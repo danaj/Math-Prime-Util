@@ -1,0 +1,6 @@
+
+- Examine behavior near 32-bit limit on 32-bit machines.
+
+- GMP versions of all routines.
+
+- factoring (Fermat, Pollard Rho, HOLF, etc.)
