@@ -1,0 +1,51 @@
+Math::Prime::Util version 0.01
+
+A set of utilities related to prime numbers.  These include multiple sieving
+methods, is_prime, prime_count, nth_prime, approximations and bounds for
+the prime_count and nth prime, next_prime and prev_prime, factoring utilities,
+and more.
+
+The default sieving and factoring are intended to be the fastest on CPAN,
+including Math::Prime::XS, Math::Prime::FastSieve, and Math::Factor::XS.
+
+
+SYNOPSIS
+
+  use Math::Prime::Util qw/primes/;
+
+  # Get a big array reference of many primes
+  my $aref = primes( 100_000_000 );
+
+  # All the primes between 5k and 10k inclusive
+  my $aref = primes( 5_000, 10_000 );
+
+See the POD module documentation for examples and more information on all the
+methods included.
+
+
+INSTALLATION
+
+To install this module type the following:
+
+   perl Makefile.PL
+   make
+   make test
+   make install
+
+You will need a C compiler compatible with the compiler used to build Perl.
+Since the routines are meant to be used from Perl, the data types will match
+the ones used with the Perl you are installing for.  This means a 32-bit Perl
+running on a 64-bit machine will result in a 32-bit library.
+
+
+DEPENDENCIES
+
+Perl 5.6.2 or later.  No modules outside of Core have been used.
+
+
+COPYRIGHT AND LICENCE
+
+Copyright (C) 2011-2012 by Dana Jacobsen <dana@acm.org>
+
+This library is free software; you can redistribute it and/or modify
+it under the same terms as Perl itself.
