@@ -88,6 +88,23 @@ sub primes {
   return $sref;
 }
 
+# We use this object to let them control when memory is freed.
+package Math::Prime::Util::MemFree;
+use Carp qw/croak confess/;
+my $memfree_instances = 0;
+sub new {
+  my $self = bless {}, shift;
+  $memfree_instances++;
+  return $self;
+}
+sub DESTROY {
+  my $self = shift;
+  confess "instances count mismatch" unless $memfree_instances > 0;
+  Math::Prime::Util::prime_free if --$memfree_instances == 0;
+}
+package Math::Prime::Util;
+
+
 
 1;
 
@@ -136,26 +153,6 @@ including Math::Prime::XS, Math::Prime::FastSieve, and Math::Factor::XS.
 
 
 =head1 FUNCTIONS
-
-=head2 prime_precalc
-
-  prime_precalc( 1_000_000_000 );
-
-Let the module prepare for fast operation up to a specific number.  It is not
-necessary to call this, but it gives you more control over when memory is
-allocated and gives faster results for multiple calls in some cases.  In the
-current implementation this will calculate a sieve for all numbers up to the
-specified number.
-
-
-=head2 prime_free
-
-  prime_free;
-
-Frees any extra memory the module may have allocated.  Like with
-C<prime_precalc>, it is not necessary to call this, but if you're done
-making calls, or want things cleanup up, you can use this.
-
 
 =head2 is_prime
 
@@ -290,11 +287,45 @@ generate any primes.  Uses the Cipolla 1902 approximation with two
 polynomials, plus a correction term for small values to reduce the error.
 
 
+=head1 UTILITY FUNCTIONS
+
+=head2 prime_precalc
+
+  prime_precalc( 1_000_000_000 );
+
+Let the module prepare for fast operation up to a specific number.  It is not
+necessary to call this, but it gives you more control over when memory is
+allocated and gives faster results for multiple calls in some cases.  In the
+current implementation this will calculate a sieve for all numbers up to the
+specified number.
+
+
+=head2 prime_free
+
+  prime_free;
+
+Frees any extra memory the module may have allocated.  Like with
+C<prime_precalc>, it is not necessary to call this, but if you're done
+making calls, or want things cleanup up, you can use this.  The object method
+might be a better choice for complicated uses.
+
+=head2 Math::Prime::Util::MemFree->new
+
+  my $mf = Math::Prime::Util::MemFree->new
+  # perform operations.  When $mf goes out of scope, memory will be recovered.
+
+This is a more robust way of making sure any cached memory is freed, as it
+will be handled by the last C<MemFree> object leaving scope.  This means if
+your routines were inside an eval that died, things will still get cleaned up.
+If you call another function that uses a MemFree object, the cache will stay
+in place because you still have an object.
+
+
 =head1 LIMITATIONS
 
-Some of the functions have not yet transitioned to using a segmented sieve,
-so will use too much memory to be practical when called with very large
-numbers (C<10^11> and up).
+The functions C<prime_count> and C<nth_prime> have not yet transitioned to
+using a segmented sieve, so will use too much memory to be practical when
+called with very large numbers (C<10^11> and up).
 
 I have not completed testing all the functions near the word size limit
 (e.g. C<2^32> for 32-bit machines).  Please report any problems you find.
