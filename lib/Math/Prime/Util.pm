@@ -379,7 +379,7 @@ also amenable to massively parallel searching.
 For 64-bit input, these are unlikely to be of too much use.  An optimized
 SQUFOF implementation takes under 20 milliseconds to find a factor for any
 62-bit input on modern desktop computers.  Lightweight quadratic sieves
-are typically much faster for moderate in the 19+ digit range.
+are typically much faster for inputs in the 19+ digit range.
 
 
 =head1 LIMITATIONS
@@ -405,7 +405,7 @@ Pi(10^10) = 455,052,511.
        5.6  Tomás Oliveira e Silva's segmented sieve v2 (Sep 2010)
        6.6  primegen (optimized Sieve of Atkin)
       11.2  Tomás Oliveira e Silva's segmented sieve v1 (May 2003)
-  
+
       15.6  My Sieve of Eratosthenes using a mod-30 wheel
       17.2  A slightly modified verion of Terje Mathisen's mod-30 sieve
       35.5  Basic Sieve of Eratosthenes on odd numbers
@@ -420,7 +420,7 @@ Perl modules, counting the primes to C<800_000_000> (800 million), in seconds:
       11.7  Math::Prime::XS             0.29
       15.0  Bit::Vector                 7.2
    (hours)  Math::Primality             0.04
-    
+
 
 =head1 AUTHORS
 

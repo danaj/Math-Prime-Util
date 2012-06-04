@@ -6,3 +6,13 @@
 - prime_count and nth_prime with very large inputs.
 
 - factoring (Fermat, Pollard Rho, HOLF, etc.)
+
+- Add test to check maxbits in compiled library vs. Perl
+
+- Fill in the synopsis!
+
+- Li(n)
+
+- Pure perl implementations
+
+- input validation (in XS, or do we need to make Perl wrappers for everything?)
