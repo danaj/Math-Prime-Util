@@ -17,10 +17,6 @@ WriteMakefile1(
                       'Exporter'         => '5.562',
                       'XSLoader'         => '0.01',
                     },
-    # Example:
-    #META_MERGE   => {
-    #                  recommends => { 'Data::BitStream' => 0, },
-    #                },
 
     MIN_PERL_VERSION => 5.006002,
 );

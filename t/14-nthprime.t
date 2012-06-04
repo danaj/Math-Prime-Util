@@ -48,7 +48,7 @@ my %nthprimes64 = (
 while (my($n, $nth) = each (%nthprimes32)) {
   cmp_ok( nth_prime_upper($n), '>=', $nth, "nth_prime($n) <= upper estimate" );
   cmp_ok( nth_prime_lower($n), '<=', $nth, "nth_prime($n) >= lower estimate" );
-  
+
   if ( ($n <= 2000000) || $extra ) {
     is( nth_prime($n), $nth, "nth_prime($n) = $nth" );
   }

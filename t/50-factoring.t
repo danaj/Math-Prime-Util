@@ -34,7 +34,7 @@ foreach my $n (@testn) {
   # Do they multiply to the number?
   my $product = 1;  $product *= $_ for @f;
   is( $product, $n, "$n = [ $facstring ]" );
-  
+
   # Are they all prime?
   my $isprime = 1; $isprime *= is_prime($_) for @f;
   if ($n < 2) {
