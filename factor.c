@@ -9,6 +9,17 @@
 #include "util.h"
 #include "sieve.h"
 
+/*
+ * You need to remember to use UV for unsigned and IV for signed types that
+ * are large enough to hold our data.
+ *   If you use int, that's 32-bit on LP64 and LLP64 machines.  You lose.
+ *   If you use long, that's 32-bit on LLP64 machines.  You lose.
+ *   If you use long long, you may be too large which isn't so bad, but some
+ *                         compilers may not understand the type at all.
+ * perl.h already figured all this out, and provided us with these types which
+ * match the native integer type used inside our Perl, so just use those.
+ */
+
 
 int trial_factor(UV n, UV *factors, UV maxtrial)
 {
@@ -278,9 +289,9 @@ int pminus1_factor(UV n, UV *factors, UV rounds)
 
 /* My modification of Ben Buhrow's modification of Bob Silverman's SQUFOF code.
  * I like Jason P's code a lot -- I should put it in. */
-static long qqueue[100];
-static long qpoint;
-static void enqu(long q, long *iter) {
+static IV qqueue[100];
+static IV qpoint;
+static void enqu(IV q, IV *iter) {
   qqueue[qpoint] = q;
   if (++qpoint >= 100) *iter = -1;
 }
@@ -289,8 +300,8 @@ int squfof_factor(UV n, UV *factors, UV rounds)
 {
   int nfactors = 0;
   UV temp;
-  long iq,ll,l2,p,pnext,q,qlast,r,s,t,i;
-  long jter, iter;
+  IV iq,ll,l2,p,pnext,q,qlast,r,s,t,i;
+  IV jter, iter;
   int reloop;
 
   if ( (n < 2) ) {
@@ -320,7 +331,7 @@ int squfof_factor(UV n, UV *factors, UV rounds)
   }
 
   q = temp;              /* q = excess of n over next smaller square */
-  ll = 1 + 2*(long)sqrt((double)(p+p));
+  ll = 1 + 2*(IV)sqrt((double)(p+p));
   l2 = ll/2;
   qpoint = 0;
 

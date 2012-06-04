@@ -86,7 +86,7 @@ sieve_primes(IN UV low, IN UV high)
   CODE:
     if (low <= high) {
       if (get_prime_cache(high, &sieve) < high) {
-        croak("Could not generate sieve for %ld", high);
+        croak("Could not generate sieve for %"UVuf, high);
       } else {
         if ((low <= 2) && (high >= 2)) { av_push(av, newSVuv( 2 )); }
         if ((low <= 3) && (high >= 3)) { av_push(av, newSVuv( 3 )); }
@@ -125,6 +125,7 @@ segment_primes(IN UV low, IN UV high, IN UV segment_size = 65536UL)
   PREINIT:
     AV* av = newAV();
     unsigned char* sieve;
+    UV low_d, high_d;
   CODE:
     if ((low <= 2) && (high >= 2)) { av_push(av, newSVuv( 2 )); }
     if ((low <= 3) && (high >= 3)) { av_push(av, newSVuv( 3 )); }
@@ -134,27 +135,34 @@ segment_primes(IN UV low, IN UV high, IN UV segment_size = 65536UL)
       /* Call the segment siever one or more times */
       sieve = (unsigned char*) malloc( segment_size );
       if (sieve == 0)
-        croak("Could not allocate %lu bytes for segment sieve", segment_size);
-      while (low <= high) {
-        UV seghigh = ((high/30 - low/30) < segment_size)
-                          ?  high
-                          :  ( (low/30 + segment_size-1)*30+29 );
-        UV startd = low/30;
-        UV endd = seghigh/30;
-        UV ranged = endd - startd + 1;
-        assert(endd >= startd);
-        assert(ranged <= segment_size);
+        croak("Could not allocate %"UVuf" bytes for segment sieve", segment_size);
+
+      /* To protect vs. overflow, work entirely with d. */
+      low_d  = low  / 30;
+      high_d = high / 30;
+      while ( low_d <= high_d ) {
+        UV seghigh_d = ((high_d - low_d) < segment_size)
+                       ? high_d
+                       : (low_d + segment_size-1);
+        UV range_d = seghigh_d - low_d + 1;
+        UV seghigh = (seghigh_d == high_d) ? high : (seghigh_d*30+29);
+        UV segbase = low_d * 30;
+        /* printf("  startd = %"UVuf"  endd = %"UVuf"\n", startd, endd); */
+  
+        assert( seghigh_d >= low_d );
+        assert( range_d <= segment_size );
 
         /* Sieve from startd*30+1 to endd*30+29.  */
-        if (sieve_segment(sieve, startd, endd) == 0) {
-          croak("Could not segment sieve from %lu to %lu", startd*30+1, endd*30+29);
+        if (sieve_segment(sieve, low_d, seghigh_d) == 0) {
+          croak("Could not segment sieve from %"UVuf" to %"UVuf, segbase+1, seghigh);
           break;
         }
 
-        START_DO_FOR_EACH_SIEVE_PRIME( sieve, low-startd*30, seghigh-30*startd )
-          av_push(av,newSVuv( startd*30 + p ));
+        START_DO_FOR_EACH_SIEVE_PRIME( sieve, low - segbase, seghigh - segbase )
+          av_push(av,newSVuv( segbase + p ));
         END_DO_FOR_EACH_SIEVE_PRIME
 
+        low_d += range_d;
         low = seghigh+2;
       }
       free(sieve);
@@ -172,7 +180,7 @@ erat_primes(IN UV low, IN UV high)
     if (low <= high) {
       sieve = sieve_erat30(high);
       if (sieve == 0) {
-        croak("Could not generate sieve for %lu", high);
+        croak("Could not generate sieve for %"UVuf, high);
       } else {
         if ((low <= 2) && (high >= 2)) { av_push(av, newSVuv( 2 )); }
         if ((low <= 3) && (high >= 3)) { av_push(av, newSVuv( 3 )); }
@@ -199,7 +207,7 @@ erat_simple_primes(IN UV low, IN UV high)
     if (low <= high) {
       sieve = sieve_erat(high);
       if (sieve == 0) {
-        croak("Could not generate sieve for %ld", high);
+        croak("Could not generate sieve for %"UVuf, high);
       } else {
         if (low <= 2) { av_push(av, newSVuv( 2 )); low = 3; }
         low  = low/2;

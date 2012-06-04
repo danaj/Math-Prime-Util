@@ -26,7 +26,9 @@ is( Math::Prime::Util::_get_prime_cache_size, $init_size, "Internal space went b
 
 # Now do the object way.
 {
-  my $mf = new_ok( 'Math::Prime::Util::MemFree');
+  #my $mf = new_ok( 'Math::Prime::Util::MemFree');  # Better 0.88+ way
+  my $mf = Math::Prime::Util::MemFree->new;
+  isa_ok $mf, 'Math::Prime::Util::MemFree';
   prime_precalc($bigsize);
   cmp_ok( Math::Prime::Util::_get_prime_cache_size, '>', $init_size, "Internal space grew after large precalc" );
 }

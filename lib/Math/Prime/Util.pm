@@ -5,7 +5,7 @@ use Carp qw/croak confess/;
 
 BEGIN {
   $Math::Prime::Util::AUTHORITY = 'cpan:DANAJ';
-  $Math::Prime::Util::VERSION = '0.01';
+  $Math::Prime::Util::VERSION = '0.02';
 }
 
 # parent is cleaner, and in the Perl 5.10.1 / 5.12.0 core, but not earlier.
@@ -34,6 +34,8 @@ BEGIN {
 }
 
 
+my $_maxparam = (_maxbits == 32) ? 4294967295 : 18446744073709551615;
+
 sub primes {
   my $optref = {};  $optref = shift if ref $_[0] eq 'HASH';
   croak "no parameters to primes" unless scalar @_ > 0;
@@ -44,11 +46,14 @@ sub primes {
 
   # Validate parameters
   if ( (!defined $low) || (!defined $high) ||
-       #($low < 0) || ($high < 0) ||
        ($low =~ tr/0123456789//c) || ($high =~ tr/0123456789//c)
      ) {
-    croak "Parameters must be positive integers";
+    croak "Parameters [ $low $high ] must be positive integers";
   }
+
+  # Verify the parameters are in range.
+  croak "Parameters [ $low $high ] not in range 0-$_maxparam" unless $low <= $_maxparam && $high <= $_maxparam;
+
   return $sref if ($low > $high) || ($high < 2);
 
   my $method = $optref->{'method'};
@@ -126,7 +131,7 @@ Math::Prime::Util - Utilities related to prime numbers, including fast generator
 
 =head1 VERSION
 
-Version 0.01
+Version 0.02
 
 
 =head1 SYNOPSIS
@@ -356,9 +361,8 @@ q are the same number of digits), then this will be very fast.
   my @factors = squfof_factor($n);
 
 Produces factors, not necessarily prime, of the positive number input.  It
-is possible the factorization will fail, in which case you will need to use
-another method.  Failure in this case means a single factor is returned that
-is not prime.
+is possible the function will be unable to find a factor, in which case a
+single factor (the input) is returned.
 
 =head2 prho_factor
 
@@ -376,10 +380,10 @@ finding a factor or very large inputs in remarkably short time, similar to
 how Fermat's method works very well for factors near C<sqrt(n)>.  They are
 also amenable to massively parallel searching.
 
-For 64-bit input, these are unlikely to be of too much use.  An optimized
-SQUFOF implementation takes under 20 milliseconds to find a factor for any
-62-bit input on modern desktop computers.  Lightweight quadratic sieves
-are typically much faster for inputs in the 19+ digit range.
+For 64-bit input, these are unlikely to be of much use.  An optimized SQUFOF
+implementation takes under 20 milliseconds to find a factor for any 62-bit
+input on modern desktop computers.  Lightweight quadratic sieves are
+typically much faster for inputs in the 19+ digit range.
 
 
 =head1 LIMITATIONS
@@ -391,9 +395,11 @@ called with very large numbers (C<10^11> and up).
 I have not completed testing all the functions near the word size limit
 (e.g. C<2^32> for 32-bit machines).  Please report any problems you find.
 
-The factoring algorithms are mildly interesting but really limited by not
-being big number aware.  Factoring 64-bit numbers is not much of a challenge
-these days.
+The extra factoring algorithms are mildly interesting but really limited by
+not being big number aware.
+
+Perl versions earlier than 5.8.0 have issues with 64-bit.  The test suite will
+try to determine if your Perl is broken.  This will show up in factoring tests.
 
 
 =head1 PERFORMANCE

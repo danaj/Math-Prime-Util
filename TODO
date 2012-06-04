@@ -5,6 +5,9 @@
 
 - prime_count and nth_prime with very large inputs.
 
+- segment sieve should itself use a segment for its primes.
+  Today we'd need sqrt(2^64) max = 140MB.  Segmenting would yield under 1MB.
+
 - factoring (Fermat, Pollard Rho, HOLF, etc.)
 
 - Add test to check maxbits in compiled library vs. Perl

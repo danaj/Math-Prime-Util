@@ -1,4 +1,12 @@
 Revision history for Perl extension Math::Prime::Util.
 
+0.02  4 June 2012
+    - Back off new_ok to new/isa_ok to keep Test::More requirements low.
+    - Some documentation updates.
+    - I accidently used long in SQUFOF, which breaks LLP64.
+    - Test for broken 64-bit Perl.
+    - Fix overflow issues in segmented sieving.
+    - Switch to using UVuf for croaks.  What I should have done all along.
+
 0.01  4 June 2012
     - Initial release

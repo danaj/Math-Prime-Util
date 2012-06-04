@@ -25,7 +25,20 @@ push @testn, @testn64 if $use64;
 push @testn, qw/9999986200004761 99999989237606677 999999866000004473/
       if $use64 && $extra;
 
-plan tests => 2 * scalar @testn;
+plan tests =>  (2 * scalar @testn) + ($use64 ? 1 : 0);
+
+if ($use64) {
+  # Simple test:  perl -e 'die if 18446744073709550592 == ~0'
+  my $broken = (18446744073709550592 == ~0);
+  if ($broken) {
+    if ($] < 5.008) {
+      diag "Perl pre-5.8.0 has broken 64-bit.  Expect failures.";
+    } else {
+      diag "Eek!  Your 64-bit Perl $] is **** BROKEN ****.  Expect failures.";
+    }
+  }
+  ok( !$broken, "64-bit isn't obviously broken" );
+}
 
 foreach my $n (@testn) {
   my @f = factor($n);

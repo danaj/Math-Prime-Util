@@ -469,12 +469,12 @@ UV nth_prime(UV n)
 
   upper_limit = nth_prime_upper(n);
   if (upper_limit == 0) {
-    croak("nth_prime(%lu) would overflow", (unsigned long)n);
+    croak("nth_prime(%"UVuf") would overflow", n);
     return 0;
   }
   /* The nth prime is guaranteed to be within this range */
   if (get_prime_cache(upper_limit, &sieve) < upper_limit) {
-    croak("Couldn't generate sieve for nth(%lu) [sieve to %lu]", (unsigned long)n, (unsigned long)upper_limit);
+    croak("Couldn't generate sieve for nth(%"UVuf") [sieve to %"UVuf"]", n, upper_limit);
     return 0;
   }
 
@@ -495,6 +495,6 @@ UV nth_prime(UV n)
   START_DO_FOR_EACH_SIEVE_PRIME(sieve, start, upper_limit)
     if (++count == n)  return p;
   END_DO_FOR_EACH_SIEVE_PRIME;
-  croak("nth_prime failed for %lu, not found in range %lu - %lu", (unsigned long)n, (unsigned long) start, (unsigned long)upper_limit);
+  croak("nth_prime failed for %"UVuf", not found in range %"UVuf" - %"UVuf, n, start, upper_limit);
   return 0;
 }
