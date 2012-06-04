@@ -3,4 +3,6 @@
 
 - GMP versions of all routines.
 
+- prime_count and nth_prime with very large inputs.
+
 - factoring (Fermat, Pollard Rho, HOLF, etc.)

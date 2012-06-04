@@ -6,6 +6,7 @@
 #include "sieve.h"
 #include "util.h"
 #include "bitarray.h"
+#include "factor.h"
 
 MODULE = Math::Prime::Util	PACKAGE = Math::Prime::Util
 
@@ -214,3 +215,118 @@ erat_simple_primes(IN UV low, IN UV high)
     RETVAL = newRV_noinc( (SV*) av );
   OUTPUT:
     RETVAL
+
+void
+factor(IN UV n)
+  PREINIT:
+    UV const maxtrials = UV_MAX;
+    UV factors[MPU_MAX_FACTORS+1];
+    int nfactors;
+    int i;
+  PPCODE:
+#if BITS_PER_WORD == 32
+    nfactors = trial_factor(n, factors, maxtrials);
+    if (nfactors < 1)
+      croak("No factors from trial_factor");
+    for (i = 0; i < nfactors; i++) {
+      XPUSHs(sv_2mortal(newSVuv( factors[i] )));
+    }
+#else
+    /* TODO: worry about squfof overflow */
+    if ( n < UVCONST(0xFFFFFFFF) ) {
+      /* small number */
+      nfactors = trial_factor(n, factors, maxtrials);
+    } else {
+      UV sqfactors, f1, f2;
+      /* First factor out small numbers */
+      nfactors = trial_factor(n, factors, 29);
+      /* Use SQUFOF to separate the remainder */
+      n = factors[--nfactors];
+      sqfactors = squfof_factor(n, factors+nfactors, 800000);
+      assert(sqfactors <= 2);
+      if (sqfactors == 1) {
+        n = factors[nfactors];
+        nfactors += trial_factor(n, factors+nfactors, maxtrials);
+      } else {
+        UV n1 = factors[nfactors];
+        n = factors[nfactors+1];
+        nfactors += trial_factor(n1, factors+nfactors, maxtrials);
+        nfactors += trial_factor(n, factors+nfactors, maxtrials);
+      }
+    }
+    if (nfactors < 1) croak("No factors");
+    for (i = 0; i < nfactors; i++) {
+      XPUSHs(sv_2mortal(newSVuv( factors[i] )));
+    }
+#endif
+
+void
+fermat_factor(IN UV n)
+  PREINIT:
+    UV factors[MPU_MAX_FACTORS+1];
+    int nfactors;
+    int i;
+  PPCODE:
+    nfactors = fermat_factor(n, factors);
+    if (nfactors < 1)
+      croak("No factors from fermat_factor");
+    for (i = 0; i < nfactors; i++) {
+      XPUSHs(sv_2mortal(newSVuv( factors[i] )));
+    }
+
+void
+squfof_factor(IN UV n)
+  PREINIT:
+    UV factors[MPU_MAX_FACTORS+1];
+    int nfactors;
+    int i;
+  PPCODE:
+    nfactors = squfof_factor(n, factors, 800000);
+    if (nfactors < 1)
+      croak("No factors from squfof_factor");
+    for (i = 0; i < nfactors; i++) {
+      XPUSHs(sv_2mortal(newSVuv( factors[i] )));
+    }
+
+
+void
+pbrent_factor(IN UV n)
+  PREINIT:
+    UV factors[MPU_MAX_FACTORS+1];
+    int nfactors;
+    int i;
+  PPCODE:
+    nfactors = pbrent_factor(n, factors, 50000000);
+    if (nfactors < 1)
+      croak("No factors from pbrent_factor");
+    for (i = 0; i < nfactors; i++) {
+      XPUSHs(sv_2mortal(newSVuv( factors[i] )));
+    }
+
+void
+prho_factor(IN UV n)
+  PREINIT:
+    UV factors[MPU_MAX_FACTORS+1];
+    int nfactors;
+    int i;
+  PPCODE:
+    nfactors = prho_factor(n, factors, 50000000);
+    if (nfactors < 1)
+      croak("No factors from prho_factor");
+    for (i = 0; i < nfactors; i++) {
+      XPUSHs(sv_2mortal(newSVuv( factors[i] )));
+    }
+
+void
+pminus1_factor(IN UV n)
+  PREINIT:
+    UV factors[MPU_MAX_FACTORS+1];
+    int nfactors;
+    int i;
+  PPCODE:
+    nfactors = pminus1_factor(n, factors, 50000000);
+    if (nfactors < 1)
+      croak("No factors from pminus1_factor");
+    for (i = 0; i < nfactors; i++) {
+      XPUSHs(sv_2mortal(newSVuv( factors[i] )));
+    }

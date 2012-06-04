@@ -10,7 +10,7 @@ WriteMakefile1(
     LIBS         => [''],   # e.g., '-lm'
     DEFINE       => '',     # e.g., '-DHAVE_SOMETHING'
     INC          => '',     # e.g., '-I/usr/include/other'
-    OBJECT       => 'sieve.o util.o XS.o',
+    OBJECT       => 'factor.o sieve.o util.o XS.o',
 
     PREREQ_PM    => {
                       'Test::More'       => '0.45',

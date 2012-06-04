@@ -18,6 +18,7 @@ our @EXPORT_OK = qw(
                      next_prime  prev_prime
                      prime_count prime_count_lower prime_count_upper prime_count_approx
                      nth_prime nth_prime_lower nth_prime_upper nth_prime_approx
+                     factor
                    );
 
 BEGIN {
@@ -321,6 +322,66 @@ If you call another function that uses a MemFree object, the cache will stay
 in place because you still have an object.
 
 
+
+=head1 FACTORING FUNCTIONS
+
+=head2 factor
+
+  my @factors = factor(3_369_738_766_071_892_021);
+
+Produces the prime factors of a positive number input.  They will typically
+but necessarily be in numerical order.  The special cases of C<n = 0> and
+C<n = 1> will return C<n>, which guarantees multiplying the factors together
+will always result in the input value, though those are the only cases where
+the returned factors are not prime.
+
+The current algorithm is to use trial division for 32-bit numbers, while for
+larger numbers a small set of trial divisions is performed, followed by a
+single run of SQUFOF, then trial division of the results.  This results in
+faster factorization of most large numbers.  More sophisticated methods could
+be used.
+
+=head2 fermat_factor
+
+  my @factors = fermat_factor($n);
+
+Produces factors, not necessarily prime, of the positive number input.  The
+particular algorithm is Knuth's algorithm C.  For small inputs this will be
+very fast, but it slows down quite rapidly as the number of digits increases.
+If there is a factor close to the midpoint (e.g. a semiprime p*q where p and
+q are the same number of digits), then this will be very fast.
+
+=head2 squfof_factor
+
+  my @factors = squfof_factor($n);
+
+Produces factors, not necessarily prime, of the positive number input.  It
+is possible the factorization will fail, in which case you will need to use
+another method.  Failure in this case means a single factor is returned that
+is not prime.
+
+=head2 prho_factor
+
+=head2 pbrent_factor
+
+=head2 pminus1_factor
+
+Attempts to find a factor using one of the probabilistic algorigthms of
+Pollard Rho, Brent's modification of Pollard Rho, or Pollard's C<p - 1>.
+These are more specialized algorithms usually used for pre-factoring very
+large inputs, or checking very large inputs for naive mistakes.  If given
+a prime input, or if just unlucky, these will take a long time to return
+back the single input value.  There are cases where these can result in
+finding a factor or very large inputs in remarkably short time, similar to
+how Fermat's method works very well for factors near C<sqrt(n)>.  They are
+also amenable to massively parallel searching.
+
+For 64-bit input, these are unlikely to be of too much use.  An optimized
+SQUFOF implementation takes under 20 milliseconds to find a factor for any
+62-bit input on modern desktop computers.  Lightweight quadratic sieves
+are typically much faster for moderate in the 19+ digit range.
+
+
 =head1 LIMITATIONS
 
 The functions C<prime_count> and C<nth_prime> have not yet transitioned to
@@ -329,6 +390,10 @@ called with very large numbers (C<10^11> and up).
 
 I have not completed testing all the functions near the word size limit
 (e.g. C<2^32> for 32-bit machines).  Please report any problems you find.
+
+The factoring algorithms are mildly interesting but really limited by not
+being big number aware.  Factoring 64-bit numbers is not much of a challenge
+these days.
 
 
 =head1 PERFORMANCE
@@ -373,6 +438,12 @@ used in my wheel sieve.
 Tomás Oliveira e Silva has released the source for a very fast segmented sieve.
 The current implementation does not use these ideas, but future versions likely
 will.
+
+The SQUFOF implementation being used is my modifications to Ben Buhrow's
+modifications to Bob Silverman's code.  I may experiment with some other
+implementations (Ben Buhrows and Jason Papadopoulos both have published their
+excellent versions in the public domain).
+
 
 
 =head1 COPYRIGHT

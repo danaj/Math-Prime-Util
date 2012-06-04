@@ -7,6 +7,8 @@ README
 TODO
 XS.xs
 bitarray.h
+factor.h
+factor.c
 sieve.h
 sieve.c
 util.h
@@ -20,7 +22,7 @@ t/12-nextprime.t
 t/13-primecount.t
 t/14-nthprime.t
 t/30-relations.t
+t/50-factoring.t
 t/90-release-perlcritic.t
 t/91-release-pod-syntax.t
 t/92-release-pod-coverage.t
-

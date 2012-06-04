@@ -467,13 +467,6 @@ UV nth_prime(UV n)
   if (n < NPRIMES_SMALL)
     return primes_small[n];
 
-if (n ==      100000) return 1299709;
-if (n ==     1000000) return 15485863;
-if (n ==    10000000) return 179424673;
-if (n ==   100000000) return 2038074743;
-if (n ==  1000000000) return 22801763489;
-if (n == 10000000000) return 252097800623;
-
   upper_limit = nth_prime_upper(n);
   if (upper_limit == 0) {
     croak("nth_prime(%lu) would overflow", (unsigned long)n);
