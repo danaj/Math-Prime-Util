@@ -209,10 +209,12 @@ input is C<2> or lower.
 
 Returns the Prime Count function C<Pi(n)>.  The current implementation relies
 on sieving to find the primes within the interval, so will take some time and
-memory.  There are slightly faster ways to handle the sieving (e.g. maintain
-a list of counts from C<2 - j> for various C<j>, then do a segmented sieve
-between C<j> and C<n>), and for very large numbers the methods of Meissel,
-Lehmer, or Lagarias-Miller-Odlyzko-Deleglise-Rivat may be appropriate.
+memory.  It uses a segmented sieve if the primary sieve is not large enough,
+so is very memory efficient.  However, time growth is slightly more than
+linear with C<n>, so it can take a very long time.  A hybrid table approach
+is the usual means taken to speed this up, which a later version may do.  For
+very large inputs the methods of Meissel, Lehmer, or
+Lagarias-Miller-Odlyzko-Deleglise-Rivat may be appropriate.
 
 
 =head2 prime_count_upper
@@ -388,9 +390,9 @@ typically much faster for inputs in the 19+ digit range.
 
 =head1 LIMITATIONS
 
-The functions C<prime_count> and C<nth_prime> have not yet transitioned to
-using a segmented sieve, so will use too much memory to be practical when
-called with very large numbers (C<10^11> and up).
+The function C<nth_prime> has not yet transitioned to using a segmented sieve,
+so will use too much memory to be practical when called with very large
+numbers (C<10^11> and up).
 
 I have not completed testing all the functions near the word size limit
 (e.g. C<2^32> for 32-bit machines).  Please report any problems you find.

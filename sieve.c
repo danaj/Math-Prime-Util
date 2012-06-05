@@ -248,5 +248,8 @@ int sieve_segment(unsigned char* mem, UV startd, UV endd)
   }
   END_DO_FOR_EACH_SIEVE_PRIME;
 
+  if (startd == 0)
+    mem[0] |= masktab30[1];  /* 1 is composite */
+
   return 1;
 }

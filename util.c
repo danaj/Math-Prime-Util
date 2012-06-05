@@ -323,36 +323,69 @@ UV prime_count(UV n)
   if (n < NPRIME_COUNT_SMALL)
     return prime_count_small[n];
 
-  /* Get the cached sieve. */
-  if (get_prime_cache(n, &sieve) < n) {
-    croak("Couldn't generate sieve for prime_count");
-    return 0;
-  }
-
-  /* Simple:
-   *          START_DO_FOR_EACH_SIEVE_PRIME(sieve, 7, n)
-   *            count++;
-   *          END_DO_FOR_EACH_SIEVE_PRIME;
-   */
-
-  bytes = n / 30;
+  bytes = n/30;
   s = 0;
 
-  /* Start from last word position if we can.  This is a big speedup when
-   * calling prime_count many times with successively larger numbers. */
-  if (bytes >= last_bytes) {
-    s = last_bytes;
-    count = last_count;
+  if (n <= get_prime_cache(0, &sieve)) {
+
+    /* We have enough primes -- just count them. */
+
+    /* Start from last word position if we can.  This is a big speedup when
+     * calling prime_count many times with successively larger numbers. */
+    if (bytes >= last_bytes) {
+      s = last_bytes;
+      count = last_count;
+    }
+
+    count += count_zero_bits(sieve+s, bytes-s);
+
+    last_bytes = bytes;
+    last_count = count;
+
+    START_DO_FOR_EACH_SIEVE_PRIME(sieve, 30*bytes, n)
+      count++;
+    END_DO_FOR_EACH_SIEVE_PRIME;
+
+  } else {
+
+    /* We don't have enough primes.  Repeatedly segment sieve */
+    UV const segment_size = 262144;
+    unsigned char* segment;
+
+    /* TODO: we really shouldn't need this */
+    prime_precalc( sqrt(n) + 2 );
+
+    segment = (unsigned char*) malloc( segment_size );
+    if (segment == 0) {
+      croak("Could not allocate %"UVuf" bytes for segment sieve", segment_size);
+      return 0;
+    }
+
+    for (s = 0; s <= bytes; s += segment_size) {
+      /* We want to sieve one extra byte, to handle the last fragment */
+      UV sieve_bytes = ((bytes-s) >= segment_size) ? segment_size : bytes-s+1;
+      UV count_bytes = ((bytes-s) >= segment_size) ? segment_size : bytes-s;
+
+      /* printf("sieving from %"UVuf" to %"UVuf"\n", 30*s+1, 30*(s+sieve_bytes-1)+29); */
+      if (sieve_segment(segment, s, s + sieve_bytes - 1) == 0) {
+        croak("Could not segment sieve from %"UVuf" to %"UVuf, 30*s+1, 30*(s+sieve_bytes)+29);
+        break;
+      }
+
+      if (count_bytes > 0)
+        count += count_zero_bits(segment, count_bytes);
+
+    }
+    s -= segment_size;
+
+    /*printf("counting fragment from %"UVuf" to %"UVuf"\n", 30*bytes-30*s, n-30*s); */
+    START_DO_FOR_EACH_SIEVE_PRIME(segment, 30*bytes - s*30, n - s*30)
+      count++;
+    END_DO_FOR_EACH_SIEVE_PRIME;
+
+    free(segment);
+
   }
-
-  count += count_zero_bits(sieve+s, bytes-s);
-
-  last_bytes = bytes;
-  last_count = count;
-
-  START_DO_FOR_EACH_SIEVE_PRIME(sieve, 30*bytes, n)
-    count++;
-  END_DO_FOR_EACH_SIEVE_PRIME;
 
   return count;
 }

@@ -7,6 +7,10 @@ Revision history for Perl extension Math::Prime::Util.
     - Test for broken 64-bit Perl.
     - Fix overflow issues in segmented sieving.
     - Switch to using UVuf for croaks.  What I should have done all along.
+    - prime_count uses a segment sieve with 256k chunks (~7.9M numbers).
+      Not memory intensive any more, and faster for large inputs.  The time
+      growth is slightly over linear however, so expect to wait a long
+      time for 10^12 or more.
 
 0.01  4 June 2012
     - Initial release
