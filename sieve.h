@@ -27,9 +27,11 @@ static const unsigned char masktab30[30] = {
     0,  1,  0,  0,  0,  0,  0,  2,  0,  0,  0,  4,  0,  8,  0,
     0,  0, 16,  0, 32,  0,  0,  0, 64,  0,  0,  0,  0,  0,128  };
 /* Add this to a number and you'll ensure you're on a wheel location */
-static const unsigned char distancewheel30[30] = {
-    1,  0,  5,  4,  3,  2,  1,  0,  3,  2,  1,  0,  1,  0,  3,
-    2,  1,  0,  1,  0,  3,  2,  1,  0,  5,  4,  3,  2,  1,  0 };
+static const unsigned char distancewheel30[30] =
+    {1,0,5,4,3,2,1,0,3,2,1,0,1,0,3,2,1,0,1,0,3,2,1,0,5,4,3,2,1,0};
+/* Once on the wheel, add this to get to next spot.  In p space, not m. */
+static const unsigned char wheeladvance30[30] =
+    {0,6,0,0,0,0,0,4,0,0,0,2,0,4,0,0,0,2,0,4,0,0,0,6,0,0,0,0,0,2};
 
 static int is_prime_in_sieve(const unsigned char* sieve, UV p) {
   UV d = p/30;

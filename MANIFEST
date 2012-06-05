@@ -13,6 +13,8 @@ sieve.h
 sieve.c
 util.h
 util.c
+examples/bench-nthprime.pl
+examples/bench-factor-semiprime.pl
 t/01-load.t
 t/02-can.t
 t/03-init.t

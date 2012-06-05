@@ -3,19 +3,18 @@
 
 - GMP versions of all routines.
 
-- prime_count and nth_prime with very large inputs.
-
 - segment sieve should itself use a segment for its primes.
   Today we'd need sqrt(2^64) max = 140MB.  Segmenting would yield under 1MB.
 
 - factoring (Fermat, Pollard Rho, HOLF, etc.)
+- Speed up basic factoring
 
 - Add test to check maxbits in compiled library vs. Perl
-
-- Fill in the synopsis!
 
 - Li(n)
 
 - Pure perl implementations
 
 - input validation (in XS, or do we need to make Perl wrappers for everything?)
+
+- examples and benchmarks

@@ -23,8 +23,6 @@
 
 int trial_factor(UV n, UV *factors, UV maxtrial)
 {
-  static const wheeladvance[30] =
-    {0,6,0,0,0,0,0,4,0,0,0,2,0,4,0,0,0,2,0,4,0,0,0,6,0,0,0,0,0,2};
   UV f, m, limit;
   int nfactors = 0;
 
@@ -70,7 +68,7 @@ int trial_factor(UV n, UV *factors, UV maxtrial)
       newlimit = sqrt(n);
       if (newlimit < limit)  limit = newlimit;
     }
-    f += wheeladvance[m];
+    f += wheeladvance30[m];
     m = nextwheel30[m];
   }
   if (n != 1)

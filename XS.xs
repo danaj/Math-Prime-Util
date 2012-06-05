@@ -226,47 +226,60 @@ erat_simple_primes(IN UV low, IN UV high)
 
 void
 factor(IN UV n)
-  PREINIT:
-    UV const maxtrials = UV_MAX;
-    UV factors[MPU_MAX_FACTORS+1];
-    int nfactors;
-    int i;
   PPCODE:
-#if BITS_PER_WORD == 32
-    nfactors = trial_factor(n, factors, maxtrials);
-    if (nfactors < 1)
-      croak("No factors from trial_factor");
-    for (i = 0; i < nfactors; i++) {
-      XPUSHs(sv_2mortal(newSVuv( factors[i] )));
-    }
-#else
-    /* TODO: worry about squfof overflow */
-    if ( n < UVCONST(0xFFFFFFFF) ) {
-      /* small number */
-      nfactors = trial_factor(n, factors, maxtrials);
+    /* Exit if n is 0 or 1 */
+    if (n < 2) {
+      XPUSHs(sv_2mortal(newSVuv( n )));
     } else {
-      UV sqfactors, f1, f2;
-      /* First factor out small numbers */
-      nfactors = trial_factor(n, factors, 29);
-      /* Use SQUFOF to separate the remainder */
-      n = factors[--nfactors];
-      sqfactors = squfof_factor(n, factors+nfactors, 800000);
-      assert(sqfactors <= 2);
-      if (sqfactors == 1) {
-        n = factors[nfactors];
-        nfactors += trial_factor(n, factors+nfactors, maxtrials);
-      } else {
-        UV n1 = factors[nfactors];
-        n = factors[nfactors+1];
-        nfactors += trial_factor(n1, factors+nfactors, maxtrials);
-        nfactors += trial_factor(n, factors+nfactors, maxtrials);
+      /* Quick trial divisions */
+      while ( (n% 2) == 0 ) {  n /=  2;  XPUSHs(sv_2mortal(newSVuv(  2 ))); }
+      while ( (n% 3) == 0 ) {  n /=  3;  XPUSHs(sv_2mortal(newSVuv(  3 ))); }
+      while ( (n% 5) == 0 ) {  n /=  5;  XPUSHs(sv_2mortal(newSVuv(  5 ))); }
+      while ( (n% 7) == 0 ) {  n /=  7;  XPUSHs(sv_2mortal(newSVuv(  7 ))); }
+      while ( (n%11) == 0 ) {  n /= 11;  XPUSHs(sv_2mortal(newSVuv( 11 ))); }
+      while ( (n%13) == 0 ) {  n /= 13;  XPUSHs(sv_2mortal(newSVuv( 13 ))); }
+      if (n > 1) {
+        if (n <= UVCONST(0xFFFFFFFF)) {  /* tune this */
+          /* trial factorization */
+          UV f = 17;
+          UV m = 17;
+          UV limit = sqrt((double) n);
+          while (f <= limit) {
+            if ( (n%f) == 0 ) {
+              do {
+                n /= f;  XPUSHs(sv_2mortal(newSVuv( f )));
+              } while ( (n%f) == 0 );
+              limit = sqrt((double) n);
+            }
+            f += wheeladvance30[m];
+            m =  nextwheel30[m];
+          }
+          if (n != 1)
+            XPUSHs(sv_2mortal(newSVuv( n )));
+        } else {
+          UV factors[MPU_MAX_FACTORS+1];
+          UV sqfactors, f1, f2;
+          int nfactors;
+          int i;
+          /* Use SQUFOF to crack a factor off */
+          sqfactors = squfof_factor(n, factors+nfactors, 800000);
+          assert(sqfactors <= 2);
+          if (sqfactors == 1) {
+            n = factors[nfactors];
+            nfactors += trial_factor(n, factors+nfactors, UV_MAX);
+          } else {
+            UV n1 = factors[nfactors];
+            n = factors[nfactors+1];
+            nfactors += trial_factor(n1, factors+nfactors, UV_MAX);
+            nfactors += trial_factor(n, factors+nfactors, UV_MAX);
+          }
+          if (nfactors < 1) croak("No factors");
+          for (i = 0; i < nfactors; i++) {
+            XPUSHs(sv_2mortal(newSVuv( factors[i] )));
+          }
+        }
       }
     }
-    if (nfactors < 1) croak("No factors");
-    for (i = 0; i < nfactors; i++) {
-      XPUSHs(sv_2mortal(newSVuv( factors[i] )));
-    }
-#endif
 
 void
 fermat_factor(IN UV n)

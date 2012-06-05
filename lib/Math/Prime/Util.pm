@@ -5,7 +5,7 @@ use Carp qw/croak confess/;
 
 BEGIN {
   $Math::Prime::Util::AUTHORITY = 'cpan:DANAJ';
-  $Math::Prime::Util::VERSION = '0.02';
+  $Math::Prime::Util::VERSION = '0.03';
 }
 
 # parent is cleaner, and in the Perl 5.10.1 / 5.12.0 core, but not earlier.
@@ -127,12 +127,12 @@ __END__
 
 =head1 NAME
 
-Math::Prime::Util - Utilities related to prime numbers, including fast generators / sievers
+Math::Prime::Util - Utilities related to prime numbers, including fast sieves and factoring
 
 
 =head1 VERSION
 
-Version 0.02
+Version 0.03
 
 
 =head1 SYNOPSIS
@@ -487,11 +487,10 @@ Perl modules, counting the primes to C<800_000_000> (800 million), in seconds:
 
 
 I have not done extensive timing on factoring.  The difference in speed for
-most inputs between Math::Factor::XS and Math::Prime::Util is small.
-M::F::XS is a bit faster than the current implementation for most ranges,
-except for large inputs with large factors, where using SQUFOF is a big
-advantage (e.g. C<204518747 * 16476429743>, which is ~50x faster with this
-module).
+most inputs between Math::Factor::XS and Math::Prime::Util is small.  For
+some ranges M::F::XS is faster, and some ranges it is slower.  Factoring
+random semiprimes is about 1.1x to 6x faster with M::P::U, and some inputs
+are even faster (e.g. C<204518747 * 16476429743>, which is ~50x faster).
 
 
 =head1 AUTHORS

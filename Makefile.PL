@@ -2,7 +2,7 @@ use ExtUtils::MakeMaker;
 
 WriteMakefile1(
     NAME         => 'Math::Prime::Util',
-    ABSTRACT     => 'Utilities related to prime numbers, including fast generators / sievers',
+    ABSTRACT     => 'Utilities related to prime numbers, including fast sieves and factoring',
     VERSION_FROM => 'lib/Math/Prime/Util.pm',
     LICENSE      => 'perl',
     AUTHOR       => 'Dana A Jacobsen <dana@acm.org>',
@@ -16,6 +16,7 @@ WriteMakefile1(
                       'Test::More'       => '0.45',
                       'Exporter'         => '5.562',
                       'XSLoader'         => '0.01',
+                      'Carp'             => '0',
                     },
 
     MIN_PERL_VERSION => 5.006002,

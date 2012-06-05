@@ -1,0 +1,62 @@
+#!/usr/bin/perl -w
+use strict;
+use warnings;
+$| = 1;  # fast pipes
+
+use Math::Prime::Util qw/factor/;
+use Math::Factor::XS qw/prime_factors/;
+use Benchmark qw/:all/;
+my $digits = shift || 10;
+my $count = shift || -2;
+
+my @min_factors_by_digit = (2,2,3,3,5,11,17,47,97);
+my $smallest_factor_allowed = $min_factors_by_digit[$digits];
+$smallest_factor_allowed = $min_factors_by_digit[-1] unless defined $smallest_factor_allowed;
+my $numprimes = 50;
+die "Digits has to be >= 2 and <= 19" unless $digits >= 2 && $digits <= 19;
+
+# Construct some semiprimes of the appropriate number of digits
+# There are much cleverer ways of doing this, using randomly selected
+# nth_primes, and so on, but this works well until we get lots of digits.
+print "Generating $numprimes random $digits-digit semiprimes (min factor $smallest_factor_allowed) ";
+my @semiprimes;
+foreach my $i ( 1 .. $numprimes ) {
+  my $base = 10 ** ($digits-1);
+  my $add = 10 ** ($digits) - $base;
+  my @factors;
+  my $n;
+  while (1) {
+    $n = $base + int(rand($add));
+    $n++ if ($n%2) == 0;
+    $n += 3 if ($n%3) == 0;
+    next if $n > ~0;
+    @factors = factor($n);
+    next if scalar @factors != 2;
+    next if $factors[0] < $smallest_factor_allowed;
+    next if $factors[1] < $smallest_factor_allowed;
+    last if scalar @factors == 2;
+  }
+  die "ummm... $n != $factors[0] * $factors[1]\n" unless $n == $factors[0] * $factors[1];
+  #print "$n == $factors[0] * $factors[1]\n";
+  push @semiprimes, $n;
+  print "." if ($i % ($numprimes/10)) == 0;
+}
+print "done.\n";
+
+print "Verifying Math::Prime::Util $Math::Prime::Util::VERSION ...";
+foreach my $sp (@semiprimes) {
+  my @factors = factor($sp);
+  die "wrong for $sp\n" unless ($#factors == 1) && ($factors[0] * $factors[1]) == $sp;
+}
+print "OK\n";
+print "Verifying Math::Factor::XS $Math::Factor::XS::VERSION ...";
+foreach my $sp (@semiprimes) {
+  my @factors = prime_factors($sp);
+  die "wrong for $sp\n" unless ($#factors == 1) && ($factors[0] * $factors[1]) == $sp;
+}
+print "OK\n";
+
+cmpthese($count,{
+    'MPU'   => sub { factor($_) for @semiprimes; },
+    'MFXS'  => sub { prime_factors($_) for @semiprimes; },
+});
