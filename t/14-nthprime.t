@@ -8,7 +8,7 @@ use Math::Prime::Util qw/nth_prime nth_prime_lower nth_prime_upper nth_prime_app
 my $use64 = Math::Prime::Util::_maxbits > 32;
 my $extra = defined $ENV{RELEASE_TESTING} && $ENV{RELEASE_TESTING};
 
-plan tests => 7*2 + 9*3 + ($extra ? 9 : 7) + ($use64 ? 4*3 : 0);
+plan tests => 7*2 + 9*3 + ($extra ? 9 : 7) + ($use64 ? 9*3 : 0);
 
 my %pivals32 = (
                   1 => 0,
@@ -42,7 +42,11 @@ my %nthprimes64 = (
         10000000000 => 252097800623,
        100000000000 => 2760727302517,
       1000000000000 => 29996224275833,
-     # TODO: find more
+     10000000000000 => 323780508946331,
+    100000000000000 => 3475385758524527,
+   1000000000000000 => 37124508045065437,
+  10000000000000000 => 394906913903735329,
+ 100000000000000000 => 4185296581467695669,
 );
 
 while (my($n, $nth) = each (%nthprimes32)) {

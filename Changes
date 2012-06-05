@@ -11,6 +11,7 @@ Revision history for Perl extension Math::Prime::Util.
       Not memory intensive any more, and faster for large inputs.  The time
       growth is slightly over linear however, so expect to wait a long
       time for 10^12 or more.
+    - nth_prime also transitioned to segmented sieve.
 
 0.01  4 June 2012
     - Initial release

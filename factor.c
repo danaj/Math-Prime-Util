@@ -23,8 +23,9 @@
 
 int trial_factor(UV n, UV *factors, UV maxtrial)
 {
-  UV f, d, m;
-  UV limit;
+  static const wheeladvance[30] =
+    {0,6,0,0,0,0,0,4,0,0,0,2,0,4,0,0,0,2,0,4,0,0,0,6,0,0,0,0,0,2};
+  UV f, m, limit;
   int nfactors = 0;
 
   if (maxtrial == 0)  maxtrial = UV_MAX;
@@ -58,7 +59,6 @@ int trial_factor(UV n, UV *factors, UV maxtrial)
 
   /* wheel 30 */
   f = 11;
-  d = 0;
   m = 11;
   while (f <= limit) {
     if ( (n%f) == 0 ) {
@@ -70,8 +70,8 @@ int trial_factor(UV n, UV *factors, UV maxtrial)
       newlimit = sqrt(n);
       if (newlimit < limit)  limit = newlimit;
     }
-    m = nextwheel30[m];  if (m == 1) d++;
-    f = d*30 + m;
+    f += wheeladvance[m];
+    m = nextwheel30[m];
   }
   if (n != 1)
     factors[nfactors++] = n;
@@ -91,15 +91,19 @@ static UV gcd_ui(UV x, UV y) {
 }
 
 /* n^power + a mod m */
+/* This has serious overflow issues, making the programs that use it dubious */
 static UV powmod(UV n, UV power, UV add, UV m) {
   UV t = 1;
+  n = n % m;
+  /* t and n will always be < m from now on */
   while (power) {
     if (power & 1)
-      t = ((t % m) * (n % m)) % m;
-    n = ((n % m) * (n % m)) % m;
+      t = (t * n) % m;
+    n = (n * n) % m;
     power >>= 1;
   }
-  return (t+add) % m;
+  /* (t+a) % m, noting t is always < m */
+  return ( ((m-t) > add) ? (t+add) : (t+add-m) );
 }
 
 /* Knuth volume 2, algorithm C.

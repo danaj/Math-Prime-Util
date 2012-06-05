@@ -7,6 +7,7 @@
 
 #include "sieve.h"
 #include "bitarray.h"
+#include "util.h"     /* For freeing the segment cache */
 
 
 static unsigned char* prime_cache_sieve = 0;
@@ -61,6 +62,8 @@ void prime_precalc(UV n)
   }
 
   get_prime_cache(n, 0);   /* Sieve to n */
+
+  /* TODO: should we prealloc the segment here? */
 }
 
 void prime_free(void)
@@ -69,6 +72,8 @@ void prime_free(void)
       free(prime_cache_sieve);
   prime_cache_sieve = 0;
   prime_cache_size = 0;
+
+  free_prime_segment();
 
   prime_precalc(0);
 }

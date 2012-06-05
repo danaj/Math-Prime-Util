@@ -19,4 +19,8 @@ extern UV  nth_prime_upper(UV x);
 extern UV  nth_prime_approx(UV x);
 extern UV  nth_prime(UV x);
 
+#define SEGMENT_CHUNK_SIZE 262144
+extern unsigned char* get_prime_segment(void);
+extern void           free_prime_segment(void);
+
 #endif

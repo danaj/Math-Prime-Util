@@ -9,6 +9,23 @@
 #include "sieve.h"
 #include "bitarray.h"
 
+/*
+ * I'm undecided as to whether we want this, or just let the functions alloc
+ * and free it per call.
+ */
+static unsigned char* prime_segment = 0;
+unsigned char* get_prime_segment(void) {
+  if (prime_segment == 0)
+    prime_segment = (unsigned char*) malloc( SEGMENT_CHUNK_SIZE );
+  if (prime_segment == 0)
+    croak("Could not allocate %"UVuf" bytes for segment sieve", SEGMENT_CHUNK_SIZE);
+  return prime_segment;
+}
+void free_prime_segment(void) {
+  if (prime_segment != 0)
+    free(prime_segment);
+  prime_segment = 0;
+}
 
 static const unsigned char byte_zeros[256] =
   {8,7,7,6,7,6,6,5,7,6,6,5,6,5,5,4,7,6,6,5,6,5,5,4,6,5,5,4,5,4,4,3,
@@ -349,17 +366,15 @@ UV prime_count(UV n)
   } else {
 
     /* We don't have enough primes.  Repeatedly segment sieve */
-    UV const segment_size = 262144;
+    UV const segment_size = SEGMENT_CHUNK_SIZE;
     unsigned char* segment;
 
-    /* TODO: we really shouldn't need this */
+    /* Get this over with once */
     prime_precalc( sqrt(n) + 2 );
 
-    segment = (unsigned char*) malloc( segment_size );
-    if (segment == 0) {
-      croak("Could not allocate %"UVuf" bytes for segment sieve", segment_size);
+    segment = get_prime_segment();
+    if (segment == 0)
       return 0;
-    }
 
     for (s = 0; s <= bytes; s += segment_size) {
       /* We want to sieve one extra byte, to handle the last fragment */
@@ -382,8 +397,6 @@ UV prime_count(UV n)
     START_DO_FOR_EACH_SIEVE_PRIME(segment, 30*bytes - s*30, n - s*30)
       count++;
     END_DO_FOR_EACH_SIEVE_PRIME;
-
-    free(segment);
 
   }
 
@@ -492,42 +505,106 @@ UV nth_prime_approx(UV n)
 }
 
 
+/*
+ * Given a sieve of size nbytes, walk it counting zeros (primes) until:
+ *
+ * (1) we counted them all: return the count, which will be less than maxcount.
+ *
+ * (2) we hit maxcount: set position to the index of the maxcount'th prime
+ *     and return count (which will be equal to maxcount).
+ */
+static UV count_segment(const unsigned char* sieve, UV nbytes, UV maxcount, UV* pos)
+{
+  UV count = 0;
+  UV bytes_left;
+  UV byte = 0;
+
+  assert(sieve != 0);
+  assert(pos != 0);
+  *pos = 0;
+  if ( (nbytes == 0) || (maxcount == 0) )
+    return 0;
+
+  while ( (byte < nbytes) && (count < maxcount) )
+    count += byte_zeros[sieve[byte++]];
+
+  if (count >= maxcount) { /* One too far -- back up */
+    count -= byte_zeros[sieve[--byte]];
+  }
+
+  assert(count < maxcount);
+
+  if (byte == nbytes)
+    return count;
+
+  /* The result is somewhere in the next byte */
+  START_DO_FOR_EACH_SIEVE_PRIME(sieve, byte*30+1, nbytes*30-1)
+    if (++count == maxcount)  { *pos = p; return count; }
+  END_DO_FOR_EACH_SIEVE_PRIME;
+
+  croak("count_segment failed");
+  return 0;
+}
+
 UV nth_prime(UV n)
 {
-  const unsigned char* sieve;
-  UV upper_limit, start, count, s, bytes_left;
+  const unsigned char* cache_sieve;
+  unsigned char* segment;
+  UV upper_limit, segbase, segment_size;
+  UV p = 0;
+  UV target = n-3;
+  UV count = 0;
 
+  /* If very small, return the table entry */
   if (n < NPRIMES_SMALL)
     return primes_small[n];
 
+  /* Determine a bound on the nth prime.  We know it comes before this. */
   upper_limit = nth_prime_upper(n);
   if (upper_limit == 0) {
     croak("nth_prime(%"UVuf") would overflow", n);
     return 0;
   }
-  /* The nth prime is guaranteed to be within this range */
-  if (get_prime_cache(upper_limit, &sieve) < upper_limit) {
-    croak("Couldn't generate sieve for nth(%"UVuf") [sieve to %"UVuf"]", n, upper_limit);
+
+  /* Get the primary cache, and ensure it is at least this large.  If the
+   * input is small enough, get a sieve covering the range.  Otherwise, we'll
+   * walk segments.  Make sure we have enough primes in the cache so the
+   * segmented siever won't have to keep resieving.
+   */
+  if (upper_limit <= (1*1024*1024*30))
+    segment_size = get_prime_cache(upper_limit, &cache_sieve) / 30;
+  else
+    segment_size = get_prime_cache(sqrt(upper_limit), &cache_sieve) / 30;
+
+  /* Count up everything in the cached sieve. */
+  count += count_segment(cache_sieve, segment_size, target, &p);
+  if (count == target)
+    return p;
+
+  /* Start segment sieving.  Get memory to sieve into. */
+  segbase = segment_size;
+  segment_size = SEGMENT_CHUNK_SIZE;
+  segment = get_prime_segment();
+  if (segment == 0)
     return 0;
-  }
 
-  count = 3;
-  start = 7;
-  s = 0;
-  bytes_left = (n-count) / 8;
-  while ( bytes_left > 0 ) {
-    /* There is at minimum one byte we can count (and probably many more) */
-    count += count_zero_bits(sieve+s, bytes_left);
-    assert(count <= n);
-    s += bytes_left;
-    bytes_left = (n-count) / 8;
-  }
-  if (s > 0)
-    start = s * 30;
+  while (count < target) {
+    /* Limit the segment size if we know the answer comes earlier */
+    if ( (30*(segbase+segment_size)+29) > upper_limit )
+      segment_size = (upper_limit - segbase*30 + 30) / 30;
 
-  START_DO_FOR_EACH_SIEVE_PRIME(sieve, start, upper_limit)
-    if (++count == n)  return p;
-  END_DO_FOR_EACH_SIEVE_PRIME;
-  croak("nth_prime failed for %"UVuf", not found in range %"UVuf" - %"UVuf, n, start, upper_limit);
-  return 0;
+    /* Do the actual sieving in the range */
+    if (sieve_segment(segment, segbase, segbase + segment_size-1) == 0) {
+      croak("Could not segment sieve from %"UVuf" to %"UVuf, 30*segbase+1, 30*(segbase+segment_size)+29);
+      break;
+    }
+
+    /* Count up everything in this segment */
+    count += count_segment(segment, segment_size, target-count, &p);
+
+    if (count < target)
+      segbase += segment_size;
+  }
+  assert(count == target);
+  return ( (segbase*30) + p );
 }
