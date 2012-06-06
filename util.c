@@ -46,6 +46,7 @@ static UV count_zero_bits(const unsigned char* m, UV nbytes)
 }
 
 
+/* Does trial division, assuming x not divisible by 2, 3, or 5 */
 static int _is_trial_prime7(UV x)
 {
   UV q, i;
@@ -63,11 +64,12 @@ static int _is_trial_prime7(UV x)
   return 2;
 }
 
+/* Does trial division or prob tests, assuming x not divisible by 2, 3, or 5 */
 static int _is_prime7(UV x)
 {
   UV q, i;
 
-  if (x >= UVCONST(100000000))
+  if (x > MPU_PROB_PRIME_BEST)
     return is_prob_prime(x);  /* We know this works for all 64-bit n */
 
   i = 7;
@@ -97,7 +99,34 @@ static const unsigned char prime_is_small[] =
    0x00,0x20,0x8a,0x00,0x20,0x8a,0x00,0x00,0x88,0x80,0x00,0x02,0x22,0x08,0x02};
 #define NPRIME_IS_SMALL (sizeof(prime_is_small)/sizeof(prime_is_small[0]))
 
+/* Return of 2 if n is prime, 0 if not.  Do it fast. */
 int is_prime(UV n)
+{
+  UV d, m;
+  unsigned char mtab;
+  const unsigned char* sieve;
+
+  if ( n < (NPRIME_IS_SMALL*8))
+    return ((prime_is_small[n/8] >> (n%8)) & 1) ? 2 : 0;
+
+  d = n/30;
+  m = n - d*30;
+  mtab = masktab30[m];  /* Bitmask in mod30 wheel */
+
+  /* Return 0 if a multiple of 2, 3, or 5 */
+  if (mtab == 0)
+    return 0;
+
+  if (n <= get_prime_cache(0, &sieve))
+    return ((sieve[d] & mtab) == 0) ? 2 : 0;
+
+  return _is_prime7(n);
+}
+
+/* Shortcut, asking for a very quick response of 1 = prime, 0 = dunno.
+ * No trial divisions will be done, making this useful for factoring.
+ */
+int is_definitely_prime(UV n)
 {
   UV d, m;
   unsigned char mtab;
@@ -117,7 +146,10 @@ int is_prime(UV n)
   if (n <= get_prime_cache(0, &sieve))
     return ((sieve[d] & mtab) == 0);
 
-  return _is_prime7(n);
+  if (n > MPU_PROB_PRIME_BEST)
+    return (is_prob_prime(n) == 2);
+
+  return 0;
 }
 
 

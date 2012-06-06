@@ -242,16 +242,15 @@ factor(IN UV n)
       while ( (n%13) == 0 ) {  n /= 13;  XPUSHs(sv_2mortal(newSVuv( 13 ))); }
       while ( (n%17) == 0 ) {  n /= 17;  XPUSHs(sv_2mortal(newSVuv( 17 ))); }
       do { /* loop over each remaining factor */
-        while ( (n >= (19*19)) && (!is_prime(n)) ) {
-          /* n is composite, so factor it. */
+        while ( (n >= (19*19)) && (!is_definitely_prime(n)) ) {
           int split_success = 0;
-          if (n > UVCONST(10000000) ) {  /* tune this */
-            /* For sufficiently large numbers, try more complex methods. */
+          if (n > UVCONST(60000000) ) {  /* tune this */
+            /* For sufficiently large n, try more complex methods. */
             /* SQUFOF (succeeds ~98% of the time) */
             split_success = squfof_factor(n, factor_stack+nstack, 64*4096)-1;
             assert( (split_success == 0) || (split_success == 1) );
             /* a few rounds of Pollard rho (succeeds 99+% of the rest) */
-            if (!split_success) {
+            if (1 && !split_success) {
               split_success = prho_factor(n, factor_stack+nstack, 400)-1;
               assert( (split_success == 0) || (split_success == 1) );
             }
@@ -279,6 +278,7 @@ factor(IN UV n)
               f += wheeladvance30[m];
               m =  nextwheel30[m];
             }
+            break;  /* We just factored n via trial division.  Exit loop. */
           }
         }
         if (n != 1)  XPUSHs(sv_2mortal(newSVuv( n )));

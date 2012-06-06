@@ -4,6 +4,7 @@
 #include "ptypes.h"
 
 extern int is_prime(UV x);
+extern int is_definitely_prime(UV x);
 extern UV  next_trial_prime(UV x);
 extern UV  next_prime(UV x);
 extern UV  prev_prime(UV x);
@@ -21,5 +22,8 @@ extern UV  nth_prime(UV x);
 #define SEGMENT_CHUNK_SIZE  UVCONST(262144)
 extern unsigned char* get_prime_segment(void);
 extern void           free_prime_segment(void);
+
+/* Above this value, is_prime will do deterministic Miller-Rabin */
+#define MPU_PROB_PRIME_BEST  UVCONST(100000000)
 
 #endif

@@ -2,6 +2,7 @@
 use strict;
 use warnings;
 $| = 1;  # fast pipes
+srand(377);
 
 use Math::Prime::Util qw/factor/;
 use Math::Factor::XS qw/prime_factors/;
@@ -12,8 +13,11 @@ my $count = shift || -2;
 my @min_factors_by_digit = (2,2,3,3,5,11,17,47,97);
 my $smallest_factor_allowed = $min_factors_by_digit[$digits];
 $smallest_factor_allowed = $min_factors_by_digit[-1] unless defined $smallest_factor_allowed;
-my $numprimes = 50;
-die "Digits has to be >= 2 and <= 19" unless $digits >= 2 && $digits <= 19;
+my $numprimes = 100;
+
+die "Digits has to be >= 2" unless $digits >= 2;
+die "Digits has to be <= 10" if (~0 == 4294967295) && ($digits > 10);
+die "Digits has to be <= 19" if $digits > 19;
 
 # Construct some semiprimes of the appropriate number of digits
 # There are much cleverer ways of doing this, using randomly selected

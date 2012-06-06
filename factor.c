@@ -89,6 +89,9 @@ static UV gcd_ui(UV x, UV y) {
   return x;
 }
 
+/* if n is smaller than this, you can multiply without overflow */
+#define HALF_WORD (UVCONST(1) << (BITS_PER_WORD/2))
+
 static UV mulmod(UV a, UV b, UV m) {
   UV p;
   UV r = 0;
@@ -107,30 +110,35 @@ static UV mulmod(UV a, UV b, UV m) {
   return r;
 }
 
-/* n^power + a mod m */
-static UV powmodadd(UV n, UV power, UV add, UV m) {
-  UV t = 1;
-  while (power) {
-    if (power & 1)
-      t = mulmod(t, n, m);
-    n = mulmod(n, n, m);
-    power >>= 1;
-  }
-  t = ((m-t) > add)  ?  t+add  :  t+add-m;  /* (t+a) % m  where t < m */
-  return t;
-}
-
 /* n^power mod m */
 static UV powmod(UV n, UV power, UV m) {
   UV t = 1;
-  while (power) {
-    if (power & 1)
-      t = mulmod(t, n, m);
-    n = mulmod(n, n, m);
-    power >>= 1;
+  if (m < HALF_WORD) {
+    n %= m;
+    while (power) {
+      if (power & 1)
+        t = (t*n)%m;
+      n = (n*n)%m;
+      power >>= 1;
+    }
+  } else {
+    while (power) {
+      if (power & 1)
+        t = mulmod(t, n, m);
+      n = (n < HALF_WORD) ? (n*n)%m : mulmod(n, n, m);
+      power >>= 1;
+    }
   }
   return t;
 }
+
+/* n + a mod m */
+static UV addmod(UV n, UV a, UV m) {
+  return ((m-n) > a)  ?  n+a  :  n+a-m;
+}
+
+/* n^power + a mod m */
+#define powmodadd(n, p, a, m)  addmod(powmod(n,p,m),a,m)
 
 
 /* Miller-Rabin probabilistic primality test
@@ -162,7 +170,7 @@ int miller_rabin(UV n, const UV *bases, UV nbases)
     if ( (x == 1) || (x == (n-1)) )  continue;
 
     for (r = 0; r < s; r++) {
-      x = powmod(x, 2, n);
+      x = (x < HALF_WORD) ?  (x*x) % n  :  mulmod(x, x, n);
       if (x == 1) {
         return 0;
       } else if (x == (n-1)) {
@@ -270,7 +278,6 @@ int is_prob_prime(UV n)
  */
 int fermat_factor(UV n, UV *factors, UV rounds)
 {
-  int nfactors = 0;
   IV sqn, x, y, r;
 
   assert( (n >= 3) && ((n%2) != 0) );
@@ -289,12 +296,13 @@ int fermat_factor(UV n, UV *factors, UV rounds)
     } while (r > 0);
   }
   r = (x-y)/2;
-  if (r != 1)
-    factors[nfactors++] = r;
-  n /= r;
-  if (n != 1)
-    factors[nfactors++] = n;
-  return nfactors;
+  if ( (r != 1) && (r != n) ) {
+    factors[0] = r;
+    factors[1] = n/r;
+    return 2;
+  }
+  factors[0] = n;
+  return 1;
 }
 
 /* Pollard / Brent
@@ -304,13 +312,12 @@ int fermat_factor(UV n, UV *factors, UV rounds)
  */
 int pbrent_factor(UV n, UV *factors, UV rounds)
 {
-  int nfactors = 0;
-  UV a, f, Xi, Xm, i;
+  UV a, f, i;
+  UV Xi = 2;
+  UV Xm = 2;
 
   assert( (n >= 3) && ((n%2) != 0) );
 
-  Xi = 2;
-  Xm = 2;
   switch (n%4) {
     case 0:  a =  1; break;
     case 1:  a =  3; break;
@@ -323,15 +330,15 @@ int pbrent_factor(UV n, UV *factors, UV rounds)
     Xi = powmodadd(Xi, 2, a, n);
     f = gcd_ui(Xi - Xm, n);
     if ( (f != 1) && (f != n) ) {
-      factors[nfactors++] = f;
-      factors[nfactors++] = n/f;
-      return nfactors;
+      factors[0] = f;
+      factors[1] = n/f;
+      return 2;
     }
     if ( (i & (i-1)) == 0)   /* i is a power of 2 */
       Xm = Xi;
   }
-  factors[nfactors++] = n;
-  return nfactors;
+  factors[0] = n;
+  return 1;
 }
 
 /* Pollard's Rho
@@ -341,8 +348,9 @@ int pbrent_factor(UV n, UV *factors, UV rounds)
  */
 int prho_factor(UV n, UV *factors, UV rounds)
 {
-  int nfactors = 0;
-  UV a, f, t, U, V, i;
+  UV a, f, i;
+  UV U = 7;
+  UV V = 7;
 
   assert( (n >= 3) && ((n%2) != 0) );
 
@@ -354,9 +362,6 @@ int prho_factor(UV n, UV *factors, UV rounds)
     default: a =  3; break;
   }
 
-  U = 7;
-  V = 7;
-
   for (i = 1; i < rounds; i++) {
     U = powmodadd(U, 2, a, n);
     V = powmodadd(V, 2, a, n);
@@ -364,13 +369,13 @@ int prho_factor(UV n, UV *factors, UV rounds)
 
     f = gcd_ui( (U > V) ? U-V : V-U, n);
     if ( (f != 1) && (f != n) ) {
-      factors[nfactors++] = f;
-      factors[nfactors++] = n/f;
-      return nfactors;
+      factors[0] = f;
+      factors[1] = n/f;
+      return 2;
     }
   }
-  factors[nfactors++] = n;
-  return nfactors;
+  factors[0] = n;
+  return 1;
 }
 
 /* Pollard's P-1
@@ -380,26 +385,22 @@ int prho_factor(UV n, UV *factors, UV rounds)
  */
 int pminus1_factor(UV n, UV *factors, UV rounds)
 {
-  int nfactors = 0;
-  UV f, b, i;
+  UV f, i;
+  UV b = 13;
 
   assert( (n >= 3) && ((n%2) != 0) );
 
-  b = 13;
   for (i = 1; i < rounds; i++) {
     b = powmod(b, i, n);
     f = gcd_ui(b-1, n);
-    if (f == n) {
-      factors[nfactors++] = n;
-      return nfactors;
-    } else if (f != 1) {
-      factors[nfactors++] = f;
-      factors[nfactors++] = n/f;
-      return nfactors;
-    }
+    if (n == 1) continue;
+    if (f == n) break;    /* or we could continue */
+    factors[0] = f;
+    factors[1] = n/f;
+    return 2;
   }
-  factors[nfactors++] = n;
-  return nfactors;
+  factors[0] = f;
+  return 1;
 }
 
 /* My modification of Ben Buhrow's modification of Bob Silverman's SQUFOF code.
@@ -413,7 +414,6 @@ static void enqu(IV q, IV *iter) {
 
 int squfof_factor(UV n, UV *factors, UV rounds)
 {
-  int nfactors = 0;
   UV rounds2 = rounds/16;
   UV temp;
   IV iq,ll,l2,p,pnext,q,qlast,r,s,t,i;
@@ -430,9 +430,9 @@ int squfof_factor(UV n, UV *factors, UV rounds)
   p = s;
   temp = n - (s*s);                 /* temp = n - floor(sqrt(n))^2   */
   if (temp == 0) {
-    factors[nfactors++] = s;
-    factors[nfactors++] = s;
-    return nfactors;
+    factors[0] = s;
+    factors[1] = s;
+    return 2;
   }
 
   q = temp;              /* q = excess of n over next smaller square */
@@ -453,8 +453,7 @@ int squfof_factor(UV n, UV *factors, UV rounds)
       else if (q <= l2)
         enqu(q,&jter);
       if (jter < 0) {
-        factors[nfactors++] = n;
-        return nfactors;
+        factors[0] = n;  return 1;
       }
     }
 
@@ -477,8 +476,7 @@ int squfof_factor(UV n, UV *factors, UV rounds)
   }   /* end of main loop */
 
   if (jter >= rounds) {
-    factors[nfactors++] = n;
-    return nfactors;
+    factors[0] = n;  return 1;
   }
 
   qlast = r;
@@ -516,38 +514,22 @@ int squfof_factor(UV n, UV *factors, UV rounds)
   }
 
   if (iter >= rounds2) {
-    factors[nfactors++] = n;
-    return nfactors;
+    factors[0] = n;  return 1;
   }
 
   if ((q & 1) == 0) q/=2;      /* q was factor or 2*factor   */
 
   if ( (q == 1) || (q == n) ) {
-    factors[nfactors++] = n;
-    return nfactors;
+    factors[0] = n;  return 1;
   }
 
   p = n/q;
-  /* smallest factor first */
-  if (q < p) {  t = p; p = q; q = t; }
 
   /* printf(" squfof found %lu = %lu * %lu in %ld/%ld rounds\n", n, p, q, jter, iter); */
 
-#if 1
-  factors[nfactors++] = p;
-  factors[nfactors++] = q;
-#else
-  if ( (p >= refactor_above) && (is_prob_prime(p) == 0) )
-    nfactors += squfof_factor(p, factors+nfactors, rounds, refactor_above);
-  else
-    factors[nfactors++] = p;
-
-  if ( (q >= refactor_above) && (is_prob_prime(q) == 0) )
-    nfactors += squfof_factor(q, factors+nfactors, rounds, refactor_above);
-  else
-    factors[nfactors++] = q;
-#endif
-  return nfactors;
+  factors[0] = p;
+  factors[1] = q;
+  return 2;
 }
 
 
