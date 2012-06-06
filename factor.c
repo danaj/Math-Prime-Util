@@ -199,9 +199,14 @@ int is_prob_prime(UV n)
 #if 1
   /* Better basis from:  http://miller-rabin.appspot.com/ */
   if (n < UVCONST(9080191)) {
-    bases[0] = 31; bases[1] = 73; nbases = 2;
+    bases[0] = 31;
+    bases[1] = 73;
+    nbases = 2;
   } else if (n < UVCONST(4759123141)) {
-    bases[0] = 2; bases[1] = 7; bases[2] = 61; nbases = 3;
+    bases[0] = 2;
+    bases[1] = 7;
+    bases[2] = 61;
+    nbases = 3;
   } else if (n < UVCONST(105936894253)) {
     bases[0] = 2;
     bases[1] = 1005905886;
@@ -263,23 +268,12 @@ int is_prob_prime(UV n)
  * Very fast for small numbers, grows rapidly.
  * SQUFOF is better for numbers nearing the 64-bit limit.
  */
-int fermat_factor(UV n, UV *factors)
+int fermat_factor(UV n, UV *factors, UV rounds)
 {
   int nfactors = 0;
   IV sqn, x, y, r;
 
-  if (n < 2) {
-    factors[0] = n;
-    return 1;
-  }
-
-  while ((n & 1) == 0) {
-    factors[nfactors++] = 2;
-    n /= 2;
-  }
-
-  if (n == 1)
-    return nfactors;
+  assert( (n >= 3) && ((n%2) != 0) );
 
   sqn = sqrt((double) n);
   x = 2 * sqn + 1;
@@ -313,18 +307,7 @@ int pbrent_factor(UV n, UV *factors, UV rounds)
   int nfactors = 0;
   UV a, f, Xi, Xm, i;
 
-  if (n < 2) {
-    factors[0] = n;
-    return 1;
-  }
-
-  while ((n & 1) == 0) {
-    factors[nfactors++] = 2;
-    n /= 2;
-  }
-
-  if (n == 1)
-    return nfactors;
+  assert( (n >= 3) && ((n%2) != 0) );
 
   Xi = 2;
   Xm = 2;
@@ -361,18 +344,7 @@ int prho_factor(UV n, UV *factors, UV rounds)
   int nfactors = 0;
   UV a, f, t, U, V, i;
 
-  if (n < 2) {
-    factors[0] = n;
-    return 1;
-  }
-
-  while ((n & 1) == 0) {
-    factors[nfactors++] = 2;
-    n /= 2;
-  }
-
-  if (n == 1)
-    return nfactors;
+  assert( (n >= 3) && ((n%2) != 0) );
 
   switch (n%4) {
     case 0:  a =  5; break;
@@ -411,18 +383,7 @@ int pminus1_factor(UV n, UV *factors, UV rounds)
   int nfactors = 0;
   UV f, b, i;
 
-  if (n < 2) {
-    factors[0] = n;
-    return 1;
-  }
-
-  while ((n & 1) == 0) {
-    factors[nfactors++] = 2;
-    n /= 2;
-  }
-
-  if (n == 1)
-    return nfactors;
+  assert( (n >= 3) && ((n%2) != 0) );
 
   b = 13;
   for (i = 1; i < rounds; i++) {
@@ -450,7 +411,7 @@ static void enqu(IV q, IV *iter) {
   if (++qpoint >= 100) *iter = -1;
 }
 
-int squfof_factor(UV n, UV *factors, UV rounds, UV refactor_above)
+int squfof_factor(UV n, UV *factors, UV rounds)
 {
   int nfactors = 0;
   UV rounds2 = rounds/16;
@@ -459,18 +420,7 @@ int squfof_factor(UV n, UV *factors, UV rounds, UV refactor_above)
   IV jter, iter;
   int reloop;
 
-  if ( (n < 2) ) {
-    factors[0] = n;
-    return 1;
-  }
-
-  while ((n & 1) == 0) {
-    factors[nfactors++] = 2;
-    n /= 2;
-  }
-
-  if (n == 1)
-    return nfactors;
+  assert( (n >= 3) && ((n%2) != 0) );
 
   /* TODO:  What value of n leads to overflow? */
 
@@ -583,7 +533,7 @@ int squfof_factor(UV n, UV *factors, UV rounds, UV refactor_above)
 
   /* printf(" squfof found %lu = %lu * %lu in %ld/%ld rounds\n", n, p, q, jter, iter); */
 
-#if 0
+#if 1
   factors[nfactors++] = p;
   factors[nfactors++] = q;
 #else

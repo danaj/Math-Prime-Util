@@ -46,9 +46,30 @@ static UV count_zero_bits(const unsigned char* m, UV nbytes)
 }
 
 
+static int _is_trial_prime7(UV x)
+{
+  UV q, i;
+  i = 7;
+  while (1) {   /* trial division, skipping multiples of 2/3/5 */
+    q = x/i;  if (q<i) return 1;  if (x==(q*i)) return 0;   i += 4;
+    q = x/i;  if (q<i) return 1;  if (x==(q*i)) return 0;   i += 2;
+    q = x/i;  if (q<i) return 1;  if (x==(q*i)) return 0;   i += 4;
+    q = x/i;  if (q<i) return 1;  if (x==(q*i)) return 0;   i += 2;
+    q = x/i;  if (q<i) return 1;  if (x==(q*i)) return 0;   i += 4;
+    q = x/i;  if (q<i) return 1;  if (x==(q*i)) return 0;   i += 6;
+    q = x/i;  if (q<i) return 1;  if (x==(q*i)) return 0;   i += 2;
+    q = x/i;  if (q<i) return 1;  if (x==(q*i)) return 0;   i += 6;
+  }
+  return 2;
+}
+
 static int _is_prime7(UV x)
 {
   UV q, i;
+
+  if (x >= UVCONST(100000000))
+    return is_prob_prime(x);  /* We know this works for all 64-bit n */
+
   i = 7;
   while (1) {   /* trial division, skipping multiples of 2/3/5 */
     q = x/i;  if (q<i) return 1;  if (x==(q*i)) return 0;   i += 4;
@@ -96,16 +117,7 @@ int is_prime(UV n)
   if (n <= get_prime_cache(0, &sieve))
     return ((sieve[d] & mtab) == 0);
 
-#if 0
-  /* Trial division, mod 30 */
   return _is_prime7(n);
-#else
-  if (n < UVCONST(100000000)) {
-    return _is_prime7(n);
-  } else {
-    return is_prob_prime(n);  /* We know this works for all 64-bit n */
-  }
-#endif
 }
 
 
@@ -125,7 +137,7 @@ UV next_trial_prime(UV n)
   d = n/30;
   m = n - d*30;
   m = nextwheel30[m];  if (m == 1) d++;
-  while (!_is_prime7(d*30+m)) {
+  while (!_is_trial_prime7(d*30+m)) {
     m = nextwheel30[m];  if (m == 1) d++;
   }
   return(d*30+m);

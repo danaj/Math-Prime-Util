@@ -362,10 +362,13 @@ between C<2> and C<n - 2>.  Returns 2 is C<n> is definitely prime, 1 if C<n>
 is probably prime, and 0 if C<n> is definitely composite.  Since this is
 just the Miller-Rabin test, a value of 2 is only returned for inputs of
 2 and 3, which are shortcut.  If 0 is returned, then the number really is a
-composite.  If 1 is returned, we aren't sure.
+composite.  If 1 is returned, there is a good chance the number is prime
+(depending on the input and the bases), but we cannot be sure.
 
 This is usually used in combination with other tests to make either stronger
-tests or deterministic results for numbers less than some verified limit.
+tests (e.g. the strong BPSW test) or deterministic results for numbers less
+than some verified limit (such as the C<is_prob_prime> function in this module).
+
 
 =head2 is_prob_prime
 
@@ -376,7 +379,7 @@ Takes a positive number as input and returns back either 0 (composite),
 2 (definitely prime), or 1 (probably prime).
 
 This is done with a tuned set of Miller-Rabin tests such that the result
-should be deterministic for 64-bit input.  Either 2, 3, 4, 5, or 7 Miller-Rabin
+will be deterministic for 64-bit input.  Either 2, 3, 4, 5, or 7 Miller-Rabin
 tests are performed (no more than 3 for 32-bit input), and the result will
 then always be 0 (composite) or 2 (prime).  A later implementation may switch
 to a BPSW test, depending on speed.
@@ -423,17 +426,25 @@ in place because you still have an object.
 
   my @factors = factor(3_369_738_766_071_892_021);
 
-Produces the prime factors of a positive number input.  They will typically
-but necessarily be in numerical order.  The special cases of C<n = 0> and
-C<n = 1> will return C<n>, which guarantees multiplying the factors together
-will always result in the input value, though those are the only cases where
+Produces the prime factors of a positive number input.  They may not be in
+numerical order.  The special cases of C<n = 0> and C<n = 1> will
+return C<n>, which guarantees multiplying the factors together will
+always result in the input value, though those are the only cases where
 the returned factors are not prime.
 
-The current algorithm is to use trial division for 32-bit numbers, while for
-larger numbers a small set of trial divisions is performed, followed by a
-single run of SQUFOF, then trial division of the results.  This results in
-faster factorization of most large numbers.  More sophisticated methods could
-be used.
+The current algorithm is to use trial division for small numbers, while large
+numbers go through a sequence of small trials, SQUFOF, and Pollard's Rho.
+This process is repeated for each non-prime factor.
+
+
+=head2 trial_factor
+
+  my @factors = trial_factor($n);
+
+Produces the prime factors of a positive number input.  The factors will be
+in numerical order.  The special cases of C<n = 0> and C<n = 1> will return
+C<n>, while with all other inputs the factors are guaranteed to be prime.
+For large inputs this will be very slow.
 
 =head2 fermat_factor
 
@@ -442,16 +453,17 @@ be used.
 Produces factors, not necessarily prime, of the positive number input.  The
 particular algorithm is Knuth's algorithm C.  For small inputs this will be
 very fast, but it slows down quite rapidly as the number of digits increases.
-If there is a factor close to the midpoint (e.g. a semiprime p*q where p and
-q are the same number of digits), then this will be very fast.
+It is very fast for inputs with a factor close to the midpoint
+(e.g. a semiprime p*q where p and q are the same number of digits).
 
 =head2 squfof_factor
 
   my @factors = squfof_factor($n);
 
-Produces factors, not necessarily prime, of the positive number input.  It
-is possible the function will be unable to find a factor, in which case a
-single element, the input, is returned.
+Produces factors, not necessarily prime, of the positive number input.  An
+optional number of rounds can be given as a second parameter.  It is possible
+the function will be unable to find a factor, in which case a single element,
+the input, is returned.  This function typically runs very fast.
 
 =head2 prho_factor
 
@@ -459,20 +471,20 @@ single element, the input, is returned.
 
 =head2 pminus1_factor
 
-Attempts to find a factor using one of the probabilistic algorigthms of
+  my @factors = prho_factor($n);
+
+  # Use a very small number of rounds
+  my @factors = prho_factor($n, 1000);
+
+Produces factors, not necessarily prime, of the positive number input.  An
+optional number of rounds can be given as a second parameter.  These attempt
+to find a single factor using one of the probabilistic algorigthms of
 Pollard Rho, Brent's modification of Pollard Rho, or Pollard's C<p - 1>.
 These are more specialized algorithms usually used for pre-factoring very
-large inputs, or checking very large inputs for naive mistakes.  If given
-a prime input, or if just unlucky, these will take a long time to return
-back the single input value.  There are cases where these can result in
-finding a factor or very large inputs in remarkably short time, similar to
-how Fermat's method works very well for factors near C<sqrt(n)>.  They are
-also amenable to massively parallel searching.
-
-For 64-bit input, these are unlikely to be of much use.  An optimized SQUFOF
-implementation takes under 20 milliseconds to find a factor for any 62-bit
-input on modern desktop computers.  Lightweight quadratic sieves are
-typically much faster for inputs in the 19+ digit range.
+large inputs, or checking very large inputs for naive mistakes.  If the
+input is prime or they run out of rounds, they will return the single
+input value.  On some inputs they will take a very long time, while on
+others they succeed in a remarkably short time.
 
 
 =head1 LIMITATIONS
@@ -497,7 +509,7 @@ Pi(10^10) = 455,052,511.
        6.6  primegen (optimized Sieve of Atkin)
       11.2  Tomás Oliveira e Silva's segmented sieve v1 (May 2003)
 
-       5.9  My SoE called in segments
+       5.9  My segmented SoE
       15.6  My Sieve of Eratosthenes using a mod-30 wheel
       17.2  A slightly modified verion of Terje Mathisen's mod-30 sieve
       35.5  Basic Sieve of Eratosthenes on odd numbers
@@ -521,6 +533,17 @@ Factoring performance depends on the input, and I'm still tuning it.  Compared
 to Math::Factor::XS, it is faster for small numbers, a little slower in
 the 7-9 digit range, and then gets much faster.  14+ digit semiprimes are
 factored 10 - 100x faster.
+
+The presentation here:
+ L<http://math.boisestate.edu/~liljanab/BOISECRYPTFall09/Jacobsen.pdf>
+has a lot of data on 64-bit and GMP factoring performance I collected in 2009.
+Assuming you do not know anything about the inputs, trial division and
+optimized Fermat work very well for small numbers (<= 10 digits), while
+native SQUFOF is typically the method of choice for 11-18 digits (I've
+seen claims that a lightweight QS can be faster for 15+ digits).  Some form
+of Quadratic Sieve is usually used for inputs in the 19-100 digit range, and
+beyond that is the Generalized Number Field Sieve.  For serious factoring,
+I recommend looking info C<yafu>, C<msieve>, C<Pari>, and C<GGNFS>.
 
 
 =head1 AUTHORS

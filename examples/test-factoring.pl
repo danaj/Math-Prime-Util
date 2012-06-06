@@ -7,8 +7,8 @@ use Math::Prime::Util qw/factor/;
 use Math::Factor::XS qw/prime_factors/;
 
 my $nlinear = 1000000;
-my $nrandom = ~0;
-my $randmax = 1_000_000_000_000;
+my $nrandom = 1000000;
+my $randmax = (~0 == 0xFFFFFFFF) ? ~0 : 1_000_000_000_000;
 
 print "OK for first 1";
 my $dig = 1;
@@ -25,13 +25,14 @@ foreach my $n (2 .. $nlinear) {
   }
 }
 print " numbers\n";
-print "Testing random numbers from $nlinear to ", $nlinear+$randmax, "\n";
+print "Testing random numbers from $nlinear to ", $randmax, "\n";
 
 while ($nrandom-- > 0) {
-  my $n = $nlinear + int(rand($randmax));
+  my $n = $nlinear + 1 + int(rand($randmax - $nlinear));
   my @mfxs = sort { $a<=>$b } prime_factors($n);
   my @mpu  = sort { $a<=>$b } factor($n);
   die "failure for $n" unless scalar @mfxs == scalar @mpu;
   for (0 .. $#mfxs) { die "failure for $n" unless $mfxs[$_] == $mpu[$_]; }
   print "." if ($nrandom % 1024) == 0;
 }
+print "\n";

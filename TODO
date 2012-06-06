@@ -8,6 +8,8 @@
 
 - factoring (Fermat, Pollard Rho, HOLF, etc.)
 - Speed up basic factoring
+- Since is_prime does trials for small numbers, we should skip it in factor
+  for small numbers.  We're just duplicating work.
 
 - Add test to check maxbits in compiled library vs. Perl
 
@@ -18,3 +20,5 @@
 - input validation (in XS, or do we need to make Perl wrappers for everything?)
 
 - examples and benchmarks
+
+- consider having next prime return 0 when it would overflow
