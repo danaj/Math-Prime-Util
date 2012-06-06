@@ -13,7 +13,7 @@ BEGIN {
 use base qw( Exporter );
 our @EXPORT_OK = qw(
                      prime_precalc prime_free
-                     is_prime
+                     is_prime is_prob_prime miller_rabin
                      primes
                      next_prime  prev_prime
                      prime_count prime_count_lower prime_count_upper prime_count_approx
@@ -215,9 +215,10 @@ including Math::Prime::XS, Math::Prime::FastSieve, and Math::Factor::XS.
 
 =head2 is_prime
 
-Returns true if the number is prime, false if not.
-
   print "$n is prime" if is_prime($n);
+
+Returns 2 if the number is prime, 0 if not.  Also note there are
+probabilistic prime testing functions available.
 
 
 =head2 primes
@@ -349,6 +350,36 @@ C<n * (logn + loglogn)> for C<n E<lt> 7022>.
 Returns an approximation to the C<nth_prime> function, without having to
 generate any primes.  Uses the Cipolla 1902 approximation with two
 polynomials, plus a correction term for small values to reduce the error.
+
+
+=head2 miller_rabin
+
+  my $maybe_prime = miller_rabin($n, 2);
+  my $probably_prime = miller_rabin($n, 2, 3, 5, 7, 11, 13, 17);
+
+Takes a positive number as input and one or more bases.  The bases must be
+between C<2> and C<n - 2>.  Returns 2 is C<n> is definitely prime, 1 if C<n>
+is probably prime, and 0 if C<n> is definitely composite.  Since this is
+just the Miller-Rabin test, a value of 2 is only returned for inputs of
+2 and 3, which are shortcut.  If 0 is returned, then the number really is a
+composite.  If 1 is returned, we aren't sure.
+
+This is usually used in combination with other tests to make either stronger
+tests or deterministic results for numbers less than some verified limit.
+
+=head2 is_prob_prime
+
+  my $prob_prime = is_prob_prime($n);
+  # Returns 0 (composite), 2 (prime), or 1 (probably prime)
+
+Takes a positive number as input and returns back either 0 (composite),
+2 (definitely prime), or 1 (probably prime).
+
+This is done with a tuned set of Miller-Rabin tests such that the result
+should be deterministic for 64-bit input.  Either 2, 3, 4, 5, or 7 Miller-Rabin
+tests are performed (no more than 3 for 32-bit input), and the result will
+then always be 0 (composite) or 2 (prime).  A later implementation may switch
+to a BPSW test, depending on speed.
 
 
 =head1 UTILITY FUNCTIONS

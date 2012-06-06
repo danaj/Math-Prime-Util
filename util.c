@@ -7,6 +7,7 @@
 
 #include "util.h"
 #include "sieve.h"
+#include "factor.h"
 #include "bitarray.h"
 
 /*
@@ -59,7 +60,7 @@ static int _is_prime7(UV x)
     q = x/i;  if (q<i) return 1;  if (x==(q*i)) return 0;   i += 2;
     q = x/i;  if (q<i) return 1;  if (x==(q*i)) return 0;   i += 6;
   }
-  return 1;
+  return 2;
 }
 
 
@@ -95,8 +96,16 @@ int is_prime(UV n)
   if (n <= get_prime_cache(0, &sieve))
     return ((sieve[d] & mtab) == 0);
 
+#if 0
   /* Trial division, mod 30 */
   return _is_prime7(n);
+#else
+  if (n < UVCONST(100000000)) {
+    return _is_prime7(n);
+  } else {
+    return is_prob_prime(n);  /* We know this works for all 64-bit n */
+  }
+#endif
 }
 
 

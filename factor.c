@@ -8,6 +8,7 @@
 #include "factor.h"
 #include "util.h"
 #include "sieve.h"
+#include "bitarray.h"
 
 /*
  * You need to remember to use UV for unsigned and IV for signed types that
@@ -88,21 +89,175 @@ static UV gcd_ui(UV x, UV y) {
   return x;
 }
 
+static UV mulmod(UV a, UV b, UV m) {
+  UV p;
+  UV r = 0;
+  while (b > 0) {
+    if (b & 1) {
+      if (r == 0) {
+        r = a;
+      } else {
+        r = m - r;
+        r = (a >= r)  ?  a-r  :  m-r+a;
+      }
+    }
+    a = (a > (m-a))  ?  (a-m)+a  :  a+a;
+    b >>= 1;
+  }
+  return r;
+}
+
 /* n^power + a mod m */
-/* This has serious overflow issues, making the programs that use it dubious */
-static UV powmod(UV n, UV power, UV add, UV m) {
+static UV powmodadd(UV n, UV power, UV add, UV m) {
   UV t = 1;
-  n = n % m;
-  /* t and n will always be < m from now on */
   while (power) {
     if (power & 1)
-      t = (t * n) % m;
-    n = (n * n) % m;
+      t = mulmod(t, n, m);
+    n = mulmod(n, n, m);
     power >>= 1;
   }
-  /* (t+a) % m, noting t is always < m */
-  return ( ((m-t) > add) ? (t+add) : (t+add-m) );
+  t = ((m-t) > add)  ?  t+add  :  t+add-m;  /* (t+a) % m  where t < m */
+  return t;
 }
+
+/* n^power mod m */
+static UV powmod(UV n, UV power, UV m) {
+  UV t = 1;
+  while (power) {
+    if (power & 1)
+      t = mulmod(t, n, m);
+    n = mulmod(n, n, m);
+    power >>= 1;
+  }
+  return t;
+}
+
+
+/* Miller-Rabin probabilistic primality test
+ * Returns 1 if probably prime relative to the bases, 0 if composite.
+ * Bases must be between 2 and n-2
+ */
+int miller_rabin(UV n, const UV *bases, UV nbases)
+{
+  int b;
+  int s = 0;
+  UV d = n-1;
+
+  assert(n > 3);
+
+  while ( (d&1) == 0 ) {
+    s++;
+    d >>= 1;
+  }
+  for (b = 0; b < nbases; b++) {
+    int r;
+    UV a = bases[b];
+    UV x;
+
+    /* Skip invalid bases */
+    if ( (a < 2) || (a > (n-2)) )
+      croak("Base %"UVuf" is invalid for input %"UVuf, a, n);
+
+    x = powmod(a, d, n);
+    if ( (x == 1) || (x == (n-1)) )  continue;
+
+    for (r = 0; r < s; r++) {
+      x = powmod(x, 2, n);
+      if (x == 1) {
+        return 0;
+      } else if (x == (n-1)) {
+        a = 0;
+        break;
+      }
+    }
+    if (a != 0)
+      return 0;
+  }
+  return 1;
+}
+
+int is_prob_prime(UV n)
+{
+  UV bases[12];
+  int nbases;
+  int prob_prime;
+
+  if ( (n == 2) || (n == 3) || (n == 5) || (n == 7) )
+    return 2;
+  if ( (n<2) || ((n% 2)==0) || ((n% 3)==0) || ((n% 5)==0) || ((n% 7)==0) )
+    return 0;
+  if (n < 121)
+    return 2;
+
+#if BITS_PER_WORD == 32
+  if (n < UVCONST(9080191)) {
+    bases[0] = 31; bases[1] = 73; nbases = 2;
+  } else  {
+    bases[0] = 2; bases[1] = 7; bases[2] = 61; nbases = 3;
+  }
+#else
+#if 1
+  /* Better basis from:  http://miller-rabin.appspot.com/ */
+  if (n < UVCONST(9080191)) {
+    bases[0] = 31; bases[1] = 73; nbases = 2;
+  } else if (n < UVCONST(4759123141)) {
+    bases[0] = 2; bases[1] = 7; bases[2] = 61; nbases = 3;
+  } else if (n < UVCONST(105936894253)) {
+    bases[0] = 2;
+    bases[1] = 1005905886;
+    bases[2] = 1340600841;
+    nbases = 3;
+  } else if (n < UVCONST(31858317218647)) {
+    bases[0] = 2;
+    bases[1] = 642735;
+    bases[2] = 553174392;
+    bases[3] = 3046413974;
+    nbases = 4;
+  } else if (n < UVCONST(3071837692357849)) {
+    bases[0] = 2;
+    bases[1] = 75088;
+    bases[2] = 642735;
+    bases[3] = 203659041;
+    bases[4] = 3613982119;
+    nbases = 5;
+  } else {
+    bases[0] = 2;
+    bases[1] = 325;
+    bases[2] = 9375;
+    bases[3] = 28178;
+    bases[4] = 450775;
+    bases[5] = 9780504;
+    bases[6] = 1795265022;
+    nbases = 7;
+  }
+#else
+  /* More standard bases */
+  if (n < UVCONST(9080191)) {
+    bases[0] = 31; bases[1] = 73; nbases = 2;
+  } else if (n < UVCONST(4759123141)) {
+    bases[0] = 2; bases[1] = 7; bases[2] = 61; nbases = 3;
+  } else if (n < UVCONST(21652684502221)) {
+    bases[0] = 2; bases[1] = 1215; bases[2] = 34862; bases[3] = 574237825;
+    nbases = 4;
+  } else if (n < UVCONST(341550071728321)) {
+    bases[0] =  2; bases[1] =  3; bases[2] =  5; bases[3] =  7; bases[4] = 11;
+    bases[5] = 13; bases[6] = 17; nbases = 7;
+  } else if (n < UVCONST(3825123056546413051)) {
+    bases[0] =  2; bases[1] =  3; bases[2] =  5; bases[3] =  7; bases[4] = 11;
+    bases[5] = 13; bases[6] = 17; bases[7] = 19; bases[8] = 23; nbases = 9;
+  } else {
+    bases[0] =  2; bases[1] =  3; bases[2] =  5; bases[3] =  7; bases[4] = 11;
+    bases[5] = 13; bases[6] = 17; bases[7] = 19; bases[8] = 23; bases[9] = 29;
+    bases[10]= 31; bases[11]= 37;
+    nbases = 12;
+  }
+#endif
+#endif
+  prob_prime = miller_rabin(n, bases, nbases);
+  return 2*prob_prime;
+}
+
+
 
 /* Knuth volume 2, algorithm C.
  * Very fast for small numbers, grows rapidly.
@@ -182,7 +337,7 @@ int pbrent_factor(UV n, UV *factors, UV rounds)
   }
 
   for (i = 1; i < rounds; i++) {
-    Xi = powmod(Xi, 2, a, n);
+    Xi = powmodadd(Xi, 2, a, n);
     f = gcd_ui(Xi - Xm, n);
     if ( (f != 1) && (f != n) ) {
       factors[nfactors++] = f;
@@ -231,9 +386,9 @@ int prho_factor(UV n, UV *factors, UV rounds)
   V = 7;
 
   for (i = 1; i < rounds; i++) {
-    U = powmod(U, 2, a, n);
-    V = powmod(V, 2, a, n);
-    V = powmod(V, 2, a, n);
+    U = powmodadd(U, 2, a, n);
+    V = powmodadd(V, 2, a, n);
+    V = powmodadd(V, 2, a, n);
 
     f = gcd_ui( (U > V) ? U-V : V-U, n);
     if ( (f != 1) && (f != n) ) {
@@ -270,12 +425,9 @@ int pminus1_factor(UV n, UV *factors, UV rounds)
     return nfactors;
 
   b = 13;
-
   for (i = 1; i < rounds; i++) {
-    b = powmod(b+1, i, 0, n);
-    if (b == 0)  b = n;
-    b--;
-    f = gcd_ui(b, n);
+    b = powmod(b, i, n);
+    f = gcd_ui(b-1, n);
     if (f == n) {
       factors[nfactors++] = n;
       return nfactors;
@@ -435,12 +587,12 @@ int squfof_factor(UV n, UV *factors, UV rounds, UV refactor_above)
   factors[nfactors++] = p;
   factors[nfactors++] = q;
 #else
-  if (p >= refactor_above)
+  if ( (p >= refactor_above) && (is_prob_prime(p) == 0) )
     nfactors += squfof_factor(p, factors+nfactors, rounds, refactor_above);
   else
     factors[nfactors++] = p;
 
-  if (q >= refactor_above)
+  if ( (q >= refactor_above) && (is_prob_prime(q) == 0) )
     nfactors += squfof_factor(q, factors+nfactors, rounds, refactor_above);
   else
     factors[nfactors++] = q;

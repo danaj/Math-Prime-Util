@@ -257,6 +257,18 @@ factor(IN UV n)
           /* trial factorization for each item in the list */
           UV f, m, limit;
           n = factor_list[i];
+          /* We pulled out everything through this point, so must be prime */
+          if (n < (19*19)) {
+            XPUSHs(sv_2mortal(newSVuv( n )));
+            continue;
+          /* If sufficiently large, run a prob prime test on it.  This saves
+           * us a huge amount of work on big primes.  We could also look into
+           * some possible shortcuts.  What this really needs is to move
+           * the prime test up above SQUFOF. */
+          } else if ( (n > 40000000) && is_prob_prime(n) ) {
+            XPUSHs(sv_2mortal(newSVuv( n )));
+            continue;
+          }
           f = startfactor;
           m = startfactor % 30;
           limit = sqrt((double) n);
@@ -347,3 +359,32 @@ pminus1_factor(IN UV n)
     for (i = 0; i < nfactors; i++) {
       XPUSHs(sv_2mortal(newSVuv( factors[i] )));
     }
+
+int
+miller_rabin(IN UV n, ...)
+  PREINIT:
+    UV bases[64];
+    int prob_prime = 1;
+    int c = 1;
+  CODE:
+    if (items < 2)
+      croak("No bases given to miller_rabin");
+    if ( (n == 0) || (n == 1) ) XSRETURN(0);   /* 0 and 1 are composite */
+    if ( (n == 2) || (n == 3) ) XSRETURN(2);   /* 2 and 3 are prime */
+    while (c < items) {
+      int b = 0;
+      while (c < items) {
+        bases[b++] = SvUV(ST(c));
+        c++;
+        if (b == 64) break;
+      }
+      prob_prime = miller_rabin(n, bases, b);
+      if (prob_prime != 1)
+        break;
+    }
+    RETVAL = prob_prime;
+  OUTPUT:
+    RETVAL
+
+int
+is_prob_prime(IN UV n)
