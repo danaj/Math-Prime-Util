@@ -6,7 +6,7 @@ $| = 1;  # fast pipes
 use Math::Prime::Util qw/factor/;
 use Math::Factor::XS qw/prime_factors/;
 use Benchmark qw/:all/;
-my $digits = shift || 10;
+my $digits = shift || 15;
 my $count = shift || -2;
 
 my @min_factors_by_digit = (2,2,3,3,5,11,17,47,97);

@@ -291,16 +291,17 @@ int pminus1_factor(UV n, UV *factors, UV rounds)
 
 /* My modification of Ben Buhrow's modification of Bob Silverman's SQUFOF code.
  * I like Jason P's code a lot -- I should put it in. */
-static IV qqueue[100];
+static IV qqueue[100+1];
 static IV qpoint;
 static void enqu(IV q, IV *iter) {
   qqueue[qpoint] = q;
   if (++qpoint >= 100) *iter = -1;
 }
 
-int squfof_factor(UV n, UV *factors, UV rounds)
+int squfof_factor(UV n, UV *factors, UV rounds, UV refactor_above)
 {
   int nfactors = 0;
+  UV rounds2 = rounds/16;
   UV temp;
   IV iq,ll,l2,p,pnext,q,qlast,r,s,t,i;
   IV jter, iter;
@@ -363,6 +364,7 @@ int squfof_factor(UV n, UV *factors, UV rounds)
     r = (int)sqrt((double)q);                 /* r = floor(sqrt(q))      */
     if (q != r*r) continue;
     if (qpoint == 0) break;
+    qqueue[qpoint] = 0;
     reloop = 0;
     for (i=0; i<qpoint-1; i+=2) {    /* treat queue as list for simplicity*/
       if (r == qqueue[i]) { reloop = 1; break; }
@@ -372,10 +374,15 @@ int squfof_factor(UV n, UV *factors, UV rounds)
     break;
   }   /* end of main loop */
 
+  if (jter >= rounds) {
+    factors[nfactors++] = n;
+    return nfactors;
+  }
+
   qlast = r;
   p = p + r*((s - p)/r);
   q = (n - (p*p)) / qlast;			/* q = (n - p*p)/qlast (div is exact)*/
-  for (iter=0; iter<(rounds/16); iter++) {   /* unrolled second main loop */
+  for (iter=0; iter<rounds2; iter++) {   /* unrolled second main loop */
     iq = (s + p)/q;
     pnext = iq*q - p;
     if (p == pnext) break;
@@ -406,24 +413,40 @@ int squfof_factor(UV n, UV *factors, UV rounds)
     p = pnext;
   }
 
-  if (iter >= (rounds/20)) {
+  if (iter >= rounds2) {
     factors[nfactors++] = n;
     return nfactors;
   }
 
   if ((q & 1) == 0) q/=2;      /* q was factor or 2*factor   */
-  p = n/q;
 
-  if (p < q) {
-    factors[nfactors++] = p;
-    factors[nfactors++] = q;
-  } else {
-    factors[nfactors++] = q;
-    factors[nfactors++] = p;
+  if ( (q == 1) || (q == n) ) {
+    factors[nfactors++] = n;
+    return nfactors;
   }
+
+  p = n/q;
+  /* smallest factor first */
+  if (q < p) {  t = p; p = q; q = t; }
+
+  /* printf(" squfof found %lu = %lu * %lu in %ld/%ld rounds\n", n, p, q, jter, iter); */
+
+#if 0
+  factors[nfactors++] = p;
+  factors[nfactors++] = q;
+#else
+  if (p >= refactor_above)
+    nfactors += squfof_factor(p, factors+nfactors, rounds, refactor_above);
+  else
+    factors[nfactors++] = p;
+
+  if (q >= refactor_above)
+    nfactors += squfof_factor(q, factors+nfactors, rounds, refactor_above);
+  else
+    factors[nfactors++] = q;
+#endif
   return nfactors;
 }
 
 
 /* TODO: Add Jason Papadopoulos's racing SQUFOF */
-

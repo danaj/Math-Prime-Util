@@ -420,7 +420,7 @@ q are the same number of digits), then this will be very fast.
 
 Produces factors, not necessarily prime, of the positive number input.  It
 is possible the function will be unable to find a factor, in which case a
-single factor (the input) is returned.
+single element, the input, is returned.
 
 =head2 prho_factor
 

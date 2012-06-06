@@ -226,24 +226,40 @@ erat_simple_primes(IN UV low, IN UV high)
 
 void
 factor(IN UV n)
+  PREINIT:
   PPCODE:
     /* Exit if n is 0 or 1 */
     if (n < 2) {
       XPUSHs(sv_2mortal(newSVuv( n )));
     } else {
-      /* Quick trial divisions */
+      /* Quick trial divisions.  We could do tricky gcd magic here. */
       while ( (n% 2) == 0 ) {  n /=  2;  XPUSHs(sv_2mortal(newSVuv(  2 ))); }
       while ( (n% 3) == 0 ) {  n /=  3;  XPUSHs(sv_2mortal(newSVuv(  3 ))); }
       while ( (n% 5) == 0 ) {  n /=  5;  XPUSHs(sv_2mortal(newSVuv(  5 ))); }
       while ( (n% 7) == 0 ) {  n /=  7;  XPUSHs(sv_2mortal(newSVuv(  7 ))); }
       while ( (n%11) == 0 ) {  n /= 11;  XPUSHs(sv_2mortal(newSVuv( 11 ))); }
       while ( (n%13) == 0 ) {  n /= 13;  XPUSHs(sv_2mortal(newSVuv( 13 ))); }
-      if (n > 1) {
-        if (n <= UVCONST(0xFFFFFFFF)) {  /* tune this */
-          /* trial factorization */
-          UV f = 17;
-          UV m = 17;
-          UV limit = sqrt((double) n);
+      while ( (n%17) == 0 ) {  n /= 17;  XPUSHs(sv_2mortal(newSVuv( 17 ))); }
+      if (n < (19*19)) {
+        if (n != 1)  XPUSHs(sv_2mortal(newSVuv( n )));
+      } else {
+        UV startfactor = 19;
+        UV factor_list[MPU_MAX_FACTORS+1];
+        int n_list_factors = 1;
+        int i;
+        if (n > (UVCONST(0xFFFFFFFF)) ) {  /* tune this */
+          /* Use SQUFOF to crack some factors, recurse on large factors */
+          n_list_factors = squfof_factor(n, factor_list, 800000, (373*373)+1);
+        } else {
+          factor_list[0] = n;
+        }
+        for (i = 0; i < n_list_factors; i++) {
+          /* trial factorization for each item in the list */
+          UV f, m, limit;
+          n = factor_list[i];
+          f = startfactor;
+          m = startfactor % 30;
+          limit = sqrt((double) n);
           while (f <= limit) {
             if ( (n%f) == 0 ) {
               do {
@@ -256,27 +272,6 @@ factor(IN UV n)
           }
           if (n != 1)
             XPUSHs(sv_2mortal(newSVuv( n )));
-        } else {
-          UV factors[MPU_MAX_FACTORS+1];
-          UV sqfactors, f1, f2;
-          int nfactors;
-          int i;
-          /* Use SQUFOF to crack a factor off */
-          sqfactors = squfof_factor(n, factors+nfactors, 800000);
-          assert(sqfactors <= 2);
-          if (sqfactors == 1) {
-            n = factors[nfactors];
-            nfactors += trial_factor(n, factors+nfactors, UV_MAX);
-          } else {
-            UV n1 = factors[nfactors];
-            n = factors[nfactors+1];
-            nfactors += trial_factor(n1, factors+nfactors, UV_MAX);
-            nfactors += trial_factor(n, factors+nfactors, UV_MAX);
-          }
-          if (nfactors < 1) croak("No factors");
-          for (i = 0; i < nfactors; i++) {
-            XPUSHs(sv_2mortal(newSVuv( factors[i] )));
-          }
         }
       }
     }
@@ -302,7 +297,8 @@ squfof_factor(IN UV n)
     int nfactors;
     int i;
   PPCODE:
-    nfactors = squfof_factor(n, factors, 800000);
+    /* have squfof recurse on each factor found */
+    nfactors = squfof_factor(n, factors, 800000, 2);
     if (nfactors < 1)
       croak("No factors from squfof_factor");
     for (i = 0; i < nfactors; i++) {
