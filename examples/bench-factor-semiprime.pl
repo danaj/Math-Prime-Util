@@ -21,15 +21,15 @@ die "Digits has to be >= 2 and <= 19" unless $digits >= 2 && $digits <= 19;
 print "Generating $numprimes random $digits-digit semiprimes (min factor $smallest_factor_allowed) ";
 my @semiprimes;
 foreach my $i ( 1 .. $numprimes ) {
-  my $base = 10 ** ($digits-1);
-  my $add = 10 ** ($digits) - $base;
+  my $base = int(10 ** ($digits-1));
+  my $add = int(10 ** ($digits)) - $base;
   my @factors;
   my $n;
   while (1) {
     $n = $base + int(rand($add));
-    $n++ if ($n%2) == 0;
+    next if $n > (~0 - 4);
+    $n += 1 if ($n%2) == 0;
     $n += 3 if ($n%3) == 0;
-    next if $n > ~0;
     @factors = factor($n);
     next if scalar @factors != 2;
     next if $factors[0] < $smallest_factor_allowed;

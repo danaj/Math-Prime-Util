@@ -517,11 +517,10 @@ Perl modules, counting the primes to C<800_000_000> (800 million), in seconds:
    [hours]  Math::Primality             0.04
 
 
-I have not done extensive timing on factoring.  The difference in speed for
-most inputs between Math::Factor::XS and Math::Prime::Util is small.  For
-some ranges M::F::XS is faster, and some ranges it is slower.  Factoring
-random semiprimes is about 1.1x to 6x faster with M::P::U, and some inputs
-are even faster (e.g. C<204518747 * 16476429743>, which is ~50x faster).
+Factoring performance depends on the input, and I'm still tuning it.  Compared
+to Math::Factor::XS, it is faster for small numbers, a little slower in
+the 7-9 digit range, and then gets much faster.  14+ digit semiprimes are
+factored 10 - 100x faster.
 
 
 =head1 AUTHORS
