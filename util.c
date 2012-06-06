@@ -8,7 +8,7 @@
 #include "util.h"
 #include "sieve.h"
 #include "factor.h"
-#include "bitarray.h"
+#include "ptypes.h"
 
 /*
  * I'm undecided as to whether we want this, or just let the functions alloc

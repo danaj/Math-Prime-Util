@@ -3,6 +3,7 @@
 #include "perl.h"
 #include "XSUB.h"
 /* We're not using anything for which we need ppport.h */
+#include "ptypes.h"
 #include "sieve.h"
 #include "util.h"
 #include "bitarray.h"

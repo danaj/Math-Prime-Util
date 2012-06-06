@@ -1,8 +1,7 @@
 #ifndef MPU_FACTOR_H
 #define MPU_FACTOR_H
 
-#include "EXTERN.h"
-#include "perl.h"
+#include "ptypes.h"
 
 #define MPU_MAX_FACTORS 64
 
@@ -22,7 +21,6 @@ extern int miller_rabin(UV n, const UV *bases, UV nbases);
 extern int is_prob_prime(UV n);
 
 #if 0
-#include "bitarray.h"
 /* Try to make a quick probable prime test */
 static int is_perhaps_prime(UV n)
 {

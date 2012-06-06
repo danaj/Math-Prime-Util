@@ -8,7 +8,7 @@
 #include "factor.h"
 #include "util.h"
 #include "sieve.h"
-#include "bitarray.h"
+#include "ptypes.h"
 
 /*
  * You need to remember to use UV for unsigned and IV for signed types that

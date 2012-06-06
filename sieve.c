@@ -6,6 +6,7 @@
 #include <math.h>
 
 #include "sieve.h"
+#include "ptypes.h"
 #include "bitarray.h"
 #include "util.h"     /* For freeing the segment cache */
 
