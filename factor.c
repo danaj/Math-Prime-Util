@@ -3,6 +3,8 @@
 #include <string.h>
 #include <assert.h>
 #include <limits.h>
+#define __STDC_LIMIT_MACROS
+#include <stdint.h>
 #include <math.h>
 
 #include "factor.h"
@@ -77,73 +79,84 @@ int trial_factor(UV n, UV *factors, UV maxtrial)
   return nfactors;
 }
 
-static UV gcd_ui(UV x, UV y) {
-  UV t;
 
-  if (y < x) { t = x; x = y; y = t; }
+#if UINT64_MAX > UV_MAX
 
-  while (y > 0) {
-    x = x % y;
-    t = x; x = y; y = t;
-  }
-  return x;
-}
+  /* We have 64-bit available, but UV is 32-bit.  Do the math in 64-bit.
+   * Even if it is emulated, it should be as fast or faster than us doing it.
+   */
+  #define addmod(n,a,m)  (UV)(((uint64_t)(n)+(uint64_t)(a)) % ((uint64_t)(m)))
+  #define mulmod(a,b,m)  (UV)(((uint64_t)(a)*(uint64_t)(b)) % ((uint64_t)(m)))
+  #define sqrmod(n,m)    (UV)(((uint64_t)(n)*(uint64_t)(n)) % ((uint64_t)(m)))
 
-/* if n is smaller than this, you can multiply without overflow */
-#define HALF_WORD (UVCONST(1) << (BITS_PER_WORD/2))
-
-static UV mulmod(UV a, UV b, UV m) {
-  UV r = 0;
-  while (b > 0) {
-    if (b & 1) {
-      if (r == 0) {
-        r = a;
-      } else {
-        r = m - r;
-        r = (a >= r)  ?  a-r  :  m-r+a;
-      }
-    }
-    a = (a > (m-a))  ?  (a-m)+a  :  a+a;
-    b >>= 1;
-  }
-  return r;
-}
-
-/* n^power mod m */
-static UV powmod(UV n, UV power, UV m) {
-  UV t = 1;
-  if (m < HALF_WORD) {
-    n %= m;
-    while (power) {
-      if (power & 1)
-        t = (t*n)%m;
-      n = (n*n)%m;
-      power >>= 1;
-    }
-  } else {
+  static UV powmod(UV n, UV power, UV m) {
+    UV t = 1;
     while (power) {
       if (power & 1)
         t = mulmod(t, n, m);
-      n = (n < HALF_WORD) ? (n*n)%m : mulmod(n, n, m);
+      n = sqrmod(n, m);
       power >>= 1;
     }
+    return t;
   }
-  return t;
-}
 
-/* n + a mod m */
-static UV addmod(UV n, UV a, UV m) {
-  return ((m-n) > a)  ?  n+a  :  n+a-m;
-}
+#else
 
-/* n^2 mod m */
-#define powsqr(n, m)  (n < HALF_WORD) ? (n*n)%m : mulmod(n,n,m)
+  /* UV is the largest integral type available (that we know of). */
+
+  /* if n is smaller than this, you can multiply without overflow */
+  #define HALF_WORD (UVCONST(1) << (BITS_PER_WORD/2))
+
+  static UV _mulmod(UV a, UV b, UV m) {
+    UV r = 0;
+    while (b > 0) {
+      if (b & 1) {
+        if (r == 0) {
+          r = a;
+        } else {
+          r = m - r;
+          r = (a >= r)  ?  a-r  :  m-r+a;
+        }
+      }
+      a = (a > (m-a))  ?  (a-m)+a  :  a+a;
+      b >>= 1;
+    }
+    return r;
+  }
+
+  #define addmod(n,a,m) ((((m)-(n)) > (a))  ?  ((n)+(a))  :  ((n)+(a)-(m)))
+  #define mulmod(a,b,m) (((a)|(b)) < HALF_WORD) ? ((a)*(b))%(m) : _mulmod(a,b,m)
+  #define sqrmod(n,m)   ((n) < HALF_WORD)       ? ((n)*(n))%(m) : _mulmod(n,n,m)
+
+  /* n^power mod m */
+  static UV powmod(UV n, UV power, UV m) {
+    UV t = 1;
+    if (m < HALF_WORD) {
+      n %= m;
+      while (power) {
+        if (power & 1)
+          t = (t*n)%m;
+        n = (n*n)%m;
+        power >>= 1;
+      }
+    } else {
+      while (power) {
+        if (power & 1)
+          t = mulmod(t, n, m);
+        n = sqrmod(n,m);
+        power >>= 1;
+      }
+    }
+    return t;
+  }
+
+#endif
 
 /* n^power + a mod m */
-#define powmodadd(n, p, a, m)  addmod(powmod(n,p,m),a,m)
+#define powaddmod(n, p, a, m)  addmod(powmod(n,p,m),a,m)
 
 /* n^2 + a mod m */
-#define powsqradd(n, a, m)     addmod(powsqr(n,m), a, m)
+#define sqraddmod(n, a, m)     addmod(sqrmod(n,m),  a,m)
 
 
 /* Miller-Rabin probabilistic primality test
@@ -175,7 +188,7 @@ int miller_rabin(UV n, const UV *bases, UV nbases)
     if ( (x == 1) || (x == (n-1)) )  continue;
 
     for (r = 0; r < s; r++) {
-      x = powsqr(x, n);
+      x = sqrmod(x, n);
       if (x == 1) {
         return 0;
       } else if (x == (n-1)) {
@@ -323,7 +336,7 @@ int holf_factor(UV n, UV *factors, UV rounds)
   for (i = 1; i <= rounds; i++) {
     s = sqrt(n*i);                      /* TODO: overflow here */
     if ( (s*s) != (n*i) )  s++;
-    m = powsqr(s, n);
+    m = sqrmod(s, n);
     /* Cheaper would be:
      *     if (m is probably not a perfect sequare)  continue;
      *     f = sqrt(m);
@@ -370,7 +383,7 @@ int pbrent_factor(UV n, UV *factors, UV rounds)
   }
 
   for (i = 1; i <= rounds; i++) {
-    Xi = powsqradd(Xi, a, n);
+    Xi = sqraddmod(Xi, a, n);
     f = gcd_ui( (Xi>Xm) ? Xi-Xm : Xm-Xi, n);
     if ( (f != 1) && (f != n) ) {
       factors[0] = f;
@@ -408,9 +421,9 @@ int prho_factor(UV n, UV *factors, UV rounds)
   }
 
   for (i = 1; i <= rounds; i++) {
-    U = powsqradd(U, a, n);
-    V = powsqradd(V, a, n);
-    V = powsqradd(V, a, n);
+    U = sqraddmod(U, a, n);
+    V = sqraddmod(V, a, n);
+    V = sqraddmod(V, a, n);
     f = gcd_ui( (U > V) ? U-V : V-U, n);
     if (f == n) {
       if (in_loop++)     /* Mark that we've been here */

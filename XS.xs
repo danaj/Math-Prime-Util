@@ -230,20 +230,35 @@ factor(IN UV n)
     if (n < 4) {
       XPUSHs(sv_2mortal(newSVuv( n ))); /* If n is 0-3, we're done. */
     } else {
+      UV tlim = 19;  /* Below this we've checked */
       UV factor_stack[MPU_MAX_FACTORS+1];
       int nstack = 0;
-      /* Quick trial divisions.  We could do tricky gcd magic here. */
+      /* Quick trial divisions.  Crude use of GCD to hopefully go faster. */
       while ( (n% 2) == 0 ) {  n /=  2;  XPUSHs(sv_2mortal(newSVuv(  2 ))); }
-      while ( (n% 3) == 0 ) {  n /=  3;  XPUSHs(sv_2mortal(newSVuv(  3 ))); }
-      while ( (n% 5) == 0 ) {  n /=  5;  XPUSHs(sv_2mortal(newSVuv(  5 ))); }
-      while ( (n% 7) == 0 ) {  n /=  7;  XPUSHs(sv_2mortal(newSVuv(  7 ))); }
-      while ( (n%11) == 0 ) {  n /= 11;  XPUSHs(sv_2mortal(newSVuv( 11 ))); }
-      while ( (n%13) == 0 ) {  n /= 13;  XPUSHs(sv_2mortal(newSVuv( 13 ))); }
-      while ( (n%17) == 0 ) {  n /= 17;  XPUSHs(sv_2mortal(newSVuv( 17 ))); }
+      if ( (n >= UVCONST(3*3)) && (gcd_ui(n, UVCONST(3234846615) != 1)) ) {
+        while ( (n% 3) == 0 ) {  n /=  3;  XPUSHs(sv_2mortal(newSVuv(  3 ))); }
+        while ( (n% 5) == 0 ) {  n /=  5;  XPUSHs(sv_2mortal(newSVuv(  5 ))); }
+        while ( (n% 7) == 0 ) {  n /=  7;  XPUSHs(sv_2mortal(newSVuv(  7 ))); }
+        while ( (n%11) == 0 ) {  n /= 11;  XPUSHs(sv_2mortal(newSVuv( 11 ))); }
+        while ( (n%13) == 0 ) {  n /= 13;  XPUSHs(sv_2mortal(newSVuv( 13 ))); }
+        while ( (n%17) == 0 ) {  n /= 17;  XPUSHs(sv_2mortal(newSVuv( 17 ))); }
+        while ( (n%19) == 0 ) {  n /= 19;  XPUSHs(sv_2mortal(newSVuv( 19 ))); }
+        while ( (n%23) == 0 ) {  n /= 23;  XPUSHs(sv_2mortal(newSVuv( 23 ))); }
+        while ( (n%29) == 0 ) {  n /= 29;  XPUSHs(sv_2mortal(newSVuv( 29 ))); }
+        tlim = 31;
+      }
+      if ( (n >= UVCONST(31*31)) && (gcd_ui(n, UVCONST(95041567) != 1)) ) {
+        while ( (n%31) == 0 ) {  n /= 31;  XPUSHs(sv_2mortal(newSVuv( 31 ))); }
+        while ( (n%37) == 0 ) {  n /= 37;  XPUSHs(sv_2mortal(newSVuv( 37 ))); }
+        while ( (n%41) == 0 ) {  n /= 41;  XPUSHs(sv_2mortal(newSVuv( 41 ))); }
+        while ( (n%43) == 0 ) {  n /= 43;  XPUSHs(sv_2mortal(newSVuv( 43 ))); }
+        while ( (n%47) == 0 ) {  n /= 47;  XPUSHs(sv_2mortal(newSVuv( 47 ))); }
+        tlim = 53;
+      }
       do { /* loop over each remaining factor */
-        while ( (n >= (19*19)) && (!is_definitely_prime(n)) ) {
+        while ( (n >= (tlim*tlim)) && (!is_definitely_prime(n)) ) {
           int split_success = 0;
-          if (n > UVCONST(60000000) ) {  /* tune this */
+          if (n > UVCONST(10000000) ) {  /* tune this */
             /* For sufficiently large n, try more complex methods. */
             /* SQUFOF (succeeds 98-99.9%) */
             split_success = squfof_factor(n, factor_stack+nstack, 256*1024)-1;
@@ -259,8 +274,8 @@ factor(IN UV n)
             n = factor_stack[nstack];
           } else {
             /* trial divisions */
-            UV f = 19;
-            UV m = 19;
+            UV f = tlim;
+            UV m = tlim % 30;
             UV limit = sqrt((double) n);
             while (f <= limit) {
               if ( (n%f) == 0 ) {

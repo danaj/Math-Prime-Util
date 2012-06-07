@@ -4,14 +4,17 @@ use strict;
 #use Math::Primality;
 use Math::Prime::XS;
 use Math::Prime::Util;
-use Math::Pari;
+#use Math::Pari;
 #use Math::Prime::FastSieve;
 use Benchmark qw/:all/;
 use List::Util qw/min max/;
 my $count = shift || -5;
 
+my $is64bit = (~0 > 4294967295);
+my $maxdigits = ($is64bit) ? 20 : 10;  # Noting the range is limited for max.
+
 srand(29);
-test_at_digits($_) for (5..15);
+test_at_digits($_) for (5 .. $maxdigits);
 
 
 sub test_at_digits {
@@ -36,7 +39,7 @@ sub test_at_digits {
     #'M::P::FS' => sub { $sieve->isprime($_) for @nums },
     'M::P::U' => sub { Math::Prime::Util::is_prime($_) for @nums },
     'MPU prob' => sub { Math::Prime::Util::is_prob_prime($_) for @nums },
-    'Math::Pari' => sub { Math::Pari::isprime($_) for @nums },
+    #'Math::Pari' => sub { Math::Pari::isprime($_) for @nums },
   });
   print "\n";
 }
