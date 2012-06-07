@@ -81,7 +81,6 @@ _maxbits()
 SV*
 sieve_primes(IN UV low, IN UV high)
   PREINIT:
-    UV  s;
     const unsigned char* sieve;
     AV* av = newAV();
   CODE:

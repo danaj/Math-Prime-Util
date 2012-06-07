@@ -93,7 +93,6 @@ static UV gcd_ui(UV x, UV y) {
 #define HALF_WORD (UVCONST(1) << (BITS_PER_WORD/2))
 
 static UV mulmod(UV a, UV b, UV m) {
-  UV p;
   UV r = 0;
   while (b > 0) {
     if (b & 1) {
@@ -223,30 +222,30 @@ int is_prob_prime(UV n)
     nbases = 3;
   } else if (n < UVCONST(105936894253)) {
     bases[0] = 2;
-    bases[1] = 1005905886;
-    bases[2] = 1340600841;
+    bases[1] = UVCONST( 1005905886 );
+    bases[2] = UVCONST( 1340600841 );
     nbases = 3;
   } else if (n < UVCONST(31858317218647)) {
     bases[0] = 2;
-    bases[1] = 642735;
-    bases[2] = 553174392;
-    bases[3] = 3046413974;
+    bases[1] = UVCONST( 642735     );
+    bases[2] = UVCONST( 553174392  );
+    bases[3] = UVCONST( 3046413974 );
     nbases = 4;
   } else if (n < UVCONST(3071837692357849)) {
     bases[0] = 2;
-    bases[1] = 75088;
-    bases[2] = 642735;
-    bases[3] = 203659041;
-    bases[4] = 3613982119;
+    bases[1] = UVCONST( 75088      );
+    bases[2] = UVCONST( 642735     );
+    bases[3] = UVCONST( 203659041  );
+    bases[4] = UVCONST( 3613982119 );
     nbases = 5;
   } else {
     bases[0] = 2;
-    bases[1] = 325;
-    bases[2] = 9375;
-    bases[3] = 28178;
-    bases[4] = 450775;
-    bases[5] = 9780504;
-    bases[6] = 1795265022;
+    bases[1] = UVCONST( 325        );
+    bases[2] = UVCONST( 9375       );
+    bases[3] = UVCONST( 28178      );
+    bases[4] = UVCONST( 450775     );
+    bases[5] = UVCONST( 9780504    );
+    bases[6] = UVCONST( 1795265022 );
     nbases = 7;
   }
 #else
@@ -409,7 +408,7 @@ int pminus1_factor(UV n, UV *factors, UV rounds)
       return 2;
     }
   }
-  factors[0] = f;
+  factors[0] = n;
   return 1;
 }
 

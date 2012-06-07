@@ -275,17 +275,17 @@ static const unsigned char prime_count_small[] =
    16,16,16,16,16,16,17,17,18,18,18,18,18,18,19};
 #define NPRIME_COUNT_SMALL  (sizeof(prime_count_small)/sizeof(prime_count_small[0]))
 
-static const float F1 = 1.0;
+static const double F1 = 1.0;
 UV prime_count_lower(UV x)
 {
-  float fx, flogx;
-  float a = 1.80;
+  double fx, flogx;
+  double a = 1.80;
 
   if (x < NPRIME_COUNT_SMALL)
     return prime_count_small[x];
 
-  fx = (float)x;
-  flogx = logf(x);
+  fx = (double)x;
+  flogx = log(x);
 
   if (x < 599)
     return (UV) (fx / (flogx-0.7));
@@ -308,14 +308,14 @@ UV prime_count_lower(UV x)
 
 UV prime_count_upper(UV x)
 {
-  float fx, flogx;
-  float a = 2.51;
+  double fx, flogx;
+  double a = 2.51;
 
   if (x < NPRIME_COUNT_SMALL)
     return prime_count_small[x];
 
-  fx = (float)x;
-  flogx = logf(x);
+  fx = (double)x;
+  flogx = log(x);
 
   /* This function is unduly complicated. */
 
@@ -554,7 +554,10 @@ UV nth_prime_approx(UV n)
   else if (n < 12000) approx += 3.0 * order;
   else if (n <150000) approx += 2.1 * order;
 
-  return (UV) rint(approx);
+  if (approx > (double)UV_MAX)
+    return 0;
+
+  return (UV) (approx + 0.5);
 }
 
 
@@ -569,7 +572,6 @@ UV nth_prime_approx(UV n)
 static UV count_segment(const unsigned char* sieve, UV nbytes, UV maxcount, UV* pos)
 {
   UV count = 0;
-  UV bytes_left;
   UV byte = 0;
 
   assert(sieve != 0);
