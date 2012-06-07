@@ -245,17 +245,12 @@ factor(IN UV n)
           int split_success = 0;
           if (n > UVCONST(60000000) ) {  /* tune this */
             /* For sufficiently large n, try more complex methods. */
-            /* SQUFOF (succeeds ~98% of the time) */
-            split_success = squfof_factor(n, factor_stack+nstack, 64*4096)-1;
+            /* SQUFOF (succeeds 98-99.9%) */
+            split_success = squfof_factor(n, factor_stack+nstack, 256*1024)-1;
             assert( (split_success == 0) || (split_success == 1) );
-            /* a few rounds of Pollard rho (succeeds 99+% of the rest) */
-            if (1 && !split_success) {
+            /* a few rounds of Pollard rho (succeeds most of the rest) */
+            if (!split_success) {
               split_success = prho_factor(n, factor_stack+nstack, 400)-1;
-              assert( (split_success == 0) || (split_success == 1) );
-            }
-            /* Fermat (Knuth) -- highly debatable with no round limit */
-            if (0 && !split_success) {
-              split_success = fermat_factor(n, factor_stack+nstack,1000)-1;
               assert( (split_success == 0) || (split_success == 1) );
             }
           }
@@ -315,22 +310,27 @@ fermat_factor(IN UV n, IN UV maxrounds = 64*1024*1024)
     SIMPLE_FACTOR(fermat_factor, n, maxrounds);
 
 void
-squfof_factor(IN UV n, IN UV maxrounds = 16*1024*1024)
+holf_factor(IN UV n, IN UV maxrounds = 64*1024*1024)
+  PPCODE:
+    SIMPLE_FACTOR(holf_factor, n, maxrounds);
+
+void
+squfof_factor(IN UV n, IN UV maxrounds = 4*1024*1024)
   PPCODE:
     SIMPLE_FACTOR(squfof_factor, n, maxrounds);
 
 void
-pbrent_factor(IN UV n, IN UV maxrounds = 64*1024*1024)
+pbrent_factor(IN UV n, IN UV maxrounds = 4*1024*1024)
   PPCODE:
     SIMPLE_FACTOR(pbrent_factor, n, maxrounds);
 
 void
-prho_factor(IN UV n, IN UV maxrounds = 64*1024*1024)
+prho_factor(IN UV n, IN UV maxrounds = 4*1024*1024)
   PPCODE:
     SIMPLE_FACTOR(prho_factor, n, maxrounds);
 
 void
-pminus1_factor(IN UV n, IN UV maxrounds = 64*1024*1024)
+pminus1_factor(IN UV n, IN UV maxrounds = 4*1024*1024)
   PPCODE:
     SIMPLE_FACTOR(pminus1_factor, n, maxrounds);
 

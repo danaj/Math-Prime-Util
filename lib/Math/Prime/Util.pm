@@ -206,8 +206,14 @@ methods, is_prime, prime_count, nth_prime, approximations and bounds for
 the prime_count and nth prime, next_prime and prev_prime, factoring utilities,
 and more.
 
-The default sieving and factoring are intended to be the fastest on CPAN,
-including Math::Prime::XS, Math::Prime::FastSieve, and Math::Factor::XS.
+All routines currently work in native integers (32-bit or 64-bit).  Bignum
+support may be added later.  If you need bignum support for these types of
+functions inside Perl now, I recommend L<Math::Pari>.
+
+The default sieving and factoring are intended to be (and currently are)
+the fastest on CPAN, including L<Math::Prime::XS>, L<Math::Prime::FastSieve>,
+and L<Math::Factor::XS>.  L<Math::Pari> is slower in some things, faster in
+others.
 
 
 
@@ -246,7 +252,9 @@ using wheel factorization, or a segmented sieve.
 
   $n = next_prime($n);
 
-Returns the next prime greater than the input number.
+Returns the next prime greater than the input number.  0 is returned if the
+next prime is larger than a native integer type (the last primes being
+C<4,294,967,291> in 32-bit Perl and C<18,446,744,073,709,551,557> in 64-bit).
 
 
 =head2 prev_prime
@@ -456,6 +464,18 @@ very fast, but it slows down quite rapidly as the number of digits increases.
 It is very fast for inputs with a factor close to the midpoint
 (e.g. a semiprime p*q where p and q are the same number of digits).
 
+=head2 holf_factor
+
+  my @factors = holf_factor($n);
+
+Produces factors, not necessarily prime, of the positive number input.  An
+optional number of rounds can be given as a second parameter.  It is possible
+the function will be unable to find a factor, in which case a single element,
+the input, is returned.  This uses Hart's One Line Factorization with no
+premultiplier.  It is an interesting alternative to Fermat's algorithm,
+and there are some inputs it can rapidly factor.  In the long run it has the
+same advantages and disadvantages as Fermat's method.
+
 =head2 squfof_factor
 
   my @factors = squfof_factor($n);
@@ -497,6 +517,7 @@ not being big number aware.
 
 Perl versions earlier than 5.8.0 have issues with 64-bit.  The test suite will
 try to determine if your Perl is broken.  This will show up in factoring tests.
+Perl 5.6.2 32-bit works fine, as do later versions with 32-bit and 64-bit.
 
 
 =head1 PERFORMANCE
@@ -508,6 +529,7 @@ Pi(10^10) = 455,052,511.
        5.6  Tomás Oliveira e Silva's segmented sieve v2 (Sep 2010)
        6.6  primegen (optimized Sieve of Atkin)
       11.2  Tomás Oliveira e Silva's segmented sieve v1 (May 2003)
+      17.0  Pari 2.3.5 (primepi)
 
        5.9  My segmented SoE
       15.6  My Sieve of Eratosthenes using a mod-30 wheel
@@ -529,10 +551,22 @@ Perl modules, counting the primes to C<800_000_000> (800 million), in seconds:
    [hours]  Math::Primality             0.04
 
 
-Factoring performance depends on the input, and I'm still tuning it.  Compared
-to Math::Factor::XS, it is faster for small numbers, a little slower in
-the 7-9 digit range, and then gets much faster.  14+ digit semiprimes are
-factored 10 - 100x faster.
+C<is_prime> is slightly faster than M::P::XS for small inputs, but is much
+faster with larger ones  (5x faster for 8-digit, over 50x for 14-digit).
+Math::Pari is relatively slow for small inputs, but becomes faster in the
+13-digit range.
+
+
+Factoring performance depends on the input, and the algorithm choices used
+are still being tuned.  Compared to Math::Factor::XS, it is a tiny bit faster
+for most input under 10M or so, and rapidly gets faster.  For numbers
+larger than 32 bits it's 10-100x faster (depending on the number -- a power
+of two will be identical, while a semiprime with large factors will be on
+the extreme end).  Pari's underlying algorithms and code are very
+sophisticated, and will always be more so than this module, and of course
+supports bignums which is a huge advantage.  Small numbers factor much, much
+faster with Math::Prime::Util.  Pari passes M::P::U in speed somewhere in the
+16 digit range and rapidly increases its lead.
 
 The presentation here:
  L<http://math.boisestate.edu/~liljanab/BOISECRYPTFall09/Jacobsen.pdf>

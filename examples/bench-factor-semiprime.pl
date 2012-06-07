@@ -6,7 +6,9 @@ srand(377);
 
 use Math::Prime::Util qw/factor/;
 use Math::Factor::XS qw/prime_factors/;
+use Math::Pari qw/factorint/;
 use Benchmark qw/:all/;
+use Data::Dumper;
 my $digits = shift || 15;
 my $count = shift || -2;
 
@@ -59,8 +61,17 @@ foreach my $sp (@semiprimes) {
   die "wrong for $sp\n" unless ($#factors == 1) && ($factors[0] * $factors[1]) == $sp;
 }
 print "OK\n";
+print "Verifying Math::Pari $Math::Pari::VERSION ...";
+foreach my $sp (@semiprimes) {
+  my @factors;
+  my ($pn,$pc) = @{factorint($sp)};
+  push @factors, (int($pn->[$_])) x $pc->[$_] for (0 .. $#{$pn});
+  die "wrong for $sp\n" unless ($#factors == 1) && ($factors[0] * $factors[1]) == $sp;
+}
+print "OK\n";
 
 cmpthese($count,{
     'MPU'   => sub { factor($_) for @semiprimes; },
     'MFXS'  => sub { prime_factors($_) for @semiprimes; },
+    'Pari'  => sub { foreach my $n (@semiprimes) { my @factors; my ($pn,$pc) = @{factorint($n)}; push @factors, (int($pn->[$_])) x $pc->[$_] for (0 .. $#{$pn}); } }
 });

@@ -1,9 +1,13 @@
 Revision history for Perl extension Math::Prime::Util.
 
 0.03  6 June 2012
-    - Speed up factoring a little by moving some work into the XS routine.
+    - Speed up factoring.
     - fixed powmod routine, speedup for smaller numbers
-    - Add Miller-Rabin and deterministic probable prime functions.
+    - Add Miller-Rabin and deterministic probable prime functions.  These
+      are now used for is_prime and factoring, giving a big speedup for
+      numbers > 32-bit.
+    - Add HOLF factoring (just for demo)
+    - Next prime returns 0 on overflow
 
 0.02  5 June 2012
     - Back off new_ok to new/isa_ok to keep Test::More requirements low.

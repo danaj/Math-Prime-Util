@@ -311,6 +311,43 @@ int fermat_factor(UV n, UV *factors, UV rounds)
   return 1;
 }
 
+/* Hart's One Line Factorization.
+ * Translation from my GMP, missing perfect square calc and premult.
+ */
+int holf_factor(UV n, UV *factors, UV rounds)
+{
+  UV i, s, m, f;
+
+  assert( (n >= 3) && ((n%2) != 0) );
+
+  for (i = 1; i <= rounds; i++) {
+    s = sqrt(n*i);                      /* TODO: overflow here */
+    if ( (s*s) != (n*i) )  s++;
+    m = powsqr(s, n);
+    /* Cheaper would be:
+     *     if (m is probably not a perfect sequare)  continue;
+     *     f = sqrt(m);
+     *     if (f*f == m) { yay }
+     */
+    if ( ((m&2)!= 0) || ((m&7)==5) || ((m&11) == 8) )
+      continue;
+    f = sqrt(m);                        /* expensive */
+    if ( (f*f) == m ) {
+      f = gcd_ui( (s>f) ? s-f : f-s, n);
+      /* This should always succeed, but with overflow concerns.... */
+      if ((f == 1) || (f == n))
+        break;
+      factors[0] = f;
+      factors[1] = n/f;
+      assert( factors[0] * factors[1] == n );
+      return 2;
+    }
+  }
+  factors[0] = n;
+  return 1;
+}
+
+
 /* Pollard / Brent
  *
  * Probabilistic.  If you give this a prime number, it will loop
@@ -332,7 +369,7 @@ int pbrent_factor(UV n, UV *factors, UV rounds)
     default: a = 11; break;
   }
 
-  for (i = 1; i < rounds; i++) {
+  for (i = 1; i <= rounds; i++) {
     Xi = powsqradd(Xi, a, n);
     f = gcd_ui( (Xi>Xm) ? Xi-Xm : Xm-Xi, n);
     if ( (f != 1) && (f != n) ) {
@@ -355,6 +392,7 @@ int pbrent_factor(UV n, UV *factors, UV rounds)
  */
 int prho_factor(UV n, UV *factors, UV rounds)
 {
+  int in_loop = 0;
   UV a, f, i;
   UV U = 7;
   UV V = 7;
@@ -369,12 +407,15 @@ int prho_factor(UV n, UV *factors, UV rounds)
     default: a =  3; break;
   }
 
-  for (i = 1; i < rounds; i++) {
+  for (i = 1; i <= rounds; i++) {
     U = powsqradd(U, a, n);
     V = powsqradd(V, a, n);
     V = powsqradd(V, a, n);
     f = gcd_ui( (U > V) ? U-V : V-U, n);
-    if ( (f != 1) && (f != n) ) {
+    if (f == n) {
+      if (in_loop++)     /* Mark that we've been here */
+        break;           /* Exit now if we're cycling */
+    } else if (f != 1) {
       factors[0] = f;
       factors[1] = n/f;
       assert( factors[0] * factors[1] == n );
@@ -397,7 +438,7 @@ int pminus1_factor(UV n, UV *factors, UV rounds)
 
   assert( (n >= 3) && ((n%2) != 0) );
 
-  for (i = 1; i < rounds; i++) {
+  for (i = 1; i <= rounds; i++) {
     kf = powmod(kf, i, n);
     if (kf == 0) kf = n;
     f = gcd_ui(kf-1, n);
@@ -412,8 +453,9 @@ int pminus1_factor(UV n, UV *factors, UV rounds)
   return 1;
 }
 
+
 /* My modification of Ben Buhrow's modification of Bob Silverman's SQUFOF code.
- * I like Jason P's code a lot -- I should put it in. */
+ */
 static IV qqueue[100+1];
 static IV qpoint;
 static void enqu(IV q, IV *iter) {

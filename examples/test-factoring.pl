@@ -7,8 +7,8 @@ use Math::Prime::Util qw/factor/;
 use Math::Factor::XS qw/prime_factors/;
 
 my $nlinear = 1000000;
-my $nrandom = 1000000;
-my $randmax = (~0 == 0xFFFFFFFF) ? ~0 : 1_000_000_000_000;
+my $nrandom = shift || 1000000;
+my $randmax = ~0;
 
 print "OK for first 1";
 my $dig = 1;

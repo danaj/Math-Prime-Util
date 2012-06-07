@@ -194,6 +194,13 @@ UV next_prime(UV n)
     n = sieve_size;
   }
 
+  /* Overflow */
+#if BITS_PER_WORD == 32
+  if (n > UVCONST(4294967291))  return 0;
+#else
+  if (n > UVCONST(18446744073709551557))  return 0;
+#endif
+
   d = n/30;
   m = n - d*30;
   m = nextwheel30[m];  if (m == 1) d++;

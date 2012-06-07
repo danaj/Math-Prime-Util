@@ -24,6 +24,11 @@ extern unsigned char* get_prime_segment(void);
 extern void           free_prime_segment(void);
 
 /* Above this value, is_prime will do deterministic Miller-Rabin */
+/* With 64-bit math, we can do much faster mulmods from 2^16-2^32 */
+#if BITS_PER_WORD == 32
 #define MPU_PROB_PRIME_BEST  UVCONST(100000000)
+#else
+#define MPU_PROB_PRIME_BEST  UVCONST(100000)
+#endif
 
 #endif

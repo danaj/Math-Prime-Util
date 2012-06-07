@@ -8,7 +8,7 @@ use Math::Prime::Util qw/next_prime prev_prime/;
 my $use64 = Math::Prime::Util::_maxbits > 32;
 my $extra = defined $ENV{RELEASE_TESTING} && $ENV{RELEASE_TESTING};
 
-plan tests => 499*2 + 3*2 + 6;
+plan tests => 499*2 + 3*2 + 6 + 2;
 
 my @small_primes = qw/
 2 3 5 7 11 13 17 19 23 29 31 37 41 43 47 53 59 61 67 71
@@ -62,3 +62,6 @@ is( next_prime(19660), 19661, "next prime of 19660 is 19661" );
 is( prev_prime(19662), 19661, "prev prime of 19662 is 19661" );
 is( prev_prime(19660), 19609, "prev prime of 19660 is 19609" );
 is( prev_prime(19610), 19609, "prev prime of 19610 is 19609" );
+
+is( prev_prime(2), 0, "Previous prime of 2 returns 0" );
+is( next_prime(~0-5), 0, "Next prime of ~0-5 returns 0" );

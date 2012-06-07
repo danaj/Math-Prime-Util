@@ -1,23 +1,25 @@
-#!/usr/bin/perl -w
-
+#!/usr/bin/env perl
 use strict;
+use warnings;
 use Math::Prime::Util;
 use Benchmark qw/:all/;
 use List::Util qw/min max/;
 my $count = shift || -2;
+my $is64bit = (~0 > 4294967295);
+my $maxdigits = ($is64bit) ? 20 : 10;  # Noting the range is limited for max.
 
 srand(29);
-my $rounds = 100;
-my $sqrounds = 64*1024;
-test_at_digits($_) for (3..10);
+my $rounds = 400;
+my $sqrounds = 256*1024;
+my $hrounds = 100000;
+test_at_digits($_) for ( 3 .. $maxdigits );
 
 
 sub test_at_digits {
   my $digits = shift;
 
   die "Digits has to be >= 1" unless $digits >= 1;
-  die "Digits has to be <= 10" if (~0 == 4294967295) && ($digits > 10);
-  die "Digits has to be <= 19" if $digits > 19;
+  die "Digits has to be <= $maxdigits" if $digits > $maxdigits;
 
   my @nums = genrand($digits, 1000);
   #my @nums = gensemi($digits, 1000, 23);
@@ -26,15 +28,18 @@ sub test_at_digits {
 
   # Determine success rates
   my %nfactored;
+  my $tfac = 0;
+  my $calc_nfacs = sub { ((scalar grep { $_ > 5 } @_) > 1) ? 1 : 0 };
   for (@nums) {
-    $nfactored{'prho'} += int((scalar grep { $_ > 5 } Math::Prime::Util::prho_factor($_, $rounds))/2);
-    $nfactored{'pbrent'} += int((scalar grep { $_ > 5 } Math::Prime::Util::pbrent_factor($_, $rounds))/2);
-    $nfactored{'pminus1'} += int((scalar grep { $_ > 5 } Math::Prime::Util::pminus1_factor($_, $rounds))/2);
-    $nfactored{'fermat'} += int((scalar grep { $_ > 5 } Math::Prime::Util::fermat_factor($_, $rounds))/2);
-    $nfactored{'squfof'} += int((scalar grep { $_ > 5 } Math::Prime::Util::squfof_factor($_, $sqrounds))/2);
-    #$nfactored{'trial'} += int((scalar grep { $_ > 5 } Math::Prime::Util::trial_factor($_))/2);
+    $tfac += $calc_nfacs->(Math::Prime::Util::factor($_));
+    $nfactored{'prho'} += $calc_nfacs->(Math::Prime::Util::prho_factor($_, $rounds));
+    $nfactored{'pbrent'} += $calc_nfacs->(Math::Prime::Util::pbrent_factor($_, $rounds));
+    $nfactored{'pminus1'} += $calc_nfacs->(Math::Prime::Util::pminus1_factor($_, $rounds));
+    $nfactored{'squfof'} += $calc_nfacs->(Math::Prime::Util::squfof_factor($_, $sqrounds));
+    #$nfactored{'trial'} += $calc_nfacs->(Math::Prime::Util::trial_factor($_));
+    #$nfactored{'fermat'} += $calc_nfacs->(Math::Prime::Util::fermat_factor($_, $rounds));
+    $nfactored{'holf'} += $calc_nfacs->(Math::Prime::Util::holf_factor($_, $hrounds));
   }
-  my $tfac = $nfactored{'fermat'};
 
   print "factoring 1000 random $digits-digit numbers ($min_num - $max_num)\n";
   print "Factorizations: ",
@@ -48,10 +53,12 @@ sub test_at_digits {
     "pbrent"  => sub { Math::Prime::Util::pbrent_factor($_, $rounds) for @nums },
     "pminus1" => sub { Math::Prime::Util::pminus1_factor($_, $rounds) for @nums },
     "fermat"  => sub { Math::Prime::Util::fermat_factor($_, $rounds) for @nums },
+    "holf"    => sub { Math::Prime::Util::holf_factor($_, $hrounds) for @nums },
     "squfof"  => sub { Math::Prime::Util::squfof_factor($_, $sqrounds) for @nums },
     "trial"   => sub { Math::Prime::Util::trial_factor($_) for @nums },
   };
   delete $lref->{'fermat'} if $digits >= 9;
+  #delete $lref->{'holf'} if $digits >= 9;
   cmpthese($count, $lref);
   print "\n";
 }

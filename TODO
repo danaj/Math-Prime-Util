@@ -1,15 +1,11 @@
 
 - Examine behavior near 32-bit limit on 32-bit machines.
+  (done for factoring)
 
 - GMP versions of all routines.
 
 - segment sieve should itself use a segment for its primes.
   Today we'd need sqrt(2^64) max = 140MB.  Segmenting would yield under 1MB.
-
-- factoring (Fermat, Pollard Rho, HOLF, etc.)
-- Speed up basic factoring
-- Since is_prime does trials for small numbers, we should skip it in factor
-  for small numbers.  We're just duplicating work.
 
 - Add test to check maxbits in compiled library vs. Perl
 
@@ -19,6 +15,11 @@
 
 - input validation (in XS, or do we need to make Perl wrappers for everything?)
 
-- examples and benchmarks
+- Faster SQUFOF
 
-- consider having next prime return 0 when it would overflow
+- random_prime( {bits => 32,
+                 digits => 4,
+                 between => '4 and 100',
+                 between_nth => '26 and 42', } )
+  for super huge bases, we can use approx functions to get center, generate
+  a range, and then do random selection within it.
