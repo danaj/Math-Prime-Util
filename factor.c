@@ -137,8 +137,14 @@ static UV addmod(UV n, UV a, UV m) {
   return ((m-n) > a)  ?  n+a  :  n+a-m;
 }
 
+/* n^2 mod m */
+#define powsqr(n, m)  (n < HALF_WORD) ? (n*n)%m : mulmod(n,n,m)
+
 /* n^power + a mod m */
 #define powmodadd(n, p, a, m)  addmod(powmod(n,p,m),a,m)
+
+/* n^2 + a mod m */
+#define powsqradd(n, a, m)     addmod(powsqr(n,m), a, m)
 
 
 /* Miller-Rabin probabilistic primality test
@@ -170,7 +176,7 @@ int miller_rabin(UV n, const UV *bases, UV nbases)
     if ( (x == 1) || (x == (n-1)) )  continue;
 
     for (r = 0; r < s; r++) {
-      x = (x < HALF_WORD) ?  (x*x) % n  :  mulmod(x, x, n);
+      x = powsqr(x, n);
       if (x == 1) {
         return 0;
       } else if (x == (n-1)) {
@@ -299,6 +305,7 @@ int fermat_factor(UV n, UV *factors, UV rounds)
   if ( (r != 1) && (r != n) ) {
     factors[0] = r;
     factors[1] = n/r;
+    assert( factors[0] * factors[1] == n );
     return 2;
   }
   factors[0] = n;
@@ -327,11 +334,12 @@ int pbrent_factor(UV n, UV *factors, UV rounds)
   }
 
   for (i = 1; i < rounds; i++) {
-    Xi = powmodadd(Xi, 2, a, n);
-    f = gcd_ui(Xi - Xm, n);
+    Xi = powsqradd(Xi, a, n);
+    f = gcd_ui( (Xi>Xm) ? Xi-Xm : Xm-Xi, n);
     if ( (f != 1) && (f != n) ) {
       factors[0] = f;
       factors[1] = n/f;
+      assert( factors[0] * factors[1] == n );
       return 2;
     }
     if ( (i & (i-1)) == 0)   /* i is a power of 2 */
@@ -363,14 +371,14 @@ int prho_factor(UV n, UV *factors, UV rounds)
   }
 
   for (i = 1; i < rounds; i++) {
-    U = powmodadd(U, 2, a, n);
-    V = powmodadd(V, 2, a, n);
-    V = powmodadd(V, 2, a, n);
-
+    U = powsqradd(U, a, n);
+    V = powsqradd(V, a, n);
+    V = powsqradd(V, a, n);
     f = gcd_ui( (U > V) ? U-V : V-U, n);
     if ( (f != 1) && (f != n) ) {
       factors[0] = f;
       factors[1] = n/f;
+      assert( factors[0] * factors[1] == n );
       return 2;
     }
   }
@@ -386,18 +394,20 @@ int prho_factor(UV n, UV *factors, UV rounds)
 int pminus1_factor(UV n, UV *factors, UV rounds)
 {
   UV f, i;
-  UV b = 13;
+  UV kf = 13;
 
   assert( (n >= 3) && ((n%2) != 0) );
 
   for (i = 1; i < rounds; i++) {
-    b = powmod(b, i, n);
-    f = gcd_ui(b-1, n);
-    if (n == 1) continue;
-    if (f == n) break;    /* or we could continue */
-    factors[0] = f;
-    factors[1] = n/f;
-    return 2;
+    kf = powmod(kf, i, n);
+    if (kf == 0) kf = n;
+    f = gcd_ui(kf-1, n);
+    if ( (f != 1) && (f != n) ) {
+      factors[0] = f;
+      factors[1] = n/f;
+      assert( factors[0] * factors[1] == n );
+      return 2;
+    }
   }
   factors[0] = f;
   return 1;
@@ -529,6 +539,7 @@ int squfof_factor(UV n, UV *factors, UV rounds)
 
   factors[0] = p;
   factors[1] = q;
+  assert( factors[0] * factors[1] == n );
   return 2;
 }
 

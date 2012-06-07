@@ -15,8 +15,10 @@ sieve.c
 util.h
 util.c
 examples/bench-nthprime.pl
+examples/bench-factor-extra.t
 examples/bench-factor-semiprime.pl
 examples/bench-is-prime.pl
+examples/bench-miller-rabin.t
 examples/test-factoring.pl
 t/01-load.t
 t/02-can.t
