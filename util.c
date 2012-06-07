@@ -185,6 +185,13 @@ UV next_prime(UV n)
   if (n < NPRIME_NEXT_SMALL)
     return prime_next_small[n];
 
+  /* Overflow */
+#if BITS_PER_WORD == 32
+  if (n >= UVCONST(4294967291))  return 0;
+#else
+  if (n >= UVCONST(18446744073709551557))  return 0;
+#endif
+
   sieve_size = get_prime_cache(0, &sieve);
   if (n < sieve_size) {
     START_DO_FOR_EACH_SIEVE_PRIME(sieve, n+1, sieve_size)
@@ -193,13 +200,6 @@ UV next_prime(UV n)
     /* Not found, so must be larger than the cache size */
     n = sieve_size;
   }
-
-  /* Overflow */
-#if BITS_PER_WORD == 32
-  if (n > UVCONST(4294967291))  return 0;
-#else
-  if (n > UVCONST(18446744073709551557))  return 0;
-#endif
 
   d = n/30;
   m = n - d*30;

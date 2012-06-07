@@ -1,5 +1,9 @@
 Revision history for Perl extension Math::Prime::Util.
 
+0.04  7 June 2012
+    - Didn't do tests on 32-bit machine before release.  Test suite caught
+      problem with next_prime overflow.
+
 0.03  6 June 2012
     - Speed up factoring.
     - fixed powmod routine, speedup for smaller numbers

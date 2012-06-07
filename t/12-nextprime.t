@@ -64,4 +64,4 @@ is( prev_prime(19660), 19609, "prev prime of 19660 is 19609" );
 is( prev_prime(19610), 19609, "prev prime of 19610 is 19609" );
 
 is( prev_prime(2), 0, "Previous prime of 2 returns 0" );
-is( next_prime(~0-5), 0, "Next prime of ~0-5 returns 0" );
+is( next_prime(~0-4), 0, "Next prime of ~0-4 returns 0" );
