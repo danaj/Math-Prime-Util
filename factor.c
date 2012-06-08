@@ -200,9 +200,12 @@ int miller_rabin(UV n, const UV *bases, int nbases)
     UV a = bases[b];
     UV x;
 
-    /* Skip invalid bases */
-    if ( (a < 2) || (a > (n-2)) )
+    if (a < 2)
+      croak("Base %"UVuf" is invalid", a);
+#if 0
+    if (a > (n-2))
       croak("Base %"UVuf" is invalid for input %"UVuf, a, n);
+#endif
 
     x = powmod(a, d, n);
     if ( (x == 1) || (x == (n-1)) )  continue;
