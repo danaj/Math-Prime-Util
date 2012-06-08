@@ -85,6 +85,60 @@ int trial_factor(UV n, UV *factors, UV maxtrial)
   #define mulmod(a,b,m)  (UV)(((uint64_t)(a)*(uint64_t)(b)) % ((uint64_t)(m)))
   #define sqrmod(n,m)    (UV)(((uint64_t)(n)*(uint64_t)(n)) % ((uint64_t)(m)))
 
+#elif defined(__GNUC__) && defined(__x86_64__)
+
+  /* GCC on a 64-bit Intel x86 */
+  static UV _mulmod(UV a, UV b, UV c) {
+    UV d; /* to hold the result of a*b mod c */
+    /* calculates a*b mod c, stores result in d */
+    asm ("mov %1, %%rax;"        /* put a into rax */
+         "mul %2;"               /* mul a*b -> rdx:rax */
+         "div %3;"               /* (a*b)/c -> quot in rax remainder in rdx */
+         "mov %%rdx, %0;"        /* store result in d */
+         :"=r"(d)                /* output */
+         :"r"(a), "r"(b), "r"(c) /* input */
+         :"%rax", "%rdx"         /* clobbered registers */
+        );
+    return d;
+  }
+  #define mulmod(a,b,m) _mulmod(a,b,m)
+  #define sqrmod(n,m)   _mulmod(n,n,m)
+
+#else
+
+  /* UV is the largest integral type available (that we know of). */
+
+  /* Do it by hand */
+  static UV _mulmod(UV a, UV b, UV m) {
+    UV r = 0;
+    while (b > 0) {
+      if (b & 1) {
+        if (r == 0) {
+          r = a;
+        } else {
+          r = m - r;
+          r = (a >= r)  ?  a-r  :  m-r+a;
+        }
+      }
+      a = (a > (m-a))  ?  (a-m)+a  :  a+a;
+      b >>= 1;
+    }
+    return r;
+  }
+
+  /* if n is smaller than this, you can multiply without overflow */
+  #define HALF_WORD (UVCONST(1) << (BITS_PER_WORD/2))
+  #define mulmod(a,b,m) (((a)|(b)) < HALF_WORD) ? ((a)*(b))%(m):_mulmod(a,b,m)
+  #define sqrmod(n,m)   ((n) < HALF_WORD)       ? ((n)*(n))%(m):_mulmod(n,n,m)
+
+#endif
+
+#ifndef addmod
+  #define addmod(n,a,m) ((((m)-(n)) > (a))  ?  ((n)+(a))  :  ((n)+(a)-(m)))
+#endif
+
+/* n^power mod m */
+#ifndef HALF_WORD
   static UV powmod(UV n, UV power, UV m) {
     UV t = 1;
     while (power) {
@@ -95,56 +149,7 @@ int trial_factor(UV n, UV *factors, UV maxtrial)
     }
     return t;
   }
-
 #else
-
-  /* UV is the largest integral type available (that we know of). */
-
-  /* if n is smaller than this, you can multiply without overflow */
-  #define HALF_WORD (UVCONST(1) << (BITS_PER_WORD/2))
-
-  #if defined(__GNUC__) && (defined(__i386__) || defined(__x86_64__))
-    /* Inline assembly -- basically as fast as a regular (a*b)%m */
-    static UV _mulmod(UV a, UV b, UV c) {
-      UV d; /* to hold the result of a*b mod c */
-      /* calculates a*b mod c, stores result in d */
-      asm ("mov %1, %%rax;"        /* put a into rax */
-           "mul %2;"               /* mul a*b -> rdx:rax */
-           "div %3;"               /* (a*b)/c -> quot in rax remainder in rdx */
-           "mov %%rdx, %0;"        /* store result in d */
-           :"=r"(d)                /* output */
-           :"r"(a), "r"(b), "r"(c) /* input */
-           :"%rax", "%rdx"         /* clobbered registers */
-          );
-      return d;
-    }
-    #define mulmod(a,b,m) _mulmod(a,b,m)
-    #define sqrmod(n,m)   _mulmod(n,n,m)
-  #else
-    /* Do it by hand */
-    static UV _mulmod(UV a, UV b, UV m) {
-      UV r = 0;
-      while (b > 0) {
-        if (b & 1) {
-          if (r == 0) {
-            r = a;
-          } else {
-            r = m - r;
-            r = (a >= r)  ?  a-r  :  m-r+a;
-          }
-        }
-        a = (a > (m-a))  ?  (a-m)+a  :  a+a;
-        b >>= 1;
-      }
-      return r;
-    }
-    #define mulmod(a,b,m) (((a)|(b)) < HALF_WORD) ? ((a)*(b))%(m):_mulmod(a,b,m)
-    #define sqrmod(n,m)   ((n) < HALF_WORD)       ? ((n)*(n))%(m):_mulmod(n,n,m)
-  #endif
-
-  #define addmod(n,a,m) ((((m)-(n)) > (a))  ?  ((n)+(a))  :  ((n)+(a)-(m)))
-
-  /* n^power mod m */
   static UV powmod(UV n, UV power, UV m) {
     UV t = 1;
     if (m < HALF_WORD) {
@@ -165,7 +170,6 @@ int trial_factor(UV n, UV *factors, UV maxtrial)
     }
     return t;
   }
-
 #endif
 
 /* n^power + a mod m */

@@ -32,6 +32,7 @@ t/13-primecount.t
 t/14-nthprime.t
 t/15-probprime.t
 t/16-randomprime.t
+t/17-pseudoprime.t
 t/30-relations.t
 t/50-factoring.t
 t/90-release-perlcritic.t

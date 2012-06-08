@@ -22,3 +22,5 @@
 - speed up random_prime for large numbers
 
 - Add other bases to pseudoprime test
+
+- test x64 asm if Perl is built for 32-bit
