@@ -109,6 +109,7 @@ sub random_prime {
   $low = 2 if $low < 2;
 
   # Make sure we have a valid range.
+  # TODO: this is is killing performance with large numbers
   $low = next_prime($low-1);
   $high = ($high < ~0) ? prev_prime($high+1) : prev_prime($high);
   return $low if ($low == $high) && is_prime($low);
@@ -463,9 +464,10 @@ to a BPSW test, depending on speed.
   my $small_prime = random_prime(1000);      # random prime <= limit
   my $rand_prime = random_prime(100, 10000); # random prime within a range
 
-Returns a randomly selected prime that will be greater than or equal to the
-lower limit and less than or equal to the upper limit.  If no lower limit is
-given, 2 is implied.  Returns undef if no primes exist within the range.
+Returns a psuedo-randomly selected prime that will be greater than or equal
+to the lower limit and less than or equal to the upper limit.  If no lower
+limit is given, 2 is implied.  Returns undef if no primes exist within the
+range.  The L<rand> function is called one or more times for selection.
 
 This will return a uniform distribution of the primes in the range, meaning
 for each prime in the range, the chances are equally likely that it will be
@@ -474,9 +476,10 @@ seen.
 The current algorithm does a random index selection for small numbers, which
 is deterministic.  For larger numbers, this can be very slow, so the
 obvious Monte Carlo method is used, where random numbers in the range are
-selected until one is prime.
-
-The L<rand> function is called one or more times for selection.
+selected until one is prime.  That also gets slow as the number of digits
+increases, but not something that impacts us in 64-bit.  A GMP version would
+likely need to consider using C<next_prime>/C<prev_prime> -- giving up a
+small bit of uniformity for reasonable performance.
 
 
 =head2 random_ndigit_prime

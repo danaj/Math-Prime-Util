@@ -25,10 +25,10 @@ extern void           free_prime_segment(void);
 
 /* Above this value, is_prime will do deterministic Miller-Rabin */
 /* With 64-bit math, we can do much faster mulmods from 2^16-2^32 */
-#if (BITS_PER_WORD == 32) && (UINT64_MAX <= UV_MAX)
-#define MPU_PROB_PRIME_BEST  UVCONST(100000000)
+#if (BITS_PER_WORD == 64) || HAVE_STD_U64
+  #define MPU_PROB_PRIME_BEST  UVCONST(100000)
 #else
-#define MPU_PROB_PRIME_BEST  UVCONST(100000)
+  #define MPU_PROB_PRIME_BEST  UVCONST(100000000)
 #endif
 
 #endif

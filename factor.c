@@ -1,15 +1,13 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <limits.h>
-#define __STDC_LIMIT_MACROS
-#include <stdint.h>
-#include <math.h>
+//#include <stdio.h>
+//#include <stdlib.h>
+//#include <string.h>
+//#include <limits.h>
+//#include <math.h>
 
+#include "ptypes.h"
 #include "factor.h"
 #include "util.h"
 #include "sieve.h"
-#include "ptypes.h"
 
 /*
  * You need to remember to use UV for unsigned and IV for signed types that
@@ -79,7 +77,7 @@ int trial_factor(UV n, UV *factors, UV maxtrial)
 }
 
 
-#if UINT64_MAX > UV_MAX
+#if (BITS_PER_WORD == 32) && HAVE_STD_U64
 
   /* We have 64-bit available, but UV is 32-bit.  Do the math in 64-bit.
    * Even if it is emulated, it should be as fast or faster than us doing it.
@@ -162,7 +160,7 @@ int trial_factor(UV n, UV *factors, UV maxtrial)
  * Returns 1 if probably prime relative to the bases, 0 if composite.
  * Bases must be between 2 and n-2
  */
-int miller_rabin(UV n, const UV *bases, UV nbases)
+int miller_rabin(UV n, const UV *bases, int nbases)
 {
   int b;
   int s = 0;
@@ -313,7 +311,7 @@ int fermat_factor(UV n, UV *factors, UV rounds)
     } while (r > 0);
   }
   r = (x-y)/2;
-  if ( (r != 1) && (r != n) ) {
+  if ( (r != 1) && ((UV)r != n) ) {
     factors[0] = r;
     factors[1] = n/r;
     MPUassert( factors[0] * factors[1] == n , "incorrect factoring");
@@ -477,7 +475,7 @@ static void enqu(IV q, IV *iter) {
 
 int squfof_factor(UV n, UV *factors, UV rounds)
 {
-  UV rounds2 = rounds/16;
+  IV rounds2 = (IV) (rounds/16);
   UV temp;
   IV iq,ll,l2,p,pnext,q,qlast,r,s,t,i;
   IV jter, iter;
@@ -507,7 +505,7 @@ int squfof_factor(UV n, UV *factors, UV rounds)
   /*  the end of the loop.  Is there a faster way? The current way is     */
   /*  EXPENSIVE! (many branches and double prec sqrt)                     */
 
-  for (jter=0; jter < rounds; jter++) {
+  for (jter=0; (UV)jter < rounds; jter++) {
     iq = (s + p)/q;
     pnext = iq*q - p;
     if (q <= ll) {
@@ -538,7 +536,7 @@ int squfof_factor(UV n, UV *factors, UV rounds)
     break;
   }   /* end of main loop */
 
-  if (jter >= rounds) {
+  if ((UV)jter >= rounds) {
     factors[0] = n;  return 1;
   }
 
@@ -582,7 +580,7 @@ int squfof_factor(UV n, UV *factors, UV rounds)
 
   if ((q & 1) == 0) q/=2;      /* q was factor or 2*factor   */
 
-  if ( (q == 1) || (q == n) ) {
+  if ( (q == 1) || ((UV)q == n) ) {
     factors[0] = n;  return 1;
   }
 

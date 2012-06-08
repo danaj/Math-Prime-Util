@@ -1,6 +1,9 @@
 #ifndef MPU_PTYPES_H
 #define MPU_PTYPES_H
 
+#define __STDC_LIMIT_MACROS
+#include <stdint.h>
+
 #include "EXTERN.h"
 #include "perl.h"
 
@@ -35,6 +38,15 @@
 #else
   #define BITS_PER_WORD  32
   #define UVCONST(x)     U32_CONST(x)
+#endif
+
+/* Try to determine if we have 64-bit available via uint64_t */
+#define HAVE_STD_U64 0
+#if defined(UINT64_MAX) && defined(__UINT64_C)
+  #if (UINT64_MAX >= __UINT64_C(18446744073709551615))
+    #undef HAVE_STD_U64
+    #define HAVE_STD_U64 1
+  #endif
 #endif
 
 #define MAXBIT        (BITS_PER_WORD-1)

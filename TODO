@@ -20,3 +20,5 @@
 - prime count bounds are <=, nth_prime bounds are <.  Pick one.
 
 - test file for random_prime
+
+- speed up random_prime for large numbers
