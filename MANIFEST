@@ -15,10 +15,12 @@ sieve.c
 util.h
 util.c
 examples/bench-nthprime.pl
-examples/bench-factor-extra.t
+examples/bench-factor.pl
+examples/bench-factor-extra.pl
 examples/bench-factor-semiprime.pl
 examples/bench-is-prime.pl
-examples/bench-miller-rabin.t
+examples/bench-miller-rabin.pl
+examples/bench-random-prime.pl
 examples/test-factoring.pl
 t/01-load.t
 t/02-can.t
@@ -29,6 +31,7 @@ t/12-nextprime.t
 t/13-primecount.t
 t/14-nthprime.t
 t/15-probprime.t
+t/16-randomprime.t
 t/30-relations.t
 t/50-factoring.t
 t/90-release-perlcritic.t

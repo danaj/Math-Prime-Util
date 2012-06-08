@@ -1,7 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <limits.h>
 #include <math.h>
 
 #include "sieve.h"
@@ -66,7 +65,7 @@ void prime_precalc(UV n)
   /* TODO: should we prealloc the segment here? */
 }
 
-void prime_free(void)
+void prime_memfree(void)
 {
   if (prime_cache_sieve != 0)
       free(prime_cache_sieve);

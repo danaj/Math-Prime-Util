@@ -1,7 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <limits.h>
 #include <math.h>
 
 #include "util.h"
@@ -537,7 +536,7 @@ UV nth_prime_approx(UV n)
   fn = (double) n;
   flogn = log(n);
   flog2n = log(flogn);
- 
+
   /* Cipolla 1902:
    *    m=0   fn * ( flogn + flog2n - 1 );
    *    m=1   + ((flog2n - 2)/flogn) );

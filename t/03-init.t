@@ -1,7 +1,7 @@
 #!/usr/bin/env perl
 use strict;
 use warnings;
-use Math::Prime::Util qw/prime_precalc prime_free/;
+use Math::Prime::Util qw/prime_precalc prime_memfree/;
 
 use Test::More  tests => 3 + 3 + 3 + 6;
 
@@ -19,9 +19,9 @@ prime_precalc($bigsize);
 
 cmp_ok( Math::Prime::Util::_get_prime_cache_size, '>', $init_size, "Internal space grew after large precalc" );
 
-prime_free;
+prime_memfree;
 
-is( Math::Prime::Util::_get_prime_cache_size, $init_size, "Internal space went back to original size after free" );
+is( Math::Prime::Util::_get_prime_cache_size, $init_size, "Internal space went back to original size after memfree" );
 
 
 # Now do the object way.
@@ -48,12 +48,12 @@ is( Math::Prime::Util::_get_prime_cache_size, $init_size, "Memory released after
 is( Math::Prime::Util::_get_prime_cache_size, $init_size, "Memory released after last MemFree object goes out of scope");
 
 # Show how an eval death can leak
-eval { prime_precalc($bigsize); cmp_ok( Math::Prime::Util::_get_prime_cache_size, '>', $init_size, "Internal space grew after large precalc" ); prime_free; };
-is( Math::Prime::Util::_get_prime_cache_size, $init_size, "Memory freed after eval");
+eval { prime_precalc($bigsize); cmp_ok( Math::Prime::Util::_get_prime_cache_size, '>', $init_size, "Internal space grew after large precalc" ); prime_memfree; };
+is( Math::Prime::Util::_get_prime_cache_size, $init_size, "Memory freed after successful eval");
 
-eval { prime_precalc($bigsize); cmp_ok( Math::Prime::Util::_get_prime_cache_size, '>', $init_size, "Internal space grew after large precalc" ); die; prime_free; };
+eval { prime_precalc($bigsize); cmp_ok( Math::Prime::Util::_get_prime_cache_size, '>', $init_size, "Internal space grew after large precalc" ); die; prime_memfree; };
 isnt( Math::Prime::Util::_get_prime_cache_size, $init_size, "Memory normally not freed after eval die");
-prime_free;
+prime_memfree;
 
-eval { my $mf = Math::Prime::Util::MemFree->new; prime_precalc($bigsize); cmp_ok( Math::Prime::Util::_get_prime_cache_size, '>', $init_size, "Internal space grew after large precalc" ); die; prime_free; };
-is( Math::Prime::Util::_get_prime_cache_size, $init_size, "Memory is not freed after eval die using object scoper");
+eval { my $mf = Math::Prime::Util::MemFree->new; prime_precalc($bigsize); cmp_ok( Math::Prime::Util::_get_prime_cache_size, '>', $init_size, "Internal space grew after large precalc" ); die; };
+is( Math::Prime::Util::_get_prime_cache_size, $init_size, "Memory is freed after eval die using object scoper");

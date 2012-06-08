@@ -7,6 +7,7 @@ Revision history for Perl extension Math::Prime::Util.
       is_prime run up to 10x faster (which impacts next_prime, factoring, etc.)
     - replace all assert with croak indicating an internal error.
     - Add random_prime and random_ndigit_prime
+    - renamed prime_free to prime_memfree.
 
 0.03  6 June 2012
     - Speed up factoring.

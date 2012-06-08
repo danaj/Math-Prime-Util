@@ -12,7 +12,7 @@ BEGIN {
 # use parent qw( Exporter );
 use base qw( Exporter );
 our @EXPORT_OK = qw(
-                     prime_precalc prime_free
+                     prime_precalc prime_memfree
                      is_prime is_prob_prime miller_rabin
                      primes
                      next_prime  prev_prime
@@ -51,6 +51,8 @@ sub primes {
   if ( (!defined $low) || (!defined $high) ||
        ($low =~ tr/0123456789//c) || ($high =~ tr/0123456789//c)
      ) {
+    $low  = 'undef' unless defined $low;
+    $high = 'undef' unless defined $high;
     croak "Parameters [ $low $high ] must be positive integers";
   }
 
@@ -103,6 +105,8 @@ sub random_prime {
   if ( (!defined $low) || (!defined $high) ||
        ($low =~ tr/0123456789//c) || ($high =~ tr/0123456789//c)
      ) {
+    $low  = 'undef' unless defined $low;
+    $high = 'undef' unless defined $high;
     croak "Parameters [ $low $high ] must be positive integers";
   }
   croak "Parameters [ $low $high ] not in range 0-$_maxparam" unless $low <= $_maxparam && $high <= $_maxparam;
@@ -131,12 +135,12 @@ sub random_prime {
     if ($range <= 4294967295) {
       do {
         $prime = $low + int(rand($range));
-      }  while ( !($prime%2) && !($prime%3) && !is_prime($prime) );
+      }  while ( !($prime%2) || !($prime%3) || !is_prime($prime) );
     } else {
       do {
         my $rand = ( (int(rand(4294967295)) << 32) + int(rand(4294967295)) ) % $range;
         $prime = $low + $rand;
-      }  while ( !($prime%2) && !($prime%3) && !is_prime($prime) );
+      }  while ( !($prime%2) || !($prime%3) || !is_prime($prime) );
     }
   }
   return $prime;
@@ -167,7 +171,7 @@ sub new {
 sub DESTROY {
   my $self = shift;
   confess "instances count mismatch" unless $memfree_instances > 0;
-  Math::Prime::Util::prime_free if --$memfree_instances == 0;
+  Math::Prime::Util::prime_memfree if --$memfree_instances == 0;
 }
 package Math::Prime::Util;
 
@@ -212,11 +216,14 @@ Version 0.04
   my @primes = @{primes( 500 )};
 
 
-  # is_prime returns 0 for composite, 1 for prime
+  # is_prime returns 0 for composite, 2 for prime
   say "$n is prime"  if is_prime($n);
 
+  # is_prob_prime returns 0 for composite, 2 for prime, and 1 for maybe prime
+  say "$n is ", qw(composite maybe_prime? prime)[is_prob_prime($n)];
 
-  # step to the next prime
+
+  # step to the next prime (returns 0 if the next one is more than ~0)
   $n = next_prime($n);
 
   # step back (returns 0 if given input less than 2)
@@ -253,7 +260,7 @@ Version 0.04
   prime_precalc( 1_000_000_000 );
 
   # Free any memory used by the module.
-  prime_free;
+  prime_memfree;
 
   # Alternate way to free.  When this leaves scope, memory is freed.
   my $mf = Math::Prime::Util::MemFree->new;
@@ -477,9 +484,12 @@ The current algorithm does a random index selection for small numbers, which
 is deterministic.  For larger numbers, this can be very slow, so the
 obvious Monte Carlo method is used, where random numbers in the range are
 selected until one is prime.  That also gets slow as the number of digits
-increases, but not something that impacts us in 64-bit.  A GMP version would
-likely need to consider using C<next_prime>/C<prev_prime> -- giving up a
-small bit of uniformity for reasonable performance.
+increases, but not something that impacts us in 64-bit.
+
+If you want cryptographically secure primes, I suggest looking at
+L<Crypt::Primes> or something similar.  The current L<Math::Prime::Util>
+module does not use strong randomness, and its primes are ridiculously small
+by cryptographic standards.
 
 
 =head2 random_ndigit_prime
@@ -506,9 +516,9 @@ current implementation this will calculate a sieve for all numbers up to the
 specified number.
 
 
-=head2 prime_free
+=head2 prime_memfree
 
-  prime_free;
+  prime_memfree;
 
 Frees any extra memory the module may have allocated.  Like with
 C<prime_precalc>, it is not necessary to call this, but if you're done
@@ -541,8 +551,9 @@ always result in the input value, though those are the only cases where
 the returned factors are not prime.
 
 The current algorithm is to use trial division for small numbers, while large
-numbers go through a sequence of small trials, SQUFOF, and Pollard's Rho.
-This process is repeated for each non-prime factor.
+numbers go through a sequence of small trials, SQUFOF, Pollard's Rho, and
+finally trial division for any survivors.  This process is repeated for
+each non-prime factor.
 
 
 =head2 trial_factor
@@ -626,6 +637,7 @@ Counting the primes to C<10^10> (10 billion), with time in seconds.
 Pi(10^10) = 455,052,511.
 
        1.9  primesieve 3.6 forced to use only a single thread
+       2.2  yafu 1.31
        5.6  Tomás Oliveira e Silva's segmented sieve v2 (Sep 2010)
        6.6  primegen (optimized Sieve of Atkin)
       11.2  Tomás Oliveira e Silva's segmented sieve v1 (May 2003)

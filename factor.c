@@ -1,8 +1,7 @@
-//#include <stdio.h>
-//#include <stdlib.h>
-//#include <string.h>
-//#include <limits.h>
-//#include <math.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <math.h>
 
 #include "ptypes.h"
 #include "factor.h"
@@ -101,25 +100,44 @@ int trial_factor(UV n, UV *factors, UV maxtrial)
 
   /* UV is the largest integral type available (that we know of). */
 
+  #if defined(__GNUC__) && (defined(__i386__) || defined(__x86_64__))
+    /* Inline assembly -- basically as fast as a regular (a*b)%m */
+    /* Arguably we don't need all the ifs to avoid it */
+    static UV _mulmod(UV a, UV b, UV c) {
+      UV d; /* to hold the result of a*b mod c */
+      /* calculates a*b mod c, stores result in d */
+      asm ("mov %1, %%rax;"        /* put a into rax */
+           "mul %2;"               /* mul a*b -> rdx:rax */
+           "div %3;"               /* (a*b)/c -> quot in rax remainder in rdx */
+           "mov %%rdx, %0;"        /* store result in d */
+           :"=r"(d)                /* output */
+           :"r"(a), "r"(b), "r"(c) /* input */
+           :"%rax", "%rdx"         /* clobbered registers */
+          );
+      return d;
+    }
+  #else
+    /* Do it by hand */
+    static UV _mulmod(UV a, UV b, UV m) {
+      UV r = 0;
+      while (b > 0) {
+        if (b & 1) {
+          if (r == 0) {
+            r = a;
+          } else {
+            r = m - r;
+            r = (a >= r)  ?  a-r  :  m-r+a;
+          }
+        }
+        a = (a > (m-a))  ?  (a-m)+a  :  a+a;
+        b >>= 1;
+      }
+      return r;
+    }
+  #endif
+
   /* if n is smaller than this, you can multiply without overflow */
   #define HALF_WORD (UVCONST(1) << (BITS_PER_WORD/2))
-
-  static UV _mulmod(UV a, UV b, UV m) {
-    UV r = 0;
-    while (b > 0) {
-      if (b & 1) {
-        if (r == 0) {
-          r = a;
-        } else {
-          r = m - r;
-          r = (a >= r)  ?  a-r  :  m-r+a;
-        }
-      }
-      a = (a > (m-a))  ?  (a-m)+a  :  a+a;
-      b >>= 1;
-    }
-    return r;
-  }
 
   #define addmod(n,a,m) ((((m)-(n)) > (a))  ?  ((n)+(a))  :  ((n)+(a)-(m)))
   #define mulmod(a,b,m) (((a)|(b)) < HALF_WORD) ? ((a)*(b))%(m) : _mulmod(a,b,m)

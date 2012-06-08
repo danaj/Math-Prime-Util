@@ -18,7 +18,7 @@ void
 prime_precalc(IN UV n)
 
 void
-prime_free()
+prime_memfree()
 
 UV
 prime_count(IN UV n)
@@ -148,7 +148,7 @@ segment_primes(IN UV low, IN UV high, IN UV segment_size = 65536UL)
         UV seghigh = (seghigh_d == high_d) ? high : (seghigh_d*30+29);
         UV segbase = low_d * 30;
         /* printf("  startd = %"UVuf"  endd = %"UVuf"\n", startd, endd); */
-  
+
         MPUassert( seghigh_d >= low_d, "segment_primes highd < lowd");
         MPUassert( range_d <= segment_size, "segment_primes range > segment size");
 
