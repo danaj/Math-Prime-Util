@@ -20,3 +20,5 @@
 - nth_prime bounds are < in the code, but <= in the documentation.
 
 - speed up random_prime for large numbers
+
+- Add other bases to pseudoprime test
