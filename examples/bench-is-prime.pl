@@ -1,6 +1,6 @@
-#!/usr/bin/perl -w
-
+#!/usr/bin/env perl
 use strict;
+use warnings;
 #use Math::Primality;
 use Math::Prime::XS;
 use Math::Prime::Util;
