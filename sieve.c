@@ -1,7 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <assert.h>
 #include <limits.h>
 #include <math.h>
 
@@ -135,7 +134,7 @@ unsigned char* sieve_erat30(UV end)
     if ( d < max_buf )  mem[d++] = 0x08;
     if ( d < max_buf )  mem[d++] = 0x04;
     if ( d < max_buf )  mem[d++] = 0x40;
-    assert(d >= max_buf);
+    MPUassert( d >= max_buf, "sieve_erat30 incorrect 7 sieve");
   }
   limit = sqrt((double) end);  /* prime*prime can overflow */
   for (prime = 11; prime <= limit; prime = next_prime_in_sieve(mem,prime)) {
@@ -188,9 +187,8 @@ int sieve_segment(unsigned char* mem, UV startd, UV endd)
   UV endp = (endd >= (UV_MAX/30))  ?  UV_MAX-2  :  30*endd+29;
   UV ranged = endd - startd + 1;
 
-  assert(mem != 0);
-  assert(endd >= startd);
-  assert(endp >= startp);
+  MPUassert( (mem != 0) && (endd >= startd) && (endp >= startp),
+             "sieve_segment bad arguments");
   memset(mem, 0, ranged);
 
   limit = sqrt( (double) endp ) + 1;

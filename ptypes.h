@@ -41,4 +41,6 @@
 #define NWORDS(bits)  ( ((bits)+BITS_PER_WORD-1) / BITS_PER_WORD )
 #define NBYTES(bits)  ( ((bits)+8-1) / 8 )
 
+#define MPUassert(c,text) if (!(c)) { croak("Math::Prime::Util internal error: " text); }
+
 #endif

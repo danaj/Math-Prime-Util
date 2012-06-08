@@ -18,6 +18,7 @@ our @EXPORT_OK = qw(
                      next_prime  prev_prime
                      prime_count prime_count_lower prime_count_upper prime_count_approx
                      nth_prime nth_prime_lower nth_prime_upper nth_prime_approx
+                     random_prime random_ndigit_prime
                      factor
                    );
 our %EXPORT_TAGS = (all => [ @EXPORT_OK ]);
@@ -35,7 +36,8 @@ BEGIN {
 }
 
 
-my $_maxparam = (_maxbits == 32) ? 4294967295 : 18446744073709551615;
+my $_maxparam  = (_maxbits == 32) ? 4294967295 : 18446744073709551615;
+my $_maxdigits = (_maxbits == 32) ? 10 : 20;
 
 sub primes {
   my $optref = {};  $optref = shift if ref $_[0] eq 'HASH';
@@ -94,6 +96,63 @@ sub primes {
   #return (wantarray) ? @{$sref} : $sref;
   return $sref;
 }
+
+sub random_prime {
+  my $low = (@_ == 2)  ?  shift  :  2;
+  my $high = shift;
+  if ( (!defined $low) || (!defined $high) ||
+       ($low =~ tr/0123456789//c) || ($high =~ tr/0123456789//c)
+     ) {
+    croak "Parameters [ $low $high ] must be positive integers";
+  }
+  croak "Parameters [ $low $high ] not in range 0-$_maxparam" unless $low <= $_maxparam && $high <= $_maxparam;
+  $low = 2 if $low < 2;
+
+  # Make sure we have a valid range.
+  $low = next_prime($low-1);
+  $high = ($high < ~0) ? prev_prime($high+1) : prev_prime($high);
+  return $low if ($low == $high) && is_prime($low);
+  return if $low >= $high;
+
+  # At this point low and high are both primes, and low < high.
+  my $range = $high - $low + 1;
+  my $prime;
+
+  if ($high < 30000) {
+    # nice deterministic solution, but gets very costly with large values.
+    my $li = ($low == 2) ? 1 : prime_count($low);
+    my $hi = prime_count($high);
+    my $irange = $hi - $li + 1;
+    my $rand = int(rand($irange));
+    $prime = nth_prime($li + $rand);
+  } else {
+    # random loop
+    if ($range <= 4294967295) {
+      do {
+        $prime = $low + int(rand($range));
+      }  while ( !($prime%2) && !($prime%3) && !is_prime($prime) );
+    } else {
+      do {
+        my $rand = ( (int(rand(4294967295)) << 32) + int(rand(4294967295)) ) % $range;
+        $prime = $low + $rand;
+      }  while ( !($prime%2) && !($prime%3) && !is_prime($prime) );
+    }
+  }
+  return $prime;
+}
+
+sub random_ndigit_prime {
+  my $digits = shift;
+  if ((!defined $digits) || ($digits > $_maxdigits) || ($digits < 1)) {
+    croak "Digits must be between 1 and $_maxdigits";
+  }
+  my $low = ($digits == 1) ? 0 : int(10 ** ($digits-1));
+  my $max = int(10 ** $digits);
+  $max = ~0 if $max > ~0;
+  return random_prime($low, $max);
+}
+
+# Perhaps a random_nbit_prime ?   Definition?
 
 # We use this object to let them control when memory is freed.
 package Math::Prime::Util::MemFree;
@@ -197,6 +256,12 @@ Version 0.04
 
   # Alternate way to free.  When this leaves scope, memory is freed.
   my $mf = Math::Prime::Util::MemFree->new;
+
+
+  # Random primes
+  my $small_prime = random_prime(1000);      # random prime <= limit
+  my $rand_prime = random_prime(100, 10000); # random prime within a range
+  my $rand_prime = random_ndigit_prime(6);   # random 6-digit prime
 
 
 =head1 DESCRIPTION
@@ -391,6 +456,38 @@ will be deterministic for 64-bit input.  Either 2, 3, 4, 5, or 7 Miller-Rabin
 tests are performed (no more than 3 for 32-bit input), and the result will
 then always be 0 (composite) or 2 (prime).  A later implementation may switch
 to a BPSW test, depending on speed.
+
+
+=head2 random_prime
+
+  my $small_prime = random_prime(1000);      # random prime <= limit
+  my $rand_prime = random_prime(100, 10000); # random prime within a range
+
+Returns a randomly selected prime that will be greater than or equal to the
+lower limit and less than or equal to the upper limit.  If no lower limit is
+given, 2 is implied.  Returns undef if no primes exist within the range.
+
+This will return a uniform distribution of the primes in the range, meaning
+for each prime in the range, the chances are equally likely that it will be
+seen.
+
+The current algorithm does a random index selection for small numbers, which
+is deterministic.  For larger numbers, this can be very slow, so the
+obvious Monte Carlo method is used, where random numbers in the range are
+selected until one is prime.
+
+The L<rand> function is called one or more times for selection.
+
+
+=head2 random_ndigit_prime
+
+  say "My 4-digit prime number is: ", random_ndigit_prime(4);
+
+Selects a random n-digit prime, where the input is an integer number of
+digits between 1 and the maximum native type (10 for 32-bit, 20 for 64-bit).
+One of the primes within that range (e.g. 1000 - 9999 for 4-digits) will be
+uniformly selected using the L<rand> function.
+
 
 
 =head1 UTILITY FUNCTIONS

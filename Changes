@@ -3,6 +3,10 @@ Revision history for Perl extension Math::Prime::Util.
 0.04  7 June 2012
     - Didn't do tests on 32-bit machine before release.  Test suite caught
       problem with next_prime overflow.
+    - Try to use 64-bit modulo math even when Perl is 32-bit.  It can make
+      is_prime run up to 10x faster (which impacts next_prime, factoring, etc.)
+    - replace all assert with croak indicating an internal error.
+    - Add random_prime and random_ndigit_prime
 
 0.03  6 June 2012
     - Speed up factoring.

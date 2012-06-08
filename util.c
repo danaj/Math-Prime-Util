@@ -1,7 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <assert.h>
 #include <limits.h>
 #include <math.h>
 
@@ -516,8 +515,9 @@ UV nth_prime_upper(UV n)
   else
     upper = fn * ( flogn + flog2n );
 
+  /* Special case to not overflow any 32-bit */
   if (upper > (double)UV_MAX)
-    return 0;
+    return (n <= UVCONST(203280221))  ?  UVCONST(4294967292)  :  0;
 
   return (UV) ceil(upper);
 }
@@ -581,8 +581,8 @@ static UV count_segment(const unsigned char* sieve, UV nbytes, UV maxcount, UV* 
   UV count = 0;
   UV byte = 0;
 
-  assert(sieve != 0);
-  assert(pos != 0);
+  MPUassert(sieve != 0, "count_segment incorrect args");
+  MPUassert(pos != 0, "count_segment incorrect args");
   *pos = 0;
   if ( (nbytes == 0) || (maxcount == 0) )
     return 0;
@@ -594,7 +594,7 @@ static UV count_segment(const unsigned char* sieve, UV nbytes, UV maxcount, UV* 
     count -= byte_zeros[sieve[--byte]];
   }
 
-  assert(count < maxcount);
+  MPUassert(count < maxcount, "count_segment wrong count");
 
   if (byte == nbytes)
     return count;
@@ -604,7 +604,7 @@ static UV count_segment(const unsigned char* sieve, UV nbytes, UV maxcount, UV* 
     if (++count == maxcount)  { *pos = p; return count; }
   END_DO_FOR_EACH_SIEVE_PRIME;
 
-  croak("count_segment failed");
+  MPUassert(0, "count_segment failure");
   return 0;
 }
 
@@ -667,6 +667,6 @@ UV nth_prime(UV n)
     if (count < target)
       segbase += segment_size;
   }
-  assert(count == target);
+  MPUassert(count == target, "nth_prime got incorrect count");
   return ( (segbase*30) + p );
 }

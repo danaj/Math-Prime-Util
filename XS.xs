@@ -149,8 +149,8 @@ segment_primes(IN UV low, IN UV high, IN UV segment_size = 65536UL)
         UV segbase = low_d * 30;
         /* printf("  startd = %"UVuf"  endd = %"UVuf"\n", startd, endd); */
   
-        assert( seghigh_d >= low_d );
-        assert( range_d <= segment_size );
+        MPUassert( seghigh_d >= low_d, "segment_primes highd < lowd");
+        MPUassert( range_d <= segment_size, "segment_primes range > segment size");
 
         /* Sieve from startd*30+1 to endd*30+29.  */
         if (sieve_segment(sieve, low_d, seghigh_d) == 0) {
@@ -262,14 +262,13 @@ factor(IN UV n)
             /* For sufficiently large n, try more complex methods. */
             /* SQUFOF (succeeds 98-99.9%) */
             split_success = squfof_factor(n, factor_stack+nstack, 256*1024)-1;
-            assert( (split_success == 0) || (split_success == 1) );
             /* a few rounds of Pollard rho (succeeds most of the rest) */
             if (!split_success) {
               split_success = prho_factor(n, factor_stack+nstack, 400)-1;
-              assert( (split_success == 0) || (split_success == 1) );
             }
           }
           if (split_success) {
+            MPUassert( split_success == 1, "split factor returned more than 2 factors");
             nstack++;
             n = factor_stack[nstack];
           } else {

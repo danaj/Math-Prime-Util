@@ -1,7 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <assert.h>
 #include <limits.h>
 #define __STDC_LIMIT_MACROS
 #include <stdint.h>
@@ -169,7 +168,7 @@ int miller_rabin(UV n, const UV *bases, UV nbases)
   int s = 0;
   UV d = n-1;
 
-  assert(n > 3);
+  MPUassert(n > 3, "MR called with n <= 3");
 
   while ( (d&1) == 0 ) {
     s++;
@@ -298,7 +297,7 @@ int fermat_factor(UV n, UV *factors, UV rounds)
 {
   IV sqn, x, y, r;
 
-  assert( (n >= 3) && ((n%2) != 0) );
+  MPUassert( (n >= 3) && ((n%2) != 0) , "bad n in fermat_factor");
 
   sqn = sqrt((double) n);
   x = 2 * sqn + 1;
@@ -317,7 +316,7 @@ int fermat_factor(UV n, UV *factors, UV rounds)
   if ( (r != 1) && (r != n) ) {
     factors[0] = r;
     factors[1] = n/r;
-    assert( factors[0] * factors[1] == n );
+    MPUassert( factors[0] * factors[1] == n , "incorrect factoring");
     return 2;
   }
   factors[0] = n;
@@ -331,7 +330,7 @@ int holf_factor(UV n, UV *factors, UV rounds)
 {
   UV i, s, m, f;
 
-  assert( (n >= 3) && ((n%2) != 0) );
+  MPUassert( (n >= 3) && ((n%2) != 0) , "bad n in holf_factor");
 
   for (i = 1; i <= rounds; i++) {
     s = sqrt(n*i);                      /* TODO: overflow here */
@@ -352,7 +351,7 @@ int holf_factor(UV n, UV *factors, UV rounds)
         break;
       factors[0] = f;
       factors[1] = n/f;
-      assert( factors[0] * factors[1] == n );
+      MPUassert( factors[0] * factors[1] == n , "incorrect factoring");
       return 2;
     }
   }
@@ -372,7 +371,7 @@ int pbrent_factor(UV n, UV *factors, UV rounds)
   UV Xi = 2;
   UV Xm = 2;
 
-  assert( (n >= 3) && ((n%2) != 0) );
+  MPUassert( (n >= 3) && ((n%2) != 0) , "bad n in pbrent_factor");
 
   switch (n%4) {
     case 0:  a =  1; break;
@@ -388,7 +387,7 @@ int pbrent_factor(UV n, UV *factors, UV rounds)
     if ( (f != 1) && (f != n) ) {
       factors[0] = f;
       factors[1] = n/f;
-      assert( factors[0] * factors[1] == n );
+      MPUassert( factors[0] * factors[1] == n , "incorrect factoring");
       return 2;
     }
     if ( (i & (i-1)) == 0)   /* i is a power of 2 */
@@ -410,7 +409,7 @@ int prho_factor(UV n, UV *factors, UV rounds)
   UV U = 7;
   UV V = 7;
 
-  assert( (n >= 3) && ((n%2) != 0) );
+  MPUassert( (n >= 3) && ((n%2) != 0) , "bad n in prho_factor");
 
   switch (n%4) {
     case 0:  a =  5; break;
@@ -431,7 +430,7 @@ int prho_factor(UV n, UV *factors, UV rounds)
     } else if (f != 1) {
       factors[0] = f;
       factors[1] = n/f;
-      assert( factors[0] * factors[1] == n );
+      MPUassert( factors[0] * factors[1] == n , "incorrect factoring");
       return 2;
     }
   }
@@ -449,7 +448,7 @@ int pminus1_factor(UV n, UV *factors, UV rounds)
   UV f, i;
   UV kf = 13;
 
-  assert( (n >= 3) && ((n%2) != 0) );
+  MPUassert( (n >= 3) && ((n%2) != 0) , "bad n in pminus1_factor");
 
   for (i = 1; i <= rounds; i++) {
     kf = powmod(kf, i, n);
@@ -458,7 +457,7 @@ int pminus1_factor(UV n, UV *factors, UV rounds)
     if ( (f != 1) && (f != n) ) {
       factors[0] = f;
       factors[1] = n/f;
-      assert( factors[0] * factors[1] == n );
+      MPUassert( factors[0] * factors[1] == n , "incorrect factoring");
       return 2;
     }
   }
@@ -484,7 +483,7 @@ int squfof_factor(UV n, UV *factors, UV rounds)
   IV jter, iter;
   int reloop;
 
-  assert( (n >= 3) && ((n%2) != 0) );
+  MPUassert( (n >= 3) && ((n%2) != 0) , "bad n in squfof_factor");
 
   /* TODO:  What value of n leads to overflow? */
 
@@ -593,7 +592,7 @@ int squfof_factor(UV n, UV *factors, UV rounds)
 
   factors[0] = p;
   factors[1] = q;
-  assert( factors[0] * factors[1] == n );
+  MPUassert( factors[0] * factors[1] == n , "incorrect factoring");
   return 2;
 }
 
