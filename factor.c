@@ -178,6 +178,54 @@ int trial_factor(UV n, UV *factors, UV maxtrial)
 /* n^2 + a mod m */
 #define sqraddmod(n, a, m)     addmod(sqrmod(n,m),  a,m)
 
+/* Return 0 if n is not a perfect square.  Set sqrtn to int(sqrt(n)) if so.
+ *
+ * A simplistic solution (but not unhelpful) is:
+ *
+ *     return ( ((m&2)!= 0) || ((m&7)==5) || ((m&11) == 8) )  ?  0  :  1;
+ *
+ * The following Bloom filter cascade works very well indeed.  Read all
+ * about it here: http://mersenneforum.org/showpost.php?p=110896
+ */
+static int is_perfect_square(UV n, UV* sqrtn)
+{
+  UV m, lm;
+  m = n & 127;
+  if ((m*0x8bc40d7d) & (m*0xa1e2f5d1) & 0x14020a)  return 0;
+  /* 82% of non-squares rejected here */
+
+#if 0
+  /* The big deal with this technique is that you do two total operations,
+   * one cheap (the & 127 above), one expensive (the modulo below) on n.
+   * The rest of the operations are 32-bit operations.  This is a huge win
+   * if n is multiprecision.
+   * However, in this file we're doing native precision sqrt, so it just
+   * isn't expensive enough to justify this second filter set.
+   */
+  lm = n % UVCONST(63*25*11*17*19*23*31);
+  m = lm % 63;
+  if ((m*0x3d491df7) & (m*0xc824a9f9) & 0x10f14008) return 0;
+  m = lm % 25;
+  if ((m*0x1929fc1b) & (m*0x4c9ea3b2) & 0x51001005) return 0;
+  m = 0xd10d829a*(lm%31);
+  if (m & (m+0x672a5354) & 0x21025115) return 0;
+  m = lm % 23;
+  if ((m*0x7bd28629) & (m*0xe7180889) & 0xf8300) return 0;
+  m = lm % 19;
+  if ((m*0x1b8bead3) & (m*0x4d75a124) & 0x4280082b) return 0;
+  m = lm % 17;
+  if ((m*0x6736f323) & (m*0x9b1d499) & 0xc0000300) return 0;
+  m = lm % 11;
+  if ((m*0xabf1a3a7) & (m*0x2612bf93) & 0x45854000) return 0;
+  /* 99.92% of non-squares are rejected now */
+#endif
+  m = sqrt(n);
+  if (n != (m*m))
+    return 0;
+
+  if (sqrtn != 0) *sqrtn = m;
+  return 1;
+}
 
 /* Miller-Rabin probabilistic primality test
  * Returns 1 if probably prime relative to the bases, 0 if composite.
@@ -360,15 +408,7 @@ int holf_factor(UV n, UV *factors, UV rounds)
     s = sqrt(n*i);                      /* TODO: overflow here */
     if ( (s*s) != (n*i) )  s++;
     m = sqrmod(s, n);
-    /* Cheaper would be:
-     *     if (m is probably not a perfect sequare)  continue;
-     *     f = sqrt(m);
-     *     if (f*f == m) { yay }
-     */
-    if ( ((m&2)!= 0) || ((m&7)==5) || ((m&11) == 8) )
-      continue;
-    f = sqrt(m);                        /* expensive */
-    if ( (f*f) == m ) {
+    if (is_perfect_square(m, &f)) {
       f = gcd_ui( (s>f) ? s-f : f-s, n);
       /* This should always succeed, but with overflow concerns.... */
       if ((f == 1) || (f == n))
