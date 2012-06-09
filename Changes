@@ -2,6 +2,9 @@ Revision history for Perl extension Math::Prime::Util.
 
 0.05  8 June 2012
     - Use assembler for mulmod if 64-bit and gcc and x86
+    - nth_prime routines should now all croak on overflow in the same way.
+    - Segmented prime_count, things like this are efficient:
+            say prime_count( 10**16,  10**16 + 2**20 )
 
 0.04  7 June 2012
     - Didn't do tests on 32-bit machine before release.  Test suite caught

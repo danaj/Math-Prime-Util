@@ -21,13 +21,19 @@ void
 prime_memfree()
 
 UV
-prime_count(IN UV n)
+prime_count(IN UV low, IN UV high = 0)
   CODE:
+    if (high == 0) {   /* Without a Perl layer in front of this, we'll have */
+      high = low;      /* the pathological case of a-0 turning into 0-a.    */
+      low = 0;
+    }
     if (GIMME_V == G_VOID) {
-      prime_precalc(n);
+      prime_precalc(high);
       RETVAL = 0;
+    } else if (low == 0) {
+      RETVAL = prime_count(high);
     } else {
-      RETVAL = prime_count(n);
+      RETVAL = prime_count_seg(low, high);
     }
   OUTPUT:
     RETVAL
@@ -140,6 +146,12 @@ segment_primes(IN UV low, IN UV high, IN UV segment_size = 65536UL)
       /* To protect vs. overflow, work entirely with d. */
       low_d  = low  / 30;
       high_d = high / 30;
+
+      {  /* Avoid recalculations of this */
+        UV endp = (high_d >= (UV_MAX/30))  ?  UV_MAX-2  :  30*high_d+29;
+        prime_precalc( sqrt(endp) + 1 );
+      }
+
       while ( low_d <= high_d ) {
         UV seghigh_d = ((high_d - low_d) < segment_size)
                        ? high_d

@@ -284,7 +284,7 @@ static const double F1 = 1.0;
 UV prime_count_lower(UV x)
 {
   double fx, flogx;
-  double a = 1.80;
+  double a = 1.80;     /* Dusart 1999, page 14 */
 
   if (x < NPRIME_COUNT_SMALL)
     return prime_count_small[x];
@@ -314,7 +314,7 @@ UV prime_count_lower(UV x)
 UV prime_count_upper(UV x)
 {
   double fx, flogx;
-  double a = 2.51;
+  double a = 2.51;    /* Dusart 1999, page 14 */
 
   if (x < NPRIME_COUNT_SMALL)
     return prime_count_small[x];
@@ -471,42 +471,49 @@ static const unsigned short primes_small[] =
    409,419,421,431,433,439,443,449,457,461,463,467,479,487,491,499};
 #define NPRIMES_SMALL (sizeof(primes_small)/sizeof(primes_small[0]))
 
-/* The nth prime will be more than this number */
+/* The nth prime will be greater than or equal to this number */
 UV nth_prime_lower(UV n)
 {
   double fn = (double) n;
   double flogn, flog2n, lower;
 
   if (n < NPRIMES_SMALL)
-    return (n==0) ? 0 : primes_small[n]-1;
+    return (n==0) ? 0 : primes_small[n];
 
   flogn  = log(n);
-  flog2n = log(flogn);
+  flog2n = log(flogn);    /* Note distinction between log_2(n) and log^2(n) */
 
-  /* Dusart 1999, for all n >= 2 */
+  /* Dusart 1999 page 14, for all n >= 2 */
   lower = fn * (flogn + flog2n - 1.0 + ((flog2n-2.25)/flogn));
 
-  if (lower > (double)UV_MAX)
-    return 0;
+  /* Watch out for overflow */
+  if (lower >= (double)UV_MAX) {
+#if BITS_PER_WORD == 32
+    if (n <= UVCONST(203280221)) return UVCONST(4294967291);
+#else
+    if (n <= UVCONST(425656284035217743)) return UVCONST(18446744073709551557);
+#endif
+    croak("nth_prime_lower(%"UVuf") overflow", n);
+  }
 
   return (UV) lower;
 }
 
 
-/* The nth prime will be less than this number */
+/* The nth prime will be less or equal to this number */
 UV nth_prime_upper(UV n)
 {
   double fn = (double) n;
   double flogn, flog2n, upper;
 
   if (n < NPRIMES_SMALL)
-    return primes_small[n]+1;
+    return primes_small[n];
 
   flogn  = log(n);
-  flog2n = log(flogn);
+  flog2n = log(flogn);    /* Note distinction between log_2(n) and log^2(n) */
 
   if (n >= 39017)
-    upper = fn * ( flogn  +  flog2n - 0.9484 ); /* Dusart 1999 */
+    upper = fn * ( flogn  +  flog2n - 0.9484 ); /* Dusart 1999 page 14*/
   else if (n >= 27076)
     upper = fn * (flogn + flog2n - 1.0 + ((flog2n-1.80)/flogn)); /*Dusart 1999*/
   else if (n >= 7022)
@@ -514,9 +521,15 @@ UV nth_prime_upper(UV n)
   else
     upper = fn * ( flogn + flog2n );
 
-  /* Special case to not overflow any 32-bit */
-  if (upper > (double)UV_MAX)
-    return (n <= UVCONST(203280221))  ?  UVCONST(4294967292)  :  0;
+  /* Watch out for  overflow */
+  if (upper >= (double)UV_MAX) {
+#if BITS_PER_WORD == 32
+    if (n <= UVCONST(203280221)) return UVCONST(4294967291);
+#else
+    if (n <= UVCONST(425656284035217743)) return UVCONST(18446744073709551557);
+#endif
+    croak("nth_prime_upper(%"UVuf") overflow", n);
+  }
 
   return (UV) ceil(upper);
 }
@@ -542,6 +555,8 @@ UV nth_prime_approx(UV n)
    *    m=1   + ((flog2n - 2)/flogn) );
    *    m=2   - (((flog2n*flog2n) - 6*flog2n + 11) / (2*flogn*flogn))
    *    + O((flog2n/flogn)^3)
+   *
+   * Shown in Dusart 1999 page 12, as well as other sources
    */
   approx = fn * ( flogn + flog2n - 1
                   + ((flog2n - 2)/flogn)
@@ -560,8 +575,24 @@ UV nth_prime_approx(UV n)
   else if (n < 12000) approx += 3.0 * order;
   else if (n <150000) approx += 2.1 * order;
 
-  if (approx > (double)UV_MAX)
-    return 0;
+  /* For all three analytical functions, it is possible that for a given valid
+   * input, we will not be able to return an output that fits in the UV type.
+   * For example, if they ask for the 203280222nd prime, we should return
+   * 4294967311.  But in 32-bit, that overflows.  What we do is calculate our
+   * double precision value.  If that would overflow, then we look at the input
+   * and if it is <= the index of the last representable prime, then we return
+   * the last representable prime.  Otherwise, we croak an overflow message.
+   * This should maintain the invariant:
+   *    nth_prime_lower(n)  <=  nth_prime(n)  <=  nth_prime_upper(n)
+   */
+  if (approx >= (double)UV_MAX) {
+#if BITS_PER_WORD == 32
+    if (n <= UVCONST(203280221)) return UVCONST(4294967291);
+#else
+    if (n <= UVCONST(425656284035217743)) return UVCONST(18446744073709551557);
+#endif
+    croak("nth_prime_approx(%"UVuf") overflow", n);
+  }
 
   return (UV) (approx + 0.5);
 }
@@ -622,10 +653,7 @@ UV nth_prime(UV n)
 
   /* Determine a bound on the nth prime.  We know it comes before this. */
   upper_limit = nth_prime_upper(n);
-  if (upper_limit == 0) {
-    croak("nth_prime(%"UVuf") would overflow", n);
-    return 0;
-  }
+  MPUassert(upper_limit > 0, "nth_prime got an upper limit of 0");
 
   /* Get the primary cache, and ensure it is at least this large.  If the
    * input is small enough, get a sieve covering the range.  Otherwise, we'll
@@ -668,4 +696,69 @@ UV nth_prime(UV n)
   }
   MPUassert(count == target, "nth_prime got incorrect count");
   return ( (segbase*30) + p );
+}
+
+UV prime_count_seg(UV low, UV high)
+{
+  UV const segment_size = SEGMENT_CHUNK_SIZE;
+  unsigned char* segment;
+  UV low_d, high_d;
+  UV count = 0;
+
+  if ((low <= 2) && (high >= 2)) count++;
+  if ((low <= 3) && (high >= 3)) count++;
+  if ((low <= 5) && (high >= 5)) count++;
+  if (low < 7)  low = 7;
+
+  if (low > high)  return count;
+
+  /*
+   *  (1)  be smart about small low/high values.
+   *  (2)  be generic so we can kill the other function
+   *  (3)  use fast counting.
+   */
+
+  segment = get_prime_segment();
+  if (segment == 0)
+    return 0;
+
+  low_d  = low  / 30;
+  high_d = high / 30;
+
+  {  /* Avoid recalculations of this */
+    UV endp = (high_d >= (UV_MAX/30))  ?  UV_MAX-2  :  30*high_d+29;
+    prime_precalc( sqrt(endp) + 1 );
+  }
+
+  while ( low_d <= high_d ) {
+    UV seghigh_d = ((high_d - low_d) < segment_size)
+                   ? high_d
+                   : (low_d + segment_size-1);
+    UV range_d = seghigh_d - low_d + 1;
+    UV seghigh = (seghigh_d == high_d) ? high : (seghigh_d*30+29);
+    UV segbase = low_d * 30;
+    /* printf("  startd = %"UVuf"  endd = %"UVuf"\n", startd, endd); */
+
+    MPUassert( seghigh_d >= low_d, "segment_primes highd < lowd");
+    MPUassert( range_d <= segment_size, "segment_primes range > segment size");
+
+    /* Sieve from startd*30+1 to endd*30+29.  */
+    if (sieve_segment(segment, low_d, seghigh_d) == 0) {
+      croak("Could not segment sieve from %"UVuf" to %"UVuf, segbase+1, seghigh);
+      break;
+    }
+
+    if (seghigh < high) {
+      count += count_zero_bits(segment, range_d);
+    } else {
+      START_DO_FOR_EACH_SIEVE_PRIME( segment, low - segbase, seghigh - segbase )
+        count++;
+      END_DO_FOR_EACH_SIEVE_PRIME
+    }
+
+    low_d += range_d;
+    low = seghigh+2;
+  }
+
+  return count;
 }

@@ -8,7 +8,7 @@ use Math::Prime::Util qw/nth_prime nth_prime_lower nth_prime_upper nth_prime_app
 my $use64 = Math::Prime::Util::_maxbits > 32;
 my $extra = defined $ENV{RELEASE_TESTING} && $ENV{RELEASE_TESTING};
 
-plan tests => 7*2 + 9*3 + ($extra ? 9 : 7) + ($use64 ? 9*3 : 0);
+plan tests => 7*2 + 9*3 + 7 + ($extra ? 9 : 7) + ($use64 ? 9*3 : 0);
 
 my %pivals32 = (
                   1 => 0,
@@ -26,6 +26,8 @@ while (my($n, $pin) = each (%pivals32)) {
   cmp_ok( nth_prime($next), '>=', $n, "nth_prime($next) >= $n");
 }
 
+#  Powers of 10: http://oeis.org/A006988/b006988.txt
+#  Powers of  2: http://oeis.org/A033844/b033844.txt
 my %nthprimes32 = (
                   1 => 2,
                  10 => 29,
@@ -73,3 +75,15 @@ if ($use64) {
   }
 }
 
+my $maxindex = $use64 ? 425656284035217743 : 203280221;
+my $maxprime = $use64 ? 18446744073709551557 : 4294967291;
+cmp_ok( nth_prime_lower($maxindex), '<=', $maxprime, "nth_prime_lower(maxindex) <= maxprime");
+cmp_ok( nth_prime_upper($maxindex), '>=', $maxprime, "nth_prime_upper(maxindex) >= maxprime");
+cmp_ok( nth_prime_approx($maxindex), '==', $maxprime, "nth_prime_approx(maxindex) == maxprime");
+cmp_ok( nth_prime_lower($maxindex+1), '>=', nth_prime_lower($maxindex), "nth_prime_lower(maxindex+1) >= nth_prime_lower(maxindex)");
+eval { nth_prime_upper($maxindex+1); };
+like($@, qr/overflow/, "nth_prime_upper(maxindex+1) overflows");
+eval { nth_prime_approx($maxindex+1); };
+like($@, qr/overflow/, "nth_prime_approx(maxindex+1) overflows");
+eval { nth_prime($maxindex+1); };
+like($@, qr/overflow/, "nth_prime(maxindex+1) overflows");
