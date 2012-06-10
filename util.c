@@ -377,13 +377,30 @@ UV prime_count_upper(UV x)
 
 UV prime_count_approx(UV x)
 {
-  /* Placeholder for fancy algorithms, like Tomás Oliveira e Silva's:
+  /*
+   * A simple way:
+   *     return ((prime_count_lower(x) + prime_count_upper(x)) / 2);
+   * With the current bounds, this is ~131k at 10^10 and 436B at 10^19.
+   *
+   * The logarithmic integral works quite well, with absolute errors of
+   * ~3100 at 10^10 and ~100M at 10^19.
+   *
+   * Riemann's R function works astoundingly well, with errors of ~1828
+   * at 10^10 and 24M at 10^19.
+   *
+   * Getting fancier, one try using Riemann's pi formula:
    *     http://trac.sagemath.org/sage_trac/ticket/8135
-   * or an approximation to Li(x) plus a delta.
    */
-  UV lower = prime_count_lower(x);
-  UV upper = prime_count_upper(x);
-  return ((lower + upper) / 2);
+  double R;
+  if (x < NPRIME_COUNT_SMALL)
+    return prime_count_small[x];
+
+  R = RiemannR(x);
+  /* We could add the additional factor:
+   *   R = R - (1.0 / log(x)) + (M_1_PI * atan(M_PI/log(x)))
+   * but it's extraordinarily small, so not worth calculating here.
+   */
+  return (UV)(R+0.5);
 }
 
 
@@ -761,4 +778,236 @@ UV prime_count_seg(UV low, UV high)
   }
 
   return count;
+}
+
+/*
+ * See:
+ *  "Multiple-Precision Exponential Integral and Related Functions"
+ *      by David M. Smith, and
+ *  "On the Evaluation of the Complex-Valued Exponential Integral"
+ *      by Vincent Pegoraro and Philipp Slusallek
+ *  "Numerical Recipes" 3rd edition
+ *      by William H. Press et al.
+ *
+ * Any mistakes here are completely my fault.  This code has not been
+ * verified for anything serious.  For better reulsts, see:
+ *    http://www.trnicely.net/pi/pix_0000.htm
+ * which although the author claims are demonstration programs, will
+ * produce more usable results than this code does.
+ */
+
+static double const euler_mascheroni = 0.57721566490153286060651209008240243104215933593992;
+static double const li2 = 1.045163780117492784844588889194613136522615578151;
+
+double ExponentialIntegral(double x) {
+  double const tol = 0.0000000001;
+  double val, term, x_to_the_n, fact_n;
+  double y, t;
+  double sum = 0.0;
+  double c = 0.0;
+  int n;
+
+  if (x == 0) croak("Invalid input to ExponentialIntegral:  x must be != 0");
+
+  if (x < 0) {
+    /* continued fraction */
+#if 0
+    val = 0;
+    for (n = 50; n >= 1; n--) {
+      val = -n * n / (2 * n + 1 - x + val);
+    }
+    val = -exp(x) / (1 - x + val);
+#else
+    double old;
+    double lc = 0;
+    double ld = 1 / (1 - x);
+    val = ld * (-exp(x));
+    for (n = 1; n <= 2000; n++) {
+      lc = 1 / (2*n + 1 - x - n*n*lc);
+      ld = 1 / (2*n + 1 - x - n*n*ld);
+      old = val;
+      val *= ld/lc;
+      if ( fabs(val-old) <= tol*fabs(val) )
+        break;
+    }
+#endif
+  } else if (x < -log(tol)) {
+    /* Convergent series */
+    fact_n = 1;
+
+    y = euler_mascheroni-c;  t = sum+y;  c = (t-sum)-y;  sum = t;
+    y = log(x)-c;  t = sum+y;  c = (t-sum)-y;  sum = t;
+
+    for (n = 1; n <= 100; n++) {
+      fact_n *= x/n;
+      term = fact_n/n;
+      y = term-c;  t = sum+y;  c = (t-sum)-y;  sum = t;
+      /* printf("C  after adding %.8lf, val = %.8lf\n", term, sum); */
+      if (term < tol) break;
+    }
+    val = sum;
+    if (term > tol) printf("Tolerance not met after %d rounds for Ei(%lf)\n", n, x);
+  } else {
+    /* Asymptotic divergent series */
+#if 0
+    double last_term, sum;
+    last_term = 1.0;
+    x_to_the_n = 1;
+    fact_n = 1;
+
+    y = 1.0-c;  t = sum+y;  c = (t-sum)-y;  sum = t;
+
+    for (n = 1; n <= 100; n++) {
+      x_to_the_n *= x;
+      fact_n *= n;
+      term = fact_n / x_to_the_n;
+      if (term > last_term) break;
+      last_term = term;
+      y = term-c;  t = sum+y;  c = (t-sum)-y;  sum = t;
+      /* printf("A  after adding %.8lf, sum = %.8lf\n", term, sum); */
+    }
+    val = (exp(x) / x) * sum - euler_mascheroni;
+#else
+    double last_term, sum;
+
+    val = exp(x) / x;
+    term = 1.0;
+    y = 1.0-c;  t = sum+y;  c = (t-sum)-y;  sum = t;
+
+    for (n = 1; n <= 100; n++) {
+      last_term = term;
+      term *= n/x;
+      if (term < (tol/val)) break;
+      if (term < last_term) {
+        y = term-c;  t = sum+y;  c = (t-sum)-y;  sum = t;
+        /* printf("A  after adding %.8lf, sum = %.8lf\n", term, sum); */
+      } else {
+        y = (-last_term/3)-c;  t = sum+y;  c = (t-sum)-y;  sum = t;
+        /* printf("A  after adding %.8lf, sum = %.8lf\n", -last_term/3, sum); */
+        break;
+      }
+    }
+    val *= sum;
+#endif
+  }
+
+  return val;
+}
+
+double LogarithmicIntegral(double x) {
+  if (x == 0) return 0;
+  if (x == 1) return -INFINITY;
+  if (x == 2) return li2;
+  if (x <= 0) croak("Invalid input to ExponentialIntegral:  x must be > 0");
+  return ExponentialIntegral(log(x));
+}
+
+/*
+ * Storing the first 10-20 Zeta values makes sense.  Past that it is purely
+ * to avoid making the call to generate them ourselves.  We could cache the
+ * calculated values. */
+static const double riemann_zeta_table[] = {
+  1.6449340668482264364724151666460251892,  /* zeta(2) */
+  1.2020569031595942853997381615114499908,
+  1.0823232337111381915160036965411679028,
+  1.0369277551433699263313654864570341681,
+  1.0173430619844491397145179297909205279,
+  1.0083492773819228268397975498497967596,
+  1.0040773561979443393786852385086524653,
+  1.0020083928260822144178527692324120605,
+  1.0009945751278180853371459589003190170,
+  1.0004941886041194645587022825264699365,
+  1.0002460865533080482986379980477396710,
+  1.0001227133475784891467518365263573957,
+  1.0000612481350587048292585451051353337,
+  1.0000305882363070204935517285106450626,
+  1.0000152822594086518717325714876367220,
+  1.0000076371976378997622736002935630292,  /* zeta(17)  Past here all we're */
+  1.0000038172932649998398564616446219397,  /* zeta(18)  getting is speed.   */
+  1.0000019082127165539389256569577951013,
+  1.0000009539620338727961131520386834493,
+  1.0000004769329867878064631167196043730,
+  1.0000002384505027277329900036481867530,
+  1.0000001192199259653110730677887188823,
+  1.0000000596081890512594796124402079358,
+  1.0000000298035035146522801860637050694,
+  1.0000000149015548283650412346585066307,
+  1.0000000074507117898354294919810041706,
+  1.0000000037253340247884570548192040184,
+  1.0000000018626597235130490064039099454,
+  1.0000000009313274324196681828717647350,
+  1.0000000004656629065033784072989233251,
+  1.0000000002328311833676505492001455976,
+  1.0000000001164155017270051977592973835,
+  1.0000000000582077208790270088924368599,
+  1.0000000000291038504449709968692942523,
+  1.0000000000145519218910419842359296322,
+  1.0000000000072759598350574810145208690,
+  1.0000000000036379795473786511902372363,
+  1.0000000000018189896503070659475848321,
+  1.0000000000009094947840263889282533118,
+};
+#define NPRECALC_ZETA (sizeof(riemann_zeta_table)/sizeof(riemann_zeta_table[0]))
+
+static double evaluate_zeta(double x) {
+  double const tol = 1e-14;
+  double y, t;
+  double sum = 0.0;
+  double c = 0.0;
+  double term;
+  int k;
+
+  /* Simple method.  Slow and inaccurate near x=1, but iterations and accuracy
+   * improve quickly.
+   */
+
+  term = 1.0;          y = term-c;  t = sum+y;  c = (t-sum)-y;  sum = t;
+  term = 1.0/exp2(x);  y = term-c;  t = sum+y;  c = (t-sum)-y;  sum = t;
+
+  for (k = 3; k <= 100000; k++) {
+    if (term < tol) break;
+    if      (k ==  4) term = 1.0 / exp2(2*x);
+    else if (k ==  8) term = 1.0 / exp2(4*x);
+    else if (k == 16) term = 1.0 / exp2(8*x);
+    else              term = 1.0 / pow(k, x);
+    y = term-c;  t = sum+y;  c = (t-sum)-y;  sum = t;
+  }
+  return sum;
+}
+
+double RiemannR(double x) {
+  double const tol = 1e-14;
+  double y, t, part_term, term, flogx, zeta;
+  double sum = 0.0;
+  double c = 0.0;
+  int k;
+
+  if (x <= 0) croak("Invalid input to ReimannR:  x must be > 0");
+
+  y = 1.0-c;  t = sum+y;  c = (t-sum)-y;  sum = t;
+
+  flogx = log(x);
+  part_term = 1;
+
+  /* Do small k with zetas from table */
+  for (k = 1; k <= NPRECALC_ZETA; k++) {
+    zeta = riemann_zeta_table[k+1-2];
+    part_term *= flogx / k;
+    term = part_term / (k * zeta);
+    y = term-c;  t = sum+y;  c = (t-sum)-y;  sum = t;
+    if (term < tol) break;
+    /* printf("R  after adding %.8lf, sum = %.8lf\n", term, sum); */
+  }
+  /* Finish with function */
+  for (; k <= 10000; k++) {
+    if (term < tol) break;
+    zeta = evaluate_zeta(k+1);
+    part_term *= flogx / k;
+    term = part_term / (k * zeta);
+    y = term-c;  t = sum+y;  c = (t-sum)-y;  sum = t;
+    /* printf("R  after adding %.8lf, sum = %.8lf\n", term, sum); */
+  }
+
+
+  return sum;
 }

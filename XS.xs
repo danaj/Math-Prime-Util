@@ -388,3 +388,12 @@ miller_rabin(IN UV n, ...)
 
 int
 is_prob_prime(IN UV n)
+
+double
+ExponentialIntegral(double x)
+
+double
+LogarithmicIntegral(double x)
+
+double
+RiemannR(double x)

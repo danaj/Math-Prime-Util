@@ -20,6 +20,10 @@ extern UV  nth_prime_upper(UV x);
 extern UV  nth_prime_approx(UV x);
 extern UV  nth_prime(UV x);
 
+extern double ExponentialIntegral(double x);
+extern double LogarithmicIntegral(double x);
+extern double RiemannR(double x);
+
 #define SEGMENT_CHUNK_SIZE  UVCONST(262144)
 extern unsigned char* get_prime_segment(void);
 extern void           free_prime_segment(void);

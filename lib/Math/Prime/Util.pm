@@ -5,7 +5,7 @@ use Carp qw/croak confess/;
 
 BEGIN {
   $Math::Prime::Util::AUTHORITY = 'cpan:DANAJ';
-  $Math::Prime::Util::VERSION = '0.04';
+  $Math::Prime::Util::VERSION = '0.05';
 }
 
 # parent is cleaner, and in the Perl 5.10.1 / 5.12.0 core, but not earlier.
@@ -20,6 +20,7 @@ our @EXPORT_OK = qw(
                      nth_prime nth_prime_lower nth_prime_upper nth_prime_approx
                      random_prime random_ndigit_prime
                      factor
+                     ExponentialIntegral LogarithmicIntegral RiemannR
                    );
 our %EXPORT_TAGS = (all => [ @EXPORT_OK ]);
 
@@ -387,10 +388,9 @@ above that range.
         " primes below one quintillion.\n";
 
 Returns an approximation to the C<prime_count> function, without having to
-generate any primes.  The results are very close for small numbers, but less
-so with large ranges.  The current implementation is 0.00033% too small
-for the example, but takes under a microsecond and no memory to get the
-result.
+generate any primes.  The current implementation uses the Riemann R function
+which is quite accurate.  A slightly faster answer, but less accurate,
+can be obtained by averaging the upper and lower bounds.
 
 
 =head2 nth_prime
@@ -618,6 +618,46 @@ input value.  On some inputs they will take a very long time, while on
 others they succeed in a remarkably short time.
 
 
+
+=head1 MATHEMATICAL FUNCTIONS
+
+=head2 ExponentialIntegral
+
+  my $Ei = ExponentialIntegral($x);
+
+Given a non-zero floating point input C<x>, this returns the exponential integral
+of C<x>, defined as the integral of C<e^t/t dt> from C<-infinity> to C<x>.
+Depending on the input, the integral
+is calculated using continued fractions (negative C<x>), a convergent series
+(small positive C<x>), or an asymptotic divergent series (large positive C<x>).
+This function only considers the real part.
+
+=head2 LogarithmicIntegral
+
+  my $li = LogarithmicIntegral($x)
+
+Given a positive floating point input, returns the floating point logarithmic
+integral of C<x>, defined as the integral of C<dt/ln t> from C<0> to C<x>.
+If given a negative input, the function will croak.  The function returns
+0 at C<x = 0>, and C<-infinity> at C<x = 1>.
+
+This is often known as C<li(x)>.  A related function is the offset logarithmic
+integral, sometimes known as C<Li(x)> which avoids the singularity at 1.  It
+may be defined as C<Li(x) = li(x) - li(2)>.
+
+This function is implemented as C<li(x) = Ei(ln x)> after handling special
+values.
+
+=head2 RiemannR
+
+  my $r = RiemannR($x);
+
+Given a positive non-zero floating point input, returns the floating
+point value of Riemann's R function.  Riemann's R function gives a very close
+approximation to the prime counting function.
+
+
+
 =head1 LIMITATIONS
 
 I have not completed testing all the functions near the word size limit
@@ -629,6 +669,7 @@ not being big number aware.
 Perl versions earlier than 5.8.0 have issues with 64-bit.  The test suite will
 try to determine if your Perl is broken.  This will show up in factoring tests.
 Perl 5.6.2 32-bit works fine, as do later versions with 32-bit and 64-bit.
+
 
 
 =head1 PERFORMANCE
