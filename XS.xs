@@ -147,7 +147,7 @@ segment_primes(IN UV low, IN UV high, IN UV segment_size = 65536UL)
 
       {  /* Avoid recalculations of this */
         UV endp = (high_d >= (UV_MAX/30))  ?  UV_MAX-2  :  30*high_d+29;
-        prime_precalc( sqrt(endp) + 1 );
+        prime_precalc( sqrt(endp) + 0.1 + 1 );
       }
 
       while ( low_d <= high_d ) {
@@ -272,9 +272,13 @@ factor(IN UV n)
             /* For sufficiently large n, try more complex methods. */
             /* SQUFOF (succeeds 98-99.9%) */
             split_success = squfof_factor(n, factor_stack+nstack, 256*1024)-1;
-            /* a few rounds of Pollard rho (succeeds most of the rest) */
+            /* A few rounds of Pollard rho (succeeds most of the rest) */
             if (!split_success) {
               split_success = prho_factor(n, factor_stack+nstack, 400)-1;
+            }
+            /* Some rounds of HOLF, good for close to perfect squares */
+            if (!split_success) {
+              split_success = holf_factor(n, factor_stack+nstack, 2000)-1;
             }
           }
           if (split_success) {
@@ -285,13 +289,13 @@ factor(IN UV n)
             /* trial divisions */
             UV f = tlim;
             UV m = tlim % 30;
-            UV limit = sqrt((double) n);
+            UV limit = (UV) (sqrt(n)+0.1);
             while (f <= limit) {
               if ( (n%f) == 0 ) {
                 do {
                   n /= f;  XPUSHs(sv_2mortal(newSVuv( f )));
                 } while ( (n%f) == 0 );
-                limit = sqrt((double) n);
+                limit = (UV) (sqrt(n)+0.1);
               }
               f += wheeladvance30[m];
               m =  nextwheel30[m];

@@ -32,7 +32,7 @@ sub test_at_digits {
     my @mpxs = prime_factors($p);  push @mpxs, $p if $p < 2;
 
     verify_factor($p, \@mpxs, [factor($p)], "Math::Prime::Util $Math::Prime::Util::VERSION");
-}
+  }
 
 
   #my $min_num = min @nums;

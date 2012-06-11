@@ -50,7 +50,7 @@ int trial_factor(UV n, UV *factors, UV maxtrial)
     return nfactors;
   }
 
-  limit = sqrt((double) n);
+  limit = (UV) (sqrt(n)+0.1);
   if (limit > maxtrial)
     limit = maxtrial;
 
@@ -64,7 +64,7 @@ int trial_factor(UV n, UV *factors, UV maxtrial)
         factors[nfactors++] = f;
         n /= f;
       } while ( (n%f) == 0 );
-      newlimit = sqrt(n);
+      newlimit = (UV) (sqrt(n)+0.1);
       if (newlimit < limit)  limit = newlimit;
     }
     f += wheeladvance30[m];
@@ -371,7 +371,7 @@ int fermat_factor(UV n, UV *factors, UV rounds)
 
   MPUassert( (n >= 3) && ((n%2) != 0) , "bad n in fermat_factor");
 
-  sqn = sqrt((double) n);
+  sqn = (UV) (sqrt(n)+0.1);
   x = 2 * sqn + 1;
   y = 1;
   r = (sqn*sqn) - n;

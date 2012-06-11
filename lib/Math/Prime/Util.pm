@@ -368,9 +368,9 @@ C<~ 10^11>.  Memory use is proportional only to C<sqrt(a)>, with total
 memory use under 1MB for any base under C<10^14>.
 
 A later implementation may work on improving performance for values, both
-in reducing memory use (the current maximum is 140MB at 2^64) and improving
+in reducing memory use (the current maximum is 140MB at C<2^64>) and improving
 speed.  Possibilities include a hybrid table approach, using an explicit
-formula with C<li(x) or C<R(x)>, or one of the Meissel, Lehmer,
+formula with C<li(x)> or C<R(x)>, or one of the Meissel, Lehmer,
 or Lagarias-Miller-Odlyzko-Deleglise-Rivat methods.
 
 
