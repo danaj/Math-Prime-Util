@@ -8,7 +8,7 @@ use Math::Prime::Util qw/prime_count prime_count_lower prime_count_upper prime_c
 my $use64 = Math::Prime::Util::_maxbits > 32;
 my $extra = defined $ENV{RELEASE_TESTING} && $ENV{RELEASE_TESTING};
 
-plan tests => 14*3 + ($extra ? 14 : 8) + ($use64 ? 2*18 : 0);
+plan tests => 14*3 + 8 + 6*$extra + 2*18*$use64 + 12 + 5*$use64;
 
 #  Powers of 2:  http://oeis.org/A007053/b007053.txt
 #  Powers of 10: http://oeis.org/A006880/b006880.txt
@@ -65,7 +65,52 @@ if ($use64) {
   }
 }
 
+#  ./primesieve 1e10 -o2**32 -c1
+#  ./primesieve 24689 7973249 -c1
+my %intervals = (
+  "868396 to 9478505" => 563275,
+  "1118105 to 9961674" => 575195,
+  "24689 to 7973249" => 535368,
+  "1e10 +2**16" => 2821,
+  "17 to 13"    => 0,
+  "3 to 17"     => 6,
+  "4 to 17"     => 5,
+  "4 to 16"     => 4,
+  "191912783 +248" => 2,
+  "191912784 +247" => 1,
+  "191912783 +247" => 1,
+  "191912784 +246" => 0,
 
+  "1e14 +2**16" => 1973,
+  "127976334671 +468" => 2,
+  "127976334672 +467" => 1,
+  "127976334671 +467" => 1,
+  "127976334672 +466" => 0,
+);
+
+while (my($range, $expect) = each (%intervals)) {
+  my($low,$high);
+  if ($range =~ /(\S+)\s+to\s+(\S+)/) {
+    $low = fixnum($1);
+    $high = fixnum($2);
+  } elsif ($range =~ /(\S+)\s*\+\s*(\S+)/) {
+    $low = fixnum($1);
+    $high = $low + fixnum($2);
+  } else {
+    die "Can't parse test data";
+  }
+  next if $high > ~0;
+  is( prime_count($low,$high), $expect, "prime_count($range) = $expect");
+}
+
+sub fixnum {
+  my $nstr = shift;
+  $nstr =~ s/^(\d+)e(\d+)$/$1*(10**$2)/e;
+  $nstr =~ s/^(\d+)\*\*(\d+)$/$1**$2/e;
+  die "Unknown string in test" unless $nstr =~ /^\d+$/;
+  $nstr;
+}
+ 
 # TODO: intervals.  From primesieve:
 #    155428406, // prime count 2^32 interval starting at 10^12
 #    143482916, // prime count 2^32 interval starting at 10^13
@@ -75,4 +120,5 @@ if ($use64) {
 #    109726486, // prime count 2^32 interval starting at 10^17
 #    103626726, // prime count 2^32 interval starting at 10^18
 #    98169972}; // prime count 2^32 interval starting at 10^19
-# Note:  ./primesieve 1e10 -o2**32 -c1
+
+

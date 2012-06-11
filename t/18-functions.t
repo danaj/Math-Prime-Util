@@ -8,7 +8,7 @@ use Math::Prime::Util qw/prime_count ExponentialIntegral LogarithmicIntegral Rie
 my $use64 = Math::Prime::Util::_maxbits > 32;
 my $extra = defined $ENV{RELEASE_TESTING} && $ENV{RELEASE_TESTING};
 
-#plan tests => 14*3 + ($extra ? 14 : 8) + ($use64 ? 2*18 : 0);
+plan tests => 4 + 1 + 12 + 11 + 9;
 
 eval { ExponentialIntegral(0); };
 like($@, qr/invalid/i, "Ei(0) is invalid");
@@ -76,8 +76,6 @@ while (my($n, $rin) = each (%rvals)) {
   cmp_closeto( RiemannR($n), $rin, 0.00000001 * abs($rin), "R($n) ~= $rin");
 }
 
-
-done_testing();
 
 sub cmp_closeto {
   my $got = shift;

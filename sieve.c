@@ -32,8 +32,10 @@ UV get_prime_cache(UV n, const unsigned char** sieve)
     prime_cache_size = 0;
 
     /* Sieve a bit more than asked, to mitigate thrashing */
-    if (n < (UV_MAX-3840))
-      n += 3840;
+    if (n >= (UV_MAX-3840))
+      n = UV_MAX;
+    else
+      n = ((n + 3840)/30)*30;
     /* TODO: testing near 2^32-1 */
 
     prime_cache_sieve = sieve_erat30(n);

@@ -30,10 +30,8 @@ prime_count(IN UV low, IN UV high = 0)
     if (GIMME_V == G_VOID) {
       prime_precalc(high);
       RETVAL = 0;
-    } else if (low == 0) {
-      RETVAL = prime_count(high);
     } else {
-      RETVAL = prime_count_seg(low, high);
+      RETVAL = prime_count(low, high);
     }
   OUTPUT:
     RETVAL

@@ -8,10 +8,7 @@ use Math::Prime::Util qw/is_prime miller_rabin/;
 my $use64 = Math::Prime::Util::_maxbits > 32;
 my $extra = defined $ENV{RELEASE_TESTING} && $ENV{RELEASE_TESTING};
 
-#plan tests => 6 + 19 + 3573 + (5 + 29 + 22 + 23 + 16) + 15 + 27
-#              + ($use64 ? 5+1 : 0)
-#              + ($extra ? 6 : 0)
-#              + (($extra && $use64) ? 19 : 0);
+plan tests => 3 + 295 + 4 + 4*$use64 + 1 + 1*$extra + 161;
 
 ok(!eval { miller_rabin(2047); }, "MR with no base fails");
 ok(!eval { miller_rabin(2047,0); }, "MR base 0 fails");
@@ -105,5 +102,3 @@ foreach my $base (@ebases) {
 #                      1005905886, 1340600841, 553174392, 3046413974,
 #                      203659041, 3613982119,
 #                      9780504, 1795265022
-
-done_testing();

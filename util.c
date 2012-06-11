@@ -3,6 +3,11 @@
 #include <string.h>
 #include <math.h>
 
+/* It took until C99 to get this macro */
+#ifndef INFINITY
+#define INFINITY (DBL_MAX + DBL_MAX)
+#endif
+
 #include "util.h"
 #include "sieve.h"
 #include "factor.h"
@@ -237,6 +242,109 @@ UV prev_prime(UV n)
 
 
 
+/* Given a sieve of size nbytes, walk it counting zeros (primes) until:
+ *
+ * (1) we counted them all: return the count, which will be less than maxcount.
+ *
+ * (2) we hit maxcount: set position to the index of the maxcount'th prime
+ *     and return count (which will be equal to maxcount).
+ */
+static UV count_segment_maxcount(const unsigned char* sieve, UV nbytes, UV maxcount, UV* pos)
+{
+  UV count = 0;
+  UV byte = 0;
+
+  MPUassert(sieve != 0, "count_segment_maxcount incorrect args");
+  MPUassert(pos != 0, "count_segment_maxcount incorrect args");
+  *pos = 0;
+  if ( (nbytes == 0) || (maxcount == 0) )
+    return 0;
+
+  while ( (byte < nbytes) && (count < maxcount) )
+    count += byte_zeros[sieve[byte++]];
+
+  if (count >= maxcount) { /* One too far -- back up */
+    count -= byte_zeros[sieve[--byte]];
+  }
+
+  MPUassert(count < maxcount, "count_segment_maxcount wrong count");
+
+  if (byte == nbytes)
+    return count;
+
+  /* The result is somewhere in the next byte */
+  START_DO_FOR_EACH_SIEVE_PRIME(sieve, byte*30+1, nbytes*30-1)
+    if (++count == maxcount)  { *pos = p; return count; }
+  END_DO_FOR_EACH_SIEVE_PRIME;
+
+  MPUassert(0, "count_segment_maxcount failure");
+  return 0;
+}
+
+/* Given a sieve of size nbytes, counting zeros (primes) but excluding the
+ * areas outside lowp and highp.
+ */
+static UV count_segment_ranged(const unsigned char* sieve, UV nbytes, UV lowp, UV highp)
+{
+  UV count = 0;
+
+  UV lo_d = lowp/30;
+  UV lo_m = lowp - lo_d*30;
+  UV hi_d = highp/30;
+  UV hi_m = highp - hi_d*30;
+
+  MPUassert( sieve != 0, "count_segment_maxcount incorrect args");
+
+  if (hi_d >= nbytes) {
+    hi_d = nbytes-1;
+    highp = hi_d*30+29;
+  }
+
+  if ( (nbytes == 0) || (highp < lowp) )
+    return 0;
+
+#if 0
+  /* Dead simple way */
+  START_DO_FOR_EACH_SIEVE_PRIME(sieve, lowp, highp)
+    count++;
+  END_DO_FOR_EACH_SIEVE_PRIME;
+  return count;
+#endif
+
+  /* Count first fragment */
+  if (lo_m > 1) {
+    UV upper = (highp <= (lo_d*30+29)) ? highp : (lo_d*30+29);
+    START_DO_FOR_EACH_SIEVE_PRIME(sieve, lowp, upper)
+      count++;
+    END_DO_FOR_EACH_SIEVE_PRIME;
+    lowp = upper+2;
+    lo_d = lowp/30;
+    lo_m = lowp - lo_d*30;
+  }
+  if (highp < lowp)
+    return count;
+
+  /* Count bytes in the middle */
+  {
+    UV count_bytes = hi_d - lo_d + (hi_m == 29);
+    if (count_bytes > 0) {
+      count += count_zero_bits(sieve+lo_d, count_bytes);
+      lowp += 30*count_bytes;
+      lo_d = lowp/30;
+      lo_m = lowp - lo_d*30;
+    }
+  }
+  if (highp < lowp)
+    return count;
+
+  /* Count last fragment */
+  START_DO_FOR_EACH_SIEVE_PRIME(sieve, lowp, highp)
+    count++;
+  END_DO_FOR_EACH_SIEVE_PRIME;
+
+  return count;
+}
+
 
 /*
  * The pi(x) prime count functions.  prime_count(x) gives an exact number,
@@ -295,17 +403,23 @@ UV prime_count_lower(UV x)
   if (x < 599)
     return (UV) (fx / (flogx-0.7));
 
-  if      (x <     2700) {  a = 0.30; }
-  else if (x <     5500) {  a = 0.90; }
-  else if (x <    19400) {  a = 1.30; }
-  else if (x <    32299) {  a = 1.60; }
-  else if (x <   176000) {  a = 1.80; }
-  else if (x <   315000) {  a = 2.10; }
-  else if (x <  1100000) {  a = 2.20; }
-  else if (x <  4500000) {  a = 2.31; }
-  else if (x <233000000) {  a = 2.36; }
-  else if (x <240000000) {  a = 2.32; }
-  else if (x <UVCONST(0xFFFFFFFF)) {  a = 2.32; }
+  if      (x <     2700)  { a = 0.30; }
+  else if (x <     5500)  { a = 0.90; }
+  else if (x <    19400)  { a = 1.30; }
+  else if (x <    32299)  { a = 1.60; }
+  else if (x <   176000)  { a = 1.80; }
+  else if (x <   315000)  { a = 2.10; }
+  else if (x <  1100000)  { a = 2.20; }
+  else if (x <  4500000)  { a = 2.31; }
+  else if (x <233000000)  { a = 2.36; }
+  else if (x <240000000)  { a = 2.32; }
+#if BITS_PER_WORD == 32
+  else a = 2.32;
+#else
+  else if (x < UVCONST( 5433800000)) { a = 2.32; }
+  else if (x < UVCONST(10000000000)) { a = 2.15; }
+  else a = 1.80;
+#endif
 
   return (UV) ( (fx/flogx) * (F1 + F1/flogx + a/(flogx*flogx)) );
 }
@@ -351,7 +465,12 @@ UV prime_count_upper(UV x)
   else if (x <400000000) {  a = 2.375; }
   else if (x <510000000) {  a = 2.370; }
   else if (x <682000000) {  a = 2.367; }
-  else if (x <UVCONST(0xFFFFFFFF)) {  a = 2.362; }
+#if BITS_PER_WORD == 32
+  else a = 2.362;
+#else
+  else if (x < UVCONST(10000000000)) { a = 2.362; }
+  else a = 2.51;
+#endif
 
   /*
    * An alternate idea:
@@ -404,75 +523,73 @@ UV prime_count_approx(UV x)
 }
 
 
-UV prime_count(UV n)
+UV prime_count(UV low, UV high)
 {
-  const unsigned char* sieve;
-  static UV last_bytes = 0;
-  static UV last_count = 3;
-  UV s, bytes;
-  UV count = 3;
+  const unsigned char* cache_sieve;
+  unsigned char* segment;
+  UV segbase, segment_size, low_d, high_d;
+  UV count = 0;
 
-  if (n < NPRIME_COUNT_SMALL)
-    return prime_count_small[n];
+  if ( (low <= 2) && (high < NPRIME_COUNT_SMALL) )
+    return prime_count_small[high];
 
-  bytes = n/30;
-  s = 0;
+  if ((low <= 2) && (high >= 2)) count++;
+  if ((low <= 3) && (high >= 3)) count++;
+  if ((low <= 5) && (high >= 5)) count++;
+  if (low < 7)  low = 7;
 
-  if (n <= get_prime_cache(0, &sieve)) {
+  if (low > high)  return count;
 
-    /* We have enough primes -- just count them. */
+  low_d = low/30;
+  high_d = high/30;
+  //printf("  our range %lu - %lu lies in bytes %lu - %lu\n", low, high, low_d, high_d);
 
-    /* Start from last word position if we can.  This is a big speedup when
-     * calling prime_count many times with successively larger numbers. */
-    if (bytes >= last_bytes) {
-      s = last_bytes;
-      count = last_count;
+  /* Count full bytes only -- no fragments from primary cache */
+  segment_size = get_prime_cache(0, &cache_sieve) / 30;
+  if (segment_size < high_d) {
+    /* Expand sieve to sqrt(n) */
+    UV endp = (high_d >= (UV_MAX/30))  ?  UV_MAX-2  :  30*high_d+29;
+    segment_size = get_prime_cache( sqrt(endp) + 1 , &cache_sieve) / 30;
+  }
+  //printf("  primary cache is %lu bytes.  From %lu to %lu.  Size=%lu, count=%lu\n", segment_size, 0, (segment_size-1)*30+29, get_prime_cache_size(), count_zero_bits(cache_sieve, segment_size-1));
+
+  if (1 && low_d <= segment_size) {
+    /* Count all the primes in the primary cache in our range */
+    count += count_segment_ranged(cache_sieve, segment_size, low, high);
+    //printf("  counted in pcache, count (%lu,%lu) is %lu\n", low, high, count);
+
+    if (high_d <= segment_size)
+      return count;
+
+    low_d = segment_size;
+  }
+
+  /* More primes needed.  Repeatedly segment sieve */
+  segment_size = SEGMENT_CHUNK_SIZE;
+  segment = get_prime_segment();
+  if (segment == 0)
+    return 0;
+
+  while (low_d <= high_d)
+  {
+    UV seghigh_d = ((high_d - low_d) < segment_size)
+                   ? high_d
+                   : (low_d + segment_size-1);
+    UV range_d = seghigh_d - low_d + 1;
+    UV seglow  = (low_d*30 < low) ? low : low_d*30;
+    UV seghigh = (seghigh_d == high_d) ? high : (seghigh_d*30+29);
+    //printf("  seg d: %lu - %lu   seg p: %lu - %lu\n", low_d, seghigh_d, seglow, seghigh);
+
+    //printf("  sieve from bytes %lu to %lu\n", low_d, seghigh_d);
+    if (sieve_segment(segment, low_d, seghigh_d) == 0) {
+      croak("Could not segment sieve from %"UVuf" to %"UVuf, segbase+1, 30*(segbase+segment_size)+29);
+      break;
     }
 
-    count += count_zero_bits(sieve+s, bytes-s);
+    //printf("  count from %lu to %lu\n", seglow - low_d*30, seghigh - low_d*30);
+    count += count_segment_ranged(segment, segment_size, seglow - low_d*30, seghigh - low_d*30);
 
-    last_bytes = bytes;
-    last_count = count;
-
-    START_DO_FOR_EACH_SIEVE_PRIME(sieve, 30*bytes, n)
-      count++;
-    END_DO_FOR_EACH_SIEVE_PRIME;
-
-  } else {
-
-    /* We don't have enough primes.  Repeatedly segment sieve */
-    UV const segment_size = SEGMENT_CHUNK_SIZE;
-    unsigned char* segment;
-
-    /* Get this over with once */
-    prime_precalc( sqrt(n) + 2 );
-
-    segment = get_prime_segment();
-    if (segment == 0)
-      return 0;
-
-    for (s = 0; s <= bytes; s += segment_size) {
-      /* We want to sieve one extra byte, to handle the last fragment */
-      UV sieve_bytes = ((bytes-s) >= segment_size) ? segment_size : bytes-s+1;
-      UV count_bytes = ((bytes-s) >= segment_size) ? segment_size : bytes-s;
-
-      /* printf("sieving from %"UVuf" to %"UVuf"\n", 30*s+1, 30*(s+sieve_bytes-1)+29); */
-      if (sieve_segment(segment, s, s + sieve_bytes - 1) == 0) {
-        croak("Could not segment sieve from %"UVuf" to %"UVuf, 30*s+1, 30*(s+sieve_bytes)+29);
-        break;
-      }
-
-      if (count_bytes > 0)
-        count += count_zero_bits(segment, count_bytes);
-
-    }
-    s -= segment_size;
-
-    /*printf("counting fragment from %"UVuf" to %"UVuf"\n", 30*bytes-30*s, n-30*s); */
-    START_DO_FOR_EACH_SIEVE_PRIME(segment, 30*bytes - s*30, n - s*30)
-      count++;
-    END_DO_FOR_EACH_SIEVE_PRIME;
-
+    low_d += range_d;
   }
 
   return count;
@@ -615,46 +732,6 @@ UV nth_prime_approx(UV n)
 }
 
 
-/*
- * Given a sieve of size nbytes, walk it counting zeros (primes) until:
- *
- * (1) we counted them all: return the count, which will be less than maxcount.
- *
- * (2) we hit maxcount: set position to the index of the maxcount'th prime
- *     and return count (which will be equal to maxcount).
- */
-static UV count_segment(const unsigned char* sieve, UV nbytes, UV maxcount, UV* pos)
-{
-  UV count = 0;
-  UV byte = 0;
-
-  MPUassert(sieve != 0, "count_segment incorrect args");
-  MPUassert(pos != 0, "count_segment incorrect args");
-  *pos = 0;
-  if ( (nbytes == 0) || (maxcount == 0) )
-    return 0;
-
-  while ( (byte < nbytes) && (count < maxcount) )
-    count += byte_zeros[sieve[byte++]];
-
-  if (count >= maxcount) { /* One too far -- back up */
-    count -= byte_zeros[sieve[--byte]];
-  }
-
-  MPUassert(count < maxcount, "count_segment wrong count");
-
-  if (byte == nbytes)
-    return count;
-
-  /* The result is somewhere in the next byte */
-  START_DO_FOR_EACH_SIEVE_PRIME(sieve, byte*30+1, nbytes*30-1)
-    if (++count == maxcount)  { *pos = p; return count; }
-  END_DO_FOR_EACH_SIEVE_PRIME;
-
-  MPUassert(0, "count_segment failure");
-  return 0;
-}
-
 UV nth_prime(UV n)
 {
   const unsigned char* cache_sieve;
@@ -683,7 +760,7 @@ UV nth_prime(UV n)
     segment_size = get_prime_cache(sqrt(upper_limit), &cache_sieve) / 30;
 
   /* Count up everything in the cached sieve. */
-  count += count_segment(cache_sieve, segment_size, target, &p);
+  count += count_segment_maxcount(cache_sieve, segment_size, target, &p);
   if (count == target)
     return p;
 
@@ -706,7 +783,7 @@ UV nth_prime(UV n)
     }
 
     /* Count up everything in this segment */
-    count += count_segment(segment, segment_size, target-count, &p);
+    count += count_segment_maxcount(segment, segment_size, target-count, &p);
 
     if (count < target)
       segbase += segment_size;
@@ -715,70 +792,8 @@ UV nth_prime(UV n)
   return ( (segbase*30) + p );
 }
 
-UV prime_count_seg(UV low, UV high)
-{
-  UV const segment_size = SEGMENT_CHUNK_SIZE;
-  unsigned char* segment;
-  UV low_d, high_d;
-  UV count = 0;
 
-  if ((low <= 2) && (high >= 2)) count++;
-  if ((low <= 3) && (high >= 3)) count++;
-  if ((low <= 5) && (high >= 5)) count++;
-  if (low < 7)  low = 7;
 
-  if (low > high)  return count;
-
-  /*
-   *  (1)  be smart about small low/high values.
-   *  (2)  be generic so we can kill the other function
-   *  (3)  use fast counting.
-   */
-
-  segment = get_prime_segment();
-  if (segment == 0)
-    return 0;
-
-  low_d  = low  / 30;
-  high_d = high / 30;
-
-  {  /* Avoid recalculations of this */
-    UV endp = (high_d >= (UV_MAX/30))  ?  UV_MAX-2  :  30*high_d+29;
-    prime_precalc( sqrt(endp) + 1 );
-  }
-
-  while ( low_d <= high_d ) {
-    UV seghigh_d = ((high_d - low_d) < segment_size)
-                   ? high_d
-                   : (low_d + segment_size-1);
-    UV range_d = seghigh_d - low_d + 1;
-    UV seghigh = (seghigh_d == high_d) ? high : (seghigh_d*30+29);
-    UV segbase = low_d * 30;
-    /* printf("  startd = %"UVuf"  endd = %"UVuf"\n", startd, endd); */
-
-    MPUassert( seghigh_d >= low_d, "segment_primes highd < lowd");
-    MPUassert( range_d <= segment_size, "segment_primes range > segment size");
-
-    /* Sieve from startd*30+1 to endd*30+29.  */
-    if (sieve_segment(segment, low_d, seghigh_d) == 0) {
-      croak("Could not segment sieve from %"UVuf" to %"UVuf, segbase+1, seghigh);
-      break;
-    }
-
-    if (seghigh < high) {
-      count += count_zero_bits(segment, range_d);
-    } else {
-      START_DO_FOR_EACH_SIEVE_PRIME( segment, low - segbase, seghigh - segbase )
-        count++;
-      END_DO_FOR_EACH_SIEVE_PRIME
-    }
-
-    low_d += range_d;
-    low = seghigh+2;
-  }
-
-  return count;
-}
 
 /*
  * See:

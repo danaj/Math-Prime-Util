@@ -9,18 +9,16 @@
 
 - Add test to check maxbits in compiled library vs. Perl
 
-- Li(n)
-
 - Pure perl implementations
 
 - input validation (in XS, or do we need to make Perl wrappers for everything?)
 
 - Faster SQUFOF
 
-- nth_prime bounds are < in the code, but <= in the documentation.
-
 - speed up random_prime for large numbers
 
 - test x64 asm if Perl is built for 32-bit
 
 - Clean up prime_count ranges.  Write tests.
+
+- better prime count upper/lower bounds

@@ -12,8 +12,7 @@ extern UV  prev_prime(UV x);
 extern UV  prime_count_lower(UV x);
 extern UV  prime_count_upper(UV x);
 extern UV  prime_count_approx(UV x);
-extern UV  prime_count(UV x);
-extern UV prime_count_seg(UV low, UV high);
+extern UV  prime_count(UV low, UV high);
 
 extern UV  nth_prime_lower(UV n);
 extern UV  nth_prime_upper(UV x);
