@@ -232,7 +232,8 @@ Version 0.04
 
 
   # Return Pi(n) -- the number of primes E<lt>= n.
-  my $number_of_primes = prime_count( 1_000_000 );
+  $primepi = prime_count( 1_000_000 );
+  $primepi = prime_count( 10**14, 10**14+1000 );  # also does ranges
 
   # Quickly return an approximation to Pi(n)
   my $approx_number_of_primes = prime_count_approx( 10**17 );
@@ -327,8 +328,9 @@ using wheel factorization, or a segmented sieve.
   $n = next_prime($n);
 
 Returns the next prime greater than the input number.  0 is returned if the
-next prime is larger than a native integer type (the last primes being
-C<4,294,967,291> in 32-bit Perl and C<18,446,744,073,709,551,557> in 64-bit).
+next prime is larger than a native integer type (the last representable
+primes being C<4,294,967,291> in 32-bit Perl and
+C<18,446,744,073,709,551,557> in 64-bit).
 
 
 =head2 prev_prime
@@ -341,16 +343,27 @@ input is C<2> or lower.
 
 =head2 prime_count
 
-  my $number_of_primes = prime_count( 1_000 );
+  my $primepi = prime_count( 1_000 );
+  my $pirange = prime_count( 1_000, 10_000 );
 
-Returns the Prime Count function C<Pi(n)>.  The current implementation relies
-on sieving to find the primes within the interval, so will take some time and
-memory.  It uses a segmented sieve if the primary sieve is not large enough,
-so is very memory efficient.  However, time growth is slightly more than
-linear with C<n>, so it can take a very long time.  A hybrid table approach
-is the usual means taken to speed this up, which a later version may do.  For
-very large inputs the methods of Meissel, Lehmer, or
-Lagarias-Miller-Odlyzko-Deleglise-Rivat may be appropriate.
+Returns the Prime Count function C<Pi(n)>, also called C<primepi> in some
+math packages.  When given two arguments, it returns the inclusive
+count of primes between the ranges (e.g. C<(13,17)> returns 2, C<14,17>
+and C<13,16> return 1, and C<14,16> returns 0).
+
+The current implementation relies on sieving to find the primes within the
+interval, so will take some time and memory.  It uses a segmented sieve so
+is very memory efficient, and also allows fast results even with large
+base values.  The complexity for C<prime_count(a, b)> is approximately
+C<O(sqrt(a) + (b-a))>, where the first term is typically negligible below
+C<~ 10^11>.  Memory use is proportional only to C<sqrt(a)>, with total
+memory use under 1MB for any base under C<10^14>.
+
+A later implementation may work on improving performance for values, both
+in reducing memory use (the current maximum is 140MB at 2^64) and improving
+speed.  Possibilities include a hybrid table approach, using an explicit
+formula with C<li(x) or C<R(x)>, or one of the Meissel, Lehmer,
+or Lagarias-Miller-Odlyzko-Deleglise-Rivat methods.
 
 
 =head2 prime_count_upper
@@ -371,8 +384,8 @@ A common place these would be used is sizing an array to hold the first C<$n>
 primes.  It may be desirable to use a bit more memory than is necessary, to
 avoid calling C<prime_count>.
 
-These routines use hand-verified tight limits below a range at least C<2^32>,
-and fall back to the proven Dusart bounds of
+These routines use hand-verified tight limits below a range at least C<2^33>,
+and fall back to the Dusart bounds of
 
     x/logx * (1 + 1/logx + 1.80/log^2x) <= Pi(x)
 
@@ -389,8 +402,9 @@ above that range.
 
 Returns an approximation to the C<prime_count> function, without having to
 generate any primes.  The current implementation uses the Riemann R function
-which is quite accurate.  A slightly faster answer, but less accurate,
-can be obtained by averaging the upper and lower bounds.
+which is quite accurate: an error of less than C<0.0005%> is typical for
+input values over C<2^32>.  A slightly faster (0.1ms vs. 1ms), but much less
+accurate, answer can be obtained by averaging the upper and lower bounds.
 
 
 =head2 nth_prime

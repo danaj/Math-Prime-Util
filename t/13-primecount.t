@@ -8,7 +8,7 @@ use Math::Prime::Util qw/prime_count prime_count_lower prime_count_upper prime_c
 my $use64 = Math::Prime::Util::_maxbits > 32;
 my $extra = defined $ENV{RELEASE_TESTING} && $ENV{RELEASE_TESTING};
 
-plan tests => 14*3 + 8 + 6*$extra + 2*18*$use64 + 12 + 5*$use64;
+plan tests => 14*3 + 8 + 6*$extra + 3*18*$use64 + 11 + 6*$use64;
 
 #  Powers of 2:  http://oeis.org/A007053/b007053.txt
 #  Powers of 10: http://oeis.org/A006880/b006880.txt
@@ -55,13 +55,16 @@ while (my($n, $pin) = each (%pivals32)) {
     is( prime_count($n), $pin, "Pi($n) = $pin" );
   }
   my $approx_range = abs($pin - prime_count_approx($n));
-  my $range_limit = ($n <= 1000000000) ? 1100 : 70000;
+  my $range_limit = ($n <= 100000000) ? 100 : 500;
   cmp_ok( $approx_range, '<=', $range_limit, "prime_count_approx($n) within $range_limit");
 }
 if ($use64) {
   while (my($n, $pin) = each (%pivals64)) {
     cmp_ok( prime_count_upper($n), '>=', $pin, "Pi($n) <= upper estimate" );
     cmp_ok( prime_count_lower($n), '<=', $pin, "Pi($n) >= lower estimate" );
+    my $approx = prime_count_approx($n);
+    my $percent_limit = 0.0005;
+    cmp_ok( abs($pin - $approx) / $pin, '<=', $percent_limit/100.0, "prime_count approx($n) within $percent_limit\% of Pi($n)");
   }
 }
 
@@ -102,6 +105,7 @@ while (my($range, $expect) = each (%intervals)) {
   next if $high > ~0;
   is( prime_count($low,$high), $expect, "prime_count($range) = $expect");
 }
+exit(0);
 
 sub fixnum {
   my $nstr = shift;

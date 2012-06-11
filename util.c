@@ -690,14 +690,18 @@ UV nth_prime_approx(UV n)
    *    m=2   - (((flog2n*flog2n) - 6*flog2n + 11) / (2*flogn*flogn))
    *    + O((flog2n/flogn)^3)
    *
-   * Shown in Dusart 1999 page 12, as well as other sources
+   * Shown in Dusart 1999 page 12, as well as other sources such as:
+   *   http://www.emis.de/journals/JIPAM/images/153_02_JIPAM/153_02.pdf
+   * where the main issue you run into is that you're doing polynomial
+   * interpolation, so it oscillates like crazy with many high-order terms.
+   * Hence I'm leaving it at m=2.
    */
   approx = fn * ( flogn + flog2n - 1
                   + ((flog2n - 2)/flogn)
                   - (((flog2n*flog2n) - 6*flog2n + 11) / (2*flogn*flogn))
                 );
 
-  /* Apply a correction to help keep small inputs close. */
+  /* Apply a correction to help keep values close */
   order = flog2n/flogn;
   order = order*order*order * fn;
 
@@ -708,6 +712,8 @@ UV nth_prime_approx(UV n)
   else if (n <  4000) approx += 4.3 * order;
   else if (n < 12000) approx += 3.0 * order;
   else if (n <150000) approx += 2.1 * order;
+  else if (n <200000000) approx += 0.0 * order;
+  else                approx += -0.023 * order;
 
   /* For all three analytical functions, it is possible that for a given valid
    * input, we will not be able to return an output that fits in the UV type.

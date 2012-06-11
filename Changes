@@ -1,7 +1,10 @@
 Revision history for Perl extension Math::Prime::Util.
 
-0.05  8 June 2012
-    - Use assembler for mulmod if 64-bit and gcc and x86
+0.05  11 June 2012
+    - Speed up mulmod: asm for GCC + x86_64, native 64-bit for 32-bit Perl
+      is uint64_t is available, and range tests for others.  This speeds up
+      some of the factoring as well as Miller-Rabin, which in turn speeds up
+      is_prime.  is_prime is used quite commonly, so this is good.
     - nth_prime routines should now all croak on overflow in the same way.
     - Segmented prime_count, things like this are reasonably efficient:
             say prime_count( 10**16,  10**16 + 2**20 )
