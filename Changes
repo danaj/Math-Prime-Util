@@ -10,6 +10,7 @@ Revision history for Perl extension Math::Prime::Util.
             say prime_count( 10**16,  10**16 + 2**20 )
     - Add Ei(x), li(x), and R(x) functions.
     - prime_count_approx uses R(x), making it vastly more accurate.
+    - Let user override rand for random_prime.
 
 0.04  7 June 2012
     - Didn't do tests on 32-bit machine before release.  Test suite caught

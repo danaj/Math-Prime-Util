@@ -3,6 +3,9 @@ use strict;
 use warnings;
 
 use Test::More;
+#use Math::Random::MT qw/rand/;
+#use Math::Random::MT::Auto qw/rand/;
+#sub rand { return 0.5; }
 use Math::Prime::Util qw/random_prime random_ndigit_prime is_prime/;
 
 my $use64 = Math::Prime::Util::_maxbits > 32;

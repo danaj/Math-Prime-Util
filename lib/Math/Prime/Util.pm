@@ -124,23 +124,31 @@ sub random_prime {
   my $range = $high - $low + 1;
   my $prime;
 
+  # Note:  I was using rand($range), but Math::Random::MT ignores the argument
+  #        instead of following its documentation.
+  my $irandf = (exists &::rand) ? sub { return int(::rand()*shift); }
+                                : sub { return int(rand()*shift); };
+
   if ($high < 30000) {
     # nice deterministic solution, but gets very costly with large values.
     my $li = ($low == 2) ? 1 : prime_count($low);
     my $hi = prime_count($high);
     my $irange = $hi - $li + 1;
-    my $rand = int(rand($irange));
+    my $rand = $irandf->($irange);
     $prime = nth_prime($li + $rand);
   } else {
     # random loop
+    my $loop_limit = 2000 * 1000;  # To protect against broken rand
     if ($range <= 4294967295) {
       do {
-        $prime = $low + int(rand($range));
+        $prime = $low + $irandf->($range);
+        croak "Random function broken?" if $loop_limit-- < 0;
       }  while ( !($prime%2) || !($prime%3) || !is_prime($prime) );
     } else {
       do {
-        my $rand = ( (int(rand(4294967295)) << 32) + int(rand(4294967295)) ) % $range;
+        my $rand = ( ($irandf->(4294967295) << 32) + $irandf->(4294967295) ) % $range;
         $prime = $low + $rand;
+        croak "Random function broken?" if $loop_limit-- < 0;
       }  while ( !($prime%2) || !($prime%3) || !is_prime($prime) );
     }
   }
@@ -505,6 +513,16 @@ L<Crypt::Primes> or something similar.  The current L<Math::Prime::Util>
 module does not use strong randomness, and its primes are ridiculously small
 by cryptographic standards.
 
+Perl's L<rand> function is normally called, but if the sub C<main::rand>
+exists, it will be used instead.  When called with no arguments it should
+return a float value between 0 and 1-epsilon, with 32 bits of randomness.
+Examples:
+
+  # Use Mersenne Twister
+  use Math::Random::MT::Auto qw/rand/;
+
+  # Use my custom random function
+  sub rand { ... }
 
 =head2 random_ndigit_prime
 

@@ -713,7 +713,7 @@ UV nth_prime_approx(UV n)
   else if (n < 12000) approx += 3.0 * order;
   else if (n <150000) approx += 2.1 * order;
   else if (n <200000000) approx += 0.0 * order;
-  else                approx += -0.023 * order;
+  else                approx += -0.010 * order; /* -0.025 is better */
 
   /* For all three analytical functions, it is possible that for a given valid
    * input, we will not be able to return an output that fits in the UV type.
