@@ -374,8 +374,8 @@ miller_rabin(IN UV n, ...)
   CODE:
     if (items < 2)
       croak("No bases given to miller_rabin");
-    if ( (n == 0) || (n == 1) ) XSRETURN(0);   /* 0 and 1 are composite */
-    if ( (n == 2) || (n == 3) ) XSRETURN(2);   /* 2 and 3 are prime */
+    if ( (n == 0) || (n == 1) ) XSRETURN_IV(0);   /* 0 and 1 are composite */
+    if ( (n == 2) || (n == 3) ) XSRETURN_IV(2);   /* 2 and 3 are prime */
     while (c < items) {
       int b = 0;
       while (c < items) {

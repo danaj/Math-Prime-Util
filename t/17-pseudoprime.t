@@ -8,11 +8,16 @@ use Math::Prime::Util qw/is_prime miller_rabin/;
 my $use64 = Math::Prime::Util::_maxbits > 32;
 my $extra = defined $ENV{RELEASE_TESTING} && $ENV{RELEASE_TESTING};
 
-plan tests => 3 + 295 + 4 + 4*$use64 + 1 + 1*$extra + 161;
+plan tests => 3 + 4 + 295 + 4 + 4*$use64 + 1 + 1*$extra + 161;
 
 ok(!eval { miller_rabin(2047); }, "MR with no base fails");
 ok(!eval { miller_rabin(2047,0); }, "MR base 0 fails");
 ok(!eval { miller_rabin(2047,1); }, "MR base 1 fails");
+
+is( miller_rabin(0, 2), 0, "MR with 0 shortcut composite");
+is( miller_rabin(1, 2), 0, "MR with 0 shortcut composite");
+is( miller_rabin(2, 2), 2, "MR with 2 shortcut prime");
+is( miller_rabin(3, 2), 2, "MR with 3 shortcut prime");
 
 # small primes
 my @sp = qw/2 3 5 7 11 13 17 19 23 29 31 37/;

@@ -8,7 +8,9 @@ use Math::Prime::Util qw/prime_count prime_count_lower prime_count_upper prime_c
 my $use64 = Math::Prime::Util::_maxbits > 32;
 my $extra = defined $ENV{RELEASE_TESTING} && $ENV{RELEASE_TESTING};
 
-plan tests => 14*3 + 8 + 6*$extra + 3*18*$use64 + 11 + 6*$use64;
+plan tests => 1 + 14*3 + 8 + 6*$extra + 3*18*$use64 + 11 + 6*$use64;
+
+ok( eval { prime_count(13); 1; }, "prime_count in void context");
 
 #  Powers of 2:  http://oeis.org/A007053/b007053.txt
 #  Powers of 10: http://oeis.org/A006880/b006880.txt
@@ -124,5 +126,3 @@ sub fixnum {
 #    109726486, // prime count 2^32 interval starting at 10^17
 #    103626726, // prime count 2^32 interval starting at 10^18
 #    98169972}; // prime count 2^32 interval starting at 10^19
-
-

@@ -395,7 +395,7 @@ A common place these would be used is sizing an array to hold the first C<$n>
 primes.  It may be desirable to use a bit more memory than is necessary, to
 avoid calling C<prime_count>.
 
-These routines use hand-verified tight limits below a range at least C<2^33>,
+These routines use hand-verified tight limits below a range at least C<2^35>,
 and fall back to the Dusart bounds of
 
     x/logx * (1 + 1/logx + 1.80/log^2x) <= Pi(x)

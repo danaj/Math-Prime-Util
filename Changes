@@ -11,6 +11,7 @@ Revision history for Perl extension Math::Prime::Util.
     - Add Ei(x), li(x), and R(x) functions.
     - prime_count_approx uses R(x), making it vastly more accurate.
     - Let user override rand for random_prime.
+    - Add many more tests with the help of Devel::Cover.
 
 0.04  7 June 2012
     - Didn't do tests on 32-bit machine before release.  Test suite caught

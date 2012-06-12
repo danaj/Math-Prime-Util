@@ -11,7 +11,7 @@ use Math::Prime::Util qw/random_prime random_ndigit_prime is_prime/;
 my $use64 = Math::Prime::Util::_maxbits > 32;
 my $extra = defined $ENV{RELEASE_TESTING} && $ENV{RELEASE_TESTING};
 
-plan tests => 13 + 6*1 + 11*3 + 10*2 + 12*2;
+plan tests => 13+4 + 6*1 + 11*3 + 10*2 + 12*2 + 2*$use64 + 10*2;
 
 my $infinity = ~0 * ~0;
 
@@ -28,6 +28,11 @@ ok(!eval { random_prime(2,-4); }, "random_prime(2,-4)");
 ok(!eval { random_prime(2,$infinity); }, "random_prime(2,+infinity)");
 ok(!eval { random_prime($infinity); }, "random_prime(+infinity)");
 ok(!eval { random_prime(-$infinity); }, "random_prime(-infinity)");
+
+ok(!eval { random_ndigit_prime(undef); }, "random_ndigit_prime(undef)");
+ok(!eval { random_ndigit_prime(0); }, "random_ndigit_prime(0)");
+ok(!eval { random_ndigit_prime(-5); }, "random_ndigit_prime(-5)");
+ok(!eval { random_ndigit_prime(50); }, "random_ndigit_prime(50)");
 
 my %range_edge_empty = (
   "0 to 0" => [],
@@ -99,4 +104,16 @@ foreach my $high (@to) {
   }
   ok($isprime, "All returned values for $high were prime" );
   ok($inrange, "All returned values for $high were in the range" );
+}
+
+if ($use64) {
+  my $got = random_prime(2**34);
+  cmp_ok( $got, '<=', 2**34, "34-bit random_prime is in range");
+  ok( is_prime($got), "32-bit prime is indeed prime");
+}
+
+foreach my $digits (1 .. 10) {
+  my $got = random_ndigit_prime($digits);
+  is( length($got), $digits, "$digits-digit random prime is $digits digits");
+  ok( is_prime($got), "$digits-digit random prime is indeed prime");
 }

@@ -416,7 +416,7 @@ UV prime_count_lower(UV x)
   else a = 2.32;
 #else
   else if (x < UVCONST( 5433800000)) { a = 2.32; }
-  else if (x < UVCONST(50000000000)) { a = 2.15; }
+  else if (x < UVCONST(60000000000)) { a = 2.15; }
 #endif
 
   return (UV) ( (fx/flogx) * (F1 + F1/flogx + a/(flogx*flogx)) );
@@ -466,7 +466,7 @@ UV prime_count_upper(UV x)
 #if BITS_PER_WORD == 32
   else a = 2.362;
 #else
-  else if (x < UVCONST(50000000000)) { a = 2.362; }
+  else if (x < UVCONST(60000000000)) { a = 2.362; }
 #endif
 
   /*
