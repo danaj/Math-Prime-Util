@@ -412,13 +412,11 @@ UV prime_count_lower(UV x)
   else if (x <  1100000)  { a = 2.20; }
   else if (x <  4500000)  { a = 2.31; }
   else if (x <233000000)  { a = 2.36; }
-  else if (x <240000000)  { a = 2.32; }
 #if BITS_PER_WORD == 32
   else a = 2.32;
 #else
   else if (x < UVCONST( 5433800000)) { a = 2.32; }
-  else if (x < UVCONST(10000000000)) { a = 2.15; }
-  else a = 1.80;
+  else if (x < UVCONST(50000000000)) { a = 2.15; }
 #endif
 
   return (UV) ( (fx/flogx) * (F1 + F1/flogx + a/(flogx*flogx)) );
@@ -468,8 +466,7 @@ UV prime_count_upper(UV x)
 #if BITS_PER_WORD == 32
   else a = 2.362;
 #else
-  else if (x < UVCONST(10000000000)) { a = 2.362; }
-  else a = 2.51;
+  else if (x < UVCONST(50000000000)) { a = 2.362; }
 #endif
 
   /*
@@ -527,7 +524,7 @@ UV prime_count(UV low, UV high)
 {
   const unsigned char* cache_sieve;
   unsigned char* segment;
-  UV segbase, segment_size, low_d, high_d;
+  UV segment_size, low_d, high_d;
   UV count = 0;
 
   if ( (low <= 2) && (high < NPRIME_COUNT_SMALL) )
@@ -542,7 +539,6 @@ UV prime_count(UV low, UV high)
 
   low_d = low/30;
   high_d = high/30;
-  //printf("  our range %lu - %lu lies in bytes %lu - %lu\n", low, high, low_d, high_d);
 
   /* Count full bytes only -- no fragments from primary cache */
   segment_size = get_prime_cache(0, &cache_sieve) / 30;
@@ -551,12 +547,10 @@ UV prime_count(UV low, UV high)
     UV endp = (high_d >= (UV_MAX/30))  ?  UV_MAX-2  :  30*high_d+29;
     segment_size = get_prime_cache( sqrt(endp) + 1 , &cache_sieve) / 30;
   }
-  //printf("  primary cache is %lu bytes.  From %lu to %lu.  Size=%lu, count=%lu\n", segment_size, 0, (segment_size-1)*30+29, get_prime_cache_size(), count_zero_bits(cache_sieve, segment_size-1));
 
-  if (1 && low_d <= segment_size) {
+  if (low_d <= segment_size) {
     /* Count all the primes in the primary cache in our range */
     count += count_segment_ranged(cache_sieve, segment_size, low, high);
-    //printf("  counted in pcache, count (%lu,%lu) is %lu\n", low, high, count);
 
     if (high_d <= segment_size)
       return count;
@@ -578,15 +572,12 @@ UV prime_count(UV low, UV high)
     UV range_d = seghigh_d - low_d + 1;
     UV seglow  = (low_d*30 < low) ? low : low_d*30;
     UV seghigh = (seghigh_d == high_d) ? high : (seghigh_d*30+29);
-    //printf("  seg d: %lu - %lu   seg p: %lu - %lu\n", low_d, seghigh_d, seglow, seghigh);
 
-    //printf("  sieve from bytes %lu to %lu\n", low_d, seghigh_d);
     if (sieve_segment(segment, low_d, seghigh_d) == 0) {
-      croak("Could not segment sieve from %"UVuf" to %"UVuf, segbase+1, 30*(segbase+segment_size)+29);
+      croak("Could not segment sieve from %"UVuf" to %"UVuf, low_d*30+1, 30*seghigh_d+29);
       break;
     }
 
-    //printf("  count from %lu to %lu\n", seglow - low_d*30, seghigh - low_d*30);
     count += count_segment_ranged(segment, segment_size, seglow - low_d*30, seghigh - low_d*30);
 
     low_d += range_d;
@@ -822,7 +813,7 @@ static double const li2 = 1.045163780117492784844588889194613136522615578151;
 
 double ExponentialIntegral(double x) {
   double const tol = 0.0000000001;
-  double val, term, x_to_the_n, fact_n;
+  double val, term, fact_n;
   double y, t;
   double sum = 0.0;
   double c = 0.0;
@@ -832,13 +823,6 @@ double ExponentialIntegral(double x) {
 
   if (x < 0) {
     /* continued fraction */
-#if 0
-    val = 0;
-    for (n = 50; n >= 1; n--) {
-      val = -n * n / (2 * n + 1 - x + val);
-    }
-    val = -exp(x) / (1 - x + val);
-#else
     double old;
     double lc = 0;
     double ld = 1 / (1 - x);
@@ -851,7 +835,6 @@ double ExponentialIntegral(double x) {
       if ( fabs(val-old) <= tol*fabs(val) )
         break;
     }
-#endif
   } else if (x < -log(tol)) {
     /* Convergent series */
     fact_n = 1;
@@ -867,29 +850,9 @@ double ExponentialIntegral(double x) {
       if (term < tol) break;
     }
     val = sum;
-    if (term > tol) printf("Tolerance not met after %d rounds for Ei(%lf)\n", n, x);
   } else {
     /* Asymptotic divergent series */
-#if 0
-    double last_term, sum;
-    last_term = 1.0;
-    x_to_the_n = 1;
-    fact_n = 1;
-
-    y = 1.0-c;  t = sum+y;  c = (t-sum)-y;  sum = t;
-
-    for (n = 1; n <= 100; n++) {
-      x_to_the_n *= x;
-      fact_n *= n;
-      term = fact_n / x_to_the_n;
-      if (term > last_term) break;
-      last_term = term;
-      y = term-c;  t = sum+y;  c = (t-sum)-y;  sum = t;
-      /* printf("A  after adding %.8lf, sum = %.8lf\n", term, sum); */
-    }
-    val = (exp(x) / x) * sum - euler_mascheroni;
-#else
-    double last_term, sum;
+    double last_term;
 
     val = exp(x) / x;
     term = 1.0;
@@ -909,7 +872,6 @@ double ExponentialIntegral(double x) {
       }
     }
     val *= sum;
-#endif
   }
 
   return val;
@@ -1011,7 +973,7 @@ double RiemannR(double x) {
   part_term = 1;
 
   /* Do small k with zetas from table */
-  for (k = 1; k <= NPRECALC_ZETA; k++) {
+  for (k = 1; k <= (int)NPRECALC_ZETA; k++) {
     zeta = riemann_zeta_table[k+1-2];
     part_term *= flogx / k;
     term = part_term / (k * zeta);
@@ -1028,7 +990,6 @@ double RiemannR(double x) {
     y = term-c;  t = sum+y;  c = (t-sum)-y;  sum = t;
     /* printf("R  after adding %.8lf, sum = %.8lf\n", term, sum); */
   }
-
 
   return sum;
 }

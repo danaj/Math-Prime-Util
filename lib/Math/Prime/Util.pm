@@ -35,6 +35,9 @@ BEGIN {
     croak "XS Code not available: $@";
   }
 }
+END {
+  _prime_memfreeall;
+}
 
 
 my $_maxparam  = (_maxbits == 32) ? 4294967295 : 18446744073709551615;
@@ -702,6 +705,10 @@ Perl versions earlier than 5.8.0 have issues with 64-bit.  The test suite will
 try to determine if your Perl is broken.  This will show up in factoring tests.
 Perl 5.6.2 32-bit works fine, as do later versions with 32-bit and 64-bit.
 
+Because static caches are used, many functions are not threadsafe.  If you
+use C<prime_precalc> and all calls have inputs smaller than that number,
+then only C<nth_prime> is problematic.  This will be addressed in a later
+implementation.
 
 
 =head1 PERFORMANCE

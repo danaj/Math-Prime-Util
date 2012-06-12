@@ -67,7 +67,7 @@ void prime_precalc(UV n)
   /* TODO: should we prealloc the segment here? */
 }
 
-void prime_memfree(void)
+void _prime_memfreeall(void)
 {
   if (prime_cache_sieve != 0)
       free(prime_cache_sieve);
@@ -75,6 +75,11 @@ void prime_memfree(void)
   prime_cache_size = 0;
 
   free_prime_segment();
+}
+
+void prime_memfree(void)
+{
+  _prime_memfreeall();
 
   prime_precalc(0);
 }

@@ -189,7 +189,7 @@ int trial_factor(UV n, UV *factors, UV maxtrial)
  */
 static int is_perfect_square(UV n, UV* sqrtn)
 {
-  UV m, lm;
+  UV m;  /* lm */
   m = n & 127;
   if ((m*0x8bc40d7d) & (m*0xa1e2f5d1) & 0x14020a)  return 0;
   /* 82% of non-squares rejected here */

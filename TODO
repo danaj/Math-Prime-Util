@@ -17,8 +17,10 @@
 
 - speed up random_prime for large numbers
 
-- test x64 asm if Perl is built for 32-bit
-
-- Clean up prime_count ranges.  Write tests.
-
 - better prime count upper/lower bounds
+
+- Thread-safety.  Change all uses of sieve and segment to include a free call.
+  For segment we can:
+     1) mutex  (holy slowdown, batman)
+     2) use one cache, and malloc/free if the cache isn't available.
+  For sieve I think we'll need a counting semaphore.

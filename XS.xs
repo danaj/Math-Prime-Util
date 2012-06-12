@@ -20,6 +20,9 @@ prime_precalc(IN UV n)
 void
 prime_memfree()
 
+void
+_prime_memfreeall()
+
 UV
 prime_count(IN UV low, IN UV high = 0)
   CODE:
