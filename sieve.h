@@ -4,7 +4,6 @@
 #include "EXTERN.h"
 #include "perl.h"
 
-extern void  prime_precalc(UV x);
 extern UV* sieve_erat(UV end);
 extern unsigned char* sieve_erat30(UV end);
 extern int sieve_segment(unsigned char* mem, UV startd, UV endd);

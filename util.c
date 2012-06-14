@@ -542,10 +542,9 @@ UV prime_count(UV low, UV high)
   }
 
   /* More primes needed.  Repeatedly segment sieve */
-  segment_size = SEGMENT_CHUNK_SIZE;
-  segment = get_prime_segment();
+  segment = get_prime_segment(&segment_size);
   if (segment == 0)
-    return 0;
+    croak("Could not get segment memory");
 
   while (low_d <= high_d)
   {
@@ -565,6 +564,7 @@ UV prime_count(UV low, UV high)
 
     low_d += range_d;
   }
+  free_prime_segment(segment);
 
   return count;
 }
@@ -746,10 +746,9 @@ UV nth_prime(UV n)
 
   /* Start segment sieving.  Get memory to sieve into. */
   segbase = segment_size;
-  segment_size = SEGMENT_CHUNK_SIZE;
-  segment = get_prime_segment();
+  segment = get_prime_segment(&segment_size);
   if (segment == 0)
-    return 0;
+    croak("Could not get segment memory");
 
   while (count < target) {
     /* Limit the segment size if we know the answer comes earlier */
@@ -768,6 +767,7 @@ UV nth_prime(UV n)
     if (count < target)
       segbase += segment_size;
   }
+  free_prime_segment(segment);
   MPUassert(count == target, "nth_prime got incorrect count");
   return ( (segbase*30) + p );
 }

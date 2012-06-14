@@ -6,10 +6,12 @@
 
 extern UV  get_prime_cache_size(void);
 extern UV  get_prime_cache(UV n, const unsigned char** sieve);
+extern void free_prime_cache(unsigned char* sieve);
 
+extern void  prime_precalc(UV x);
 extern void  prime_memfree(void);
 
-#define SEGMENT_CHUNK_SIZE  UVCONST(262144)
-extern unsigned char* get_prime_segment(void);
+extern unsigned char* get_prime_segment(UV* size);
+extern void free_prime_segment(unsigned char* segment);
 
 #endif

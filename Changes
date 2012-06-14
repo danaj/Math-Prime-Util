@@ -1,6 +1,6 @@
 Revision history for Perl extension Math::Prime::Util.
 
-0.06  18 June 2012
+0.06  14 June 2012
     - Change to New/Safefree from malloc.  Oops.
 
 0.05  11 June 2012

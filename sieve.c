@@ -8,19 +8,6 @@
 #include "bitarray.h"
 
 
-void prime_precalc(UV n)
-{
-  if (n == 0) {
-    /* On initialization, make a few primes (2-30k using 1k memory) */
-    n = (1024-16)*30;
-  }
-
-  get_prime_cache(n, 0);   /* Sieve to n */
-
-  /* TODO: should we prealloc the segment here? */
-}
-
-
 
 UV* sieve_erat(UV end)
 {

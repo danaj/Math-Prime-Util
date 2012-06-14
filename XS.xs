@@ -139,9 +139,8 @@ segment_primes(IN UV low, IN UV high);
     if (low < 7)  low = 7;
     if (low <= high) {
       /* Call the segment siever one or more times */
-      UV low_d, high_d;
-      UV segment_size = SEGMENT_CHUNK_SIZE;
-      unsigned char* sieve = get_prime_segment();
+      UV low_d, high_d, segment_size;
+      unsigned char* sieve = get_prime_segment(&segment_size);
       if (sieve == 0)
         croak("Could not get segment cache");
 
@@ -179,6 +178,7 @@ segment_primes(IN UV low, IN UV high);
         low_d += range_d;
         low = seghigh+2;
       }
+      free_prime_segment(sieve);
     }
     RETVAL = newRV_noinc( (SV*) av );
   OUTPUT:
