@@ -4,6 +4,7 @@
 #include "XSUB.h"
 /* We're not using anything for which we need ppport.h */
 #include "ptypes.h"
+#include "cache.h"
 #include "sieve.h"
 #include "util.h"
 #include "bitarray.h"
@@ -128,11 +129,9 @@ trial_primes(IN UV low, IN UV high)
     RETVAL
 
 SV*
-segment_primes(IN UV low, IN UV high, IN UV segment_size = 65536UL)
+segment_primes(IN UV low, IN UV high);
   PREINIT:
     AV* av = newAV();
-    unsigned char* sieve;
-    UV low_d, high_d;
   CODE:
     if ((low <= 2) && (high >= 2)) { av_push(av, newSVuv( 2 )); }
     if ((low <= 3) && (high >= 3)) { av_push(av, newSVuv( 3 )); }
@@ -140,9 +139,11 @@ segment_primes(IN UV low, IN UV high, IN UV segment_size = 65536UL)
     if (low < 7)  low = 7;
     if (low <= high) {
       /* Call the segment siever one or more times */
-      sieve = (unsigned char*) malloc( segment_size );
+      UV low_d, high_d;
+      UV segment_size = SEGMENT_CHUNK_SIZE;
+      unsigned char* sieve = get_prime_segment();
       if (sieve == 0)
-        croak("Could not allocate %"UVuf" bytes for segment sieve", segment_size);
+        croak("Could not get segment cache");
 
       /* To protect vs. overflow, work entirely with d. */
       low_d  = low  / 30;
@@ -178,7 +179,6 @@ segment_primes(IN UV low, IN UV high, IN UV segment_size = 65536UL)
         low_d += range_d;
         low = seghigh+2;
       }
-      free(sieve);
     }
     RETVAL = newRV_noinc( (SV*) av );
   OUTPUT:
@@ -202,7 +202,7 @@ erat_primes(IN UV low, IN UV high)
         START_DO_FOR_EACH_SIEVE_PRIME( sieve, low, high ) {
            av_push(av,newSVuv(p));
         } END_DO_FOR_EACH_SIEVE_PRIME
-        free(sieve);
+        Safefree(sieve);
       }
     }
     RETVAL = newRV_noinc( (SV*) av );
@@ -230,7 +230,7 @@ erat_simple_primes(IN UV low, IN UV high)
             av_push(av,newSVuv( 2*s+1 ));
           }
         }
-        free(sieve);
+        Safefree(sieve);
       }
     }
     RETVAL = newRV_noinc( (SV*) av );

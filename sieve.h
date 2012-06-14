@@ -4,11 +4,7 @@
 #include "EXTERN.h"
 #include "perl.h"
 
-extern UV  get_prime_cache_size(void);
-extern UV  get_prime_cache(UV n, const unsigned char** sieve);
-
 extern void  prime_precalc(UV x);
-extern void  prime_memfree(void);
 extern UV* sieve_erat(UV end);
 extern unsigned char* sieve_erat30(UV end);
 extern int sieve_segment(unsigned char* mem, UV startd, UV endd);

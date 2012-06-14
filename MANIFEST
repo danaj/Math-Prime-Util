@@ -8,6 +8,8 @@ TODO
 XS.xs
 bitarray.h
 ptypes.h
+cache.h
+cache.c
 factor.h
 factor.c
 sieve.h

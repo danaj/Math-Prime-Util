@@ -6,82 +6,18 @@
 #include "sieve.h"
 #include "ptypes.h"
 #include "bitarray.h"
-#include "util.h"     /* For freeing the segment cache */
-
-
-static unsigned char* prime_cache_sieve = 0;
-static UV             prime_cache_size = 0;
-
-/* Get the maximum sieved value of the cached prime sieve. */
-UV get_prime_cache_size(void) { return prime_cache_size; }
-
-/*
- * Get the size and a pointer to the cached prime sieve.
- * Returns the maximum sieved value in the sieve.
- * Allocates and sieves if needed.
- *
- * The sieve holds 30 numbers per byte, using a mod-30 wheel.
- */
-UV get_prime_cache(UV n, const unsigned char** sieve)
-{
-  if (prime_cache_size < n) {
-
-    if (prime_cache_sieve != 0)
-      free(prime_cache_sieve);
-    prime_cache_sieve = 0;
-    prime_cache_size = 0;
-
-    /* Sieve a bit more than asked, to mitigate thrashing */
-    if (n >= (UV_MAX-3840))
-      n = UV_MAX;
-    else
-      n = ((n + 3840)/30)*30;
-    /* TODO: testing near 2^32-1 */
-
-    prime_cache_sieve = sieve_erat30(n);
-
-    if (prime_cache_sieve != 0)
-      prime_cache_size = n;
-  }
-
-  if (sieve != 0)
-    *sieve = prime_cache_sieve;
-  return prime_cache_size;
-}
-
 
 
 void prime_precalc(UV n)
 {
-  if ( (n == 0) && (prime_cache_sieve == 0) ) {
+  if (n == 0) {
     /* On initialization, make a few primes (2-30k using 1k memory) */
-    UV initial_primes_to = 30 * (1024-8);
-    prime_cache_sieve = sieve_erat30(initial_primes_to);
-    if (prime_cache_sieve != 0)
-      prime_cache_size = initial_primes_to;
-    return;
+    n = (1024-16)*30;
   }
 
   get_prime_cache(n, 0);   /* Sieve to n */
 
   /* TODO: should we prealloc the segment here? */
-}
-
-void _prime_memfreeall(void)
-{
-  if (prime_cache_sieve != 0)
-      free(prime_cache_sieve);
-  prime_cache_sieve = 0;
-  prime_cache_size = 0;
-
-  free_prime_segment();
-}
-
-void prime_memfree(void)
-{
-  _prime_memfreeall();
-
-  prime_precalc(0);
 }
 
 
@@ -92,7 +28,7 @@ UV* sieve_erat(UV end)
   UV n, s;
   UV last = (end+1)/2;
 
-  mem = (UV*) calloc( NWORDS(last), sizeof(UV) );
+  Newz(0, mem, NWORDS(last), UV );
   if (mem == 0) {
     croak("allocation failure in sieve_erat: could not alloc %"UVuf" bits", last);
     return 0;
@@ -121,7 +57,7 @@ unsigned char* sieve_erat30(UV end)
 
   max_buf = (end/30) + ((end%30) != 0);
   buffer_words = (max_buf + sizeof(UV) - 1) / sizeof(UV);
-  mem = (unsigned char*) calloc( buffer_words, sizeof(UV) );
+  Newz(0, mem, buffer_words*sizeof(UV), unsigned char );
   if (mem == 0) {
     croak("allocation failure in sieve_erat30: could not alloc %"UVuf" bytes", (buffer_words*sizeof(UV)));
     return 0;

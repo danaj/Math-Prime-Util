@@ -1,5 +1,8 @@
 Revision history for Perl extension Math::Prime::Util.
 
+0.06  18 June 2012
+    - Change to New/Safefree from malloc.  Oops.
+
 0.05  11 June 2012
     - Speed up mulmod: asm for GCC + x86_64, native 64-bit for 32-bit Perl
       is uint64_t is available, and range tests for others.  This speeds up
