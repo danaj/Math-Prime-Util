@@ -33,6 +33,6 @@ while ($nrandom-- > 0) {
   my @mpu  = sort { $a<=>$b } factor($n);
   die "failure for $n" unless scalar @mfxs == scalar @mpu;
   for (0 .. $#mfxs) { die "failure for $n" unless $mfxs[$_] == $mpu[$_]; }
-  print "." if ($nrandom % 1024) == 0;
+  print "." if ($nrandom % 256) == 0;
 }
 print "\n";

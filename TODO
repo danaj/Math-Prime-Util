@@ -37,3 +37,5 @@
 - Iterator or tie?
 
 - Get rid of erat_simple and bitarray.h.  They're only there for comparison.
+
+- Need to be more aware of precision for the math operations.

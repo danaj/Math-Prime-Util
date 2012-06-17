@@ -55,7 +55,7 @@ foreach my $n (sort {$a<=>$b} keys %pivals) {
   my $pin  = $pivals{$n};
   my $pcl  = prime_count_lower($n);
   my $pcu  = prime_count_upper($n);
-  my ($scl,$scu) = schoenfeld($n);
+  my ($scl,$scu) = stoll($n);
 
   #printf "10^%2d  %12d  %12d\n", length($n)-1, $pin-$pcl, $pcu-$pin;
   printf "10^%2d  %12.7f  %12.7f  %12.7f  %12.7f\n",
@@ -66,7 +66,15 @@ foreach my $n (sort {$a<=>$b} keys %pivals) {
 sub schoenfeld {
   my $x = shift;
   my $lix = LogarithmicIntegral($x);
-  my $bound = ((sqrt($x)*log($x)) / 8*3.1415926535);
+  my $bound = (sqrt($x)*log($x)) / 8*3.1415926535;
+  ($lix-$bound,$lix+$bound);
+}
+
+# http://www.ams.org/journals/mcom/2011-80-276/S0025-5718-2011-02477-4/home.html
+sub stoll {
+  my $x = shift;
+  my $lix = LogarithmicIntegral($x);
+  my $bound = sqrt($x) * (log(log(log($x))) + exp(1) + 1) / (exp(1)*log($x));
   ($lix-$bound,$lix+$bound);
 }
 

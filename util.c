@@ -154,7 +154,8 @@ UV next_trial_prime(UV n)
 
   d = n/30;
   m = n - d*30;
-  m = nextwheel30[m];  if (m == 1) d++;
+  /* Move forward one, knowing we may not be on the wheel */
+  if (m == 29) { d++; m = 1; } else  { m = nextwheel30[m]; }
   while (!_is_trial_prime7(d*30+m)) {
     m = nextwheel30[m];  if (m == 1) d++;
   }
@@ -189,8 +190,10 @@ UV next_prime(UV n)
 
   d = n/30;
   m = n - d*30;
-  m = nextwheel30[m];  if (m == 1) d++;
+  /* Move forward one, knowing we may not be on the wheel */
+  if (m == 29) { d++; m = 1; } else  { m = nextwheel30[m]; }
   while (!_is_prime7(d*30+m)) {
+    /* Move forward one, knowing we are on the wheel */
     m = nextwheel30[m];  if (m == 1) d++;
   }
   return(d*30+m);

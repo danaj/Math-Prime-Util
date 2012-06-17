@@ -283,6 +283,7 @@ factor(IN UV n)
             if (!split_success) {
               split_success = holf_factor(n, factor_stack+nstack, 2000)-1;
             }
+            /* Very, very few numbers make it past here */
           }
           if (split_success) {
             MPUassert( split_success == 1, "split factor returned more than 2 factors");

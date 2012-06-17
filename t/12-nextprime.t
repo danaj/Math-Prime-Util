@@ -8,7 +8,7 @@ use Math::Prime::Util qw/next_prime prev_prime/;
 my $use64 = Math::Prime::Util::_maxbits > 32;
 my $extra = defined $ENV{RELEASE_TESTING} && $ENV{RELEASE_TESTING};
 
-plan tests => 499*2 + 3*2 + 6 + 2;
+plan tests => 3573*2 + 3*2 + 6 + 2 + 148 + 148 + 1;
 
 my @small_primes = qw/
 2 3 5 7 11 13 17 19 23 29 31 37 41 43 47 53 59 61 67 71
@@ -38,11 +38,19 @@ my @small_primes = qw/
 3433 3449 3457 3461 3463 3467 3469 3491 3499 3511 3517 3527 3529 3533 3539 3541 3547 3557 3559 3571
 /;
 
-for (my $i = 0; $i < (scalar @small_primes) - 1; $i++) {
-  my $n = next_prime($small_primes[$i]);
-  is($n, $small_primes[$i+1], "the next prime after $small_primes[$i] is $small_primes[$i+1] ?= $n");
-  my $p = prev_prime($small_primes[$i+1]);
-  is($p, $small_primes[$i], "the prev prime before $small_primes[$i+1] is $small_primes[$i] ?= $n");
+{
+  # insert primes before and after
+  unshift @small_primes, 0;
+  push @small_primes, 3581;
+  # Now test next_prime and prev_prime for all numbers 0 to 3572
+  my $prev_index = 0;
+  my $next_index = 1;
+  foreach my $n (0 .. 3572) {
+    $next_index++ if $n >= $small_primes[$next_index];
+    $prev_index++ if $n > $small_primes[$prev_index+1];
+    is(next_prime($n), $small_primes[$next_index], "next_prime($n) == $small_primes[$next_index]");
+    is(prev_prime($n), $small_primes[$prev_index], "prev_prime($n) == $small_primes[$prev_index]");
+  }
 }
 
 my %primegaps = (
@@ -65,3 +73,13 @@ is( prev_prime(19610), 19609, "prev prime of 19610 is 19609" );
 
 is( prev_prime(2), 0, "Previous prime of 2 returns 0" );
 is( next_prime(~0-4), 0, "Next prime of ~0-4 returns 0" );
+
+# Turns out the testing of prev/next from 0-3572 still misses some cases.
+foreach my $n (2010733 .. 2010880) {
+  is(next_prime($n), 2010881, "next_prime($n) == 2010881");
+}
+foreach my $n (2010734 .. 2010881) {
+  is(prev_prime($n), 2010733, "prev_prime($n) == 2010733");
+}
+# Similar test case to 2010870, where m=0 and next_prime is at m=1
+is(next_prime(1234567890), 1234567891, "next_prime(1234567890) == 1234567891)");

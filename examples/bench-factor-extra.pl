@@ -11,7 +11,7 @@ my $maxdigits = ($is64bit) ? 20 : 10;  # Noting the range is limited for max.
 srand(29);
 my $rounds = 400;
 my $sqrounds = 256*1024;
-my $hrounds = 100000;
+my $hrounds = 2000;
 test_at_digits($_) for ( 3 .. $maxdigits );
 
 

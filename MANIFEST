@@ -16,6 +16,7 @@ sieve.h
 sieve.c
 util.h
 util.c
+examples/README
 examples/bench-factor.pl
 examples/bench-factor-extra.pl
 examples/bench-factor-semiprime.pl
@@ -23,8 +24,12 @@ examples/bench-is-prime.pl
 examples/bench-miller-rabin.pl
 examples/bench-nthprime.pl
 examples/bench-pcapprox.pl
+examples/bench-primecount.pl
 examples/bench-random-prime.pl
-examples/test-factoring.pl
+examples/test-factor-yafu.pl
+examples/test-factor-mpxs.pl
+examples/test-nextprime-yafu.pl
+examples/test-primes-yafu.pl
 examples/test-holf.pl
 examples/test-nthapprox.pl
 examples/test-pcapprox.pl

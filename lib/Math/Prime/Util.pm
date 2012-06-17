@@ -5,7 +5,7 @@ use Carp qw/croak confess/;
 
 BEGIN {
   $Math::Prime::Util::AUTHORITY = 'cpan:DANAJ';
-  $Math::Prime::Util::VERSION = '0.06';
+  $Math::Prime::Util::VERSION = '0.07';
 }
 
 # parent is cleaner, and in the Perl 5.10.1 / 5.12.0 core, but not earlier.
@@ -213,7 +213,7 @@ Math::Prime::Util - Utilities related to prime numbers, including fast sieves an
 
 =head1 VERSION
 
-Version 0.06
+Version 0.07
 
 
 =head1 SYNOPSIS
