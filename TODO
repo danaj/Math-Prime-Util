@@ -12,8 +12,14 @@
 - Pure perl implementations
 
 - input validation (in XS, or do we need to make Perl wrappers for everything?)
+  We can do inpuut val in XS by looking at the NV.  But I think long term we'll
+  have a little Perl front end for everything to route to bignum routines or
+  regular routines.
 
 - Faster SQUFOF
+
+- Init a 1k static const with the 7/11/13 marks, and use that to init both
+  erat30 and segment_sieve.
 
 - speed up random_prime for large numbers
 
@@ -27,3 +33,7 @@
 
 - Move .c / .h files into separate directory.
   version does it in a painful way.  Something simpler to be had?
+
+- Iterator or tie?
+
+- Get rid of erat_simple and bitarray.h.  They're only there for comparison.

@@ -16,8 +16,10 @@ WriteMakefile1(
                     'util.o '  .
                     'XS.o',
 
+    BUILD_REQUIRES => {
+                    'Test::More'       => '0.45',
+                      },
     PREREQ_PM    => {
-                      'Test::More'       => '0.45',
                       'Exporter'         => '5.562',
                       'XSLoader'         => '0.01',
                       'Carp'             => '0',

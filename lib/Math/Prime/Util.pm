@@ -99,7 +99,12 @@ sub primes {
   elsif ($method =~ /^Sieve$/i)     { $sref = sieve_primes($low, $high); }
   else { croak "Unknown prime method: $method"; }
 
-  #return (wantarray) ? @{$sref} : $sref;
+  # Using this line:
+  #   return (wantarray) ? @{$sref} : $sref;
+  # would allow us to return an array ref in scalar context, and an array
+  # in array context.  Handy for people who might write:
+  #   @primes = primes(100);
+  # but I think the dual interface could bite us later.
   return $sref;
 }
 

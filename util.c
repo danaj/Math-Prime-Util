@@ -785,10 +785,14 @@ UV nth_prime(UV n)
  *      by William H. Press et al.
  *
  * Any mistakes here are completely my fault.  This code has not been
- * verified for anything serious.  For better reulsts, see:
+ * verified for anything serious.  For better results, see:
  *    http://www.trnicely.net/pi/pix_0000.htm
  * which although the author claims are demonstration programs, will
- * produce more usable results than this code does.
+ * undoubtedly produce more reliable results than this code does (I don't
+ * know of any obvious issues with this code, but it just hasn't been used
+ * by many people).
+ *
+ * TODO: Verify error bounds at different ranges.
  */
 
 static double const euler_mascheroni = 0.57721566490153286060651209008240243104215933593992;
