@@ -1,5 +1,8 @@
 Revision history for Perl extension Math::Prime::Util.
 
+0.08  20 June 2012
+    - Added thread scaffolding.
+
 0.07  17 June 2012
     - Fixed a bug in next_prime found by Lou Godio (thank you VERY much!).
       Added more tests for this.  This had been changed in another area but

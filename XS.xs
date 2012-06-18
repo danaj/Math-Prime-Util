@@ -167,8 +167,8 @@ segment_primes(IN UV low, IN UV high);
 
         /* Sieve from startd*30+1 to endd*30+29.  */
         if (sieve_segment(sieve, low_d, seghigh_d) == 0) {
+          free_prime_segment(sieve);
           croak("Could not segment sieve from %"UVuf" to %"UVuf, segbase+1, seghigh);
-          break;
         }
 
         START_DO_FOR_EACH_SIEVE_PRIME( sieve, low - segbase, seghigh - segbase )

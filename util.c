@@ -239,6 +239,8 @@ static UV count_segment_maxcount(const unsigned char* sieve, UV nbytes, UV maxco
 {
   UV count = 0;
   UV byte = 0;
+  const unsigned char* sieveptr = sieve;
+  const unsigned char* maxsieve = sieve + nbytes;
 
   MPUassert(sieve != 0, "count_segment_maxcount incorrect args");
   MPUassert(pos != 0, "count_segment_maxcount incorrect args");
@@ -246,12 +248,14 @@ static UV count_segment_maxcount(const unsigned char* sieve, UV nbytes, UV maxco
   if ( (nbytes == 0) || (maxcount == 0) )
     return 0;
 
-  while ( (byte < nbytes) && (count < maxcount) )
-    count += byte_zeros[sieve[byte++]];
-
-  if (count >= maxcount) { /* One too far -- back up */
-    count -= byte_zeros[sieve[--byte]];
-  }
+  /* Count until we reach the end or >= maxcount */
+  while ( (sieveptr < maxsieve) && (count < maxcount) )
+    count += byte_zeros[*sieveptr++];
+  /* If we went one too far, back up.  Count will always be < maxcount */
+  if (count >= maxcount)
+    count -= byte_zeros[*--sieveptr];
+  /* We counted this many bytes */
+  byte = sieveptr - sieve;
 
   MPUassert(count < maxcount, "count_segment_maxcount wrong count");
 
@@ -559,8 +563,8 @@ UV prime_count(UV low, UV high)
     UV seghigh = (seghigh_d == high_d) ? high : (seghigh_d*30+29);
 
     if (sieve_segment(segment, low_d, seghigh_d) == 0) {
+      free_prime_segment(segment);
       croak("Could not segment sieve from %"UVuf" to %"UVuf, low_d*30+1, 30*seghigh_d+29);
-      break;
     }
 
     count += count_segment_ranged(segment, segment_size, seglow - low_d*30, seghigh - low_d*30);
@@ -760,8 +764,8 @@ UV nth_prime(UV n)
 
     /* Do the actual sieving in the range */
     if (sieve_segment(segment, segbase, segbase + segment_size-1) == 0) {
+      free_prime_segment(segment);
       croak("Could not segment sieve from %"UVuf" to %"UVuf, 30*segbase+1, 30*(segbase+segment_size)+29);
-      break;
     }
 
     /* Count up everything in this segment */
