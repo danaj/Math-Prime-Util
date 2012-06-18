@@ -7,7 +7,6 @@
 #include "cache.h"
 #include "sieve.h"
 #include "util.h"
-#include "bitarray.h"
 #include "factor.h"
 
 MODULE = Math::Prime::Util	PACKAGE = Math::Prime::Util
@@ -209,33 +208,6 @@ erat_primes(IN UV low, IN UV high)
   OUTPUT:
     RETVAL
 
-
-SV*
-erat_simple_primes(IN UV low, IN UV high)
-  PREINIT:
-    UV* sieve;
-    UV s;
-    AV* av = newAV();
-  CODE:
-    if (low <= high) {
-      sieve = sieve_erat(high);
-      if (sieve == 0) {
-        croak("Could not generate sieve for %"UVuf, high);
-      } else {
-        if (low <= 2) { av_push(av, newSVuv( 2 )); low = 3; }
-        low  = low/2;
-        high = (high-1)/2;
-        for (s = low; s <= high; s++) {
-          if ( ! IS_SET_ARRAY_BIT(sieve, s) ) {
-            av_push(av,newSVuv( 2*s+1 ));
-          }
-        }
-        Safefree(sieve);
-      }
-    }
-    RETVAL = newRV_noinc( (SV*) av );
-  OUTPUT:
-    RETVAL
 
 void
 factor(IN UV n)

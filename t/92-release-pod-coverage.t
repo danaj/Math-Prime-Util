@@ -21,5 +21,5 @@ my @modules = Test::Pod::Coverage::all_modules();
 plan tests => scalar @modules;
 
 foreach my $m (@modules) {
-  pod_coverage_ok( $m, { also_private => [ qr/^(erat|erat_simple|segment|trial|sieve)_primes$/ ] } );
+  pod_coverage_ok( $m, { also_private => [ qr/^(erat|segment|trial|sieve)_primes$/ ] } );
 }

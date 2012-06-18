@@ -92,9 +92,13 @@ sub primes {
     }
   }
 
+  if ($method =~ /^Simple\w*$/i) {
+    warn "Method 'Simple' is deprecated.";
+    $method = 'Erat';
+  }
+
   if    ($method =~ /^Trial$/i)     { $sref = trial_primes($low, $high); }
   elsif ($method =~ /^Erat\w*$/i)   { $sref = erat_primes($low, $high); }
-  elsif ($method =~ /^Simple\w*$/i) { $sref = erat_simple_primes($low, $high); }
   elsif ($method =~ /^Seg\w*$/i)    { $sref = segment_primes($low, $high); }
   elsif ($method =~ /^Sieve$/i)     { $sref = sieve_primes($low, $high); }
   else { croak "Unknown prime method: $method"; }

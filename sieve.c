@@ -5,34 +5,7 @@
 
 #include "sieve.h"
 #include "ptypes.h"
-#include "bitarray.h"
 
-
-
-UV* sieve_erat(UV end)
-{
-  UV* mem;
-  UV n, s;
-  UV last = (end+1)/2;
-
-  Newz(0, mem, NWORDS(last), UV );
-  if (mem == 0) {
-    croak("allocation failure in sieve_erat: could not alloc %"UVuf" bits", last);
-    return 0;
-  }
-
-  n = 3;
-  /* TODO: overflow */
-  while ( (n*n) <= end) {
-    for (s = n*n; s <= end; s += 2*n)
-      SET_ARRAY_BIT(mem,s/2);
-    do { n += 2; } while (IS_SET_ARRAY_BIT(mem,n/2));
-  }
-
-  SET_ARRAY_BIT(mem, 1/2);  /* 1 is composite */
-
-  return mem;
-}
 
 
 /* Wheel 30 sieve.  Ideas from Terje Mathisen and Quesada / Van Pelt. */

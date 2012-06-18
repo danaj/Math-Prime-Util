@@ -35,5 +35,3 @@
   version does it in a painful way.  Something simpler to be had?
 
 - Iterator or tie?
-
-- Get rid of erat_simple and bitarray.h.  They're only there for comparison.

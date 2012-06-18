@@ -3,6 +3,8 @@ Revision history for Perl extension Math::Prime::Util.
 0.08  20 June 2012
     - Added thread scaffolding.
     - Accuracy improvement and measurements for math functions.
+    - Remove simple sieve -- it wasn't being used, and was just around for
+      performance comparisons.
 
 0.07  17 June 2012
     - Fixed a bug in next_prime found by Lou Godio (thank you VERY much!).

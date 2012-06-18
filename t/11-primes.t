@@ -8,7 +8,7 @@ use Math::Prime::Util qw/primes prime_count/;
 my $use64 = Math::Prime::Util::_maxbits > 32;
 my $extra = defined $ENV{RELEASE_TESTING} && $ENV{RELEASE_TESTING};
 
-plan tests => 12+3 + 12 + 1 + 19 + ($use64 ? 1 : 0) + 1 + 13*6;
+plan tests => 12+3 + 12 + 1 + 19 + ($use64 ? 1 : 0) + 1 + 13*5;
 
 ok(!eval { primes(undef); },   "primes(undef)");
 ok(!eval { primes("a"); },     "primes(a)");
@@ -113,7 +113,7 @@ if ($use64) {
 is( scalar @{primes(474973,838390)}, prime_count(838390) - prime_count(474973), "count primes within a range" );
 
 
-foreach my $method (qw/trial erat simple segment sieve dynamic/) {
+foreach my $method (qw/trial erat segment sieve dynamic/) {
   is_deeply( primes({method=>$method}, 0, 3572), \@small_primes, "Primes between 0 and 3572" );
   is_deeply( primes({method=>$method}, 2, 20), [2,3,5,7,11,13,17,19], "Primes between 2 and 20" );
   is_deeply( primes({method=>$method}, 30, 70), [31,37,41,43,47,53,59,61,67], "Primes between 30 and 70" );
