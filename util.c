@@ -806,7 +806,7 @@ static double const euler_mascheroni = 0.577215664901532860606512090082402431042
 static double const li2 = 1.045163780117492784844588889194613136522615578151;
 
 double ExponentialIntegral(double x) {
-  double const tol = 0.0000000001;
+  double const tol = 1e-16;
   double val, term, fact_n;
   double y, t;
   double sum = 0.0;
@@ -817,11 +817,12 @@ double ExponentialIntegral(double x) {
 
   if (x < 0) {
     /* continued fraction */
+    /* This loses accuracy very quickly below -0.001 or so */
     double old;
     double lc = 0;
     double ld = 1 / (1 - x);
     val = ld * (-exp(x));
-    for (n = 1; n <= 2000; n++) {
+    for (n = 1; n <= 100000; n++) {
       lc = 1 / (2*n + 1 - x - n*n*lc);
       ld = 1 / (2*n + 1 - x - n*n*ld);
       old = val;
@@ -836,7 +837,7 @@ double ExponentialIntegral(double x) {
     y = euler_mascheroni-c;  t = sum+y;  c = (t-sum)-y;  sum = t;
     y = log(x)-c;  t = sum+y;  c = (t-sum)-y;  sum = t;
 
-    for (n = 1; n <= 100; n++) {
+    for (n = 1; n <= 200; n++) {
       fact_n *= x/n;
       term = fact_n/n;
       y = term-c;  t = sum+y;  c = (t-sum)-y;  sum = t;
@@ -852,10 +853,10 @@ double ExponentialIntegral(double x) {
     term = 1.0;
     y = 1.0-c;  t = sum+y;  c = (t-sum)-y;  sum = t;
 
-    for (n = 1; n <= 100; n++) {
+    for (n = 1; n <= 200; n++) {
       last_term = term;
       term *= n/x;
-      if (term < (tol/val)) break;
+      if (term < tol) break;
       if (term < last_term) {
         y = term-c;  t = sum+y;  c = (t-sum)-y;  sum = t;
         /* printf("A  after adding %.8lf, sum = %.8lf\n", term, sum); */
@@ -927,7 +928,7 @@ static const double riemann_zeta_table[] = {
 #define NPRECALC_ZETA (sizeof(riemann_zeta_table)/sizeof(riemann_zeta_table[0]))
 
 static double evaluate_zeta(double x) {
-  double const tol = 1e-14;
+  double const tol = 1e-16;
   double y, t;
   double sum = 0.0;
   double c = 0.0;
@@ -942,7 +943,7 @@ static double evaluate_zeta(double x) {
   term = 1.0/exp2(x);  y = term-c;  t = sum+y;  c = (t-sum)-y;  sum = t;
 
   for (k = 3; k <= 100000; k++) {
-    if (term < tol) break;
+    if (fabs(term) < tol) break;
     if      (k ==  4) term = 1.0 / exp2(2*x);
     else if (k ==  8) term = 1.0 / exp2(4*x);
     else if (k == 16) term = 1.0 / exp2(8*x);
@@ -953,7 +954,7 @@ static double evaluate_zeta(double x) {
 }
 
 double RiemannR(double x) {
-  double const tol = 1e-14;
+  double const tol = 1e-16;
   double y, t, part_term, term, flogx, zeta;
   double sum = 0.0;
   double c = 0.0;
@@ -972,12 +973,12 @@ double RiemannR(double x) {
     part_term *= flogx / k;
     term = part_term / (k * zeta);
     y = term-c;  t = sum+y;  c = (t-sum)-y;  sum = t;
-    if (term < tol) break;
+    if (fabs(term) < tol) break;
     /* printf("R  after adding %.8lf, sum = %.8lf\n", term, sum); */
   }
   /* Finish with function */
   for (; k <= 10000; k++) {
-    if (term < tol) break;
+    if (fabs(term) < tol) break;
     zeta = evaluate_zeta(k+1);
     part_term *= flogx / k;
     term = part_term / (k * zeta);

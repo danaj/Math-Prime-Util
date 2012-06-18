@@ -672,6 +672,9 @@ is calculated using continued fractions (negative C<x>), a convergent series
 (small positive C<x>), or an asymptotic divergent series (large positive C<x>).
 This function only considers the real part.
 
+Accuracy is typically 15 digits unless between C<-.1> and C<0>, where
+accuracy is degraded.
+
 =head2 LogarithmicIntegral
 
   my $li = LogarithmicIntegral($x)
@@ -688,6 +691,11 @@ may be defined as C<Li(x) = li(x) - li(2)>.
 This function is implemented as C<li(x) = Ei(ln x)> after handling special
 values.
 
+Accuracy is typically 15 digits unless between C<0.9> and C<1>, where
+accuracy is degraded.  These are not typically values one would use for
+prime number functionality, so should have little impact.
+
+
 =head2 RiemannR
 
   my $r = RiemannR($x);
@@ -695,6 +703,8 @@ values.
 Given a positive non-zero floating point input, returns the floating
 point value of Riemann's R function.  Riemann's R function gives a very close
 approximation to the prime counting function.
+
+Accuracy should be at least 14 digits.
 
 
 
