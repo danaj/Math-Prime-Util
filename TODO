@@ -18,9 +18,6 @@
 
 - Faster SQUFOF
 
-- Init a 1k static const with the 7/11/13 marks, and use that to init both
-  erat30 and segment_sieve.
-
 - speed up random_prime for large numbers
 
 - better prime count upper/lower bounds
