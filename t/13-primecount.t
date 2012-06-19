@@ -8,7 +8,7 @@ use Math::Prime::Util qw/prime_count prime_count_lower prime_count_upper prime_c
 my $use64 = Math::Prime::Util::_maxbits > 32;
 my $extra = defined $ENV{RELEASE_TESTING} && $ENV{RELEASE_TESTING};
 
-plan tests => 1 + 14*3 + 8 + 6*$extra + 3*18*$use64 + 11 + 6*$use64;
+plan tests => 1 + 15*3 + 9 + 6*$extra + 3*18*$use64 + 11 + 6*$use64;
 
 ok( eval { prime_count(13); 1; }, "prime_count in void context");
 
@@ -25,6 +25,7 @@ my %pivals32 = (
             10000000 => 664579,
            100000000 => 5761455,
           1000000000 => 50847534,
+               60067 => 6062,
                65535 => 6542,
             16777215 => 1077871,
           2147483647 => 105097565,
