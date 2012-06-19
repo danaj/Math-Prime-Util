@@ -1,7 +1,7 @@
 package Math::Prime::Util;
 use strict;
 use warnings;
-use Carp qw/croak confess/;
+use Carp qw/croak confess carp/;
 
 BEGIN {
   $Math::Prime::Util::AUTHORITY = 'cpan:DANAJ';
@@ -694,15 +694,17 @@ others they succeed in a remarkably short time.
 
   my $Ei = ExponentialIntegral($x);
 
-Given a non-zero floating point input C<x>, this returns the exponential integral
-of C<x>, defined as the integral of C<e^t/t dt> from C<-infinity> to C<x>.
-Depending on the input, the integral
-is calculated using continued fractions (negative C<x>), a convergent series
-(small positive C<x>), or an asymptotic divergent series (large positive C<x>).
-This function only considers the real part.
+Given a non-zero floating point input C<x>, this returns the real-valued
+exponential integral of C<x>, defined as the integral of C<e^t/t dt>
+from C<-infinity> to C<x>.
+Depending on the input, the integral is calculated using
+continued fractions (C<x E<lt> -1>),
+rational Chebyshev approximation (C< -1 E<lt> x E<lt> 0>),
+a convergent series (small positive C<x>),
+or an asymptotic divergent series (large positive C<x>).
 
-Accuracy is typically 15 digits unless between C<-.1> and C<0>, where
-accuracy is degraded.
+Accuracy should be at least 14 digits.
+
 
 =head2 LogarithmicIntegral
 
@@ -720,9 +722,7 @@ may be defined as C<Li(x) = li(x) - li(2)>.
 This function is implemented as C<li(x) = Ei(ln x)> after handling special
 values.
 
-Accuracy is typically 15 digits unless between C<0.9> and C<1>, where
-accuracy is degraded.  These are not typically values one would use for
-prime number functionality, so should have little impact.
+Accuracy should be at least 14 digits.
 
 
 =head2 RiemannR

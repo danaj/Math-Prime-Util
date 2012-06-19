@@ -97,7 +97,11 @@ static void sieve_prefill(unsigned char* mem, UV startd, UV endd)
   UV nbytes = endd - startd + 1;
   MPUassert( (mem != 0) && (endd >= startd), "sieve_prefill bad arguments");
 
-  /* TODO: Big ranges would benefit from copy doubling */
+  /* Walk the memory, tiling in the presieve area using memcpy.
+   * This is pretty fast, but it might still benefit from using copy
+   * doubling (where we copy to the memory, then copy memory to memory
+   * doubling in size each time), as memcpy usually loves big chunks.
+   */
   while (startd <= endd) {
     UV pstartd = startd % PRESIEVE_SIZE;
     UV sieve_bytes = PRESIEVE_SIZE - pstartd;

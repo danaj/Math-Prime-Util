@@ -785,11 +785,13 @@ UV nth_prime(UV n)
 /*
  * See:
  *  "Multiple-Precision Exponential Integral and Related Functions"
- *      by David M. Smith, and
+ *      by David M. Smith
  *  "On the Evaluation of the Complex-Valued Exponential Integral"
  *      by Vincent Pegoraro and Philipp Slusallek
  *  "Numerical Recipes" 3rd edition
  *      by William H. Press et al.
+ *  "Rational Chevyshev Approximations for the Exponential Integral E_1(x)"
+ *      by W. J. Cody and Henry C. Thacher, Jr.
  *
  * Any mistakes here are completely my fault.  This code has not been
  * verified for anything serious.  For better results, see:
@@ -798,8 +800,6 @@ UV nth_prime(UV n)
  * undoubtedly produce more reliable results than this code does (I don't
  * know of any obvious issues with this code, but it just hasn't been used
  * by many people).
- *
- * TODO: Verify error bounds at different ranges.
  */
 
 static double const euler_mascheroni = 0.57721566490153286060651209008240243104215933593992;
@@ -815,9 +815,8 @@ double ExponentialIntegral(double x) {
 
   if (x == 0) croak("Invalid input to ExponentialIntegral:  x must be != 0");
 
-  if (x < 0) {
-    /* continued fraction */
-    /* This loses accuracy very quickly below -0.001 or so */
+  if (x < -1) {
+    /* Continued fraction, good for x < -1 */
     double old;
     double lc = 0;
     double ld = 1 / (1 - x);
@@ -830,6 +829,32 @@ double ExponentialIntegral(double x) {
       if ( fabs(val-old) <= tol*fabs(val) )
         break;
     }
+  } else if (x < 0) {
+    /* Rational Chebyshev approximation (Cody, Thacher), good for -1 < x < 0 */
+#if 0
+    static const double C2p[3] = { -4.43668255, 4.42054938, 3.16274620 };
+    static const double C2q[3] = {  7.68641124, 5.65655216, 1.00000000 };
+    double sumn = C2p[0] - x*(C2p[1] - x*C2p[2]);
+    double sumd = C2q[0] - x*(C2q[1] - x*C2q[2]);
+#else
+    static const double C6p[7] = { -148151.02102575750838086,
+                                    150260.59476436982420737,
+                                     89904.972007457256553251,
+                                     15924.175980637303639884,
+                                      2150.0672908092918123209,
+                                       116.69552669734461083368,
+                                         5.0196785185439843791020 };
+    static const double C6q[7] = {  256664.93484897117319268,
+                                    184340.70063353677359298,
+                                     52440.529172056355429883,
+                                      8125.8035174768735759866,
+                                       750.43163907103936624165,
+                                        40.205465640027706061433,
+                                         1.0000000000000000000000 };
+    double sumn = C6p[0]-x*(C6p[1]-x*(C6p[2]-x*(C6p[3]-x*(C6p[4]-x*(C6p[5]-x*C6p[6])))));
+    double sumd = C6q[0]-x*(C6q[1]-x*(C6q[2]-x*(C6q[3]-x*(C6q[4]-x*(C6q[5]-x*C6q[6])))));
+#endif
+    val = log(-x) - sumn/sumd;
   } else if (x < -log(tol)) {
     /* Convergent series */
     fact_n = 1;
@@ -883,47 +908,47 @@ double LogarithmicIntegral(double x) {
 /*
  * Storing the first 10-20 Zeta values makes sense.  Past that it is purely
  * to avoid making the call to generate them ourselves.  We could cache the
- * calculated values. */
+ * calculated values. These all have 1 subtracted from them.  */
 static const double riemann_zeta_table[] = {
-  1.6449340668482264364724151666460251892,  /* zeta(2) */
-  1.2020569031595942853997381615114499908,
-  1.0823232337111381915160036965411679028,
-  1.0369277551433699263313654864570341681,
-  1.0173430619844491397145179297909205279,
-  1.0083492773819228268397975498497967596,
-  1.0040773561979443393786852385086524653,
-  1.0020083928260822144178527692324120605,
-  1.0009945751278180853371459589003190170,
-  1.0004941886041194645587022825264699365,
-  1.0002460865533080482986379980477396710,
-  1.0001227133475784891467518365263573957,
-  1.0000612481350587048292585451051353337,
-  1.0000305882363070204935517285106450626,
-  1.0000152822594086518717325714876367220,
-  1.0000076371976378997622736002935630292,  /* zeta(17)  Past here all we're */
-  1.0000038172932649998398564616446219397,  /* zeta(18)  getting is speed.   */
-  1.0000019082127165539389256569577951013,
-  1.0000009539620338727961131520386834493,
-  1.0000004769329867878064631167196043730,
-  1.0000002384505027277329900036481867530,
-  1.0000001192199259653110730677887188823,
-  1.0000000596081890512594796124402079358,
-  1.0000000298035035146522801860637050694,
-  1.0000000149015548283650412346585066307,
-  1.0000000074507117898354294919810041706,
-  1.0000000037253340247884570548192040184,
-  1.0000000018626597235130490064039099454,
-  1.0000000009313274324196681828717647350,
-  1.0000000004656629065033784072989233251,
-  1.0000000002328311833676505492001455976,
-  1.0000000001164155017270051977592973835,
-  1.0000000000582077208790270088924368599,
-  1.0000000000291038504449709968692942523,
-  1.0000000000145519218910419842359296322,
-  1.0000000000072759598350574810145208690,
-  1.0000000000036379795473786511902372363,
-  1.0000000000018189896503070659475848321,
-  1.0000000000009094947840263889282533118,
+  0.6449340668482264364724151666460251892,  /* zeta(2) */
+  0.2020569031595942853997381615114499908,
+  0.0823232337111381915160036965411679028,
+  0.0369277551433699263313654864570341681,
+  0.0173430619844491397145179297909205279,
+  0.0083492773819228268397975498497967596,
+  0.0040773561979443393786852385086524653,
+  0.0020083928260822144178527692324120605,
+  0.0009945751278180853371459589003190170,
+  0.0004941886041194645587022825264699365,
+  0.0002460865533080482986379980477396710,
+  0.0001227133475784891467518365263573957,
+  0.0000612481350587048292585451051353337,
+  0.0000305882363070204935517285106450626,
+  0.0000152822594086518717325714876367220,
+  0.0000076371976378997622736002935630292,  /* zeta(17)  Past here all we're */
+  0.0000038172932649998398564616446219397,  /* zeta(18)  getting is speed.   */
+  0.0000019082127165539389256569577951013,
+  0.0000009539620338727961131520386834493,
+  0.0000004769329867878064631167196043730,
+  0.0000002384505027277329900036481867530,
+  0.0000001192199259653110730677887188823,
+  0.0000000596081890512594796124402079358,
+  0.0000000298035035146522801860637050694,
+  0.0000000149015548283650412346585066307,
+  0.0000000074507117898354294919810041706,
+  0.0000000037253340247884570548192040184,
+  0.0000000018626597235130490064039099454,
+  0.0000000009313274324196681828717647350,
+  0.0000000004656629065033784072989233251,
+  0.0000000002328311833676505492001455976,
+  0.0000000001164155017270051977592973835,
+  0.0000000000582077208790270088924368599,
+  0.0000000000291038504449709968692942523,
+  0.0000000000145519218910419842359296322,
+  0.0000000000072759598350574810145208690,
+  0.0000000000036379795473786511902372363,
+  0.0000000000018189896503070659475848321,
+  0.0000000000009094947840263889282533118,
 };
 #define NPRECALC_ZETA (sizeof(riemann_zeta_table)/sizeof(riemann_zeta_table[0]))
 
@@ -939,7 +964,7 @@ static double evaluate_zeta(double x) {
    * improve quickly.
    */
 
-  term = 1.0;          y = term-c;  t = sum+y;  c = (t-sum)-y;  sum = t;
+  /* term = 1.0;          y = term-c;  t = sum+y;  c = (t-sum)-y;  sum = t; */
   term = 1.0/exp2(x);  y = term-c;  t = sum+y;  c = (t-sum)-y;  sum = t;
 
   for (k = 3; k <= 100000; k++) {
@@ -971,7 +996,7 @@ double RiemannR(double x) {
   for (k = 1; k <= (int)NPRECALC_ZETA; k++) {
     zeta = riemann_zeta_table[k+1-2];
     part_term *= flogx / k;
-    term = part_term / (k * zeta);
+    term = part_term / (k + k * zeta);
     y = term-c;  t = sum+y;  c = (t-sum)-y;  sum = t;
     if (fabs(term) < tol) break;
     /* printf("R  after adding %.8lf, sum = %.8lf\n", term, sum); */
@@ -981,7 +1006,7 @@ double RiemannR(double x) {
     if (fabs(term) < tol) break;
     zeta = evaluate_zeta(k+1);
     part_term *= flogx / k;
-    term = part_term / (k * zeta);
+    term = part_term / (k + k * zeta);
     y = term-c;  t = sum+y;  c = (t-sum)-y;  sum = t;
     /* printf("R  after adding %.8lf, sum = %.8lf\n", term, sum); */
   }
