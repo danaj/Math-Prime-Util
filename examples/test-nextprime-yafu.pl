@@ -6,11 +6,11 @@ use File::Temp qw/tempfile/;
 use autodie;
 my $maxdigits = (~0 <= 4294967295) ? 10 : 20;
 $| = 1;  # fast pipes
-my $num = 10000;
+my $num = shift || 10000;
 my $yafu_fname = "yafu_batchfile_$$.txt";
 $SIG{'INT'} = \&gotsig;
 
-foreach my $digits (1 .. $maxdigits) {
+foreach my $digits (4 .. $maxdigits) {
   printf "%2d-digit numbers", $digits;
   my @narray = gendigits($digits, $num);
   print ".";
