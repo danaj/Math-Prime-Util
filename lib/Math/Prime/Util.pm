@@ -749,10 +749,8 @@ Perl versions earlier than 5.8.0 have issues with 64-bit.  The test suite will
 try to determine if your Perl is broken.  This will show up in factoring tests.
 Perl 5.6.2 32-bit works fine, as do later versions with 32-bit and 64-bit.
 
-Because static caches are used, many functions are not threadsafe.  If you
-use C<prime_precalc> and all calls have inputs smaller than that number,
-then only C<nth_prime> is problematic.  This will be addressed in a later
-implementation.
+The module is thread-safe, but will not currently allow much concurrency.  This
+is being worked on.
 
 
 =head1 PERFORMANCE

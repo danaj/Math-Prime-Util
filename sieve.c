@@ -250,5 +250,6 @@ int sieve_segment(unsigned char* mem, UV startd, UV endd)
   }
   END_DO_FOR_EACH_SIEVE_PRIME;
 
+  release_prime_cache(sieve);
   return 1;
 }

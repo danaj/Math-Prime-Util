@@ -91,6 +91,7 @@ int is_prime(UV n)
   UV d, m;
   unsigned char mtab;
   const unsigned char* sieve;
+  int isprime;
 
   if ( n < (NPRIME_IS_SMALL*8))
     return ((prime_is_small[n/8] >> (n%8)) & 1) ? 2 : 0;
@@ -103,10 +104,12 @@ int is_prime(UV n)
   if (mtab == 0)
     return 0;
 
-  if (n <= get_prime_cache(0, &sieve))
-    return ((sieve[d] & mtab) == 0) ? 2 : 0;
+  isprime = (n <= get_prime_cache(0, &sieve))
+            ?  2*((sieve[d] & mtab) == 0)
+            :  -1;
+  release_prime_cache(sieve);
 
-  return _is_prime7(n);
+  return (isprime >= 0)  ?  isprime  :  _is_prime7(n);
 }
 
 /* Shortcut, asking for a very quick response of 1 = prime, 0 = dunno.
@@ -117,6 +120,7 @@ int is_definitely_prime(UV n)
   UV d, m;
   unsigned char mtab;
   const unsigned char* sieve;
+  int isprime;
 
   if ( n < (NPRIME_IS_SMALL*8))
     return ((prime_is_small[n/8] >> (n%8)) & 1);
@@ -129,8 +133,11 @@ int is_definitely_prime(UV n)
   if (mtab == 0)
     return 0;
 
-  if (n <= get_prime_cache(0, &sieve))
-    return ((sieve[d] & mtab) == 0);
+  isprime = (n <= get_prime_cache(0, &sieve))
+            ?  ((sieve[d] & mtab) == 0)
+            :  -1;
+  release_prime_cache(sieve);
+  if (isprime >= 0)  return isprime;
 
   if (n > MPU_PROB_PRIME_BEST)
     return (is_prob_prime(n) == 2);
@@ -182,11 +189,12 @@ UV next_prime(UV n)
   sieve_size = get_prime_cache(0, &sieve);
   if (n < sieve_size) {
     START_DO_FOR_EACH_SIEVE_PRIME(sieve, n+1, sieve_size)
-      return p;
+      { release_prime_cache(sieve); return p; }
     END_DO_FOR_EACH_SIEVE_PRIME;
     /* Not found, so must be larger than the cache size */
     n = sieve_size;
   }
+  release_prime_cache(sieve);
 
   d = n/30;
   m = n - d*30;
@@ -216,11 +224,15 @@ UV prev_prime(UV n)
   sieve_size = get_prime_cache(0, &sieve);
   if (n < sieve_size) {
     do {
-      m = prevwheel30[m];  if (m==29) { if (d == 0) return 0;  d--; }
+      m = prevwheel30[m];
+      if (m==29) { MPUassert(d>0, "d 0 in prev_prime");  d--; }
     } while (sieve[d] & masktab30[m]);
+    release_prime_cache(sieve);
   } else {
+    release_prime_cache(sieve);
     do {
-      m = prevwheel30[m];  if (m==29) { if (d == 0) return 0;  d--; }
+      m = prevwheel30[m];
+      if (m==29) { MPUassert(d>0, "d 0 in prev_prime");  d--; }
     } while (!_is_prime7(d*30+m));
   }
   return(d*30+m);
@@ -535,6 +547,7 @@ UV prime_count(UV low, UV high)
   if (segment_size < high_d) {
     /* Expand sieve to sqrt(n) */
     UV endp = (high_d >= (UV_MAX/30))  ?  UV_MAX-2  :  30*high_d+29;
+    release_prime_cache(cache_sieve);
     segment_size = get_prime_cache( sqrt(endp) + 1 , &cache_sieve) / 30;
   }
 
@@ -542,13 +555,16 @@ UV prime_count(UV low, UV high)
     /* Count all the primes in the primary cache in our range */
     count += count_segment_ranged(cache_sieve, segment_size, low, high);
 
-    if (high_d <= segment_size)
+    if (high_d <= segment_size) {
+      release_prime_cache(cache_sieve);
       return count;
+    }
 
     low_d = segment_size;
   }
+  release_prime_cache(cache_sieve);
 
-  /* More primes needed.  Repeatedly segment sieve */
+  /* More primes needed.  Repeatedly segment sieve. */
   segment = get_prime_segment(&segment_size);
   if (segment == 0)
     croak("Could not get segment memory");
@@ -563,7 +579,7 @@ UV prime_count(UV low, UV high)
     UV seghigh = (seghigh_d == high_d) ? high : (seghigh_d*30+29);
 
     if (sieve_segment(segment, low_d, seghigh_d) == 0) {
-      free_prime_segment(segment);
+      release_prime_segment(segment);
       croak("Could not segment sieve from %"UVuf" to %"UVuf, low_d*30+1, 30*seghigh_d+29);
     }
 
@@ -571,7 +587,7 @@ UV prime_count(UV low, UV high)
 
     low_d += range_d;
   }
-  free_prime_segment(segment);
+  release_prime_segment(segment);
 
   return count;
 }
@@ -748,6 +764,7 @@ UV nth_prime(UV n)
 
   /* Count up everything in the cached sieve. */
   count += count_segment_maxcount(cache_sieve, segment_size, target, &p);
+  release_prime_cache(cache_sieve);
   if (count == target)
     return p;
 
@@ -764,7 +781,7 @@ UV nth_prime(UV n)
 
     /* Do the actual sieving in the range */
     if (sieve_segment(segment, segbase, segbase + segment_size-1) == 0) {
-      free_prime_segment(segment);
+      release_prime_segment(segment);
       croak("Could not segment sieve from %"UVuf" to %"UVuf, 30*segbase+1, 30*(segbase+segment_size)+29);
     }
 
@@ -774,7 +791,7 @@ UV nth_prime(UV n)
     if (count < target)
       segbase += segment_size;
   }
-  free_prime_segment(segment);
+  release_prime_segment(segment);
   MPUassert(count == target, "nth_prime got incorrect count");
   return ( (segbase*30) + p );
 }

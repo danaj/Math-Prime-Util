@@ -17,8 +17,8 @@
  *
  * Since we're trying to be thread-safe (and ideally allow a good deal
  * of concurrency), it is imperative these be used correctly.  You need
- * to call the get method, do your stuff, then call free.  Do *not* return
- * out of your function or croak without calling free.
+ * to call the get method, do your stuff, then call release.  Do *not* return
+ * out of your function or croak without calling release.
  */
 
 static int mutex_init = 0;
@@ -30,9 +30,6 @@ static perl_mutex primary_mutex;
 static unsigned char* prime_cache_sieve = 0;
 static UV             prime_cache_size = 0;
 
-/* Get the maximum sieved value of the cached prime sieve. */
-UV get_prime_cache_size(void) { return prime_cache_size; }
-
 /*
  * Get the size and a pointer to the cached prime sieve.
  * Returns the maximum sieved value in the sieve.
@@ -42,6 +39,8 @@ UV get_prime_cache_size(void) { return prime_cache_size; }
  */
 UV get_prime_cache(UV n, const unsigned char** sieve)
 {
+  MUTEX_LOCK(&primary_mutex);
+
   if (prime_cache_size < n) {
 
     if (prime_cache_sieve != 0)
@@ -62,9 +61,17 @@ UV get_prime_cache(UV n, const unsigned char** sieve)
       prime_cache_size = n;
   }
 
-  if (sieve != 0)
+  if (sieve == 0) {
+    MUTEX_UNLOCK(&primary_mutex);
+  } else {
     *sieve = prime_cache_sieve;
+  }
+
   return prime_cache_size;
+}
+void release_prime_cache(const unsigned char* mem) {
+  /* Thanks for letting us know you're done. */
+  MUTEX_UNLOCK(&primary_mutex);
 }
 
 
@@ -85,7 +92,7 @@ unsigned char* get_prime_segment(UV *size) {
   *size = SEGMENT_CHUNK_SIZE;
   return prime_segment;
 }
-void free_prime_segment(unsigned char* mem) {
+void release_prime_segment(unsigned char* mem) {
   /* Thanks for letting us know you're done. */
   MUTEX_UNLOCK(&segment_mutex);
 }

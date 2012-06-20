@@ -4,14 +4,30 @@
 #include "EXTERN.h"
 #include "perl.h"
 
-extern UV  get_prime_cache_size(void);
-extern UV  get_prime_cache(UV n, const unsigned char** sieve);
-extern void free_prime_cache(unsigned char* sieve);
-
+  /* Sieve from 0 to x and store in primary cache */
 extern void  prime_precalc(UV x);
+  /* Release all extra memory -- go back to initial amounts */
 extern void  prime_memfree(void);
 
+  /* Get the primary cache.  Returns the size.  Tries to make it
+   * at least size n.  Sets sieve* to the cache, unless given 0.
+   *
+   * Ex: just give me the current size:
+   *   UV cache_size = get_prime_cache(0, 0);
+   *
+   * Ex: give me the current cache and size:
+   *   UV cache_size = get_prime_cache(0, &sieve);
+   *
+   * Ex: give me the cache at least size n:
+   *   UV cache_size = get_prime_cache(n, &sieve);
+   */
+extern UV   get_prime_cache(UV n, const unsigned char** sieve);
+  /* Inform the system we're done using the primary cache if we got a ptr. */
+extern void release_prime_cache(const unsigned char* sieve);
+
+  /* Get the segment cache.  Set size to its size. */
 extern unsigned char* get_prime_segment(UV* size);
-extern void free_prime_segment(unsigned char* segment);
+  /* Inform the system we're done using the segment cache. */
+extern void release_prime_segment(unsigned char* segment);
 
 #endif
