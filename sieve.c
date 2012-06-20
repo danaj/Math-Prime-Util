@@ -193,7 +193,7 @@ int sieve_segment(unsigned char* mem, UV startd, UV endd)
   /* printf("segment sieve from %"UVuf" to %"UVuf" (aux sieve to %"UVuf")\n", startp, endp, limit); */
   pcsize = get_prime_cache(limit, &sieve);
   if (pcsize < limit) {
-    croak("Couldn't generate small sieve for segment sieve");
+    release_prime_cache(sieve);
     return 0;
   }
 

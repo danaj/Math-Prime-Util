@@ -326,6 +326,8 @@ the fastest on CPAN, including L<Math::Prime::XS>, L<Math::Prime::FastSieve>,
 and L<Math::Factor::XS>.  L<Math::Pari> is slower in some things, faster in
 others.
 
+The module is thread-safe, though threads should not call the memory free
+routines.
 
 
 =head1 FUNCTIONS
@@ -749,8 +751,9 @@ Perl versions earlier than 5.8.0 have issues with 64-bit.  The test suite will
 try to determine if your Perl is broken.  This will show up in factoring tests.
 Perl 5.6.2 32-bit works fine, as do later versions with 32-bit and 64-bit.
 
-The module is thread-safe, but will not currently allow much concurrency.  This
-is being worked on.
+The module is thread-safe and should allow good concurrency.  There are still
+some issues if threads call prime_memfree while other threads are sieving
+that are being worked on.
 
 
 =head1 PERFORMANCE

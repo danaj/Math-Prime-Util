@@ -45,6 +45,7 @@ t/16-randomprime.t
 t/17-pseudoprime.t
 t/18-functions.t
 t/30-relations.t
+t/31-threading.t
 t/50-factoring.t
 t/90-release-perlcritic.t
 t/91-release-pod-syntax.t

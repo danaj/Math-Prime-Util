@@ -295,7 +295,7 @@ static UV count_segment_ranged(const unsigned char* sieve, UV nbytes, UV lowp, U
   UV hi_d = highp/30;
   UV hi_m = highp - hi_d*30;
 
-  MPUassert( sieve != 0, "count_segment_maxcount incorrect args");
+  MPUassert( sieve != 0, "count_segment_ranged incorrect args");
 
   if (hi_d >= nbytes) {
     hi_d = nbytes-1;
@@ -551,7 +551,7 @@ UV prime_count(UV low, UV high)
     segment_size = get_prime_cache( sqrt(endp) + 1 , &cache_sieve) / 30;
   }
 
-  if (low_d <= segment_size) {
+  if ( (segment_size > 0) && (low_d <= segment_size) ) {
     /* Count all the primes in the primary cache in our range */
     count += count_segment_ranged(cache_sieve, segment_size, low, high);
 
@@ -763,7 +763,8 @@ UV nth_prime(UV n)
     segment_size = get_prime_cache(sqrt(upper_limit), &cache_sieve) / 30;
 
   /* Count up everything in the cached sieve. */
-  count += count_segment_maxcount(cache_sieve, segment_size, target, &p);
+  if (segment_size > 0)
+    count += count_segment_maxcount(cache_sieve, segment_size, target, &p);
   release_prime_cache(cache_sieve);
   if (count == target)
     return p;
