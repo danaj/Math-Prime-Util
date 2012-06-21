@@ -3,7 +3,7 @@ use strict;
 use warnings;
 
 use Test::More;
-use Math::Prime::Util qw/factor is_prime/;
+use Math::Prime::Util qw/factor all_factors is_prime/;
 
 my $use64 = Math::Prime::Util::_maxbits > 32;
 my $extra = defined $ENV{RELEASE_TESTING} && $ENV{RELEASE_TESTING};
@@ -34,7 +34,31 @@ push @testn, @testn64 if $use64;
 push @testn, qw/9999986200004761 99999989237606677 999999866000004473/
       if $use64 && $extra;
 
-plan tests =>  (2 * scalar @testn) + 1*$use64 + 6*7;
+my %all_factors = (
+1234567890 => [2,3,5,6,9,10,15,18,30,45,90,3607,3803,7214,7606,10821,11409,18035,19015,21642,22818,32463,34227,36070,38030,54105,57045,64926,68454,108210,114090,162315,171135,324630,342270,13717421,27434842,41152263,68587105,82304526,123456789,137174210,205761315,246913578,411522630,617283945],
+1032924637 => [6469,159673],
+4567890 => [2,3,5,6,10,15,30,43,86,129,215,258,430,645,1290,3541,7082,10623,17705,21246,35410,53115,106230,152263,304526,456789,761315,913578,1522630,2283945],
+ 456789 => [3,43,129,3541,10623,152263],
+ 123456 => [2,3,4,6,8,12,16,24,32,48,64,96,192,643,1286,1929,2572,3858,5144,7716,10288,15432,20576,30864,41152,61728],
+ 115553 => [],
+  30107 => [7,11,17,23,77,119,161,187,253,391,1309,1771,2737,4301],
+     42 => [2,3,6,7,14,21],
+     16 => [2,4,8],
+     12 => [2,3,4,6],
+     10 => [2,5],
+      9 => [3],
+      8 => [2,4],
+      7 => [],
+      6 => [2,3],
+      5 => [],
+      4 => [2],
+      3 => [],
+      2 => [],
+      1 => [],
+      0 => [],
+);
+
+plan tests =>  (2 * scalar @testn) + 1*$use64 + scalar(keys %all_factors) + 6*7;
 
 if ($use64) {
   # Simple test:  perl -e 'die if 18446744073709550592 == ~0'
@@ -65,6 +89,11 @@ foreach my $n (@testn) {
     ok( $isprime, "All factors [ $facstring ] of $n are prime" );
   }
 };
+
+while (my($n, $divisors) = each(%all_factors)) {
+  is_deeply( [all_factors($n)], $divisors, "all_factors($n)" );
+}
+
 
 extra_factor_test("trial_factor",  sub {Math::Prime::Util::trial_factor(shift)});
 extra_factor_test("fermat_factor", sub {Math::Prime::Util::fermat_factor(shift)});

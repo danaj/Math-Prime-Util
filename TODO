@@ -22,12 +22,6 @@
 
 - better prime count upper/lower bounds
 
-- Thread-safety.  Change all uses of sieve and segment to include a free call.
-  For segment we can:
-     1) mutex  (holy slowdown, batman)
-     2) use one cache, and malloc/free if the cache isn't available.
-  For sieve I think we'll need a counting semaphore.
-
 - Move .c / .h files into separate directory.
   version does it in a painful way.  Something simpler to be had?
 

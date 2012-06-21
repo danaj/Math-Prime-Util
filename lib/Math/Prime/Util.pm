@@ -185,6 +185,7 @@ sub all_factors {
   my @factors = factor($n);
   my %all_factors;
   foreach my $f1 (@factors) {
+    next if $f1 >= $n;
     my @all = keys %all_factors;;
     foreach my $f2 (@all) {
       $all_factors{$f1*$f2} = 1 if ($f1*$f2) < $n;
@@ -622,9 +623,10 @@ process is repeated for each non-prime factor.
 
   my @divisors = all_factors(30);   # returns (2, 3, 5, 6, 10, 15)
 
-Produces all the divisors of a positive number input.  Note that 1 and the
-input number are excluded.  The divisors are a power set of multiplications
-of the prime factors, returned as a uniqued sorted list.
+Produces all the divisors of a positive number input.  1 and the input number
+are excluded (which implies that an empty list is returned for any prime
+number input).  The divisors are a power set of multiplications of the prime
+factors, returned as a uniqued sorted list.
 
 
 =head2 trial_factor
