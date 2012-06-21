@@ -15,24 +15,66 @@ BEGIN {
   }
 }
 
-use Test::More 'tests' => 1;
+use Test::More 'tests' => 9;
 use Math::Prime::Util ":all";
-my $nthreads = 64;
 
 srand(50);
-my @digits;
-push @digits, random_ndigit_prime(6) for (0..9);
+my @randn;
+push @randn, rand(100000) for (0..37);
 
-my $tsub = sub { my $sum = 0;  $sum += prime_count($_) for (@digits); return $sum;};
-my @threads;
-# Fire off all our threads
-push @threads, threads->create($tsub) for (1..$nthreads);
-# Retrieve results
-my $par_sum = 0;
-$par_sum += $_->join() for (@threads);
+thread_test(
+  sub { my $sum = 0;  $sum += prime_count($_) for (@randn); return $sum;},
+  8, "sum prime_count");
 
-# Now try it on main
-my $seq_sum = 0;
-$seq_sum += $tsub->() for (1..$nthreads);
+thread_test(
+  sub { my $sum = 0;  for (@randn) {$sum += prime_count($_); prime_memfree; } return $sum;},
+  8, "sum prime_count with overlapping memfree calls");
 
-is($par_sum, $seq_sum, "$nthreads threads summed prime count");
+thread_test(
+  sub { my $sum = 0; for my $d (@randn) { for my $f (factor($d)) { $sum += $f; } } return $sum; },
+  8, "factor");
+
+thread_test(
+  sub { my $sum = 0;  $sum += nth_prime($_) for (@randn); return $sum;},
+  8, "nth_prime");
+
+thread_test(
+  sub { my $sum = 0;  $sum += next_prime($_) for (@randn); return $sum;},
+  8, "next_prime");
+
+thread_test(
+  sub { my $sum = 0;  $sum += prev_prime($_) for (@randn); return $sum;},
+  8, "prev_prime");
+
+thread_test(
+  sub { my $sum = 0;  $sum += is_prime($_) for (@randn); return $sum;},
+  8, "is_prime");
+
+thread_test(
+  sub { my $sum = 0;  for (@randn) { srand($_); $sum += random_ndigit_prime(6); } return $sum;},
+  8, "random 7-digit prime");
+
+thread_test(
+  sub { my $sum = 0;  $sum += int(RiemannR($_)) for (@randn); return $sum;},
+  8, "RiemannR");
+
+sub thread_test {
+  my $tsub = shift;
+  my $nthreads = shift;
+  my $text = shift;
+
+  my @threads;
+  # Fire off all our threads
+  push @threads, threads->create($tsub) for (1..$nthreads);
+  # Get results
+  my $par_sum = 0;
+  $par_sum += $_->join() for (@threads);
+  prime_memfree;
+
+  # Now do the same operation sequentially
+  my $seq_sum = 0;
+  $seq_sum += $tsub->() for (1..$nthreads);
+  prime_memfree;
+
+  is($par_sum, $seq_sum, "$nthreads threads $text");
+}

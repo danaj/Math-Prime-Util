@@ -9,8 +9,11 @@ extern void  prime_precalc(UV x);
   /* Release all extra memory -- go back to initial amounts */
 extern void  prime_memfree(void);
 
-  /* Get the primary cache.  Returns the size.  Tries to make it
-   * at least size n.  Sets sieve* to the cache, unless given 0.
+  /* Get the primary cache (mod-30 wheel sieve).
+   * Try to make sure it contains n.
+   * Returns the maximum value in the cache.
+   * Sets sieve* to the cache, unless given 0.
+   * If you get a pointer back, you MUST call release when you're done.
    *
    * Ex: just give me the current size:
    *   UV cache_size = get_prime_cache(0, 0);

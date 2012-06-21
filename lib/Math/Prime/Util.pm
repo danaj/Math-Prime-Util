@@ -323,11 +323,11 @@ functions inside Perl now, I recommend L<Math::Pari>.
 
 The default sieving and factoring are intended to be (and currently are)
 the fastest on CPAN, including L<Math::Prime::XS>, L<Math::Prime::FastSieve>,
-and L<Math::Factor::XS>.  L<Math::Pari> is slower in some things, faster in
-others.
+and L<Math::Factor::XS>.  It seems to be faster than L<Math::Pari> for
+everything except factoring certain 16-20 digit numbers.
 
-The module is thread-safe, though threads should not call the memory free
-routines.
+The module is thread-safe and allows concurrency between Perl threads while
+still sharing a prime cache.  It is not itself multithreaded.
 
 
 =head1 FUNCTIONS
@@ -613,9 +613,9 @@ always result in the input value, though those are the only cases where
 the returned factors are not prime.
 
 The current algorithm is to use trial division for small numbers, while large
-numbers go through a sequence of small trials, SQUFOF, Pollard's Rho, and
-finally trial division for any survivors.  This process is repeated for
-each non-prime factor.
+numbers go through a sequence of small trials, SQUFOF, Pollard's Rho, Hart's
+one line factorization, and finally trial division for any survivors.  This
+process is repeated for each non-prime factor.
 
 
 =head2 all_factors
@@ -745,15 +745,15 @@ I have not completed testing all the functions near the word size limit
 (e.g. C<2^32> for 32-bit machines).  Please report any problems you find.
 
 The extra factoring algorithms are mildly interesting but really limited by
-not being big number aware.
+not being big number aware.  Assuming a desktop PC, every 32-bit number
+should be factored by the main routine in a few microseconds, and 64-bit
+numbers should be a few milliseconds at worst.
 
 Perl versions earlier than 5.8.0 have issues with 64-bit.  The test suite will
 try to determine if your Perl is broken.  This will show up in factoring tests.
 Perl 5.6.2 32-bit works fine, as do later versions with 32-bit and 64-bit.
 
-The module is thread-safe and should allow good concurrency.  There are still
-some issues if threads call prime_memfree while other threads are sieving
-that are being worked on.
+The module is thread-safe and should allow good concurrency.
 
 
 =head1 PERFORMANCE
@@ -826,6 +826,7 @@ The differences are in the implementations:
      deterministic set of Miller-Rabin tests for large numbers.
 
 
+
 Factoring performance depends on the input, and the algorithm choices used
 are still being tuned.  Compared to Math::Factor::XS, it is a tiny bit faster
 for most input under 10M or so, and rapidly gets faster.  For numbers
@@ -847,6 +848,7 @@ seen claims that a lightweight QS can be faster for 15+ digits).  Some form
 of Quadratic Sieve is usually used for inputs in the 19-100 digit range, and
 beyond that is the Generalized Number Field Sieve.  For serious factoring,
 I recommend looking info C<yafu>, C<msieve>, C<Pari>, and C<GGNFS>.
+
 
 
 =head1 AUTHORS
