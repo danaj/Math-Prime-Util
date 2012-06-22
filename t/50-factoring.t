@@ -8,6 +8,21 @@ use Math::Prime::Util qw/factor all_factors is_prime/;
 my $use64 = Math::Prime::Util::_maxbits > 32;
 my $extra = defined $ENV{RELEASE_TESTING} && $ENV{RELEASE_TESTING};
 
+
+if ($use64) {
+  # Simple test:  perl -e 'die if 18446744073709550592 == ~0'
+  my $broken = (18446744073709550592 == ~0);
+  if ($broken) {
+    if ($] < 5.008) {
+      diag "Perl pre-5.8.0 has broken 64-bit.  Skipping 64-bit tests.";
+    } else {
+      diag "Eek!  Your 64-bit Perl $] is **** BROKEN ****.  Skipping 64-bit tests.";
+    }
+    $use64 = 0;
+  }
+}
+
+
 my @testn = qw/0 1 2 3 4 5 6 7 8 16 57 64 377 9592 30107 78498 664579 5761455
                114256942 2214143 999999929 50847534 455052511 2147483647
                4118054813
@@ -27,7 +42,6 @@ my @testn64 = qw/37607912018 346065536839 600851475143
                  6469693230 200560490130 7420738134810 304250263527210
                  13082761331670030 614889782588491410
                 /;
-
 
 push @testn, @testn64 if $use64;
 
@@ -58,20 +72,7 @@ my %all_factors = (
       0 => [],
 );
 
-plan tests =>  (2 * scalar @testn) + 1*$use64 + scalar(keys %all_factors) + 6*7;
-
-if ($use64) {
-  # Simple test:  perl -e 'die if 18446744073709550592 == ~0'
-  my $broken = (18446744073709550592 == ~0);
-  if ($broken) {
-    if ($] < 5.008) {
-      diag "Perl pre-5.8.0 has broken 64-bit.  Expect failures.";
-    } else {
-      diag "Eek!  Your 64-bit Perl $] is **** BROKEN ****.  Expect failures.";
-    }
-  }
-  ok( !$broken, "64-bit isn't obviously broken" );
-}
+plan tests =>  (2 * scalar @testn) + scalar(keys %all_factors) + 6*7;
 
 foreach my $n (@testn) {
   my @f = factor($n);

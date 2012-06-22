@@ -159,7 +159,7 @@ Random access in a small window (1000 or so primes in either direction) will
 be very fast, as will sequential access in either direction.
 
 Shifting acts like the array is losing elements at the front, so after two
-shifts, C<$primes[0]> == 5>.  Unshift will move the internal shift index back
+shifts, C<$primes[0] == 5>.  Unshift will move the internal shift index back
 one, unless given an argument which is the number to move back (it silently
 truncates so it does not shift past the beginning).
 Example:

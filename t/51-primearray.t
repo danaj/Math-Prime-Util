@@ -56,7 +56,7 @@ my %test_indices = (
 );
   
 
-plan tests => 1 + (3*scalar @small_primes) + 2 + scalar(keys %test_indices) + 8;
+plan tests => (3*scalar @small_primes) + 2 + scalar(keys %test_indices) + 8;
 
 {
   my @primes;  tie @primes, 'Math::Prime::Util::PrimeArray';

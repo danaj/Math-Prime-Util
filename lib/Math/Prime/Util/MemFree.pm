@@ -67,6 +67,19 @@ If you call another function that uses a MemFree object, the cache will stay
 in place because you still have an object.
 
 
+=head1 FUNCTIONS
+
+=head2 new
+
+Creates a new auto-free object.  This object has no methods and has no data.
+When it leaves scope it will call C<prime_memfree>, thereby releasing any
+extra memory that the L<Math::Prime::Util> module may have allocated.
+
+Memory is not freed until the last object goes out of scope.  C<prime_memfree>
+may always be called manually.  All memory is freed at C<END> time, so this is
+mainly for long running programs that want extra control over memory use.
+
+
 =head1 AUTHORS
 
 Dana Jacobsen E<lt>dana@acm.orgE<gt>

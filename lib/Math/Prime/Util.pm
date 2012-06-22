@@ -591,6 +591,7 @@ in place because you still have an object.
 =head2 factor
 
   my @factors = factor(3_369_738_766_071_892_021);
+  # returns (204518747,16476429743)
 
 Produces the prime factors of a positive number input.  They may not be in
 numerical order.  The special cases of C<n = 0> and C<n = 1> will
@@ -736,9 +737,11 @@ not being big number aware.  Assuming a desktop PC, every 32-bit number
 should be factored by the main routine in a few microseconds, and 64-bit
 numbers should be a few milliseconds at worst.
 
-Perl versions earlier than 5.8.0 have issues with 64-bit.  The test suite will
-try to determine if your Perl is broken.  This will show up in factoring tests.
-Perl 5.6.2 32-bit works fine, as do later versions with 32-bit and 64-bit.
+Perl versions earlier than 5.8.0 have issues with 64-bit that show up in the
+factoring tests.  The test suite will try to determine if your Perl is broken.
+If you use later versions of Perl, or Perl 5.6.2 32-bit, or Perl 5.6.2 64-bit
+and keep numbers below C<~ 2^52>, then everything works.  The best solution is
+to update to a more recent Perl.
 
 The module is thread-safe and should allow good concurrency.
 
