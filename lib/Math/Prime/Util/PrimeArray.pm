@@ -4,7 +4,7 @@ use warnings;
 
 BEGIN {
   $Math::Prime::Util::PrimeArray::AUTHORITY = 'cpan:DANAJ';
-  $Math::Prime::Util::PrimeArray::VERSION = '0.07';
+  $Math::Prime::Util::PrimeArray::VERSION = '0.08';
 }
 
 # parent is cleaner, and in the Perl 5.10.1 / 5.12.0 core, but not earlier.
@@ -14,7 +14,7 @@ our @EXPORT_OK = qw( );
 our %EXPORT_TAGS = (all => [ @EXPORT_OK ]);
 
 
-use Math::Prime::Util qw/nth_prime nth_prime_upper primes/;
+use Math::Prime::Util qw/nth_prime nth_prime_upper primes prime_precalc/;
 use Tie::Array;
 use Carp qw/carp croak confess/;
 
@@ -40,6 +40,7 @@ sub STORE     { carp "You cannot write to the prime array"; }
 sub DELETE    { carp "You cannot write to the prime array"; }
 sub STORESIZE { carp "You cannot write to the prime array"; }
 sub EXISTS    { 1 }
+#sub EXTEND    { my $self = shift; my $count = shift; prime_precalc($count); }
 sub EXTEND    { 1 }
 sub FETCHSIZE { 0x7FFF_FFFF }   # Even on 64-bit
 # Simple FETCH:
@@ -47,7 +48,8 @@ sub FETCHSIZE { 0x7FFF_FFFF }   # Even on 64-bit
 sub FETCH {
   my $self = shift;
   my $index = shift;
-  # TODO: negative index?
+  # We actually don't get negative indices -- they get turned into big numbers
+  croak "Negative index given to prime array" if $index < 0;
   $index += $self->{SHIFTINDEX};  # take into account any shifts
   if ( ($index < $self->{BEG_INDEX}) || ($index > $self->{END_INDEX}) ) {
     # We're going to get a chunk of primes starting 1000 before the one
@@ -107,7 +109,7 @@ Math::Prime::Util::PrimeArray - A tied array for primes
 
 =head1 VERSION
 
-Version 0.07
+Version 0.08
 
 
 =head1 SYNOPSIS
@@ -199,11 +201,12 @@ Summing the first 10M primes via walking the array:
        4s    365 MB    $sum += $_ for @{primes(nth_prime(10_000_000))};
      2m        2 MB    Math::Prime::Util::PrimeArray
     85m        2 MB    Math::NumSeq::Primes
-           >2048 MB    Math::Primes::TiedArray (extend 1k)
+           >5000 MB    Math::Primes::TiedArray (extend 1k)
 
 Using L<Math::Prime::Util> directly in a naive fashion uses lots of memory,
 but is extremely fast.  Sieving segments at a time would control the memory
-use, which is one thing the C<PrimeArray> tie is trying to do for you.
+use, which is one thing the C<PrimeArray> tie is trying to do for you (but
+adds more inefficiency than is ideal).
 
 L<Math::NumSeq::Primes> offers an iterator alternative, and works quite well
 for reasonably small numbers.  It does not, however, support random access.

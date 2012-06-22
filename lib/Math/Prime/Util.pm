@@ -5,7 +5,7 @@ use Carp qw/croak confess carp/;
 
 BEGIN {
   $Math::Prime::Util::AUTHORITY = 'cpan:DANAJ';
-  $Math::Prime::Util::VERSION = '0.07';
+  $Math::Prime::Util::VERSION = '0.08';
 }
 
 # parent is cleaner, and in the Perl 5.10.1 / 5.12.0 core, but not earlier.
@@ -198,24 +198,7 @@ sub all_factors {
   return @factors;
 }
 
-# We use this object to let them control when memory is freed.
-package Math::Prime::Util::MemFree;
-use Carp qw/croak confess/;
-my $memfree_instances = 0;
-sub new {
-  my $self = bless {}, shift;
-  $memfree_instances++;
-  return $self;
-}
-sub DESTROY {
-  my $self = shift;
-  confess "instances count mismatch" unless $memfree_instances > 0;
-  Math::Prime::Util::prime_memfree if --$memfree_instances == 0;
-  return;
-}
-package Math::Prime::Util;
-
-
+use Math::Prime::Util::MemFree;
 
 1;
 
@@ -236,7 +219,7 @@ Math::Prime::Util - Utilities related to prime numbers, including fast sieves an
 
 =head1 VERSION
 
-Version 0.07
+Version 0.08
 
 
 =head1 SYNOPSIS
