@@ -25,4 +25,4 @@
 - Move .c / .h files into separate directory.
   version does it in a painful way.  Something simpler to be had?
 
-- Iterator or tie?
+- tests for tie

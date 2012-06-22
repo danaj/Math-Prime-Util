@@ -1,5 +1,6 @@
 Changes
 lib/Math/Prime/Util.pm
+lib/Math/Prime/Util/PrimeArray.pm
 LICENSE
 Makefile.PL
 MANIFEST
@@ -32,6 +33,8 @@ examples/test-primes-yafu.pl
 examples/test-holf.pl
 examples/test-nthapprox.pl
 examples/test-pcapprox.pl
+examples/sophie_germain.pl
+examples/twin_primes.pl
 t/01-load.t
 t/02-can.t
 t/03-init.t

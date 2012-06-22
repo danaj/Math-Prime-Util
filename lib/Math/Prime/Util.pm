@@ -42,6 +42,8 @@ END {
 
 my $_maxparam  = (_maxbits == 32) ? 4294967295 : 18446744073709551615;
 my $_maxdigits = (_maxbits == 32) ? 10 : 20;
+my $_maxprime  = (_maxbits == 32) ? 4294967291 : 18446744073709551557;
+my $_maxprimeidx=(_maxbits == 32) ?  203280221 :   425656284035217743;
 
 sub primes {
   my $optref = {};  $optref = shift if ref $_[0] eq 'HASH';
