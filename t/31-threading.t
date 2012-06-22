@@ -17,46 +17,47 @@ BEGIN {
 
 use Test::More 'tests' => 9;
 use Math::Prime::Util ":all";
+my $numthreads = 8;
 
 srand(50);
 my @randn;
-push @randn, rand(100000) for (0..37);
+push @randn, rand(100000) for (0..377);
 
 thread_test(
   sub { my $sum = 0;  $sum += prime_count($_) for (@randn); return $sum;},
-  8, "sum prime_count");
+  $numthreads, "sum prime_count");
 
 thread_test(
   sub { my $sum = 0;  for (@randn) {$sum += prime_count($_); prime_memfree; } return $sum;},
-  8, "sum prime_count with overlapping memfree calls");
+  $numthreads, "sum prime_count with overlapping memfree calls");
 
 thread_test(
   sub { my $sum = 0; for my $d (@randn) { for my $f (factor($d)) { $sum += $f; } } return $sum; },
-  8, "factor");
+  $numthreads, "factor");
 
 thread_test(
   sub { my $sum = 0;  $sum += nth_prime($_) for (@randn); return $sum;},
-  8, "nth_prime");
+  $numthreads, "nth_prime");
 
 thread_test(
   sub { my $sum = 0;  $sum += next_prime($_) for (@randn); return $sum;},
-  8, "next_prime");
+  $numthreads, "next_prime");
 
 thread_test(
   sub { my $sum = 0;  $sum += prev_prime($_) for (@randn); return $sum;},
-  8, "prev_prime");
+  $numthreads, "prev_prime");
 
 thread_test(
   sub { my $sum = 0;  $sum += is_prime($_) for (@randn); return $sum;},
-  8, "is_prime");
+  $numthreads, "is_prime");
 
 thread_test(
   sub { my $sum = 0;  for (@randn) { srand($_); $sum += random_ndigit_prime(6); } return $sum;},
-  8, "random 7-digit prime");
+  $numthreads, "random 7-digit prime");
 
 thread_test(
   sub { my $sum = 0;  $sum += int(RiemannR($_)) for (@randn); return $sum;},
-  8, "RiemannR");
+  $numthreads, "RiemannR");
 
 sub thread_test {
   my $tsub = shift;

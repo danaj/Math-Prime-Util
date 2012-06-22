@@ -12,6 +12,7 @@ WriteMakefile1(
                     'sieve.o '  .
                     'util.o '  .
                     'XS.o',
+    LIBS         => ['-lm'],
 
     BUILD_REQUIRES => {
                     'Test::More'       => '0.45',
@@ -21,6 +22,7 @@ WriteMakefile1(
                       'XSLoader'         => '0.01',
                       'Carp'             => 0,
                       'Tie::Array'       => 0,
+                      'base'             => 0,
                     },
 
     MIN_PERL_VERSION => 5.006002,
