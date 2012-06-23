@@ -1,7 +1,7 @@
 Revision history for Perl extension Math::Prime::Util.
 
 0.09  23 June 2012
-    - Started work on pure perl code.
+    - Pure Perl code.  Passes all tests, but 1 to 13000x slower.
 
 0.08  22 June 2012
     - Added thread safety and tested good concurrency.

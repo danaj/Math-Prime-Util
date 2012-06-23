@@ -919,7 +919,7 @@ double LogarithmicIntegral(double x) {
   if (x == 0) return 0;
   if (x == 1) return -INFINITY;
   if (x == 2) return li2;
-  if (x <= 0) croak("Invalid input to ExponentialIntegral:  x must be > 0");
+  if (x <= 0) croak("Invalid input to LogarithmicIntegral:  x must be > 0");
   return ExponentialIntegral(log(x));
 }
 

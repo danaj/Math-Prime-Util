@@ -99,6 +99,44 @@ sub is_prime {
   2*_is_prime7($n);
 }
 
+sub _sieve_erat {
+  my($end) = @_;
+  my $last = int(($end+1)/2);
+
+  my $sieve = '';
+  my $n = 3;
+  while ( ($n*$n) <= $end ) {
+    my $s = $n*$n;
+    while ($s <= $end) {
+      vec($sieve, $s >> 1, 1) = 1;
+      $s += 2*$n;
+    }
+    do { $n += 2 } while vec($sieve, $n >> 1, 1) != 0;
+  }
+  # Mark 1 as composite
+  vec($sieve, 0, 1) = 1;
+  $sieve;
+}
+# Uses 8x more memory, but about 50% faster
+sub _sieve_erat_array {
+  my($end) = @_;
+  my $last = int(($end+1)/2);
+
+  my @sieve;
+  my $n = 3;
+  while ( ($n*$n) <= $end ) {
+    my $s = $n*$n;
+    while ($s <= $end) {
+      $sieve[$s>>1] = 1;
+      $s += 2*$n;
+    }
+    do { $n += 2 } while $sieve[$n>>1];
+  }
+  # Mark 1 as composite
+  $sieve[0] = 1;
+  \@sieve;
+}
+
 sub primes {
   my $optref = (ref $_[0] eq 'HASH')  ?  shift  :  {};
   croak "no parameters to primes" unless scalar @_ > 0;
@@ -119,14 +157,23 @@ sub primes {
   push @$sref, 5  if ($low <= 5) && ($high >= 5);
   $low = 7 if $low < 7;
 
-  my $n = $low;
-  my $base = 30 * int($n/30);
-  my $in = 0;  $in++ while ($n - $base) > $_prime_indices[$in];
-  $n = $base + $_prime_indices[$in];
-  while ($n <= $high) {
-    push @$sref, $n  if _is_prime7($n);
-    if (++$in == 8) {  $base += 30; $in = 0;  }
+  if ($low == 7) {
+    my $sieve = _sieve_erat_array($high);
+    my $n = 7;
+    while ($n <= $high) {
+      push @$sref, $n  if !$sieve->[$n>>1];
+      $n += 2;
+    }
+  } else {
+    my $n = $low;
+    my $base = 30 * int($n/30);
+    my $in = 0;  $in++ while ($n - $base) > $_prime_indices[$in];
     $n = $base + $_prime_indices[$in];
+    while ($n <= $high) {
+      push @$sref, $n  if _is_prime7($n);
+      if (++$in == 8) {  $base += 30; $in = 0;  }
+      $n = $base + $_prime_indices[$in];
+    }
   }
   $sref;
 }
@@ -203,14 +250,27 @@ sub prime_count {
   $count++ if ($low <= 5) && ($high >= 5);
   $low = 7 if $low < 7;
 
-  my $n = $low;
-  my $base = 30 * int($n/30);
-  my $in = 0;  $in++ while ($n - $base) > $_prime_indices[$in];
-  $n = $base + $_prime_indices[$in];
-  while ($n <= $high) {
-    $count++ if _is_prime7($n);
-    if (++$in == 8) {  $base += 30; $in = 0;  }
+  if ($low == 7) {
+    my $sieve = _sieve_erat_array($high);
+    my $n = 7;
+    while ($n <= $high) {
+      $count++ if !$sieve->[$n>>1];
+      $n += 4;
+      if ($n <= $high) {
+        $count++ if !$sieve->[$n>>1];
+        $n += 2;
+      }
+    }
+  } else {
+    my $n = $low;
+    my $base = 30 * int($n/30);
+    my $in = 0;  $in++ while ($n - $base) > $_prime_indices[$in];
     $n = $base + $_prime_indices[$in];
+    while ($n <= $high) {
+      $count++ if _is_prime7($n);
+      if (++$in == 8) {  $base += 30; $in = 0;  }
+      $n = $base + $_prime_indices[$in];
+    }
   }
   $count;
 }
@@ -290,7 +350,8 @@ sub prime_count_approx {
 
   return $_prime_count_small[$x] if $x <= $#_prime_count_small;
 
-  return int( (prime_count_upper($x) + prime_count_lower($x)) / 2);
+  #return int( (prime_count_upper($x) + prime_count_lower($x)) / 2);
+  return int(RiemannR($x)+0.5);
 }
 
 sub nth_prime_lower {
@@ -541,6 +602,182 @@ sub squfof_factor { trial_factor(@_) }
 sub pbrent_factor { trial_factor(@_) }
 sub prho_factor { trial_factor(@_) }
 sub pminus1_factor { trial_factor(@_) }
+
+
+my $_const_euler = 0.57721566490153286060651209008240243104215933593992;
+my $_const_li2 = 1.045163780117492784844588889194613136522615578151;
+
+sub ExponentialIntegral {
+  my($x) = @_;
+  my $tol = 1e-16;
+  my $sum = 0.0;
+  my($y, $t);
+  my $c = 0.0;
+
+  croak "Invalid input to ExponentialIntegral:  x must be != 0" if $x == 0;
+
+  my $val; # The result from one of the four methods
+
+  if ($x < -1) {
+    # Continued fraction
+    my $lc = 0;
+    my $ld = 1 / (1 - $x);
+    $val = $ld * (-exp($x));
+    for my $n (1 .. 100000) {
+      $lc = 1 / (2*$n + 1 - $x - $n*$n*$lc);
+      $ld = 1 / (2*$n + 1 - $x - $n*$n*$ld);
+      my $old = $val;
+      $val *= $ld/$lc;
+      last if abs($val - $old) <= ($tol * abs($val));
+    }
+  } elsif ($x < 0) {
+    # Rational Chebyshev approximation
+    my @C6p = ( -148151.02102575750838086,
+                 150260.59476436982420737,
+                  89904.972007457256553251,
+                  15924.175980637303639884,
+                   2150.0672908092918123209,
+                    116.69552669734461083368,
+                      5.0196785185439843791020);
+    my @C6q = (  256664.93484897117319268,
+                 184340.70063353677359298,
+                  52440.529172056355429883,
+                   8125.8035174768735759866,
+                    750.43163907103936624165,
+                     40.205465640027706061433,
+                      1.0000000000000000000000);
+    my $sumn = $C6p[0]-$x*($C6p[1]-$x*($C6p[2]-$x*($C6p[3]-$x*($C6p[4]-$x*($C6p[5]-$x*$C6p[6])))));
+    my $sumd = $C6q[0]-$x*($C6q[1]-$x*($C6q[2]-$x*($C6q[3]-$x*($C6q[4]-$x*($C6q[5]-$x*$C6q[6])))));
+    $val = log(-$x) - ($sumn / $sumd);
+  } elsif ($x < -log($tol)) {
+    # Convergent series
+    my $fact_n = 1;
+    $y = $_const_euler-$c; $t = $sum+$y; $c = ($t-$sum)-$y; $sum = $t;
+    $y = log($x)-$c; $t = $sum+$y; $c = ($t-$sum)-$y; $sum = $t;
+    for my $n (1 .. 200) {
+      $fact_n *= $x/$n;
+      my $term = $fact_n / $n;
+      $y = $term-$c; $t = $sum+$y; $c = ($t-$sum)-$y; $sum = $t;
+      last if $term < $tol;
+    }
+    $val = $sum;
+  } else {
+    # Asymptotic divergent series
+    $val = exp($x) / $x;
+    $y = 1.0-$c; $t = $sum+$y; $c = ($t-$sum)-$y; $sum = $t;
+    my $term = 1.0;
+    for my $n (1 .. 200) {
+      my $last_term = $term;
+      $term *= $n/$x;
+      last if $term < $tol;
+      if ($term < $last_term) {
+        $y = $term-$c; $t = $sum+$y; $c = ($t-$sum)-$y; $sum = $t;
+      } else {
+        $y = (-$last_term/3)-$c; $t = $sum+$y; $c = ($t-$sum)-$y; $sum = $t;
+        last;
+      }
+    }
+    $val *= $sum;
+  }
+  $val;
+}
+
+sub LogarithmicIntegral {
+  my($x) = @_;
+  return 0 if $x == 0;
+  return 0+(-Infinity) if $x == 1;
+  return $_const_li2 if $x == 2;
+  croak "Invalid input to LogarithmicIntegral:  x must be > 0" if $x <= 0;
+  ExponentialIntegral(log($x));
+}
+
+# Riemann Zeta function for integers, used for computing Riemann R
+my @_Riemann_Zeta_Table = (
+  0.6449340668482264364724151666460251892,  # zeta(2)
+  0.2020569031595942853997381615114499908,
+  0.0823232337111381915160036965411679028,
+  0.0369277551433699263313654864570341681,
+  0.0173430619844491397145179297909205279,
+  0.0083492773819228268397975498497967596,
+  0.0040773561979443393786852385086524653,
+  0.0020083928260822144178527692324120605,
+  0.0009945751278180853371459589003190170,
+  0.0004941886041194645587022825264699365,
+  0.0002460865533080482986379980477396710,
+  0.0001227133475784891467518365263573957,
+  0.0000612481350587048292585451051353337,
+  0.0000305882363070204935517285106450626,
+  0.0000152822594086518717325714876367220,
+  0.0000076371976378997622736002935630292,
+  0.0000038172932649998398564616446219397,
+  0.0000019082127165539389256569577951013,
+  0.0000009539620338727961131520386834493,
+  0.0000004769329867878064631167196043730,
+  0.0000002384505027277329900036481867530,
+  0.0000001192199259653110730677887188823,
+  0.0000000596081890512594796124402079358,
+  0.0000000298035035146522801860637050694,
+  0.0000000149015548283650412346585066307,
+  0.0000000074507117898354294919810041706,
+  0.0000000037253340247884570548192040184,
+  0.0000000018626597235130490064039099454,
+  0.0000000009313274324196681828717647350,
+  0.0000000004656629065033784072989233251,
+  0.0000000002328311833676505492001455976,
+  0.0000000001164155017270051977592973835,
+  0.0000000000582077208790270088924368599,
+  0.0000000000291038504449709968692942523,
+  0.0000000000145519218910419842359296322,
+  0.0000000000072759598350574810145208690,
+  0.0000000000036379795473786511902372363,
+  0.0000000000018189896503070659475848321,
+  0.0000000000009094947840263889282533118,
+);
+
+# Compute Riemann Zeta function.  Slow and inaccurate near x = 1, but improves
+# very rapidly (x = 5 is quite reasonable).
+sub _evaluate_zeta {
+  my($x) = @_;
+  my $tol = 1e-16;
+  my $sum = 0.0;
+  my($y, $t);
+  my $c = 0.0;
+
+  $y = (1.0/(2.0**$x))-$c; $t = $sum+$y; $c = ($t-$sum)-$y; $sum = $t;
+
+  for my $k (3 .. 100000) {
+    my $term = 1.0 / ($k ** $x);
+    $y = $term-$c; $t = $sum+$y; $c = ($t-$sum)-$y; $sum = $t;
+    last if abs($term) < $tol;
+  }
+  $sum;
+}
+
+# Riemann R function
+sub RiemannR {
+  my($x) = @_;
+  my $tol = 1e-16;
+  my $sum = 0.0;
+  my($y, $t);
+  my $c = 0.0;
+
+  croak "Invalid input to ReimannR:  x must be > 0" if $x <= 0;
+
+  $y = 1.0-$c; $t = $sum+$y; $c = ($t-$sum)-$y; $sum = $t;
+  my $flogx = log($x);
+  my $part_term = 1.0;
+
+  for my $k (1 .. 10000) {
+    # Small k from table, larger k from function
+    my $zeta = ($k <= $#_Riemann_Zeta_Table) ? $_Riemann_Zeta_Table[$k+1-2]
+                                             : _evaluate_zeta($k+1);
+    $part_term *= $flogx / $k;
+    my $term = $part_term / ($k + $k * $zeta);
+    $y = $term-$c; $t = $sum+$y; $c = ($t-$sum)-$y; $sum = $t;
+    last if abs($term) < $tol;
+  }
+  $sum;
+}
 
 1;
 

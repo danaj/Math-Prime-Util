@@ -69,7 +69,9 @@ BEGIN {
     *prho_factor    = \&Math::Prime::Util::PP::prho_factor;
     *pminus1_factor = \&Math::Prime::Util::PP::pminus1_factor;
 
-    # TODO: Ei(x), li(x), R(x)
+    *RiemannR            = \&Math::Prime::Util::PP::RiemannR;
+    *LogarithmicIntegral = \&Math::Prime::Util::PP::LogarithmicIntegral;
+    *ExponentialIntegral = \&Math::Prime::Util::PP::ExponentialIntegral;
     # TODO: prime_count is horribly, horribly slow
     # TODO: We should have some tests to verify XS vs. PP.
   }
@@ -85,7 +87,7 @@ my $_maxprimeidx=(_maxbits == 32) ?  203280221 :   425656284035217743;
 
 
 sub primes {
-  my $optref = {};  $optref = shift if ref $_[0] eq 'HASH';
+  my $optref = (ref $_[0] eq 'HASH')  ?  shift  :  {};
   croak "no parameters to primes" unless scalar @_ > 0;
   croak "too many parameters to primes" unless scalar @_ <= 2;
   my $low = (@_ == 2)  ?  shift  :  2;
@@ -96,8 +98,8 @@ sub primes {
   if ( (!defined $low) || (!defined $high) ||
        ($low =~ tr/0123456789//c) || ($high =~ tr/0123456789//c)
      ) {
-    $low  = 'undef' unless defined $low;
-    $high = 'undef' unless defined $high;
+    $low  = '<undef>' unless defined $low;
+    $high = '<undef>' unless defined $high;
     croak "Parameters [ $low $high ] must be positive integers";
   }
 
@@ -155,6 +157,7 @@ sub primes {
   return $sref;
 }
 
+
 sub random_prime {
   my $low = (@_ == 2)  ?  shift  :  2;
   my $high = shift;
@@ -170,8 +173,8 @@ sub random_prime {
 
   # Make sure we have a valid range.
   # TODO: this is is killing performance with large numbers
-  $low = next_prime($low-1);
-  $high = ($high < ~0) ? prev_prime($high+1) : prev_prime($high);
+  $low = next_prime($low - 1);
+  $high = ($high < ~0)  ?  prev_prime($high + 1)  :  prev_prime($high);
   return $low if ($low == $high) && is_prime($low);
   return if $low >= $high;
 
@@ -198,17 +201,18 @@ sub random_prime {
       do {
         $prime = $low + $irandf->($range);
         croak "Random function broken?" if $loop_limit-- < 0;
-      }  while ( !($prime%2) || !($prime%3) || !is_prime($prime) );
+      }  while ( !($prime % 2 ) || !($prime % 3) || !is_prime($prime) );
     } else {
       do {
         my $rand = ( ($irandf->(4294967295) << 32) + $irandf->(4294967295) ) % $range;
         $prime = $low + $rand;
         croak "Random function broken?" if $loop_limit-- < 0;
-      }  while ( !($prime%2) || !($prime%3) || !is_prime($prime) );
+      }  while ( !($prime % 2) || !($prime % 3) || !is_prime($prime) );
     }
   }
   return $prime;
 }
+
 
 sub random_ndigit_prime {
   my $digits = shift;
@@ -223,12 +227,14 @@ sub random_ndigit_prime {
 
 # Perhaps a random_nbit_prime ?   Definition?
 
+
 sub all_factors {
   my $n = shift;
   my @factors = factor($n);
   my %all_factors;
   foreach my $f1 (@factors) {
     next if $f1 >= $n;
+    # We're adding to %all_factors in the loop, so grab the keys now.
     my @all = keys %all_factors;;
     foreach my $f2 (@all) {
       $all_factors{$f1*$f2} = 1 if ($f1*$f2) < $n;
@@ -835,21 +841,26 @@ C<is_prime>: my impressions:
    Math::Primality           Very slow      Very slow
 
 The differences are in the implementations:
+
    - L<Math::Prime::FastSieve> only works in a sieved range, which is really
      fast if you can do it (M::P::U will do the same if you call
      C<prime_precalc>).  Larger inputs just need too much time and memory
      for the sieve.
+
    - L<Math::Primality> uses a GMP BPSW test which is overkill for our 64-bit
      range.  It's generally an order of magnitude or two slower than any
      of the others.  
+
    - L<Math::Pari> has some very effective code, but it has some overhead to get
      to it from Perl.  That means for small numbers it is relatively slow: an
      order of magnitude slower than M::P::XS and M::P::Util (though arguably
      this is only important for benchmarking since "slow" is ~2 microseconds).
      Large numbers transition over to smarter tests so don't slow down much.
+
    - L<Math::Prime::XS> does trial divisions, which is wonderful if the input
      has a small factor (or is small itself).  But it can take 1000x longer
      if given a large prime.
+
    - L<Math::Prime::Util> looks in the sieve for a fast bit lookup if that
      exists (default up to 30,000 but it can be expanded, e.g.
      C<prime_precalc>), uses trial division for numbers higher than this but
