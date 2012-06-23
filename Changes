@@ -1,5 +1,8 @@
 Revision history for Perl extension Math::Prime::Util.
 
+0.09  23 June 2012
+    - Started work on pure perl code.
+
 0.08  22 June 2012
     - Added thread safety and tested good concurrency.
     - Accuracy improvement and measurements for math functions.

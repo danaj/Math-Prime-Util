@@ -24,26 +24,65 @@ our @EXPORT_OK = qw(
                    );
 our %EXPORT_TAGS = (all => [ @EXPORT_OK ]);
 
+my $_pure_perl;
+
 BEGIN {
   eval {
     require XSLoader;
     XSLoader::load(__PACKAGE__, $Math::Prime::Util::VERSION);
     prime_precalc(0);
+    $_pure_perl = 0;
     1;
   } or do {
-    # We could insert a Pure Perl implementation here.
-    croak "XS Code not available: $@";
+    require Math::Prime::Util::PP;
+    $_pure_perl = 1;
+    #carp "Using Pure Perl implementation";
+    *_get_prime_cache_size = \&Math::Prime::Util::PP::_get_prime_cache_size;
+    *_maxbits = \&Math::Prime::Util::PP::_maxbits;
+    *_prime_memfreeall = \&Math::Prime::Util::PP::_prime_memfreeall;
+
+    *prime_memfree  = \&Math::Prime::Util::PP::prime_memfree;
+    *prime_precalc  = \&Math::Prime::Util::PP::prime_precalc;
+
+    *prime_count        = \&Math::Prime::Util::PP::prime_count;
+    *prime_count_upper  = \&Math::Prime::Util::PP::prime_count_upper;
+    *prime_count_lower  = \&Math::Prime::Util::PP::prime_count_lower;
+    *prime_count_approx = \&Math::Prime::Util::PP::prime_count_approx;
+    *nth_prime          = \&Math::Prime::Util::PP::nth_prime;
+    *nth_prime_upper    = \&Math::Prime::Util::PP::nth_prime_upper;
+    *nth_prime_lower    = \&Math::Prime::Util::PP::nth_prime_lower;
+    *nth_prime_approx   = \&Math::Prime::Util::PP::nth_prime_approx;
+
+    *is_prime       = \&Math::Prime::Util::PP::is_prime;
+    *next_prime     = \&Math::Prime::Util::PP::next_prime;
+    *prev_prime     = \&Math::Prime::Util::PP::prev_prime;
+
+    *miller_rabin   = \&Math::Prime::Util::PP::miller_rabin;
+    *is_prob_prime  = \&Math::Prime::Util::PP::is_prob_prime;
+
+    *factor         = \&Math::Prime::Util::PP::factor;
+    *trial_factor   = \&Math::Prime::Util::PP::trial_factor;
+    *fermat_factor  = \&Math::Prime::Util::PP::fermat_factor;
+    *holf_factor    = \&Math::Prime::Util::PP::holf_factor;
+    *squfof_factor  = \&Math::Prime::Util::PP::squfof_factor;
+    *pbrent_factor  = \&Math::Prime::Util::PP::pbrent_factor;
+    *prho_factor    = \&Math::Prime::Util::PP::prho_factor;
+    *pminus1_factor = \&Math::Prime::Util::PP::pminus1_factor;
+
+    # TODO: Ei(x), li(x), R(x)
+    # TODO: prime_count is horribly, horribly slow
+    # TODO: We should have some tests to verify XS vs. PP.
   }
 }
 END {
   _prime_memfreeall;
 }
 
-
 my $_maxparam  = (_maxbits == 32) ? 4294967295 : 18446744073709551615;
 my $_maxdigits = (_maxbits == 32) ? 10 : 20;
 my $_maxprime  = (_maxbits == 32) ? 4294967291 : 18446744073709551557;
 my $_maxprimeidx=(_maxbits == 32) ?  203280221 :   425656284035217743;
+
 
 sub primes {
   my $optref = {};  $optref = shift if ref $_[0] eq 'HASH';
@@ -66,6 +105,8 @@ sub primes {
   croak "Parameters [ $low $high ] not in range 0-$_maxparam" unless $low <= $_maxparam && $high <= $_maxparam;
 
   return $sref if ($low > $high) || ($high < 2);
+
+  return Math::Prime::Util::PP::primes($low,$high) if $_pure_perl;
 
   my $method = $optref->{'method'};
   $method = 'Dynamic' unless defined $method;
