@@ -11,9 +11,10 @@ BEGIN {
 # The Pure Perl versions of all the Math::Prime::Util routines.
 #
 # Some of these will be relatively similar in performance, some will be
-# horrendously slow in comparison.
+# very slow in comparison.
 #
-# TODO: These are currently all terribly simple.
+# Most of these are pretty simple.  Also, you really should look at the C
+# code for more detailed comments, including references to papers.
 
 my $_uv_size;
 BEGIN {
@@ -69,21 +70,24 @@ my @_prevwheel30 = (29,29,1,1,1,1,1,1,7,7,7,7,11,11,13,13,13,13,17,17,19,19,19,1
 sub _is_prime7 {  # n must not be divisible by 2, 3, or 5
   my($x) = @_;
   my $q;
-  foreach my $i (7, 11, 13, 17, 19, 23, 29) {
-    $q = int($x/$i); return 1 if $q < $i; return 0 if $x == ($q*$i);
+  foreach my $i (qw/7 11 13 17 19 23 29 31 37 41 43 47 53 59/) {
+    $q = int($x/$i); return 2 if $q < $i; return 0 if $x == ($q*$i);
   }
-  my $i = 31;  # mod-30 loop
+
+  return is_prob_prime($x) if $x > 10_000_000;
+
+  my $i = 61;  # mod-30 loop
   while (1) {
-    $q = int($x/$i); return 1 if $q < $i; return 0 if $x == ($q*$i);  $i += 6;
-    $q = int($x/$i); return 1 if $q < $i; return 0 if $x == ($q*$i);  $i += 4;
-    $q = int($x/$i); return 1 if $q < $i; return 0 if $x == ($q*$i);  $i += 2;
-    $q = int($x/$i); return 1 if $q < $i; return 0 if $x == ($q*$i);  $i += 4;
-    $q = int($x/$i); return 1 if $q < $i; return 0 if $x == ($q*$i);  $i += 2;
-    $q = int($x/$i); return 1 if $q < $i; return 0 if $x == ($q*$i);  $i += 4;
-    $q = int($x/$i); return 1 if $q < $i; return 0 if $x == ($q*$i);  $i += 6;
-    $q = int($x/$i); return 1 if $q < $i; return 0 if $x == ($q*$i);  $i += 2;
+    $q = int($x/$i); return 2 if $q < $i; return 0 if $x == ($q*$i);  $i += 6;
+    $q = int($x/$i); return 2 if $q < $i; return 0 if $x == ($q*$i);  $i += 4;
+    $q = int($x/$i); return 2 if $q < $i; return 0 if $x == ($q*$i);  $i += 2;
+    $q = int($x/$i); return 2 if $q < $i; return 0 if $x == ($q*$i);  $i += 4;
+    $q = int($x/$i); return 2 if $q < $i; return 0 if $x == ($q*$i);  $i += 2;
+    $q = int($x/$i); return 2 if $q < $i; return 0 if $x == ($q*$i);  $i += 4;
+    $q = int($x/$i); return 2 if $q < $i; return 0 if $x == ($q*$i);  $i += 6;
+    $q = int($x/$i); return 2 if $q < $i; return 0 if $x == ($q*$i);  $i += 2;
   }
-  1;
+  2;
 }
 
 sub is_prime {
@@ -94,9 +98,7 @@ sub is_prime {
   # multiples of 2,3,5 are composite
   return 0 if (($n % 2) == 0) || (($n % 3) == 0) || (($n % 5) == 0);
 
-  return is_prob_prime($n) if $n > 10_000_000;
-
-  2*_is_prime7($n);
+  return _is_prime7($n);
 }
 
 sub _sieve_erat {
@@ -117,24 +119,71 @@ sub _sieve_erat {
   vec($sieve, 0, 1) = 1;
   $sieve;
 }
-# Uses 8x more memory, but about 50% faster
-sub _sieve_erat_array {
+# Uses 8x more memory, but almost 2x faster
+sub _sieve_erat_string {
   my($end) = @_;
-  my $last = int(($end+1)/2);
 
-  my @sieve;
+  my $sieve = "1" . "0" x ($end>>1);
   my $n = 3;
   while ( ($n*$n) <= $end ) {
     my $s = $n*$n;
-    while ($s <= $end) {
-      $sieve[$s>>1] = 1;
-      $s += 2*$n;
+    my $filter_s   = $s >> 1;
+    my $filter_end = $end >> 1;
+    while ($filter_s <= $filter_end) {
+      substr($sieve, $filter_s, 1) = "1";
+      $filter_s += $n;
     }
-    do { $n += 2 } while $sieve[$n>>1];
+    do { $n += 2 } while substr($sieve, $n>>1, 1);
   }
-  # Mark 1 as composite
-  $sieve[0] = 1;
-  \@sieve;
+  \$sieve;
+}
+sub _sieve_segment {
+  my($beg,$end) = @_;
+  croak "Internal error: segment beg is even" if ($beg % 2) == 0;
+  croak "Internal error: segment end is even" if ($end % 2) == 0;
+  croak "Internal error: segment end < beg" if $end < $beg;
+  croak "Internal error: segment beg should be >= 3" if $beg < 3;
+  my $range = int( ($end - $beg) / 2 ) + 1;
+
+  # Replicate the string "010" and we've just marked 3's.
+  # Replicate "011010010010110" and we've marked 3's and 5's.
+  my $sieve = "0" x $range;
+  my $limit = int(sqrt($end)) + 1;
+  # We'd like to go through just the primes, but we'll keep things simple by
+  # just skipping multiples of 2/3/5/7/11/13/17/19.
+  my $p = 3;
+  while ($p <= $limit) {
+    my $p2 = $p*$p;
+    last if $p2 > $end;
+    if ($p2 < $beg) {
+      $p2 = int($beg / $p) * $p;
+      $p2 += $p if $p2 < $beg;
+      $p2 += $p if ($p2 % 2) == 0;   # Make sure p2 is odd
+    }
+    # With large bases and small segments, it's common to find we don't hit
+    # the segment at all.  Skip all the setup if we find this now.
+    if ($p2 <= $end) {
+      # Inner loop marking multiples of p
+      # (everything is divided by 2 to keep inner loop simpler)
+      my $filter_end = ($end - $beg) >> 1;
+      my $filter_p2  = ($p2  - $beg) >> 1;
+      while ($filter_p2 <= $filter_end) {
+        substr($sieve, $filter_p2, 1) = "1";
+        $filter_p2 += $p;
+      }
+    }
+    $p += 2;
+    # Skip obvious composites.
+    if ($p <= 19) {
+      $p += 2 if $p ==  9;
+      $p += 2 if $p == 15;
+    } else {
+      while ( (($p % 3) == 0) || (($p % 5) == 0) || (($p % 7) == 0) || (($p % 11) == 0) || (($p % 13) == 0) || (($p % 17) == 0) || (($p % 19) == 0) ) {
+        $p+= 2;
+      }
+    }
+  }
+  \$sieve;
 }
 
 sub primes {
@@ -156,23 +205,38 @@ sub primes {
   push @$sref, 3  if ($low <= 3) && ($high >= 3);
   push @$sref, 5  if ($low <= 5) && ($high >= 5);
   $low = 7 if $low < 7;
+  $low++ if ($low % 2) == 0;
+  $high-- if ($high % 2) == 0;
+  return $sref if $low > $high;
 
+  #if ($low == 7) {
+  #  my $sieveref = _sieve_erat_string($high);
+  #  my $n = 7;
+  #  while ($n <= $high) {
+  #    push @$sref, $n  if !substr($$sieveref,$n>>1,1);
+  #    $n += 2;
+  #  }
+  #} else {
+  #  my $sieveref = _sieve_segment($low,$high);
+  #  my $n = $low;
+  #  while ($n <= $high) {
+  #    push @$sref, $n  if !substr($$sieveref,($n-$low)>>1,1);
+  #    $n += 2;
+  #  }
+  #}
   if ($low == 7) {
-    my $sieve = _sieve_erat_array($high);
-    my $n = 7;
-    while ($n <= $high) {
-      push @$sref, $n  if !$sieve->[$n>>1];
-      $n += 2;
+    my $sieveref = _sieve_erat_string($high);
+    my $n = $low - 2;
+    foreach my $s (split("0", substr($$sieveref, 3), -1)) {
+      $n += 2 + 2 * length($s);
+      push @$sref, $n if $n <= $high;
     }
   } else {
-    my $n = $low;
-    my $base = 30 * int($n/30);
-    my $in = 0;  $in++ while ($n - $base) > $_prime_indices[$in];
-    $n = $base + $_prime_indices[$in];
-    while ($n <= $high) {
-      push @$sref, $n  if _is_prime7($n);
-      if (++$in == 8) {  $base += 30; $in = 0;  }
-      $n = $base + $_prime_indices[$in];
+    my $sieveref = _sieve_segment($low,$high);
+    my $n = $low - 2;
+    foreach my $s (split("0", $$sieveref, -1)) {
+      $n += 2 + 2 * length($s);
+      push @$sref, $n if $n <= $high;
     }
   }
   $sref;
@@ -235,43 +299,27 @@ sub prime_count {
   }
   croak "Input must be a positive integer" unless is_positive_int($low)
                                                && is_positive_int($high);
+
   my $count = 0;
 
-  # We should get sieved segments and count them.
+  $count++ if ($low <= 2) && ($high >= 2);   # Count 2
+  $low = 3 if $low < 3;
 
-  #my $d = $low;   # High can be outside iterator range
-  #while ($d <= $high) {
-  #  $count++ if is_prime($d);
-  #  $d++;
-  #}
+  $low++ if ($low % 2) == 0;   # Make low go to odd number.
+  $high-- if ($high % 2) == 0; # Make high go to odd number.
+  return $count if $low > $high;
 
-  $count++ if ($low <= 2) && ($high >= 2);
-  $count++ if ($low <= 3) && ($high >= 3);
-  $count++ if ($low <= 5) && ($high >= 5);
-  $low = 7 if $low < 7;
+  my $sieveref;
 
-  if ($low == 7) {
-    my $sieve = _sieve_erat_array($high);
-    my $n = 7;
-    while ($n <= $high) {
-      $count++ if !$sieve->[$n>>1];
-      $n += 4;
-      if ($n <= $high) {
-        $count++ if !$sieve->[$n>>1];
-        $n += 2;
-      }
-    }
+  if ($low == 3) {
+    $sieveref = _sieve_erat_string($high);
   } else {
-    my $n = $low;
-    my $base = 30 * int($n/30);
-    my $in = 0;  $in++ while ($n - $base) > $_prime_indices[$in];
-    $n = $base + $_prime_indices[$in];
-    while ($n <= $high) {
-      $count++ if _is_prime7($n);
-      if (++$in == 8) {  $base += 30; $in = 0;  }
-      $n = $base + $_prime_indices[$in];
-    }
+    return 0 if $low > $high;
+    $sieveref = _sieve_segment($low,$high);
   }
+
+  $count += $$sieveref =~ tr/0//;
+
   $count;
 }
 
@@ -460,17 +508,26 @@ sub nth_prime {
   }
 
   my $prime = 0;
-  # This is quite slow, so try to skip some
-  if    ($n >= 1000000) { $prime = 15485863; $n -= 1000000; }
-  elsif ($n >=  500000) { $prime =  7368787; $n -=  500000; }
-  elsif ($n >=  100000) { $prime =  1299709; $n -=  100000; }
-  elsif ($n >=   50000) { $prime =   611953; $n -=   50000; }
-  elsif ($n >=   10000) { $prime =   104729; $n -=   10000; }
-  elsif ($n >=    1000) { $prime =     7919; $n -=    1000; }
-  elsif ($n >=     100) { $prime =      541; $n -=     100; }
 
-  while ($n-- > 0) {
-    $prime = next_prime($prime);
+  {
+    my $count = 1;
+    my $start = 3;
+    # Make sure incr is an even number.
+    my $incr = ($n < 1000) ? 1000 : ($n < 10000) ? 10000 : 100000;
+    my $sieveref;
+    while (1) {
+      $sieveref = _sieve_segment($start, $start+$incr);
+      my $segcount = $$sieveref =~ tr/0//;
+      last if ($count + $segcount) >= $n;
+      $count += $segcount;
+      $start += $incr+2;
+    }
+    # Our count is somewhere in this segment.  Need to look for it.
+    $prime = $start - 2;
+    while ($count < $n) {
+      $prime += 2;
+      $count++ if !substr($$sieveref, ($prime-$start)>>1, 1);
+    }
   }
   $prime;
 }
@@ -497,13 +554,35 @@ sub _powmod {
   my($n, $power, $m) = @_;
   my $t = 1;
 
-  while ($power) {
-    $t = _mulmod($t, $n, $m) if ($power & 1) != 0;
-    $n = _mulmod($n, $n, $m);
-    $power >>= 1;
+  if ( (~0 == 18446744073709551615) && ($m < 4294967296) ) {
+    $n %= $m;
+    while ($power) {
+      $t = ($t * $n) % $m if ($power & 1) != 0;
+      $n = ($n * $n) % $m;
+      $power >>= 1;
+    }
+  } else {
+    while ($power) {
+      $t = _mulmod($t, $n, $m) if ($power & 1) != 0;
+      $n = _mulmod($n, $n, $m);
+      $power >>= 1;
+    }
   }
   $t;
 }
+
+sub _gcd_ui {
+  my($x, $y) = @_;
+  if ($y < $x) { ($x, $y) = ($y, $x); }
+  while ($y > 0) {
+    # y1 <- x0 % y0 ; x1 <- y0
+    my $t = $y;
+    $y = $x % $y;
+    $x = $t;
+  }
+  $x;
+}
+
 
 sub miller_rabin {
   my($n, @bases) = @_;
@@ -530,12 +609,23 @@ sub miller_rabin {
     my $x = _powmod($a, $d, $n);
     next if ($x == 1) || ($x == ($n-1));
 
-    foreach my $r (1 .. $s) {
-      $x = _mulmod($x, $x, $n);
-      return 0 if $x == 1;
-      if ($x == ($n-1)) {
-        $a = 0;
-        last;
+    if (~0 == 18446744073709551615) {
+      foreach my $r (1 .. $s) {
+        $x = ($x < 4294967296) ? ($x*$x) % $n : _mulmod($x, $x, $n);
+        return 0 if $x == 1;
+        if ($x == ($n-1)) {
+          $a = 0;
+          last;
+        }
+      }
+    } else {
+      foreach my $r (1 .. $s) {
+        $x = ($x < 65536) ? ($x*$x) % $n : _mulmod($x, $x, $n);
+        return 0 if $x == 1;
+        if ($x == ($n-1)) {
+          $a = 0;
+          last;
+        }
       }
     }
     return 0 if $a != 0;
@@ -561,22 +651,30 @@ sub is_prob_prime {
   # Run our selected set of Miller-Rabin strong probability tests
   my $prob_prime = miller_rabin($n, @bases);
   # We're deterministic for 64-bit numbers
-  $prob_prime *= 2 if $n <= ~0; 
+  $prob_prime *= 2 if $n <= ~0;
   $prob_prime;
+}
+
+sub _basic_factor {
+  # MODIFIES INPUT SCALAR
+  return ($_[0]) if $_[0] < 4;
+  my @factors;
+  while ( ($_[0] % 2) == 0 ) { push @factors, 2;  $_[0] /= 2; }
+  while ( ($_[0] % 3) == 0 ) { push @factors, 3;  $_[0] /= 3; }
+  while ( ($_[0] % 5) == 0 ) { push @factors, 5;  $_[0] /= 5; }
+  if (is_prime($_[0])) {
+    push @factors, $_[0];
+    $_[0] = 1;
+  }
+  @factors;
 }
 
 sub trial_factor {
   my($n) = @_;
   croak "Input must be a positive integer" unless is_positive_int($n);
 
-  return ($n) if $n < 4;
-
-  my @factors;
-
-  while ( ($n & 1) == 0) {
-    push @factors, 2;
-    $n >>= 1;
-  }
+  my @factors = _basic_factor($n);
+  return @factors if $n < 4;
 
   my $limit = int( sqrt($n) + 0.001);
   my $f = 3;
@@ -594,15 +692,170 @@ sub trial_factor {
   @factors;
 }
 
-# TODO:
-sub factor { trial_factor(@_) }
-sub fermat_factor { trial_factor(@_) }
-sub holf_factor { trial_factor(@_) }
-sub squfof_factor { trial_factor(@_) }
-sub pbrent_factor { trial_factor(@_) }
-sub prho_factor { trial_factor(@_) }
-sub pminus1_factor { trial_factor(@_) }
+sub factor {
+  my($n) = @_;
+  croak "Input must be a positive integer" unless is_positive_int($n);
 
+  return trial_factor($n) if $n < 100000;
+
+  my @factors = _basic_factor($n);
+  return @factors if $n < 4;
+
+  while (($n %  7) == 0) { push @factors,  7;  $n /=  7; }
+  while (($n % 11) == 0) { push @factors, 11;  $n /= 11; }
+  while (($n % 13) == 0) { push @factors, 13;  $n /= 13; }
+  while (($n % 17) == 0) { push @factors, 17;  $n /= 17; }
+  while (($n % 19) == 0) { push @factors, 19;  $n /= 19; }
+  while (($n % 23) == 0) { push @factors, 23;  $n /= 23; }
+  while (($n % 29) == 0) { push @factors, 29;  $n /= 29; }
+
+  my @nstack = ($n);
+  while (@nstack) {
+    $n = pop @nstack;
+    #print "Looking at $n with stack ", join(",",@nstack), "\n";
+    while ( ($n >= (31*31)) && !is_prime($n) ) {
+      my @ftry;
+      @ftry = prho_factor($n, 64*1024);
+      @ftry = holf_factor($n, 64*1024)  if scalar @ftry == 1;
+      if (scalar @ftry > 1) {
+        #print "  split into ", join(",",@ftry), "\n";
+        $n = shift @ftry;
+        push @nstack, @ftry;
+      } else {
+        push @factors, trial_factor($n);
+        #print "  trial into ", join(",",@factors), "\n";
+        $n = 1;
+        last;
+      }
+    }
+    push @factors, $n  if $n != 1;
+  }
+  @factors;
+}
+
+# TODO:
+sub fermat_factor { trial_factor(@_) }
+sub squfof_factor { trial_factor(@_) }
+
+sub prho_factor {
+  my($n, $rounds) = @_;
+  croak "Input must be a positive integer" unless is_positive_int($n);
+  $rounds = 4*1024*1024 unless defined $rounds;
+
+  my @factors = _basic_factor($n);
+  return @factors if $n < 4;
+
+  my $inloop = 0;
+  my $a = 3;
+  my $U = 7;
+  my $V = 7;
+
+  for my $i (1 .. $rounds) {
+    # U^2+a % n
+    $U = _mulmod($U, $U, $n);
+    $U = (($n-$U) > $a)  ?  $U+$a  :  $U+$a-$n;
+    # V^2+a % n
+    $V = _mulmod($V, $V, $n);
+    $V = (($n-$V) > $a)  ?  $V+$a  :  $V+$a-$n;
+    # V^2+a % n
+    $V = _mulmod($V, $V, $n);
+    $V = (($n-$V) > $a)  ?  $V+$a  :  $V+$a-$n;
+    my $f = _gcd_ui( ($U > $V) ? $U-$V : $V-$U,  $n );
+    if ($f == $n) {
+      last if $inloop++;  # We've been here before
+    } elsif ($f != 1) {
+      push @factors, $f;
+      push @factors, int($n/$f);
+      croak "internal error in prho" unless ($f * int($n/$f)) == $n;
+      return @factors;
+    }
+  }
+  push @factors, $n;
+  @factors;
+}
+
+sub pbrent_factor {
+  my($n, $rounds) = @_;
+  croak "Input must be a positive integer" unless is_positive_int($n);
+  $rounds = 4*1024*1024 unless defined $rounds;
+
+  my @factors = _basic_factor($n);
+  return @factors if $n < 4;
+
+  my $a = 11;
+  my $Xi = 2;
+  my $Xm = 2;
+
+  for my $i (1 .. $rounds) {
+    # Xi^2+a % n
+    $Xi = _mulmod($Xi, $Xi, $n);
+    $Xi = (($n-$Xi) > $a)  ?  $Xi+$a  :  $Xi+$a-$n;
+    my $f = _gcd_ui( ($Xi > $Xm) ? $Xi-$Xm : $Xm-$Xi,  $n );
+    if ( ($f != 1) && ($f != $n) ) {
+      push @factors, $f;
+      push @factors, int($n/$f);
+      croak "internal error in pbrent" unless ($f * int($n/$f)) == $n;
+      return @factors;
+    }
+    $Xm = $Xi if ($i & ($i-1)) == 0;  # i is a power of 2
+  }
+  push @factors, $n;
+  @factors;
+}
+
+sub pminus1_factor {
+  my($n, $rounds) = @_;
+  croak "Input must be a positive integer" unless is_positive_int($n);
+  $rounds = 4*1024*1024 unless defined $rounds;
+
+  my @factors = _basic_factor($n);
+  return @factors if $n < 4;
+
+  my $kf = 13;
+
+  for my $i (1 .. $rounds) {
+    $kf = _powmod($kf, $i, $n);
+    $kf = $n if $kf == 0;
+    my $f = _gcd_ui( $kf-1, $n );
+    if ( ($f != 1) && ($f != $n) ) {
+      push @factors, $f;
+      push @factors, int($n/$f);
+      croak "internal error in pminus1" unless ($f * int($n/$f)) == $n;
+      return @factors;
+    }
+  }
+  push @factors, $n;
+  @factors;
+}
+
+sub holf_factor {
+  my($n, $rounds) = @_;
+  croak "Input must be a positive integer" unless is_positive_int($n);
+  $rounds = 64*1024*1024 unless defined $rounds;
+
+  my @factors = _basic_factor($n);
+  return @factors if $n < 4;
+
+  for my $i (1 .. $rounds) {
+    my $s = int(sqrt($n * $i));
+    $s++ if ($s * $s) != ($n * $i);
+    my $m = _mulmod($s, $s, $n);
+    # Check for perfect square
+    my $mcheck = $m & 127;
+    next if (($mcheck*0x8bc40d7d) & ($mcheck*0xa1e2f5d1) & 0x14020a);
+    my $f = int(sqrt($m));
+    next unless $f*$f == $m;
+    $f = _gcd_ui( ($s > $f)  ?  $s - $f  :  $f - $s,  $n);
+    last if $f == 1 || $f == $n;   # Should never happen
+    push @factors, $f;
+    push @factors, int($n/$f);
+    croak "internal error in HOLF" unless ($f * int($n/$f)) == $n;
+    # print "HOLF found factors in $i rounds\n";
+    return @factors;
+  }
+  push @factors, $n;
+  @factors;
+}
 
 my $_const_euler = 0.57721566490153286060651209008240243104215933593992;
 my $_const_li2 = 1.045163780117492784844588889194613136522615578151;

@@ -72,7 +72,6 @@ BEGIN {
     *RiemannR            = \&Math::Prime::Util::PP::RiemannR;
     *LogarithmicIntegral = \&Math::Prime::Util::PP::LogarithmicIntegral;
     *ExponentialIntegral = \&Math::Prime::Util::PP::ExponentialIntegral;
-    # TODO: prime_count is horribly, horribly slow
     # TODO: We should have some tests to verify XS vs. PP.
   }
 }
@@ -201,7 +200,7 @@ sub random_prime {
       do {
         $prime = $low + $irandf->($range);
         croak "Random function broken?" if $loop_limit-- < 0;
-      }  while ( !($prime % 2 ) || !($prime % 3) || !is_prime($prime) );
+      }  while ( !($prime % 2) || !($prime % 3) || !is_prime($prime) );
     } else {
       do {
         my $rand = ( ($irandf->(4294967295) << 32) + $irandf->(4294967295) ) % $range;
