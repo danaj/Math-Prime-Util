@@ -2,7 +2,6 @@
 use strict;
 use warnings;
 
-my $is_win32 = 0;
 use Config;
 BEGIN {
   if (! $Config{useithreads} || $] < 5.008) {
@@ -13,11 +12,6 @@ BEGIN {
   if (! eval { require threads }) {
     print "1..0 # Skip threads.pm not installed\n";
     exit 0;
-  }
-  if ($Config{osname} eq 'MSWin32') {
-    $is_win32 = 1;
-    #print "1..0 # Skip this module's threading not implemented on Win32\n";
-    #exit 0;
   }
 }
 
@@ -56,6 +50,9 @@ my @randn = (
     23284 41448 37349 59268 36894 79674 31694 73975 71738 18344 26328  5264
     79976 26714 27187 65237 18881 74975 28505 16271 51390 22598 65689 65512
     20357 68743 72422 69481 26714  6824 30012/);
+
+my $is_win32 = ($Config{osname} eq 'MSWin32')  ?  1  :  0;
+
 
 thread_test(
   sub { my $sum = 0;  $sum += prime_count($_) for (@randn); return $sum;},
