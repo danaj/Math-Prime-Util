@@ -38,14 +38,14 @@ static int _is_trial_prime7(UV x)
   UV q, i;
   i = 7;
   while (1) {   /* trial division, skipping multiples of 2/3/5 */
-    q = x/i;  if (q<i) return 1;  if (x==(q*i)) return 0;   i += 4;
-    q = x/i;  if (q<i) return 1;  if (x==(q*i)) return 0;   i += 2;
-    q = x/i;  if (q<i) return 1;  if (x==(q*i)) return 0;   i += 4;
-    q = x/i;  if (q<i) return 1;  if (x==(q*i)) return 0;   i += 2;
-    q = x/i;  if (q<i) return 1;  if (x==(q*i)) return 0;   i += 4;
-    q = x/i;  if (q<i) return 1;  if (x==(q*i)) return 0;   i += 6;
-    q = x/i;  if (q<i) return 1;  if (x==(q*i)) return 0;   i += 2;
-    q = x/i;  if (q<i) return 1;  if (x==(q*i)) return 0;   i += 6;
+    q = x/i;  if (q<i) break;  if (x==(q*i)) return 0;   i += 4;
+    q = x/i;  if (q<i) break;  if (x==(q*i)) return 0;   i += 2;
+    q = x/i;  if (q<i) break;  if (x==(q*i)) return 0;   i += 4;
+    q = x/i;  if (q<i) break;  if (x==(q*i)) return 0;   i += 2;
+    q = x/i;  if (q<i) break;  if (x==(q*i)) return 0;   i += 4;
+    q = x/i;  if (q<i) break;  if (x==(q*i)) return 0;   i += 6;
+    q = x/i;  if (q<i) break;  if (x==(q*i)) return 0;   i += 2;
+    q = x/i;  if (q<i) break;  if (x==(q*i)) return 0;   i += 6;
   }
   return 2;
 }
@@ -60,14 +60,14 @@ static int _is_prime7(UV x)
 
   i = 7;
   while (1) {   /* trial division, skipping multiples of 2/3/5 */
-    q = x/i;  if (q<i) return 1;  if (x==(q*i)) return 0;   i += 4;
-    q = x/i;  if (q<i) return 1;  if (x==(q*i)) return 0;   i += 2;
-    q = x/i;  if (q<i) return 1;  if (x==(q*i)) return 0;   i += 4;
-    q = x/i;  if (q<i) return 1;  if (x==(q*i)) return 0;   i += 2;
-    q = x/i;  if (q<i) return 1;  if (x==(q*i)) return 0;   i += 4;
-    q = x/i;  if (q<i) return 1;  if (x==(q*i)) return 0;   i += 6;
-    q = x/i;  if (q<i) return 1;  if (x==(q*i)) return 0;   i += 2;
-    q = x/i;  if (q<i) return 1;  if (x==(q*i)) return 0;   i += 6;
+    q = x/i;  if (q<i) break;  if (x==(q*i)) return 0;   i += 4;
+    q = x/i;  if (q<i) break;  if (x==(q*i)) return 0;   i += 2;
+    q = x/i;  if (q<i) break;  if (x==(q*i)) return 0;   i += 4;
+    q = x/i;  if (q<i) break;  if (x==(q*i)) return 0;   i += 2;
+    q = x/i;  if (q<i) break;  if (x==(q*i)) return 0;   i += 4;
+    q = x/i;  if (q<i) break;  if (x==(q*i)) return 0;   i += 6;
+    q = x/i;  if (q<i) break;  if (x==(q*i)) return 0;   i += 2;
+    q = x/i;  if (q<i) break;  if (x==(q*i)) return 0;   i += 6;
   }
   return 2;
 }

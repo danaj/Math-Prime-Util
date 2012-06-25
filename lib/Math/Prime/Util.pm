@@ -5,7 +5,7 @@ use Carp qw/croak confess carp/;
 
 BEGIN {
   $Math::Prime::Util::AUTHORITY = 'cpan:DANAJ';
-  $Math::Prime::Util::VERSION = '0.08';
+  $Math::Prime::Util::VERSION = '0.09';
 }
 
 # parent is cleaner, and in the Perl 5.10.1 / 5.12.0 core, but not earlier.
@@ -265,7 +265,7 @@ Math::Prime::Util - Utilities related to prime numbers, including fast sieves an
 
 =head1 VERSION
 
-Version 0.08
+Version 0.09
 
 
 =head1 SYNOPSIS
@@ -818,14 +818,16 @@ Pi(10^10) = 455,052,511.
 
 Perl modules, counting the primes to C<800_000_000> (800 million), in seconds:
 
-  Time (s)  Module                      Version
-  --------  --------------------------  ------
-       0.4  Math::Prime::Util           0.02
-       0.9  Math::Prime::Util           0.01
-       2.9  Math::Prime::FastSieve      0.12
-      11.7  Math::Prime::XS             0.29
-      15.0  Bit::Vector                 7.2
-   [hours]  Math::Primality             0.04
+  Time (s)   Module                      Version  Notes
+  ---------  --------------------------  -------  -----------
+       0.36  Math::Prime::Util           0.09     segmented mod-30 sieve
+       0.9   Math::Prime::Util           0.01     mod-30 sieve
+       2.9   Math::Prime::FastSieve      0.12     decent odd-number sieve
+      11.7   Math::Prime::XS             0.29     "" but needs a count API
+      15.0   Bit::Vector                 7.2
+      59.1   Math::Prime::Util::PP       0.09     Perl
+     548.1   RosettaCode sieve           2012-06  simplistic Perl
+   [hours]   Math::Primality             0.04     Perl + GMP
 
 
 

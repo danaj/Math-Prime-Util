@@ -5,7 +5,7 @@ use Carp qw/carp croak confess/;
 
 BEGIN {
   $Math::Prime::Util::PP::AUTHORITY = 'cpan:DANAJ';
-  $Math::Prime::Util::PP::VERSION = '0.08';
+  $Math::Prime::Util::PP::VERSION = '0.09';
 }
 
 # The Pure Perl versions of all the Math::Prime::Util routines.
@@ -101,30 +101,36 @@ sub is_prime {
   return _is_prime7($n);
 }
 
-sub _sieve_erat {
-  my($end) = @_;
-  my $last = int(($end+1)/2);
+# Possible sieve storage:
+#   1) vec with mod-30 wheel:   8 bits  / 30
+#   2) vec with mod-2 wheel :  15 bits  / 30
+#   3) str with mod-30 wheel:   8 bytes / 30
+#   4) str with mod-2 wheel :  15 bytes / 30
+#
+# It looks like using vecs is about 2x slower than strs, and the strings also
+# let us do some fast operations on the results.  E.g.
+#   Count all primes:
+#      $count += $$sieveref =~ tr/0//;
+#   Loop over primes:
+#      foreach my $s (split("0", $$sieveref, -1)) {
+#        $n += 2 + 2 * length($s);
+#        .. do something with the prime $n
+#      }
+#
+# We're using method 4, though sadly it is memory intensive.
+#
+# Even so, it is a lot less memory than making an array entry for each number,
+# and the performance is almost 10x faster than a naive array sieve.
 
-  my $sieve = '';
-  my $n = 3;
-  while ( ($n*$n) <= $end ) {
-    my $s = $n*$n;
-    while ($s <= $end) {
-      vec($sieve, $s >> 1, 1) = 1;
-      $s += 2*$n;
-    }
-    do { $n += 2 } while vec($sieve, $n >> 1, 1) != 0;
-  }
-  # Mark 1 as composite
-  vec($sieve, 0, 1) = 1;
-  $sieve;
-}
-# Uses 8x more memory, but almost 2x faster
 sub _sieve_erat_string {
   my($end) = @_;
 
-  my $sieve = "1" . "0" x ($end>>1);
-  my $n = 3;
+  # Prefill with 3 and 5 already marked.
+  my $whole = int( ($end>>1) / 15);
+  my $sieve = "100010010010110" . "011010010010110" x $whole;
+  # Make exactly the number of entries requested, never more.
+  substr($sieve, ($end>>1)+1) = '';
+  my $n = 7;
   while ( ($n*$n) <= $end ) {
     my $s = $n*$n;
     my $filter_s   = $s >> 1;
@@ -137,6 +143,27 @@ sub _sieve_erat_string {
   }
   \$sieve;
 }
+
+# TODO: this should be plugged into precalc, memfree, etc. just like the C code
+{
+  my $primary_size_limit = 15000;
+  my $primary_sieve_size = 0;
+  my $primary_sieve_ref;
+  sub _sieve_erat {
+    my($end) = @_;
+
+    return _sieve_erat_string($end) if $end > $primary_size_limit;
+
+    if ($primary_sieve_size == 0) {
+      $primary_sieve_size = $primary_size_limit;
+      $primary_sieve_ref = _sieve_erat_string($primary_sieve_size);
+    }
+    my $sieve = substr($$primary_sieve_ref, 0, ($end+1)>>1);
+    \$sieve;
+  }
+}
+
+
 sub _sieve_segment {
   my($beg,$end) = @_;
   croak "Internal error: segment beg is even" if ($beg % 2) == 0;
@@ -145,14 +172,25 @@ sub _sieve_segment {
   croak "Internal error: segment beg should be >= 3" if $beg < 3;
   my $range = int( ($end - $beg) / 2 ) + 1;
 
-  # Replicate the string "010" and we've just marked 3's.
-  # Replicate "011010010010110" and we've marked 3's and 5's.
-  my $sieve = "0" x $range;
+  # Prefill with 3 and 5 already marked, and offset to the segment start.
+  my $whole = int( ($range+14) / 15);
+  my $startp = ($beg % 30) >> 1;
+  my $sieve = substr("011010010010110", $startp) . "011010010010110" x $whole;
+  # Set 3 and 5 to prime if we're sieving them.
+  substr($sieve,0,2) = "00" if $beg == 3;
+  substr($sieve,0,1) = "0"  if $beg == 5;
+  # Get rid of any extra we added.
+  substr($sieve, $range) = '';
+
+  # If the end value is below 7^2, then the pre-sieve is all we needed.
+  return \$sieve if $end < 49;
+
   my $limit = int(sqrt($end)) + 1;
-  # We'd like to go through just the primes, but we'll keep things simple by
-  # just skipping multiples of 2/3/5/7/11/13/17/19.
-  my $p = 3;
-  while ($p <= $limit) {
+  # For large value of end, it's a huge win to just walk primes.
+  my $primesieveref = _sieve_erat($limit);
+  my $p = 7-2;
+  foreach my $s (split("0", substr($$primesieveref, 3), -1)) {
+    $p += 2 + 2 * length($s);
     my $p2 = $p*$p;
     last if $p2 > $end;
     if ($p2 < $beg) {
@@ -170,16 +208,6 @@ sub _sieve_segment {
       while ($filter_p2 <= $filter_end) {
         substr($sieve, $filter_p2, 1) = "1";
         $filter_p2 += $p;
-      }
-    }
-    $p += 2;
-    # Skip obvious composites.
-    if ($p <= 19) {
-      $p += 2 if $p ==  9;
-      $p += 2 if $p == 15;
-    } else {
-      while ( (($p % 3) == 0) || (($p % 5) == 0) || (($p % 7) == 0) || (($p % 11) == 0) || (($p % 13) == 0) || (($p % 17) == 0) || (($p % 19) == 0) ) {
-        $p+= 2;
       }
     }
   }
@@ -209,23 +237,8 @@ sub primes {
   $high-- if ($high % 2) == 0;
   return $sref if $low > $high;
 
-  #if ($low == 7) {
-  #  my $sieveref = _sieve_erat_string($high);
-  #  my $n = 7;
-  #  while ($n <= $high) {
-  #    push @$sref, $n  if !substr($$sieveref,$n>>1,1);
-  #    $n += 2;
-  #  }
-  #} else {
-  #  my $sieveref = _sieve_segment($low,$high);
-  #  my $n = $low;
-  #  while ($n <= $high) {
-  #    push @$sref, $n  if !substr($$sieveref,($n-$low)>>1,1);
-  #    $n += 2;
-  #  }
-  #}
   if ($low == 7) {
-    my $sieveref = _sieve_erat_string($high);
+    my $sieveref = _sieve_erat($high);
     my $n = $low - 2;
     foreach my $s (split("0", substr($$sieveref, 3), -1)) {
       $n += 2 + 2 * length($s);
@@ -312,9 +325,8 @@ sub prime_count {
   my $sieveref;
 
   if ($low == 3) {
-    $sieveref = _sieve_erat_string($high);
+    $sieveref = _sieve_erat($high);
   } else {
-    return 0 if $low > $high;
     $sieveref = _sieve_segment($low,$high);
   }
 
@@ -1048,7 +1060,7 @@ Math::Prime::Util::PP - Pure Perl version of Math::Prime::Util
 
 =head1 VERSION
 
-Version 0.08
+Version 0.09
 
 
 =head1 SYNOPSIS

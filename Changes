@@ -1,7 +1,14 @@
 Revision history for Perl extension Math::Prime::Util.
 
-0.09  23 June 2012
-    - Pure Perl code.  Passes all tests, but 1 to 13000x slower.
+0.09  25 June 2012
+    - Pure Perl code.  Passes all tests, but 1 to 120x slower.  Test suite
+      as a whole is 38x slower.
+    - Modifications to threading test:
+        - some machines were failing because they use non-TS rand.  Fix by
+          making our own rand.
+        - Win32 was failing because of unique threading issues.  It barfs
+          if you free memory on a different thread than allocated it.
+    - is_prime could return 1 in some cases.  Fixed.
 
 0.08  22 June 2012
     - Added thread safety and tested good concurrency.
