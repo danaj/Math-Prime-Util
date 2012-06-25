@@ -33,7 +33,7 @@ sub _maxbits { $_uv_size }
 my $_precalc_size = 0;
 sub prime_precalc {
   my($n) = @_;
-  croak "Input must be a positive integer" unless is_positive_int($n);
+  croak "Input must be a positive integer" unless _is_positive_int($n);
   $_precalc_size = $n if $n > $_precalc_size;
 }
 sub prime_memfree {
@@ -43,7 +43,7 @@ sub _get_prime_cache_size { $_precalc_size }
 sub _prime_memfreeall { prime_memfree; }
 
 
-sub is_positive_int {
+sub _is_positive_int {
   ((defined $_[0]) && ($_[0] !~ tr/0123456789//c));
 }
 
@@ -222,8 +222,8 @@ sub primes {
   my $high = shift;
   my $sref = [];
 
-  croak "Input must be a positive integer" unless is_positive_int($low)
-                                               && is_positive_int($high);
+  croak "Input must be a positive integer" unless _is_positive_int($low)
+                                               && _is_positive_int($high);
 
   return $sref if ($low > $high) || ($high < 2);
 
@@ -257,7 +257,7 @@ sub primes {
 
 sub next_prime {
   my($n) = @_;
-  croak "Input must be a positive integer" unless is_positive_int($n);
+  croak "Input must be a positive integer" unless _is_positive_int($n);
   return 0 if $n >= ((_maxbits == 32) ? 4294967291 : 18446744073709551557);
   return $_prime_next_small[$n] if $n <= $#_prime_next_small;
 
@@ -273,7 +273,7 @@ sub next_prime {
 
 sub prev_prime {
   my($n) = @_;
-  croak "Input must be a positive integer" unless is_positive_int($n);
+  croak "Input must be a positive integer" unless _is_positive_int($n);
   if ($n <= 7) {
     return ($n <= 2) ? 0 : ($n <= 3) ? 2 : ($n <= 5) ? 3 : 5;
   }
@@ -310,8 +310,8 @@ sub prime_count {
     $high = $low;
     $low = 2;
   }
-  croak "Input must be a positive integer" unless is_positive_int($low)
-                                               && is_positive_int($high);
+  croak "Input must be a positive integer" unless _is_positive_int($low)
+                                               && _is_positive_int($high);
 
   my $count = 0;
 
@@ -337,7 +337,7 @@ sub prime_count {
 
 sub prime_count_lower {
   my($x) = @_;
-  croak "Input must be a positive integer" unless is_positive_int($x);
+  croak "Input must be a positive integer" unless _is_positive_int($x);
 
   return $_prime_count_small[$x] if $x <= $#_prime_count_small;
 
@@ -364,7 +364,7 @@ sub prime_count_lower {
 
 sub prime_count_upper {
   my($x) = @_;
-  croak "Input must be a positive integer" unless is_positive_int($x);
+  croak "Input must be a positive integer" unless _is_positive_int($x);
 
   return $_prime_count_small[$x] if $x <= $#_prime_count_small;
 
@@ -406,7 +406,7 @@ sub prime_count_upper {
 
 sub prime_count_approx {
   my($x) = @_;
-  croak "Input must be a positive integer" unless is_positive_int($x);
+  croak "Input must be a positive integer" unless _is_positive_int($x);
 
   return $_prime_count_small[$x] if $x <= $#_prime_count_small;
 
@@ -416,7 +416,7 @@ sub prime_count_approx {
 
 sub nth_prime_lower {
   my($n) = @_;
-  croak "Input must be a positive integer" unless is_positive_int($n);
+  croak "Input must be a positive integer" unless _is_positive_int($n);
 
   return $_primes_small[$n] if $n <= $#_primes_small;
 
@@ -439,7 +439,7 @@ sub nth_prime_lower {
 
 sub nth_prime_upper {
   my($n) = @_;
-  croak "Input must be a positive integer" unless is_positive_int($n);
+  croak "Input must be a positive integer" unless _is_positive_int($n);
 
   return $_primes_small[$n] if $n <= $#_primes_small;
 
@@ -470,7 +470,7 @@ sub nth_prime_upper {
 
 sub nth_prime_approx {
   my($n) = @_;
-  croak "Input must be a positive integer" unless is_positive_int($n);
+  croak "Input must be a positive integer" unless _is_positive_int($n);
 
   return $_primes_small[$n] if $n <= $#_primes_small;
 
@@ -509,7 +509,7 @@ sub nth_prime_approx {
 
 sub nth_prime {
   my($n) = @_;
-  croak "Input must be a positive integer" unless is_positive_int($n);
+  croak "Input must be a positive integer" unless _is_positive_int($n);
 
   return $_primes_small[$n] if $n <= $#_primes_small;
 
@@ -598,7 +598,7 @@ sub _gcd_ui {
 
 sub miller_rabin {
   my($n, @bases) = @_;
-  croak "Input must be a positive integer" unless is_positive_int($n);
+  croak "Input must be a positive integer" unless _is_positive_int($n);
   croak "No bases given to miller_rabin" unless @bases;
 
   return 0 if ($n == 0) || ($n == 1);
@@ -683,7 +683,7 @@ sub _basic_factor {
 
 sub trial_factor {
   my($n) = @_;
-  croak "Input must be a positive integer" unless is_positive_int($n);
+  croak "Input must be a positive integer" unless _is_positive_int($n);
 
   my @factors = _basic_factor($n);
   return @factors if $n < 4;
@@ -706,7 +706,7 @@ sub trial_factor {
 
 sub factor {
   my($n) = @_;
-  croak "Input must be a positive integer" unless is_positive_int($n);
+  croak "Input must be a positive integer" unless _is_positive_int($n);
 
   return trial_factor($n) if $n < 100000;
 
@@ -751,7 +751,7 @@ sub squfof_factor { trial_factor(@_) }
 
 sub prho_factor {
   my($n, $rounds) = @_;
-  croak "Input must be a positive integer" unless is_positive_int($n);
+  croak "Input must be a positive integer" unless _is_positive_int($n);
   $rounds = 4*1024*1024 unless defined $rounds;
 
   my @factors = _basic_factor($n);
@@ -788,7 +788,7 @@ sub prho_factor {
 
 sub pbrent_factor {
   my($n, $rounds) = @_;
-  croak "Input must be a positive integer" unless is_positive_int($n);
+  croak "Input must be a positive integer" unless _is_positive_int($n);
   $rounds = 4*1024*1024 unless defined $rounds;
 
   my @factors = _basic_factor($n);
@@ -817,7 +817,7 @@ sub pbrent_factor {
 
 sub pminus1_factor {
   my($n, $rounds) = @_;
-  croak "Input must be a positive integer" unless is_positive_int($n);
+  croak "Input must be a positive integer" unless _is_positive_int($n);
   $rounds = 4*1024*1024 unless defined $rounds;
 
   my @factors = _basic_factor($n);
@@ -842,7 +842,7 @@ sub pminus1_factor {
 
 sub holf_factor {
   my($n, $rounds) = @_;
-  croak "Input must be a positive integer" unless is_positive_int($n);
+  croak "Input must be a positive integer" unless _is_positive_int($n);
   $rounds = 64*1024*1024 unless defined $rounds;
 
   my @factors = _basic_factor($n);
@@ -1065,12 +1065,484 @@ Version 0.09
 
 =head1 SYNOPSIS
 
-   .... See L<Math::Prime::Util> ...
+The functionality is basically identical to L<Math::Prime::Util>, as this
+module is just the Pure Perl implementation.
+
+  # Normally you would just import the functions you are using.
+  # Nothing is exported by default.
+  use Math::Prime::Util ':all';
+
+
+  # Get a big array reference of many primes
+  my $aref = primes( 100_000_000 );
+
+  # All the primes between 5k and 10k inclusive
+  my $aref = primes( 5_000, 10_000 );
+
+  # If you want them in an array instead
+  my @primes = @{primes( 500 )};
+
+
+  # is_prime returns 0 for composite, 2 for prime
+  say "$n is prime"  if is_prime($n);
+
+  # is_prob_prime returns 0 for composite, 2 for prime, and 1 for maybe prime
+  say "$n is ", qw(composite maybe_prime? prime)[is_prob_prime($n)];
+
+
+  # step to the next prime (returns 0 if the next one is more than ~0)
+  $n = next_prime($n);
+
+  # step back (returns 0 if given input less than 2)
+  $n = prev_prime($n);
+
+
+  # Return Pi(n) -- the number of primes E<lt>= n.
+  $primepi = prime_count( 1_000_000 );
+  $primepi = prime_count( 10**14, 10**14+1000 );  # also does ranges
+
+  # Quickly return an approximation to Pi(n)
+  my $approx_number_of_primes = prime_count_approx( 10**17 );
+
+  # Lower and upper bounds.  lower <= Pi(n) <= upper for all n
+  die unless prime_count_lower($n) <= prime_count($n);
+  die unless prime_count_upper($n) >= prime_count($n);
+
+
+  # Return p_n, the nth prime
+  say "The ten thousandth prime is ", nth_prime(10_000);
+
+  # Return a quick approximation to the nth prime
+  say "The one trillionth prime is ~ ", nth_prime_approx(10**12);
+
+  # Lower and upper bounds.   lower <= nth_prime(n) <= upper for all n
+  die unless nth_prime_lower($n) <= nth_prime($n);
+  die unless nth_prime_upper($n) >= nth_prime($n);
+
+
+  # Get the prime factors of a number
+  @prime_factors = factor( $n );
+
+
+  # Precalculate a sieve, possibly speeding up later work.
+  prime_precalc( 1_000_000_000 );
+
+  # Free any memory used by the module.
+  prime_memfree;
+
+  # Alternate way to free.  When this leaves scope, memory is freed.
+  my $mf = Math::Prime::Util::MemFree->new;
+
+
+  # Random primes
+  my $small_prime = random_prime(1000);      # random prime <= limit
+  my $rand_prime = random_prime(100, 10000); # random prime within a range
+  my $rand_prime = random_ndigit_prime(6);   # random 6-digit prime
 
 
 =head1 DESCRIPTION
 
-   .... See L<Math::Prime::Util> ...
+A set of utilities related to prime numbers.  These include multiple sieving
+methods, is_prime, prime_count, nth_prime, approximations and bounds for
+the prime_count and nth prime, next_prime and prev_prime, factoring utilities,
+and more.
+
+All routines currently work in native integers (32-bit or 64-bit).  Bignum
+support may be added later.  If you need bignum support for these types of
+functions inside Perl now, I recommend L<Math::Pari>.
+
+
+=head1 FUNCTIONS
+
+=head2 is_prime
+
+  print "$n is prime" if is_prime($n);
+
+Returns 2 if the number is prime, 0 if not.  Also note there are
+probabilistic prime testing functions available.
+
+
+=head2 primes
+
+Returns all the primes between the lower and upper limits (inclusive), with
+a lower limit of C<2> if none is given.
+
+An array reference is returned (with large lists this is much faster and uses
+less memory than returning an array directly).
+
+  my $aref1 = primes( 1_000_000 );
+  my $aref2 = primes( 1_000_000_000_000, 1_000_000_001_000 );
+
+  my @primes = @{ primes( 500 ) };
+
+  print "$_\n" for (@{primes( 20, 100 )});
+
+Sieving will be done if required.  The algorithm used will depend on the range
+and whether a sieve result already exists.  Possibilities include trial
+division (for ranges with only one expected prime), a Sieve of Eratosthenes
+using wheel factorization, or a segmented sieve.
+
+
+=head2 next_prime
+
+  $n = next_prime($n);
+
+Returns the next prime greater than the input number.  0 is returned if the
+next prime is larger than a native integer type (the last representable
+primes being C<4,294,967,291> in 32-bit Perl and
+C<18,446,744,073,709,551,557> in 64-bit).
+
+
+=head2 prev_prime
+
+  $n = prev_prime($n);
+
+Returns the prime smaller than the input number.  0 is returned if the
+input is C<2> or lower.
+
+
+=head2 prime_count
+
+  my $primepi = prime_count( 1_000 );
+  my $pirange = prime_count( 1_000, 10_000 );
+
+Returns the Prime Count function C<Pi(n)>, also called C<primepi> in some
+math packages.  When given two arguments, it returns the inclusive
+count of primes between the ranges (e.g. C<(13,17)> returns 2, C<14,17>
+and C<13,16> return 1, and C<14,16> returns 0).
+
+
+=head2 prime_count_upper
+
+=head2 prime_count_lower
+
+  my $lower_limit = prime_count_lower($n);
+  die unless prime_count($n) >= $lower_limit;
+
+  my $upper_limit = prime_count_upper($n);
+  die unless prime_count($n) <= $upper_limit;
+
+Returns an upper or lower bound on the number of primes below the input number.
+These are analytical routines, so will take a fixed amount of time and no
+memory.  The actual C<prime_count> will always be on or between these numbers.
+
+A common place these would be used is sizing an array to hold the first C<$n>
+primes.  It may be desirable to use a bit more memory than is necessary, to
+avoid calling C<prime_count>.
+
+These routines use hand-verified tight limits below a range at least C<2^35>,
+and fall back to the Dusart bounds of
+
+    x/logx * (1 + 1/logx + 1.80/log^2x) <= Pi(x)
+
+    x/logx * (1 + 1/logx + 2.51/log^2x) >= Pi(x)
+
+above that range.
+
+
+=head2 prime_count_approx
+
+  print "there are about ",
+        prime_count_approx( 10 ** 18 ),
+        " primes below one quintillion.\n";
+
+Returns an approximation to the C<prime_count> function, without having to
+generate any primes.  The current implementation uses the Riemann R function
+which is quite accurate: an error of less than C<0.0005%> is typical for
+input values over C<2^32>.  A slightly faster (0.1ms vs. 1ms), but much less
+accurate, answer can be obtained by averaging the upper and lower bounds.
+
+
+=head2 nth_prime
+
+  say "The ten thousandth prime is ", nth_prime(10_000);
+
+Returns the prime that lies in index C<n> in the array of prime numbers.  Put
+another way, this returns the smallest C<p> such that C<Pi(p) E<gt>= n>.
+
+This relies on generating primes, so can require a lot of time and space for
+large inputs.
+
+
+=head2 nth_prime_upper
+
+=head2 nth_prime_lower
+
+  my $lower_limit = nth_prime_lower($n);
+  die unless nth_prime($n) >= $lower_limit;
+
+  my $upper_limit = nth_prime_upper($n);
+  die unless nth_prime($n) <= $upper_limit;
+
+Returns an analytical upper or lower bound on the Nth prime.  This will be
+very fast.  The lower limit uses the Dusart 1999 bounds for all C<n>, while
+the upper bound uses one of the two Dusart 1999 bounds for C<n E<gt>= 27076>,
+the Robin 1983 bound for C<n E<gt>= 7022>, and the simple bound of
+C<n * (logn + loglogn)> for C<n E<lt> 7022>.
+
+
+=head2 nth_prime_approx
+
+  say "The one trillionth prime is ~ ", nth_prime_approx(10**12);
+
+Returns an approximation to the C<nth_prime> function, without having to
+generate any primes.  Uses the Cipolla 1902 approximation with two
+polynomials, plus a correction term for small values to reduce the error.
+
+
+=head2 miller_rabin
+
+  my $maybe_prime = miller_rabin($n, 2);
+  my $probably_prime = miller_rabin($n, 2, 3, 5, 7, 11, 13, 17);
+
+Takes a positive number as input and one or more bases.  The bases must be
+between C<2> and C<n - 2>.  Returns 2 is C<n> is definitely prime, 1 if C<n>
+is probably prime, and 0 if C<n> is definitely composite.  Since this is
+just the Miller-Rabin test, a value of 2 is only returned for inputs of
+2 and 3, which are shortcut.  If 0 is returned, then the number really is a
+composite.  If 1 is returned, there is a good chance the number is prime
+(depending on the input and the bases), but we cannot be sure.
+
+This is usually used in combination with other tests to make either stronger
+tests (e.g. the strong BPSW test) or deterministic results for numbers less
+than some verified limit (such as the C<is_prob_prime> function in this module).
+
+
+=head2 is_prob_prime
+
+  my $prob_prime = is_prob_prime($n);
+  # Returns 0 (composite), 2 (prime), or 1 (probably prime)
+
+Takes a positive number as input and returns back either 0 (composite),
+2 (definitely prime), or 1 (probably prime).
+
+This is done with a tuned set of Miller-Rabin tests such that the result
+will be deterministic for 64-bit input.  Either 2, 3, 4, 5, or 7 Miller-Rabin
+tests are performed (no more than 3 for 32-bit input), and the result will
+then always be 0 (composite) or 2 (prime).  A later implementation may switch
+to a BPSW test, depending on speed.
+
+
+=head2 random_prime
+
+  my $small_prime = random_prime(1000);      # random prime <= limit
+  my $rand_prime = random_prime(100, 10000); # random prime within a range
+
+Returns a psuedo-randomly selected prime that will be greater than or equal
+to the lower limit and less than or equal to the upper limit.  If no lower
+limit is given, 2 is implied.  Returns undef if no primes exist within the
+range.  The L<rand> function is called one or more times for selection.
+
+This will return a uniform distribution of the primes in the range, meaning
+for each prime in the range, the chances are equally likely that it will be
+seen.
+
+The current algorithm does a random index selection for small numbers, which
+is deterministic.  For larger numbers, this can be very slow, so the
+obvious Monte Carlo method is used, where random numbers in the range are
+selected until one is prime.  That also gets slow as the number of digits
+increases, but not something that impacts us in 64-bit.
+
+If you want cryptographically secure primes, I suggest looking at
+L<Crypt::Primes> or something similar.  The current L<Math::Prime::Util>
+module does not use strong randomness, and its primes are ridiculously small
+by cryptographic standards.
+
+Perl's L<rand> function is normally called, but if the sub C<main::rand>
+exists, it will be used instead.  When called with no arguments it should
+return a float value between 0 and 1-epsilon, with 32 bits of randomness.
+Examples:
+
+  # Use Mersenne Twister
+  use Math::Random::MT::Auto qw/rand/;
+
+  # Use my custom random function
+  sub rand { ... }
+
+=head2 random_ndigit_prime
+
+  say "My 4-digit prime number is: ", random_ndigit_prime(4);
+
+Selects a random n-digit prime, where the input is an integer number of
+digits between 1 and the maximum native type (10 for 32-bit, 20 for 64-bit).
+One of the primes within that range (e.g. 1000 - 9999 for 4-digits) will be
+uniformly selected using the L<rand> function.
+
+
+
+=head1 UTILITY FUNCTIONS
+
+=head2 prime_precalc
+
+  prime_precalc( 1_000_000_000 );
+
+Let the module prepare for fast operation up to a specific number.  It is not
+necessary to call this, but it gives you more control over when memory is
+allocated and gives faster results for multiple calls in some cases.  In the
+current implementation this will calculate a sieve for all numbers up to the
+specified number.
+
+
+=head2 prime_memfree
+
+  prime_memfree;
+
+Frees any extra memory the module may have allocated.  Like with
+C<prime_precalc>, it is not necessary to call this, but if you're done
+making calls, or want things cleanup up, you can use this.  The object method
+might be a better choice for complicated uses.
+
+=head2 Math::Prime::Util::MemFree->new
+
+  my $mf = Math::Prime::Util::MemFree->new;
+  # perform operations.  When $mf goes out of scope, memory will be recovered.
+
+This is a more robust way of making sure any cached memory is freed, as it
+will be handled by the last C<MemFree> object leaving scope.  This means if
+your routines were inside an eval that died, things will still get cleaned up.
+If you call another function that uses a MemFree object, the cache will stay
+in place because you still have an object.
+
+
+
+=head1 FACTORING FUNCTIONS
+
+=head2 factor
+
+  my @factors = factor(3_369_738_766_071_892_021);
+  # returns (204518747,16476429743)
+
+Produces the prime factors of a positive number input.  They may not be in
+numerical order.  The special cases of C<n = 0> and C<n = 1> will
+return C<n>, which guarantees multiplying the factors together will
+always result in the input value, though those are the only cases where
+the returned factors are not prime.
+
+The current algorithm is to use trial division for small numbers, while large
+numbers go through a sequence of small trials, SQUFOF, Pollard's Rho, Hart's
+one line factorization, and finally trial division for any survivors.  This
+process is repeated for each non-prime factor.
+
+
+=head2 all_factors
+
+  my @divisors = all_factors(30);   # returns (2, 3, 5, 6, 10, 15)
+
+Produces all the divisors of a positive number input.  1 and the input number
+are excluded (which implies that an empty list is returned for any prime
+number input).  The divisors are a power set of multiplications of the prime
+factors, returned as a uniqued sorted list.
+
+
+=head2 trial_factor
+
+  my @factors = trial_factor($n);
+
+Produces the prime factors of a positive number input.  The factors will be
+in numerical order.  The special cases of C<n = 0> and C<n = 1> will return
+C<n>, while with all other inputs the factors are guaranteed to be prime.
+For large inputs this will be very slow.
+
+=head2 fermat_factor
+
+  my @factors = fermat_factor($n);
+
+Produces factors, not necessarily prime, of the positive number input.  The
+particular algorithm is Knuth's algorithm C.  For small inputs this will be
+very fast, but it slows down quite rapidly as the number of digits increases.
+It is very fast for inputs with a factor close to the midpoint
+(e.g. a semiprime p*q where p and q are the same number of digits).
+
+=head2 holf_factor
+
+  my @factors = holf_factor($n);
+
+Produces factors, not necessarily prime, of the positive number input.  An
+optional number of rounds can be given as a second parameter.  It is possible
+the function will be unable to find a factor, in which case a single element,
+the input, is returned.  This uses Hart's One Line Factorization with no
+premultiplier.  It is an interesting alternative to Fermat's algorithm,
+and there are some inputs it can rapidly factor.  In the long run it has the
+same advantages and disadvantages as Fermat's method.
+
+=head2 squfof_factor
+
+  my @factors = squfof_factor($n);
+
+Produces factors, not necessarily prime, of the positive number input.  An
+optional number of rounds can be given as a second parameter.  It is possible
+the function will be unable to find a factor, in which case a single element,
+the input, is returned.  This function typically runs very fast.
+
+=head2 prho_factor
+
+=head2 pbrent_factor
+
+=head2 pminus1_factor
+
+  my @factors = prho_factor($n);
+
+  # Use a very small number of rounds
+  my @factors = prho_factor($n, 1000);
+
+Produces factors, not necessarily prime, of the positive number input.  An
+optional number of rounds can be given as a second parameter.  These attempt
+to find a single factor using one of the probabilistic algorigthms of
+Pollard Rho, Brent's modification of Pollard Rho, or Pollard's C<p - 1>.
+These are more specialized algorithms usually used for pre-factoring very
+large inputs, or checking very large inputs for naive mistakes.  If the
+input is prime or they run out of rounds, they will return the single
+input value.  On some inputs they will take a very long time, while on
+others they succeed in a remarkably short time.
+
+
+
+=head1 MATHEMATICAL FUNCTIONS
+
+=head2 ExponentialIntegral
+
+  my $Ei = ExponentialIntegral($x);
+
+Given a non-zero floating point input C<x>, this returns the real-valued
+exponential integral of C<x>, defined as the integral of C<e^t/t dt>
+from C<-infinity> to C<x>.
+Depending on the input, the integral is calculated using
+continued fractions (C<x E<lt> -1>),
+rational Chebyshev approximation (C< -1 E<lt> x E<lt> 0>),
+a convergent series (small positive C<x>),
+or an asymptotic divergent series (large positive C<x>).
+
+Accuracy should be at least 14 digits.
+
+
+=head2 LogarithmicIntegral
+
+  my $li = LogarithmicIntegral($x)
+
+Given a positive floating point input, returns the floating point logarithmic
+integral of C<x>, defined as the integral of C<dt/ln t> from C<0> to C<x>.
+If given a negative input, the function will croak.  The function returns
+0 at C<x = 0>, and C<-infinity> at C<x = 1>.
+
+This is often known as C<li(x)>.  A related function is the offset logarithmic
+integral, sometimes known as C<Li(x)> which avoids the singularity at 1.  It
+may be defined as C<Li(x) = li(x) - li(2)>.
+
+This function is implemented as C<li(x) = Ei(ln x)> after handling special
+values.
+
+Accuracy should be at least 14 digits.
+
+
+=head2 RiemannR
+
+  my $r = RiemannR($x);
+
+Given a positive non-zero floating point input, returns the floating
+point value of Riemann's R function.  Riemann's R function gives a very close
+approximation to the prime counting function.
+
+Accuracy should be at least 14 digits.
 
 
 =head1 LIMITATIONS
