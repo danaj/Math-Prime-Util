@@ -359,7 +359,9 @@ and L<Math::Factor::XS>.  It seems to be faster than L<Math::Pari> for
 everything except factoring certain 16-20 digit numbers.
 
 The module is thread-safe and allows concurrency between Perl threads while
-still sharing a prime cache.  It is not itself multithreaded.
+still sharing a prime cache.  It is not itself multithreaded.  The one caveat
+is on Win32 where you must use C<precalc> if the function will use primes
+(C<primes>, C<prime_count> greater than 900M, C<nth_prime> greater than 45M).
 
 
 =head1 FUNCTIONS
@@ -789,7 +791,10 @@ If you use later versions of Perl, or Perl 5.6.2 32-bit, or Perl 5.6.2 64-bit
 and keep numbers below C<~ 2^52>, then everything works.  The best solution is
 to update to a more recent Perl.
 
-The module is thread-safe and should allow good concurrency.
+The module is thread-safe and should allow good concurrency on all platforms
+that support Perl threads except Win32 (Cygwin works).  With Win32, either
+don't use threads or make sure C<prime_precalc> is called before using
+C<primes>, C<prime_count>, or C<nth_prime> with large inputs.
 
 
 =head1 PERFORMANCE
@@ -826,8 +831,9 @@ Perl modules, counting the primes to C<800_000_000> (800 million), in seconds:
       11.7   Math::Prime::XS             0.29     "" but needs a count API
       15.0   Bit::Vector                 7.2
       59.1   Math::Prime::Util::PP       0.09     Perl
-     548.1   RosettaCode sieve           2012-06  simplistic Perl
-   [hours]   Math::Primality             0.04     Perl + GMP
+     170.0   Faster Perl sieve (net)     2012-01  array of odds
+     548.1   RosettaCode sieve (net)     2012-06  simplistic Perl
+   >5000     Math::Primality             0.04     Perl + GMP
 
 
 

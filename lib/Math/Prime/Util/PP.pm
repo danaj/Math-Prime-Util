@@ -1065,19 +1065,56 @@ Version 0.09
 
 =head1 SYNOPSIS
 
-  # TODO
+   .... See L<Math::Prime::Util> ...
+
 
 =head1 DESCRIPTION
 
-  # TODO
+   .... See L<Math::Prime::Util> ...
+
 
 =head1 LIMITATIONS
+
+The SQUFOF and Fermat factoring algorithms are not implemented yet.
+
+Some of the prime methods use more memory than they should, as the segmented
+sieve is not properly used in C<primes> and C<prime_count>.
 
 
 =head1 PERFORMANCE
 
+Performance compared to the XS/C code is quite poor for many operations.  Some
+operations that are relatively close for small and medium-size values:
 
-  # TODO
+  next_prime / prev_prime
+  is_prime / is_prob_prime
+  miller_rabin
+  ExponentialIntegral / LogarithmicIntegral / RiemannR
+  primearray
+
+Operations that are slower include:
+
+  primes
+  random_prime / random_ndigit_prime
+  factor / all_factors
+  nth_prime
+  primecount
+
+Performance improvement in this code is still possible.  The prime sieve is
+over 2x faster than anything I was able to find online, but it is still has
+room for improvement.
+
+Fundamentally some of these operations will be much faster in C than Perl.  I
+expect any of the CPAN XS modules supporting related features to be faster,
+however if those modules are available, then the XS code in
+L<Math::Prime::Util> should be.
+
+Memory use will generally be higher for the PP code, and in some cases B<much>
+higher.  Some of this may be addressed in a later release.
+
+For small values (e.g. primes and prime counts under 10M) most of this will
+not matter.  
+
 
 =head1 SEE ALSO
 
