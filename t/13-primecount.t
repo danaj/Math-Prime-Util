@@ -78,7 +78,7 @@ delete @intervals{ grep { (parse_range($_))[1] > ~0 } keys %intervals };
 plan tests => 0 + 1
                 + 3*scalar(keys %pivals32)
                 + scalar(keys %pivals_small)
-                + $use64 * scalar(keys %pivals64)
+                + $use64 * 3 * scalar(keys %pivals64)
                 + scalar(keys %intervals);
 
 ok( eval { prime_count(13); 1; }, "prime_count in void context");

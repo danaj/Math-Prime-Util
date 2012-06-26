@@ -28,7 +28,7 @@ WriteMakefile1(
     MIN_PERL_VERSION => 5.006002,
 );
 
-sub WriteMakefile1 {
+sub WriteMakefile1 {   # Cribbed from eumm-upgrade by Alexandr Ciornii
   my %params = @_;
   my $eumm_version = $ExtUtils::MakeMaker::VERSION;
   $eumm_version = eval $eumm_version;
