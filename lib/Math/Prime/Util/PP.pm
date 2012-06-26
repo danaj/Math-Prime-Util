@@ -603,6 +603,7 @@ sub miller_rabin {
 
   return 0 if ($n == 0) || ($n == 1);
   return 2 if ($n == 2) || ($n == 3);
+  return 0 if ($n % 2) == 0;
 
   # I was using bignum here for a while, but doing "$a ** $d" with a
   # big $d is **ridiculously** slow.  It's thousands of times faster

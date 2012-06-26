@@ -12,8 +12,6 @@ my $broken64 = (18446744073709550592 == ~0);
 my $nsmallprimes = 1000;
 my $nth_small_prime = 7919;  # nth_prime(1000)
 
-plan tests => 7*2 + $nsmallprimes+1 + 9*3 + 7 + ($extra ? 9 : 7) + ($use64 ? 9*3 : 0);
-
 my %pivals32 = (
                   1 => 0,
                  10 => 4,
@@ -23,19 +21,6 @@ my %pivals32 = (
              100000 => 9592,
             1000000 => 78498,
 );
-
-while (my($n, $pin) = each (%pivals32)) {
-  my $next = $pin+1;
-  cmp_ok( nth_prime($pin), '<=', $n, "nth_prime($pin) <= $n");
-  cmp_ok( nth_prime($next), '>=', $n, "nth_prime($next) >= $n");
-}
-
-my @small_primes = (0);
-push @small_primes, @{primes($nth_small_prime)};
-foreach my $n (0 .. $nsmallprimes) {
-  is(nth_prime($n), $small_primes[$n], "The ${n}th prime is $small_primes[$n]");
-}
-
 
 #  Powers of 10: http://oeis.org/A006988/b006988.txt
 #  Powers of  2: http://oeis.org/A033844/b033844.txt
@@ -61,18 +46,43 @@ my %nthprimes64 = (
   10000000000000000 => 394906913903735329,
  100000000000000000 => 4185296581467695669,
 );
+my %nthprimes_small = map { $_ => $nthprimes32{$_} }
+                      grep { ($_ <= 2000000) || $extra }
+                      keys %nthprimes32;
+
+my @small_primes = (0, @{primes($nth_small_prime)});
+
+#plan tests => 7*2 + $nsmallprimes+1 + 9*3 + 7 + ($extra ? 9 : 7) + ($use64 ? 9*3 : 0);
+
+plan tests => 0 + 2*scalar(keys %pivals32)
+                + scalar @small_primes
+                + 3*scalar(keys %nthprimes32)
+                + scalar(keys %nthprimes_small)
+                + $use64 * 3 * scalar(keys %nthprimes64)
+                + 4
+                + 3;
+
+
+while (my($n, $pin) = each (%pivals32)) {
+  my $next = $pin+1;
+  cmp_ok( nth_prime($pin), '<=', $n, "nth_prime($pin) <= $n");
+  cmp_ok( nth_prime($next), '>=', $n, "nth_prime($next) >= $n");
+}
+
+foreach my $n (0 .. $#small_primes) {
+  is(nth_prime($n), $small_primes[$n], "The ${n}th prime is $small_primes[$n]");
+}
 
 while (my($n, $nth) = each (%nthprimes32)) {
   cmp_ok( nth_prime_upper($n), '>=', $nth, "nth_prime($n) <= upper estimate" );
   cmp_ok( nth_prime_lower($n), '<=', $nth, "nth_prime($n) >= lower estimate" );
 
-  if ( ($n <= 2000000) || $extra ) {
-    is( nth_prime($n), $nth, "nth_prime($n) = $nth" );
-  }
-
   my $approx = nth_prime_approx($n);
   my $percent_limit = ($n >= 775) ? 1 : 2;
   cmp_ok( abs($nth - $approx) / $nth, '<=', $percent_limit/100.0, "nth_prime_approx($n) = $approx within $percent_limit\% of $nth");
+}
+while (my($n, $nth) = each (%nthprimes_small)) {
+  is( nth_prime($n), $nth, "nth_prime($n) = $nth" );
 }
 
 if ($use64) {

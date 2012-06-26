@@ -13,6 +13,7 @@ my @functions =  qw(
                      prime_count prime_count_lower prime_count_upper prime_count_approx
                      nth_prime nth_prime_lower nth_prime_upper nth_prime_approx
                      random_prime random_ndigit_prime
-                     factor
+                     factor all_factors
+                     ExponentialIntegral LogarithmicIntegral RiemannR
                    );
 can_ok( 'Math::Prime::Util', @functions);

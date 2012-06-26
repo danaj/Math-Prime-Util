@@ -1,14 +1,22 @@
 Revision history for Perl extension Math::Prime::Util.
 
+0.10  30 June 2012
+    - Make miller_rabin return 0 if given even number.
+    - Add tests for PP.
+    - Cleanup of some tests.
+
 0.09  25 June 2012
-    - Pure Perl code.  Passes all tests, but 1 to 120x slower.  Test suite
-      as a whole is 38x slower.
+    - Pure Perl code added.  Passes all tests.  Used only if the XSLoader
+      fails.  It's 1-120x slower than the C code.  When forced to use the
+      PP code, the test suite is 38x slower on 64-bit, 16x slower on 32-bit
+      (in 64-bit, the test suite runs some large numbers through routines
+      like prime_count and nth_prime that are much faster in C).
     - Modifications to threading test:
         - some machines were failing because they use non-TS rand.  Fix by
           making our own rand.
         - Win32 was failing because of unique threading issues.  It barfs
           if you free memory on a different thread than allocated it.
-    - is_prime could return 1 in some cases.  Fixed.
+    - is_prime could return 1 in some cases.  Fixed to only return 0 or 2.
 
 0.08  22 June 2012
     - Added thread safety and tested good concurrency.

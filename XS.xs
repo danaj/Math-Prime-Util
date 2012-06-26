@@ -351,6 +351,7 @@ miller_rabin(IN UV n, ...)
       croak("No bases given to miller_rabin");
     if ( (n == 0) || (n == 1) ) XSRETURN_IV(0);   /* 0 and 1 are composite */
     if ( (n == 2) || (n == 3) ) XSRETURN_IV(2);   /* 2 and 3 are prime */
+    if (( n % 2 ) == 0)  XSRETURN_IV(0);          /* MR works with odd n */
     while (c < items) {
       int b = 0;
       while (c < items) {

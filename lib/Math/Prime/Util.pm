@@ -526,15 +526,25 @@ polynomials, plus a correction term for small values to reduce the error.
 
 Takes a positive number as input and one or more bases.  The bases must be
 between C<2> and C<n - 2>.  Returns 2 is C<n> is definitely prime, 1 if C<n>
-is probably prime, and 0 if C<n> is definitely composite.  Since this is
-just the Miller-Rabin test, a value of 2 is only returned for inputs of
-2 and 3, which are shortcut.  If 0 is returned, then the number really is a
-composite.  If 1 is returned, there is a good chance the number is prime
-(depending on the input and the bases), but we cannot be sure.
+is probably prime, and 0 if C<n> is definitely composite.  A value of 2 will
+only be returned for the inputs of 2 and 3, which are shortcut.
+
+If 0 is returned, then the number really is a composite.  If 1 is returned,
+then it is either a prime or a strong pseudoprime to all the given bases.
+Given enough bases, the chances become very, very strong that the number is
+actually prime.
 
 This is usually used in combination with other tests to make either stronger
 tests (e.g. the strong BPSW test) or deterministic results for numbers less
 than some verified limit (such as the C<is_prob_prime> function in this module).
+However, given the chances of passing multiple bases, there are some math
+packages that just use multiple MR tests for primality testing.
+
+Even numbers other than 2 will always return 0 (composite).  While the
+algorithm does run with even input, most sources define it only on odd input.
+Returning composite for all non-2 even input makes the function match most
+other implementations including L<Math::Primality>'s C<is_strong_pseudoprime>
+function.
 
 
 =head2 is_prob_prime
@@ -585,8 +595,9 @@ Examples:
   # Use Mersenne Twister
   use Math::Random::MT::Auto qw/rand/;
 
-  # Use my custom random function
+  # Use a custom random function
   sub rand { ... }
+
 
 =head2 random_ndigit_prime
 
@@ -773,6 +784,12 @@ approximation to the prime counting function.
 
 Accuracy should be at least 14 digits.
 
+
+=head1 EXAMPLES
+
+Print pseudoprimes base 17:
+
+    perl -MMath::Prime::Util=:all -E 'my $n=$base|1; while(1) { print "$n " if miller_rabin($n,$base) && !is_prime($n); $n+=2; } BEGIN {$|=1; $base=17}'
 
 
 =head1 LIMITATIONS

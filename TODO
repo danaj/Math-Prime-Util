@@ -9,7 +9,9 @@
 
 - Add test to check maxbits in compiled library vs. Perl
 
-- Pure perl implementations
+- Figure out documentation solution for PP.pm
+
+- Is the current PP.pm setup the way we want to do it?
 
 - input validation (in XS, or do we need to make Perl wrappers for everything?)
   We can do inpuut val in XS by looking at the NV.  But I think long term we'll
@@ -24,5 +26,3 @@
 
 - Move .c / .h files into separate directory.
   version does it in a painful way.  Something simpler to be had?
-
-- threading and Windows.  Ugh.

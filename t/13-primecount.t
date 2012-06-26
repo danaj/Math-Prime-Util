@@ -8,10 +8,6 @@ use Math::Prime::Util qw/prime_count prime_count_lower prime_count_upper prime_c
 my $use64 = Math::Prime::Util::_maxbits > 32;
 my $extra = defined $ENV{RELEASE_TESTING} && $ENV{RELEASE_TESTING};
 
-plan tests => 1 + 15*3 + 9 + 6*$extra + 3*18*$use64 + 11 + 6*$use64;
-
-ok( eval { prime_count(13); 1; }, "prime_count in void context");
-
 #  Powers of 2:  http://oeis.org/A007053/b007053.txt
 #  Powers of 10: http://oeis.org/A006880/b006880.txt
 my %pivals32 = (
@@ -51,25 +47,9 @@ my %pivals64 = (
  1152921504606846975 => 28423094496953330,
 18446744073709551615 => 425656284035217743,
 );
-while (my($n, $pin) = each (%pivals32)) {
-  cmp_ok( prime_count_upper($n), '>=', $pin, "Pi($n) <= upper estimate" );
-  cmp_ok( prime_count_lower($n), '<=', $pin, "Pi($n) >= lower estimate" );
-  if ( ($n <= 2000000) || $extra ) {
-    is( prime_count($n), $pin, "Pi($n) = $pin" );
-  }
-  my $approx_range = abs($pin - prime_count_approx($n));
-  my $range_limit = ($n <= 100000000) ? 100 : 500;
-  cmp_ok( $approx_range, '<=', $range_limit, "prime_count_approx($n) within $range_limit");
-}
-if ($use64) {
-  while (my($n, $pin) = each (%pivals64)) {
-    cmp_ok( prime_count_upper($n), '>=', $pin, "Pi($n) <= upper estimate" );
-    cmp_ok( prime_count_lower($n), '<=', $pin, "Pi($n) >= lower estimate" );
-    my $approx = prime_count_approx($n);
-    my $percent_limit = 0.0005;
-    cmp_ok( abs($pin - $approx) / $pin, '<=', $percent_limit/100.0, "prime_count approx($n) within $percent_limit\% of Pi($n)");
-  }
-}
+my %pivals_small = map { $_ => $pivals32{$_} }
+                   grep { ($_ <= 2000000) || $extra }
+                   keys %pivals32;
 
 #  ./primesieve 1e10 -o2**32 -c1
 #  ./primesieve 24689 7973249 -c1
@@ -93,31 +73,63 @@ my %intervals = (
   "127976334671 +467" => 1,
   "127976334672 +466" => 0,
 );
+delete @intervals{ grep { (parse_range($_))[1] > ~0 } keys %intervals };
+
+plan tests => 0 + 1
+                + 3*scalar(keys %pivals32)
+                + scalar(keys %pivals_small)
+                + $use64 * scalar(keys %pivals64)
+                + scalar(keys %intervals);
+
+ok( eval { prime_count(13); 1; }, "prime_count in void context");
+
+while (my($n, $pin) = each (%pivals32)) {
+  cmp_ok( prime_count_upper($n), '>=', $pin, "Pi($n) <= upper estimate" );
+  cmp_ok( prime_count_lower($n), '<=', $pin, "Pi($n) >= lower estimate" );
+  my $approx_range = abs($pin - prime_count_approx($n));
+  my $range_limit = ($n <= 100000000) ? 100 : 500;
+  cmp_ok( $approx_range, '<=', $range_limit, "prime_count_approx($n) within $range_limit");
+}
+while (my($n, $pin) = each (%pivals_small)) {
+  is( prime_count($n), $pin, "Pi($n) = $pin" );
+}
+if ($use64) {
+  while (my($n, $pin) = each (%pivals64)) {
+    cmp_ok( prime_count_upper($n), '>=', $pin, "Pi($n) <= upper estimate" );
+    cmp_ok( prime_count_lower($n), '<=', $pin, "Pi($n) >= lower estimate" );
+    my $approx = prime_count_approx($n);
+    my $percent_limit = 0.0005;
+    cmp_ok( abs($pin - $approx) / $pin, '<=', $percent_limit/100.0, "prime_count approx($n) within $percent_limit\% of Pi($n)");
+  }
+}
 
 while (my($range, $expect) = each (%intervals)) {
+  my($low,$high) = parse_range($range);
+  is( prime_count($low,$high), $expect, "prime_count($range) = $expect");
+}
+
+sub parse_range {
+  my($range) = @_;
   my($low,$high);
+  my $fixnum = sub {
+    my $nstr = shift;
+    $nstr =~ s/^(\d+)e(\d+)$/$1*(10**$2)/e;
+    $nstr =~ s/^(\d+)\*\*(\d+)$/$1**$2/e;
+    die "Unknown string in test" unless $nstr =~ /^\d+$/;
+    $nstr;
+  };
   if ($range =~ /(\S+)\s+to\s+(\S+)/) {
-    $low = fixnum($1);
-    $high = fixnum($2);
+    $low = $fixnum->($1);
+    $high = $fixnum->($2);
   } elsif ($range =~ /(\S+)\s*\+\s*(\S+)/) {
-    $low = fixnum($1);
-    $high = $low + fixnum($2);
+    $low = $fixnum->($1);
+    $high = $low + $fixnum->($2);
   } else {
     die "Can't parse test data";
   }
-  next if $high > ~0;
-  is( prime_count($low,$high), $expect, "prime_count($range) = $expect");
+  ($low,$high);
 }
-exit(0);
 
-sub fixnum {
-  my $nstr = shift;
-  $nstr =~ s/^(\d+)e(\d+)$/$1*(10**$2)/e;
-  $nstr =~ s/^(\d+)\*\*(\d+)$/$1**$2/e;
-  die "Unknown string in test" unless $nstr =~ /^\d+$/;
-  $nstr;
-}
- 
 # TODO: intervals.  From primesieve:
 #    155428406, // prime count 2^32 interval starting at 10^12
 #    143482916, // prime count 2^32 interval starting at 10^13
