@@ -825,6 +825,7 @@ Pi(10^10) = 455,052,511.
        2.2  yafu 1.31
        3.8  primegen (optimized Sieve of Atkin, conf-word 8192)
        5.6  Tomás Oliveira e Silva's unoptimized segmented sieve v2 (Sep 2010)
+       6.7  Achim Flammenkamp's prime_sieve (32k segments)
        9.3  http://tverniquet.com/prime/ (mod 2310, single thread)
       11.2  Tomás Oliveira e Silva's unoptimized segmented sieve v1 (May 2003)
       17.0  Pari 2.3.5 (primepi)

@@ -13,21 +13,24 @@ my $upper = shift || 8192;
 my $count = shift || -1;
 my $countarg;
 
+#atkin2(100);  exit(0);
+
 # Shows sizes for sieving to 100k, and rate/second for sieving to 16k
 my $pc_subs = {
-  "Scriptol"    => sub { scriptol($countarg) },    # 3200k    290/s
-  "Shootout"    => sub { shootout($countarg) },    # 3200k    231/s
-  "In Many"     => sub { inmany($countarg) },      # 2018k    666/s
-  "Rosetta 1"   => sub { rosetta1($countarg) },    # 3449k    187/s
-  "Rosetta 2"   => sub { rosetta2($countarg) },    #   13k    109/s
-  "Rosetta 3"   => sub { rosetta3($countarg) },    # 4496k    165/s
   "Rosetta 4"   => sub { rosetta4($countarg) },    #   25k     60/s
   "Atkin MPTA"  => sub { atkin($countarg) },       # 3430k     90/s
-  "DO Array"    => sub {daoswald_array($countarg)},# 3200k    306/s
-  "DO Vec"      => sub {daoswald_vec($countarg)},  #   13k    112/s
   "Merlyn"      => sub { merlyn($countarg)},       #   13k     96/s
+  "Rosetta 2"   => sub { rosetta2($countarg) },    #   13k    109/s
+  "Atkin 2"     => sub { atkin2($countarg) },      # 1669k    110/s
+  "DO Vec"      => sub {daoswald_vec($countarg)},  #   13k    112/s
+  "Rosetta 3"   => sub { rosetta3($countarg) },    # 4496k    165/s
+  "Rosetta 1"   => sub { rosetta1($countarg) },    # 3449k    187/s
+  "Shootout"    => sub { shootout($countarg) },    # 3200k    231/s
   "DJ Vec"      => sub { dj1($countarg) },         #    7k    245/s
+  "Scriptol"    => sub { scriptol($countarg) },    # 3200k    290/s
+  "DO Array"    => sub {daoswald_array($countarg)},# 3200k    306/s
   "DJ Array"    => sub { dj2($countarg) },         # 1494k    475/s
+  "In Many"     => sub { inmany($countarg) },      # 2018k    666/s
   "DJ String1"  => sub { dj3($countarg) },         #   50k    981/s
   "DJ String2"  => sub { dj4($countarg) },         #   50k   1682/s
 #  "MPU Sieve"   => sub {
@@ -256,11 +259,84 @@ sub atkin {
     $count;
 }
 
+# Naive Sieve of Atkin, basically straight from Wikipedia.
+#
+# <rant>
+#
+# First thing to note about SoA, is that people love to quote things like
+# "memory use is O(N^(1/2+o(1)))" then proceed to _clearly_ use N bytes in
+# their implementation.  If your data structures between SoA and SoE are the
+# same, then all talk about comparative O(blah..blah) memory use is stupid.
+#
+# Secondly, assuming you're not Dan Bernstein, if your Sieve of Atkin is
+# faster than your Sieve of Eratosthenes, then I strongly suggest you verify
+# your code actually _works_, and secondly I would bet you made stupid mistakes
+# in your SoE implementation.  If your SoA code even remotely resembles the
+# Wikipedia code and it comes out faster than SoE, then I _guarantee_ your
+# SoE is borked.
+#
+# SoA does have a slightly better asymptotic operation count O(N/loglogN) vs.
+# O(N) for SoE.  The Wikipedia-like code that most people use is O(N) so it
+# isn't even theoretically better unless you pull lots of stunts like primegen
+# does.  Even if you do, loglogN is essentially a small constant for most uses
+# (it's under 4 for all 64-bit values), so you need to make sure all the rest
+# of your overhead is controlled.
+#
+# Sumarizing, in practice the SoE is faster, and often a LOT faster.
+#
+# </rant>
+#
+sub atkin2 {
+  my($max) = @_;
+  return 0 if $max < 2;
+  return 1 if $max < 3;
+
+  my @sieve;
+
+  my $sqrt = int(sqrt($max));
+  for my $x (1 .. $sqrt) {
+    for my $y (1 .. $sqrt) {
+      my $n;
+
+      $n = 4*$x*$x + $y*$y;
+      if ( ($n <= $max) && ( (($n%12) == 1) || (($n%12) == 5) ) ) {
+        $sieve[$n] ^= 1;
+      }
+      $n = 3*$x*$x + $y*$y;
+      if ( ($n <= $max) && (($n%12) == 7) ) {
+        $sieve[$n] ^= 1;
+      }
+      $n = 3*$x*$x - $y*$y;
+      if ( ($x > $y) && ($n <= $max) && (($n%12) == 11) ) {
+        $sieve[$n] ^= 1;
+      }
+    }
+  }
+
+  for my $n (5 .. $sqrt) {
+    if ($sieve[$n]) {
+      my $k = $n*$n;
+      my $z = $k;
+      while ($z <= $max) {
+        $sieve[$z] = 0;
+        $z += $k;
+      }
+    }
+  }
+  $sieve[2] = 1;
+  $sieve[3] = 1;
+  #print "Atkin size: ", total_size(\@sieve), "\n" if $max > 90000;
+
+  my $count = scalar grep { $sieve[$_] } 2 .. $#sieve;
+  $count;
+}
+
 # https://github.com/daoswald/Inline-C-Perl-Mongers-Talk/blob/master/primesbench.pl
 sub daoswald_array {
   my($top) = @_;
   return 0 if $top < 2;
   return 1 if $top < 3;
+  $top++;
 
     my @primes = (1) x $top;
     my $i_times_j;
@@ -286,13 +362,13 @@ sub daoswald_vec {
     my $i_times_j;
     for my $i ( 2 .. sqrt $top ) {
         if ( !vec( $primes, $i, 1 ) ) {
-            for ( my $j = $i; ( $i_times_j = $i * $j ) < $top; $j++ ) {
+            for ( my $j = $i; ( $i_times_j = $i * $j ) <= $top; $j++ ) {
                 vec( $primes, $i_times_j, 1 ) = 1;
             }
         }
     }
   #print "do_vec size: ", total_size(\$primes), "\n" if $top > 90000;
-  my $count = scalar grep { !vec( $primes, $_, 1 ) } 2 .. $top-1 ;
+  my $count = scalar grep { !vec( $primes, $_, 1 ) } 2 .. $top ;
   $count;
 }
 
