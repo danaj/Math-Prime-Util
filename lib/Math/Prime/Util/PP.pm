@@ -68,24 +68,35 @@ my @_nextwheel30 = (1,7,7,7,7,7,7,11,11,11,11,13,13,17,17,17,17,19,19,23,23,23,2
 my @_prevwheel30 = (29,29,1,1,1,1,1,1,7,7,7,7,11,11,13,13,13,13,17,17,19,19,19,19,23,23,23,23,23,23);
 
 sub _is_prime7 {  # n must not be divisible by 2, 3, or 5
-  my($x) = @_;
-  my $q;
-  foreach my $i (qw/7 11 13 17 19 23 29 31 37 41 43 47 53 59/) {
-    $q = int($x/$i); return 2 if $q < $i; return 0 if $x == ($q*$i);
+  my($n) = @_;
+
+  return is_prob_prime($n) if (~0 == 18446744073709551615) && ($n > 10_000_000);
+
+  foreach my $i (qw/7 11 13 17 19 23 29/) {
+    return 2 if $i*$i > $n;
+    return 0 if ($n % $i) == 0;
   }
-
-  return is_prob_prime($x) if $x > 10_000_000;
-
-  my $i = 61;  # mod-30 loop
+  my $limit = int(sqrt($n));
+  my $i = 31;
+  while (($i+30) <= $limit) {
+    return 0 if ($n % $i) == 0;  $i += 6;
+    return 0 if ($n % $i) == 0;  $i += 4;
+    return 0 if ($n % $i) == 0;  $i += 2;
+    return 0 if ($n % $i) == 0;  $i += 4;
+    return 0 if ($n % $i) == 0;  $i += 2;
+    return 0 if ($n % $i) == 0;  $i += 4;
+    return 0 if ($n % $i) == 0;  $i += 6;
+    return 0 if ($n % $i) == 0;  $i += 2;
+  }
   while (1) {
-    $q = int($x/$i); return 2 if $q < $i; return 0 if $x == ($q*$i);  $i += 6;
-    $q = int($x/$i); return 2 if $q < $i; return 0 if $x == ($q*$i);  $i += 4;
-    $q = int($x/$i); return 2 if $q < $i; return 0 if $x == ($q*$i);  $i += 2;
-    $q = int($x/$i); return 2 if $q < $i; return 0 if $x == ($q*$i);  $i += 4;
-    $q = int($x/$i); return 2 if $q < $i; return 0 if $x == ($q*$i);  $i += 2;
-    $q = int($x/$i); return 2 if $q < $i; return 0 if $x == ($q*$i);  $i += 4;
-    $q = int($x/$i); return 2 if $q < $i; return 0 if $x == ($q*$i);  $i += 6;
-    $q = int($x/$i); return 2 if $q < $i; return 0 if $x == ($q*$i);  $i += 2;
+    last if $i > $limit;  return 0 if ($n % $i) == 0;  $i += 6;
+    last if $i > $limit;  return 0 if ($n % $i) == 0;  $i += 4;
+    last if $i > $limit;  return 0 if ($n % $i) == 0;  $i += 2;
+    last if $i > $limit;  return 0 if ($n % $i) == 0;  $i += 4;
+    last if $i > $limit;  return 0 if ($n % $i) == 0;  $i += 2;
+    last if $i > $limit;  return 0 if ($n % $i) == 0;  $i += 4;
+    last if $i > $limit;  return 0 if ($n % $i) == 0;  $i += 6;
+    last if $i > $limit;  return 0 if ($n % $i) == 0;  $i += 2;
   }
   2;
 }
@@ -93,9 +104,9 @@ sub _is_prime7 {  # n must not be divisible by 2, 3, or 5
 sub is_prime {
   my($n) = @_;
   croak "Input must be an integer" unless defined $_[0];
-  return 0 if $n < 2;        # 0 and 1 are composite
   return 2 if ($n == 2) || ($n == 3) || ($n == 5);  # 2, 3, 5 are prime
-  # multiples of 2,3,5 are composite
+  return 0 if $n < 7;             # everything else below 7 is composite
+                                  # multiples of 2,3,5 are composite
   return 0 if (($n % 2) == 0) || (($n % 3) == 0) || (($n % 5) == 0);
 
   return _is_prime7($n);
@@ -664,7 +675,7 @@ sub is_prob_prime {
   # Run our selected set of Miller-Rabin strong probability tests
   my $prob_prime = miller_rabin($n, @bases);
   # We're deterministic for 64-bit numbers
-  $prob_prime *= 2 if $n <= ~0;
+  $prob_prime *= 2 if $n <= 18446744073709551615;
   $prob_prime;
 }
 
@@ -675,7 +686,7 @@ sub _basic_factor {
   while ( ($_[0] % 2) == 0 ) { push @factors, 2;  $_[0] /= 2; }
   while ( ($_[0] % 3) == 0 ) { push @factors, 3;  $_[0] /= 3; }
   while ( ($_[0] % 5) == 0 ) { push @factors, 5;  $_[0] /= 5; }
-  if (is_prime($_[0])) {
+  if ( ($_[0] > 1) && _is_prime7($_[0]) ) {
     push @factors, $_[0];
     $_[0] = 1;
   }
@@ -726,7 +737,7 @@ sub factor {
   while (@nstack) {
     $n = pop @nstack;
     #print "Looking at $n with stack ", join(",",@nstack), "\n";
-    while ( ($n >= (31*31)) && !is_prime($n) ) {
+    while ( ($n >= (31*31)) && !_is_prime7($n) ) {
       my @ftry;
       @ftry = prho_factor($n, 64*1024);
       @ftry = holf_factor($n, 64*1024)  if scalar @ftry == 1;
