@@ -33,41 +33,43 @@ static UV count_zero_bits(const unsigned char* m, UV nbytes)
 
 
 /* Does trial division, assuming x not divisible by 2, 3, or 5 */
-static int _is_trial_prime7(UV x)
+static int _is_trial_prime7(UV n)
 {
-  UV q, i;
+  UV limit, i;
+  limit = sqrt(n);
   i = 7;
   while (1) {   /* trial division, skipping multiples of 2/3/5 */
-    q = x/i;  if (q<i) break;  if (x==(q*i)) return 0;   i += 4;
-    q = x/i;  if (q<i) break;  if (x==(q*i)) return 0;   i += 2;
-    q = x/i;  if (q<i) break;  if (x==(q*i)) return 0;   i += 4;
-    q = x/i;  if (q<i) break;  if (x==(q*i)) return 0;   i += 2;
-    q = x/i;  if (q<i) break;  if (x==(q*i)) return 0;   i += 4;
-    q = x/i;  if (q<i) break;  if (x==(q*i)) return 0;   i += 6;
-    q = x/i;  if (q<i) break;  if (x==(q*i)) return 0;   i += 2;
-    q = x/i;  if (q<i) break;  if (x==(q*i)) return 0;   i += 6;
+    if (i > limit) break;  if ((n % i) == 0) return 0;  i += 4;
+    if (i > limit) break;  if ((n % i) == 0) return 0;  i += 2;
+    if (i > limit) break;  if ((n % i) == 0) return 0;  i += 4;
+    if (i > limit) break;  if ((n % i) == 0) return 0;  i += 2;
+    if (i > limit) break;  if ((n % i) == 0) return 0;  i += 4;
+    if (i > limit) break;  if ((n % i) == 0) return 0;  i += 6;
+    if (i > limit) break;  if ((n % i) == 0) return 0;  i += 2;
+    if (i > limit) break;  if ((n % i) == 0) return 0;  i += 6;
   }
   return 2;
 }
 
 /* Does trial division or prob tests, assuming x not divisible by 2, 3, or 5 */
-static int _is_prime7(UV x)
+static int _is_prime7(UV n)
 {
-  UV q, i;
+  UV limit, i;
 
-  if (x > MPU_PROB_PRIME_BEST)
-    return is_prob_prime(x);  /* We know this works for all 64-bit n */
+  if (n > MPU_PROB_PRIME_BEST)
+    return is_prob_prime(n);  /* We know this works for all 64-bit n */
 
+  limit = sqrt(n);
   i = 7;
   while (1) {   /* trial division, skipping multiples of 2/3/5 */
-    q = x/i;  if (q<i) break;  if (x==(q*i)) return 0;   i += 4;
-    q = x/i;  if (q<i) break;  if (x==(q*i)) return 0;   i += 2;
-    q = x/i;  if (q<i) break;  if (x==(q*i)) return 0;   i += 4;
-    q = x/i;  if (q<i) break;  if (x==(q*i)) return 0;   i += 2;
-    q = x/i;  if (q<i) break;  if (x==(q*i)) return 0;   i += 4;
-    q = x/i;  if (q<i) break;  if (x==(q*i)) return 0;   i += 6;
-    q = x/i;  if (q<i) break;  if (x==(q*i)) return 0;   i += 2;
-    q = x/i;  if (q<i) break;  if (x==(q*i)) return 0;   i += 6;
+    if (i > limit) break;  if ((n % i) == 0) return 0;  i += 4;
+    if (i > limit) break;  if ((n % i) == 0) return 0;  i += 2;
+    if (i > limit) break;  if ((n % i) == 0) return 0;  i += 4;
+    if (i > limit) break;  if ((n % i) == 0) return 0;  i += 2;
+    if (i > limit) break;  if ((n % i) == 0) return 0;  i += 4;
+    if (i > limit) break;  if ((n % i) == 0) return 0;  i += 6;
+    if (i > limit) break;  if ((n % i) == 0) return 0;  i += 2;
+    if (i > limit) break;  if ((n % i) == 0) return 0;  i += 6;
   }
   return 2;
 }
