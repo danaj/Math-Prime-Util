@@ -17,12 +17,15 @@ my $sum;
 # This is like counting, but we want an array returned.
 # The subs will compute a sum on the results.
 
+# In practice you would probably want to return a ref to your array, or return
+# a ref to your sieve structure and let the caller decode it as needed.
+
 # Times for 100k.
 # Vs. MPU sieve, as we move from 8k to 10M:
 #   Atkin MPTA, Rosetta 3 & 1, Shootout, Scriptol, DO Array, DJ Array, and
 #   InMany all slow down.  Atkin 2 speeds up (from 65x slower to 54x slower).
 # The DJ string methods have almost no relative slowdown, so stretch out their
-# advantage over the others (In Many, DJ Array, DJ Vec, and DO Array).
+# advantage over the other fast ones (In Many, DJ Array, DJ Vec, and DO Array).
 my $pc_subs = {
   "Rosetta 4" => sub {$sum=0; $sum+=$_ for rosetta4($countarg);$sum;},  #    9/s
   "Atkin MPTA"=> sub {$sum=0; $sum+=$_ for atkin($countarg);$sum;},     #   11/s

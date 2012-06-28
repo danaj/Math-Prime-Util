@@ -30,6 +30,12 @@ BEGIN {
 }
 sub _maxbits { $_uv_size }
 
+# If $n < $_half_word, then $n*$n will be exact.
+my $_half_word = (~0 == 18446744073709551615) ? 4294967296 :    # 64-bit
+                 (~0 ==           4294967295) ?      65536 :    # 32-bit
+                 (~0 ==                   -1) ?   1000**10 :    # bignum
+                                                         0 ;    # No idea
+
 my $_precalc_size = 0;
 sub prime_precalc {
   my($n) = @_;
@@ -128,10 +134,10 @@ sub is_prime {
 #        .. do something with the prime $n
 #      }
 #
-# We're using method 4, though sadly it is memory intensive.
-#
-# Even so, it is a lot less memory than making an array entry for each number,
-# and the performance is almost 10x faster than a naive array sieve.
+# We're using method 4, though sadly it is memory intensive relative to the
+# other methods.  I will point out that it is 30-60x less memory than sieves
+# using an array, and the performance of this function is over 10x that
+# of naive sieves like found on RosettaCode.
 
 sub _sieve_erat_string {
   my($end) = @_;
@@ -557,6 +563,7 @@ sub nth_prime {
 
 sub _mulmod {
   my($a, $b, $m) = @_;
+  return (($a * $b) % $m) if ($a|$b) < $_half_word;
   my $r = 0;
   while ($b > 0) {
     if ($b & 1) {
@@ -577,7 +584,7 @@ sub _powmod {
   my($n, $power, $m) = @_;
   my $t = 1;
 
-  if ( (~0 == 18446744073709551615) && ($m < 4294967296) ) {
+  if  ($m < $_half_word) {
     $n %= $m;
     while ($power) {
       $t = ($t * $n) % $m if ($power & 1) != 0;
@@ -633,23 +640,12 @@ sub miller_rabin {
     my $x = _powmod($a, $d, $n);
     next if ($x == 1) || ($x == ($n-1));
 
-    if (~0 == 18446744073709551615) {
-      foreach my $r (1 .. $s) {
-        $x = ($x < 4294967296) ? ($x*$x) % $n : _mulmod($x, $x, $n);
-        return 0 if $x == 1;
-        if ($x == ($n-1)) {
-          $a = 0;
-          last;
-        }
-      }
-    } else {
-      foreach my $r (1 .. $s) {
-        $x = ($x < 65536) ? ($x*$x) % $n : _mulmod($x, $x, $n);
-        return 0 if $x == 1;
-        if ($x == ($n-1)) {
-          $a = 0;
-          last;
-        }
+    foreach my $r (1 .. $s) {
+      $x = ($x < $_half_word) ? ($x*$x) % $n : _mulmod($x, $x, $n);
+      return 0 if $x == 1;
+      if ($x == ($n-1)) {
+        $a = 0;
+        last;
       }
     }
     return 0 if $a != 0;
@@ -863,7 +859,7 @@ sub holf_factor {
   for my $i (1 .. $rounds) {
     my $s = int(sqrt($n * $i));
     $s++ if ($s * $s) != ($n * $i);
-    my $m = _mulmod($s, $s, $n);
+    my $m = ($s < $_half_word) ? ($s*$s) % $n : _mulmod($s, $s, $n);
     # Check for perfect square
     my $mcheck = $m & 127;
     next if (($mcheck*0x8bc40d7d) & ($mcheck*0xa1e2f5d1) & 0x14020a);
