@@ -171,7 +171,6 @@ sub random_prime {
   $low = 2 if $low < 2;
 
   # Make sure we have a valid range.
-  # TODO: this is is killing performance with large numbers
   $low = next_prime($low - 1);
   $high = ($high < ~0)  ?  prev_prime($high + 1)  :  prev_prime($high);
   return $low if ($low == $high) && is_prime($low);
@@ -180,6 +179,10 @@ sub random_prime {
   # At this point low and high are both primes, and low < high.
   my $range = $high - $low + 1;
   my $prime;
+
+  # If $low is large (e.g. >10 digits) and $range is small (say ~10k), it
+  # would be fastest to call primes in the range and randomly pick one.  I'm
+  # not implementing it now because it seems like a rare case.
 
   # Note:  I was using rand($range), but Math::Random::MT ignores the argument
   #        instead of following its documentation.
@@ -207,15 +210,23 @@ sub random_prime {
 }
 
 
+# Calculate next_prime and prev_prime once.
+# This helps performance with 9+ digits.
+my @_random_ndigit_ranges;
+
 sub random_ndigit_prime {
   my $digits = shift;
   if ((!defined $digits) || ($digits > $_maxdigits) || ($digits < 1)) {
     croak "Digits must be between 1 and $_maxdigits";
   }
-  my $low = ($digits == 1) ? 0 : int(10 ** ($digits-1));
-  my $max = int(10 ** $digits);
-  $max = ~0 if $max > ~0;
-  return random_prime($low, $max);
+  if (!defined $_random_ndigit_ranges[$digits]) {
+    my $low = ($digits == 1) ? 0 : int(10 ** ($digits-1));
+    my $high = int(10 ** $digits);
+    $high = ~0 if $high > ~0;
+    $_random_ndigit_ranges[$digits] = [next_prime($low), prev_prime($high)];
+  }
+  my ($low, $high) = @{$_random_ndigit_ranges[$digits]};
+  return random_prime($low, $high);
 }
 
 # Perhaps a random_nbit_prime ?   Definition?

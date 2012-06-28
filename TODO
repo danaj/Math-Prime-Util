@@ -20,8 +20,6 @@
 
 - Faster SQUFOF
 
-- speed up random_prime for large numbers
-
 - better prime count upper/lower bounds
 
 - Move .c / .h files into separate directory.
