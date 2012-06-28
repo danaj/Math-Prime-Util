@@ -183,8 +183,8 @@ sub random_prime {
 
   # Note:  I was using rand($range), but Math::Random::MT ignores the argument
   #        instead of following its documentation.
-  my $irandf = (exists &::rand) ? sub { return int(::rand()*shift); }
-                                : sub { return int(rand()*shift); };
+  my $irandf = (defined &::rand) ? sub { return int(::rand()*shift); }
+                                 : sub { return int(rand()*shift); };
 
   if ($high < 30000) {
     # nice deterministic solution, but gets very costly with large values.
@@ -194,20 +194,14 @@ sub random_prime {
     my $rand = $irandf->($irange);
     $prime = nth_prime($li + $rand);
   } else {
-    # random loop
+    # Generate random numbers in the interval until one is prime.
     my $loop_limit = 2000 * 1000;  # To protect against broken rand
-    if ($range <= 4294967295) {
-      do {
-        $prime = $low + $irandf->($range);
-        croak "Random function broken?" if $loop_limit-- < 0;
-      }  while ( !($prime % 2) || !($prime % 3) || !is_prime($prime) );
-    } else {
-      do {
-        my $rand = ( ($irandf->(4294967295) << 32) + $irandf->(4294967295) ) % $range;
-        $prime = $low + $rand;
-        croak "Random function broken?" if $loop_limit-- < 0;
-      }  while ( !($prime % 2) || !($prime % 3) || !is_prime($prime) );
-    }
+    do {
+      my $rand = ($range <= 4294967295) ? $irandf->($range) :
+                 ( ($irandf->(4294967295) << 32) + $irandf->(4294967295) ) % $range;
+      $prime = $low + $rand;
+      croak "Random function broken?" if $loop_limit-- < 0;
+    } while ( !($prime % 2) || !($prime % 3) || !is_prime($prime) );
   }
   return $prime;
 }
