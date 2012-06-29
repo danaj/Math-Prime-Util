@@ -380,7 +380,7 @@ static UV count_segment_ranged(const unsigned char* sieve, UV nbytes, UV lowp, U
  * The formulas of Dusart for higher x are better yet.  I recommend the paper
  * by Burde for further information.  Dusart's thesis is also a good resource.
  *
- * I have tweaked the bounds formulas for small (under 4000M) numbers so they
+ * I have tweaked the bounds formulas for small (under 70_000M) numbers so they
  * are tighter.  These bounds are verified via trial.  The Dusart bounds
  * (1.8 and 2.51) are used for larger numbers since those are proven.
  *
@@ -500,13 +500,19 @@ UV prime_count_approx(UV x)
   /*
    * A simple way:
    *     return ((prime_count_lower(x) + prime_count_upper(x)) / 2);
-   * With the current bounds, this is ~131k at 10^10 and 436B at 10^19.
+   * With the current bounds, this is within ~131k at 10^10 and 436B at 10^19.
    *
    * The logarithmic integral works quite well, with absolute errors of
-   * ~3100 at 10^10 and ~100M at 10^19.
+   * ~3100 at 10^10 and ~100M at 10^19
    *
-   * Riemann's R function works astoundingly well, with errors of ~1828
-   * at 10^10 and 24M at 10^19.
+   * Riemann's R function works even better, with errors of ~1828 at 10^10
+   * and 24M at 10^19.
+   *
+   *    Method           10^10 %error  10^19 %error
+   *    ---------------  ------------  ------------
+   *    average bounds    .01%          .0002%
+   *    li(n)             .0007%        .00000004%
+   *    R(n)              .0004%        .00000001%
    *
    * Getting fancier, one try using Riemann's pi formula:
    *     http://trac.sagemath.org/sage_trac/ticket/8135
@@ -516,10 +522,12 @@ UV prime_count_approx(UV x)
     return prime_count_small[x];
 
   R = RiemannR(x);
+
   /* We could add the additional factor:
    *   R = R - (1.0 / log(x)) + (M_1_PI * atan(M_PI/log(x)))
    * but it's extraordinarily small, so not worth calculating here.
    */
+
   return (UV)(R+0.5);
 }
 
