@@ -5,6 +5,7 @@
 
 #include "sieve.h"
 #include "ptypes.h"
+#include "cache.h"
 
 
 /* 1001 bytes of presieved mod-30 bytes.  If the area to be sieved is
