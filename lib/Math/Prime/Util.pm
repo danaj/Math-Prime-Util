@@ -103,7 +103,9 @@ sub primes {
   }
 
   # Verify the parameters are in range.
-  croak "Parameters [ $low $high ] not in range 0-$_maxparam" unless $low <= $_maxparam && $high <= $_maxparam;
+  if (!$_pure_perl || !defined $bigint::VERSION) {
+    croak "Parameters [ $low $high ] not in range 0-$_maxparam" unless $low <= $_maxparam && $high <= $_maxparam;
+  }
 
   return $sref if ($low > $high) || ($high < 2);
 
@@ -167,7 +169,9 @@ sub random_prime {
     $high = 'undef' unless defined $high;
     croak "Parameters [ $low $high ] must be positive integers";
   }
-  croak "Parameters [ $low $high ] not in range 0-$_maxparam" unless $low <= $_maxparam && $high <= $_maxparam;
+  if (!$_pure_perl || !defined $bigint::VERSION) {
+    croak "Parameters [ $low $high ] not in range 0-$_maxparam" unless $low <= $_maxparam && $high <= $_maxparam;
+  }
   $low = 2 if $low < 2;
 
   # Make sure we have a valid range.
@@ -200,6 +204,7 @@ sub random_prime {
     # Generate random numbers in the interval until one is prime.
     my $loop_limit = 2000 * 1000;  # To protect against broken rand
     do {
+      # TODO: bigint with huge range
       my $rand = ($range <= 4294967295) ? $irandf->($range) :
                  ( ($irandf->(4294967295) << 32) + $irandf->(4294967295) ) % $range;
       $prime = $low + $rand;
@@ -216,6 +221,7 @@ my @_random_ndigit_ranges;
 
 sub random_ndigit_prime {
   my $digits = shift;
+  # TODO: bigint with many digits
   if ((!defined $digits) || ($digits > $_maxdigits) || ($digits < 1)) {
     croak "Digits must be between 1 and $_maxdigits";
   }

@@ -24,3 +24,5 @@
 
 - Move .c / .h files into separate directory.
   version does it in a painful way.  Something simpler to be had?
+
+- In PP nth_prime* and prime_count*, turn on bignum if bigint is on.

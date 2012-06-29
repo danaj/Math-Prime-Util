@@ -76,6 +76,7 @@ my @_prevwheel30 = (29,29,1,1,1,1,1,1,7,7,7,7,11,11,13,13,13,13,17,17,19,19,19,1
 sub _is_prime7 {  # n must not be divisible by 2, 3, or 5
   my($n) = @_;
 
+  # TODO: bignum on 32-bit
   return is_prob_prime($n) if (~0 == 18446744073709551615) && ($n > 10_000_000);
 
   foreach my $i (qw/7 11 13 17 19 23 29/) {
@@ -275,7 +276,8 @@ sub primes {
 sub next_prime {
   my($n) = @_;
   croak "Input must be a positive integer" unless _is_positive_int($n);
-  return 0 if $n >= ((_maxbits == 32) ? 4294967291 : 18446744073709551557);
+  return 0 if ($n >= ((_maxbits == 32) ? 4294967291 : 18446744073709551557))
+              && (!defined $bigint::VERSION);
   return $_prime_next_small[$n] if $n <= $#_prime_next_small;
 
   my $d = int($n/30);
@@ -443,7 +445,7 @@ sub nth_prime_lower {
   # Dusart 1999 page 14, for all n >= 2
   my $lower = $n * ($flogn + $flog2n - 1.0 + (($flog2n-2.25)/$flogn));
 
-  if ($lower >= ~0) {
+  if ( ($lower >= ~0) && (!defined $bignum::VERSION) ) {
     if (_maxbits == 32) {
       return 4294967291 if $n <= 203280221;
     } else {
@@ -474,7 +476,7 @@ sub nth_prime_upper {
     $upper = $n * ( $flogn  +  $flog2n );
   }
 
-  if ($upper >= ~0) {
+  if ( ($upper >= ~0) && (!defined $bignum::VERSION) ) {
     if (_maxbits == 32) {
       return 4294967291 if $n <= 203280221;
     } else {
@@ -512,7 +514,7 @@ sub nth_prime_approx {
   elsif ($n <  200000000) { $approx +=  0.0 * $order; }
   else                    { $approx += -0.010 * $order; }
 
-  if ($approx >= ~0) {
+  if ( ($approx >= ~0) && (!defined $bignum::VERSION) ) {
     if (_maxbits == 32) {
       return 4294967291 if $n <= 203280221;
     } else {
@@ -530,10 +532,12 @@ sub nth_prime {
 
   return $_primes_small[$n] if $n <= $#_primes_small;
 
-  if (_maxbits == 32) {
-    croak "nth_prime($n) overflow" if $n > 203280221;
-  } else {
-    croak "nth_prime($n) overflow" if $n > 425656284035217743;
+  if (!defined $bigint::VERSION) {
+    if (_maxbits == 32) {
+      croak "nth_prime($n) overflow" if $n > 203280221;
+    } else {
+      croak "nth_prime($n) overflow" if $n > 425656284035217743;
+    }
   }
 
   my $prime = 0;
@@ -1155,9 +1159,16 @@ methods, is_prime, prime_count, nth_prime, approximations and bounds for
 the prime_count and nth prime, next_prime and prev_prime, factoring utilities,
 and more.
 
-All routines currently work in native integers (32-bit or 64-bit).  Bignum
-support may be added later.  If you need bignum support for these types of
-functions inside Perl now, I recommend L<Math::Pari>.
+All routines should work with native integers or multi-precision numbers.  To
+enable big numbers, use bignum:
+
+    use bignum;
+    say prime_count_approx(1000000000000000000000000)'
+    # says 18435599767347543283712
+
+This is still experimental, and some functions will be very slow.  I recommend
+looking into L<Math::Pari> if you need serious bignum support for this type
+of functionality right now.
 
 
 =head1 FUNCTIONS
