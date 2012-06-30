@@ -141,6 +141,7 @@ int trial_factor(UV n, UV *factors, UV maxtrial)
 #ifndef HALF_WORD
   static UV powmod(UV n, UV power, UV m) {
     UV t = 1;
+    n %= m;
     while (power) {
       if (power & 1)
         t = mulmod(t, n, m);
@@ -152,8 +153,8 @@ int trial_factor(UV n, UV *factors, UV maxtrial)
 #else
   static UV powmod(UV n, UV power, UV m) {
     UV t = 1;
+    n %= m;
     if (m < HALF_WORD) {
-      n %= m;
       while (power) {
         if (power & 1)
           t = (t*n)%m;
