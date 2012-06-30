@@ -508,11 +508,12 @@ UV prime_count_approx(UV x)
    * Riemann's R function works even better, with errors of ~1828 at 10^10
    * and 24M at 10^19.
    *
-   *    Method           10^10 %error  10^19 %error
-   *    ---------------  ------------  ------------
-   *    average bounds    .01%          .0002%
-   *    li(n)             .0007%        .00000004%
-   *    R(n)              .0004%        .00000001%
+   *    Method             10^10 %error  10^19 %error
+   *    -----------------  ------------  ------------
+   *    average bounds      .01%          .0002%
+   *    li(n)               .0007%        .00000004%
+   *    li(n)-li(n^.5)/2    .0004%        .00000001%
+   *    R(n)                .0004%        .00000001%
    *
    * Getting fancier, one try using Riemann's pi formula:
    *     http://trac.sagemath.org/sage_trac/ticket/8135
@@ -521,7 +522,8 @@ UV prime_count_approx(UV x)
   if (x < NPRIME_COUNT_SMALL)
     return prime_count_small[x];
 
-  R = RiemannR(x);
+  //R = XS_LogarithmicIntegral(x) - XS_LogarithmicIntegral(sqrt(x))/2;
+  R = XS_RiemannR(x);
 
   /* We could add the additional factor:
    *   R = R - (1.0 / log(x)) + (M_1_PI * atan(M_PI/log(x)))
@@ -833,7 +835,7 @@ UV nth_prime(UV n)
 static double const euler_mascheroni = 0.57721566490153286060651209008240243104215933593992;
 static double const li2 = 1.045163780117492784844588889194613136522615578151;
 
-double ExponentialIntegral(double x) {
+double XS_ExponentialIntegral(double x) {
   double const tol = 1e-16;
   double val, term, fact_n;
   double y, t;
@@ -925,12 +927,12 @@ double ExponentialIntegral(double x) {
   return val;
 }
 
-double LogarithmicIntegral(double x) {
+double XS_LogarithmicIntegral(double x) {
   if (x == 0) return 0;
   if (x == 1) return -INFINITY;
   if (x == 2) return li2;
   if (x <= 0) croak("Invalid input to LogarithmicIntegral:  x must be > 0");
-  return ExponentialIntegral(log(x));
+  return XS_ExponentialIntegral(log(x));
 }
 
 /*
@@ -1006,7 +1008,7 @@ static double evaluate_zeta(double x) {
   return sum;
 }
 
-double RiemannR(double x) {
+double XS_RiemannR(double x) {
   double const tol = 1e-16;
   double y, t, part_term, term, flogx, zeta;
   double sum = 0.0;

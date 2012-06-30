@@ -212,7 +212,7 @@ erat_primes(IN UV low, IN UV high)
 
 
 void
-factor(IN UV n)
+XS_factor(IN UV n)
   PPCODE:
     if (n < 4) {
       XPUSHs(sv_2mortal(newSVuv( n ))); /* If n is 0-3, we're done. */
@@ -371,10 +371,10 @@ int
 is_prob_prime(IN UV n)
 
 double
-ExponentialIntegral(double x)
+XS_ExponentialIntegral(double x)
 
 double
-LogarithmicIntegral(double x)
+XS_LogarithmicIntegral(double x)
 
 double
-RiemannR(double x)
+XS_RiemannR(double x)

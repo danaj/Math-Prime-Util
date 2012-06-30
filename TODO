@@ -14,7 +14,7 @@
 - Is the current PP.pm setup the way we want to do it?
 
 - input validation (in XS, or do we need to make Perl wrappers for everything?)
-  We can do inpuut val in XS by looking at the NV.  But I think long term we'll
+  We can do input val in XS by looking at the NV.  But I think long term we'll
   have a little Perl front end for everything to route to bignum routines or
   regular routines.
 
@@ -26,3 +26,11 @@
   version does it in a painful way.  Something simpler to be had?
 
 - In PP nth_prime* and prime_count*, turn on bignum if bigint is on.
+
+- Add euler_phi documentation
+
+- More testing for bignum, including a test suite file
+
+- Move the approx / bounds functions into main, to support bignum properly.
+
+- need next_prime and prev_prime bignum support.  random_ndigit_prime needs it.

@@ -19,9 +19,9 @@ extern UV  nth_prime_upper(UV x);
 extern UV  nth_prime_approx(UV x);
 extern UV  nth_prime(UV x);
 
-extern double ExponentialIntegral(double x);
-extern double LogarithmicIntegral(double x);
-extern double RiemannR(double x);
+extern double XS_ExponentialIntegral(double x);
+extern double XS_LogarithmicIntegral(double x);
+extern double XS_RiemannR(double x);
 
 /* Above this value, is_prime will do deterministic Miller-Rabin */
 /* With 64-bit math, we can do much faster mulmods from 2^16-2^32 */

@@ -584,6 +584,18 @@ sub _mulmod {
   $r;
 }
 
+sub _native_powmod {
+  my($n, $power, $m) = @_;
+  my $t = 1;
+  $n = $n % $m;
+  while ($power) {
+    $t = ($t * $n) % $m if ($power & 1) != 0;
+    $n = ($n * $n) % $m;
+    $power >>= 1;
+  }
+  $t;
+}
+
 sub _powmod {
   my($n, $power, $m) = @_;
   my $t = 1;
@@ -639,20 +651,41 @@ sub miller_rabin {
     $d >>= 1;
   }
 
-  foreach my $a (@bases) {
-    croak "Base $a is invalid" if $a < 2;
-    my $x = _powmod($a, $d, $n);
-    next if ($x == 1) || ($x == ($n-1));
+  if ( ($n < $_half_word) || (ref($n) =~ /^Math::Big/) ) {
 
-    foreach my $r (1 .. $s) {
-      $x = ($x < $_half_word) ? ($x*$x) % $n : _mulmod($x, $x, $n);
-      return 0 if $x == 1;
-      if ($x == ($n-1)) {
-        $a = 0;
-        last;
+    foreach my $a (@bases) {
+      croak "Base $a is invalid" if $a < 2;
+      my $x = _native_powmod($a, $d, $n);
+      next if ($x == 1) || ($x == ($n-1));
+      foreach my $r (1 .. $s) {
+        $x = ($x*$x) % $n;
+        return 0 if $x == 1;
+        if ($x == ($n-1)) {
+          $a = 0;
+          last;
+        }
       }
+      return 0 if $a != 0;
     }
-    return 0 if $a != 0;
+
+  } else {
+
+    foreach my $a (@bases) {
+      croak "Base $a is invalid" if $a < 2;
+      my $x = _powmod($a, $d, $n);
+      next if ($x == 1) || ($x == ($n-1));
+
+      foreach my $r (1 .. $s) {
+        $x = ($x < $_half_word) ? ($x*$x) % $n : _mulmod($x, $x, $n);
+        return 0 if $x == 1;
+        if ($x == ($n-1)) {
+          $a = 0;
+          last;
+        }
+      }
+      return 0 if $a != 0;
+    }
+
   }
   1;
 }
@@ -682,10 +715,15 @@ sub is_prob_prime {
 sub _basic_factor {
   # MODIFIES INPUT SCALAR
   return ($_[0]) if $_[0] < 4;
+
   my @factors;
-  while ( ($_[0] % 2) == 0 ) { push @factors, 2;  $_[0] /= 2; }
-  while ( ($_[0] % 3) == 0 ) { push @factors, 3;  $_[0] /= 3; }
-  while ( ($_[0] % 5) == 0 ) { push @factors, 5;  $_[0] /= 5; }
+  while ( ($_[0] % 2) == 0 ) { push @factors, 2;  $_[0] = int($_[0] / 2); }
+  while ( ($_[0] % 3) == 0 ) { push @factors, 3;  $_[0] = int($_[0] / 3); }
+  while ( ($_[0] % 5) == 0 ) { push @factors, 5;  $_[0] = int($_[0] / 5); }
+
+  # Stop using bignum if we can
+  $_[0] = $_[0]->numify if ref($_[0]) =~ /^Math::Big/ && $_[0] <= ~0;
+
   if ( ($_[0] > 1) && _is_prime7($_[0]) ) {
     push @factors, $_[0];
     $_[0] = 1;
@@ -706,7 +744,7 @@ sub trial_factor {
     if ( ($n % $f) == 0) {
       while ( ($n % $f) == 0) {
         push @factors, $f;
-        $n /= $f;
+        $n = int($n/$f);
       }
       $limit = int( sqrt($n) + 0.001);
     }
@@ -725,13 +763,16 @@ sub factor {
   my @factors = _basic_factor($n);
   return @factors if $n < 4;
 
-  while (($n %  7) == 0) { push @factors,  7;  $n /=  7; }
-  while (($n % 11) == 0) { push @factors, 11;  $n /= 11; }
-  while (($n % 13) == 0) { push @factors, 13;  $n /= 13; }
-  while (($n % 17) == 0) { push @factors, 17;  $n /= 17; }
-  while (($n % 19) == 0) { push @factors, 19;  $n /= 19; }
-  while (($n % 23) == 0) { push @factors, 23;  $n /= 23; }
-  while (($n % 29) == 0) { push @factors, 29;  $n /= 29; }
+  while (($n %  7) == 0) { push @factors,  7;  $n = int($n /  7); }
+  while (($n % 11) == 0) { push @factors, 11;  $n = int($n / 11); }
+  while (($n % 13) == 0) { push @factors, 13;  $n = int($n / 13); }
+  while (($n % 17) == 0) { push @factors, 17;  $n = int($n / 17); }
+  while (($n % 19) == 0) { push @factors, 19;  $n = int($n / 19); }
+  while (($n % 23) == 0) { push @factors, 23;  $n = int($n / 23); }
+  while (($n % 29) == 0) { push @factors, 29;  $n = int($n / 29); }
+
+  # Stop using bignum if possible
+  $n = $n->numify if ref($n) =~ /^Math::Big/ && $n <= ~0;
 
   my @nstack = ($n);
   while (@nstack) {
@@ -885,8 +926,8 @@ my $_const_euler = 0.57721566490153286060651209008240243104215933593992;
 my $_const_li2 = 1.045163780117492784844588889194613136522615578151;
 
 sub ExponentialIntegral {
-  my($x) = @_;
-  my $tol = 1e-16;
+  my($x, $tol) = @_;
+  $tol = 1e-16 unless defined $tol;
   my $sum = 0.0;
   my($y, $t);
   my $c = 0.0;
@@ -1032,8 +1073,8 @@ sub _evaluate_zeta {
 
 # Riemann R function
 sub RiemannR {
-  my($x) = @_;
-  my $tol = 1e-16;
+  my($x, $tol) = @_;
+  $tol = 1e-16 unless defined $tol;
   my $sum = 0.0;
   my($y, $t);
   my $c = 0.0;

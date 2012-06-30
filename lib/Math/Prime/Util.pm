@@ -12,6 +12,7 @@ BEGIN {
 # use parent qw( Exporter );
 use base qw( Exporter );
 our @EXPORT_OK = qw(
+                     prime_get_config
                      prime_precalc prime_memfree
                      is_prime is_prob_prime miller_rabin
                      primes
@@ -19,23 +20,29 @@ our @EXPORT_OK = qw(
                      prime_count prime_count_lower prime_count_upper prime_count_approx
                      nth_prime nth_prime_lower nth_prime_upper nth_prime_approx
                      random_prime random_ndigit_prime
-                     factor all_factors
+                     factor all_factors moebius euler_phi
                      ExponentialIntegral LogarithmicIntegral RiemannR
                    );
 our %EXPORT_TAGS = (all => [ @EXPORT_OK ]);
 
-my $_pure_perl;
+my %_Config;
 
 BEGIN {
+
+  # Load PP code.  Nothing exported.
+  require Math::Prime::Util::PP;
+
   eval {
     require XSLoader;
     XSLoader::load(__PACKAGE__, $Math::Prime::Util::VERSION);
     prime_precalc(0);
-    $_pure_perl = 0;
+    $_Config{'xs'} = 1;
+    $_Config{'maxbits'} = _maxbits();
     1;
   } or do {
-    require Math::Prime::Util::PP;
-    $_pure_perl = 1;
+die $@;
+    $_Config{'xs'} = 0;
+    $_Config{'maxbits'} = Math::Prime::Util::PP::_maxbits();
     #carp "Using Pure Perl implementation";
     *_get_prime_cache_size = \&Math::Prime::Util::PP::_get_prime_cache_size;
     *_maxbits = \&Math::Prime::Util::PP::_maxbits;
@@ -72,18 +79,39 @@ BEGIN {
     *RiemannR            = \&Math::Prime::Util::PP::RiemannR;
     *LogarithmicIntegral = \&Math::Prime::Util::PP::LogarithmicIntegral;
     *ExponentialIntegral = \&Math::Prime::Util::PP::ExponentialIntegral;
-    # TODO: We should have some tests to verify XS vs. PP.
   }
 }
 END {
   _prime_memfreeall;
 }
 
-my $_maxparam  = (_maxbits == 32) ? 4294967295 : 18446744073709551615;
-my $_maxdigits = (_maxbits == 32) ? 10 : 20;
-my $_maxprime  = (_maxbits == 32) ? 4294967291 : 18446744073709551557;
-my $_maxprimeidx=(_maxbits == 32) ?  203280221 :   425656284035217743;
+if ($_Config{'maxbits'} == 32) {
+  $_Config{'maxparam'}    = 4294967295;
+  $_Config{'maxdigits'}   = 10;
+  $_Config{'maxprime'}    = 4294967291;
+  $_Config{'maxprimeidx'} = 203280221;
+} else {
+  $_Config{'maxparam'}    = 18446744073709551615;
+  $_Config{'maxdigits'}   = 20;
+  $_Config{'maxprime'}    = 18446744073709551557;
+  $_Config{'maxprimeidx'} = 425656284035217743;
+}
 
+sub prime_get_config {
+  my %config = %_Config;
+  return \%config;
+}
+
+sub _validate_positive_integer {
+  my($n, $min, $max) = @_;
+  croak "Parameter must be defined" if !defined $n;
+  croak "Parameter '$n' must be a positive integer" if $n =~ tr/0123456789//c;
+  croak "Parameter '$n' must be >= $min" if defined $min && $n < $min;
+  croak "Parameter '$n' must be <= $max" if defined $max && $n > $max;
+  croak "Parameter '$n' outside of integer range" if $n > $_Config{'maxparam'}
+                                                  && ref($n) !~ /^Math::Big/;
+  1;
+}
 
 sub primes {
   my $optref = (ref $_[0] eq 'HASH')  ?  shift  :  {};
@@ -91,25 +119,16 @@ sub primes {
   croak "too many parameters to primes" unless scalar @_ <= 2;
   my $low = (@_ == 2)  ?  shift  :  2;
   my $high = shift;
+
+  _validate_positive_integer($low);
+  _validate_positive_integer($high);
+
   my $sref = [];
-
-  # Validate parameters
-  if ( (!defined $low) || (!defined $high) ||
-       ($low =~ tr/0123456789//c) || ($high =~ tr/0123456789//c)
-     ) {
-    $low  = '<undef>' unless defined $low;
-    $high = '<undef>' unless defined $high;
-    croak "Parameters [ $low $high ] must be positive integers";
-  }
-
-  # Verify the parameters are in range.
-  if (!$_pure_perl || !defined $bigint::VERSION) {
-    croak "Parameters [ $low $high ] not in range 0-$_maxparam" unless $low <= $_maxparam && $high <= $_maxparam;
-  }
-
   return $sref if ($low > $high) || ($high < 2);
 
-  return Math::Prime::Util::PP::primes($low,$high) if $_pure_perl;
+  if ( (!$_Config{'xs'}) || ($high > $_Config{'maxparam'}) ) {
+    return Math::Prime::Util::PP::primes($low,$high);
+  }
 
   my $method = $optref->{'method'};
   $method = 'Dynamic' unless defined $method;
@@ -162,19 +181,11 @@ sub primes {
 sub random_prime {
   my $low = (@_ == 2)  ?  shift  :  2;
   my $high = shift;
-  if ( (!defined $low) || (!defined $high) ||
-       ($low =~ tr/0123456789//c) || ($high =~ tr/0123456789//c)
-     ) {
-    $low  = 'undef' unless defined $low;
-    $high = 'undef' unless defined $high;
-    croak "Parameters [ $low $high ] must be positive integers";
-  }
-  if (!$_pure_perl || !defined $bigint::VERSION) {
-    croak "Parameters [ $low $high ] not in range 0-$_maxparam" unless $low <= $_maxparam && $high <= $_maxparam;
-  }
-  $low = 2 if $low < 2;
+  _validate_positive_integer($low);
+  _validate_positive_integer($high);
 
-  # Make sure we have a valid range.
+  # Tighten the range to the nearest prime.
+  $low = 2 if $low < 2;
   $low = next_prime($low - 1);
   $high = ($high < ~0)  ?  prev_prime($high + 1)  :  prev_prime($high);
   return $low if ($low == $high) && is_prime($low);
@@ -220,15 +231,12 @@ sub random_prime {
 my @_random_ndigit_ranges;
 
 sub random_ndigit_prime {
-  my $digits = shift;
-  # TODO: bigint with many digits
-  if ((!defined $digits) || ($digits > $_maxdigits) || ($digits < 1)) {
-    croak "Digits must be between 1 and $_maxdigits";
-  }
+  my($digits) = @_;
+  _validate_positive_integer($digits, 1, (defined $bigint::VERSION) ? 10000 : $_Config{'maxdigits'} );
   if (!defined $_random_ndigit_ranges[$digits]) {
     my $low = ($digits == 1) ? 0 : int(10 ** ($digits-1));
     my $high = int(10 ** $digits);
-    $high = ~0 if $high > ~0;
+    $high = ~0 if $high > ~0 && !defined $bigint::VERSION;
     $_random_ndigit_ranges[$digits] = [next_prime($low), prev_prime($high)];
   }
   my ($low, $high) = @{$_random_ndigit_ranges[$digits]};
@@ -236,7 +244,6 @@ sub random_ndigit_prime {
 }
 
 # Perhaps a random_nbit_prime ?   Definition?
-
 
 sub all_factors {
   my $n = shift;
@@ -254,6 +261,126 @@ sub all_factors {
   @factors = sort {$a<=>$b} keys %all_factors;
   return @factors;
 }
+
+# A008683 Moebius function mu(n)
+# A030059, A013929, A030229, A002321, A005117, A013929 all relate.
+
+# One can argue for the Omega function (A001221), Euler Phi (A000010), and
+# Merten's functions also.
+
+sub moebius {
+  my($n) = @_;
+  _validate_positive_integer($n, 1);
+  return if $n <= 0;
+  return 1 if $n == 1;
+
+  # Quick check for small replicated factors
+  return 0 if ($n >= 25) && (($n % 4) == 0 || ($n % 9) == 0 || ($n % 25) == 0);
+
+  my @factors = factor($n);
+  my %all_factors;
+  foreach my $factor (@factors) {
+    return 0 if $all_factors{$factor}++;
+  }
+  return (((scalar @factors) % 2) == 0) ? 1 : -1;
+}
+
+sub euler_phi {
+  my($n) = @_;
+  _validate_positive_integer($n);
+  return 1 if $n <= 1;  # phi(0) is disputed
+
+  my %factor_mult;
+  my @factors = grep { !$factor_mult{$_}++ } factor($n);
+  my $totient = $n;
+  foreach my $factor (@factors) {
+    # These divisions should always be exact
+    $totient = int($totient/$factor) * ($factor-1);
+  }
+  $totient;
+}
+
+
+#############################################################################
+# Front ends to functions.
+#
+# These will do input validation, then call the appropriate internal function
+# based on the input (XS, GMP, PP).
+#############################################################################
+
+#
+# This works, but sadly has a lot of overhead -- 7x more overhead than the
+# entire is_prime C function for n under 10M or so.
+#
+#sub is_prime {
+#  my($n) = @_;
+#  _validate_positive_integer($n);
+#
+#  return XS_is_prime($n) if $_Config{'xs'} && $n <= $_Config{'maxparam'};
+#  return Math::Prime::Util::PP::is_prime($n);
+#}
+
+sub factor {
+  my($n) = @_;
+  _validate_positive_integer($n);
+  
+  return XS_factor($n) if $_Config{'xs'} && $n <= $_Config{'maxparam'};
+
+  $n = $n->as_number() if ref($n) =~ /^Math::BigFloat/;
+  $n = $n->numify if $n <= ~0;
+  Math::Prime::Util::PP::factor($n);
+}
+
+
+sub RiemannR {
+  my($n) = @_;
+  croak("Invalid input to ReimannR:  x must be > 0") if $n <= 0;
+
+  if (ref($n) eq 'Math::BigInt' && !defined $Math::BigFloat::VERSION) {
+    require Math::BigFloat;
+    $n = new Math::BigFloat "$n";
+  }
+
+  return Math::Prime::Util::PP::RiemannR($n, 1e-30) if ref($n) =~ /^Math::Big/;
+  return Math::Prime::Util::PP::RiemannR($n) if !$_Config{'xs'};
+  return XS_RiemannR($n);
+
+  # We could make a new object, like:
+  #    require Math::BigFloat;
+  #    my $bign = new Math::BigFloat "$n";
+  #    my $result = Math::Prime::Util::PP::RiemannR($bign);
+  #    return $result;
+}
+
+sub ExponentialIntegral {
+  my($n) = @_;
+  croak "Invalid input to ExponentialIntegral:  x must be != 0" if $n == 0;
+
+  if (ref($n) eq 'Math::BigInt' && !defined $Math::BigFloat::VERSION) {
+    require Math::BigFloat;
+    $n = new Math::BigFloat "$n";
+  }
+
+  return Math::Prime::Util::PP::ExponentialIntegral($n, 1e-30) if ref($n) =~ /^Math::Big/;
+  return Math::Prime::Util::PP::ExponentialIntegral($n) if !$_Config{'xs'};
+  return XS_ExponentialIntegral($n);
+}
+
+sub LogarithmicIntegral {
+  my($n) = @_;
+  return 0 if $n == 0;
+  croak("Invalid input to LogarithmicIntegral:  x must be >= 0") if $n <= 0;
+
+  if (defined $Math::BigFloat::VERSION) {
+    return Math::BigFloat->binf('-') if $n == 1;
+    return Math::BigFloat->new('1.045163780117492784844588889194613136522615578151201575832909144075013205210359530172717405626383356306') if $n == 2;
+  } else {
+    return 0+'-inf' if $n == 1;
+    return 1.045163780117492784844588889194613136522615578151 if $n == 2;
+  }
+  ExponentialIntegral(log($n));
+}
+
 
 use Math::Prime::Util::MemFree;
 
@@ -619,6 +746,16 @@ digits between 1 and the maximum native type (10 for 32-bit, 20 for 64-bit).
 One of the primes within that range (e.g. 1000 - 9999 for 4-digits) will be
 uniformly selected using the L<rand> function.
 
+=head2 moebius
+
+  say "$n is square free" if moebius($n) != 0;
+  $sum += moebius($_) for (1..200); say "Mertens(200) = $sum";
+
+Returns the Möbius function (also called the Moebius, Mobius, or MoebiusMu
+function) for a positive non-zero integer input.  This function is 1 if
+C<n = 1>, 0 if C<n> is not square free (i.e. C<n> has a repeated factor),
+and C<-1^t> if C<n> is a product of C<t> distinct primes.  This is an
+important function in prime number theory.
 
 
 =head1 UTILITY FUNCTIONS
