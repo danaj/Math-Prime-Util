@@ -30,3 +30,11 @@
 - need next_prime and prev_prime bignum support.  random_ndigit_prime needs it.
 
 - redo _XS_factor to return a sorted array
+
+- Need to add more bignum factoring support:
+   - GMP prho
+   - GMP pminus1
+   - GMP tinyqs
+  That should at least make us usable for 80-90 bit numbers.
+
+- Must add BPSW if we want is_prime to be meaningful for >64-bit.
