@@ -31,43 +31,37 @@ BEGIN {
 
   # Load PP code.  Nothing exported.
   require Math::Prime::Util::PP;
+  # There is no GMP module yet
+  $_Config{'gmp'} = 0;
 
   eval {
     require XSLoader;
     XSLoader::load(__PACKAGE__, $Math::Prime::Util::VERSION);
     prime_precalc(0);
     $_Config{'xs'} = 1;
-    $_Config{'maxbits'} = _maxbits();
+    $_Config{'maxbits'} = _XS_prime_maxbits();
     1;
   } or do {
-die $@;
     $_Config{'xs'} = 0;
-    $_Config{'maxbits'} = Math::Prime::Util::PP::_maxbits();
-    #carp "Using Pure Perl implementation";
-    *_get_prime_cache_size = \&Math::Prime::Util::PP::_get_prime_cache_size;
-    *_maxbits = \&Math::Prime::Util::PP::_maxbits;
+    $_Config{'maxbits'} = Math::Prime::Util::PP::_PP_prime_maxbits();
+    carp "Using Pure Perl implementation: $@";
     *_prime_memfreeall = \&Math::Prime::Util::PP::_prime_memfreeall;
 
     *prime_memfree  = \&Math::Prime::Util::PP::prime_memfree;
     *prime_precalc  = \&Math::Prime::Util::PP::prime_precalc;
 
     *prime_count        = \&Math::Prime::Util::PP::prime_count;
-    *prime_count_upper  = \&Math::Prime::Util::PP::prime_count_upper;
-    *prime_count_lower  = \&Math::Prime::Util::PP::prime_count_lower;
-    *prime_count_approx = \&Math::Prime::Util::PP::prime_count_approx;
     *nth_prime          = \&Math::Prime::Util::PP::nth_prime;
-    *nth_prime_upper    = \&Math::Prime::Util::PP::nth_prime_upper;
-    *nth_prime_lower    = \&Math::Prime::Util::PP::nth_prime_lower;
-    *nth_prime_approx   = \&Math::Prime::Util::PP::nth_prime_approx;
 
     *is_prime       = \&Math::Prime::Util::PP::is_prime;
     *next_prime     = \&Math::Prime::Util::PP::next_prime;
     *prev_prime     = \&Math::Prime::Util::PP::prev_prime;
 
+    # Perhaps these can be moved here?
     *miller_rabin   = \&Math::Prime::Util::PP::miller_rabin;
     *is_prob_prime  = \&Math::Prime::Util::PP::is_prob_prime;
 
-    *factor         = \&Math::Prime::Util::PP::factor;
+    # These probably shouldn't even be exported
     *trial_factor   = \&Math::Prime::Util::PP::trial_factor;
     *fermat_factor  = \&Math::Prime::Util::PP::fermat_factor;
     *holf_factor    = \&Math::Prime::Util::PP::holf_factor;
@@ -75,10 +69,6 @@ die $@;
     *pbrent_factor  = \&Math::Prime::Util::PP::pbrent_factor;
     *prho_factor    = \&Math::Prime::Util::PP::prho_factor;
     *pminus1_factor = \&Math::Prime::Util::PP::pminus1_factor;
-
-    *RiemannR            = \&Math::Prime::Util::PP::RiemannR;
-    *LogarithmicIntegral = \&Math::Prime::Util::PP::LogarithmicIntegral;
-    *ExponentialIntegral = \&Math::Prime::Util::PP::ExponentialIntegral;
   }
 }
 END {
@@ -99,7 +89,13 @@ if ($_Config{'maxbits'} == 32) {
 
 sub prime_get_config {
   my %config = %_Config;
+
+  $config{'precalc_to'} = ($_Config{'xs'})
+                        ? _get_prime_cache_size
+                        : Math::Prime::Util::PP::_get_prime_cache_size;
+
   return \%config;
+
 }
 
 sub _validate_positive_integer {
@@ -112,6 +108,27 @@ sub _validate_positive_integer {
                                                   && ref($n) !~ /^Math::Big/;
   1;
 }
+
+my @_primes_small = (
+   0,2,3,5,7,11,13,17,19,23,29,31,37,41,43,47,53,59,61,67,71,73,79,83,89,97,
+   101,103,107,109,113,127,131,137,139,149,151,157,163,167,173,179,181,191,
+   193,197,199,211,223,227,229,233,239,241,251,257,263,269,271,277,281,283,
+   293,307,311,313,317,331,337,347,349,353,359,367,373,379,383,389,397,401,
+   409,419,421,431,433,439,443,449,457,461,463,467,479,487,491,499);
+my @_prime_count_small = (
+   0,0,1,2,2,3,3,4,4,4,4,5,5,6,6,6,6,7,7,8,8,8,8,9,9,9,9,9,9,10,10,
+   11,11,11,11,11,11,12,12,12,12,13,13,14,14,14,14,15,15,15,15,15,15,
+   16,16,16,16,16,16,17,17,18,18,18,18,18,18,19);
+#my @_prime_next_small = (
+#   2,2,3,5,5,7,7,11,11,11,11,13,13,17,17,17,17,19,19,23,23,23,23,
+#   29,29,29,29,29,29,31,31,37,37,37,37,37,37,41,41,41,41,43,43,47,
+#   47,47,47,53,53,53,53,53,53,59,59,59,59,59,59,61,61,67,67,67,67,67,67,71);
+
+
+
+
+
+#############################################################################
 
 sub primes {
   my $optref = (ref $_[0] eq 'HASH')  ?  shift  :  {};
@@ -247,20 +264,31 @@ sub random_ndigit_prime {
 
 sub all_factors {
   my $n = shift;
+  my $use_bigint = (ref($n) =~ /^Math::Big/);
   my @factors = factor($n);
   my %all_factors;
   foreach my $f1 (@factors) {
     next if $f1 >= $n;
     # We're adding to %all_factors in the loop, so grab the keys now.
     my @all = keys %all_factors;;
-    foreach my $f2 (@all) {
-      $all_factors{$f1*$f2} = 1 if ($f1*$f2) < $n;
+    if (!$use_bigint) {
+      foreach my $f2 (@all) {
+        $all_factors{$f1*$f2} = 1 if ($f1*$f2) < $n;
+      }
+    } else {
+      # Many of the factors will be numified after coming back, so we need
+      # to make sure we're using bigints when we calculate the product.
+      foreach my $f2 (@all) {
+        my $product = Math::BigInt->new("$f1") * Math::BigInt->new("$f2");
+        $all_factors{$product} = 1 if $product < $n;
+      }
     }
     $all_factors{$f1} = 1;
   }
   @factors = sort {$a<=>$b} keys %all_factors;
   return @factors;
 }
+
 
 # A008683 Moebius function mu(n)
 # A030059, A013929, A030229, A002321, A005117, A013929 all relate.
@@ -271,7 +299,6 @@ sub all_factors {
 sub moebius {
   my($n) = @_;
   _validate_positive_integer($n, 1);
-  return if $n <= 0;
   return 1 if $n == 1;
 
   # Quick check for small replicated factors
@@ -285,18 +312,35 @@ sub moebius {
   return (((scalar @factors) % 2) == 0) ? 1 : -1;
 }
 
+
+# Euler Phi, aka Euler Totient.  A000010
+
 sub euler_phi {
   my($n) = @_;
+  # SAGE defines this to be 0 for all n <= 0.  Others choose differently.
+  return 0 if defined $n && $n <= 0;  # Following SAGE's logic here.
   _validate_positive_integer($n);
-  return 1 if $n <= 1;  # phi(0) is disputed
+  return 1 if $n <= 1;
 
   my %factor_mult;
   my @factors = grep { !$factor_mult{$_}++ } factor($n);
+
   my $totient = $n;
   foreach my $factor (@factors) {
     # These divisions should always be exact
     $totient = int($totient/$factor) * ($factor-1);
   }
+
+  # Alternate way if you want to avoid divisions.
+  #my $totient = 1;
+  #foreach my $factor (@factors) {
+  #  $totient *= ($factor - 1);
+  #  while ($factor_mult{$factor} > 1) {
+  #    $totient *= $factor;
+  #    $factor_mult{$factor}--;
+  #  }
+  #}
+
   $totient;
 }
 
@@ -308,10 +352,20 @@ sub euler_phi {
 # based on the input (XS, GMP, PP).
 #############################################################################
 
+# Doing a sub here like:
 #
-# This works, but sadly has a lot of overhead -- 7x more overhead than the
-# entire is_prime C function for n under 10M or so.
+#   sub foo {  my($n) = @_;  _validate_positive_integer($n);
+#              return _XS_... if $_Config{'xs'} && $n <= $_Config{'maxparam'}; }
 #
+# takes about 0.7uS on my machine.  Operations like is_prime and factor run
+# on small input (under 100_000) typically take a lot less time than this.  So
+# The overhead for these is significantly more than just the XS call itself.
+#
+# The plan for some of these functions will be to invert the operation.  That
+# is, the XS functions will look at the input and make a call here if the input
+# is large.
+
+
 #sub is_prime {
 #  my($n) = @_;
 #  _validate_positive_integer($n);
@@ -323,27 +377,267 @@ sub euler_phi {
 sub factor {
   my($n) = @_;
   _validate_positive_integer($n);
-  
-  return XS_factor($n) if $_Config{'xs'} && $n <= $_Config{'maxparam'};
+
+  #return _XS_factor($n) if $_Config{'xs'} && $n <= $_Config{'maxparam'};
+  if ($_Config{'xs'} && $n <= $_Config{'maxparam'}) {
+    my @factors = sort {$a<=>$b} _XS_factor($n);
+    return @factors;
+  }
 
   $n = $n->as_number() if ref($n) =~ /^Math::BigFloat/;
   $n = $n->numify if $n <= ~0;
   Math::Prime::Util::PP::factor($n);
 }
 
+#############################################################################
+
+sub prime_count_approx {
+  my($x) = @_;
+  _validate_positive_integer($x);
+
+  return $_prime_count_small[$x] if $x <= $#_prime_count_small;
+
+  #    Method             10^10 %error  10^19 %error
+  #    -----------------  ------------  ------------
+  #    average bounds      .01%          .0002%
+  #    li(n)               .0007%        .00000004%
+  #    li(n)-li(n^.5)/2    .0004%        .00000001%
+  #    R(n)                .0004%        .00000001%
+
+  # return int( (prime_count_upper($x) + prime_count_lower($x)) / 2);
+
+  # return int( LogarithmicIntegral($x) );
+
+  # return int( LogarithmicIntegral($x) - LogarithmicIntegral(sqrt($x))/2 );
+
+  return int(RiemannR($x)+0.5);
+}
+
+sub prime_count_lower {
+  my($x) = @_;
+  _validate_positive_integer($x);
+
+  return $_prime_count_small[$x] if $x <= $#_prime_count_small;
+
+  if (ref($x) =~ /^Math::BigInt/ && !defined $Math::BigFloat::VERSION) {
+    require Math::BigFloat;  Math::BigFloat->import;
+    $x = new Math::BigFloat "$x";
+  }
+
+  my $flogx = log($x);
+
+  # Chebyshev:            1*x/logx       x >= 17
+  # Rosser & Schoenfeld:  x/(logx-1/2)   x >= 67
+  # Dusart 1999:          x/logx*(1+1/logx+1.8/logxlogx)  x >= 32299
+
+  # For smaller numbers this works out well.
+  return int( $x / ($flogx - 0.7) ) if $x < 599;
+
+  my $a;
+  # Hand tuned for small numbers (< 60_000M)
+  if    ($x <       2700) { $a = 0.30; }
+  elsif ($x <       5500) { $a = 0.90; }
+  elsif ($x <      19400) { $a = 1.30; }
+  elsif ($x <      32299) { $a = 1.60; }
+  elsif ($x <     176000) { $a = 1.80; }
+  elsif ($x <     315000) { $a = 2.10; }
+  elsif ($x <    1100000) { $a = 2.20; }
+  elsif ($x <    4500000) { $a = 2.31; }
+  elsif ($x <  233000000) { $a = 2.36; }
+  elsif ($x < 5433800000) { $a = 2.32; }
+  elsif ($x <60000000000) { $a = 2.15; }
+  else                    { $a = 1.80; } # Dusart 1999, page 14
+
+  return int( ($x/$flogx) * (1.0 + 1.0/$flogx + $a/($flogx*$flogx)) );
+}
+
+sub prime_count_upper {
+  my($x) = @_;
+  _validate_positive_integer($x);
+
+  return $_prime_count_small[$x] if $x <= $#_prime_count_small;
+
+  if (ref($x) =~ /^Math::BigInt/ && !defined $Math::BigFloat::VERSION) {
+    require Math::BigFloat;
+    $x = new Math::BigFloat "$x";
+  }
+
+  # Chebyshev:            1.25506*x/logx       x >= 17
+  # Rosser & Schoenfeld:  x/(logx-3/2)         x >= 67
+  # Dusart 1999:          x/logx*(1+1/logx+2.51/logxlogx)  x >= 355991
+
+  my $flogx = log($x);
+
+  # These work out well for small values
+  return int( ($x / ($flogx - 1.048)) + 1.0 ) if $x <  1621;
+  return int( ($x / ($flogx - 1.071)) + 1.0 ) if $x <  5000;
+  return int( ($x / ($flogx - 1.098)) + 1.0 ) if $x < 15900;
+
+  my $a;
+  # Hand tuned for small numbers (< 60_000M)
+  if    ($x <      24000) { $a = 2.30; }
+  elsif ($x <      59000) { $a = 2.48; }
+  elsif ($x <     350000) { $a = 2.52; }
+  elsif ($x <     355991) { $a = 2.54; }
+  elsif ($x <     356000) { $a = 2.51; }
+  elsif ($x <    3550000) { $a = 2.50; }
+  elsif ($x <    3560000) { $a = 2.49; }
+  elsif ($x <    5000000) { $a = 2.48; }
+  elsif ($x <    8000000) { $a = 2.47; }
+  elsif ($x <   13000000) { $a = 2.46; }
+  elsif ($x <   18000000) { $a = 2.45; }
+  elsif ($x <   31000000) { $a = 2.44; }
+  elsif ($x <   41000000) { $a = 2.43; }
+  elsif ($x <   48000000) { $a = 2.42; }
+  elsif ($x <  119000000) { $a = 2.41; }
+  elsif ($x <  182000000) { $a = 2.40; }
+  elsif ($x <  192000000) { $a = 2.395; }
+  elsif ($x <  213000000) { $a = 2.390; }
+  elsif ($x <  271000000) { $a = 2.385; }
+  elsif ($x <  322000000) { $a = 2.380; }
+  elsif ($x <  400000000) { $a = 2.375; }
+  elsif ($x <  510000000) { $a = 2.370; }
+  elsif ($x <  682000000) { $a = 2.367; }
+  elsif ($x <60000000000) { $a = 2.362; }
+  else                    { $a = 2.51; }
+
+  return int( ($x/$flogx) * (1.0 + 1.0/$flogx + $a/($flogx*$flogx)) + 1.0 );
+}
+
+#############################################################################
+
+sub nth_prime_approx {
+  my($n) = @_;
+  _validate_positive_integer($n);
+
+  return $_primes_small[$n] if $n <= $#_primes_small;
+
+  if (ref($n) =~ /^Math::BigInt/ && !defined $Math::BigFloat::VERSION) {
+    require Math::BigFloat;
+    $n = new Math::BigFloat "$n";
+  }
+
+  my $flogn  = log($n);
+  my $flog2n = log($flogn);
+
+  # Cipolla 1902:
+  #    m=0   fn * ( flogn + flog2n - 1 );
+  #    m=1   + ((flog2n - 2)/flogn) );
+  #    m=2   - (((flog2n*flog2n) - 6*flog2n + 11) / (2*flogn*flogn))
+  #    + O((flog2n/flogn)^3)
+  #
+  # Shown in Dusart 1999 page 12, as well as other sources such as:
+  #   http://www.emis.de/journals/JIPAM/images/153_02_JIPAM/153_02.pdf
+  # where the main issue you run into is that you're doing polynomial
+  # interpolation, so it oscillates like crazy with many high-order terms.
+  # Hence I'm leaving it at m=2.
+  #
+
+  my $approx = $n * ( $flogn + $flog2n - 1
+                      + (($flog2n - 2)/$flogn)
+                      - ((($flog2n*$flog2n) - 6*$flog2n + 11) / (2*$flogn*$flogn))
+                    );
+
+  # Apply a correction to help keep values close.
+  my $order = $flog2n/$flogn;
+  $order = $order*$order*$order * $n;
+
+  if    ($n <        259) { $approx += 10.4 * $order; }
+  elsif ($n <        775) { $approx +=  7.52* $order; }
+  elsif ($n <       1271) { $approx +=  5.6 * $order; }
+  elsif ($n <       2000) { $approx +=  5.2 * $order; }
+  elsif ($n <       4000) { $approx +=  4.3 * $order; }
+  elsif ($n <      12000) { $approx +=  3.0 * $order; }
+  elsif ($n <     150000) { $approx +=  2.1 * $order; }
+  elsif ($n <  200000000) { $approx +=  0.0 * $order; }
+  else                    { $approx += -0.010 * $order; }
+
+  if ( ($approx >= ~0) && (ref($n) !~ /^Math::Big/) ) {
+    return $_Config{'maxprime'} if $n <= $_Config{'maxprimeidx'};
+    croak "nth_prime_approx($n) overflow";
+  }
+
+  return int($approx + 0.5);
+}
+
+# The nth prime will be greater than or equal to this number
+sub nth_prime_lower {
+  my($n) = @_;
+  _validate_positive_integer($n);
+
+  return $_primes_small[$n] if $n <= $#_primes_small;
+
+  if (ref($n) =~ /^Math::BigInt/ && !defined $Math::BigFloat::VERSION) {
+    require Math::BigFloat;
+    $n = new Math::BigFloat "$n";
+  }
+
+  my $flogn  = log($n);
+  my $flog2n = log($flogn);  # Note distinction between log_2(n) and log^2(n)
+
+  # Dusart 1999 page 14, for all n >= 2
+  my $lower = $n * ($flogn + $flog2n - 1.0 + (($flog2n-2.25)/$flogn));
+
+  if ( ($lower >= ~0) && (ref($n) !~ /^Math::Big/) ) {
+    return $_Config{'maxprime'} if $n <= $_Config{'maxprimeidx'};
+    croak "nth_prime_lower($n) overflow";
+  }
+
+  return int($lower);
+}
+
+# The nth prime will be less or equal to this number
+sub nth_prime_upper {
+  my($n) = @_;
+  _validate_positive_integer($n);
+
+  return $_primes_small[$n] if $n <= $#_primes_small;
+
+  if (ref($n) =~ /^Math::BigInt/ && !defined $Math::BigFloat::VERSION) {
+    require Math::BigFloat;
+    $n = new Math::BigFloat "$n";
+  }
+
+  my $flogn  = log($n);
+  my $flog2n = log($flogn);  # Note distinction between log_2(n) and log^2(n)
+
+  my $upper;
+  if ($n >= 39017) {        # Dusart 1999 page 14
+    $upper = $n * ( $flogn  +  $flog2n - 0.9484 );
+  } elsif ($n >= 27076) {   # Dusart 1999 page 14
+    $upper = $n * ( $flogn  +  $flog2n - 1.0 + (($flog2n-1.80)/$flogn) );
+  } elsif ($n >= 7022) {    # Robin 1983
+    $upper = $n * ( $flogn  +  0.9385 * $flog2n );
+  } else {
+    $upper = $n * ( $flogn  +  $flog2n );
+  }
+
+  if ( ($upper >= ~0) && (ref($n) !~ /^Math::Big/) ) {
+    return $_Config{'maxprime'} if $n <= $_Config{'maxprimeidx'};
+    croak "nth_prime_upper($n) overflow";
+  }
+
+  return int($upper + 1.0);
+}
+
+
+#############################################################################
+
+
+#############################################################################
 
 sub RiemannR {
   my($n) = @_;
   croak("Invalid input to ReimannR:  x must be > 0") if $n <= 0;
 
-  if (ref($n) eq 'Math::BigInt' && !defined $Math::BigFloat::VERSION) {
+  if (ref($n) =~ /^Math::BigInt/ && !defined $Math::BigFloat::VERSION) {
     require Math::BigFloat;
     $n = new Math::BigFloat "$n";
   }
 
   return Math::Prime::Util::PP::RiemannR($n, 1e-30) if ref($n) =~ /^Math::Big/;
   return Math::Prime::Util::PP::RiemannR($n) if !$_Config{'xs'};
-  return XS_RiemannR($n);
+  return _XS_RiemannR($n);
 
   # We could make a new object, like:
   #    require Math::BigFloat;
@@ -356,14 +650,14 @@ sub ExponentialIntegral {
   my($n) = @_;
   croak "Invalid input to ExponentialIntegral:  x must be != 0" if $n == 0;
 
-  if (ref($n) eq 'Math::BigInt' && !defined $Math::BigFloat::VERSION) {
+  if (ref($n) =~ /^Math::BigInt/ && !defined $Math::BigFloat::VERSION) {
     require Math::BigFloat;
     $n = new Math::BigFloat "$n";
   }
 
   return Math::Prime::Util::PP::ExponentialIntegral($n, 1e-30) if ref($n) =~ /^Math::Big/;
   return Math::Prime::Util::PP::ExponentialIntegral($n) if !$_Config{'xs'};
-  return XS_ExponentialIntegral($n);
+  return _XS_ExponentialIntegral($n);
 }
 
 sub LogarithmicIntegral {
@@ -381,6 +675,7 @@ sub LogarithmicIntegral {
   ExponentialIntegral(log($n));
 }
 
+#############################################################################
 
 use Math::Prime::Util::MemFree;
 
@@ -479,6 +774,10 @@ Version 0.09
   my $rand_prime = random_prime(100, 10000); # random prime within a range
   my $rand_prime = random_ndigit_prime(6);   # random 6-digit prime
 
+  # Euler phi on large number
+  use bigint;  say euler_phi( 801294088771394680000412 );
+  # returns 391329671260448564651280
+
 
 =head1 DESCRIPTION
 
@@ -487,19 +786,58 @@ methods, is_prime, prime_count, nth_prime, approximations and bounds for
 the prime_count and nth prime, next_prime and prev_prime, factoring utilities,
 and more.
 
-All routines currently work in native integers (32-bit or 64-bit).  Bignum
-support may be added later.  If you need bignum support for these types of
-functions inside Perl now, I recommend L<Math::Pari>.
-
 The default sieving and factoring are intended to be (and currently are)
 the fastest on CPAN, including L<Math::Prime::XS>, L<Math::Prime::FastSieve>,
-and L<Math::Factor::XS>.  It seems to be faster than L<Math::Pari> for
-everything except factoring certain 16-20 digit numbers.
+L<Math::Factor::XS>, and L<Math::Prime::TiedArray>.  For numbers in the 10-20
+digit range, it is often orders of magnitude faster.  Typically it is faster
+than L<Math::Pari> for 64-bit operations, with the exception of factoring
+certain 16-20 digit numbers.
+
+The main development of the module has been for working with Perl UVs, so
+32-bit or 64-bit.  Bignum support is limited.  If you need full bignum
+support for these types of functions inside Perl now, I recommend L<Math::Pari>.
 
 The module is thread-safe and allows concurrency between Perl threads while
 still sharing a prime cache.  It is not itself multithreaded.  The one caveat
-is on Win32 where you must use C<precalc> if the function will use primes
-(C<primes>, C<prime_count> greater than 900M, C<nth_prime> greater than 45M).
+is on Win32 (non-Cygwin) where you must use C<precalc> if the function will
+use primes (C<primes>, C<prime_count> greater than 900M,
+C<nth_prime> greater than 45M).
+
+
+=head1 BIGNUM SUPPORT
+
+A number of the functions support big numbers, but currently not all.  The
+ones that do:
+
+  prime_count_lower
+  prime_count_upper
+  prime_count_approx
+  nth_prime_lower
+  nth_prime_upper
+  nth_prime_approx
+  factor
+  all_factors
+  moebius
+  euler_phi
+  ExponentialIntegral
+  LogarithmicIntegral
+  RiemannR
+
+These still do not:
+
+  is_prime
+  is_prob_prime
+  miller_rabin
+  primes
+  next_prime
+  prev_prime
+  prime_count
+  nth_prime
+  random_prime
+  random_ndigit_prime
+
+It is possible to call the L<Math::Prime::Util::PP> versions directly, though
+performance may be very suboptimal.
 
 
 =head1 FUNCTIONS
@@ -758,6 +1096,20 @@ and C<-1^t> if C<n> is a product of C<t> distinct primes.  This is an
 important function in prime number theory.
 
 
+=head2 euler_phi
+
+  say "The Euler totient of $n is ", euler_phi($n);
+
+Returns the Euler totient function (also called Euler's phi or phi function)
+for an integer value.  This is an arithmetic function that counts the number
+of positive integers less than or equal to C<n> that are relatively prime to
+C<n>.  Given the definition used, C<euler_phi> will return 0 for all
+C<n E<lt> 1>.  This follows the logic used by SAGE.  Mathematic/WolframAlpha
+returns 0 for input 0, but returns C<euler_phi(-n)> for C<n E<lt> 0>.
+
+
+
+
 =head1 UTILITY FUNCTIONS
 
 =head2 prime_precalc
@@ -791,6 +1143,22 @@ your routines were inside an eval that died, things will still get cleaned up.
 If you call another function that uses a MemFree object, the cache will stay
 in place because you still have an object.
 
+=head2 prime_get_config
+
+  my $cached_up_to = prime_get_config->{'precalc_to'};
+
+Returns a reference to a hash of the current settings.  The hash is copy of
+the configuration, so changing it has no effect.  The settings include:
+
+  precalc_to      primes up to this number are calculated
+  maxbits         the maximum number of bits for native operations
+  xs              0 or 1, indicating the XS code is running
+  gmp             0 or 1, indicating GMP code is available
+  maxparam        the largest value for most functions, without bigint
+  maxdigits       the max digits in a number, without bigint
+  maxprime        the largest representable prime, without bigint
+  maxprimeidx     the index of maxprime, without bigint
+  
 
 
 =head1 FACTORING FUNCTIONS
@@ -800,16 +1168,20 @@ in place because you still have an object.
   my @factors = factor(3_369_738_766_071_892_021);
   # returns (204518747,16476429743)
 
-Produces the prime factors of a positive number input.  They may not be in
-numerical order.  The special cases of C<n = 0> and C<n = 1> will
-return C<n>, which guarantees multiplying the factors together will
-always result in the input value, though those are the only cases where
-the returned factors are not prime.
+Produces the prime factors of a positive number input, in numerical order.
+The special cases of C<n = 0> and C<n = 1> will return C<n>, which
+guarantees multiplying the factors together will always result in the
+input value, though those are the only cases where the returned factors
+are not prime.
 
 The current algorithm is to use trial division for small numbers, while large
 numbers go through a sequence of small trials, SQUFOF, Pollard's Rho, Hart's
 one line factorization, and finally trial division for any survivors.  This
 process is repeated for each non-prime factor.
+
+While factoring works on bigints, the algorithms are currently set up for
+smaller numbers, and bignum support is all in pure Perl.  Hence, it will be
+somewhat slow for "easy" numbers and too slow for "hard" numbers.
 
 
 =head2 all_factors
@@ -945,11 +1317,6 @@ Print pseudoprimes base 17:
 I have not completed testing all the functions near the word size limit
 (e.g. C<2^32> for 32-bit machines).  Please report any problems you find.
 
-The extra factoring algorithms are mildly interesting but really limited by
-not being big number aware.  Assuming a desktop PC, every 32-bit number
-should be factored by the main routine in a few microseconds, and 64-bit
-numbers should be a few milliseconds at worst.
-
 Perl versions earlier than 5.8.0 have issues with 64-bit that show up in the
 factoring tests.  The test suite will try to determine if your Perl is broken.
 If you use later versions of Perl, or Perl 5.6.2 32-bit, or Perl 5.6.2 64-bit
@@ -1023,7 +1390,7 @@ The differences are in the implementations:
 
    - L<Math::Primality> uses a GMP BPSW test which is overkill for our 64-bit
      range.  It's generally an order of magnitude or two slower than any
-     of the others.  
+     of the others.
 
    - L<Math::Pari> has some very effective code, but it has some overhead to get
      to it from Perl.  That means for small numbers it is relatively slow: an
@@ -1052,7 +1419,8 @@ the extreme end).  Pari's underlying algorithms and code are very
 sophisticated, and will always be more so than this module, and of course
 supports bignums which is a huge advantage.  Small numbers factor much, much
 faster with Math::Prime::Util.  Pari passes M::P::U in speed somewhere in the
-16 digit range and rapidly increases its lead.
+16 digit range and rapidly increases its lead.  For bignums, there is no
+question that Math::Pari is far superior at this point.
 
 The presentation here:
  L<http://math.boisestate.edu/~liljanab/BOISECRYPTFall09/Jacobsen.pdf>

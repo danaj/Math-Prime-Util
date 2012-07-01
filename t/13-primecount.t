@@ -5,7 +5,7 @@ use warnings;
 use Test::More;
 use Math::Prime::Util qw/prime_count prime_count_lower prime_count_upper prime_count_approx/;
 
-my $use64 = Math::Prime::Util::_maxbits > 32;
+my $use64 = Math::Prime::Util::prime_get_config->{'maxbits'} > 32;
 my $extra = defined $ENV{RELEASE_TESTING} && $ENV{RELEASE_TESTING};
 
 #  Powers of 2:  http://oeis.org/A007053/b007053.txt

@@ -393,7 +393,7 @@ static const unsigned char prime_count_small[] =
 #define NPRIME_COUNT_SMALL  (sizeof(prime_count_small)/sizeof(prime_count_small[0]))
 
 static const double F1 = 1.0;
-UV prime_count_lower(UV x)
+UV _XS_prime_count_lower(UV x)
 {
   double fx, flogx;
   double a = 1.80;     /* Dusart 1999, page 14 */
@@ -427,7 +427,7 @@ UV prime_count_lower(UV x)
 }
 
 
-UV prime_count_upper(UV x)
+UV _XS_prime_count_upper(UV x)
 {
   double fx, flogx;
   double a = 2.51;    /* Dusart 1999, page 14 */
@@ -495,7 +495,7 @@ UV prime_count_upper(UV x)
 }
 
 
-UV prime_count_approx(UV x)
+UV _XS_prime_count_approx(UV x)
 {
   /*
    * A simple way:
@@ -522,8 +522,8 @@ UV prime_count_approx(UV x)
   if (x < NPRIME_COUNT_SMALL)
     return prime_count_small[x];
 
-  //R = XS_LogarithmicIntegral(x) - XS_LogarithmicIntegral(sqrt(x))/2;
-  R = XS_RiemannR(x);
+  //R = _XS_LogarithmicIntegral(x) - _XS_LogarithmicIntegral(sqrt(x))/2;
+  R = _XS_RiemannR(x);
 
   /* We could add the additional factor:
    *   R = R - (1.0 / log(x)) + (M_1_PI * atan(M_PI/log(x)))
@@ -615,7 +615,7 @@ static const unsigned short primes_small[] =
 #define NPRIMES_SMALL (sizeof(primes_small)/sizeof(primes_small[0]))
 
 /* The nth prime will be greater than or equal to this number */
-UV nth_prime_lower(UV n)
+UV _XS_nth_prime_lower(UV n)
 {
   double fn = (double) n;
   double flogn, flog2n, lower;
@@ -644,7 +644,7 @@ UV nth_prime_lower(UV n)
 
 
 /* The nth prime will be less or equal to this number */
-UV nth_prime_upper(UV n)
+UV _XS_nth_prime_upper(UV n)
 {
   double fn = (double) n;
   double flogn, flog2n, upper;
@@ -678,7 +678,7 @@ UV nth_prime_upper(UV n)
 }
 
 
-UV nth_prime_approx(UV n)
+UV _XS_nth_prime_approx(UV n)
 {
   double fn, flogn, flog2n, order, approx;
 
@@ -761,7 +761,7 @@ UV nth_prime(UV n)
     return primes_small[n];
 
   /* Determine a bound on the nth prime.  We know it comes before this. */
-  upper_limit = nth_prime_upper(n);
+  upper_limit = _XS_nth_prime_upper(n);
   MPUassert(upper_limit > 0, "nth_prime got an upper limit of 0");
 
   /* Get the primary cache, and ensure it is at least this large.  If the
@@ -835,7 +835,7 @@ UV nth_prime(UV n)
 static double const euler_mascheroni = 0.57721566490153286060651209008240243104215933593992;
 static double const li2 = 1.045163780117492784844588889194613136522615578151;
 
-double XS_ExponentialIntegral(double x) {
+double _XS_ExponentialIntegral(double x) {
   double const tol = 1e-16;
   double val, term, fact_n;
   double y, t;
@@ -927,12 +927,12 @@ double XS_ExponentialIntegral(double x) {
   return val;
 }
 
-double XS_LogarithmicIntegral(double x) {
+double _XS_LogarithmicIntegral(double x) {
   if (x == 0) return 0;
   if (x == 1) return -INFINITY;
   if (x == 2) return li2;
   if (x <= 0) croak("Invalid input to LogarithmicIntegral:  x must be > 0");
-  return XS_ExponentialIntegral(log(x));
+  return _XS_ExponentialIntegral(log(x));
 }
 
 /*
@@ -1008,7 +1008,7 @@ static double evaluate_zeta(double x) {
   return sum;
 }
 
-double XS_RiemannR(double x) {
+double _XS_RiemannR(double x) {
   double const tol = 1e-16;
   double y, t, part_term, term, flogx, zeta;
   double sum = 0.0;

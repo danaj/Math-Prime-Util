@@ -5,7 +5,7 @@ use warnings;
 use Test::More;
 use Math::Prime::Util qw/primes nth_prime nth_prime_lower nth_prime_upper nth_prime_approx/;
 
-my $use64 = Math::Prime::Util::_maxbits > 32;
+my $use64 = Math::Prime::Util::prime_get_config->{'maxbits'} > 32;
 my $extra = defined $ENV{RELEASE_TESTING} && $ENV{RELEASE_TESTING};
 my $broken64 = (18446744073709550592 == ~0);
 

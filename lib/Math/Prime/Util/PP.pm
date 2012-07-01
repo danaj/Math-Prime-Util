@@ -28,7 +28,7 @@ BEGIN {
    : 32;
   no Config;
 }
-sub _maxbits { $_uv_size }
+sub _PP_prime_maxbits { $_uv_size }
 
 # If $n < $_half_word, then $n*$n will be exact.
 my $_half_word = (~0 == 18446744073709551615) ? 4294967296 :    # 64-bit
@@ -276,7 +276,7 @@ sub primes {
 sub next_prime {
   my($n) = @_;
   croak "Input must be a positive integer" unless _is_positive_int($n);
-  return 0 if ($n >= ((_maxbits == 32) ? 4294967291 : 18446744073709551557))
+  return 0 if ($n >= ((_PP_prime_maxbits == 32) ? 4294967291 : 18446744073709551557))
               && (!defined $bigint::VERSION);
   return $_prime_next_small[$n] if $n <= $#_prime_next_small;
 
@@ -354,177 +354,6 @@ sub prime_count {
   $count;
 }
 
-sub prime_count_lower {
-  my($x) = @_;
-  croak "Input must be a positive integer" unless _is_positive_int($x);
-
-  return $_prime_count_small[$x] if $x <= $#_prime_count_small;
-
-  my $flogx = log($x);
-
-  return int( $x / ($flogx - 0.7) ) if $x < 599;
-
-  my $a;
-  if    ($x <       2700) { $a = 0.30; }
-  elsif ($x <       5500) { $a = 0.90; }
-  elsif ($x <      19400) { $a = 1.30; }
-  elsif ($x <      32299) { $a = 1.60; }
-  elsif ($x <     176000) { $a = 1.80; }
-  elsif ($x <     315000) { $a = 2.10; }
-  elsif ($x <    1100000) { $a = 2.20; }
-  elsif ($x <    4500000) { $a = 2.31; }
-  elsif ($x <  233000000) { $a = 2.36; }
-  elsif ($x < 5433800000) { $a = 2.32; }
-  elsif ($x <60000000000) { $a = 2.15; }
-  else                    { $a = 1.80; } # Dusart 1999, page 14
-
-  return int( ($x/$flogx) * (1.0 + 1.0/$flogx + $a/($flogx*$flogx)) );
-}
-
-sub prime_count_upper {
-  my($x) = @_;
-  croak "Input must be a positive integer" unless _is_positive_int($x);
-
-  return $_prime_count_small[$x] if $x <= $#_prime_count_small;
-
-  my $flogx = log($x);
-
-  return int( ($x / ($flogx - 1.048)) + 1.0 ) if $x <  1621;
-  return int( ($x / ($flogx - 1.071)) + 1.0 ) if $x <  5000;
-  return int( ($x / ($flogx - 1.098)) + 1.0 ) if $x < 15900;
-
-  my $a;
-  if    ($x <      24000) { $a = 2.30; }
-  elsif ($x <      59000) { $a = 2.48; }
-  elsif ($x <     350000) { $a = 2.52; }
-  elsif ($x <     355991) { $a = 2.54; }
-  elsif ($x <     356000) { $a = 2.51; }
-  elsif ($x <    3550000) { $a = 2.50; }
-  elsif ($x <    3560000) { $a = 2.49; }
-  elsif ($x <    5000000) { $a = 2.48; }
-  elsif ($x <    8000000) { $a = 2.47; }
-  elsif ($x <   13000000) { $a = 2.46; }
-  elsif ($x <   18000000) { $a = 2.45; }
-  elsif ($x <   31000000) { $a = 2.44; }
-  elsif ($x <   41000000) { $a = 2.43; }
-  elsif ($x <   48000000) { $a = 2.42; }
-  elsif ($x <  119000000) { $a = 2.41; }
-  elsif ($x <  182000000) { $a = 2.40; }
-  elsif ($x <  192000000) { $a = 2.395; }
-  elsif ($x <  213000000) { $a = 2.390; }
-  elsif ($x <  271000000) { $a = 2.385; }
-  elsif ($x <  322000000) { $a = 2.380; }
-  elsif ($x <  400000000) { $a = 2.375; }
-  elsif ($x <  510000000) { $a = 2.370; }
-  elsif ($x <  682000000) { $a = 2.367; }
-  elsif ($x <60000000000) { $a = 2.362; }
-  else                    { $a = 2.51; }
-
-  return int( ($x/$flogx) * (1.0 + 1.0/$flogx + $a/($flogx*$flogx)) + 1.0 );
-}
-
-sub prime_count_approx {
-  my($x) = @_;
-  croak "Input must be a positive integer" unless _is_positive_int($x);
-
-  return $_prime_count_small[$x] if $x <= $#_prime_count_small;
-
-  #return int( (prime_count_upper($x) + prime_count_lower($x)) / 2);
-  return int(RiemannR($x)+0.5);
-}
-
-sub nth_prime_lower {
-  my($n) = @_;
-  croak "Input must be a positive integer" unless _is_positive_int($n);
-
-  return $_primes_small[$n] if $n <= $#_primes_small;
-
-  my $flogn  = log($n);
-  my $flog2n = log($flogn);
-
-  # Dusart 1999 page 14, for all n >= 2
-  my $lower = $n * ($flogn + $flog2n - 1.0 + (($flog2n-2.25)/$flogn));
-
-  if ( ($lower >= ~0) && (!defined $bignum::VERSION) ) {
-    if (_maxbits == 32) {
-      return 4294967291 if $n <= 203280221;
-    } else {
-      return 18446744073709551557 if $n <= 425656284035217743;
-    }
-    croak "nth_prime_lower($n) overflow";
-  }
-  return int($lower);
-}
-
-sub nth_prime_upper {
-  my($n) = @_;
-  croak "Input must be a positive integer" unless _is_positive_int($n);
-
-  return $_primes_small[$n] if $n <= $#_primes_small;
-
-  my $flogn  = log($n);
-  my $flog2n = log($flogn);
-
-  my $upper;
-  if ($n >= 39017) {
-    $upper = $n * ( $flogn  +  $flog2n - 0.9484 ); # Dusart 1999 page 14
-  } elsif ($n >= 27076) {
-    $upper = $n * ( $flogn  +  $flog2n - 1.0 + (($flog2n-1.80)/$flogn) );
-  } elsif ($n >= 7022) {
-    $upper = $n * ( $flogn  +  0.9385 * $flog2n ); # Robin 1983
-  } else {
-    $upper = $n * ( $flogn  +  $flog2n );
-  }
-
-  if ( ($upper >= ~0) && (!defined $bignum::VERSION) ) {
-    if (_maxbits == 32) {
-      return 4294967291 if $n <= 203280221;
-    } else {
-      return 18446744073709551557 if $n <= 425656284035217743;
-    }
-    croak "nth_prime_upper($n) overflow";
-  }
-  return int($upper + 1.0);
-}
-
-sub nth_prime_approx {
-  my($n) = @_;
-  croak "Input must be a positive integer" unless _is_positive_int($n);
-
-  return $_primes_small[$n] if $n <= $#_primes_small;
-
-  my $flogn  = log($n);
-  my $flog2n = log($flogn);
-
-  my $approx = $n * ( $flogn + $flog2n - 1
-                      + (($flog2n - 2)/$flogn)
-                      - ((($flog2n*$flog2n) - 6*$flog2n + 11) / (2*$flogn*$flogn))
-                    );
-
-  my $order = $flog2n/$flogn;
-  $order = $order*$order*$order * $n;
-
-  if    ($n <        259) { $approx += 10.4 * $order; }
-  elsif ($n <        775) { $approx +=  7.52* $order; }
-  elsif ($n <       1271) { $approx +=  5.6 * $order; }
-  elsif ($n <       2000) { $approx +=  5.2 * $order; }
-  elsif ($n <       4000) { $approx +=  4.3 * $order; }
-  elsif ($n <      12000) { $approx +=  3.0 * $order; }
-  elsif ($n <     150000) { $approx +=  2.1 * $order; }
-  elsif ($n <  200000000) { $approx +=  0.0 * $order; }
-  else                    { $approx += -0.010 * $order; }
-
-  if ( ($approx >= ~0) && (!defined $bignum::VERSION) ) {
-    if (_maxbits == 32) {
-      return 4294967291 if $n <= 203280221;
-    } else {
-      return 18446744073709551557 if $n <= 425656284035217743;
-    }
-    croak "nth_prime_approx($n) overflow";
-  }
-
-  return int($approx + 0.5);
-}
 
 sub nth_prime {
   my($n) = @_;
@@ -533,7 +362,7 @@ sub nth_prime {
   return $_primes_small[$n] if $n <= $#_primes_small;
 
   if (!defined $bigint::VERSION) {
-    if (_maxbits == 32) {
+    if (_PP_prime_maxbits == 32) {
       croak "nth_prime($n) overflow" if $n > 203280221;
     } else {
       croak "nth_prime($n) overflow" if $n > 425656284035217743;
@@ -698,12 +527,16 @@ sub is_prob_prime {
   return 2 if $n < 121;
 
   my @bases;
+  # We can do this, if MR accepts bases larger than the number
+  #if    ($n <        316349281) { @bases = (11000544, 31481107); }
   if    ($n <          9080191) { @bases = (31, 73); }
   elsif ($n <       4759123141) { @bases = (2, 7, 61); }
   elsif ($n <     105936894253) { @bases = (2, 1005905886, 1340600841); }
   elsif ($n <   31858317218647) { @bases = (2, 642735, 553174392, 3046413974); }
   elsif ($n < 3071837692357849) { @bases = (2, 75088, 642735, 203659041, 3613982119); }
-  else                          { @bases = (2, 325, 9375, 28178, 450775, 9780504, 1795265022); }
+  elsif ($n < 18446744073709551615) { @bases = (2, 325, 9375, 28178, 450775, 9780504, 1795265022); }
+  # Seriously we need BPSW here.
+  else                          { @bases = (2, 325, 9375, 28178, 450775, 9780504, 1795265022, 15, 52, 311); }
 
   # Run our selected set of Miller-Rabin strong probability tests
   my $prob_prime = miller_rabin($n, @bases);
@@ -763,6 +596,7 @@ sub factor {
   my @factors = _basic_factor($n);
   return @factors if $n < 4;
 
+  # Use 'n = int($n/7)' instead of 'n/=7' to not "upgrade" n to a Math::BigFloat.
   while (($n %  7) == 0) { push @factors,  7;  $n = int($n /  7); }
   while (($n % 11) == 0) { push @factors, 11;  $n = int($n / 11); }
   while (($n % 13) == 0) { push @factors, 13;  $n = int($n / 13); }
@@ -770,23 +604,46 @@ sub factor {
   while (($n % 19) == 0) { push @factors, 19;  $n = int($n / 19); }
   while (($n % 23) == 0) { push @factors, 23;  $n = int($n / 23); }
   while (($n % 29) == 0) { push @factors, 29;  $n = int($n / 29); }
-
-  # Stop using bignum if possible
-  $n = $n->numify if ref($n) =~ /^Math::Big/ && $n <= ~0;
+  if ($n < (31*31)) {
+    push @factors, $n  if $n != 1;
+    return @factors;
+  }
 
   my @nstack = ($n);
   while (@nstack) {
     $n = pop @nstack;
+    # Don't use bignum on $n if it has gotten small enough.
+    $n = $n->numify if ref($n) =~ /^Math::Big/ && $n <= ~0;
     #print "Looking at $n with stack ", join(",",@nstack), "\n";
     while ( ($n >= (31*31)) && !_is_prime7($n) ) {
       my @ftry;
-      @ftry = prho_factor($n, 64*1024);
-      @ftry = holf_factor($n, 64*1024)  if scalar @ftry == 1;
+      my $holf_rounds = 0;
+      if ($n <= ~0) {
+        $holf_rounds = 64*1024;
+        #warn "trying holf 64k on $n\n";
+        @ftry = holf_factor($n, $holf_rounds);
+      }
+      if (scalar @ftry < 2) {
+        foreach my $add (3, 5, 7, 11, 13) {
+          #warn "trying prho 64k {$add} on $n\n" if scalar @ftry < 2;
+          @ftry = prho_factor($n, 64*1024, $add) if scalar @ftry < 2;
+        }
+      }
+      if (scalar @ftry < 2) {
+        #warn "trying holf 128k on $n\n";
+        @ftry = holf_factor($n, 128*1024, $holf_rounds);
+        $holf_rounds += 128*1024;
+      }
+      if (scalar @ftry < 2) {
+        #warn "trying prho 128k {17} on $n\n";
+        @ftry = prho_factor($n, 128*1024, 17);
+      }
       if (scalar @ftry > 1) {
         #print "  split into ", join(",",@ftry), "\n";
         $n = shift @ftry;
         push @nstack, @ftry;
       } else {
+        #warn "trial factor $n\n";
         push @factors, trial_factor($n);
         #print "  trial into ", join(",",@factors), "\n";
         $n = 1;
@@ -795,7 +652,7 @@ sub factor {
     }
     push @factors, $n  if $n != 1;
   }
-  @factors;
+  sort {$a<=>$b} @factors;
 }
 
 # TODO:
@@ -803,37 +660,58 @@ sub fermat_factor { trial_factor(@_) }
 sub squfof_factor { trial_factor(@_) }
 
 sub prho_factor {
-  my($n, $rounds) = @_;
+  my($n, $rounds, $a) = @_;
   croak "Input must be a positive integer" unless _is_positive_int($n);
   $rounds = 4*1024*1024 unless defined $rounds;
+  $a = 3 unless defined $a;
 
   my @factors = _basic_factor($n);
   return @factors if $n < 4;
 
   my $inloop = 0;
-  my $a = 3;
   my $U = 7;
   my $V = 7;
 
-  for my $i (1 .. $rounds) {
-    # U^2+a % n
-    $U = _mulmod($U, $U, $n);
-    $U = (($n-$U) > $a)  ?  $U+$a  :  $U+$a-$n;
-    # V^2+a % n
-    $V = _mulmod($V, $V, $n);
-    $V = (($n-$V) > $a)  ?  $V+$a  :  $V+$a-$n;
-    # V^2+a % n
-    $V = _mulmod($V, $V, $n);
-    $V = (($n-$V) > $a)  ?  $V+$a  :  $V+$a-$n;
-    my $f = _gcd_ui( ($U > $V) ? $U-$V : $V-$U,  $n );
-    if ($f == $n) {
-      last if $inloop++;  # We've been here before
-    } elsif ($f != 1) {
-      push @factors, $f;
-      push @factors, int($n/$f);
-      croak "internal error in prho" unless ($f * int($n/$f)) == $n;
-      return @factors;
+  if ( ($n < $_half_word) || (ref($n) =~ /^Math::Big/) ) {
+
+    for my $i (1 .. $rounds) {
+      $U = ($U * $U + $a) % $n;
+      $V = ($V * $V + $a) % $n;
+      $V = ($V * $V + $a) % $n;
+      my $f = _gcd_ui( ($U > $V) ? $U-$V : $V-$U,  $n );
+      if ($f == $n) {
+        last if $inloop++;  # We've been here before
+      } elsif ($f != 1) {
+        push @factors, $f;
+        push @factors, int($n/$f);
+        croak "internal error in prho" unless ($f * int($n/$f)) == $n;
+        return @factors;
+      }
     }
+
+  } else {
+
+    for my $i (1 .. $rounds) {
+      # U^2+a % n
+      $U = _mulmod($U, $U, $n);
+      $U = (($n-$U) > $a)  ?  $U+$a  :  $U+$a-$n;
+      # V^2+a % n
+      $V = _mulmod($V, $V, $n);
+      $V = (($n-$V) > $a)  ?  $V+$a  :  $V+$a-$n;
+      # V^2+a % n
+      $V = _mulmod($V, $V, $n);
+      $V = (($n-$V) > $a)  ?  $V+$a  :  $V+$a-$n;
+      my $f = _gcd_ui( ($U > $V) ? $U-$V : $V-$U,  $n );
+      if ($f == $n) {
+        last if $inloop++;  # We've been here before
+      } elsif ($f != 1) {
+        push @factors, $f;
+        push @factors, int($n/$f);
+        croak "internal error in prho" unless ($f * int($n/$f)) == $n;
+        return @factors;
+      }
+    }
+
   }
   push @factors, $n;
   @factors;
@@ -847,22 +725,40 @@ sub pbrent_factor {
   my @factors = _basic_factor($n);
   return @factors if $n < 4;
 
-  my $a = 11;
+  my $a = 1;
   my $Xi = 2;
   my $Xm = 2;
 
-  for my $i (1 .. $rounds) {
-    # Xi^2+a % n
-    $Xi = _mulmod($Xi, $Xi, $n);
-    $Xi = (($n-$Xi) > $a)  ?  $Xi+$a  :  $Xi+$a-$n;
-    my $f = _gcd_ui( ($Xi > $Xm) ? $Xi-$Xm : $Xm-$Xi,  $n );
-    if ( ($f != 1) && ($f != $n) ) {
-      push @factors, $f;
-      push @factors, int($n/$f);
-      croak "internal error in pbrent" unless ($f * int($n/$f)) == $n;
-      return @factors;
+  if ( ($n < $_half_word) || (ref($n) =~ /^Math::Big/) ) {
+
+    for my $i (1 .. $rounds) {
+      $Xi = ($Xi * $Xi + $a) % $n;
+      my $f = _gcd_ui( ($Xi > $Xm) ? $Xi-$Xm : $Xm-$Xi,  $n );
+      if ( ($f != 1) && ($f != $n) ) {
+        push @factors, $f;
+        push @factors, int($n/$f);
+        croak "internal error in pbrent" unless ($f * int($n/$f)) == $n;
+        return @factors;
+      }
+      $Xm = $Xi if ($i & ($i-1)) == 0;  # i is a power of 2
     }
-    $Xm = $Xi if ($i & ($i-1)) == 0;  # i is a power of 2
+
+  } else {
+
+    for my $i (1 .. $rounds) {
+      # Xi^2+a % n
+      $Xi = _mulmod($Xi, $Xi, $n);
+      $Xi = (($n-$Xi) > $a)  ?  $Xi+$a  :  $Xi+$a-$n;
+      my $f = _gcd_ui( ($Xi > $Xm) ? $Xi-$Xm : $Xm-$Xi,  $n );
+      if ( ($f != 1) && ($f != $n) ) {
+        push @factors, $f;
+        push @factors, int($n/$f);
+        croak "internal error in pbrent" unless ($f * int($n/$f)) == $n;
+        return @factors;
+      }
+      $Xm = $Xi if ($i & ($i-1)) == 0;  # i is a power of 2
+    }
+
   }
   push @factors, $n;
   @factors;
@@ -894,20 +790,22 @@ sub pminus1_factor {
 }
 
 sub holf_factor {
-  my($n, $rounds) = @_;
+  my($n, $rounds, $startrounds) = @_;
   croak "Input must be a positive integer" unless _is_positive_int($n);
   $rounds = 64*1024*1024 unless defined $rounds;
+  $startrounds = 1 unless defined $startrounds;
 
   my @factors = _basic_factor($n);
   return @factors if $n < 4;
 
-  for my $i (1 .. $rounds) {
+  for my $i ($startrounds .. $rounds) {
     my $s = int(sqrt($n * $i));
     $s++ if ($s * $s) != ($n * $i);
     my $m = ($s < $_half_word) ? ($s*$s) % $n : _mulmod($s, $s, $n);
     # Check for perfect square
     my $mcheck = $m & 127;
     next if (($mcheck*0x8bc40d7d) & ($mcheck*0xa1e2f5d1) & 0x14020a);
+    # ... 82% of non-squares were rejected by the bloom filter
     my $f = int(sqrt($m));
     next unless $f*$f == $m;
     $f = _gcd_ui( ($s > $f)  ?  $s - $f  :  $f - $s,  $n);

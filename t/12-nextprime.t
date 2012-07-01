@@ -5,7 +5,7 @@ use warnings;
 use Test::More;
 use Math::Prime::Util qw/next_prime prev_prime/;
 
-my $use64 = Math::Prime::Util::_maxbits > 32;
+my $use64 = Math::Prime::Util::prime_get_config->{'maxbits'} > 32;
 my $extra = defined $ENV{RELEASE_TESTING} && $ENV{RELEASE_TESTING};
 
 plan tests => 3573*2 + 3*2 + 6 + 2 + 148 + 148 + 1;

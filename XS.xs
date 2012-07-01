@@ -40,25 +40,7 @@ prime_count(IN UV low, IN UV high = 0)
     RETVAL
 
 UV
-prime_count_lower(IN UV n)
-
-UV
-prime_count_upper(IN UV n)
-
-UV
-prime_count_approx(IN UV n)
-
-UV
 nth_prime(IN UV n)
-
-UV
-nth_prime_lower(IN UV n)
-
-UV
-nth_prime_upper(IN UV n)
-
-UV
-nth_prime_approx(IN UV n)
 
 int
 is_prime(IN UV n)
@@ -78,7 +60,7 @@ _get_prime_cache_size()
     RETVAL
 
 int
-_maxbits()
+_XS_prime_maxbits()
   CODE:
     RETVAL = BITS_PER_WORD;
   OUTPUT:
@@ -212,7 +194,7 @@ erat_primes(IN UV low, IN UV high)
 
 
 void
-XS_factor(IN UV n)
+_XS_factor(IN UV n)
   PPCODE:
     if (n < 4) {
       XPUSHs(sv_2mortal(newSVuv( n ))); /* If n is 0-3, we're done. */
@@ -371,10 +353,10 @@ int
 is_prob_prime(IN UV n)
 
 double
-XS_ExponentialIntegral(double x)
+_XS_ExponentialIntegral(double x)
 
 double
-XS_LogarithmicIntegral(double x)
+_XS_LogarithmicIntegral(double x)
 
 double
-XS_RiemannR(double x)
+_XS_RiemannR(double x)

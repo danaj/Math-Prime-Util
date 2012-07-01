@@ -4,6 +4,7 @@ use warnings;
 
 # This is a subset of our tests.  You really should run the whole test suite
 # on the PP code.  What this will do is basic regression testing.
+my $extra = defined $ENV{RELEASE_TESTING} && $ENV{RELEASE_TESTING};
 
 use Test::More;
 my @small_primes = qw/
@@ -128,13 +129,10 @@ my %pivals32 = (
           4294967295 => 203280221,
 );
 my %pivals_small = map { $_ => $pivals32{$_} }
-                   grep {$_ <= 2000000}
+                   grep {$_ <= 200000}
                    keys %pivals32;
 
 my %pi_intervals = (
-  "868396 to 9478505" => 563275,
-  "1118105 to 9961674" => 575195,
-  "24689 to 7973249" => 535368,
   "1e10 +2**16" => 2821,
   "17 to 13"    => 0,
   "3 to 17"     => 6,
@@ -145,6 +143,14 @@ my %pi_intervals = (
   "191912783 +247" => 1,
   "191912784 +246" => 0,
 );
+my %extra_pi_intervals = (
+  "868396 to 9478505" => 563275,
+  "1118105 to 9961674" => 575195,
+  "24689 to 7973249" => 535368,
+);
+# Add extra intervals to pi_intervals if we're doing release testing
+@pi_intervals{keys %extra_pi_intervals} = values %extra_pi_intervals if $extra;
+
 # Remove any entries where the high value is too large for us
 # ikegami++ for the delete from a hash slice idea
 delete @pi_intervals{ grep { (parse_range($_))[1] > ~0 } keys %pi_intervals };
@@ -161,7 +167,7 @@ my %nthprimes32 = (
           100000000 => 2038074743,
 );
 my %nthprimes_small = map { $_ => $nthprimes32{$_} }
-                      grep {$_ <= 2000000}
+                      grep {$_ <= 200000}
                       keys %nthprimes32;
 
 my %eivals = (
@@ -212,27 +218,21 @@ plan tests => 1 +
               2*(1087 + @primes + @composites) +
               3 + scalar(keys %small_single) + scalar(keys %small_range) +
               2*scalar(keys %primegaps) + 8 + 148 + 148 + 1 +
-              3*scalar(keys %pivals32) + scalar(keys %pivals_small) + scalar(keys %pi_intervals) +
-              2*scalar(keys %pivals_small) + 3*scalar(keys %nthprimes32) + scalar(keys %nthprimes_small) +
+              scalar(keys %pivals_small) + scalar(keys %pi_intervals) +
+              2*scalar(keys %pivals_small) + scalar(keys %nthprimes_small) +
               4 + $num_pseudoprimes +
               scalar(keys %eivals) + scalar(keys %livals) + scalar(keys %rvals) +
               scalar @primes + 3*scalar @composites +
               0;
 
-use Math::Prime::Util qw/primes/;
+use Math::Prime::Util qw/primes prime_count_approx prime_count_lower/;
 require_ok 'Math::Prime::Util::PP';
     # This function skips some setup
     undef *primes;
     *primes             = \&Math::Prime::Util::PP::primes;
 
     *prime_count        = \&Math::Prime::Util::PP::prime_count;
-    *prime_count_upper  = \&Math::Prime::Util::PP::prime_count_upper;
-    *prime_count_lower  = \&Math::Prime::Util::PP::prime_count_lower;
-    *prime_count_approx = \&Math::Prime::Util::PP::prime_count_approx;
     *nth_prime          = \&Math::Prime::Util::PP::nth_prime;
-    *nth_prime_upper    = \&Math::Prime::Util::PP::nth_prime_upper;
-    *nth_prime_lower    = \&Math::Prime::Util::PP::nth_prime_lower;
-    *nth_prime_approx   = \&Math::Prime::Util::PP::nth_prime_approx;
 
     *is_prime       = \&Math::Prime::Util::PP::is_prime;
     *next_prime     = \&Math::Prime::Util::PP::next_prime;
@@ -312,13 +312,6 @@ is(next_prime(1234567890), 1234567891, "next_prime(1234567890) == 1234567891)");
 
 ###############################################################################
 
-while (my($n, $pin) = each (%pivals32)) {
-  cmp_ok( prime_count_upper($n), '>=', $pin, "Pi($n) <= upper estimate" );
-  cmp_ok( prime_count_lower($n), '<=', $pin, "Pi($n) >= lower estimate" );
-  my $approx_range = abs($pin - prime_count_approx($n));
-  my $range_limit = ($n <= 100000000) ? 100 : 500;
-  cmp_ok( $approx_range, '<=', $range_limit, "prime_count_approx($n) within $range_limit");
-}
 while (my($n, $pin) = each (%pivals_small)) {
   is( prime_count($n), $pin, "Pi($n) = $pin" );
 }
@@ -336,14 +329,6 @@ while (my($n, $pin) = each (%pivals_small)) {
   cmp_ok( nth_prime($next), '>=', $n, "nth_prime($next) >= $n");
 }
 
-while (my($n, $nth) = each (%nthprimes32)) {
-  cmp_ok( nth_prime_upper($n), '>=', $nth, "nth_prime($n) <= upper estimate" );
-  cmp_ok( nth_prime_lower($n), '<=', $nth, "nth_prime($n) >= lower estimate" );
-
-  my $approx = nth_prime_approx($n);
-  my $percent_limit = ($n >= 775) ? 1 : 2;
-  cmp_ok( abs($nth - $approx) / $nth, '<=', $percent_limit/100.0, "nth_prime_approx($n) = $approx within $percent_limit\% of $nth");
-}
 while (my($n, $nth) = each (%nthprimes_small)) {
   is( nth_prime($n), $nth, "nth_prime($n) = $nth" );
 }
