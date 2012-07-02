@@ -76,12 +76,13 @@ my @_prevwheel30 = (29,29,1,1,1,1,1,1,7,7,7,7,11,11,13,13,13,13,17,17,19,19,19,1
 sub _is_prime7 {  # n must not be divisible by 2, 3, or 5
   my($n) = @_;
 
-  return is_prob_prime($n) if $n > 10_000_000;
-
   foreach my $i (qw/7 11 13 17 19 23 29/) {
     return 2 if $i*$i > $n;
     return 0 if ($n % $i) == 0;
   }
+
+  return is_prob_prime($n) if $n > 10_000_000;
+
   my $limit = int(sqrt($n));
   my $i = 31;
   while (($i+30) <= $limit) {
@@ -313,11 +314,21 @@ sub next_prime {
   my($n) = @_;
   croak "Input must be a positive integer" unless _is_positive_int($n);
   return 0 if ($n >= ((_PP_prime_maxbits == 32) ? 4294967291 : 18446744073709551557))
-              && (!defined $bigint::VERSION);
+              && (!defined $Math::BigInt::VERSION);
   return $_prime_next_small[$n] if $n <= $#_prime_next_small;
 
-  my $d = int($n/30);
-  my $m = $n - $d*30;
+  if (ref($n) =~ /^Math::Big/) {
+    $n = $n->numify if $n <= ~0;
+  } elsif ($n > ~0) {
+    $n = Math::BigInt->new($n);
+  }
+
+  # Be careful trying to do:
+  #     my $d = int($n/30);
+  #     my $m = $n - $d*30;
+  # See:  int(9999999999999999403 / 30) => 333333333333333312  (off by 1)
+  my $m = $n % 30;
+  my $d = int( ($n - $m) / 30 );
   if ($m == 29) { $d++;  $m = 1;} else { $m = $_nextwheel30[$m]; }
   while (!_is_prime7($d*30+$m)) {
     $m = $_nextwheel30[$m];
@@ -336,7 +347,7 @@ sub prev_prime {
   $n++ if ($n % 2) == 0;
   do {
     $n -= 2;
-  } while ( (($n % 3) == 0) || (!is_prime($n)) );
+  } while ( (($n % 3) == 0) || (($n % 5) == 0) || (!_is_prime7($n)) );
   $n;
 
   # This is faster for larger intervals, slower for short ones.
@@ -350,8 +361,8 @@ sub prev_prime {
   #}
   #$n;
 
-  #my $d = int($n/30);
-  #my $m = $n - $d*30;
+  #my $m = $n % 30;
+  #my $d = int( ($n - $m) / 30 );
   #do {
   #  $m = $_prevwheel30[$m];
   #  $d-- if $m == 29;

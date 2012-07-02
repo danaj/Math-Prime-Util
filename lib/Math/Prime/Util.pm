@@ -787,10 +787,9 @@ The main development of the module has been for working with Perl UVs, so
 support for these types of functions inside Perl now, I recommend L<Math::Pari>.
 
 The module is thread-safe and allows concurrency between Perl threads while
-still sharing a prime cache.  It is not itself multithreaded.  The one caveat
-is on Win32 (non-Cygwin) where you must use C<precalc> if the function will
-use primes (C<primes>, C<prime_count> greater than 900M,
-C<nth_prime> greater than 45M).
+still sharing a prime cache.  It is not itself multithreaded.  See the
+L<Limitations|/"LIMITATIONS"> section if you are using Win32 and threads in
+your program.
 
 
 =head1 BIGNUM SUPPORT
@@ -1300,6 +1299,11 @@ Print pseudoprimes base 17:
 
     perl -MMath::Prime::Util=:all -E 'my $n=$base|1; while(1) { print "$n " if miller_rabin($n,$base) && !is_prime($n); $n+=2; } BEGIN {$|=1; $base=17}'
 
+Print some primes above 64-bit range:
+
+    perl -MMath::Prime::Util=:all -Mbigint -E 'my $start=100000000000000000000; say join "\n", @{primes($start,$start+1000)}'
+    # Similar behavior:
+    # perl -MMath::Pari=:int,PARI,nextprime -E 'my $start = PARI "100000000000000000000"; my $end = $start+1000; my $p=nextprime($start); while ($p <= $end) { say $p; $p = nextprime($p+1); }'
 
 =head1 LIMITATIONS
 
@@ -1315,7 +1319,10 @@ to update to a more recent Perl.
 The module is thread-safe and should allow good concurrency on all platforms
 that support Perl threads except Win32 (Cygwin works).  With Win32, either
 don't use threads or make sure C<prime_precalc> is called before using
-C<primes>, C<prime_count>, or C<nth_prime> with large inputs.
+C<primes>, C<prime_count>, or C<nth_prime> with large inputs.  This is B<only>
+an issue if you use non-Cygwin Win32 and call these routines from within
+Perl threads.
+
 
 
 =head1 PERFORMANCE
