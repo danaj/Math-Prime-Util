@@ -199,9 +199,11 @@ _XS_factor(IN UV n)
     if (n < 4) {
       XPUSHs(sv_2mortal(newSVuv( n ))); /* If n is 0-3, we're done. */
     } else {
-      UV tlim = 19;  /* Below this we've checked */
-      UV factor_stack[MPU_MAX_FACTORS+1];
-      int nstack = 0;
+      UV tlim = 53;  /* Below this we've checked with trial division */
+      UV tofac_stack[MPU_MAX_FACTORS+1];
+      UV factored_stack[MPU_MAX_FACTORS+1];
+      int ntofac = 0;
+      int nfactored = 0;
       /* Quick trial divisions.  Crude use of GCD to hopefully go faster. */
       while ( (n% 2) == 0 ) {  n /=  2;  XPUSHs(sv_2mortal(newSVuv(  2 ))); }
       if ( (n >= UVCONST(3*3)) && (gcd_ui(n, UVCONST(3234846615) != 1)) ) {
@@ -214,7 +216,6 @@ _XS_factor(IN UV n)
         while ( (n%19) == 0 ) {  n /= 19;  XPUSHs(sv_2mortal(newSVuv( 19 ))); }
         while ( (n%23) == 0 ) {  n /= 23;  XPUSHs(sv_2mortal(newSVuv( 23 ))); }
         while ( (n%29) == 0 ) {  n /= 29;  XPUSHs(sv_2mortal(newSVuv( 29 ))); }
-        tlim = 31;
       }
       if ( (n >= UVCONST(31*31)) && (gcd_ui(n, UVCONST(95041567) != 1)) ) {
         while ( (n%31) == 0 ) {  n /= 31;  XPUSHs(sv_2mortal(newSVuv( 31 ))); }
@@ -222,7 +223,6 @@ _XS_factor(IN UV n)
         while ( (n%41) == 0 ) {  n /= 41;  XPUSHs(sv_2mortal(newSVuv( 41 ))); }
         while ( (n%43) == 0 ) {  n /= 43;  XPUSHs(sv_2mortal(newSVuv( 43 ))); }
         while ( (n%47) == 0 ) {  n /= 47;  XPUSHs(sv_2mortal(newSVuv( 47 ))); }
-        tlim = 53;
       }
       do { /* loop over each remaining factor */
         while ( (n >= (tlim*tlim)) && (!is_definitely_prime(n)) ) {
@@ -230,21 +230,21 @@ _XS_factor(IN UV n)
           if (n > UVCONST(10000000) ) {  /* tune this */
             /* For sufficiently large n, try more complex methods. */
             /* SQUFOF (succeeds 98-99.9%) */
-            split_success = squfof_factor(n, factor_stack+nstack, 256*1024)-1;
+            split_success = squfof_factor(n, tofac_stack+ntofac, 256*1024)-1;
             /* A few rounds of Pollard rho (succeeds most of the rest) */
             if (!split_success) {
-              split_success = prho_factor(n, factor_stack+nstack, 400)-1;
+              split_success = prho_factor(n, tofac_stack+ntofac, 400)-1;
             }
             /* Some rounds of HOLF, good for close to perfect squares */
             if (!split_success) {
-              split_success = holf_factor(n, factor_stack+nstack, 2000)-1;
+              split_success = holf_factor(n, tofac_stack+ntofac, 2000)-1;
             }
             /* Less than 0.00003% of numbers make it past here. */
           }
           if (split_success) {
             MPUassert( split_success == 1, "split factor returned more than 2 factors");
-            nstack++;
-            n = factor_stack[nstack];
+            ntofac++; /* Leave one on the to-be-factored stack */
+            n = tofac_stack[ntofac];  /* Set n to the other one */
           } else {
             /* trial divisions */
             UV f = tlim;
@@ -253,7 +253,8 @@ _XS_factor(IN UV n)
             while (f <= limit) {
               if ( (n%f) == 0 ) {
                 do {
-                  n /= f;  XPUSHs(sv_2mortal(newSVuv( f )));
+                  n /= f;
+                  factored_stack[nfactored++] = f;
                 } while ( (n%f) == 0 );
                 limit = (UV) (sqrt(n)+0.1);
               }
@@ -263,9 +264,27 @@ _XS_factor(IN UV n)
             break;  /* We just factored n via trial division.  Exit loop. */
           }
         }
-        if (n != 1)  XPUSHs(sv_2mortal(newSVuv( n )));
-        if (nstack > 0)  n = factor_stack[nstack-1];
-      } while (nstack-- > 0);
+        /* n is now prime (or 1), so add to already-factored stack */
+        if (n != 1)  factored_stack[nfactored++] = n;
+        /* Pop the next number off the to-factor stack */
+        if (ntofac > 0)  n = tofac_stack[ntofac-1];
+      } while (ntofac-- > 0);
+      /* Now push all the factored results in sorted order */
+      {
+        int i, j;
+        for (i = 0; i < nfactored; i++) {
+          int mini = i;
+          for (j = i+1; j < nfactored; j++)
+            if (factored_stack[j] < factored_stack[mini])
+              mini = j;
+          if (mini != i) {
+            UV t = factored_stack[mini];
+            factored_stack[mini] = factored_stack[i];
+            factored_stack[i] = t;
+          }
+          XPUSHs(sv_2mortal(newSVuv( factored_stack[i] )));
+        }
+      }
     }
 
 #define SIMPLE_FACTOR(func, n, rounds) \

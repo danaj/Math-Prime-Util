@@ -5,7 +5,7 @@ use Carp qw/croak confess carp/;
 
 BEGIN {
   $Math::Prime::Util::AUTHORITY = 'cpan:DANAJ';
-  $Math::Prime::Util::VERSION = '0.09';
+  $Math::Prime::Util::VERSION = '0.10';
 }
 
 # parent is cleaner, and in the Perl 5.10.1 / 5.12.0 core, but not earlier.
@@ -104,9 +104,27 @@ sub _validate_positive_integer {
   croak "Parameter '$n' must be a positive integer" if $n =~ tr/0123456789//c;
   croak "Parameter '$n' must be >= $min" if defined $min && $n < $min;
   croak "Parameter '$n' must be <= $max" if defined $max && $n > $max;
-  croak "Parameter '$n' outside of integer range" if $n > $_Config{'maxparam'}
-                                                  && ref($n) !~ /^Math::Big/;
+  if ($n > $_Config{'maxparam'}) {
+    croak "Parameter '$n' outside of integer range" if !defined $Math::BigInt::VERSION;
+    # Make $n a proper object if it isn't one already (or convert from float)
+    $_[0] = Math::BigInt->new("$n") unless ref($n) eq 'Math::BigInt';
+  }
   1;
+}
+
+# It you use bigint then call one of the approx/bounds/math functions, you'll
+# end up with full bignum turned on.  This seems non-optimal.  However, if I
+# don't do this, then you'll get wrong results and end up with it turned on
+# _anyway_.  As soon as anyone does something like log($n) where $n is a
+# Math::BigInt, it auto-upgrade and loads up Math::BigFloat.
+#
+# Ideally we'd notice we were causing this, and turn off Math::BigFloat after
+# we were done.
+sub _upgrade_to_float {
+  my($n) = @_;
+  return $n unless defined $Math::BigInt::VERSION || defined $Math::BigFloat::VERSION;
+  do { require Math::BigFloat; Math::BigFloat->import; } if defined $Math::BigInt::VERSION && !defined $Math::BigFloat::VERSION;
+  return Math::BigFloat->new($n);
 }
 
 my @_primes_small = (
@@ -264,14 +282,13 @@ sub random_ndigit_prime {
 
 sub all_factors {
   my $n = shift;
-  my $use_bigint = (ref($n) =~ /^Math::Big/);
   my @factors = factor($n);
   my %all_factors;
   foreach my $f1 (@factors) {
     next if $f1 >= $n;
     # We're adding to %all_factors in the loop, so grab the keys now.
     my @all = keys %all_factors;;
-    if (!$use_bigint) {
+    if (!defined $bigint::VERSION) {
       foreach my $f2 (@all) {
         $all_factors{$f1*$f2} = 1 if ($f1*$f2) < $n;
       }
@@ -280,6 +297,7 @@ sub all_factors {
       # to make sure we're using bigints when we calculate the product.
       foreach my $f2 (@all) {
         my $product = Math::BigInt->new("$f1") * Math::BigInt->new("$f2");
+        $product = $product->numify if $product <= ~0;
         $all_factors{$product} = 1 if $product < $n;
       }
     }
@@ -325,21 +343,18 @@ sub euler_phi {
   my %factor_mult;
   my @factors = grep { !$factor_mult{$_}++ } factor($n);
 
-  my $totient = $n;
-  foreach my $factor (@factors) {
-    # These divisions should always be exact
-    $totient = int($totient/$factor) * ($factor-1);
-  }
-
-  # Alternate way if you want to avoid divisions.
-  #my $totient = 1;
+  # Direct from Euler's product formula.  Note division will be exact.
+  #my $totient = $n;
   #foreach my $factor (@factors) {
-  #  $totient *= ($factor - 1);
-  #  while ($factor_mult{$factor} > 1) {
-  #    $totient *= $factor;
-  #    $factor_mult{$factor}--;
-  #  }
+  #  $totient = int($totient/$factor) * ($factor-1);
   #}
+
+  # Alternate way doing multiplications only.
+  my $totient = 1;
+  foreach my $factor (@factors) {
+    $totient *= ($factor - 1);
+    $totient *= $factor for (2 .. $factor_mult{$factor});
+  }
 
   $totient;
 }
@@ -359,7 +374,7 @@ sub euler_phi {
 #
 # takes about 0.7uS on my machine.  Operations like is_prime and factor run
 # on small input (under 100_000) typically take a lot less time than this.  So
-# The overhead for these is significantly more than just the XS call itself.
+# the overhead for these is significantly more than just the XS call itself.
 #
 # The plan for some of these functions will be to invert the operation.  That
 # is, the XS functions will look at the input and make a call here if the input
@@ -378,13 +393,9 @@ sub factor {
   my($n) = @_;
   _validate_positive_integer($n);
 
-  #return _XS_factor($n) if $_Config{'xs'} && $n <= $_Config{'maxparam'};
-  if ($_Config{'xs'} && $n <= $_Config{'maxparam'}) {
-    my @factors = sort {$a<=>$b} _XS_factor($n);
-    return @factors;
-  }
+  return _XS_factor($n) if $_Config{'xs'} && $n <= $_Config{'maxparam'};
 
-  $n = $n->as_number() if ref($n) =~ /^Math::BigFloat/;
+  $n = $n->as_number() if ref($n) eq 'Math::BigFloat';
   $n = $n->numify if $n <= ~0;
   Math::Prime::Util::PP::factor($n);
 }
@@ -396,6 +407,9 @@ sub prime_count_approx {
   _validate_positive_integer($x);
 
   return $_prime_count_small[$x] if $x <= $#_prime_count_small;
+
+  # Turn on high precision FP if they gave us a big number.
+  #do { require Math::BigFloat; Math::BigFloat->import; } if defined $Math::BigInt::VERSION && !defined $Math::BigFloat::VERSION;
 
   #    Method             10^10 %error  10^19 %error
   #    -----------------  ------------  ------------
@@ -419,10 +433,7 @@ sub prime_count_lower {
 
   return $_prime_count_small[$x] if $x <= $#_prime_count_small;
 
-  if (ref($x) =~ /^Math::BigInt/ && !defined $Math::BigFloat::VERSION) {
-    require Math::BigFloat;  Math::BigFloat->import;
-    $x = new Math::BigFloat "$x";
-  }
+  $x = _upgrade_to_float($x) if defined $Math::BigInt::VERSION && ref($x) ne 'Math::BigFloat';
 
   my $flogx = log($x);
 
@@ -457,10 +468,7 @@ sub prime_count_upper {
 
   return $_prime_count_small[$x] if $x <= $#_prime_count_small;
 
-  if (ref($x) =~ /^Math::BigInt/ && !defined $Math::BigFloat::VERSION) {
-    require Math::BigFloat;
-    $x = new Math::BigFloat "$x";
-  }
+  $x = _upgrade_to_float($x) if defined $Math::BigInt::VERSION && ref($x) ne 'Math::BigFloat';
 
   # Chebyshev:            1.25506*x/logx       x >= 17
   # Rosser & Schoenfeld:  x/(logx-3/2)         x >= 67
@@ -512,10 +520,7 @@ sub nth_prime_approx {
 
   return $_primes_small[$n] if $n <= $#_primes_small;
 
-  if (ref($n) =~ /^Math::BigInt/ && !defined $Math::BigFloat::VERSION) {
-    require Math::BigFloat;
-    $n = new Math::BigFloat "$n";
-  }
+  $n = _upgrade_to_float($n) if defined $Math::BigInt::VERSION && ref($n) ne 'Math::BigFloat';
 
   my $flogn  = log($n);
   my $flog2n = log($flogn);
@@ -552,7 +557,7 @@ sub nth_prime_approx {
   elsif ($n <  200000000) { $approx +=  0.0 * $order; }
   else                    { $approx += -0.010 * $order; }
 
-  if ( ($approx >= ~0) && (ref($n) !~ /^Math::Big/) ) {
+  if ( ($approx >= ~0) && (ref($approx) ne 'Math::BigFloat') ) {
     return $_Config{'maxprime'} if $n <= $_Config{'maxprimeidx'};
     croak "nth_prime_approx($n) overflow";
   }
@@ -567,10 +572,7 @@ sub nth_prime_lower {
 
   return $_primes_small[$n] if $n <= $#_primes_small;
 
-  if (ref($n) =~ /^Math::BigInt/ && !defined $Math::BigFloat::VERSION) {
-    require Math::BigFloat;
-    $n = new Math::BigFloat "$n";
-  }
+  $n = _upgrade_to_float($n) if defined $Math::BigInt::VERSION && ref($n) ne 'Math::BigFloat';
 
   my $flogn  = log($n);
   my $flog2n = log($flogn);  # Note distinction between log_2(n) and log^2(n)
@@ -578,7 +580,7 @@ sub nth_prime_lower {
   # Dusart 1999 page 14, for all n >= 2
   my $lower = $n * ($flogn + $flog2n - 1.0 + (($flog2n-2.25)/$flogn));
 
-  if ( ($lower >= ~0) && (ref($n) !~ /^Math::Big/) ) {
+  if ( ($lower >= ~0) && (ref($lower) ne 'Math::BigFloat') ) {
     return $_Config{'maxprime'} if $n <= $_Config{'maxprimeidx'};
     croak "nth_prime_lower($n) overflow";
   }
@@ -593,10 +595,7 @@ sub nth_prime_upper {
 
   return $_primes_small[$n] if $n <= $#_primes_small;
 
-  if (ref($n) =~ /^Math::BigInt/ && !defined $Math::BigFloat::VERSION) {
-    require Math::BigFloat;
-    $n = new Math::BigFloat "$n";
-  }
+  $n = _upgrade_to_float($n) if defined $Math::BigInt::VERSION && ref($n) ne 'Math::BigFloat';
 
   my $flogn  = log($n);
   my $flog2n = log($flogn);  # Note distinction between log_2(n) and log^2(n)
@@ -612,7 +611,7 @@ sub nth_prime_upper {
     $upper = $n * ( $flogn  +  $flog2n );
   }
 
-  if ( ($upper >= ~0) && (ref($n) !~ /^Math::Big/) ) {
+  if ( ($upper >= ~0) && (ref($upper) ne 'Math::BigFloat') ) {
     return $_Config{'maxprime'} if $n <= $_Config{'maxprimeidx'};
     croak "nth_prime_upper($n) overflow";
   }
@@ -630,12 +629,7 @@ sub RiemannR {
   my($n) = @_;
   croak("Invalid input to ReimannR:  x must be > 0") if $n <= 0;
 
-  if (ref($n) =~ /^Math::BigInt/ && !defined $Math::BigFloat::VERSION) {
-    require Math::BigFloat;
-    $n = new Math::BigFloat "$n";
-  }
-
-  return Math::Prime::Util::PP::RiemannR($n, 1e-30) if ref($n) =~ /^Math::Big/;
+  return Math::Prime::Util::PP::RiemannR($n, 1e-30) if defined $Math::BigFloat::VERSION;
   return Math::Prime::Util::PP::RiemannR($n) if !$_Config{'xs'};
   return _XS_RiemannR($n);
 
@@ -650,12 +644,7 @@ sub ExponentialIntegral {
   my($n) = @_;
   croak "Invalid input to ExponentialIntegral:  x must be != 0" if $n == 0;
 
-  if (ref($n) =~ /^Math::BigInt/ && !defined $Math::BigFloat::VERSION) {
-    require Math::BigFloat;
-    $n = new Math::BigFloat "$n";
-  }
-
-  return Math::Prime::Util::PP::ExponentialIntegral($n, 1e-30) if ref($n) =~ /^Math::Big/;
+  return Math::Prime::Util::PP::ExponentialIntegral($n, 1e-30) if defined $Math::BigFloat::VERSION;
   return Math::Prime::Util::PP::ExponentialIntegral($n) if !$_Config{'xs'};
   return _XS_ExponentialIntegral($n);
 }
@@ -698,7 +687,7 @@ Math::Prime::Util - Utilities related to prime numbers, including fast sieves an
 
 =head1 VERSION
 
-Version 0.09
+Version 0.10
 
 
 =head1 SYNOPSIS
@@ -1105,7 +1094,7 @@ for an integer value.  This is an arithmetic function that counts the number
 of positive integers less than or equal to C<n> that are relatively prime to
 C<n>.  Given the definition used, C<euler_phi> will return 0 for all
 C<n E<lt> 1>.  This follows the logic used by SAGE.  Mathematic/WolframAlpha
-returns 0 for input 0, but returns C<euler_phi(-n)> for C<n E<lt> 0>.
+also returns 0 for input 0, but returns C<euler_phi(-n)> for C<n E<lt> 0>.
 
 
 

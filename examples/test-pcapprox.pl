@@ -3,7 +3,6 @@ use strict;
 use warnings;
 use Math::Prime::Util qw/prime_count prime_count_approx prime_count_lower prime_count_upper LogarithmicIntegral RiemannR/;
 $| = 1;  # fast pipes
-my $use64 = Math::Prime::Util::_maxbits > 32;
 
 
 my %pivals = (
@@ -28,18 +27,20 @@ my %pivals = (
 10000000000000000000 => 234057667276344607,
 );
 
-printf("  N    %12s  %12s  %12s\n", "pc_approx", "Li", "R");
-printf("-----  %12s  %12s  %12s\n", '-'x12,'-'x12,'-'x12);
+printf("  N    %12s  %12s  %12s  %12s\n", "pc_approx", "Li", "LiCor", "R");
+printf("-----  %12s  %12s  %12s  %12s\n", '-'x12,'-'x12,'-'x12,'-'x12);
 foreach my $n (sort {$a<=>$b} keys %pivals) {
   my $pin  = $pivals{$n};
   my $pca  = prime_count_approx($n);
 
-  my $pcli = ($n < 2) ? 0 : int(LogarithmicIntegral($n)-LogarithmicIntegral(2)+0.5);
+  my $Lisub = sub { my $x = shift; return ($x < 2) ? 0 : (LogarithmicIntegral($x)-LogarithmicIntegral(2)+0.5); };
+  my $pcli = int($Lisub->($n));
+  my $pclicor = int( $Lisub->($n) - ($Lisub->(sqrt($n)) / 2) );
 
   my $r = int(RiemannR($n)+0.5);
 
-  printf "10^%2d  %12d  %12d  %12d\n", length($n)-1,
-         abs($pca-$pin), abs($pcli-$pin), abs($r-$pin);
+  printf "10^%2d  %12d  %12d  %12d  %12d\n", length($n)-1,
+         abs($pca-$pin), abs($pcli-$pin), abs($pclicor-$pin), abs($r-$pin);
 }
 
 # Also see http://empslocal.ex.ac.uk/people/staff/mrwatkin/zeta/encoding1.htm

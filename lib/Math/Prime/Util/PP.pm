@@ -5,7 +5,7 @@ use Carp qw/carp croak confess/;
 
 BEGIN {
   $Math::Prime::Util::PP::AUTHORITY = 'cpan:DANAJ';
-  $Math::Prime::Util::PP::VERSION = '0.09';
+  $Math::Prime::Util::PP::VERSION = '0.10';
 }
 
 # The Pure Perl versions of all the Math::Prime::Util routines.
@@ -76,8 +76,7 @@ my @_prevwheel30 = (29,29,1,1,1,1,1,1,7,7,7,7,11,11,13,13,13,13,17,17,19,19,19,1
 sub _is_prime7 {  # n must not be divisible by 2, 3, or 5
   my($n) = @_;
 
-  # TODO: bignum on 32-bit
-  return is_prob_prime($n) if (~0 == 18446744073709551615) && ($n > 10_000_000);
+  return is_prob_prime($n) if $n > 10_000_000;
 
   foreach my $i (qw/7 11 13 17 19 23 29/) {
     return 2 if $i*$i > $n;
@@ -111,11 +110,17 @@ sub _is_prime7 {  # n must not be divisible by 2, 3, or 5
 sub is_prime {
   my($n) = @_;
   croak "Input must be an integer" unless defined $_[0];
+  if ($n > ~0) {
+    croak "Input out of range" if !defined $Math::BigInt::VERSION;
+    $n = Math::BigInt->new($n) unless ref($n) =~ /^Math::Big/;
+  } else {
+    $n = $n->numify if $n < ~0 && ref($n) =~ /^Math::Big/;
+  }
+
   return 2 if ($n == 2) || ($n == 3) || ($n == 5);  # 2, 3, 5 are prime
   return 0 if $n < 7;             # everything else below 7 is composite
                                   # multiples of 2,3,5 are composite
   return 0 if (($n % 2) == 0) || (($n % 3) == 0) || (($n % 5) == 0);
-
   return _is_prime7($n);
 }
 
@@ -145,6 +150,7 @@ sub _sieve_erat_string {
 
   # Prefill with 3 and 5 already marked.
   my $whole = int( ($end>>1) / 15);
+  croak "Sieve too large" if $whole > 1_145_324_612;  # ~32 GB string
   my $sieve = "100010010010110" . "011010010010110" x $whole;
   # Make exactly the number of entries requested, never more.
   substr($sieve, ($end>>1)+1) = '';
@@ -232,6 +238,27 @@ sub _sieve_segment {
   \$sieve;
 }
 
+sub trial_primes {
+  my($low,$high) = @_;
+  if (!defined $high) {
+    $high = $low;
+    $low = 2;
+  }
+  croak "Input must be a positive integer" unless _is_positive_int($low)
+                                               && _is_positive_int($high);
+
+  return if $low > $high;
+
+  my @primes;
+  $low-- if $low >= 2;
+  my $curprime = next_prime($low);
+  while ($curprime <= $high) {
+    push @primes, $curprime;
+    $curprime = next_prime($curprime);
+  }
+  return \@primes;
+}
+
 sub primes {
   my $optref = (ref $_[0] eq 'HASH')  ?  shift  :  {};
   croak "no parameters to primes" unless scalar @_ > 0;
@@ -246,6 +273,15 @@ sub primes {
   return $sref if ($low > $high) || ($high < 2);
 
   # Ignore method options in this code
+
+  $low  = $low->numify  if ref($low)  =~ /^Math::Big/ && $low  <= ~0;
+  $high = $high->numify if ref($high) =~ /^Math::Big/ && $high <= ~0;
+  # At some point even the pretty-fast pure perl sieve is going to be a
+  # dog, and we should move to trials.  This is typical with a small range
+  # on a large base.  More thought on the switchover should be done.
+  return trial_primes($low, $high) if ref($low)  =~ /^Math::Big/
+                                   || ref($high) =~ /^Math::Big/
+                                   || ($low > 1_000_000_000_000 && ($high-$low) < int($low/1_000_000));
 
   push @$sref, 2  if ($low <= 2) && ($high >= 2);
   push @$sref, 3  if ($low <= 3) && ($high >= 3);
@@ -332,6 +368,21 @@ sub prime_count {
   croak "Input must be a positive integer" unless _is_positive_int($low)
                                                && _is_positive_int($high);
 
+if (0) {
+  if ($low > ~0) {
+    croak "Input out of range" if !defined $Math::BigInt::VERSION;
+    $low = Math::BigInt->new($low) unless ref($low) =~ /^Math::Big/;
+  } else {
+    $low = $low->numify if $low < ~0 && ref($low) =~ /^Math::Big/;
+  }
+  if ($high > ~0) {
+    croak "Input out of range" if !defined $Math::BigInt::VERSION;
+    $high = Math::BigInt->new($high) unless ref($high) =~ /^Math::Big/;
+  } else {
+    $high = $high->numify if $high < ~0 && ref($high) =~ /^Math::Big/;
+  }
+}
+
   my $count = 0;
 
   $count++ if ($low <= 2) && ($high >= 2);   # Count 2
@@ -341,8 +392,20 @@ sub prime_count {
   $high-- if ($high % 2) == 0; # Make high go to odd number.
   return $count if $low > $high;
 
-  my $sieveref;
+  if (   ref($low)  =~ /^Math::Big/ || ref($high) =~ /^Math::Big/
+      || $high > 16_000_000_000
+      || ($high-$low) < int($low/1_000_000) ) {
+    # Too big to sieve.
+    my $count = 0;
+    my $curprime = next_prime($low-1);
+    while ($curprime <= $high) {
+      $count++;
+      $curprime = next_prime($curprime);
+    }
+    return $count;
+  }
 
+  my $sieveref;
   if ($low == 3) {
     $sieveref = _sieve_erat($high);
   } else {
@@ -464,6 +527,13 @@ sub miller_rabin {
   croak "Input must be a positive integer" unless _is_positive_int($n);
   croak "No bases given to miller_rabin" unless @bases;
 
+  if ($n > ~0) {
+    croak "Input out of range" if !defined $Math::BigInt::VERSION;
+    $n = Math::BigInt->new($n) unless ref($n) =~ /^Math::Big/;
+  } else {
+    $n = $n->numify if $n < ~0 && ref($n) =~ /^Math::Big/;
+  }
+
   return 0 if ($n == 0) || ($n == 1);
   return 2 if ($n == 2) || ($n == 3);
   return 0 if ($n % 2) == 0;
@@ -521,6 +591,13 @@ sub miller_rabin {
 
 sub is_prob_prime {
   my($n) = @_;
+
+  if ($n > ~0) {
+    croak "Input out of range" if !defined $Math::BigInt::VERSION;
+    $n = Math::BigInt->new($n) unless ref($n) =~ /^Math::Big/;
+  } else {
+    $n = $n->numify if $n < ~0 && ref($n) =~ /^Math::Big/;
+  }
 
   return 2 if ($n == 2) || ($n == 3) || ($n == 5) || ($n == 7);
   return 0 if ($n < 2) || (($n % 2) == 0) || (($n % 3) == 0) || (($n % 5) == 0) || (($n % 7) == 0);
@@ -832,6 +909,8 @@ sub ExponentialIntegral {
 
   croak "Invalid input to ExponentialIntegral:  x must be != 0" if $x == 0;
 
+  $x = new Math::BigFloat "$x"  if defined $Math::BigFloat::VERSION && ref($x) ne 'Math::BigFloat';
+
   my $val; # The result from one of the four methods
 
   if ($x < -1) {
@@ -979,6 +1058,8 @@ sub RiemannR {
 
   croak "Invalid input to ReimannR:  x must be > 0" if $x <= 0;
 
+  $x = new Math::BigFloat "$x"  if defined $Math::BigFloat::VERSION && ref($x) ne 'Math::BigFloat';
+
   $y = 1.0-$c; $t = $sum+$y; $c = ($t-$sum)-$y; $sum = $t;
   my $flogx = log($x);
   my $part_term = 1.0;
@@ -1011,7 +1092,7 @@ Math::Prime::Util::PP - Pure Perl version of Math::Prime::Util
 
 =head1 VERSION
 
-Version 0.09
+Version 0.10
 
 
 =head1 SYNOPSIS

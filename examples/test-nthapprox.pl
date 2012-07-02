@@ -3,8 +3,6 @@ use strict;
 use warnings;
 use Math::Prime::Util ":all";
 $| = 1;  # fast pipes
-my $use64 = Math::Prime::Util::_maxbits > 32;
-
 
 my %nthprimes = (
                   1 => 2,
@@ -33,7 +31,7 @@ foreach my $n (sort {$a<=>$b} keys %nthprimes) {
   my $nth  = $nthprimes{$n};
   my $ntha = nth_prime_approx($n);
 
-  printf "10^%2d %13llu  %12.7f\n", length($n)-1, abs($nth-$ntha), 100*($ntha-$nth)/$nth;
+  printf "10^%2d %13lu  %12.7f\n", length($n)-1, abs($nth-$ntha), 100*($ntha-$nth)/$nth;
 }
 
 print "\n";
@@ -48,5 +46,5 @@ foreach my $n (sort {$a<=>$b} keys %nthprimes) {
   my $nthu  = nth_prime_upper($n);
 
   printf "10^%2d  %12.7f  %12.7f\n",
-         length($n)-1, 100*($nth-$nthl)/$nth, 100*($nthu-$nth)/$nth;
+         length($n)-1, 100.0*($nth-$nthl)/$nth, 100.0*($nthu-$nth)/$nth;
 }

@@ -3,7 +3,7 @@ use strict;
 use warnings;
 
 use Benchmark qw/:all/;
-use Devel::Size qw/total_size/;
+#use Devel::Size qw/total_size/;
 use Math::Prime::Util;
 use Math::Prime::FastSieve;
 *mpu_erat = \&Math::Prime::Util::erat_primes;

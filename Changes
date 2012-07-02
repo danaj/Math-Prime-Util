@@ -8,6 +8,8 @@ Revision history for Perl extension Math::Prime::Util.
     - Moved prime_count_* and nth_prime_* into Util.pm.  This lets them
       work with big numbers.
     - factor and all_factor should correctly work with bigints.
+    - many more bigint/bignum changes
+    - factor always returns sorted results
 
 0.09  25 June 2012
     - Pure Perl code added.  Passes all tests.  Used only if the XSLoader
