@@ -43,10 +43,12 @@ sub test_at_digits {
   #      " ($min_num - $max_num)\n";
 
   my $lref = {
-    "MPU  rand"  => sub { factor($_) for @rnd },
-    "MPU  semi"  => sub { factor($_) for @smp },
-    "MFXS rand"  => sub { prime_factors($_) for @rnd },
-    "MFXS semi"  => sub { prime_factors($_) for @smp },
+    "MPUxs rand"  => sub { Math::Prime::Util::_XS_factor($_) for @rnd },
+    "MPUxs semi"  => sub { Math::Prime::Util::_XS_factor($_) for @smp },
+    "MPU   rand"  => sub { factor($_) for @rnd },
+    "MPU   semi"  => sub { factor($_) for @smp },
+    "MFXS  rand"  => sub { prime_factors($_) for @rnd },
+    "MFXS  semi"  => sub { prime_factors($_) for @smp },
   };
   cmpthese($count, $lref);
 }
