@@ -63,6 +63,7 @@ plan tests => 0 +
               0;
 
 use Math::Prime::Util qw/
+  is_prob_prime
   prime_count_lower
   prime_count_upper
   prime_count_approx
@@ -88,7 +89,6 @@ use Math::Prime::Util qw/
     *prev_prime     = \&Math::Prime::Util::PP::prev_prime;
 
     *miller_rabin   = \&Math::Prime::Util::PP::miller_rabin;
-    *is_prob_prime  = \&Math::Prime::Util::PP::is_prob_prime;
 
 ###############################################################################
 

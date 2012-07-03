@@ -369,7 +369,7 @@ miller_rabin(IN UV n, ...)
     RETVAL
 
 int
-is_prob_prime(IN UV n)
+_XS_is_prob_prime(IN UV n)
 
 double
 _XS_ExponentialIntegral(double x)

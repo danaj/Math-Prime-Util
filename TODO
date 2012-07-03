@@ -41,4 +41,6 @@
   installed and call that, but I'm not sure how much it will help if we get
   the above running.
 
-- Must add BPSW if we want is_prime to be meaningful for >64-bit.
+- Tune the Lucas sequence code, especially try using more BigInt features.
+
+- Add tests for strong lucas pseudoprime, perhaps export the function

@@ -53,6 +53,26 @@ sub _is_positive_int {
   ((defined $_[0]) && ($_[0] !~ tr/0123456789//c));
 }
 
+sub _validate_positive_integer {
+  my($n, $min, $max) = @_;
+  croak "Parameter must be defined" if !defined $n;
+  croak "Parameter '$n' must be a positive integer" if $n =~ tr/0123456789//c;
+  croak "Parameter '$n' must be >= $min" if defined $min && $n < $min;
+  croak "Parameter '$n' must be <= $max" if defined $max && $n > $max;
+  if ($n <= ~0) {
+    $_[0] = $n->as_number() if ref($n) eq 'Math::BigFloat';
+    $_[0] = $n->numify() if ref($n) eq 'Math::BigInt';
+  } elsif (ref($n) ne 'Math::BigInt') {
+    croak "Parameter '$n' outside of integer range" if !defined $bigint::VERSION;
+    $_[0] = Math::BigInt->new("$n"); # Make $n a proper bigint object
+  }
+  # One of these will be true:
+  #     1) $n <= max and $n is not a bigint
+  #     2) $n  > max and $n is a bigint
+  1;
+}
+
+
 my @_primes_small = (
    0,2,3,5,7,11,13,17,19,23,29,31,37,41,43,47,53,59,61,67,71,73,79,83,89,97,
    101,103,107,109,113,127,131,137,139,149,151,157,163,167,173,179,181,191,
@@ -81,7 +101,7 @@ sub _is_prime7 {  # n must not be divisible by 2, 3, or 5
     return 0 if ($n % $i) == 0;
   }
 
-  return is_prob_prime($n) if $n > 10_000_000;
+  return Math::Prime::Util::is_prob_prime($n) if $n > 10_000_000;
 
   my $limit = int(sqrt($n));
   my $i = 31;
@@ -110,13 +130,7 @@ sub _is_prime7 {  # n must not be divisible by 2, 3, or 5
 
 sub is_prime {
   my($n) = @_;
-  croak "Input must be an integer" unless defined $_[0];
-  if ($n > ~0) {
-    croak "Input out of range" if !defined $Math::BigInt::VERSION;
-    $n = Math::BigInt->new($n) unless ref($n) =~ /^Math::Big/;
-  } else {
-    $n = $n->numify if $n < ~0 && ref($n) =~ /^Math::Big/;
-  }
+  _validate_positive_integer($n);
 
   return 2 if ($n == 2) || ($n == 3) || ($n == 5);  # 2, 3, 5 are prime
   return 0 if $n < 7;             # everything else below 7 is composite
@@ -245,8 +259,8 @@ sub trial_primes {
     $high = $low;
     $low = 2;
   }
-  croak "Input must be a positive integer" unless _is_positive_int($low)
-                                               && _is_positive_int($high);
+  _validate_positive_integer($low);
+  _validate_positive_integer($high);
 
   return if $low > $high;
 
@@ -268,15 +282,13 @@ sub primes {
   my $high = shift;
   my $sref = [];
 
-  croak "Input must be a positive integer" unless _is_positive_int($low)
-                                               && _is_positive_int($high);
+  _validate_positive_integer($low);
+  _validate_positive_integer($high);
 
   return $sref if ($low > $high) || ($high < 2);
 
   # Ignore method options in this code
 
-  $low  = $low->numify  if ref($low)  =~ /^Math::Big/ && $low  <= ~0;
-  $high = $high->numify if ref($high) =~ /^Math::Big/ && $high <= ~0;
   # At some point even the pretty-fast pure perl sieve is going to be a
   # dog, and we should move to trials.  This is typical with a small range
   # on a large base.  More thought on the switchover should be done.
@@ -312,16 +324,9 @@ sub primes {
 
 sub next_prime {
   my($n) = @_;
-  croak "Input must be a positive integer" unless _is_positive_int($n);
-  return 0 if ($n >= ((_PP_prime_maxbits == 32) ? 4294967291 : 18446744073709551557))
-              && (!defined $Math::BigInt::VERSION);
+  _validate_positive_integer($n);
+  return 0 if ($n >= ((_PP_prime_maxbits == 32) ? 4294967291 : 18446744073709551557)) && ref($n) ne 'Math::BigInt';
   return $_prime_next_small[$n] if $n <= $#_prime_next_small;
-
-  if (ref($n) =~ /^Math::Big/) {
-    $n = $n->numify if $n <= ~0;
-  } elsif ($n > ~0) {
-    $n = Math::BigInt->new($n);
-  }
 
   # Be careful trying to do:
   #     my $d = int($n/30);
@@ -339,7 +344,7 @@ sub next_prime {
 
 sub prev_prime {
   my($n) = @_;
-  croak "Input must be a positive integer" unless _is_positive_int($n);
+  _validate_positive_integer($n);
   if ($n <= 7) {
     return ($n <= 2) ? 0 : ($n <= 3) ? 2 : ($n <= 5) ? 3 : 5;
   }
@@ -376,23 +381,8 @@ sub prime_count {
     $high = $low;
     $low = 2;
   }
-  croak "Input must be a positive integer" unless _is_positive_int($low)
-                                               && _is_positive_int($high);
-
-if (0) {
-  if ($low > ~0) {
-    croak "Input out of range" if !defined $Math::BigInt::VERSION;
-    $low = Math::BigInt->new($low) unless ref($low) =~ /^Math::Big/;
-  } else {
-    $low = $low->numify if $low < ~0 && ref($low) =~ /^Math::Big/;
-  }
-  if ($high > ~0) {
-    croak "Input out of range" if !defined $Math::BigInt::VERSION;
-    $high = Math::BigInt->new($high) unless ref($high) =~ /^Math::Big/;
-  } else {
-    $high = $high->numify if $high < ~0 && ref($high) =~ /^Math::Big/;
-  }
-}
+  _validate_positive_integer($low);
+  _validate_positive_integer($high);
 
   my $count = 0;
 
@@ -431,11 +421,11 @@ if (0) {
 
 sub nth_prime {
   my($n) = @_;
-  croak "Input must be a positive integer" unless _is_positive_int($n);
+  _validate_positive_integer($n);
 
   return $_primes_small[$n] if $n <= $#_primes_small;
 
-  if (!defined $bigint::VERSION) {
+  if (!defined $bigint::VERSION) { # This isn't ideal.
     if (_PP_prime_maxbits == 32) {
       croak "nth_prime($n) overflow" if $n > 203280221;
     } else {
@@ -535,15 +525,8 @@ sub _gcd_ui {
 
 sub miller_rabin {
   my($n, @bases) = @_;
-  croak "Input must be a positive integer" unless _is_positive_int($n);
+  _validate_positive_integer($n);
   croak "No bases given to miller_rabin" unless @bases;
-
-  if ($n > ~0) {
-    croak "Input out of range" if !defined $Math::BigInt::VERSION;
-    $n = Math::BigInt->new($n) unless ref($n) =~ /^Math::Big/;
-  } else {
-    $n = $n->numify if $n < ~0 && ref($n) =~ /^Math::Big/;
-  }
 
   return 0 if ($n == 0) || ($n == 1);
   return 2 if ($n == 2) || ($n == 3);
@@ -561,7 +544,7 @@ sub miller_rabin {
     $d >>= 1;
   }
 
-  if ( ($n < $_half_word) || (ref($n) =~ /^Math::Big/) ) {
+  if ( ($n < $_half_word) || (ref($n) eq 'Math::BigInt') ) {
 
     foreach my $a (@bases) {
       croak "Base $a is invalid" if $a < 2;
@@ -600,38 +583,156 @@ sub miller_rabin {
   1;
 }
 
-sub is_prob_prime {
+# Calculate Jacobi symbol (M|N)
+sub _jacobi {
+  my($n, $m) = @_;
+  return 0 if $m <= 0 || ($m % 2) == 0;
+  my $j = 1;
+  if ($n < 0) {
+    $n = -$n;
+    $j = -$j if ($m % 4) == 3;
+  }
+  while ($n != 0) {
+    while (($n % 2) == 0) {
+      $n >>= 1;
+      $j = -$j if ($m % 8) == 3 || ($m % 8) == 5;
+    }
+    ($n, $m) = ($m, $n);
+    $j = -$j if ($n % 4) == 3 && ($m % 4) == 3;
+    $n = $n % $m;
+  }
+  return ($m == 1) ? $j : 0;
+}
+
+# Find first D in sequence (5,-7,9,-11,13,-15,...) where (D|N) == -1
+sub _find_jacobi_d_sequence {
   my($n) = @_;
 
-  if ($n > ~0) {
-    croak "Input out of range" if !defined $Math::BigInt::VERSION;
-    $n = Math::BigInt->new($n) unless ref($n) =~ /^Math::Big/;
-  } else {
-    $n = $n->numify if $n < ~0 && ref($n) =~ /^Math::Big/;
+  # D is typically quite small: 67 max for N < 10^19.  However, it is
+  # theoretically possible D could grow unreasonably.  We are ignoring this.
+  my $d = 5;
+  my $sign = 1;
+  while (1) {
+    my $gcd = _gcd_ui($d, $n);
+    return 0 if $gcd > 1 && $gcd != $n;  # Found divisor $d
+    my $j = _jacobi($d * $sign, $n);
+    last if $j == -1;
+    $d += 2;
+    $sign = -$sign;
+  }
+  return ($sign * $d);
+}
+
+
+sub is_strong_lucas_pseudoprime {
+  my($n) = @_;
+  _validate_positive_integer($n);
+
+  return 1 if $n == 2;
+  return 0 if $n < 2 || ($n % 2) == 0;
+
+  # References:
+  #     http://www.trnicely.net/misc/bpsw.html
+  #     Math::Primality
+
+  # Check for perfect square
+  {
+    my $mcheck = $n & 127;
+    if (($mcheck*0x8bc40d7d) & ($mcheck*0xa1e2f5d1) & 0x14020a) {
+      # ... 82% of non-squares were rejected by the bloom filter
+      # For bigints we should put in the rest of this filter, which prunes
+      # 99.92% of nonsquares, for the cost of one bigint mod and some
+      # non-bigint operations.
+      my $sq = int(sqrt($n));
+      return 0 if ($sq*$sq) == $n;
+    }
   }
 
-  return 2 if ($n == 2) || ($n == 3) || ($n == 5) || ($n == 7);
-  return 0 if ($n < 2) || (($n % 2) == 0) || (($n % 3) == 0) || (($n % 5) == 0) || (($n % 7) == 0);
-  return 2 if $n < 121;
+  # We have to make sure we use bigints
+  my $result = 0;
+ {
+  use bigint;
+  $n = Math::BigInt->new($n) unless ref($n) eq 'Math::BigInt';
 
-  my @bases;
-  # We can do this, if MR accepts bases larger than the number
-  #if    ($n <        316349281) { @bases = (11000544, 31481107); }
-  if    ($n <          9080191) { @bases = (31, 73); }
-  elsif ($n <       4759123141) { @bases = (2, 7, 61); }
-  elsif ($n <     105936894253) { @bases = (2, 1005905886, 1340600841); }
-  elsif ($n <   31858317218647) { @bases = (2, 642735, 553174392, 3046413974); }
-  elsif ($n < 3071837692357849) { @bases = (2, 75088, 642735, 203659041, 3613982119); }
-  elsif ($n < 18446744073709551615) { @bases = (2, 325, 9375, 28178, 450775, 9780504, 1795265022); }
-  # Seriously we need BPSW here.
-  else                          { @bases = (2, 325, 9375, 28178, 450775, 9780504, 1795265022, 15, 52, 311); }
+  # Determine Selfridge D, P, and Q parameters
+  my $D = _find_jacobi_d_sequence($n);
+  $D = $D->numify if $D <= ~0 && ref($D) eq 'Math::BigInt';
+  return 0 if $D == 0;  # We found a divisor in the sequence
+  my $P = 1;
+  my $Q = int( (1 - $D) / 4 );
+  # Verify we've calculated this right
+  die "Selfridge error: $D, $P, $Q\n" if ($D != $P*$P - 4*$Q);
+  #warn "N: $n  D: $D  P: $P  Q: $Q\n";
 
-  # Run our selected set of Miller-Rabin strong probability tests
-  my $prob_prime = miller_rabin($n, @bases);
-  # We're deterministic for 64-bit numbers
-  $prob_prime *= 2 if $n <= 18446744073709551615;
-  $prob_prime;
+  # It's now time to perform the Lucase pseudoprimality test using $D.
+
+  my $m = $n + 1;
+  my $s = 0;
+  my $d = $m;
+  while ( ($d & 1) == 0 ) {
+    $s++;
+    $d >>= 1;
+  }
+  # $m == $d * 2 ** $s
+  #die "Invalid $m, $d, $s\n" unless $m == $d * 2**$s;
+
+  my $U = 1;
+  my $V = $P;
+  my $U_2m = 1;
+  my $V_2m = $P;
+  my $Q_m = $Q;
+  my $Q_m2 = 2 * $Q;
+  my $Qkd = $Q;
+  $d >>= 1;
+  #my $i = 1;
+  while ($d != 0) {
+    #warn "U=$U  V=$V  Qm=$Q_m  Qm2=$Q_m2\n";
+    $U_2m = ($U_2m * $V_2m) % $n;
+    $V_2m = ($V_2m * $V_2m - $Q_m2) % $n;
+    #warn "  $i  U2m=$U_2m  V2m=$V_2m\n";  $i++;
+    $Q_m  = ($Q_m * $Q_m) % $n;
+    $Q_m2 = 2 * $Q_m;   # no mod
+    if ($d & 1) {
+      my $Uold = $U;
+      $U = $U_2m * $V  +  $V_2m * $U;
+      $U += $n if $U & 1;
+      $U = int($U / 2) % $n;
+
+      $V = $V_2m * $V  +  $U_2m * $Uold * $D;
+      $V += $n if $V & 1;
+      $V = int($V / 2) % $n;
+
+      $Qkd = ($Qkd * $Q_m) % $n;
+    }
+    $d >>= 1;
+  }
+  #warn "l0 U=$U  V=$V\n";
+  if ($U == 0 || $V == 0) {
+    $result = 1;
+  } else {
+    # Compute powers of V
+    my $Qkd2 = 2 * $Qkd;
+    foreach my $r (1 .. $s-1) {
+      #warn "l$r U=$U  V=$V  Qkd2=$Qkd2\n";
+      $V = ($V * $V - $Qkd2) % $n;
+      if ($V == 0) {
+        $result = 1;
+        last;
+      }
+      if ($r < ($s-1)) {
+        $Qkd = ($Qkd * $Qkd) % $n;
+        $Qkd2 = 2 * $Qkd;
+      }
+    }
+  }
+  no bigint;
+ }
+  #warn "Math::BigInt is loaded\n" if defined $Math::BigInt::VERSION;
+  #warn "bigint is loaded\n" if defined $bigint::VERSION;
+  #warn "bigint is in effect\n" if bigint::in_effect();
+  return $result;
 }
+
 
 sub _basic_factor {
   # MODIFIES INPUT SCALAR
@@ -643,7 +744,7 @@ sub _basic_factor {
   while ( ($_[0] % 5) == 0 ) { push @factors, 5;  $_[0] = int($_[0] / 5); }
 
   # Stop using bignum if we can
-  $_[0] = $_[0]->numify if ref($_[0]) =~ /^Math::Big/ && $_[0] <= ~0;
+  $_[0] = $_[0]->numify if ref($_[0]) eq 'Math::BigInt' && $_[0] <= ~0;
 
   if ( ($_[0] > 1) && _is_prime7($_[0]) ) {
     push @factors, $_[0];
@@ -654,7 +755,7 @@ sub _basic_factor {
 
 sub trial_factor {
   my($n) = @_;
-  croak "Input must be a positive integer" unless _is_positive_int($n);
+  _validate_positive_integer($n);
 
   my @factors = _basic_factor($n);
   return @factors if $n < 4;
@@ -677,7 +778,7 @@ sub trial_factor {
 
 sub factor {
   my($n) = @_;
-  croak "Input must be a positive integer" unless _is_positive_int($n);
+  _validate_positive_integer($n);
 
   return trial_factor($n) if $n < 100000;
 
@@ -701,7 +802,7 @@ sub factor {
   while (@nstack) {
     $n = pop @nstack;
     # Don't use bignum on $n if it has gotten small enough.
-    $n = $n->numify if ref($n) =~ /^Math::Big/ && $n <= ~0;
+    $n = $n->numify if ref($n) eq 'Math::BigInt' && $n <= ~0;
     #print "Looking at $n with stack ", join(",",@nstack), "\n";
     while ( ($n >= (31*31)) && !_is_prime7($n) ) {
       my @ftry;
@@ -749,7 +850,7 @@ sub squfof_factor { trial_factor(@_) }
 
 sub prho_factor {
   my($n, $rounds, $a) = @_;
-  croak "Input must be a positive integer" unless _is_positive_int($n);
+  _validate_positive_integer($n);
   $rounds = 4*1024*1024 unless defined $rounds;
   $a = 3 unless defined $a;
 
@@ -760,7 +861,7 @@ sub prho_factor {
   my $U = 7;
   my $V = 7;
 
-  if ( ($n < $_half_word) || (ref($n) =~ /^Math::Big/) ) {
+  if ( ($n < $_half_word) || (ref($n) eq 'Math::BigInt') ) {
 
     for my $i (1 .. $rounds) {
       $U = ($U * $U + $a) % $n;
@@ -807,7 +908,7 @@ sub prho_factor {
 
 sub pbrent_factor {
   my($n, $rounds) = @_;
-  croak "Input must be a positive integer" unless _is_positive_int($n);
+  _validate_positive_integer($n);
   $rounds = 4*1024*1024 unless defined $rounds;
 
   my @factors = _basic_factor($n);
@@ -817,7 +918,7 @@ sub pbrent_factor {
   my $Xi = 2;
   my $Xm = 2;
 
-  if ( ($n < $_half_word) || (ref($n) =~ /^Math::Big/) ) {
+  if ( ($n < $_half_word) || (ref($n) eq 'Math::BigInt') ) {
 
     for my $i (1 .. $rounds) {
       $Xi = ($Xi * $Xi + $a) % $n;
@@ -854,7 +955,7 @@ sub pbrent_factor {
 
 sub pminus1_factor {
   my($n, $rounds) = @_;
-  croak "Input must be a positive integer" unless _is_positive_int($n);
+  _validate_positive_integer($n);
   $rounds = 4*1024*1024 unless defined $rounds;
 
   my @factors = _basic_factor($n);
@@ -879,7 +980,7 @@ sub pminus1_factor {
 
 sub holf_factor {
   my($n, $rounds, $startrounds) = @_;
-  croak "Input must be a positive integer" unless _is_positive_int($n);
+  _validate_positive_integer($n);
   $rounds = 64*1024*1024 unless defined $rounds;
   $startrounds = 1 unless defined $startrounds;
 

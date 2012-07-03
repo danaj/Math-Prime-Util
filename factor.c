@@ -274,7 +274,7 @@ int miller_rabin(UV n, const UV *bases, int nbases)
   return 1;
 }
 
-int is_prob_prime(UV n)
+int _XS_is_prob_prime(UV n)
 {
   UV bases[12];
   int nbases;

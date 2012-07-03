@@ -59,7 +59,6 @@ BEGIN {
 
     # Perhaps these can be moved here?
     *miller_rabin   = \&Math::Prime::Util::PP::miller_rabin;
-    *is_prob_prime  = \&Math::Prime::Util::PP::is_prob_prime;
 
     # These probably shouldn't even be exported
     *trial_factor   = \&Math::Prime::Util::PP::trial_factor;
@@ -87,6 +86,24 @@ if ($_Config{'maxbits'} == 32) {
   $_Config{'maxprimeidx'} = 425656284035217743;
 }
 
+# Notes on how we're dealing with big integers:
+#
+#  1) if (ref($n) eq 'Math::BigInt')
+#     $n is a bigint, so do bigint stuff
+#
+#  2) if (defined $bigint::VERSION && $n > ~0)
+#     make $n into a bigint.  This is debatable, but they *did* hand us a
+#     string with a big integer in it.  The big gotcha here is that
+#     is_strong_lucas_pseudoprime does bigint computations, so it will load
+#     up bigint and there is no way to unload it.
+#
+#  3) if (ref($n) =~ /^Math::Big/)
+#     $n is a big int, float, or rat.  We probably want this as an int.
+#
+#  $n = $n->numify if $n < ~0 && ref($n) =~ /^Math::Big/;
+#     get us out of big math if we can
+
+
 sub prime_get_config {
   my %config = %_Config;
 
@@ -104,11 +121,16 @@ sub _validate_positive_integer {
   croak "Parameter '$n' must be a positive integer" if $n =~ tr/0123456789//c;
   croak "Parameter '$n' must be >= $min" if defined $min && $n < $min;
   croak "Parameter '$n' must be <= $max" if defined $max && $n > $max;
-  if ($n > $_Config{'maxparam'}) {
-    croak "Parameter '$n' outside of integer range" if !defined $Math::BigInt::VERSION;
-    # Make $n a proper object if it isn't one already (or convert from float)
-    $_[0] = Math::BigInt->new("$n") unless ref($n) eq 'Math::BigInt';
+  if ($n <= $_Config{'maxparam'}) {
+    $_[0] = $n->as_number() if ref($n) eq 'Math::BigFloat';
+    $_[0] = $n->numify() if ref($n) eq 'Math::BigInt';
+  } elsif (ref($n) ne 'Math::BigInt') {
+    croak "Parameter '$n' outside of integer range" if !defined $bigint::VERSION;
+    $_[0] = Math::BigInt->new("$n"); # Make $n a proper bigint object
   }
+  # One of these will be true:
+  #     1) $n <= max and $n is not a bigint
+  #     2) $n  > max and $n is a bigint
   1;
 }
 
@@ -267,7 +289,11 @@ my @_random_ndigit_ranges;
 
 sub random_ndigit_prime {
   my($digits) = @_;
-  _validate_positive_integer($digits, 1, (defined $bigint::VERSION) ? 10000 : $_Config{'maxdigits'} );
+  if (defined $bigint::VERSION && bigint::in_effect()) {
+    _validate_positive_integer($digits, 1, 10000);
+  } else {
+    _validate_positive_integer($digits, 1, $_Config{'maxdigits'});
+  }
   if (!defined $_random_ndigit_ranges[$digits]) {
     my $low = ($digits == 1) ? 0 : int(10 ** ($digits-1));
     my $high = int(10 ** $digits);
@@ -395,9 +421,65 @@ sub factor {
 
   return _XS_factor($n) if $_Config{'xs'} && $n <= $_Config{'maxparam'};
 
-  $n = $n->as_number() if ref($n) eq 'Math::BigFloat';
-  $n = $n->numify if $n <= ~0;
   Math::Prime::Util::PP::factor($n);
+}
+
+#############################################################################
+
+  # Timings for various combinations, given the current possibilities of:
+  #    1) XS MR optimized (either x86-64, 32-bit on 64-bit mach, or half-word)
+  #    2) XS MR non-optimized (big input not on 64-bit machine)
+  #    3) PP MR with small input (non-bigint Perl)
+  #    4) PP MR with large input (using functions for mulmod)
+  #    5) PP MR with full bigints
+  #    6) PP Lucas with small input
+  #    7) PP Lucas with large input
+  #    8) PP Lucas with full bigints
+  #
+  # Time for one test:
+  #       0.5uS  XS MR with small input
+  #       0.8uS  XS MR with large input
+  #       7uS    PP MR with small input
+  #     400uS    PP MR with large input
+  #    5000uS    PP MR with bigint
+  #    2700uS    PP LP with small input
+  #    6100uS    PP LP with large input
+  #    7400uS    PP LP with bigint
+
+sub is_prob_prime {
+  my($n) = @_;
+  return 0 if defined $n && $n < 2;
+  _validate_positive_integer($n);
+
+  return _XS_is_prob_prime($n) if $_Config{'xs'} && $n <= $_Config{'maxparam'};
+
+  return 2 if $n == 2 || $n == 3 || $n == 5 || $n == 7;
+  return 0 if $n < 11;
+  return 0 if ($n % 2) == 0 || ($n % 3) == 0 || ($n % 5) == 0 || ($n % 7) == 0;
+  foreach my $i (qw/11 13 17 19 23 29 31 37 41 43 47 53 59 61 67 71/) {
+    return 2 if $i*$i > $n;   return 0 if ($n % $i) == 0;
+  }
+
+  if ($n < 105936894253) {   # BPSW seems to be faster after this
+    # Deterministic set of Miller-Rabin tests.
+    my @bases;
+    if    ($n <          9080191) { @bases = (31, 73); }
+    elsif ($n <       4759123141) { @bases = (2, 7, 61); }
+    elsif ($n <     105936894253) { @bases = (2, 1005905886, 1340600841); }
+    elsif ($n <   31858317218647) { @bases = (2, 642735, 553174392, 3046413974); }
+    elsif ($n < 3071837692357849) { @bases = (2, 75088, 642735, 203659041, 3613982119); }
+    else                          { @bases = (2, 325, 9375, 28178, 450775, 9780504, 1795265022); }
+    return Math::Prime::Util::PP::miller_rabin($n, @bases)  ?  2  :  0;
+  }
+
+  # BPSW probable prime.  No composites are known to have passed this test
+  # since it was published in 1980, though we know infinitely many exist.
+  # It has also been verified that no 64-bit composite will return true.
+  # Slow since it's all in PP, but it's the Right Thing To Do.
+
+  return 0 unless Math::Prime::Util::PP::miller_rabin($n, 2);
+  return 0 unless Math::Prime::Util::PP::is_strong_lucas_pseudoprime($n);
+  return ($n <= 18446744073709551615)  ?  2  :  1;
 }
 
 #############################################################################
@@ -409,7 +491,7 @@ sub prime_count_approx {
   return $_prime_count_small[$x] if $x <= $#_prime_count_small;
 
   # Turn on high precision FP if they gave us a big number.
-  #do { require Math::BigFloat; Math::BigFloat->import; } if defined $Math::BigInt::VERSION && !defined $Math::BigFloat::VERSION;
+  $x = _upgrade_to_float($x) if ref($x) eq 'Math::BigInt';
 
   #    Method             10^10 %error  10^19 %error
   #    -----------------  ------------  ------------
@@ -433,7 +515,7 @@ sub prime_count_lower {
 
   return $_prime_count_small[$x] if $x <= $#_prime_count_small;
 
-  $x = _upgrade_to_float($x) if defined $Math::BigInt::VERSION && ref($x) ne 'Math::BigFloat';
+  $x = _upgrade_to_float($x) if ref($x) eq 'Math::BigInt';
 
   my $flogx = log($x);
 
@@ -468,7 +550,7 @@ sub prime_count_upper {
 
   return $_prime_count_small[$x] if $x <= $#_prime_count_small;
 
-  $x = _upgrade_to_float($x) if defined $Math::BigInt::VERSION && ref($x) ne 'Math::BigFloat';
+  $x = _upgrade_to_float($x) if ref($x) eq 'Math::BigInt';
 
   # Chebyshev:            1.25506*x/logx       x >= 17
   # Rosser & Schoenfeld:  x/(logx-3/2)         x >= 67
@@ -520,7 +602,7 @@ sub nth_prime_approx {
 
   return $_primes_small[$n] if $n <= $#_primes_small;
 
-  $n = _upgrade_to_float($n) if defined $Math::BigInt::VERSION && ref($n) ne 'Math::BigFloat';
+  $n = _upgrade_to_float($n) if ref($n) eq 'Math::BigInt';
 
   my $flogn  = log($n);
   my $flog2n = log($flogn);
@@ -572,7 +654,7 @@ sub nth_prime_lower {
 
   return $_primes_small[$n] if $n <= $#_primes_small;
 
-  $n = _upgrade_to_float($n) if defined $Math::BigInt::VERSION && ref($n) ne 'Math::BigFloat';
+  $n = _upgrade_to_float($n) if ref($n) eq 'Math::BigInt';
 
   my $flogn  = log($n);
   my $flog2n = log($flogn);  # Note distinction between log_2(n) and log^2(n)
@@ -595,7 +677,7 @@ sub nth_prime_upper {
 
   return $_primes_small[$n] if $n <= $#_primes_small;
 
-  $n = _upgrade_to_float($n) if defined $Math::BigInt::VERSION && ref($n) ne 'Math::BigFloat';
+  $n = _upgrade_to_float($n) if ref($n) eq 'Math::BigInt';
 
   my $flogn  = log($n);
   my $flog2n = log($flogn);  # Note distinction between log_2(n) and log^2(n)
@@ -629,7 +711,7 @@ sub RiemannR {
   my($n) = @_;
   croak("Invalid input to ReimannR:  x must be > 0") if $n <= 0;
 
-  return Math::Prime::Util::PP::RiemannR($n, 1e-30) if defined $Math::BigFloat::VERSION;
+  return Math::Prime::Util::PP::RiemannR($n, 1e-30) if defined $bignum::VERSION || ref($n) eq 'Math::BigFloat';
   return Math::Prime::Util::PP::RiemannR($n) if !$_Config{'xs'};
   return _XS_RiemannR($n);
 
@@ -644,7 +726,7 @@ sub ExponentialIntegral {
   my($n) = @_;
   croak "Invalid input to ExponentialIntegral:  x must be != 0" if $n == 0;
 
-  return Math::Prime::Util::PP::ExponentialIntegral($n, 1e-30) if defined $Math::BigFloat::VERSION;
+  return Math::Prime::Util::PP::ExponentialIntegral($n, 1e-30) if defined $bignum::VERSION || ref($n) eq 'Math::BigFloat';
   return Math::Prime::Util::PP::ExponentialIntegral($n) if !$_Config{'xs'};
   return _XS_ExponentialIntegral($n);
 }
@@ -654,7 +736,7 @@ sub LogarithmicIntegral {
   return 0 if $n == 0;
   croak("Invalid input to LogarithmicIntegral:  x must be >= 0") if $n <= 0;
 
-  if (defined $Math::BigFloat::VERSION) {
+  if ( (defined $bignum::VERSION && (!defined &bignum::in_effect || bignum::in_effect())) || (ref($n) eq 'Math::BigFloat') ) {
     return Math::BigFloat->binf('-') if $n == 1;
     return Math::BigFloat->new('1.045163780117492784844588889194613136522615578151201575832909144075013205210359530172717405626383356306') if $n == 2;
   } else {
@@ -797,6 +879,7 @@ your program.
 A number of the functions support big numbers, but currently not all.  The
 ones that do:
 
+  is_prob_prime
   prime_count_lower
   prime_count_upper
   prime_count_approx
@@ -814,7 +897,6 @@ ones that do:
 These still do not:
 
   is_prime
-  is_prob_prime
   miller_rabin
   primes
   next_prime
@@ -1019,11 +1101,19 @@ function.
 Takes a positive number as input and returns back either 0 (composite),
 2 (definitely prime), or 1 (probably prime).
 
-This is done with a tuned set of Miller-Rabin tests such that the result
-will be deterministic for 64-bit input.  Either 2, 3, 4, 5, or 7 Miller-Rabin
-tests are performed (no more than 3 for 32-bit input), and the result will
-then always be 0 (composite) or 2 (prime).  A later implementation may switch
-to a BPSW test, depending on speed.
+For 64-bit input (native or bignum), this uses a tuned set of Miller-Rabin
+tests such that the result will be deterministic.  Either 2, 3, 4, 5, or 7
+Miller-Rabin tests are performed (no more than 3 for 32-bit input), and the
+result will then always be 0 (composite) or 2 (prime).  A later implementation
+may change the internals, but the results will be identical.
+
+For inputs larger than C<2^64>, a strong Baillie-PSW primality test is
+performed (aka BPSW or BSW).  This is a probabilistic test, so the only times
+a 2 (definitely prime) are returned are when the small trial division succeeds.
+Note that since the test was published in 1980, not a single BPSW pseudoprime
+has been found, so it is extremely likely to be prime.  While we know there
+an infinite number of counterexamples exist, there is a weak conjecture that
+none exist under 10000 digits.
 
 
 =head2 random_prime
@@ -1169,7 +1259,7 @@ process is repeated for each non-prime factor.
 
 While factoring works on bigints, the algorithms are currently set up for
 smaller numbers, and bignum support is all in pure Perl.  Hence, it will be
-somewhat slow for "easy" numbers and too slow for "hard" numbers.
+somewhat slow for "easy" numbers and very, very slow for "hard" numbers.
 
 
 =head2 all_factors
@@ -1302,7 +1392,7 @@ Print pseudoprimes base 17:
 Print some primes above 64-bit range:
 
     perl -MMath::Prime::Util=:all -Mbigint -E 'my $start=100000000000000000000; say join "\n", @{primes($start,$start+1000)}'
-    # Similar behavior:
+    # Similar but much faster:
     # perl -MMath::Pari=:int,PARI,nextprime -E 'my $start = PARI "100000000000000000000"; my $end = $start+1000; my $p=nextprime($start); while ($p <= $end) { say $p; $p = nextprime($p+1); }'
 
 =head1 LIMITATIONS

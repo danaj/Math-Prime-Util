@@ -215,7 +215,7 @@ my %rvals = (
 
 
 plan tests => 1 +
-              2*(1087 + @primes + @composites) +
+              1*(1087 + @primes + @composites) +
               3 + scalar(keys %small_single) + scalar(keys %small_range) +
               2*scalar(keys %primegaps) + 8 + 148 + 148 + 1 +
               scalar(keys %pivals_small) + scalar(keys %pi_intervals) +
@@ -239,7 +239,6 @@ require_ok 'Math::Prime::Util::PP';
     *prev_prime     = \&Math::Prime::Util::PP::prev_prime;
 
     *miller_rabin   = \&Math::Prime::Util::PP::miller_rabin;
-    *is_prob_prime  = \&Math::Prime::Util::PP::is_prob_prime;
 
     *factor         = \&Math::Prime::Util::PP::factor;
 
@@ -252,20 +251,16 @@ require_ok 'Math::Prime::Util::PP';
 foreach my $n (0 .. 1086) {
   if (defined $small_primes{$n}) {
     is( is_prime($n), 2, "$n is prime");
-    ok( is_prob_prime($n), "$n is probably prime");
   } else {
     ok(!is_prime($n), "$n is not prime");
-    ok(!is_prob_prime($n), "$n is not probably prime");
   }
 }
 
 foreach my $n (@primes) {
   is( is_prime($n), 2, "$n is prime" );
-  ok( is_prob_prime($n), "$n is probably prime");
 }
 foreach my $n (@composites) {
   is( is_prime($n), 0, "$n is not prime" );
-  is( is_prob_prime($n), 0, "$n is not probably prime");
 }
 
 ###############################################################################

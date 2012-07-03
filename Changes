@@ -10,6 +10,7 @@ Revision history for Perl extension Math::Prime::Util.
     - factor and all_factor should correctly work with bigints.
     - many more bigint/bignum changes
     - factor always returns sorted results
+    - added BPSW primality test for large is_prob_prime
 
 0.09  25 June 2012
     - Pure Perl code added.  Passes all tests.  Used only if the XSLoader

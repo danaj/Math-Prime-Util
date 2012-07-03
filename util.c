@@ -57,7 +57,7 @@ static int _is_prime7(UV n)
   UV limit, i;
 
   if (n > MPU_PROB_PRIME_BEST)
-    return is_prob_prime(n);  /* We know this works for all 64-bit n */
+    return _XS_is_prob_prime(n);  /* We know this works for all 64-bit n */
 
   limit = sqrt(n);
   i = 7;
@@ -142,7 +142,7 @@ int is_definitely_prime(UV n)
   if (isprime >= 0)  return isprime;
 
   if (n > MPU_PROB_PRIME_BEST)
-    return (is_prob_prime(n) == 2);
+    return (_XS_is_prob_prime(n) == 2);
 
   return 0;
 }
