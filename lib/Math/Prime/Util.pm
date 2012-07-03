@@ -14,7 +14,7 @@ use base qw( Exporter );
 our @EXPORT_OK = qw(
                      prime_get_config
                      prime_precalc prime_memfree
-                     is_prime is_prob_prime miller_rabin
+                     is_prime is_prob_prime miller_rabin is_strong_lucas_pseudoprime
                      primes
                      next_prime  prev_prime
                      prime_count prime_count_lower prime_count_upper prime_count_approx
@@ -482,6 +482,10 @@ sub is_prob_prime {
   return ($n <= 18446744073709551615)  ?  2  :  1;
 }
 
+sub is_strong_lucas_pseudoprime {
+  return Math::Prime::Util::PP::is_strong_lucas_pseudoprime(@_);
+}
+
 #############################################################################
 
 sub prime_count_approx {
@@ -865,8 +869,13 @@ than L<Math::Pari> for 64-bit operations, with the exception of factoring
 certain 16-20 digit numbers.
 
 The main development of the module has been for working with Perl UVs, so
-32-bit or 64-bit.  Bignum support is limited.  If you need full bignum
-support for these types of functions inside Perl now, I recommend L<Math::Pari>.
+32-bit or 64-bit.  Bignum support is limited.  On advantage is that it requires
+no external software (e.g. GMP or Pari).  If you need full bignum support for
+these types of functions inside Perl now, I recommend L<Math::Pari>.
+While this module contains all the functionality of L<Math::Primality>, and is
+far faster on 64-bit input, bigint performance varies.  On my 64-bit machine,
+L<Math::Primality> works well and is quite a bit faster than this module.  On
+my 32-bit machine, L<Math::Primality> is very slow and consumes a lot of memory.
 
 The module is thread-safe and allows concurrency between Perl threads while
 still sharing a prime cache.  It is not itself multithreaded.  See the
@@ -880,6 +889,7 @@ A number of the functions support big numbers, but currently not all.  The
 ones that do:
 
   is_prob_prime
+  is_strong_lucas_pseudoprime
   prime_count_lower
   prime_count_upper
   prime_count_approx
@@ -1091,6 +1101,14 @@ algorithm does run with even input, most sources define it only on odd input.
 Returning composite for all non-2 even input makes the function match most
 other implementations including L<Math::Primality>'s C<is_strong_pseudoprime>
 function.
+
+
+=head2 is_strong_lucas_pseudoprime
+
+Takes a positive number as input, and returns 1 if the input is a strong
+Lucas pseudoprime using the Selfridge method of choosing D, P, and Q (hence
+some sources call this a strong Lucas-Selfridge pseudoprime).  This is one
+half of the BPSW primality test (the Miller-Rabin test being the other).
 
 
 =head2 is_prob_prime
