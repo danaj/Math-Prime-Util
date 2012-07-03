@@ -332,8 +332,8 @@ while (my($n, $nth) = each (%nthprimes_small)) {
 
 is( miller_rabin(0, 2), 0, "MR with 0 shortcut composite");
 is( miller_rabin(1, 2), 0, "MR with 0 shortcut composite");
-is( miller_rabin(2, 2), 2, "MR with 2 shortcut prime");
-is( miller_rabin(3, 2), 2, "MR with 3 shortcut prime");
+is( miller_rabin(2, 2), 1, "MR with 2 shortcut prime");
+is( miller_rabin(3, 2), 1, "MR with 3 shortcut prime");
 
 while (my($base, $ppref) = each (%pseudoprimes)) {
   foreach my $p (@$ppref) {

@@ -1492,9 +1492,12 @@ The differences are in the implementations:
      C<prime_precalc>).  Larger inputs just need too much time and memory
      for the sieve.
 
-   - L<Math::Primality> uses a GMP BPSW test which is overkill for our 64-bit
-     range.  It's generally an order of magnitude or two slower than any
-     of the others.
+   - L<Math::Primality> uses GMP for all work.  Under ~32-bits it uses 2 or 3
+     MR tests, while above 4759123141 it performs a BPSW test.  This is is
+     fantastic for bigints over 2^64, but it is significantly slower than
+     native precision tests.  With 64-bit numbers it is generally an order of
+     magnitude or more slower than any of the others.  This reverses when
+     numbers get larger.
 
    - L<Math::Pari> has some very effective code, but it has some overhead to get
      to it from Perl.  That means for small numbers it is relatively slow: an
@@ -1509,8 +1512,9 @@ The differences are in the implementations:
    - L<Math::Prime::Util> looks in the sieve for a fast bit lookup if that
      exists (default up to 30,000 but it can be expanded, e.g.
      C<prime_precalc>), uses trial division for numbers higher than this but
-     not too large (0.1M on 64-bit machines, 100M on 32-bit machines), and a
-     deterministic set of Miller-Rabin tests for large numbers.
+     not too large (0.1M on 64-bit machines, 100M on 32-bit machines), a
+     deterministic set of Miller-Rabin tests for 64-bit and smaller numbers,
+     and a BPSW test for bigints.
 
 
 

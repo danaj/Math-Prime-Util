@@ -609,15 +609,17 @@ sub _find_jacobi_d_sequence {
   my($n) = @_;
 
   # D is typically quite small: 67 max for N < 10^19.  However, it is
-  # theoretically possible D could grow unreasonably.  We are ignoring this.
+  # theoretically possible D could grow unreasonably.  I'm giving up at 4000M.
   my $d = 5;
   my $sign = 1;
   while (1) {
     my $gcd = _gcd_ui($d, $n);
+    #my $gcd = Math::BigInt::bgcd($d, $n);
     return 0 if $gcd > 1 && $gcd != $n;  # Found divisor $d
     my $j = _jacobi($d * $sign, $n);
     last if $j == -1;
     $d += 2;
+    croak "Could not find Jacobi sequence for $n" if $d > 4_000_000_000;
     $sign = -$sign;
   }
   return ($sign * $d);
@@ -628,6 +630,10 @@ sub is_strong_lucas_pseudoprime {
   my($n) = @_;
   _validate_positive_integer($n);
 
+  # We're trying to limit the bignum calculations as much as possible.
+  # It's also important to try to match whatever they passed in.  For instance
+  # if they use a GMP or Pari object, we must do the same.
+
   return 1 if $n == 2;
   return 0 if $n < 2 || ($n % 2) == 0;
 
@@ -636,27 +642,25 @@ sub is_strong_lucas_pseudoprime {
   #     Math::Primality
 
   # Check for perfect square
-  {
+  if (ref($n) eq 'Math::BigInt') {
+    my $mcheck = ($n & 127)->numify;
+    if (($mcheck*0x8bc40d7d) & ($mcheck*0xa1e2f5d1) & 0x14020a) {
+      # ~82% of non-squares were rejected by the bloom filter
+      my $sq = int($n->copy()->bsqrt());
+      return 0 if ($sq*$sq) == $n;
+    }
+  } else {
     my $mcheck = $n & 127;
     if (($mcheck*0x8bc40d7d) & ($mcheck*0xa1e2f5d1) & 0x14020a) {
-      # ... 82% of non-squares were rejected by the bloom filter
-      # For bigints we should put in the rest of this filter, which prunes
-      # 99.92% of nonsquares, for the cost of one bigint mod and some
-      # non-bigint operations.
       my $sq = int(sqrt($n));
       return 0 if ($sq*$sq) == $n;
     }
   }
 
-  # We have to make sure we use bigints
-  my $result = 0;
- {
-  use bigint;
-  $n = Math::BigInt->new($n) unless ref($n) eq 'Math::BigInt';
-
   # Determine Selfridge D, P, and Q parameters
   my $D = _find_jacobi_d_sequence($n);
-  $D = $D->numify if $D <= ~0 && ref($D) eq 'Math::BigInt';
+  #die if ref($D) eq 'Math::BigInt';
+  #$D = $D->numify if $D <= ~0 && ref($D) eq 'Math::BigInt';
   return 0 if $D == 0;  # We found a divisor in the sequence
   my $P = 1;
   my $Q = int( (1 - $D) / 4 );
@@ -664,11 +668,16 @@ sub is_strong_lucas_pseudoprime {
   die "Selfridge error: $D, $P, $Q\n" if ($D != $P*$P - 4*$Q);
   #warn "N: $n  D: $D  P: $P  Q: $Q\n";
 
-  # It's now time to perform the Lucase pseudoprimality test using $D.
+  # It's now time to perform the Lucas pseudoprimality test using $D.
 
-  my $m = $n + 1;
+  if (ref($n) ne 'Math::BigInt') {
+    require Math::BigInt;
+    $n = Math::BigInt->new($n);
+  }
+
+  my $m = $n->copy() + 1;
   my $s = 0;
-  my $d = $m;
+  my $d = $m->copy();
   while ( ($d & 1) == 0 ) {
     $s++;
     $d >>= 1;
@@ -676,61 +685,59 @@ sub is_strong_lucas_pseudoprime {
   # $m == $d * 2 ** $s
   #die "Invalid $m, $d, $s\n" unless $m == $d * 2**$s;
 
-  my $U = 1;
-  my $V = $P;
-  my $U_2m = 1;
-  my $V_2m = $P;
-  my $Q_m = $Q;
-  my $Q_m2 = 2 * $Q;
-  my $Qkd = $Q;
+  my $ZERO = $n->copy->bzero();
+  my $U = $ZERO + 1;
+  my $V = $ZERO + $P;
+  my $U_2m = $ZERO + 1;
+  my $V_2m = $ZERO + $P;
+  my $Q_m = $ZERO + $Q;
+  my $Q_m2 = ($ZERO + $Q) * 2;
+  my $Qkd = $ZERO + $Q;
   $d >>= 1;
+  $d = $d->numify if $d <= ~0 && ref($d) eq 'Math::BigInt';
   #my $i = 1;
   while ($d != 0) {
     #warn "U=$U  V=$V  Qm=$Q_m  Qm2=$Q_m2\n";
-    $U_2m = ($U_2m * $V_2m) % $n;
-    $V_2m = ($V_2m * $V_2m - $Q_m2) % $n;
+    $U_2m->bmul($V_2m);             $U_2m->bmod($n);
+    $V_2m->bmuladd($V_2m, -$Q_m2);  $V_2m->bmod($n);
     #warn "  $i  U2m=$U_2m  V2m=$V_2m\n";  $i++;
-    $Q_m  = ($Q_m * $Q_m) % $n;
-    $Q_m2 = 2 * $Q_m;   # no mod
+    $Q_m->bmul($Q_m);             $Q_m->bmod($n);
+    $Q_m2 = 2 * $Q_m; # don't bother to mod n
     if ($d & 1) {
-      my $Uold = $U;
-      $U = $U_2m * $V  +  $V_2m * $U;
-      $U += $n if $U & 1;
-      $U = int($U / 2) % $n;
+      my $Uold = $U->copy();
+      $U->bmuladd($V_2m, $U_2m * $V);  # U = U*V_2m + V*U_2m
+      $U->badd($n) if $U->is_odd;      # U += n if U & 1
+      $U->brsft(1,2);                  # U = floor(U / 2)
+      $U->bmod($n);                    # U = U % n
 
-      $V = $V_2m * $V  +  $U_2m * $Uold * $D;
-      $V += $n if $V & 1;
-      $V = int($V / 2) % $n;
+      $V->bmuladd($V_2m, $U_2m * $Uold * $D);
+      $V->badd($n) if $V->is_odd;
+      $V->brsft(1,2);
+      $V->bmod($n);
 
-      $Qkd = ($Qkd * $Q_m) % $n;
+      $Qkd->bmul($Q_m);
+      $Qkd->bmod($n);
     }
     $d >>= 1;
   }
   #warn "l0 U=$U  V=$V\n";
-  if ($U == 0 || $V == 0) {
-    $result = 1;
-  } else {
-    # Compute powers of V
-    my $Qkd2 = 2 * $Qkd;
-    foreach my $r (1 .. $s-1) {
-      #warn "l$r U=$U  V=$V  Qkd2=$Qkd2\n";
-      $V = ($V * $V - $Qkd2) % $n;
-      if ($V == 0) {
-        $result = 1;
-        last;
-      }
-      if ($r < ($s-1)) {
-        $Qkd = ($Qkd * $Qkd) % $n;
-        $Qkd2 = 2 * $Qkd;
-      }
+  return 1 if $U == 0 || $V == 0;
+
+  # Compute powers of V
+  my $Qkd2 = 2 * $Qkd;
+  foreach my $r (1 .. $s-1) {
+    #warn "l$r U=$U  V=$V  Qkd2=$Qkd2\n";
+    $V->bmuladd($V, -$Qkd2);  $V->bmod($n);
+    return 1 if $V == 0;
+    if ($r < ($s-1)) {
+      $Qkd->bmul($Qkd);  $Qkd->bmod($n);
+      $Qkd2 = 2 * $Qkd;
     }
   }
-  no bigint;
- }
   #warn "Math::BigInt is loaded\n" if defined $Math::BigInt::VERSION;
   #warn "bigint is loaded\n" if defined $bigint::VERSION;
   #warn "bigint is in effect\n" if bigint::in_effect();
-  return $result;
+  return 0;
 }
 
 

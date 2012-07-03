@@ -77,8 +77,8 @@ ok(!eval { miller_rabin(2047,1); }, "MR base 1 fails");
 
 is( miller_rabin(0, 2), 0, "MR with 0 shortcut composite");
 is( miller_rabin(1, 2), 0, "MR with 0 shortcut composite");
-is( miller_rabin(2, 2), 2, "MR with 2 shortcut prime");
-is( miller_rabin(3, 2), 2, "MR with 3 shortcut prime");
+is( miller_rabin(2, 2), 1, "MR with 2 shortcut prime");
+is( miller_rabin(3, 2), 1, "MR with 3 shortcut prime");
 
 
 # Check that each strong pseudoprime base b makes it through MR with that base
