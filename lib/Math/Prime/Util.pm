@@ -861,21 +861,22 @@ methods, is_prime, prime_count, nth_prime, approximations and bounds for
 the prime_count and nth prime, next_prime and prev_prime, factoring utilities,
 and more.
 
-The default sieving and factoring are intended to be (and currently are)
-the fastest on CPAN, including L<Math::Prime::XS>, L<Math::Prime::FastSieve>,
-L<Math::Factor::XS>, and L<Math::Prime::TiedArray>.  For numbers in the 10-20
-digit range, it is often orders of magnitude faster.  Typically it is faster
-than L<Math::Pari> for 64-bit operations, with the exception of factoring
-certain 16-20 digit numbers.
+The default sieving and factoring are intended to be (and currently are for
+32-/64-bit calculations) the fastest on CPAN, including L<Math::Prime::XS>,
+L<Math::Prime::FastSieve>, L<Math::Factor::XS>, L<Math::Prime::TiedArray>,
+and L<Math::Primality>.  For numbers in the 10-20 digit range, it is often
+orders of magnitude faster.  Typically it is faster than L<Math::Pari> for
+64-bit operations, with the exception of factoring certain 16-20 digit numbers.
 
 The main development of the module has been for working with Perl UVs, so
-32-bit or 64-bit.  Bignum support is limited.  On advantage is that it requires
-no external software (e.g. GMP or Pari).  If you need full bignum support for
-these types of functions inside Perl now, I recommend L<Math::Pari>.
-While this module contains all the functionality of L<Math::Primality>, and is
-far faster on 64-bit input, bigint performance varies.  On my 64-bit machine,
-L<Math::Primality> works well and is quite a bit faster than this module.  On
-my 32-bit machine, L<Math::Primality> is very slow and consumes a lot of memory.
+32-bit or 64-bit.  Bignum support is limited, but does exist.  One pro is
+that it requires no external software or non-core modules (e.g. GMP or Pari)
+and works on every platform.  The big con is performance which is dramatically
+lower than native performance, actual GMP, or Perl GMP.  L<Math::Primality>,
+for example, is one to two orders of magnitude slower than L<Math::Prime::Util>
+for native precision numbers, but for bigints it is the other way around.
+If you need full bigint support for these types of functions inside Perl now,
+and performance will be of any concern, I recommend L<Math::Pari>.
 
 The module is thread-safe and allows concurrency between Perl threads while
 still sharing a prime cache.  It is not itself multithreaded.  See the
@@ -888,6 +889,7 @@ your program.
 A number of the functions support big numbers, but currently not all.  The
 ones that do:
 
+  primes
   is_prob_prime
   is_strong_lucas_pseudoprime
   prime_count_lower
@@ -908,7 +910,6 @@ These still do not:
 
   is_prime
   miller_rabin
-  primes
   next_prime
   prev_prime
   prime_count
@@ -926,8 +927,11 @@ performance may be very suboptimal.
 
   print "$n is prime" if is_prime($n);
 
-Returns 2 if the number is prime, 0 if not.  Also note there are
-probabilistic prime testing functions available.
+Returns 2 if the number is definitely prime, 1 if probably prime, and 0 if
+composite.  For all numbers under C<2^64>, the calculations are deterministic,
+so 0 (composite) and 2 (definitely prime) are the only values possible.
+
+Also note there are probabilistic prime testing functions available.
 
 
 =head2 primes
@@ -1246,7 +1250,7 @@ in place because you still have an object.
 Returns a reference to a hash of the current settings.  The hash is copy of
 the configuration, so changing it has no effect.  The settings include:
 
-  precalc_to      primes up to this number are calculated
+  precalc_to      primes up to this number have been calculated and cached
   maxbits         the maximum number of bits for native operations
   xs              0 or 1, indicating the XS code is running
   gmp             0 or 1, indicating GMP code is available
@@ -1254,7 +1258,7 @@ the configuration, so changing it has no effect.  The settings include:
   maxdigits       the max digits in a number, without bigint
   maxprime        the largest representable prime, without bigint
   maxprimeidx     the index of maxprime, without bigint
-  
+
 
 
 =head1 FACTORING FUNCTIONS
