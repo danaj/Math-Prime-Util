@@ -19,7 +19,7 @@ extern int prho_factor(UV n, UV *factors, UV maxrounds);
 
 extern int pminus1_factor(UV n, UV *factors, UV maxrounds);
 
-extern int miller_rabin(UV n, const UV *bases, int nbases);
+extern int _XS_miller_rabin(UV n, const UV *bases, int nbases);
 extern int _XS_is_prob_prime(UV n);
 
 static UV gcd_ui(UV x, UV y) {
