@@ -88,7 +88,7 @@ static const unsigned char prime_is_small[] =
 #define NPRIME_IS_SMALL (sizeof(prime_is_small)/sizeof(prime_is_small[0]))
 
 /* Return of 2 if n is prime, 0 if not.  Do it fast. */
-int is_prime(UV n)
+int _XS_is_prime(UV n)
 {
   UV d, m;
   unsigned char mtab;
@@ -172,7 +172,7 @@ UV next_trial_prime(UV n)
 }
 
 
-UV next_prime(UV n)
+UV _XS_next_prime(UV n)
 {
   UV d, m;
   const unsigned char* sieve;
@@ -210,7 +210,7 @@ UV next_prime(UV n)
 }
 
 
-UV prev_prime(UV n)
+UV _XS_prev_prime(UV n)
 {
   UV d, m;
   const unsigned char* sieve;
@@ -534,7 +534,7 @@ UV _XS_prime_count_approx(UV x)
 }
 
 
-UV prime_count(UV low, UV high)
+UV _XS_prime_count(UV low, UV high)
 {
   const unsigned char* cache_sieve;
   unsigned char* segment;
@@ -747,7 +747,7 @@ UV _XS_nth_prime_approx(UV n)
 }
 
 
-UV nth_prime(UV n)
+UV _XS_nth_prime(UV n)
 {
   const unsigned char* cache_sieve;
   unsigned char* segment;

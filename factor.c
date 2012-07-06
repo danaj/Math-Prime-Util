@@ -232,7 +232,7 @@ static int is_perfect_square(UV n, UV* sqrtn)
  * Returns 1 if probably prime relative to the bases, 0 if composite.
  * Bases must be between 2 and n-2
  */
-int miller_rabin(UV n, const UV *bases, int nbases)
+int _XS_miller_rabin(UV n, const UV *bases, int nbases)
 {
   int b;
   int s = 0;
@@ -356,7 +356,7 @@ int _XS_is_prob_prime(UV n)
   }
 #endif
 #endif
-  prob_prime = miller_rabin(n, bases, nbases);
+  prob_prime = _XS_miller_rabin(n, bases, nbases);
   return 2*prob_prime;
 }
 

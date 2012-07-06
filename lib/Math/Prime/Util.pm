@@ -14,16 +14,35 @@ use base qw( Exporter );
 our @EXPORT_OK = qw(
                      prime_get_config
                      prime_precalc prime_memfree
-                     is_prime is_prob_prime miller_rabin is_strong_lucas_pseudoprime
+                     is_prime is_prob_prime
+                     is_strong_pseudoprime is_strong_lucas_pseudoprime
                      primes
                      next_prime  prev_prime
                      prime_count prime_count_lower prime_count_upper prime_count_approx
                      nth_prime nth_prime_lower nth_prime_upper nth_prime_approx
-                     random_prime random_ndigit_prime
+                     random_prime random_ndigit_prime random_nbit_prime
                      factor all_factors moebius euler_phi
                      ExponentialIntegral LogarithmicIntegral RiemannR
                    );
 our %EXPORT_TAGS = (all => [ @EXPORT_OK ]);
+
+# Similar to how boolean handles its option
+sub import {
+    my @options = grep $_ ne '-nobigint', @_;
+    $_[0]->_import_nobigint if @options != @_;
+    @_ = @options;
+    goto &Exporter::import;
+}
+
+sub _import_nobigint {
+  undef *factor;      *factor          = \&_XS_factor;
+  undef *is_prime;    *is_prime        = \&_XS_is_prime;
+  undef *next_prime;  *next_prime      = \&_XS_next_prime;
+  undef *prev_prime;  *prev_prime      = \&_XS_prev_prime;
+  undef *prime_count; *prime_count     = \&_XS_prime_count;
+  undef *nth_prime;   *nth_prime       = \&_XS_nth_prime;
+  undef *is_strong_pseudoprime;  *is_strong_pseudoprime = \&_XS_miller_rabin;
+}
 
 my %_Config;
 
@@ -45,20 +64,10 @@ BEGIN {
     $_Config{'xs'} = 0;
     $_Config{'maxbits'} = Math::Prime::Util::PP::_PP_prime_maxbits();
     carp "Using Pure Perl implementation: $@";
-    *_prime_memfreeall = \&Math::Prime::Util::PP::_prime_memfreeall;
 
+    *_prime_memfreeall = \&Math::Prime::Util::PP::_prime_memfreeall;
     *prime_memfree  = \&Math::Prime::Util::PP::prime_memfree;
     *prime_precalc  = \&Math::Prime::Util::PP::prime_precalc;
-
-    *prime_count        = \&Math::Prime::Util::PP::prime_count;
-    *nth_prime          = \&Math::Prime::Util::PP::nth_prime;
-
-    *is_prime       = \&Math::Prime::Util::PP::is_prime;
-    *next_prime     = \&Math::Prime::Util::PP::next_prime;
-    *prev_prime     = \&Math::Prime::Util::PP::prev_prime;
-
-    # Perhaps these can be moved here?
-    *miller_rabin   = \&Math::Prime::Util::PP::miller_rabin;
 
     # These probably shouldn't even be exported
     *trial_factor   = \&Math::Prime::Util::PP::trial_factor;
@@ -85,6 +94,11 @@ if ($_Config{'maxbits'} == 32) {
   $_Config{'maxprime'}    = 18446744073709551557;
   $_Config{'maxprimeidx'} = 425656284035217743;
 }
+
+# used for code like:
+#    return _XS_foo($n)  if $n <= $_XS_MAXVAL
+# which builds into one scalar whether XS is available and if we can call it.
+my $_XS_MAXVAL = $_Config{'xs'}  ?  $_Config{'maxparam'}  :  -1;
 
 # Notes on how we're dealing with big integers:
 #
@@ -183,7 +197,7 @@ sub primes {
   my $sref = [];
   return $sref if ($low > $high) || ($high < 2);
 
-  if ( (!$_Config{'xs'}) || ($high > $_Config{'maxparam'}) ) {
+  if ( $high > $_XS_MAXVAL) {
     return Math::Prime::Util::PP::primes($low,$high);
   }
 
@@ -235,76 +249,152 @@ sub primes {
 }
 
 
-sub random_prime {
-  my $low = (@_ == 2)  ?  shift  :  2;
-  my $high = shift;
-  _validate_positive_integer($low);
-  _validate_positive_integer($high);
+# This is what I think we should be doing for large values:
+# See http://citeseerx.ist.psu.edu/viewdoc/summary?doi=10.1.1.26.2151
+# "Fast Generation of Prime Numbers and Secure Public-Key Cryptographic Parameters"
+# by Ueli M. Maurer.
+#
+# Also see "Close to Uniform Prime Number Generation With Fewer Random Bits"
+# by Foque and Tibouchi (2005).
+#
+# What we're currently doing is not much different than Foque's algorithm 1.
+# Their A1 doesn't work when $low == 2.  Some speedups should be done.
+#
+# The current code is pretty fast for native types, but *very* slow for bigints.
+# It does give a uniform distribution.
+#      37uS for   24-bit
+#     0.25s for   64-bit (on 32-bit machine)
+#     4s    for  256-bit
+#    40s    for  512-bit
+#  15m      for 1024-bit
+# A lot of this is due to is_prime on bigints however.
+#     
+# To verify distribution:
+#   perl -Iblib/lib -Iblib/arch -MMath::Prime::Util=:all -E 'my %freq; $n=1000000; $freq{random_nbit_prime(6)}++ for (1..$n); printf("%4d %6.3f%%\n", $_, 100.0*$freq{$_}/$n) for sort {$a<=>$b} keys %freq;'
+#   perl -Iblib/lib -Iblib/arch -MMath::Prime::Util=:all -E 'my %freq; $n=1000000; $freq{random_prime(1260437,1260733)}++ for (1..$n); printf("%4d %6.3f%%\n", $_, 100.0*$freq{$_}/$n) for sort {$a<=>$b} keys %freq;'
 
-  # Tighten the range to the nearest prime.
-  $low = 2 if $low < 2;
-  $low = next_prime($low - 1);
-  $high = ($high < ~0)  ?  prev_prime($high + 1)  :  prev_prime($high);
-  return $low if ($low == $high) && is_prime($low);
-  return if $low >= $high;
+{
+  # Sub to call with low and high already primes and verified range.
+  my $_random_prime = sub {
+    my($low,$high) = @_;
 
-  # At this point low and high are both primes, and low < high.
-  my $range = $high - $low + 1;
-  my $prime;
+    # low and high are both primes, and low < high.
+    my $range = $high - $low + 1;
+    my $prime;
 
-  # If $low is large (e.g. >10 digits) and $range is small (say ~10k), it
-  # would be fastest to call primes in the range and randomly pick one.  I'm
-  # not implementing it now because it seems like a rare case.
+    # If $low is large (e.g. >10 digits) and $range is small (say ~10k), it
+    # would be fastest to call primes in the range and randomly pick one.  I'm
+    # not implementing it now because it seems like a rare case.
 
-  # Note:  I was using rand($range), but Math::Random::MT ignores the argument
-  #        instead of following its documentation.
-  my $irandf = (defined &::rand) ? sub { return int(::rand()*shift); }
-                                 : sub { return int(rand()*shift); };
+    # Note:  I was using rand($range), but Math::Random::MT ignores the argument
+    #        instead of following its documentation.
+    my $irandf = (defined &::rand) ? sub { return int(::rand()*shift); }
+                                   : sub { return int(rand()*shift); };
+    # TODO: Look at RANDBITS if using system rand
 
-  if ($high < 30000) {
-    # nice deterministic solution, but gets very costly with large values.
-    my $li = ($low == 2) ? 1 : prime_count($low);
-    my $hi = prime_count($high);
-    my $irange = $hi - $li + 1;
-    my $rand = $irandf->($irange);
-    $prime = nth_prime($li + $rand);
-  } else {
-    # Generate random numbers in the interval until one is prime.
-    my $loop_limit = 2000 * 1000;  # To protect against broken rand
-    do {
-      # TODO: bigint with huge range
-      my $rand = ($range <= 4294967295) ? $irandf->($range) :
-                 ( ($irandf->(4294967295) << 32) + $irandf->(4294967295) ) % $range;
-      $prime = $low + $rand;
-      croak "Random function broken?" if $loop_limit-- < 0;
-    } while ( !($prime % 2) || !($prime % 3) || !is_prime($prime) );
+    if ($high < 30000) {
+      # nice deterministic solution, but gets very costly with large values.
+      my $li = ($low == 2) ? 1 : prime_count($low);
+      my $hi = prime_count($high);
+      my $irange = $hi - $li + 1;
+      my $rand = $irandf->($irange);
+      $prime = nth_prime($li + $rand);
+    } else {
+      # Generate random numbers in the interval until one is prime.
+      my $loop_limit = 2000 * 1000;  # To protect against broken rand
+
+      my $nrands = 1;
+      my $randzero = 0;
+      if (ref($range) ne 'Math::BigInt') {
+        $nrands = ($range < 2147483648) ? 1
+                : ($range < 4611686018427387904) ?  2 : 3;
+      } else {
+        my $randbits = length($range->as_bin());
+        $nrands = int(($randbits+30) / 31);    # 31 bits at a time
+        $randzero = Math::BigInt->bzero();
+      }
+      # Do all the upper rand bits only once.
+      my $randbase = $randzero;
+      for (2 .. $nrands) {
+        $randbase = ($randbase << 31) + $irandf->(2147483648);
+      }
+      $randbase = $randbase << 31;
+      # Now loop looking for a prime.  There are lots of ways we could speed
+      # this up, especially for special cases.
+      while (1) {
+        my $rand = $randbase + $irandf->(2147483648);
+        $prime = $low + ($rand % $range);
+        croak "Random function broken?" if $loop_limit-- < 0;
+        next if !($prime % 2) || !($prime % 3) || !($prime % 5) || !($prime % 7) || !($prime % 11);
+        last if is_prime($prime);
+      }
+    }
+    return $prime;
+  };
+  # Cache of tight bounds for each digit.  Helps performance a lot.
+  my @_random_ndigit_ranges = (undef, [2,7], [11,97] );
+  my @_random_nbit_ranges   = (undef, undef, [2,3],[5,7] );
+
+  sub random_prime {
+    my $low = (@_ == 2)  ?  shift  :  2;
+    my $high = shift;
+    _validate_positive_integer($low);
+    _validate_positive_integer($high);
+
+    # Tighten the range to the nearest prime.
+    $low = 2 if $low < 2;
+    $low = next_prime($low - 1);
+    $high = ($high < ~0)  ?  prev_prime($high + 1)  :  prev_prime($high);
+    return $low if ($low == $high) && is_prime($low);
+    return if $low >= $high;
+
+    # At this point low and high are both primes, and low < high.
+    return $_random_prime->($low, $high);
   }
-  return $prime;
+
+  sub random_ndigit_prime {
+    my($digits) = @_;
+    _validate_positive_integer($digits, 1,
+             (defined $bigint::VERSION) ? 10000 : $_Config{'maxdigits'});
+
+    if (!defined $_random_ndigit_ranges[$digits]) {
+      if ( defined $bigint::VERSION  &&  $digits >= $_Config{'maxdigits'} ) {
+        my $low  = Math::BigInt->new('10')->bpow($digits-1);
+        my $high = Math::BigInt->new('10')->bpow($digits);
+        $_random_ndigit_ranges[$digits] = [next_prime($low), prev_prime($high)];
+      } else {
+        my $low  = int(10 ** ($digits-1));
+        my $high = int(10 ** $digits);
+        $high = ~0 if $high > ~0;
+        $_random_ndigit_ranges[$digits] = [next_prime($low), prev_prime($high)];
+      }
+    }
+    my ($low, $high) = @{$_random_ndigit_ranges[$digits]};
+    return $_random_prime->($low, $high);
+  }
+
+  sub random_nbit_prime {
+    my($bits) = @_;
+    _validate_positive_integer($bits, 2,
+             (defined $bigint::VERSION) ? 100000 : $_Config{'maxbits'});
+
+    if (!defined $_random_nbit_ranges[$bits]) {
+      if ( defined $bigint::VERSION  &&  $bits >= $_Config{'maxbits'} ) {
+        my $low  = Math::BigInt->new('2')->bpow($bits-1);
+        my $high = Math::BigInt->new('2')->bpow($bits);
+        # Don't pull the range in to primes, just odds
+        $_random_nbit_ranges[$bits] = [$low+1, $high-1];
+      } else {
+        my $low  = int(2 ** ($bits-1));
+        my $high = int(2 ** $bits);
+        $high = ~0 if $high > ~0;
+        $_random_nbit_ranges[$bits] = [next_prime($low), prev_prime($high)];
+      }
+    }
+    my ($low, $high) = @{$_random_nbit_ranges[$bits]};
+    return $_random_prime->($low, $high);
+  }
 }
-
-
-# Calculate next_prime and prev_prime once.
-# This helps performance with 9+ digits.
-my @_random_ndigit_ranges;
-
-sub random_ndigit_prime {
-  my($digits) = @_;
-  if (defined $bigint::VERSION && bigint::in_effect()) {
-    _validate_positive_integer($digits, 1, 10000);
-  } else {
-    _validate_positive_integer($digits, 1, $_Config{'maxdigits'});
-  }
-  if (!defined $_random_ndigit_ranges[$digits]) {
-    my $low = ($digits == 1) ? 0 : int(10 ** ($digits-1));
-    my $high = int(10 ** $digits);
-    $high = ~0 if $high > ~0 && !defined $bigint::VERSION;
-    $_random_ndigit_ranges[$digits] = [next_prime($low), prev_prime($high)];
-  }
-  my ($low, $high) = @{$_random_ndigit_ranges[$digits]};
-  return random_prime($low, $high);
-}
-
-# Perhaps a random_nbit_prime ?   Definition?
 
 sub all_factors {
   my $n = shift;
@@ -406,22 +496,77 @@ sub euler_phi {
 # is, the XS functions will look at the input and make a call here if the input
 # is large.
 
+sub is_prime {
+  my($n) = @_;
+  return 0 if $n <= 0;             # everything else below 7 is composite
+  _validate_positive_integer($n);
 
-#sub is_prime {
-#  my($n) = @_;
-#  _validate_positive_integer($n);
-#
-#  return XS_is_prime($n) if $_Config{'xs'} && $n <= $_Config{'maxparam'};
-#  return Math::Prime::Util::PP::is_prime($n);
-#}
+  return _XS_is_prime($n) if $n <= $_XS_MAXVAL;
+  return Math::Prime::Util::PP::is_prime($n);
+}
+
+sub next_prime {
+  my($n) = @_;
+  _validate_positive_integer($n);
+
+  return _XS_next_prime($n) if $n <= $_XS_MAXVAL;
+  return Math::Prime::Util::PP::next_prime($n);
+}
+
+sub prev_prime {
+  my($n) = @_;
+  _validate_positive_integer($n);
+
+  return _XS_prev_prime($n) if $n <= $_XS_MAXVAL;
+  return Math::Prime::Util::PP::prev_prime($n);
+}
+
+sub prime_count {
+  my($low,$high) = @_;
+  if (defined $high) {
+    _validate_positive_integer($low);
+    _validate_positive_integer($high);
+  } else {
+    ($low,$high) = (2, $low);
+    _validate_positive_integer($high);
+  }
+  return 0 if $high < 2  ||  $low > $high;
+
+  return _XS_prime_count($low,$high) if $high <= $_XS_MAXVAL;
+  return Math::Prime::Util::PP::prime_count($low,$high);
+}
+
+sub nth_prime {
+  my($n) = @_;
+  _validate_positive_integer($n);
+
+  return _XS_nth_prime($n) if $_Config{'xs'} && $n <= $_Config{'maxprimeidx'};
+  return Math::Prime::Util::PP::nth_prime($n);
+}
 
 sub factor {
   my($n) = @_;
   _validate_positive_integer($n);
 
-  return _XS_factor($n) if $_Config{'xs'} && $n <= $_Config{'maxparam'};
+  return _XS_factor($n) if $n <= $_XS_MAXVAL;
+  return Math::Prime::Util::PP::factor($n);
+}
 
-  Math::Prime::Util::PP::factor($n);
+sub is_strong_pseudoprime {
+  my($n) = shift;
+  _validate_positive_integer($n);
+  # validate bases?
+  return _XS_miller_rabin($n, @_) if $n <= $_XS_MAXVAL;
+  return Math::Prime::Util::PP::miller_rabin($n, @_);
+}
+
+sub is_strong_lucas_pseudoprime {
+  return Math::Prime::Util::PP::is_strong_lucas_pseudoprime(@_);
+}
+
+sub miller_rabin {
+  warn "Use of miller_rabin is deprecated.  Use is_strong_pseudoprime instead.";
+  return is_strong_pseudoprime(@_);
 }
 
 #############################################################################
@@ -451,7 +596,7 @@ sub is_prob_prime {
   return 0 if defined $n && $n < 2;
   _validate_positive_integer($n);
 
-  return _XS_is_prob_prime($n) if $_Config{'xs'} && $n <= $_Config{'maxparam'};
+  return _XS_is_prob_prime($n) if $n <= $_XS_MAXVAL;
 
   return 2 if $n == 2 || $n == 3 || $n == 5 || $n == 7;
   return 0 if $n < 11;
@@ -480,10 +625,6 @@ sub is_prob_prime {
   return 0 unless Math::Prime::Util::PP::miller_rabin($n, 2);
   return 0 unless Math::Prime::Util::PP::is_strong_lucas_pseudoprime($n);
   return ($n <= 18446744073709551615)  ?  2  :  1;
-}
-
-sub is_strong_lucas_pseudoprime {
-  return Math::Prime::Util::PP::is_strong_lucas_pseudoprime(@_);
 }
 
 #############################################################################
@@ -848,6 +989,7 @@ Version 0.10
   my $small_prime = random_prime(1000);      # random prime <= limit
   my $rand_prime = random_prime(100, 10000); # random prime within a range
   my $rand_prime = random_ndigit_prime(6);   # random 6-digit prime
+  my $rand_prime = random_nbit_prime(128);   # random 128-bit prime
 
   # Euler phi on large number
   use bigint;  say euler_phi( 801294088771394680000412 );
@@ -872,10 +1014,9 @@ The main development of the module has been for working with Perl UVs, so
 32-bit or 64-bit.  Bignum support is limited.  On advantage is that it requires
 no external software (e.g. GMP or Pari).  If you need full bignum support for
 these types of functions inside Perl now, I recommend L<Math::Pari>.
-While this module contains all the functionality of L<Math::Primality>, and is
-far faster on 64-bit input, bigint performance varies.  On my 64-bit machine,
-L<Math::Primality> works well and is quite a bit faster than this module.  On
-my 32-bit machine, L<Math::Primality> is very slow and consumes a lot of memory.
+While this module contains all the functionality of L<Math::Primality> and is
+much faster on 64-bit input, L<Math::Primality> is much faster than we are
+for bigints.  This is being addressed.
 
 The module is thread-safe and allows concurrency between Perl threads while
 still sharing a prime cache.  It is not itself multithreaded.  See the
@@ -885,39 +1026,29 @@ your program.
 
 =head1 BIGNUM SUPPORT
 
-A number of the functions support big numbers, but currently not all.  The
-ones that do:
+By default all functions support bigints.  Performance on bigints is not very
+good however, as currently it is all using the core bigint / bignum routines.
+Some of these performance concerns will be addressed in later versions, and
+should all be hidden.
 
-  is_prob_prime
-  is_strong_lucas_pseudoprime
-  prime_count_lower
-  prime_count_upper
-  prime_count_approx
-  nth_prime_lower
-  nth_prime_upper
-  nth_prime_approx
+Some of the functions, notably:
+
   factor
-  all_factors
-  moebius
-  euler_phi
-  ExponentialIntegral
-  LogarithmicIntegral
-  RiemannR
-
-These still do not:
-
   is_prime
-  miller_rabin
-  primes
   next_prime
   prev_prime
   prime_count
   nth_prime
-  random_prime
-  random_ndigit_prime
+  is_strong_pseudoprime
 
-It is possible to call the L<Math::Prime::Util::PP> versions directly, though
-performance may be very suboptimal.
+work very fast (under 1 microsecond) on small inputs, but the wrappers to do
+input validation and bigint support take more time than the function itself.
+Using the flag:
+
+  use Math::Prime::Util qw(-bigint);
+
+will turn off bigint support for those functions.  Those functions will then
+go directly to the XS versions, which will speed up very small inputs a B<lot>.
 
 
 =head1 FUNCTIONS
@@ -1149,19 +1280,14 @@ for each prime in the range, the chances are equally likely that it will be
 seen.
 
 The current algorithm does a random index selection for small numbers, which
-is deterministic.  For larger numbers, this can be very slow, so the
+is deterministic.  For larger numbers, this slows down, so the
 obvious Monte Carlo method is used, where random numbers in the range are
 selected until one is prime.  That also gets slow as the number of digits
-increases, but not something that impacts us in 64-bit.
-
-If you want cryptographically secure primes, I suggest looking at
-L<Crypt::Primes> or something similar.  The current L<Math::Prime::Util>
-module does not use strong randomness, and its primes are ridiculously small
-by cryptographic standards.
+increases, but isn't really an issue until bigints are used.
 
 Perl's L<rand> function is normally called, but if the sub C<main::rand>
 exists, it will be used instead.  When called with no arguments it should
-return a float value between 0 and 1-epsilon, with 32 bits of randomness.
+return a float value between 0 and 1-epsilon, with 31 bits of randomness.
 Examples:
 
   # Use Mersenne Twister
@@ -1170,15 +1296,44 @@ Examples:
   # Use a custom random function
   sub rand { ... }
 
+If you want cryptographically secure primes, I suggest looking at
+L<Crypt::Primes> for now.  At minimum you should use a better source of
+random numbers, such as L<Crypt::Random>.
+
 
 =head2 random_ndigit_prime
 
   say "My 4-digit prime number is: ", random_ndigit_prime(4);
 
 Selects a random n-digit prime, where the input is an integer number of
-digits between 1 and the maximum native type (10 for 32-bit, 20 for 64-bit).
-One of the primes within that range (e.g. 1000 - 9999 for 4-digits) will be
-uniformly selected using the L<rand> function.
+digits between 1 and the maximum native type (10 for 32-bit, 20 for 64-bit,
+10000 if bigint is active).  One of the primes within that range
+(e.g. 1000 - 9999 for 4-digits) will be uniformly selected using the
+L<rand> function as described above.
+
+
+=head2 random_nbit_prime
+
+  use bigint;  my $bigprime = random_nbit_prime(512);
+
+Selects a random n-bit prime, where the input is an integer number of bits
+between 2 and the maximum representable bits (32, 64, or 100000 for native
+32-bit, native 64-bit, and bigint respectively).  A prime with the nth bit
+set will be uniformly selected, with randomness supplied via calls to the
+L<rand> function as described above.
+
+This the trivial algorithm to select primes from a range.  This gives a uniform
+distribution, however it is quite slow for bigints, where the C<is_prime>
+function is a limiter.
+
+The differences between this function and what is used by L<Crypt::Primes>
+include: (1) this function generates probable primes (albeit using BPSW) while
+the latter is provable primes; (2) this function is really fast for native
+bit sizes, but ridiculously slow in its current implementation when run on
+very large numbers of bits -- L<Crypt::Primes> is quite fast for large bits;
+(3) this function requires no external libraries while the latter requires
+L<Math::Pari>; (4) the latter has some useful options for cryptography.
+
 
 =head2 moebius
 

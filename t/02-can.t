@@ -8,7 +8,8 @@ use Test::More  tests => 1;
 my @functions =  qw(
                      prime_get_config
                      prime_precalc prime_memfree
-                     is_prime is_prob_prime miller_rabin
+                     is_prime is_prob_prime
+                     is_strong_pseudoprime is_strong_lucas_pseudoprime
                      primes
                      next_prime  prev_prime
                      prime_count prime_count_lower prime_count_upper prime_count_approx

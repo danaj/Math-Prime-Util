@@ -3,14 +3,14 @@
 
 #include "ptypes.h"
 
-extern int is_prime(UV x);
+extern int _XS_is_prime(UV x);
 extern int is_definitely_prime(UV x);
 extern UV  next_trial_prime(UV x);
-extern UV  next_prime(UV x);
-extern UV  prev_prime(UV x);
+extern UV  _XS_next_prime(UV x);
+extern UV  _XS_prev_prime(UV x);
 
-extern UV  prime_count(UV low, UV high);
-extern UV  nth_prime(UV x);
+extern UV  _XS_prime_count(UV low, UV high);
+extern UV  _XS_nth_prime(UV x);
 
 /* These have been moved into the main Util.pm */
 extern UV  _XS_prime_count_lower(UV x);

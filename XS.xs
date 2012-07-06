@@ -24,7 +24,7 @@ void
 _prime_memfreeall()
 
 UV
-prime_count(IN UV low, IN UV high = 0)
+_XS_prime_count(IN UV low, IN UV high = 0)
   CODE:
     if (high == 0) {   /* Without a Perl layer in front of this, we'll have */
       high = low;      /* the pathological case of a-0 turning into 0-a.    */
@@ -34,22 +34,22 @@ prime_count(IN UV low, IN UV high = 0)
       prime_precalc(high);
       RETVAL = 0;
     } else {
-      RETVAL = prime_count(low, high);
+      RETVAL = _XS_prime_count(low, high);
     }
   OUTPUT:
     RETVAL
 
 UV
-nth_prime(IN UV n)
+_XS_nth_prime(IN UV n)
 
 int
-is_prime(IN UV n)
+_XS_is_prime(IN UV n)
 
 UV
-next_prime(IN UV n)
+_XS_next_prime(IN UV n)
 
 UV
-prev_prime(IN UV n)
+_XS_prev_prime(IN UV n)
 
 
 UV
@@ -295,7 +295,7 @@ _XS_factor(IN UV n)
       while ( (n% 3) == 0 ) {  n /=  3;  XPUSHs(sv_2mortal(newSVuv( 3 ))); } \
       while ( (n% 5) == 0 ) {  n /=  5;  XPUSHs(sv_2mortal(newSVuv( 5 ))); } \
       if (n == 1) {  /* done */ } \
-      else if (is_prime(n)) { XPUSHs(sv_2mortal(newSVuv( n ))); } \
+      else if (_XS_is_prime(n)) { XPUSHs(sv_2mortal(newSVuv( n ))); } \
       else { \
         UV factors[MPU_MAX_FACTORS+1]; \
         int i, nfactors; \
@@ -342,7 +342,7 @@ pminus1_factor(IN UV n, IN UV maxrounds = 4*1024*1024)
     SIMPLE_FACTOR(pminus1_factor, n, maxrounds);
 
 int
-miller_rabin(IN UV n, ...)
+_XS_miller_rabin(IN UV n, ...)
   PREINIT:
     UV bases[64];
     int prob_prime = 1;
@@ -360,7 +360,7 @@ miller_rabin(IN UV n, ...)
         c++;
         if (b == 64) break;
       }
-      prob_prime = miller_rabin(n, bases, b);
+      prob_prime = _XS_miller_rabin(n, bases, b);
       if (prob_prime != 1)
         break;
     }

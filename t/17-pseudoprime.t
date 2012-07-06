@@ -3,7 +3,7 @@ use strict;
 use warnings;
 
 use Test::More;
-use Math::Prime::Util qw/is_prime miller_rabin/;
+use Math::Prime::Util qw/is_prime is_strong_pseudoprime is_strong_lucas_pseudoprime/;
 
 my $use64 = Math::Prime::Util::prime_get_config->{'maxbits'} > 32;
 my $extra = defined $ENV{RELEASE_TESTING} && $ENV{RELEASE_TESTING};
@@ -26,7 +26,7 @@ $#phis = 3 unless $use64;
 #  perl -MMath::Primality=is_strong_pseudoprime -MMath::Prime::Util=is_prime -E 'my $_=$base|1; while(1) {print "$_ " if is_strong_pseudoprime($_,$base) && !is_prime($_); $_+=2; } print "\n"; BEGIN {$|=1; $base=553174392}'
 #
 # ~30x faster than Math::Primality:
-#  perl -MMath::Prime::Util=:all -E 'my $_=$base|1; while(1) {print "$_ " if miller_rabin($_,$base) && !is_prime($_); $_+=2; } print "\n"; BEGIN {$|=1; $base=553174392}'
+#  perl -MMath::Prime::Util=:all -E 'my $_=$base|1; while(1) {print "$_ " if is_strong_pseudoprime($_,$base) && !is_prime($_); $_+=2; } print "\n"; BEGIN {$|=1; $base=553174392}'
 
 my %pseudoprimes = (
    2 => [ qw/2047 3277 4033 4681 8321 15841 29341 42799 49141 52633 65281 74665 80581 85489 88357 90751/ ],
@@ -71,27 +71,27 @@ plan tests => 0 + 3
                 + 1
                 + 1*$extra;
 
-ok(!eval { miller_rabin(2047); }, "MR with no base fails");
-ok(!eval { miller_rabin(2047,0); }, "MR base 0 fails");
-ok(!eval { miller_rabin(2047,1); }, "MR base 1 fails");
+ok(!eval { is_strong_pseudoprime(2047); }, "MR with no base fails");
+ok(!eval { is_strong_pseudoprime(2047,0); }, "MR base 0 fails");
+ok(!eval { is_strong_pseudoprime(2047,1); }, "MR base 1 fails");
 
-is( miller_rabin(0, 2), 0, "MR with 0 shortcut composite");
-is( miller_rabin(1, 2), 0, "MR with 0 shortcut composite");
-is( miller_rabin(2, 2), 1, "MR with 2 shortcut prime");
-is( miller_rabin(3, 2), 1, "MR with 3 shortcut prime");
+is( is_strong_pseudoprime(0, 2), 0, "MR with 0 shortcut composite");
+is( is_strong_pseudoprime(1, 2), 0, "MR with 0 shortcut composite");
+is( is_strong_pseudoprime(2, 2), 1, "MR with 2 shortcut prime");
+is( is_strong_pseudoprime(3, 2), 1, "MR with 3 shortcut prime");
 
 
 # Check that each strong pseudoprime base b makes it through MR with that base
 while (my($base, $ppref) = each (%pseudoprimes)) {
   foreach my $p (@$ppref) {
-    ok(miller_rabin($p, $base), "Pseudoprime (base $base) $p passes MR");
+    ok(is_strong_pseudoprime($p, $base), "Pseudoprime (base $base) $p passes MR");
   }
 }
 
 # Check that phi_n makes passes MR with all prime bases < pn
 for my $phi (1 .. scalar @phis) {
   #next if ($phi > 4) && (!$use64);
-  ok( miller_rabin($phis[$phi-1], @sp[0 .. $phi-1]), "phi_$phi passes MR with first $phi primes");
+  ok( is_strong_pseudoprime($phis[$phi-1], @sp[0 .. $phi-1]), "phi_$phi passes MR with first $phi primes");
 }
 
 # Verify MR base 2 for all small numbers
@@ -100,9 +100,9 @@ for my $phi (1 .. scalar @phis) {
   for (2 .. 4032) {
     next if $_ == 2047 || $_ == 3277;
     if (is_prime($_)) {
-      if (!miller_rabin($_,2)) { $mr2fail = $_; last; }
+      if (!is_strong_pseudoprime($_,2)) { $mr2fail = $_; last; }
     } else {
-      if (miller_rabin($_,2))  { $mr2fail = $_; last; }
+      if (is_strong_pseudoprime($_,2))  { $mr2fail = $_; last; }
     }
   }
   is($mr2fail, 0, "MR base 2 matches is_prime for 2-4032 (ex 2047,3277)");
@@ -113,10 +113,10 @@ if ($extra) {
   my $mr2fail = 0;
   for (2 .. 1373652) {
     if (is_prime($_)) {
-      if (!miller_rabin($_,2,3)) { $mr2fail = $_; last; }
+      if (!is_strong_pseudoprime($_,2,3)) { $mr2fail = $_; last; }
     } else {
-      if (miller_rabin($_,2,3))  { $mr2fail = $_; last; }
+      if (is_strong_pseudoprime($_,2,3))  { $mr2fail = $_; last; }
     }
   }
-  is($mr2fail, 0, "miller_rabin bases 2,3 matches is_prime to 1,373,652");
+  is($mr2fail, 0, "is_strong_pseudoprime bases 2,3 matches is_prime to 1,373,652");
 }

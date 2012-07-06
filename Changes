@@ -1,6 +1,6 @@
 Revision history for Perl extension Math::Prime::Util.
 
-0.10  30 June 2012
+0.10  7 July 2012
     - Make miller_rabin return 0 if given even number.
     - Add tests for PP.
     - Cleanup of some tests.
@@ -11,6 +11,10 @@ Revision history for Perl extension Math::Prime::Util.
     - many more bigint/bignum changes
     - factor always returns sorted results
     - added BPSW primality test for large is_prob_prime
+    - miller_rabin() deprecated.  Use is_strong_pseudoprime instead.
+    - Add '-bigint' tag to turn off bigint support for some functions.  In
+      conjunction, add wrappers for all remaining functions so we support
+      bigints everywhere.
 
 0.09  25 June 2012
     - Pure Perl code added.  Passes all tests.  Used only if the XSLoader
