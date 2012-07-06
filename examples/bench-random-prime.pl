@@ -2,7 +2,7 @@
 use strict;
 use warnings;
 
-use Math::Prime::Util qw/random_prime random_ndigit_prime/;
+use Math::Prime::Util qw/-nobigint random_prime random_ndigit_prime/;
 use Benchmark qw/:all/;
 use List::Util qw/min max/;
 my $count = shift || -3;

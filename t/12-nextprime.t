@@ -72,7 +72,11 @@ is( prev_prime(19660), 19609, "prev prime of 19660 is 19609" );
 is( prev_prime(19610), 19609, "prev prime of 19610 is 19609" );
 
 is( prev_prime(2), 0, "Previous prime of 2 returns 0" );
-is( next_prime(~0-4), 0, "Next prime of ~0-4 returns 0" );
+if ($use64) {
+  is( next_prime(18446744073709551611), 0, "Next prime of ~0-4 returns 0" );
+} else {
+  is( next_prime(4294967291), 0, "Next prime of ~0-4 returns 0" );
+}
 
 # Turns out the testing of prev/next from 0-3572 still misses some cases.
 foreach my $n (2010733 .. 2010880) {

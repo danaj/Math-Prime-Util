@@ -96,20 +96,21 @@ if ($use64) {
   }
 }
 
-my $maxindex = $use64 ? 425656284035217743 : 203280221;
-my $maxprime = $use64 ? 18446744073709551557 : 4294967291;
+my $maxindex   = $use64 ? 425656284035217743 : 203280221;
+my $maxindexp1 = $use64 ? 425656284035217744 : 203280222;
+my $maxprime   = $use64 ? 18446744073709551557 : 4294967291;
 cmp_ok( nth_prime_lower($maxindex), '<=', $maxprime, "nth_prime_lower(maxindex) <= maxprime");
 cmp_ok( nth_prime_upper($maxindex), '>=', $maxprime, "nth_prime_upper(maxindex) >= maxprime");
 cmp_ok( nth_prime_approx($maxindex), '==', $maxprime, "nth_prime_approx(maxindex) == maxprime");
-cmp_ok( nth_prime_lower($maxindex+1), '>=', nth_prime_lower($maxindex), "nth_prime_lower(maxindex+1) >= nth_prime_lower(maxindex)");
+cmp_ok( nth_prime_lower($maxindexp1), '>=', nth_prime_lower($maxindex), "nth_prime_lower(maxindex+1) >= nth_prime_lower(maxindex)");
 
-my $add = ($broken64) ? 100 : 1;
+my $overindex = ($broken64) ? 425656284035217843 : $maxindexp1;
 
-eval { nth_prime_upper($maxindex+$add); };
-like($@, qr/overflow/, "nth_prime_upper(maxindex+$add) overflows");
+eval { nth_prime_upper($overindex); };
+like($@, qr/overflow/, "nth_prime_upper($overindex) overflows");
 
-eval { nth_prime_approx($maxindex+$add); };
-like($@, qr/overflow/, "nth_prime_approx(maxindex+$add) overflows");
+eval { nth_prime_approx($overindex); };
+like($@, qr/overflow/, "nth_prime_approx($overindex) overflows");
 
-eval { nth_prime($maxindex+$add); };
-like($@, qr/overflow/, "nth_prime(maxindex+$add) overflows");
+eval { nth_prime($overindex); };
+like($@, qr/overflow/, "nth_prime($overindex) overflows");

@@ -2,7 +2,7 @@
 use strict;
 use warnings;
 
-use Math::Prime::Util qw/next_prime is_prime/;
+use Math::Prime::Util qw/-nobigint next_prime is_prime/;
 
 my $count = shift || 20;
 

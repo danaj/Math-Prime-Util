@@ -16,6 +16,7 @@ our @EXPORT_OK = qw(
                      prime_precalc prime_memfree
                      is_prime is_prob_prime
                      is_strong_pseudoprime is_strong_lucas_pseudoprime
+                     miller_rabin
                      primes
                      next_prime  prev_prime
                      prime_count prime_count_lower prime_count_upper prime_count_approx
@@ -35,13 +36,15 @@ sub import {
 }
 
 sub _import_nobigint {
-  undef *factor;      *factor          = \&_XS_factor;
-  undef *is_prime;    *is_prime        = \&_XS_is_prime;
-  undef *next_prime;  *next_prime      = \&_XS_next_prime;
-  undef *prev_prime;  *prev_prime      = \&_XS_prev_prime;
-  undef *prime_count; *prime_count     = \&_XS_prime_count;
-  undef *nth_prime;   *nth_prime       = \&_XS_nth_prime;
+  undef *factor;        *factor          = \&_XS_factor;
+  undef *is_prime;      *is_prime        = \&_XS_is_prime;
+  undef *is_prob_prime; *is_prob_prime   = \&_XS_is_prob_prime;
+  undef *next_prime;    *next_prime      = \&_XS_next_prime;
+  undef *prev_prime;    *prev_prime      = \&_XS_prev_prime;
+  undef *prime_count;   *prime_count     = \&_XS_prime_count;
+  undef *nth_prime;     *nth_prime       = \&_XS_nth_prime;
   undef *is_strong_pseudoprime;  *is_strong_pseudoprime = \&_XS_miller_rabin;
+  undef *miller_rabin;  *miller_rabin    = \&_XS_miller_rabin;
 }
 
 my %_Config;
@@ -116,6 +119,12 @@ my $_XS_MAXVAL = $_Config{'xs'}  ?  $_Config{'maxparam'}  :  -1;
 #
 #  $n = $n->numify if $n < ~0 && ref($n) =~ /^Math::Big/;
 #     get us out of big math if we can
+#
+# Sadly, non-modern versions of bignum (5.12.4 and earlier) completely make a
+# mess of things like BigInt::numify and int(BigFloat).  Using int($x->bstr)
+# seems to work.
+# E.g.:
+#    $n = 33662485846146713;  $n->numify;   $n is now 3.36624858461467e+16
 
 
 sub prime_get_config {
@@ -137,7 +146,7 @@ sub _validate_positive_integer {
   croak "Parameter '$n' must be <= $max" if defined $max && $n > $max;
   if ($n <= $_Config{'maxparam'}) {
     $_[0] = $n->as_number() if ref($n) eq 'Math::BigFloat';
-    $_[0] = $n->numify() if ref($n) eq 'Math::BigInt';
+    $_[0] = int($n->bstr) if ref($n) eq 'Math::BigInt';
   } elsif (ref($n) ne 'Math::BigInt') {
     croak "Parameter '$n' outside of integer range" if !defined $bigint::VERSION;
     $_[0] = Math::BigInt->new("$n"); # Make $n a proper bigint object
@@ -321,6 +330,8 @@ sub primes {
       $randbase = $randbase << 31;
       # Now loop looking for a prime.  There are lots of ways we could speed
       # this up, especially for special cases.
+      # TODO: This has to be updated for 5.6.2.  It keeps turning these numbers
+      # into floating point.
       while (1) {
         my $rand = $randbase + $irandf->(2147483648);
         $prime = $low + ($rand % $range);
@@ -413,7 +424,7 @@ sub all_factors {
       # to make sure we're using bigints when we calculate the product.
       foreach my $f2 (@all) {
         my $product = Math::BigInt->new("$f1") * Math::BigInt->new("$f2");
-        $product = $product->numify if $product <= ~0;
+        $product = int($product->bstr) if $product <= ~0;
         $all_factors{$product} = 1 if $product < $n;
       }
     }
@@ -498,11 +509,11 @@ sub euler_phi {
 
 sub is_prime {
   my($n) = @_;
-  return 0 if $n <= 0;             # everything else below 7 is composite
+  return 0 if $n <= 0;
   _validate_positive_integer($n);
 
   return _XS_is_prime($n) if $n <= $_XS_MAXVAL;
-  return Math::Prime::Util::PP::is_prime($n);
+  return is_prob_prime($n);
 }
 
 sub next_prime {
@@ -565,7 +576,7 @@ sub is_strong_lucas_pseudoprime {
 }
 
 sub miller_rabin {
-  warn "Use of miller_rabin is deprecated.  Use is_strong_pseudoprime instead.";
+  #warn "miller_rabin() is deprecated. Use is_strong_pseudoprime instead.";
   return is_strong_pseudoprime(@_);
 }
 
@@ -651,7 +662,10 @@ sub prime_count_approx {
 
   # return int( LogarithmicIntegral($x) - LogarithmicIntegral(sqrt($x))/2 );
 
-  return int(RiemannR($x)+0.5);
+  my $result = RiemannR($x) + 0.5;
+
+  $result = Math::BigInt->new($result->bfloor->bstr()) if ref($result) eq 'Math::BigFloat';
+  return int($result);
 }
 
 sub prime_count_lower {
@@ -686,7 +700,9 @@ sub prime_count_lower {
   elsif ($x <60000000000) { $a = 2.15; }
   else                    { $a = 1.80; } # Dusart 1999, page 14
 
-  return int( ($x/$flogx) * (1.0 + 1.0/$flogx + $a/($flogx*$flogx)) );
+  my $result = ($x/$flogx) * (1.0 + 1.0/$flogx + $a/($flogx*$flogx));
+  $result = Math::BigInt->new($result->bfloor->bstr()) if ref($result) eq 'Math::BigFloat';
+  return int($result);
 }
 
 sub prime_count_upper {
@@ -736,7 +752,12 @@ sub prime_count_upper {
   elsif ($x <60000000000) { $a = 2.362; }
   else                    { $a = 2.51; }
 
-  return int( ($x/$flogx) * (1.0 + 1.0/$flogx + $a/($flogx*$flogx)) + 1.0 );
+  # Old versions of Math::BigFloat will do the Wrong Thing with this.
+  #return int( ($x/$flogx) * (1.0 + 1.0/$flogx + $a/($flogx*$flogx)) + 1.0 );
+  my $result = ($x/$flogx) * (1.0 + 1.0/$flogx + $a/($flogx*$flogx)) + 1.0;
+  $result = Math::BigInt->new($result->bfloor->bstr()) if ref($result) eq 'Math::BigFloat';
+  return int($result);
+
 }
 
 #############################################################################
@@ -881,7 +902,7 @@ sub LogarithmicIntegral {
   return 0 if $n == 0;
   croak("Invalid input to LogarithmicIntegral:  x must be >= 0") if $n <= 0;
 
-  if ( (defined $bignum::VERSION && (!defined &bignum::in_effect || bignum::in_effect())) || (ref($n) eq 'Math::BigFloat') ) {
+  if ( defined $bignum::VERSION || ref($n) eq 'Math::BigFloat' ) {
     return Math::BigFloat->binf('-') if $n == 1;
     return Math::BigFloat->new('1.045163780117492784844588889194613136522615578151201575832909144075013205210359530172717405626383356306') if $n == 2;
   } else {
@@ -1206,26 +1227,26 @@ generate any primes.  Uses the Cipolla 1902 approximation with two
 polynomials, plus a correction term for small values to reduce the error.
 
 
-=head2 miller_rabin
+=head2 is_strong_pseudoprime
 
-  my $maybe_prime = miller_rabin($n, 2);
-  my $probably_prime = miller_rabin($n, 2, 3, 5, 7, 11, 13, 17);
+  my $maybe_prime = is_strong_pseudoprime($n, 2);
+  my $probably_prime = is_strong_pseudoprime($n, 2, 3, 5, 7, 11, 13, 17);
 
 Takes a positive number as input and one or more bases.  The bases must be
-between C<2> and C<n - 2>.  Returns 2 is C<n> is definitely prime, 1 if C<n>
-is probably prime, and 0 if C<n> is definitely composite.  A value of 2 will
-only be returned for the inputs of 2 and 3, which are shortcut.
+between C<2> and C<n - 2>.  Returns 1 is C<n> is a prime or a strong
+pseudoprime to all of the bases, and 0 if not.
 
 If 0 is returned, then the number really is a composite.  If 1 is returned,
 then it is either a prime or a strong pseudoprime to all the given bases.
-Given enough bases, the chances become very, very strong that the number is
-actually prime.
+Given enough distinct bases, the chances become very, very strong that the
+number is actually prime.
 
 This is usually used in combination with other tests to make either stronger
 tests (e.g. the strong BPSW test) or deterministic results for numbers less
-than some verified limit (such as the C<is_prob_prime> function in this module).
-However, given the chances of passing multiple bases, there are some math
-packages that just use multiple MR tests for primality testing.
+than some verified limit (e.g. it has long been known that no more than three
+selected bases are required to give correct primality test results for any
+32-bit number).  Given the small chances of passing multiple bases, there
+are some math packages that just use multiple MR tests for primality testing.
 
 Even numbers other than 2 will always return 0 (composite).  While the
 algorithm does run with even input, most sources define it only on odd input.
@@ -1233,13 +1254,18 @@ Returning composite for all non-2 even input makes the function match most
 other implementations including L<Math::Primality>'s C<is_strong_pseudoprime>
 function.
 
+=head2 miller_rabin
+
+An alias for C<is_strong_pseudoprime>.  This name is being deprecated.
+
 
 =head2 is_strong_lucas_pseudoprime
 
 Takes a positive number as input, and returns 1 if the input is a strong
-Lucas pseudoprime using the Selfridge method of choosing D, P, and Q (hence
-some sources call this a strong Lucas-Selfridge pseudoprime).  This is one
-half of the BPSW primality test (the Miller-Rabin test being the other).
+Lucas pseudoprime using the Selfridge method of choosing D, P, and Q (some
+sources call this a strong Lucas-Selfridge pseudoprime).  This is one half
+of the BPSW primality test (the Miller-Rabin strong pseudoprime test with
+base 2 being the other half).
 
 
 =head2 is_prob_prime
@@ -1560,7 +1586,7 @@ Accuracy should be at least 14 digits.
 
 Print pseudoprimes base 17:
 
-    perl -MMath::Prime::Util=:all -E 'my $n=$base|1; while(1) { print "$n " if miller_rabin($n,$base) && !is_prime($n); $n+=2; } BEGIN {$|=1; $base=17}'
+    perl -MMath::Prime::Util=:all -E 'my $n=$base|1; while(1) { print "$n " if is_strong_pseudoprime($n,$base) && !is_prime($n); $n+=2; } BEGIN {$|=1; $base=17}'
 
 Print some primes above 64-bit range:
 

@@ -77,18 +77,14 @@ use Math::Prime::Util qw/
   ExponentialIntegral
   LogarithmicIntegral
   RiemannR
+  primes
+  prime_count
+  nth_prime
+  is_prime
+  next_prime
+  prev_prime
+  is_strong_pseudoprime
 /;
-
-    *primes             = \&Math::Prime::Util::PP::primes;
-
-    *prime_count        = \&Math::Prime::Util::PP::prime_count;
-    #*nth_prime          = \&Math::Prime::Util::PP::nth_prime;
-
-    *is_prime       = \&Math::Prime::Util::PP::is_prime;
-    *next_prime     = \&Math::Prime::Util::PP::next_prime;
-    *prev_prime     = \&Math::Prime::Util::PP::prev_prime;
-
-    *miller_rabin   = \&Math::Prime::Util::PP::miller_rabin;
 
 ###############################################################################
 
@@ -125,7 +121,7 @@ is( prime_count(877777777777777777777752, 877777777777777777777872), 2, "prime_c
 
 while (my($psrp, $baseref) = each (%pseudoprimes)) {
   foreach my $base (@$baseref) {
-    ok( miller_rabin($psrp, $base), "$psrp is a strong pseudoprime to base $base" );
+    ok( is_strong_pseudoprime($psrp, $base), "$psrp is a strong pseudoprime to base $base" );
   }
 }
 

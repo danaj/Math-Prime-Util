@@ -3,7 +3,7 @@ use strict;
 use warnings;
 #use Math::Primality;
 use Math::Prime::XS;
-use Math::Prime::Util;
+use Math::Prime::Util '-nobigint';
 #use Math::Pari;
 #use Math::Prime::FastSieve;
 use Benchmark qw/:all/;

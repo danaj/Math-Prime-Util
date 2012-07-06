@@ -61,7 +61,7 @@ sub _validate_positive_integer {
   croak "Parameter '$n' must be <= $max" if defined $max && $n > $max;
   if ($n <= ~0) {
     $_[0] = $n->as_number() if ref($n) eq 'Math::BigFloat';
-    $_[0] = $n->numify() if ref($n) eq 'Math::BigInt';
+    $_[0] = int($n->bstr) if ref($n) eq 'Math::BigInt';
   } elsif (ref($n) ne 'Math::BigInt') {
     croak "Parameter '$n' outside of integer range" if !defined $bigint::VERSION;
     $_[0] = Math::BigInt->new("$n"); # Make $n a proper bigint object
@@ -643,7 +643,7 @@ sub is_strong_lucas_pseudoprime {
 
   # Check for perfect square
   if (ref($n) eq 'Math::BigInt') {
-    my $mcheck = ($n & 127)->numify;
+    my $mcheck = int(($n & 127)->bstr);
     if (($mcheck*0x8bc40d7d) & ($mcheck*0xa1e2f5d1) & 0x14020a) {
       # ~82% of non-squares were rejected by the bloom filter
       my $sq = int($n->copy()->bsqrt());
@@ -659,8 +659,6 @@ sub is_strong_lucas_pseudoprime {
 
   # Determine Selfridge D, P, and Q parameters
   my $D = _find_jacobi_d_sequence($n);
-  #die if ref($D) eq 'Math::BigInt';
-  #$D = $D->numify if $D <= ~0 && ref($D) eq 'Math::BigInt';
   return 0 if $D == 0;  # We found a divisor in the sequence
   my $P = 1;
   my $Q = int( (1 - $D) / 4 );
@@ -694,7 +692,7 @@ sub is_strong_lucas_pseudoprime {
   my $Q_m2 = ($ZERO + $Q) * 2;
   my $Qkd = $ZERO + $Q;
   $d >>= 1;
-  $d = $d->numify if $d <= ~0 && ref($d) eq 'Math::BigInt';
+  $d = int($d->bstr) if $d <= ~0 && ref($d) eq 'Math::BigInt';
   #my $i = 1;
   while ($d != 0) {
     #warn "U=$U  V=$V  Qm=$Q_m  Qm2=$Q_m2\n";
@@ -734,9 +732,6 @@ sub is_strong_lucas_pseudoprime {
       $Qkd2 = 2 * $Qkd;
     }
   }
-  #warn "Math::BigInt is loaded\n" if defined $Math::BigInt::VERSION;
-  #warn "bigint is loaded\n" if defined $bigint::VERSION;
-  #warn "bigint is in effect\n" if bigint::in_effect();
   return 0;
 }
 
@@ -751,7 +746,7 @@ sub _basic_factor {
   while ( ($_[0] % 5) == 0 ) { push @factors, 5;  $_[0] = int($_[0] / 5); }
 
   # Stop using bignum if we can
-  $_[0] = $_[0]->numify if ref($_[0]) eq 'Math::BigInt' && $_[0] <= ~0;
+  $_[0] = int($_[0]->bstr) if ref($_[0]) eq 'Math::BigInt' && $_[0] <= ~0;
 
   if ( ($_[0] > 1) && _is_prime7($_[0]) ) {
     push @factors, $_[0];
@@ -809,7 +804,7 @@ sub factor {
   while (@nstack) {
     $n = pop @nstack;
     # Don't use bignum on $n if it has gotten small enough.
-    $n = $n->numify if ref($n) eq 'Math::BigInt' && $n <= ~0;
+    $n = int($n->bstr) if ref($n) eq 'Math::BigInt' && $n <= ~0;
     #print "Looking at $n with stack ", join(",",@nstack), "\n";
     while ( ($n >= (31*31)) && !_is_prime7($n) ) {
       my @ftry;
@@ -1299,9 +1294,9 @@ the prime_count and nth prime, next_prime and prev_prime, factoring utilities,
 and more.
 
 All routines should work with native integers or multi-precision numbers.  To
-enable big numbers, use bignum:
+enable big numbers, use bigint or bignum:
 
-    use bignum;
+    use bigint;
     say prime_count_approx(1000000000000000000000000)'
     # says 18435599767347543283712
 
