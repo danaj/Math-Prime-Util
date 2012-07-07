@@ -29,7 +29,7 @@ $#phis = 3 unless $use64;
 #  perl -MMath::Prime::Util=:all -E 'my $_=$base|1; while(1) {print "$_ " if is_strong_pseudoprime($_,$base) && !is_prime($_); $_+=2; } print "\n"; BEGIN {$|=1; $base=553174392}'
 
 my %pseudoprimes = (
-   2 => [ qw/2047 3277 4033 4681 8321 15841 29341 42799 49141 52633 65281 74665 80581 85489 88357 90751/ ],
+   2 => [ qw/2047 3277 4033 4681 8321 15841 29341 42799 49141 52633 65281 74665 80581 85489 88357 90751 1194649/ ],
    3 => [ qw/121 703 1891 3281 8401 8911 10585 12403 16531 18721 19345 23521 31621 44287 47197 55969 63139 74593 79003 82513 87913 88573 97567/ ],
    5 => [ qw/781 1541 5461 5611 7813 13021 14981 15751 24211 25351 29539 38081 40501 44801 53971 79381/ ],
    7 => [ qw/25 325 703 2101 2353 4525 11041 14089 20197 29857 29891 39331 49241 58825 64681 76627 78937 79381 87673 88399 88831/ ],
@@ -57,18 +57,20 @@ my %pseudoprimes = (
  1795265022 => [ qw/1795265023 1797174457 1797741901 1804469753 1807751977 1808043283 1808205701 1813675681 1816462201 1817936371 1819050257/ ],
  3046413974 => [ qw/3046413975 3048698683 3051199817 3068572849 3069705673 3070556233 3079010071 3089940811 3090723901 3109299161 3110951251 3113625601/ ],
  3613982119 => [ qw/3626488471 3630467017 3643480501 3651840727 3653628247 3654142177 3672033223 3672036061 3675774019 3687246109 3690036017 3720856369/ ],
+ lucas      => [ qw/5459 5777 10877 16109 18971 22499 24569 25199 40309 58519 75077 97439/ ],
 );
 my $num_pseudoprimes = 0;
 foreach my $ppref (values %pseudoprimes) {
   $num_pseudoprimes += scalar @$ppref;
 }
-
+my @small_lucas_trials = (2, 9, 16, 100, 102, 2047, 2048, 5781, 9000, 14381);
 
 plan tests => 0 + 3
                 + 4
                 + $num_pseudoprimes
                 + scalar @phis
-                + 1
+                + 1  # mr base 2    2-4k
+                + scalar @small_lucas_trials
                 + 1*$extra;
 
 ok(!eval { is_strong_pseudoprime(2047); }, "MR with no base fails");
@@ -84,7 +86,11 @@ is( is_strong_pseudoprime(3, 2), 1, "MR with 3 shortcut prime");
 # Check that each strong pseudoprime base b makes it through MR with that base
 while (my($base, $ppref) = each (%pseudoprimes)) {
   foreach my $p (@$ppref) {
-    ok(is_strong_pseudoprime($p, $base), "Pseudoprime (base $base) $p passes MR");
+    if ($base eq 'lucas') {
+      ok(is_strong_lucas_pseudoprime($p), "$p is a strong Lucas-Selfridge pseudoprime");
+    } else {
+      ok(is_strong_pseudoprime($p, $base), "Pseudoprime (base $base) $p passes MR");
+    }
   }
 }
 
@@ -105,7 +111,18 @@ for my $phi (1 .. scalar @phis) {
       if (is_strong_pseudoprime($_,2))  { $mr2fail = $_; last; }
     }
   }
-  is($mr2fail, 0, "MR base 2 matches is_prime for 2-4032 (ex 2047,3277)");
+  is($mr2fail, 0, "MR base 2 matches is_prime for 2-4032 (excl 2047,3277)");
+}
+
+# Verify Lucas for some small numbers
+for my $n (@small_lucas_trials) {
+  next if $n == 5459 || $n == 5777 || $n == 10877 || $n == 16109 || $n == 18971;
+  if (is_prime($n)) {
+    # Technically if it is a prime it isn't a pseudoprime.
+    ok(is_strong_lucas_pseudoprime($n), "$n is a prime and a strong Lucas-Selfridge pseudoprime");
+  } else {
+    ok(!is_strong_lucas_pseudoprime($n), "$n is not a prime and not a strong Lucas-Selfridge pseudoprime");
+  }
 }
 
 # Verify MR base 2-3 for many small numbers (up to phi2)
