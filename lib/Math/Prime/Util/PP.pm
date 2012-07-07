@@ -532,20 +532,41 @@ sub miller_rabin {
   return 1 if ($n == 2) || ($n == 3);
   return 0 if ($n % 2) == 0;
 
-  # I was using bignum here for a while, but doing "$a ** $d" with a
-  # big $d is **ridiculously** slow.  It's thousands of times faster
-  # to do it ourselves using _powmod and _mulmod.
+  if ( ref($n) eq 'Math::BigInt' ) {
 
-  my $s = 0;
-  my $d = $n - 1;
+    my $s = 0;
+    my $nminus1 = $n->copy->bsub(1);
+    my $d = $nminus1->copy;
+    while ($d->is_even) {
+      $s++;
+      $d->brsft(1);
+    }
 
-  while ( ($d & 1) == 0 ) {
-    $s++;
-    $d >>= 1;
-  }
+    foreach my $a (@bases) {
+      croak "Base $a is invalid" if $a < 2;
+      my $x = $n->copy->bzero->badd($a)->bmodpow($d,$n);
+      next if ($x->is_one) || ($x->bcmp($nminus1) == 0);
+      foreach my $r (1 .. $s) {
+        $x->bmul($x); $x->bmod($n);
+        return 0 if $x->is_one;
+        if ($x->bcmp($nminus1) == 0) {
+          $a = 0;
+          last;
+        }
+      }
+      return 0 if $a != 0;
+    }
 
-  if ( ($n < $_half_word) || (ref($n) eq 'Math::BigInt') ) {
+  } else {
 
+   my $s = 0;
+   my $d = $n - 1;
+   while ( ($d & 1) == 0 ) {
+     $s++;
+     $d >>= 1;
+   }
+
+   if ($n < $_half_word) {
     foreach my $a (@bases) {
       croak "Base $a is invalid" if $a < 2;
       my $x = _native_powmod($a, $d, $n);
@@ -560,9 +581,7 @@ sub miller_rabin {
       }
       return 0 if $a != 0;
     }
-
-  } else {
-
+   } else {
     foreach my $a (@bases) {
       croak "Base $a is invalid" if $a < 2;
       my $x = _powmod($a, $d, $n);
@@ -578,6 +597,7 @@ sub miller_rabin {
       }
       return 0 if $a != 0;
     }
+   }
 
   }
   1;
@@ -591,6 +611,18 @@ sub _jacobi {
   if ($n < 0) {
     $n = -$n;
     $j = -$j if ($m % 4) == 3;
+  }
+  # Split loop so we can reduce n/m to non-bigints after first iteration.
+  if ($n != 0) {
+    while (($n % 2) == 0) {
+      $n >>= 1;
+      $j = -$j if ($m % 8) == 3 || ($m % 8) == 5;
+    }
+    ($n, $m) = ($m, $n);
+    $j = -$j if ($n % 4) == 3 && ($m % 4) == 3;
+    $n = $n % $m;
+    $n = int($n->bstr) if $n <= ~0 && ref($n) eq 'Math::BigInt';
+    $m = int($m->bstr) if $m <= ~0 && ref($m) eq 'Math::BigInt';
   }
   while ($n != 0) {
     while (($n % 2) == 0) {
@@ -613,8 +645,8 @@ sub _find_jacobi_d_sequence {
   my $d = 5;
   my $sign = 1;
   while (1) {
-    my $gcd = _gcd_ui($d, $n);
-    #my $gcd = Math::BigInt::bgcd($d, $n);
+    my $gcd = (ref($n) eq 'Math::BigInt') ? Math::BigInt::bgcd($d, $n)
+                                          : _gcd_ui($d, $n);
     return 0 if $gcd > 1 && $gcd != $n;  # Found divisor $d
     my $j = _jacobi($d * $sign, $n);
     last if $j == -1;
@@ -632,7 +664,12 @@ sub is_strong_lucas_pseudoprime {
 
   # We're trying to limit the bignum calculations as much as possible.
   # It's also important to try to match whatever they passed in.  For instance
-  # if they use a GMP or Pari object, we must do the same.
+  # if they use a GMP or Pari object, we must do the same.  Hence instead of:
+  #        my $U = Math::BigInt->bone;
+  # we do
+  #        my $U = $n->copy->bone;
+  # so U is the same class as n.  If they passed in a string or a small value,
+  # then we just make it up.
 
   return 1 if $n == 2;
   return 0 if $n < 2 || ($n % 2) == 0;
@@ -646,8 +683,9 @@ sub is_strong_lucas_pseudoprime {
     my $mcheck = int(($n & 127)->bstr);
     if (($mcheck*0x8bc40d7d) & ($mcheck*0xa1e2f5d1) & 0x14020a) {
       # ~82% of non-squares were rejected by the bloom filter
-      my $sq = int($n->copy()->bsqrt());
-      return 0 if ($sq*$sq) == $n;
+      my $sq = $n->copy->bsqrt->bfloor;
+      $sq->bmul($sq);
+      return 0 if $sq == $n;
     }
   } else {
     my $mcheck = $n & 127;
@@ -673,42 +711,40 @@ sub is_strong_lucas_pseudoprime {
     $n = Math::BigInt->new($n);
   }
 
-  my $m = $n->copy() + 1;
-  my $s = 0;
-  my $d = $m->copy();
-  while ( ($d & 1) == 0 ) {
-    $s++;
-    $d >>= 1;
-  }
-  # $m == $d * 2 ** $s
-  #die "Invalid $m, $d, $s\n" unless $m == $d * 2**$s;
+  my $m = $n->copy->badd(1);
+  # Traditional d,s:
+  #   my $d=$m->copy; my $s=0; while ($d->is_even) { $s++; $d->brsft(1); }
+  #   die "Invalid $m, $d, $s\n" unless $m == $d * 2**$s;
+  my $dstr = substr($m->as_bin, 2);
+  $dstr =~ s/(0*)$//;  
+  my $s = length($1);
 
-  my $ZERO = $n->copy->bzero();
+  my $ZERO = $n->copy->bzero;
   my $U = $ZERO + 1;
   my $V = $ZERO + $P;
-  my $U_2m = $ZERO + 1;
-  my $V_2m = $ZERO + $P;
+  my $U_2m = $U->copy;
+  my $V_2m = $V->copy;
   my $Q_m = $ZERO + $Q;
-  my $Q_m2 = ($ZERO + $Q) * 2;
-  my $Qkd = $ZERO + $Q;
-  $d >>= 1;
-  $d = int($d->bstr) if $d <= ~0 && ref($d) eq 'Math::BigInt';
+  my $Q_m2 = $Q_m->copy->bmul(2);
+  my $Qkd = $Q_m->copy;
+  substr($dstr,-1) = '';   #$d->brsft(1);
   #my $i = 1;
-  while ($d != 0) {
+  while ($dstr ne '') {    #while (!$d->is_zero) {
     #warn "U=$U  V=$V  Qm=$Q_m  Qm2=$Q_m2\n";
     $U_2m->bmul($V_2m);             $U_2m->bmod($n);
     $V_2m->bmuladd($V_2m, -$Q_m2);  $V_2m->bmod($n);
     #warn "  $i  U2m=$U_2m  V2m=$V_2m\n";  $i++;
-    $Q_m->bmul($Q_m);             $Q_m->bmod($n);
-    $Q_m2 = 2 * $Q_m; # don't bother to mod n
-    if ($d & 1) {
-      my $Uold = $U->copy();
-      $U->bmuladd($V_2m, $U_2m * $V);  # U = U*V_2m + V*U_2m
+    $Q_m->bmul($Q_m);               $Q_m->bmod($n);
+    $Q_m2 = $Q_m->copy->bmul(2);    # no mod
+    if (substr($dstr,-1)) {   #if ($d->is_odd) {
+      my $T1 = $U_2m->copy->bmul($V);
+      my $T2 = $U_2m->copy->bmul($U)->bmul($D);
+      $U->bmuladd($V_2m, $T1);         # U = U*V_2m + V*U_2m
       $U->badd($n) if $U->is_odd;      # U += n if U & 1
       $U->brsft(1,2);                  # U = floor(U / 2)
       $U->bmod($n);                    # U = U % n
 
-      $V->bmuladd($V_2m, $U_2m * $Uold * $D);
+      $V->bmuladd($V_2m, $T2);
       $V->badd($n) if $V->is_odd;
       $V->brsft(1,2);
       $V->bmod($n);
@@ -716,20 +752,20 @@ sub is_strong_lucas_pseudoprime {
       $Qkd->bmul($Q_m);
       $Qkd->bmod($n);
     }
-    $d >>= 1;
+    substr($dstr,-1) = '';   #$d->brsft(1);
   }
   #warn "l0 U=$U  V=$V\n";
-  return 1 if $U == 0 || $V == 0;
+  return 1 if $U->is_zero || $V->is_zero;
 
   # Compute powers of V
-  my $Qkd2 = 2 * $Qkd;
+  my $Qkd2 = $Qkd->copy->bmul(2);
   foreach my $r (1 .. $s-1) {
     #warn "l$r U=$U  V=$V  Qkd2=$Qkd2\n";
     $V->bmuladd($V, -$Qkd2);  $V->bmod($n);
-    return 1 if $V == 0;
+    return 1 if $V->is_zero;
     if ($r < ($s-1)) {
       $Qkd->bmul($Qkd);  $Qkd->bmod($n);
-      $Qkd2 = 2 * $Qkd;
+      $Qkd2 = $Qkd->copy->bmul(2);
     }
   }
   return 0;
@@ -863,7 +899,27 @@ sub prho_factor {
   my $U = 7;
   my $V = 7;
 
-  if ( ($n < $_half_word) || (ref($n) eq 'Math::BigInt') ) {
+  if ( ref($n) eq 'Math::BigInt' ) {
+
+    $U = $n->copy->bzero->badd($U);
+    $V = $n->copy->bzero->badd($V);
+    for my $i (1 .. $rounds) {
+      $U->bmuladd($U, $a);  $U->bmod($n);
+      $V->bmuladd($V, $a);  $V->bmod($n);
+      $V->bmuladd($V, $a);  $V->bmod($n);
+      my $f = Math::BigInt::bgcd( ($U > $V) ? $U-$V : $V-$U,  $n);
+      if ($f == $n) {
+        last if $inloop++;  # We've been here before
+      } elsif ($f != 1) {
+        my $f2 = $n->copy->bdiv($f);
+        push @factors, $f;
+        push @factors, $f2;
+        croak "internal error in prho" unless ($f * $f2) == $n;
+        return @factors;
+      }
+    }
+
+  } elsif ($n < $_half_word) {
 
     for my $i (1 .. $rounds) {
       $U = ($U * $U + $a) % $n;
@@ -920,7 +976,24 @@ sub pbrent_factor {
   my $Xi = 2;
   my $Xm = 2;
 
-  if ( ($n < $_half_word) || (ref($n) eq 'Math::BigInt') ) {
+  if ( ref($n) eq 'Math::BigInt' ) {
+  
+    $Xi = $n->copy->bzero->badd($Xi);
+    $Xm = $n->copy->bzero->badd($Xm);
+    for my $i (1 .. $rounds) {
+      $Xi->bmuladd($Xi, $a);  $Xi->bmod($n);
+      my $f = Math::BigInt::bgcd( ($Xi > $Xm) ? $Xi-$Xm : $Xm-$Xi,  $n);
+      if ( ($f != 1) && ($f != $n) ) {
+        my $f2 = $n->copy->bdiv($f);
+        push @factors, $f;
+        push @factors, $f2;
+        croak "internal error in pbrent" unless ($f * $f2) == $n;
+        return @factors;
+      }
+      $Xm = $Xi->copy if ($i & ($i-1)) == 0;  # i is a power of 2
+    }
+
+  } elsif ($n < $_half_word) {
 
     for my $i (1 .. $rounds) {
       $Xi = ($Xi * $Xi + $a) % $n;
@@ -963,17 +1036,33 @@ sub pminus1_factor {
   my @factors = _basic_factor($n);
   return @factors if $n < 4;
 
-  my $kf = 13;
 
-  for my $i (1 .. $rounds) {
-    $kf = _powmod($kf, $i, $n);
-    $kf = $n if $kf == 0;
-    my $f = _gcd_ui( $kf-1, $n );
-    if ( ($f != 1) && ($f != $n) ) {
-      push @factors, $f;
-      push @factors, int($n/$f);
-      croak "internal error in pminus1" unless ($f * int($n/$f)) == $n;
-      return @factors;
+  if ( ref($n) eq 'Math::BigInt' ) {
+    my $kf = $n->copy->bzero->badd(13);
+    for my $i (1 .. $rounds) {
+      $kf->bmodpow($i,$n);
+      $kf = $n if $kf == 0;
+      my $f = Math::BigInt::bgcd( $kf-1, $n );
+      if ( ($f != 1) && ($f != $n) ) {
+        my $f2 = $n->copy->bdiv($f);
+        push @factors, $f;
+        push @factors, $f2;
+        croak "internal error in pminus1" unless ($f * $f2) == $n;
+        return @factors;
+      }
+    }
+  } else {
+    my $kf = 13;
+    for my $i (1 .. $rounds) {
+      $kf = _powmod($kf, $i, $n);
+      $kf = $n if $kf == 0;
+      my $f = _gcd_ui( $kf-1, $n );
+      if ( ($f != 1) && ($f != $n) ) {
+        push @factors, $f;
+        push @factors, int($n/$f);
+        croak "internal error in pminus1" unless ($f * int($n/$f)) == $n;
+        return @factors;
+      }
     }
   }
   push @factors, $n;
@@ -989,23 +1078,46 @@ sub holf_factor {
   my @factors = _basic_factor($n);
   return @factors if $n < 4;
 
-  for my $i ($startrounds .. $rounds) {
-    my $s = int(sqrt($n * $i));
-    $s++ if ($s * $s) != ($n * $i);
-    my $m = ($s < $_half_word) ? ($s*$s) % $n : _mulmod($s, $s, $n);
-    # Check for perfect square
-    my $mcheck = $m & 127;
-    next if (($mcheck*0x8bc40d7d) & ($mcheck*0xa1e2f5d1) & 0x14020a);
-    # ... 82% of non-squares were rejected by the bloom filter
-    my $f = int(sqrt($m));
-    next unless $f*$f == $m;
-    $f = _gcd_ui( ($s > $f)  ?  $s - $f  :  $f - $s,  $n);
-    last if $f == 1 || $f == $n;   # Should never happen
-    push @factors, $f;
-    push @factors, int($n/$f);
-    croak "internal error in HOLF" unless ($f * int($n/$f)) == $n;
-    # print "HOLF found factors in $i rounds\n";
-    return @factors;
+  if ( ref($n) eq 'Math::BigInt' ) {
+    for my $i ($startrounds .. $rounds) {
+      my $ni = $n->copy->bmul($i);
+      my $s = $ni->copy->bsqrt->bfloor;
+      $s->binc if ($s * $s) != $ni;
+      my $m = $s->copy->bmul($s)->bmod($n);
+      # Check for perfect square
+      my $mcheck = int(($m & 127)->bstr);
+      next if (($mcheck*0x8bc40d7d) & ($mcheck*0xa1e2f5d1) & 0x14020a);
+      # ... 82% of non-squares were rejected by the bloom filter
+      my $f = $m->copy->bsqrt->bfloor;
+      next unless ($f*$f) == $m;
+      $f = Math::BigInt::bgcd( ($s > $f) ? $s-$f : $f-$s,  $n);
+      last if $f == 1 || $f == $n;   # Should never happen
+      my $f2 = $n->copy->bdiv($f);
+      push @factors, $f;
+      push @factors, $f2;
+      croak "internal error in HOLF" unless ($f * $f2) == $n;
+      # print "HOLF found factors in $i rounds\n";
+      return @factors;
+    }
+  } else {
+    for my $i ($startrounds .. $rounds) {
+      my $s = int(sqrt($n * $i));
+      $s++ if ($s * $s) != ($n * $i);
+      my $m = ($s < $_half_word) ? ($s*$s) % $n : _mulmod($s, $s, $n);
+      # Check for perfect square
+      my $mcheck = $m & 127;
+      next if (($mcheck*0x8bc40d7d) & ($mcheck*0xa1e2f5d1) & 0x14020a);
+      # ... 82% of non-squares were rejected by the bloom filter
+      my $f = int(sqrt($m));
+      next unless $f*$f == $m;
+      $f = _gcd_ui( ($s > $f)  ?  $s - $f  :  $f - $s,  $n);
+      last if $f == 1 || $f == $n;   # Should never happen
+      push @factors, $f;
+      push @factors, int($n/$f);
+      croak "internal error in HOLF" unless ($f * int($n/$f)) == $n;
+      # print "HOLF found factors in $i rounds\n";
+      return @factors;
+    }
   }
   push @factors, $n;
   @factors;
