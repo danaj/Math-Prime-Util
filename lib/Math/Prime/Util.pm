@@ -1267,8 +1267,12 @@ will turn off bigint support for those functions.  Those functions will then
 go directly to the XS versions, which will speed up very small inputs a B<lot>.
 
 Having run these functions on many versions of Perl, if you're using anything
-older than Perl 5.14, I would recommend you upgrade if you want bigint support.
-There are a lot of brittle behaviors on 5.12.4 and earlier.
+older than Perl 5.14, I would recommend you upgrade if you are using bigints
+a lot.  There are some brittle behaviors on 5.12.4 and earlier.
+
+I also recommend installing L<Math::BigInt::GMP> and writing
+C< use bigint try => 'GMP'> to have bigint see if it can use GMP.  Large
+modular exponentiation is much, much faster using the GMP or Pari backends.
 
 
 

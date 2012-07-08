@@ -69,7 +69,8 @@ plan tests => 0 +
               12 +  # random primes
               0;
 
-use bigint;     #  <--------------- We're testing large numbers here:  > 2^64
+# Using GMP makes these tests run about 2x faster on my machine
+use bigint try => 'GMP';   #  <--------------- large numbers ahead!  > 2^64
 
 use Math::Prime::Util qw/
   is_prob_prime
