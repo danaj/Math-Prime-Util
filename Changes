@@ -29,7 +29,7 @@ Revision history for Perl extension Math::Prime::Util.
          Math::Prime::FastSieve
          Math::Prime::TiedArray  (much faster)
          Math::Factor::XS        (faster, missing multiplicity)
-         Math::Primality         (more portable, fast for native, slow for bigint)
+         Math::Primality         (more portable, fast for small, slow for big)
          Crypt::Primes           (more portable, much slower, no fancy options)
 
 0.09  25 June 2012

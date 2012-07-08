@@ -324,7 +324,10 @@ sub primes {
     $r;
   };
 
-  # Returns a uniform number between [0,$range] inclusive.
+  # Returns a uniform number between [0,$range] inclusive.  The straightforward
+  # method of getting a number of rand bits equal to the number of bits in the
+  # number, then repeatedly get a random number in the bit range until it
+  # falls within the desired range.
   my $get_rand_range = sub {
     my($range) = @_;
     my $rbits = 0;
@@ -345,33 +348,6 @@ sub primes {
       return $U if $U <= $range;
     }
   };
-  my $get_rand_range2 = sub {
-    my($range) = @_;
-    my $max = int($range) + 1;
-    my $offset = 0;
-    while ($max > 1) {
-      if ($max <= 31) { $offset += $irandf->($max); last; }
-      my $part = $max >> 1;
-      $part++ if ($max & 1) && $get_rand_bit->();
-      $offset += $part if $get_rand_bit->();
-      $max -= $part;
-    }
-    $offset;
-  };
-  # The above routine isn't perfect, but it works pretty well.  It's repeatedly
-  # partitioning the space into two pieces selected at random.  For odd
-  # ranges the two edges are selected with slightly higher priority because
-  # we're approximating 1/r using powers of 2.  The error rapidly reduces
-  # as r increases.  By calling out to irandf when max is small enough we can
-  # mitigate it.
-  #
-  # The other implementation choice I can think of is to call irandf a bunch
-  # of times to get a random number R >= r.  Let m = int(R/r).  If R < m*r
-  # then return R % m.  Repeat otherwise.  This description isn't quite right
-  # in that we want to generate R with at least as many random bits as r, not
-  # necessarily greater, and m is related to the bits in each.
-  #
-  # Lastly I could do a recursive partition.
 
 
   # Sub to call with low and high already primes and verified range.
@@ -559,7 +535,7 @@ sub primes {
     my $I = Math::BigInt->new(2)->bpow($k-1)->bdiv(2 * $q)->bfloor;
     #warn "I = $I\n";
 
-    my @primes = @{primes(11,$B)};
+    my @primes = @{primes(17,$B)};
 
     while (1) {
       # R is a random number between $I+1 and 2*$I
@@ -568,9 +544,7 @@ sub primes {
       # We constructed a promising looking $n.  Now test it.
 
       # Trial divide up to $B
-      next if !($n % 3);
-      next if !($n % 5);
-      next if !($n % 7);
+      next if !($n % 3) || !($n % 5) || !($n % 7) || !($n % 11) || !($n % 13);
       my $looks_prime = 1;
       foreach my $p (@primes) {
         do { $looks_prime = 0; last; } if !($n % $p);
@@ -1593,10 +1567,9 @@ in its current implementation when run on very large numbers of bits; (2) no
 external libraries are used for this module, while C::P uses L<Math::Pari>;
 (3) C::P uses a modified version of final acceptance criteria
 (C<q E<LT> n**(1/3)> without the rest of Lemma 2), while this module uses the
-original set followed by a BPSW probable prime test to give some extra
-assurance against code error; (4) C::P  has some useful options for
-cryptography, and (5) C::P is hardcoded to use Crypt::Random, while this
-function will use whatever you set C<rand> to (this is both good and bad).
+original set; (4) C::P  has some useful options for cryptography, and (5)
+C::P is hardcoded to use Crypt::Random, while this function will use whatever
+you set C<rand> to (this is both good and bad).
 
 
 =head2 moebius

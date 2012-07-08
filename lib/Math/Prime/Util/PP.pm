@@ -96,15 +96,23 @@ my @_prevwheel30 = (29,29,1,1,1,1,1,1,7,7,7,7,11,11,13,13,13,13,17,17,19,19,19,1
 sub _is_prime7 {  # n must not be divisible by 2, 3, or 5
   my($n) = @_;
 
-  foreach my $i (qw/7 11 13 17 19 23 29/) {
-    return 2 if $i*$i > $n;
-    return 0 if !($n % $i);
+  if ($n < 61*61) {
+    foreach my $i (qw/7 11 13 17 19 23 29 31 37 41 43 47 53 59/) {
+      return 2 if $i*$i > $n;
+      return 0 if !($n % $i);
+    }
+    return 2;
   }
+
+  return 0 if !($n %  7) || !($n % 11) || !($n % 13) || !($n % 17) ||
+              !($n % 19) || !($n % 23) || !($n % 29) || !($n % 31) ||
+              !($n % 37) || !($n % 41) || !($n % 43) || !($n % 47) ||
+              !($n % 53) || !($n % 59);
 
   return Math::Prime::Util::is_prob_prime($n) if $n > 10_000_000;
 
   my $limit = int(sqrt($n));
-  my $i = 31;
+  my $i = 61;
   while (($i+30) <= $limit) {
     return 0 if !($n % $i);  $i += 6;
     return 0 if !($n % $i);  $i += 4;
