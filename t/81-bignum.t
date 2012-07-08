@@ -66,6 +66,7 @@ plan tests => 0 +
               scalar(keys %factors) +
               scalar(keys %allfactors) +
               2 +  # moebius, euler_phi
+              12 +  # random primes
               0;
 
 use bigint;     #  <--------------- We're testing large numbers here:  > 2^64
@@ -92,7 +93,16 @@ use Math::Prime::Util qw/
   next_prime
   prev_prime
   is_strong_pseudoprime
+  random_prime
+  random_ndigit_prime
+  random_nbit_prime
+  random_maurer_prime
 /;
+# TODO:  is_strong_lucas_pseudoprime
+#        ExponentialIntegral
+#        LogarithmicIntegral
+#        RiemannR
+
 
 ###############################################################################
 
@@ -169,8 +179,28 @@ SKIP: {
   is( euler_phi(618970019642690137449562110), 145857122964987051805507584, "euler_phi(618970019642690137449562110)" );
 }
 
-#  ExponentialIntegral
-#  LogarithmicIntegral
-#  RiemannR
+###############################################################################
+
+my $randprime;
+
+$randprime = random_prime(147573952590750158861, 340282366920939067930896100764782952647);
+cmp_ok( $randprime, '>=', 147573952590750158861, "random range prime isn't too small");
+cmp_ok( $randprime, '<=', 340282366920939067930896100764782952647, "random range prime isn't too big");
+ok( is_prime($randprime), "random range prime is prime");
+
+$randprime = random_ndigit_prime(25);
+cmp_ok( $randprime, '>', 10**24, "random 25-digit prime isn't too small");
+cmp_ok( $randprime, '<', 10**25, "random 25-digit prime isn't too big");
+ok( is_prime($randprime), "random 25-digit prime is prime");
+
+$randprime = random_nbit_prime(80);
+cmp_ok( $randprime, '>', 2**79, "random 80-bit prime isn't too small");
+cmp_ok( $randprime, '<', 2**80, "random 80-bit prime isn't too big");
+ok( is_prime($randprime), "random 80-bit prime is prime");
+
+$randprime = random_maurer_prime(80);
+cmp_ok( $randprime, '>', 2**79, "random 80-bit Maurer prime isn't too small");
+cmp_ok( $randprime, '<', 2**80, "random 80-bit Maurer prime isn't too big");
+ok( is_prime($randprime), "random 80-bit Maurer prime is prime");
 
 ###############################################################################

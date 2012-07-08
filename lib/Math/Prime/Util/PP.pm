@@ -60,8 +60,8 @@ sub _validate_positive_integer {
   croak "Parameter '$n' must be >= $min" if defined $min && $n < $min;
   croak "Parameter '$n' must be <= $max" if defined $max && $n > $max;
   if ($n <= ~0) {
-    $_[0] = $n->as_number() if ref($n) eq 'Math::BigFloat';
-    $_[0] = int($n->bstr) if ref($n) eq 'Math::BigInt';
+    $_[0] = $_[0]->as_number() if ref($_[0]) eq 'Math::BigFloat';
+    $_[0] = int($_[0]->bstr) if ref($_[0]) eq 'Math::BigInt';
   } elsif (ref($n) ne 'Math::BigInt') {
     croak "Parameter '$n' outside of integer range" if !defined $bigint::VERSION;
     $_[0] = Math::BigInt->new("$n"); # Make $n a proper bigint object

@@ -21,7 +21,7 @@ our @EXPORT_OK = qw(
                      next_prime  prev_prime
                      prime_count prime_count_lower prime_count_upper prime_count_approx
                      nth_prime nth_prime_lower nth_prime_upper nth_prime_approx
-                     random_prime random_ndigit_prime random_nbit_prime
+                     random_prime random_ndigit_prime random_nbit_prime random_maurer_prime
                      factor all_factors moebius euler_phi
                      ExponentialIntegral LogarithmicIntegral RiemannR
                    );
@@ -145,8 +145,8 @@ sub _validate_positive_integer {
   croak "Parameter '$n' must be >= $min" if defined $min && $n < $min;
   croak "Parameter '$n' must be <= $max" if defined $max && $n > $max;
   if ($n <= $_Config{'maxparam'}) {
-    $_[0] = $n->as_number() if ref($n) eq 'Math::BigFloat';
-    $_[0] = int($n->bstr) if ref($n) eq 'Math::BigInt';
+    $_[0] = $_[0]->as_number() if ref($_[0]) eq 'Math::BigFloat';
+    $_[0] = int($_[0]->bstr) if ref($_[0]) eq 'Math::BigInt';
   } elsif (ref($n) ne 'Math::BigInt') {
     croak "Parameter '$n' outside of integer range" if !defined $bigint::VERSION;
     $_[0] = Math::BigInt->new("$n"); # Make $n a proper bigint object
