@@ -333,7 +333,7 @@ sub next_prime {
   #     my $m = $n - $d*30;
   # See:  int(9999999999999999403 / 30) => 333333333333333312  (off by 1)
   my $m = $n % 30;
-  my $d = int( ($n - $m) / 30 );
+  my $d = ($n - $m) / 30;
   if ($m == 29) { $d++;  $m = 1;} else { $m = $_nextwheel30[$m]; }
   while (!_is_prime7($d*30+$m)) {
     $m = $_nextwheel30[$m];
@@ -845,7 +845,7 @@ sub factor {
     while ( ($n >= (31*31)) && !_is_prime7($n) ) {
       my @ftry;
       my $holf_rounds = 0;
-      if ($n <= ~0) {
+      if ($n < $_half_word) {
         $holf_rounds = 64*1024;
         #warn "trying holf 64k on $n\n";
         @ftry = holf_factor($n, $holf_rounds);
@@ -904,9 +904,13 @@ sub prho_factor {
     $U = $n->copy->bzero->badd($U);
     $V = $n->copy->bzero->badd($V);
     for my $i (1 .. $rounds) {
-      $U->bmuladd($U, $a);  $U->bmod($n);
-      $V->bmuladd($V, $a);  $V->bmod($n);
-      $V->bmuladd($V, $a);  $V->bmod($n);
+      # Would use bmuladd here, but old Math::BigInt's barf with scalar $a.
+      #$U->bmuladd($U, $a);  $U->bmod($n);
+      #$V->bmuladd($V, $a);  $V->bmod($n);
+      #$V->bmuladd($V, $a);  $V->bmod($n);
+      $U->bmul($U); $U->badd($a); $U->bmod($n);
+      $V->bmul($V); $V->badd($a); $V->bmod($n);
+      $V->bmul($V); $V->badd($a); $V->bmod($n);
       my $f = Math::BigInt::bgcd( ($U > $V) ? $U-$V : $V-$U,  $n);
       if ($f == $n) {
         last if $inloop++;  # We've been here before
@@ -981,7 +985,7 @@ sub pbrent_factor {
     $Xi = $n->copy->bzero->badd($Xi);
     $Xm = $n->copy->bzero->badd($Xm);
     for my $i (1 .. $rounds) {
-      $Xi->bmuladd($Xi, $a);  $Xi->bmod($n);
+      $Xi->bmul($Xi);  $Xi->badd($a);  $Xi->bmod($n);
       my $f = Math::BigInt::bgcd( ($Xi > $Xm) ? $Xi-$Xm : $Xm-$Xi,  $n);
       if ( ($f != 1) && ($f != $n) ) {
         my $f2 = $n->copy->bdiv($f);

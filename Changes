@@ -1,20 +1,36 @@
 Revision history for Perl extension Math::Prime::Util.
 
 0.10  7 July 2012
-    - Make miller_rabin return 0 if given even number.
-    - Add tests for PP.
-    - Cleanup of some tests.
-    - The XS miller_rabin code now works with large base > n.
-    - Moved prime_count_* and nth_prime_* into Util.pm.  This lets them
-      work with big numbers.
-    - factor and all_factor should correctly work with bigints.
-    - many more bigint/bignum changes
-    - factor always returns sorted results
-    - added BPSW primality test for large is_prob_prime
-    - miller_rabin() deprecated.  Use is_strong_pseudoprime instead.
-    - Add '-bigint' tag to turn off bigint support for some functions.  In
-      conjunction, add wrappers for all remaining functions so we support
-      bigints everywhere.
+    - Add:
+           prime_get_config              to get configuration options
+           is_strong_pseudoprime         better name for miller_rabin
+           is_strong_lucas_pseudoprime   strong lucas-selfridge psp test
+           random_nbit_prime             for n-bit primes
+           random_maurer_prime           provable n-bit primes
+           moebius                       Mo:bius function
+           euler_phi                     Euler's phi aka totient
+
+    - full bigint support for everything.  Use '-nobigint' as an import to
+      shortcut straight to XS for better speed on some of the very fast functions.
+      This involved moving a lot of functions into Util.pm.
+
+    - added BPSW primality test for large (>2^64) is_prob_prime and is_prime.
+
+    - Add tests for pp and bignum, cleanup of many tests.
+
+    - Minor changes:
+        - Make miller_rabin return 0 if given even number.
+        - The XS miller_rabin code now works with large base > n.
+        - factor always returns sorted results 
+        - miller_rabin() deprecated.  Use is_strong_pseudoprime instead.
+
+    - We now should support most of the functionality of:
+         Math::Prime::XS         (more functions)
+         Math::Prime::FastSieve
+         Math::Prime::TiedArray  (much faster)
+         Math::Factor::XS        (faster, missing multiplicity)
+         Math::Primality         (more portable, fast for native, slow for bigint)
+         Crypt::Primes           (more portable, much slower, no fancy options)
 
 0.09  25 June 2012
     - Pure Perl code added.  Passes all tests.  Used only if the XSLoader

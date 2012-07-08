@@ -309,12 +309,14 @@ sub primes {
   my $irandf = (defined &::rand) ? sub { return int(::rand()*shift); }
                                  : sub { return int(rand()*shift); };
   # TODO: Look at RANDBITS if using system rand
+  my $rand_max_bits = 31;
+  my $rand_max_val  = 1 << $rand_max_bits;
   my $_rdata = 0;
   my $_rbits = 0;
   my $get_rand_bit = sub {
     if ($_rbits == 0) {
-      $_rdata = $irandf->(2147483648);
-      $_rbits = 31;
+      $_rdata = $irandf->($rand_max_val);
+      $_rbits = $rand_max_bits;
     }
     my $r = $_rdata & 1;
     $_rdata >>= 1;
@@ -325,25 +327,39 @@ sub primes {
   # Returns a uniform number between [0,$range] inclusive.
   my $get_rand_range = sub {
     my($range) = @_;
-    $range = int($range);
+    my $max = int($range) + 1;
     my $offset = 0;
-    my $nbits = 0;
-    # TODO: consider range == 1.  We'll get 0 three out of four times.
-    while ($range > 0) {
-      my $part = $range >> 1;
-      $part++ if ($range & 1) && $get_rand_bit->();
+    while ($max > 1) {
+      if ($max <= $rand_max_val) { $offset += $irandf->($max); last; }
+      my $part = $max >> 1;
+      $part++ if ($max & 1) && $get_rand_bit->();
       $offset += $part if $get_rand_bit->();
-      $range >>= 1;
-      $nbits++;
+      $max -= $part;
     }
-    wantarray ? ($offset, $nbits) : $offset;
+    $offset;
   };
+  # The above routine isn't perfect, but it works pretty well.  It's repeatedly
+  # partitioning the space into two pieces selected at random.  For odd
+  # ranges the two edges are selected with slightly higher priority because
+  # we're approximating 1/r using powers of 2.  The error rapidly reduces
+  # as r increases.  By calling out to irandf when max is small enough we can
+  # make it basically go away.
+  #
+  # The other implementation choice I can think of is to call irandf a bunch
+  # of times to get a random number R >= r.  Let m = int(R/r).  If R < m*r
+  # then return R % m.  Repeat otherwise.  This description isn't quite right
+  # in that we want to generate R with at least as many random bits as r, not
+  # necessarily greater, and m is related to the bits in each.
 
 
   # Sub to call with low and high already primes and verified range.
   my $_random_prime = sub {
     my($low,$high) = @_;
     my $prime;
+
+    # { my $bsize = 100; my @bins; my $counts = 10000000;
+    #   for my $c (1..$counts) { $bins[ $get_rand_range->($bsize) ]++; }
+    #   for my $b (0..$bsize) {printf("%4d %8.5f%%\n", $b, $bins[$b]/$counts);}
 
     # low and high are both primes, and low < high.
 
@@ -367,7 +383,7 @@ sub primes {
     # would be fastest to call primes in the range and randomly pick one.  I'm
     # not implementing it now because it seems like a rare case.
 
-    if ($oddrange <= 2147483648) {
+    if ($oddrange <= $rand_max_val) {
       # Our range is small enough we can just call rand once and be happy.
       # Generate random numbers in the interval until one is prime.
       my $loop_limit = 2000 * 1000;  # To protect against broken rand
@@ -383,19 +399,20 @@ sub primes {
 
     # We have an ocean of range, and a teaspoon to hold randomness.
 
-    # The strategy I'm going to take is to randomly select the bottom
-    # portion, leaving the top 2^31 bits for us to iterate over.
+    # Since we have an arbitrary range and not a power of two, I don't see how
+    # Fouque's algorithm A1 could be used (where we generate lower bits and
+    # generate random sets of upper).  What I'm doing is pulling out 2^31 lower
+    # bits, then randomly select all the uppers.  We iterate adding in the lower
+    # bits.
 
-    my $srange = $oddrange >> 31;
-    my ($offset, $nbits) = $get_rand_range->($srange);
+    my $srange = $oddrange - $rand_max_val - 1;
+    my $offset = $get_rand_range->($srange);
     my $primelow = $low + 2 * $offset;
-    my $uppermult = int($oddrange / $oddrange);   # 1 in possible bigint
-    $uppermult *= 2 for (1 .. $nbits);
 
     # Generate random numbers in the interval until one is prime.
     my $loop_limit = 2000 * 1000;  # To protect against broken rand
     while (1) {
-      $prime = $primelow + ($irandf->(2147483648) * $uppermult);
+      $prime = $primelow + ( 2 * $irandf->($rand_max_val) );
       die "$prime > $high" if $prime > $high;
       croak "Random function broken?" if $loop_limit-- < 0;
       if (ref($prime) eq 'Math::BigInt') {
@@ -492,12 +509,12 @@ sub primes {
     if ($k > 2*$m) {
       my $rbits = 0;
       while ($rbits <= $m) {
-        my $s = Math::BigFloat->new( $irandf->(2147483648) )->bdiv(2147483648);
+        my $s = Math::BigFloat->new( $irandf->($rand_max_val) )->bdiv($rand_max_val);
         my $r = Math::BigFloat->new(2)->bpow($s-1);
         $rbits = $k - ($r*$k);
       }
     }
-    # I've seen +0, +1, and +2 here
+    # I've seen +0, +1, and +2 here.  Menezes uses +1.
     my $q = random_maurer_prime( ($r * $k)->bfloor + 1 );
     #warn "B = $B  r = $r  k = $k  q = $q\n";
     my $I = Math::BigInt->new(2)->bpow($k-1)->bdiv(2 * $q)->bfloor;
@@ -525,17 +542,23 @@ sub primes {
       next unless $b == 1;
       #warn "$n passes a^n-1 == 1\n";
 
-      # Crypt::Primes includes this:
-      #     next if ($q <= $n->copy->bpow(1/3));
-      # but nothing else.
+      # We now get to choose between Maurer's original proposal:
+      #   check gcd(a^((n-1)/q)-1,n)==1 for each factor q of n-1
+      # thusly:
 
-      # Maurer's paper indicates we need to check gcd(a^((n-1)/q)-1,n)==1
-      # for each factor q of n-1.
       $b = $a->copy->bmodpow(2*$R, $n);
       next unless Math::BigInt::bgcd($b-1, $n) == 1;
       #warn "$n passes final gcd\n";
 
-      # Verify with a BPSW test on the result.
+      # Or via a different method, where we check q >= n**1/3 and also do
+      # some tests on x & y from 2R = xq+y.  Crypt::Primes does the q test
+      # but doesn't seem to do the x/y and perfect square portions.
+      #   next if ($q <= $n->copy->bpow(1/3));
+      #   next if ....
+
+      # Finally, verify with a BPSW test on the result.  This will either,
+      #  1) save us from accidently outputing a non-prime due to some mistake
+      #  2) make history by finding the first known BPSW pseudo-prime
       die "Maurer prime $n failed BPSW" unless is_prob_prime($n);
       #warn "     and passed BPSW.\n";
 
@@ -623,6 +646,16 @@ sub euler_phi {
   }
 
   $totient;
+}
+
+# Omega function A001221.  Don't export.
+sub omega {
+  my($n) = @_;
+  return 0 if defined $n && $n <= 1;
+  _validate_positive_integer($n);
+  my %factor_mult;
+  my @factors = grep { !$factor_mult{$_}++ } factor($n);
+  return scalar @factors;
 }
 
 
@@ -803,7 +836,7 @@ sub prime_count_approx {
 
   my $result = RiemannR($x) + 0.5;
 
-  $result = Math::BigInt->new($result->bfloor->bstr()) if ref($result) eq 'Math::BigFloat';
+  return Math::BigInt->new($result->bfloor->bstr()) if ref($result) eq 'Math::BigFloat';
   return int($result);
 }
 
@@ -894,7 +927,7 @@ sub prime_count_upper {
   # Old versions of Math::BigFloat will do the Wrong Thing with this.
   #return int( ($x/$flogx) * (1.0 + 1.0/$flogx + $a/($flogx*$flogx)) + 1.0 );
   my $result = ($x/$flogx) * (1.0 + 1.0/$flogx + $a/($flogx*$flogx)) + 1.0;
-  $result = Math::BigInt->new($result->bfloor->bstr()) if ref($result) eq 'Math::BigFloat';
+  return Math::BigInt->new($result->bfloor->bstr()) if ref($result) eq 'Math::BigFloat';
   return int($result);
 
 }
@@ -1210,6 +1243,11 @@ Using the flag:
 
 will turn off bigint support for those functions.  Those functions will then
 go directly to the XS versions, which will speed up very small inputs a B<lot>.
+
+Having run these functions on many versions of Perl, if you're using anything
+older than Perl 5.14, I would recommend you upgrade if you want bigint support.
+There are a lot of brittle behaviors on 5.12.4 and earlier.
+
 
 
 =head1 FUNCTIONS

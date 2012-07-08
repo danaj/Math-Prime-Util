@@ -23,9 +23,9 @@ WriteMakefile1(
                       'Carp'             => 0,
                       'Tie::Array'       => 0,
                       'base'             => 0,
-                      'bignum'           => 0,
-                      'Math::BigInt'     => 0,
-                      'Math::BigFloat'   => 0,
+                      'bignum'           => '0.23',   # Used for bigint tests
+                      'Math::BigInt'     => '1.88',
+                      'Math::BigFloat'   => '1.59',
                     },
 
     MIN_PERL_VERSION => 5.006002,
