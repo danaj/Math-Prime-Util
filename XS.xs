@@ -307,9 +307,9 @@ _XS_factor(IN UV n)
     }
 
 void
-trial_factor(IN UV n)
+trial_factor(IN UV n, IN UV maxfactor = 0)
   PPCODE:
-    SIMPLE_FACTOR(trial_factor, n, UV_MAX);
+    SIMPLE_FACTOR(trial_factor, n, maxfactor);
 
 void
 fermat_factor(IN UV n, IN UV maxrounds = 64*1024*1024)

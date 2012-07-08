@@ -98,7 +98,7 @@ sub _is_prime7 {  # n must not be divisible by 2, 3, or 5
 
   foreach my $i (qw/7 11 13 17 19 23 29/) {
     return 2 if $i*$i > $n;
-    return 0 if ($n % $i) == 0;
+    return 0 if !($n % $i);
   }
 
   return Math::Prime::Util::is_prob_prime($n) if $n > 10_000_000;
@@ -106,24 +106,24 @@ sub _is_prime7 {  # n must not be divisible by 2, 3, or 5
   my $limit = int(sqrt($n));
   my $i = 31;
   while (($i+30) <= $limit) {
-    return 0 if ($n % $i) == 0;  $i += 6;
-    return 0 if ($n % $i) == 0;  $i += 4;
-    return 0 if ($n % $i) == 0;  $i += 2;
-    return 0 if ($n % $i) == 0;  $i += 4;
-    return 0 if ($n % $i) == 0;  $i += 2;
-    return 0 if ($n % $i) == 0;  $i += 4;
-    return 0 if ($n % $i) == 0;  $i += 6;
-    return 0 if ($n % $i) == 0;  $i += 2;
+    return 0 if !($n % $i);  $i += 6;
+    return 0 if !($n % $i);  $i += 4;
+    return 0 if !($n % $i);  $i += 2;
+    return 0 if !($n % $i);  $i += 4;
+    return 0 if !($n % $i);  $i += 2;
+    return 0 if !($n % $i);  $i += 4;
+    return 0 if !($n % $i);  $i += 6;
+    return 0 if !($n % $i);  $i += 2;
   }
   while (1) {
-    last if $i > $limit;  return 0 if ($n % $i) == 0;  $i += 6;
-    last if $i > $limit;  return 0 if ($n % $i) == 0;  $i += 4;
-    last if $i > $limit;  return 0 if ($n % $i) == 0;  $i += 2;
-    last if $i > $limit;  return 0 if ($n % $i) == 0;  $i += 4;
-    last if $i > $limit;  return 0 if ($n % $i) == 0;  $i += 2;
-    last if $i > $limit;  return 0 if ($n % $i) == 0;  $i += 4;
-    last if $i > $limit;  return 0 if ($n % $i) == 0;  $i += 6;
-    last if $i > $limit;  return 0 if ($n % $i) == 0;  $i += 2;
+    last if $i > $limit;  return 0 if !($n % $i);  $i += 6;
+    last if $i > $limit;  return 0 if !($n % $i);  $i += 4;
+    last if $i > $limit;  return 0 if !($n % $i);  $i += 2;
+    last if $i > $limit;  return 0 if !($n % $i);  $i += 4;
+    last if $i > $limit;  return 0 if !($n % $i);  $i += 2;
+    last if $i > $limit;  return 0 if !($n % $i);  $i += 4;
+    last if $i > $limit;  return 0 if !($n % $i);  $i += 6;
+    last if $i > $limit;  return 0 if !($n % $i);  $i += 2;
   }
   2;
 }
@@ -135,7 +135,7 @@ sub is_prime {
   return 2 if ($n == 2) || ($n == 3) || ($n == 5);  # 2, 3, 5 are prime
   return 0 if $n < 7;             # everything else below 7 is composite
                                   # multiples of 2,3,5 are composite
-  return 0 if (($n % 2) == 0) || (($n % 3) == 0) || (($n % 5) == 0);
+  return 0 if !($n % 2) || !($n % 3) || !($n % 5);
   return _is_prime7($n);
 }
 
@@ -530,7 +530,7 @@ sub miller_rabin {
 
   return 0 if ($n == 0) || ($n == 1);
   return 1 if ($n == 2) || ($n == 3);
-  return 0 if ($n % 2) == 0;
+  return 0 if !($n % 2);
 
   if ( ref($n) eq 'Math::BigInt' ) {
 
@@ -777,9 +777,9 @@ sub _basic_factor {
   return ($_[0]) if $_[0] < 4;
 
   my @factors;
-  while ( ($_[0] % 2) == 0 ) { push @factors, 2;  $_[0] = int($_[0] / 2); }
-  while ( ($_[0] % 3) == 0 ) { push @factors, 3;  $_[0] = int($_[0] / 3); }
-  while ( ($_[0] % 5) == 0 ) { push @factors, 5;  $_[0] = int($_[0] / 5); }
+  while ( !($_[0] % 2) ) { push @factors, 2;  $_[0] = int($_[0] / 2); }
+  while ( !($_[0] % 3) ) { push @factors, 3;  $_[0] = int($_[0] / 3); }
+  while ( !($_[0] % 5) ) { push @factors, 5;  $_[0] = int($_[0] / 5); }
 
   # Stop using bignum if we can
   $_[0] = int($_[0]->bstr) if ref($_[0]) eq 'Math::BigInt' && $_[0] <= ~0;

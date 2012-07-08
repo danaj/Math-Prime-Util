@@ -327,6 +327,26 @@ sub primes {
   # Returns a uniform number between [0,$range] inclusive.
   my $get_rand_range = sub {
     my($range) = @_;
+    my $rbits = 0;
+    if (ref($range) eq 'Math::BigInt') {
+      $rbits = length($range->as_bin) - 2;
+    } else {
+      my $t = $range - 1;
+      while ($t) { $rbits++; $t >>= 1; }
+    }
+    while (1) {
+      my $rbitsleft = $rbits;
+      my $U = $range - $range;   # zero in possible bigint
+      while ($rbitsleft > 0) {
+        my $usebits = ($rbitsleft > $rand_max_bits) ? $rand_max_bits : $rbitsleft;
+        $U = ($U << $usebits) + $irandf->(1 << $usebits);
+        $rbitsleft -= $usebits;
+      }
+      return $U if $U <= $range;
+    }
+  };
+  my $get_rand_range2 = sub {
+    my($range) = @_;
     my $max = int($range) + 1;
     my $offset = 0;
     while ($max > 1) {
@@ -539,7 +559,7 @@ sub primes {
     my $I = Math::BigInt->new(2)->bpow($k-1)->bdiv(2 * $q)->bfloor;
     #warn "I = $I\n";
 
-    my @primes = @{primes($B)};
+    my @primes = @{primes(11,$B)};
 
     while (1) {
       # R is a random number between $I+1 and 2*$I
@@ -548,9 +568,12 @@ sub primes {
       # We constructed a promising looking $n.  Now test it.
 
       # Trial divide up to $B
+      next if !($n % 3);
+      next if !($n % 5);
+      next if !($n % 7);
       my $looks_prime = 1;
       foreach my $p (@primes) {
-        do { $looks_prime = 0; last; } if ($n % $p) == 0;
+        do { $looks_prime = 0; last; } if !($n % $p);
       }
       next unless $looks_prime;
       #warn "$n passes trial division\n";
@@ -581,10 +604,10 @@ sub primes {
       #   next if $z is a perfect square
       # Menezes seems to imply only the q test needs to be done.
 
-      # Finally, verify with a BPSW test on the result.  This will either,
+      # We perhaps could verify with a BPSW test on the result.  This could:
       #  1) save us from accidently outputing a non-prime due to some mistake
       #  2) make history by finding the first known BPSW pseudo-prime
-      croak "Maurer prime $n failed BPSW" unless is_prob_prime($n);
+      # croak "Maurer prime $n failed BPSW" unless is_prob_prime($n);
       #warn "     and passed BPSW.\n";
 
       return $n;
@@ -634,7 +657,7 @@ sub moebius {
   return 1 if $n == 1;
 
   # Quick check for small replicated factors
-  return 0 if ($n >= 25) && (($n % 4) == 0 || ($n % 9) == 0 || ($n % 25) == 0);
+  return 0 if ($n >= 25) && (!($n % 4) || !($n % 9) || !($n % 25));
 
   my @factors = factor($n);
   my %all_factors;
@@ -808,9 +831,9 @@ sub is_prob_prime {
 
   return 2 if $n == 2 || $n == 3 || $n == 5 || $n == 7;
   return 0 if $n < 11;
-  return 0 if ($n % 2) == 0 || ($n % 3) == 0 || ($n % 5) == 0 || ($n % 7) == 0;
+  return 0 if !($n % 2) || !($n % 3) || !($n % 5) || !($n % 7);
   foreach my $i (qw/11 13 17 19 23 29 31 37 41 43 47 53 59 61 67 71/) {
-    return 2 if $i*$i > $n;   return 0 if ($n % $i) == 0;
+    return 2 if $i*$i > $n;   return 0 if !($n % $i);
   }
 
   if ($n < 105936894253) {   # BPSW seems to be faster after this
