@@ -287,13 +287,13 @@ sub primes {
 #
 # The random_maurer_prime function uses Maurer's algorithm of course.
 #
-# The current code is pretty fast for native types, but very slow for bigints.
-#      37uS for   24-bit
-#     0.25s for   64-bit
+# The current code is reasonably fast for native, but very slow for bigints.
+#      70uS for   24-bit
+#     0.01s for   64-bit
 #     0.2s  for  128-bit
-#     1.3s  for  256-bit
-#     9s    for  512-bit
-#   3m      for 1024-bit
+#     1s    for  256-bit
+#    10s    for  512-bit
+#   1m      for 1024-bit
 #  ~4m      for 2048-bit
 # ~80m      for 4096-bit
 #
@@ -330,7 +330,7 @@ sub primes {
     my $max = int($range) + 1;
     my $offset = 0;
     while ($max > 1) {
-      if ($max <= $rand_max_val) { $offset += $irandf->($max); last; }
+      if ($max <= 31) { $offset += $irandf->($max); last; }
       my $part = $max >> 1;
       $part++ if ($max & 1) && $get_rand_bit->();
       $offset += $part if $get_rand_bit->();
@@ -343,13 +343,15 @@ sub primes {
   # ranges the two edges are selected with slightly higher priority because
   # we're approximating 1/r using powers of 2.  The error rapidly reduces
   # as r increases.  By calling out to irandf when max is small enough we can
-  # make it basically go away.
+  # mitigate it.
   #
   # The other implementation choice I can think of is to call irandf a bunch
   # of times to get a random number R >= r.  Let m = int(R/r).  If R < m*r
   # then return R % m.  Repeat otherwise.  This description isn't quite right
   # in that we want to generate R with at least as many random bits as r, not
   # necessarily greater, and m is related to the bits in each.
+  #
+  # Lastly I could do a recursive partition.
 
 
   # Sub to call with low and high already primes and verified range.
@@ -401,19 +403,36 @@ sub primes {
 
     # Since we have an arbitrary range and not a power of two, I don't see how
     # Fouque's algorithm A1 could be used (where we generate lower bits and
-    # generate random sets of upper).  What I'm doing is pulling out 2^31 lower
-    # bits, then randomly select all the uppers.  We iterate adding in the lower
-    # bits.
+    # generate random sets of upper).  Similarly trying to simply generate
+    # upper bits is full of ways to trip up and get non-uniform results.
+    #
+    # What I'm doing here is:
+    #
+    #   1) divide the range into semi-evenly sized partitions, where each part
+    #      is as close to $rand_max_val as we can.
+    #   2) randomly select one of the partitions.
+    #   3) iterate choosing random values within the partition.
 
-    my $srange = $oddrange - $rand_max_val - 1;
-    my $offset = $get_rand_range->($srange);
-    my $primelow = $low + 2 * $offset;
+    my $nbins   = int( ($oddrange + $rand_max_val - 1) / $rand_max_val );
+    my $binsize = int( ($oddrange + $nbins - 1) / $nbins );
+    my $nparts  = int( $oddrange / $binsize );
+    
+    my $rpart = $get_rand_range->($nparts);
+    #my $rpart = (($irandf->($rand_max_val) << 31) + $irandf->($rand_max_val)) % $nparts;
+
+    my $primelow = $low + 2 * $binsize * $rpart;
+    my $partsize = ($rpart < $nparts) ? $binsize
+                                      : $oddrange - ($nparts * $binsize);
+    $partsize = int($partsize->bstr) if ref($partsize) eq 'Math::BigInt';
+    #warn "range $oddrange  = $nparts * $binsize + ", $oddrange - ($nparts * $binsize), "\n";
+    #warn "  chose part $rpart size $partsize\n";
+    #warn "  primelow is $low + 2 * $binsize * $rpart = $primelow\n";
 
     # Generate random numbers in the interval until one is prime.
     my $loop_limit = 2000 * 1000;  # To protect against broken rand
     while (1) {
-      $prime = $primelow + ( 2 * $irandf->($rand_max_val) );
-      die "$prime > $high" if $prime > $high;
+      $prime = $primelow + ( 2 * $irandf->($partsize) );
+      croak "random prime failure, $prime > $high" if $prime > $high;
       croak "Random function broken?" if $loop_limit-- < 0;
       if (ref($prime) eq 'Math::BigInt') {
         next if $prime > 53 && Math::BigInt::bgcd($prime, "16294579238595022365") != 1;
@@ -551,15 +570,21 @@ sub primes {
       #warn "$n passes final gcd\n";
 
       # Or via a different method, where we check q >= n**1/3 and also do
-      # some tests on x & y from 2R = xq+y.  Crypt::Primes does the q test
-      # but doesn't seem to do the x/y and perfect square portions.
+      # some tests on x & y from 2R = xq+y (see Lemma 2 from Maurer's paper).
+      # Crypt::Primes does the q test but doesn't seem to do the x/y and
+      # perfect square portions.
       #   next if ($q <= $n->copy->bpow(1/3));
-      #   next if ....
+      #   my $x = (2*$R)->bdiv($q)->bfloor;
+      #   my $y = 2*$R - $x*$q;
+      #   my $z = $y*$y - 4*$x;
+      #   next if $z == 0;
+      #   next if $z is a perfect square
+      # Menezes seems to imply only the q test needs to be done.
 
       # Finally, verify with a BPSW test on the result.  This will either,
       #  1) save us from accidently outputing a non-prime due to some mistake
       #  2) make history by finding the first known BPSW pseudo-prime
-      die "Maurer prime $n failed BPSW" unless is_prob_prime($n);
+      croak "Maurer prime $n failed BPSW" unless is_prob_prime($n);
       #warn "     and passed BPSW.\n";
 
       return $n;
@@ -1489,7 +1514,6 @@ the obvious Monte Carlo method is used, where random numbers in the range are
 selected until one is prime.  For even larger ranges, a method similar to that
 of Fouque and Tibouchi (2011) algorithm A1 is used.
 
-
 Perl's L<rand> function is normally called, but if the sub C<main::rand>
 exists, it will be used instead.  When called with no arguments it should
 return a float value between 0 and 1-epsilon, with 31 bits of randomness.
@@ -1501,9 +1525,10 @@ Examples:
   # Use a custom random function
   sub rand { ... }
 
-If you want cryptographically secure primes, I suggest looking at
-L<Crypt::Primes> for now.  At minimum you should use a better source of
-random numbers, such as L<Crypt::Random>.
+If you want cryptographically secure primes, at minimum a better source of
+random numbers should be used, e.g. L<Crypt::Random>.  Until this module
+has more testing, I would point the user to L<Crypt::Primes> for production
+use.
 
 
 =head2 random_ndigit_prime
@@ -1531,13 +1556,24 @@ This the trivial algorithm to select primes from a range.  This gives a uniform
 distribution, however it is quite slow for bigints, where the C<is_prime>
 function is a limiter.
 
-The differences between this function and what is used by L<Crypt::Primes>
-include: (1) this function generates probable primes (albeit using BPSW) while
-the latter is provable primes; (2) this function is really fast for native
-bit sizes, but ridiculously slow in its current implementation when run on
-very large numbers of bits -- L<Crypt::Primes> is quite fast for large bits;
-(3) this function requires no external libraries while the latter requires
-L<Math::Pari>; (4) the latter has some useful options for cryptography.
+
+=head2 random_maurer_prime
+
+  use bigint;  my $bigprime = random_maurer_prime(512);
+
+Construct an n-bit provable prime, using the algorithm of Ueli Maurer (1995).
+This is the same algorithm used by L<Crypt::Primes>.
+
+The differences between this function and that in L<Crypt::Primes> include
+(1) this function is really fast for native bit sizes, but ridiculously slow
+in its current implementation when run on very large numbers of bits; (2) no
+external libraries are used for this module, while C::P uses L<Math::Pari>;
+(3) C::P uses a modified version of final acceptance criteria
+(C<q E<LT> n**(1/3)> without the rest of Lemma 2), while this module uses the
+original set followed by a BPSW probable prime test to give some extra
+assurance against code error; (4) C::P  has some useful options for
+cryptography, and (5) C::P is hardcoded to use Crypt::Random, while this
+function will use whatever you set C<rand> to (this is both good and bad).
 
 
 =head2 moebius
