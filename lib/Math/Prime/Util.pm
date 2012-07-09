@@ -298,7 +298,7 @@ sub primes {
 # ~80m      for 4096-bit
 #
 # A lot of this is due to is_prime on bigints however.
-#     
+#
 # To verify distribution:
 #   perl -Iblib/lib -Iblib/arch -MMath::Prime::Util=:all -E 'my %freq; $n=1000000; $freq{random_nbit_prime(6)}++ for (1..$n); printf("%4d %6.3f%%\n", $_, 100.0*$freq{$_}/$n) for sort {$a<=>$b} keys %freq;'
 #   perl -Iblib/lib -Iblib/arch -MMath::Prime::Util=:all -E 'my %freq; $n=1000000; $freq{random_prime(1260437,1260733)}++ for (1..$n); printf("%4d %6.3f%%\n", $_, 100.0*$freq{$_}/$n) for sort {$a<=>$b} keys %freq;'
@@ -311,18 +311,6 @@ sub primes {
   # TODO: Look at RANDBITS if using system rand
   my $rand_max_bits = 31;
   my $rand_max_val  = 1 << $rand_max_bits;
-  my $_rdata = 0;
-  my $_rbits = 0;
-  my $get_rand_bit = sub {
-    if ($_rbits == 0) {
-      $_rdata = $irandf->($rand_max_val);
-      $_rbits = $rand_max_bits;
-    }
-    my $r = $_rdata & 1;
-    $_rdata >>= 1;
-    $_rbits--;
-    $r;
-  };
 
   # Returns a uniform number between [0,$range] inclusive.  The straightforward
   # method of getting a number of rand bits equal to the number of bits in the
@@ -330,11 +318,12 @@ sub primes {
   # falls within the desired range.
   my $get_rand_range = sub {
     my($range) = @_;
+    return 0 if $range <= 0;
     my $rbits = 0;
     if (ref($range) eq 'Math::BigInt') {
       $rbits = length($range->as_bin) - 2;
     } else {
-      my $t = $range - 1;
+      my $t = $range;
       while ($t) { $rbits++; $t >>= 1; }
     }
     while (1) {
@@ -348,7 +337,6 @@ sub primes {
       return $U if $U <= $range;
     }
   };
-
 
   # Sub to call with low and high already primes and verified range.
   my $_random_prime = sub {
@@ -382,6 +370,7 @@ sub primes {
     # not implementing it now because it seems like a rare case.
 
     if ($oddrange <= $rand_max_val) {
+      $oddrange = int($oddrange->bstr) if ref($oddrange) eq 'Math::BigInt';
       # Our range is small enough we can just call rand once and be happy.
       # Generate random numbers in the interval until one is prime.
       my $loop_limit = 2000 * 1000;  # To protect against broken rand
@@ -409,12 +398,23 @@ sub primes {
     #   2) randomly select one of the partitions.
     #   3) iterate choosing random values within the partition.
 
-    my $nbins   = int( ($oddrange + $rand_max_val - 1) / $rand_max_val );
-    my $binsize = int( ($oddrange + $nbins - 1) / $nbins );
-    my $nparts  = int( $oddrange / $binsize );
-    
+    my($binsize, $nparts);
+    if (ref($oddrange) eq 'Math::BigInt') {
+      # Go to some trouble here because some systems are wonky, such as
+      # giving us +a/+b = -r.
+      my($nbins, $rem);
+      ($nbins, $rem) = $oddrange->copy->bdiv("$rand_max_val");
+      $nbins++ if $rem > 0;
+      ($binsize,$rem) = $oddrange->copy->bdiv($nbins);
+      $binsize++ if $rem > 0;
+      $nparts  = $oddrange->copy->bdiv($binsize);
+    } else {
+      my $nbins = int( ($oddrange + $rand_max_val - 1) / $rand_max_val );
+      $binsize  = int( ($oddrange + $nbins - 1) / $nbins );
+      $nparts   = int( $oddrange / $binsize );
+    }
+
     my $rpart = $get_rand_range->($nparts);
-    #my $rpart = (($irandf->($rand_max_val) << 31) + $irandf->($rand_max_val)) % $nparts;
 
     my $primelow = $low + 2 * $binsize * $rpart;
     my $partsize = ($rpart < $nparts) ? $binsize
@@ -1650,7 +1650,7 @@ the configuration, so changing it has no effect.  The settings include:
   maxdigits       the max digits in a number, without bigint
   maxprime        the largest representable prime, without bigint
   maxprimeidx     the index of maxprime, without bigint
-  
+
 
 
 =head1 FACTORING FUNCTIONS
