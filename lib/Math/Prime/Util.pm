@@ -53,8 +53,6 @@ BEGIN {
 
   # Load PP code.  Nothing exported.
   require Math::Prime::Util::PP;
-  # There is no GMP module yet
-  $_Config{'gmp'} = 0;
 
   eval {
     require XSLoader;
@@ -80,7 +78,13 @@ BEGIN {
     *pbrent_factor  = \&Math::Prime::Util::PP::pbrent_factor;
     *prho_factor    = \&Math::Prime::Util::PP::prho_factor;
     *pminus1_factor = \&Math::Prime::Util::PP::pminus1_factor;
-  }
+  };
+
+  # See if they have the GMP module
+  $_Config{'gmp'} = 0;
+  $_Config{'gmp'} = 1 if eval { require Math::Prime::Util::GMP;
+                                Math::Prime::Util::GMP->import();
+                                1; };
 }
 END {
   _prime_memfreeall;
@@ -102,6 +106,7 @@ if ($_Config{'maxbits'} == 32) {
 #    return _XS_foo($n)  if $n <= $_XS_MAXVAL
 # which builds into one scalar whether XS is available and if we can call it.
 my $_XS_MAXVAL = $_Config{'xs'}  ?  $_Config{'maxparam'}  :  -1;
+my $_HAVE_GMP = $_Config{'gmp'};
 
 # Notes on how we're dealing with big integers:
 #
@@ -277,9 +282,9 @@ sub primes {
 #    1) Joye and Paillier have patents on their methods.  Never use them.
 #
 #    2) The easy-peasy method of next_prime(random number) is fast but gives
-#       gives a terribly distribution, and not only in the obvious positive
-#       bias.  The probability for a prime is proportional to its gap, which
-#       is really a bad distribution.
+#       a terribly distribution, and not only in the obvious positive bias.
+#       The probability for a prime is proportional to its gap, which is
+#       really a bad distribution.
 #
 # For standard random primes, the implementation is very similar to Fouque's
 # Algorithm 1.  For ranges of 32-bits or less, the distribution is uniform.
@@ -287,17 +292,17 @@ sub primes {
 #
 # The random_maurer_prime function uses Maurer's algorithm of course.
 #
-# The current code is reasonably fast for native, but very slow for bigints.
-#      70uS for   24-bit
-#     0.01s for   64-bit
-#     0.2s  for  128-bit
-#     1s    for  256-bit
-#    10s    for  512-bit
-#   1m      for 1024-bit
-#  ~4m      for 2048-bit
-# ~80m      for 4096-bit
-#
-# A lot of this is due to is_prime on bigints however.
+# The current code is reasonably fast for native, but slow for bigints.
+#    n-bits      no GMP      with MPU::GMP
+#    ----------  ----------  --------------
+#       24-bit         70uS
+#       64-bit       0.01s       0.01s
+#      128-bit       0.2s        0.02s
+#      256-bit       1s          0.04s
+#      512-bit      10s          0.1s
+#     1024-bit     1m            0.5s
+#     2048-bit    ~4m            5s
+#     4096-bit   ~80m           35s
 #
 # To verify distribution:
 #   perl -Iblib/lib -Iblib/arch -MMath::Prime::Util=:all -E 'my %freq; $n=1000000; $freq{random_nbit_prime(6)}++ for (1..$n); printf("%4d %6.3f%%\n", $_, 100.0*$freq{$_}/$n) for sort {$a<=>$b} keys %freq;'
@@ -430,11 +435,10 @@ sub primes {
       $prime = $primelow + ( 2 * $irandf->($partsize) );
       croak "random prime failure, $prime > $high" if $prime > $high;
       croak "Random function broken?" if $loop_limit-- < 0;
-      if (ref($prime) eq 'Math::BigInt') {
-        next if $prime > 53 && Math::BigInt::bgcd($prime, "16294579238595022365") != 1;
-      } else {
-        next if $prime > 13 && (!($prime % 3) || !($prime % 5) || !($prime % 7) || !($prime % 11) || !($prime % 13));
-      }
+      # If we are a small int, then some mods are good.
+      # If we're a bigint and have MPU:GMP installed then everything here is
+      # wasteful.  If we're a bigint without MPU:GMP, then a bgcd is faster.
+      next if $prime > 11 && (!($prime % 3) || !($prime % 5) || !($prime % 7) || !($prime % 11));
       do { $prime = 2; last; } if $prime == 1;   # special case for low = 2
       last if is_prime($prime);
     }
@@ -707,6 +711,7 @@ sub is_prime {
   _validate_positive_integer($n);
 
   return _XS_is_prime($n) if $n <= $_XS_MAXVAL;
+  return Math::Prime::Util::GMP::is_prime($n, @_) if $_HAVE_GMP;
   return is_prob_prime($n);
 }
 
@@ -762,11 +767,15 @@ sub is_strong_pseudoprime {
   _validate_positive_integer($n);
   # validate bases?
   return _XS_miller_rabin($n, @_) if $n <= $_XS_MAXVAL;
+  return Math::Prime::Util::GMP::is_strong_pseudoprime($n, @_) if $_HAVE_GMP;
   return Math::Prime::Util::PP::miller_rabin($n, @_);
 }
 
 sub is_strong_lucas_pseudoprime {
-  return Math::Prime::Util::PP::is_strong_lucas_pseudoprime(@_);
+  my($n) = shift;
+  _validate_positive_integer($n);
+  return Math::Prime::Util::GMP::is_strong_lucas_pseudoprime("$n") if $_HAVE_GMP;
+  return Math::Prime::Util::PP::is_strong_lucas_pseudoprime($n);
 }
 
 sub miller_rabin {
@@ -802,6 +811,7 @@ sub is_prob_prime {
   _validate_positive_integer($n);
 
   return _XS_is_prob_prime($n) if $n <= $_XS_MAXVAL;
+  return Math::Prime::Util::GMP::is_prob_prime($n, @_) if $_HAVE_GMP;
 
   return 2 if $n == 2 || $n == 3 || $n == 5 || $n == 7;
   return 0 if $n < 11;
@@ -1221,18 +1231,17 @@ and more.
 
 The default sieving and factoring are intended to be (and currently are)
 the fastest on CPAN, including L<Math::Prime::XS>, L<Math::Prime::FastSieve>,
-L<Math::Factor::XS>, and L<Math::Prime::TiedArray>.  For numbers in the 10-20
-digit range, it is often orders of magnitude faster.  Typically it is faster
-than L<Math::Pari> for 64-bit operations, with the exception of factoring
-certain 16-20 digit numbers.
+L<Math::Factor::XS>, L<Math::Prime::TiedArray>, and L<Math::Primality> (when
+the GMP module is available).  For numbers in the 10-20 digit range, it is
+often orders of magnitude faster.  Typically it is faster than L<Math::Pari>
+for 64-bit operations, with the exception of factoring certain 16-20 digit
+numbers.
 
 The main development of the module has been for working with Perl UVs, so
-32-bit or 64-bit.  Bignum support is limited.  On advantage is that it requires
-no external software (e.g. GMP or Pari).  If you need full bignum support for
-these types of functions inside Perl now, I recommend L<Math::Pari>.
-While this module contains all the functionality of L<Math::Primality> and is
-much faster on 64-bit input, L<Math::Primality> is much faster than we are
-for bigints.  This is being addressed.
+32-bit or 64-bit.  Bignum support is still experimental.  One advantage is
+that it requires no external software (e.g. GMP or Pari).  For much faster
+performance for bigints, install the L<Math::Prime::Util::GMP> module.  I
+also recommend L<Math::Pari> for these types of operations on big numbers.
 
 The module is thread-safe and allows concurrency between Perl threads while
 still sharing a prime cache.  It is not itself multithreaded.  See the
@@ -1243,9 +1252,8 @@ your program.
 =head1 BIGNUM SUPPORT
 
 By default all functions support bigints.  Performance on bigints is not very
-good however, as currently it is all using the core bigint / bignum routines.
-Some of these performance concerns will be addressed in later versions, and
-should all be hidden.
+good without the L<Math::Prime::Util::GMP> module, as all operations then
+use the bigint / bignum routines from Perl core.
 
 Some of the functions, notably:
 
@@ -1554,8 +1562,8 @@ set will be uniformly selected, with randomness supplied via calls to the
 L<rand> function as described above.
 
 This the trivial algorithm to select primes from a range.  This gives a uniform
-distribution, however it is quite slow for bigints, where the C<is_prime>
-function is a limiter.
+distribution and can be extremely fast.  When used with bigints, having the
+L<Math::Prime::Util::GMP> module installed will make it run much faster.
 
 
 =head2 random_maurer_prime
@@ -1809,6 +1817,7 @@ Print some primes above 64-bit range:
     # Similar but much faster:
     # perl -MMath::Pari=:int,PARI,nextprime -E 'my $start = PARI "100000000000000000000"; my $end = $start+1000; my $p=nextprime($start); while ($p <= $end) { say $p; $p = nextprime($p+1); }'
 
+
 =head1 LIMITATIONS
 
 I have not completed testing all the functions near the word size limit
@@ -1892,8 +1901,10 @@ The differences are in the implementations:
      MR tests, while above 4759123141 it performs a BPSW test.  This is is
      fantastic for bigints over 2^64, but it is significantly slower than
      native precision tests.  With 64-bit numbers it is generally an order of
-     magnitude or more slower than any of the others.  This reverses when
-     numbers get larger.
+     magnitude or more slower than any of the others.  Once bigints are being
+     used, its performance is quite good.  It is an order of magnitude or more
+     faster than this module by default, but installing the
+     L<Math::Prime::Util::GMP> module makes this code run slightly faster.
 
    - L<Math::Pari> has some very effective code, but it has some overhead to get
      to it from Perl.  That means for small numbers it is relatively slow: an
