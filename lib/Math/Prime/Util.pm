@@ -418,6 +418,7 @@ sub primes {
       $binsize  = int( ($oddrange + $nbins - 1) / $nbins );
       $nparts   = int( $oddrange / $binsize );
     }
+    $nparts-- if ($nparts * $binsize) == $oddrange;
 
     my $rpart = $get_rand_range->($nparts);
 
@@ -428,6 +429,7 @@ sub primes {
     #warn "range $oddrange  = $nparts * $binsize + ", $oddrange - ($nparts * $binsize), "\n";
     #warn "  chose part $rpart size $partsize\n";
     #warn "  primelow is $low + 2 * $binsize * $rpart = $primelow\n";
+    #die "Result could be too large" if ($primelow + 2*($partsize-1)) > $high;
 
     # Generate random numbers in the interval until one is prime.
     my $loop_limit = 2000 * 1000;  # To protect against broken rand
