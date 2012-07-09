@@ -292,17 +292,21 @@ sub primes {
 #
 # The random_maurer_prime function uses Maurer's algorithm of course.
 #
-# The current code is reasonably fast for native, but slow for bigints.
+# The current code is reasonably fast for native, but slow for bigints.  Using
+# the M::P::U::GMP module helps immensely.  Performance does differ though --
+# my 32-bit machine is ~5x slower than this 64-bit machine for this.
+#
 #    n-bits      no GMP      with MPU::GMP
 #    ----------  ----------  --------------
-#       24-bit         70uS
-#       64-bit       0.01s       0.01s
-#      128-bit       0.2s        0.02s
-#      256-bit       1s          0.04s
-#      512-bit      10s          0.1s
-#     1024-bit     1m            0.5s
-#     2048-bit    ~4m            5s
-#     4096-bit   ~80m           35s
+#       24-bit         15uS                 (native)
+#       64-bit         60uS                 (native)
+#      128-bit       0.2s        0.01s
+#      256-bit       1s          0.02s
+#      512-bit      10s          0.03s
+#     1024-bit     1m            0.1s
+#     2048-bit    ~4m            0.6s
+#     4096-bit   ~80m            7s
+#     8192-bit   ----           80s
 #
 # To verify distribution:
 #   perl -Iblib/lib -Iblib/arch -MMath::Prime::Util=:all -E 'my %freq; $n=1000000; $freq{random_nbit_prime(6)}++ for (1..$n); printf("%4d %6.3f%%\n", $_, 100.0*$freq{$_}/$n) for sort {$a<=>$b} keys %freq;'
@@ -551,11 +555,15 @@ sub primes {
 
       # Trial divide up to $B
       next if !($n % 3) || !($n % 5) || !($n % 7) || !($n % 11) || !($n % 13);
-      my $looks_prime = 1;
-      foreach my $p (@primes) {
-        do { $looks_prime = 0; last; } if !($n % $p);
+      if ($_HAVE_GMP) {
+        next unless Math::Prime::Util::GMP::is_strong_pseudoprime($n, 2, 7);
+      } else {
+        my $looks_prime = 1;
+        foreach my $p (@primes) {
+          do { $looks_prime = 0; last; } if !($n % $p);
+        }
+        next unless $looks_prime;
       }
-      next unless $looks_prime;
       #warn "$n passes trial division\n";
 
       # a is a random number between 2 and $n-2
