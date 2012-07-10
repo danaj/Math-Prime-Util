@@ -1621,7 +1621,7 @@ The differences between this function and that in L<Crypt::Primes> include
 in its current implementation when run on very large numbers of bits; (2) no
 external libraries are used for this module, while C::P uses L<Math::Pari>;
 (3) C::P uses a modified version of final acceptance criteria
-(C<q E<LT> n**(1/3)> without the rest of Lemma 2), while this module uses the
+(C<q E<lt> n**(1/3)> without the rest of Lemma 2), while this module uses the
 original set; (4) C::P  has some useful options for cryptography, and (5)
 C::P is hardcoded to use Crypt::Random, while this function will use whatever
 you set C<rand> to (this is both good and bad).
