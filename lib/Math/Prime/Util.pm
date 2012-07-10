@@ -675,12 +675,26 @@ sub euler_phi {
   #}
 
   # Alternate way doing multiplications only.
-  my $totient = 1;
-  foreach my $factor (@factors) {
-    $totient *= ($factor - 1);
-    $totient *= $factor for (2 .. $factor_mult{$factor});
+  if (ref($n) ne 'Math::BigInt') {
+    my $totient = 1;  # $n - $n + 1 will make this a bigint if needed
+    foreach my $factor (@factors) {
+      $totient *= ($factor - 1);
+      $totient *= $factor for (2 .. $factor_mult{$factor});
+    }
+    return $totient;
   }
 
+  # Some real wackiness to solve issues with Math::BigInt::GMP (not seen with
+  # Pari or Calc).  Results of the multiply will go negative if we don't do
+  # this.  Standalone bug:
+  #      perl -E 'my $a = 2931542417; use bigint lib=>'GMP'; my $n = 49754396241690624; my $x = $n*$a; say $x;'
+  # This may be related to RT 71548 of Math::BigInt::GMP.
+  my $totient = $n->copy->bone;
+  foreach my $factor (@factors) {
+    my $f = $n->copy->bzero->badd("$factor");
+    $totient->bmul($f->copy->bsub(1));
+    $totient->bmul($f)  for (2 .. $factor_mult{$factor});
+  }
   $totient;
 }
 
@@ -721,7 +735,7 @@ sub is_prime {
   _validate_positive_integer($n);
 
   return _XS_is_prime($n) if $n <= $_XS_MAXVAL;
-  return Math::Prime::Util::GMP::is_prime($n, @_) if $_HAVE_GMP;
+  return Math::Prime::Util::GMP::is_prime($n) if $_HAVE_GMP;
   return is_prob_prime($n);
 }
 
@@ -730,6 +744,12 @@ sub next_prime {
   _validate_positive_integer($n);
 
   return _XS_next_prime($n) if $n <= $_XS_MAXVAL;
+  if ($_HAVE_GMP) {
+    # If $n is a bigint object, try to make the return value the same
+    return (ref($n) eq 'Math::BigInt')
+        ?  $n->copy->bzero->badd(Math::Prime::Util::GMP::next_prime($n))
+        :  Math::Prime::Util::GMP::next_prime($n);
+  }
   return Math::Prime::Util::PP::next_prime($n);
 }
 
@@ -738,6 +758,12 @@ sub prev_prime {
   _validate_positive_integer($n);
 
   return _XS_prev_prime($n) if $n <= $_XS_MAXVAL;
+  if ($_HAVE_GMP) {
+    # If $n is a bigint object, try to make the return value the same
+    return (ref($n) eq 'Math::BigInt')
+        ?  $n->copy->bzero->badd(Math::Prime::Util::GMP::prev_prime($n))
+        :  Math::Prime::Util::GMP::prev_prime($n);
+  }
   return Math::Prime::Util::PP::prev_prime($n);
 }
 
@@ -769,6 +795,13 @@ sub factor {
   _validate_positive_integer($n);
 
   return _XS_factor($n) if $n <= $_XS_MAXVAL;
+  if ($_HAVE_GMP) {
+    my @factors = Math::Prime::Util::GMP::factor($n);
+    if (ref($n) eq 'Math::BigInt') {
+      @factors = map { ($_ > ~0) ? $n->copy->bzero->badd($_) : $_ } @factors;
+    }
+    return @factors;
+  }
   return Math::Prime::Util::PP::factor($n);
 }
 
@@ -821,7 +854,7 @@ sub is_prob_prime {
   _validate_positive_integer($n);
 
   return _XS_is_prob_prime($n) if $n <= $_XS_MAXVAL;
-  return Math::Prime::Util::GMP::is_prob_prime($n, @_) if $_HAVE_GMP;
+  return Math::Prime::Util::GMP::is_prob_prime($n) if $_HAVE_GMP;
 
   return 2 if $n == 2 || $n == 3 || $n == 5 || $n == 7;
   return 0 if $n < 11;
