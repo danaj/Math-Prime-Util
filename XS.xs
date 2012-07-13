@@ -227,26 +227,46 @@ _XS_factor(IN UV n)
       do { /* loop over each remaining factor */
         while ( (n >= (tlim*tlim)) && (!is_definitely_prime(n)) ) {
           int split_success = 0;
+          /* For larger n, do a different sequence */
           if (n > UVCONST(10000000) ) {  /* tune this */
-            /* For sufficiently large n, try more complex methods. */
             /* SQUFOF (succeeds 98-99.9%) */
-            split_success = squfof_factor(n, tofac_stack+ntofac, 256*1024)-1;
-            /* A few rounds of Pollard rho (succeeds most of the rest) */
             if (!split_success) {
-              split_success = prho_factor(n, tofac_stack+ntofac, 400)-1;
+              split_success = squfof_factor(n, tofac_stack+ntofac, 256*1024)-1;
+//printf("squfof %d\n", split_success);
+            }
+            /* A few rounds of Pollard's Rho usually gets the factors */
+            if (!split_success) {
+              split_success = prho_factor(n, tofac_stack+ntofac, 800)-1;
+//printf("prho %d\n", split_success);
             }
             /* Some rounds of HOLF, good for close to perfect squares */
             if (!split_success) {
               split_success = holf_factor(n, tofac_stack+ntofac, 2000)-1;
+//printf("holf %d\n", split_success);
             }
             /* Less than 0.00003% of numbers make it past here. */
+            if (!split_success) {
+              split_success = prho(n, tofac_stack+ntofac, 256*1024)-1;
+//printf("prho %d\n", split_success);
+            }
+          } else {
+            /* A few rounds of Pollard rho is good for finding small factors */
+            if (!split_success) {
+              split_success = prho_factor(n, tofac_stack+ntofac, 800)-1;
+//if (split_success) printf("small prho 1:  %llu %llu\n", tofac_stack[ntofac], tofac_stack[ntofac+1]); else printf("small prho 0\n");
+            }
           }
           if (split_success) {
             MPUassert( split_success == 1, "split factor returned more than 2 factors");
             ntofac++; /* Leave one on the to-be-factored stack */
             n = tofac_stack[ntofac];  /* Set n to the other one */
+          } else if (_XS_is_prime(n)) {
+            /* No wonder we couldn't factor it.  It's prime. */
+            factored_stack[nfactored++] = n;
+            n = 1;
           } else {
             /* trial divisions */
+printf("doing trial on %llu\n", n);
             UV f = tlim;
             UV m = tlim % 30;
             UV limit = (UV) (sqrt(n)+0.1);
@@ -317,7 +337,7 @@ fermat_factor(IN UV n, IN UV maxrounds = 64*1024*1024)
     SIMPLE_FACTOR(fermat_factor, n, maxrounds);
 
 void
-holf_factor(IN UV n, IN UV maxrounds = 64*1024*1024)
+holf_factor(IN UV n, IN UV maxrounds = 8*1024*1024)
   PPCODE:
     SIMPLE_FACTOR(holf_factor, n, maxrounds);
 
@@ -337,7 +357,7 @@ prho_factor(IN UV n, IN UV maxrounds = 4*1024*1024)
     SIMPLE_FACTOR(prho_factor, n, maxrounds);
 
 void
-pminus1_factor(IN UV n, IN UV maxrounds = 4*1024*1024)
+pminus1_factor(IN UV n, IN UV maxrounds = 1*1024*1024)
   PPCODE:
     SIMPLE_FACTOR(pminus1_factor, n, maxrounds);
 

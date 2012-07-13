@@ -406,7 +406,7 @@ int holf_factor(UV n, UV *factors, UV rounds)
   MPUassert( (n >= 3) && ((n%2) != 0) , "bad n in holf_factor");
 
   for (i = 1; i <= rounds; i++) {
-    s = sqrt(n*i);                      /* TODO: overflow here */
+    s = sqrt( (double)n * (double)i );
     if ( (s*s) != (n*i) )  s++;
     m = sqrmod(s, n);
     if (is_perfect_square(m, &f)) {
@@ -467,6 +467,7 @@ int pbrent_factor(UV n, UV *factors, UV rounds)
  * Probabilistic.  If you give this a prime number, it will loop
  * until it runs out of rounds.
  */
+#if 0
 int prho_factor(UV n, UV *factors, UV rounds)
 {
   int in_loop = 0;
@@ -502,6 +503,59 @@ int prho_factor(UV n, UV *factors, UV rounds)
   factors[0] = n;
   return 1;
 }
+#else
+int prho_factor(UV n, UV *factors, UV rounds)
+{
+  UV a, f, i, m, oldU, oldV;
+  const UV inner = 8;
+  UV U = 7;
+  UV V = 7;
+
+  MPUassert( (n >= 3) && ((n%2) != 0) , "bad n in prho_factor");
+
+  switch (n%8) {
+    case 1:  a = 1; break;
+    case 3:  a = 2; break;
+    case 5:  a = 3; break;
+    case 7:  a = 5; break;
+    default: a = 7; break;
+  }
+
+  rounds = (rounds + inner - 1) / inner;
+
+  while (rounds-- > 0) {
+    m = 1; oldU = U; oldV = V;
+    for (i = 0; i < inner; i++) {
+      U = sqraddmod(U, a, n);
+      V = sqraddmod(V, a, n);
+      V = sqraddmod(V, a, n);
+      f = (U > V) ? U-V : V-U;
+      m = mulmod(m, f, n);
+    }
+    f = gcd_ui(m, n);
+    if (f == 1)
+      continue;
+    if (f == n) {  /* backup */
+      U = oldU; V = oldV;
+      i = inner;
+      do {
+        U = sqraddmod(U, a, n);
+        V = sqraddmod(V, a, n);
+        V = sqraddmod(V, a, n);
+        f = gcd_ui( (U > V) ? U-V : V-U, n);
+      } while (f == 1 && i-- != 0);
+      if ( (f == 1) || (f == n) )
+        break;
+    }
+    factors[0] = f;
+    factors[1] = n/f;
+    MPUassert( factors[0] * factors[1] == n , "incorrect factoring");
+    return 2;
+  }
+  factors[0] = n;
+  return 1;
+}
+#endif
 
 /* Pollard's P-1
  *
