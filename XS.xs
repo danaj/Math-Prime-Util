@@ -199,6 +199,7 @@ _XS_factor(IN UV n)
     if (n < 4) {
       XPUSHs(sv_2mortal(newSVuv( n ))); /* If n is 0-3, we're done. */
     } else {
+      int const verbose = 0;
       UV tlim = 53;  /* Below this we've checked with trial division */
       UV tofac_stack[MPU_MAX_FACTORS+1];
       UV factored_stack[MPU_MAX_FACTORS+1];
@@ -227,46 +228,48 @@ _XS_factor(IN UV n)
       do { /* loop over each remaining factor */
         while ( (n >= (tlim*tlim)) && (!is_definitely_prime(n)) ) {
           int split_success = 0;
-          /* For larger n, do a different sequence */
-          if (n > UVCONST(10000000) ) {  /* tune this */
-            /* SQUFOF (succeeds 98-99.9%) */
-            if (!split_success) {
-              split_success = squfof_factor(n, tofac_stack+ntofac, 256*1024)-1;
-//printf("squfof %d\n", split_success);
-            }
-            /* A few rounds of Pollard's Rho usually gets the factors */
-            if (!split_success) {
-              split_success = prho_factor(n, tofac_stack+ntofac, 800)-1;
-//printf("prho %d\n", split_success);
-            }
-            /* Some rounds of HOLF, good for close to perfect squares */
-            if (!split_success) {
-              split_success = holf_factor(n, tofac_stack+ntofac, 2000)-1;
-//printf("holf %d\n", split_success);
-            }
-            /* Less than 0.00003% of numbers make it past here. */
-            if (!split_success) {
-              split_success = prho(n, tofac_stack+ntofac, 256*1024)-1;
-//printf("prho %d\n", split_success);
-            }
-          } else {
-            /* A few rounds of Pollard rho is good for finding small factors */
-            if (!split_success) {
-              split_success = prho_factor(n, tofac_stack+ntofac, 800)-1;
-//if (split_success) printf("small prho 1:  %llu %llu\n", tofac_stack[ntofac], tofac_stack[ntofac+1]); else printf("small prho 0\n");
-            }
+
+          if (!split_success) {
+            split_success = pbrent_factor(n, tofac_stack+ntofac, 1500)-1;
+            if (verbose) { if (split_success) printf("pbrent 1:  %lu %lu\n", tofac_stack[ntofac], tofac_stack[ntofac+1]); else printf("pbrent 0\n"); }
           }
+          if (!split_success) {
+            split_success = squfof_factor(n, tofac_stack+ntofac, 256*1024)-1;
+            if (verbose) printf("squfof %d\n", split_success);
+          }
+
+          /* Time to do expensive primality check and exit now if it is */
+          if (!split_success && _XS_is_prime(n)) {
+            if (verbose) printf("oops, %lu is prime\n", n);
+            factored_stack[nfactored++] = n;
+            n = 1;
+            break;
+          }
+
+          /* A few rounds of Pollard's Rho usually gets the factors */
+          if (!split_success) {
+            split_success = prho_factor(n, tofac_stack+ntofac, 800)-1;
+            if (verbose) printf("prho %d\n", split_success);
+          }
+          /* Some rounds of HOLF, good for close to perfect squares */
+          if (!split_success) {
+            split_success = holf_factor(n, tofac_stack+ntofac, 2000)-1;
+            if (verbose) printf("holf %d\n", split_success);
+          }
+
+          /* A miniscule fraction of numbers make it here */
+          if (!split_success) {
+            split_success = prho_factor(n, tofac_stack+ntofac, 256*1024)-1;
+            if (verbose) printf("long prho %d\n", split_success);
+          }
+
           if (split_success) {
             MPUassert( split_success == 1, "split factor returned more than 2 factors");
             ntofac++; /* Leave one on the to-be-factored stack */
             n = tofac_stack[ntofac];  /* Set n to the other one */
-          } else if (_XS_is_prime(n)) {
-            /* No wonder we couldn't factor it.  It's prime. */
-            factored_stack[nfactored++] = n;
-            n = 1;
           } else {
             /* trial divisions */
-printf("doing trial on %llu\n", n);
+            if (verbose) printf("doing trial on %llu\n", n);
             UV f = tlim;
             UV m = tlim % 30;
             UV limit = (UV) (sqrt(n)+0.1);
