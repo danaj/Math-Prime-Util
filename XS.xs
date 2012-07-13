@@ -269,7 +269,7 @@ _XS_factor(IN UV n)
             n = tofac_stack[ntofac];  /* Set n to the other one */
           } else {
             /* trial divisions */
-            if (verbose) printf("doing trial on %llu\n", n);
+            if (verbose) printf("doing trial on %lu\n", (unsigned long)n);
             UV f = tlim;
             UV m = tlim % 30;
             UV limit = (UV) (sqrt(n)+0.1);
