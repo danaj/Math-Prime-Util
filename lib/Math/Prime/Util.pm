@@ -212,6 +212,7 @@ sub primes {
   return $sref if ($low > $high) || ($high < 2);
 
   if ( $high > $_XS_MAXVAL) {
+    return Math::Prime::Util::GMP::primes($low,$high) if $_HAVE_GMP;
     return Math::Prime::Util::PP::primes($low,$high);
   }
 
@@ -795,6 +796,7 @@ sub factor {
   _validate_positive_integer($n);
 
   return _XS_factor($n) if $n <= $_XS_MAXVAL;
+
   if ($_HAVE_GMP) {
     my @factors = Math::Prime::Util::GMP::factor($n);
     if (ref($n) eq 'Math::BigInt') {
@@ -802,6 +804,7 @@ sub factor {
     }
     return @factors;
   }
+
   return Math::Prime::Util::PP::factor($n);
 }
 
@@ -1488,7 +1491,7 @@ polynomials, plus a correction term for small values to reduce the error.
   my $probably_prime = is_strong_pseudoprime($n, 2, 3, 5, 7, 11, 13, 17);
 
 Takes a positive number as input and one or more bases.  The bases must be
-between C<2> and C<n - 2>.  Returns 1 is C<n> is a prime or a strong
+between C<2> and C<n - 2>.  Returns 1 if the input is a prime or a strong
 pseudoprime to all of the bases, and 0 if not.
 
 If 0 is returned, then the number really is a composite.  If 1 is returned,
@@ -1538,8 +1541,8 @@ result will then always be 0 (composite) or 2 (prime).  A later implementation
 may change the internals, but the results will be identical.
 
 For inputs larger than C<2^64>, a strong Baillie-PSW primality test is
-performed (aka BPSW or BSW).  This is a probabilistic test, so the only times
-a 2 (definitely prime) are returned are when the small trial division succeeds.
+performed (aka BPSW or BSW).  This is a probabilistic test, so only
+0 (composite) and 1 (probably prime) are returned.
 Note that since the test was published in 1980, not a single BPSW pseudoprime
 has been found, so it is extremely likely to be prime.  While we know there
 an infinite number of counterexamples exist, there is a weak conjecture that
