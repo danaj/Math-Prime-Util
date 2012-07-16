@@ -1919,10 +1919,10 @@ Perl modules, counting the primes to C<800_000_000> (800 million), in seconds:
        2.9   Math::Prime::FastSieve      0.12     decent odd-number sieve
       11.7   Math::Prime::XS             0.29     "" but needs a count API
       15.0   Bit::Vector                 7.2
-      59.1   Math::Prime::Util::PP       0.09     Perl
+      59.1   Math::Prime::Util::PP       0.09     Perl (fastest I know of)
      170.0   Faster Perl sieve (net)     2012-01  array of odds
      548.1   RosettaCode sieve (net)     2012-06  simplistic Perl
-   >5000     Math::Primality             0.04     Perl + GMP
+  ~11000     Math::Primality             0.04     Perl + Math::GMPz
   >20000     Math::Big                   1.12     Perl, > 26GB RAM used
 
 
