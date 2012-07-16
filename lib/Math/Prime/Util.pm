@@ -1923,6 +1923,7 @@ Perl modules, counting the primes to C<800_000_000> (800 million), in seconds:
      170.0   Faster Perl sieve (net)     2012-01  array of odds
      548.1   RosettaCode sieve (net)     2012-06  simplistic Perl
    >5000     Math::Primality             0.04     Perl + GMP
+  >20000     Math::Big                   1.12     Perl, > 26GB RAM used
 
 
 

@@ -15,29 +15,11 @@
 
 - Faster SQUFOF
 
-- better prime count upper/lower bounds (under RH for 64-bit).
+- better prime count upper/lower bounds:
+    - Dusart 2010 "Estimates of Some Functions Over Primes without R.H."
+    - Schoenfeld or Stoll for with-RH limits
 
 - Move .c / .h files into separate directory.
   version does it in a painful way.  Something simpler to be had?
 
 - finish test suite for bignum.  Work on making it faster.
-
-- Need to add more bignum factoring support:
-   - GMP prho
-   - GMP pminus1
-   - GMP SQUFOF
-   - GMP tinyqs
-  The first three should give us reasonable support up to ~30 digits.  Adding
-  a tinyQS (e.g. yafu, msieve, flint) would both be faster and extend to ~40
-  digits (in a reasonable time).  Going beyong that is going to need full
-  MPQS or SIQS.  Another possibility is to see if the GMP-ECM library is
-  installed and call that, but I'm not sure how much it will help if we get
-  the above running.
-
-- Tune the Lucas sequence code, especially try using more BigInt features.
-
-- Add tests for strong lucas pseudoprime
-
-- Speedup random_prime.
-
-- Add random maurer prime.
