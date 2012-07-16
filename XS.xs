@@ -231,7 +231,7 @@ _XS_factor(IN UV n)
 
           if (!split_success) {
             split_success = pbrent_factor(n, tofac_stack+ntofac, 1500)-1;
-            if (verbose) { if (split_success) printf("pbrent 1:  %lu %lu\n", tofac_stack[ntofac], tofac_stack[ntofac+1]); else printf("pbrent 0\n"); }
+            if (verbose) { if (split_success) printf("pbrent 1:  %"UVuf" %"UVuf"\n", tofac_stack[ntofac], tofac_stack[ntofac+1]); else printf("pbrent 0\n"); }
           }
           if (!split_success) {
             split_success = squfof_factor(n, tofac_stack+ntofac, 256*1024)-1;
@@ -240,7 +240,7 @@ _XS_factor(IN UV n)
 
           /* Time to do expensive primality check and exit now if it is */
           if (!split_success && _XS_is_prime(n)) {
-            if (verbose) printf("oops, %lu is prime\n", n);
+            if (verbose) printf("oops, %"UVuf" is prime\n", n);
             factored_stack[nfactored++] = n;
             n = 1;
             break;
@@ -269,7 +269,7 @@ _XS_factor(IN UV n)
             n = tofac_stack[ntofac];  /* Set n to the other one */
           } else {
             /* trial divisions */
-            if (verbose) printf("doing trial on %lu\n", (unsigned long)n);
+            if (verbose) printf("doing trial on %"UVuf"\n", n);
             UV f = tlim;
             UV m = tlim % 30;
             UV limit = (UV) (sqrt(n)+0.1);

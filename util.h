@@ -12,14 +12,6 @@ extern UV  _XS_prev_prime(UV x);
 extern UV  _XS_prime_count(UV low, UV high);
 extern UV  _XS_nth_prime(UV x);
 
-/* These have been moved into the main Util.pm */
-extern UV  _XS_prime_count_lower(UV x);
-extern UV  _XS_prime_count_upper(UV x);
-extern UV  _XS_prime_count_approx(UV x);
-extern UV  _XS_nth_prime_lower(UV n);
-extern UV  _XS_nth_prime_upper(UV x);
-extern UV  _XS_nth_prime_approx(UV x);
-
 extern double _XS_ExponentialIntegral(double x);
 extern double _XS_LogarithmicIntegral(double x);
 extern double _XS_RiemannR(double x);
