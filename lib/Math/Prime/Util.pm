@@ -316,8 +316,9 @@ sub primes {
 {
   # Note:  I was using rand($range), but Math::Random::MT ignores the argument
   #        instead of following its documentation.
-  my $irandf = (defined &::rand) ? sub { return int(::rand()*shift); }
-                                 : sub { return int(rand()*shift); };
+  my $irandf = sub {
+     return int( (defined &::rand)  ?  ::rand()*$_[0]  :  rand()*$_[0] );
+  };
   # TODO: Look at RANDBITS if using system rand
   my $rand_max_bits = 31;
   my $rand_max_val  = 1 << $rand_max_bits;
@@ -1186,7 +1187,11 @@ sub LogarithmicIntegral {
     return Math::BigFloat->binf('-') if $n == 1;
     return Math::BigFloat->new('1.045163780117492784844588889194613136522615578151201575832909144075013205210359530172717405626383356306') if $n == 2;
   } else {
-    return 0+'-inf' if $n == 1;
+    if ($n == 1) {
+      my $neg_infinity = 0+'-inf';
+      return (-9)**9**9 if $neg_infinity == 0;
+      return $neg_infinity;
+    }
     return 1.045163780117492784844588889194613136522615578151 if $n == 2;
   }
   ExponentialIntegral(log($n));
