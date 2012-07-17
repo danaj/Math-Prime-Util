@@ -226,31 +226,33 @@ _XS_factor(IN UV n)
         while ( (n%47) == 0 ) {  n /= 47;  XPUSHs(sv_2mortal(newSVuv( 47 ))); }
       }
       do { /* loop over each remaining factor */
-        while ( (n >= (tlim*tlim)) && (!is_definitely_prime(n)) ) {
+        /* In theory we can try to minimize work using is_definitely_prime(n)
+         * but in practice it seems slower. */
+        while ( (n >= (tlim*tlim)) && (!_XS_is_prime(n)) ) {
           int split_success = 0;
+          /* How many rounds of SQUFOF to try depends on the number size */
+          UV sq_rounds = ((n>>29) ==     0) ? 100000 :
+                         ((n>>29) < 100000) ? 250000 :
+                                              600000;
 
+          /* Small factors will be found quite rapidly with this */
           if (!split_success) {
             split_success = pbrent_factor(n, tofac_stack+ntofac, 1500)-1;
             if (verbose) { if (split_success) printf("pbrent 1:  %"UVuf" %"UVuf"\n", tofac_stack[ntofac], tofac_stack[ntofac+1]); else printf("pbrent 0\n"); }
           }
+
+          /* SQUFOF does great with big numbers */
           if (!split_success) {
-            split_success = squfof_factor(n, tofac_stack+ntofac, 256*1024)-1;
+            split_success = squfof_factor(n, tofac_stack+ntofac, sq_rounds)-1;
             if (verbose) printf("squfof %d\n", split_success);
           }
 
-          /* Time to do expensive primality check and exit now if it is */
-          if (!split_success && _XS_is_prime(n)) {
-            if (verbose) printf("oops, %"UVuf" is prime\n", n);
-            factored_stack[nfactored++] = n;
-            n = 1;
-            break;
-          }
-
-          /* A few rounds of Pollard's Rho usually gets the factors */
+          /* Perhaps prho using different parameters will find it */
           if (!split_success) {
             split_success = prho_factor(n, tofac_stack+ntofac, 800)-1;
             if (verbose) printf("prho %d\n", split_success);
           }
+
           /* Some rounds of HOLF, good for close to perfect squares */
           if (!split_success) {
             split_success = holf_factor(n, tofac_stack+ntofac, 2000)-1;
@@ -266,6 +268,8 @@ _XS_factor(IN UV n)
           if (split_success) {
             MPUassert( split_success == 1, "split factor returned more than 2 factors");
             ntofac++; /* Leave one on the to-be-factored stack */
+            if ((tofac_stack[ntofac] == n) || (tofac_stack[ntofac] == 1))
+              croak("bad factor\n");
             n = tofac_stack[ntofac];  /* Set n to the other one */
           } else {
             /* trial divisions */
