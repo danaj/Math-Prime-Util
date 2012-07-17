@@ -23,6 +23,7 @@ WriteMakefile1(
                       'Carp'             => 0,
                       'Tie::Array'       => 0,
                       'base'             => 0,
+                      'Config'           => 0,
                       'bignum'           => '0.23',   # Used for bigint tests
                       'Math::BigInt'     => '1.88',
                       'Math::BigFloat'   => '1.59',

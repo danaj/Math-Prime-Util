@@ -489,9 +489,9 @@ static UV _XS_nth_prime_upper(UV n)
     upper = fn * (flogn + flog2n - 1.0 + ((flog2n-2.00)/flogn));
   else if (n >= 178974)    /* Dusart 2010 page 7 */
     upper = fn * (flogn + flog2n - 1.0 + ((flog2n-1.95)/flogn));
-  else if (n >= 27076)     /* Dusart 1999 page 14 */
-    upper = fn * (flogn + flog2n - 1.0 + ((flog2n-1.80)/flogn));
-  else if (n >=     6)     /* Modified from Robin 1983 for 6-27075 _only_ */
+  else if (n >=  39017)    /* Dusart 1999 page 14 */
+    upper = fn * (flogn + flog2n - 0.9484);
+  else if (n >=     6)     /* Modified from Robin 1983 for 6-39016 _only_ */
     upper = fn * ( flogn  +  0.6000 * flog2n );
   else
     upper = fn * ( flogn + flog2n );
