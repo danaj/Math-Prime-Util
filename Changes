@@ -1,6 +1,6 @@
 Revision history for Perl extension Math::Prime::Util.
 
-0.10  7 July 2012
+0.10  16 July 2012
     - Add:
            prime_get_config              to get configuration options
            is_strong_pseudoprime         better name for miller_rabin
@@ -18,6 +18,9 @@ Revision history for Perl extension Math::Prime::Util.
 
     - Add tests for pp and bignum, cleanup of many tests.
 
+    - New bounds for prime_count and nth_prime.  Dusart 2010 for larger
+      values, tuned nth_prime_upper for small values.  Much tighter.
+
     - Minor changes:
         - Make miller_rabin return 0 if given even number.
         - The XS miller_rabin code now works with large base > n.
@@ -25,12 +28,18 @@ Revision history for Perl extension Math::Prime::Util.
         - miller_rabin() deprecated.  Use is_strong_pseudoprime instead.
 
     - We now should support most of the functionality of:
-         Math::Prime::XS         (more functions)
-         Math::Prime::FastSieve
-         Math::Prime::TiedArray  (much faster)
-         Math::Factor::XS        (faster, missing multiplicity)
-         Math::Primality         (more portable, fast for small, slow for big)
-         Crypt::Primes           (more portable, much slower, no fancy options)
+         Math::Prime::XS         (MPU: more functions, a bit faster)
+         Math::Prime::FastSieve  (MPU: more functions, a bit faster)
+         Math::Prime::TiedArray  (MPU: a *lot* faster)
+         Math::Factor::XS        (MPU: bignums, faster, missing multiplicity)
+         Math::Big::Factors      (MPU: orders of magnitude faster)
+         Math::Primality         (MPU: more portable, fast native, slow bigint)
+                                 (MPU+MPU::GMP: faster)
+         Crypt::Primes           (MPU: more portable, slower & no fancy options)
+
+      as well as a tiny bit of:
+         Math::Big               (MPU's primes is *much* faster)
+         Bit::Vector             (MPU's primes is ~10x faster)
 
 0.09  25 June 2012
     - Pure Perl code added.  Passes all tests.  Used only if the XSLoader
