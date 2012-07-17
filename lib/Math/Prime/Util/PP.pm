@@ -1412,10 +1412,11 @@ module is just the Pure Perl implementation.
 
 =head1 DESCRIPTION
 
-A set of utilities related to prime numbers.  These include multiple sieving
-methods, is_prime, prime_count, nth_prime, approximations and bounds for
-the prime_count and nth prime, next_prime and prev_prime, factoring utilities,
-and more.
+Pure Perl implementations of prime number utilities that are normally
+handled with XS or GMP.  Having the Perl implementations (1) provides examples,
+(2) allows the functions to run even if XS isn't available, and (3) gives
+big number support if L<Math::Prime::Util::GMP> isn't available.  This is a
+subset of L<Math::Prime::Util>'s functionality.
 
 All routines should work with native integers or multi-precision numbers.  To
 enable big numbers, use bigint or bignum:
@@ -1424,9 +1425,9 @@ enable big numbers, use bigint or bignum:
     say prime_count_approx(1000000000000000000000000)'
     # says 18435599767347543283712
 
-This is still experimental, and some functions will be very slow.  I recommend
-looking into L<Math::Pari> if you need serious bignum support for this type
-of functionality right now.
+This is still experimental, and some functions will be very slow.  The
+L<Math::Prime::Util::GMP> module has much faster versions of many of these
+functions.  Alternately, L<Math::Pari> has a lot of these types of functions.
 
 
 =head1 FUNCTIONS
@@ -1435,8 +1436,9 @@ of functionality right now.
 
   print "$n is prime" if is_prime($n);
 
-Returns 2 if the number is prime, 0 if not.  Also note there are
-probabilistic prime testing functions available.
+Returns 2 if the number is prime, 0 if not.  For numbers larger than C<2^64>
+it will return 0 for composite and 1 for probably prime, using a strong BPSW
+test.  Also note there are probabilistic prime testing functions available.
 
 
 =head2 primes
@@ -1464,9 +1466,9 @@ using wheel factorization, or a segmented sieve.
 
   $n = next_prime($n);
 
-Returns the next prime greater than the input number.  0 is returned if the
-next prime is larger than a native integer type (the last representable
-primes being C<4,294,967,291> in 32-bit Perl and
+Returns the next prime greater than the input number.  If the input is not a
+bigint, then 0 is returned if the next prime is larger than a native integer
+type (the last representable primes being C<4,294,967,291> in 32-bit Perl and
 C<18,446,744,073,709,551,557> in 64-bit).
 
 
@@ -1489,47 +1491,6 @@ count of primes between the ranges (e.g. C<(13,17)> returns 2, C<14,17>
 and C<13,16> return 1, and C<14,16> returns 0).
 
 
-=head2 prime_count_upper
-
-=head2 prime_count_lower
-
-  my $lower_limit = prime_count_lower($n);
-  die unless prime_count($n) >= $lower_limit;
-
-  my $upper_limit = prime_count_upper($n);
-  die unless prime_count($n) <= $upper_limit;
-
-Returns an upper or lower bound on the number of primes below the input number.
-These are analytical routines, so will take a fixed amount of time and no
-memory.  The actual C<prime_count> will always be on or between these numbers.
-
-A common place these would be used is sizing an array to hold the first C<$n>
-primes.  It may be desirable to use a bit more memory than is necessary, to
-avoid calling C<prime_count>.
-
-These routines use hand-verified tight limits below a range at least C<2^35>,
-and fall back to the Dusart bounds of
-
-    x/logx * (1 + 1/logx + 1.80/log^2x) <= Pi(x)
-
-    x/logx * (1 + 1/logx + 2.51/log^2x) >= Pi(x)
-
-above that range.
-
-
-=head2 prime_count_approx
-
-  print "there are about ",
-        prime_count_approx( 10 ** 18 ),
-        " primes below one quintillion.\n";
-
-Returns an approximation to the C<prime_count> function, without having to
-generate any primes.  The current implementation uses the Riemann R function
-which is quite accurate: an error of less than C<0.0005%> is typical for
-input values over C<2^32>.  A slightly faster (0.1ms vs. 1ms), but much less
-accurate, answer can be obtained by averaging the upper and lower bounds.
-
-
 =head2 nth_prime
 
   say "The ten thousandth prime is ", nth_prime(10_000);
@@ -1541,39 +1502,15 @@ This relies on generating primes, so can require a lot of time and space for
 large inputs.
 
 
-=head2 nth_prime_upper
-
-=head2 nth_prime_lower
-
-  my $lower_limit = nth_prime_lower($n);
-  die unless nth_prime($n) >= $lower_limit;
-
-  my $upper_limit = nth_prime_upper($n);
-  die unless nth_prime($n) <= $upper_limit;
-
-Returns an analytical upper or lower bound on the Nth prime.  This will be
-very fast.  The lower limit uses the Dusart 1999 bounds for all C<n>, while
-the upper bound uses one of the two Dusart 1999 bounds for C<n E<gt>= 27076>,
-the Robin 1983 bound for C<n E<gt>= 7022>, and the simple bound of
-C<n * (logn + loglogn)> for C<n E<lt> 7022>.
-
-
-=head2 nth_prime_approx
-
-  say "The one trillionth prime is ~ ", nth_prime_approx(10**12);
-
-Returns an approximation to the C<nth_prime> function, without having to
-generate any primes.  Uses the Cipolla 1902 approximation with two
-polynomials, plus a correction term for small values to reduce the error.
-
+=head2 is_strong_pseudoprime
 
 =head2 miller_rabin
 
-  my $maybe_prime = miller_rabin($n, 2);
-  my $probably_prime = miller_rabin($n, 2, 3, 5, 7, 11, 13, 17);
+  my $maybe_prime = is_strong_pseudoprime($n, 2);
+  my $probably_prime = is_strong_pseudoprime($n, 2, 3, 5, 7, 11, 13, 17);
 
 Takes a positive number as input and one or more bases.  The bases must be
-between C<2> and C<n - 2>.  Returns 2 is C<n> is definitely prime, 1 if C<n>
+greater than 1.  Returns 2 is C<n> is definitely prime, 1 if C<n>
 is probably prime, and 0 if C<n> is definitely composite.  Since this is
 just the Miller-Rabin test, a value of 2 is only returned for inputs of
 2 and 3, which are shortcut.  If 0 is returned, then the number really is a
@@ -1585,66 +1522,13 @@ tests (e.g. the strong BPSW test) or deterministic results for numbers less
 than some verified limit (such as the C<is_prob_prime> function in this module).
 
 
-=head2 is_prob_prime
+=head2 is_strong_lucas_pseudoprime
 
-  my $prob_prime = is_prob_prime($n);
-  # Returns 0 (composite), 2 (prime), or 1 (probably prime)
-
-Takes a positive number as input and returns back either 0 (composite),
-2 (definitely prime), or 1 (probably prime).
-
-This is done with a tuned set of Miller-Rabin tests such that the result
-will be deterministic for 64-bit input.  Either 2, 3, 4, 5, or 7 Miller-Rabin
-tests are performed (no more than 3 for 32-bit input), and the result will
-then always be 0 (composite) or 2 (prime).  A later implementation may switch
-to a BPSW test, depending on speed.
-
-
-=head2 random_prime
-
-  my $small_prime = random_prime(1000);      # random prime <= limit
-  my $rand_prime = random_prime(100, 10000); # random prime within a range
-
-Returns a psuedo-randomly selected prime that will be greater than or equal
-to the lower limit and less than or equal to the upper limit.  If no lower
-limit is given, 2 is implied.  Returns undef if no primes exist within the
-range.  The L<rand> function is called one or more times for selection.
-
-This will return a uniform distribution of the primes in the range, meaning
-for each prime in the range, the chances are equally likely that it will be
-seen.
-
-The current algorithm does a random index selection for small numbers, which
-is deterministic.  For larger numbers, this can be very slow, so the
-obvious Monte Carlo method is used, where random numbers in the range are
-selected until one is prime.  That also gets slow as the number of digits
-increases, but not something that impacts us in 64-bit.
-
-If you want cryptographically secure primes, I suggest looking at
-L<Crypt::Primes> or something similar.  The current L<Math::Prime::Util>
-module does not use strong randomness, and its primes are ridiculously small
-by cryptographic standards.
-
-Perl's L<rand> function is normally called, but if the sub C<main::rand>
-exists, it will be used instead.  When called with no arguments it should
-return a float value between 0 and 1-epsilon, with 32 bits of randomness.
-Examples:
-
-  # Use Mersenne Twister
-  use Math::Random::MT::Auto qw/rand/;
-
-  # Use my custom random function
-  sub rand { ... }
-
-=head2 random_ndigit_prime
-
-  say "My 4-digit prime number is: ", random_ndigit_prime(4);
-
-Selects a random n-digit prime, where the input is an integer number of
-digits between 1 and the maximum native type (10 for 32-bit, 20 for 64-bit).
-One of the primes within that range (e.g. 1000 - 9999 for 4-digits) will be
-uniformly selected using the L<rand> function.
-
+Takes a positive number as input, and returns 1 if the input is a strong
+Lucas pseudoprime using the Selfridge method of choosing D, P, and Q (some
+sources call this a strong Lucas-Selfridge pseudoprime).  This is one half
+of the BPSW primality test (the Miller-Rabin strong pseudoprime test with
+base 2 being the other half).
 
 
 =head1 UTILITY FUNCTIONS
@@ -1669,18 +1553,6 @@ C<prime_precalc>, it is not necessary to call this, but if you're done
 making calls, or want things cleanup up, you can use this.  The object method
 might be a better choice for complicated uses.
 
-=head2 Math::Prime::Util::MemFree->new
-
-  my $mf = Math::Prime::Util::MemFree->new;
-  # perform operations.  When $mf goes out of scope, memory will be recovered.
-
-This is a more robust way of making sure any cached memory is freed, as it
-will be handled by the last C<MemFree> object leaving scope.  This means if
-your routines were inside an eval that died, things will still get cleaned up.
-If you call another function that uses a MemFree object, the cache will stay
-in place because you still have an object.
-
-
 
 =head1 FACTORING FUNCTIONS
 
@@ -1689,26 +1561,11 @@ in place because you still have an object.
   my @factors = factor(3_369_738_766_071_892_021);
   # returns (204518747,16476429743)
 
-Produces the prime factors of a positive number input.  They may not be in
-numerical order.  The special cases of C<n = 0> and C<n = 1> will
-return C<n>, which guarantees multiplying the factors together will
-always result in the input value, though those are the only cases where
-the returned factors are not prime.
-
-The current algorithm is to use trial division for small numbers, while large
-numbers go through a sequence of small trials, SQUFOF, Pollard's Rho, Hart's
-one line factorization, and finally trial division for any survivors.  This
-process is repeated for each non-prime factor.
-
-
-=head2 all_factors
-
-  my @divisors = all_factors(30);   # returns (2, 3, 5, 6, 10, 15)
-
-Produces all the divisors of a positive number input.  1 and the input number
-are excluded (which implies that an empty list is returned for any prime
-number input).  The divisors are a power set of multiplications of the prime
-factors, returned as a uniqued sorted list.
+Produces the prime factors of a positive number input, in numerical order.
+The special cases of C<n = 0> and C<n = 1> will return C<n>, which
+guarantees multiplying the factors together will always result in the
+input value, though those are the only cases where the returned factors
+are not prime.
 
 
 =head2 trial_factor
@@ -1724,11 +1581,7 @@ For large inputs this will be very slow.
 
   my @factors = fermat_factor($n);
 
-Produces factors, not necessarily prime, of the positive number input.  The
-particular algorithm is Knuth's algorithm C.  For small inputs this will be
-very fast, but it slows down quite rapidly as the number of digits increases.
-It is very fast for inputs with a factor close to the midpoint
-(e.g. a semiprime p*q where p and q are the same number of digits).
+Currently unimplementated in Perl.
 
 =head2 holf_factor
 
@@ -1746,10 +1599,7 @@ same advantages and disadvantages as Fermat's method.
 
   my @factors = squfof_factor($n);
 
-Produces factors, not necessarily prime, of the positive number input.  An
-optional number of rounds can be given as a second parameter.  It is possible
-the function will be unable to find a factor, in which case a single element,
-the input, is returned.  This function typically runs very fast.
+Currently unimplementated in Perl.
 
 =head2 prho_factor
 
@@ -1853,10 +1703,10 @@ Performance improvement in this code is still possible.  The prime sieve is
 over 2x faster than anything I was able to find online, but it is still has
 room for improvement.
 
-Fundamentally some of these operations will be much faster in C than Perl.  I
-expect any of the CPAN XS modules supporting related features to be faster,
-however if those modules are available, then the XS code in
-L<Math::Prime::Util> should be.
+L<Math::Prime::Util::GMP> offers C<C+XS+GMP> support for most of the important
+functions, and will be vastly faster for most operations.  If you install that
+module, L<Math::Prime::Util> will load it automatically, meaning you should
+not have to think about what code is actually being used (C, GMP, or Perl).
 
 Memory use will generally be higher for the PP code, and in some cases B<much>
 higher.  Some of this may be addressed in a later release.
@@ -1868,6 +1718,8 @@ not matter.
 =head1 SEE ALSO
 
 L<Math::Prime::Util>
+
+L<Math::Prime::Util::GMP>
 
 
 =head1 AUTHORS

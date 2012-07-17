@@ -23,3 +23,6 @@
   version does it in a painful way.  Something simpler to be had?
 
 - finish test suite for bignum.  Work on making it faster.
+
+- After the factoring changes, we need to use Devel::Cover again to ferret
+  out numbers that pass the early tests.

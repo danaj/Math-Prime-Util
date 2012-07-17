@@ -1343,10 +1343,12 @@ your program.
 =head1 BIGNUM SUPPORT
 
 By default all functions support bigints.  The module will not turn on bigint
-support for you -- you will need to use bigint or pass in a L<Math::BigInt>
-object as your input.  Some care is taken to keep all bignum operations using
-the same class as was passed in, allowing the module to work properly with
-Calc, FastCalc, GMP, Pari, etc.
+support for you -- you will need to C<use bigint>, C<use bignum>, or pass in
+a L<Math::BigInt> object as your input.  The functions take some care to
+perform all bignum operations using the same class as was passed in, allowing
+the module to work properly with Calc, FastCalc, GMP, Pari, etc.  You should
+try to install L<Math::Prime::Util::GMP> if you plan to use bigints with this
+module, as it will make it run much faster.
 
 
 Some of the functions, notably:
@@ -1939,7 +1941,9 @@ Given a positive non-zero floating point input, returns the floating
 point value of Riemann's R function.  Riemann's R function gives a very close
 approximation to the prime counting function.
 
-Accuracy should be at least 14 digits.  The current implementation isn't corrently storing constants as big floats, so is not giving increased accuracy like it should.
+Accuracy should be at least 14 digits.  The current implementation isn't
+correctly storing constants as big floats, so is not giving increased accuracy
+with big numbers like it should.
 
 
 =head1 EXAMPLES
