@@ -768,14 +768,11 @@ static double evaluate_zeta(double x) {
    */
 
   /* term = 1.0;          y = term-c;  t = sum+y;  c = (t-sum)-y;  sum = t; */
-  term = 1.0/exp2(x);  y = term-c;  t = sum+y;  c = (t-sum)-y;  sum = t;
+  term = pow(2, -x);  y = term-c;  t = sum+y;  c = (t-sum)-y;  sum = t;
 
   for (k = 3; k <= 100000; k++) {
     if (fabs(term) < tol) break;
-    if      (k ==  4) term = 1.0 / exp2(2*x);
-    else if (k ==  8) term = 1.0 / exp2(4*x);
-    else if (k == 16) term = 1.0 / exp2(8*x);
-    else              term = 1.0 / pow(k, x);
+    term = pow(k, -x);
     y = term-c;  t = sum+y;  c = (t-sum)-y;  sum = t;
   }
   return sum;
