@@ -5,7 +5,7 @@ use Carp qw/carp croak confess/;
 
 BEGIN {
   $Math::Prime::Util::PP::AUTHORITY = 'cpan:DANAJ';
-  $Math::Prime::Util::PP::VERSION = '0.10';
+  $Math::Prime::Util::PP::VERSION = '0.11';
 }
 
 # The Pure Perl versions of all the Math::Prime::Util routines.
@@ -1276,10 +1276,10 @@ sub _evaluate_zeta {
   my($y, $t);
   my $c = 0.0;
 
-  $y = (1.0/(2.0**$x))-$c; $t = $sum+$y; $c = ($t-$sum)-$y; $sum = $t;
+  $y = (2.0 ** -$x)-$c; $t = $sum+$y; $c = ($t-$sum)-$y; $sum = $t;
 
   for my $k (3 .. 100000) {
-    my $term = 1.0 / ($k ** $x);
+    my $term = $k ** -$x;
     $y = $term-$c; $t = $sum+$y; $c = ($t-$sum)-$y; $sum = $t;
     last if abs($term) < $tol;
   }
@@ -1330,7 +1330,7 @@ Math::Prime::Util::PP - Pure Perl version of Math::Prime::Util
 
 =head1 VERSION
 
-Version 0.10
+Version 0.11
 
 
 =head1 SYNOPSIS
