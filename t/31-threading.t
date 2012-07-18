@@ -8,6 +8,12 @@ BEGIN {
     print("1..0 # Skip Threads not supported\n");
     exit(0);
   }
+  # All these tests used to run on Cygwin, but now they're all giving me
+  # random panics in mutexes.
+  if ($Config{osname} eq 'cygwin') {
+    print "1..0 # Skip Cygwin threads are unstable\n";
+    exit 0;
+  }
   # Should be be looking for newer than 5.008?
   if (! eval { require threads }) {
     print "1..0 # Skip threads.pm not installed\n";
