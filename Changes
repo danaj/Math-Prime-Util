@@ -1,5 +1,10 @@
 Revision history for Perl extension Math::Prime::Util.
 
+0.11  19 July 2012
+    - Turn of threading tests on Cygwin, as threads now gives random panics.
+    - Use pow instead of exp2 -- some systems don't have exp2.
+
+
 0.10  16 July 2012
     - Add:
            prime_get_config              to get configuration options
