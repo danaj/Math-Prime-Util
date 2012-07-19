@@ -1,8 +1,20 @@
 #ifndef MPU_PTYPES_H
 #define MPU_PTYPES_H
 
+#ifndef _MSC_VER
 #define __STDC_LIMIT_MACROS
 #include <stdint.h>
+#else
+ /* No stdint.h for MS C, so we lose the chance to possibly optimize
+  * some operations on 64-bit machines running a 32-bit Perl.  It's probably
+  * a rare enough case that we don't need to be too concerned.  If we do want,
+  * see:  http://gauss.cs.ucsb.edu/~aydin/CombBLAS/html/stdint_8h_source.html
+  * for some ideas.
+  *
+  *  Thanks to Sisyphus for bringing the MSC issue to my attention (and even
+  *  submitting a working patch!).
+  */
+#endif
 
 #include "EXTERN.h"
 #include "perl.h"
