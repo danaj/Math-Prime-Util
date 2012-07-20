@@ -121,7 +121,7 @@ static void sieve_prefill(unsigned char* mem, UV startd, UV endd)
 unsigned char* sieve_erat30(UV end)
 {
   unsigned char* mem;
-  UV max_buf, buffer_words, limit;
+  UV max_buf, limit;
   UV prime;
 
   max_buf = (end/30) + ((end%30) != 0);

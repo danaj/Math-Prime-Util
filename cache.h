@@ -8,6 +8,10 @@
 extern void  prime_precalc(UV x);
   /* Release all extra memory -- go back to initial amounts */
 extern void  prime_memfree(void);
+  /* Seriously shut everything down, including destroying mutexes.
+   * This should ONLY be called when we're leaving for good.
+   */
+extern void  _prime_memfreeall(void);
 
   /* Get the primary cache (mod-30 wheel sieve).
    * Try to make sure it contains n.
