@@ -99,7 +99,10 @@ if ($use64) {
     cmp_ok( prime_count_lower($n), '<=', $pin, "Pi($n) >= lower estimate" );
     my $approx = prime_count_approx($n);
     my $percent_limit = 0.0005;
-    cmp_ok( abs($pin - $approx) / $pin, '<=', $percent_limit/100.0, "prime_count approx($n) within $percent_limit\% of Pi($n)");
+    # This is the test we want:
+    #cmp_ok( abs($pin - $approx) / $pin, '<=', $percent_limit/100.0, "prime_count_approx($n) within $percent_limit\% of Pi($n)");
+    # Math rearranged so we don't lose all precision.
+    cmp_ok( abs($pin - $approx) * (100.0 / $percent_limit), '<=', $pin, "prime_count_approx($n) within $percent_limit\% of Pi($n)");
   }
 }
 
