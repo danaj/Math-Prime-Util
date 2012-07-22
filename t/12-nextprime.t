@@ -8,7 +8,7 @@ use Math::Prime::Util qw/next_prime prev_prime/;
 my $use64 = Math::Prime::Util::prime_get_config->{'maxbits'} > 32;
 my $extra = defined $ENV{RELEASE_TESTING} && $ENV{RELEASE_TESTING};
 
-plan tests => 3573*2 + 3*2 + 6 + 2 + 148 + 148 + 1;
+plan tests => 2 + 3*2 + 6 + 2 + 148 + 148 + 1;
 
 my @small_primes = qw/
 2 3 5 7 11 13 17 19 23 29 31 37 41 43 47 53 59 61 67 71
@@ -45,12 +45,18 @@ my @small_primes = qw/
   # Now test next_prime and prev_prime for all numbers 0 to 3572
   my $prev_index = 0;
   my $next_index = 1;
+  # We'll collect them here
+  my(@got_next, @got_prev, @exp_next, @exp_prev);
   foreach my $n (0 .. 3572) {
     $next_index++ if $n >= $small_primes[$next_index];
     $prev_index++ if $n > $small_primes[$prev_index+1];
-    is(next_prime($n), $small_primes[$next_index], "next_prime($n) == $small_primes[$next_index]");
-    is(prev_prime($n), $small_primes[$prev_index], "prev_prime($n) == $small_primes[$prev_index]");
+    push @got_next, next_prime($n);
+    push @got_prev, prev_prime($n);
+    push @exp_next, $small_primes[$next_index];
+    push @exp_prev, $small_primes[$prev_index];
   }
+  is_deeply( \@got_next, \@exp_next, "next_prime 0 .. 3572" );
+  is_deeply( \@got_prev, \@exp_prev, "prev_prime 0 .. 3572" );
 }
 
 my %primegaps = (
