@@ -745,10 +745,9 @@ sub next_prime {
   my($n) = @_;
   _validate_positive_integer($n);
 
-  # If n is native precision AND not a bigint or not the last native prime,
-  # then we can call the XS function.
+  # If we have XS and n is either small or bigint is unknown, then use XS.
   return _XS_next_prime($n) if $n <= $_XS_MAXVAL
-                            && (ref($_[0]) ne 'Math::BigInt' || $n < $_Config{'maxprime'});
+             && (!defined $bigint::VERSION || $n < $_Config{'maxprime'} );
 
   if ($_HAVE_GMP) {
     # If $n is a bigint object, try to make the return value the same
@@ -1386,7 +1385,7 @@ for many of the functions.  This does require the L<GMP|gttp://gmplib.org>
 library be installed on your system, but this increasingly comes pre-installed
 or easily available using the OS vendor package installation tool.  If you
 do not want to use that, I recommend L<Math::BigInt::GMP> or
-L<Math::BigInt::Pari> and then writing C<use bigint try => 'GMP,Pari'>.
+L<Math::BigInt::Pari> and then writing C<use bigint try =E<gt> 'GMP,Pari'>.
 Large modular exponentiation is much faster using the GMP or Pari backends.
 This is not so important if you installed L<Math::Prime::Util::GMP>, but it can
 still speed up large random Maurer primes.
@@ -1824,7 +1823,7 @@ for "hard" numbers.  Installing the L<Math::Prime::Util::GMP> module will speed
 up bigint factoring a B<lot>, and all future effort on large number factoring
 will be in that module.  If you do not have that module for some reason, use
 the GMP or Pari version of bigint if possible
-(e.g. C<use bigint try => 'GMP,Pari'>), which will run 2-3x faster (though
+(e.g. C<use bigint try =E<gt> 'GMP,Pari'>), which will run 2-3x faster (though
 still 100x slower than the real GMP code).
 
 
@@ -2092,7 +2091,7 @@ The presentation here:
  L<http://math.boisestate.edu/~liljanab/BOISECRYPTFall09/Jacobsen.pdf>
 has a lot of data on 64-bit and GMP factoring performance I collected in 2009.
 Assuming you do not know anything about the inputs, trial division and
-optimized Fermat or Lehmen work very well for small numbers (<= 10 digits),
+optimized Fermat or Lehman work very well for small numbers (<= 10 digits),
 while native SQUFOF is typically the method of choice for 11-18 digits (I've
 seen claims that a lightweight QS can be faster for 15+ digits).  Some form
 of Quadratic Sieve is usually used for inputs in the 19-100 digit range, and
