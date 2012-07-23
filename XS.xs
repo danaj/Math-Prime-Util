@@ -250,14 +250,6 @@ _XS_factor(IN UV n)
                          ((n>>29) < 100000) ? 250000 :
                                               600000;
 
- #if 0
-          if (!split_success && n < 1000000) {
-            nfactored += trial_factor(n, factored_stack+nfactored, 0);
-            n = 1;
-            break;
-          }
- #endif
-
           /* Small factors will be found quite rapidly with this */
           if (!split_success) {
             split_success = pbrent_factor(n, tofac_stack+ntofac, 1500)-1;
@@ -265,12 +257,11 @@ _XS_factor(IN UV n)
           }
 
           if (!split_success) {
-            /* SQUFOF does very well with what's left after TD and Rho.
-             * On such input, racing SQUFOF is ~40% faster and has better
-             * success, but has input size restrictions. */
-            split_success = (n > (UV_MAX >> 3))
-                  ? squfof_factor(n, tofac_stack+ntofac, sq_rounds)-1
-                  : racing_squfof_factor(n, tofac_stack+ntofac, 0)-1;
+            /* SQUFOF does very well with what's left after TD and Rho. */
+            /* Racing SQUFOF is about 40% faster and has better success, but
+             * has input size restrictions and I'm seeing cases where it gets
+             * stuck in stage 2.  For now just stick with the old one.  */
+            split_success = squfof_factor(n, tofac_stack+ntofac, sq_rounds)-1;
             if (verbose) printf("squfof %d\n", split_success);
           }
 
