@@ -434,7 +434,7 @@ int pbrent_factor(UV n, UV *factors, UV rounds)
   UV Xi = 2;
   UV Xm = 2;
   UV a = 1;
-  const UV inner = 128;
+  const UV inner = 64;
 
   MPUassert( (n >= 3) && ((n%2) != 0) , "bad n in pbrent_factor");
 
@@ -464,7 +464,7 @@ int pbrent_factor(UV n, UV *factors, UV rounds)
       Xm = Xi;
       continue;
     }
-    if (f == n) {  /* backup, with safety */
+    if (f == n) {  /* back up, with safety */
       Xi = saveXi;
       do {
         Xi = sqraddmod(Xi, a, n);
@@ -485,7 +485,7 @@ int pbrent_factor(UV n, UV *factors, UV rounds)
 int prho_factor(UV n, UV *factors, UV rounds)
 {
   UV a, f, i, m, oldU, oldV;
-  const UV inner = 128;
+  const UV inner = 64;
   UV U = 7;
   UV V = 7;
 
@@ -693,5 +693,191 @@ int squfof_factor(UV n, UV *factors, UV rounds)
   return 2;
 }
 
+/* Another version, based on Ben Buhrow's racing SQUFOF. */
 
-/* TODO: Add Jason Papadopoulos's racing SQUFOF */
+typedef unsigned int uint32;
+typedef UV uint64;
+
+typedef struct
+{
+  uint32 mult;
+  uint32 valid;
+  uint32 P;
+  uint32 bn;
+  uint32 Qn;
+  uint32 Q0;
+  uint32 b0;
+  uint32 it;
+  uint32 imax;
+} mult_t;
+
+// N < 2^63 (or 2^31).  *f == 1 if no factor found
+static void squfof_unit(UV n, mult_t* mult_save, uint64* f)
+{
+  uint32 imax,i,Q0,b0,Qn,bn,P,bbn,Ro,S,So,t1,t2;
+  int j = 0;
+
+  *f = 0;
+
+  P = mult_save->P;
+  bn = mult_save->bn;
+  Qn = mult_save->Qn;
+  Q0 = mult_save->Q0;
+  b0 = mult_save->b0;
+  i  = mult_save->it;
+  imax = i + mult_save->imax;
+
+#define SQUARE_SEARCH_ITERATION \
+      t1 = P; \
+      P = bn*Qn - P; \
+      t2 = Qn; \
+      Qn = Q0 + bn*(t1-P); \
+      Q0 = t2; \
+      bn = (b0 + P) / Qn; \
+      i++;
+
+  while (1) {
+    j = 0;
+    if (i & 0x1) {
+      SQUARE_SEARCH_ITERATION;
+    }
+    // i is now even
+    while (1) {
+      // We need to know P, bn, Qn, Q0, iteration count, i  from prev
+      if (i >= imax) {
+        // save state and try another multiplier.
+        mult_save->P = P;
+        mult_save->bn = bn;
+        mult_save->Qn = Qn;
+        mult_save->Q0 = Q0;
+        mult_save->it = i;
+        *f = 0;
+        return;
+      }
+
+      SQUARE_SEARCH_ITERATION;
+
+      // Even iteration.  Check for square: Qn = S*S
+      // TODO: DAJ try bloom filter?
+      t2 = Qn & 31;
+      if (t2 ==  0 || t2 ==  1 || t2 ==  4 || t2 ==  9 ||
+          t2 == 16 || t2 == 17 || t2 == 25) {
+        S = (uint32)sqrt(Qn);
+        if (Qn == S * S)
+          break;
+      }
+
+      // Odd iteration.
+      SQUARE_SEARCH_ITERATION;
+    }
+    /* printf("found square %lu after %lu iterations with mult %d\n", Qn, i, mult_save->mult); */
+
+    // Reduce to G0
+    // S = (uint32)sqrt(Qn);
+    Ro = P + S*((b0 - P)/S);
+    t1 = Ro;
+    So = (uint32)(((uint64)n - (uint64)t1*(uint64)t1)/(uint64)S);
+    bbn = (b0+Ro)/So;
+
+    // Search for symmetry point
+#define SYMMETRY_POINT_ITERATION \
+      t1 = Ro; \
+      Ro = bbn*So - Ro; \
+      t2 = So; \
+      So = S + bbn*(t1-Ro); \
+      S = t2; \
+      bbn = (b0+Ro)/So; \
+      if (Ro == t1) break;
+
+    while (1) {
+      SYMMETRY_POINT_ITERATION;
+      SYMMETRY_POINT_ITERATION;
+      SYMMETRY_POINT_ITERATION;
+      SYMMETRY_POINT_ITERATION;
+    }
+
+    *f = gcd_ui(Ro, n);
+    if (*f > 1)
+      return;
+  }
+}
+
+#define NSQUFOF_MULT 16
+
+int racing_squfof_factor(UV n, UV *factors, UV rounds)
+{
+  const int multipliers[NSQUFOF_MULT] = {1, 3, 5, 7, 11,
+                                         3*5, 3*7, 3*11,
+                                         5*7, 5*11, 7*11,
+                                         3*5*7, 3*5*11, 3*7*11,
+                                         5*7*11, 3*5*7*11};
+  const UV big2 = UV_MAX >> 2;
+  mult_t mult_save[NSQUFOF_MULT];
+  int i, j, race_rounds;
+  uint64 nn64, f64;
+
+  /* Caller should have handled these trivial cases */
+  MPUassert( (n >= 3) && ((n%2) != 0) , "bad n in racing_squfof_factor");
+
+  /* Too big */
+  if (n > big2) {
+    factors[0] = n;  return 1;
+  }
+
+  for (i = NSQUFOF_MULT-1; i >= 0; i--) {
+    nn64 = n * (uint64)multipliers[i];
+    if ((big2 / (UV)multipliers[i]) < n) {
+      /* This multiplier would overflow 64-bit */
+      mult_save[i].mult = multipliers[i];
+      mult_save[i].valid = 0;
+      continue;
+    }
+    mult_save[i].mult = multipliers[i];
+    mult_save[i].valid = 1;
+
+    mult_save[i].b0 = (uint32) sqrt( (double)nn64 );
+    mult_save[i].imax = (uint32) sqrt( (double)mult_save[i].b0 );
+
+    mult_save[i].Q0 = 1;
+    mult_save[i].P  = mult_save[i].b0;
+    mult_save[i].Qn = (uint32) (nn64 - (uint64)mult_save[i].b0 * (uint64)mult_save[i].b0);
+    if (mult_save[i].Qn == 0) {
+      factors[0] = mult_save[i].b0;
+      factors[1] = n / mult_save[i].b0;
+      MPUassert( factors[0] * factors[1] == n , "incorrect factoring");
+      return 2;
+    }
+    mult_save[i].bn = (mult_save[i].b0 + mult_save[i].P) / mult_save[i].Qn;
+    mult_save[i].it = 0;
+  }
+
+  /* Process the multipliers a little at a time. */
+  race_rounds = 6;
+  for (i = 0; i < race_rounds; i++) {
+    for (j = 0; j < NSQUFOF_MULT; j++) {
+      if (!mult_save[j].valid)
+        continue;
+      nn64 = n * (UV)multipliers[j];
+      squfof_unit(nn64, &mult_save[j], &f64);
+      if (f64 == -1) {          /* -1 is an error */
+        mult_save[j].valid = 0;
+      } else if (f64 > 1) {
+        if (f64 != multipliers[j]) {
+          f64 /= gcd_ui(f64, multipliers[j]);
+          if (f64 != 1) {
+            factors[0] = f64;
+            factors[1] = n / f64;
+            MPUassert( factors[0] * factors[1] == n , "incorrect factoring");
+            return 2;
+          }
+        }
+        /* Found trivial factor.  Quit working with this multiplier. */
+        mult_save[j].valid = 0;
+      }
+    }
+  }
+
+  /* No factors found */
+  factors[0] = n;
+  return 1;
+}
