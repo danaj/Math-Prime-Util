@@ -1,12 +1,13 @@
 Revision history for Perl extension Math::Prime::Util.
 
-0.11  19 July 2012
+0.11  23 July 2012
     - Turn of threading tests on Cygwin, as threads on some Cygwin platforms
       give random panics (my Win7 64-bit works fine, XP 32-bit does not).
     - Use pow instead of exp2 -- some systems don't have exp2.
     - Fix compile issues on MSC, thanks to Sisyphus.
     - some bigint/bignum changes (next_prime and math functions).
     - speed up and enhance some tests.
+    - Add racing SQUFOF for UVs, also add a little more trial division.
 
 
 0.10  16 July 2012

@@ -200,7 +200,7 @@ _XS_factor(IN UV n)
       XPUSHs(sv_2mortal(newSVuv( n ))); /* If n is 0-3, we're done. */
     } else {
       int const verbose = 0;
-      UV tlim = 53;  /* Below this we've checked with trial division */
+      UV tlim = 101;  /* Below this we've checked with trial division */
       UV tofac_stack[MPU_MAX_FACTORS+1];
       UV factored_stack[MPU_MAX_FACTORS+1];
       int ntofac = 0;
@@ -225,6 +225,21 @@ _XS_factor(IN UV n)
         while ( (n%43) == 0 ) {  n /= 43;  XPUSHs(sv_2mortal(newSVuv( 43 ))); }
         while ( (n%47) == 0 ) {  n /= 47;  XPUSHs(sv_2mortal(newSVuv( 47 ))); }
       }
+      if ( (n >= UVCONST(53*53)) && (gcd_ui(n, UVCONST(907383479) != 1)) ) {
+        while ( (n%53) == 0 ) {  n /= 53;  XPUSHs(sv_2mortal(newSVuv( 53 ))); }
+        while ( (n%59) == 0 ) {  n /= 59;  XPUSHs(sv_2mortal(newSVuv( 59 ))); }
+        while ( (n%61) == 0 ) {  n /= 61;  XPUSHs(sv_2mortal(newSVuv( 61 ))); }
+        while ( (n%67) == 0 ) {  n /= 67;  XPUSHs(sv_2mortal(newSVuv( 67 ))); }
+        while ( (n%71) == 0 ) {  n /= 71;  XPUSHs(sv_2mortal(newSVuv( 71 ))); }
+      }
+      if ( (n >= UVCONST(73*73)) && (gcd_ui(n, UVCONST(4132280413) != 1)) ) {
+        while ( (n%73) == 0 ) {  n /= 73;  XPUSHs(sv_2mortal(newSVuv( 73 ))); }
+        while ( (n%79) == 0 ) {  n /= 79;  XPUSHs(sv_2mortal(newSVuv( 79 ))); }
+        while ( (n%83) == 0 ) {  n /= 83;  XPUSHs(sv_2mortal(newSVuv( 83 ))); }
+        while ( (n%89) == 0 ) {  n /= 89;  XPUSHs(sv_2mortal(newSVuv( 89 ))); }
+        while ( (n%97) == 0 ) {  n /= 97;  XPUSHs(sv_2mortal(newSVuv( 97 ))); }
+      }
+
       do { /* loop over each remaining factor */
         /* In theory we can try to minimize work using is_definitely_prime(n)
          * but in practice it seems slower. */
@@ -235,15 +250,27 @@ _XS_factor(IN UV n)
                          ((n>>29) < 100000) ? 250000 :
                                               600000;
 
+ #if 0
+          if (!split_success && n < 1000000) {
+            nfactored += trial_factor(n, factored_stack+nfactored, 0);
+            n = 1;
+            break;
+          }
+ #endif
+
           /* Small factors will be found quite rapidly with this */
           if (!split_success) {
             split_success = pbrent_factor(n, tofac_stack+ntofac, 1500)-1;
             if (verbose) { if (split_success) printf("pbrent 1:  %"UVuf" %"UVuf"\n", tofac_stack[ntofac], tofac_stack[ntofac+1]); else printf("pbrent 0\n"); }
           }
 
-          /* SQUFOF does great with big numbers */
           if (!split_success) {
-            split_success = squfof_factor(n, tofac_stack+ntofac, sq_rounds)-1;
+            /* SQUFOF does very well with what's left after TD and Rho.
+             * On such input, racing SQUFOF is ~40% faster and has better
+             * success, but has input size restrictions. */
+            split_success = (n > (UV_MAX >> 3))
+                  ? squfof_factor(n, tofac_stack+ntofac, sq_rounds)-1
+                  : racing_squfof_factor(n, tofac_stack+ntofac, 0)-1;
             if (verbose) printf("squfof %d\n", split_success);
           }
 
@@ -352,6 +379,11 @@ void
 squfof_factor(IN UV n, IN UV maxrounds = 4*1024*1024)
   PPCODE:
     SIMPLE_FACTOR(squfof_factor, n, maxrounds);
+
+void
+rsqufof_factor(IN UV n)
+  PPCODE:
+    SIMPLE_FACTOR(racing_squfof_factor, n, 0);
 
 void
 pbrent_factor(IN UV n, IN UV maxrounds = 4*1024*1024)

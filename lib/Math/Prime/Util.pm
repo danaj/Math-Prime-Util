@@ -1870,7 +1870,10 @@ same advantages and disadvantages as Fermat's method.
 
 =head2 squfof_factor
 
+=head2 rsqufof_factor
+
   my @factors = squfof_factor($n);
+  my @factors = rsqufof_factor($n);  # racing multiplier version
 
 Produces factors, not necessarily prime, of the positive number input.  An
 optional number of rounds can be given as a second parameter.  It is possible

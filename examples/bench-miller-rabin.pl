@@ -1,9 +1,10 @@
 #!/usr/bin/env perl
 use strict;
 use warnings;
-#use Math::Primality;
+use Math::Primality;
 use Math::Prime::XS;
 use Math::Prime::Util '-nobigint';
+use Math::Prime::Util::GMP;
 #use Math::Prime::FastSieve;
 use Benchmark qw/:all/;
 use List::Util qw/min max/;
@@ -30,7 +31,16 @@ sub test_at_digits {
   print "miller_rabin for 1000 random $digits-digit numbers ($min_num - $max_num)\n";
 
   cmpthese($count,{
-    'M::P::U' => sub { Math::Prime::Util::miller_rabin($_,2,3,5,7,11,13,17) for @nums },
+    'MPU' => sub { Math::Prime::Util::is_strong_pseudoprime($_,2,3,5,7,11,13,17) for @nums },
+    'MPU GMP' => sub { Math::Prime::Util::GMP::is_strong_pseudoprime($_,2,3,5,7,11,13,17) for @nums },
+    'M:Primality' => sub { for (@nums) {
+                       Math::Primality::is_strong_pseudoprime($_,2) &&
+                       Math::Primality::is_strong_pseudoprime($_,3) &&
+                       Math::Primality::is_strong_pseudoprime($_,5) &&
+                       Math::Primality::is_strong_pseudoprime($_,7) &&
+                       Math::Primality::is_strong_pseudoprime($_,11) &&
+                       Math::Primality::is_strong_pseudoprime($_,13) &&
+                       Math::Primality::is_strong_pseudoprime($_,17); } },
   });
   print "\n";
 }
