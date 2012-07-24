@@ -14,9 +14,10 @@ WriteMakefile1(
                     'XS.o',
     LIBS         => ['-lm'],
 
-    BUILD_REQUIRES => {
-                    'Test::More'       => '0.45',
-                      },
+    BUILD_REQUIRES=>{
+                      'Test::More'       => '0.45',
+                      'bignum'           => '0.23',   # Used for bigint tests
+                    },
     PREREQ_PM    => {
                       'Exporter'         => '5.562',
                       'XSLoader'         => '0.01',
@@ -24,9 +25,11 @@ WriteMakefile1(
                       'Tie::Array'       => 0,
                       'base'             => 0,
                       'Config'           => 0,
-                      'bignum'           => '0.23',   # Used for bigint tests
                       'Math::BigInt'     => '1.88',
                       'Math::BigFloat'   => '1.59',
+                    },
+    META_MERGE   => {
+                      recommends => { 'Math::Prime::Util::GMP' => 0.04, },
                     },
 
     MIN_PERL_VERSION => 5.006002,

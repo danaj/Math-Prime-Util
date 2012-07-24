@@ -162,7 +162,7 @@ sub _validate_positive_integer {
   1;
 }
 
-# It you use bigint then call one of the approx/bounds/math functions, you'll
+# If you use bigint then call one of the approx/bounds/math functions, you'll
 # end up with full bignum turned on.  This seems non-optimal.  However, if I
 # don't do this, then you'll get wrong results and end up with it turned on
 # _anyway_.  As soon as anyone does something like log($n) where $n is a
@@ -784,6 +784,8 @@ sub prime_count {
   return 0 if $high < 2  ||  $low > $high;
 
   return _XS_prime_count($low,$high) if $high <= $_XS_MAXVAL;
+  return Math::Prime::Util::GMP::prime_count($low,$high) if $_HAVE_GMP
+                       && defined &Math::Prime::Util::GMP::prime_count;
   return Math::Prime::Util::PP::prime_count($low,$high);
 }
 

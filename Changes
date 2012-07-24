@@ -6,7 +6,7 @@ Revision history for Perl extension Math::Prime::Util.
       used for integers > 40 before).
 
 0.11  23 July 2012
-    - Turn of threading tests on Cygwin, as threads on some Cygwin platforms
+    - Turn off threading tests on Cygwin, as threads on some Cygwin platforms
       give random panics (my Win7 64-bit works fine, XP 32-bit does not).
     - Use pow instead of exp2 -- some systems don't have exp2.
     - Fix compile issues on MSC, thanks to Sisyphus.
