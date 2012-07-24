@@ -1270,22 +1270,26 @@ my @_Riemann_Zeta_Table = (
   0.0000000000009094947840263889282533118,
 );
 
-# Compute Riemann Zeta function.  Slow and inaccurate near x = 1, but improves
-# very rapidly (x = 5 is quite reasonable).
-sub _evaluate_zeta {
-  my($x) = @_;
-  my $tol = 1e-16;
+# Compute Riemann Zeta function minus 1.
+sub RiemannZeta {
+  my($x, $tol) = @_;
+  $tol = 1e-16 unless defined $tol;
   my $sum = 0.0;
   my($y, $t);
   my $c = 0.0;
 
-  $y = (2.0 ** -$x)-$c; $t = $sum+$y; $c = ($t-$sum)-$y; $sum = $t;
-
-  for my $k (3 .. 100000) {
-    my $term = $k ** -$x;
+  for my $k (2 .. 1000000) {
+    my $term = (2*$k+1) ** -$x;
     $y = $term-$c; $t = $sum+$y; $c = ($t-$sum)-$y; $sum = $t;
-    last if abs($term) < $tol;
+    last if abs($term/$sum) < $tol;
   }
+  my $term = 3 ** -$x;
+  $y = $term-$c; $t = $sum+$y; $c = ($t-$sum)-$y; $sum = $t;
+  $t = 1.0 / (1.0 - (2 ** -$x));
+  $sum *= $t;
+  $term = $t - 1.0;
+  $y = $term-$c; $t = $sum+$y; $c = ($t-$sum)-$y; $sum = $t;
+
   $sum;
 }
 
@@ -1308,7 +1312,7 @@ sub RiemannR {
   for my $k (1 .. 10000) {
     # Small k from table, larger k from function
     my $zeta = ($k <= $#_Riemann_Zeta_Table) ? $_Riemann_Zeta_Table[$k+1-2]
-                                             : _evaluate_zeta($k+1);
+                                             : RiemannZeta($k+1);
     $part_term *= $flogx / $k;
     my $term = $part_term / ($k + $k * $zeta);
     $y = $term-$c; $t = $sum+$y; $c = ($t-$sum)-$y; $sum = $t;
@@ -1662,6 +1666,20 @@ This function is implemented as C<li(x) = Ei(ln x)> after handling special
 values.
 
 Accuracy should be at least 14 digits.
+
+=head2 RiemannZeta
+
+  my $z = RiemannZeta($s);
+
+Given a floating point input C<s> where C<s E<gt>= 0.5>, returns the floating
+point value of ζ(s)-1, where ζ(s) is the Riemann zeta function.  One is
+subtracted to ensure maximum precision for large values of C<s>.  The zeta
+function is the sum from k=1 to infinity of C<1 / k^s>
+
+Accuracy should be at least 14 digits, but currently does not increase
+accuracy with big floats.  Small integer values are returned from a table,
+values between 0.5 and 5 use rational Chebyshev approximation, and larger
+values use a series.
 
 
 =head2 RiemannR

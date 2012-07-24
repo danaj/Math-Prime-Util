@@ -608,12 +608,21 @@ UV _XS_nth_prime(UV n)
 static double const euler_mascheroni = 0.57721566490153286060651209008240243104215933593992;
 static double const li2 = 1.045163780117492784844588889194613136522615578151;
 
+#define KAHAN_INIT(s) \
+  double s ## _y, s ## _t; \
+  double s ## _c = 0.0; \
+  double s = 0.0;
+
+#define KAHAN_SUM(s, term) \
+  s ## _y = term - s ## _c; \
+  s ## _t = s + s ## _y; \
+  s ## _c = (s ## _t - s) - s ## _y; \
+  s = s ## _t;
+
 double _XS_ExponentialIntegral(double x) {
   double const tol = 1e-16;
   double val, term, fact_n;
-  double y, t;
-  double sum = 0.0;
-  double c = 0.0;
+  KAHAN_INIT(sum);
   int n;
 
   if (x == 0) croak("Invalid input to ExponentialIntegral:  x must be != 0");
@@ -662,13 +671,13 @@ double _XS_ExponentialIntegral(double x) {
     /* Convergent series */
     fact_n = 1;
 
-    y = euler_mascheroni-c;  t = sum+y;  c = (t-sum)-y;  sum = t;
-    y = log(x)-c;  t = sum+y;  c = (t-sum)-y;  sum = t;
+    KAHAN_SUM(sum, euler_mascheroni);
+    KAHAN_SUM(sum, log(x));
 
     for (n = 1; n <= 200; n++) {
       fact_n *= x/n;
       term = fact_n/n;
-      y = term-c;  t = sum+y;  c = (t-sum)-y;  sum = t;
+      KAHAN_SUM(sum, term);
       /* printf("C  after adding %.8lf, val = %.8lf\n", term, sum); */
       if (term < tol) break;
     }
@@ -679,17 +688,17 @@ double _XS_ExponentialIntegral(double x) {
 
     val = exp(x) / x;
     term = 1.0;
-    y = 1.0-c;  t = sum+y;  c = (t-sum)-y;  sum = t;
+    KAHAN_SUM(sum, term);
 
     for (n = 1; n <= 200; n++) {
       last_term = term;
       term *= n/x;
       if (term < tol) break;
       if (term < last_term) {
-        y = term-c;  t = sum+y;  c = (t-sum)-y;  sum = t;
+        KAHAN_SUM(sum, term);
         /* printf("A  after adding %.8lf, sum = %.8lf\n", term, sum); */
       } else {
-        y = (-last_term/3)-c;  t = sum+y;  c = (t-sum)-y;  sum = t;
+        KAHAN_SUM(sum, (-last_term/3) );
         /* printf("A  after adding %.8lf, sum = %.8lf\n", -last_term/3, sum); */
         break;
       }
@@ -755,60 +764,122 @@ static const double riemann_zeta_table[] = {
 };
 #define NPRECALC_ZETA (sizeof(riemann_zeta_table)/sizeof(riemann_zeta_table[0]))
 
-static double evaluate_zeta(double x) {
+/* Riemann Zeta on the real line.  Compare to Math::Cephes::zetac */
+double _XS_RiemannZeta(double x) {
   double const tol = 1e-16;
-  double y, t;
-  double sum = 0.0;
-  double c = 0.0;
+  KAHAN_INIT(sum);
   double term;
   int k;
 
-  /* Simple method.  Slow and inaccurate near x=1, but iterations and accuracy
-   * improve quickly.
-   */
+  if (x < 0.5) croak("Invalid input to RiemannZeta:  x must be >= 0.5");
 
-  /* term = 1.0;          y = term-c;  t = sum+y;  c = (t-sum)-y;  sum = t; */
-  term = pow(2, -x);  y = term-c;  t = sum+y;  c = (t-sum)-y;  sum = t;
-
-  for (k = 3; k <= 100000; k++) {
-    if (fabs(term) < tol) break;
-    term = pow(k, -x);
-    y = term-c;  t = sum+y;  c = (t-sum)-y;  sum = t;
+  if (x == (unsigned int)x) {
+    k = x - 2;
+    if ((k >= 0) && (k < NPRECALC_ZETA))
+      return riemann_zeta_table[k];
   }
+
+  /* Use Cody et al. rational Chebyshev approx for small values.  This is the
+   * range where the series methods take a long time and are inaccurate.  This
+   * method is fast and quite accurate over the range 0.5 - 5. */
+  if (x <= 5.0) {
+    static const double C8p[9] = { 1.287168121482446392809e10,
+                                   1.375396932037025111825e10,
+                                   5.106655918364406103683e09,
+                                   8.561471002433314862469e08,
+                                   7.483618124380232984824e07,
+                                   4.860106585461882511535e06,
+                                   2.739574990221406087728e05,
+                                   4.631710843183427123061e03,
+                                   5.787581004096660659109e01 };
+    static const double C8q[9] = { 2.574336242964846244667e10,
+                                   5.938165648679590160003e09,
+                                   9.006330373261233439089e08,
+                                   8.042536634283289888587e07,
+                                   5.609711759541920062814e06,
+                                   2.247431202899137523543e05,
+                                   7.574578909341537560115e03,
+                                  -2.373835781373772623086e01,
+                                   1.000000000000000000000    };
+    double sumn = C8p[0]+x*(C8p[1]+x*(C8p[2]+x*(C8p[3]+x*(C8p[4]+x*(C8p[5]+x*(C8p[6]+x*(C8p[7]+x*C8p[8])))))));
+    double sumd = C8q[0]+x*(C8q[1]+x*(C8q[2]+x*(C8q[3]+x*(C8q[4]+x*(C8q[5]+x*(C8q[6]+x*(C8q[7]+x*C8q[8])))))));
+    sum = (sumn - (x-1)*sumd) / ((x-1)*sumd);
+    return sum;
+  }
+
+#if 0
+  /* Standard method, pushing the biggest two terms to the end. */
+  for (k = 4; k <= 1000000; k++) {
+    term = pow(k, -x);
+    if (fabs(term/sum) < tol) break;
+    KAHAN_SUM(sum, term);
+  }
+  KAHAN_SUM(sum, pow(3, -x) );
+  KAHAN_SUM(sum, pow(2, -x) );
+  /* printf("zeta(%lf) = %.15lf in %d iterations\n", x, sum, k-2); */
+#endif
+
+#if 1
+  /* A different series using odd powers.  About half the number of terms are
+   * needed vs. the normal mathod, and we get better numerical results.
+   * http://functions.wolfram.com/ZetaFunctionsandPolylogarithms/Zeta/06/04/0003
+   */
+  for (k = 2; k <= 1000000; k++) {
+    term = pow(2*k+1, -x);
+    KAHAN_SUM(sum, term);
+    if (fabs(term/sum) < tol) break;
+  }
+  KAHAN_SUM(sum, pow(3, -x) );
+  double t = 1.0 / (1.0 - pow(2, -x));
+  sum *= t;
+  sum += (t - 1.0);
+  /* printf("zeta(%lf) = %.15lf in %d iterations\n", x, sum, k); */
+#endif
+
+#if 0
+  /* An example using the Euler product.  Many fewer terms are needed vs. the
+   * two series above, but we can't get the same accuracy for large input
+   * because we've got the leading 1.0.
+   */
+  {
+    double t;
+    int iter = 1;
+    sum = 1.0;
+    t = sum;  sum *= 1.0 / (1.0 - pow(2, -x));  term = sum-t;
+    k = 3;
+    while (k < 1000000) {
+      if (fabs(term/sum) < tol) break;
+      t = sum;  sum *= 1.0 / (1.0 - pow(k, -x));  term = sum-t;
+      iter++;
+      k = _XS_next_prime(k);
+    }
+    sum -= 1.0;
+    /* printf("zeta(%lf) = %.15lf in %d iterations\n", x, sum, iter); */
+  }
+#endif
   return sum;
 }
 
 double _XS_RiemannR(double x) {
   double const tol = 1e-16;
-  double y, t, part_term, term, flogx, zeta;
-  double sum = 0.0;
-  double c = 0.0;
+  KAHAN_INIT(sum);
+  double part_term, term, flogx, zeta;
   int k;
 
   if (x <= 0) croak("Invalid input to ReimannR:  x must be > 0");
 
-  y = 1.0-c;  t = sum+y;  c = (t-sum)-y;  sum = t;
+  KAHAN_SUM(sum, 1.0);
 
   flogx = log(x);
   part_term = 1;
 
-  /* Do small k with zetas from table */
-  for (k = 1; k <= (int)NPRECALC_ZETA; k++) {
-    zeta = riemann_zeta_table[k+1-2];
+  for (k = 1; k <= 10000; k++) {
+    zeta = _XS_RiemannZeta(k+1);
     part_term *= flogx / k;
     term = part_term / (k + k * zeta);
-    y = term-c;  t = sum+y;  c = (t-sum)-y;  sum = t;
-    if (fabs(term) < tol) break;
-    /* printf("R  after adding %.8lf, sum = %.8lf\n", term, sum); */
-  }
-  /* Finish with function */
-  for (; k <= 10000; k++) {
-    if (fabs(term) < tol) break;
-    zeta = evaluate_zeta(k+1);
-    part_term *= flogx / k;
-    term = part_term / (k + k * zeta);
-    y = term-c;  t = sum+y;  c = (t-sum)-y;  sum = t;
-    /* printf("R  after adding %.8lf, sum = %.8lf\n", term, sum); */
+    KAHAN_SUM(sum, term);
+    /* printf("R  after adding %.15lg, sum = %.15lg\n", term, sum); */
+    if (fabs(term/sum) < tol) break;
   }
 
   return sum;

@@ -23,7 +23,7 @@ our @EXPORT_OK = qw(
                      nth_prime nth_prime_lower nth_prime_upper nth_prime_approx
                      random_prime random_ndigit_prime random_nbit_prime random_maurer_prime
                      factor all_factors moebius euler_phi
-                     ExponentialIntegral LogarithmicIntegral RiemannR
+                     ExponentialIntegral LogarithmicIntegral RiemannZeta RiemannR
                    );
 our %EXPORT_TAGS = (all => [ @EXPORT_OK ]);
 
@@ -1153,6 +1153,15 @@ sub nth_prime_upper {
 
 #############################################################################
 
+sub RiemannZeta {
+  my($n) = @_;
+  croak("Invalid input to ReimannZeta:  x must be > 0") if $n <= 0;
+
+  #return Math::Prime::Util::PP::RiemannZeta($n, 1e-30) if defined $bignum::VERSION || ref($n) eq 'Math::BigFloat';
+  return Math::Prime::Util::PP::RiemannZeta($n) if !$_Config{'xs'};
+  return _XS_RiemannZeta($n);
+}
+
 sub RiemannR {
   my($n) = @_;
   croak("Invalid input to ReimannR:  x must be > 0") if $n <= 0;
@@ -1940,6 +1949,21 @@ values.
 Accuracy should be at least 14 digits.
 
 
+=head2 RiemannZeta
+
+  my $z = RiemannZeta($s);
+
+Given a floating point input C<s> where C<s E<gt>= 0.5>, returns the floating
+point value of ζ(s)-1, where ζ(s) is the Riemann zeta function.  One is
+subtracted to ensure maximum precision for large values of C<s>.  The zeta
+function is the sum from k=1 to infinity of C<1 / k^s>
+
+Accuracy should be at least 14 digits, but currently does not increase
+accuracy with big floats.  Small integer values are returned from a table,
+values between 0.5 and 5 use rational Chebyshev approximation, and larger
+values use a series.
+
+
 =head2 RiemannR
 
   my $r = RiemannR($x);
@@ -2148,6 +2172,8 @@ excellent versions in the public domain).
 =item William H. Press et al., "Numerical Recipes", 3rd edition.
 
 =item W. J. Cody and Henry C. Thacher, Jr., "Rational Chevyshev Approximations for the Exponential Integral E_1(x)".
+
+=item W. J. Cody, K. E. Hillstrom, and Henry C. Thacher Jr., "Chebyshev Approximations for the Riemann Zeta Function", Mathematics of Computation, v25, n115, pp 537-547, July 1971.
 
 =item Ueli M. Maurer, "Fast Generation of Prime Numbers and Secure Public-Key Cryptographic Parameters", 1995.  L<http://citeseerx.ist.psu.edu/viewdoc/summary?doi=10.1.1.26.2151>
 

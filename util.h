@@ -14,6 +14,7 @@ extern UV  _XS_nth_prime(UV x);
 
 extern double _XS_ExponentialIntegral(double x);
 extern double _XS_LogarithmicIntegral(double x);
+extern double _XS_RiemannZeta(double x);
 extern double _XS_RiemannR(double x);
 
 /* Above this value, is_prime will do deterministic Miller-Rabin */

@@ -428,4 +428,7 @@ double
 _XS_LogarithmicIntegral(double x)
 
 double
+_XS_RiemannZeta(double x)
+
+double
 _XS_RiemannR(double x)
