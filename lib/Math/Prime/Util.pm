@@ -12,7 +12,7 @@ BEGIN {
 # use parent qw( Exporter );
 use base qw( Exporter );
 our @EXPORT_OK = qw(
-                     prime_get_config
+                     prime_get_config prime_set_config
                      prime_precalc prime_memfree
                      is_prime is_prob_prime
                      is_strong_pseudoprime is_strong_lucas_pseudoprime
@@ -101,6 +101,7 @@ if ($_Config{'maxbits'} == 32) {
   $_Config{'maxprime'}    = 18446744073709551557;
   $_Config{'maxprimeidx'} = 425656284035217743;
 }
+$_Config{'assume_rh'} = 0;
 
 # used for code like:
 #    return _XS_foo($n)  if $n <= $_XS_MAXVAL
@@ -140,7 +141,28 @@ sub prime_get_config {
                         : Math::Prime::Util::PP::_get_prime_cache_size;
 
   return \%config;
+}
 
+# Note: You can cause yourself pain if you turn on xs or gmp when they're not
+# loaded.  Your calls will probably die.
+sub prime_set_config {
+  my %params = (@_);  # no defaults
+  while (my($param, $value) = each %params) {
+    $param = lc $param;
+    # dispatch table should go here.
+    if      ($param eq 'xs') {
+      $_Config{'xs'} = ($value) ? 1 : 0;
+      $_XS_MAXVAL = $_Config{'xs'}  ?  $_Config{'maxparam'}  :  -1;
+    } elsif ($param eq 'gmp') {
+      $_Config{'gmp'} = ($value) ? 1 : 0;
+      $_HAVE_GMP = $_Config{'gmp'};
+    } elsif ($param =~ /^(assume[_ ]?)?rh$/ || $param =~ /riemann\s*h/) {
+      $_Config{'assume_rh'} = ($value) ? 1 : 0;
+    } else {
+      croak "Unknown or invalid configuration setting: $param\n";
+    }
+  }
+  1;
 }
 
 sub _validate_positive_integer {
@@ -940,36 +962,35 @@ sub prime_count_lower {
   # Rosser & Schoenfeld:  x/(logx-1/2)   x >= 67
   # Dusart 1999:          x/logx*(1+1/logx+1.8/logxlogx)  x >= 32299
   # Dusart 2010:          x/logx*(1+1/logx+2.0/logxlogx)  x >= 88783
-
   # The Dusart (1999 or 2010) bounds are far, far better than the others.
 
-  # TODO:
-  #   We need a assume_riemann_hypothesis(bool) function, which would let
-  #   these bounds return the Schoenfeld or Stoll limits.  The former are
-  #   better for n > ~10^12, the latter for n > ~10^8.
-  #   Given the ability to hand test to ~100_000M, if the Stoll limits are
-  #   better then we can always use them up to the verification point.
+  my $result;
+  if ($x > 1000_000_000_000 && $_Config{'assume_rh'}) {
+    my $lix = LogarithmicIntegral($x);
+    my $sqx = sqrt($x);
+    # Schoenfeld bound:    (constant is 8 * Pi)
+    $result = $lix - (($sqx*$flogx) / 25.13274122871834590770114707);
+  } elsif ($x < 599) {
+    $result = $x / ($flogx - 0.7);   # For smaller numbers this works out well.
+  } else {
+    my $a;
+    # Hand tuned for small numbers (< 60_000M)
+    if    ($x <       2700) { $a = 0.30; }
+    elsif ($x <       5500) { $a = 0.90; }
+    elsif ($x <      19400) { $a = 1.30; }
+    elsif ($x <      32299) { $a = 1.60; }
+    elsif ($x <     176000) { $a = 1.80; }
+    elsif ($x <     315000) { $a = 2.10; }
+    elsif ($x <    1100000) { $a = 2.20; }
+    elsif ($x <    4500000) { $a = 2.31; }
+    elsif ($x <  233000000) { $a = 2.36; }
+    elsif ($x < 5433800000) { $a = 2.32; }
+    elsif ($x <60000000000) { $a = 2.15; }
+    else                    { $a = 2.00; } # Dusart 2010, page 2
+    $result = ($x/$flogx) * (1.0 + 1.0/$flogx + $a/($flogx*$flogx));
+  }
 
-  # For smaller numbers this works out well.
-  return int( $x / ($flogx - 0.7) ) if $x < 599;
-
-  my $a;
-  # Hand tuned for small numbers (< 60_000M)
-  if    ($x <       2700) { $a = 0.30; }
-  elsif ($x <       5500) { $a = 0.90; }
-  elsif ($x <      19400) { $a = 1.30; }
-  elsif ($x <      32299) { $a = 1.60; }
-  elsif ($x <     176000) { $a = 1.80; }
-  elsif ($x <     315000) { $a = 2.10; }
-  elsif ($x <    1100000) { $a = 2.20; }
-  elsif ($x <    4500000) { $a = 2.31; }
-  elsif ($x <  233000000) { $a = 2.36; }
-  elsif ($x < 5433800000) { $a = 2.32; }
-  elsif ($x <60000000000) { $a = 2.15; }
-  else                    { $a = 2.00; } # Dusart 2010, page 2
-
-  my $result = ($x/$flogx) * (1.0 + 1.0/$flogx + $a/($flogx*$flogx));
-  $result = Math::BigInt->new($result->bfloor->bstr()) if ref($result) eq 'Math::BigFloat';
+  return Math::BigInt->new($result->bfloor->bstr()) if ref($result) eq 'Math::BigFloat';
   return int($result);
 }
 
@@ -993,47 +1014,53 @@ sub prime_count_upper {
 
   my $flogx = log($x);
 
-  # These work out well for small values
-  return int( ($x / ($flogx - 1.048)) + 1.0 ) if $x <  1621;
-  return int( ($x / ($flogx - 1.071)) + 1.0 ) if $x <  5000;
-  return int( ($x / ($flogx - 1.098)) + 1.0 ) if $x < 15900;
+  my $result;
+  if ($x > 10000_000_000_000 && $_Config{'assume_rh'}) {
+    my $lix = LogarithmicIntegral($x);
+    my $sqx = sqrt($x);
+    # Schoenfeld bound:    (constant is 8 * Pi)
+    $result = $lix + (($sqx*$flogx) / 25.13274122871834590770114707);
+  } elsif ($x <  1621) { $result = ($x / ($flogx - 1.048)) + 1.0; }
+    elsif ($x <  5000) { $result = ($x / ($flogx - 1.071)) + 1.0; }
+    elsif ($x < 15900) { $result = ($x / ($flogx - 1.098)) + 1.0; }
+    else {
+    my $a;
+    # Hand tuned for small numbers (< 60_000M)
+    if    ($x <      24000) { $a = 2.30; }
+    elsif ($x <      59000) { $a = 2.48; }
+    elsif ($x <     350000) { $a = 2.52; }
+    elsif ($x <     355991) { $a = 2.54; }
+    elsif ($x <     356000) { $a = 2.51; }
+    elsif ($x <    3550000) { $a = 2.50; }
+    elsif ($x <    3560000) { $a = 2.49; }
+    elsif ($x <    5000000) { $a = 2.48; }
+    elsif ($x <    8000000) { $a = 2.47; }
+    elsif ($x <   13000000) { $a = 2.46; }
+    elsif ($x <   18000000) { $a = 2.45; }
+    elsif ($x <   31000000) { $a = 2.44; }
+    elsif ($x <   41000000) { $a = 2.43; }
+    elsif ($x <   48000000) { $a = 2.42; }
+    elsif ($x <  119000000) { $a = 2.41; }
+    elsif ($x <  182000000) { $a = 2.40; }
+    elsif ($x <  192000000) { $a = 2.395; }
+    elsif ($x <  213000000) { $a = 2.390; }
+    elsif ($x <  271000000) { $a = 2.385; }
+    elsif ($x <  322000000) { $a = 2.380; }
+    elsif ($x <  400000000) { $a = 2.375; }
+    elsif ($x <  510000000) { $a = 2.370; }
+    elsif ($x <  682000000) { $a = 2.367; }
+    elsif ($x < 2953652287) { $a = 2.362; }
+    else                    { $a = 2.334; } # Dusart 2010, page 2
+    #elsif ($x <60000000000) { $a = 2.362; }
+    #else                    { $a = 2.51;  } # Dusart 1999, page 14
 
-  my $a;
-  # Hand tuned for small numbers (< 60_000M)
-  if    ($x <      24000) { $a = 2.30; }
-  elsif ($x <      59000) { $a = 2.48; }
-  elsif ($x <     350000) { $a = 2.52; }
-  elsif ($x <     355991) { $a = 2.54; }
-  elsif ($x <     356000) { $a = 2.51; }
-  elsif ($x <    3550000) { $a = 2.50; }
-  elsif ($x <    3560000) { $a = 2.49; }
-  elsif ($x <    5000000) { $a = 2.48; }
-  elsif ($x <    8000000) { $a = 2.47; }
-  elsif ($x <   13000000) { $a = 2.46; }
-  elsif ($x <   18000000) { $a = 2.45; }
-  elsif ($x <   31000000) { $a = 2.44; }
-  elsif ($x <   41000000) { $a = 2.43; }
-  elsif ($x <   48000000) { $a = 2.42; }
-  elsif ($x <  119000000) { $a = 2.41; }
-  elsif ($x <  182000000) { $a = 2.40; }
-  elsif ($x <  192000000) { $a = 2.395; }
-  elsif ($x <  213000000) { $a = 2.390; }
-  elsif ($x <  271000000) { $a = 2.385; }
-  elsif ($x <  322000000) { $a = 2.380; }
-  elsif ($x <  400000000) { $a = 2.375; }
-  elsif ($x <  510000000) { $a = 2.370; }
-  elsif ($x <  682000000) { $a = 2.367; }
-  elsif ($x < 2953652287) { $a = 2.362; }
-  else                    { $a = 2.334; } # Dusart 2010, page 2
-  #elsif ($x <60000000000) { $a = 2.362; }
-  #else                    { $a = 2.51;  } # Dusart 1999, page 14
+    # Old versions of Math::BigFloat will do the Wrong Thing with this.
+    #return int( ($x/$flogx) * (1.0 + 1.0/$flogx + $a/($flogx*$flogx)) + 1.0 );
+    $result = ($x/$flogx) * (1.0 + 1.0/$flogx + $a/($flogx*$flogx)) + 1.0;
+  }
 
-  # Old versions of Math::BigFloat will do the Wrong Thing with this.
-  #return int( ($x/$flogx) * (1.0 + 1.0/$flogx + $a/($flogx*$flogx)) + 1.0 );
-  my $result = ($x/$flogx) * (1.0 + 1.0/$flogx + $a/($flogx*$flogx)) + 1.0;
   return Math::BigInt->new($result->bfloor->bstr()) if ref($result) eq 'Math::BigFloat';
   return int($result);
-
 }
 
 #############################################################################
@@ -1508,7 +1535,9 @@ use the Dusart (2010) bounds of
 
     x/logx * (1 + 1/logx + 2.334/log^2x) >= Pi(x)
 
-above that range.  These bounds do not assume the Riemann Hypothesis.
+above that range.  These bounds do not assume the Riemann Hypothesis.  If the
+configuration option C<assume_rh> has been set (it is off by default), then
+the Schoenfeld (1976) bounds are used for large values.
 
 
 =head2 prime_count_approx
@@ -1958,7 +1987,10 @@ Accuracy should be at least 14 digits.
 Given a floating point input C<s> where C<s E<gt>= 0.5>, returns the floating
 point value of ζ(s)-1, where ζ(s) is the Riemann zeta function.  One is
 subtracted to ensure maximum precision for large values of C<s>.  The zeta
-function is the sum from k=1 to infinity of C<1 / k^s>
+function is the sum from k=1 to infinity of C<1 / k^s>.
+
+Since the argument and the result are real, this is technically the Euler Zeta
+function.
 
 Accuracy should be at least 14 digits, but currently does not increase
 accuracy with big floats.  Small integer values are returned from a table,
@@ -2180,6 +2212,8 @@ excellent versions in the public domain).
 =item Ueli M. Maurer, "Fast Generation of Prime Numbers and Secure Public-Key Cryptographic Parameters", 1995.  L<http://citeseerx.ist.psu.edu/viewdoc/summary?doi=10.1.1.26.2151>
 
 =item Pierre-Alain Fouque and Mehdi Tibouchi, "Close to Uniform Prime Number Generation With Fewer Random Bits", 2011.  L<http://eprint.iacr.org/2011/481>
+
+=item Douglas A. Stoll and Patrick Demichel , "The impact of ζ(s) complex zeros on π(x) for x E<lt> 10^{10^{13}}", Mathematics of Computation, v80, n276, pp 2381-2394, October 2011.  L<http://www.ams.org/journals/mcom/2011-80-276/S0025-5718-2011-02477-4/home.html>
 
 =back
 
