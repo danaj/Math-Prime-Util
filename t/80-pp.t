@@ -419,5 +419,3 @@ sub cmp_closeto {
   my $message = shift;
   cmp_ok( abs($got - $expect), '<=', $tolerance, $message );
 }
-
-done_testing();
