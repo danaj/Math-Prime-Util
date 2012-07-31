@@ -52,7 +52,7 @@ my %_Config;
 BEGIN {
 
   # Load PP code.  Nothing exported.
-  require Math::Prime::Util::PP;
+  require Math::Prime::Util::PP;  Math::Prime::Util::PP->import();
 
   eval {
     require XSLoader;
@@ -547,9 +547,14 @@ sub primes {
 
     return random_nbit_prime($k) if $k <= $p0;
 
-    use Math::BigInt;
-    use Math::BigFloat;
-
+    eval {
+      require Math::BigInt;   Math::BigInt->import();
+      require Math::BigFloat; Math::BigFloat->import();
+      1;
+    } or do {
+      croak "Cannot load Math::BigInt and Math::BigFloat";
+    };
+    
     my $c = Math::BigFloat->new("0.09");  # higher = more trial divisions
     my $r = Math::BigFloat->new("0.5");
     my $m = 24;   # How much randomness we're trying to get at a time

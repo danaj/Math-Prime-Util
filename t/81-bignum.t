@@ -3,9 +3,11 @@ use strict;
 use warnings;
 
 # If you're not using ancient perl 5.6.2 with super early releases of bigint,
-# then you can define bigint up here and lose all the stupid quotes
-# around every number.
+# then you can define bigint up here and not have to quote every number.
 
+# Note: In 5.16.0 (and perhaps others?), using labels like "SKIP:" will create
+# a small memory leak.  So running the test suite through valgrind will show
+# some small leaks in this test, which has nothing to do with the module.
 
 my $extra = defined $ENV{RELEASE_TESTING} && $ENV{RELEASE_TESTING};
 my $broken64 = (18446744073709550592 == ~0);

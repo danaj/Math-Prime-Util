@@ -7,6 +7,7 @@ Revision history for Perl extension Math::Prime::Util.
     - add prime_set_config(), including ability to set assume_rh to let all
       functions assume the Riemann Hypothesis.
     - Use the Schoenfeld bound for Pi(x) (x large) if assume_rh is true.
+    - valgrind testing
 
 0.11  23 July 2012
     - Turn off threading tests on Cygwin, as threads on some Cygwin platforms
