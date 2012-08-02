@@ -1,13 +1,19 @@
 Revision history for Perl extension Math::Prime::Util.
 
-0.12  30 July 2012
-    - Add RiemannZeta function.  We used this before for Riemann R, but now
-      it is exported and should be accurate for small numbers (it was only
-      used for integers > 40 before).
-    - add prime_set_config(), including ability to set assume_rh to let all
-      functions assume the Riemann Hypothesis.
+0.12  2 August 2012
+    - Add:
+           primorial               product of primes <= n
+           pn_primorial            product of first n primes
+           prime_set_config        set config options
+           RiemannZeta             export and make accurate for small reals
+
+    - Add 'assume_rh' configuration option (default: false) which can be set
+      to allow functions to assume the Riemann Hypothesis.
+
     - Use the Schoenfeld bound for Pi(x) (x large) if assume_rh is true.
+
     - valgrind testing
+
 
 0.11  23 July 2012
     - Turn off threading tests on Cygwin, as threads on some Cygwin platforms

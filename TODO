@@ -2,8 +2,6 @@
 - Examine behavior near 32-bit limit on 32-bit machines.
   (done for factoring)
 
-- GMP versions of all routines.
-
 - segment sieve should itself use a segment for its primes.
   Today we'd need sqrt(2^64) max = 140MB.  Segmenting would yield under 1MB.
 
@@ -15,10 +13,6 @@
 
 - Faster SQUFOF
 
-- better prime count upper/lower bounds:
-    - Dusart 2010 "Estimates of Some Functions Over Primes without R.H."
-    - Schoenfeld or Stoll for with-RH limits
-
 - Move .c / .h files into separate directory.
   version does it in a painful way.  Something simpler to be had?
 
@@ -26,3 +20,7 @@
 
 - After the factoring changes, we need to use Devel::Cover again to ferret
   out numbers that pass the early tests.
+
+- tests for primorial
+
+- document prime_set_config

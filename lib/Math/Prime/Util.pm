@@ -22,6 +22,7 @@ our @EXPORT_OK = qw(
                      prime_count prime_count_lower prime_count_upper prime_count_approx
                      nth_prime nth_prime_lower nth_prime_upper nth_prime_approx
                      random_prime random_ndigit_prime random_nbit_prime random_maurer_prime
+                     primorial pn_primorial
                      factor all_factors moebius euler_phi
                      ExponentialIntegral LogarithmicIntegral RiemannZeta RiemannR
                    );
@@ -633,6 +634,28 @@ sub primes {
     no Math::BigInt;
   }
 }
+
+sub primorial {
+  my $n = shift;
+  _validate_positive_integer($n);
+
+  return Math::Prime::Util::GMP::primorial($n)
+         if $_HAVE_GMP && defined &Math::Prime::Util::GMP::primorial;
+
+  my $pn = 1;
+  $pn = Math::BigInt->new->bone if defined $bigint::VERSION &&
+        $n >= (($_Config{'maxbits'} == 32) ? 29 : 53);
+
+  foreach my $p ( @{ primes($n) } ) {
+    $pn *= $p;
+  }
+  return $pn;
+}
+
+sub pn_primorial {
+  return primorial( nth_prime($_[0]) );
+}
+
 
 sub all_factors {
   my $n = shift;
@@ -1335,6 +1358,11 @@ Version 0.12
   # Moebius function used to calculate Mertens
   $sum += moebius($_) for (1..200); say "Mertens(200) = $sum";
 
+  # The primorial n# (product of all primes <= n)
+  say "15# (2*3*5*7*11*13) is ", primorial(15);
+  # The primorial p(n)# (product of first n primes)
+  say "P(9)# (2*3*5*7*11*13*17*19*23) is ", pn_primorial(9);
+
   # Ei, li, and Riemann R functions
   my $ei = ExponentialIntegral($x);    # $x a real: $x != 0
   my $li = LogarithmicIntegral($x);    # $x a real: $x >= 0
@@ -1694,6 +1722,44 @@ C<n>.  Given the definition used, C<euler_phi> will return 0 for all
 C<n E<lt> 1>.  This follows the logic used by SAGE.  Mathematic/WolframAlpha
 also returns 0 for input 0, but returns C<euler_phi(-n)> for C<n E<lt> 0>.
 
+
+=head2 primorial
+
+  $prim = primorial(11); #        11# = 2*3*5*7*11 = 2310
+
+Returns the primorial C<n#> of the positive integer input, defined as the
+product of the prime numbers less than or equal to C<n>.  This is the
+L<OEIS series A034386|http://oeis.org/A034386>: primorial numbers second
+definition.
+
+  primorial(0)  == 1
+  primorial($n) == pn_primorial( prime_count($n) )
+
+The result will be calculated using native numbers if neither bigint nor
+L<Math::Prime::Util::GMP> are loaded.
+
+Be careful about which version (C<primorial> or C<pn_primorial>) matches the
+definition you want to use.  Not all sources agree on the terminology, though
+they should give a clear definition of which of the two versions they mean.
+OEIS, Wikipedia, and Mathworld are all consistent, and these functions should
+match that terminology.
+
+
+=head2 pn_primorial
+
+  $prim = pn_primorial(5); #      p_5# = 2*3*5*7*11 = 2310
+
+Returns the primorial number C<p_n#> of the positive integer input, defined as
+the product of the first C<n> prime numbers (compare to the factorial, which
+is the product of the first C<n> natural numbers).  This is the
+L<OEIS series A002110|http://oeis.org/A002110>: primorial numbers first
+definition.
+
+  pn_primorial(0)  == 1
+  pn_primorial($n) == primorial( nth_prime($n) )
+
+The result will be calculated using native numbers if neither bigint nor
+L<Math::Prime::Util::GMP> are loaded.
 
 
 =head2 random_prime
@@ -2219,6 +2285,8 @@ excellent versions in the public domain).
 =item Pierre-Alain Fouque and Mehdi Tibouchi, "Close to Uniform Prime Number Generation With Fewer Random Bits", 2011.  L<http://eprint.iacr.org/2011/481>
 
 =item Douglas A. Stoll and Patrick Demichel , "The impact of ζ(s) complex zeros on π(x) for x E<lt> 10^{10^{13}}", Mathematics of Computation, v80, n276, pp 2381-2394, October 2011.  L<http://www.ams.org/journals/mcom/2011-80-276/S0025-5718-2011-02477-4/home.html>
+
+=item L<OEIS: Primorial|http://oeis.org/wiki/Primorial>.
 
 =back
 
