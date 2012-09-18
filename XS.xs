@@ -429,6 +429,10 @@ _XS_LogarithmicIntegral(double x)
 
 double
 _XS_RiemannZeta(double x)
+  CODE:
+    RETVAL = (double) ld_riemann_zeta(x);
+  OUTPUT:
+    RETVAL
 
 double
 _XS_RiemannR(double x)

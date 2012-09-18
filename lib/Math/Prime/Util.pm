@@ -2043,7 +2043,11 @@ If given a negative input, the function will croak.  The function returns
 
 This is often known as C<li(x)>.  A related function is the offset logarithmic
 integral, sometimes known as C<Li(x)> which avoids the singularity at 1.  It
-may be defined as C<Li(x) = li(x) - li(2)>.
+may be defined as C<Li(x) = li(x) - li(2)>.  Crandall and Pomerance use the
+term C<li0> for this function, and define C<li(x) = Li0(x) - li0(2)>.  Due to
+this terminilogy confusion, it is important to check which exact definition is
+being used.
+
 
 This function is implemented as C<li(x) = Ei(ln x)> after handling special
 values.

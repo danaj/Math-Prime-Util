@@ -14,6 +14,8 @@ Revision history for Perl extension Math::Prime::Util.
 
     - valgrind testing
 
+    - Use long doubles for math functions.
+
 
 0.11  23 July 2012
     - Turn off threading tests on Cygwin, as threads on some Cygwin platforms

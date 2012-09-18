@@ -3,9 +3,27 @@
 #include <string.h>
 #include <math.h>
 
-/* It took until C99 to get this macro */
+/* Use long double to get a little more precision when we're calculating the
+ * math functions -- especially those calculated with a series.  Long double
+ * is defined in C89 (ISO C), so it should be supported by any reasonable
+ * compiler we're using (seriously is your C compiler 20+ years out of date?).
+ * Noting that 'long double' on many platforms is no different than 'double'
+ * so it may buy us nothing.  But it's worth trying.
+ */
+extern long double powl(long double, long double);
+extern long double expl(long double);
+extern long double logl(long double);
+extern long double fabsl(long double);
+
+/* However, standard math functions weren't defined on them until C99.  Same
+ * with the macro INFINITY.  There are some reasonable platforms I've seen
+ * that don't have these. */
 #ifndef INFINITY
-#define INFINITY (DBL_MAX + DBL_MAX)
+  #define INFINITY (DBL_MAX + DBL_MAX)
+  #define powl(x, y)  (long double) pow( (double) (x), (double) (y) )
+  #define expl(x)  (long double) exp( (double) (x) )
+  #define logl(x)  (long double) log( (double) (x) )
+  #define fabsl(x)  (long double) fabs( (double) (x) )
 #endif
 
 #include "ptypes.h"
@@ -605,13 +623,13 @@ UV _XS_nth_prime(UV n)
  * by many people).
  */
 
-static double const euler_mascheroni = 0.57721566490153286060651209008240243104215933593992;
-static double const li2 = 1.045163780117492784844588889194613136522615578151;
+static long double const euler_mascheroni = 0.57721566490153286060651209008240243104215933593992L;
+static long double const li2 = 1.045163780117492784844588889194613136522615578151L;
 
 #define KAHAN_INIT(s) \
-  double s ## _y, s ## _t; \
-  double s ## _c = 0.0; \
-  double s = 0.0;
+  long double s ## _y, s ## _t; \
+  long double s ## _c = 0.0; \
+  long double s = 0.0;
 
 #define KAHAN_SUM(s, term) \
   s ## _y = term - s ## _c; \
@@ -620,80 +638,71 @@ static double const li2 = 1.045163780117492784844588889194613136522615578151;
   s = s ## _t;
 
 double _XS_ExponentialIntegral(double x) {
-  double const tol = 1e-16;
-  double val, term, fact_n;
+  long double const tol = 1e-16;
+  long double val, term;
   KAHAN_INIT(sum);
-  int n;
+  unsigned int n;
 
   if (x == 0) croak("Invalid input to ExponentialIntegral:  x must be != 0");
 
   if (x < -1) {
     /* Continued fraction, good for x < -1 */
-    double old;
-    double lc = 0;
-    double ld = 1 / (1 - x);
-    val = ld * (-exp(x));
+    long double lc = 0;
+    long double ld = 1.0L / (1.0L - (long double)x);
+    long double old, t, n2;
+    val = ld * (-expl(x));
     for (n = 1; n <= 100000; n++) {
-      lc = 1 / (2*n + 1 - x - n*n*lc);
-      ld = 1 / (2*n + 1 - x - n*n*ld);
+      t = (long double)(2*n + 1) - (long double) x;
+      n2 = n * n;
+      lc = 1.0L / (t - n2 * lc);
+      ld = 1.0L / (t - n2 * ld);
       old = val;
       val *= ld/lc;
-      if ( fabs(val-old) <= tol*fabs(val) )
+      if ( fabsl(val-old) <= tol*fabsl(val) )
         break;
     }
   } else if (x < 0) {
     /* Rational Chebyshev approximation (Cody, Thacher), good for -1 < x < 0 */
-#if 0
-    static const double C2p[3] = { -4.43668255, 4.42054938, 3.16274620 };
-    static const double C2q[3] = {  7.68641124, 5.65655216, 1.00000000 };
-    double sumn = C2p[0] - x*(C2p[1] - x*C2p[2]);
-    double sumd = C2q[0] - x*(C2q[1] - x*C2q[2]);
-#else
-    static const double C6p[7] = { -148151.02102575750838086,
-                                    150260.59476436982420737,
-                                     89904.972007457256553251,
-                                     15924.175980637303639884,
-                                      2150.0672908092918123209,
-                                       116.69552669734461083368,
-                                         5.0196785185439843791020 };
-    static const double C6q[7] = {  256664.93484897117319268,
-                                    184340.70063353677359298,
-                                     52440.529172056355429883,
-                                      8125.8035174768735759866,
-                                       750.43163907103936624165,
-                                        40.205465640027706061433,
-                                         1.0000000000000000000000 };
-    double sumn = C6p[0]-x*(C6p[1]-x*(C6p[2]-x*(C6p[3]-x*(C6p[4]-x*(C6p[5]-x*C6p[6])))));
-    double sumd = C6q[0]-x*(C6q[1]-x*(C6q[2]-x*(C6q[3]-x*(C6q[4]-x*(C6q[5]-x*C6q[6])))));
-#endif
-    val = log(-x) - sumn/sumd;
-  } else if (x < -log(tol)) {
+    static const long double C6p[7] = { -148151.02102575750838086L,
+                                    150260.59476436982420737L,
+                                     89904.972007457256553251L,
+                                     15924.175980637303639884L,
+                                      2150.0672908092918123209L,
+                                       116.69552669734461083368L,
+                                         5.0196785185439843791020L };
+    static const long double C6q[7] = {  256664.93484897117319268L,
+                                    184340.70063353677359298L,
+                                     52440.529172056355429883L,
+                                      8125.8035174768735759866L,
+                                       750.43163907103936624165L,
+                                        40.205465640027706061433L,
+                                         1.0000000000000000000000L };
+    long double sumn = C6p[0]-x*(C6p[1]-x*(C6p[2]-x*(C6p[3]-x*(C6p[4]-x*(C6p[5]-x*C6p[6])))));
+    long double sumd = C6q[0]-x*(C6q[1]-x*(C6q[2]-x*(C6q[3]-x*(C6q[4]-x*(C6q[5]-x*C6q[6])))));
+    val = logl(-x) - sumn/sumd;
+  } else if (x < -logl(tol)) {
     /* Convergent series */
-    fact_n = 1;
-
-    KAHAN_SUM(sum, euler_mascheroni);
-    KAHAN_SUM(sum, log(x));
-
-    for (n = 1; n <= 200; n++) {
-      fact_n *= x/n;
-      term = fact_n/n;
+    long double fact_n = x;
+    for (n = 2; n <= 200; n++) {
+      long double invn = 1.0L / n;
+      fact_n *= (long double)x * invn;
+      term = fact_n * invn;
       KAHAN_SUM(sum, term);
       /* printf("C  after adding %.8lf, val = %.8lf\n", term, sum); */
-      if (term < tol) break;
+      if ( term < tol*sum) break;
     }
+    KAHAN_SUM(sum, euler_mascheroni);
+    KAHAN_SUM(sum, logl(x));
+    KAHAN_SUM(sum, x);
     val = sum;
   } else {
     /* Asymptotic divergent series */
-    double last_term;
-
-    val = exp(x) / x;
     term = 1.0;
-    KAHAN_SUM(sum, term);
-
+    long double invx = 1.0L / x;
     for (n = 1; n <= 200; n++) {
-      last_term = term;
-      term *= n/x;
-      if (term < tol) break;
+      long double last_term = term;
+      term = term * ( (long double)n * invx );
+      if (term < tol*sum) break;
       if (term < last_term) {
         KAHAN_SUM(sum, term);
         /* printf("A  after adding %.8lf, sum = %.8lf\n", term, sum); */
@@ -703,7 +712,8 @@ double _XS_ExponentialIntegral(double x) {
         break;
       }
     }
-    val *= sum;
+    term = expl(x) * invx;
+    val = term * sum + term;
   }
 
   return val;
@@ -721,54 +731,54 @@ double _XS_LogarithmicIntegral(double x) {
  * Storing the first 10-20 Zeta values makes sense.  Past that it is purely
  * to avoid making the call to generate them ourselves.  We could cache the
  * calculated values. These all have 1 subtracted from them.  */
-static const double riemann_zeta_table[] = {
-  0.6449340668482264364724151666460251892,  /* zeta(2) */
-  0.2020569031595942853997381615114499908,
-  0.0823232337111381915160036965411679028,
-  0.0369277551433699263313654864570341681,
-  0.0173430619844491397145179297909205279,
-  0.0083492773819228268397975498497967596,
-  0.0040773561979443393786852385086524653,
-  0.0020083928260822144178527692324120605,
-  0.0009945751278180853371459589003190170,
-  0.0004941886041194645587022825264699365,
-  0.0002460865533080482986379980477396710,
-  0.0001227133475784891467518365263573957,
-  0.0000612481350587048292585451051353337,
-  0.0000305882363070204935517285106450626,
-  0.0000152822594086518717325714876367220,
-  0.0000076371976378997622736002935630292,  /* zeta(17)  Past here all we're */
-  0.0000038172932649998398564616446219397,  /* zeta(18)  getting is speed.   */
-  0.0000019082127165539389256569577951013,
-  0.0000009539620338727961131520386834493,
-  0.0000004769329867878064631167196043730,
-  0.0000002384505027277329900036481867530,
-  0.0000001192199259653110730677887188823,
-  0.0000000596081890512594796124402079358,
-  0.0000000298035035146522801860637050694,
-  0.0000000149015548283650412346585066307,
-  0.0000000074507117898354294919810041706,
-  0.0000000037253340247884570548192040184,
-  0.0000000018626597235130490064039099454,
-  0.0000000009313274324196681828717647350,
-  0.0000000004656629065033784072989233251,
-  0.0000000002328311833676505492001455976,
-  0.0000000001164155017270051977592973835,
-  0.0000000000582077208790270088924368599,
-  0.0000000000291038504449709968692942523,
-  0.0000000000145519218910419842359296322,
-  0.0000000000072759598350574810145208690,
-  0.0000000000036379795473786511902372363,
-  0.0000000000018189896503070659475848321,
-  0.0000000000009094947840263889282533118,
+static const long double riemann_zeta_table[] = {
+  0.6449340668482264364724151666460251892L,  /* zeta(2) */
+  0.2020569031595942853997381615114499908L,
+  0.0823232337111381915160036965411679028L,
+  0.0369277551433699263313654864570341681L,
+  0.0173430619844491397145179297909205279L,
+  0.0083492773819228268397975498497967596L,
+  0.0040773561979443393786852385086524653L,
+  0.0020083928260822144178527692324120605L,
+  0.0009945751278180853371459589003190170L,
+  0.0004941886041194645587022825264699365L,
+  0.0002460865533080482986379980477396710L,
+  0.0001227133475784891467518365263573957L,
+  0.0000612481350587048292585451051353337L,
+  0.0000305882363070204935517285106450626L,
+  0.0000152822594086518717325714876367220L,
+  0.0000076371976378997622736002935630292L,  /* zeta(17)  Past here all we're */
+  0.0000038172932649998398564616446219397L,  /* zeta(18)  getting is speed.   */
+  0.0000019082127165539389256569577951013L,
+  0.0000009539620338727961131520386834493L,
+  0.0000004769329867878064631167196043730L,
+  0.0000002384505027277329900036481867530L,
+  0.0000001192199259653110730677887188823L,
+  0.0000000596081890512594796124402079358L,
+  0.0000000298035035146522801860637050694L,
+  0.0000000149015548283650412346585066307L,
+  0.0000000074507117898354294919810041706L,
+  0.0000000037253340247884570548192040184L,
+  0.0000000018626597235130490064039099454L,
+  0.0000000009313274324196681828717647350L,
+  0.0000000004656629065033784072989233251L,
+  0.0000000002328311833676505492001455976L,
+  0.0000000001164155017270051977592973835L,
+  0.0000000000582077208790270088924368599L,
+  0.0000000000291038504449709968692942523L,
+  0.0000000000145519218910419842359296322L,
+  0.0000000000072759598350574810145208690L,
+  0.0000000000036379795473786511902372363L,
+  0.0000000000018189896503070659475848321L,
+  0.0000000000009094947840263889282533118L,
 };
 #define NPRECALC_ZETA (sizeof(riemann_zeta_table)/sizeof(riemann_zeta_table[0]))
 
 /* Riemann Zeta on the real line.  Compare to Math::Cephes::zetac */
-double _XS_RiemannZeta(double x) {
-  double const tol = 1e-16;
+long double ld_riemann_zeta(long double x) {
+  long double const tol = 1e-17;
   KAHAN_INIT(sum);
-  double term;
+  long double term;
   int k;
 
   if (x < 0.5) croak("Invalid input to RiemannZeta:  x must be >= 0.5");
@@ -783,103 +793,70 @@ double _XS_RiemannZeta(double x) {
    * range where the series methods take a long time and are inaccurate.  This
    * method is fast and quite accurate over the range 0.5 - 5. */
   if (x <= 5.0) {
-    static const double C8p[9] = { 1.287168121482446392809e10,
-                                   1.375396932037025111825e10,
-                                   5.106655918364406103683e09,
-                                   8.561471002433314862469e08,
-                                   7.483618124380232984824e07,
-                                   4.860106585461882511535e06,
-                                   2.739574990221406087728e05,
-                                   4.631710843183427123061e03,
-                                   5.787581004096660659109e01 };
-    static const double C8q[9] = { 2.574336242964846244667e10,
-                                   5.938165648679590160003e09,
-                                   9.006330373261233439089e08,
-                                   8.042536634283289888587e07,
-                                   5.609711759541920062814e06,
-                                   2.247431202899137523543e05,
-                                   7.574578909341537560115e03,
-                                  -2.373835781373772623086e01,
-                                   1.000000000000000000000    };
-    double sumn = C8p[0]+x*(C8p[1]+x*(C8p[2]+x*(C8p[3]+x*(C8p[4]+x*(C8p[5]+x*(C8p[6]+x*(C8p[7]+x*C8p[8])))))));
-    double sumd = C8q[0]+x*(C8q[1]+x*(C8q[2]+x*(C8q[3]+x*(C8q[4]+x*(C8q[5]+x*(C8q[6]+x*(C8q[7]+x*C8q[8])))))));
+
+    static const long double C8p[9] = { 1.287168121482446392809e10L,
+                                   1.375396932037025111825e10L,
+                                   5.106655918364406103683e09L,
+                                   8.561471002433314862469e08L,
+                                   7.483618124380232984824e07L,
+                                   4.860106585461882511535e06L,
+                                   2.739574990221406087728e05L,
+                                   4.631710843183427123061e03L,
+                                   5.787581004096660659109e01L };
+    static const long double C8q[9] = { 2.574336242964846244667e10L,
+                                   5.938165648679590160003e09L,
+                                   9.006330373261233439089e08L,
+                                   8.042536634283289888587e07L,
+                                   5.609711759541920062814e06L,
+                                   2.247431202899137523543e05L,
+                                   7.574578909341537560115e03L,
+                                  -2.373835781373772623086e01L,
+                                   1.000000000000000000000L    };
+    long double sumn = C8p[0]+x*(C8p[1]+x*(C8p[2]+x*(C8p[3]+x*(C8p[4]+x*(C8p[5]+x*(C8p[6]+x*(C8p[7]+x*C8p[8])))))));
+    long double sumd = C8q[0]+x*(C8q[1]+x*(C8q[2]+x*(C8q[3]+x*(C8q[4]+x*(C8q[5]+x*(C8q[6]+x*(C8q[7]+x*C8q[8])))))));
     sum = (sumn - (x-1)*sumd) / ((x-1)*sumd);
-    return sum;
-  }
 
-#if 0
-  /* Standard method, pushing the biggest two terms to the end. */
-  for (k = 4; k <= 1000000; k++) {
-    term = pow(k, -x);
-    if (fabs(term/sum) < tol) break;
-    KAHAN_SUM(sum, term);
-  }
-  KAHAN_SUM(sum, pow(3, -x) );
-  KAHAN_SUM(sum, pow(2, -x) );
-  /* printf("zeta(%lf) = %.15lf in %d iterations\n", x, sum, k-2); */
-#endif
+  } else {
 
-#if 1
-  /* A different series using odd powers.  About half the number of terms are
-   * needed vs. the normal mathod, and we get better numerical results.
-   * http://functions.wolfram.com/ZetaFunctionsandPolylogarithms/Zeta/06/04/0003
-   */
-  for (k = 2; k <= 1000000; k++) {
-    term = pow(2*k+1, -x);
-    KAHAN_SUM(sum, term);
-    if (fabs(term/sum) < tol) break;
-  }
-  KAHAN_SUM(sum, pow(3, -x) );
-  double t = 1.0 / (1.0 - pow(2, -x));
-  sum *= t;
-  sum += (t - 1.0);
-  /* printf("zeta(%lf) = %.15lf in %d iterations\n", x, sum, k); */
-#endif
-
-#if 0
-  /* An example using the Euler product.  Many fewer terms are needed vs. the
-   * two series above, but we can't get the same accuracy for large input
-   * because we've got the leading 1.0.
-   */
-  {
-    double t;
-    int iter = 1;
-    sum = 1.0;
-    t = sum;  sum *= 1.0 / (1.0 - pow(2, -x));  term = sum-t;
-    k = 3;
-    while (k < 1000000) {
-      if (fabs(term/sum) < tol) break;
-      t = sum;  sum *= 1.0 / (1.0 - pow(k, -x));  term = sum-t;
-      iter++;
-      k = _XS_next_prime(k);
+    /* This series needs about half the number of terms as the usual k^-x,
+     * and gets slightly better numerical results.
+     *   functions.wolfram.com/ZetaFunctionsandPolylogarithms/Zeta/06/04/0003
+     */
+    for (k = 2; k <= 1000000; k++) {
+      term = powl(2*k+1, -x);
+      KAHAN_SUM(sum, term);
+      if (term < tol*sum) break;
     }
-    sum -= 1.0;
-    /* printf("zeta(%lf) = %.15lf in %d iterations\n", x, sum, iter); */
+    KAHAN_SUM(sum, powl(3, -x) );
+    long double t = 1.0L / (1.0L - powl(2, -x));
+    sum *= t;
+    sum += (t - 1.0L);
+    /* printf("zeta(%lf) = %.15lf in %d iterations\n", x, sum, k); */
+
   }
-#endif
+
   return sum;
 }
 
 double _XS_RiemannR(double x) {
-  double const tol = 1e-16;
+  long double const tol = 1e-16;
   KAHAN_INIT(sum);
-  double part_term, term, flogx, zeta;
-  int k;
+  long double part_term, term, flogx;
+  unsigned int k;
 
   if (x <= 0) croak("Invalid input to ReimannR:  x must be > 0");
 
   KAHAN_SUM(sum, 1.0);
 
-  flogx = log(x);
+  flogx = logl(x);
   part_term = 1;
 
   for (k = 1; k <= 10000; k++) {
-    zeta = _XS_RiemannZeta(k+1);
     part_term *= flogx / k;
-    term = part_term / (k + k * zeta);
+    term = part_term / (k + k * ld_riemann_zeta(k+1));
     KAHAN_SUM(sum, term);
     /* printf("R  after adding %.15lg, sum = %.15lg\n", term, sum); */
-    if (fabs(term/sum) < tol) break;
+    if (fabsl(term/sum) < tol) break;
   }
 
   return sum;
