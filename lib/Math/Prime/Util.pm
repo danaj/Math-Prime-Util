@@ -257,6 +257,16 @@ sub primes {
     # More memory than we should reasonably use for base sieve?
     } elsif ($high > (32*1024*1024*30)) {
       $method = 'Segment';
+      # The segment sieve doesn't itself use a segmented sieve for the base,
+      # so it will slow down for very large endpoints (larger than 10^16).
+      # Make a crude predictor of segment and trial and decide.
+      if ($high > 10**14) {
+        my $est_trial = ($high-$low) / 1_000_000;  # trial estimate 1s per 1M
+        # segment is exponential on high, plus very fast scan.
+        my $est_segment = 0.2 * 3.3**(log($high / 10**15) / log(10))
+                          + ($high-$low) / 1_000_000_000_000;
+        $method = 'Trial' if $est_trial <= $est_segment;
+      }
 
     # Only want half or less of the range low-high ?
     } elsif ( int($high / ($high-$low)) >= 2 ) {
