@@ -172,7 +172,8 @@ sub _validate_positive_integer {
   croak "Parameter '$n' must be a positive integer" if $n =~ tr/0123456789//c;
   croak "Parameter '$n' must be >= $min" if defined $min && $n < $min;
   croak "Parameter '$n' must be <= $max" if defined $max && $n > $max;
-  if ($n <= $_Config{'maxparam'}) {
+  # this used instead of '<=' to fix strings like ~0+delta
+  if ($n < $_Config{'maxparam'} || int($n) eq $_Config{'maxparam'}) {
     $_[0] = $_[0]->as_number() if ref($_[0]) eq 'Math::BigFloat';
     $_[0] = int($_[0]->bstr) if ref($_[0]) eq 'Math::BigInt';
   } elsif (ref($n) ne 'Math::BigInt') {
