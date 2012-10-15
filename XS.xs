@@ -101,10 +101,10 @@ trial_primes(IN UV low, IN UV high)
   CODE:
     if (low <= high) {
       if (low >= 2) low--;   /* Make sure low gets included */
-      curprime = next_trial_prime(low);
+      curprime = _XS_next_prime(low);
       while (curprime <= high) {
         av_push(av,newSVuv(curprime));
-        curprime = next_trial_prime(curprime);
+        curprime = _XS_next_prime(curprime);
       }
     }
     RETVAL = newRV_noinc( (SV*) av );
