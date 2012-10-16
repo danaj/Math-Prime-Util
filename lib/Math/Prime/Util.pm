@@ -236,7 +236,13 @@ sub primes {
   return $sref if ($low > $high) || ($high < 2);
 
   if ($high > $_XS_MAXVAL) {
-    return Math::Prime::Util::GMP::primes($low,$high) if $_HAVE_GMP;
+    if ($_HAVE_GMP) {
+      $sref = Math::Prime::Util::GMP::primes($low,$high);
+      # Convert the returned strings into BigInts
+      croak "Internal error: large value without bigint loaded." unless defined $Math::BigInt::VERSION;
+      @$sref = map { Math::BigInt->new("$_") } @$sref;
+      return $sref;
+    }
     return Math::Prime::Util::PP::primes($low,$high);
   }
 
