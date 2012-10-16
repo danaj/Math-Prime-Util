@@ -9,13 +9,15 @@ $| = 1;
 my $show_safe = 0;
 my $show_sophie = 0;
 my $show_twin = 0;
+my $show_usage = 0;
 my $segment_size = 30 * 128_000;   # 128kB
 
 GetOptions( "safe"   => \$show_safe,
             "sophie" => \$show_sophie,
             "twin"   => \$show_twin,
-            "help"   => sub { die_usage() },
+            "help"   => \$show_usage,
           ) || die_usage();
+die_usage() if $show_usage;
 
 # Get the start and end values.  Verify they're positive integers.
 die_usage() unless @ARGV == 2;

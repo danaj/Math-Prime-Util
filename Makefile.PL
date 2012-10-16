@@ -14,6 +14,8 @@ WriteMakefile1(
                     'XS.o',
     LIBS         => ['-lm'],
 
+    EXE_FILES    => ['bin/primes.pl'],
+
     BUILD_REQUIRES=>{
                       'Test::More'       => '0.45',
                       'bignum'           => '0.23',   # Used for bigint tests

@@ -1,7 +1,9 @@
 Revision history for Perl extension Math::Prime::Util.
 
-0.12  2 August 2012
-    - Add:
+0.12  2 November 2012
+    - Add bin/primes.pl
+
+    - Add functions:
            primorial               product of primes <= n
            pn_primorial            product of first n primes
            prime_set_config        set config options
@@ -16,6 +18,7 @@ Revision history for Perl extension Math::Prime::Util.
 
     - Use long doubles for math functions.
 
+    - Some fixes and speedups for ranged primes().
 
 0.11  23 July 2012
     - Turn off threading tests on Cygwin, as threads on some Cygwin platforms

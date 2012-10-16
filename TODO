@@ -24,3 +24,8 @@
 - tests for primorial
 
 - document prime_set_config
+
+- Test all routines for numbers on word-size boundary, or ranges that cross.
+
+- Test all functions return either native or bigints.  Functions that return
+  raw MPU::GMP results will return strings, which isn't right.
