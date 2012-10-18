@@ -653,11 +653,14 @@ sub primes {
 }
 
 sub primorial {
-  my $n = shift;
+  my($n) = @_;
   _validate_positive_integer($n);
 
-  return Math::Prime::Util::GMP::primorial($n)
-         if $_HAVE_GMP && defined &Math::Prime::Util::GMP::primorial;
+  if ($_HAVE_GMP && defined &Math::Prime::Util::GMP::primorial) {
+    return (ref($_[0]) eq 'Math::BigInt')
+        ?  $_[0]->copy->bzero->badd( Math::Prime::Util::GMP::primorial($n) )
+        :  Math::Prime::Util::GMP::primorial($n);
+  }
 
   my $pn = 1;
   $pn = Math::BigInt->new->bone if defined $bigint::VERSION &&
@@ -670,7 +673,13 @@ sub primorial {
 }
 
 sub pn_primorial {
-  return primorial( nth_prime($_[0]) );
+  my($n) = @_;
+  if ($_HAVE_GMP && defined &Math::Prime::Util::GMP::pn_primorial) {
+    return (ref($_[0]) eq 'Math::BigInt')
+        ?  $_[0]->copy->bzero->badd( Math::Prime::Util::GMP::pn_primorial($n) )
+        :  Math::Prime::Util::GMP::pn_primorial($n);
+  }
+  return primorial(nth_prime($n));
 }
 
 
