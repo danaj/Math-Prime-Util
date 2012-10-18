@@ -159,7 +159,10 @@ sub ndig_palindromes {
 sub is_pillai {
   my $p = shift;
   return 0 if $p < 2;
-  # return 0 unless is_prime($p);
+  # Simpler but much slower:
+  #   foreach my $n (grep { ($p % $_) != 1 } (2 .. $p-1)) {
+  #     return 1 if Math::BigInt->new($n)->bfac()->bmod($p) == ($p-1);
+  #   }
   my $n_factorial_mod_p = Math::BigInt->bone();
   for my $n (2 .. $p-1) {
     $n_factorial_mod_p->bmul($n)->bmod($p);
@@ -169,7 +172,7 @@ sub is_pillai {
   0;
 }
 
-# Also slow.
+# Also pretty slow.
 sub is_good_prime {
   my $p = shift;
   return 0 if $p <= 2; # 2 isn't a good prime
@@ -273,16 +276,24 @@ sub gen_and_filter {
          @p;
   }
   if (exists $opts{'sophie'}) {
+    my %mod210;
+    undef @mod210{11,23,29,41,53,71,83,89,113,131,149,173,179,191,209};
     @p = grep { is_prime( 2*$_+1 ); }
-         grep { my $m30 = $_ % 30;
-                $_ <= 5 || $m30 == 11 || $m30 == 23 || $m30 == 29 ; }
+         grep { $_ <= 5 || exists $mod210{$_ % 210} }
          @p;
   }
   if (exists $opts{'cuban1'}) {
-    @p = grep { my $n = sqrt((4*$_-1)/3);  $n == int($n); } @p;
+    my %mod210;
+    undef @mod210{1,19,37,61,79,121,127,169,187};
+    @p = grep { my $n = sqrt((4*$_-1)/3); $n == int($n); }
+         #grep { ($_%3) == 1 }
+         grep { $_ <= 7 || exists $mod210{$_ % 210} }
+         @p;
   }
   if (exists $opts{'cuban2'}) {
-    @p = grep { my $n = sqrt(($_-1)/3);  $n == int($n); } @p;
+    @p = grep { my $n = sqrt(($_-1)/3);  $n == int($n); }
+         grep { ($_%3) == 1 }
+         @p;
   }
   if (exists $opts{'pnm1'}) {
     @p = grep { is_prime( primorial(Math::BigInt->new($_))-1 ) } @p;
@@ -301,7 +312,6 @@ sub gen_and_filter {
 
 if (exists $opts{'lucas'} ||
     exists $opts{'fibonacci'} ||
-    exists $opts{'palindromic'} ||
     exists $opts{'euclid'} ||
     exists $opts{'mersenne'}) {
   my @p = gen_and_filter($start, $end);
@@ -314,6 +324,9 @@ if (exists $opts{'lucas'} ||
     $segment_size = 10000 if $start > ~0;   # small if doing bigints
     if (exists $opts{'pillai'}) {
       $segment_size = ($start < 10000) ? 100 : 1000;  # very small for Pillai
+    }
+    if (exists $opts{'palindromic'}) {
+      $segment_size = 10**length($start) - $start - 1; # all n-digit numbers
     }
 
     my $seg_start = $start;
