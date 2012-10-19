@@ -31,16 +31,27 @@ my @test_data = (
   [18239, "Euclid",      "--euclid",     0],
 );
 my %oeis_name = map { $_->[0] => $_->[1] } @test_data;
+my %oeis_number = map { my $n=$_->[2]; $n=~s/^--//; $n => $_->[0] } @test_data;
+
+# Verify additional filters
+my @additional_filters;
+foreach my $name (@ARGV) {
+  $name =~ s/^--//;
+  die "Unknown filter: $name\n" unless defined $oeis_number{$name};
+  push @additional_filters, $name;
+}
 
 my $test_data_hash = read_script_data('script-test-data.bs');
 
+if (@additional_filters > 0) {
+  print "Additional Filters: ", join(" ", @additional_filters), "\n";
+}
 foreach my $test (@test_data) {
   my $oeis_no = $test->[0];
-  my $test_data = $test_data_hash->{$oeis_no};
-  if (!defined $test_data) {
+  if (!defined $test_data_hash->{$oeis_no}) {
     die "No test data found for OEIS $oeis_no : $test->[1] primes\n";
   }
-  test_oeis(@$test, $test_data);
+  test_oeis(@$test, $test_data_hash);
 }
 
 
@@ -48,6 +59,9 @@ foreach my $test (@test_data) {
 
 sub read_script_data {
   my ($filename) = @_;
+
+  die "Can't find test file: $filename\nRun make-script-test-data.pl\n"
+      unless -r $filename;
 
   my $stream = Data::BitStream::XS->new( file => $filename, mode => 'ro' );
   my %hash;
@@ -89,20 +103,28 @@ sub read_script_data {
 }
 
 sub test_oeis {
-  my($oeis_no, $name, $script_arg, $restrict, $ref_data) = @_;
+  my($oeis_no, $name, $script_arg, $restrict, $test_data_hash) = @_;
 
-  my @ref = @$ref_data;
+  my @ref = @{ $test_data_hash->{$oeis_no} };
+  my $end = $ref[-1];
+
+  foreach my $filter_name (@additional_filters) {
+    my $filter_no = $oeis_number{$filter_name};
+    my %filter_data;
+    undef @filter_data{ @{$test_data_hash->{$filter_no}} };
+    my $filter_end = $test_data_hash->{$filter_no}->[-1];
+    @ref = grep { exists $filter_data{$_} } @ref;
+    $script_arg .= " --$filter_name";
+    $end = $filter_end if $end > $filter_end;  # bring endpoint down
+  }
+
   printf "%12s primes (OEIS A%06d): generating..", $name, $oeis_no;
 
-  #print "\n";
-  #print "reference data:\n";
-  #print "  $_\n" for @ref;
-  #print "primes.pl $script_arg 1 $ref[-1]\n";
   my $start = [gettimeofday];
-  my @scr = split /\s+/, qx+$FindBin::Bin/../bin/primes.pl $script_arg 1 $ref[-1]+;
+  my @scr = split /\s+/, qx+$FindBin::Bin/../bin/primes.pl $script_arg 1 $end+;
   {
     no bigint;
-    my $num_generated = scalar @scr;
+    my $num_generated = scalar @scr || 0.1;
     my $seconds = tv_interval($start);
     my $msperprime = ($seconds * 1000.0) / $num_generated;
     printf " %7d. %7.2f ms/prime\n", $num_generated, $msperprime;

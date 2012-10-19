@@ -65,7 +65,6 @@ GetOptions(\%opts,
 die_usage() if exists $opts{'help'};
 Math::Prime::Util::prime_set_config(gmp=>0) if exists $opts{'nompugmp'};
 
-
 # Get the start and end values.  Verify they're positive integers.
 die_usage() unless @ARGV == 2;
 my ($start, $end) = @ARGV;
@@ -81,13 +80,58 @@ if ( ($start >= ~0 && $start ne ~0) || ($end >= ~0 && $end ne ~0) ) {
   $end = Math::BigInt->new($end);
 }
 
+# Calculate the mod 210 pre-test.  This helps with the individual filters,
+# but the real benefit is that it convolves the pretests, which can speed
+# up even more.
+my ($min_pass, %mod_pass) = find_mod210_restriction();
+# Find out if they've filtered so much nothing passes (e.g. cousin quad)
+if (scalar keys %mod_pass == 0) {
+  $end = $min_pass if $end > $min_pass;
+}
+
+if ($start > $end) {
+  # Do nothing
+} elsif (exists $opts{'lucas'} ||
+         exists $opts{'fibonacci'} ||
+         exists $opts{'euclid'} ||
+         exists $opts{'mersenne'}
+        ) {
+  my @p = gen_and_filter($start, $end);
+  print join("\n", @p), "\n"  if scalar @p > 0;
+} else {
+  my @p;
+  while ($start <= $end) {
+
+    # Adjust segment sizes for some cases
+    $segment_size = 10000 if $start > ~0;   # small if doing bigints
+    if (exists $opts{'pillai'}) {
+      $segment_size = ($start < 10000) ? 100 : 1000;  # very small for Pillai
+    }
+    if (exists $opts{'palindromic'}) {
+      $segment_size = 10**length($start) - $start - 1; # all n-digit numbers
+    }
+
+    my $seg_start = $start;
+    my $seg_end = $start + $segment_size;
+    $seg_end = $end if $end < $seg_end;
+    $start = $seg_end+1;
+
+    @p = gen_and_filter($seg_start, $seg_end);
+
+    # print this segment
+    print join("\n", @p), "\n"  if scalar @p > 0;
+  }
+}
+
+
 # Fibonacci numbers
 {
-  my @fibs = (Math::BigInt->new(0), Math::BigInt->new(1));
+  my @fibs;
   sub fib {
     my $n = shift;
     return $n if $n < 2;
     if (!defined $fibs[$n]) {
+      @fibs = (Math::BigInt->new(0), Math::BigInt->new(1)) if scalar @fibs == 0;
       my ($nm2, $nm1) = ($fibs[-2],$fibs[-1]);
       for (scalar @fibs .. $n) {
         ($nm2, $nm1) = ($nm1, $nm2 + $nm1);
@@ -265,44 +309,46 @@ sub gen_and_filter {
     }
   }
 
+  if (exists $opts{'twin'} && !defined $gen) {
+    @p = @{primes($start, $end)};
+    push @p, is_prime($p[-1]+2) ? $p[-1]+2 : 0;
+    my @twin;
+    my $prime = shift @p;
+    foreach my $next (@p) {
+      push @twin, $prime if $prime+2 == $next;
+      $prime = $next;
+    }
+    @p = @twin;
+    $gen = 'twin';
+  }
+
   if (!defined $gen) {
     @p = @{primes($start, $end)};
     $gen = 'primes';
   }
 
-  if (exists $opts{'twin'}) {
-    if ($gen ne 'primes') {
-      @p = grep { is_prime( $_+2 ); } @p;
-    } elsif (scalar @p > 0) {
-      # All primes in the range are here, so just look in the array.
-      push @p, is_prime($p[-1]+2) ? $p[-1]+2 : 0;
-      my @twin;
-      my $prime = shift @p;
-      foreach my $next (@p) {
-        push @twin, $prime if $prime+2 == $next;
-        $prime = $next;
-      }
-      @p = @twin;
-    }
+  # Apply the mod 210 pretest
+  if ($min_pass > 0) {
+    @p = grep { $_ <= $min_pass || exists $mod_pass{$_ % 210} } @p;
   }
 
-  if (exists $opts{'triplet'}) {   # could be optimized like twin
+  if (exists $opts{'twin'} && $gen ne 'twin') {
+    @p = grep { is_prime( $_+2 ); } @p;
+  }
+
+  if (exists $opts{'triplet'}) {
     @p = grep { is_prime($_+6) && (is_prime($_+2) || is_prime($_+4)); } @p;
   }
 
-  if (exists $opts{'quadruplet'}) {   # could be optimized like twin
-    @p = grep { is_prime($_+2) && is_prime($_+6) && is_prime($_+8); }
-         grep { $_ <= 5 || ($_ % 30) == 11; }
-         @p;
+  if (exists $opts{'quadruplet'}) {
+    @p = grep { is_prime($_+2) && is_prime($_+6) && is_prime($_+8); } @p;
   }
 
-  if (exists $opts{'cousin'}) {   # could be optimized like twin
-    @p = grep { is_prime($_+4); }
-         grep { ($_ <= 3) || ($_ % 6) == 1; }
-         @p;
+  if (exists $opts{'cousin'}) {
+    @p = grep { is_prime($_+4); } @p;
   }
 
-  if (exists $opts{'sexy'}) {   # could be optimized like twin
+  if (exists $opts{'sexy'}) {
     @p = grep { is_prime($_+6); } @p;
   }
 
@@ -312,24 +358,14 @@ sub gen_and_filter {
          @p;
   }
   if (exists $opts{'sophie'}) {
-    my %mod210;
-    undef @mod210{11,23,29,41,53,71,83,89,113,131,149,173,179,191,209};
-    @p = grep { is_prime( 2*$_+1 ); }
-         grep { $_ <= 5 || exists $mod210{$_ % 210} }
-         @p;
+    @p = grep { is_prime( 2*$_+1 ); } @p;
   }
   if (exists $opts{'cuban1'}) {
-    my %mod210;
-    undef @mod210{1,19,37,61,79,121,127,169,187};
-    @p = grep { my $n = sqrt((4*$_-1)/3); $n == int($n); }
-         #grep { ($_%3) == 1 }
-         grep { $_ <= 7 || exists $mod210{$_ % 210} }
-         @p;
+    #@p = grep { my $n = sqrt((4*$_-1)/3); $n == int($n); } @p;
+    @p = grep { my $n = sqrt((4*$_-1)/3); 4*$_ == int($n)*int($n)*3+1; } @p;
   }
   if (exists $opts{'cuban2'}) {
-    @p = grep { my $n = sqrt(($_-1)/3);  $n == int($n); }
-         grep { ($_%3) == 1 }
-         @p;
+    @p = grep { my $n = sqrt(($_-1)/3); $_ == int($n)*int($n)*3+1; } @p;
   }
   if (exists $opts{'pnm1'}) {
     @p = grep { is_prime( primorial(Math::BigInt->new($_))-1 ) } @p;
@@ -346,38 +382,35 @@ sub gen_and_filter {
   @p;
 }
 
-if (exists $opts{'lucas'} ||
-    exists $opts{'fibonacci'} ||
-    exists $opts{'euclid'} ||
-    exists $opts{'mersenne'}) {
-  my @p = gen_and_filter($start, $end);
-  print join("\n", @p), "\n"  if scalar @p > 0;
-} else {
-  my @p;
-  while ($start <= $end) {
+sub find_mod210_restriction {
+  my %mods_left;
+  undef @mods_left{ grep { ($_%2) && ($_%3) && ($_%5) && ($_%7) } (0..209) };
+  
+  my %mod210_restrict = (
+    cuban1     => {min=> 7, mod=>[1,19,37,61,79,121,127,169,187]},
+    cuban2     => {min=> 2, mod=>[1,13,43,109,139,151,169,181,193]},
+    twin       => {min=> 5, mod=>[11,17,29,41,59,71,101,107,137,149,167,179,191,197,209]},
+    triplet    => {min=> 7, mod=>[11,13,17,37,41,67,97,101,103,107,137,163,167,187,191,193]},
+    quadruplet => {min=> 5, mod=>[11,101,191]},
+    cousin     => {min=> 7, mod=>[13,19,37,43,67,79,97,103,109,127,139,163,169,187,193]},
+    sexy       => {min=> 7, mod=>[11,13,17,23,31,37,41,47,53,61,67,73,83,97,101,103,107,121,131,137,143,151,157,163,167,173,181,187,191,193]},
+    safe       => {min=>11, mod=>[17,23,47,53,59,83,89,107,137,143,149,167,173,179,209]},
+    sophie     => {min=> 5, mod=>[11,23,29,41,53,71,83,89,113,131,149,173,179,191,209]},
+    # Nothing for good, pillai, palindromic, fib, lucas, mersenne, primorials
+  );
 
-    # Adjust segment sizes for some cases
-    $segment_size = 10000 if $start > ~0;   # small if doing bigints
-    if (exists $opts{'pillai'}) {
-      $segment_size = ($start < 10000) ? 100 : 1000;  # very small for Pillai
+  my $min = 0;
+  while (my($filter,$data) = each %mod210_restrict) {
+    next unless exists $opts{$filter};
+    $min = $data->{min} if $min < $data->{min};
+    my %thismod;
+    undef @thismod{ @{$data->{mod}} };
+    foreach my $m (keys %mods_left) {
+      delete $mods_left{$m} unless exists $thismod{$m};
     }
-    if (exists $opts{'palindromic'}) {
-      $segment_size = 10**length($start) - $start - 1; # all n-digit numbers
-    }
-
-    my $seg_start = $start;
-    my $seg_end = $start + $segment_size;
-    $seg_end = $end if $end < $seg_end;
-    $start = $seg_end+1;
-
-    @p = gen_and_filter($seg_start, $seg_end);
-
-    # print this segment
-    print join("\n", @p), "\n"  if scalar @p > 0;
   }
+  return ($min, %mods_left);
 }
-
-
 
 
 sub die_usage {
