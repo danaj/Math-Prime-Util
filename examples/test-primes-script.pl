@@ -3,51 +3,110 @@ use strict;
 use warnings;
 use File::Spec::Functions;
 use FindBin;
+use Time::HiRes qw(gettimeofday tv_interval);
+use bigint;
+use Data::BitStream::XS;
 $|++; #flush the output buffer after every write() or print() function
 
-test_oeis(668, "Mersenne", "--mersenne", '1' . '0' x 100);
-#test_oeis(2407, "Cuban y+1", "--cuban1");
-#test_oeis(2648, "Cuban y+2", "--cuban2", 100_000_000);
-test_oeis(5234, "Primorial+1", "--pnp1", 2500);
-test_oeis(6794, "Primorial-1", "--pnm1", 2500);
-test_oeis(18239, "Euclid", "--euclid");
-test_oeis(7529, "Triplet", "--triplet");
-test_oeis(7530, "Quadruplet", "--quadruplet");
-test_oeis(23200, "Cousin", "--cousin");
-test_oeis(23201, "Sexy", "--sexy");
-test_oeis(1359, "Twin", "--twin");
-test_oeis(5385, "Safe", "--safe");
-test_oeis(5384, "SG", "--sophie");
-test_oeis(2385, "Palindromic", "--palin");
-test_oeis(5479, "Lucas", "--lucas");
-test_oeis(5478, "Fibonacci", "--fibonacci");
-test_oeis(63980, "Pillai", "--pillai", 2000);
-test_oeis(28388, "Good", "--good", 20000);
+# Should use a "put_test_string" sort of call on the test data, so we
+# wouldn't need this.
+my @test_data = (
+  [  668, "Mersenne",    "--mersenne",   10**100],
+  [ 7529, "Triplet",     "--triplet",    0],
+  [ 7530, "Quadruplet",  "--quadruplet", 0],
+  [23200, "Cousin",      "--cousin",     0],
+  [23201, "Sexy",        "--sexy",       0],
+  [ 1359, "Twin",        "--twin",       0],
+  [ 5385, "Safe",        "--safe",       0],
+  [ 5384, "SG",          "--sophie",     0],
+  [ 2385, "Palindromic", "--palin",      32_965_656_923],
+  [ 5479, "Lucas",       "--lucas",      0],
+  [ 5478, "Fibonacci",   "--fibonacci",  0],
+  [63980, "Pillai",      "--pillai",     2000],
+  [28388, "Good",        "--good",       20000],
+  [ 2407, "Cuban y+1",   "--cuban1",     0],
+  [ 2648, "Cuban y+2",   "--cuban2",     100_000_000],
+  [ 5234, "Primorial+1", "--pnp1",       2500],
+  [ 6794, "Primorial-1", "--pnm1",       2500],
+  [18239, "Euclid",      "--euclid",     0],
+);
+my %oeis_name = map { $_->[0] => $_->[1] } @test_data;
+
+my $test_data_hash = read_script_data('script-test-data.bs');
+
+foreach my $test (@test_data) {
+  my $oeis_no = $test->[0];
+  my $test_data = $test_data_hash->{$oeis_no};
+  if (!defined $test_data) {
+    die "No test data found for OEIS $oeis_no : $test->[1] primes\n";
+  }
+  test_oeis(@$test, $test_data);
+}
+
+
+
+
+sub read_script_data {
+  my ($filename) = @_;
+
+  my $stream = Data::BitStream::XS->new( file => $filename, mode => 'ro' );
+  my %hash;
+
+  while (!$stream->exhausted) {
+    my ($oeis_no, $is_bigint, $num_entries, @ref) = $stream->get_gamma(5);
+    printf "%12s primes (OEIS A%06d): reading %7d entries..", $oeis_name{$oeis_no}, $oeis_no, $num_entries;
+    if ($is_bigint) {
+      print ",";
+      my $k = 2;
+      my @deltas = $stream->get_arice($k, $num_entries-2);
+      print ".";
+      # Check to see if we have any giant deltas
+      foreach my $d (@deltas) {
+        if ($d >= 18446744073709551614) {
+          my $len = $stream->get_gamma;
+          my $binstr = $stream->read_string($len);
+          $d = Math::BigInt->new('0b' . $binstr);
+        }
+      }
+      print ".";
+      my $prev = $ref[1];
+      push @ref, map { $prev = $_*2+$prev+2; } @deltas;
+      $hash{$oeis_no} = \@ref;
+      print ".\n";
+    } else {
+      no bigint;
+      print ".";
+      my $k = 2;
+      my @deltas = $stream->get_arice($k, $num_entries-2);
+      print ".";
+      my $prev = $ref[1];
+      push @ref, map { $prev = $_*2+$prev+2; } @deltas;
+      $hash{$oeis_no} = \@ref;
+      print ".\n";
+    }
+  }
+  \%hash;
+}
 
 sub test_oeis {
-  my($oeis_no, $name, $script_arg, $restrict) = @_;
+  my($oeis_no, $name, $script_arg, $restrict, $ref_data) = @_;
 
-  my $filename = sprintf("b%06d.txt", $oeis_no);
-  my $link     = sprintf("http://oeis.org/A%06d/b%06d.txt", $oeis_no, $oeis_no);
+  my @ref = @$ref_data;
+  printf "%12s primes (OEIS A%06d): generating..", $name, $oeis_no;
 
-  my @ref;
-  my @scr;
+  #print "\n";
+  #print "reference data:\n";
+  #print "  $_\n" for @ref;
+  #print "primes.pl $script_arg 1 $ref[-1]\n";
+  my $start = [gettimeofday];
+  my @scr = split /\s+/, qx+$FindBin::Bin/../bin/primes.pl $script_arg 1 $ref[-1]+;
   {
-    open my $fh, '<', $filename
-        or die "Can't read $filename.\nYou should run:\n  wget $link\n";
-    printf "%12s primes: reading %15s...", $name, $filename;
-    while (<$fh>) {
-      next unless /^(\d+)\s+(\d+)/;
-      last if defined $restrict && $2 > $restrict;
-      push @ref, "$2";
-    }
-    close $fh;
+    no bigint;
+    my $num_generated = scalar @scr;
+    my $seconds = tv_interval($start);
+    my $msperprime = ($seconds * 1000.0) / $num_generated;
+    printf " %7d. %7.2f ms/prime\n", $num_generated, $msperprime;
   }
-  printf " %7d.", scalar @ref;
-
-  printf "  Generating...";
-  @scr = split /\s+/, qx+$FindBin::Bin/../bin/primes.pl $script_arg 1 $ref[-1]+;
-  printf " %7d.\n", scalar @scr;
 
   die "Not equal numbers:  ", scalar @ref, " - ", scalar @scr, "\n"
     unless @ref == @scr;

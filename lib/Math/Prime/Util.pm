@@ -663,7 +663,7 @@ sub primorial {
   }
 
   my $pn = 1;
-  $pn = Math::BigInt->new->bone if defined $bigint::VERSION &&
+  $pn = Math::BigInt->new->bone if defined $Math::BigInt::VERSION &&
         $n >= (($_Config{'maxbits'} == 32) ? 29 : 53);
 
   foreach my $p ( @{ primes($n) } ) {

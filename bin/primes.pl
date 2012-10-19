@@ -11,6 +11,33 @@ $| = 1;
 #   http://en.wikipedia.org/wiki/List_of_prime_numbers
 #   http://mathworld.wolfram.com/IntegerSequencePrimes.html
 
+# This program shouldn't contain any special knowledge about the series
+# members other than perhaps the start.  It can know patterns, but don't
+# include a static list of the members, for instance.  It should actually
+# compute the entries in a range (though go ahead and be clever about it).
+# Example:
+#   DO     use knowledge that F_k is prime only if k <= 4 or k is prime.
+#   DO     use knowledge that safe primes are <= 7 or congruent to 11 mod 12.
+#   DO NOT use knowledge that fibprime(14) = 19134702400093278081449423917
+
+# The various primorial primes are confusing.  Some things to consider:
+#   1) there are two definitions of primorial: p# and p_n#
+#   2) three sequences:
+#         p where 1+p# is prime
+#         n where 1+p_n# is prime
+#         p_n#+1 where 1+p_n# is prime
+#   3) intersections of sequences (e.g. p_n#+1 and p_n#-1)
+#   4) other sequences like A057705: p where p+1 is an A002110 primorial
+#      plus all the crazy primorial sequences (unlikely to be confused)
+#
+# A005234  p      where p#+1   prime
+# A136351  p#     where p#+1   prime     2,6,30,210,2310,200560490130
+# A014545  n      where p_n#+1 prime     1,2,3,4,5,11,75,171,172
+# A018239  p_n#+1 where p_n#+1 prime
+#
+# A006794  p      where p#-1   prime     3,5,11,13,41,89,317,337
+# A057704  n      where p_n#-1 prime     2,3,5,6,13,24,66,68,167
+
 my $segment_size = 30 * 128_000;   # 128kB
 my %opts;
 GetOptions(\%opts,
@@ -32,9 +59,11 @@ GetOptions(\%opts,
            'pnp1|A005234',
            'pnm1|A006794',
            'euclid|A018239',
+           'nompugmp',   # turn off MPU::GMP for debugging
            'help',
           ) || die_usage();
 die_usage() if exists $opts{'help'};
+Math::Prime::Util::prime_set_config(gmp=>0) if exists $opts{'nompugmp'};
 
 
 # Get the start and end values.  Verify they're positive integers.
@@ -91,17 +120,17 @@ sub lucas_primes {
 sub fibonacci_primes {
   my ($start, $end) = @_;
   my @fprimes;
-  my $prime = 2;
+  my $Fk = 2;
   my $k = 3;
-  while ($prime < $start) {
+  while ($Fk < $start) {
     $k++;
-    $prime = fib($k);
+    $Fk = fib($k);
   }
-  while ($prime <= $end) {
-    push @fprimes, $prime if is_prime($prime);
+  while ($Fk <= $end) {
+    push @fprimes, $Fk if is_prime($Fk);
     # For all but k=4, F_k is prime only when k is prime.
     $k = ($k <= 4)  ?  $k+1  :  next_prime($k);
-    $prime = fib($k);
+    $Fk = fib($k);
   }
   @fprimes;
 }
@@ -163,6 +192,13 @@ sub is_pillai {
   #   foreach my $n (grep { ($p % $_) != 1 } (2 .. $p-1)) {
   #     return 1 if Math::BigInt->new($n)->bfac()->bmod($p) == ($p-1);
   #   }
+  # About 20% faster but sucks memory:
+  #   foreach my $n (grep { ($p % $_) != 1 } (2 .. $p-1)) {
+  #     $fac_c[$n] = Math::BigInt->new($n)->bfac() if !defined $fac_c[$n];
+  #     return 1 if ($fac_c[$n] % $p) == ($p-1);
+  #   }
+  # Once p gets large (say 20,000+), then calculating and storing n! is
+  # unreasonable, and the code below will be much faster.
   my $n_factorial_mod_p = Math::BigInt->bone();
   for my $n (2 .. $p-1) {
     $n_factorial_mod_p->bmul($n)->bmod($p);
@@ -172,7 +208,7 @@ sub is_pillai {
   0;
 }
 
-# Also pretty slow.
+# Not nearly as slow as Pillai, but not fast.
 sub is_good_prime {
   my $p = shift;
   return 0 if $p <= 2; # 2 isn't a good prime
