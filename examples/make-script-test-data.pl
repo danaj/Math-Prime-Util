@@ -6,28 +6,33 @@ use FindBin;
 use bigint;
 use Data::BitStream::XS;
 use Math::Prime::Util qw/is_prime/;
-$|++; #flush the output buffer after every write() or print() function
+$|++;
 
+# Encode all the OEIS text files for our primes.pl testing into a bitstream.
+# This not only makes the test script run much faster, but it turns 18 text
+# files of 5MB into one ~300k file.
 
 my @test_data = (
-  [  668, "Mersenne",    "--mersenne",   10**100],
-  [ 7529, "Triplet",     "--triplet",    0],
-  [ 7530, "Quadruplet",  "--quadruplet", 0],
-  [23200, "Cousin",      "--cousin",     0],
-  [23201, "Sexy",        "--sexy",       0],
-  [ 1359, "Twin",        "--twin",       0],
-  [ 5385, "Safe",        "--safe",       0],
-  [ 5384, "SG",          "--sophie",     0],
-  [ 2385, "Palindromic", "--palin",      32_965_656_923],
-  [ 5479, "Lucas",       "--lucas",      0],
-  [ 5478, "Fibonacci",   "--fibonacci",  0],
-  [63980, "Pillai",      "--pillai",     2000],
-  [28388, "Good",        "--good",       20000],
-  [ 2407, "Cuban y+1",   "--cuban1",     0],
-  [ 2648, "Cuban y+2",   "--cuban2",     100_000_000],
-  [ 5234, "Primorial+1", "--pnp1",       2500],
-  [ 6794, "Primorial-1", "--pnm1",       2500],
-  [18239, "Euclid",      "--euclid",     0],
+  # OEIS#  TEXT NAME      script-arg   skip if > this
+  [ 7529, "Triplet",     "triplet",    0],
+  [ 7530, "Quadruplet",  "quadruplet", 0],
+  [23200, "Cousin",      "cousin",     0],
+  [23201, "Sexy",        "sexy",       0],
+  [ 1359, "Twin",        "twin",       0],
+  [ 5385, "Safe",        "safe",       0],
+  [ 5384, "SG",          "sophie",     0],
+  [ 2407, "Cuban y+1",   "cuban1",     0],
+  [ 2648, "Cuban y+2",   "cuban2",     0],
+  [ 2385, "Palindromic", "palin",      32_965_656_923],
+  [  668, "Mersenne",    "mersenne",   10**100],
+  [ 5479, "Lucas",       "lucas",      0],
+  [ 5478, "Fibonacci",   "fibonacci",  0],
+  [63980, "Pillai",      "pillai",     2000],
+  [28388, "Good",        "good",       20000],
+  [31157, "Lucky",       "lucky",      0],
+  [ 5234, "Primorial+1", "pnp1",       2500],
+  [ 6794, "Primorial-1", "pnm1",       2500],
+  [18239, "Euclid",      "euclid",     0],
 );
 
 foreach my $test (@test_data) {
@@ -45,7 +50,7 @@ foreach my $test (@test_data) {
 
 my $stream = Data::BitStream::XS->new( file => 'script-test-data.bs', mode => 'w' );
 foreach my $test (@test_data) {
-  test_oeis(@$test);
+  encode_oeis(@$test);
 }
 $stream->write_close();
 
@@ -102,11 +107,14 @@ sub read_oeis {
   return \@ref;
 }
 
-sub test_oeis {
+sub encode_oeis {
   my($oeis_no, $name, $script_arg, $restrict, $ref_data) = @_;
 
   my @ref = @$ref_data;
   printf "%12s primes: stream..", $name;
+
+  put_text_string($stream, $script_arg);
+  put_text_string($stream, $name);
 
   if ($ref[-1] > 18446744073709551615) {
     print ",";
@@ -150,4 +158,20 @@ sub test_oeis {
   }
 
   print "done\n";
+}
+
+sub put_text_string {
+  my ($stream, $str) = @_;
+  $stream->put_gamma(ord($_)) for (split "", $str);
+  $stream->put_gamma(0);
+  1;
+}
+
+sub get_text_string {
+  my ($stream) = @_;
+  my $str = '';
+  while (my $c = $stream->get_gamma) {
+    $str .= chr($c);
+  }
+  $str;
 }
