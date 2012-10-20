@@ -197,7 +197,8 @@ sub _validate_positive_integer {
 sub _upgrade_to_float {
   my($n) = @_;
   return $n unless defined $Math::BigInt::VERSION || defined $Math::BigFloat::VERSION;
-  do { require Math::BigFloat; Math::BigFloat->import; } if defined $Math::BigInt::VERSION && !defined $Math::BigFloat::VERSION;
+  do { require Math::BigFloat; Math::BigFloat->import(try=>'GMP,Pari') }
+     if defined $Math::BigInt::VERSION && !defined $Math::BigFloat::VERSION;
   return Math::BigFloat->new($n);
 }
 
@@ -239,7 +240,8 @@ sub primes {
     if ($_HAVE_GMP) {
       $sref = Math::Prime::Util::GMP::primes($low,$high);
       # Convert the returned strings into BigInts
-      croak "Internal error: large value without bigint loaded." unless defined $Math::BigInt::VERSION;
+      croak "Internal error: large value without bigint loaded."
+            unless defined $Math::BigInt::VERSION;
       @$sref = map { Math::BigInt->new("$_") } @$sref;
       return $sref;
     }
@@ -566,8 +568,8 @@ sub primes {
     return random_nbit_prime($k) if $k <= $p0;
 
     eval {
-      require Math::BigInt;   Math::BigInt->import();
-      require Math::BigFloat; Math::BigFloat->import();
+      require Math::BigInt;   Math::BigInt->import(   try=>'GMP,Pari' );
+      require Math::BigFloat; Math::BigFloat->import( try=>'GMP,Pari' );
       1;
     } or do {
       croak "Cannot load Math::BigInt and Math::BigFloat";
@@ -913,6 +915,8 @@ sub miller_rabin {
 
 #############################################################################
 
+  # Oct 2012 note:  these numbers are old.
+  #
   # Timings for various combinations, given the current possibilities of:
   #    1) XS MR optimized (either x86-64, 32-bit on 64-bit mach, or half-word)
   #    2) XS MR non-optimized (big input not on 64-bit machine)
@@ -990,11 +994,11 @@ sub prime_count_approx {
   #
   # Also consider: http://trac.sagemath.org/sage_trac/ticket/8135
 
-  # return int( (prime_count_upper($x) + prime_count_lower($x)) / 2);
+  # my $result = int( (prime_count_upper($x) + prime_count_lower($x)) / 2);
 
-  # return int( LogarithmicIntegral($x) );
+  # my $result = int( LogarithmicIntegral($x) );
 
-  # return int( LogarithmicIntegral($x) - LogarithmicIntegral(sqrt($x))/2 );
+  # my $result = int(LogarithmicIntegral($x) - LogarithmicIntegral(sqrt($x))/2);
 
   my $result = RiemannR($x) + 0.5;
 
@@ -1240,7 +1244,7 @@ sub RiemannZeta {
   my($n) = @_;
   croak("Invalid input to ReimannZeta:  x must be > 0") if $n <= 0;
 
-  #return Math::Prime::Util::PP::RiemannZeta($n, 1e-30) if defined $bignum::VERSION || ref($n) eq 'Math::BigFloat';
+  #return Math::Prime::Util::PP::RiemannZeta($n) if defined $bignum::VERSION || ref($n) eq 'Math::BigFloat';
   return Math::Prime::Util::PP::RiemannZeta($n) if !$_Config{'xs'};
   return _XS_RiemannZeta($n);
 }
@@ -1249,7 +1253,7 @@ sub RiemannR {
   my($n) = @_;
   croak("Invalid input to ReimannR:  x must be > 0") if $n <= 0;
 
-  return Math::Prime::Util::PP::RiemannR($n, 1e-30) if defined $bignum::VERSION || ref($n) eq 'Math::BigFloat';
+  return Math::Prime::Util::PP::RiemannR($n) if defined $bignum::VERSION || ref($n) eq 'Math::BigFloat';
   return Math::Prime::Util::PP::RiemannR($n) if !$_Config{'xs'};
   return _XS_RiemannR($n);
 
@@ -1264,7 +1268,7 @@ sub ExponentialIntegral {
   my($n) = @_;
   croak "Invalid input to ExponentialIntegral:  x must be != 0" if $n == 0;
 
-  return Math::Prime::Util::PP::ExponentialIntegral($n, 1e-30) if defined $bignum::VERSION || ref($n) eq 'Math::BigFloat';
+  return Math::Prime::Util::PP::ExponentialIntegral($n) if defined $bignum::VERSION || ref($n) eq 'Math::BigFloat';
   return Math::Prime::Util::PP::ExponentialIntegral($n) if !$_Config{'xs'};
   return _XS_ExponentialIntegral($n);
 }
@@ -1476,21 +1480,28 @@ is less than a millisecond, it's really not important in general (also, a
 future implementation may find a way to speed this up without the option).
 
 
-If you are using bigints, there are two performance suggestions.  The first
-is to install L<Math::Prime::Util::GMP>, as that will vastly increase the speed
-for many of the functions.  This does require the L<GMP|gttp://gmplib.org>
-library be installed on your system, but this increasingly comes pre-installed
-or easily available using the OS vendor package installation tool.  If you
-do not want to use that, I recommend L<Math::BigInt::GMP> or
-L<Math::BigInt::Pari> and then writing C<use bigint try =E<gt> 'GMP,Pari'>.
-Large modular exponentiation is much faster using the GMP or Pari backends.
-This is not so important if you installed L<Math::Prime::Util::GMP>, but it can
-still speed up large random Maurer primes.
+If you are using bigints, here are some performance suggestions:
 
+=over 4
 
-Having run these functions on many versions of Perl, if you're using anything
-older than Perl 5.14, I would recommend you upgrade if you are using bignums
-a lot.  There are some brittle behaviors on 5.12.4 and earlier with bignums.
+=item Install L<Math::Prime::Util::GMP>, as that will vastly increase the
+      speed of many of the functions.  This does require the
+      L<GMP|gttp://gmplib.org> library be installed on your system, but this
+      increasingly comes pre-installed or easily available using the OS vendor
+      package installation tool.
+
+=item Install and use L<Math::BigInt::GMP> or L<Math::BigInt::Pari>, then use
+      C<use bigint try =E<gt> 'GMP,Pari'> in your script, or on the command
+      line C<-Mbigint=lib,GMP>.  Large modular exponentiation is much faster
+      using the GMP or Pari backends, as are the math and approximation
+      functions when called with very large inputs.
+
+=item Having run these functions on many versions of Perl, if you're using
+      anything older than Perl 5.14, I would recommend you upgrade if you
+      are using bignums a lot.  There are some brittle behaviors on
+      5.12.4 and earlier with bignums.
+
+=back
 
 
 =head1 FUNCTIONS

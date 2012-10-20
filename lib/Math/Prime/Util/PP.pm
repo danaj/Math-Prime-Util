@@ -1281,14 +1281,13 @@ sub RiemannZeta {
   for my $k (2 .. 1000000) {
     my $term = (2*$k+1) ** -$x;
     $y = $term-$c; $t = $sum+$y; $c = ($t-$sum)-$y; $sum = $t;
-    last if abs($term/$sum) < $tol;
+    last if $term < abs($tol*$sum);
   }
   my $term = 3 ** -$x;
   $y = $term-$c; $t = $sum+$y; $c = ($t-$sum)-$y; $sum = $t;
   $t = 1.0 / (1.0 - (2 ** -$x));
   $sum *= $t;
-  $term = $t - 1.0;
-  $y = $term-$c; $t = $sum+$y; $c = ($t-$sum)-$y; $sum = $t;
+  $sum += ($t - 1.0);
 
   $sum;
 }
@@ -1316,7 +1315,7 @@ sub RiemannR {
     $part_term *= $flogx / $k;
     my $term = $part_term / ($k + $k * $zeta);
     $y = $term-$c; $t = $sum+$y; $c = ($t-$sum)-$y; $sum = $t;
-    last if abs($term) < $tol;
+    last if abs($term/$sum) < $tol;
   }
   $sum;
 }
