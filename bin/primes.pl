@@ -11,6 +11,7 @@ $| = 1;
 #   http://en.wikipedia.org/wiki/List_of_prime_numbers
 #   http://mathworld.wolfram.com/IntegerSequencePrimes.html
 
+
 # This program shouldn't contain any special knowledge about the series
 # members other than perhaps the start.  It can know patterns, but don't
 # include a static list of the members, for instance.  It should actually
@@ -19,6 +20,7 @@ $| = 1;
 #   DO     use knowledge that F_k is prime only if k <= 4 or k is prime.
 #   DO     use knowledge that safe primes are <= 7 or congruent to 11 mod 12.
 #   DO NOT use knowledge that fibprime(14) = 19134702400093278081449423917
+
 
 # The various primorial primes are confusing.  Some things to consider:
 #   1) there are two definitions of primorial: p# and p_n#
@@ -38,7 +40,35 @@ $| = 1;
 # A006794  p      where p#-1   prime     3,5,11,13,41,89,317,337
 # A057704  n      where p_n#-1 prime     2,3,5,6,13,24,66,68,167
 
-my $segment_size = 30 * 128_000;   # 128kB
+
+# There are a few of these prime filters that Math::NumSeq supports, and in
+# theory it will add them eventually since they are OEIS sequences.  Many are
+# of the form "primes from ####" so aren't hard to work up.  Math::NumSeq is
+# a really neat module for playing with OEIS sequences.
+#
+# Example: All Sophie Germain primes under 1M
+#    primes.pl --sophie 1 1000000
+#    perl -MMath::NumSeq::SophieGermainPrimes=:all -E 'my $seq = Math::NumSeq::SophieGermainPrimes->new; my $v = 0; while (1) { $v = ($seq->next)[1]; last if $v > $end; say $v; } BEGIN {our $end = 1000000}'
+#
+# Timing from 1 .. N for small N is going to be similar.  As N increases, the
+# time difference grows rapidly.
+#
+#          primes.pl    Math::NumSeq::SophieGermainPrimes
+#     1M     0.14s        0.18s
+#    10M     0.82s        3.89s
+#   100M     7.09s      793s
+#  1000M    64.2s       ? estimated >3 days
+#
+# If given a non-zero start value it spreads even more, as for most sequences
+# primes.pl doesn't have to generate preceeding values, while NumSeq has to
+# start at the beginning.  Additionally, Math::NumSeq may or may not deal with
+# numbers larger than 2^32 (many sequences do, but it uses Math::Factor::XS
+# for factoring and primality, which is limited to 32-bit).
+#
+# Here's an example of a combination.  Palindromic primes:
+#    primes.pl --palin 1 1000000000
+#    perl -MMath::Prime::Util=is_prime -MMath::NumSeq::Palindromes=:all -E 'my $seq = Math::NumSeq::Palindromes->new; my $v = 0; while (1) { $v = ($seq->next)[1]; last if $v > $end; say $v if is_prime($v); } BEGIN {our $end = 1000000000}'
+
 my %opts;
 GetOptions(\%opts,
            'safe|A005385',
@@ -46,6 +76,7 @@ GetOptions(\%opts,
            'twin|A001359',
            'lucas|A005479',
            'fibonacci|A005478',
+           'lucky|A031157',
            'triplet|A007529',
            'quadruplet|A007530',
            'cousin|A023200',
@@ -74,11 +105,14 @@ $end   =~ s/^(\d+)\*\*(\d+)$/Math::BigInt->new($1)->bpow($2)/e;
 die "$start isn't a positive integer" if $start =~ tr/0123456789//c;
 die "$end isn't a positive integer" if $end =~ tr/0123456789//c;
 
-# Turn start and end into bigints if they're very large
-if ( ($start >= ~0 && $start ne ~0) || ($end >= ~0 && $end ne ~0) ) {
-  $start = Math::BigInt->new($start);
-  $end = Math::BigInt->new($end);
+# Turn start and end into bigints if they're very large.
+# Fun fact:  Math::BigInt->new("1") <= 10000000000000000000  is false.  Sigh.
+if ( ($start >= 2**63) || ($end >= 2**63) ) {
+  $start = Math::BigInt->new("$start") unless ref($start) eq 'Math::BigInt';
+  $end = Math::BigInt->new("$end") unless ref($end) eq 'Math::BigInt';
 }
+
+my $segment_size = $start - $start + 30 * 128_000;   # 128kB
 
 # Calculate the mod 210 pre-test.  This helps with the individual filters,
 # but the real benefit is that it convolves the pretests, which can speed
@@ -91,10 +125,13 @@ if (scalar keys %mod_pass == 0) {
 
 if ($start > $end) {
   # Do nothing
-} elsif (exists $opts{'lucas'} ||
-         exists $opts{'fibonacci'} ||
-         exists $opts{'euclid'} ||
-         exists $opts{'mersenne'}
+} elsif (   exists $opts{'lucas'}
+         || exists $opts{'fibonacci'}
+         || exists $opts{'euclid'}
+         || exists $opts{'lucky'}
+         || exists $opts{'mersenne'}
+         || exists $opts{'cuban1'}
+         || exists $opts{'cuban2'}
         ) {
   my @p = gen_and_filter($start, $end);
   print join("\n", @p), "\n"  if scalar @p > 0;
@@ -112,7 +149,7 @@ if ($start > $end) {
     }
 
     my $seg_start = $start;
-    my $seg_end = $start + $segment_size;
+    my $seg_end = int($start + $segment_size);
     $seg_end = $end if $end < $seg_end;
     $start = $seg_end+1;
 
@@ -142,21 +179,21 @@ if ($start > $end) {
   }
 }
 
-# Return all Lucas primes between start and end, using identity:
-#     L_n = F_n-1 + F_n+1
+# This is OEIS A000032, Lucas numbers beginning at 2.
+# Use identity:  L_n = F_n-1 + F_n+1.  Would be faster if calculated directly.
 sub lucas_primes {
   my ($start, $end) = @_;
   my @lprimes;
-  my $prime = 2;
   my $k = 0;
-  while ($prime < $start) {
+  my $Lk = 2;
+  while ($Lk < $start) {
     $k++;
-    $prime = fib($k) + fib($k+2);
+    $Lk = fib($k+1) + fib($k-1);
   }
-  while ($prime <= $end) {
-    push @lprimes, $prime if is_prime($prime);
+  while ($Lk <= $end) {
+    push @lprimes, $Lk if is_prime($Lk);
     $k++;
-    $prime = fib($k) + fib($k+2);
+    $Lk = fib($k+1) + fib($k-1);
   }
   @lprimes;
 }
@@ -164,11 +201,10 @@ sub lucas_primes {
 sub fibonacci_primes {
   my ($start, $end) = @_;
   my @fprimes;
-  my $Fk = 2;
   my $k = 3;
+  my $Fk = fib($k);
   while ($Fk < $start) {
-    $k++;
-    $Fk = fib($k);
+    $Fk = fib(++$k);
   }
   while ($Fk <= $end) {
     push @fprimes, $Fk if is_prime($Fk);
@@ -205,6 +241,53 @@ sub euclid_primes {
     $k++;
   }
   @eprimes;
+}
+
+sub cuban_primes {
+  my ($start, $end, $add) = @_;
+  my @cprimes;
+  my $psub = ($add == 1) ? sub { 3*$_[0]*$_[0] + 3*$_[0] + 1 }
+                         : sub { 3*$_[0]*$_[0] + 6*$_[0] + 4 };
+  # Determine first y via quadratic equation (under-estimate)
+  my $y = ($start <= 2)  ?  0  :
+          ($add == 1)
+          ? int((-3 + sqrt(3*3 - 4*3*(1-$start))) / (2*3))
+          : int((-6 + sqrt(6*6 - 4*3*(4-$start))) / (2*3));
+  die "Incorrect start calculation" if $y > 0 && $psub->($y - 1) >= $start;
+
+  # skip forward until p >= start
+  $y++ while $psub->($y) < $start;
+
+  my $p = $psub->($y);
+  while ($p <= $end) {
+    push @cprimes, $p if is_prime($p);
+    $p = $psub->(++$y);
+  }
+  @cprimes;
+}
+
+sub lucky_primes {
+  my ($start, $end) = @_;
+  # First do a (very basic) lucky number sieve to generate A000959.
+  # Evens removed for k=1:
+  #    my @lucky = map { $_*2+1 } (0 .. int(($end-1)/2));
+  # Remove the 3rd elements for k=2:
+  #     my @lucky = grep { my $m = $_ % 6; $m == 1 || $m == 3 } (0 .. $end);
+  # Remove the 4th elements for k=3:
+  my @lucky = grep { my $m = $_ % 21; $m != 18 && $m != 19 }
+              grep { my $m = $_ % 6; $m == 1 || $m == 3 }
+              map { $_*2+1 } (0 .. int(($end-1)/2));
+  for (my $k = 3; $k < scalar @lucky; $k++) {
+    my $skip = $lucky[$k];
+    my $index = $skip-1;
+    last if $index > $#lucky;
+    do {
+      splice(@lucky, $index, 1);
+      $index += $skip-1;
+    } while ($index <= $#lucky);
+  }
+  # Then restrict to primes to get A031157.
+  grep { $_ >= $start && is_prime($_) } @lucky;
 }
 
 # This is not a general palindromic digit function!
@@ -244,7 +327,7 @@ sub is_pillai {
   # Once p gets large (say 20,000+), then calculating and storing n! is
   # unreasonable, and the code below will be much faster.
   my $n_factorial_mod_p = Math::BigInt->bone();
-  for my $n (2 .. $p-1) {
+  for (my $n = 2; $n < $p; $n++) {
     $n_factorial_mod_p->bmul($n)->bmod($p);
     next if $p % $n == 1;
     return 1 if $n_factorial_mod_p == ($p-1);
@@ -296,6 +379,15 @@ sub gen_and_filter {
   }
   if (exists $opts{'euclid'}) {
     merge_primes(\$gen, \@p, 'euclid', euclid_primes($start, $end, 1));
+  }
+  if (exists $opts{'lucky'}) {
+    merge_primes(\$gen, \@p, 'lucky', lucky_primes($start, $end));
+  }
+  if (exists $opts{'cuban1'}) {
+    merge_primes(\$gen, \@p, 'cuban1', cuban_primes($start, $end, 1));
+  }
+  if (exists $opts{'cuban2'}) {
+    merge_primes(\$gen, \@p, 'cuban2', cuban_primes($start, $end, 2));
   }
   if (exists $opts{'palindromic'}) {
     if (!defined $gen) {
@@ -360,13 +452,12 @@ sub gen_and_filter {
   if (exists $opts{'sophie'}) {
     @p = grep { is_prime( 2*$_+1 ); } @p;
   }
-  if (exists $opts{'cuban1'}) {
-    #@p = grep { my $n = sqrt((4*$_-1)/3); $n == int($n); } @p;
-    @p = grep { my $n = sqrt((4*$_-1)/3); 4*$_ == int($n)*int($n)*3+1; } @p;
-  }
-  if (exists $opts{'cuban2'}) {
-    @p = grep { my $n = sqrt(($_-1)/3); $_ == int($n)*int($n)*3+1; } @p;
-  }
+  #if (exists $opts{'cuban1'}) {
+  #  @p = grep { my $n = sqrt((4*$_-1)/3); 4*$_ == int($n)*int($n)*3+1; } @p;
+  #}
+  #if (exists $opts{'cuban2'}) {
+  #  @p = grep { my $n = sqrt(($_-1)/3); $_ == int($n)*int($n)*3+1; } @p;
+  #}
   if (exists $opts{'pnm1'}) {
     @p = grep { is_prime( primorial(Math::BigInt->new($_))-1 ) } @p;
   }
@@ -438,6 +529,7 @@ to only those primes additionally meeting these conditions:
   --lucas      Lucas            L_p is prime
   --fibonacci  Fibonacci        F_p is prime
   --mersenne   Mersenne         M_p = 2^p-1 is prime
+  --lucky      Lucky            p is a lucky number
   --palindr    Palindromic      p is equal to p with its base-10 digits reversed
   --pillai     Pillai           n! % p = p-1 and p % n != 1 for some n
   --good       Good             p_n^2 > p_{n-i}*p_{n+i} for all i in (1..n-1)
