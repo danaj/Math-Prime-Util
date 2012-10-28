@@ -256,10 +256,16 @@ int _XS_miller_rabin(UV n, const UV *bases, int nbases)
       croak("Base %"UVuf" is invalid for input %"UVuf, a, n);
 #endif
 
+    /* n is a strong pseudoprime to this base if either
+     *   -  a^d = 1 mod n
+     *   -  a^(d2^r) = -1 mod n for some r: 0 <= r <= s-1
+     */
+
     x = powmod(a, d, n);
     if ( (x == 1) || (x == (n-1)) )  continue;
 
-    for (r = 0; r < s; r++) {
+    /* cover r = 1 to s-1, r=0 was just done */
+    for (r = 1; r < s; r++) {
       x = sqrmod(x, n);
       if (x == 1) {
         return 0;
@@ -296,6 +302,7 @@ int _XS_is_prob_prime(UV n)
 #else
 #if 1
   /* Better basis from:  http://miller-rabin.appspot.com/ */
+  /* We could go up to 316_349_281 using 2 bases */
   if (n < UVCONST(9080191)) {
     bases[0] = 31;
     bases[1] = 73;

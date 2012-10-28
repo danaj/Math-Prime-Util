@@ -953,14 +953,18 @@ sub is_prob_prime {
   }
 
   if ($n < 105936894253) {   # BPSW seems to be faster after this
-    # Deterministic set of Miller-Rabin tests.
+    # Deterministic set of Miller-Rabin tests.  If the MR routines can handle
+    # bases greater than n, then this can be simplified.
     my @bases;
-    if    ($n <          9080191) { @bases = (31, 73); }
-    elsif ($n <       4759123141) { @bases = (2, 7, 61); }
-    elsif ($n <     105936894253) { @bases = (2, 1005905886, 1340600841); }
-    elsif ($n <   31858317218647) { @bases = (2, 642735, 553174392, 3046413974); }
-    elsif ($n < 3071837692357849) { @bases = (2, 75088, 642735, 203659041, 3613982119); }
-    else                          { @bases = (2, 325, 9375, 28178, 450775, 9780504, 1795265022); }
+    if    ($n <          9080191) { @bases = (31,       73); }
+    elsif ($n <         19471033) { @bases = ( 2,   299417); }
+    elsif ($n <         38010307) { @bases = ( 2,  9332593); }
+    elsif ($n <        316349281) { @bases = ( 11000544, 31481107); }
+    elsif ($n <       4759123141) { @bases = ( 2, 7, 61); }
+    elsif ($n <     105936894253) { @bases = ( 2, 1005905886, 1340600841); }
+    elsif ($n <   31858317218647) { @bases = ( 2, 642735, 553174392, 3046413974); }
+    elsif ($n < 3071837692357849) { @bases = ( 2, 75088, 642735, 203659041, 3613982119); }
+    else                          { @bases = ( 2, 325, 9375, 28178, 450775, 9780504, 1795265022); }
     return Math::Prime::Util::PP::miller_rabin($n, @bases)  ?  2  :  0;
   }
 
