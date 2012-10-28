@@ -493,9 +493,9 @@ sub _native_powmod {
   my $t = 1;
   $n = $n % $m;
   while ($power) {
-    $t = ($t * $n) % $m if ($power & 1) != 0;
-    $n = ($n * $n) % $m;
+    $t = ($t * $n) % $m if ($power & 1);
     $power >>= 1;
+    $n = ($n * $n) % $m if $power;
   }
   $t;
 }
@@ -507,15 +507,15 @@ sub _powmod {
   if  ($m < $_half_word) {
     $n %= $m;
     while ($power) {
-      $t = ($t * $n) % $m if ($power & 1) != 0;
-      $n = ($n * $n) % $m;
+      $t = ($t * $n) % $m if ($power & 1);
       $power >>= 1;
+      $n = ($n * $n) % $m if $power;
     }
   } else {
     while ($power) {
-      $t = _mulmod($t, $n, $m) if ($power & 1) != 0;
-      $n = _mulmod($n, $n, $m);
+      $t = _mulmod($t, $n, $m) if ($power & 1);
       $power >>= 1;
+      $n = _mulmod($n, $n, $m) if $power;
     }
   }
   $t;
