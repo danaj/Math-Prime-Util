@@ -14,7 +14,7 @@ use base qw( Exporter );
 our @EXPORT_OK = qw(
                      prime_get_config prime_set_config
                      prime_precalc prime_memfree
-                     is_prime is_prob_prime
+                     is_prime is_prob_prime is_provable_prime
                      is_strong_pseudoprime is_strong_lucas_pseudoprime
                      miller_rabin
                      primes
@@ -145,7 +145,7 @@ sub prime_get_config {
 }
 
 # Note: You can cause yourself pain if you turn on xs or gmp when they're not
-# loaded.  Your calls will probably die.
+# loaded.  Your calls will probably die horribly.
 sub prime_set_config {
   my %params = (@_);  # no defaults
   while (my($param, $value) = each %params) {
@@ -432,7 +432,7 @@ sub primes {
         croak "Random function broken?" if $loop_limit-- < 0;
         next if $prime > 11 && (!($prime % 3) || !($prime % 5) || !($prime % 7) || !($prime % 11));
         return 2 if $prime == 1;  # Remember the special case for 2.
-        last if is_prime($prime);
+        last if is_prob_prime($prime);
       }
       return $prime;
     }
@@ -490,7 +490,7 @@ sub primes {
       # wasteful.  If we're a bigint without MPU:GMP, then a bgcd is faster.
       next if $prime > 11 && (!($prime % 3) || !($prime % 5) || !($prime % 7) || !($prime % 11));
       do { $prime = 2; last; } if $prime == 1;   # special case for low = 2
-      last if is_prime($prime);
+      last if is_prob_prime($prime);
     }
     return $prime;
   };
@@ -508,7 +508,7 @@ sub primes {
     $low = 2 if $low < 2;
     $low = next_prime($low - 1);
     $high = ($high < ~0)  ?  prev_prime($high + 1)  :  prev_prime($high);
-    return $low if ($low == $high) && is_prime($low);
+    return $low if ($low == $high) && is_prob_prime($low);
     return if $low >= $high;
 
     # At this point low and high are both primes, and low < high.
@@ -978,6 +978,54 @@ sub is_prob_prime {
   return ($n <= 18446744073709551615)  ?  2  :  1;
 }
 
+sub is_provable_prime {
+  my($n) = @_;
+  return 0 if defined $n && $n < 2;
+  _validate_positive_integer($n);
+
+  # Shortcut some of the calls.
+  return _XS_is_prime($n) if $n <= $_XS_MAXVAL;
+  return Math::Prime::Util::GMP::is_provable_prime($n) if $_HAVE_GMP
+                       && defined &Math::Prime::Util::GMP::is_provable_prime;
+
+  my $is_prob_prime = is_prob_prime($n);
+  return $is_prob_prime unless $is_prob_prime == 1;
+
+  # At this point we know it is almost certainly a prime, but we need to
+  # prove it.  We should do ECPP or APR-CL now, or failing that, do the
+  # Brillhart-Lehmer-Selfridge test, or Pocklington-Lehmer.  Until those
+  # are written here, we'll do a Lucas test, which is super simple but may
+  # be very slow.  We could do AKS, but that's even slower.
+  # See http://primes.utm.edu/prove/merged.html or other sources.
+
+  # It shouldn't be possible to get here without BigInt already loaded.
+  if (!defined $Math::BigInt::VERSION) {
+    eval { require Math::BigInt;   Math::BigInt->import(try=>'GMP,Pari'); 1; }
+    or do { croak "Cannot load Math::BigInt"; };
+  }
+  my $nm1 = $n-1;
+  my @factors = factor($nm1);
+  # Remember that we have to prove the primality of every factor.
+  if ( (scalar grep { is_provable_prime($_) != 2 } @factors) > 0) {
+    carp "could not prove primality of $n.\n";
+    return 1;
+  }
+ 
+  for (my $a = 2; $a < $nm1; $a++) {
+    my $ap = Math::BigInt->new($a);
+    # 1. a^(n-1) = 1 mod n.
+    next if $ap->copy->bmodpow($nm1, $n) != 1;
+    # 2. a^((n-1)/f) != 1 mod n for all f.
+    next if (scalar grep { $_ == 1 }
+             map { $ap->copy->bmodpow($nm1/$_,$n); }
+             @factors) > 0;
+    return 2;
+  }
+  carp "proved $n is not prime\n";
+  return 0;
+}
+
+
 #############################################################################
 
 sub prime_count_approx {
@@ -1430,11 +1478,10 @@ and more.
 
 The default sieving and factoring are intended to be (and currently are)
 the fastest on CPAN, including L<Math::Prime::XS>, L<Math::Prime::FastSieve>,
-L<Math::Factor::XS>, L<Math::Prime::TiedArray>, L<Math::Big::Factors>, and
-L<Math::Primality> (when the GMP module is available).  For numbers in the
-10-20 digit range, it is often orders of magnitude faster.  Typically it is
-faster than L<Math::Pari> for 64-bit operations, with the exception of
-factoring 16+ digit semiprimes.
+L<Math::Factor::XS>, L<Math::Prime::TiedArray>, L<Math::Big::Factors>,
+L<Math::Factoring>, and L<Math::Primality> (when the GMP module is available).
+For numbers in the 10-20 digit range, it is often orders of magnitude faster.
+Typically it is faster than L<Math::Pari> for 64-bit operations.
 
 The main development of the module has been for working with Perl UVs, so
 32-bit or 64-bit.  Bignum support is still experimental.  One advantage is
@@ -1516,7 +1563,19 @@ If you are using bigints, here are some performance suggestions:
 
 Returns 2 if the number is prime, 0 if not.  For numbers larger than C<2^64>
 it will return 0 for composite and 1 for probably prime, using a strong BPSW
-test.  Also note there are probabilistic prime testing functions available.
+test.  If L<Math::Prime::Util::GMP> is installed, some quick primality proofs
+are run on larger numbers, so will return 2 for some of those also.
+
+Also see the L</"is_prob_prime"> function, which will never do additional
+tests, and the L</"is_provable_prime"> function which will try very hard to
+return only 0 or 2 for any input.
+
+For native precision numbers (anything smaller than C<2^64>, all three
+functions are identical and use a deterministic set of Miller-Rabin tests.
+While L</"is_prob_prime"> and L</"is_prime"> return probable prime results
+for larger numbers, they use the strong Baillie-PSW test, which has had
+no counterexample found since it was published in 1980 (though certainly they
+exist).
 
 
 =head2 primes
@@ -1740,6 +1799,22 @@ While we believe (Pomerance 1984) that an infinite number of counterexamples
 exist, there is a weak conjecture (Martin) that none exist under 10000 digits.
 
 
+=head2 is_provable_prime
+
+  say "$n is definitely prime" if is_provable_prime($n) == 2;
+
+Takes a positive number as input and returns back either 0 (composite),
+2 (definitely prime), or 1 (probably prime).  This gives it the same return
+values as C<is_prime> and C<is_prob_prime>.
+
+The current implementation uses a Lucas test requiring a complete factorization
+of C<n-1>, which may not be possible in a reasonable amount of time.  The GMP
+version uses the BLS (Brillhart-Lehmer-Selfridge) method, requiring C<n-1> to
+be factored to the cube root of C<n>, which is more likely to succeed and will
+usually take less time, but can still fail.  Hence you should always test that
+the result is C<2> to ensure the prime is proven.
+
+
 =head2 moebius
 
   say "$n is square free" if moebius($n) != 0;
@@ -1866,8 +1941,11 @@ function apply to this.  The n-bit range is partitioned into nearly equal
 segments less than C<2^31>, a segment is randomly selected, then the trivial
 Monte Carlo algorithm is used to select a prime from within the segment.
 This gives a nearly uniform distribution, doesn't use excessive random source,
-and can be very fast.  When used with bigints, having the
-L<Math::Prime::Util::GMP> module installed will make it run much faster.
+and can be very fast.
+
+Note that if you use Perl default bigints, it can get very slow as the
+number of bits increases.  Either use Math::BigInt::GMP or install
+L<Math::Prime::Util::GMP>, which can make it run B<much> faster.
 
 
 =head2 random_maurer_prime
@@ -2203,19 +2281,39 @@ Perl modules, counting the primes to C<800_000_000> (800 million), in seconds:
 
 
 
-C<is_prime>: my impressions:
+C<is_prime>: my impressions for various sized inputs:
 
-   Module                    Small inputs   Large inputs (10-20dig)
-   -----------------------   -------------  ----------------------
-   Math::Prime::Util         Very fast      Pretty fast
-   Math::Prime::XS           Very fast      Very, very slow if no small factors
-   Math::Pari                Slow           OK
-   Math::Prime::FastSieve    Very fast      N/A (too much memory)
-   Math::Primality           Very slow      Very slow
+   Module                   1-10 digits  10-20 digits  BigInts
+   -----------------------  -----------  ------------  --------------
+   Math::Prime::Util        Very fast    Pretty fast   Slow to Fast (3)
+   Math::Prime::XS          Very fast    Very slow (1) --
+   Math::Prime::FastSieve   Very fast    N/A (2)       --
+   Math::Primality          Very slow    Very slow     Fast
+   Math::Pari               Slow         OK            Fast
+
+   (1) trial division only.  Very fast if every factor is tiny.
+   (2) Too much memory to hold the sieve (11dig = 6GB, 12dig = ~50GB)
+   (3) If L<Math::Prime::Util::GMP> is installed, then all three of the
+       BigInt capable modules run at reasonble similar speeds, capable of
+       performing the BPSW test on a 3000 digit input in ~ 1 second.  Without
+       that module all computations are done in Perl, so this module using
+       GMP bigints runs 2-3x slower, using Pari bigints about 10x slower,
+       and using the default bigints (Calc) it can run much slower.
 
 The differences are in the implementations:
 
 =over 4
+
+=item L<Math::Prime::Util> looks in the sieve for a fast bit lookup if that
+     exists (default up to 30,000 but it can be expanded, e.g.
+     C<prime_precalc>), uses trial division for numbers higher than this but
+     not too large (0.1M on 64-bit machines, 100M on 32-bit machines), a
+     deterministic set of Miller-Rabin tests for 64-bit and smaller numbers,
+     and a BPSW test for bigints.
+
+=item L<Math::Prime::XS> does trial divisions, which is wonderful if the input
+     has a small factor (or is small itself).  But if given a large prime it
+     can take orders of magnitude longer.  It does not support bigints.
 
 =item L<Math::Prime::FastSieve> only works in a sieved range, which is really
      fast if you can do it (M::P::U will do the same if you call
@@ -2227,26 +2325,17 @@ The differences are in the implementations:
      fantastic for bigints over 2^64, but it is significantly slower than
      native precision tests.  With 64-bit numbers it is generally an order of
      magnitude or more slower than any of the others.  Once bigints are being
-     used, its performance is quite good.  It is an order of magnitude or more
-     faster than this module by default, but installing the
-     L<Math::Prime::Util::GMP> module makes this code run slightly faster.
+     used, its performance is quite good.  It is faster than this module unless
+     L<Math::Prime::Util::GMP> has been installed, in which case this module
+     is just a little bit faster.
 
 =item L<Math::Pari> has some very effective code, but it has some overhead to
      get to it from Perl.  That means for small numbers it is relatively slow:
      an order of magnitude slower than M::P::XS and M::P::Util (though arguably
      this is only important for benchmarking since "slow" is ~2 microseconds).
      Large numbers transition over to smarter tests so don't slow down much.
-
-=item L<Math::Prime::XS> does trial divisions, which is wonderful if the input
-     has a small factor (or is small itself).  But it can take 1000x longer
-     if given a large prime.
-
-=item L<Math::Prime::Util> looks in the sieve for a fast bit lookup if that
-     exists (default up to 30,000 but it can be expanded, e.g.
-     C<prime_precalc>), uses trial division for numbers higher than this but
-     not too large (0.1M on 64-bit machines, 100M on 32-bit machines), a
-     deterministic set of Miller-Rabin tests for 64-bit and smaller numbers,
-     and a BPSW test for bigints.
+     The C<ispseudoprime(n,0)> function will perform the BPSW test and is
+     fast even for large inputs.
 
 =back
 
@@ -2281,6 +2370,12 @@ L<GGNFS|http://sourceforge.net/projects/ggnfs/>,
 and L<Pari|http://pari.math.u-bordeaux.fr/>.
 
 
+The primality proving algorithms leave much to be desired.  If you have
+numbers larger than C<2^128>, I recommend Pari's C<isprime(n, 2)> which
+will run a fast APRCL test, or
+L<GMP-ECPP|http://http://sourceforge.net/projects/gmp-ecpp/>.  Either one
+will be much, much faster.
+
 
 =head1 AUTHORS
 
@@ -2296,8 +2391,7 @@ Terje Mathisen, A.R. Quesada, and B. Van Pelt all had useful ideas which I
 used in my wheel sieve.
 
 Tomás Oliveira e Silva has released the source for a very fast segmented sieve.
-The current implementation does not use these ideas, but future versions likely
-will.
+The current implementation does not use these ideas.  Future versions might.
 
 The SQUFOF implementation being used is my modifications to Ben Buhrow's
 modifications to Bob Silverman's code.  I may experiment with some other

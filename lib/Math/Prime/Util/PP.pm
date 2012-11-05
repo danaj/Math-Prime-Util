@@ -1043,6 +1043,7 @@ sub pbrent_factor {
   @factors;
 }
 
+# This code is bollocks.  See a proper implementation in factor.c
 sub pminus1_factor {
   my($n, $rounds) = @_;
   _validate_positive_integer($n);
@@ -1050,7 +1051,6 @@ sub pminus1_factor {
 
   my @factors = _basic_factor($n);
   return @factors if $n < 4;
-
 
   if ( ref($n) eq 'Math::BigInt' ) {
     my $kf = $n->copy->bzero->badd(13);
