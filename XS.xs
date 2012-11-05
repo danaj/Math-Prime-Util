@@ -196,48 +196,33 @@ erat_primes(IN UV low, IN UV high)
 void
 _XS_factor(IN UV n)
   PPCODE:
-    if (n < 4) {
-      XPUSHs(sv_2mortal(newSVuv( n ))); /* If n is 0-3, we're done. */
+    UV orign = n;
+    if (n < 4) {                        /* If n is 0-3, we're done. */
+      XPUSHs(sv_2mortal(newSVuv( n )));
+    } else if (n < 2000000) {           /* For small n, just trial division */
+      int i;
+      UV facs[32];  /* maximum number of factors is log2n */
+      UV nfacs = trial_factor(n, facs, 0);
+      for (i = 1; i <= nfacs; i++) {
+        XPUSHs(sv_2mortal(newSVuv( facs[i-1] )));
+      }
     } else {
       int const verbose = 0;
-      UV tlim = 101;  /* Below this we've checked with trial division */
+      UV const tlim_lower = 211;  /* Trial division through this prime */
+      UV const tlim = 223;        /* This means we've checked through here */
       UV tofac_stack[MPU_MAX_FACTORS+1];
       UV factored_stack[MPU_MAX_FACTORS+1];
       int ntofac = 0;
       int nfactored = 0;
-      /* Quick trial divisions.  Crude use of GCD to hopefully go faster. */
-      while ( (n% 2) == 0 ) {  n /=  2;  XPUSHs(sv_2mortal(newSVuv(  2 ))); }
-      if ( (n >= UVCONST(3*3)) && (gcd_ui(n, UVCONST(3234846615) != 1)) ) {
-        while ( (n% 3) == 0 ) {  n /=  3;  XPUSHs(sv_2mortal(newSVuv(  3 ))); }
-        while ( (n% 5) == 0 ) {  n /=  5;  XPUSHs(sv_2mortal(newSVuv(  5 ))); }
-        while ( (n% 7) == 0 ) {  n /=  7;  XPUSHs(sv_2mortal(newSVuv(  7 ))); }
-        while ( (n%11) == 0 ) {  n /= 11;  XPUSHs(sv_2mortal(newSVuv( 11 ))); }
-        while ( (n%13) == 0 ) {  n /= 13;  XPUSHs(sv_2mortal(newSVuv( 13 ))); }
-        while ( (n%17) == 0 ) {  n /= 17;  XPUSHs(sv_2mortal(newSVuv( 17 ))); }
-        while ( (n%19) == 0 ) {  n /= 19;  XPUSHs(sv_2mortal(newSVuv( 19 ))); }
-        while ( (n%23) == 0 ) {  n /= 23;  XPUSHs(sv_2mortal(newSVuv( 23 ))); }
-        while ( (n%29) == 0 ) {  n /= 29;  XPUSHs(sv_2mortal(newSVuv( 29 ))); }
-      }
-      if ( (n >= UVCONST(31*31)) && (gcd_ui(n, UVCONST(95041567) != 1)) ) {
-        while ( (n%31) == 0 ) {  n /= 31;  XPUSHs(sv_2mortal(newSVuv( 31 ))); }
-        while ( (n%37) == 0 ) {  n /= 37;  XPUSHs(sv_2mortal(newSVuv( 37 ))); }
-        while ( (n%41) == 0 ) {  n /= 41;  XPUSHs(sv_2mortal(newSVuv( 41 ))); }
-        while ( (n%43) == 0 ) {  n /= 43;  XPUSHs(sv_2mortal(newSVuv( 43 ))); }
-        while ( (n%47) == 0 ) {  n /= 47;  XPUSHs(sv_2mortal(newSVuv( 47 ))); }
-      }
-      if ( (n >= UVCONST(53*53)) && (gcd_ui(n, UVCONST(907383479) != 1)) ) {
-        while ( (n%53) == 0 ) {  n /= 53;  XPUSHs(sv_2mortal(newSVuv( 53 ))); }
-        while ( (n%59) == 0 ) {  n /= 59;  XPUSHs(sv_2mortal(newSVuv( 59 ))); }
-        while ( (n%61) == 0 ) {  n /= 61;  XPUSHs(sv_2mortal(newSVuv( 61 ))); }
-        while ( (n%67) == 0 ) {  n /= 67;  XPUSHs(sv_2mortal(newSVuv( 67 ))); }
-        while ( (n%71) == 0 ) {  n /= 71;  XPUSHs(sv_2mortal(newSVuv( 71 ))); }
-      }
-      if ( (n >= UVCONST(73*73)) && (gcd_ui(n, UVCONST(4132280413) != 1)) ) {
-        while ( (n%73) == 0 ) {  n /= 73;  XPUSHs(sv_2mortal(newSVuv( 73 ))); }
-        while ( (n%79) == 0 ) {  n /= 79;  XPUSHs(sv_2mortal(newSVuv( 79 ))); }
-        while ( (n%83) == 0 ) {  n /= 83;  XPUSHs(sv_2mortal(newSVuv( 83 ))); }
-        while ( (n%89) == 0 ) {  n /= 89;  XPUSHs(sv_2mortal(newSVuv( 89 ))); }
-        while ( (n%97) == 0 ) {  n /= 97;  XPUSHs(sv_2mortal(newSVuv( 97 ))); }
+
+      { /* Trial division, removes all factors below tlim */
+        int i;
+        UV facs[BITS_PER_WORD+1];
+        UV nfacs = trial_factor(n, facs, tlim_lower);
+        for (i = 1; i < nfacs; i++) {
+          XPUSHs(sv_2mortal(newSVuv( facs[i-1] )));
+        }
+        n = facs[nfacs-1];
       }
 
       do { /* loop over each remaining factor */
@@ -245,23 +230,19 @@ _XS_factor(IN UV n)
          * but in practice it seems slower. */
         while ( (n >= (tlim*tlim)) && (!_XS_is_prime(n)) ) {
           int split_success = 0;
-          /* How many rounds of SQUFOF to try depends on the number size */
-          UV sq_rounds = ((n>>29) ==     0) ? 100000 :
-                         ((n>>29) < 100000) ? 250000 :
-                                              600000;
+          /* Adjust the number of rounds based on the number size */
+          UV br_rounds = ((n>>29) < 100000) ?  1500 :  1500;
+          UV sq_rounds = 80000; /* 20k 91%, 40k 98%, 80k 99.9%, 120k 99.99% */
 
           /* Small factors will be found quite rapidly with this */
           if (!split_success) {
-            split_success = pbrent_factor(n, tofac_stack+ntofac, 1500)-1;
+            split_success = pbrent_factor(n, tofac_stack+ntofac, br_rounds)-1;
             if (verbose) { if (split_success) printf("pbrent 1:  %"UVuf" %"UVuf"\n", tofac_stack[ntofac], tofac_stack[ntofac+1]); else printf("pbrent 0\n"); }
           }
 
-          if (!split_success) {
+          if (!split_success && n < (UV_MAX>>3)) {
             /* SQUFOF does very well with what's left after TD and Rho. */
-            /* Racing SQUFOF is about 40% faster and has better success, but
-             * has input size restrictions and I'm seeing cases where it gets
-             * stuck in stage 2.  For now just stick with the old one.  */
-            split_success = squfof_factor(n, tofac_stack+ntofac, sq_rounds)-1;
+            split_success = racing_squfof_factor(n, tofac_stack+ntofac, sq_rounds)-1;
             if (verbose) printf("squfof %d\n", split_success);
           }
 
@@ -275,6 +256,10 @@ _XS_factor(IN UV n)
           if (!split_success) {
             split_success = holf_factor(n, tofac_stack+ntofac, 2000)-1;
             if (verbose) printf("holf %d\n", split_success);
+          }
+          if (!split_success) {
+            split_success = pminus1_factor(n, tofac_stack+ntofac, 1000)-1;
+            if (verbose) printf("pminus1 %d\n", split_success);
           }
 
           /* A miniscule fraction of numbers make it here */
@@ -372,9 +357,9 @@ squfof_factor(IN UV n, IN UV maxrounds = 4*1024*1024)
     SIMPLE_FACTOR(squfof_factor, n, maxrounds);
 
 void
-rsqufof_factor(IN UV n)
+rsqufof_factor(IN UV n, IN UV maxrounds = 4*1024*1024)
   PPCODE:
-    SIMPLE_FACTOR(racing_squfof_factor, n, 0);
+    SIMPLE_FACTOR(racing_squfof_factor, n, maxrounds);
 
 void
 pbrent_factor(IN UV n, IN UV maxrounds = 4*1024*1024)

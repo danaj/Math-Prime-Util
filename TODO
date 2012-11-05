@@ -29,3 +29,5 @@
 
 - Test all functions return either native or bigints.  Functions that return
   raw MPU::GMP results will return strings, which isn't right.
+
+- Make proper pminus1 in PP code, like factor.c.

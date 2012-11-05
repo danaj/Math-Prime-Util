@@ -1,6 +1,7 @@
 Revision history for Perl extension Math::Prime::Util.
 
 0.12  2 November 2012
+
     - Add bin/primes.pl
 
     - Add functions:
@@ -8,6 +9,7 @@ Revision history for Perl extension Math::Prime::Util.
            pn_primorial            product of first n primes
            prime_set_config        set config options
            RiemannZeta             export and make accurate for small reals
+           is_provable_prime       prove primes after BPSW
 
     - Add 'assume_rh' configuration option (default: false) which can be set
       to allow functions to assume the Riemann Hypothesis.
@@ -21,6 +23,10 @@ Revision history for Perl extension Math::Prime::Util.
     - Some fixes and speedups for ranged primes().
 
     - In the PP code, use 2 MR bases for more numbers when possible.
+
+    - Fixup of racing SQUFOF, and switch to use it in factor().
+
+    - Complete rewrite of XS p-1 factor routine, includes second stage.
 
 0.11  23 July 2012
     - Turn off threading tests on Cygwin, as threads on some Cygwin platforms
