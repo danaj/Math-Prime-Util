@@ -3,8 +3,9 @@ use strict;
 use warnings;
 use Getopt::Long;
 use Math::BigInt try => 'GMP';
-use Math::Prime::Util qw/primes is_prime next_prime prev_prime
-                         prime_count primorial pn_primorial/;
+use Math::Prime::Util qw/primes  prime_count  next_prime  prev_prime
+                         is_prime  is_provable_prime
+                         prime_count  primorial  pn_primorial/;
 $| = 1;
 
 # For many more types, see:
@@ -90,6 +91,7 @@ GetOptions(\%opts,
            'pnp1|A005234',
            'pnm1|A006794',
            'euclid|A018239',
+           'provable',
            'nompugmp',   # turn off MPU::GMP for debugging
            'help',
           ) || die_usage();
@@ -470,6 +472,9 @@ sub gen_and_filter {
   if (exists $opts{'good'}) {
     @p = grep { is_good_prime($_); } @p;
   }
+  if (exists $opts{'provable'}) {
+    @p = grep { is_provable_prime($_) == 2; } @p;
+  }
   @p;
 }
 
@@ -538,6 +543,7 @@ to only those primes additionally meeting these conditions:
   --pnp1       Primorial+1      p#+1 is prime
   --pnm1       Primorial-1      p#-1 is prime
   --euclid     Euclid           pn#+1 is prime
+  --provable                    Ensure all primes are provably prime
 
 Note that options can be combined, e.g. display only safe twin primes.
 In all cases involving multiples (twin, triplet, etc.), the value returned
