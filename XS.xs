@@ -196,7 +196,6 @@ erat_primes(IN UV low, IN UV high)
 void
 _XS_factor(IN UV n)
   PPCODE:
-    UV orign = n;
     if (n < 4) {                        /* If n is 0-3, we're done. */
       XPUSHs(sv_2mortal(newSVuv( n )));
     } else if (n < 2000000) {           /* For small n, just trial division */

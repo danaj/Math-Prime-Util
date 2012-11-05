@@ -640,8 +640,8 @@ static long double const li2 = 1.04516378011749278484458888919461313652261557815
 double _XS_ExponentialIntegral(double x) {
   long double const tol = 1e-16;
   long double val, term;
-  KAHAN_INIT(sum);
   unsigned int n;
+  KAHAN_INIT(sum);
 
   if (x == 0) croak("Invalid input to ExponentialIntegral:  x must be != 0");
 
@@ -697,8 +697,8 @@ double _XS_ExponentialIntegral(double x) {
     val = sum;
   } else {
     /* Asymptotic divergent series */
-    term = 1.0;
     long double invx = 1.0L / x;
+    term = 1.0;
     for (n = 1; n <= 200; n++) {
       long double last_term = term;
       term = term * ( (long double)n * invx );
@@ -777,9 +777,9 @@ static const long double riemann_zeta_table[] = {
 /* Riemann Zeta on the real line.  Compare to Math::Cephes::zetac */
 long double ld_riemann_zeta(long double x) {
   long double const tol = 1e-17;
-  KAHAN_INIT(sum);
   long double term;
   int k;
+  KAHAN_INIT(sum);
 
   if (x < 0.5) croak("Invalid input to RiemannZeta:  x must be >= 0.5");
 
@@ -828,9 +828,9 @@ long double ld_riemann_zeta(long double x) {
       if (term < tol*sum) break;
     }
     KAHAN_SUM(sum, powl(3, -x) );
-    long double t = 1.0L / (1.0L - powl(2, -x));
-    sum *= t;
-    sum += (t - 1.0L);
+    term = 1.0L / (1.0L - powl(2, -x));
+    sum *= term;
+    sum += (term - 1.0L);
     /* printf("zeta(%lf) = %.15lf in %d iterations\n", x, sum, k); */
 
   }
@@ -840,9 +840,9 @@ long double ld_riemann_zeta(long double x) {
 
 double _XS_RiemannR(double x) {
   long double const tol = 1e-16;
-  KAHAN_INIT(sum);
   long double part_term, term, flogx;
   unsigned int k;
+  KAHAN_INIT(sum);
 
   if (x <= 0) croak("Invalid input to ReimannR:  x must be > 0");
 
