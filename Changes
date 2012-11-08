@@ -2,7 +2,7 @@ Revision history for Perl extension Math::Prime::Util.
 
 0.12  2 November 2012
 
-    - Add bin/primes.pl
+    - Add bin/primes.pl and bin/factor.pl
 
     - Add functions:
            primorial               product of primes <= n

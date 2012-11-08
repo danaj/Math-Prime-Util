@@ -93,10 +93,19 @@ GetOptions(\%opts,
            'euclid|A018239',
            'provable',
            'nompugmp',   # turn off MPU::GMP for debugging
+           'version',
            'help',
           ) || die_usage();
-die_usage() if exists $opts{'help'};
 Math::Prime::Util::prime_set_config(gmp=>0) if exists $opts{'nompugmp'};
+if (exists $opts{'version'}) {
+  my $version_str =
+   "primes.pl version 1.2 using Math::Prime::Util $Math::Prime::Util::VERSION";
+  $version_str .= " and MPU::GMP $Math::Prime::Util::GMP::VERSION"
+    if Math::Prime::Util::prime_get_config->{'gmp'};
+  $version_str .= "\nWritten by Dana Jacobsen.\n";
+  die "$version_str";
+}
+die_usage() if exists $opts{'help'};
 
 # Get the start and end values.  Verify they're positive integers.
 die_usage() unless @ARGV == 2;

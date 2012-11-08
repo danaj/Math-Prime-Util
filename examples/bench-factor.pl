@@ -1,19 +1,42 @@
 #!/usr/bin/env perl
 use strict;
 use warnings;
+
+# One of the things this test shows is the impact of the '-nobigint' option.
+#    "MPU"   results are the timings without the '-nobigint' option
+#    "MPUxs" results are the timings _with_  the '-nobigint' option
 use Math::Prime::Util qw/factor/;
+
+# Compare to Math::Factor::XS, which uses trial division.
 use Math::Factor::XS qw/prime_factors/;
+
 use Benchmark qw/:all/;
 use List::Util qw/min max reduce/;
+use Config;
 my $count = shift || -2;
 my $is64bit = (~0 > 4294967295);
 my $maxdigits = ($is64bit) ? 20 : 10;  # Noting the range is limited for max.
 my $semiprimes = 0;
-my $howmany = 10000;
+my $howmany = 1000;
 
+my $rgen = sub {
+  my $range = shift;
+  return 0 if $range <= 0;
+  my $rbits = 0; { my $t = $range; while ($t) { $rbits++; $t >>= 1; } }
+  while (1) {
+    my $rbitsleft = $rbits;
+    my $U = 0;
+    while ($rbitsleft > 0) {
+      my $usebits = ($rbitsleft > $Config{randbits}) ? $Config{randbits} : $rbitsleft;
+      $U = ($U << $usebits) + int(rand(1 << $usebits));
+      $rbitsleft -= $usebits;
+    }
+    return $U if $U <= $range;
+  }
+};
 srand(29);
 
-for my $d ( 3 .. $maxdigits ) {
+for my $d ( 17 .. $maxdigits ) {
   print "Factor $howmany $d-digit numbers\n";
   test_at_digits($d, $howmany);
 }
@@ -27,7 +50,7 @@ sub test_at_digits {
   my @rnd = genrand($digits, $quantity);
   my @smp = gensemi($digits, $quantity);
 
-  # verify
+  # verify (can be _really_ slow for 18+ digits)
   foreach my $p (@rnd, @smp) {
     my @mpxs = prime_factors($p);  push @mpxs, $p if $p < 2;
 
@@ -77,7 +100,7 @@ sub genrand {
   my $base = ($digits == 1) ? 0 : int(10 ** ($digits-1));
   my $max = int(10 ** $digits);
   $max = ~0 if $max > ~0;
-  my @nums = map { $base+int(rand($max-$base)) } (1 .. $num);
+  my @nums = map { $base + $rgen->($max-$base) } (1 .. $num);
   return @nums;
 }
 
@@ -98,9 +121,9 @@ sub gensemi {
     my @factors;
     my $n;
     while (1) {
-      $n = $base + int(rand($max-$base));
-      $n += 1 if ($n%2) == 0;
-      $n += 3 if ($n%3) == 0;
+      $n = $base + $rgen->($max-$base);
+      # Skip past all multiples of 2, 3, and 5.
+      $n += (1,0,5,4,3,2,1,0,3,2,1,0,1,0,3,2,1,0,1,0,3,2,1,0,5,4,3,2,1,0)[$n%30];
       @factors = Math::Prime::Util::factor($n);
       next if scalar @factors != 2;
       next if $factors[0] < $smallest_factor;

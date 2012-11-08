@@ -42,6 +42,7 @@ examples/test-pcapprox.pl
 examples/sophie_germain.pl
 examples/twin_primes.pl
 bin/primes.pl
+bin/factor.pl
 t/01-load.t
 t/02-can.t
 t/03-init.t

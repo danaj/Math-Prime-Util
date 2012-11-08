@@ -14,7 +14,7 @@ WriteMakefile1(
                     'XS.o',
     LIBS         => ['-lm'],
 
-    EXE_FILES    => ['bin/primes.pl'],
+    EXE_FILES    => ['bin/primes.pl', 'bin/factor.pl'],
 
     BUILD_REQUIRES=>{
                       'Test::More'       => '0.45',
