@@ -64,3 +64,4 @@ t/81-bignum.t
 t/90-release-perlcritic.t
 t/91-release-pod-syntax.t
 t/92-release-pod-coverage.t
+.travis.yml
