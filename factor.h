@@ -18,7 +18,7 @@ extern int pbrent_factor(UV n, UV *factors, UV maxrounds);
 
 extern int prho_factor(UV n, UV *factors, UV maxrounds);
 
-extern int pminus1_factor(UV n, UV *factors, UV maxrounds);
+extern int pminus1_factor(UV n, UV *factors, UV B1, UV B2);
 
 extern int _XS_miller_rabin(UV n, const UV *bases, int nbases);
 extern int _XS_is_prob_prime(UV n);

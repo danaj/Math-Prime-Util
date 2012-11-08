@@ -549,21 +549,19 @@ int prho_factor(UV n, UV *factors, UV rounds)
   return 1;
 }
 
-/* Pollard's P-1
- *
- * Probabilistic.  If you give this a prime number, it will loop
- * until it runs out of rounds.
- */
-int pminus1_factor(UV n, UV *factors, UV B1)
+/* Pollard's P-1 */
+int pminus1_factor(UV n, UV *factors, UV B1, UV B2)
 {
-  UV f, q, restartq, restarta;
+  UV q, f;
   UV a = 2;
+  UV savea = 2;
+  UV saveq = 2;
+  UV j = 1;
   UV sqrtB1 = sqrt(B1);
   MPUassert( (n >= 3) && ((n%2) != 0) , "bad n in pminus1_factor");
-  restartq = 2;
-  restarta = a;
+
   for (q = 2; q <= sqrtB1; q = _XS_next_prime(q)) {
-    UV k = q;
+    UV k = q*q;
     UV kmin = B1/q;
     while (k <= kmin)
       k *= q;
@@ -572,46 +570,70 @@ int pminus1_factor(UV n, UV *factors, UV B1)
   if (a == 0) { factors[0] = n; return 1; }
   f = gcd_ui(a-1, n);
   if (f == 1) {
-    restartq = q;
-    restarta = a;
-    for ( ; q <= B1; q = _XS_next_prime(q)) {
+    savea = a;
+    saveq = q;
+    for (; q <= B1; q = _XS_next_prime(q)) {
       a = powmod(a, q, n);
+      if ( (j++ % 32) == 0) {
+        if (a == 0 || gcd_ui(a-1, n) != 1)
+          break;
+        savea = a;
+        saveq = q;
+      }
     }
+    if (a == 0) { factors[0] = n; return 1; }
     f = gcd_ui(a-1, n);
   }
-  /* See if we found more than one factor in stage 1, repeat if so */
+  /* If we found more than one factor in stage 1, backup and single step */
   if (f == n) {
-    a = restarta;
-    for (q = restartq; q <= B1; q = _XS_next_prime(q)) {
+    a = savea;
+    for (q = saveq; q <= B1; q = _XS_next_prime(q)) {
       UV k = q;
       UV kmin = B1/q;
       while (k <= kmin)
         k *= q;
       a = powmod(a, k, n);
       f = gcd_ui(a-1, n);
-      if (f != 1 && f != n)
+      if (f != 1)
         break;
     }
+    /* If f == n again, we could do:
+     * for (savea = 3; f == n && savea < 100; savea = _XS_next_prime(savea)) {
+     *   a = savea;
+     *   for (q = 2; q <= B1; q = _XS_next_prime(q)) {
+     *     ...
+     *   }
+     * }
+     * but this could be a huge time sink if B1 is large, so just fail.
+     */
   }
-  if (f == 1 || f == n) {  /* stage 2 */
-    UV B2 = B1 * 10;
+
+  /* STAGE 2 */
+  if (f == 1 && B2 > B1) {
     UV bm = a;
     UV b = 1;
-    UV j = 1;
+    UV bmdiff;
     UV precomp_bm[111] = {0};    /* Enough for B2 = 189M */
 
     /* calculate (a^q)^2, (a^q)^4, etc. */
-    precomp_bm[0] = sqrmod(bm, n);
+    bmdiff = sqrmod(bm, n);
+    precomp_bm[0] = bmdiff;
+    for (j = 1; j < 20; j++) {
+      bmdiff = mulmod(bmdiff,bm,n);
+      bmdiff = mulmod(bmdiff,bm,n);
+      precomp_bm[j] = bmdiff;
+    }
 
     a = powmod(a, q, n);
+    j = 1;
     while (q <= B2) {
       UV lastq = q;
-      UV qdiff, bmdiff;
+      UV qdiff;
       q = _XS_next_prime(q);
       /* compute a^q = a^lastq * a^(q-lastq) */
       qdiff = (q - lastq) / 2 - 1;
       if (qdiff >= 111) {
-        bmdiff = powmod(bm, q-lastq, n);  /* Too big of gap */
+        bmdiff = powmod(bm, q-lastq, n);  /* Big gap */
       } else {
         bmdiff = precomp_bm[qdiff];
         if (bmdiff == 0) {
@@ -622,13 +644,12 @@ int pminus1_factor(UV n, UV *factors, UV B1)
           precomp_bm[qdiff] = bmdiff;
         }
       }
-      a = mulmod( a, bmdiff, n);
-      if (a <= 1) break;
-      b = mulmod( b, a-1, n);
-      if (b == 0) b = 1;
+      a = mulmod(a, bmdiff, n);
+      if (a == 0) break;
+      b = mulmod(b, a-1, n);   /* if b == 0, we found multiple factors */
       if ( (j++ % 64) == 0 ) {
         f = gcd_ui(b, n);
-        if (f != 1 && f != n)
+        if (f != 1)
           break;
       }
     }

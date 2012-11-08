@@ -233,14 +233,14 @@ _XS_factor(IN UV n)
           UV br_rounds = ((n>>29) < 100000) ?  1500 :  1500;
           UV sq_rounds = 80000; /* 20k 91%, 40k 98%, 80k 99.9%, 120k 99.99% */
 
-          /* Small factors will be found quite rapidly with this */
+          /* About 94% of random inputs are factored with this pbrent call */
           if (!split_success) {
             split_success = pbrent_factor(n, tofac_stack+ntofac, br_rounds)-1;
             if (verbose) { if (split_success) printf("pbrent 1:  %"UVuf" %"UVuf"\n", tofac_stack[ntofac], tofac_stack[ntofac+1]); else printf("pbrent 0\n"); }
           }
 
           if (!split_success && n < (UV_MAX>>3)) {
-            /* SQUFOF does very well with what's left after TD and Rho. */
+            /* SQUFOF with these parameters gets 95% of what's left. */
             split_success = racing_squfof_factor(n, tofac_stack+ntofac, sq_rounds)-1;
             if (verbose) printf("squfof %d\n", split_success);
           }
@@ -251,17 +251,19 @@ _XS_factor(IN UV n)
             if (verbose) printf("prho %d\n", split_success);
           }
 
+          /* This p-1 gets about 2/3 of what makes it through the above */
+          if (!split_success) {
+            split_success = pminus1_factor(n, tofac_stack+ntofac, 4000, 40000)-1;
+            if (verbose) printf("pminus1 %d\n", split_success);
+          }
+
           /* Some rounds of HOLF, good for close to perfect squares */
           if (!split_success) {
             split_success = holf_factor(n, tofac_stack+ntofac, 2000)-1;
             if (verbose) printf("holf %d\n", split_success);
           }
-          if (!split_success) {
-            split_success = pminus1_factor(n, tofac_stack+ntofac, 1000)-1;
-            if (verbose) printf("pminus1 %d\n", split_success);
-          }
 
-          /* A miniscule fraction of numbers make it here */
+          /* Less than 0.1% of random inputs make it here */
           if (!split_success) {
             split_success = prho_factor(n, tofac_stack+ntofac, 256*1024)-1;
             if (verbose) printf("long prho %d\n", split_success);
@@ -274,7 +276,7 @@ _XS_factor(IN UV n)
               croak("bad factor\n");
             n = tofac_stack[ntofac];  /* Set n to the other one */
           } else {
-            /* trial divisions */
+            /* Factor via trial division.  Nothing should make it here. */
             UV f = tlim;
             UV m = tlim % 30;
             UV limit = (UV) (sqrt(n)+0.1);
@@ -371,9 +373,27 @@ prho_factor(IN UV n, IN UV maxrounds = 4*1024*1024)
     SIMPLE_FACTOR(prho_factor, n, maxrounds);
 
 void
-pminus1_factor(IN UV n, IN UV maxrounds = 1*1024*1024)
+pminus1_factor(IN UV n, IN UV B1 = 1*1024*1024, IN UV B2 = 0)
   PPCODE:
-    SIMPLE_FACTOR(pminus1_factor, n, maxrounds);
+    if (B2 == 0)
+      B2 = 10*B1;
+    if (n <= 1) {
+      XPUSHs(sv_2mortal(newSVuv( n )));
+    } else {
+      while ( (n% 2) == 0 ) {  n /=  2;  XPUSHs(sv_2mortal(newSVuv( 2 ))); }
+      while ( (n% 3) == 0 ) {  n /=  3;  XPUSHs(sv_2mortal(newSVuv( 3 ))); }
+      while ( (n% 5) == 0 ) {  n /=  5;  XPUSHs(sv_2mortal(newSVuv( 5 ))); }
+      if (n == 1) {  /* done */ }
+      else if (_XS_is_prime(n)) { XPUSHs(sv_2mortal(newSVuv( n ))); }
+      else {
+        UV factors[MPU_MAX_FACTORS+1];
+        int i, nfactors;
+        nfactors = pminus1_factor(n, factors, B1, B2);
+        for (i = 0; i < nfactors; i++) {
+          XPUSHs(sv_2mortal(newSVuv( factors[i] )));
+        }
+      }
+    }
 
 int
 _XS_miller_rabin(IN UV n, ...)
