@@ -157,7 +157,7 @@ sub prime_set_config {
     } elsif ($param eq 'gmp') {
       $_Config{'gmp'} = ($value) ? 1 : 0;
       $_HAVE_GMP = $_Config{'gmp'};
-    } elsif ($param =~ /^(assume[_ ]?)?rh$/ || $param =~ /riemann\s*h/) {
+    } elsif ($param =~ /^(assume[_ ]?)?[ge]?rh$/ || $param =~ /riemann\s*h/) {
       $_Config{'assume_rh'} = ($value) ? 1 : 0;
     } else {
       croak "Unknown or invalid configuration setting: $param\n";
@@ -2010,6 +2010,7 @@ your routines were inside an eval that died, things will still get cleaned up.
 If you call another function that uses a MemFree object, the cache will stay
 in place because you still have an object.
 
+
 =head2 prime_get_config
 
   my $cached_up_to = prime_get_config->{'precalc_to'};
@@ -2025,7 +2026,29 @@ the configuration, so changing it has no effect.  The settings include:
   maxdigits       the max digits in a number, without bigint
   maxprime        the largest representable prime, without bigint
   maxprimeidx     the index of maxprime, without bigint
+  assume_rh       whether to assume the Riemann hypothesis (default 0)
 
+=head2 prime_set_config
+
+  prime_set_config( assume_rh => 1 );
+
+Allows setting of some parameters.  Currently the only parameters are:
+
+  xs              allows turning off the XS code, forcing the Pure Perl code
+                  to be used.  Set to 0 to disable XS, set to 1 to re-enable.
+                  You probably will never want to do this.
+
+  gmp             allows turning off the use of L<Math::Prime::Util::GMP>,
+                  which means using Pure Perl code for big numbers.  Set to
+                  0 to disable GMP, set to 1 to re-enable.
+                  You probably will never want to do this.
+
+  assume_rh       Allows functions to assume the Riemann hypothesis is true
+                  if set to 1.  This defaults to 0.  Currently this setting
+                  only impacts prime count lower and upper bounds, but could
+                  later be applied to other areas such as primality testing.
+                  A later version may also have a way to indicate whether
+                  no RH, RH, GRH, or ERH is to be assumed.
 
 
 =head1 FACTORING FUNCTIONS

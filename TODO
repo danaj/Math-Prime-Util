@@ -31,3 +31,5 @@
   raw MPU::GMP results will return strings, which isn't right.
 
 - Make proper pminus1 in PP code, like factor.c.
+
+- Add Lehmer prime count function for large values.
