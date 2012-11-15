@@ -20,7 +20,6 @@ our @EXPORT_OK = qw(
                      primes
                      next_prime  prev_prime
                      prime_count prime_count_lower prime_count_upper prime_count_approx
-                     prime_count_legendre prime_count_lehmer
                      nth_prime nth_prime_lower nth_prime_upper nth_prime_approx
                      random_prime random_ndigit_prime random_nbit_prime random_maurer_prime
                      primorial pn_primorial
@@ -43,7 +42,7 @@ sub _import_nobigint {
   undef *is_prob_prime; *is_prob_prime   = \&_XS_is_prob_prime;
   undef *next_prime;    *next_prime      = \&_XS_next_prime;
   undef *prev_prime;    *prev_prime      = \&_XS_prev_prime;
-  undef *prime_count;   *prime_count     = \&_XS_prime_count;
+  #undef *prime_count;   *prime_count     = \&_XS_prime_count;
   undef *nth_prime;     *nth_prime       = \&_XS_nth_prime;
   undef *is_strong_pseudoprime;  *is_strong_pseudoprime = \&_XS_miller_rabin;
   undef *miller_rabin;  *miller_rabin    = \&_XS_miller_rabin;
@@ -862,21 +861,27 @@ sub prime_count {
   }
   return 0 if $high < 2  ||  $low > $high;
 
-  return _XS_prime_count($low,$high) if $high <= $_XS_MAXVAL;
+  if ($high <= $_XS_MAXVAL) {
+    if ($high > 15_000_000) {
+      # These estimates need a lot of work.
+      #my $est_segment = 10.0 * 1.5**(log($high / 10**16) / log(10))
+      #                  + (($high-$low)/10**12);
+      #my $est_lehmer = 0.0000000057 * $high**0.72
+      #                 + 0.0000000057 * $low**0.72;
+      #if ($est_lehmer < $est_segment) {
+      if ( ($high / ($high-$low+1)) < 100 ) {
+        $low = 2 if $low < 2;
+        return _XS_lehmer_pi($high) - _XS_lehmer_pi($low-1);
+      }
+    }
+    return _XS_prime_count($low,$high);
+  }
   return Math::Prime::Util::GMP::prime_count($low,$high) if $_HAVE_GMP
                        && defined &Math::Prime::Util::GMP::prime_count;
   return Math::Prime::Util::PP::prime_count($low,$high);
 }
 
-sub prime_count_legendre {
-  my($n) = @_;
-  return 0 if $n <= 0;
-  _validate_positive_integer($n);
-
-  return _XS_legendre_pi($n) if $n <= $_XS_MAXVAL;
-}
-
-sub prime_count_lehmer {
+sub _prime_count_lehmer {
   my($n) = @_;
   return 0 if $n <= 0;
   _validate_positive_integer($n);
@@ -1644,21 +1649,28 @@ math packages.  When given two arguments, it returns the inclusive
 count of primes between the ranges (e.g. C<(13,17)> returns 2, C<14,17>
 and C<13,16> return 1, and C<14,16> returns 0).
 
-The current implementation relies on sieving to find the primes within the
-interval, so will take some time and memory.  It uses a segmented sieve so
-is very memory efficient, and also allows fast results even with large
-base values.  The complexity for C<prime_count(a, b)> is approximately
-C<O(sqrt(a) + (b-a))>, where the first term is typically negligible below
-C<~ 10^11>.  Memory use is proportional only to C<sqrt(a)>, with total
-memory use under 1MB for any base under C<10^14>.
+The current implementation decides based on the ranges whether to use a
+segmented sieve with a fast bit count, or Lehmer's algorithm.  The former
+is prefered for small sizes as well as small ranges.  The latter is much
+faster for large ranges.
 
-A later implementation may work on improving performance for values, both
-in reducing memory use (the current maximum is 140MB at C<2^64>) and improving
-speed.  Possibilities include a hybrid table approach, using an explicit
-formula with C<li(x)> or C<R(x)>, or one of the Meissel, Lehmer,
-or Lagarias-Miller-Odlyzko-Deleglise-Rivat methods.  For any use with inputs
-over 1,000 million or so, think about whether an approximation or bounds would
-work, as they will be much faster.
+The segmented sieve is very memory efficient and is quite fast even with
+large base values.  Its complexity is approximately C<O(sqrt(a) + (b-a))>,
+where the first term is typically negligible below C<~ 10^11>.  Memory use
+is proportional only to C<sqrt(a)>, with total memory use under 1MB for any
+base under C<10^14>.
+
+Lehmer's method has complexity approximately C<O(b^0.7) + O(a^0.7)>.  It
+does use more memory however.  A calculation of C<Pi(10^14)> completes in
+under 1 minute, C<Pi(10^15)> in approximately 5 minutes, and C<Pi(10^16)>
+in about 30 minutes, however using nearly 800MB of peak memory for the last.
+In contrast, even primesieve using multiple cores would take over a week
+on this same computer to determine C<Pi(10^16)>.
+
+Also see the function L</"prime_count_approx"> which gives a very good
+approximation to the prime count, and L</"prime_count_lower"> and
+L</"prime_count_upper"> which give tight bounds to the actual prime count.
+These functions return quickly for any input, including bigints.
 
 
 =head2 prime_count_upper

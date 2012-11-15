@@ -159,18 +159,19 @@ static UV phi(UV x, UV a)
   while (h1.N > 0) {
     v = heap_remove_coalesce(&h1);
     if (v.c != 0)
-      sum += v.c * mapes(v.v, a);
+      sum += v.c * mapes(v.v, a);  /* This could be faster */
   }
   heap_destroy(&h1);
   return sum;
 }
 
+/* Legendre's method.  Interesting and a good test for phi(x,a), but Lehmer's
+ * method is much faster (Legendre: a = pi(n^.5), Lehmer: a = pi(n^.25)) */
 UV _XS_legendre_pi(UV n)
 {
   if (n < 30000)
     return _XS_prime_count(2, n);
 
-  /* Legendre */
   UV a = _XS_legendre_pi(sqrt(n));
   prime_precalc(a);
   return phi(n, a) + a - 1;

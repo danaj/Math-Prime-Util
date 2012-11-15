@@ -8,4 +8,5 @@ cache.o
 factor.o
 sieve.o
 util.o
+lehmer.o
 blib*
