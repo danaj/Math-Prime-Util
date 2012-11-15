@@ -8,6 +8,7 @@
 #include "sieve.h"
 #include "util.h"
 #include "factor.h"
+#include "lehmer.h"
 
 MODULE = Math::Prime::Util	PACKAGE = Math::Prime::Util
 
@@ -38,6 +39,12 @@ _XS_prime_count(IN UV low, IN UV high = 0)
     }
   OUTPUT:
     RETVAL
+
+UV
+_XS_legendre_pi(IN UV n)
+
+UV
+_XS_lehmer_pi(IN UV n)
 
 UV
 _XS_nth_prime(IN UV n)

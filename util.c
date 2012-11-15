@@ -427,6 +427,20 @@ UV _XS_prime_count(UV low, UV high)
 
   if (low > high)  return count;
 
+  if (low == 7) {
+    if      (high > (1UL << 42)) { count += 156661034233-3; low = 1UL<<42; }
+    else if (high > (1UL << 39)) { count +=  21151907950-3; low = 1UL<<39; }
+    else if (high > (1UL << 36)) { count +=   2874398515-3; low = 1UL<<36; }
+    else if (high > (1UL << 33)) { count +=    393615806-3; low = 1UL<<33; }
+    else if (high > (1UL << 30)) { count +=     54400028-3; low = 1UL<<30; }
+    else if (high > (1UL << 27)) { count +=      7603553-3; low = 1UL<<27; }
+    else if (high > (1UL << 24)) { count +=      1077871-3; low = 1UL<<24; }
+    else if (high > (1UL << 20)) { count +=        82025-3; low = 1UL<<20; }
+    else if (high > (1UL << 18)) { count +=        23000-3; low = 1UL<<18; }
+    else if (high > (1UL << 16)) { count +=         6542-3; low = 1UL<<16; }
+    else if (high > (1UL << 14)) { count +=         1900-3; low = 1UL<<14; }
+  }
+
   low_d = low/30;
   high_d = high/30;
 
@@ -443,7 +457,7 @@ UV _XS_prime_count(UV low, UV high)
     /* Count all the primes in the primary cache in our range */
     count += count_segment_ranged(cache_sieve, segment_size, low, high);
 
-    if (high_d <= segment_size) {
+    if (high_d < segment_size) {
       release_prime_cache(cache_sieve);
       return count;
     }

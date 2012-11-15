@@ -1,6 +1,6 @@
 Revision history for Perl extension Math::Prime::Util.
 
-0.12  2 November 2012
+0.12  12 November 2012
 
     - Add bin/primes.pl and bin/factor.pl
 
@@ -27,6 +27,10 @@ Revision history for Perl extension Math::Prime::Util.
     - Fixup of racing SQUFOF, and switch to use it in factor().
 
     - Complete rewrite of XS p-1 factor routine, includes second stage.
+
+    - bug fix for prime_count on edge of cache.
+
+    - Add Lehmer prime counting algorithm.  This is much faster than sieving.
 
 0.11  23 July 2012
     - Turn off threading tests on Cygwin, as threads on some Cygwin platforms

@@ -14,6 +14,8 @@ cache.h
 cache.c
 factor.h
 factor.c
+lehmer.h
+lehmer.c
 sieve.h
 sieve.c
 util.h

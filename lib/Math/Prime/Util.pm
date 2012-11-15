@@ -20,6 +20,7 @@ our @EXPORT_OK = qw(
                      primes
                      next_prime  prev_prime
                      prime_count prime_count_lower prime_count_upper prime_count_approx
+                     prime_count_legendre prime_count_lehmer
                      nth_prime nth_prime_lower nth_prime_upper nth_prime_approx
                      random_prime random_ndigit_prime random_nbit_prime random_maurer_prime
                      primorial pn_primorial
@@ -865,6 +866,22 @@ sub prime_count {
   return Math::Prime::Util::GMP::prime_count($low,$high) if $_HAVE_GMP
                        && defined &Math::Prime::Util::GMP::prime_count;
   return Math::Prime::Util::PP::prime_count($low,$high);
+}
+
+sub prime_count_legendre {
+  my($n) = @_;
+  return 0 if $n <= 0;
+  _validate_positive_integer($n);
+
+  return _XS_legendre_pi($n) if $n <= $_XS_MAXVAL;
+}
+
+sub prime_count_lehmer {
+  my($n) = @_;
+  return 0 if $n <= 0;
+  _validate_positive_integer($n);
+
+  return _XS_lehmer_pi($n) if $n <= $_XS_MAXVAL;
 }
 
 sub nth_prime {
