@@ -33,22 +33,21 @@
  * with large values of x.
  *
  * Calculating pi(10^11) is done in under 1 second on my computer.  pi(10^14)
- * takes about 1 minute, pi(10^16) in under an hour.  Compared to Thomas
- * R. Nicely's pix4 program, this one is about 3-4x faster and uses 3x less
- * memory.  However those comparisons were done without the big pre-computed
- * prime count tables pix4 can use to speed up the final stage.
+ * takes under 1 minute, pi(10^16) in a half hour.  Compared with Thomas
+ * R. Nicely's pix4 program, this one is 3-4x faster and uses 2-3x less memory.
  *
  *    n     phi(x,a) mem/time  |  stage 4 mem/time  | total time
- *   10^17   5988MB  1244.11   |   2688MB
- *   10^16   1877MB   254.83   |   945MB  1478.9    |  28m 51.4s
- *   10^15    754MB    50.50   |   392MB   224.2    |   4m 33.8s
- *   10^14    260MB     9.879  |   217MB    38.06   |    47.83s
- *   10^13              1.852  |   162MB     6.987  |     8.864s
- *   10^12              0.363  |             1.358  |     1.768s
- *   10^11              0.064  |             0.276  |     0.381s
- *   10^10  xxxxxMB     0.011  | xxxxxMB     0.056  |     0.105s
+ *   10^17   5094MB    870.07   |   2688MB 11328.6    | 203m 20.0s
+ *   10^16   1483MB    168.19   |   945MB   1489.2    |  27m 35.5s
+ *   10^15    448MB     31.26   |   392MB    226.1    |   4m 17.1s
+ *   10^14               5.519  |   217MB     38.36   |    43.76s
+ *   10^13               0.950  |   162MB      7.025  |     7.993s
+ *   10^12               0.174  |              1.363  |     1.574s
+ *   10^11               0.034  |              0.278  |     0.346s
+ *   10^10               0.007  |              0.058  |     0.103s
  *
- * Reference: "Prime numbers and computer methods for factorization", Riesel.
+ * Reference: Hans Riesel, "Prime Numbers and Computer Methods for
+ * Factorization", 2nd edition, 1994.
  */
 
 static int const verbose = 0;
@@ -70,8 +69,7 @@ static int const verbose = 0;
 
 /* Use Mapes' method to calculate phi(x,a) for small a.  This is really
  * convenient and a little Perl script will spit this code out for whatever
- * limit we select.  It gets unwieldy however, and using the primorial/totient
- * method looks faster for the final output.
+ * limit we select.  It gets unwieldy with large a values.
  */
 static IV mapes(IV x, UV a)
 {
@@ -87,197 +85,214 @@ static IV mapes(IV x, UV a)
   return val;
 }
 
+static IV mapes7(IV x) {    /* A tiny bit faster setup for a=7 */
+  IV val = x-x/2-x/3-x/5+x/6-x/7+x/10-x/11-x/13+x/14+x/15-x/17+x/21+x/22+x/26
+          -x/30+x/33+x/34+x/35+x/39-x/42+x/51+x/55+x/65-x/66-x/70+x/77-x/78
+          +x/85+x/91-x/102-x/105-x/110+x/119-x/130+x/143-x/154-x/165-x/170
+          -x/182+x/187-x/195+x/210+x/221-x/231-x/238-x/255-x/273-x/286+x/330
+          -x/357-x/374-x/385+x/390-x/429-x/442-x/455+x/462+x/510+x/546-x/561
+          -x/595-x/663+x/714;
+  if (x >= 715) {
+    val += -x/715+x/770+x/858+x/910-x/935-x/1001-x/1105+x/1122+x/1155+x/1190
+           -x/1309+x/1326+x/1365+x/1430-x/1547+x/1785+x/1870+x/2002+x/2145
+           +x/2210-x/2310-x/2431+x/2618-x/2730+x/2805+x/3003+x/3094+x/3315
+           -x/3570+x/3927-x/4290+x/4641+x/4862+x/5005-x/5610-x/6006+x/6545
+           -x/6630+x/7293+x/7735-x/7854;
+    if (x >= 9282)
+      val += -x/9282-x/10010+x/12155-x/13090-x/14586-x/15015-x/15470+x/17017
+             -x/19635-x/23205-x/24310+x/30030-x/34034-x/36465+x/39270+x/46410
+             -x/51051+x/72930-x/85085+x/102102+x/170170+x/255255-x/510510;
+  }
+  return val;
+}
+
 /******************************************************************************/
 /*   Modified heap for manipulating our UV value / IV count pairs             */
 /******************************************************************************/
 
-/* TODO: This should be cleaned up */
+/*
+ * This is a heap augmented with a small array.  We store values and signed
+ * counts, where all counts for the same value are summed.  An easy way to
+ * do this in Perl/Python is a hash.  In plain C, I don't believe this is the
+ * best solution.  A heap can be implemented both easily and very efficiently
+ * (using a linear array), and as we pull items off the heap we can combine
+ * all similar values.
+ *
+ * Below some threshold value ('small_limit') the items become dense.  That is,
+ * not only are the values small but we have many items in that range.  Hence
+ * the small array augmentation.  All values below the threshold are just put
+ * directly into an array.  This not only handles them a little faster but
+ * helps reduce the heap size a bit, as we don't put any repeated values in
+ * the heap for the small items.  Since they're dense in this range, we can
+ * do a linear scan to find the next non-zero count.
+ *
+ * An ideal data structure for our purpose would coalesce values on insertion,
+ * and would allow operating in place (so we could retrieve all our items and
+ * add new items as we go, without them appearing on this scan).  The former
+ * is possible using an ordered list or a balanced tree.  I don't know how we
+ * would achieve the latter.  The point being that we're pulling items off of
+ * h1 and adding it (plus possibly a new item) to h2, so ideally we'd manage
+ * to use that space freed up by h1.
+ */
 
-/* heap of values and counts, stored by value */
 typedef struct {
   UV v;
   IV c;
 } vc_t;
 
 typedef struct {
-  vc_t* array;
-  UV    array_size;
-  UV    N;
-  UV    small_limit;
-  IV*   small_array;
-  UV    Nsmall;
-  int   ptr_small;
+  UV    small_limit;    /* small count array: size */
+  UV    small_N;        /* small count array: number of non-zero elements */
+  int   small_ptr;      /* small count array: index of largest non-zero value */
+  UV    array_size;     /* heap: allocated size in elements */
+  UV    N;              /* heap: number of elements */
+  IV*   small_array;    /* small count array data */
+  vc_t* array;          /* heap data */
 } heap_t;
 
-static void heap_insert(heap_t* h, vc_t v)
+static void heap_insert(heap_t* h, UV val, IV count)
 {
-  UV k;
-  UV val = v.v;
-  if (v.c == 0)
-    return;
   if (val < h->small_limit) {
-    if (h->small_array[val] == 0) ++(h->Nsmall);
-    h->small_array[val] += v.c;
-    if (h->small_array[val] == 0) --(h->Nsmall);
-    else if (h->ptr_small < (int)val) h->ptr_small = (int) val;
-// printf("small array insert %lu count %ld, coalesce to %ld, Nsmall = %lu, ptr %d\n", v.v, v.c, h->small_array[val], h->Nsmall, h->ptr_small);
+    IV* saptr = h->small_array + val;
+    if (*saptr == 0)
+      ++(h->small_N);
+    *saptr += count;
+    if (*saptr == 0)
+      --(h->small_N);
+    else if (h->small_ptr < (int)val)
+      h->small_ptr = (int) val;
     return;
   }
   UV n = ++(h->N);
   vc_t* a = h->array;
   if (n >= h->array_size) {
-    UV new_size = (h->array_size == 0) ? 20000 : 1.5 * h->array_size;
-    if (verbose>2) printf("REALLOCing %p, new size %lu\n", h->array, new_size);
-    h->array = realloc( h->array, new_size * sizeof(vc_t) );
+    UV new_size = (h->array_size == 0)
+                  ? (h->small_limit <= (20000/2)) ? 20000 : 2*h->small_limit
+                  : 1.5 * h->array_size;
+    if (verbose>2) printf("REALLOCing heap %p, new size %lu\n", h->array, new_size);
+    h->array = Renew( h->array, new_size, vc_t );
     if (h->array == 0)
       croak("could not allocate heap\n");
     a = h->array;
     h->array_size = new_size-1;
     a[0].v = UV_MAX;  a[0].c = 0;
   }
-  a[n] = v;
-  k = n;
-  while (a[k/2].v <= v.v) {  /* upheap */
-    a[k] = a[k/2];
-    k /= 2;
+  while (a[n/2].v <= val) {  /* upheap */
+    a[n] = a[n/2];
+    n /= 2;
   }
-  a[k] = v;
+  a[n].v = val;
+  a[n].c = count;
 }
-
-static vc_t heap_remove(heap_t* h)
+static void heap_remove(heap_t* h, UV* val, IV* count)
 {
-  UV k;
-  UV n = h->N;
-  vc_t* a = h->array;
-  vc_t v, top;
-  if (n == 0)
-    croak("removing from empty heap\n");
-  top = a[1];
-  v = a[1] = a[n];
-  n = --(h->N);                     /* downheap */
-  k = 1;
-  while (k <= n/2) {
-    UV j = k+k;
-    if (j < n && a[j].v < a[j+1].v)  j++;
-    if (v.v >= a[j].v) break;
-    a[k] = a[j];
-    k = j;
-  }
-  a[k] = v;
-  return top;
-}
-static vc_t heap_remove_coalesce(heap_t* h)
-{
-  vc_t v;
   if (h->N == 0) {
-    int i;
-    if (h->Nsmall == 0) croak("remove from empty heap\n");
-    for (i = h->ptr_small; i >= 0; i--) {
-      if (h->small_array[i] != 0) {
-        v.v = (UV) i;
-        v.c = h->small_array[i];
-        h->small_array[i] = 0;
-        h->ptr_small = i-1;
-        --(h->Nsmall);
- //printf("small array returning %lu count %ld\n", v.v, v.c);
-        return v;
+    if (h->small_N == 0) croak("remove from empty heap\n");
+    /* Search small_array for a non-zero count from small_ptr down */
+    IV* saptr = h->small_array + h->small_ptr;
+    while (!*saptr)
+      saptr--;
+    if (saptr < h->small_array) croak("walked off small array\n");
+    *val = (saptr - h->small_array);
+    *count = *saptr;
+    *saptr = 0;
+    h->small_ptr = *val-1;
+    --(h->small_N);
+    return;
+  } else {
+    vc_t* a = h->array;
+    UV ival, k, n = h->N;
+    *val = a[1].v;
+    *count = 0;
+    do {
+      *count += a[1].c;
+      /* remove top element */
+      ival = a[n--].v;
+      k = 1;
+      while (k <= n/2) {
+        UV j = k+k;
+        if (j < n && a[j].v < a[j+1].v)  j++;
+        if (ival >= a[j].v) break;
+        a[k] = a[j];
+        k = j;
       }
-    }
-    croak("walked off small array\n");
+      a[k] = a[n+1];
+    } while (n > 0 && a[1].v == *val);
+    h->N = n;
   }
-  v = heap_remove(h);
-  /* get rest of entries with same value */
-  while (h->N > 0 && h->array[1].v == v.v) {
-    v.c += h->array[1].c;
-    (void) heap_remove(h);
-  }
-  return v;
 }
 static heap_t heap_create(UV small_size)
 {
   heap_t h;
   h.array = 0;
   h.array_size = 0;
-  h.N = 0;
   h.small_limit = small_size;
   h.small_array = 0;
   if (small_size > 0) {
     if (verbose>1)printf("creating small array of size %lu\n", small_size);
-    h.small_array = (IV*) calloc( small_size, sizeof(IV) );
+    Newz(0, h.small_array, small_size, IV);
   }
-  h.Nsmall = 0;
-  h.ptr_small = -1;
+  h.N = 0;
+  h.small_N = 0;
+  h.small_ptr = -1;
   return h;
 }
 static void heap_destroy(heap_t* h)
 {
   if (h->array != 0) {
-    if (verbose > 2) printf("FREE %p\n", h->array);
-    free(h->array);
+    if (verbose > 2) printf("FREE heap %p\n", h->array);
+    Safefree(h->array);
   }
   h->array = 0;
   h->array_size = 0;
   h->N = 0;
-  if (h->small_array != 0) {
-    free(h->small_array);
-  }
+  if (h->small_array != 0)
+    Safefree(h->small_array);
   h->small_array = 0;
-  h->Nsmall = 0;
-  h->ptr_small = -1;
+  h->small_N = 0;
+  h->small_ptr = -1;
 }
-static void heap_empty(heap_t* h)
-{
-  h->N = 0;
-  h->Nsmall = 0;
-  h->ptr_small = -1;
-  if (h->small_limit > 0)
-    memset(h->small_array, 0, h->small_limit * sizeof(IV));
-}
-
-#define heap_not_empty(h) ((h).N > 0 || (h).Nsmall > 0)
+#define heap_not_empty(h)  ((h).N > 0 || (h).small_N > 0)
 
 /******************************************************************************/
 
 
 
 /*
- * The main phi(x,a) algorithm.  In this implementation, it takes about 25%
- * of the total time for the Lehmer algorithm, but it is by far the most memory
- * consuming section.
+ * The main phi(x,a) algorithm.  In this implementation, it takes about 15%
+ * of the total time for the Lehmer algorithm, but it is by far the most
+ * memory consuming part.
  */
 
 static UV phi(UV x, UV a, UV* primes)
 {
-  UV i;
-  IV  sum = 0;
-  UV  primea = primes ? primes[a+1] : _XS_nth_prime(a+1);
+  UV i, val;
+  IV count, sum = 0;
+  UV primea = primes ? primes[a+1] : _XS_nth_prime(a+1);
   if (x < primea)  return (x > 0) ? 1 : 0;
   if (a == 1)      return ((x+1)/2);
   if (a <= 7)      return mapes(x, a);
 
   primea = primes ? primes[a] : _XS_prev_prime(primea);
 
-  heap_t h1 = heap_create(20 * x/primea/primea/primea);
-  heap_t h2 = heap_create(20 * x/primea/primea/primea);
-  vc_t v;
+  heap_t h1 = heap_create(a * 1000);
+  heap_t h2 = heap_create(a * 1000);
 
-  v.v = x;  v.c = 1;
-  heap_insert(&h1, v);
-  while (a > 6) {
-    heap_empty(&h2);
+  heap_insert(&h1, x, 1);
+
+  while (a > 7) {
+    if (heap_not_empty(h2)) croak("h2 heap isn't empty.");
     while ( heap_not_empty(h1) ) {
       UV sval;
-      v = heap_remove_coalesce(&h1);
-      if (v.c == 0)
+      heap_remove(&h1, &val, &count);
+      if (count == 0)
         continue;
-      heap_insert(&h2, v);
-      sval = v.v / primea;
+      heap_insert(&h2, val, count);
+      sval = val / primea;
       if (sval >= primea) {
-        v.v = sval;
-        v.c = -v.c;
-        heap_insert(&h2, v);
+        heap_insert(&h2, sval, -count);
       } else {
-        sum -= v.c;
+        sum -= count;
       }
     }
     { heap_t t = h1; h1 = h2; h2 = t; }
@@ -285,13 +300,14 @@ static UV phi(UV x, UV a, UV* primes)
     primea = primes ? primes[a] : _XS_prev_prime(primea);
   }
   heap_destroy(&h2);
+  if (a != 7) croak("final loop is set for a=7, a = %lu\n", a);
   while ( heap_not_empty(h1) ) {
-    v = heap_remove_coalesce(&h1);
-    if (v.c != 0)
-      sum += v.c * mapes(v.v, a);  /* This could be faster */
+    heap_remove(&h1, &val, &count);
+    if (count != 0)
+      sum += count * mapes7(val);
   }
   heap_destroy(&h1);
-  return sum;
+  return (UV) sum;
 }
 
 
@@ -335,7 +351,7 @@ UV _XS_lehmer_pi(UV n)
       release_prime_cache(sieve);
       croak("Could not generate sieve for %"UVuf, z);
     }
-    primea = (UV*) malloc( (b+4) * sizeof(UV) );
+    New(0, primea, b+4, UV);
     if (primea == 0)
       croak("Can not allocate small primes\n");
     primea[0] = 0;
@@ -364,7 +380,7 @@ UV _XS_lehmer_pi(UV n)
   TIMING_START;
   { /* Generate primecounts up to z used by stage 4. */
     UV count = 0;
-    pca = (UV*) malloc( (z+4) * sizeof(UV) );
+    New(0, pca, z+4, UV);
     if (pca == 0)
       croak("Can not allocate small prime counts\n");
     for (i = 0; i <= z && count+1 <= b; i++) {
@@ -409,8 +425,8 @@ printf("precalculated counts to %lu\n", z);
   }
   TIMING_END_PRINT("stage 4")
   if (pca != 0)
-    free(pca);
+    Safefree(pca);
   if (primea != 0)
-    free(primea);
+    Safefree(primea);
   return sum;
 }
