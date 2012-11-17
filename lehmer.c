@@ -34,17 +34,17 @@
  *
  * Calculating pi(10^11) is done in under 1 second on my computer.  pi(10^14)
  * takes under 1 minute, pi(10^16) in a half hour.  Compared with Thomas
- * R. Nicely's pix4 program, this one is 3-4x faster and uses 2-3x less memory.
+ * R. Nicely's pix4 program, this one is 3-5x faster and uses 2-3x less memory.
  *
  *    n     phi(x,a) mem/time  |  stage 4 mem/time  | total time
- *   10^17   5094MB    870.07   |   2688MB 11328.6    | 203m 20.0s
- *   10^16   1483MB    168.19   |   945MB   1489.2    |  27m 35.5s
- *   10^15    448MB     31.26   |   392MB    226.1    |   4m 17.1s
- *   10^14               5.519  |   217MB     38.36   |    43.76s
- *   10^13               0.950  |   162MB      7.025  |     7.993s
- *   10^12               0.174  |              1.363  |     1.574s
- *   10^11               0.034  |              0.278  |     0.346s
- *   10^10               0.007  |              0.058  |     0.103s
+ *   10^17   4953MB    871.14   |   2988MB  9911.9    | 179m 37.5s
+ *   10^16   1436MB    168.02   |   901MB   1195.7    |  22m 45.6s
+ *   10^15    432MB     31.34   |   394MB    165.6    |   3m 17.5s
+ *   10^14    203MB      5.509  |   223MB     25.96   |    31.69s
+ *   10^13               0.949  |   165MB      4.284  |     5.336s
+ *   10^12               0.174  |              0.755  |     0.990s
+ *   10^11               0.034  |              0.138  |     0.213s
+ *   10^10               0.007  |              0.025  |     0.064s
  *
  * Reference: Hans Riesel, "Prime Numbers and Computer Methods for
  * Factorization", 2nd edition, 1994.
@@ -152,6 +152,8 @@ typedef struct {
 
 static void heap_insert(heap_t* h, UV val, IV count)
 {
+  UV n;
+  vc_t* a;
   if (val < h->small_limit) {
     IV* saptr = h->small_array + val;
     if (*saptr == 0)
@@ -163,16 +165,20 @@ static void heap_insert(heap_t* h, UV val, IV count)
       h->small_ptr = (int) val;
     return;
   }
-  UV n = ++(h->N);
-  vc_t* a = h->array;
+  n = ++(h->N);
+  a = h->array;
   if (n >= h->array_size) {
-    UV new_size = (h->array_size == 0)
-                  ? (h->small_limit <= (20000/2)) ? 20000 : 2*h->small_limit
-                  : 1.5 * h->array_size;
-    if (verbose>2) printf("REALLOCing heap %p, new size %lu\n", h->array, new_size);
-    h->array = Renew( h->array, new_size, vc_t );
-    if (h->array == 0)
-      croak("could not allocate heap\n");
+    UV new_size;
+    if (h->array_size == 0) {
+      new_size = (h->small_limit <= (20000/2)) ? 20000 : 2*h->small_limit;
+      if (verbose>2) printf("ALLOCing heap, size %lu\n", new_size);
+      New(0, h->array, new_size, vc_t);
+    } else {
+      new_size = 1.5 * h->array_size;
+      if (verbose>2) printf("REALLOCing heap %p, new size %lu\n", h->array, new_size);
+      Renew( h->array, new_size, vc_t );
+    }
+    if (h->array == 0) croak("could not allocate heap\n");
     a = h->array;
     h->array_size = new_size-1;
     a[0].v = UV_MAX;  a[0].c = 0;
@@ -187,9 +193,9 @@ static void heap_insert(heap_t* h, UV val, IV count)
 static void heap_remove(heap_t* h, UV* val, IV* count)
 {
   if (h->N == 0) {
-    if (h->small_N == 0) croak("remove from empty heap\n");
     /* Search small_array for a non-zero count from small_ptr down */
     IV* saptr = h->small_array + h->small_ptr;
+    if (h->small_N == 0) croak("remove from empty heap\n");
     while (!*saptr)
       saptr--;
     if (saptr < h->small_array) croak("walked off small array\n");
@@ -264,9 +270,10 @@ static void heap_destroy(heap_t* h)
  * memory consuming part.
  */
 
-static UV phi(UV x, UV a, UV* primes)
+static UV phi(UV x, UV a, UV const* const primes)
 {
-  UV i, val;
+  heap_t h1, h2;
+  UV val;
   IV count, sum = 0;
   UV primea = primes ? primes[a+1] : _XS_nth_prime(a+1);
   if (x < primea)  return (x > 0) ? 1 : 0;
@@ -275,8 +282,8 @@ static UV phi(UV x, UV a, UV* primes)
 
   primea = primes ? primes[a] : _XS_prev_prime(primea);
 
-  heap_t h1 = heap_create(a * 1000);
-  heap_t h2 = heap_create(a * 1000);
+  h1 = heap_create(a * 1000);
+  h2 = heap_create(a * 1000);
 
   heap_insert(&h1, x, 1);
 
@@ -311,26 +318,82 @@ static UV phi(UV x, UV a, UV* primes)
 }
 
 
+static UV* generate_small_primes(UV *n)
+{
+  const unsigned char* sieve;
+  UV* primea;
+  UV  nth_prime;
+  UV  i;
+
+  /* Dusart 1999 bound */
+  nth_prime = (*n <= 10) ? 29 : *n * ( log(*n) + log(log(*n)) ) + 1;
+
+  if (get_prime_cache(nth_prime, &sieve) < nth_prime) {
+    release_prime_cache(sieve);
+    croak("Could not generate sieve for %"UVuf, nth_prime);
+  }
+  New(0, primea, *n+4, UV);
+  if (primea == 0)
+    croak("Can not allocate small primes\n");
+  primea[0] = 0; primea[1] = 2; primea[2] = 3; primea[3] = 5;
+  i = 3;
+  START_DO_FOR_EACH_SIEVE_PRIME( sieve, 7, nth_prime ) {
+    if (i >= *n) break;
+    primea[++i] = p;
+  } END_DO_FOR_EACH_SIEVE_PRIME
+  release_prime_cache(sieve);
+  if (i < *n)
+    croak("Did not generate enough small primes.\n");
+  if (verbose > 1) printf("generated %lu small primes, from 2 to %lu\n", i, primea[i]);
+  return primea;
+}
+
+/* Given an array of primes[1..lastprime], return Pi(n) where n <= lastprime.
+ * This is actually quite fast, and definitely faster than sieving.  By using
+ * this we can avoid caching prime counts and also skip most calls to the
+ * segment siever.
+ */
+static UV bs_prime_count(UV n, UV const* const primes, UV lastprime)
+{
+  UV i, j;
+  if (n < 2)  return 0;
+  /* if (n > primes[lastprime])  return _XS_prime_count(2, n); */
+  if (n > primes[lastprime])
+    croak("called bspc(%lu) with counts up to %lu\n", n, primes[lastprime]);
+  i = 1;
+  j = lastprime;
+  while (i < j) {
+    UV mid = (i+j)/2;
+    if (primes[mid] <= n)  i = mid+1;
+    else                   j = mid;
+  }
+  return i-1;
+}
+
+
 /* Legendre's method.  Interesting and a good test for phi(x,a), but Lehmer's
  * method is much faster (Legendre: a = pi(n^.5), Lehmer: a = pi(n^.25)) */
 UV _XS_legendre_pi(UV n)
 {
+  UV a;
   if (n < 30000)
     return _XS_prime_count(2, n);
 
-  UV a = _XS_legendre_pi(sqrt(n));
+  a = _XS_legendre_pi(sqrt(n));
   prime_precalc(a);
   return phi(n, a, 0) + a - 1;
 }
 
-/* Lehmer's method.  See Riesel for basic program. */
+/* Lehmer's method.  This is basically Riesel's Lehmer function (page 22),
+ * with some additional code to help optimize it.
+ */
 
 UV _XS_lehmer_pi(UV n)
 {
-  DECLARE_TIMING_VARIABLES;
-  UV z, a, b, c, sum, i, j, lastw, lastwpc;
+  UV z, a, b, c, sum, i, j, lastprimea, lastpc, lastw, lastwpc;
   UV* primea = 0;   /* small prime cache, first b=pi(z)=pi(sqrt(n)) primes */
-  UV* pca = 0;      /* small prime count cache, first z=sqrt(n) numbers */
+  DECLARE_TIMING_VARIABLES;
+
   if (n < 1000000)
     return _XS_prime_count(2, n);
 
@@ -343,68 +406,37 @@ UV _XS_lehmer_pi(UV n)
   TIMING_END_PRINT("stage 1")
 
 
-  if (verbose > 0) printf("lehmer %lu stage 2: %lu small primes, %lu counts\n", n, b, z);
+  /* We're going to sieve for small primes twice, in the interest of saving
+   * memory.  For phi(x,a), get just as many as are needed (a+1) because it
+   * is our memory bottleneck.  Then sieve for more afterwards. */
+  if (verbose > 0) printf("lehmer %lu stage 2: phi(x,a) (z=%lu a=%lu b=%lu c=%lu)\n", n, z, a, b, c);
   TIMING_START;
-  { /* Calculate the first b primes */
-    const unsigned char* sieve;
-    if (get_prime_cache(z, &sieve) < z) {
-      release_prime_cache(sieve);
-      croak("Could not generate sieve for %"UVuf, z);
-    }
-    New(0, primea, b+4, UV);
-    if (primea == 0)
-      croak("Can not allocate small primes\n");
-    primea[0] = 0;
-    primea[1] = 2;
-    primea[2] = 3;
-    primea[3] = 5;
-    i = 3;
-    START_DO_FOR_EACH_SIEVE_PRIME( sieve, 7, z ) {
-      if (i > b) break;
-      primea[++i] = p;
-    } END_DO_FOR_EACH_SIEVE_PRIME
-    release_prime_cache(sieve);
-    if (i < b)
-      croak("Did not generate enough small primes.  Bug in Lehmer code.\n");
-    if (verbose > 1) printf("generated first %lu small primes, from 2 to %lu\n", i, z);
-  }
-  TIMING_END_PRINT("small primes")
+  lastprimea = a+1;
+  primea = generate_small_primes(&lastprimea);
+  if (primea == 0 || lastprimea < a+1) croak("Error generating primes.\n");
 
-
-  if (verbose > 0) printf("lehmer %lu stage 3: phi(x,a) (z=%lu a=%lu b=%lu c=%lu)\n", n, z, a, b, c);
-  TIMING_START;
   sum = phi(n, a, primea) + ( (b+a-2) * (b-a+1) / 2);
+
+  Safefree(primea);
   TIMING_END_PRINT("phi(x,a)")
 
 
+  /* Sieve to get small primes.  Get more than the minimum needed (b) to allow
+   * fast prime counts.  Using a higher value here will mean more memory but
+   * faster operation.  A lower value saves memory at the expense of more
+   * segment sieving.*/
+  lastprimea = b*16;
+  if (verbose > 0) printf("lehmer %lu stage 3: %lu small primes\n", n, lastprimea);
   TIMING_START;
-  { /* Generate primecounts up to z used by stage 4. */
-    UV count = 0;
-    New(0, pca, z+4, UV);
-    if (pca == 0)
-      croak("Can not allocate small prime counts\n");
-    for (i = 0; i <= z && count+1 <= b; i++) {
-      if (i >= primea[count+1])
-        count++;
-      pca[i] = count;
-    }
-    if (verbose > 1) printf("generated first %lu prime counts, from 2 to %lu\n", count, z);
-  }
- TIMING_END_PRINT("prime counts")
-printf("precalculated counts to %lu\n", z);
+  primea = generate_small_primes(&lastprimea);
+  if (primea == 0 || lastprimea < b) croak("Error generating primes.\n");
+  lastpc = primea[lastprimea];
+  TIMING_END_PRINT("small primes")
 
-  /* Ensure we have the base sieve for prime_count ( n/primea[i] ). */
+
+  /* Ensure we have the base sieve for big prime_count ( n/primea[i] ). */
   /* This is about 75k for n=10^13, 421k for n=10^15, 2.4M for n=10^17 */
   prime_precalc( sqrt( n / primea[a+1] ) );
-
- /* TODO:
-  *  (1) generate 2b primes instead of b
-  *  (2) generate counts for all 2b primes
-  *  (3) store counts on odd numbers only.
-  *  (4) in loop below, check if we have the result in pca and use it.
-  *  This will cut in half the prime_count calls below, at a little memory
-  *  cost (almost entirely mitigated by change #3)
-  */
 
   if (verbose > 0) printf("lehmer %lu stage 4: loop %lu to %lu, pc to %lu\n", n, a+1, b, n/primea[a+1]);
   TIMING_START;
@@ -413,20 +445,18 @@ printf("precalculated counts to %lu\n", z);
   lastwpc = 0;
   for (i = b; i >= a+1; i--) {
     UV w = n / primea[i];
-    lastwpc += _XS_prime_count(lastw+1, w);
+    lastwpc = (w <= lastpc) ? bs_prime_count(w, primea, lastprimea)
+                            : lastwpc + _XS_prime_count(lastw+1, w);
     lastw = w;
     sum = sum - lastwpc;
     if (i <= c) {
-      UV bi = pca[(UV) (sqrt(w) + 0.5)];
+      UV bi = bs_prime_count( (UV) (sqrt(w) + 0.5), primea, lastprimea );
       for (j = i; j <= bi; j++) {
-        sum = sum - pca[w / primea[j]] + j - 1;
+        sum = sum - bs_prime_count(w / primea[j], primea, lastprimea) + j - 1;
       }
     }
   }
   TIMING_END_PRINT("stage 4")
-  if (pca != 0)
-    Safefree(pca);
-  if (primea != 0)
-    Safefree(primea);
+  Safefree(primea);
   return sum;
 }
