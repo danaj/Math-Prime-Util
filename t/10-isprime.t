@@ -7,6 +7,7 @@ use Math::Prime::Util qw/is_prime/;
 
 my $use64 = Math::Prime::Util::prime_get_config->{'maxbits'} > 32;
 my $extra = defined $ENV{RELEASE_TESTING} && $ENV{RELEASE_TESTING};
+my $broken64 = (18446744073709550592 == ~0);
 
 plan tests => 6 + 19 + 3573 + (5 + 29 + 22 + 23 + 16) + 15 + 27 + 1
               + ($use64 ? 5+1 : 0)
@@ -112,5 +113,8 @@ map { ok(is_prime($_), "Primegap end $_ is prime" ) }
   if $use64 && $extra;
 
 # Check that we do the right thing near the word-size edge
-eval { is_prime( $use64 ? "18446744073709551629" : "4294967306" ); };
-like($@, qr/range/i, "is_prime on ~0 + delta without bigint should croak");
+SKIP: {
+  skip "Skipping 64-bit edge case on broken 64-bit Perl", 1 if $use64 && $broken64;
+  eval { is_prime( $use64 ? "18446744073709551629" : "4294967306" ); };
+  like($@, qr/range/i, "is_prime on ~0 + delta without bigint should croak");
+}
