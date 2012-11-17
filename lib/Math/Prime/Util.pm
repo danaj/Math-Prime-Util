@@ -862,7 +862,7 @@ sub prime_count {
   return 0 if $high < 2  ||  $low > $high;
 
   if ($high <= $_XS_MAXVAL) {
-    if ($high > 15_000_000) {
+    if ($high > 4_000_000) {
       # These estimates need a lot of work.
       #my $est_segment = 10.0 * 1.5**(log($high / 10**16) / log(10))
       #                  + (($high-$low)/10**12);

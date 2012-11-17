@@ -52,7 +52,7 @@
 
 static int const verbose = 0;
 #define DO_TIMING 0
-#ifdef DO_TIMING
+#if DO_TIMING
  #include <sys/time.h>
  #define DECLARE_TIMING_VARIABLES  struct timeval t0, t1;
  #define TIMING_START   gettimeofday(&t0, 0);
