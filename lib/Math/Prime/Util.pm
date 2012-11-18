@@ -16,6 +16,7 @@ our @EXPORT_OK = qw(
                      prime_precalc prime_memfree
                      is_prime is_prob_prime is_provable_prime
                      is_strong_pseudoprime is_strong_lucas_pseudoprime
+                     is_aks_prime
                      miller_rabin
                      primes
                      next_prime  prev_prime
@@ -819,6 +820,19 @@ sub is_prime {
   return is_prob_prime($n);
 }
 
+sub is_aks_prime {
+  my($n) = @_;
+  return 0 if $n <= 0;
+  _validate_positive_integer($n);
+
+  my $max_xs = ($_Config{'maxparam'} > 4294967295) ? 4294967294 : 65534;
+  return _XS_is_aks_prime($n) if $n <= $_XS_MAXVAL && $n <= $max_xs;
+  return Math::Prime::Util::GMP::is_aks_prime($n) if $_HAVE_GMP
+                       && defined &Math::Prime::Util::GMP::is_aks_prime;
+  return Math::Prime::Util::PP::is_aks_prime($n);
+}
+
+
 sub next_prime {
   my($n) = @_;
   _validate_positive_integer($n);
@@ -1017,7 +1031,7 @@ sub is_provable_prime {
   # prove it.  We should do ECPP or APR-CL now, or failing that, do the
   # Brillhart-Lehmer-Selfridge test, or Pocklington-Lehmer.  Until those
   # are written here, we'll do a Lucas test, which is super simple but may
-  # be very slow.  We could do AKS, but that's even slower.
+  # be very slow.  We have AKS code, but it's insanely slow.
   # See http://primes.utm.edu/prove/merged.html or other sources.
 
   # It shouldn't be possible to get here without BigInt already loaded.
@@ -1662,10 +1676,10 @@ base under C<10^14>.
 
 Lehmer's method has complexity approximately C<O(b^0.7) + O(a^0.7)>.  It
 does use more memory however.  A calculation of C<Pi(10^14)> completes in
-under 1 minute, C<Pi(10^15)> in approximately 5 minutes, and C<Pi(10^16)>
-in about 30 minutes, however using nearly 800MB of peak memory for the last.
-In contrast, even primesieve using multiple cores would take over a week
-on this same computer to determine C<Pi(10^16)>.
+under 1 minute, C<Pi(10^15)> in undef 5 minutes, and C<Pi(10^16)> in under
+30 minutes, however using nearly 1400MB of peak memory for the last.
+In contrast, even primesieve using 12 cores would take over a week on this
+same computer to determine C<Pi(10^16)>.
 
 Also see the function L</"prime_count_approx"> which gives a very good
 approximation to the prime count, and L</"prime_count_lower"> and
@@ -1842,6 +1856,21 @@ version uses the BLS (Brillhart-Lehmer-Selfridge) method, requiring C<n-1> to
 be factored to the cube root of C<n>, which is more likely to succeed and will
 usually take less time, but can still fail.  Hence you should always test that
 the result is C<2> to ensure the prime is proven.
+
+
+=head2 is_aks_prime
+
+  say "$n is definitely prime" if is_aks_prime($n);
+
+Takes a positive number as input, and returns 1 if the input passes the
+Agrawal-Kayal-Saxena (AKS) primality test.  This is a deterministic
+unconditional primality test which runs in polynomial time for general input.
+
+This function is only included for completeness and as an example.  While the
+implementation is fast compared to the only other Perl implementation available
+(in L<Math::Primality>), it is slow compared to others.  However, even
+optimized AKS implementations are far slower than ECPP or other modern
+primality tests.
 
 
 =head2 moebius
@@ -2293,7 +2322,9 @@ Perl threads.
 =head1 PERFORMANCE
 
 Counting the primes to C<10^10> (10 billion), with time in seconds.
-Pi(10^10) = 455,052,511.
+Pi(10^10) = 455,052,511.  Note that the Lehmer prime counting method in
+Math::Prime::Util version 0.12 takes 0.064 seconds to do this -- the numbers
+below are all for doing it the long way (sieving).
 
    External C programs in C / C++:
 

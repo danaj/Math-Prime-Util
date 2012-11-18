@@ -3,13 +3,13 @@ use strict;
 use warnings;
 
 use Test::More;
-use Math::Prime::Util qw/is_prime/;
+use Math::Prime::Util qw/is_prime is_aks_prime/;
 
 my $use64 = Math::Prime::Util::prime_get_config->{'maxbits'} > 32;
 my $extra = defined $ENV{RELEASE_TESTING} && $ENV{RELEASE_TESTING};
 my $broken64 = (18446744073709550592 == ~0);
 
-plan tests => 6 + 19 + 3573 + (5 + 29 + 22 + 23 + 16) + 15 + 27 + 1
+plan tests => 6 + 19 + 3573 + (5 + 29 + 22 + 23 + 16) + 15 + 27 + 1 + 3
               + ($use64 ? 5+1 : 0)
               + ($extra ? 6 : 0)
               + (($extra && $use64) ? 19 : 0);
@@ -118,3 +118,10 @@ SKIP: {
   eval { is_prime( $use64 ? "18446744073709551629" : "4294967306" ); };
   like($@, qr/range/i, "is_prime on ~0 + delta without bigint should croak");
 }
+
+# Simple AKS
+is( is_aks_prime(877), 1, "is_aks_prime(877) is true" );
+# The first number that makes it past the sqrt test to actually run.
+is( is_aks_prime(69197), 1, "is_aks_prime(69197) is true" );
+# A composite
+is( is_aks_prime(1262952907), 0, "is_aks_prime(1262952907) is false" );

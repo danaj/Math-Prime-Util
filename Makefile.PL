@@ -9,6 +9,7 @@ WriteMakefile1(
 
     OBJECT       => 'cache.o '  .
                     'factor.o ' .
+                    'aks.o '    .
                     'lehmer.o ' .
                     'sieve.o '  .
                     'util.o '   .

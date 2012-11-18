@@ -9,6 +9,7 @@
 #include "util.h"
 #include "factor.h"
 #include "lehmer.h"
+#include "aks.h"
 
 MODULE = Math::Prime::Util	PACKAGE = Math::Prime::Util
 
@@ -48,6 +49,9 @@ _XS_nth_prime(IN UV n)
 
 int
 _XS_is_prime(IN UV n)
+
+int
+_XS_is_aks_prime(IN UV n)
 
 UV
 _XS_next_prime(IN UV n)

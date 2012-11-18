@@ -23,8 +23,6 @@
 
 - tests for primorial
 
-- document prime_set_config
-
 - Test all routines for numbers on word-size boundary, or ranges that cross.
 
 - Test all functions return either native or bigints.  Functions that return
@@ -32,4 +30,6 @@
 
 - Make proper pminus1 in PP code, like factor.c.
 
-- Add Lehmer prime count function for large values.
+- Add Lehmer in PP (I have a version, just needs some polishing).
+
+- Move AKS tests into their own test, and add some provable prime tests.

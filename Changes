@@ -1,6 +1,6 @@
 Revision history for Perl extension Math::Prime::Util.
 
-0.12  12 November 2012
+0.12  17 November 2012
 
     - Add bin/primes.pl and bin/factor.pl
 
@@ -10,6 +10,7 @@ Revision history for Perl extension Math::Prime::Util.
            prime_set_config        set config options
            RiemannZeta             export and make accurate for small reals
            is_provable_prime       prove primes after BPSW
+           is_aks_prime            prove prime via AKS
 
     - Add 'assume_rh' configuration option (default: false) which can be set
       to allow functions to assume the Riemann Hypothesis.
@@ -30,7 +31,8 @@ Revision history for Perl extension Math::Prime::Util.
 
     - bug fix for prime_count on edge of cache.
 
-    - Add Lehmer prime counting algorithm.  This is much faster than sieving.
+    - prime_count will use Lehmer prime counting algorithm for largish
+      sizes (above 4 million).  This is MUCH faster than sieving.
 
 0.11  23 July 2012
     - Turn off threading tests on Cygwin, as threads on some Cygwin platforms

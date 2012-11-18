@@ -186,7 +186,7 @@ int sieve_segment(unsigned char* mem, UV startd, UV endd)
 
   MPUassert( (mem != 0) && (endd >= startd) && (endp >= startp),
              "sieve_segment bad arguments");
-  
+
   /* Fill buffer with marked 7, 11, and 13 */
   sieve_prefill(mem, startd, endd);
 

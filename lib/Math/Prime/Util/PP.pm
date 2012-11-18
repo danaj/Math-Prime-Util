@@ -533,6 +533,36 @@ sub _gcd_ui {
   $x;
 }
 
+sub _is_perfect_power {
+  my $n = shift;
+  my $log2n = _log2($n);
+  $n = Math::BigInt->new("$n") unless ref($n) eq 'Math::BigInt';
+  for my $e (@{primes($log2n)}) {
+    return 1 if $n->copy()->broot($e)->bpow($e) == $n;
+  }
+  0;
+}
+
+sub _order {
+  my($r, $n, $lim) = @_;
+  $lim = $r unless defined $lim;
+
+  return 1 if ($n % $r) == 1;
+  for (my $j = 2; $j <= $lim; $j++) {
+    return $j if _powmod($n, $j, $r) == 1;
+  }
+  return $lim+1;
+}
+
+# same result as:  int($n->blog(2)->floor->bstr)
+sub _log2 {
+  my $n = shift;
+  my $log2n = 0;
+  $log2n++ while ($n >>= 1);
+  $log2n;
+}
+
+
 
 sub miller_rabin {
   my($n, @bases) = @_;
@@ -780,6 +810,126 @@ sub is_strong_lucas_pseudoprime {
     }
   }
   return 0;
+}
+
+
+my $_poly_bignum;
+sub _poly_new {
+  my @poly;
+  if ($_poly_bignum) {
+    foreach my $c (@_) {
+      push @poly, (ref $c eq 'Math::BigInt') ? $c->copy : Math::BigInt->new("$c");
+    }
+  } else {
+    push @poly, $_ for (@_);
+    push @poly, 0 unless scalar @poly;
+  }
+  return \@poly;
+}
+
+sub _poly_print {
+  my($poly) = @_;
+  warn "poly has null top degree" if $#$poly > 0 && !$poly->[-1];
+  foreach my $d (reverse 1 .. $#$poly) {
+    my $coef = $poly->[$d];
+    print "", ($coef != 1) ? $coef : "", ($d > 1) ? "x^$d" : "x", " + "
+      if $coef;
+  }
+  my $p0 = $poly->[0] || 0;
+  print "$p0\n";
+}
+
+sub _poly_mod_mul {
+  my($px, $py, $r, $n) = @_;
+
+  my $px_degree = $#$px;
+  my $py_degree = $#$py;
+  my @res;
+
+  # convolve(px, py) mod (X^r-1,n)
+  my @indices_y = grep { $py->[$_] } (0 .. $py_degree);
+  for (my $ix = 0; $ix <= $px_degree; $ix++) {
+    my $px_at_ix = $px->[$ix];
+    next unless $px_at_ix;
+    foreach my $iy (@indices_y) {
+      my $py_at_iy = $py->[$iy];
+      my $rindex = ($ix + $iy) % $r;  # reduce mod X^r-1
+      if (!defined $res[$rindex]) {
+        $res[$rindex] = $_poly_bignum ? Math::BigInt->bzero : 0
+      }
+      $res[$rindex] = ($res[$rindex] + ($py_at_iy * $px_at_ix)) % $n;
+    }
+  }
+  # In case we had upper terms go to zero after modulo, reduce the degree.
+  pop @res while !$res[-1];
+  return \@res;
+}
+
+sub _poly_mod_pow {
+  my($pn, $power, $r, $mod) = @_;
+  my $res = _poly_new(1);
+  my $p = $power;
+
+  while ($p) {
+    $res = _poly_mod_mul($res, $pn, $r, $mod) if ($p & 1);
+    $p >>= 1;
+    $pn  = _poly_mod_mul($pn,  $pn, $r, $mod) if $p;
+  }
+  return $res;
+}
+
+sub _test_anr {
+  my($a, $n, $r) = @_;
+  my $pp = _poly_mod_pow(_poly_new($a, 1), $n, $r, $n);
+  $pp->[$n % $r] = (($pp->[$n % $r] || 0) -  1) % $n;  # subtract X^(n%r)
+  $pp->[      0] = (($pp->[      0] || 0) - $a) % $n;  # subtract a
+  return 0 if scalar grep { $_ } @$pp;
+  1;
+}
+
+sub is_aks_prime {
+  my $n = shift;
+  $n = Math::BigInt->new("$n") unless ref($n) eq 'Math::BigInt';
+
+  return 0 if $n < 2;
+  return 0 if _is_perfect_power($n);
+
+  # limit = floor( log2(n) * log2(n) ).  o_r(n) must be larger than this
+  my $sqrtn = int(Math::BigFloat->new($n)->bsqrt->bfloor->bstr);
+  my $log2n = Math::BigFloat->new($n)->blog(2);
+  my $log2_squared_n = $log2n * $log2n;
+  my $limit = int($log2_squared_n->bfloor->bstr);
+
+  my $r = next_prime($limit);
+  foreach my $f (@{primes(0,$r-1)}) {
+    return 1 if $f == $n;
+    return 0 if !($n % $f);
+  }
+
+  while ($r < $n) {
+    return 0 if !($n % $r);
+    #return 1 if $r >= $sqrtn;
+    last if _order($r, $n, $limit) > $limit;
+    $r = next_prime($r);
+  }
+
+  return 1 if $r >= $n;
+
+  # Since r is a prime, phi(r) = r-1
+  my $rlimit = int( Math::BigFloat->new($r)->bsub(1)
+                    ->bsqrt->bmul($log2n)->bfloor->bstr);
+
+  $_poly_bignum = 1;
+  if ( $n < ( (~0 == 4294967295) ? 65535 : 4294967295 ) ) {
+    $_poly_bignum = 0;
+    $n = int($n->bstr) if ref($n) eq 'Math::BigInt';
+  }
+
+  for (my $a = 1; $a <= $rlimit; $a++) {
+    return 0 unless _test_anr($a, $n, $r);
+  }
+
+  return 1;
 }
 
 
@@ -1538,6 +1688,12 @@ Lucas pseudoprime using the Selfridge method of choosing D, P, and Q (some
 sources call this a strong Lucas-Selfridge pseudoprime).  This is one half
 of the BPSW primality test (the Miller-Rabin strong pseudoprime test with
 base 2 being the other half).
+
+=head2 is_aks_prime
+
+Takes a positive number as input, and returns 1 if the input can be proven
+prime using the AKS primality test.  This code is included for completeness
+and as an example, but is impractically slow.
 
 
 =head1 UTILITY FUNCTIONS

@@ -10,6 +10,8 @@ README
 TODO
 XS.xs
 ptypes.h
+aks.h
+aks.c
 cache.h
 cache.c
 factor.h
