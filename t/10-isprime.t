@@ -121,7 +121,10 @@ SKIP: {
 
 # Simple AKS
 is( is_aks_prime(877), 1, "is_aks_prime(877) is true" );
-# The first number that makes it past the sqrt test to actually run.
-is( is_aks_prime(69197), 1, "is_aks_prime(69197) is true" );
-# A composite
-is( is_aks_prime(1262952907), 0, "is_aks_prime(1262952907) is false" );
+SKIP: {
+  skip "Skipping is_aks_prime tests on 32-bit Perl", 2 if !$use64;
+  # The first number that makes it past the sqrt test to actually run.
+  is( is_aks_prime(69197), 1, "is_aks_prime(69197) is true" );
+  # A composite (product of two 5-digit primes)
+  is( is_aks_prime(1262952907), 0, "is_aks_prime(1262952907) is false" );
+}
