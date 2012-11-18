@@ -34,6 +34,10 @@ Revision history for Perl extension Math::Prime::Util.
     - prime_count will use Lehmer prime counting algorithm for largish
       sizes (above 4 million).  This is MUCH faster than sieving.
 
+    - nth_prime now uses the fast Lehmer prime count below the lower limit,
+      then sieves up from there.  This makes a big speed difference for inputs
+      over 10^6 or so -- over 100x faster for 10^9 and up.
+
 0.11  23 July 2012
     - Turn off threading tests on Cygwin, as threads on some Cygwin platforms
       give random panics (my Win7 64-bit works fine, XP 32-bit does not).

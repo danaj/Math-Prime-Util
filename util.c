@@ -31,6 +31,7 @@ extern long double fabsl(long double);
 #include "sieve.h"
 #include "factor.h"
 #include "cache.h"
+#include "lehmer.h"
 
 static const unsigned char byte_zeros[256] =
   {8,7,7,6,7,6,6,5,7,6,6,5,6,5,5,4,7,6,6,5,6,5,5,4,6,5,5,4,5,4,4,3,
@@ -555,20 +556,31 @@ UV _XS_nth_prime(UV n)
   upper_limit = _XS_nth_prime_upper(n);
   MPUassert(upper_limit > 0, "nth_prime got an upper limit of 0");
 
-  /* Get the primary cache, and ensure it is at least this large.  If the
-   * input is small enough, get a sieve covering the range.  Otherwise, we'll
-   * walk segments.  Make sure we have enough primes in the cache so the
-   * segmented siever won't have to keep resieving.
+  /* For relatively small values, generate a sieve and count the results.
+   * For larger values, compute a lower bound, use Lehmer's algorithm to get
+   * a fast prime count, then start segment sieving from there.
    */
-  if (upper_limit <= (1*1024*1024*30))
+  if (upper_limit <= 1*1024*1024*30) {
+    /* Generate a sieve and count. */
     segment_size = get_prime_cache(upper_limit, &cache_sieve) / 30;
-  else
-    segment_size = get_prime_cache(sqrt(upper_limit), &cache_sieve) / 30;
+    /* Count up everything in the cached sieve. */
+    if (segment_size > 0)
+      count += count_segment_maxcount(cache_sieve, segment_size, target, &p);
+    release_prime_cache(cache_sieve);
+  } else {
+    double fn = n;
+    double flogn = log(fn);
+    double flog2n = log(flogn);   /* Dusart 2010, page 2, n >= 3 */
+    UV lower_limit = fn * (flogn + flog2n - 1.0 + ((flog2n-2.10)/flogn));
+    segment_size = lower_limit / 30;
+    lower_limit = 30 * segment_size - 1;
+    count = _XS_lehmer_pi(lower_limit) - 3;
+    MPUassert(count <= target, "Pi(nth_prime_lower(n))) > n");
 
-  /* Count up everything in the cached sieve. */
-  if (segment_size > 0)
-    count += count_segment_maxcount(cache_sieve, segment_size, target, &p);
-  release_prime_cache(cache_sieve);
+    /* Make sure the segment siever won't have to keep resieving. */
+    prime_precalc(sqrt(upper_limit));
+  }
+
   if (count == target)
     return p;
 

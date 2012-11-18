@@ -47,7 +47,7 @@ my %nthprimes64 = (
  100000000000000000 => 4185296581467695669,
 );
 my %nthprimes_small = map { $_ => $nthprimes32{$_} }
-                      grep { ($_ <= 2000000) || $extra }
+                      #grep { ($_ <= 2000000) || $extra }
                       keys %nthprimes32;
 
 my @small_primes = (0, @{primes($nth_small_prime)});

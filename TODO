@@ -33,3 +33,5 @@
 - Add Lehmer in PP (I have a version, just needs some polishing).
 
 - Move AKS tests into their own test, and add some provable prime tests.
+
+- Add a 'verbose' option to general config.
