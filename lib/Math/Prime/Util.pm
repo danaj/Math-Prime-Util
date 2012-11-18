@@ -1551,7 +1551,6 @@ Some of the functions, notably:
   is_strong_pseudoprime
   next_prime
   prev_prime
-  prime_count
   nth_prime
 
 work very fast (under 1 microsecond) on small inputs, but the wrappers for
@@ -1600,7 +1599,7 @@ If you are using bigints, here are some performance suggestions:
 Returns 2 if the number is prime, 0 if not.  For numbers larger than C<2^64>
 it will return 0 for composite and 1 for probably prime, using a strong BPSW
 test.  If L<Math::Prime::Util::GMP> is installed, some quick primality proofs
-are run on larger numbers, so will return 2 for some of those also.
+are run on larger numbers, so will return 2 for many of those also.
 
 Also see the L</"is_prob_prime"> function, which will never do additional
 tests, and the L</"is_provable_prime"> function which will try very hard to
@@ -1725,8 +1724,8 @@ the Schoenfeld (1976) bounds are used for large values.
 Returns an approximation to the C<prime_count> function, without having to
 generate any primes.  The current implementation uses the Riemann R function
 which is quite accurate: an error of less than C<0.0005%> is typical for
-input values over C<2^32>.  A slightly faster (0.1ms vs. 1ms), but much less
-accurate, answer can be obtained by averaging the upper and lower bounds.
+input values over C<2^32>.  A slightly faster (0.1ms vs. 1ms) but much less
+accurate answer can be obtained by averaging the upper and lower bounds.
 
 
 =head2 nth_prime
@@ -1736,12 +1735,19 @@ accurate, answer can be obtained by averaging the upper and lower bounds.
 Returns the prime that lies in index C<n> in the array of prime numbers.  Put
 another way, this returns the smallest C<p> such that C<Pi(p) E<gt>= n>.
 
-This relies on generating primes, so can require a lot of time and space for
-large inputs.  A segmented sieve is used for large inputs, so it is memory
-efficient.  On my machine it will return the 203,280,221st prime (the largest
-that fits in 32-bits) in 2.5 seconds.  The 10^9th prime takes 15 seconds to
-find, while the 10^10th prime takes nearly four minutes.  As with prime_count,
-think carefully about whether a bound or an approximation would be acceptable.
+For relatively small inputs (below 2 million or so), this does a sieve over
+a range containing the nth prime, then counts up to the number.  This is fairly
+efficient in time and memory.  For larger values, the Dusart 2010 bounds are
+calculated, Lehmer's fast prime counting method is used to calculate the
+count up to that point, then sieving is done in the range between the bounds.
+
+While this method is hundreds of times faster than generating primes, and
+doesn't involve big tables of precomputed values, it still can take a fair
+amount of time and space for large inputs.  Calculating the C<10^11th> prime
+takes a bit over 2 seconds, the C<10^12th> prime takes 20 seconds, and the
+C<10^13th> prime (323780508946331) takes 4 minutes.  Think about whether
+a bound or approximation would be acceptable, as they can be computed
+analytically.
 
 If the bigint or bignum module is not in use, this will generate an overflow
 exception if the number requested would result in a prime that cannot fit in
@@ -2123,7 +2129,7 @@ input value, though those are the only cases where the returned factors
 are not prime.
 
 The current algorithm for non-bigints is a sequence of small trial division,
-a few rounds of Pollard's Rho, SQUFOF, Hart's one line factorization, a long
+a few rounds of Pollard's Rho, SQUFOF, Pollard's p-1, Hart's OLF, a long
 run of Pollard's Rho, and finally trial division if anything survives.  This
 process is repeated for each non-prime factor.  In practice, it is very rare
 to require more than the first Rho + SQUFOF to find a factor.
@@ -2195,22 +2201,30 @@ the input, is returned.  This function typically runs very fast.
 
 =head2 pbrent_factor
 
-=head2 pminus1_factor
-
   my @factors = prho_factor($n);
+  my @factors = pbrent_factor($n);
 
   # Use a very small number of rounds
   my @factors = prho_factor($n, 1000);
 
 Produces factors, not necessarily prime, of the positive number input.  An
 optional number of rounds can be given as a second parameter.  These attempt
-to find a single factor using one of the probabilistic algorigthms of
-Pollard Rho, Brent's modification of Pollard Rho, or Pollard's C<p - 1>.
-These are more specialized algorithms usually used for pre-factoring very
-large inputs, or checking very large inputs for naive mistakes.  If the
-input is prime or they run out of rounds, they will return the single
-input value.  On some inputs they will take a very long time, while on
-others they succeed in a remarkably short time.
+to find a single factor using Pollard's Rho algorithm, either the original
+version or Brent's modified version.  These are more specialized algorithms
+usually used for pre-factoring very large inputs, as they are very fast at
+finding small factors.
+
+
+=head2 pminus1_factor
+
+  my @factors = pminus1_factor($n);
+  my @factors = pminus1_factor($n, 1_000);          # set B1 smoothness
+  my @factors = pminus1_factor($n, 1_000, 50_000);  # set B1 and B2
+
+Produces factors, not necessarily prime, of the positive number input.  This
+is Pollard's C<p-1> method, using two stages with default smoothness
+settings of 1_000_000 for B1, and C<10 * B1> for B2.  This method can rapidly
+find a factor C<p> of C<n> where C<p-1> is smooth (it has no large factors).
 
 
 
@@ -2322,9 +2336,9 @@ Perl threads.
 =head1 PERFORMANCE
 
 Counting the primes to C<10^10> (10 billion), with time in seconds.
-Pi(10^10) = 455,052,511.  Note that the Lehmer prime counting method in
-Math::Prime::Util version 0.12 takes 0.064 seconds to do this -- the numbers
-below are all for doing it the long way (sieving).
+Pi(10^10) = 455,052,511.
+The numbers below are for sieving.  Calculating C<Pi(10^10)> takes 0.064
+seconds using the Lehmer algorithm in version 0.12.
 
    External C programs in C / C++:
 
@@ -2351,13 +2365,16 @@ Perl modules, counting the primes to C<800_000_000> (800 million), in seconds:
 
   Time (s)   Module                      Version  Notes
   ---------  --------------------------  -------  -----------
+       0.04  Math::Prime::Util           0.12     using Lehmer's method
        0.36  Math::Prime::Util           0.09     segmented mod-30 sieve
        0.9   Math::Prime::Util           0.01     mod-30 sieve
        2.9   Math::Prime::FastSieve      0.12     decent odd-number sieve
       11.7   Math::Prime::XS             0.29     "" but needs a count API
       15.0   Bit::Vector                 7.2
       59.1   Math::Prime::Util::PP       0.09     Perl (fastest I know of)
+     169.5   Python's mpmath primepi     0.17     Python, 25+GB RAM used
      170.0   Faster Perl sieve (net)     2012-01  array of odds
+     292.2   Python's sympy primepi      0.7.1    Python
      548.1   RosettaCode sieve (net)     2012-06  simplistic Perl
   ~11000     Math::Primality             0.04     Perl + Math::GMPz
   >20000     Math::Big                   1.12     Perl, > 26GB RAM used
@@ -2430,11 +2447,10 @@ in size.  For numbers larger than 32 bits, L<Math::Prime::Util> can be 100x or
 more faster (a number with only very small factors will be nearly identical,
 while a semiprime with large factors will be the extreme end).  L<Math::Pari>'s
 underlying algorithms and code are much more mature than this module, and
-for 20+ digit numbers will be typically be a better choice.
-Small numbers factor much, much faster with Math::Prime::Util.
-Pari passes M::P::U in speed somewhere in the 16 digit range and rapidly
-increases its lead.  Without the L<Math::Prime::Util::GMP> module, almost
-all actions on numbers greater than native scalars will be much faster in Pari.
+for 21+ digit numbers will be a better choice.  Small numbers factor much
+faster with Math::Prime::Util.  For 30+ digit numbers, L<Math::Pari> is much
+faster.  Without the L<Math::Prime::Util::GMP> module, almost all actions on
+numbers greater than native scalars will be much faster in Pari.
 
 The presentation here:
  L<http://math.boisestate.edu/~liljanab/BOISECRYPTFall09/Jacobsen.pdf>
@@ -2457,7 +2473,8 @@ The primality proving algorithms leave much to be desired.  If you have
 numbers larger than C<2^128>, I recommend Pari's C<isprime(n, 2)> which
 will run a fast APRCL test, or
 L<GMP-ECPP|http://http://sourceforge.net/projects/gmp-ecpp/>.  Either one
-will be much, much faster.
+will be much faster than the Lucas or BLS algorithms used in MPU for large
+inputs.
 
 
 =head1 AUTHORS
