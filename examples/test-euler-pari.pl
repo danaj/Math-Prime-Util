@@ -7,8 +7,8 @@ use Math::Prime::Util qw/-nobigint/;
 use Math::Pari;
 
 Math::Prime::Util::prime_precalc(10_000_000);
-my $nlinear = 1000000;
-my $nrandom = shift || 1000000;
+my $nlinear = 100000;
+my $nrandom = shift || 100000;
 my $randmax = ~0;
 
 # Looks like MPU is 4x faster than Pari for 1 .. 1M, 5x faster for 1M - 10_000M.
@@ -27,11 +27,12 @@ foreach my $n (2 .. $nlinear) {
 }
 print " numbers\n";
 print "Testing random numbers from $nlinear to ", $randmax, "\n";
+my $mod = int($nrandom / 80);
 
 while ($nrandom-- > 0) {
   my $n = $nlinear + 1 + int(rand($randmax - $nlinear));
   die "failure for eulerphi($n)" unless Math::Prime::Util::euler_phi($n) == Math::Pari::eulerphi($n);
   die "failure for moebius($n)" unless Math::Prime::Util::moebius($n) == Math::Pari::moebius($n);
-  print "." if ($nrandom % 256) == 0;
+  print "." if ($nrandom % $mod) == 0;
 }
 print "\n";

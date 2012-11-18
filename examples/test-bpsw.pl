@@ -96,10 +96,11 @@ foreach my $r (1 .. int($nrandom/50)) {
 print "\n";
 }
 
-use bigint try => 'GMP';
-my $num_rns = 50;
+my $num_rns = 100;
 my $len_rns = 100;
-my $count = -.1;
+my $count = -1;
+
+use bigint try => 'GMP';
 
 my @rns;  # make the primality tests at least lift a finger.
 while (@rns < $num_rns) {
