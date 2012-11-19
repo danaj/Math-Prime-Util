@@ -46,6 +46,7 @@ examples/test-pcapprox.pl
 examples/sophie_germain.pl
 examples/twin_primes.pl
 examples/find_mr_bases.pl
+examples/parallel_fibprime.pl
 examples/test-bpsw.pl
 examples/test-euler-pari.pl
 examples/test-factor-gnufactor.pl

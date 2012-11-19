@@ -1,5 +1,10 @@
 Revision history for Perl extension Math::Prime::Util.
 
+0.13  19 November 2012
+
+    - Fix an issue with prime count, and make prime count available as a
+      standalone program using primesieve.
+
 0.12  17 November 2012
 
     - Add bin/primes.pl and bin/factor.pl

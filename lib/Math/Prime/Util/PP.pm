@@ -5,7 +5,7 @@ use Carp qw/carp croak confess/;
 
 BEGIN {
   $Math::Prime::Util::PP::AUTHORITY = 'cpan:DANAJ';
-  $Math::Prime::Util::PP::VERSION = '0.12';
+  $Math::Prime::Util::PP::VERSION = '0.13';
 }
 
 # The Pure Perl versions of all the Math::Prime::Util routines.
@@ -757,7 +757,7 @@ sub is_strong_lucas_pseudoprime {
   #   my $d=$m->copy; my $s=0; while ($d->is_even) { $s++; $d->brsft(1); }
   #   die "Invalid $m, $d, $s\n" unless $m == $d * 2**$s;
   my $dstr = substr($m->as_bin, 2);
-  $dstr =~ s/(0*)$//;  
+  $dstr =~ s/(0*)$//;
   my $s = length($1);
 
   my $ZERO = $n->copy->bzero;
@@ -1142,7 +1142,7 @@ sub pbrent_factor {
   my $Xm = 2;
 
   if ( ref($n) eq 'Math::BigInt' ) {
-  
+
     $Xi = $n->copy->bzero->badd($Xi);
     $Xm = $n->copy->bzero->badd($Xm);
     for my $i (1 .. $rounds) {
@@ -1489,7 +1489,7 @@ Math::Prime::Util::PP - Pure Perl version of Math::Prime::Util
 
 =head1 VERSION
 
-Version 0.12
+Version 0.13
 
 
 =head1 SYNOPSIS
@@ -1891,7 +1891,7 @@ Memory use will generally be higher for the PP code, and in some cases B<much>
 higher.  Some of this may be addressed in a later release.
 
 For small values (e.g. primes and prime counts under 10M) most of this will
-not matter.  
+not matter.
 
 
 =head1 SEE ALSO

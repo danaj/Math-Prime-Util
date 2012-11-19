@@ -5,7 +5,7 @@ use Carp qw/croak confess carp/;
 
 BEGIN {
   $Math::Prime::Util::AUTHORITY = 'cpan:DANAJ';
-  $Math::Prime::Util::VERSION = '0.12';
+  $Math::Prime::Util::VERSION = '0.13';
 }
 
 # parent is cleaner, and in the Perl 5.10.1 / 5.12.0 core, but not earlier.
@@ -575,7 +575,7 @@ sub primes {
     } or do {
       croak "Cannot load Math::BigInt and Math::BigFloat";
     };
-    
+
     my $c = Math::BigFloat->new("0.09");  # higher = more trial divisions
     my $r = Math::BigFloat->new("0.5");
     my $m = 24;   # How much randomness we're trying to get at a time
@@ -1046,7 +1046,7 @@ sub is_provable_prime {
     carp "could not prove primality of $n.\n";
     return 1;
   }
- 
+
   for (my $a = 2; $a < $nm1; $a++) {
     my $ap = Math::BigInt->new($a);
     # 1. a^(n-1) = 1 mod n.
@@ -1403,7 +1403,7 @@ Math::Prime::Util - Utilities related to prime numbers, including fast sieves an
 
 =head1 VERSION
 
-Version 0.12
+Version 0.13
 
 
 =head1 SYNOPSIS

@@ -1,14 +1,21 @@
-Math::Prime::Util version 0.12
+Math::Prime::Util version 0.13
 
 A set of utilities related to prime numbers.  These include multiple sieving
 methods, is_prime, prime_count, nth_prime, approximations and bounds for
 the prime_count and nth prime, next_prime and prev_prime, moebius and totient
 functions, integer factoring, and more.
 
-The default sieving and factoring are intended to be the fastest on CPAN,
-including Math::Prime::XS, Math::Prime::FastSieve, Math::Factor::XS,
-Math::Primality, and Math::Prime::TiedArray.  For non-bignums, it is typically
-faster than Math::Pari (and doesn't require Pari to be installed).
+The default sieving and factoring are intended to be the fastest on CPAN.
+Current measurements show it is faster than:
+  Math::Prime::XS
+  Math::Prime::FastSieve
+  Math::Factor::XS
+  Math::Big::Factors
+  Math::Factoring
+  Math::Primality
+  Math::Prime::TiedArray
+For non-bignums, it is typically faster than Math::Pari (and doesn't
+require Pari to be installed).
 
 
 SYNOPSIS
