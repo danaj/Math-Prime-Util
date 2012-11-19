@@ -3,10 +3,7 @@
 #include <string.h>
 #include <math.h>
 
-#include "lehmer.h"
-#include "util.h"
-#include "cache.h"
-#include "sieve.h"
+#define SIEVE_LIMIT  1000000    /* Just sieve if smaller than this */
 
 /*****************************************************************************
  *
@@ -16,13 +13,14 @@
  * This is free software; you can redistribute it and/or modify it under
  * the same terms as the Perl 5 programming language system itself.
  *
- * This file is part of the Math::Prime::Util Perl module.  It relies on two
- * features: (1) a sieve to generate very small primes which could be as
- * simple as a three-line SoE, and (2) _XS_prime_count(low, high) is expected
- * to return the prime count within the segment low to high inclusive.  These
- * are used for the relatively small segments in the final stage, but making
- * it fast is important for the final performance.  The primesieve package is
- * one source of excellent routines for either task.
+ * This file is part of the Math::Prime::Util Perl module, but also can be
+ * compiled as a standalone UNIX program using the primesieve package.
+ *
+ *    g++ -O3 -DPRIMESIEVE_STANDALONE lehmer.c -o prime_count -lprimesieve
+ *
+ * For faster prime counting in stage 4 with multiprocessor machines:
+ *
+ *    g++ -O3 -DPRIMESIEVE_STANDALONE -DPRIMESIEVE_PARALLEL lehmer.c -o prime_count -lprimesieve -lgomp
  *
  * The phi(x,a) calculation is unique, to the best of my knowledge.  It keeps
  * a heap of all x values + signed counts for the given 'a' value, and walks
@@ -35,6 +33,8 @@
  * Calculating pi(10^11) is done in under 1 second on my computer.  pi(10^14)
  * takes under 1 minute, pi(10^16) in a half hour.  Compared with Thomas
  * R. Nicely's pix4 program, this one is 3-5x faster and uses 2-3x less memory.
+ * When compiled with parallel primesieve it is another 2x or more faster:
+ * pix4(10^16) takes 124 minutes, this takes 6 minutes.
  *
  *    n     phi(x,a) mem/time  |  stage 4 mem/time  | total time
  *   10^17   4953MB    871.14   |   2988MB  9911.9    | 179m 37.5s
@@ -46,13 +46,16 @@
  *   10^11               0.034  |              0.138  |     0.213s
  *   10^10               0.007  |              0.025  |     0.064s
  *
+ * These timings are using Perl + MPU.  The standalone version using primesieve
+ * speeds up stage 4 a lot for large values.
+ *
  * Reference: Hans Riesel, "Prime Numbers and Computer Methods for
  * Factorization", 2nd edition, 1994.
  */
 
 static int const verbose = 0;
-#define DO_TIMING 0
-#if DO_TIMING
+
+#ifdef STAGE_TIMING
  #include <sys/time.h>
  #define DECLARE_TIMING_VARIABLES  struct timeval t0, t1;
  #define TIMING_START   gettimeofday(&t0, 0);
@@ -66,6 +69,122 @@ static int const verbose = 0;
  #define TIMING_START
  #define TIMING_END_PRINT(text)
 #endif
+
+
+#ifdef PRIMESIEVE_STANDALONE
+
+#include <limits.h>
+#include <sys/time.h>
+#ifdef PRIMESIEVE_PARALLEL
+ #include <primesieve/soe/ParallelPrimeSieve.h>
+ ParallelPrimeSieve ps;
+#else
+ #include <primesieve/soe/PrimeSieve.h>
+ PrimeSieve ps;
+#endif
+
+/* Translations from Perl + Math::Prime::Util  to  C/C++ + primesieve */
+typedef unsigned long UV;
+typedef   signed long IV;
+#define UV_MAX ULONG_MAX
+#define New(id, mem, size, type)  mem = (type*) malloc((size)*sizeof(type))
+#define Newz(id, mem, size, type) mem = (type*) calloc(size, sizeof(type))
+#define Renew(mem, size, type)    mem = (type*) realloc(mem,(size)*sizeof(type))
+#define Safefree(mem)             free((void*)mem)
+#define _XS_prime_count(a, b)     ps.countPrimes(a, b)
+#define croak(fmt,...)            { printf(fmt,##__VA_ARGS__); exit(1); }
+#define prime_precalc(n)          /* */
+
+/* There has _got_ to be a better way to get an array of small primes using
+ * primesieve.  This is ridiculous. */
+static UV* sieve_array = 0;
+static UV sieve_k;
+static UV sieve_n;
+void primesieve_callback(uint64_t pk)
+  { if (sieve_k <= sieve_n) sieve_array[sieve_k++] = pk; }
+
+/* Generate an array of small primes up to and including n, where the kth
+ * prime is element p[k].  Remember to free when done. */
+static UV* generate_small_primes(UV n)
+{
+  UV* primes;
+  UV nth_prime = (n <= 10) ? 29 : n * ( log(n) + log(log(n)) ) + 1;
+  New(0, primes, n+1, UV);
+  if (primes == 0)
+    croak("Can not allocate small primes\n");
+  primes[0] = 0;
+  sieve_array = primes;
+  sieve_n = n;
+  sieve_k = 1;
+  ps.generatePrimes(2, nth_prime, primesieve_callback);
+  sieve_array = 0;
+  return primes;
+}
+
+#else
+
+#include "lehmer.h"
+#include "util.h"
+#include "cache.h"
+#include "sieve.h"
+
+/* Generate an array of small primes up to and including n, where the kth
+ * prime is element p[k].  Remember to free when done. */
+static UV* generate_small_primes(UV n)
+{
+  const unsigned char* sieve;
+  UV* primes;
+  UV  i, nth_prime;
+
+  /* Dusart 1999 bound */
+  nth_prime = (n <= 10) ? 29 : n * ( log(n) + log(log(n)) ) + 1;
+
+  if (get_prime_cache(nth_prime, &sieve) < nth_prime) {
+    release_prime_cache(sieve);
+    croak("Could not generate sieve for %"UVuf, nth_prime);
+  }
+  New(0, primes, n+1, UV);
+  if (primes == 0)
+    croak("Can not allocate small primes\n");
+  primes[0] = 0; primes[1] = 2; primes[2] = 3; primes[3] = 5;
+  i = 3;
+  START_DO_FOR_EACH_SIEVE_PRIME( sieve, 7, nth_prime ) {
+    if (i >= n) break;
+    primes[++i] = p;
+  } END_DO_FOR_EACH_SIEVE_PRIME
+  release_prime_cache(sieve);
+  if (i < n)
+    croak("Did not generate enough small primes.\n");
+  if (verbose > 1) printf("generated %lu small primes, from 2 to %lu\n", i, primes[i]);
+  return primes;
+}
+
+#endif
+
+/* Given an array of primes[1..lastprime], return Pi(n) where n <= lastprime.
+ * This is actually quite fast, and definitely faster than sieving.  By using
+ * this we can avoid caching prime counts and also skip most calls to the
+ * segment siever.
+ */
+static UV bs_prime_count(UV n, UV const* const primes, UV lastprime)
+{
+  UV i, j;
+  if (n < 2)  return 0;
+  /* if (n > primes[lastprime])  return _XS_prime_count(2, n); */
+  if (n >= primes[lastprime]) {
+    if (n == primes[lastprime]) return lastprime;
+    croak("called bspc(%lu) with counts up to %lu\n", n, primes[lastprime]);
+  }
+  i = 1;
+  j = lastprime;
+  while (i < j) {
+    UV mid = (i+j)/2;
+    if (primes[mid] <= n)  i = mid+1;
+    else                   j = mid;
+  }
+  return i-1;
+}
+
 
 /* Use Mapes' method to calculate phi(x,a) for small a.  This is really
  * convenient and a little Perl script will spit this code out for whatever
@@ -270,24 +389,32 @@ static void heap_destroy(heap_t* h)
  * memory consuming part.
  */
 
-static UV phi(UV x, UV a, UV const* const primes)
+static UV phi(UV x, UV a)
 {
   heap_t h1, h2;
-  UV val;
+  UV val, smallv;
   IV count, sum = 0;
-  UV primea = primes ? primes[a+1] : _XS_nth_prime(a+1);
-  if (x < primea)  return (x > 0) ? 1 : 0;
-  if (a == 1)      return ((x+1)/2);
-  if (a <= 7)      return mapes(x, a);
+  const UV* primes;
 
-  primea = primes ? primes[a] : _XS_prev_prime(primea);
+  if (a == 1)  return ((x+1)/2);
+  if (a <= 7)  return mapes(x, a);
 
-  h1 = heap_create(a * 1000);
-  h2 = heap_create(a * 1000);
+  primes = generate_small_primes(a+1);
+  if (primes == 0)
+    croak("Could not generate primes for phi(%lu,%lu)\n", x, a);
+  if (x < primes[a+1])  { Safefree(primes); return (x > 0) ? 1 : 0; }
 
+  /* This is a hack, trying to guess at a value where the array gets dense */
+  smallv = a * 1000;
+  if (smallv > x / primes[a] / 5)
+    smallv = x / primes[a] / 5;
+
+  h1 = heap_create(smallv);
+  h2 = heap_create(smallv);
   heap_insert(&h1, x, 1);
 
   while (a > 7) {
+    UV primea = primes[a];
     if (heap_not_empty(h2)) croak("h2 heap isn't empty.");
     while ( heap_not_empty(h1) ) {
       UV sval;
@@ -303,8 +430,8 @@ static UV phi(UV x, UV a, UV const* const primes)
       }
     }
     { heap_t t = h1; h1 = h2; h2 = t; }
+    /* printf("a = %lu  heap %lu/%lu + %lu\n", a, h1.small_N, h1.small_limit, h1.N); */
     a--;
-    primea = primes ? primes[a] : _XS_prev_prime(primea);
   }
   heap_destroy(&h2);
   if (a != 7) croak("final loop is set for a=7, a = %lu\n", a);
@@ -314,60 +441,8 @@ static UV phi(UV x, UV a, UV const* const primes)
       sum += count * mapes7(val);
   }
   heap_destroy(&h1);
+  Safefree(primes);
   return (UV) sum;
-}
-
-
-static UV* generate_small_primes(UV *n)
-{
-  const unsigned char* sieve;
-  UV* primea;
-  UV  nth_prime;
-  UV  i;
-
-  /* Dusart 1999 bound */
-  nth_prime = (*n <= 10) ? 29 : *n * ( log(*n) + log(log(*n)) ) + 1;
-
-  if (get_prime_cache(nth_prime, &sieve) < nth_prime) {
-    release_prime_cache(sieve);
-    croak("Could not generate sieve for %"UVuf, nth_prime);
-  }
-  New(0, primea, *n+4, UV);
-  if (primea == 0)
-    croak("Can not allocate small primes\n");
-  primea[0] = 0; primea[1] = 2; primea[2] = 3; primea[3] = 5;
-  i = 3;
-  START_DO_FOR_EACH_SIEVE_PRIME( sieve, 7, nth_prime ) {
-    if (i >= *n) break;
-    primea[++i] = p;
-  } END_DO_FOR_EACH_SIEVE_PRIME
-  release_prime_cache(sieve);
-  if (i < *n)
-    croak("Did not generate enough small primes.\n");
-  if (verbose > 1) printf("generated %lu small primes, from 2 to %lu\n", i, primea[i]);
-  return primea;
-}
-
-/* Given an array of primes[1..lastprime], return Pi(n) where n <= lastprime.
- * This is actually quite fast, and definitely faster than sieving.  By using
- * this we can avoid caching prime counts and also skip most calls to the
- * segment siever.
- */
-static UV bs_prime_count(UV n, UV const* const primes, UV lastprime)
-{
-  UV i, j;
-  if (n < 2)  return 0;
-  /* if (n > primes[lastprime])  return _XS_prime_count(2, n); */
-  if (n > primes[lastprime])
-    croak("called bspc(%lu) with counts up to %lu\n", n, primes[lastprime]);
-  i = 1;
-  j = lastprime;
-  while (i < j) {
-    UV mid = (i+j)/2;
-    if (primes[mid] <= n)  i = mid+1;
-    else                   j = mid;
-  }
-  return i-1;
 }
 
 
@@ -376,48 +451,88 @@ static UV bs_prime_count(UV n, UV const* const primes, UV lastprime)
 UV _XS_legendre_pi(UV n)
 {
   UV a;
-  if (n < 30000)
+  if (n < SIEVE_LIMIT)
     return _XS_prime_count(2, n);
 
-  a = _XS_legendre_pi(sqrt(n));
-  prime_precalc(a);
-  return phi(n, a, 0) + a - 1;
+  a = _XS_legendre_pi(sqrt(n)+0.5);
+
+  return phi(n, a) + a - 1;
 }
 
-/* Lehmer's method.  This is basically Riesel's Lehmer function (page 22),
- * with some additional code to help optimize it.
- */
 
+/* Meissel's method. */
+UV _XS_meissel_pi(UV n)
+{
+  UV a, b, c, sum, i, lastprime, lastpc, lastw, lastwpc;
+  const UV* primes = 0;  /* small prime cache */
+  DECLARE_TIMING_VARIABLES;
+  if (n < SIEVE_LIMIT)
+    return _XS_prime_count(2, n);
+
+  if (verbose > 0) printf("meissel %lu stage 1: calculate a,b,c \n", n);
+  TIMING_START;
+  a = _XS_meissel_pi(pow(n, 1.0/3.0)+0.5);     /* a = floor(n^1/3) */
+  b = _XS_meissel_pi(sqrt(n)+0.5);             /* b = floor(n^1/2) */
+  c = a;                                       /* c = a            */
+  TIMING_END_PRINT("stage 1")
+
+  if (verbose > 0) printf("meissel %lu stage 2: phi(x,a) (a=%lu b=%lu c=%lu)\n", n, a, b, c);
+  TIMING_START;
+  sum = phi(n, a) + ((b+a-2) * (b-a+1) / 2);
+  if (verbose > 0) printf("phi(%lu,%lu) = %lu.  sum = %lu\n", n, a, sum - ((b+a-2) * (b-a+1) / 2), sum);
+  TIMING_END_PRINT("phi(x,a)")
+
+  lastprime = b*16;
+  if (verbose > 0) printf("meissel %lu stage 3: %lu small primes\n", n, lastprime);
+  TIMING_START;
+  primes = generate_small_primes(lastprime);
+  if (primes == 0) croak("Error generating primes.\n");
+  lastpc = primes[lastprime];
+  TIMING_END_PRINT("small primes")
+
+  prime_precalc( sqrt( n / primes[a+1] ) );
+
+  if (verbose > 0) printf("meissel %lu stage 4: loop %lu to %lu, pc to %lu\n", n, a+1, b, n/primes[a+1]);
+  TIMING_START;
+  /* Reverse the i loop so w increases.  Count w in segments. */
+  lastw = 0;
+  lastwpc = 0;
+  for (i = b; i > a; i--) {
+    UV w = n / primes[i];
+    lastwpc = (w <= lastpc) ? bs_prime_count(w, primes, lastprime)
+                            : lastwpc + _XS_prime_count(lastw+1, w);
+    lastw = w;
+    sum = sum - lastwpc;
+  }
+  TIMING_END_PRINT("stage 4")
+  Safefree(primes);
+  return sum;
+}
+
+
+/* Lehmer's method.  This is basically Riesel's Lehmer function (page 22),
+ * with some additional code to help optimize it.  */
 UV _XS_lehmer_pi(UV n)
 {
-  UV z, a, b, c, sum, i, j, lastprimea, lastpc, lastw, lastwpc;
-  UV* primea = 0;   /* small prime cache, first b=pi(z)=pi(sqrt(n)) primes */
+  UV z, a, b, c, sum, i, j, lastprime, lastpc, lastw, lastwpc;
+  const UV* primes = 0; /* small prime cache, first b=pi(z)=pi(sqrt(n)) */
   DECLARE_TIMING_VARIABLES;
 
-  if (n < 1000000)
+  if (n < SIEVE_LIMIT)
     return _XS_prime_count(2, n);
 
   if (verbose > 0) printf("lehmer %lu stage 1: calculate a,b,c \n", n);
   TIMING_START;
   z = sqrt((double)n+0.5);
-  a = _XS_lehmer_pi(sqrt((double)z)+0.5);
-  b = _XS_lehmer_pi(z);
-  c = _XS_lehmer_pi(pow((double)n, 1.0/3.0)+0.5);
+  a = _XS_lehmer_pi(sqrt((double)z)+0.5);          /* a = floor(n^1/4) */
+  b = _XS_lehmer_pi(z);                            /* b = floor(n^1/2) */
+  c = _XS_lehmer_pi(pow((double)n, 1.0/3.0)+0.5);  /* c = floor(n^1/3) */
   TIMING_END_PRINT("stage 1")
 
 
-  /* We're going to sieve for small primes twice, in the interest of saving
-   * memory.  For phi(x,a), get just as many as are needed (a+1) because it
-   * is our memory bottleneck.  Then sieve for more afterwards. */
   if (verbose > 0) printf("lehmer %lu stage 2: phi(x,a) (z=%lu a=%lu b=%lu c=%lu)\n", n, z, a, b, c);
   TIMING_START;
-  lastprimea = a+1;
-  primea = generate_small_primes(&lastprimea);
-  if (primea == 0 || lastprimea < a+1) croak("Error generating primes.\n");
-
-  sum = phi(n, a, primea) + ( (b+a-2) * (b-a+1) / 2);
-
-  Safefree(primea);
+  sum = phi(n, a) + ((b+a-2) * (b-a+1) / 2);
   TIMING_END_PRINT("phi(x,a)")
 
 
@@ -425,38 +540,72 @@ UV _XS_lehmer_pi(UV n)
    * fast prime counts.  Using a higher value here will mean more memory but
    * faster operation.  A lower value saves memory at the expense of more
    * segment sieving.*/
-  lastprimea = b*16;
-  if (verbose > 0) printf("lehmer %lu stage 3: %lu small primes\n", n, lastprimea);
+  lastprime = b*16;
+  if (verbose > 0) printf("lehmer %lu stage 3: %lu small primes\n", n, lastprime);
   TIMING_START;
-  primea = generate_small_primes(&lastprimea);
-  if (primea == 0 || lastprimea < b) croak("Error generating primes.\n");
-  lastpc = primea[lastprimea];
+  primes = generate_small_primes(lastprime);
+  if (primes == 0) croak("Error generating primes.\n");
+  lastpc = primes[lastprime];
   TIMING_END_PRINT("small primes")
 
 
-  /* Ensure we have the base sieve for big prime_count ( n/primea[i] ). */
+  /* Ensure we have the base sieve for big prime_count ( n/primes[i] ). */
   /* This is about 75k for n=10^13, 421k for n=10^15, 2.4M for n=10^17 */
-  prime_precalc( sqrt( n / primea[a+1] ) );
+  prime_precalc( sqrt( n / primes[a+1] ) );
 
-  if (verbose > 0) printf("lehmer %lu stage 4: loop %lu to %lu, pc to %lu\n", n, a+1, b, n/primea[a+1]);
+  if (verbose > 0) printf("lehmer %lu stage 4: loop %lu to %lu, pc to %lu\n", n, a+1, b, n/primes[a+1]);
   TIMING_START;
   /* Reverse the i loop so w increases.  Count w in segments. */
   lastw = 0;
   lastwpc = 0;
   for (i = b; i >= a+1; i--) {
-    UV w = n / primea[i];
-    lastwpc = (w <= lastpc) ? bs_prime_count(w, primea, lastprimea)
+    UV w = n / primes[i];
+    lastwpc = (w <= lastpc) ? bs_prime_count(w, primes, lastprime)
                             : lastwpc + _XS_prime_count(lastw+1, w);
     lastw = w;
     sum = sum - lastwpc;
     if (i <= c) {
-      UV bi = bs_prime_count( (UV) (sqrt(w) + 0.5), primea, lastprimea );
+      UV bi = bs_prime_count( (UV) (sqrt(w) + 0.5), primes, lastprime );
       for (j = i; j <= bi; j++) {
-        sum = sum - bs_prime_count(w / primea[j], primea, lastprimea) + j - 1;
+        sum = sum - bs_prime_count(w / primes[j], primes, lastprime) + j - 1;
       }
     }
   }
   TIMING_END_PRINT("stage 4")
-  Safefree(primea);
+  Safefree(primes);
   return sum;
 }
+
+
+#ifdef PRIMESIEVE_STANDALONE
+int main(int argc, char *argv[])
+{
+  UV n, pi;
+  double t;
+  const char* method;
+  struct timeval t0, t1;
+
+  if (argc <= 1) { printf("usage: %s  <n>  [<method>]\n", argv[0]); return(1); }
+  n = atol(argv[1]);
+  if (n < 2) { printf("Pi(%lu) = 0\n", n); return(0); }
+
+  if (argc > 2)
+    method = argv[2];
+  else
+    method = "lehmer";
+
+  gettimeofday(&t0, 0);
+  if      (!strcasecmp(method, "lehmer"))   { pi = _XS_lehmer_pi(n);      }
+  else if (!strcasecmp(method, "meissel"))  { pi = _XS_meissel_pi(n);     }
+  else if (!strcasecmp(method, "legendre")) { pi = _XS_legendre_pi(n);    }
+  else if (!strcasecmp(method, "sieve"))    { pi = _XS_prime_count(2, n); }
+  else {
+    printf("method must be one of: lehmer, meissel, legendre, or sieve\n");
+    return(2);
+  }
+  gettimeofday(&t1, 0);
+  t = (t1.tv_sec-t0.tv_sec);  t *= 1000000.0;  t += (t1.tv_usec - t0.tv_usec);
+  printf("%8s Pi(%lu) = %lu   in %10.5fs\n", method, n, pi, t / 1000000.0);
+  return(0);
+}
+#endif

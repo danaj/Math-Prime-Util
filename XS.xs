@@ -42,6 +42,12 @@ _XS_prime_count(IN UV low, IN UV high = 0)
     RETVAL
 
 UV
+_XS_legendre_pi(IN UV n)
+
+UV
+_XS_meissel_pi(IN UV n)
+
+UV
 _XS_lehmer_pi(IN UV n)
 
 UV

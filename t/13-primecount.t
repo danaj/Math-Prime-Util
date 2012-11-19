@@ -81,7 +81,8 @@ plan tests => 0 + 1
                 + 3*scalar(keys %pivals32)
                 + scalar(keys %pivals_small)
                 + $use64 * 3 * scalar(keys %pivals64)
-                + scalar(keys %intervals);
+                + scalar(keys %intervals)
+                + 1;
 
 ok( eval { prime_count(13); 1; }, "prime_count in void context");
 
@@ -112,6 +113,9 @@ while (my($range, $expect) = each (%intervals)) {
   my($low,$high) = parse_range($range);
   is( prime_count($low,$high), $expect, "prime_count($range) = $expect");
 }
+
+# Defect found in prime binary search
+is( prime_count(130066574), 7381740, "prime_count(130066574) = 7381740");
 
 sub parse_range {
   my($range) = @_;
