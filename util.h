@@ -3,6 +3,9 @@
 
 #include "ptypes.h"
 
+extern int  _XS_get_verbose(void);
+extern void _XS_set_verbose(int v);
+
 extern int _XS_is_prime(UV x);
 extern int is_definitely_prime(UV x);
 extern UV  next_trial_prime(UV x);

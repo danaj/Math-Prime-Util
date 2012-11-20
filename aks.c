@@ -15,7 +15,6 @@
  */
 
 #define SQRTN_SHORTCUT 1
-#define VERBOSE 0
 
 #include "ptypes.h"
 #include "util.h"
@@ -159,6 +158,7 @@ int _XS_is_aks_prime(UV n)
 {
   UV sqrtn, limit, r, rlimit, a;
   double log2n;
+  int verbose = _XS_get_verbose();
 
   /* Check for overflow */
 #if BITS_PER_WORD == 32
@@ -180,7 +180,7 @@ int _XS_is_aks_prime(UV n)
   log2n = log(n) / log(2);   /* C99 has a log2() function */
   limit = (UV) floor(log2n * log2n);
 
-  if (VERBOSE) { printf("limit is %lu\n", limit); }
+  if (verbose) { printf("# aks limit is %lu\n", limit); }
 
   for (r = 2; r < n; r++) {
     if ((n % r) == 0)
@@ -198,13 +198,13 @@ int _XS_is_aks_prime(UV n)
 
   rlimit = (UV) floor(sqrt(r-1) * log2n);
 
-  if (VERBOSE) { printf("r = %lu  rlimit = %lu\n", r, rlimit); }
+  if (verbose) { printf("# aks r = %lu  rlimit = %lu\n", r, rlimit); }
 
   for (a = 1; a <= rlimit; a++) {
     if (! test_anr(a, n, r) )
       return 0;
-    if (VERBOSE) { printf("."); fflush(stdout); }
+    if (verbose>1) { printf("."); fflush(stdout); }
   }
-  if (VERBOSE) { printf("\n"); }
+  if (verbose>1) { printf("\n"); }
   return 1;
 }

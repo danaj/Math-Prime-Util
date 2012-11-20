@@ -17,6 +17,13 @@ PROTOTYPES: ENABLE
 
 
 void
+_XS_set_verbose(IN int verbose)
+
+int
+_XS_get_verbose()
+
+
+void
 prime_precalc(IN UV n)
 
 void
@@ -220,7 +227,7 @@ _XS_factor(IN UV n)
         XPUSHs(sv_2mortal(newSVuv( facs[i-1] )));
       }
     } else {
-      int const verbose = 0;
+      int const verbose = _XS_get_verbose();
       UV const tlim_lower = 211;  /* Trial division through this prime */
       UV const tlim = 223;        /* This means we've checked through here */
       UV tofac_stack[MPU_MAX_FACTORS+1];

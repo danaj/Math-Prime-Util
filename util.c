@@ -33,6 +33,11 @@ extern long double fabsl(long double);
 #include "cache.h"
 #include "lehmer.h"
 
+static int _verbose = 0;
+void _XS_set_verbose(int v) { _verbose = v; }
+int _XS_get_verbose(void) { return _verbose; }
+
+
 static const unsigned char byte_zeros[256] =
   {8,7,7,6,7,6,6,5,7,6,6,5,6,5,5,4,7,6,6,5,6,5,5,4,6,5,5,4,5,4,4,3,
    7,6,6,5,6,5,5,4,6,5,5,4,5,4,4,3,6,5,5,4,5,4,4,3,5,4,4,3,4,3,3,2,

@@ -104,6 +104,7 @@ if ($_Config{'maxbits'} == 32) {
   $_Config{'maxprimeidx'} = 425656284035217743;
 }
 $_Config{'assume_rh'} = 0;
+$_Config{'verbose'} = 0;
 
 # used for code like:
 #    return _XS_foo($n)  if $n <= $_XS_MAXVAL
@@ -160,6 +161,13 @@ sub prime_set_config {
       $_HAVE_GMP = $_Config{'gmp'};
     } elsif ($param =~ /^(assume[_ ]?)?[ge]?rh$/ || $param =~ /riemann\s*h/) {
       $_Config{'assume_rh'} = ($value) ? 1 : 0;
+    } elsif ($param eq 'verbose') {
+      if    ($value =~ /^\d+$/) { }
+      elsif ($value =~ /^[ty]/i) { $value = 1; }
+      elsif ($value =~ /^[fn]/i) { $value = 0; }
+      else { croak("Invalid setting for verbose.  0, 1, 2, etc."); }
+      $_Config{'verbose'} = $value;
+      _XS_set_verbose($value) if $_Config{'xs'};
     } else {
       croak "Unknown or invalid configuration setting: $param\n";
     }
