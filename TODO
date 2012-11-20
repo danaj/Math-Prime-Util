@@ -11,7 +11,8 @@
 
 - Is the current PP.pm setup the way we want to do it?
 
-- Faster SQUFOF
+- Faster SQUFOF.  We're using the faster racing SQUFOF now, but it could still
+  use some tuning.
 
 - Move .c / .h files into separate directory.
   version does it in a painful way.  Something simpler to be had?

@@ -168,6 +168,7 @@ sub prime_set_config {
       else { croak("Invalid setting for verbose.  0, 1, 2, etc."); }
       $_Config{'verbose'} = $value;
       _XS_set_verbose($value) if $_Config{'xs'};
+      Math::Prime::Util::GMP::_GMP_set_verbose($value) if $_Config{'gmp'};
     } else {
       croak "Unknown or invalid configuration setting: $param\n";
     }
