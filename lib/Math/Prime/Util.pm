@@ -207,7 +207,7 @@ sub _validate_positive_integer {
 sub _upgrade_to_float {
   my($n) = @_;
   return $n unless defined $Math::BigInt::VERSION || defined $Math::BigFloat::VERSION;
-  do { require Math::BigFloat; Math::BigFloat->import(try=>'GMP,Pari') }
+  do { require Math::BigFloat; Math::BigFloat->import() }
      if defined $Math::BigInt::VERSION && !defined $Math::BigFloat::VERSION;
   return Math::BigFloat->new($n);
 }
@@ -578,8 +578,8 @@ sub primes {
     return random_nbit_prime($k) if $k <= $p0;
 
     eval {
-      require Math::BigInt;   Math::BigInt->import(   try=>'GMP,Pari' );
-      require Math::BigFloat; Math::BigFloat->import( try=>'GMP,Pari' );
+      require Math::BigInt;   Math::BigInt->import( try=>'GMP,Pari' );
+      require Math::BigFloat; Math::BigFloat->import();
       1;
     } or do {
       croak "Cannot load Math::BigInt and Math::BigFloat";
@@ -659,8 +659,6 @@ sub primes {
 
       return $n;
     }
-    no Math::BigFloat;
-    no Math::BigInt;
   }
 }
 
@@ -1079,6 +1077,12 @@ sub prime_count_approx {
 
   return $_prime_count_small[$x] if $x <= $#_prime_count_small;
 
+  # Below 2^58th or so, all differences between the high precision and C double
+  # precision result are less than 0.5.
+  if ($x <= $_XS_MAXVAL && $x <= 144115188075855872) {
+    return int(_XS_RiemannR($x) + 0.5);
+  }
+
   # Turn on high precision FP if they gave us a big number.
   $x = _upgrade_to_float($x) if ref($x) eq 'Math::BigInt';
 
@@ -1097,7 +1101,8 @@ sub prime_count_approx {
 
   # my $result = int(LogarithmicIntegral($x) - LogarithmicIntegral(sqrt($x))/2);
 
-  my $result = RiemannR($x) + 0.5;
+  my $tol = 10**-(length(int($x))+1);
+  my $result = RiemannR($x, $tol) + 0.5;
 
   return Math::BigInt->new($result->bfloor->bstr()) if ref($result) eq 'Math::BigFloat';
   return int($result);
@@ -1341,24 +1346,18 @@ sub RiemannZeta {
   my($n) = @_;
   croak("Invalid input to ReimannZeta:  x must be > 0") if $n <= 0;
 
-  #return Math::Prime::Util::PP::RiemannZeta($n) if defined $bignum::VERSION || ref($n) eq 'Math::BigFloat';
-  return Math::Prime::Util::PP::RiemannZeta($n) if !$_Config{'xs'};
-  return _XS_RiemannZeta($n);
+  return Math::Prime::Util::PP::RiemannZeta($n) if defined $bignum::VERSION || ref($n) eq 'Math::BigFloat';
+  return _XS_RiemannZeta($n) if $n <= $_XS_MAXVAL;
+  return Math::Prime::Util::PP::RiemannZeta($n);
 }
 
 sub RiemannR {
-  my($n) = @_;
+  my($n, $tol) = @_;
   croak("Invalid input to ReimannR:  x must be > 0") if $n <= 0;
 
-  return Math::Prime::Util::PP::RiemannR($n) if defined $bignum::VERSION || ref($n) eq 'Math::BigFloat';
-  return Math::Prime::Util::PP::RiemannR($n) if !$_Config{'xs'};
-  return _XS_RiemannR($n);
-
-  # We could make a new object, like:
-  #    require Math::BigFloat;
-  #    my $bign = new Math::BigFloat "$n";
-  #    my $result = Math::Prime::Util::PP::RiemannR($bign);
-  #    return $result;
+  return Math::Prime::Util::PP::RiemannR($n, $tol) if defined $bignum::VERSION || ref($n) eq 'Math::BigFloat';
+  return _XS_RiemannR($n) if $n <= $_XS_MAXVAL;
+  return Math::Prime::Util::PP::RiemannR($n, $tol);
 }
 
 sub ExponentialIntegral {
@@ -2282,18 +2281,17 @@ Accuracy should be at least 14 digits.
 
   my $z = RiemannZeta($s);
 
-Given a floating point input C<s> where C<s E<gt>= 0.5>, returns the floating
+Given a floating point input C<s> where C<s E<gt> 0>, returns the floating
 point value of ζ(s)-1, where ζ(s) is the Riemann zeta function.  One is
 subtracted to ensure maximum precision for large values of C<s>.  The zeta
-function is the sum from k=1 to infinity of C<1 / k^s>.
+function is the sum from k=1 to infinity of C<1 / k^s>.  This function only
+uses real arguments, so is basically the Euler Zeta function.
 
-Since the argument and the result are real, this is technically the Euler Zeta
-function.
-
-Accuracy should be at least 14 digits, but currently does not increase
-accuracy with big floats.  Small integer values are returned from a table,
-values between 0.5 and 5 use rational Chebyshev approximation, and larger
-values use a series.
+Accuracy should be at least 14 digits with native numbers and 35 digits with
+bignum or a BigInt/BigFloat argument.  Small integer values are returned from
+a table.  For native-precision numbers, a rational Chebyshev approximation is
+used between 0.5 and 5, while larger values use a series.  Multiple precision
+numbers use Borwein (1991) algorithm 2 or the basic series.
 
 
 =head2 RiemannR
@@ -2304,9 +2302,8 @@ Given a positive non-zero floating point input, returns the floating
 point value of Riemann's R function.  Riemann's R function gives a very close
 approximation to the prime counting function.
 
-Accuracy should be at least 14 digits.  The current implementation isn't
-correctly storing constants as big floats, so is not giving increased accuracy
-with big numbers like it should.
+Accuracy should be at least 14 digits for native numbers and 35 digits with
+bignum or a BigInt/BigFloat argument.
 
 
 =head1 EXAMPLES
