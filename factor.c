@@ -308,17 +308,14 @@ int _XS_is_prob_prime(UV n)
   }
 #else
 #if 1
-  /* Better basis from:  http://miller-rabin.appspot.com/ */
-  /* We could go up to 316_349_281 using 2 bases */
-  if (n < UVCONST(9080191)) {
-    bases[0] = 31;
-    bases[1] = 73;
+  /* Better bases from:  http://miller-rabin.appspot.com/ */
+  if (n < UVCONST(212321)) {
+    bases[0] = UVCONST(1948244569546278);
+    nbases = 1;
+  } else if (n < UVCONST(360018361)) {
+    bases[0] = UVCONST( 1143370    );
+    bases[1] = UVCONST( 2350307676 );
     nbases = 2;
-  } else if (n < UVCONST(4759123141)) {
-    bases[0] = 2;
-    bases[1] = 7;
-    bases[2] = 61;
-    nbases = 3;
   } else if (n < UVCONST(105936894253)) {
     bases[0] = 2;
     bases[1] = UVCONST( 1005905886 );
@@ -348,7 +345,7 @@ int _XS_is_prob_prime(UV n)
     nbases = 7;
   }
 #else
-  /* More standard bases */
+  /* Classic bases */
   if (n < UVCONST(9080191)) {
     bases[0] = 31; bases[1] = 73; nbases = 2;
   } else if (n < UVCONST(4759123141)) {
