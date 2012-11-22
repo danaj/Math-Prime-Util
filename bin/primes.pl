@@ -144,10 +144,9 @@ if ($start > $end) {
          || exists $opts{'cuban1'}
          || exists $opts{'cuban2'}
         ) {
-  my @p = gen_and_filter($start, $end);
-  print join("\n", @p), "\n"  if scalar @p > 0;
+  my $p = gen_and_filter($start, $end);
+  print join("\n", @$p), "\n"  if scalar @$p > 0;
 } else {
-  my @p;
   while ($start <= $end) {
 
     # Adjust segment sizes for some cases
@@ -164,10 +163,10 @@ if ($start > $end) {
     $seg_end = $end if $end < $seg_end;
     $start = $seg_end+1;
 
-    @p = gen_and_filter($seg_start, $seg_end);
+    my $p = gen_and_filter($seg_start, $seg_end);
 
     # print this segment
-    print join("\n", @p), "\n"  if scalar @p > 0;
+    print join("\n", @$p), "\n"  if scalar @$p > 0;
   }
 }
 
@@ -285,9 +284,20 @@ sub lucky_primes {
   # Remove the 3rd elements for k=2:
   #     my @lucky = grep { my $m = $_ % 6; $m == 1 || $m == 3 } (0 .. $end);
   # Remove the 4th elements for k=3:
-  my @lucky = grep { my $m = $_ % 21; $m != 18 && $m != 19 }
-              grep { my $m = $_ % 6; $m == 1 || $m == 3 }
-              map { $_*2+1 } (0 .. int(($end-1)/2));
+  #     my @lucky = grep { my $m = $_ % 21; $m != 18 && $m != 19 }
+  #                 grep { my $m = $_ % 6; $m == 1 || $m == 3 }
+  #                 map { $_*2+1 } (0 .. int(($end-1)/2));
+  # This is the same k=3 sieve, but uses much less memory:
+  my @lucky;
+  my $n = 1;
+  while ($n <= $end) {
+    my $m21 = $n % 21;
+    push @lucky, $n unless $m21 == 18 || $m21 == 19;
+    push @lucky, $n+2 unless $m21 == 16 || $m21 == 17;
+    $n += 6;
+  }
+  delete $lucky[-1] if $lucky[-1] > $end;
+
   for (my $k = 3; $k < scalar @lucky; $k++) {
     my $skip = $lucky[$k];
     my $index = $skip-1;
@@ -377,91 +387,91 @@ sub merge_primes {
 sub gen_and_filter {
   my ($start, $end) = @_;
   my $gen;
-  my @p;
+  my $p = [];
 
   if (exists $opts{'lucas'}) {
-    merge_primes(\$gen, \@p, 'lucas', lucas_primes($start, $end));
+    merge_primes(\$gen, $p, 'lucas', lucas_primes($start, $end));
   }
   if (exists $opts{'fibonacci'}) {
-    merge_primes(\$gen, \@p, 'fibonacci', fibonacci_primes($start, $end));
+    merge_primes(\$gen, $p, 'fibonacci', fibonacci_primes($start, $end));
   }
   if (exists $opts{'mersenne'}) {
-    merge_primes(\$gen, \@p, 'mersenne', mersenne_primes($start, $end));
+    merge_primes(\$gen, $p, 'mersenne', mersenne_primes($start, $end));
   }
   if (exists $opts{'euclid'}) {
-    merge_primes(\$gen, \@p, 'euclid', euclid_primes($start, $end, 1));
+    merge_primes(\$gen, $p, 'euclid', euclid_primes($start, $end, 1));
   }
   if (exists $opts{'lucky'}) {
-    merge_primes(\$gen, \@p, 'lucky', lucky_primes($start, $end));
+    merge_primes(\$gen, $p, 'lucky', lucky_primes($start, $end));
   }
   if (exists $opts{'cuban1'}) {
-    merge_primes(\$gen, \@p, 'cuban1', cuban_primes($start, $end, 1));
+    merge_primes(\$gen, $p, 'cuban1', cuban_primes($start, $end, 1));
   }
   if (exists $opts{'cuban2'}) {
-    merge_primes(\$gen, \@p, 'cuban2', cuban_primes($start, $end, 2));
+    merge_primes(\$gen, $p, 'cuban2', cuban_primes($start, $end, 2));
   }
   if (exists $opts{'palindromic'}) {
     if (!defined $gen) {
       foreach my $d (length($start) .. length($end)) {
-        push @p, grep { $_ >= $start && $_ <= $end && is_prime($_) }
-                 ndig_palindromes($d);
+        push @$p, grep { $_ >= $start && $_ <= $end && is_prime($_) }
+                  ndig_palindromes($d);
       }
       $gen = 'palindromic';
     } else {
-      @p = grep { $_ eq reverse $_; } @p;
+      @$p = grep { $_ eq reverse $_; } @$p;
     }
   }
 
   if (exists $opts{'twin'} && !defined $gen) {
-    @p = @{primes($start, $end)};
-    push @p, is_prime($p[-1]+2) ? $p[-1]+2 : 0;
+    $p = primes($start, $end);
+    push @$p, is_prime($p->[-1]+2) ? $p->[-1]+2 : 0;
     my @twin;
-    my $prime = shift @p;
-    foreach my $next (@p) {
+    my $prime = shift @$p;
+    foreach my $next (@$p) {
       push @twin, $prime if $prime+2 == $next;
       $prime = $next;
     }
-    @p = @twin;
+    $p = \@twin;
     $gen = 'twin';
   }
 
   if (!defined $gen) {
-    @p = @{primes($start, $end)};
+    $p = primes($start, $end);
     $gen = 'primes';
   }
 
   # Apply the mod 210 pretest
   if ($min_pass > 0) {
-    @p = grep { $_ <= $min_pass || exists $mod_pass{$_ % 210} } @p;
+    @$p = grep { $_ <= $min_pass || exists $mod_pass{$_ % 210} } @$p;
   }
 
   if (exists $opts{'twin'} && $gen ne 'twin') {
-    @p = grep { is_prime( $_+2 ); } @p;
+    @$p = grep { is_prime( $_+2 ); } @$p;
   }
 
   if (exists $opts{'triplet'}) {
-    @p = grep { is_prime($_+6) && (is_prime($_+2) || is_prime($_+4)); } @p;
+    @$p = grep { is_prime($_+6) && (is_prime($_+2) || is_prime($_+4)); } @$p;
   }
 
   if (exists $opts{'quadruplet'}) {
-    @p = grep { is_prime($_+2) && is_prime($_+6) && is_prime($_+8); } @p;
+    @$p = grep { is_prime($_+2) && is_prime($_+6) && is_prime($_+8); } @$p;
   }
 
   if (exists $opts{'cousin'}) {
-    @p = grep { is_prime($_+4); } @p;
+    @$p = grep { is_prime($_+4); } @$p;
   }
 
   if (exists $opts{'sexy'}) {
-    @p = grep { is_prime($_+6); } @p;
+    @$p = grep { is_prime($_+6); } @$p;
   }
 
   if (exists $opts{'safe'}) {
-    @p = grep { is_prime( ($_-1) >> 1 ); }
-         grep { ($_ <= 7) || ($_ % 12) == 11; }
-         @p;
+    @$p = grep { is_prime( ($_-1) >> 1 ); }
+          grep { ($_ <= 7) || ($_ % 12) == 11; }
+          @$p;
   }
   if (exists $opts{'sophie'}) {
-    @p = grep { is_prime( 2*$_+1 ); } @p;
+    @$p = grep { is_prime( 2*$_+1 ); } @$p;
   }
   #if (exists $opts{'cuban1'}) {
   #  @p = grep { my $n = sqrt((4*$_-1)/3); 4*$_ == int($n)*int($n)*3+1; } @p;
@@ -470,21 +480,21 @@ sub gen_and_filter {
   #  @p = grep { my $n = sqrt(($_-1)/3); $_ == int($n)*int($n)*3+1; } @p;
   #}
   if (exists $opts{'pnm1'}) {
-    @p = grep { is_prime( primorial(Math::BigInt->new($_))-1 ) } @p;
+    @$p = grep { is_prime( primorial(Math::BigInt->new($_))-1 ) } @$p;
   }
   if (exists $opts{'pnp1'}) {
-    @p = grep { is_prime( primorial(Math::BigInt->new($_))+1 ) } @p;
+    @$p = grep { is_prime( primorial(Math::BigInt->new($_))+1 ) } @$p;
   }
   if (exists $opts{'pillai'}) {
-    @p = grep { is_pillai($_); } @p;
+    @$p = grep { is_pillai($_); } @$p;
   }
   if (exists $opts{'good'}) {
-    @p = grep { is_good_prime($_); } @p;
+    @$p = grep { is_good_prime($_); } @$p;
   }
   if (exists $opts{'provable'}) {
-    @p = grep { is_provable_prime($_) == 2; } @p;
+    @$p = grep { is_provable_prime($_) == 2; } @$p;
   }
-  @p;
+  $p;
 }
 
 sub find_mod210_restriction {
