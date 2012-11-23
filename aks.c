@@ -4,12 +4,19 @@
 #include <math.h>
 
 /*
- * The AKS v6 algorithm, for native integers, where n < 2^(wordbits/2)-1.
- * Hence on 64-bit machines this works for n < 4294967295, because we do
- *   r = (r + a * b) % n
- * where r, a, and b are mod n.  This could be extended to a full word by
- * using a mulmod function (like factor.c has), but it's easier to go to
- * GMP at that point, which also lets one do r or 2r modulos instead of r*r.
+ * The AKS v6 algorithm, for native integers.  Based on the AKS v6 paper.
+ * As with most AKS implementations, it's really slow.
+ *
+ * When n < 2^(wordbits/2)-1, we can do a straightforward intermediate:
+ *      r = (r + a * b) % n
+ * If n is larger, then these are replaced with:
+ *      r = addmod( r, mulmod(a, b, n), n)
+ * which is a lot more work, but keeps us correct.
+ *
+ * Software that does polynomial convolutions followed by a modulo can be
+ * very fast, but will fail when n >= (2^wordbits)/r.
+ *
+ * This is all much easier in GMP.
  *
  * Copyright 2012, Dana Jacobsen.
  */

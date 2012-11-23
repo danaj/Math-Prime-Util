@@ -39,3 +39,6 @@
   precision.  We should be able to do better.  One problem is the accuracy
   bug in Math::BigFloat.  Perhaps check for Math::MPFR installed and use it?
   Alternately write real-number pow function using GMP.
+
+- An assembler version of mulmod for i386 would be _really_ helpful for
+  all the non-x86-64 Intel machines.

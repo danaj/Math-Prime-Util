@@ -1,5 +1,11 @@
 Revision history for Perl extension Math::Prime::Util.
 
+0.14  ?? November 2012
+
+    - Clean up some tests.
+
+    - XS AKS extended from half-word to full-word.
+
 0.13  19 November 2012
 
     - Fix an issue with prime count, and make prime count available as a

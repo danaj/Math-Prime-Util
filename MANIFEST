@@ -69,6 +69,7 @@ t/16-randomprime.t
 t/17-pseudoprime.t
 t/18-functions.t
 t/19-moebius.t
+t/22-aks-prime.t
 t/30-relations.t
 t/31-threading.t
 t/50-factoring.t
