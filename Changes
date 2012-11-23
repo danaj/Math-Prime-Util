@@ -6,6 +6,10 @@ Revision history for Perl extension Math::Prime::Util.
 
     - XS AKS extended from half-word to full-word.
 
+    - Add functions:
+           jordan_totient          generalization of Euler Totient
+           divisor_sum             run coderef for every divisor
+
 0.13  19 November 2012
 
     - Fix an issue with prime count, and make prime count available as a

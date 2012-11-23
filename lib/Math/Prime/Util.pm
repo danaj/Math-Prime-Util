@@ -24,7 +24,9 @@ our @EXPORT_OK = qw(
                      nth_prime nth_prime_lower nth_prime_upper nth_prime_approx
                      random_prime random_ndigit_prime random_nbit_prime random_maurer_prime
                      primorial pn_primorial
-                     factor all_factors moebius euler_phi
+                     factor all_factors
+                     moebius euler_phi jordan_totient
+                     divisor_sum
                      ExponentialIntegral LogarithmicIntegral RiemannZeta RiemannR
                    );
 our %EXPORT_TAGS = (all => [ @EXPORT_OK ]);
@@ -737,7 +739,7 @@ sub moebius {
   # Quick check for small replicated factors
   return 0 if ($n >= 25) && (!($n % 4) || !($n % 9) || !($n % 25));
 
-  my @factors = factor($n);
+  my @factors = ($n <= $_XS_MAXVAL) ? _XS_factor($n) : factor($n);
   my %all_factors;
   foreach my $factor (@factors) {
     return 0 if $all_factors{$factor}++;
@@ -756,7 +758,8 @@ sub euler_phi {
   return 1 if $n <= 1;
 
   my %factor_mult;
-  my @factors = grep { !$factor_mult{$_}++ } factor($n);
+  my @factors = grep { !$factor_mult{$_}++ }
+                ($n <= $_XS_MAXVAL) ? _XS_factor($n) : factor($n);
 
   # Direct from Euler's product formula.  Note division will be exact.
   #my $totient = $n;
@@ -786,6 +789,54 @@ sub euler_phi {
     $totient->bmul($f)  for (2 .. $factor_mult{$factor});
   }
   $totient;
+}
+
+# Jordan's totient -- a generalization of Euler's totient.
+sub jordan_totient {
+  my($k, $n) = @_;
+  _validate_positive_integer($k, 1);
+  return euler_phi($n) if $k == 1;
+
+  return 0 if defined $n && $n <= 0;  # Following SAGE's logic here.
+  _validate_positive_integer($n);
+  return 1 if $n <= 1;
+
+  my %factor_mult;
+  my @factors = grep { !$factor_mult{$_}++ }
+                ($n <= $_XS_MAXVAL) ? _XS_factor($n) : factor($n);
+
+  my $totient = $n - $n + 1;
+
+  if (ref($n) ne 'Math::BigInt') {
+    foreach my $factor (@factors) {
+      my $fmult = int($factor ** $k);
+      $totient *= ($fmult - 1);
+      $totient *= $fmult for (2 .. $factor_mult{$factor});
+    }
+  } else {
+    foreach my $factor (@factors) {
+      my $fmult = $n->copy->bzero->badd("$factor")->bpow($k);
+      $totient->bmul($fmult->copy->bsub(1));
+      $totient->bmul($fmult) for (2 .. $factor_mult{$factor});
+    }
+  }
+  return $totient;
+}
+
+# Mathematica and Pari both have functions like this.
+sub divisor_sum {
+  my($n, $sub) = @_;
+  croak "Second argument must be a code ref" unless ref($sub) eq 'CODE';
+  return 0 if defined $n && $n <= 1;
+  _validate_positive_integer($n);
+
+  my @afactors = all_factors($n);
+
+  my $sum = $n - $n;  # zero as an object of type $n.
+  foreach my $f (1, all_factors($n), $n) {
+    $sum += $sub->($f);
+  }
+  return $sum;
 }
 
 # Omega function A001221.  Just an example.
@@ -1479,11 +1530,15 @@ Version 0.13
   # Get all factors
   @divisors = all_factors( $n );
 
-  # Euler phi (aka the totient) on a large number
+  # Euler phi (Euler's totient) on a large number
   use bigint;  say euler_phi( 801294088771394680000412 );
+  say jordan_totient(5, 1234);  # Jordan's totient
 
   # Moebius function used to calculate Mertens
   $sum += moebius($_) for (1..200); say "Mertens(200) = $sum";
+
+  # divisor sum
+  $sigma = divisor_sum( $n, sub { $_[0] } );
 
   # The primorial n# (product of all primes <= n)
   say "15# (2*3*5*7*11*13) is ", primorial(15);
@@ -1910,6 +1965,41 @@ of positive integers less than or equal to C<n> that are relatively prime to
 C<n>.  Given the definition used, C<euler_phi> will return 0 for all
 C<n E<lt> 1>.  This follows the logic used by SAGE.  Mathematic/WolframAlpha
 also returns 0 for input 0, but returns C<euler_phi(-n)> for C<n E<lt> 0>.
+
+
+=head2 jordan_totient
+
+  say "Jordan's totient J_$k($n) is ", jordan_totient($k, $n);
+
+Returns Jordan's totient function for a given integer value.  Jordan's totient
+is a generalization of Euler's totient, where
+  C<jordan_totient(1,$n) == euler_totient($n)>
+This counts the number of k-tuples less than or equal to n that form a coprime
+tuple with n.  As with C<euler_phi>, 0 is returned for all C<n E<lt> 1>.
+This function can be used to generate some other useful functions, such as
+the Dedikind psi function, where C<psi(n) = J(2,n) / J(1,n)>.
+
+
+=head2 divisor_sum
+
+  say "Sum of divisors of $n:", divisor_sum( $n, sub { $_[0] } );
+
+This function takes a positive integer as input, along with a code reference.
+For each positive divisor of the input, including 1 and itself, the coderef
+is called with the divisor as the only argument, and the return values summed.
+There are a number of utilities this can be used for, though it may not be the
+most efficient way to calculate them.  Example:
+
+  divisor_sum( $n, sub { my $d=shift; $d**5 * moebius($n/$d); } );
+
+calculates the 5th Jordan totient (OEIS 59378).  In this example we have a
+specific function C<jordan_totient> that can compute this more efficiently.
+
+  divisor_sum( $n, sub { $_[0] ** $k } );
+
+calculates sigma_k (OEIS A000005, A000203, A001157, A001158 for k=0..3).  The
+simple sigma shown as the first example can be used to find aliquot sums,
+abundant numbers, perfect numbers, and more.
 
 
 =head2 primorial
