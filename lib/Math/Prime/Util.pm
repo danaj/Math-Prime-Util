@@ -82,11 +82,13 @@ BEGIN {
     *pminus1_factor = \&Math::Prime::Util::PP::pminus1_factor;
   };
 
-  # See if they have the GMP module
   $_Config{'gmp'} = 0;
-  $_Config{'gmp'} = 1 if eval { require Math::Prime::Util::GMP;
-                                Math::Prime::Util::GMP->import();
-                                1; };
+  # See if they have the GMP module and haven't requested it not to be used.
+  if (!defined $ENV{MPU_NO_GMP} || $ENV{MPU_NO_GMP} != 1) {
+    $_Config{'gmp'} = 1 if eval { require Math::Prime::Util::GMP;
+                                  Math::Prime::Util::GMP->import();
+                                  1; };
+  }
 }
 END {
   _prime_memfreeall;
@@ -819,7 +821,7 @@ sub _omega {
 
 sub is_prime {
   my($n) = @_;
-  return 0 if $n <= 0;
+  return 0 if defined $n && $n < 2;
   _validate_positive_integer($n);
 
   return _XS_is_prime($n) if $n <= $_XS_MAXVAL;
@@ -829,11 +831,10 @@ sub is_prime {
 
 sub is_aks_prime {
   my($n) = @_;
-  return 0 if $n <= 0;
+  return 0 if defined $n && $n < 2;
   _validate_positive_integer($n);
 
-  my $max_xs = ($_Config{'maxparam'} > 4294967295) ? 4294967294 : 65534;
-  return _XS_is_aks_prime($n) if $n <= $_XS_MAXVAL && $n <= $max_xs;
+  return _XS_is_aks_prime($n) if $n <= $_XS_MAXVAL;
   return Math::Prime::Util::GMP::is_aks_prime($n) if $_HAVE_GMP
                        && defined &Math::Prime::Util::GMP::is_aks_prime;
   return Math::Prime::Util::PP::is_aks_prime($n);
@@ -904,7 +905,7 @@ sub prime_count {
 
 sub _prime_count_lehmer {
   my($n) = @_;
-  return 0 if $n <= 0;
+  return 0 if defined $n && $n < 2;
   _validate_positive_integer($n);
 
   return _XS_lehmer_pi($n) if $n <= $_XS_MAXVAL;

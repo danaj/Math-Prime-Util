@@ -21,8 +21,7 @@
 #include "sieve.h"
 #include "factor.h"
 #include "cache.h"
-
-#define addmod(n,a,m) ((((m)-(n)) > (a))  ?  ((n)+(a))  :  ((n)+(a)-(m)))
+#include "mulmod.h"
 
 static UV log2floor(UV n) {
   UV log2n = 0;
@@ -80,7 +79,11 @@ static void poly_mod_mul(UV* px, UV* py, UV* res, UV r, UV mod)
       pyj = py[j];
       if (pyj == 0)  continue;
       rindex = (i+j) < r ? i+j : i+j-r; /* (i+j) % r */
-      res[rindex] = (res[rindex] + (pxi*pyj) ) % mod;
+      if (mod < HALF_WORD) {
+        res[rindex] = (res[rindex] + (pxi*pyj) ) % mod;
+      } else {
+        res[rindex] = muladdmod(pxi, pyj, res[rindex], mod);
+      }
     }
   }
   memcpy(px, res, r * sizeof(UV)); /* put result in px */
@@ -90,10 +93,6 @@ static void poly_mod_sqr(UV* px, UV* res, UV r, UV mod)
   int d, s;
   UV sum, rindex;
   UV degree = r-1;
-
-  /* we sum a max of r*mod*mod between modulos */
-  if (mod > sqrt(UV_MAX/r))
-    return poly_mod_mul(px, px, res, r, mod);
 
   memset(res, 0, r * sizeof(UV)); /* zero out sums */
   for (d = 0; d <= 2*degree; d++) {
@@ -112,18 +111,22 @@ static UV* poly_mod_pow(UV* pn, UV power, UV r, UV mod)
 {
   UV* res;
   UV* temp;
+  int use_sqr = (mod > sqrt(UV_MAX/r)) ? 0 : 1;
 
   Newz(0, res, r, UV);
   New(0, temp, r, UV);
   if ( (res == 0) || (temp == 0) )
-    croak("Couldn't allocate space for polynomial of degree %lu\n", r);
+    croak("Couldn't allocate space for polynomial of degree %lu\n", (unsigned long) r);
 
   res[0] = 1;
 
   while (power) {
     if (power & 1)  poly_mod_mul(res, pn, temp, r, mod);
     power >>= 1;
-    if (power)      poly_mod_sqr(pn, temp, r, mod);
+    if (power) {
+      if (use_sqr)  poly_mod_sqr(pn, temp, r, mod);
+      else          poly_mod_mul(pn, pn, temp, r, mod);
+    }
   }
   Safefree(temp);
   return res;
@@ -138,7 +141,7 @@ static int test_anr(UV a, UV n, UV r)
 
   Newz(0, pn, r, UV);
   if (pn == 0)
-    croak("Couldn't allocate space for polynomial of degree %lu\n", r);
+    croak("Couldn't allocate space for polynomial of degree %lu\n", (unsigned long) r);
   a %= r;
   pn[0] = a;
   pn[1] = 1;
@@ -160,14 +163,6 @@ int _XS_is_aks_prime(UV n)
   double log2n;
   int verbose = _XS_get_verbose();
 
-  /* Check for overflow */
-#if BITS_PER_WORD == 32
-  if (n >= UVCONST(65535))
-#else
-  if (n >= UVCONST(4294967295))
-#endif
-    croak("aks(%"UVuf") overflow", n);
-
   if (n < 2)
     return 0;
   if (n == 2)
@@ -180,7 +175,7 @@ int _XS_is_aks_prime(UV n)
   log2n = log(n) / log(2);   /* C99 has a log2() function */
   limit = (UV) floor(log2n * log2n);
 
-  if (verbose) { printf("# aks limit is %lu\n", limit); }
+  if (verbose) { printf("# aks limit is %lu\n", (unsigned long) limit); }
 
   for (r = 2; r < n; r++) {
     if ((n % r) == 0)
@@ -198,7 +193,7 @@ int _XS_is_aks_prime(UV n)
 
   rlimit = (UV) floor(sqrt(r-1) * log2n);
 
-  if (verbose) { printf("# aks r = %lu  rlimit = %lu\n", r, rlimit); }
+  if (verbose) { printf("# aks r = %lu  rlimit = %lu\n", (unsigned long) r, (unsigned long) rlimit); }
 
   for (a = 1; a <= rlimit; a++) {
     if (! test_anr(a, n, r) )
