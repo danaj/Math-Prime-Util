@@ -106,6 +106,10 @@ use Math::Prime::Util qw/
 #        LogarithmicIntegral
 #        RiemannR
 
+# Test bignum using PP
+diag "Math::Prime::Util::GMP not being used.\n"
+  unless Math::Prime::Util::prime_get_config->{gmp};
+
 
 ###############################################################################
 
