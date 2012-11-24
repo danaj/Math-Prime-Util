@@ -47,15 +47,13 @@ my %nthprimes64 = (
  100000000000000000 => 4185296581467695669,
 );
 my %nthprimes_small = map { $_ => $nthprimes32{$_} }
-                      #grep { ($_ <= 2000000) || $extra }
+                      #grep { ($_ <= 2_000_000) || $extra }
                       keys %nthprimes32;
 
 my @small_primes = (0, @{primes($nth_small_prime)});
 
-#plan tests => 7*2 + $nsmallprimes+1 + 9*3 + 7 + ($extra ? 9 : 7) + ($use64 ? 9*3 : 0);
-
 plan tests => 0 + 2*scalar(keys %pivals32)
-                + scalar @small_primes
+                + 1
                 + 3*scalar(keys %nthprimes32)
                 + scalar(keys %nthprimes_small)
                 + $use64 * 3 * scalar(keys %nthprimes64)
@@ -69,8 +67,9 @@ while (my($n, $pin) = each (%pivals32)) {
   cmp_ok( nth_prime($next), '>=', $n, "nth_prime($next) >= $n");
 }
 
-foreach my $n (0 .. $#small_primes) {
-  is(nth_prime($n), $small_primes[$n], "The ${n}th prime is $small_primes[$n]");
+{
+  my @nth_primes = map { nth_prime($_) }  (0 .. $#small_primes);
+  is_deeply( \@nth_primes, \@small_primes, "nth_prime for primes 0 .. $#small_primes" );
 }
 
 while (my($n, $nth) = each (%nthprimes32)) {

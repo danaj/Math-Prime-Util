@@ -1437,7 +1437,9 @@ sub LogarithmicIntegral {
     }
     return 1.045163780117492784844588889194613136522615578151 if $n == 2;
   }
-  ExponentialIntegral(log($n));
+  return Math::Prime::Util::PP::LogarithmicIntegral($n)
+    if defined $bignum::VERSION || ref($n) eq 'Math::BigFloat' || !$_Config{'xs'};
+  return _XS_LogarithmicIntegral($n);
 }
 
 #############################################################################

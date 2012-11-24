@@ -58,23 +58,26 @@ my %allfactors = (
   '23489223467134234890234680' => [qw/2 4 5 8 10 20 40 4073 4283 8146 8566 16292 17132 20365 21415 32584 34264 40730 42830 81460 85660 162920 171320 17444659 34889318 69778636 87223295 139557272 174446590 348893180 697786360 33662485846146713 67324971692293426 134649943384586852 168312429230733565 269299886769173704 336624858461467130 673249716922934260 1346499433845868520 137107304851355562049 144176426879046371779 274214609702711124098 288352853758092743558 548429219405422248196 576705707516185487116 685536524256777810245 720882134395231858895 1096858438810844496392 1153411415032370974232 1371073048513555620490 1441764268790463717790 2742146097027111240980 2883528537580927435580 5484292194054222481960 5767057075161854871160 587230586678355872255867 1174461173356711744511734 2348922346713423489023468 2936152933391779361279335 4697844693426846978046936 5872305866783558722558670 11744611733567117445117340/],
 );
 
-plan tests => 0 +
-              2*(@primes + @composites) +
-              1 +
-              2 +
-              1 +
-              $num_pseudoprime_tests +
-              5 +  # PC lower, upper, approx
-              scalar(keys %factors) +
-              scalar(keys %allfactors) +
-              2 +  # moebius, euler_phi
-              12 +  # random primes
-              0;
+plan tests =>  0
+             + 2*(@primes + @composites)
+             + 1   # primes
+             + 2   # next/prev prime
+             + 1   # primecount large base small range
+             + scalar(keys %pseudoprimes)
+             + 6   # PC lower, upper, approx
+             + 6*2*$extra # more PC tests
+             + scalar(keys %factors)
+             + scalar(keys %allfactors)
+             + 2   # moebius, euler_phi
+             + 12  # random primes
+             + 0;
 
 # Using GMP makes these tests run about 2x faster on some machines
 use bigint try => 'GMP';   #  <--------------- large numbers ahead!  > 2^64
+use Math::BigFloat;
 
 use Math::Prime::Util qw/
+  prime_set_config
   is_prob_prime
   prime_count_lower
   prime_count_upper
@@ -106,7 +109,7 @@ use Math::Prime::Util qw/
 #        LogarithmicIntegral
 #        RiemannR
 
-# Test bignum using PP
+# See if we're testing bignum with PP or GMP.
 diag "Math::Prime::Util::GMP not being used.\n"
   unless Math::Prime::Util::prime_get_config->{gmp};
 
@@ -146,24 +149,20 @@ is( prime_count(877777777777777777777752, 877777777777777777777872), 2, "prime_c
 
 while (my($psrp, $baseref) = each (%pseudoprimes)) {
   SKIP: {
-    skip "Your 64-bit Perl is broken, skipping pseudoprime tests for $psrp", scalar @$baseref if $broken64 && $psrp == 3825123056546413051;
-    foreach my $base (@$baseref) {
-      ok( is_strong_pseudoprime($psrp, $base), "$psrp is a strong pseudoprime to base $base" );
-    }
+    skip "Your 64-bit Perl is broken, skipping pseudoprime tests for $psrp", 1 if $broken64 && $psrp == 3825123056546413051;
+    my $baselist = join(",", @$baseref);
+    my @expmr = map { 1 } @$baseref;
+    my @gotmr = map { is_strong_pseudoprime($psrp, $_) } @$baseref;
+    is_deeply(\@gotmr, \@expmr, "$psrp is a strong pseudoprime to bases $baselist");
   }
 }
 
 ###############################################################################
 
-{
-  # See: http://www.mersenneforum.org/showpost.php?p=206983&postcount=25
-  my $n = 31415926535897932384626433;
-  cmp_ok( prime_count_lower($n), '<=', 544551456594153032339707, "PC lower (high)" );
-  cmp_ok( prime_count_lower($n), '>=', 544503356940764609324440, "PC lower (low)" );
-  cmp_ok( prime_count_upper($n), '>=', 544551456620339227350566, "PC upper (low)" );
-  cmp_ok( prime_count_upper($n), '<=', 544613583498498996743730, "PC upper (high)" );
-  # TODO: Need to improve accuracy for this
-  ok( abs(prime_count_approx($n) - 544551456607147153724423) < 50_000_000, "PC approx" );
+check_pcbounds(31415926535897932384, 716115441142294636, '8e-5', '2e-8');
+if ($extra) {
+  check_pcbounds(314159265358979323846, 6803848951392700268, '7e-5', '5e-9');
+  check_pcbounds(31415926535897932384626433, 544551456607147153724423, '4e-5', '3e-11');
 }
 
 ###############################################################################
@@ -211,3 +210,42 @@ cmp_ok( $randprime, '<', 2**80, "random 80-bit Maurer prime isn't too big");
 ok( is_prime($randprime), "random 80-bit Maurer prime is prime");
 
 ###############################################################################
+
+
+sub check_pcbounds {
+  my ($n, $expn, $percent, $percentrh) = @_;
+  $percent   = Math::BigFloat->new($percent);
+  $percentrh = Math::BigFloat->new($percentrh);
+
+  my $pcap = prime_count_approx($n);
+  is( $pcap, "$expn", "PC approx($n)" );
+
+  my $pclo = prime_count_lower($n);
+  my $pcup = prime_count_upper($n);
+  prime_set_config(assume_rh=>1);
+  my $pclo_rh = prime_count_lower($n);
+  my $pcup_rh = prime_count_upper($n);
+  prime_set_config(assume_rh=>0);
+
+  #diag "lower:    " . $pclo->bstr() . "  " . ($pcap-$pclo)->bstr;
+  #diag "rh lower: " . $pclo_rh->bstr() . "  " . ($pcap-$pclo_rh)->bstr;
+  #diag "approx:   " . $pcap->bstr();
+  #diag "rh upper: " . $pcup_rh->bstr() . "  " . ($pcup_rh-$pcap)->bstr;
+  #diag "upper:    " . $pcup->bstr() . "  " . ($pcup-$pcap)->bstr;
+  # lower:    544534406675337676203117  17049931809477521306
+  # rh lower: 544551456594152957592704  12994196131719
+  # approx:   544551456607147153724423
+  # rh upper: 544551456620339152603564  13191998879141
+  # upper:    544586259732074697890498  34803124927544166075
+
+  ok( $pclo <= $pclo_rh && $pclo_rh <= $pcap &&
+      $pcap <= $pcup_rh && $pcup_rh <= $pcup,
+      "prime count bounds for $n are in the right order");
+
+  my $pcapf = Math::BigFloat->new($pcap);
+#diag "" . ($pcapf - $pclo_rh)/($pcapf) . "  " . $percentrh/100.0 . "";
+  cmp_ok( ($pcapf - $pclo_rh)/$pcapf, '<=', $percentrh , "PC lower with RH");
+  cmp_ok( ($pcup_rh - $pcapf)/$pcapf, '<=', $percentrh , "PC upper with RH");
+  cmp_ok( ($pcapf - $pclo)/$pcapf,    '<=', $percent   , "PC lower");
+  cmp_ok( ($pcup - $pcapf)/$pcapf,    '<=', $percent   , "PC upper");
+}

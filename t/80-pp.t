@@ -20,8 +20,6 @@ my @small_primes = qw/
 947 953 967 971 977 983 991 997 1009 1013 1019 1021 1031 1033 1039 1049 1051
 1061 1063 1069
 /;  # next prime is 1087
-my %small_primes;
-map { $small_primes{$_} = 1; } @small_primes;
 
 my @primes = qw/
 1129 1327 9551 15683 19609 31397 155921
@@ -168,7 +166,7 @@ my %nthprimes32 = (
           100000000 => 2038074743,
 );
 my %nthprimes_small = map { $_ => $nthprimes32{$_} }
-                      grep {$_ <= 200000}
+                      grep { $extra ? ($_ <= 2_000_000) : ($_ <= 20_000) }
                       keys %nthprimes32;
 
 my %eivals = (
@@ -216,14 +214,14 @@ my %rvals = (
 
 
 plan tests => 1 +
-              1*(1087 + @primes + @composites) +
+              2 +
               3 + scalar(keys %small_single) + scalar(keys %small_range) +
-              2*scalar(keys %primegaps) + 8 + 148 + 148 + 1 +
+              2*scalar(keys %primegaps) + 8 + 1 + 1 + 1 +
               scalar(keys %pivals_small) + scalar(keys %pi_intervals) +
               2*scalar(keys %pivals_small) + scalar(keys %nthprimes_small) +
-              4 + $num_pseudoprimes +
+              4 + scalar(keys %pseudoprimes) +
               scalar(keys %eivals) + scalar(keys %livals) + scalar(keys %rvals) +
-              scalar @primes + 3*scalar @composites +
+              1 + 1 +
               0;
 
 use Math::Prime::Util qw/primes prime_count_approx prime_count_lower/;
@@ -249,19 +247,18 @@ require_ok 'Math::Prime::Util::PP';
 
 ###############################################################################
 
-foreach my $n (0 .. 1086) {
-  if (defined $small_primes{$n}) {
-    is( is_prime($n), 2, "$n is prime");
-  } else {
-    ok(!is_prime($n), "$n is not prime");
-  }
+{
+  my %small_primes = map { $_ => 1 } @small_primes;
+  my @isprime = map { is_prime($_) } (0 .. 1086);
+  my @exprime = map { $small_primes{$_} ? 2 : 0 } (0 .. 1086);
+  is_deeply( \@isprime, \@exprime, "is_prime 0 .. 1086" );
 }
-
-foreach my $n (@primes) {
-  is( is_prime($n), 2, "$n is prime" );
-}
-foreach my $n (@composites) {
-  is( is_prime($n), 0, "$n is not prime" );
+{
+  my @isprime = map { is_prime($_) ? "$_ is prime" : "$_ is composite" }
+                @primes, @composites;
+  my @exprime =  map { "$_ is prime" } @primes;
+  push @exprime, map { "$_ is composite" } @composites;
+  is_deeply( \@isprime, \@exprime, "is_prime for selected numbers" );
 }
 
 ###############################################################################
@@ -301,11 +298,15 @@ if ($use64) {
   is( next_prime(4294967291), 0, "Next prime of ~0-4 returns 0" );
 }
 
-foreach my $n (2010733 .. 2010880) {
-  is(next_prime($n), 2010881, "next_prime($n) == 2010881");
+{
+  my @exprime = map { "next_prime($_) == 2010881" }         (2010733..2010880);
+  my @isprime = map { "next_prime($_) == ".next_prime($_) } (2010733..2010880);
+  is_deeply(\@isprime, \@exprime, "next_prime for 148 primes before primegap end 2010881");
 }
-foreach my $n (2010734 .. 2010881) {
-  is(prev_prime($n), 2010733, "prev_prime($n) == 2010733");
+{
+  my @exprime = map { "prev_prime($_) == 2010733" }         (2010734..2010881);
+  my @isprime = map { "prev_prime($_) == ".prev_prime($_) } (2010734..2010881);
+  is_deeply(\@isprime, \@exprime, "prev_prime for 148 primes before primegap start 2010733");
 }
 # Similar test case to 2010870, where m=0 and next_prime is at m=1
 is(next_prime(1234567890), 1234567891, "next_prime(1234567890) == 1234567891)");
@@ -341,9 +342,10 @@ is( miller_rabin(2, 2), 1, "MR with 2 shortcut prime");
 is( miller_rabin(3, 2), 1, "MR with 3 shortcut prime");
 
 while (my($base, $ppref) = each (%pseudoprimes)) {
-  foreach my $p (@$ppref) {
-    ok(miller_rabin($p, $base), "Pseudoprime (base $base) $p passes MR");
-  }
+  my $npseudos = scalar @$ppref;
+  my @expmr = map { 1 } @$ppref;
+  my @gotmr = map { miller_rabin($_, $base) } @$ppref;
+  is_deeply(\@gotmr, \@expmr, "$npseudos pseudoprimes (base $base)");
 }
 
 ###############################################################################
@@ -360,32 +362,40 @@ while (my($n, $rin) = each (%rvals)) {
 
 ###############################################################################
 
-foreach my $n (@primes) {
-  my @f = factor($n);
-  is_deeply( \@f, [$n], "factor prime $n yields $n" );
+#foreach my $n (@primes) {
+#  my @f = factor($n);
+#  is_deeply( \@f, [$n], "factor prime $n yields $n" );
+#}
+{
+  my $ntests = scalar @primes;
+  my @expfactor = map { "$_" } @primes;
+  my @gotfactor = map { join(' * ', factor($_)) } @primes;
+  is_deeply( \@gotfactor, \@expfactor, "test factoring for $ntests primes");
 }
-foreach my $n (@composites) {
-  my @f = factor($n);
-  my $facstring = join(' * ', @f);
+{
+  my $ntests = scalar @composites;
+  my @expfactor = map { "$_ factored correctly" } @composites;
+  my @gotfactor;
 
-  # Special case for 0 and 1
-  if ($n < 2) {
-    cmp_ok( scalar @f, '==', 1, "Factored small $n into itself" );
-    is( $f[0], $n, "$n = [ $facstring ]" );
-    ok( !is_prime($f[0]), "All factors [ $facstring ] of small $n are not prime" );
-    next;
+  foreach my $n (@composites) {
+    my @f = factor($n);
+    my $facstring = join(' * ', @f);
+
+    if ($n < 2) {
+      push @gotfactor, (@f == 1 && $f[0] == $n)
+                       ? "$n factored correctly"
+                       : "$n not correct: $facstring";
+      next;
+    }
+    my $product  = 1; $product = int($product * $_) for @f;
+    my $allprime = 1; $allprime *= is_prime($_) for @f;
+    if (@f >= 2 && $product == $n && $allprime) {
+      push @gotfactor, "$n factored correctly";
+    } else {
+      push @gotfactor, "$n not correct: $facstring";
+    }
   }
-
-  # These are composites, so they should give us more than one factor
-  cmp_ok( scalar @f, '>=', 2, "Factored $n into multiple factors" );
-
-  # Do they multiply to the number?
-  my $product = 1;  $product = int($product * $_) for @f;
-  is( $product, $n, "$n = [ $facstring ]" );
-
-  # Are they all prime?
-  my $isprime = 1; $isprime *= is_prime($_) for @f;
-  ok( $isprime, "All factors [ $facstring ] of $n are prime" );
+  is_deeply( \@gotfactor, \@expfactor, "test factoring for $ntests composites");
 }
 
 ###############################################################################
