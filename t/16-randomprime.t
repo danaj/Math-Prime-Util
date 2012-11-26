@@ -11,6 +11,7 @@ use Math::Prime::Util qw/random_prime random_ndigit_prime random_nbit_prime
 
 my $use64 = Math::Prime::Util::prime_get_config->{'maxbits'} > 32;
 my $extra = defined $ENV{RELEASE_TESTING} && $ENV{RELEASE_TESTING};
+my $broken64 = (18446744073709550592 == ~0);
 my $maxbits = $use64 ? 64 : 32;
 
 my @random_to = (2, 3, 4, 5, 6, 7, 8, 9, 100, 1000, 1000000, 4294967295);
@@ -135,6 +136,14 @@ foreach my $high (@random_to) {
   ok($inrange, "All returned values for $high were in the range" );
 }
 
+SKIP: {
+  if ($use64 && $broken64) {
+    my $num_ndigit_tests = scalar @random_ndigit_tests;
+    @random_ndigit_tests = grep { $_ < 15 } @random_ndigit_tests;
+    my $nskip = $num_ndigit_tests - scalar @random_ndigit_tests;
+    skip "Skipping random 15+ digit primes on broken 64-bit Perl", $nskip;
+  }
+}
 foreach my $digits ( @random_ndigit_tests ) {
   my $n = random_ndigit_prime($digits);
   ok ( length($n) == $digits && is_prime($n),
@@ -150,6 +159,7 @@ sub check_bits {
   my($n, $bits, $what) = @_;
   my $min = 1 << ($bits-1);
   my $max = ~0 >> ($maxbits - $bits);
+  $max = Math::BigInt->new("$max") if ref($n) eq 'Math::BigInt';
   ok ( $n >= $min && $n <= $max && is_prime($n),
        "$bits-bit random $what prime is in range and prime");
 }
