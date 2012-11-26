@@ -2,9 +2,15 @@ Revision history for Perl extension Math::Prime::Util.
 
 0.14  ?? November 2012
 
-    - Clean up some tests.
+    - Clean up some tests.  A lot of tests moved from testing 3000 cases as
+      separate tests, to putting everything in arrays and using is_deeply.
+      Output should still be specific, but it is a huge speedup on some
+      platforms (e.g. Cygwin on a netbook).
 
     - XS AKS extended from half-word to full-word.
+
+    - Moved bignum Zeta and R to separate file, only loaded when needed.
+      Helpful to get the big rarely-used tables out of the main loading.
 
     - Add functions:
            jordan_totient          generalization of Euler Totient
