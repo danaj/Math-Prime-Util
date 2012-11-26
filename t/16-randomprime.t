@@ -150,6 +150,14 @@ foreach my $digits ( @random_ndigit_tests ) {
        "$digits-digit random prime is in range and prime");
 }
 
+SKIP: {
+  if ($use64 && $broken64) {
+    my $num_nbit_tests = scalar @random_nbit_tests;
+    @random_nbit_tests = grep { $_ < 50 } @random_nbit_tests;
+    my $nskip = $num_nbit_tests - scalar @random_nbit_tests;
+    skip "Skipping random 50+ bit primes on broken 64-bit Perl", 2*$nskip;
+  }
+}
 foreach my $bits ( @random_nbit_tests ) {
   check_bits( random_nbit_prime($bits), $bits, "nbit" );
   check_bits( random_maurer_prime($bits), $bits, "Maurer" );

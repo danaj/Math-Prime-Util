@@ -1296,12 +1296,13 @@ my $_const_li2 = 1.045163780117492784844588889194613136522615578151;
 
 sub ExponentialIntegral {
   my($x, $tol) = @_;
+  return 0+'-inf' if $x == 0;
+  return 0        if $x == (0 + '-inf');
+  return 0+'inf'  if $x == (0 + 'inf');
   $tol = 1e-16 unless defined $tol;
   my $sum = 0.0;
   my($y, $t);
   my $c = 0.0;
-
-  croak "Invalid input to ExponentialIntegral:  x must be != 0" if $x == 0;
 
   $x = new Math::BigFloat "$x"  if defined $bignum::VERSION && ref($x) ne 'Math::BigFloat';
 
@@ -1353,12 +1354,11 @@ sub ExponentialIntegral {
   } else {
     # Asymptotic divergent series
     my $invx = 1.0 / $x;
-    $val = exp($x) * $invx;
-    $sum = 1.0;
-    my $term = 1.0;
-    for my $n (1 .. 200) {
+    my $term = $invx;
+    $sum = 1.0 + $term;
+    for my $n (2 .. 200) {
       my $last_term = $term;
-      $term *= $n*$invx;
+      $term *= $n * $invx;
       last if $term < $tol;
       if ($term < $last_term) {
         $y = $term-$c; $t = $sum+$y; $c = ($t-$sum)-$y; $sum = $t;
@@ -1367,7 +1367,7 @@ sub ExponentialIntegral {
         last;
       }
     }
-    $val *= $sum;
+    $val = exp($x) * $invx * $sum;
   }
   $val;
 }
@@ -1375,7 +1375,8 @@ sub ExponentialIntegral {
 sub LogarithmicIntegral {
   my($x) = @_;
   return 0 if $x == 0;
-  return 0+(-Infinity) if $x == 1;
+  return 0+'-inf' if $x == 1;
+  return 0+'inf'  if $x == (0 + 'inf');
   return $_const_li2 if $x == 2;
   croak "Invalid input to LogarithmicIntegral:  x must be > 0" if $x <= 0;
 
@@ -1384,12 +1385,13 @@ sub LogarithmicIntegral {
 
   # Do divergent series here for big inputs.  Common for big pc approximations.
   if ($x > 1e16) {
-    my $tol = 1e-16;
+    my $tol = 1e-20;
     my $invx = 1.0 / $logx;
-    my $val = $x * $invx;
-    my $sum = 1.0;
-    my $term = 1.0;
-    for my $n (1 .. 200) {
+    # n = 0  =>  0!/(logx)^0 = 1/1 = 1
+    # n = 1  =>  1!/(logx)^1 = 1/logx
+    my $term = $invx;
+    my $sum = 1.0 + $term;
+    for my $n (2 .. 200) {
       my $last_term = $term;
       $term *= $n * $invx;
       last if $term < $tol;
@@ -1400,9 +1402,26 @@ sub LogarithmicIntegral {
         last;
       }
     }
-    $val *= $sum;
+    my $val = $x * $invx * $sum;
     return $val;
   }
+  # Convergent series.
+  if ($x >= 1) {
+    my $tol  = 1e-20;
+    my $fact_n = 1.0;
+    my $nfac = 1.0;
+    my $sum  = 0.0;
+    for my $n (1 .. 200) {
+      $fact_n *= $logx/$n;
+      my $term = $fact_n / $n;
+      $sum += $term;
+      last if $term < $tol;
+    }
+    my $eulerconst = (ref($x) eq 'Math::BigFloat') ? Math::BigFloat->new('0.577215664901532860606512090082402431042159335939923598805767') : $_const_euler;
+    my $val = $eulerconst + log($logx) + $sum;
+    return $val;
+  }
+
   ExponentialIntegral($logx);
 }
 

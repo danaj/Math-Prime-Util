@@ -541,7 +541,10 @@ sub primes {
         $_random_ndigit_ranges[$digits] = [next_prime($low), prev_prime($high)];
       } else {
         my $low  = int(10 ** ($digits-1));
-        my $high = int(10 ** $digits);
+        my $high = int(10 ** int($digits));
+        # Note: Perl 5.6.2 cannot represent 10**15 as an integer, so things will
+        # crash all over the place if you try.  We can stringify it, but then it
+        # starts failing math tests later.
         $high = ~0 if $high > ~0;
         $_random_ndigit_ranges[$digits] = [next_prime($low), prev_prime($high)];
       }
@@ -1153,7 +1156,8 @@ sub prime_count_approx {
 
   # my $result = int(LogarithmicIntegral($x) - LogarithmicIntegral(sqrt($x))/2);
 
-  my $tol = 10**-(length(int($x))+1);
+  my $xlen = (ref($x) eq 'Math::BigFloat') ? length($x->bfloor->bstr()) : length(int($x));
+  my $tol = 10**-$xlen;
   my $result = RiemannR($x, $tol) + 0.5;
 
   return Math::BigInt->new($result->bfloor->bstr()) if ref($result) eq 'Math::BigFloat';
@@ -1414,7 +1418,9 @@ sub RiemannR {
 
 sub ExponentialIntegral {
   my($n) = @_;
-  croak "Invalid input to ExponentialIntegral:  x must be != 0" if $n == 0;
+  return 0+'-inf' if $n == 0;
+  return 0        if $n == (0 + '-inf');
+  return 0+'inf'  if $n == (0 + 'inf');
 
   return Math::Prime::Util::PP::ExponentialIntegral($n) if defined $bignum::VERSION || ref($n) eq 'Math::BigFloat';
   return Math::Prime::Util::PP::ExponentialIntegral($n) if !$_Config{'xs'};
@@ -1424,6 +1430,8 @@ sub ExponentialIntegral {
 sub LogarithmicIntegral {
   my($n) = @_;
   return 0 if $n == 0;
+  return 0+'-inf' if $n == 1;
+  return 0+'inf'  if $n == (0 + 'inf');
   croak("Invalid input to LogarithmicIntegral:  x must be >= 0") if $n <= 0;
 
   if ( defined $bignum::VERSION || ref($n) eq 'Math::BigFloat' ) {
