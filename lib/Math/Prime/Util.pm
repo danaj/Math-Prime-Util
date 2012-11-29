@@ -5,7 +5,7 @@ use Carp qw/croak confess carp/;
 
 BEGIN {
   $Math::Prime::Util::AUTHORITY = 'cpan:DANAJ';
-  $Math::Prime::Util::VERSION = '0.13';
+  $Math::Prime::Util::VERSION = '0.14';
 }
 
 # parent is cleaner, and in the Perl 5.10.1 / 5.12.0 core, but not earlier.
@@ -117,6 +117,11 @@ $_Config{'verbose'} = 0;
 my $_XS_MAXVAL = $_Config{'xs'}  ?  $_Config{'maxparam'}  :  -1;
 my $_HAVE_GMP = $_Config{'gmp'};
 
+# Infinity in Perl is rather O/S specific.
+our $_Infinity = 0+'inf';
+$_Infinity = 20**20**20 if 65535 > $_Infinity;   # E.g. Windows
+our $_Neg_Infinity = -$_Infinity;
+
 # Notes on how we're dealing with big integers:
 #
 #  1) if (ref($n) eq 'Math::BigInt')
@@ -146,7 +151,7 @@ sub prime_get_config {
 
   $config{'precalc_to'} = ($_Config{'xs'})
                         ? _get_prime_cache_size()
-                        : Math::Prime::Util::PP::_get_prime_cache_size;
+                        : Math::Prime::Util::PP::_get_prime_cache_size();
 
   return \%config;
 }
@@ -1429,9 +1434,9 @@ sub RiemannR {
 
 sub ExponentialIntegral {
   my($n) = @_;
-  return 0+'-inf' if $n == 0;
-  return 0        if $n == (0 + '-inf');
-  return 0+'inf'  if $n == (0 + 'inf');
+  return $_Neg_Infinity if $n == 0;
+  return 0              if $n == $_Neg_Infinity;
+  return $_Infinity     if $n == $_Infinity;
 
   return Math::Prime::Util::PP::ExponentialIntegral($n) if defined $bignum::VERSION || ref($n) eq 'Math::BigFloat';
   return Math::Prime::Util::PP::ExponentialIntegral($n) if !$_Config{'xs'};
@@ -1440,20 +1445,16 @@ sub ExponentialIntegral {
 
 sub LogarithmicIntegral {
   my($n) = @_;
-  return 0 if $n == 0;
-  return 0+'-inf' if $n == 1;
-  return 0+'inf'  if $n == (0 + 'inf');
+  return 0              if $n == 0;
+  return $_Neg_Infinity if $n == 1;
+  return $_Infinity     if $n == $_Infinity;
   croak("Invalid input to LogarithmicIntegral:  x must be >= 0") if $n <= 0;
 
   if ( defined $bignum::VERSION || ref($n) eq 'Math::BigFloat' ) {
     return Math::BigFloat->binf('-') if $n == 1;
     return Math::BigFloat->new('1.045163780117492784844588889194613136522615578151201575832909144075013205210359530172717405626383356306') if $n == 2;
   } else {
-    if ($n == 1) {
-      my $neg_infinity = 0+'-inf';
-      return (-9)**9**9 if $neg_infinity == 0;
-      return $neg_infinity;
-    }
+    return $_Neg_Infinity if $n == 1;
     return 1.045163780117492784844588889194613136522615578151 if $n == 2;
   }
   return Math::Prime::Util::PP::LogarithmicIntegral($n)
@@ -1484,7 +1485,7 @@ Math::Prime::Util - Utilities related to prime numbers, including fast sieves an
 
 =head1 VERSION
 
-Version 0.13
+Version 0.14
 
 
 =head1 SYNOPSIS

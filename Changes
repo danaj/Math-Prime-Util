@@ -1,6 +1,6 @@
 Revision history for Perl extension Math::Prime::Util.
 
-0.14  ?? November 2012
+0.14  29 November 2012
 
     - Compilation and test issues:
           Fix compilation on NetBSD

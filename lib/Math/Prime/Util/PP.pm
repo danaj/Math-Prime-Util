@@ -5,7 +5,7 @@ use Carp qw/carp croak confess/;
 
 BEGIN {
   $Math::Prime::Util::PP::AUTHORITY = 'cpan:DANAJ';
-  $Math::Prime::Util::PP::VERSION = '0.13';
+  $Math::Prime::Util::PP::VERSION = '0.14';
 }
 
 # The Pure Perl versions of all the Math::Prime::Util routines.
@@ -35,6 +35,10 @@ my $_half_word = (~0 == 18446744073709551615) ? 4294967296 :    # 64-bit
                  (~0 ==           4294967295) ?      65536 :    # 32-bit
                  (~0 ==                   -1) ?   1000**10 :    # bignum
                                                          0 ;    # No idea
+# Infinity in Perl is rather O/S specific.
+our $_Infinity = 0+'inf';
+$_Infinity = 20**20**20 if 65535 > $_Infinity;   # E.g. Windows
+our $_Neg_Infinity = -$_Infinity;
 
 my $_precalc_size = 0;
 sub prime_precalc {
@@ -1429,9 +1433,9 @@ my $_const_li2 = 1.045163780117492784844588889194613136522615578151;
 
 sub ExponentialIntegral {
   my($x, $tol) = @_;
-  return 0+'-inf' if $x == 0;
-  return 0        if $x == (0 + '-inf');
-  return 0+'inf'  if $x == (0 + 'inf');
+  return $_Neg_Infinity if $x == 0;
+  return 0              if $x == $_Neg_Infinity;
+  return $_Infinity     if $x == $_Infinity;
   $tol = 1e-16 unless defined $tol;
   my $sum = 0.0;
   my($y, $t);
@@ -1507,9 +1511,9 @@ sub ExponentialIntegral {
 
 sub LogarithmicIntegral {
   my($x) = @_;
-  return 0 if $x == 0;
-  return 0+'-inf' if $x == 1;
-  return 0+'inf'  if $x == (0 + 'inf');
+  return 0              if $x == 0;
+  return $_Neg_Infinity if $x == 1;
+  return $_Infinity     if $x == $_Infinity;
   return $_const_li2 if $x == 2;
   croak "Invalid input to LogarithmicIntegral:  x must be > 0" if $x <= 0;
 
@@ -1682,7 +1686,7 @@ Math::Prime::Util::PP - Pure Perl version of Math::Prime::Util
 
 =head1 VERSION
 
-Version 0.13
+Version 0.14
 
 
 =head1 SYNOPSIS
