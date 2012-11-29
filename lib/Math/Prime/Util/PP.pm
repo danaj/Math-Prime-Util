@@ -438,6 +438,20 @@ sub _sieve_prime_count {
   return $count;
 }
 
+sub _count_with_sieve {
+  my ($sref, $high) = @_;
+  return (0,0,1,2,2,3,3)[$high] if $high < 7;
+  $high-- if ($high % 2) == 0; # Make high go to odd number.
+  my $send = ($high >> 1) + 1;
+
+  if ( !defined $sref || $send > length($$sref) ) {
+    # We could take the full count of $sref, then segment sieve to high.
+    $sref = _sieve_erat($high);
+    return 1 + $$sref =~ tr/0//;
+  }
+  return 1 + substr($$sref, 0, $send) =~ tr/0//;
+}
+
 sub _lehmer_pi {
   my $x = shift;
   return _sieve_prime_count($x) if $x < 1_000;
@@ -447,23 +461,28 @@ sub _lehmer_pi {
   my $c = _lehmer_pi(int($x**(1/3)+0.5));
 
   # Generate at least b primes.
-  my $nth_prime_upper = ($b <= 10) ? 29 : int($b*(log($b) + log(log($b)))) + 1;
-  my $primes = primes( $nth_prime_upper );
+  my $bth_prime_upper = ($b <= 10) ? 29 : int($b*(log($b) + log(log($b)))) + 1;
+  my $primes = primes( $bth_prime_upper );
 
   my $sum = int(($b + $a - 2) * ($b - $a + 1) / 2);
   $sum += _legendre_phi($x, $a, $primes);
 
-  # Make sure these calls are fast.
-  # 1M for 10**8, 32M for 10**10, 5600M for 10**12
-  prime_precalc( int($x / $primes->[$a]) );
+  # Get a big sieve for our primecounts.  The C code uses b*16 as a compromise,
+  # as that cuts out all the inner loop sieves and about half the outer loop.
+  # It also takes good advantage of segment sieving for the big outer counts.
+  # We'll just go ahead and sieve everything we need now.  This is really much
+  # more than we should use, but it saves a _huge_ amount of time given we're
+  # not using a segment sieve for the outer loop.
+  #my $sref = _sieve_erat($b * 16);
+  my $sref = _sieve_erat( int($x / $primes->[$a]) );
 
   foreach my $i ($a+1 .. $b) {
     my $w = int($x / $primes->[$i-1]);
-    $sum = $sum - _sieve_prime_count($w);
+    $sum = $sum - _count_with_sieve($sref,$w);
     if ($i <= $c) {
-      my $bi = _sieve_prime_count(int(sqrt($w)+0.5));
+      my $bi = _count_with_sieve($sref,int(sqrt($w)+0.5));
       foreach my $j ($i .. $bi) {
-        $sum = $sum - _sieve_prime_count(int($w / $primes->[$j-1])) + $j - 1;
+        $sum = $sum - _count_with_sieve($sref,int($w / $primes->[$j-1])) + $j - 1;
       }
     }
   }
@@ -492,8 +511,8 @@ sub prime_count {
 
   if (   ref($low) eq 'Math::BigInt' || ref($high) eq 'Math::BigInt'
       || ($high-$low) < 10
-      || ($high-$low) < int($low/1_000_000) ) {
-    # Trial primes seems best.
+      || ($high-$low) < int($low/100_000_000_000) ) {
+    # Trial primes seems best.  Needs some tuning.
     my $curprime = next_prime($low-1);
     while ($curprime <= $high) {
       $count++;
@@ -674,6 +693,11 @@ sub miller_rabin {
   return 1 if ($n == 2) || ($n == 3);
   return 0 if !($n % 2);
 
+  # Die on invalid bases
+  do { croak "Base $_ is invalid" if $_ < 2 } for (@bases);
+  # Make sure we handle big bases ok.
+  @bases = grep { $_ > 1 }  map { ($_ >= $n) ? $_ % $n : $_ }  @bases;
+
   if ( ref($n) eq 'Math::BigInt' ) {
 
     my $s = 0;
@@ -685,7 +709,6 @@ sub miller_rabin {
     }
 
     foreach my $a (@bases) {
-      croak "Base $a is invalid" if $a < 2;
       my $x = $n->copy->bzero->badd($a)->bmodpow($d,$n);
       next if ($x->is_one) || ($x->bcmp($nminus1) == 0);
       foreach my $r (1 .. $s) {
@@ -710,7 +733,6 @@ sub miller_rabin {
 
    if ($n < $_half_word) {
     foreach my $a (@bases) {
-      croak "Base $a is invalid" if $a < 2;
       my $x = _native_powmod($a, $d, $n);
       next if ($x == 1) || ($x == ($n-1));
       foreach my $r (1 .. $s) {
@@ -725,7 +747,6 @@ sub miller_rabin {
     }
    } else {
     foreach my $a (@bases) {
-      croak "Base $a is invalid" if $a < 2;
       my $x = _powmod($a, $d, $n);
       next if ($x == 1) || ($x == ($n-1));
 
@@ -850,7 +871,7 @@ sub is_strong_lucas_pseudoprime {
 
   if (ref($n) ne 'Math::BigInt') {
     require Math::BigInt;
-    $n = Math::BigInt->new($n);
+    $n = Math::BigInt->new("$n");
   }
 
   my $m = $n->copy->badd(1);
@@ -1008,7 +1029,7 @@ sub is_aks_prime {
 
   # limit = floor( log2(n) * log2(n) ).  o_r(n) must be larger than this
   my $sqrtn = int(Math::BigFloat->new($n)->bsqrt->bfloor->bstr);
-  my $log2n = Math::BigFloat->new($n)->blog(2);
+  my $log2n = Math::BigFloat->new("$n")->blog(2);
   my $log2_squared_n = $log2n * $log2n;
   my $limit = int($log2_squared_n->bfloor->bstr);
 
@@ -1028,7 +1049,7 @@ sub is_aks_prime {
   return 1 if $r >= $n;
 
   # Since r is a prime, phi(r) = r-1
-  my $rlimit = int( Math::BigFloat->new($r)->bsub(1)
+  my $rlimit = int( Math::BigFloat->new("$r")->bsub(1)
                     ->bsqrt->bmul($log2n)->bfloor->bstr);
 
   $_poly_bignum = 1;

@@ -2,15 +2,13 @@ Revision history for Perl extension Math::Prime::Util.
 
 0.14  ?? November 2012
 
-    - Clean up some tests.  A lot of tests moved from testing 3000 cases as
-      separate tests, to putting everything in arrays and using is_deeply.
-      Output should still be specific, but it is a huge speedup on some
-      platforms (e.g. Cygwin on a netbook).
+    - Compilation and test issues:
+          Fix compilation on NetBSD
+          Try to fix compilation on Win32 + MSVC
+          Speed up some testing, helps a lot with Cygwin on slow machines
+          Speed up a lot of slow PP areas, especially used by test suite
 
     - XS AKS extended from half-word to full-word.
-
-    - Moved bignum Zeta and R to separate file, only loaded when needed.
-      Helpful to get the big rarely-used tables out of the main loading.
 
     - Add functions:
            jordan_totient          generalization of Euler Totient
@@ -20,7 +18,19 @@ Revision history for Perl extension Math::Prime::Util.
       GMP support respectively if they are defined and equal to 1.
 
     - Lehmer prime count for Pure Perl code, including use in nth_prime.
-      Almost 10x speedup on test suite if using only Pure Perl.
+         prime count 10^9 using sieve:
+            71.9s   PP sieve
+             0.47s  XS sieve
+         prime count 10^9 using Lehmer:
+             0.70s  PP lehmer
+             0.03s  XS lehmer
+
+    - Moved bignum Zeta and R to separate file, only loaded when needed.
+      Helpful to get the big rarely-used tables out of the main loading.
+
+    - Quote arguments to Math::Big{Int,Float} in a few places it wasn't.
+      Math::Big* coerces the input to a signed value if it isn't a string,
+      which causes us all sorts of grief.
 
 0.13  19 November 2012
 
