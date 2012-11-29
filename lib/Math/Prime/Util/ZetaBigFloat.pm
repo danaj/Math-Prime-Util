@@ -299,9 +299,9 @@ sub RiemannZeta {
   # into (6^-(40.5/4))^4  (assuming the base is positive).  Without that hack,
   # none of this would work at all.
 
-  $x = Math::BigFloat->new($x);
+  $x = Math::BigFloat->new("$x");
   my $superx = 1;
-  my $subx = Math::BigFloat->new($x);
+  my $subx = $x->copy;
   while ($subx > 8) {
     $superx *= 2;
     $subx /= 2;

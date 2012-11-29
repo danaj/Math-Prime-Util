@@ -137,7 +137,7 @@ static UV* generate_small_primes(UV n)
   UV  i, nth_prime;
 
   /* Dusart 1999 bound */
-  nth_prime = (n <= 10) ? 29 : n * ( log(n) + log(log(n)) ) + 1;
+  nth_prime = (n <= 10) ? 29 : (UV) (n * ( log(n) + log(log(n)) )) + 1;
 
   if (get_prime_cache(nth_prime, &sieve) < nth_prime) {
     release_prime_cache(sieve);
@@ -293,7 +293,7 @@ static void heap_insert(heap_t* h, UV val, IV count)
       if (verbose>2) printf("ALLOCing heap, size %lu\n", new_size);
       New(0, h->array, new_size, vc_t);
     } else {
-      new_size = 1.5 * h->array_size;
+      new_size = (UV) (1.5 * h->array_size);
       if (verbose>2) printf("REALLOCing heap %p, new size %lu\n", h->array, new_size);
       Renew( h->array, new_size, vc_t );
     }
@@ -454,7 +454,7 @@ UV _XS_legendre_pi(UV n)
   if (n < SIEVE_LIMIT)
     return _XS_prime_count(2, n);
 
-  a = _XS_legendre_pi(sqrt(n)+0.5);
+  a = _XS_legendre_pi( (UV) (sqrt(n)+0.5) );
 
   return phi(n, a) + a - 1;
 }
@@ -523,7 +523,7 @@ UV _XS_lehmer_pi(UV n)
 
   if (verbose > 0) printf("lehmer %lu stage 1: calculate a,b,c \n", n);
   TIMING_START;
-  z = sqrt((double)n+0.5);
+  z = (UV) sqrt((double)n+0.5);
   a = _XS_lehmer_pi(sqrt((double)z)+0.5);          /* a = floor(n^1/4) */
   b = _XS_lehmer_pi(z);                            /* b = floor(n^1/2) */
   c = _XS_lehmer_pi(pow((double)n, 1.0/3.0)+0.5);  /* c = floor(n^1/3) */

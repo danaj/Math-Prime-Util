@@ -9,9 +9,13 @@ BEGIN {
     exit(0);
   }
   # All these tests used to run on Cygwin, but now they're all giving me
-  # random panics in mutexes.
+  # random panics in mutexes.  Same with NetBSD.
   if ($Config{osname} eq 'cygwin') {
     print "1..0 # Skip Cygwin threads are unstable\n";
+    exit 0;
+  }
+  if ($Config{osname} eq 'netbsd') {
+    print "1..0 # Skip NetBSD threads have panic issues\n";
     exit 0;
   }
   # Should be be looking for newer than 5.008?

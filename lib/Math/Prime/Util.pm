@@ -214,7 +214,7 @@ sub _upgrade_to_float {
   return $n unless defined $Math::BigInt::VERSION || defined $Math::BigFloat::VERSION;
   do { require Math::BigFloat; Math::BigFloat->import() }
      if defined $Math::BigInt::VERSION && !defined $Math::BigFloat::VERSION;
-  return Math::BigFloat->new($n);
+  return Math::BigFloat->new($n);   # $n is a Math::BigInt
 }
 
 my @_primes_small = (
@@ -604,7 +604,7 @@ sub primes {
     if ($k > 2*$m) {
       my $rbits = 0;
       while ($rbits <= $m) {
-        my $s = Math::BigFloat->new( $irandf->($rand_max_val) )->bdiv($rand_max_val);
+        my $s = Math::BigFloat->new( "$irandf->($rand_max_val)" )->bdiv($rand_max_val);
         my $r = Math::BigFloat->new(2)->bpow($s-1);
         $rbits = $k - ($r*$k);
       }
@@ -1121,7 +1121,7 @@ sub is_provable_prime {
   }
 
   for (my $a = 2; $a < $nm1; $a++) {
-    my $ap = Math::BigInt->new($a);
+    my $ap = Math::BigInt->new("$a");
     # 1. a^(n-1) = 1 mod n.
     next if $ap->copy->bmodpow($nm1, $n) != 1;
     # 2. a^((n-1)/f) != 1 mod n for all f.

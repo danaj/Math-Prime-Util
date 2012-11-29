@@ -54,8 +54,12 @@ ok(!is_aks_prime(0),  '0 is not prime');
 ok(!is_aks_prime(-1), '-1 is not prime');
 ok(!is_aks_prime(-2), '-2 is not prime');
 
-# Simple number (cought by sqrt test
+# Simple number (cought by sqrt test)
 is( is_aks_prime(877), 1, "is_aks_prime(877) is true" );
+
+# Perhaps let them know this is probably not a hung test?
+# This runs in milliseconds on an i3930K, but many seconds on an UltraSPARC.
+#diag "Unfortunately these tests are very slow.";
 
 # The first number that makes it past the sqrt test to actually run.
 is( is_aks_prime(69197), 1, "is_aks_prime(69197) is true" );

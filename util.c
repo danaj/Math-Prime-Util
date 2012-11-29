@@ -10,20 +10,33 @@
  * Noting that 'long double' on many platforms is no different than 'double'
  * so it may buy us nothing.  But it's worth trying.
  */
-extern long double powl(long double, long double);
-extern long double expl(long double);
-extern long double logl(long double);
-extern long double fabsl(long double);
 
-/* However, standard math functions weren't defined on them until C99.  Same
- * with the macro INFINITY.  There are some reasonable platforms I've seen
- * that don't have these. */
+/* These math functions are a clusterfrack.  They're defined by C99, but
+ * NetBSD doesn't have them.  You need them in both the headers and libraries,
+ * but there is no standard way to find out if the libraries have them.  The
+ * best way (I belive) to deal with this is having the make system do test
+ * compiles.  Barring that, we make limited guesses, and just give up
+ * precision on any system we don't recognize.
+ */
+#if _MSC_VER
+  /* MSVS has these as macros, and really doesn't want us defining them. */
+#elif defined(__MATH_DECLARE_LDOUBLE) || \
+      defined(__LONG_DOUBLE_128__) || \
+      defined(__LONGDOUBLE128)
+  /* GLIBC */
+  extern long double powl(long double, long double);
+  extern long double expl(long double);
+  extern long double logl(long double);
+  extern long double fabsl(long double);
+#else
+  #define powl(x, y)  (long double) pow( (double) (x), (double) (y) )
+  #define expl(x)     (long double) exp( (double) (x) )
+  #define logl(x)     (long double) log( (double) (x) )
+  #define fabsl(x)    (long double) fabs( (double) (x) )
+#endif
+
 #ifndef INFINITY
   #define INFINITY (DBL_MAX + DBL_MAX)
-  #define powl(x, y)  (long double) pow( (double) (x), (double) (y) )
-  #define expl(x)  (long double) exp( (double) (x) )
-  #define logl(x)  (long double) log( (double) (x) )
-  #define fabsl(x)  (long double) fabs( (double) (x) )
 #endif
 
 #include "ptypes.h"
