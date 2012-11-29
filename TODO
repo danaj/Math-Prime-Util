@@ -46,7 +46,5 @@
    RiemannZeta
    RiemannR
 
-- Add Lehmer in PP (I have a version, just needs some polishing).  This is a
-  high priority, as the test suite now assumes prime_count is fast for large
-  inputs.
-
+- Dynamically use a mulmodadd in PP aks, just like the new C code does.
+  This will mean it'll work for full-size native ints.

@@ -35,6 +35,13 @@
          :"r"(a), "r"(b), "r"(c) /* input */
          :"%rax", "%rdx"         /* clobbered registers */
         );
+    /* A version for _MSC_VER:
+     *  
+     *    __asm { mov rax, qword ptr a
+     *            mul qword ptr b
+     *            div qword ptr c
+     *            mov qword ptr d, rdx }
+     */
     return d;
   }
   #define mulmod(a,b,m) _mulmod(a,b,m)

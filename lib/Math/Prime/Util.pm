@@ -254,10 +254,12 @@ sub primes {
   if ($high > $_XS_MAXVAL) {
     if ($_HAVE_GMP) {
       $sref = Math::Prime::Util::GMP::primes($low,$high);
-      # Convert the returned strings into BigInts
-      croak "Internal error: large value without bigint loaded."
-            unless defined $Math::BigInt::VERSION;
-      @$sref = map { Math::BigInt->new("$_") } @$sref;
+      if ($high > ~0) {
+        # Convert the returned strings into BigInts
+        croak "Internal error: large value without bigint loaded."
+              unless defined $Math::BigInt::VERSION;
+        @$sref = map { Math::BigInt->new("$_") } @$sref;
+      }
       return $sref;
     }
     return Math::Prime::Util::PP::primes($low,$high);
@@ -905,6 +907,9 @@ sub next_prime {
   return _XS_next_prime($n) if $n <= $_XS_MAXVAL
              && (!defined $bigint::VERSION || $n < $_Config{'maxprime'} );
 
+  # Try to stick to the plan with respect to maximum return values.
+  return 0 if ref($_[0]) ne 'Math::BigInt' && $n >= $_Config{'maxprime'};
+
   if ($_HAVE_GMP) {
     # If $n is a bigint object, try to make the return value the same
     return (ref($_[0]) eq 'Math::BigInt')
@@ -954,8 +959,12 @@ sub prime_count {
     }
     return _XS_prime_count($low,$high);
   }
+  # We can relax these constraints if MPU::GMP gets a Lehmer implementation.
   return Math::Prime::Util::GMP::prime_count($low,$high) if $_HAVE_GMP
-                       && defined &Math::Prime::Util::GMP::prime_count;
+                       && defined &Math::Prime::Util::GMP::prime_count
+                       && (   (ref($high) eq 'Math::BigInt')
+                           || (($high-$low) < int($low/1_000_000))
+                          );
   return Math::Prime::Util::PP::prime_count($low,$high);
 }
 

@@ -170,21 +170,17 @@ sub is_prime {
 
 sub _sieve_erat_string {
   my($end) = @_;
+  $end-- if ($end & 1) == 0;
+  my $s_end = $end >> 1;
 
-  # Prefill with 3 and 5 already marked.
-  my $whole = int( ($end>>1) / 15);
+  my $whole = int( $s_end / 15);   # Prefill with 3 and 5 already marked.
   croak "Sieve too large" if $whole > 1_145_324_612;  # ~32 GB string
   my $sieve = "100010010010110" . "011010010010110" x $whole;
-  # Make exactly the number of entries requested, never more.
-  substr($sieve, ($end>>1)+1) = '';
-  my $n = 7;
-  while ( ($n*$n) <= $end ) {
-    my $s = $n*$n;
-    my $filter_s   = $s >> 1;
-    my $filter_end = $end >> 1;
-    while ($filter_s <= $filter_end) {
-      substr($sieve, $filter_s, 1) = "1";
-      $filter_s += $n;
+  substr($sieve, $s_end+1) = '';   # Ensure we don't make too many entries
+  my ($n, $limit) = ( 7, int(sqrt($end)) );
+  while ( $n <= $limit ) {
+    for (my $s = ($n*$n) >> 1; $s <= $s_end; $s += $n) {
+      substr($sieve, $s, 1) = '1';
     }
     do { $n += 2 } while substr($sieve, $n>>1, 1);
   }
@@ -386,6 +382,96 @@ sub prev_prime {
   #$d*30+$m;
 }
 
+#############################################################################
+#                       Lehmer prime count
+#
+sub _mapes {
+  my($v, $ma) = @_;
+  return $v if $ma == 0;
+  my $val = $v-int($v/2);
+  $val += -int($v/3)+int($v/6) if $ma >= 2;
+  $val += -int($v/5)+int($v/10)+int($v/15)-int($v/30) if $ma >= 3;
+  $val += -int($v/7)+int($v/14)+int($v/21)-int($v/42)+int($v/35)-int($v/70)-int($v/105)+int($v/210) if $ma >= 4;
+  $val += -int($v/11)+int($v/22)+int($v/33)-int($v/66)+int($v/55)-int($v/110)-int($v/165)+int($v/330)+int($v/77)-int($v/154)-int($v/231)+int($v/462)-int($v/385)+int($v/770)+int($v/1155)-int($v/2310) if $ma >= 5;
+  $val += -int($v/13)+int($v/26)+int($v/39)-int($v/78)+int($v/65)-int($v/130)-int($v/195)+int($v/390)+int($v/91)-int($v/182)-int($v/273)+int($v/546)-int($v/455)+int($v/910)+int($v/1365)-int($v/2730)+int($v/143)-int($v/286)-int($v/429)+int($v/858)-int($v/715)+int($v/1430)+int($v/2145)-int($v/4290)-int($v/1001)+int($v/2002)+int($v/3003)-int($v/6006)+int($v/5005)-int($v/10010)-int($v/15015)+int($v/30030) if $ma >= 6;
+  return $val;
+}
+
+sub _legendre_phi {
+  my ($x, $a, $primes) = @_;
+  return _mapes($x,$a) if $a <= 6;
+  return ($x > 0 ? 1 : 0) if $x < $primes->[$a];
+
+  my $sum = 0;
+  my %vals = ( $x => 1 );
+  while ($a > 6) {
+    my $primea = $primes->[$a-1];
+    my %newvals;
+    while (my($v,$c) = each %vals) {
+      next if $c == 0;
+      # next if $v < $primea;
+      $newvals{$v} += $c;
+      my $sval = int($v / $primea);
+      if ($sval >= $primea) {
+        $newvals{$sval} -= $c;
+      } else {
+        $sum -= $c;
+      }
+    }
+    %vals = %newvals;
+    $a--;
+  }
+  while (my($v,$c) = each %vals) {
+    next if $c == 0;
+    $sum += $c * _mapes($v, $a);
+  }
+  return $sum;
+}
+
+sub _sieve_prime_count {
+  my $high = shift;
+  return (0,0,1,2,2,3,3)[$high] if $high < 7;
+  $high-- if ($high % 2) == 0; # Make high go to odd number.
+
+  my $sieveref = _sieve_erat($high);
+  my $count = 1 + $$sieveref =~ tr/0//;
+  return $count;
+}
+
+sub _lehmer_pi {
+  my $x = shift;
+  return _sieve_prime_count($x) if $x < 1_000;
+  my $z = int(sqrt($x+0.5));
+  my $a = _lehmer_pi(int(sqrt($z)+0.5));
+  my $b = _lehmer_pi($z);
+  my $c = _lehmer_pi(int($x**(1/3)+0.5));
+
+  # Generate at least b primes.
+  my $nth_prime_upper = ($b <= 10) ? 29 : int($b*(log($b) + log(log($b)))) + 1;
+  my $primes = primes( $nth_prime_upper );
+
+  my $sum = int(($b + $a - 2) * ($b - $a + 1) / 2);
+  $sum += _legendre_phi($x, $a, $primes);
+
+  # Make sure these calls are fast.
+  # 1M for 10**8, 32M for 10**10, 5600M for 10**12
+  prime_precalc( int($x / $primes->[$a]) );
+
+  foreach my $i ($a+1 .. $b) {
+    my $w = int($x / $primes->[$i-1]);
+    $sum = $sum - _sieve_prime_count($w);
+    if ($i <= $c) {
+      my $bi = _sieve_prime_count(int(sqrt($w)+0.5));
+      foreach my $j ($i .. $bi) {
+        $sum = $sum - _sieve_prime_count(int($w / $primes->[$j-1])) + $j - 1;
+      }
+    }
+  }
+  $sum;
+}
+#############################################################################
+
+
 sub prime_count {
   my($low,$high) = @_;
   if (!defined $high) {
@@ -405,10 +491,9 @@ sub prime_count {
   return $count if $low > $high;
 
   if (   ref($low) eq 'Math::BigInt' || ref($high) eq 'Math::BigInt'
-      || $high > 16_000_000_000
+      || ($high-$low) < 10
       || ($high-$low) < int($low/1_000_000) ) {
-    # Too big to sieve.
-    my $count = 0;
+    # Trial primes seems best.
     my $curprime = next_prime($low-1);
     while ($curprime <= $high) {
       $count++;
@@ -417,16 +502,20 @@ sub prime_count {
     return $count;
   }
 
-  my $sieveref;
-  if ($low == 3) {
-    $sieveref = _sieve_erat($high);
-  } else {
-    $sieveref = _sieve_segment($low,$high);
+  # TODO: Needs tuning
+  if ($high > 50_000) {
+    if ( ($high / ($high-$low+1)) < 100 ) {
+      $count += _lehmer_pi($high);
+      $count -= ($low == 3) ? 1 : _lehmer_pi($low-1);
+      return $count;
+    }
   }
 
-  $count += $$sieveref =~ tr/0//;
+  return (_sieve_prime_count($high) - 1 + $count) if $low == 3;
 
-  $count;
+  my $sieveref = _sieve_segment($low,$high);
+  $count += $$sieveref =~ tr/0//;
+  return $count;
 }
 
 
@@ -446,9 +535,21 @@ sub nth_prime {
 
   my $prime = 0;
 
+  my $count = 1;
+  my $start = 3;
+
+  my $logn = log($n);
+  my $loglogn = log($logn);
+  my $nth_prime_upper = ($n <= 10) ? 29 : int($n*($logn + $loglogn)) + 1;
+  if ($nth_prime_upper > 100000) {
+    # Use fast Lehmer prime count combined with lower bound to get close.
+    my $nth_prime_lower = int($n * ($logn + $loglogn - 1.0 + (($loglogn-2.10)/$logn)));
+    $nth_prime_lower-- unless $nth_prime_lower % 2;
+    $count = _lehmer_pi($nth_prime_lower);
+    $start = $nth_prime_lower + 2;
+  }
+
   {
-    my $count = 1;
-    my $start = 3;
     # Make sure incr is an even number.
     my $incr = ($n < 1000) ? 1000 : ($n < 10000) ? 10000 : 100000;
     my $sieveref;
@@ -889,7 +990,18 @@ sub _test_anr {
 
 sub is_aks_prime {
   my $n = shift;
-  $n = Math::BigInt->new("$n") unless ref($n) eq 'Math::BigInt';
+
+  if (ref($n) ne 'Math::BigInt') {
+    if (!defined $MATH::BigInt::VERSION) {
+      eval { require Math::BigInt;  Math::BigInt->import(try=>'GMP,Pari'); 1; }
+      or do { croak "Cannot load Math::BigInt "; }
+    }
+    if (!defined $MATH::BigFloat::VERSION) {
+      eval { require Math::BigFloat;   Math::BigFloat->import(); 1; }
+      or do { croak "Cannot load Math::BigFloat "; }
+    }
+    $n = Math::BigInt->new("$n");
+  }
 
   return 0 if $n < 2;
   return 0 if _is_perfect_power($n);

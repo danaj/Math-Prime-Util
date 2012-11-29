@@ -19,6 +19,9 @@ Revision history for Perl extension Math::Prime::Util.
     - Allow environment variables MPU_NO_XS and MPU_NO_GMP to turn off XS and
       GMP support respectively if they are defined and equal to 1.
 
+    - Lehmer prime count for Pure Perl code, including use in nth_prime.
+      Almost 10x speedup on test suite if using only Pure Perl.
+
 0.13  19 November 2012
 
     - Fix an issue with prime count, and make prime count available as a
