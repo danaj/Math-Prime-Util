@@ -16,6 +16,9 @@ Revision history for Perl extension Math::Prime::Util.
            jordan_totient          generalization of Euler Totient
            divisor_sum             run coderef for every divisor
 
+    - Allow environment variables MPU_NO_XS and MPU_NO_GMP to turn off XS and
+      GMP support respectively if they are defined and equal to 1.
+
 0.13  19 November 2012
 
     - Fix an issue with prime count, and make prime count available as a

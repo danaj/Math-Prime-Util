@@ -142,9 +142,9 @@ static int is_perfect_square(UV n, UV* sqrtn)
  */
 int _XS_miller_rabin(UV n, const UV *bases, int nbases)
 {
-  int b;
-  int s = 0;
+  UV const nm1 = n-1;
   UV d = n-1;
+  int b, r, s = 0;
 
   MPUassert(n > 3, "MR called with n <= 3");
 
@@ -153,15 +153,18 @@ int _XS_miller_rabin(UV n, const UV *bases, int nbases)
     d >>= 1;
   }
   for (b = 0; b < nbases; b++) {
-    int r;
-    UV a = bases[b];
-    UV x;
+    UV x, a = bases[b];
 
     if (a < 2)
       croak("Base %"UVuf" is invalid", a);
 #if 0
     if (a > (n-2))
       croak("Base %"UVuf" is invalid for input %"UVuf, a, n);
+#else
+    if (a >= n)
+      a %= n;
+    if ( (a <= 1) || (a == nm1) )
+      continue;
 #endif
 
     /* n is a strong pseudoprime to this base if either
@@ -170,19 +173,15 @@ int _XS_miller_rabin(UV n, const UV *bases, int nbases)
      */
 
     x = powmod(a, d, n);
-    if ( (x == 1) || (x == (n-1)) )  continue;
+    if ( (x == 1) || (x == nm1) )  continue;
 
     /* cover r = 1 to s-1, r=0 was just done */
     for (r = 1; r < s; r++) {
       x = sqrmod(x, n);
-      if (x == 1) {
-        return 0;
-      } else if (x == (n-1)) {
-        a = 0;
-        break;
-      }
+      if ( x == nm1 )  break;
+      if ( x == 1   )  return 0;
     }
-    if (a != 0)
+    if (r >= s)
       return 0;
   }
   return 1;

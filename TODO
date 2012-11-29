@@ -29,8 +29,6 @@
 
 - Make proper pminus1 in PP code, like factor.c.
 
-- Add Lehmer in PP (I have a version, just needs some polishing).
-
 - For bignums, RiemannZeta and RiemmannR are slow and give questionable
   precision.  We should be able to do better.  One problem is the accuracy
   bug in Math::BigFloat.  Perhaps check for Math::MPFR installed and use it?
@@ -47,3 +45,8 @@
    is_provable_prime
    RiemannZeta
    RiemannR
+
+- Add Lehmer in PP (I have a version, just needs some polishing).  This is a
+  high priority, as the test suite now assumes prime_count is fast for large
+  inputs.
+

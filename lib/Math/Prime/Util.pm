@@ -59,6 +59,7 @@ BEGIN {
   require Math::Prime::Util::PP;  Math::Prime::Util::PP->import();
 
   eval {
+    return 0 if defined $ENV{MPU_NO_XS} && $ENV{MPU_NO_XS} == 1;
     require XSLoader;
     XSLoader::load(__PACKAGE__, $Math::Prime::Util::VERSION);
     prime_precalc(0);
@@ -276,8 +277,9 @@ sub primes {
     } elsif (($high <= (65536*30)) || ($high <= _get_prime_cache_size())) {
       $method = 'Sieve';
 
-    # More memory than we should reasonably use for base sieve?
-    } elsif ($high > (32*1024*1024*30)) {
+    # At some point the segmented sieve is faster than the base sieve, not
+    # to mention using much less memory.
+    } elsif ($high > (1024*1024*30)) {
       $method = 'Segment';
       # The segment sieve doesn't itself use a segmented sieve for the base,
       # so it will slow down for very large endpoints (larger than 10^16).
