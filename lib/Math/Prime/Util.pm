@@ -1448,17 +1448,16 @@ sub LogarithmicIntegral {
   return 0              if $n == 0;
   return $_Neg_Infinity if $n == 1;
   return $_Infinity     if $n == $_Infinity;
+  if ($n == 2) {
+    return (defined $bignum::VERSION || ref($n) eq 'Math::BigFloat')
+           ? Math::BigFloat->new('1.045163780117492784844588889194613136522615578151201575832909144075013205210359530172717405626383356306')
+           : 1.045163780117492784844588889194613136522615578151;
+  }
+
   croak("Invalid input to LogarithmicIntegral:  x must be >= 0") if $n <= 0;
 
-  if ( defined $bignum::VERSION || ref($n) eq 'Math::BigFloat' ) {
-    return Math::BigFloat->binf('-') if $n == 1;
-    return Math::BigFloat->new('1.045163780117492784844588889194613136522615578151201575832909144075013205210359530172717405626383356306') if $n == 2;
-  } else {
-    return $_Neg_Infinity if $n == 1;
-    return 1.045163780117492784844588889194613136522615578151 if $n == 2;
-  }
   return Math::Prime::Util::PP::LogarithmicIntegral($n)
-    if defined $bignum::VERSION || ref($n) eq 'Math::BigFloat' || !$_Config{'xs'};
+   if defined $bignum::VERSION || ref($n) eq 'Math::BigFloat' || !$_Config{'xs'};
   return _XS_LogarithmicIntegral($n);
 }
 

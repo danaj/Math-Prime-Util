@@ -24,7 +24,7 @@ cmp_ok( ExponentialIntegral($infinity), '>=', $infinity, "Ei(inf) is infinity");
 
 cmp_ok( LogarithmicIntegral(0),         '==', 0,         "li(0) is 0");
 cmp_ok( LogarithmicIntegral(1),         '<=',-$infinity, "li(1) is -infinity");
-cmp_ok( LogarithmicIntegral($infinity)),'>=', $infinity, "li(inf) is infinity");
+cmp_ok( LogarithmicIntegral($infinity), '>=', $infinity, "li(inf) is infinity");
 
 # Example used in Math::Cephes
 cmp_closeto( ExponentialIntegral(2.2), 5.732614700, 1e-06, "Ei(2.2)");
