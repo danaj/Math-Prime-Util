@@ -7,6 +7,7 @@ use Math::Prime::Util qw/prime_count ExponentialIntegral LogarithmicIntegral Rie
 
 my $use64 = Math::Prime::Util::prime_get_config->{'maxbits'} > 32;
 my $extra = defined $ENV{RELEASE_TESTING} && $ENV{RELEASE_TESTING};
+my $infinity = 20**20**20;
 
 plan tests => 3 + 6 + 1 + 16 + 11 + 9;
 
@@ -17,13 +18,13 @@ like($@, qr/invalid/i, "R(0) is invalid");
 eval { RiemannR(-1); };
 like($@, qr/invalid/i, "R(-1) is invalid");
 
-cmp_ok( ExponentialIntegral(0),     '<=', 0 - (~0 * ~0), "Ei(0) is -infinity" );
-cmp_ok( ExponentialIntegral('-inf'),'==', 0, "Ei(-inf) is 0" );
-cmp_ok( ExponentialIntegral('inf'), '>=', 0 + (~0 * ~0), "Ei(inf) is infinity" );
+cmp_ok( ExponentialIntegral(0),         '<=',-$infinity, "Ei(0) is -infinity");
+cmp_ok( ExponentialIntegral(-$infinity),'==', 0,         "Ei(-inf) is 0" );
+cmp_ok( ExponentialIntegral($infinity), '>=', $infinity, "Ei(inf) is infinity");
 
-cmp_ok( LogarithmicIntegral(0),    '==', 0, "li(0) is 0" );
-cmp_ok( LogarithmicIntegral(1),    '<=', 0 - (~0 * ~0), "li(1) is -infinity" );
-cmp_ok( LogarithmicIntegral('inf'),'>=', 0 + (~0 * ~0), "li(inf) is infinity" );
+cmp_ok( LogarithmicIntegral(0),    '==', 0,         "li(0) is 0" );
+cmp_ok( LogarithmicIntegral(1),    '<=',-$infinity, "li(1) is -infinity" );
+cmp_ok( LogarithmicIntegral('inf'),'>=', $infinity, "li(inf) is infinity" );
 
 # Example used in Math::Cephes
 cmp_closeto( ExponentialIntegral(2.2), 5.732614700, 1e-06, "Ei(2.2)");

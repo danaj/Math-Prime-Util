@@ -66,7 +66,7 @@ plan tests => 13+4+4+4
               + (2 * scalar @random_nbit_tests)
               + 0;
 
-my $infinity = ~0 * ~0;
+my $infinity = 20**20**20;
 my $nrandom_range_samples = $extra ? 1000 : 50;
 
 ok(!eval { random_prime(undef); }, "random_prime(undef)");
