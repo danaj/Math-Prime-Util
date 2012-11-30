@@ -35,6 +35,9 @@ my $_half_word = (~0 == 18446744073709551615) ? 4294967296 :    # 64-bit
                  (~0 ==           4294967295) ?      65536 :    # 32-bit
                  (~0 ==                   -1) ?   1000**10 :    # bignum
                                                          0 ;    # No idea
+# With Perl 5.6.2, (114438327*114438327) % 122164969  !=  75730585
+$_half_word >>= 7 if $_uv_size == 64 && $] < 5.008;
+
 # Infinity in Perl is rather O/S specific.
 our $_Infinity = 0+'inf';
 $_Infinity = 20**20**20 if 65535 > $_Infinity;   # E.g. Windows
@@ -612,6 +615,7 @@ sub _mulmod {
   $r;
 }
 
+# Note that Perl 5.6.2 with largish 64-bit numbers will break.  As usual.
 sub _native_powmod {
   my($n, $power, $m) = @_;
   my $t = 1;
