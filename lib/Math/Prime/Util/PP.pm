@@ -43,6 +43,8 @@ our $_Infinity = 0+'inf';
 $_Infinity = 20**20**20 if 65535 > $_Infinity;   # E.g. Windows
 our $_Neg_Infinity = -$_Infinity;
 
+my $_have_MPFR = -1;
+
 my $_precalc_size = 0;
 sub prime_precalc {
   my($n) = @_;
@@ -1436,17 +1438,47 @@ my $_const_euler = 0.57721566490153286060651209008240243104215933593992;
 my $_const_li2 = 1.045163780117492784844588889194613136522615578151;
 
 sub ExponentialIntegral {
-  my($x, $tol) = @_;
+  my($x) = @_;
   return $_Neg_Infinity if $x == 0;
   return 0              if $x == $_Neg_Infinity;
   return $_Infinity     if $x == $_Infinity;
-  $tol = 1e-16 unless defined $tol;
-  my $sum = 0.0;
-  my($y, $t);
-  my $c = 0.0;
+
+  # Use MPFR if possible.
+  if ($_have_MPFR < 0) {
+    $_have_MPFR = 1;
+    eval { require Math::MPFR; 1; } or do { $_have_MPFR = 0; };
+  }
+  # Gotcha -- MPFR decided to make negative inputs return NaN.  Grrr.
+  if ($_have_MPFR && $x > 0) {
+    my $wantbf = 0;
+    my $xdigits = 17;
+    if (defined $bignum::VERSION || ref($x) =~ /^Math::Big/) {
+      if (!defined $MATH::BigFloat::VERSION) {
+        eval { require Math::BigFloat;   Math::BigFloat->import(); 1; }
+        or do { croak "Cannot load Math::BigFloat "; }
+      }
+      $x = new Math::BigFloat "$x" if ref($x) ne 'Math::BigFloat';
+      $wantbf = 1;
+      $xdigits = $x->accuracy || Math::BigFloat->accuracy() || Math::BigFloat->div_scale();
+    }
+    my $rnd = 0;  # MPFR_RNDN;
+    my $bit_precision = int($xdigits * 3.322) + 4;
+    my $rx = Math::MPFR->new();
+    Math::MPFR::Rmpfr_set_prec($rx, $bit_precision);
+    Math::MPFR::Rmpfr_set_str($rx, "$x", 10, $rnd);
+    my $eix = Math::MPFR->new();
+    Math::MPFR::Rmpfr_set_prec($eix, $bit_precision);
+    Math::MPFR::Rmpfr_eint($eix, $rx, $rnd);
+    my $strval = Math::MPFR::Rmpfr_get_str($eix, 10, 0, $rnd);
+    return ($wantbf)  ?  Math::BigFloat->new($strval)  :  0.0 + $strval;
+  }
 
   $x = new Math::BigFloat "$x"  if defined $bignum::VERSION && ref($x) ne 'Math::BigFloat';
 
+  my $tol = 1e-16;
+  my $sum = 0.0;
+  my($y, $t);
+  my $c = 0.0;
   my $val; # The result from one of the four methods
 
   if ($x < -1) {
@@ -1518,13 +1550,52 @@ sub LogarithmicIntegral {
   return 0              if $x == 0;
   return $_Neg_Infinity if $x == 1;
   return $_Infinity     if $x == $_Infinity;
-  return $_const_li2 if $x == 2;
   croak "Invalid input to LogarithmicIntegral:  x must be > 0" if $x <= 0;
+
+  # Use MPFR if possible.
+  if ($_have_MPFR < 0) {
+    $_have_MPFR = 1;
+    eval { require Math::MPFR; 1; } or do { $_have_MPFR = 0; };
+  }
+  # Remember MPFR eint doesn't handle negative inputs
+  if ($_have_MPFR && $x >= 1) {
+    my $wantbf = 0;
+    my $xdigits = 17;
+    if (defined $bignum::VERSION || ref($x) =~ /^Math::Big/) {
+      if (!defined $MATH::BigFloat::VERSION) {
+        eval { require Math::BigFloat;   Math::BigFloat->import(); 1; }
+        or do { croak "Cannot load Math::BigFloat "; }
+      }
+      $x = new Math::BigFloat "$x" if ref($x) ne 'Math::BigFloat';
+      $wantbf = 1;
+      $xdigits = $x->accuracy || Math::BigFloat->accuracy() || Math::BigFloat->div_scale();
+    }
+    $x = log($x); # Use BigFloat to do the log to simplify precision tracking.
+    my $rnd = 0;  # MPFR_RNDN;
+    my $bit_precision = int($xdigits * 3.322) + 4;
+    my $rx = Math::MPFR->new();
+    Math::MPFR::Rmpfr_set_prec($rx, $bit_precision);
+    Math::MPFR::Rmpfr_set_str($rx, "$x", 10, $rnd);
+    my $lix = Math::MPFR->new();
+    Math::MPFR::Rmpfr_set_prec($lix, $bit_precision);
+    Math::MPFR::Rmpfr_eint($lix, $rx, $rnd);
+    my $strval = Math::MPFR::Rmpfr_get_str($lix, 10, 0, $rnd);
+    return ($wantbf)  ?  Math::BigFloat->new($strval)  :  0.0 + $strval;
+  }
+
+  if ($x == 2) {
+    my $li2const = (ref($x) eq 'Math::BigFloat') ? Math::BigFloat->new('1.04516378011749278484458888919461313652261557815120157583290914407501320521') : $_const_li2;
+    return $li2const;
+  }
 
   $x = new Math::BigFloat "$x" if defined $bignum::VERSION && ref($x) ne 'Math::BigFloat';
   my $logx = log($x);
 
   # Do divergent series here for big inputs.  Common for big pc approximations.
+  # Why is this here?
+  #   1) exp(log(x)) results in a lot of lost precision
+  #   2) exp(x) with lots of precision turns out to be really slow, and in
+  #      this case it was unnecessary.
   if ($x > 1e16) {
     my $tol = 1e-20;
     my $invx = 1.0 / $logx;
@@ -1611,16 +1682,50 @@ my @_Riemann_Zeta_Table = (
 
 
 sub RiemannZeta {
-  my($x, $tol) = @_;
+  my($x) = @_;
 
-  if (defined $bignum::VERSION || ref($x) =~ /^Math::Big/) {
-    require Math::Prime::Util::ZetaBigFloat;
-    return Math::Prime::Util::ZetaBigFloat::RiemannZeta($x, $tol);
+  # Use MPFR if possible.
+  if ($_have_MPFR < 0) {
+    $_have_MPFR = 1;
+    eval { require Math::MPFR; 1; } or do { $_have_MPFR = 0; };
+  }
+  if ($_have_MPFR) {
+    my $wantbf = 0;
+    my $xdigits = 17;
+    if (defined $bignum::VERSION || ref($x) =~ /^Math::Big/) {
+      if (!defined $MATH::BigFloat::VERSION) {
+        eval { require Math::BigFloat;   Math::BigFloat->import(); 1; }
+        or do { croak "Cannot load Math::BigFloat "; }
+      }
+      $x = new Math::BigFloat "$x" if ref($x) ne 'Math::BigFloat';
+      $wantbf = 1;
+      $xdigits = $x->accuracy || Math::BigFloat->accuracy() || Math::BigFloat->div_scale();
+    }
+    my $rnd = 0;  # MPFR_RNDN;
+    my $bit_precision = int($xdigits * 3.322) + 4;
+    my $rx = Math::MPFR->new();
+    Math::MPFR::Rmpfr_set_prec($rx, $bit_precision);
+    Math::MPFR::Rmpfr_set_str($rx, "$x", 10, $rnd);
+    my $zetax = Math::MPFR->new();
+    # Add more bits to account for the leading zeros.
+    my $extra_bits = int(abs($x));
+    Math::MPFR::Rmpfr_set_prec($zetax, $bit_precision + $extra_bits);
+    Math::MPFR::Rmpfr_zeta($zetax, $rx, $rnd);
+    Math::MPFR::Rmpfr_sub_ui($zetax, $zetax, 1, $rnd);
+    my $strval = Math::MPFR::Rmpfr_get_str($zetax, 10, $xdigits, $rnd);
+    return ($wantbf)  ?  Math::BigFloat->new($strval)  :  0.0 + $strval;
   }
 
+  if (defined $bignum::VERSION || ref($x) =~ /^Math::Big/) {
+    # No MPFR, BigFloat
+    require Math::Prime::Util::ZetaBigFloat;
+    return Math::Prime::Util::ZetaBigFloat::RiemannZeta($x);
+  }
+
+  # No MPFR, no BigFloat.
   return 0.0 + $_Riemann_Zeta_Table[int($x)-2]
     if $x == int($x) && defined $_Riemann_Zeta_Table[int($x)-2];
-  $tol = 1e-16 unless defined $tol;
+  my $tol = 1e-16;
   my($y, $t);
   my $sum = 0.0;
   my $c = 0.0;
@@ -1640,17 +1745,76 @@ sub RiemannZeta {
 
 # Riemann R function
 sub RiemannR {
-  my($x, $tol) = @_;
+  my($x) = @_;
 
   croak "Invalid input to ReimannR:  x must be > 0" if $x <= 0;
 
+  # Use MPFR if possible.
+  if ($_have_MPFR < 0) {
+    $_have_MPFR = 1;
+    eval { require Math::MPFR; 1; } or do { $_have_MPFR = 0; };
+  }
+  if ($_have_MPFR) {
+    my $wantbf = 0;
+    my $xdigits = 17;
+    if (defined $bignum::VERSION || ref($x) =~ /^Math::Big/) {
+      if (!defined $MATH::BigFloat::VERSION) {
+        eval { require Math::BigFloat;   Math::BigFloat->import(); 1; }
+        or do { croak "Cannot load Math::BigFloat "; }
+      }
+      $x = new Math::BigFloat "$x" if ref($x) ne 'Math::BigFloat';
+      $wantbf = 1;
+      $xdigits = $x->accuracy || Math::BigFloat->accuracy() || Math::BigFloat->div_scale();
+    }
+    my $rnd = 0;  # MPFR_RNDN;
+    my $bit_precision = int($xdigits * 3.322) + 8;  # Add some extra
+
+    my $rlogx = Math::MPFR->new();
+    Math::MPFR::Rmpfr_set_prec($rlogx, $bit_precision);
+    Math::MPFR::Rmpfr_set_str($rlogx, "$x", 10, $rnd);
+    Math::MPFR::Rmpfr_log($rlogx, $rlogx, $rnd);
+
+    my $rpart_term = Math::MPFR->new();
+    Math::MPFR::Rmpfr_set_prec($rpart_term, $bit_precision);
+    Math::MPFR::Rmpfr_set_str($rpart_term, "1", 10, $rnd);
+
+    my $rzeta = Math::MPFR->new();
+    Math::MPFR::Rmpfr_set_prec($rzeta, $bit_precision);
+    my $rterm = Math::MPFR->new();
+    Math::MPFR::Rmpfr_set_prec($rterm, $bit_precision);
+
+    my $rsum = Math::MPFR->new();
+    Math::MPFR::Rmpfr_set_prec($rsum, $bit_precision);
+    Math::MPFR::Rmpfr_set_str($rsum, "1", 10, $rnd);
+
+    my $rstop = Math::MPFR->new();
+    Math::MPFR::Rmpfr_set_prec($rstop, $bit_precision);
+    Math::MPFR::Rmpfr_set_str($rstop, "1e-$xdigits", 10, $rnd);
+
+    for my $k (1 .. 10000) {
+      Math::MPFR::Rmpfr_mul($rpart_term, $rpart_term, $rlogx, $rnd);
+      Math::MPFR::Rmpfr_div_ui($rpart_term, $rpart_term, $k, $rnd);
+
+      Math::MPFR::Rmpfr_zeta_ui($rzeta, $k+1, $rnd);
+      Math::MPFR::Rmpfr_sub_ui($rzeta, $rzeta, 1, $rnd);
+      Math::MPFR::Rmpfr_mul_ui($rzeta, $rzeta, $k, $rnd);
+      Math::MPFR::Rmpfr_add_ui($rzeta, $rzeta, $k, $rnd);
+      Math::MPFR::Rmpfr_div($rterm, $rpart_term, $rzeta, $rnd);
+
+      last if Math::MPFR::Rmpfr_less_p($rterm, $rstop);
+      Math::MPFR::Rmpfr_add($rsum, $rsum, $rterm, $rnd);
+    }
+    my $strval = Math::MPFR::Rmpfr_get_str($rsum, 10, $xdigits, $rnd);
+    return ($wantbf)  ?  Math::BigFloat->new($strval)  :  0.0 + $strval;
+  }
+
   if (defined $bignum::VERSION || ref($x) =~ /^Math::Big/) {
     require Math::Prime::Util::ZetaBigFloat;
-    return Math::Prime::Util::ZetaBigFloat::RiemannR($x, $tol);
+    return Math::Prime::Util::ZetaBigFloat::RiemannR($x);
   }
 
 
-  $tol = 1e-16 unless defined $tol;
+  my $tol = 1e-16;
   my $sum = 0.0;
   my($y, $t);
   my $c = 0.0;
@@ -1850,6 +2014,8 @@ math packages.  When given two arguments, it returns the inclusive
 count of primes between the ranges (e.g. C<(13,17)> returns 2, C<14,17>
 and C<13,16> return 1, and C<14,16> returns 0).
 
+The Lehmer method is used for large values, which speeds up results greatly.
+
 
 =head2 nth_prime
 
@@ -1858,8 +2024,9 @@ and C<13,16> return 1, and C<14,16> returns 0).
 Returns the prime that lies in index C<n> in the array of prime numbers.  Put
 another way, this returns the smallest C<p> such that C<Pi(p) E<gt>= n>.
 
-This relies on generating primes, so can require a lot of time and space for
-large inputs.
+The Lehmer prime count is used to speed up results for large inputs, but both
+methods take quite a bit of time and space.  Think abut whether a bound or
+approximation would be acceptable instead.
 
 
 =head2 is_strong_pseudoprime
@@ -1999,12 +2166,22 @@ others they succeed in a remarkably short time.
 Given a non-zero floating point input C<x>, this returns the real-valued
 exponential integral of C<x>, defined as the integral of C<e^t/t dt>
 from C<-infinity> to C<x>.
-Depending on the input, the integral is calculated using
+
+If the bignum module has been loaded, all inputs will be treated as if they
+were Math::BigFloat objects.
+
+We first check to see if the Math::MPFR module is installed.  If so, then
+it is used, as it will return results much faster and can be more accurate.
+Accuracy when using MPFR will be 17 digits for non-BigInt/BigFloats, and
+for BigInt/BigFloat inputs will be equal to the C<accuracy()> value of the
+input (or the default BigFloat accuracy, which is 40 by default).
+
+MPFR is used for positive inputs only.  If Math::MPFR is not installed or the
+input is negative, then other methods are used: 
 continued fractions (C<x E<lt> -1>),
 rational Chebyshev approximation (C< -1 E<lt> x E<lt> 0>),
 a convergent series (small positive C<x>),
 or an asymptotic divergent series (large positive C<x>).
-
 Accuracy should be at least 14 digits.
 
 
@@ -2021,10 +2198,14 @@ This is often known as C<li(x)>.  A related function is the offset logarithmic
 integral, sometimes known as C<Li(x)> which avoids the singularity at 1.  It
 may be defined as C<Li(x) = li(x) - li(2)>.
 
-This function is implemented as C<li(x) = Ei(ln x)> after handling special
-values.
+We first check to see if the Math::MPFR module is installed.  If so, then
+it is used, as it will return results much faster and can be more accurate.
+Accuracy when using MPFR will be 17 digits for non-BigInt/BigFloats, and
+for BigInt/BigFloat inputs will be equal to the C<accuracy()> value of the
+input (or the default BigFloat accuracy, which is 40 by default).
 
-Accuracy should be at least 14 digits.
+MPFR is used for inputs greater than 1 only.  If Math::MPFR is not installed or
+the input is less than 1, results will be calculated as C<Ei(ln x)>.
 
 =head2 RiemannZeta
 
@@ -2035,10 +2216,17 @@ point value of ζ(s)-1, where ζ(s) is the Riemann zeta function.  One is
 subtracted to ensure maximum precision for large values of C<s>.  The zeta
 function is the sum from k=1 to infinity of C<1 / k^s>
 
-Accuracy should be at least 14 digits, but currently does not increase
-accuracy with big floats.  Small integer values are returned from a table,
-values between 0.5 and 5 use rational Chebyshev approximation, and larger
-values use a series.
+If the bignum module has been loaded, all inputs will be treated as if they
+were Math::BigFloat objects.
+
+We first check to see if the Math::MPFR module is installed.  If so, then
+it is used, as it will return results much faster and can be more accurate.
+Accuracy when using MPFR will be 17 digits for non-BigInt/BigFloats, and
+for BigInt/BigFloat inputs will be equal to the C<accuracy()> value of the
+input (or the default BigFloat accuracy, which is 40 by default).
+
+If Math::MPFR is not installed, then results are calculated either from a
+table, rational Chebyshev approximation, or via a series.
 
 
 =head2 RiemannR
@@ -2049,7 +2237,14 @@ Given a positive non-zero floating point input, returns the floating
 point value of Riemann's R function.  Riemann's R function gives a very close
 approximation to the prime counting function.
 
-Accuracy should be at least 14 digits.
+If the bignum module has been loaded, all inputs will be treated as if they
+were Math::BigFloat objects.
+
+We first check to see if the Math::MPFR module is installed.  If so, then
+it is used, as it will return results much faster and can be more accurate.
+Accuracy when using MPFR will be 17 digits for non-BigInt/BigFloats, and
+for BigInt/BigFloat inputs will be equal to the C<accuracy()> value of the
+input (or the default BigFloat accuracy, which is 40 by default).
 
 
 =head1 LIMITATIONS

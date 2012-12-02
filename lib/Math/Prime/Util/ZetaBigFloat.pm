@@ -284,12 +284,17 @@ sub _Recompute_Dk {
 }
 
 sub RiemannZeta {
-  my($x, $tol) = @_;
+  my($x) = @_;
+
+  $x = new Math::BigFloat "$x" if ref($x) ne 'Math::BigFloat';
+  my $xdigits = $x->accuracy || Math::BigFloat->accuracy() || Math::BigFloat->div_scale();
 
   return $_Riemann_Zeta_Table[int($x)-2]
-      if $x == int($x) && defined $_Riemann_Zeta_Table[int($x)-2];
+       if $x == int($x)
+       && defined $_Riemann_Zeta_Table[int($x)-2]
+       && $xdigits <= 44;
 
-  $tol = 1e-40 unless defined $tol;
+  my $tol = 0.0 + "1e-$xdigits";
 
   # Trying to work around Math::BigFloat bugs RT 43692 and RT 77105 which make
   # a right mess of things.  Watch this:
@@ -299,7 +304,6 @@ sub RiemannZeta {
   # into (6^-(40.5/4))^4  (assuming the base is positive).  Without that hack,
   # none of this would work at all.
 
-  $x = Math::BigFloat->new("$x");
   my $superx = 1;
   my $subx = $x->copy;
   while ($subx > 8) {
@@ -310,7 +314,8 @@ sub RiemannZeta {
   # Go with the basic formula for large x, as it best works around the mess,
   # though is unfortunately much slower.
   if ($x > 30) {
-    my $sum = 0.0;
+    my $sum = Math::BigFloat->bzero;
+    $sum->accuracy($xdigits);
     for my $k (4 .. 1000) {
       my $term = ( $k ** -$subx )  ** $superx;
       $sum += $term;
@@ -335,9 +340,11 @@ sub RiemannZeta {
   #  return $sum;
   #}
 
-  # If we wanted to change the Borwein series being used:
-  # _Recompute_Dk(55);
-
+  {
+    my $dig = int($_Borwein_n / 1.3)+1;
+    _Recompute_Dk( int($xdigits * 1.3) + 4 )  if $dig < $xdigits;
+  }
+  
   if (ref $_Borwein_dk[0] ne 'Math::BigInt') {
     @_Borwein_dk = map { Math::BigInt->new("$_") } @_Borwein_dk;
   }
@@ -371,23 +378,27 @@ sub RiemannZeta {
   $sum += Math::BigFloat->new( $one - $_Borwein_dk[$n] ); # term k=0
   $sum->bdiv( $divisor );
   $sum->bsub(1);
+  #$sum->fround($xdigits);
   return $sum;
 }
 
 # Riemann R function
 sub RiemannR {
-  my($x, $tol) = @_;
+  my($x) = @_;
 
+  $x = new Math::BigFloat "$x" if ref($x) ne 'Math::BigFloat';
+  my $xdigits = $x->accuracy || Math::BigFloat->accuracy() || Math::BigFloat->div_scale();
+  my $tol = 0.0 + "1e-$xdigits";
+
+  # TODO: Changing input accuracy may mean we should recalculate this.  Also,
+  # the default table is only 44 digits.
   if (scalar @_Riemann_Zeta_Premult == 0) {
     @_Riemann_Zeta_Premult = map { my $v = Math::BigFloat->bone;
-                                   $v->accuracy($x->accuracy() || 45);
+                                   $v->accuracy($xdigits);
                                    $v / ($_Riemann_Zeta_Table[$_-1] * $_ + $_) }
                              (1 .. @_Riemann_Zeta_Table);
   }
 
-  $x = new Math::BigFloat "$x"  if ref($x) ne 'Math::BigFloat';
-
-  $tol = 1e-35 unless defined $tol;
   my $sum = Math::BigFloat->bone;
 
   my $flogx = log($x);
@@ -396,9 +407,19 @@ sub RiemannR {
   for my $k (1 .. 10000) {
     my $zeta_term = $_Riemann_Zeta_Premult[$k-1];
     if (!defined $zeta_term) {
-      my $zeta = (($k-1) <= $#_Riemann_Zeta_Table)
-                 ? $_Riemann_Zeta_Table[$k-1]
-                 : RiemannZeta( $k+1 );
+      my $zeta = $_Riemann_Zeta_Table[$k-1];
+      if (!defined $zeta) {
+        my $kz = $k+1;
+        if ($kz >= 100 && $xdigits <= 40) {
+          # For this accuracy level, two terms are more than enough.  Also,
+          # we should be able to miss the Math::BigFloat accuracy bug.  If we
+          # try to do this for higher accuracy, things will go very bad.
+          $zeta = Math::BigFloat->new(3)->bpow(-$kz)
+                + Math::BigFloat->new(2)->bpow(-$kz);
+        } else {
+          $zeta = Math::Prime::Util::ZetaBigFloat::RiemannZeta( $kz );
+        }
+      }
       $zeta_term = Math::BigFloat->bone / ($zeta * $k + $k);
     }
     $part_term *= $flogx / $k;
@@ -436,12 +457,26 @@ Version 0.14
 
 Math::BigFloat versions`of the Riemann Zeta and Riemann R functions.  These
 are kept in a separate module because they use a lot of big tables that we'd
-prefer not to have loaded all the time.
+prefer to only load if needed.
 
 
 =head1 DESCRIPTION
 
 Pure Perl implementations of Riemann Zeta and Riemann R using Math::BigFloat.
+These functions are used if:
+
+=over 4
+
+=item The input is a BigInt, a BigFloat, or the bignum module has been loaded.
+
+=item The Math::MPFR module is not available.
+
+=back
+
+If you use these functions a lot, I B<highly> recommend you install
+L<Math::MPFR>, which the main L<Math::Prime::Util> functions will find.
+These give B<much> better performance, and better accuracy.  You can also
+use L<Math::Pari> for the Riemann Zeta function.
 
 
 =head1 FUNCTIONS
@@ -455,10 +490,9 @@ point value of ζ(s)-1, where ζ(s) is the Riemann zeta function.  One is
 subtracted to ensure maximum precision for large values of C<s>.  The zeta
 function is the sum from k=1 to infinity of C<1 / k^s>
 
-Accuracy should be at least 14 digits, but currently does not increase
-accuracy with big floats.  Small integer values are returned from a table,
-values between 0.5 and 5 use rational Chebyshev approximation, and larger
-values use a series.
+Results are calculated using either Borwein (1991) algorithm 2, or the basic
+series.  Full input accuracy is attempted, but there are defects in
+Math::BigFloat with high accuracy computations that make this difficult.
 
 
 =head2 RiemannR
@@ -469,7 +503,7 @@ Given a positive non-zero floating point input, returns the floating
 point value of Riemann's R function.  Riemann's R function gives a very close
 approximation to the prime counting function.
 
-Accuracy should be at least 14 digits.
+Accuracy should be about 35 digits.
 
 
 =head1 LIMITATIONS
@@ -478,19 +512,19 @@ Bugs in Math::BigFloat (RT 43692, RT 77105) cause many problems with this code.
 I've attempted to apply workarounds, but it is possible there are cases they
 miss.
 
-The accuracy goals (35 digits) are sometimes missed by a digit or two, and
-extensive testing needs to be done to ensure we meet the goals.
+The accuracy goals (35 digits) are sometimes missed by a digit or two.
 
 
 =head1 PERFORMANCE
 
-Performance is not good at all.  A version using XS+GMP would be good to have.
-Pari can give better accuracy in a miniscule fraction of the time.
+Performance is quite bad.
 
 
 =head1 SEE ALSO
 
 L<Math::Prime::Util>
+
+L<Math::MPFR>
 
 L<Math::Pari>
 

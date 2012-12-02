@@ -1172,9 +1172,11 @@ sub prime_count_approx {
 
   # my $result = int(LogarithmicIntegral($x) - LogarithmicIntegral(sqrt($x))/2);
 
-  my $xlen = (ref($x) eq 'Math::BigFloat') ? length($x->bfloor->bstr()) : length(int($x));
-  my $tol = 10**-$xlen;
-  my $result = RiemannR($x, $tol) + 0.5;
+  if (ref($x) eq 'Math::BigFloat') {
+    # Make sure we get enough accuracy, and also not too much more than needed
+    $x->accuracy(length($x->bfloor->bstr())+2);
+  }
+  my $result = RiemannR($x) + 0.5;
 
   return Math::BigInt->new($result->bfloor->bstr()) if ref($result) eq 'Math::BigFloat';
   return int($result);
@@ -1418,18 +1420,18 @@ sub RiemannZeta {
   my($n) = @_;
   croak("Invalid input to ReimannZeta:  x must be > 0") if $n <= 0;
 
-  return Math::Prime::Util::PP::RiemannZeta($n) if defined $bignum::VERSION || ref($n) eq 'Math::BigFloat';
-  return _XS_RiemannZeta($n) if $n <= $_XS_MAXVAL;
+  return _XS_RiemannZeta($n)
+    if !defined $bignum::VERSION && ref($n) ne 'Math::BigFloat' && $n <= $_XS_MAXVAL;
   return Math::Prime::Util::PP::RiemannZeta($n);
 }
 
 sub RiemannR {
-  my($n, $tol) = @_;
+  my($n) = @_;
   croak("Invalid input to ReimannR:  x must be > 0") if $n <= 0;
 
-  return Math::Prime::Util::PP::RiemannR($n, $tol) if defined $bignum::VERSION || ref($n) eq 'Math::BigFloat';
-  return _XS_RiemannR($n) if $n <= $_XS_MAXVAL;
-  return Math::Prime::Util::PP::RiemannR($n, $tol);
+  return _XS_RiemannR($n)
+    if !defined $bignum::VERSION && ref($n) ne 'Math::BigFloat' && $n <= $_XS_MAXVAL;
+  return Math::Prime::Util::PP::RiemannR($n);
 }
 
 sub ExponentialIntegral {
@@ -1438,9 +1440,10 @@ sub ExponentialIntegral {
   return 0              if $n == $_Neg_Infinity;
   return $_Infinity     if $n == $_Infinity;
 
-  return Math::Prime::Util::PP::ExponentialIntegral($n) if defined $bignum::VERSION || ref($n) eq 'Math::BigFloat';
-  return Math::Prime::Util::PP::ExponentialIntegral($n) if !$_Config{'xs'};
-  return _XS_ExponentialIntegral($n);
+  return _XS_ExponentialIntegral($n)
+   if !defined $bignum::VERSION && ref($n) ne 'Math::BigFloat' && $_Config{'xs'};
+
+  return Math::Prime::Util::PP::ExponentialIntegral($n);
 }
 
 sub LogarithmicIntegral {
@@ -1448,17 +1451,15 @@ sub LogarithmicIntegral {
   return 0              if $n == 0;
   return $_Neg_Infinity if $n == 1;
   return $_Infinity     if $n == $_Infinity;
-  if ($n == 2) {
-    return (defined $bignum::VERSION || ref($n) eq 'Math::BigFloat')
-           ? Math::BigFloat->new('1.045163780117492784844588889194613136522615578151201575832909144075013205210359530172717405626383356306')
-           : 1.045163780117492784844588889194613136522615578151;
-  }
 
   croak("Invalid input to LogarithmicIntegral:  x must be >= 0") if $n <= 0;
 
-  return Math::Prime::Util::PP::LogarithmicIntegral($n)
-   if defined $bignum::VERSION || ref($n) eq 'Math::BigFloat' || !$_Config{'xs'};
-  return _XS_LogarithmicIntegral($n);
+  if (!defined $bignum::VERSION && ref($n) ne 'Math::BigFloat' && $_Config{'xs'}) {
+    return 1.045163780117492784844588889194613136522615578151 if $n == 2;
+    return _XS_LogarithmicIntegral($n);
+  }
+
+  return Math::Prime::Util::PP::LogarithmicIntegral($n);
 }
 
 #############################################################################
@@ -2357,12 +2358,25 @@ find a factor C<p> of C<n> where C<p-1> is smooth (it has no large factors).
 Given a non-zero floating point input C<x>, this returns the real-valued
 exponential integral of C<x>, defined as the integral of C<e^t/t dt>
 from C<-infinity> to C<x>.
-Depending on the input, the integral is calculated using
+
+If the bignum module has been loaded, all inputs will be treated as if they
+were Math::BigFloat objects.
+
+For non-BigInt/BigFloat objects, the result should be accurate to at least 14
+digits.
+
+For BigInt / BigFloat objects, we first check to see if the Math::MPFR module
+is installed.  If so, then it is used, as it will return results much faster
+and can be more accurate.  Accuracy when using MPFR will be equal to the
+C<accuracy()> value of the input (or the default BigFloat accuracy, which
+is 40 by default).
+
+MPFR is used for positive inputs only.  If Math::MPFR is not installed or the
+input is negative, then other methods are used: 
 continued fractions (C<x E<lt> -1>),
 rational Chebyshev approximation (C< -1 E<lt> x E<lt> 0>),
 a convergent series (small positive C<x>),
 or an asymptotic divergent series (large positive C<x>).
-
 Accuracy should be at least 14 digits.
 
 
@@ -2382,11 +2396,20 @@ term C<li0> for this function, and define C<li(x) = Li0(x) - li0(2)>.  Due to
 this terminilogy confusion, it is important to check which exact definition is
 being used.
 
+If the bignum module has been loaded, all inputs will be treated as if they
+were Math::BigFloat objects.
 
-This function is implemented as C<li(x) = Ei(ln x)> after handling special
-values.
+For non-BigInt/BigFloat objects, the result should be accurate to at least 14
+digits.
 
-Accuracy should be at least 14 digits.
+For BigInt / BigFloat objects, we first check to see if the Math::MPFR module
+is installed.  If so, then it is used, as it will return results much faster
+and can be more accurate.  Accuracy when using MPFR will be equal to the
+C<accuracy()> value of the input (or the default BigFloat accuracy, which
+is 40 by default).
+
+MPFR is used for inputs greater than 1 only.  If Math::MPFR is not installed or
+the input is less than 1, results will be calculated as C<Ei(ln x)>.
 
 
 =head2 RiemannZeta
@@ -2399,11 +2422,24 @@ subtracted to ensure maximum precision for large values of C<s>.  The zeta
 function is the sum from k=1 to infinity of C<1 / k^s>.  This function only
 uses real arguments, so is basically the Euler Zeta function.
 
-Accuracy should be at least 14 digits with native numbers and 35 digits with
-bignum or a BigInt/BigFloat argument.  Small integer values are returned from
-a table.  For native-precision numbers, a rational Chebyshev approximation is
-used between 0.5 and 5, while larger values use a series.  Multiple precision
-numbers use Borwein (1991) algorithm 2 or the basic series.
+If the bignum module has been loaded, all inputs will be treated as if they
+were Math::BigFloat objects.
+
+For non-BigInt/BigFloat objects, the result should be accurate to at least 14
+digits.  The XS code uses a rational Chebyshev approximation between 0.5 and 5,
+and a series for larger values.
+
+For BigInt / BigFloat objects, we first check to see if the Math::MPFR module
+is installed.  If so, then it is used, as it will return results much faster
+and can be more accurate.  Accuracy when using MPFR will be equal to the
+C<accuracy()> value of the input (or the default BigFloat accuracy, which
+is 40 by default).
+
+If Math::MPFR is not installed, then results are calculated using either
+Borwein (1991) algorithm 2, or the basic series.  Full input accuracy is
+attempted, but there are defects in Math::BigFloat with high accuracy
+computations that make this difficult.  It is also very slow.  I highly
+recommend installing Math::MPFR for BigFloat computations.
 
 
 =head2 RiemannR
@@ -2414,8 +2450,18 @@ Given a positive non-zero floating point input, returns the floating
 point value of Riemann's R function.  Riemann's R function gives a very close
 approximation to the prime counting function.
 
-Accuracy should be at least 14 digits for native numbers and 35 digits with
-bignum or a BigInt/BigFloat argument.
+If the bignum module has been loaded, all inputs will be treated as if they
+were Math::BigFloat objects.
+
+For non-BigInt/BigFloat objects, the result should be accurate to at least 14
+digits.
+
+For BigInt / BigFloat objects, we first check to see if the Math::MPFR module
+is installed.  If so, then it is used, as it will return results much faster
+and can be more accurate.  Accuracy when using MPFR will be equal to the
+C<accuracy()> value of the input (or the default BigFloat accuracy, which
+is 40 by default).  Accuracy without MPFR should be 35 digits.
+
 
 
 =head1 EXAMPLES

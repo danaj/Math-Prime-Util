@@ -846,22 +846,31 @@ long double ld_riemann_zeta(long double x) {
     long double sumd = C8q[0]+x*(C8q[1]+x*(C8q[2]+x*(C8q[3]+x*(C8q[4]+x*(C8q[5]+x*(C8q[6]+x*(C8q[7]+x*C8q[8])))))));
     sum = (sumn - (x-1)*sumd) / ((x-1)*sumd);
 
+  } else if (x > 2000.0) {
+
+    /* 1) zeta(2000)-1 is about 8.7E-603, which is far less than a IEEE-754
+     *    64-bit double can represent.  A 128-bit quad could go to ~16000.
+     * 2) pow / powl start getting obnoxiously slow with values like -7500.
+     */
+    return 0.0;
+
   } else {
 
-    /* This series needs about half the number of terms as the usual k^-x,
-     * and gets slightly better numerical results.
+    /* I was using this series:
      *   functions.wolfram.com/ZetaFunctionsandPolylogarithms/Zeta/06/04/0003
+     * which for integer values is great -- it needs half the number of terms
+     * and gives slightly better numerical results.  However, for non-integer
+     * values using double precision, it's awful.
+     * Back to the defining equation.
      */
-    for (k = 2; k <= 1000000; k++) {
-      term = powl(2*k+1, -x);
+    for (k = 5; k <= 1000000; k++) {
+      term = powl(k, -x);
       KAHAN_SUM(sum, term);
       if (term < tol*sum) break;
     }
+    KAHAN_SUM(sum, powl(4, -x) );
     KAHAN_SUM(sum, powl(3, -x) );
-    term = 1.0L / (1.0L - powl(2, -x));
-    sum *= term;
-    sum += (term - 1.0L);
-    /* printf("zeta(%lf) = %.15lf in %d iterations\n", x, sum, k); */
+    KAHAN_SUM(sum, powl(2, -x) );
 
   }
 

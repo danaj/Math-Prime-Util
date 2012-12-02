@@ -1,5 +1,18 @@
 Revision history for Perl extension Math::Prime::Util.
 
+0.15  ?? December 2012
+
+    - Lots of internal changes to Ei, li, Zeta, and R functions:
+       - Native Zeta and R have slightly more accurate results.
+       - For bignums, use Math::MPFR if possible.  MUCH faster.
+         Also allows extended precision while still being fast.
+       - Better accuracy for standard bignums.
+       - All four functions do:
+          - XS if native input.
+          - MPFR to whatever accuracy is desired, if Math::MPFR installed.
+          - BigFloat versions if no MPFR and BigFloat input.
+          - standard version if no MPFR and not a BigFloat.
+
 0.14  29 November 2012
 
     - Compilation and test issues:
