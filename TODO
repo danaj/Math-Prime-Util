@@ -34,9 +34,6 @@
 
 - Tests for:
 
-   primorial
-   jordan_totient
-   divisor_sum
    is_provable_prime
    RiemannZeta
    RiemannR

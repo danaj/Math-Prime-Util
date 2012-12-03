@@ -13,6 +13,8 @@ Revision history for Perl extension Math::Prime::Util.
           - BigFloat versions if no MPFR and BigFloat input.
           - standard version if no MPFR and not a BigFloat.
 
+    - Add tests for primorial, jordan_totient, and divisor_sum.
+
 0.14  29 November 2012
 
     - Compilation and test issues:

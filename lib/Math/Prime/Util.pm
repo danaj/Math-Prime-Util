@@ -839,8 +839,9 @@ sub jordan_totient {
 sub divisor_sum {
   my($n, $sub) = @_;
   croak "Second argument must be a code ref" unless ref($sub) eq 'CODE';
-  return 0 if defined $n && $n <= 1;
+  return 0 if defined $n && $n < 1;
   _validate_positive_integer($n);
+  return ($n-$n+$sub->(1)) if $n == 1;
 
   my @afactors = all_factors($n);
 

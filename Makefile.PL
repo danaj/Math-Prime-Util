@@ -35,6 +35,7 @@ WriteMakefile1(
     META_MERGE   => {
                       recommends => { 'Math::Prime::Util::GMP' => 0.04, },
                       recommends => { 'Math::BigInt::GMP' => 0, },
+                      recommends => { 'Math::MPFR' => 0, },
                     },
 
     MIN_PERL_VERSION => 5.006002,
