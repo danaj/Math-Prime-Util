@@ -192,8 +192,9 @@ sub _validate_positive_integer {
   croak "Parameter '$n' must be a positive integer" if $n =~ tr/0123456789//c;
   croak "Parameter '$n' must be >= $min" if defined $min && $n < $min;
   croak "Parameter '$n' must be <= $max" if defined $max && $n > $max;
-  # this used instead of '<=' to fix strings like ~0+delta
-  if ($n < $_Config{'maxparam'} || int($n) eq $_Config{'maxparam'}) {
+  # The second term is used instead of '<=' to fix strings like ~0+delta.
+  # The third works around a rare BigInt bug (e.g. 23 > 18446744073709551615 !!)
+  if ($n < $_Config{'maxparam'} || int($n) eq $_Config{'maxparam'} || "$n" < $_Config{'maxparam'}) {
     $_[0] = $_[0]->as_number() if ref($_[0]) eq 'Math::BigFloat';
     $_[0] = int($_[0]->bstr) if ref($_[0]) eq 'Math::BigInt';
   } elsif (ref($n) ne 'Math::BigInt') {
@@ -540,11 +541,12 @@ sub primes {
 
   sub random_ndigit_prime {
     my($digits) = @_;
-    _validate_positive_integer($digits, 1,
-             (defined $bigint::VERSION) ? 10000 : $_Config{'maxdigits'});
+    my $usebigint = (   defined $bigint::VERSION
+                     || (defined $digits && ref($digits) =~ /^Math::Big/));
+    _validate_positive_integer($digits, 1, $usebigint ? undef : $_Config{'maxbits'});
 
     if (!defined $_random_ndigit_ranges[$digits]) {
-      if ( defined $bigint::VERSION  &&  $digits >= $_Config{'maxdigits'} ) {
+      if ( $usebigint  &&  $digits >= $_Config{'maxdigits'} ) {
         my $low  = Math::BigInt->new('10')->bpow($digits-1);
         my $high = Math::BigInt->new('10')->bpow($digits);
         $_random_ndigit_ranges[$digits] = [next_prime($low), prev_prime($high)];
@@ -564,11 +566,12 @@ sub primes {
 
   sub random_nbit_prime {
     my($bits) = @_;
-    _validate_positive_integer($bits, 2,
-             (defined $bigint::VERSION) ? 100000 : $_Config{'maxbits'});
+    my $usebigint = (   defined $bigint::VERSION
+                     || (defined $bits && ref($bits) =~ /^Math::Big/));
+    _validate_positive_integer($bits, 2, $usebigint ? undef : $_Config{'maxbits'});
 
     if (!defined $_random_nbit_ranges[$bits]) {
-      if ( defined $bigint::VERSION  &&  $bits >= $_Config{'maxbits'} ) {
+      if ( $usebigint  &&  $bits >= $_Config{'maxbits'} ) {
         my $low  = Math::BigInt->new('2')->bpow($bits-1);
         my $high = Math::BigInt->new('2')->bpow($bits);
         # Don't pull the range in to primes, just odds
@@ -586,20 +589,22 @@ sub primes {
 
   sub random_maurer_prime {
     my($k) = @_;
-    _validate_positive_integer($k, 2,
-             (defined $bigint::VERSION) ? 100000 : $_Config{'maxbits'});
+    my $usebigint = (   defined $bigint::VERSION
+                     || (defined $k && ref($k) =~ /^Math::Big/));
+    _validate_positive_integer($k, 2, $usebigint ? undef : $_Config{'maxbits'});
 
     my $p0 = 32;    # Use uniform random method for this many or less
 
     return random_nbit_prime($k) if $k <= $p0;
 
-    eval {
-      require Math::BigInt;   Math::BigInt->import( try=>'GMP,Pari' );
-      require Math::BigFloat; Math::BigFloat->import();
-      1;
-    } or do {
-      croak "Cannot load Math::BigInt and Math::BigFloat";
-    };
+    if (!defined $Math::BigInt::VERSION) {
+      eval { require Math::BigInt;   Math::BigInt->import(try=>'GMP,Pari'); 1; }
+      or do { croak "Cannot load Math::BigInt"; };
+    }
+    if (!defined $Math::BigFloat::VERSION) {
+      eval { require Math::BigFloat;   Math::BigFloat->import(); 1; }
+      or do { croak "Cannot load Math::BigFloat"; };
+    }
 
     my $c = Math::BigFloat->new("0.09");  # higher = more trial divisions
     my $r = Math::BigFloat->new("0.5");
@@ -641,16 +646,22 @@ sub primes {
       }
       #warn "$n passes trial division\n";
 
+      # Now we do Lemma 1 -- a special case of the Pocklington test.
+      # Let F = q where q is prime, and n = 2RF+1.
+      # If F > sqrt(n) or F odd and F > R, and a^((n-1)/F)-1 mod n = 1, n prime.
+
       # a is a random number between 2 and $n-2
       my $a = 2 + $get_rand_range->( $n - 4 );
       my $b = $a->copy->bmodpow($n-1, $n);
       next unless $b == 1;
       #warn "$n passes a^n-1 == 1\n";
 
-      # We now get to choose between Maurer's original proposal:
-      #   check gcd(a^((n-1)/q)-1,n)==1 for each factor q of n-1
-      # thusly:
+      # This is Lemma 1 from Maurer's paper.  Also see Menezes 4.59.
+      # First let's double check our conditions.  They better be true -- we
+      # went to some effort to ensure they were when we arrived here!
+      next if $q <= $R || ($q % 2) == 0;
 
+      # Given the above, we have only one GCD to check and we're done!
       $b = $a->copy->bmodpow(2*$R, $n);
       next unless Math::BigInt::bgcd($b-1, $n) == 1;
       #warn "$n passes final gcd\n";
@@ -659,18 +670,20 @@ sub primes {
       # some tests on x & y from 2R = xq+y (see Lemma 2 from Maurer's paper).
       # Crypt::Primes does the q test but doesn't seem to do the x/y and
       # perfect square portions.
-      #   next if ($q <= $n->copy->bpow(1/3));
+      #   next if $q <= $n->copy->broot(3);
       #   my $x = (2*$R)->bdiv($q)->bfloor;
       #   my $y = 2*$R - $x*$q;
       #   my $z = $y*$y - 4*$x;
       #   next if $z == 0;
-      #   next if $z is a perfect square
-      # Menezes seems to imply only the q test needs to be done.
+      #   next if $z->bsqrt->bfloor->bpow(2) == $z;  # perfect square
+      # Menezes seems to imply only the q test needs to be done, but that
+      # doesn't follow from Lemma 2.  Here's my problem: with q > R we'll
+      # end up with x=0 most of the time, hence z will be a perfect square.
 
       # We perhaps could verify with a BPSW test on the result.  This could:
       #  1) save us from accidently outputing a non-prime due to some mistake
       #  2) make history by finding the first known BPSW pseudo-prime
-      # croak "Maurer prime $n failed BPSW" unless is_prob_prime($n);
+      croak "Maurer prime $n=2*$R*$q+1 failed BPSW" unless is_prob_prime($n);
       #warn "     and passed BPSW.\n";
 
       return $n;
