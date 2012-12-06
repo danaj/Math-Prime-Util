@@ -49,6 +49,8 @@
 
 #else
 
+  /* TODO: We could try __uint128_t / __uint64_t on GCC */
+
   /* UV is the largest integral type available (that we know of). */
 
   /* Do it by hand */

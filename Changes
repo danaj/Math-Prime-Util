@@ -15,6 +15,8 @@ Revision history for Perl extension Math::Prime::Util.
 
     - Add tests for primorial, jordan_totient, and divisor_sum.
 
+    - Fix some issues with random nbit and maurer primes.
+
 0.14  29 November 2012
 
     - Compilation and test issues:

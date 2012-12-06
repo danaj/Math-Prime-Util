@@ -426,13 +426,13 @@ sub primes {
 
     # low and high are both primes, and low < high.
 
-    if ($high < 30000) {
+    if ($high < 65536 && $high <= $_XS_MAXVAL) {
       # nice deterministic solution, but gets very costly with large values.
-      my $li = prime_count($low);
-      my $hi = prime_count($high);
+      my $li = _XS_prime_count($low);
+      my $hi = _XS_prime_count($high);
       my $irange = $hi - $li + 1;
       my $rand = $irandf->($irange);
-      return nth_prime($li + $rand);
+      return _XS_nth_prime($li + $rand);
     }
 
     $low-- if $low == 2;  # Low of 2 becomes 1 for our program.
@@ -529,8 +529,7 @@ sub primes {
     _validate_positive_integer($high);
 
     # Tighten the range to the nearest prime.
-    $low = 2 if $low < 2;
-    $low = next_prime($low - 1);
+    $low = ($low <= 2)  ?  2  :  next_prime($low-1);
     $high = ($high < ~0)  ?  prev_prime($high + 1)  :  prev_prime($high);
     return $low if ($low == $high) && is_prob_prime($low);
     return if $low >= $high;
@@ -549,7 +548,8 @@ sub primes {
       if ( $usebigint  &&  $digits >= $_Config{'maxdigits'} ) {
         my $low  = Math::BigInt->new('10')->bpow($digits-1);
         my $high = Math::BigInt->new('10')->bpow($digits);
-        $_random_ndigit_ranges[$digits] = [next_prime($low), prev_prime($high)];
+        # Just pull the range in to the nearest odd.
+        $_random_ndigit_ranges[$digits] = [$low+1, $high-1];
       } else {
         my $low  = int(10 ** ($digits-1));
         my $high = int(10 ** int($digits));
@@ -577,10 +577,14 @@ sub primes {
         # Don't pull the range in to primes, just odds
         $_random_nbit_ranges[$bits] = [$low+1, $high-1];
       } else {
-        #my $low  = int(2 ** ($bits-1));
         my $low  = 1 << ($bits-1);
-        my $high = ~0 >> ($_Config{'maxbits'} - $bits);
-        $_random_nbit_ranges[$bits] = [next_prime($low), prev_prime($high)];
+        my $high = ($bits == $_Config{'maxbits'})
+                   ? ~0-1
+                   : ~0 >> ($_Config{'maxbits'} - $bits);
+        $_random_nbit_ranges[$bits] = [next_prime($low-1), prev_prime($high+1)];
+        # Example: bits = 7.
+        #    low = 1<<6 = 64.            next_prime(64-1)  = 67
+        #    high = ~0 >> (64-7) = 127.  prev_prime(127+1) = 127
       }
     }
     my ($low, $high) = @{$_random_nbit_ranges[$bits]};
@@ -606,26 +610,28 @@ sub primes {
       or do { croak "Cannot load Math::BigFloat"; };
     }
 
-    my $c = Math::BigFloat->new("0.09");  # higher = more trial divisions
-    my $r = Math::BigFloat->new("0.5");
+    my $c = Math::BigFloat->new("0.065"); # higher = more trial divisions
+    my $r = Math::BigFloat->new("0.5");   # relative size of the prime q
     my $m = 24;   # How much randomness we're trying to get at a time
     my $B = ($c * $k * $k)->bfloor;
 
+    # Generate a random prime q of size $r*$k, where $r >= 0.5.
+    # Select r so it more-or-less matches the size of a typical random factor.
     if ($k > 2*$m) {
-      my $rbits = 0;
-      while ($rbits <= $m) {
-        my $s = Math::BigFloat->new( "$irandf->($rand_max_val)" )->bdiv($rand_max_val);
-        my $r = Math::BigFloat->new(2)->bpow($s-1);
-        $rbits = $k - ($r*$k);
-      }
+      do {
+        my $s = Math::BigFloat->new($irandf->($rand_max_val))
+                              ->bdiv($rand_max_val);
+        $r = Math::BigFloat->new(2)->bpow($s-1);
+      } while ($k*$r >= $k-$m);
     }
-    # I've seen +0, +1, and +2 here.  Menezes uses +1.
+
+    # I've seen +0, +1, and +2 here.  Maurer uses +0.  Menezes uses +1.
     my $q = random_maurer_prime( ($r * $k)->bfloor + 1 );
     #warn "B = $B  r = $r  k = $k  q = $q\n";
     my $I = Math::BigInt->new(2)->bpow($k-1)->bdiv(2 * $q)->bfloor;
     #warn "I = $I\n";
 
-    my @primes = @{primes(17,$B)};
+    my $primemult;
 
     while (1) {
       # R is a random number between $I+1 and 2*$I
@@ -633,16 +639,17 @@ sub primes {
       my $n = 2 * $R * $q + 1;
       # We constructed a promising looking $n.  Now test it.
 
-      # Trial divide up to $B
-      next if !($n % 3) || !($n % 5) || !($n % 7) || !($n % 11) || !($n % 13);
+      # Weed out non-primes as fast as we can.  First test for 3,5,7,11,13
+      next unless Math::BigInt::bgcd($n, 15015) == 1;
+      # Then do either MR or primes up to B (using a gcd)
       if ($_HAVE_GMP) {
         next unless Math::Prime::Util::GMP::is_strong_pseudoprime($n, 2, 7);
       } else {
-        my $looks_prime = 1;
-        foreach my $p (@primes) {
-          do { $looks_prime = 0; last; } if !($n % $p);
+        if (!defined $primemult) {
+          $primemult = Math::BigInt->bone;
+          foreach my $p (@{primes(17,$B)}) { $primemult *= $p; }
         }
-        next unless $looks_prime;
+        next unless Math::BigInt::bgcd($n, $primemult) == 1;
       }
       #warn "$n passes trial division\n";
 
@@ -657,8 +664,9 @@ sub primes {
       #warn "$n passes a^n-1 == 1\n";
 
       # This is Lemma 1 from Maurer's paper.  Also see Menezes 4.59.
-      # First let's double check our conditions.  They better be true -- we
-      # went to some effort to ensure they were when we arrived here!
+      # First let's double check our conditions.  This really isn't necessary
+      # as we went to a lot of trouble to ensure these hold when we get here.
+      # Menezes doesn't bother, but I want to check.
       next if $q <= $R || ($q % 2) == 0;
 
       # Given the above, we have only one GCD to check and we're done!
@@ -1619,12 +1627,12 @@ L<Math::Factoring>, and L<Math::Primality> (when the GMP module is available).
 For numbers in the 10-20 digit range, it is often orders of magnitude faster.
 Typically it is faster than L<Math::Pari> for 64-bit operations.
 
-The main development of the module has been for working with Perl UVs, so
-32-bit or 64-bit.  Bignum support is still experimental.  One advantage is
-that it requires no external software (e.g. GMP or Pari).  For much faster
-performance for bigints, install the L<Math::Prime::Util::GMP> module.  If
-you're doing a lot of big number operations, look into L<Math::GMPz> and
-L<Math::Pari> as well.
+All operations support both Perl UV's (32-bit or 64-bit) and bignums.  It
+requires no external software for big number support, as there are Perl
+implementations included that solely use Math::BigInt and Math::BigFloat.
+However, performance will be improved for most big number functions by
+installing L<Math::Prime::Util::GMP>, and is definitely recommended if you
+do many bignum operations.  Also look into L<Math::Pari> as an alternative.
 
 The module is thread-safe and allows concurrency between Perl threads while
 still sharing a prime cache.  It is not itself multithreaded.  See the
@@ -1634,13 +1642,14 @@ your program.
 
 =head1 BIGNUM SUPPORT
 
-By default all functions support bigints.  The module will not turn on bigint
-support for you -- you will need to C<use bigint>, C<use bignum>, or pass in
-a L<Math::BigInt> object as your input.  The functions take some care to
-perform all bignum operations using the same class as was passed in, allowing
-the module to work properly with Calc, FastCalc, GMP, Pari, etc.  You should
-try to install L<Math::Prime::Util::GMP> if you plan to use bigints with this
-module, as it will make it run much faster.
+By default all functions support bignums.  With a few exceptions, the module
+will not turn on bignum support for you -- you will need to C<use bigint>,
+C<use bignum>, or pass in a L<Math::BigInt> or L<Math::BigFloat> object as
+your input.  The functions take some care to perform all bignum operations
+using the same class as was passed in, allowing the module to work properly
+with Calc, FastCalc, GMP, Pari, etc.  You should try to install
+L<Math::Prime::Util::GMP> if you plan to use bigints with this module, as
+it will make it run much faster.
 
 
 Some of the functions, notably:
@@ -1681,6 +1690,10 @@ If you are using bigints, here are some performance suggestions:
       line C<-Mbigint=lib,GMP>.  Large modular exponentiation is much faster
       using the GMP or Pari backends, as are the math and approximation
       functions when called with very large inputs.
+
+=item Install L<Math::MPFR> if you use the Ei, li, Zeta, or R functions.  If
+      that module can be loaded, these functions will run much faster on
+      bignum inputs, and are able to provide higher accuracy.
 
 =item Having run these functions on many versions of Perl, if you're using
       anything older than Perl 5.14, I would recommend you upgrade if you
