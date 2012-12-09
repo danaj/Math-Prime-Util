@@ -5,7 +5,7 @@ use Carp qw/croak confess carp/;
 
 BEGIN {
   $Math::Prime::Util::AUTHORITY = 'cpan:DANAJ';
-  $Math::Prime::Util::VERSION = '0.14';
+  $Math::Prime::Util::VERSION = '0.15';
 }
 
 # parent is cleaner, and in the Perl 5.10.1 / 5.12.0 core, but not earlier.
@@ -31,6 +31,8 @@ our @EXPORT_OK = qw(
                    );
 our %EXPORT_TAGS = (all => [ @EXPORT_OK ]);
 
+my %_Config;
+
 # Similar to how boolean handles its option
 sub import {
     my @options = grep $_ ne '-nobigint', @_;
@@ -40,6 +42,7 @@ sub import {
 }
 
 sub _import_nobigint {
+  $_Config{'nobigint'} = 1;
   undef *factor;        *factor          = \&_XS_factor;
   undef *is_prime;      *is_prime        = \&_XS_is_prime;
   undef *is_prob_prime; *is_prob_prime   = \&_XS_is_prob_prime;
@@ -50,8 +53,6 @@ sub _import_nobigint {
   undef *is_strong_pseudoprime;  *is_strong_pseudoprime = \&_XS_miller_rabin;
   undef *miller_rabin;  *miller_rabin    = \&_XS_miller_rabin;
 }
-
-my %_Config;
 
 BEGIN {
 
@@ -85,6 +86,7 @@ BEGIN {
     *pminus1_factor = \&Math::Prime::Util::PP::pminus1_factor;
   };
 
+  $_Config{'nobigint'} = 0;
   $_Config{'gmp'} = 0;
   # See if they have the GMP module and haven't requested it not to be used.
   if (!defined $ENV{MPU_NO_GMP} || $ENV{MPU_NO_GMP} != 1) {
@@ -92,6 +94,11 @@ BEGIN {
                                   Math::Prime::Util::GMP->import();
                                   1; };
   }
+
+  use Config;
+  $_Config{'system_randbits'} = $Config{'randbits'};
+  no Config;
+
 }
 END {
   _prime_memfreeall;
@@ -265,6 +272,8 @@ sub primes {
         croak "Internal error: large value without bigint loaded."
               unless defined $Math::BigInt::VERSION;
         @$sref = map { Math::BigInt->new("$_") } @$sref;
+      } else {
+        @$sref = map { int($_) } @$sref;
       }
       return $sref;
     }
@@ -353,27 +362,50 @@ sub primes {
 #       The probability for a prime is proportional to its gap, which is
 #       really a bad distribution.
 #
-# For standard random primes, the implementation is very similar to Fouque's
-# Algorithm 1.  For ranges of 32-bits or less, the distribution is uniform.
-# For larger ranges it is very close (See Foque/Tibouchi).
+# In this code, for ranges within randbits (typically 48 on UNIX system rand,
+# 31 for user-provided rand, and 16 for most Win32 systems), the results
+# are completely uniform.  For larger ranges it is close.
 #
-# The random_maurer_prime function uses Maurer's algorithm of course.
+# The random_maurer_prime function uses Maurer's FastPrime algorithm.
 #
-# The current code is reasonably fast for native, but slow for bigints.  Using
-# the M::P::U::GMP module helps immensely.  Performance does differ though --
-# my 32-bit machine is ~5x slower than this 64-bit machine for this.
+# These functions are quite fast for native size inputs, and reasonably fast
+# for bigints.  Some factors that make a significant difference:
+#   - Is Math::Prime::Util::GMP installed?
+#   - Using Math::BigInt::GMP or Math::BigInt::Pari?  Very important.
+#   - Which platform?  Typically x86_64 is best optimized.
+#   - If using system rand, is RANDBITS large?
+#   - What RNG?
 #
-#    n-bits      no GMP      with MPU::GMP
-#    ----------  ----------  --------------
-#       24-bit         15uS                 (native)
-#       64-bit         60uS                 (native)
-#      128-bit       0.2s        0.01s
-#      256-bit       1s          0.02s
-#      512-bit      10s          0.03s
-#     1024-bit     1m            0.1s
-#     2048-bit    ~4m            0.6s
-#     4096-bit   ~80m            7s
-#     8192-bit   ----           80s
+#                   random_nbit_prime         random_maurer_prime
+#    n-bits       no GMP   w/ MPU::GMP        no GMP   w/ MPU::GMP
+#    ----------  --------  -----------       --------  -----------
+#       24-bit       14uS      same             same       same
+#       64-bit       70uS      same             same       same
+#      128-bit     0.06s       0.006s          0.06s       0.07s
+#      256-bit     0.1s        0.012s          0.17s       0.16s
+#      512-bit     0.2s        0.028s          0.46s       0.47s
+#     1024-bit     0.6s        0.12s           1.2s        1.1s
+#     2048-bit     2.3s        1.0s            5.2s        4.3s
+#     4096-bit    17.5s       12s             23s         23s
+#
+# Writing these entirely in GMP has a problem, which is that we want to use
+# a user-supplied rand function, which means a lot of callbacks.  One
+# possibility is to, if they do not supply a rand function, use the GMP MT
+# function with an appropriate seed.
+#
+# It will generate primes with more bits, but it slows down a lot.  The
+# time variation becomes quite extreme once bit sizes get over 6000 or so.
+#
+# Random timings for 1M calls:
+#   0.054   system rand
+#   0.24    Math::Random::MT::Auto
+#   2.27    Math::Random::Secure   (with Math::Random::ISAAC::XS)
+#   6.73    Math::Random::Secure
+#   7.31   *Bytes::Random::Secure  (with Math::Random::ISAAC::XS)
+#  16.2    *Bytes::Random::Secure
+# 180.0    *Crypt::Random (probably blocked on /dev/random)
+#  * BRS and CR were hindered on this test by being used in a sub, and neither
+#    are being used to their full potential of returning big random chunks.
 #
 # To verify distribution:
 #   perl -Iblib/lib -Iblib/arch -MMath::Prime::Util=:all -E 'my %freq; $n=1000000; $freq{random_nbit_prime(6)}++ for (1..$n); printf("%4d %6.3f%%\n", $_, 100.0*$freq{$_}/$n) for sort {$a<=>$b} keys %freq;'
@@ -381,13 +413,34 @@ sub primes {
 
 {
   # Note:  I was using rand($range), but Math::Random::MT ignores the argument
-  #        instead of following its documentation.
+  #        instead of following its documentation.  (Fixed in v1.16)
   my $irandf = sub {
      return int( (defined &::rand)  ?  ::rand()*$_[0]  :  rand()*$_[0] );
   };
-  # TODO: Look at RANDBITS if using system rand
-  my $rand_max_bits = 31;
-  my $rand_max_val  = 1 << $rand_max_bits;
+  my $irandmaxbitsf = sub {
+    # 31 for user-defined, randbits for system rand
+    my $rand_max_bits = (defined &::rand) ? 31 : $_Config{'system_randbits'};
+    # but always make sure we can make an integer from it.
+    $rand_max_bits = $_Config{'maxbits'}-1 if $rand_max_bits >= $_Config{'maxbits'};
+    return $rand_max_bits;
+  };
+
+  # These are much faster than straightforward trial division when n is big.
+  # You'll want to first do a test up to and including 23.
+  my @_big_gcd;
+  my $_big_gcd_top = 20046;
+  my $_big_gcd_use = -1;
+  sub _make_big_gcds {
+    croak "Internal error: make_big_gcds needs Math::BigInt!" unless defined $Math::BigInt::VERSION;
+    my $p0 = primorial(Math::BigInt->new( 520));
+    my $p1 = primorial(Math::BigInt->new(2052));
+    my $p2 = primorial(Math::BigInt->new(6028));
+    my $p3 = primorial(Math::BigInt->new($_big_gcd_top));
+    $_big_gcd[0] = $p0 / 223092870;
+    $_big_gcd[1] = $p1 / $p0;
+    $_big_gcd[2] = $p2 / $p1;
+    $_big_gcd[3] = $p3 / $p2;
+  }
 
   # Returns a uniform number between [0,$range] inclusive.  The straightforward
   # method of getting a number of rand bits equal to the number of bits in the
@@ -403,6 +456,7 @@ sub primes {
       my $t = $range;
       while ($t) { $rbits++; $t >>= 1; }
     }
+    my $rand_max_bits = $irandmaxbitsf->();
     while (1) {
       my $rbitsleft = $rbits;
       my $U = $range - $range;   # zero in possible bigint
@@ -420,17 +474,18 @@ sub primes {
     my($low,$high) = @_;
     my $prime;
 
-    # { my $bsize = 100; my @bins; my $counts = 10000000;
-    #   for my $c (1..$counts) { $bins[ $get_rand_range->($bsize) ]++; }
-    #   for my $b (0..$bsize) {printf("%4d %8.5f%%\n", $b, $bins[$b]/$counts);}
+    #{ my $bsize = 100; my @bins; my $counts = 10000000;
+    #  for my $c (1..$counts) { $bins[ $get_rand_range->($bsize) ]++; }
+    #  for my $b (0..$bsize) {printf("%4d %8.5f%%\n", $b, $bins[$b]/$counts);} }
 
     # low and high are both primes, and low < high.
 
-    if ($high < 65536 && $high <= $_XS_MAXVAL) {
-      # nice deterministic solution, but gets very costly with large values.
-      my $li = _XS_prime_count($low);
-      my $hi = _XS_prime_count($high);
-      my $irange = $hi - $li + 1;
+    # This is fast for small values, low memory, perfectly uniform, and consumes
+    # the absolute minimum amount of randomness needed.  But it isn't feasible
+    # with large values.
+    if ($high <= 131072 && $high <= $_XS_MAXVAL) {
+      my $li     = _XS_prime_count(2, $low);
+      my $irange = _XS_prime_count($low, $high);
       my $rand = $irandf->($irange);
       return _XS_nth_prime($li + $rand);
     }
@@ -442,6 +497,9 @@ sub primes {
     #my $range = $high - $low + 1;
     my $oddrange = int(($high - $low) / 2) + 1;
 
+    # Find out the parameters of the random function
+    my $rand_max_val  = 1 << $irandmaxbitsf->();
+
     # If $low is large (e.g. >10 digits) and $range is small (say ~10k), it
     # would be fastest to call primes in the range and randomly pick one.  I'm
     # not implementing it now because it seems like a rare case.
@@ -451,14 +509,22 @@ sub primes {
       # Our range is small enough we can just call rand once and be happy.
       # Generate random numbers in the interval until one is prime.
       my $loop_limit = 2000 * 1000;  # To protect against broken rand
-      while (1) {
-        $prime = $low + 2 * $irandf->($oddrange);
-        croak "Random function broken?" if $loop_limit-- < 0;
-        next if $prime > 11 && (!($prime % 3) || !($prime % 5) || !($prime % 7) || !($prime % 11));
-        return 2 if $prime == 1;  # Remember the special case for 2.
-        last if is_prob_prime($prime);
+
+      if ($low > 11) {
+        while ($loop_limit-- > 0) {
+          $prime = $low + 2 * $irandf->($oddrange);
+          next if !($prime % 3) || !($prime % 5) || !($prime % 7) || !($prime % 11);
+          return $prime if is_prob_prime($prime);
+        }
+      } else {
+        while ($loop_limit-- > 0) {
+          $prime = $low + 2 * $irandf->($oddrange);
+          next if $prime > 11 && (!($prime % 3) || !($prime % 5) || !($prime % 7) || !($prime % 11));
+          return 2 if $prime == 1;  # Remember the special case for 2.
+          return $prime if is_prob_prime($prime);
+        }
       }
-      return $prime;
+      croak "Random function broken?";
     }
 
     # We have an ocean of range, and a teaspoon to hold randomness.
@@ -474,6 +540,38 @@ sub primes {
     #      is as close to $rand_max_val as we can.
     #   2) randomly select one of the partitions.
     #   3) iterate choosing random values within the partition.
+    #
+    # The downside is that we're skewing a _lot_ farther from uniformity than
+    # we'd like.  Imagine we started at 0 with 1e18 partitions of size 100k each.
+    # Probability of '5' being returned =
+    #   1.04e-22 = 1e-18 (chose first partition) * 1/9592 (chose '5')
+    # Probability of '100003' being returned =
+    #   1.19e-22 = 1e-18 (chose second partition) * 1/8392 (chose '100003')
+    # Probability of '99999999999999999999977' being returned =
+    #   5.20e-22 = 1e-18 (chose last partition)  *  1/1922 (chose '99...77')
+    # So the primes in the last partition will show up 5x more often.
+    # The partitions are selected uniformly, and the primes within are selected
+    # uniformly, but the number of primes in each bucket is _not_ uniform.
+    # Their individual probability of being selected is the probability of the
+    # partition (uniform) times the probability of being selected inside the
+    # partition (uniform with respect to all other primes in the same
+    # partition, but each partition is different and skewed).
+    #
+    # When selecting n-bit or n-digit primes, this effect is _much_ smaller, as
+    # the skew becomes approx lg(2^n) / lg(2^(n-1)) which is pretty close to 1.
+    # Note that we really want big partitions to even out any local skews, which
+    # worries me on systems with randbits of 16.  In fact, we should probably
+    # just get two numbers on those systems.
+    #
+    # Another idea I'd like to try sometime is:
+    #  pclo = prime_count_lower(low);
+    #  pchi = prime_count_upper(high);
+    #  do {
+    #    $nth = random selection between pclo and pchi
+    #    $prguess = nth_prime_approx($nth);
+    #  } while ($prguess >= low) && ($prguess <= high);
+    #  monte carlo select a prime in $prguess-2**24 to $prguess+2**24
+    # which accounts for the prime distribution.
 
     my($binsize, $nparts);
     if (ref($oddrange) eq 'Math::BigInt') {
@@ -485,10 +583,13 @@ sub primes {
       ($binsize,$rem) = $oddrange->copy->bdiv($nbins);
       $binsize++ if $rem > 0;
       $nparts  = $oddrange->copy->bdiv($binsize);
+      $low = $high->copy->bzero->badd($low) if ref($low) ne 'Math::BigInt';
     } else {
-      my $nbins = int( ($oddrange + $rand_max_val - 1) / $rand_max_val );
-      $binsize  = int( ($oddrange + $nbins - 1) / $nbins );
-      $nparts   = int( $oddrange / $binsize );
+      my $nbins = int($oddrange / $rand_max_val);
+      $nbins++ if $nbins * $rand_max_val != $oddrange;
+      $binsize = int($oddrange / $nbins);
+      $binsize++ if $binsize*$nbins != $oddrange;
+      $nparts = int($oddrange/$binsize);
     }
     $nparts-- if ($nparts * $binsize) == $oddrange;
 
@@ -505,19 +606,69 @@ sub primes {
 
     # Generate random numbers in the interval until one is prime.
     my $loop_limit = 2000 * 1000;  # To protect against broken rand
-    while (1) {
-      $prime = $primelow + ( 2 * $irandf->($partsize) );
-      croak "random prime failure, $prime > $high" if $prime > $high;
-      croak "Random function broken?" if $loop_limit-- < 0;
-      # If we are a small int, then some mods are good.
-      # If we're a bigint and have MPU:GMP installed then everything here is
-      # wasteful.  If we're a bigint without MPU:GMP, then a bgcd is faster.
-      next if $prime > 11 && (!($prime % 3) || !($prime % 5) || !($prime % 7) || !($prime % 11));
-      do { $prime = 2; last; } if $prime == 1;   # special case for low = 2
-      last if is_prob_prime($prime);
+
+    # Simply things for non-bigints.
+    if (ref($low) ne 'Math::BigInt') {
+      while ($loop_limit-- > 0) {
+        my $rand = $irandf->($partsize);
+        $prime = $primelow + $rand + $rand;
+        croak "random prime failure, $prime > $high" if $prime > $high;
+        if ($prime <= 23) {
+          $prime = 2 if $prime == 1;  # special case for low = 2
+          next unless (0,0,1,1,0,1,0,1,0,0,0,1,0,1,0,0,0,1,0,1,0,0,0,1)[$prime];
+          return $prime;
+        }
+        next if !($prime % 3) || !($prime % 5) || !($prime % 7) || !($prime % 11);
+        # It looks promising.  Check it.
+        next unless is_prob_prime($prime);
+        return $prime;
+      }
+      croak "Random function broken?";
     }
-    return $prime;
+
+    # By checking a wheel 30 mod, we can skip anything that would be a multiple
+    # of 2, 3, or 5, without even having to create the bigint prime.
+    my @w30 = (1,0,5,4,3,2,1,0,3,2,1,0,1,0,3,2,1,0,1,0,3,2,1,0,5,4,3,2,1,0);
+    my $primelow30 = $primelow % 30;
+    $primelow30 = int($primelow30->bstr) if ref($primelow30) eq 'Math::BigInt';
+
+    # Big GCD's are hugely fast with GMP or Pari, but super slow with Calc.
+    if ($_big_gcd_use < 0) {
+      $_big_gcd_use = 0;
+      my $lib = Math::BigInt->config()->{lib};
+      $_big_gcd_use = 1 if $lib =~ /^Math::BigInt::(GMP|Pari)/;
+      _make_big_gcds() if $_big_gcd_use;
+    }
+
+    while ($loop_limit-- > 0) {
+      my $rand = $irandf->($partsize);
+      # Check wheel-30 mod
+      my $rand30 = $rand % 30;
+      next if $w30[($primelow30 + 2*$rand30) % 30]
+              && ($rand > 3 || $primelow > 5);
+      # Construct prime
+      $prime = $primelow + $rand + $rand;
+      croak "random prime failure, $prime > $high" if $prime > $high;
+      if ($prime <= 23) {
+        $prime = 2 if $prime == 1;  # special case for low = 2
+        next unless (0,0,1,1,0,1,0,1,0,0,0,1,0,1,0,0,0,1,0,1,0,0,0,1)[$prime];
+        return $prime;
+      }
+      # Perform quick trial division
+      next unless Math::BigInt::bgcd($prime, 7436429) == 1;
+      if ($_big_gcd_use && $prime > $_big_gcd_top) {
+        next unless Math::BigInt::bgcd($prime, $_big_gcd[0]) == 1;
+        next unless Math::BigInt::bgcd($prime, $_big_gcd[1]) == 1;
+        next unless Math::BigInt::bgcd($prime, $_big_gcd[2]) == 1;
+        next unless Math::BigInt::bgcd($prime, $_big_gcd[3]) == 1;
+      }
+      # It looks promising.  Check it.
+      next unless is_prob_prime($prime);
+      return $prime;
+    }
+    croak "Random function broken?";
   };
+
   # Cache of tight bounds for each digit.  Helps performance a lot.
   my @_random_ndigit_ranges = (undef, [2,7], [11,97] );
   my @_random_nbit_ranges   = (undef, undef, [2,3],[5,7] );
@@ -540,24 +691,37 @@ sub primes {
 
   sub random_ndigit_prime {
     my($digits) = @_;
-    my $usebigint = (   defined $bigint::VERSION
-                     || (defined $digits && ref($digits) =~ /^Math::Big/));
-    _validate_positive_integer($digits, 1, $usebigint ? undef : $_Config{'maxbits'});
+    _validate_positive_integer($digits, 1);
+
+    my $bigdigits = $digits >= $_Config{'maxdigits'};
+
+    if ($bigdigits && $_Config{'nobigint'}) {
+      _validate_positive_integer($digits, 1, $_Config{'maxdigits'});
+      # Special case for nobigint and threshold digits
+      if (!defined $_random_ndigit_ranges[$digits]) {
+        my $low  = int(10 ** ($digits-1));
+        my $high = ~0;
+        $_random_ndigit_ranges[$digits] = [next_prime($low),prev_prime($high)];
+      }
+    }
 
     if (!defined $_random_ndigit_ranges[$digits]) {
-      if ( $usebigint  &&  $digits >= $_Config{'maxdigits'} ) {
+      if ($bigdigits) {
+        if (!defined $Math::BigInt::VERSION) {
+          eval { require Math::BigInt; Math::BigInt->import(try=>'GMP,Pari'); 1; }
+          or do { croak "Cannot load Math::BigInt"; };
+        }
         my $low  = Math::BigInt->new('10')->bpow($digits-1);
         my $high = Math::BigInt->new('10')->bpow($digits);
         # Just pull the range in to the nearest odd.
         $_random_ndigit_ranges[$digits] = [$low+1, $high-1];
       } else {
         my $low  = int(10 ** ($digits-1));
-        my $high = int(10 ** int($digits));
-        # Note: Perl 5.6.2 cannot represent 10**15 as an integer, so things will
-        # crash all over the place if you try.  We can stringify it, but then it
-        # starts failing math tests later.
-        $high = ~0 if $high > ~0;
-        $_random_ndigit_ranges[$digits] = [next_prime($low), prev_prime($high)];
+        my $high = int(10 ** $digits);
+        # Note: Perl 5.6.2 cannot represent 10**15 as an integer, so things
+        # will crash all over the place if you try.  We can stringify it, but
+        # will just fail tests later.
+        $_random_ndigit_ranges[$digits] = [next_prime($low),prev_prime($high)];
       }
     }
     my ($low, $high) = @{$_random_ndigit_ranges[$digits]};
@@ -566,12 +730,15 @@ sub primes {
 
   sub random_nbit_prime {
     my($bits) = @_;
-    my $usebigint = (   defined $bigint::VERSION
-                     || (defined $bits && ref($bits) =~ /^Math::Big/));
-    _validate_positive_integer($bits, 2, $usebigint ? undef : $_Config{'maxbits'});
+    _validate_positive_integer($bits, 2);
 
     if (!defined $_random_nbit_ranges[$bits]) {
-      if ( $usebigint  &&  $bits >= $_Config{'maxbits'} ) {
+      my $bigbits = $bits > $_Config{'maxbits'};
+      if ($bigbits) {
+        if (!defined $Math::BigInt::VERSION) {
+          eval { require Math::BigInt; Math::BigInt->import(try=>'GMP,Pari'); 1; }
+          or do { croak "Cannot load Math::BigInt"; };
+        }
         my $low  = Math::BigInt->new('2')->bpow($bits-1);
         my $high = Math::BigInt->new('2')->bpow($bits);
         # Don't pull the range in to primes, just odds
@@ -581,7 +748,7 @@ sub primes {
         my $high = ($bits == $_Config{'maxbits'})
                    ? ~0-1
                    : ~0 >> ($_Config{'maxbits'} - $bits);
-        $_random_nbit_ranges[$bits] = [next_prime($low-1), prev_prime($high+1)];
+        $_random_nbit_ranges[$bits] = [next_prime($low-1),prev_prime($high+1)];
         # Example: bits = 7.
         #    low = 1<<6 = 64.            next_prime(64-1)  = 67
         #    high = ~0 >> (64-7) = 127.  prev_prime(127+1) = 127
@@ -593,31 +760,36 @@ sub primes {
 
   sub random_maurer_prime {
     my($k) = @_;
-    my $usebigint = (   defined $bigint::VERSION
-                     || (defined $k && ref($k) =~ /^Math::Big/));
-    _validate_positive_integer($k, 2, $usebigint ? undef : $_Config{'maxbits'});
+    _validate_positive_integer($k, 2);
 
-    my $p0 = 32;    # Use uniform random method for this many or less
+    # Results for random_nbit_prime are proven for all native bit sizes.  We
+    # could go even higher if we used is_provable_prime or looked for is_prime
+    # returning 2.
+    my $p0 = $_Config{'maxbits'};
 
     return random_nbit_prime($k) if $k <= $p0;
 
     if (!defined $Math::BigInt::VERSION) {
-      eval { require Math::BigInt;   Math::BigInt->import(try=>'GMP,Pari'); 1; }
+      eval { require Math::BigInt; Math::BigInt->import(try=>'GMP,Pari'); 1; }
       or do { croak "Cannot load Math::BigInt"; };
     }
     if (!defined $Math::BigFloat::VERSION) {
-      eval { require Math::BigFloat;   Math::BigFloat->import(); 1; }
+      eval { require Math::BigFloat; Math::BigFloat->import(); 1; }
       or do { croak "Cannot load Math::BigFloat"; };
     }
 
+    my $verbose = $_Config{'verbose'};
+    local $| = 1 if $verbose > 2;
+
     my $c = Math::BigFloat->new("0.065"); # higher = more trial divisions
     my $r = Math::BigFloat->new("0.5");   # relative size of the prime q
-    my $m = 24;   # How much randomness we're trying to get at a time
+    my $m = 20;                           # makes sure R is big enough
     my $B = ($c * $k * $k)->bfloor;
 
-    # Generate a random prime q of size $r*$k, where $r >= 0.5.
-    # Select r so it more-or-less matches the size of a typical random factor.
+    # Generate a random prime q of size $r*$k, where $r >= 0.5.  Try to
+    # cleverly select r to match the size of a typical random factor.
     if ($k > 2*$m) {
+      my $rand_max_val = 1 << $irandmaxbitsf->();
       do {
         my $s = Math::BigFloat->new($irandf->($rand_max_val))
                               ->bdiv($rand_max_val);
@@ -627,105 +799,118 @@ sub primes {
 
     # I've seen +0, +1, and +2 here.  Maurer uses +0.  Menezes uses +1.
     my $q = random_maurer_prime( ($r * $k)->bfloor + 1 );
-    #warn "B = $B  r = $r  k = $k  q = $q\n";
     my $I = Math::BigInt->new(2)->bpow($k-1)->bdiv(2 * $q)->bfloor;
-    #warn "I = $I\n";
+    print "B = $B  r = $r  k = $k  q = $q  I = $I\n" if $verbose;
 
-    my $primemult;
+    # Big GCD's are hugely fast with GMP or Pari, but super slow with Calc.
+    if ($_big_gcd_use < 0) {
+      $_big_gcd_use = 0;
+      my $lib = Math::BigInt->config()->{lib};
+      $_big_gcd_use = 1 if $lib =~ /^Math::BigInt::(GMP|Pari)/;
+      _make_big_gcds() if $_big_gcd_use;
+    }
 
     while (1) {
       # R is a random number between $I+1 and 2*$I
-      my $R = $I + 1 + $get_rand_range->( int($I - 1) );
-      my $n = 2 * $R * $q + 1;
+      my $R = $I + 1 + $get_rand_range->( $I - 1 );
+      #my $n = 2 * $R * $q + 1;
+      my $n = Math::BigInt->new(2)->bmul($R)->bmul($q)->badd(1);
       # We constructed a promising looking $n.  Now test it.
+      print "." if $verbose > 2;
 
-      # Weed out non-primes as fast as we can.  First test for 3,5,7,11,13
-      next unless Math::BigInt::bgcd($n, 15015) == 1;
-      # Then do either MR or primes up to B (using a gcd)
-      if ($_HAVE_GMP) {
-        next unless Math::Prime::Util::GMP::is_strong_pseudoprime($n, 2, 7);
-      } else {
-        if (!defined $primemult) {
-          $primemult = Math::BigInt->bone;
-          foreach my $p (@{primes(17,$B)}) { $primemult *= $p; }
-        }
-        next unless Math::BigInt::bgcd($n, $primemult) == 1;
+      # Trial divisions, trying to quickly weed out non-primes.
+      next unless Math::BigInt::bgcd($n, 111546435) == 1;
+      if ($_big_gcd_use && $n > $_big_gcd_top) {
+        next unless Math::BigInt::bgcd($n, $_big_gcd[0]) == 1;
+        next unless Math::BigInt::bgcd($n, $_big_gcd[1]) == 1;
+        next unless Math::BigInt::bgcd($n, $_big_gcd[2]) == 1;
+        next unless Math::BigInt::bgcd($n, $_big_gcd[3]) == 1;
       }
-      #warn "$n passes trial division\n";
+      print "+" if $verbose > 2;
+      if ($_HAVE_GMP) {
+        next unless Math::Prime::Util::GMP::is_strong_pseudoprime($n, 2);
+      }
+      print "*" if $verbose > 2;
 
       # Now we do Lemma 1 -- a special case of the Pocklington test.
       # Let F = q where q is prime, and n = 2RF+1.
       # If F > sqrt(n) or F odd and F > R, and a^((n-1)/F)-1 mod n = 1, n prime.
 
-      # a is a random number between 2 and $n-2
-      my $a = 2 + $get_rand_range->( $n - 4 );
-      my $b = $a->copy->bmodpow($n-1, $n);
-      next unless $b == 1;
-      #warn "$n passes a^n-1 == 1\n";
+      # Based on our construction, this should always be true.  Check anyway.
+      next unless $q > $R;
 
-      # This is Lemma 1 from Maurer's paper.  Also see Menezes 4.59.
-      # First let's double check our conditions.  This really isn't necessary
-      # as we went to a lot of trouble to ensure these hold when we get here.
-      # Menezes doesn't bother, but I want to check.
-      next if $q <= $R || ($q % 2) == 0;
+      # Select random 'a' values.  If n is prime, then almost any 'a' value
+      # will work, so just try two small ones instead of generating a giant
+      # random 'a' between 2 and n-2.  This makes the powmods run faster.
+      foreach my $try_a (2, 7) {
+        # my $a = 2 + $get_rand_range->( $n - 4 );
+        my $a = Math::BigInt->new($try_a);
+        my $b = $a->copy->bmodpow($n-1, $n);
+        next unless $b == 1;
 
-      # Given the above, we have only one GCD to check and we're done!
-      $b = $a->copy->bmodpow(2*$R, $n);
-      next unless Math::BigInt::bgcd($b-1, $n) == 1;
-      #warn "$n passes final gcd\n";
+        # Now do the one gcd check we need to do.
+        $b = $a->copy->bmodpow(2*$R, $n);
+        next unless Math::BigInt::bgcd($b-1, $n) == 1;
+        print "$n passed final gcd\n" if $verbose > 2;
 
-      # Or via a different method, where we check q >= n**1/3 and also do
-      # some tests on x & y from 2R = xq+y (see Lemma 2 from Maurer's paper).
-      # Crypt::Primes does the q test but doesn't seem to do the x/y and
-      # perfect square portions.
-      #   next if $q <= $n->copy->broot(3);
-      #   my $x = (2*$R)->bdiv($q)->bfloor;
-      #   my $y = 2*$R - $x*$q;
-      #   my $z = $y*$y - 4*$x;
-      #   next if $z == 0;
-      #   next if $z->bsqrt->bfloor->bpow(2) == $z;  # perfect square
-      # Menezes seems to imply only the q test needs to be done, but that
-      # doesn't follow from Lemma 2.  Here's my problem: with q > R we'll
-      # end up with x=0 most of the time, hence z will be a perfect square.
+        # Instead of the previous gcd, we could check q >= n**1/3 and also do
+        # some tests on x & y from 2R = xq+y (see Lemma 2 from Maurer's paper).
+        # Crypt::Primes does the q test but doesn't do the x/y tests.
+        #   next if ($q <= $n->copy->broot(3));
+        #   my $x = (2*$R)->bdiv($q)->bfloor;
+        #   my $y = 2*$R - $x*$q;
+        #   my $z = $y*$y - 4*$x;
+        #   next if $z == 0;
+        #   next if $z->bsqrt->bfloor->bpow(2) == $z;  # perfect square
+        # Menezes seems to imply only the q test needs to be done, but this
+        # doesn't follow from Lemma 2.  Also note the entire POINT of going to
+        # Lemma 2 is that we now allow r to be 0.3334, making q smaller.  If we
+        # run this without changing r, then x will typically be 0 and this fails.
 
-      # We perhaps could verify with a BPSW test on the result.  This could:
-      #  1) save us from accidently outputing a non-prime due to some mistake
-      #  2) make history by finding the first known BPSW pseudo-prime
-      croak "Maurer prime $n=2*$R*$q+1 failed BPSW" unless is_prob_prime($n);
-      #warn "     and passed BPSW.\n";
+        # Verify with a BPSW test on the result.  This could:
+        #  1) save us from accidently outputing a non-prime due to some mistake
+        #  2) make history by finding the first known BPSW pseudo-prime
+        croak "Maurer prime $n=2*$R*$q+1 failed BPSW" unless is_prob_prime($n);
 
-      return $n;
+        return $n;
+      }
+      # Didn't pass the selected a values.  Try another R.
     }
-  }
-}
+  } # End of random_maurer_prime
+
+} # end of the random prime section
 
 sub primorial {
   my($n) = @_;
   _validate_positive_integer($n);
 
-  if ($_HAVE_GMP && defined &Math::Prime::Util::GMP::primorial) {
-    return (ref($_[0]) eq 'Math::BigInt')
-        ?  $_[0]->copy->bzero->badd( Math::Prime::Util::GMP::primorial($n) )
-        :  Math::Prime::Util::GMP::primorial($n);
-  }
-
   my $pn = 1;
-  $pn = Math::BigInt->new->bone if defined $Math::BigInt::VERSION &&
-        $n >= (($_Config{'maxbits'} == 32) ? 29 : 53);
+  if ($n >= (($_Config{'maxbits'} == 32) ? 29 : 53)) {
+    if (!defined $Math::BigInt::VERSION) {
+      eval { require Math::BigInt; Math::BigInt->import(try=>'GMP,Pari'); 1; }
+      or do { croak "Cannot load Math::BigInt"; };
+    }
+    $pn = Math::BigInt->bone();
+  }
+  # Make sure we use their type if they passed one in.
+  $pn = $_[0]->copy->bone() if ref($_[0]) eq 'Math::BigInt';
 
-  foreach my $p ( @{ primes($n) } ) {
-    $pn *= $p;
+  if ($_HAVE_GMP && defined &Math::Prime::Util::GMP::primorial) {
+    if (ref($pn) eq 'Math::BigInt') {
+      $pn->bzero->badd( Math::Prime::Util::GMP::primorial($n) );
+    } else {
+      $pn = int( Math::Prime::Util::GMP::primorial($n) );
+    }
+  } else {
+    foreach my $p ( @{ primes($n) } ) {
+      $pn *= $p;
+    }
   }
   return $pn;
 }
 
 sub pn_primorial {
   my($n) = @_;
-  if ($_HAVE_GMP && defined &Math::Prime::Util::GMP::pn_primorial) {
-    return (ref($_[0]) eq 'Math::BigInt')
-        ?  $_[0]->copy->bzero->badd( Math::Prime::Util::GMP::pn_primorial($n) )
-        :  Math::Prime::Util::GMP::pn_primorial($n);
-  }
   return primorial(nth_prime($n));
 }
 
@@ -1507,7 +1692,7 @@ Math::Prime::Util - Utilities related to prime numbers, including fast sieves an
 
 =head1 VERSION
 
-Version 0.14
+Version 0.15
 
 
 =head1 SYNOPSIS
@@ -2063,8 +2248,8 @@ definition.
   primorial(0)  == 1
   primorial($n) == pn_primorial( prime_count($n) )
 
-The result will be calculated using native numbers if neither bigint nor
-L<Math::Prime::Util::GMP> are loaded.
+The result will be a L<Math::BigInt> object if it is larger than the native
+bit size.
 
 Be careful about which version (C<primorial> or C<pn_primorial>) matches the
 definition you want to use.  Not all sources agree on the terminology, though
@@ -2086,8 +2271,8 @@ definition.
   pn_primorial(0)  == 1
   pn_primorial($n) == primorial( nth_prime($n) )
 
-The result will be calculated using native numbers if neither bigint nor
-L<Math::Prime::Util::GMP> are loaded.
+The result will be a L<Math::BigInt> object if it is larger than the native
+bit size.
 
 
 =head2 random_prime
@@ -2102,29 +2287,46 @@ range.  The L<rand> function is called one or more times for selection.
 
 The goal is to return a uniform distribution of the primes in the range,
 meaning for each prime in the range, the chances are equally likely that it
-will be seen.
+will be seen.  This is removes from consideration such algorithms as
+C<PRIMEINC>, which although efficient, gives very non-random output.
 
-The current algorithm does a random index selection for small numbers, which
-is deterministic.  For larger numbers, this slows down, so for 32-bit ranges,
-the obvious Monte Carlo method is used, where random numbers in the range are
-selected until one is prime.  For even larger ranges, a method similar to that
-of Fouque and Tibouchi (2011) algorithm A1 is used.
+For small numbers, a random index selection is done, which gives ideal
+uniformity and is very efficient with small inputs.  For ranges larger than
+this ~16-bit threshold but small enough to be handled by a single C<rand>
+call, a Monte Carlo method is used.  This also gives ideal uniformity and
+can be very fast for reasonably sized ranged.  For even larger numbers, we
+partition the range, choose a random partition, then select a random prime
+from the partition.  This gives some loss of uniformity but results in many
+fewer bits of randomness being consumed as well as being much faster.
 
 Perl's L<rand> function is normally called, but if the sub C<main::rand>
 exists, it will be used instead.  When called with no arguments it should
-return a float value between 0 and 1-epsilon, with 31 bits of randomness.
-Examples:
+return a float value between 0 and 1-epsilon, with at least 31 bits of
+randomness.  Examples:
 
-  # Use Mersenne Twister
+  # Math::Random::Secure.  Very good, uses ISAAC and strong seed methods.
+  use Math::Random::Secure qw/rand/;
+
+  # Bytes::Random::Secure.  Also uses ISAAC and strong seed methods.
+  use Bytes::Random::Secure qw/random_bytes/;
+  sub rand { return unpack("L", random_bytes(4))/4294967296; }
+
+  # Crypt::Random.  Uses Pari and /dev/random.
+  use Crypt::Random qw/makerandom/;
+  sub rand { return makerandom(Size=>32,Uniform=>1)->pari2nv/4294967296; }
+
+  # Mersenne Twister.  Very fast, decent RNG, auto seeding.
   use Math::Random::MT::Auto qw/rand/;
 
-  # Use a custom random function
-  sub rand { ... }
+  # A custom random function
+  sub rand { ... do your own cool stuff here ... }
 
-If you want cryptographically secure primes, at minimum a better source of
-random numbers should be used, e.g. L<Crypt::Random>.  Until this module
-has more testing, I would point the user to L<Crypt::Primes> for production
-use.
+For cryptographically secure primes, you need to use something better than the
+default for both seeding and random number generation.  I would recommend
+using L<Math::Random::Secure> and also installing L<Math::Random::ISAAC::XS>
+if possible.  It is fast and does everything needed by default.  If you want
+to know more, I recommend reading the documentation for L<Math::Random::Secure>
+and L<Bytes::Random::Secure>.
 
 
 =head2 random_ndigit_prime
@@ -2137,10 +2339,15 @@ digits between 1 and the maximum native type (10 for 32-bit, 20 for 64-bit,
 (e.g. 1000 - 9999 for 4-digits) will be uniformly selected using the
 L<rand> function as described above.
 
+If the number of digits is greater than or equal to the maximum native type,
+then the result will be returned as a BigInt.  However, if the '-nobigint'
+tag was used, then numbers larger than the threshold will be flagged as an
+error, and numbers on the threshold will be restricted to native numbers.
+
 
 =head2 random_nbit_prime
 
-  use bigint;  my $bigprime = random_nbit_prime(512);
+  my $bigprime = random_nbit_prime(512);
 
 Selects a random n-bit prime, where the input is an integer number of bits
 between 2 and the maximum representable bits (32, 64, or 100000 for native
@@ -2152,36 +2359,68 @@ Since this uses the random_prime function, all uniformity properties of that
 function apply to this.  The n-bit range is partitioned into nearly equal
 segments less than C<2^31>, a segment is randomly selected, then the trivial
 Monte Carlo algorithm is used to select a prime from within the segment.
-This gives a nearly uniform distribution, doesn't use excessive random source,
-and can be very fast.
+This gives a reasonably uniform distribution, doesn't use excessive random
+source, and can be very fast.
 
-Note that if you use Perl default bigints, it can get very slow as the
-number of bits increases.  Either use Math::BigInt::GMP or install
-L<Math::Prime::Util::GMP>, which can make it run B<much> faster.
+The result will be a BigInt if the number of bits is greater than the native
+bit size.  For better performance with very large bit sizes, install
+L<Math::BigInt::GMP>.
 
 
 =head2 random_maurer_prime
 
-  use bigint;  my $bigprime = random_maurer_prime(512);
+  my $bigprime = random_maurer_prime(512);
 
-Construct an n-bit provable prime, using the algorithm of Ueli Maurer (1995).
-This is the same algorithm used by L<Crypt::Primes>.
+Construct an n-bit provable prime, using the FastPrime algorithm of
+Ueli Maurer (1995).  This is the same algorithm used by L<Crypt::Primes>.
+Similar to L</"random_nbit_prime">, the result will be a BigInt if the
+number of bits is greater than the native bit size.
+
+For cryptographic purposes you need to ensure you're using a good RNG that
+is well seeded.  See the notes for L</"random_prime">.
 
 The differences between this function and that in L<Crypt::Primes> include
-(1) the current version of C::P has been in use for 9 years, while M::P::U
-is new and relatively untested;
-(2) no external libraries are needed for this module, while C::P requires
-L<Math::Pari>;
-(3) C::P is quite fast for all sizes -- M::P::U is really
-fast for native bit sizes, so-so for large bit sizes when
-L<Math::Prime::Util::GMP> is installed, but ridiculously slow when using
-native Perl bigints for large bit sizes;
-(4) C::P uses a modified version of final acceptance criteria
-(C<q E<lt> n**(1/3)> without the rest of Lemma 2), while this module uses the
-original set;
-(5) C::P  has some useful options for cryptography;
-(6) C::P is hardcoded to use L<Crypt::Random>, while this function will use
-whatever you set C<rand> to (this is more flexible but also prone to misuse).
+
+=over
+
+=item *
+
+Version 0.50 of Crypt::Primes can return composites.
+
+=item *
+
+Version 0.50 of Crypt::Primes uses the C<PRIMEINC> algorithm for the base
+generator, which gives a very non-uniform distribution.  This differs
+from Maurer's algorithm which uses the Monte Carlo algorithm (which is what
+this module uses).
+
+=item *
+
+No external libraries are needed for this module, while C::P requires
+L<Math::Pari>.  See the next item however.
+
+=item *
+
+Crypt::Primes is quite fast for all sizes since it uses Pari for all heavy
+lifting.  M::P::U is really fast for native bit sizes.  It is similar speed
+to Crypt::Primes if the BigInt package in use is GMP or Pari, e.g.
+
+   use Math::BigInt lib=>'GMP';
+
+but a lot slower without.  Having the L<Math::Prime::Util::GMP> module
+installed helps in any case.
+
+=item *
+
+Crypt::Primes has some useful options for cryptography.
+
+=item *
+
+Crypt::Primes is hardcoded to use L<Crypt::Random>, while this function will
+use whatever you set C<rand> to.  This is more flexible but also prone to
+misuse.  You ought to use something like L<Math::Random::Secure>.
+
+=back
 
 Any feedback on this function would be greatly appreciated.
 
@@ -2399,7 +2638,7 @@ C<accuracy()> value of the input (or the default BigFloat accuracy, which
 is 40 by default).
 
 MPFR is used for positive inputs only.  If Math::MPFR is not installed or the
-input is negative, then other methods are used: 
+input is negative, then other methods are used:
 continued fractions (C<x E<lt> -1>),
 rational Chebyshev approximation (C< -1 E<lt> x E<lt> 0>),
 a convergent series (small positive C<x>),

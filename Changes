@@ -1,6 +1,6 @@
 Revision history for Perl extension Math::Prime::Util.
 
-0.15  ?? December 2012
+0.15  9 December 2012
 
     - Lots of internal changes to Ei, li, Zeta, and R functions:
        - Native Zeta and R have slightly more accurate results.
@@ -16,6 +16,10 @@ Revision history for Perl extension Math::Prime::Util.
     - Add tests for primorial, jordan_totient, and divisor_sum.
 
     - Fix some issues with random nbit and maurer primes.
+
+    - The random prime and primorial functions now will return a Math::BigInt
+      object if the result is greater than the native size.  This includes
+      loading up the Math::BigInt library if necessary.
 
 0.14  29 November 2012
 
