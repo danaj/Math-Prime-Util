@@ -5,6 +5,8 @@ use warnings;
 use Test::More;
 use Math::Prime::Util qw/primorial pn_primorial/;
 
+my $broken64 = (18446744073709550592 == ~0);
+
 my @pn_primorials = qw/
 1
 2
@@ -65,15 +67,21 @@ sub nth_prime {
 
 # First we test native numbers
 foreach my $n (0 .. $#small_primorials) {
-  is( primorial(nth_prime($n)), $pn_primorials[$n], "primorial(nth($n))" );
-  is( pn_primorial($n), $pn_primorials[$n], "pn_primorial($n)" );
+  SKIP: {
+    skip "Broken 64-bit again...", 2 if $broken64 && $n >= 14 && $n <= 15;
+    is( primorial(nth_prime($n)), $pn_primorials[$n], "primorial(nth($n))" );
+    is( pn_primorial($n), $pn_primorials[$n], "pn_primorial($n)" );
+  }
 }
 
 # Then load up BigInt and make sure everything works for big numbers
 require Math::BigInt;
 foreach my $n (0 .. $#pn_primorials) {
-  is( primorial(nth_prime($n)), $pn_primorials[$n], "primorial(nth($n))" );
-  is( pn_primorial($n), $pn_primorials[$n], "pn_primorial($n)" );
+  SKIP: {
+    skip "Broken 64-bit again...", 2 if $broken64 && $n >= 14 && $n <= 15;
+    is( primorial(nth_prime($n)), $pn_primorials[$n], "primorial(nth($n))" );
+    is( pn_primorial($n), $pn_primorials[$n], "pn_primorial($n)" );
+  }
 }
 
 

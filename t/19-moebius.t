@@ -6,6 +6,8 @@ use Test::More;
 use Math::Prime::Util qw/moebius euler_phi jordan_totient divisor_sum/;
 
 my $use64 = Math::Prime::Util::prime_get_config->{'maxbits'} > 32;
+my $broken64 = (18446744073709550592 == ~0);
+$use64 = 0 if $broken64;
 
 my @moeb_vals = (qw/ 1 -1 -1 0 -1 1 -1 0 0 1 -1 0 -1 1 1 0 -1 0 -1 0 /);
 my %mertens = (

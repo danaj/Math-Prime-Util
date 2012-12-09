@@ -204,10 +204,13 @@ cmp_ok( $randprime, '>', 2**79, "random 80-bit prime isn't too small");
 cmp_ok( $randprime, '<', 2**80, "random 80-bit prime isn't too big");
 ok( is_prime($randprime), "random 80-bit prime is prime");
 
-$randprime = random_maurer_prime(80);
-cmp_ok( $randprime, '>', 2**79, "random 80-bit Maurer prime isn't too small");
-cmp_ok( $randprime, '<', 2**80, "random 80-bit Maurer prime isn't too big");
-ok( is_prime($randprime), "random 80-bit Maurer prime is prime");
+SKIP: {
+  skip "Your 64-bit Perl is broken, skipping maurer prime", 3 if $broken64;
+  $randprime = random_maurer_prime(80);
+  cmp_ok( $randprime, '>', 2**79, "random 80-bit Maurer prime isn't too small");
+  cmp_ok( $randprime, '<', 2**80, "random 80-bit Maurer prime isn't too big");
+  ok( is_prime($randprime), "random 80-bit Maurer prime is prime");
+}
 
 ###############################################################################
 

@@ -40,5 +40,3 @@
 
 - Dynamically use a mulmodadd in PP aks, just like the new C code does.
   This will mean it'll work for full-size native ints.
-
-- RANDBITS in random primes.
