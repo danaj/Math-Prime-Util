@@ -35,6 +35,7 @@ examples/bench-nthprime.pl
 examples/bench-pcapprox.pl
 examples/bench-primecount.pl
 examples/bench-random-prime.pl
+examples/bench-random-prime-bigint.pl
 examples/bench-pp-count.pl
 examples/bench-pp-isprime.pl
 examples/bench-pp-sieve.pl

@@ -15,7 +15,8 @@ Revision history for Perl extension Math::Prime::Util.
 
     - Add tests for primorial, jordan_totient, and divisor_sum.
 
-    - Fix some issues with random nbit and maurer primes.
+    - Revamp of the random_prime internals.  Also fixes some issues with
+      random n-bit and maurer primes.
 
     - The random prime and primorial functions now will return a Math::BigInt
       object if the result is greater than the native size.  This includes

@@ -36,7 +36,7 @@ my $rgen = sub {
 };
 srand(29);
 
-for my $d ( 17 .. $maxdigits ) {
+for my $d ( 3 .. $maxdigits ) {
   print "Factor $howmany $d-digit numbers\n";
   test_at_digits($d, $howmany);
 }
