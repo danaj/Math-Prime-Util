@@ -438,35 +438,11 @@ sub primes {
   # sure you use version 1.16 or later.
   sub _get_rand_func {
     my $irandf;
-    if (defined &::rand) {
+    if (defined &::rand) {                 # User-defined rand function
       $irandf = sub {
         my($range) = @_;
         return 0 if $range <= 0;
-        my $rand_max_bits = $_Config{'system_randbits'};
-        return int(::rand($range+1)) if $range < (1 << $rand_max_bits);
-        my $rbits = 0;
-        if (ref($range) eq 'Math::BigInt') {
-          $rbits = length($range->as_bin) - 2;
-        } else {
-          my $t = $range;
-          while ($t) { $rbits++; $t >>= 1; }
-        }
-        while (1) {
-          my $rbitsleft = $rbits;
-          my $U = $range - $range;   # zero in possible bigint
-          while ($rbitsleft > 0) {
-            my $usebits = ($rbitsleft > $rand_max_bits) ? $rand_max_bits : $rbitsleft;
-            $U = ($U << $usebits) + int(::rand(1 << $usebits));
-            $rbitsleft -= $usebits;
-          }
-          return $U if $U <= $range;
-        }
-      };
-    } else {
-      $irandf = sub {
-        my($range) = @_;
-        return 0 if $range <= 0;
-        return int(rand($range+1)) if $range < (1 << 31);
+        return int(::rand($range+1)) if $range < (1 << 31);
         my $rbits = 0;
         if (ref($range) eq 'Math::BigInt') {
           $rbits = length($range->as_bin) - 2;
@@ -479,6 +455,30 @@ sub primes {
           my $U = $range - $range;   # zero in possible bigint
           while ($rbitsleft > 0) {
             my $usebits = ($rbitsleft > 31) ? 31 : $rbitsleft;
+            $U = ($U << $usebits) + int(::rand(1 << $usebits));
+            $rbitsleft -= $usebits;
+          }
+          return $U if $U <= $range;
+        }
+      };
+    } else {                               # System rand function
+      $irandf = sub {
+        my($range) = @_;
+        return 0 if $range <= 0;
+        my $rand_max_bits = $_Config{'system_randbits'};
+        return int(rand($range+1)) if $range < (1 << $rand_max_bits);
+        my $rbits = 0;
+        if (ref($range) eq 'Math::BigInt') {
+          $rbits = length($range->as_bin) - 2;
+        } else {
+          my $t = $range;
+          while ($t) { $rbits++; $t >>= 1; }
+        }
+        while (1) {
+          my $rbitsleft = $rbits;
+          my $U = $range - $range;   # zero in possible bigint
+          while ($rbitsleft > 0) {
+            my $usebits = ($rbitsleft > $rand_max_bits) ? $rand_max_bits : $rbitsleft;
             $U = ($U << $usebits) + int(rand(1 << $usebits));
             $rbitsleft -= $usebits;
           }

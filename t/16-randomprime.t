@@ -6,7 +6,8 @@ use Test::More;
 #use Math::Random::MT qw/rand/;
 #use Math::Random::MT::Auto qw/rand/;
 #sub rand { return 0.5; }
-use Math::Prime::Util qw/random_prime random_ndigit_prime random_nbit_prime
+use Math::Prime::Util qw/-nobigint
+                         random_prime random_ndigit_prime random_nbit_prime
                          random_maurer_prime is_prime/;
 
 my $use64 = Math::Prime::Util::prime_get_config->{'maxbits'} > 32;
