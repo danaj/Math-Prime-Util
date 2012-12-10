@@ -197,6 +197,7 @@ my @_Riemann_Zeta_Table = (
 # for k = 1 .. n :  (1 / (zeta(k+1) * k + k)
 # Makes RiemannR run about twice as fast.
 my @_Riemann_Zeta_Premult;
+my $_Riemann_Zeta_Premult_accuracy;
 
 # Select n = 55, good for 46ish digits of accuracy.
 my $_Borwein_n = 55;
@@ -390,9 +391,9 @@ sub RiemannR {
   my $xdigits = $x->accuracy || Math::BigFloat->accuracy() || Math::BigFloat->div_scale();
   my $tol = 0.0 + "1e-$xdigits";
 
-  # TODO: Changing input accuracy may mean we should recalculate this.  Also,
-  # the default table is only 44 digits.
-  if (scalar @_Riemann_Zeta_Premult == 0) {
+  # TODO: The default table is only 44 digits.
+  if ( (scalar @_Riemann_Zeta_Premult == 0) || ($_Riemann_Zeta_Premult_accuracy < $xdigits) ) {
+    $_Riemann_Zeta_Premult_accuracy = $xdigits;
     @_Riemann_Zeta_Premult = map { my $v = Math::BigFloat->bone;
                                    $v->accuracy($xdigits);
                                    $v / ($_Riemann_Zeta_Table[$_-1] * $_ + $_) }
@@ -409,7 +410,8 @@ sub RiemannR {
     if (!defined $zeta_term) {
       my $zeta = $_Riemann_Zeta_Table[$k-1];
       if (!defined $zeta) {
-        my $kz = $k+1;
+        my $kz = Math::BigFloat->new($k+1);
+        $kz->accuracy($xdigits);
         if ($kz >= 100 && $xdigits <= 40) {
           # For this accuracy level, two terms are more than enough.  Also,
           # we should be able to miss the Math::BigFloat accuracy bug.  If we
@@ -424,7 +426,7 @@ sub RiemannR {
     }
     $part_term *= $flogx / $k;
     my $term = $part_term * $zeta_term;
-    #warn "k = $k  term = $term\n";
+    #warn "k = $k  term = $term  sum = $sum\n";
     $sum += $term;
     last if $term < ($tol*$sum);
   }
