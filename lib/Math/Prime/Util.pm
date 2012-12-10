@@ -97,6 +97,10 @@ BEGIN {
 
   use Config;
   $_Config{'system_randbits'} = $Config{'randbits'};
+  # We should probably croak if it's too low.
+  $_Config{'system_randbits'} = 15 if $_Config{'system_randbits'} < 15;
+  # Keep things in integer range.
+  $_Config{'system_randbits'} = $_Config{'maxbits'} if $_Config{'system_randbits'} > $_Config{'maxbits'};
   no Config;
 
 }
@@ -595,9 +599,10 @@ sub primes {
     my $rand_part_size = 1 << 31;  # Max size we want to use.
     if (ref($oddrange) eq 'Math::BigInt') {
       # Go to some trouble here because some systems are wonky, such as
-      # giving us +a/+b = -r.
+      # giving us +a/+b = -r.  Also note the quotes for the bigint argument.
+      # Without that, Math::BigInt::GMP on 32-bit Win32 will return garbage.
       my($nbins, $rem);
-      ($nbins, $rem) = $oddrange->copy->bdiv( $rand_part_size );
+      ($nbins, $rem) = $oddrange->copy->bdiv( "$rand_part_size" );
       $nbins++ if $rem > 0;
       ($binsize,$rem) = $oddrange->copy->bdiv($nbins);
       $binsize++ if $rem > 0;
