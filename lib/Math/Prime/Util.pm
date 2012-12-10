@@ -180,6 +180,8 @@ sub prime_set_config {
     } elsif ($param eq 'gmp') {
       $_Config{'gmp'} = ($value) ? 1 : 0;
       $_HAVE_GMP = $_Config{'gmp'};
+    } elsif ($param eq 'nobigint') {
+      $_Config{'nobigint'} = ($value) ? 1 : 0;
     } elsif ($param =~ /^(assume[_ ]?)?[ge]?rh$/ || $param =~ /riemann\s*h/) {
       $_Config{'assume_rh'} = ($value) ? 1 : 0;
     } elsif ($param eq 'verbose') {
@@ -446,7 +448,8 @@ sub primes {
       $irandf = sub {
         my($range) = @_;
         return 0 if $range <= 0;
-        return int(::rand($range+1)) if $range < (1 << 31);
+        my $zero = $range - $range;   # zero in possible bigint
+        return $zero+int(::rand($range+1)) if $range < (1 << 31);
         my $rbits = 0;
         if (ref($range) eq 'Math::BigInt') {
           $rbits = length($range->as_bin) - 2;
@@ -456,7 +459,7 @@ sub primes {
         }
         while (1) {
           my $rbitsleft = $rbits;
-          my $U = $range - $range;   # zero in possible bigint
+          my $U = $zero;
           while ($rbitsleft > 0) {
             my $usebits = ($rbitsleft > 31) ? 31 : $rbitsleft;
             $U = ($U << $usebits) + int(::rand(1 << $usebits));
@@ -469,8 +472,9 @@ sub primes {
       $irandf = sub {
         my($range) = @_;
         return 0 if $range <= 0;
+        my $zero = $range - $range;   # zero in possible bigint
         my $rand_max_bits = $_Config{'system_randbits'};
-        return int(rand($range+1)) if $range < (1 << $rand_max_bits);
+        return $zero+int(rand($range+1)) if $range < (1 << $rand_max_bits);
         my $rbits = 0;
         if (ref($range) eq 'Math::BigInt') {
           $rbits = length($range->as_bin) - 2;
@@ -480,7 +484,7 @@ sub primes {
         }
         while (1) {
           my $rbitsleft = $rbits;
-          my $U = $range - $range;   # zero in possible bigint
+          my $U = $zero;
           while ($rbitsleft > 0) {
             my $usebits = ($rbitsleft > $rand_max_bits) ? $rand_max_bits : $rbitsleft;
             $U = ($U << $usebits) + int(rand(1 << $usebits));
@@ -822,6 +826,7 @@ sub primes {
 
     # I've seen +0, +1, and +2 here.  Maurer uses +0.  Menezes uses +1.
     my $q = random_maurer_prime( ($r * $k)->bfloor + 1 );
+    $q = Math::BigInt->new("$q") unless ref($q) eq 'Math::BigInt';
     my $I = Math::BigInt->new(2)->bpow($k-1)->bdiv(2 * $q)->bfloor;
     print "B = $B  r = $r  k = $k  q = $q  I = $I\n" if $verbose;
 
@@ -833,7 +838,8 @@ sub primes {
       _make_big_gcds() if $_big_gcd_use;
     }
 
-    while (1) {
+    my $loop_limit = 1_000_000 + $k * 1_000;
+    while ($loop_limit-- > 0) {
       # R is a random number between $I+1 and 2*$I
       my $R = $I + 1 + $irandf->( $I - 1 );
       #my $n = 2 * $R * $q + 1;
@@ -899,6 +905,7 @@ sub primes {
       }
       # Didn't pass the selected a values.  Try another R.
     }
+    croak "Failure in random_maurer_prime, could not find a prime\n";
   } # End of random_maurer_prime
 
 } # end of the random prime section

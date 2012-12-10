@@ -6,9 +6,9 @@ use Test::More;
 #use Math::Random::MT qw/rand/;
 #use Math::Random::MT::Auto qw/rand/;
 #sub rand { return 0.5; }
-use Math::Prime::Util qw/-nobigint
-                         random_prime random_ndigit_prime random_nbit_prime
-                         random_maurer_prime is_prime/;
+use Math::Prime::Util qw/random_prime random_ndigit_prime random_nbit_prime
+                         random_maurer_prime is_prime
+                         prime_set_config/;
 
 my $use64 = Math::Prime::Util::prime_get_config->{'maxbits'} > 32;
 my $extra = defined $ENV{RELEASE_TESTING} && $ENV{RELEASE_TESTING};
@@ -121,6 +121,10 @@ while (my($range, $expect) = each (%ranges)) {
   ok($isprime, "All returned values for $low-$high were prime" );
   ok($inrange, "All returned values for $low-$high were in the range" );
 }
+
+# We want to test the no-bigint stuff here.  This makes calls for 10-digit
+# (32-bit) and 20-digit (64-bit) random primes stay inside native range.
+prime_set_config(nobigint=>1);
 
 foreach my $high (@random_to) {
   my $isprime = 1;
