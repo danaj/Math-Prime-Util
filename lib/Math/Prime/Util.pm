@@ -5,7 +5,7 @@ use Carp qw/croak confess carp/;
 
 BEGIN {
   $Math::Prime::Util::AUTHORITY = 'cpan:DANAJ';
-  $Math::Prime::Util::VERSION = '0.15';
+  $Math::Prime::Util::VERSION = '0.16';
 }
 
 # parent is cleaner, and in the Perl 5.10.1 / 5.12.0 core, but not earlier.
@@ -43,6 +43,7 @@ sub import {
 
 sub _import_nobigint {
   $_Config{'nobigint'} = 1;
+  return unless $_Config{'xs'};
   undef *factor;        *factor          = \&_XS_factor;
   undef *is_prime;      *is_prime        = \&_XS_is_prime;
   undef *is_prob_prime; *is_prob_prime   = \&_XS_is_prob_prime;
@@ -68,9 +69,10 @@ BEGIN {
     $_Config{'maxbits'} = _XS_prime_maxbits();
     1;
   } or do {
+    carp "Using Pure Perl implementation: $@";
+
     $_Config{'xs'} = 0;
     $_Config{'maxbits'} = Math::Prime::Util::PP::_PP_prime_maxbits();
-    carp "Using Pure Perl implementation: $@";
 
     *_prime_memfreeall = \&Math::Prime::Util::PP::_prime_memfreeall;
     *prime_memfree  = \&Math::Prime::Util::PP::prime_memfree;
@@ -95,12 +97,11 @@ BEGIN {
                                   1; };
   }
 
+  # Try to figure out a system rand configuration that works for us.
   use Config;
   $_Config{'system_randbits'} = $Config{'randbits'};
-  # We should probably croak if it's too low.
-  $_Config{'system_randbits'} = 15 if $_Config{'system_randbits'} < 15;
   # Keep things in integer range.
-  $_Config{'system_randbits'} = $_Config{'maxbits'} if $_Config{'system_randbits'} > $_Config{'maxbits'};
+  $_Config{'system_randbits'} = $_Config{'maxbits'}-1 if $_Config{'system_randbits'} >= $_Config{'maxbits'};
   no Config;
 
 }
@@ -469,6 +470,8 @@ sub primes {
         }
       };
     } else {                               # System rand function
+       croak "System rand has too few bits.  Use a custom RNG."
+         if $_Config{'system_randbits'} < 15;
       $irandf = sub {
         my($range) = @_;
         return 0 if $range <= 0;
@@ -1722,7 +1725,7 @@ Math::Prime::Util - Utilities related to prime numbers, including fast sieves an
 
 =head1 VERSION
 
-Version 0.15
+Version 0.16
 
 
 =head1 SYNOPSIS
@@ -2003,7 +2006,7 @@ base under C<10^14>.
 
 Lehmer's method has complexity approximately C<O(b^0.7) + O(a^0.7)>.  It
 does use more memory however.  A calculation of C<Pi(10^14)> completes in
-under 1 minute, C<Pi(10^15)> in undef 5 minutes, and C<Pi(10^16)> in under
+under 1 minute, C<Pi(10^15)> in under 5 minutes, and C<Pi(10^16)> in under
 30 minutes, however using nearly 1400MB of peak memory for the last.
 In contrast, even primesieve using 12 cores would take over a week on this
 same computer to determine C<Pi(10^16)>.

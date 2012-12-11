@@ -1,5 +1,10 @@
 Revision history for Perl extension Math::Prime::Util.
 
+0.16  11 December 2012
+
+    - randbits >= 32 on some 32-bit systems was messing us up.  Restrict our
+      internal randbits to wordsize-1.
+
 0.15  9 December 2012
 
     - Lots of internal changes to Ei, li, Zeta, and R functions:
