@@ -721,13 +721,10 @@ sub miller_rabin {
     foreach my $a (@bases) {
       my $x = $n->copy->bzero->badd($a)->bmodpow($d,$n);
       next if ($x->is_one) || ($x->bcmp($nminus1) == 0);
-      foreach my $r (1 .. $s) {
+      foreach my $r (1 .. $s-1) {
         $x->bmul($x); $x->bmod($n);
         return 0 if $x->is_one;
-        if ($x->bcmp($nminus1) == 0) {
-          $a = 0;
-          last;
-        }
+        do { $a = 0; last; } if $x->bcmp($nminus1) == 0;
       }
       return 0 if $a != 0;
     }
@@ -745,30 +742,24 @@ sub miller_rabin {
     foreach my $a (@bases) {
       my $x = _native_powmod($a, $d, $n);
       next if ($x == 1) || ($x == ($n-1));
-      foreach my $r (1 .. $s) {
+      foreach my $r (1 .. $s-1) {
         $x = ($x*$x) % $n;
         return 0 if $x == 1;
-        if ($x == ($n-1)) {
-          $a = 0;
-          last;
-        }
+        last if $x == $n-1;
       }
-      return 0 if $a != 0;
+      return 0 if $x != $n-1;
     }
    } else {
     foreach my $a (@bases) {
       my $x = _powmod($a, $d, $n);
       next if ($x == 1) || ($x == ($n-1));
 
-      foreach my $r (1 .. $s) {
+      foreach my $r (1 .. $s-1) {
         $x = ($x < $_half_word) ? ($x*$x) % $n : _mulmod($x, $x, $n);
         return 0 if $x == 1;
-        if ($x == ($n-1)) {
-          $a = 0;
-          last;
-        }
+        last if $x == $n-1;
       }
-      return 0 if $a != 0;
+      return 0 if $x != $n-1;
     }
    }
 
