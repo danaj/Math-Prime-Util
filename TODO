@@ -40,3 +40,6 @@
 
 - Dynamically use a mulmodadd in PP aks, just like the new C code does.
   This will mean it'll work for full-size native ints.
+
+- Add configuration options for rand and randbits (maybe irand and irandrange).
+  This will help when being used as part of a library.

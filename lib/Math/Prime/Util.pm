@@ -98,10 +98,13 @@ BEGIN {
   }
 
   # Try to figure out a system rand configuration that works for us.
+  # Using something other than the craptastic system rand would be best.
   use Config;
   $_Config{'system_randbits'} = $Config{'randbits'};
   # Keep things in integer range.
   $_Config{'system_randbits'} = $_Config{'maxbits'}-1 if $_Config{'system_randbits'} >= $_Config{'maxbits'};
+  # drand48 has an alternating last bit on almost every system.
+  $_Config{'system_randbits'}-- if $_Config{'system_randbits'} == 48;
   no Config;
 
 }
@@ -830,7 +833,7 @@ sub primes {
     # I've seen +0, +1, and +2 here.  Maurer uses +0.  Menezes uses +1.
     my $q = random_maurer_prime( ($r * $k)->bfloor + 1 );
     $q = Math::BigInt->new("$q") unless ref($q) eq 'Math::BigInt';
-    my $I = Math::BigInt->new(2)->bpow($k-1)->bdiv(2 * $q)->bfloor;
+    my $I = Math::BigInt->new(2)->bpow($k-2)->bdiv($q)->bfloor;
     print "B = $B  r = $r  k = $k  q = $q  I = $I\n" if $verbose;
 
     # Big GCD's are hugely fast with GMP or Pari, but super slow with Calc.
