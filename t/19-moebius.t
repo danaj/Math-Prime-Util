@@ -125,8 +125,9 @@ while (my($k, $tref) = each (%jordan_totients)) {
 if ($use64) {
   is( jordan_totient(4, 12345), 22902026746060800, "J_4(12345)" );
   # Apostal page 48, 17a.
-  is( divisor_sum( 12345, sub { jordan_totient(4,shift) } ),
-      int(12345 ** 4),
+  is( divisor_sum( 12345, sub { jordan_totient(4,$_[0]) } ),
+      # was int(12345 ** 4), but Perl 5.8.2 gets it wrong.
+      int(12345*12345*12345*12345),
       "n=12345, k=4  :   n**k = divisor_sum(n, jordan_totient(k, d))" );
 }
 
