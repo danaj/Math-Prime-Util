@@ -3,8 +3,10 @@
 
 #include "ptypes.h"
 
-#if defined(__GNUC__) || defined(_MSC_VER)
+#if defined(__GNUC__)
   #define INLINE inline
+#elif defined(_MSC_VER)
+  #define INLINE __inline
 #else
   #define INLINE
 #endif
