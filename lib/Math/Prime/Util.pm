@@ -1216,14 +1216,6 @@ sub prime_count {
   return Math::Prime::Util::PP::prime_count($low,$high);
 }
 
-sub _prime_count_lehmer {
-  my($n) = @_;
-  return 0 if defined $n && $n < 2;
-  _validate_positive_integer($n);
-
-  return _XS_lehmer_pi($n) if $n <= $_XS_MAXVAL;
-}
-
 sub nth_prime {
   my($n) = @_;
   _validate_positive_integer($n);
@@ -2832,13 +2824,14 @@ Perl modules, counting the primes to C<800_000_000> (800 million), in seconds:
 
   Time (s)   Module                      Version  Notes
   ---------  --------------------------  -------  -----------
-       0.04  Math::Prime::Util           0.12     using Lehmer's method
+       0.03  Math::Prime::Util           0.12     using Lehmer's method
        0.36  Math::Prime::Util           0.09     segmented mod-30 sieve
+       0.52  Math::Prime::Util::PP       0.14     Perl (Lehmer's method)
        0.9   Math::Prime::Util           0.01     mod-30 sieve
        2.9   Math::Prime::FastSieve      0.12     decent odd-number sieve
       11.7   Math::Prime::XS             0.29     "" but needs a count API
       15.0   Bit::Vector                 7.2
-      59.1   Math::Prime::Util::PP       0.09     Perl (fastest I know of)
+      57.3   Math::Prime::Util::PP       0.14     Perl (fastest I know of)
      169.5   Python's mpmath primepi     0.17     Python, 25+GB RAM used
      170.0   Faster Perl sieve (net)     2012-01  array of odds
      292.2   Python's sympy primepi      0.7.1    Python
