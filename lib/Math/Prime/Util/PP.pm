@@ -1437,7 +1437,7 @@ sub ExponentialIntegral {
   # Use MPFR if possible.
   if ($_have_MPFR < 0) {
     $_have_MPFR = 1;
-    eval { require Math::MPFR; 1; } or do { $_have_MPFR = 0; };
+    eval { require Math::MPFR; $Math::MPFR::VERSION >= 2.03; } or do { $_have_MPFR = 0; };
   }
   # Gotcha -- MPFR decided to make negative inputs return NaN.  Grrr.
   if ($_have_MPFR && $x > 0) {
@@ -1546,7 +1546,7 @@ sub LogarithmicIntegral {
   # Use MPFR if possible.
   if ($_have_MPFR < 0) {
     $_have_MPFR = 1;
-    eval { require Math::MPFR; 1; } or do { $_have_MPFR = 0; };
+    eval { require Math::MPFR; $Math::MPFR::VERSION >= 2.03; } or do { $_have_MPFR = 0; };
   }
   # Remember MPFR eint doesn't handle negative inputs
   if ($_have_MPFR && $x >= 1) {
@@ -1678,7 +1678,7 @@ sub RiemannZeta {
   # Use MPFR if possible.
   if ($_have_MPFR < 0) {
     $_have_MPFR = 1;
-    eval { require Math::MPFR; 1; } or do { $_have_MPFR = 0; };
+    eval { require Math::MPFR; $Math::MPFR::VERSION >= 2.03; } or do { $_have_MPFR = 0; };
   }
   if ($_have_MPFR) {
     my $wantbf = 0;
@@ -1743,7 +1743,7 @@ sub RiemannR {
   # Use MPFR if possible.
   if ($_have_MPFR < 0) {
     $_have_MPFR = 1;
-    eval { require Math::MPFR; 1; } or do { $_have_MPFR = 0; };
+    eval { require Math::MPFR; $Math::MPFR::VERSION >= 2.03; } or do { $_have_MPFR = 0; };
   }
   if ($_have_MPFR) {
     my $wantbf = 0;
