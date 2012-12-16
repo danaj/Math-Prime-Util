@@ -34,6 +34,8 @@ sub TIEARRAY {
     BEG_INDEX  => 0,
     # What's the index of the last one?
     END_INDEX  => 6,
+    # positive = forward, negative = backward, 0 = random
+    ACCESS_TYPE => 0,
   }, $class;
 }
 sub STORE     { carp "You cannot write to the prime array"; }
@@ -45,30 +47,45 @@ sub EXTEND    { 1 }
 sub FETCHSIZE { 0x7FFF_FFFF }   # Even on 64-bit
 # Simple FETCH:
 # sub FETCH { return nth_prime($_[1]+1); }
+
 sub FETCH {
   my $self = shift;
   my $index = shift;
   # We actually don't get negative indices -- they get turned into big numbers
   croak "Negative index given to prime array" if $index < 0;
   $index += $self->{SHIFTINDEX};  # take into account any shifts
-  if ( ($index < $self->{BEG_INDEX}) || ($index > $self->{END_INDEX}) ) {
-    # We're going to get a chunk of primes starting 1000 before the one
-    # asked for, and extending at _least_ 1000 past it.  So given a number
-    # past index 1000, we would expect to have ~2000 primes with the one
-    # requested being about in the middle.  This should be reasonably fast
-    # for the siever and amortize the cost over a lot of calls if they're
-    # walking us.  Yes, we'll get well over 2000 primes as the numbers get
-    # very large, but that's ok (e.g. 80k primes at index 400M).  Calling
-    # nth_prime on indices that large is very time consuming.
-    my $start_idx = ($index < 1000) ? 0 : $index-1000;
-    my $start_prime = nth_prime($start_idx+1);       # This is exact
-    my $end_prime   = nth_prime_upper($index+5000);  # This is a bound
-    #print "calling primes from $start_idx/$start_prime to $end_prime\n";
-    $self->{PRIMES} = primes($start_prime, $end_prime);
-    $self->{BEG_INDEX} = $start_idx;
-    $self->{END_INDEX} = $start_idx + scalar @{$self->{PRIMES}} - 1;;
+  my $begidx = $self->{BEG_INDEX};
+  my $endidx = $self->{END_INDEX};
+
+  if ( $index < $begidx || $index > $endidx ) {
+
+    if    ($index == $endidx+1) { $self->{ACCESS_TYPE}++; }
+    elsif ($index == $begidx-1) { $self->{ACCESS_TYPE}--; }
+    else                        { $self->{ACCESS_TYPE}=0; }
+
+    if ($index == $endidx+1  &&  $self->{ACCESS_TYPE} > 2) {  # Forward iter
+
+      my $end_prime = nth_prime_upper($index + 10000);
+      $self->{PRIMES} = primes( $self->{PRIMES}->[-1]+1, $end_prime );
+
+      $begidx = $endidx+1;
+
+    # TODO: backwards iter
+
+    } else {  # Looks like random access so far.  Get a small range.
+
+      my $start_idx = ($index < 500) ? 0 : $index - 500;
+      my $start_prime = nth_prime($start_idx+1);       # This is exact
+      my $end_prime   = nth_prime_upper($index+500);   # This is a bound
+      $self->{PRIMES} = primes($start_prime, $end_prime);
+
+      $begidx = $start_idx;
+
+    }
+    $self->{BEG_INDEX} = $begidx;
+    $self->{END_INDEX} = $begidx + scalar @{$self->{PRIMES}} - 1;
   }
-  return $self->{PRIMES}->[ $index - $self->{BEG_INDEX} ];
+  return $self->{PRIMES}->[ $index - $begidx ];
 }
 
 # Fake out shift and unshift
