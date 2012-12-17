@@ -1,9 +1,10 @@
 language: "perl"
 perl:
   - "5.16"
-  - "5.14"
-  - "5.12"
   - "5.10"
+# There is little reason to have travis run multiple Perls.
+#  - "5.14"
+#  - "5.12"
 
 before_script:
 #    - sudo apt-get install libgmp3-dev

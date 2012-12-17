@@ -7,6 +7,7 @@ use Math::Prime::Util qw/is_aks_prime/;
 
 my $use64 = Math::Prime::Util::prime_get_config->{'maxbits'} > 32;
 my $extra = defined $ENV{RELEASE_TESTING} && $ENV{RELEASE_TESTING};
+my $ispp = !Math::Prime::Util::prime_get_config->{xs};
 my $broken64 = (18446744073709550592 == ~0);
 
 plan tests =>   6   # range
@@ -33,8 +34,11 @@ is( is_aks_prime(877), 1, "is_aks_prime(877) is true" );
 
 #diag "Unfortunately these tests are very slow.";
 
-# The first number that makes it past the sqrt test to actually run.
-is( is_aks_prime(69197), 1, "is_aks_prime(69197) is true" );
+SKIP: {
+  skip "Skipping PP AKS on 32-bit -- just too slow.", 1 if $ispp && !$use64;
+  # The first number that makes it past the sqrt test to actually run.
+  is( is_aks_prime(69197), 1, "is_aks_prime(69197) is true" );
+}
 
 # A small composite that runs the real primality test.
 is( is_aks_prime(69199), 0, "is_aks_prime(69199) is false" );
