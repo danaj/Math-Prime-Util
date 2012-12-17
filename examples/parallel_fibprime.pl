@@ -14,7 +14,8 @@ $| = 1;
 #
 # This will fully utilize however many cores you choose (using the $nthreads
 # variable).  It spreads the numbers across threads, where each one runs a
-# BPSW test.  A separate thread handles the in-order display.
+# BPSW test.  A separate thread handles the in-order display.  I have tested
+# it on machines with 2, 4, 8, 12, 24, and 64 cores.
 #
 # On my 12-core computer:
 #    24    5387              0.65488
