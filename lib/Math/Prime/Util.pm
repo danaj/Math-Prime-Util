@@ -69,7 +69,7 @@ BEGIN {
     $_Config{'maxbits'} = _XS_prime_maxbits();
     1;
   } or do {
-    carp "Using Pure Perl implementation: $@";
+    #carp "Using Pure Perl implementation: $@";
 
     $_Config{'xs'} = 0;
     $_Config{'maxbits'} = Math::Prime::Util::PP::_PP_prime_maxbits();

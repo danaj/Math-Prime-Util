@@ -5,7 +5,16 @@ perl:
   - "5.12"
   - "5.10"
 
-#before_script:
+before_script:
+    - cpanm Math::Prime::Util::GMP
+    - cpanm Math::MPFR
+
+env:
+    - MPU_NO_XS=1 MPU_NO_GMP=1 MPU_NO_MPFR=1
+    - MPU_NO_MPFR=1
+    - MPU_NO_GMP=1
+    - MPU_NO_GMP=1 MPU_NO_MPFR=1
+
 #    - sudo apt-get install libgmp3-dev
 #    - cpanm Test::Pod # optional dependency
 

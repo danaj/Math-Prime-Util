@@ -109,9 +109,11 @@ use Math::Prime::Util qw/
 #        LogarithmicIntegral
 #        RiemannR
 
-# See if we're testing bignum with PP or GMP.
-diag "Math::Prime::Util::GMP not being used.\n"
-  unless Math::Prime::Util::prime_get_config->{gmp};
+my $bigintlib = Math::BigInt->config()->{lib};
+$bigintlib =~ s/^Math::BigInt:://;
+my $mpugmpver = Math::Prime::Util::prime_get_config->{gmp}
+                ? $Math::Prime::Util::GMP::VERSION : "<none>";
+diag "BigInt library: $bigintlib, MPU::GMP $mpugmpver\n";
 
 
 ###############################################################################

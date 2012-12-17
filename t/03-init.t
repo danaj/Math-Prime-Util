@@ -13,6 +13,16 @@ my $bigsize = 10_000_000;
 
 can_ok( 'Math::Prime::Util', 'prime_get_config' );
 
+my $diag = "Using " .
+  ((Math::Prime::Util::prime_get_config->{xs})
+    ? "XS"
+    : "PP") .
+  ((Math::Prime::Util::prime_get_config->{gmp}) 
+    ? " with MPU::GMP version $Math::Prime::Util::GMP::VERSION."
+    : ".") .
+  "\n";
+diag $diag;
+
 my $init_size = prime_get_config->{'precalc_to'};
 
 prime_precalc($bigsize);
