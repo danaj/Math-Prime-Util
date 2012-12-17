@@ -6,6 +6,9 @@ perl:
   - "5.10"
 
 before_script:
+#    - sudo apt-get install libgmp3-dev
+#    - cpanm Test::Pod # optional dependency
+    - sudo apt-get install libmpfr-dev
     - cpanm Math::Prime::Util::GMP
     - cpanm Math::MPFR
 
@@ -15,8 +18,6 @@ env:
     - MPU_NO_GMP=1
     - MPU_NO_GMP=1 MPU_NO_MPFR=1
 
-#    - sudo apt-get install libgmp3-dev
-#    - cpanm Test::Pod # optional dependency
 
 install:
     - cpanm -v --installdeps --notest --mirror http://cpan.mirrors.travis-ci.org .
