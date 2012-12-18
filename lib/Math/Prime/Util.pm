@@ -2812,7 +2812,7 @@ seconds using the Lehmer algorithm in version 0.12.
 
    Small portable functions suitable for plugging into XS:
 
-       5.3  My segmented SoE used in this module
+       4.1  My segmented SoE used in this module (with unrolled inner loop)
       15.6  My Sieve of Eratosthenes using a mod-30 wheel
       17.2  A slightly modified verion of Terje Mathisen's mod-30 sieve
       35.5  Basic Sieve of Eratosthenes on odd numbers
@@ -2820,25 +2820,27 @@ seconds using the Lehmer algorithm in version 0.12.
       72.8  Sieve of Atkin, 10-minute fixup of basic algorithm
       91.6  Sieve of Atkin, Wikipedia-like
 
-Perl modules, counting the primes to C<800_000_000> (800 million), in seconds:
+Perl modules, counting the primes to C<800_000_000> (800 million):
 
   Time (s)   Module                      Version  Notes
   ---------  --------------------------  -------  -----------
        0.03  Math::Prime::Util           0.12     using Lehmer's method
-       0.36  Math::Prime::Util           0.09     segmented mod-30 sieve
+       0.28  Math::Prime::Util           0.17     segmented mod-30 sieve
        0.52  Math::Prime::Util::PP       0.14     Perl (Lehmer's method)
        0.9   Math::Prime::Util           0.01     mod-30 sieve
        2.9   Math::Prime::FastSieve      0.12     decent odd-number sieve
       11.7   Math::Prime::XS             0.29     "" but needs a count API
       15.0   Bit::Vector                 7.2
       57.3   Math::Prime::Util::PP       0.14     Perl (fastest I know of)
-     169.5   Python's mpmath primepi     0.17     Python, 25+GB RAM used
      170.0   Faster Perl sieve (net)     2012-01  array of odds
-     292.2   Python's sympy primepi      0.7.1    Python
      548.1   RosettaCode sieve (net)     2012-06  simplistic Perl
   ~11000     Math::Primality             0.04     Perl + Math::GMPz
   >20000     Math::Big                   1.12     Perl, > 26GB RAM used
 
+Python can do this in 2.8s using an RWH numpy function, 14.3s using an RWH
+pure Python function.  However the standard modules are far slower.  mpmath
+v0.17 primepi takes 169.5s and 25+ GB of RAM.  sympi 0.7.1 primepi takes
+292.2s.
 
 
 C<is_prime>: my impressions for various sized inputs:

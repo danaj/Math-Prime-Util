@@ -163,12 +163,20 @@ unsigned char* sieve_erat30(UV end)
     assert(d < max_buf);
     assert(prime = (wdinc[0]+wdinc[1]+wdinc[2]+wdinc[3]+wdinc[4]+wdinc[5]+wdinc[6]+wdinc[7]));
 #endif
-    i = 0;        /* Mark the composites */
-    do {
-      mem[d] |= wmask[i];
-      d += wdinc[i];
-      i = (i+1) & 7;
-    } while (d < max_buf);
+    /* Regular code to mark composites.
+    * i = 0;
+    * do { mem[d] |= wmask[i]; d += wdinc[i]; i = (i+1)&7; } while (d < max_buf);
+    * Unrolled version: */
+    while (1) {
+      mem[d] |= wmask[0];  d += wdinc[0];  if (d >= max_buf) break;
+      mem[d] |= wmask[1];  d += wdinc[1];  if (d >= max_buf) break;
+      mem[d] |= wmask[2];  d += wdinc[2];  if (d >= max_buf) break;
+      mem[d] |= wmask[3];  d += wdinc[3];  if (d >= max_buf) break;
+      mem[d] |= wmask[4];  d += wdinc[4];  if (d >= max_buf) break;
+      mem[d] |= wmask[5];  d += wdinc[5];  if (d >= max_buf) break;
+      mem[d] |= wmask[6];  d += wdinc[6];  if (d >= max_buf) break;
+      mem[d] |= wmask[7];  d += wdinc[7];  if (d >= max_buf) break;
+    }
   }
 
   return mem;
@@ -226,6 +234,7 @@ int sieve_segment(unsigned char* mem, UV startd, UV endd)
       UV minc = (2*p) - dinc*30;
       UV wdinc[8];
       unsigned char wmask[8];
+      UV offset_endd = endd - startd;
       int i;
 
       /* Find the positions of the next composites we will mark */
@@ -240,12 +249,37 @@ int sieve_segment(unsigned char* mem, UV startd, UV endd)
         wmask[i%8] = masktab30[m];
       }
       d -= p;
+      d -= startd;
+#if 0
       i = 0;        /* Mark the composites */
       do {
-        mem[d-startd] |= wmask[i];
+        mem[d] |= wmask[i];
         d += wdinc[i];
         i = (i+1) & 7;
-      } while (d <= endd);
+      } while (d <= offset_endd);
+#else
+      /* Unrolled inner loop for marking composites */
+      while ( (d+p) <= offset_endd ) {
+        mem[d] |= wmask[0];  d += wdinc[0];
+        mem[d] |= wmask[1];  d += wdinc[1];
+        mem[d] |= wmask[2];  d += wdinc[2];
+        mem[d] |= wmask[3];  d += wdinc[3];
+        mem[d] |= wmask[4];  d += wdinc[4];
+        mem[d] |= wmask[5];  d += wdinc[5];
+        mem[d] |= wmask[6];  d += wdinc[6];
+        mem[d] |= wmask[7];  d += wdinc[7];
+      }
+      while (1) {
+        mem[d] |= wmask[0];  d += wdinc[0];  if (d > offset_endd) break;
+        mem[d] |= wmask[1];  d += wdinc[1];  if (d > offset_endd) break;
+        mem[d] |= wmask[2];  d += wdinc[2];  if (d > offset_endd) break;
+        mem[d] |= wmask[3];  d += wdinc[3];  if (d > offset_endd) break;
+        mem[d] |= wmask[4];  d += wdinc[4];  if (d > offset_endd) break;
+        mem[d] |= wmask[5];  d += wdinc[5];  if (d > offset_endd) break;
+        mem[d] |= wmask[6];  d += wdinc[6];  if (d > offset_endd) break;
+        mem[d] |= wmask[7];  d += wdinc[7];  if (d > offset_endd) break;
+      }
+#endif
 #endif
     }
   }
