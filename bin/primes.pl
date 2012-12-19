@@ -538,9 +538,10 @@ sub eval_expr {
   $expr =~ s/:1/nth_prime/g;
   $expr =~ s/:2/log/g;
   $expr =~ s/(\d+)/ Math::BigInt->new($1) /g;
-  $expr = eval $expr or die "Cannot eval: $expr\n";
-  $expr = int($expr->bstr) if ref($expr) eq 'Math::BigInt' && $expr <= ~0;
-  return $expr;
+  my $res = eval $expr;
+  die "Cannot eval: $expr\n" if !defined $res;
+  $res = int($res->bstr) if ref($res) eq 'Math::BigInt' && $res <= ~0;
+  $res;
 }
 
 
