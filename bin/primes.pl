@@ -4,7 +4,7 @@ use warnings;
 use Getopt::Long;
 use Math::BigInt try => 'GMP';
 use Math::Prime::Util qw/primes  prime_count  next_prime  prev_prime
-                         is_prime  is_provable_prime
+                         is_prime  is_provable_prime  nth_prime
                          prime_count  primorial  pn_primorial/;
 $| = 1;
 
@@ -110,11 +110,11 @@ die_usage() if exists $opts{'help'};
 # Get the start and end values.  Verify they're positive integers.
 die_usage() unless @ARGV == 2;
 my ($start, $end) = @ARGV;
-# Allow "10**100" as arguments
-$start =~ s/^(\d+)\*\*(\d+)$/Math::BigInt->new($1)->bpow($2)/e;
-$end   =~ s/^(\d+)\*\*(\d+)$/Math::BigInt->new($1)->bpow($2)/e;
+# Allow some expression evaluation on the input, but don't just eval it.
+$start = eval_expr($start) unless $start =~ /^\d+$/;
+$end   = eval_expr($end  ) unless $end   =~ /^\d+$/;
 die "$start isn't a positive integer" if $start =~ tr/0123456789//c;
-die "$end isn't a positive integer" if $end =~ tr/0123456789//c;
+die "$end isn't a positive integer"   if $end   =~ tr/0123456789//c;
 
 # Turn start and end into bigints if they're very large.
 # Fun fact:  Math::BigInt->new("1") <= 10000000000000000000  is false.  Sigh.
@@ -527,14 +527,30 @@ sub find_mod210_restriction {
   return ($min, %mods_left);
 }
 
+# This is rather braindead.  We're going to eval their input so they can give
+# arbitrary expressions.  But we only want to allow math-like strings.
+sub eval_expr {
+  my $expr = shift;
+  die "$expr cannot be evaluated" if $expr =~ /:/;  # Use : for escape
+  $expr =~ s/nth_prime\(/:1(/g;
+  $expr =~ s/log\(/:2(/g;
+  die "$expr cannot be evaluated" if $expr =~ tr|-0123456789+*/() :||c;
+  $expr =~ s/:1/nth_prime/g;
+  $expr =~ s/:2/log/g;
+  $expr =~ s/(\d+)/ Math::BigInt->new($1) /g;
+  $expr = eval $expr or die "Cannot eval: $expr\n";
+  $expr = int($expr->bstr) if ref($expr) eq 'Math::BigInt' && $expr <= ~0;
+  return $expr;
+}
+
 
 sub die_usage {
   die <<EOU;
 Usage: $0 [options]  START  END
 
 Displays all primes between the positive integers START and END, inclusive.
-The START and END values must be integers, however the shortcut "x**y" may
-be used, which allows very large values (e.g. '10**500' or '2**64')
+The START and END values must be integers or simple expressions.  This allows
+inputs like "10**500+100" or "2**64-1000" or "2 * nth_prime(560)".
 
 General options:
 
