@@ -41,5 +41,7 @@
 - Dynamically use a mulmodadd in PP aks, just like the new C code does.
   This will mean it'll work for full-size native ints.
 
-- Add configuration options for rand and randbits (maybe irand and irandrange).
-  This will help when being used as part of a library.
+- Perl's rand() is a mess.  I believe a decent workaround is to include
+  tinymt32, seed it using the system rand (multiple calls, just use 8-bits
+  each), then use it to get 32-bit irands.  This would only be used if they
+  didn't give us a RNG (so they don't care about strict crypto).

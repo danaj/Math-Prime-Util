@@ -10,6 +10,8 @@ Revision history for Perl extension Math::Prime::Util.
       practical application now that we use Lehmer's method for counts, but
       there are some cases that can still show speedups.
 
+    - Changed the rand functionality yet again.  Sorry.
+
 0.16  11 December 2012
 
     - randbits >= 32 on some 32-bit systems was messing us up.  Restrict our

@@ -125,6 +125,7 @@ if ($_Config{'maxbits'} == 32) {
 }
 $_Config{'assume_rh'} = 0;
 $_Config{'verbose'} = 0;
+$_Config{'irand'} = undef;
 
 # used for code like:
 #    return _XS_foo($n)  if $n <= $_XS_MAXVAL
@@ -186,6 +187,9 @@ sub prime_set_config {
       $_HAVE_GMP = $_Config{'gmp'};
     } elsif ($param eq 'nobigint') {
       $_Config{'nobigint'} = ($value) ? 1 : 0;
+    } elsif ($param eq 'irand') {
+      croak "irand must supply a sub" unless ref($value) eq 'CODE';
+      $_Config{'irand'} = $value;
     } elsif ($param =~ /^(assume[_ ]?)?[ge]?rh$/ || $param =~ /riemann\s*h/) {
       $_Config{'assume_rh'} = ($value) ? 1 : 0;
     } elsif ($param eq 'verbose') {
@@ -386,17 +390,19 @@ sub primes {
 #   - If using system rand, is RANDBITS large?
 #   - What RNG?
 #
+# Timings using Math::BigInt::GMP, x86_64, system rand with 32+ randbits.
+#
 #                   random_nbit_prime         random_maurer_prime
 #    n-bits       no GMP   w/ MPU::GMP        no GMP   w/ MPU::GMP
 #    ----------  --------  -----------       --------  -----------
-#       24-bit       14uS      same             same       same
-#       64-bit       70uS      same             same       same
-#      128-bit     0.06s       0.006s          0.06s       0.07s
-#      256-bit     0.1s        0.012s          0.17s       0.16s
-#      512-bit     0.2s        0.028s          0.46s       0.47s
-#     1024-bit     0.6s        0.12s           1.2s        1.1s
-#     2048-bit     2.3s        1.0s            5.2s        4.3s
-#     4096-bit    17.5s       12s             23s         23s
+#       24-bit       25uS      same             same       same
+#       64-bit       87uS      same             same       same
+#      128-bit     0.032s      0.0049s         0.098s      0.056s
+#      256-bit     0.062s      0.0097s         0.25s       0.15s
+#      512-bit     0.13s       0.019s          0.65s       0.30s
+#     1024-bit     0.28s       0.058s          1.3s        0.94s
+#     2048-bit     0.91s       0.4s            3.2s        3.1s
+#     4096-bit     6.6s        4.0s           23s         12.0s
 #
 # Writing these entirely in GMP has a problem, which is that we want to use
 # a user-supplied rand function, which means a lot of callbacks.  One
@@ -407,15 +413,22 @@ sub primes {
 # time variation becomes quite extreme once bit sizes get over 6000 or so.
 #
 # Random timings for 1M calls:
-#   0.054   system rand
-#   0.24    Math::Random::MT::Auto
-#   2.27    Math::Random::Secure   (with Math::Random::ISAAC::XS)
-#   6.73    Math::Random::Secure
-#   7.31   *Bytes::Random::Secure  (with Math::Random::ISAAC::XS)
-#  16.2    *Bytes::Random::Secure
-# 180.0    *Crypt::Random (probably blocked on /dev/random)
-#  * BRS and CR were hindered on this test by being used in a sub, and neither
-#    are being used to their full potential of returning big random chunks.
+#   0.032   system rand
+#   0.20    Math::Random::MT::Auto
+#   0.96    Math::Random::Secure  irand  (with Math::Random::ISAAC::XS)
+#   1.71    Math::Random::Secure         (with Math::Random::ISAAC::XS)
+#   1.90   *Bytes::Random::Secure irand  (with Math::Random::ISAAC::XS)
+#   2.40    Math::Random::Secure  irand
+#   3.37    Math::Random::Secure
+#   2.21   *Bytes::Random::Secure        (with Math::Random::ISAAC::XS)
+#   3.32   *Bytes::Random::Secure irand
+#   3.62   *Bytes::Random::Secure
+# 123.8    *Crypt::Random         irand
+# BRS: sub irand { return unpack("L", random_bytes(4)); }
+#      sub rand  {return ($_[0]||1)*(unpack("L",random_bytes(4))/4294967296.0)}
+# CR:  makerandom(Size=>32, Uniform=>1, Strength=>0)
+#      haveged daemon running to stop /dev/random blocking
+# Both BRS and CR have more features that this isn't measuring.
 #
 # To verify distribution:
 #   perl -Iblib/lib -Iblib/arch -MMath::Prime::Util=:all -E 'my %freq; $n=1000000; $freq{random_nbit_prime(6)}++ for (1..$n); printf("%4d %6.3f%%\n", $_, 100.0*$freq{$_}/$n) for sort {$a<=>$b} keys %freq;'
@@ -439,68 +452,81 @@ sub primes {
     $_big_gcd[3] = $p3 / $p2;
   }
 
-  # Returns a function that will get a uniform random number between [0,$range]
-  # inclusive.  Uses either the system rand or a user defined rand.  Will use
-  # the function directly if possible, and if the range is larger than the
-  # randomness in a single call, will build up a random number.
+  # Returns a function that will get a uniform random number between 0 and
+  # $max inclusive.
   #
-  # Relies on rand working like system rand.  If you use Math::Random::MT, make
-  # sure you use version 1.16 or later.
+  # Relies on rand working like system rand.  If you use Math::Random::MT,
+  # make sure you use version 1.16 or later.
   sub _get_rand_func {
-    my $irandf;
-    if (defined &::rand) {                 # User-defined rand function
-      $irandf = sub {
-        my($range) = @_;
-        return 0 if $range <= 0;
-        my $zero = $range - $range;   # zero in possible bigint
-        return $zero+int(::rand($range+1)) if $range < (1 << 31);
-        my $rbits = 0;
-        if (ref($range) eq 'Math::BigInt') {
-          $rbits = length($range->as_bin) - 2;
-        } else {
-          my $t = $range;
-          while ($t) { $rbits++; $t >>= 1; }
-        }
-        while (1) {
-          my $rbitsleft = $rbits;
-          my $U = $zero;
-          while ($rbitsleft > 0) {
-            my $usebits = ($rbitsleft > 31) ? 31 : $rbitsleft;
-            $U = ($U << $usebits) + int(::rand(1 << $usebits));
-            $rbitsleft -= $usebits;
-          }
-          return $U if $U <= $range;
-        }
-      };
-    } else {                               # System rand function
-       croak "System rand has too few bits.  Use a custom RNG."
-         if $_Config{'system_randbits'} < 15;
-      $irandf = sub {
-        my($range) = @_;
-        return 0 if $range <= 0;
-        my $zero = $range - $range;   # zero in possible bigint
-        my $rand_max_bits = $_Config{'system_randbits'};
-        return $zero+int(rand($range+1)) if $range < (1 << $rand_max_bits);
-        my $rbits = 0;
-        if (ref($range) eq 'Math::BigInt') {
-          $rbits = length($range->as_bin) - 2;
-        } else {
-          my $t = $range;
-          while ($t) { $rbits++; $t >>= 1; }
-        }
-        while (1) {
-          my $rbitsleft = $rbits;
-          my $U = $zero;
-          while ($rbitsleft > 0) {
-            my $usebits = ($rbitsleft > $rand_max_bits) ? $rand_max_bits : $rbitsleft;
-            $U = ($U << $usebits) + int(rand(1 << $usebits));
-            $rbitsleft -= $usebits;
-          }
-          return $U if $U <= $range;
-        }
-      };
+    if (!defined $_Config{'irand'} && defined &::rand) {
+      # They have not given us an irand function, but they have their own rand.
+      $_Config{'irand'} = sub { int(4294967296.0 * ::rand()) };
     }
-    return $irandf;
+    # We first make a function irandf that returns a 32-bit integer.  This
+    # will be a number uniformly in the range [0, 2^32-1].  This corresponds
+    # to the irand function of many CPAN modules:
+    #    Math::Random::MT
+    #    Math::Random::ISAAC
+    #    Math::Random::Xorshift
+    #    Math::Random::Secure
+    # but not:
+    #    Math::Random::MT::Auto (it will return 64-bits)
+    #
+    # We try in order:
+    #   1) the function they gave us via prime_set_config(irand=> \&irand )
+    #   2) main::rand(), exportable by many modules
+    #   3) CORE::rand().  Hopefully one call will work, otherwise use many.
+    my $irandf = $_Config{'irand'};
+    if (!defined $irandf) {
+      if ($_Config{'system_randbits'} >= 32) {
+        $irandf = sub { int(4294967296.0 * CORE::rand()) };
+      } else {
+        my $randbits = $_Config{'system_randbits'};
+        $irandf = sub {
+          my $rwords = int((32+$randbits-1)/$randbits);
+          my $U = 0;
+          $U = ($U << $randbits) + int((1 << $randbits) * CORE::rand())
+             for 1 .. $rwords;
+          $U &= 0xFFFFFFFF;
+          return $U;
+        };
+      }
+    }
+    # OK, now we have a function irandf.  Use it.
+    my $randf = sub {
+      my($max) = @_;
+      return 0 if $max <= 0;
+      my $range = $max+1;
+      my $U;
+      if (ref($range) eq 'Math::BigInt') {
+        my $zero = $range - $range;
+        my $rbits = length($range->as_bin) - 2;   # bits in range
+        my $rwords = int($rbits/32) + (($rbits % 32) ? 1 : 0);
+        # Generate more bits so we rarely have to loop.
+        my $rmax = (($zero+2) ** ($rwords*32)) - 1;
+        my $remainder = $rmax % $range;
+        do {
+          $U = $zero;
+          $U = ($U << 32) + $irandf->()  for 1 .. $rwords;
+        } while $U >= ($rmax - $remainder);
+      } elsif ($range <= 4294967295) {
+        my $remainder = 4294967295 % $range;
+        do {
+          $U = $irandf->();
+        } while $U >= (4294967295 - $remainder);
+      } else {
+        croak "randf given max out of bounds: $max" if $range > ~0;
+        my $remainder = 18446744073709551615 % $range;
+        do {
+          $U = ($irandf->() << 32) + $irandf->();
+        } while $U >= (18446744073709551615 - $remainder);
+      }
+      #return $U % $range;
+      $U %= $range;
+      die "random failure: $max $U\n" if $U > $max;
+      return $U;
+    };
+    return $randf;
   }
 
   # Sub to call with low and high already primes and verified range.
@@ -508,6 +534,7 @@ sub primes {
     my($low,$high) = @_;
     my $prime;
 
+    # irandf->($n) gives numbers in the range [0, $n].
     my $irandf = _get_rand_func();
 
     #{ my $bsize = 100; my @bins; my $counts = 10000000;
@@ -531,7 +558,7 @@ sub primes {
 
     # We're going to look at the odd numbers only.
     #my $range = $high - $low + 1;
-    my $oddrange = int(($high - $low) / 2) + 1;
+    my $oddrange = (($high - $low) >> 1) + 1;
 
     # If $low is large (e.g. >10 digits) and $range is small (say ~10k), it
     # would be fastest to call primes in the range and randomly pick one.  I'm
@@ -539,7 +566,7 @@ sub primes {
 
     # If the range is reasonably small, generate using simple Monte Carlo
     # method (aka the 'trivial' method).  Completely uniform.
-    if ($oddrange < $_Config{'maxbits'}) {
+    if ($oddrange < ~0) {
       $oddrange = int($oddrange->bstr) if ref($oddrange) eq 'Math::BigInt';
       my $loop_limit = 2000 * 1000;  # To protect against broken rand
       if ($low > 11) {
@@ -606,7 +633,7 @@ sub primes {
     # which accounts for the prime distribution.
 
     my($binsize, $nparts);
-    my $rand_part_size = 1 << 31;  # Max size we want to use.
+    my $rand_part_size = 1 << (($_Config{'maxbits'} > 32) ? 32 : 31);
     if (ref($oddrange) eq 'Math::BigInt') {
       # Go to some trouble here because some systems are wonky, such as
       # giving us +a/+b = -r.  Also note the quotes for the bigint argument.
@@ -622,7 +649,7 @@ sub primes {
       my $nbins = int($oddrange / $rand_part_size);
       $nbins++ if $nbins * $rand_part_size != $oddrange;
       $binsize = int($oddrange / $nbins);
-      $binsize++ if $binsize*$nbins != $oddrange;
+      $binsize++ if $binsize * $nbins != $oddrange;
       $nparts = int($oddrange/$binsize);
     }
     $nparts-- if ($nparts * $binsize) == $oddrange;
@@ -798,7 +825,7 @@ sub primes {
 
     # Results for random_nbit_prime are proven for all native bit sizes.  We
     # could go even higher if we used is_provable_prime or looked for is_prime
-    # returning 2.
+    # returning 2.  This should be reasonably fast to ~128 bits with MPU::GMP.
     my $p0 = $_Config{'maxbits'};
 
     return random_nbit_prime($k) if $k <= $p0;
@@ -812,6 +839,7 @@ sub primes {
       or do { croak "Cannot load Math::BigFloat"; };
     }
 
+    # Set verbose to 3 to get pretty output like Crypt::Primes
     my $verbose = $_Config{'verbose'};
     local $| = 1 if $verbose > 2;
 
@@ -834,7 +862,7 @@ sub primes {
     my $q = random_maurer_prime( ($r * $k)->bfloor + 1 );
     $q = Math::BigInt->new("$q") unless ref($q) eq 'Math::BigInt';
     my $I = Math::BigInt->new(2)->bpow($k-2)->bdiv($q)->bfloor;
-    print "B = $B  r = $r  k = $k  q = $q  I = $I\n" if $verbose;
+    print "B = $B  r = $r  k = $k  q = $q  I = $I\n" if $verbose && $verbose != 3;
 
     # Big GCD's are hugely fast with GMP or Pari, but super slow with Calc.
     if ($_big_gcd_use < 0) {
@@ -886,7 +914,9 @@ sub primes {
         # Now do the one gcd check we need to do.
         $b = $a->copy->bmodpow(2*$R, $n);
         next unless Math::BigInt::bgcd($b-1, $n) == 1;
-        print "$n passed final gcd\n" if $verbose > 2;
+        if ($verbose) {
+          print "", ($verbose == 3) ? "($k)" : "$n passed final gcd\n";
+        }
 
         # Instead of the previous gcd, we could check q >= n**1/3 and also do
         # some tests on x & y from 2R = xq+y (see Lemma 2 from Maurer's paper).
@@ -2328,33 +2358,55 @@ then select a random prime from the partition.  This gives some loss of
 uniformity but results in many fewer bits of randomness being consumed as
 well as being much faster.
 
-Perl's L<rand> function is normally called, but if the sub C<main::rand>
-exists, it will be used instead.  It will be called with an integer argument
-between 1 and 2**31, and should return a uniform random value between 0 and
-the argument-1.  The value may be a float or integer.
+If an C<irand> function has been set via L</"prime_set_config">, it will be
+used.  The function should return a uniformly random 32-bit integer, which
+is how the irand functions exported by L<Math::Random::Secure>,
+L<Math::Random::MT>, L<Math::Random::ISAAC> and some other modules behave.
+
+If no C<irand> function was set, then we check if the sub C<main::rand>
+exists and use it if so.  It will be called with no arguments and should
+return a floating point value in the interval [0,1) with 32 bits of entropy.
+This allows the C<rand> function from most CPAN modules to be used.
+
+Lastly, if no C<irand> function was set and no sub <main::rand> exists, then
+the system rand will be used.  System rand functions are notoriously poor,
+and a later version of this module may implement something like TinyMT to
+cover the default case.
+
+Examples of irand functions:
 
   # Math::Random::Secure.  Uses ISAAC and strong seed methods.  Recommended.
-  use Math::Random::Secure qw/rand/;
+  use Math::Random::Secure;
+  prime_set_config(irand => \&Math::Random::Secure::irand);
 
   # Bytes::Random::Secure.  Also uses ISAAC and strong seed methods.
   use Bytes::Random::Secure qw/random_bytes/;
-  sub rand { return ($_[0]||1)*(unpack("L", random_bytes(4))/4294967296); }
+  prime_set_config(irand => sub { return unpack("L", random_bytes(4)); });
 
   # Crypt::Random.  Uses Pari and /dev/random.  Very slow.
-  use Crypt::Random qw/makerandom_itv/;
-  sub rand { return makerandom_itv(Lower=>0,Upper=>$_[0]); }
+  use Crypt::Random qw/makerandom/;
+  prime_set_config(irand => sub { makerandom(Size=>32, Uniform=>1); });
 
   # Mersenne Twister.  Very fast, decent RNG, auto seeding.
+  use Math::Random::MT::Auto;
+  prime_set_config(irand=>sub {Math::Random::MT::Auto::irand() & 0xFFFFFFFF});
+
+Examples of main::rand, where this is done in your script:
+
+  use Math::Random::Secure qw/rand/;
+
+  use Bytes::Random::Secure qw/random_bytes/;
+  sub rand { ($_[0]||1) * (unpack("L", random_bytes(4))/4294967296.0)}
+
   use Math::Random::MT::Auto qw/rand/;
 
-  # A custom random function
   sub rand { ... do your own cool stuff here ... }
 
 For cryptographically secure primes, you need to use something better than the
 default for both seeding and random number generation.  I would recommend
 using L<Math::Random::Secure> and also installing L<Math::Random::ISAAC::XS>
-if possible.  It is reasonably fast and does everything needed by default.  If
-you want to know more, I recommend reading the documentation for
+if possible.  It is reasonably fast and does everything needed by default.
+For more information, I recommend reading the documentation for
 L<Math::Random::Secure> and L<Bytes::Random::Secure>.
 
 
@@ -2386,7 +2438,7 @@ L<rand> function as described above.
 
 Since this uses the random_prime function, all uniformity properties of that
 function apply to this.  The n-bit range is partitioned into nearly equal
-segments less than C<2^31>, a segment is randomly selected, then the trivial
+segments less than C<2^32>, a segment is randomly selected, then the trivial
 Monte Carlo algorithm is used to select a prime from within the segment.
 This gives a reasonably uniform distribution, doesn't use excessive random
 source, and can be very fast.
@@ -2445,8 +2497,8 @@ Crypt::Primes has some useful options for cryptography.
 
 =item *
 
-Crypt::Primes is hardcoded to use L<Crypt::Random>, while this function will
-use whatever you set C<rand> to.  This is more flexible but also prone to
+Crypt::Primes is hardcoded to use L<Crypt::Random>, while M::P::U allows
+plugging in the random function.  This is more flexible but also prone to
 misuse.  You ought to use something like L<Math::Random::Secure>.
 
 =back
@@ -2514,11 +2566,11 @@ the configuration, so changing it has no effect.  The settings include:
 
 Allows setting of some parameters.  Currently the only parameters are:
 
-  xs              allows turning off the XS code, forcing the Pure Perl code
+  xs              Allows turning off the XS code, forcing the Pure Perl code
                   to be used.  Set to 0 to disable XS, set to 1 to re-enable.
                   You probably will never want to do this.
 
-  gmp             allows turning off the use of L<Math::Prime::Util::GMP>,
+  gmp             Allows turning off the use of L<Math::Prime::Util::GMP>,
                   which means using Pure Perl code for big numbers.  Set to
                   0 to disable GMP, set to 1 to re-enable.
                   You probably will never want to do this.
@@ -2529,6 +2581,11 @@ Allows setting of some parameters.  Currently the only parameters are:
                   later be applied to other areas such as primality testing.
                   A later version may also have a way to indicate whether
                   no RH, RH, GRH, or ERH is to be assumed.
+
+  irand           Takes a code ref to an irand function returning a uniform
+                  number between 0 and 2**32-1.  This will be used for all
+                  random number generation, and is the preferred way to use
+                  cryptographic RNGs.
 
 
 =head1 FACTORING FUNCTIONS
