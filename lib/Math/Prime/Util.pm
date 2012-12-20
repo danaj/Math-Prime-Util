@@ -454,14 +454,7 @@ sub primes {
 
   # Returns a function that will get a uniform random number between 0 and
   # $max inclusive.
-  #
-  # Relies on rand working like system rand.  If you use Math::Random::MT,
-  # make sure you use version 1.16 or later.
   sub _get_rand_func {
-    if (!defined $_Config{'irand'} && defined &::rand) {
-      # They have not given us an irand function, but they have their own rand.
-      $_Config{'irand'} = sub { int(4294967296.0 * ::rand()) };
-    }
     # We first make a function irandf that returns a 32-bit integer.  This
     # will be a number uniformly in the range [0, 2^32-1].  This corresponds
     # to the irand function of many CPAN modules:
@@ -477,6 +470,10 @@ sub primes {
     #   2) main::rand(), exportable by many modules
     #   3) CORE::rand().  Hopefully one call will work, otherwise use many.
     my $irandf = $_Config{'irand'};
+    if (!defined $irandf && defined &::rand) {
+      # They have not given us an irand function, but they have their own rand.
+      $irandf = sub { int(4294967296.0 * ::rand()) };
+    }
     if (!defined $irandf) {
       if ($_Config{'system_randbits'} >= 32) {
         $irandf = sub { int(4294967296.0 * CORE::rand()) };
