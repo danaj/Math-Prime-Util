@@ -110,7 +110,7 @@ thread_test(
 {
   my $seed = 1;
   sub mysrand { $seed = $_[0]; }
-  sub rand { $seed = (1103515245*$seed + 12345) & 0xFFFF_FFFF; $seed/(0xFFFF_FFFF+1); }
+  sub rand { $seed = (1103515245*$seed + 12345) % 4294967296; $seed/4294967296.0; }
 }
 
 thread_test(
