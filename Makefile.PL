@@ -33,7 +33,7 @@ WriteMakefile1(
                       'Math::BigFloat'   => '1.59',
                     },
     META_MERGE   => {
-                      recommends => { 'Math::Prime::Util::GMP' => 0.04, },
+                      recommends => { 'Math::Prime::Util::GMP' => 0.06, },
                       recommends => { 'Math::BigInt::GMP' => 0, },
                       recommends => { 'Math::MPFR' => 0, },
                     },

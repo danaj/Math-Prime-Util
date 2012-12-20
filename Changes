@@ -1,6 +1,6 @@
 Revision history for Perl extension Math::Prime::Util.
 
-0.17  18 December 2012
+0.17  20 December 2012
 
     - Perl 5.8.1 - 5.8.7 miscalculates 12345 ** 4, which I used in a test.
 
@@ -10,7 +10,9 @@ Revision history for Perl extension Math::Prime::Util.
       practical application now that we use Lehmer's method for counts, but
       there are some cases that can still show speedups.
 
-    - Changed the rand functionality yet again.  Sorry.
+    - Changed the rand functionality yet again.  Sorry.  This should give
+      better support for plugging in crypto RNG's when used from other
+      modules.
 
 0.16  11 December 2012
 
