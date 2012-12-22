@@ -20,7 +20,7 @@ WriteMakefile1(
 
     BUILD_REQUIRES=>{
                       'Test::More'       => '0.45',
-                      'bignum'           => '0.22',   # Used for bigint tests
+                      'bignum'           => '0.22',   # 'use bigint' in tests
                     },
     PREREQ_PM    => {
                       'Exporter'         => '5.562',

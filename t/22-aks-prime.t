@@ -35,7 +35,11 @@ is( is_aks_prime(877), 1, "is_aks_prime(877) is true" );
 #diag "Unfortunately these tests are very slow.";
 
 SKIP: {
-  skip "Skipping PP AKS on 32-bit -- just too slow.", 1 if $ispp && !$use64;
+  # If we're pure Perl, then this is definitely too slow.  If we have 64-bit
+  # available in the compiler (e.g. uint64_t) , this can still be quite fast.
+  # However for pretty much everyone else, this is just unreasonably slow
+  # for a standard test suite.
+  skip "Skipping PP AKS on 32-bit -- just too slow.", 1 if !$use64;
   # The first number that makes it past the sqrt test to actually run.
   is( is_aks_prime(69197), 1, "is_aks_prime(69197) is true" );
 }

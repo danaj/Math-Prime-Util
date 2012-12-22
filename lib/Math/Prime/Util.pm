@@ -518,10 +518,7 @@ sub primes {
           $U = ($irandf->() << 32) + $irandf->();
         } while $U >= (18446744073709551615 - $remainder);
       }
-      #return $U % $range;
-      $U %= $range;
-      die "random failure: $max $U\n" if $U > $max;
-      return $U;
+      return $U % $range;
     };
     return $randf;
   }
