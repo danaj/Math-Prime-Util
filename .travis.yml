@@ -14,10 +14,11 @@ before_script:
     - cpanm Math::MPFR
 
 env:
-    - MPU_NO_XS=1 MPU_NO_GMP=1 MPU_NO_MPFR=1
-    - MPU_NO_MPFR=1
+    -
     - MPU_NO_GMP=1
+    - MPU_NO_MPFR=1
     - MPU_NO_GMP=1 MPU_NO_MPFR=1
+    - MPU_NO_XS=1 MPU_NO_GMP=1 MPU_NO_MPFR=1
 
 
 install:
