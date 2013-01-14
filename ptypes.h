@@ -1,10 +1,7 @@
 #ifndef MPU_PTYPES_H
 #define MPU_PTYPES_H
 
-#ifndef _MSC_VER
-#define __STDC_LIMIT_MACROS
-#include <stdint.h>
-#else
+#ifdef _MSC_VER
  /* No stdint.h for MS C, so we lose the chance to possibly optimize
   * some operations on 64-bit machines running a 32-bit Perl.  It's probably
   * a rare enough case that we don't need to be too concerned.  If we do want,
@@ -14,6 +11,15 @@
   *  Thanks to Sisyphus for bringing the MSC issue to my attention (and even
   *  submitting a working patch!).
   */
+#elif defined(__sun) || defined(__sun__)
+ /* stdint.h is only in Solaris 10+. */
+ #if defined(__SunOS_5_10) || defined(__SunOS_5_11) || defined(__SunOS_5_12)
+  #define __STDC_LIMIT_MACROS
+  #include <stdint.h>
+ #endif
+#else
+#define __STDC_LIMIT_MACROS
+#include <stdint.h>
 #endif
 
 #include "EXTERN.h"
