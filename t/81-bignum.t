@@ -69,7 +69,7 @@ plan tests =>  0
              + scalar(keys %factors)
              + scalar(keys %allfactors)
              + 2   # moebius, euler_phi
-             + 12  # random primes
+             + 15  # random primes
              + 0;
 
 # Using GMP makes these tests run about 2x faster on some machines
@@ -102,6 +102,7 @@ use Math::Prime::Util qw/
   random_prime
   random_ndigit_prime
   random_nbit_prime
+  random_strong_prime
   random_maurer_prime
 /;
 # TODO:  is_strong_lucas_pseudoprime
@@ -207,6 +208,11 @@ $randprime = random_nbit_prime(80);
 cmp_ok( $randprime, '>', 2**79, "random 80-bit prime isn't too small");
 cmp_ok( $randprime, '<', 2**80, "random 80-bit prime isn't too big");
 ok( is_prime($randprime), "random 80-bit prime is prime");
+
+$randprime = random_strong_prime(256);
+cmp_ok( $randprime, '>', 2**255, "random 256-bit strong prime isn't too small");
+cmp_ok( $randprime, '<', 2**256, "random 256-bit strong prime isn't too big");
+ok( is_prime($randprime), "random 80-bit strong prime is prime");
 
 SKIP: {
   skip "Your 64-bit Perl is broken, skipping maurer prime", 3 if $broken64;

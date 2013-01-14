@@ -45,3 +45,6 @@
   tinymt32, seed it using the system rand (multiple calls, just use 8-bits
   each), then use it to get 32-bit irands.  This would only be used if they
   didn't give us a RNG (so they don't care about strict crypto).
+
+- Perfect power from Dietzfelbinger algorithm 2.3.5 works a bit better.
+  Newton's method would be even better.

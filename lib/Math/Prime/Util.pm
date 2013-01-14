@@ -5,7 +5,7 @@ use Carp qw/croak confess carp/;
 
 BEGIN {
   $Math::Prime::Util::AUTHORITY = 'cpan:DANAJ';
-  $Math::Prime::Util::VERSION = '0.17';
+  $Math::Prime::Util::VERSION = '0.18';
 }
 
 # parent is cleaner, and in the Perl 5.10.1 / 5.12.0 core, but not earlier.
@@ -22,7 +22,8 @@ our @EXPORT_OK = qw(
                      next_prime  prev_prime
                      prime_count prime_count_lower prime_count_upper prime_count_approx
                      nth_prime nth_prime_lower nth_prime_upper nth_prime_approx
-                     random_prime random_ndigit_prime random_nbit_prime random_maurer_prime
+                     random_prime random_ndigit_prime random_nbit_prime
+                     random_strong_prime random_maurer_prime
                      primorial pn_primorial
                      factor all_factors
                      moebius euler_phi jordan_totient
@@ -788,7 +789,7 @@ sub primes {
     _validate_positive_integer($bits, 2);
 
     if (!defined $_random_nbit_ranges[$bits]) {
-      my $bigbits = $bits > $_Config{'maxbits'};
+      my $bigbits = $bits > $_Config{'maxbits'}; # || ($] < 5.8 && $bits > 49);
       if ($bigbits) {
         if (!defined $Math::BigInt::VERSION) {
           eval { require Math::BigInt; Math::BigInt->import(try=>'GMP,Pari'); 1; }
@@ -821,6 +822,7 @@ sub primes {
     # could go even higher if we used is_provable_prime or looked for is_prime
     # returning 2.  This should be reasonably fast to ~128 bits with MPU::GMP.
     my $p0 = $_Config{'maxbits'};
+    $p0 = 32 if $] < 5.8 && $p0 > 32;
 
     return random_nbit_prime($k) if $k <= $p0;
 
@@ -937,6 +939,45 @@ sub primes {
     }
     croak "Failure in random_maurer_prime, could not find a prime\n";
   } # End of random_maurer_prime
+
+  # Gordon's algorithm for generating a strong prime.
+  sub random_strong_prime {
+    my($t) = @_;
+    _validate_positive_integer($t, 128);
+
+    if (!defined $Math::BigInt::VERSION) {
+      eval { require Math::BigInt; Math::BigInt->import(try=>'GMP,Pari'); 1; }
+      or do { croak "Cannot load Math::BigInt"; };
+    }
+    my $irandf = _get_rand_func();
+
+    my $l   = (($t+1) >> 1) - 2;
+    my $lp  = int($t/2) - 20;
+    my $lpp = $l - 20;
+    while (1) {
+      my $qp  = random_nbit_prime($lp);
+      my $qpp = random_nbit_prime($lpp);
+      $qp  = Math::BigInt->new("$qp")  unless ref($qp)  eq 'Math::BigInt';
+      $qpp = Math::BigInt->new("$qpp") unless ref($qpp) eq 'Math::BigInt';
+      my ($il, $rem) = Math::BigInt->new(2)->bpow($l-1)->bsub(1)->bdiv(2*$qpp);
+      $il++ if $rem > 0;
+      my $iu = Math::BigInt->new(2)->bpow($l)->bsub(2)->bdiv(2*$qpp);
+      my $istart = $il + $irandf->($iu - $il);
+      for (my $i = $istart; $i <= $iu; $i++) {  # Search for q
+        my $q = 2 * $i * $qpp + 1;
+        next unless is_prob_prime($q);
+        my $pp = $qp->copy->bmodpow($q-2, $q)->bmul(2)->bmul($qp)->bsub(1);
+        my ($jl, $rem) = Math::BigInt->new(2)->bpow($t-1)->bsub($pp)->bdiv(2*$q*$qp);
+        $jl++ if $rem > 0;
+        my $ju = Math::BigInt->new(2)->bpow($t)->bsub(1)->bsub($pp)->bdiv(2*$q*$qp);
+        my $jstart = $jl + $irandf->($ju - $jl);
+        for (my $j = $jstart; $j <= $ju; $j++) {  # Search for p
+          my $p = $pp + 2 * $j * $q * $qp;
+          return $p if is_prob_prime($p);
+        }
+      }
+    }
+  }
 
 } # end of the random prime section
 
@@ -1744,7 +1785,7 @@ Math::Prime::Util - Utilities related to prime numbers, including fast sieves an
 
 =head1 VERSION
 
-Version 0.17
+Version 0.18
 
 
 =head1 SYNOPSIS
@@ -1847,6 +1888,7 @@ Version 0.17
   my $rand_prime = random_prime(100, 10000); # random prime within a range
   my $rand_prime = random_ndigit_prime(6);   # random 6-digit prime
   my $rand_prime = random_nbit_prime(128);   # random 128-bit prime
+  my $rand_prime = random_strong_prime(256); # random 256-bit strong prime
   my $rand_prime = random_maurer_prime(256); # random 256-bit provable prime
 
 
@@ -2440,6 +2482,35 @@ source, and can be very fast.
 The result will be a BigInt if the number of bits is greater than the native
 bit size.  For better performance with very large bit sizes, install
 L<Math::BigInt::GMP>.
+
+
+=head2 random_strong_prime
+
+  my $bigprime = random_strong_prime(512);
+
+Constructs an n-bit strong prime using Gordon's algorithm.  We consider a
+strong prime I<p> to be one where
+
+=over
+
+=item * I<p> is large.   This function uses 128 as a minimum.
+
+=item * I<p-1> has a large prime factor I<r>.
+
+=item * I<p+1> has a large prime factor I<s>
+
+=item * I<r-1> has a large prime factor I<t>
+
+=back
+
+Using a strong prime in cryptography guards against easy factoring with
+algorithms like Pollard's Rho.  Rivest and Silverman (1999) present a case
+that using strong primes is unnecessary, and most modern cryptographic systems
+agree.  First, the smoothness does not affect more modern factoring methods
+such as ECM.  Second, modern factoring methods like GNFS are far faster than
+either method so make the point moot.  Third, due to key size growth and
+advances in factoring and attacks, for practical purposes, using large random
+primes offer security equivalent to using strong primes.
 
 
 =head2 random_maurer_prime

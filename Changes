@@ -1,5 +1,16 @@
 Revision history for Perl extension Math::Prime::Util.
 
+0.18  14 January 2012
+
+    - Add random_strong_prime.
+
+    - Fix builds with Solaris 9 and older.
+
+    - Add some debug info to perhaps find out why old ActiveState Perls are
+      dying in Math::BigInt::Calc, as if they were using really old versions
+      that run out of memory trying to calculate '2 ** 66'.
+      http://code.activestate.com/ppm/Math-Prime-Util/
+
 0.17  20 December 2012
 
     - Perl 5.8.1 - 5.8.7 miscalculates 12345 ** 4, which I used in a test.
