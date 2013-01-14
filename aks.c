@@ -38,14 +38,15 @@ static UV log2floor(UV n) {
 }
 
 /* See Bach and Sorenson (1993) for much better algorithm */
+/* This isn't generally going to work for numbers > 2**53 */
 static int is_perfect_power(UV x) {
   UV b, last;
   if ((x & (x-1)) == 0)  return 1;          /* powers of 2    */
-  b = sqrt(x); if (b*b == x)  return 1;     /* perfect square */
+  b = sqrt(x)+0.5; if (b*b == x)  return 1; /* perfect square */
   last = log2floor(x) + 1;
   for (b = 3; b < last; b = _XS_next_prime(b)) {
-    UV root = pow(x, 1.0 / (double)b);
-    if (pow(root, b) == x)  return 1;
+    UV root = pow(x, 1.0 / (double)b) + 0.5;
+    if ( ((UV)(pow(root, b)+0.5)) == x)  return 1;
   }
   return 0;
 }
