@@ -109,11 +109,13 @@ use Math::Prime::Util qw/
 #        LogarithmicIntegral
 #        RiemannR
 
+my $bignumver = $bigint::VERSION;
+my $bigintver = $Math::BigInt::VERSION;
 my $bigintlib = Math::BigInt->config()->{lib};
 $bigintlib =~ s/^Math::BigInt:://;
 my $mpugmpver = Math::Prime::Util::prime_get_config->{gmp}
                 ? $Math::Prime::Util::GMP::VERSION : "<none>";
-diag "BigInt library: $bigintlib, MPU::GMP $mpugmpver\n";
+diag "BigInt $bignumver/$bigintver, lib: $bigintlib.  MPU::GMP $mpugmpver\n";
 
 
 ###############################################################################
@@ -230,7 +232,7 @@ sub check_pcbounds {
   prime_set_config(assume_rh=>1);
   my $pclo_rh = prime_count_lower($n);
   my $pcup_rh = prime_count_upper($n);
-  prime_set_config(assume_rh=>0);
+  prime_set_config(assume_rh => undef);
 
   #diag "lower:    " . $pclo->bstr() . "  " . ($pcap-$pclo)->bstr;
   #diag "rh lower: " . $pclo_rh->bstr() . "  " . ($pcap-$pclo_rh)->bstr;
