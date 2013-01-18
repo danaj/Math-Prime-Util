@@ -31,7 +31,7 @@ for my $n (3 .. 1000000) {
 
 # Parallel:
 my $maxn :shared;
-my $start = 1;  # People have mined below ~ 2^52
+my $start = int(2**59+2**41);  # People have mined below 2^55
 $maxn = 2047;
 my $nextn = 2049;
 my @threads;
@@ -83,3 +83,4 @@ base 42162995 good up to 97921
 2012-07-02  base 64390572806844 good up to 161701
 2012-10-15  base 1769236083487960 good up to 192001
 2012-10-17  base 1948244569546278 good up to 212321
+2013-01-14  base 34933608779780163 good up to 218245

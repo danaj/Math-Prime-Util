@@ -2493,7 +2493,7 @@ strong prime I<p> to be one where
 
 =over
 
-=item * I<p> is large.   This function uses 128 as a minimum.
+=item * I<p> is large.   This function requires at least 128 bits.
 
 =item * I<p-1> has a large prime factor I<r>.
 
