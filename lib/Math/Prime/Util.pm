@@ -447,10 +447,10 @@ sub primes {
     my $p1 = primorial(Math::BigInt->new(2052));
     my $p2 = primorial(Math::BigInt->new(6028));
     my $p3 = primorial(Math::BigInt->new($_big_gcd_top));
-    $_big_gcd[0] = $p0 / 223092870;
-    $_big_gcd[1] = $p1 / $p0;
-    $_big_gcd[2] = $p2 / $p1;
-    $_big_gcd[3] = $p3 / $p2;
+    $_big_gcd[0] = int( $p0 / 223092870 );
+    $_big_gcd[1] = int( $p1 / $p0 );
+    $_big_gcd[2] = int( $p2 / $p1 );
+    $_big_gcd[3] = int( $p3 / $p2 );
   }
 
   # Returns a function that will get a uniform random number between 0 and
@@ -636,9 +636,11 @@ sub primes {
       my($nbins, $rem);
       ($nbins, $rem) = $oddrange->copy->bdiv( "$rand_part_size" );
       $nbins++ if $rem > 0;
+      $nbins = $nbins->as_int();
       ($binsize,$rem) = $oddrange->copy->bdiv($nbins);
       $binsize++ if $rem > 0;
-      $nparts  = $oddrange->copy->bdiv($binsize);
+      $binsize = $binsize->as_int();
+      $nparts  = $oddrange->copy->bdiv($binsize)->as_int();
       $low = $high->copy->bzero->badd($low) if ref($low) ne 'Math::BigInt';
     } else {
       my $nbins = int($oddrange / $rand_part_size);
@@ -857,7 +859,7 @@ sub primes {
     # I've seen +0, +1, and +2 here.  Maurer uses +0.  Menezes uses +1.
     my $q = random_maurer_prime( ($r * $k)->bfloor + 1 );
     $q = Math::BigInt->new("$q") unless ref($q) eq 'Math::BigInt';
-    my $I = Math::BigInt->new(2)->bpow($k-2)->bdiv($q)->bfloor;
+    my $I = Math::BigInt->new(2)->bpow($k-2)->bdiv($q)->bfloor->as_int();
     print "B = $B  r = $r  k = $k  q = $q  I = $I\n" if $verbose && $verbose != 3;
 
     # Big GCD's are hugely fast with GMP or Pari, but super slow with Calc.
@@ -961,7 +963,8 @@ sub primes {
       $qpp = Math::BigInt->new("$qpp") unless ref($qpp) eq 'Math::BigInt';
       my ($il, $rem) = Math::BigInt->new(2)->bpow($l-1)->bsub(1)->bdiv(2*$qpp);
       $il++ if $rem > 0;
-      my $iu = Math::BigInt->new(2)->bpow($l)->bsub(2)->bdiv(2*$qpp);
+      $il = $il->as_int();
+      my $iu = Math::BigInt->new(2)->bpow($l)->bsub(2)->bdiv(2*$qpp)->as_int();
       my $istart = $il + $irandf->($iu - $il);
       for (my $i = $istart; $i <= $iu; $i++) {  # Search for q
         my $q = 2 * $i * $qpp + 1;
@@ -969,7 +972,8 @@ sub primes {
         my $pp = $qp->copy->bmodpow($q-2, $q)->bmul(2)->bmul($qp)->bsub(1);
         my ($jl, $rem) = Math::BigInt->new(2)->bpow($t-1)->bsub($pp)->bdiv(2*$q*$qp);
         $jl++ if $rem > 0;
-        my $ju = Math::BigInt->new(2)->bpow($t)->bsub(1)->bsub($pp)->bdiv(2*$q*$qp);
+        $jl = $jl->as_int();
+        my $ju = Math::BigInt->new(2)->bpow($t)->bsub(1)->bsub($pp)->bdiv(2*$q*$qp)->as_int();
         my $jstart = $jl + $irandf->($ju - $jl);
         for (my $j = $jstart; $j <= $ju; $j++) {  # Search for p
           my $p = $pp + 2 * $j * $q * $qp;
@@ -1431,7 +1435,7 @@ sub is_provable_prime {
     next if $ap->copy->bmodpow($nm1, $n) != 1;
     # 2. a^((n-1)/f) != 1 mod n for all f.
     next if (scalar grep { $_ == 1 }
-             map { $ap->copy->bmodpow($nm1/$_,$n); }
+             map { $ap->copy->bmodpow(int($nm1/$_),$n); }
              @factors) > 0;
     return 2;
   }

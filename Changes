@@ -4,6 +4,8 @@ Revision history for Perl extension Math::Prime::Util.
 
     - Update MR bases.
 
+    - Fixed some issues when using bignum and Calc BigInt backend.
+
 0.18  14 January 2012
 
     - Add random_strong_prime.

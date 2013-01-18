@@ -1210,7 +1210,7 @@ sub prho_factor {
       if ($f == $n) {
         last if $inloop++;  # We've been here before
       } elsif ($f != 1) {
-        my $f2 = $n->copy->bdiv($f);
+        my $f2 = $n->copy->bdiv($f)->as_int;
         push @factors, $f;
         push @factors, $f2;
         croak "internal error in prho" unless ($f * $f2) == $n;
@@ -1283,7 +1283,7 @@ sub pbrent_factor {
       $Xi->bmul($Xi);  $Xi->badd($a);  $Xi->bmod($n);
       my $f = Math::BigInt::bgcd( ($Xi > $Xm) ? $Xi-$Xm : $Xm-$Xi,  $n);
       if ( ($f != 1) && ($f != $n) ) {
-        my $f2 = $n->copy->bdiv($f);
+        my $f2 = $n->copy->bdiv($f)->as_int;
         push @factors, $f;
         push @factors, $f2;
         croak "internal error in pbrent" unless ($f * $f2) == $n;
@@ -1343,7 +1343,7 @@ sub pminus1_factor {
       $kf = $n if $kf == 0;
       my $f = Math::BigInt::bgcd( $kf-1, $n );
       if ( ($f != 1) && ($f != $n) ) {
-        my $f2 = $n->copy->bdiv($f);
+        my $f2 = $n->copy->bdiv($f)->as_int;
         push @factors, $f;
         push @factors, $f2;
         croak "internal error in pminus1" unless ($f * $f2) == $n;
@@ -1380,18 +1380,18 @@ sub holf_factor {
   if ( ref($n) eq 'Math::BigInt' ) {
     for my $i ($startrounds .. $rounds) {
       my $ni = $n->copy->bmul($i);
-      my $s = $ni->copy->bsqrt->bfloor;
+      my $s = $ni->copy->bsqrt->bfloor->as_int;
       $s->binc if ($s * $s) != $ni;
       my $m = $s->copy->bmul($s)->bmod($n);
       # Check for perfect square
       my $mcheck = int(($m & 127)->bstr);
       next if (($mcheck*0x8bc40d7d) & ($mcheck*0xa1e2f5d1) & 0x14020a);
       # ... 82% of non-squares were rejected by the bloom filter
-      my $f = $m->copy->bsqrt->bfloor;
+      my $f = $m->copy->bsqrt->bfloor->as_int;
       next unless ($f*$f) == $m;
       $f = Math::BigInt::bgcd( ($s > $f) ? $s-$f : $f-$s,  $n);
       last if $f == 1 || $f == $n;   # Should never happen
-      my $f2 = $n->copy->bdiv($f);
+      my $f2 = $n->copy->bdiv($f)->as_int;
       push @factors, $f;
       push @factors, $f2;
       croak "internal error in HOLF" unless ($f * $f2) == $n;
