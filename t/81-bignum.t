@@ -27,6 +27,12 @@ my @composites = qw/
 87777777777777777777777795475 890745785790123461234805903467891234681234
 /;
 
+# Primes where n-1 is easy to factor, so we finish quickly.
+my @proveprimes = qw/
+65635624165761929287 1162566711635022452267983 77123077103005189615466924501
+3991617775553178702574451996736229 273952953553395851092382714516720001799
+/;
+
 # pseudoprimes to various small prime bases
 # These must not be themselves prime, as we're going to primality test them.
 my %pseudoprimes = (
@@ -59,7 +65,7 @@ my %allfactors = (
 );
 
 plan tests =>  0
-             + 2*(@primes + @composites)
+             + 2*(@primes + @composites + @proveprimes)
              + 1   # primes
              + 2   # next/prev prime
              + 1   # primecount large base small range
@@ -96,6 +102,7 @@ use Math::Prime::Util qw/
   prime_count
   nth_prime
   is_prime
+  is_provable_prime
   next_prime
   prev_prime
   is_strong_pseudoprime
@@ -128,6 +135,10 @@ foreach my $n (@primes) {
 foreach my $n (@composites) {
   ok( !is_prime($n), "$n is not prime" );
   ok( !is_prob_prime($n), "$n is not probably prime");
+}
+foreach my $n (@proveprimes) {
+  ok( is_prime($n), "$n is prime" );
+  ok( is_provable_prime($n), "$n is provably prime" );
 }
 
 ###############################################################################
