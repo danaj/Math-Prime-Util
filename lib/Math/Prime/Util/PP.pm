@@ -74,6 +74,8 @@ sub _validate_positive_integer {
   } elsif (ref($n) ne 'Math::BigInt') {
     croak "Parameter '$n' outside of integer range" if !defined $bigint::VERSION;
     $_[0] = Math::BigInt->new("$n"); # Make $n a proper bigint object
+  } else {
+    $_[0]->upgrade(undef) if $_[0]->upgrade();  # Stop BigFloat upgrade
   }
   # One of these will be true:
   #     1) $n <= max and $n is not a bigint
