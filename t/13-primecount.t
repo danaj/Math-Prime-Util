@@ -5,6 +5,7 @@ use warnings;
 use Test::More;
 use Math::Prime::Util qw/prime_count prime_count_lower prime_count_upper prime_count_approx/;
 
+my $isxs  = Math::Prime::Util::prime_get_config->{'xs'};
 my $use64 = Math::Prime::Util::prime_get_config->{'maxbits'} > 32;
 my $extra = defined $ENV{RELEASE_TESTING} && $ENV{RELEASE_TESTING};
 
@@ -82,7 +83,8 @@ plan tests => 0 + 1
                 + scalar(keys %pivals_small)
                 + $use64 * 3 * scalar(keys %pivals64)
                 + scalar(keys %intervals)
-                + 1;
+                + 1
+                + 6; # prime count specific methods
 
 ok( eval { prime_count(13); 1; }, "prime_count in void context");
 
@@ -148,3 +150,14 @@ sub parse_range {
 #    109726486, // prime count 2^32 interval starting at 10^17
 #    103626726, // prime count 2^32 interval starting at 10^18
 #    98169972}; // prime count 2^32 interval starting at 10^19
+
+# Make sure each specific algorithm isn't broken.
+SKIP: {
+  skip "Not XS -- skipping direct primecount tests", 4 unless $isxs;
+  is(Math::Prime::Util::_XS_lehmer_pi  (3456789), 247352, "XS Lehmer count");
+  is(Math::Prime::Util::_XS_meissel_pi (3456789), 247352, "XS Meissel count");
+  is(Math::Prime::Util::_XS_legendre_pi(3456789), 247352, "XS Legendre count");
+  is(Math::Prime::Util::_XS_prime_count(3456789), 247352, "XS sieve count");
+}
+is(Math::Prime::Util::PP::_lehmer_pi   (3456789), 247352, "PP Lehmer count");
+is(Math::Prime::Util::PP::_sieve_prime_count(3456789), 247352, "PP sieve count");

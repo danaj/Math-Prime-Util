@@ -30,8 +30,9 @@ my @testn = qw/0 1 2 3 4 5 6 7 8 16 57 64 377 9592 30107 78498 664579 5761455
                1363 989 779 629 403
                547308031
                808 2727 12625 34643 134431 221897 496213 692759 1228867
-               2463289 3008891 5115953 6961021 8030207 10486123
+               2231139 2463289 3008891 5115953 6961021 8030207 10486123
                10893343 12327779 701737021
+               549900
               /;
 
 my @testn64 = qw/37607912018 346065536839 600851475143
@@ -72,7 +73,7 @@ my %all_factors = (
       0 => [],
 );
 
-plan tests =>  (2 * scalar @testn) + scalar(keys %all_factors) + 6*7;
+plan tests =>  (2 * scalar @testn) + scalar(keys %all_factors) + 7*8;
 
 foreach my $n (@testn) {
   my @f = factor($n);
@@ -100,6 +101,7 @@ extra_factor_test("trial_factor",  sub {Math::Prime::Util::trial_factor(shift)})
 extra_factor_test("fermat_factor", sub {Math::Prime::Util::fermat_factor(shift)});
 extra_factor_test("holf_factor",   sub {Math::Prime::Util::holf_factor(shift)});
 extra_factor_test("squfof_factor", sub {Math::Prime::Util::squfof_factor(shift)});
+extra_factor_test("rsqufof_factor", sub {Math::Prime::Util::rsqufof_factor(shift)});
 extra_factor_test("pbrent_factor", sub {Math::Prime::Util::pbrent_factor(shift)});
 extra_factor_test("prho_factor",   sub {Math::Prime::Util::prho_factor(shift)});
 extra_factor_test("pminus1_factor",sub {Math::Prime::Util::pminus1_factor(shift)});
@@ -111,8 +113,9 @@ sub extra_factor_test {
   is_deeply( [ sort {$a<=>$b} $fsub->(1)   ], [1],       "$fname(1)" );
   is_deeply( [ sort {$a<=>$b} $fsub->(4)   ], [2, 2],    "$fname(4)" );
   is_deeply( [ sort {$a<=>$b} $fsub->(9)   ], [3, 3],    "$fname(9)" );
-  is_deeply( [ sort {$a<=>$b} $fsub->(25)  ], [5, 5],    "$fname(9)" );
+  is_deeply( [ sort {$a<=>$b} $fsub->(25)  ], [5, 5],    "$fname(25)" );
   is_deeply( [ sort {$a<=>$b} $fsub->(175) ], [5, 5, 7], "$fname(175)" );
   is_deeply( [ sort {$a<=>$b} $fsub->(403) ], [13, 31],  "$fname(403)" );
+  is_deeply( [ sort {$a<=>$b} $fsub->(549900) ], [2,2,3,3,5,5,13,47],  "$fname(549900)" );
 }
 

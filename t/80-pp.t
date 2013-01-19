@@ -55,6 +55,8 @@ my %pseudoprimes = (
   61 => [ qw/217 341 1261 2701 3661 6541 6697 7613 13213 16213 22177 23653 23959 31417 50117 61777 63139 67721 76301 77421 79381 80041/ ],
   73 => [ qw/205 259 533 1441 1921 2665 3439 5257 15457 23281 24617 26797 27787 28939 34219 39481 44671 45629 64681 67069 76429 79501 93521/ ],
 );
+# Test a pseudoprime larger than 2^32.
+push @{$pseudoprimes{2}}, 75792980677 if $use64;
 my $num_pseudoprimes = 0;
 foreach my $ppref (values %pseudoprimes) {
   push @composites, @$ppref;
@@ -221,10 +223,13 @@ plan tests => 1 +
               2*scalar(keys %pivals_small) + scalar(keys %nthprimes_small) +
               4 + scalar(keys %pseudoprimes) +
               scalar(keys %eivals) + scalar(keys %livals) + scalar(keys %rvals) +
-              1 + 1 +
+              1 + 1 +    # factor
+              8 + 4*3 +  # factoring subs
+              10 +       # AKS
               0;
 
 use Math::Prime::Util qw/primes prime_count_approx prime_count_lower/;
+use Math::BigInt try => 'GMP';
 require_ok 'Math::Prime::Util::PP';
     # This function skips some setup
     undef *primes;
@@ -238,6 +243,7 @@ require_ok 'Math::Prime::Util::PP';
     *prev_prime     = \&Math::Prime::Util::PP::prev_prime;
 
     *miller_rabin   = \&Math::Prime::Util::PP::miller_rabin;
+    *is_aks_prime   = \&Math::Prime::Util::PP::is_aks_prime;
 
     *factor         = \&Math::Prime::Util::PP::factor;
 
@@ -397,6 +403,70 @@ while (my($n, $rin) = each (%rvals)) {
   }
   is_deeply( \@gotfactor, \@expfactor, "test factoring for $ntests composites");
 }
+
+# The PP factor code does small trials, then loops doing 64k rounds of HOLF
+# if the composite is less than a half word, followed by 64k rounds each of
+# prho with a = {3,5,7,11,13}.  Most numbers are handled by these.  The ones
+# that aren't end up being too slow for us to put in a test.  So we'll try
+# running the various factoring methods manually.
+{
+  is_deeply( [ sort {$a<=>$b} Math::Prime::Util::PP::holf_factor(403) ],
+             [ 13, 31 ],
+             "holf(403)" );
+  is_deeply( [ sort {$a<=>$b} Math::Prime::Util::PP::prho_factor(403) ],
+             [ 13, 31 ],
+             "prho(403)" );
+  is_deeply( [ sort {$a<=>$b} Math::Prime::Util::PP::pbrent_factor(403) ],
+             [ 13, 31 ],
+             "pbrent(403)" );
+  is_deeply( [ sort {$a<=>$b} Math::Prime::Util::PP::pminus1_factor(403) ],
+             [ 13, 31 ],
+             "pminus1(403)" );
+  is_deeply( [ sort {$a<=>$b} Math::Prime::Util::PP::prho_factor(851981) ],
+             [ 13, 65537 ],
+             "prho(851981)" );
+  is_deeply( [ sort {$a<=>$b} Math::Prime::Util::PP::pbrent_factor(851981) ],
+             [ 13, 65537 ],
+             "pbrent(851981)" );
+  my $n64 = $use64 ? 55834573561 : Math::BigInt->new("55834573561");
+  is_deeply( [ sort {$a<=>$b} Math::Prime::Util::PP::prho_factor($n64) ],
+             [ 13, 4294967197 ],
+             "prho(55834573561)" );
+  is_deeply( [ sort {$a<=>$b} Math::Prime::Util::PP::pbrent_factor($n64) ],
+             [ 13, 4294967197 ],
+             "pbrent(55834573561)" );
+  # 1013 4294967197 4294967291
+  my $nbig = Math::BigInt->new("18686551294184381720251");
+  my @nfac;
+  @nfac = sort {$a<=>$b} Math::Prime::Util::PP::holf_factor($nbig);
+  is(scalar @nfac, 2, "holf finds a factor of 18686551294184381720251");
+  is($nfac[0] * $nfac[1], $nbig, "holf found a correct factor");
+  ok($nfac[0] != 1 && $nfac[1] != 1, "holf didn't return a degenerate factor");
+  @nfac = sort {$a<=>$b} Math::Prime::Util::PP::prho_factor($nbig);
+  is(scalar @nfac, 2, "prho finds a factor of 18686551294184381720251");
+  is($nfac[0] * $nfac[1], $nbig, "prho found a correct factor");
+  ok($nfac[0] != 1 && $nfac[1] != 1, "prho didn't return a degenerate factor");
+  @nfac = sort {$a<=>$b} Math::Prime::Util::PP::pbrent_factor($nbig);
+  is(scalar @nfac, 2, "pbrent finds a factor of 18686551294184381720251");
+  is($nfac[0] * $nfac[1], $nbig, "pbrent found a correct factor");
+  ok($nfac[0] != 1 && $nfac[1] != 1, "pbrent didn't return a degenerate factor");
+  @nfac = sort {$a<=>$b} Math::Prime::Util::PP::pminus1_factor($nbig);
+  is(scalar @nfac, 2, "pminus1 finds a factor of 18686551294184381720251");
+  is($nfac[0] * $nfac[1], $nbig, "pminus1 found a correct factor");
+  ok($nfac[0] != 1 && $nfac[1] != 1, "pminus1 didn't return a degenerate factor");
+}
+
+##### AKS primality test.  Be very careful with performance.
+is( is_aks_prime(1), 0, "AKS: 1 is composite (less than 2)" );
+is( is_aks_prime(2), 1, "AKS: 2 is prime" );
+is( is_aks_prime(3), 1, "AKS: 3 is prime" );
+is( is_aks_prime(4), 0, "AKS: 4 is composite" );
+is( is_aks_prime(64), 0, "AKS: 64 is composite (perfect power)" );
+is( is_aks_prime(65), 0, "AKS: 65 is composite (caught in trial)" );
+is( is_aks_prime(23), 1, "AKS: 23 is prime (r >= n)" );
+is( is_aks_prime(101), 1, "AKS: 101 is prime (passed anr test)" );
+is( is_aks_prime(70747), 0, "AKS: 70747 is composite (n mod r)" );
+is( is_aks_prime(74513), 0, "AKS: 74513 is composite (failed anr test)" );
 
 ###############################################################################
 

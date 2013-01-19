@@ -84,6 +84,7 @@ BEGIN {
     *fermat_factor  = \&Math::Prime::Util::PP::fermat_factor;
     *holf_factor    = \&Math::Prime::Util::PP::holf_factor;
     *squfof_factor  = \&Math::Prime::Util::PP::squfof_factor;
+    *rsqufof_factor = \&Math::Prime::Util::PP::squfof_factor;
     *pbrent_factor  = \&Math::Prime::Util::PP::pbrent_factor;
     *prho_factor    = \&Math::Prime::Util::PP::prho_factor;
     *pminus1_factor = \&Math::Prime::Util::PP::pminus1_factor;
