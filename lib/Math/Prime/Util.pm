@@ -212,7 +212,8 @@ sub prime_set_config {
 sub _validate_positive_integer {
   my($n, $min, $max) = @_;
   croak "Parameter must be defined" if !defined $n;
-  croak "Parameter '$n' must be a positive integer" if $n =~ tr/0123456789//c;
+  croak "Parameter '$n' must be a positive integer"
+        if ref($n) ne 'Math::BigInt' && $n =~ tr/0123456789//c;
   croak "Parameter '$n' must be >= $min" if defined $min && $n < $min;
   croak "Parameter '$n' must be <= $max" if defined $max && $n > $max;
   # The second term is used instead of '<=' to fix strings like ~0+delta.
@@ -223,6 +224,7 @@ sub _validate_positive_integer {
   } elsif (ref($n) ne 'Math::BigInt') {
     croak "Parameter '$n' outside of integer range" if !defined $bigint::VERSION;
     $_[0] = Math::BigInt->new("$n"); # Make $n a proper bigint object
+    $_[0]->upgrade(undef) if $_[0]->upgrade();  # Stop BigFloat upgrade
   } else {
     $_[0]->upgrade(undef) if $_[0]->upgrade();  # Stop BigFloat upgrade
   }
@@ -450,10 +452,10 @@ sub primes {
     my $p1 = primorial(Math::BigInt->new(2052));
     my $p2 = primorial(Math::BigInt->new(6028));
     my $p3 = primorial(Math::BigInt->new($_big_gcd_top));
-    $_big_gcd[0] = int( $p0 / 223092870 );
-    $_big_gcd[1] = int( $p1 / $p0 );
-    $_big_gcd[2] = int( $p2 / $p1 );
-    $_big_gcd[3] = int( $p3 / $p2 );
+    $_big_gcd[0] = $p0->bdiv(223092870)->bfloor->as_int;
+    $_big_gcd[1] = $p1->bdiv($p0)->bfloor->as_int;
+    $_big_gcd[2] = $p2->bdiv($p1)->bfloor->as_int;
+    $_big_gcd[3] = $p3->bdiv($p2)->bfloor->as_int;
   }
 
   # Returns a function that will get a uniform random number between 0 and

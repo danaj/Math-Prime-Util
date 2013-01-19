@@ -65,7 +65,8 @@ sub _is_positive_int {
 sub _validate_positive_integer {
   my($n, $min, $max) = @_;
   croak "Parameter must be defined" if !defined $n;
-  croak "Parameter '$n' must be a positive integer" if $n =~ tr/0123456789//c;
+  croak "Parameter '$n' must be a positive integer"
+        if ref($n) ne 'Math::BigInt' && $n =~ tr/0123456789//c;
   croak "Parameter '$n' must be >= $min" if defined $min && $n < $min;
   croak "Parameter '$n' must be <= $max" if defined $max && $n > $max;
   if ($n <= ~0) {
@@ -74,6 +75,7 @@ sub _validate_positive_integer {
   } elsif (ref($n) ne 'Math::BigInt') {
     croak "Parameter '$n' outside of integer range" if !defined $bigint::VERSION;
     $_[0] = Math::BigInt->new("$n"); # Make $n a proper bigint object
+    $_[0]->upgrade(undef) if $_[0]->upgrade();  # Stop BigFloat upgrade
   } else {
     $_[0]->upgrade(undef) if $_[0]->upgrade();  # Stop BigFloat upgrade
   }
@@ -667,9 +669,13 @@ sub _gcd_ui {
 
 sub _is_perfect_power {
   my $n = shift;
-  my $log2n = _log2($n);
+  return 0 if $n <= 3 || $n != int($n);
+  return 1 if ($n & ($n-1)) == 0;                       # Power of 2
   $n = Math::BigInt->new("$n") unless ref($n) eq 'Math::BigInt';
-  for my $e (@{primes($log2n)}) {
+  # Perl 5.6.2 chokes on this, so do it via as_bin
+  # my $log2n = 0; { my $num = $n; $log2n++ while $num >>= 1; }
+  my $log2n = length($n->as_bin) - 2;
+  for (my $e = 2; $e <= $log2n; $e = next_prime($e)) {
     return 1 if $n->copy()->broot($e)->bpow($e) == $n;
   }
   0;
@@ -1074,12 +1080,24 @@ sub _basic_factor {
   return ($_[0]) if $_[0] < 4;
 
   my @factors;
-  while ( !($_[0] % 2) ) { push @factors, 2;  $_[0] = int($_[0] / 2); }
-  while ( !($_[0] % 3) ) { push @factors, 3;  $_[0] = int($_[0] / 3); }
-  while ( !($_[0] % 5) ) { push @factors, 5;  $_[0] = int($_[0] / 5); }
-
-  # Stop using bignum if we can
-  $_[0] = int($_[0]->bstr) if ref($_[0]) eq 'Math::BigInt' && $_[0] <= ~0;
+  if (ref($_[0]) ne 'Math::BigInt') {
+    while ( !($_[0] % 2) ) { push @factors, 2;  $_[0] = int($_[0] / 2); }
+    while ( !($_[0] % 3) ) { push @factors, 3;  $_[0] = int($_[0] / 3); }
+    while ( !($_[0] % 5) ) { push @factors, 5;  $_[0] = int($_[0] / 5); }
+  } else {
+    if (Math::BigInt::bgcd($_[0], 2*3*5) != 1) {
+      while ( $_[0]->is_even)   { push @factors, 2;  $_[0]->brsft(1); }
+      foreach my $div (3, 5) {
+        my ($q, $r) = $_[0]->copy->bdiv($div);
+        while ($r->is_zero) {
+          push @factors, $div;
+          $_[0] = $q;
+          ($q, $r) = $_[0]->copy->bdiv($div);
+        }
+      }
+    }
+    $_[0] = int($_[0]->bstr) if $_[0] <= ~0;
+  }
 
   if ( ($_[0] > 1) && _is_prime7($_[0]) ) {
     push @factors, $_[0];
