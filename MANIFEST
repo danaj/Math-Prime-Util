@@ -46,6 +46,7 @@ examples/test-primes-yafu.pl
 examples/test-holf.pl
 examples/test-nthapprox.pl
 examples/test-pcapprox.pl
+examples/test-primality-small.pl
 examples/sophie_germain.pl
 examples/twin_primes.pl
 examples/find_mr_bases.pl

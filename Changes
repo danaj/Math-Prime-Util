@@ -2,7 +2,7 @@ Revision history for Perl extension Math::Prime::Util.
 
 0.19  ?? January 2012
 
-    - Update MR bases.
+    - Update MR bases with newest from http://miller-rabin.appspot.com/.
 
     - Fixed some issues when using bignum and Calc BigInt backend, and bignum
       and Perl 5.6.
