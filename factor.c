@@ -208,31 +208,31 @@ int _XS_is_prob_prime(UV n)
   }
 #else
 #if 1
-  /* Better bases from http://miller-rabin.appspot.com/, 23 Jan 2013 */
+  /* Better bases from http://miller-rabin.appspot.com/, 30 Jan 2013 */
   if (n < UVCONST(272161)) {
     bases[0] = UVCONST(62769592775616394);
     nbases = 1;
   } else if (n < UVCONST(466758181)) {
-    bases[0] = UVCONST( 91869414    );
+    bases[0] = UVCONST( 91869414   );
     bases[1] = UVCONST( 6346128598129234 );
     nbases = 2;
-  } else if (n < UVCONST(105936894253)) {
+  } else if (n < UVCONST(109134866497)) {
     bases[0] = 2;
-    bases[1] = UVCONST( 1005905886 );
-    bases[2] = UVCONST( 1340600841 );
+    bases[1] = UVCONST( 45650740   );
+    bases[2] = UVCONST( 3722628058 );
     nbases = 3;
-  } else if (n < UVCONST(31858317218647)) {
+  } else if (n < UVCONST(47636622961201)) {
     bases[0] = 2;
-    bases[1] = UVCONST( 642735     );
-    bases[2] = UVCONST( 553174392  );
-    bases[3] = UVCONST( 3046413974 );
+    bases[1] = UVCONST( 2570940    );
+    bases[2] = UVCONST( 211991001  );
+    bases[3] = UVCONST( 3749873356 );
     nbases = 4;
-  } else if (n < UVCONST(3071837692357849)) {
+  } else if (n < UVCONST(3770579582154547)) {
     bases[0] = 2;
-    bases[1] = UVCONST( 75088      );
-    bases[2] = UVCONST( 642735     );
-    bases[3] = UVCONST( 203659041  );
-    bases[4] = UVCONST( 3613982119 );
+    bases[1] = UVCONST( 2570940    );
+    bases[2] = UVCONST( 880937     );
+    bases[3] = UVCONST( 610386380  );
+    bases[4] = UVCONST( 4130785767 );
     nbases = 5;
   } else {
     bases[0] = 2;
