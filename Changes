@@ -1,6 +1,6 @@
 Revision history for Perl extension Math::Prime::Util.
 
-0.19  ?? January 2012
+0.19  ?? February 2012
 
     - Update MR bases with newest from http://miller-rabin.appspot.com/.
 
@@ -10,6 +10,8 @@ Revision history for Perl extension Math::Prime::Util.
     - Added tests for bigint is_provable_prime.
 
     - Added a few tests to give better coverage.
+
+    - Adjust some validation tests to cut down on overhead.
 
 0.18  14 January 2012
 

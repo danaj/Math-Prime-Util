@@ -879,7 +879,10 @@ sub is_strong_lucas_pseudoprime {
   # It's now time to perform the Lucas pseudoprimality test using $D.
 
   if (ref($n) ne 'Math::BigInt') {
-    require Math::BigInt;
+    if (!defined $MATH::BigInt::VERSION) {
+      eval { require Math::BigInt;  Math::BigInt->import(try=>'GMP,Pari'); 1; }
+      or do { croak "Cannot load Math::BigInt "; }
+    }
     $n = Math::BigInt->new("$n");
   }
 
