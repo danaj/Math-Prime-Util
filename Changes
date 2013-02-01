@@ -1,6 +1,6 @@
 Revision history for Perl extension Math::Prime::Util.
 
-0.19  ?? February 2012
+0.19  1 February 2012
 
     - Update MR bases with newest from http://miller-rabin.appspot.com/.
 
@@ -11,7 +11,7 @@ Revision history for Perl extension Math::Prime::Util.
 
     - Added a few tests to give better coverage.
 
-    - Adjust some validation tests to cut down on overhead.
+    - Adjust some validation subroutines to cut down on overhead.
 
 0.18  14 January 2012
 

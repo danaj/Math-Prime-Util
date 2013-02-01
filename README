@@ -1,4 +1,4 @@
-Math::Prime::Util version 0.18
+Math::Prime::Util version 0.19
 
 A set of utilities related to prime numbers.  These include multiple sieving
 methods, is_prime, prime_count, nth_prime, approximations and bounds for
