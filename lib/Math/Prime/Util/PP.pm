@@ -852,16 +852,15 @@ sub is_strong_lucas_pseudoprime {
 
   # Check for perfect square
   if (ref($n) eq 'Math::BigInt') {
-    my $mcheck = int(($n & 127)->bstr);
-    if (($mcheck*0x8bc40d7d) & ($mcheck*0xa1e2f5d1) & 0x14020a) {
-      # ~82% of non-squares were rejected by the bloom filter
+    my $mc = int(($n & 31)->bstr);
+    if ($mc==0||$mc==1||$mc==4||$mc==9||$mc==16||$mc==17||$mc==25) {
       my $sq = $n->copy->bsqrt->bfloor;
       $sq->bmul($sq);
       return 0 if $sq == $n;
     }
   } else {
-    my $mcheck = $n & 127;
-    if (($mcheck*0x8bc40d7d) & ($mcheck*0xa1e2f5d1) & 0x14020a) {
+    my $mc = $n & 31;
+    if ($mc==0||$mc==1||$mc==4||$mc==9||$mc==16||$mc==17||$mc==25) {
       my $sq = int(sqrt($n));
       return 0 if ($sq*$sq) == $n;
     }
@@ -1412,9 +1411,8 @@ sub holf_factor {
       $s->binc if ($s * $s) != $ni;
       my $m = $s->copy->bmul($s)->bmod($n);
       # Check for perfect square
-      my $mcheck = int(($m & 127)->bstr);
-      next if (($mcheck*0x8bc40d7d) & ($mcheck*0xa1e2f5d1) & 0x14020a);
-      # ... 82% of non-squares were rejected by the bloom filter
+      my $mc = int(($m & 31)->bstr);
+      next unless $mc==0||$mc==1||$mc==4||$mc==9||$mc==16||$mc==17||$mc==25;
       my $f = $m->copy->bsqrt->bfloor->as_int;
       next unless ($f*$f) == $m;
       $f = Math::BigInt::bgcd( ($s > $f) ? $s-$f : $f-$s,  $n);
@@ -1432,9 +1430,8 @@ sub holf_factor {
       $s++ if ($s * $s) != ($n * $i);
       my $m = ($s < $_half_word) ? ($s*$s) % $n : _mulmod($s, $s, $n);
       # Check for perfect square
-      my $mcheck = $m & 127;
-      next if (($mcheck*0x8bc40d7d) & ($mcheck*0xa1e2f5d1) & 0x14020a);
-      # ... 82% of non-squares were rejected by the bloom filter
+      my $mc = $m & 31;
+      next unless $mc==0||$mc==1||$mc==4||$mc==9||$mc==16||$mc==17||$mc==25;
       my $f = int(sqrt($m));
       next unless $f*$f == $m;
       $f = _gcd_ui( ($s > $f)  ?  $s - $f  :  $f - $s,  $n);

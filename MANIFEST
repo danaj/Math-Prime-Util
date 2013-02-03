@@ -41,6 +41,7 @@ examples/bench-pp-isprime.pl
 examples/bench-pp-sieve.pl
 examples/bench-mp-nextprime.pl
 examples/bench-mp-psrp.pl
+examples/bench-mp-prime_count.pl
 examples/test-factor-yafu.pl
 examples/test-factor-mpxs.pl
 examples/test-nextprime-yafu.pl
