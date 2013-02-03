@@ -5,7 +5,7 @@ use Carp qw/carp croak confess/;
 
 BEGIN {
   $Math::Prime::Util::PP::AUTHORITY = 'cpan:DANAJ';
-  $Math::Prime::Util::PP::VERSION = '0.14';
+  $Math::Prime::Util::PP::VERSION = '0.20';
 }
 
 # The Pure Perl versions of all the Math::Prime::Util routines.

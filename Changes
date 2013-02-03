@@ -1,11 +1,12 @@
 Revision history for Perl extension Math::Prime::Util.
 
-0.20  2 February 2012
+0.20  3 February 2012
 
-    - Little speedup for PP AKS, and turn off test on 32-bit machines.
+    - Speedup for PP AKS, and turn off test on 32-bit machines.
 
     - Replaced fast sqrt detection in PP.pm with a slightly slower version.
-      The bloom filter doesn't work right in 32-bit Perl.
+      The bloom filter doesn't work right in 32-bit Perl.  These two changes
+      should speed up testing on some machines by a huge amount.
 
     - Fix is_perfect_power in XS AKS.
 
