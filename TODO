@@ -47,3 +47,5 @@
 
 - Perfect power from Dietzfelbinger algorithm 2.3.5 works a bit better.
   Newton's method would be even better.
+
+- Add PE 35 Circular primes and PE 291 Panatoipal primes to bin/primes.pl

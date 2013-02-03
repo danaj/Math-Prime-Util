@@ -1,5 +1,9 @@
 Revision history for Perl extension Math::Prime::Util.
 
+0.20  2 February 2012
+
+    - Little speedup for PP AKS, and turn off test on 32-bit machines.
+
 0.19  1 February 2012
 
     - Update MR bases with newest from http://miller-rabin.appspot.com/.

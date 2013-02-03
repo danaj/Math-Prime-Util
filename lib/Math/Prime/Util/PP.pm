@@ -985,13 +985,20 @@ sub _poly_mod_mul {
   for (my $ix = 0; $ix <= $px_degree; $ix++) {
     my $px_at_ix = $px->[$ix];
     next unless $px_at_ix;
-    foreach my $iy (@indices_y) {
-      my $py_at_iy = $py->[$iy];
-      my $rindex = ($ix + $iy) % $r;  # reduce mod X^r-1
-      if (!defined $res[$rindex]) {
-        $res[$rindex] = $_poly_bignum ? Math::BigInt->bzero : 0
+    if ($_poly_bignum) {
+      foreach my $iy (@indices_y) {
+        my $py_px = $py->[$iy] * $px_at_ix;
+        my $rindex = ($ix + $iy) % $r;  # reduce mod X^r-1
+        $res[$rindex] = Math::BigInt->bzero unless defined $res[$rindex];
+        $res[$rindex]->badd($py_px)->bmod($n);
       }
-      $res[$rindex] = ($res[$rindex] + ($py_at_iy * $px_at_ix)) % $n;
+    } else {
+      foreach my $iy (@indices_y) {
+        my $py_px = $py->[$iy] * $px_at_ix;
+        my $rindex = ($ix + $iy) % $r;  # reduce mod X^r-1
+       $res[$rindex] = 0 unless defined $res[$rindex];
+        $res[$rindex] = ($res[$rindex] + $py_px) % $n;
+      }
     }
   }
   # In case we had upper terms go to zero after modulo, reduce the degree.
@@ -1024,17 +1031,15 @@ sub _test_anr {
 sub is_aks_prime {
   my $n = shift;
 
-  if (ref($n) ne 'Math::BigInt') {
-    if (!defined $MATH::BigInt::VERSION) {
-      eval { require Math::BigInt;  Math::BigInt->import(try=>'GMP,Pari'); 1; }
-      or do { croak "Cannot load Math::BigInt "; }
-    }
-    if (!defined $MATH::BigFloat::VERSION) {
-      eval { require Math::BigFloat;   Math::BigFloat->import(); 1; }
-      or do { croak "Cannot load Math::BigFloat "; }
-    }
-    $n = Math::BigInt->new("$n");
+  if (!defined $MATH::BigInt::VERSION) {
+    eval { require Math::BigInt;  Math::BigInt->import(try=>'GMP,Pari'); 1; }
+    or do { croak "Cannot load Math::BigInt "; }
   }
+  if (!defined $MATH::BigFloat::VERSION) {
+    eval { require Math::BigFloat;   Math::BigFloat->import(); 1; }
+    or do { croak "Cannot load Math::BigFloat "; }
+  }
+  $n = Math::BigInt->new("$n") unless ref($n) eq 'Math::BigInt';
 
   return 0 if $n < 2;
   return 0 if _is_perfect_power($n);

@@ -33,12 +33,16 @@ WriteMakefile1(
                       'Math::BigFloat'   => '1.59',
                     },
     META_MERGE   => {
-                      recommends => {
-                        'Math::Prime::Util::GMP' => 0.06,
-                        'Math::BigInt::GMP'      => 0,
-                        'Math::MPFR'             => 2.03,
-                      },
-                    },
+               resources => {
+                  homepage   => 'https://github.com/danaj/Math-Prime-Util',
+                  repository => 'https://github.com/danaj/Math-Prime-Util',
+               },
+               recommends => {
+                 'Math::Prime::Util::GMP' => 0.06,
+                 'Math::BigInt::GMP'      => 0,
+                 'Math::MPFR'             => 2.03,
+               },
+             },
 
     MIN_PERL_VERSION => 5.006002,
 );

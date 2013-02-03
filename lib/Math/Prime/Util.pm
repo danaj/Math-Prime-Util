@@ -1979,26 +1979,32 @@ If you are using bigints, here are some performance suggestions:
 
 =over 4
 
-=item Install L<Math::Prime::Util::GMP>, as that will vastly increase the
-      speed of many of the functions.  This does require the
-      L<GMP|gttp://gmplib.org> library be installed on your system, but this
-      increasingly comes pre-installed or easily available using the OS vendor
-      package installation tool.
+=item *
 
-=item Install and use L<Math::BigInt::GMP> or L<Math::BigInt::Pari>, then use
-      C<use bigint try =E<gt> 'GMP,Pari'> in your script, or on the command
-      line C<-Mbigint=lib,GMP>.  Large modular exponentiation is much faster
-      using the GMP or Pari backends, as are the math and approximation
-      functions when called with very large inputs.
+Install L<Math::Prime::Util::GMP>, as that will vastly increase the speed
+of many of the functions.  This does require the L<GMP|gttp://gmplib.org>
+library be installed on your system, but this increasingly comes
+pre-installed or easily available using the OS vendor package installation tool.
 
-=item Install L<Math::MPFR> if you use the Ei, li, Zeta, or R functions.  If
-      that module can be loaded, these functions will run much faster on
-      bignum inputs, and are able to provide higher accuracy.
+=item *
 
-=item Having run these functions on many versions of Perl, if you're using
-      anything older than Perl 5.14, I would recommend you upgrade if you
-      are using bignums a lot.  There are some brittle behaviors on
-      5.12.4 and earlier with bignums.
+Install and use L<Math::BigInt::GMP> or L<Math::BigInt::Pari>, then use
+C<use bigint try =E<gt> 'GMP,Pari'> in your script, or on the command line
+C<-Mbigint=lib,GMP>.  Large modular exponentiation is much faster using the
+GMP or Pari backends, as are the math and approximation functions when
+called with very large inputs.
+
+=item *
+
+Install L<Math::MPFR> if you use the Ei, li, Zeta, or R functions.  If that
+module can be loaded, these functions will run much faster on bignum inputs,
+and are able to provide higher accuracy.
+
+=item *
+
+Having run these functions on many versions of Perl, if you're using anything
+older than Perl 5.14, I would recommend you upgrade if you are using bignums
+a lot.  There are some brittle behaviors on 5.12.4 and earlier with bignums.
 
 =back
 
@@ -2915,12 +2921,64 @@ Print some primes above 64-bit range:
     # perl -MMath::Pari=:int,PARI,nextprime -E 'my $start = PARI "100000000000000000000"; my $end = $start+1000; my $p=nextprime($start); while ($p <= $end) { say $p; $p = nextprime($p+1); }'
 
 
-Project Euler, problem 10.  Solution in under 50 milliseconds:
+Project Euler, problem 3 (Largest prime factor):
+
+  use Math::Prime::Util qw/factor/;
+  use bigint;  # Only necessary for 32-bit machines.
+  say "", (factor(600851475143))[-1]
+
+Project Euler, problem 7 (10001st prime):
+
+  use Math::Prime::Util qw/nth_prime/;
+  say nth_prime(10_001);
+
+Project Euler, problem 10 (summation of primes):
 
   use Math::Prime::Util qw/primes/;
   my $sum = 0;
   $sum += $_ for @{primes(2_000_000)};
   say $sum;
+
+Project Euler, problem 21 (Amicable numbers):
+
+  use Math::Prime::Util qw/divisor_sum/;
+  sub dsum { my $n = shift; divisor_sum($n, sub {$_[0]}) - $n; }
+  my $sum = 0;
+  foreach my $a (1..10000) { 
+    my $b = dsum($a);
+    $sum += $a + $b if $b > $a && dsum($b) == $a;
+  }
+  say $sum;
+
+Project Euler, problem 41 (Pandigital prime), brute force command line:
+
+  perl -MMath::Prime::Util=:all -E 'my @p = grep { /1/&&/2/&&/3/&&/4/&&/5/&&/6/&&/7/} @{primes(1000000,9999999)}; say $p[-1];
+
+Project Euler, problem 47 (Distinct primes factors):
+
+  use Math::Prime::Util qw/factor/;
+  use List::MoreUtils qw/distinct/;
+  sub nfactors { scalar distinct factor(shift); }
+  my $n = pn_primorial(4);  # Start with the first 4-factor number
+  $n++ while (nfactors($n) != 4 || nfactors($n+1) != 4 || nfactors($n+2) != 4 || nfactors($n+3) != 4);
+  say $n;
+
+Project Euler, problem 69, stupid brute force solution (about 5 seconds):
+
+  use Math::Prime::Util qw/euler_phi/;
+  my ($n, $max) = (0,0);
+  do {
+    my $ndivphi = $_/euler_phi($_);
+    ($n, $max) = ($_, $ndivphi) if $ndivphi > $max;
+  } for 1..1000000;
+  say "$n  $max";
+
+Here's the right way to do PE problem 69 (under 0.03s):
+
+  use Math::Prime::Util qw/pn_primorial/;
+  my $n = 0;
+  $n++ while pn_primorial($n+1) < 1000000;
+  say pn_primorial($n);'
 
 
 =head1 LIMITATIONS
@@ -2977,14 +3035,15 @@ Perl modules, counting the primes to C<800_000_000> (800 million):
   ---------  --------------------------  -------  -----------
        0.03  Math::Prime::Util           0.12     using Lehmer's method
        0.28  Math::Prime::Util           0.17     segmented mod-30 sieve
-       0.52  Math::Prime::Util::PP       0.14     Perl (Lehmer's method)
+       0.47  Math::Prime::Util::PP       0.14     Perl (Lehmer's method)
        0.9   Math::Prime::Util           0.01     mod-30 sieve
        2.9   Math::Prime::FastSieve      0.12     decent odd-number sieve
       11.7   Math::Prime::XS             0.29     "" but needs a count API
       15.0   Bit::Vector                 7.2
-      57.3   Math::Prime::Util::PP       0.14     Perl (fastest I know of)
+      48.9   Math::Prime::Util::PP       0.14     Perl (fastest I know of)
      170.0   Faster Perl sieve (net)     2012-01  array of odds
      548.1   RosettaCode sieve (net)     2012-06  simplistic Perl
+    3048.1   Math::Primality             0.08     Perl + Math::GMPz
   ~11000     Math::Primality             0.04     Perl + Math::GMPz
   >20000     Math::Big                   1.12     Perl, > 26GB RAM used
 
@@ -3017,38 +3076,46 @@ The differences are in the implementations:
 
 =over 4
 
-=item L<Math::Prime::Util> looks in the sieve for a fast bit lookup if that
-     exists (default up to 30,000 but it can be expanded, e.g.
-     C<prime_precalc>), uses trial division for numbers higher than this but
-     not too large (0.1M on 64-bit machines, 100M on 32-bit machines), a
-     deterministic set of Miller-Rabin tests for 64-bit and smaller numbers,
-     and a BPSW test for bigints.
+=item L<Math::Prime::Util>
 
-=item L<Math::Prime::XS> does trial divisions, which is wonderful if the input
-     has a small factor (or is small itself).  But if given a large prime it
-     can take orders of magnitude longer.  It does not support bigints.
+looks in the sieve for a fast bit lookup if that exists (default up to 30,000
+but it can be expanded, e.g.  C<prime_precalc>), uses trial division for
+numbers higher than this but not too large (0.1M on 64-bit machines,
+100M on 32-bit machines), a deterministic set of Miller-Rabin tests for
+64-bit and smaller numbers, and a BPSW test for bigints.
 
-=item L<Math::Prime::FastSieve> only works in a sieved range, which is really
-     fast if you can do it (M::P::U will do the same if you call
-     C<prime_precalc>).  Larger inputs just need too much time and memory
-     for the sieve.
+=item L<Math::Prime::XS>
 
-=item L<Math::Primality> uses GMP for all work.  Under ~32-bits it uses 2 or 3
-     MR tests, while above 4759123141 it performs a BPSW test.  This is is
-     fantastic for bigints over 2^64, but it is significantly slower than
-     native precision tests.  With 64-bit numbers it is generally an order of
-     magnitude or more slower than any of the others.  Once bigints are being
-     used, its performance is quite good.  It is faster than this module unless
-     L<Math::Prime::Util::GMP> has been installed, in which case this module
-     is just a little bit faster.
+does trial divisions, which is wonderful if the input has a small factor
+(or is small itself).  But if given a large prime it can take orders of
+magnitude longer.  It does not support bigints.
 
-=item L<Math::Pari> has some very effective code, but it has some overhead to
-     get to it from Perl.  That means for small numbers it is relatively slow:
-     an order of magnitude slower than M::P::XS and M::P::Util (though arguably
-     this is only important for benchmarking since "slow" is ~2 microseconds).
-     Large numbers transition over to smarter tests so don't slow down much.
-     The C<ispseudoprime(n,0)> function will perform the BPSW test and is
-     fast even for large inputs.
+=item L<Math::Prime::FastSieve>
+
+only works in a sieved range, which is really fast if you can do it
+(M::P::U will do the same if you call C<prime_precalc>).  Larger inputs
+just need too much time and memory for the sieve.
+
+=item L<Math::Primality>
+
+uses GMP for all work.  Under ~32-bits it uses 2 or 3 MR tests, while
+above 4759123141 it performs a BPSW test.  This is is fantastic for
+bigints over 2^64, but it is significantly slower than native precision
+tests.  With 64-bit numbers it is generally an order of magnitude or more
+slower than any of the others.  Once bigints are being used, its
+performance is quite good.  It is faster than this module unless
+L<Math::Prime::Util::GMP> has been installed, in which case this module
+is just a little bit faster.
+
+=item L<Math::Pari>
+
+has some very effective code, but it has some overhead to get to it from
+Perl.  That means for small numbers it is relatively slow: an order of
+magnitude slower than M::P::XS and M::P::Util (though arguably this is
+only important for benchmarking since "slow" is ~2 microseconds).  Large
+numbers transition over to smarter tests so don't slow down much.  The
+C<ispseudoprime(n,0)> function will perform the BPSW test and is fast
+even for large inputs.
 
 =back
 
@@ -3116,29 +3183,53 @@ excellent versions in the public domain).
 
 =over 4
 
-=item Pierre Dusart, "Estimates of Some Functions Over Primes without R.H.", preprint, 2010.  L<http://arxiv.org/abs/1002.0442/>
+=item *
 
-=item Pierre Dusart, "Autour de la fonction qui compte le nombre de nombres premiers", PhD thesis, 1998.  In French, but the mathematics is readable and highly recommended reading if you're interesting in prime number bounds.  L<http://www.unilim.fr/laco/theses/1998/T1998_01.html>
+Pierre Dusart, "Estimates of Some Functions Over Primes without R.H.", preprint, 2010.  L<http://arxiv.org/abs/1002.0442/>
 
-=item Gabriel Mincu, "An Asymptotic Expansion", Journal of Inequalities in Pure and Applied Mathematics, v4, n2, 2003.  A very readable account of Cipolla's 1902 nth prime approximation.  L<http://www.emis.de/journals/JIPAM/images/153_02_JIPAM/153_02.pdf>
+=item *
 
-=item David M. Smith, "Multiple-Precision Exponential Integral and Related Functions".
+Pierre Dusart, "Autour de la fonction qui compte le nombre de nombres premiers", PhD thesis, 1998.  In French, but the mathematics is readable and highly recommended reading if you're interesting in prime number bounds.  L<http://www.unilim.fr/laco/theses/1998/T1998_01.html>
 
-=item Vincent Pegoraro and Philipp Slusallek, "On the Evaluation of the Complex-Valued Exponential Integral".
+=item *
 
-=item William H. Press et al., "Numerical Recipes", 3rd edition.
+Gabriel Mincu, "An Asymptotic Expansion", Journal of Inequalities in Pure and Applied Mathematics, v4, n2, 2003.  A very readable account of Cipolla's 1902 nth prime approximation.  L<http://www.emis.de/journals/JIPAM/images/153_02_JIPAM/153_02.pdf>
 
-=item W. J. Cody and Henry C. Thacher, Jr., "Rational Chevyshev Approximations for the Exponential Integral E_1(x)".
+=item *
 
-=item W. J. Cody, K. E. Hillstrom, and Henry C. Thacher Jr., "Chebyshev Approximations for the Riemann Zeta Function", Mathematics of Computation, v25, n115, pp 537-547, July 1971.
+David M. Smith, "Multiple-Precision Exponential Integral and Related Functions".
 
-=item Ueli M. Maurer, "Fast Generation of Prime Numbers and Secure Public-Key Cryptographic Parameters", 1995.  L<http://citeseerx.ist.psu.edu/viewdoc/summary?doi=10.1.1.26.2151>
+=item *
 
-=item Pierre-Alain Fouque and Mehdi Tibouchi, "Close to Uniform Prime Number Generation With Fewer Random Bits", 2011.  L<http://eprint.iacr.org/2011/481>
+Vincent Pegoraro and Philipp Slusallek, "On the Evaluation of the Complex-Valued Exponential Integral".
 
-=item Douglas A. Stoll and Patrick Demichel , "The impact of ζ(s) complex zeros on π(x) for x E<lt> 10^{10^{13}}", Mathematics of Computation, v80, n276, pp 2381-2394, October 2011.  L<http://www.ams.org/journals/mcom/2011-80-276/S0025-5718-2011-02477-4/home.html>
+=item *
 
-=item L<OEIS: Primorial|http://oeis.org/wiki/Primorial>.
+William H. Press et al., "Numerical Recipes", 3rd edition.
+
+=item *
+
+W. J. Cody and Henry C. Thacher, Jr., "Rational Chevyshev Approximations for the Exponential Integral E_1(x)".
+
+=item *
+
+W. J. Cody, K. E. Hillstrom, and Henry C. Thacher Jr., "Chebyshev Approximations for the Riemann Zeta Function", Mathematics of Computation, v25, n115, pp 537-547, July 1971.
+
+=item *
+
+Ueli M. Maurer, "Fast Generation of Prime Numbers and Secure Public-Key Cryptographic Parameters", 1995.  L<http://citeseerx.ist.psu.edu/viewdoc/summary?doi=10.1.1.26.2151>
+
+=item *
+
+Pierre-Alain Fouque and Mehdi Tibouchi, "Close to Uniform Prime Number Generation With Fewer Random Bits", 2011.  L<http://eprint.iacr.org/2011/481>
+
+=item *
+
+Douglas A. Stoll and Patrick Demichel , "The impact of ζ(s) complex zeros on π(x) for x E<lt> 10^{10^{13}}", Mathematics of Computation, v80, n276, pp 2381-2394, October 2011.  L<http://www.ams.org/journals/mcom/2011-80-276/S0025-5718-2011-02477-4/home.html>
+
+=item *
+
+L<OEIS: Primorial|http://oeis.org/wiki/Primorial>.
 
 =back
 
