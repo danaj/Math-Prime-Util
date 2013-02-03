@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
+#include <float.h>
 
 /*
  * The AKS v6 algorithm, for native integers.  Based on the AKS v6 paper.
@@ -37,16 +38,49 @@ static UV log2floor(UV n) {
   return log2n;
 }
 
-/* See Bach and Sorenson (1993) for much better algorithm */
-/* This isn't generally going to work for numbers > 2**53 */
-static int is_perfect_power(UV x) {
+/* Bach and Sorenson (1993) would be better */
+static int is_perfect_power(UV n) {
   UV b, last;
-  if ((x & (x-1)) == 0)  return 1;          /* powers of 2    */
-  b = sqrt(x)+0.5; if (b*b == x)  return 1; /* perfect square */
-  last = log2floor(x) + 1;
-  for (b = 3; b < last; b = _XS_next_prime(b)) {
-    UV root = pow(x, 1.0 / (double)b) + 0.5;
-    if ( ((UV)(pow(root, b)+0.5)) == x)  return 1;
+  if ((n <= 3) || (n == UV_MAX)) return 0;
+  if ((n & (n-1)) == 0)  return 1;          /* powers of 2    */
+  last = log2floor(n-1) + 1;
+#if (BITS_PER_WORD == 32) || (DBL_DIG > 19)
+  if (1) {
+#elif DBL_DIG == 10
+  if (n < UVCONST(10000000000)) {
+#elif DBL_DIG == 15
+  if (n < UVCONST(1000000000000000)) {
+#else
+  if ( n < (UV) pow(10, DBL_DIG) ) {
+#endif
+    /* Simple floating point method.  Fast, but need enough mantissa. */
+    b = sqrt(n)+0.5; if (b*b == n)  return 1; /* perfect square */
+    for (b = 3; b < last; b = _XS_next_prime(b)) {
+      UV root = pow(n, 1.0 / (double)b) + 0.5;
+      if ( ((UV)(pow(root, b)+0.5)) == n)  return 1;
+    }
+  } else {
+    /* Dietzfelbinger, algorithm 2.3.5 (without optimized exponential) */
+    for (b = 2; b <= last; b++) {
+      UV a = 1;
+      UV c = n;
+      while (c >= HALF_WORD) c = (1+c)>>1;
+      while ((c-a) >= 2) {
+        UV m, maxm, p, i;
+        m = (a+c) >> 1;
+        maxm = UV_MAX / m;
+        p = m;
+        for (i = 2; i <= b; i++) {
+          if (p > maxm) { p = n+1; break; }
+          p *= m;
+        }
+        if (p == n)  return 1;
+        if (p < n)
+          a = m;
+        else
+          c = m;
+      }
+    }
   }
   return 0;
 }
