@@ -2956,7 +2956,7 @@ Project Euler, problem 41 (Pandigital prime), brute force command line:
 
 Project Euler, problem 47 (Distinct primes factors):
 
-  use Math::Prime::Util qw/factor/;
+  use Math::Prime::Util qw/pn_primorial factor/;
   use List::MoreUtils qw/distinct/;
   sub nfactors { scalar distinct factor(shift); }
   my $n = pn_primorial(4);  # Start with the first 4-factor number
@@ -2968,7 +2968,7 @@ Project Euler, problem 69, stupid brute force solution (about 5 seconds):
   use Math::Prime::Util qw/euler_phi/;
   my ($n, $max) = (0,0);
   do {
-    my $ndivphi = $_/euler_phi($_);
+    my $ndivphi = $_ / euler_phi($_);
     ($n, $max) = ($_, $ndivphi) if $ndivphi > $max;
   } for 1..1000000;
   say "$n  $max";
