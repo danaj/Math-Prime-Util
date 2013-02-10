@@ -44,5 +44,3 @@
   tinymt32, seed it using the system rand (multiple calls, just use 8-bits
   each), then use it to get 32-bit irands.  This would only be used if they
   didn't give us a RNG (so they don't care about strict crypto).
-
-- Add PE 291 Panatoipal primes to bin/primes.pl

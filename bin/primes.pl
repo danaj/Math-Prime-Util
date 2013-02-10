@@ -92,6 +92,7 @@ GetOptions(\%opts,
            'pnm1|A006794',
            'euclid|A018239',
            'circular|A068652',
+           'panaitopol|A027862',
            'provable',
            'nompugmp',   # turn off MPU::GMP for debugging
            'version',
@@ -157,6 +158,9 @@ if ($start > $end) {
     }
     if (exists $opts{'palindromic'}) {
       $segment_size = 10**length($start) - $start - 1; # all n-digit numbers
+    }
+    if (exists $opts{'panaitopol'}) {
+      $segment_size = (~0 == 4294967295) ? 2147483648 : int(10**12);
     }
 
     my $seg_start = $start;
@@ -277,6 +281,25 @@ sub cuban_primes {
   @cprimes;
 }
 
+sub panaitopol_primes {
+  my ($start, $end) = @_;
+
+  my @init;
+  push @init,  5 if $start <=  5 && $end >=  5;
+  push @init, 13 if $start <= 13 && $end >= 13;
+  return @init if $end < 41;
+  my $nbeg = ($start <= 41)  ?  4  :  int( sqrt( ($start-1)/2) );
+  my $nend = int( sqrt(($end-1)/2) );
+  $nbeg++ while (2*$nbeg*($nbeg+1)+1) < $start;
+  $nend-- while (2*$nend*($nend+1)+1) > $end;
+  # TODO: BigInts
+  return @init,
+         grep { is_prime($_) }
+         grep { ($_%5) && ($_%13) && ($_%17) && ($_%29) && ($_%37) }
+         map { 2*$_*($_+1)+1 }
+         $nbeg .. $nend;
+}
+
 sub lucky_primes {
   my ($start, $end) = @_;
   # First do a (very basic) lucky number sieve to generate A000959.
@@ -333,26 +356,23 @@ sub ndig_palindromes {
 }
 
 # See: http://en.wikipedia.org/wiki/Pillai_prime
-# This is quite slow.
 sub is_pillai {
   my $p = shift;
-  return 0 if $p < 2;
-  # Simpler but much slower:
-  #   foreach my $n (grep { ($p % $_) != 1 } (2 .. $p-1)) {
-  #     return 1 if Math::BigInt->new($n)->bfac()->bmod($p) == ($p-1);
-  #   }
-  # About 20% faster but sucks memory:
-  #   foreach my $n (grep { ($p % $_) != 1 } (2 .. $p-1)) {
-  #     $fac_c[$n] = Math::BigInt->new($n)->bfac() if !defined $fac_c[$n];
-  #     return 1 if ($fac_c[$n] % $p) == ($p-1);
-  #   }
-  # Once p gets large (say 20,000+), then calculating and storing n! is
-  # unreasonable, and the code below will be much faster.
-  my $n_factorial_mod_p = Math::BigInt->bone();
-  for (my $n = 2; $n < $p; $n++) {
-    $n_factorial_mod_p->bmul($n)->bmod($p);
-    next if $p % $n == 1;
-    return 1 if $n_factorial_mod_p == ($p-1);
+  return 0 if $p <= 2;
+  my $half_word = (~0 == 4294967295) ? 65535 : 4294967295;
+  if ($p <= $half_word) {
+    my $nfac = 1;
+    for (my $n = 2; $n < $p; $n++) {
+      $nfac = ($nfac * $n) % $p;
+      return 1 if $nfac == $p-1 && ($p % $n) != 1;
+    }
+  } else {
+    # Must use bigints.  Very slow.
+    my $n_factorial_mod_p = Math::BigInt->bone();
+    for (my $n = Math::BigInt->new(2); $n < $p; $n++) {
+      $n_factorial_mod_p->bmul($n)->bmod($p);
+      return 1 if $n_factorial_mod_p == ($p-1) && ($p % $n) != 1;
+    }
   }
   0;
 }
@@ -422,6 +442,9 @@ sub gen_and_filter {
   }
   if (exists $opts{'cuban2'}) {
     merge_primes(\$gen, $p, 'cuban2', cuban_primes($start, $end, 2));
+  }
+  if (exists $opts{'panaitopol'}) {
+    merge_primes(\$gen, $p, 'panaitopol', panaitopol_primes($start, $end));
   }
   if (exists $opts{'palindromic'}) {
     if (!defined $gen) {
@@ -527,6 +550,7 @@ sub find_mod210_restriction {
     sexy       => {min=> 7, mod=>[11,13,17,23,31,37,41,47,53,61,67,73,83,97,101,103,107,121,131,137,143,151,157,163,167,173,181,187,191,193]},
     safe       => {min=>11, mod=>[17,23,47,53,59,83,89,107,137,143,149,167,173,179,209]},
     sophie     => {min=> 5, mod=>[11,23,29,41,53,71,83,89,113,131,149,173,179,191,209]},
+    panaitopol => {min=> 5, mod=>[1,11,13,41,43,53,61,71,83,103,113,131,151,173,181,193]},
     # Nothing for good, pillai, palindromic, fib, lucas, mersenne, primorials
   );
 
@@ -596,6 +620,7 @@ to only those primes additionally meeting these conditions:
   --pnm1       Primorial-1      p#-1 is prime
   --euclid     Euclid           pn#+1 is prime
   --circular   Circular         all digit rotations of p are prime
+  --panaitopol Panaitopol       p = (x^4-y^4)/(x^3+y^3) for some x,y
   --provable                    Ensure all primes are provably prime
 
 Note that options can be combined, e.g. display only safe twin primes.
