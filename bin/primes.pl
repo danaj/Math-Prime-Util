@@ -91,6 +91,7 @@ GetOptions(\%opts,
            'pnp1|A005234',
            'pnm1|A006794',
            'euclid|A018239',
+           'circular|A068652',
            'provable',
            'nompugmp',   # turn off MPU::GMP for debugging
            'version',
@@ -370,6 +371,18 @@ sub is_good_prime {
   1;
 }
 
+# Assumes the input is prime.  Returns 1 if all digit rotations are prime.
+sub is_circular_prime {
+  my $p = shift;
+  return 1 if $p < 10;
+  return 0 if $p =~ tr/024568//;
+  # TODO: BigInts
+  foreach my $rot (1 .. length($p)-1) {
+    return 0 unless is_prime( substr($p, $rot) . substr($p, 0, $rot) );
+  }
+  1;
+}
+
 sub merge_primes {
   my ($genref, $pref, $name, @primes) = @_;
   if (!defined $$genref) {
@@ -485,6 +498,9 @@ sub gen_and_filter {
   if (exists $opts{'pnp1'}) {
     @$p = grep { is_prime( primorial(Math::BigInt->new($_))+1 ) } @$p;
   }
+  if (exists $opts{'circular'}) {
+    @$p = grep { is_circular_prime($_) } @$p;
+  }
   if (exists $opts{'pillai'}) {
     @$p = grep { is_pillai($_); } @$p;
   }
@@ -579,6 +595,7 @@ to only those primes additionally meeting these conditions:
   --pnp1       Primorial+1      p#+1 is prime
   --pnm1       Primorial-1      p#-1 is prime
   --euclid     Euclid           pn#+1 is prime
+  --circular   Circular         all digit rotations of p are prime
   --provable                    Ensure all primes are provably prime
 
 Note that options can be combined, e.g. display only safe twin primes.
