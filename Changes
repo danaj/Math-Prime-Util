@@ -2,9 +2,7 @@ Revision history for Perl extension Math::Prime::Util.
 
 0.21  ? February 2012
 
-    - primes.pl changes:
-      - add circular and Panaitopol primes
-      - big Pillai primes speedup by not using bigints if not necessary
+    - primes.pl: Add circular and Panaitopol primes, speedup Pillai primes.
 
 0.20  3 February 2012
 

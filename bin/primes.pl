@@ -332,7 +332,8 @@ sub lucky_primes {
     } while ($index <= $#lucky);
   }
   # Then restrict to primes to get A031157.
-  grep { $_ >= $start && is_prime($_) } @lucky;
+  shift @lucky while $lucky[0] < $start;
+  grep { is_prime($_) } @lucky;
 }
 
 # This is not a general palindromic digit function!

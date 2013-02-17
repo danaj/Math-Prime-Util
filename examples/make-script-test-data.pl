@@ -3,7 +3,7 @@ use strict;
 use warnings;
 use File::Spec::Functions;
 use FindBin;
-use bigint;
+use bigint try => 'GMP';
 use Data::BitStream::XS;
 use Math::Prime::Util qw/is_prime/;
 $|++;

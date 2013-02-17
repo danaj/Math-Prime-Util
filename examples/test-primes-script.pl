@@ -4,7 +4,7 @@ use warnings;
 use File::Spec::Functions;
 use FindBin;
 use Time::HiRes qw(gettimeofday tv_interval);
-use bigint;
+use bigint try => 'GMP';
 use Data::BitStream::XS;
 $|++; #flush the output buffer after every write() or print() function
 

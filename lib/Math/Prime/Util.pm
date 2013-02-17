@@ -578,8 +578,7 @@ sub primes {
 
     # If the range is reasonably small, generate using simple Monte Carlo
     # method (aka the 'trivial' method).  Completely uniform.
-    if ($oddrange < ~0) {
-      $oddrange = int($oddrange->bstr) if ref($oddrange) eq 'Math::BigInt';
+    if ($oddrange < $_Config{'maxparam'}) {
       my $loop_limit = 2000 * 1000;  # To protect against broken rand
       if ($low > 11) {
         while ($loop_limit-- > 0) {
@@ -2944,7 +2943,7 @@ Project Euler, problem 21 (Amicable numbers):
   use Math::Prime::Util qw/divisor_sum/;
   sub dsum { my $n = shift; divisor_sum($n, sub {$_[0]}) - $n; }
   my $sum = 0;
-  foreach my $a (1..10000) { 
+  foreach my $a (1..10000) {
     my $b = dsum($a);
     $sum += $a + $b if $b > $a && dsum($b) == $a;
   }
