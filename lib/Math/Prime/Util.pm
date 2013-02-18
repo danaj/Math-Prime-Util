@@ -5,7 +5,7 @@ use Carp qw/croak confess carp/;
 
 BEGIN {
   $Math::Prime::Util::AUTHORITY = 'cpan:DANAJ';
-  $Math::Prime::Util::VERSION = '0.20';
+  $Math::Prime::Util::VERSION = '0.21';
 }
 
 # parent is cleaner, and in the Perl 5.10.1 / 5.12.0 core, but not earlier.
@@ -1805,7 +1805,7 @@ Math::Prime::Util - Utilities related to prime numbers, including fast sieves an
 
 =head1 VERSION
 
-Version 0.20
+Version 0.21
 
 
 =head1 SYNOPSIS
@@ -2082,7 +2082,7 @@ and C<13,16> return 1, and C<14,16> returns 0).
 
 The current implementation decides based on the ranges whether to use a
 segmented sieve with a fast bit count, or Lehmer's algorithm.  The former
-is prefered for small sizes as well as small ranges.  The latter is much
+is preferred for small sizes as well as small ranges.  The latter is much
 faster for large ranges.
 
 The segmented sieve is very memory efficient and is quite fast even with
@@ -2836,7 +2836,7 @@ This is often known as C<li(x)>.  A related function is the offset logarithmic
 integral, sometimes known as C<Li(x)> which avoids the singularity at 1.  It
 may be defined as C<Li(x) = li(x) - li(2)>.  Crandall and Pomerance use the
 term C<li0> for this function, and define C<li(x) = Li0(x) - li0(2)>.  Due to
-this terminilogy confusion, it is important to check which exact definition is
+this terminology confusion, it is important to check which exact definition is
 being used.
 
 If the bignum module has been loaded, all inputs will be treated as if they
@@ -3065,7 +3065,7 @@ C<is_prime>: my impressions for various sized inputs:
    (1) trial division only.  Very fast if every factor is tiny.
    (2) Too much memory to hold the sieve (11dig = 6GB, 12dig = ~50GB)
    (3) If L<Math::Prime::Util::GMP> is installed, then all three of the
-       BigInt capable modules run at reasonble similar speeds, capable of
+       BigInt capable modules run at reasonably similar speeds, capable of
        performing the BPSW test on a 3000 digit input in ~ 1 second.  Without
        that module all computations are done in Perl, so this module using
        GMP bigints runs 2-3x slower, using Pari bigints about 10x slower,
@@ -3172,10 +3172,12 @@ used in my wheel sieve.
 Tomás Oliveira e Silva has released the source for a very fast segmented sieve.
 The current implementation does not use these ideas.  Future versions might.
 
-The SQUFOF implementation being used is my modifications to Ben Buhrow's
-modifications to Bob Silverman's code.  I may experiment with some other
-implementations (Ben Buhrows and Jason Papadopoulos both have published
-excellent versions in the public domain).
+The SQUFOF implementation being used is a slight modification to the public
+domain racing version written by Ben Buhrow.  Enhancements with ideas from
+Ben's later code as well as Jason Papadopoulos's public domain implementations
+are planned for a later version.  The old SQUFOF implementation, still included
+in the code, is my modifications to Ben Buhrow's modifications to Bob
+Silverman's code.
 
 
 =head1 REFERENCES
