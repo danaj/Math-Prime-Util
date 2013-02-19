@@ -67,7 +67,7 @@ my %sigmak = (
 plan tests => 0 + 1
                 + 1 # Small Moebius
                 + scalar(keys %mertens)
-                + 1 # Small Phi
+                + 2 # Small Phi
                 + scalar(keys %totients)
                 + scalar(keys %jordan_totients)
                 + 2  # Dedekind psi calculated two ways
@@ -91,6 +91,10 @@ while (my($n, $mertens) = each (%mertens)) {
 {
   my @phi = map { euler_phi($_) } (0 .. $#A000010);
   is_deeply( \@phi, \@A000010, "euler_phi 0 .. $#A000010" );
+}
+{
+  my @phi = euler_phi(0, $#A000010);
+  is_deeply( \@phi, \@A000010, "euler_phi with range: 0, $#A000010" );
 }
 while (my($n, $phi) = each (%totients)) {
   is( euler_phi($n), $phi, "euler_phi($n) == $phi" );

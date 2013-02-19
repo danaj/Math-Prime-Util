@@ -461,3 +461,42 @@ _XS_RiemannZeta(double x)
 
 double
 _XS_RiemannR(double x)
+
+
+SV*
+_XS_totient_range(IN UV lo, IN UV hi)
+  PREINIT:
+    UV* totients;
+    AV* av = newAV();
+    UV i, j;
+  CODE:
+    /* Calculate Euler's totient for all n: lo <= n <= hi. */
+    /* Return as array ref */
+    New(0, totients, hi+1, UV);
+    if (totients == 0)
+      croak("Could not get memory for %"UVuf" totients\n", hi);
+    for (i = 0; i <= hi; i++)
+      totients[i] = i;
+    if (lo <= 0 && hi >= 0) av_push(av,newSVuv(totients[0]));
+    if (lo <= 1 && hi >= 1) av_push(av,newSVuv(totients[1]));
+    if (lo <= 2 && hi >= 2) {
+      totients[2] = 1;
+      av_push(av,newSVuv(totients[2]));
+    }
+    for (j = 2; j <= hi/2; j++)
+      totients[2*j] /= 2;
+    for (i = 3; i <= hi; i++) {
+      if (totients[i] == i) {
+        totients[i] = i-1;
+        for (j = 2; j <= hi/i; j++) {
+          totients[i*j] = (totients[i*j]*(i-1))/i;
+        }
+      }
+      if (i >= lo)
+        av_push(av,newSVuv(totients[i]));
+    }
+    Safefree(totients);
+    RETVAL = newRV_noinc( (SV*) av );
+  OUTPUT:
+    RETVAL
+

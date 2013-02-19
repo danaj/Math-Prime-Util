@@ -1038,26 +1038,28 @@ sub pn_primorial {
 
 sub all_factors {
   my $n = shift;
+  my $use_bigint = defined $bigint::VERSION
+             || !($n < $_Config{'maxparam'} || int($n) eq $_Config{'maxparam'});
   my @factors = factor($n);
   my %all_factors;
-  foreach my $f1 (@factors) {
-    next if $f1 >= $n;
-    # We're adding to %all_factors in the loop, so grab the keys now.
-    my @all = keys %all_factors;;
-    if (!defined $bigint::VERSION) {
-      foreach my $f2 (@all) {
-        $all_factors{$f1*$f2} = 1 if ($f1*$f2) < $n;
-      }
-    } else {
-      # Many of the factors will be numified after coming back, so we need
-      # to make sure we're using bigints when we calculate the product.
-      foreach my $f2 (@all) {
-        my $product = Math::BigInt->new("$f1") * Math::BigInt->new("$f2");
-        $product = int($product->bstr) if $product <= ~0;
-        $all_factors{$product} = 1 if $product < $n;
-      }
+  if ($use_bigint) {
+    foreach my $f1 (@factors) {
+      next if $f1 >= $n;
+      my $big_f1 = Math::BigInt->new("$f1");
+      my @to_add = map { ($_ <= ~0) ? int($_->bstr) : $_ }
+                   grep { $_ < $n }
+                   map { $big_f1 * $_ }
+                   keys %all_factors;
+      undef @all_factors{ $f1, @to_add };
     }
-    $all_factors{$f1} = 1;
+  } else {
+    foreach my $f1 (@factors) {
+      next if $f1 >= $n;
+      my @to_add = grep { $_ < $n }
+                   map { int($f1 * $_) }
+                   keys %all_factors;
+      undef @all_factors{ $f1, @to_add };
+    }
   }
   @factors = sort {$a<=>$b} keys %all_factors;
   return @factors;
@@ -1090,12 +1092,35 @@ sub moebius {
 # Euler Phi, aka Euler Totient.  A000010
 
 sub euler_phi {
-  my($n) = @_;
+  my($n, $nend) = @_;
   # SAGE defines this to be 0 for all n <= 0.  Others choose differently.
-  return 0 if defined $n && $n <= 0;  # Following SAGE's logic here.
+  # I am following SAGE's decision for n <= 0.
+  return 0 if defined $n && $n < 0;
   _validate_positive_integer($n);
-  return 1 if $n <= 1;
+  undef $nend if defined $nend && $nend == $n;
 
+  # Totient over a range.  Could be improved, as this can use huge memory.
+  if (defined $nend) {
+    _validate_positive_integer($nend);
+    return () if $nend < $n;
+    # Use XS code if at all possible.  Better memory use.
+    if ($nend <= $_XS_MAXVAL) {
+      my $totients = _XS_totient_range($n, $nend);
+      return @$totients;
+    }
+    my @totients = map { $_ } 0 .. $nend;
+    foreach my $i (2 .. $nend) {
+      next unless $totients[$i] == $i;
+      $totients[$i] = $i-1;
+      foreach my $j (2 .. int($nend / $i)) {
+        $totients[$i*$j] = ($totients[$i*$j]*($i-1))/$i;
+      }
+    }
+    splice(@totients, 0, $n) if $n > 0;
+    return @totients;
+  }
+
+  return (0,1)[$n] if $n <= 1;
   my %factor_mult;
   my @factors = grep { !$factor_mult{$_}++ }
                 ($n <= $_XS_MAXVAL) ? _XS_factor($n) : factor($n);
@@ -1153,8 +1178,9 @@ sub jordan_totient {
       $totient *= $fmult for (2 .. $factor_mult{$factor});
     }
   } else {
+    my $zero = $n->copy->bzero;
     foreach my $factor (@factors) {
-      my $fmult = $n->copy->bzero->badd("$factor")->bpow($k);
+      my $fmult = $zero->copy->badd("$factor")->bpow($k);
       $totient->bmul($fmult->copy->bsub(1));
       $totient->bmul($fmult) for (2 .. $factor_mult{$factor});
     }
@@ -1165,15 +1191,23 @@ sub jordan_totient {
 # Mathematica and Pari both have functions like this.
 sub divisor_sum {
   my($n, $sub) = @_;
-  croak "Second argument must be a code ref" unless ref($sub) eq 'CODE';
   return 0 if defined $n && $n < 1;
   _validate_positive_integer($n);
-  return ($n-$n+$sub->(1)) if $n == 1;
 
-  my @afactors = all_factors($n);
+  if (!defined $sub) {
+    return $n if $n == 1;
+    my $sum = 1 + $n;
+    foreach my $f ( all_factors($n) ) {
+      $sum += $f;
+    }
+    return $sum;
+  }
 
-  my $sum = $n - $n;  # zero as an object of type $n.
-  foreach my $f (1, all_factors($n), $n) {
+  croak "Second argument must be a code ref" unless ref($sub) eq 'CODE';
+  my $sum = $n - $n;
+  return ($sum+$sub->(1)) if $n == 1;
+
+  foreach my $f (1, all_factors($n), $n ) {
     $sum += $sub->($f);
   }
   return $sum;
@@ -1880,7 +1914,8 @@ Version 0.21
   $sum += moebius($_) for (1..200); say "Mertens(200) = $sum";
 
   # divisor sum
-  $sigma = divisor_sum( $n, sub { $_[0] } );
+  $sigma  = divisor_sum( $n );
+  $sigma2 = divisor_sum( $n, sub { $_[0]*$_[0] } );
 
   # The primorial n# (product of all primes <= n)
   say "15# (2*3*5*7*11*13) is ", primorial(15);
@@ -2320,6 +2355,10 @@ C<n>.  Given the definition used, C<euler_phi> will return 0 for all
 C<n E<lt> 1>.  This follows the logic used by SAGE.  Mathematic/WolframAlpha
 also returns 0 for input 0, but returns C<euler_phi(-n)> for C<n E<lt> 0>.
 
+If called with two arguments, they define a range C<low> to C<high>, and the
+function returns an array with the totient of every n from low to high,
+inclusive.  Large values of high will result in a lot of memory use.
+
 
 =head2 jordan_totient
 
@@ -2336,24 +2375,38 @@ the Dedikind psi function, where C<psi(n) = J(2,n) / J(1,n)>.
 
 =head2 divisor_sum
 
-  say "Sum of divisors of $n:", divisor_sum( $n, sub { $_[0] } );
+  say "Sum of divisors of $n:", divisor_sum( $n );
 
-This function takes a positive integer as input, along with a code reference.
-For each positive divisor of the input, including 1 and itself, the coderef
-is called with the divisor as the only argument, and the return values summed.
-There are a number of utilities this can be used for, though it may not be the
-most efficient way to calculate them.  Example:
+This function takes a positive integer as input and returns the sum of all
+the divisors of the input, including 1 and itself.  This is known as the
+sigma function (see Hardy and Wright section 16.7, or OEIS A000203).
 
-  divisor_sum( $n, sub { my $d=shift; $d**5 * moebius($n/$d); } );
+The more general form takes a code reference as a second parameter, which
+is applied to each divisor before the summation.  This allows computation
+of numerous functions such as OEIS A000005 [d(n), sigma_0(n), tau(n)]:
 
-calculates the 5th Jordan totient (OEIS 59378).  In this example we have a
-specific function C<jordan_totient> that can compute this more efficiently.
+  divisor_sum( $n, sub { 1 } );
+
+OEIS A001157 [sigma_2(n)]:
+
+  divisor_sum( $n, sub { $_[0]*$_[0] } )
+
+the general sigma_k (OEIS A00005, A000203, A001157, A001158, etc.):
 
   divisor_sum( $n, sub { $_[0] ** $k } );
 
-calculates sigma_k (OEIS A000005, A000203, A001157, A001158 for k=0..3).  The
-simple sigma shown as the first example can be used to find aliquot sums,
-abundant numbers, perfect numbers, and more.
+the 5th Jordan totient (OEIS A059378):
+
+  divisor_sum( $n, sub { my $d=shift; $d**5 * moebius($n/$d); } );
+
+though in the last case we have a function L</"jordan_totient"> to compute
+it more efficiently.
+
+This function is useful for calculating things like aliquot sums, abundant
+numbers, perfect numbers, etc.
+
+The summation is done as a bigint if the input was a bigint object.  You may
+need to ensure the result of the subroutine does not overflow a native int.
 
 
 =head2 primorial
@@ -2941,7 +2994,7 @@ Project Euler, problem 10 (summation of primes):
 Project Euler, problem 21 (Amicable numbers):
 
   use Math::Prime::Util qw/divisor_sum/;
-  sub dsum { my $n = shift; divisor_sum($n, sub {$_[0]}) - $n; }
+  sub dsum { my $n = shift; divisor_sum($n) - $n; }
   my $sum = 0;
   foreach my $a (1..10000) {
     my $b = dsum($a);
@@ -2978,6 +3031,23 @@ Here's the right way to do PE problem 69 (under 0.03s):
   my $n = 0;
   $n++ while pn_primorial($n+1) < 1000000;
   say pn_primorial($n);'
+
+Project Euler, problem 187, stupid brute force solution:
+
+  use Math::Prime::Util qw/factor -nobigint/;
+  my $nsemis = 0;
+  do { my @f = factor($_); $nsemis++ if scalar @f == 2; }
+     for 1 .. int(10**8)-1;
+  say $nsemis;
+
+Here's the best way for PE187.  Under 30 milliseconds from the command line:
+
+  use Math::Prime::Util qw/primes prime_count -nobigint/;
+  use List::Util qw/sum/;
+  my $limit = shift || int(10**8);
+  my @primes = @{primes(int(sqrt($limit)))};
+  say sum( map { prime_count(int(($limit-1)/$primes[$_-1])) - $_ + 1 }
+               1 .. scalar @primes );
 
 
 =head1 LIMITATIONS
