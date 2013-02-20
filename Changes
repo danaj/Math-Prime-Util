@@ -10,6 +10,8 @@ Revision history for Perl extension Math::Prime::Util.
 
     - Speedup of divisor sum.  Also default to sigma if no sub given.
 
+    - Switch to using Bytes::Random::Secure.
+
 0.20  3 February 2012
 
     - Speedup for PP AKS, and turn off test on 32-bit machines.

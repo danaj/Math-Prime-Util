@@ -986,16 +986,15 @@ sub _poly_mod_mul {
     next unless $px_at_ix;
     if ($_poly_bignum) {
       foreach my $iy (@indices_y) {
-        my $py_px = $py->[$iy] * $px_at_ix;
         my $rindex = ($ix + $iy) % $r;  # reduce mod X^r-1
         $res[$rindex] = Math::BigInt->bzero unless defined $res[$rindex];
-        $res[$rindex]->badd($py_px)->bmod($n);
+        $res[$rindex]->badd($px_at_ix->copy->bmul($py->[$iy]))->bmod($n);
       }
     } else {
       foreach my $iy (@indices_y) {
-        my $py_px = $py->[$iy] * $px_at_ix;
         my $rindex = ($ix + $iy) % $r;  # reduce mod X^r-1
-       $res[$rindex] = 0 unless defined $res[$rindex];
+        $res[$rindex] = 0 unless defined $res[$rindex];
+        my $py_px = $px_at_ix * $py->[$iy];
         $res[$rindex] = ($res[$rindex] + $py_px) % $n;
       }
     }
@@ -2197,7 +2196,7 @@ for BigInt/BigFloat inputs will be equal to the C<accuracy()> value of the
 input (or the default BigFloat accuracy, which is 40 by default).
 
 MPFR is used for positive inputs only.  If Math::MPFR is not installed or the
-input is negative, then other methods are used: 
+input is negative, then other methods are used:
 continued fractions (C<x E<lt> -1>),
 rational Chebyshev approximation (C< -1 E<lt> x E<lt> 0>),
 a convergent series (small positive C<x>),

@@ -2,6 +2,7 @@ package Math::Prime::Util;
 use strict;
 use warnings;
 use Carp qw/croak confess carp/;
+use Bytes::Random::Secure;
 
 BEGIN {
   $Math::Prime::Util::AUTHORITY = 'cpan:DANAJ';
@@ -470,42 +471,30 @@ sub primes {
     $_big_gcd[3] = $p3->bdiv($p2)->bfloor->as_int;
   }
 
-  # Returns a function that will get a uniform random number between 0 and
-  # $max inclusive.
+  # Returns a function that will get a uniform random number
+  # between 0 and $max inclusive.  $max can be a bigint.
+  my $_BRS;
   sub _get_rand_func {
-    # We first make a function irandf that returns a 32-bit integer.  This
-    # will be a number uniformly in the range [0, 2^32-1].  This corresponds
-    # to the irand function of many CPAN modules:
+    # First define a function $irandf that returns a 32-bit integer.  This
+    # corresponds to the irand function of many CPAN modules:
     #    Math::Random::MT
     #    Math::Random::ISAAC
     #    Math::Random::Xorshift
     #    Math::Random::Secure
-    # but not:
-    #    Math::Random::MT::Auto (it will return 64-bits)
+    # (but not Math::Random::MT::Auto which will return 64-bits)
     #
-    # We try in order:
-    #   1) the function they gave us via prime_set_config(irand=> \&irand )
-    #   2) main::rand(), exportable by many modules
-    #   3) CORE::rand().  Hopefully one call will work, otherwise use many.
+    # See if they passed one in via prime_set_config(irand=> \&irand).
+    # If not, make a Bytes::Random::Secure object with non-blocking seed, and
+    # use its irand method.
+    #
+    # This gives us a good starting point to make arbitrary size random
+    # numbers.  Bytes::Random::Secure will get us excellent quality 32-bit
+    # numbers on any platform, which means we can avoid possible nightmares
+    # with bad system rand functions.
     my $irandf = $_Config{'irand'};
-    if (!defined $irandf && defined &::rand) {
-      # They have not given us an irand function, but they have their own rand.
-      $irandf = sub { int(4294967296.0 * ::rand()) };
-    }
     if (!defined $irandf) {
-      if ($_Config{'system_randbits'} >= 32) {
-        $irandf = sub { int(4294967296.0 * CORE::rand()) };
-      } else {
-        my $randbits = $_Config{'system_randbits'};
-        $irandf = sub {
-          my $rwords = int((32+$randbits-1)/$randbits);
-          my $U = 0;
-          $U = ($U << $randbits) + int((1 << $randbits) * CORE::rand())
-             for 1 .. $rwords;
-          $U &= 0xFFFFFFFF;
-          return $U;
-        };
-      }
+      $_BRS = Bytes::Random::Secure->new(NonBlocking=>1) unless defined $_BRS;
+      $irandf = sub { return $_BRS->irand(); };
     }
     # OK, now we have a function irandf.  Use it.
     my $randf = sub {
@@ -514,7 +503,7 @@ sub primes {
       my $range = $max+1;
       my $U;
       if (ref($range) eq 'Math::BigInt') {
-        my $zero = $range - $range;
+        my $zero = $range->copy->bzero;
         my $rbits = length($range->as_bin) - 2;   # bits in range
         my $rwords = int($rbits/32) + (($rbits % 32) ? 1 : 0);
         # Generate more bits so we rarely have to loop.
@@ -768,7 +757,7 @@ sub primes {
     _validate_positive_integer($digits, 1);
 
     my $bigdigits = $digits >= $_Config{'maxdigits'};
-
+    croak "Large random primes not supported on old Perl" if $] < 5.008 && $_Config{'maxbits'} > 32 && !$bigdigits && $digits > 15;
     if ($bigdigits && $_Config{'nobigint'}) {
       _validate_positive_integer($digits, 1, $_Config{'maxdigits'});
       # Special case for nobigint and threshold digits
@@ -807,7 +796,8 @@ sub primes {
     _validate_positive_integer($bits, 2);
 
     if (!defined $_random_nbit_ranges[$bits]) {
-      my $bigbits = $bits > $_Config{'maxbits'}; # || ($] < 5.8 && $bits > 49);
+      my $bigbits = $bits > $_Config{'maxbits'};
+      croak "Large random primes not supported on old Perl" if $] < 5.008 && $_Config{'maxbits'} > 32 && !$bigbits && $bits > 49;
       if ($bigbits) {
         if (!defined $Math::BigInt::VERSION) {
           eval { require Math::BigInt; Math::BigInt->import(try=>'GMP,Pari'); 1; }
@@ -835,12 +825,15 @@ sub primes {
   sub random_maurer_prime {
     my($k) = @_;
     _validate_positive_integer($k, 2);
+    if ($] < 5.008 && $_Config{'maxbits'} > 32) {
+      return random_nbit_prime($k) if $k <= 49;
+      croak "Random Maurer not supported on old Perl";
+    }
 
     # Results for random_nbit_prime are proven for all native bit sizes.  We
     # could go even higher if we used is_provable_prime or looked for is_prime
     # returning 2.  This should be reasonably fast to ~128 bits with MPU::GMP.
     my $p0 = $_Config{'maxbits'};
-    $p0 = 32 if $] < 5.8 && $p0 > 32;
 
     return random_nbit_prime($k) if $k <= $p0;
 
@@ -962,6 +955,7 @@ sub primes {
   sub random_strong_prime {
     my($t) = @_;
     _validate_positive_integer($t, 128);
+    croak "Random strong primes must be >= 173 bits on old Perl" if $] < 5.008 && $_Config{'maxbits'} > 32 && $t < 173;
 
     if (!defined $Math::BigInt::VERSION) {
       eval { require Math::BigInt; Math::BigInt->import(try=>'GMP,Pari'); 1; }

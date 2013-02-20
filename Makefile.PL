@@ -31,6 +31,7 @@ WriteMakefile1(
                       'Config'           => 0,
                       'Math::BigInt'     => '1.88',
                       'Math::BigFloat'   => '1.59',
+                      'Bytes::Random::Secure' => '0.23',
                     },
     META_MERGE   => {
                resources => {
