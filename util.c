@@ -630,6 +630,73 @@ UV _XS_nth_prime(UV n)
   return ( (segbase*30) + p );
 }
 
+/* Return an IV array with lo-hi+1 elements.  mu[k-lo] = µ(k) for k = lo .. hi.
+ * It is the callers responsibility to call Safefree on the result. */
+IV* _moebius_range(UV lo, UV hi)
+{
+#if 0
+  IV* mu;
+  UV i, j;
+
+  /* This implementation follows that used by Oliveira e Silva (2006). */
+  New(0, mu, hi+1, IV);
+  if (mu == 0)
+    croak("Could not get memory for %"UVuf" moebius results\n", hi);
+  mu[0] = 0;
+  for (i = 1; i <= hi; i++)
+    mu[i] = 1;
+  for (j = 2; j <= hi; j++)
+    if (mu[j] == 1)
+      for (i = j; i <= hi; i += j)
+        mu[i] = (mu[i] == 1) ? -j : -mu[i];
+  for (j = 2; j*j <= hi; j++)
+    if (mu[j] == -j)
+      for (i = j*j; i <= hi; i += j*j)
+        mu[i] = 0;
+  for (i = lo; i <= hi; i++)
+    mu[i] = (mu[i]>0) - (mu[i]<0);
+  return mu;
+#endif
+  IV* mu;
+  UV i, p, sqrtn, range;
+
+  /* This implementation follows that of Deléglise & Rivat (1996), which is
+   * a segmented version of Lioen & van de Lune (1994).
+   */
+  range = hi-lo+1;
+  sqrtn = (UV) (sqrt(hi) + 0.5);
+
+  New(0, mu, range, IV);
+  if (mu == 0)
+    croak("Could not get memory for %"UVuf" moebius results\n", range);
+  for (i = lo; i <= hi; i++)
+    mu[i-lo] = 1;
+  if (lo == 0)  mu[0] = 0;
+  prime_precalc(sqrtn);
+  for (p = 2; p <= sqrtn; p = _XS_next_prime(p)) {
+    i = p*p;
+    if (i < lo)
+      i = i*(lo/i) + ( (lo%i) ? i : 0 );
+    while (i <= hi) {
+      mu[i-lo] = 0;
+      i += p*p;
+    }
+    i = p;
+    if (i < lo)
+      i = i*(lo/i) + ( (lo%i) ? i : 0 );
+    while (i <= hi) {
+      mu[i-lo] *= -p;
+      i += p;
+    }
+  }
+  for (i = lo; i <= hi; i++) {
+    IV m = mu[i-lo];
+    if (m != i && m != -i)  m *= -1;
+    mu[i-lo] = (m>0) - (m<0);
+  }
+  return mu;
+}
+
 
 
 
