@@ -6,7 +6,9 @@ Revision history for Perl extension Math::Prime::Util.
 
     - Spelling fixes in documentation.
 
-    - Fast return of Euler's totient over a range.
+    - Fast return of Euler's totient and Möbius function over a range.
+
+    - Add mertens function: 500+ times faster than summing moebius($_).
 
     - Speedup of divisor sum.  Also default to sigma if no sub given.
 

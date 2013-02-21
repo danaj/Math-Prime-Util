@@ -27,7 +27,7 @@ our @EXPORT_OK = qw(
                      random_strong_prime random_maurer_prime
                      primorial pn_primorial
                      factor all_factors
-                     moebius euler_phi jordan_totient
+                     moebius mertens euler_phi jordan_totient
                      divisor_sum
                      ExponentialIntegral LogarithmicIntegral RiemannZeta RiemannR
                    );
@@ -1067,10 +1067,34 @@ sub all_factors {
 # Merten's functions also.
 
 sub moebius {
-  my($n) = @_;
+  my($n, $nend) = @_;
   _validate_positive_integer($n, 1);
-  return 1 if $n == 1;
 
+  # Moebius over a range.
+  if (defined $nend) {
+    _validate_positive_integer($nend);
+    return () if $nend < $n;
+    if ($nend <= $_XS_MAXVAL) {
+      my $mu = _XS_moebius_range($n, $nend);
+      return @$mu;
+    }
+    my @mu = map { 1 } 0 .. $nend;
+    foreach my $j (2 .. $nend) {
+      next unless $mu[$j] == 1;
+      for (my $i = $j; $i <= $nend; $i += $j) {
+        $mu[$i] = ($mu[$i] == 1) ? -$j : -$mu[$i];
+      }
+    }
+    for (my $j = 2; $j*$j <= $nend; $j++) {
+      next unless $mu[$j] == -$j;
+      for (my $i = $j*$j; $i <= $nend; $i += $j*$j) {
+        $mu[$i] = 0;
+      }
+    }
+    return map { ($_>0) - ($_<0) } @mu[ $n .. $nend ];
+  }
+
+  return 1 if $n == 1;
   # Quick check for small replicated factors
   return 0 if ($n >= 25) && (!($n % 4) || !($n % 9) || !($n % 25));
 
@@ -1080,6 +1104,22 @@ sub moebius {
     return 0 if $all_factors{$factor}++;
   }
   return (((scalar @factors) % 2) == 0) ? 1 : -1;
+}
+
+sub mertens {
+  my($n) = @_;
+  _validate_positive_integer($n);
+  return (0,1)[$n] if $n <= 1;
+  return _XS_mertens($n) if $n <= $_XS_MAXVAL;
+  # See Benito and Varona 2008, theorem 3
+  my $n3 = int($n/3);
+  my @mu = (0, moebius(1, $n3));
+  my $sum = 0;
+  foreach my $k (1 .. $n3) {
+    next if $mu[$k] == 0;
+    $sum += $mu[$k] * int(($n - $k) / (2*$k));
+  }
+  return -$sum;
 }
 
 
@@ -1906,6 +1946,8 @@ Version 0.21
 
   # Moebius function used to calculate Mertens
   $sum += moebius($_) for (1..200); say "Mertens(200) = $sum";
+  # Mertens function directly (more efficient for large values)
+  say mertens(10_000_000);
 
   # divisor sum
   $sigma  = divisor_sum( $n );
@@ -2337,6 +2379,30 @@ C<n = 1>, 0 if C<n> is not square free (i.e. C<n> has a repeated factor),
 and C<-1^t> if C<n> is a product of C<t> distinct primes.  This is an
 important function in prime number theory.
 
+If called with two arguments, they define a range C<low> to C<high>, and the
+function returns an array with the value of the Möbius function for every n
+from low to high inclusive.  Large values of high will result in a lot of
+memory use.  The algorithm used is Deléglise and Rivat (1996) algorithm 4.1,
+which is a segmented version of Lioen and van de Lune (1994) algorithm 3.2.
+
+
+=head2 mertens
+
+  say "Mertens(10M) = ", mertens(10_000_000);   # = 1037
+
+Returns the Mertens function of the positive non-zero integer input.  This
+function is defined as C<sum(moebius(1..n))>.  This is a much more efficient
+solution for larger inputs.  For example, computing Mertens(100M) takes:
+
+   time    approx mem
+     0.4s      8MB     mertens(100_000_000)
+    74.8s   7000MB     List::Util::sum(moebius(1,100_000_000))
+   325.7s      0MB     $sum += moebius($_) for 1..100_000_000
+
+The algorithm used is a segmented version of the C<n/3> summation from Benito
+and Varona (2008) theorem 3.  A future version may implement an even more
+efficient calculation, such as the algorithm of Deléglise and Rivat (1996).
+
 
 =head2 euler_phi
 
@@ -2350,7 +2416,7 @@ C<n E<lt> 1>.  This follows the logic used by SAGE.  Mathematic/WolframAlpha
 also returns 0 for input 0, but returns C<euler_phi(-n)> for C<n E<lt> 0>.
 
 If called with two arguments, they define a range C<low> to C<high>, and the
-function returns an array with the totient of every n from low to high,
+function returns an array with the totient of every n from low to high
 inclusive.  Large values of high will result in a lot of memory use.
 
 

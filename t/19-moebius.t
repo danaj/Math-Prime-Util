@@ -3,7 +3,7 @@ use strict;
 use warnings;
 
 use Test::More;
-use Math::Prime::Util qw/moebius euler_phi jordan_totient divisor_sum/;
+use Math::Prime::Util qw/moebius mertens euler_phi jordan_totient divisor_sum/;
 
 my $use64 = Math::Prime::Util::prime_get_config->{'maxbits'} > 32;
 my $broken64 = (18446744073709550592 == ~0);
@@ -66,7 +66,7 @@ my %sigmak = (
 
 plan tests => 0 + 1
                 + 1 # Small Moebius
-                + scalar(keys %mertens)
+                + 3*scalar(keys %mertens) + 3
                 + 2 # Small Phi
                 + scalar(keys %totients)
                 + scalar(keys %jordan_totients)
@@ -85,8 +85,17 @@ ok(!eval { moebius(0); }, "moebius(0)");
 while (my($n, $mertens) = each (%mertens)) {
   my $M = 0;
   $M += moebius($_) for (1 .. $n);
-  is( $M, $mertens, "Mertens($n) == $mertens" );
+  is( $M, $mertens, "sum(moebius(k) for k=1..$n) == $mertens" );
+  # Calculate using ranged moebius
+  $M = 0;
+  $M += $_ for moebius(1,$n);
+  is( $M, $mertens, "sum(moebius(1..$n) == $mertens" );
+  # Now with mertens function
+  is( mertens($n), $mertens, "mertens($n) == $mertens" );
 }
+is( mertens(  100000),  -48, "mertens(100000)" );
+is( mertens( 1000000),  212, "mertens(1000000)" );
+is( mertens(10000000), 1037, "mertens(10000000)" );
 
 {
   my @phi = map { euler_phi($_) } (0 .. $#A000010);

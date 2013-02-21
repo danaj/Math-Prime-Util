@@ -500,3 +500,47 @@ _XS_totient_range(IN UV lo, IN UV hi)
   OUTPUT:
     RETVAL
 
+SV*
+_XS_moebius_range(IN UV lo, IN UV hi)
+  PREINIT:
+    IV* mu;
+    AV* av = newAV();
+    UV i;
+  CODE:
+    /* Return array ref of Moebius function for all n: lo <= n <= hi. */
+    mu = _moebius_range(lo, hi);
+    MPUassert( mu != 0, "_moebius_range returned 0" );
+    for (i = lo; i <= hi; i++)
+      av_push(av,newSViv(mu[i-lo]));
+    Safefree(mu);
+    RETVAL = newRV_noinc( (SV*) av );
+  OUTPUT:
+    RETVAL
+
+IV
+_XS_mertens(IN UV n)
+  PREINIT:
+    IV* mu;
+    IV sum;
+    UV n3, k, startk, endk, limit;
+  CODE:
+    /* Benito and Varona 2008, theorem 3.  Segment. */
+    limit = 1000000;
+    n3 = n/3;
+    sum = 0;
+    startk = 1;
+    endk = limit;
+    prime_precalc( (UV) (sqrt(n)+0.5) );
+    while (startk <= n3) {
+      if (endk > n3) endk = n3;
+      mu = _moebius_range(startk, endk);
+      for (k = startk; k <= endk; k++)
+        if (mu[k-startk] != 0)
+          sum += mu[k-startk] * ((n-k)/(2*k));
+      Safefree(mu);
+      startk = endk+1;
+      endk += limit;
+    }
+    RETVAL = -sum;
+  OUTPUT:
+    RETVAL
