@@ -2,6 +2,8 @@ Revision history for Perl extension Math::Prime::Util.
 
 0.21  ? February 2012
 
+    - Switch to using Bytes::Random::Secure for random primes.
+
     - primes.pl: Add circular and Panaitopol primes, speedup Pillai primes.
 
     - Spelling fixes in documentation.
@@ -11,8 +13,6 @@ Revision history for Perl extension Math::Prime::Util.
     - Add mertens function: 500+ times faster than summing moebius($_).
 
     - Speedup of divisor sum.  Also default to sigma if no sub given.
-
-    - Switch to using Bytes::Random::Secure.
 
 0.20  3 February 2012
 

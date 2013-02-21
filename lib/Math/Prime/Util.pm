@@ -2516,7 +2516,7 @@ bit size.
 Returns a psuedo-randomly selected prime that will be greater than or equal
 to the lower limit and less than or equal to the upper limit.  If no lower
 limit is given, 2 is implied.  Returns undef if no primes exist within the
-range.  The L<rand> function is called one or more times for selection.
+range.
 
 The goal is to return a uniform distribution of the primes in the range,
 meaning for each prime in the range, the chances are equally likely that it
@@ -2534,23 +2534,19 @@ uniformity but results in many fewer bits of randomness being consumed as
 well as being much faster.
 
 If an C<irand> function has been set via L</"prime_set_config">, it will be
-used.  The function should return a uniformly random 32-bit integer, which
-is how the irand functions exported by L<Math::Random::Secure>,
-L<Math::Random::MT>, L<Math::Random::ISAAC> and some other modules behave.
+used to construct any ranged random numbers needed.  The function should
+return a uniformly random 32-bit integer, which is how the irand functions
+exported by L<Math::Random::Secure>, L<Math::Random::MT>,
+L<Math::Random::ISAAC> and most other modules behave.
 
-If no C<irand> function was set, then we check if the sub C<main::rand>
-exists and use it if so.  It will be called with no arguments and should
-return a floating point value in the interval [0,1) with 32 bits of entropy.
-This allows the C<rand> function from most CPAN modules to be used.
-
-Lastly, if no C<irand> function was set and no sub <main::rand> exists, then
-the system rand will be used.  System rand functions are notoriously poor,
-and a later version of this module may implement something like TinyMT to
-cover the default case.
+If no C<irand> function was set, then L<Bytes::Random::Secure> is used with
+a non-blocking seed.  This will create good quality random numbers, so there
+should be little reason to change unless one is generating long-term keys,
+where using the blocking random source may be preferred.
 
 Examples of irand functions:
 
-  # Math::Random::Secure.  Uses ISAAC and strong seed methods.  Recommended.
+  # Math::Random::Secure.  Uses ISAAC and strong seed methods.
   use Math::Random::Secure;
   prime_set_config(irand => \&Math::Random::Secure::irand);
 
@@ -2566,24 +2562,6 @@ Examples of irand functions:
   use Math::Random::MT::Auto;
   prime_set_config(irand=>sub {Math::Random::MT::Auto::irand() & 0xFFFFFFFF});
 
-Examples of main::rand, where this is done in your script:
-
-  use Math::Random::Secure qw/rand/;
-
-  use Bytes::Random::Secure qw/random_bytes/;
-  sub rand { ($_[0]||1) * (unpack("L", random_bytes(4))/4294967296.0)}
-
-  use Math::Random::MT::Auto qw/rand/;
-
-  sub rand { ... do your own cool stuff here ... }
-
-For cryptographically secure primes, you need to use something better than the
-default for both seeding and random number generation.  I would recommend
-using L<Math::Random::Secure> and also installing L<Math::Random::ISAAC::XS>
-if possible.  It is reasonably fast and does everything needed by default.
-For more information, I recommend reading the documentation for
-L<Math::Random::Secure> and L<Bytes::Random::Secure>.
-
 
 =head2 random_ndigit_prime
 
@@ -2593,7 +2571,7 @@ Selects a random n-digit prime, where the input is an integer number of
 digits between 1 and the maximum native type (10 for 32-bit, 20 for 64-bit,
 10000 if bigint is active).  One of the primes within that range
 (e.g. 1000 - 9999 for 4-digits) will be uniformly selected using the
-L<rand> function as described above.
+C<irand> function as described above.
 
 If the number of digits is greater than or equal to the maximum native type,
 then the result will be returned as a BigInt.  However, if the '-nobigint'
@@ -2609,7 +2587,7 @@ Selects a random n-bit prime, where the input is an integer number of bits
 between 2 and the maximum representable bits (32, 64, or 100000 for native
 32-bit, native 64-bit, and bigint respectively).  A prime with the nth bit
 set will be uniformly selected, with randomness supplied via calls to the
-L<rand> function as described above.
+C<irand> function as described above.
 
 Since this uses the random_prime function, all uniformity properties of that
 function apply to this.  The n-bit range is partitioned into nearly equal
@@ -2661,9 +2639,6 @@ Ueli Maurer (1995).  This is the same algorithm used by L<Crypt::Primes>.
 Similar to L</"random_nbit_prime">, the result will be a BigInt if the
 number of bits is greater than the native bit size.
 
-For cryptographic purposes you need to ensure you're using a good RNG that
-is well seeded.  See the notes for L</"random_prime">.
-
 The differences between this function and that in L<Crypt::Primes> include
 
 =over
@@ -2701,9 +2676,10 @@ Crypt::Primes has some useful options for cryptography.
 
 =item *
 
-Crypt::Primes is hardcoded to use L<Crypt::Random>, while M::P::U allows
-plugging in the random function.  This is more flexible but also prone to
-misuse.  You ought to use something like L<Math::Random::Secure>.
+Crypt::Primes is hardcoded to use L<Crypt::Random>, while M::P::U uses
+L<Bytes::Random::Secure>, and also allows plugging in a random function.
+This is more flexible, faster, has fewer dependencies, and uses a CSPRNG
+for security.
 
 =back
 
@@ -2788,8 +2764,7 @@ Allows setting of some parameters.  Currently the only parameters are:
 
   irand           Takes a code ref to an irand function returning a uniform
                   number between 0 and 2**32-1.  This will be used for all
-                  random number generation, and is the preferred way to use
-                  cryptographic RNGs.
+                  random number generation in the module.
 
 
 =head1 FACTORING FUNCTIONS
