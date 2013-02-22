@@ -634,29 +634,6 @@ UV _XS_nth_prime(UV n)
  * It is the callers responsibility to call Safefree on the result. */
 IV* _moebius_range(UV lo, UV hi)
 {
-#if 0
-  IV* mu;
-  UV i, j;
-
-  /* This implementation follows that used by Oliveira e Silva (2006). */
-  New(0, mu, hi+1, IV);
-  if (mu == 0)
-    croak("Could not get memory for %"UVuf" moebius results\n", hi);
-  mu[0] = 0;
-  for (i = 1; i <= hi; i++)
-    mu[i] = 1;
-  for (j = 2; j <= hi; j++)
-    if (mu[j] == 1)
-      for (i = j; i <= hi; i += j)
-        mu[i] = (mu[i] == 1) ? -j : -mu[i];
-  for (j = 2; j*j <= hi; j++)
-    if (mu[j] == -j)
-      for (i = j*j; i <= hi; i += j*j)
-        mu[i] = 0;
-  for (i = lo; i <= hi; i++)
-    mu[i] = (mu[i]>0) - (mu[i]<0);
-  return mu;
-#endif
   IV* mu;
   UV i, p, sqrtn, range;
 
@@ -697,6 +674,63 @@ IV* _moebius_range(UV lo, UV hi)
   return mu;
 }
 
+IV _XS_mertens(UV n) {
+#if 0
+  /* Benito and Varona 2008, theorem 3.  Segment. */
+  IV* mu;
+  UV k;
+  UV limit = 1000000;
+  UV n3 = n/3;
+  IV sum = 0;
+  UV startk = 1;
+  UV endk = limit;
+  prime_precalc( (UV) (sqrt(n)+0.5) );
+  while (startk <= n3) {
+    if (endk > n3) endk = n3;
+    mu = _moebius_range(startk, endk);
+    for (k = startk; k <= endk; k++)
+      if (mu[k-startk] != 0)
+        sum += mu[k-startk] * ((n-k)/(2*k));
+    Safefree(mu);
+    startk = endk+1;
+    endk += limit;
+  }
+  return -sum;
+#else
+  /* Deléglise and Rivat (1996) using u = n^1/2 and unsegmented. */
+  /* Very simple, but they use u = n^1/3 and segment */
+  UV u, i, m, nmk;
+  IV* mu;
+  IV* M;
+  IV sum;
+
+  u = (UV) sqrt(n);
+  mu = _moebius_range(0, u);
+  New(0, M, u+1, IV);
+  M[0] = 0;
+  for (i = 1; i <= u; i++)
+    M[i] = M[i-1] + mu[i];
+  sum = M[u];
+  for (m = 1; m <= u; m++) {
+    if (mu[m] != 0) {
+      IV inner_sum = 0;
+      UV lower = (u/m) + 1;
+      UV last_nmk = n/(m*lower);
+      UV this_k = 0;
+      UV next_k = n/(m*1);
+      for (nmk = 1; nmk <= last_nmk; nmk++) {
+        this_k = next_k;
+        next_k = n/(m*(nmk+1));
+        inner_sum += M[nmk] * (this_k - next_k);
+      }
+      sum -= mu[m] * inner_sum;
+    }
+  }
+  Safefree(M);
+  Safefree(mu);
+  return sum;
+#endif
+}
 
 
 

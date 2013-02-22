@@ -1111,15 +1111,29 @@ sub mertens {
   _validate_positive_integer($n);
   return (0,1)[$n] if $n <= 1;
   return _XS_mertens($n) if $n <= $_XS_MAXVAL;
-  # See Benito and Varona 2008, theorem 3
-  my $n3 = int($n/3);
-  my @mu = (0, moebius(1, $n3));
-  my $sum = 0;
-  foreach my $k (1 .. $n3) {
-    next if $mu[$k] == 0;
-    $sum += $mu[$k] * int(($n - $k) / (2*$k));
+  # This is the most basic Deléglise and Rivat algorithm.  u = n^1/2
+  # and no segmenting is done.  Their algorithm uses u = n^1/3, breaks
+  # the summation into two parts, and calculates those in segments.  Their
+  # computation time growth is half of this code.
+  my $u = int(sqrt($n));
+  my @mu = (0, moebius(1, $u));          # Hold values of mu for 0-u
+  my $musum = 0;
+  my @M = map { $musum += $_; } @mu;     # Hold values of M for 0-u
+  my $sum = $M[$u];
+  foreach my $m (1 .. $u) {
+    next if $mu[$m] == 0;
+    my $inner_sum = 0;
+    my $lower = int($u/$m) + 1;
+    my $last_nmk = int($n/($m*$lower));
+    my ($this_k, $next_k) = (0, int($n/($m*1)));
+    for my $nmk (1 .. $last_nmk) {
+      $this_k = $next_k;
+      $next_k = int($n/($m*($nmk+1)));
+      $inner_sum += $M[$nmk] * ($this_k - $next_k);
+    }
+    $sum -= $mu[$m] * $inner_sum;
   }
-  return -$sum;
+  return $sum;
 }
 
 
@@ -2399,9 +2413,15 @@ solution for larger inputs.  For example, computing Mertens(100M) takes:
     74.8s   7000MB     List::Util::sum(moebius(1,100_000_000))
    325.7s      0MB     $sum += moebius($_) for 1..100_000_000
 
-The algorithm used is a segmented version of the C<n/3> summation from Benito
-and Varona (2008) theorem 3.  A future version may implement an even more
-efficient calculation, such as the algorithm of Deléglise and Rivat (1996).
+The summation of individual terms via factoring is quite expensive in time,
+though uses O(1) space.  Computing the summation via a moebius sieve to C<n>
+is much faster, though a segmented sieve must be used for large C<n> to
+control the memory taken.  Benito and Varona (2008) show a simple C<n/3>
+summation which is much faster and uses less memory.  Better yet is a
+simple C<n^1/2> version of Deléglise and Rivat (1996), which is what the
+current implementation uses.  The best known implementation is Deléglise and
+Rivat's segmented C<n^1/3> algorithm.  In theory using one of the advanced
+prime count algorithms can lead to a faster solution.
 
 
 =head2 euler_phi
@@ -3299,15 +3319,15 @@ Pierre Dusart, "Autour de la fonction qui compte le nombre de nombres premiers",
 
 =item *
 
-Gabriel Mincu, "An Asymptotic Expansion", Journal of Inequalities in Pure and Applied Mathematics, v4, n2, 2003.  A very readable account of Cipolla's 1902 nth prime approximation.  L<http://www.emis.de/journals/JIPAM/images/153_02_JIPAM/153_02.pdf>
+Gabriel Mincu, "An Asymptotic Expansion", <Journal of Inequalities in Pure and Applied Mathematics>, v4, n2, 2003.  A very readable account of Cipolla's 1902 nth prime approximation.  L<http://www.emis.de/journals/JIPAM/images/153_02_JIPAM/153_02.pdf>
 
 =item *
 
-David M. Smith, "Multiple-Precision Exponential Integral and Related Functions".
+David M. Smith, "Multiple-Precision Exponential Integral and Related Functions", I<ACM Transactions on Mathematical Software>, v37, n4, 2011.  L<http://myweb.lmu.edu/dmsmith/toms2011.pdf>
 
 =item *
 
-Vincent Pegoraro and Philipp Slusallek, "On the Evaluation of the Complex-Valued Exponential Integral".
+Vincent Pegoraro and Philipp Slusallek, "On the Evaluation of the Complex-Valued Exponential Integral", I<Journal of Graphics, GPU, and Game Tools>, v15, n3, pp 183-198, 2011.  L<http://www.cs.utah.edu/~vpegorar/research/2011_JGT/paper.pdf>
 
 =item *
 
@@ -3315,11 +3335,15 @@ William H. Press et al., "Numerical Recipes", 3rd edition.
 
 =item *
 
-W. J. Cody and Henry C. Thacher, Jr., "Rational Chevyshev Approximations for the Exponential Integral E_1(x)".
+W. J. Cody and Henry C. Thacher, Jr., "Chebyshev approximations for the exponential integral Ei(x)", I<Mathematics of Computation>, v23, pp 289-303, 1969.  L<http://www.ams.org/journals/mcom/1969-23-106/S0025-5718-1969-0242349-2/>
 
 =item *
 
-W. J. Cody, K. E. Hillstrom, and Henry C. Thacher Jr., "Chebyshev Approximations for the Riemann Zeta Function", Mathematics of Computation, v25, n115, pp 537-547, July 1971.
+W. J. Cody and Henry C. Thacher, Jr., "Rational Chebyshev Approximations for the Exponential Integral E_1(x)", I<Mathematics of Computation>, v22, pp 641-649, 1968.
+
+=item *
+
+W. J. Cody, K. E. Hillstrom, and Henry C. Thacher Jr., "Chebyshev Approximations for the Riemann Zeta Function", L<Mathematics of Computation>, v25, n115, pp 537-547, July 1971.
 
 =item *
 
@@ -3327,15 +3351,27 @@ Ueli M. Maurer, "Fast Generation of Prime Numbers and Secure Public-Key Cryptogr
 
 =item *
 
-Pierre-Alain Fouque and Mehdi Tibouchi, "Close to Uniform Prime Number Generation With Fewer Random Bits", 2011.  L<http://eprint.iacr.org/2011/481>
+Pierre-Alain Fouque and Mehdi Tibouchi, "Close to Uniform Prime Number Generation With Fewer Random Bits", pre-print, 2011.  L<http://eprint.iacr.org/2011/481>
 
 =item *
 
-Douglas A. Stoll and Patrick Demichel , "The impact of ζ(s) complex zeros on π(x) for x E<lt> 10^{10^{13}}", Mathematics of Computation, v80, n276, pp 2381-2394, October 2011.  L<http://www.ams.org/journals/mcom/2011-80-276/S0025-5718-2011-02477-4/home.html>
+Douglas A. Stoll and Patrick Demichel , "The impact of ζ(s) complex zeros on π(x) for x E<lt> 10^{10^{13}}", L<Mathematics of Computation>, v80, n276, pp 2381-2394, October 2011.  L<http://www.ams.org/journals/mcom/2011-80-276/S0025-5718-2011-02477-4/home.html>
 
 =item *
 
 L<OEIS: Primorial|http://oeis.org/wiki/Primorial>.
+
+=item *
+
+Walter M. Lioen and Jan van de Lune, "Systematic Computations on Mertens' Conjecture and Dirichlet's Divisor Problem by Vectorized Sieving", in I<From Universal Morphisms to Megabytes>, Centrum voor Wiskunde en Informatica, pp. 421-432, 1994.  Describes a nice way to compute a range of Möbius values.  L<http://walter.lioen.com/papers/LL94.pdf>
+
+=item *
+
+Marc Deléglise and Joöl Rivat, "Computing the summation of the Möbius function", I<Experimental Mathematics>, v5, n4, pp 291-295, 1996.  Enhances the Möbius computation in Lioen/van de Lune, and gives a very efficient way to compute the Mertens function.  L<http://projecteuclid.org/euclid.em/1047565447>
+
+=item *
+
+Manuel Benito and Juan L. Varona, "Recursive formulas related to the summation of the Möbius function", I<The Open Mathematics Journal>, v1, pp 25-34, 2007.  Presents a nice algorithm to compute the Mertens functions with only n/3 Möbius values.  L<http://www.unirioja.es/cu/jvarona/downloads/Benito-Varona-TOMATJ-Mertens.pdf>
 
 =back
 

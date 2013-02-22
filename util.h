@@ -15,7 +15,8 @@ extern UV  _XS_prev_prime(UV x);
 extern UV  _XS_prime_count(UV low, UV high);
 extern UV  _XS_nth_prime(UV x);
 
-extern IV*  _moebius_range(UV low, UV high);
+extern IV* _moebius_range(UV low, UV high);
+extern IV  _XS_mertens(UV n);
 
 extern double _XS_ExponentialIntegral(double x);
 extern double _XS_LogarithmicIntegral(double x);
