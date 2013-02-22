@@ -642,6 +642,7 @@ IV* _moebius_range(UV lo, UV hi)
    */
   range = hi-lo+1;
   sqrtn = (UV) (sqrt(hi) + 0.5);
+  /* sqrtn = (UV) sqrt(hi);  if (sqrtn*sqrtn < hi) sqrtn++; */  /* TODO */
 
   New(0, mu, range, IV);
   if (mu == 0)

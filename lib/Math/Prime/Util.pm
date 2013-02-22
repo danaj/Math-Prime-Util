@@ -27,7 +27,7 @@ our @EXPORT_OK = qw(
                      random_strong_prime random_maurer_prime
                      primorial pn_primorial
                      factor all_factors
-                     moebius mertens euler_phi jordan_totient
+                     moebius mertens euler_phi jordan_totient exp_mangoldt
                      divisor_sum
                      ExponentialIntegral LogarithmicIntegral RiemannZeta RiemannR
                    );
@@ -1271,6 +1271,24 @@ sub _omega {
   return scalar @factors;
 }
 
+# Exponential of Mangoldt function (A014963).
+# Return p if n = p^m [p prime, m >= 1], 1 otherwise.
+sub exp_mangoldt {
+  my($n) = @_;
+  return 1 if defined $n && $n <= 1;
+  _validate_positive_integer($n);
+
+  #my $is_prime = ($n<=$_XS_MAXVAL) ? _XS_is_prob_prime($n) : is_prob_prime($n);
+  #return $n if $is_prime;
+
+  my %factor_mult;
+  my @factors = grep { !$factor_mult{$_}++ }
+                ($n <= $_XS_MAXVAL) ? _XS_factor($n) : factor($n);
+
+  return 1 unless scalar @factors == 1;
+  return $factors[0];
+}
+
 
 #############################################################################
 # Front ends to functions.
@@ -1963,6 +1981,9 @@ Version 0.21
   # Mertens function directly (more efficient for large values)
   say mertens(10_000_000);
 
+  # Exponential of Mangoldt function
+  say "lamba(49) = ", log(exp_mangoldt(49));
+
   # divisor sum
   $sigma  = divisor_sum( $n );
   $sigma2 = divisor_sum( $n, sub { $_[0]*$_[0] } );
@@ -2451,6 +2472,18 @@ This counts the number of k-tuples less than or equal to n that form a coprime
 tuple with n.  As with C<euler_phi>, 0 is returned for all C<n E<lt> 1>.
 This function can be used to generate some other useful functions, such as
 the Dedikind psi function, where C<psi(n) = J(2,n) / J(1,n)>.
+
+
+=head2 exp_mangoldt
+
+  say "exp(lambda($_)) = ", exp_mangoldt($_) for 1 .. 100;
+
+The Mangoldt function Λ(n) (also known as von Mangoldt's function) is equal
+to log p if n is prime or a power of a prime, and 0 otherwise.  We return
+the exponential so all results are integers.  Hence the return value
+for C<exp_mangoldt> is:
+   C<p> if C<n = p^m> for some prime C<p> and integer C<m E<gt>= 1>
+   1 otherwise.
 
 
 =head2 divisor_sum

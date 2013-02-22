@@ -12,7 +12,9 @@ Revision history for Perl extension Math::Prime::Util.
 
     - Add mertens function: 1000+ times faster than summing moebius($_).
 
-    - Speedup of divisor sum.  Also default to sigma if no sub given.
+    - Add exp_mangoldt function: exponential of von Mangoldt's function.
+
+    - divisor sum is 2x faster.  Also default to sigma if no sub given.
 
 0.20  3 February 2012
 
