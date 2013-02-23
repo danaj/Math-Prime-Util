@@ -5,7 +5,6 @@ $| = 1;  # fast pipes
 
 use Math::Prime::Util qw/moebius mertens/;
 use List::Util qw/sum/;
-use Algorithm::Diff qw/diff/;
 
 my $limit = shift || 1_000_000;
 
