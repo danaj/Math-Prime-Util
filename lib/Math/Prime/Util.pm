@@ -2422,7 +2422,7 @@ function is defined as C<sum(moebius(1..n))>.  This is a much more efficient
 solution for larger inputs.  For example, computing Mertens(100M) takes:
 
    time    approx mem
-     0.4s      8MB     mertens(100_000_000)
+     0.36s     0.1MB   mertens(100_000_000)
     74.8s   7000MB     List::Util::sum(moebius(1,100_000_000))
    325.7s      0MB     $sum += moebius($_) for 1..100_000_000
 

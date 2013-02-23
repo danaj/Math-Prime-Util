@@ -1,8 +1,10 @@
 Revision history for Perl extension Math::Prime::Util.
 
-0.21  ? February 2012
+0.21 22 February 2012
 
-    - Switch to using Bytes::Random::Secure for random primes.
+    - Switch to using Bytes::Random::Secure for random primes.  This is a
+      big change in that it is the first non-CORE module used.  However, it
+      gets rid of lots of possible stupidness from system rand.
 
     - Spelling fixes in documentation.
 
