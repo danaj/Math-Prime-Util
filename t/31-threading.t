@@ -110,7 +110,8 @@ thread_test(
 {
   my $seed = 1;
   sub mysrand { $seed = $_[0]; }
-  sub rand { $seed = (1103515245*$seed + 12345) % 4294967296; $seed/4294967296.0; }
+  sub irand { $seed = (1103515245*$seed + 12345) % 4294967296; }
+  prime_set_config( irand => \&irand );
 }
 
 thread_test(
