@@ -5,6 +5,7 @@ use warnings;
 use Test::More;
 use Math::Prime::Util qw/moebius mertens euler_phi jordan_totient divisor_sum/;
 
+my $extra = defined $ENV{RELEASE_TESTING} && $ENV{RELEASE_TESTING};
 my $use64 = Math::Prime::Util::prime_get_config->{'maxbits'} > 32;
 my $broken64 = (18446744073709550592 == ~0);
 $use64 = 0 if $broken64;
@@ -20,10 +21,55 @@ my %mertens = (
       100 =>    1,
      1000 =>    2,
     10000 =>  -23,
-#   100000 =>  -48,
-#  1000000 =>  212,
-# 10000000 => 1037,
+        8 =>   -2,
+       16 =>   -1,
+       32 =>   -4,
+       64 =>   -1,
+      128 =>   -2,
+      256 =>   -1,
+      512 =>   -4,
+     1024 =>   -4,
+     2048 =>    7,
+     4096 =>  -19,
+     8192 =>   22,
 );
+my %big_mertens = (
+   100000 =>  -48,
+  1000000 =>  212,
+ 10000000 => 1037,
+);
+if ($extra && $use64) {
+  %big_mertens = ( %big_mertens,
+          2 =>  0,      # A087987, mertens at primorials
+          6 => -1,
+         30 => -3,
+        210 => -1,
+       2310 => -1,
+      30030 => 16,
+     510510 => -25,
+    9699690 => 278,
+  223092870 => 3516,
+
+    6433477 => 900,     # 30^2
+  109851909 => -4096,   # A084235, 2^12  
+
+      2**14 =>  -32,    # A084236
+      2**15 =>   26,
+      2**16 =>   14,
+      2**17 =>  -20,
+      2**18 =>   24,
+      2**19 => -125,
+      2**20 =>  257,
+      2**21 => -362,
+      2**22 =>  228,
+      2**23 =>  -10,
+
+     10**8  => 1928,
+     10**9  => -222,
+#  1*10**10 => -33722,  # From Deleglise and Rivat
+#  2*10**10 => -48723,  # Too slow with current method
+  );
+}
 
 my %totients = (
      123456 => 41088, 
@@ -66,7 +112,8 @@ my %sigmak = (
 
 plan tests => 0 + 1
                 + 1 # Small Moebius
-                + 3*scalar(keys %mertens) + 3
+                + 3*scalar(keys %mertens)
+                + 1*scalar(keys %big_mertens)
                 + 2 # Small Phi
                 + scalar(keys %totients)
                 + scalar(keys %jordan_totients)
@@ -93,9 +140,9 @@ while (my($n, $mertens) = each (%mertens)) {
   # Now with mertens function
   is( mertens($n), $mertens, "mertens($n) == $mertens" );
 }
-is( mertens(  100000),  -48, "mertens(100000)" );
-is( mertens( 1000000),  212, "mertens(1000000)" );
-is( mertens(10000000), 1037, "mertens(10000000)" );
+while (my($n, $mertens) = each (%big_mertens)) {
+  is( mertens($n), $mertens, "mertens($n)" );
+}
 
 {
   my @phi = map { euler_phi($_) } (0 .. $#A000010);

@@ -4,17 +4,25 @@ Revision history for Perl extension Math::Prime::Util.
 
     - Switch to using Bytes::Random::Secure for random primes.
 
-    - primes.pl: Add circular and Panaitopol primes, speedup Pillai primes.
-
     - Spelling fixes in documentation.
 
-    - Fast return of Euler's totient and Möbius function over a range.
+    - primes.pl: Add circular and Panaitopol primes.
+
+    - euler_phi and moebius now will compute over a range.
 
     - Add mertens function: 1000+ times faster than summing moebius($_).
 
     - Add exp_mangoldt function: exponential of von Mangoldt's function.
 
-    - divisor sum is 2x faster.  Also default to sigma if no sub given.
+    - divisor_sum defaults to sigma if no sub is given (i.e. it sums).
+
+    - Performance:
+       - Speedup factoring small numbers.  With -nobigint factoring from
+         1 to 10M, it's 1.2x faster.  1.5x faster than Math::Factor::XS.
+       - Totient and Möbius over a range are much faster than separate calls.
+       - divisor_sum is 2x faster.
+       - primes.pl is much faster with Pillai primes.
+       - Reduce overhead in euler_phi -- about 2x faster for individual calls.
 
 0.20  3 February 2012
 

@@ -51,10 +51,11 @@ sub _import_nobigint {
   undef *is_prob_prime; *is_prob_prime   = \&_XS_is_prob_prime;
   undef *next_prime;    *next_prime      = \&_XS_next_prime;
   undef *prev_prime;    *prev_prime      = \&_XS_prev_prime;
-  #undef *prime_count;   *prime_count     = \&_XS_prime_count;
+ #undef *prime_count;   *prime_count     = \&_XS_prime_count;
   undef *nth_prime;     *nth_prime       = \&_XS_nth_prime;
   undef *is_strong_pseudoprime;  *is_strong_pseudoprime = \&_XS_miller_rabin;
   undef *miller_rabin;  *miller_rabin    = \&_XS_miller_rabin;
+  undef *mertens;       *mertens         = \&_XS_mertens;
 }
 
 BEGIN {
@@ -1062,10 +1063,6 @@ sub all_factors {
 
 # A008683 Moebius function mu(n)
 # A030059, A013929, A030229, A002321, A005117, A013929 all relate.
-
-# One can argue for the Omega function (A001221), Euler Phi (A000010), and
-# Merten's functions also.
-
 sub moebius {
   my($n, $nend) = @_;
   _validate_positive_integer($n, 1);
@@ -1074,10 +1071,7 @@ sub moebius {
   if (defined $nend) {
     _validate_positive_integer($nend);
     return () if $nend < $n;
-    if ($nend <= $_XS_MAXVAL) {
-      my $mu = _XS_moebius_range($n, $nend);
-      return @$mu;
-    }
+    return @{ _XS_moebius_range($n, $nend) } if $nend <= $_XS_MAXVAL;
     my @mu = map { 1 } 0 .. $nend;
     foreach my $j (2 .. $nend) {
       next unless $mu[$j] == 1;
@@ -1106,15 +1100,16 @@ sub moebius {
   return (((scalar @factors) % 2) == 0) ? 1 : -1;
 }
 
+# A002321 Mertens' function.  mertens(n) = sum(moebius(1,n))
 sub mertens {
   my($n) = @_;
   _validate_positive_integer($n);
-  return (0,1)[$n] if $n <= 1;
   return _XS_mertens($n) if $n <= $_XS_MAXVAL;
   # This is the most basic Deléglise and Rivat algorithm.  u = n^1/2
   # and no segmenting is done.  Their algorithm uses u = n^1/3, breaks
   # the summation into two parts, and calculates those in segments.  Their
   # computation time growth is half of this code.
+  return $n if $n <= 1;
   my $u = int(sqrt($n));
   my @mu = (0, moebius(1, $u));          # Hold values of mu for 0-u
   my $musum = 0;
@@ -1137,25 +1132,20 @@ sub mertens {
 }
 
 
-# Euler Phi, aka Euler Totient.  A000010
-
+# A000010 Euler Phi, aka Euler Totient
 sub euler_phi {
   my($n, $nend) = @_;
   # SAGE defines this to be 0 for all n <= 0.  Others choose differently.
   # I am following SAGE's decision for n <= 0.
   return 0 if defined $n && $n < 0;
   _validate_positive_integer($n);
-  undef $nend if defined $nend && $nend == $n;
 
   # Totient over a range.  Could be improved, as this can use huge memory.
-  if (defined $nend) {
+  if (defined $nend && $nend != $n) {
     _validate_positive_integer($nend);
     return () if $nend < $n;
     # Use XS code if at all possible.  Better memory use.
-    if ($nend <= $_XS_MAXVAL) {
-      my $totients = _XS_totient_range($n, $nend);
-      return @$totients;
-    }
+    return @{ _XS_totient_range($n, $nend) } if $nend <= $_XS_MAXVAL;
     my @totients = map { $_ } 0 .. $nend;
     foreach my $i (2 .. $nend) {
       next unless $totients[$i] == $i;
@@ -1169,38 +1159,40 @@ sub euler_phi {
   }
 
   return (0,1)[$n] if $n <= 1;
-  my %factor_mult;
-  my @factors = grep { !$factor_mult{$_}++ }
-                ($n <= $_XS_MAXVAL) ? _XS_factor($n) : factor($n);
 
-  # Direct from Euler's product formula.  Note division will be exact.
-  #my $totient = $n;
-  #foreach my $factor (@factors) {
-  #  $totient = int($totient/$factor) * ($factor-1);
-  #}
-
-  # Alternate way doing multiplications only.
-  if (ref($n) ne 'Math::BigInt') {
-    my $totient = 1;  # $n - $n + 1 will make this a bigint if needed
-    foreach my $factor (@factors) {
-      $totient *= ($factor - 1);
-      $totient *= $factor for (2 .. $factor_mult{$factor});
+  if ($n <= $_XS_MAXVAL) {
+    my $last_f = 0;
+    my $totient = 1;
+    foreach my $f ( _XS_factor($n) ) {
+      if ($f == $last_f) {  $totient *= $f;                   }
+      else               {  $totient *= $f-1;  $last_f = $f;  }
     }
     return $totient;
   }
 
-  # Some real wackiness to solve issues with Math::BigInt::GMP (not seen with
-  # Pari or Calc).  Results of the multiply will go negative if we don't do
-  # this.  Standalone bug:
-  #      perl -E 'my $a = 2931542417; use bigint lib=>'GMP'; my $n = 49754396241690624; my $x = $n*$a; say $x;'
-  # This may be related to RT 71548 of Math::BigInt::GMP.
-  my $totient = $n->copy->bone;
-  foreach my $factor (@factors) {
-    my $f = $n->copy->bzero->badd("$factor");
-    $totient->bmul($f->copy->bsub(1));
-    $totient->bmul($f)  for (2 .. $factor_mult{$factor});
+  my %factor_mult;
+  my @factors = grep { !$factor_mult{$_}++ } factor($n);
+  my $totient = 1;
+
+  if (ref($n) ne 'Math::BigInt') {
+    foreach my $factor (@factors) {
+      $totient *= ($factor - 1);
+      $totient *= $factor for (2 .. $factor_mult{$factor});
+    }
+  } else {
+    # Some real wackiness to solve issues with Math::BigInt::GMP (not seen with
+    # Pari or Calc).  Results of the multiply will go negative if we don't do
+    # this.  To see if you hit the standalone bug:
+    #      perl -E 'my $a = 2931542417; use bigint lib=>'GMP'; my $n = 49754396241690624; my $x = $n*$a; say $x;'
+    # This may be related to RT 71548 of Math::BigInt::GMP.
+    $totient = $n->copy->bone;
+    foreach my $factor (@factors) {
+      my $f = $n->copy->bzero->badd("$factor");
+      $totient->bmul($f->copy->bsub(1));
+      $totient->bmul($f)  for (2 .. $factor_mult{$factor});
+    }
   }
-  $totient;
+  return $totient;
 }
 
 # Jordan's totient -- a generalization of Euler's totient.
@@ -2440,9 +2432,10 @@ is much faster, though a segmented sieve must be used for large C<n> to
 control the memory taken.  Benito and Varona (2008) show a simple C<n/3>
 summation which is much faster and uses less memory.  Better yet is a
 simple C<n^1/2> version of Deléglise and Rivat (1996), which is what the
-current implementation uses.  The best known implementation is Deléglise and
-Rivat's segmented C<n^1/3> algorithm.  In theory using one of the advanced
-prime count algorithms can lead to a faster solution.
+current implementation uses.  Deléglise and Rivat's full segmented C<n^1/3>
+algorithm is faster.  Kuznetsov (2011) gives an alternate method that he
+indicates is even faster.  In theory using one of the advanced prime count
+algorithms can lead to a faster solution.
 
 
 =head2 euler_phi

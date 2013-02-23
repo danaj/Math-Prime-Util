@@ -219,7 +219,7 @@ _XS_factor(IN UV n)
   PPCODE:
     if (n < 4) {                        /* If n is 0-3, we're done. */
       XPUSHs(sv_2mortal(newSVuv( n )));
-    } else if (n < 2000000) {           /* For small n, just trial division */
+    } else if (n < 10000000) {          /* For small n, just trial division */
       int i;
       UV facs[32];  /* maximum number of factors is log2n */
       UV nfacs = trial_factor(n, facs, 0);
@@ -228,8 +228,8 @@ _XS_factor(IN UV n)
       }
     } else {
       int const verbose = _XS_get_verbose();
-      UV const tlim_lower = 211;  /* Trial division through this prime */
-      UV const tlim = 223;        /* This means we've checked through here */
+      UV const tlim_lower = 401;  /* Trial division through this prime */
+      UV const tlim = 409;        /* This means we've checked through here */
       UV tofac_stack[MPU_MAX_FACTORS+1];
       UV factored_stack[MPU_MAX_FACTORS+1];
       int ntofac = 0;
