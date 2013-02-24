@@ -214,131 +214,6 @@ erat_primes(IN UV low, IN UV high)
     RETVAL
 
 
-void
-_XS_factor(IN UV n)
-  PPCODE:
-    if (n < 4) {                        /* If n is 0-3, we're done. */
-      XPUSHs(sv_2mortal(newSVuv( n )));
-    } else if (n < 10000000) {          /* For small n, just trial division */
-      int i;
-      UV facs[32];  /* maximum number of factors is log2n */
-      UV nfacs = trial_factor(n, facs, 0);
-      for (i = 1; i <= nfacs; i++) {
-        XPUSHs(sv_2mortal(newSVuv( facs[i-1] )));
-      }
-    } else {
-      int const verbose = _XS_get_verbose();
-      UV const tlim_lower = 401;  /* Trial division through this prime */
-      UV const tlim = 409;        /* This means we've checked through here */
-      UV tofac_stack[MPU_MAX_FACTORS+1];
-      UV factored_stack[MPU_MAX_FACTORS+1];
-      int ntofac = 0;
-      int nfactored = 0;
-
-      { /* Trial division, removes all factors below tlim */
-        int i;
-        UV facs[BITS_PER_WORD+1];
-        UV nfacs = trial_factor(n, facs, tlim_lower);
-        for (i = 1; i < nfacs; i++) {
-          XPUSHs(sv_2mortal(newSVuv( facs[i-1] )));
-        }
-        n = facs[nfacs-1];
-      }
-
-      do { /* loop over each remaining factor */
-        /* In theory we can try to minimize work using is_definitely_prime(n)
-         * but in practice it seems slower. */
-        while ( (n >= (tlim*tlim)) && (!_XS_is_prime(n)) ) {
-          int split_success = 0;
-          /* Adjust the number of rounds based on the number size */
-          UV br_rounds = ((n>>29) < 100000) ?  1500 :  1500;
-          UV sq_rounds = 80000; /* 20k 91%, 40k 98%, 80k 99.9%, 120k 99.99% */
-
-          /* About 94% of random inputs are factored with this pbrent call */
-          if (!split_success) {
-            split_success = pbrent_factor(n, tofac_stack+ntofac, br_rounds)-1;
-            if (verbose) { if (split_success) printf("pbrent 1:  %"UVuf" %"UVuf"\n", tofac_stack[ntofac], tofac_stack[ntofac+1]); else printf("pbrent 0\n"); }
-          }
-
-          if (!split_success && n < (UV_MAX>>3)) {
-            /* SQUFOF with these parameters gets 95% of what's left. */
-            split_success = racing_squfof_factor(n, tofac_stack+ntofac, sq_rounds)-1;
-            if (verbose) printf("squfof %d\n", split_success);
-          }
-
-          /* Perhaps prho using different parameters will find it */
-          if (!split_success) {
-            split_success = prho_factor(n, tofac_stack+ntofac, 800)-1;
-            if (verbose) printf("prho %d\n", split_success);
-          }
-
-          /* This p-1 gets about 2/3 of what makes it through the above */
-          if (!split_success) {
-            split_success = pminus1_factor(n, tofac_stack+ntofac, 4000, 40000)-1;
-            if (verbose) printf("pminus1 %d\n", split_success);
-          }
-
-          /* Some rounds of HOLF, good for close to perfect squares */
-          if (!split_success) {
-            split_success = holf_factor(n, tofac_stack+ntofac, 2000)-1;
-            if (verbose) printf("holf %d\n", split_success);
-          }
-
-          /* Less than 0.1% of random inputs make it here */
-          if (!split_success) {
-            split_success = prho_factor(n, tofac_stack+ntofac, 256*1024)-1;
-            if (verbose) printf("long prho %d\n", split_success);
-          }
-
-          if (split_success) {
-            MPUassert( split_success == 1, "split factor returned more than 2 factors");
-            ntofac++; /* Leave one on the to-be-factored stack */
-            if ((tofac_stack[ntofac] == n) || (tofac_stack[ntofac] == 1))
-              croak("bad factor\n");
-            n = tofac_stack[ntofac];  /* Set n to the other one */
-          } else {
-            /* Factor via trial division.  Nothing should make it here. */
-            UV f = tlim;
-            UV m = tlim % 30;
-            UV limit = (UV) (sqrt(n)+0.1);
-            if (verbose) printf("doing trial on %"UVuf"\n", n);
-            while (f <= limit) {
-              if ( (n%f) == 0 ) {
-                do {
-                  n /= f;
-                  factored_stack[nfactored++] = f;
-                } while ( (n%f) == 0 );
-                limit = (UV) (sqrt(n)+0.1);
-              }
-              f += wheeladvance30[m];
-              m =  nextwheel30[m];
-            }
-            break;  /* We just factored n via trial division.  Exit loop. */
-          }
-        }
-        /* n is now prime (or 1), so add to already-factored stack */
-        if (n != 1)  factored_stack[nfactored++] = n;
-        /* Pop the next number off the to-factor stack */
-        if (ntofac > 0)  n = tofac_stack[ntofac-1];
-      } while (ntofac-- > 0);
-      /* Now push all the factored results in sorted order */
-      {
-        int i, j;
-        for (i = 0; i < nfactored; i++) {
-          int mini = i;
-          for (j = i+1; j < nfactored; j++)
-            if (factored_stack[j] < factored_stack[mini])
-              mini = j;
-          if (mini != i) {
-            UV t = factored_stack[mini];
-            factored_stack[mini] = factored_stack[i];
-            factored_stack[i] = t;
-          }
-          XPUSHs(sv_2mortal(newSVuv( factored_stack[i] )));
-        }
-      }
-    }
-
 #define SIMPLE_FACTOR(func, n, rounds) \
     if (n <= 1) { \
       XPUSHs(sv_2mortal(newSVuv( n ))); \
@@ -356,6 +231,18 @@ _XS_factor(IN UV n)
           XPUSHs(sv_2mortal(newSVuv( factors[i] ))); \
         } \
       } \
+    }
+
+void
+_XS_factor(IN UV n)
+  PREINIT:
+    UV factors[MPU_MAX_FACTORS+1];
+    int i, nfactors;
+  PPCODE:
+    nfactors = factor(n, factors);
+    EXTEND(SP, nfactors);
+    for (i = 0; i < nfactors; i++) {
+      PUSHs(sv_2mortal(newSVuv( factors[i] )));
     }
 
 void
@@ -463,58 +350,88 @@ double
 _XS_RiemannR(double x)
 
 
-SV*
-_XS_totient_range(IN UV lo, IN UV hi)
-  PREINIT:
-    UV* totients;
-    AV* av = newAV();
-    UV i, j;
-  CODE:
-    /* Calculate Euler's totient for all n: lo <= n <= hi. */
-    /* Return as array ref */
-    New(0, totients, hi+1, UV);
-    if (totients == 0)
-      croak("Could not get memory for %"UVuf" totients\n", hi);
-    for (i = 0; i <= hi; i++)
-      totients[i] = i;
-    if (lo <= 0 && hi >= 0) av_push(av,newSVuv(totients[0]));
-    if (lo <= 1 && hi >= 1) av_push(av,newSVuv(totients[1]));
-    if (lo <= 2 && hi >= 2) {
-      totients[2] = 1;
-      av_push(av,newSVuv(totients[2]));
-    }
-    for (j = 2; j <= hi/2; j++)
-      totients[2*j] /= 2;
-    for (i = 3; i <= hi; i++) {
-      if (totients[i] == i) {
-        totients[i] = i-1;
-        for (j = 2*i; j <= hi; j += i)
-          totients[j] = (totients[j]*(i-1))/i;
-      }
-      if (i >= lo)
-        av_push(av,newSVuv(totients[i]));
-    }
-    Safefree(totients);
-    RETVAL = newRV_noinc( (SV*) av );
-  OUTPUT:
-    RETVAL
+void
+_XS_totient(IN UV lo, IN UV hi = 0)
+  PPCODE:
+    if (hi != lo && hi != 0) {
+      /* Totients in a range, returns array */
+      UV* totients;
+      UV i, p;
 
-SV*
-_XS_moebius_range(IN UV lo, IN UV hi)
-  PREINIT:
-    IV* mu;
-    AV* av = newAV();
+      if (hi < lo) XSRETURN_EMPTY;
+      if (lo < 2) {
+        if (lo <= 0 && hi >= 0) XPUSHs(sv_2mortal(newSVuv(0)));
+        if (lo <= 1 && hi >= 1) XPUSHs(sv_2mortal(newSVuv(1)));
+        lo = 2;
+      }
+      New(0, totients, hi-lo+1, UV);
+      if (totients == 0)
+        croak("Could not get memory for %"UVuf" totients\n", hi);
+      for (i = lo; i <= hi; i++)
+        totients[i-lo] = i;
+      prime_precalc( hi/2 );
+      for (p = 2; p <= hi/2; p = _XS_next_prime(p)) {
+        i = 2*p;
+        if (i < lo)  i = p*(lo/p) + ( (lo%p) ? p : 0 );
+        for ( ; i <= hi; i += p)
+          totients[i-lo] -= totients[i-lo]/p;
+      }
+      /* Extend the stack to handle how many items we'll return */
+      EXTEND(SP, hi-lo+1);
+      for (i = lo; i <= hi; i++) {
+        UV t = totients[i-lo];
+        if (t == i)
+          t = i-1;
+        PUSHs(sv_2mortal(newSVuv(t)));
+      }
+      Safefree(totients);
+
+    } else {
+      UV facs[64];  /* maximum number of factors is log2n */
+      UV i, nfacs, totient, lastf;
+      UV n = lo;
+      if (n <= 1) XSRETURN_UV(n);
+      nfacs = trial_factor(n, facs, 0);
+      totient = 1;
+      lastf = 0;
+      for (i = 0; i < nfacs; i++) {
+        UV f = facs[i];
+        if (f == lastf) { totient *= f;               }
+        else            { totient *= f-1;  lastf = f; }
+      }
+      PUSHs(sv_2mortal(newSVuv(totient)));
+    }
+
+void
+_XS_moebius(IN UV lo, IN UV hi = 0)
+  PPCODE:
     UV i;
-  CODE:
-    /* Return array ref of Moebius function for all n: lo <= n <= hi. */
-    mu = _moebius_range(lo, hi);
-    MPUassert( mu != 0, "_moebius_range returned 0" );
-    for (i = lo; i <= hi; i++)
-      av_push(av,newSViv(mu[i-lo]));
-    Safefree(mu);
-    RETVAL = newRV_noinc( (SV*) av );
-  OUTPUT:
-    RETVAL
+    if (hi != lo && hi != 0) {   /* mobius in a range */
+      IV* mu = _moebius_range(lo, hi);
+      MPUassert( mu != 0, "_moebius_range returned 0" );
+      EXTEND(SP, hi-lo+1);
+      for (i = lo; i <= hi; i++)
+        PUSHs(sv_2mortal(newSViv(mu[i-lo])));
+      Safefree(mu);
+    } else {
+      UV factors[MPU_MAX_FACTORS+1];
+      UV i, nfactors, lastf;
+      UV n = lo;
+
+      if (n <= 1)
+        XSRETURN_IV(n);
+      if ( (n >= 25) && ( !(n%4) || !(n%9) || !(n%25) ) )
+        XSRETURN_IV(0);
+
+      nfactors = factor(n, factors);
+      lastf = 0;
+      for (i = 0; i < nfactors; i++) {
+        if (factors[i] == lastf)
+          XSRETURN_IV(0);
+        lastf = factors[i];
+      }
+      XSRETURN_IV( (nfactors % 2) ? -1 : 1 );
+    }
 
 IV
 _XS_mertens(IN UV n)

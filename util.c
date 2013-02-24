@@ -635,17 +635,16 @@ UV _XS_nth_prime(UV n)
 IV* _moebius_range(UV lo, UV hi)
 {
   IV* mu;
-  UV i, p, sqrtn, range;
+  UV i, p, sqrtn;
 
   /* This implementation follows that of Deléglise & Rivat (1996), which is
    * a segmented version of Lioen & van de Lune (1994).
    */
-  range = hi-lo+1;
   sqrtn = (UV) (sqrt(hi) + 0.5);
 
-  New(0, mu, range, IV);
+  New(0, mu, hi-lo+1, IV);
   if (mu == 0)
-    croak("Could not get memory for %"UVuf" moebius results\n", range);
+    croak("Could not get memory for %"UVuf" moebius results\n", hi-lo+1);
   for (i = lo; i <= hi; i++)
     mu[i-lo] = 1;
   if (lo == 0)  mu[0] = 0;

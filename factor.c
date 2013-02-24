@@ -20,6 +20,117 @@
  * match the native integer type used inside our Perl, so just use those.
  */
 
+/* The main factoring loop */
+/* Puts factors in factors[] and returns the number found. */
+int factor(UV n, UV *factors)
+{
+  int nfactors = 0;           /* Number of factored in factors result */
+
+  int const verbose = _XS_get_verbose();
+  UV const tlim_lower = 401;  /* Trial division through this prime */
+  UV const tlim = 409;        /* This means we've checked through here */
+  UV tofac_stack[MPU_MAX_FACTORS+1];
+  UV fac_stack[MPU_MAX_FACTORS+1];
+  int ntofac = 0;             /* Number of items on tofac_stack */
+  int nfac = 0;               /* Number of items on fac_stack */
+
+  if (n < 10000000)
+    return trial_factor(n, factors, 0);
+
+  /* Trial division for all factors below tlim */
+  nfactors = trial_factor(n, factors, tlim_lower);
+  n = factors[--nfactors];
+
+  /* loop over each remaining factor, until ntofac == 0 */
+  do {
+    while ( (n >= (tlim*tlim)) && (!_XS_is_prime(n)) ) {
+      int split_success = 0;
+      /* Adjust the number of rounds based on the number size */
+      UV br_rounds = ((n>>29) < 100000) ?  1500 :  1500;
+      UV sq_rounds = 80000; /* 20k 91%, 40k 98%, 80k 99.9%, 120k 99.99% */
+
+      /* About 94% of random inputs are factored with this pbrent call */
+      if (!split_success) {
+        split_success = pbrent_factor(n, tofac_stack+ntofac, br_rounds)-1;
+        if (verbose) { if (split_success) printf("pbrent 1:  %"UVuf" %"UVuf"\n", tofac_stack[ntofac], tofac_stack[ntofac+1]); else printf("pbrent 0\n"); }
+      }
+      /* SQUFOF with these parameters gets 95% of what's left. */
+      if (!split_success && n < (UV_MAX>>3)) {
+        split_success = racing_squfof_factor(n,tofac_stack+ntofac, sq_rounds)-1;
+        if (verbose) printf("squfof %d\n", split_success);
+      }
+      /* Perhaps prho using different parameters will find it */
+      if (!split_success) {
+        split_success = prho_factor(n, tofac_stack+ntofac, 800)-1;
+        if (verbose) printf("prho %d\n", split_success);
+      }
+      /* This p-1 gets about 2/3 of what makes it through the above */
+      if (!split_success) {
+        split_success = pminus1_factor(n, tofac_stack+ntofac, 4000, 40000)-1;
+        if (verbose) printf("pminus1 %d\n", split_success);
+      }
+      /* Some rounds of HOLF, good for close to perfect squares */
+      if (!split_success) {
+        split_success = holf_factor(n, tofac_stack+ntofac, 2000)-1;
+        if (verbose) printf("holf %d\n", split_success);
+      }
+      /* Less than 0.1% of random inputs make it here */
+      if (!split_success) {
+        split_success = prho_factor(n, tofac_stack+ntofac, 256*1024)-1;
+        if (verbose) printf("long prho %d\n", split_success);
+      }
+
+      if (split_success) {
+        MPUassert( split_success == 1, "split factor returned more than 2 factors");
+        ntofac++; /* Leave one on the to-be-factored stack */
+        if ((tofac_stack[ntofac] == n) || (tofac_stack[ntofac] == 1))
+          croak("bad factor\n");
+        n = tofac_stack[ntofac];  /* Set n to the other one */
+      } else {
+        /* Factor via trial division.  Nothing should make it here. */
+        UV f = tlim;
+        UV m = tlim % 30;
+        UV limit = (UV) (sqrt(n)+0.1);
+        if (verbose) printf("doing trial on %"UVuf"\n", n);
+        while (f <= limit) {
+          if ( (n%f) == 0 ) {
+            do {
+              n /= f;
+              fac_stack[nfac++] = f;
+            } while ( (n%f) == 0 );
+            limit = (UV) (sqrt(n)+0.1);
+          }
+          f += wheeladvance30[m];
+          m =  nextwheel30[m];
+        }
+        break;  /* We just factored n via trial division.  Exit loop. */
+      }
+    }
+    /* n is now prime (or 1), so add to already-factored stack */
+    if (n != 1)  fac_stack[nfac++] = n;
+    /* Pop the next number off the to-factor stack */
+    if (ntofac > 0)  n = tofac_stack[ntofac-1];
+  } while (ntofac-- > 0);
+
+  /* Sort all the results from fac_stack and put into factors result */
+  {
+    int i, j;
+    for (i = 0; i < nfac; i++) {
+      int mini = i;
+      for (j = i+1; j < nfac; j++)
+        if (fac_stack[j] < fac_stack[mini])
+          mini = j;
+      if (mini != i) {
+        UV t = fac_stack[mini];
+        fac_stack[mini] = fac_stack[i];
+        fac_stack[i] = t;
+      }
+      factors[nfactors++] = fac_stack[i];
+    }
+  }
+  return nfactors;
+}
+
 static const unsigned short primes_small[] =
   {0,2,3,5,7,11,13,17,19,23,29,31,37,41,43,47,53,59,61,67,71,73,79,83,89,97,
    101,103,107,109,113,127,131,137,139,149,151,157,163,167,173,179,181,191,
@@ -249,18 +360,18 @@ int _XS_is_prob_prime(UV n)
   }
 #else
 #if 1
-  /* Better bases from http://miller-rabin.appspot.com/, 8 Feb 2013 */
+  /* Better bases from http://miller-rabin.appspot.com/, 23 Feb 2013 */
   if (n < UVCONST(291831)) {
     bases[0] = UVCONST(126401071349994536);
     nbases = 1;
   } else if (n < UVCONST(520924141)) {
-    bases[0] = UVCONST( 15   );
+    bases[0] = 15;
     bases[1] = UVCONST( 750068417525532 );
     nbases = 2;
-  } else if (n < UVCONST(109134866497)) {
-    bases[0] = 2;
-    bases[1] = UVCONST( 45650740   );
-    bases[2] = UVCONST( 3722628058 );
+  } else if (n < UVCONST(154639673381)) {
+    bases[0] = 15;
+    bases[1] = UVCONST(  176006322 );
+    bases[2] = UVCONST( 4221622697 );
     nbases = 3;
   } else if (n < UVCONST(47636622961201)) {
     bases[0] = 2;

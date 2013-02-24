@@ -55,7 +55,9 @@ sub _import_nobigint {
   undef *nth_prime;     *nth_prime       = \&_XS_nth_prime;
   undef *is_strong_pseudoprime;  *is_strong_pseudoprime = \&_XS_miller_rabin;
   undef *miller_rabin;  *miller_rabin    = \&_XS_miller_rabin;
+  undef *moebius;       *moebius         = \&_XS_moebius;
   undef *mertens;       *mertens         = \&_XS_mertens;
+  undef *euler_phi;     *euler_phi       = \&_XS_totient;
 }
 
 BEGIN {
@@ -1065,37 +1067,52 @@ sub all_factors {
 # A030059, A013929, A030229, A002321, A005117, A013929 all relate.
 sub moebius {
   my($n, $nend) = @_;
-  _validate_positive_integer($n, 1);
+  _validate_positive_integer($n);
 
-  # Moebius over a range.
   if (defined $nend) {
     _validate_positive_integer($nend);
-    return () if $nend < $n;
-    return @{ _XS_moebius_range($n, $nend) } if $nend <= $_XS_MAXVAL;
-    my @mu = map { 1 } 0 .. $nend;
-    foreach my $j (2 .. $nend) {
-      next unless $mu[$j] == 1;
-      for (my $i = $j; $i <= $nend; $i += $j) {
-        $mu[$i] = ($mu[$i] == 1) ? -$j : -$mu[$i];
+    return if $nend < $n;
+  } else {
+    $nend = $n;
+  }
+  return _XS_moebius($n, $nend) if $nend <= $_XS_MAXVAL;
+
+  # Moebius over a range.
+  if ($nend != $n) {
+    my ($lo,$hi) = ($n,$nend);
+    my @mu = map { 1 } $lo .. $hi;
+    $mu[0] = 0 if $lo == 0;
+    my $sqrtn = int(sqrt($hi)+0.5);
+    foreach my $p ( @{ primes($sqrtn) } ) {
+      my $i = $p * $p;
+      $i = $i * int($lo/$i) + (($lo % $i)  ? $i : 0)  if $i < $lo;
+      while ($i <= $hi) {
+        $mu[$i-$lo] = 0;
+        $i += $p * $p;
+      }
+      $i = $p;
+      $i = $i * int($lo/$i) + (($lo % $i)  ? $i : 0)  if $i < $lo;
+      while ($i <= $hi) {
+        $mu[$i-$lo] *= -$p;
+        $i += $p;
       }
     }
-    for (my $j = 2; $j*$j <= $nend; $j++) {
-      next unless $mu[$j] == -$j;
-      for (my $i = $j*$j; $i <= $nend; $i += $j*$j) {
-        $mu[$i] = 0;
-      }
+    foreach my $i ($lo .. $hi) {
+      my $m = $mu[$i-$lo];
+      $m *= -1 if abs($m) != $i;
+      $mu[$i-$lo] = ($m>0) - ($m<0);
     }
-    return map { ($_>0) - ($_<0) } @mu[ $n .. $nend ];
+    return @mu;
   }
 
-  return 1 if $n == 1;
+  return $n if $n <= 1;
   # Quick check for small replicated factors
   return 0 if ($n >= 25) && (!($n % 4) || !($n % 9) || !($n % 25));
-
-  my @factors = ($n <= $_XS_MAXVAL) ? _XS_factor($n) : factor($n);
-  my %all_factors;
+  my @factors = factor($n);
+  my $lastf = 0;
   foreach my $factor (@factors) {
-    return 0 if $all_factors{$factor}++;
+    return 0 if $factor == $lastf;
+    $lastf = $factor;
   }
   return (((scalar @factors) % 2) == 0) ? 1 : -1;
 }
@@ -1139,14 +1156,18 @@ sub euler_phi {
   # I am following SAGE's decision for n <= 0.
   return 0 if defined $n && $n < 0;
   _validate_positive_integer($n);
+  if (defined $nend) {
+    _validate_positive_integer($nend);
+    return if $nend < $n;
+  } else {
+    $nend = $n;
+  }
+  return _XS_totient($n, $nend) if $nend <= $_XS_MAXVAL;
 
   # Totient over a range.  Could be improved, as this can use huge memory.
-  if (defined $nend && $nend != $n) {
-    _validate_positive_integer($nend);
+  if ($nend != $n) {
     return () if $nend < $n;
-    # Use XS code if at all possible.  Better memory use.
-    return @{ _XS_totient_range($n, $nend) } if $nend <= $_XS_MAXVAL;
-    my @totients = map { $_ } 0 .. $nend;
+    my @totients = (0 .. $nend);
     foreach my $i (2 .. $nend) {
       next unless $totients[$i] == $i;
       $totients[$i] = $i-1;
@@ -1158,39 +1179,29 @@ sub euler_phi {
     return @totients;
   }
 
-  return (0,1)[$n] if $n <= 1;
-
-  if ($n <= $_XS_MAXVAL) {
-    my $last_f = 0;
-    my $totient = 1;
-    foreach my $f ( _XS_factor($n) ) {
-      if ($f == $last_f) {  $totient *= $f;                   }
-      else               {  $totient *= $f-1;  $last_f = $f;  }
-    }
-    return $totient;
-  }
-
+  return $n if $n <= 1;
   my %factor_mult;
   my @factors = grep { !$factor_mult{$_}++ } factor($n);
-  my $totient = 1;
 
   if (ref($n) ne 'Math::BigInt') {
+    my $totient = 1;
     foreach my $factor (@factors) {
       $totient *= ($factor - 1);
       $totient *= $factor for (2 .. $factor_mult{$factor});
     }
-  } else {
-    # Some real wackiness to solve issues with Math::BigInt::GMP (not seen with
-    # Pari or Calc).  Results of the multiply will go negative if we don't do
-    # this.  To see if you hit the standalone bug:
-    #      perl -E 'my $a = 2931542417; use bigint lib=>'GMP'; my $n = 49754396241690624; my $x = $n*$a; say $x;'
-    # This may be related to RT 71548 of Math::BigInt::GMP.
-    $totient = $n->copy->bone;
-    foreach my $factor (@factors) {
-      my $f = $n->copy->bzero->badd("$factor");
-      $totient->bmul($f->copy->bsub(1));
-      $totient->bmul($f)  for (2 .. $factor_mult{$factor});
-    }
+    return $totient;
+  }
+
+  # Some real wackiness to solve issues with Math::BigInt::GMP (not seen with
+  # Pari or Calc).  Results of the multiply will go negative if we don't do
+  # this.  To see if you hit the standalone bug:
+  #      perl -E 'my $a = 2931542417; use bigint lib=>'GMP'; my $n = 49754396241690624; my $x = $n*$a; say $x;'
+  # This may be related to RT 71548 of Math::BigInt::GMP.
+  my $totient = $n->copy->bone;
+  foreach my $factor (@factors) {
+    my $f = $n->copy->bzero->badd("$factor");
+    $totient->bmul($f->copy->bsub(1));
+    $totient->bmul($f)  for (2 .. $factor_mult{$factor});
   }
   return $totient;
 }
@@ -2401,10 +2412,11 @@ primality tests.
   $sum += moebius($_) for (1..200); say "Mertens(200) = $sum";
 
 Returns the Möbius function (also called the Moebius, Mobius, or MoebiusMu
-function) for a positive non-zero integer input.  This function is 1 if
+function) for a non-negative integer input.  This function is 1 if
 C<n = 1>, 0 if C<n> is not square free (i.e. C<n> has a repeated factor),
 and C<-1^t> if C<n> is a product of C<t> distinct primes.  This is an
-important function in prime number theory.
+important function in prime number theory.  Like SAGE, we define
+C<moebius(0) = 0> for convenience.
 
 If called with two arguments, they define a range C<low> to C<high>, and the
 function returns an array with the value of the Möbius function for every n
@@ -3113,7 +3125,7 @@ Here's the right way to do PE problem 69 (under 0.03s):
   $n++ while pn_primorial($n+1) < 1000000;
   say pn_primorial($n);'
 
-Project Euler, problem 187, stupid brute force solution:
+Project Euler, problem 187, stupid brute force solution, ~3 minutes:
 
   use Math::Prime::Util qw/factor -nobigint/;
   my $nsemis = 0;

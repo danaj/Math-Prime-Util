@@ -1,5 +1,13 @@
 Revision history for Perl extension Math::Prime::Util.
 
+0.22 xx February 2012
+
+    - Move main factor loop out of xs and into factor.c.
+
+    - Totient and Moebius now have complete XS implementations.
+
+    - Ranged totient uses less memory when segmented.
+
 0.21 22 February 2012
 
     - Switch to using Bytes::Random::Secure for random primes.  This is a
