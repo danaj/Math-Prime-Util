@@ -360,7 +360,7 @@ _XS_totient(IN UV lo, IN UV hi = 0)
 
       if (hi < lo) XSRETURN_EMPTY;
       if (lo < 2) {
-        if (lo <= 0 && hi >= 0) XPUSHs(sv_2mortal(newSVuv(0)));
+        if (lo <= 0           ) XPUSHs(sv_2mortal(newSVuv(0)));
         if (lo <= 1 && hi >= 1) XPUSHs(sv_2mortal(newSVuv(1)));
         lo = 2;
       }
@@ -404,8 +404,9 @@ _XS_totient(IN UV lo, IN UV hi = 0)
 
 void
 _XS_moebius(IN UV lo, IN UV hi = 0)
-  PPCODE:
+  PREINIT:
     UV i;
+  PPCODE:
     if (hi != lo && hi != 0) {   /* mobius in a range */
       IV* mu = _moebius_range(lo, hi);
       MPUassert( mu != 0, "_moebius_range returned 0" );
@@ -415,7 +416,7 @@ _XS_moebius(IN UV lo, IN UV hi = 0)
       Safefree(mu);
     } else {
       UV factors[MPU_MAX_FACTORS+1];
-      UV i, nfactors, lastf;
+      UV nfactors, lastf;
       UV n = lo;
 
       if (n <= 1)

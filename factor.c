@@ -959,8 +959,8 @@ int racing_squfof_factor(UV n, UV *factors, UV rounds)
     3*11,     3,     5*11,   5,   7*11,   7,   11,     1   };
   const UV big2 = UV_MAX >> 2;
   mult_t mult_save[NSQUFOF_MULT];
-  int i, still_racing;
-  UV nn64, mult, f64;
+  int still_racing;
+  UV i, nn64, mult, f64;
   UV rounds_done = 0;
 
   /* Caller should have handled these trivial cases */

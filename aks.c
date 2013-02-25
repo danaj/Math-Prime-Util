@@ -25,6 +25,7 @@
 #define SQRTN_SHORTCUT 1
 
 #include "ptypes.h"
+#include "aks.h"
 #include "util.h"
 #include "sieve.h"
 #include "factor.h"
@@ -109,8 +110,7 @@ static void poly_print(UV* poly, UV r)
 
 static void poly_mod_mul(UV* px, UV* py, UV* res, UV r, UV mod)
 {
-  int i, j;
-  UV pxi, pyj, rindex;
+  UV i, j, pxi, pyj, rindex;
 
   memset(res, 0, r * sizeof(UV));
   for (i = 0; i < r; i++) {
@@ -131,8 +131,7 @@ static void poly_mod_mul(UV* px, UV* py, UV* res, UV r, UV mod)
 }
 static void poly_mod_sqr(UV* px, UV* res, UV r, UV mod)
 {
-  int d, s;
-  UV sum, rindex;
+  UV d, s, sum, rindex;
   UV degree = r-1;
 
   memset(res, 0, r * sizeof(UV)); /* zero out sums */
@@ -177,7 +176,7 @@ static int test_anr(UV a, UV n, UV r)
 {
   UV* pn;
   UV* res;
-  int i;
+  UV i;
   int retval = 1;
 
   Newz(0, pn, r, UV);

@@ -667,8 +667,10 @@ IV* _moebius_range(UV lo, UV hi)
   }
   for (i = lo; i <= hi; i++) {
     IV m = mu[i-lo];
-    if (m != i && m != -i)  m *= -1;
-    mu[i-lo] = (m>0) - (m<0);
+    if (m != 0) {
+      if (m != i && -m != i)  m *= -1;
+      mu[i-lo] = (m>0) - (m<0);
+    }
   }
   return mu;
 }
@@ -909,14 +911,13 @@ static const long double riemann_zeta_table[] = {
 long double ld_riemann_zeta(long double x) {
   long double const tol = 1e-17;
   long double term;
-  int k;
   KAHAN_INIT(sum);
 
   if (x < 0.5) croak("Invalid input to RiemannZeta:  x must be >= 0.5");
 
   if (x == (unsigned int)x) {
-    k = x - 2;
-    if ((k >= 0) && (k < NPRECALC_ZETA))
+    int k = x - 2;
+    if ((k >= 0) && (k < (int)NPRECALC_ZETA))
       return riemann_zeta_table[k];
   }
 
@@ -964,6 +965,7 @@ long double ld_riemann_zeta(long double x) {
      * values using double precision, it's awful.
      * Back to the defining equation.
      */
+    int k;
     for (k = 5; k <= 1000000; k++) {
       term = powl(k, -x);
       KAHAN_SUM(sum, term);
