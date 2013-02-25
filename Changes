@@ -8,6 +8,8 @@ Revision history for Perl extension Math::Prime::Util.
 
     - Ranged totient uses less memory when segmented.
 
+    - Switch thread locking to pthreads condition variables.
+
 0.21 22 February 2012
 
     - Switch to using Bytes::Random::Secure for random primes.  This is a

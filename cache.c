@@ -23,14 +23,60 @@
  */
 
 static int mutex_init = 0;
-#ifdef USE_ITHREADS
-static perl_mutex segment_mutex;
+#ifndef USE_ITHREADS
 
-/* See: http://en.wikipedia.org/wiki/Readers-writers_problem */
-static perl_mutex primary_mutex_no_waiting;
-static perl_mutex primary_mutex_no_accessing;
-static perl_mutex primary_mutex_counter;
-static int        primary_number_of_readers = 0;
+ #define WRITE_LOCK_START
+ #define WRITE_LOCK_END
+ #define READ_LOCK_START
+ #define READ_LOCK_END
+
+#else
+
+ static perl_mutex segment_mutex;
+ static perl_mutex primary_cache_mutex;
+ static perl_cond  primary_cache_turn;
+ static int        primary_cache_reading;
+ static int        primary_cache_writing;
+ static int        primary_cache_writers;
+
+ #define WRITE_LOCK_START \
+   do { \
+     MUTEX_LOCK(&primary_cache_mutex); \
+     primary_cache_writers++; \
+     while (primary_cache_reading || primary_cache_writing) \
+       COND_WAIT(&primary_cache_turn, &primary_cache_mutex); \
+     primary_cache_writing++; \
+     MUTEX_UNLOCK(&primary_cache_mutex); \
+   } while (0)
+
+ #define WRITE_LOCK_END \
+   do { \
+     MUTEX_LOCK(&primary_cache_mutex); \
+     primary_cache_writing--; \
+     primary_cache_writers--; \
+     COND_BROADCAST(&primary_cache_turn); \
+     MUTEX_UNLOCK(&primary_cache_mutex); \
+   } while (0)
+
+ #define READ_LOCK_START \
+   do { \
+     MUTEX_LOCK(&primary_cache_mutex); \
+     if (primary_cache_writers) \
+       COND_WAIT(&primary_cache_turn, &primary_cache_mutex); \
+     while (primary_cache_writing) \
+       COND_WAIT(&primary_cache_turn, &primary_cache_mutex); \
+     primary_cache_reading++; \
+     MUTEX_UNLOCK(&primary_cache_mutex); \
+   } while (0)
+
+ #define READ_LOCK_END \
+   do { \
+     MUTEX_LOCK(&primary_cache_mutex); \
+     primary_cache_reading--; \
+     COND_BROADCAST(&primary_cache_turn); \
+     MUTEX_UNLOCK(&primary_cache_mutex); \
+   } while (0)
+
 #endif
 
 static unsigned char* prime_cache_sieve = 0;
@@ -40,15 +86,9 @@ static UV             prime_cache_size = 0;
 #define FILL_EXTRA_N (128*30)
 
 /* Erase the primary cache and fill up to n. */
+/* Note: You must have a write lock before calling this! */
 static void _erase_and_fill_prime_cache(UV n) {
   UV padded_n;
-  /* Note: You need to handle mutexes around this.
-   *   MUTEX_LOCK(&primary_mutex_no_waiting);
-   *   MUTEX_LOCK(&primary_mutex_no_accessing);
-   *   MUTEX_UNLOCK(&primary_mutex_no_waiting);
-   *   _fill_prime_cache(n);
-   *   MUTEX_UNLOCK(&primary_mutex_no_accessing);
-   */
 
   if (n >= (UV_MAX-FILL_EXTRA_N))
     padded_n = UV_MAX;
@@ -81,41 +121,31 @@ static void _erase_and_fill_prime_cache(UV n) {
 UV get_prime_cache(UV n, const unsigned char** sieve)
 {
 #ifdef USE_ITHREADS
-  int prev_readers;
-  int i_hold_access_lock = 0;
-
   if (sieve == 0) {
     if (prime_cache_size < n) {
-      MUTEX_LOCK(&primary_mutex_no_waiting);
-      MUTEX_LOCK(&primary_mutex_no_accessing);
-      MUTEX_UNLOCK(&primary_mutex_no_waiting);
-      _erase_and_fill_prime_cache(n);
-      MUTEX_UNLOCK(&primary_mutex_no_accessing);
+      WRITE_LOCK_START;
+        _erase_and_fill_prime_cache(n);
+      WRITE_LOCK_END;
     }
     return prime_cache_size;
   }
 
-  MUTEX_LOCK(&primary_mutex_no_waiting);
-    /* If we need more primes, get the access lock right now */
-    if (prime_cache_size < n) {
-      MUTEX_LOCK(&primary_mutex_no_accessing);
-      i_hold_access_lock = 1;
-    }
-
-    MUTEX_LOCK(&primary_mutex_counter);
-      prev_readers = primary_number_of_readers;
-      primary_number_of_readers++;
-    MUTEX_UNLOCK(&primary_mutex_counter);
-
-    if ( (prev_readers == 0) && (!i_hold_access_lock) ) {
-      MUTEX_LOCK(&primary_mutex_no_accessing);
-      i_hold_access_lock = 1;
-    }
-    if (prime_cache_size < n) {
-      _erase_and_fill_prime_cache(n);
-    }
-  MUTEX_UNLOCK(&primary_mutex_no_waiting);
-
+  /* This could be done more efficiently if we converted a write lock to a
+   * reader after doing the expansion.  But I think this solution is less
+   * error prone (though could lead to starvation in pathological cases).
+   */
+  READ_LOCK_START;
+  while (prime_cache_size < n) {
+    /* The cache isn't big enough.  Expand it. */
+    READ_LOCK_END;
+    /* thread reminder: the world can change right here */
+    WRITE_LOCK_START;
+      if (prime_cache_size < n)
+        _erase_and_fill_prime_cache(n);
+    WRITE_LOCK_END;
+    /* thread reminder: the world can change right here */
+    READ_LOCK_START;
+  }
   MPUassert(prime_cache_size >= n, "prime cache is too small!");
 
   *sieve = prime_cache_sieve;
@@ -130,14 +160,8 @@ UV get_prime_cache(UV n, const unsigned char** sieve)
 }
 
 void release_prime_cache(const unsigned char* mem) {
-#ifdef USE_ITHREADS
-  int current_readers;
-  MUTEX_LOCK(&primary_mutex_counter);
-    primary_number_of_readers--;
-    current_readers = primary_number_of_readers;
-  MUTEX_UNLOCK(&primary_mutex_counter);
-  if (current_readers == 0) { MUTEX_UNLOCK(&primary_mutex_no_accessing); }
-#endif
+  (void)mem; /* We don't currently care about the pointer */
+  READ_LOCK_END;
 }
 
 
@@ -151,7 +175,7 @@ static int prime_segment_is_available = 1;
 
 unsigned char* get_prime_segment(UV *size) {
   unsigned char* mem;
-  int use_prime_segment;
+  int use_prime_segment = 0;
 
   MPUassert(size != 0, "get_prime_segment given null size pointer");
   MPUassert(mutex_init == 1, "segment mutex has not been initialized");
@@ -160,8 +184,6 @@ unsigned char* get_prime_segment(UV *size) {
     if (prime_segment_is_available) {
       prime_segment_is_available = 0;
       use_prime_segment = 1;
-    } else {
-      use_prime_segment = 0;
     }
   MUTEX_UNLOCK(&segment_mutex);
 
@@ -185,10 +207,11 @@ void release_prime_segment(unsigned char* mem) {
   MUTEX_LOCK(&segment_mutex);
     if (mem == prime_segment) {
       prime_segment_is_available = 1;
-    } else {
-      Safefree(mem);
+      mem = 0;
     }
   MUTEX_UNLOCK(&segment_mutex);
+  if (mem)
+    Safefree(mem);
 }
 
 
@@ -197,10 +220,8 @@ void release_prime_segment(unsigned char* mem) {
 void prime_precalc(UV n)
 {
   if (!mutex_init) {
-    MUTEX_INIT(&segment_mutex);
-    MUTEX_INIT(&primary_mutex_no_waiting);
-    MUTEX_INIT(&primary_mutex_no_accessing);
-    MUTEX_INIT(&primary_mutex_counter);
+    MUTEX_INIT(&primary_cache_mutex);
+    COND_INIT(&primary_cache_turn);
     mutex_init = 1;
   }
 
@@ -225,12 +246,10 @@ void prime_memfree(void)
   }
   MUTEX_UNLOCK(&segment_mutex);
 
-  MUTEX_LOCK(&primary_mutex_no_waiting);
-  MUTEX_LOCK(&primary_mutex_no_accessing);
-  MUTEX_UNLOCK(&primary_mutex_no_waiting);
+  WRITE_LOCK_START;
     /* Put primary cache back to initial state */
     _erase_and_fill_prime_cache(INITIAL_CACHE_SIZE);
-  MUTEX_UNLOCK(&primary_mutex_no_accessing);
+  WRITE_LOCK_END;
 }
 
 
@@ -238,10 +257,8 @@ void _prime_memfreeall(void)
 {
   /* No locks.  We're shutting everything down. */
   if (mutex_init) {
-    MUTEX_DESTROY(&segment_mutex);
-    MUTEX_DESTROY(&primary_mutex_no_waiting);
-    MUTEX_DESTROY(&primary_mutex_no_accessing);
-    MUTEX_DESTROY(&primary_mutex_counter);
+    MUTEX_DESTROY(&primary_cache_mutex);
+    COND_DESTROY(&primary_cache_turn);
     mutex_init = 0;
   }
   if (prime_cache_sieve != 0)
