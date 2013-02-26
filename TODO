@@ -32,11 +32,6 @@
 - An assembler version of mulmod for i386 would be _really_ helpful for
   all the non-x86-64 Intel machines.
 
-- Tests for:
-
-   RiemannZeta
-   RiemannR
-
 - Dynamically use a mulmodadd in PP aks, just like the new C code does.
   This will mean it'll work for full-size native ints.
 
