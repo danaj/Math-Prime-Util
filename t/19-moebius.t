@@ -3,7 +3,8 @@ use strict;
 use warnings;
 
 use Test::More;
-use Math::Prime::Util qw/moebius mertens euler_phi jordan_totient divisor_sum/;
+use Math::Prime::Util
+   qw/moebius mertens euler_phi jordan_totient divisor_sum exp_mangoldt/;
 
 my $extra = defined $ENV{RELEASE_TESTING} && $ENV{RELEASE_TESTING};
 my $use64 = Math::Prime::Util::prime_get_config->{'maxbits'} > 32;
@@ -109,6 +110,29 @@ my %sigmak = (
   3 => [1, 9, 28, 73, 126, 252, 344, 585, 757, 1134, 1332, 2044, 2198, 3096, 3528, 4681, 4914, 6813, 6860, 9198, 9632, 11988, 12168, 16380, 15751, 19782, 20440, 25112, 24390, 31752, 29792, 37449, 37296, 44226, 43344, 55261, 50654, 61740, 61544],
 );
 
+my %mangoldt = (
+  0 => 1,
+  1 => 1,
+  2 => 2,
+  3 => 3,
+  4 => 2,
+  5 => 5,
+  6 => 1,
+  7 => 7,
+  8 => 2,
+  9 => 3,
+ 10 => 1,
+ 11 => 11,
+ 25 => 5,
+ 27 => 3,
+ 399981 => 1,
+ 399982 => 1,
+ 399983 => 399983,
+ 823543 => 7,
+ 83521 => 17,
+ 130321 => 19,
+);
+
 
 plan tests => 0 + 1
                 + 1 # Small Moebius
@@ -120,7 +144,8 @@ plan tests => 0 + 1
                 + 2  # Dedekind psi calculated two ways
                 + 1  # Calculate J5 two different ways
                 + 2 * $use64 # Jordan totient example
-                + scalar(keys %sigmak);
+                + scalar(keys %sigmak)
+                + scalar(keys %mangoldt);
 
 ok(!eval { moebius(0); }, "moebius(0)");
 
@@ -198,4 +223,9 @@ while (my($k, $sigmaref) = each (%sigmak)) {
     push @slist, divisor_sum( $n, sub { int($_[0] ** $k) } );
   }
   is_deeply( \@slist, $sigmaref, "Sum of divisors to the ${k}th power: Sigma_$k" );
+}
+
+###### Exponential of von Mangoldt
+while (my($n, $em) = each (%mangoldt)) {
+  is( exp_mangoldt($n), $em, "exp_mangoldt($n) == $em" );
 }

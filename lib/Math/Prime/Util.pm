@@ -58,6 +58,7 @@ sub _import_nobigint {
   undef *moebius;       *moebius         = \&_XS_moebius;
   undef *mertens;       *mertens         = \&_XS_mertens;
   undef *euler_phi;     *euler_phi       = \&_XS_totient;
+  undef *exp_mangoldt;  *exp_mangoldt    = \&_XS_exp_mangoldt;
 }
 
 BEGIN {
@@ -1172,7 +1173,7 @@ sub euler_phi {
       next unless $totients[$i] == $i;
       $totients[$i] = $i-1;
       foreach my $j (2 .. int($nend / $i)) {
-        $totients[$i*$j] = ($totients[$i*$j]*($i-1))/$i;
+        $totients[$i*$j] -= $totients[$i*$j]/$i;
       }
     }
     splice(@totients, 0, $n) if $n > 0;
@@ -1180,28 +1181,30 @@ sub euler_phi {
   }
 
   return $n if $n <= 1;
-  my %factor_mult;
-  my @factors = grep { !$factor_mult{$_}++ } factor($n);
+  my @factors = factor($n);
 
   if (ref($n) ne 'Math::BigInt') {
     my $totient = 1;
-    foreach my $factor (@factors) {
-      $totient *= ($factor - 1);
-      $totient *= $factor for (2 .. $factor_mult{$factor});
+    my $lastf = 0;
+    foreach my $f (@factors) {
+      if ($f == $lastf) { $totient *= $f;                 }
+      else              { $totient *= $f-1;  $lastf = $f; }
     }
     return $totient;
   }
 
-  # Some real wackiness to solve issues with Math::BigInt::GMP (not seen with
-  # Pari or Calc).  Results of the multiply will go negative if we don't do
-  # this.  To see if you hit the standalone bug:
-  #      perl -E 'my $a = 2931542417; use bigint lib=>'GMP'; my $n = 49754396241690624; my $x = $n*$a; say $x;'
-  # This may be related to RT 71548 of Math::BigInt::GMP.
   my $totient = $n->copy->bone;
+  my $lastf = 0;
   foreach my $factor (@factors) {
+    # This screwball line is here to solve some issues with the GMP backend,
+    # which has a weird bug.  Results of the multiply can turn negative (!)
+    # if we don't do this.  Perhaps related to RT 71548?
+    #  perl -le 'use Math::BigInt lib=>'GMP'; my $a = 2931542417; my $n = Math::BigInt->new("49754396241690624"); my $x = $n*$a; print $x;'
+    #  perl -le 'use Math::BigInt lib=>'GMP'; my $a = Math::BigInt->bone; $a *= 2931542417; $a *= 49754396241690624; print $a;'
+    # TODO: more work reproducing this
     my $f = $n->copy->bzero->badd("$factor");
-    $totient->bmul($f->copy->bsub(1));
-    $totient->bmul($f)  for (2 .. $factor_mult{$factor});
+    if ($f == $lastf) { $totient->bmul($f);                              }
+    else              { $totient->bmul($f->copy->bsub(1));  $lastf = $f; }
   }
   return $totient;
 }
@@ -1279,16 +1282,17 @@ sub exp_mangoldt {
   my($n) = @_;
   return 1 if defined $n && $n <= 1;
   _validate_positive_integer($n);
+  return _XS_exp_mangoldt($n) if $n <= $_XS_MAXVAL;
 
-  #my $is_prime = ($n<=$_XS_MAXVAL) ? _XS_is_prob_prime($n) : is_prob_prime($n);
-  #return $n if $is_prime;
+  # Power of 2
+  return 2 if ($n & ($n-1)) == 0;
+  # Even numbers can't be a power of an odd prime
+  return 1 unless $n & 1;
 
-  my %factor_mult;
-  my @factors = grep { !$factor_mult{$_}++ }
-                ($n <= $_XS_MAXVAL) ? _XS_factor($n) : factor($n);
-
-  return 1 unless scalar @factors == 1;
-  return $factors[0];
+  my @factors = ($n <= $_XS_MAXVAL) ? _XS_factor($n) : factor($n);
+  my $first = shift @factors;
+  return 1 if scalar grep { $_ != $first } @factors;
+  return $first;
 }
 
 

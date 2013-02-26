@@ -1,5 +1,9 @@
 Revision history for Perl extension Math::Prime::Util.
 
+0.23 xx February 2012
+
+    - exp_mangoldt in XS, and speed up the PP version.
+
 0.22 26 February 2012
 
     - Move main factor loop out of xs and into factor.c.
@@ -41,8 +45,9 @@ Revision history for Perl extension Math::Prime::Util.
     - Speedup for PP AKS, and turn off test on 32-bit machines.
 
     - Replaced fast sqrt detection in PP.pm with a slightly slower version.
-      The bloom filter doesn't work right in 32-bit Perl.  These two changes
-      should speed up testing on some machines by a huge amount.
+      The bloom filter doesn't work right in 32-bit Perl.  Having a non-working
+      detector led to really bad performance.  Hence this and the AKS change
+      should speed up testing on some 32-bit machines by a huge amount.
 
     - Fix is_perfect_power in XS AKS.
 

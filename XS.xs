@@ -3,6 +3,10 @@
 #include "perl.h"
 #include "XSUB.h"
 /* We're not using anything for which we need ppport.h */
+#ifndef XSRETURN_UV   /* Er, almost.  Fix 21086 from Sep 2003 */
+  #define XST_mUV(i,v)  (ST(i) = sv_2mortal(newSVuv(v))  )
+  #define XSRETURN_UV(v) STMT_START { XST_mUV(0,v);  XSRETURN(1); } STMT_END
+#endif
 #include "ptypes.h"
 #include "cache.h"
 #include "sieve.h"
@@ -436,3 +440,26 @@ _XS_moebius(IN UV lo, IN UV hi = 0)
 
 IV
 _XS_mertens(IN UV n)
+
+UV
+_XS_exp_mangoldt(IN UV n)
+  CODE:
+    if (n <= 1)           XSRETURN_UV(1);
+    if ((n & (n-1)) == 0) XSRETURN_UV(2);   /* Power of 2 */
+    if ((n & 1) == 0)     XSRETURN_UV(1);   /* Even number */
+    /* if (_XS_is_prime(n))  XSRETURN_UV(n); */
+    {
+      UV factors[MPU_MAX_FACTORS+1];
+      UV nfactors, i;
+      /* We could try a partial factor, e.g. looking for two small factors */
+      /* We could also check powers of primes searching for n */
+      nfactors = factor(n, factors);
+      for (i = 1; i < nfactors; i++) {
+        if (factors[i] != factors[0])
+          XSRETURN_UV(1);
+      }
+      XSRETURN_UV(factors[0]);
+    }
+    RETVAL = 1;
+  OUTPUT:
+    RETVAL
