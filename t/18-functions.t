@@ -3,13 +3,15 @@ use strict;
 use warnings;
 
 use Test::More;
-use Math::Prime::Util qw/prime_count ExponentialIntegral LogarithmicIntegral RiemannR/;
+use Math::Prime::Util qw/
+    prime_count ExponentialIntegral LogarithmicIntegral RiemannR RiemannZeta
+/;
 
 my $use64 = Math::Prime::Util::prime_get_config->{'maxbits'} > 32;
 my $extra = defined $ENV{RELEASE_TESTING} && $ENV{RELEASE_TESTING};
 my $infinity = 20**20**20;
 
-plan tests => 3 + 6 + 1 + 16 + 11 + 9;
+plan tests => 3 + 6 + 1 + 16 + 11 + 9 + 6;
 
 eval { LogarithmicIntegral(-1); };
 like($@, qr/invalid/i, "li(-1) is invalid");
@@ -86,6 +88,19 @@ my %rvals = (
 while (my($n, $rin) = each (%rvals)) {
   cmp_closeto( RiemannR($n), $rin, 0.00000001 * abs($rin), "R($n) ~= $rin");
 }
+
+my %rzvals = (
+            2   =>  0.6449340668482264364724151666,
+            2.5 =>  0.3414872572509171797567696934,
+            4.5 =>  0.0547075107614542640229672890,
+            7   =>  0.0083492773819228268397975498,
+            8.5 =>  0.0028592508824156277133439825,
+           20.6 =>  0.0000006293391573578212882457,
+);
+while (my($n, $zin) = each (%rzvals)) {
+  cmp_closeto( RiemannZeta($n), $zin, 0.00000001 * abs($zin), "Zeta($n) ~= $zin");
+}
+
 
 
 sub cmp_closeto {

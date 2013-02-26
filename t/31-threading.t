@@ -8,16 +8,6 @@ BEGIN {
     print("1..0 # Skip Threads not supported\n");
     exit(0);
   }
-  # All these tests used to run on Cygwin, but now they're all giving me
-  # random panics in mutexes.  Same with NetBSD.
-  if ($Config{osname} eq 'cygwin') {
-    print "1..0 # Skip Cygwin threads are unstable\n";
-    exit 0;
-  }
-  if ($Config{osname} eq 'netbsd') {
-    print "1..0 # Skip NetBSD threads have panic issues\n";
-    exit 0;
-  }
   # Should be be looking for newer than 5.008?
   if (! eval { require threads }) {
     print "1..0 # Skip threads.pm not installed\n";
@@ -102,11 +92,7 @@ thread_test(
   sub { my $sum = 0;  $sum += is_prime($_) for (@randn); return $sum;},
   $numthreads, "is_prime");
 
-# Override rand because some systems don't use thread-safe rand, which will
-# make this test go beserk (it doesn't make *sense* without TS rand).
-# This should provide a semi-random result that depends on the seed given.
-# rand should return a number in the range [0,1) --- 0 is ok, 1 is not.  Since
-# this is all in Perl, it all gets duped with the interpreter so is TS.
+# Custom rand, so we get the same result each time.
 {
   my $seed = 1;
   sub mysrand { $seed = $_[0]; }
@@ -116,7 +102,7 @@ thread_test(
 
 thread_test(
   sub { my $sum = 0;  for (@randn) { mysrand($_); $sum += random_ndigit_prime(6); } return $sum;},
-  $numthreads, "random 7-digit prime");
+  $numthreads, "random 6-digit prime");
 
 thread_test(
   sub { my $sum = 0;  $sum += int(RiemannR($_)) for (@randn); return $sum;},
