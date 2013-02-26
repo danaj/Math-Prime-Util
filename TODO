@@ -40,7 +40,10 @@
 - Dynamically use a mulmodadd in PP aks, just like the new C code does.
   This will mean it'll work for full-size native ints.
 
-- Perl's rand() is a mess.  I believe a decent workaround is to include
-  tinymt32, seed it using the system rand (multiple calls, just use 8-bits
-  each), then use it to get 32-bit irands.  This would only be used if they
-  didn't give us a RNG (so they don't care about strict crypto).
+- More efficient Mertens.  The current version has poor growth.
+
+- Add first and second Chebyshev functions.  See Planat and Solé (2011).
+
+- Keep speeding up factoring for very large values.
+
+- More efficient totient segment.  Do we really need primes to n/2?

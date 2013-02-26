@@ -46,7 +46,6 @@ examples/test-factor-yafu.pl
 examples/test-factor-mpxs.pl
 examples/test-nextprime-yafu.pl
 examples/test-primes-yafu.pl
-examples/test-holf.pl
 examples/test-nthapprox.pl
 examples/test-pcapprox.pl
 examples/sophie_germain.pl
@@ -56,7 +55,6 @@ examples/parallel_fibprime.pl
 examples/test-bpsw.pl
 examples/test-euler-pari.pl
 examples/test-factor-gnufactor.pl
-examples/make-script-test-data.pl
 examples/test-primes-script.pl
 examples/test-primes-script2.pl
 bin/primes.pl
@@ -88,4 +86,6 @@ t/91-release-pod-syntax.t
 t/92-release-pod-coverage.t
 xt/moebius-mertens.pl
 xt/primality-small.pl
+xt/factor-holf.pl
+xt/make-script-test-data.pl
 .travis.yml

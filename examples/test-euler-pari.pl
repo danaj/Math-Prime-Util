@@ -9,7 +9,7 @@ use Math::Pari;
 Math::Prime::Util::prime_precalc(10_000_000);
 my $nlinear = 100000;
 my $nrandom = shift || 100000;
-my $randmax = ~0;
+my $randmax = 10**16;
 
 # Looks like MPU is 4x faster than Pari for 1 .. 1M, 5x faster for 1M - 10_000M.
 #

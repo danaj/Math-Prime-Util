@@ -387,7 +387,7 @@ _XS_totient(IN UV lo, IN UV hi = 0)
       Safefree(totients);
 
     } else {
-      UV facs[64];  /* maximum number of factors is log2n */
+      UV facs[MPU_MAX_FACTORS+1];  /* maximum number of factors is log2n */
       UV i, nfacs, totient, lastf;
       UV n = lo;
       if (n <= 1) XSRETURN_UV(n);

@@ -220,6 +220,7 @@ void release_prime_segment(unsigned char* mem) {
 void prime_precalc(UV n)
 {
   if (!mutex_init) {
+    MUTEX_INIT(&segment_mutex);
     MUTEX_INIT(&primary_cache_mutex);
     COND_INIT(&primary_cache_turn);
     mutex_init = 1;
@@ -257,6 +258,7 @@ void _prime_memfreeall(void)
 {
   /* No locks.  We're shutting everything down. */
   if (mutex_init) {
+    MUTEX_DESTROY(&segment_mutex);
     MUTEX_DESTROY(&primary_cache_mutex);
     COND_DESTROY(&primary_cache_turn);
     mutex_init = 0;
