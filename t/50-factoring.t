@@ -73,7 +73,7 @@ my %all_factors = (
       0 => [],
 );
 
-plan tests =>  (2 * scalar @testn) + scalar(keys %all_factors) + 7*8;
+plan tests =>  (2 * scalar @testn) + scalar(keys %all_factors) + 10*8;
 
 foreach my $n (@testn) {
   my @f = factor($n);
@@ -113,7 +113,10 @@ sub extra_factor_test {
   is_deeply( [ sort {$a<=>$b} $fsub->(1)   ], [1],       "$fname(1)" );
   is_deeply( [ sort {$a<=>$b} $fsub->(4)   ], [2, 2],    "$fname(4)" );
   is_deeply( [ sort {$a<=>$b} $fsub->(9)   ], [3, 3],    "$fname(9)" );
+  is_deeply( [ sort {$a<=>$b} $fsub->(11)  ], [11],      "$fname(11)" );
   is_deeply( [ sort {$a<=>$b} $fsub->(25)  ], [5, 5],    "$fname(25)" );
+  is_deeply( [ sort {$a<=>$b} $fsub->(30)  ], [2, 3, 5], "$fname(30)" );
+  is_deeply( [ sort {$a<=>$b} $fsub->(210) ], [2,3,5,7], "$fname(210)" );
   is_deeply( [ sort {$a<=>$b} $fsub->(175) ], [5, 5, 7], "$fname(175)" );
   is_deeply( [ sort {$a<=>$b} $fsub->(403) ], [13, 31],  "$fname(403)" );
   is_deeply( [ sort {$a<=>$b} $fsub->(549900) ], [2,2,3,3,5,5,13,47],  "$fname(549900)" );

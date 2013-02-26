@@ -49,7 +49,6 @@ examples/test-primes-yafu.pl
 examples/test-holf.pl
 examples/test-nthapprox.pl
 examples/test-pcapprox.pl
-examples/test-primality-small.pl
 examples/sophie_germain.pl
 examples/twin_primes.pl
 examples/find_mr_bases.pl
@@ -88,4 +87,5 @@ t/90-release-perlcritic.t
 t/91-release-pod-syntax.t
 t/92-release-pod-coverage.t
 xt/moebius-mertens.pl
+xt/primality-small.pl
 .travis.yml

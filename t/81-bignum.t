@@ -74,7 +74,7 @@ plan tests =>  0
              + 6*2*$extra # more PC tests
              + scalar(keys %factors)
              + scalar(keys %allfactors)
-             + 2   # moebius, euler_phi
+             + 4   # moebius, euler_phi, jordan totient
              + 15  # random primes
              + 0;
 
@@ -95,6 +95,8 @@ use Math::Prime::Util qw/
   all_factors
   moebius
   euler_phi
+  jordan_totient
+  divisor_sum
   ExponentialIntegral
   LogarithmicIntegral
   RiemannR
@@ -199,9 +201,14 @@ SKIP: {
 ###############################################################################
 
 SKIP: {
-  skip "Your 64-bit Perl is broken, skipping moebius and euler_phi tests", 2 if $broken64;
-  is( moebius(618970019642690137449562110), -1, "moebius(618970019642690137449562110)" );
-  is( euler_phi(618970019642690137449562110), 145857122964987051805507584, "euler_phi(618970019642690137449562110)" );
+  skip "Your 64-bit Perl is broken, skipping moebius and euler_phi tests", 4 if $broken64;
+  my $n;
+  $n = 618970019642690137449562110;
+  is( moebius($n), -1, "moebius($n)" );
+  is( euler_phi($n), 145857122964987051805507584, "euler_phi($n)" );
+  $n = 48981631802481400359696467;
+  is( jordan_totient(5,$n), 281946200770875813001683560563488308767928594805846855593191749929654015729263525162226378019837608857421063724603387506651820000, "jordan_totient(5,$n)" );
+  is( divisor_sum( $n, sub { my $d=shift; $d**5 * moebius($n/$d); }), 281946200770875813001683560563488308767928594805846855593191749929654015729263525162226378019837608857421063724603387506651820000, "jordan totient using divisor_sum and moebius" );
 }
 
 ###############################################################################

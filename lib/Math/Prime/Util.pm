@@ -1255,10 +1255,9 @@ sub divisor_sum {
   }
 
   croak "Second argument must be a code ref" unless ref($sub) eq 'CODE';
-  my $sum = $n - $n;
-  return ($sum+$sub->(1)) if $n == 1;
-
-  foreach my $f (1, all_factors($n), $n ) {
+  my $sum = $sub->(1);
+  return $sum if $n == 1;
+  foreach my $f (all_factors($n), $n ) {
     $sum += $sub->($f);
   }
   return $sum;

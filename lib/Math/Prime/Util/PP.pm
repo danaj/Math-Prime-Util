@@ -1138,6 +1138,7 @@ sub trial_factor {
 sub factor {
   my($n) = @_;
   _validate_positive_integer($n);
+  $n = $n->copy if ref($n) eq 'Math::BigInt';
 
   return trial_factor($n) if $n < 100000;
 

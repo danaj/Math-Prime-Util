@@ -27,12 +27,14 @@ static const unsigned char distancewheel30[30] =
 static const unsigned char wheeladvance30[30] =
     {0,6,0,0,0,0,0,4,0,0,0,2,0,4,0,0,0,2,0,4,0,0,0,6,0,0,0,0,0,2};
 
+#if 0
 static int is_prime_in_sieve(const unsigned char* sieve, UV p) {
   UV d = p/30;
   UV m = p - d*30;
   /* If m isn't part of the wheel, we return 0 */
   return ( (masktab30[m] != 0) && ((sieve[d] & masktab30[m]) == 0) );
 }
+#endif
 
 /* Warning -- can go off the end of the sieve */
 static UV next_prime_in_sieve(const unsigned char* sieve, UV p) {
@@ -47,6 +49,7 @@ static UV next_prime_in_sieve(const unsigned char* sieve, UV p) {
   } while (sieve[d] & masktab30[m]);
   return(d*30+m);
 }
+#if 0
 static UV prev_prime_in_sieve(const unsigned char* sieve, UV p) {
   UV d, m;
   if (p <= 7)
@@ -58,6 +61,7 @@ static UV prev_prime_in_sieve(const unsigned char* sieve, UV p) {
   } while (sieve[d] & masktab30[m]);
   return(d*30+m);
 }
+#endif
 
 /* Useful macros for the wheel-30 sieve array */
 #define START_DO_FOR_EACH_SIEVE_PRIME(sieve, a, b) \

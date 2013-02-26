@@ -14,7 +14,7 @@
 /* These math functions are a clusterfrack.  They're defined by C99, but
  * NetBSD doesn't have them.  You need them in both the headers and libraries,
  * but there is no standard way to find out if the libraries have them.  The
- * best way (I belive) to deal with this is having the make system do test
+ * best way (I believe) to deal with this is having the make system do test
  * compiles.  Barring that, we make limited guesses, and just give up
  * precision on any system we don't recognize.
  */
@@ -149,39 +149,6 @@ int _XS_is_prime(UV n)
   release_prime_cache(sieve);
 
   return (isprime >= 0)  ?  isprime  :  _is_prime7(n);
-}
-
-/* Shortcut, asking for a very quick response of 1 = prime, 0 = dunno.
- * No trial divisions will be done, making this useful for factoring.
- */
-int is_definitely_prime(UV n)
-{
-  UV d, m;
-  unsigned char mtab;
-  const unsigned char* sieve;
-  int isprime;
-
-  if ( n < (NPRIME_IS_SMALL*8))
-    return ((prime_is_small[n/8] >> (n%8)) & 1);
-
-  d = n/30;
-  m = n - d*30;
-  mtab = masktab30[m];  /* Bitmask in mod30 wheel */
-
-  /* Return 0 if a multiple of 2, 3, or 5 */
-  if (mtab == 0)
-    return 0;
-
-  isprime = (n <= get_prime_cache(0, &sieve))
-            ?  ((sieve[d] & mtab) == 0)
-            :  -1;
-  release_prime_cache(sieve);
-  if (isprime >= 0)  return isprime;
-
-  if (n > MPU_PROB_PRIME_BEST)
-    return (_XS_is_prob_prime(n) == 2);
-
-  return 0;
 }
 
 
