@@ -2414,8 +2414,8 @@ primality tests.
   say "$n is square free" if moebius($n) != 0;
   $sum += moebius($_) for (1..200); say "Mertens(200) = $sum";
 
-Returns the Möbius function (also called the Moebius, Mobius, or MoebiusMu
-function) for a non-negative integer input.  This function is 1 if
+Returns μ(n), the Möbius function (also called the Moebius, Mobius, or
+MoebiusMu function) for a non-negative integer input.  This function is 1 if
 C<n = 1>, 0 if C<n> is not square free (i.e. C<n> has a repeated factor),
 and C<-1^t> if C<n> is a product of C<t> distinct primes.  This is an
 important function in prime number theory.  Like SAGE, we define
@@ -2432,7 +2432,7 @@ which is a segmented version of Lioen and van de Lune (1994) algorithm 3.2.
 
   say "Mertens(10M) = ", mertens(10_000_000);   # = 1037
 
-Returns the Mertens function of the positive non-zero integer input.  This
+Returns M(n), the Mertens function for a non-negative integer input.  This
 function is defined as C<sum(moebius(1..n))>.  This is a much more efficient
 solution for larger inputs.  For example, computing Mertens(100M) takes:
 
@@ -2457,10 +2457,10 @@ algorithms can lead to a faster solution.
 
   say "The Euler totient of $n is ", euler_phi($n);
 
-Returns the Euler totient function (also called Euler's phi or phi function)
-for an integer value.  This is an arithmetic function that counts the number
-of positive integers less than or equal to C<n> that are relatively prime to
-C<n>.  Given the definition used, C<euler_phi> will return 0 for all
+Returns φ(n), the Euler totient function (also called Euler's phi or phi
+function) for an integer value.  This is an arithmetic function that counts
+the number of positive integers less than or equal to C<n> that are relatively
+prime to C<n>.  Given the definition used, C<euler_phi> will return 0 for all
 C<n E<lt> 1>.  This follows the logic used by SAGE.  Mathematic/WolframAlpha
 also returns 0 for input 0, but returns C<euler_phi(-n)> for C<n E<lt> 0>.
 
@@ -2486,12 +2486,12 @@ the Dedikind psi function, where C<psi(n) = J(2,n) / J(1,n)>.
 
   say "exp(lambda($_)) = ", exp_mangoldt($_) for 1 .. 100;
 
-The Mangoldt function Λ(n) (also known as von Mangoldt's function) is equal
-to log p if n is prime or a power of a prime, and 0 otherwise.  We return
-the exponential so all results are integers.  Hence the return value
-for C<exp_mangoldt> is:
-   C<p> if C<n = p^m> for some prime C<p> and integer C<m E<gt>= 1>
-   1 otherwise.
+Returns Λ(n), the Mangoldt function (also known as von Mangoldt's function) for
+an integer value.  It is equal to log p if n is prime or a power of a prime,
+and 0 otherwise.  We return the exponential so all results are integers.
+ Hence the return value for C<exp_mangoldt> is:
+   C<p>   if C<n = p^m> for some prime C<p> and integer C<m E<gt>= 1>
+   1   otherwise.
 
 
 =head2 divisor_sum

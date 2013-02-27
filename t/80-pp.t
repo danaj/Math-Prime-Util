@@ -226,7 +226,7 @@ plan tests => 1 +
               1 + 1 +    # factor
               8 + 4*3 +  # factoring subs
               10 +       # AKS
-              0;
+              1;
 
 use Math::Prime::Util qw/primes prime_count_approx prime_count_lower/;
 use Math::BigInt try => 'GMP';
@@ -252,6 +252,8 @@ require_ok 'Math::Prime::Util::PP';
     *ExponentialIntegral = \&Math::Prime::Util::PP::ExponentialIntegral;
 
 ###############################################################################
+
+$_ = 'this should not change';
 
 {
   my %small_primes = map { $_ => 1 } @small_primes;
@@ -470,6 +472,8 @@ SKIP: {
   skip "Skipping PP AKS test on 32-bit machine", 1 unless $use64 || $extra;
   is( is_aks_prime(74513), 0, "AKS: 74513 is composite (failed anr test)" );
 }
+
+is( $_, 'this should not change', "Nobody clobbered \$_" );
 
 ###############################################################################
 
