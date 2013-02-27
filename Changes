@@ -4,6 +4,10 @@ Revision history for Perl extension Math::Prime::Util.
 
     - exp_mangoldt in XS, and speed up the PP version.
 
+    - Replace XS Zeta for x > 5 with series from Cephes.  It is 1 eps more
+      accurate for a small fracion of inputs.  More importantly, it is much
+      faster in range 5 < x < 10.
+
 0.22 26 February 2013
 
     - Move main factor loop out of xs and into factor.c.

@@ -874,13 +874,28 @@ static const long double riemann_zeta_table[] = {
 };
 #define NPRECALC_ZETA (sizeof(riemann_zeta_table)/sizeof(riemann_zeta_table[0]))
 
-/* Riemann Zeta on the real line.  Compare to Math::Cephes::zetac */
+/* Riemann Zeta on the real line, with 1 subtracted.
+ * Compare to Math::Cephes zetac.  Also zeta with q=1 and subtracting 1.
+ *
+ * The Cephes zeta function uses a series (2k)!/B_2k which converges rapidly
+ * and has a very wide range of values.  We use it here for some values.
+ *
+ * Note: Calculations here are done on long doubles and we try to generate ~17
+ *       digits of accuracy.  When these are returned to Perl they get put in
+ *       a standard 64-bit double, so don't expect more than 15 digits.
+ *
+ * For values 0.5 to 5, this code uses the rational Chebyshev approximation
+ * from Cody and Thacher.  This method is extraordinarily fast and very
+ * accurate over its range (slightly better than Cephes for most values).  If
+ * we had quad floats, we could use the 9-term polynomial.
+ */
 long double ld_riemann_zeta(long double x) {
   long double const tol = 1e-17;
-  long double term;
+  int i;
   KAHAN_INIT(sum);
 
-  if (x < 0.5) croak("Invalid input to RiemannZeta:  x must be >= 0.5");
+  if (x < 0)  croak("Invalid input to RiemannZeta:  x must be >= 0");
+  if (x == 1) return INFINITY;
 
   if (x == (unsigned int)x) {
     int k = x - 2;
@@ -888,63 +903,96 @@ long double ld_riemann_zeta(long double x) {
       return riemann_zeta_table[k];
   }
 
-  /* Use Cody et al. rational Chebyshev approx for small values.  This is the
-   * range where the series methods take a long time and are inaccurate.  This
-   * method is fast and quite accurate over the range 0.5 - 5. */
-  if (x <= 5.0) {
-
+  /* Cody / Thacher rational Chebyshev approximation for small values */
+  if (x >= 0.5 && x <= 5.0) {
     static const long double C8p[9] = { 1.287168121482446392809e10L,
-                                   1.375396932037025111825e10L,
-                                   5.106655918364406103683e09L,
-                                   8.561471002433314862469e08L,
-                                   7.483618124380232984824e07L,
-                                   4.860106585461882511535e06L,
-                                   2.739574990221406087728e05L,
-                                   4.631710843183427123061e03L,
-                                   5.787581004096660659109e01L };
+                                        1.375396932037025111825e10L,
+                                        5.106655918364406103683e09L,
+                                        8.561471002433314862469e08L,
+                                        7.483618124380232984824e07L,
+                                        4.860106585461882511535e06L,
+                                        2.739574990221406087728e05L,
+                                        4.631710843183427123061e03L,
+                                        5.787581004096660659109e01L };
     static const long double C8q[9] = { 2.574336242964846244667e10L,
-                                   5.938165648679590160003e09L,
-                                   9.006330373261233439089e08L,
-                                   8.042536634283289888587e07L,
-                                   5.609711759541920062814e06L,
-                                   2.247431202899137523543e05L,
-                                   7.574578909341537560115e03L,
-                                  -2.373835781373772623086e01L,
-                                   1.000000000000000000000L    };
+                                        5.938165648679590160003e09L,
+                                        9.006330373261233439089e08L,
+                                        8.042536634283289888587e07L,
+                                        5.609711759541920062814e06L,
+                                        2.247431202899137523543e05L,
+                                        7.574578909341537560115e03L,
+                                       -2.373835781373772623086e01L,
+                                        1.000000000000000000000L    };
     long double sumn = C8p[0]+x*(C8p[1]+x*(C8p[2]+x*(C8p[3]+x*(C8p[4]+x*(C8p[5]+x*(C8p[6]+x*(C8p[7]+x*C8p[8])))))));
     long double sumd = C8q[0]+x*(C8q[1]+x*(C8q[2]+x*(C8q[3]+x*(C8q[4]+x*(C8q[5]+x*(C8q[6]+x*(C8q[7]+x*C8q[8])))))));
     sum = (sumn - (x-1)*sumd) / ((x-1)*sumd);
-
-  } else if (x > 2000.0) {
-
-    /* 1) zeta(2000)-1 is about 8.7E-603, which is far less than a IEEE-754
-     *    64-bit double can represent.  A 128-bit quad could go to ~16000.
-     * 2) pow / powl start getting obnoxiously slow with values like -7500.
-     */
-    return 0.0;
-
-  } else {
-
-    /* I was using this series:
-     *   functions.wolfram.com/ZetaFunctionsandPolylogarithms/Zeta/06/04/0003
-     * which for integer values is great -- it needs half the number of terms
-     * and gives slightly better numerical results.  However, for non-integer
-     * values using double precision, it's awful.
-     * Back to the defining equation.
-     */
-    int k;
-    for (k = 5; k <= 1000000; k++) {
-      term = powl(k, -x);
-      KAHAN_SUM(sum, term);
-      if (term < tol*sum) break;
-    }
-    KAHAN_SUM(sum, powl(4, -x) );
-    KAHAN_SUM(sum, powl(3, -x) );
-    KAHAN_SUM(sum, powl(2, -x) );
-
+    return sum;
   }
 
+  if (x > 2000.0) {
+    /* 1) zeta(2000)-1 is about 8.7E-603, which is far less than a IEEE-754
+     *    64-bit double can represent.  A 128-bit quad could go to ~16000.
+     * 2) pow / powl start getting obnoxiously slow with values like -7500. */
+    return 0.0;
+  }
+
+#if 0
+  /* Simple defining series, works well. */
+  for (i = 5; i <= 1000000; i++) {
+    long double term = powl(i, -x);
+    KAHAN_SUM(sum, term);
+    if (term < tol*sum) break;
+  }
+  KAHAN_SUM(sum, powl(4, -x) );
+  KAHAN_SUM(sum, powl(3, -x) );
+  KAHAN_SUM(sum, powl(2, -x) );
   return sum;
+#endif
+
+  /* The 2n!/B_2k series used by the Cephes library. */
+  {
+    /* gp/pari: factorial(2n)/bernfrac(2n) */
+    static const long double A[] = {
+      12.0L,
+     -720.0L,
+      30240.0L,
+     -1209600.0L,
+      47900160.0L,
+     -1892437580.3183791606367583212735166426L,
+      74724249600.0L,
+     -2950130727918.1642244954382084600497650L,
+      116467828143500.67248729113000661089202L,
+     -4597978722407472.6105457273596737891657L,
+      181521054019435467.73425331153534235290L,
+     -7166165256175667011.3346447367083352776L,
+      282908877253042996618.18640556532523927L,
+    };
+    long double a, b, s, t, w;
+    s = powl(1.0, -x) - 1.0;
+    b = 0.0;
+    for (i = 2; i < 11; i++) {
+      b = powl( i, -x );
+      s += b;
+      if (fabsl(b/s) < tol)
+         return s;
+    }
+    w = i-1;
+    s = s + b*w/(x-1.0) - 0.5 * b;
+    a = 1.0;
+    for (i = 0; i < 13; i++) {
+      long double k = 2*i;
+      a *= x + k;
+      b /= w;
+      t = a*b/A[i];
+      s = s + t;
+      t = fabsl(t/s);
+      if (t < tol)
+        break;
+      a *= x + k + 1.0;
+      b /= w;
+    }
+    return s;
+  }
 }
 
 double _XS_RiemannR(double x) {
