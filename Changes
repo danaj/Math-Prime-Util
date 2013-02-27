@@ -1,10 +1,10 @@
 Revision history for Perl extension Math::Prime::Util.
 
-0.23 xx February 2012
+0.23 xx February 2013
 
     - exp_mangoldt in XS, and speed up the PP version.
 
-0.22 26 February 2012
+0.22 26 February 2013
 
     - Move main factor loop out of xs and into factor.c.
 
@@ -14,7 +14,7 @@ Revision history for Perl extension Math::Prime::Util.
 
     - Switch thread locking to pthreads condition variables.
 
-0.21 22 February 2012
+0.21 22 February 2013
 
     - Switch to using Bytes::Random::Secure for random primes.  This is a
       big change in that it is the first non-CORE module used.  However, it
@@ -40,7 +40,7 @@ Revision history for Perl extension Math::Prime::Util.
        - primes.pl is much faster with Pillai primes.
        - Reduce overhead in euler_phi -- about 2x faster for individual calls.
 
-0.20  3 February 2012
+0.20  3 February 2013
 
     - Speedup for PP AKS, and turn off test on 32-bit machines.
 
@@ -51,7 +51,7 @@ Revision history for Perl extension Math::Prime::Util.
 
     - Fix is_perfect_power in XS AKS.
 
-0.19  1 February 2012
+0.19  1 February 2013
 
     - Update MR bases with newest from http://miller-rabin.appspot.com/.
 
@@ -64,7 +64,7 @@ Revision history for Perl extension Math::Prime::Util.
 
     - Adjust some validation subroutines to cut down on overhead.
 
-0.18  14 January 2012
+0.18  14 January 2013
 
     - Add random_strong_prime.
 
