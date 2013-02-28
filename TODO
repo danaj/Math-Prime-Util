@@ -38,6 +38,7 @@
 - More efficient Mertens.  The current version has poor growth.
 
 - Add first and second Chebyshev functions.  See Planat and Solé (2011).
+  MPU::GMP has primorial and consecutive_integer_lcm which are what we need.
 
 - Keep speeding up factoring for very large values.
 

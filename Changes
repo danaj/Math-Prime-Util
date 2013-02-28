@@ -11,6 +11,10 @@ Revision history for Perl extension Math::Prime::Util.
     - PP Zeta code replaced (for no-MPFR, non-bignums) with new series.  The
       new code is much more accurate for small values, and *much* faster.
 
+    - Add consecutive_integer_lcm function, just like MPU::GMP's.
+
+    - Add examples for first and second Chebyshev functions.
+
 0.22 26 February 2013
 
     - Move main factor loop out of xs and into factor.c.

@@ -25,7 +25,7 @@ our @EXPORT_OK = qw(
                      nth_prime nth_prime_lower nth_prime_upper nth_prime_approx
                      random_prime random_ndigit_prime random_nbit_prime
                      random_strong_prime random_maurer_prime
-                     primorial pn_primorial
+                     primorial pn_primorial consecutive_integer_lcm
                      factor all_factors
                      moebius mertens euler_phi jordan_totient exp_mangoldt
                      divisor_sum
@@ -435,23 +435,25 @@ sub primes {
 # It will generate primes with more bits, but it slows down a lot.  The
 # time variation becomes quite extreme once bit sizes get over 6000 or so.
 #
-# Random timings for 1M calls:
-#   0.032   system rand
-#   0.20    Math::Random::MT::Auto
-#   0.96    Math::Random::Secure  irand  (with Math::Random::ISAAC::XS)
-#   1.71    Math::Random::Secure         (with Math::Random::ISAAC::XS)
-#   1.90   *Bytes::Random::Secure irand  (with Math::Random::ISAAC::XS)
-#   2.40    Math::Random::Secure  irand
-#   3.37    Math::Random::Secure
-#   2.21   *Bytes::Random::Secure        (with Math::Random::ISAAC::XS)
-#   3.32   *Bytes::Random::Secure irand
-#   3.62   *Bytes::Random::Secure
-# 123.8    *Crypt::Random         irand
-# BRS: sub irand { return unpack("L", random_bytes(4)); }
-#      sub rand  {return ($_[0]||1)*(unpack("L",random_bytes(4))/4294967296.0)}
-# CR:  makerandom(Size=>32, Uniform=>1, Strength=>0)
-#      haveged daemon running to stop /dev/random blocking
-# Both BRS and CR have more features that this isn't measuring.
+# Random timings for 10M calls:
+#    1.92    system rand
+#    2.62    Math::Random::MT::Auto
+#   12.0     Math::Random::Secure           w/ISAAC::XS
+#   12.6     Bytes::Random::Secure OO       w/ISAAC::XS
+#   31.1     Bytes::Random::Secure OO
+#   44.5     Bytes::Random::Secure function w/ISAAC::XS
+#   44.8     Math::Random::Secure
+#   71.5     Bytes::Random::Secure function
+# 1840       Crypt::Random
+#
+# time perl -E 'sub irand {int(rand(4294967296));} irand() for 1..10000000;'
+# time perl -E 'use Math::Random::MT::Auto qw/irand/; irand() for 1..10000000;'
+# time perl -E 'use Math::Random::Secure qw/irand/; irand() for 1..10000000;'
+# time perl -E 'use Bytes::Random::Secure qw/random_bytes/; sub irand {return unpack("L",random_bytes(4));} irand() for 1..10000000;'
+# time perl -E 'use Bytes::Random::Secure; my $rng = Bytes::Random::Secure->new(); sub irand {return $rng->irand;} irand() for 1..10000000;'
+# time perl -E 'use Crypt::Random qw/makerandom/; sub irand {makerandom(Size=>32, Uniform=>1, Strength=>0)} irand() for 1..100_000;'
+# > haveged daemon running to stop /dev/random blocking
+# > Both BRS and CR have more features that this isn't measuring.
 #
 # To verify distribution:
 #   perl -Iblib/lib -Iblib/arch -MMath::Prime::Util=:all -E 'my %freq; $n=1000000; $freq{random_nbit_prime(6)}++ for (1..$n); printf("%4d %6.3f%%\n", $_, 100.0*$freq{$_}/$n) for sort {$a<=>$b} keys %freq;'
@@ -1031,6 +1033,44 @@ sub primorial {
 sub pn_primorial {
   my($n) = @_;
   return primorial(nth_prime($n));
+}
+
+sub consecutive_integer_lcm {
+  my($n) = @_;
+  _validate_positive_integer($n);
+  return 1 if $n <= 1;
+
+  my $pn = 1;
+  if ($n >= (($_Config{'maxbits'} == 32) ? 22 : 46)) {
+    if (!defined $Math::BigInt::VERSION) {
+      eval { require Math::BigInt; Math::BigInt->import(try=>'GMP,Pari'); 1; }
+      or do { croak "Cannot load Math::BigInt"; };
+    }
+    $pn = Math::BigInt->bone();
+  }
+  # Ensure we use their type
+  $pn = $_[0]->copy->bone() if ref($_[0]) eq 'Math::BigInt';
+
+  if ($_HAVE_GMP && defined &Math::Prime::Util::GMP::consecutive_integer_lcm) {
+    my $clcm = Math::Prime::Util::GMP::consecutive_integer_lcm($n);
+    return int($clcm) unless ref($pn) eq 'Math::BigInt';
+    return $pn->copy->badd("$clcm");
+  }
+
+  my @primes = @{primes(2,$n)};
+  while (@primes) {
+    my $p = $primes[0];
+    my $pmin = int($n/$p);
+    last if $p > $pmin;
+    my $p_power = $p*$p;
+    $p_power *= $p while $p_power <= $pmin;
+    $pn *= $p_power;
+    shift @primes;
+  }
+  foreach my $p (@primes) {
+    $pn *= $p;
+  }
+  return $pn;
 }
 
 
@@ -1994,15 +2034,16 @@ Version 0.22
   $sigma  = divisor_sum( $n );
   $sigma2 = divisor_sum( $n, sub { $_[0]*$_[0] } );
 
-  # The primorial n# (product of all primes <= n)
-  say "15# (2*3*5*7*11*13) is ", primorial(15);
-  # The primorial p(n)# (product of first n primes)
-  say "P(9)# (2*3*5*7*11*13*17*19*23) is ", pn_primorial(9);
+  # primorial n#, primorial p(n)#, and lcm
+  say "The product of primes below 47 is ",     primorial(47);
+  say "The product of the first 47 primes is ", pn_primorial(47);
+  say "lcm(1..1000) is ", consecutive_integer_lcm(1000);
 
   # Ei, li, and Riemann R functions
-  my $ei = ExponentialIntegral($x);    # $x a real: $x != 0
-  my $li = LogarithmicIntegral($x);    # $x a real: $x >= 0
-  my $R  = RiemannR($x)                # $x a real: $x > 0
+  my $ei   = ExponentialIntegral($x);   # $x a real: $x != 0
+  my $li   = LogarithmicIntegral($x);   # $x a real: $x >= 0
+  my $R    = RiemannR($x)               # $x a real: $x > 0
+  my $Zeta = RiemannZeta($x)            # $x a real: $x >= 0
 
 
   # Precalculate a sieve, possibly speeding up later work.
@@ -2063,7 +2104,7 @@ L<Math::Prime::Util::GMP> if you plan to use bigints with this module, as
 it will make it run much faster.
 
 
-Some of the functions, notably:
+Some of the functions, including:
 
   factor
   is_prime
@@ -2072,6 +2113,10 @@ Some of the functions, notably:
   next_prime
   prev_prime
   nth_prime
+  moebius
+  mertens
+  euler_phi
+  exp_mangoldt
 
 work very fast (under 1 microsecond) on small inputs, but the wrappers for
 input validation and bigint support take more time than the function itself.
@@ -2569,6 +2614,16 @@ The result will be a L<Math::BigInt> object if it is larger than the native
 bit size.
 
 
+=head2 consecutive_integer_lcm
+
+  $lcm = consecutive_integer_lcm($n);
+
+Given an unsigned integer argument, returns the least common multiple of all
+integers from 1 to C<n>.  This can be done by manipulation of the primes up
+to C<n>, resulting in much faster and memory-friendly results than using
+a factorial.
+
+
 =head2 random_prime
 
   my $small_prime = random_prime(1000);      # random prime <= limit
@@ -2605,15 +2660,19 @@ a non-blocking seed.  This will create good quality random numbers, so there
 should be little reason to change unless one is generating long-term keys,
 where using the blocking random source may be preferred.
 
-Examples of irand functions:
+Examples of various ways to set your own irand function:
 
   # Math::Random::Secure.  Uses ISAAC and strong seed methods.
   use Math::Random::Secure;
   prime_set_config(irand => \&Math::Random::Secure::irand);
 
-  # Bytes::Random::Secure.  Also uses ISAAC and strong seed methods.
-  use Bytes::Random::Secure qw/random_bytes/;
-  prime_set_config(irand => sub { return unpack("L", random_bytes(4)); });
+  # Bytes::Random::Secure (OO interface with full control of options):
+  use Bytes::Random::Secure ();
+  BEGIN {
+    my $rng = Bytes::Random::Secure->new( Bits => 512 );
+    sub irand { return $rng->irand; }
+  }
+  prime_set_config(irand => \&irand);
 
   # Crypt::Random.  Uses Pari and /dev/random.  Very slow.
   use Crypt::Random qw/makerandom/;
@@ -3008,7 +3067,7 @@ the input is less than 1, results will be calculated as C<Ei(ln x)>.
 
   my $z = RiemannZeta($s);
 
-Given a floating point input C<s> where C<s E<gt> 0>, returns the floating
+Given a floating point input C<s> where C<s E<gt>= 0>, returns the floating
 point value of ζ(s)-1, where ζ(s) is the Riemann zeta function.  One is
 subtracted to ensure maximum precision for large values of C<s>.  The zeta
 function is the sum from k=1 to infinity of C<1 / k^s>.  This function only
@@ -3019,7 +3078,8 @@ were Math::BigFloat objects.
 
 For non-BigInt/BigFloat objects, the result should be accurate to at least 14
 digits.  The XS code uses a rational Chebyshev approximation between 0.5 and 5,
-and a series for larger values.
+and a series for other values.  The PP code uses an identical series for all
+values.
 
 For BigInt / BigFloat objects, we first check to see if the Math::MPFR module
 is installed.  If so, then it is used, as it will return results much faster
@@ -3068,6 +3128,19 @@ Print some primes above 64-bit range:
     # Similar code using Pari:
     # perl -MMath::Pari=:int,PARI,nextprime -E 'my $start = PARI "100000000000000000000"; my $end = $start+1000; my $p=nextprime($start); while ($p <= $end) { say $p; $p = nextprime($p+1); }'
 
+The first Chebyshev function θ(x):
+
+  use List::Util qw/sum/;
+  sub chebyshev1 { 0+sum( map { log($_) } @{primes(shift)} ) }
+  #  or using primorial and BigFloat:
+  sub chebyshev1a { Math::BigFloat->new(primorial(shift))->blog }
+
+The second Chebyshev function ψ(x):
+
+  use List::Util qw/sum/;
+  sub chebyshev2 { 0+sum( map { log(exp_mangoldt($_)) } 1 .. shift ) }
+  #  or using cilcm and BigFloat:
+  sub chebyshev2a { Math::BigFloat->new(consecutive_integer_lcm(shift))->blog }
 
 Project Euler, problem 3 (Largest prime factor):
 
@@ -3151,17 +3224,19 @@ Here's the best way for PE187.  Under 30 milliseconds from the command line:
 I have not completed testing all the functions near the word size limit
 (e.g. C<2^32> for 32-bit machines).  Please report any problems you find.
 
-Perl versions earlier than 5.8.0 have issues with 64-bit that show up in the
-factoring tests.  The test suite will try to determine if your Perl is broken.
-If you use later versions of Perl, or Perl 5.6.2 32-bit, or Perl 5.6.2 64-bit
-and keep numbers below C<~ 2^52>, then everything works.  The best solution is
-to update to a more recent Perl.
+Perl versions earlier than 5.8.0 have a rather broken 64-bit implementation,
+in that the values are actually stored as doubles.  Hence any value larger
+than C<~ 2^49> will start losing bottom bits.  This causes numerous functions
+to not work properly.  The test suite will try to determine if your Perl is
+broken (this only applies to really old versions of Perl compiled for 64-bit
+when using numbers larger than C<~ 2^49>).  The best solution is updating to
+a more recent Perl.
 
 The module is thread-safe and should allow good concurrency on all platforms
-that support Perl threads except Win32 (Cygwin works).  With Win32, either
-don't use threads or make sure C<prime_precalc> is called before using
-C<primes>, C<prime_count>, or C<nth_prime> with large inputs.  This is B<only>
-an issue if you use non-Cygwin Win32 and call these routines from within
+that support Perl threads except Win32.  With Win32, either don't use threads
+or make sure C<prime_precalc> is called before using C<primes>,
+C<prime_count>, or C<nth_prime> with large inputs.  This is B<only>
+an issue if you use non-Cygwin Win32 B<and> call these routines from within
 Perl threads.
 
 
@@ -3203,7 +3278,7 @@ Perl modules, counting the primes to C<800_000_000> (800 million):
        0.47  Math::Prime::Util::PP       0.14     Perl (Lehmer's method)
        0.9   Math::Prime::Util           0.01     mod-30 sieve
        2.9   Math::Prime::FastSieve      0.12     decent odd-number sieve
-      11.7   Math::Prime::XS             0.29     "" but needs a count API
+      11.7   Math::Prime::XS             0.26     needs some optimization
       15.0   Bit::Vector                 7.2
       48.9   Math::Prime::Util::PP       0.14     Perl (fastest I know of)
      170.0   Faster Perl sieve (net)     2012-01  array of odds
