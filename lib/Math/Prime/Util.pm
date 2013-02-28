@@ -1054,7 +1054,7 @@ sub consecutive_integer_lcm {
   if ($_HAVE_GMP && defined &Math::Prime::Util::GMP::consecutive_integer_lcm) {
     my $clcm = Math::Prime::Util::GMP::consecutive_integer_lcm($n);
     return int($clcm) unless ref($pn) eq 'Math::BigInt';
-    return $pn->copy->badd("$clcm");
+    return $pn->bzero->badd("$clcm");
   }
 
   my @primes = @{primes(2,$n)};

@@ -73,6 +73,7 @@ t/17-pseudoprime.t
 t/18-functions.t
 t/19-moebius.t
 t/20-primorial.t
+t/21-conseq-lcm.t
 t/22-aks-prime.t
 t/30-relations.t
 t/31-threading.t
