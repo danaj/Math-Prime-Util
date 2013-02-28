@@ -967,8 +967,9 @@ long double ld_riemann_zeta(long double x) {
      -7166165256175667011.3346447367083352776L,
       282908877253042996618.18640556532523927L,
     };
-    long double a, b, s, t, w;
-    s = powl(1.0, -x) - 1.0;
+    long double a, b, s, t;
+    const long double w = 10.0;
+    s = 0.0;
     b = 0.0;
     for (i = 2; i < 11; i++) {
       b = powl( i, -x );
@@ -976,7 +977,6 @@ long double ld_riemann_zeta(long double x) {
       if (fabsl(b/s) < tol)
          return s;
     }
-    w = i-1;
     s = s + b*w/(x-1.0) - 0.5 * b;
     a = 1.0;
     for (i = 0; i < 13; i++) {

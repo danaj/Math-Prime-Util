@@ -5,8 +5,11 @@ Revision history for Perl extension Math::Prime::Util.
     - exp_mangoldt in XS, and speed up the PP version.
 
     - Replace XS Zeta for x > 5 with series from Cephes.  It is 1 eps more
-      accurate for a small fracion of inputs.  More importantly, it is much
-      faster in range 5 < x < 10.
+      accurate for a small fraction of inputs.  More importantly, it is much
+      faster in range 5 < x < 10.  This only affects non-integer inputs.
+
+    - PP Zeta code replaced (for no-MPFR, non-bignums) with new series.  The
+      new code is much more accurate for small values, and *much* faster.
 
 0.22 26 February 2013
 
