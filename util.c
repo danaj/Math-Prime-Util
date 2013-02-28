@@ -557,10 +557,46 @@ UV _XS_nth_prime(UV n)
     double flogn = log(fn);
     double flog2n = log(flogn);   /* Dusart 2010, page 2, n >= 3 */
     UV lower_limit = fn * (flogn + flog2n - 1.0 + ((flog2n-2.10)/flogn));
-    segment_size = lower_limit / 30;
-    lower_limit = 30 * segment_size - 1;
-    count = _XS_lehmer_pi(lower_limit) - 3;
-    MPUassert(count <= target, "Pi(nth_prime_lower(n))) > n");
+#if BITS_PER_WORD == 32
+    if (1) {
+#else
+    if (n <= UVCONST(20000000000)) {
+#endif
+      /* Calculate lower limit, get count, sieve to that */
+      segment_size = lower_limit / 30;
+      lower_limit = 30 * segment_size - 1;
+      count = _XS_lehmer_pi(lower_limit) - 3;
+      MPUassert(count <= target, "Pi(nth_prime_lower(n))) > n");
+    } else {
+      /* Compute approximate nth prime via binary search on R(n) */
+      UV lo = lower_limit;
+      UV hi = upper_limit;
+      double lor = _XS_RiemannR(lo);
+      double hir = _XS_RiemannR(hi);
+      while (lor < hir) {
+        UV mid = (UV)  ((lo + hi) / 2);
+        double midr = _XS_RiemannR(mid);
+        if (midr <= n) { lo = mid+1;  lor = _XS_RiemannR(lo); }
+        else           { hi = mid; hir = midr; }
+      }
+      /* Bias toward lower, because we want to sieve up if possible */
+      lower_limit = (UV) (double)(0.9999999*(lo-1));
+      segment_size = lower_limit / 30;
+      lower_limit = 30 * segment_size - 1;
+      count = _XS_lehmer_pi(lower_limit);
+      /*
+        printf("We've estimated %lu too %s.\n", (count>n)?count-n:n-count, (count>n)?"FAR":"little");
+        printf("Our limit %lu %s a prime\n", lower_limit, _XS_is_prime(lower_limit) ? "is" : "is not");
+      */
+
+      if (count > n) { /* Too far.  Walk backwards */
+        if (_XS_is_prime(lower_limit)) count--;
+        for (p = 0; p <= (count-n); p++)
+          lower_limit = _XS_prev_prime(lower_limit);
+        return lower_limit;
+      }
+      count -= 3;
+    }
 
     /* Make sure the segment siever won't have to keep resieving. */
     prime_precalc(sqrt(upper_limit));

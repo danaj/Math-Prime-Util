@@ -15,6 +15,10 @@ Revision history for Perl extension Math::Prime::Util.
 
     - Add examples for first and second Chebyshev functions.
 
+    - Implement binary search on RiemannR for XS nth_prime when n > 2e11.
+      Runs ~2x faster for 1e12, 3x faster for 1e13.  Thanks to Programming
+      Praxis for the idea and motivation.
+
 0.22 26 February 2013
 
     - Move main factor loop out of xs and into factor.c.
