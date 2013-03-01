@@ -360,13 +360,13 @@ int _XS_is_prob_prime(UV n)
   }
 #else
 #if 1
-  /* Better bases from http://miller-rabin.appspot.com/, 23 Feb 2013 */
+  /* Better bases from http://miller-rabin.appspot.com/, 28 Feb 2013 */
   if (n < UVCONST(291831)) {
     bases[0] = UVCONST(126401071349994536);
     nbases = 1;
-  } else if (n < UVCONST(520924141)) {
+  } else if (n < UVCONST(624732421)) {
     bases[0] = 15;
-    bases[1] = UVCONST( 750068417525532 );
+    bases[1] = UVCONST( 5511855321103177 );
     nbases = 2;
   } else if (n < UVCONST(154639673381)) {
     bases[0] = 15;

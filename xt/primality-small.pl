@@ -5,7 +5,7 @@ $| = 1;  # fast pipes
 
 # Make sure the is_prob_prime functionality is working for small inputs.
 # Good for making sure the first few M-R bases are set up correctly.
-my $limit = 600_000_000;
+my $limit = 800_000_000;
 
 use Math::Prime::Util qw/is_prob_prime/;
 # Use another code base for comparison.

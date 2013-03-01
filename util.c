@@ -664,7 +664,7 @@ IV* _moebius_range(UV lo, UV hi)
     if (i < lo)
       i = i*(lo/i) + ( (lo%i) ? i : 0 );
     while (i <= hi) {
-      mu[i-lo] *= -p;
+      mu[i-lo] *= -(IV)p;
       i += p;
     }
   }

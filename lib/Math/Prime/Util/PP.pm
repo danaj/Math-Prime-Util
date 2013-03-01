@@ -712,7 +712,7 @@ sub miller_rabin {
   return 0 if !($n % 2);
 
   # Die on invalid bases
-  do { croak "Base $_ is invalid" if $_ < 2 } for (@bases);
+  foreach my $base (@bases) { croak "Base $base is invalid" if $base < 2 }
   # Make sure we handle big bases ok.
   @bases = grep { $_ > 1 }  map { ($_ >= $n) ? $_ % $n : $_ }  @bases;
 
@@ -948,14 +948,12 @@ sub is_strong_lucas_pseudoprime {
 
 my $_poly_bignum;
 sub _poly_new {
-  my @poly;
+  my @poly = @_;
+  push @poly, 0 unless scalar @poly;
   if ($_poly_bignum) {
-    foreach my $c (@_) {
-      push @poly, (ref $c eq 'Math::BigInt') ? $c->copy : Math::BigInt->new("$c");
-    }
-  } else {
-    push @poly, $_ for (@_);
-    push @poly, 0 unless scalar @poly;
+    @poly = map { (ref $_ eq 'Math::BigInt')
+                  ?  $_->copy
+                  :  Math::BigInt->new("$_"); } @poly;
   }
   return \@poly;
 }
