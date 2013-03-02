@@ -12,25 +12,27 @@ BEGIN {
 # parent is cleaner, and in the Perl 5.10.1 / 5.12.0 core, but not earlier.
 # use parent qw( Exporter );
 use base qw( Exporter );
-our @EXPORT_OK = qw(
-                     prime_get_config prime_set_config
-                     prime_precalc prime_memfree
-                     is_prime is_prob_prime is_provable_prime
-                     is_strong_pseudoprime is_strong_lucas_pseudoprime
-                     is_aks_prime
-                     miller_rabin
-                     primes
-                     next_prime  prev_prime
-                     prime_count prime_count_lower prime_count_upper prime_count_approx
-                     nth_prime nth_prime_lower nth_prime_upper nth_prime_approx
-                     random_prime random_ndigit_prime random_nbit_prime
-                     random_strong_prime random_maurer_prime
-                     primorial pn_primorial consecutive_integer_lcm
-                     factor all_factors
-                     moebius mertens euler_phi jordan_totient exp_mangoldt
-                     divisor_sum
-                     ExponentialIntegral LogarithmicIntegral RiemannZeta RiemannR
-                   );
+our @EXPORT_OK =
+  qw( prime_get_config prime_set_config
+      prime_precalc prime_memfree
+      is_prime is_prob_prime is_provable_prime
+      is_strong_pseudoprime is_strong_lucas_pseudoprime
+      is_aks_prime
+      miller_rabin
+      primes
+      next_prime  prev_prime
+      prime_count
+      prime_count_lower prime_count_upper prime_count_approx
+      nth_prime nth_prime_lower nth_prime_upper nth_prime_approx
+      random_prime random_ndigit_prime random_nbit_prime
+      random_strong_prime random_maurer_prime
+      primorial pn_primorial consecutive_integer_lcm
+      factor all_factors
+      moebius mertens euler_phi jordan_totient exp_mangoldt
+      chebyshev_theta chebyshev_psi
+      divisor_sum
+      ExponentialIntegral LogarithmicIntegral RiemannZeta RiemannR
+  );
 our %EXPORT_TAGS = (all => [ @EXPORT_OK ]);
 
 my %_Config;
@@ -46,19 +48,21 @@ sub import {
 sub _import_nobigint {
   $_Config{'nobigint'} = 1;
   return unless $_Config{'xs'};
-  undef *factor;        *factor          = \&_XS_factor;
-  undef *is_prime;      *is_prime        = \&_XS_is_prime;
-  undef *is_prob_prime; *is_prob_prime   = \&_XS_is_prob_prime;
-  undef *next_prime;    *next_prime      = \&_XS_next_prime;
-  undef *prev_prime;    *prev_prime      = \&_XS_prev_prime;
- #undef *prime_count;   *prime_count     = \&_XS_prime_count;
-  undef *nth_prime;     *nth_prime       = \&_XS_nth_prime;
+  undef *factor;          *factor            = \&_XS_factor;
+  undef *is_prime;        *is_prime          = \&_XS_is_prime;
+  undef *is_prob_prime;   *is_prob_prime     = \&_XS_is_prob_prime;
+  undef *next_prime;      *next_prime        = \&_XS_next_prime;
+  undef *prev_prime;      *prev_prime        = \&_XS_prev_prime;
+ #undef *prime_count;     *prime_count       = \&_XS_prime_count;
+  undef *nth_prime;       *nth_prime         = \&_XS_nth_prime;
   undef *is_strong_pseudoprime;  *is_strong_pseudoprime = \&_XS_miller_rabin;
-  undef *miller_rabin;  *miller_rabin    = \&_XS_miller_rabin;
-  undef *moebius;       *moebius         = \&_XS_moebius;
-  undef *mertens;       *mertens         = \&_XS_mertens;
-  undef *euler_phi;     *euler_phi       = \&_XS_totient;
-  undef *exp_mangoldt;  *exp_mangoldt    = \&_XS_exp_mangoldt;
+  undef *miller_rabin;    *miller_rabin      = \&_XS_miller_rabin;
+  undef *moebius;         *moebius           = \&_XS_moebius;
+  undef *mertens;         *mertens           = \&_XS_mertens;
+  undef *euler_phi;       *euler_phi         = \&_XS_totient;
+  undef *exp_mangoldt;    *exp_mangoldt      = \&_XS_exp_mangoldt;
+  undef *chebyshev_theta; *chebyshev_theta   = \&_XS_chebyshev_theta;
+  undef *chebyshev_psi;   *chebyshev_psi     = \&_XS_chebyshev_psi;
 }
 
 BEGIN {
@@ -1038,7 +1042,7 @@ sub pn_primorial {
 sub consecutive_integer_lcm {
   my($n) = @_;
   _validate_positive_integer($n);
-  return 1 if $n <= 1;
+  return 0 if $n < 1;
 
   my $pn = 1;
   if ($n >= (($_Config{'maxbits'} == 32) ? 22 : 46)) {
@@ -1334,6 +1338,31 @@ sub exp_mangoldt {
   return 1 if scalar grep { $_ != $first } @factors;
   return $first;
 }
+
+sub chebyshev_theta {
+  my($n) = @_;
+  _validate_positive_integer($n);
+  return _XS_chebyshev_theta($n) if $n <= $_XS_MAXVAL;
+  my $sum = 0.0;
+  foreach my $p (@{primes($n)}) {
+    $sum += log($p);
+  }
+  return $sum;
+}
+sub chebyshev_psi {
+  my($n) = @_;
+  _validate_positive_integer($n);
+  return 0 if $n <= 1;
+  return _XS_chebyshev_psi($n) if $n <= $_XS_MAXVAL;
+  my ($sum, $logn, $mults_are_one) = (0.0, log($n), 0);
+  foreach my $p (@{primes($n)}) {
+    my $logp = log($p);
+    $mults_are_one = 1 if !$mults_are_one && $p > int($n/$p);
+    $sum += ($mults_are_one) ? $logp : $logp * int($logn/$logp+1e-15);
+  }
+  return $sum;
+}
+
 
 
 #############################################################################
@@ -2539,6 +2568,40 @@ and 0 otherwise.  We return the exponential so all results are integers.
    1   otherwise.
 
 
+=head2 chebyshev_theta
+
+  say chebyshev_theta(10000);
+
+Returns θ(n), the first Chebyshev function for a non-negative integer input.
+This is the sum of the logarithm of each prime where C<p E<lt>= n>.  An
+alternate computation is as the logarithm of n primorial, hence:
+
+  use List::Util qw/sum/;
+  sub c1a { 0+sum( map { log($_) } @{primes(shift)} ) }
+  use Math::BigFloat;
+  sub c1b { Math::BigFloat->new(primorial(shift))->blog }
+
+yield similar results, albeit slower and using more memory.
+
+
+=head2 chebyshev_psi
+
+  say chebyshev_psi(10000);
+
+Returns ψ(n), the second Chebyshev function for a non-negative integer input.
+This is the sum of the logarithm of each prime where C<p^k E<lt>= n> for an
+integer k.  An alternate computation is as the summatory Mangoldt function.
+Another alternate computation is as the logarithm of lcm(1,2,...,n).
+Hence these functions:
+
+  use List::Util qw/sum/;
+  sub c2a { 0+sum( map { log(exp_mangoldt($_)) } 1 .. shift ) }
+  use Math::BigFloat;
+  sub c2b { Math::BigFloat->new(consecutive_integer_lcm(shift))->blog }
+
+yield similar results, albeit slower and using more memory.
+
+
 =head2 divisor_sum
 
   say "Sum of divisors of $n:", divisor_sum( $n );
@@ -3127,20 +3190,6 @@ Print some primes above 64-bit range:
     perl -MMath::Prime::Util=:all -Mbigint -E 'my $start=100000000000000000000; say join "\n", @{primes($start,$start+1000)}'
     # Similar code using Pari:
     # perl -MMath::Pari=:int,PARI,nextprime -E 'my $start = PARI "100000000000000000000"; my $end = $start+1000; my $p=nextprime($start); while ($p <= $end) { say $p; $p = nextprime($p+1); }'
-
-The first Chebyshev function θ(x):
-
-  use List::Util qw/sum/;
-  sub chebyshev1 { 0+sum( map { log($_) } @{primes(shift)} ) }
-  #  or using primorial and BigFloat:
-  sub chebyshev1a { Math::BigFloat->new(primorial(shift))->blog }
-
-The second Chebyshev function ψ(x):
-
-  use List::Util qw/sum/;
-  sub chebyshev2 { 0+sum( map { log(exp_mangoldt($_)) } 1 .. shift ) }
-  #  or using cilcm and BigFloat:
-  sub chebyshev2a { Math::BigFloat->new(consecutive_integer_lcm(shift))->blog }
 
 Project Euler, problem 3 (Largest prime factor):
 

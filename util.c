@@ -28,16 +28,32 @@
   extern long double expl(long double);
   extern long double logl(long double);
   extern long double fabsl(long double);
+  extern long double floorl(long double);
 #else
   #define powl(x, y)  (long double) pow( (double) (x), (double) (y) )
   #define expl(x)     (long double) exp( (double) (x) )
   #define logl(x)     (long double) log( (double) (x) )
   #define fabsl(x)    (long double) fabs( (double) (x) )
+  #define floorl(x)   (long double) floor( (double) (x) )
 #endif
 
 #ifndef INFINITY
   #define INFINITY (DBL_MAX + DBL_MAX)
 #endif
+
+#define KAHAN_INIT(s) \
+  long double s ## _y, s ## _t; \
+  long double s ## _c = 0.0; \
+  long double s = 0.0;
+
+#define KAHAN_SUM(s, term) \
+  do { \
+    s ## _y = (term) - s ## _c; \
+    s ## _t = s + s ## _y; \
+    s ## _c = (s ## _t - s) - s ## _y; \
+    s = s ## _t; \
+  } while (0)
+
 
 #include "ptypes.h"
 #include "util.h"
@@ -737,6 +753,54 @@ IV _XS_mertens(UV n) {
 #endif
 }
 
+double _XS_chebyshev_theta(UV n)
+{
+  const unsigned char* sieve;
+  KAHAN_INIT(sum);
+
+  if (n >= 2) KAHAN_SUM(sum, 0.6931471805599453094172321214581765680755L);
+  if (n >= 3) KAHAN_SUM(sum, 1.0986122886681096913952452369225257046475L);
+  if (n >= 5) KAHAN_SUM(sum, 1.6094379124341003746007593332261876395256L);
+  if (n < 7) return (double) sum;
+
+  if (get_prime_cache(n, &sieve) < n) {
+    release_prime_cache(sieve);
+    croak("Could not generate sieve for %"UVuf, n);
+  }
+  START_DO_FOR_EACH_SIEVE_PRIME(sieve, 7, n) {
+    KAHAN_SUM(sum, logl(p));
+  } END_DO_FOR_EACH_SIEVE_PRIME
+  release_prime_cache(sieve);
+  return (double) sum;
+}
+double _XS_chebyshev_psi(UV n)
+{
+  const unsigned char* sieve;
+  UV prime, mults_are_one;
+  long double logn, logp;
+  KAHAN_INIT(sum);
+
+  logn = logl(n);
+  for (prime = 2; prime <= 5 && prime <= n; prime += prime-1) {
+    logp = logl(prime);
+    KAHAN_SUM(sum, logp * floorl(logn/logp + 1e-15));
+  }
+  if (n < 7) return (double) sum;
+
+  if (get_prime_cache(n, &sieve) < n) {
+    release_prime_cache(sieve);
+    croak("Could not generate sieve for %"UVuf, n);
+  }
+  mults_are_one = 0;
+  START_DO_FOR_EACH_SIEVE_PRIME(sieve, 7, n) {
+    logp = logl(p);
+    if (!mults_are_one && p > (n/p))   mults_are_one = 1;
+    KAHAN_SUM(sum, (mults_are_one) ? logp : logp * floorl(logn/logp + 1e-15));
+  } END_DO_FOR_EACH_SIEVE_PRIME
+  release_prime_cache(sieve);
+  return (double) sum;
+}
+
 
 
 /*
@@ -761,17 +825,6 @@ IV _XS_mertens(UV n) {
 
 static long double const euler_mascheroni = 0.57721566490153286060651209008240243104215933593992L;
 static long double const li2 = 1.045163780117492784844588889194613136522615578151L;
-
-#define KAHAN_INIT(s) \
-  long double s ## _y, s ## _t; \
-  long double s ## _c = 0.0; \
-  long double s = 0.0;
-
-#define KAHAN_SUM(s, term) \
-  s ## _y = term - s ## _c; \
-  s ## _t = s + s ## _y; \
-  s ## _c = (s ## _t - s) - s ## _y; \
-  s = s ## _t;
 
 double _XS_ExponentialIntegral(double x) {
   long double const tol = 1e-16;

@@ -463,3 +463,9 @@ _XS_exp_mangoldt(IN UV n)
     RETVAL = 1;
   OUTPUT:
     RETVAL
+
+double
+_XS_chebyshev_theta(IN UV n)
+
+double
+_XS_chebyshev_psi(IN UV n)

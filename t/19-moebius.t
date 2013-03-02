@@ -4,7 +4,8 @@ use warnings;
 
 use Test::More;
 use Math::Prime::Util
-   qw/moebius mertens euler_phi jordan_totient divisor_sum exp_mangoldt/;
+   qw/moebius mertens euler_phi jordan_totient divisor_sum exp_mangoldt
+      chebyshev_theta chebyshev_psi/;
 
 my $extra = defined $ENV{RELEASE_TESTING} && $ENV{RELEASE_TESTING};
 my $use64 = Math::Prime::Util::prime_get_config->{'maxbits'} > 32;
@@ -133,6 +134,27 @@ my %mangoldt = (
  130321 => 19,
 );
 
+my %chebyshev1 = (
+       0 =>       0,
+       1 =>       0,
+       2 =>       0.693147180559945,
+       3 =>       1.79175946922805,
+       4 =>       1.79175946922805,
+       5 =>       3.40119738166216,
+     243 =>     226.593507136467,
+ 1234567 => 1233272.80087825,
+);
+my %chebyshev2 = (
+       0 =>       0,
+       1 =>       0,
+       2 =>       0.693147180559945,
+       3 =>       1.79175946922805,
+       4 =>       2.484906649788,
+       5 =>       4.0943445622221,
+     243 =>     245.274469978683,
+ 1234567 => 1234515.17962833,
+);
+
 
 plan tests => 0 + 1
                 + 1 # Small Moebius
@@ -145,7 +167,9 @@ plan tests => 0 + 1
                 + 1  # Calculate J5 two different ways
                 + 2 * $use64 # Jordan totient example
                 + scalar(keys %sigmak)
-                + scalar(keys %mangoldt);
+                + scalar(keys %mangoldt)
+                + scalar(keys %chebyshev1)
+                + scalar(keys %chebyshev2);
 
 ok(!eval { moebius(0); }, "moebius(0)");
 
@@ -228,4 +252,22 @@ while (my($k, $sigmaref) = each (%sigmak)) {
 ###### Exponential of von Mangoldt
 while (my($n, $em) = each (%mangoldt)) {
   is( exp_mangoldt($n), $em, "exp_mangoldt($n) == $em" );
+}
+
+###### first Chebyshev function
+while (my($n, $c1) = each (%chebyshev1)) {
+  cmp_closeto( chebyshev_theta($n), $c1, 1e-9*abs($n), "chebyshev_theta($n)" );
+}
+###### second Chebyshev function
+while (my($n, $c2) = each (%chebyshev2)) {
+  cmp_closeto( chebyshev_psi($n), $c2, 1e-9*abs($n), "chebyshev_psi($n)" );
+}
+
+
+sub cmp_closeto {
+  my $got = shift;
+  my $expect = shift;
+  my $tolerance = shift;
+  my $message = shift;
+  cmp_ok( abs($got - $expect), '<=', $tolerance, $message );
 }

@@ -1,6 +1,6 @@
 Revision history for Perl extension Math::Prime::Util.
 
-0.23 xx February 2013
+0.23 xx March 2013
 
     - exp_mangoldt in XS, and speed up the PP version.
 
@@ -11,13 +11,14 @@ Revision history for Perl extension Math::Prime::Util.
     - PP Zeta code replaced (for no-MPFR, non-bignums) with new series.  The
       new code is much more accurate for small values, and *much* faster.
 
-    - Add consecutive_integer_lcm function, just like MPU::GMP's.
-
-    - Add examples for first and second Chebyshev functions.
+    - Add consecutive_integer_lcm function, just like MPU::GMP's (though we
+      define ci_lcm(0) = 0, which should get propogated).
 
     - Implement binary search on RiemannR for XS nth_prime when n > 2e11.
       Runs ~2x faster for 1e12, 3x faster for 1e13.  Thanks to Programming
       Praxis for the idea and motivation.
+
+    - Add the first and second Chebyshev functions (theta and psi).
 
 0.22 26 February 2013
 
