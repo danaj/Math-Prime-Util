@@ -469,3 +469,6 @@ _XS_chebyshev_theta(IN UV n)
 
 double
 _XS_chebyshev_psi(IN UV n)
+
+UV
+_XS_divisor_sum(IN UV n)

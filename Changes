@@ -20,6 +20,8 @@ Revision history for Perl extension Math::Prime::Util.
 
     - Add the first and second Chebyshev functions (theta and psi).
 
+    - Divisor sum with no sub is ~10x faster.
+
 0.22 26 February 2013
 
     - Move main factor loop out of xs and into factor.c.

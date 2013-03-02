@@ -424,6 +424,30 @@ int _XS_is_prob_prime(UV n)
 }
 
 
+UV _XS_divisor_sum(UV n)
+{
+  UV factors[MPU_MAX_FACTORS+1];
+  int nfac, i;
+  UV product = 1;
+
+  if (n <= 1) return n;
+  nfac = factor(n, factors);
+  for (i = 0; i < nfac; i++) {
+    if (i+1 < nfac && factors[i] == factors[i+1]) {
+      UV fmult = factors[i]*factors[i];
+      do {
+        fmult *= factors[i++];
+      } while (i+1 < nfac && factors[i] == factors[i+1]);
+      product *= (fmult-1) / (factors[i]-1);
+    } else {
+      product *= factors[i]+1;
+    }
+  }
+  return product;
+}
+
+
+
 
 /* Knuth volume 2, algorithm C.
  * Very fast for small numbers, grows rapidly.

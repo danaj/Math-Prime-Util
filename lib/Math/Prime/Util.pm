@@ -1289,16 +1289,26 @@ sub jordan_totient {
 # Mathematica and Pari both have functions like this.
 sub divisor_sum {
   my($n, $sub) = @_;
-  return 0 if defined $n && $n < 1;
+  # I really need to get cracking on an XS validator.
+  #return _XS_divisor_sum($n) if !defined $sub && defined $n && $n <= $_XS_MAXVAL && $_Config{'nobigint'};
+  return (0,1)[$n] if defined $n && $n <= 1;
   _validate_positive_integer($n);
 
   if (!defined $sub) {
-    return $n if $n == 1;
-    my $sum = 1 + $n;
-    foreach my $f ( all_factors($n) ) {
-      $sum += $f;
+    return _XS_divisor_sum($n) if $n <= $_XS_MAXVAL;
+    my $product = 1;
+    my @factors = factor($n);
+    while (@factors) {
+      if (@factors > 1 && $factors[0] == $factors[1]) {
+        my $fmult = $factors[0] * $factors[0];
+        $fmult *= shift @factors while @factors > 1 && $factors[0] == $factors[1];
+        $product *= ($fmult -1) / ($factors[0] - 1);
+      } else {
+        $product *= $factors[0]+1;
+      }
+      shift @factors;
     }
-    return $sum;
+    return $product;
   }
 
   croak "Second argument must be a code ref" unless ref($sub) eq 'CODE';
@@ -3190,6 +3200,21 @@ Print some primes above 64-bit range:
     perl -MMath::Prime::Util=:all -Mbigint -E 'my $start=100000000000000000000; say join "\n", @{primes($start,$start+1000)}'
     # Similar code using Pari:
     # perl -MMath::Pari=:int,PARI,nextprime -E 'my $start = PARI "100000000000000000000"; my $end = $start+1000; my $p=nextprime($start); while ($p <= $end) { say $p; $p = nextprime($p+1); }'
+
+Examining the η3(x) function of Planat and Solé (2011):
+
+  sub nu3 {
+    my $n = shift;
+    my $phix = chebyshev_psi($n);
+    my $nu3 = 0;
+    foreach my $nu (1..3) {
+      $nu3 += (moebius($nu)/$nu)*LogarithmicIntegral($phix**(1/$nu));
+    }
+    return $nu3;
+  }
+  say prime_count(1000000);
+  say prime_count_approx(1000000);
+  say nu3(1000000);
 
 Project Euler, problem 3 (Largest prime factor):
 
