@@ -6,7 +6,7 @@ use Bytes::Random::Secure;
 
 BEGIN {
   $Math::Prime::Util::AUTHORITY = 'cpan:DANAJ';
-  $Math::Prime::Util::VERSION = '0.22';
+  $Math::Prime::Util::VERSION = '0.23';
 }
 
 # parent is cleaner, and in the Perl 5.10.1 / 5.12.0 core, but not earlier.
@@ -1045,7 +1045,8 @@ sub consecutive_integer_lcm {
   return 0 if $n < 1;
 
   my $pn = 1;
-  if ($n >= (($_Config{'maxbits'} == 32) ? 22 : 46)) {
+  my $max = ($_Config{'maxbits'} == 32) ? 22 : ($] < 5.008) ? 43 : 46;
+  if ($n >= $max) {
     if (!defined $Math::BigInt::VERSION) {
       eval { require Math::BigInt; Math::BigInt->import(try=>'GMP,Pari'); 1; }
       or do { croak "Cannot load Math::BigInt"; };
@@ -1990,7 +1991,7 @@ Math::Prime::Util - Utilities related to prime numbers, including fast sieves an
 
 =head1 VERSION
 
-Version 0.22
+Version 0.23
 
 
 =head1 SYNOPSIS

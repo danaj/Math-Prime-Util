@@ -444,11 +444,14 @@ _XS_mertens(IN UV n)
 UV
 _XS_exp_mangoldt(IN UV n)
   CODE:
-    if (n <= 1)           XSRETURN_UV(1);
-    if ((n & (n-1)) == 0) XSRETURN_UV(2);   /* Power of 2 */
-    if ((n & 1) == 0)     XSRETURN_UV(1);   /* Even number */
-    /* if (_XS_is_prime(n))  XSRETURN_UV(n); */
-    {
+    if (n <= 1)
+      RETVAL = 1;
+    else if ((n & (n-1)) == 0)  /* Power of 2 */
+      RETVAL = 2;
+    else if ((n & 1) == 0)      /* Even number */
+      RETVAL = 1;
+    /* else if (_XS_is_prime(n))  RETVAL = n; */
+    else {
       UV factors[MPU_MAX_FACTORS+1];
       UV nfactors, i;
       /* We could try a partial factor, e.g. looking for two small factors */
@@ -458,9 +461,8 @@ _XS_exp_mangoldt(IN UV n)
         if (factors[i] != factors[0])
           XSRETURN_UV(1);
       }
-      XSRETURN_UV(factors[0]);
+      RETVAL = factors[0];
     }
-    RETVAL = 1;
   OUTPUT:
     RETVAL
 

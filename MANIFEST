@@ -87,6 +87,7 @@ t/91-release-pod-syntax.t
 t/92-release-pod-coverage.t
 xt/moebius-mertens.pl
 xt/primality-small.pl
+xt/primality-aks.pl
 xt/factor-holf.pl
 xt/make-script-test-data.pl
 .travis.yml

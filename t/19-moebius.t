@@ -161,12 +161,12 @@ plan tests => 0 + 1
                 + 3*scalar(keys %mertens)
                 + 1*scalar(keys %big_mertens)
                 + 2 # Small Phi
-                + scalar(keys %totients)
+                + 6 + scalar(keys %totients)
                 + scalar(keys %jordan_totients)
                 + 2  # Dedekind psi calculated two ways
                 + 1  # Calculate J5 two different ways
                 + 2 * $use64 # Jordan totient example
-                + scalar(keys %sigmak)
+                + 1 + scalar(keys %sigmak)
                 + scalar(keys %mangoldt)
                 + scalar(keys %chebyshev1)
                 + scalar(keys %chebyshev2);
@@ -204,6 +204,12 @@ while (my($n, $mertens) = each (%big_mertens)) {
 while (my($n, $phi) = each (%totients)) {
   is( euler_phi($n), $phi, "euler_phi($n) == $phi" );
 }
+is_deeply( [euler_phi(0,0)], [0],     "euler_phi(0,0)" );
+is_deeply( [euler_phi(1,0)], [],      "euler_phi with end < start" );
+is_deeply( [euler_phi(0,1)], [0,1],   "euler_phi 0-1" );
+is_deeply( [euler_phi(1,2)], [1,1],   "euler_phi 1-2" );
+is_deeply( [euler_phi(1,3)], [1,1,2], "euler_phi 1-3" );
+is_deeply( [euler_phi(2,3)], [1,2],   "euler_phi 2-3" );
 
 ###### Jordan Totient
 while (my($k, $tref) = each (%jordan_totients)) {
@@ -247,6 +253,11 @@ while (my($k, $sigmaref) = each (%sigmak)) {
     push @slist, divisor_sum( $n, sub { int($_[0] ** $k) } );
   }
   is_deeply( \@slist, $sigmaref, "Sum of divisors to the ${k}th power: Sigma_$k" );
+}
+# k=1 standard sum -- much faster
+{
+  my @slist = map { divisor_sum($_) } 1 .. scalar @{$sigmak{1}};
+  is_deeply(\@slist, $sigmak{1}, "divisor_sum(n)");
 }
 
 ###### Exponential of von Mangoldt

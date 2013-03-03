@@ -2,8 +2,6 @@ Revision history for Perl extension Math::Prime::Util.
 
 0.23 xx March 2013
 
-    - exp_mangoldt in XS, and speed up the PP version.
-
     - Replace XS Zeta for x > 5 with series from Cephes.  It is 1 eps more
       accurate for a small fraction of inputs.  More importantly, it is much
       faster in range 5 < x < 10.  This only affects non-integer inputs.
@@ -20,7 +18,12 @@ Revision history for Perl extension Math::Prime::Util.
 
     - Add the first and second Chebyshev functions (theta and psi).
 
-    - Divisor sum with no sub is ~10x faster.
+    - Performance:
+       - Divisor sum with no sub is ~10x faster.
+       - Speed up PP version of exp_mangoldt, create XS version.
+       - Zeta much faster as mentioned above.
+       - faster nth_prime as mentioned above.
+       - AKS about 10% faster.
 
 0.22 26 February 2013
 

@@ -131,16 +131,28 @@ static void poly_mod_mul(UV* px, UV* py, UV* res, UV r, UV mod)
 }
 static void poly_mod_sqr(UV* px, UV* res, UV r, UV mod)
 {
-  UV d, s, sum, rindex;
+  UV c, d, s, sum, rindex, maxpx;
   UV degree = r-1;
 
   memset(res, 0, r * sizeof(UV)); /* zero out sums */
+  /* Discover index of last non-zero value in px */
+  for (s = degree; s > 0; s--)
+    if (px[s] != 0)
+      break;
+  maxpx = s;
+  /* 1D convolution */
   for (d = 0; d <= 2*degree; d++) {
+    UV s_beg = (d <= degree) ? 0 : d-degree;
+    UV s_end = ((d/2) <= maxpx) ? d/2 : maxpx;
+    if (s_end < s_beg) continue;
     sum = 0;
-    for (s = (d <= degree) ? 0 : d-degree; s <= (d/2); s++) {
-      UV c = px[s];
-      sum += (s*2 == d) ? c*c : 2*c * px[d-s];
+    for (s = s_beg; s < s_end; s++) {
+      c = px[s];
+      sum += 2*c * px[d-s];
     }
+    /* Special treatment for last point */
+    c = px[s_end];
+    sum += (s_end*2 == d)  ?  c*c  :  2*c*px[d-s_end];
     rindex = (d < r) ? d : d-r;  /* d % r */
     res[rindex] = (res[rindex] + sum) % mod;
   }
