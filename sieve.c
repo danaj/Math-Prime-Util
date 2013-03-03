@@ -6,6 +6,7 @@
 #include "sieve.h"
 #include "ptypes.h"
 #include "cache.h"
+#include "util.h"
 
 
 /* 1001 bytes of presieved mod-30 bytes.  If the area to be sieved is
@@ -136,7 +137,7 @@ unsigned char* sieve_erat30(UV end)
   /* Fill buffer with marked 7, 11, and 13 */
   sieve_prefill(mem, 0, max_buf-1);
 
-  limit = sqrt((double) end);  /* prime*prime can overflow */
+  limit = isqrt(end);  /* prime*prime can overflow */
   for (prime = 17; prime <= limit; prime = next_prime_in_sieve(mem,prime)) {
     UV d = (prime*prime)/30;
     UV m = (prime*prime) - d*30;
@@ -198,7 +199,7 @@ int sieve_segment(unsigned char* mem, UV startd, UV endd)
   /* Fill buffer with marked 7, 11, and 13 */
   sieve_prefill(mem, startd, endd);
 
-  limit = sqrt( (double) endp ) + 1;
+  limit = isqrt(endp) + 1;
   /* printf("segment sieve from %"UVuf" to %"UVuf" (aux sieve to %"UVuf")\n", startp, endp, limit); */
   pcsize = get_prime_cache(limit, &sieve);
   if (pcsize < limit) {

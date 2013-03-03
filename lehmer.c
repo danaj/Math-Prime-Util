@@ -54,6 +54,7 @@
  */
 
 static int const verbose = 0;
+/* #define STAGE_TIMING 1 */
 
 #ifdef STAGE_TIMING
  #include <sys/time.h>
@@ -94,6 +95,16 @@ typedef   signed long IV;
 #define _XS_prime_count(a, b)     ps.countPrimes(a, b)
 #define croak(fmt,...)            { printf(fmt,##__VA_ARGS__); exit(1); }
 #define prime_precalc(n)          /* */
+
+static UV isqrt(UV n)
+{
+  if (sizeof(UV) == 8 && n >= 18446744065119617025UL)  return 4294967295UL;
+  if (sizeof(UV) == 4 && n >= 4294836225UL)            return 65535UL;
+  UV root = (UV) sqrt((double)n);
+  while (root*root > n)  root--;
+  while ((root+1)*(root+1) <= n)  root++;
+  return root;
+}
 
 /* There has _got_ to be a better way to get an array of small primes using
  * primesieve.  This is ridiculous. */
@@ -160,6 +171,36 @@ static UV* generate_small_primes(UV n)
 }
 
 #endif
+
+static UV icbrt(UV n)
+{
+#if 0
+  /* The integer cube root code is about 30% faster for me */
+  if (n >= UVCONST(18446724184312856125)) return UVCONST(2642245);
+  UV root = (UV) pow(n, 1.0/3.0);
+  if (root*root*root > n) {
+    root--;
+    while (root*root*root > n)  root--;
+  } else {
+    while ((root+1)*(root+1)*(root+1) <= n)  root++;
+  }
+  return root;
+#else
+  int s;
+  UV y = 0;
+  for (s = (sizeof(UV)*8)-1; s >= 0; s -= 3) {
+    UV b;
+    y += y;
+    b = 3*y*(y+1)+1;
+    if ((n >> s) >= b) {
+      n -= b << s;
+      y++;
+    }
+  }
+  return y;
+#endif
+}
+
 
 /* Given an array of primes[1..lastprime], return Pi(n) where n <= lastprime.
  * This is actually quite fast, and definitely faster than sieving.  By using
@@ -455,7 +496,7 @@ UV _XS_legendre_pi(UV n)
   if (n < SIEVE_LIMIT)
     return _XS_prime_count(2, n);
 
-  a = _XS_legendre_pi( (UV) (sqrt(n)+0.5) );
+  a = _XS_legendre_pi(isqrt(n));
 
   return phi(n, a) + a - 1;
 }
@@ -472,9 +513,9 @@ UV _XS_meissel_pi(UV n)
 
   if (verbose > 0) printf("meissel %lu stage 1: calculate a,b,c \n", n);
   TIMING_START;
-  a = _XS_meissel_pi(pow(n, 1.0/3.0)+0.5);     /* a = floor(n^1/3) */
-  b = _XS_meissel_pi(sqrt(n)+0.5);             /* b = floor(n^1/2) */
-  c = a;                                       /* c = a            */
+  a = _XS_meissel_pi(icbrt(n));        /* a = floor(n^1/3) */
+  b = _XS_meissel_pi(isqrt(n));        /* b = floor(n^1/2) */
+  c = a;                               /* c = a            */
   TIMING_END_PRINT("stage 1")
 
   if (verbose > 0) printf("meissel %lu stage 2: phi(x,a) (a=%lu b=%lu c=%lu)\n", n, a, b, c);
@@ -491,7 +532,7 @@ UV _XS_meissel_pi(UV n)
   lastpc = primes[lastprime];
   TIMING_END_PRINT("small primes")
 
-  prime_precalc( sqrt( n / primes[a+1] ) );
+  prime_precalc(isqrt(n / primes[a+1]));
 
   if (verbose > 0) printf("meissel %lu stage 4: loop %lu to %lu, pc to %lu\n", n, a+1, b, n/primes[a+1]);
   TIMING_START;
@@ -532,10 +573,10 @@ UV _XS_lehmer_pi(UV n)
 
   if (verbose > 0) printf("lehmer %lu stage 1: calculate a,b,c \n", n);
   TIMING_START;
-  z = (UV) sqrt((double)n+0.5);
-  a = _XS_lehmer_pi(sqrt((double)z)+0.5);          /* a = floor(n^1/4) */
-  b = _XS_lehmer_pi(z);                            /* b = floor(n^1/2) */
-  c = _XS_lehmer_pi(pow((double)n, 1.0/3.0)+0.5);  /* c = floor(n^1/3) */
+  z = isqrt(n);
+  a = _XS_lehmer_pi(isqrt(z));         /* a = floor(n^1/4) */
+  b = _XS_lehmer_pi(z);                /* b = floor(n^1/2) */
+  c = _XS_lehmer_pi(icbrt(n));         /* c = floor(n^1/3) */
   TIMING_END_PRINT("stage 1")
 
 
@@ -560,7 +601,7 @@ UV _XS_lehmer_pi(UV n)
 
   /* Ensure we have the base sieve for big prime_count ( n/primes[i] ). */
   /* This is about 75k for n=10^13, 421k for n=10^15, 2.4M for n=10^17 */
-  prime_precalc( sqrt( n / primes[a+1] ) );
+  prime_precalc(isqrt(n / primes[a+1]));
 
   if (verbose > 0) printf("lehmer %lu stage 4: loop %lu to %lu, pc to %lu\n", n, a+1, b, n/primes[a+1]);
   TIMING_START;
@@ -574,7 +615,7 @@ UV _XS_lehmer_pi(UV n)
     lastw = w;
     sum = sum - lastwpc;
     if (i <= c) {
-      UV bi = bs_prime_count( (UV) (sqrt(w) + 0.5), primes, lastprime );
+      UV bi = bs_prime_count( isqrt(w), primes, lastprime );
       for (j = i; j <= bi; j++) {
         sum = sum - bs_prime_count(w / primes[j], primes, lastprime) + j - 1;
       }
@@ -582,6 +623,99 @@ UV _XS_lehmer_pi(UV n)
   }
   TIMING_END_PRINT("stage 4")
   Safefree(primes);
+  return sum;
+}
+
+UV _XS_LMO_pi(UV n)
+{
+  UV a, b, sum, i, lastprime, lastpc, lastw, lastwpc;
+  UV n13, n12, n23;
+  IV S1;
+  UV S2, P2;
+  const UV* primes = 0;  /* small prime cache */
+  char* mu = 0;          /* moebius to n^1/3 */
+  UV*   lpf = 0;         /* least prime factor to n^1/3 */
+  DECLARE_TIMING_VARIABLES;
+  if (n < SIEVE_LIMIT)
+    return _XS_prime_count(2, n);
+
+  if (verbose > 0) printf("LMO %lu stage 1: calculate pi(n^1/3) \n", n);
+  TIMING_START;
+  n13 = icbrt(n);
+  n12 = isqrt(n);
+  n23 = (UV) (pow(n, 2.0/3.0)+0.01);
+  a = _XS_lehmer_pi(n13);
+  b = _XS_lehmer_pi(n12);
+  TIMING_END_PRINT("stage 1")
+
+  lastprime = b*16;
+  if (verbose > 0) printf("LMO %lu stage 2: %lu small primes\n", n, lastprime);
+  TIMING_START;
+  primes = generate_small_primes(lastprime);
+  if (primes == 0) croak("Error generating primes.\n");
+  lastpc = primes[lastprime];
+  TIMING_END_PRINT("small primes")
+
+  if (verbose > 0) printf("LMO %lu stage 3: calculate mu/lpf to %lu\n", n, a);
+  TIMING_START;
+  /* We could call MPU's:
+   *    mu = _moebius_range(0, n13+1)
+   * but (1) it's a bit slower (something to be addressed), and (2) we will
+   * do the least prime factor calculation at the same time.
+   */
+  New(0, mu, n13+1, char);
+  memset(mu, 1, sizeof(char) * (n13+1));
+  New(0, lpf, n13+1, UV);
+  memset(lpf, 0, sizeof(UV) * (n13+1));
+  mu[0] = 0;
+  for (i = 1; i <= a; i++) {
+    UV primei = primes[i];
+    UV j;
+    for (j = primei; j <= n13; j += primei) {
+      mu[j] = -mu[j];
+      if (lpf[j] == 0) lpf[j] = primei;
+    }
+    UV isquared = primei * primei;
+    for (j = isquared; j <= n13; j += isquared)
+      mu[j] = 0;
+  }
+  //for (i = 0; i <= n13; i++) { printf("mu %lu %ld\n", i, (IV)mu[i]); }
+  TIMING_END_PRINT("mu")
+
+  if (verbose > 0) printf("LMO %lu stage 4: calculate S1 (%lu)\n", n, n13);
+  TIMING_START;
+  S1 = 0;
+  for (i = 1; i <= n13; i++)
+    if (mu[i] != 0)
+      S1 += mu[i] * (IV) (n/i);
+  TIMING_END_PRINT("S1")
+  if (verbose > 0) printf("LMO %lu stage 4: S1 = %ld\n", n, S1);
+
+  S2 = 0;
+  /* TODO... */
+
+  Safefree(mu);
+  Safefree(lpf);
+
+  prime_precalc(isqrt(n / primes[a+1]));
+  if (verbose > 0) printf("LMO %lu stage 5: P2 loop %lu to %lu, pc to %lu\n", n, a+1, b, n/primes[a+1]);
+  TIMING_START;
+  P2 = 0;
+  /* Reverse the i loop so w increases.  Count w in segments. */
+  lastw = 0;
+  lastwpc = 0;
+  for (i = b; i > a; i--) {
+    UV w = n / primes[i];
+    lastwpc = (w <= lastpc) ? bs_prime_count(w, primes, lastprime)
+                            : lastwpc + _XS_prime_count(lastw+1, w);
+    lastw = w;
+    P2 += lastwpc;
+  }
+  P2 -= ((b+a-2) * (b-a+1) / 2) - a + 1;
+  TIMING_END_PRINT("P2")
+  if (verbose > 0) printf("LMO %lu stage 5: P2 = %lu\n", n, P2);
+  Safefree(primes);
+  sum = P2 + S1 + S2;
   return sum;
 }
 
@@ -607,9 +741,10 @@ int main(int argc, char *argv[])
   if      (!strcasecmp(method, "lehmer"))   { pi = _XS_lehmer_pi(n);      }
   else if (!strcasecmp(method, "meissel"))  { pi = _XS_meissel_pi(n);     }
   else if (!strcasecmp(method, "legendre")) { pi = _XS_legendre_pi(n);    }
+  else if (!strcasecmp(method, "lmo"))      { pi = _XS_LMO_pi(n);    }
   else if (!strcasecmp(method, "sieve"))    { pi = _XS_prime_count(2, n); }
   else {
-    printf("method must be one of: lehmer, meissel, legendre, or sieve\n");
+    printf("method must be one of: lehmer, meissel, legendre, lmo, or sieve\n");
     return(2);
   }
   gettimeofday(&t1, 0);

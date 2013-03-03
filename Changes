@@ -18,6 +18,11 @@ Revision history for Perl extension Math::Prime::Util.
 
     - Add the first and second Chebyshev functions (theta and psi).
 
+    - put isqrt(n) in util.h, use it everywhere.
+      put icbrt(n) in lehmer.h, use it there.
+
+    - Start on Lagarias-Miller-Odlyzko prime count.
+
     - Performance:
        - Divisor sum with no sub is ~10x faster.
        - Speed up PP version of exp_mangoldt, create XS version.

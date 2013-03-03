@@ -62,6 +62,9 @@ UV
 _XS_lehmer_pi(IN UV n)
 
 UV
+_XS_LMO_pi(IN UV n)
+
+UV
 _XS_nth_prime(IN UV n)
 
 int
@@ -158,7 +161,7 @@ segment_primes(IN UV low, IN UV high);
 
       {  /* Avoid recalculations of this */
         UV endp = (high_d >= (UV_MAX/30))  ?  UV_MAX-2  :  30*high_d+29;
-        prime_precalc( sqrt(endp) + 0.1 + 1 );
+        prime_precalc(isqrt(endp) + 1 );
       }
 
       while ( low_d <= high_d ) {

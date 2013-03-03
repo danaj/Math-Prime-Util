@@ -90,7 +90,7 @@ int factor(UV n, UV *factors)
         /* Factor via trial division.  Nothing should make it here. */
         UV f = tlim;
         UV m = tlim % 30;
-        UV limit = (UV) (sqrt(n)+0.1);
+        UV limit = isqrt(n);
         if (verbose) printf("doing trial on %"UVuf"\n", n);
         while (f <= limit) {
           if ( (n%f) == 0 ) {
@@ -98,7 +98,7 @@ int factor(UV n, UV *factors)
               n /= f;
               fac_stack[nfac++] = f;
             } while ( (n%f) == 0 );
-            limit = (UV) (sqrt(n)+0.1);
+            limit = isqrt(n);
           }
           f += wheeladvance30[m];
           m =  nextwheel30[m];
@@ -178,7 +178,7 @@ int trial_factor(UV n, UV *factors, UV maxtrial)
   }
 
   /* Trial division to this number at most.  Reduced as we find factors. */
-  limit = (UV) (sqrt(n)+0.1);
+  limit = isqrt(n);
   if (limit > maxtrial)
     limit = maxtrial;
 
@@ -192,7 +192,7 @@ int trial_factor(UV n, UV *factors, UV maxtrial)
           factors[nfactors++] = f;
           n /= f;
         } while ( (n%f) == 0 );
-        newlimit = (UV) (sqrt(n)+0.1);
+        newlimit = isqrt(n);
         if (newlimit < limit)  limit = newlimit;
       }
       f = primes_small[++sp];
@@ -208,7 +208,7 @@ int trial_factor(UV n, UV *factors, UV maxtrial)
           factors[nfactors++] = f;
           n /= f;
         } while ( (n%f) == 0 );
-        newlimit = (UV) (sqrt(n)+0.1);
+        newlimit = isqrt(n);
         if (newlimit < limit)  limit = newlimit;
       }
       f += wheeladvance30[m];
@@ -280,7 +280,7 @@ static int is_perfect_square(UV n, UV* sqrtn)
   m = n % 63;
   if ((m*0x3d491df7) & (m*0xc824a9f9) & 0x10f14008) return 0;
 #endif
-  m = sqrt(n);
+  m = isqrt(n);
   if (n != (m*m))
     return 0;
 
@@ -459,7 +459,7 @@ int fermat_factor(UV n, UV *factors, UV rounds)
 
   MPUassert( (n >= 3) && ((n%2) != 0) , "bad n in fermat_factor");
 
-  sqn = (UV) (sqrt(n)+0.1);
+  sqn = isqrt(n);
   x = 2 * sqn + 1;
   y = 1;
   r = (sqn*sqn) - n;
@@ -630,7 +630,7 @@ int pminus1_factor(UV n, UV *factors, UV B1, UV B2)
   UV savea = 2;
   UV saveq = 2;
   UV j = 1;
-  UV sqrtB1 = sqrt(B1);
+  UV sqrtB1 = isqrt(B1);
   MPUassert( (n >= 3) && ((n%2) != 0) , "bad n in pminus1_factor");
 
   for (q = 2; q <= sqrtB1; q = _XS_next_prime(q)) {
@@ -761,7 +761,7 @@ int squfof_factor(UV n, UV *factors, UV rounds)
   /* TODO:  What value of n leads to overflow? */
 
   qlast = 1;
-  s = sqrt(n);
+  s = isqrt(n);
 
   p = s;
   temp = n - (s*s);                 /* temp = n - floor(sqrt(n))^2   */
@@ -798,7 +798,7 @@ int squfof_factor(UV n, UV *factors, UV rounds)
     q = t;
     p = pnext;                          /* check for square; even iter   */
     if (jter & 1) continue;             /* jter is odd:omit square test  */
-    r = (int)sqrt((double)q);                 /* r = floor(sqrt(q))      */
+    r = isqrt(q);                       /* r = floor(sqrt(q))      */
     if (q != r*r) continue;
     if (qpoint == 0) break;
     qqueue[qpoint] = 0;
@@ -1005,8 +1005,8 @@ int racing_squfof_factor(UV n, UV *factors, UV rounds)
     }
     mult_save[i].valid = 1;
 
-    mult_save[i].b0 = sqrt( (double)nn64 );
-    mult_save[i].imax = sqrt( (double)mult_save[i].b0 ) / 3;
+    mult_save[i].b0 = isqrt(nn64);
+    mult_save[i].imax = sqrt(mult_save[i].b0) / 3;
     if (mult_save[i].imax < 20)     mult_save[i].imax = 20;
     if (mult_save[i].imax > rounds) mult_save[i].imax = rounds;
 

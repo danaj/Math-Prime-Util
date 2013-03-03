@@ -55,7 +55,7 @@ static int is_perfect_power(UV n) {
   if ( n < (UV) pow(10, DBL_DIG) ) {
 #endif
     /* Simple floating point method.  Fast, but need enough mantissa. */
-    b = sqrt(n)+0.5; if (b*b == n)  return 1; /* perfect square */
+    b = isqrt(n); if (b*b == n)  return 1; /* perfect square */
     for (b = 3; b < last; b = _XS_next_prime(b)) {
       UV root = pow(n, 1.0 / (double)b) + 0.5;
       if ( ((UV)(pow(root, b)+0.5)) == n)  return 1;
@@ -163,7 +163,7 @@ static UV* poly_mod_pow(UV* pn, UV power, UV r, UV mod)
 {
   UV* res;
   UV* temp;
-  int use_sqr = (mod > sqrt(UV_MAX/r)) ? 0 : 1;
+  int use_sqr = (mod > isqrt(UV_MAX/r)) ? 0 : 1;
 
   Newz(0, res, r, UV);
   New(0, temp, r, UV);
@@ -223,7 +223,7 @@ int _XS_is_aks_prime(UV n)
   if (is_perfect_power(n))
     return 0;
 
-  sqrtn = sqrt(n);
+  sqrtn = isqrt(n);
   log2n = log(n) / log(2);   /* C99 has a log2() function */
   limit = (UV) floor(log2n * log2n);
 

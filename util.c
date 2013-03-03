@@ -89,7 +89,7 @@ static UV count_zero_bits(const unsigned char* m, UV nbytes)
 static int _is_trial_prime7(UV n)
 {
   UV limit, i;
-  limit = sqrt(n);
+  limit = isqrt(n);
   i = 7;
   while (1) {   /* trial division, skipping multiples of 2/3/5 */
     if (i > limit) break;  if ((n % i) == 0) return 0;  i += 4;
@@ -112,7 +112,7 @@ static int _is_prime7(UV n)
   if (n > MPU_PROB_PRIME_BEST)
     return _XS_is_prob_prime(n);  /* We know this works for all 64-bit n */
 
-  limit = sqrt(n);
+  limit = isqrt(n);
   i = 7;
   while (1) {   /* trial division, skipping multiples of 2/3/5 */
     if (i > limit) break;  if ((n % i) == 0) return 0;  i += 4;
@@ -438,7 +438,7 @@ UV _XS_prime_count(UV low, UV high)
     /* Expand sieve to sqrt(n) */
     UV endp = (high_d >= (UV_MAX/30))  ?  UV_MAX-2  :  30*high_d+29;
     release_prime_cache(cache_sieve);
-    segment_size = get_prime_cache( sqrt(endp) + 1 , &cache_sieve) / 30;
+    segment_size = get_prime_cache( isqrt(endp) + 1 , &cache_sieve) / 30;
   }
 
   if ( (segment_size > 0) && (low_d <= segment_size) ) {
@@ -615,7 +615,7 @@ UV _XS_nth_prime(UV n)
     }
 
     /* Make sure the segment siever won't have to keep resieving. */
-    prime_precalc(sqrt(upper_limit));
+    prime_precalc(isqrt(upper_limit));
   }
 
   if (count == target)
@@ -659,7 +659,7 @@ IV* _moebius_range(UV lo, UV hi)
   /* This implementation follows that of Deléglise & Rivat (1996), which is
    * a segmented version of Lioen & van de Lune (1994).
    */
-  sqrtn = (UV) (sqrt(hi) + 0.5);
+  sqrtn = isqrt(hi);
 
   New(0, mu, hi-lo+1, IV);
   if (mu == 0)
@@ -725,7 +725,7 @@ IV _XS_mertens(UV n) {
   IV sum;
 
   if (n <= 1)  return n;
-  u = (UV) sqrt(n);
+  u = isqrt(n);
   mu = _moebius_range(0, u);
   New(0, M, u+1, IV);
   M[0] = 0;
@@ -981,7 +981,6 @@ static const long double riemann_zeta_table[] = {
 long double ld_riemann_zeta(long double x) {
   long double const tol = 1e-17;
   int i;
-  KAHAN_INIT(sum);
 
   if (x < 0)  croak("Invalid input to RiemannZeta:  x must be >= 0");
   if (x == 1) return INFINITY;
@@ -1014,7 +1013,7 @@ long double ld_riemann_zeta(long double x) {
                                         1.000000000000000000000L    };
     long double sumn = C8p[0]+x*(C8p[1]+x*(C8p[2]+x*(C8p[3]+x*(C8p[4]+x*(C8p[5]+x*(C8p[6]+x*(C8p[7]+x*C8p[8])))))));
     long double sumd = C8q[0]+x*(C8q[1]+x*(C8q[2]+x*(C8q[3]+x*(C8q[4]+x*(C8q[5]+x*(C8q[6]+x*(C8q[7]+x*C8q[8])))))));
-    sum = (sumn - (x-1)*sumd) / ((x-1)*sumd);
+    long double sum = (sumn - (x-1)*sumd) / ((x-1)*sumd);
     return sum;
   }
 
@@ -1026,16 +1025,19 @@ long double ld_riemann_zeta(long double x) {
   }
 
 #if 0
-  /* Simple defining series, works well. */
-  for (i = 5; i <= 1000000; i++) {
-    long double term = powl(i, -x);
-    KAHAN_SUM(sum, term);
-    if (term < tol*sum) break;
+  {
+    KAHAN_INIT(sum);
+    /* Simple defining series, works well. */
+    for (i = 5; i <= 1000000; i++) {
+      long double term = powl(i, -x);
+      KAHAN_SUM(sum, term);
+      if (term < tol*sum) break;
+    }
+    KAHAN_SUM(sum, powl(4, -x) );
+    KAHAN_SUM(sum, powl(3, -x) );
+    KAHAN_SUM(sum, powl(2, -x) );
+    return sum;
   }
-  KAHAN_SUM(sum, powl(4, -x) );
-  KAHAN_SUM(sum, powl(3, -x) );
-  KAHAN_SUM(sum, powl(2, -x) );
-  return sum;
 #endif
 
   /* The 2n!/B_2k series used by the Cephes library. */
