@@ -651,46 +651,98 @@ UV _XS_nth_prime(UV n)
 
 /* Return an IV array with lo-hi+1 elements.  mu[k-lo] = µ(k) for k = lo .. hi.
  * It is the callers responsibility to call Safefree on the result. */
-IV* _moebius_range(UV lo, UV hi)
+#define PGTLO(p,lo)  (p >= lo) ? p : (p*(lo/p) + ((lo%p)?p:0))
+char* _moebius_range(UV lo, UV hi)
 {
-  IV* mu;
-  UV i, p, sqrtn;
+  char* mu;
+  UV i, p;
+  UV sqrtn = isqrt(hi);
+#if 1
+  IV* A;
 
   /* This implementation follows that of Deléglise & Rivat (1996), which is
-   * a segmented version of Lioen & van de Lune (1994).
+   * a segmented version of Lioen & van de Lune (1994).  Downside is that it
+   * uses an array of IV's, so too much memory.  Pawleicz (2011) shows a small
+   * variation but seems to just be a rearrangement -- there is no time or
+   * space difference on my machines. (TODO: but maybe for hi > 2^63?)
    */
-  sqrtn = isqrt(hi);
 
-  New(0, mu, hi-lo+1, IV);
-  if (mu == 0)
+  New(0, A, hi-lo+1, IV);
+  if (A == 0)
     croak("Could not get memory for %"UVuf" moebius results\n", hi-lo+1);
   for (i = lo; i <= hi; i++)
-    mu[i-lo] = 1;
-  if (lo == 0)  mu[0] = 0;
+    A[i-lo] = 1;
   prime_precalc(sqrtn);
   for (p = 2; p <= sqrtn; p = _XS_next_prime(p)) {
-    i = p*p;
-    if (i < lo)
-      i = i*(lo/i) + ( (lo%i) ? i : 0 );
-    while (i <= hi) {
-      mu[i-lo] = 0;
-      i += p*p;
-    }
-    i = p;
-    if (i < lo)
-      i = i*(lo/i) + ( (lo%i) ? i : 0 );
-    while (i <= hi) {
-      mu[i-lo] *= -(IV)p;
-      i += p;
-    }
+    UV p2 = p*p;
+    for (i = PGTLO(p2, lo); i <= hi; i += p2)
+      A[i-lo] = 0;
+    for (i = PGTLO(p, lo); i <= hi; i += p)
+      A[i-lo] *= -(IV)p;
   }
+  New(0, mu, hi-lo+1, char);
+  if (mu == 0)
+    croak("Could not get memory for %"UVuf" moebius results\n", hi-lo+1);
+  memset(mu, 0, hi-lo+1);
   for (i = lo; i <= hi; i++) {
-    IV m = mu[i-lo];
-    if (m != 0) {
-      if (m != i && -m != i)  m *= -1;
-      mu[i-lo] = (m>0) - (m<0);
-    }
+    IV a = A[i-lo];
+    if (a != 0)
+      mu[i-lo] = (a != i && -a != i)  ?  (a<0) - (a>0)
+                                      :  (a>0) - (a<0);
   }
+  Safefree(A);
+#endif
+#if 0
+  /* Simple char method, Needs way too many primes */
+  New(0, mu, hi-lo+1, char);
+  if (mu == 0)
+    croak("Could not get memory for %"UVuf" moebius results\n", hi-lo+1);
+  memset(mu, 1, hi-lo+1);
+  if (lo == 0)  mu[0] = 0;
+  prime_precalc( _XS_nth_prime_upper(hi) );
+  for (p = 2; p <= hi; p = _XS_next_prime(p)) {
+    UV p2 = p*p;
+    for (i = PGTLO(p2, lo); i <= hi; i += p2)
+      mu[i-lo] = 0;
+    for (i = PGTLO(p, lo); i <= hi; i += p)
+      mu[i-lo] = -mu[i-lo];
+  }
+#endif
+#if 0
+  /* Kuznetsov's transform of Deléglise & Rivat (1996) into logs.
+   * (1) I'm using the log function, which should be fixed (easy).
+   * (2) it doesn't work.  try 64-101 vs. 64 vs. 100.
+   */
+  unsigned char* A;
+  New(0, A, hi-lo+1, unsigned char);
+  if (A == 0)
+    croak("Could not get memory for %"UVuf" moebius results\n", hi-lo+1);
+  memset(A, 0, hi-lo+1);
+  if (sqrtn*sqrtn != hi) sqrtn++;  /* ceil sqrtn */
+  prime_precalc(sqrtn);
+  for (p = 2; p <= sqrtn; p = _XS_next_prime(p)) {
+    UV p2 = p*p;
+    unsigned char l = 1 | (unsigned char) ( log(p)/log(2) );
+    for (i = PGTLO(p, lo); i <= hi; i += p)
+      A[i-lo] += l;
+    for (i = PGTLO(p2, lo); i <= hi; i += p2)
+      A[i-lo] |= 0x80;
+  }
+
+  New(0, mu, hi-lo+1, char);
+  if (mu == 0)
+    croak("Could not get memory for %"UVuf" moebius results\n", hi-lo+1);
+  for (i = lo; i <= hi; i++) {
+    unsigned char a = A[i-lo];
+    unsigned char log2i = (unsigned char) ( log(i)/log(2) );
+    //printf("i = %lu  a = %lu  log2i = %lu\n", i, a, log2i);
+    if (a & 0x80) { mu[i-lo] = 0; }
+    else if (a >= log2i) { mu[i-lo] =  1 - 2*(a&1); }
+    else                 { mu[i-lo] = -1 + 2*(a&1); }
+  }
+  if (lo == 0)  mu[0] = 0;
+  Safefree(A);
+#endif
   return mu;
 }
 
@@ -720,7 +772,7 @@ IV _XS_mertens(UV n) {
   /* Deléglise and Rivat (1996) using u = n^1/2 and unsegmented. */
   /* Very simple, but they use u = n^1/3 and segment */
   UV u, i, m, nmk;
-  IV* mu;
+  char* mu;
   IV* M;
   IV sum;
 
