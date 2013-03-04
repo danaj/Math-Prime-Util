@@ -1297,11 +1297,12 @@ sub divisor_sum {
 
   if (!defined $sub) {
     return _XS_divisor_sum($n) if $n <= $_XS_MAXVAL;
-    my $product = 1;
+    my $bone = (ref($n) eq 'Math::BigInt') ? $n->copy->bone : 1;
+    my $product = $bone;
     my @factors = factor($n);
     while (@factors) {
       if (@factors > 1 && $factors[0] == $factors[1]) {
-        my $fmult = $factors[0] * $factors[0];
+        my $fmult = $bone * $factors[0] * $factors[0];
         $fmult *= shift @factors while @factors > 1 && $factors[0] == $factors[1];
         $product *= ($fmult -1) / ($factors[0] - 1);
       } else {

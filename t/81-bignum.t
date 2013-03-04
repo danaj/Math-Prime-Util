@@ -74,7 +74,7 @@ plan tests =>  0
              + 6*2*$extra # more PC tests
              + scalar(keys %factors)
              + scalar(keys %allfactors)
-             + 4   # moebius, euler_phi, jordan totient
+             + 5   # moebius, euler_phi, jordan totient
              + 15  # random primes
              + 0;
 
@@ -209,6 +209,9 @@ SKIP: {
   $n = 48981631802481400359696467;
   is( jordan_totient(5,$n), 281946200770875813001683560563488308767928594805846855593191749929654015729263525162226378019837608857421063724603387506651820000, "jordan_totient(5,$n)" );
   is( divisor_sum( $n, sub { my $d=shift; $d**5 * moebius($n/$d); }), 281946200770875813001683560563488308767928594805846855593191749929654015729263525162226378019837608857421063724603387506651820000, "jordan totient using divisor_sum and moebius" );
+  # Done wrong, the following will have a bunch of extra zeros.
+  my $hundredfac = Math::BigInt->new(100)->bfac;
+  is( divisor_sum($hundredfac), 774026292208877355243820142464115597282472420387824628823543695735957009720184359087194959566149232506852422409529601312686157396490982598473425595924480000000, "Divisor sum of 100!" );
 }
 
 ###############################################################################
