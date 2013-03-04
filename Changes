@@ -29,6 +29,7 @@ Revision history for Perl extension Math::Prime::Util.
        - Zeta much faster as mentioned above.
        - faster nth_prime as mentioned above.
        - AKS about 10% faster.
+       - New data structure for phi(x,a) means even faster prime_count.
 
 0.22 26 February 2013
 

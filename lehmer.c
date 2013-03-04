@@ -9,7 +9,7 @@
  *
  * Lehmer prime counting utility.  Calculates pi(x), count of primes <= x.
  *
- * Copyright (c) 2012 Dana Jacobsen (dana@acm.org).
+ * Copyright (c) 2012-2013 Dana Jacobsen (dana@acm.org).
  * This is free software; you can redistribute it and/or modify it under
  * the same terms as the Perl 5 programming language system itself.
  *
@@ -22,32 +22,33 @@
  *
  *    g++ -O3 -DPRIMESIEVE_STANDALONE -DPRIMESIEVE_PARALLEL lehmer.c -o prime_count -lprimesieve -lgomp
  *
- * The phi(x,a) calculation is unique, to the best of my knowledge.  It keeps
- * a heap of all x values + signed counts for the given 'a' value, and walks
+ * The phi(x,a) calculation is unique, to the best of my knowledge.  It uses
+ * two lists of all x values + signed counts for the given 'a' value, and walks
  * 'a' down until it is small enough to calculate directly (either with Mapes
  * or using a calculated table using the primorial/totient method).  This
  * is relatively fast and low memory compared to many other solutions.  As with
  * all Lehmer-Meissel-Legendre algorithms, memory use will be a constraint
  * with large values of x.
  *
- * Calculating pi(10^11) is done in under 1 second on my computer.  pi(10^14)
- * takes under 1 minute, pi(10^16) in a half hour.  Compared with Thomas
- * R. Nicely's pix4 program, this one is 3-5x faster and uses 2-3x less memory.
- * When compiled with parallel primesieve it is another 2x or more faster:
- * pix4(10^16) takes 124 minutes, this takes 6 minutes.
+ * Using my sieve code with everything running in serial, calculating pi(10^12)
+ * is done undef 1 second on my computer.  pi(10^14) takes under 30 seconds,
+ * pi(10^16) in under 20 minutes.  Compared with Thomas R. Nicely's pix4
+ * program, his one is 4-6x faster and uses 2-3x less memory.  When compiled
+ * with parallel primesieve it is another 2x or more faster:
+ *   pix4(10^16) takes 124 minutes, this code + primesieve takes 4 minutes.
+ *
+ * Timings with Perl + MPU.  Using the standalone program with primesieve
+ * speeds up stage 4 a lot for large values.
  *
  *    n     phi(x,a) mem/time  |  stage 4 mem/time  | total time
- *   10^17   4953MB    871.14   |   2988MB  9911.9    | 179m 37.5s
- *   10^16   1436MB    168.02   |   901MB   1195.7    |  22m 45.6s
- *   10^15    432MB     31.34   |   394MB    165.6    |   3m 17.5s
- *   10^14    203MB      5.509  |   223MB     25.96   |    31.69s
- *   10^13               0.949  |   165MB      4.284  |     5.336s
- *   10^12               0.174  |              0.755  |     0.990s
- *   10^11               0.034  |              0.138  |     0.213s
- *   10^10               0.007  |              0.025  |     0.064s
- *
- * These timings are using Perl + MPU.  The standalone version using primesieve
- * speeds up stage 4 a lot for large values.
+ *   10^17   3000MB    275.29  | 2300MB   9911.9    | 179m 37.5s
+ *   10^16    986MB     38.73  |  815MB   1139.8    |  19m 43.0s
+ *   10^15    170MB      7.22  |  296MB    147.9    |   2m 36.2s
+ *   10^14     39MB      1.69  |  101MB     23.03   |    24.740s
+ *   10^13               0.398 |   32MB      3.840  |     5.336s
+ *   10^12               0.093 |             0.666  |     0.802s
+ *   10^11               0.017 |             0.120  |     0.143s
+ *   10^10               0.004 |             0.023  |     0.028s
  *
  * Reference: Hans Riesel, "Prime Numbers and Computer Methods for
  * Factorization", 2nd edition, 1994.
@@ -267,33 +268,8 @@ static UV mapes7(UV x) {    /* A tiny bit faster setup for a=7 */
 }
 
 /******************************************************************************/
-/*   Modified heap for manipulating our UV value / IV count pairs             */
+/*   In-order lists for manipulating our UV value / IV count pairs            */
 /******************************************************************************/
-
-/*
- * This is a heap augmented with a small array.  We store values and signed
- * counts, where all counts for the same value are summed.  An easy way to
- * do this in Perl/Python is a hash.  In plain C, I don't believe this is the
- * best solution.  A heap can be implemented both easily and very efficiently
- * (using a linear array), and as we pull items off the heap we can combine
- * all similar values.
- *
- * Below some threshold value ('small_limit') the items become dense.  That is,
- * not only are the values small but we have many items in that range.  Hence
- * the small array augmentation.  All values below the threshold are just put
- * directly into an array.  This not only handles them a little faster but
- * helps reduce the heap size a bit, as we don't put any repeated values in
- * the heap for the small items.  Since they're dense in this range, we can
- * do a linear scan to find the next non-zero count.
- *
- * An ideal data structure for our purpose would coalesce values on insertion,
- * and would allow operating in place (so we could retrieve all our items and
- * add new items as we go, without them appearing on this scan).  The former
- * is possible using an ordered list or a balanced tree.  I don't know how we
- * would achieve the latter.  The point being that we're pulling items off of
- * h1 and adding it (plus possibly a new item) to h2, so ideally we'd manage
- * to use that space freed up by h1.
- */
 
 typedef struct {
   UV v;
@@ -301,139 +277,107 @@ typedef struct {
 } vc_t;
 
 typedef struct {
-  UV    small_limit;    /* small count array: size */
-  UV    small_N;        /* small count array: number of non-zero elements */
-  int   small_ptr;      /* small count array: index of largest non-zero value */
-  UV    array_size;     /* heap: allocated size in elements */
-  UV    N;              /* heap: number of elements */
-  IV*   small_array;    /* small count array data */
-  vc_t* array;          /* heap data */
-} heap_t;
-
-static void heap_insert(heap_t* h, UV val, IV count)
-{
-  UV n;
   vc_t* a;
-  if (val < h->small_limit) {
-    IV* saptr = h->small_array + val;
-    if (*saptr == 0)
-      ++(h->small_N);
-    *saptr += count;
-    if (*saptr == 0)
-      --(h->small_N);
-    else if (h->small_ptr < (int)val)
-      h->small_ptr = (int) val;
+  UV size;
+  UV n;
+} vcarray_t;
+
+static vcarray_t vcarray_create(void)
+{
+  vcarray_t l;
+  l.a = 0;
+  l.size = 0;
+  l.n = 0;
+  return l;
+}
+static void vcarray_destroy(vcarray_t* l)
+{
+  if (l->a != 0) {
+    if (verbose > 2) printf("FREE list %p\n", l->a);
+    Safefree(l->a);
+  }
+  l->size = 0;
+  l->n = 0;
+}
+static void vcarray_insert(vcarray_t* l, UV val, IV count)
+{
+  UV n = l->n;
+  if (n > 0 && l->a[n-1].v <= val) {
+    if (l->a[n-1].v < val)
+      croak("Previous value was %lu, inserting %lu out of order\n", l->a[n-1].v, val);
+    l->a[n-1].c += count;
     return;
   }
-  n = ++(h->N);
-  a = h->array;
-  if (n >= h->array_size) {
+  if (n >= l->size) {
     UV new_size;
-    if (h->array_size == 0) {
-      new_size = (h->small_limit <= (20000/2)) ? 20000 : 2*h->small_limit;
-      if (verbose>2) printf("ALLOCing heap, size %lu\n", new_size);
-      New(0, h->array, new_size, vc_t);
+    if (l->size == 0) {
+      new_size = 20000;
+      if (verbose>2) printf("ALLOCing list, size %lu\n", new_size);
+      New(0, l->a, new_size, vc_t);
     } else {
-      new_size = (UV) (1.5 * h->array_size);
-      if (verbose>2) printf("REALLOCing heap %p, new size %lu\n", h->array, new_size);
-      Renew( h->array, new_size, vc_t );
+      new_size = (UV) (1.5 * l->size);
+      if (verbose>2) printf("REALLOCing list %p, new size %lu\n",l->a,new_size);
+      Renew( l->a, new_size, vc_t );
     }
-    if (h->array == 0) croak("could not allocate heap\n");
-    a = h->array;
-    h->array_size = new_size-1;
-    a[0].v = UV_MAX;  a[0].c = 0;
+    if (l->a == 0) croak("could not allocate list\n");
+    l->size = new_size;
   }
-  while (a[n/2].v <= val) {  /* upheap */
-    a[n] = a[n/2];
-    n /= 2;
-  }
-  a[n].v = val;
-  a[n].c = count;
+  /* printf(" inserting %lu %ld\n", val, count); */
+  l->a[n].v = val;
+  l->a[n].c = count;
+  l->n++;
 }
-static void heap_remove(heap_t* h, UV* val, IV* count)
-{
-  if (h->N == 0) {
-    /* Search small_array for a non-zero count from small_ptr down */
-    IV* saptr = h->small_array + h->small_ptr;
-    if (h->small_N == 0) croak("remove from empty heap\n");
-    while (!*saptr)
-      saptr--;
-    if (saptr < h->small_array) croak("walked off small array\n");
-    *val = (saptr - h->small_array);
-    *count = *saptr;
-    *saptr = 0;
-    h->small_ptr = *val-1;
-    --(h->small_N);
-    return;
-  } else {
-    vc_t* a = h->array;
-    UV ival, k, n = h->N;
-    *val = a[1].v;
-    *count = 0;
-    do {
-      *count += a[1].c;
-      /* remove top element */
-      ival = a[n--].v;
-      k = 1;
-      while (k <= n/2) {
-        UV j = k+k;
-        if (j < n && a[j].v < a[j+1].v)  j++;
-        if (ival >= a[j].v) break;
-        a[k] = a[j];
-        k = j;
-      }
-      a[k] = a[n+1];
-    } while (n > 0 && a[1].v == *val);
-    h->N = n;
-  }
-}
-static heap_t heap_create(UV small_size)
-{
-  heap_t h;
-  h.array = 0;
-  h.array_size = 0;
-  h.small_limit = small_size;
-  h.small_array = 0;
-  if (small_size > 0) {
-    if (verbose>1)printf("creating small array of size %lu\n", small_size);
-    Newz(0, h.small_array, small_size, IV);
-  }
-  h.N = 0;
-  h.small_N = 0;
-  h.small_ptr = -1;
-  return h;
-}
-static void heap_destroy(heap_t* h)
-{
-  if (h->array != 0) {
-    if (verbose > 2) printf("FREE heap %p\n", h->array);
-    Safefree(h->array);
-  }
-  h->array = 0;
-  h->array_size = 0;
-  h->N = 0;
-  if (h->small_array != 0)
-    Safefree(h->small_array);
-  h->small_array = 0;
-  h->small_N = 0;
-  h->small_ptr = -1;
-}
-#define heap_not_empty(h)  ((h).N > 0 || (h).small_N > 0)
 
-/******************************************************************************/
+static vcarray_t vcarray_merge(vcarray_t* a, vcarray_t* b)
+{
+  UV ai, bi, an, bn, k, mn;
+  vcarray_t m = vcarray_create();
 
+  /* printf("going to merge %lu and %lu elements\n", a->n, b->n); */
+  an = a->n;  bn = b->n;  mn = an+bn;
+  New(0, m.a, mn, vc_t);
+  m.size = mn;
+  /* merge */
+  ai = 0;  bi = 0;
+  vc_t* aa = a->a;
+  vc_t* ba = b->a;
+  for (k = 0; k < mn; k++) {
+    if (ai >= an) {
+      if (bi >= bn) croak("ran out of data during merge");
+      while (k < mn)
+        m.a[k++] = ba[bi++];
+      break;
+    } else if (bi >= bn) {
+      while (k < mn)
+        m.a[k++] = aa[ai++];
+      break;
+    } else if (aa[ai].v > ba[bi].v) {
+      m.a[k] = aa[ai++];
+    } else if (ba[bi].v > aa[ai].v) {
+      m.a[k] = ba[bi++];
+    } else {
+      m.a[k] = aa[ai];
+      m.a[k].c += ba[bi].c;
+      ai++;  bi++;  mn--;
+    }
+  }
+  m.n = k;
+  /* printf("done with merge, have %lu elements\n", m.n); */
+  return m;
+}
 
 
 /*
- * The main phi(x,a) algorithm.  In this implementation, it takes about 15%
- * of the total time for the Lehmer algorithm, but it is by far the most
- * memory consuming part.
+ * The main phi(x,a) algorithm.  In this implementation, it takes under 10%
+ * of the total time for the Lehmer algorithm, but it is the memory
+ * constraining part.
+ *
+ * TODO: Expand a1, then merge a2 directly into it.  Should save memory.
  */
 
 static UV phi(UV x, UV a)
 {
-  heap_t h1, h2;
-  UV val, smallv;
+  UV i, val, sval;
   UV sum = 0;
   IV count;
   const UV* primes;
@@ -446,46 +390,52 @@ static UV phi(UV x, UV a)
     croak("Could not generate primes for phi(%lu,%lu)\n", x, a);
   if (x < primes[a+1])  { Safefree(primes); return (x > 0) ? 1 : 0; }
 
-  /* This is a hack, trying to guess at a value where the array gets dense */
-  smallv = a * 1000;
-  if (smallv > x / primes[a] / 5)
-    smallv = x / primes[a] / 5;
-
-  h1 = heap_create(smallv);
-  h2 = heap_create(smallv);
-  heap_insert(&h1, x, 1);
+  vcarray_t a1 = vcarray_create();
+  vcarray_t a2 = vcarray_create();
+  vcarray_insert(&a1, x, 1);
 
   while (a > 7) {
     UV primea = primes[a];
-    if (heap_not_empty(h2)) croak("h2 heap isn't empty.");
-    while ( heap_not_empty(h1) ) {
-      UV sval;
-      heap_remove(&h1, &val, &count);
+    for (i = 0; i < a1.n; i++) {
+      val   = a1.a[i].v;
+      count = a1.a[i].c;
       if (count == 0)
         continue;
-      heap_insert(&h2, val, count);
       sval = val / primea;
       if (sval >= primea) {
-        heap_insert(&h2, sval, -count);
+        vcarray_insert(&a2, sval, -count);
       } else {
         sum -= count;
       }
     }
-    { heap_t t = h1; h1 = h2; h2 = t; }
-    /* printf("a = %lu  heap %lu/%lu + %lu\n", a, h1.small_N, h1.small_limit, h1.N); */
+    { /* Merge a1 and a2 into a3 */
+      vcarray_t m = vcarray_merge(&a1, &a2);
+      /* printf("a1 size %lu  a2 size %lu  m size %lu\n",a1.n,a2.n,m.n); */
+      /* Empty a2 */
+      a2.n = 0;
+      /* erase a1 and replace with m */
+      vcarray_destroy(&a1);
+      a1.a = m.a;
+      a1.n = m.n;
+      a1.size = m.size;
+    }
     a--;
   }
-  heap_destroy(&h2);
+  vcarray_destroy(&a2);
   if (a != 7) croak("final loop is set for a=7, a = %lu\n", a);
-  while ( heap_not_empty(h1) ) {
-    heap_remove(&h1, &val, &count);
+  for (i = 0; i < a1.n; i++) {
+    val   = a1.a[i].v;
+    count = a1.a[i].c;
     if (count != 0)
       sum += count * mapes7(val);
   }
-  heap_destroy(&h1);
+  vcarray_destroy(&a1);
   Safefree(primes);
   return (UV) sum;
 }
+
+
+
 
 
 /* Legendre's method.  Interesting and a good test for phi(x,a), but Lehmer's
@@ -626,6 +576,7 @@ UV _XS_lehmer_pi(UV n)
   return sum;
 }
 
+
 UV _XS_LMO_pi(UV n)
 {
   UV a, b, sum, i, lastprime, lastpc, lastw, lastwpc;
@@ -679,7 +630,7 @@ UV _XS_LMO_pi(UV n)
     for (j = isquared; j <= n13; j += isquared)
       mu[j] = 0;
   }
-  //for (i = 0; i <= n13; i++) { printf("mu %lu %ld\n", i, (IV)mu[i]); }
+  /* for (i = 0; i <= n13; i++) { printf("mu %lu %ld\n", i, (IV)mu[i]); } */
   TIMING_END_PRINT("mu")
 
   if (verbose > 0) printf("LMO %lu stage 4: calculate S1 (%lu)\n", n, n13);

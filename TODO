@@ -48,8 +48,6 @@
   that (1) handles any low / high, and (2) segments.  Take segment_primes
   from XS.xs to do this.
 
-- Try in lehmer.c's phi function: Use two linear arrays to replace the
-  heap+array.  If we add val in one and sval in the other, they can remain
-  sorted, then reading the next combined value is easy.
+- Do in-place merge in new phi(x,a).
 
 - Implement S2 calculation for LMO prime count.
