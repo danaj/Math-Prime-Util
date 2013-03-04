@@ -651,7 +651,7 @@ UV _XS_nth_prime(UV n)
 
 /* Return an IV array with lo-hi+1 elements.  mu[k-lo] = µ(k) for k = lo .. hi.
  * It is the callers responsibility to call Safefree on the result. */
-#define PGTLO(p,lo)  (p >= lo) ? p : (p*(lo/p) + ((lo%p)?p:0))
+#define PGTLO(p,lo)  ((p) >= lo) ? (p) : ((p)*(lo/(p)) + ((lo%(p))?(p):0))
 char* _moebius_range(UV lo, UV hi)
 {
   char* mu;
@@ -744,6 +744,36 @@ char* _moebius_range(UV lo, UV hi)
   Safefree(A);
 #endif
   return mu;
+}
+
+UV* _totient_range(UV lo, UV hi) {
+  UV* totients;
+  const unsigned char* sieve;
+  UV i, sievehi;
+  if (hi < lo) croak("_totient_range error hi %lu < lo %lu\n", hi, lo);
+  New(0, totients, hi-lo+1, UV);
+  if (totients == 0)
+    croak("Could not get memory for %"UVuf" totients\n", hi);
+  for (i = lo; i <= hi; i++)
+    totients[i-lo] = i;
+  for (i = PGTLO(2*2, lo); i <= hi; i += 2) totients[i-lo] -= totients[i-lo]/2;
+  for (i = PGTLO(2*3, lo); i <= hi; i += 3) totients[i-lo] -= totients[i-lo]/3;
+  for (i = PGTLO(2*5, lo); i <= hi; i += 5) totients[i-lo] -= totients[i-lo]/5;
+  sievehi = hi/2;
+  if (get_prime_cache(sievehi, &sieve) < sievehi) {
+    release_prime_cache(sieve);
+    croak("Could not generate sieve for %"UVuf, sievehi);
+  } else {
+    START_DO_FOR_EACH_SIEVE_PRIME( sieve, 7, sievehi ) {
+      for (i = PGTLO(2*p, lo); i <= hi; i += p)
+        totients[i-lo] -= totients[i-lo]/p;
+    } END_DO_FOR_EACH_SIEVE_PRIME
+    release_prime_cache(sieve);
+  }
+  for (i = lo; i <= hi; i++)
+    if (totients[i-lo] == i)
+      totients[i-lo] = i-1;
+  return totients;
 }
 
 IV _XS_mertens(UV n) {

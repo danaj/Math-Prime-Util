@@ -359,46 +359,31 @@ _XS_RiemannR(double x)
 
 void
 _XS_totient(IN UV lo, IN UV hi = 0)
+  PREINIT:
+    UV i;
   PPCODE:
-    if (hi != lo && hi != 0) {
-      /* Totients in a range, returns array */
+    if (hi != lo && hi != 0) { /* Totients in a range, returns array */
       UV* totients;
-      UV i, p;
-
       if (hi < lo) XSRETURN_EMPTY;
       if (lo < 2) {
         if (lo <= 0           ) XPUSHs(sv_2mortal(newSVuv(0)));
         if (lo <= 1 && hi >= 1) XPUSHs(sv_2mortal(newSVuv(1)));
         lo = 2;
       }
-      New(0, totients, hi-lo+1, UV);
-      if (totients == 0)
-        croak("Could not get memory for %"UVuf" totients\n", hi);
-      for (i = lo; i <= hi; i++)
-        totients[i-lo] = i;
-      prime_precalc( hi/2 );
-      for (p = 2; p <= hi/2; p = _XS_next_prime(p)) {
-        i = 2*p;
-        if (i < lo)  i = p*(lo/p) + ( (lo%p) ? p : 0 );
-        for ( ; i <= hi; i += p)
-          totients[i-lo] -= totients[i-lo]/p;
+      if (hi >= lo) {
+        totients = _totient_range(lo, hi);
+        /* Extend the stack to handle how many items we'll return */
+        EXTEND(SP, hi-lo+1);
+        for (i = lo; i <= hi; i++)
+          PUSHs(sv_2mortal(newSVuv(totients[i-lo])));
+        Safefree(totients);
       }
-      /* Extend the stack to handle how many items we'll return */
-      EXTEND(SP, hi-lo+1);
-      for (i = lo; i <= hi; i++) {
-        UV t = totients[i-lo];
-        if (t == i)
-          t = i-1;
-        PUSHs(sv_2mortal(newSVuv(t)));
-      }
-      Safefree(totients);
-
     } else {
       UV facs[MPU_MAX_FACTORS+1];  /* maximum number of factors is log2n */
-      UV i, nfacs, totient, lastf;
+      UV nfacs, totient, lastf;
       UV n = lo;
       if (n <= 1) XSRETURN_UV(n);
-      nfacs = trial_factor(n, facs, 0);
+      nfacs = factor(n, facs);
       totient = 1;
       lastf = 0;
       for (i = 0; i < nfacs; i++) {
