@@ -31,14 +31,14 @@
  * with large values of x.
  *
  * Using my sieve code with everything running in serial, calculating pi(10^12)
- * is done undef 1 second on my computer.  pi(10^14) takes under 30 seconds,
+ * is done under 1 second on my computer.  pi(10^14) takes under 30 seconds,
  * pi(10^16) in under 20 minutes.  Compared with Thomas R. Nicely's pix4
- * program, his one is 4-6x faster and uses 2-3x less memory.  When compiled
+ * program, his one is 4-6x faster and uses 2-4x less memory.  When compiled
  * with parallel primesieve it is another 2x or more faster:
  *   pix4(10^16) takes 124 minutes, this code + primesieve takes 4 minutes.
  *
- * Timings with Perl + MPU.  Using the standalone program with primesieve
- * speeds up stage 4 a lot for large values.
+ * Timings with Perl + MPU with all-serial computation.  Using the standalone
+ * program with parallel primesieve speeds up stage 4 a lot for large values.
  *
  *    n     phi(x,a) mem/time  |  stage 4 mem/time  | total time
  *   10^17   3000MB    275.29  | 2300MB   9911.9    | 179m 37.5s
@@ -299,7 +299,14 @@ static void vcarray_destroy(vcarray_t* l)
   l->size = 0;
   l->n = 0;
 }
-static void vcarray_insert(vcarray_t* l, UV val, IV count)
+/* Insert a value/count pair.  We do this indirection because about 80% of
+ * the calls result in a merge with the previous entry. */
+#define vcarray_insert(arr, val, count) \
+  if (arr.n > 0 && arr.a[arr.n-1].v == val) \
+    arr.a[arr.n-1].c += count; \
+  else \
+    vcarray_insert_func(&arr, val, count);
+static void vcarray_insert_func(vcarray_t* l, UV val, IV count)
 {
   UV n = l->n;
   if (n > 0 && l->a[n-1].v <= val) {
@@ -328,51 +335,80 @@ static void vcarray_insert(vcarray_t* l, UV val, IV count)
   l->n++;
 }
 
-static vcarray_t vcarray_merge(vcarray_t* a, vcarray_t* b)
+/* Merge the two sorted lists A and B into A.  Each list has no duplicates,
+ * but they may have duplications between the two.  We're quite interested
+ * in saving memory, so first remove all the duplicates, then do an in-place
+ * merge. */
+static void vcarray_merge(vcarray_t* a, vcarray_t* b)
 {
-  UV ai, bi, an, bn, k, mn;
-  vcarray_t m = vcarray_create();
-
-  /* printf("going to merge %lu and %lu elements\n", a->n, b->n); */
-  an = a->n;  bn = b->n;  mn = an+bn;
-  New(0, m.a, mn, vc_t);
-  m.size = mn;
-  /* merge */
-  ai = 0;  bi = 0;
+  long ai, bi, bj, k, kn;
+  UV an = a->n;
+  UV bn = b->n;
   vc_t* aa = a->a;
   vc_t* ba = b->a;
-  for (k = 0; k < mn; k++) {
+
+  /* Merge anything in B that appears in A. */
+  for (ai = 0, bi = 0, bj = 0; bi < bn; bi++) {
+    /* Skip forward in A until empty or aa[ai].v <= ba[bi].v */
+    UV bval = ba[bi].v;
+    while (ai < an && aa[ai].v > bval)
+      ai++;
+    /* if A empty then copy the remaining elements */
     if (ai >= an) {
-      if (bi >= bn) croak("ran out of data during merge");
-      while (k < mn)
-        m.a[k++] = ba[bi++];
+      if (bi == bj)
+        bj = bn;
+      else
+        while (bi < bn)
+          ba[bj++] = ba[bi++];
       break;
-    } else if (bi >= bn) {
-      while (k < mn)
-        m.a[k++] = aa[ai++];
+    }
+    if (aa[ai].v == bval)
+      aa[ai].c += ba[bi].c;
+    else
+      ba[bj++] = ba[bi];
+  }
+  if (verbose>2) printf("  removed %lu duplicates from b\n", bn - bj);
+  bn = bj;
+
+  if (bn == 0) {  /* In case they were all duplicates */
+    b->n = 0;
+    return;
+  }
+
+  /* kn = the final merged size.  All duplicates are gone, so this is exact. */
+  kn = an+bn;
+  if (a->size < kn) {  /* Make A big enough to hold kn elements */
+    UV new_size = (UV) (1.2 * kn);
+    if (verbose>2) printf("REALLOCing list %p, new size %lu\n", a->a, new_size);
+    Renew( a->a, new_size, vc_t );
+    aa = a->a;  /* this could have been changed by the realloc */
+    a->size = new_size;
+  }
+
+  /* merge A and B.  Very simple using reverse merge. */
+  ai = an-1;
+  bi = bn-1;
+  for (k = kn-1; k >= 0; k--) {
+    if (ai < 0) { /* A is exhausted, just filling in B */
+      if (bi < 0) croak("ran out of data during merge");
+      aa[k] = ba[bi--];
+    } else if (bi < 0) { /* We've caught up with A */
       break;
-    } else if (aa[ai].v > ba[bi].v) {
-      m.a[k] = aa[ai++];
-    } else if (ba[bi].v > aa[ai].v) {
-      m.a[k] = ba[bi++];
+    } else if (aa[ai].v < ba[bi].v) {
+      aa[k] = aa[ai--];
     } else {
-      m.a[k] = aa[ai];
-      m.a[k].c += ba[bi].c;
-      ai++;  bi++;  mn--;
+      if (aa[ai].v == ba[bi].v) croak("deduplication error");
+      aa[k] = ba[bi--];
     }
   }
-  m.n = k;
-  /* printf("done with merge, have %lu elements\n", m.n); */
-  return m;
+  a->n = kn;    /* A now has this many items */
+  b->n = 0;     /* B is marked empty */
 }
 
 
 /*
  * The main phi(x,a) algorithm.  In this implementation, it takes under 10%
- * of the total time for the Lehmer algorithm, but it is the memory
- * constraining part.
- *
- * TODO: Expand a1, then merge a2 directly into it.  Should save memory.
+ * of the total time for the Lehmer algorithm, but is a big memory consumer.
  */
 
 static UV phi(UV x, UV a)
@@ -392,7 +428,7 @@ static UV phi(UV x, UV a)
 
   vcarray_t a1 = vcarray_create();
   vcarray_t a2 = vcarray_create();
-  vcarray_insert(&a1, x, 1);
+  vcarray_insert(a1, x, 1);
 
   while (a > 7) {
     UV primea = primes[a];
@@ -403,22 +439,13 @@ static UV phi(UV x, UV a)
         continue;
       sval = val / primea;
       if (sval >= primea) {
-        vcarray_insert(&a2, sval, -count);
+        vcarray_insert(a2, sval, -count);
       } else {
         sum -= count;
       }
     }
-    { /* Merge a1 and a2 into a3 */
-      vcarray_t m = vcarray_merge(&a1, &a2);
-      /* printf("a1 size %lu  a2 size %lu  m size %lu\n",a1.n,a2.n,m.n); */
-      /* Empty a2 */
-      a2.n = 0;
-      /* erase a1 and replace with m */
-      vcarray_destroy(&a1);
-      a1.a = m.a;
-      a1.n = m.n;
-      a1.size = m.size;
-    }
+    /* Merge a1 and a2 into a1.  a2 will be emptied. */
+    vcarray_merge(&a1, &a2);
     a--;
   }
   vcarray_destroy(&a2);

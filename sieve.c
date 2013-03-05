@@ -94,6 +94,30 @@ static const unsigned char presieve13[PRESIEVE_SIZE] =
   0x18,0x89,0x08,0x25,0x44,0x22,0x30,0x14,0xc3,0x88,0x86,0x40,0x1a,
   0x28,0x30,0x85,0x09,0x54,0x60,0x43,0x24,0x92,0x81,0x08,0x04,0x70};
 
+#define FIND_COMPOSITE_POS(i,j) \
+  { \
+    UV dlast = d; \
+    do { \
+      d += dinc; \
+      m += minc; \
+      if (m >= 30) { d++; m -= 30; } \
+    } while ( masktab30[m] == 0 ); \
+    wdinc[i] = d - dlast; \
+    wmask[j] = masktab30[m]; \
+  }
+#define FIND_COMPOSITE_POSITIONS(p) \
+  do { \
+    FIND_COMPOSITE_POS(0,1) \
+    FIND_COMPOSITE_POS(1,2) \
+    FIND_COMPOSITE_POS(2,3) \
+    FIND_COMPOSITE_POS(3,4) \
+    FIND_COMPOSITE_POS(4,5) \
+    FIND_COMPOSITE_POS(5,6) \
+    FIND_COMPOSITE_POS(6,7) \
+    FIND_COMPOSITE_POS(7,0) \
+    d -= p; \
+  } while (0)
+
 static void sieve_prefill(unsigned char* mem, UV startd, UV endd)
 {
   UV nbytes = endd - startd + 1;
@@ -145,20 +169,9 @@ unsigned char* sieve_erat30(UV end)
     UV minc = (2*prime) - dinc*30;
     UV wdinc[8];
     unsigned char wmask[8];
-    int i;
 
     /* Find the positions of the next composites we will mark */
-    for (i = 1; i <= 8; i++) {
-      UV dlast = d;
-      do {
-        d += dinc;
-        m += minc;
-        if (m >= 30) { d++; m -= 30; }
-      } while ( masktab30[m] == 0 );
-      wdinc[i-1] = d - dlast;
-      wmask[i%8] = masktab30[m];
-    }
-    d -= prime;
+    FIND_COMPOSITE_POSITIONS(prime);
 #if 0
     assert(d == ((prime*prime)/30));
     assert(d < max_buf);
@@ -199,7 +212,8 @@ int sieve_segment(unsigned char* mem, UV startd, UV endd)
   /* Fill buffer with marked 7, 11, and 13 */
   sieve_prefill(mem, startd, endd);
 
-  limit = isqrt(endp) + 1;
+  limit = isqrt(endp);
+  if (limit*limit < endp) limit++;  /* ceil(sqrt(endp)) */
   /* printf("segment sieve from %"UVuf" to %"UVuf" (aux sieve to %"UVuf")\n", startp, endp, limit); */
   pcsize = get_prime_cache(limit, &sieve);
   if (pcsize < limit) {
@@ -236,20 +250,9 @@ int sieve_segment(unsigned char* mem, UV startd, UV endd)
       UV wdinc[8];
       unsigned char wmask[8];
       UV offset_endd = endd - startd;
-      int i;
 
       /* Find the positions of the next composites we will mark */
-      for (i = 1; i <= 8; i++) {
-        UV dlast = d;
-        do {
-          d += dinc;
-          m += minc;
-          if (m >= 30) { d++; m -= 30; }
-        } while ( masktab30[m] == 0 );
-        wdinc[i-1] = d - dlast;
-        wmask[i%8] = masktab30[m];
-      }
-      d -= p;
+      FIND_COMPOSITE_POSITIONS(p);
       d -= startd;
 #if 0
       i = 0;        /* Mark the composites */
