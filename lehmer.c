@@ -185,7 +185,11 @@ static UV icbrt(UV n)
 {
 #if 0
   /* The integer cube root code is about 30% faster for me */
+#if BITS_PER_WORD == 32
+  if (n >= UVCONST(4291015625)) return UVCONST(1625);
+#else
   if (n >= UVCONST(18446724184312856125)) return UVCONST(2642245);
+#endif
   UV root = (UV) pow(n, 1.0/3.0);
   if (root*root*root > n) {
     root--;
@@ -197,7 +201,12 @@ static UV icbrt(UV n)
 #else
   int s;
   UV y = 0;
-  for (s = (sizeof(UV)*8)-1; s >= 0; s -= 3) {
+  /* Alternately: s = (sizeof(UV)*8)-(sizeof(UV)*8)%3 */
+#if BITS_PER_WORD == 32
+  for (s = 30; s >= 0; s -= 3) {
+#else
+  for (s = 63; s >= 0; s -= 3) {
+#endif
     UV b;
     y += y;
     b = 3*y*(y+1)+1;

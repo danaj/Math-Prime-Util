@@ -34,11 +34,11 @@ extern double _XS_RiemannR(double x);
 #endif
 
 static UV isqrt(UV n) {
- #if BIT_PER_WORD == 32
+#if BITS_PER_WORD == 32
   if (n >= UVCONST(4294836225)) return UVCONST(65535);
- #else
+#else
   if (n >= UVCONST(18446744065119617025)) return UVCONST(4294967295);
- #endif
+#endif
   UV root = (UV) sqrt((double)n);
   while (root*root > n)  root--;
   while ((root+1)*(root+1) <= n)  root++;
