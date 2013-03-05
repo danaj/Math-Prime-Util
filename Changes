@@ -1,6 +1,6 @@
 Revision history for Perl extension Math::Prime::Util.
 
-0.23 xx March 2013
+0.23  5 March 2013
 
     - Replace XS Zeta for x > 5 with series from Cephes.  It is 1 eps more
       accurate for a small fraction of inputs.  More importantly, it is much

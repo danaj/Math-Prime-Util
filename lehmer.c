@@ -3,7 +3,13 @@
 #include <string.h>
 #include <math.h>
 
-#define SIEVE_LIMIT  1000000    /* Just sieve if smaller than this */
+/* Below this size, just sieve. */
+#define SIEVE_LIMIT  1000000
+/* We need a set of small primes for stage 4.  If we get more than strictly
+ * necessary, we can spend less time sieving.  This has a direct impact on
+ * the memory used in stage 4.  About 10-12 seems to balance with the amount
+ * taken by the phi algorithm. */
+#define SIEVE_MULT   12
 
 /*****************************************************************************
  *
@@ -33,22 +39,24 @@
  * Using my sieve code with everything running in serial, calculating pi(10^12)
  * is done under 1 second on my computer.  pi(10^14) takes under 30 seconds,
  * pi(10^16) in under 20 minutes.  Compared with Thomas R. Nicely's pix4
- * program, his one is 4-6x faster and uses 2-4x less memory.  When compiled
- * with parallel primesieve it is another 2x or more faster:
- *   pix4(10^16) takes 124 minutes, this code + primesieve takes 4 minutes.
+ * program, this one is 5x faster and uses 10x less memory.  When compiled
+ * with parallel primesieve it is over 10x faster.
+ *   pix4(10^16) takes 124 minutes, this code + primesieve takes < 4 minutes.
  *
  * Timings with Perl + MPU with all-serial computation.  Using the standalone
  * program with parallel primesieve speeds up stage 4 a lot for large values.
+ * The last column is the standalone time with parallel primesieve
  *
- *    n     phi(x,a) mem/time  |  stage 4 mem/time  | total time
- *   10^17   3000MB    275.29  | 2300MB   9911.9    | 179m 37.5s
- *   10^16    986MB     38.73  |  815MB   1139.8    |  19m 43.0s
- *   10^15    170MB      7.22  |  296MB    147.9    |   2m 36.2s
- *   10^14     39MB      1.69  |  101MB     23.03   |    24.740s
- *   10^13               0.398 |   32MB      3.840  |     5.336s
- *   10^12               0.093 |             0.666  |     0.802s
- *   10^11               0.017 |             0.120  |     0.143s
- *   10^10               0.004 |             0.023  |     0.028s
+ *    n     phi(x,a) mem/time  |  stage 4 mem/time  | total time | pps time
+ *   10^18   5648MB    532.33  |                    |            | 88m  7s
+ *   10^17   1737MB    122.06  | 1708MB   9684.1    | 163m 36  s | 17m 53s
+ *   10^16    534MB     28.14  |  573MB   1118.4    |  19m  9  s |  3m 48s
+ *   10^15    163MB      6.55  |  193MB    151.3    |   2m 39  s |   49.12 s
+ *   10^14     49MB      1.51  |   66MB     23.81   |    25.20 s |   10.86 s
+ *   10^13     14MB      0.348 |   22MB      4.008  |     4.44 s |    2.44 s
+ *   10^12      4MB      0.079 |    8MB      0.703  |     0.85 s |    0.547s
+ *   10^11      1MB      0.017 |             0.130  |     0.143s |    0.128s
+ *   10^10               0.004 |             0.025  |     0.028s |    0.036s
  *
  * Reference: Hans Riesel, "Prime Numbers and Computer Methods for
  * Factorization", 2nd edition, 1994.
@@ -501,7 +509,7 @@ UV _XS_meissel_pi(UV n)
   if (verbose > 0) printf("phi(%lu,%lu) = %lu.  sum = %lu\n", n, a, sum - ((b+a-2) * (b-a+1) / 2), sum);
   TIMING_END_PRINT("phi(x,a)")
 
-  lastprime = b*16;
+  lastprime = b*SIEVE_MULT;
   if (verbose > 0) printf("meissel %lu stage 3: %lu small primes\n", n, lastprime);
   TIMING_START;
   primes = generate_small_primes(lastprime);
@@ -527,7 +535,6 @@ UV _XS_meissel_pi(UV n)
   Safefree(primes);
   return sum;
 }
-
 
 /* Lehmer's method.  This is basically Riesel's Lehmer function (page 22),
  * with some additional code to help optimize it.  */
@@ -556,7 +563,6 @@ UV _XS_lehmer_pi(UV n)
   c = _XS_lehmer_pi(icbrt(n));         /* c = floor(n^1/3) */
   TIMING_END_PRINT("stage 1")
 
-
   if (verbose > 0) printf("lehmer %lu stage 2: phi(x,a) (z=%lu a=%lu b=%lu c=%lu)\n", n, z, a, b, c);
   TIMING_START;
   sum = phi(n, a) + ((b+a-2) * (b-a+1) / 2);
@@ -567,7 +573,7 @@ UV _XS_lehmer_pi(UV n)
    * fast prime counts.  Using a higher value here will mean more memory but
    * faster operation.  A lower value saves memory at the expense of more
    * segment sieving.*/
-  lastprime = b*16;
+  lastprime = b*SIEVE_MULT;
   if (verbose > 0) printf("lehmer %lu stage 3: %lu small primes\n", n, lastprime);
   TIMING_START;
   primes = generate_small_primes(lastprime);
@@ -626,7 +632,7 @@ UV _XS_LMO_pi(UV n)
   b = _XS_lehmer_pi(n12);
   TIMING_END_PRINT("stage 1")
 
-  lastprime = b*16;
+  lastprime = b*SIEVE_MULT;
   if (verbose > 0) printf("LMO %lu stage 2: %lu small primes\n", n, lastprime);
   TIMING_START;
   primes = generate_small_primes(lastprime);
