@@ -161,7 +161,7 @@ plan tests => 0 + 1
                 + 3*scalar(keys %mertens)
                 + 1*scalar(keys %big_mertens)
                 + 2 # Small Phi
-                + 6 + scalar(keys %totients)
+                + 7 + scalar(keys %totients)
                 + scalar(keys %jordan_totients)
                 + 2  # Dedekind psi calculated two ways
                 + 1  # Calculate J5 two different ways
@@ -210,6 +210,7 @@ is_deeply( [euler_phi(0,1)], [0,1],   "euler_phi 0-1" );
 is_deeply( [euler_phi(1,2)], [1,1],   "euler_phi 1-2" );
 is_deeply( [euler_phi(1,3)], [1,1,2], "euler_phi 1-3" );
 is_deeply( [euler_phi(2,3)], [1,2],   "euler_phi 2-3" );
+is_deeply( [euler_phi(10,20)], [4,10,4,12,6,8,8,16,6,18,8], "euler_phi 10-20" );
 
 ###### Jordan Totient
 while (my($k, $tref) = each (%jordan_totients)) {

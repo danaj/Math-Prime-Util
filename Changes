@@ -1,5 +1,9 @@
 Revision history for Perl extension Math::Prime::Util.
 
+0.24  5 March 2013
+
+    - euler_phi on a range wasn't working right with some ranges.
+
 0.23  5 March 2013
 
     - Replace XS Zeta for x > 5 with series from Cephes.  It is 1 eps more
