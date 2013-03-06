@@ -4,6 +4,10 @@ Revision history for Perl extension Math::Prime::Util.
 
     - euler_phi on a range wasn't working right with some ranges.
 
+    - Fix compilation with old pre-C99 strict compilers (decl after statement).
+
+    - Some more prime count improvements to speed and space.
+
 0.23  5 March 2013
 
     - Replace XS Zeta for x > 5 with series from Cephes.  It is 1 eps more

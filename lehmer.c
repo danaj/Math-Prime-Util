@@ -9,7 +9,7 @@
  * necessary, we can spend less time sieving.  This has a direct impact on
  * the memory used in stage 4.  About 10-12 seems to balance with the amount
  * taken by the phi algorithm. */
-#define SIEVE_MULT   12
+#define SIEVE_MULT   10
 
 /*****************************************************************************
  *
@@ -107,9 +107,10 @@ typedef   signed long IV;
 
 static UV isqrt(UV n)
 {
+  UV root;
   if (sizeof(UV) == 8 && n >= 18446744065119617025UL)  return 4294967295UL;
   if (sizeof(UV) == 4 && n >= 4294836225UL)            return 65535UL;
-  UV root = (UV) sqrt((double)n);
+  root = (UV) sqrt((double)n);
   while (root*root > n)  root--;
   while ((root+1)*(root+1) <= n)  root++;
   return root;
@@ -183,40 +184,36 @@ static UV* generate_small_primes(UV n)
 
 static UV icbrt(UV n)
 {
-#if 0
-  /* The integer cube root code is about 30% faster for me */
+  UV root = 0;
+  /* int s = BITS_PER_WORD - (BITS_PER_WORD % 3); */
 #if BITS_PER_WORD == 32
+  int s = 30;
   if (n >= UVCONST(4291015625)) return UVCONST(1625);
 #else
+  int s = 63;
   if (n >= UVCONST(18446724184312856125)) return UVCONST(2642245);
 #endif
-  UV root = (UV) pow(n, 1.0/3.0);
+#if 0
+  /* The integer cube root code is about 30% faster for me */
+  root = (UV) pow(n, 1.0/3.0);
   if (root*root*root > n) {
     root--;
     while (root*root*root > n)  root--;
   } else {
     while ((root+1)*(root+1)*(root+1) <= n)  root++;
   }
-  return root;
 #else
-  int s;
-  UV y = 0;
-  /* Alternately: s = (sizeof(UV)*8)-(sizeof(UV)*8)%3 */
-#if BITS_PER_WORD == 32
-  for (s = 30; s >= 0; s -= 3) {
-#else
-  for (s = 63; s >= 0; s -= 3) {
-#endif
+  for ( ; s >= 0; s -= 3) {
     UV b;
-    y += y;
-    b = 3*y*(y+1)+1;
+    root += root;
+    b = 3*root*(root+1)+1;
     if ((n >> s) >= b) {
       n -= b << s;
-      y++;
+      root++;
     }
   }
-  return y;
 #endif
+  return root;
 }
 
 
@@ -318,20 +315,11 @@ static void vcarray_destroy(vcarray_t* l)
 }
 /* Insert a value/count pair.  We do this indirection because about 80% of
  * the calls result in a merge with the previous entry. */
-#define vcarray_insert(arr, val, count) \
-  if (arr.n > 0 && arr.a[arr.n-1].v == val) \
-    arr.a[arr.n-1].c += count; \
-  else \
-    vcarray_insert_func(&arr, val, count);
-static void vcarray_insert_func(vcarray_t* l, UV val, IV count)
+static void vcarray_insert(vcarray_t* l, UV val, IV count)
 {
   UV n = l->n;
-  if (n > 0 && l->a[n-1].v <= val) {
-    if (l->a[n-1].v < val)
-      croak("Previous value was %lu, inserting %lu out of order\n", l->a[n-1].v, val);
-    l->a[n-1].c += count;
-    return;
-  }
+  if (n > 0 && l->a[n-1].v < val)
+    croak("Previous value was %lu, inserting %lu out of order\n", l->a[n-1].v, val);
   if (n >= l->size) {
     UV new_size;
     if (l->size == 0) {
@@ -434,6 +422,8 @@ static UV phi(UV x, UV a)
   UV sum = 0;
   IV count;
   const UV* primes;
+  vcarray_t a1, a2;
+  vc_t* arr;
 
   if (a == 1)  return ((x+1)/2);
   if (a <= 7)  return mapes(x, a);
@@ -443,35 +433,45 @@ static UV phi(UV x, UV a)
     croak("Could not generate primes for phi(%lu,%lu)\n", x, a);
   if (x < primes[a+1])  { Safefree(primes); return (x > 0) ? 1 : 0; }
 
-  vcarray_t a1 = vcarray_create();
-  vcarray_t a2 = vcarray_create();
-  vcarray_insert(a1, x, 1);
+  a1 = vcarray_create();
+  a2 = vcarray_create();
+  vcarray_insert(&a1, x, 1);
 
   while (a > 7) {
     UV primea = primes[a];
+    UV sval_last = 0;
+    IV sval_count = 0;
+    arr = a1.a;
     for (i = 0; i < a1.n; i++) {
-      val   = a1.a[i].v;
-      count = a1.a[i].c;
-      if (count == 0)
-        continue;
+      count = arr[i].c;
+      if (count == 0) continue;      /* Skip if count = 0 */
+      val  = arr[i].v;
       sval = val / primea;
-      if (sval >= primea) {
-        vcarray_insert(a2, sval, -count);
-      } else {
-        sum -= count;
+      if (sval < primea) break;      /* stop inserting into a2 if small */
+      if (sval != sval_last) {       /* non-merged value.  Insert into a2 */
+        if (sval_last != 0)
+          vcarray_insert(&a2, sval_last, sval_count);
+        sval_last = sval;
+        sval_count = 0;
       }
+      sval_count -= count;           /* Accumulate count for this sval */
     }
+    if (sval_last != 0)              /* Insert the last sval */
+      vcarray_insert(&a2, sval_last, sval_count);
+    /* For each small sval, add up the counts */
+    for ( ; i < a1.n; i++) 
+      sum -= arr[i].c;
     /* Merge a1 and a2 into a1.  a2 will be emptied. */
     vcarray_merge(&a1, &a2);
     a--;
   }
   vcarray_destroy(&a2);
   if (a != 7) croak("final loop is set for a=7, a = %lu\n", a);
+  arr = a1.a;
   for (i = 0; i < a1.n; i++) {
-    val   = a1.a[i].v;
-    count = a1.a[i].c;
+    count = arr[i].c;
     if (count != 0)
-      sum += count * mapes7(val);
+      sum += count * mapes7( arr[i].v );
   }
   vcarray_destroy(&a1);
   Safefree(primes);
@@ -578,11 +578,14 @@ UV _XS_lehmer_pi(UV n)
   TIMING_END_PRINT("phi(x,a)")
 
 
-  /* Sieve to get small primes.  Get more than the minimum needed (b) to allow
-   * fast prime counts.  Using a higher value here will mean more memory but
-   * faster operation.  A lower value saves memory at the expense of more
-   * segment sieving.*/
+  /* We get an array of the first b primes.  This is used in stage 4.  If we
+   * get more than necessary, we can use them to speed up some.
+   */
+#ifdef PRIMESIEVE_STANDALONE
   lastprime = b*SIEVE_MULT;
+#else
+  lastprime = b;   /* Use the precalc instead */
+#endif
   if (verbose > 0) printf("lehmer %lu stage 3: %lu small primes\n", n, lastprime);
   TIMING_START;
   primes = generate_small_primes(lastprime);
@@ -594,6 +597,7 @@ UV _XS_lehmer_pi(UV n)
   /* Ensure we have the base sieve for big prime_count ( n/primes[i] ). */
   /* This is about 75k for n=10^13, 421k for n=10^15, 2.4M for n=10^17 */
   prime_precalc(isqrt(n / primes[a+1]));
+  prime_precalc( (UV) pow(n, 3.0/5.0) );  /* Sieve more for speed */
 
   if (verbose > 0) printf("lehmer %lu stage 4: loop %lu to %lu, pc to %lu\n", n, a+1, b, n/primes[a+1]);
   TIMING_START;
