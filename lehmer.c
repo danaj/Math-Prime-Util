@@ -65,9 +65,9 @@
  */
 
 static int const verbose = 0;
-/* #define STAGE_TIMING 1 */
+#define STAGE_TIMING 0
 
-#ifdef STAGE_TIMING
+#if STAGE_TIMING
  #include <sys/time.h>
  #define DECLARE_TIMING_VARIABLES  struct timeval t0, t1;
  #define TIMING_START   gettimeofday(&t0, 0);
@@ -769,6 +769,9 @@ int main(int argc, char *argv[])
     method = "lehmer";
 
   gettimeofday(&t0, 0);
+
+  /* Using a smaller preseive speeds us up since our counts are usually small */
+  ps.setPreSieve(13);
   SET_PPS_PARALLEL;
   if      (!strcasecmp(method, "lehmer"))   { pi = _XS_lehmer_pi(n);      }
   else if (!strcasecmp(method, "meissel"))  { pi = _XS_meissel_pi(n);     }
