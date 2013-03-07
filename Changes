@@ -6,7 +6,10 @@ Revision history for Perl extension Math::Prime::Util.
 
     - Fix compilation with old pre-C99 strict compilers (decl after statement).
 
-    - Some more prime count improvements to speed and space.
+    - More XS prime count improvements to speed and space.
+
+    - PP prime count for 10^9 and larger is ~2x faster and uses much less
+      memory.  Similar impact for nth_prime 10^8 or larger.
 
 0.23  5 March 2013
 
