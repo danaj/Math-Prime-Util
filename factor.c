@@ -493,7 +493,7 @@ int holf_factor(UV n, UV *factors, UV rounds)
   MPUassert( (n >= 3) && ((n%2) != 0) , "bad n in holf_factor");
 
   for (i = 1; i <= rounds; i++) {
-    s = sqrt( (double)n * (double)i );
+    s = (UV) sqrt( (double)n * (double)i );
     /* Assume s^2 isn't a perfect square.  We're rapidly losing precision
      * so we won't be able to accurately detect it anyway. */
     s++;    /* s = ceil(sqrt(n*i)) */
@@ -1006,7 +1006,7 @@ int racing_squfof_factor(UV n, UV *factors, UV rounds)
     mult_save[i].valid = 1;
 
     mult_save[i].b0 = isqrt(nn64);
-    mult_save[i].imax = sqrt(mult_save[i].b0) / 3;
+    mult_save[i].imax = (UV) (sqrt(mult_save[i].b0) / 3);
     if (mult_save[i].imax < 20)     mult_save[i].imax = 20;
     if (mult_save[i].imax > rounds) mult_save[i].imax = rounds;
 

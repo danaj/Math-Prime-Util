@@ -5,7 +5,7 @@ use Carp qw/carp croak confess/;
 
 BEGIN {
   $Math::Prime::Util::PP::AUTHORITY = 'cpan:DANAJ';
-  $Math::Prime::Util::PP::VERSION = '0.20';
+  $Math::Prime::Util::PP::VERSION = '0.24';
 }
 
 # The Pure Perl versions of all the Math::Prime::Util routines.
@@ -197,7 +197,7 @@ sub _sieve_erat_string {
     }
     do { $n += 2 } while substr($sieve, $n>>1, 1);
   }
-  \$sieve;
+  return \$sieve;
 }
 
 # TODO: this should be plugged into precalc, memfree, etc. just like the C code
@@ -215,7 +215,7 @@ sub _sieve_erat_string {
       $primary_sieve_ref = _sieve_erat_string($primary_sieve_size);
     }
     my $sieve = substr($$primary_sieve_ref, 0, ($end+1)>>1);
-    \$sieve;
+    return \$sieve;
   }
 }
 
@@ -444,11 +444,8 @@ sub _legendre_phi {
 sub _sieve_prime_count {
   my $high = shift;
   return (0,0,1,2,2,3,3)[$high] if $high < 7;
-  $high-- if ($high % 2) == 0; # Make high go to odd number.
-
-  my $sieveref = _sieve_erat($high);
-  my $count = 1 + $$sieveref =~ tr/0//;
-  return $count;
+  $high-- unless ($high & 1);
+  return 1 + ${_sieve_erat($high)} =~ tr/0//;
 }
 
 sub _count_with_sieve {
@@ -457,7 +454,7 @@ sub _count_with_sieve {
   my $count = 0;
   if   ($low < 3) { $low = 3; $count++; }
   else            { $low |= 1; }
-  $high-- if ($high % 2) == 0; # Make high go to odd number.
+  $high-- unless ($high & 1);
   return $count if $low > $high;
   my $sbeg = $low >> 1;
   my $send = $high >> 1;

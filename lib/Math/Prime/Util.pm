@@ -6,7 +6,7 @@ use Bytes::Random::Secure;
 
 BEGIN {
   $Math::Prime::Util::AUTHORITY = 'cpan:DANAJ';
-  $Math::Prime::Util::VERSION = '0.23';
+  $Math::Prime::Util::VERSION = '0.24';
 }
 
 # parent is cleaner, and in the Perl 5.10.1 / 5.12.0 core, but not earlier.
@@ -1992,7 +1992,7 @@ Math::Prime::Util - Utilities related to prime numbers, including fast sieves an
 
 =head1 VERSION
 
-Version 0.23
+Version 0.24
 
 
 =head1 SYNOPSIS
@@ -3349,9 +3349,9 @@ Perl modules, counting the primes to C<800_000_000> (800 million):
 
   Time (s)   Module                      Version  Notes
   ---------  --------------------------  -------  -----------
-       0.03  Math::Prime::Util           0.12     using Lehmer's method
-       0.28  Math::Prime::Util           0.17     segmented mod-30 sieve
-       0.47  Math::Prime::Util::PP       0.14     Perl (Lehmer's method)
+       0.007 Math::Prime::Util           0.12     using Lehmer's method
+       0.27  Math::Prime::Util           0.17     segmented mod-30 sieve
+       0.39  Math::Prime::Util::PP       0.24     Perl (Lehmer's method)
        0.9   Math::Prime::Util           0.01     mod-30 sieve
        2.9   Math::Prime::FastSieve      0.12     decent odd-number sieve
       11.7   Math::Prime::XS             0.26     needs some optimization
@@ -3363,10 +3363,10 @@ Perl modules, counting the primes to C<800_000_000> (800 million):
   ~11000     Math::Primality             0.04     Perl + Math::GMPz
   >20000     Math::Big                   1.12     Perl, > 26GB RAM used
 
-Python can do this in 2.8s using an RWH numpy function, 14.3s using an RWH
-pure Python function.  However the standard modules are far slower.  mpmath
-v0.17 primepi takes 169.5s and 25+ GB of RAM.  sympi 0.7.1 primepi takes
-292.2s.
+Python's standard modules are very slow: mpmath v0.17 primepi takes 169.5s
+and 25+ GB of RAM.  sympy 0.7.1 primepi takes 292.2s.  However there are very
+fast solutions written by Robert William Hanks (included in the xt/
+directory of this distribution): pure Python in 12.1s and numpy in 2.8s.
 
 
 C<is_prime>: my impressions for various sized inputs:

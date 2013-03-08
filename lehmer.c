@@ -25,17 +25,18 @@
  *
  * The phi(x,a) calculation is unique, to the best of my knowledge.  It uses
  * two lists of all x values + signed counts for the given 'a' value, and walks
- * 'a' down until it is small enough to calculate directly (either with Mapes
- * or using a calculated table using the primorial/totient method).  This
- * is relatively fast and low memory compared to many other solutions.  As with
- * all Lehmer-Meissel-Legendre algorithms, memory use will be a constraint
- * with large values of x (see the table below).
+ * 'a' down until it is small enough to calculate directly using Mapes' method.
+ * This is relatively fast and low memory compared to many other solutions.
+ * As with all Lehmer-Meissel-Legendre algorithms, memory use will be a
+ * constraint with large values of x (see the table below).
  *
  * If you want something better, I highly recommend the paper "Computing
  * Pi(x): the combinatorial method" (2006) by Tomás Oliveira e Silva.  His
- * implementation is certainly much faster and lower memory than this, but I
- * have not seen any working source code for one of the LMO methods so it is
- * difficult to compare.
+ * implementation is certainly much faster and lower memory than this.  I have
+ * briefly run Christian Bau's LMO implementation which has the big advantage
+ * of using almost no memory.  On the same machine that ran the times below,
+ * I got 10^16 in 36s, 10^17 in 165s, 10^18 in 769s, 10^19 in 4162s.  All
+ * using a single core.  That's 10-50x faster than this code.
  *
  * Using my sieve code with everything running in serial, calculating pi(10^12)
  * is done under 1 second on my computer.  pi(10^14) takes under 30 seconds,

@@ -91,4 +91,6 @@ xt/primality-small.pl
 xt/primality-aks.pl
 xt/factor-holf.pl
 xt/make-script-test-data.pl
+xt/rwh_primecount.py
+xt/rwh_primecount_numpy.py
 .travis.yml
