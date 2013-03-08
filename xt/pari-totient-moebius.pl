@@ -6,12 +6,12 @@ $| = 1;  # fast pipes
 use Math::Prime::Util qw/-nobigint/;
 use Math::Pari;
 
-Math::Prime::Util::prime_precalc(10_000_000);
 my $nlinear = 100000;
 my $nrandom = shift || 100000;
 my $randmax = 10**16;
 
-# Looks like MPU is 4x faster than Pari for 1 .. 1M, 5x faster for 1M - 10_000M.
+# Moebius and euler_phi seem about 2-4x faster than Pari.  Also, we have
+# ranged versions that run much faster.
 #
 print "OK for first 1";
 my $dig = 1;
