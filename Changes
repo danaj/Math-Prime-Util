@@ -6,7 +6,8 @@ Revision history for Perl extension Math::Prime::Util.
 
     - euler_phi on a range wasn't working right with some ranges.
 
-    - More XS prime count improvements to speed and space.
+    - More XS prime count improvements to speed and space.  Add some tables
+      to the sieve count so it runs a bit faster.  Transition from sieve later.
 
     - PP prime count for 10^9 and larger is ~2x faster and uses much less
       memory.  Similar impact for nth_prime 10^8 or larger.
