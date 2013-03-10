@@ -4,7 +4,7 @@
 #include <math.h>
 
 /* Below this size, just sieve. */
-#define SIEVE_LIMIT  1000000
+#define SIEVE_LIMIT  60000000
 
 /*****************************************************************************
  *
@@ -553,7 +553,7 @@ UV _XS_meissel_pi(UV n)
   if (verbose > 0) printf("phi(%lu,%lu) = %lu.  sum = %lu\n", n, a, sum - ((b+a-2) * (b-a+1) / 2), sum);
   TIMING_END_PRINT("phi(x,a)")
 
-  lastprime = b*SIEVE_MULT;
+  lastprime = b*SIEVE_MULT+1;
   if (verbose > 0) printf("meissel %lu stage 3: %lu small primes\n", n, lastprime);
   TIMING_START;
   primes = generate_small_primes(lastprime);
@@ -616,7 +616,7 @@ UV _XS_lehmer_pi(UV n)
   /* We get an array of the first b primes.  This is used in stage 4.  If we
    * get more than necessary, we can use them to speed up some.
    */
-  lastprime = b*SIEVE_MULT;
+  lastprime = b*SIEVE_MULT+1;
   if (verbose > 0) printf("lehmer %lu stage 3: %lu small primes\n", n, lastprime);
   TIMING_START;
   primes = generate_small_primes(lastprime);
@@ -680,7 +680,7 @@ UV _XS_LMO_pi(UV n)
   b = _XS_lehmer_pi(n12);
   TIMING_END_PRINT("stage 1")
 
-  lastprime = b*SIEVE_MULT;
+  lastprime = b*SIEVE_MULT+1;
   if (verbose > 0) printf("LMO %lu stage 2: %lu small primes\n", n, lastprime);
   TIMING_START;
   primes = generate_small_primes(lastprime);
