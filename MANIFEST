@@ -88,6 +88,7 @@ xt/moebius-mertens.pl
 xt/totient-range.pl
 xt/primality-small.pl
 xt/primality-aks.pl
+xt/small-is-next-prev.pl
 xt/factor-holf.pl
 xt/make-script-test-data.pl
 xt/pari-totient-moebius.pl
