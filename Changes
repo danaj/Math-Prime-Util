@@ -1,6 +1,6 @@
 Revision history for Perl extension Math::Prime::Util.
 
-0.24  5 March 2013
+0.24 10 March 2013
 
     - Fix compilation with old pre-C99 strict compilers (decl after statement).
 

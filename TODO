@@ -49,5 +49,3 @@
   from XS.xs to do this.
 
 - Implement S2 calculation for LMO prime count.
-
-- Balance memory used in phi with memory for binary search pc in lehmer.
