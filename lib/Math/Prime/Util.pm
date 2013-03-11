@@ -2292,7 +2292,7 @@ base under C<10^14>.
 Lehmer's method has complexity approximately C<O(b^0.7) + O(a^0.7)>.  It
 does use more memory however.  A calculation of C<Pi(10^14)> completes in
 under 1 minute, C<Pi(10^15)> in under 5 minutes, and C<Pi(10^16)> in under
-30 minutes, however using nearly 1400MB of peak memory for the last.
+20 minutes, however using about 500MB of peak memory for the last.
 In contrast, even primesieve using 12 cores would take over a week on this
 same computer to determine C<Pi(10^16)>.
 
@@ -2353,15 +2353,16 @@ another way, this returns the smallest C<p> such that C<Pi(p) E<gt>= n>.
 
 For relatively small inputs (below 2 million or so), this does a sieve over
 a range containing the nth prime, then counts up to the number.  This is fairly
-efficient in time and memory.  For larger values, the Dusart 2010 bounds are
-calculated, Lehmer's fast prime counting method is used to calculate the
-count up to that point, then sieving is done in the range between the bounds.
+efficient in time and memory.  For larger values, a binary search is performed
+between the Dusart 2010 bounds using Riemann's R function, then Lehmer's fast
+prime counting method is used to calculate the count up to that point, then
+sieving is done in the typically small error zone.
 
 While this method is hundreds of times faster than generating primes, and
 doesn't involve big tables of precomputed values, it still can take a fair
 amount of time and space for large inputs.  Calculating the C<10^11th> prime
-takes a bit over 2 seconds, the C<10^12th> prime takes 20 seconds, and the
-C<10^13th> prime (323780508946331) takes 4 minutes.  Think about whether
+takes a bit under 2 seconds, the C<10^12th> prime takes 10 seconds, and the
+C<10^13th> prime (323780508946331) takes 1 minute.  Think about whether
 a bound or approximation would be acceptable, as they can be computed
 analytically.
 
@@ -2523,20 +2524,26 @@ function is defined as C<sum(moebius(1..n))>.  This is a much more efficient
 solution for larger inputs.  For example, computing Mertens(100M) takes:
 
    time    approx mem
-     0.36s     0.1MB   mertens(100_000_000)
+     0.4s      0.1MB   mertens(100_000_000)
     74.8s   7000MB     List::Util::sum(moebius(1,100_000_000))
-   325.7s      0MB     $sum += moebius($_) for 1..100_000_000
+    88.5s      0MB     $sum += moebius($_) for 1..100_000_000   [-nobigint]
+   181.8s      0MB     $sum += moebius($_) for 1..100_000_000
 
 The summation of individual terms via factoring is quite expensive in time,
-though uses O(1) space.  Computing the summation via a moebius sieve to C<n>
-is much faster, though a segmented sieve must be used for large C<n> to
-control the memory taken.  Benito and Varona (2008) show a simple C<n/3>
-summation which is much faster and uses less memory.  Better yet is a
-simple C<n^1/2> version of Deléglise and Rivat (1996), which is what the
-current implementation uses.  Deléglise and Rivat's full segmented C<n^1/3>
-algorithm is faster.  Kuznetsov (2011) gives an alternate method that he
-indicates is even faster.  In theory using one of the advanced prime count
-algorithms can lead to a faster solution.
+though uses O(1) space.  This function will generate the equivalent output
+via a sieving method, which will use some more memory, but be much faster.
+The current method is a simple C<n^1/2> version of Deléglise and Rivat (1996),
+which involves calculating all moebius values to C<n^1/2>, which in turn will
+require prime sieving to C<n^1/4>.
+
+Various methods exist for this, using differing quantities of μ(n).  The
+simplest way is to efficiently sum all C<n> values.  Benito and Varona (2008)
+show a clever and simple method that only requires C<n/3> values.  Deléglise
+and Rivat (1996) describe a segmented method using only C<n^1/3> values.  The
+current implementation does a simple non-segmented C<n^1/2> version of this.
+uznetsov (2011) gives an alternate method that he indicates is even faster.
+Lastly, one of the advanced prime count algorithms could be theoretically used
+to create a faster solution. 
 
 
 =head2 euler_phi
