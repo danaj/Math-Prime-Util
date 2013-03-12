@@ -45,21 +45,25 @@
  * with parallel primesieve it is over 10x faster.
  *   pix4(10^16) takes 124 minutes, this code + primesieve takes < 4 minutes.
  *
- * Timings with Perl + MPU with all-serial computation.  Using the standalone
- * program with parallel primesieve speeds up stage 4 a lot for large values.
+ * Timings with Perl + MPU with all-serial computation.
  * The last column is the standalone time with 12-core parallel primesieve.
  *
  *    n     phi(x,a) mem/time  |  stage 4 mem/time  | total time | pps time
- *   10^19            1979.41  |  ~13GB             |            | 7h 26m
- *   10^18   5515MB    483.46  | 5390MB             |            | 87m  0s
- *   10^17   1698MB    109.56  | 1568MB   9684.1    | 163m 36  s | 17m 37s
- *   10^16    522MB     24.14  |  460MB   1066.3    |  18m 12  s |  3m 44s
- *   10^15    159MB      5.58  |  137MB    142.5    |   2m 28  s |   48.17 s
- *   10^14     48MB      1.28  |   41MB     22.26   |    23.61 s |   10.55 s
- *   10^13     14MB      0.294 |   12MB      3.82   |     4.12 s |    2.40 s
- *   10^12      4MB      0.070 |    4MB      0.707  |     0.78 s |    0.527
- *   10^11      1MB      0.015 |             0.135  |     0.158s |    0.124s
- *   10^10               0.003 |             0.029  |     0.028s |    0.036s
+ *   10^19  17884MB   1979.41  | 9144MB             |            | 7h 26m
+ *   10^18   5515MB    483.46  | 2394MB             |            | 87m  0s
+ *   10^17   1698MB    109.56  |  634MB   9684.1    | 163m 36  s | 17m 45s
+ *   10^16    522MB     24.14  |  171MB   1066.3    |  18m 12  s |  3m 44s
+ *   10^15    159MB      5.58  |   47MB    142.5    |   2m 28  s |   47.66 s
+ *   10^14     48MB      1.28  |   13MB     22.26   |    23.61 s |   10.25 s
+ *   10^13     14MB      0.294 |    4MB      3.82   |     4.12 s |    2.21 s
+ *   10^12      4MB      0.070 |    1MB      0.707  |     0.78 s |    0.459s
+ *   10^11      1MB      0.015 |             0.135  |     0.158s |    0.097s
+ *   10^10               0.003 |             0.029  |     0.028s |    0.025s
+ *
+ * Using the standalone program with parallel primesieve speeds up stage 4
+ * a lot for large values, as can be seen by the last column.  It does use
+ * quite a bit more memory in stage 4 however (lowering SIEVE_MULT can reduce
+ * it by as much as 10x, at the expense of some performance).
  *
  * Reference: Hans Riesel, "Prime Numbers and Computer Methods for
  * Factorization", 2nd edition, 1994.
@@ -86,9 +90,10 @@ static int const verbose = 0;
 
 #ifdef PRIMESIEVE_STANDALONE
 
-/* countPrimes seems to be pretty slow for small ranges, so sieve more small
- * primes and count using binary search.  Uses a lot of memory though.  For
- * big ranges, countPrimes is really fast. */
+/* countPrimes can be pretty slow for small ranges, so sieve more small primes
+ * and count using binary search.  Uses a lot of memory though.  For big
+ * ranges, countPrimes is really fast.  If you use primesieve 4.2, the
+ * crossover point is lower (better). */
 #define SIEVE_MULT   10
 
 #include <limits.h>
@@ -134,12 +139,14 @@ static UV isqrt(UV n)
 static UV* sieve_array = 0;
 static UV sieve_k;
 static UV sieve_n;
+class stop_primesieve : public std::exception { };
 void primesieve_callback(uint64_t pk) {
-  if (sieve_k <= sieve_n) {
-    if (pk < sieve_array[sieve_k-1])
-      croak("Primes generated out of order.  Switch to serial mode.\n");
-    sieve_array[sieve_k++] = pk;
-  }
+  if (sieve_k > sieve_n) throw stop_primesieve();
+  /*
+  if (pk < sieve_array[sieve_k-1])
+    croak("Primes generated out of order.  Switch to serial mode.\n");
+  */
+  sieve_array[sieve_k++] = pk;
 }
 
 /* Generate an array of n small primes, where the kth prime is element p[k].
@@ -162,9 +169,12 @@ static UV* generate_small_primes(UV n)
   sieve_array = primes;
   sieve_n = n;
   sieve_k = 1;
-  SET_PPS_SERIAL;
-  ps.generatePrimes(2, nth_prime, primesieve_callback);
-  SET_PPS_PARALLEL;
+  {
+    PrimeSieve sps;
+    try {
+      sps.generatePrimes(2, nth_prime, primesieve_callback);
+    } catch (stop_primesieve&) { }
+  }
   sieve_array = 0;
   return primes;
 }
@@ -764,8 +774,6 @@ int main(int argc, char *argv[])
 
   gettimeofday(&t0, 0);
 
-  /* Using a smaller preseive speeds us up since our counts are usually small */
-  ps.setPreSieve(13);
   SET_PPS_PARALLEL;
   if      (!strcasecmp(method, "lehmer"))   { pi = _XS_lehmer_pi(n);      }
   else if (!strcasecmp(method, "meissel"))  { pi = _XS_meissel_pi(n);     }
