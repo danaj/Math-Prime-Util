@@ -8,6 +8,8 @@ Revision history for Perl extension Math::Prime::Util.
     - New internal macro to loop over primary sieve starting at 2.  Simplifies
       code in quite a few places.
 
+    - Forgot to skip one of the tests with broken 5.6.2.
+
 0.24 10 March 2013
 
     - Fix compilation with old pre-C99 strict compilers (decl after statement).

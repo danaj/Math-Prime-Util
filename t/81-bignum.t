@@ -201,7 +201,7 @@ SKIP: {
 ###############################################################################
 
 SKIP: {
-  skip "Your 64-bit Perl is broken, skipping moebius and euler_phi tests", 4 if $broken64;
+  skip "Your 64-bit Perl is broken, skipping moebius and euler_phi tests", 5 if $broken64;
   my $n;
   $n = 618970019642690137449562110;
   is( moebius($n), -1, "moebius($n)" );
