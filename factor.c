@@ -46,27 +46,27 @@ int factor(UV n, UV *factors)
     while ( (n >= (tlim*tlim)) && (!_XS_is_prime(n)) ) {
       int split_success = 0;
       /* Adjust the number of rounds based on the number size */
-      UV br_rounds = ((n>>29) < 100000) ?  1500 :  1500;
-      UV sq_rounds = 80000; /* 20k 91%, 40k 98%, 80k 99.9%, 120k 99.99% */
+      UV const br_rounds = ((n>>29) < 100000) ?  1500 :  1500;
+      UV const sq_rounds = 80000; /* 20k 91%, 40k 98%, 80k 99.9%, 120k 99.99% */
 
       /* About 94% of random inputs are factored with this pbrent call */
       if (!split_success) {
-        split_success = pbrent_factor(n, tofac_stack+ntofac, br_rounds)-1;
+        split_success = pbrent_factor(n, tofac_stack+ntofac, br_rounds, 3)-1;
         if (verbose) { if (split_success) printf("pbrent 1:  %"UVuf" %"UVuf"\n", tofac_stack[ntofac], tofac_stack[ntofac+1]); else printf("pbrent 0\n"); }
       }
       /* SQUFOF with these parameters gets 95% of what's left. */
       if (!split_success && n < (UV_MAX>>3)) {
         split_success = racing_squfof_factor(n,tofac_stack+ntofac, sq_rounds)-1;
-        if (verbose) printf("squfof %d\n", split_success);
+        if (verbose) printf("rsqufof %d\n", split_success);
       }
       /* Perhaps prho using different parameters will find it */
       if (!split_success) {
-        split_success = prho_factor(n, tofac_stack+ntofac, 800)-1;
-        if (verbose) printf("prho %d\n", split_success);
+        split_success = pbrent_factor(n, tofac_stack+ntofac, 800, 5)-1;
+        if (verbose) printf("pbrent5 %d\n", split_success);
       }
       /* This p-1 gets about 2/3 of what makes it through the above */
       if (!split_success) {
-        split_success = pminus1_factor(n, tofac_stack+ntofac, 4000, 40000)-1;
+        split_success = pminus1_factor(n, tofac_stack+ntofac, 4000, 80000)-1;
         if (verbose) printf("pminus1 %d\n", split_success);
       }
       /* Some rounds of HOLF, good for close to perfect squares */
@@ -76,7 +76,7 @@ int factor(UV n, UV *factors)
       }
       /* Less than 0.1% of random inputs make it here */
       if (!split_success) {
-        split_success = prho_factor(n, tofac_stack+ntofac, 256*1024)-1;
+        split_success = pbrent_factor(n, tofac_stack+ntofac, 256*1024, 7)-1;
         if (verbose) printf("long prho %d\n", split_success);
       }
 
@@ -515,12 +515,11 @@ int holf_factor(UV n, UV *factors, UV rounds)
 
 
 /* Pollard / Brent.  Brent's modifications to Pollard's Rho.  Maybe faster. */
-int pbrent_factor(UV n, UV *factors, UV rounds)
+int pbrent_factor(UV n, UV *factors, UV rounds, UV a)
 {
   UV f, i, r;
   UV Xi = 2;
   UV Xm = 2;
-  UV a = 1;
   const UV inner = 64;
 
   MPUassert( (n >= 3) && ((n%2) != 0) , "bad n in pbrent_factor");
@@ -682,7 +681,8 @@ int pminus1_factor(UV n, UV *factors, UV B1, UV B2)
   }
 
   /* STAGE 2 */
-  if (f == 1 && B2 > B1) {
+  if (f == 1 && B2 > B1 && q >= 5) {
+    const unsigned char* sieve;
     UV bm = a;
     UV b = 1;
     UV bmdiff;
@@ -699,10 +699,14 @@ int pminus1_factor(UV n, UV *factors, UV B1, UV B2)
 
     a = powmod(a, q, n);
     j = 1;
-    while (q <= B2) {
+    if (get_prime_cache(B2, &sieve) < B2) {
+      release_prime_cache(sieve);
+      croak("Could not generate sieve for %"UVuf, B2);
+    }
+    START_DO_FOR_EACH_SIEVE_PRIME( sieve, q+1, B2 ) {
       UV lastq = q;
       UV qdiff;
-      q = _XS_next_prime(q);
+      q = p;
       /* compute a^q = a^lastq * a^(q-lastq) */
       qdiff = (q - lastq) / 2 - 1;
       if (qdiff >= 111) {
@@ -725,7 +729,8 @@ int pminus1_factor(UV n, UV *factors, UV B1, UV B2)
         if (f != 1)
           break;
       }
-    }
+    } END_DO_FOR_EACH_SIEVE_PRIME
+    release_prime_cache(sieve);
     f = gcd_ui(b, n);
   }
   if ( (f != 1) && (f != n) ) {

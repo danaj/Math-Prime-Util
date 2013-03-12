@@ -280,7 +280,7 @@ rsqufof_factor(IN UV n, IN UV maxrounds = 4*1024*1024)
 void
 pbrent_factor(IN UV n, IN UV maxrounds = 4*1024*1024)
   PPCODE:
-    SIMPLE_FACTOR(pbrent_factor, n, maxrounds);
+    SIMPLE_FACTOR(pbrent_factor_a1, n, maxrounds);
 
 void
 prho_factor(IN UV n, IN UV maxrounds = 4*1024*1024)
