@@ -769,7 +769,7 @@ UV _XS_nth_prime(UV n)
 char* _moebius_range(UV lo, UV hi)
 {
   char* mu;
-  UV i, p;
+  UV i;
   UV sqrtn = isqrt(hi);
 #if 1
   IV* A;
@@ -786,14 +786,13 @@ char* _moebius_range(UV lo, UV hi)
     croak("Could not get memory for %"UVuf" moebius results\n", hi-lo+1);
   for (i = lo; i <= hi; i++)
     A[i-lo] = 1;
-  prime_precalc(sqrtn);
-  for (p = 2; p <= sqrtn; p = _XS_next_prime(p)) {
+  START_DO_FOR_EACH_PRIME(2, sqrtn) {
     UV p2 = p*p;
     for (i = PGTLO(p2, lo); i <= hi; i += p2)
       A[i-lo] = 0;
     for (i = PGTLO(p, lo); i <= hi; i += p)
       A[i-lo] *= -(IV)p;
-  }
+  } END_DO_FOR_EACH_PRIME
   New(0, mu, hi-lo+1, char);
   if (mu == 0)
     croak("Could not get memory for %"UVuf" moebius results\n", hi-lo+1);
@@ -807,6 +806,7 @@ char* _moebius_range(UV lo, UV hi)
   Safefree(A);
 #endif
 #if 0
+  UV p;
   /* Simple char method, Needs way too many primes */
   New(0, mu, hi-lo+1, char);
   if (mu == 0)
@@ -827,6 +827,7 @@ char* _moebius_range(UV lo, UV hi)
    * (1) I'm using the log function, which should be fixed (easy).
    * (2) it doesn't work.  try 64-101 vs. 64 vs. 100.
    */
+  UV p;
   unsigned char* A;
   New(0, A, hi-lo+1, unsigned char);
   if (A == 0)
@@ -862,7 +863,6 @@ char* _moebius_range(UV lo, UV hi)
 
 UV* _totient_range(UV lo, UV hi) {
   UV* totients;
-  const unsigned char* sieve;
   UV i, sievehi;
   if (hi < lo) croak("_totient_range error hi %lu < lo %lu\n", hi, lo);
   New(0, totients, hi-lo+1, UV);
@@ -872,18 +872,10 @@ UV* _totient_range(UV lo, UV hi) {
     totients[i-lo] = i;
   sievehi = hi/2;
   for (i=P2GTLO(2*2,2,lo); i <= hi; i += 2) totients[i-lo] -= totients[i-lo]/2;
-  for (i=P2GTLO(2*3,3,lo); i <= hi; i += 3) totients[i-lo] -= totients[i-lo]/3;
-  for (i=P2GTLO(2*5,5,lo); i <= hi; i += 5) totients[i-lo] -= totients[i-lo]/5;
-  if (get_prime_cache(sievehi, &sieve) < sievehi) {
-    release_prime_cache(sieve);
-    croak("Could not generate sieve for %"UVuf, sievehi);
-  } else {
-    START_DO_FOR_EACH_SIEVE_PRIME( sieve, 7, sievehi ) {
-      for (i = P2GTLO(2*p,p,lo); i <= hi; i += p)
-        totients[i-lo] -= totients[i-lo]/p;
-    } END_DO_FOR_EACH_SIEVE_PRIME
-    release_prime_cache(sieve);
-  }
+  START_DO_FOR_EACH_PRIME(3, sievehi) {
+    for (i = P2GTLO(2*p,p,lo); i <= hi; i += p)
+      totients[i-lo] -= totients[i-lo]/p;
+  } END_DO_FOR_EACH_PRIME
   for (i = lo; i <= hi; i++)
     if (totients[i-lo] == i)
       totients[i-lo] = i-1;
@@ -951,49 +943,24 @@ IV _XS_mertens(UV n) {
 
 double _XS_chebyshev_theta(UV n)
 {
-  const unsigned char* sieve;
   KAHAN_INIT(sum);
-
-  if (n >= 2) KAHAN_SUM(sum, 0.6931471805599453094172321214581765680755L);
-  if (n >= 3) KAHAN_SUM(sum, 1.0986122886681096913952452369225257046475L);
-  if (n >= 5) KAHAN_SUM(sum, 1.6094379124341003746007593332261876395256L);
-  if (n < 7) return (double) sum;
-
-  if (get_prime_cache(n, &sieve) < n) {
-    release_prime_cache(sieve);
-    croak("Could not generate sieve for %"UVuf, n);
-  }
-  START_DO_FOR_EACH_SIEVE_PRIME(sieve, 7, n) {
+  START_DO_FOR_EACH_PRIME(2, n) {
     KAHAN_SUM(sum, logl(p));
-  } END_DO_FOR_EACH_SIEVE_PRIME
-  release_prime_cache(sieve);
+  } END_DO_FOR_EACH_PRIME
   return (double) sum;
 }
 double _XS_chebyshev_psi(UV n)
 {
-  const unsigned char* sieve;
-  UV prime, mults_are_one;
+  UV mults_are_one = 0;
   long double logn, logp;
   KAHAN_INIT(sum);
 
   logn = logl(n);
-  for (prime = 2; prime <= 5 && prime <= n; prime += prime-1) {
-    logp = logl(prime);
-    KAHAN_SUM(sum, logp * floorl(logn/logp + 1e-15));
-  }
-  if (n < 7) return (double) sum;
-
-  if (get_prime_cache(n, &sieve) < n) {
-    release_prime_cache(sieve);
-    croak("Could not generate sieve for %"UVuf, n);
-  }
-  mults_are_one = 0;
-  START_DO_FOR_EACH_SIEVE_PRIME(sieve, 7, n) {
+  START_DO_FOR_EACH_PRIME(2, n) {
     logp = logl(p);
     if (!mults_are_one && p > (n/p))   mults_are_one = 1;
     KAHAN_SUM(sum, (mults_are_one) ? logp : logp * floorl(logn/logp + 1e-15));
-  } END_DO_FOR_EACH_SIEVE_PRIME
-  release_prime_cache(sieve);
+  } END_DO_FOR_EACH_PRIME
   return (double) sum;
 }
 

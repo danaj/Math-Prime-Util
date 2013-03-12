@@ -183,9 +183,8 @@ static UV* generate_small_primes(UV n)
  * Remember to free when done. */
 static UV* generate_small_primes(UV n)
 {
-  const unsigned char* sieve;
   UV* primes;
-  UV  i;
+  UV  i = 0;
   double fn = (double)n;
   double flogn  = log(fn);
   double flog2n  = log(flogn);
@@ -195,20 +194,14 @@ static UV* generate_small_primes(UV n)
      (n >= 18)     ? (UV) ceil(fn*(flogn+flog2n-1.0+((flog2n+0.30)/flogn)))
                    : 59;
 
-  if (get_prime_cache(nth_prime, &sieve) < nth_prime) {
-    release_prime_cache(sieve);
-    croak("Could not generate sieve for %"UVuf, nth_prime);
-  }
   New(0, primes, n+1, UV);
   if (primes == 0)
     croak("Can not allocate small primes\n");
-  primes[0] = 0; primes[1] = 2; primes[2] = 3; primes[3] = 5;
-  i = 3;
-  START_DO_FOR_EACH_SIEVE_PRIME( sieve, 7, nth_prime ) {
+  primes[0] = 0;
+  START_DO_FOR_EACH_PRIME(2, nth_prime) {
     if (i >= n) break;
     primes[++i] = p;
-  } END_DO_FOR_EACH_SIEVE_PRIME
-  release_prime_cache(sieve);
+  } END_DO_FOR_EACH_PRIME
   if (i < n)
     croak("Did not generate enough small primes.\n");
   if (verbose > 1) printf("generated %lu small primes, from 2 to %lu\n", i, primes[i]);

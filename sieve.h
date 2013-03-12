@@ -81,5 +81,40 @@ static UV prev_prime_in_sieve(const unsigned char* sieve, UV p) {
     } \
   }
 
+#define START_DO_FOR_EACH_PRIME(a, b) \
+  { \
+    const unsigned char* sieve_; \
+    UV d_ = 0; \
+    UV m_ = 7; \
+    UV p  = a; \
+    UV l_ = b; \
+    if (get_prime_cache(l_, &sieve_) < l_) { \
+      release_prime_cache(sieve_); \
+      croak("Could not generate sieve for %"UVuf, l_); \
+    } \
+    if (p <= 5) { \
+      p = (p <= 2) ? 2 : (p <= 3) ? 3 : 5; \
+    } else { \
+      d_ = p/30; \
+      m_ = p-d_*30; \
+      m_ += distancewheel30[m_]; \
+      p = d_*30 + m_; \
+    } \
+    while ( p <= l_ ) { \
+      if (p < 7 || !(sieve_[d_] & masktab30[m_]))
+
+#define RETURN_FROM_EACH_PRIME(x) \
+    do { release_prime_cache(sieve_); return(x); } while (0)
+
+#define END_DO_FOR_EACH_PRIME \
+      if (p < 7) { \
+        p += 1 + (p > 2); \
+      } else { \
+        m_ = nextwheel30[m_];  if (m_ == 1) { d_++; } \
+        p = d_*30+m_; \
+      } \
+    } \
+    release_prime_cache(sieve_); \
+  }
 
 #endif

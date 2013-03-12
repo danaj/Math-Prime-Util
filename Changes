@@ -5,6 +5,9 @@ Revision history for Perl extension Math::Prime::Util.
     - Speed up p-1 stage 2 factoring.  This makes factor() about 20% faster
       for 19 digit semiprimes.
 
+    - New internal macro to loop over primary sieve starting at 2.  Simplifies
+      code in quite a few places.
+
 0.24 10 March 2013
 
     - Fix compilation with old pre-C99 strict compilers (decl after statement).

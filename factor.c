@@ -66,7 +66,7 @@ int factor(UV n, UV *factors)
       }
       /* This p-1 gets about 2/3 of what makes it through the above */
       if (!split_success) {
-        split_success = pminus1_factor(n, tofac_stack+ntofac, 4000, 80000)-1;
+        split_success = pminus1_factor(n, tofac_stack+ntofac, 5000, 80000)-1;
         if (verbose) printf("pminus1 %d\n", split_success);
       }
       /* Some rounds of HOLF, good for close to perfect squares */
@@ -632,19 +632,21 @@ int pminus1_factor(UV n, UV *factors, UV B1, UV B2)
   UV sqrtB1 = isqrt(B1);
   MPUassert( (n >= 3) && ((n%2) != 0) , "bad n in pminus1_factor");
 
-  for (q = 2; q <= sqrtB1; q = _XS_next_prime(q)) {
-    UV k = q*q;
-    UV kmin = B1/q;
+  START_DO_FOR_EACH_PRIME(2, sqrtB1) {
+    UV k = p*p;
+    UV kmin = B1/p;
     while (k <= kmin)
-      k *= q;
+      k *= p;
     a = powmod(a, k, n);
-  }
+    q = p;
+  } END_DO_FOR_EACH_PRIME
   if (a == 0) { factors[0] = n; return 1; }
   f = gcd_ui(a-1, n);
   if (f == 1) {
     savea = a;
     saveq = q;
-    for (; q <= B1; q = _XS_next_prime(q)) {
+    START_DO_FOR_EACH_PRIME(q+1, B1) {
+      q = p;
       a = powmod(a, q, n);
       if ( (j++ % 32) == 0) {
         if (a == 0 || gcd_ui(a-1, n) != 1)
@@ -652,23 +654,24 @@ int pminus1_factor(UV n, UV *factors, UV B1, UV B2)
         savea = a;
         saveq = q;
       }
-    }
+    } END_DO_FOR_EACH_PRIME
     if (a == 0) { factors[0] = n; return 1; }
     f = gcd_ui(a-1, n);
   }
   /* If we found more than one factor in stage 1, backup and single step */
   if (f == n) {
     a = savea;
-    for (q = saveq; q <= B1; q = _XS_next_prime(q)) {
-      UV k = q;
-      UV kmin = B1/q;
+    START_DO_FOR_EACH_PRIME(saveq, B1) {
+      UV k = p;
+      UV kmin = B1/p;
       while (k <= kmin)
-        k *= q;
+        k *= p;
       a = powmod(a, k, n);
       f = gcd_ui(a-1, n);
+      q = p;
       if (f != 1)
         break;
-    }
+    } END_DO_FOR_EACH_PRIME
     /* If f == n again, we could do:
      * for (savea = 3; f == n && savea < 100; savea = _XS_next_prime(savea)) {
      *   a = savea;
@@ -681,8 +684,7 @@ int pminus1_factor(UV n, UV *factors, UV B1, UV B2)
   }
 
   /* STAGE 2 */
-  if (f == 1 && B2 > B1 && q >= 5) {
-    const unsigned char* sieve;
+  if (f == 1 && B2 > B1) {
     UV bm = a;
     UV b = 1;
     UV bmdiff;
@@ -699,11 +701,7 @@ int pminus1_factor(UV n, UV *factors, UV B1, UV B2)
 
     a = powmod(a, q, n);
     j = 1;
-    if (get_prime_cache(B2, &sieve) < B2) {
-      release_prime_cache(sieve);
-      croak("Could not generate sieve for %"UVuf, B2);
-    }
-    START_DO_FOR_EACH_SIEVE_PRIME( sieve, q+1, B2 ) {
+    START_DO_FOR_EACH_PRIME( q+1, B2 ) {
       UV lastq = q;
       UV qdiff;
       q = p;
@@ -729,8 +727,7 @@ int pminus1_factor(UV n, UV *factors, UV B1, UV B2)
         if (f != 1)
           break;
       }
-    } END_DO_FOR_EACH_SIEVE_PRIME
-    release_prime_cache(sieve);
+    } END_DO_FOR_EACH_PRIME
     f = gcd_ui(b, n);
   }
   if ( (f != 1) && (f != n) ) {
