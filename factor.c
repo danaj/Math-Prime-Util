@@ -49,34 +49,31 @@ int factor(UV n, UV *factors)
       UV const br_rounds = ((n>>29) < 100000) ?  1500 :  1500;
       UV const sq_rounds = 80000; /* 20k 91%, 40k 98%, 80k 99.9%, 120k 99.99% */
 
-      /* About 94% of random inputs are factored with this pbrent call */
+      /* 99.7% of 32-bit, 94% of 64-bit random inputs factored here */
       if (!split_success) {
         split_success = pbrent_factor(n, tofac_stack+ntofac, br_rounds, 3)-1;
         if (verbose) { if (split_success) printf("pbrent 1:  %"UVuf" %"UVuf"\n", tofac_stack[ntofac], tofac_stack[ntofac+1]); else printf("pbrent 0\n"); }
       }
-      /* SQUFOF with these parameters gets 95% of what's left. */
+      /* SQUFOF with these parameters gets 99.9% of everything left */
       if (!split_success && n < (UV_MAX>>3)) {
         split_success = racing_squfof_factor(n,tofac_stack+ntofac, sq_rounds)-1;
         if (verbose) printf("rsqufof %d\n", split_success);
       }
-      /* Perhaps prho using different parameters will find it */
-      if (!split_success) {
-        split_success = pbrent_factor(n, tofac_stack+ntofac, 800, 5)-1;
-        if (verbose) printf("pbrent5 %d\n", split_success);
-      }
+      /* At this point we should only have 16+ digit semiprimes. */
       /* This p-1 gets about 2/3 of what makes it through the above */
       if (!split_success) {
         split_success = pminus1_factor(n, tofac_stack+ntofac, 5000, 80000)-1;
         if (verbose) printf("pminus1 %d\n", split_success);
       }
-      /* Some rounds of HOLF, good for close to perfect squares */
+      /* Some rounds of HOLF, good for close to perfect squares which are
+       * the worst case for the next step */
       if (!split_success) {
         split_success = holf_factor(n, tofac_stack+ntofac, 2000)-1;
         if (verbose) printf("holf %d\n", split_success);
       }
-      /* Less than 0.1% of random inputs make it here */
+      /* The catch-all.  Should factor anything. */
       if (!split_success) {
-        split_success = pbrent_factor(n, tofac_stack+ntofac, 256*1024, 7)-1;
+        split_success = prho_factor(n, tofac_stack+ntofac, 256*1024)-1;
         if (verbose) printf("long prho %d\n", split_success);
       }
 
@@ -277,6 +274,7 @@ static int is_perfect_square(UV n, UV* sqrtn)
   if ((m*0xabf1a3a7) & (m*0x2612bf93) & 0x45854000) return 0;
   /* 99.92% of non-squares are rejected now */
 #else
+  /* It may be faster to skip these */
   m = n % 63;
   if ((m*0x3d491df7) & (m*0xc824a9f9) & 0x10f14008) return 0;
 #endif
