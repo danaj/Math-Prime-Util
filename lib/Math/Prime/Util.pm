@@ -2132,6 +2132,18 @@ still sharing a prime cache.  It is not itself multithreaded.  See the
 L<Limitations|/"LIMITATIONS"> section if you are using Win32 and threads in
 your program.
 
+Two scripts are also included and installed by default:
+
+=over 4
+
+=item primes.pl displays primes between start and end values, with many
+options for filtering (e.g. twin, safe, circular, good, lucky, etc.).
+
+=item factor.pl operates similar to the GNU C<factor> program.  It supports
+bigint and expression inputs.
+
+=back
+
 
 =head1 BIGNUM SUPPORT
 
@@ -2543,7 +2555,7 @@ and Rivat (1996) describe a segmented method using only C<n^1/3> values.  The
 current implementation does a simple non-segmented C<n^1/2> version of this.
 uznetsov (2011) gives an alternate method that he indicates is even faster.
 Lastly, one of the advanced prime count algorithms could be theoretically used
-to create a faster solution. 
+to create a faster solution.
 
 
 =head2 euler_phi
@@ -3322,6 +3334,182 @@ C<prime_count>, or C<nth_prime> with large inputs.  This is B<only>
 an issue if you use non-Cygwin Win32 B<and> call these routines from within
 Perl threads.
 
+
+=head1 SEE ALSO
+
+This section describes other CPAN modules available that have some feature
+overlap with this one.  Also see the L</REFERENCES> section.  Please let me
+know if any of this information is inaccurate.  Also note that just because
+a module doesn't match what I believe are the best set of features, doesn't
+mean it isn't perfect for someone else.
+
+I will use SoE to indicate the Sieve of Eratosthenes, and MPU to denote this
+module (L<Math::Prime::Util>).  Some quick alternatives I can recommend:
+
+=over 4
+
+=item L<Math::Prime::FastSieve>
+This is the alternative module I use for basic functionality with small
+integers.  It's fast and simple, and has a good set of features.
+
+=item L<Math::Primality>
+This is the alternative module I use for primality testing on bigints.
+
+=item L<Math::Pari>
+If you want the kitchen sink and can install it and handle using it.
+
+=back
+
+
+L<Math::Prime::XS> has C<is_prime> and C<primes> functionality.  There is no
+bigint support.  The C<is_prime> function is a well-written trial division,
+meaning it is very fast for small numbers, but terribly slow for large
+64-bit numbers.  The prime sieve is an unoptimized non-segmented SoE which
+which returns an array.  It works well for 32-bit values, but speed and
+memory are problematic for larger values.
+
+L<Math::Prime::FastSieve> supports C<primes>, C<is_prime>, C<next_prime>,
+C<prev_prime>, C<prime_count>, and C<nth_prime>.  The caveat is that all
+functions only work within the sieved range, so are limited to about C<10^10>.
+It uses a fast SoE to generate the main sieve.  The sieve is 2-3x slower than
+the base sieve for MPU, and is non-segmented so cannot be used for
+larger values.  Since the functions work with the sieve, they are very fast.
+All this functionality is present in MPU as well, though not required.
+
+L<Bit::Vector> supports the C<primes> and C<prime_count> functionality in a
+somewhat similar way to L<Math::Prime::FastSieve>.  It is the slowest of all
+the XS sieves, and has the most memory use.  It is, however, faster than
+the pure Perl code in MPU or elsewhere.
+
+L<Crypt::Primes> supports C<random_maurer_prime> functionality.  MPU has
+more options for random primes (n-digit, n-bit, ranged, and strong) in
+addition to Maurer's algorithm.  MPU does not have the critical bug
+L<RT81858|https://rt.cpan.org/Ticket/Display.html?id=81858>, and also should
+have a more uniform distribution
+(L<RT81871|https://rt.cpan.org/Ticket/Display.html?id=81871>).
+MPU does not depend on L<Math::Pari> though can run slow for bigints unless
+the L<Math::BigInt::GMP> or L<Math::BigInt::Pari> modules are installed, in
+which case it is typically faster that Crypt::Primes.  What Crypt::Primes
+has that MPU does not is support for returning a generator.
+
+L<Math::Factor::XS> calculates prime factors and factors, which correpond to
+the L</"factor"> and L<"all_factors"> functions of MPU.  These functions do
+not support bigints.  Both are implemented with trial division, meaning they
+are very fast for really small values, but quickly become unusably slow
+(factoring 19 digit semiprimes is over 700 times slower).  It has additional
+functions C<count_prime_factors> and C<matches> which have no direct equivalent
+in MPU.
+
+L<Math::Big> version 1.12 includes C<primes> functionality.  The current
+code is only usable for very tiny inputs as it is incredibly slow and uses
+lots of memory.  L<RT81986|https://rt.cpan.org/Ticket/Display.html?id=81986>
+has a patch to make it run much faster and use much less memory.  Since it is
+in pure Perl it will still run quite slow compared to MPU.
+
+L<Math::Big::Factors> supports factorization using wheel factorization (smart
+trial division).  It supports bigints.  Unfortunately it is extremely slow on
+any input that isn't comprised entirely of small factors.  Even 7 digit inputs
+can take hundreds or thousands of times longer to factor than MPU or
+L<Math::Factor::XS>.  19-digit semiprimes will take hours vs. MPU's single
+milliseconds.
+
+L<Math::Factoring> is a placeholder module for bigint factoring.  Version 0.02
+only supports trial division (the Pollard-Rho method does not work).
+
+L<Math::Prime::TiedArray> allows random access to a tied primes array, almost
+identically to what MPU provides in L<Math::Prime::Util::PrimeArray>.  MPU
+has attempted to fix Math::Prime::TiedArray's shift bug
+(L<RT58151|https://rt.cpan.org/Ticket/Display.html?id=58151>).  MPU is
+typically much faster and will use less memory, but there are some cases where
+MP:TA is faster (MP:TA stores all entries up to the largest request, while
+MPU:PA stores only a window around the last request).
+
+L<Math::Primality> supports C<is_prime>, C<is_strong_pseudoprime>,
+C<is_strong_lucas_pseudoprime>, C<next_prime>, C<prev_prime>, C<prime_count>,
+and C<is_aks_prime> functionality.  It also adds C<is_pseudoprime> which MPU
+does not have or have planned.  This is a great little module that implements
+primality functionality.  It was the first module to support the BPSW and
+AKS tests.  All inputs are processed using GMP, so it of course supports
+bigints.  In fact, Math::Primality was made originally with bigints in mind,
+while MPU was originally targeted to native integers, but both have added
+better support for the other.  The main differences are extra functionality
+(MPU has more functions) and performance.  With native integer inputs, MPU
+is generally much faster, especially with L</"prime_count">.  For bigints,
+MPU is slower unless the L<Math::Prime::Util::GMP> module is installed, in
+which case they have somewhat similar speeds.  L<Math::Primality> also installs
+a C<primes.pl> program, but it has much less functionality than the one
+includes with MPU.
+
+L<Math::NumSeq> is more a related module rather than one with direct
+functionality.  It does however offer a way to get similar results such as
+primes, twin primes, Sophie-Germain primes, lucky primes, moebius, divisor
+count, factor count, Euler totient, primorials, etc.  Math::NumSeq is mainly
+set up for accessing these values in order, rather than for arbitrary values,
+though some sequences support that.  The primary advantage I see is the
+uniform access mechanism for a <I>lot</I> of sequences.  For those methods that
+overlap, MPU is usually much faster.  Importantly, most all the sequences in
+Math::NumSeq are limited to 32-bit indices.
+
+L<Math::Pari> supports a lot of features, with a great deal of overlap.  In
+general, MPU will be faster for native 64-bit integers, while Pari will be
+faster for bigints (installing L<Math::Prime::Util::GMP> is critical for
+getting good performance with bigints, but even then, Pari's better algorithms
+will eventually win out).  Trying to hit some of the highlights:
+
+=over 4
+
+=item isprime Similar to MPU's L<is_prob_prime> or L<is_prime> functions.
+MPU is deterministic for native integers, and uses a strong
+BPSW test for bigints (with a quick primality proof tried as well).  The
+default version of Pari used by L<Math::Pari> (2.1.7) uses 10 random M-R
+bases, which is a quick probable prime test (it also supports a
+Pocklington-Lehmer test by giving a 1 as the second argument).  Using the
+newer 2.3.5 library makes C<isprime> use an APRCL primality proof, which
+can take longer (though will be much faster than the BLS75 proof used in
+MPU's L<is_provable_prime> routine).
+
+=item primepi Similar to MPU's L<prime_count> function.  Pari uses a naive
+counting algorithm with its precalculated primes, so this is not very useful.
+
+=item primes Doesn't support ranges, requires bumping up the precalculated
+primes for larger numbers, which means knowing in advance the upper limit
+for primes.  Support for numbers larger than 400M requires making with Pari
+version 2.3.5.  If that is used, sieving is about 2x faster than MPU, but
+doesn't support segmenting.
+
+=item factorint Similar to MPU's L<factor> though with a diffent return (I
+find the result value quite inconvenient to work with, but others may like
+its vector of factor/exponent format).  Slower than MPU for all 64-bit inputs
+on an x86_64 platform, it may be faster for large values on other platforms.
+Bigints are slightly faster with Math::Pari for "small" values, and MPU slows
+down rapidly (the difference is noticable with 30+ digit numbers).
+
+=item eulerphi Similar to MPU's L<euler_phi>.  MPU is 2-5x faster for native
+integers.  There is also support for a range, which can be much more efficient.
+Without L<Math::Prime::Util::GMP> installed, MPU is very slow with bigints.
+With it installed, it is about 2x slower than Math::Pari.
+
+=item moebius Similar to MPU's L<moebius>.  Comparisons are similar to
+C<eulerphi>.
+
+=item sumdiv Similar to MPU's L<divisor_sum>.  A default sum (sigma_1) is
+very fast in MPU.  Giving it a sub makes it much slower, and for numbers
+with very many factors, Pari is much faster.
+
+=item eint1 Similar to MPU's L<ExponentialIntegral>.
+
+=item zeta A more substantial version of MPU's L<RiemannZeta> function.
+
+=back
+
+Overall, L<Math::Pari> supports a huge variety of functionality and has a
+sophisticated and mature code base behind it.  For native integers sometimes
+the functions can be slower, but bigints are usually superior, and it rarely
+has any performance surprises.  Some of the unique features MPU offers include
+super fast prime counts, nth_prime, approximations and limits for both, random
+primes, fast Mertens calculations, Chebyshev theta and psi functions, and the
+logarithmic integral and Riemann R functions.  All with fairly minimal
+installation requirements.
 
 
 =head1 PERFORMANCE
