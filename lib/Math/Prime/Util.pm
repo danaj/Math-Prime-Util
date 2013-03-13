@@ -2553,7 +2553,7 @@ simplest way is to efficiently sum all C<n> values.  Benito and Varona (2008)
 show a clever and simple method that only requires C<n/3> values.  Deléglise
 and Rivat (1996) describe a segmented method using only C<n^1/3> values.  The
 current implementation does a simple non-segmented C<n^1/2> version of this.
-uznetsov (2011) gives an alternate method that he indicates is even faster.
+Kuznetsov (2011) gives an alternate method that he indicates is even faster.
 Lastly, one of the advanced prime count algorithms could be theoretically used
 to create a faster solution.
 
@@ -2723,7 +2723,7 @@ a factorial.
   my $small_prime = random_prime(1000);      # random prime <= limit
   my $rand_prime = random_prime(100, 10000); # random prime within a range
 
-Returns a psuedo-randomly selected prime that will be greater than or equal
+Returns a pseudo-randomly selected prime that will be greater than or equal
 to the lower limit and less than or equal to the upper limit.  If no lower
 limit is given, 2 is implied.  Returns undef if no primes exist within the
 range.
@@ -2791,6 +2791,7 @@ If the number of digits is greater than or equal to the maximum native type,
 then the result will be returned as a BigInt.  However, if the '-nobigint'
 tag was used, then numbers larger than the threshold will be flagged as an
 error, and numbers on the threshold will be restricted to native numbers.
+For better performance with large bit sizes, install L<Math::Prime::Util::GMP>.
 
 
 =head2 random_nbit_prime
@@ -2811,8 +2812,8 @@ This gives a reasonably uniform distribution, doesn't use excessive random
 source, and can be very fast.
 
 The result will be a BigInt if the number of bits is greater than the native
-bit size.  For better performance with very large bit sizes, install
-L<Math::BigInt::GMP>.
+bit size.  For better performance with large bit sizes, install
+L<Math::Prime::Util::GMP>.
 
 
 =head2 random_strong_prime
@@ -2843,6 +2844,9 @@ either method so make the point moot.  Third, due to key size growth and
 advances in factoring and attacks, for practical purposes, using large random
 primes offer security equivalent to using strong primes.
 
+Similar to L</"random_nbit_prime">, the result will be a BigInt if the
+number of bits is greater than the native bit size.  For better performance
+with large bit sizes, install L<Math::Prime::Util::GMP>.
 
 =head2 random_maurer_prime
 
@@ -2851,55 +2855,11 @@ primes offer security equivalent to using strong primes.
 Construct an n-bit provable prime, using the FastPrime algorithm of
 Ueli Maurer (1995).  This is the same algorithm used by L<Crypt::Primes>.
 Similar to L</"random_nbit_prime">, the result will be a BigInt if the
-number of bits is greater than the native bit size.
+number of bits is greater than the native bit size.  For better performance
+with large bit sizes, install L<Math::Prime::Util::GMP>.
 
-The differences between this function and that in L<Crypt::Primes> include
-
-=over
-
-=item *
-
-Version 0.50 of Crypt::Primes can return composites.
-
-=item *
-
-Version 0.50 of Crypt::Primes uses the C<PRIMEINC> algorithm for the base
-generator, which gives a very non-uniform distribution.  This differs
-from Maurer's algorithm which uses the Monte Carlo algorithm (which is what
-this module uses).
-
-=item *
-
-No external libraries are needed for this module, while C::P requires
-L<Math::Pari>.  See the next item however.
-
-=item *
-
-Crypt::Primes is quite fast for all sizes since it uses Pari for all heavy
-lifting.  M::P::U is really fast for native bit sizes.  It is similar speed
-to Crypt::Primes if the BigInt package in use is GMP or Pari, e.g.
-
-   use Math::BigInt lib=>'GMP';
-
-but a lot slower without.  Having the L<Math::Prime::Util::GMP> module
-installed helps in any case.
-
-=item *
-
-Crypt::Primes has some useful options for cryptography.
-
-=item *
-
-Crypt::Primes is hardcoded to use L<Crypt::Random>, while M::P::U uses
-L<Bytes::Random::Secure>, and also allows plugging in a random function.
-This is more flexible, faster, has fewer dependencies, and uses a CSPRNG
-for security.
-
-=back
-
-Any feedback on this function would be greatly appreciated.
-
-
+The differences between this function and that in L<Crypt::Primes> are
+described in the L</"SEE ALSO"> section.
 
 
 
@@ -3110,14 +3070,13 @@ were Math::BigFloat objects.
 For non-BigInt/BigFloat objects, the result should be accurate to at least 14
 digits.
 
-For BigInt / BigFloat objects, we first check to see if the Math::MPFR module
-is installed.  If so, then it is used, as it will return results much faster
-and can be more accurate.  Accuracy when using MPFR will be equal to the
-C<accuracy()> value of the input (or the default BigFloat accuracy, which
-is 40 by default).
+For BigInt / BigFloat objects, we first check to see if L<Math::MPFR> is
+available.  If so, then it is used since it is very fast and has high accuracy.
+Accuracy when using MPFR will be equal to the C<accuracy()> value of the
+input (or the default BigFloat accuracy, which is 40 by default).
 
-MPFR is used for positive inputs only.  If Math::MPFR is not installed or the
-input is negative, then other methods are used:
+MPFR is used for positive inputs only.  If L<Math::MPFR> is not available
+or the input is negative, then other methods are used:
 continued fractions (C<x E<lt> -1>),
 rational Chebyshev approximation (C< -1 E<lt> x E<lt> 0>),
 a convergent series (small positive C<x>),
@@ -3147,14 +3106,15 @@ were Math::BigFloat objects.
 For non-BigInt/BigFloat objects, the result should be accurate to at least 14
 digits.
 
-For BigInt / BigFloat objects, we first check to see if the Math::MPFR module
-is installed.  If so, then it is used, as it will return results much faster
+For BigInt / BigFloat objects, we first check to see if L<Math::MPFR> is
+available.  If so, then it is used, as it will return results much faster
 and can be more accurate.  Accuracy when using MPFR will be equal to the
 C<accuracy()> value of the input (or the default BigFloat accuracy, which
 is 40 by default).
 
-MPFR is used for inputs greater than 1 only.  If Math::MPFR is not installed or
-the input is less than 1, results will be calculated as C<Ei(ln x)>.
+MPFR is used for inputs greater than 1 only.  If L<Math::MPFR> is not
+installed or the input is less than 1, results will be calculated as
+C<Ei(ln x)>.
 
 
 =head2 RiemannZeta
@@ -3344,7 +3304,8 @@ a module doesn't match what I believe are the best set of features, doesn't
 mean it isn't perfect for someone else.
 
 I will use SoE to indicate the Sieve of Eratosthenes, and MPU to denote this
-module (L<Math::Prime::Util>).  Some quick alternatives I can recommend:
+module (L<Math::Prime::Util>).  Some quick alternatives I can recommend if
+you don't want to use MPU:
 
 =over 4
 
@@ -3356,7 +3317,8 @@ integers.  It's fast and simple, and has a good set of features.
 This is the alternative module I use for primality testing on bigints.
 
 =item L<Math::Pari>
-If you want the kitchen sink and can install it and handle using it.
+If you want the kitchen sink and can install it and handle using it.  There
+are still some functions it doesn't do well (e.g. prime count and nth_prime).
 
 =back
 
@@ -3384,15 +3346,19 @@ the pure Perl code in MPU or elsewhere.
 L<Crypt::Primes> supports C<random_maurer_prime> functionality.  MPU has
 more options for random primes (n-digit, n-bit, ranged, and strong) in
 addition to Maurer's algorithm.  MPU does not have the critical bug
-L<RT81858|https://rt.cpan.org/Ticket/Display.html?id=81858>, and also should
-have a more uniform distribution
+L<RT81858|https://rt.cpan.org/Ticket/Display.html?id=81858>.  MPU should have
+a more uniform distribution as well as return a larger subset of primes
 (L<RT81871|https://rt.cpan.org/Ticket/Display.html?id=81871>).
 MPU does not depend on L<Math::Pari> though can run slow for bigints unless
-the L<Math::BigInt::GMP> or L<Math::BigInt::Pari> modules are installed, in
-which case it is typically faster that Crypt::Primes.  What Crypt::Primes
-has that MPU does not is support for returning a generator.
+the L<Math::BigInt::GMP> or L<Math::BigInt::Pari> modules are installed.
+Having L<Math::Prime::Util::GMP> installed also helps performance for MPU.
+Crypt::Primes is hardcoded to use L<Crypt::Random>, while MPU uses
+L<Bytes::Random::Secure>, and also allows plugging in a random function.
+This is more flexible, faster, has fewer dependencies, and uses a CSPRNG
+for security.
+What Crypt::Primes has that MPU does not is support for returning a generator.
 
-L<Math::Factor::XS> calculates prime factors and factors, which correpond to
+L<Math::Factor::XS> calculates prime factors and factors, which correspond to
 the L</"factor"> and L<"all_factors"> functions of MPU.  These functions do
 not support bigints.  Both are implemented with trial division, meaning they
 are very fast for really small values, but quickly become unusably slow
@@ -3477,12 +3443,12 @@ for primes.  Support for numbers larger than 400M requires making with Pari
 version 2.3.5.  If that is used, sieving is about 2x faster than MPU, but
 doesn't support segmenting.
 
-=item factorint Similar to MPU's L<factor> though with a diffent return (I
+=item factorint Similar to MPU's L<factor> though with a different return (I
 find the result value quite inconvenient to work with, but others may like
 its vector of factor/exponent format).  Slower than MPU for all 64-bit inputs
 on an x86_64 platform, it may be faster for large values on other platforms.
 Bigints are slightly faster with Math::Pari for "small" values, and MPU slows
-down rapidly (the difference is noticable with 30+ digit numbers).
+down rapidly (the difference is noticeable with 30+ digit numbers).
 
 =item eulerphi Similar to MPU's L<euler_phi>.  MPU is 2-5x faster for native
 integers.  There is also support for a range, which can be much more efficient.
@@ -3492,9 +3458,9 @@ With it installed, it is about 2x slower than Math::Pari.
 =item moebius Similar to MPU's L<moebius>.  Comparisons are similar to
 C<eulerphi>.
 
-=item sumdiv Similar to MPU's L<divisor_sum>.  A default sum (sigma_1) is
+=item sumdiv Similar to MPU's L<divisor_sum>.  The standard sum (sigma_1) is
 very fast in MPU.  Giving it a sub makes it much slower, and for numbers
-with very many factors, Pari is much faster.
+with very many factors, Pari is <I>much</I> faster.
 
 =item eint1 Similar to MPU's L<ExponentialIntegral>.
 
@@ -3591,9 +3557,9 @@ The differences are in the implementations:
 
 looks in the sieve for a fast bit lookup if that exists (default up to 30,000
 but it can be expanded, e.g.  C<prime_precalc>), uses trial division for
-numbers higher than this but not too large (0.1M on 64-bit machines,
+numbers higher than this but not too large (100k on 64-bit machines,
 100M on 32-bit machines), a deterministic set of Miller-Rabin tests for
-64-bit and smaller numbers, and a BPSW test for bigints.
+64-bit numbers, and a BPSW test for bigints.
 
 =item L<Math::Prime::XS>
 
@@ -3624,9 +3590,16 @@ has some very effective code, but it has some overhead to get to it from
 Perl.  That means for small numbers it is relatively slow: an order of
 magnitude slower than M::P::XS and M::P::Util (though arguably this is
 only important for benchmarking since "slow" is ~2 microseconds).  Large
-numbers transition over to smarter tests so don't slow down much.  The
-C<ispseudoprime(n,0)> function will perform the BPSW test and is fast
-even for large inputs.
+numbers transition over to smarter tests so don't slow down much.  With
+the default Pari version, C<isprime> will do M-R tests for 10 randomly
+chosen bases, but can perform a Pocklington-Lehmer proof if requested using
+C<isprime(x,1)>.  Both could fail to identify a composite.  If pari 2.3.5
+is used instead (this requires hand-building the Math::Pari module) then
+the options are quite different.  C<ispseudoprime(x,0)> performs a strong
+BPSW test, while C<isprime> now performs a primality proof using a fast
+implementation of the APRCL method.  While the APRCL method is very fast
+compared to MPU's primality proof methods, it is still much, much slower
+than a BPSW probable prime test for large inputs.
 
 =back
 
@@ -3702,7 +3675,7 @@ Pierre Dusart, "Estimates of Some Functions Over Primes without R.H.", preprint,
 
 =item *
 
-Pierre Dusart, "Autour de la fonction qui compte le nombre de nombres premiers", PhD thesis, 1998.  In French, but the mathematics is readable and highly recommended reading if you're interesting in prime number bounds.  L<http://www.unilim.fr/laco/theses/1998/T1998_01.html>
+Pierre Dusart, "Autour de la fonction qui compte le nombre de nombres premiers", PhD thesis, 1998.  In French.  The mathematics is readable and highly recommended reading if you're interesting in prime number bounds.  L<http://www.unilim.fr/laco/theses/1998/T1998_01.html>
 
 =item *
 
