@@ -55,7 +55,7 @@ int factor(UV n, UV *factors)
         if (verbose) { if (split_success) printf("pbrent 1:  %"UVuf" %"UVuf"\n", tofac_stack[ntofac], tofac_stack[ntofac+1]); else printf("pbrent 0\n"); }
       }
       /* SQUFOF with these parameters gets 99.9% of everything left */
-      if (!split_success && n < (UV_MAX>>3)) {
+      if (!split_success && n < (UV_MAX>>2)) {
         split_success = racing_squfof_factor(n,tofac_stack+ntofac, sq_rounds)-1;
         if (verbose) printf("rsqufof %d\n", split_success);
       }
@@ -223,7 +223,7 @@ int trial_factor(UV n, UV *factors, UV maxtrial)
  *
  * Some simple solutions:
  *
- *     return ( ((m&2)!= 0) || ((m&7)==5) || ((m&11) == 8) )  ?  0  :  1;
+ *     return ( ((n&2)!= 0) || ((n&7)==5) || ((n&11) == 8) )  ?  0  :  1;
  *
  * or:
  *
@@ -244,7 +244,7 @@ int trial_factor(UV n, UV *factors, UV maxtrial)
  */
 static int is_perfect_square(UV n, UV* sqrtn)
 {
-  UV m;  /* lm */
+  UV m;
   m = n & 127;
   if ((m*0x8bc40d7d) & (m*0xa1e2f5d1) & 0x14020a)  return 0;
   /* 82% of non-squares rejected here */
@@ -273,8 +273,9 @@ static int is_perfect_square(UV n, UV* sqrtn)
   m = lm % 11;
   if ((m*0xabf1a3a7) & (m*0x2612bf93) & 0x45854000) return 0;
   /* 99.92% of non-squares are rejected now */
-#else
-  /* It may be faster to skip these */
+#endif
+#if 0
+  /* This could save time on some platforms, but not on x86 */
   m = n % 63;
   if ((m*0x3d491df7) & (m*0xc824a9f9) & 0x10f14008) return 0;
 #endif

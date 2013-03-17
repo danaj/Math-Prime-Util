@@ -11,9 +11,6 @@
 
 - Is the current PP.pm setup the way we want to do it?
 
-- Faster SQUFOF.  We're using the faster racing SQUFOF now, but it could still
-  use some tuning.
-
 - Move .c / .h files into separate directory.
   version does it in a painful way.  Something simpler to be had?
 
@@ -33,8 +30,6 @@
   This will mean it'll work for full-size native ints.
 
 - More efficient Mertens.  The current version has poor growth.
-
-- Keep speeding up factoring for very large values.
 
 - More efficient totient segment.  Do we really need primes to n/2?
 
