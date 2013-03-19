@@ -15,6 +15,11 @@
 #include "lehmer.h"
 #include "aks.h"
 
+static int pbrent_factor_a1(UV n, UV *factors, UV maxrounds) {
+  return pbrent_factor(n, factors, maxrounds, 1);
+}
+
+
 MODULE = Math::Prime::Util	PACKAGE = Math::Prime::Util
 
 PROTOTYPES: ENABLE

@@ -1,6 +1,6 @@
 Revision history for Perl extension Math::Prime::Util.
 
-0.25 xx March 2013
+0.25 19 March 2013
 
     - Speed up p-1 stage 2 factoring.  Combined with some minor changes to the
       general factoring combination, ~20% faster for 19 digit semiprimes.
