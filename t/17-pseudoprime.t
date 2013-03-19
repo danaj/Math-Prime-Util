@@ -70,6 +70,7 @@ plan tests => 0 + 3
                 + $num_pseudoprimes
                 + scalar @phis
                 + 1  # mr base 2    2-4k
+                + 9  # mr with large bases
                 + scalar @small_lucas_trials
                 + 1*$extra;
 
@@ -113,6 +114,17 @@ for my $phi (1 .. scalar @phis) {
   }
   is($mr2fail, 0, "MR base 2 matches is_prime for 2-4032 (excl 2047,3277)");
 }
+
+# Verify MR for bases >= n
+is( is_strong_pseudoprime(  3,    3), 1, "spsp(  3,    3)");
+is( is_strong_pseudoprime( 11,   11), 1, "spsp( 11,   11)");
+is( is_strong_pseudoprime( 89, 5785), 1, "spsp( 89, 5785)");
+is( is_strong_pseudoprime(257, 6168), 1, "spsp(257, 6168)");
+is( is_strong_pseudoprime(367,  367), 1, "spsp(367,  367)");
+is( is_strong_pseudoprime(367, 1101), 1, "spsp(367, 1101)");
+is( is_strong_pseudoprime(49001, 921211727), 0, "spsp(49001, 921211727)");
+is( is_strong_pseudoprime(  331, 921211727), 1, "spsp(  331, 921211727)");
+is( is_strong_pseudoprime(49117, 921211727), 1, "spsp(49117, 921211727)");
 
 # Verify Lucas for some small numbers
 for my $n (@small_lucas_trials) {
