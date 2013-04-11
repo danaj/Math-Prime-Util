@@ -47,7 +47,7 @@ sub eval_expr {
   die "$expr cannot be evaluated" if $expr =~ tr|-0123456789+*/() :||c;
   $expr =~ s/:1/nth_prime/g;
   $expr =~ s/:2/log/g;
-  $expr =~ s/(\d+)/ Math::BigInt->new($1) /g;
+  $expr =~ s/(\d+)/ Math::BigInt->new("$1") /g;
   my $res = eval $expr; ## no critic
   die "Cannot eval: $expr\n" if !defined $res;
   $res = int($res->bstr) if ref($res) eq 'Math::BigInt' && $res <= ~0;
