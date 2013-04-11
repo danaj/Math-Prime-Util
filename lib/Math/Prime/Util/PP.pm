@@ -882,7 +882,7 @@ sub is_strong_lucas_pseudoprime {
   # It's now time to perform the Lucas pseudoprimality test using $D.
 
   if (ref($n) ne 'Math::BigInt') {
-    if (!defined $MATH::BigInt::VERSION) {
+    if (!defined $Math::BigInt::VERSION) {
       eval { require Math::BigInt;  Math::BigInt->import(try=>'GMP,Pari'); 1; }
       or do { croak "Cannot load Math::BigInt "; }
     }
@@ -1031,11 +1031,11 @@ sub _test_anr {
 sub is_aks_prime {
   my $n = shift;
 
-  if (!defined $MATH::BigInt::VERSION) {
+  if (!defined $Math::BigInt::VERSION) {
     eval { require Math::BigInt;  Math::BigInt->import(try=>'GMP,Pari'); 1; }
     or do { croak "Cannot load Math::BigInt "; }
   }
-  if (!defined $MATH::BigFloat::VERSION) {
+  if (!defined $Math::BigFloat::VERSION) {
     eval { require Math::BigFloat;   Math::BigFloat->import(); 1; }
     or do { croak "Cannot load Math::BigFloat "; }
   }
@@ -1472,7 +1472,7 @@ sub ExponentialIntegral {
     my $wantbf = 0;
     my $xdigits = 17;
     if (defined $bignum::VERSION || ref($x) =~ /^Math::Big/) {
-      if (!defined $MATH::BigFloat::VERSION) {
+      if (!defined $Math::BigFloat::VERSION) {
         eval { require Math::BigFloat;   Math::BigFloat->import(); 1; }
         or do { croak "Cannot load Math::BigFloat "; }
       }
@@ -1582,7 +1582,7 @@ sub LogarithmicIntegral {
     my $wantbf = 0;
     my $xdigits = 17;
     if (defined $bignum::VERSION || ref($x) =~ /^Math::Big/) {
-      if (!defined $MATH::BigFloat::VERSION) {
+      if (!defined $Math::BigFloat::VERSION) {
         eval { require Math::BigFloat;   Math::BigFloat->import(); 1; }
         or do { croak "Cannot load Math::BigFloat "; }
       }
@@ -1714,7 +1714,7 @@ sub RiemannZeta {
     my $wantbf = 0;
     my $xdigits = 17;
     if (defined $bignum::VERSION || ref($x) =~ /^Math::Big/) {
-      if (!defined $MATH::BigFloat::VERSION) {
+      if (!defined $Math::BigFloat::VERSION) {
         eval { require Math::BigFloat;   Math::BigFloat->import(); 1; }
         or do { croak "Cannot load Math::BigFloat "; }
       }
@@ -1805,7 +1805,7 @@ sub RiemannR {
     my $wantbf = 0;
     my $xdigits = 17;
     if (defined $bignum::VERSION || ref($x) =~ /^Math::Big/) {
-      if (!defined $MATH::BigFloat::VERSION) {
+      if (!defined $Math::BigFloat::VERSION) {
         eval { require Math::BigFloat;   Math::BigFloat->import(); 1; }
         or do { croak "Cannot load Math::BigFloat "; }
       }
