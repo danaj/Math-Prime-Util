@@ -12,7 +12,6 @@ BEGIN {
 # parent is cleaner, and in the Perl 5.10.1 / 5.12.0 core, but not earlier.
 # use parent qw( Exporter );
 use base qw( Exporter );
-use Data::Dump qw/dump/;
 our @EXPORT_OK =
   qw( prime_get_config prime_set_config
       prime_precalc prime_memfree
