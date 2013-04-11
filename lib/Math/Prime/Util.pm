@@ -12,10 +12,11 @@ BEGIN {
 # parent is cleaner, and in the Perl 5.10.1 / 5.12.0 core, but not earlier.
 # use parent qw( Exporter );
 use base qw( Exporter );
+use Data::Dump qw/dump/;
 our @EXPORT_OK =
   qw( prime_get_config prime_set_config
       prime_precalc prime_memfree
-      is_prime is_prob_prime is_provable_prime
+      is_prime is_prob_prime is_provable_prime verify_prime
       is_strong_pseudoprime is_strong_lucas_pseudoprime
       is_aks_prime
       miller_rabin
@@ -1643,6 +1644,135 @@ sub is_provable_prime {
     return 2;
   }
   carp "proved $n is not prime\n";
+  return 0;
+}
+
+sub verify_prime {
+  my @pdata = @_;
+  my $verbose = $_Config{'verbose'};
+
+  croak "Parameter must be defined" if scalar @pdata == 0;
+  my $n = shift @pdata;
+  if (length($n) == 1) {
+    return 1 if $n =~ /^[2357]$/;
+    print "primality fail: $n tiny and not prime\n" if $verbose;
+    return 0;
+  }
+
+  if (!defined $Math::BigInt::VERSION) {
+    eval { require Math::BigInt;   Math::BigInt->import(try=>'GMP,Pari'); 1; }
+    or do { croak "Cannot load Math::BigInt"; };
+  }
+  $n = Math::BigInt->new("$n");
+  if ($n->is_even) {
+    print "primality fail: $n even\n" if $verbose;
+    return 0;
+  }
+
+  my $method = (scalar @pdata > 0) ? shift @pdata : 'BPSW';
+
+  if ($method eq 'BPSW') {
+    if ($n > Math::BigInt->new("18446744073709551615")) {
+      print "primality fail: $n too large for BPSW proof\n" if $verbose;
+      return 0;
+    }
+    my $bpsw = 0;
+    if ($_HAVE_GMP) {
+      $bpsw = Math::Prime::Util::GMP::is_prob_prime($n);
+    } else {
+      $bpsw = Math::Prime::Util::PP::miller_rabin($n, 2)
+           && Math::Prime::Util::PP::is_strong_lucas_pseudoprime($n);
+    }
+    if (!$bpsw) {
+      print "primality fail: BPSW indicated $n is composite\n" if $verbose;
+      return 0;
+    }
+    print "primality success: $n by BPSW\n" if $verbose > 1;
+    return 1;
+  }
+  if ($method eq 'n-1') {
+    # BLS75
+    # http://www.ams.org/journals/mcom/1975-29-130/S0025-5718-1975-0384673-1/S0025-5718-1975-0384673-1.pdf
+    if (scalar @pdata != 2 || (ref($pdata[0]) ne 'ARRAY') || (ref($pdata[1]) ne 'ARRAY')) {
+      warn "verify_prime: incorrect n-1 format, must have factors and a values\n";
+      return 0;
+    }
+    my @factors = @{shift @pdata};
+    my @as = @{shift @pdata};
+    if ($#factors != $#as) {
+      warn "verify_prime: incorrect n-1 format, must have a value for each factor\n";
+      return 0;
+    }
+
+    my $nm1 = $n - 1;
+    my $A = $n-$n+1;  # Factored part    (F_1 in BLS paper)
+    my $B = $nm1;     # Unfactored part  (R_1 in BLS paper)
+
+    my @prime_factors;
+    my @pfas;
+    my %factors_seen;
+    foreach my $farray (@factors) {
+      my $f;
+      my $a = shift @as;
+      if (ref($farray) eq 'ARRAY') {
+        $f = Math::BigInt->new("$farray->[0]");
+        return 0 unless verify_prime(@$farray);
+      } else {
+        $f = $farray;
+        return 0 unless verify_prime($f);
+      }
+      next if defined $factors_seen{"$f"};   # repeated factors
+      if (($B % $f) != 0) {
+        print "primality fail: given factor $f does not divide $nm1\n" if $verbose;
+        return 0;
+      }
+      while (($B % $f) == 0) {
+        $B /= $f;
+        $A *= $f;
+      }
+      push @prime_factors, $f;
+      push @pfas, $a;
+      $factors_seen{"$f"} = 1;
+    }
+    croak "BLS75 error: $A * $B != $nm1" unless $A*$B == $nm1;
+    croak "BLS75 error: $A not even" unless $A->is_even();
+
+    # TODO: consider: if B=1 and a single a is given, then Lucas test.
+
+    if (Math::BigInt::bgcd($A, $B) != 1) {
+      print "primality fail: A and B not coprime\n" if $verbose;
+      return 0;
+    }
+    # Theorem 5, m = 1, page 624
+    {
+      my ($s,$r) = $B->copy->bdiv($A->copy->bmul(2));
+      my $fpart = ($A+1) * (2*$A*$A + ($r-1) * $A + 1);
+      if ($n >= $fpart) {
+        print "primality fail: not enough factors\n" if $verbose;
+        return 0;
+      }
+      my $rtest = $r*$r - 8*$s;
+      my $rtestroot = $rtest->copy->bsqrt;
+      if ($s != 0 && ($rtestroot*$rtestroot) == $rtest) {
+        print "primality fail: BLS75 theorem 5: s=$s, r=$r indicates composite\n" if $verbose;
+        return 0;
+      }
+    }
+    # Now verify (I), page 623
+    foreach my $i (0 .. $#prime_factors) {
+      my $f = $prime_factors[$i];
+      my $a = Math::BigInt->new("$pfas[$i]");
+      if ($a->copy->bmodpow($nm1, $n) != 1 ||
+          Math::BigInt::bgcd($a->copy->bmodpow($nm1/$f, $n)->bsub(1), $n) != 1) {
+        print "primality fail: BLS75 factor=$f, a=$a failed.\n" if $verbose;
+        return 0;
+      }
+    }
+    print "primality success: $n by BLS75 theorem 5\n" if $verbose > 1;
+    return 1;
+  }
+
+  warn "verify_prime: Unknown method: '$method'.\n";
   return 0;
 }
 
