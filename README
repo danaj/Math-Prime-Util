@@ -1,4 +1,4 @@
-Math::Prime::Util version 0.25
+Math::Prime::Util version 0.26
 
 A set of utilities related to prime numbers.  These include multiple sieving
 methods, is_prime, prime_count, nth_prime, approximations and bounds for
@@ -10,10 +10,12 @@ Current measurements show it is faster than:
   Math::Prime::XS
   Math::Prime::FastSieve
   Math::Factor::XS
+  Math::Big
   Math::Big::Factors
   Math::Factoring
   Math::Primality
   Math::Prime::TiedArray
+  Crypt::Primes
 For non-bignums, it is typically faster than Math::Pari (and doesn't
 require Pari to be installed).
 
@@ -49,12 +51,14 @@ running on a 64-bit machine will result in a 32-bit library.
 
 DEPENDENCIES
 
-Perl 5.6.2 or later.  No modules outside of Core have been used.
+Perl 5.6.2 or later (5.8 or later is preferred).
+
+Bytes::Random::Secure 0.23 or later.
 
 
 COPYRIGHT AND LICENCE
 
-Copyright (C) 2011-2012 by Dana Jacobsen <dana@acm.org>
+Copyright (C) 2011-2013 by Dana Jacobsen <dana@acm.org>
 
 This library is free software; you can redistribute it and/or modify
 it under the same terms as Perl itself.

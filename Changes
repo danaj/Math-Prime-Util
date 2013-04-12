@@ -1,5 +1,11 @@
 Revision history for Perl extension Math::Prime::Util.
 
+0.26 xx April 2013
+
+    - Pure Perl p-1 factoring, Fermat factoring, and speedup for pbrent.
+
+    - New verify_prime function that can check a primality proof.
+
 0.25 19 March 2013
 
     - Speed up p-1 stage 2 factoring.  Combined with some minor changes to the

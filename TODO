@@ -21,8 +21,6 @@
 - Test all functions return either native or bigints.  Functions that return
   raw MPU::GMP results will return strings, which isn't right.
 
-- Make proper pminus1 in PP code, like factor.c.
-
 - An assembler version of mulmod for i386 would be _really_ helpful for
   all the non-x86-64 Intel machines.
 
@@ -34,3 +32,5 @@
 - More efficient totient segment.  Do we really need primes to n/2?
 
 - Implement S2 calculation for LMO prime count.
+
+- Add primality proof output to is_provable_prime.

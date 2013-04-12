@@ -6,7 +6,7 @@ use Bytes::Random::Secure;
 
 BEGIN {
   $Math::Prime::Util::AUTHORITY = 'cpan:DANAJ';
-  $Math::Prime::Util::VERSION = '0.25';
+  $Math::Prime::Util::VERSION = '0.26';
 }
 
 # parent is cleaner, and in the Perl 5.10.1 / 5.12.0 core, but not earlier.
@@ -2121,7 +2121,7 @@ Math::Prime::Util - Utilities related to prime numbers, including fast sieves an
 
 =head1 VERSION
 
-Version 0.25
+Version 0.26
 
 
 =head1 SYNOPSIS
@@ -3551,7 +3551,7 @@ count, factor count, Euler totient, primorials, etc.  Math::NumSeq is mainly
 set up for accessing these values in order, rather than for arbitrary values,
 though some sequences support that.  The primary advantage I see is the
 uniform access mechanism for a I<lot> of sequences.  For those methods that
-overlap, MPU is usually much faster.  Importantly, most all the sequences in
+overlap, MPU is usually much faster.  Importantly, most of the sequences in
 Math::NumSeq are limited to 32-bit indices.
 
 L<Math::Pari> supports a lot of features, with a great deal of overlap.  In
