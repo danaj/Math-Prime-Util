@@ -34,3 +34,13 @@
 - Implement S2 calculation for LMO prime count.
 
 - Add primality proof output to is_provable_prime.
+
+- Fixup EllipticCurve so we define points and a curve.
+
+- Change is_provable_prime from Lucas to BLS75.
+
+- Use EllipticCurve to make ecm_factor.
+
+- add recursive AGKM format.
+
+- Can we easily provide a certificate for Maurer primes?

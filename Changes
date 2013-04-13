@@ -4,7 +4,11 @@ Revision history for Perl extension Math::Prime::Util.
 
     - Pure Perl p-1 factoring, Fermat factoring, and speedup for pbrent.
 
-    - New verify_prime function that can check a primality proof.
+    - New functions:
+        prime_certificate  produces a certificate of primality.
+        verify_prime       checks a primality certificate.
+
+    - Math::Prime::Util::EllipticCurve module.
 
 0.25 19 March 2013
 

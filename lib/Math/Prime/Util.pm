@@ -15,7 +15,8 @@ use base qw( Exporter );
 our @EXPORT_OK =
   qw( prime_get_config prime_set_config
       prime_precalc prime_memfree
-      is_prime is_prob_prime is_provable_prime verify_prime
+      is_prime is_prob_prime is_provable_prime
+      prime_certificate verify_prime
       is_strong_pseudoprime is_strong_lucas_pseudoprime
       is_aks_prime
       miller_rabin
@@ -1600,17 +1601,44 @@ sub is_prob_prime {
 }
 
 sub is_provable_prime {
-  my($n) = @_;
+  my($n, $ref_proof) = @_;
   return 0 if defined $n && $n < 2;
   _validate_positive_integer($n);
 
-  # Shortcut some of the calls.
-  return _XS_is_prime($n) if ref($n) ne 'Math::BigInt' && $n <= $_XS_MAXVAL;
-  return Math::Prime::Util::GMP::is_provable_prime($n) if $_HAVE_GMP
-                       && defined &Math::Prime::Util::GMP::is_provable_prime;
+  if (defined $ref_proof) {
+    croak "Second argument must be an array ref" if ref($ref_proof) ne 'ARRAY';
+    @$ref_proof = ();
+  }
 
-  my $is_prob_prime = is_prob_prime($n);
-  return $is_prob_prime unless $is_prob_prime == 1;
+  # Set to 0 if you want the proof to go down to 11.
+  if (1) {
+    if (ref($n) ne 'Math::BigInt' && $n <= $_XS_MAXVAL) {
+      my $isp = _XS_is_prime($n);
+      @$ref_proof = ($n) if defined $ref_proof && $isp;
+      return $isp;
+    }
+    if ($_HAVE_GMP && defined &Math::Prime::Util::GMP::is_provable_prime) {
+      return Math::Prime::Util::GMP::is_provable_prime($n) if !defined $ref_proof;
+      if (defined $ref_proof && $Math::Prime::Util::GMP::VERSION > 0.08) {
+        return Math::Prime::Util::GMP::is_provable_prime($n, $ref_proof);
+      }
+      # proof needed but MPU::GMP too old to give it.
+    }
+
+    my $is_prob_prime = is_prob_prime($n);
+    if ($is_prob_prime != 1) {
+      @$ref_proof = ($n) if defined $ref_proof && $is_prob_prime == 2;
+      return $is_prob_prime;
+    }
+  } else {
+    if ($n <= 10) {
+      if ($n==2||$n==3||$n==5||$n==7) {
+        @$ref_proof = ($n) if defined $ref_proof;
+        return 2;
+      }
+      return 0;
+    }
+  }
 
   # At this point we know it is almost certainly a prime, but we need to
   # prove it.  We should do ECPP or APR-CL now, or failing that, do the
@@ -1626,31 +1654,67 @@ sub is_provable_prime {
   }
   my $nm1 = $n-1;
   my @factors = factor($nm1);
-  # Remember that we have to prove the primality of every factor.
-  if ( (scalar grep { is_provable_prime($_) != 2 } @factors) > 0) {
-    carp "could not prove primality of $n.\n";
-    return 1;
+  # If not doing a proof, check all factors here.
+  if (!defined $ref_proof) {
+    if ( (scalar grep { is_provable_prime($_) != 2 } @factors) > 0) {
+      carp "could not prove primality of $n.\n";
+      return 1;
+    }
+  }
+  { # remove duplicate factors
+    my %uf;
+    undef @uf{@factors};
+    @factors = sort {$a <=> $b} keys %uf;
   }
 
   for (my $a = 2; $a < $nm1; $a++) {
     my $ap = Math::BigInt->new("$a");
-    # 1. a^(n-1) = 1 mod n.
-    next if $ap->copy->bmodpow($nm1, $n) != 1;
-    # 2. a^((n-1)/f) != 1 mod n for all f.
+    # 1. a must be coprime to n
+    next unless Math::BigInt::bgcd($ap, $n) == 1;
+    # 2. a^(n-1) = 1 mod n.
+    next unless $ap->copy->bmodpow($nm1, $n) == 1;
+    # 3. a^((n-1)/f) != 1 mod n for all f.
     next if (scalar grep { $_ == 1 }
              map { $ap->copy->bmodpow(int($nm1/$_),$n); }
              @factors) > 0;
+    # If doing a proof, we verify each factor here and add to proof.
+    if (defined $ref_proof) {
+      @$ref_proof = ();
+      my @fac_proofs;
+      foreach my $f (@factors) {
+        my @fproof;
+        if (is_provable_prime($f, \@fproof) != 2) {
+          carp "could not prove primality of $n.\n";
+          return 1;
+        }
+        push @fac_proofs, (scalar @fproof == 1) ? @fproof : [@fproof];
+      }
+      @$ref_proof = ("$n", "Pratt", [@fac_proofs], $a);
+    }
     return 2;
   }
   carp "proved $n is not prime\n";
   return 0;
 }
 
+sub prime_certificate {
+  my($n) = @_;
+  return () if defined $n && $n < 2;
+  _validate_positive_integer($n);
+
+  my @cert;
+  my $is_prime = is_provable_prime($n, \@cert);
+  return () unless $is_prime == 2;
+  return @cert;
+}
+
 sub verify_prime {
   my @pdata = @_;
   my $verbose = $_Config{'verbose'};
 
-  croak "Parameter must be defined" if scalar @pdata == 0;
+  # Empty input = no certificate = not prime
+  return 0 if scalar @pdata == 0;
+
   my $n = shift @pdata;
   if (length($n) == 1) {
     return 1 if $n =~ /^[2357]$/;
@@ -1662,7 +1726,7 @@ sub verify_prime {
     eval { require Math::BigInt;   Math::BigInt->import(try=>'GMP,Pari'); 1; }
     or do { croak "Cannot load Math::BigInt"; };
   }
-  $n = Math::BigInt->new("$n");
+  $n = Math::BigInt->new("$n") if ref($n) ne 'Math::BigInt';
   if ($n->is_even) {
     print "primality fail: $n even\n" if $verbose;
     return 0;
@@ -1689,8 +1753,65 @@ sub verify_prime {
     print "primality success: $n by BPSW\n" if $verbose > 1;
     return 1;
   }
+
+  if ($method eq 'Pratt' || $method eq 'Lucas') {
+    # Based on Lucas primality test, which requires full n-1 factorization.
+    if (scalar @pdata != 2 || (ref($pdata[0]) ne 'ARRAY') || (ref($pdata[1]) eq 'ARRAY')) {
+      warn "verify_prime: incorrect Pratt format, must have factors and a value\n";
+      return 0;
+    }
+    my @factors = @{shift @pdata};
+    my $a = Math::BigInt->new(shift @pdata);
+    my $nm1 = $n - 1;
+    my $B = $nm1;    # Unfactored part
+
+    my @prime_factors;
+    my %factors_seen;
+    foreach my $farray (@factors) {
+      my $f;
+      if (ref($farray) eq 'ARRAY') {
+        $f = Math::BigInt->new("$farray->[0]");
+        return 0 unless verify_prime(@$farray);
+      } else {
+        $f = $farray;
+        return 0 unless verify_prime($f);
+      }
+      next if defined $factors_seen{"$f"};   # repeated factors
+      if (($B % $f) != 0) {
+        print "primality fail: given factor $f does not divide $nm1\n" if $verbose;
+        return 0;
+      }
+      while (($B % $f) == 0) {
+        $B /= $f;
+      }
+      push @prime_factors, $f;
+      $factors_seen{"$f"} = 1;
+    }
+    croak "Pratt error: n-1 not completely factored" unless $B == 1;
+
+    # 1. a must be co-prime to n.
+    if (Math::BigInt::bgcd($a, $n) != 1) {
+      print "primality fail: a and n not coprime\n" if $verbose;
+      return 0;
+    }
+    # 2. n is a psp base a
+    if ($a->copy->bmodpow($nm1, $n) != 1) {
+      print "primality fail: n is not a psp base a\n" if $verbose;
+      return 0;
+    }
+    # 3. For each factor f of n-1, a^((n-1)/f) != 1 mod n
+    foreach my $f (@prime_factors) {
+      if ($a->copy->bmodpow(int($nm1/$f),$n) == 1) {
+        print "primality fail: factor f fails a^((n-1)/f) != 1 mod n\n" if $verbose;
+        return 0;
+      }
+    }
+    print "primality success: $n by Lucas test\n" if $verbose > 1;
+    return 1;
+  }
+
   if ($method eq 'n-1') {
-    # BLS75
+    # BLS75 or generalized Pocklington
     # http://www.ams.org/journals/mcom/1975-29-130/S0025-5718-1975-0384673-1/S0025-5718-1975-0384673-1.pdf
     if (scalar @pdata != 2 || (ref($pdata[0]) ne 'ARRAY') || (ref($pdata[1]) ne 'ARRAY')) {
       warn "verify_prime: incorrect n-1 format, must have factors and a values\n";
@@ -1768,6 +1889,77 @@ sub verify_prime {
       }
     }
     print "primality success: $n by BLS75 theorem 5\n" if $verbose > 1;
+    return 1;
+  }
+
+  if ($method eq 'ECPP' || $method eq 'AGKM') {
+    # EC cert: Atkin-Morain etc.
+    # Normally we'd have the q values set up recursively, but to follow the
+    # standard trend, we have this set up as a list:
+    # n, "AGKM", [n,a,b,m,q,P], [n1,a,b,m,q,P], ...
+    #
+    # Examples:
+    #   (100000000000000000039, "AGKM", [100000000000000000039, 31484432173069852672, 39553474583282556928, 100000000014867206541, 539348143913549, [39164891430400385024,86449249723524901718]])
+    #   (677826928624294778921, "AGKM", [677826928624294778921, 404277700094248015180, 599134911995823048257, 677826928656744857936, 104088901820753203, [2293544533, 356794037129589115041]])
+    #      Ux,Uy should be 600992528322000913770, 206075883056439332684
+    #      Vx,Vy should be 0, 1
+    if (scalar @pdata < 1) {
+      warn "verify_prime: incorrect AGKM format\n";
+      return 0;
+    }
+    my ($ni, $a, $b, $m, $q, $P);
+    $q = $n;
+    foreach my $block (@pdata) {
+      if (ref($block) ne 'ARRAY' || scalar @$block != 6) {
+        warn "verify_prime: incorrect AGKM block format\n";
+        return 0;
+      }
+      if ($block->[0] != $q) {
+        warn "verify_prime: incorrect AGKM block format: block n != q\n";
+        return 0;
+      }
+      ($ni, $a, $b, $m, $q, $P) = @$block;
+      if (ref($P) ne 'ARRAY' || scalar @$P != 2) {
+        warn "verify_prime: incorrect AGKM block point format\n";
+        return 0;
+      }
+      $ni = $n->bzero->badd($ni) unless ref($ni) eq 'Math::BigInt';
+      if (Math::BigInt::bgcd($ni, 6) != 1) {
+        warn "verify_prime: AGKM block n '$ni' is divisible by 2 or 3\n";
+        return 0;
+      }
+      my $c = ($n-$n+4) * $a*$a*$a + ($n-$n+27)*$b*$b;
+      if (Math::BigInt::bgcd($c, $ni) != 1) {
+        warn "verify_prime: AGKM block gcd 4a^3+27b^2,n incorrect\n";
+        return 0;
+      }
+      if ($q <= $ni->copy->broot(4)->badd(1)->bpow(2)) {
+        warn "verify_prime: AGKM block q is too small\n";
+        return 0;
+      }
+      if (!defined $Math::Prime::Util::EllipticCurve::VERSION) {
+        eval { require Math::Prime::Util::EllipticCurve; 1; }
+        or do { croak "Cannot load Math::Prime::Util::EllipticCurve"; };
+      }
+      my $EC = Math::Prime::Util::EllipticCurve->new($a, $b, $ni);
+      $m = Math::BigInt->new("$m") unless ref($m) eq 'Math::BigInt';
+      $q = Math::BigInt->new("$q") unless ref($q) eq 'Math::BigInt';
+
+      # Assume P0 and P1 are affine.
+      my $Px = Math::BigInt->new($P->[0]);
+      my $Py = Math::BigInt->new($P->[1]);
+      # Compute U = (m/q)P, check U != point at infinity
+      my($Ux,$Uy) = $EC->mul_a( int($m/$q), $Px, $Py );  # U = (m/q)P
+      my($Vx,$Vy) = $EC->mul_a( $q, $Ux, $Uy );          # V = qU
+      if ( (($Ux == 0) && ($Uy == 1)) || (($Vx != 0) || ($Vy != 1)) ) {
+        warn "verify_prime: AGKM point does not multiply correctly.\n";
+        return 0;
+      }
+    }
+    # Check primality of last q using BPSW
+    return 0 unless verify_prime($q);
+
+    print "primality success: $n by A-K-G-M elliptic curve\n" if $verbose > 1;
     return 1;
   }
 
@@ -2625,6 +2817,94 @@ version uses the BLS (Brillhart-Lehmer-Selfridge) method, requiring C<n-1> to
 be factored to the cube root of C<n>, which is more likely to succeed and will
 usually take less time, but can still fail.  Hence you should always test that
 the result is C<2> to ensure the prime is proven.
+
+An optional second argument may be given, which must be an array reference,
+which will be filled in with a primality certificate.  Normally this is used
+via the function L</prime_certificate> below.
+
+
+=head2 prime_certificate
+
+  my @cert = prime_certificate($n);
+  say verify_prime(@cert) ? "proven prime" : "not prime";
+
+Given a positive integer C<n> as input, returns either an empty array (we could
+not prove C<n> prime) or an array representing a certificate of primality.
+This may be examined or given to L</verify_prime> for verification.  The latter
+function contains the description of the format.
+
+
+=head2 verify_prime
+
+  my @cert = prime_certificate($n);
+  say verify_prime(@cert) ? "proven prime" : "not prime";
+
+Given an array representing a certificate of primality, returns either 0 (not
+verified), or 1 (verified).  The computations are all done using pure Perl
+Math::BigInt and should not be time consuming (the Pari or GMP backends will
+help with large inputs).
+
+A certificate is an array holding an C<n-cert>.  An C<n-cert> is one of:
+
+  n
+       implies n,"BPSW"
+
+  n,"BPSW"
+       the number n is small enough to be proven with BPSW.  This
+       currently means smaller than 2^64.
+
+  n,"Pratt",[n-cert, ...],a
+       A Pratt certificate.  We are given n, the method "Pratt" or "Lucas",
+       a list of n-certs that indicate all the unique factors of n-1, and
+       an 'a' value to be used in the Lucas primality test.
+       The certificate passes if:
+         1 all factor n-certs can be verified
+         2 all n-certs are factors of n-1 and none are missing
+         3 a is coprime to n
+         4 a^(n-1) = 1 mod n
+         5 a^((n-1)/f) != 1 mod n for each factor
+
+  n,"n-1",[n-cert, ...],[a,...]
+       An n-1 certificate suitable for the generalized Pocklington or the
+       BLS75 (Brillhart-Lehmer-Selfridge 1975, theorem 5) test.  The proof
+       is performed using BLS75 theorem 5 which requires n-1 to be factored
+       up to (n/2)^1/3.  If n-1 is factored to more than sqrt(n), then the
+       conditions are identical to the generalized Pocklington test.
+       The certificate passes if:
+         1 all factor n-certs can be verified
+         2 all factor n-certs are factors of n-1
+         3 there must be a corresponding 'a' for each factor n-cert
+         4 given A (the factored part of n-1), B = (n-1)/A (the unfactored
+           part), s = int(B/(2A)), r = B-s*2A:
+             - n < (A+1)(2*A*A+(r-a)A+a)      [ n-1 factored to (n/2)^1/3 ]
+             - s = 0 or r*r-8s not a perfect square
+             - A and B are coprime
+         5 for each pair (f,a) representing a factor n-cert and its 'a':
+             - a^(n-1) = 1 mod n
+             - gcd( a^((n-1)/f)-1, n ) = 1
+
+  n,"AGKM",[ec-block],[ec-block],...
+       An Elliptic Curve certificate.  We are given n, the method "AGKM"
+       or "ECPP", and a one or more 6-element blocks representing a standard
+       ECPP or Atkin-Goldwasser-Kilian-Morain certificate.  The format of
+       this n-cert is non-recursive so it can be easily used for similar
+       programs such as Sage and GMP-ECPP.
+       Every ec-block has 6 elements:
+         N   the N value this block proves prime if q is prime
+         a   value describing the elliptic curve to be used
+         b   value describing the elliptic curve to be used
+         m   order of the curve
+         q   a probable prime > (N^1/4+1)^2
+         P   a point [x,y] on the curve (affine coordinates)
+       The certificate passes if:
+         - the final q can be proved with BPSW.
+         - for each block:
+             - N is the same as the preceeding block's q
+             - N is not divisible by 2 or 3
+             - gcd( 4a^3 + 27b^2, N ) == 1;
+             - q > (N^1/4+1)^2
+             - U = (m/q)P is not the point at infinity
+             - V = qU is the point at infinity
 
 
 =head2 is_aks_prime
