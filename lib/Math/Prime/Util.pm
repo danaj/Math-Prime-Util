@@ -2822,9 +2822,9 @@ A certificate is an array holding an C<n-cert>.  An C<n-cert> is one of:
        currently means smaller than 2^64.
 
   n,"Pratt",[n-cert, ...],a
-       A Pratt certificate.  We are given n, the method "Pratt" or "Lucas",
-       a list of n-certs that indicate all the unique factors of n-1, and
-       an 'a' value to be used in the Lucas primality test.
+       A Pratt certificate.  We are given n, the method "Pratt" or
+       "Lucas", a list of n-certs that indicate all the unique factors
+       of n-1, and an 'a' value to be used in the Lucas primality test.
        The certificate passes if:
          1 all factor n-certs can be verified
          2 all n-certs are factors of n-1 and none are missing
@@ -2834,17 +2834,18 @@ A certificate is an array holding an C<n-cert>.  An C<n-cert> is one of:
 
   n,"n-1",[n-cert, ...],[a,...]
        An n-1 certificate suitable for the generalized Pocklington or the
-       BLS75 (Brillhart-Lehmer-Selfridge 1975, theorem 5) test.  The proof
-       is performed using BLS75 theorem 5 which requires n-1 to be factored
-       up to (n/2)^1/3.  If n-1 is factored to more than sqrt(n), then the
-       conditions are identical to the generalized Pocklington test.
+       BLS75 (Brillhart-Lehmer-Selfridge 1975, theorem 5) test.  The
+       proof is performed using BLS75 theorem 5 which requires n-1 to be
+       factored up to (n/2)^1/3.  If n-1 is factored to more than
+       sqrt(n), then the conditions are identical to the generalized
+       Pocklington test.
        The certificate passes if:
          1 all factor n-certs can be verified
          2 all factor n-certs are factors of n-1
          3 there must be a corresponding 'a' for each factor n-cert
-         4 given A (the factored part of n-1), B = (n-1)/A (the unfactored
-           part), s = int(B/(2A)), r = B-s*2A:
-             - n < (A+1)(2*A*A+(r-a)A+a)      [ n-1 factored to (n/2)^1/3 ]
+         4 given A (the factored part of n-1), B = (n-1)/A (the
+           unfactored part), s = int(B/(2A)), r = B-s*2A:
+             - n < (A+1)(2*A*A+(r-a)A+a)    [ n-1 factored to (n/2)^1/3 ]
              - s = 0 or r*r-8s not a perfect square
              - A and B are coprime
          5 for each pair (f,a) representing a factor n-cert and its 'a':
@@ -2853,10 +2854,10 @@ A certificate is an array holding an C<n-cert>.  An C<n-cert> is one of:
 
   n,"AGKM",[ec-block],[ec-block],...
        An Elliptic Curve certificate.  We are given n, the method "AGKM"
-       or "ECPP", and a one or more 6-element blocks representing a standard
-       ECPP or Atkin-Goldwasser-Kilian-Morain certificate.  The format of
-       this n-cert is non-recursive so it can be easily used for similar
-       programs such as Sage and GMP-ECPP.
+       or "ECPP", and a one or more 6-element blocks representing a
+       standard ECPP or Atkin-Goldwasser-Kilian-Morain certificate.
+       The format of this n-cert is non-recursive so it can be easily
+       used for similar programs such as Sage and GMP-ECPP.
        Every ec-block has 6 elements:
          N   the N value this block proves prime if q is prime
          a   value describing the elliptic curve to be used
@@ -3305,25 +3306,26 @@ the configuration, so changing it has no effect.  The settings include:
 
 Allows setting of some parameters.  Currently the only parameters are:
 
-  xs              Allows turning off the XS code, forcing the Pure Perl code
-                  to be used.  Set to 0 to disable XS, set to 1 to re-enable.
-                  You probably will never want to do this.
+  xs              Allows turning off the XS code, forcing the Pure Perl
+                  code to be used.  Set to 0 to disable XS, set to 1 to
+                  re-enable.  You probably will never want to do this.
 
   gmp             Allows turning off the use of L<Math::Prime::Util::GMP>,
-                  which means using Pure Perl code for big numbers.  Set to
-                  0 to disable GMP, set to 1 to re-enable.
+                  which means using Pure Perl code for big numbers.  Set
+                  to 0 to disable GMP, set to 1 to re-enable.
                   You probably will never want to do this.
 
-  assume_rh       Allows functions to assume the Riemann hypothesis is true
-                  if set to 1.  This defaults to 0.  Currently this setting
-                  only impacts prime count lower and upper bounds, but could
-                  later be applied to other areas such as primality testing.
-                  A later version may also have a way to indicate whether
-                  no RH, RH, GRH, or ERH is to be assumed.
+  assume_rh       Allows functions to assume the Riemann hypothesis is
+                  true if set to 1.  This defaults to 0.  Currently this
+                  setting only impacts prime count lower and upper
+                  bounds, but could later be applied to other areas such
+                  as primality testing.  A later version may also have a
+                  way to indicate whether no RH, RH, GRH, or ERH is to
+                  be assumed.
 
-  irand           Takes a code ref to an irand function returning a uniform
-                  number between 0 and 2**32-1.  This will be used for all
-                  random number generation in the module.
+  irand           Takes a code ref to an irand function returning a
+                  uniform number between 0 and 2**32-1.  This will be
+                  used for all random number generation in the module.
 
 
 =head1 FACTORING FUNCTIONS
