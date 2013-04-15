@@ -1600,6 +1600,7 @@ sub is_prob_prime {
   return ($n <= 18446744073709551615)  ?  2  :  1;
 }
 
+
 sub is_provable_prime {
   my($n, $ref_proof) = @_;
   return 0 if defined $n && $n < 2;
@@ -1612,17 +1613,21 @@ sub is_provable_prime {
 
   # Set to 0 if you want the proof to go down to 11.
   if (1) {
-    if (ref($n) ne 'Math::BigInt' && $n <= $_XS_MAXVAL) {
-      my $isp = _XS_is_prime($n);
-      @$ref_proof = ($n) if defined $ref_proof && $isp;
-      return $isp;
-    }
-    if ($_HAVE_GMP && defined &Math::Prime::Util::GMP::is_provable_prime) {
-      return Math::Prime::Util::GMP::is_provable_prime($n) if !defined $ref_proof;
-      if (defined $ref_proof && $Math::Prime::Util::GMP::VERSION > 0.08) {
-        return Math::Prime::Util::GMP::is_provable_prime($n, $ref_proof);
+    if (defined $ref_proof) {
+      if (ref($n) ne 'Math::BigInt' && $n <= $_XS_MAXVAL) {
+        my $isp = _XS_is_prime($n);
+        @$ref_proof = ($n) if $isp == 2;
+        return $isp;
       }
-      # proof needed but MPU::GMP too old to give it.
+      if ($_HAVE_GMP && defined &Math::Prime::Util::GMP::is_provable_prime_with_cert) {
+        my($isp, $pref) = Math::Prime::Util::GMP::is_provable_prime_with_cert($n);
+        @$ref_proof = @$pref;
+        return $isp;
+      }
+    } else {
+      return _XS_is_prime($n) if ref($n) ne 'Math::BigInt' && $n <= $_XS_MAXVAL;
+      return Math::Prime::Util::GMP::is_provable_prime($n)
+            if $_HAVE_GMP && defined &Math::Prime::Util::GMP::is_provable_prime;
     }
 
     my $is_prob_prime = is_prob_prime($n);
@@ -1640,62 +1645,23 @@ sub is_provable_prime {
     }
   }
 
-  # At this point we know it is almost certainly a prime, but we need to
-  # prove it.  We should do ECPP or APR-CL now, or failing that, do the
-  # Brillhart-Lehmer-Selfridge test, or Pocklington-Lehmer.  Until those
-  # are written here, we'll do a Lucas test, which is super simple but may
-  # be very slow.  We have AKS code, but it's insanely slow.
+  # Choice of methods for proof:
+  #   ECPP         needs a fair bit of programming work
+  #   APRCL        needs a lot of programming work
+  #   BLS75        Requires factoring n-1 to (n/2)^1/3
+  #   Pocklington  Requires factoring n-1 to n^1/2
+  #   Lucas        Easy, required complete factoring of n-1
+  #   AKS          horribly slow
   # See http://primes.utm.edu/prove/merged.html or other sources.
 
-  # It shouldn't be possible to get here without BigInt already loaded.
-  if (!defined $Math::BigInt::VERSION) {
-    eval { require Math::BigInt;   Math::BigInt->import(try=>'GMP,Pari'); 1; }
-    or do { croak "Cannot load Math::BigInt"; };
-  }
-  my $nm1 = $n-1;
-  my @factors = factor($nm1);
-  # If not doing a proof, check all factors here.
-  if (!defined $ref_proof) {
-    if ( (scalar grep { is_provable_prime($_) != 2 } @factors) > 0) {
-      carp "could not prove primality of $n.\n";
-      return 1;
-    }
-  }
-  { # remove duplicate factors
-    my %uf;
-    undef @uf{@factors};
-    @factors = sort {$a <=> $b} keys %uf;
-  }
+  #my ($isp, $pref) = Math::Prime::Util::PP::primality_proof_lucas($n);
+  my ($isp, $pref) = Math::Prime::Util::PP::primality_proof_bls75($n);
 
-  for (my $a = 2; $a < $nm1; $a++) {
-    my $ap = Math::BigInt->new("$a");
-    # 1. a must be coprime to n
-    next unless Math::BigInt::bgcd($ap, $n) == 1;
-    # 2. a^(n-1) = 1 mod n.
-    next unless $ap->copy->bmodpow($nm1, $n) == 1;
-    # 3. a^((n-1)/f) != 1 mod n for all f.
-    next if (scalar grep { $_ == 1 }
-             map { $ap->copy->bmodpow(int($nm1/$_),$n); }
-             @factors) > 0;
-    # If doing a proof, we verify each factor here and add to proof.
-    if (defined $ref_proof) {
-      @$ref_proof = ();
-      my @fac_proofs;
-      foreach my $f (@factors) {
-        my @fproof;
-        if (is_provable_prime($f, \@fproof) != 2) {
-          carp "could not prove primality of $n.\n";
-          return 1;
-        }
-        push @fac_proofs, (scalar @fproof == 1) ? @fproof : [@fproof];
-      }
-      @$ref_proof = ("$n", "Pratt", [@fac_proofs], $a);
-    }
-    return 2;
-  }
-  carp "proved $n is not prime\n";
-  return 0;
+  @$ref_proof = @$pref if defined $ref_proof;
+  carp "proved $n is not prime\n" if !$isp;
+  return $isp;
 }
+
 
 sub prime_certificate {
   my($n) = @_;
@@ -1937,21 +1903,23 @@ sub verify_prime {
         warn "verify_prime: AGKM block q is too small\n";
         return 0;
       }
-      if (!defined $Math::Prime::Util::EllipticCurve::VERSION) {
-        eval { require Math::Prime::Util::EllipticCurve; 1; }
-        or do { croak "Cannot load Math::Prime::Util::EllipticCurve"; };
+      # Final check, check that we've got a bound above and below (Hasse)
+      if (!defined $Math::Prime::Util::ECAffinePoint::VERSION) {
+        eval { require Math::Prime::Util::ECAffinePoint; 1; }
+        or do { croak "Cannot load Math::Prime::Util::ECAffinePoint"; };
       }
-      my $EC = Math::Prime::Util::EllipticCurve->new($a, $b, $ni);
       $m = Math::BigInt->new("$m") unless ref($m) eq 'Math::BigInt';
       $q = Math::BigInt->new("$q") unless ref($q) eq 'Math::BigInt';
-
-      # Assume P0 and P1 are affine.
-      my $Px = Math::BigInt->new($P->[0]);
-      my $Py = Math::BigInt->new($P->[1]);
+      my $ECP = Math::Prime::Util::ECAffinePoint->new($a, $b, $ni, $P->[0], $P->[1]);
       # Compute U = (m/q)P, check U != point at infinity
-      my($Ux,$Uy) = $EC->mul_a( int($m/$q), $Px, $Py );  # U = (m/q)P
-      my($Vx,$Vy) = $EC->mul_a( $q, $Ux, $Uy );          # V = qU
-      if ( (($Ux == 0) && ($Uy == 1)) || (($Vx != 0) || ($Vy != 1)) ) {
+      $ECP->mul( int($m/$q) );
+      if ($ECP->is_infinity) {
+        warn "verify_prime: AGKM point does not multiply correctly.\n";
+        return 0;
+      }
+      # Compute V = qU, check V = point at infinity
+      $ECP->mul( $q );
+      if (! $ECP->is_infinity) {
         warn "verify_prime: AGKM point does not multiply correctly.\n";
         return 0;
       }

@@ -2,11 +2,19 @@ Revision history for Perl extension Math::Prime::Util.
 
 0.26 xx April 2013
 
-    - Pure Perl p-1 factoring, Fermat factoring, and speedup for pbrent.
+    - Pure Perl factoring:
+        - real p-1 -- much faster and more effective
+        - Fermat (no better than HOLF)
+        - speedup for pbrent
+        - simple affine single stage ECM
+        - redo factoring mix
 
     - New functions:
         prime_certificate  produces a certificate of primality.
         verify_prime       checks a primality certificate.
+
+    - Pure perl primality proof now uses BLS75 instead of Lucas, so some
+      numbers will be much faster.  n-1 only needs factoring to (n/2)^1/3.
 
     - Math::Prime::Util::EllipticCurve module.
 

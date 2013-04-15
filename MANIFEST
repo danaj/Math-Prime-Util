@@ -5,6 +5,7 @@ lib/Math/Prime/Util/PrimeArray.pm
 lib/Math/Prime/Util/PP.pm
 lib/Math/Prime/Util/ZetaBigFloat.pm
 lib/Math/Prime/Util/EllipticCurve.pm
+lib/Math/Prime/Util/ECAffinePoint.pm
 LICENSE
 Makefile.PL
 MANIFEST

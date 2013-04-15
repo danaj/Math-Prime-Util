@@ -136,23 +136,24 @@ sub mul_a {
   my $Bx = Math::BigInt->bzero;
   my $By = Math::BigInt->bone;
   my $v = 1;
+  my $d = 1;
 
   while ($v && $k > 0) {
     if ( ($k % 2) != 0) {
       $k--;
-      my $d = Math::BigInt::bgcd( ($Bx - $x) % $n, $n);
+      $d = Math::BigInt::bgcd( ($Bx - $x) % $n, $n);
       $v = ($d == 1 || $d == $n);
       if    ($x == 0 && $y == 1)   { }
       elsif ($Bx == 0 && $By == 1) { ($Bx,$By) = ($x,$y); }
       elsif ($v)                   { ($Bx,$By) = $self->add_a($x,$y,$Bx,$By); }
     } else {
       $k >>= 1;
-      my $d = Math::BigInt::bgcd( 2*$y % $n, $n);
+      $d = Math::BigInt::bgcd( 2*$y % $n, $n);
       $v = ($d == 1 || $d == $n);
       if ($v) { ($x,$y) = $self->double_a($x,$y); }
     }
   }
-  return ($Bx, $By);
+  return ($Bx, $By, $d);
 }
 
 1;
