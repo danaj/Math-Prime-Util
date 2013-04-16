@@ -6,7 +6,7 @@ Revision history for Perl extension Math::Prime::Util.
         - real p-1 -- much faster and more effective
         - Fermat (no better than HOLF)
         - speedup for pbrent
-        - simple affine single stage ECM
+        - simple ECM
         - redo factoring mix
 
     - New functions:

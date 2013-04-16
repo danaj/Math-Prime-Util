@@ -9,8 +9,8 @@ if (!defined $Math::BigInt::VERSION) {
 }
 
 BEGIN {
-  $Math::Prime::Util::EllipticCurve::AUTHORITY = 'cpan:DANAJ';
-  $Math::Prime::Util::EllipticCurve::VERSION = '0.26';
+  $Math::Prime::Util::ECAffinePoint::AUTHORITY = 'cpan:DANAJ';
+  $Math::Prime::Util::ECAffinePoint::VERSION = '0.26';
 }
 
 # Pure perl (with Math::BigInt) manipulation of Elliptic Curves
@@ -180,9 +180,9 @@ To write.
 
 =head2 new
 
-  $point = Math::Prime::Util::EllipticCurve->new(a, b);
+  $point = Math::Prime::Util::ECAffinePoint->new(a, b, n, x, y);
 
-Returns a new curve defined by a and b.
+Returns a new point at C<(x,y,1)> on the curve C<(a,b,n)>.
 
 =head2 a
 

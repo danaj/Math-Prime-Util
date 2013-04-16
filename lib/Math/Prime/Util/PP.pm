@@ -1146,13 +1146,13 @@ my @_fsublist = (
   sub { pminus1_factor(shift,    10_000); },
   sub { pminus1_factor(shift,   600_000); },
   sub { pbrent_factor (shift,  512*1024, 7) },
-  sub { ecm_factor    (shift,     1_000,   1_000, 10) },
+  sub { ecm_factor    (shift,     1_000,   5_000, 10) },
   sub { pminus1_factor(shift, 4_000_000); },
   sub { pbrent_factor (shift,  512*1024, 11) },
-  sub { ecm_factor    (shift,    10_000,  10_000, 10) },
+  sub { ecm_factor    (shift,    10_000,  50_000, 10) },
   sub { holf_factor   (shift, 256*1024, $_holf_r); $_holf_r += 256*1024; },
   sub { pminus1_factor(shift,20_000_000); },
-  sub { ecm_factor    (shift,   100_000, 100_000, 10) },
+  sub { ecm_factor    (shift,   100_000, 400_000, 10) },
   sub { holf_factor   (shift, 512*1024, $_holf_r); $_holf_r += 512*1024; },
   sub { pbrent_factor (shift, 2048*1024, 13) },
   sub { holf_factor   (shift, 2048*1024, $_holf_r); $_holf_r += 2048*1024; },
@@ -1213,6 +1213,18 @@ sub factor {
   sort {$a<=>$b} @factors;
 }
 
+sub _found_factor {
+  my($f, $n, $what, @factors) = @_;
+  if ($f == 1 || $f == $n) {
+    push @factors, $n;
+  } else {
+    push @factors, $f;
+    push @factors, int($n/$f);
+    croak "internal error in $what" unless ($f * int($n/$f)) == $n;
+  }
+  @factors;
+}
+
 # TODO:
 sub squfof_factor { trial_factor(@_) }
 
@@ -1242,11 +1254,7 @@ sub prho_factor {
       if ($f == $n) {
         last if $inloop++;  # We've been here before
       } elsif ($f != 1) {
-        my $f2 = $n->copy->bdiv($f)->as_int;
-        push @factors, $f;
-        push @factors, $f2;
-        croak "internal error in prho" unless ($f * $f2) == $n;
-        return @factors;
+        return _found_factor($f, $n, "prho", @factors);
       }
     }
 
@@ -1260,10 +1268,7 @@ sub prho_factor {
       if ($f == $n) {
         last if $inloop++;  # We've been here before
       } elsif ($f != 1) {
-        push @factors, $f;
-        push @factors, int($n/$f);
-        croak "internal error in prho" unless ($f * int($n/$f)) == $n;
-        return @factors;
+        return _found_factor($f, $n, "prho", @factors);
       }
     }
 
@@ -1277,10 +1282,7 @@ sub prho_factor {
       if ($f == $n) {
         last if $inloop++;  # We've been here before
       } elsif ($f != 1) {
-        push @factors, $f;
-        push @factors, int($n/$f);
-        croak "internal error in prho" unless ($f * int($n/$f)) == $n;
-        return @factors;
+        return _found_factor($f, $n, "prho", @factors);
       }
     }
 
@@ -1342,11 +1344,7 @@ sub pbrent_factor {
         } while ($f != 1 && $r-- != 0);
         last if $f == 1 || $f == $n;
       }
-      my $f2 = $n->copy->bdiv($f)->as_int;
-      push @factors, $f;
-      push @factors, $f2;
-      croak "internal error in pbrent" unless ($f * $f2) == $n;
-      return @factors;
+      return _found_factor($f, $n, "pbrent", @factors);
     }
 
   } elsif ($n < $_half_word) {
@@ -1354,12 +1352,7 @@ sub pbrent_factor {
     for my $i (1 .. $rounds) {
       $Xi = ($Xi * $Xi + $a) % $n;
       my $f = _gcd_ui( ($Xi > $Xm) ? $Xi-$Xm : $Xm-$Xi,  $n );
-      if ( ($f != 1) && ($f != $n) ) {
-        push @factors, $f;
-        push @factors, int($n/$f);
-        croak "internal error in pbrent" unless ($f * int($n/$f)) == $n;
-        return @factors;
-      }
+      return _found_factor($f, $n, "pbrent", @factors) if $f != 1 && $f != $n;
       $Xm = $Xi if ($i & ($i-1)) == 0;  # i is a power of 2
     }
 
@@ -1370,12 +1363,7 @@ sub pbrent_factor {
       $Xi = _mulmod($Xi, $Xi, $n);
       $Xi = (($n-$Xi) > $a)  ?  $Xi+$a  :  $Xi+$a-$n;
       my $f = _gcd_ui( ($Xi > $Xm) ? $Xi-$Xm : $Xm-$Xi,  $n );
-      if ( ($f != 1) && ($f != $n) ) {
-        push @factors, $f;
-        push @factors, int($n/$f);
-        croak "internal error in pbrent" unless ($f * int($n/$f)) == $n;
-        return @factors;
-      }
+      return _found_factor($f, $n, "pbrent", @factors) if $f != 1 && $f != $n;
       $Xm = $Xi if ($i & ($i-1)) == 0;  # i is a power of 2
     }
 
@@ -1413,13 +1401,7 @@ sub pminus1_factor {
         $a = _powmod($a, $k, $n);
         if ($a == 0) { push @factors, $n; return @factors; }
         my $f = _gcd_ui( $a-1, $n );
-        if ($f == $n) { push @factors, $n; return @factors; }
-        if ($f != 1) {
-          push @factors, $f;
-          push @factors, int($n/$f);
-          croak "internal error in pminus1" unless ($f * int($n/$f)) == $n;
-          return @factors;
-        }
+        return _found_factor($f, $n, "pminus1", @factors) if $f != 1;
       }
       last if $pc_end >= $B1;
       $pc_beg = $pc_end+1;
@@ -1540,12 +1522,7 @@ sub pminus1_factor {
     }
     $f = Math::BigInt::bgcd( $b, $n );
   }
-  if ($f != 1 && $f != $n) {
-    push @factors, $f, $n/$f;
-    return @factors;
-  }
-  push @factors, $n;
-  @factors;
+  return _found_factor($f, $n, "pminus1", @factors);
 }
 
 sub holf_factor {
@@ -1565,11 +1542,7 @@ sub holf_factor {
       if ($s * $s == $ni) {
         # s^2 = n*i, so m = s^2 mod n = 0.  Hence f = GCD(n, s) = GCD(n, n*i)
         my $f = Math::BigInt::bgcd($ni, $n);
-        last if $f == 1 || $f == $n;   # Should never happen
-        push @factors, $f;
-        push @factors, int($n/$f);
-        croak "internal error in HOLF" unless ($f * int($n/$f)) == $n;
-        return @factors;
+        return _found_factor($f, $n, "HOLF", @factors);
       }
       $s->binc;
       my $m = ($s * $s) - $ni;
@@ -1579,12 +1552,7 @@ sub holf_factor {
       my $f = $m->copy->bsqrt->bfloor->as_int;
       next unless ($f*$f) == $m;
       $f = Math::BigInt::bgcd( ($s > $f) ? $s-$f : $f-$s,  $n);
-      last if $f == 1 || $f == $n;   # Should never happen
-      push @factors, $f;
-      push @factors, int($n/$f);
-      croak "internal error in HOLF" unless ($f * int($n/$f)) == $n;
-      # print "HOLF found factors in $i rounds\n";
-      return @factors;
+      return _found_factor($f, $n, "HOLF ($i rounds)", @factors);
     }
   } else {
     for my $i ($startrounds .. $rounds) {
@@ -1597,12 +1565,7 @@ sub holf_factor {
       my $f = int(sqrt($m));
       next unless $f*$f == $m;
       $f = _gcd_ui( ($s > $f)  ?  $s - $f  :  $f - $s,  $n);
-      last if $f == 1 || $f == $n;   # Should never happen
-      push @factors, $f;
-      push @factors, int($n/$f);
-      croak "internal error in HOLF" unless ($f * int($n/$f)) == $n;
-      # print "HOLF found factors in $i rounds\n";
-      return @factors;
+      return _found_factor($f, $n, "HOLF ($i rounds)", @factors);
     }
   }
   push @factors, $n;
@@ -1619,7 +1582,7 @@ sub fermat_factor {
 
   if ( ref($n) eq 'Math::BigInt' ) {
     my $a = $n->copy->bsqrt->bfloor->as_int;
-    if ($a*$a == $n) { push @factors, $a, $a; return @factors; }
+    return _found_factor($a, $n, "Fermat", @factors) if $a*$a == $n;
     $a++;
     my $b2 = $a*$a - $n;
     my $lasta = $a + $rounds;
@@ -1628,12 +1591,8 @@ sub fermat_factor {
       if ($mc==0||$mc==1||$mc==4||$mc==9||$mc==16||$mc==17||$mc==25) {
         my $s = $b2->copy->bsqrt->bfloor->as_int;
         if ($s*$s == $b2) {
-          my $f = $a - $s;
-          push @factors, $f;
-          push @factors, int($n/$f);
-          croak "internal error in Fermat" unless ($f * int($n/$f)) == $n;
-          #warn "Fermat found factors in ",$a-($lasta-$rounds)+1," rounds\n";
-          return @factors;
+          my $i = $a-($lasta-$rounds)+1;
+          return _found_factor($a - $s, $n, "Fermat ($i rounds)", @factors);
         }
       }
       $a++;
@@ -1641,7 +1600,7 @@ sub fermat_factor {
     }
   } else {
     my $a = int(sqrt($n));
-    if ($a*$a == $n) { push @factors, $a, $a; return @factors; }
+    return _found_factor($a, $n, "Fermat", @factors) if $a*$a == $n;
     $a++;
     my $b2 = $a*$a - $n;
     my $lasta = $a + $rounds;
@@ -1650,12 +1609,8 @@ sub fermat_factor {
       if ($mc==0||$mc==1||$mc==4||$mc==9||$mc==16||$mc==17||$mc==25) {
         my $s = int(sqrt($b2));
         if ($s*$s == $b2) {
-          my $f = $a - $s;
-          push @factors, $f;
-          push @factors, int($n/$f);
-          croak "internal error in Fermat" unless ($f * int($n/$f)) == $n;
-          #warn "Fermat found factors in ",$a-($lasta-$rounds)+1," rounds\n";
-          return @factors;
+          my $i = $a-($lasta-$rounds)+1;
+          return _found_factor($a - $s, $n, "Fermat ($i rounds)", @factors);
         }
       }
       $a++;
@@ -1665,6 +1620,7 @@ sub fermat_factor {
   push @factors, $n;
   @factors;
 }
+
 
 sub ecm_factor {
   my($n, $B1, $B2, $ncurves) = @_;
@@ -1678,7 +1634,7 @@ sub ecm_factor {
   if (!defined $B1) {
     for my $mul (1, 10, 100, 1000, 10_000, 100_000, 1_000_000) {
       $B1 = 100 * $mul;
-      $B2 = 1*$B1;
+      $B2 = 10*$B1;
       #warn "Trying ecm with $B1 / $B2\n";
       my @nf = ecm_factor($n, $B1, $B2, $ncurves);
       if (scalar @nf > 1) {
@@ -1693,21 +1649,71 @@ sub ecm_factor {
   $B2 = 1*$B1 unless defined $B2;
   my $sqrt_b1 = int(sqrt($B1)+1);
 
-  if (!defined $Math::Prime::Util::ECAffinePoint::VERSION) {
-    eval { require Math::Prime::Util::ECAffinePoint; 1; }
-    or do { croak "Cannot load Math::Prime::Util::ECAffinePoint"; };
+  # Affine code.  About 3x slower than the projective, and no stage 2.
+  #
+  #if (!defined $Math::Prime::Util::ECAffinePoint::VERSION) {
+  #  eval { require Math::Prime::Util::ECAffinePoint; 1; }
+  #  or do { croak "Cannot load Math::Prime::Util::ECAffinePoint"; };
+  #}
+  #my @bprimes = @{ primes(2, $B1) };
+  #my $irandf = Math::Prime::Util::_get_rand_func();
+  #foreach my $curve (1 .. $ncurves) {
+  #  my $a = $irandf->($n-1);
+  #  my $b = 1;
+  #  my $ECP = Math::Prime::Util::ECAffinePoint->new($a, $b, $n, 0, 1);
+  #  foreach my $q (@bprimes) {
+  #    my $k = $q;
+  #    if ($k < $sqrt_b1) {
+  #      my $kmin = int($B1 / $q);
+  #      while ($k <= $kmin) { $k *= $q; }
+  #    }
+  #    $ECP->mul($k);
+  #    my $f = $ECP->f;
+  #    if ($f != 1) {
+  #      last if $f == $n;
+  #      warn "ECM found factors with B1 = $B1 in curve $curve\n";
+  #      return _found_factor($f, $n, "ECM B1=$B1 curve $curve", @factors);
+  #    }
+  #    last if $ECP->is_infinity;
+  #  }
+  #}
+
+  if (!defined $Math::Prime::Util::ECProjectivePoint::VERSION) {
+    eval { require Math::Prime::Util::ECProjectivePoint; 1; }
+    or do { croak "Cannot load Math::Prime::Util::ECProjectivePoint"; };
   }
 
-  # With multiple curves, it's better to get all the primes at once.  The
-  # downside is this can kill memory with a very large B1.
-  my @bprimes = @{ primes(2, $B1) };
+  # With multiple curves, it's better to get all the primes at once.
+  # The downside is this can kill memory with a very large B1.
+  my @bprimes = @{ primes(3, $B1) };
+  my @b2primes = ($B2 > $B1) ? @{primes($B1+1, $B2)} : ();
   my $irandf = Math::Prime::Util::_get_rand_func();
 
   foreach my $curve (1 .. $ncurves) {
-    my $a = $irandf->($n-1);
-    my $b = 1;
-    my $ECP = Math::Prime::Util::ECAffinePoint->new($a, $b, $n, 0, 1);
+    my $sigma;
+    do { $sigma = $irandf->($n-1) } while ($sigma <= 5);
+    my ($u, $v) = ( ($sigma*$sigma - 5) % $n, (4 * $sigma) % $n );
+    my ($x, $z) = ( ($u*$u*$u) % $n,  ($v*$v*$v) % $n );
+    my $b = (4 * $x * $v) % $n;
+    my $a = ( (($v-$u)**3) * (3*$u + $v) ) % $n;
+    my $f = Math::BigInt::bgcd( $b, $n );
+    $f = Math::BigInt::bgcd( $z, $n ) if $f == 1;
+    next if $f == $n;
+    return _found_factor($f,$n, "ECM B1=$B1 curve $curve", @factors) if $f != 1;
+    $u = $b->copy->bmodinv($n);
+    $a = (($a*$u) - 2) % $n;
+    $b = $a+2;
+    $b = ( (($b % 2) == 0) ? $b  : $b+$n ) >> 1;
+    $b = ( (($b % 2) == 0) ? $b  : $b+$n ) >> 1;
+    #$u = $z->copy->bmodinv($n);
+    #$x = ($x * $u) % $n;
+    #$z = $n-$n+1;
 
+    my $ECP = Math::Prime::Util::ECProjectivePoint->new($a, $b, $n, $x, $z);
+    my $fm = $n-$n+1;
+    my $i = 15;
+
+    for (my $q = 2; $q < $B1; $q *= 2) { $ECP->double(); }
     foreach my $q (@bprimes) {
       my $k = $q;
       if ($k < $sqrt_b1) {
@@ -1715,17 +1721,88 @@ sub ecm_factor {
         while ($k <= $kmin) { $k *= $q; }
       }
       $ECP->mul($k);
-      my $f = $ECP->f;
-      if ($f != 1) {
-        last if $f == $n;
-        push @factors, $f;
-        push @factors, int($n/$f);
-        croak "internal error in ecm" unless ($f * int($n/$f)) == $n;
-        warn "ECM found factors with B1 = $B1 in curve $curve\n";
-        return @factors;
+      $fm = ($fm * $ECP->x() ) % $n;
+      if ($i++ % 32 == 0) {
+        $f = Math::BigInt::bgcd($fm, $n);
+        last if $f != 1;
       }
-      last if $ECP->is_infinity;
     }
+    $f = Math::BigInt::bgcd($fm, $n);
+    next if $f == $n;
+
+    if ($f == 1 && $B2 > $B1) { # BEGIN STAGE 2
+      my $D = int(sqrt($B2/2));  $D++ if $D % 2;
+      my $one = $n - $n + 1;
+      my $g = $one;
+
+      my $S2P = $ECP->copy->normalize;
+      $f = $S2P->f;
+      if ($f != 1) {
+        next if $f == $n;
+        #warn "ECM S2 normalize f=$f\n" if $f != 1;
+        return _found_factor($f, $n, "ECM S2 B1=$B1 curve $curve");
+      }
+      my $S2x = $S2P->x;
+      my @nqx = ($n-$n, $S2x);
+
+      foreach my $i (2 .. 2*$D) {
+        my($x2, $z2);
+        if ($i % 2) {
+          ($x2, $z2) = $S2P->_add($nqx[($i+1)/2], $one, $nqx[($i-1)/2], $one, $S2x, $n);
+        } else {
+          ($x2, $z2) = $S2P->_double($nqx[$i/2], $one, $n);
+        }
+        $nqx[$i] = $x2;
+        #($f, $u, undef) = _extended_gcd($z2, $n);
+        $f = Math::BigInt::bgcd( $z2, $n );
+        last if $f != 1;
+        $u = $z2->copy->bmodinv($n);
+        $nqx[$i] = ($x2 * $u) % $n;
+      }
+      if ($f != 1) {
+        next if $f == $n;
+        #warn "ECM S2 1: B1 $B1 B2 $B2 curve $curve f=$f\n";
+        return _found_factor($f, $n, "ECM S2 B1=$B1 curve $curve", @factors);
+      }
+
+      $x = $nqx[2*$D-1];
+      my $m = 1;
+      while ($m < ($B2+$D)) {
+        if ($m != 1) {
+          my $oldx = $S2x;
+          my ($x1, $z1) = $S2P->_add($S2x, $one, $nqx[2*$D], $one, $x, $n);
+          $f = Math::BigInt::bgcd( $z1, $n );
+          last if $f != 1;
+          $u = $z1->copy->bmodinv($n);
+          $S2x = ($x1 * $u) % $n;
+          $x = $oldx;
+          last if $f != 1;
+        }
+        if ($m+$D > $B1) {
+          my @p = grep { $_ >= $m-$D && $_ <= $m+$D } @b2primes;
+          foreach my $i (@p) {
+            last if $i >= $m;
+            $g = ($g * ($S2x - $nqx[$m+$D-$i])) % $n;
+          }
+          foreach my $i (@p) {
+            next unless $i > $m;
+            next if is_prime($m+$m-$i);
+            $g = ($g * ($S2x - $nqx[$i-$m])) % $n;
+          }
+          $f = Math::BigInt::bgcd($g, $n);
+          #warn "ECM S2 3: found $f in stage 2\n" if $f != 1;
+          last if $f != 1;
+        }
+        $m += 2*$D;
+      }
+    } # END STAGE 2
+
+    next if $f == $n;
+    if ($f != 1) {
+      #warn "ECM found factors with B1 = $B1 in curve $curve\n";
+      return _found_factor($f, $n, "ECM B1=$B1 curve $curve", @factors);
+    }
+    # end of curve loop
   }
   push @factors, $n;
   @factors;

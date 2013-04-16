@@ -8,6 +8,7 @@
 #include "util.h"
 #include "sieve.h"
 #include "mulmod.h"
+#include "cache.h"
 
 /*
  * You need to remember to use UV for unsigned and IV for signed types that
@@ -623,7 +624,8 @@ int prho_factor(UV n, UV *factors, UV rounds)
 /* Pollard's P-1 */
 int pminus1_factor(UV n, UV *factors, UV B1, UV B2)
 {
-  UV q, f;
+  UV f;
+  UV q = 2;
   UV a = 2;
   UV savea = 2;
   UV saveq = 2;
