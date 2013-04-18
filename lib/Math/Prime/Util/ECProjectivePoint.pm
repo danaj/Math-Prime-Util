@@ -187,7 +187,7 @@ sub copy {
 __END__
 
 
-# ABSTRACT: Elliptic curve operations for affine points
+# ABSTRACT: Elliptic curve operations for projective points
 
 =pod
 
@@ -196,7 +196,7 @@ __END__
 
 =head1 NAME
 
-Math::Prime::Util::ECAffinePoint - Elliptic curve operations for affine points
+Math::Prime::Util::ECProjectivePoint - Elliptic curve operations for projective points
 
 
 =head1 VERSION
@@ -207,7 +207,7 @@ Version 0.26
 =head1 SYNOPSIS
 
   # Create a point on a curve (a,b,n) with coordinates 0,1
-  my $ECP = Math::Prime::Util::ECAffinePoint->new($a, $b, $n, 0, 1);
+  my $ECP = Math::Prime::Util::ECProjectivePoint->new($a, $b, $n, 0, 1);
 
   # scalar multiplication by k.
   $ECP->mul($k)
@@ -228,7 +228,7 @@ To write.
 
 =head2 new
 
-  $point = Math::Prime::Util::EllipticCurve->new(a, b);
+  $point = Math::Prime::Util::ECProjectivePoint->new(a, b);
 
 Returns a new curve defined by a and b.
 
@@ -242,9 +242,9 @@ Returns the C<a>, C<b>, or C<n> values that describe the curve.
 
 =head2 x
 
-=head2 y
+=head2 z
 
-Returns the C<x> or C<y> values that define the point on the curve.
+Returns the C<x> or C<z> values that define the point on the curve.
 
 =head2 f
 
@@ -254,6 +254,10 @@ Returns a possible factor found during EC multiplication.
 
 Takes another point on the same curve as an argument and adds it this point.
 
+=head2 double
+
+Double the current point on the curve.
+
 =head2 mul
 
 Takes an integer and performs scalar multiplication of the point.
@@ -262,6 +266,15 @@ Takes an integer and performs scalar multiplication of the point.
 
 Returns true if the point is (0,1), which is the point at infinity for
 the affine coordinates.
+
+=head2 copy
+
+Returns a copy of the point.
+
+=head2 normalize
+
+Performs an extended gcd operation to make C<z=1>.  If a factor of C<n> is
+found it is put in C<f>.
 
 
 =head1 SEE ALSO

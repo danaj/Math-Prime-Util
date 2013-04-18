@@ -1815,7 +1815,7 @@ sub primality_proof_lucas {
 
   # Since this can take a very long time with a composite, try some easy cuts
   return @composite if !defined $n || $n < 2;
-  return ($n,[$n]) if $n < 4;
+  return (2, [$n]) if $n < 4;
   return @composite if miller_rabin($n,2,15,325) == 0;
 
   if (!defined $Math::BigInt::VERSION) {
@@ -1843,12 +1843,12 @@ sub primality_proof_lucas {
     # Verify each factor and add to proof
     my @fac_proofs;
     foreach my $f (@factors) {
-      my @fproof;
-      if (Math::Prime::Util::is_provable_prime($f, \@fproof) != 2) {
+      my ($isp, $fproof) = Math::Prime::Util::is_provable_prime_with_cert($f);
+      if ($isp != 2) {
         carp "could not prove primality of $n.\n";
         return (1, []);
       }
-      push @fac_proofs, (scalar @fproof == 1) ? @fproof : [@fproof];
+      push @fac_proofs, (scalar @$fproof == 1) ? $fproof->[0] : $fproof;
     }
     my @proof = ("$n", "Pratt", [@fac_proofs], $a);
     return (2, [@proof]);
@@ -1856,13 +1856,15 @@ sub primality_proof_lucas {
   return @composite;
 }
 
+use Data::Dump qw/dump/;
 sub primality_proof_bls75 {
   my ($n) = shift;
   my @composite = (0, []);
 
   # Since this can take a very long time with a composite, try some easy cuts
   return @composite if !defined $n || $n < 2;
-  return ($n,[$n]) if $n < 4;
+  return (2, [$n]) if $n < 4;
+  return @composite if ($n & 1) == 0;
   return @composite if miller_rabin($n,2,15,325) == 0;
 
   if (!defined $Math::BigInt::VERSION) {
@@ -1874,9 +1876,11 @@ sub primality_proof_bls75 {
   my $nm1 = $n-1;
   my $A = $nm1->copy->bone;   # factored part
   my $B = $nm1->copy;         # unfactored part
-  my @factors;
+  my @factors = (2);
+  croak "BLS75 error: n-1 not even" unless $nm1->is_even();
   while ($B->is_even) { $B /= 2; $A *= 2; }
   foreach my $f (3,5,7,11,13,17,19,23,29,31,37,41,43,47,53,59,61,67,71,73,79) {
+    last if $f*$f > $B;
     if (($B % $f) == 0) {
       push @factors, $f;
       do { $B /= $f;  $A *= $f; } while (($B % $f) == 0);
@@ -1884,7 +1888,9 @@ sub primality_proof_bls75 {
   }
   my @nstack;
   # nstack should only hold composites
-  if (Math::Prime::Util::is_prob_prime($B)) {
+  if ($B == 1) {
+    # Completely factored.  Nothing.
+  } elsif (Math::Prime::Util::is_prob_prime($B)) {
     push @factors, $B;
     $A *= $B;  $B /= $B;   # completely factored already
   } else {
@@ -1925,8 +1931,7 @@ sub primality_proof_bls75 {
     }
   }
   { # remove duplicate factors and make a sorted array of bigints
-    my %uf;
-    undef @uf{@factors};
+    my %uf = map { $_ => 1 } @factors;
     @factors = sort {$a<=>$b} map { Math::BigInt->new("$_") } keys %uf;
   }
   # Did we factor enough?
@@ -1955,14 +1960,14 @@ sub primality_proof_bls75 {
       last;
     }
     return @composite unless $success;
-    my @fproof;
-    if (Math::Prime::Util::is_provable_prime($f, \@fproof) != 2) {
+    my ($isp, $fproof) = Math::Prime::Util::is_provable_prime_with_cert($f);
+    if ($isp != 2) {
       carp "could not prove primality of $n.\n";
       return (1, []);
     }
-    push @fac_proofs, (scalar @fproof == 1) ? @fproof : [@fproof];
+    push @fac_proofs, (scalar @$fproof == 1) ? $fproof->[0] : $fproof;
   }
-  my @proof = ("$n", "n-1", [@fac_proofs], [@as]);
+  my @proof = ($n, "n-1", [@fac_proofs], [@as]);
   return (2, [@proof]);
 }
 
@@ -2625,6 +2630,20 @@ Takes a positive number as input, and returns 1 if the input can be proven
 prime using the AKS primality test.  This code is included for completeness
 and as an example, but is impractically slow.
 
+=head2 primality_proof_lucas
+
+Given a positive number C<n> as input, performs a full factorization of C<n-1>,
+then attempts a Lucas test on the result.  A Pratt-style certificate is
+returned.  Note that if the input is composite, this will take a B<very> long
+time to return.
+
+=head2 primality_proof_bls75
+
+Given a positive number C<n> as input, performs a partial factorization of
+C<n-1>, then attempts a proof using theorem 5 of Brillhart, Lehmer, and
+Selfridge's 1975 paper.  This can take a long time to return if given a
+composite, though it should not be anywhere near as long as the Lucas test.
+
 
 =head1 UTILITY FUNCTIONS
 
@@ -2729,6 +2748,19 @@ is Pollard's C<p-1> method, using two stages.  The default with no B1 or B2
 given is to run with increasing B1 factors.
 This method can rapidly find a factor C<p> of C<n> where C<p-1> is smooth
 (i.e. C<p-1> has no large factors).
+
+=head2 ecm_factor
+
+  my @factors = ecm_factor($n);
+  my @factors = ecm_factor($n, 1000);           # B1 = B2 = 1000, curves = 10
+  my @factors = ecm_factor($n, 1000, 5000, 10); # Set B1, B2, and ncurves
+
+Given a positive number input, tries to discover a factor using ECM.  The
+resulting array will contain either two factors (it succeeded) or the original
+number (no factor was found).  In either case, multiplying @factors yields the
+original input.  The B1 and B2 smoothness factors for stage 1 and stage 2
+respectively may be supplied, as can be number of curves to try.
+
 
 
 

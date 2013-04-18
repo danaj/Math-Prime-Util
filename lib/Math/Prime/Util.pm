@@ -15,7 +15,7 @@ use base qw( Exporter );
 our @EXPORT_OK =
   qw( prime_get_config prime_set_config
       prime_precalc prime_memfree
-      is_prime is_prob_prime is_provable_prime
+      is_prime is_prob_prime is_provable_prime is_provable_prime_with_cert
       prime_certificate verify_prime
       is_strong_pseudoprime is_strong_lucas_pseudoprime
       is_aks_prime
@@ -26,7 +26,7 @@ our @EXPORT_OK =
       prime_count_lower prime_count_upper prime_count_approx
       nth_prime nth_prime_lower nth_prime_upper nth_prime_approx
       random_prime random_ndigit_prime random_nbit_prime
-      random_strong_prime random_maurer_prime
+      random_strong_prime random_maurer_prime random_maurer_prime_with_cert
       primorial pn_primorial consecutive_integer_lcm
       factor all_factors
       moebius mertens euler_phi jordan_totient exp_mangoldt
@@ -834,10 +834,21 @@ sub primes {
   }
 
   sub random_maurer_prime {
+    my ($n, $cert) = random_maurer_prime_with_cert(@_);
+    croak "maurer prime $n failed certificate verification!"
+          unless verify_prime(@$cert);
+    return $n;
+  }
+
+  sub random_maurer_prime_with_cert {
     my($k) = @_;
     _validate_positive_integer($k, 2);
+    my @cert;
     if ($] < 5.008 && $_Config{'maxbits'} > 32) {
-      return random_nbit_prime($k) if $k <= 49;
+      if ($k <= 49) {
+        my $n = random_nbit_prime($k);
+        return ($n, [$n]);
+      }
       croak "Random Maurer not supported on old Perl";
     }
 
@@ -846,7 +857,12 @@ sub primes {
     # returning 2.  This should be reasonably fast to ~128 bits with MPU::GMP.
     my $p0 = $_Config{'maxbits'};
 
-    return random_nbit_prime($k) if $k <= $p0;
+    if ($k <= $p0) {
+      my $n = random_nbit_prime($k);
+      my ($isp, $cert) = is_provable_prime_with_cert($n);
+      croak "small nbit prime could not be proven" if $isp != 2;
+      return ($n, $cert);
+    }
 
     if (!defined $Math::BigInt::VERSION) {
       eval { require Math::BigInt; Math::BigInt->import(try=>'GMP,Pari'); 1; }
@@ -877,7 +893,7 @@ sub primes {
     }
 
     # I've seen +0, +1, and +2 here.  Maurer uses +0.  Menezes uses +1.
-    my $q = random_maurer_prime( ($r * $k)->bfloor + 1 );
+    my ($q, $certref) = random_maurer_prime_with_cert( ($r * $k)->bfloor + 1 );
     $q = Math::BigInt->new("$q") unless ref($q) eq 'Math::BigInt';
     my $I = Math::BigInt->new(2)->bpow($k-2)->bdiv($q)->bfloor->as_int();
     print "B = $B  r = $r  k = $k  q = $q  I = $I\n" if $verbose && $verbose != 3;
@@ -955,7 +971,15 @@ sub primes {
         #  2) make history by finding the first known BPSW pseudo-prime
         croak "Maurer prime $n=2*$R*$q+1 failed BPSW" unless is_prob_prime($n);
 
-        return $n;
+        # Build up cert, knowing n-1 = 2*q*R, q > sqrt(n).
+        # We'll need to find the right a value for the factor 2.
+        foreach my $f2a (2 .. 200) {
+          $a = Math::BigInt->new($f2a);
+          next unless $a->copy->bmodpow($n-1, $n) == 1;
+          next unless Math::BigInt::bgcd($a->copy->bmodpow(($n-1)/2, $n)->bsub(1), $n) == 1;
+          @cert = ("$n", "n-1", [2, [@$certref]], [$f2a, $try_a]);
+          return ($n, \@cert);
+        }
       }
       # Didn't pass the selected a values.  Try another R.
     }
@@ -1600,46 +1624,51 @@ sub is_prob_prime {
   return ($n <= 18446744073709551615)  ?  2  :  1;
 }
 
-
+# Return just the non-cert portion.
 sub is_provable_prime {
-  my($n, $ref_proof) = @_;
+  my($n) = @_;
   return 0 if defined $n && $n < 2;
   _validate_positive_integer($n);
 
-  if (defined $ref_proof) {
-    croak "Second argument must be an array ref" if ref($ref_proof) ne 'ARRAY';
-    @$ref_proof = ();
-  }
+  return _XS_is_prime($n) if ref($n) ne 'Math::BigInt' && $n <= $_XS_MAXVAL;
+  return Math::Prime::Util::GMP::is_provable_prime($n)
+         if $_HAVE_GMP && defined &Math::Prime::Util::GMP::is_provable_prime;
+
+  my ($is_prime, $cert) = is_provable_prime_with_cert($n);
+  return $is_prime;
+}
+
+# Return just the cert portion.
+sub prime_certificate {
+  my($n) = @_;
+  my ($is_prime, $cert) = is_provable_prime_with_cert($n);
+  return @$cert;
+}
+
+
+sub is_provable_prime_with_cert {
+  my($n) = @_;
+  return 0 if defined $n && $n < 2;
+  _validate_positive_integer($n);
 
   # Set to 0 if you want the proof to go down to 11.
   if (1) {
-    if (defined $ref_proof) {
-      if (ref($n) ne 'Math::BigInt' && $n <= $_XS_MAXVAL) {
-        my $isp = _XS_is_prime($n);
-        @$ref_proof = ($n) if $isp == 2;
-        return $isp;
-      }
-      if ($_HAVE_GMP && defined &Math::Prime::Util::GMP::is_provable_prime_with_cert) {
-        my($isp, $pref) = Math::Prime::Util::GMP::is_provable_prime_with_cert($n);
-        @$ref_proof = @$pref;
-        return $isp;
-      }
-    } else {
-      return _XS_is_prime($n) if ref($n) ne 'Math::BigInt' && $n <= $_XS_MAXVAL;
-      return Math::Prime::Util::GMP::is_provable_prime($n)
-            if $_HAVE_GMP && defined &Math::Prime::Util::GMP::is_provable_prime;
+    if (ref($n) ne 'Math::BigInt' && $n <= $_XS_MAXVAL) {
+      my $isp = _XS_is_prime($n);
+      return ($isp == 2) ? ($isp, [$n]) : ($isp, []);
+    }
+    if ($_HAVE_GMP && defined &Math::Prime::Util::GMP::is_provable_prime_with_cert) {
+      return Math::Prime::Util::GMP::is_provable_prime_with_cert($n);
     }
 
-    my $is_prob_prime = is_prob_prime($n);
-    if ($is_prob_prime != 1) {
-      @$ref_proof = ($n) if defined $ref_proof && $is_prob_prime == 2;
-      return $is_prob_prime;
+    my $isp = is_prob_prime($n);
+    if ($isp != 1) {
+      return ($isp == 2) ? ($isp, [$n]) : ($isp, []);
     }
   } else {
     if ($n <= 10) {
       if ($n==2||$n==3||$n==5||$n==7) {
-        @$ref_proof = ($n) if defined $ref_proof;
-        return 2;
+        return (2, [$n]);
       }
       return 0;
     }
@@ -1648,31 +1677,22 @@ sub is_provable_prime {
   # Choice of methods for proof:
   #   ECPP         needs a fair bit of programming work
   #   APRCL        needs a lot of programming work
-  #   BLS75        Requires factoring n-1 to (n/2)^1/3
-  #   Pocklington  Requires factoring n-1 to n^1/2
-  #   Lucas        Easy, required complete factoring of n-1
+  #   BLS75 combo  Corollary 11 of BLS75.  Trial factor n-1 and n+1 to B, find
+  #                factors F1 of n-1 and F2 of n+1.  Quit when:
+  #                B > (N/(F1*F1*(F2/2)))^1/3 or B > (N/((F1/2)*F2*F2))^1/3
+  #   BLS75 n+1    Requires factoring n+1 to (n/2)^1/3 (theorem 19)
+  #   BLS75 n-1    Requires factoring n-1 to (n/2)^1/3 (theorem 5 or 7)
+  #   Pocklington  Requires factoring n-1 to n^1/2 (BLS75 theorem 4)
+  #   Lucas        Easy, requires factoring of n-1 (BLS75 theorem 1)
   #   AKS          horribly slow
   # See http://primes.utm.edu/prove/merged.html or other sources.
 
   #my ($isp, $pref) = Math::Prime::Util::PP::primality_proof_lucas($n);
   my ($isp, $pref) = Math::Prime::Util::PP::primality_proof_bls75($n);
-
-  @$ref_proof = @$pref if defined $ref_proof;
   carp "proved $n is not prime\n" if !$isp;
-  return $isp;
+  return ($isp, $pref);
 }
 
-
-sub prime_certificate {
-  my($n) = @_;
-  return () if defined $n && $n < 2;
-  _validate_positive_integer($n);
-
-  my @cert;
-  my $is_prime = is_provable_prime($n, \@cert);
-  return () unless $is_prime == 2;
-  return @cert;
-}
 
 sub verify_prime {
   my @pdata = @_;
@@ -1680,6 +1700,9 @@ sub verify_prime {
 
   # Empty input = no certificate = not prime
   return 0 if scalar @pdata == 0;
+
+  # Handle case of being handed a reference to the certificate.
+  @pdata = @{$pdata[0]} if scalar @pdata == 1 && ref($pdata[0]) eq 'ARRAY';
 
   my $n = shift @pdata;
   if (length($n) == 1) {
@@ -1804,7 +1827,7 @@ sub verify_prime {
         $f = Math::BigInt->new("$farray->[0]");
         return 0 unless verify_prime(@$farray);
       } else {
-        $f = $farray;
+        $f = Math::BigInt->new("$farray");
         return 0 unless verify_prime($f);
       }
       next if defined $factors_seen{"$f"};   # repeated factors
@@ -1821,7 +1844,13 @@ sub verify_prime {
       $factors_seen{"$f"} = 1;
     }
     croak "BLS75 error: $A * $B != $nm1" unless $A*$B == $nm1;
-    croak "BLS75 error: $A not even" unless $A->is_even();
+
+    # The theorems state that A is the even portion, so we are requiring 2 be
+    # listed as a factor.
+    if ($A->is_odd) {
+      print "primality fail: 2 must be included as a factor" if $verbose;
+      return 0;
+    }
 
     # TODO: consider: if B=1 and a single a is given, then Lucas test.
 
@@ -2777,18 +2806,16 @@ exist, there is a weak conjecture (Martin) that none exist under 10000 digits.
 
 Takes a positive number as input and returns back either 0 (composite),
 2 (definitely prime), or 1 (probably prime).  This gives it the same return
-values as C<is_prime> and C<is_prob_prime>.
+values as L</is_prime> and L</is_prob_prime>.
 
-The current implementation uses a Lucas test requiring a complete factorization
-of C<n-1>, which may not be possible in a reasonable amount of time.  The GMP
-version uses the BLS (Brillhart-Lehmer-Selfridge) method, requiring C<n-1> to
-be factored to the cube root of C<n>, which is more likely to succeed and will
-usually take less time, but can still fail.  Hence you should always test that
-the result is C<2> to ensure the prime is proven.
+The current implementation of both the Perl and GMP proofs is using theorem 5
+of BLS75 (Brillhart-Lehmer-Selfridge), requiring C<n-1> to be factored to
+C<(n/2)^(1/3))>.  This takes less time than factoring to C<n^0.5> as required
+by the generalized Pocklington test or C<n-1> for the Lucas test.  However it
+is possible a factor cannot be found in a reasonable amount of time, so you
+should always test that the result in C<2> to ensure it was proven.
 
-An optional second argument may be given, which must be an array reference,
-which will be filled in with a primality certificate.  Normally this is used
-via the function L</prime_certificate> below.
+A later implementation will use an ECPP test for larger inputs.
 
 
 =head2 prime_certificate
@@ -2800,6 +2827,14 @@ Given a positive integer C<n> as input, returns either an empty array (we could
 not prove C<n> prime) or an array representing a certificate of primality.
 This may be examined or given to L</verify_prime> for verification.  The latter
 function contains the description of the format.
+
+
+=head2 is_provable_prime_with_cert
+
+Given a positive integer as input, returns a two element array containing the
+result of L</is_provable_prime> and an array reference containing the primality
+certificate like L</prime_certificate>.  The certificate will be an empty
+array reference if the result is not 2 (definitely prime).
 
 
 =head2 verify_prime
@@ -3234,6 +3269,7 @@ Similar to L</random_nbit_prime>, the result will be a BigInt if the
 number of bits is greater than the native bit size.  For better performance
 with large bit sizes, install L<Math::Prime::Util::GMP>.
 
+
 =head2 random_maurer_prime
 
   my $bigprime = random_maurer_prime(512);
@@ -3246,6 +3282,23 @@ with large bit sizes, install L<Math::Prime::Util::GMP>.
 
 The differences between this function and that in L<Crypt::Primes> are
 described in the L</"SEE ALSO"> section.
+
+Internally this additionally runs the BPSW probable prime test on every
+partial result, and constructs a primality certificate for the final
+result, which is verified.  These add additional checks that the resulting
+value has been properly constructed.
+
+
+=head2 random_maurer_prime_with_cert
+
+  my($n, $cert_ref) = random_maurer_prime_with_cert(512)
+
+As with L</random_maurer_prime>, but returns a two-element array containing
+the n-bit provable prime along with a primality certificate.  The certificate
+is the same as produced by L</prime_certificate> or
+L</is_provable_prime_with_cert>, and can be parsed by L</verify_prime> or
+any other software that can parse the certificate (the "n-1" form is described
+in detail in L</verify_prime>).
 
 
 
