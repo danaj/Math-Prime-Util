@@ -1856,7 +1856,6 @@ sub primality_proof_lucas {
   return @composite;
 }
 
-use Data::Dump qw/dump/;
 sub primality_proof_bls75 {
   my ($n) = shift;
   my @composite = (0, []);

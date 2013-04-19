@@ -1902,8 +1902,8 @@ sub verify_prime {
       warn "verify_prime: incorrect AGKM format\n";
       return 0;
     }
-    my ($ni, $a, $b, $m, $q, $P);
-    $q = $n;
+    my ($ni, $a, $b, $m, $P);
+    my ($qval, $q) = ($n, $n);
     foreach my $block (@pdata) {
       if (ref($block) ne 'ARRAY' || scalar @$block != 6) {
         warn "verify_prime: incorrect AGKM block format\n";
@@ -1913,7 +1913,8 @@ sub verify_prime {
         warn "verify_prime: incorrect AGKM block format: block n != q\n";
         return 0;
       }
-      ($ni, $a, $b, $m, $q, $P) = @$block;
+      ($ni, $a, $b, $m, $qval, $P) = @$block;
+      $q = ref($qval) eq 'ARRAY' ? $qval->[0] : $qval;
       if (ref($P) ne 'ARRAY' || scalar @$P != 2) {
         warn "verify_prime: incorrect AGKM block point format\n";
         return 0;
@@ -1953,8 +1954,8 @@ sub verify_prime {
         return 0;
       }
     }
-    # Check primality of last q using BPSW
-    return 0 unless verify_prime($q);
+    # Check primality of last q
+    return 0 unless verify_prime($qval);
 
     print "primality success: $n by A-K-G-M elliptic curve\n" if $verbose > 1;
     return 1;

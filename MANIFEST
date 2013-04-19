@@ -58,6 +58,7 @@ examples/test-bpsw.pl
 examples/test-factor-gnufactor.pl
 examples/test-primes-script.pl
 examples/test-primes-script2.pl
+examples/verify-gmp-eccp-cert.pl
 bin/primes.pl
 bin/factor.pl
 t/01-load.t

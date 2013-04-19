@@ -33,14 +33,7 @@
 
 - Implement S2 calculation for LMO prime count.
 
-- Add primality proof output to is_provable_prime.
-
-- Fixup EllipticCurve so we define points and a curve.
-
-- Change is_provable_prime from Lucas to BLS75.
-
-- Use EllipticCurve to make ecm_factor.
-
-- add recursive AGKM format.
-
-- Can we easily provide a certificate for Maurer primes?
+- Add Sage output style verification.  Looks like NZMATH has ECPP but doesn't
+  produce a certificate.  Adding a Primo parser (see WraithX's code) would
+  be awesome, but may be a lot more work.  It would still be nice to have yet
+  another independent codebase for this.
