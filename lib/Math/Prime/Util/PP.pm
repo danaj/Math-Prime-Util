@@ -1152,7 +1152,7 @@ my @_fsublist = (
   sub { ecm_factor    (shift,    10_000,  50_000, 10) },
   sub { holf_factor   (shift, 256*1024, $_holf_r); $_holf_r += 256*1024; },
   sub { pminus1_factor(shift,20_000_000); },
-  sub { ecm_factor    (shift,   100_000, 400_000, 10) },
+  sub { ecm_factor    (shift,   100_000, 800_000, 10) },
   sub { holf_factor   (shift, 512*1024, $_holf_r); $_holf_r += 512*1024; },
   sub { pbrent_factor (shift, 2048*1024, 13) },
   sub { holf_factor   (shift, 2048*1024, $_holf_r); $_holf_r += 2048*1024; },
@@ -1646,7 +1646,7 @@ sub ecm_factor {
     return @factors;
   }
 
-  $B2 = 1*$B1 unless defined $B2;
+  $B2 = 10*$B1 unless defined $B2;
   my $sqrt_b1 = int(sqrt($B1)+1);
 
   # Affine code.  About 3x slower than the projective, and no stage 2.
@@ -1690,8 +1690,7 @@ sub ecm_factor {
   my $irandf = Math::Prime::Util::_get_rand_func();
 
   foreach my $curve (1 .. $ncurves) {
-    my $sigma;
-    do { $sigma = $irandf->($n-1) } while ($sigma <= 5);
+    my $sigma = $irandf->($n-1-6) + 6;
     my ($u, $v) = ( ($sigma*$sigma - 5) % $n, (4 * $sigma) % $n );
     my ($x, $z) = ( ($u*$u*$u) % $n,  ($v*$v*$v) % $n );
     my $b = (4 * $x * $v) % $n;
@@ -1702,14 +1701,8 @@ sub ecm_factor {
     return _found_factor($f,$n, "ECM B1=$B1 curve $curve", @factors) if $f != 1;
     $u = $b->copy->bmodinv($n);
     $a = (($a*$u) - 2) % $n;
-    $b = $a+2;
-    $b = ( (($b % 2) == 0) ? $b  : $b+$n ) >> 1;
-    $b = ( (($b % 2) == 0) ? $b  : $b+$n ) >> 1;
-    #$u = $z->copy->bmodinv($n);
-    #$x = ($x * $u) % $n;
-    #$z = $n-$n+1;
 
-    my $ECP = Math::Prime::Util::ECProjectivePoint->new($a, $b, $n, $x, $z);
+    my $ECP = Math::Prime::Util::ECProjectivePoint->new($a, $n, $x, $z);
     my $fm = $n-$n+1;
     my $i = 15;
 
@@ -1743,14 +1736,15 @@ sub ecm_factor {
         return _found_factor($f, $n, "ECM S2 B1=$B1 curve $curve");
       }
       my $S2x = $S2P->x;
+      my $S2d = $S2P->d;
       my @nqx = ($n-$n, $S2x);
 
       foreach my $i (2 .. 2*$D) {
         my($x2, $z2);
         if ($i % 2) {
-          ($x2, $z2) = $S2P->_add($nqx[($i+1)/2], $one, $nqx[($i-1)/2], $one, $S2x, $n);
+          ($x2, $z2) = Math::Prime::Util::ECProjectivePoint::_addx($nqx[($i-1)/2], $nqx[($i+1)/2], $S2x, $n);
         } else {
-          ($x2, $z2) = $S2P->_double($nqx[$i/2], $one, $n);
+          ($x2, $z2) = Math::Prime::Util::ECProjectivePoint::_double($nqx[$i/2], $one, $n, $S2d);
         }
         $nqx[$i] = $x2;
         #($f, $u, undef) = _extended_gcd($z2, $n);
@@ -1770,7 +1764,7 @@ sub ecm_factor {
       while ($m < ($B2+$D)) {
         if ($m != 1) {
           my $oldx = $S2x;
-          my ($x1, $z1) = $S2P->_add($S2x, $one, $nqx[2*$D], $one, $x, $n);
+          my ($x1, $z1) = Math::Prime::Util::ECProjectivePoint::_addx($nqx[2*$D], $S2x, $x, $n);
           $f = Math::BigInt::bgcd( $z1, $n );
           last if $f != 1;
           $u = $z1->copy->bmodinv($n);

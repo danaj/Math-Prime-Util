@@ -17,20 +17,18 @@ BEGIN {
 # in projective coordinates.
 
 sub new {
-  my ($class, $a, $b, $n, $x, $z) = @_;
-  $a = Math::BigInt->new("$a") unless ref($a) eq 'Math::BigInt';
-  $b = Math::BigInt->new("$b") unless ref($b) eq 'Math::BigInt';
+  my ($class, $c, $n, $x, $z) = @_;
+  $c = Math::BigInt->new("$c") unless ref($c) eq 'Math::BigInt';
   $n = Math::BigInt->new("$n") unless ref($n) eq 'Math::BigInt';
   $x = Math::BigInt->new("$x") unless ref($x) eq 'Math::BigInt';
   $z = Math::BigInt->new("$z") unless ref($z) eq 'Math::BigInt';
 
   croak "n must be >= 2" unless $n >= 2;
-  $a->bmod($n);
-  $b->bmod($n);
+  $c->bmod($n);
 
   my $self = {
-    a => $a,
-    b => $b,
+    c => $c,
+    d => ($c + 2) >> 2,
     n => $n,
     x => $x,
     z => $z,
@@ -40,39 +38,39 @@ sub new {
   bless $self, $class;
   return $self;
 }
+ 
+sub _addx {
+  my ($x1, $x2, $xin, $n) = @_;
 
-sub _add {
-  my ($self, $x2, $z2, $x1, $z1, $xin, $n) = @_;
+  my $u = ($x2 - 1) * ($x1 + 1);
+  my $v = ($x2 + 1) * ($x1 - 1);
 
-  my $u = ( ($x2 - $z2) * ($x1 + $z1) ) % $n;
-  my $v = ( ($x2 + $z2) * ($x1 - $z1) ) % $n;
+  my $upv2 = ($u + $v) ** 2;
+  my $umv2 = ($u - $v) ** 2;
 
-  my $puv = $u + $v;
-  my $muv = $u - $v;
-
-  return ( ($puv*$puv) % $n, ($muv*$muv * $xin) % $n );
+  return ( $upv2 % $n, ($umv2*$xin) % $n );
 }
 
 sub _add3 {
-  my ($self, $x1, $z1, $x2, $z2, $xin, $zin, $n) = @_;
+  my ($x1, $z1, $x2, $z2, $xin, $zin, $n) = @_;
 
-  my $u = (($x2 - $z2) * ($x1 + $z1) ) % $n;
-  my $v = (($x2 + $z2) * ($x1 - $z1) ) % $n;
+  my $u = ($x2 - $z2) * ($x1 + $z1);
+  my $v = ($x2 + $z2) * ($x1 - $z1);
 
-  my $upv2 = (($u+$v) * ($u+$v)) % $n;
-  my $umv2 = (($u-$v) * ($u-$v)) % $n;
+  my $upv2 = ($u + $v) ** 2;
+  my $umv2 = ($u - $v) ** 2;
 
   return ( ($upv2*$zin) % $n, ($umv2*$xin) % $n );
 }
 
 sub _double {
-  my ($self, $x, $z, $n) = @_;
+  my ($x, $z, $n, $d) = @_;
 
-  my $u = $x + $z;   $u = ($u * $u) % $n;
-  my $v = $x - $z;   $v = ($v * $v) % $n;
+  my $u = ($x + $z) ** 2;
+  my $v = ($x - $z) ** 2;
   my $w = $u - $v;
-
-  return ( ($u*$v)%$n , ($w*($v+$w*$self->{'b'}))%$n );
+  my $t = $d * $w + $v;
+  return ( ($u * $v) % $n  ,  ($w * $t) % $n );
 }
 
 sub mul {
@@ -80,6 +78,7 @@ sub mul {
   my $x = $self->{'x'};
   my $z = $self->{'z'};
   my $n = $self->{'n'};
+  my $d = $self->{'d'};
 
   my ($x1, $x2, $z1, $z2);
 
@@ -87,28 +86,28 @@ sub mul {
   my $l = -1;
   while ($r != 1) { $r >>= 1; $l++ }
   if ($k & (1 << $l)) {
-    ($x2, $z2) = $self->_double($x, $z, $n);
-    ($x1, $z1) = $self->_add3($x2, $z2, $x, $z, $x, $z, $n);
-    ($x2, $z2) = $self->_double($x2, $z2, $n);
+    ($x2, $z2) = _double($x, $z, $n, $d);
+    ($x1, $z1) = _add3($x2, $z2, $x, $z, $x, $z, $n);
+    ($x2, $z2) = _double($x2, $z2, $n, $d);
   } else {
-    ($x1, $z1) = $self->_double($x, $z, $n);
-    ($x2, $z2) = $self->_add3($x, $z, $x1, $z1, $x, $z, $n);
+    ($x1, $z1) = _double($x, $z, $n, $d);
+    ($x2, $z2) = _add3($x, $z, $x1, $z1, $x, $z, $n);
   }
   $l--;
   while ($l >= 1) {
     if ($k & (1 << $l)) {
-      ($x1, $z1) = $self->_add3($x1, $z1, $x2, $z2, $x, $z, $n);
-      ($x2, $z2) = $self->_double($x2, $z2, $n);
+      ($x1, $z1) = _add3($x1, $z1, $x2, $z2, $x, $z, $n);
+      ($x2, $z2) = _double($x2, $z2, $n, $d);
     } else {
-      ($x2, $z2) = $self->_add3($x2, $z2, $x1, $z1, $x, $z, $n);
-      ($x1, $z1) = $self->_double($x1, $z1, $n);
+      ($x2, $z2) = _add3($x2, $z2, $x1, $z1, $x, $z, $n);
+      ($x1, $z1) = _double($x1, $z1, $n, $d);
     }
     $l--;
   }
   if ($k & 1) {
-    ($x, $z) = $self->_double($x2, $z2, $n);
+    ($x, $z) = _double($x2, $z2, $n, $d);
   } else {
-    ($x, $z) = $self->_add3($x2, $z2, $x1, $z1, $x, $z, $n);
+    ($x, $z) = _add3($x2, $z2, $x1, $z1, $x, $z, $n);
   }
 
   $self->{'x'} = $x;
@@ -121,20 +120,19 @@ sub add {
   croak "add takes a EC point"
     unless ref($other) eq 'Math::Prime::Util::ECProjectivePoint';
   croak "second point is not on the same curve"
-    unless $self->{'a'} == $other->{'a'} &&
-           $self->{'b'} == $other->{'b'} &&
+    unless $self->{'c'} == $other->{'c'} &&
            $self->{'n'} == $other->{'n'};
 
-  ($self->{'x'}, $self->{'z'}) = $self->_add3($self->{'x'}, $self->{'z'},
-                                              $other->{'x'}, $other->{'z'},
-                                              $self->{'x'}, $self->{'z'},
-                                              $self->{'n'});
+  ($self->{'x'}, $self->{'z'}) = _add3($self->{'x'}, $self->{'z'},
+                                       $other->{'x'}, $other->{'z'},
+                                       $self->{'x'}, $self->{'z'},
+                                       $self->{'n'});
   return $self;
 }
 
 sub double {
   my ($self) = @_;
-  ($self->{'x'}, $self->{'z'}) = $self->_double($self->{'x'}, $self->{'z'}, $self->{'n'});
+  ($self->{'x'}, $self->{'z'}) = _double($self->{'x'}, $self->{'z'}, $self->{'n'}, $self->{'d'});
   return $self;
 }
 
@@ -164,8 +162,8 @@ sub normalize {
   return $self;
 }
 
-sub a { return shift->{'a'}; }
-sub b { return shift->{'b'}; }
+sub c { return shift->{'c'}; }
+sub d { return shift->{'d'}; }
 sub n { return shift->{'n'}; }
 sub x { return shift->{'x'}; }
 sub z { return shift->{'z'}; }
@@ -179,7 +177,7 @@ sub is_infinity {
 sub copy {
   my $self = shift;
   return Math::Prime::Util::ECProjectivePoint->new(
-    $self->{'a'}, $self->{'b'}, $self->{'n'}, $self->{'x'}, $self->{'z'});
+    $self->{'c'}, $self->{'n'}, $self->{'x'}, $self->{'z'});
 }
 
 1;
@@ -207,7 +205,7 @@ Version 0.26
 =head1 SYNOPSIS
 
   # Create a point on a curve (a,b,n) with coordinates 0,1
-  my $ECP = Math::Prime::Util::ECProjectivePoint->new($a, $b, $n, 0, 1);
+  my $ECP = Math::Prime::Util::ECProjectivePoint->new($c, $n, 0, 1);
 
   # scalar multiplication by k.
   $ECP->mul($k)
@@ -228,17 +226,19 @@ To write.
 
 =head2 new
 
-  $point = Math::Prime::Util::ECProjectivePoint->new(a, b);
+  $point = Math::Prime::Util::ECProjectivePoint->new(c, n, x, z);
 
-Returns a new curve defined by a and b.
+Returns a new point on the curve defined by the Montgomery parameter c.
 
-=head2 a
-
-=head2 b
+=head2 c
 
 =head2 n
 
-Returns the C<a>, C<b>, or C<n> values that describe the curve.
+Returns the C<c>, C<d>, or C<n> values that describe the curve.
+
+=head2 d
+
+Returns the precalculated value of C<int( (c + 2) / 4 )>.
 
 =head2 x
 
@@ -248,7 +248,7 @@ Returns the C<x> or C<z> values that define the point on the curve.
 
 =head2 f
 
-Returns a possible factor found during EC multiplication.
+Returns a possible factor found after L</normalize>.
 
 =head2 add
 
