@@ -2895,16 +2895,18 @@ A certificate is an array holding an C<n-cert>.  An C<n-cert> is one of:
 
   n,"AGKM",[ec-block],[ec-block],...
        An Elliptic Curve certificate.  We are given n, the method "AGKM"
-       or "ECPP", and a one or more 6-element blocks representing a
+       or "ECPP", and one or more 6-element blocks representing a
        standard ECPP or Atkin-Goldwasser-Kilian-Morain certificate.
-       The format of this n-cert is non-recursive so it can be easily
-       used for similar programs such as Sage and GMP-ECPP.
+       In its traditional form, it is non-recursive, with each q value
+       being proved by successive blocks (this makes it easy to use for
+       programs like Sage and GMP-ECPP).  A q value is also allowed to
+       be an n-cert, which allows an alternative proof for the last q.
        Every ec-block has 6 elements:
          N   the N value this block proves prime if q is prime
          a   value describing the elliptic curve to be used
          b   value describing the elliptic curve to be used
          m   order of the curve
-         q   a probable prime > (N^1/4+1)^2
+         q   a probable prime > (N^1/4+1)^2 (may be an n-cert)
          P   a point [x,y] on the curve (affine coordinates)
        The certificate passes if:
          - the final q can be proved with BPSW.

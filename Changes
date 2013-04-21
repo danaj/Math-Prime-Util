@@ -1,6 +1,6 @@
 Revision history for Perl extension Math::Prime::Util.
 
-0.26 xx April 2013
+0.26 21 April 2013
 
     - Pure Perl factoring:
         - real p-1 -- much faster and more effective
@@ -14,7 +14,7 @@ Revision history for Perl extension Math::Prime::Util.
         verify_prime       checks a primality certificate.
 
     - Pure perl primality proof now uses BLS75 instead of Lucas, so some
-      numbers will be much faster.  n-1 only needs factoring to (n/2)^1/3.
+      numbers will be much faster [n-1 only needs factoring to (n/2)^1/3].
 
     - Math::Prime::Util::ECAffinePoint and ECProjectivePoint modules for
       dealing with elliptic curves.
