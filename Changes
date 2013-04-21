@@ -16,7 +16,8 @@ Revision history for Perl extension Math::Prime::Util.
     - Pure perl primality proof now uses BLS75 instead of Lucas, so some
       numbers will be much faster.  n-1 only needs factoring to (n/2)^1/3.
 
-    - Math::Prime::Util::EllipticCurve module.
+    - Math::Prime::Util::ECAffinePoint and ECProjectivePoint modules for
+      dealing with elliptic curves.
 
 0.25 19 March 2013
 

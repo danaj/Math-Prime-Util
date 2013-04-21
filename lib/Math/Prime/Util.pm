@@ -1919,12 +1919,19 @@ sub verify_prime {
         warn "verify_prime: incorrect AGKM block point format\n";
         return 0;
       }
-      $ni = $n->bzero->badd($ni) unless ref($ni) eq 'Math::BigInt';
+      my($Px, $Py) = @$P;
+      $ni = $n->copy->bzero->badd("$ni") unless ref($ni) eq 'Math::BigInt';
+      $a  = $n->copy->bzero->badd("$a")  unless ref($a)  eq 'Math::BigInt';
+      $b  = $n->copy->bzero->badd("$b")  unless ref($b)  eq 'Math::BigInt';
+      $m  = $n->copy->bzero->badd("$m")  unless ref($m)  eq 'Math::BigInt';
+      $q  = $n->copy->bzero->badd("$q")  unless ref($q)  eq 'Math::BigInt';
+      $Px = $n->copy->bzero->badd("$Px") unless ref($Px) eq 'Math::BigInt';
+      $Py = $n->copy->bzero->badd("$Py") unless ref($Py) eq 'Math::BigInt';
       if (Math::BigInt::bgcd($ni, 6) != 1) {
         warn "verify_prime: AGKM block n '$ni' is divisible by 2 or 3\n";
         return 0;
       }
-      my $c = ($n-$n+4) * $a*$a*$a + ($n-$n+27)*$b*$b;
+      my $c = $a*$a*$a * 4 + $b*$b * 27;
       if (Math::BigInt::bgcd($c, $ni) != 1) {
         warn "verify_prime: AGKM block gcd 4a^3+27b^2,n incorrect\n";
         return 0;
@@ -1938,11 +1945,9 @@ sub verify_prime {
         eval { require Math::Prime::Util::ECAffinePoint; 1; }
         or do { croak "Cannot load Math::Prime::Util::ECAffinePoint"; };
       }
-      $m = Math::BigInt->new("$m") unless ref($m) eq 'Math::BigInt';
-      $q = Math::BigInt->new("$q") unless ref($q) eq 'Math::BigInt';
-      my $ECP = Math::Prime::Util::ECAffinePoint->new($a, $b, $ni, $P->[0], $P->[1]);
+      my $ECP = Math::Prime::Util::ECAffinePoint->new($a, $b, $ni, $Px, $Py);
       # Compute U = (m/q)P, check U != point at infinity
-      $ECP->mul( int($m/$q) );
+      $ECP->mul( $m->copy->bdiv($q)->as_int );
       if ($ECP->is_infinity) {
         warn "verify_prime: AGKM point does not multiply correctly.\n";
         return 0;

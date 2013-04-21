@@ -1218,9 +1218,14 @@ sub _found_factor {
   if ($f == 1 || $f == $n) {
     push @factors, $n;
   } else {
+    # Perl 5.6.2 needs things spelled out for it.
+    my $f2 = (ref($n) eq 'Math::BigInt') ? $n->copy->bdiv($f)->as_int
+                                         : int($n/$f);
     push @factors, $f;
-    push @factors, int($n/$f);
-    croak "internal error in $what" unless ($f * int($n/$f)) == $n;
+    push @factors, $f2;
+    croak "internal error in $what" unless $f * $f2 == $n;
+    # MPU::GMP prints this type of message if verbose, so do the same.
+    print "$what found factor $f\n" if Math::Prime::Util::prime_get_config()->{'verbose'} > 0;
   }
   @factors;
 }
