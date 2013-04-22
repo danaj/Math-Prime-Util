@@ -1122,16 +1122,17 @@ sub trial_factor {
   return @factors if $n < 4;
 
   my $limit = int( sqrt($n) + 0.001);
-  my $f = 3;
-  while ($f <= $limit) {
-    if ( ($n % $f) == 0) {
-      while ( ($n % $f) == 0) {
-        push @factors, $f;
-        $n = int($n/$f);
+  my $f = 7;
+  SEARCH: while ($f <= $limit) {
+    foreach my $finc (4, 2, 4, 2, 4, 6, 2, 6) {
+      if ( (($n % $f) == 0) && ($f <= $limit) ) {
+        do { push @factors, $f; $n = int($n/$f); } while (($n % $f) == 0);
+        $n = int($n->bstr) if ref($n) eq 'Math::BigInt' && $n <= ~0;
+        last SEARCH if $n == 1 || Math::Prime::Util::is_prob_prime($n);
+        $limit = int( sqrt($n) + 0.001);
       }
-      $limit = int( sqrt($n) + 0.001);
+      $f += $finc;
     }
-    $f += 2;
   }
   push @factors, $n  if $n > 1;
   @factors;
@@ -1139,8 +1140,6 @@ sub trial_factor {
 
 my $_holf_r;
 my @_fsublist = (
-  sub { my $n = shift; return ($n) unless $n < $_half_word;
-        holf_factor   ($n,      64*1024, $_holf_r); $_holf_r +=  64*1024; },
   sub { prho_factor   (shift,    8*1024, 3) },
   sub { pbrent_factor (shift,   32*1024, 1) },
   sub { pminus1_factor(shift,    10_000); },
@@ -1165,7 +1164,7 @@ sub factor {
   _validate_positive_integer($n);
   $n = $n->copy if ref($n) eq 'Math::BigInt';
 
-  return trial_factor($n) if $n < 100000;
+  return trial_factor($n) if $n < 1_000_000;
 
   my @factors = _basic_factor($n);
   return @factors if $n < 4;

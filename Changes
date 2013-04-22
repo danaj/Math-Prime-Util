@@ -1,5 +1,9 @@
 Revision history for Perl extension Math::Prime::Util.
 
+0.27 xx April 2013
+
+    - Speedup pure Perl factoring of small numbers.
+
 0.26 21 April 2013
 
     - Pure Perl factoring:
