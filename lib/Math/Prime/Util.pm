@@ -2911,7 +2911,7 @@ A certificate is an array holding an C<n-cert>.  An C<n-cert> is one of:
        The certificate passes if:
          - the final q can be proved with BPSW.
          - for each block:
-             - N is the same as the preceeding block's q
+             - N is the same as the preceding block's q
              - N is not divisible by 2 or 3
              - gcd( 4a^3 + 27b^2, N ) == 1;
              - q > (N^1/4+1)^2
