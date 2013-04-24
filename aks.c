@@ -90,7 +90,7 @@ static UV order(UV r, UV n, UV limit) {
   UV j;
   UV t = 1;
   for (j = 1; j <= limit; j++) {
-    t = (t * n) % r;
+    t = mulmod(t, n, r);
     if (t == 1)
       break;
   }
