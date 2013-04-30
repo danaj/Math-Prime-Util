@@ -1909,7 +1909,7 @@ sub verify_prime {
         warn "verify_prime: incorrect AGKM block format\n";
         return 0;
       }
-      if ($block->[0] != $q) {
+      if (Math::BigInt->new("$block->[0]") != Math::BigInt->new("$q")) {
         warn "verify_prime: incorrect AGKM block format: block n != q\n";
         return 0;
       }
