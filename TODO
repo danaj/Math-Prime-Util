@@ -33,7 +33,11 @@
 
 - Implement S2 calculation for LMO prime count.
 
-- Add Sage output style verification.  Looks like NZMATH has ECPP but doesn't
-  produce a certificate.  Adding a Primo parser (see WraithX's code) would
+- Adding a Primo certificate parser (see WraithX's code) would
   be awesome, but may be a lot more work.  It would still be nice to have yet
   another independent codebase for this.
+
+- Big features:
+   - LMO prime count
+   - ECPP primality proof
+   - QS factoring
