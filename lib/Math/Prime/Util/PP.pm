@@ -1875,12 +1875,22 @@ sub primality_proof_bls75 {
   my $B = $nm1->copy;         # unfactored part
   my @factors = (2);
   croak "BLS75 error: n-1 not even" unless $nm1->is_even();
-  while ($B->is_even) { $B /= 2; $A *= 2; }
-  foreach my $f (3,5,7,11,13,17,19,23,29,31,37,41,43,47,53,59,61,67,71,73,79) {
-    last if $f*$f > $B;
-    if (($B % $f) == 0) {
-      push @factors, $f;
-      do { $B /= $f;  $A *= $f; } while (($B % $f) == 0);
+  {
+    while ($B->is_even) { $B /= 2; $A *= 2; }
+    my $tlim = $_primes_small[-1];
+    if ($B > $tlim*$tlim) {
+      my @small_primes = @_primes_small[2 .. $#_primes_small];
+      foreach my $f (@small_primes) {
+        if (($B % $f) == 0) {
+          push @factors, $f;
+          do { $B /= $f;  $A *= $f; } while (($B % $f) == 0);
+          last if $B <= $tlim*$tlim;
+        }
+      }
+    }
+    if ($B <= $tlim*$tlim) {
+      push @factors, factor($B);
+      $A *= $B;  $B /= $B;
     }
   }
   my @nstack;
@@ -1893,10 +1903,15 @@ sub primality_proof_bls75 {
   } else {
     push @nstack, $B;
   }
+  my $using_theorem_7 = 0;
   while (@nstack) {
     my ($s,$r) = $B->copy->bdiv($A->copy->bmul(2));
     my $fpart = ($A+1) * (2*$A*$A + ($r-1) * $A + 1);
     last if $n < $fpart;
+    # Theorem 7....
+    # my $tlim = $_primes_small[-1];
+    # $fpart = ($A*$tlim+1) * (2*$A*$A + ($r-$tlim) * $A + 1);
+    # if ($n < $fpart) { $using_theorem_7 = 1; last; }
 
     my $m = pop @nstack;
     # Don't use bignum if it has gotten small enough.
@@ -1905,8 +1920,8 @@ sub primality_proof_bls75 {
     my @ftry;
     $_holf_r = 1;
     foreach my $sub (@_fsublist) {
-      last if scalar @ftry >= 2;
       @ftry = $sub->($m);
+      last if scalar @ftry >= 2;
     }
     # If we couldn't find a factor, skip it.
     next unless scalar @ftry > 1;

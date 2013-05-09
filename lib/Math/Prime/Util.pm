@@ -1698,11 +1698,11 @@ sub verify_prime {
   my @pdata = @_;
   my $verbose = $_Config{'verbose'};
 
-  # Empty input = no certificate = not prime
-  return 0 if scalar @pdata == 0;
-
   # Handle case of being handed a reference to the certificate.
   @pdata = @{$pdata[0]} if scalar @pdata == 1 && ref($pdata[0]) eq 'ARRAY';
+
+  # Empty input = no certificate = not prime
+  return 0 if scalar @pdata == 0;
 
   my $n = shift @pdata;
   if (length($n) == 1) {
