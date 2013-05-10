@@ -4,6 +4,9 @@ use strict;
 use Math::BigInt try=>"GMP,Pari";
 use Math::Prime::Util qw/:all/;
 use Data::Dump qw/dump/;
+my $bifilter = sub { my($ctx, $n) = @_;
+                     return {dump=>"$n"} if ref($n) eq "Math::BigInt";
+                     undef; };
 
 # Takes the output of GMP-ECPP, creates a certificate in the format used
 # by MPU, and runs it through the verifier.
@@ -57,5 +60,5 @@ while (<>) {
   }
 }
 
-print dump(\@cert), "\n";
+print dump_filtered(\@cert, $bifilter), "\n";
 print verify_prime(@cert) ? "SUCCESS\n" : "FAILURE\n";

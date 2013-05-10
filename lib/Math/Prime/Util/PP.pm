@@ -69,19 +69,25 @@ sub _validate_positive_integer {
         if ref($n) ne 'Math::BigInt' && $n =~ tr/0123456789//c;
   croak "Parameter '$n' must be >= $min" if defined $min && $n < $min;
   croak "Parameter '$n' must be <= $max" if defined $max && $n > $max;
-  if ($n <= ~0) {
-    $_[0] = $_[0]->as_number() if ref($_[0]) eq 'Math::BigFloat';
-    $_[0] = int($_[0]->bstr) if ref($_[0]) eq 'Math::BigInt';
-  } elsif (ref($n) ne 'Math::BigInt') {
-    croak "Parameter '$n' outside of integer range" if !defined $bigint::VERSION;
-    $_[0] = Math::BigInt->new("$n"); # Make $n a proper bigint object
-    $_[0]->upgrade(undef) if $_[0]->upgrade();  # Stop BigFloat upgrade
+  if (ref($_[0])) {
+    $_[0] = Math::BigInt->new("$_[0]") unless ref($_[0]) eq 'Math::BigInt';
+    # Stupid workaround for Math::BigInt::GMP RT # 71548
+    if ($_[0]->bacmp(''.~0) <= 0) {
+      $_[0] = int($_[0]->bstr);
+      croak "Didn't convert!" if ref($_[0]);
+    } else {
+      $_[0]->upgrade(undef) if $_[0]->upgrade();  # Stop BigFloat upgrade
+    }
   } else {
-    $_[0]->upgrade(undef) if $_[0]->upgrade();  # Stop BigFloat upgrade
+    if ($n > ~0) {
+      croak "Parameter '$n' outside of integer range" if !defined $bigint::VERSION;
+      $_[0] = Math::BigInt->new("$n"); # Make $n a proper bigint object
+      $_[0]->upgrade(undef) if $_[0]->upgrade();  # Stop BigFloat upgrade
+    }
   }
   # One of these will be true:
-  #     1) $n <= max and $n is not a bigint
-  #     2) $n  > max and $n is a bigint
+  #     1) $n <= ~0 and $n is not a bigint
+  #     2) $n  > ~0 and $n is a bigint
   1;
 }
 
@@ -1115,21 +1121,32 @@ sub _basic_factor {
 }
 
 sub trial_factor {
-  my($n) = @_;
+  my($n, $maxlim) = @_;
   _validate_positive_integer($n);
+  $maxlim = $n unless defined $maxlim && _validate_positive_integer($maxlim);
 
-  my @factors = _basic_factor($n);
+  # Don't use _basic factor here -- they want a trial forced.
+  #my @factors = _basic_factor($n);
+  return ($n) if $n < 4;
+  my @factors;
+  while ( !($n % 2) ) { push @factors, 2;  $n = int($n / 2); }
+  while ( !($n % 3) ) { push @factors, 3;  $n = int($n / 3); }
+  while ( !($n % 5) ) { push @factors, 5;  $n = int($n / 5); }
+  $n = int($n->bstr) if ref($n) eq 'Math::BigInt' && $n <= ''.~0;
   return @factors if $n < 4;
 
   my $limit = int( sqrt($n) + 0.001);
+  $limit = $maxlim if $limit > $maxlim;
   my $f = 7;
   SEARCH: while ($f <= $limit) {
     foreach my $finc (4, 2, 4, 2, 4, 6, 2, 6) {
       if ( (($n % $f) == 0) && ($f <= $limit) ) {
         do { push @factors, $f; $n = int($n/$f); } while (($n % $f) == 0);
-        $n = int($n->bstr) if ref($n) eq 'Math::BigInt' && $n <= ~0;
-        last SEARCH if $n == 1 || Math::Prime::Util::is_prob_prime($n);
+        $n = int($n->bstr) if ref($n) eq 'Math::BigInt' && $n <= ''.~0;
+        #last SEARCH if $n == 1 || Math::Prime::Util::is_prob_prime($n);
+        last SEARCH if $n == 1;
         $limit = int( sqrt($n) + 0.001);
+        $limit = $maxlim if $limit > $maxlim;
       }
       $f += $finc;
     }
@@ -1875,22 +1892,15 @@ sub primality_proof_bls75 {
   my $B = $nm1->copy;         # unfactored part
   my @factors = (2);
   croak "BLS75 error: n-1 not even" unless $nm1->is_even();
+  my $trial_B = 20000;
   {
     while ($B->is_even) { $B /= 2; $A *= 2; }
-    my $tlim = $_primes_small[-1];
-    if ($B > $tlim*$tlim) {
-      my @small_primes = @_primes_small[2 .. $#_primes_small];
-      foreach my $f (@small_primes) {
-        if (($B % $f) == 0) {
-          push @factors, $f;
-          do { $B /= $f;  $A *= $f; } while (($B % $f) == 0);
-          last if $B <= $tlim*$tlim;
-        }
-      }
-    }
-    if ($B <= $tlim*$tlim) {
-      push @factors, factor($B);
-      $A *= $B;  $B /= $B;
+    my @tf = trial_factor($B, $trial_B);
+    pop @tf if $tf[-1] > $trial_B;
+    foreach my $f (@tf) {
+      next if $f == $factors[-1];
+      push @factors, $f;
+      do { $B /= $f;  $A *= $f; } while (($B % $f) == 0);
     }
   }
   my @nstack;
@@ -1903,15 +1913,14 @@ sub primality_proof_bls75 {
   } else {
     push @nstack, $B;
   }
-  my $using_theorem_7 = 0;
+  my $theorem = 5;
   while (@nstack) {
     my ($s,$r) = $B->copy->bdiv($A->copy->bmul(2));
     my $fpart = ($A+1) * (2*$A*$A + ($r-1) * $A + 1);
     last if $n < $fpart;
     # Theorem 7....
-    # my $tlim = $_primes_small[-1];
-    # $fpart = ($A*$tlim+1) * (2*$A*$A + ($r-$tlim) * $A + 1);
-    # if ($n < $fpart) { $using_theorem_7 = 1; last; }
+    $fpart = ($A*$trial_B+1) * (2*$A*$A + ($r-$trial_B) * $A + 1);
+    if ($n < $fpart) { $theorem = 7; last; }
 
     my $m = pop @nstack;
     # Don't use bignum if it has gotten small enough.
@@ -1948,7 +1957,9 @@ sub primality_proof_bls75 {
   }
   # Did we factor enough?
   my ($s,$r) = $B->copy->bdiv($A->copy->bmul(2));
-  my $fpart = ($A+1) * (2*$A*$A + ($r-1) * $A + 1);
+  my $fpart = ($theorem == 5)
+            ? ($A+1) * (2*$A*$A + ($r-1) * $A + 1)
+            : ($A*$trial_B+1) * (2*$A*$A + ($r-$trial_B) * $A + 1);
   return (1,[]) if $n >= $fpart;
   # Check we didn't mess up
   croak "BLS75 error: $A * $B != $nm1" unless $A*$B == $nm1;
@@ -1964,7 +1975,7 @@ sub primality_proof_bls75 {
   foreach my $f (@factors) {
     my $success = 0;
     foreach my $a (2 .. 10000) {
-      my $ap = Math::BigInt->new("$a");
+      my $ap = Math::BigInt->new($a);
       next unless $ap->copy->bmodpow($nm1, $n) == 1;
       next unless Math::BigInt::bgcd($ap->copy->bmodpow($nm1/$f, $n)->bsub(1), $n) == 1;
       push @as, $a;
@@ -1979,8 +1990,19 @@ sub primality_proof_bls75 {
     }
     push @fac_proofs, (scalar @$fproof == 1) ? $fproof->[0] : $fproof;
   }
-  my @proof = ($n, "n-1", [@fac_proofs], [@as]);
-  return (2, [@proof]);
+  if ($theorem == 5) {
+    return (2, [$n, "n-1", [@fac_proofs], [@as]]);
+  } else {
+    my $t7a = 0;
+    my $f = $B;
+    foreach my $a (2 .. 10000) {
+      my $ap = Math::BigInt->new($a);
+      next unless $ap->copy->bmodpow($nm1, $n) == 1;
+      next unless Math::BigInt::bgcd($ap->copy->bmodpow($nm1/$f, $n)->bsub(1), $n) == 1;
+      return (2, [$n, "n-1", ["B", $trial_B, $B, $a], [@fac_proofs], [@as]]);
+    }
+  }
+  return @composite;
 }
 
 
