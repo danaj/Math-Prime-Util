@@ -1158,9 +1158,9 @@ sub trial_factor {
 my $_holf_r;
 my @_fsublist = (
   sub { prho_factor   (shift,    8*1024, 3) },
-  sub { pbrent_factor (shift,   32*1024, 1) },
   sub { pminus1_factor(shift,    10_000); },
-  sub { pminus1_factor(shift,   600_000); },
+  sub { pbrent_factor (shift,   32*1024, 1) },
+  sub { pminus1_factor(shift, 1_000_000); },
   sub { pbrent_factor (shift,  512*1024, 7) },
   sub { ecm_factor    (shift,     1_000,   5_000, 10) },
   sub { pminus1_factor(shift, 4_000_000); },
@@ -1412,8 +1412,7 @@ sub pminus1_factor {
     while (1) {
       $pc_end = $B1 if $pc_end > $B1;
       @bprimes = @{ primes($pc_beg, $pc_end) };
-      while (@bprimes) {
-        my $q = shift @bprimes;
+      foreach my $q (@bprimes) {
         my $k = $q;
         if ($q <= $sqrtb1) {
           my $kmin = int($B1 / $q);
@@ -1433,6 +1432,7 @@ sub pminus1_factor {
   }
 
   # Stage 2 isn't really any faster than stage 1 for the examples I've tried.
+  # Perl's overhead is greater than the savings of multiply vs. powmod
 
   if (!defined $B1) {
     for my $mul (1, 100, 1000, 10_000, 100_000, 1_000_000) {
@@ -1451,7 +1451,7 @@ sub pminus1_factor {
   $B2 = 1*$B1 unless defined $B2;
 
   my $one = $n->copy->bone;
-  my ($j, $q, $saveq) = (1, 2, 2);
+  my ($j, $q, $saveq) = (32, 2, 2);
   my $t = $one->copy;
   my $a = $one->copy->badd(1);
   my $savea = $a->copy;
@@ -1463,26 +1463,23 @@ sub pminus1_factor {
   while (1) {
     $pc_end = $B1 if $pc_end > $B1;
     @bprimes = @{ primes($pc_beg, $pc_end) };
-    while (@bprimes) {
-      $q = shift @bprimes;
-      my $k = $q;
-      my $kmin = int($B1 / $q);
+    foreach $q (@bprimes) {
+      my($k, $kmin) = ($q, int($B1 / $q));
       while ($k <= $kmin) { $k *= $q; }
       $t *= $k;                         # accumulate powers for a
-      if ( ($j++ % 32) == 0) {
+      if ( ($j++ % 64) == 0) {
+        next if $pc_beg > 2 && ($j-1) % 256;
         $a->bmodpow($t, $n);
         $t = $one->copy;
         if ($a == 0) { push @factors, $n; return @factors; }
         $f = Math::BigInt::bgcd( $a-1, $n );
         last if $f == $n;
-        if ($f != 1) {
-          push @factors, $f, $n/$f;
-          return @factors;
-        }
+        return _found_factor($f, $n, "pminus1", @factors) if $f != 1;
         $saveq = $q;
         $savea = $a->copy;
       }
     }
+    $q = $bprimes[-1];
     last if $f != 1 || $pc_end >= $B1;
     $pc_beg = $pc_end+1;
     $pc_end += 500_000;
@@ -1495,8 +1492,7 @@ sub pminus1_factor {
     $q = $saveq;
     $a = $savea->copy;
     while ($q <= $B1) {
-      my $k = $q;
-      my $kmin = int($B1 / $q);
+      my ($k, $kmin) = ($q, int($B1 / $q));
       while ($k <= $kmin) { $k *= $q; }
       $a->bmodpow($k, $n);
       my $f = Math::BigInt::bgcd( $a-1, $n );
@@ -1521,17 +1517,17 @@ sub pminus1_factor {
     while (1) {
       $pc_end = $B2 if $pc_end > $B2;
       @bprimes = @{ primes($pc_beg, $pc_end) };
-      while (@bprimes) {
-        my $lastq = $q;
-        $q = shift @bprimes;
-        my $qdiff = ($q - $lastq) / 2 - 1;
+      foreach my $i (0 .. $#bprimes) {
+        my $diff = $bprimes[$i] - $q;
+        $q = $bprimes[$i];
+        my $qdiff = ($diff >> 1) - 1;
         if (!defined $precomp_bm[$qdiff]) {
-          $precomp_bm[$qdiff] = $bm->copy->bmodpow($q-$lastq, $n);
+          $precomp_bm[$qdiff] = $bm->copy->bmodpow($diff, $n);
         }
         $a->bmul($precomp_bm[$qdiff])->bmod($n);
         if ($a == 0) { push @factors, $n; return @factors; }
         $b->bmul($a-1);
-        if (($j++ % 64) == 0) {
+        if (($j++ % 128) == 0) {
           $b->bmod($n);
           $f = Math::BigInt::bgcd( $b, $n );
           last if $f != 1;
@@ -1707,6 +1703,12 @@ sub ecm_factor {
   # With multiple curves, it's better to get all the primes at once.
   # The downside is this can kill memory with a very large B1.
   my @bprimes = @{ primes(3, $B1) };
+  foreach my $q (@bprimes) {
+    last if $q > $sqrt_b1;
+    my($k,$kmin) = ($q, int($B1/$q));
+    while ($k <= $kmin) { $k *= $q; }
+    $q = $k;
+  }
   my @b2primes = ($B2 > $B1) ? @{primes($B1+1, $B2)} : ();
   my $irandf = Math::Prime::Util::_get_rand_func();
 
@@ -1728,12 +1730,7 @@ sub ecm_factor {
     my $i = 15;
 
     for (my $q = 2; $q < $B1; $q *= 2) { $ECP->double(); }
-    foreach my $q (@bprimes) {
-      my $k = $q;
-      if ($k < $sqrt_b1) {
-        my $kmin = int($B1 / $q);
-        while ($k <= $kmin) { $k *= $q; }
-      }
+    foreach my $k (@bprimes) {
       $ECP->mul($k);
       $fm = ($fm * $ECP->x() ) % $n;
       if ($i++ % 32 == 0) {
