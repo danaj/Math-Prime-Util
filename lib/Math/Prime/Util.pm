@@ -234,9 +234,8 @@ sub _validate_positive_integer {
 
   if (ref($_[0])) {
     $_[0] = Math::BigInt->new("$_[0]") unless ref($_[0]) eq 'Math::BigInt';
-    $_bigint_small = Math::BigInt->new("$_Config{'maxparam'}")
-                   unless defined $_bigint_small;
-    if ($_[0]->bacmp($_bigint_small) <= 0) {
+    # Stupid workaround for Math::BigInt::GMP RT # 71548
+    if ($_[0]->bacmp(''.~0) <= 0) {
       $_[0] = int($_[0]->bstr);
     } else {
       $_[0]->upgrade(undef) if $_[0]->upgrade();  # Stop BigFloat upgrade
@@ -251,8 +250,8 @@ sub _validate_positive_integer {
     }
   }
   # One of these will be true:
-  #     1) $n <= max and $n is not a bigint
-  #     2) $n  > max and $n is a bigint
+  #     1) $n <= ~0 and $n is not a bigint
+  #     2) $n  > ~0 and $n is a bigint
   1;
 }
 
@@ -1802,6 +1801,13 @@ sub verify_prime {
   if ($method eq 'n-1') {
     # BLS75 or generalized Pocklington
     # http://www.ams.org/journals/mcom/1975-29-130/S0025-5718-1975-0384673-1/S0025-5718-1975-0384673-1.pdf
+    # Pull of optional theorem 7 data
+    my ($theorem, $t7_B1, $t7_B, $t7_a) = (5, undef, undef, undef);
+    if (scalar @pdata == 3 && ref($pdata[0]) eq 'ARRAY' && $pdata[0]->[0] =~ /^(B|T7|Theorem\s*7)$/i) {
+      $theorem = 7;
+      (undef, $t7_B1, $t7_B, $t7_a) = @{shift @pdata};
+      $t7_B  = Math::BigInt->new("$t7_B");
+    }
     if (scalar @pdata != 2 || (ref($pdata[0]) ne 'ARRAY') || (ref($pdata[1]) ne 'ARRAY')) {
       warn "verify_prime: incorrect n-1 format, must have factors and a values\n";
       return 0;
@@ -1858,10 +1864,42 @@ sub verify_prime {
       print "primality fail: A and B not coprime\n" if $verbose;
       return 0;
     }
-    # Theorem 5, m = 1, page 624
-    {
+    if ($theorem == 7) {
+      if ($B != $t7_B) {
+        print "primality fail: T7 unfactored != unfactored\n" if $verbose;
+        return 0;
+      }
+      if ($t7_B1 < 1) {
+        print "primality fail: T7 B value < 1\n" if $verbose;
+        return 0;
+      }
+      # 1. Check $B has no factors smaller than $t7_B1
+      my $no_small_factors = 0;
+      if ($_HAVE_GMP) {
+        my @trial = Math::Prime::Util::GMP::trial_factor($B, $t7_B1);
+        $no_small_factors = (scalar @trial == 1);
+      } elsif ($B <= ''.~0) {
+        my @trial = Math::Prime::Util::PP::trial_factor($B, $t7_B1);
+        $no_small_factors = (scalar @trial == 1);
+      } else {
+        # This is slow when B1 > 1M, but with a bigint B it's faster than
+        # doing trial divisions (but much slower with native B).
+        $no_small_factors =
+            (Math::BigInt::bgcd($B, primorial(Math::BigInt->new($t7_B1))) == 1);
+      }
+      if (!$no_small_factors) {
+        print "primality fail: T7 B has a factor smaller than B1\n" if $verbose;
+        return 0;
+      }
+      # 2. Add $B and $t7_a to lists so they get checked as part of (I).
+      push @prime_factors, $B;
+      push @pfas, $t7_a;
+    }
+    { # Theorem 5, m = 1, page 624;  Theorem 7, page 626
       my ($s,$r) = $B->copy->bdiv($A->copy->bmul(2));
-      my $fpart = ($A+1) * (2*$A*$A + ($r-1) * $A + 1);
+      my $fpart = ($theorem == 7)
+                ? ($A*$t7_B1+1) * (2*$A*$A + ($r-$t7_B1) * $A + 1)
+                : ($A+1) * (2*$A*$A + ($r-1) * $A + 1);
       if ($n >= $fpart) {
         print "primality fail: not enough factors\n" if $verbose;
         return 0;
@@ -1883,7 +1921,7 @@ sub verify_prime {
         return 0;
       }
     }
-    print "primality success: $n by BLS75 theorem 5\n" if $verbose > 1;
+    print "primality success: $n by BLS75 theorem $theorem\n" if $verbose > 1;
     return 1;
   }
 
@@ -2873,9 +2911,9 @@ A certificate is an array holding an C<n-cert>.  An C<n-cert> is one of:
          4 a^(n-1) = 1 mod n
          5 a^((n-1)/f) != 1 mod n for each factor
 
-  n,"n-1",[n-cert, ...],[a,...]
+  n,"n-1",[optional B-block],[n-cert, ...],[a,...]
        An n-1 certificate suitable for the generalized Pocklington or the
-       BLS75 (Brillhart-Lehmer-Selfridge 1975, theorem 5) test.  The
+       BLS75 (Brillhart-Lehmer-Selfridge 1975, theorem 5) n-1 test.  The
        proof is performed using BLS75 theorem 5 which requires n-1 to be
        factored up to (n/2)^1/3.  If n-1 is factored to more than
        sqrt(n), then the conditions are identical to the generalized
@@ -2892,6 +2930,11 @@ A certificate is an array holding an C<n-cert>.  An C<n-cert> is one of:
          5 for each pair (f,a) representing a factor n-cert and its 'a':
              - a^(n-1) = 1 mod n
              - gcd( a^((n-1)/f)-1, n ) = 1
+       If the optional B block is present, then theorem 7 will be used.
+       The B-block consists of 4 items:  "B" as an identifier, the
+       factoring limit B indicating that the unfactored portion has no
+       factors smaller than B, the unfactored amount F, and an 'a' value
+       to be tested with F as in step 5.
 
   n,"AGKM",[ec-block],[ec-block],...
        An Elliptic Curve certificate.  We are given n, the method "AGKM"

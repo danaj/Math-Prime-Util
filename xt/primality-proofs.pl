@@ -6,7 +6,10 @@ use Math::BigInt lib=>"GMP";
 #use Crypt::Primes 'maurer';
 use Math::Pari qw/isprime/;
 use Crypt::Random 'makerandom';
-use Data::Dump 'dump';
+use Data::Dump::Filtered 'dump_filtered';
+my $bifilter = sub { my($ctx, $n) = @_;
+                     return {dump=>"$n"} if ref($n) eq "Math::BigInt";
+                     undef; };
 
 $|++;
 my $num = 71;
@@ -56,7 +59,7 @@ foreach my $certn (@certs) {
   print proof_mark($certn->[1]);
   next if $v;
   print "\n\n$certn->[0] didn't verify!\n\n";
-  print dump($certn->[1]);
+  print dump_filtered($certn->[1], $bifilter);
   die;
 }
 print "\n";
@@ -64,8 +67,8 @@ print "\n";
 sub proof_mark {
   my $cert = shift;
   my $type = (scalar @$cert == 1) ? "bpsw" : $cert->[1];
-  if (!defined $type) { die "\nNo cert:\n\n", dump($cert); }
-  if    ($type =~ /n-1/i)       { return '1'; }
+  if (!defined $type) { die "\nNo cert:\n\n", dump_filtered($cert, $bifilter); }
+  if    ($type =~ /n-1/i)       { return ($cert->[2]->[0] eq 'B') ? '7' : '5'; }
   elsif ($type =~ /bpsw/i)      { return '.'; }
   elsif ($type =~ /ecpp|agkm/i) { return 'E'; }
   return '?';

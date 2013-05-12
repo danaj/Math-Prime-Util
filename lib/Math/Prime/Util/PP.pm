@@ -69,19 +69,25 @@ sub _validate_positive_integer {
         if ref($n) ne 'Math::BigInt' && $n =~ tr/0123456789//c;
   croak "Parameter '$n' must be >= $min" if defined $min && $n < $min;
   croak "Parameter '$n' must be <= $max" if defined $max && $n > $max;
-  if ($n <= ~0) {
-    $_[0] = $_[0]->as_number() if ref($_[0]) eq 'Math::BigFloat';
-    $_[0] = int($_[0]->bstr) if ref($_[0]) eq 'Math::BigInt';
-  } elsif (ref($n) ne 'Math::BigInt') {
-    croak "Parameter '$n' outside of integer range" if !defined $bigint::VERSION;
-    $_[0] = Math::BigInt->new("$n"); # Make $n a proper bigint object
-    $_[0]->upgrade(undef) if $_[0]->upgrade();  # Stop BigFloat upgrade
+  if (ref($_[0])) {
+    $_[0] = Math::BigInt->new("$_[0]") unless ref($_[0]) eq 'Math::BigInt';
+    # Stupid workaround for Math::BigInt::GMP RT # 71548
+    if ($_[0]->bacmp(''.~0) <= 0) {
+      $_[0] = int($_[0]->bstr);
+      croak "Didn't convert!" if ref($_[0]);
+    } else {
+      $_[0]->upgrade(undef) if $_[0]->upgrade();  # Stop BigFloat upgrade
+    }
   } else {
-    $_[0]->upgrade(undef) if $_[0]->upgrade();  # Stop BigFloat upgrade
+    if ($n > ~0) {
+      croak "Parameter '$n' outside of integer range" if !defined $bigint::VERSION;
+      $_[0] = Math::BigInt->new("$n"); # Make $n a proper bigint object
+      $_[0]->upgrade(undef) if $_[0]->upgrade();  # Stop BigFloat upgrade
+    }
   }
   # One of these will be true:
-  #     1) $n <= max and $n is not a bigint
-  #     2) $n  > max and $n is a bigint
+  #     1) $n <= ~0 and $n is not a bigint
+  #     2) $n  > ~0 and $n is a bigint
   1;
 }
 
@@ -1115,21 +1121,32 @@ sub _basic_factor {
 }
 
 sub trial_factor {
-  my($n) = @_;
+  my($n, $maxlim) = @_;
   _validate_positive_integer($n);
+  $maxlim = $n unless defined $maxlim && _validate_positive_integer($maxlim);
 
-  my @factors = _basic_factor($n);
+  # Don't use _basic factor here -- they want a trial forced.
+  #my @factors = _basic_factor($n);
+  return ($n) if $n < 4;
+  my @factors;
+  while ( !($n % 2) ) { push @factors, 2;  $n = int($n / 2); }
+  while ( !($n % 3) ) { push @factors, 3;  $n = int($n / 3); }
+  while ( !($n % 5) ) { push @factors, 5;  $n = int($n / 5); }
+  $n = int($n->bstr) if ref($n) eq 'Math::BigInt' && $n <= ''.~0;
   return @factors if $n < 4;
 
   my $limit = int( sqrt($n) + 0.001);
+  $limit = $maxlim if $limit > $maxlim;
   my $f = 7;
   SEARCH: while ($f <= $limit) {
     foreach my $finc (4, 2, 4, 2, 4, 6, 2, 6) {
       if ( (($n % $f) == 0) && ($f <= $limit) ) {
         do { push @factors, $f; $n = int($n/$f); } while (($n % $f) == 0);
-        $n = int($n->bstr) if ref($n) eq 'Math::BigInt' && $n <= ~0;
-        last SEARCH if $n == 1 || Math::Prime::Util::is_prob_prime($n);
+        $n = int($n->bstr) if ref($n) eq 'Math::BigInt' && $n <= ''.~0;
+        #last SEARCH if $n == 1 || Math::Prime::Util::is_prob_prime($n);
+        last SEARCH if $n == 1;
         $limit = int( sqrt($n) + 0.001);
+        $limit = $maxlim if $limit > $maxlim;
       }
       $f += $finc;
     }
@@ -1141,9 +1158,9 @@ sub trial_factor {
 my $_holf_r;
 my @_fsublist = (
   sub { prho_factor   (shift,    8*1024, 3) },
-  sub { pbrent_factor (shift,   32*1024, 1) },
   sub { pminus1_factor(shift,    10_000); },
-  sub { pminus1_factor(shift,   600_000); },
+  sub { pbrent_factor (shift,   32*1024, 1) },
+  sub { pminus1_factor(shift, 1_000_000); },
   sub { pbrent_factor (shift,  512*1024, 7) },
   sub { ecm_factor    (shift,     1_000,   5_000, 10) },
   sub { pminus1_factor(shift, 4_000_000); },
@@ -1395,8 +1412,7 @@ sub pminus1_factor {
     while (1) {
       $pc_end = $B1 if $pc_end > $B1;
       @bprimes = @{ primes($pc_beg, $pc_end) };
-      while (@bprimes) {
-        my $q = shift @bprimes;
+      foreach my $q (@bprimes) {
         my $k = $q;
         if ($q <= $sqrtb1) {
           my $kmin = int($B1 / $q);
@@ -1416,6 +1432,7 @@ sub pminus1_factor {
   }
 
   # Stage 2 isn't really any faster than stage 1 for the examples I've tried.
+  # Perl's overhead is greater than the savings of multiply vs. powmod
 
   if (!defined $B1) {
     for my $mul (1, 100, 1000, 10_000, 100_000, 1_000_000) {
@@ -1434,7 +1451,7 @@ sub pminus1_factor {
   $B2 = 1*$B1 unless defined $B2;
 
   my $one = $n->copy->bone;
-  my ($j, $q, $saveq) = (1, 2, 2);
+  my ($j, $q, $saveq) = (32, 2, 2);
   my $t = $one->copy;
   my $a = $one->copy->badd(1);
   my $savea = $a->copy;
@@ -1446,26 +1463,23 @@ sub pminus1_factor {
   while (1) {
     $pc_end = $B1 if $pc_end > $B1;
     @bprimes = @{ primes($pc_beg, $pc_end) };
-    while (@bprimes) {
-      $q = shift @bprimes;
-      my $k = $q;
-      my $kmin = int($B1 / $q);
+    foreach $q (@bprimes) {
+      my($k, $kmin) = ($q, int($B1 / $q));
       while ($k <= $kmin) { $k *= $q; }
       $t *= $k;                         # accumulate powers for a
-      if ( ($j++ % 32) == 0) {
+      if ( ($j++ % 64) == 0) {
+        next if $pc_beg > 2 && ($j-1) % 256;
         $a->bmodpow($t, $n);
         $t = $one->copy;
         if ($a == 0) { push @factors, $n; return @factors; }
         $f = Math::BigInt::bgcd( $a-1, $n );
         last if $f == $n;
-        if ($f != 1) {
-          push @factors, $f, $n/$f;
-          return @factors;
-        }
+        return _found_factor($f, $n, "pminus1", @factors) if $f != 1;
         $saveq = $q;
         $savea = $a->copy;
       }
     }
+    $q = $bprimes[-1];
     last if $f != 1 || $pc_end >= $B1;
     $pc_beg = $pc_end+1;
     $pc_end += 500_000;
@@ -1478,8 +1492,7 @@ sub pminus1_factor {
     $q = $saveq;
     $a = $savea->copy;
     while ($q <= $B1) {
-      my $k = $q;
-      my $kmin = int($B1 / $q);
+      my ($k, $kmin) = ($q, int($B1 / $q));
       while ($k <= $kmin) { $k *= $q; }
       $a->bmodpow($k, $n);
       my $f = Math::BigInt::bgcd( $a-1, $n );
@@ -1504,17 +1517,17 @@ sub pminus1_factor {
     while (1) {
       $pc_end = $B2 if $pc_end > $B2;
       @bprimes = @{ primes($pc_beg, $pc_end) };
-      while (@bprimes) {
-        my $lastq = $q;
-        $q = shift @bprimes;
-        my $qdiff = ($q - $lastq) / 2 - 1;
+      foreach my $i (0 .. $#bprimes) {
+        my $diff = $bprimes[$i] - $q;
+        $q = $bprimes[$i];
+        my $qdiff = ($diff >> 1) - 1;
         if (!defined $precomp_bm[$qdiff]) {
-          $precomp_bm[$qdiff] = $bm->copy->bmodpow($q-$lastq, $n);
+          $precomp_bm[$qdiff] = $bm->copy->bmodpow($diff, $n);
         }
         $a->bmul($precomp_bm[$qdiff])->bmod($n);
         if ($a == 0) { push @factors, $n; return @factors; }
         $b->bmul($a-1);
-        if (($j++ % 64) == 0) {
+        if (($j++ % 128) == 0) {
           $b->bmod($n);
           $f = Math::BigInt::bgcd( $b, $n );
           last if $f != 1;
@@ -1690,6 +1703,12 @@ sub ecm_factor {
   # With multiple curves, it's better to get all the primes at once.
   # The downside is this can kill memory with a very large B1.
   my @bprimes = @{ primes(3, $B1) };
+  foreach my $q (@bprimes) {
+    last if $q > $sqrt_b1;
+    my($k,$kmin) = ($q, int($B1/$q));
+    while ($k <= $kmin) { $k *= $q; }
+    $q = $k;
+  }
   my @b2primes = ($B2 > $B1) ? @{primes($B1+1, $B2)} : ();
   my $irandf = Math::Prime::Util::_get_rand_func();
 
@@ -1711,12 +1730,7 @@ sub ecm_factor {
     my $i = 15;
 
     for (my $q = 2; $q < $B1; $q *= 2) { $ECP->double(); }
-    foreach my $q (@bprimes) {
-      my $k = $q;
-      if ($k < $sqrt_b1) {
-        my $kmin = int($B1 / $q);
-        while ($k <= $kmin) { $k *= $q; }
-      }
+    foreach my $k (@bprimes) {
       $ECP->mul($k);
       $fm = ($fm * $ECP->x() ) % $n;
       if ($i++ % 32 == 0) {
@@ -1875,22 +1889,15 @@ sub primality_proof_bls75 {
   my $B = $nm1->copy;         # unfactored part
   my @factors = (2);
   croak "BLS75 error: n-1 not even" unless $nm1->is_even();
+  my $trial_B = 20000;
   {
     while ($B->is_even) { $B /= 2; $A *= 2; }
-    my $tlim = $_primes_small[-1];
-    if ($B > $tlim*$tlim) {
-      my @small_primes = @_primes_small[2 .. $#_primes_small];
-      foreach my $f (@small_primes) {
-        if (($B % $f) == 0) {
-          push @factors, $f;
-          do { $B /= $f;  $A *= $f; } while (($B % $f) == 0);
-          last if $B <= $tlim*$tlim;
-        }
-      }
-    }
-    if ($B <= $tlim*$tlim) {
-      push @factors, factor($B);
-      $A *= $B;  $B /= $B;
+    my @tf = trial_factor($B, $trial_B);
+    pop @tf if $tf[-1] > $trial_B;
+    foreach my $f (@tf) {
+      next if $f == $factors[-1];
+      push @factors, $f;
+      do { $B /= $f;  $A *= $f; } while (($B % $f) == 0);
     }
   }
   my @nstack;
@@ -1903,15 +1910,14 @@ sub primality_proof_bls75 {
   } else {
     push @nstack, $B;
   }
-  my $using_theorem_7 = 0;
+  my $theorem = 5;
   while (@nstack) {
     my ($s,$r) = $B->copy->bdiv($A->copy->bmul(2));
     my $fpart = ($A+1) * (2*$A*$A + ($r-1) * $A + 1);
     last if $n < $fpart;
     # Theorem 7....
-    # my $tlim = $_primes_small[-1];
-    # $fpart = ($A*$tlim+1) * (2*$A*$A + ($r-$tlim) * $A + 1);
-    # if ($n < $fpart) { $using_theorem_7 = 1; last; }
+    $fpart = ($A*$trial_B+1) * (2*$A*$A + ($r-$trial_B) * $A + 1);
+    if ($n < $fpart) { $theorem = 7; last; }
 
     my $m = pop @nstack;
     # Don't use bignum if it has gotten small enough.
@@ -1948,7 +1954,9 @@ sub primality_proof_bls75 {
   }
   # Did we factor enough?
   my ($s,$r) = $B->copy->bdiv($A->copy->bmul(2));
-  my $fpart = ($A+1) * (2*$A*$A + ($r-1) * $A + 1);
+  my $fpart = ($theorem == 5)
+            ? ($A+1) * (2*$A*$A + ($r-1) * $A + 1)
+            : ($A*$trial_B+1) * (2*$A*$A + ($r-$trial_B) * $A + 1);
   return (1,[]) if $n >= $fpart;
   # Check we didn't mess up
   croak "BLS75 error: $A * $B != $nm1" unless $A*$B == $nm1;
@@ -1964,7 +1972,7 @@ sub primality_proof_bls75 {
   foreach my $f (@factors) {
     my $success = 0;
     foreach my $a (2 .. 10000) {
-      my $ap = Math::BigInt->new("$a");
+      my $ap = Math::BigInt->new($a);
       next unless $ap->copy->bmodpow($nm1, $n) == 1;
       next unless Math::BigInt::bgcd($ap->copy->bmodpow($nm1/$f, $n)->bsub(1), $n) == 1;
       push @as, $a;
@@ -1979,8 +1987,19 @@ sub primality_proof_bls75 {
     }
     push @fac_proofs, (scalar @$fproof == 1) ? $fproof->[0] : $fproof;
   }
-  my @proof = ($n, "n-1", [@fac_proofs], [@as]);
-  return (2, [@proof]);
+  if ($theorem == 5) {
+    return (2, [$n, "n-1", [@fac_proofs], [@as]]);
+  } else {
+    my $t7a = 0;
+    my $f = $B;
+    foreach my $a (2 .. 10000) {
+      my $ap = Math::BigInt->new($a);
+      next unless $ap->copy->bmodpow($nm1, $n) == 1;
+      next unless Math::BigInt::bgcd($ap->copy->bmodpow($nm1/$f, $n)->bsub(1), $n) == 1;
+      return (2, [$n, "n-1", ["B", $trial_B, $B, $a], [@fac_proofs], [@as]]);
+    }
+  }
+  return @composite;
 }
 
 
