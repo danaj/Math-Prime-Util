@@ -345,12 +345,12 @@ int _XS_is_prob_prime(UV n)
   int nbases;
   int prob_prime;
 
-  if ( (n == 2) || (n == 3) || (n == 5) || (n == 7) )
-    return 2;
-  if ( (n<2) || ((n% 2)==0) || ((n% 3)==0) || ((n% 5)==0) || ((n% 7)==0) )
-    return 0;
-  if (n < 121)
-    return 2;
+  if (n == 2 || n == 3 || n == 5)           return 2;
+  if (n < 2 || !(n%2) || !(n%3) || !(n%5))  return 0;
+  if (n <   49) /* 7*7 */                   return 2;
+  if (!(n% 7) || !(n%11) || !(n%13) || !(n%17) || !(n%19) || !(n%23)) return 0;
+  if (!(n%29) || !(n%31) || !(n%37) || !(n%41) || !(n%43) || !(n%47)) return 0;
+  if (n < 2809) /* 53*53 */                 return 2;
 
 #if BITS_PER_WORD == 32
   if (n < UVCONST(9080191)) {
