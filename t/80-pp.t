@@ -54,6 +54,7 @@ my %pseudoprimes = (
   37 => [ qw/9 451 469 589 685 817 1333 3781 8905 9271 18631 19517 20591 25327 34237 45551 46981 47587 48133 59563 61337 68101 68251 73633 79381 79501 83333 84151 96727/ ],
   61 => [ qw/217 341 1261 2701 3661 6541 6697 7613 13213 16213 22177 23653 23959 31417 50117 61777 63139 67721 76301 77421 79381 80041/ ],
   73 => [ qw/205 259 533 1441 1921 2665 3439 5257 15457 23281 24617 26797 27787 28939 34219 39481 44671 45629 64681 67069 76429 79501 93521/ ],
+ lucas      => [ qw/5459 5777 10877 16109 18971 22499 24569 25199 40309 58519 75077 97439/ ],
 );
 # Test a pseudoprime larger than 2^32.
 push @{$pseudoprimes{2}}, 75792980677 if $use64;
@@ -216,7 +217,7 @@ my %rvals = (
 
 
 plan tests => 1 +
-              2 +
+              3 +
               3 + scalar(keys %small_single) + scalar(keys %small_range) +
               2*scalar(keys %primegaps) + 8 + 1 + 1 + 1 +
               scalar(keys %pivals_small) + scalar(keys %pi_intervals) +
@@ -242,6 +243,7 @@ require_ok 'Math::Prime::Util::PP';
     *next_prime     = \&Math::Prime::Util::PP::next_prime;
     *prev_prime     = \&Math::Prime::Util::PP::prev_prime;
 
+    *is_strong_lucas_pseudoprime = \&Math::Prime::Util::PP::is_strong_lucas_pseudoprime;
     *miller_rabin   = \&Math::Prime::Util::PP::miller_rabin;
     *is_aks_prime   = \&Math::Prime::Util::PP::is_aks_prime;
 
@@ -268,6 +270,10 @@ $_ = 'this should not change';
   push @exprime, map { "$_ is composite" } @composites;
   is_deeply( \@isprime, \@exprime, "is_prime for selected numbers" );
 }
+
+is_deeply( Math::Prime::Util::PP::trial_primes(80),
+           [2,3,5,7,11,13,17,19,23,29,31,37,41,43,47,53,59,61,67,71,73,79],
+           "Trial primes 2-80" );
 
 ###############################################################################
 
@@ -352,7 +358,9 @@ is( miller_rabin(3, 2), 1, "MR with 3 shortcut prime");
 while (my($base, $ppref) = each (%pseudoprimes)) {
   my $npseudos = scalar @$ppref;
   my @expmr = map { 1 } @$ppref;
-  my @gotmr = map { miller_rabin($_, $base) } @$ppref;
+  my @gotmr;
+  if ($base eq 'lucas') { @gotmr = map { is_strong_lucas_pseudoprime($_) } @$ppref; }
+  else                  { @gotmr = map { miller_rabin($_, $base) } @$ppref;         }
   is_deeply(\@gotmr, \@expmr, "$npseudos pseudoprimes (base $base)");
 }
 
