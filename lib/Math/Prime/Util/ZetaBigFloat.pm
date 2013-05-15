@@ -511,7 +511,7 @@ Accuracy should be about 35 digits.
 =head1 LIMITATIONS
 
 Bugs in Math::BigFloat (RT 43692, RT 77105) cause many problems with this code.
-I've attempted to apply workarounds, but it is possible there are cases they
+I've attempted to work around them, but it is possible there are cases they
 miss.
 
 The accuracy goals (35 digits) are sometimes missed by a digit or two.

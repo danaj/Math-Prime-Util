@@ -191,6 +191,8 @@ __END__
 
 =encoding utf8
 
+=for stopwords mul
+
 
 =head1 NAME
 
@@ -273,7 +275,7 @@ Returns a copy of the point.
 
 =head2 normalize
 
-Performs an extended gcd operation to make C<z=1>.  If a factor of C<n> is
+Performs an extended GCD operation to make C<z=1>.  If a factor of C<n> is
 found it is put in C<f>.
 
 

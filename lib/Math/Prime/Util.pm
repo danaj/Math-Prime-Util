@@ -2346,6 +2346,8 @@ __END__
 
 =encoding utf8
 
+=for stopwords Möbius Deléglise totient moebius mertens irand primesieve uniqued k-tuples von SoE pari yafu fonction qui compte le nombre nombres voor PhD
+
 
 =head1 NAME
 
@@ -2490,7 +2492,7 @@ installing L<Math::Prime::Util::GMP>, and is definitely recommended if you
 do many bignum operations.  Also look into L<Math::Pari> as an alternative.
 
 The module is thread-safe and allows concurrency between Perl threads while
-still sharing a prime cache.  It is not itself multithreaded.  See the
+still sharing a prime cache.  It is not itself multi-threaded.  See the
 L<Limitations|/"LIMITATIONS"> section if you are using Win32 and threads in
 your program.
 
@@ -2719,8 +2721,9 @@ the Schoenfeld (1976) bounds are used for large values.
 Returns an approximation to the C<prime_count> function, without having to
 generate any primes.  The current implementation uses the Riemann R function
 which is quite accurate: an error of less than C<0.0005%> is typical for
-input values over C<2^32>.  A slightly faster (0.1ms vs. 1ms) but much less
-accurate answer can be obtained by averaging the upper and lower bounds.
+input values over C<2^32>.  A slightly faster
+(0.1 millisecond versus 1 millisecond) but much less accurate answer
+can be obtained by averaging the upper and lower bounds.
 
 
 =head2 nth_prime
@@ -2835,7 +2838,7 @@ result will then always be 0 (composite) or 2 (prime).  A later implementation
 may change the internals, but the results will be identical.
 
 For inputs larger than C<2^64>, a strong Baillie-PSW primality test is
-performed (aka BPSW or BSW).  This is a probabilistic test, so only
+performed (also called BPSW or BSW).  This is a probabilistic test, so only
 0 (composite) and 1 (probably prime) are returned.  There is a possibility that
 composites may be returned marked prime, but since the test was published in
 1980, not a single BPSW pseudoprime has been found, so it is extremely likely
@@ -3060,7 +3063,7 @@ the Dedikind psi function, where C<psi(n) = J(2,n) / J(1,n)>.
 
   say "exp(lambda($_)) = ", exp_mangoldt($_) for 1 .. 100;
 
-Returns exp(Λ(n)), the exponential of the Mangoldt function (also known
+Returns EXP(Λ(n)), the exponential of the Mangoldt function (also known
 as von Mangoldt's function) for an integer value.
 It is equal to log p if n is prime or a power of a prime,
 and 0 otherwise.  We return the exponential so all results are integers.
@@ -3094,7 +3097,7 @@ yield similar results, albeit slower and using more memory.
 Returns ψ(n), the second Chebyshev function for a non-negative integer input.
 This is the sum of the logarithm of each prime where C<p^k E<lt>= n> for an
 integer k.  An alternate computation is as the summatory Mangoldt function.
-Another alternate computation is as the logarithm of lcm(1,2,...,n).
+Another alternate computation is as the logarithm of LCM(1,2,...,n).
 Hence these functions:
 
   use List::Util qw/sum/;  use Math::BigFloat;
@@ -3260,7 +3263,7 @@ digits between 1 and the maximum native type (10 for 32-bit, 20 for 64-bit,
 C<irand> function as described above.
 
 If the number of digits is greater than or equal to the maximum native type,
-then the result will be returned as a BigInt.  However, if the '-nobigint'
+then the result will be returned as a BigInt.  However, if the C<-nobigint>
 tag was used, then numbers larger than the threshold will be flagged as an
 error, and numbers on the threshold will be restricted to native numbers.
 For better performance with large bit sizes, install L<Math::Prime::Util::GMP>.
@@ -3868,8 +3871,8 @@ L<Math::Big::Factors> supports factorization using wheel factorization (smart
 trial division).  It supports bigints.  Unfortunately it is extremely slow on
 any input that isn't comprised entirely of small factors.  Even 7 digit inputs
 can take hundreds or thousands of times longer to factor than MPU or
-L<Math::Factor::XS>.  19-digit semiprimes will take I<hours> vs. MPU's single
-milliseconds.
+L<Math::Factor::XS>.  19-digit semiprimes will take I<hours> versus MPU's
+single milliseconds.
 
 L<Math::Factoring> is a placeholder module for bigint factoring.  Version 0.02
 only supports trial division (the Pollard-Rho method does not work).
@@ -3916,7 +3919,7 @@ will eventually win out).  Trying to hit some of the highlights:
 
 =over 4
 
-=item isprime
+=item C<isprime>
 
 Similar to MPU's L<is_prob_prime> or L<is_prime> functions.
 MPU is deterministic for native integers, and uses a strong
@@ -3928,12 +3931,12 @@ newer 2.3.5 library makes C<isprime> use an APRCL primality proof, which
 can take longer (though will be much faster than the BLS75 proof used in
 MPU's L<is_provable_prime> routine).
 
-=item primepi
+=item C<primepi>
 
 Similar to MPU's L<prime_count> function.  Pari uses a naive
 counting algorithm with its precalculated primes, so this is not very useful.
 
-=item primes
+=item C<primes>
 
 Doesn't support ranges, requires bumping up the precalculated
 primes for larger numbers, which means knowing in advance the upper limit
@@ -3941,7 +3944,7 @@ for primes.  Support for numbers larger than 400M requires making with Pari
 version 2.3.5.  If that is used, sieving is about 2x faster than MPU, but
 doesn't support segmenting.
 
-=item factorint
+=item C<factorint>
 
 Similar to MPU's L<factor> though with a different return (I
 find the result value quite inconvenient to work with, but others may like
@@ -3950,28 +3953,28 @@ on an x86_64 platform, it may be faster for large values on other platforms.
 Bigints are slightly faster with Math::Pari for "small" values, and MPU slows
 down rapidly (the difference is noticeable with 30+ digit numbers).
 
-=item eulerphi
+=item C<eulerphi>
 
 Similar to MPU's L<euler_phi>.  MPU is 2-5x faster for native
 integers.  There is also support for a range, which can be much more efficient.
 Without L<Math::Prime::Util::GMP> installed, MPU is very slow with bigints.
 With it installed, it is about 2x slower than Math::Pari.
 
-=item moebius
+=item C<moebius>
 
 Similar to MPU's L<moebius>.  Comparisons are similar to C<eulerphi>.
 
-=item sumdiv
+=item C<sumdiv>
 
 Similar to MPU's L<divisor_sum>.  The standard sum (sigma_1) is
 very fast in MPU.  Giving it a sub makes it much slower, and for numbers
 with very many factors, Pari is I<much> faster.
 
-=item eint1
+=item C<eint1>
 
 Similar to MPU's L<ExponentialIntegral>.
 
-=item zeta
+=item C<zeta>
 
 A more feature-rich version MPU's L<RiemannZeta> function (supports negative
 and complex inputs).
@@ -4034,10 +4037,10 @@ Perl modules, counting the primes to C<800_000_000> (800 million):
   ~11000     Math::Primality             0.04     Perl + Math::GMPz
   >20000     Math::Big                   1.12     Perl, > 26GB RAM used
 
-Python's standard modules are very slow: mpmath v0.17 primepi takes 169.5s
-and 25+ GB of RAM.  sympy 0.7.1 primepi takes 292.2s.  However there are very
+Python's standard modules are very slow: MPMATH v0.17 C<primepi> takes 169.5s
+and 25+ GB of RAM.  SymPy 0.7.1 C<primepi> takes 292.2s.  However there are very
 fast solutions written by Robert William Hanks (included in the xt/
-directory of this distribution): pure Python in 12.1s and numpy in 2.8s.
+directory of this distribution): pure Python in 12.1s and NUMPY in 2.8s.
 
 
 C<is_prime>: my impressions for various sized inputs:

@@ -1463,7 +1463,7 @@ sub pminus1_factor {
   while (1) {
     $pc_end = $B1 if $pc_end > $B1;
     @bprimes = @{ primes($pc_beg, $pc_end) };
-    foreach $q (@bprimes) {
+    foreach my $q (@bprimes) { 
       my($k, $kmin) = ($q, int($B1 / $q));
       while ($k <= $kmin) { $k *= $q; }
       $t *= $k;                         # accumulate powers for a

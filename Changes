@@ -1,8 +1,10 @@
 Revision history for Perl extension Math::Prime::Util.
 
-0.27 xx April 2013
+0.27 xx May 2013
 
     - Speedup pure Perl factoring of small numbers.
+
+    - is_prob_prime / is_prime about 10% faster for composites.
 
 0.26 21 April 2013
 

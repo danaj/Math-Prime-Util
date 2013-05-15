@@ -145,6 +145,7 @@ __END__
 
 =encoding utf8
 
+=for stopwords mul
 
 =head1 NAME
 
