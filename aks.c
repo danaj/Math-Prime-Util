@@ -97,6 +97,7 @@ static UV order(UV r, UV n, UV limit) {
   return j;
 }
 
+#if 0
 static void poly_print(UV* poly, UV r)
 {
   int i;
@@ -107,6 +108,7 @@ static void poly_print(UV* poly, UV r)
   if (poly[0] != 0) printf("%lu", poly[0]);
   printf("\n");
 }
+#endif
 
 static void poly_mod_mul(UV* px, UV* py, UV* res, UV r, UV mod)
 {

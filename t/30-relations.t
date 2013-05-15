@@ -12,9 +12,6 @@ use Math::Prime::Util qw/primes
 
 my @trials = qw/1 2 3 4 5 6 7 17 57 89 102 1337 8573 84763 784357 1000001 2573622/;
 
-my $use64 = Math::Prime::Util::prime_get_config->{'maxbits'} > 32;
-my $extra = defined $ENV{RELEASE_TESTING} && $ENV{RELEASE_TESTING};
-
 plan tests => 5 * scalar @trials;
 
 my $last = 0;

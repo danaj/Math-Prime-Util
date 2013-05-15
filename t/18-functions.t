@@ -7,8 +7,6 @@ use Math::Prime::Util qw/
     prime_count ExponentialIntegral LogarithmicIntegral RiemannR RiemannZeta
 /;
 
-my $use64 = Math::Prime::Util::prime_get_config->{'maxbits'} > 32;
-my $extra = defined $ENV{RELEASE_TESTING} && $ENV{RELEASE_TESTING};
 my $infinity = 20**20**20;
 
 plan tests => 3 + 6 + 1 + 16 + 11 + 9 + 6;

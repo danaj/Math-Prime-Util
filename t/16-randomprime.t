@@ -11,7 +11,7 @@ use Math::Prime::Util qw/random_prime random_ndigit_prime random_nbit_prime
                          prime_set_config/;
 
 my $use64 = Math::Prime::Util::prime_get_config->{'maxbits'} > 32;
-my $extra = defined $ENV{RELEASE_TESTING} && $ENV{RELEASE_TESTING};
+my $extra = defined $ENV{EXTENDED_TESTING} && $ENV{EXTENDED_TESTING};
 my $broken64 = (18446744073709550592 == ~0);
 my $maxbits = $use64 ? 64 : 32;
 

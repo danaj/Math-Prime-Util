@@ -4,7 +4,7 @@ use warnings;
 
 # This is a subset of our tests.  You really should run the whole test suite
 # on the PP code.  What this will do is basic regression testing.
-my $extra = defined $ENV{RELEASE_TESTING} && $ENV{RELEASE_TESTING};
+my $extra = defined $ENV{EXTENDED_TESTING} && $ENV{EXTENDED_TESTING};
 my $use64 = ~0 > 4294967295;
 
 use Test::More;
@@ -36,6 +36,7 @@ my @composites = qw/
 9439201 17236801 23382529 34657141 56052361 146843929
 341 561 645 1105 1387 1729 1905 2047 2465 2701 2821 3277 4033 4369 4371
 4681 5461 6601 7957 8321 52633 88357
+66066 173645446 7500135 115501463
 /;
 
 # pseudoprimes to various small prime bases
@@ -214,6 +215,14 @@ my %rvals = (
     10000000000 =>  455050683.30684692446315,
 18446744073709551615 => 4.25656284014012122706963685602e17,
 );
+my %rzvals = (
+            2   =>  0.6449340668482264364724151666,
+            2.5 =>  0.3414872572509171797567696934,
+            4.5 =>  0.0547075107614542640229672890,
+            7   =>  0.0083492773819228268397975498,
+            8.5 =>  0.0028592508824156277133439825,
+           20.6 =>  0.0000006293391573578212882457,
+);
 
 
 plan tests => 1 +
@@ -223,14 +232,17 @@ plan tests => 1 +
               scalar(keys %pivals_small) + scalar(keys %pi_intervals) +
               2*scalar(keys %pivals_small) + scalar(keys %nthprimes_small) +
               4 + scalar(keys %pseudoprimes) +
-              scalar(keys %eivals) + scalar(keys %livals) + scalar(keys %rvals) +
+              scalar(keys %eivals) + scalar(keys %livals) + scalar(keys %rvals) + scalar(keys %rzvals) +
+              ($extra ? 2 : 0) +  # Bigfloat RiemannZeta
               1 + 1 +    # factor
-              8 + 4*3 +  # factoring subs
+              10 + 7*3 +  # factoring subs
               10 +       # AKS
+              2 +        # Lucas and BLS75 primality proofs
               1;
 
 use Math::Prime::Util qw/primes prime_count_approx prime_count_lower/;
 use Math::BigInt try => 'GMP';
+use Math::BigFloat;
 require_ok 'Math::Prime::Util::PP';
     # This function skips some setup
     undef *primes;
@@ -250,6 +262,7 @@ require_ok 'Math::Prime::Util::PP';
     *factor         = \&Math::Prime::Util::PP::factor;
 
     *RiemannR            = \&Math::Prime::Util::PP::RiemannR;
+    *RiemannZeta         = \&Math::Prime::Util::PP::RiemannZeta;
     *LogarithmicIntegral = \&Math::Prime::Util::PP::LogarithmicIntegral;
     *ExponentialIntegral = \&Math::Prime::Util::PP::ExponentialIntegral;
 
@@ -375,6 +388,16 @@ while (my($n, $lin) = each (%livals)) {
 while (my($n, $rin) = each (%rvals)) {
   cmp_closeto( RiemannR($n), $rin, 0.00000001 * abs($rin), "R($n) ~= $rin");
 }
+while (my($n, $zin) = each (%rzvals)) {
+  cmp_closeto( RiemannZeta($n), $zin, 0.00000001 * abs($zin), "Zeta($n) ~= $zin");
+}
+if ($extra) {
+  my ($n, $zin);
+  ($n, $zin) = (4.5, $rzvals{4.5});
+  cmp_closeto( RiemannZeta(Math::BigFloat->new($n)), $zin, 0.00000001 * abs($zin), "Zeta($n) ~= $zin");
+  ($n, $zin) = (20.6, $rzvals{20.6});
+  cmp_closeto( RiemannZeta(Math::BigFloat->new($n)), $zin, 0.00000001 * abs($zin), "Zeta($n) ~= $zin");
+}
 
 ###############################################################################
 
@@ -423,6 +446,9 @@ while (my($n, $rin) = each (%rvals)) {
   is_deeply( [ sort {$a<=>$b} Math::Prime::Util::PP::holf_factor(403) ],
              [ 13, 31 ],
              "holf(403)" );
+  is_deeply( [ sort {$a<=>$b} Math::Prime::Util::PP::fermat_factor(403) ],
+             [ 13, 31 ],
+             "fermat(403)" );
   is_deeply( [ sort {$a<=>$b} Math::Prime::Util::PP::prho_factor(403) ],
              [ 13, 31 ],
              "prho(403)" );
@@ -438,6 +464,9 @@ while (my($n, $rin) = each (%rvals)) {
   is_deeply( [ sort {$a<=>$b} Math::Prime::Util::PP::pbrent_factor(851981) ],
              [ 13, 65537 ],
              "pbrent(851981)" );
+  is_deeply( [ sort {$a<=>$b} Math::Prime::Util::PP::ecm_factor(851981) ],
+             [ 13, 65537 ],
+             "ecm(851981)" );
   my $n64 = $use64 ? 55834573561 : Math::BigInt->new("55834573561");
   is_deeply( [ sort {$a<=>$b} Math::Prime::Util::PP::prho_factor($n64) ],
              [ 13, 4294967197 ],
@@ -464,6 +493,24 @@ while (my($n, $rin) = each (%rvals)) {
   is(scalar @nfac, 2, "pminus1 finds a factor of 18686551294184381720251");
   is($nfac[0] * $nfac[1], $nbig, "pminus1 found a correct factor");
   ok($nfac[0] != 1 && $nfac[1] != 1, "pminus1 didn't return a degenerate factor");
+  @nfac = sort {$a<=>$b} Math::Prime::Util::PP::ecm_factor($nbig);
+  is(scalar @nfac, 2, "ecm finds a factor of 18686551294184381720251");
+  is($nfac[0] * $nfac[1], $nbig, "ecm found a correct factor");
+  ok($nfac[0] != 1 && $nfac[1] != 1, "ecm didn't return a degenerate factor");
+
+  $nbig = Math::BigInt->new("73786976930493367637");
+  # Check stage 2 p-1.  Fast with Math::BigInt::GMP, slow without.
+  SKIP: {
+    skip "Skipping p-1 stage 2 tests", 3 unless $extra;
+    @nfac = sort {$a<=>$b} Math::Prime::Util::PP::pminus1_factor($nbig, 27000, 35000);
+    is(scalar @nfac, 2, "pminus1 finds a factor of 73786976930493367637");
+    is($nfac[0] * $nfac[1], $nbig, "pminus1 found a correct factor");
+    ok($nfac[0] != 1 && $nfac[1] != 1, "pminus1 didn't return a degenerate factor");
+  }
+  @nfac = sort {$a<=>$b} Math::Prime::Util::PP::fermat_factor($nbig);
+  is(scalar @nfac, 2, "fermat finds a factor of 73786976930493367637");
+  is($nfac[0] * $nfac[1], $nbig, "fermat found a correct factor");
+  ok($nfac[0] != 1 && $nfac[1] != 1, "fermat didn't return a degenerate factor");
 }
 
 ##### AKS primality test.  Be very careful with performance.
@@ -480,6 +527,13 @@ SKIP: {
   skip "Skipping PP AKS test on 32-bit machine", 1 unless $use64 || $extra;
   is( is_aks_prime(74513), 0, "AKS: 74513 is composite (failed anr test)" );
 }
+
+is_deeply( [Math::Prime::Util::PP::primality_proof_lucas(100003)],
+           [2, [100003, "Pratt", [2, 3, 7, 2381], 2]],
+           "primality_proof_lucas(100003)" );
+is_deeply( [Math::Prime::Util::PP::primality_proof_bls75(100000007)],
+           [2, [100000007, "n-1", [2, 491, 101833], [5, 2, 2]]],
+           "primality_proof_bls75(100000007)" );
 
 is( $_, 'this should not change', "Nobody clobbered \$_" );
 

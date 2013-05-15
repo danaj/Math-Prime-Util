@@ -6,7 +6,7 @@ use Test::More;
 use Math::Prime::Util qw/is_prime is_strong_pseudoprime is_strong_lucas_pseudoprime/;
 
 my $use64 = Math::Prime::Util::prime_get_config->{'maxbits'} > 32;
-my $extra = defined $ENV{RELEASE_TESTING} && $ENV{RELEASE_TESTING};
+my $extra = defined $ENV{EXTENDED_TESTING} && $ENV{EXTENDED_TESTING};
 
 # small primes
 my @sp = qw/2 3 5 7 11 13 17 19 23 29 31 37/;
@@ -140,11 +140,13 @@ for my $n (@small_lucas_trials) {
 # Verify MR base 2-3 for many small numbers (up to phi2)
 if ($extra) {
   my $mr2fail = 0;
-  for (2 .. 1373652) {
-    if (is_prime($_)) {
-      if (!is_strong_pseudoprime($_,2,3)) { $mr2fail = $_; last; }
-    } else {
-      if (is_strong_pseudoprime($_,2,3))  { $mr2fail = $_; last; }
+  foreach my $i (1 .. 50000) {
+    my $n = int(rand(1373652)) + 1;
+    my $isp23 = !!is_strong_pseudoprime($n,2,3);
+    my $prime = !!is_prime($n);
+    if ($isp23 != $prime) {
+      $mr2fail = $n;
+      last;
     }
   }
   is($mr2fail, 0, "is_strong_pseudoprime bases 2,3 matches is_prime to 1,373,652");

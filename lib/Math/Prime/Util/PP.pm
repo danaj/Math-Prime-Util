@@ -803,8 +803,8 @@ sub _jacobi {
     ($n, $m) = ($m, $n);
     $j = -$j if ($n % 4) == 3 && ($m % 4) == 3;
     $n = $n % $m;
-    $n = int($n->bstr) if $n <= ~0 && ref($n) eq 'Math::BigInt';
-    $m = int($m->bstr) if $m <= ~0 && ref($m) eq 'Math::BigInt';
+    $n = int($n->bstr) if ref($n) eq 'Math::BigInt' && $n <= ''.~0;
+    $m = int($m->bstr) if ref($m) eq 'Math::BigInt' && $m <= ''.~0;
   }
   while ($n != 0) {
     while (($n % 2) == 0) {
@@ -1110,7 +1110,7 @@ sub _basic_factor {
         }
       }
     }
-    $_[0] = int($_[0]->bstr) if $_[0] <= ~0;
+    $_[0] = int($_[0]->bstr) if $_[0] <= ''.~0;
   }
 
   if ( ($_[0] > 1) && _is_prime7($_[0]) ) {
@@ -1203,7 +1203,7 @@ sub factor {
   while (@nstack) {
     $n = pop @nstack;
     # Don't use bignum on $n if it has gotten small enough.
-    $n = int($n->bstr) if ref($n) eq 'Math::BigInt' && $n <= ~0;
+    $n = int($n->bstr) if ref($n) eq 'Math::BigInt' && $n <= ''.~0;
     #print "Looking at $n with stack ", join(",",@nstack), "\n";
     while ( ($n >= (31*31)) && !_is_prime7($n) ) {
       my @ftry;
@@ -1722,6 +1722,7 @@ sub ecm_factor {
     $f = Math::BigInt::bgcd( $z, $n ) if $f == 1;
     next if $f == $n;
     return _found_factor($f,$n, "ECM B1=$B1 curve $curve", @factors) if $f != 1;
+    $b = Math::BigInt->new("$b") unless ref($b) eq 'Math::BigInt';
     $u = $b->copy->bmodinv($n);
     $a = (($a*$u) - 2) % $n;
 
@@ -1921,7 +1922,7 @@ sub primality_proof_bls75 {
 
     my $m = pop @nstack;
     # Don't use bignum if it has gotten small enough.
-    $m = int($m->bstr) if ref($m) eq 'Math::BigInt' && $m <= ~0;
+    $m = int($m->bstr) if ref($m) eq 'Math::BigInt' && $m <= ''.~0;
     # Try to find factors of m, using the default set of factor subs.
     my @ftry;
     $_holf_r = 1;
@@ -1987,6 +1988,9 @@ sub primality_proof_bls75 {
     }
     push @fac_proofs, (scalar @$fproof == 1) ? $fproof->[0] : $fproof;
   }
+  # Put n, B back to non-bigints if possible.
+  $n = int($n->bstr) if ref($n) eq 'Math::BigInt' && $n <= ''.~0;
+  $B = int($B->bstr) if ref($B) eq 'Math::BigInt' && $B <= ''.~0;
   if ($theorem == 5) {
     return (2, [$n, "n-1", [@fac_proofs], [@as]]);
   } else {

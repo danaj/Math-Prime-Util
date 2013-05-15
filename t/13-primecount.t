@@ -7,7 +7,7 @@ use Math::Prime::Util qw/prime_count prime_count_lower prime_count_upper prime_c
 
 my $isxs  = Math::Prime::Util::prime_get_config->{'xs'};
 my $use64 = Math::Prime::Util::prime_get_config->{'maxbits'} > 32;
-my $extra = defined $ENV{RELEASE_TESTING} && $ENV{RELEASE_TESTING};
+my $extra = defined $ENV{EXTENDED_TESTING} && $ENV{EXTENDED_TESTING};
 
 #  Powers of 2:  http://oeis.org/A007053/b007053.txt
 #  Powers of 10: http://oeis.org/A006880/b006880.txt
@@ -157,10 +157,11 @@ sub parse_range {
 # Make sure each specific algorithm isn't broken.
 SKIP: {
   skip "Not XS -- skipping direct primecount tests", 4 unless $isxs;
-  is(Math::Prime::Util::_XS_lehmer_pi  (3456789), 247352, "XS Lehmer count");
-  is(Math::Prime::Util::_XS_meissel_pi (3456789), 247352, "XS Meissel count");
-  is(Math::Prime::Util::_XS_legendre_pi(3456789), 247352, "XS Legendre count");
-  is(Math::Prime::Util::_XS_prime_count(3456789), 247352, "XS sieve count");
+  # This has to be above lehmer.c's SIEVE_LIMIT or nothing happens.
+  is(Math::Prime::Util::_XS_lehmer_pi  (66123456), 3903023, "XS Lehmer count");
+  is(Math::Prime::Util::_XS_meissel_pi (66123456), 3903023, "XS Meissel count");
+  is(Math::Prime::Util::_XS_legendre_pi(66123456), 3903023, "XS Legendre count");
+  is(Math::Prime::Util::_XS_prime_count(66123456), 3903023, "XS sieve count");
 }
 is(Math::Prime::Util::PP::_lehmer_pi   (3456789), 247352, "PP Lehmer count");
 is(Math::Prime::Util::PP::_sieve_prime_count(3456789), 247352, "PP sieve count");

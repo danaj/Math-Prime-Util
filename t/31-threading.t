@@ -18,7 +18,7 @@ BEGIN {
 use Test::More 'tests' => 9;
 use Math::Prime::Util ":all";
 
-my $extra = defined $ENV{RELEASE_TESTING} && $ENV{RELEASE_TESTING};
+my $extra = defined $ENV{EXTENDED_TESTING} && $ENV{EXTENDED_TESTING};
 my $is_win32 = ($Config{osname} eq 'MSWin32')  ?  1  :  0;
 
 # threads are memory hogs, so we want few of them.  But for testing purposes,

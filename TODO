@@ -24,9 +24,6 @@
 - An assembler version of mulmod for i386 would be _really_ helpful for
   all the non-x86-64 Intel machines.
 
-- Dynamically use a mulmodadd in PP aks, just like the new C code does.
-  This will mean it'll work for full-size native ints.
-
 - More efficient Mertens.  The current version has poor growth.
 
 - More efficient totient segment.  Do we really need primes to n/2?
@@ -39,5 +36,9 @@
 
 - Big features:
    - LMO prime count
-   - ECPP primality proof
    - QS factoring
+
+- Test coverage:
+  PP miller-rabin with bigint
+  PP ecm_factor stage 2
+  PP primality_proof_bls75 that needs to find factors
