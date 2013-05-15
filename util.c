@@ -85,25 +85,6 @@ static UV count_zero_bits(const unsigned char* m, UV nbytes)
 }
 
 
-/* Does trial division, assuming x not divisible by 2, 3, or 5 */
-static int _is_trial_prime7(UV n)
-{
-  UV limit, i;
-  limit = isqrt(n);
-  i = 7;
-  while (1) {   /* trial division, skipping multiples of 2/3/5 */
-    if (i > limit) break;  if ((n % i) == 0) return 0;  i += 4;
-    if (i > limit) break;  if ((n % i) == 0) return 0;  i += 2;
-    if (i > limit) break;  if ((n % i) == 0) return 0;  i += 4;
-    if (i > limit) break;  if ((n % i) == 0) return 0;  i += 2;
-    if (i > limit) break;  if ((n % i) == 0) return 0;  i += 4;
-    if (i > limit) break;  if ((n % i) == 0) return 0;  i += 6;
-    if (i > limit) break;  if ((n % i) == 0) return 0;  i += 2;
-    if (i > limit) break;  if ((n % i) == 0) return 0;  i += 6;
-  }
-  return 2;
-}
-
 /* Does trial division or prob tests, assuming x not divisible by 2, 3, or 5 */
 static int _is_prime7(UV n)
 {
@@ -191,24 +172,6 @@ int _XS_is_prime(UV n)
   release_prime_cache(sieve);
 
   return (isprime >= 0)  ?  isprime  :  _is_prime7(n);
-}
-
-
-UV next_trial_prime(UV n)
-{
-  UV d,m;
-
-  if (n < 7)
-    return (n < 2) ? 2 : (n < 3) ? 3 : (n < 5) ? 5 : 7;
-
-  d = n/30;
-  m = n - d*30;
-  /* Move forward one, knowing we may not be on the wheel */
-  if (m == 29) { d++; m = 1; } else  { m = nextwheel30[m]; }
-  while (!_is_trial_prime7(d*30+m)) {
-    m = nextwheel30[m];  if (m == 1) d++;
-  }
-  return(d*30+m);
 }
 
 
@@ -800,8 +763,8 @@ char* _moebius_range(UV lo, UV hi)
   for (i = lo; i <= hi; i++) {
     IV a = A[i-lo];
     if (a != 0)
-      mu[i-lo] = (a != i && -a != i)  ?  (a<0) - (a>0)
-                                      :  (a>0) - (a<0);
+      mu[i-lo] = (a != (IV)i && -a != (IV)i)  ?  (a<0) - (a>0)
+                                              :  (a>0) - (a<0);
   }
   Safefree(A);
 #endif

@@ -3,6 +3,7 @@
 #include <string.h>
 #include <math.h>
 
+#define FUNC_next_prime_in_sieve
 #include "sieve.h"
 #include "ptypes.h"
 #include "cache.h"

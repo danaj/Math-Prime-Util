@@ -25,9 +25,11 @@ extern int pminus1_factor(UV n, UV *factors, UV B1, UV B2);
 
 extern int _XS_miller_rabin(UV n, const UV *bases, int nbases);
 extern int _XS_is_prob_prime(UV n);
+extern int _XS_is_prime_tom(UV n, int t);
 
 extern UV _XS_divisor_sum(UV n);
 
+#ifdef FUNC_gcd_ui
 static UV gcd_ui(UV x, UV y) {
   UV t;
   if (y < x) { t = x; x = y; y = t; }
@@ -36,5 +38,6 @@ static UV gcd_ui(UV x, UV y) {
   }
   return x;
 }
+#endif
 
 #endif

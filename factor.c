@@ -3,6 +3,7 @@
 #include <string.h>
 #include <math.h>
 
+#define FUNC_gcd_ui
 #include "ptypes.h"
 #include "factor.h"
 #include "util.h"
@@ -359,7 +360,6 @@ int _XS_is_prob_prime(UV n)
     bases[0] = 2; bases[1] = 7; bases[2] = 61; nbases = 3;
   }
 #else
-#if 1
   /* Better bases from http://miller-rabin.appspot.com/, 10 Mar 2013 */
   if (n < UVCONST(341531)) {
     bases[0] = UVCONST(9345883071009581737);
@@ -396,28 +396,6 @@ int _XS_is_prob_prime(UV n)
     bases[6] = UVCONST( 1795265022 );
     nbases = 7;
   }
-#else
-  /* Classic bases */
-  if (n < UVCONST(9080191)) {
-    bases[0] = 31; bases[1] = 73; nbases = 2;
-  } else if (n < UVCONST(4759123141)) {
-    bases[0] = 2; bases[1] = 7; bases[2] = 61; nbases = 3;
-  } else if (n < UVCONST(21652684502221)) {
-    bases[0] = 2; bases[1] = 1215; bases[2] = 34862; bases[3] = 574237825;
-    nbases = 4;
-  } else if (n < UVCONST(341550071728321)) {
-    bases[0] =  2; bases[1] =  3; bases[2] =  5; bases[3] =  7; bases[4] = 11;
-    bases[5] = 13; bases[6] = 17; nbases = 7;
-  } else if (n < UVCONST(3825123056546413051)) {
-    bases[0] =  2; bases[1] =  3; bases[2] =  5; bases[3] =  7; bases[4] = 11;
-    bases[5] = 13; bases[6] = 17; bases[7] = 19; bases[8] = 23; nbases = 9;
-  } else {
-    bases[0] =  2; bases[1] =  3; bases[2] =  5; bases[3] =  7; bases[4] = 11;
-    bases[5] = 13; bases[6] = 17; bases[7] = 19; bases[8] = 23; bases[9] = 29;
-    bases[10]= 31; bases[11]= 37;
-    nbases = 12;
-  }
-#endif
 #endif
   prob_prime = _XS_miller_rabin(n, bases, nbases);
   return 2*prob_prime;

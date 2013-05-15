@@ -27,7 +27,7 @@ static const unsigned char distancewheel30[30] =
 static const unsigned char wheeladvance30[30] =
     {0,6,0,0,0,0,0,4,0,0,0,2,0,4,0,0,0,2,0,4,0,0,0,6,0,0,0,0,0,2};
 
-#if 0
+#ifdef FUNC_is_prime_in_sieve
 static int is_prime_in_sieve(const unsigned char* sieve, UV p) {
   UV d = p/30;
   UV m = p - d*30;
@@ -36,6 +36,7 @@ static int is_prime_in_sieve(const unsigned char* sieve, UV p) {
 }
 #endif
 
+#ifdef FUNC_next_prime_in_sieve
 /* Warning -- can go off the end of the sieve */
 static UV next_prime_in_sieve(const unsigned char* sieve, UV p) {
   UV d, m;
@@ -49,7 +50,8 @@ static UV next_prime_in_sieve(const unsigned char* sieve, UV p) {
   } while (sieve[d] & masktab30[m]);
   return(d*30+m);
 }
-#if 0
+#endif
+#ifdef FUNC_prev_prime_in_sieve
 static UV prev_prime_in_sieve(const unsigned char* sieve, UV p) {
   UV d, m;
   if (p <= 7)
