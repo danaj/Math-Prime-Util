@@ -71,6 +71,8 @@ $| = 1;
 #    perl -MMath::Prime::Util=is_prime -MMath::NumSeq::Palindromes=:all -E 'my $seq = Math::NumSeq::Palindromes->new; my $v = 0; while (1) { $v = ($seq->next)[1]; last if $v > $end; say $v if is_prime($v); } BEGIN {our $end = 1000000000}'
 
 my %opts;
+# Make Getopt not capture +
+Getopt::Long::Configure(qw/no_getopt_compat/);
 GetOptions(\%opts,
            'safe|A005385',
            'sophie|sg|A005384',
@@ -101,7 +103,7 @@ GetOptions(\%opts,
 Math::Prime::Util::prime_set_config(gmp=>0) if exists $opts{'nompugmp'};
 if (exists $opts{'version'}) {
   my $version_str =
-   "primes.pl version 1.2 using Math::Prime::Util $Math::Prime::Util::VERSION";
+   "primes.pl version 1.3 using Math::Prime::Util $Math::Prime::Util::VERSION";
   $version_str .= " and MPU::GMP $Math::Prime::Util::GMP::VERSION"
     if Math::Prime::Util::prime_get_config->{'gmp'};
   $version_str .= "\nWritten by Dana Jacobsen.\n";
@@ -113,6 +115,7 @@ die_usage() if exists $opts{'help'};
 die_usage() unless @ARGV == 2;
 my ($start, $end) = @ARGV;
 # Allow some expression evaluation on the input, but don't just eval it.
+$end = "($start)$end" if $end =~ /^\+/;
 $start = eval_expr($start) unless $start =~ /^\d+$/;
 $end   = eval_expr($end  ) unless $end   =~ /^\d+$/;
 die "$start isn't a positive integer" if $start =~ tr/0123456789//c;
@@ -593,6 +596,7 @@ Usage: $0 [options]  START  END
 Displays all primes between the positive integers START and END, inclusive.
 The START and END values must be integers or simple expressions.  This allows
 inputs like "10**500+100" or "2**64-1000" or "2 * nth_prime(560)".
+Additionally, if END starts with '+' then it is assumed to add to START.
 
 General options:
 

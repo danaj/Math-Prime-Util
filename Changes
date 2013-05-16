@@ -6,6 +6,13 @@ Revision history for Perl extension Math::Prime::Util.
 
     - is_prob_prime / is_prime about 10% faster for composites.
 
+    - Allow '+N' as the second parameter to primes.pl.  This allows:
+          primes.pl 100 +30
+      to return the primes between 100 and 130.  Or:
+          primes.pl 'nth_prime(1000000000)' +2**8
+
+    - Use EXTENDED_TESTING to turn on extra tests.
+
 0.26 21 April 2013
 
     - Pure Perl factoring:
