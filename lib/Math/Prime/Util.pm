@@ -1745,7 +1745,7 @@ sub verify_prime {
   if ($method eq 'Pratt' || $method eq 'Lucas') {
     # Based on Lucas primality test, which requires full n-1 factorization.
     if (scalar @pdata != 2 || (ref($pdata[0]) ne 'ARRAY') || (ref($pdata[1]) eq 'ARRAY')) {
-      print "verify_prime: incorrect Pratt format, must have factors and a value\n" if $verbose;
+      carp "verify_prime: incorrect Pratt format, must have factors and a value\n";
       return 0;
     }
     my @factors = @{shift @pdata};
@@ -1776,7 +1776,7 @@ sub verify_prime {
       $factors_seen{"$f"} = 1;
     }
     if ($B != 1) {
-      print "verify_prime: n-1 not completely factored" if $verbose;
+      print "primality fail: n-1 not completely factored" if $verbose;
       return 0;
     }
 
@@ -1804,7 +1804,7 @@ sub verify_prime {
   if ($method eq 'n-1') {
     # BLS75 or generalized Pocklington
     # http://www.ams.org/journals/mcom/1975-29-130/S0025-5718-1975-0384673-1/S0025-5718-1975-0384673-1.pdf
-    # Pull of optional theorem 7 data
+    # Pull off optional theorem 7 data
     my ($theorem, $t7_B1, $t7_B, $t7_a) = (5, undef, undef, undef);
     if (scalar @pdata == 3 && ref($pdata[0]) eq 'ARRAY' && $pdata[0]->[0] =~ /^(B|T7|Theorem\s*7)$/i) {
       $theorem = 7;
@@ -1812,13 +1812,13 @@ sub verify_prime {
       $t7_B  = Math::BigInt->new("$t7_B");
     }
     if (scalar @pdata != 2 || (ref($pdata[0]) ne 'ARRAY') || (ref($pdata[1]) ne 'ARRAY')) {
-      warn "verify_prime: incorrect n-1 format, must have factors and a values\n";
+      carp "verify_prime: incorrect n-1 format, must have factors and a values\n";
       return 0;
     }
     my @factors = @{shift @pdata};
     my @as = @{shift @pdata};
     if ($#factors != $#as) {
-      warn "verify_prime: incorrect n-1 format, must have a value for each factor\n";
+      carp "verify_prime: incorrect n-1 format, must have a value for each factor\n";
       return 0;
     }
 
@@ -1940,24 +1940,24 @@ sub verify_prime {
     #      Ux,Uy should be 600992528322000913770, 206075883056439332684
     #      Vx,Vy should be 0, 1
     if (scalar @pdata < 1) {
-      warn "verify_prime: incorrect AGKM format\n";
+      carp "verify_prime: incorrect AGKM format\n";
       return 0;
     }
     my ($ni, $a, $b, $m, $P);
     my ($qval, $q) = ($n, $n);
     foreach my $block (@pdata) {
       if (ref($block) ne 'ARRAY' || scalar @$block != 6) {
-        warn "verify_prime: incorrect AGKM block format\n";
+        carp "verify_prime: incorrect AGKM block format\n";
         return 0;
       }
       if (Math::BigInt->new("$block->[0]") != Math::BigInt->new("$q")) {
-        warn "verify_prime: incorrect AGKM block format: block n != q\n";
+        carp "verify_prime: incorrect AGKM block format: block n != q\n";
         return 0;
       }
       ($ni, $a, $b, $m, $qval, $P) = @$block;
       $q = ref($qval) eq 'ARRAY' ? $qval->[0] : $qval;
       if (ref($P) ne 'ARRAY' || scalar @$P != 2) {
-        warn "verify_prime: incorrect AGKM block point format\n";
+        carp "verify_prime: incorrect AGKM block point format\n";
         return 0;
       }
       my($Px, $Py) = @$P;
@@ -1969,16 +1969,16 @@ sub verify_prime {
       $Px = $n->copy->bzero->badd("$Px") unless ref($Px) eq 'Math::BigInt';
       $Py = $n->copy->bzero->badd("$Py") unless ref($Py) eq 'Math::BigInt';
       if (Math::BigInt::bgcd($ni, 6) != 1) {
-        warn "verify_prime: AGKM block n '$ni' is divisible by 2 or 3\n";
+        print "primality fail: AGKM block n '$ni' is divisible by 2 or 3\n" if $verbose;
         return 0;
       }
       my $c = $a*$a*$a * 4 + $b*$b * 27;
       if (Math::BigInt::bgcd($c, $ni) != 1) {
-        warn "verify_prime: AGKM block gcd 4a^3+27b^2,n incorrect\n";
+        print "primality fail: AGKM block gcd 4a^3+27b^2,n incorrect\n" if $verbose;
         return 0;
       }
       if ($q <= $ni->copy->broot(4)->badd(1)->bpow(2)) {
-        warn "verify_prime: AGKM block q is too small\n";
+        print "primality fail: AGKM block q is too small\n" if $verbose;
         return 0;
       }
       # Final check, check that we've got a bound above and below (Hasse)
@@ -1990,13 +1990,13 @@ sub verify_prime {
       # Compute U = (m/q)P, check U != point at infinity
       $ECP->mul( $m->copy->bdiv($q)->as_int );
       if ($ECP->is_infinity) {
-        warn "verify_prime: AGKM point does not multiply correctly.\n";
+        print "primality fail: AGKM point does not multiply correctly (1).\n" if $verbose;
         return 0;
       }
       # Compute V = qU, check V = point at infinity
       $ECP->mul( $q );
       if (! $ECP->is_infinity) {
-        print "verify_prime: AGKM point does not multiply correctly.\n" if $verbose;
+        print "primality fail: AGKM point does not multiply correctly (2).\n" if $verbose;
         return 0;
       }
     }
@@ -2007,7 +2007,7 @@ sub verify_prime {
     return 1;
   }
 
-  print "verify_prime: Unknown method: '$method'.\n" if $verbose;
+  carp "verify_prime: Unknown method: '$method'.\n";
   return 0;
 }
 
@@ -2894,8 +2894,14 @@ array reference if the result is not 2 (definitely prime).
 
 Given an array representing a certificate of primality, returns either 0 (not
 verified), or 1 (verified).  The computations are all done using pure Perl
-Math::BigInt and should not be time consuming (the Pari or GMP backends will
-help with large inputs).
+Math::BigInt.  Lucas/Pratt and n-1 proofs are not time consuming, but ECPP
+proofs can be rather slow, especially without the GMP or Pari backends.
+
+If the certificate is malformed, the routine will carp a warning in addition
+to returning 0.  If the C<verbose> option is set (see L</prime_set_config>)
+then if the validation fails, the reason for the failure is printed in
+addition to returning 0.  If the C<verbose> option is set to 2 or higher, then
+a message indicating success and the certificate type is also printed.
 
 A certificate is an array holding an C<n-cert>.  An C<n-cert> is one of:
 

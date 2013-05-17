@@ -3,6 +3,7 @@ use strict;
 use warnings;
 
 use Test::More;
+use Test::Warn;
 use Math::Prime::Util qw/is_prime is_provable_prime is_provable_prime_with_cert
                          prime_certificate verify_prime
                          prime_get_config
@@ -30,10 +31,14 @@ my @plist = qw/20907001 809120722675364249 677826928624294778921
          @plist;
 
 plan tests => 0
-            + 2 # is_provable_prime
+            + 2  # is_provable_prime
             + 6 * scalar(@plist)
-            + 6 # hand-done proofs
-            + 17 # verification failures
+            + 6  # hand-done proofs
+            + 28 # borked up certificates generating warnings
+            + 6  # verification failures (tiny/BPSW)
+            + 8  # verification failures (Lucas/Pratt)
+            + 12 # verification failures (n-1)
+            + 7  # verification failures (ECPP)
             + 0;
 
 is( is_provable_prime(871139809), 0, "871139809 is composite" );
@@ -107,16 +112,79 @@ SKIP: {
 }
 
 # Failures for verify_prime
+
+# First, let's get the borked up formats, which is should warn about.
+{
+  my $result;
+  warning_like { $result = verify_prime([1490266103, 'INVALID', 1, 2, 3]) }
+               { carped => qr/^verify_prime: / },
+               "warning for unknown method";
+  is( $result, 0, "   ...and returns 0" );
+
+  warning_like { $result = verify_prime([1490266103, 'Pratt', 1, 2, 3]) }
+               { carped => qr/^verify_prime: / },
+               "warning for invalid Lucas/Pratt";
+  is( $result, 0, "   ...and returns 0" );
+  warning_like { $result = verify_prime([1490266103, 'Pratt', 1, [2], 3]) }
+               { carped => qr/^verify_prime: / },
+               "warning for invalid Lucas/Pratt";
+  is( $result, 0, "   ...and returns 0" );
+  warning_like { $result = verify_prime([1490266103, 'Pratt', [1], 2, 3]) }
+               { carped => qr/^verify_prime: / },
+               "warning for invalid Lucas/Pratt";
+  is( $result, 0, "   ...and returns 0" );
+
+  warning_like { $result = verify_prime([1490266103, 'n-1', 1, 2, 3]) }
+               { carped => qr/^verify_prime: / },
+               "warning for invalid n-1 (too many arguments)";
+  is( $result, 0, "   ...and returns 0" );
+  warning_like { $result = verify_prime([1490266103, 'n-1', 1, 2]) }
+               { carped => qr/^verify_prime: / },
+               "warning for invalid n-1 (non-array f,a)";
+  is( $result, 0, "   ...and returns 0" );
+  warning_like { $result = verify_prime([1490266103, 'n-1', [1], 2]) }
+               { carped => qr/^verify_prime: / },
+               "warning for invalid n-1 (non-array a)";
+  is( $result, 0, "   ...and returns 0" );
+  warning_like { $result = verify_prime([1490266103, 'n-1', [2, 13, 19, 1597, 1889], [2, 2, 2, 2]]) }
+               { carped => qr/^verify_prime: / },
+               "warning for invalid n-1 (too few a values)";
+  is( $result, 0, "   ...and returns 0" );
+
+  warning_like { $result = verify_prime([1490266103, 'ECPP']) }
+               { carped => qr/^verify_prime: / },
+               "warning for invalid ECPP (no n-certs)";
+  is( $result, 0, "   ...and returns 0" );
+  warning_like { $result = verify_prime([1490266103, 'ECPP', 15]) }
+               { carped => qr/^verify_prime: / },
+               "warning for invalid ECPP (non-array block)";
+  is( $result, 0, "   ...and returns 0" );
+  warning_like { $result = verify_prime([1490266103, 'ECPP', [15,16,17]]) }
+               { carped => qr/^verify_prime: / },
+               "warning for invalid ECPP (wrong size block)";
+  is( $result, 0, "   ...and returns 0" );
+  warning_like { $result = verify_prime([1490266103, 'ECPP', [694361, 694358, 0, 695162, 26737, [348008, 638945]]]) }
+               { carped => qr/^verify_prime: / },
+               "warning for invalid ECPP (block n != q)";
+  is( $result, 0, "   ...and returns 0" );
+  warning_like { $result = verify_prime([1490266103, 'ECPP', [1490266103, 1442956066, 1025050760, 1490277784, 2780369, 531078754]]) }
+               { carped => qr/^verify_prime: / },
+               "warning for invalid ECPP (block point wrong format)";
+  is( $result, 0, "   ...and returns 0" );
+  warning_like { $result = verify_prime([1490266103, 'ECPP', [1490266103, 1442956066, 1025050760, 1490277784, 2780369, [531078754, 0, 195830554]]]) }
+               { carped => qr/^verify_prime: / },
+               "warning for invalid ECPP (block point wrong format)";
+  is( $result, 0, "   ...and returns 0" );
+}
+
 is( verify_prime([]), 0, "verify null is composite" );
 is( verify_prime([2]), 1, "verify [2] is prime" );
 is( verify_prime([9]), 0, "verify [9] is composite" );
 is( verify_prime([14]), 0, "verify [14] is composite" );
 is( verify_prime(['28446744073709551615']), 0, "verify BPSW with n > 2^64 fails" );
 is( verify_prime([871139809]), 0, "verify BPSW with composite fails" );
-is( verify_prime([1490266103, 'INVALID', 1, 2, 3]), 0, "unknown method" );
-is( verify_prime([1490266103, 'Pratt', 1, 2, 3]), 0, "Pratt with wrong count" );
-is( verify_prime([1490266103, 'Pratt', 1, [2]]), 0, "Pratt with non-array arguments" );
-is( verify_prime([1490266103, 'Pratt', [1], [2]]), 0, "Pratt with non-array arguments" );
+
+is( verify_prime([1490266103, 'Pratt', [2,13,19,1597,1889], 5]), 1, "Lucas/Pratt proper" );
 is( verify_prime([1490266103, 'Pratt', [4,13,19,1597,1889], 5]), 0, "Pratt with non-prime factors" );
 is( verify_prime([1490266103, 'Pratt', [[4],13,19,1597,1889], 5]), 0, "Pratt with non-prime factors" );
 is( verify_prime([1490266103, 'Pratt', [2,13,29,1597,1889], 5]), 0, "Pratt with wrong factors" );
@@ -124,3 +192,46 @@ is( verify_prime([1490266103, 'Pratt', [2,13,19,1597], 5]), 0, "Pratt with not e
 is( verify_prime([1490266103, 'Pratt', [2,13,19,1597,1889], 1490266103]), 0, "Pratt with coprime a" );
 is( verify_prime([185156263, 'Pratt', [2,3,3,10286459], 2]), 0, "Pratt with non-psp a" );
 is( verify_prime([1490266103, 'Pratt', [2,13,19,1597,1889], 3]), 0, "Pratt with a not valid for all f" );
+
+is( verify_prime([1490266103, 'n-1', [2, 13, 19, 1597, 1889], [5, 2, 2, 2, 2]]), 1, "n-1 proper" );
+is( verify_prime([1490266103, 'n-1', [2, 23, 19, 1597, 1889], [5, 2, 2, 2, 2]]), 0, "n-1 with wrong factors" );
+is( verify_prime([1490266103, 'n-1', [13, 19, 1597, 1889], [2, 2, 2, 2]]), 0, "n-1 without 2 as a factor" );
+is( verify_prime([1490266103, 'n-1', [2, 13, 1889, 30343], [5, 2, 2, 2]]), 0, "n-1 with a non-prime factor" );
+is( verify_prime([1490266103, 'n-1', [2, 13, 1889, [30343]], [5, 2, 2, 2]]), 0, "n-1 with a non-prime array factor" );
+# I don't know how to make F and R (A and B) to not be coprime
+is( verify_prime(['9848131514359', 'n-1', ["B", 20000, 890588851, 2], [2, 3, 19, 97], [3, 5, 2, 2]]), 1, "n-1 T7 proper" );
+is( verify_prime(['9848131514359', 'n-1', ["B", 20000, 890588951, 2], [2, 3, 19, 97], [3, 5, 2, 2]]), 0, "n-1 T7 with misfactor" );
+is( verify_prime(['9848131514359', 'n-1', ["B", 0, 890588851, 2], [2, 3, 19, 97], [3, 5, 2, 2]]), 0, "n-1 T7 with B < 1" );
+is( verify_prime(['9848131514359', 'n-1', ["B", 20000, 16921188169, 2], [2, 3, 97], [3, 5, 2]]), 0, "n-1 T7 with wrong B" );
+is( verify_prime([1490266103, 'n-1', [2, 13], [5, 2]]), 0, "n-1 without enough factors" );
+is( verify_prime([914144252447488195, 'n-1', [2, 3, 11, 17, 1531], [2, 2, 2, 2, 2]]), 0, "n-1 with bad BLS75 r/s" );
+is( verify_prime([1490266103, 'n-1', [2, 13, 19, 1597, 1889], [3, 2, 2, 2, 2]]), 0, "n-1 with bad a value" );
+
+is( verify_prime([1490266103, "ECPP",
+                 [1490266103, 1442956066, 1025050760, 1490277784, 2780369, [531078754, 195830554]],
+                 [2780369, 2780360, 0, 2777444, 694361, [2481811, 1317449]],
+                 [694361, 694358, 0, 695162, 26737, [348008, 638945]]]),
+                 1, "ECPP proper" );
+is( verify_prime([1490266103, "ECPP",
+                 [1490266103, 1442956066, 1025050760, 1490277784, 5560738, [531078754, 195830554]],
+                 [5560738, 2780360, 0, 2777444, 694361, [2481811, 1317449]]]),
+                 0, "ECPP q is divisible by 2" );
+is( verify_prime([74468183, "ECPP",
+                 [74468183, 89, 1629, 74475075, 993001, [47943960, 8832604]],
+                 [993001, 0, 992984, 994825, 3061, [407531, 231114]]]),
+                 0, "ECPP a/b invalid" );
+is( verify_prime([1490266103, "ECPP",
+                 [1490266103, 1442956066, 1025050760, 1490277784, 536, [531078754, 195830554]],
+                 [536, 2780360, 0, 2777444, 694361, [2481811, 1317449]]]),
+                 0, "ECPP q is too small" );
+is( verify_prime([694361, "ECPP",
+                 [694361, 694358, 0, 30, 26737, [264399, 59977]]]),
+                 0, "ECPP multiplication wrong (infinity)" );
+is( verify_prime([694361, "ECPP",
+                 [694361, 694358, 0, 695161, 26737, [264399, 59977]]]),
+                 0, "ECPP multiplication wrong (not infinity)" );
+is( verify_prime([1490266103, "ECPP",
+                 [1490266103, 1442956066, 1025050760, 1490277784, 2780369, [531078754, 195830554]],
+                 [2780369, 2780360, 0, 2777444, 694361, [2481811, 1317449]],
+                 [694361, 694358, 0, 695162, [26737, "n-1", [2],[2]], [348008, 638945]]]),
+                 0, "ECPP non-prime last q" );
