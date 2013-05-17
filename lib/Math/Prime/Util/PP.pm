@@ -1799,7 +1799,7 @@ sub ecm_factor {
           }
           foreach my $i (@p) {
             next unless $i > $m;
-            next if is_prime($m+$m-$i);
+            next if $i > ($m+$m) || is_prime($m+$m-$i);
             $g = ($g * ($S2x - $nqx[$i-$m])) % $n;
           }
           $f = Math::BigInt::bgcd($g, $n);

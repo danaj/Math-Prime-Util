@@ -663,6 +663,7 @@ UV _XS_lehmer_pi(UV n)
 
 UV _XS_LMO_pi(UV n)
 {
+#if 0
   UV a, b, sum, i, lastprime, lastpc, lastw, lastwpc;
   UV n13, n12, n23;
   IV S1;
@@ -752,6 +753,9 @@ UV _XS_LMO_pi(UV n)
   Safefree(primes);
   sum = P2 + S1 + S2;
   return sum;
+#else
+  croak("not implemented: LMO(%lu)", (unsigned long) n);
+#endif
 }
 
 
@@ -778,7 +782,7 @@ int main(int argc, char *argv[])
   if      (!strcasecmp(method, "lehmer"))   { pi = _XS_lehmer_pi(n);      }
   else if (!strcasecmp(method, "meissel"))  { pi = _XS_meissel_pi(n);     }
   else if (!strcasecmp(method, "legendre")) { pi = _XS_legendre_pi(n);    }
-  else if (!strcasecmp(method, "lmo"))      { pi = _XS_LMO_pi(n);    }
+  else if (!strcasecmp(method, "lmo"))      { pi = _XS_LMO_pi(n);         }
   else if (!strcasecmp(method, "sieve"))    { pi = _XS_prime_count(2, n); }
   else {
     printf("method must be one of: lehmer, meissel, legendre, lmo, or sieve\n");

@@ -34,11 +34,9 @@
   be awesome, but may be a lot more work.  It would still be nice to have yet
   another independent codebase for this.
 
+- Similar to the previous, having a method to convert our certificates into
+  Primo-style ones would be useful for easy independent verification.
+
 - Big features:
    - LMO prime count
    - QS factoring
-
-- Test coverage:
-  PP miller-rabin with bigint
-  PP ecm_factor stage 2
-  PP primality_proof_bls75 that needs to find factors

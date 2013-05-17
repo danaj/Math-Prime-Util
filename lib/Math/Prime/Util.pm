@@ -1745,7 +1745,7 @@ sub verify_prime {
   if ($method eq 'Pratt' || $method eq 'Lucas') {
     # Based on Lucas primality test, which requires full n-1 factorization.
     if (scalar @pdata != 2 || (ref($pdata[0]) ne 'ARRAY') || (ref($pdata[1]) eq 'ARRAY')) {
-      warn "verify_prime: incorrect Pratt format, must have factors and a value\n";
+      print "verify_prime: incorrect Pratt format, must have factors and a value\n" if $verbose;
       return 0;
     }
     my @factors = @{shift @pdata};
@@ -1775,7 +1775,10 @@ sub verify_prime {
       push @prime_factors, $f;
       $factors_seen{"$f"} = 1;
     }
-    croak "Pratt error: n-1 not completely factored" unless $B == 1;
+    if ($B != 1) {
+      print "verify_prime: n-1 not completely factored" if $verbose;
+      return 0;
+    }
 
     # 1. a must be co-prime to n.
     if (Math::BigInt::bgcd($a, $n) != 1) {
@@ -1993,7 +1996,7 @@ sub verify_prime {
       # Compute V = qU, check V = point at infinity
       $ECP->mul( $q );
       if (! $ECP->is_infinity) {
-        warn "verify_prime: AGKM point does not multiply correctly.\n";
+        print "verify_prime: AGKM point does not multiply correctly.\n" if $verbose;
         return 0;
       }
     }
@@ -2004,7 +2007,7 @@ sub verify_prime {
     return 1;
   }
 
-  warn "verify_prime: Unknown method: '$method'.\n";
+  print "verify_prime: Unknown method: '$method'.\n" if $verbose;
   return 0;
 }
 
