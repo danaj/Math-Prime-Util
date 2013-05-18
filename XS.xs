@@ -2,6 +2,7 @@
 #include "EXTERN.h"
 #include "perl.h"
 #include "XSUB.h"
+#include <ctype.h>
 /* We're not using anything for which we need ppport.h */
 #ifndef XSRETURN_UV   /* Er, almost.  Fix 21086 from Sep 2003 */
   #define XST_mUV(i,v)  (ST(i) = sv_2mortal(newSVuv(v))  )
@@ -440,3 +441,46 @@ _XS_chebyshev_psi(IN UV n)
 
 UV
 _XS_divisor_sum(IN UV n)
+
+int
+_validate_num(SV* n, ...)
+  PREINIT:
+    char* ptr;
+    STRLEN len;
+    int i;
+    UV val;
+  CODE:
+    if (!SvOK(n))  croak("Parameter must be defined");
+    if (SvROK(n))  XSRETURN_UV(0);
+    /* Perhaps SvPVbyte, or other UTF8 stuff? */
+    ptr = SvPV(n, len);
+    if (len == 0)
+      croak("Parameter '' must be a positive integer");
+    for (i = 0; i < (int)len; i++)
+      if (!isdigit(ptr[i]))
+        croak("Parameter '%s' must be a positive integer", ptr); /* TODO NULL */
+    val = SvUV(n);
+    if (items > 1 && SvOK(ST(1))) {
+      UV min = SvUV(ST(1));
+      if (val < min)
+        croak("Parameter '%"UVuf"' must be >= %"UVuf, val, min);
+      if (items > 2 && SvOK(ST(2))) {
+        UV max = SvUV(ST(2));
+        if (val > max)
+          croak("Parameter '%"UVuf"' must be <= %"UVuf, val, max);
+        MPUassert( items <= 3, "_validate_num takes at most 3 parameters");
+      }
+    }
+    if (val == UV_MAX) { /* Could be bigger than UV_MAX.  Need to find out. */
+      char vstr[40];
+      sprintf(vstr, "%"UVuf, val);
+      /* Skip possible leading zeros */
+      while (len > 0 && *ptr == '0')
+        { ptr++; len--; }
+      for (i = 0; i < (int)len; i++)
+        if (vstr[i] != ptr[i])
+          XSRETURN_UV(0);
+    }
+    RETVAL = 1;
+  OUTPUT:
+    RETVAL

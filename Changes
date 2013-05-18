@@ -13,6 +13,10 @@ Revision history for Perl extension Math::Prime::Util.
 
     - Use EXTENDED_TESTING to turn on extra tests.
 
+    - XS simple number validation to lower function call overhead.  Still too
+      much overhead compared to directly calling the XS functions, but it
+      helps.
+
 0.26 21 April 2013
 
     - Pure Perl factoring:

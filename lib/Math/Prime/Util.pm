@@ -85,6 +85,8 @@ BEGIN {
     $_Config{'xs'} = 0;
     $_Config{'maxbits'} = Math::Prime::Util::PP::_PP_prime_maxbits();
 
+    *_validate_num = \&Math::Prime::Util::PP::_validate_num;
+
     *_prime_memfreeall = \&Math::Prime::Util::PP::_prime_memfreeall;
     *prime_memfree  = \&Math::Prime::Util::PP::prime_memfree;
     *prime_precalc  = \&Math::Prime::Util::PP::prime_precalc;
@@ -219,15 +221,11 @@ sub prime_set_config {
   1;
 }
 
-my $_bigint_small;
 sub _validate_positive_integer {
   my($n, $min, $max) = @_;
-  croak "Parameter must be defined" if !defined $n;
+  # We've gone through _validate_num already, so we just need to handle bigints
   if (ref($n) eq 'Math::BigInt') {
     croak "Parameter '$n' must be a positive integer" unless $n->sign() eq '+';
-  } else {
-    croak "Parameter '$n' must be a positive integer"
-          if $n eq '' || $n =~ tr/0123456789//c;
   }
   croak "Parameter '$n' must be >= $min" if defined $min && $n < $min;
   croak "Parameter '$n' must be <= $max" if defined $max && $n > $max;
@@ -299,8 +297,8 @@ sub primes {
   my $low = (@_ == 2)  ?  shift  :  2;
   my $high = shift;
 
-  _validate_positive_integer($low);
-  _validate_positive_integer($high);
+  _validate_num($low) || _validate_positive_integer($low);
+  _validate_num($high) || _validate_positive_integer($high);
 
   my $sref = [];
   return $sref if ($low > $high) || ($high < 2);
@@ -749,8 +747,8 @@ sub primes {
   sub random_prime {
     my $low = (@_ == 2)  ?  shift  :  2;
     my $high = shift;
-    _validate_positive_integer($low);
-    _validate_positive_integer($high);
+    _validate_num($low) || _validate_positive_integer($low);
+    _validate_num($high) || _validate_positive_integer($high);
 
     # Tighten the range to the nearest prime.
     $low = ($low <= 2)  ?  2  :  next_prime($low-1);
@@ -764,7 +762,7 @@ sub primes {
 
   sub random_ndigit_prime {
     my($digits) = @_;
-    _validate_positive_integer($digits, 1);
+    _validate_num($digits, 1) || _validate_positive_integer($digits, 1);
 
     my $bigdigits = $digits >= $_Config{'maxdigits'};
     croak "Large random primes not supported on old Perl" if $] < 5.008 && $_Config{'maxbits'} > 32 && !$bigdigits && $digits > 15;
@@ -803,7 +801,7 @@ sub primes {
 
   sub random_nbit_prime {
     my($bits) = @_;
-    _validate_positive_integer($bits, 2);
+    _validate_num($bits, 2) || _validate_positive_integer($bits, 2);
 
     if (!defined $_random_nbit_ranges[$bits]) {
       my $bigbits = $bits > $_Config{'maxbits'};
@@ -841,7 +839,7 @@ sub primes {
 
   sub random_maurer_prime_with_cert {
     my($k) = @_;
-    _validate_positive_integer($k, 2);
+    _validate_num($k, 2) || _validate_positive_integer($k, 2);
     my @cert;
     if ($] < 5.008 && $_Config{'maxbits'} > 32) {
       if ($k <= 49) {
@@ -988,7 +986,7 @@ sub primes {
   # Gordon's algorithm for generating a strong prime.
   sub random_strong_prime {
     my($t) = @_;
-    _validate_positive_integer($t, 128);
+    _validate_num($t, 128) || _validate_positive_integer($t, 128);
     croak "Random strong primes must be >= 173 bits on old Perl" if $] < 5.008 && $_Config{'maxbits'} > 32 && $t < 173;
 
     if (!defined $Math::BigInt::VERSION) {
@@ -1031,7 +1029,7 @@ sub primes {
 
 sub primorial {
   my($n) = @_;
-  _validate_positive_integer($n);
+  _validate_num($n) || _validate_positive_integer($n);
 
   my $pn = 1;
   if ($n >= (($_Config{'maxbits'} == 32) ? 29 : 53)) {
@@ -1065,7 +1063,7 @@ sub pn_primorial {
 
 sub consecutive_integer_lcm {
   my($n) = @_;
-  _validate_positive_integer($n);
+  _validate_num($n) || _validate_positive_integer($n);
   return 0 if $n < 1;
 
   my $pn = 1;
@@ -1137,10 +1135,10 @@ sub all_factors {
 # A030059, A013929, A030229, A002321, A005117, A013929 all relate.
 sub moebius {
   my($n, $nend) = @_;
-  _validate_positive_integer($n);
+  _validate_num($n) || _validate_positive_integer($n);
 
   if (defined $nend) {
-    _validate_positive_integer($nend);
+    _validate_num($nend) || _validate_positive_integer($nend);
     return if $nend < $n;
   } else {
     $nend = $n;
@@ -1190,7 +1188,7 @@ sub moebius {
 # A002321 Mertens' function.  mertens(n) = sum(moebius(1,n))
 sub mertens {
   my($n) = @_;
-  _validate_positive_integer($n);
+  _validate_num($n) || _validate_positive_integer($n);
   return _XS_mertens($n) if $n <= $_XS_MAXVAL;
   # This is the most basic Deléglise and Rivat algorithm.  u = n^1/2
   # and no segmenting is done.  Their algorithm uses u = n^1/3, breaks
@@ -1225,9 +1223,9 @@ sub euler_phi {
   # SAGE defines this to be 0 for all n <= 0.  Others choose differently.
   # I am following SAGE's decision for n <= 0.
   return 0 if defined $n && $n < 0;
-  _validate_positive_integer($n);
+  _validate_num($n) || _validate_positive_integer($n);
   if (defined $nend) {
-    _validate_positive_integer($nend);
+    _validate_num($nend) || _validate_positive_integer($nend);
     return if $nend < $n;
   } else {
     $nend = $n;
@@ -1281,11 +1279,11 @@ sub euler_phi {
 # Jordan's totient -- a generalization of Euler's totient.
 sub jordan_totient {
   my($k, $n) = @_;
-  _validate_positive_integer($k, 1);
+  _validate_num($k, 1) || _validate_positive_integer($k, 1);
   return euler_phi($n) if $k == 1;
 
   return 0 if defined $n && $n <= 0;  # Following SAGE's logic here.
-  _validate_positive_integer($n);
+  _validate_num($n) || _validate_positive_integer($n);
   return 1 if $n <= 1;
 
   my %factor_mult;
@@ -1317,7 +1315,7 @@ sub divisor_sum {
   # I really need to get cracking on an XS validator.
   #return _XS_divisor_sum($n) if !defined $sub && defined $n && $n <= $_XS_MAXVAL && $_Config{'nobigint'};
   return (0,1)[$n] if defined $n && $n <= 1;
-  _validate_positive_integer($n);
+  _validate_num($n) || _validate_positive_integer($n);
 
   if (!defined $sub) {
     return _XS_divisor_sum($n) if $n <= $_XS_MAXVAL;
@@ -1350,7 +1348,7 @@ sub divisor_sum {
 sub _omega {
   my($n) = @_;
   return 0 if defined $n && $n <= 1;
-  _validate_positive_integer($n);
+  _validate_num($n) || _validate_positive_integer($n);
   my %factor_mult;
   my @factors = grep { !$factor_mult{$_}++ } factor($n);
   return scalar @factors;
@@ -1361,7 +1359,7 @@ sub _omega {
 sub exp_mangoldt {
   my($n) = @_;
   return 1 if defined $n && $n <= 1;
-  _validate_positive_integer($n);
+  _validate_num($n) || _validate_positive_integer($n);
   return _XS_exp_mangoldt($n) if $n <= $_XS_MAXVAL;
 
   # Power of 2
@@ -1377,7 +1375,7 @@ sub exp_mangoldt {
 
 sub chebyshev_theta {
   my($n) = @_;
-  _validate_positive_integer($n);
+  _validate_num($n) || _validate_positive_integer($n);
   return _XS_chebyshev_theta($n) if $n <= $_XS_MAXVAL;
   my $sum = 0.0;
   foreach my $p (@{primes($n)}) {
@@ -1387,7 +1385,7 @@ sub chebyshev_theta {
 }
 sub chebyshev_psi {
   my($n) = @_;
-  _validate_positive_integer($n);
+  _validate_num($n) || _validate_positive_integer($n);
   return 0 if $n <= 1;
   return _XS_chebyshev_psi($n) if $n <= $_XS_MAXVAL;
   my ($sum, $logn, $mults_are_one) = (0.0, log($n), 0);
@@ -1424,7 +1422,7 @@ sub chebyshev_psi {
 sub is_prime {
   my($n) = @_;
   return 0 if defined $n && $n < 2;
-  _validate_positive_integer($n);
+  _validate_num($n) || _validate_positive_integer($n);
 
   return _XS_is_prime($n) if ref($n) ne 'Math::BigInt' && $n <= $_XS_MAXVAL;
   return Math::Prime::Util::GMP::is_prime($n) if $_HAVE_GMP;
@@ -1434,7 +1432,7 @@ sub is_prime {
 sub is_aks_prime {
   my($n) = @_;
   return 0 if defined $n && $n < 2;
-  _validate_positive_integer($n);
+  _validate_num($n) || _validate_positive_integer($n);
 
   return _XS_is_aks_prime($n) if $n <= $_XS_MAXVAL;
   return Math::Prime::Util::GMP::is_aks_prime($n) if $_HAVE_GMP
@@ -1445,7 +1443,7 @@ sub is_aks_prime {
 
 sub next_prime {
   my($n) = @_;
-  _validate_positive_integer($n);
+  _validate_num($n) || _validate_positive_integer($n);
 
   # If we have XS and n is either small or bigint is unknown, then use XS.
   return _XS_next_prime($n) if ref($n) ne 'Math::BigInt' && $n <= $_XS_MAXVAL
@@ -1465,7 +1463,7 @@ sub next_prime {
 
 sub prev_prime {
   my($n) = @_;
-  _validate_positive_integer($n);
+  _validate_num($n) || _validate_positive_integer($n);
 
   return _XS_prev_prime($n) if ref($n) ne 'Math::BigInt' && $n <= $_XS_MAXVAL;
   if ($_HAVE_GMP) {
@@ -1480,11 +1478,11 @@ sub prev_prime {
 sub prime_count {
   my($low,$high) = @_;
   if (defined $high) {
-    _validate_positive_integer($low);
-    _validate_positive_integer($high);
+    _validate_num($low) || _validate_positive_integer($low);
+    _validate_num($high) || _validate_positive_integer($high);
   } else {
     ($low,$high) = (2, $low);
-    _validate_positive_integer($high);
+    _validate_num($high) || _validate_positive_integer($high);
   }
   return 0 if $high < 2  ||  $low > $high;
 
@@ -1514,7 +1512,7 @@ sub prime_count {
 
 sub nth_prime {
   my($n) = @_;
-  _validate_positive_integer($n);
+  _validate_num($n) || _validate_positive_integer($n);
 
   return _XS_nth_prime($n) if $_Config{'xs'} && $n <= $_Config{'maxprimeidx'};
   return Math::Prime::Util::PP::nth_prime($n);
@@ -1522,7 +1520,7 @@ sub nth_prime {
 
 sub factor {
   my($n) = @_;
-  _validate_positive_integer($n);
+  _validate_num($n) || _validate_positive_integer($n);
 
   return _XS_factor($n) if ref($n) ne 'Math::BigInt' && $n <= $_XS_MAXVAL;
 
@@ -1539,7 +1537,7 @@ sub factor {
 
 sub is_strong_pseudoprime {
   my($n) = shift;
-  _validate_positive_integer($n);
+  _validate_num($n) || _validate_positive_integer($n);
   # validate bases?
   return _XS_miller_rabin($n, @_) if ref($n) ne 'Math::BigInt' && $n <= $_XS_MAXVAL;
   return Math::Prime::Util::GMP::is_strong_pseudoprime($n, @_) if $_HAVE_GMP;
@@ -1548,7 +1546,7 @@ sub is_strong_pseudoprime {
 
 sub is_strong_lucas_pseudoprime {
   my($n) = shift;
-  _validate_positive_integer($n);
+  _validate_num($n) || _validate_positive_integer($n);
   return Math::Prime::Util::GMP::is_strong_lucas_pseudoprime("$n") if $_HAVE_GMP;
   return Math::Prime::Util::PP::is_strong_lucas_pseudoprime($n);
 }
@@ -1585,7 +1583,7 @@ sub miller_rabin {
 sub is_prob_prime {
   my($n) = @_;
   return 0 if defined $n && $n < 2;
-  _validate_positive_integer($n);
+  _validate_num($n) || _validate_positive_integer($n);
 
   return _XS_is_prob_prime($n) if ref($n) ne 'Math::BigInt' && $n <= $_XS_MAXVAL;
   return Math::Prime::Util::GMP::is_prob_prime($n) if $_HAVE_GMP;
@@ -1627,7 +1625,7 @@ sub is_prob_prime {
 sub is_provable_prime {
   my($n) = @_;
   return 0 if defined $n && $n < 2;
-  _validate_positive_integer($n);
+  _validate_num($n) || _validate_positive_integer($n);
 
   return _XS_is_prime($n) if ref($n) ne 'Math::BigInt' && $n <= $_XS_MAXVAL;
   return Math::Prime::Util::GMP::is_provable_prime($n)
@@ -1648,7 +1646,7 @@ sub prime_certificate {
 sub is_provable_prime_with_cert {
   my($n) = @_;
   return 0 if defined $n && $n < 2;
-  _validate_positive_integer($n);
+  _validate_num($n) || _validate_positive_integer($n);
 
   # Set to 0 if you want the proof to go down to 11.
   if (1) {
@@ -2016,7 +2014,7 @@ sub verify_prime {
 
 sub prime_count_approx {
   my($x) = @_;
-  _validate_positive_integer($x);
+  _validate_num($x) || _validate_positive_integer($x);
 
   return $_prime_count_small[$x] if $x <= $#_prime_count_small;
 
@@ -2056,7 +2054,7 @@ sub prime_count_approx {
 
 sub prime_count_lower {
   my($x) = @_;
-  _validate_positive_integer($x);
+  _validate_num($x) || _validate_positive_integer($x);
 
   return $_prime_count_small[$x] if $x <= $#_prime_count_small;
 
@@ -2102,7 +2100,7 @@ sub prime_count_lower {
 
 sub prime_count_upper {
   my($x) = @_;
-  _validate_positive_integer($x);
+  _validate_num($x) || _validate_positive_integer($x);
 
   return $_prime_count_small[$x] if $x <= $#_prime_count_small;
 
@@ -2173,7 +2171,7 @@ sub prime_count_upper {
 
 sub nth_prime_approx {
   my($n) = @_;
-  _validate_positive_integer($n);
+  _validate_num($n) || _validate_positive_integer($n);
 
   return $_primes_small[$n] if $n <= $#_primes_small;
 
@@ -2227,7 +2225,7 @@ sub nth_prime_approx {
 # The nth prime will be greater than or equal to this number
 sub nth_prime_lower {
   my($n) = @_;
-  _validate_positive_integer($n);
+  _validate_num($n) || _validate_positive_integer($n);
 
   return $_primes_small[$n] if $n <= $#_primes_small;
 
@@ -2252,7 +2250,7 @@ sub nth_prime_lower {
 # The nth prime will be less or equal to this number
 sub nth_prime_upper {
   my($n) = @_;
-  _validate_positive_integer($n);
+  _validate_num($n) || _validate_positive_integer($n);
 
   return $_primes_small[$n] if $n <= $#_primes_small;
 

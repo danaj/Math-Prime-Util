@@ -59,7 +59,19 @@ sub _prime_memfreeall { prime_memfree; }
 
 
 sub _is_positive_int {
-  ((defined $_[0]) && ($_[0] !~ tr/0123456789//c));
+  ((defined $_[0]) && $_[0] ne '' && ($_[0] !~ tr/0123456789//c));
+}
+
+sub _validate_num {
+  my($n, $min, $max) = @_;
+  croak "Parameter must be defined" if !defined $n;
+  return 0 if ref($n);
+  croak "Parameter '$n' must be a positive integer"
+          if $n eq '' || $n =~ tr/0123456789//c;
+  croak "Parameter '$n' must be >= $min" if defined $min && $n < $min;
+  croak "Parameter '$n' must be <= $max" if defined $max && $n > $max;
+  return 0 unless $n < ~0 || int($n) eq ''.~0;
+  1;
 }
 
 sub _validate_positive_integer {
