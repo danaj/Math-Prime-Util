@@ -634,10 +634,15 @@ UV _XS_nth_prime(UV n)
   MPUassert(upper_limit > 0, "nth_prime got an upper limit of 0");
 
   /* For relatively small values, generate a sieve and count the results.
+   *
    * For larger values, compute a lower bound, use Lehmer's algorithm to get
    * a fast prime count, then start segment sieving from there.
+   *
+   * For very large values, binary search on Riemann's R function to get a
+   * good approximation, use Lehmer's algorithm to get the count, then walk
+   * backwards or sieve forwards.
    */
-  if (upper_limit <= 1*1024*1024*30) {
+  if (upper_limit <= 32*1024*30) {
     /* Generate a sieve and count. */
     segment_size = get_prime_cache(upper_limit, &cache_sieve) / 30;
     /* Count up everything in the cached sieve. */

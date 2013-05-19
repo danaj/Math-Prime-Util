@@ -942,51 +942,34 @@ sub is_strong_lucas_pseudoprime {
   my $ZERO = $n->copy->bzero;
   my $U = $ZERO + 1;
   my $V = $ZERO + $P;
-  my $U_2m = $U->copy;
-  my $V_2m = $V->copy;
-  my $Q_m = $ZERO + $Q;
-  my $Q_m2 = $Q_m->copy->bmul(2);
-  my $Qkd = $Q_m->copy;
-  substr($dstr,-1) = '';   #$d->brsft(1);
-  #my $i = 1;
-  while ($dstr ne '') {    #while (!$d->is_zero) {
-    #warn "U=$U  V=$V  Qm=$Q_m  Qm2=$Q_m2\n";
-    $U_2m->bmul($V_2m);             $U_2m->bmod($n);
-    $V_2m->bmuladd($V_2m, -$Q_m2);  $V_2m->bmod($n);
-    #warn "  $i  U2m=$U_2m  V2m=$V_2m\n";  $i++;
-    $Q_m->bmul($Q_m);               $Q_m->bmod($n);
-    $Q_m2 = $Q_m->copy->bmul(2);    # no mod
-    if (substr($dstr,-1)) {   #if ($d->is_odd) {
-      my $T1 = $U_2m->copy->bmul($V);
-      my $T2 = $U_2m->copy->bmul($U)->bmul($D);
-      $U->bmuladd($V_2m, $T1);         # U = U*V_2m + V*U_2m
-      $U->badd($n) if $U->is_odd;      # U += n if U & 1
-      $U->brsft(1,2);                  # U = floor(U / 2)
-      $U->bmod($n);                    # U = U % n
+  my $Qk = $ZERO + $Q;
+  my $bpos = 0;
+  while ($bpos++ < length($dstr)) {
+    $U = ($U * $V) % $n;
+    $V = ($V * $V - 2*$Qk) % $n;
+    $Qk = ($Qk * $Qk) % $n;
+    if (substr($dstr,$bpos,1)) {
+      my $T1 = $U->copy->bmul($D);
+      $U->badd($V);
+      $U->badd($n) if $U->is_odd;
+      $U->brsft(1);
+      $U->bmod($n);
 
-      $V->bmuladd($V_2m, $T2);
+      $V->badd($T1);
       $V->badd($n) if $V->is_odd;
-      $V->brsft(1,2);
+      $V->brsft(1);
       $V->bmod($n);
 
-      $Qkd->bmul($Q_m);
-      $Qkd->bmod($n);
+      $Qk = ($Qk * $Q) % $n;
     }
-    substr($dstr,-1) = '';   #$d->brsft(1);
   }
-  #warn "l0 U=$U  V=$V\n";
   return 1 if $U->is_zero || $V->is_zero;
 
   # Compute powers of V
-  my $Qkd2 = $Qkd->copy->bmul(2);
   foreach my $r (1 .. $s-1) {
-    #warn "l$r U=$U  V=$V  Qkd2=$Qkd2\n";
-    $V->bmuladd($V, -$Qkd2);  $V->bmod($n);
+    $V = ($V * $V - 2*$Qk) % $n;
     return 1 if $V->is_zero;
-    if ($r < ($s-1)) {
-      $Qkd->bmul($Qkd);  $Qkd->bmod($n);
-      $Qkd2 = $Qkd->copy->bmul(2);
-    }
+    $Qk = ($Qk * $Qk) % $n if $r < ($s-1);
   }
   return 0;
 }
