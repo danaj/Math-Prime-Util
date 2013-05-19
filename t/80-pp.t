@@ -566,13 +566,21 @@ SKIP: {
 is_deeply( [Math::Prime::Util::PP::primality_proof_lucas(100003)],
            [2, [100003, "Pratt", [2, 3, 7, 2381], 2]],
            "primality_proof_lucas(100003)" );
-is_deeply( [Math::Prime::Util::PP::primality_proof_bls75(210596120454733723)],
-           [2, [210596120454733723, "n-1", [2, 3, 82651, 47185492693], [2, 2, 2, 2]]],
-           "primality_proof_bls75(210596120454733723)" );
-is_deeply( [Math::Prime::Util::PP::primality_proof_bls75(809120722675364249)],
-           [2, [809120722675364249, "n-1",
-               ["B", 20000, 22233477760919, 2], [2, 4549], [3, 2]]],
-           "primality_proof_bls75(809120722675364249)" );
+# Had to reduce these to make borked up Perl 5.6.2 work.
+#is_deeply( [Math::Prime::Util::PP::primality_proof_bls75("210596120454733723")],
+#           [2, ["210596120454733723", "n-1", [2, 3, 82651, "47185492693"], [2, 2, 2, 2]]],
+#           "primality_proof_bls75(210596120454733723)" );
+#is_deeply( [Math::Prime::Util::PP::primality_proof_bls75("809120722675364249")],
+#           [2, ["809120722675364249", "n-1",
+#               ["B", 20000, "22233477760919", 2], [2, 4549], [3, 2]]],
+#           "primality_proof_bls75(809120722675364249)" );
+is_deeply( [Math::Prime::Util::PP::primality_proof_bls75(1490266103)],
+           [2, [1490266103, 'n-1', [2, 13, 19, 1597, 1889], [5, 2, 2, 2, 2]]],
+           "primality_proof_bls75(1490266103)" );
+is_deeply( [Math::Prime::Util::PP::primality_proof_bls75("64020974585221")],
+           [2, ["64020974585221", "n-1",
+               ["B", 20000, "5154667841", 2], [2, 3, 5, 23], [2, 2, 2, 2]]],
+           "primality_proof_bls75(64020974585221)" );
 
 {
   my $n = Math::BigInt->new("168790877523676911809192454171451");

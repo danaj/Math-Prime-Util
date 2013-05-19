@@ -11,6 +11,7 @@ use Math::Prime::Util qw/is_prime is_provable_prime is_provable_prime_with_cert
 use Math::BigInt try => 'GMP';
 
 my $extra = defined $ENV{EXTENDED_TESTING} && $ENV{EXTENDED_TESTING};
+my $broken64 = (18446744073709550592 == ~0);
 
 my @plist = qw/20907001 809120722675364249 677826928624294778921
                980098182126316404630169387/;
@@ -47,16 +48,20 @@ is( is_provable_prime(1490266103), 2, "1490266103 is provably prime" );
 foreach my $p (@plist) {
  
   ok( is_prime($p), "$p is prime" );
-  my($isp, $cert_ref) = is_provable_prime_with_cert($p);
-  is( $isp, 2, "   is_provable_prime_with_cert returns 2" );
-  ok( defined($cert_ref) && ref($cert_ref) eq 'ARRAY' && scalar(@$cert_ref) >= 1,
-      "   certificate is non-null" );
-  ok( verify_prime($cert_ref), "   verification of certificate reference done" );
-  # Note, in some cases the two certs could be non-equal (but both must be valid!)
-  my @cert = prime_certificate($p);
-  ok( scalar(@cert) >= 1, "   prime_certificate is also non-null" );
-  # TODO: compare certificates and skip if equal
-  ok( verify_prime(@cert), "   verification of prime_certificate done" );
+  SKIP: {
+    skip "Broken 64-bit causes trial factor to barf", 5
+      if $broken64 && $p > 2**48;
+    my($isp, $cert_ref) = is_provable_prime_with_cert($p);
+    is( $isp, 2, "   is_provable_prime_with_cert returns 2" );
+    ok( defined($cert_ref) && ref($cert_ref) eq 'ARRAY' && scalar(@$cert_ref) >= 1,
+        "   certificate is non-null" );
+    ok( verify_prime($cert_ref), "   verification of certificate reference done" );
+    # Note, in some cases the two certs could be non-equal (but both must be valid!)
+    my @cert = prime_certificate($p);
+    ok( scalar(@cert) >= 1, "   prime_certificate is also non-null" );
+    # TODO: compare certificates and skip if equal
+    ok( verify_prime(@cert), "   verification of prime_certificate done" );
+  }
 }
 
 # Some hand-done proofs
