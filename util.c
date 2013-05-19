@@ -171,7 +171,8 @@ int _XS_is_prime(UV n)
             :  -1;
   release_prime_cache(sieve);
 
-  return (isprime >= 0)  ?  isprime  :  _is_prime7(n);
+  /* return (isprime >= 0)  ?  isprime  :  _is_prime7(n); */
+  return (isprime >= 0)  ?  isprime  :  _XS_is_prob_prime(n);
 }
 
 
