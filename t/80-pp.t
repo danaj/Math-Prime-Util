@@ -577,7 +577,7 @@ is_deeply( [Math::Prime::Util::PP::primality_proof_lucas(100003)],
 is_deeply( [Math::Prime::Util::PP::primality_proof_bls75(1490266103)],
            [2, [1490266103, 'n-1', [2, 13, 19, 1597, 1889], [5, 2, 2, 2, 2]]],
            "primality_proof_bls75(1490266103)" );
-is_deeply( [Math::Prime::Util::PP::primality_proof_bls75("64020974585221")],
+is_deeply( [Math::Prime::Util::PP::primality_proof_bls75(Math::BigInt->new("64020974585221"))],
            [2, ["64020974585221", "n-1",
                ["B", 20000, "5154667841", 2], [2, 3, 5, 23], [2, 2, 2, 2]]],
            "primality_proof_bls75(64020974585221)" );
