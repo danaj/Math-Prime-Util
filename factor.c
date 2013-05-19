@@ -360,7 +360,7 @@ int _XS_is_prob_prime(UV n)
     bases[0] = 2; bases[1] = 7; bases[2] = 61; nbases = 3;
   }
 #else
-  /* Better bases from http://miller-rabin.appspot.com/, 10 Mar 2013 */
+  /* Better bases from http://miller-rabin.appspot.com/, 18 May 2013 */
   if (n < UVCONST(341531)) {
     bases[0] = UVCONST(9345883071009581737);
     nbases = 1;
@@ -368,10 +368,10 @@ int _XS_is_prob_prime(UV n)
     bases[0] = 15;
     bases[1] = UVCONST( 13393019396194701 );
     nbases = 2;
-  } else if (n < UVCONST(154639673381)) {
+  } else if (n < UVCONST(242175507817)) {
     bases[0] = 15;
-    bases[1] = UVCONST(  176006322 );
-    bases[2] = UVCONST( 4221622697 );
+    bases[1] = UVCONST(      7363882082 );
+    bases[2] = UVCONST( 211573017068182 );
     nbases = 3;
   } else if (n < UVCONST(47636622961201)) {
     bases[0] = 2;
