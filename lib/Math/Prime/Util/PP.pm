@@ -140,31 +140,56 @@ sub _is_prime7 {  # n must not be divisible by 2, 3, or 5
               !($n % 37) || !($n % 41) || !($n % 43) || !($n % 47) ||
               !($n % 53) || !($n % 59);
 
-  return Math::Prime::Util::is_prob_prime($n) if $n > 10_000_000;
+  if ($n <= 10_000_000) {
+    my $limit = int(sqrt($n));
+    my $i = 61;
+    while (($i+30) <= $limit) {
+      return 0 if !($n % $i);  $i += 6;
+      return 0 if !($n % $i);  $i += 4;
+      return 0 if !($n % $i);  $i += 2;
+      return 0 if !($n % $i);  $i += 4;
+      return 0 if !($n % $i);  $i += 2;
+      return 0 if !($n % $i);  $i += 4;
+      return 0 if !($n % $i);  $i += 6;
+      return 0 if !($n % $i);  $i += 2;
+    }
+    while (1) {
+      last if $i > $limit;  return 0 if !($n % $i);  $i += 6;
+      last if $i > $limit;  return 0 if !($n % $i);  $i += 4;
+      last if $i > $limit;  return 0 if !($n % $i);  $i += 2;
+      last if $i > $limit;  return 0 if !($n % $i);  $i += 4;
+      last if $i > $limit;  return 0 if !($n % $i);  $i += 2;
+      last if $i > $limit;  return 0 if !($n % $i);  $i += 4;
+      last if $i > $limit;  return 0 if !($n % $i);  $i += 6;
+      last if $i > $limit;  return 0 if !($n % $i);  $i += 2;
+    }
+    return 2;
+  }
 
-  my $limit = int(sqrt($n));
-  my $i = 61;
-  while (($i+30) <= $limit) {
-    return 0 if !($n % $i);  $i += 6;
-    return 0 if !($n % $i);  $i += 4;
-    return 0 if !($n % $i);  $i += 2;
-    return 0 if !($n % $i);  $i += 4;
-    return 0 if !($n % $i);  $i += 2;
-    return 0 if !($n % $i);  $i += 4;
-    return 0 if !($n % $i);  $i += 6;
-    return 0 if !($n % $i);  $i += 2;
+  if ($n < 105936894253) {   # BPSW seems to be faster after this
+    # Deterministic set of Miller-Rabin tests.  If the MR routines can handle
+    # bases greater than n, then this can be simplified.
+    my @bases;
+    if    ($n <          9080191) { @bases = (31,       73); }
+    elsif ($n <         19471033) { @bases = ( 2,   299417); }
+    elsif ($n <         38010307) { @bases = ( 2,  9332593); }
+    elsif ($n <        316349281) { @bases = ( 11000544, 31481107); }
+    elsif ($n <       4759123141) { @bases = ( 2, 7, 61); }
+    elsif ($n <     105936894253) { @bases = ( 2, 1005905886, 1340600841); }
+    elsif ($n <   31858317218647) { @bases = ( 2, 642735, 553174392, 3046413974); }
+    elsif ($n < 3071837692357849) { @bases = ( 2, 75088, 642735, 203659041, 3613982119); }
+    else                          { @bases = ( 2, 325, 9375, 28178, 450775, 9780504, 1795265022); }
+    return miller_rabin($n, @bases)  ?  2  :  0;
   }
-  while (1) {
-    last if $i > $limit;  return 0 if !($n % $i);  $i += 6;
-    last if $i > $limit;  return 0 if !($n % $i);  $i += 4;
-    last if $i > $limit;  return 0 if !($n % $i);  $i += 2;
-    last if $i > $limit;  return 0 if !($n % $i);  $i += 4;
-    last if $i > $limit;  return 0 if !($n % $i);  $i += 2;
-    last if $i > $limit;  return 0 if !($n % $i);  $i += 4;
-    last if $i > $limit;  return 0 if !($n % $i);  $i += 6;
-    last if $i > $limit;  return 0 if !($n % $i);  $i += 2;
-  }
-  2;
+
+  # BPSW probable prime.  No composites are known to have passed this test
+  # since it was published in 1980, though we know infinitely many exist.
+  # It has also been verified that no 64-bit composite will return true.
+  # Slow since it's all in PP, but it's the Right Thing To Do.
+
+  return 0 unless miller_rabin($n, 2);
+  return 0 unless is_strong_lucas_pseudoprime($n);
+  return ($n <= 18446744073709551615)  ?  2  :  1;
 }
 
 sub is_prime {
@@ -173,7 +198,6 @@ sub is_prime {
 
   return 2 if ($n == 2) || ($n == 3) || ($n == 5);  # 2, 3, 5 are prime
   return 0 if $n < 7;             # everything else below 7 is composite
-                                  # multiples of 2,3,5 are composite
   return 0 if !($n % 2) || !($n % 3) || !($n % 5);
   return _is_prime7($n);
 }
@@ -1147,7 +1171,7 @@ sub trial_factor {
   $n = int($n->bstr) if ref($n) eq 'Math::BigInt' && $n <= ''.~0;
   return @factors if $n < 4;
 
-  my $limit = int( sqrt($n) + 0.001);
+  my $limit = int(sqrt($n) + 0.001);
   $limit = $maxlim if $limit > $maxlim;
   my $f = 7;
   SEARCH: while ($f <= $limit) {
@@ -1946,7 +1970,7 @@ sub primality_proof_bls75 {
     next unless scalar @ftry > 1;
     # Process each factor
     foreach my $f (@ftry) {
-      croak "Invalid factoring" if $f == 1 || $f == $m || ($B%$f) != 0;
+      croak "Invalid factoring: B=$B m=$m f=$f" if $f == 1 || $f == $m || ($B%$f) != 0;
       if (Math::Prime::Util::is_prob_prime($f)) {
         push @factors, $f;
         do { $B /= $f;  $A *= $f; } while (($B % $f) == 0);
