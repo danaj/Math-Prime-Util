@@ -2,6 +2,14 @@ Revision history for Perl extension Math::Prime::Util.
 
 0.27 xx May 2013
 
+    - is_prime, is_prob_prime, next_prime, and prev_prime now all go straight
+      to XS if possible.  This makes them much faster for small inputs without
+      having to use the -nobigint flag.
+
+    - XS simple number validation to lower function call overhead.  Still a
+      lot more overhead compared to directly calling the XS functions, but
+      it shaves a little bit of time off every call.
+
     - Speedup pure Perl factoring of small numbers.
 
     - is_prob_prime / is_prime about 10% faster for composites.
@@ -12,10 +20,6 @@ Revision history for Perl extension Math::Prime::Util.
           primes.pl 'nth_prime(1000000000)' +2**8
 
     - Use EXTENDED_TESTING to turn on extra tests.
-
-    - XS simple number validation to lower function call overhead.  Still too
-      much overhead compared to directly calling the XS functions, but it
-      helps.
 
 0.26 21 April 2013
 

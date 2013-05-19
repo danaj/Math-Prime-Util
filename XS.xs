@@ -16,9 +16,95 @@
 #include "lehmer.h"
 #include "aks.h"
 
+#if PERL_REVISION <= 5 && PERL_VERSION <= 6 && BITS_PER_WORD == 64
+ /* This could be blown up with a wacky string, but it's just for 5.6 */
+ #define set_val_from_sv(val, sv) \
+   { char*ptr = SvPV_nolen(sv); val = strtoul(ptr, NULL, 10); }
+#else
+ #define set_val_from_sv(val, sv) \
+   val = SvUV(sv)
+#endif
+
+
 static int pbrent_factor_a1(UV n, UV *factors, UV maxrounds) {
   return pbrent_factor(n, factors, maxrounds, 1);
 }
+
+/* Is this a pedantically valid integer?
+ * Croaks if undefined or invalid.
+ * Returns 0 if it is an object or a string too large for a UV.
+ * Returns 1 if it is good to process by XS.
+ */
+static int _validate_int(SV* n, int negok)
+{
+  char* ptr;
+  STRLEN i, len;
+  UV val;
+  int isneg = 0;
+
+  if (!SvOK(n))  croak("Parameter must be defined");
+  /* aside: to detect bigint: if ( SvROK(n) && sv_isa(n, "Math::BigInt") ) */
+  if (SvROK(n))  return 0;
+  /* Perhaps SvPVbyte, or other UTF8 stuff? */
+  ptr = SvPV(n, len);
+  if (len == 0)  croak("Parameter '' must be a positive integer");
+  for (i = 0; i < len; i++) {
+    if (!isdigit(ptr[i])) {
+      if (i == 0 && ptr[i] == '-' && negok)
+        isneg = 1;
+      else if (i == 0 && ptr[i] != '+')
+        croak("Parameter '%s' must be a positive integer", ptr); /* TODO NULL */
+    }
+  }
+  if (isneg) return -1;  /* It's a valid negative number */
+  set_val_from_sv(val, n);
+  if (val == UV_MAX) { /* Could be bigger than UV_MAX.  Need to find out. */
+    char vstr[40];
+    sprintf(vstr, "%"UVuf, val);
+    /* Skip possible leading zeros */
+    while (len > 0 && (*ptr == '0' || *ptr == '+'))
+      { ptr++; len--; }
+    for (i = 0; i < len; i++)
+      if (vstr[i] != ptr[i])
+        return 0;
+  }
+  return 1;
+}
+
+/* Call a Perl sub with one SV* in and a SV* return value.
+ * We use this to foist off big inputs onto Perl.
+ */
+static SV* _callsub(SV* arg, const char* name)
+{
+  dSP;                               /* Local copy of stack pointer         */
+  int count;
+  SV* v;
+
+  ENTER;                             /* Start wrapper                       */
+  SAVETMPS;                          /* Start (2)                           */
+
+  PUSHMARK(SP);                      /* Start args: note our SP             */
+  XPUSHs(arg);
+  PUTBACK;                           /* End args:   set global SP to ours   */
+
+  count = call_pv(name, G_SCALAR);   /* Call the sub                        */
+  SPAGAIN;                           /* refresh local stack pointer         */
+
+  if (count != 1)
+    croak("callback sub should return one value");
+
+  v = newSVsv(POPs);                 /* Get the returned value              */
+
+  FREETMPS;                          /* End wrapper                         */
+  LEAVE;                             /* End (2)                             */
+  return v;
+}
+
+#if BITS_PER_WORD == 64
+static const UV _max_prime = UVCONST(18446744073709551557);
+#else
+static const UV _max_prime = UVCONST(4294967291);
+#endif
 
 
 MODULE = Math::Prime::Util	PACKAGE = Math::Prime::Util
@@ -74,16 +160,7 @@ UV
 _XS_nth_prime(IN UV n)
 
 int
-_XS_is_prime(IN UV n)
-
-int
 _XS_is_aks_prime(IN UV n)
-
-UV
-_XS_next_prime(IN UV n)
-
-UV
-_XS_prev_prime(IN UV n)
 
 
 UV
@@ -316,8 +393,60 @@ _XS_miller_rabin(IN UV n, ...)
   OUTPUT:
     RETVAL
 
+
 int
 _XS_is_prob_prime(IN UV n)
+
+int
+_XS_is_prime(IN UV n)
+
+int
+is_prime(IN SV* n)
+  ALIAS:
+    is_prob_prime = 1
+  PREINIT:
+    int status;
+  CODE:
+    status = _validate_int(n, 1);
+    RETVAL = 0;
+    if (status == -1) {
+      /* return 0 */
+    } else if (status == 1) {
+      UV val;
+      set_val_from_sv(val, n);
+      RETVAL = _XS_is_prime(val);
+    } else if (ix == 0) {
+      /* If we knew GMP was allowed and available, we could call it here. */
+      RETVAL = SvIV(_callsub(ST(0), "Math::Prime::Util::_generic_is_prime"));
+    } else if (ix == 1) {
+      RETVAL = SvIV(_callsub(ST(0), "Math::Prime::Util::_generic_is_prob_prime"));
+    }
+  OUTPUT:
+    RETVAL
+
+UV
+_XS_next_prime(IN UV n)
+
+UV
+_XS_prev_prime(IN UV n)
+
+void
+next_prime(IN SV* n)
+  ALIAS:
+    prev_prime = 1
+  PPCODE:
+    if (_validate_int(n, 0)) {
+      UV val;
+      set_val_from_sv(val, n);
+      if ( (ix && val < 3) || (!ix && val >= _max_prime) )  XSRETURN_UV(0);
+      if (ix) XSRETURN_UV(_XS_prev_prime(val));
+      else    XSRETURN_UV(_XS_next_prime(val));
+    } else if (ix == 0) {
+      XPUSHs(sv_2mortal(_callsub(ST(0), "Math::Prime::Util::_generic_next_prime")));
+    } else if (ix == 1) {
+      XPUSHs(sv_2mortal(_callsub(ST(0), "Math::Prime::Util::_generic_prev_prime")));
+    }
+
 
 double
 _XS_ExponentialIntegral(double x)
@@ -444,43 +573,23 @@ _XS_divisor_sum(IN UV n)
 
 int
 _validate_num(SV* n, ...)
-  PREINIT:
-    char* ptr;
-    STRLEN len;
-    int i;
-    UV val;
   CODE:
-    if (!SvOK(n))  croak("Parameter must be defined");
-    if (SvROK(n))  XSRETURN_UV(0);
-    /* Perhaps SvPVbyte, or other UTF8 stuff? */
-    ptr = SvPV(n, len);
-    if (len == 0)
-      croak("Parameter '' must be a positive integer");
-    for (i = 0; i < (int)len; i++)
-      if (!isdigit(ptr[i]))
-        croak("Parameter '%s' must be a positive integer", ptr); /* TODO NULL */
-    val = SvUV(n);
-    if (items > 1 && SvOK(ST(1))) {
-      UV min = SvUV(ST(1));
-      if (val < min)
-        croak("Parameter '%"UVuf"' must be >= %"UVuf, val, min);
-      if (items > 2 && SvOK(ST(2))) {
-        UV max = SvUV(ST(2));
-        if (val > max)
-          croak("Parameter '%"UVuf"' must be <= %"UVuf, val, max);
-        MPUassert( items <= 3, "_validate_num takes at most 3 parameters");
+    RETVAL = 0;
+    if (_validate_int(n, 0)) {
+      if (items > 1 && SvOK(ST(1))) {
+        UV val, min, max;
+        set_val_from_sv(val, n);
+        set_val_from_sv(min, ST(1));
+        if (val < min)
+          croak("Parameter '%"UVuf"' must be >= %"UVuf, val, min);
+        if (items > 2 && SvOK(ST(2))) {
+          set_val_from_sv(max, ST(2));
+          if (val > max)
+            croak("Parameter '%"UVuf"' must be <= %"UVuf, val, max);
+          MPUassert( items <= 3, "_validate_num takes at most 3 parameters");
+        }
       }
+      RETVAL = 1;
     }
-    if (val == UV_MAX) { /* Could be bigger than UV_MAX.  Need to find out. */
-      char vstr[40];
-      sprintf(vstr, "%"UVuf, val);
-      /* Skip possible leading zeros */
-      while (len > 0 && *ptr == '0')
-        { ptr++; len--; }
-      for (i = 0; i < (int)len; i++)
-        if (vstr[i] != ptr[i])
-          XSRETURN_UV(0);
-    }
-    RETVAL = 1;
   OUTPUT:
     RETVAL

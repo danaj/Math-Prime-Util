@@ -50,10 +50,6 @@ sub _import_nobigint {
   $_Config{'nobigint'} = 1;
   return unless $_Config{'xs'};
   undef *factor;          *factor            = \&_XS_factor;
-  undef *is_prime;        *is_prime          = \&_XS_is_prime;
-  undef *is_prob_prime;   *is_prob_prime     = \&_XS_is_prob_prime;
-  undef *next_prime;      *next_prime        = \&_XS_next_prime;
-  undef *prev_prime;      *prev_prime        = \&_XS_prev_prime;
  #undef *prime_count;     *prime_count       = \&_XS_prime_count;
   undef *nth_prime;       *nth_prime         = \&_XS_nth_prime;
   undef *is_strong_pseudoprime;  *is_strong_pseudoprime = \&_XS_miller_rabin;
@@ -64,6 +60,11 @@ sub _import_nobigint {
   undef *exp_mangoldt;    *exp_mangoldt      = \&_XS_exp_mangoldt;
   undef *chebyshev_theta; *chebyshev_theta   = \&_XS_chebyshev_theta;
   undef *chebyshev_psi;   *chebyshev_psi     = \&_XS_chebyshev_psi;
+  # These should be fast anyway, but this skips validation.
+  undef *is_prime;        *is_prime          = \&_XS_is_prime;
+  undef *is_prob_prime;   *is_prob_prime     = \&_XS_is_prob_prime;
+  undef *next_prime;      *next_prime        = \&_XS_next_prime;
+  undef *prev_prime;      *prev_prime        = \&_XS_prev_prime;
 }
 
 BEGIN {
@@ -86,6 +87,10 @@ BEGIN {
     $_Config{'maxbits'} = Math::Prime::Util::PP::_PP_prime_maxbits();
 
     *_validate_num = \&Math::Prime::Util::PP::_validate_num;
+    *is_prob_prime = \&Math::Prime::Util::_generic_is_prob_prime;
+    *is_prime      = \&Math::Prime::Util::_generic_is_prime;
+    *next_prime    = \&Math::Prime::Util::_generic_next_prime;
+    *prev_prime    = \&Math::Prime::Util::_generic_prev_prime;
 
     *_prime_memfreeall = \&Math::Prime::Util::PP::_prime_memfreeall;
     *prime_memfree  = \&Math::Prime::Util::PP::prime_memfree;
@@ -224,9 +229,8 @@ sub prime_set_config {
 sub _validate_positive_integer {
   my($n, $min, $max) = @_;
   # We've gone through _validate_num already, so we just need to handle bigints
-  if (ref($n) eq 'Math::BigInt') {
-    croak "Parameter '$n' must be a positive integer" unless $n->sign() eq '+';
-  }
+  croak "Parameter '$n' must be a positive integer"
+     if ref($n) eq 'Math::BigInt' && $n->sign() ne '+';
   croak "Parameter '$n' must be >= $min" if defined $min && $n < $min;
   croak "Parameter '$n' must be <= $max" if defined $max && $n > $max;
 
@@ -1419,29 +1423,35 @@ sub chebyshev_psi {
 # is, the XS functions will look at the input and make a call here if the input
 # is large.
 
-sub is_prime {
+sub _generic_is_prime {
   my($n) = @_;
   return 0 if defined $n && $n < 2;
   _validate_num($n) || _validate_positive_integer($n);
 
-  return _XS_is_prime($n) if ref($n) ne 'Math::BigInt' && $n <= $_XS_MAXVAL;
+  return _XS_is_prime("$n") if ref($n) ne 'Math::BigInt' && $n <= $_XS_MAXVAL;
   return Math::Prime::Util::GMP::is_prime($n) if $_HAVE_GMP;
-  return is_prob_prime($n);
+
+  return 2 if ($n == 2) || ($n == 3) || ($n == 5);  # 2, 3, 5 are prime
+  return 0 if $n < 7;             # everything else below 7 is composite
+  return 0 if !($n % 2) || !($n % 3) || !($n % 5);
+  return Math::Prime::Util::PP::_is_prime7($n);
 }
 
-sub is_aks_prime {
+sub _generic_is_prob_prime {
   my($n) = @_;
   return 0 if defined $n && $n < 2;
   _validate_num($n) || _validate_positive_integer($n);
 
-  return _XS_is_aks_prime($n) if $n <= $_XS_MAXVAL;
-  return Math::Prime::Util::GMP::is_aks_prime($n) if $_HAVE_GMP
-                       && defined &Math::Prime::Util::GMP::is_aks_prime;
-  return Math::Prime::Util::PP::is_aks_prime($n);
+  return _XS_is_prob_prime($n) if ref($n) ne 'Math::BigInt' && $n<=$_XS_MAXVAL;
+  return Math::Prime::Util::GMP::is_prob_prime($n) if $_HAVE_GMP;
+
+  return 2 if ($n == 2) || ($n == 3) || ($n == 5);  # 2, 3, 5 are prime
+  return 0 if $n < 7;             # everything else below 7 is composite
+  return 0 if !($n % 2) || !($n % 3) || !($n % 5);
+  return Math::Prime::Util::PP::_is_prime7($n);
 }
 
-
-sub next_prime {
+sub _generic_next_prime {
   my($n) = @_;
   _validate_num($n) || _validate_positive_integer($n);
 
@@ -1461,7 +1471,7 @@ sub next_prime {
   return Math::Prime::Util::PP::next_prime($n);
 }
 
-sub prev_prime {
+sub _generic_prev_prime {
   my($n) = @_;
   _validate_num($n) || _validate_positive_integer($n);
 
@@ -1580,45 +1590,15 @@ sub miller_rabin {
   #    6100uS    PP LP with large input
   #    7400uS    PP LP with bigint
 
-sub is_prob_prime {
+sub is_aks_prime {
   my($n) = @_;
   return 0 if defined $n && $n < 2;
   _validate_num($n) || _validate_positive_integer($n);
 
-  return _XS_is_prob_prime($n) if ref($n) ne 'Math::BigInt' && $n <= $_XS_MAXVAL;
-  return Math::Prime::Util::GMP::is_prob_prime($n) if $_HAVE_GMP;
-
-  return 2 if $n == 2 || $n == 3 || $n == 5 || $n == 7;
-  return 0 if $n < 11;
-  return 0 if !($n % 2) || !($n % 3) || !($n % 5) || !($n % 7);
-  foreach my $i (qw/11 13 17 19 23 29 31 37 41 43 47 53 59 61 67 71/) {
-    return 2 if $i*$i > $n;   return 0 if !($n % $i);
-  }
-
-  if ($n < 105936894253) {   # BPSW seems to be faster after this
-    # Deterministic set of Miller-Rabin tests.  If the MR routines can handle
-    # bases greater than n, then this can be simplified.
-    my @bases;
-    if    ($n <          9080191) { @bases = (31,       73); }
-    elsif ($n <         19471033) { @bases = ( 2,   299417); }
-    elsif ($n <         38010307) { @bases = ( 2,  9332593); }
-    elsif ($n <        316349281) { @bases = ( 11000544, 31481107); }
-    elsif ($n <       4759123141) { @bases = ( 2, 7, 61); }
-    elsif ($n <     105936894253) { @bases = ( 2, 1005905886, 1340600841); }
-    elsif ($n <   31858317218647) { @bases = ( 2, 642735, 553174392, 3046413974); }
-    elsif ($n < 3071837692357849) { @bases = ( 2, 75088, 642735, 203659041, 3613982119); }
-    else                          { @bases = ( 2, 325, 9375, 28178, 450775, 9780504, 1795265022); }
-    return Math::Prime::Util::PP::miller_rabin($n, @bases)  ?  2  :  0;
-  }
-
-  # BPSW probable prime.  No composites are known to have passed this test
-  # since it was published in 1980, though we know infinitely many exist.
-  # It has also been verified that no 64-bit composite will return true.
-  # Slow since it's all in PP, but it's the Right Thing To Do.
-
-  return 0 unless Math::Prime::Util::PP::miller_rabin($n, 2);
-  return 0 unless Math::Prime::Util::PP::is_strong_lucas_pseudoprime($n);
-  return ($n <= 18446744073709551615)  ?  2  :  1;
+  return _XS_is_aks_prime($n) if $n <= $_XS_MAXVAL;
+  return Math::Prime::Util::GMP::is_aks_prime($n) if $_HAVE_GMP
+                       && defined &Math::Prime::Util::GMP::is_aks_prime;
+  return Math::Prime::Util::PP::is_aks_prime($n);
 }
 
 # Return just the non-cert portion.
@@ -1627,7 +1607,7 @@ sub is_provable_prime {
   return 0 if defined $n && $n < 2;
   _validate_num($n) || _validate_positive_integer($n);
 
-  return _XS_is_prime($n) if ref($n) ne 'Math::BigInt' && $n <= $_XS_MAXVAL;
+  return _XS_is_prime("$n") if ref($n) ne 'Math::BigInt' && $n <= $_XS_MAXVAL;
   return Math::Prime::Util::GMP::is_provable_prime($n)
          if $_HAVE_GMP && defined &Math::Prime::Util::GMP::is_provable_prime;
 
@@ -1651,7 +1631,7 @@ sub is_provable_prime_with_cert {
   # Set to 0 if you want the proof to go down to 11.
   if (1) {
     if (ref($n) ne 'Math::BigInt' && $n <= $_XS_MAXVAL) {
-      my $isp = _XS_is_prime($n);
+      my $isp = _XS_is_prime("$n");
       return ($isp == 2) ? ($isp, [$n]) : ($isp, []);
     }
     if ($_HAVE_GMP && defined &Math::Prime::Util::GMP::is_provable_prime_with_cert) {
@@ -1876,7 +1856,7 @@ sub verify_prime {
       }
       # 1. Check $B has no factors smaller than $t7_B1
       my $no_small_factors = 0;
-      if ($_HAVE_GMP) {
+      if ($_HAVE_GMP && defined &Math::Prime::Util::GMP::trial_factor) {
         my @trial = Math::Prime::Util::GMP::trial_factor($B, $t7_B1);
         $no_small_factors = (scalar @trial == 1);
       } elsif ($B <= ''.~0) {
