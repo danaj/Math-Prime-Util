@@ -66,6 +66,10 @@ static int _verbose = 0;
 void _XS_set_verbose(int v) { _verbose = v; }
 int _XS_get_verbose(void) { return _verbose; }
 
+static int _call_gmp = 0;
+void _XS_set_callgmp(int v) { _call_gmp = v; }
+int  _XS_get_callgmp(void) { return _call_gmp; }
+
 
 static const unsigned char byte_zeros[256] =
   {8,7,7,6,7,6,6,5,7,6,6,5,6,5,5,4,7,6,6,5,6,5,5,4,6,5,5,4,5,4,4,3,

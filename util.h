@@ -5,6 +5,8 @@
 
 extern int  _XS_get_verbose(void);
 extern void _XS_set_verbose(int v);
+extern int  _XS_get_callgmp(void);
+extern void _XS_set_callgmp(int v);
 
 extern int _XS_is_prime(UV x);
 extern UV  _XS_next_prime(UV x);

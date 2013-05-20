@@ -5,7 +5,7 @@ $| = 1;  # fast pipes
 
 # Make sure the is_prob_prime functionality is working for small inputs.
 # Good for making sure the first few M-R bases are set up correctly.
-my $limit = 800_000_000;
+my $limit = 1_000_000_000;
 
 use Math::Prime::Util qw/is_prob_prime/;
 # Use another code base for comparison.
@@ -23,7 +23,7 @@ if (0) {  # just primes using Math::Prime::FastSieve
   }
 }
 
-# Test every number up to the 100Mth prime (about 2000M)
+# Test every number up to $limit
 if (1) {
   my $n = 2;
   my $i = 1;

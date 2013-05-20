@@ -9,7 +9,7 @@ use Config;
 use autodie;
 use Text::Diff;
 use Time::HiRes qw(gettimeofday tv_interval);
-my $maxdigits = 50;
+my $maxdigits = 100;
 $| = 1;  # fast pipes
 srand(87431);
 my $num = 1000;
@@ -146,7 +146,7 @@ sub mpu_factors {
     my @ns = @_;
     my $numpercommand = int( (4000-30)/(length($ns[-1])+1) );
     while (@ns) {
-      my $cs = join(" ", '/usr/bin/factor', splice(@ns, 0, $numpercommand));
+      my $cs = join(" ", 'factor.pl', splice(@ns, 0, $numpercommand));
       my $fout = qx{$cs};
       my @flines = split(/\n/, $fout);
       foreach my $fline (@flines) {

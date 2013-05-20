@@ -3,7 +3,7 @@ use strict;
 use warnings;
 #use Math::Primality;
 use Math::Prime::XS;
-use Math::Prime::Util '-nobigint';
+use Math::Prime::Util;
 #use Math::Pari;
 #use Math::Prime::FastSieve;
 use Benchmark qw/:all/;
@@ -13,19 +13,35 @@ my $numbers = 1000;
 
 my $is64bit = (~0 > 4294967295);
 my $maxdigits = ($is64bit) ? 20 : 10;  # Noting the range is limited for max.
+my $randf = Math::Prime::Util::_get_rand_func();
+
+my $rand_ndigit_gen = sub {
+  my $digits = shift;
+  die "Digits must be > 0" unless $digits > 0;
+  my $howmany = shift || 1;
+  my ($base, $max);
+
+  if ( 10**$digits < ~0) {
+    $base = ($digits == 1) ? 0 : int(10 ** ($digits-1));
+    $max = int(10 ** $digits);
+    $max = ~0 if $max > ~0;
+  } else {
+    $base = Math::BigInt->new(10)->bpow($digits-1);
+    $max = Math::BigInt->new(10)->bpow($digits) - 1;
+  }
+  my @nums = map { $base + $randf->($max-$base) } (1 .. $howmany);
+  return (wantarray) ? @nums : $nums[0];
+};
 
 srand(29);
-test_at_digits($_) for (5 .. $maxdigits);
+test_at_digits($_) for (3 .. $maxdigits);
 
 
 sub test_at_digits {
   my $digits = shift;
   die "Digits must be > 0" unless $digits > 0;
 
-  my $base = ($digits == 1) ? 0 : int(10 ** ($digits-1));
-  my $max = int(10 ** $digits);
-  $max = ~0 if $max > ~0;
-  my @nums = map { $base+int(rand($max-$base)) } (1 .. $numbers);
+  my @nums = $rand_ndigit_gen->($digits, $numbers);
   my $min_num = min @nums;
   my $max_num = max @nums;
 

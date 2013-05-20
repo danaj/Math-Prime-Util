@@ -6,7 +6,7 @@ use Bytes::Random::Secure;
 
 BEGIN {
   $Math::Prime::Util::AUTHORITY = 'cpan:DANAJ';
-  $Math::Prime::Util::VERSION = '0.26';
+  $Math::Prime::Util::VERSION = '0.27';
 }
 
 # parent is cleaner, and in the Perl 5.10.1 / 5.12.0 core, but not earlier.
@@ -151,6 +151,7 @@ $_Config{'irand'} = undef;
 # which builds into one scalar whether XS is available and if we can call it.
 my $_XS_MAXVAL = $_Config{'xs'}  ?  $_Config{'maxparam'}  :  -1;
 my $_HAVE_GMP = $_Config{'gmp'};
+_XS_set_callgmp($_HAVE_GMP) if $_Config{'xs'};
 
 # Infinity in Perl is rather O/S specific.
 our $_Infinity = 0+'inf';
@@ -204,6 +205,7 @@ sub prime_set_config {
     } elsif ($param eq 'gmp') {
       $_Config{'gmp'} = ($value) ? 1 : 0;
       $_HAVE_GMP = $_Config{'gmp'};
+      _XS_set_callgmp($_HAVE_GMP) if $_Config{'xs'};
     } elsif ($param eq 'nobigint') {
       $_Config{'nobigint'} = ($value) ? 1 : 0;
     } elsif ($param eq 'irand') {
@@ -1416,17 +1418,21 @@ sub chebyshev_psi {
 #              return _XS_... if $_Config{'xs'} && $n <= $_Config{'maxparam'}; }
 #
 # takes about 0.7uS on my machine.  Operations like is_prime and factor run
-# on small input (under 100_000) typically take a lot less time than this.  So
-# the overhead for these is significantly more than just the XS call itself.
-#
-# The plan for some of these functions will be to invert the operation.  That
-# is, the XS functions will look at the input and make a call here if the input
-# is large.
+# on small inputs typically take a lot less time than this.  So the overhead
+# for these is significantly more than just the XS call itself.  For some
+# functions we have inverted the operation, so the XS function gets called,
+# does validation, and calls the _generic_* sub here if it doesn't know what
+# to do.  This removes all the overhead, making functions like is_prime run
+# about 5x faster for very small inputs.
 
 sub _generic_is_prime {
   my($n) = @_;
   return 0 if defined $n && $n < 2;
-  _validate_num($n) || _validate_positive_integer($n);
+  if (!_validate_num($n)) {
+    $n = Math::BigInt->new("$n")
+       if defined $Math::BigInt::VERSION && ref($n) ne 'Math::BigInt';
+    _validate_positive_integer($n);
+  }
 
   return _XS_is_prime("$n") if ref($n) ne 'Math::BigInt' && $n <= $_XS_MAXVAL;
   return Math::Prime::Util::GMP::is_prime($n) if $_HAVE_GMP;
@@ -1440,7 +1446,11 @@ sub _generic_is_prime {
 sub _generic_is_prob_prime {
   my($n) = @_;
   return 0 if defined $n && $n < 2;
-  _validate_num($n) || _validate_positive_integer($n);
+  if (!_validate_num($n)) {
+    $n = Math::BigInt->new("$n")
+       if defined $Math::BigInt::VERSION && ref($n) ne 'Math::BigInt';
+    _validate_positive_integer($n);
+  }
 
   return _XS_is_prob_prime($n) if ref($n) ne 'Math::BigInt' && $n<=$_XS_MAXVAL;
   return Math::Prime::Util::GMP::is_prob_prime($n) if $_HAVE_GMP;
@@ -1960,21 +1970,25 @@ sub verify_prime {
         return 0;
       }
       # Final check, check that we've got a bound above and below (Hasse)
-      if (!defined $Math::Prime::Util::ECAffinePoint::VERSION) {
-        eval { require Math::Prime::Util::ECAffinePoint; 1; }
-        or do { croak "Cannot load Math::Prime::Util::ECAffinePoint"; };
+      my $correct_point = 0;
+      if ($_HAVE_GMP && defined &Math::Prime::Util::GMP::_validate_ecpp_curve) {
+         $correct_point = Math::Prime::Util::GMP::_validate_ecpp_curve($a, $b, $ni, $Px, $Py, $m, $q);
+      } else {
+        if (!defined $Math::Prime::Util::ECAffinePoint::VERSION) {
+          eval { require Math::Prime::Util::ECAffinePoint; 1; }
+          or do { croak "Cannot load Math::Prime::Util::ECAffinePoint"; };
+        }
+        my $ECP = Math::Prime::Util::ECAffinePoint->new($a, $b, $ni, $Px, $Py);
+        # Compute U = (m/q)P, check U != point at infinity
+        $ECP->mul( $m->copy->bdiv($q)->as_int );
+        if (!$ECP->is_infinity) {
+          # Compute V = qU, check V = point at infinity
+          $ECP->mul( $q );
+          $correct_point = 1 if $ECP->is_infinity;
+        }
       }
-      my $ECP = Math::Prime::Util::ECAffinePoint->new($a, $b, $ni, $Px, $Py);
-      # Compute U = (m/q)P, check U != point at infinity
-      $ECP->mul( $m->copy->bdiv($q)->as_int );
-      if ($ECP->is_infinity) {
-        print "primality fail: AGKM point does not multiply correctly (1).\n" if $verbose;
-        return 0;
-      }
-      # Compute V = qU, check V = point at infinity
-      $ECP->mul( $q );
-      if (! $ECP->is_infinity) {
-        print "primality fail: AGKM point does not multiply correctly (2).\n" if $verbose;
+      if (!$correct_point) {
+        print "primality fail: AGKM point does not multiply correctly.\n" if $verbose;
         return 0;
       }
     }
@@ -2337,7 +2351,7 @@ Math::Prime::Util - Utilities related to prime numbers, including fast sieves an
 
 =head1 VERSION
 
-Version 0.26
+Version 0.27
 
 
 =head1 SYNOPSIS
@@ -2510,16 +2524,18 @@ it will make it run much faster.
 Some of the functions, including:
 
   factor
-  is_prime
-  is_prob_prime
   is_strong_pseudoprime
-  next_prime
-  prev_prime
   nth_prime
   moebius
   mertens
   euler_phi
   exp_mangoldt
+  chebyshev_theta
+  chebyshev_psi
+  is_prime
+  is_prob_prime
+  next_prime
+  prev_prime
 
 work very fast (under 1 microsecond) on small inputs, but the wrappers for
 input validation and bigint support take more time than the function itself.
@@ -2530,8 +2546,8 @@ Using the flag '-bigint', e.g.:
 will turn off bigint support for those functions.  Those functions will then
 go directly to the XS versions, which will speed up very small inputs a B<lot>.
 This is useful if you're using the functions in a loop, but since the difference
-is less than a millisecond, it's really not important in general (also, a
-future implementation may find a way to speed this up without the option).
+is less than a millisecond, it's really not important in general.  The last
+four functions have shortcuts by default so will only skip validation.
 
 
 If you are using bigints, here are some performance suggestions:
@@ -2576,12 +2592,14 @@ a lot.  There are some brittle behaviors on 5.12.4 and earlier with bignums.
 
 Returns 2 if the number is prime, 0 if not.  For numbers larger than C<2^64>
 it will return 0 for composite and 1 for probably prime, using a strong BPSW
-test.  If L<Math::Prime::Util::GMP> is installed, some quick primality proofs
-are run on larger numbers, so will return 2 for many of those also.
+test.  If L<Math::Prime::Util::GMP> is installed, some additional
+Miller-Rabin tests are also performed on large inputs, and a quick attempt is
+made to perform a primality proof, so it will return 2 for many other inputs.
 
 Also see the L</is_prob_prime> function, which will never do additional
-tests, and the L</is_provable_prime> function which will try very hard to
-return only 0 or 2 for any input.
+tests, and the L</is_provable_prime> function which will construct a proof
+that the input is number prime and returns 2 for almost all primes (at the
+expense of speed).
 
 For native precision numbers (anything smaller than C<2^64>, all three
 functions are identical and use a deterministic set of Miller-Rabin tests.
@@ -2834,16 +2852,28 @@ exist, there is a weak conjecture (Martin) that none exist under 10000 digits.
 
 Takes a positive number as input and returns back either 0 (composite),
 2 (definitely prime), or 1 (probably prime).  This gives it the same return
-values as L</is_prime> and L</is_prob_prime>.
+values as L</is_prime> and L</is_prob_prime>.  Note that numbers below 2^64
+are considered proven by the deterministic set of Miller-Rabin bases or the
+BPSW test.  Both of these have been tested for all small (64-bit) composites
+and do not return false positives.
 
-The current implementation of both the Perl and GMP proofs is using theorem 5
-of BLS75 (Brillhart-Lehmer-Selfridge), requiring C<n-1> to be factored to
-C<(n/2)^(1/3))>.  This takes less time than factoring to C<n^0.5> as required
-by the generalized Pocklington test or C<n-1> for the Lucas test.  However it
-is possible a factor cannot be found in a reasonable amount of time, so you
-should always test that the result in C<2> to ensure it was proven.
+Using the L<Math::Prime::Util::GMP> module is B<highly recommended> for doing
+primality proofs, as it is much, much faster.  The pure Perl code is just not
+very fast for this type of operation, nor does it have the best algorithms.
+It should suffice fine for proofs of up to 40 digit primes, while the latest
+MPU::GMP works for primes of hundreds of digits.
 
-A later implementation will use an ECPP test for larger inputs.
+The pure Perl implementation uses theorem 5 or theorem 7 of BLS75
+(Brillhart-Lehmer-Selfridge), an improvement on the Pocklington-Lehmer test.
+This requires C<n-1> to be factored to C<(n/2)^(1/3))>.  This is often fast,
+but as C<n> gets larger, it takes exponentially longer to find factors.
+
+L<Math::Prime::Util::GMP> implements both the BLS75 theorem 5/7 tests as well
+as ECPP (elliptic curve primality proving).  It will typically try a quick
+C<n-1> proof before using ECPP.  Certificates are available with either method.
+This results in proofs of 200-digit primes in under 1 second on average, and
+many hundreds of digits are possible.  This makes it significantly faster
+than Pari 2.1.7's C<is_prime(n,1)> which is the default for L<Math::Pari>.
 
 
 =head2 prime_certificate
@@ -2960,11 +2990,12 @@ Takes a positive number as input, and returns 1 if the input passes the
 Agrawal-Kayal-Saxena (AKS) primality test.  This is a deterministic
 unconditional primality test which runs in polynomial time for general input.
 
-This function is only included for completeness and as an example.  While the
-implementation is fast compared to the only other Perl implementation available
-(in L<Math::Primality>), it is slow compared to others.  However, even
-optimized AKS implementations are far slower than ECPP or other modern
-primality tests.
+This function is only included for completeness and as an example.  The Perl
+implementation is fast compared to the only other Perl implementation
+available (in L<Math::Primality>), and the implementation in
+L<Math::Prime::Util::GMP> compares favorably to others in the literature.
+However AKS in general is far too slow to be of practical use.  R.P. Brent,
+2010: "AKS is not a practical algorithm.  ECPP is much faster."
 
 
 =head2 moebius
@@ -3150,7 +3181,8 @@ Be careful about which version (C<primorial> or C<pn_primorial>) matches the
 definition you want to use.  Not all sources agree on the terminology, though
 they should give a clear definition of which of the two versions they mean.
 OEIS, Wikipedia, and Mathworld are all consistent, and these functions should
-match that terminology.
+match that terminology.  This function should return the same result as the
+C<mpz_primorial_ui> function added in GMP 5.1.
 
 
 =head2 pn_primorial
@@ -3808,9 +3840,10 @@ handle using it.  There are still some functions it doesn't do well
 L<Math::Prime::XS> has C<is_prime> and C<primes> functionality.  There is no
 bigint support.  The C<is_prime> function uses well-written trial division,
 meaning it is very fast for small numbers, but terribly slow for large
-64-bit numbers.  The prime sieve is an unoptimized non-segmented SoE which
-which returns an array.  It works well for 32-bit values, but speed and
-memory are problematic for larger values.
+64-bit numbers.  With the latest release, MPU should be faster for all sizes.
+The prime sieve is an unoptimized non-segmented SoE which which returns an
+array.  It works well for 32-bit values, but speed and memory are problematic
+for larger values.
 
 L<Math::Prime::FastSieve> supports C<primes>, C<is_prime>, C<next_prime>,
 C<prev_prime>, C<prime_count>, and C<nth_prime>.  The caveat is that all
@@ -3845,8 +3878,8 @@ the L</factor> and L</all_factors> functions of MPU.  These functions do
 not support bigints.  Both are implemented with trial division, meaning they
 are very fast for really small values, but quickly become unusably slow
 (factoring 19 digit semiprimes is over 700 times slower).  It has additional
-functions C<count_prime_factors> and C<matches> which have no direct equivalent
-in MPU.
+functions C<count_prime_factors> (possible in MPU using C<scalar factor($n)>)
+and C<matches> which has no direct equivalent.
 
 L<Math::Big> version 1.12 includes C<primes> functionality.  The current
 code is only usable for very tiny inputs as it is incredibly slow and uses
@@ -3912,22 +3945,34 @@ Similar to MPU's L<is_prob_prime> or L<is_prime> functions.
 MPU is deterministic for native integers, and uses a strong
 BPSW test for bigints (with a quick primality proof tried as well).  The
 default version of Pari used by L<Math::Pari> (2.1.7) uses 10 random M-R
-bases, which is a quick probable prime test (it also supports a
-Pocklington-Lehmer test by giving a 1 as the second argument).  Using the
-newer 2.3.5 library makes C<isprime> use an APRCL primality proof, which
-can take longer (though will be much faster than the BLS75 proof used in
-MPU's L<is_provable_prime> routine).
+bases, which is a probable prime test usually considered much weaker than the
+BPSW test used by MPU and newer versions of Pari (though better than a fixed
+set of bases).  Calling as C<isprime($n,1)> performs a Pocklington-Lehmer
+C<n-1> proof.  This is comparable in performance to MPU:GMP's C<n-1> proof
+implementation, and is reasonably fast for about 70 digits, but much slower
+than ECPP.
+
+If L<Math::Pari> is compiled with version 2.3.5 of Pari (this is not easy to
+do on many platforms), then the algorithms are completely different.  The
+C<isprime> function now acts like L</is_provable_prime> -- an APRCL proof
+is performed, which is quite efficient though requires using a larger stack
+for numbers of 300+ digits.  It is somewhat comparable in speed to MPU:GMP's
+ECPP proof method, but without a certificate.  Using the C<ispseudoprime>
+function will perform a BPSW test similar to L</is_prob_prime>.
 
 =item C<primepi>
 
-Similar to MPU's L<prime_count> function.  Pari uses a naive
-counting algorithm with its precalculated primes, so this is not very useful.
+Only available with version 2.3 of Pari.  Similar to MPU's L<prime_count>
+function in API, but uses a naive counting algorithm with its precalculated
+primes, so is not of practical use.  Incidently, Pari 2.6 (not usable from
+Perl) has fixed the pre-calculation requirement so it is more useful, but is
+still hundreds of times slower than MPU.
 
 =item C<primes>
 
 Doesn't support ranges, requires bumping up the precalculated
 primes for larger numbers, which means knowing in advance the upper limit
-for primes.  Support for numbers larger than 400M requires making with Pari
+for primes.  Support for numbers larger than 400M requires using Pari
 version 2.3.5.  If that is used, sieving is about 2x faster than MPU, but
 doesn't support segmenting.
 
@@ -3937,13 +3982,13 @@ Similar to MPU's L<factor> though with a different return (I
 find the result value quite inconvenient to work with, but others may like
 its vector of factor/exponent format).  Slower than MPU for all 64-bit inputs
 on an x86_64 platform, it may be faster for large values on other platforms.
-Bigints are slightly faster with Math::Pari for "small" values, and MPU slows
-down rapidly (the difference is noticeable with 30+ digit numbers).
+Bigint factoring is slightly faster with newer L<Math::Prime::Util::GMP>
+releases.
 
 =item C<eulerphi>
 
-Similar to MPU's L<euler_phi>.  MPU is 2-5x faster for native
-integers.  There is also support for a range, which can be much more efficient.
+Similar to MPU's L<euler_phi>.  MPU is 2-20x faster for native integers.
+There is also support for a range, which can be much more efficient.
 Without L<Math::Prime::Util::GMP> installed, MPU is very slow with bigints.
 With it installed, it is about 2x slower than Math::Pari.
 
@@ -3969,8 +4014,10 @@ and complex inputs).
 =back
 
 Overall, L<Math::Pari> supports a huge variety of functionality and has a
-sophisticated and mature code base behind it.  For native integers sometimes
-the functions can be slower, but bigints are usually superior, and it rarely
+sophisticated and mature code base behind it (noting that the default version
+of Pari used is about 10 years old now).
+For native integers sometimes
+the functions can be slower, but bigints are often superior and it rarely
 has any performance surprises.  Some of the unique features MPU offers include
 super fast prime counts, nth_prime, approximations and limits for both, random
 primes, fast Mertens calculations, Chebyshev theta and psi functions, and the
@@ -4025,8 +4072,8 @@ Perl modules, counting the primes to C<800_000_000> (800 million):
   >20000     Math::Big                   1.12     Perl, > 26GB RAM used
 
 Python's standard modules are very slow: MPMATH v0.17 C<primepi> takes 169.5s
-and 25+ GB of RAM.  SymPy 0.7.1 C<primepi> takes 292.2s.  However there are very
-fast solutions written by Robert William Hanks (included in the xt/
+and 25+ GB of RAM.  SymPy 0.7.1 C<primepi> takes 292.2s.  However there are
+very fast solutions written by Robert William Hanks (included in the xt/
 directory of this distribution): pure Python in 12.1s and NUMPY in 2.8s.
 
 
@@ -4034,20 +4081,18 @@ C<is_prime>: my impressions for various sized inputs:
 
    Module                   1-10 digits  10-20 digits  BigInts
    -----------------------  -----------  ------------  --------------
-   Math::Prime::Util        Very fast    Pretty fast   Slow to Fast (3)
-   Math::Prime::XS          Very fast    Very slow (1) --
-   Math::Prime::FastSieve   Very fast    N/A (2)       --
-   Math::Primality          Very slow    Very slow     Fast
-   Math::Pari               Slow         OK            Fast
+   Math::Prime::Util        Very fast    Pretty fast   Slow
+   Math::Prime::Util (1)    Very fast    Pretty fast   Fast (4)
+   Math::Prime::XS          Very fast    Very slow (2) --
+   Math::Prime::FastSieve   Very fast    N/A (3)       --
+   Math::Primality          Very slow    Very slow     Fast (4)
+   Math::Pari               Slow         OK            Fast (4)
 
-   (1) trial division only.  Very fast if every factor is tiny.
-   (2) Too much memory to hold the sieve (11dig = 6GB, 12dig = ~50GB)
-   (3) If L<Math::Prime::Util::GMP> is installed, then all three of the
-       BigInt capable modules run at reasonably similar speeds, capable of
-       performing the BPSW test on a 3000 digit input in ~ 1 second.  Without
-       that module all computations are done in Perl, so this module using
-       GMP bigints runs 2-3x slower, using Pari bigints about 10x slower,
-       and using the default bigints (Calc) it can run much slower.
+   (1) This is with L<Math::Prime::Util::GMP> installed.
+   (2) trial division only.  Very fast if every factor is tiny.
+   (3) Too much memory to hold the sieve (11dig = 6GB, 12dig = ~50GB)
+   (4) With L<Math::Prime::Util::GMP>, all three of the BigInt capable
+       modules run at reasonably similar speeds.
 
 The differences are in the implementations:
 
@@ -4056,15 +4101,14 @@ The differences are in the implementations:
 =item L<Math::Prime::Util>
 
 looks in the sieve for a fast bit lookup if that exists (default up to 30,000
-but it can be expanded, e.g.  C<prime_precalc>), uses trial division for
-numbers higher than this but not too large (100k on 64-bit machines,
-100M on 32-bit machines), a deterministic set of Miller-Rabin tests for
-64-bit numbers, and a BPSW test for bigints.
+but it can be expanded, e.g.  C<prime_precalc>), does some simple divisibility
+tests, then a set of deterministic set of Miller-Rabin tests for 32/64-bit
+numbers, and a BPSW test for bigints.
 
 =item L<Math::Prime::XS>
 
 does trial divisions, which is wonderful if the input has a small factor
-(or is small itself).  But if given a large prime it can take orders of
+(or is small itself).  If given a large prime it can take many orders of
 magnitude longer.  It does not support bigints.
 
 =item L<Math::Prime::FastSieve>
@@ -4098,8 +4142,7 @@ is used instead (this requires hand-building the Math::Pari module) then
 the options are quite different.  C<ispseudoprime(x,0)> performs a strong
 BPSW test, while C<isprime> now performs a primality proof using a fast
 implementation of the APRCL method.  While the APRCL method is very fast
-compared to MPU's primality proof methods, it is still much, much slower
-than a BPSW probable prime test for large inputs.
+it is still much, much slower than a BPSW probable prime test for large inputs.
 
 =back
 
@@ -4109,12 +4152,13 @@ are still being tuned.  L<Math::Factor::XS> is very fast when given input with
 only small factors, but it slows down rapidly as the smallest factor increases
 in size.  For numbers larger than 32 bits, L<Math::Prime::Util> can be 100x or
 more faster (a number with only very small factors will be nearly identical,
-while a semiprime with large factors will be the extreme end).  L<Math::Pari>'s
-underlying algorithms and code are much more mature than this module, and
-for 21+ digit numbers will be a better choice.  Small numbers factor much
-faster with Math::Prime::Util.  For 30+ digit numbers, L<Math::Pari> is much
-faster.  Without the L<Math::Prime::Util::GMP> module, almost all actions on
-numbers greater than native scalars will be much faster in Pari.
+while a semiprime with large factors will be the extreme end).  L<Math::Pari>
+is much slower with native sized inputs, probably due mostly to calling
+overhead.  For bigints, the L<Math::Prime::Util::GMP> module is needed or
+performance will be far worse than Math::Pari.  With the GMP module,
+performance is pretty similar from 20 through 70 digits, which the caveat
+that the current MPU factoring uses more memory for 60+ digit numbers.
+
 
 L<This slide presentation|http://math.boisestate.edu/~liljanab/BOISECRYPTFall09/Jacobsen.pdf>
 has a lot of data on 64-bit and GMP factoring performance I collected in 2009.
@@ -4134,13 +4178,18 @@ uses, with GGNFS likely only providing a benefit for numbers large enough to
 warrant distributed processing.
 
 
-The primality proving algorithms leave much to be desired.  If you have
-numbers larger than C<2^128>, I recommend C<isprime(n, 2)> from Pari 2.3+
-which will run a fast APRCL test,
-L<GMP-ECPP|http://http://sourceforge.net/projects/gmp-ecpp/>, or
-L<Primo|http://www.ellipsa.eu/>.  Any of those
-will be much faster than the Lucas or BLS algorithms used in MPU for large
-inputs.  For very large numbers, Primo is the one to use.
+The C<n-1> proving algorithm in L<Math::Prime::Util::GMP> compares well to
+the version including in Pari.  Both are pretty fast to about 60 digits, and
+work reasonably well to 80 or so before starting to take over many minutes per
+number on a fast computer.  Version 0.09 and newer of MPU::GMP contain an
+ECPP implementation that works quite well, though is certainly not state of
+the art.  It averages less than a second for proving 200-digit primes,
+including creating a certificate.  Times below 200 digits are faster than
+Pari 2.3.5's APR-CL proof.  For larger inputs the bottleneck is a limited set
+of discriminants, and time becomes more variable.  There is a larger set of
+discriminants on github that help, with 300-digit primes taking ~5 seconds on
+average and typically under a minute for 500-digits.  For serious primality
+proving, I recommend L<Primo|http://www.ellipsa.eu/>.
 
 
 =head1 AUTHORS

@@ -118,6 +118,12 @@ _XS_set_verbose(IN int verbose)
 int
 _XS_get_verbose()
 
+void
+_XS_set_callgmp(IN int call_gmp)
+
+int
+_XS_get_callgmp()
+
 
 void
 prime_precalc(IN UV n)
@@ -415,11 +421,17 @@ is_prime(IN SV* n)
       UV val;
       set_val_from_sv(val, n);
       RETVAL = _XS_is_prime(val);
-    } else if (ix == 0) {
-      /* If we knew GMP was allowed and available, we could call it here. */
-      RETVAL = SvIV(_callsub(ST(0), "Math::Prime::Util::_generic_is_prime"));
-    } else if (ix == 1) {
-      RETVAL = SvIV(_callsub(ST(0), "Math::Prime::Util::_generic_is_prob_prime"));
+    } else {
+      SV* result;
+      const char* sub = 0;
+      if (_XS_get_callgmp())
+        sub = (ix == 0) ? "Math::Prime::Util::GMP::is_prime"
+                        : "Math::Prime::Util::GMP::is_prob_prime";
+      else
+        sub = (ix == 0) ? "Math::Prime::Util::_generic_is_prime"
+                        : "Math::Prime::Util::_generic_is_prob_prime";
+      result = _callsub(ST(0), sub);
+      RETVAL = SvIV(result);
     }
   OUTPUT:
     RETVAL
@@ -441,10 +453,11 @@ next_prime(IN SV* n)
       if ( (ix && val < 3) || (!ix && val >= _max_prime) )  XSRETURN_UV(0);
       if (ix) XSRETURN_UV(_XS_prev_prime(val));
       else    XSRETURN_UV(_XS_next_prime(val));
-    } else if (ix == 0) {
-      XPUSHs(sv_2mortal(_callsub(ST(0), "Math::Prime::Util::_generic_next_prime")));
-    } else if (ix == 1) {
-      XPUSHs(sv_2mortal(_callsub(ST(0), "Math::Prime::Util::_generic_prev_prime")));
+    } else {
+      SV* result = _callsub(ST(0), (ix == 0) ?
+                       "Math::Prime::Util::_generic_next_prime" :
+                       "Math::Prime::Util::_generic_prev_prime" );
+      XPUSHs(sv_2mortal(result));
     }
 
 
