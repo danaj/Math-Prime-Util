@@ -734,7 +734,7 @@ UV _XS_nth_prime(UV n)
   return ( (segbase*30) + p );
 }
 
-/* Return an IV array with lo-hi+1 elements.  mu[k-lo] = µ(k) for k = lo .. hi.
+/* Return a char array with lo-hi+1 elements.  mu[k-lo] = µ(k) for k = lo .. hi.
  * It is the callers responsibility to call Safefree on the result. */
 #define PGTLO(p,lo)  ((p) >= lo) ? (p) : ((p)*(lo/(p)) + ((lo%(p))?(p):0))
 #define P2GTLO(pinit, p, lo) \
@@ -744,16 +744,30 @@ char* _moebius_range(UV lo, UV hi)
   char* mu;
   UV i;
   UV sqrtn = isqrt(hi);
-#if 1
-  IV* A;
+#if 0
+  /* Simple char method.  Needs way too many primes. */
+  New(0, mu, hi-lo+1, char);
+  if (mu == 0)
+    croak("Could not get memory for %"UVuf" moebius results\n", hi-lo+1);
+  memset(mu, 1, hi-lo+1);
+  if (lo == 0)  mu[0] = 0;
+  prime_precalc( _XS_nth_prime_upper(hi) );
+  START_DO_FOR_EACH_PRIME(2, hi) {
+    UV p2 = p*p;
+    for (i = PGTLO(p2, lo); i <= hi; i += p2)
+      mu[i-lo] = 0;
+    for (i = PGTLO(p, lo); i <= hi; i += p)
+      mu[i-lo] = -mu[i-lo];
+  } END_DO_FOR_EACH_PRIME
+#endif
 
-  /* This implementation follows that of Deléglise & Rivat (1996), which is
-   * a segmented version of Lioen & van de Lune (1994).  Downside is that it
+#if 0
+  /* This implementation follows Deléglise & Rivat (1996), which is a
+   * segmented version of Lioen & van de Lune (1994).  Downside is that it
    * uses an array of IV's, so too much memory.  Pawleicz (2011) shows a small
    * variation but seems to just be a rearrangement -- there is no time or
-   * space difference on my machines. (TODO: but maybe for hi > 2^63?)
-   */
-
+   * space difference on my machines. */
+  IV* A;
   New(0, A, hi-lo+1, IV);
   if (A == 0)
     croak("Could not get memory for %"UVuf" moebius results\n", hi-lo+1);
@@ -778,58 +792,45 @@ char* _moebius_range(UV lo, UV hi)
   }
   Safefree(A);
 #endif
-#if 0
-  UV p;
-  /* Simple char method, Needs way too many primes */
-  New(0, mu, hi-lo+1, char);
+
+#if 1
+  /* Kuznetsov indicates that the Deléglise & Rivat (1996) method can be
+   * modified to work on logs, which allows us to operate with no
+   * intermediate memory at all.  There isn't really any time savings. */
+  unsigned char* A;
+  unsigned char logp;
+  UV nextlog;
+
+  Newz(0, mu, hi-lo+1, char);
   if (mu == 0)
     croak("Could not get memory for %"UVuf" moebius results\n", hi-lo+1);
-  memset(mu, 1, hi-lo+1);
-  if (lo == 0)  mu[0] = 0;
-  prime_precalc( _XS_nth_prime_upper(hi) );
-  for (p = 2; p <= hi; p = _XS_next_prime(p)) {
-    UV p2 = p*p;
-    for (i = PGTLO(p2, lo); i <= hi; i += p2)
-      mu[i-lo] = 0;
-    for (i = PGTLO(p, lo); i <= hi; i += p)
-      mu[i-lo] = -mu[i-lo];
-  }
-#endif
-#if 0
-  /* Kuznetsov's transform of Deléglise & Rivat (1996) into logs.
-   * (1) I'm using the log function, which should be fixed (easy).
-   * (2) it doesn't work.  try 64-101 vs. 64 vs. 100.
-   */
-  UV p;
-  unsigned char* A;
-  New(0, A, hi-lo+1, unsigned char);
-  if (A == 0)
-    croak("Could not get memory for %"UVuf" moebius results\n", hi-lo+1);
-  memset(A, 0, hi-lo+1);
+  A = (unsigned char*) mu;
   if (sqrtn*sqrtn != hi) sqrtn++;  /* ceil sqrtn */
-  prime_precalc(sqrtn);
-  for (p = 2; p <= sqrtn; p = _XS_next_prime(p)) {
+  
+  logp = 1; nextlog = 3; /* 2+1 */
+  START_DO_FOR_EACH_PRIME(2, sqrtn) {
     UV p2 = p*p;
-    unsigned char l = 1 | (unsigned char) ( log(p)/log(2) );
+    if (p > nextlog) {
+      logp += 2;   /* logp is 1 | ceil(log(p)/log(2)) */
+      nextlog = ((nextlog-1)*4)+1;
+    }
     for (i = PGTLO(p, lo); i <= hi; i += p)
-      A[i-lo] += l;
+      A[i-lo] += logp;
     for (i = PGTLO(p2, lo); i <= hi; i += p2)
       A[i-lo] |= 0x80;
-  }
+  } END_DO_FOR_EACH_PRIME
 
-  New(0, mu, hi-lo+1, char);
-  if (mu == 0)
-    croak("Could not get memory for %"UVuf" moebius results\n", hi-lo+1);
+  logp = 0; nextlog = lo;
+  while (nextlog >>= 1)  logp++;
+  nextlog = 2UL << logp;
   for (i = lo; i <= hi; i++) {
     unsigned char a = A[i-lo];
-    unsigned char log2i = (unsigned char) ( log(i)/log(2) );
-    //printf("i = %lu  a = %lu  log2i = %lu\n", i, a, log2i);
-    if (a & 0x80) { mu[i-lo] = 0; }
-    else if (a >= log2i) { mu[i-lo] =  1 - 2*(a&1); }
-    else                 { mu[i-lo] = -1 + 2*(a&1); }
+    if (i >= nextlog) {  logp++;  nextlog *= 2;  } /* logp is log(p)/log(2) */
+    if (a & 0x80)       { mu[i-lo] = 0; }
+    else if (a >= logp) { mu[i-lo] =  1 - 2*(a&1); }
+    else                { mu[i-lo] = -1 + 2*(a&1); }
   }
   if (lo == 0)  mu[0] = 0;
-  Safefree(A);
 #endif
   return mu;
 }
@@ -878,8 +879,9 @@ IV _XS_mertens(UV n) {
   }
   return -sum;
 #else
-  /* Deléglise and Rivat (1996) using u = n^1/2 and unsegmented. */
-  /* Very simple, but they use u = n^1/3 and segment */
+  /* See Deléglise and Rivat (1996) for a segmented n^1/3 algorithm.
+   * This implementation uses their lemma 2.1 directly, so is n^1/2.
+   */
   UV u, i, m, nmk;
   char* mu;
   IV* M;
