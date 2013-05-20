@@ -28,7 +28,11 @@ while (<>) {
   if (/^N\[(\d+)\]\s*=\s*(\d+)/) {
     $n = $2;
     if ($1 == 0) {
-      die "Bad input" if defined $N;
+      if (defined $N) {
+        # I guess we're done with the last one...
+        print verify_prime(@cert) ? "SUCCESS\n" : "FAILURE\n";
+      }
+      #die "Bad input" if defined $N;
       $N = $n;
       @cert = ($n, "AGKM");
     }
@@ -56,7 +60,7 @@ while (<>) {
     push @cert, [$n, $a, $b, $m, $q, [$Px,$Py]];
   }
   else {
-    last if /^proven prime/;
+    undef $N if /^proven prime/;
   }
 }
 

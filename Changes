@@ -1,6 +1,6 @@
 Revision history for Perl extension Math::Prime::Util.
 
-0.27 xx May 2013
+0.27 20 May 2013
 
     - is_prime, is_prob_prime, next_prime, and prev_prime now all go straight
       to XS if possible.  This makes them much faster for small inputs without
