@@ -2385,6 +2385,8 @@ Version 0.27
   # If you want them in an array instead
   my @primes = @{primes( 500 )};
 
+  # You can do something for every prime in a range.  Twin primes to 10k:
+  forprimes { say if is_prime($_+2) } 10000;
 
   # For non-bigints, is_prime and is_prob_prime will always be 0 or 2.
   # They return return 0 (composite), 2 (prime), or 1 (probably prime)
@@ -2661,6 +2663,20 @@ C<18,446,744,073,709,551,557> in 64-bit).
 
 Returns the prime smaller than the input number.  0 is returned if the
 input is C<2> or lower.
+
+
+=head2 forprimes
+
+  forprimes { say } 100,200;                  # print primes from 100-200
+
+  $sum=0;  forprimes { $sum += $_ } 100000;   # sum primes to 100k
+
+  forprimes { say if is_prime($_+2) } 10000;  # print twin primes to 10k
+
+Given a block and either an end count or a start and end pair, calls the
+block for each prime in the range.  Compared to getting a big array of primes
+and iterating through it, this is more memory efficient and perhaps more
+convenient.
 
 
 =head2 prime_count

@@ -42,6 +42,10 @@
    - QS factoring
 
 - forprimes { say } 1000,2000
-  - Documentation
   - Tests
   - Examples
+
+- Make forprimes use a segment sieve
+
+- Figure out a way to make the internal FOR_EACH_PRIME macros use a segmented
+  sieve.

@@ -648,6 +648,7 @@ forprimes (SV* block, IN SV* svbeg, IN SV* svend = 0)
     GV *gv;
     HV *stash;
     CV *cv;
+    SV* svarg;
 
     if (!_validate_int(svbeg, 0) || (items >= 3 && !_validate_int(svend,0))) {
       dSP;
@@ -672,12 +673,14 @@ forprimes (SV* block, IN SV* svbeg, IN SV* svend = 0)
     if (cv == Nullcv)
       croak("Not a subroutine reference");
     SAVESPTR(GvSV(PL_defgv));
+    svarg = newSVuv(0);
     if (!CvISXSUB(cv)) {
       dMULTICALL;
       I32 gimme = G_VOID;
       PUSH_MULTICALL(cv);
       START_DO_FOR_EACH_PRIME(beg, end) {
-        GvSV(PL_defgv) = newSVuv(p);
+        sv_setuv(svarg, p);
+        GvSV(PL_defgv) = svarg;
         MULTICALL;
       } END_DO_FOR_EACH_PRIME
 #ifdef PERL_HAS_BAD_MULTICALL_REFCOUNT
@@ -688,11 +691,13 @@ forprimes (SV* block, IN SV* svbeg, IN SV* svend = 0)
     } else {
       START_DO_FOR_EACH_PRIME(beg, end) {
         dSP;
-        GvSV(PL_defgv) = newSVuv(p);
+        sv_setuv(svarg, p);
+        GvSV(PL_defgv) = svarg;
         PUSHMARK(SP);
         call_sv((SV*)cv, G_VOID|G_DISCARD);
       } END_DO_FOR_EACH_PRIME
     }
+    SvREFCNT_dec(svarg);
 #endif
     XSRETURN_UNDEF;
   }
