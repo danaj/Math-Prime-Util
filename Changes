@@ -2,6 +2,9 @@ Revision history for Perl extension Math::Prime::Util.
 
 0.28 xx May 2013
 
+    - An optimization to nth_prime caused occasional threaded Win32 faults.
+      Adjust so this is avoided.
+
     - Yet another XS micro-speedup (PERL_NO_GET_CONTEXT)
 
     - forprimes { block } [begin,]end.  e.g.

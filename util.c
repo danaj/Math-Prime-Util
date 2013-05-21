@@ -646,7 +646,7 @@ UV _XS_nth_prime(UV n)
    * good approximation, use Lehmer's algorithm to get the count, then walk
    * backwards or sieve forwards.
    */
-  if (upper_limit <= 32*1024*30) {
+  if (upper_limit <= get_prime_cache(0, 0) || upper_limit <= 32*1024*30) {
     /* Generate a sieve and count. */
     segment_size = get_prime_cache(upper_limit, &cache_sieve) / 30;
     /* Count up everything in the cached sieve. */
