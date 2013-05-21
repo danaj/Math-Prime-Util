@@ -19,6 +19,7 @@
 #include "lehmer.h"
 #include "aks.h"
 
+/* Workaround perl 5.6 UVs */
 #if PERL_REVISION <= 5 && PERL_VERSION <= 6 && BITS_PER_WORD == 64
  /* This could be blown up with a wacky string, but it's just for 5.6 */
  #define set_val_from_sv(val, sv) \
@@ -28,11 +29,22 @@
    val = SvUV(sv)
 #endif
 
+/* multicall compatibility stuff */
+#if PERL_VERSION < 7
+# define USE_MULTICALL 0   /* Too much trouble to work around it */
+#else
+# define USE_MULTICALL 1
+#endif
+
 #if PERL_VERSION < 13 || (PERL_VERSION == 13 && PERL_SUBVERSION < 9)
 #  define PERL_HAS_BAD_MULTICALL_REFCOUNT
 #endif
 #ifndef CvISXSUB
 #  define CvISXSUB(cv) CvXSUB(cv)
+#endif
+/* Not right, but close */
+#if !defined cxinc && ( (PERL_VERSION == 8 && PERL_SUBVERSION == 9) || (PERL_VERSION == 10 && PERL_SUBVERSION <= 1) )
+# define cxinc() Perl_cxinc(aTHX)
 #endif
 
 
@@ -624,6 +636,14 @@ forprimes (SV* block, IN SV* svbeg, IN SV* svend = 0)
   PROTOTYPE: &$;$
   CODE:
   {
+#if !USE_MULTICALL
+    dSP;
+    PUSHMARK(SP);
+    XPUSHs(block); XPUSHs(svbeg); XPUSHs(svend);
+    PUTBACK;
+    (void) call_pv("Math::Prime::Util::_generic_forprimes", G_VOID|G_DISCARD);
+    SPAGAIN;
+#else
     UV beg, end;
     GV *gv;
     HV *stash;
@@ -673,5 +693,6 @@ forprimes (SV* block, IN SV* svbeg, IN SV* svend = 0)
         call_sv((SV*)cv, G_VOID|G_DISCARD);
       } END_DO_FOR_EACH_PRIME
     }
+#endif
     XSRETURN_UNDEF;
   }
