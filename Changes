@@ -1,5 +1,14 @@
 Revision history for Perl extension Math::Prime::Util.
 
+0.28 xx May 2013
+
+    - Yet another XS micro-speedup (PERL_NO_GET_CONTEXT)
+
+    - forprimes { block } [begin,]end.  e.g.
+        forprimes { say } 100;
+        $sum = 0;  forprimes { $sum += $_ } 1000,50000;  say $sum;
+        forprimes { say if is_prime($_+2) } 10000;  # print twin primes
+
 0.27 20 May 2013
 
     - is_prime, is_prob_prime, next_prime, and prev_prime now all go straight

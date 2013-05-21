@@ -21,6 +21,7 @@ our @EXPORT_OK =
       is_aks_prime
       miller_rabin
       primes
+      forprimes
       next_prime  prev_prime
       prime_count
       prime_count_lower prime_count_upper prime_count_approx
@@ -91,6 +92,7 @@ BEGIN {
     *is_prime      = \&Math::Prime::Util::_generic_is_prime;
     *next_prime    = \&Math::Prime::Util::_generic_next_prime;
     *prev_prime    = \&Math::Prime::Util::_generic_prev_prime;
+    *forprimes     = \&Math::Prime::Util::_generic_forprimes;
 
     *_prime_memfreeall = \&Math::Prime::Util::PP::_prime_memfreeall;
     *prime_memfree  = \&Math::Prime::Util::PP::prime_memfree;
@@ -1348,6 +1350,19 @@ sub divisor_sum {
     $sum += $sub->($f);
   }
   return $sum;
+}
+
+sub _generic_forprimes (&$;$) {
+  my($sub, $beg, $end) = @_;
+  if (!defined $end) { $end = $beg; $beg = 2; }
+  _validate_num($beg) || _validate_positive_integer($beg);
+  _validate_num($end) || _validate_positive_integer($end);
+  my $p = ($beg <= 2) ? 2 : next_prime($beg-1);
+  while ($p <= $end) {
+    local *_ = \$p;
+    $sub->();
+    $p = next_prime($p);
+  }
 }
 
 # Omega function A001221.  Just an example.

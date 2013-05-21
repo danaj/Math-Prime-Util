@@ -1,7 +1,10 @@
 
+#define PERL_NO_GET_CONTEXT  /* Define at top for more efficiency. */
+
 #include "EXTERN.h"
 #include "perl.h"
 #include "XSUB.h"
+#include "multicall.h"  /* only works in 5.6 and newer */
 #include <ctype.h>
 /* We're not using anything for which we need ppport.h */
 #ifndef XSRETURN_UV   /* Er, almost.  Fix 21086 from Sep 2003 */
@@ -25,6 +28,13 @@
    val = SvUV(sv)
 #endif
 
+#if PERL_VERSION < 13 || (PERL_VERSION == 13 && PERL_SUBVERSION < 9)
+#  define PERL_HAS_BAD_MULTICALL_REFCOUNT
+#endif
+#ifndef CvISXSUB
+#  define CvISXSUB(cv) CvXSUB(cv)
+#endif
+
 
 static int pbrent_factor_a1(UV n, UV *factors, UV maxrounds) {
   return pbrent_factor(n, factors, maxrounds, 1);
@@ -37,6 +47,7 @@ static int pbrent_factor_a1(UV n, UV *factors, UV maxrounds) {
  */
 static int _validate_int(SV* n, int negok)
 {
+  dTHX;
   char* ptr;
   STRLEN i, len;
   UV val;
@@ -76,6 +87,7 @@ static int _validate_int(SV* n, int negok)
  */
 static SV* _callsub(SV* arg, const char* name)
 {
+  dTHX;
   dSP;                               /* Local copy of stack pointer         */
   int count;
   SV* v;
@@ -606,3 +618,60 @@ _validate_num(SV* n, ...)
     }
   OUTPUT:
     RETVAL
+
+void
+forprimes (SV* block, IN SV* svbeg, IN SV* svend = 0)
+  PROTOTYPE: &$;$
+  CODE:
+  {
+    UV beg, end;
+    GV *gv;
+    HV *stash;
+    CV *cv;
+
+    if (!_validate_int(svbeg, 0) || (items >= 3 && !_validate_int(svend,0))) {
+      dSP;
+      PUSHMARK(SP);
+      XPUSHs(block); XPUSHs(svbeg); XPUSHs(svend);
+      PUTBACK;
+      (void) call_pv("Math::Prime::Util::_generic_forprimes", G_VOID|G_DISCARD);
+      SPAGAIN;
+      XSRETURN_UNDEF;
+    }
+    if (items < 3) {
+      beg = 2;
+      set_val_from_sv(end, svbeg);
+    } else {
+      set_val_from_sv(beg, svbeg);
+      set_val_from_sv(end, svend);
+    }
+    if (beg > end)
+      XSRETURN_UNDEF;
+
+    cv = sv_2cv(block, &stash, &gv, 0);
+    if (cv == Nullcv)
+      croak("Not a subroutine reference");
+    SAVESPTR(GvSV(PL_defgv));
+    if (!CvISXSUB(cv)) {
+      dMULTICALL;
+      I32 gimme = G_VOID;
+      PUSH_MULTICALL(cv);
+      START_DO_FOR_EACH_PRIME(beg, end) {
+        GvSV(PL_defgv) = newSVuv(p);
+        MULTICALL;
+      } END_DO_FOR_EACH_PRIME
+#ifdef PERL_HAS_BAD_MULTICALL_REFCOUNT
+      if (CvDEPTH(multicall_cv) > 1)
+        SvREFCNT_inc_simple_void_NN(multicall_cv);
+#endif
+      POP_MULTICALL;
+    } else {
+      START_DO_FOR_EACH_PRIME(beg, end) {
+        dSP;
+        GvSV(PL_defgv) = newSVuv(p);
+        PUSHMARK(SP);
+        call_sv((SV*)cv, G_VOID|G_DISCARD);
+      } END_DO_FOR_EACH_PRIME
+    }
+    XSRETURN_UNDEF;
+  }

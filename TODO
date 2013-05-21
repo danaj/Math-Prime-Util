@@ -40,3 +40,8 @@
 - Big features:
    - LMO prime count
    - QS factoring
+
+- forprimes { say } 1000,2000
+  - Documentation
+  - Tests
+  - Examples

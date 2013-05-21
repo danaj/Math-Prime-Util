@@ -13,6 +13,7 @@ README
 TODO
 XS.xs
 ptypes.h
+multicall.h
 mulmod.h
 aks.h
 aks.c
