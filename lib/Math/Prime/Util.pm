@@ -21,7 +21,7 @@ our @EXPORT_OK =
       is_aks_prime
       miller_rabin
       primes
-      forprimes
+      forprimes prime_iterator
       next_prime  prev_prime
       prime_count
       prime_count_lower prime_count_upper prime_count_approx
@@ -1362,6 +1362,20 @@ sub _generic_forprimes (&$;$) {
     local *_ = \$p;
     $sub->();
     $p = next_prime($p);
+  }
+}
+
+sub prime_iterator {
+  my($start) = @_;
+  my $p = (defined $start && $start > 0) ? $start-1 : 0;
+  if (ref($p) ne 'Math::BigInt' && $p <= $_XS_MAXVAL) {
+    return sub { $p = _XS_next_prime($p); return $p; };
+  } elsif ($_HAVE_GMP) {
+    return sub { my $next = Math::Prime::Util::GMP::next_prime($p);
+                 $p = $p-$p+$next;
+                 return $p; };
+  } else {
+    return sub { $p = Math::Prime::Util::PP::next_prime($p); return $p; }
   }
 }
 
