@@ -269,8 +269,7 @@ for reasonably small numbers.  It does not support random access.  It is
 very fast for small values, but is very slow with large counts.
 
 L<Math::Primes::TiedArray> is remarkably impractical for anything other
-than very small numbers.  The sieve used is incredibly slow, and the memory
-use is crazy.
+than very small numbers.
 
 
 =head1 SEE ALSO

@@ -1,5 +1,5 @@
 
-#define PERL_NO_GET_CONTEXT  /* Define at top for more efficiency. */
+#define PERL_NO_GET_CONTEXT 1 /* Define at top for more efficiency. */
 
 #include "EXTERN.h"
 #include "perl.h"

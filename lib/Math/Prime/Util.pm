@@ -1371,9 +1371,7 @@ sub prime_iterator {
   if (ref($p) ne 'Math::BigInt' && $p <= $_XS_MAXVAL) {
     return sub { $p = _XS_next_prime($p); return $p; };
   } elsif ($_HAVE_GMP) {
-    return sub { my $next = Math::Prime::Util::GMP::next_prime($p);
-                 $p = $p-$p+$next;
-                 return $p; };
+    return sub { $p = $p-$p+Math::Prime::Util::GMP::next_prime($p); return $p;};
   } else {
     return sub { $p = Math::Prime::Util::PP::next_prime($p); return $p; }
   }
@@ -2691,6 +2689,29 @@ Given a block and either an end count or a start and end pair, calls the
 block for each prime in the range.  Compared to getting a big array of primes
 and iterating through it, this is more memory efficient and perhaps more
 convenient.
+
+Inside the block, you may use C<last> to exit early, or C<return> to skip to
+the next entry.
+
+
+=head2 prime_iterator
+
+  my $it = prime_iterator;
+  $sum += $it->() for 1..100000;
+
+Returns a closure-style iterator.  The start value defaults to the first
+prime (2) but an initial value may be given as an argument, which will result
+in the first value returned being the next prime greater than or equal to the
+argument.  For example, this:
+
+  my $it = prime_iterator(200);  say $it->();  say $it->();
+
+will return 211 followed by 223, as those are the next primes E<gt>= 200.
+On each call, the iterator returns the current value and increments to
+the next prime.
+
+In general, L</forprimes> will be more efficient, but the generic iterator has
+a little more flexibility.
 
 
 =head2 prime_count
