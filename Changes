@@ -12,6 +12,9 @@ Revision history for Perl extension Math::Prime::Util.
         $sum = 0;  forprimes { $sum += $_ } 1000,50000;  say $sum;
         forprimes { say if is_prime($_+2) } 10000;  # print twin primes
 
+    - my $it = prime_iterator(10000); say $it->(); 
+      This is experimental (that is, the interface may change).
+
 0.27 20 May 2013
 
     - is_prime, is_prob_prime, next_prime, and prev_prime now all go straight

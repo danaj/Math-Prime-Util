@@ -5,7 +5,6 @@
 #include "perl.h"
 #include "XSUB.h"
 #include "multicall.h"  /* only works in 5.6 and newer */
-#include <ctype.h>
 /* We're not using anything for which we need ppport.h */
 #ifndef XSRETURN_UV   /* Er, almost.  Fix 21086 from Sep 2003 */
   #define XST_mUV(i,v)  (ST(i) = sv_2mortal(newSVuv(v))  )
@@ -23,7 +22,7 @@
 #if PERL_REVISION <= 5 && PERL_VERSION <= 6 && BITS_PER_WORD == 64
  /* This could be blown up with a wacky string, but it's just for 5.6 */
  #define set_val_from_sv(val, sv) \
-   { char*ptr = SvPV_nolen(sv); val = strtoul(ptr, NULL, 10); }
+   { char*ptr = SvPV_nolen(sv); val = Strtoul(ptr, NULL, 10); }
 #else
  #define set_val_from_sv(val, sv) \
    val = SvUV(sv)
@@ -72,10 +71,12 @@ static int _validate_int(SV* n, int negok)
   ptr = SvPV(n, len);
   if (len == 0)  croak("Parameter '' must be a positive integer");
   for (i = 0; i < len; i++) {
-    if (!isdigit(ptr[i])) {
+    if (!isDIGIT(ptr[i])) {
       if (i == 0 && ptr[i] == '-' && negok)
         isneg = 1;
-      else if (i == 0 && ptr[i] != '+')
+      else if (i == 0 && ptr[i] == '+')
+        /* Allowed */ ;
+      else
         croak("Parameter '%s' must be a positive integer", ptr); /* TODO NULL */
     }
   }

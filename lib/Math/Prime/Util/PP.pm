@@ -1070,8 +1070,11 @@ sub is_aks_prime {
   return 0 if _is_perfect_power($n);
 
   # limit = floor( log2(n) * log2(n) ).  o_r(n) must be larger than this
-  my $sqrtn = int(Math::BigFloat->new($n)->bsqrt->bfloor->bstr);
-  my $log2n = Math::BigFloat->new("$n")->blog(2);
+  my $floatn = Math::BigFloat->new($n);
+  my $sqrtn = int($floatn->copy->bsqrt->bfloor->bstr);
+  # The following line seems to trigger a memory leak in Math::BigFloat::blog
+  # (the part where $MBI is copied to $int) if $n is a Math::BigInt::GMP.
+  my $log2n = $floatn->copy->blog(2);
   my $log2_squared_n = $log2n * $log2n;
   my $limit = int($log2_squared_n->bfloor->bstr);
 

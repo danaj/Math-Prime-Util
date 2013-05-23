@@ -354,13 +354,14 @@ int _XS_is_prob_prime(UV n)
   if (n < 2809) /* 53*53 */                 return 2;
 
 #if BITS_PER_WORD == 32
+  /* These aren't ideal.  Could use 1 when n < 49191, 2 when n < 360018361 */
   if (n < UVCONST(9080191)) {
     bases[0] = 31; bases[1] = 73; nbases = 2;
   } else  {
     bases[0] = 2; bases[1] = 7; bases[2] = 61; nbases = 3;
   }
 #else
-  /* Better bases from http://miller-rabin.appspot.com/, 18 May 2013 */
+  /* Better bases from http://miller-rabin.appspot.com/, 23 May 2013 */
   if (n < UVCONST(341531)) {
     bases[0] = UVCONST(9345883071009581737);
     nbases = 1;
@@ -368,24 +369,32 @@ int _XS_is_prob_prime(UV n)
     bases[0] = 15;
     bases[1] = UVCONST( 13393019396194701 );
     nbases = 2;
-  } else if (n < UVCONST(242175507817)) {
+  } else if (n < UVCONST(273919523041)) {
     bases[0] = 15;
-    bases[1] = UVCONST(      7363882082 );
-    bases[2] = UVCONST( 211573017068182 );
+    bases[1] = UVCONST(        7363882082 );
+    bases[2] = UVCONST(   992620450144556 );
     nbases = 3;
-  } else if (n < UVCONST(47636622961201)) {
+  } else if (n < UVCONST(55245642489451)) {
     bases[0] = 2;
-    bases[1] = UVCONST( 2570940    );
-    bases[2] = UVCONST( 211991001  );
-    bases[3] = UVCONST( 3749873356 );
+    bases[1] = UVCONST(      141889084524735 );
+    bases[2] = UVCONST(  1199124725622454117 );
+    bases[3] = UVCONST( 11096072698276303650 );
     nbases = 4;
-  } else if (n < UVCONST(3770579582154547)) {
+  } else if (n < UVCONST(7999252175582851)) {
     bases[0] = 2;
-    bases[1] = UVCONST( 2570940    );
-    bases[2] = UVCONST( 880937     );
-    bases[3] = UVCONST( 610386380  );
-    bases[4] = UVCONST( 4130785767 );
+    bases[1] = UVCONST(        4130806001517 );
+    bases[2] = UVCONST(   149795463772692060 );
+    bases[3] = UVCONST(   186635894390467037 );
+    bases[4] = UVCONST(  3967304179347715805 );
     nbases = 5;
+  } else if (n < UVCONST(585226005592931977)) {
+    bases[0] = 2;
+    bases[1] = UVCONST(      123635709730000 );
+    bases[2] = UVCONST(     9233062284813009 );
+    bases[3] = UVCONST(    43835965440333360 );
+    bases[4] = UVCONST(   761179012939631437 );
+    bases[5] = UVCONST(  1263739024124850375 );
+    nbases = 6;
   } else {
     bases[0] = 2;
     bases[1] = UVCONST( 325        );

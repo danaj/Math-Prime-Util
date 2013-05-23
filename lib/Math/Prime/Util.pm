@@ -1352,7 +1352,8 @@ sub divisor_sum {
   return $sum;
 }
 
-sub _generic_forprimes (&$;$) {
+                                   # Need proto for the block
+sub _generic_forprimes (&$;$) {    ## no critic qw(ProhibitSubroutinePrototypes)
   my($sub, $beg, $end) = @_;
   if (!defined $end) { $end = $beg; $beg = 2; }
   _validate_num($beg) || _validate_positive_integer($beg);
@@ -1367,7 +1368,9 @@ sub _generic_forprimes (&$;$) {
 
 sub prime_iterator {
   my($start) = @_;
-  my $p = (defined $start && $start > 0) ? $start-1 : 0;
+  $start = 0 unless defined $start;
+  _validate_num($start) || _validate_positive_integer($start);
+  my $p = ($start > 0) ? $start-1 : 0;
   if (ref($p) ne 'Math::BigInt' && $p <= $_XS_MAXVAL) {
     return sub { $p = _XS_next_prime($p); return $p; };
   } elsif ($_HAVE_GMP) {
@@ -2368,7 +2371,7 @@ __END__
 
 =encoding utf8
 
-=for stopwords Möbius Deléglise totient moebius mertens irand primesieve uniqued k-tuples von SoE pari yafu fonction qui compte le nombre nombres voor PhD
+=for stopwords forprimes Möbius Deléglise totient moebius mertens irand primesieve uniqued k-tuples von SoE pari yafu fonction qui compte le nombre nombres voor PhD
 
 
 =head1 NAME
@@ -2688,10 +2691,8 @@ input is C<2> or lower.
 Given a block and either an end count or a start and end pair, calls the
 block for each prime in the range.  Compared to getting a big array of primes
 and iterating through it, this is more memory efficient and perhaps more
-convenient.
-
-Inside the block, you may use C<last> to exit early, or C<return> to skip to
-the next entry.
+convenient.  There is no way to exit the loop early, so the iterator may
+be more appropriate for those uses.
 
 
 =head2 prime_iterator
@@ -2711,7 +2712,7 @@ On each call, the iterator returns the current value and increments to
 the next prime.
 
 In general, L</forprimes> will be more efficient, but the generic iterator has
-a little more flexibility.
+more flexibility (e.g. exiting a loop early, or passing the iterator around).
 
 
 =head2 prime_count

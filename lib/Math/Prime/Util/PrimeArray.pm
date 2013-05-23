@@ -180,7 +180,7 @@ An array that acts like the infinite set of primes.  This may be more
 convenient than using L<Math::Prime::Util> directly, and in some cases it can
 be faster than calling C<next_prime> and C<prev_prime>.
 
-If the access pattern is ascending or decending, then a window is sieved and
+If the access pattern is ascending or descending, then a window is sieved and
 results returned from the window as needed.  If the access pattern is random,
 then C<nth_prime> is used.
 
