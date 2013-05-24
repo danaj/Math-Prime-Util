@@ -1,6 +1,6 @@
 Revision history for Perl extension Math::Prime::Util.
 
-0.28 xx May 2013
+0.28 23 May 2013
 
     - An optimization to nth_prime caused occasional threaded Win32 faults.
       Adjust so this is avoided.
