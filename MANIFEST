@@ -36,6 +36,7 @@ examples/bench-isprime-bpsw.pl
 examples/bench-miller-rabin.pl
 examples/bench-nthprime.pl
 examples/bench-pcapprox.pl
+examples/bench-primearray.pl
 examples/bench-primecount.pl
 examples/bench-random-prime.pl
 examples/bench-random-prime-bigint.pl
@@ -82,6 +83,7 @@ t/22-aks-prime.t
 t/23-primality-proofs.t
 t/30-relations.t
 t/31-threading.t
+t/32-iterators.t
 t/50-factoring.t
 t/51-primearray.t
 t/70-rt-bignum.t
