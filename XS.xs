@@ -546,7 +546,7 @@ _XS_moebius(IN UV lo, IN UV hi = 0)
     UV i;
   PPCODE:
     if (hi != lo && hi != 0) {   /* mobius in a range */
-      char* mu = _moebius_range(lo, hi);
+      signed char* mu = _moebius_range(lo, hi);
       MPUassert( mu != 0, "_moebius_range returned 0" );
       EXTEND(SP, hi-lo+1);
       for (i = lo; i <= hi; i++)

@@ -739,14 +739,14 @@ UV _XS_nth_prime(UV n)
 #define PGTLO(p,lo)  ((p) >= lo) ? (p) : ((p)*(lo/(p)) + ((lo%(p))?(p):0))
 #define P2GTLO(pinit, p, lo) \
    ((pinit) >= lo) ? (pinit) : ((p)*(lo/(p)) + ((lo%(p))?(p):0))
-char* _moebius_range(UV lo, UV hi)
+signed char* _moebius_range(UV lo, UV hi)
 {
-  char* mu;
+  signed char* mu;
   UV i;
   UV sqrtn = isqrt(hi);
 #if 0
   /* Simple char method.  Needs way too many primes. */
-  New(0, mu, hi-lo+1, char);
+  New(0, mu, hi-lo+1, signed char);
   if (mu == 0)
     croak("Could not get memory for %"UVuf" moebius results\n", hi-lo+1);
   memset(mu, 1, hi-lo+1);
@@ -780,7 +780,7 @@ char* _moebius_range(UV lo, UV hi)
     for (i = PGTLO(p, lo); i <= hi; i += p)
       A[i-lo] *= -(IV)p;
   } END_DO_FOR_EACH_PRIME
-  New(0, mu, hi-lo+1, char);
+  New(0, mu, hi-lo+1, signed char);
   if (mu == 0)
     croak("Could not get memory for %"UVuf" moebius results\n", hi-lo+1);
   memset(mu, 0, hi-lo+1);
@@ -801,7 +801,7 @@ char* _moebius_range(UV lo, UV hi)
   unsigned char logp;
   UV nextlog;
 
-  Newz(0, mu, hi-lo+1, char);
+  Newz(0, mu, hi-lo+1, signed char);
   if (mu == 0)
     croak("Could not get memory for %"UVuf" moebius results\n", hi-lo+1);
   A = (unsigned char*) mu;
@@ -883,7 +883,7 @@ IV _XS_mertens(UV n) {
    * This implementation uses their lemma 2.1 directly, so is n^1/2.
    */
   UV u, i, m, nmk;
-  char* mu;
+  signed char* mu;
   IV* M;
   IV sum;
 
