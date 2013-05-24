@@ -42,7 +42,7 @@
 #  define CvISXSUB(cv) CvXSUB(cv)
 #endif
 /* Not right, but close */
-#if !defined cxinc && ( (PERL_VERSION == 8 && PERL_SUBVERSION == 9) || (PERL_VERSION == 10 && PERL_SUBVERSION <= 1) )
+#if !defined cxinc && ( (PERL_VERSION == 8 && PERL_SUBVERSION >= 2) || (PERL_VERSION == 10 && PERL_SUBVERSION <= 1) )
 # define cxinc() Perl_cxinc(aTHX)
 #endif
 
@@ -686,7 +686,7 @@ forprimes (SV* block, IN SV* svbeg, IN SV* svend = 0)
       } END_DO_FOR_EACH_PRIME
 #ifdef PERL_HAS_BAD_MULTICALL_REFCOUNT
       if (CvDEPTH(multicall_cv) > 1)
-        SvREFCNT_inc_simple_void_NN(multicall_cv);
+        SvREFCNT_inc(multicall_cv);
 #endif
       POP_MULTICALL;
     } else {
