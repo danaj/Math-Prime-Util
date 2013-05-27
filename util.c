@@ -916,6 +916,8 @@ IV _XS_mertens(UV n) {
 #endif
 }
 
+/* TODO: the two Chebyshev functions ought to use segmented sieves */
+
 double _XS_chebyshev_theta(UV n)
 {
   KAHAN_INIT(sum);

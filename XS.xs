@@ -247,6 +247,7 @@ segment_primes(IN UV low, IN UV high);
   PREINIT:
     AV* av = newAV();
   CODE:
+    /* Could rewrite using {start/next/end}_segment_primes functions */
     if ((low <= 2) && (high >= 2)) { av_push(av, newSVuv( 2 )); }
     if ((low <= 3) && (high >= 3)) { av_push(av, newSVuv( 3 )); }
     if ((low <= 5) && (high >= 5)) { av_push(av, newSVuv( 5 )); }
@@ -650,6 +651,9 @@ forprimes (SV* block, IN SV* svbeg, IN SV* svend = 0)
     HV *stash;
     CV *cv;
     SV* svarg;
+    void* ctx;
+    unsigned char* segment;
+    UV seg_base, seg_low, seg_high;
 
     if (!_validate_int(svbeg, 0) || (items >= 3 && !_validate_int(svend,0))) {
       dSP;
@@ -675,29 +679,39 @@ forprimes (SV* block, IN SV* svbeg, IN SV* svend = 0)
       croak("Not a subroutine reference");
     SAVESPTR(GvSV(PL_defgv));
     svarg = newSVuv(0);
+    ctx = start_segment_primes(beg, end, &segment);
     if (!CvISXSUB(cv)) {
       dMULTICALL;
       I32 gimme = G_VOID;
       PUSH_MULTICALL(cv);
-      START_DO_FOR_EACH_PRIME(beg, end) {
-        sv_setuv(svarg, p);
-        GvSV(PL_defgv) = svarg;
-        MULTICALL;
-      } END_DO_FOR_EACH_PRIME
+      while (beg < 7) {
+        beg = (beg <= 2) ? 2 : (beg <= 3) ? 3 : 5; 
+        { sv_setuv(svarg, beg); GvSV(PL_defgv) = svarg; MULTICALL; }
+        beg += 1 + (beg > 2);
+      }
+      while (next_segment_primes(ctx, &seg_base, &seg_low, &seg_high)) {
+        START_DO_FOR_EACH_SIEVE_PRIME( segment, seg_low - seg_base, seg_high - seg_base )
+          { sv_setuv(svarg, seg_base + p); GvSV(PL_defgv) = svarg; MULTICALL; }
+        END_DO_FOR_EACH_SIEVE_PRIME
+      }
 #ifdef PERL_HAS_BAD_MULTICALL_REFCOUNT
       if (CvDEPTH(multicall_cv) > 1)
         SvREFCNT_inc(multicall_cv);
 #endif
       POP_MULTICALL;
     } else {
-      START_DO_FOR_EACH_PRIME(beg, end) {
-        dSP;
-        sv_setuv(svarg, p);
-        GvSV(PL_defgv) = svarg;
-        PUSHMARK(SP);
-        call_sv((SV*)cv, G_VOID|G_DISCARD);
-      } END_DO_FOR_EACH_PRIME
+      while (beg < 7) {
+        beg = (beg <= 2) ? 2 : (beg <= 3) ? 3 : 5; 
+        { dSP; sv_setuv(svarg, beg); GvSV(PL_defgv) = svarg; PUSHMARK(SP); call_sv((SV*)cv, G_VOID|G_DISCARD); }
+        beg += 1 + (beg > 2);
+      }
+      while (next_segment_primes(ctx, &seg_base, &seg_low, &seg_high)) {
+        START_DO_FOR_EACH_SIEVE_PRIME( segment, seg_low - seg_base, seg_high - seg_base )
+        { dSP; sv_setuv(svarg, seg_base + p); GvSV(PL_defgv) = svarg; PUSHMARK(SP); call_sv((SV*)cv, G_VOID|G_DISCARD); }
+        END_DO_FOR_EACH_SIEVE_PRIME
+      }
     }
+    end_segment_primes(ctx);
     SvREFCNT_dec(svarg);
 #endif
     XSRETURN_UNDEF;

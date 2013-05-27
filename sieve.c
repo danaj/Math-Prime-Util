@@ -293,3 +293,100 @@ int sieve_segment(unsigned char* mem, UV startd, UV endd)
   release_prime_cache(sieve);
   return 1;
 }
+
+/**************************************************************************/
+
+typedef struct {
+  UV lod;
+  UV hid;
+  UV low;
+  UV high;
+  UV endp;
+  UV segment_size;
+  unsigned char* segment;
+  unsigned char* base;
+} segment_context_t;
+
+/*
+ * unsigned char* segment;
+ * UV seg_base, seg_low, seg_high;
+ * void* ctx = start_segment_primes(low, high, &segment);
+ * while (beg < 7) {
+ *   beg = (beg <= 2) ? 2 : (beg <= 3) ? 3 : 5;
+ *   .... with beg ....
+ *   beg += 1 + (beg > 2);
+ * }
+ * while (next_segment_primes(ctx, &seg_base, &seg_low, &seg_high)) {
+ *   START_DO_FOR_EACH_SIEVE_PRIME( segment, seg_low - seg_base, seg_high - seg_base )
+ *     .... with seg_base + p ....
+ *   END_DO_FOR_EACH_SIEVE_PRIME
+ * }
+ * end_segment_primes(ctx);
+ */
+
+void* start_segment_primes(UV low, UV high, unsigned char** segmentmem)
+{
+  segment_context_t* ctx;
+
+  MPUassert( high >= low, "start_segment_primes bad arguments");
+  New(0, ctx, 1, segment_context_t);
+  ctx->low = low;
+  ctx->high = high;
+  ctx->lod = low / 30;
+  ctx->hid = high / 30;
+  ctx->endp = (ctx->hid >= (UV_MAX/30))  ?  UV_MAX-2  :  30*ctx->hid+29;
+
+  ctx->segment = get_prime_segment( &(ctx->segment_size) );
+  if (ctx->segment == 0)
+    croak("start_segment_primes: Could not get segment");
+  *segmentmem = ctx->segment;
+
+  ctx->base = sieve_erat30( isqrt(ctx->endp)+1 );
+  if (ctx->base == 0)
+    croak("start_segment_primes: Could not get base");
+
+  return (void*) ctx;
+}
+
+int next_segment_primes(void* vctx, UV* base, UV* low, UV* high)
+{
+  UV seghigh_d, range_d;
+  segment_context_t* ctx = (segment_context_t*) vctx;
+
+  if (ctx->lod > ctx->hid) return 0;
+
+  seghigh_d = ((ctx->hid - ctx->lod) < ctx->segment_size)
+            ? ctx->hid
+           : (ctx->lod + ctx->segment_size - 1);
+  range_d = seghigh_d - ctx->lod + 1;
+  *low = ctx->low;
+  *high = (seghigh_d == ctx->hid) ? ctx->high : (seghigh_d*30 + 29);
+  *base = ctx->lod * 30;
+
+  MPUassert( seghigh_d >= ctx->lod, "next_segment_primes: highd < lowd");
+  MPUassert( range_d <= ctx->segment_size, "next_segment_primes: range > segment size");
+
+  if (sieve_segment(ctx->segment, ctx->lod, seghigh_d) == 0) {
+    croak("Could not segment sieve from %"UVuf" to %"UVuf, *base+1, *high);
+  }
+
+  ctx->lod += range_d;
+  ctx->low = *high + 2;
+  
+  return 1;
+}
+
+void end_segment_primes(void* vctx)
+{
+  segment_context_t* ctx = (segment_context_t*) vctx;
+  MPUassert(ctx != 0, "end_segment_primes given a null pointer");
+  if (ctx->segment != 0) {
+    release_prime_segment(ctx->segment);
+    ctx->segment = 0;
+  }
+  if (ctx->base != 0) {
+    Safefree(ctx->base);
+    ctx->base = 0;
+  }
+  Safefree(ctx);
+}
