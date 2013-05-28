@@ -11,6 +11,7 @@ use Math::Prime::Util qw/is_prime is_provable_prime is_provable_prime_with_cert
 use Math::BigInt try => 'GMP';
 
 my $extra = defined $ENV{EXTENDED_TESTING} && $ENV{EXTENDED_TESTING};
+my $use64 = ~0 > 4294967295;
 my $broken64 = (18446744073709550592 == ~0);
 
 my @plist = qw/20907001 809120722675364249 677826928624294778921
@@ -51,6 +52,8 @@ foreach my $p (@plist) {
   SKIP: {
     skip "Broken 64-bit causes trial factor to barf", 5
       if $broken64 && $p > 2**48;
+    skip "These take a long time on non-64-bit.  Skipping", 5
+      if !$use64 && !$extra && $p =~ /^(6778|9800)/;
     my($isp, $cert_ref) = is_provable_prime_with_cert($p);
     is( $isp, 2, "   is_provable_prime_with_cert returns 2" );
     ok( defined($cert_ref) && ref($cert_ref) eq 'ARRAY' && scalar(@$cert_ref) >= 1,
