@@ -10,6 +10,7 @@ use warnings;
 # some small leaks in this test, which has nothing to do with the module.
 
 my $extra = defined $ENV{EXTENDED_TESTING} && $ENV{EXTENDED_TESTING};
+my $use64 = ~0 > 4294967295;
 my $broken64 = (18446744073709550592 == ~0);
 
 use Test::More;
@@ -141,7 +142,11 @@ foreach my $n (@composites) {
 }
 foreach my $n (@proveprimes) {
   ok( is_prime($n), "$n is prime" );
-  ok( is_provable_prime($n), "$n is provably prime" );
+  SKIP: {
+    skip "Large proof on 32-bit machine.", 1
+      if !$use64 && !$extra && $n > 2**66;
+    ok( is_provable_prime($n), "$n is provably prime" );
+  }
 }
 
 ###############################################################################
