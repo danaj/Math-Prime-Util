@@ -308,6 +308,25 @@ static int jacobi_iu(IV in, UV m) {
 }
 
 
+/* Fermat pseudoprime */
+int _XS_is_pseudoprime(UV n, UV a)
+{
+  UV x;
+  UV const nm1 = n-1;
+
+  if (n <= 3) return 0;
+  if (a < 2) croak("Base %"UVuf" is invalid", a);
+  if (a >= n) {
+    a %= n;
+    if ( a <= 1 || a == nm1 )
+      return 1;
+  }
+
+  x = powmod(a, nm1, n);    /* x = a^(n-1) mod n */
+  return (x == 1);
+}
+
+
 /* Miller-Rabin probabilistic primality test
  * Returns 1 if probably prime relative to the bases, 0 if composite.
  * Bases must be between 2 and n-2
@@ -405,28 +424,31 @@ int _XS_is_prob_prime(UV n)
 
 #else
 
-#if 0
-  /* TODO: Must verify this Lucas with Feitsma database */
-  if (1 && n >= UVCONST(4294967295)) {
+  /* Verified with Feitsma database.  No counterexamples below 2^64.
+   * This is faster than multiple M-R routines once we're over 32-bit */
+  if (n >= UVCONST(4294967295)) {
     prob_prime = _SPRP2(n) && _XS_is_strong_lucas_pseudoprime(n);
     return 2*prob_prime;
   }
-#endif
 
-  /* Better bases from http://miller-rabin.appspot.com/, 23 May 2013 */
+  /* Better bases from http://miller-rabin.appspot.com/, 27 May 2013 */
+  /* Verify with:
+   *  cat /local/share/spsps-below-2-to-64.txt | perl -MMath::Prime::Util=:all
+   *    -nE 'chomp; next unless is_strong_pseudoprime($_, @bases); say;'
+   */
   if (n < UVCONST(341531)) {
-    bases[0] = UVCONST(9345883071009581737);
+    bases[0] = UVCONST(  9345883071009581737 );
     nbases = 1;
-  } else if (n < UVCONST(716169301)) {
-    bases[0] = 15;
-    bases[1] = UVCONST( 13393019396194701 );
+  } else if (n < UVCONST(885594169)) {
+    bases[0] = UVCONST(   725270293939359937 );
+    bases[1] = UVCONST(  3569819667048198375 );
     nbases = 2;
-  } else if (n < UVCONST(273919523041)) {        /* 29+ bits */
-    bases[0] = 15;
-    bases[1] = UVCONST(        7363882082 );
-    bases[2] = UVCONST(   992620450144556 );
+  } else if (n < UVCONST(350269456337)) {
+    bases[0] = UVCONST(  4230279247111683200 );
+    bases[1] = UVCONST( 14694767155120705706 );
+    bases[2] = UVCONST( 16641139526367750375 );
     nbases = 3;
-  } else if (n < UVCONST(55245642489451)) {      /* 37+ bits */
+  } else if (n < UVCONST(55245642489451)) {      /* 38+ bits */
     bases[0] = 2;
     bases[1] = UVCONST(      141889084524735 );
     bases[2] = UVCONST(  1199124725622454117 );
@@ -1157,4 +1179,74 @@ int racing_squfof_factor(UV n, UV *factors, UV rounds)
   /* No factors found */
   factors[0] = n;
   return 1;
+}
+
+
+/****************************************************************************/
+
+int _XS_is_frobenius_underwood_pseudoprime(UV n)
+{
+  int bit;
+  UV x, result, multiplier, a, b, np1, len, t1, t2, na;
+  IV t;
+
+  if (n < 2) return 0;
+  if (n < 4) return 1;
+  if ((n % 2) == 0) return 0;
+  if (is_perfect_square(n,0)) return 0;
+  if (n == UV_MAX) return 0;
+
+  x = 0;
+  t = -1;
+  while ( jacobi_iu( t, n ) != -1 ) {
+    x++;
+    t = (IV)(x*x) - 4;
+  }
+  result = addmod( addmod(x, x, n), 5, n);
+  multiplier = addmod(x, 2, n);
+
+  a = 1;
+  b = 2;
+  np1 = n+1;
+  { UV v = np1; len = 1;  while (v >>= 1) len++; }
+
+  if (x == 0) {
+    for (bit = len-2; bit >= 0; bit--) {
+      t2 = addmod(b, b, n);
+      na = mulmod(a, t2, n);
+      t1 = addmod(b, a, n);
+      t2 = addmod(b, n-a, n);  /* subtract */
+      b = mulmod(t1, t2, n);
+      a = na;
+      if ( (np1 >> bit) & UVCONST(1) ) {
+        t1 = mulmod(a, 2, n);
+        na = addmod(t1, b, n);
+        t1 = addmod(b, b, n);
+        b = addmod(t1, n-a, n); /* subtract */
+        a = na;
+      }
+    }
+  } else {
+    for (bit = len-2; bit >= 0; bit--) {
+      t1 = mulmod(a, x, n);
+      t2 = addmod(b, b, n);
+      t1 = addmod(t1, t2, n);
+      na = mulmod(a, t1, n);
+      t1 = addmod(b, a, n);
+      t2 = addmod(b, n-a, n);  /* subtract */
+      b = mulmod(t1, t2, n);
+      a = na;
+      if ( (np1 >> bit) & UVCONST(1) ) {
+        t1 = mulmod(a, multiplier, n);
+        na = addmod(t1, b, n);
+        t1 = addmod(b, b, n);
+        b = addmod(t1, n-a, n); /* subtract */
+        a = na;
+      }
+    }
+  }
+  if (_XS_get_verbose()>1) printf("%"UVuf" is %s with x = %"UVuf"\n", n, (a == 0 && b == result) ? "probably prime" : "composite", x);
+  if (a == 0 && b == result)
+    return 1;
+  return 0;
 }

@@ -8,6 +8,7 @@ use Math::Prime::Util qw/primes forprimes prime_iterator/;
 my $use64 = Math::Prime::Util::prime_get_config->{'maxbits'} > 32;
 
 plan tests => 8 + 5
+            + 11
             + 3 + 7
             + 2;
 
@@ -21,6 +22,18 @@ ok(!eval { forprimes { 1 } 2, -3; },   "forprimes 2,-3");
 ok(!eval { forprimes { 1 } "abc"; },   "forprimes abc");
 ok(!eval { forprimes { 1 } 2, "abc"; },   "forprimes 2, abc");
 ok(!eval { forprimes { 1 } 5.6; },   "forprimes abc");
+
+{my @t; forprimes {push @t,$_} 1; is_deeply( [@t], [], "forprimes 1" ); }
+{my @t; forprimes {push @t,$_} 2; is_deeply( [@t], [2], "forprimes 3" ); }
+{my @t; forprimes {push @t,$_} 3; is_deeply( [@t], [2,3], "forprimes 3" ); }
+{my @t; forprimes {push @t,$_} 4; is_deeply( [@t], [2,3], "forprimes 4" ); }
+{my @t; forprimes {push @t,$_} 5; is_deeply( [@t], [2,3,5], "forprimes 5" ); }
+{my @t; forprimes {push @t,$_} 3,5; is_deeply( [@t], [3,5], "forprimes 3,5" ); }
+{my @t; forprimes {push @t,$_} 3,6; is_deeply( [@t], [3,5], "forprimes 3,6" ); }
+{my @t; forprimes {push @t,$_} 3,7; is_deeply( [@t], [3,5,7], "forprimes 3,7" ); }
+{my @t; forprimes {push @t,$_} 5,7; is_deeply( [@t], [5,7], "forprimes 5,7" ); }
+{my @t; forprimes {push @t,$_} 5,11; is_deeply( [@t], [5,7,11], "forprimes 5,11" ); }
+{my @t; forprimes {push @t,$_} 7,11; is_deeply( [@t], [7,11], "forprimes 7,11" ); }
 
 { my @t; forprimes { push @t, $_ } 50;
   is_deeply( [@t], [2,3,5,7,11,13,17,19,23,29,31,37,41,43,47], "forprimes 50" );

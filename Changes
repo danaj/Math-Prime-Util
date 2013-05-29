@@ -4,6 +4,9 @@ Revision history for Perl extension Math::Prime::Util.
 
     - Fix a signed vs. unsigned char issue in ranged moebius.
 
+    - forprimes now uses a segmented sieve.  This (1) allows arbitrary 64-bit
+      ranges with good memory use, and (2) allows nesting on threaded perls.
+
     - Added XS strong Lucas test, but not using Selfridge parameters.
       Hence we only use it internally.
 

@@ -399,6 +399,9 @@ pminus1_factor(IN UV n, IN UV B1 = 1*1024*1024, IN UV B2 = 0)
     SIMPLE_FACTOR(pminus1_factor, n, B1, B2);
 
 int
+_XS_is_pseudoprime(IN UV n, IN UV a)
+
+int
 _XS_miller_rabin(IN UV n, ...)
   PREINIT:
     UV bases[64];
@@ -427,6 +430,9 @@ _XS_miller_rabin(IN UV n, ...)
 
 int
 _XS_is_strong_lucas_pseudoprime(IN UV n)
+
+int
+_XS_is_frobenius_underwood_pseudoprime(IN UV n)
 
 int
 _XS_is_prob_prime(IN UV n)
@@ -681,39 +687,49 @@ forprimes (SV* block, IN SV* svbeg, IN SV* svend = 0)
       croak("Not a subroutine reference");
     SAVESPTR(GvSV(PL_defgv));
     svarg = newSVuv(0);
-    ctx = start_segment_primes(beg, end, &segment);
-    if (!CvISXSUB(cv)) {
-      dMULTICALL;
-      I32 gimme = G_VOID;
-      PUSH_MULTICALL(cv);
-      while (beg < 7) {
-        beg = (beg <= 2) ? 2 : (beg <= 3) ? 3 : 5; 
-        { sv_setuv(svarg, beg); GvSV(PL_defgv) = svarg; MULTICALL; }
-        beg += 1 + (beg > 2);
+    /* Handle early part */
+    while (beg < 7) {
+      dSP;
+      beg = (beg <= 2) ? 2 : (beg <= 3) ? 3 : 5; 
+      if (beg <= end) {
+        sv_setuv(svarg, beg);
+        GvSV(PL_defgv) = svarg;
+        PUSHMARK(SP);
+        call_sv((SV*)cv, G_VOID|G_DISCARD);
       }
-      while (next_segment_primes(ctx, &seg_base, &seg_low, &seg_high)) {
-        START_DO_FOR_EACH_SIEVE_PRIME( segment, seg_low - seg_base, seg_high - seg_base )
-          { sv_setuv(svarg, seg_base + p); GvSV(PL_defgv) = svarg; MULTICALL; }
-        END_DO_FOR_EACH_SIEVE_PRIME
-      }
-#ifdef PERL_HAS_BAD_MULTICALL_REFCOUNT
-      if (CvDEPTH(multicall_cv) > 1)
-        SvREFCNT_inc(multicall_cv);
-#endif
-      POP_MULTICALL;
-    } else {
-      while (beg < 7) {
-        beg = (beg <= 2) ? 2 : (beg <= 3) ? 3 : 5; 
-        { dSP; sv_setuv(svarg, beg); GvSV(PL_defgv) = svarg; PUSHMARK(SP); call_sv((SV*)cv, G_VOID|G_DISCARD); }
-        beg += 1 + (beg > 2);
-      }
-      while (next_segment_primes(ctx, &seg_base, &seg_low, &seg_high)) {
-        START_DO_FOR_EACH_SIEVE_PRIME( segment, seg_low - seg_base, seg_high - seg_base )
-        { dSP; sv_setuv(svarg, seg_base + p); GvSV(PL_defgv) = svarg; PUSHMARK(SP); call_sv((SV*)cv, G_VOID|G_DISCARD); }
-        END_DO_FOR_EACH_SIEVE_PRIME
-      }
+      beg += 1 + (beg > 2);
     }
-    end_segment_primes(ctx);
+    if (beg <= end) {
+      ctx = start_segment_primes(beg, end, &segment);
+      while (next_segment_primes(ctx, &seg_base, &seg_low, &seg_high)) {
+        /* I'm getting a memory leak in the MULTICALL and I'm having no luck
+         * finding out why it is happening.  Forget MULTICALL for now. */
+        if (0 && !CvISXSUB(cv)) {
+          dMULTICALL;
+          I32 gimme = G_VOID;
+          PUSH_MULTICALL(cv);
+          START_DO_FOR_EACH_SIEVE_PRIME( segment, seg_low - seg_base, seg_high - seg_base ) {
+            sv_setuv(svarg, seg_base + p);
+            GvSV(PL_defgv) = svarg;
+            MULTICALL;
+          } END_DO_FOR_EACH_SIEVE_PRIME
+#ifdef PERL_HAS_BAD_MULTICALL_REFCOUNT
+          if (CvDEPTH(multicall_cv) > 1)
+            SvREFCNT_inc(multicall_cv);
+#endif
+          POP_MULTICALL;
+        } else {
+          START_DO_FOR_EACH_SIEVE_PRIME( segment, seg_low - seg_base, seg_high - seg_base ) {
+            dSP;
+            sv_setuv(svarg, seg_base + p);
+            GvSV(PL_defgv) = svarg;
+            PUSHMARK(SP);
+            call_sv((SV*)cv, G_VOID|G_DISCARD);
+          } END_DO_FOR_EACH_SIEVE_PRIME
+        }
+      }
+      end_segment_primes(ctx);
+    }
     SvREFCNT_dec(svarg);
 #endif
     XSRETURN_UNDEF;

@@ -10,22 +10,20 @@ extern int factor(UV n, UV *factors);
 extern int trial_factor(UV n, UV *factors, UV maxtrial);
 
 extern int fermat_factor(UV n, UV *factors, UV rounds);
-
 extern int holf_factor(UV n, UV *factors, UV rounds);
-
+extern int pbrent_factor(UV n, UV *factors, UV maxrounds, UV a);
+extern int prho_factor(UV n, UV *factors, UV maxrounds);
+extern int pminus1_factor(UV n, UV *factors, UV B1, UV B2);
 extern int squfof_factor(UV n, UV *factors, UV rounds);
 extern int racing_squfof_factor(UV n, UV *factors, UV rounds);
 
 
-extern int pbrent_factor(UV n, UV *factors, UV maxrounds, UV a);
-
-extern int prho_factor(UV n, UV *factors, UV maxrounds);
-
-extern int pminus1_factor(UV n, UV *factors, UV B1, UV B2);
-
+extern int _XS_is_pseudoprime(UV n, UV a);
 extern int _XS_miller_rabin(UV n, const UV *bases, int nbases);
+extern int _SPRP2(UV n);
 extern int _XS_is_prob_prime(UV n);
-extern int _XS_is_prime_tom(UV n, int t);
+extern int _XS_is_strong_lucas_pseudoprime(UV n);
+extern int _XS_is_frobenius_underwood_pseudoprime(UV n);
 
 extern UV _XS_divisor_sum(UV n);
 
