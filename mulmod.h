@@ -49,9 +49,14 @@
   #define mulmod(a,b,m) _mulmod(a,b,m)
   #define sqrmod(n,m)   _mulmod(n,n,m)
 
-#else
+#elif 0
 
-  /* TODO: We could try __uint128_t / __uint64_t on GCC */
+  /* Finding out if these types are supported requires non-trivial
+   * configuration.  They are very fast if they exist. */
+  #define mulmod(a,b,m)  (UV)(((__uint128_t)(a)*(__uint128_t)(b)) % ((__uint128_t)(m)))
+  #define sqrmod(n,m)    (UV)(((__uint128_t)(n)*(__uint128_t)(n)) % ((__uint128_t)(m)))
+
+#else
 
   /* UV is the largest integral type available (that we know of). */
 

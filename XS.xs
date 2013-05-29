@@ -425,6 +425,8 @@ _XS_miller_rabin(IN UV n, ...)
   OUTPUT:
     RETVAL
 
+int
+_XS_is_strong_lucas_pseudoprime(IN UV n)
 
 int
 _XS_is_prob_prime(IN UV n)

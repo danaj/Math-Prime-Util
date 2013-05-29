@@ -4,6 +4,9 @@ Revision history for Perl extension Math::Prime::Util.
 
     - Fix a signed vs. unsigned char issue in ranged moebius.
 
+    - Added XS strong Lucas test, but not using Selfridge parameters.
+      Hence we only use it internally.
+
 0.28 23 May 2013
 
     - An optimization to nth_prime caused occasional threaded Win32 faults.

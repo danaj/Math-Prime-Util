@@ -289,6 +289,25 @@ static int is_perfect_square(UV n, UV* sqrtn)
   return 1;
 }
 
+static int jacobi_iu(IV in, UV m) {
+  int j = 1;
+  UV n = (in < 0) ? -in : in;
+
+  if (m <= 0 || (m%2) == 0) return 0;
+  if (in < 0 && (m%4) == 3) j = -j;
+  while (n != 0) {
+    while ((n % 2) == 0) {
+      n >>= 1;
+      if ( (m % 8) == 3 || (m % 8) == 5 )  j = -j;
+    }
+    { UV t = n; n = m; m = t; }
+    if ( (n % 4) == 3 && (m % 4) == 3 )  j = -j;
+    n = n % m;
+  }
+  return (m == 1) ? j : 0;
+}
+
+
 /* Miller-Rabin probabilistic primality test
  * Returns 1 if probably prime relative to the bases, 0 if composite.
  * Bases must be between 2 and n-2
@@ -310,15 +329,10 @@ int _XS_miller_rabin(UV n, const UV *bases, int nbases)
 
     if (a < 2)
       croak("Base %"UVuf" is invalid", a);
-#if 0
-    if (a > (n-2))
-      croak("Base %"UVuf" is invalid for input %"UVuf, a, n);
-#else
     if (a >= n)
       a %= n;
     if ( (a <= 1) || (a == nm1) )
       continue;
-#endif
 
     /* n is a strong pseudoprime to this base if either
      *   -  a^d = 1 mod n
@@ -340,6 +354,31 @@ int _XS_miller_rabin(UV n, const UV *bases, int nbases)
   return 1;
 }
 
+/* M-R with a = 2 and some checks removed.  For internal use. */
+int _SPRP2(UV n)
+{
+  UV const nm1 = n-1;
+  UV d = n-1;
+  UV x;
+  int b, r, s = 0;
+
+  MPUassert(n > 3, "S-PRP-2 called with n <= 3");
+  if (!(n & 1)) return 0;
+  while ( (d & 1) == 0 ) {  s++;  d >>= 1; }
+  /* n is a strong pseudoprime to this base if either
+   *   -  a^d = 1 mod n
+   *   -  a^(d2^r) = -1 mod n for some r: 0 <= r <= s-1 */
+  x = powmod(2, d, n);
+  if (x == 1 || x == nm1)  return 1;
+
+  /* just did r=0, now test r = 1 to s-1 */
+  for (r = 1; r < s; r++) {
+    x = sqrmod(x, n);
+    if (x == nm1)  return 1;
+  }
+  return 0;
+}
+
 int _XS_is_prob_prime(UV n)
 {
   UV bases[12];
@@ -354,13 +393,26 @@ int _XS_is_prob_prime(UV n)
   if (n < 2809) /* 53*53 */                 return 2;
 
 #if BITS_PER_WORD == 32
+
   /* These aren't ideal.  Could use 1 when n < 49191, 2 when n < 360018361 */
   if (n < UVCONST(9080191)) {
     bases[0] = 31; bases[1] = 73; nbases = 2;
   } else  {
     bases[0] = 2; bases[1] = 7; bases[2] = 61; nbases = 3;
   }
+  prob_prime = _XS_miller_rabin(n, bases, nbases);
+  return 2*prob_prime;
+
 #else
+
+#if 0
+  /* TODO: Must verify this Lucas with Feitsma database */
+  if (1 && n >= UVCONST(4294967295)) {
+    prob_prime = _SPRP2(n) && _XS_is_strong_lucas_pseudoprime(n);
+    return 2*prob_prime;
+  }
+#endif
+
   /* Better bases from http://miller-rabin.appspot.com/, 23 May 2013 */
   if (n < UVCONST(341531)) {
     bases[0] = UVCONST(9345883071009581737);
@@ -369,25 +421,25 @@ int _XS_is_prob_prime(UV n)
     bases[0] = 15;
     bases[1] = UVCONST( 13393019396194701 );
     nbases = 2;
-  } else if (n < UVCONST(273919523041)) {
+  } else if (n < UVCONST(273919523041)) {        /* 29+ bits */
     bases[0] = 15;
     bases[1] = UVCONST(        7363882082 );
     bases[2] = UVCONST(   992620450144556 );
     nbases = 3;
-  } else if (n < UVCONST(55245642489451)) {
+  } else if (n < UVCONST(55245642489451)) {      /* 37+ bits */
     bases[0] = 2;
     bases[1] = UVCONST(      141889084524735 );
     bases[2] = UVCONST(  1199124725622454117 );
     bases[3] = UVCONST( 11096072698276303650 );
     nbases = 4;
-  } else if (n < UVCONST(7999252175582851)) {
+  } else if (n < UVCONST(7999252175582851)) {    /* 45+ bits */
     bases[0] = 2;
     bases[1] = UVCONST(        4130806001517 );
     bases[2] = UVCONST(   149795463772692060 );
     bases[3] = UVCONST(   186635894390467037 );
     bases[4] = UVCONST(  3967304179347715805 );
     nbases = 5;
-  } else if (n < UVCONST(585226005592931977)) {
+  } else if (n < UVCONST(585226005592931977)) {  /* 52+ bits */
     bases[0] = 2;
     bases[1] = UVCONST(      123635709730000 );
     bases[2] = UVCONST(     9233062284813009 );
@@ -395,7 +447,7 @@ int _XS_is_prob_prime(UV n)
     bases[4] = UVCONST(   761179012939631437 );
     bases[5] = UVCONST(  1263739024124850375 );
     nbases = 6;
-  } else {
+  } else {                                       /* 59+ bits */
     bases[0] = 2;
     bases[1] = UVCONST( 325        );
     bases[2] = UVCONST( 9375       );
@@ -405,9 +457,69 @@ int _XS_is_prob_prime(UV n)
     bases[6] = UVCONST( 1795265022 );
     nbases = 7;
   }
-#endif
   prob_prime = _XS_miller_rabin(n, bases, nbases);
   return 2*prob_prime;
+#endif
+}
+
+/* Strong Lucas with non-Selfridge params.  Basically the same speed as
+ * the standard test above.  The parameter choice leads to almost 2x
+ * as many pseudoprimes as the Selfridge params.  This runs about 7x
+ * faster than the GMP version, and about 2x slower than our M-R tests.
+ * The goal: no false results when combined with the SPRP-2 test. */
+int _XS_is_strong_lucas_pseudoprime(UV n)
+{
+  UV P, D, Q, U, V, t, t2, d, s, b;
+  int const _verbose = _XS_get_verbose();
+
+  if (n == 2 || n == 3) return 1;
+  if (n < 5 || (n%2) == 0) return 0;
+  if (n == UV_MAX) return 0;
+
+  P = 3;
+  Q = 1;
+  while (1) {
+    D = P*P - 4;
+    if (gcd_ui(D, n) > 1 && gcd_ui(D, n) != n) return 0;
+    if (jacobi_iu(D, n) == -1)
+      break;
+    /* Perhaps n is a perfect square? */
+    if (P == 21 && is_perfect_square(n, 0)) return 0;
+    P += 2;
+  }
+  if (_verbose>3) printf("N: %lu  D: %ld  P: %lu  Q: %ld\n", n, D, P, Q);
+  MPUassert( D == ((IV)(P*P)) - 4*Q , "incorrect DPQ");
+
+  U = 1;
+  V = P;
+  d = n+1;
+  s = 0;
+  while ( (d & 1) == 0 ) {  s++;  d >>= 1; }
+  { UV v = d; b = 1; while (v >>= 1) b++; }
+
+  if (_verbose>3) printf("U=%lu  V=%lu\n", U, V);
+  while (b > 1) {
+    U = mulmod(U, V, n);
+    V = muladdmod(V, V, n-2, n);
+    b--;
+    if (_verbose>3) printf("U2k=%lu  V2k=%lu\n", U, V);
+    if ( (d >> (b-1)) & UVCONST(1) ) {
+      t2 = mulmod(U, D, n);
+      U = muladdmod(U, P, V, n);
+      if (U & 1) { U = (n>>1) + (U>>1) + 1; } else { U >>= 1; }
+      V = muladdmod(V, P, t2, n);
+      if (V & 1) { V = (n>>1) + (V>>1) + 1; } else { V >>= 1; }
+    }
+    if (_verbose>3) printf("U=%lu  V=%lu\n", U, V);
+  }
+  if (U == 0 || V == 0)
+    return 1;
+  while (s--) {
+    V = muladdmod(V, V, n-2, n);
+    if (V == 0)
+      return 1;
+  }
+  return 0;
 }
 
 
