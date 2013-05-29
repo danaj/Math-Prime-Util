@@ -17,7 +17,8 @@ our @EXPORT_OK =
       prime_precalc prime_memfree
       is_prime is_prob_prime is_provable_prime is_provable_prime_with_cert
       prime_certificate verify_prime
-      is_strong_pseudoprime is_strong_lucas_pseudoprime
+      is_pseudoprime is_strong_pseudoprime
+      is_strong_lucas_pseudoprime is_extra_strong_lucas_pseudoprime
       is_aks_prime
       miller_rabin
       primes
@@ -53,6 +54,7 @@ sub _import_nobigint {
   undef *factor;          *factor            = \&_XS_factor;
  #undef *prime_count;     *prime_count       = \&_XS_prime_count;
   undef *nth_prime;       *nth_prime         = \&_XS_nth_prime;
+  undef *is_pseudoprime;  *is_pseudoprime    = \&_XS_is_pseudoprime;
   undef *is_strong_pseudoprime;  *is_strong_pseudoprime = \&_XS_miller_rabin;
   undef *miller_rabin;    *miller_rabin      = \&_XS_miller_rabin;
   undef *moebius;         *moebius           = \&_XS_moebius;
@@ -169,7 +171,7 @@ our $_Neg_Infinity = -$_Infinity;
 #     make $n into a bigint.  This is debatable, but they *did* hand us a
 #     string with a big integer in it.  The big gotcha here is that
 #     is_strong_lucas_pseudoprime does bigint computations, so it will load
-#     up bigint and there is no way to unload it.
+#     up Math::BigInt and there is no way to unload it.
 #
 #  3) if (ref($n) =~ /^Math::Big/)
 #     $n is a big int, float, or rat.  We probably want this as an int.
@@ -1585,6 +1587,17 @@ sub factor {
   return Math::Prime::Util::PP::factor($n);
 }
 
+sub is_pseudoprime {
+  my($n, $a) = @_;
+  _validate_num($n) || _validate_positive_integer($n);
+  _validate_num($a) || _validate_positive_integer($a);
+  return _XS_is_pseudoprime($n, $a)
+    if ref($n) ne 'Math::BigInt' && $n <= $_XS_MAXVAL;
+  return Math::Prime::Util::GMP::is_pseudoprime($n, $a)
+    if $_HAVE_GMP && defined &Math::Prime::Util::GMP::is_pseudoprime;
+  return Math::Prime::Util::PP::is_pseudoprime($n, $a);
+}
+
 sub is_strong_pseudoprime {
   my($n) = shift;
   _validate_num($n) || _validate_positive_integer($n);
@@ -1594,11 +1607,25 @@ sub is_strong_pseudoprime {
   return Math::Prime::Util::PP::miller_rabin($n, @_);
 }
 
+# TODO: standard lucas pseudoprime
+
 sub is_strong_lucas_pseudoprime {
   my($n) = shift;
   _validate_num($n) || _validate_positive_integer($n);
-  return Math::Prime::Util::GMP::is_strong_lucas_pseudoprime("$n") if $_HAVE_GMP;
+  return Math::Prime::Util::GMP::is_strong_lucas_pseudoprime("$n")
+    if $_HAVE_GMP;
   return Math::Prime::Util::PP::is_strong_lucas_pseudoprime($n);
+}
+
+sub is_extra_strong_lucas_pseudoprime {
+  my($n) = shift;
+  _validate_num($n) || _validate_positive_integer($n);
+  return _XS_is_extra_strong_lucas_pseudoprime($n)
+    if ref($n) ne 'Math::BigInt' && $n <= $_XS_MAXVAL;
+  return Math::Prime::Util::GMP::is_extra_strong_lucas_pseudoprime("$n")
+    if $_HAVE_GMP
+    && defined &Math::Prime::Util::GMP::is_extra_strong_lucas_pseudoprime;
+  return Math::Prime::Util::PP::is_extra_strong_lucas_pseudoprime($n);
 }
 
 sub miller_rabin {
@@ -1746,7 +1773,10 @@ sub verify_prime {
       return 0;
     }
     my $bpsw = 0;
-    if ($_HAVE_GMP) {
+    if ($n <= $_XS_MAXVAL) {
+      $bpsw = _XS_miller_rabin($n, 2)
+           && _XS_is_extra_strong_lucas_pseudoprime($n);
+    } elsif ($_HAVE_GMP) {
       $bpsw = Math::Prime::Util::GMP::is_prob_prime($n);
     } else {
       $bpsw = Math::Prime::Util::PP::miller_rabin($n, 2)
@@ -2411,8 +2441,9 @@ Version 0.28
   # Strong pseudoprime test with multiple bases, using Miller-Rabin
   say "$n is a prime or 2/7/61-psp" if is_strong_pseudoprime($n, 2, 7, 61);
 
-  # Strong Lucas-Selfridge test
+  # Strong Lucas-Selfridge and extra strong Lucas tests
   say "$n is a prime or slpsp" if is_strong_lucas_pseudoprime($n);
+  say "$n is a prime or eslpsp" if is_extra_strong_lucas_pseudoprime($n);
 
   # step to the next prime (returns 0 if not using bigints and we'd overflow)
   $n = next_prime($n);
@@ -2556,6 +2587,7 @@ it will make it run much faster.
 Some of the functions, including:
 
   factor
+  is_pseudoprime
   is_strong_pseudoprime
   nth_prime
   moebius
@@ -2848,14 +2880,21 @@ generate any primes.  Uses the Cipolla 1902 approximation with two
 polynomials, plus a correction for small values to reduce the error.
 
 
+=head2 is_pseudoprime
+
+Takes a positive number C<n> and a base C<a> as input, and returns 1 if
+C<n> is a probable prime to base C<a>.  This is the simple Fermat primality
+test.  Removing primes, given base 2 this produces the sequence
+L<OEIS A001567|http://oeis.org/A001567>.
+
 =head2 is_strong_pseudoprime
 
   my $maybe_prime = is_strong_pseudoprime($n, 2);
   my $probably_prime = is_strong_pseudoprime($n, 2, 3, 5, 7, 11, 13, 17);
 
 Takes a positive number as input and one or more bases.  The bases must be
-greater than C<1>.  Returns 1 if the input is a prime or a strong
-pseudoprime to all of the bases, and 0 if not.
+greater than C<1>.  Returns 1 if the input is a strong probable prime
+to all of the bases, and 0 if not.
 
 If 0 is returned, then the number really is a composite.  If 1 is returned,
 then it is either a prime or a strong pseudoprime to all the given bases.
@@ -2869,7 +2908,7 @@ selected bases are required to give correct primality test results for any
 32-bit number).  Given the small chances of passing multiple bases, there
 are some math packages that just use multiple MR tests for primality testing.
 
-Even numbers other than 2 will always return 0 (composite).  While the
+Even inputs other than 2 will always return 0 (composite).  While the
 algorithm does run with even input, most sources define it only on odd input.
 Returning composite for all non-2 even input makes the function match most
 other implementations including L<Math::Primality>'s C<is_strong_pseudoprime>
@@ -2883,10 +2922,21 @@ An alias for C<is_strong_pseudoprime>.  This name is being deprecated.
 =head2 is_strong_lucas_pseudoprime
 
 Takes a positive number as input, and returns 1 if the input is a strong
-Lucas pseudoprime using the Selfridge method of choosing D, P, and Q (some
+Lucas probable prime using the Selfridge method of choosing D, P, and Q (some
 sources call this a strong Lucas-Selfridge pseudoprime).  This is one half
 of the BPSW primality test (the Miller-Rabin strong pseudoprime test with
-base 2 being the other half).
+base 2 being the other half).  Removing primes, this produces the sequence
+L<OEIS A217255|http://oeis.org/A217255>.
+
+=head2 is_extra_strong_lucas_pseudoprime
+
+Takes a positive number as input, and returns 1 if the input passes the extra
+strong Lucas test (as defined in
+L<Grantham 2000|http://www.ams.org/mathscinet-getitem?mr=1680879>).
+This has slightly more restrictive conditions than the strong Lucas test,
+but uses different starting parameters so is not directly comparable.
+Removing primes, this produces the sequence
+L<OEIS A217719|http://oeis.org/A217719>.
 
 
 =head2 is_prob_prime
@@ -2897,11 +2947,12 @@ base 2 being the other half).
 Takes a positive number as input and returns back either 0 (composite),
 2 (definitely prime), or 1 (probably prime).
 
-For 64-bit input (native or bignum), this uses a tuned set of Miller-Rabin
-tests such that the result will be deterministic.  Either 2, 3, 4, 5, or 7
-Miller-Rabin tests are performed (no more than 3 for 32-bit input), and the
-result will then always be 0 (composite) or 2 (prime).  A later implementation
-may change the internals, but the results will be identical.
+For 64-bit input (native or bignum), this uses either a deterministic set of
+Miller-Rabin tests (1, 2, or 3 tests) or a strong BPSW test consisting of a
+single base-2 strong probable prime test followed by a strong Lucas test.
+This has been verified with Jan Feitsma's 2-PSP database to produce no false
+results for 64-bit inputs.  Hence the result will always be 0 (composite) or
+2 (prime).
 
 For inputs larger than C<2^64>, a strong Baillie-PSW primality test is
 performed (also called BPSW or BSW).  This is a probabilistic test, so only
@@ -2926,7 +2977,7 @@ and do not return false positives.
 
 Using the L<Math::Prime::Util::GMP> module is B<highly recommended> for doing
 primality proofs, as it is much, much faster.  The pure Perl code is just not
-very fast for this type of operation, nor does it have the best algorithms.
+fast for this type of operation, nor does it have the best algorithms.
 It should suffice fine for proofs of up to 40 digit primes, while the latest
 MPU::GMP works for primes of hundreds of digits.
 

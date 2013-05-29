@@ -429,7 +429,7 @@ _XS_miller_rabin(IN UV n, ...)
     RETVAL
 
 int
-_XS_is_strong_lucas_pseudoprime(IN UV n)
+_XS_is_extra_strong_lucas_pseudoprime(IN UV n)
 
 int
 _XS_is_frobenius_underwood_pseudoprime(IN UV n)

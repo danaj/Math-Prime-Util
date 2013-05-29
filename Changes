@@ -2,13 +2,20 @@ Revision history for Perl extension Math::Prime::Util.
 
 0.29 xx May 2013
 
-    - Fix a signed vs. unsigned char issue in ranged moebius.
+    - Fix a signed vs. unsigned char issue in ranged moebius.  Thanks to the
+      Debian testers for finding this.
+
+    - XS is_prob_prime / is_prime now use a BPSW-style test (SPRP2 plus
+      extra strong Lucas test) for values over 2^32.  This results in up
+      to 2.5x faster performance for large 64-bit values on most machines.
+      All PSP2s have been verified with Jan Feitsma's database.
 
     - forprimes now uses a segmented sieve.  This (1) allows arbitrary 64-bit
       ranges with good memory use, and (2) allows nesting on threaded perls.
 
-    - Added XS strong Lucas test, but not using Selfridge parameters.
-      Hence we only use it internally.
+    - Added is_pseudoprime (for Fermat probable prime test) and
+      is_extra_strong_lucas_pseudoprime (for the Mo/Jones/Grantham extra
+      strong Lucas test).
 
 0.28 23 May 2013
 

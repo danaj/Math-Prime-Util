@@ -314,7 +314,8 @@ int _XS_is_pseudoprime(UV n, UV a)
   UV x;
   UV const nm1 = n-1;
 
-  if (n <= 3) return 0;
+  if (n == 2 || n == 3)  return 1;
+  if (n < 5) return 0;
   if (a < 2) croak("Base %"UVuf" is invalid", a);
   if (a >= n) {
     a %= n;
@@ -427,7 +428,7 @@ int _XS_is_prob_prime(UV n)
   /* Verified with Feitsma database.  No counterexamples below 2^64.
    * This is faster than multiple M-R routines once we're over 32-bit */
   if (n >= UVCONST(4294967295)) {
-    prob_prime = _SPRP2(n) && _XS_is_strong_lucas_pseudoprime(n);
+    prob_prime = _SPRP2(n) && _XS_is_extra_strong_lucas_pseudoprime(n);
     return 2*prob_prime;
   }
 
@@ -484,12 +485,22 @@ int _XS_is_prob_prime(UV n)
 #endif
 }
 
-/* Strong Lucas with non-Selfridge params.  Basically the same speed as
- * the standard test above.  The parameter choice leads to almost 2x
- * as many pseudoprimes as the Selfridge params.  This runs about 7x
- * faster than the GMP version, and about 2x slower than our M-R tests.
- * The goal: no false results when combined with the SPRP-2 test. */
-int _XS_is_strong_lucas_pseudoprime(UV n)
+/* Extra Strong Lucas test.
+ *
+ * Goal:
+ *       (1) no false results when combined with the SPRP-2 test.
+ *       (2) fast enough to use SPRP-2 + this in place of 3+ M-R tests.
+ *
+ * Why the extra strong test?  If we use Q=1, the code is both simpler and
+ * faster.  But the Selfridge parameters have P==1 Q!=1.  Once we decide to
+ * go with the Q==1, P!=1 method, then we may as well use the extra strong
+ * test so we can verify results (e.g. OEIS A217719).  There is no cost to
+ * run this vs. the strong or standard test.
+ *
+ * This runs about 7x faster than the GMP strong test, and about 2x slower
+ * than our M-R tests.
+ */
+int _XS_is_extra_strong_lucas_pseudoprime(UV n)
 {
   UV P, D, Q, U, V, t, t2, d, s, b;
   int const _verbose = _XS_get_verbose();
@@ -507,7 +518,7 @@ int _XS_is_strong_lucas_pseudoprime(UV n)
       break;
     /* Perhaps n is a perfect square? */
     if (P == 21 && is_perfect_square(n, 0)) return 0;
-    P += 2;
+    P++;
   }
   if (_verbose>3) printf("N: %lu  D: %ld  P: %lu  Q: %ld\n", n, D, P, Q);
   MPUassert( D == ((IV)(P*P)) - 4*Q , "incorrect DPQ");
@@ -534,7 +545,7 @@ int _XS_is_strong_lucas_pseudoprime(UV n)
     }
     if (_verbose>3) printf("U=%lu  V=%lu\n", U, V);
   }
-  if (U == 0 || V == 0)
+  if ( (U == 0 && (V == 2 || V == (n-2))) || (V == 0) )
     return 1;
   while (s--) {
     V = muladdmod(V, V, n-2, n);

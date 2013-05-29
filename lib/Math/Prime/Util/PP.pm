@@ -748,6 +748,24 @@ sub _log2 {
 
 
 
+sub is_pseudoprime {
+  my($n, $base) = @_;
+  _validate_positive_integer($n);
+  _validate_positive_integer($base);
+
+  return 1 if $n == 2 || $n == 3;
+  return 0 if $n < 5;
+  croak "Base $base is invalid" if $base < 2;
+  if ($base >= $n) {
+    $base = $base % $n;
+    return 1 if $base <= 1 || $base == $n-1;
+  }
+  my $x = (ref($n) eq 'Math::BigInt')
+        ? $n->copy->bzero->badd($base)->bmodpow($n-1,$n)
+        : _native_powmod($base, $n-1, $n);
+  return ($x == 1);
+}
+
 sub miller_rabin {
   my($n, @bases) = @_;
   _validate_positive_integer($n);
@@ -821,6 +839,26 @@ sub miller_rabin {
   1;
 }
 
+sub _is_perfect_square {
+  my($n) = @_;
+
+  if (ref($n) eq 'Math::BigInt') {
+    my $mc = int(($n & 31)->bstr);
+    if ($mc==0||$mc==1||$mc==4||$mc==9||$mc==16||$mc==17||$mc==25) {
+      my $sq = $n->copy->bsqrt->bfloor;
+      $sq->bmul($sq);
+      return 1 if $sq == $n;
+    }
+  } else {
+    my $mc = $n & 31;
+    if ($mc==0||$mc==1||$mc==4||$mc==9||$mc==16||$mc==17||$mc==25) {
+      my $sq = int(sqrt($n));
+      return 1 if ($sq*$sq) == $n;
+    }
+  }
+  0;
+}
+
 # Calculate Jacobi symbol (M|N)
 sub _jacobi {
   my($n, $m) = @_;
@@ -880,37 +918,9 @@ sub is_strong_lucas_pseudoprime {
   my($n) = @_;
   _validate_positive_integer($n);
 
-  # We're trying to limit the bignum calculations as much as possible.
-  # It's also important to try to match whatever they passed in.  For instance
-  # if they use a GMP or Pari object, we must do the same.  Hence instead of:
-  #        my $U = Math::BigInt->bone;
-  # we do
-  #        my $U = $n->copy->bone;
-  # so U is the same class as n.  If they passed in a string or a small value,
-  # then we just make it up.
-
   return 1 if $n == 2;
   return 0 if $n < 2 || ($n % 2) == 0;
-
-  # References:
-  #     http://www.trnicely.net/misc/bpsw.html
-  #     Math::Primality
-
-  # Check for perfect square
-  if (ref($n) eq 'Math::BigInt') {
-    my $mc = int(($n & 31)->bstr);
-    if ($mc==0||$mc==1||$mc==4||$mc==9||$mc==16||$mc==17||$mc==25) {
-      my $sq = $n->copy->bsqrt->bfloor;
-      $sq->bmul($sq);
-      return 0 if $sq == $n;
-    }
-  } else {
-    my $mc = $n & 31;
-    if ($mc==0||$mc==1||$mc==4||$mc==9||$mc==16||$mc==17||$mc==25) {
-      my $sq = int(sqrt($n));
-      return 0 if ($sq*$sq) == $n;
-    }
-  }
+  return 0 if _is_perfect_square($n);
 
   # Determine Selfridge D, P, and Q parameters
   my $D = _find_jacobi_d_sequence($n);
@@ -944,7 +954,7 @@ sub is_strong_lucas_pseudoprime {
   my $V = $ZERO + $P;
   my $Qk = $ZERO + $Q;
   my $bpos = 0;
-  while ($bpos++ < length($dstr)) {
+  while (++$bpos < length($dstr)) {
     $U = ($U * $V) % $n;
     $V = ($V * $V - 2*$Qk) % $n;
     $Qk = ($Qk * $Qk) % $n;
@@ -970,6 +980,71 @@ sub is_strong_lucas_pseudoprime {
     $V = ($V * $V - 2*$Qk) % $n;
     return 1 if $V->is_zero;
     $Qk = ($Qk * $Qk) % $n if $r < ($s-1);
+  }
+  return 0;
+}
+
+sub is_extra_strong_lucas_pseudoprime {
+  my($n) = @_;
+  _validate_positive_integer($n);
+
+  return 1 if $n == 2;
+  return 0 if $n < 2 || ($n % 2) == 0;
+  return 0 if _is_perfect_square($n);
+
+  my ($P, $Q, $D) = (3, 1, 5);
+  while (1) {
+    my $gcd = (ref($n) eq 'Math::BigInt') ? Math::BigInt::bgcd($D, $n)
+                                          : _gcd_ui($D, $n);
+    return 0 if $gcd > 1 && $gcd != $n;  # Found divisor $d
+    last if _jacobi($D, $n) == -1;
+    $P++;
+    $D = $P*$P - 4;
+  }
+  die "Lucas incorrect DPQ: $D, $P, $Q\n" if ($D != $P*$P - 4*$Q);
+
+  if (ref($n) ne 'Math::BigInt') {
+    if (!defined $Math::BigInt::VERSION) {
+      eval { require Math::BigInt;  Math::BigInt->import(try=>'GMP,Pari'); 1; }
+      or do { croak "Cannot load Math::BigInt "; }
+    }
+    $n = Math::BigInt->new("$n");
+  }
+
+  my $m = $n->copy->badd(1);
+  # Traditional d,s:
+  #   my $d=$m->copy; my $s=0; while ($d->is_even) { $s++; $d->brsft(1); }
+  #   die "Invalid $m, $d, $s\n" unless $m == $d * 2**$s;
+  my $dstr = substr($m->as_bin, 2);
+  $dstr =~ s/(0*)$//;
+  my $s = length($1);
+
+  my $ZERO = $n->copy->bzero;
+  my $U = $ZERO + 1;
+  my $V = $ZERO + $P;
+  my $bpos = 0;
+  while (++$bpos < length($dstr)) {
+    $U->bmul($V)->bmod($n);
+    $V->bmul($V)->bsub(2)->bmod($n);
+    if (substr($dstr,$bpos,1)) {
+      my $U_times_D = $U->copy->bmul($D);
+      $U->bmul($P)->badd($V);
+      $U->badd($n) if $U->is_odd;
+      $U->brsft(1);
+
+      $V->bmul($P)->badd($U_times_D);
+      $V->badd($n) if $V->is_odd;
+      $V->brsft(1);
+    }
+  }
+  $U->bmod($n);
+  $V->bmod($n);
+  return 1 if $U->is_zero && ($V == 2 || $V == ($n-2));
+  return 1 if $V->is_zero;
+
+  foreach my $r (1 .. $s-1) {
+    $V->bmul($V)->bsub(2)->bmod($n);
+    return 1 if $V->is_zero;
   }
   return 0;
 }
@@ -1485,7 +1560,7 @@ sub pminus1_factor {
   while (1) {
     $pc_end = $B1 if $pc_end > $B1;
     @bprimes = @{ primes($pc_beg, $pc_end) };
-    foreach my $q (@bprimes) { 
+    foreach my $q (@bprimes) {
       my($k, $kmin) = ($q, int($B1 / $q));
       while ($k <= $kmin) { $k *= $q; }
       $t *= $k;                         # accumulate powers for a
@@ -2653,6 +2728,13 @@ methods take quite a bit of time and space.  Think abut whether a bound or
 approximation would be acceptable instead.
 
 
+=head2 is_pseudoprime
+
+Takes a positive number C<n> and a base C<a> as input, and returns 1 if
+C<n> is a probable prime to base C<a>.  This is the simple Fermat primality
+test.  Removing primes, given base 2 this produces the sequence
+L<OEIS A001567|http://oeis.org/A001567>.
+
 =head2 is_strong_pseudoprime
 
 =head2 miller_rabin
@@ -2661,16 +2743,17 @@ approximation would be acceptable instead.
   my $probably_prime = is_strong_pseudoprime($n, 2, 3, 5, 7, 11, 13, 17);
 
 Takes a positive number as input and one or more bases.  The bases must be
-greater than 1.  Returns 2 is C<n> is definitely prime, 1 if C<n>
-is probably prime, and 0 if C<n> is definitely composite.  Since this is
-just the Miller-Rabin test, a value of 2 is only returned for inputs of
-2 and 3, which are shortcut.  If 0 is returned, then the number really is a
-composite.  If 1 is returned, there is a good chance the number is prime
-(depending on the input and the bases), but we cannot be sure.
+greater than C<1>.  Returns 1 if the input is a strong probable prime
+to all of the bases, and 0 if not.
+
+If 0 is returned, then the number really is a composite.  If 1 is returned,
+then it is either a prime or a strong pseudoprime to all the given bases.
+Given enough distinct bases, the chances become very, very strong that the
+number is actually prime.
 
 This is usually used in combination with other tests to make either stronger
 tests (e.g. the strong BPSW test) or deterministic results for numbers less
-than some verified limit (such as the C<is_prob_prime> function in this module).
+than some verified limit.
 
 
 =head2 is_strong_lucas_pseudoprime
@@ -2680,6 +2763,14 @@ Lucas pseudoprime using the Selfridge method of choosing D, P, and Q (some
 sources call this a strong Lucas-Selfridge pseudoprime).  This is one half
 of the BPSW primality test (the Miller-Rabin strong pseudoprime test with
 base 2 being the other half).
+
+=head2 is_extra_strong_lucas_pseudoprime
+
+Takes a positive number as input, and returns 1 if the input passes the extra
+strong Lucas test (as defined in
+L<Grantham 2000|http://www.ams.org/mathscinet-getitem?mr=1680879>).
+This has slightly more restrictive conditions than the strong Lucas test,
+but uses different starting parameters so is not directly comparable.
 
 =head2 is_aks_prime
 

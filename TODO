@@ -41,9 +41,11 @@
    - LMO prime count
    - QS factoring
 
-- Make forprimes use a segment sieve
-
 - Figure out a way to make the internal FOR_EACH_PRIME macros use a segmented
   sieve.
 
 - prime_count_approx on a 100-digit bigint is really slow without MPFR.
+
+- Add is_lucas_pseudoprime to complete our set
+
+- re-verify with Feitsma database using extra strong test
