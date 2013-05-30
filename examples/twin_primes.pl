@@ -2,20 +2,34 @@
 use strict;
 use warnings;
 
-use Math::Prime::Util qw/-nobigint next_prime is_prime/;
+use Math::Prime::Util qw/prime_iterator nth_prime_upper prime_precalc/;
 
 my $count = shift || 20;
 
-# Simple little loop looking for twin primes (numbers where p and p+2 are
-# both prime).  Print them both.  About 3x faster than Math::NumSeq::TwinPrimes.
-my $prime = 2;
-my $next;
+# Find twin primes (numbers where p and p+2 are prime)
+
+# Time for the first 300k:
+#   3m28s  Math::NumSeq::TwinPrimes
+#   2.5s   this iterator
+#   9.1s   this iterator without the precalc
+
+# This speeds things up, but isn't necessary.
+my $estimate = 5000 + int( nth_prime_upper($count) * 1.4 * log($count) );
+prime_precalc($estimate);
+
+sub get_twin_prime_iterator {
+  my $p = shift || 2;
+  my $it = prime_iterator($p);
+  my $prev = $it->();    # prev = 2
+  $p = $it->();          # p = 3
+  return sub {
+    do {
+      ($prev, $p) = ($p, $it->())
+    } while ($p-$prev) != 2;
+    $prev;
+  };
+}
+my $twinit = get_twin_prime_iterator();
 for (1..$count) {
-  while (1) {
-    $next = next_prime($prime);
-    last if ($next-2) == $prime;
-    $prime = $next;
-  }
-  print $prime, ",", $prime+2, "\n";
-  $prime = $next;
+  print $twinit->(), "\n";
 }

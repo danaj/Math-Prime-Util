@@ -2,7 +2,7 @@
 use strict;
 use warnings;
 use Math::Prime::Util qw/:all/;
-use Math::Prime::Util::PrimeArray qw/make_prime_iterator/;
+use Math::Prime::Util::PrimeArray;
 use Math::NumSeq::Primes;
 use Math::Prime::TiedArray;
 use Benchmark qw/:all/;
@@ -21,9 +21,6 @@ cmpthese($count,{
   'primes'    => sub { $s=0; $s += $_ for @{primes($nlimit)}; die unless $s == $expect; },
   'forprimes' => sub { $s=0; forprimes { $s += $_ } $nlimit;  die unless $s == $expect; },
   'iterator'  => sub { $s=0; my $it = prime_iterator();
-                       $s += $it->() for 0..$ilimit;
-                       die unless $s == $expect; },
-  'pa iter'   => sub { $s=0; my $it = make_prime_iterator();
                        $s += $it->() for 0..$ilimit;
                        die unless $s == $expect; },
   'pa index'  => sub { $s=0; tie my @primes, "Math::Prime::Util::PrimeArray";
@@ -82,7 +79,7 @@ cmpthese($count,{
 });
 }
 
-if (0) {
+if (1) {
 print "Walk primes backwards from 1M\n";
 $nlimit = 1_000_000;
 $ilimit = prime_count($nlimit)-1;
@@ -100,7 +97,7 @@ cmpthese($count,{
 });
 }
 
-if (0) {
+if (1) {
 print "Random walk in 1M\n";
 srand(29);
 my @rindex;

@@ -3839,6 +3839,21 @@ Examining the η3(x) function of Planat and Solé (2011):
   say prime_count_approx(1000000);
   say nu3(1000000);
 
+Construct and use a Sophie-Germain prime iterator:
+
+  sub make_sophie_germain_iterator {
+    my $p = shift || 2;
+    my $it = prime_iterator($p);
+    return sub {
+      do { $p = $it->() } while !is_prime(2*$p+1);
+      $p;
+    };
+  }
+  my $sgit = make_sophie_germain_iterator();
+  for (1 .. 10000) {
+    print $sgit->(), "\n";
+  }
+
 Project Euler, problem 3 (Largest prime factor):
 
   use Math::Prime::Util qw/factor/;

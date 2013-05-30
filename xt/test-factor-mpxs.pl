@@ -33,8 +33,8 @@ print "OK for first 1";
 my $dig = 1;
 my $i = 9;
 foreach my $n (2 .. $nlinear) {
-  my @mfxs = sort { $a<=>$b } prime_factors($n);
-  my @mpu  = sort { $a<=>$b } factor($n);
+  my @mfxs = prime_factors($n);
+  my @mpu  = factor($n);
   die "failure for $n" unless scalar @mfxs == scalar @mpu;
   for (0 .. $#mfxs) { die "failure for $n" unless $mfxs[$_] == $mpu[$_]; }
   if (--$i == 0) {
@@ -48,8 +48,8 @@ print "Testing random numbers from $nlinear to ", $randmax, "\n";
 
 while ($nrandom-- > 0) {
   my $n = $nlinear + 1 + $rgen->($randmax - $nlinear);
-  my @mfxs = sort { $a<=>$b } prime_factors($n);
-  my @mpu  = sort { $a<=>$b } factor($n);
+  my @mfxs = prime_factors($n);
+  my @mpu  = factor($n);
   die "failure for $n" unless scalar @mfxs == scalar @mpu;
   for (0 .. $#mfxs) { die "failure for $n" unless $mfxs[$_] == $mpu[$_]; }
   print "." if ($nrandom % 256) == 0;
