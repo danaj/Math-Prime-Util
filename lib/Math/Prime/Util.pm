@@ -6,7 +6,7 @@ use Bytes::Random::Secure;
 
 BEGIN {
   $Math::Prime::Util::AUTHORITY = 'cpan:DANAJ';
-  $Math::Prime::Util::VERSION = '0.28';
+  $Math::Prime::Util::VERSION = '0.29';
 }
 
 # parent is cleaner, and in the Perl 5.10.1 / 5.12.0 core, but not earlier.
@@ -94,7 +94,7 @@ BEGIN {
     *is_prime      = \&Math::Prime::Util::_generic_is_prime;
     *next_prime    = \&Math::Prime::Util::_generic_next_prime;
     *prev_prime    = \&Math::Prime::Util::_generic_prev_prime;
-    *forprimes     = \&Math::Prime::Util::_generic_forprimes;
+    *forprimes     = sub (&$;$) { _generic_forprimes(@_); }; ## no critic qw(ProhibitSubroutinePrototypes)
 
     *_prime_memfreeall = \&Math::Prime::Util::PP::_prime_memfreeall;
     *prime_memfree  = \&Math::Prime::Util::PP::prime_memfree;
@@ -1059,7 +1059,7 @@ sub primorial {
       $pn = int( Math::Prime::Util::GMP::primorial($n) );
     }
   } else {
-    forprimes { $pn *= $_ } $n;
+    forprimes(sub { $pn *= $_ }, $n);
   }
   return $pn;
 }
@@ -2407,7 +2407,7 @@ Math::Prime::Util - Utilities related to prime numbers, including fast sieves an
 
 =head1 VERSION
 
-Version 0.28
+Version 0.29
 
 
 =head1 SYNOPSIS
