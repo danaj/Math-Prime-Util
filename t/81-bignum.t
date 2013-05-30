@@ -145,6 +145,7 @@ foreach my $n (@proveprimes) {
   SKIP: {
     skip "Large proof on 32-bit machine.", 1
       if !$use64 && !$extra && $n > 2**66;
+    skip "Skipping provable primes on broken 64-bit", 1 if $broken64;
     ok( is_provable_prime($n), "$n is provably prime" );
   }
 }

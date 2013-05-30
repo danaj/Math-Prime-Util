@@ -83,13 +83,13 @@ sub _validate_positive_integer {
   croak "Parameter '$n' must be <= $max" if defined $max && $n > $max;
   if (ref($_[0])) {
     $_[0] = Math::BigInt->new("$_[0]") unless ref($_[0]) eq 'Math::BigInt';
-    # Stupid workaround for Math::BigInt::GMP RT # 71548
+    # Workarounds for Math::BigInt::GMP RT # 71548 and Perl 5.6
     if ($_[0]->bacmp(''.~0) <= 0) {
-      $_[0] = int($_[0]->bstr);
-      croak "Didn't convert!" if ref($_[0]);
-    } else {
-      $_[0]->upgrade(undef) if $_[0]->upgrade();  # Stop BigFloat upgrade
+      my $intn = int($_[0]->bstr);
+      $_[0] = $intn if $_[0]->bcmp("$intn") == 0;
     }
+    # Stop BigFloat upgrade
+    $_[0]->upgrade(undef) if ref($_[0]) && $_[0]->upgrade();
   } else {
     if ($n > ~0) {
       croak "Parameter '$n' outside of integer range" if !defined $bigint::VERSION;
@@ -950,8 +950,11 @@ sub is_strong_lucas_pseudoprime {
   #   my $d=$m->copy; my $s=0; while ($d->is_even) { $s++; $d->brsft(1); }
   #   die "Invalid $m, $d, $s\n" unless $m == $d * 2**$s;
   my $dstr = substr($m->as_bin, 2);
-  $dstr =~ s/(0*)$// unless $doweak;
-  my $s = length($1);
+  my $s = 0;
+  if (!$doweak) {
+    $dstr =~ s/(0*)$//;
+    $s = length($1);
+  }
 
   my $ZERO = $n->copy->bzero;
   my $U = $ZERO + 1;
