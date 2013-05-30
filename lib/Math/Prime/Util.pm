@@ -1059,9 +1059,7 @@ sub primorial {
       $pn = int( Math::Prime::Util::GMP::primorial($n) );
     }
   } else {
-    foreach my $p ( @{ primes($n) } ) {
-      $pn *= $p;
-    }
+    forprimes { $pn *= $_ } $n;
   }
   return $pn;
 }
@@ -1094,20 +1092,13 @@ sub consecutive_integer_lcm {
     return $pn->bzero->badd("$clcm");
   }
 
-  my @primes = @{primes(2,$n)};
-  while (@primes) {
-    my $p = $primes[0];
-    my $pmin = int($n/$p);
-    last if $p > $pmin;
-    my $p_power = $p*$p;
-    $p_power *= $p while $p_power <= $pmin;
+  forprimes {
+    my($p_power, $pmin) = ($_, int($n/$_));
+    $p_power *= $_ while $p_power <= $pmin;
     $pn *= $p_power;
-    shift @primes;
-  }
-  foreach my $p (@primes) {
-    $pn *= $p;
-  }
-  return $pn;
+  } $n;
+
+  return (ref($pn) eq 'Math::BigInt') ? $pn : int($pn);
 }
 
 
@@ -1416,9 +1407,7 @@ sub chebyshev_theta {
   _validate_num($n) || _validate_positive_integer($n);
   return _XS_chebyshev_theta($n) if $n <= $_XS_MAXVAL;
   my $sum = 0.0;
-  foreach my $p (@{primes($n)}) {
-    $sum += log($p);
-  }
+  forprimes { $sum += log($_); } $n;
   return $sum;
 }
 sub chebyshev_psi {
@@ -1427,11 +1416,11 @@ sub chebyshev_psi {
   return 0 if $n <= 1;
   return _XS_chebyshev_psi($n) if $n <= $_XS_MAXVAL;
   my ($sum, $logn, $mults_are_one) = (0.0, log($n), 0);
-  foreach my $p (@{primes($n)}) {
-    my $logp = log($p);
-    $mults_are_one = 1 if !$mults_are_one && $p > int($n/$p);
+  forprimes {
+    my $logp = log($_);
+    $mults_are_one = 1 if !$mults_are_one && $_ > int($n/$_);
     $sum += ($mults_are_one) ? $logp : $logp * int($logn/$logp+1e-15);
-  }
+  } $n;
   return $sum;
 }
 
@@ -1779,9 +1768,10 @@ sub verify_prime {
       return 0;
     }
     my $bpsw = 0;
-    if ($n <= $_XS_MAXVAL) {
-      $bpsw = _XS_miller_rabin($n, 2)
-           && _XS_is_extra_strong_lucas_pseudoprime($n);
+    my $intn = int($n->bstr);
+    if ($n->bcmp("$intn") == 0 && $intn <= $_XS_MAXVAL) {
+      $bpsw = _XS_miller_rabin($intn, 2)
+           && _XS_is_extra_strong_lucas_pseudoprime($intn);
     } elsif ($_HAVE_GMP) {
       $bpsw = Math::Prime::Util::GMP::is_prob_prime($n);
     } else {
