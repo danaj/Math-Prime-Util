@@ -5,7 +5,8 @@ use warnings;
 use Test::More;
 use Math::Prime::Util qw/is_prime
                          is_pseudoprime is_strong_pseudoprime
-                         is_strong_lucas_pseudoprime is_extra_strong_lucas_pseudoprime/;
+                         is_lucas_pseudoprime is_strong_lucas_pseudoprime
+                         is_extra_strong_lucas_pseudoprime/;
 
 my $use64 = Math::Prime::Util::prime_get_config->{'maxbits'} > 32;
 my $extra = defined $ENV{EXTENDED_TESTING} && $ENV{EXTENDED_TESTING};
@@ -61,6 +62,7 @@ my %pseudoprimes = (
  3613982119 => [ qw/3626488471 3630467017 3643480501 3651840727 3653628247 3654142177 3672033223 3672036061 3675774019 3687246109 3690036017 3720856369/ ],
  psp2       => [ qw/341 561 645 1105 1387 1729 1905 2047 2465 2701 2821 3277 4033 4369 4371 4681 5461 6601 7957 8321 8481 8911 10261 10585 11305 12801 13741 13747 13981 14491 15709 15841 16705 18705 18721 19951 23001 23377 25761 29341/ ],
  psp3       => [ qw/91 121 286 671 703 949 1105 1541 1729 1891 2465 2665 2701 2821 3281 3367 3751 4961 5551 6601 7381 8401 8911 10585 11011 12403 14383 15203 15457 15841 16471 16531 18721 19345 23521 24046 24661 24727 28009 29161/ ],
+ lucas      => [ qw/323 377 1159 1829 3827 5459 5777 9071 9179 10877 11419 11663 13919 14839 16109 16211 18407 18971 19043/ ],
  slucas     => [ qw/5459 5777 10877 16109 18971 22499 24569 25199 40309 58519 75077 97439 100127 113573 115639 130139/ ],
  eslucas    => [ qw/989 3239 5777 10877 27971 29681 30739 31631 39059 72389 73919 75077 100127 113573 125249 137549 137801/ ],
 );
@@ -96,6 +98,8 @@ while (my($base, $ppref) = each (%pseudoprimes)) {
       ok(is_extra_strong_lucas_pseudoprime($p), "$p is an extra strong Lucas pseudoprime");
     } elsif ($base eq 'slucas') {
       ok(is_strong_lucas_pseudoprime($p), "$p is a strong Lucas-Selfridge pseudoprime");
+    } elsif ($base eq 'lucas') {
+      ok(is_lucas_pseudoprime($p), "$p is a Lucas-Selfridge pseudoprime");
     } elsif ($base =~ /^psp(\d+)/) {
       my $base = $1;
       ok(is_pseudoprime($p, $base), "$p is a pseudoprime to base $base");

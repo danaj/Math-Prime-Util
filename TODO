@@ -46,6 +46,4 @@
 
 - prime_count_approx on a 100-digit bigint is really slow without MPFR.
 
-- Add is_lucas_pseudoprime to complete our set
-
 - re-verify with Feitsma database using extra strong test

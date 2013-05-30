@@ -703,7 +703,7 @@ forprimes (SV* block, IN SV* svbeg, IN SV* svend = 0)
       ctx = start_segment_primes(beg, end, &segment);
       while (next_segment_primes(ctx, &seg_base, &seg_low, &seg_high)) {
         /* I'm getting a memory leak in the MULTICALL and I'm having no luck
-         * finding out why it is happening.  Forget MULTICALL for now. */
+         * finding out why it is happening.  Don't use this for now. */
         if (0 && !CvISXSUB(cv)) {
           dMULTICALL;
           I32 gimme = G_VOID;

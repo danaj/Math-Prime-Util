@@ -913,10 +913,14 @@ sub _find_jacobi_d_sequence {
   return ($sign * $d);
 }
 
+sub is_lucas_pseudoprime {
+  return is_strong_lucas_pseudoprime($_[0], 'weak');
+}
 
 sub is_strong_lucas_pseudoprime {
-  my($n) = @_;
+  my($n, $doweak) = @_;
   _validate_positive_integer($n);
+  $doweak = (defined $doweak && $doweak eq 'weak') ? 1 : 0;
 
   return 1 if $n == 2;
   return 0 if $n < 2 || ($n % 2) == 0;
@@ -946,7 +950,7 @@ sub is_strong_lucas_pseudoprime {
   #   my $d=$m->copy; my $s=0; while ($d->is_even) { $s++; $d->brsft(1); }
   #   die "Invalid $m, $d, $s\n" unless $m == $d * 2**$s;
   my $dstr = substr($m->as_bin, 2);
-  $dstr =~ s/(0*)$//;
+  $dstr =~ s/(0*)$// unless $doweak;
   my $s = length($1);
 
   my $ZERO = $n->copy->bzero;
@@ -973,6 +977,7 @@ sub is_strong_lucas_pseudoprime {
       $Qk = ($Qk * $Q) % $n;
     }
   }
+  if ($doweak) { return $U->is_zero ? 1 : 0; }
   return 1 if $U->is_zero || $V->is_zero;
 
   # Compute powers of V
@@ -2755,6 +2760,12 @@ This is usually used in combination with other tests to make either stronger
 tests (e.g. the strong BPSW test) or deterministic results for numbers less
 than some verified limit.
 
+
+=head2 is_lucas_pseudoprime
+
+Takes a positive number as input, and returns 1 if the input is a standard
+Lucas probable prime using the Selfridge method of choosing D, P, and Q (some
+sources call this a Lucas-Selfridge pseudoprime).
 
 =head2 is_strong_lucas_pseudoprime
 

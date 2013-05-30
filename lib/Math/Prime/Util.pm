@@ -17,7 +17,7 @@ our @EXPORT_OK =
       prime_precalc prime_memfree
       is_prime is_prob_prime is_provable_prime is_provable_prime_with_cert
       prime_certificate verify_prime
-      is_pseudoprime is_strong_pseudoprime
+      is_pseudoprime is_strong_pseudoprime is_lucas_pseudoprime
       is_strong_lucas_pseudoprime is_extra_strong_lucas_pseudoprime
       is_aks_prime
       miller_rabin
@@ -1607,7 +1607,13 @@ sub is_strong_pseudoprime {
   return Math::Prime::Util::PP::miller_rabin($n, @_);
 }
 
-# TODO: standard lucas pseudoprime
+sub is_lucas_pseudoprime {
+  my($n) = shift;
+  _validate_num($n) || _validate_positive_integer($n);
+  return Math::Prime::Util::GMP::is_lucas_pseudoprime("$n")
+    if $_HAVE_GMP && defined &Math::Prime::Util::GMP::is_lucas_pseudoprime;
+  return Math::Prime::Util::PP::is_lucas_pseudoprime($n);
+}
 
 sub is_strong_lucas_pseudoprime {
   my($n) = shift;
@@ -2441,8 +2447,9 @@ Version 0.28
   # Strong pseudoprime test with multiple bases, using Miller-Rabin
   say "$n is a prime or 2/7/61-psp" if is_strong_pseudoprime($n, 2, 7, 61);
 
-  # Strong Lucas-Selfridge and extra strong Lucas tests
-  say "$n is a prime or slpsp" if is_strong_lucas_pseudoprime($n);
+  # Standard and strong Lucas-Selfridge, and extra strong Lucas tests
+  say "$n is a prime or lpsp"   if is_lucas_pseudoprime($n);
+  say "$n is a prime or slpsp"  if is_strong_lucas_pseudoprime($n);
   say "$n is a prime or eslpsp" if is_extra_strong_lucas_pseudoprime($n);
 
   # step to the next prime (returns 0 if not using bigints and we'd overflow)
@@ -2545,9 +2552,11 @@ Typically it is faster than L<Math::Pari> for 64-bit operations.
 All operations support both Perl UV's (32-bit or 64-bit) and bignums.  It
 requires no external software for big number support, as there are Perl
 implementations included that solely use Math::BigInt and Math::BigFloat.
-However, performance will be improved for most big number functions by
-installing L<Math::Prime::Util::GMP>, and is definitely recommended if you
-do many bignum operations.  Also look into L<Math::Pari> as an alternative.
+B<If you want high performance with big numbers (larger than Perl's UV
+size), you should install L<Math::Prime::Util::GMP>>.  This will be a
+recurring theme throughout this documentation -- while all bignum operations
+are supported in pure Perl, most methods will be much slower than the C+GMP
+alternative.
 
 The module is thread-safe and allows concurrency between Perl threads while
 still sharing a prime cache.  It is not itself multi-threaded.  See the
@@ -2657,7 +2666,7 @@ a lot.  There are some brittle behaviors on 5.12.4 and earlier with bignums.
 Returns 2 if the number is prime, 0 if not.  For numbers larger than C<2^64>
 it will return 0 for composite and 1 for probably prime, using a strong BPSW
 test.  If L<Math::Prime::Util::GMP> is installed, some additional
-Miller-Rabin tests are also performed on large inputs, and a quick attempt is
+primality tests are also performed on large inputs, and a quick attempt is
 made to perform a primality proof, so it will return 2 for many other inputs.
 
 Also see the L</is_prob_prime> function, which will never do additional
@@ -2666,11 +2675,10 @@ that the input is number prime and returns 2 for almost all primes (at the
 expense of speed).
 
 For native precision numbers (anything smaller than C<2^64>, all three
-functions are identical and use a deterministic set of Miller-Rabin tests.
-While L</is_prob_prime> and L</is_prime> return probable prime results
-for larger numbers, they use the strong Baillie-PSW test, which has had
-no counterexample found since it was published in 1980 (though certainly they
-exist).
+functions are identical and use a deterministic set of tests (selected
+Miller-Rabin bases or BPSW).  For larger inputs both L</is_prob_prime> and
+L</is_prime> return probable prime results using the strong Baillie-PSW test,
+which has had no counterexample found since it was published in 1980.
 
 
 =head2 primes
@@ -2708,8 +2716,8 @@ C<18,446,744,073,709,551,557> in 64-bit).
 
   $n = prev_prime($n);
 
-Returns the prime smaller than the input number.  0 is returned if the
-input is C<2> or lower.
+Returns the prime preceding the input number (i.e. the largest prime that is
+strictly less than the input).  0 is returned if the input is C<2> or lower.
 
 
 =head2 forprimes
@@ -2918,6 +2926,13 @@ function.
 
 An alias for C<is_strong_pseudoprime>.  This name is being deprecated.
 
+=head2 is_lucas_pseudoprime
+
+Takes a positive number as input, and returns 1 if the input is a standard
+Lucas probable prime using the Selfridge method of choosing D, P, and Q (some
+sources call this a Lucas-Selfridge pseudoprime).
+Removing primes, this produces the sequence
+L<OEIS A217120|http://oeis.org/A217120>.
 
 =head2 is_strong_lucas_pseudoprime
 
@@ -3804,9 +3819,14 @@ is 40 by default).  Accuracy without MPFR should be 35 digits.
 
 =head1 EXAMPLES
 
-Print pseudoprimes base 17:
+Print strong pseudoprimes to base 17 up to 10M:
 
-    perl -MMath::Prime::Util=:all -E 'my $n=$base|1; while(1) { print "$n " if is_strong_pseudoprime($n,$base) && !is_prime($n); $n+=2; } BEGIN {$|=1; $base=17}'
+    perl -MMath::Prime::Util=:all -E 'my $n=3; while($n <= 10000000) { print "$n " if is_strong_pseudoprime($n,$base) && !is_prime($n); $n+=2; } BEGIN {$|=1; $base=17}'
+
+or, slightly faster, use forprimes and loop over the odds between primes:
+
+   # Runs about 5x faster than Pari using A001262's isStrongPsp function
+   perl -MMath::Prime::Util=:all -E '$|=1; $base=17; my $prev = 1; forprimes { $prev += 2; while ($prev < $_) { print "$prev " if is_strong_pseudoprime($prev,$base); $prev += 2; } } 3,10000000'
 
 Print some primes above 64-bit range:
 
@@ -3912,7 +3932,7 @@ I have not completed testing all the functions near the word size limit
 (e.g. C<2^32> for 32-bit machines).  Please report any problems you find.
 
 Perl versions earlier than 5.8.0 have a rather broken 64-bit implementation,
-in that the values are actually stored as doubles.  Hence any value larger
+in that the values are accessed as doubles.  Hence any value larger
 than C<~ 2^49> will start losing bottom bits.  This causes numerous functions
 to not work properly.  The test suite will try to determine if your Perl is
 broken (this only applies to really old versions of Perl compiled for 64-bit
@@ -4023,10 +4043,10 @@ typically much faster and will use less memory, but there are some cases where
 MP:TA is faster (MP:TA stores all entries up to the largest request, while
 MPU:PA stores only a window around the last request).
 
-L<Math::Primality> supports C<is_prime>, C<is_strong_pseudoprime>,
-C<is_strong_lucas_pseudoprime>, C<next_prime>, C<prev_prime>, C<prime_count>,
-and C<is_aks_prime> functionality.  It also adds C<is_pseudoprime> which MPU
-does not have or have planned.  This is a great little module that implements
+L<Math::Primality> supports C<is_prime>, C<is_pseudoprime>,
+C<is_strong_pseudoprime>, C<is_strong_lucas_pseudoprime>, C<next_prime>,
+C<prev_prime>, C<prime_count>, and C<is_aks_prime> functionality.
+This is a great little module that implements
 primality functionality.  It was the first module to support the BPSW and
 AKS tests.  All inputs are processed using GMP, so it of course supports
 bigints.  In fact, Math::Primality was made originally with bigints in mind,
@@ -4037,7 +4057,7 @@ is generally much faster, especially with L</prime_count>.  For bigints,
 MPU is slower unless the L<Math::Prime::Util::GMP> module is installed, in
 which case they have somewhat similar speeds.  L<Math::Primality> also installs
 a C<primes.pl> program, but it has much less functionality than the one
-includes with MPU.
+included with MPU.
 
 L<Math::NumSeq> is more a related module rather than one with direct
 functionality.  It does however offer a way to get similar results such as
@@ -4050,10 +4070,10 @@ overlap, MPU is usually much faster.  Importantly, most of the sequences in
 Math::NumSeq are limited to 32-bit indices.
 
 L<Math::Pari> supports a lot of features, with a great deal of overlap.  In
-general, MPU will be faster for native 64-bit integers, while Pari will be
-faster for bigints (installing L<Math::Prime::Util::GMP> is critical for
-getting good performance with bigints, but even then, Pari's better algorithms
-will eventually win out).  Trying to hit some of the highlights:
+general, MPU will be faster for native 64-bit integers, while it's differs
+for bigints (Pari will always be faster if L<Math::Prime::Util::GMP> is not
+installed; with it, it varies by function).
+Trying to hit some of the highlights:
 
 =over 4
 
@@ -4100,8 +4120,8 @@ Similar to MPU's L<factor> though with a different return (I
 find the result value quite inconvenient to work with, but others may like
 its vector of factor/exponent format).  Slower than MPU for all 64-bit inputs
 on an x86_64 platform, it may be faster for large values on other platforms.
-Bigint factoring is slightly faster with newer L<Math::Prime::Util::GMP>
-releases.
+With the newer L<Math::Prime::Util::GMP> releases, bigint factoring is slightly
+faster in MPU.
 
 =item C<eulerphi>
 
@@ -4137,10 +4157,10 @@ of Pari used is about 10 years old now).
 For native integers sometimes
 the functions can be slower, but bigints are often superior and it rarely
 has any performance surprises.  Some of the unique features MPU offers include
-super fast prime counts, nth_prime, approximations and limits for both, random
-primes, fast Mertens calculations, Chebyshev theta and psi functions, and the
-logarithmic integral and Riemann R functions.  All with fairly minimal
-installation requirements.
+super fast prime counts, nth_prime, ECPP primality proofs with certificates,
+approximations and limits for both, random primes, fast Mertens calculations,
+Chebyshev theta and psi functions, and the logarithmic integral and Riemann R
+functions.  All with fairly minimal installation requirements.
 
 
 =head1 PERFORMANCE
@@ -4199,15 +4219,15 @@ C<is_prime>: my impressions for various sized inputs:
 
    Module                   1-10 digits  10-20 digits  BigInts
    -----------------------  -----------  ------------  --------------
-   Math::Prime::Util        Very fast    Pretty fast   Slow
+   Math::Prime::Util        Very fast    Very fast     Slow
    Math::Prime::Util (1)    Very fast    Pretty fast   Fast (4)
    Math::Prime::XS          Very fast    Very slow (2) --
    Math::Prime::FastSieve   Very fast    N/A (3)       --
    Math::Primality          Very slow    Very slow     Fast (4)
    Math::Pari               Slow         OK            Fast (4)
 
-   (1) This is with L<Math::Prime::Util::GMP> installed.
-   (2) trial division only.  Very fast if every factor is tiny.
+   (1) With L<Math::Prime::Util::GMP> installed.
+   (2) Trial division only.  Very fast if every factor is tiny.
    (3) Too much memory to hold the sieve (11dig = 6GB, 12dig = ~50GB)
    (4) With L<Math::Prime::Util::GMP>, all three of the BigInt capable
        modules run at reasonably similar speeds.
@@ -4218,16 +4238,17 @@ The differences are in the implementations:
 
 =item L<Math::Prime::Util>
 
-looks in the sieve for a fast bit lookup if that exists (default up to 30,000
-but it can be expanded, e.g.  C<prime_precalc>), does some simple divisibility
-tests, then a set of deterministic set of Miller-Rabin tests for 32/64-bit
-numbers, and a BPSW test for bigints.
+does simple divisibility tests first.  It looks in the sieve for a fast bit
+lookup if that exists (default up to 30,000 but it can be expanded, e.g.
+C<prime_precalc>).  If these have failed, then for 32-bit inputs it does a
+deterministic set of Miller-Rabin tests, while for larger values including
+bigints it does a strong BPSW test.
 
 =item L<Math::Prime::XS>
 
 does trial divisions, which is wonderful if the input has a small factor
-(or is small itself).  If given a large prime it can take many orders of
-magnitude longer.  It does not support bigints.
+(or is small itself).  If given a large prime it can be tens of thousands of
+times slower than MPU.  It does not support bigints.
 
 =item L<Math::Prime::FastSieve>
 
@@ -4237,14 +4258,14 @@ just need too much time and memory for the sieve.
 
 =item L<Math::Primality>
 
-uses GMP for all work.  Under ~32-bits it uses 2 or 3 MR tests, while
-above 4759123141 it performs a BPSW test.  This is is fantastic for
+uses GMP (in Perl) for all work.  Under ~32-bits it uses 2 or 3 MR tests,
+while above 4759123141 it performs a BPSW test.  This is is fantastic for
 bigints over 2^64, but it is significantly slower than native precision
 tests.  With 64-bit numbers it is generally an order of magnitude or more
 slower than any of the others.  Once bigints are being used, its
 performance is quite good.  It is faster than this module unless
 L<Math::Prime::Util::GMP> has been installed, in which case this module
-is just a little bit faster.
+is a little bit faster.
 
 =item L<Math::Pari>
 

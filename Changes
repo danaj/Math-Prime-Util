@@ -13,9 +13,10 @@ Revision history for Perl extension Math::Prime::Util.
     - forprimes now uses a segmented sieve.  This (1) allows arbitrary 64-bit
       ranges with good memory use, and (2) allows nesting on threaded perls.
 
-    - Added is_pseudoprime (for Fermat probable prime test) and
-      is_extra_strong_lucas_pseudoprime (for the Mo/Jones/Grantham extra
-      strong Lucas test).
+    - Added:
+        is_pseudoprime (Fermat probable prime test)
+        is_lucas_pseudoprime (standard Lucas-Selfridge test)
+        is_extra_strong_lucas_pseudoprime (Mo/Jones/Grantham E.S. Lucas test)
 
 0.28 23 May 2013
 
