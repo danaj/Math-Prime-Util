@@ -17,6 +17,8 @@ Revision history for Perl extension Math::Prime::Util.
       Math::MPFR.  Switch to Li+correction for large values if Math::MPFR is
       not available.
 
+    - Workaround for MSVC compiler.
+
     - Added:
         is_pseudoprime (Fermat probable prime test)
         is_lucas_pseudoprime (standard Lucas-Selfridge test)

@@ -325,7 +325,7 @@ erat_primes(IN UV low, IN UV high)
     RETVAL
 
 
-#define SIMPLE_FACTOR(func, n, ...) \
+#define SIMPLE_FACTOR(func, n, arg1) \
     if (n <= 1) { \
       XPUSHs(sv_2mortal(newSVuv( n ))); \
     } else { \
@@ -337,7 +337,26 @@ erat_primes(IN UV low, IN UV high)
       else { \
         UV factors[MPU_MAX_FACTORS+1]; \
         int i, nfactors; \
-        nfactors = func(n, factors, ## __VA_ARGS__); \
+        nfactors = func(n, factors, arg1); \
+        for (i = 0; i < nfactors; i++) { \
+          XPUSHs(sv_2mortal(newSVuv( factors[i] ))); \
+        } \
+      } \
+    }
+#define SIMPLE_FACTOR_2ARG(func, n, arg1, arg2) \
+    /* Stupid MSVC won't bring its C compiler out of the 1980s. */ \
+    if (n <= 1) { \
+      XPUSHs(sv_2mortal(newSVuv( n ))); \
+    } else { \
+      while ( (n% 2) == 0 ) {  n /=  2;  XPUSHs(sv_2mortal(newSVuv( 2 ))); } \
+      while ( (n% 3) == 0 ) {  n /=  3;  XPUSHs(sv_2mortal(newSVuv( 3 ))); } \
+      while ( (n% 5) == 0 ) {  n /=  5;  XPUSHs(sv_2mortal(newSVuv( 5 ))); } \
+      if (n == 1) {  /* done */ } \
+      else if (_XS_is_prime(n)) { XPUSHs(sv_2mortal(newSVuv( n ))); } \
+      else { \
+        UV factors[MPU_MAX_FACTORS+1]; \
+        int i, nfactors; \
+        nfactors = func(n, factors, arg1, arg2); \
         for (i = 0; i < nfactors; i++) { \
           XPUSHs(sv_2mortal(newSVuv( factors[i] ))); \
         } \
@@ -396,7 +415,7 @@ pminus1_factor(IN UV n, IN UV B1 = 1*1024*1024, IN UV B2 = 0)
   PPCODE:
     if (B2 == 0)
       B2 = 10*B1;
-    SIMPLE_FACTOR(pminus1_factor, n, B1, B2);
+    SIMPLE_FACTOR_2ARG(pminus1_factor, n, B1, B2);
 
 int
 _XS_is_pseudoprime(IN UV n, IN UV a)
