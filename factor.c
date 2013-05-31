@@ -1195,6 +1195,59 @@ int racing_squfof_factor(UV n, UV *factors, UV rounds)
 
 /****************************************************************************/
 
+/*
+ *
+ * The Frobenius-Underwood test has no known counterexamples below 10^13, but
+ * has not been extensively tested above that.
+ *
+ * Given the script:
+ *  time mpu 'forprimes { Math::Prime::Util::_XS_is_frobenius_underwood_pseudoprime($_); Math::Prime::Util::_XS_is_frobenius_underwood_pseudoprime($_+2); } 100_000_000'
+ * and replacing the tests appropriately, I get these times:
+ *
+ *   0.57    $_ (cost of empty loop)
+ *   6.89    _XS_is_pseudoprime($_,2)
+ *   6.82    _XS_miller_rabin($_,2)
+ *  11.81    _XS_is_extra_strong_lucas_pseudoprime($_)
+ *  13.07    _XS_is_frobenius_underwood_pseudoprime($_)
+ *   7.87    _XS_is_prob_prime($_)
+ *   8.74    _XS_is_prime($_)
+ *
+ * At these sizes is_prob_prime is doing 1-2 M-R tests.  The input validation
+ * is adding a noticeable overhead to is_prime.
+ *
+ * With a set of 10k 64-bit random primes; 'do { die unless ... } for 1..500'
+ *
+ *   0.36    empty loop
+ *  12.38    _XS_is_pseudoprime($_,2)
+ *  12.05    _XS_miller_rabin($_,2)
+ *  24.95    _XS_is_extra_strong_lucas_pseudoprime($_)
+ *  22.35    _XS_is_frobenius_underwood_pseudoprime($_)
+ *  36.67    _XS_is_prob_prime($_)
+ *  37.24    _XS_is_prime($_)
+ *
+ * At this point is_prob_prime has transitioned to BPSW.
+ *
+ * Calling a powmod a 'Selfridge' unit, then we see:
+ *    1 Selfridge unit    M-R test
+ *    2 Selfridge units   Lucas or Frobenius-Underwood
+ *    3 Selfridge units   BPSW
+ *
+ * We try to structure the primality test like:
+ *   1) simple divisibility    very fast       primes and ~10% of composites
+ *   2) M-R with base 2        1 Selfridge     most remaining composites gone
+ *   3) Lucas test             2 Selfridge     only primes
+ *
+ * Hence given a composite, it will typically cost 0-1 Selfridges, and for
+ * our 64-bit values, the final Lucas test has no false positives.  Replacing
+ * the Lucas test with the F-U test won't save any time.  Replacing the whole
+ * thing with the F-U test (assuming it has no false results for all 64-bit
+ * values), doesn't help much either -- it's 2/3 the cost for primes, but much
+ * more expensive for composites.  It seems of interest for > 2^64 as a
+ * different test to do in addition to BPSW.
+ *
+ */
+
+
 int _XS_is_frobenius_underwood_pseudoprime(UV n)
 {
   int bit;
