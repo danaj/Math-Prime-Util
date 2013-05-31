@@ -1,6 +1,6 @@
 Revision history for Perl extension Math::Prime::Util.
 
-0.29 xx May 2013
+0.29 30 May 2013
 
     - Fix a signed vs. unsigned char issue in ranged moebius.  Thanks to the
       Debian testers for finding this.
@@ -12,6 +12,10 @@ Revision history for Perl extension Math::Prime::Util.
 
     - forprimes now uses a segmented sieve.  This (1) allows arbitrary 64-bit
       ranges with good memory use, and (2) allows nesting on threaded perls.
+
+    - prime_count_approx for very large values (> 10^36) was very slow without
+      Math::MPFR.  Switch to Li+correction for large values if Math::MPFR is
+      not available.
 
     - Added:
         is_pseudoprime (Fermat probable prime test)

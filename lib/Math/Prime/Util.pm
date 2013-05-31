@@ -2087,16 +2087,23 @@ sub prime_count_approx {
   # Also consider: http://trac.sagemath.org/sage_trac/ticket/8135
 
   # my $result = int( (prime_count_upper($x) + prime_count_lower($x)) / 2);
-
   # my $result = int( LogarithmicIntegral($x) );
-
   # my $result = int(LogarithmicIntegral($x) - LogarithmicIntegral(sqrt($x))/2);
+  # my $result = RiemannR($x) + 0.5;
 
-  if (ref($x) eq 'Math::BigFloat') {
-    # Make sure we get enough accuracy, and also not too much more than needed
-    $x->accuracy(length($x->bfloor->bstr())+2);
+  # Sadly my Perl RiemannR function is really slow for big values.  If MPFR
+  # is available, then use it -- it rocks.  Otherwise, switch to LiCorr for
+  # very big values.  This is hacky and shouldn't be necessary.
+  my $result;
+  if ( $x < 1e36 || Math::Prime::Util::PP::_MPFR_available() ) {
+    if (ref($x) eq 'Math::BigFloat') {
+      # Make sure we get enough accuracy, and also not too much more than needed
+      $x->accuracy(length($x->bfloor->bstr())+2);
+    }
+    $result = RiemannR($x) + 0.5;
+  } else {
+    $result = int(LogarithmicIntegral($x) - LogarithmicIntegral(sqrt($x))/2);
   }
-  my $result = RiemannR($x) + 0.5;
 
   return Math::BigInt->new($result->bfloor->bstr()) if ref($result) eq 'Math::BigFloat';
   return int($result);
@@ -2815,11 +2822,16 @@ the Schoenfeld (1976) bounds are used for large values.
         " primes below one quintillion.\n";
 
 Returns an approximation to the C<prime_count> function, without having to
-generate any primes.  The current implementation uses the Riemann R function
-which is quite accurate: an error of less than C<0.0005%> is typical for
-input values over C<2^32>.  A slightly faster
-(0.1 millisecond versus 1 millisecond) but much less accurate answer
-can be obtained by averaging the upper and lower bounds.
+generate any primes.  For values under C<10^36> this uses the Riemann R
+function, which is quite accurate: an error of less than C<0.0005%> is typical
+for input values over C<2^32>, and decreases as the input gets larger.  If
+L<Math::MPFR> is installed, the Riemann R function is used for all values, and
+will be very fast.  If not, then values of C<10^36> and larger will use the
+approximation C<li(x) - li(sqrt(x))/2>.  While not as accurate as the Riemann
+R function, it still should have error less than C<0.00000000000000001%>.
+
+A slightly faster but much less accurate answer can be obtained by averaging
+the upper and lower bounds.
 
 
 =head2 nth_prime

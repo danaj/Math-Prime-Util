@@ -44,6 +44,7 @@
 - Figure out a way to make the internal FOR_EACH_PRIME macros use a segmented
   sieve.
 
-- prime_count_approx on a 100-digit bigint is really slow without MPFR.
-
 - Refactor where functions exist in .c.  Lots of primality tests in factor.c.
+
+- Write a standalone function that demonstrates the memory leak with MULTICALL,
+  so we can use MULTICALL.

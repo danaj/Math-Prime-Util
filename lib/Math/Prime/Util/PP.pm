@@ -43,7 +43,17 @@ our $_Infinity = 0+'inf';
 $_Infinity = 20**20**20 if 65535 > $_Infinity;   # E.g. Windows
 our $_Neg_Infinity = -$_Infinity;
 
-my $_have_MPFR = -1;
+{
+  my $_have_MPFR = -1;
+  sub _MPFR_available {
+    if ($_have_MPFR < 0) {
+      $_have_MPFR = 0;
+      $_have_MPFR = 1 if (!defined $ENV{MPU_NO_MPFR} || $ENV{MPU_NO_MPFR} != 1)
+                      && eval { require Math::MPFR; $Math::MPFR::VERSION>=2.03; };
+    }
+    return $_have_MPFR;
+  }
+}
 
 my $_precalc_size = 0;
 sub prime_precalc {
@@ -2121,14 +2131,8 @@ sub ExponentialIntegral {
   return 0              if $x == $_Neg_Infinity;
   return $_Infinity     if $x == $_Infinity;
 
-  # Use MPFR if possible.
-  if ($_have_MPFR < 0) {
-    $_have_MPFR = 0;
-    $_have_MPFR = 1 if (!defined $ENV{MPU_NO_MPFR} || $ENV{MPU_NO_MPFR} != 1)
-                    && eval { require Math::MPFR; $Math::MPFR::VERSION>=2.03; };
-  }
   # Gotcha -- MPFR decided to make negative inputs return NaN.  Grrr.
-  if ($_have_MPFR && $x > 0) {
+  if ($x > 0 && _MPFR_available()) {
     my $wantbf = 0;
     my $xdigits = 17;
     if (defined $bignum::VERSION || ref($x) =~ /^Math::Big/) {
@@ -2231,14 +2235,8 @@ sub LogarithmicIntegral {
   return $_Infinity     if $x == $_Infinity;
   croak "Invalid input to LogarithmicIntegral:  x must be > 0" if $x <= 0;
 
-  # Use MPFR if possible.
-  if ($_have_MPFR < 0) {
-    $_have_MPFR = 0;
-    $_have_MPFR = 1 if (!defined $ENV{MPU_NO_MPFR} || $ENV{MPU_NO_MPFR} != 1)
-                    && eval { require Math::MPFR; $Math::MPFR::VERSION>=2.03; };
-  }
   # Remember MPFR eint doesn't handle negative inputs
-  if ($_have_MPFR && $x >= 1) {
+  if ($x >= 1 && _MPFR_available()) {
     my $wantbf = 0;
     my $xdigits = 17;
     if (defined $bignum::VERSION || ref($x) =~ /^Math::Big/) {
@@ -2365,12 +2363,7 @@ sub RiemannZeta {
   my($x) = @_;
 
   # Use MPFR if possible.
-  if ($_have_MPFR < 0) {
-    $_have_MPFR = 0;
-    $_have_MPFR = 1 if (!defined $ENV{MPU_NO_MPFR} || $ENV{MPU_NO_MPFR} != 1)
-                    && eval { require Math::MPFR; $Math::MPFR::VERSION>=2.03; };
-  }
-  if ($_have_MPFR) {
+  if (_MPFR_available()) {
     my $wantbf = 0;
     my $xdigits = 17;
     if (defined $bignum::VERSION || ref($x) =~ /^Math::Big/) {
@@ -2456,12 +2449,7 @@ sub RiemannR {
   croak "Invalid input to ReimannR:  x must be > 0" if $x <= 0;
 
   # Use MPFR if possible.
-  if ($_have_MPFR < 0) {
-    $_have_MPFR = 0;
-    $_have_MPFR = 1 if (!defined $ENV{MPU_NO_MPFR} || $ENV{MPU_NO_MPFR} != 1)
-                    && eval { require Math::MPFR; $Math::MPFR::VERSION>=2.03; };
-  }
-  if ($_have_MPFR) {
+  if (_MPFR_available()) {
     my $wantbf = 0;
     my $xdigits = 17;
     if (defined $bignum::VERSION || ref($x) =~ /^Math::Big/) {

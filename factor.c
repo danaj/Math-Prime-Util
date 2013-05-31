@@ -380,7 +380,7 @@ int _SPRP2(UV n)
   UV const nm1 = n-1;
   UV d = n-1;
   UV x;
-  int b, r, s = 0;
+  int r, s = 0;
 
   MPUassert(n > 3, "S-PRP-2 called with n <= 3");
   if (!(n & 1)) return 0;
@@ -502,7 +502,7 @@ int _XS_is_prob_prime(UV n)
  */
 int _XS_is_extra_strong_lucas_pseudoprime(UV n)
 {
-  UV P, D, Q, U, V, t, t2, d, s, b;
+  UV P, D, Q, U, V, d, s, b;
   int const _verbose = _XS_get_verbose();
 
   if (n == 2 || n == 3) return 1;
@@ -537,7 +537,7 @@ int _XS_is_extra_strong_lucas_pseudoprime(UV n)
     b--;
     if (_verbose>3) printf("U2k=%lu  V2k=%lu\n", U, V);
     if ( (d >> (b-1)) & UVCONST(1) ) {
-      t2 = mulmod(U, D, n);
+      UV t2 = mulmod(U, D, n);
       U = muladdmod(U, P, V, n);
       if (U & 1) { U = (n>>1) + (U>>1) + 1; } else { U >>= 1; }
       V = muladdmod(V, P, t2, n);
@@ -1198,7 +1198,8 @@ int racing_squfof_factor(UV n, UV *factors, UV rounds)
 /*
  *
  * The Frobenius-Underwood test has no known counterexamples below 10^13, but
- * has not been extensively tested above that.
+ * has not been extensively tested above that.  This is the Minimal Lambda+2
+ * test from section 9 of "Quadratic Composite Tests" by Paul Underwood.
  *
  * Given the script:
  *  time mpu 'forprimes { Math::Prime::Util::_XS_is_frobenius_underwood_pseudoprime($_); Math::Prime::Util::_XS_is_frobenius_underwood_pseudoprime($_+2); } 100_000_000'
@@ -1234,17 +1235,18 @@ int racing_squfof_factor(UV n, UV *factors, UV rounds)
  *
  * We try to structure the primality test like:
  *   1) simple divisibility    very fast       primes and ~10% of composites
- *   2) M-R with base 2        1 Selfridge     most remaining composites gone
+ *   2) M-R with base 2        1 Selfridge     primes and .00000000002% comps
  *   3) Lucas test             2 Selfridge     only primes
  *
- * Hence given a composite, it will typically cost 0-1 Selfridges, and for
- * our 64-bit values, the final Lucas test has no false positives.  Replacing
- * the Lucas test with the F-U test won't save any time.  Replacing the whole
- * thing with the F-U test (assuming it has no false results for all 64-bit
- * values), doesn't help much either -- it's 2/3 the cost for primes, but much
- * more expensive for composites.  It seems of interest for > 2^64 as a
- * different test to do in addition to BPSW.
- *
+ * Hence given a random composite, about 90% of the time it costs us almost
+ * nothing.  After spending 1 Selfridge on the first MR test, less than 32M
+ * composites remain undecided out of 18 quintillion 64-bit composites.  The
+ * final Lucas test has no false positives.
+ * Replacing the Lucas test with the F-U test won't save any time.  Replacing
+ * the whole thing with the F-U test (assuming it has no false results for
+ * all 64-bit values, which hasn't been verified), doesn't help either.
+ * It's 2/3 the cost for primes, but much more expensive for composites.  It
+ * seems of interest for > 2^64 as a different test to do in addition to BPSW.
  */
 
 
