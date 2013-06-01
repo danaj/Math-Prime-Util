@@ -179,7 +179,7 @@ while (my($psrp, $baseref) = each (%pseudoprimes)) {
   SKIP: {
     skip "Your 64-bit Perl is broken, skipping pseudoprime tests for $psrp", 1 if $broken64 && $psrp == 3825123056546413051;
     my $baselist = join(",", @$baseref);
-    my @expmr = map { 1 } @$baseref;
+    my @expmr = map { (0!=1) } @$baseref;
     my @gotmr = map { is_strong_pseudoprime($psrp, $_) } @$baseref;
     is_deeply(\@gotmr, \@expmr, "$psrp is a strong pseudoprime to bases $baselist");
   }

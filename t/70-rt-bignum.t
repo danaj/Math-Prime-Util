@@ -23,8 +23,11 @@ my $n = 100199294509778143137521762187425301691197073534078445671945250753109628
 
 my @partial_factor = Math::Prime::Util::PP::prho_factor(100199294509778143137521762187425301691197073534078445671945250753109628678272, 5);
 
-is_deeply( \@partial_factor, 
-           [2,2,2,2,2,2,2,3,7,37276523255125797298185179385202865212498911284999421752955822452793760669],
+my @expected_factors =
+   map { ($_ <= 4294967295 && ref($_)) ? int($_->bstr) : $_ }
+   (2,2,2,2,2,2,2,3,7,37276523255125797298185179385202865212498911284999421752955822452793760669);
+
+is_deeply( \@partial_factor, \@expected_factors,
            "PP prho factors correctly with 'use bignum'" );
 
 # The same thing happens in random primes, PP holf factoring,
