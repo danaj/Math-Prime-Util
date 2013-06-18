@@ -1599,6 +1599,8 @@ sub is_strong_pseudoprime {
 sub is_lucas_pseudoprime {
   my($n) = shift;
   _validate_num($n) || _validate_positive_integer($n);
+  return _XS_is_lucas_pseudoprime($n, 0)
+    if ref($n) ne 'Math::BigInt' && $n <= $_XS_MAXVAL;
   return Math::Prime::Util::GMP::is_lucas_pseudoprime("$n")
     if $_HAVE_GMP && defined &Math::Prime::Util::GMP::is_lucas_pseudoprime;
   return Math::Prime::Util::PP::is_lucas_pseudoprime($n);
@@ -1607,6 +1609,8 @@ sub is_lucas_pseudoprime {
 sub is_strong_lucas_pseudoprime {
   my($n) = shift;
   _validate_num($n) || _validate_positive_integer($n);
+  return _XS_is_lucas_pseudoprime($n, 1)
+    if ref($n) ne 'Math::BigInt' && $n <= $_XS_MAXVAL;
   return Math::Prime::Util::GMP::is_strong_lucas_pseudoprime("$n")
     if $_HAVE_GMP;
   return Math::Prime::Util::PP::is_strong_lucas_pseudoprime($n);
@@ -1615,7 +1619,7 @@ sub is_strong_lucas_pseudoprime {
 sub is_extra_strong_lucas_pseudoprime {
   my($n) = shift;
   _validate_num($n) || _validate_positive_integer($n);
-  return _XS_is_extra_strong_lucas_pseudoprime($n)
+  return _XS_is_lucas_pseudoprime($n, 2)
     if ref($n) ne 'Math::BigInt' && $n <= $_XS_MAXVAL;
   return Math::Prime::Util::GMP::is_extra_strong_lucas_pseudoprime("$n")
     if $_HAVE_GMP
@@ -1771,7 +1775,7 @@ sub verify_prime {
     my $intn = int($n->bstr);
     if ($n->bcmp("$intn") == 0 && $intn <= $_XS_MAXVAL) {
       $bpsw = _XS_miller_rabin($intn, 2)
-           && _XS_is_extra_strong_lucas_pseudoprime($intn);
+           && _XS_is_lucas_pseudoprime($intn,2);
     } elsif ($_HAVE_GMP) {
       $bpsw = Math::Prime::Util::GMP::is_prob_prime($n);
     } else {

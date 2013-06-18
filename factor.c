@@ -428,7 +428,7 @@ int _XS_is_prob_prime(UV n)
   /* Verified with Feitsma database.  No counterexamples below 2^64.
    * This is faster than multiple M-R routines once we're over 32-bit */
   if (n >= UVCONST(4294967295)) {
-    prob_prime = _SPRP2(n) && _XS_is_extra_strong_lucas_pseudoprime(n);
+    prob_prime = _SPRP2(n) && _XS_is_lucas_pseudoprime(n,2);
     return 2*prob_prime;
   }
 
@@ -485,72 +485,142 @@ int _XS_is_prob_prime(UV n)
 #endif
 }
 
-/* Extra Strong Lucas test.
+/* Generic Lucas sequence for any appropriate P and Q */
+static void lucas_seq(UV* Uret, UV* Vret, UV* Qkret, UV n, IV P, IV Q, UV k)
+{
+  UV U, V, b, Dmod, Qmod, Pmod, Qk;
+  IV D;
+
+  if (k == 0) {
+    *Uret = 0;
+    *Vret = 2;
+    *Qkret = Q;
+    return;
+  }
+
+  Qmod = (Q < 0) ? Q + n : Q;
+  Pmod = (P < 0) ? P + n : P;
+  Dmod = addmod( mulmod(Pmod, Pmod, n), n - mulmod(4, Qmod, n), n );
+  MPUassert(Dmod != 0, "lucas_seq: D is 0");
+  U = 1;
+  V = Pmod;
+  Qk = Qmod;
+  { UV v = k; b = 1; while (v >>= 1) b++; }
+
+  if (Q == 1) {
+    while (b > 1) {
+      U = mulmod(U, V, n);
+      V = muladdmod(V, V, n-2, n);
+      b--;
+      if ( (k >> (b-1)) & UVCONST(1) ) {
+        UV t2 = mulmod(U, Dmod, n);
+        U = muladdmod(U, Pmod, V, n);
+        if (U & 1) { U = (n>>1) + (U>>1) + 1; } else { U >>= 1; }
+        V = muladdmod(V, P, t2, n);
+        if (V & 1) { V = (n>>1) + (V>>1) + 1; } else { V >>= 1; }
+      }
+    }
+  } else {
+    while (b > 1) {
+      U = mulmod(U, V, n);
+      V = muladdmod(V, V, n - addmod(Qk, Qk, n), n);
+      Qk = sqrmod(Qk, n);
+      b--;
+      if ( (k >> (b-1)) & UVCONST(1) ) {
+        UV t2 = mulmod(U, Dmod, n);
+        U = muladdmod(U, Pmod, V, n);
+        if (U & 1) { U = (n>>1) + (U>>1) + 1; } else { U >>= 1; }
+        V = muladdmod(V, P, t2, n);
+        if (V & 1) { V = (n>>1) + (V>>1) + 1; } else { V >>= 1; }
+        Qk = mulmod(Qk, Qmod, n);
+      }
+    }
+  }
+  *Uret = U;
+  *Vret = V;
+  *Qkret = Qk;
+}
+
+/* Lucas tests:
+ *  0: Standard
+ *  1: Strong
+ *  2: Extra Strong (Mo/Jones/Grantham)
  *
  * Goal:
  *       (1) no false results when combined with the SPRP-2 test.
  *       (2) fast enough to use SPRP-2 + this in place of 3+ M-R tests.
  *
- * Why the extra strong test?  If we use Q=1, the code is both simpler and
- * faster.  But the Selfridge parameters have P==1 Q!=1.  Once we decide to
- * go with the Q==1, P!=1 method, then we may as well use the extra strong
- * test so we can verify results (e.g. OEIS A217719).  There is no cost to
- * run this vs. the strong or standard test.
+ * For internal purposes, we typically want to use the extra strong test
+ * because it is slightly faster (Q = 1 simplies things).  None of them have
+ * any false positives for the BPSW test.
  *
- * This runs about 7x faster than the GMP strong test, and about 2x slower
- * than our M-R tests.
+ * This runs 4-7x faster than MPU::GMP, which means ~10x faster than most GMP
+ * implementations.  It is about 2x slower than a single M-R test.
  */
-int _XS_is_extra_strong_lucas_pseudoprime(UV n)
+int _XS_is_lucas_pseudoprime(UV n, int strength)
 {
-  UV P, D, Q, U, V, d, s, b;
-  int const _verbose = _XS_get_verbose();
+  IV P, Q, D;
+  UV U, V, Qk, d, s, b;
 
   if (n == 2 || n == 3) return 1;
   if (n < 5 || (n%2) == 0) return 0;
   if (n == UV_MAX) return 0;
 
-  P = 3;
-  Q = 1;
-  while (1) {
-    D = P*P - 4;
-    if (gcd_ui(D, n) > 1 && gcd_ui(D, n) != n) return 0;
-    if (jacobi_iu(D, n) == -1)
-      break;
-    /* Perhaps n is a perfect square? */
-    if (P == 21 && is_perfect_square(n, 0)) return 0;
-    P++;
+  if (strength < 2) {
+    UV Du = 5;
+    IV sign = 1;
+    while (1) {
+      D = Du * sign;
+      if (gcd_ui(Du, n) > 1 && gcd_ui(Du, n) != n) return 0;
+      if (jacobi_iu(D, n) == -1)
+        break;
+      if (Du == 21 && is_perfect_square(n, 0)) return 0;
+      Du += 2;
+      sign = -sign;
+    }
+    P = 1;
+    Q = (1 - D) / 4;
+  } else {
+    P = 3;
+    Q = 1;
+    while (1) {
+      D = P*P - 4;
+      if (gcd_ui(D, n) > 1 && gcd_ui(D, n) != n) return 0;
+      if (jacobi_iu(D, n) == -1)
+        break;
+      if (P == 21 && is_perfect_square(n, 0)) return 0;
+      P++;
+    }
   }
-  if (_verbose>3) printf("N: %lu  D: %ld  P: %lu  Q: %ld\n", n, D, P, Q);
-  MPUassert( D == ((IV)(P*P)) - 4*Q , "incorrect DPQ");
+  MPUassert( D == (P*P - 4*Q) , "is_lucas_pseudoprime: incorrect DPQ");
 
-  U = 1;
-  V = P;
   d = n+1;
   s = 0;
-  while ( (d & 1) == 0 ) {  s++;  d >>= 1; }
-  { UV v = d; b = 1; while (v >>= 1) b++; }
+  if (strength > 0)
+    while ( (d & 1) == 0 ) {  s++;  d >>= 1; }
+  lucas_seq(&U, &V, &Qk, n, P, Q, d);
 
-  if (_verbose>3) printf("U=%lu  V=%lu\n", U, V);
-  while (b > 1) {
-    U = mulmod(U, V, n);
-    V = muladdmod(V, V, n-2, n);
-    b--;
-    if (_verbose>3) printf("U2k=%lu  V2k=%lu\n", U, V);
-    if ( (d >> (b-1)) & UVCONST(1) ) {
-      UV t2 = mulmod(U, D, n);
-      U = muladdmod(U, P, V, n);
-      if (U & 1) { U = (n>>1) + (U>>1) + 1; } else { U >>= 1; }
-      V = muladdmod(V, P, t2, n);
-      if (V & 1) { V = (n>>1) + (V>>1) + 1; } else { V >>= 1; }
-    }
-    if (_verbose>3) printf("U=%lu  V=%lu\n", U, V);
-  }
-  if ( (U == 0 && (V == 2 || V == (n-2))) || (V == 0) )
-    return 1;
-  while (s--) {
-    V = muladdmod(V, V, n-2, n);
-    if (V == 0)
+  if (strength == 0) {
+    if (U == 0)
       return 1;
+  } else if (strength == 1) {
+    if (U == 0 || V == 0)
+      return 1;
+    while (s--) {
+      V = muladdmod(V, V, n - addmod(Qk, Qk, n), n);
+      if (V == 0)
+        return 1;
+      if (s)
+        Qk = sqrmod(Qk, n);
+    }
+  } else {
+    if ( (U == 0 && (V == 2 || V == (n-2))) || (V == 0) )
+      return 1;
+    while (s--) {
+      V = muladdmod(V, V, n-2, n);
+      if (V == 0)
+        return 1;
+    }
   }
   return 0;
 }
@@ -1208,7 +1278,9 @@ int racing_squfof_factor(UV n, UV *factors, UV rounds)
  *   0.57    $_ (cost of empty loop)
  *   6.89    _XS_is_pseudoprime($_,2)
  *   6.82    _XS_miller_rabin($_,2)
- *  11.81    _XS_is_extra_strong_lucas_pseudoprime($_)
+ *  17.42    _XS_is_lucas_pseudoprime($_,0) (standard)
+ *  17.15    _XS_is_lucas_pseudoprime($_,1) (strong)
+ *  11.81    _XS_is_lucas_pseudoprime($_,2) (extra strong)
  *  13.07    _XS_is_frobenius_underwood_pseudoprime($_)
  *   7.87    _XS_is_prob_prime($_)
  *   8.74    _XS_is_prime($_)
