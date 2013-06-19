@@ -82,10 +82,19 @@
   #define addmod(n,a,m) ((((m)-(n)) > (a))  ?  ((n)+(a))  :  ((n)+(a)-(m)))
 #endif
 
+/* We need to make sure a and b get evaluated into UVs, then do the
+ * subtract into a UV before the addmod. */
+static INLINE UV submod(UV a, UV b, UV m) {
+  UV t1 = m - b;
+  return addmod(a, t1, m);
+}
+
 /* n^2 + a mod m */
 #define sqraddmod(n, a, m)     addmod(sqrmod(n,m),  a,m)
 /* i*j + a mod m */
 #define muladdmod(i, j, a, m)  addmod(mulmod(i,j,m), a, m)
+/* i*j - a mod m */
+#define mulsubmod(i, j, a, m)  submod(mulmod(i,j,m), a, m)
 
 /* n^power mod m */
 #ifndef HALF_WORD

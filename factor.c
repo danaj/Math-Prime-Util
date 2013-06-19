@@ -500,7 +500,7 @@ static void lucas_seq(UV* Uret, UV* Vret, UV* Qkret, UV n, IV P, IV Q, UV k)
 
   Qmod = (Q < 0) ? Q + n : Q;
   Pmod = (P < 0) ? P + n : P;
-  Dmod = addmod( mulmod(Pmod, Pmod, n), n - mulmod(4, Qmod, n), n );
+  Dmod = submod( mulmod(Pmod, Pmod, n), mulmod(4, Qmod, n), n);
   MPUassert(Dmod != 0, "lucas_seq: D is 0");
   U = 1;
   V = Pmod;
@@ -510,7 +510,7 @@ static void lucas_seq(UV* Uret, UV* Vret, UV* Qkret, UV n, IV P, IV Q, UV k)
   if (Q == 1) {
     while (b > 1) {
       U = mulmod(U, V, n);
-      V = muladdmod(V, V, n-2, n);
+      V = mulsubmod(V, V, 2, n);
       b--;
       if ( (k >> (b-1)) & UVCONST(1) ) {
         UV t2 = mulmod(U, Dmod, n);
@@ -523,7 +523,7 @@ static void lucas_seq(UV* Uret, UV* Vret, UV* Qkret, UV n, IV P, IV Q, UV k)
   } else {
     while (b > 1) {
       U = mulmod(U, V, n);
-      V = muladdmod(V, V, n - addmod(Qk, Qk, n), n);
+      V = mulsubmod(V, V, addmod(Qk,Qk,n), n);
       Qk = sqrmod(Qk, n);
       b--;
       if ( (k >> (b-1)) & UVCONST(1) ) {
@@ -617,7 +617,7 @@ int _XS_is_lucas_pseudoprime(UV n, int strength)
     if ( (U == 0 && (V == 2 || V == (n-2))) || (V == 0) )
       return 1;
     while (s--) {
-      V = muladdmod(V, V, n-2, n);
+      V = mulsubmod(V, V, 2, n);
       if (V == 0)
         return 1;
     }
@@ -1353,14 +1353,14 @@ int _XS_is_frobenius_underwood_pseudoprime(UV n)
       t2 = addmod(b, b, n);
       na = mulmod(a, t2, n);
       t1 = addmod(b, a, n);
-      t2 = addmod(b, n-a, n);  /* subtract */
+      t2 = submod(b, a, n);
       b = mulmod(t1, t2, n);
       a = na;
       if ( (np1 >> bit) & UVCONST(1) ) {
         t1 = mulmod(a, 2, n);
         na = addmod(t1, b, n);
         t1 = addmod(b, b, n);
-        b = addmod(t1, n-a, n); /* subtract */
+        b = submod(t1, a, n);
         a = na;
       }
     }
@@ -1371,14 +1371,14 @@ int _XS_is_frobenius_underwood_pseudoprime(UV n)
       t1 = addmod(t1, t2, n);
       na = mulmod(a, t1, n);
       t1 = addmod(b, a, n);
-      t2 = addmod(b, n-a, n);  /* subtract */
+      t2 = submod(b, a, n);
       b = mulmod(t1, t2, n);
       a = na;
       if ( (np1 >> bit) & UVCONST(1) ) {
         t1 = mulmod(a, multiplier, n);
         na = addmod(t1, b, n);
         t1 = addmod(b, b, n);
-        b = addmod(t1, n-a, n); /* subtract */
+        b = submod(t1, a, n);
         a = na;
       }
     }
