@@ -3,6 +3,8 @@ Revision history for Perl extension Math::Prime::Util.
 0.30 
     - Add standard and strong Lucas tests in XS.
 
+    - Fixed a rare refcount / bignum / callback issue.
+
 0.29 30 May 2013
 
     - Fix a signed vs. unsigned char issue in ranged moebius.  Thanks to the

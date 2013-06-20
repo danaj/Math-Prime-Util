@@ -12,7 +12,7 @@ use warnings;
 use Math::Prime::Util qw/:all/;
 use bignum;
 
-use Test::More tests => 1;
+use Test::More tests => 2;
 
 if ($] < 5.008) {
   diag "A prototype warning was expected with old, old Perl";
@@ -32,3 +32,14 @@ is_deeply( \@partial_factor, \@expected_factors,
 
 # The same thing happens in random primes, PP holf factoring,
 # PP is_provable_primes, and possibly elsewhere
+
+################################################################################
+
+# Here is another test case that has to do with reference counting
+# in the XS subroutine callback code.
+SKIP: {
+  skip "No MPU::GMP, skipping callback test",1 unless prime_get_config->{'gmp'};
+  my $n = 10**1200+5226;
+  my $expect = $n+1;
+  is(next_prime($n), $expect, "next_prime(10^1200+5226) = 10^1200+5227");
+}

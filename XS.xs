@@ -95,19 +95,21 @@ static int _validate_int(SV* n, int negok)
   return 1;
 }
 
-/* Call a Perl sub with one SV* in and a SV* return value.
- * We use this to foist off big inputs onto Perl.
+/* Call a Perl sub to handle work for us.
+ *   The input is a single SV on the top of the stack.
+ *   The output is a single mortal SV that is on the stack.
  */
-static SV* _callsub(SV* arg, const char* name)
+static void _vcallsub(const char* name)
 {
   dTHX;
   dSP;                               /* Local copy of stack pointer         */
   int count;
-  SV* v;
+  SV* arg;
 
   ENTER;                             /* Start wrapper                       */
   SAVETMPS;                          /* Start (2)                           */
 
+  arg = POPs;                        /* Get argument value from stack       */
   PUSHMARK(SP);                      /* Start args: note our SP             */
   XPUSHs(arg);
   PUTBACK;                           /* End args:   set global SP to ours   */
@@ -118,11 +120,12 @@ static SV* _callsub(SV* arg, const char* name)
   if (count != 1)
     croak("callback sub should return one value");
 
-  v = newSVsv(POPs);                 /* Get the returned value              */
+  TOPs = SvREFCNT_inc(TOPs);         /* Make sure FREETMPS doesn't kill it  */
 
+  PUTBACK;
   FREETMPS;                          /* End wrapper                         */
   LEAVE;                             /* End (2)                             */
-  return v;
+  TOPs = sv_2mortal(TOPs);           /* mortalize it.  refcnt will be 1.    */
 }
 
 #if BITS_PER_WORD == 64
@@ -465,15 +468,14 @@ is_prime(IN SV* n)
     is_prob_prime = 1
   PREINIT:
     int status;
-  CODE:
+  PPCODE:
     status = _validate_int(n, 1);
-    RETVAL = 0;
     if (status == -1) {
-      /* return 0 */
+      XSRETURN_UV(0);
     } else if (status == 1) {
       UV val;
       set_val_from_sv(val, n);
-      RETVAL = _XS_is_prime(val);
+      XSRETURN_UV(_XS_is_prime(val));
     } else {
       SV* result;
       const char* sub = 0;
@@ -483,11 +485,9 @@ is_prime(IN SV* n)
       else
         sub = (ix == 0) ? "Math::Prime::Util::_generic_is_prime"
                         : "Math::Prime::Util::_generic_is_prob_prime";
-      result = _callsub(ST(0), sub);
-      RETVAL = SvIV(result);
+      _vcallsub(sub);
+      XSRETURN(1);
     }
-  OUTPUT:
-    RETVAL
 
 UV
 _XS_next_prime(IN UV n)
@@ -507,10 +507,9 @@ next_prime(IN SV* n)
       if (ix) XSRETURN_UV(_XS_prev_prime(val));
       else    XSRETURN_UV(_XS_next_prime(val));
     } else {
-      SV* result = _callsub(ST(0), (ix == 0) ?
-                       "Math::Prime::Util::_generic_next_prime" :
-                       "Math::Prime::Util::_generic_prev_prime" );
-      XPUSHs(sv_2mortal(result));
+      _vcallsub((ix == 0) ?  "Math::Prime::Util::_generic_next_prime" :
+                             "Math::Prime::Util::_generic_prev_prime" );
+      XSRETURN(1);
     }
 
 
