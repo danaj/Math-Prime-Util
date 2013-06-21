@@ -477,7 +477,6 @@ is_prime(IN SV* n)
       set_val_from_sv(val, n);
       XSRETURN_UV(_XS_is_prime(val));
     } else {
-      SV* result;
       const char* sub = 0;
       if (_XS_get_callgmp())
         sub = (ix == 0) ? "Math::Prime::Util::GMP::is_prime"

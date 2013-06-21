@@ -560,7 +560,7 @@ static void lucas_seq(UV* Uret, UV* Vret, UV* Qkret, UV n, IV P, IV Q, UV k)
 int _XS_is_lucas_pseudoprime(UV n, int strength)
 {
   IV P, Q, D;
-  UV U, V, Qk, d, s, b;
+  UV U, V, Qk, d, s;
 
   if (n == 2 || n == 3) return 1;
   if (n < 5 || (n%2) == 0) return 0;

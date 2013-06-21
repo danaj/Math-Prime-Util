@@ -7,6 +7,7 @@ use Math::Primality;
 use Benchmark qw/:all/;
 my $count = shift || -2;
 srand(29);  # So we have repeatable results
+Math::Prime::Util::prime_set_config(irand => sub { int(rand(4294967295)) });
 
 test_at_digits($_, 1000) for (5, 15, 25, 50, 200);
 
