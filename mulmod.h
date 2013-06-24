@@ -63,8 +63,9 @@
   /* Do it by hand */
   static INLINE UV _mulmod(UV a, UV b, UV m) {
     UV r = 0;
-    a %= m;   /* These are wasteful given that careful attention from the */
-    b %= m;   /* caller should make them unnecessary.                     */
+    if (a >= m) a %= m;   /* Careful attention from the caller should make */
+    if (b >= m) b %= m;   /* these unnecessary.                            */
+    if (a < b) { UV t = a; a = b; b = t; }
     while (b > 0) {
       if (b & 1)  r = ((m-r) > a) ? r+a : r+a-m;    /* r = (r + a) % m */
       b >>= 1;

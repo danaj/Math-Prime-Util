@@ -19,6 +19,7 @@ our @EXPORT_OK =
       prime_certificate verify_prime
       is_pseudoprime is_strong_pseudoprime is_lucas_pseudoprime
       is_strong_lucas_pseudoprime is_extra_strong_lucas_pseudoprime
+      is_frobenius_underwood_pseudoprime
       is_aks_prime
       miller_rabin
       primes
@@ -1627,6 +1628,17 @@ sub is_extra_strong_lucas_pseudoprime {
   return Math::Prime::Util::PP::is_extra_strong_lucas_pseudoprime($n);
 }
 
+sub is_frobenius_underwood_pseudoprime {
+  my($n) = shift;
+  _validate_num($n) || _validate_positive_integer($n);
+  return _XS_is_frobenius_underwood_pseudoprime($n)
+    if ref($n) ne 'Math::BigInt' && $n <= $_XS_MAXVAL;
+  return Math::Prime::Util::GMP::is_frobenius_underwood_pseudoprime("$n")
+    if $_HAVE_GMP
+    && defined &Math::Prime::Util::GMP::is_frobenius_underwood_pseudoprime;
+  return Math::Prime::Util::PP::is_frobenius_underwood_pseudoprime($n);
+}
+
 sub miller_rabin {
   #warn "miller_rabin() is deprecated. Use is_strong_pseudoprime instead.";
   return is_strong_pseudoprime(@_);
@@ -2016,6 +2028,10 @@ sub verify_prime {
       $q  = $n->copy->bzero->badd("$q")  unless ref($q)  eq 'Math::BigInt';
       $Px = $n->copy->bzero->badd("$Px") unless ref($Px) eq 'Math::BigInt';
       $Py = $n->copy->bzero->badd("$Py") unless ref($Py) eq 'Math::BigInt';
+      if ( $ni <= 0 ) {
+        print "primality fail: AGKM block n is 0 or negative\n" if $verbose;
+        return 0;
+      }
       if (Math::BigInt::bgcd($ni, 6) != 1) {
         print "primality fail: AGKM block n '$ni' is divisible by 2 or 3\n" if $verbose;
         return 0;
@@ -2023,6 +2039,26 @@ sub verify_prime {
       my $c = $a*$a*$a * 4 + $b*$b * 27;
       if (Math::BigInt::bgcd($c, $ni) != 1) {
         print "primality fail: AGKM block gcd 4a^3+27b^2,n incorrect\n" if $verbose;
+        return 0;
+      }
+      if ( ($Py*$Py % $ni) != (($Px*$Px*$Px + $a*$Px + $b) % $ni) ) {
+        print "primality fail: AGKM block y^2 != x^3 + ax + b\n" if $verbose;
+        return 0;
+      }
+      if ( $m < ($ni - 2*$ni->copy->bsqrt + 1)) {
+        print "primality fail: AGKM block m too small\n" if $verbose;
+        return 0;
+      }
+      if ( $m > ($ni + 2*$ni->copy->bsqrt + 1)) {
+        print "primality fail: AGKM block m too large\n" if $verbose;
+        return 0;
+      }
+      if ( $q > $ni || $q <= 0 ) {
+        print "primality fail: AGKM block q invalid\n" if $verbose;
+        return 0;
+      }
+      if ( ($m == $q) || ($m % $q) != 0 ) {
+        print "primality fail: AGKM block m is not a multiple of q\n" if $verbose;
         return 0;
       }
       if ($q <= $ni->copy->broot(4)->badd(1)->bpow(2)) {
@@ -2959,6 +2995,15 @@ but uses different starting parameters so is not directly comparable.
 Removing primes, this produces the sequence
 L<OEIS A217719|http://oeis.org/A217719>.
 
+=head2 is_frobenius_underwood_pseudoprime
+
+Takes a positive number as input, and returns 1 if the input passes the minimal
+lambda+2 test (see Underwood 2012 "Quadratic Compositeness Tests"), where
+C<(L+2)^(n-1) = 5 + 2x mod (n, L^2 - Lx + 1)>.  The computational cost for this
+is between the cost of 2 and 3 strong pseudoprime tests.  There are no known
+counterexamples, but this is not a well studied test.
+
+
 
 =head2 is_prob_prime
 
@@ -3114,8 +3159,14 @@ A certificate is an array holding an C<n-cert>.  An C<n-cert> is one of:
          - the final q can be proved with BPSW.
          - for each block:
              - N is the same as the preceding block's q
+             - N >= 0
              - N is not divisible by 2 or 3
              - gcd( 4a^3 + 27b^2, N ) == 1;
+             - Py^2 = Px^3 + a*Px + b   mod N
+             - m >= (N - 2*sqrt(N) + 1)
+             - m <= (N + 2*sqrt(N) + 1)
+             - q >= 0  and  q <= n
+             - m != q  and  (m % q) == 0
              - q > (N^1/4+1)^2
              - U = (m/q)P is not the point at infinity
              - V = qU is the point at infinity

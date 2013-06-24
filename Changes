@@ -5,6 +5,13 @@ Revision history for Perl extension Math::Prime::Util.
 
     - Fixed a rare refcount / bignum / callback issue.
 
+    - Small mulmod speedup for non-gcc/x86_64 platforms.
+
+    - Add more conditions to ECPP block verification.
+
+    - Added:
+        is_frobenius_underwood_pseudoprime
+
 0.29 30 May 2013
 
     - Fix a signed vs. unsigned char issue in ranged moebius.  Thanks to the
