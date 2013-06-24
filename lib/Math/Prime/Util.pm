@@ -2737,6 +2737,7 @@ L</is_prime> return probable prime results using the strong Baillie-PSW test,
 which has had no counterexample found since it was published in 1980.
 
 
+
 =head2 primes
 
 Returns all the primes between the lower and upper limits (inclusive), with
@@ -2985,7 +2986,7 @@ function.
 
 =head2 miller_rabin
 
-An alias for C<is_strong_pseudoprime>.  This name is being deprecated.
+An alias for C<is_strong_pseudoprime>.  This name is deprecated.
 
 =head2 is_lucas_pseudoprime
 
@@ -3008,11 +3009,17 @@ L<OEIS A217255|http://oeis.org/A217255>.
 
 Takes a positive number as input, and returns 1 if the input passes the extra
 strong Lucas test (as defined in
-L<Grantham 2000|http://www.ams.org/mathscinet-getitem?mr=1680879>).
+L<Grantham 2000|http://www.ams.org/mathscinet-getitem?mr=1680879>).  Parameter
+selection is done by incrementing C<P> from C<3> until C<jacobi(D,n) = -1>.
 This has slightly more restrictive conditions than the strong Lucas test,
 but uses different starting parameters so is not directly comparable.
 Removing primes, this produces the sequence
 L<OEIS A217719|http://oeis.org/A217719>.
+
+The extra strong Lucas test typically performs 20 to 30% faster than the
+strong Lucas test, and produces fewer pseudoprimes.  There are no
+counterexamples below C<2^64> with BPSW using any of the Lucas tests, and
+no published counterexamples of any size.
 
 =head2 is_frobenius_underwood_pseudoprime
 
@@ -3211,7 +3218,7 @@ However AKS in general is far too slow to be of practical use.  R.P. Brent,
 
   my($U, $V, $Qk) = lucas_sequence($n, $P, $Q, $k)
 
-Computes C<U_k>, C<V_k>, and C<Q_k> for the Lucas seqence defined by
+Computes C<U_k>, C<V_k>, and C<Q_k> for the Lucas sequence defined by
 C<P>,C<Q>, modulo C<n>.  The modular Lucas sequence is used in a
 number of primality tests and proofs.
 

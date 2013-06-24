@@ -2842,6 +2842,14 @@ L<Grantham 2000|http://www.ams.org/mathscinet-getitem?mr=1680879>).
 This has slightly more restrictive conditions than the strong Lucas test,
 but uses different starting parameters so is not directly comparable.
 
+=head2 is_frobenius_underwood_pseudoprime
+
+Takes a positive number as input, and returns 1 if the input passes the minimal
+lambda+2 test (see Underwood 2012 "Quadratic Compositeness Tests"), where
+C<(L+2)^(n-1) = 5 + 2x mod (n, L^2 - Lx + 1)>.  The computational cost for this
+is between the cost of 2 and 3 strong pseudoprime tests.  There are no known
+counterexamples, but this is not a well studied test.
+
 =head2 is_aks_prime
 
 Takes a positive number as input, and returns 1 if the input can be proven
@@ -2866,7 +2874,7 @@ composite, though it should not be anywhere near as long as the Lucas test.
 
   my($U, $V, $Qk) = lucas_sequence($n, $P, $Q, $k)
 
-Computes C<U_k>, C<V_k>, and C<Q_k> for the Lucas seqence defined by
+Computes C<U_k>, C<V_k>, and C<Q_k> for the Lucas sequence defined by
 C<P>,C<Q>, modulo C<n>.  The modular Lucas sequence is used in a
 number of primality tests and proofs.
 
