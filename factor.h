@@ -22,6 +22,7 @@ extern int _XS_is_pseudoprime(UV n, UV a);
 extern int _XS_miller_rabin(UV n, const UV *bases, int nbases);
 extern int _SPRP2(UV n);
 extern int _XS_is_prob_prime(UV n);
+extern void lucas_seq(UV* U, UV* V, UV* Qk,  UV n, IV P, IV Q, UV k);
 extern int _XS_is_lucas_pseudoprime(UV n, int strength);
 extern int _XS_is_frobenius_underwood_pseudoprime(UV n);
 

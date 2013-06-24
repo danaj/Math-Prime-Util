@@ -450,6 +450,16 @@ _XS_miller_rabin(IN UV n, ...)
   OUTPUT:
     RETVAL
 
+void
+_XS_lucas_sequence(IN UV n, IN IV P, IN IV Q, IN UV k)
+  PREINIT:
+    UV U, V, Qk;
+  PPCODE:
+    lucas_seq(&U, &V, &Qk,  n, P, Q, k);
+    XPUSHs(sv_2mortal(newSVuv( U )));
+    XPUSHs(sv_2mortal(newSVuv( V )));
+    XPUSHs(sv_2mortal(newSVuv( Qk )));
+
 int
 _XS_is_lucas_pseudoprime(IN UV n, int strength)
 

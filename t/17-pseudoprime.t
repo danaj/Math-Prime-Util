@@ -6,7 +6,8 @@ use Test::More;
 use Math::Prime::Util qw/is_prime
                          is_pseudoprime is_strong_pseudoprime
                          is_lucas_pseudoprime is_strong_lucas_pseudoprime
-                         is_extra_strong_lucas_pseudoprime/;
+                         is_extra_strong_lucas_pseudoprime
+                         lucas_sequence/;
 
 my $use64 = Math::Prime::Util::prime_get_config->{'maxbits'} > 32;
 my $extra = defined $ENV{EXTENDED_TESTING} && $ENV{EXTENDED_TESTING};
@@ -72,6 +73,17 @@ foreach my $ppref (values %pseudoprimes) {
 }
 my @small_lucas_trials = (2, 9, 16, 100, 102, 2047, 2048, 5781, 9000, 14381);
 
+my %lucas_sequences = (
+  "323 1 1 324" => [0,2,1],
+  "323 4 1 324" => [170,308,1],
+  "323 4 5 324" => [194,156,115],
+  "323 3 1 324" => [0,2,1],
+  "323 3 1  81" => [0,287,1],
+  "323 5 -1 81" => [153,195,322],
+  "49001 25 117 24501" => [20933,18744,19141],
+  "18971 10001 -1 4743" => [5866,14421,18970],
+);
+
 plan tests => 0 + 3
                 + 4
                 + $num_pseudoprimes
@@ -79,6 +91,7 @@ plan tests => 0 + 3
                 + 1  # mr base 2    2-4k
                 + 9  # mr with large bases
                 + scalar @small_lucas_trials
+                + scalar(keys %lucas_sequences)
                 + 1*$extra;
 
 ok(!eval { is_strong_pseudoprime(2047); }, "MR with no base fails");
@@ -164,4 +177,12 @@ if ($extra) {
     }
   }
   is($mr2fail, 0, "is_strong_pseudoprime bases 2,3 matches is_prime to 1,373,652");
+}
+
+# Lucas sequences, used for quite a few tests
+sub lucas_sequence_to_native {
+  map { (ref($_) eq 'Math::BigInt') ? int($_->bstr) : $_ } lucas_sequence(@_);
+}
+while (my($params, $expect) = each (%lucas_sequences)) {
+  is_deeply( [lucas_sequence_to_native(split(' ', $params))], $expect, "Lucas sequence $params" );
 }

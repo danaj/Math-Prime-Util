@@ -486,7 +486,7 @@ int _XS_is_prob_prime(UV n)
 }
 
 /* Generic Lucas sequence for any appropriate P and Q */
-static void lucas_seq(UV* Uret, UV* Vret, UV* Qkret, UV n, IV P, IV Q, UV k)
+void lucas_seq(UV* Uret, UV* Vret, UV* Qkret, UV n, IV P, IV Q, UV k)
 {
   UV U, V, b, Dmod, Qmod, Pmod, Qk;
   IV D;

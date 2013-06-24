@@ -903,7 +903,7 @@ sub _jacobi {
 }
 
 # Find first D in sequence (5,-7,9,-11,13,-15,...) where (D|N) == -1
-sub _find_jacobi_d_sequence {
+sub _lucas_selfridge_params {
   my($n) = @_;
 
   # D is typically quite small: 67 max for N < 10^19.  However, it is
@@ -913,39 +913,46 @@ sub _find_jacobi_d_sequence {
   while (1) {
     my $gcd = (ref($n) eq 'Math::BigInt') ? Math::BigInt::bgcd($d, $n)
                                           : _gcd_ui($d, $n);
-    return 0 if $gcd > 1 && $gcd != $n;  # Found divisor $d
+    return (0,0,0) if $gcd > 1 && $gcd != $n;  # Found divisor $d
     my $j = _jacobi($d * $sign, $n);
     last if $j == -1;
     $d += 2;
     croak "Could not find Jacobi sequence for $n" if $d > 4_000_000_000;
     $sign = -$sign;
   }
-  return ($sign * $d);
-}
-
-sub is_lucas_pseudoprime {
-  return is_strong_lucas_pseudoprime($_[0], 'weak');
-}
-
-sub is_strong_lucas_pseudoprime {
-  my($n, $doweak) = @_;
-  _validate_positive_integer($n);
-  $doweak = (defined $doweak && $doweak eq 'weak') ? 1 : 0;
-
-  return 1 if $n == 2;
-  return 0 if $n < 2 || ($n % 2) == 0;
-  return 0 if _is_perfect_square($n);
-
-  # Determine Selfridge D, P, and Q parameters
-  my $D = _find_jacobi_d_sequence($n);
-  return 0 if $D == 0;  # We found a divisor in the sequence
+  my $D = $sign * $d;
   my $P = 1;
   my $Q = int( (1 - $D) / 4 );
-  # Verify we've calculated this right
-  die "Selfridge error: $D, $P, $Q\n" if ($D != $P*$P - 4*$Q);
-  #warn "N: $n  D: $D  P: $P  Q: $Q\n";
+  ($P, $Q, $D)
+}
 
-  # It's now time to perform the Lucas pseudoprimality test using $D.
+sub _lucas_extrastrong_params {
+  my($n) = @_;
+
+  my ($P, $Q, $D) = (3, 1, 5);
+  while (1) {
+    my $gcd = (ref($n) eq 'Math::BigInt') ? Math::BigInt::bgcd($D, $n)
+                                          : _gcd_ui($D, $n);
+    return (0,0,0) if $gcd > 1 && $gcd != $n;  # Found divisor $d
+    last if _jacobi($D, $n) == -1;
+    $P++;
+    $D = $P*$P - 4;
+  }
+  ($P, $Q, $D);
+}
+
+# returns U_k, V_k, Q_k all mod n
+sub lucas_sequence {
+  my($n, $P, $Q, $k) = @_;
+
+  return (0, 2) if $k == 0;
+  my $D = $P*$P - 4*$Q;
+
+  croak "lucas_sequence: n must be >= 2" if $n < 2;
+  croak "lucas_sequence: k must be >= 0" if $k < 0;
+  croak "lucas_sequence: P out of range" if $P < 0 || $P >= $n;
+  croak "lucas_sequence: Q out of range" if $Q >= $n;
+  croak "lucas_sequence: D is zero" if $D == 0;
 
   if (ref($n) ne 'Math::BigInt') {
     if (!defined $Math::BigInt::VERSION) {
@@ -955,46 +962,97 @@ sub is_strong_lucas_pseudoprime {
     $n = Math::BigInt->new("$n");
   }
 
-  my $m = $n->copy->badd(1);
-  # Traditional d,s:
-  #   my $d=$m->copy; my $s=0; while ($d->is_even) { $s++; $d->brsft(1); }
-  #   die "Invalid $m, $d, $s\n" unless $m == $d * 2**$s;
-  my $dstr = substr($m->as_bin, 2);
-  my $s = 0;
-  if (!$doweak) {
-    $dstr =~ s/(0*)$//;
-    $s = length($1);
-  }
-
   my $ZERO = $n->copy->bzero;
   my $U = $ZERO + 1;
   my $V = $ZERO + $P;
   my $Qk = $ZERO + $Q;
+
+  $k = Math::BigInt->new("$k") unless ref($k) eq 'Math::BigInt';
+  my $kstr = substr($k->as_bin, 2);
   my $bpos = 0;
-  while (++$bpos < length($dstr)) {
-    $U = ($U * $V) % $n;
-    $V = ($V * $V - 2*$Qk) % $n;
-    $Qk = ($Qk * $Qk) % $n;
-    if (substr($dstr,$bpos,1)) {
-      my $T1 = $U->copy->bmul($D);
-      $U->badd($V);
-      $U->badd($n) if $U->is_odd;
-      $U->brsft(1);
-      $U->bmod($n);
 
-      $V->badd($T1);
-      $V->badd($n) if $V->is_odd;
-      $V->brsft(1);
-      $V->bmod($n);
+  if ($Q == 1) {
+    while (++$bpos < length($kstr)) {
+      $U = ($U * $V) % $n;
+      $V = ($V * $V - 2) % $n;
+      if (substr($kstr,$bpos,1)) {
+        my $T1 = $U->copy->bmul($D);
+        $U->bmul($P);
+        $U->badd($V);
+        $U->badd($n) if $U->is_odd;
+        $U->brsft(1);
 
-      $Qk = ($Qk * $Q) % $n;
+        $V->bmul($P);
+        $V->badd($T1);
+        $V->badd($n) if $V->is_odd;
+        $V->brsft(1);
+      }
+    }
+  } else {
+    while (++$bpos < length($kstr)) {
+      $U = ($U * $V) % $n;
+      $V = ($V * $V - 2*$Qk) % $n;
+      $Qk->bmul($Qk);
+      if (substr($kstr,$bpos,1)) {
+        my $T1 = $U->copy->bmul($D);
+        $U->bmul($P);
+        $U->badd($V);
+        $U->badd($n) if $U->is_odd;
+        $U->brsft(1);
+
+        $V->bmul($P);
+        $V->badd($T1);
+        $V->badd($n) if $V->is_odd;
+        $V->brsft(1);
+
+        $Qk->bmul($Q);
+      }
+      $Qk->bmod($n);
     }
   }
-  if ($doweak) { return $U->is_zero ? 1 : 0; }
-  return 1 if $U->is_zero || $V->is_zero;
+  $U->bmod($n);
+  $V->bmod($n);
+  return ($U, $V, $Qk);
+}
 
-  # Compute powers of V
-  foreach my $r (1 .. $s-1) {
+sub is_lucas_pseudoprime {
+  my($n) = @_;
+  _validate_positive_integer($n);
+
+  return 1 if $n == 2;
+  return 0 if $n < 2 || ($n % 2) == 0;
+  return 0 if _is_perfect_square($n);
+
+  my ($P, $Q, $D) = _lucas_selfridge_params($n);
+  return 0 if $D == 0;  # We found a divisor in the sequence
+  die "Lucas parameter error: $D, $P, $Q\n" if ($D != $P*$P - 4*$Q);
+
+  my($U, $V, $Qk) = lucas_sequence($n, $P, $Q, $n+1);
+  return $U->is_zero ? 1 : 0;
+}
+
+sub is_strong_lucas_pseudoprime {
+  my($n) = @_;
+  _validate_positive_integer($n);
+
+  return 1 if $n == 2;
+  return 0 if $n < 2 || ($n % 2) == 0;
+  return 0 if _is_perfect_square($n);
+
+  my ($P, $Q, $D) = _lucas_selfridge_params($n);
+  return 0 if $D == 0;  # We found a divisor in the sequence
+  die "Lucas parameter error: $D, $P, $Q\n" if ($D != $P*$P - 4*$Q);
+
+  my $m = $n+1;
+  my($s, $k) = (0, $m);
+  while ( $k > 0 && !($k % 2) ) {
+    $s++;
+    $k >>= 1;
+  }
+  my($U, $V, $Qk) = lucas_sequence($n, $P, $Q, $k);
+
+  return 1 if $U->is_zero || $V->is_zero;
+  foreach my $r (1 .. $s-1) { # Compute powers of V
     $V = ($V * $V - 2*$Qk) % $n;
     return 1 if $V->is_zero;
     $Qk = ($Qk * $Qk) % $n if $r < ($s-1);
@@ -1010,53 +1068,18 @@ sub is_extra_strong_lucas_pseudoprime {
   return 0 if $n < 2 || ($n % 2) == 0;
   return 0 if _is_perfect_square($n);
 
-  my ($P, $Q, $D) = (3, 1, 5);
-  while (1) {
-    my $gcd = (ref($n) eq 'Math::BigInt') ? Math::BigInt::bgcd($D, $n)
-                                          : _gcd_ui($D, $n);
-    return 0 if $gcd > 1 && $gcd != $n;  # Found divisor $d
-    last if _jacobi($D, $n) == -1;
-    $P++;
-    $D = $P*$P - 4;
+  my ($P, $Q, $D) = _lucas_extrastrong_params($n);
+  return 0 if $D == 0;  # We found a divisor in the sequence
+  die "Lucas parameter error: $D, $P, $Q\n" if ($D != $P*$P - 4*$Q);
+
+  my $m = $n+1;
+  my($s, $k) = (0, $m);
+  while ( $k > 0 && !($k % 2) ) {
+    $s++;
+    $k >>= 1;
   }
-  die "Lucas incorrect DPQ: $D, $P, $Q\n" if ($D != $P*$P - 4*$Q);
+  my($U, $V, $Qk) = lucas_sequence($n, $P, $Q, $k);
 
-  if (ref($n) ne 'Math::BigInt') {
-    if (!defined $Math::BigInt::VERSION) {
-      eval { require Math::BigInt;  Math::BigInt->import(try=>'GMP,Pari'); 1; }
-      or do { croak "Cannot load Math::BigInt "; }
-    }
-    $n = Math::BigInt->new("$n");
-  }
-
-  my $m = $n->copy->badd(1);
-  # Traditional d,s:
-  #   my $d=$m->copy; my $s=0; while ($d->is_even) { $s++; $d->brsft(1); }
-  #   die "Invalid $m, $d, $s\n" unless $m == $d * 2**$s;
-  my $dstr = substr($m->as_bin, 2);
-  $dstr =~ s/(0*)$//;
-  my $s = length($1);
-
-  my $ZERO = $n->copy->bzero;
-  my $U = $ZERO + 1;
-  my $V = $ZERO + $P;
-  my $bpos = 0;
-  while (++$bpos < length($dstr)) {
-    $U->bmul($V)->bmod($n);
-    $V->bmul($V)->bsub(2)->bmod($n);
-    if (substr($dstr,$bpos,1)) {
-      my $U_times_D = $U->copy->bmul($D);
-      $U->bmul($P)->badd($V);
-      $U->badd($n) if $U->is_odd;
-      $U->brsft(1);
-
-      $V->bmul($P)->badd($U_times_D);
-      $V->badd($n) if $V->is_odd;
-      $V->brsft(1);
-    }
-  }
-  $U->bmod($n);
-  $V->bmod($n);
   return 1 if $U->is_zero && ($V == 2 || $V == ($n-2));
   return 1 if $V->is_zero;
 
@@ -2793,6 +2816,22 @@ Given a positive number C<n> as input, performs a partial factorization of
 C<n-1>, then attempts a proof using theorem 5 of Brillhart, Lehmer, and
 Selfridge's 1975 paper.  This can take a long time to return if given a
 composite, though it should not be anywhere near as long as the Lucas test.
+
+=head2 lucas_sequence
+
+  my($U, $V, $Qk) = lucas_sequence($n, $P, $Q, $k)
+
+Computes C<U_k>, C<V_k>, and C<Q_k> for the Lucas seqence defined by
+C<P>,C<Q>, modulo C<n>.  The modular Lucas sequence is used in a
+number of primality tests and proofs.
+
+The following conditions must hold:
+  - C<< D = P*P - 4*Q  !=  0 >>
+  - C<< P > 0 >>
+  - C<< P < n >>
+  - C<< Q < n >>
+  - C<< k >= 0 >>
+  - C<< n >= 2 >>
 
 
 =head1 UTILITY FUNCTIONS

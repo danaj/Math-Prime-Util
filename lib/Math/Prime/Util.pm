@@ -22,6 +22,7 @@ our @EXPORT_OK =
       is_frobenius_underwood_pseudoprime
       is_aks_prime
       miller_rabin
+      lucas_sequence
       primes
       forprimes prime_iterator
       next_prime  prev_prime
@@ -1644,6 +1645,24 @@ sub miller_rabin {
   return is_strong_pseudoprime(@_);
 }
 
+sub lucas_sequence {
+  my($n, $P, $Q, $k) = @_;
+  _validate_num($n) || _validate_positive_integer($n);
+  _validate_num($k) || _validate_positive_integer($k);
+  { my $testP = (!defined $P || $P >= 0) ? $P : -$P;
+    _validate_num($testP) || _validate_positive_integer($testP); }
+  { my $testQ = (!defined $Q || $Q >= 0) ? $Q : -$Q;
+    _validate_num($testQ) || _validate_positive_integer($testQ); }
+  return _XS_lucas_sequence($n, $P, $Q, $k)
+    if ref($n) ne 'Math::BigInt' && $n <= $_XS_MAXVAL
+    && ref($k) ne 'Math::BigInt' && $k <= $_XS_MAXVAL;
+  return Math::Prime::Util::GMP::lucas_sequence($n, $P, $Q, $k)
+    if $_HAVE_GMP
+    && defined &Math::Prime::Util::GMP::lucas_sequence;
+  return Math::Prime::Util::PP::lucas_sequence($n, $P, $Q, $k);
+}
+
+
 #############################################################################
 
   # Oct 2012 note:  these numbers are old.
@@ -3186,6 +3205,23 @@ available (in L<Math::Primality>), and the implementation in
 L<Math::Prime::Util::GMP> compares favorably to others in the literature.
 However AKS in general is far too slow to be of practical use.  R.P. Brent,
 2010: "AKS is not a practical algorithm.  ECPP is much faster."
+
+
+=head2 lucas_sequence
+
+  my($U, $V, $Qk) = lucas_sequence($n, $P, $Q, $k)
+
+Computes C<U_k>, C<V_k>, and C<Q_k> for the Lucas seqence defined by
+C<P>,C<Q>, modulo C<n>.  The modular Lucas sequence is used in a
+number of primality tests and proofs.
+
+The following conditions must hold:
+  - C<< D = P*P - 4*Q  !=  0 >>
+  - C<< P > 0 >>
+  - C<< P < n >>
+  - C<< Q < n >>
+  - C<< k >= 0 >>
+  - C<< n >= 2 >>
 
 
 =head2 moebius
