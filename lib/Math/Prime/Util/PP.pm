@@ -1090,6 +1090,51 @@ sub is_extra_strong_lucas_pseudoprime {
   return 0;
 }
 
+sub is_frobenius_underwood_pseudoprime {
+  my($n) = @_;
+  _validate_positive_integer($n);
+  return 0 if $n < 2;
+  return 1 if $n < 4;
+  return 0 if ($n % 2) == 0;
+  return 0 if _is_perfect_square($n);
+
+  if (ref($n) ne 'Math::BigInt') {
+    if (!defined $Math::BigInt::VERSION) {
+      eval { require Math::BigInt;  Math::BigInt->import(try=>'GMP,Pari'); 1; }
+      or do { croak "Cannot load Math::BigInt "; }
+    }
+    $n = Math::BigInt->new("$n");
+  }
+
+  my $ZERO = $n->copy->bzero;
+  my $a = $ZERO + 1;
+  my $b = $ZERO + 2;
+
+  my ($x, $t, $np1, $len, $na) = (0, -1, $n+1, 1, undef);
+  while ( _jacobi($t, $n) != -1 ) {
+    $x++;
+    $t = $x*$x - 4;
+  }
+  my $result = $x+$x+5;
+  my $multiplier = $x+2;
+  $result %= $n if $result > $n;
+  $multiplier %= $n if $multiplier > $n;
+  { my $v = $np1; $len++ while ($v >>= 1); }
+  foreach my $bit (reverse 0 .. $len-2) {
+    $na = $a * (($a*$x) + ($b+$b));
+    $b = ( ($b + $a) * ($b - $a) ) % $n;
+    $a = $na % $n;
+    if ( ($np1 >> $bit) & 1 ) {
+      $na = $b + ($a * $multiplier);
+      $b += ($b - $a);
+      $a = $na;
+    }
+  }
+  $a->bmod($n);
+  $b->bmod($n);
+  return ($a == 0 && $b == $result) ? 1 : 0;
+}
+
 
 my $_poly_bignum;
 sub _poly_new {

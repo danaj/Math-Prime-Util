@@ -4,9 +4,12 @@ use warnings;
 
 use Test::More;
 use Math::Prime::Util qw/is_prime
-                         is_pseudoprime is_strong_pseudoprime
-                         is_lucas_pseudoprime is_strong_lucas_pseudoprime
+                         is_pseudoprime
+                         is_strong_pseudoprime
+                         is_lucas_pseudoprime
+                         is_strong_lucas_pseudoprime
                          is_extra_strong_lucas_pseudoprime
+                         is_frobenius_underwood_pseudoprime
                          lucas_sequence/;
 
 my $use64 = Math::Prime::Util::prime_get_config->{'maxbits'} > 32;
@@ -92,6 +95,7 @@ plan tests => 0 + 3
                 + 9  # mr with large bases
                 + scalar @small_lucas_trials
                 + scalar(keys %lucas_sequences)
+                + 1  # frob-underwood
                 + 1*$extra;
 
 ok(!eval { is_strong_pseudoprime(2047); }, "MR with no base fails");
@@ -176,7 +180,7 @@ if ($extra) {
       last;
     }
   }
-  is($mr2fail, 0, "is_strong_pseudoprime bases 2,3 matches is_prime to 1,373,652");
+  is($mr2fail, 0, "is_strong_pseudoprime bases 2,3 matches is_prime");
 }
 
 # Lucas sequences, used for quite a few tests
@@ -185,4 +189,18 @@ sub lucas_sequence_to_native {
 }
 while (my($params, $expect) = each (%lucas_sequences)) {
   is_deeply( [lucas_sequence_to_native(split(' ', $params))], $expect, "Lucas sequence $params" );
+}
+
+{
+  my $fufail = 0;
+  foreach my $i (1 .. 5000) {
+    my $n = int(rand(1000000000)) + 1;
+    my $ispfu = !!is_frobenius_underwood_pseudoprime($n);
+    my $prime = !!is_prime($n);
+    if ($ispfu != $prime) {
+      $fufail = $n;
+      last;
+    }
+  }
+  is($fufail, 0, "is_frobenius_underwood_pseudoprime matches is_prime");
 }
