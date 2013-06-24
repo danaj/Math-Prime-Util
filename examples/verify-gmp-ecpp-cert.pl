@@ -3,7 +3,7 @@ use warnings;
 use strict;
 use Math::BigInt try=>"GMP,Pari";
 use Math::Prime::Util qw/:all/;
-use Data::Dump qw/dump/;
+use Data::Dump qw/dumpf/;
 my $bifilter = sub { my($ctx, $n) = @_;
                      return {dump=>"$n"} if ref($n) eq "Math::BigInt";
                      undef; };
@@ -64,5 +64,5 @@ while (<>) {
   }
 }
 
-print dump_filtered(\@cert, $bifilter), "\n";
+print dumpf(\@cert, $bifilter), "\n";
 print verify_prime(@cert) ? "SUCCESS\n" : "FAILURE\n";
