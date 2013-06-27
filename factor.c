@@ -520,6 +520,26 @@ void lucas_seq(UV* Uret, UV* Vret, UV* Qkret, UV n, IV P, IV Q, UV k)
         if (V & 1) { V = (n>>1) + (V>>1) + 1; } else { V >>= 1; }
       }
     }
+  } else if (P == 1 && Q == -1) {
+    /* This is about 30% faster than the generic code below.  Since 50% of
+     * Lucas and strong Lucas tests come here, I think it's worth doing. */
+    int sign = Q;
+    while (b > 1) {
+      U = mulmod(U, V, n);
+      if (sign == 1) V = mulsubmod(V, V, 2, n);
+      else           V = muladdmod(V, V, 2, n);
+      sign = 1;   /* Qk *= Qk */
+      b--;
+      if ( (k >> (b-1)) & UVCONST(1) ) {
+        UV t2 = mulmod(U, Dmod, n);
+        U = addmod(U, V, n);
+        if (U & 1) { U = (n>>1) + (U>>1) + 1; } else { U >>= 1; }
+        V = addmod(V, t2, n);
+        if (V & 1) { V = (n>>1) + (V>>1) + 1; } else { V >>= 1; }
+        sign = -1;  /* Qk *= Q */
+      }
+    }
+    if (sign == 1) Qk = 1;
   } else {
     while (b > 1) {
       U = mulmod(U, V, n);
