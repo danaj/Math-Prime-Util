@@ -420,6 +420,11 @@ pminus1_factor(IN UV n, IN UV B1 = 1*1024*1024, IN UV B2 = 0)
       B2 = 10*B1;
     SIMPLE_FACTOR_2ARG(pminus1_factor, n, B1, B2);
 
+void
+pplus1_factor(IN UV n, IN UV B = 200)
+  PPCODE:
+    SIMPLE_FACTOR(pplus1_factor, n, B);
+
 int
 _XS_is_pseudoprime(IN UV n, IN UV a)
 

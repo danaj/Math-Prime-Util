@@ -12,6 +12,7 @@ Revision history for Perl extension Math::Prime::Util.
     - Added:
         is_frobenius_underwood_pseudoprime
         lucas_sequence
+        pplus1_factor
 
 0.29 30 May 2013
 

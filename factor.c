@@ -943,6 +943,57 @@ int pminus1_factor(UV n, UV *factors, UV B1, UV B2)
   return 1;
 }
 
+/* Simple Williams p+1 */
+int pplus1_factor(UV n, UV *factors, UV B)
+{
+  UV i, f, b;
+  UV P1, P2, P3, U1, U2, U3, V1, V2, V3;
+
+  /* Calculate 3 sequences at once */
+  P1 =  5 % n;
+  P2 =  9 % n;
+  P3 = 13 % n;
+  U1 = P1;  U2 = P2;  U3 = P3;
+  for (i = 1; i < B; i++) {
+    { UV v = i; b = 1; while (v >>= 1) b++; }
+    V1 = mulsubmod(P1, P1, 2, n);
+    V2 = mulsubmod(P2, P2, 2, n);
+    V3 = mulsubmod(P3, P3, 2, n);
+    while (b > 1) {
+      b--;
+      if ( (i >> (b-1)) & UVCONST(1) ) {
+        U1 = mulsubmod(U1, V1, P1, n);
+        V1 = mulsubmod(V1, V1,  2, n);
+        U2 = mulsubmod(U2, V2, P2, n);
+        V2 = mulsubmod(V2, V2,  2, n);
+        U3 = mulsubmod(U3, V3, P3, n);
+        V3 = mulsubmod(V3, V3,  2, n);
+      } else {
+        V1 = mulsubmod(U1, V1, P1, n);
+        U1 = mulsubmod(U1, U1,  2, n);
+        V2 = mulsubmod(U2, V2, P2, n);
+        U2 = mulsubmod(U2, U2,  2, n);
+        V3 = mulsubmod(U3, V3, P3, n);
+        U3 = mulsubmod(U3, U3,  2, n);
+      }
+    }
+    P1 = U1;  P2 = U2;  P3 = U3;
+    f = gcd_ui(n, submod(U1, 2, n));
+    if (f == 1 || f == n)
+      f = gcd_ui(n, submod(U2, 2, n));
+    if (f == 1 || f == n)
+      f = gcd_ui(n, submod(U3, 2, n));
+    if (f > 1 && f != n) {
+      factors[0] = f;
+      factors[1] = n/f;
+      MPUassert( factors[0] * factors[1] == n , "incorrect factoring");
+      return 2;
+    }
+  }
+  factors[0] = n;
+  return 1;
+}
+
 
 /* My modification of Ben Buhrow's modification of Bob Silverman's SQUFOF code.
  */
