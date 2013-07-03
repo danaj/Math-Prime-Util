@@ -624,22 +624,27 @@ int _XS_is_lucas_pseudoprime(UV n, int strength)
     if (U == 0)
       return 1;
   } else if (strength == 1) {
-    if (U == 0 || V == 0)
+    if (U == 0)
       return 1;
+    /* Now check to see if V_{d*2^r} == 0 for any 0 <= r < s */
     while (s--) {
-      V = muladdmod(V, V, n - addmod(Qk, Qk, n), n);
+      if (V == 0)
+        return 1;
+      if (s) {
+        V = mulsubmod(V, V, addmod(Qk,Qk,n), n);
+        Qk = sqrmod(Qk, n);
+      }
+    }
+  } else {
+    if ( U == 0 && (V == 2 || V == (n-2)) )
+      return 1;
+    /* Now check to see if V_{d*2^r} == 0 for any 0 <= r < s-1 */
+    s--;
+    while (s--) {
       if (V == 0)
         return 1;
       if (s)
-        Qk = sqrmod(Qk, n);
-    }
-  } else {
-    if ( (U == 0 && (V == 2 || V == (n-2))) || (V == 0) )
-      return 1;
-    while (s--) {
-      V = mulsubmod(V, V, 2, n);
-      if (V == 0)
-        return 1;
+        V = mulsubmod(V, V, 2, n);
     }
   }
   return 0;

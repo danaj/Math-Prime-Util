@@ -1051,11 +1051,13 @@ sub is_strong_lucas_pseudoprime {
   }
   my($U, $V, $Qk) = lucas_sequence($n, $P, $Q, $k);
 
-  return 1 if $U->is_zero || $V->is_zero;
-  foreach my $r (1 .. $s-1) { # Compute powers of V
-    $V = ($V * $V - 2*$Qk) % $n;
+  return 1 if $U->is_zero;
+  foreach my $r (0 .. $s-1) {
     return 1 if $V->is_zero;
-    $Qk = ($Qk * $Qk) % $n if $r < ($s-1);
+    if ($r < ($s-1)) {
+      $V->bmul($V)->bsub(2*$Qk)->bmod($n);
+      $Qk->bmul($Qk)->bmod($n);
+    }
   }
   return 0;
 }
@@ -1081,11 +1083,9 @@ sub is_extra_strong_lucas_pseudoprime {
   my($U, $V, $Qk) = lucas_sequence($n, $P, $Q, $k);
 
   return 1 if $U->is_zero && ($V == 2 || $V == ($n-2));
-  return 1 if $V->is_zero;
-
-  foreach my $r (1 .. $s-1) {
-    $V->bmul($V)->bsub(2)->bmod($n);
+  foreach my $r (0 .. $s-2) {
     return 1 if $V->is_zero;
+    $V->bmul($V)->bsub(2)->bmod($n);
   }
   return 0;
 }
