@@ -405,12 +405,14 @@ int _XS_is_prob_prime(UV n)
   int nbases;
   int prob_prime;
 
-  if (n == 2 || n == 3 || n == 5)           return 2;
-  if (n < 2 || !(n%2) || !(n%3) || !(n%5))  return 0;
-  if (n <   49) /* 7*7 */                   return 2;
-  if (!(n% 7) || !(n%11) || !(n%13) || !(n%17) || !(n%19) || !(n%23)) return 0;
-  if (!(n%29) || !(n%31) || !(n%37) || !(n%41) || !(n%43) || !(n%47)) return 0;
-  if (n < 2809) /* 53*53 */                 return 2;
+  if (n == 2 || n == 3 || n == 5 || n == 7)           return 2;
+  if (n < 2 || !(n%2) || !(n%3) || !(n%5) || !(n%7))  return 0;
+  if (n <   121) /* 11*11 */                          return 2;
+  if (!(n%11) || !(n%13) || !(n%17) || !(n%19) || !(n%23) || !(n%29) ||
+      !(n%31) || !(n%37) || !(n%41) || !(n%43) || !(n%47) || !(n%53) ||
+      !(n%59) || !(n%61) || !(n%67) || !(n%71) || !(n%73) || !(n%79) ||
+      !(n%83) || !(n%89) || !(n%97))                  return 0;
+  if (n < 10201) /* 101*101 */                        return 2;
 
 #if BITS_PER_WORD == 32
 
@@ -428,7 +430,7 @@ int _XS_is_prob_prime(UV n)
   /* Verified with Feitsma database.  No counterexamples below 2^64.
    * This is faster than multiple M-R routines once we're over 32-bit */
   if (n >= UVCONST(4294967295)) {
-    prob_prime = _SPRP2(n) && _XS_is_lucas_pseudoprime(n,2);
+    prob_prime = _SPRP2(n) && _XS_is_almost_extra_strong_lucas_pseudoprime(n,1);
     return 2*prob_prime;
   }
 
@@ -489,7 +491,6 @@ int _XS_is_prob_prime(UV n)
 void lucas_seq(UV* Uret, UV* Vret, UV* Qkret, UV n, IV P, IV Q, UV k)
 {
   UV U, V, b, Dmod, Qmod, Pmod, Qk;
-  IV D;
 
   if (k == 0) {
     *Uret = 0;
@@ -498,8 +499,8 @@ void lucas_seq(UV* Uret, UV* Vret, UV* Qkret, UV n, IV P, IV Q, UV k)
     return;
   }
 
-  Qmod = (Q < 0) ? Q + n : Q;
-  Pmod = (P < 0) ? P + n : P;
+  Qmod = (Q < 0)  ?  (UV)(Q + (IV)n)  :  (UV)Q;
+  Pmod = (P < 0)  ?  (UV)(P + (IV)n)  :  (UV)P;
   Dmod = submod( mulmod(Pmod, Pmod, n), mulmod(4, Qmod, n), n);
   MPUassert(Dmod != 0, "lucas_seq: D is 0");
   U = 1;
@@ -646,6 +647,70 @@ int _XS_is_lucas_pseudoprime(UV n, int strength)
       if (s)
         V = mulsubmod(V, V, 2, n);
     }
+  }
+  return 0;
+}
+
+/* A generalization of Pari's shortcut to the extra-strong Lucas test.
+ * I've added a gcd check at the top, which needs to be done and also results
+ * in fewer pseudoprimes.  Pari always does trial division to 100 first so
+ * is unlikely to come up there.  This only calculate V, which can be done
+ * faster, but that means we have more pseudoprimes than the standard
+ * extra-strong test.
+ *
+ * increment:  1 for Baillie OEIS, 2 for Pari.
+ *
+ * With increment = 1, these results will be a subset of the extra-strong
+ * Lucas pseudoprimes.  With increment = 2, we produce Pari's results.
+ */
+int _XS_is_almost_extra_strong_lucas_pseudoprime(UV n, UV increment)
+{
+  UV P, V, d, s;
+
+  if (n == 2 || n == 3 || n == 5) return 1;
+  if (n < 7 || (n%2) == 0) return 0;
+  if (n == UV_MAX) return 0;
+
+  P = 3;
+  while (1) {
+    UV D = P*P - 4;
+    d = gcd_ui(D, n);
+    if (d > 1 && d < n)
+      return 0;
+    if (jacobi_iu(D, n) == -1)
+      break;
+    if (P == (3+20*increment) && is_perfect_square(n, 0)) return 0;
+    P += increment;
+  }
+
+  d = n+1;
+  s = 0;
+  while ( (d & 1) == 0 ) {  s++;  d >>= 1; }
+
+  {
+    UV W, b;
+    V = P;
+    W = mulsubmod(P, P, 2, n);
+    { UV v = d; b = 1; while (v >>= 1) b++; }
+    while (b-- > 1) {
+      if ( (d >> (b-1)) & UVCONST(1) ) {
+        V = mulsubmod(V, W, P, n);
+        W = mulsubmod(W, W, 2, n);
+      } else {
+        W = mulsubmod(V, W, P, n);
+        V = mulsubmod(V, V, 2, n);
+      }
+    }
+  }
+
+  if (V == 2 || V == (n-2))
+    return 1;
+  while (s-- > 1) {
+    if (V == 0)
+      return 1;
+    V = mulsubmod(V, V, 2, n);
+    if (V == 2)
+      return 0;
   }
   return 0;
 }
@@ -1348,38 +1413,43 @@ int racing_squfof_factor(UV n, UV *factors, UV rounds)
  * test from section 9 of "Quadratic Composite Tests" by Paul Underwood.
  *
  * Given the script:
- *  time mpu 'forprimes { Math::Prime::Util::_XS_is_frobenius_underwood_pseudoprime($_); Math::Prime::Util::_XS_is_frobenius_underwood_pseudoprime($_+2); } 100_000_000'
+ *  time mpu 'forprimes { Math::Prime::Util::_XS_is_frobenius_underwood_pseudoprime($_); Math::Prime::Util::_XS_is_frobenius_underwood_pseudoprime($_+2); } 500_000_000'
  * and replacing the tests appropriately, I get these times:
  *
- *   0.57    $_ (cost of empty loop)
- *   6.89    _XS_is_pseudoprime($_,2)
- *   6.82    _XS_miller_rabin($_,2)
- *  17.42    _XS_is_lucas_pseudoprime($_,0) (standard)
- *  17.15    _XS_is_lucas_pseudoprime($_,1) (strong)
- *  11.81    _XS_is_lucas_pseudoprime($_,2) (extra strong)
- *  13.07    _XS_is_frobenius_underwood_pseudoprime($_)
- *   7.87    _XS_is_prob_prime($_)
- *   8.74    _XS_is_prime($_)
+ *    0.87    $_ (cost of empty loop)
+ *   21.37    _XS_is_pseudoprime($_,2)
+ *   22.42    _XS_miller_rabin($_,2)
+ *   44.53    _XS_is_lucas_pseudoprime($_)
+ *   43.95    _XS_is_strong_lucas_pseudoprime($_)
+ *   40.09    _XS_is_extra_strong_lucas_pseudoprime($_)
+ *   25.86    _XS_is_almost_extra_strong_lucas_pseudoprime($_)
+ *   42.40    _XS_is_frobenius_underwood_pseudoprime($_)
+ *   27.02    _XS_is_prob_prime($_)
+ *   27.24    _XS_is_prime($_)
  *
  * At these sizes is_prob_prime is doing 1-2 M-R tests.  The input validation
  * is adding a noticeable overhead to is_prime.
  *
- * With a set of 10k 64-bit random primes; 'do { die unless ... } for 1..500'
+ * With a set of 100k 64-bit random primes; 'do { die unless ... } for 1..50'
  *
- *   0.36    empty loop
- *  12.38    _XS_is_pseudoprime($_,2)
- *  12.05    _XS_miller_rabin($_,2)
- *  24.95    _XS_is_extra_strong_lucas_pseudoprime($_)
- *  22.35    _XS_is_frobenius_underwood_pseudoprime($_)
- *  36.67    _XS_is_prob_prime($_)
- *  37.24    _XS_is_prime($_)
+ *   0.32    empty loop
+ *  10.25    _XS_is_pseudoprime($_,2)
+ *  10.06    _XS_miller_rabin($_,2)
+ *  22.02    _XS_is_lucas_pseudoprime($_)
+ *  21.81    _XS_is_strong_lucas_pseudoprime($_)
+ *  20.99    _XS_is_extra_strong_lucas_pseudoprime($_)
+ *  14.01    _XS_is_almost_extra_strong_lucas_pseudoprime($_)
+ *  18.44    _XS_is_frobenius_underwood_pseudoprime($_)
+ *  24.11    _XS_is_prob_prime($_)
+ *  24.06    _XS_is_prime($_)
  *
  * At this point is_prob_prime has transitioned to BPSW.
  *
  * Calling a powmod a 'Selfridge' unit, then we see:
- *    1 Selfridge unit    M-R test
- *    2 Selfridge units   Lucas or Frobenius-Underwood
- *    3 Selfridge units   BPSW
+ *    1   Selfridge unit    M-R test
+ *    1.4 Selfridge unit    "almost extra strong" Lucas
+ *    2   Selfridge units   Lucas or Frobenius-Underwood
+ *    3   Selfridge units   BPSW (standard, strong, or extra-strong)
  *
  * We try to structure the primality test like:
  *   1) simple divisibility    very fast       primes and ~10% of composites

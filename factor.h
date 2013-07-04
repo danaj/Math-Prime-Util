@@ -14,6 +14,7 @@ extern int holf_factor(UV n, UV *factors, UV rounds);
 extern int pbrent_factor(UV n, UV *factors, UV maxrounds, UV a);
 extern int prho_factor(UV n, UV *factors, UV maxrounds);
 extern int pminus1_factor(UV n, UV *factors, UV B1, UV B2);
+extern int pplus1_factor(UV n, UV *factors, UV B);
 extern int squfof_factor(UV n, UV *factors, UV rounds);
 extern int racing_squfof_factor(UV n, UV *factors, UV rounds);
 
@@ -25,6 +26,7 @@ extern int _XS_is_prob_prime(UV n);
 extern void lucas_seq(UV* U, UV* V, UV* Qk,  UV n, IV P, IV Q, UV k);
 extern int _XS_is_lucas_pseudoprime(UV n, int strength);
 extern int _XS_is_frobenius_underwood_pseudoprime(UV n);
+extern int _XS_is_almost_extra_strong_lucas_pseudoprime(UV n, UV increment);
 
 extern UV _XS_divisor_sum(UV n);
 

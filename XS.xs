@@ -466,10 +466,25 @@ _XS_lucas_sequence(IN UV n, IN IV P, IN IV Q, IN UV k)
     XPUSHs(sv_2mortal(newSVuv( Qk )));
 
 int
-_XS_is_lucas_pseudoprime(IN UV n, int strength)
-
-int
-_XS_is_frobenius_underwood_pseudoprime(IN UV n)
+_XS_is_lucas_pseudoprime(IN UV n)
+  ALIAS:
+    _XS_is_strong_lucas_pseudoprime = 1
+    _XS_is_extra_strong_lucas_pseudoprime = 2
+    _XS_is_almost_extra_strong_lucas_pseudoprime = 3
+    _XS_is_pari_lucas_pseudoprime = 4
+    _XS_is_frobenius_underwood_pseudoprime = 5
+  CODE:
+    switch (ix) {
+      case 0: RETVAL = _XS_is_lucas_pseudoprime(n, 0); break;
+      case 1: RETVAL = _XS_is_lucas_pseudoprime(n, 1); break;
+      case 2: RETVAL = _XS_is_lucas_pseudoprime(n, 2); break;
+      case 3: RETVAL = _XS_is_almost_extra_strong_lucas_pseudoprime(n,1);break;
+      case 4: RETVAL = _XS_is_almost_extra_strong_lucas_pseudoprime(n,2);break;
+      case 5: RETVAL = _XS_is_frobenius_underwood_pseudoprime(n); break;
+      default:RETVAL = 0; break;
+    }
+  OUTPUT:
+    RETVAL
 
 int
 _XS_is_prob_prime(IN UV n)
@@ -734,9 +749,8 @@ forprimes (SV* block, IN SV* svbeg, IN SV* svend = 0)
     if (beg <= end) {
       ctx = start_segment_primes(beg, end, &segment);
       while (next_segment_primes(ctx, &seg_base, &seg_low, &seg_high)) {
-        /* I'm getting a memory leak in the MULTICALL and I'm having no luck
-         * finding out why it is happening.  Don't use this for now. */
-        if (0 && !CvISXSUB(cv)) {
+        /* TODO: Make sure this doesn't leak memory in 5.16 and previous */
+        if (!CvISXSUB(cv)) {
           dMULTICALL;
           I32 gimme = G_VOID;
           PUSH_MULTICALL(cv);
