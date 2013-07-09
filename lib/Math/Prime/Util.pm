@@ -4184,7 +4184,7 @@ better support for the other.  The main differences are extra functionality
 (MPU has more functions) and performance.  With native integer inputs, MPU
 is generally much faster, especially with L</prime_count>.  For bigints,
 MPU is slower unless the L<Math::Prime::Util::GMP> module is installed, in
-which case they have somewhat similar speeds.  L<Math::Primality> also installs
+which case MPU is ~2x faster.  L<Math::Primality> also installs
 a C<primes.pl> program, but it has much less functionality than the one
 included with MPU.
 
@@ -4348,18 +4348,18 @@ C<is_prime>: my impressions for various sized inputs:
 
    Module                   1-10 digits  10-20 digits  BigInts
    -----------------------  -----------  ------------  --------------
-   Math::Prime::Util        Very fast    Very fast     Slow
-   Math::Prime::Util (1)    Very fast    Pretty fast   Fast (4)
+   Math::Prime::Util        Very fast    Very fast     Slow / Very Fast (1)
    Math::Prime::XS          Very fast    Very slow (2) --
    Math::Prime::FastSieve   Very fast    N/A (3)       --
-   Math::Primality          Very slow    Very slow     Fast (4)
-   Math::Pari               Slow         OK            Fast (4)
+   Math::Primality          Very slow    Very slow     Fast
+   Math::Pari               Slow         OK            OK / Fast (4)
 
-   (1) With L<Math::Prime::Util::GMP> installed.
+   (1) Without / With L<Math::Prime::Util::GMP> installed.
    (2) Trial division only.  Very fast if every factor is tiny.
    (3) Too much memory to hold the sieve (11dig = 6GB, 12dig = ~50GB)
-   (4) With L<Math::Prime::Util::GMP>, all three of the BigInt capable
-       modules run at reasonably similar speeds.
+   (4) By default L<Math::Pari> installs Pari 2.1.7, which uses 10 M-R tests
+       for is_prime and is not fast.  See notes below for 2.3.5.
+     
 
 The differences are in the implementations:
 
@@ -4367,11 +4367,14 @@ The differences are in the implementations:
 
 =item L<Math::Prime::Util>
 
-does simple divisibility tests first.  It looks in the sieve for a fast bit
-lookup if that exists (default up to 30,000 but it can be expanded, e.g.
-C<prime_precalc>).  If these have failed, then for 32-bit inputs it does a
-deterministic set of Miller-Rabin tests, while for larger values including
-bigints it does a strong BPSW test.
+first does simple divisibility tests to quickly recognize composites, then
+looks in the sieve for a fast bit lookup if possible (default up to 30,000
+but can be expanded via C<prime_precalc>).  Next, for relatively small inputs,
+a deterministic set of Miller-Rabin tests are used, while for larger inputs
+a strong BPSW test is performed.  For native integers, this is faster than
+any of the other modules.  With Bigints, you need the L<Math::Prime::Util::GMP>
+module installed to get good performance.  With that installed, it is about
+2x faster than Math::Primality and 10x faster than Math::Pari (default 2.1.7).
 
 =item L<Math::Prime::XS>
 
@@ -4388,13 +4391,13 @@ just need too much time and memory for the sieve.
 =item L<Math::Primality>
 
 uses GMP (in Perl) for all work.  Under ~32-bits it uses 2 or 3 MR tests,
-while above 4759123141 it performs a BPSW test.  This is is fantastic for
+while above 4759123141 it performs a BPSW test.  This is is great for
 bigints over 2^64, but it is significantly slower than native precision
 tests.  With 64-bit numbers it is generally an order of magnitude or more
 slower than any of the others.  Once bigints are being used, its
 performance is quite good.  It is faster than this module unless
-L<Math::Prime::Util::GMP> has been installed, in which case this module
-is a little bit faster.
+L<Math::Prime::Util::GMP> has been installed, in which case Math::Prime::Util
+is faster.
 
 =item L<Math::Pari>
 
