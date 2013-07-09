@@ -399,92 +399,51 @@ int _SPRP2(UV n)
   return 0;
 }
 
+/* Select M-R bases from http://miller-rabin.appspot.com/, 27 May 2013 */
+#if BITS_PER_WORD == 32
+static const UV mr_bases_small_2[2] = {31, 73};
+static const UV mr_bases_small_3[3] = {2, 7, 61};
+#else
+static const UV mr_bases_large_1[1] = { UVCONST(  9345883071009581737 ) };
+static const UV mr_bases_large_2[2] = { UVCONST(   725270293939359937 ),
+                                        UVCONST(  3569819667048198375 ) };
+static const UV mr_bases_large_3[3] = { UVCONST(  4230279247111683200 ),
+                                        UVCONST( 14694767155120705706 ),
+                                        UVCONST( 16641139526367750375 ) };
+#endif
+
 int _XS_is_prob_prime(UV n)
 {
-  UV bases[12];
-  int nbases;
-  int prob_prime;
+  int ret;
 
-  if (n == 2 || n == 3 || n == 5 || n == 7)           return 2;
-  if (n < 2 || !(n%2) || !(n%3) || !(n%5) || !(n%7))  return 0;
-  if (n <   121) /* 11*11 */                          return 2;
-  if (!(n%11) || !(n%13) || !(n%17) || !(n%19) || !(n%23) || !(n%29) ||
-      !(n%31) || !(n%37) || !(n%41) || !(n%43) || !(n%47) || !(n%53) ||
-      !(n%59) || !(n%61) || !(n%67) || !(n%71) || !(n%73) || !(n%79) ||
-      !(n%83) || !(n%89) || !(n%97))                  return 0;
-  if (n < 10201) /* 101*101 */                        return 2;
+  if (n < 11) {
+    if (n == 2 || n == 3 || n == 5 || n == 7)     return 2;
+    else                                          return 0;
+  }
+  if (!(n%2) || !(n%3) || !(n%5) || !(n%7))       return 0;
+  if (n <  121) /* 11*11 */                       return 2;
+  if (!(n%11) || !(n%13) || !(n%17) || !(n%19) ||
+      !(n%23) || !(n%29) || !(n%31) || !(n%37) ||
+      !(n%41) || !(n%43) || !(n%47) || !(n%53))   return 0;
+  if (n < 3481) /* 59*59 */                       return 2;
 
 #if BITS_PER_WORD == 32
-
-  /* These aren't ideal.  Could use 1 when n < 49191, 2 when n < 360018361 */
-  if (n < UVCONST(9080191)) {
-    bases[0] = 31; bases[1] = 73; nbases = 2;
-  } else  {
-    bases[0] = 2; bases[1] = 7; bases[2] = 61; nbases = 3;
-  }
-  prob_prime = _XS_miller_rabin(n, bases, nbases);
-  return 2*prob_prime;
-
+  /* We could use one base when n < 49191, two when n < 360018361. */
+  if (n < UVCONST(9080191))
+    ret = _XS_miller_rabin(n, mr_bases_small_2, 2);
+  else
+    ret = _XS_miller_rabin(n, mr_bases_small_3, 3);
 #else
-
-  /* Verified with Feitsma database.  No counterexamples below 2^64.
-   * This is faster than multiple M-R routines once we're over 32-bit */
-  if (n >= UVCONST(4294967295)) {
-    prob_prime = _SPRP2(n) && _XS_is_almost_extra_strong_lucas_pseudoprime(n,1);
-    return 2*prob_prime;
-  }
-
-  /* Better bases from http://miller-rabin.appspot.com/, 27 May 2013 */
-  /* Verify with:
-   *  cat /local/share/spsps-below-2-to-64.txt | perl -MMath::Prime::Util=:all
-   *    -nE 'chomp; next unless is_strong_pseudoprime($_, @bases); say;'
-   */
-  if (n < UVCONST(341531)) {
-    bases[0] = UVCONST(  9345883071009581737 );
-    nbases = 1;
-  } else if (n < UVCONST(885594169)) {
-    bases[0] = UVCONST(   725270293939359937 );
-    bases[1] = UVCONST(  3569819667048198375 );
-    nbases = 2;
-  } else if (n < UVCONST(350269456337)) {
-    bases[0] = UVCONST(  4230279247111683200 );
-    bases[1] = UVCONST( 14694767155120705706 );
-    bases[2] = UVCONST( 16641139526367750375 );
-    nbases = 3;
-  } else if (n < UVCONST(55245642489451)) {      /* 38+ bits */
-    bases[0] = 2;
-    bases[1] = UVCONST(      141889084524735 );
-    bases[2] = UVCONST(  1199124725622454117 );
-    bases[3] = UVCONST( 11096072698276303650 );
-    nbases = 4;
-  } else if (n < UVCONST(7999252175582851)) {    /* 45+ bits */
-    bases[0] = 2;
-    bases[1] = UVCONST(        4130806001517 );
-    bases[2] = UVCONST(   149795463772692060 );
-    bases[3] = UVCONST(   186635894390467037 );
-    bases[4] = UVCONST(  3967304179347715805 );
-    nbases = 5;
-  } else if (n < UVCONST(585226005592931977)) {  /* 52+ bits */
-    bases[0] = 2;
-    bases[1] = UVCONST(      123635709730000 );
-    bases[2] = UVCONST(     9233062284813009 );
-    bases[3] = UVCONST(    43835965440333360 );
-    bases[4] = UVCONST(   761179012939631437 );
-    bases[5] = UVCONST(  1263739024124850375 );
-    nbases = 6;
-  } else {                                       /* 59+ bits */
-    bases[0] = 2;
-    bases[1] = UVCONST( 325        );
-    bases[2] = UVCONST( 9375       );
-    bases[3] = UVCONST( 28178      );
-    bases[4] = UVCONST( 450775     );
-    bases[5] = UVCONST( 9780504    );
-    bases[6] = UVCONST( 1795265022 );
-    nbases = 7;
-  }
-  prob_prime = _XS_miller_rabin(n, bases, nbases);
-  return 2*prob_prime;
+  /* AESLSP test costs about 1.5 Selfridges, vs. ~2.2 for strong Lucas.
+   * So it works out to be faster to do AES-BPSW vs. 3 M-R tests. */
+  if (n < UVCONST(341531))
+    ret = _XS_miller_rabin(n, mr_bases_large_1, 1);
+  else if (n < UVCONST(885594169))
+    ret = _XS_miller_rabin(n, mr_bases_large_2, 2);
+  else
+    ret = _SPRP2(n) && _XS_is_almost_extra_strong_lucas_pseudoprime(n,1);
 #endif
+  return 2*ret;
 }
 
 /* Generic Lucas sequence for any appropriate P and Q */

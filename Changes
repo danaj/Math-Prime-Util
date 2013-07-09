@@ -1,7 +1,9 @@
 Revision history for Perl extension Math::Prime::Util.
 
 0.30 
-    - Add standard and strong Lucas tests in XS.
+    - We have XS code for all 4 Lucas tests now.  Some speedups applied.
+
+    - Clean up is_prob_prime, also ~10% faster for n >= 885594169.
 
     - Fixed a rare refcount / bignum / callback issue.
 
