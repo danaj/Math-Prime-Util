@@ -74,7 +74,7 @@ my %all_factors = (
       0 => [],
 );
 
-plan tests =>  (2 * scalar @testn) + scalar(keys %all_factors) + 10*8 + 1;
+plan tests =>  (2 * scalar @testn) + scalar(keys %all_factors) + 10*9 + 1;
 
 foreach my $n (@testn) {
   my @f = factor($n);
@@ -106,6 +106,7 @@ extra_factor_test("rsqufof_factor", sub {Math::Prime::Util::rsqufof_factor(shift
 extra_factor_test("pbrent_factor", sub {Math::Prime::Util::pbrent_factor(shift)});
 extra_factor_test("prho_factor",   sub {Math::Prime::Util::prho_factor(shift)});
 extra_factor_test("pminus1_factor",sub {Math::Prime::Util::pminus1_factor(shift)});
+extra_factor_test("pplus1_factor", sub {Math::Prime::Util::pplus1_factor(shift)});
 
 # To hit some extra coverage
 is_deeply( [Math::Prime::Util::trial_factor(5514109)], [2203,2503], "trial factor 2203*2503" );

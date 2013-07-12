@@ -114,6 +114,7 @@ BEGIN {
     *pbrent_factor  = \&Math::Prime::Util::PP::pbrent_factor;
     *prho_factor    = \&Math::Prime::Util::PP::prho_factor;
     *pminus1_factor = \&Math::Prime::Util::PP::pminus1_factor;
+    *pplus1_factor  = \&Math::Prime::Util::PP::pminus1_factor;   # TODO: implement PP p+1.
   };
 
   $_Config{'nobigint'} = 0;
@@ -3812,6 +3813,14 @@ Produces factors, not necessarily prime, of the positive number input.  This
 is Pollard's C<p-1> method, using two stages with default smoothness
 settings of 1_000_000 for B1, and C<10 * B1> for B2.  This method can rapidly
 find a factor C<p> of C<n> where C<p-1> is smooth (it has no large factors).
+
+=head2 pplus1_factor
+
+  my @factors = pplus1_factor($n);
+  my @factors = pplus1_factor($n, 1_000);          # set B1 smoothness
+
+Produces factors, not necessarily prime, of the positive number input.  This
+is Williams' C<p+1> method, using one stage and two predefined initial points.
 
 
 

@@ -993,51 +993,62 @@ int pminus1_factor(UV n, UV *factors, UV B1, UV B2)
 }
 
 /* Simple Williams p+1 */
-int pplus1_factor(UV n, UV *factors, UV B)
+static void pp1_pow(UV *cX, unsigned long exp, UV n)
 {
-  UV i, f, b;
-  UV P1, P2, P3, U1, U2, U3, V1, V2, V3;
+  UV X0 = *cX;
+  UV X  = *cX;
+  UV Y = mulsubmod(X, X, 2, n);
+  unsigned long bit;
+  {
+    unsigned long v = exp;
+    unsigned long b = 1;
+    while (v >>= 1) b++;
+    bit = 1UL << (b-2);
+  }
+  while (bit) {
+    if ( exp & bit ) {
+      X = mulsubmod(X, Y, X0, n);
+      Y = mulsubmod(Y, Y, 2, n);
+    } else {
+      Y = mulsubmod(X, Y, X0, n);
+      X = mulsubmod(X, X, 2, n);
+    }
+    bit >>= 1;
+  }
+  *cX = X;
+}
+int pplus1_factor(UV n, UV *factors, UV B1)
+{
+  UV X1, X2, f;
+  UV sqrtB1 = isqrt(B1);
+  MPUassert( (n >= 3) && ((n%2) != 0) , "bad n in pminus1_factor");
 
-  /* Calculate 3 sequences at once */
-  P1 =  5 % n;
-  P2 =  9 % n;
-  P3 = 13 % n;
-  U1 = P1;  U2 = P2;  U3 = P3;
-  for (i = 1; i < B; i++) {
-    { UV v = i; b = 1; while (v >>= 1) b++; }
-    V1 = mulsubmod(P1, P1, 2, n);
-    V2 = mulsubmod(P2, P2, 2, n);
-    V3 = mulsubmod(P3, P3, 2, n);
-    while (b > 1) {
-      b--;
-      if ( (i >> (b-1)) & UVCONST(1) ) {
-        U1 = mulsubmod(U1, V1, P1, n);
-        V1 = mulsubmod(V1, V1,  2, n);
-        U2 = mulsubmod(U2, V2, P2, n);
-        V2 = mulsubmod(V2, V2,  2, n);
-        U3 = mulsubmod(U3, V3, P3, n);
-        V3 = mulsubmod(V3, V3,  2, n);
-      } else {
-        V1 = mulsubmod(U1, V1, P1, n);
-        U1 = mulsubmod(U1, U1,  2, n);
-        V2 = mulsubmod(U2, V2, P2, n);
-        U2 = mulsubmod(U2, U2,  2, n);
-        V3 = mulsubmod(U3, V3, P3, n);
-        U3 = mulsubmod(U3, U3,  2, n);
-      }
+  X1 =  7 % n;
+  X2 = 11 % n;
+  START_DO_FOR_EACH_PRIME(2, B1) {
+    UV k = p;
+    if (p < sqrtB1) {
+      UV kmin = B1/p;
+      while (k <= kmin)
+        k *= p;
     }
-    P1 = U1;  P2 = U2;  P3 = U3;
-    f = gcd_ui(n, submod(U1, 2, n));
-    if (f == 1 || f == n)
-      f = gcd_ui(n, submod(U2, 2, n));
-    if (f == 1 || f == n)
-      f = gcd_ui(n, submod(U3, 2, n));
-    if (f > 1 && f != n) {
-      factors[0] = f;
-      factors[1] = n/f;
-      MPUassert( factors[0] * factors[1] == n , "incorrect factoring");
-      return 2;
+    pp1_pow(&X1, k, n);
+    if (X1 != 2) {
+      f = gcd_ui( submod(X1, 2, n) , n);
+      if (f != 1 && f != n) break;
     }
+    pp1_pow(&X2, k, n);
+    if (X2 != 2) {
+      f = gcd_ui( submod(X2, 2, n) , n);
+      if (f != 1 && f != n) break;
+    }
+  } END_DO_FOR_EACH_PRIME
+
+  if ( (f != 1) && (f != n) ) {
+    factors[0] = f;
+    factors[1] = n/f;
+    MPUassert( factors[0] * factors[1] == n , "incorrect factoring");
+    return 2;
   }
   factors[0] = n;
   return 1;
