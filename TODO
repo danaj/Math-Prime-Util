@@ -47,6 +47,15 @@
 - Refactor where functions exist in .c.  Lots of primality tests in factor.c.
 
 - Write a standalone function that demonstrates the memory leak with MULTICALL,
-  so we can use MULTICALL.
+  so we can use MULTICALL.  Seems to be fixed on 5.18.0.  See if this was
+  broken on 5.16 and previous, or if this was just a 5.17 issue.
 
 - Tests, documentation, optimizations, and comparisons for p+1 factoring
+
+- Fix p+1 factoring (see latest GMP code).
+
+- Switch to new text proofs.
+
+- Sync all the Lucas pseudoprimes with GMP.
+
+- Update Perl code for Lucas, use fastest available (probably AES).
