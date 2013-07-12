@@ -38,7 +38,7 @@
          :"%rax", "%rdx"         /* clobbered registers */
         );
     /* A version for _MSC_VER:
-     *  
+     *
      *    __asm { mov rax, qword ptr a
      *            mul qword ptr b
      *            div qword ptr c
@@ -49,12 +49,16 @@
   #define mulmod(a,b,m) _mulmod(a,b,m)
   #define sqrmod(n,m)   _mulmod(n,n,m)
 
-#elif 0
+#elif __GNUC__ == 4 && __GNUC_MINOR__ >= 4
 
-  /* Finding out if these types are supported requires non-trivial
-   * configuration.  They are very fast if they exist. */
-  #define mulmod(a,b,m)  (UV)(((__uint128_t)(a)*(__uint128_t)(b)) % ((__uint128_t)(m)))
-  #define sqrmod(n,m)    (UV)(((__uint128_t)(n)*(__uint128_t)(n)) % ((__uint128_t)(m)))
+  #if __GNUC__ == 4 && __GNUC_MINOR__ >= 4 && __GNUC_MINOR__ < 6
+    typedef unsigned int uint128_t __attribute__ ((__mode__ (TI)));
+  #else
+    typedef unsigned __int128 uint128_t;
+  #endif
+
+  #define mulmod(a,b,m) (UV)(((uint128_t)(a)*(uint128_t)(b)) % ((uint128_t)(m)))
+  #define sqrmod(n,m)   (UV)(((uint128_t)(n)*(uint128_t)(n)) % ((uint128_t)(m)))
 
 #else
 
