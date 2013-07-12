@@ -56,6 +56,7 @@ sub test_at_digits {
     $nfactored{'prho'} += $calc_nfacs->(Math::Prime::Util::prho_factor($_, $rounds));
     $nfactored{'pbrent'} += $calc_nfacs->(Math::Prime::Util::pbrent_factor($_, $rounds));
     $nfactored{'pminus1'} += $calc_nfacs->(Math::Prime::Util::pminus1_factor($_, $p1smooth));
+    $nfactored{'pplus1'} += $calc_nfacs->(Math::Prime::Util::pplus1_factor($_, $p1smooth));
     $nfactored{'squfof'} += $calc_nfacs->(Math::Prime::Util::squfof_factor($_, $sqrounds));
     $nfactored{'rsqufof'} += $calc_nfacs->(Math::Prime::Util::rsqufof_factor($_, $rsqrounds));
     #$nfactored{'trial'} += $calc_nfacs->(Math::Prime::Util::trial_factor($_));
@@ -74,7 +75,8 @@ sub test_at_digits {
     "prho"    => sub { Math::Prime::Util::prho_factor($_, $rounds) for @nums },
     "pbrent"  => sub { Math::Prime::Util::pbrent_factor($_, $rounds) for @nums },
     "pminus1" => sub { Math::Prime::Util::pminus1_factor($_, $rounds) for @nums },
-    "fermat"  => sub { Math::Prime::Util::fermat_factor($_, $rounds) for @nums },
+    "pplus1"  => sub { Math::Prime::Util::pplus1_factor($_, $rounds) for @nums},
+    "fermat"  => sub { Math::Prime::Util::fermat_factor($_, $rounds) for @nums},
     "holf"    => sub { Math::Prime::Util::holf_factor($_, $hrounds) for @nums },
     "squfof"  => sub { Math::Prime::Util::squfof_factor($_, $sqrounds) for @nums },
     "rsqufof" => sub { Math::Prime::Util::rsqufof_factor($_) for @nums },

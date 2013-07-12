@@ -6,18 +6,33 @@ $| = 1;  # fast pipes
 use Math::Prime::Util;
 use Math::Primality;
 
+my $count = shift || -1;
+
 # GMP is ~3x faster than Calc or Pari for these operations
 use bigint try=>'GMP';
 srand(500);
-use Math::BigInt::Random::OO;
-my $gen = Math::BigInt::Random::OO -> new(length => 80);
-#my $gen = Math::BigInt::Random::OO -> new(length => 8);
+use Config;
+
+my $rgen = sub {
+  my $range = shift;
+  return 0 if $range <= 0;
+  my $rbits = 0; { my $t = $range; while ($t) { $rbits++; $t >>= 1; } }
+  while (1) {
+    my $rbitsleft = $rbits;
+    my $U = $range - $range;  # 0 or bigint 0
+    while ($rbitsleft > 0) {
+      my $usebits = ($rbitsleft > $Config{randbits}) ? $Config{randbits} : $rbitsleft;
+      $U = ($U << $usebits) + int(rand(1 << $usebits));
+      $rbitsleft -= $usebits;
+    }
+    return $U if $U <= $range;
+  }
+};
 
 my @rns;
 while (@rns < 50) {
-  # Ensure $n is an object of our bigint class, not MBROO's choice.
-  my $n = Math::BigInt->new( $gen->generate()->bstr );
-  $n++ if ($n % 2) == 0;    # Math::BigInt::Random::OO keeps making evens (bug?)
+  my $n = $rgen->( Math::BigInt->new(2)->bpow(81) );
+  $n++ if ($n % 2) == 0;
   next unless ($n % 2) != 0;
   push @rns, $n;
 }
@@ -36,12 +51,14 @@ print "OK\n";
 
 use Benchmark qw/:all/;
 my $sum = 0;
-cmpthese(-2, {
+cmpthese($count, {
   "MP  MR" => sub { $sum += Math::Primality::is_strong_pseudoprime("$_","2") for @rns; },
-  "MPU MR" => sub { $sum += Math::Prime::Util::is_strong_pseudoprime($_,2) for @rns; },
+  "MPU MR" => sub { $sum += Math::Prime::Util::GMP::is_strong_pseudoprime($_,2) for @rns; },
   #"MPUxMR" => sub { Math::Prime::Util::miller_rabin($_,2) for @rns; },
   "MP  LP" => sub { $sum += Math::Primality::is_strong_lucas_pseudoprime("$_") for @rns;},
-  "MPU LP" => sub { $sum += Math::Prime::Util::is_strong_lucas_pseudoprime($_) for @rns;},
+  "MPU LP" => sub { $sum += Math::Prime::Util::GMP::is_strong_lucas_pseudoprime($_) for @rns;},
+  "MPU ELP" => sub { $sum += Math::Prime::Util::GMP::is_extra_strong_lucas_pseudoprime($_) for @rns;},
+  #"MPU AELP" => sub { $sum += Math::Prime::Util::GMP::is_almost_extra_strong_lucas_pseudoprime($_) for @rns;},
   "MP  IP" => sub { $sum += Math::Primality::is_prime("$_") for @rns;},
   "MPU IP" => sub { $sum += Math::Prime::Util::is_prime($_) for @rns;},
   #"MPUxIP" => sub { Math::Prime::Util::is_prime($_) for @rns;},
