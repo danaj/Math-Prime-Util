@@ -1634,14 +1634,19 @@ sub is_extra_strong_lucas_pseudoprime {
 }
 
 sub is_almost_extra_strong_lucas_pseudoprime {
-  my($n) = shift;
+  my($n, $inc) = @_;
   _validate_num($n) || _validate_positive_integer($n);
-  return _XS_is_almost_extra_strong_lucas_pseudoprime($n)
+  if (!defined $inc) {
+    $inc = 1;
+  } else {
+    _validate_positive_integer($inc, 1, 256);
+  }
+  return _XS_is_almost_extra_strong_lucas_pseudoprime($n, $inc)
     if ref($n) ne 'Math::BigInt' && $n <= $_XS_MAXVAL;
-  return Math::Prime::Util::GMP::is_almost_extra_strong_lucas_pseudoprime("$n")
+  return Math::Prime::Util::GMP::is_almost_extra_strong_lucas_pseudoprime("$n", $inc)
     if $_HAVE_GMP
     && defined &Math::Prime::Util::GMP::is_almost_extra_strong_lucas_pseudoprime;
-  return Math::Prime::Util::PP::is_almost_extra_strong_lucas_pseudoprime($n);
+  return Math::Prime::Util::PP::is_almost_extra_strong_lucas_pseudoprime($n, $inc);
 }
 
 sub is_frobenius_underwood_pseudoprime {

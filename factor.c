@@ -629,6 +629,8 @@ int _XS_is_almost_extra_strong_lucas_pseudoprime(UV n, UV increment)
   if (n == 2 || n == 3 || n == 5) return 1;
   if (n < 7 || (n%2) == 0) return 0;
   if (n == UV_MAX) return 0;
+  if (increment < 1 || increment > 256)
+    croak("Invalid lucas paramater increment: %"UVuf"\n", increment);
 
   P = 3;
   while (1) {
@@ -640,7 +642,10 @@ int _XS_is_almost_extra_strong_lucas_pseudoprime(UV n, UV increment)
       break;
     if (P == (3+20*increment) && is_perfect_square(n, 0)) return 0;
     P += increment;
+    if (P > 65535)
+      croak("lucas_extrastrong_params: P exceeded 65535");
   }
+  if (P >= n)  P %= n;   /* Never happens with increment < 4 */
 
   d = n+1;
   s = 0;
