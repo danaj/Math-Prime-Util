@@ -179,22 +179,32 @@ _XS_prime_count(IN UV low, IN UV high = 0)
     RETVAL
 
 UV
-_XS_legendre_pi(IN UV n)
-
-UV
-_XS_meissel_pi(IN UV n)
-
-UV
-_XS_lehmer_pi(IN UV n)
-
-UV
-_XS_LMO_pi(IN UV n)
-
-UV
 _XS_nth_prime(IN UV n)
-
-int
-_XS_is_aks_prime(IN UV n)
+  ALIAS:
+    _XS_next_prime = 1
+    _XS_prev_prime = 2
+    _XS_legendre_pi = 3
+    _XS_meissel_pi = 4
+    _XS_lehmer_pi = 5
+    _XS_LMO_pi = 6
+    _XS_divisor_sum = 7
+  PREINIT:
+    UV ret;
+  CODE:
+    switch (ix) {
+      case 0: ret = _XS_nth_prime(n); break;
+      case 1: ret = _XS_next_prime(n); break;
+      case 2: ret = _XS_prev_prime(n); break;
+      case 3: ret = _XS_legendre_pi(n); break;
+      case 4: ret = _XS_meissel_pi(n); break;
+      case 5: ret = _XS_lehmer_pi(n); break;
+      case 6: ret = _XS_LMO_pi(n); break;
+      case 7: ret = _XS_divisor_sum(n); break;
+      default: croak("_XS_nth_prime: Unknown function alias"); break;
+    }
+    RETVAL = ret;
+  OUTPUT:
+    RETVAL
 
 
 UV
@@ -466,31 +476,37 @@ _XS_lucas_sequence(IN UV n, IN IV P, IN IV Q, IN UV k)
     XPUSHs(sv_2mortal(newSVuv( Qk )));
 
 int
-_XS_is_lucas_pseudoprime(IN UV n)
+_XS_is_prime(IN UV n)
   ALIAS:
-    _XS_is_strong_lucas_pseudoprime = 1
-    _XS_is_extra_strong_lucas_pseudoprime = 2
-    _XS_is_almost_extra_strong_lucas_pseudoprime = 3
-    _XS_is_pari_lucas_pseudoprime = 4
+    _XS_is_prob_prime = 1
+    _XS_is_lucas_pseudoprime = 2
+    _XS_is_strong_lucas_pseudoprime = 3
+    _XS_is_extra_strong_lucas_pseudoprime = 4
     _XS_is_frobenius_underwood_pseudoprime = 5
+    _XS_is_aks_prime = 6
+  PREINIT:
+    int ret;
   CODE:
     switch (ix) {
-      case 0: RETVAL = _XS_is_lucas_pseudoprime(n, 0); break;
-      case 1: RETVAL = _XS_is_lucas_pseudoprime(n, 1); break;
-      case 2: RETVAL = _XS_is_lucas_pseudoprime(n, 2); break;
-      case 3: RETVAL = _XS_is_almost_extra_strong_lucas_pseudoprime(n,1);break;
-      case 4: RETVAL = _XS_is_almost_extra_strong_lucas_pseudoprime(n,2);break;
-      case 5: RETVAL = _XS_is_frobenius_underwood_pseudoprime(n); break;
-      default:RETVAL = 0; break;
+      case 0: ret = _XS_is_prime(n); break;
+      case 1: ret = _XS_is_prob_prime(n); break;
+      case 2: ret = _XS_is_lucas_pseudoprime(n, 0); break;
+      case 3: ret = _XS_is_lucas_pseudoprime(n, 1); break;
+      case 4: ret = _XS_is_lucas_pseudoprime(n, 2); break;
+      case 5: ret = _XS_is_frobenius_underwood_pseudoprime(n); break;
+      case 6: ret = _XS_is_aks_prime(n); break;
+      default: croak("_XS_is_prime: Unknown function alias"); break;
     }
+    RETVAL = ret;
   OUTPUT:
     RETVAL
 
 int
-_XS_is_prob_prime(IN UV n)
-
-int
-_XS_is_prime(IN UV n)
+_XS_is_almost_extra_strong_lucas_pseudoprime(IN UV n, IN UV increment = 1)
+  CODE:
+    RETVAL = _XS_is_almost_extra_strong_lucas_pseudoprime(n, increment);
+  OUTPUT:
+    RETVAL
 
 int
 is_prime(IN SV* n)
@@ -518,12 +534,6 @@ is_prime(IN SV* n)
       XSRETURN(1);
     }
 
-UV
-_XS_next_prime(IN UV n)
-
-UV
-_XS_prev_prime(IN UV n)
-
 void
 next_prime(IN SV* n)
   ALIAS:
@@ -541,23 +551,41 @@ next_prime(IN SV* n)
       XSRETURN(1);
     }
 
-
 double
-_XS_ExponentialIntegral(double x)
-
-double
-_XS_LogarithmicIntegral(double x)
-
-double
-_XS_RiemannZeta(double x)
+_XS_ExponentialIntegral(IN double x)
+  ALIAS:
+    _XS_LogarithmicIntegral = 1
+    _XS_RiemannZeta = 2
+    _XS_RiemannR = 3
+  PREINIT:
+    double ret;
   CODE:
-    RETVAL = (double) ld_riemann_zeta(x);
+    switch (ix) {
+      case 0: ret = _XS_ExponentialIntegral(x); break;
+      case 1: ret = _XS_LogarithmicIntegral(x); break;
+      case 2: ret = (double) ld_riemann_zeta(x); break;
+      case 3: ret = _XS_RiemannR(x); break;
+      default: croak("_XS_ExponentialIntegral: Unknown function alias"); break;
+    }
+    RETVAL = ret;
   OUTPUT:
     RETVAL
 
 double
-_XS_RiemannR(double x)
-
+_XS_chebyshev_theta(IN UV n)
+  ALIAS:
+    _XS_chebyshev_psi = 1
+  PREINIT:
+    double ret;
+  CODE:
+    switch (ix) {
+      case 0: ret = _XS_chebyshev_theta(n); break;
+      case 1: ret = _XS_chebyshev_psi(n); break;
+      default: croak("_XS_chebyshev_theta: Unknown function alias"); break;
+    }
+    RETVAL = ret;
+  OUTPUT:
+    RETVAL
 
 void
 _XS_totient(IN UV lo, IN UV hi = 0)
@@ -656,15 +684,6 @@ _XS_exp_mangoldt(IN UV n)
   OUTPUT:
     RETVAL
 
-double
-_XS_chebyshev_theta(IN UV n)
-
-double
-_XS_chebyshev_psi(IN UV n)
-
-UV
-_XS_divisor_sum(IN UV n)
-
 int
 _validate_num(SV* n, ...)
   CODE:
@@ -685,6 +704,33 @@ _validate_num(SV* n, ...)
       }
       RETVAL = 1;
     }
+  OUTPUT:
+    RETVAL
+
+UV
+testfac (IN UV bits, IN UV num)
+  PREINIT:
+    UV n, i, nf, base, numfacs;
+    UV factors[64];
+  CODE:
+    numfacs = 0;
+    base = 1 + (1UL << bits);
+    for (i = 0; i < num; i++) {
+      n = base+2*i;
+      nf = trial_factor(n, factors, 1001);
+      n = factors[--nf];
+      if (_XS_is_prob_prime(n)) continue;
+      //numfacs += holf_factor(n, factors, 20000) - 1;
+      //numfacs += pminus1_factor(n, factors, 5000, 80000) - 1;
+      //numfacs += pminus1_factor(n, factors, 300, 60000) - 1;
+      numfacs += pplus1_factor(n, factors, 5000) - 1;
+      //numfacs += squfof_factor(n, factors, 20000) - 1;
+      //numfacs += racing_squfof_factor(n, factors, 10000) - 1;
+      //numfacs += pbrent_factor(n, factors, 1500, 3) - 1;
+      //numfacs += pplus1_factor(n, factors, 200) - 1;
+      //numfacs += lehman_factor(n, factors) - 1;
+    }
+    RETVAL = numfacs;
   OUTPUT:
     RETVAL
 
