@@ -2470,7 +2470,7 @@ sub RiemannZeta {
   my $tol = 1.11e-16;
 
   # Series based on (2n)! / B_2n.
-  # This is a simplication of the Cephes zeta function.
+  # This is a simplification of the Cephes zeta function.
   my @A = (
       12.0,
      -720.0,
