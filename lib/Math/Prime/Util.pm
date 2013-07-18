@@ -980,7 +980,7 @@ sub primes {
         # run this without changing r, then x will typically be 0 and this fails.
 
         # Verify with a BPSW test on the result.  This could:
-        #  1) save us from accidently outputing a non-prime due to some mistake
+        #  1) save us from accidently outputting a non-prime due to some mistake
         #  2) make history by finding the first known BPSW pseudo-prime
         croak "Maurer prime $n=2*$R*$q+1 failed BPSW" unless is_prob_prime($n);
 
@@ -2516,7 +2516,7 @@ Version 0.30
   forprimes { say if is_prime($_+2) } 10000;
 
   # For non-bigints, is_prime and is_prob_prime will always be 0 or 2.
-  # They return return 0 (composite), 2 (prime), or 1 (probably prime)
+  # They return 0 (composite), 2 (prime), or 1 (probably prime)
   say "$n is prime"  if is_prime($n);
   say "$n is ", (qw(composite maybe_prime? prime))[is_prob_prime($n)];
 
@@ -4122,7 +4122,7 @@ L<Math::Prime::XS> has C<is_prime> and C<primes> functionality.  There is no
 bigint support.  The C<is_prime> function uses well-written trial division,
 meaning it is very fast for small numbers, but terribly slow for large
 64-bit numbers.  With the latest release, MPU should be faster for all sizes.
-The prime sieve is an unoptimized non-segmented SoE which which returns an
+The prime sieve is an unoptimized non-segmented SoE which returns an
 array.  It works well for 32-bit values, but speed and memory are problematic
 for larger values.
 
@@ -4405,7 +4405,7 @@ just need too much time and memory for the sieve.
 =item L<Math::Primality>
 
 uses GMP (in Perl) for all work.  Under ~32-bits it uses 2 or 3 MR tests,
-while above 4759123141 it performs a BPSW test.  This is is great for
+while above 4759123141 it performs a BPSW test.  This is great for
 bigints over 2^64, but it is significantly slower than native precision
 tests.  With 64-bit numbers it is generally an order of magnitude or more
 slower than any of the others.  Once bigints are being used, its
