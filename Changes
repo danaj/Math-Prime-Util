@@ -1,24 +1,39 @@
-Revision history for Perl extension Math::Prime::Util.
+Revision history for Perl module Math::Prime::Util
 
-0.30 
-    - We have XS code for all 4 Lucas tests now.  Some speedups applied.
+0.30
+    [Functions Added]
+       - is_frobenius_underwood_pseudoprime
+       - is_almost_extra_strong_lucas_pseudoprime
+       - lucas_sequence
+       - pplus1_factor
+
+    - Documentation and PP is_prime changed to use extra strong Lucas test
+      from the strong test.  This matches what the newest MPU::GMP does.
+      This has no effect at all for numbers < 2^64.  No counter-example is
+      known for the standard, strong, extra strong, or almost extra strong
+      (increment 1 or 2) tests.  The extra strong test is faster than the
+      strong test and produces fewer pseudoprimes.  It retains the residue
+      class properties of the strong Lucas test (where the SPSP-2
+      pseudoprimes favor residue class 1 and the Lucas pseudoprimes favor
+      residue class -1), hence should retain the BPSW test strength.
+
+    - XS code for all 4 Lucas tests.
 
     - Clean up is_prob_prime, also ~10% faster for n >= 885594169.
 
-    - Fixed a rare refcount / bignum / callback issue.
+    - Fixed a rare refcount / bignum / callback issue in next_prime.
 
     - Small mulmod speedup for non-gcc/x86_64 platforms, and for any platform
       with gcc 4.4 or newer.
 
     - Add more conditions to ECPP block verification.
 
-    - Added:
-        is_frobenius_underwood_pseudoprime
-        is_almost_extra_strong_lucas_pseudoprime
-        lucas_sequence
-        pplus1_factor
+0.29  2013-05-30
 
-0.29 30 May 2013
+    [Functions Added]
+       - is_pseudoprime (Fermat probable prime test)
+       - is_lucas_pseudoprime (standard Lucas-Selfridge test)
+       - is_extra_strong_lucas_pseudoprime (Mo/Jones/Grantham E.S. Lucas test)
 
     - Fix a signed vs. unsigned char issue in ranged moebius.  Thanks to the
       Debian testers for finding this.
@@ -37,12 +52,7 @@ Revision history for Perl extension Math::Prime::Util.
 
     - Workaround for MSVC compiler.
 
-    - Added:
-        is_pseudoprime (Fermat probable prime test)
-        is_lucas_pseudoprime (standard Lucas-Selfridge test)
-        is_extra_strong_lucas_pseudoprime (Mo/Jones/Grantham E.S. Lucas test)
-
-0.28 23 May 2013
+0.28  2013-05-23
 
     - An optimization to nth_prime caused occasional threaded Win32 faults.
       Adjust so this is avoided.
@@ -57,7 +67,7 @@ Revision history for Perl extension Math::Prime::Util.
     - my $it = prime_iterator(10000); say $it->(); 
       This is experimental (that is, the interface may change).
 
-0.27 20 May 2013
+0.27  2013-05-20
 
     - is_prime, is_prob_prime, next_prime, and prev_prime now all go straight
       to XS if possible.  This makes them much faster for small inputs without
@@ -78,16 +88,16 @@ Revision history for Perl extension Math::Prime::Util.
 
     - Use EXTENDED_TESTING to turn on extra tests.
 
-0.26 21 April 2013
+0.26  2013-04-21
 
-    - Pure Perl factoring:
+    [Pure Perl Factoring]
         - real p-1 -- much faster and more effective
         - Fermat (no better than HOLF)
         - speedup for pbrent
         - simple ECM
         - redo factoring mix
 
-    - New functions:
+    [Functions Added]
         prime_certificate  produces a certificate of primality.
         verify_prime       checks a primality certificate.
 
@@ -97,7 +107,7 @@ Revision history for Perl extension Math::Prime::Util.
     - Math::Prime::Util::ECAffinePoint and ECProjectivePoint modules for
       dealing with elliptic curves.
 
-0.25 19 March 2013
+0.25  2013-03-19
 
     - Speed up p-1 stage 2 factoring.  Combined with some minor changes to the
       general factoring combination, ~20% faster for 19 digit semiprimes.
@@ -107,7 +117,7 @@ Revision history for Perl extension Math::Prime::Util.
 
     - Forgot to skip one of the tests with broken 5.6.2.
 
-0.24 10 March 2013
+0.24  2013-03-10
 
     - Fix compilation with old pre-C99 strict compilers (decl after statement).
 
@@ -121,7 +131,7 @@ Revision history for Perl extension Math::Prime::Util.
 
     - Let factor.pl accept expressions just like primes.pl.
 
-0.23  5 March 2013
+0.23  2013-03-05
 
     - Replace XS Zeta for x > 5 with series from Cephes.  It is 1 eps more
       accurate for a small fraction of inputs.  More importantly, it is much
@@ -148,7 +158,7 @@ Revision history for Perl extension Math::Prime::Util.
       prime count routines.  Quite a bit faster and most importantly, uses
       half the memory of the old structure.
 
-    - Performance:
+    [Performance]
        - Divisor sum with no sub is ~10x faster.
        - Speed up PP version of exp_mangoldt, create XS version.
        - Zeta much faster as mentioned above.
@@ -157,7 +167,7 @@ Revision history for Perl extension Math::Prime::Util.
        - Unroll a little more in sieve inner loop.  A couple percent faster.
        - Faster prime_count and nth_prime due to new phi(x,a) (about 1.25x).
 
-0.22 26 February 2013
+0.22  2013-02-26
 
     - Move main factor loop out of xs and into factor.c.
 
@@ -167,7 +177,7 @@ Revision history for Perl extension Math::Prime::Util.
 
     - Switch thread locking to pthreads condition variables.
 
-0.21 22 February 2013
+0.21  2013-02-22
 
     - Switch to using Bytes::Random::Secure for random primes.  This is a
       big change in that it is the first non-CORE module used.  However, it
@@ -185,7 +195,7 @@ Revision history for Perl extension Math::Prime::Util.
 
     - divisor_sum defaults to sigma if no sub is given (i.e. it sums).
 
-    - Performance:
+    [Performance]
        - Speedup factoring small numbers.  With -nobigint factoring from
          1 to 10M, it's 1.2x faster.  1.5x faster than Math::Factor::XS.
        - Totient and Möbius over a range are much faster than separate calls.
@@ -193,7 +203,7 @@ Revision history for Perl extension Math::Prime::Util.
        - primes.pl is much faster with Pillai primes.
        - Reduce overhead in euler_phi -- about 2x faster for individual calls.
 
-0.20  3 February 2013
+0.20  2013-02-03
 
     - Speedup for PP AKS, and turn off test on 32-bit machines.
 
@@ -204,7 +214,7 @@ Revision history for Perl extension Math::Prime::Util.
 
     - Fix is_perfect_power in XS AKS.
 
-0.19  1 February 2013
+0.19  2013-02-01
 
     - Update MR bases with newest from http://miller-rabin.appspot.com/.
 
@@ -217,7 +227,7 @@ Revision history for Perl extension Math::Prime::Util.
 
     - Adjust some validation subroutines to cut down on overhead.
 
-0.18  14 January 2013
+0.18  2013-01-14
 
     - Add random_strong_prime.
 
@@ -228,7 +238,7 @@ Revision history for Perl extension Math::Prime::Util.
       that run out of memory trying to calculate '2 ** 66'.
       http://code.activestate.com/ppm/Math-Prime-Util/
 
-0.17  20 December 2012
+0.17  2012-12-20
 
     - Perl 5.8.1 - 5.8.7 miscalculates 12345 ** 4, which I used in a test.
 
@@ -242,14 +252,14 @@ Revision history for Perl extension Math::Prime::Util.
       better support for plugging in crypto RNG's when used from other
       modules.
 
-0.16  11 December 2012
+0.16  2012-12-11
 
     - randbits >= 32 on some 32-bit systems was messing us up.  Restrict our
       internal randbits to wordsize-1.
 
-0.15  9 December 2012
+0.15  2012-12-09
 
-    - Lots of internal changes to Ei, li, Zeta, and R functions:
+    [Enhancements to Ei, li, Zeta, R functions]
        - Native Zeta and R have slightly more accurate results.
        - For bignums, use Math::MPFR if possible.  MUCH faster.
          Also allows extended precision while still being fast.
@@ -260,6 +270,7 @@ Revision history for Perl extension Math::Prime::Util.
           - BigFloat versions if no MPFR and BigFloat input.
           - standard version if no MPFR and not a BigFloat.
 
+    [Other Changes]
     - Add tests for primorial, jordan_totient, and divisor_sum.
 
     - Revamp of the random_prime internals.  Also fixes some issues with
@@ -269,19 +280,20 @@ Revision history for Perl extension Math::Prime::Util.
       object if the result is greater than the native size.  This includes
       loading up the Math::BigInt library if necessary.
 
-0.14  29 November 2012
+0.14  2012-11-29
 
-    - Compilation and test issues:
-          Fix compilation on NetBSD
-          Try to fix compilation on Win32 + MSVC
-          Speed up some testing, helps a lot with Cygwin on slow machines
-          Speed up a lot of slow PP areas, especially used by test suite
+    [Compilation / Test Issues]
+       - Fix compilation on NetBSD
+       - Try to fix compilation on Win32 + MSVC
+       - Speed up some testing, helps a lot with Cygwin on slow machines
+       - Speed up a lot of slow PP areas, especially used by test suite
 
+    [Functions Added]
+       - jordan_totient          generalization of Euler Totient
+       - divisor_sum             run coderef for every divisor
+
+    [Other Changes]
     - XS AKS extended from half-word to full-word.
-
-    - Add functions:
-           jordan_totient          generalization of Euler Totient
-           divisor_sum             run coderef for every divisor
 
     - Allow environment variables MPU_NO_XS and MPU_NO_GMP to turn off XS and
       GMP support respectively if they are defined and equal to 1.
@@ -301,23 +313,26 @@ Revision history for Perl extension Math::Prime::Util.
       Math::Big* coerces the input to a signed value if it isn't a string,
       which causes us all sorts of grief.
 
-0.13  19 November 2012
+0.13  2012-11-19
 
     - Fix an issue with prime count, and make prime count available as a
       standalone program using primesieve.
 
-0.12  17 November 2012
+0.12  2012-11-17
 
-    - Add bin/primes.pl and bin/factor.pl
+    [Programs Added]
+       - bin/primes.pl
+       - bin/factor.pl
 
-    - Add functions:
-           primorial               product of primes <= n
-           pn_primorial            product of first n primes
-           prime_set_config        set config options
-           RiemannZeta             export and make accurate for small reals
-           is_provable_prime       prove primes after BPSW
-           is_aks_prime            prove prime via AKS
+    [Functions Added]
+       - primorial               product of primes <= n
+       - pn_primorial            product of first n primes
+       - prime_set_config        set config options
+       - RiemannZeta             export and make accurate for small reals
+       - is_provable_prime       prove primes after BPSW
+       - is_aks_prime            prove prime via AKS
 
+    [Other Changes]
     - Add 'assume_rh' configuration option (default: false) which can be set
       to allow functions to assume the Riemann Hypothesis.
 
@@ -344,7 +359,7 @@ Revision history for Perl extension Math::Prime::Util.
       then sieves up from there.  This makes a big speed difference for inputs
       over 10^6 or so -- over 100x faster for 10^9 and up.
 
-0.11  23 July 2012
+0.11  2012-07-23
     - Turn off threading tests on Cygwin, as threads on some Cygwin platforms
       give random panics (my Win7 64-bit works fine, XP 32-bit does not).
     - Use pow instead of exp2 -- some systems don't have exp2.
@@ -355,16 +370,7 @@ Revision history for Perl extension Math::Prime::Util.
       a little more up-front trial division for main factor routine.
 
 
-0.10  16 July 2012
-    - Add:
-           prime_get_config              to get configuration options
-           is_strong_pseudoprime         better name for miller_rabin
-           is_strong_lucas_pseudoprime   strong lucas-selfridge psp test
-           random_nbit_prime             for n-bit primes
-           random_maurer_prime           provable n-bit primes
-           moebius                       Mo:bius function
-           euler_phi                     Euler's phi aka totient
-
+0.10  2012-07-16
     - full bigint support for everything.  Use '-nobigint' as an import to
       shortcut straight to XS for better speed on some of the very fast functions.
       This involved moving a lot of functions into Util.pm.
@@ -376,27 +382,36 @@ Revision history for Perl extension Math::Prime::Util.
     - New bounds for prime_count and nth_prime.  Dusart 2010 for larger
       values, tuned nth_prime_upper for small values.  Much tighter.
 
-    - Minor changes:
-        - Make miller_rabin return 0 if given even number.
-        - The XS miller_rabin code now works with large base > n.
-        - factor always returns sorted results 
-        - miller_rabin() deprecated.  Use is_strong_pseudoprime instead.
+    [Functions Added]
+       - prime_get_config              to get configuration options
+       - is_strong_pseudoprime         better name for miller_rabin
+       - is_strong_lucas_pseudoprime   strong lucas-selfridge psp test
+       - random_nbit_prime             for n-bit primes
+       - random_maurer_prime           provable n-bit primes
+       - moebius                       Mo:bius function
+       - euler_phi                     Euler's phi aka totient
 
-    - We now should support most of the functionality of:
-         Math::Prime::XS         (MPU: more functions, a bit faster)
-         Math::Prime::FastSieve  (MPU: more functions, a bit faster)
-         Math::Prime::TiedArray  (MPU: a *lot* faster)
-         Math::Factor::XS        (MPU: bignums, faster, missing multiplicity)
-         Math::Big::Factors      (MPU: orders of magnitude faster)
-         Math::Primality         (MPU: more portable, fast native, slow bigint)
+    [Minor Changes]
+       - Make miller_rabin return 0 if given even number.
+       - The XS miller_rabin code now works with large base > n.
+       - factor always returns sorted results 
+       - miller_rabin() deprecated.  Use is_strong_pseudoprime instead.
+
+    [Support all functionality of:]
+       - Math::Prime::XS         (MPU: more functions, a bit faster)
+       - Math::Prime::FastSieve  (MPU: more functions, a bit faster)
+       - Math::Prime::TiedArray  (MPU: a *lot* faster)
+       - Math::Factor::XS        (MPU: bignums, faster, missing multiplicity)
+       - Math::Big::Factors      (MPU: orders of magnitude faster)
+       - Math::Primality         (MPU: more portable, fast native, slow bigint)
                                  (MPU+MPU::GMP: faster)
-         Crypt::Primes           (MPU: more portable, slower & no fancy options)
+       - Crypt::Primes           (MPU: more portable, slower & no fancy options)
 
-      as well as a tiny bit of:
-         Math::Big               (MPU's primes is *much* faster)
-         Bit::Vector             (MPU's primes is ~10x faster)
+    [Support some functionality of:]
+       - Math::Big               (MPU's primes is *much* faster)
+       - Bit::Vector             (MPU's primes is ~10x faster)
 
-0.09  25 June 2012
+0.09  2012-06-25
     - Pure Perl code added.  Passes all tests.  Used only if the XSLoader
       fails.  It's 1-120x slower than the C code.  When forced to use the
       PP code, the test suite is 38x slower on 64-bit, 16x slower on 32-bit
@@ -409,7 +424,7 @@ Revision history for Perl extension Math::Prime::Util.
           if you free memory on a different thread than allocated it.
     - is_prime could return 1 in some cases.  Fixed to only return 0 or 2.
 
-0.08  22 June 2012
+0.08  2012-06-22
     - Added thread safety and tested good concurrency.
     - Accuracy improvement and measurements for math functions.
     - Remove simple sieve -- it wasn't being used, and was just around for
@@ -422,15 +437,15 @@ Revision history for Perl extension Math::Prime::Util.
       the module.  The main issue is that we can't verify the factors since Perl
       can't properly multiply them.
 
-0.07  17 June 2012
+0.07  2012-06-17
     - Fixed a bug in next_prime found by Lou Godio (thank you VERY much!).
       Added more tests for this.  This had been changed in another area but
       hadn't been brought into next_prime.
 
-0.06  14 June 2012
+0.06  2012-06-14
     - Change to New/Safefree from malloc.  Oops.
 
-0.05  11 June 2012
+0.05  2012-06-11
     - Speed up mulmod: asm for GCC + x86_64, native 64-bit for 32-bit Perl
       is uint64_t is available, and range tests for others.  This speeds up
       some of the factoring as well as Miller-Rabin, which in turn speeds up
@@ -443,7 +458,7 @@ Revision history for Perl extension Math::Prime::Util.
     - Let user override rand for random_prime.
     - Add many more tests with the help of Devel::Cover.
 
-0.04  7 June 2012
+0.04  2012-06-07
     - Didn't do tests on 32-bit machine before release.  Test suite caught
       problem with next_prime overflow.
     - Try to use 64-bit modulo math even when Perl is 32-bit.  It can make
@@ -452,7 +467,7 @@ Revision history for Perl extension Math::Prime::Util.
     - Add random_prime and random_ndigit_prime
     - renamed prime_free to prime_memfree.
 
-0.03  6 June 2012
+0.03  2012-06-06
     - Speed up factoring.
     - fixed powmod routine, speedup for smaller numbers
     - Add Miller-Rabin and deterministic probable prime functions.  These
@@ -461,7 +476,7 @@ Revision history for Perl extension Math::Prime::Util.
     - Add HOLF factoring (just for demo)
     - Next prime returns 0 on overflow
 
-0.02  5 June 2012
+0.02  2012-06-05
     - Back off new_ok to new/isa_ok to keep Test::More requirements low.
     - Some documentation updates.
     - I accidently used long in SQUFOF, which breaks LLP64.
@@ -474,5 +489,5 @@ Revision history for Perl extension Math::Prime::Util.
       time for 10^12 or more.
     - nth_prime also transitioned to segmented sieve.
 
-0.01  4 June 2012
+0.01  2012-06-04
     - Initial release
