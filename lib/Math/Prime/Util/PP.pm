@@ -150,7 +150,7 @@ sub _is_prime7 {  # n must not be divisible by 2, 3, or 5
               !($n % 37) || !($n % 41) || !($n % 43) || !($n % 47) ||
               !($n % 53) || !($n % 59);
 
-  if ($n <= 10_000_000) {
+  if ($n <= 1_000_000) {
     my $limit = int(sqrt($n));
     my $i = 61;
     while (($i+30) <= $limit) {
@@ -176,18 +176,18 @@ sub _is_prime7 {  # n must not be divisible by 2, 3, or 5
     return 2;
   }
 
-  if ($n < 105936894253) {   # BPSW seems to be faster after this
+  if ($n < 47636622961201) {   # BPSW seems to be faster after this
     # Deterministic set of Miller-Rabin tests.  If the MR routines can handle
     # bases greater than n, then this can be simplified.
     my @bases;
-    if    ($n <          9080191) { @bases = (31,       73); }
-    elsif ($n <         19471033) { @bases = ( 2,   299417); }
+    # n > 1_000_000 because of the previous block.
+    if    ($n <         19471033) { @bases = ( 2,  299417); }
     elsif ($n <         38010307) { @bases = ( 2,  9332593); }
     elsif ($n <        316349281) { @bases = ( 11000544, 31481107); }
     elsif ($n <       4759123141) { @bases = ( 2, 7, 61); }
-    elsif ($n <     105936894253) { @bases = ( 2, 1005905886, 1340600841); }
-    elsif ($n <   31858317218647) { @bases = ( 2, 642735, 553174392, 3046413974); }
-    elsif ($n < 3071837692357849) { @bases = ( 2, 75088, 642735, 203659041, 3613982119); }
+    elsif ($n <     154639673381) { @bases = ( 15, 176006322, 4221622697); }
+    elsif ($n <   47636622961201) { @bases = ( 2, 2570940, 211991001, 3749873356); }
+    elsif ($n < 3770579582154547) { @bases = ( 2, 2570940, 880937, 610386380, 4130785767); }
     else                          { @bases = ( 2, 325, 9375, 28178, 450775, 9780504, 1795265022); }
     return miller_rabin($n, @bases)  ?  2  :  0;
   }
@@ -195,10 +195,10 @@ sub _is_prime7 {  # n must not be divisible by 2, 3, or 5
   # BPSW probable prime.  No composites are known to have passed this test
   # since it was published in 1980, though we know infinitely many exist.
   # It has also been verified that no 64-bit composite will return true.
-  # Slow since it's all in PP, but it's the Right Thing To Do.
+  # Slow since it's all in PP and uses bigints.
 
   return 0 unless miller_rabin($n, 2);
-  return 0 unless is_strong_lucas_pseudoprime($n);
+  return 0 unless is_extra_strong_lucas_pseudoprime($n);
   return ($n <= 18446744073709551615)  ?  2  :  1;
 }
 
@@ -927,7 +927,8 @@ sub _lucas_selfridge_params {
 }
 
 sub _lucas_extrastrong_params {
-  my($n) = @_;
+  my($n, $increment) = @_;
+  $increment = 1 unless defined $increment;
 
   my ($P, $Q, $D) = (3, 1, 5);
   while (1) {
@@ -935,7 +936,8 @@ sub _lucas_extrastrong_params {
                                           : _gcd_ui($D, $n);
     return (0,0,0) if $gcd > 1 && $gcd != $n;  # Found divisor $d
     last if _jacobi($D, $n) == -1;
-    $P++;
+    $P += $increment;
+    croak "Could not find Jacobi sequence for $n" if $P > 65535;
     $D = $P*$P - 4;
   }
   ($P, $Q, $D);
@@ -945,13 +947,12 @@ sub _lucas_extrastrong_params {
 sub lucas_sequence {
   my($n, $P, $Q, $k) = @_;
 
-  return (0, 2) if $k == 0;
-  my $D = $P*$P - 4*$Q;
-
   croak "lucas_sequence: n must be >= 2" if $n < 2;
   croak "lucas_sequence: k must be >= 0" if $k < 0;
   croak "lucas_sequence: P out of range" if $P < 0 || $P >= $n;
   croak "lucas_sequence: Q out of range" if $Q >= $n;
+
+  my $D = $P*$P - 4*$Q;
   croak "lucas_sequence: D is zero" if $D == 0;
 
   if (ref($n) ne 'Math::BigInt') {
@@ -967,25 +968,36 @@ sub lucas_sequence {
   my $V = $ZERO + $P;
   my $Qk = $ZERO + $Q;
 
+  return ($ZERO, $ZERO+2) if $k == 0;
   $k = Math::BigInt->new("$k") unless ref($k) eq 'Math::BigInt';
   my $kstr = substr($k->as_bin, 2);
   my $bpos = 0;
 
   if ($Q == 1) {
-    while (++$bpos < length($kstr)) {
-      $U = ($U * $V) % $n;
-      $V = ($V * $V - 2) % $n;
-      if (substr($kstr,$bpos,1)) {
-        my $T1 = $U->copy->bmul($D);
-        $U->bmul($P);
-        $U->badd($V);
-        $U->badd($n) if $U->is_odd;
-        $U->brsft(1);
-
-        $V->bmul($P);
-        $V->badd($T1);
-        $V->badd($n) if $V->is_odd;
-        $V->brsft(1);
+    my $Dinverse = ($ZERO+$D)->bmodinv($n);
+    if ($P > 2 && !$Dinverse->is_nan) {
+      # Calculate V_k with U=V_{k+1}
+      $U = $ZERO + ($P*$P - 2);
+      while (++$bpos < length($kstr)) {
+        if (substr($kstr,$bpos,1)) {
+          $V->bmul($U)->bsub($P)->bmod($n);
+          $U->bmul($U)->bsub( 2)->bmod($n);
+        } else {
+          $U->bmul($V)->bsub($P)->bmod($n);
+          $V->bmul($V)->bsub( 2)->bmod($n);
+        }
+      }
+      # Crandall and Pomerance eq 3.13: U_n = D^-1 (2V_{n+1} - PV_n)
+      $U = $Dinverse * (2*$U - $P*$V);
+    } else {
+      while (++$bpos < length($kstr)) {
+        $U = ($U * $V) % $n;
+        $V = ($V * $V - 2) % $n;
+        if (substr($kstr,$bpos,1)) {
+          my $T1 = $U->copy->bmul($D);
+          $U->bmul($P)->badd( $V)->badd( $U->is_odd ? $n : 0 )->brsft(1);
+          $V->bmul($P)->badd($T1)->badd( $V->is_odd ? $n : 0 )->brsft(1);
+        }
       }
     }
   } else {
@@ -1083,6 +1095,59 @@ sub is_extra_strong_lucas_pseudoprime {
   my($U, $V, $Qk) = lucas_sequence($n, $P, $Q, $k);
 
   return 1 if $U->is_zero && ($V == 2 || $V == ($n-2));
+  foreach my $r (0 .. $s-2) {
+    return 1 if $V->is_zero;
+    $V->bmul($V)->bsub(2)->bmod($n);
+  }
+  return 0;
+}
+
+sub is_almost_extra_strong_lucas_pseudoprime {
+  my($n, $increment) = @_;
+  _validate_positive_integer($n);
+  $increment = 1 unless defined $increment;
+  _validate_positive_integer($increment, 1, 256);
+
+  return 1 if $n == 2;
+  return 0 if $n < 2 || ($n % 2) == 0;
+  return 0 if _is_perfect_square($n);
+
+  my ($P, $Q, $D) = _lucas_extrastrong_params($n, $increment);
+  return 0 if $D == 0;  # We found a divisor in the sequence
+  die "Lucas parameter error: $D, $P, $Q\n" if ($D != $P*$P - 4*$Q);
+
+  my $m = $n+1;
+  my($s, $k) = (0, $m);
+  while ( $k > 0 && !($k % 2) ) {
+    $s++;
+    $k >>= 1;
+  }
+
+  if (ref($n) ne 'Math::BigInt') {
+    if (!defined $Math::BigInt::VERSION) {
+      eval { require Math::BigInt;  Math::BigInt->import(try=>'GMP,Pari'); 1; }
+      or do { croak "Cannot load Math::BigInt "; }
+    }
+    $n = Math::BigInt->new("$n");
+  }
+
+  my $ZERO = $n->copy->bzero;
+  my $V = $ZERO + $P;        # V_{k}
+  my $W = $ZERO + $P*$P-2;   # V_{k+1}
+  $k = Math::BigInt->new("$k") unless ref($k) eq 'Math::BigInt';
+  my $kstr = substr($k->as_bin, 2);
+  my $bpos = 0;
+  while (++$bpos < length($kstr)) {
+    if (substr($kstr,$bpos,1)) {
+      $V->bmul($W)->bsub($P)->bmod($n);
+      $W->bmul($W)->bsub( 2)->bmod($n);
+    } else {
+      $W->bmul($V)->bsub($P)->bmod($n);
+      $V->bmul($V)->bsub( 2)->bmod($n);
+    }
+  }
+
+  return 1 if $V == 2 || $V == ($n-2);
   foreach my $r (0 .. $s-2) {
     return 1 if $V->is_zero;
     $V->bmul($V)->bsub(2)->bmod($n);
@@ -2724,8 +2789,9 @@ functions.  Alternately, L<Math::Pari> has a lot of these types of functions.
   print "$n is prime" if is_prime($n);
 
 Returns 2 if the number is prime, 0 if not.  For numbers larger than C<2^64>
-it will return 0 for composite and 1 for probably prime, using a strong BPSW
-test.  Also note there are probabilistic prime testing functions available.
+it will return 0 for composite and 1 for probably prime, using an
+extra-strong BPSW test.  Also note there are probabilistic prime testing
+functions available.
 
 
 =head2 primes
@@ -2841,6 +2907,20 @@ strong Lucas test (as defined in
 L<Grantham 2000|http://www.ams.org/mathscinet-getitem?mr=1680879>).
 This has slightly more restrictive conditions than the strong Lucas test,
 but uses different starting parameters so is not directly comparable.
+
+=head2 is_almost_extra_strong_lucas_pseudoprime
+
+Takes a positive number as input, and returns 1 if the input passes the extra
+strong Lucas test, ignoring the C<U_n = 0> condition.  This produces about 5%
+more pseudoprimes than the extra strong test, but 66% fewer than the strong
+test.
+
+An optional second argument (an integer between 1 and 256) indicates the
+increment used when selecting the C<P> parameter.  A default value of 1
+creates the same parameters as the extra strong test, so the pseudoprime
+sequence from this function will contain all the extra strong Lucas
+pseudoprimes.  A value of 2 yields the method used by
+L<Pari|http://pari.math.u-bordeaux.fr/faq.html#primetest>.
 
 =head2 is_frobenius_underwood_pseudoprime
 

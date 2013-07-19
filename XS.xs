@@ -707,33 +707,6 @@ _validate_num(SV* n, ...)
   OUTPUT:
     RETVAL
 
-UV
-testfac (IN UV bits, IN UV num)
-  PREINIT:
-    UV n, i, nf, base, numfacs;
-    UV factors[64];
-  CODE:
-    numfacs = 0;
-    base = 1 + (1UL << bits);
-    for (i = 0; i < num; i++) {
-      n = base+2*i;
-      nf = trial_factor(n, factors, 1001);
-      n = factors[--nf];
-      if (_XS_is_prob_prime(n)) continue;
-      //numfacs += holf_factor(n, factors, 20000) - 1;
-      //numfacs += pminus1_factor(n, factors, 5000, 80000) - 1;
-      //numfacs += pminus1_factor(n, factors, 300, 60000) - 1;
-      numfacs += pplus1_factor(n, factors, 5000) - 1;
-      //numfacs += squfof_factor(n, factors, 20000) - 1;
-      //numfacs += racing_squfof_factor(n, factors, 10000) - 1;
-      //numfacs += pbrent_factor(n, factors, 1500, 3) - 1;
-      //numfacs += pplus1_factor(n, factors, 200) - 1;
-      //numfacs += lehman_factor(n, factors) - 1;
-    }
-    RETVAL = numfacs;
-  OUTPUT:
-    RETVAL
-
 void
 forprimes (SV* block, IN SV* svbeg, IN SV* svend = 0)
   PROTOTYPE: &$;$

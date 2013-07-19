@@ -2483,7 +2483,7 @@ __END__
 
 =encoding utf8
 
-=for stopwords forprimes Möbius Deléglise totient moebius mertens irand primesieve uniqued k-tuples von SoE pari yafu fonction qui compte le nombre nombres voor PhD
+=for stopwords forprimes Möbius Deléglise totient moebius mertens irand primesieve uniqued k-tuples von SoE pari yafu fonction qui compte le nombre nombres voor PhD superset
 
 
 =head1 NAME
@@ -2740,10 +2740,11 @@ a lot.  There are some brittle behaviors on 5.12.4 and earlier with bignums.
   print "$n is prime" if is_prime($n);
 
 Returns 2 if the number is prime, 0 if not.  For numbers larger than C<2^64>
-it will return 0 for composite and 1 for probably prime, using a strong BPSW
-test.  If L<Math::Prime::Util::GMP> is installed, some additional
-primality tests are also performed on large inputs, and a quick attempt is
-made to perform a primality proof, so it will return 2 for many other inputs.
+it will return 0 for composite and 1 for probably prime, using an
+extra-strong BPSW test.  If L<Math::Prime::Util::GMP> is installed, some
+additional primality tests are also performed on large inputs, and a
+quick attempt is made to perform a primality proof, so it will
+return 2 for many other inputs.
 
 Also see the L</is_prob_prime> function, which will never do additional
 tests, and the L</is_provable_prime> function which will construct a proof
@@ -2753,8 +2754,9 @@ expense of speed).
 For native precision numbers (anything smaller than C<2^64>, all three
 functions are identical and use a deterministic set of tests (selected
 Miller-Rabin bases or BPSW).  For larger inputs both L</is_prob_prime> and
-L</is_prime> return probable prime results using the strong Baillie-PSW test,
-which has had no counterexample found since it was published in 1980.
+L</is_prime> return probable prime results using the extra-strong
+Baillie-PSW test, which has had no counterexample found since it was
+published in 1980.
 
 
 
@@ -3029,17 +3031,37 @@ L<OEIS A217255|http://oeis.org/A217255>.
 
 Takes a positive number as input, and returns 1 if the input passes the extra
 strong Lucas test (as defined in
-L<Grantham 2000|http://www.ams.org/mathscinet-getitem?mr=1680879>).  Parameter
-selection is done by incrementing C<P> from C<3> until C<jacobi(D,n) = -1>.
-This has slightly more restrictive conditions than the strong Lucas test,
-but uses different starting parameters so is not directly comparable.
+L<Grantham 2000|http://www.ams.org/mathscinet-getitem?mr=1680879>).  This
+test has more stringent conditions than the strong Lucas test, and produces
+about 60% fewer pseudoprimes.  Performance is typically 20-30% I<faster>
+than the strong Lucas test.
+
+The parameters are selected using the
+L<Baillie-OEIS method|http://oeis.org/A217719>
+method: increment C<P> from C<3> until C<jacobi(D,n) = -1>.
 Removing primes, this produces the sequence
 L<OEIS A217719|http://oeis.org/A217719>.
 
-The extra strong Lucas test typically performs 20 to 30% faster than the
-strong Lucas test, and produces fewer pseudoprimes.  There are no
-counterexamples below C<2^64> with BPSW using any of the Lucas tests, and
-no published counterexamples of any size.
+=head2 is_almost_extra_strong_lucas_pseudoprime
+
+This is similar to the L</is_extra_strong_lucas_pseudoprime> function, but
+does not calculate C<U>, so is a little faster, but also weaker.
+With the current implementations, there is little reason to prefer this unless
+trying to reproduce specific results.  The extra-strong implementation has been
+optimized to use similar features, removing most of the performance advantage.
+
+An optional second argument (an integer between 1 and 256) indicates the
+increment amount for C<P> parameter selection.  The default value of 1 yields
+the parameter selection described in L</is_extra_strong_lucas_pseudoprime>,
+creating a pseudoprime sequence which is a superset of the latter's
+pseudoprime sequence L<OEIS A217719|http://oeis.org/A217719>.
+A value of 2 yields the method used by
+L<Pari|http://pari.math.u-bordeaux.fr/faq.html#primetest>.
+
+Because the C<U = 0> condition is ignored, this produces about 5% more
+pseudoprimes than the extra-strong Lucas test.  However this is still only
+66% of the number produced by the strong Lucas-Selfridge test.  No BPSW
+counterexamples have been found with any of the Lucas tests described.
 
 =head2 is_frobenius_underwood_pseudoprime
 
@@ -3066,7 +3088,7 @@ This has been verified with Jan Feitsma's 2-PSP database to produce no false
 results for 64-bit inputs.  Hence the result will always be 0 (composite) or
 2 (prime).
 
-For inputs larger than C<2^64>, a strong Baillie-PSW primality test is
+For inputs larger than C<2^64>, an extra-strong Baillie-PSW primality test is
 performed (also called BPSW or BSW).  This is a probabilistic test, so only
 0 (composite) and 1 (probably prime) are returned.  There is a possibility that
 composites may be returned marked prime, but since the test was published in
