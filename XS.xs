@@ -754,7 +754,7 @@ forprimes (SV* block, IN SV* svbeg, IN SV* svend = 0)
     SAVESPTR(GvSV(PL_defgv));
     svarg = newSVuv(0);
     /* Handle early part */
-    while (beg < 7) {
+    while (beg < 6) {
       dSP;
       beg = (beg <= 2) ? 2 : (beg <= 3) ? 3 : 5; 
       if (beg <= end) {

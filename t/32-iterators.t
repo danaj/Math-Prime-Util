@@ -8,7 +8,7 @@ use Math::Prime::Util qw/primes forprimes prime_iterator/;
 my $use64 = Math::Prime::Util::prime_get_config->{'maxbits'} > 32;
 
 plan tests => 8 + 5
-            + 11
+            + 12
             + 3 + 7
             + 2;
 
@@ -32,6 +32,7 @@ ok(!eval { forprimes { 1 } 5.6; },   "forprimes abc");
 {my @t; forprimes {push @t,$_} 3,6; is_deeply( [@t], [3,5], "forprimes 3,6" ); }
 {my @t; forprimes {push @t,$_} 3,7; is_deeply( [@t], [3,5,7], "forprimes 3,7" ); }
 {my @t; forprimes {push @t,$_} 5,7; is_deeply( [@t], [5,7], "forprimes 5,7" ); }
+{my @t; forprimes {push @t,$_} 6,7; is_deeply( [@t], [7], "forprimes 6,7" ); }
 {my @t; forprimes {push @t,$_} 5,11; is_deeply( [@t], [5,7,11], "forprimes 5,11" ); }
 {my @t; forprimes {push @t,$_} 7,11; is_deeply( [@t], [7,11], "forprimes 7,11" ); }
 
