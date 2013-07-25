@@ -669,7 +669,7 @@ UV _XS_LMO_pi(UV n)
   IV S1;
   UV S2, P2;
   const UV* primes = 0;  /* small prime cache */
-  char* mu = 0;          /* moebius to n^1/3 */
+  signed char* mu = 0;          /* moebius to n^1/3 */
   UV*   lpf = 0;         /* least prime factor to n^1/3 */
   DECLARE_TIMING_VARIABLES;
   if (n < SIEVE_LIMIT)
@@ -696,13 +696,11 @@ UV _XS_LMO_pi(UV n)
   TIMING_START;
   /* We could call MPU's:
    *    mu = _moebius_range(0, n13+1)
-   * but (1) it's a bit slower (something to be addressed), and (2) we will
-   * do the least prime factor calculation at the same time.
+   * but we will do the least prime factor calculation at the same time.
    */
-  New(0, mu, n13+1, char);
+  New(0, mu, n13+1, signed char);
   memset(mu, 1, sizeof(char) * (n13+1));
-  New(0, lpf, n13+1, UV);
-  memset(lpf, 0, sizeof(UV) * (n13+1));
+  Newz(0, lpf, n13+1, UV);
   mu[0] = 0;
   for (i = 1; i <= a; i++) {
     UV primei = primes[i];
