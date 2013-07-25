@@ -49,7 +49,9 @@
   #define mulmod(a,b,m) _mulmod(a,b,m)
   #define sqrmod(n,m)   _mulmod(n,n,m)
 
-#elif __GNUC__ == 4 && __GNUC_MINOR__ >= 4
+#elif BITS_PER_WORD == 64 && __GNUC__ == 4 && __GNUC_MINOR__ >= 4 && (defined(__LP64__) || defined(__x86_64__) || defined(__powerpc64__) || defined(_M_X64) || defined(_M_IX86))
+
+  /* We're 64-bit, using a modern gcc, and the target has some 128-bit type */
 
   #if __GNUC__ == 4 && __GNUC_MINOR__ >= 4 && __GNUC_MINOR__ < 6
     typedef unsigned int uint128_t __attribute__ ((__mode__ (TI)));
