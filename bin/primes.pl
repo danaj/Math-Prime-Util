@@ -55,10 +55,10 @@ $| = 1;
 # time difference grows rapidly.
 #
 #          primes.pl    Math::NumSeq::SophieGermainPrimes
-#     1M     0.14s        0.18s
-#    10M     0.82s        3.89s
-#   100M     7.09s      793s
-#  1000M    64.2s       ? estimated >3 days
+#     1M     0.11s        0.18s
+#    10M     0.38        3.89s
+#   100M     2.98s     793s
+#  1000M    27.7s       ? estimated >3 days
 #
 # If given a non-zero start value it spreads even more, as for most sequences
 # primes.pl doesn't have to generate preceeding values, while NumSeq has to
