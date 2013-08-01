@@ -29,7 +29,7 @@
 #endif
 
 /* multicall compatibility stuff */
-#if PERL_VERSION < 7
+#if PERL_REVISION <= 5 && PERL_VERSION < 7
 # define USE_MULTICALL 0   /* Too much trouble to work around it */
 #else
 # define USE_MULTICALL 1
@@ -768,7 +768,6 @@ forprimes (SV* block, IN SV* svbeg, IN SV* svend = 0)
     if (beg <= end) {
       ctx = start_segment_primes(beg, end, &segment);
       while (next_segment_primes(ctx, &seg_base, &seg_low, &seg_high)) {
-        /* TODO: Make sure this doesn't leak memory in 5.16 and previous */
         if (!CvISXSUB(cv)) {
           dMULTICALL;
           I32 gimme = G_VOID;
