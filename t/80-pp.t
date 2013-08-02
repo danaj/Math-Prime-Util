@@ -239,7 +239,7 @@ my %ipp = (
   36010359 => 0,
 );
 
-plan tests => 1 +
+plan tests => 2 +
               3 +
               3 + scalar(keys %small_single) + scalar(keys %small_range) +
               2*scalar(keys %primegaps) + 8 + 1 + 1 + 1 +
@@ -266,6 +266,8 @@ use Math::Prime::Util qw/primes prime_count_approx prime_count_lower
 use Math::BigInt try => 'GMP';
 use Math::BigFloat;
 require_ok 'Math::Prime::Util::PP';
+require_ok 'Math::Prime::Util::PrimalityProving';
+
     # This function skips some setup
     undef *primes;
     *primes             = \&Math::Prime::Util::PP::primes;
@@ -563,7 +565,7 @@ SKIP: {
   is( is_aks_prime(74513), 0, "AKS: 74513 is composite (failed anr test)" );
 }
 
-is_deeply( [Math::Prime::Util::PP::primality_proof_lucas(100003)],
+is_deeply( [Math::Prime::Util::PrimalityProving::primality_proof_lucas(100003)],
            [2, [100003, "Pratt", [2, 3, 7, 2381], 2]],
            "primality_proof_lucas(100003)" );
 # Had to reduce these to make borked up Perl 5.6.2 work.
@@ -574,10 +576,10 @@ is_deeply( [Math::Prime::Util::PP::primality_proof_lucas(100003)],
 #           [2, ["809120722675364249", "n-1",
 #               ["B", 20000, "22233477760919", 2], [2, 4549], [3, 2]]],
 #           "primality_proof_bls75(809120722675364249)" );
-is_deeply( [Math::Prime::Util::PP::primality_proof_bls75(1490266103)],
+is_deeply( [Math::Prime::Util::PrimalityProving::primality_proof_bls75(1490266103)],
            [2, [1490266103, 'n-1', [2, 13, 19, 1597, 1889], [5, 2, 2, 2, 2]]],
            "primality_proof_bls75(1490266103)" );
-is_deeply( [Math::Prime::Util::PP::primality_proof_bls75(Math::BigInt->new("64020974585221"))],
+is_deeply( [Math::Prime::Util::PrimalityProving::primality_proof_bls75(Math::BigInt->new("64020974585221"))],
            [2, ["64020974585221", "n-1",
                ["B", 20000, "5154667841", 2], [2, 3, 5, 23], [2, 2, 2, 2]]],
            "primality_proof_bls75(64020974585221)" );

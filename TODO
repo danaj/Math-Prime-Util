@@ -40,3 +40,5 @@
 - Refactor where functions exist in .c.  Lots of primality tests in factor.c.
 
 - Switch to new text proofs.
+
+- Add ecm_factor just like the other routines

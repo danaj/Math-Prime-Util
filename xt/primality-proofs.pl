@@ -66,10 +66,23 @@ print "\n";
 
 sub proof_mark {
   my $cert = shift;
-  my $type = (scalar @$cert == 1) ? "bpsw" : $cert->[1];
+  my $type;
+  if (ref($cert) eq 'ARRAY') {
+    $type = (scalar @$cert == 1) ? "bpsw" : $cert->[1];
+    if ($type =~ /n-1/i) {
+      $type = ($cert->[2]->[0] eq 'B') ? 'BLS7' : 'BLS5';
+    }
+  } else {
+    ($type) = $cert =~ /Type (\S+)/;
+    $type = 'ECPP' if $cert =~ /Type\s+ECPP/;
+  }
   if (!defined $type) { die "\nNo cert:\n\n", dump_filtered($cert, $bifilter); }
-  if    ($type =~ /n-1/i)       { return ($cert->[2]->[0] eq 'B') ? '7' : '5'; }
+  if    ($type =~ /bls5/i)      { return '5'; }
+  elsif ($type =~ /bls7/i)      { return '7'; }
+  if    ($type =~ /bls3/i)      { return '-'; }
+  elsif ($type =~ /bls15/i)     { return '+'; }
   elsif ($type =~ /bpsw/i)      { return '.'; }
   elsif ($type =~ /ecpp|agkm/i) { return 'E'; }
+  warn "type: $type\n";
   return '?';
 }

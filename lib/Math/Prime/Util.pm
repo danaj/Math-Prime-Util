@@ -849,7 +849,7 @@ sub primes {
   sub random_maurer_prime {
     my ($n, $cert) = random_maurer_prime_with_cert(@_);
     croak "maurer prime $n failed certificate verification!"
-          unless verify_prime(@$cert);
+          unless verify_prime($cert);
     return $n;
   }
 
@@ -1736,7 +1736,7 @@ sub is_provable_prime {
 sub prime_certificate {
   my($n) = @_;
   my ($is_prime, $cert) = is_provable_prime_with_cert($n);
-  return @$cert;
+  return $cert;
 }
 
 
@@ -1744,28 +1744,30 @@ sub is_provable_prime_with_cert {
   my($n) = @_;
   return 0 if defined $n && $n < 2;
   _validate_num($n) || _validate_positive_integer($n);
+  my $header = "[MPU - Primality Certificate]\nVersion 1.0\n\nProof for:\nN $n\n\n";
 
-  # Set to 0 if you want the proof to go down to 11.
-  if (1) {
-    if (ref($n) ne 'Math::BigInt' && $n <= $_XS_MAXVAL) {
-      my $isp = _XS_is_prime("$n");
-      return ($isp == 2) ? ($isp, [$n]) : ($isp, []);
-    }
-    if ($_HAVE_GMP && defined &Math::Prime::Util::GMP::is_provable_prime_with_cert) {
-      return Math::Prime::Util::GMP::is_provable_prime_with_cert($n);
-    }
+  if (ref($n) ne 'Math::BigInt' && $n <= $_XS_MAXVAL) {
+    my $isp = _XS_is_prime("$n");
+    return ($isp, '') unless $isp == 2;
+    return (2, "[MPU - Primality Certificate]\nVersion 1.0\n\nProof for:\nN $n\n\nType Small\nN $n");
+  }
 
+  if ($_HAVE_GMP && defined &Math::Prime::Util::GMP::is_provable_prime_with_cert) {
+    my ($isp, $cert) = Math::Prime::Util::GMP::is_provable_prime_with_cert($n);
+    # New version that returns string format.
+    return ($isp, $cert) if ref($cert) ne 'ARRAY';
+    # Old version.  Convert.
+    if (!defined $Math::Prime::Util::PrimalityProving::VERSION) {
+      eval { require Math::Prime::Util::PrimalityProving; 1; }
+      or do { croak "Cannot load Math::Prime::Util::PrimalityProving"; };
+    }
+    return ($isp, Math::Prime::Util::PrimalityProving::convert_array_cert_to_string($cert));
+  }
+
+  {
     my $isp = is_prob_prime($n);
-    if ($isp != 1) {
-      return ($isp == 2) ? ($isp, [$n]) : ($isp, []);
-    }
-  } else {
-    if ($n <= 10) {
-      if ($n==2||$n==3||$n==5||$n==7) {
-        return (2, [$n]);
-      }
-      return 0;
-    }
+    return ($isp, '') if $isp == 0;
+    return (2, "[MPU - Primality Certificate]\nVersion 1.0\n\nProof for:\nN $n\n\nType Small\nN $n") if $isp == 2;
   }
 
   # Choice of methods for proof:
@@ -1781,361 +1783,39 @@ sub is_provable_prime_with_cert {
   #   AKS          horribly slow
   # See http://primes.utm.edu/prove/merged.html or other sources.
 
-  #my ($isp, $pref) = Math::Prime::Util::PP::primality_proof_lucas($n);
-  my ($isp, $pref) = Math::Prime::Util::PP::primality_proof_bls75($n);
+  if (!defined $Math::Prime::Util::PrimalityProving::VERSION) {
+    eval { require Math::Prime::Util::PrimalityProving; 1; }
+    or do { croak "Cannot load Math::Prime::Util::PrimalityProving"; };
+  }
+
+  #my ($isp, $pref) = Math::Prime::Util::PrimalityProving::primality_proof_lucas($n);
+  my ($isp, $pref) = Math::Prime::Util::PrimalityProving::primality_proof_bls75($n);
   carp "proved $n is not prime\n" if !$isp;
   return ($isp, $pref);
 }
 
 
 sub verify_prime {
-  my @pdata = @_;
-  my $verbose = $_Config{'verbose'};
+  my @cdata = @_;
 
-  # Handle case of being handed a reference to the certificate.
-  @pdata = @{$pdata[0]} if scalar @pdata == 1 && ref($pdata[0]) eq 'ARRAY';
-
-  # Empty input = no certificate = not prime
-  return 0 if scalar @pdata == 0;
-
-  my $n = shift @pdata;
-  if (length($n) == 1) {
-    return 1 if $n =~ /^[2357]$/;
-    print "primality fail: $n tiny and not prime\n" if $verbose;
-    return 0;
+  if (!defined $Math::Prime::Util::PrimalityProving::VERSION) {
+    eval { require Math::Prime::Util::PrimalityProving; 1; }
+    or do { croak "Cannot load Math::Prime::Util::PrimalityProving"; };
   }
 
-  if (!defined $Math::BigInt::VERSION) {
-    eval { require Math::BigInt;   Math::BigInt->import(try=>'GMP,Pari'); 1; }
-    or do { croak "Cannot load Math::BigInt"; };
+  my $cert = '';
+  if (scalar @cdata == 1 && ref($cdata[0]) eq '') {
+    $cert = $cdata[0];
+  } else {
+    # We've been given an old array cert
+    $cert = Math::Prime::Util::PrimalityProving::convert_array_cert_to_string(@cdata);
+    if ($cert eq '') {
+      print "primality fail: error converting old certificate" if $_Config{'verbose'};
+      return 0;
+    }
   }
-  $n = Math::BigInt->new("$n") if ref($n) ne 'Math::BigInt';
-  if ($n->is_even) {
-    print "primality fail: $n even\n" if $verbose;
-    return 0;
-  }
-
-  my $method = (scalar @pdata > 0) ? shift @pdata : 'BPSW';
-
-  if ($method eq 'BPSW') {
-    if ($n > Math::BigInt->new("18446744073709551615")) {
-      print "primality fail: $n too large for BPSW proof\n" if $verbose;
-      return 0;
-    }
-    my $bpsw = 0;
-    my $intn = int($n->bstr);
-    if ($n->bcmp("$intn") == 0 && $intn <= $_XS_MAXVAL) {
-      $bpsw = _XS_miller_rabin($intn, 2)
-           && _XS_is_extra_strong_lucas_pseudoprime($intn);
-    } elsif ($_HAVE_GMP) {
-      $bpsw = Math::Prime::Util::GMP::is_prob_prime($n);
-    } else {
-      $bpsw = Math::Prime::Util::PP::miller_rabin($n, 2)
-           && Math::Prime::Util::PP::is_strong_lucas_pseudoprime($n);
-    }
-    if (!$bpsw) {
-      print "primality fail: BPSW indicated $n is composite\n" if $verbose;
-      return 0;
-    }
-    print "primality success: $n by BPSW\n" if $verbose > 1;
-    return 1;
-  }
-
-  if ($method eq 'Pratt' || $method eq 'Lucas') {
-    # Based on Lucas primality test, which requires full n-1 factorization.
-    if (scalar @pdata != 2 || (ref($pdata[0]) ne 'ARRAY') || (ref($pdata[1]) eq 'ARRAY')) {
-      carp "verify_prime: incorrect Pratt format, must have factors and a value\n";
-      return 0;
-    }
-    my @factors = @{shift @pdata};
-    my $a = Math::BigInt->new(shift @pdata);
-    my $nm1 = $n - 1;
-    my $B = $nm1;    # Unfactored part
-
-    my @prime_factors;
-    my %factors_seen;
-    foreach my $farray (@factors) {
-      my $f;
-      if (ref($farray) eq 'ARRAY') {
-        $f = Math::BigInt->new("$farray->[0]");
-        return 0 unless verify_prime(@$farray);
-      } else {
-        $f = $farray;
-        return 0 unless verify_prime($f);
-      }
-      next if defined $factors_seen{"$f"};   # repeated factors
-      if (($B % $f) != 0) {
-        print "primality fail: given factor $f does not divide $nm1\n" if $verbose;
-        return 0;
-      }
-      while (($B % $f) == 0) {
-        $B /= $f;
-      }
-      push @prime_factors, $f;
-      $factors_seen{"$f"} = 1;
-    }
-    if ($B != 1) {
-      print "primality fail: n-1 not completely factored" if $verbose;
-      return 0;
-    }
-
-    # 1. a must be co-prime to n.
-    if (Math::BigInt::bgcd($a, $n) != 1) {
-      print "primality fail: a and n not coprime\n" if $verbose;
-      return 0;
-    }
-    # 2. n is a psp base a
-    if ($a->copy->bmodpow($nm1, $n) != 1) {
-      print "primality fail: n is not a psp base a\n" if $verbose;
-      return 0;
-    }
-    # 3. For each factor f of n-1, a^((n-1)/f) != 1 mod n
-    foreach my $f (@prime_factors) {
-      if ($a->copy->bmodpow(int($nm1/$f),$n) == 1) {
-        print "primality fail: factor f fails a^((n-1)/f) != 1 mod n\n" if $verbose;
-        return 0;
-      }
-    }
-    print "primality success: $n by Lucas test\n" if $verbose > 1;
-    return 1;
-  }
-
-  if ($method eq 'n-1') {
-    # BLS75 or generalized Pocklington
-    # http://www.ams.org/journals/mcom/1975-29-130/S0025-5718-1975-0384673-1/S0025-5718-1975-0384673-1.pdf
-    # Pull off optional theorem 7 data
-    my ($theorem, $t7_B1, $t7_B, $t7_a) = (5, undef, undef, undef);
-    if (scalar @pdata == 3 && ref($pdata[0]) eq 'ARRAY' && $pdata[0]->[0] =~ /^(B|T7|Theorem\s*7)$/i) {
-      $theorem = 7;
-      (undef, $t7_B1, $t7_B, $t7_a) = @{shift @pdata};
-      $t7_B  = Math::BigInt->new("$t7_B");
-    }
-    if (scalar @pdata != 2 || (ref($pdata[0]) ne 'ARRAY') || (ref($pdata[1]) ne 'ARRAY')) {
-      carp "verify_prime: incorrect n-1 format, must have factors and a values\n";
-      return 0;
-    }
-    my @factors = @{shift @pdata};
-    my @as = @{shift @pdata};
-    if ($#factors != $#as) {
-      carp "verify_prime: incorrect n-1 format, must have a value for each factor\n";
-      return 0;
-    }
-
-    my $nm1 = $n - 1;
-    my $A = $n-$n+1;  # Factored part    (F_1 in BLS paper)
-    my $B = $nm1;     # Unfactored part  (R_1 in BLS paper)
-
-    my @prime_factors;
-    my @pfas;
-    my %factors_seen;
-    foreach my $farray (@factors) {
-      my $f;
-      my $a = shift @as;
-      if (ref($farray) eq 'ARRAY') {
-        $f = Math::BigInt->new("$farray->[0]");
-        return 0 unless verify_prime(@$farray);
-      } else {
-        $f = Math::BigInt->new("$farray");
-        return 0 unless verify_prime($f);
-      }
-      next if defined $factors_seen{"$f"};   # repeated factors
-      if (($B % $f) != 0) {
-        print "primality fail: given factor $f does not divide $nm1\n" if $verbose;
-        return 0;
-      }
-      while (($B % $f) == 0) {
-        $B /= $f;
-        $A *= $f;
-      }
-      push @prime_factors, $f;
-      push @pfas, $a;
-      $factors_seen{"$f"} = 1;
-    }
-    croak "BLS75 error: $A * $B != $nm1" unless $A*$B == $nm1;
-
-    # The theorems state that A is the even portion, so we are requiring 2 be
-    # listed as a factor.
-    if ($A->is_odd) {
-      print "primality fail: 2 must be included as a factor" if $verbose;
-      return 0;
-    }
-
-    # TODO: consider: if B=1 and a single a is given, then Lucas test.
-
-    if (Math::BigInt::bgcd($A, $B) != 1) {
-      print "primality fail: A and B not coprime\n" if $verbose;
-      return 0;
-    }
-    if ($theorem == 7) {
-      if ($B != $t7_B) {
-        print "primality fail: T7 unfactored != unfactored\n" if $verbose;
-        return 0;
-      }
-      if ($t7_B1 < 1) {
-        print "primality fail: T7 B value < 1\n" if $verbose;
-        return 0;
-      }
-      # 1. Check $B has no factors smaller than $t7_B1
-      my $no_small_factors = 0;
-      if ($_HAVE_GMP && defined &Math::Prime::Util::GMP::trial_factor) {
-        my @trial = Math::Prime::Util::GMP::trial_factor($B, $t7_B1);
-        $no_small_factors = (scalar @trial == 1);
-      } elsif ($B <= ''.~0) {
-        my @trial = Math::Prime::Util::PP::trial_factor($B, $t7_B1);
-        $no_small_factors = (scalar @trial == 1);
-      } else {
-        # This is slow when B1 > 1M, but with a bigint B it's faster than
-        # doing trial divisions (but much slower with native B).
-        $no_small_factors =
-            (Math::BigInt::bgcd($B, primorial(Math::BigInt->new($t7_B1))) == 1);
-      }
-      if (!$no_small_factors) {
-        print "primality fail: T7 B has a factor smaller than B1\n" if $verbose;
-        return 0;
-      }
-      # 2. Add $B and $t7_a to lists so they get checked as part of (I).
-      push @prime_factors, $B;
-      push @pfas, $t7_a;
-    }
-    { # Theorem 5, m = 1, page 624;  Theorem 7, page 626
-      my ($s,$r) = $B->copy->bdiv($A->copy->bmul(2));
-      my $fpart = ($theorem == 7)
-                ? ($A*$t7_B1+1) * (2*$A*$A + ($r-$t7_B1) * $A + 1)
-                : ($A+1) * (2*$A*$A + ($r-1) * $A + 1);
-      if ($n >= $fpart) {
-        print "primality fail: not enough factors\n" if $verbose;
-        return 0;
-      }
-      my $rtest = $r*$r - 8*$s;
-      my $rtestroot = $rtest->copy->bsqrt;
-      if ($s != 0 && ($rtestroot*$rtestroot) == $rtest) {
-        print "primality fail: BLS75 theorem 5: s=$s, r=$r indicates composite\n" if $verbose;
-        return 0;
-      }
-    }
-    # Now verify (I), page 623
-    foreach my $i (0 .. $#prime_factors) {
-      my $f = $prime_factors[$i];
-      my $a = Math::BigInt->new("$pfas[$i]");
-      if ($a->copy->bmodpow($nm1, $n) != 1 ||
-          Math::BigInt::bgcd($a->copy->bmodpow($nm1/$f, $n)->bsub(1), $n) != 1) {
-        print "primality fail: BLS75 factor=$f, a=$a failed.\n" if $verbose;
-        return 0;
-      }
-    }
-    print "primality success: $n by BLS75 theorem $theorem\n" if $verbose > 1;
-    return 1;
-  }
-
-  if ($method eq 'ECPP' || $method eq 'AGKM') {
-    # EC cert: Atkin-Morain etc.
-    # Normally we'd have the q values set up recursively, but to follow the
-    # standard trend, we have this set up as a list:
-    # n, "AGKM", [n,a,b,m,q,P], [n1,a,b,m,q,P], ...
-    #
-    # Examples:
-    #   (100000000000000000039, "AGKM", [100000000000000000039, 31484432173069852672, 39553474583282556928, 100000000014867206541, 539348143913549, [39164891430400385024,86449249723524901718]])
-    #   (677826928624294778921, "AGKM", [677826928624294778921, 404277700094248015180, 599134911995823048257, 677826928656744857936, 104088901820753203, [2293544533, 356794037129589115041]])
-    #      Ux,Uy should be 600992528322000913770, 206075883056439332684
-    #      Vx,Vy should be 0, 1
-    if (scalar @pdata < 1) {
-      carp "verify_prime: incorrect AGKM format\n";
-      return 0;
-    }
-    my ($ni, $a, $b, $m, $P);
-    my ($qval, $q) = ($n, $n);
-    foreach my $block (@pdata) {
-      if (ref($block) ne 'ARRAY' || scalar @$block != 6) {
-        carp "verify_prime: incorrect AGKM block format\n";
-        return 0;
-      }
-      if (Math::BigInt->new("$block->[0]") != Math::BigInt->new("$q")) {
-        carp "verify_prime: incorrect AGKM block format: block n != q\n";
-        return 0;
-      }
-      ($ni, $a, $b, $m, $qval, $P) = @$block;
-      $q = ref($qval) eq 'ARRAY' ? $qval->[0] : $qval;
-      if (ref($P) ne 'ARRAY' || scalar @$P != 2) {
-        carp "verify_prime: incorrect AGKM block point format\n";
-        return 0;
-      }
-      my($Px, $Py) = @$P;
-      $ni = $n->copy->bzero->badd("$ni") unless ref($ni) eq 'Math::BigInt';
-      $a  = $n->copy->bzero->badd("$a")  unless ref($a)  eq 'Math::BigInt';
-      $b  = $n->copy->bzero->badd("$b")  unless ref($b)  eq 'Math::BigInt';
-      $m  = $n->copy->bzero->badd("$m")  unless ref($m)  eq 'Math::BigInt';
-      $q  = $n->copy->bzero->badd("$q")  unless ref($q)  eq 'Math::BigInt';
-      $Px = $n->copy->bzero->badd("$Px") unless ref($Px) eq 'Math::BigInt';
-      $Py = $n->copy->bzero->badd("$Py") unless ref($Py) eq 'Math::BigInt';
-      if ( $ni <= 0 ) {
-        print "primality fail: AGKM block n is 0 or negative\n" if $verbose;
-        return 0;
-      }
-      if (Math::BigInt::bgcd($ni, 6) != 1) {
-        print "primality fail: AGKM block n '$ni' is divisible by 2 or 3\n" if $verbose;
-        return 0;
-      }
-      my $c = $a*$a*$a * 4 + $b*$b * 27;
-      if (Math::BigInt::bgcd($c, $ni) != 1) {
-        print "primality fail: AGKM block gcd 4a^3+27b^2,n incorrect\n" if $verbose;
-        return 0;
-      }
-      if ( ($Py*$Py % $ni) != (($Px*$Px*$Px + $a*$Px + $b) % $ni) ) {
-        print "primality fail: AGKM block y^2 != x^3 + ax + b\n" if $verbose;
-        return 0;
-      }
-      if ( $m < ($ni - 2*$ni->copy->bsqrt + 1)) {
-        print "primality fail: AGKM block m too small\n" if $verbose;
-        return 0;
-      }
-      if ( $m > ($ni + 2*$ni->copy->bsqrt + 1)) {
-        print "primality fail: AGKM block m too large\n" if $verbose;
-        return 0;
-      }
-      if ( $q > $ni || $q <= 0 ) {
-        print "primality fail: AGKM block q invalid\n" if $verbose;
-        return 0;
-      }
-      if ( ($m == $q) || ($m % $q) != 0 ) {
-        print "primality fail: AGKM block m is not a multiple of q\n" if $verbose;
-        return 0;
-      }
-      if ($q <= $ni->copy->broot(4)->badd(1)->bpow(2)) {
-        print "primality fail: AGKM block q is too small\n" if $verbose;
-        return 0;
-      }
-      # Final check, check that we've got a bound above and below (Hasse)
-      my $correct_point = 0;
-      if ($_HAVE_GMP && defined &Math::Prime::Util::GMP::_validate_ecpp_curve) {
-         $correct_point = Math::Prime::Util::GMP::_validate_ecpp_curve($a, $b, $ni, $Px, $Py, $m, $q);
-      } else {
-        if (!defined $Math::Prime::Util::ECAffinePoint::VERSION) {
-          eval { require Math::Prime::Util::ECAffinePoint; 1; }
-          or do { croak "Cannot load Math::Prime::Util::ECAffinePoint"; };
-        }
-        my $ECP = Math::Prime::Util::ECAffinePoint->new($a, $b, $ni, $Px, $Py);
-        # Compute U = (m/q)P, check U != point at infinity
-        $ECP->mul( $m->copy->bdiv($q)->as_int );
-        if (!$ECP->is_infinity) {
-          # Compute V = qU, check V = point at infinity
-          $ECP->mul( $q );
-          $correct_point = 1 if $ECP->is_infinity;
-        }
-      }
-      if (!$correct_point) {
-        print "primality fail: AGKM point does not multiply correctly.\n" if $verbose;
-        return 0;
-      }
-    }
-    # Check primality of last q
-    return 0 unless verify_prime($qval);
-
-    print "primality success: $n by A-K-G-M elliptic curve\n" if $verbose > 1;
-    return 1;
-  }
-
-  carp "verify_prime: Unknown method: '$method'.\n";
-  return 0;
+  return 0 if $cert eq '';
+  return Math::Prime::Util::PrimalityProving::verify_cert($cert);
 }
 
 

@@ -7,6 +7,7 @@ lib/Math/Prime/Util/PP.pm
 lib/Math/Prime/Util/ZetaBigFloat.pm
 lib/Math/Prime/Util/ECAffinePoint.pm
 lib/Math/Prime/Util/ECProjectivePoint.pm
+lib/Math/Prime/Util/PrimalityProving.pm
 LICENSE
 Makefile.PL
 MANIFEST
