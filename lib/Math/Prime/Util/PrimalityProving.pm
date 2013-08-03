@@ -19,6 +19,7 @@ BEGIN {
   $Math::Prime::Util::PrimalityProving::VERSION = '0.30';
 }
 
+my $_smallval = Math::BigInt->new("18446744073709551615");
 
 
 ###############################################################################
@@ -26,27 +27,43 @@ BEGIN {
 ###############################################################################
 
 my @_fsublist = (
-  sub { Math::Prime::Util::prho_factor   (shift,    8*1024) },
-  sub { Math::Prime::Util::pminus1_factor(shift,    10_000) },
-  sub { Math::Prime::Util::pbrent_factor (shift,   32*1024) },
-  sub { Math::Prime::Util::pminus1_factor(shift, 1_000_000) },
-  sub { Math::Prime::Util::pbrent_factor (shift,  512*1024) },
- #sub { Math::Prime::Util::ecm_factor    (shift,     1_000,   5_000, 10) },
-  sub { Math::Prime::Util::pminus1_factor(shift, 4_000_000) },
- #sub { Math::Prime::Util::ecm_factor    (shift,    10_000,  50_000, 10) },
-  sub { Math::Prime::Util::pminus1_factor(shift,20_000_000) },
- #sub { Math::Prime::Util::ecm_factor    (shift,   100_000, 800_000, 10) },
- #sub { Math::Prime::Util::ecm_factor    (shift, 1_000_000, 1_000_000, 10) },
-  sub { Math::Prime::Util::pminus1_factor(shift, 100_000_000, 500_000_000) },
+  sub { Math::Prime::Util::PP::prho_factor   (shift,    8*1024, 3) },
+  sub { Math::Prime::Util::PP::pminus1_factor(shift,    10_000) },
+  sub { Math::Prime::Util::PP::pbrent_factor (shift,   32*1024, 1) },
+  sub { Math::Prime::Util::PP::pminus1_factor(shift, 1_000_000) },
+  sub { Math::Prime::Util::PP::pbrent_factor (shift,  512*1024, 7) },
+  sub { Math::Prime::Util::PP::ecm_factor    (shift,     1_000,   5_000, 10) },
+  sub { Math::Prime::Util::PP::pminus1_factor(shift, 4_000_000) },
+  sub { Math::Prime::Util::PP::pbrent_factor (shift,  512*1024, 11) },
+  sub { Math::Prime::Util::PP::ecm_factor    (shift,    10_000,  50_000, 10) },
+  sub { Math::Prime::Util::PP::pminus1_factor(shift,20_000_000) },
+  sub { Math::Prime::Util::PP::ecm_factor    (shift,   100_000, 800_000, 10) },
+  sub { Math::Prime::Util::PP::pbrent_factor (shift, 2048*1024, 13) },
+  sub { Math::Prime::Util::PP::ecm_factor    (shift, 1_000_000, 1_000_000, 20)},
+  sub { Math::Prime::Util::PP::pminus1_factor(shift, 100_000_000, 500_000_000)},
 );
+
+sub _small_cert {
+  my $n = shift;
+  return '' unless is_prob_prime($n);
+  return join "\n", "[MPU - Primality Certificate]",
+                    "Version 1.0",
+                    "",
+                    "Proof for:",
+                    "N $n",
+                    "",
+                    "Type Small",
+                    "N $n",
+                    "";
+}
 
 sub primality_proof_lucas {
   my ($n) = shift;
-  my @composite = (0, []);
+  my @composite = (0, '');
 
   # Since this can take a very long time with a composite, try some easy cuts
   return @composite if !defined $n || $n < 2;
-  return (2, [$n]) if $n < 4;
+  return (2, _small_cert($n)) if $n < 4;
   return @composite if is_strong_pseudoprime($n,2,15,325) == 0;
 
   if (!defined $Math::BigInt::VERSION) {
@@ -60,6 +77,11 @@ sub primality_proof_lucas {
     my %uf;
     undef @uf{@factors};
     @factors = sort {$a<=>$b} map { Math::BigInt->new("$_") } keys %uf;
+  }
+  my $cert = "[MPU - Primality Certificate]\nVersion 1.0\n\nProof for:\nN $n\n\n";
+  $cert .= "Type Lucas\nN $n\n";
+  foreach my $i (1 .. scalar @factors) {
+    $cert .= "Q[$i] " . $factors[$i-1] . "\n";
   }
   for (my $a = 2; $a < $nm1; $a++) {
     my $ap = Math::BigInt->new("$a");
@@ -77,23 +99,26 @@ sub primality_proof_lucas {
       my ($isp, $fproof) = Math::Prime::Util::is_provable_prime_with_cert($f);
       if ($isp != 2) {
         carp "could not prove primality of $n.\n";
-        return (1, []);
+        return (1, '');
       }
-      push @fac_proofs, (scalar @$fproof == 1) ? $fproof->[0] : $fproof;
+      push @fac_proofs, Math::Prime::Util::_strip_proof_header($fproof) if $f > $_smallval;
     }
-    my @proof = ("$n", "Pratt", [@fac_proofs], $a);
-    return (2, [@proof]);
+    $cert .= "A $a\n";
+    foreach my $proof (@fac_proofs) {
+      $cert .= "\n$proof";
+    }
+    return (2, $cert);
   }
   return @composite;
 }
 
 sub primality_proof_bls75 {
   my ($n) = shift;
-  my @composite = (0, []);
+  my @composite = (0, '');
 
   # Since this can take a very long time with a composite, try some easy tests
   return @composite if !defined $n || $n < 2;
-  return (2, [$n]) if $n < 4;
+  return (2, _small_cert($n)) if $n < 4;
   return @composite if ($n & 1) == 0;
   return @composite if is_strong_pseudoprime($n,2,15,325) == 0;
 
@@ -106,12 +131,12 @@ sub primality_proof_bls75 {
   my $trial_B = 20000;
   {
     while ($B->is_even) { $B /= 2; $A *= 2; }
-    my @tf = Math::Prime::Util::trial_factor($B, $trial_B);
+    my @tf = Math::Prime::Util::PP::trial_factor($B, $trial_B);
     pop @tf if $tf[-1] > $trial_B;
     foreach my $f (@tf) {
       next if $f == $factors[-1];
       push @factors, $f;
-      do { $B /= $f;  $A *= $f; } while (($B % $f) == 0);
+      while (($B % $f) == 0) { $B /= $f;  $A *= $f; }
     }
   }
   my @nstack;
@@ -124,14 +149,10 @@ sub primality_proof_bls75 {
   } else {
     push @nstack, $B;
   }
-  my $theorem = 5;
   while (@nstack) {
     my ($s,$r) = $B->copy->bdiv($A->copy->bmul(2));
     my $fpart = ($A+1) * (2*$A*$A + ($r-1) * $A + 1);
     last if $n < $fpart;
-    # Theorem 7....
-    $fpart = ($A*$trial_B+1) * (2*$A*$A + ($r-$trial_B) * $A + 1);
-    if ($n < $fpart) { $theorem = 7; last; }
 
     my $m = pop @nstack;
     # Don't use bignum if it has gotten small enough.
@@ -167,10 +188,8 @@ sub primality_proof_bls75 {
   }
   # Did we factor enough?
   my ($s,$r) = $B->copy->bdiv($A->copy->bmul(2));
-  my $fpart = ($theorem == 5)
-            ? ($A+1) * (2*$A*$A + ($r-1) * $A + 1)
-            : ($A*$trial_B+1) * (2*$A*$A + ($r-$trial_B) * $A + 1);
-  return (1,[]) if $n >= $fpart;
+  my $fpart = ($A+1) * (2*$A*$A + ($r-1) * $A + 1);
+  return (1,'') if $n >= $fpart;
   # Check we didn't mess up
   croak "BLS75 error: $A * $B != $nm1" unless $A*$B == $nm1;
   croak "BLS75 error: $A not even" unless $A->is_even();
@@ -180,42 +199,41 @@ sub primality_proof_bls75 {
   my $rtestroot = $rtest->copy->bsqrt;
   return @composite if $s != 0 && ($rtestroot*$rtestroot) == $rtest;
 
+  my $cert = "[MPU - Primality Certificate]\nVersion 1.0\n\nProof for:\nN $n\n\n";
+  $cert .= "Type BLS5\nN $n\n";
+  my $qnum = 0;
+  my $atext = '';
   my @fac_proofs;
-  my @as;
   foreach my $f (@factors) {
     my $success = 0;
+    if ($qnum == 0) {
+      die "BLS5 Perl proof: Internal error, first factor not 2" unless $f == 2;
+    } else {
+      $cert .= "Q[$qnum] $f\n";
+    }
     foreach my $a (2 .. 10000) {
       my $ap = Math::BigInt->new($a);
       next unless $ap->copy->bmodpow($nm1, $n) == 1;
       next unless Math::BigInt::bgcd($ap->copy->bmodpow($nm1/$f, $n)->bsub(1), $n) == 1;
-      push @as, $a;
+      $atext .= "A[$qnum] $a\n" unless $a == 2;
       $success = 1;
       last;
     }
+    $qnum++;
     return @composite unless $success;
     my ($isp, $fproof) = is_provable_prime_with_cert($f);
     if ($isp != 2) {
       carp "could not prove primality of $n.\n";
-      return (1, []);
+      return (1, '');
     }
-    push @fac_proofs, (scalar @$fproof == 1) ? $fproof->[0] : $fproof;
+    push @fac_proofs, Math::Prime::Util::_strip_proof_header($fproof) if $f > $_smallval;
   }
-  # Put n, B back to non-bigints if possible.
-  $n = int($n->bstr) if ref($n) eq 'Math::BigInt' && $n <= ''.~0;
-  $B = int($B->bstr) if ref($B) eq 'Math::BigInt' && $B <= ''.~0;
-  if ($theorem == 5) {
-    return (2, [$n, "n-1", [@fac_proofs], [@as]]);
-  } else {
-    my $t7a = 0;
-    my $f = $B;
-    foreach my $a (2 .. 10000) {
-      my $ap = Math::BigInt->new($a);
-      next unless $ap->copy->bmodpow($nm1, $n) == 1;
-      next unless Math::BigInt::bgcd($ap->copy->bmodpow($nm1/$f, $n)->bsub(1), $n) == 1;
-      return (2, [$n, "n-1", ["B", $trial_B, $B, $a], [@fac_proofs], [@as]]);
-    }
+  $cert .= $atext;
+  $cert .= "----\n";
+  foreach my $proof (@fac_proofs) {
+    $cert .= "\n$proof";
   }
-  return @composite;
+  return (2, $cert);
 }
 
 ###############################################################################
@@ -237,15 +255,16 @@ sub _convert_cert {
   my $method = (scalar @$pdata > 0) ? shift @$pdata : 'BPSW';
 
   if ($method eq 'BPSW') {
-    return '' if $n > Math::BigInt->new("18446744073709551615");
+    return '' if $n > $_smallval;
     return '' if is_prob_prime($n) != 2;
     return "Type Small\nN $n";
   }
 
   if ($method eq 'Pratt' || $method eq 'Lucas') {
-    return '' if scalar @$pdata != 2 ||
-              ref($$pdata[0]) ne 'ARRAY' ||
-              ref($$pdata[1]) eq 'ARRAY';
+    if (scalar @$pdata != 2 || ref($$pdata[0]) ne 'ARRAY' || ref($$pdata[1]) eq 'ARRAY') {
+      carp "verify_prime: incorrect Pratt format, must have factors and a value\n";
+      return '';
+    }
     my @factors = @{shift @$pdata};
     my $a = shift @$pdata;
     my $cert = "Type Lucas\nN     $n\n";
@@ -266,12 +285,16 @@ sub _convert_cert {
     if (scalar @$pdata == 3 && ref($$pdata[0]) eq 'ARRAY' && $$pdata[0]->[0] =~ /^(B|T7|Theorem\s*7)$/i) {
       croak "Unsupported BLS7 proof in conversion";
     }
-    return '' if scalar @$pdata != 2 ||
-              ref($$pdata[0]) ne 'ARRAY' ||
-              ref($$pdata[1]) ne 'ARRAY';
+    if (scalar @$pdata != 2 || ref($$pdata[0]) ne 'ARRAY' || ref($$pdata[1]) ne 'ARRAY') {
+      carp "verify_prime: incorrect n-1 format, must have factors and a values\n";
+      return '';
+    }
     my @factors = @{shift @$pdata};
     my @as = @{shift @$pdata};
-    return '' unless scalar @factors == scalar @as;
+    if (scalar @factors != scalar @as) {
+      carp "verify_prime: incorrect n-1 format, must have a value for each factor\n";
+      return '';
+    }
     # Make sure 2 is at the top
     foreach my $i (1 .. $#factors) {
       my $f = (ref($factors[$i]) eq 'ARRAY') ? $factors[$i]->[0] : $factors[$i];
@@ -298,13 +321,27 @@ sub _convert_cert {
     return $cert;
   }
   if ($method eq 'ECPP' || $method eq 'AGKM') {
-    return '' if scalar @$pdata < 1;
+    if (scalar @$pdata < 1) {
+      carp "verify_prime: incorrect AGKM format\n";
+      return '';
+    }
     my $cert = '';
+    my $q = $n;
     foreach my $block (@$pdata) {
-      return '' if ref($block) ne 'ARRAY' || scalar @$block != 6;
+      if (ref($block) ne 'ARRAY' || scalar @$block != 6) {
+        carp "verify_prime: incorrect AGKM block format\n";
+        return '';
+      }
       my($ni, $a, $b, $m, $qval, $P) = @$block;
-      my $q = ref($qval) eq 'ARRAY' ? $qval->[0] : $qval;
-      return '' if ref($P) ne 'ARRAY' || scalar @$P != 2;
+      if (Math::BigInt->new("$ni") != Math::BigInt->new("$q")) {
+        carp "verify_prime: incorrect AGKM block format: block n != q\n";
+        return '';
+      }
+      $q = ref($qval) eq 'ARRAY' ? $qval->[0] : $qval;
+      if (ref($P) ne 'ARRAY' || scalar @$P != 2) {
+        carp "verify_prime: incorrect AGKM block point format\n";
+        return '';
+      }
       my ($x, $y) = @{$P};
       $cert .= "Type ECPP\nN $ni\nA $a\nB $b\nM $m\nQ $q\nX $x\nY $y\n\n";
       if (ref($qval) eq 'ARRAY') {
@@ -313,6 +350,7 @@ sub _convert_cert {
     }
     return $cert;
   }
+  carp "verify_prime: Unknown method: '$method'.\n";
   return '';
 }
 
@@ -338,12 +376,12 @@ sub convert_array_cert_to_string {
 # Verify certificate
 ###############################################################################
 
-sub _primality_error ($) {
+sub _primality_error ($) {  ## no critic qw(ProhibitSubroutinePrototypes)
   print "primality fail: $_[0]" if prime_get_config->{'verbose'};
   return;  # error in certificate
 }
 
-sub _pfail ($) {
+sub _pfail ($) {            ## no critic qw(ProhibitSubroutinePrototypes)
   print "primality fail: $_[0]" if prime_get_config->{'verbose'};
   return;  # Failed a condition
 }
@@ -638,7 +676,7 @@ sub _verify_pock {
 sub _verify_small {
   my ($n) = @_;
   return unless defined $n;
-  return _pfail "Small n $n is > 2^64\n" if $n > Math::BigInt->new("18446744073709551615");
+  return _pfail "Small n $n is > 2^64\n" if $n > $_smallval;
   return _pfail "Small n $n does not pass BPSW" unless is_prob_prime($n);
   ($n);
 }
@@ -729,7 +767,6 @@ sub verify_cert {
     POCKLINGTON =>  \&_prove_pock,    # simple n-1, Primo type 1
     LUCAS       =>  \&_prove_lucas,   # n-1 completely factored
   );
-  my $smallval = Math::BigInt->new(2)->bpow(64);
   my $base = 10;
   my $cert_type = 'Unknown';
   my $N;
@@ -775,7 +812,7 @@ sub verify_cert {
     my $q = shift @qs;
     # Check that this q has a chain
     if (!defined $parts{$q}) {
-      if ($q > $smallval) {
+      if ($q > $_smallval) {
         _primality_error "q value $q has no proof\n";
         return 0;
       }
@@ -807,7 +844,7 @@ __END__
 
 =head1 NAME
 
-Math::Prime::Util::PrimalityProving - Support for primality proofs and certs
+Math::Prime::Util::PrimalityProving - Primality proofs and certificates
 
 
 =head1 VERSION
@@ -837,6 +874,35 @@ Given a positive number C<n> as input, performs a partial factorization of
 C<n-1>, then attempts a proof using theorem 5 of Brillhart, Lehmer, and
 Selfridge's 1975 paper.  This can take a long time to return if given a
 composite, though it should not be anywhere near as long as the Lucas test.
+
+=head2 convert_array_cert_to_string
+
+Takes as input a Perl structure certificate, used by Math::Prime::Util
+from version 0.26 through 0.29, and converts it to a multi-line text
+certificate starting with "[MPU - Primality Certificate]".  This is the
+new format produced and processed by Math::Prime::Util, Math::Prime::Util::GMP,
+and associated tools.
+
+=head2 verify_cert
+
+Takes a MPU primality certificate and verifies that it does prove the
+primality of the number it represents (the N after the "Proof for:" line).
+For backwards compatibility, if given an old-style Perl structure, it will
+be converted then verified.
+
+The return value will be C<0> (failed to verify) or C<1> (verified).
+A result of C<0> does I<not> indicate the number is composite; it only
+indicates the proof given is not sufficient.
+
+If the certificate is malformed, the routine will carp a warning in addition
+to returning 0.  If the C<verbose> option is set (see L</prime_set_config>)
+then if the validation fails, the reason for the failure is printed in
+addition to returning 0.  If the C<verbose> option is set to 2 or higher, then
+a message indicating success and the certificate type is also printed.
+
+A later release may add support for
+L<Primo|http://www.ellipsa.eu/public/primo/primo.html>
+certificates, as all the method verifications are coded.
 
 
 =head1 SEE ALSO

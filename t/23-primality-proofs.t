@@ -61,11 +61,19 @@ foreach my $p (@plist) {
     ok( verify_prime($cert), "   verification of certificate done" );
     # Note, in some cases the two certs could be non-equal (but both must be valid!)
     my $cert2 = prime_certificate($p);
-    ok( defined($cert2) && $cert2 =~ /^Type/m, "   prime_certificate is also non-null" );
-    # TODO: compare certificates and skip if equal
-    ok( verify_prime($cert2), "   verification of prime_certificate done" );
+    ok( defined($cert2) && $cert2 =~ /^Type/m,
+        "   prime_certificate is also non-null" );
+    if ($cert2 eq $cert) {
+      ok(1, "   certificate is identical to first");
+    } else {
+      ok( verify_prime($cert2), "   different cert, verified" );
+    }
   }
 }
+
+# TODO: All these proofs are using the old format.  That's ok for now,
+# as verify_prime will convert them for us.  But we really should do
+# testing with the new format, including possible errors it could have.
 
 # Some hand-done proofs
 SKIP: {

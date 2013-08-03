@@ -1030,6 +1030,7 @@ int pplus1_factor(UV n, UV *factors, UV B1)
 
   X1 =  7 % n;
   X2 = 11 % n;
+  f = 1;
   START_DO_FOR_EACH_PRIME(2, B1) {
     UV k = p;
     if (p < sqrtB1) {

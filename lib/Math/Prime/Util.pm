@@ -847,7 +847,13 @@ sub primes {
   }
 
   sub random_maurer_prime {
-    my ($n, $cert) = random_maurer_prime_with_cert(@_);
+    my $k = shift;
+    _validate_num($k, 2) || _validate_positive_integer($k, 2);
+    if ($k <= $_Config{'maxbits'}) {
+      croak "Random Maurer not supported on old Perl" if $k > 49 && $] < 5.008 && $_Config{'maxbits'} > 32;
+      return random_nbit_prime($k);
+    }
+    my ($n, $cert) = random_maurer_prime_with_cert($k);
     croak "maurer prime $n failed certificate verification!"
           unless verify_prime($cert);
     return $n;
@@ -856,11 +862,10 @@ sub primes {
   sub random_maurer_prime_with_cert {
     my($k) = @_;
     _validate_num($k, 2) || _validate_positive_integer($k, 2);
-    my @cert;
     if ($] < 5.008 && $_Config{'maxbits'} > 32) {
       if ($k <= 49) {
         my $n = random_nbit_prime($k);
-        return ($n, [$n]);
+        return ($n, "[MPU - Primality Certificate]\nVersion 1.0\n\nProof for:\nN $n\n\nType Small\nN $n\n");
       }
       croak "Random Maurer not supported on old Perl";
     }
@@ -890,10 +895,9 @@ sub primes {
     my $verbose = $_Config{'verbose'};
     local $| = 1 if $verbose > 2;
 
-    my $c = Math::BigFloat->new("0.065"); # higher = more trial divisions
+    # Ignore Maurer's g and c that controls how much trial division is done.
     my $r = Math::BigFloat->new("0.5");   # relative size of the prime q
     my $m = 20;                           # makes sure R is big enough
-    my $B = ($c * $k * $k)->bfloor;
     my $irandf = _get_rand_func();
 
     # Generate a random prime q of size $r*$k, where $r >= 0.5.  Try to
@@ -906,10 +910,12 @@ sub primes {
     }
 
     # I've seen +0, +1, and +2 here.  Maurer uses +0.  Menezes uses +1.
-    my ($q, $certref) = random_maurer_prime_with_cert( ($r * $k)->bfloor + 1 );
+    my ($q, $qcert) = random_maurer_prime_with_cert( ($r * $k)->bfloor + 1 );
     $q = Math::BigInt->new("$q") unless ref($q) eq 'Math::BigInt';
     my $I = Math::BigInt->new(2)->bpow($k-2)->bdiv($q)->bfloor->as_int();
-    print "B = $B  r = $r  k = $k  q = $q  I = $I\n" if $verbose && $verbose != 3;
+    print "r = $r  k = $k  q = $q  I = $I\n" if $verbose && $verbose != 3;
+    $qcert = ($q < Math::BigInt->new("18446744073709551615"))
+             ? "" : _strip_proof_header($qcert);
 
     # Big GCD's are hugely fast with GMP or Pari, but super slow with Calc.
     if ($_big_gcd_use < 0) {
@@ -927,72 +933,47 @@ sub primes {
       my $n = Math::BigInt->new(2)->bmul($R)->bmul($q)->badd(1);
       # We constructed a promising looking $n.  Now test it.
       print "." if $verbose > 2;
-
       # Trial divisions, trying to quickly weed out non-primes.
       next unless Math::BigInt::bgcd($n, 111546435) == 1;
       if ($_big_gcd_use && $n > $_big_gcd_top) {
         next unless Math::BigInt::bgcd($n, $_big_gcd[0]) == 1;
         next unless Math::BigInt::bgcd($n, $_big_gcd[1]) == 1;
-        next unless Math::BigInt::bgcd($n, $_big_gcd[2]) == 1;
-        next unless Math::BigInt::bgcd($n, $_big_gcd[3]) == 1;
+        if (!$_HAVE_GMP) {
+          next unless Math::BigInt::bgcd($n, $_big_gcd[2]) == 1;
+          next unless Math::BigInt::bgcd($n, $_big_gcd[3]) == 1;
+        }
       }
       print "+" if $verbose > 2;
-      if ($_HAVE_GMP) {
-        next unless Math::Prime::Util::GMP::is_strong_pseudoprime($n, 2);
-      }
+      next unless Math::Prime::Util::is_strong_pseudoprime($n, 3);
       print "*" if $verbose > 2;
 
-      # Now we do Lemma 1 -- a special case of the Pocklington test.
-      # Let F = q where q is prime, and n = 2RF+1.
-      # If F > sqrt(n) or F odd and F > R, and a^((n-1)/F)-1 mod n = 1, n prime.
+      # We could set r = 0.3333 earlier, then use BLS75 theorem 5 here.
+      # The chain would be shorter, requiring less overall work for
+      # large inputs.  Maurer's paper discusses the idea.
 
-      # Based on our construction, this should always be true.  Check anyway.
-      next unless $q > $R;
+      # Use BLS75 theorem 3.  This is easier and possibly faster than
+      # BLS75 theorem 4 (Pocklington) used by Maurer's paper.
 
-      # Select random 'a' values.  If n is prime, then almost any 'a' value
-      # will work, so just try two small ones instead of generating a giant
-      # random 'a' between 2 and n-2.  This makes the powmods run faster.
-      foreach my $try_a (2, 7) {
-        # my $a = 2 + $irandf->( $n - 4 );
-        my $a = Math::BigInt->new($try_a);
-        my $b = $a->copy->bmodpow($n-1, $n);
-        next unless $b == 1;
-
-        # Now do the one gcd check we need to do.
-        $b = $a->copy->bmodpow(2*$R, $n);
-        next unless Math::BigInt::bgcd($b-1, $n) == 1;
-        if ($verbose) {
-          print "", ($verbose == 3) ? "($k)" : "$n passed final gcd\n";
-        }
-
-        # Instead of the previous gcd, we could check q >= n**1/3 and also do
-        # some tests on x & y from 2R = xq+y (see Lemma 2 from Maurer's paper).
-        # Crypt::Primes does the q test but doesn't do the x/y tests.
-        #   next if ($q <= $n->copy->broot(3));
-        #   my $x = (2*$R)->bdiv($q)->bfloor;
-        #   my $y = 2*$R - $x*$q;
-        #   my $z = $y*$y - 4*$x;
-        #   next if $z == 0;
-        #   next if $z->bsqrt->bfloor->bpow(2) == $z;  # perfect square
-        # Menezes seems to imply only the q test needs to be done, but this
-        # doesn't follow from Lemma 2.  Also note the entire POINT of going to
-        # Lemma 2 is that we now allow r to be 0.3334, making q smaller.  If we
-        # run this without changing r, then x will typically be 0 and this fails.
-
-        # Verify with a BPSW test on the result.  This could:
-        #  1) save us from accidently outputting a non-prime due to some mistake
-        #  2) make history by finding the first known BPSW pseudo-prime
+      # Check conditions -- these should be redundant.
+      my $m = 2 * $R;
+      if (! ($q->is_odd && $q > 2 && $m > 0 &&
+             $m * $q + 1 == $n && 2*$q+1 > $n->copy->bsqrt()) ) {
+        carp "Maurer prime failed BLS75 theorem 3 conditions.  Retry.";
+        next;
+      }
+      # Find a suitable a.  Move on if one isn't found quickly.
+      foreach my $trya (2, 3, 5, 7, 11, 13) {
+        my $a = Math::BigInt->new($trya);
+        # m/2 = R    (n-1)/2 = (2*R*q)/2 = R*q
+        next unless $a->copy->bmodpow($R,$n) != $n-1;
+        next unless $a->copy->bmodpow($R*$q, $n) == $n-1;
+        print "($k)" if $verbose > 2;
         croak "Maurer prime $n=2*$R*$q+1 failed BPSW" unless is_prob_prime($n);
-
-        # Build up cert, knowing n-1 = 2*q*R, q > sqrt(n).
-        # We'll need to find the right a value for the factor 2.
-        foreach my $f2a (2 .. 200) {
-          $a = Math::BigInt->new($f2a);
-          next unless $a->copy->bmodpow($n-1, $n) == 1;
-          next unless Math::BigInt::bgcd($a->copy->bmodpow(($n-1)/2, $n)->bsub(1), $n) == 1;
-          @cert = ("$n", "n-1", [2, [@$certref]], [$f2a, $try_a]);
-          return ($n, \@cert);
-        }
+        my $cert = "[MPU - Primality Certificate]\nVersion 1.0\n\n" .
+                   "Proof for:\nN $n\n\n" .
+                   "Type BLS3\nN $n\nQ $q\nA $a\n" .
+                   $qcert;
+        return ($n, $cert);
       }
       # Didn't pass the selected a values.  Try another R.
     }
@@ -1582,6 +1563,31 @@ sub factor {
   return Math::Prime::Util::PP::factor($n);
 }
 
+#sub trial_factor {
+#  my($n, $limit) = @_;
+#  _validate_num($n) || _validate_positive_integer($n);
+#  $limit = 2147483647 unless defined $limit;
+#  _validate_num($limit) || _validate_positive_integer($limit);
+#  return _XS_trial_factor($n, $limit) if $n <= $_XS_MAXVAL;
+#  if ($_HAVE_GMP) {
+#    my @factors;
+#    while (1) {
+#      last if $n <= 1 || is_prob_prime($n);
+#      my @f = sort { $a <=> $b } 
+#              Math::Prime::Util::GMP::trial_factor($n, $limit);
+#      pop(@f);  # Remove remainder
+#      last unless scalar @f > 0;
+#      foreach my $f (@f) {
+#        push @factors, $f;
+#        $n /= $f;
+#      }
+#    }
+#    push @factors, $n if $n > 1;
+#    return @factors;
+#  }
+#  return Math::Prime::Util::PP::trial_factor($n, $limit);
+#}
+
 sub is_pseudoprime {
   my($n, $a) = @_;
   _validate_num($n) || _validate_positive_integer($n);
@@ -1716,6 +1722,13 @@ sub is_aks_prime {
   return Math::Prime::Util::GMP::is_aks_prime($n) if $_HAVE_GMP
                        && defined &Math::Prime::Util::GMP::is_aks_prime;
   return Math::Prime::Util::PP::is_aks_prime($n);
+}
+
+# For stripping off the header on certificates so they can be combined.
+sub _strip_proof_header {
+  my $proof = shift;
+  $proof =~ s/^\[MPU - Primality Certificate\]\nVersion \S+\n+Proof for:\nN (\d+)\n+//ms;
+  return $proof;
 }
 
 # Return just the non-cert portion.

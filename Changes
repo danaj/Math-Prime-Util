@@ -1,32 +1,40 @@
 Revision history for Perl module Math::Prime::Util
 
 0.30
+
+    [API Changes]
+
+      - Primality proofs now use the new "MPU Certificate" format, which is
+        text rather than a nested Perl data structure.  This is much better
+        for external interaction, especially with non-Perl tools.  It is
+        not quite as convenient for all-Perl manipulation.
+
     [Functions Added]
-       - is_frobenius_underwood_pseudoprime
-       - is_almost_extra_strong_lucas_pseudoprime
-       - lucas_sequence
-       - pplus1_factor
+      - is_frobenius_underwood_pseudoprime
+      - is_almost_extra_strong_lucas_pseudoprime
+      - lucas_sequence
+      - pplus1_factor
 
-    - Documentation and PP is_prime changed to use extra strong Lucas test
-      from the strong test.  This matches what the newest MPU::GMP does.
-      This has no effect at all for numbers < 2^64.  No counter-example is
-      known for the standard, strong, extra strong, or almost extra strong
-      (increment 1 or 2) tests.  The extra strong test is faster than the
-      strong test and produces fewer pseudoprimes.  It retains the residue
-      class properties of the strong Lucas test (where the SPSP-2
-      pseudoprimes favor residue class 1 and the Lucas pseudoprimes favor
-      residue class -1), hence should retain the BPSW test strength.
+    [Enhancements]
+      - Documentation and PP is_prime changed to use extra strong Lucas test
+        from the strong test.  This matches what the newest MPU::GMP does.
+        This has no effect at all for numbers < 2^64.  No counter-example is
+        known for the standard, strong, extra strong, or almost extra strong
+        (increment 1 or 2) tests.  The extra strong test is faster than the
+        strong test and produces fewer pseudoprimes.  It retains the residue
+        class properties of the strong Lucas test (where the SPSP-2
+        pseudoprimes favor residue class 1 and the Lucas pseudoprimes favor
+        residue class -1), hence should retain the BPSW test strength.
 
-    - XS code for all 4 Lucas tests.
+      - XS code for all 4 Lucas tests.
 
-    - Clean up is_prob_prime, also ~10% faster for n >= 885594169.
+      - Clean up is_prob_prime, also ~10% faster for n >= 885594169.
 
-    - Fixed a rare refcount / bignum / callback issue in next_prime.
+      - Small mulmod speedup for non-gcc/x86_64 platforms, and for any platform
+        with gcc 4.4 or newer.
 
-    - Small mulmod speedup for non-gcc/x86_64 platforms, and for any platform
-      with gcc 4.4 or newer.
-
-    - Add more conditions to ECPP block verification.
+    [Bug Fixes]
+      - Fixed a rare refcount / bignum / callback issue in next_prime.
 
 0.29  2013-05-30
 

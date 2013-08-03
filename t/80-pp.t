@@ -251,7 +251,7 @@ plan tests => 2 +
               1 + 1 +    # factor
               10 + 8*3 + # factoring subs
               10 +       # AKS
-              3 +        # Lucas and BLS75 primality proofs
+              2 +        # Lucas and BLS75 primality proofs
               3 +        # M-R and Lucas on bigint
               13 +       # Misc util.pm functions
               scalar(keys %ipp) +
@@ -566,23 +566,15 @@ SKIP: {
 }
 
 is_deeply( [Math::Prime::Util::PrimalityProving::primality_proof_lucas(100003)],
-           [2, [100003, "Pratt", [2, 3, 7, 2381], 2]],
+           [2, "[MPU - Primality Certificate]\nVersion 1.0\n\nProof for:\nN 100003\n\nType Lucas\nN 100003\nQ[1] 2\nQ[2] 3\nQ[3] 7\nQ[4] 2381\nA 2\n"],
            "primality_proof_lucas(100003)" );
 # Had to reduce these to make borked up Perl 5.6.2 work.
 #is_deeply( [Math::Prime::Util::PP::primality_proof_bls75("210596120454733723")],
 #           [2, ["210596120454733723", "n-1", [2, 3, 82651, "47185492693"], [2, 2, 2, 2]]],
 #           "primality_proof_bls75(210596120454733723)" );
-#is_deeply( [Math::Prime::Util::PP::primality_proof_bls75("809120722675364249")],
-#           [2, ["809120722675364249", "n-1",
-#               ["B", 20000, "22233477760919", 2], [2, 4549], [3, 2]]],
-#           "primality_proof_bls75(809120722675364249)" );
 is_deeply( [Math::Prime::Util::PrimalityProving::primality_proof_bls75(1490266103)],
-           [2, [1490266103, 'n-1', [2, 13, 19, 1597, 1889], [5, 2, 2, 2, 2]]],
+           [2, "[MPU - Primality Certificate]\nVersion 1.0\n\nProof for:\nN 1490266103\n\nType BLS5\nN 1490266103\nQ[1] 13\nQ[2] 19\nQ[3] 1597\nQ[4] 1889\nA[0] 5\n----\n"],
            "primality_proof_bls75(1490266103)" );
-is_deeply( [Math::Prime::Util::PrimalityProving::primality_proof_bls75(Math::BigInt->new("64020974585221"))],
-           [2, ["64020974585221", "n-1",
-               ["B", 20000, "5154667841", 2], [2, 3, 5, 23], [2, 2, 2, 2]]],
-           "primality_proof_bls75(64020974585221)" );
 
 {
   my $n = Math::BigInt->new("168790877523676911809192454171451");
