@@ -2419,9 +2419,10 @@ and are able to provide higher accuracy.
 
 =item *
 
-Having run these functions on many versions of Perl, if you're using anything
-older than Perl 5.14, I would recommend you upgrade if you are using bignums
-a lot.  There are some brittle behaviors on 5.12.4 and earlier with bignums.
+I have run these functions on many versions of Perl, and my experience is that
+if you're using anything older than Perl 5.14, I would recommend you upgrade
+if you are using bignums a lot.  There are some brittle behaviors on 5.12.4
+and earlier with bignums.
 
 =back
 
@@ -2805,7 +2806,7 @@ and do not return false positives.
 Using the L<Math::Prime::Util::GMP> module is B<highly recommended> for doing
 primality proofs, as it is much, much faster.  The pure Perl code is just not
 fast for this type of operation, nor does it have the best algorithms.
-It should suffice fine for proofs of up to 40 digit primes, while the latest
+It should suffice for proofs of up to 40 digit primes, while the latest
 MPU::GMP works for primes of hundreds of digits.
 
 The pure Perl implementation uses theorem 5 or theorem 7 of BLS75
@@ -3304,7 +3305,7 @@ agree.  First, the smoothness does not affect more modern factoring methods
 such as ECM.  Second, modern factoring methods like GNFS are far faster than
 either method so make the point moot.  Third, due to key size growth and
 advances in factoring and attacks, for practical purposes, using large random
-primes offer security equivalent to using strong primes.
+primes offer security equivalent to strong primes.
 
 Similar to L</random_nbit_prime>, the result will be a BigInt if the
 number of bits is greater than the native bit size.  For better performance
@@ -3885,7 +3886,7 @@ in pure Perl it will still run quite slow compared to MPU.
 
 L<Math::Big::Factors> supports factorization using wheel factorization (smart
 trial division).  It supports bigints.  Unfortunately it is extremely slow on
-any input that isn't comprised entirely of small factors.  Even 7 digit inputs
+any input that isn't the product of just small factors.  Even 7 digit inputs
 can take hundreds or thousands of times longer to factor than MPU or
 L<Math::Factor::XS>.  19-digit semiprimes will take I<hours> versus MPU's
 single milliseconds.
@@ -3931,7 +3932,7 @@ L<Math::Pari> supports a lot of features, with a great deal of overlap.  In
 general, MPU will be faster for native 64-bit integers, while it's differs
 for bigints (Pari will always be faster if L<Math::Prime::Util::GMP> is not
 installed; with it, it varies by function).
-Trying to hit some of the highlights:
+Some of the highlights:
 
 =over 4
 
@@ -4153,7 +4154,7 @@ only small factors, but it slows down rapidly as the smallest factor increases
 in size.  For numbers larger than 32 bits, L<Math::Prime::Util> can be 100x or
 more faster (a number with only very small factors will be nearly identical,
 while a semiprime with large factors will be the extreme end).  L<Math::Pari>
-is much slower with native sized inputs, probably due mostly to calling
+is much slower with native sized inputs, probably due to calling
 overhead.  For bigints, the L<Math::Prime::Util::GMP> module is needed or
 performance will be far worse than Math::Pari.  With the GMP module,
 performance is pretty similar from 20 through 70 digits, which the caveat
