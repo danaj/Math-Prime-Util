@@ -13,7 +13,7 @@ my $bifilter = sub { my($ctx, $n) = @_;
 #
 # Example:
 #
-# perl -MMath::Prime::Util -E 'say random_ndigit_prime(60)' | \
+# perl -MMath::Prime::Util=:all -E 'say random_ndigit_prime(60)' | \
 # gmp-ecpp -q | \
 # perl examples/verify-gmp-eccp-cert.pl
 

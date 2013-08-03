@@ -1762,7 +1762,7 @@ sub is_provable_prime_with_cert {
   if (ref($n) ne 'Math::BigInt' && $n <= $_XS_MAXVAL) {
     my $isp = _XS_is_prime("$n");
     return ($isp, '') unless $isp == 2;
-    return (2, "[MPU - Primality Certificate]\nVersion 1.0\n\nProof for:\nN $n\n\nType Small\nN $n");
+    return (2, "[MPU - Primality Certificate]\nVersion 1.0\n\nProof for:\nN $n\n\nType Small\nN $n\n");
   }
 
   if ($_HAVE_GMP && defined &Math::Prime::Util::GMP::is_provable_prime_with_cert) {
@@ -1780,7 +1780,7 @@ sub is_provable_prime_with_cert {
   {
     my $isp = is_prob_prime($n);
     return ($isp, '') if $isp == 0;
-    return (2, "[MPU - Primality Certificate]\nVersion 1.0\n\nProof for:\nN $n\n\nType Small\nN $n") if $isp == 2;
+    return (2, "[MPU - Primality Certificate]\nVersion 1.0\n\nProof for:\nN $n\n\nType Small\nN $n\n") if $isp == 2;
   }
 
   # Choice of methods for proof:

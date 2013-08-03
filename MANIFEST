@@ -58,6 +58,7 @@ examples/parallel_fibprime.pl
 examples/test-factor-gnufactor.pl
 examples/verify-gmp-ecpp-cert.pl
 examples/verify-sage-ecpp-cert.pl
+examples/verify-cert.pl
 bin/primes.pl
 bin/factor.pl
 t/01-load.t

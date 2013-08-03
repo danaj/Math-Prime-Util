@@ -246,7 +246,7 @@ sub _convert_cert {
   return '' if scalar @$pdata == 0;
   my $n = shift @$pdata;
   if (length($n) == 1) {
-    return "Type Small\nN $n" if $n =~ /^[2357]$/;
+    return "Type Small\nN $n\n" if $n =~ /^[2357]$/;
     return '';
   }
   $n = Math::BigInt->new("$n") if ref($n) ne 'Math::BigInt';
@@ -257,7 +257,7 @@ sub _convert_cert {
   if ($method eq 'BPSW') {
     return '' if $n > $_smallval;
     return '' if is_prob_prime($n) != 2;
-    return "Type Small\nN $n";
+    return "Type Small\nN $n\n";
   }
 
   if ($method eq 'Pratt' || $method eq 'Lucas') {
