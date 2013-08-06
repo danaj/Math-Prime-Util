@@ -6,7 +6,7 @@ use Bytes::Random::Secure;
 
 BEGIN {
   $Math::Prime::Util::AUTHORITY = 'cpan:DANAJ';
-  $Math::Prime::Util::VERSION = '0.30';
+  $Math::Prime::Util::VERSION = '0.31';
 }
 
 # parent is cleaner, and in the Perl 5.10.1 / 5.12.0 core, but not earlier.
@@ -1573,7 +1573,7 @@ sub factor {
 #    my @factors;
 #    while (1) {
 #      last if $n <= 1 || is_prob_prime($n);
-#      my @f = sort { $a <=> $b } 
+#      my @f = sort { $a <=> $b }
 #              Math::Prime::Util::GMP::trial_factor($n, $limit);
 #      pop(@f);  # Remove remainder
 #      last unless scalar @f > 0;
@@ -2176,7 +2176,7 @@ __END__
 
 =encoding utf8
 
-=for stopwords forprimes Möbius Deléglise totient moebius mertens irand primesieve uniqued k-tuples von SoE pari yafu fonction qui compte le nombre nombres voor PhD superset
+=for stopwords forprimes Möbius Deléglise totient moebius mertens irand primesieve uniqued k-tuples von SoE pari yafu fonction qui compte le nombre nombres voor PhD superset sqrt(N) gcd(A^M
 
 
 =head1 NAME
@@ -2807,14 +2807,15 @@ Using the L<Math::Prime::Util::GMP> module is B<highly recommended> for doing
 primality proofs, as it is much, much faster.  The pure Perl code is just not
 fast for this type of operation, nor does it have the best algorithms.
 It should suffice for proofs of up to 40 digit primes, while the latest
-MPU::GMP works for primes of hundreds of digits.
+MPU::GMP works for primes of hundreds of digits (thousands with an optional
+larger polynomial set).
 
-The pure Perl implementation uses theorem 5 or theorem 7 of BLS75
-(Brillhart-Lehmer-Selfridge), an improvement on the Pocklington-Lehmer test.
+The pure Perl implementation uses theorem 5 of BLS75 (Brillhart, Lehmer, and
+Selfridge's 1975 paper), an improvement on the Pocklington-Lehmer test.
 This requires C<n-1> to be factored to C<(n/2)^(1/3))>.  This is often fast,
 but as C<n> gets larger, it takes exponentially longer to find factors.
 
-L<Math::Prime::Util::GMP> implements both the BLS75 theorem 5/7 tests as well
+L<Math::Prime::Util::GMP> implements both the BLS75 theorem 5 test as well
 as ECPP (elliptic curve primality proving).  It will typically try a quick
 C<n-1> proof before using ECPP.  Certificates are available with either method.
 This results in proofs of 200-digit primes in under 1 second on average, and
@@ -2827,29 +2828,34 @@ than Pari 2.1.7's C<is_prime(n,1)> which is the default for L<Math::Pari>.
   my @cert = prime_certificate($n);
   say verify_prime(@cert) ? "proven prime" : "not prime";
 
-Given a positive integer C<n> as input, returns either an empty array (we could
-not prove C<n> prime) or an array representing a certificate of primality.
+Given a positive integer C<n> as input, returns a primality certificate
+as a multi-line string.  If we could not prove C<n> prime, an empty
+string is returned (C<n> may or may not be composite).
 This may be examined or given to L</verify_prime> for verification.  The latter
 function contains the description of the format.
 
 
 =head2 is_provable_prime_with_cert
 
-Given a positive integer as input, returns a two element array containing the
-result of L</is_provable_prime> and an array reference containing the primality
-certificate like L</prime_certificate>.  The certificate will be an empty
-array reference if the result is not 2 (definitely prime).
+Given a positive integer as input, returns a two element array containing
+the result of L</is_provable_prime>:
+  0  definitely composite
+  1  probably prime
+  2  definitely prime
+and a primality certificate like L</prime_certificate>.
+The certificate will be an empty string if the first element is not 2.
 
 
 =head2 verify_prime
 
-  my @cert = prime_certificate($n);
-  say verify_prime(@cert) ? "proven prime" : "not prime";
+  my $cert = prime_certificate($n);
+  say verify_prime($cert) ? "proven prime" : "not prime";
 
-Given an array representing a certificate of primality, returns either 0 (not
-verified), or 1 (verified).  The computations are all done using pure Perl
-Math::BigInt.  Lucas/Pratt and n-1 proofs are not time consuming, but ECPP
-proofs can be rather slow, especially without the GMP or Pari backends.
+Given a primality certificate, returns either 0 (not verified)
+or 1 (verified).  Most computations are done using pure Perl with
+Math::BigInt, so you probably want to install and use Math::BigInt::GMP,
+and ECPP certificates will be faster with Math::Prime::Util::GMP for
+its elliptic curve computations.
 
 If the certificate is malformed, the routine will carp a warning in addition
 to returning 0.  If the C<verbose> option is set (see L</prime_set_config>)
@@ -2857,82 +2863,211 @@ then if the validation fails, the reason for the failure is printed in
 addition to returning 0.  If the C<verbose> option is set to 2 or higher, then
 a message indicating success and the certificate type is also printed.
 
-A certificate is an array holding an C<n-cert>.  An C<n-cert> is one of:
+A certificate may have arbitrary text before the beginning (the primality
+routines from this module will not have any extra text, but this way
+verbose output from the prover can be safely stored in a certificate).
+The certificate begins with the line:
 
-  n
-       implies n,"BPSW"
+  [MPU - Primality Certificate]
 
-  n,"BPSW"
-       the number n is small enough to be proven with BPSW.  This
-       currently means smaller than 2^64.
+All lines in the certificate beginning with C<#> are treated as comments
+and ignored, as are blank lines.  A version number may follow, such as:
 
-  n,"Pratt",[n-cert, ...],a
-       A Pratt certificate.  We are given n, the method "Pratt" or
-       "Lucas", a list of n-certs that indicate all the unique factors
-       of n-1, and an 'a' value to be used in the Lucas primality test.
-       The certificate passes if:
-         1 all factor n-certs can be verified
-         2 all n-certs are factors of n-1 and none are missing
-         3 a is coprime to n
-         4 a^(n-1) = 1 mod n
-         5 a^((n-1)/f) != 1 mod n for each factor
+  Version 1.0
 
-  n,"n-1",[optional B-block],[n-cert, ...],[a,...]
-       An n-1 certificate suitable for the generalized Pocklington or the
-       BLS75 (Brillhart-Lehmer-Selfridge 1975, theorem 5) n-1 test.  The
-       proof is performed using BLS75 theorem 5 which requires n-1 to be
-       factored up to (n/2)^1/3.  If n-1 is factored to more than
-       sqrt(n), then the conditions are identical to the generalized
-       Pocklington test.
-       The certificate passes if:
-         1 all factor n-certs can be verified
-         2 all factor n-certs are factors of n-1
-         3 there must be a corresponding 'a' for each factor n-cert
-         4 given A (the factored part of n-1), B = (n-1)/A (the
-           unfactored part), s = int(B/(2A)), r = B-s*2A:
-             - n < (A+1)(2*A*A+(r-a)A+a)    [ n-1 factored to (n/2)^1/3 ]
-             - s = 0 or r*r-8s not a perfect square
-             - A and B are coprime
-         5 for each pair (f,a) representing a factor n-cert and its 'a':
-             - a^(n-1) = 1 mod n
-             - gcd( a^((n-1)/f)-1, n ) = 1
-       If the optional B block is present, then theorem 7 will be used.
-       The B-block consists of 4 items:  "B" as an identifier, the
-       factoring limit B indicating that the unfactored portion has no
-       factors smaller than B, the unfactored amount F, and an 'a' value
-       to be tested with F as in step 5.
+For all inputs, base 10 is the default, but at any point this may be
+changed with a line like:
 
-  n,"AGKM",[ec-block],[ec-block],...
-       An Elliptic Curve certificate.  We are given n, the method "AGKM"
-       or "ECPP", and one or more 6-element blocks representing a
-       standard ECPP or Atkin-Goldwasser-Kilian-Morain certificate.
-       In its traditional form, it is non-recursive, with each q value
-       being proved by successive blocks (this makes it easy to use for
-       programs like Sage and GMP-ECPP).  A q value is also allowed to
-       be an n-cert, which allows an alternative proof for the last q.
-       Every ec-block has 6 elements:
-         N   the N value this block proves prime if q is prime
-         a   value describing the elliptic curve to be used
-         b   value describing the elliptic curve to be used
-         m   order of the curve
-         q   a probable prime > (N^1/4+1)^2 (may be an n-cert)
-         P   a point [x,y] on the curve (affine coordinates)
-       The certificate passes if:
-         - the final q can be proved with BPSW.
-         - for each block:
-             - N is the same as the preceding block's q
-             - N >= 0
-             - N is not divisible by 2 or 3
-             - gcd( 4a^3 + 27b^2, N ) == 1;
-             - Py^2 = Px^3 + a*Px + b   mod N
-             - m >= (N - 2*sqrt(N) + 1)
-             - m <= (N + 2*sqrt(N) + 1)
-             - q >= 0  and  q <= n
-             - m != q  and  (m % q) == 0
-             - q > (N^1/4+1)^2
-             - U = (m/q)P is not the point at infinity
-             - V = qU is the point at infinity
+  Base 16
 
+where allowed bases are 10, 16, and 62.  This module will only use base 10,
+so its routines will not output Base commands.
+
+Next, we look for (using "100003" as an example):
+
+  Proof for:
+  N 100003
+
+where the text C<Proof for:> indicates we will read an C<N> value.  Skipping
+comments and blank lines, the next line should be "N " followed by the number.
+
+After this, we read one or more blocks.  Each block is a proof of the form:
+
+  If Q is prime, then N is prime.
+
+Some of the blocks have more than one Q value associated with them, but most
+only have one.  Each block has its own set of conditions which must be
+verified, and this can be done completely self-contained.  That is, each
+block is independent of the other blocks and may be processed in any order.
+To be a complete proof, each block must successfully verify.  The block
+types and their conditions are shown below.
+
+Finally, when all blocks have been read and verified, we must ensure we
+can construct a proof tree from the set of blocks.  The root of the tree
+is the initial C<N>, and for each node (block), all C<Q> values must
+either have a block using that value as its C<N> or C<Q> must be less
+than C<2^64> and pass BPSW.
+
+Some other certificate formats (e.g. Primo) use an ordered chain, where
+the first block must be for the initial C<N>, a single C<Q> is given which
+is the implied C<N> for the next block, and so on.  This simplifies
+validation implementation somewhat, and removes some redundant
+information from the certificate, but has no obvious way to add proof
+types such as Lucas or the various BLS75 theorems that use multiple
+factors.  I decided that the most general solution was to have the
+certificate contain the set in any order, and let the verifier do the
+work of constructing the tree.
+
+The blocks begin with the text "Type ..." where ... is the type.  One or
+more values follow.  The defined types are:
+
+=over 4
+
+=item C<Small>
+
+  Type Small
+  N 5791
+
+N must be less than 2^64 and be prime (use BPSW or deterministic M-R).
+
+=item C<BLS3>
+
+  Type BLS3
+  N  2297612322987260054928384863
+  Q  16501461106821092981
+  A  5
+
+A simple n-1 style proof using BLS75 theorem 3.  This block verifies if:
+  a  Q is odd
+  b  Q > 2
+  c  Q divides N-1
+  .  Let M = (N-1)/Q
+  d  MQ+1 = N
+  e  M > 0
+  f  2Q+1 > sqrt(N)
+  g  A^((N-1)/2) mod N = N-1
+  h  A^(M/2) mod N != N-1
+
+=item C<Pocklington>
+
+  Type Pocklington
+  N  2297612322987260054928384863
+  Q  16501461106821092981
+  A  5
+
+A simple n-1 style proof using generalized Pocklington.  This is more
+restrictive than BLS3 and much more than BLS5.  This is Primo's type 1,
+and this module does not currently generate these blocks.
+This block verifies if:
+  a  Q divides N-1
+  .  Let M = (N-1)/Q
+  b  M > 0
+  c  M < Q
+  d  MQ+1 = N
+  e  A > 1
+  f  A^(N-1) mod N = 1
+  g  gcd(A^M - 1, N) = 1
+
+=item C<BLS15>
+
+  Type BLS15
+  N  8087094497428743437627091507362881
+  Q  175806402118016161687545467551367
+  LP 1
+  LQ 22
+
+A simple n+1 style proof using BLS75 theorem 15.  This block verifies if:
+  a  Q is odd
+  b  Q > 2
+  c  Q divides N+1
+  .  Let M = (N+1)/Q
+  d  MQ-1 = N
+  e  M > 0
+  f  2Q-1 > sqrt(N)
+  .  Let D = LP*LP - 4*LQ
+  g  D != 0
+  h  Jacobi(D,N) = -1
+  .  Note: V_{k} indicates the Lucas V sequence with LP,LQ
+  i  V_{m/2} mod N != 0
+  j  V_{(N+1)/2} mod N == 0
+
+=item C<BLS5>
+
+  Type BLS5
+  N  8087094497428743437627091507362881
+  Q[1]  98277749
+  Q[2]  3631
+  A[0]  11
+  ----
+
+A more sophisticated n-1 proof using BLS theorem 5.  This requires N-1 to
+be factored only to C<(N/2)^(1/3)>.  While this looks much more complicated,
+it really isn't much more work.  The biggest drawback is just that we have
+multiple Q values to chain rather than a single one.  This block verifies if:
+
+  a  N > 2
+  b  N is odd
+  .  Note: the block terminates on the first line starting with a C<->.
+  .  Let Q[0] = 2
+  .  Let A[i] = 2 if Q[i] exists and A[i] does not
+  c  For each i (0 .. maxi):
+  c1   Q[i] > 1
+  c2   Q[i] < N-1
+  c3   A[i] > 1
+  c4   A[i] < N
+  c5   Q[i] divides N-1
+  . Let F = N-1 divided by each Q[i] as many times as evenly possible
+  . Let R = (N-1)/F
+  d  F is even
+  e  gcd(F, R) = 1
+  . Let s = integer    part of R / 2F
+  . Let f = fractional part of R / 2F
+  . Let P = (F+1) * (2*F*F + (r-1)*F + 1)
+  f  n < P
+  g  s = 0  OR  r^2-8s is not a perfect square
+  h  For each i (0 .. maxi):
+  h1   A[i]^(N-1) mod N = 1
+  h2   gcd(A[i]^((N-1)/Q[i])-1, N) = 1
+
+=item C<ECPP>
+
+  Type ECPP
+  N  175806402118016161687545467551367
+  A  96642115784172626892568853507766
+  B  111378324928567743759166231879523
+  M  175806402118016177622955224562171
+  Q  2297612322987260054928384863
+  X  3273750212
+  Y  82061726986387565872737368000504
+
+An elliptic curve primality block, typically generated with an Atkin/Morain
+ECPP implementation, but this should be adequate for anything using the
+Atkin-Goldwasser-Kilian-Morain style certificates.
+Some basic elliptic curve math is needed for these.
+This block verifies if:
+
+  .  Note: A and B are allowed to be negative, with -1 not uncommon.
+  .  Let A = A % N
+  .  Let B = B % N
+  a  N > 0
+  b  gcd(N, 6) = 1
+  c  gcd(4*A^3 + 27*B^2, N) = 1
+  d  Y^2 mod N = X^3 + A*X + B mod N
+  e  M >= N - 2*sqrt(N) + 1
+  f  M <= N + 2*sqrt(N) + 1
+  g  Q > (N^(1/4)+1)^2
+  h  Q < N
+  i  M != Q
+  j  Q divides M
+  .  Note: EC(A,B,N,X,Y) is the point (X,Y) on Y^2 = X^3 + A*X + B, mod N
+  .        All values work in affine coordinates, but in theory other
+  .        representations work just as well.
+  .  Let POINT1 = (M/Q) * EC(A,B,N,X,Y)
+  .  Let POINT2 = M * EC(A,B,N,X,Y)  [ = Q * POINT1 ]
+  k  POINT1 is not the identity
+  l  POINT2 is the identity
+
+=back
 
 =head2 is_aks_prime
 
@@ -3333,14 +3468,14 @@ value has been properly constructed.
 
 =head2 random_maurer_prime_with_cert
 
-  my($n, $cert_ref) = random_maurer_prime_with_cert(512)
+  my($n, $cert) = random_maurer_prime_with_cert(512)
 
 As with L</random_maurer_prime>, but returns a two-element array containing
 the n-bit provable prime along with a primality certificate.  The certificate
 is the same as produced by L</prime_certificate> or
 L</is_provable_prime_with_cert>, and can be parsed by L</verify_prime> or
-any other software that can parse the certificate (the "n-1" form is described
-in detail in L</verify_prime>).
+any other software that can parse MPU primality certificates.
+The proof construction consists of a single chain of C<BLS3> types.
 
 
 
@@ -4089,7 +4224,7 @@ C<is_prime>: my impressions for various sized inputs:
    (3) Too much memory to hold the sieve (11dig = 6GB, 12dig = ~50GB)
    (4) By default L<Math::Pari> installs Pari 2.1.7, which uses 10 M-R tests
        for is_prime and is not fast.  See notes below for 2.3.5.
-     
+
 
 The differences are in the implementations:
 

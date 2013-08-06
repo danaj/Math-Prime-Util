@@ -1,5 +1,12 @@
 Revision history for Perl module Math::Prime::Util
 
+0.31  2013-08-06
+
+    - Change proof certificate documentation to reflect the new text format.
+
+    - Some platforms were using __int128 when it wasn't supported.  Only
+      x86_64 and Power64 use it now.
+
 0.30  2013-08-06
 
     [API Changes]
