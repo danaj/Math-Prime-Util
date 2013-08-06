@@ -28,6 +28,18 @@ $| = 1;
 #    31   37511            432.10713
 #    32   50833           1151.85562
 #
+# Using 60 cores of a Power 7 machine (each one slower than the x86 above)
+#    27   14431             14.23748
+#    28   25561             81.95451
+#    29   30757            117.95914
+#    30   35999            224.14832
+#    31   37511            267.01445
+#    32   50833            677.61661
+#    33   81839           3230.63871
+#    34  104911           7861.65752
+#    35  130021          16170.56098
+#    36  148091          24841.65174
+#
 # Though not as pretty as the Haskell solution on haskell.org, it is a
 # different way of solving the problem that is faster and more scalable.
 

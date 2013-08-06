@@ -1,9 +1,8 @@
 Revision history for Perl module Math::Prime::Util
 
-0.30
+0.30  2013-08-06
 
     [API Changes]
-
       - Primality proofs now use the new "MPU Certificate" format, which is
         text rather than a nested Perl data structure.  This is much better
         for external interaction, especially with non-Perl tools.  It is
