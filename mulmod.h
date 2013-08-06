@@ -49,6 +49,20 @@
   #define mulmod(a,b,m) _mulmod(a,b,m)
   #define sqrmod(n,m)   _mulmod(n,n,m)
 
+  /* addmod from Kruppa 2010 page 67 */
+  static INLINE UV _addmod(UV a, UV b, UV m) {
+    UV r = a+b;
+    UV t = a-m;
+    asm ("add %2, %1\n\t"    /* t := t + b */
+         "cmovc %1, %0\n\t"  /* if (carry) r := t */
+         :"+r" (r), "+&r" (t)
+         :"g" (b)
+         :"cc"
+        );
+    return r;
+  }
+  #define addmod(a,b,n) _addmod(a,b,n)
+
 #elif BITS_PER_WORD == 64 && __GNUC__ == 4 && __GNUC_MINOR__ >= 4 && (defined(__LP64__) || defined(__x86_64__) || defined(__powerpc64__) || defined(_M_X64) || defined(_M_IX86))
 
   /* We're 64-bit, using a modern gcc, and the target has some 128-bit type */
@@ -86,7 +100,7 @@
 #endif
 
 #ifndef addmod
-  #define addmod(n,a,m) ((((m)-(n)) > (a))  ?  ((n)+(a))  :  ((n)+(a)-(m)))
+  #define addmod(a,b,m) ((((m)-(a)) > (b))  ?  ((a)+(b))  :  ((a)+(b)-(m)))
 #endif
 
 /* We need to make sure a and b get evaluated into UVs, then do the
