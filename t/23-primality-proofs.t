@@ -6,7 +6,7 @@ use Test::More;
 use Test::Warn;
 use Math::Prime::Util qw/is_prime is_provable_prime is_provable_prime_with_cert
                          prime_certificate verify_prime
-                         prime_get_config
+                         prime_get_config prime_set_config
                         /;
 use Math::BigInt try => 'GMP';
 
@@ -58,7 +58,9 @@ foreach my $p (@plist) {
     is( $isp, 2, "   is_provable_prime_with_cert returns 2" );
     ok( defined($cert) && $cert =~ /^Type/m,
         "   certificate is non-null" );
-    ok( verify_prime($cert), "   verification of certificate done" );
+    prime_set_config(verbose=>1);
+    ok( verify_prime($cert), "   verification of certificate for $p done" );
+    prime_set_config(verbose=>0);
     # Note, in some cases the two certs could be non-equal (but both must be valid!)
     my $cert2 = prime_certificate($p);
     ok( defined($cert2) && $cert2 =~ /^Type/m,

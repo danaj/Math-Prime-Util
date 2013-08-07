@@ -1768,7 +1768,12 @@ sub is_provable_prime_with_cert {
   if ($_HAVE_GMP && defined &Math::Prime::Util::GMP::is_provable_prime_with_cert) {
     my ($isp, $cert) = Math::Prime::Util::GMP::is_provable_prime_with_cert($n);
     # New version that returns string format.
-    return ($isp, $cert) if ref($cert) ne 'ARRAY';
+    #return ($isp, $cert) if ref($cert) ne 'ARRAY';
+    if (ref($cert) ne 'ARRAY') {
+      # Fix silly 0.13 mistake (TODO: deprecate this)
+      $cert =~ s/^Type Small\n(\d+)/Type Small\nN $1/smg;
+      return ($isp, $cert);
+    }
     # Old version.  Convert.
     if (!defined $Math::Prime::Util::PrimalityProving::VERSION) {
       eval { require Math::Prime::Util::PrimalityProving; 1; }
@@ -2186,7 +2191,7 @@ Math::Prime::Util - Utilities related to prime numbers, including fast sieves an
 
 =head1 VERSION
 
-Version 0.30
+Version 0.31
 
 
 =head1 SYNOPSIS
