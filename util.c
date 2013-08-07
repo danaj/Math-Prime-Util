@@ -837,22 +837,26 @@ signed char* _moebius_range(UV lo, UV hi)
 
 UV* _totient_range(UV lo, UV hi) {
   UV* totients;
-  UV i, sievehi;
+  UV i, hidiv2;
   if (hi < lo) croak("_totient_range error hi %lu < lo %lu\n", hi, lo);
   New(0, totients, hi-lo+1, UV);
   if (totients == 0)
     croak("Could not get memory for %"UVuf" totients\n", hi);
-  for (i = lo; i <= hi; i++)
-    totients[i-lo] = i;
-  sievehi = hi/2;
-  for (i=P2GTLO(2*2,2,lo); i <= hi; i += 2) totients[i-lo] -= totients[i-lo]/2;
-  START_DO_FOR_EACH_PRIME(3, sievehi) {
-    for (i = P2GTLO(2*p,p,lo); i <= hi; i += p)
-      totients[i-lo] -= totients[i-lo]/p;
+  for (i = lo; i <= hi; i++) {
+    UV v = i;
+    if (i % 2 == 0)  v -= v/2;
+    if (i % 3 == 0)  v -= v/3;
+    if (i % 5 == 0)  v -= v/5;
+    totients[i-lo] = v;
+  }
+  hidiv2 = hi/2;
+  START_DO_FOR_EACH_PRIME(2, hi) {
+    if (p >= lo)
+      totients[p-lo] = p-1;
+    if (p >= 7 && p <= hidiv2)
+      for (i = P2GTLO(2*p,p,lo); i <= hi; i += p)
+        totients[i-lo] -= totients[i-lo]/p;
   } END_DO_FOR_EACH_PRIME
-  for (i = lo; i <= hi; i++)
-    if (totients[i-lo] == i)
-      totients[i-lo] = i-1;
   return totients;
 }
 

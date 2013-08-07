@@ -7,6 +7,8 @@ Revision history for Perl module Math::Prime::Util
     - Some platforms were using __int128 when it wasn't supported.  Only
       x86_64 and Power64 use it now.
 
+    - Small speedup for ranged totient internals.
+
 0.30  2013-08-06
 
     [API Changes]

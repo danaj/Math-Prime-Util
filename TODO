@@ -26,7 +26,9 @@
 
 - More efficient Mertens.  The current version has poor growth.
 
-- More efficient totient segment.  Do we really need primes to n/2?
+- It may be possible to have a more efficient ranged totient.  We're using
+  the sieve up to n/2, which is better than most people seem to use, but I'm
+  not completely convinced we can't do better.
 
 - Implement S2 calculation for LMO prime count.
 
