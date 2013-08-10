@@ -723,7 +723,7 @@ sub primes {
     if ($_big_gcd_use < 0) {
       $_big_gcd_use = 0;
       my $lib = Math::BigInt->config()->{lib};
-      $_big_gcd_use = 1 if $lib =~ /^Math::BigInt::(GMP|Pari)/;
+      $_big_gcd_use = 1 if !$_HAVE_GMP && $lib =~ /^Math::BigInt::(GMP|Pari)/;
       _make_big_gcds() if $_big_gcd_use;
     }
 
@@ -741,7 +741,12 @@ sub primes {
         next unless (0,0,1,1,0,1,0,1,0,0,0,1,0,1,0,0,0,1,0,1,0,0,0,1)[$prime];
         return $prime;
       }
-      # Perform quick trial division
+      # With GMP, the fastest thing to do is check primality.
+      if ($_HAVE_GMP) {
+        next unless Math::Prime::Util::GMP::is_prime($prime);
+        return $prime;
+      }
+      # No MPU:GMP, so primality checking is slow.  Skip some composites here.
       next unless Math::BigInt::bgcd($prime, 7436429) == 1;
       if ($_big_gcd_use && $prime > $_big_gcd_top) {
         next unless Math::BigInt::bgcd($prime, $_big_gcd[0]) == 1;
@@ -818,6 +823,39 @@ sub primes {
   sub random_nbit_prime {
     my($bits) = @_;
     _validate_num($bits, 2) || _validate_positive_integer($bits, 2);
+
+    # Fouque and Tibouchi (2011) Algorithm 1 (basic)
+    if (1 && $bits > 64) {
+      if (!defined $Math::BigInt::VERSION) {
+        eval { require Math::BigInt; Math::BigInt->import(try=>'GMP,Pari'); 1; }
+        or do { croak "Cannot load Math::BigInt"; };
+      }
+      my $irandf = _get_rand_func();
+      my $l = ($_Config{'maxbits'} > 32 && $bits > 79)  ?  63  :  31;
+      my $arange = (1 << $l) - 1;  # 2^$l-1
+      my $brange = Math::BigInt->new(2)->bpow($bits-$l-2)->bsub(1);
+      my $b = 2 * $irandf->($brange) + 1;
+      # Precalculate some modulii (TODO: add more or use F&T Alg 2)
+      my $em3 = ($bits % 2)  ?  (0,1,2)[$b % 3]  :  (0,2,1)[$b % 3];
+      my $loop_limit = 1_000_000;
+      while ($loop_limit-- > 0) {
+        my $a = (1 << $l) +  $irandf->($arange);
+        next if $a % 3 == $em3;
+        my $p = Math::BigInt->new("$a")->blsft($bits-$l-1)->badd($b);
+        # p:  1aaaaaaaabbbbbbbbbbbbbbbbbbbb1
+        #die " $a $b $p" if $a % 3 == $em3 && $p % 3 != 0;
+        #die "!$a $b $p" if $a % 3 != $em3 && $p % 3 == 0;
+        if ($_HAVE_GMP) {
+          next unless Math::Prime::Util::GMP::is_prime($p);
+        } else {
+          next unless Math::BigInt::bgcd($p, 4127218095) == 1;
+          next unless Math::BigInt::bgcd($p, 3948078067) == 1;
+          next unless is_prob_prime($p);
+        }
+        return $p;
+      } 
+      croak "Random function broken?";
+    }
 
     if (!defined $_random_nbit_ranges[$bits]) {
       my $bigbits = $bits > $_Config{'maxbits'};
@@ -2457,6 +2495,14 @@ L</is_prime> return probable prime results using the extra-strong
 Baillie-PSW test, which has had no counterexample found since it was
 published in 1980.
 
+For cryptographic key generation, you may want even more testing for probable
+primes (NIST recommends some additional M-R tests).  This can be done using
+additional random bases with L</is_strong_pseudoprime>, or a different test
+such as L</is_frobenius_underwood_pseudoprime>.  Even better, make sure
+L<Math::Prime::Util::GMP> is installed and use L</is_provable_prime> which
+should be reasonably fast for sizes under 2048 bits.
+Another possibility is to use L<Math::Prime::Util/random_maurer_prime> which
+constructs a random provable prime.
 
 
 =head2 primes
@@ -3407,12 +3453,13 @@ between 2 and the maximum representable bits (32, 64, or 100000 for native
 set will be uniformly selected, with randomness supplied via calls to the
 C<irand> function as described above.
 
-Since this uses the random_prime function, all uniformity properties of that
-function apply to this.  The n-bit range is partitioned into nearly equal
-segments less than C<2^32>, a segment is randomly selected, then the trivial
-Monte Carlo algorithm is used to select a prime from within the segment.
-This gives a reasonably uniform distribution, doesn't use excessive random
-source, and can be very fast.
+For bit size of 64 and lower, we use L</random_prime>, which will result in
+uniform results.  For sizes larger than 64, Algorithm 1 of Fouque and Tibouchi
+(2011) is used, wherein we select a random odd number for the lower bits, then
+loop selecting random upper bits until the result is prime.  This gives a very
+uniform distribution while running quickly.  The C<irand> function is used
+for randomness, so all the discussion in L</random_prime> about that applies
+here.
 
 The result will be a BigInt if the number of bits is greater than the native
 bit size.  For better performance with large bit sizes, install
@@ -3469,6 +3516,14 @@ Internally this additionally runs the BPSW probable prime test on every
 partial result, and constructs a primality certificate for the final
 result, which is verified.  These add additional checks that the resulting
 value has been properly constructed.
+
+An alternative to this function is to run L</is_provable_prime> on the
+result of L</random_nbit_prime>, which will provide more diversity and
+will be faster up to 512 or so bits.  Maurer's method should be much
+faster for large bit sizes (larger than 2048).  If you don't need absolutely
+proven results, then using L</random_nbit_prime> followed by additional
+tests (L</is_strong_pseudoprime> and/or L</is_frobenius_underwood_pseudoprime>)
+should be much faster.
 
 
 =head2 random_maurer_prime_with_cert
@@ -4164,6 +4219,8 @@ functions.  All with fairly minimal installation requirements.
 
 =head1 PERFORMANCE
 
+=head2 PRIME COUNTS
+
 Counting the primes to C<10^10> (10 billion), with time in seconds.
 Pi(10^10) = 455,052,511.
 The numbers below are for sieving.  Calculating C<Pi(10^10)> takes 0.064
@@ -4213,6 +4270,7 @@ and 25+ GB of RAM.  SymPy 0.7.1 C<primepi> takes 292.2s.  However there are
 very fast solutions written by Robert William Hanks (included in the xt/
 directory of this distribution): pure Python in 12.1s and NUMPY in 2.8s.
 
+=head2 PRIMALITY TESTING
 
 C<is_prime>: my impressions for various sized inputs:
 
@@ -4287,6 +4345,7 @@ it is still much, much slower than a BPSW probable prime test for large inputs.
 
 =back
 
+=head2 FACTORING
 
 Factoring performance depends on the input, and the algorithm choices used
 are still being tuned.  L<Math::Factor::XS> is very fast when given input with
@@ -4318,6 +4377,7 @@ and L<Pari|http://pari.math.u-bordeaux.fr/>.  The latest yafu should cover most
 uses, with GGNFS likely only providing a benefit for numbers large enough to
 warrant distributed processing.
 
+=head2 PRIMALITY PROVING
 
 The C<n-1> proving algorithm in L<Math::Prime::Util::GMP> compares well to
 the version including in Pari.  Both are pretty fast to about 60 digits, and
@@ -4329,8 +4389,60 @@ including creating a certificate.  Times below 200 digits are faster than
 Pari 2.3.5's APR-CL proof.  For larger inputs the bottleneck is a limited set
 of discriminants, and time becomes more variable.  There is a larger set of
 discriminants on github that help, with 300-digit primes taking ~5 seconds on
-average and typically under a minute for 500-digits.  For serious primality
-proving, I recommend L<Primo|http://www.ellipsa.eu/>.
+average and typically under a minute for 500-digits.  For primality proving
+with very large numbers, I recommend L<Primo|http://www.ellipsa.eu/>.
+
+=head2 RANDOM PRIME GENERATION
+
+Seconds per prime for random prime generation on a circa-2009 workstation,
+with L<Math::Prime::Util::GMP> installed.
+
+  bits    random   +testing  random(p)   Maurer   CPMaurer
+  -----  --------  --------  ---------  --------  --------
+     64    0.0003  +0.000003   0.0003     0.0003    0.022
+    128    0.0040  +0.00016    0.0099     0.081     0.057
+    256    0.0073  +0.0004     0.057      0.19      0.16
+    512    0.020   +0.0012     0.43       0.52      0.41
+   1024    0.089   +0.0060     6.3        1.3       2.19
+   2048    0.62    +0.039                 4.8      10.99
+   4096    6.24    +0.25                 31.9      79.71
+   8192   58.6     +1.61                234.0     947.3
+
+  random    = random_nbit_prime  (results pass BPSW)
+  random+   = additional time for 3 M-R and a frobenius test
+  random(p) = is_provable_prime(random_nbit_prime(bits))
+  maurer    = random_maurer_prime
+  CPMaurer  = Crypt::Primes::maurer
+
+L</random_nbit_prime> is reasonably fast, and for most purposes should be
+adequate.  For cryptographic purposes, one may want additional tests or a
+proven prime.  Additional tests are quite cheap, as shown by the time for
+three extra M-R and a Frobenius test.  At these bit sizes, the chances a
+composite number passes BPSW, three more M-R tests, and a Frobenius test
+is I<extraordinarily> small.
+
+For bit sizes under 600 or so (200 digits), using L</is_provable_prime> on
+the result of L</random_nbit_prime> is quite fast.  Typically this will
+actually be faster than generating a proven prime with Maurer's algorithm.
+However, as the bit sizes increase, proving primality becomes quite expensive
+so Maurer's method is typically best for proven random primes over 512 bits.
+
+L</random_maurer_prime> constructs a provable prime.  A primality test is
+run on each intermediate, and it also constructs a complete primality
+certificate which is verified at the end (and can be returned).  While the
+result is uniformly distributed, only about 10% of the primes in the range
+are selected for output.  This is a result of the FastPrime algorithm and
+is usually unimportant.
+
+L<Crypt::Primes/maurer> is included for comparison.  It is pretty fast for
+small sizes but gets slow as the size increases.  It does not perform any
+primality checks on the intermediate results or the final result (I highly
+recommended you run a primality test on the output).
+Additionally important for servers, L<Crypt::Primes/maurer> uses excessive
+system entropy and can grind to a halt if C</dev/random> is exhausted
+(it can take B<days> to return).  The times above are on a machine running
+L<HAVEGED|http://www.issihosts.com/haveged/>
+so never waits for entropy.
 
 
 =head1 AUTHORS
