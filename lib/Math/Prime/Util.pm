@@ -32,8 +32,9 @@ our @EXPORT_OK =
       prime_count
       prime_count_lower prime_count_upper prime_count_approx
       nth_prime nth_prime_lower nth_prime_upper nth_prime_approx
-      random_prime random_ndigit_prime random_nbit_prime
-      random_strong_prime random_maurer_prime random_maurer_prime_with_cert
+      random_prime random_ndigit_prime random_nbit_prime random_strong_prime
+      random_proven_prime random_proven_prime_with_cert
+      random_maurer_prime random_maurer_prime_with_cert
       primorial pn_primorial consecutive_integer_lcm
       factor all_factors
       moebius mertens euler_phi jordan_totient exp_mangoldt
@@ -484,7 +485,17 @@ sub primes {
   my $_big_gcd_top = 20046;
   my $_big_gcd_use = -1;
   sub _make_big_gcds {
+    return if $_big_gcd_use >= 0;
+    if ($_HAVE_GMP) {
+      $_big_gcd_use = 0;
+      return;
+    }
     croak "Internal error: make_big_gcds needs Math::BigInt!" unless defined $Math::BigInt::VERSION;
+    if (Math::BigInt->config()->{lib} !~ /^Math::BigInt::(GMP|Pari)/) {
+      $_big_gcd_use = 0;
+      return;
+    }
+    $_big_gcd_use = 1;
     my $p0 = primorial(Math::BigInt->new( 520));
     my $p1 = primorial(Math::BigInt->new(2052));
     my $p2 = primorial(Math::BigInt->new(6028));
@@ -625,7 +636,8 @@ sub primes {
     #   3) iterate choosing random values within the partition.
     #
     # The downside is that we're skewing a _lot_ farther from uniformity than
-    # we'd like.  Imagine we started at 0 with 1e18 partitions of size 100k each.
+    # we'd like.  Imagine we started at 0 with 1e18 partitions of size 100k
+    # each.
     # Probability of '5' being returned =
     #   1.04e-22 = 1e-18 (chose first partition) * 1/9592 (chose '5')
     # Probability of '100003' being returned =
@@ -640,11 +652,12 @@ sub primes {
     # partition (uniform with respect to all other primes in the same
     # partition, but each partition is different and skewed).
     #
-    # When selecting n-bit or n-digit primes, this effect is _much_ smaller, as
+    # Partitions are typically much larger than 100k, but with a huge range
+    # we still see this (e.g. ~3x from 0-10^30, ~10x from 0-10^100).
+    #
+    # When selecting n-bit or n-digit primes, this effect is MUCH smaller, as
     # the skew becomes approx lg(2^n) / lg(2^(n-1)) which is pretty close to 1.
-    # Note that we really want big partitions to even out any local skews, which
-    # worries me on systems with randbits of 16.  In fact, we should probably
-    # just get two numbers on those systems.
+    #
     #
     # Another idea I'd like to try sometime is:
     #  pclo = prime_count_lower(low);
@@ -720,12 +733,7 @@ sub primes {
     $primelow30 = int($primelow30->bstr) if ref($primelow30) eq 'Math::BigInt';
 
     # Big GCD's are hugely fast with GMP or Pari, but super slow with Calc.
-    if ($_big_gcd_use < 0) {
-      $_big_gcd_use = 0;
-      my $lib = Math::BigInt->config()->{lib};
-      $_big_gcd_use = 1 if !$_HAVE_GMP && $lib =~ /^Math::BigInt::(GMP|Pari)/;
-      _make_big_gcds() if $_big_gcd_use;
-    }
+    _make_big_gcds() if $_big_gcd_use < 0;
 
     while ($loop_limit-- > 0) {
       my $rand = $irandf->($partsize-1);
@@ -825,6 +833,15 @@ sub primes {
     _validate_num($bits, 2) || _validate_positive_integer($bits, 2);
 
     # Fouque and Tibouchi (2011) Algorithm 1 (basic)
+    #
+    # Example for random_nbit_prime(512) on 64-bit Perl:
+    # p:  1aaaaaaaabbbbbbbbbbbbbbbbbbbb1
+    #     ^^       ^                   ^--- Trailing 1 so p is odd
+    #     ||       +--- 512-63-2 = 447 lower bits selected before loop
+    #     |+--- 63 upper bits selected in loop, repeated until p is prime
+    #     +--- upper bit is 1 so we generate an n-bit prime
+    # total: 1 + 63 + 447 + 1 = 512 bits
+    #
     if (1 && $bits > 64) {
       if (!defined $Math::BigInt::VERSION) {
         eval { require Math::BigInt; Math::BigInt->import(try=>'GMP,Pari'); 1; }
@@ -832,24 +849,43 @@ sub primes {
       }
       my $irandf = _get_rand_func();
       my $l = ($_Config{'maxbits'} > 32 && $bits > 79)  ?  63  :  31;
+      $l = $bits-2 if $bits-2 < $l;
       my $arange = (1 << $l) - 1;  # 2^$l-1
       my $brange = Math::BigInt->new(2)->bpow($bits-$l-2)->bsub(1);
       my $b = 2 * $irandf->($brange) + 1;
-      # Precalculate some modulii (TODO: add more or use F&T Alg 2)
-      my $em3 = ($bits % 2)  ?  (0,1,2)[$b % 3]  :  (0,2,1)[$b % 3];
+      # Precalculate some modulii so we can do trial division on native int
+      # 9699690 = 2*3*5*7*11*13*17*19, so later operations can be native ints
+      my @premod;
+      my $bpremod = int($b->copy->bmod(9699690)->bstr);
+      my $twopremod = int(Math::BigInt->new(2)->bmodpow($bits-$l-1, 9699690)->bstr);
+      foreach my $zi (0 .. 19-1) {
+        foreach my $pm (3, 5, 7, 11, 13, 17, 19) {
+          next if $zi >= $pm || defined $premod[$pm];
+          $premod[$pm] = $zi if ( ($twopremod*$zi+$bpremod) % $pm) == 0;
+        }
+      }
+      _make_big_gcds() if $_big_gcd_use < 0;
       my $loop_limit = 1_000_000;
       while ($loop_limit-- > 0) {
-        my $a = (1 << $l) +  $irandf->($arange);
-        next if $a % 3 == $em3;
+        my $a = (1 << $l) + $irandf->($arange);
+        # $a % s == $premod[s]  =>  $p % s == 0  =>  p will be composite
+        next if $a %  3 == $premod[ 3] || $a %  5 == $premod[ 5]
+             || $a %  7 == $premod[ 7] || $a % 11 == $premod[11]
+             || $a % 13 == $premod[13] || $a % 17 == $premod[17]
+             || $a % 19 == $premod[19];
         my $p = Math::BigInt->new("$a")->blsft($bits-$l-1)->badd($b);
-        # p:  1aaaaaaaabbbbbbbbbbbbbbbbbbbb1
-        #die " $a $b $p" if $a % 3 == $em3 && $p % 3 != 0;
-        #die "!$a $b $p" if $a % 3 != $em3 && $p % 3 == 0;
+        #die " $a $b $p" if $a % 11 == $premod[11] && $p % 11 != 0;
+        #die "!$a $b $p" if $a % 11 != $premod[11] && $p % 11 == 0;
         if ($_HAVE_GMP) {
           next unless Math::Prime::Util::GMP::is_prime($p);
         } else {
-          next unless Math::BigInt::bgcd($p, 4127218095) == 1;
-          next unless Math::BigInt::bgcd($p, 3948078067) == 1;
+          next unless Math::BigInt::bgcd($p, 1348781387) == 1; # 23-43
+          if ($_big_gcd_use && $p > $_big_gcd_top) {
+            next unless Math::BigInt::bgcd($p, $_big_gcd[0]) == 1;
+            next unless Math::BigInt::bgcd($p, $_big_gcd[1]) == 1;
+            next unless Math::BigInt::bgcd($p, $_big_gcd[2]) == 1;
+            next unless Math::BigInt::bgcd($p, $_big_gcd[3]) == 1;
+          }
           next unless is_prob_prime($p);
         }
         return $p;
@@ -908,9 +944,7 @@ sub primes {
       croak "Random Maurer not supported on old Perl";
     }
 
-    # Results for random_nbit_prime are proven for all native bit sizes.  We
-    # could go even higher if we used is_provable_prime or looked for is_prime
-    # returning 2.  This should be reasonably fast to ~128 bits with MPU::GMP.
+    # Results for random_nbit_prime are proven for all native bit sizes.
     my $p0 = $_Config{'maxbits'};
 
     if ($k <= $p0) {
@@ -956,12 +990,7 @@ sub primes {
              ? "" : _strip_proof_header($qcert);
 
     # Big GCD's are hugely fast with GMP or Pari, but super slow with Calc.
-    if ($_big_gcd_use < 0) {
-      $_big_gcd_use = 0;
-      my $lib = Math::BigInt->config()->{lib};
-      $_big_gcd_use = 1 if $lib =~ /^Math::BigInt::(GMP|Pari)/;
-      _make_big_gcds() if $_big_gcd_use;
-    }
+    _make_big_gcds() if $_big_gcd_use < 0;
 
     my $loop_limit = 1_000_000 + $k * 1_000;
     while ($loop_limit-- > 0) {
@@ -972,17 +1001,22 @@ sub primes {
       # We constructed a promising looking $n.  Now test it.
       print "." if $verbose > 2;
       # Trial divisions, trying to quickly weed out non-primes.
-      next unless Math::BigInt::bgcd($n, 111546435) == 1;
-      if ($_big_gcd_use && $n > $_big_gcd_top) {
-        next unless Math::BigInt::bgcd($n, $_big_gcd[0]) == 1;
-        next unless Math::BigInt::bgcd($n, $_big_gcd[1]) == 1;
-        if (!$_HAVE_GMP) {
+      if ($_HAVE_GMP) {
+        my @f = Math::Prime::Util::GMP::trial_factor($n, 50000);
+        next if @f > 1;
+        print "+" if $verbose > 2;
+        next unless Math::Prime::Util::GMP::is_strong_pseudoprime($n, 3);
+      } else {
+        next unless Math::BigInt::bgcd($n, 111546435) == 1;
+        if ($_big_gcd_use && $n > $_big_gcd_top) {
+          next unless Math::BigInt::bgcd($n, $_big_gcd[0]) == 1;
+          next unless Math::BigInt::bgcd($n, $_big_gcd[1]) == 1;
           next unless Math::BigInt::bgcd($n, $_big_gcd[2]) == 1;
           next unless Math::BigInt::bgcd($n, $_big_gcd[3]) == 1;
         }
+        print "+" if $verbose > 2;
+        next unless Math::Prime::Util::is_strong_pseudoprime($n, 3);
       }
-      print "+" if $verbose > 2;
-      next unless Math::Prime::Util::is_strong_pseudoprime($n, 3);
       print "*" if $verbose > 2;
 
       # We could set r = 0.3333 earlier, then use BLS75 theorem 5 here.
@@ -1003,7 +1037,7 @@ sub primes {
       foreach my $trya (2, 3, 5, 7, 11, 13) {
         my $a = Math::BigInt->new($trya);
         # m/2 = R    (n-1)/2 = (2*R*q)/2 = R*q
-        next unless $a->copy->bmodpow($R,$n) != $n-1;
+        next unless $a->copy->bmodpow($R, $n) != $n-1;
         next unless $a->copy->bmodpow($R*$q, $n) == $n-1;
         print "($k)" if $verbose > 2;
         croak "Maurer prime $n=2*$R*$q+1 failed BPSW" unless is_prob_prime($n);
@@ -1058,6 +1092,27 @@ sub primes {
         }
       }
     }
+  }
+
+  sub random_proven_prime {
+    my $k = shift;
+    my ($n, $cert) = random_proven_prime_with_cert($k);
+    croak "maurer prime $n failed certificate verification!"
+          unless verify_prime($cert);
+    return $n;
+  }
+
+  sub random_proven_prime_with_cert {
+    my $k = shift;
+    _validate_num($k, 2) || _validate_positive_integer($k, 2);
+
+    if ($_HAVE_GMP && $k <= 512) {
+      my $n = random_nbit_prime($k);
+      my ($isp, $cert) = is_provable_prime_with_cert($n);
+      croak "small nbit prime could not be proven" if $isp != 2;
+      return ($n, $cert);
+    }
+    return random_maurer_prime_with_cert($k);
   }
 
 } # end of the random prime section
@@ -3380,12 +3435,17 @@ range.
 The goal is to return a uniform distribution of the primes in the range,
 meaning for each prime in the range, the chances are equally likely that it
 will be seen.  This is removes from consideration such algorithms as
-C<PRIMEINC>, which although efficient, gives very non-random output.
+C<PRIMEINC>, which although efficient, gives very non-random output.  This
+also implies that the numbers will not be evenly distributed, since the
+primes are not evenly distributed.  Stated again, the random prime functions
+return a uniformly selected prime from the set of primes within the range.  
+Hence given C<random_prime(1000)>, the numbers 2, 3, 487, 631, and 997 all
+have the same probability of being returned.
 
 For small numbers, a random index selection is done, which gives ideal
 uniformity and is very efficient with small inputs.  For ranges larger than
 this ~16-bit threshold but within the native bit size, a Monte Carlo method
-is used (multiple calls to C<rand> may be made if necessary).  This also
+is used (multiple calls to C<irand> will be made if necessary).  This also
 gives ideal uniformity and can be very fast for reasonably sized ranges.
 For even larger numbers, we partition the range, choose a random partition,
 then select a random prime from the partition.  This gives some loss of
@@ -3396,7 +3456,7 @@ If an C<irand> function has been set via L</prime_set_config>, it will be
 used to construct any ranged random numbers needed.  The function should
 return a uniformly random 32-bit integer, which is how the irand functions
 exported by L<Math::Random::Secure>, L<Math::Random::MT>,
-L<Math::Random::ISAAC> and most other modules behave.
+L<Math::Random::ISAAC>, and most other modules behave.
 
 If no C<irand> function was set, then L<Bytes::Random::Secure> is used with
 a non-blocking seed.  This will create good quality random numbers, so there
@@ -3453,14 +3513,18 @@ between 2 and the maximum representable bits (32, 64, or 100000 for native
 set will be uniformly selected, with randomness supplied via calls to the
 C<irand> function as described above.
 
-For bit size of 64 and lower, we use L</random_prime>, which will result in
-uniform results.  For sizes larger than 64, Algorithm 1 of Fouque and Tibouchi
-(2011) is used, wherein we select a random odd number for the lower bits, then
-loop selecting random upper bits until the result is prime.  This gives a very
-uniform distribution while running quickly.  The C<irand> function is used
-for randomness, so all the discussion in L</random_prime> about that applies
-here.
+For bit sizes of 64 and lower, L</random_prime> is used, which gives completely
+uniform results in this range.  For sizes larger than 64, Algorithm 1 of
+Fouque and Tibouchi (2011) is used, wherein we select a random odd number
+for the lower bits, then loop selecting random upper bits until the result
+is prime.  This allows a more uniform distribution than the general
+L</random_prime> case while running slightly faster (in contrast, for large
+bit sizes L</random_prime> selects a random upper partition then loops
+on the values within the partition, which very slightly skews the results
+towards smaller numbers).
 
+The C<irand> function is used for randomness, so all the discussion in
+L</random_prime> about that applies here.  
 The result will be a BigInt if the number of bits is greater than the native
 bit size.  For better performance with large bit sizes, install
 L<Math::Prime::Util::GMP>.
@@ -3499,6 +3563,26 @@ number of bits is greater than the native bit size.  For better performance
 with large bit sizes, install L<Math::Prime::Util::GMP>.
 
 
+=head2 random_proven_prime
+
+  my $bigprime = random_proven_prime(512);
+
+Constructs an n-bit random proven prime.  Internally this may use
+L</is_provable_prime>(L</random_nbit_prime>) or
+L</random_maurer_prime> depending on the platform and bit size.
+
+
+=head2 random_proven_prime_with_cert
+
+  my($n, $cert) = random_proven_prime_with_cert(512)
+
+Similar to L</random_proven_prime>, but returns a two-element array containing
+the n-bit provable prime along with a primality certificate.  The certificate
+is the same as produced by L</prime_certificate> or
+L</is_provable_prime_with_cert>, and can be parsed by L</verify_prime> or
+any other software that understands MPU primality certificates.
+
+
 =head2 random_maurer_prime
 
   my $bigprime = random_maurer_prime(512);
@@ -3514,7 +3598,7 @@ described in the L</"SEE ALSO"> section.
 
 Internally this additionally runs the BPSW probable prime test on every
 partial result, and constructs a primality certificate for the final
-result, which is verified.  These add additional checks that the resulting
+result, which is verified.  These provide additional checks that the resulting
 value has been properly constructed.
 
 An alternative to this function is to run L</is_provable_prime> on the
@@ -3534,7 +3618,7 @@ As with L</random_maurer_prime>, but returns a two-element array containing
 the n-bit provable prime along with a primality certificate.  The certificate
 is the same as produced by L</prime_certificate> or
 L</is_provable_prime_with_cert>, and can be parsed by L</verify_prime> or
-any other software that can parse MPU primality certificates.
+any other software that understands MPU primality certificates.
 The proof construction consists of a single chain of C<BLS3> types.
 
 
@@ -4395,37 +4479,38 @@ with very large numbers, I recommend L<Primo|http://www.ellipsa.eu/>.
 =head2 RANDOM PRIME GENERATION
 
 Seconds per prime for random prime generation on a circa-2009 workstation,
-with L<Math::Prime::Util::GMP> installed.
+with L<Math::Prime::Util::GMP> and L<Math::Random::ISAAC::XS> installed.
 
-  bits    random   +testing  random(p)   Maurer   CPMaurer
+  bits    random   +testing  rand_prov   Maurer   CPMaurer
   -----  --------  --------  ---------  --------  --------
-     64    0.0003  +0.000003   0.0003     0.0003    0.022
-    128    0.0040  +0.00016    0.0099     0.081     0.057
-    256    0.0073  +0.0004     0.057      0.19      0.16
-    512    0.020   +0.0012     0.43       0.52      0.41
-   1024    0.089   +0.0060     6.3        1.3       2.19
-   2048    0.62    +0.039                 4.8      10.99
-   4096    6.24    +0.25                 31.9      79.71
-   8192   58.6     +1.61                234.0     947.3
+     64    0.0001  +0.000003   0.0003     0.0001    0.022
+    128    0.0029  +0.00016    0.012      0.079     0.057
+    256    0.0048  +0.0004     0.059      0.19      0.16
+    512    0.016   +0.0012     0.47       0.50      0.41
+   1024    0.077   +0.0060     1.3        1.3       2.19
+   2048    0.70    +0.039      4.8        4.8      10.99
+   4096    6.24    +0.25      31.9       31.9      79.71
+   8192   58.6     +1.61     234.0      234.0     947.3
 
   random    = random_nbit_prime  (results pass BPSW)
   random+   = additional time for 3 M-R and a frobenius test
-  random(p) = is_provable_prime(random_nbit_prime(bits))
+  rand_prov = random_proven_prime
   maurer    = random_maurer_prime
   CPMaurer  = Crypt::Primes::maurer
 
-L</random_nbit_prime> is reasonably fast, and for most purposes should be
-adequate.  For cryptographic purposes, one may want additional tests or a
+L</random_nbit_prime> is reasonably fast, and for most purposes should
+suffice.  For cryptographic purposes, one may want additional tests or a
 proven prime.  Additional tests are quite cheap, as shown by the time for
 three extra M-R and a Frobenius test.  At these bit sizes, the chances a
 composite number passes BPSW, three more M-R tests, and a Frobenius test
 is I<extraordinarily> small.
 
-For bit sizes under 600 or so (200 digits), using L</is_provable_prime> on
-the result of L</random_nbit_prime> is quite fast.  Typically this will
-actually be faster than generating a proven prime with Maurer's algorithm.
-However, as the bit sizes increase, proving primality becomes quite expensive
-so Maurer's method is typically best for proven random primes over 512 bits.
+L</random_proven_prime> provides a randomly selected prime with an optional
+certificate, without specifying the particular method.  Below 512 bits,
+using L</is_provable_prime>(L</random_nbit_prime>) is typically faster
+than Maurer's algorithm, but becomes quite slow as the bit size increases.
+This leaves the decision of the exact method of proving the result to the
+implementation.
 
 L</random_maurer_prime> constructs a provable prime.  A primality test is
 run on each intermediate, and it also constructs a complete primality

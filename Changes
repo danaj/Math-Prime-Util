@@ -1,5 +1,13 @@
 Revision history for Perl module Math::Prime::Util
 
+0.32  2013-08
+
+    [Functions Added]
+      - is_proven_prime
+      - is_proven_prime_with_cert
+
+    - random_nbit_prime changed to Fouque and Tibouchi A1.
+
 0.31  2013-08-07
 
     - Change proof certificate documentation to reflect the new text format.
