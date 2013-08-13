@@ -723,6 +723,11 @@ sub _gcd_ui {
   $x;
 }
 
+sub _lcm_ui {
+  my($x, $y) = @_;
+  return (abs($x) / _gcd_ui($x, $y)) * abs($y);
+}
+
 sub _is_perfect_power {
   my $n = shift;
   return 0 if $n <= 3 || $n != int($n);

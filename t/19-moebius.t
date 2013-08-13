@@ -5,7 +5,7 @@ use warnings;
 use Test::More;
 use Math::Prime::Util
    qw/moebius mertens euler_phi jordan_totient divisor_sum exp_mangoldt
-      chebyshev_theta chebyshev_psi/;
+      chebyshev_theta chebyshev_psi carmichael_lambda/;
 
 my $extra = defined $ENV{EXTENDED_TESTING} && $ENV{EXTENDED_TESTING};
 my $use64 = Math::Prime::Util::prime_get_config->{'maxbits'} > 32;
@@ -155,6 +155,8 @@ my %chebyshev2 = (
  1234567 => 1234515.17962833,
 );
 
+my @A002322 = (0,1,1,2,2,4,2,6,2,6,4,10,2,12,6,4,4,16,6,18,4,6,10,22,2,20,12,18,6,28,4,30,8,10,16,12,6,36,18,12,4,40,6,42,10,12,22,46,4,42,20,16,12,52,18,20,6,18,28,58,4,60,30,6,16,12,10,66,16,22,12,70,6,72,36,20,18,30,12,78,4,54,40,82,6,16,42,28,10,88,12,12,22,30,46,36,8,96,42,30,20,100,16,102,12,12,52,106,18,108,20,36,12,112,18,44,28,12,58,48,4,110,60,40,30,100,6,126,32,42,12,130,10,18,66,36,16,136,22,138,12,46,70,60,12,28,72,42,36,148,20,150,18,48,30,60,12,156,78,52,8,66,54,162,40,20,82,166,6,156,16,18,42,172,28,60,20,58,88,178,12,180,12,60,22,36,30,80,46,18,36,190,16,192,96,12,42,196,30,198,20);
+
 
 plan tests => 0 + 1
                 + 1 # Small Moebius
@@ -162,6 +164,7 @@ plan tests => 0 + 1
                 + 1*scalar(keys %big_mertens)
                 + 2 # Small Phi
                 + 7 + scalar(keys %totients)
+                + 1 # Small Carmichael Lambda
                 + scalar(keys %jordan_totients)
                 + 2  # Dedekind psi calculated two ways
                 + 1  # Calculate J5 two different ways
@@ -273,6 +276,12 @@ while (my($n, $c1) = each (%chebyshev1)) {
 ###### second Chebyshev function
 while (my($n, $c2) = each (%chebyshev2)) {
   cmp_closeto( chebyshev_psi($n), $c2, 1e-9*abs($n), "chebyshev_psi($n)" );
+}
+
+###### Carmichael Lambda
+{
+  my @lambda = map { carmichael_lambda($_) } (0 .. $#A002322);
+  is_deeply( \@lambda, \@A002322, "carmichael_lambda with range: 0, $#A000010" );
 }
 
 

@@ -40,6 +40,7 @@ our @EXPORT_OK =
       moebius mertens euler_phi jordan_totient exp_mangoldt
       chebyshev_theta chebyshev_psi
       divisor_sum
+      carmichael_lambda
       ExponentialIntegral LogarithmicIntegral RiemannZeta RiemannR
   );
 our %EXPORT_TAGS = (all => [ @EXPORT_OK ]);
@@ -828,9 +829,71 @@ sub primes {
     return $_random_prime->($low, $high);
   }
 
+  my @_random_nbit_m;
+  my @_random_nbit_lambda;
+  my @_random_nbit_arange;
+
   sub random_nbit_prime {
     my($bits) = @_;
     _validate_num($bits, 2) || _validate_positive_integer($bits, 2);
+
+    # Fouque and Tobouchi (2011) Algorithm 2
+    if (1 && $bits > 256) {
+      if (!defined $Math::BigInt::VERSION) {
+        eval { require Math::BigInt; Math::BigInt->import(try=>'GMP,Pari'); 1; }
+        or do { croak "Cannot load Math::BigInt"; };
+      }
+      my ($m, $lambda, $arange) = ($_random_nbit_m[$bits],
+                                   $_random_nbit_lambda[$bits],
+                                   $_random_nbit_arange[$bits]);
+      if (!defined $m) {
+        # Calculate beta and primorial
+        my $target = $bits - $_Config{'maxbits'};
+        my $beta = 2;
+        $m = Math::BigInt->new(2);
+        while ($m->copy->blog(2)->badd(1) <= $target) {
+          $beta = next_prime($beta);
+          $m *= $beta;
+        }
+        # Calculate Carmichael Lambda (used to create b) and arange.
+        $lambda = Math::BigInt::blcm( map { $_-1 } @{primes(3, $beta)} );
+        $arange = Math::BigInt->new(2)->bpow($bits)->bdiv($m)->bsub(1);
+        my $arange_bits = $arange->copy->blog(2)->badd(1);
+        die "Incorrect arange" if $arange_bits > $_Config{'maxbits'};
+        $arange = int($arange->bstr);
+        #print "For $bits, I got arange = $arange_bits using primorial($beta) primes\n";
+        ($_random_nbit_m[$bits],
+         $_random_nbit_lambda[$bits],
+         $_random_nbit_arange[$bits]) = ($m, $lambda, $arange);
+      }
+      my $irandf = _get_rand_func();
+      my $b = $irandf->($m-2) + 1;
+      while (1) {
+        my $u = Math::BigInt->bone->bsub($b->copy->bmodpow($lambda, $m))->bmod($m);
+        last if $u == 0;
+        my $r = $irandf->($m-2) + 1;
+        $b->badd($r * $u)->bmod($m);
+      }
+      _make_big_gcds() if $_big_gcd_use < 0;
+      my $loop_limit = 1_000_000;
+      while ($loop_limit-- > 0) {
+        my $a = $irandf->($arange);
+        my $p = $m * $a + $b;
+        if ($_HAVE_GMP) {
+          next unless Math::Prime::Util::GMP::is_prime($p);
+        } else {
+          if ($_big_gcd_use && $p > $_big_gcd_top) {
+            next unless Math::BigInt::bgcd($p, $_big_gcd[0]) == 1;
+            next unless Math::BigInt::bgcd($p, $_big_gcd[1]) == 1;
+            next unless Math::BigInt::bgcd($p, $_big_gcd[2]) == 1;
+            next unless Math::BigInt::bgcd($p, $_big_gcd[3]) == 1;
+          }
+          next unless is_prob_prime($p);
+        }
+        return $p;
+      } 
+      croak "Random function broken?";
+    }
 
     # Fouque and Tibouchi (2011) Algorithm 1 (basic)
     #
@@ -1503,6 +1566,35 @@ sub chebyshev_psi {
   } $n;
   return $sum;
 }
+
+sub carmichael_lambda {
+  my($n) = @_;
+  _validate_num($n) || _validate_positive_integer($n);
+  # lambda(n) = phi(n) for n < 8
+  return euler_phi($n) if $n < 8;
+  # lambda(n) = phi(n)/2 for powers of two greater than 4
+  return euler_phi($n)/2 if ($n & ($n-1)) == 0;
+
+  my %factor_mult;
+  my @factors = grep { !$factor_mult{$_}++ }
+                ($n <= $_XS_MAXVAL) ? _XS_factor($n) : factor($n);
+  $factor_mult{2}-- if defined $factor_mult{2} && $factor_mult{2} > 2;
+  
+  if (!defined $Math::BigInt::VERSION) {
+    eval { require Math::BigInt; Math::BigInt->import(try=>'GMP,Pari'); 1; }
+    or do { croak "Cannot load Math::BigInt"; };
+  }
+  my $lcm = Math::BigInt::blcm(
+    map { Math::BigInt->new("$_")
+          ->bpow($factor_mult{$_}-1)
+          ->bmul($_-1)
+        } @factors
+  );
+  $lcm = int($lcm->bstr) if $lcm->bacmp(''.~0) <= 0;
+  return $lcm;
+}
+
+
 
 
 

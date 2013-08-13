@@ -5,8 +5,9 @@ Revision history for Perl module Math::Prime::Util
     [Functions Added]
       - is_proven_prime
       - is_proven_prime_with_cert
+      - carmichael_lambda
 
-    - random_nbit_prime changed to Fouque and Tibouchi A1.
+    - random_nbit_prime now uses Fouque and Tibouchi A1 and A2.
 
 0.31  2013-08-07
 
