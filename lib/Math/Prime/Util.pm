@@ -838,7 +838,8 @@ sub primes {
     _validate_num($bits, 2) || _validate_positive_integer($bits, 2);
 
     # Fouque and Tobouchi (2011) Algorithm 2
-    if (1 && $bits > 256) {
+    # TODO: Make sure the top bit is set.
+    if (0 && $bits > 256) {
       if (!defined $Math::BigInt::VERSION) {
         eval { require Math::BigInt; Math::BigInt->import(try=>'GMP,Pari'); 1; }
         or do { croak "Cannot load Math::BigInt"; };
@@ -851,12 +852,13 @@ sub primes {
         my $target = $bits - $_Config{'maxbits'};
         my $beta = 2;
         $m = Math::BigInt->new(2);
+        $lambda = Math::BigInt->bone;
         while ($m->copy->blog(2)->badd(1) <= $target) {
           $beta = next_prime($beta);
           $m *= $beta;
+          $lambda = Math::BigInt::blcm($lambda, $beta-1);
         }
-        # Calculate Carmichael Lambda (used to create b) and arange.
-        $lambda = Math::BigInt::blcm( map { $_-1 } @{primes(3, $beta)} );
+        # Lambda should now equal carmichael_lambda($m)
         $arange = Math::BigInt->new(2)->bpow($bits)->bdiv($m)->bsub(1);
         my $arange_bits = $arange->copy->blog(2)->badd(1);
         die "Incorrect arange" if $arange_bits > $_Config{'maxbits'};
@@ -878,7 +880,8 @@ sub primes {
       my $loop_limit = 1_000_000;
       while ($loop_limit-- > 0) {
         my $a = $irandf->($arange);
-        my $p = $m * $a + $b;
+        # Without wrapping $a like this, Math::BigInt::GMP will segfault.
+        my $p = $m * Math::BigInt->new("$a") + $b;
         if ($_HAVE_GMP) {
           next unless Math::Prime::Util::GMP::is_prime($p);
         } else {
