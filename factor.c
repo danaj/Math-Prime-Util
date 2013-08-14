@@ -405,8 +405,8 @@ static const UV mr_bases_small_2[2] = {31, 73};
 static const UV mr_bases_small_3[3] = {2, 7, 61};
 #else
 static const UV mr_bases_large_1[1] = { UVCONST(  9345883071009581737 ) };
-static const UV mr_bases_large_2[2] = { UVCONST(   725270293939359937 ),
-                                        UVCONST(  3569819667048198375 ) };
+static const UV mr_bases_large_2[2] = { UVCONST(         336781006125 ),
+                                        UVCONST(     9639812373923155 ) };
 static const UV mr_bases_large_3[3] = { UVCONST(  4230279247111683200 ),
                                         UVCONST( 14694767155120705706 ),
                                         UVCONST( 16641139526367750375 ) };
@@ -438,7 +438,7 @@ int _XS_is_prob_prime(UV n)
    * So it works out to be faster to do AES-BPSW vs. 3 M-R tests. */
   if (n < UVCONST(341531))
     ret = _XS_miller_rabin(n, mr_bases_large_1, 1);
-  else if (n < UVCONST(885594169))
+  else if (n < UVCONST(1050535501))
     ret = _XS_miller_rabin(n, mr_bases_large_2, 2);
   else
     ret = _SPRP2(n) && _XS_is_almost_extra_strong_lucas_pseudoprime(n,1);
