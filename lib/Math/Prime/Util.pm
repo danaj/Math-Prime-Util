@@ -837,68 +837,18 @@ sub primes {
     my($bits) = @_;
     _validate_num($bits, 2) || _validate_positive_integer($bits, 2);
 
-    # Fouque and Tobouchi (2011) Algorithm 2
-    # TODO: Make sure the top bit is set.
-    if (0 && $bits > 256) {
+    croak "Large random primes not supported on old Perl"
+      if $] < 5.008 && $bits > 49
+      && $_Config{'maxbits'} > 32 && $bits <= $_Config{'maxbits'};
+    if ($bits > $_Config{'maxbits'}) {
       if (!defined $Math::BigInt::VERSION) {
         eval { require Math::BigInt; Math::BigInt->import(try=>'GMP,Pari'); 1; }
         or do { croak "Cannot load Math::BigInt"; };
       }
-      my ($m, $lambda, $arange) = ($_random_nbit_m[$bits],
-                                   $_random_nbit_lambda[$bits],
-                                   $_random_nbit_arange[$bits]);
-      if (!defined $m) {
-        # Calculate beta and primorial
-        my $target = $bits - $_Config{'maxbits'};
-        my $beta = 2;
-        $m = Math::BigInt->new(2);
-        $lambda = Math::BigInt->bone;
-        while ($m->copy->blog(2)->badd(1) <= $target) {
-          $beta = next_prime($beta);
-          $m *= $beta;
-          $lambda = Math::BigInt::blcm($lambda, $beta-1);
-        }
-        # Lambda should now equal carmichael_lambda($m)
-        $arange = Math::BigInt->new(2)->bpow($bits)->bdiv($m)->bsub(1);
-        my $arange_bits = $arange->copy->blog(2)->badd(1);
-        die "Incorrect arange" if $arange_bits > $_Config{'maxbits'};
-        $arange = int($arange->bstr);
-        #print "For $bits, I got arange = $arange_bits using primorial($beta) primes\n";
-        ($_random_nbit_m[$bits],
-         $_random_nbit_lambda[$bits],
-         $_random_nbit_arange[$bits]) = ($m, $lambda, $arange);
-      }
-      my $irandf = _get_rand_func();
-      my $b = $irandf->($m-2) + 1;
-      while (1) {
-        my $u = Math::BigInt->bone->bsub($b->copy->bmodpow($lambda, $m))->bmod($m);
-        last if $u == 0;
-        my $r = $irandf->($m-2) + 1;
-        $b->badd($r * $u)->bmod($m);
-      }
-      _make_big_gcds() if $_big_gcd_use < 0;
-      my $loop_limit = 1_000_000;
-      while ($loop_limit-- > 0) {
-        my $a = $irandf->($arange);
-        # Without wrapping $a like this, Math::BigInt::GMP will segfault.
-        my $p = $m * Math::BigInt->new("$a") + $b;
-        if ($_HAVE_GMP) {
-          next unless Math::Prime::Util::GMP::is_prime($p);
-        } else {
-          if ($_big_gcd_use && $p > $_big_gcd_top) {
-            next unless Math::BigInt::bgcd($p, $_big_gcd[0]) == 1;
-            next unless Math::BigInt::bgcd($p, $_big_gcd[1]) == 1;
-            next unless Math::BigInt::bgcd($p, $_big_gcd[2]) == 1;
-            next unless Math::BigInt::bgcd($p, $_big_gcd[3]) == 1;
-          }
-          next unless is_prob_prime($p);
-        }
-        return $p;
-      } 
-      croak "Random function broken?";
     }
 
     # Fouque and Tibouchi (2011) Algorithm 1 (basic)
+    # Modified to make sure the nth bit is always set.
     #
     # Example for random_nbit_prime(512) on 64-bit Perl:
     # p:  1aaaaaaaabbbbbbbbbbbbbbbbbbbb1
@@ -908,11 +858,13 @@ sub primes {
     #     +--- upper bit is 1 so we generate an n-bit prime
     # total: 1 + 63 + 447 + 1 = 512 bits
     #
+    # Algorithm 2 is implemented in a previous commit on github.  The problem
+    # is that it doesn't set the nth bit, and making that change requires a
+    # modification of the algorithm.  It was not a lot faster than this A1
+    # with the native int trial division.  If the irandf function was very
+    # slow, then A2 would look more promising.
+    #
     if (1 && $bits > 64) {
-      if (!defined $Math::BigInt::VERSION) {
-        eval { require Math::BigInt; Math::BigInt->import(try=>'GMP,Pari'); 1; }
-        or do { croak "Cannot load Math::BigInt"; };
-      }
       my $irandf = _get_rand_func();
       my $l = ($_Config{'maxbits'} > 32 && $bits > 79)  ?  63  :  31;
       $l = $bits-2 if $bits-2 < $l;
@@ -960,13 +912,7 @@ sub primes {
     }
 
     if (!defined $_random_nbit_ranges[$bits]) {
-      my $bigbits = $bits > $_Config{'maxbits'};
-      croak "Large random primes not supported on old Perl" if $] < 5.008 && $_Config{'maxbits'} > 32 && !$bigbits && $bits > 49;
-      if ($bigbits) {
-        if (!defined $Math::BigInt::VERSION) {
-          eval { require Math::BigInt; Math::BigInt->import(try=>'GMP,Pari'); 1; }
-          or do { croak "Cannot load Math::BigInt"; };
-        }
+      if ($bits > $_Config{'maxbits'}) {
         my $low  = Math::BigInt->new('2')->bpow($bits-1);
         my $high = Math::BigInt->new('2')->bpow($bits);
         # Don't pull the range in to primes, just odds
@@ -3515,6 +3461,14 @@ Given an unsigned integer argument, returns the least common multiple of all
 integers from 1 to C<n>.  This can be done by manipulation of the primes up
 to C<n>, resulting in much faster and memory-friendly results than using
 a factorial.
+
+
+=head2 carmichael_lambda
+
+Returns the Carmichael function (also called the reduced totient function,
+or Carmichael λ(n)) of a positive integer argument.  It is the smallest
+positive integer m such that a^m = 1 mod n for every integer a coprime to n.
+This is L<OEIS series A002322|http://oeis.org/A002322>.
 
 
 =head2 random_prime

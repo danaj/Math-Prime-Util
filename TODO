@@ -42,5 +42,3 @@
 - Refactor where functions exist in .c.  Lots of primality tests in factor.c.
 
 - Rewrite 23-primality-proofs.t for new format (keep some of the old tests?).
-
-- Document carmichael_lambda
