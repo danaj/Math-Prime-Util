@@ -21,8 +21,9 @@ env:
     - MPU_NO_XS=1 MPU_NO_GMP=1 MPU_NO_MPFR=1
 
 
+# Add the Travis mirror as well as another, because occasionally the Travis one gets confused.
 install:
-    - cpanm -v --installdeps --notest --mirror http://cpan.mirrors.travis-ci.org .
+    - cpanm -v --installdeps --notest --mirror http://cpan.mirrors.travis-ci.org --mirror http://dl.ambiweb.de --mirror httpupdate.cpanel.net .
 
 script: "perl Makefile.PL; make test"
 # branches:
