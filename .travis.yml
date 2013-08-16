@@ -23,7 +23,7 @@ env:
 
 # Add the Travis mirror as well as another, because occasionally the Travis one gets confused.
 install:
-    - cpanm -v --installdeps --notest --mirror http://cpan.mirrors.travis-ci.org --mirror http://dl.ambiweb.de --mirror httpupdate.cpanel.net .
+    - cpanm -v --installdeps --notest --mirror http://cpan.mirrors.travis-ci.org --mirror http://dl.ambiweb.de/mirrors/ftp.cpan.org --mirror http://cpan.cse.msu.edu .
 
 script: "perl Makefile.PL; make test"
 # branches:
