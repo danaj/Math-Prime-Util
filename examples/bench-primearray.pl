@@ -12,7 +12,12 @@ my $count = shift || -2;
 my ($s, $nlimit, $ilimit, $expect);
 
 if (1) {
+print '-' x 79, "\n";
 print "summation to 100k\n";
+print "Note: MPU::PrimeArray is about 30x faster than MPTA here.\n";
+print "      It seems slices are the fastest way to access the tied array\n";
+print "      Math::NumSeq::Primes is reasonable fast (not random access)\n";
+print "      MPU's forprimes smashes everything else (not random access)\n";
 $nlimit = 100000;
 $ilimit = prime_count($nlimit)-1;
 $expect = 0; forprimes { $expect += $_ } $nlimit;
@@ -49,8 +54,11 @@ cmpthese($count,{
 }
 
 if (0) {
+print '-' x 79, "\n";
 print "summation to 10M\n";
-print "Skipping Math::Prime::TiedArray as it will take too long\n";
+print "Note: Math::Prime::TiedArray takes too long\n";
+print "      Math::NumSeq::Primes is now ~2x slower than PrimeArray\n";
+print "      forprimes is still the fastest solution for sequential access\n";
 $nlimit = 10_000_000;
 $ilimit = prime_count($nlimit)-1;
 $expect = 0; forprimes { $expect += $_ } $nlimit;
@@ -80,7 +88,9 @@ cmpthese($count,{
 }
 
 if (1) {
+print '-' x 79, "\n";
 print "Walk primes backwards from 1M\n";
+print "Note: MPTA takes 4x longer than just calling MPU's nth_prime!\n";
 $nlimit = 1_000_000;
 $ilimit = prime_count($nlimit)-1;
 $expect = 0; forprimes { $expect += $_ } $nlimit;
@@ -98,7 +108,9 @@ cmpthese($count,{
 }
 
 if (1) {
+print '-' x 79, "\n";
 print "Random walk in 1M\n";
+print "MPTA takes about 2 minutes and lots of RAM per iteration.\n";
 srand(29);
 my @rindex;
 do { push @rindex, int(rand(1000000)) } for 1..10000;
@@ -115,3 +127,5 @@ cmpthese($count,{
   #                     die unless $s == $expect; },
 });
 }
+
+print '-' x 79, "\n";

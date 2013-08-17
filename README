@@ -17,7 +17,8 @@ Current measurements show it is faster than:
   Math::Prime::TiedArray
   Crypt::Primes
 For non-bignums, it is typically faster than Math::Pari (and doesn't
-require Pari to be installed).
+require Pari to be installed).  With Math::Prime::Util::GMP installed
+it is usually faster than Math::Pari for bigints;
 
 
 SYNOPSIS
@@ -27,8 +28,8 @@ SYNOPSIS
   # Get a big array reference of many primes
   my $aref = primes( 100_000_000 );
 
-  # All the primes between 5k and 10k inclusive
-  my $aref = primes( 5_000, 10_000 );
+  # All the primes between 5k and 10k inclusive in a regular array
+  my @primes = @{ primes( 5_000, 10_000 ) };
 
 See the POD module documentation for examples and more information on all the
 methods included.
