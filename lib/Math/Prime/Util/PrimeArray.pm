@@ -4,7 +4,7 @@ use warnings;
 
 BEGIN {
   $Math::Prime::Util::PrimeArray::AUTHORITY = 'cpan:DANAJ';
-  $Math::Prime::Util::PrimeArray::VERSION = '0.28';
+  $Math::Prime::Util::PrimeArray::VERSION = '0.32';
 }
 
 # parent is cleaner, and in the Perl 5.10.1 / 5.12.0 core, but not earlier.
@@ -67,8 +67,7 @@ sub FETCH {
         $self->{PRIMES} = primes( $self->{PRIMES}->[-1]+1, $end_prime );
         $begidx = $endidx+1;
       } else {
-        $begidx = $index;
-        $self->{PRIMES} = [next_prime($self->{PRIMES}->[-1])];
+        push @{$self->{PRIMES}}, next_prime($self->{PRIMES}->[-1]);
       }
 
     } elsif ($index == $begidx-1) {  # Backward iteration
@@ -76,13 +75,12 @@ sub FETCH {
       $self->{ACCESS_TYPE}--;
       if ($self->{ACCESS_TYPE} < -2) {
         my $num = 10_000;
-        $begidx = ($index < $num) ? 0 : $index - $num;
-        my $start_prime = nth_prime($begidx+1);
-        my $end_prime = nth_prime_upper($index+500);
-        $self->{PRIMES} = primes($start_prime, $end_prime);
+        my $beg_prime = $index <= $num ? 2 : nth_prime_lower($index - $num );
+        $self->{PRIMES} = primes($beg_prime, $self->{PRIMES}->[0]-1);
+        $begidx -= scalar @{ $self->{PRIMES} };
       } else {
-        $begidx = $index;
-        $self->{PRIMES} = [prev_prime($self->{PRIMES}->[0])];
+        $begidx--;
+        unshift @{$self->{PRIMES}}, prev_prime($self->{PRIMES}->[0]);
       }
 
     } else {                         # Random access
@@ -137,7 +135,7 @@ Math::Prime::Util::PrimeArray - A tied array for primes
 
 =head1 VERSION
 
-Version 0.28
+Version 0.32
 
 
 =head1 SYNOPSIS
@@ -199,8 +197,13 @@ Example:
   unshift @primes, 2;    #     back up two
   say $primes[0];        # 2
 
-If you prefer the iterator pattern, I would recommend using
-L<Math::Prime::Util/prime_iterator>.  It will be faster than using this
+If you want sequential primes with low memory, I recommend using
+L<Math::Prime::Util/forprimes>.  It is much faster, as the tied array
+functionality in Perl is not high performance.  It does have limitations
+vs. the prime array, but many tasks find they can use it.
+
+If you prefer an iterator pattern, I would recommend using
+L<Math::Prime::Util/prime_iterator>.  It will be a bit faster than using this
 tied array, but of course you don't get random access.  If you find yourself
 using the C<shift> operation, consider the iterator.
 
@@ -226,32 +229,32 @@ use C<shift> on the tied array.
   MPTA:           tie my @primes, ...; $sum += $primes[$_] for 0..99999;
 
 Memory use is comparing the delta between just loading the module and running
-the test.  Math::NumSeq v58, Math::Prime::TiedArray v0.04.
+the test.  Perl 5.19.2, Math::NumSeq v61, Math::Prime::TiedArray v0.04.
 
 Summing the first 0.1M primes via walking the array:
 
-       9ms     52k    Math::Prime::Util      forprimes
-     150ms      0     Math::Prime::Util      prime_iterator
-      15ms   4400k    Math::Prime::Util      sum big array
+       7ms     52k    Math::Prime::Util      forprimes
+     140ms      0     Math::Prime::Util      prime_iterator
+      12ms   4400k    Math::Prime::Util      sum big array
      220ms    840k    Math::Prime::Util::PrimeArray
      130ms    280k    Math::NumSeq::Primes   sequence iterator
-   33000ms   65 MB    Math::Prime::TiedArray (extend 1k)
+    7560ms   65 MB    Math::Prime::TiedArray (extend 1k)
 
 Summing the first 1M primes via walking the array:
 
       0.1s    300k    Math::Prime::Util      forprimes
-      1.9s      0     Math::Prime::Util      prime_iterator
+      1.8s      0     Math::Prime::Util      prime_iterator
       0.2s   40 MB    Math::Prime::Util      sum big array
-      2.2s   1.1MB    Math::Prime::Util::PrimeArray
-      7.1s   1.2MB    Math::NumSeq::Primes   sequence iterator
-    122.1s  785 MB    Math::Prime::TiedArray (extend 1k)
+      1.9s   1.1MB    Math::Prime::Util::PrimeArray
+      7.5s   1.2MB    Math::NumSeq::Primes   sequence iterator
+    110.5s  785 MB    Math::Prime::TiedArray (extend 1k)
 
 Summing the first 10M primes via walking the array:
 
       0.8s   5.9MB    Math::Prime::Util      forprimes
-     23.1s      0     Math::Prime::Util      prime_iterator
-      1.6s  368 MB    Math::Prime::Util      sum big array
-     21.2s   1.2MB    Math::Prime::Util::PrimeArray
+     22.4s      0     Math::Prime::Util      prime_iterator
+      1.5s  368 MB    Math::Prime::Util      sum big array
+     19.1s   1.2MB    Math::Prime::Util::PrimeArray
    3680  s  11.1MB    Math::NumSeq::Primes   sequence iterator
           >5000 MB    Math::Primes::TiedArray (extend 1k)
 
@@ -288,7 +291,7 @@ Dana Jacobsen E<lt>dana@acm.orgE<gt>
 
 =head1 COPYRIGHT
 
-Copyright 2012 by Dana Jacobsen E<lt>dana@acm.orgE<gt>
+Copyright 2012-2013 by Dana Jacobsen E<lt>dana@acm.orgE<gt>
 
 This program is free software; you can redistribute it and/or modify it under the same terms as Perl itself.
 

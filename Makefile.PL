@@ -40,7 +40,7 @@ WriteMakefile1(
                   repository => 'https://github.com/danaj/Math-Prime-Util',
                },
                recommends => {
-                 'Math::Prime::Util::GMP' => 0.13,
+                 'Math::Prime::Util::GMP' => 0.14,
                  'Math::BigInt::GMP'      => 0,
                  'Math::MPFR'             => 2.03,
                },
