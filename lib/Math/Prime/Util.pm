@@ -1012,13 +1012,11 @@ sub primes {
       my $n = Math::BigInt->new(2)->bmul($R)->bmul($q)->badd(1);
       # We constructed a promising looking $n.  Now test it.
       print "." if $verbose > 2;
-      # Trial divisions, trying to quickly weed out non-primes.
       if ($_HAVE_GMP) {
-        my @f = Math::Prime::Util::GMP::trial_factor($n, 50000);
-        next if @f > 1;
-        print "+" if $verbose > 2;
-        next unless Math::Prime::Util::GMP::is_strong_pseudoprime($n, 3);
+        # MPU::GMP::is_prob_prime has fast tests built in.
+        next unless Math::Prime::Util::GMP::is_prob_prime($n);
       } else {
+        # No GMP, so first do trial divisions, then a SPSP test.
         next unless Math::BigInt::bgcd($n, 111546435) == 1;
         if ($_big_gcd_use && $n > $_big_gcd_top) {
           next unless Math::BigInt::bgcd($n, $_big_gcd[0]) == 1;
@@ -4533,11 +4531,11 @@ with L<Math::Prime::Util::GMP> and L<Math::Random::ISAAC::XS> installed.
   bits    random   +testing  rand_prov   Maurer   CPMaurer
   -----  --------  --------  ---------  --------  --------
      64    0.0001  +0.000003   0.0003     0.0001    0.022
-    128    0.0029  +0.00016    0.012      0.079     0.057
-    256    0.0048  +0.0004     0.059      0.19      0.16
-    512    0.016   +0.0012     0.47       0.50      0.41
-   1024    0.077   +0.0060     1.3        1.3       2.19
-   2048    0.70    +0.039      4.8        4.8      10.99
+    128    0.0026  +0.00016    0.012      0.077     0.057
+    256    0.0044  +0.0004     0.059      0.19      0.16
+    512    0.012   +0.0012     0.47       0.50      0.41
+   1024    0.067   +0.0060     1.3        1.2       2.19
+   2048    0.57    +0.039      4.8        4.8      10.99
    4096    6.24    +0.25      31.9       31.9      79.71
    8192   58.6     +1.61     234.0      234.0     947.3
 
