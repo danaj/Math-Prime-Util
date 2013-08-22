@@ -1156,7 +1156,18 @@ sub primorial {
 
 sub pn_primorial {
   my($n) = @_;
-  return primorial(nth_prime($n));
+  return primorial(nth_prime($n))
+    unless $_HAVE_GMP && defined &Math::Prime::Util::GMP::pn_primorial;
+
+  _validate_num($n) || _validate_positive_integer($n);
+  my $pn = Math::Prime::Util::GMP::pn_primorial($n);
+  return int($pn) if $n < (($_Config{'maxbits'} == 32) ? 10 : 16);
+  return $_[0]->copy->bzero->badd($pn) if ref($_[0]) eq 'Math::BigInt';
+  if (!defined $Math::BigInt::VERSION) {
+    eval { require Math::BigInt; Math::BigInt->import(try=>'GMP,Pari'); 1; }
+    or do { croak "Cannot load Math::BigInt"; };
+  }
+  return Math::BigInt->new("$pn");
 }
 
 sub consecutive_integer_lcm {
