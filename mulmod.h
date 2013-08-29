@@ -122,7 +122,7 @@ static INLINE UV submod(UV a, UV b, UV m) {
 #ifndef HALF_WORD
   static INLINE UV powmod(UV n, UV power, UV m) {
     UV t = 1;
-    n %= m;
+    if (n >= m) n %= m;
     while (power) {
       if (power & 1) t = mulmod(t, n, m);
       power >>= 1;
@@ -133,7 +133,7 @@ static INLINE UV submod(UV a, UV b, UV m) {
 #else
   static INLINE UV powmod(UV n, UV power, UV m) {
     UV t = 1;
-    n %= m;
+    if (n >= m) n %= m;
     if (m < HALF_WORD) {
       while (power) {
         if (power & 1) t = (t*n)%m;

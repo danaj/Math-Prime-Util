@@ -3,7 +3,7 @@ use strict;
 use warnings;
 use Getopt::Long;
 use bigint try => 'GMP';
-use Math::Prime::Util qw/factor nth_prime/;
+use Math::Prime::Util qw/factor nth_prime prime_set_config/;
 $| = 1;
 no bigint;
 
@@ -18,6 +18,7 @@ my %mpu_func_map;
 my %opts;
 GetOptions(\%opts,
            'version',   # turn off MPU::GMP for debugging
+           'verbose',
            'help',
           ) || die_usage();
 if (exists $opts{'version'}) {
@@ -29,6 +30,7 @@ if (exists $opts{'version'}) {
   die "$version_str";
 }
 die_usage() if exists $opts{'help'};
+prime_set_config(verbose => 3) if exists $opts{'verbose'};
 
 if (@ARGV) {
   foreach my $n (@ARGV) {
@@ -86,6 +88,7 @@ like prime_count(#), nth_prime(#), primorial(#), random_nbit_prime(#), etc.
 
   --help       displays this help message
   --version    displays the version information
+  --verbose    as we factor, display information about what we're doing
 
 Part of the Math::Prime::Util $Math::Prime::Util::VERSION package, wrapping
 the factor() function.  See 'man Math::Prime::Util' for more information.
