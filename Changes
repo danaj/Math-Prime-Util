@@ -10,6 +10,8 @@ Revision history for Perl module Math::Prime::Util
     - random_nbit_prime now uses Fouque and Tibouchi A1.  Slightly better
       uniformity and typically a bit faster.
 
+    - Use MPU::GMP::pn_primorial if we have it.
+
 0.31  2013-08-07
 
     - Change proof certificate documentation to reflect the new text format.
