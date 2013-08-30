@@ -12,6 +12,11 @@ Revision history for Perl module Math::Prime::Util
 
     - Use MPU::GMP::pn_primorial if we have it.
 
+    - Make LMO primecount work (albeit a simplistic version).  Memory
+      limiting features added to phi calculations, so the phi calculations
+      should stay under ~150MB even with giant sizes.
+      Thanks to Kim Walisch for all discussions about this.
+
 0.31  2013-08-07
 
     - Change proof certificate documentation to reflect the new text format.
