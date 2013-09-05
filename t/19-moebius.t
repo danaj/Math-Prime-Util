@@ -169,7 +169,7 @@ plan tests => 0 + 1
                 + 2  # Dedekind psi calculated two ways
                 + 1  # Calculate J5 two different ways
                 + 2 * $use64 # Jordan totient example
-                + 1 + scalar(keys %sigmak)
+                + 1 + scalar(keys %sigmak) + 2
                 + scalar(keys %mangoldt)
                 + scalar(keys %chebyshev1)
                 + scalar(keys %chebyshev2);
@@ -262,6 +262,14 @@ while (my($k, $sigmaref) = each (%sigmak)) {
 {
   my @slist = map { divisor_sum($_) } 1 .. scalar @{$sigmak{1}};
   is_deeply(\@slist, $sigmak{1}, "divisor_sum(n)");
+}
+# tau two ways
+{
+  my $len = scalar @{$sigmak{0}};
+  my @slist1 = map { divisor_sum($_, sub {1}) } 1 .. $len;
+  my @slist2 = map { divisor_sum($_, 1      ) } 1 .. $len;
+  is_deeply( \@slist1, $sigmak{0}, "tau as divisor_sum(n, sub {1})" );
+  is_deeply( \@slist2, $sigmak{0}, "tau as divisor_sum(n, 1)" );
 }
 
 ###### Exponential of von Mangoldt

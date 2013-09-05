@@ -1437,6 +1437,22 @@ sub divisor_sum {
     return $product;
   }
 
+  if (ref($sub) ne 'CODE' && int($sub) == 1) {
+    return 1 if $n == 1;
+    my ($product, $exponent) = (1, 1);
+    my @factors = ($n <= $_XS_MAXVAL) ? _XS_factor($n) : factor($n);
+    while (@factors) {
+      if (@factors > 1 && $factors[0] == $factors[1]) {
+        $exponent++;
+      } else {
+        $product *= ($exponent+1);
+        $exponent = 1;
+      }
+      shift @factors;
+    }
+    return $product;
+  }
+
   croak "Second argument must be a code ref" unless ref($sub) eq 'CODE';
   my $sum = $sub->(1);
   return $sum if $n == 1;
@@ -2419,6 +2435,7 @@ Version 0.31
 
   # divisor sum
   $sigma  = divisor_sum( $n );
+  $sigma0 = divisor_sum( $n, 1 );
   $sigma2 = divisor_sum( $n, sub { $_[0]*$_[0] } );
 
   # primorial n#, primorial p(n)#, and lcm
@@ -3393,6 +3410,10 @@ yield similar results, albeit slower and using more memory.
 This function takes a positive integer as input and returns the sum of all
 the divisors of the input, including 1 and itself.  This is known as the
 sigma function (see Hardy and Wright section 16.7, or OEIS A000203).
+
+If a second argument is given that is numerically equal to 1, then we do
+a summation of the number of divisors.  This is identical to the general
+form below with C<sub { 1 }>, but runs faster.
 
 The more general form takes a code reference as a second parameter, which
 is applied to each divisor before the summation.  This allows computation
