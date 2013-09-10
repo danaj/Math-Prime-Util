@@ -25,17 +25,15 @@
 
 #elif defined(__GNUC__) && defined(__x86_64__)
 
-  /* GCC on a 64-bit Intel x86 */
+  /* GCC on a 64-bit Intel x86, help from WraithX and Wojciech Izykowski */
+  /* Beware: if (a*b)/c > 2^64, there will be an FP exception */
   static INLINE UV _mulmod(UV a, UV b, UV c) {
-    UV d; /* to hold the result of a*b mod c */
-    /* calculates a*b mod c, stores result in d */
-    asm ("mov %1, %%rax;"        /* put a into rax */
-         "mul %2;"               /* mul a*b -> rdx:rax */
-         "div %3;"               /* (a*b)/c -> quot in rax remainder in rdx */
-         "mov %%rdx, %0;"        /* store result in d */
-         :"=r"(d)                /* output */
-         :"r"(a), "r"(b), "r"(c) /* input */
-         :"%rax", "%rdx"         /* clobbered registers */
+    UV d, dummy;                    /* d will get a*b mod c */
+    asm ("mulq %3\n\t"              /* mul a*b -> rdx:rax */
+         "divq %4\n\t"              /* (a*b)/c -> quot in rax remainder in rdx */
+         :"=a"(dummy), "=&d"(d)     /* output */
+         :"a"(a), "rm"(b), "rm"(c)  /* input */
+         :"cc"                      /* mulq and divq can set conditions */
         );
     /* A version for _MSC_VER:
      *
@@ -56,7 +54,7 @@
     asm ("add %2, %1\n\t"    /* t := t + b */
          "cmovc %1, %0\n\t"  /* if (carry) r := t */
          :"+r" (r), "+&r" (t)
-         :"g" (b)
+         :"rm" (b)
          :"cc"
         );
     return r;
