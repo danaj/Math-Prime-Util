@@ -7,12 +7,13 @@ WriteMakefile1(
     LICENSE      => 'perl',
     AUTHOR       => 'Dana A Jacobsen <dana@acm.org>',
 
-    OBJECT       => 'cache.o '  .
-                    'factor.o ' .
-                    'aks.o '    .
-                    'lehmer.o ' .
-                    'sieve.o '  .
-                    'util.o '   .
+    OBJECT       => 'cache.o '    .
+                    'factor.o '   .
+                    'primality.o '.
+                    'aks.o '      .
+                    'lehmer.o '   .
+                    'sieve.o '    .
+                    'util.o '     .
                     'XS.o',
     LIBS         => ['-lm'],
 

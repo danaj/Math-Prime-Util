@@ -25,6 +25,8 @@ factor.h
 factor.c
 lehmer.h
 lehmer.c
+primality.h
+primality.c
 sieve.h
 sieve.c
 util.h

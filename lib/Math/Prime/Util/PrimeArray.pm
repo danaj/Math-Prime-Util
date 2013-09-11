@@ -199,8 +199,8 @@ Example:
 
 If you want sequential primes with low memory, I recommend using
 L<Math::Prime::Util/forprimes>.  It is much faster, as the tied array
-functionality in Perl is not high performance.  It does have limitations
-vs. the prime array, but many tasks find they can use it.
+functionality in Perl is not high performance.  It isn't as flexible as
+the prime array, but it is a very common pattern.
 
 If you prefer an iterator pattern, I would recommend using
 L<Math::Prime::Util/prime_iterator>.  It will be a bit faster than using this

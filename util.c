@@ -58,7 +58,7 @@
 #include "ptypes.h"
 #include "util.h"
 #include "sieve.h"
-#include "factor.h"
+#include "primality.h"
 #include "cache.h"
 #include "lehmer.h"
 

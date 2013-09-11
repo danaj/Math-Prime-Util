@@ -14,6 +14,7 @@
 #include "cache.h"
 #include "sieve.h"
 #include "util.h"
+#include "primality.h"
 #include "factor.h"
 #include "lehmer.h"
 #include "aks.h"
@@ -484,6 +485,7 @@ _XS_is_prime(IN UV n)
     _XS_is_extra_strong_lucas_pseudoprime = 4
     _XS_is_frobenius_underwood_pseudoprime = 5
     _XS_is_aks_prime = 6
+    _XS_BPSW = 7
   PREINIT:
     int ret;
   CODE:
@@ -495,6 +497,7 @@ _XS_is_prime(IN UV n)
       case 4: ret = _XS_is_lucas_pseudoprime(n, 2); break;
       case 5: ret = _XS_is_frobenius_underwood_pseudoprime(n); break;
       case 6: ret = _XS_is_aks_prime(n); break;
+      case 7: ret = _XS_BPSW(n); break;
       default: croak("_XS_is_prime: Unknown function alias"); break;
     }
     RETVAL = ret;

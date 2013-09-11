@@ -39,6 +39,11 @@
 - Figure out a way to make the internal FOR_EACH_PRIME macros use a segmented
   sieve.
 
-- Refactor where functions exist in .c.  Lots of primality tests in factor.c.
-
 - Rewrite 23-primality-proofs.t for new format (keep some of the old tests?).
+
+- Use Montgomery routines in more places: Factoring and Lucas tests.
+
+- Add a group order function.  We have a naieve method used in AKS (where the
+  values are so small it doesn't matter).  See:
+  http://cs-haven.blogspot.com/2012/02/efficiently-computing-order-of-element.html
+  for some discussion of different methods.
