@@ -5,7 +5,7 @@
 
 /* Below this size, just sieve. */
 #define SIEVE_LIMIT  60000000
-#define MAX_PHI_MEM  (128*1024*1024)
+#define MAX_PHI_MEM  (256*1024*1024)
 
 /*****************************************************************************
  *
@@ -650,15 +650,13 @@ static UV phi(UV x, UV a)
   if (a > 7) {
     if (verbose > 0) printf("CUT TO SMALL PHI AT a = %lu\n", a);
 #ifdef _OPENMP
-    omp_threads = omp_get_max_threads();
-    #pragma omp parallel for reduction(+: sum) num_threads(omp_threads) schedule(dynamic, 16)
+    #pragma omp parallel for reduction(+: sum) num_threads(2) schedule(dynamic, 16)
 #endif
     for (i = 0; i < a1.n; i++)
       sum += arr[i].c * phi_small( arr[i].v, a, primes );
   } else {
 #ifdef _OPENMP
-    omp_threads = omp_get_max_threads();
-    #pragma omp parallel for reduction(+: sum) num_threads(omp_threads) schedule(dynamic, 16)
+    #pragma omp parallel for reduction(+: sum) schedule(dynamic, 16)
 #endif
     for (i = 0; i < a1.n; i++)
       sum += arr[i].c * mapes7( arr[i].v );
@@ -669,7 +667,32 @@ static UV phi(UV x, UV a)
 }
 
 
+extern UV _XS_meissel_pi(UV n);
+static UV Pk_2(UV n, UV a)
+{
+  UV b, lastprime, lastpc, lastw, lastwpc, i, P2;
+  const UV* primes; /* small prime cache, first b=pi(z)=pi(sqrt(n)) */
 
+  b = _XS_meissel_pi(isqrt(n));        /* b = pi(floor(n^1/2)) */
+  lastprime = b*SIEVE_MULT+1;
+  primes = generate_small_primes(lastprime);
+  lastpc = primes[lastprime];
+
+  /* Ensure we have a large enough base sieve */
+  prime_precalc(isqrt(n / primes[a+1]));
+
+  P2 = lastw = lastwpc = 0;
+  for (i = b; i > a; i--) {
+    UV w = n / primes[i];
+    lastwpc = (w <= lastpc) ? bs_prime_count(w, primes, lastprime)
+                            : lastwpc + _XS_prime_count(lastw+1, w);
+    lastw = w;
+    P2 += lastwpc;
+  }
+  P2 -= ((b+a-2) * (b-a+1) / 2) - a + 1;
+  Safefree(primes);
+  return P2;
+}
 
 
 /* Legendre's method.  Interesting and a good test for phi(x,a), but Lehmer's
@@ -677,21 +700,12 @@ static UV phi(UV x, UV a)
 UV _XS_legendre_pi(UV n)
 {
   UV a, phina;
-  DECLARE_TIMING_VARIABLES;
   if (n < SIEVE_LIMIT)
     return _XS_prime_count(2, n);
 
-  if (verbose > 0) printf("legendre %lu stage 1: calculate a \n", n);
-  TIMING_START;
   a = _XS_legendre_pi(isqrt(n));
-  TIMING_END_PRINT("stage 1")
-
-  if (verbose > 0) printf("legendre %lu stage 2: phi(x,a) (a=%lu)\n", n, a);
-  TIMING_START;
   phina = phi(n, a);
-  if (verbose > 0) printf("phicache size: %lu\n", (unsigned long)phicache_size());
   phicache_free();
-  TIMING_END_PRINT("stage 2")
   return phina + a - 1;
 }
 
@@ -699,52 +713,14 @@ UV _XS_legendre_pi(UV n)
 /* Meissel's method. */
 UV _XS_meissel_pi(UV n)
 {
-  UV a, b, c, sum, i, lastprime, lastpc, lastw, lastwpc;
-  const UV* primes = 0;  /* small prime cache */
-  DECLARE_TIMING_VARIABLES;
+  UV a, sum;
   if (n < SIEVE_LIMIT)
     return _XS_prime_count(2, n);
 
-  if (verbose > 0) printf("meissel %lu stage 1: calculate a,b,c \n", n);
-  TIMING_START;
   a = _XS_meissel_pi(icbrt(n));        /* a = floor(n^1/3) */
-  b = _XS_meissel_pi(isqrt(n));        /* b = floor(n^1/2) */
-  c = a;                               /* c = a            */
-  TIMING_END_PRINT("stage 1")
 
-  if (verbose > 0) printf("meissel %lu stage 2: phi(x,a) (a=%lu b=%lu c=%lu)\n", n, a, b, c);
-  TIMING_START;
-  sum = phi(n, a) + ((b+a-2) * (b-a+1) / 2);
-  if (verbose > 1) printf("phicache size: %lu\n", (unsigned long)phicache_size());
+  sum = phi(n, a) + a - 1 - Pk_2(n, a);
   phicache_free();
-  if (verbose > 0) printf("phi(%lu,%lu) = %lu.  sum = %lu\n", n, a, sum - ((b+a-2) * (b-a+1) / 2), sum);
-  TIMING_END_PRINT("phi(x,a)")
-
-  lastprime = b*SIEVE_MULT+1;
-  if (verbose > 0) printf("meissel %lu stage 3: %lu small primes\n", n, lastprime);
-  TIMING_START;
-  primes = generate_small_primes(lastprime);
-  if (primes == 0) croak("Error generating primes.\n");
-  lastpc = primes[lastprime];
-  TIMING_END_PRINT("small primes")
-
-  prime_precalc(isqrt(n / primes[a+1]));
-  prime_precalc( (UV) pow(n, 2.0/5.0) );  /* Sieve more for speed */
-
-  if (verbose > 0) printf("meissel %lu stage 4: loop %lu to %lu, pc to %lu\n", n, a+1, b, n/primes[a+1]);
-  TIMING_START;
-  /* Reverse the i loop so w increases.  Count w in segments. */
-  lastw = 0;
-  lastwpc = 0;
-  for (i = b; i > a; i--) {
-    UV w = n / primes[i];
-    lastwpc = (w <= lastpc) ? bs_prime_count(w, primes, lastprime)
-                            : lastwpc + _XS_prime_count(lastw+1, w);
-    lastw = w;
-    sum = sum - lastwpc;
-  }
-  TIMING_END_PRINT("stage 4")
-  Safefree(primes);
   return sum;
 }
 
@@ -831,7 +807,7 @@ UV _XS_lehmer_pi(UV n)
  * particularly fast. */
 UV _XS_LMO_pi(UV n)
 {
-  UV n12, n13, a, b, sum, i, j, lastprime, lastpc, lastw, lastwpc, P2, S1, S2;
+  UV n12, n13, a, b, sum, i, j, k, lastprime, P2, S1, S2;
   const UV* primes = 0;  /* small prime cache */
   signed char* mu = 0;   /* moebius to n^1/3 */
   UV*   lpf = 0;         /* least prime factor to n^1/3 */
@@ -839,27 +815,18 @@ UV _XS_LMO_pi(UV n)
   if (n < SIEVE_LIMIT)
     return _XS_prime_count(2, n);
 
-  if (verbose > 0) printf("LMO %lu stage 1: calculate pi(n^1/3) \n", n);
-  TIMING_START;
   n13 = icbrt(n);
   n12 = isqrt(n);
   a = _XS_lehmer_pi(n13);
   b = _XS_lehmer_pi(n12);
-  TIMING_END_PRINT("stage 1")
 
   lastprime = b*SIEVE_MULT+1;
   if (lastprime < n13) lastprime = n13;
-  if (verbose > 0) printf("LMO %lu stage 2: %lu small primes\n", n, lastprime);
-  TIMING_START;
   primes = generate_small_primes(lastprime);
   if (primes == 0) croak("Error generating primes.\n");
-  lastpc = primes[lastprime];
-  TIMING_END_PRINT("small primes")
 
-  if (verbose > 0) printf("LMO %lu stage 3: moebius and lpf\n", n);
-  TIMING_START;
   New(0, mu, n13+1, signed char);
-  memset(mu, 1, sizeof(char) * (n13+1));
+  memset(mu, 1, sizeof(signed char) * (n13+1));
   Newz(0, lpf, n13+1, UV);
   mu[0] = 0;
   for (i = 1; i <= n13; i++) {
@@ -874,41 +841,25 @@ UV _XS_LMO_pi(UV n)
       mu[j] = 0;
   }
   lpf[1] = UV_MAX;  /* Set lpf[1] to max */
-  TIMING_END_PRINT("moebius and lpf")
 
   /* Thanks to Kim Walisch for help with the S1+S2 calculations. */
-  if (verbose > 0) printf("LMO %lu stage 4: S1 and S2\n", n);
-  TIMING_START;
-  UV k = (a < 7) ? a : 7;
+  k = (a < 7) ? a : 7;
   S1 = 0;
   S2 = 0;
   for (i = 1; i <= n13; i++)
     if (lpf[i] > primes[k])
-      S1 += mu[i] * mapes(n/i, k);
+      S1 += mu[i] * phi_small(n/i, k, primes);
   for (i = k; i+1 < a; i++)
+#ifdef _OPENMP
+    #pragma omp parallel for reduction(+: S2) schedule(dynamic, 16) num_threads(2)
+#endif
     for (j = (n13/primes[i+1])+1; j <= n13; j++)
       if (lpf[j] > primes[i+1])
-        S2 -= mu[j] * phi_small(n / (j*primes[i+1]), i, primes);
-  if (verbose > 0) printf("phicache size: %lu\n", (unsigned long)phicache_size());
+        S2 += -mu[j] * phi_small(n / (j*primes[i+1]), i, primes);
   phicache_free();
-  TIMING_END_PRINT("S1 and S2")
 
-  if (verbose > 0) printf("LMO %lu stage 5: P2\n", n);
-  TIMING_START;
-  prime_precalc(isqrt(n / primes[a+1]));
-  /* Reverse the i loop so w increases.  Count w in segments. */
-  lastw = 0;
-  lastwpc = 0;
-  P2 = 0;
-  for (i = b; i > a; i--) {
-    UV w = n / primes[i];
-    lastwpc = (w <= lastpc) ? bs_prime_count(w, primes, lastprime)
-                            : lastwpc + _XS_prime_count(lastw+1, w);
-    lastw = w;
-    P2 += lastwpc;
-  }
-  P2 -= ((b+a-2) * (b-a+1) / 2) - a + 1;
-  TIMING_END_PRINT("stage 5 (P2)")
+  P2 = Pk_2(n, a);
+
   /* printf("S1 = %lu\nS2 = %lu\na  = %lu\nP2 = %lu\n", S1, S2, a, P2); */
   sum = (S1 + S2) + a - 1 - P2;
   Safefree(primes);
