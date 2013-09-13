@@ -146,6 +146,14 @@ static int monty_mr64(const uint64_t n, const UV* bases, int cnt)
   }
   return 1;
 }
+#else
+#if defined(__GNUC__)
+#define UNUSEDVAR __attribute__ ((unused))
+#else
+#define UNUSEDVAR
+#endif
+static int monty_mr64(const UNUSEDVAR uint64_t n, const UNUSEDVAR UV* bases, int UNUSEDVAR cnt)
+{ croak("configuration error in primality.c"); }
 #endif
 /******************************************************************************/
 
@@ -191,8 +199,7 @@ int _XS_is_pseudoprime(UV const n, UV a)
 {
   UV x;
 
-  if (n == 2 || n == 3)  return 1;
-  if (n < 5) return 0;
+  if (n < 5) return (n == 2 || n == 3);
   if (a < 2) croak("Base %"UVuf" is invalid", a);
   if (a >= n) {
     a %= n;
@@ -244,8 +251,8 @@ int _XS_miller_rabin(UV const n, const UV *bases, int nbases)
 
 int _XS_BPSW(UV const n)
 {
-  if (n == 2 || n == 3 || n == 5) return 1;
-  if (n < 7 || (n%2) == 0 || n == UV_MAX) return 0;
+  if (n < 7) return (n == 2 || n == 3 || n == 5);
+  if ((n % 2) == 0 || n == UV_MAX) return 0;
 
 #if !USE_MONT_PRIMALITY
   return    _XS_miller_rabin(n, mr_bases_const2, 1)
@@ -418,9 +425,8 @@ int _XS_is_lucas_pseudoprime(UV n, int strength)
   IV P, Q, D;
   UV U, V, Qk, d, s;
 
-  if (n == 2 || n == 3) return 1;
-  if (n < 5 || (n%2) == 0) return 0;
-  if (n == UV_MAX) return 0;
+  if (n < 7) return (n == 2 || n == 3 || n == 5);
+  if ((n % 2) == 0 || n == UV_MAX) return 0;
 
   if (strength < 2) {
     UV Du = 5;
@@ -454,6 +460,38 @@ int _XS_is_lucas_pseudoprime(UV n, int strength)
   s = 0;
   if (strength > 0)
     while ( (d & 1) == 0 ) {  s++;  d >>= 1; }
+
+#if USE_MONT_PRIMALITY
+  if (n > UVCONST(4294967295) && strength == 0 && P == 1 && Q == -1) {
+    const uint64_t npi = modular_inverse64(-((int64_t)n));
+    const uint64_t mont1 = compute_modn64(n);
+    const uint64_t mont2 = compute_2_65_mod_n(n, mont1);
+    const uint64_t mont5 = compute_a_times_2_64_mod_n(5, n, mont1);
+    int sign = -1;
+    UV b;
+    { UV v = d; b = 1; while (v >>= 1) b++; }
+
+    U = mont1;
+    V = mont1;
+    while (b > 1) {
+      U = mont_prod64(U, V, n, npi);
+      if (sign == 1) V = submod( mont_square64(V,n,npi), mont2, n);
+      else           V = addmod( mont_square64(V,n,npi), mont2, n);
+      sign = 1;   /* Qk *= Qk */
+      b--;
+      if ( (d >> (b-1)) & UVCONST(1) ) {
+        UV t2 = mont_prod64(U, mont5, n, npi); /* D = 5 */
+        U = addmod(U, V, n);
+        if (U & 1) { U = (n>>1) + (U>>1) + 1; } else { U >>= 1; }
+        V = addmod(V, t2, n);
+        if (V & 1) { V = (n>>1) + (V>>1) + 1; } else { V >>= 1; }
+        sign = -1;  /* Qk *= Q */
+      }
+    }
+    return (U == 0);
+  }
+#endif
+
   lucas_seq(&U, &V, &Qk, n, P, Q, d);
 
   if (strength == 0) {
@@ -502,9 +540,8 @@ int _XS_is_almost_extra_strong_lucas_pseudoprime(UV n, UV increment)
 {
   UV P, V, d, s;
 
-  if (n == 2 || n == 3 || n == 5) return 1;
-  if (n < 7 || (n%2) == 0) return 0;
-  if (n == UV_MAX) return 0;
+  if (n < 7) return (n == 2 || n == 3 || n == 5);
+  if ((n % 2) == 0 || n == UV_MAX) return 0;
   if (increment < 1 || increment > 256)
     croak("Invalid lucas paramater increment: %"UVuf"\n", increment);
 
@@ -527,6 +564,38 @@ int _XS_is_almost_extra_strong_lucas_pseudoprime(UV n, UV increment)
   s = 0;
   while ( (d & 1) == 0 ) {  s++;  d >>= 1; }
 
+#if USE_MONT_PRIMALITY
+  if (n > UVCONST(4294967295)) {
+    const uint64_t npi = modular_inverse64(-((int64_t)n));
+    const uint64_t montr = compute_modn64(n);
+    const uint64_t mont2 = compute_2_65_mod_n(n, montr);
+    const uint64_t montP = compute_a_times_2_64_mod_n(P, n, montr);
+    UV W, b;
+    W = submod(  mont_prod64( montP, montP, n, npi),  mont2, n);
+    V = montP;
+    { UV v = d; b = 1; while (v >>= 1) b++; }
+    while (b-- > 1) {
+      if ( (d >> (b-1)) & UVCONST(1) ) {
+        V = submod(  mont_prod64(V, W, n, npi),  montP, n);
+        W = submod(  mont_prod64(W, W, n, npi),  mont2, n);
+      } else {
+        W = submod(  mont_prod64(V, W, n, npi),  montP, n);
+        V = submod(  mont_prod64(V, V, n, npi),  mont2, n);
+      }
+    }
+
+    if (V == mont2 || V == (n-mont2))
+      return 1;
+    while (s-- > 1) {
+      if (V == 0)
+        return 1;
+      V = submod(  mont_prod64(V, V, n, npi),  mont2, n);
+      if (V == mont2)
+        return 0;
+    }
+    return 0;
+  }
+#endif
   {
     UV W, b;
     V = P;
@@ -559,23 +628,21 @@ int _XS_is_almost_extra_strong_lucas_pseudoprime(UV n, UV increment)
  * has not been extensively tested above that.  This is the Minimal Lambda+2
  * test from section 9 of "Quadratic Composite Tests" by Paul Underwood.
  *
- * It is generally slower than the AES Lucas test, but for large values will
- * be faster than a BPSW test.  Currently it is of use mainly for numbers
- * larger than 2^64 as an additional non-correlated test.
- *
- * TODO: Convert to Montgomery
+ * It is generally slower than the AES Lucas test, but for large values is
+ * competitive with the BPSW test.  Since our BPSW is known to have no
+ * counterexamples under 2^64, while the results of this test are unknown,
+ * it is mainly useful for numbers larger than 2^64 as an additional
+ * non-correlated test.
  */
 int _XS_is_frobenius_underwood_pseudoprime(UV n)
 {
   int bit;
-  UV x, result, multiplier, a, b, np1, len, t1, t2, na;
+  UV x, result, a, b, np1, len, t1, t2, na;
   IV t;
 
-  if (n < 2) return 0;
-  if (n < 4) return 1;
-  if ((n % 2) == 0) return 0;
+  if (n < 7) return (n == 2 || n == 3 || n == 5);
+  if ((n % 2) == 0 || n == UV_MAX) return 0;
   if (is_perfect_square(n,0)) return 0;
-  if (n == UV_MAX) return 0;
 
   x = 0;
   t = -1;
@@ -583,15 +650,66 @@ int _XS_is_frobenius_underwood_pseudoprime(UV n)
     x++;
     t = (IV)(x*x) - 4;
   }
-  result = addmod( addmod(x, x, n), 5, n);
-  multiplier = addmod(x, 2, n);
-
-  a = 1;
-  b = 2;
   np1 = n+1;
   { UV v = np1; len = 1;  while (v >>= 1) len++; }
 
+#if USE_MONT_PRIMALITY
+  if (n > UVCONST(4294967295)) {
+    const uint64_t npi = modular_inverse64(-((int64_t)n));
+    const uint64_t mont1 = compute_modn64(n);
+    const uint64_t mont2 = compute_2_65_mod_n(n, mont1);
+    const uint64_t mont5 = compute_a_times_2_64_mod_n(5, n, mont1);
+
+    x = compute_a_times_2_64_mod_n(x, n, mont1);
+    a = mont1;
+    b = mont2;
+
+    if (x == 0) {
+      result = mont5;
+      for (bit = len-2; bit >= 0; bit--) {
+        t2 = addmod(b, b, n);
+        na = mont_prod64(a, t2, n, npi);
+        t1 = addmod(b, a, n);
+        t2 = submod(b, a, n);
+        b = mont_prod64(t1, t2, n, npi);
+        a = na;
+        if ( (np1 >> bit) & UVCONST(1) ) {
+          t1 = addmod(a, a, n);
+          na = addmod(t1, b, n);
+          t1 = addmod(b, b, n);
+          b = submod(t1, a, n);
+          a = na;
+        }
+      }
+    } else {
+      UV multiplier = addmod(x, mont2, n);
+      result = addmod( addmod(x, x, n), mont5, n);
+      for (bit = len-2; bit >= 0; bit--) {
+        t1 = mont_prod64(a, x, n, npi);
+        t2 = addmod(b, b, n);
+        t1 = addmod(t1, t2, n);
+        na = mont_prod64(a, t1, n, npi);
+        t1 = addmod(b, a, n);
+        t2 = submod(b, a, n);
+        b = mont_prod64(t1, t2, n, npi);
+        a = na;
+        if ( (np1 >> bit) & UVCONST(1) ) {
+          t1 = mont_prod64(a, multiplier, n, npi);
+          na = addmod(t1, b, n);
+          t1 = addmod(b, b, n);
+          b = submod(t1, a, n);
+          a = na;
+        }
+      }
+    }
+    return (a == 0 && b == result);
+  }
+#endif
+  a = 1;
+  b = 2;
+
   if (x == 0) {
+    result = 5;
     for (bit = len-2; bit >= 0; bit--) {
       t2 = addmod(b, b, n);
       na = mulmod(a, t2, n);
@@ -600,7 +718,7 @@ int _XS_is_frobenius_underwood_pseudoprime(UV n)
       b = mulmod(t1, t2, n);
       a = na;
       if ( (np1 >> bit) & UVCONST(1) ) {
-        t1 = mulmod(a, 2, n);
+        t1 = addmod(a, a, n);
         na = addmod(t1, b, n);
         t1 = addmod(b, b, n);
         b = submod(t1, a, n);
@@ -608,6 +726,8 @@ int _XS_is_frobenius_underwood_pseudoprime(UV n)
       }
     }
   } else {
+    UV multiplier = addmod(x, 2, n);
+    result = addmod( addmod(x, x, n), 5, n);
     for (bit = len-2; bit >= 0; bit--) {
       t1 = mulmod(a, x, n);
       t2 = addmod(b, b, n);
@@ -626,6 +746,7 @@ int _XS_is_frobenius_underwood_pseudoprime(UV n)
       }
     }
   }
+
   if (_XS_get_verbose()>1) printf("%"UVuf" is %s with x = %"UVuf"\n", n, (a == 0 && b == result) ? "probably prime" : "composite", x);
   if (a == 0 && b == result)
     return 1;
