@@ -40,7 +40,7 @@ our @EXPORT_OK =
       moebius mertens euler_phi jordan_totient exp_mangoldt
       chebyshev_theta chebyshev_psi
       divisor_sum
-      carmichael_lambda
+      carmichael_lambda znorder
       ExponentialIntegral LogarithmicIntegral RiemannZeta RiemannR
   );
 our %EXPORT_TAGS = (all => [ @EXPORT_OK ]);
@@ -1414,8 +1414,6 @@ sub jordan_totient {
 # Mathematica and Pari both have functions like this.
 sub divisor_sum {
   my($n, $sub) = @_;
-  # I really need to get cracking on an XS validator.
-  #return _XS_divisor_sum($n) if !defined $sub && defined $n && $n <= $_XS_MAXVAL && $_Config{'nobigint'};
   return (0,1)[$n] if defined $n && $n <= 1;
   _validate_num($n) || _validate_positive_integer($n);
 
@@ -1437,8 +1435,9 @@ sub divisor_sum {
     return $product;
   }
 
+  # TODO: Alternately the argument could be the k for sigma, so this
+  # should be 0, the above should be 1, etc.
   if (ref($sub) ne 'CODE' && int($sub) == 1) {
-    return 1 if $n == 1;
     my ($product, $exponent) = (1, 1);
     my @factors = ($n <= $_XS_MAXVAL) ? _XS_factor($n) : factor($n);
     while (@factors) {
@@ -1558,14 +1557,62 @@ sub carmichael_lambda {
     eval { require Math::BigInt; Math::BigInt->import(try=>'GMP,Pari'); 1; }
     or do { croak "Cannot load Math::BigInt"; };
   }
+  @factors = map { Math::BigInt->new("$_") } @factors;
   my $lcm = Math::BigInt::blcm(
-    map { Math::BigInt->new("$_")
-          ->bpow($factor_mult{$_}-1)
-          ->bmul($_-1)
-        } @factors
+    map { $_->copy->bpow($factor_mult{$_}-1)->bmul($_-1) } @factors
   );
   $lcm = int($lcm->bstr) if $lcm->bacmp(''.~0) <= 0;
   return $lcm;
+}
+
+sub znorder {
+  my($a, $n) = @_;
+  _validate_num($a) || _validate_positive_integer($a);
+  _validate_num($n) || _validate_positive_integer($n);
+  return if $n <= 0;
+  return (undef,1)[$a] if $a <= 1;
+  return 1 if $n == 1;
+  if (!defined $Math::BigInt::VERSION) {
+    eval { require Math::BigInt; Math::BigInt->import(try=>'GMP,Pari'); 1; }
+    or do { croak "Cannot load Math::BigInt"; };
+  }
+  return if Math::BigInt::bgcd($a, $n) > 1;
+  # Method 1:  check all a^k 1 .. $n-1.
+  #            Naive and terrible slow.
+  # Method 2:  check all k in (all_factors(euler_phi($n), $n).
+  # Method 3:  check all k in (all_factors(carmichael_lambda($n), $n).
+  #            Good for most cases, but slow when factor quantity is large.
+  # Method 4:  Das algorithm 1.7, just enough multiples of p
+  #            Fastest.
+  #
+  # Most of the time is spent factoring $n and $phi.  We could do the phi
+  # construction here and build its factors to save a little more time.
+
+  $a = Math::BigInt->new("$a") unless ref($a) eq 'Math::BigInt';
+  my $phi = Math::BigInt->new('' . euler_phi($n));
+  my %e;
+  my @p = grep { !$e{$_}++ }
+          ($phi <= $_XS_MAXVAL) ? _XS_factor($phi) : factor($phi);
+  my $k = Math::BigInt->bone;
+  foreach my $i (0 .. $#p) {
+    my($pi, $ei, $enum) = (Math::BigInt->new("$p[$i]"), $e{$p[$i]}, 0);
+    my $phidiv = $phi / ($pi**$ei);
+    my $b = $a->copy->bmodpow($phidiv, $n);
+    while ($b != 1) {
+      return if $enum++ >= $ei;
+      $b = $b->copy->bmodpow($pi, $n);
+      $k *= $pi;
+    }
+  }
+  return $k;
+
+  # Method 3:
+  # my $cl = carmichael_lambda($n);
+  # foreach my $k (all_factors($cl), $cl) {
+  #   my $t = $a->copy->bmodpow("$k", $n);
+  #   return $k if $t->is_one;
+  # }
+  # return;
 }
 
 
@@ -1850,27 +1897,21 @@ sub lucas_sequence {
 
 #############################################################################
 
-  # Oct 2012 note:  these numbers are old.
+  # Simple timings, do { is_strong_pseudoprime(2*$_+1,2) } for 1..1000000;
   #
-  # Timings for various combinations, given the current possibilities of:
-  #    1) XS MR optimized (either x86-64, 32-bit on 64-bit mach, or half-word)
-  #    2) XS MR non-optimized (big input not on 64-bit machine)
-  #    3) PP MR with small input (non-bigint Perl)
-  #    4) PP MR with large input (using functions for mulmod)
-  #    5) PP MR with full bigints
-  #    6) PP Lucas with small input
-  #    7) PP Lucas with large input
-  #    8) PP Lucas with full bigints
+  #      1.0 uS  XS 32-bit input, is_strong_pseudoprime
+  #      1.8 uS  XS 64-bit input, is_strong_pseudoprime
+  #      1.4 uS  XS 32-bit input, is_strong_lucas_pseudoprime
+  #      3.0 uS  XS 64-bit input, is_strong_lucas_pseudoprime
+  #      1.2 uS  XS 32-bit input, is_almost_extra_strong_lucas_pseudoprime
+  #      2.3 uS  XS 64-bit input, is_almost_extra_strong_lucas_pseudoprime
   #
-  # Time for one test:
-  #       0.5uS  XS MR with small input
-  #       0.8uS  XS MR with large input
-  #       7uS    PP MR with small input
-  #     400uS    PP MR with large input
-  #    5000uS    PP MR with bigint
-  #    2700uS    PP LP with small input
-  #    6100uS    PP LP with large input
-  #    7400uS    PP LP with bigint
+  #     12 uS  Perl 32-bit input, is_strong_pseudoprime
+  #   1200 uS  Perl 64-bit input, is_strong_pseudoprime
+  #   2000 uS  Perl 32-bit input, is_strong_lucas_pseudoprime
+  #   7840 uS  Perl 64-bit input, is_strong_lucas_pseudoprime
+  #    940 uS  Perl 32-bit input, is_almost_extra_strong_lucas_pseudoprime
+  #   3360 uS  Perl 64-bit input, is_almost_extra_strong_lucas_pseudoprime
 
 sub is_aks_prime {
   my($n) = @_;
@@ -2340,7 +2381,7 @@ __END__
 
 =encoding utf8
 
-=for stopwords forprimes Möbius Deléglise totient moebius mertens irand primesieve uniqued k-tuples von SoE pari yafu fonction qui compte le nombre nombres voor PhD superset sqrt(N) gcd(A^M
+=for stopwords forprimes Möbius Deléglise totient moebius mertens znorder irand primesieve uniqued k-tuples von SoE pari yafu fonction qui compte le nombre nombres voor PhD superset sqrt(N) gcd(A^M
 
 
 =head1 NAME
@@ -3499,6 +3540,16 @@ Returns the Carmichael function (also called the reduced totient function,
 or Carmichael λ(n)) of a positive integer argument.  It is the smallest
 positive integer m such that a^m = 1 mod n for every integer a coprime to n.
 This is L<OEIS series A002322|http://oeis.org/A002322>.
+
+
+=head2 znorder
+
+  $order = znorder(2, next_prime(10**19)-6);
+
+Given two positive integers C<a> and C<n>, returns the multiplicative order
+of C<a> modulo <n>.  This is the smallest positive integer C<k> such that
+C<a^k ≡ 1 mod n>.  Returns 1 if C<a = 1>.  Return undef if C<a = 0> or if
+C<a> and C<n> are not coprime, since no value will result in 1 mod n.
 
 
 =head2 random_prime

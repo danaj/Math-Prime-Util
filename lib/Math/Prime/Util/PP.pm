@@ -198,8 +198,10 @@ sub _is_prime7 {  # n must not be divisible by 2, 3, or 5
   # Slow since it's all in PP and uses bigints.
 
   return 0 unless miller_rabin($n, 2);
-  return 0 unless is_extra_strong_lucas_pseudoprime($n);
-  return ($n <= 18446744073709551615)  ?  2  :  1;
+  if ($n <= 18446744073709551615) {
+    return is_almost_extra_strong_lucas_pseudoprime($n) ? 2 : 0;
+  }
+  return is_extra_strong_lucas_pseudoprime($n) ? 1 : 0;
 }
 
 sub is_prime {
@@ -1097,6 +1099,15 @@ sub is_extra_strong_lucas_pseudoprime {
     $s++;
     $k >>= 1;
   }
+  # We have to convert n to a bigint or Math::BigInt::GMP's stupid set_si bug
+  # (RT 71548) will hit us and make the test $V == $n-2 always return false.
+  if (ref($n) ne 'Math::BigInt') {
+    if (!defined $Math::BigInt::VERSION) {
+      eval { require Math::BigInt;  Math::BigInt->import(try=>'GMP,Pari'); 1; }
+      or do { croak "Cannot load Math::BigInt "; }
+    }
+    $n = Math::BigInt->new("$n");
+  }
   my($U, $V, $Qk) = lucas_sequence($n, $P, $Q, $k);
 
   return 1 if $U->is_zero && ($V == 2 || $V == ($n-2));
@@ -1121,13 +1132,6 @@ sub is_almost_extra_strong_lucas_pseudoprime {
   return 0 if $D == 0;  # We found a divisor in the sequence
   die "Lucas parameter error: $D, $P, $Q\n" if ($D != $P*$P - 4*$Q);
 
-  my $m = $n+1;
-  my($s, $k) = (0, $m);
-  while ( $k > 0 && !($k % 2) ) {
-    $s++;
-    $k >>= 1;
-  }
-
   if (ref($n) ne 'Math::BigInt') {
     if (!defined $Math::BigInt::VERSION) {
       eval { require Math::BigInt;  Math::BigInt->import(try=>'GMP,Pari'); 1; }
@@ -1139,8 +1143,9 @@ sub is_almost_extra_strong_lucas_pseudoprime {
   my $ZERO = $n->copy->bzero;
   my $V = $ZERO + $P;        # V_{k}
   my $W = $ZERO + $P*$P-2;   # V_{k+1}
-  $k = Math::BigInt->new("$k") unless ref($k) eq 'Math::BigInt';
-  my $kstr = substr($k->as_bin, 2);
+  my $kstr = substr($n->copy->badd(1)->as_bin, 2);
+  $kstr =~ s/(0*)$//;
+  my $s = length($1);
   my $bpos = 0;
   while (++$bpos < length($kstr)) {
     if (substr($kstr,$bpos,1)) {

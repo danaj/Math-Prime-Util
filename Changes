@@ -6,6 +6,7 @@ Revision history for Perl module Math::Prime::Util
       - is_proven_prime
       - is_proven_prime_with_cert
       - carmichael_lambda
+      - znorder
 
     - random_nbit_prime now uses Fouque and Tibouchi A1.  Slightly better
       uniformity and typically a bit faster.

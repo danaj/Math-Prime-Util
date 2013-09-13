@@ -75,7 +75,7 @@ plan tests =>  0
              + 6*2*$extra # more PC tests
              + scalar(keys %factors)
              + scalar(keys %allfactors)
-             + 5   # moebius, euler_phi, jordan totient
+             + 6   # moebius, euler_phi, jordan totient
              + 15  # random primes
              + 0;
 
@@ -98,6 +98,7 @@ use Math::Prime::Util qw/
   euler_phi
   jordan_totient
   divisor_sum
+  znorder
   ExponentialIntegral
   LogarithmicIntegral
   RiemannR
@@ -208,7 +209,7 @@ SKIP: {
 ###############################################################################
 
 SKIP: {
-  skip "Your 64-bit Perl is broken, skipping moebius and euler_phi tests", 5 if $broken64;
+  skip "Your 64-bit Perl is broken, skipping moebius and euler_phi tests", 6 if $broken64;
   my $n;
   $n = 618970019642690137449562110;
   is( moebius($n), -1, "moebius($n)" );
@@ -219,6 +220,9 @@ SKIP: {
   # Done wrong, the following will have a bunch of extra zeros.
   my $hundredfac = Math::BigInt->new(100)->bfac;
   is( divisor_sum($hundredfac), 774026292208877355243820142464115597282472420387824628823543695735957009720184359087194959566149232506852422409529601312686157396490982598473425595924480000000, "Divisor sum of 100!" );
+  is( znorder(82734587234,927208363107752634625923555185111613055040823736157),
+      4360156780036190093445833597286118936800,
+      "znorder" );
 }
 
 ###############################################################################
