@@ -1850,8 +1850,9 @@ sub is_almost_extra_strong_lucas_pseudoprime {
   _validate_num($n) || _validate_positive_integer($n);
   if (!defined $inc) {
     $inc = 1;
-  } else {
-    _validate_positive_integer($inc, 1, 256);
+  } elsif ($inc ne '1' && $inc ne '2') {
+    (_validate_num($inc) && $inc > 0 && $inc < 257)
+    || _validate_positive_integer($inc, 1, 256);
   }
   return _XS_is_almost_extra_strong_lucas_pseudoprime($n, $inc)
     if ref($n) ne 'Math::BigInt' && $n <= $_XS_MAXVAL;
