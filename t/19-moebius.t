@@ -194,7 +194,7 @@ plan tests => 0 + 1
                 + 2  # Dedekind psi calculated two ways
                 + 1  # Calculate J5 two different ways
                 + 2 * $use64 # Jordan totient example
-                + 1 + scalar(keys %sigmak) + 2
+                + 1 + 2*scalar(keys %sigmak) + 2
                 + scalar(keys %mangoldt)
                 + scalar(keys %chebyshev1)
                 + scalar(keys %chebyshev2);
@@ -282,6 +282,11 @@ while (my($k, $sigmaref) = each (%sigmak)) {
     push @slist, divisor_sum( $n, sub { int($_[0] ** $k) } );
   }
   is_deeply( \@slist, $sigmaref, "Sum of divisors to the ${k}th power: Sigma_$k" );
+  @slist = ();
+  foreach my $n (1 .. scalar @$sigmaref) {
+    push @slist, divisor_sum( $n, $k );
+  }
+  is_deeply( \@slist, $sigmaref, "Sigma_$k using integer instead of sub" );
 }
 # k=1 standard sum -- much faster
 {
@@ -292,9 +297,9 @@ while (my($k, $sigmaref) = each (%sigmak)) {
 {
   my $len = scalar @{$sigmak{0}};
   my @slist1 = map { divisor_sum($_, sub {1}) } 1 .. $len;
-  my @slist2 = map { divisor_sum($_, 1      ) } 1 .. $len;
+  my @slist2 = map { divisor_sum($_, 0      ) } 1 .. $len;
   is_deeply( \@slist1, $sigmak{0}, "tau as divisor_sum(n, sub {1})" );
-  is_deeply( \@slist2, $sigmak{0}, "tau as divisor_sum(n, 1)" );
+  is_deeply( \@slist2, $sigmak{0}, "tau as divisor_sum(n, 0)" );
 }
 
 ###### Exponential of von Mangoldt

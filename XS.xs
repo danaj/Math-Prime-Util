@@ -188,7 +188,6 @@ _XS_nth_prime(IN UV n)
     _XS_meissel_pi = 4
     _XS_lehmer_pi = 5
     _XS_LMO_pi = 6
-    _XS_divisor_sum = 7
   PREINIT:
     UV ret;
   CODE:
@@ -200,12 +199,14 @@ _XS_nth_prime(IN UV n)
       case 4: ret = _XS_meissel_pi(n); break;
       case 5: ret = _XS_lehmer_pi(n); break;
       case 6: ret = _XS_LMO_pi(n); break;
-      case 7: ret = _XS_divisor_sum(n); break;
       default: croak("_XS_nth_prime: Unknown function alias"); break;
     }
     RETVAL = ret;
   OUTPUT:
     RETVAL
+
+UV
+_XS_divisor_sum(IN UV n, IN UV k)
 
 
 UV

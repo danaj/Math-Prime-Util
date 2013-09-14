@@ -291,7 +291,7 @@ static int is_perfect_square(UV n, UV* sqrtn)
 }
 
 
-UV _XS_divisor_sum(UV n)
+UV _XS_divisor_sum(UV n, UV k)
 {
   UV factors[MPU_MAX_FACTORS+1];
   int nfac, i;
@@ -300,14 +300,34 @@ UV _XS_divisor_sum(UV n)
   if (n <= 1) return n;
   nfac = factor(n, factors);
   for (i = 0; i < nfac; i++) {
-    if (i+1 < nfac && factors[i] == factors[i+1]) {
-      UV fmult = factors[i]*factors[i];
-      do {
-        fmult *= factors[i++];
-      } while (i+1 < nfac && factors[i] == factors[i+1]);
-      product *= (fmult-1) / (factors[i]-1);
-    } else {
-      product *= factors[i]+1;
+    UV f = factors[i];
+    UV e = 1;
+    while (i+1 < nfac && f == factors[i+1])
+      { e++; i++; }
+    if (k == 0) {
+      product *= (e+1);
+    } else if (k == 1 && e == 1) {
+      product *= f+1;
+    } else if (k == 1) {
+      UV fmult = f * f;
+      while (e-- >= 2)
+        fmult *= f;
+      product *= (fmult - 1) / (f - 1);
+    } else {   /* Overflow is a concern */
+      UV j, pk = f * f;
+      for (j = 2; j < k; j++)  pk *= f;
+      if (e == 1) {
+        product *= pk+1;
+      } else {
+        /* Less overflow than (pk^(e+1)-1) / (pk-1) */
+        UV fmult = 1 + pk + pk*pk;
+        UV pke = pk * pk;
+        for (j = 2; j < e; j++) {
+          pke *= pk;
+          fmult += pke;
+        }
+        product *= fmult;
+      }
     }
   }
   return product;

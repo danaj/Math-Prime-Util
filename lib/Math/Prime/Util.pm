@@ -1413,52 +1413,53 @@ sub jordan_totient {
 
 # Mathematica and Pari both have functions like this.
 sub divisor_sum {
-  my($n, $sub) = @_;
+  my($n, $k) = @_;
   return (0,1)[$n] if defined $n && $n <= 1;
   _validate_num($n) || _validate_positive_integer($n);
 
-  if (!defined $sub) {
-    return _XS_divisor_sum($n) if $n <= $_XS_MAXVAL;
-    my $bone = (ref($n) eq 'Math::BigInt') ? $n->copy->bone : 1;
-    my $product = $bone;
-    my @factors = factor($n);
-    while (@factors) {
-      if (@factors > 1 && $factors[0] == $factors[1]) {
-        my $fmult = $bone * $factors[0] * $factors[0];
-        $fmult *= shift @factors while @factors > 1 && $factors[0] == $factors[1];
-        $product *= ($fmult -1) / ($factors[0] - 1);
-      } else {
-        $product *= $factors[0]+1;
-      }
-      shift @factors;
+  $k = 1 unless defined $k;
+
+  if (ref($k) eq 'CODE') {
+    my $sum = $k->(1);
+    return $sum if $n == 1;
+    foreach my $f (all_factors($n), $n ) {
+      $sum += $k->($f);
     }
-    return $product;
+    return $sum;
   }
 
-  # TODO: Alternately the argument could be the k for sigma, so this
-  # should be 0, the above should be 1, etc.
-  if (ref($sub) ne 'CODE' && int($sub) == 1) {
-    my ($product, $exponent) = (1, 1);
-    my @factors = ($n <= $_XS_MAXVAL) ? _XS_factor($n) : factor($n);
-    while (@factors) {
-      if (@factors > 1 && $factors[0] == $factors[1]) {
-        $exponent++;
-      } else {
-        $product *= ($exponent+1);
-        $exponent = 1;
-      }
-      shift @factors;
-    }
-    return $product;
+  croak "Second argument must be a code ref or number"
+    unless _validate_num($k) || _validate_positive_integer($k);
+
+  if ($n <= $_XS_MAXVAL) {
+    return _XS_divisor_sum($n, $k) if $k <= 1;
+    # 2 overflows 64-bit at 3,000,000,000 ish
+    # 3 overflows 64-bit at 2487240
+    # 4 overflows 64-bit at 64260
+    # If we think we can handle overflow, we could do a few more
   }
 
-  croak "Second argument must be a code ref" unless ref($sub) eq 'CODE';
-  my $sum = $sub->(1);
-  return $sum if $n == 1;
-  foreach my $f (all_factors($n), $n ) {
-    $sum += $sub->($f);
+  my $bone = (ref($_[0]) eq 'Math::BigInt') ? $_[0]->copy->bone : 1;
+  my $product = $bone;
+  my @factors = ($n <= $_XS_MAXVAL) ? _XS_factor($n) : factor($n);
+  while (@factors) {
+    my $f = shift @factors;
+    my $e = 1;
+    while (@factors && $factors[0] == $f) {
+      $e++;
+      shift @factors;
+    }
+    if ($k == 0)         { $product *= ($e+1); }
+    elsif ($k == 1) {
+      if ($e == 1)       { $product *= $f+1; }
+      else               { $product *= ( ($bone*$f)**($e+1) - 1) / ($f - 1); }
+    } else {
+      # TODO: do the long way around to get less overflow, see factor.c
+      my $pk = ($bone * $f) ** $k;
+      $product *= ($e == 1)  ?  $pk+1  :  ($pk ** ($e+1) - 1) / ($pk - 1);
+    }
   }
-  return $sum;
+  return $product;
 }
 
                                    # Need proto for the block
@@ -3453,9 +3454,10 @@ This function takes a positive integer as input and returns the sum of all
 the divisors of the input, including 1 and itself.  This is known as the
 sigma function (see Hardy and Wright section 16.7, or OEIS A000203).
 
-If a second argument is given that is numerically equal to 1, then we do
-a summation of the number of divisors.  This is identical to the general
-form below with C<sub { 1 }>, but runs faster.
+If a second argument is given that is numeric, it is used as the sigma
+parameter.  The result will then be the sum of each divisor raised to
+this power.  Hence C<0> will count the divisors, C<1> will sum them,
+C<2> will sum the squares, and so on.
 
 The more general form takes a code reference as a second parameter, which
 is applied to each divisor before the summation.  This allows computation
