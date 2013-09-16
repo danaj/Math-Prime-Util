@@ -780,7 +780,7 @@ sub is_pseudoprime {
   my $x = (ref($n) eq 'Math::BigInt')
         ? $n->copy->bzero->badd($base)->bmodpow($n-1,$n)
         : _native_powmod($base, $n-1, $n);
-  return ($x == 1);
+  return ($x == 1) ? 1 : 0;
 }
 
 sub miller_rabin {
@@ -800,7 +800,7 @@ sub miller_rabin {
   if ( ref($n) eq 'Math::BigInt' ) {
 
     my $s = 0;
-    my $nminus1 = $n->copy->bsub(1);
+    my $nminus1 = $n->copy->bdec();
     my $d = $nminus1->copy;
     while ($d->is_even) {
       $s++;
@@ -1143,7 +1143,7 @@ sub is_almost_extra_strong_lucas_pseudoprime {
   my $ZERO = $n->copy->bzero;
   my $V = $ZERO + $P;        # V_{k}
   my $W = $ZERO + $P*$P-2;   # V_{k+1}
-  my $kstr = substr($n->copy->badd(1)->as_bin, 2);
+  my $kstr = substr($n->copy->binc()->as_bin, 2);
   $kstr =~ s/(0*)$//;
   my $s = length($1);
   my $bpos = 0;
@@ -1330,7 +1330,7 @@ sub is_aks_prime {
   return 1 if $r >= $n;
 
   # Since r is a prime, phi(r) = r-1
-  my $rlimit = int( Math::BigFloat->new("$r")->bsub(1)
+  my $rlimit = int( Math::BigFloat->new("$r")->bdec()
                     ->bsqrt->bmul($log2n)->bfloor->bstr);
 
   $_poly_bignum = 1;
@@ -1711,7 +1711,7 @@ sub pminus1_factor {
   my $one = $n->copy->bone;
   my ($j, $q, $saveq) = (32, 2, 2);
   my $t = $one->copy;
-  my $a = $one->copy->badd(1);
+  my $a = $one->copy->binc();
   my $savea = $a->copy;
   my $f = 1;
   my($pc_beg, $pc_end, @bprimes);

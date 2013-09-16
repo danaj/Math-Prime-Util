@@ -869,7 +869,7 @@ sub primes {
       my $l = ($_Config{'maxbits'} > 32 && $bits > 79)  ?  63  :  31;
       $l = $bits-2 if $bits-2 < $l;
       my $arange = (1 << $l) - 1;  # 2^$l-1
-      my $brange = Math::BigInt->new(2)->bpow($bits-$l-2)->bsub(1);
+      my $brange = Math::BigInt->new(2)->bpow($bits-$l-2)->bdec();
       my $b = 2 * $irandf->($brange) + 1;
       # Precalculate some modulii so we can do trial division on native int
       # 9699690 = 2*3*5*7*11*13*17*19, so later operations can be native ints
@@ -1009,7 +1009,7 @@ sub primes {
       # R is a random number between $I+1 and 2*$I
       my $R = $I + 1 + $irandf->( $I - 1 );
       #my $n = 2 * $R * $q + 1;
-      my $n = Math::BigInt->new(2)->bmul($R)->bmul($q)->badd(1);
+      my $n = Math::BigInt->new(2)->bmul($R)->bmul($q)->binc();
       # We constructed a promising looking $n.  Now test it.
       print "." if $verbose > 2;
       if ($_HAVE_GMP) {
@@ -1082,7 +1082,7 @@ sub primes {
       my $qpp = random_nbit_prime($lpp);
       $qp  = Math::BigInt->new("$qp")  unless ref($qp)  eq 'Math::BigInt';
       $qpp = Math::BigInt->new("$qpp") unless ref($qpp) eq 'Math::BigInt';
-      my ($il, $rem) = Math::BigInt->new(2)->bpow($l-1)->bsub(1)->bdiv(2*$qpp);
+      my ($il, $rem) = Math::BigInt->new(2)->bpow($l-1)->bdec()->bdiv(2*$qpp);
       $il++ if $rem > 0;
       $il = $il->as_int();
       my $iu = Math::BigInt->new(2)->bpow($l)->bsub(2)->bdiv(2*$qpp)->as_int();
@@ -1090,11 +1090,11 @@ sub primes {
       for (my $i = $istart; $i <= $iu; $i++) {  # Search for q
         my $q = 2 * $i * $qpp + 1;
         next unless is_prob_prime($q);
-        my $pp = $qp->copy->bmodpow($q-2, $q)->bmul(2)->bmul($qp)->bsub(1);
+        my $pp = $qp->copy->bmodpow($q-2, $q)->bmul(2)->bmul($qp)->bdec();
         my ($jl, $rem) = Math::BigInt->new(2)->bpow($t-1)->bsub($pp)->bdiv(2*$q*$qp);
         $jl++ if $rem > 0;
         $jl = $jl->as_int();
-        my $ju = Math::BigInt->new(2)->bpow($t)->bsub(1)->bsub($pp)->bdiv(2*$q*$qp)->as_int();
+        my $ju = Math::BigInt->new(2)->bpow($t)->bdec()->bsub($pp)->bdiv(2*$q*$qp)->as_int();
         my $jstart = $jl + $irandf->($ju - $jl);
         for (my $j = $jstart; $j <= $ju; $j++) {  # Search for p
           my $p = $pp + 2 * $j * $q * $qp;
@@ -1352,28 +1352,21 @@ sub euler_phi {
   return $n if $n <= 1;
   my @factors = factor($n);
 
+  my $totient = $n - $n + 1;
+  my $lastf = 0;
+
   if (ref($n) ne 'Math::BigInt') {
-    my $totient = 1;
-    my $lastf = 0;
     foreach my $f (@factors) {
       if ($f == $lastf) { $totient *= $f;                 }
       else              { $totient *= $f-1;  $lastf = $f; }
     }
-    return $totient;
-  }
-
-  my $totient = $n->copy->bone;
-  my $lastf = 0;
-  foreach my $factor (@factors) {
-    # This screwball line is here to solve some issues with the GMP backend,
-    # which has a weird bug.  Results of the multiply can turn negative (!)
-    # if we don't do this.  Perhaps related to RT 71548?
-    #  perl -le 'use Math::BigInt lib=>'GMP'; my $a = 2931542417; my $n = Math::BigInt->new("49754396241690624"); my $x = $n*$a; print $x;'
-    #  perl -le 'use Math::BigInt lib=>'GMP'; my $a = Math::BigInt->bone; $a *= 2931542417; $a *= 49754396241690624; print $a;'
-    # TODO: more work reproducing this
-    my $f = $n->copy->bzero->badd("$factor");
-    if ($f == $lastf) { $totient->bmul($f);                              }
-    else              { $totient->bmul($f->copy->bsub(1));  $lastf = $f; }
+  } else {
+    my $zero = $n->copy->bzero;
+    foreach my $factor (@factors) {
+      my $f = $zero->copy->badd("$factor");  # Math::BigInt::GMP RT 71548
+      if ($f == $lastf) { $totient->bmul($f);                             }
+      else              { $totient->bmul($f->copy->bdec());  $lastf = $f; }
+    }
   }
   return $totient;
 }
@@ -1404,22 +1397,27 @@ sub jordan_totient {
     my $zero = $n->copy->bzero;
     foreach my $factor (@factors) {
       my $fmult = $zero->copy->badd("$factor")->bpow($k);
-      $totient->bmul($fmult->copy->bsub(1));
+      $totient->bmul($fmult->copy->bdec());
       $totient->bmul($fmult) for (2 .. $factor_mult{$factor});
     }
   }
   return $totient;
 }
 
-# Mathematica and Pari both have functions like this.
+my @_ds_overflow =  # We'll use BigInt math if the input is larger than this.
+  (~0 > 4294967295)
+   ? (0, 3000000000000000000, 3000000000, 2487240, 64260, 7026)
+   : (0,           845404560,      52560,    1548,   252,   84);
 sub divisor_sum {
   my($n, $k) = @_;
   return (0,1)[$n] if defined $n && $n <= 1;
   _validate_num($n) || _validate_positive_integer($n);
 
-  $k = 1 unless defined $k;
+  # With no argument, call the XS routine for k=1 immediately if possible.
+  return _XS_divisor_sum($n, 1)
+    if !defined $k && $n <= $_XS_MAXVAL && $n < $_ds_overflow[1];
 
-  if (ref($k) eq 'CODE') {
+  if (defined $k && ref($k) eq 'CODE') {
     my $sum = $k->(1);
     return $sum if $n == 1;
     foreach my $f (all_factors($n), $n ) {
@@ -1429,34 +1427,59 @@ sub divisor_sum {
   }
 
   croak "Second argument must be a code ref or number"
-    unless _validate_num($k) || _validate_positive_integer($k);
+    unless !defined $k || _validate_num($k) || _validate_positive_integer($k);
+  $k = 1 if !defined $k;
 
-  if ($n <= $_XS_MAXVAL) {
-    return _XS_divisor_sum($n, $k) if $k <= 1;
-    # 2 overflows 64-bit at 3,000,000,000 ish
-    # 3 overflows 64-bit at 2487240
-    # 4 overflows 64-bit at 64260
-    # If we think we can handle overflow, we could do a few more
+  my $will_overflow = ($k == 0) ? 0
+                    : ($k  > 5) ? 1
+                    : $n >= $_ds_overflow[$k];
+
+  return _XS_divisor_sum($n, $k) if $n <= $_XS_MAXVAL && !$will_overflow;
+
+  if ($will_overflow) {
+    if (!defined $Math::BigInt::VERSION) {
+      eval { require Math::BigInt; Math::BigInt->import(try=>'GMP,Pari'); 1; }
+      or do { croak "Cannot load Math::BigInt"; };
+    }
   }
 
-  my $bone = (ref($_[0]) eq 'Math::BigInt') ? $_[0]->copy->bone : 1;
-  my $product = $bone;
+  # The standard way is:
+  #    my $pk = $f ** $k;  $product *= ($pk ** ($e+1) - 1) / ($pk - 1);
+  # But we get less overflow using:
+  #    my $pk = $f ** $k;  $product *= $pk**E for E in 0 .. e
+  # Also separate BigInt and do fiddly bits for better performance.
+
+  my $product = 1;
   my @factors = ($n <= $_XS_MAXVAL) ? _XS_factor($n) : factor($n);
-  while (@factors) {
-    my $f = shift @factors;
-    my $e = 1;
-    while (@factors && $factors[0] == $f) {
-      $e++;
-      shift @factors;
+
+  if (!$will_overflow) {
+    while (@factors) {
+      my ($e, $f) = (1, shift @factors);
+      while (@factors && $factors[0] == $f) { $e++; shift @factors; }
+      if ($k == 0) {
+        $product *= ($e+1);
+      } else {
+        my $pk = $f ** $k;
+        my $fmult = $pk + 1;
+        foreach my $E (2 .. $e) { $fmult += $pk**$E }
+        $product *= $fmult;
+      }
     }
-    if ($k == 0)         { $product *= ($e+1); }
-    elsif ($k == 1) {
-      if ($e == 1)       { $product *= $f+1; }
-      else               { $product *= ( ($bone*$f)**($e+1) - 1) / ($f - 1); }
-    } else {
-      # TODO: do the long way around to get less overflow, see factor.c
-      my $pk = ($bone * $f) ** $k;
-      $product *= ($e == 1)  ?  $pk+1  :  ($pk ** ($e+1) - 1) / ($pk - 1);
+  } else {
+    $product = Math::BigInt->bone;
+    my $bik = Math::BigInt->new("$k");
+    while (@factors) {
+      my ($e, $f) = (1, shift @factors);
+      while (@factors && $factors[0] == $f) { $e++; shift @factors; }
+      my $pk = Math::BigInt->new("$f")->bpow($bik);
+      if    ($e == 1) { $pk->binc(); $product->bmul($pk); }
+      elsif ($e == 2) { $pk->badd($pk*$pk)->binc(); $product->bmul($pk); }
+      else {
+        my $fmult = $pk;
+        foreach my $E (2 .. $e) { $fmult += $pk->copy->bpow($E) }
+        $fmult->binc();
+        $product *= $fmult;
+      }
     }
   }
   return $product;
@@ -1468,11 +1491,20 @@ sub _generic_forprimes (&$;$) {    ## no critic qw(ProhibitSubroutinePrototypes)
   if (!defined $end) { $end = $beg; $beg = 2; }
   _validate_num($beg) || _validate_positive_integer($beg);
   _validate_num($end) || _validate_positive_integer($end);
-  my $p = ($beg <= 2) ? 2 : next_prime($beg-1);
-  while ($p <= $end) {
-    local *_ = \$p;
-    $sub->();
-    $p = next_prime($p);
+  # It's possible we're here just because the arguments were bigints < 2^64
+  # TODO: make a function to convert native size bigints to UVs, and let the
+  #       XS functions call that, so we don't do these loop-de-loops.
+  if (!ref($beg) && !ref($end) && $beg <= $_XS_MAXVAL && $end <= $_XS_MAXVAL) {
+    return forprimes( \&$sub, $beg, $end);
+  }
+  $beg = 2 if $beg < 2;
+  {
+    my $pp;
+    local *_ = \$pp;
+    for (my $p = next_prime($beg-1);  $p <= $end;  $p = next_prime($p)) {
+      $pp = $p;
+      $sub->();
+    }
   }
 }
 
@@ -2477,9 +2509,10 @@ Version 0.31
   say "lamba(49) = ", log(exp_mangoldt(49));
 
   # divisor sum
-  $sigma  = divisor_sum( $n );
-  $sigma0 = divisor_sum( $n, 1 );
-  $sigma2 = divisor_sum( $n, sub { $_[0]*$_[0] } );
+  $sigma  = divisor_sum( $n );       # sum of divisors
+  $sigma0 = divisor_sum( $n, 0 );    # count of divisors
+  $sigmak = divisor_sum( $n, $k );
+  $sigmaf = divisor_sum( $n, sub { log($_[0]) } ); # arbitrary func
 
   # primorial n#, primorial p(n)#, and lcm
   say "The product of primes below 47 is ",     primorial(47);
@@ -3450,41 +3483,28 @@ yield similar results, albeit slower and using more memory.
 
   say "Sum of divisors of $n:", divisor_sum( $n );
 
-This function takes a positive integer as input and returns the sum of all
-the divisors of the input, including 1 and itself.  This is known as the
-sigma function (see Hardy and Wright section 16.7, or OEIS A000203).
+This function takes a positive integer as input and returns the sum of the
+k-th powers of the divisors of the input, including 1 and itself.  If the
+second argument (C<k>) is omitted it is assumed to be 1.  This is known as
+the sigma function (see Hardy and Wright section 16.7, or OEIS A000203).
+The API is identical to Pari/GP's C<sigma> function.
 
-If a second argument is given that is numeric, it is used as the sigma
-parameter.  The result will then be the sum of each divisor raised to
-this power.  Hence C<0> will count the divisors, C<1> will sum them,
-C<2> will sum the squares, and so on.
+The second argument can be a code reference, which is called for each divisor
+and the results are summed.  This allows computation of other functions,
+but will be less efficient than using the numeric second argument.
 
-The more general form takes a code reference as a second parameter, which
-is applied to each divisor before the summation.  This allows computation
-of numerous functions such as OEIS A000005 [d(n), sigma_0(n), tau(n)]:
-
-  divisor_sum( $n, sub { 1 } );
-
-OEIS A001157 [sigma_2(n)]:
-
-  divisor_sum( $n, sub { $_[0]*$_[0] } )
-
-the general sigma_k (OEIS A00005, A000203, A001157, A001158, etc.):
-
-  divisor_sum( $n, sub { $_[0] ** $k } );
-
-the 5th Jordan totient (OEIS A059378):
+An example of the 5th Jordan totient (OEIS A059378):
 
   divisor_sum( $n, sub { my $d=shift; $d**5 * moebius($n/$d); } );
 
-though in the last case we have a function L</jordan_totient> to compute
-it more efficiently.
+though we have a function L</jordan_totient> which is more efficient.
 
 This function is useful for calculating things like aliquot sums, abundant
 numbers, perfect numbers, etc.
 
-The summation is done as a bigint if the input was a bigint object.  You may
-need to ensure the result of the subroutine does not overflow a native int.
+For numeric second arguments (sigma computations), the result will be a bigint
+if necessary.  For the code reference case, the user must take care to return
+bigints if overflow will be a concern.
 
 
 =head2 primorial
@@ -4405,11 +4425,10 @@ With it installed, it is about 2x slower than Math::Pari.
 
 Similar to MPU's L<moebius>.  Comparisons are similar to C<eulerphi>.
 
-=item C<sumdiv>
+=item C<sigma>
 
-Similar to MPU's L<divisor_sum>.  The standard sum (sigma_1) is
-very fast in MPU.  Giving it a sub makes it much slower, and for numbers
-with very many factors, Pari is I<much> faster.
+Similar to MPU's L<divisor_sum>.  MPU is ~10x faster for native integers
+and about 2x slower for bigints.
 
 =item C<eint1>
 
@@ -4425,13 +4444,13 @@ and complex inputs).
 Overall, L<Math::Pari> supports a huge variety of functionality and has a
 sophisticated and mature code base behind it (noting that the default version
 of Pari used is about 10 years old now).
-For native integers sometimes
-the functions can be slower, but bigints are often superior and it rarely
-has any performance surprises.  Some of the unique features MPU offers include
-super fast prime counts, nth_prime, ECPP primality proofs with certificates,
-approximations and limits for both, random primes, fast Mertens calculations,
-Chebyshev theta and psi functions, and the logarithmic integral and Riemann R
-functions.  All with fairly minimal installation requirements.
+For native integers often using Math::Pari will be slower, but bigints are
+often superior and it rarely has any performance surprises.  Some of the
+unique features MPU offers include super fast prime counts, nth_prime,
+ECPP primality proofs with certificates, approximations and limits for both,
+random primes, fast Mertens calculations, Chebyshev theta and psi functions,
+and the logarithmic integral and Riemann R functions.  All with fairly
+minimal installation requirements.
 
 
 =head1 PERFORMANCE

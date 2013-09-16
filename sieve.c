@@ -372,7 +372,7 @@ int next_segment_primes(void* vctx, UV* base, UV* low, UV* high)
 
   ctx->lod += range_d;
   ctx->low = *high + 2;
-  
+
   return 1;
 }
 

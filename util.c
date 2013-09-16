@@ -152,13 +152,7 @@ int _XS_is_prime(UV n)
   const unsigned char* sieve;
   int isprime;
 
-  if (n <= 10) {
-    switch (n) {
-      case 2: case 3: case 5: case 7:   return 2;  break;
-      default:                          break;
-    }
-    return 0;
-  }
+  if (n <= 10)  return (n == 2 || n == 3 || n == 5 || n == 7) ? 2 : 0;
   d = n/30;
   m = n - d*30;
   mtab = masktab30[m];  /* Bitmask in mod30 wheel */
@@ -806,7 +800,7 @@ signed char* _moebius_range(UV lo, UV hi)
     croak("Could not get memory for %"UVuf" moebius results\n", hi-lo+1);
   A = (unsigned char*) mu;
   if (sqrtn*sqrtn != hi) sqrtn++;  /* ceil sqrtn */
-  
+
   logp = 1; nextlog = 3; /* 2+1 */
   START_DO_FOR_EACH_PRIME(2, sqrtn) {
     UV p2 = p*p;

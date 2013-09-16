@@ -20,7 +20,9 @@ Revision history for Perl module Math::Prime::Util
 
     - divisor_sum can take an integer 'k' in the second argument to compute
       sigma_k.  This is much faster than using subs, especially when the
-      result can be computed in XS using native precision.
+      result can be computed in XS using native precision.  For integer
+      second arguments, the result will automatically be a bigint if needed.
+      It is also much faster for larger inputs.
 
     - Incorporate Montgomery reduction for primality testing, thanks to
       Wojciech Izykowski.  This is a 1.3 to 1.5x speedup for is_prob_prime,

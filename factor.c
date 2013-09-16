@@ -185,15 +185,17 @@ int trial_factor(UV n, UV *factors, UV maxtrial)
   /* Use the table of small primes to quickly do trial division. */
   {
     UV sp = 5;
+    UV slimit = (limit < 2003) ? limit : 2003;
     f = primes_small[sp];
-    while (f <= limit && f <= 2003) {
+    while (f <= slimit) {
       if ( (n%f) == 0 ) {
         do {
           factors[nfactors++] = f;
           n /= f;
         } while ( (n%f) == 0 );
         newlimit = isqrt(n);
-        if (newlimit < limit)  limit = newlimit;
+        if (newlimit < slimit)  slimit = newlimit;
+        if (newlimit < limit)   limit = newlimit;
       }
       f = primes_small[++sp];
     }
@@ -291,43 +293,55 @@ static int is_perfect_square(UV n, UV* sqrtn)
 }
 
 
+/*
+ * The usual method, on OEIS for instance, is:
+ *    (p^(k*(e+1))-1) / (p^k-1)
+ * but that overflows quicky.  Instead we rearrange as:
+ *    1 + p^k + p^k^2 + ... p^k^e
+ */
 UV _XS_divisor_sum(UV n, UV k)
 {
   UV factors[MPU_MAX_FACTORS+1];
-  int nfac, i;
+  int nfac, i, j;
   UV product = 1;
 
   if (n <= 1) return n;
   nfac = factor(n, factors);
-  for (i = 0; i < nfac; i++) {
-    UV f = factors[i];
-    UV e = 1;
-    while (i+1 < nfac && f == factors[i+1])
-      { e++; i++; }
-    if (k == 0) {
+  if (k == 0) {
+    for (i = 0; i < nfac; i++) {
+      UV e = 1,  f = factors[i];
+      while (i+1 < nfac && f == factors[i+1]) { e++; i++; }
       product *= (e+1);
-    } else if (k == 1 && e == 1) {
-      product *= f+1;
-    } else if (k == 1) {
-      UV fmult = f * f;
-      while (e-- >= 2)
-        fmult *= f;
-      product *= (fmult - 1) / (f - 1);
-    } else {   /* Overflow is a concern */
-      UV j, pk = f * f;
-      for (j = 2; j < k; j++)  pk *= f;
-      if (e == 1) {
-        product *= pk+1;
-      } else {
-        /* Less overflow than (pk^(e+1)-1) / (pk-1) */
-        UV fmult = 1 + pk + pk*pk;
-        UV pke = pk * pk;
-        for (j = 2; j < e; j++) {
+    }
+  } else if (k == 1) {
+    for (i = 0; i < nfac; i++) {
+      UV e = 1,  f = factors[i];
+      UV fmult = 1 + f;
+      while (i+1 < nfac && f == factors[i+1]) { e++; i++; }
+      if (e > 1) {
+        UV pke = f;
+        for (j = 1; j < e; j++) {
+          pke *= f;
+          fmult += pke;
+        }
+      }
+      product *= fmult;
+    }
+  } else {
+    for (i = 0; i < nfac; i++) {
+      UV e = 1,  f = factors[i];
+      UV fmult,  pk = f;
+      for (j = 1; j < k; j++)  pk *= f;
+      while (i+1 < nfac && f == factors[i+1]) { e++; i++; }
+      fmult = 1 + pk;
+      if (e > 1) {
+        UV pke = pk;
+        for (j = 1; j < e; j++) {
           pke *= pk;
           fmult += pke;
         }
-        product *= fmult;
       }
+      product *= fmult;
     }
   }
   return product;

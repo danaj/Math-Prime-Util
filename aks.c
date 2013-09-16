@@ -27,7 +27,6 @@
 #include "ptypes.h"
 #include "aks.h"
 #include "util.h"
-#include "sieve.h"
 #include "cache.h"
 #include "mulmod.h"
 
