@@ -75,7 +75,7 @@ plan tests =>  0
              + 6*2*$extra # more PC tests
              + scalar(keys %factors)
              + scalar(keys %allfactors)
-             + 6   # moebius, euler_phi, jordan totient
+             + 7   # moebius, euler_phi, jordan totient, divsum, znorder
              + 15  # random primes
              + 0;
 
@@ -220,9 +220,12 @@ SKIP: {
   # Done wrong, the following will have a bunch of extra zeros.
   my $hundredfac = Math::BigInt->new(100)->bfac;
   is( divisor_sum($hundredfac), 774026292208877355243820142464115597282472420387824628823543695735957009720184359087194959566149232506852422409529601312686157396490982598473425595924480000000, "Divisor sum of 100!" );
-  is( znorder(82734587234,927208363107752634625923555185111613055040823736157),
-      4360156780036190093445833597286118936800,
-      "znorder" );
+  # Calc/FastCalc are slugs with this function, so tone things down.
+  #is( znorder(82734587234,927208363107752634625923555185111613055040823736157),
+  #    4360156780036190093445833597286118936800,
+  #    "znorder" );
+  is(znorder(8267,927208363107752634625923),2843344277735759285436,"znorder 1");
+  is(znorder(902,827208363107752634625947),undef,"znorder 2");
 }
 
 ###############################################################################

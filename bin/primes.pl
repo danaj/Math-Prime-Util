@@ -119,6 +119,8 @@ die_usage() unless @ARGV == 2;
 my ($start, $end) = @ARGV;
 # Allow some expression evaluation on the input, but don't just eval it.
 $end = "($start)$end" if $end =~ /^\+/;
+$start =~ s/\s*$//;  $start =~ s/^\s*//;
+$end   =~ s/\s*$//;  $end   =~ s/^\s*//;
 $start = eval_expr($start) unless $start =~ /^\d+$/;
 $end   = eval_expr($end  ) unless $end   =~ /^\d+$/;
 die "$start isn't a positive integer" if $start =~ tr/0123456789//c;

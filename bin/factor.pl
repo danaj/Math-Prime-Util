@@ -34,6 +34,7 @@ prime_set_config(verbose => 3) if exists $opts{'verbose'};
 
 if (@ARGV) {
   foreach my $n (@ARGV) {
+    $n =~ s/\s*$//;  $n =~ s/^\s*//;
     $n = eval_expr($n) unless $n =~ /^\d+$/;
     print "$n: ", join(" ", factor($n)), "\n";
   }

@@ -6,7 +6,7 @@ use Bytes::Random::Secure;
 
 BEGIN {
   $Math::Prime::Util::AUTHORITY = 'cpan:DANAJ';
-  $Math::Prime::Util::VERSION = '0.31';
+  $Math::Prime::Util::VERSION = '0.32';
 }
 
 # parent is cleaner, and in the Perl 5.10.1 / 5.12.0 core, but not earlier.
@@ -837,7 +837,7 @@ sub primes {
     my($bits) = @_;
     _validate_num($bits, 2) || _validate_positive_integer($bits, 2);
 
-    croak "Large random primes not supported on old Perl"
+    croak "Mid-size random primes not supported on broken old Perl"
       if $] < 5.008 && $bits > 49
       && $_Config{'maxbits'} > 32 && $bits <= $_Config{'maxbits'};
     if ($bits > $_Config{'maxbits'}) {
@@ -867,6 +867,7 @@ sub primes {
     if (1 && $bits > 64) {
       my $irandf = _get_rand_func();
       my $l = ($_Config{'maxbits'} > 32 && $bits > 79)  ?  63  :  31;
+      $l = 49 if $l == 63 && $] < 5.008;  # Fix for broken Perl 5.6
       $l = $bits-2 if $bits-2 < $l;
       my $arange = (1 << $l) - 1;  # 2^$l-1
       my $brange = Math::BigInt->new(2)->bpow($bits-$l-2)->bdec();
@@ -1493,8 +1494,9 @@ sub _generic_forprimes (&$;$) {    ## no critic qw(ProhibitSubroutinePrototypes)
   _validate_num($end) || _validate_positive_integer($end);
   # It's possible we're here just because the arguments were bigints < 2^64
   # TODO: make a function to convert native size bigints to UVs, and let the
-  #       XS functions call that, so we don't do these loop-de-loops.
-  if (!ref($beg) && !ref($end) && $beg <= $_XS_MAXVAL && $end <= $_XS_MAXVAL) {
+  #       XS functions call that, so we don't do these loop-de-loops.  This
+  #       also has nasty coupling with the XS implementation.
+  if (!ref($beg) && !ref($end) && $beg <= $_XS_MAXVAL && $end <= $_XS_MAXVAL && $] >= 5.007) {
     return forprimes( \&$sub, $beg, $end);
   }
   $beg = 2 if $beg < 2;
@@ -1609,6 +1611,7 @@ sub znorder {
     eval { require Math::BigInt; Math::BigInt->import(try=>'GMP,Pari'); 1; }
     or do { croak "Cannot load Math::BigInt"; };
   }
+  # Sadly, Calc/FastCalc are horrendously slow for this function.
   return if Math::BigInt::bgcd($a, $n) > 1;
   # Method 1:  check all a^k 1 .. $n-1.
   #            Naive and terrible slow.
@@ -2425,7 +2428,7 @@ Math::Prime::Util - Utilities related to prime numbers, including fast sieves an
 
 =head1 VERSION
 
-Version 0.31
+Version 0.32
 
 
 =head1 SYNOPSIS

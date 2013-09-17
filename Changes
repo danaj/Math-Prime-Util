@@ -1,6 +1,6 @@
 Revision history for Perl module Math::Prime::Util
 
-0.32  2013-08
+0.32  2013-09
 
     [Functions Added]
       - is_proven_prime
