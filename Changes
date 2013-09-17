@@ -29,6 +29,9 @@ Revision history for Perl module Math::Prime::Util
       is_prime, and is_strong_pseudoprime for numbers > 2^32 on x86_64.
       This also help things like prime_iterator for values > 2^32.
 
+    - Montgomery reduction used in Lucas and Frobenius tests.  Up to 2x
+      speedup for 33 to 64-bit inputs on x86_64/gcc platforms.
+
     - Primality functions moved to their own file primality.c.
 
 0.31  2013-08-07

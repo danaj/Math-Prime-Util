@@ -97,7 +97,7 @@ static INLINE uint64_t modular_inverse64(const uint64_t a)
 }
 static INLINE uint64_t compute_modn64(const uint64_t n)
 {
-  
+
   if (n <= (1ULL << 63)) {
     uint64_t res = ((1ULL << 63) % n) << 1;
     return res < n ? res : res-n;
@@ -367,7 +367,7 @@ void lucas_seq(UV* Uret, UV* Vret, UV* Qkret, UV n, IV P, IV Q, UV k)
         UV t2 = mulmod(U, Dmod, n);
         U = muladdmod(U, Pmod, V, n);
         if (U & 1) { U = (n>>1) + (U>>1) + 1; } else { U >>= 1; }
-        V = muladdmod(V, P, t2, n);
+        V = muladdmod(V, Pmod, t2, n);
         if (V & 1) { V = (n>>1) + (V>>1) + 1; } else { V >>= 1; }
       }
     }
@@ -401,7 +401,7 @@ void lucas_seq(UV* Uret, UV* Vret, UV* Qkret, UV n, IV P, IV Q, UV k)
         UV t2 = mulmod(U, Dmod, n);
         U = muladdmod(U, Pmod, V, n);
         if (U & 1) { U = (n>>1) + (U>>1) + 1; } else { U >>= 1; }
-        V = muladdmod(V, P, t2, n);
+        V = muladdmod(V, Pmod, t2, n);
         if (V & 1) { V = (n>>1) + (V>>1) + 1; } else { V >>= 1; }
         Qk = mulmod(Qk, Qmod, n);
       }
@@ -462,33 +462,90 @@ int _XS_is_lucas_pseudoprime(UV n, int strength)
     while ( (d & 1) == 0 ) {  s++;  d >>= 1; }
 
 #if USE_MONT_PRIMALITY
-  if (n > UVCONST(4294967295) && strength == 0 && P == 1 && Q == -1) {
+  if (n > UVCONST(4294967295)) {
     const uint64_t npi = modular_inverse64(-((int64_t)n));
     const uint64_t mont1 = compute_modn64(n);
     const uint64_t mont2 = compute_2_65_mod_n(n, mont1);
-    const uint64_t mont5 = compute_a_times_2_64_mod_n(5, n, mont1);
-    int sign = -1;
+    const uint64_t montP = (P == 1) ? mont1
+                         : (P >= 0) ? compute_a_times_2_64_mod_n(P, n, mont1)
+                         : n - compute_a_times_2_64_mod_n(-P, n, mont1);
+    const uint64_t montD = (D >= 0) ? compute_a_times_2_64_mod_n(D, n, mont1)
+                         : n - compute_a_times_2_64_mod_n(-D, n, mont1);
     UV b;
     { UV v = d; b = 1; while (v >>= 1) b++; }
 
+    /* U, V, Qk, and mont* are in Montgomery space */
     U = mont1;
-    V = mont1;
-    while (b > 1) {
-      U = mont_prod64(U, V, n, npi);
-      if (sign == 1) V = submod( mont_square64(V,n,npi), mont2, n);
-      else           V = addmod( mont_square64(V,n,npi), mont2, n);
-      sign = 1;   /* Qk *= Qk */
-      b--;
-      if ( (d >> (b-1)) & UVCONST(1) ) {
-        UV t2 = mont_prod64(U, mont5, n, npi); /* D = 5 */
-        U = addmod(U, V, n);
-        if (U & 1) { U = (n>>1) + (U>>1) + 1; } else { U >>= 1; }
-        V = addmod(V, t2, n);
-        if (V & 1) { V = (n>>1) + (V>>1) + 1; } else { V >>= 1; }
-        sign = -1;  /* Qk *= Q */
+    V = montP;
+
+    if (Q == 1 || Q == -1) {   /* Faster code for |Q|=1, also opt for P=1 */
+      int sign = Q;
+      while (b > 1) {
+        U = mont_prod64(U, V, n, npi);
+        if (sign == 1) V = submod( mont_square64(V,n,npi), mont2, n);
+        else           V = addmod( mont_square64(V,n,npi), mont2, n);
+        sign = 1;
+        b--;
+        if ( (d >> (b-1)) & UVCONST(1) ) {
+          UV t2 = mont_prod64(U, montD, n, npi);
+          if (P == 1) {
+            U = addmod(U, V, n);
+            V = addmod(V, t2, n);
+          } else {
+            U = addmod( mont_prod64(U, montP, n, npi), V, n);
+            V = addmod( mont_prod64(V, montP, n, npi), t2, n);
+          }
+          if (U & 1) { U = (n>>1) + (U>>1) + 1; } else { U >>= 1; }
+          if (V & 1) { V = (n>>1) + (V>>1) + 1; } else { V >>= 1; }
+          sign = Q;
+        }
+      }
+      Qk = (sign == 1) ? mont1 : n-mont1;
+    } else {
+      const uint64_t montQ = (Q >= 0) ? compute_a_times_2_64_mod_n(Q, n, mont1)
+                           : n - compute_a_times_2_64_mod_n(-Q, n, mont1);
+      Qk = montQ;
+      while (b > 1) {
+        U = mont_prod64(U, V, n, npi);
+        V = submod( mont_square64(V,n,npi), addmod(Qk,Qk,n), n);
+        Qk = mont_square64(Qk,n,npi);
+        b--;
+        if ( (d >> (b-1)) & UVCONST(1) ) {
+          UV t2 = mont_prod64(U, montD, n, npi);
+          U = addmod( mont_prod64(U, montP, n, npi), V, n);
+          if (U & 1) { U = (n>>1) + (U>>1) + 1; } else { U >>= 1; }
+          V = addmod( mont_prod64(V, montP, n, npi), t2, n);
+          if (V & 1) { V = (n>>1) + (V>>1) + 1; } else { V >>= 1; }
+          Qk = mont_prod64(Qk, montQ, n, npi);
+        }
       }
     }
-    return (U == 0);
+    if (strength == 0) {
+      if (U == 0)
+        return 1;
+    } else if (strength == 1) {
+      if (U == 0)
+        return 1;
+      while (s--) {
+        if (V == 0)
+          return 1;
+        if (s) {
+          V = submod( mont_square64(V,n,npi), addmod(Qk,Qk,n), n);
+          Qk = mont_square64(Qk,n,npi);
+        }
+      }
+    } else {
+      if ( U == 0 && (V == mont2 || V == (n-mont2)) )
+        return 1;
+      s--;
+      while (s--) {
+        if (V == 0)
+          return 1;
+        if (s)
+          V = submod( mont_square64(V,n,npi), mont2, n);
+      }
+    }
+    return 0;
   }
 #endif
 
