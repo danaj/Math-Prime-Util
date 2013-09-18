@@ -19,14 +19,25 @@
 #include "lehmer.h"
 #include "aks.h"
 
-/* Workaround perl 5.6 UVs */
+#ifdef WIN32
+  #ifdef _MSC_VER
+    #include <stdlib.h>
+    #define PSTRTOULL(str, end, base) _strtoui64 (str, end, base)
+  #else
+    #define PSTRTOULL(str, end, base) strtoul (str, end, base)
+  #endif
+#else
+  #define PSTRTOULL(str, end, base) strtoull (str, end, base)
+#endif
+
+
+/* Workaround perl 5.6 UVs and bigints in later */
 #if PERL_REVISION <= 5 && PERL_VERSION <= 6 && BITS_PER_WORD == 64
- /* This could be blown up with a wacky string, but it's just for 5.6 */
  #define set_val_from_sv(val, sv) \
-   { char*ptr = SvPV_nolen(sv); val = Strtoul(ptr, NULL, 10); }
+   val = PSTRTOULL(SvPV_nolen(sv), NULL, 10);
 #else
  #define set_val_from_sv(val, sv) \
-   val = SvUV(sv)
+   val = (!SvROK(sv)) ? SvUV(sv) : PSTRTOULL(SvPV_nolen(sv), NULL, 10);
 #endif
 
 /* multicall compatibility stuff */
@@ -52,6 +63,14 @@ static int pbrent_factor_a1(UV n, UV *factors, UV maxrounds) {
   return pbrent_factor(n, factors, maxrounds, 1);
 }
 
+#if BITS_PER_WORD == 32
+  static const unsigned int uvmax_maxlen = 10;
+  static const char uvmax_str[] = "4294967295";
+#else
+  static const unsigned int uvmax_maxlen = 20;
+  static const char uvmax_str[] = "18446744073709551615";
+#endif
+
 /* Is this a pedantically valid integer?
  * Croaks if undefined or invalid.
  * Returns 0 if it is an object or a string too large for a UV.
@@ -62,38 +81,32 @@ static int _validate_int(SV* n, int negok)
   dTHX;
   char* ptr;
   STRLEN i, len;
-  UV val;
   int isneg = 0;
 
   if (!SvOK(n))  croak("Parameter must be defined");
-  /* aside: to detect bigint: if ( SvROK(n) && sv_isa(n, "Math::BigInt") ) */
-  if (SvROK(n))  return 0;
-  /* Perhaps SvPVbyte, or other UTF8 stuff? */
-  ptr = SvPV(n, len);
-  if (len == 0)  croak("Parameter '' must be a positive integer");
-  for (i = 0; i < len; i++) {
-    if (!isDIGIT(ptr[i])) {
-      if (i == 0 && ptr[i] == '-' && negok)
-        isneg = 1;
-      else if (i == 0 && ptr[i] == '+')
-        /* Allowed */ ;
-      else
-        croak("Parameter '%s' must be a positive integer", ptr); /* TODO NULL */
-    }
+  if (SvROK(n) && !sv_isa(n, "Math::BigInt"))  return 0;
+  ptr = SvPV(n, len);  /* This will stringify bigints for us, yay */
+  if (len == 0 || ptr == 0)  croak("Parameter '' must be a positive integer");
+  if (ptr[0] == '-') {                 /* Read negative sign */
+    if (negok) { isneg = 1; ptr++; len--; }
+    else       croak("Parameter '%s' must be a positive integer", ptr);
   }
-  if (isneg) return -1;  /* It's a valid negative number */
-  set_val_from_sv(val, n);
-  if (val == UV_MAX) { /* Could be bigger than UV_MAX.  Need to find out. */
-    char vstr[40];
-    sprintf(vstr, "%"UVuf, val);
-    /* Skip possible leading zeros */
-    while (len > 0 && (*ptr == '0' || *ptr == '+'))
-      { ptr++; len--; }
-    for (i = 0; i < len; i++)
-      if (vstr[i] != ptr[i])
-        return 0;
-  }
-  return 1;
+  if (ptr[0] == '+') { ptr++; len--; } /* Allow a single plus sign */
+  while (len > 0 && *ptr == '0')       /* Strip all leading zeros */
+    { ptr++; len--; }
+  if (len > uvmax_maxlen)              /* Huge number, don't even look at it */
+    return 0;
+  for (i = 0; i < len; i++)            /* Ensure all characters are digits */
+    if (!isDIGIT(ptr[i]))
+      croak("Parameter '%s' must be a positive integer", ptr);
+  if (isneg)                           /* Negative number (ignore overflow) */
+    return -1;
+  if (len < uvmax_maxlen)              /* Valid small integer */
+    return 1;
+  for (i = 0; i < uvmax_maxlen; i++)   /* Check if in range */
+    if (ptr[i] > uvmax_str[i])
+      return 0;
+  return 1;                            /* Looks good */
 }
 
 /* Call a Perl sub to handle work for us.
@@ -513,19 +526,19 @@ _XS_is_almost_extra_strong_lucas_pseudoprime(IN UV n, IN UV increment = 1)
     RETVAL
 
 int
-is_prime(IN SV* n)
+is_prime(IN SV* svn)
   ALIAS:
     is_prob_prime = 1
   PREINIT:
     int status;
   PPCODE:
-    status = _validate_int(n, 1);
+    status = _validate_int(svn, 1);
     if (status == -1) {
       XSRETURN_UV(0);
     } else if (status == 1) {
-      UV val;
-      set_val_from_sv(val, n);
-      XSRETURN_UV(_XS_is_prime(val));
+      UV n;
+      set_val_from_sv(n, svn);
+      XSRETURN_UV(_XS_is_prime(n));
     } else {
       const char* sub = 0;
       if (_XS_get_callgmp())
@@ -693,6 +706,11 @@ _validate_num(SV* n, ...)
   CODE:
     RETVAL = 0;
     if (_validate_int(n, 0)) {
+      if (SvROK(n)) {  /* Convert small Math::BigInt object into scalar */
+        UV val;
+        set_val_from_sv(val, n);
+        sv_setuv(n, val);
+      }
       if (items > 1 && SvOK(ST(1))) {
         UV val, min, max;
         set_val_from_sv(val, n);

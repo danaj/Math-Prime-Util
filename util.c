@@ -147,30 +147,36 @@ static const unsigned char prime_sieve30[] =
 /* Return of 2 if n is prime, 0 if not.  Do it fast. */
 int _XS_is_prime(UV n)
 {
-  UV d, m;
-  unsigned char mtab;
-  const unsigned char* sieve;
-  int isprime;
+  if (n < UVCONST(2000000000)) {
+    UV d, m;
+    unsigned char mtab;
+    const unsigned char* sieve;
+    int isprime = -1;
 
-  if (n <= 10)  return (n == 2 || n == 3 || n == 5 || n == 7) ? 2 : 0;
-  d = n/30;
-  m = n - d*30;
-  mtab = masktab30[m];  /* Bitmask in mod30 wheel */
+    if (n <= 10)  return (n == 2 || n == 3 || n == 5 || n == 7) ? 2 : 0;
 
-  /* Return 0 if a multiple of 2, 3, or 5 */
-  if (mtab == 0)
-    return 0;
+    d = n/30;
+    m = n - d*30;
+    mtab = masktab30[m];  /* Bitmask in mod30 wheel */
 
-  if (d < NPRIME_SIEVE30)
-    return (prime_sieve30[d] & mtab) ? 0 : 2;
+    /* Return 0 if a multiple of 2, 3, or 5 */
+    if (mtab == 0)
+      return 0;
 
-  isprime = (n <= get_prime_cache(0, &sieve))
-            ?  2*((sieve[d] & mtab) == 0)
-            :  -1;
-  release_prime_cache(sieve);
+    /* Check static tiny sieve */
+    if (d < NPRIME_SIEVE30)
+      return (prime_sieve30[d] & mtab) ? 0 : 2;
 
-  /* return (isprime >= 0)  ?  isprime  :  _is_prime7(n); */
-  return (isprime >= 0)  ?  isprime  :  _XS_is_prob_prime(n);
+    if (!(n%7) || !(n%11) || !(n%13)) return 0;
+
+    /* Check primary cache */
+    if (n <= get_prime_cache(0, &sieve))
+      isprime = 2*((sieve[d] & mtab) == 0);
+    release_prime_cache(sieve);
+    if (isprime >= 0)
+      return isprime;
+  }
+  return _XS_is_prob_prime(n);
 }
 
 

@@ -8,6 +8,9 @@ Revision history for Perl module Math::Prime::Util
       - carmichael_lambda
       - znorder
 
+    - Input validation accepts bigint objects and converts them to scalars
+      entirely in XS.
+
     - random_nbit_prime now uses Fouque and Tibouchi A1.  Slightly better
       uniformity and typically a bit faster.
 

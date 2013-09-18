@@ -1492,13 +1492,6 @@ sub _generic_forprimes (&$;$) {    ## no critic qw(ProhibitSubroutinePrototypes)
   if (!defined $end) { $end = $beg; $beg = 2; }
   _validate_num($beg) || _validate_positive_integer($beg);
   _validate_num($end) || _validate_positive_integer($end);
-  # It's possible we're here just because the arguments were bigints < 2^64
-  # TODO: make a function to convert native size bigints to UVs, and let the
-  #       XS functions call that, so we don't do these loop-de-loops.  This
-  #       also has nasty coupling with the XS implementation.
-  if (!ref($beg) && !ref($end) && $beg <= $_XS_MAXVAL && $end <= $_XS_MAXVAL && $] >= 5.007) {
-    return forprimes( \&$sub, $beg, $end);
-  }
   $beg = 2 if $beg < 2;
   {
     my $pp;
@@ -4100,11 +4093,11 @@ is 40 by default).  Accuracy without MPFR should be 35 digits.
 
 Print strong pseudoprimes to base 17 up to 10M:
 
+    # Similar to A001262's isStrongPsp function, but over 4x faster
     perl -MMath::Prime::Util=:all -E 'my $n=3; while($n <= 10000000) { print "$n " if is_strong_pseudoprime($n,$base) && !is_prime($n); $n+=2; } BEGIN {$|=1; $base=17}'
 
 or, slightly faster, use forprimes and loop over the odds between primes:
 
-   # Runs about 5x faster than Pari using A001262's isStrongPsp function
    perl -MMath::Prime::Util=:all -E '$|=1; $base=17; my $prev = 1; forprimes { $prev += 2; while ($prev < $_) { print "$prev " if is_strong_pseudoprime($prev,$base); $prev += 2; } } 3,10000000'
 
 Print some primes above 64-bit range:
@@ -4272,8 +4265,10 @@ handle using it.  There are still some functions it doesn't do well
 L<Math::Prime::XS> has C<is_prime> and C<primes> functionality.  There is no
 bigint support.  The C<is_prime> function uses well-written trial division,
 meaning it is very fast for small numbers, but terribly slow for large
-64-bit numbers.  With the latest release, MPU should be faster for all sizes.
-The prime sieve is an unoptimized non-segmented SoE which returns an
+64-bit numbers.  Because MPU does input validation and bigint conversion,
+there is about 20 microseconds of additional overhead making MPXS a little
+faster for tiny inputs, but once over 700k, MPU is faster for all values.
+MPXS's prime sieve is an unoptimized non-segmented SoE which returns an
 array.  It works well for 32-bit values, but speed and memory are problematic
 for larger values.
 
@@ -4287,8 +4282,7 @@ All this functionality is present in MPU as well, though not required.
 
 L<Bit::Vector> supports the C<primes> and C<prime_count> functionality in a
 somewhat similar way to L<Math::Prime::FastSieve>.  It is the slowest of all
-the XS sieves, and has the most memory use.  It is, however, faster than
-the pure Perl code in MPU or elsewhere.
+the XS sieves, and has the most memory use.  It is faster than pure Perl code.
 
 L<Crypt::Primes> supports C<random_maurer_prime> functionality.  MPU has
 more options for random primes (n-digit, n-bit, ranged, and strong) in
@@ -4302,7 +4296,7 @@ Having L<Math::Prime::Util::GMP> installed also helps performance for MPU.
 Crypt::Primes is hardcoded to use L<Crypt::Random>, while MPU uses
 L<Bytes::Random::Secure>, and also allows plugging in a random function.
 This is more flexible, faster, has fewer dependencies, and uses a CSPRNG
-for security.
+for security.  MPU can return a primality certificate.
 What Crypt::Primes has that MPU does not is support for returning a generator.
 
 L<Math::Factor::XS> calculates prime factors and factors, which correspond to
@@ -4674,15 +4668,15 @@ result is uniformly distributed, only about 10% of the primes in the range
 are selected for output.  This is a result of the FastPrime algorithm and
 is usually unimportant.
 
-L<Crypt::Primes/maurer> is included for comparison.  It is pretty fast for
-small sizes but gets slow as the size increases.  It does not perform any
-primality checks on the intermediate results or the final result (I highly
-recommended you run a primality test on the output).
+L<Crypt::Primes/maurer> times are included for comparison.  It is pretty
+fast for small sizes but gets slow as the size increases.  It does not
+perform any primality checks on the intermediate results or the final
+result (I highly recommended you run a primality test on the output).
 Additionally important for servers, L<Crypt::Primes/maurer> uses excessive
 system entropy and can grind to a halt if C</dev/random> is exhausted
 (it can take B<days> to return).  The times above are on a machine running
 L<HAVEGED|http://www.issihosts.com/haveged/>
-so never waits for entropy.
+so never waits for entropy.  Without this, the times would be much higher.
 
 
 =head1 AUTHORS
