@@ -356,14 +356,13 @@ void lucas_seq(UV* Uret, UV* Vret, UV* Qkret, UV n, IV P, IV Q, UV k)
   U = 1;
   V = Pmod;
   Qk = Qmod;
-  { UV v = k; b = 1; while (v >>= 1) b++; }
+  { UV v = k; b = 0; while (v >>= 1) b++; }
 
   if (Q == 1) {
-    while (b > 1) {
+    while (b--) {
       U = mulmod(U, V, n);
       V = mulsubmod(V, V, 2, n);
-      b--;
-      if ( (k >> (b-1)) & UVCONST(1) ) {
+      if ( (k >> b) & UVCONST(1) ) {
         UV t2 = mulmod(U, Dmod, n);
         U = muladdmod(U, Pmod, V, n);
         if (U & 1) { U = (n>>1) + (U>>1) + 1; } else { U >>= 1; }
@@ -375,13 +374,12 @@ void lucas_seq(UV* Uret, UV* Vret, UV* Qkret, UV n, IV P, IV Q, UV k)
     /* This is about 30% faster than the generic code below.  Since 50% of
      * Lucas and strong Lucas tests come here, I think it's worth doing. */
     int sign = Q;
-    while (b > 1) {
+    while (b--) {
       U = mulmod(U, V, n);
       if (sign == 1) V = mulsubmod(V, V, 2, n);
       else           V = muladdmod(V, V, 2, n);
       sign = 1;   /* Qk *= Qk */
-      b--;
-      if ( (k >> (b-1)) & UVCONST(1) ) {
+      if ( (k >> b) & UVCONST(1) ) {
         UV t2 = mulmod(U, Dmod, n);
         U = addmod(U, V, n);
         if (U & 1) { U = (n>>1) + (U>>1) + 1; } else { U >>= 1; }
@@ -392,12 +390,11 @@ void lucas_seq(UV* Uret, UV* Vret, UV* Qkret, UV n, IV P, IV Q, UV k)
     }
     if (sign == 1) Qk = 1;
   } else {
-    while (b > 1) {
+    while (b--) {
       U = mulmod(U, V, n);
       V = mulsubmod(V, V, addmod(Qk,Qk,n), n);
       Qk = sqrmod(Qk, n);
-      b--;
-      if ( (k >> (b-1)) & UVCONST(1) ) {
+      if ( (k >> b) & UVCONST(1) ) {
         UV t2 = mulmod(U, Dmod, n);
         U = muladdmod(U, Pmod, V, n);
         if (U & 1) { U = (n>>1) + (U>>1) + 1; } else { U >>= 1; }
@@ -472,7 +469,7 @@ int _XS_is_lucas_pseudoprime(UV n, int strength)
     const uint64_t montD = (D >= 0) ? compute_a_times_2_64_mod_n(D, n, mont1)
                          : n - compute_a_times_2_64_mod_n(-D, n, mont1);
     UV b;
-    { UV v = d; b = 1; while (v >>= 1) b++; }
+    { UV v = d; b = 0; while (v >>= 1) b++; }
 
     /* U, V, Qk, and mont* are in Montgomery space */
     U = mont1;
@@ -480,13 +477,12 @@ int _XS_is_lucas_pseudoprime(UV n, int strength)
 
     if (Q == 1 || Q == -1) {   /* Faster code for |Q|=1, also opt for P=1 */
       int sign = Q;
-      while (b > 1) {
+      while (b--) {
         U = mont_prod64(U, V, n, npi);
         if (sign == 1) V = submod( mont_square64(V,n,npi), mont2, n);
         else           V = addmod( mont_square64(V,n,npi), mont2, n);
         sign = 1;
-        b--;
-        if ( (d >> (b-1)) & UVCONST(1) ) {
+        if ( (d >> b) & UVCONST(1) ) {
           UV t2 = mont_prod64(U, montD, n, npi);
           if (P == 1) {
             U = addmod(U, V, n);
@@ -505,12 +501,11 @@ int _XS_is_lucas_pseudoprime(UV n, int strength)
       const uint64_t montQ = (Q >= 0) ? compute_a_times_2_64_mod_n(Q, n, mont1)
                            : n - compute_a_times_2_64_mod_n(-Q, n, mont1);
       Qk = montQ;
-      while (b > 1) {
+      while (b--) {
         U = mont_prod64(U, V, n, npi);
         V = submod( mont_square64(V,n,npi), addmod(Qk,Qk,n), n);
         Qk = mont_square64(Qk,n,npi);
-        b--;
-        if ( (d >> (b-1)) & UVCONST(1) ) {
+        if ( (d >> b) & UVCONST(1) ) {
           UV t2 = mont_prod64(U, montD, n, npi);
           U = addmod( mont_prod64(U, montP, n, npi), V, n);
           if (U & 1) { U = (n>>1) + (U>>1) + 1; } else { U >>= 1; }
@@ -595,7 +590,7 @@ int _XS_is_lucas_pseudoprime(UV n, int strength)
  */
 int _XS_is_almost_extra_strong_lucas_pseudoprime(UV n, UV increment)
 {
-  UV P, V, d, s;
+  UV P, V, W, d, s, b;
 
   if (n < 7) return (n == 2 || n == 3 || n == 5);
   if ((n % 2) == 0 || n == UV_MAX) return 0;
@@ -620,6 +615,7 @@ int _XS_is_almost_extra_strong_lucas_pseudoprime(UV n, UV increment)
   d = n+1;
   s = 0;
   while ( (d & 1) == 0 ) {  s++;  d >>= 1; }
+  { UV v = d; b = 0; while (v >>= 1) b++; }
 
 #if USE_MONT_PRIMALITY
   if (n > UVCONST(4294967295)) {
@@ -627,12 +623,10 @@ int _XS_is_almost_extra_strong_lucas_pseudoprime(UV n, UV increment)
     const uint64_t montr = compute_modn64(n);
     const uint64_t mont2 = compute_2_65_mod_n(n, montr);
     const uint64_t montP = compute_a_times_2_64_mod_n(P, n, montr);
-    UV W, b;
     W = submod(  mont_prod64( montP, montP, n, npi),  mont2, n);
     V = montP;
-    { UV v = d; b = 1; while (v >>= 1) b++; }
-    while (b-- > 1) {
-      if ( (d >> (b-1)) & UVCONST(1) ) {
+    while (b--) {
+      if ( (d >> b) & UVCONST(1) ) {
         V = submod(  mont_prod64(V, W, n, npi),  montP, n);
         W = submod(  mont_prod64(W, W, n, npi),  mont2, n);
       } else {
@@ -643,29 +637,25 @@ int _XS_is_almost_extra_strong_lucas_pseudoprime(UV n, UV increment)
 
     if (V == mont2 || V == (n-mont2))
       return 1;
-    while (s-- > 1) {
+    s--;
+    while (s--) {
       if (V == 0)
         return 1;
-      V = submod(  mont_prod64(V, V, n, npi),  mont2, n);
-      if (V == mont2)
-        return 0;
+      if (s)
+        V = submod(  mont_prod64(V, V, n, npi),  mont2, n);
     }
     return 0;
   }
 #endif
-  {
-    UV W, b;
-    V = P;
-    W = mulsubmod(P, P, 2, n);
-    { UV v = d; b = 1; while (v >>= 1) b++; }
-    while (b-- > 1) {
-      if ( (d >> (b-1)) & UVCONST(1) ) {
-        V = mulsubmod(V, W, P, n);
-        W = mulsubmod(W, W, 2, n);
-      } else {
-        W = mulsubmod(V, W, P, n);
-        V = mulsubmod(V, V, 2, n);
-      }
+  W = mulsubmod(P, P, 2, n);
+  V = P;
+  while (b--) {
+    if ( (d >> b) & UVCONST(1) ) {
+      V = mulsubmod(V, W, P, n);
+      W = mulsubmod(W, W, 2, n);
+    } else {
+      W = mulsubmod(V, W, P, n);
+      V = mulsubmod(V, V, 2, n);
     }
   }
   if (V == 2 || V == (n-2))
