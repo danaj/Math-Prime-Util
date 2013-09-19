@@ -29,6 +29,17 @@ static const unsigned char distancewheel30[30] =
 /* Once on the wheel, add this to get to next spot.  In p space, not m. */
 static const unsigned char wheeladvance30[30] =
     {0,6,0,0,0,0,0,4,0,0,0,2,0,4,0,0,0,2,0,4,0,0,0,6,0,0,0,0,0,2};
+/* For advancing in prime steps in the segment sieve */
+static const unsigned char primestepadvance30[15][30] = {
+ {1,0,5,4,3,2,1,0,3,2,1,0,1,0,3,2,1,0,1,0,3,2,1,0,5,4,3,2,1,0}, {0}, {0},
+ {1,0,3,2,1,2,1,0,3,2,1,0,1,0,5,2,1,0,5,0,3,4,1,0,1,4,3,2,3,0}, {0},
+ {1,0,1,4,3,4,1,0,1,2,3,0,1,0,3,2,3,0,1,0,1,2,5,0,5,2,1,2,3,0},
+ {1,0,3,2,1,2,1,0,3,4,1,0,5,0,3,2,1,0,1,0,3,2,3,0,1,4,5,2,1,0}, {0},
+ {1,0,1,2,5,4,1,0,3,2,3,0,1,0,1,2,3,0,5,0,1,4,3,0,1,2,1,2,3,0},
+ {1,0,3,2,1,2,5,0,5,2,1,0,1,0,3,2,3,0,1,0,3,2,1,0,1,4,3,4,1,0}, {0},
+ {1,0,3,2,3,4,1,0,1,4,3,0,5,0,1,2,5,0,1,0,1,2,3,0,1,2,1,2,3,0}, {0},{0},
+ {1,0,1,2,3,4,5,0,1,2,3,0,1,0,1,2,3,0,1,0,1,2,3,0,1,2,3,4,5,0}
+};
 
 #ifdef FUNC_is_prime_in_sieve
 static int is_prime_in_sieve(const unsigned char* sieve, UV p) {
@@ -71,17 +82,27 @@ static UV prev_prime_in_sieve(const unsigned char* sieve, UV p) {
 /* Useful macros for the wheel-30 sieve array */
 #define START_DO_FOR_EACH_SIEVE_PRIME(sieve, a, b) \
   { \
+    const unsigned char* sieve_ = sieve; \
     UV p = a; \
     UV l_ = b; \
     UV d_ = p/30; \
     UV m_ = p-d_*30; \
+    UV lastd_ = l_/30; \
     m_ += distancewheel30[m_]; \
+    while (d_ <= lastd_ && (sieve_[d_] & masktab30[m_])) { \
+      m_ = nextwheel30[m_]; if (m_ == 1) { d_++; } \
+    } \
     p = d_*30 + m_; \
     while ( p <= l_ ) { \
-      if ((sieve[d_] & masktab30[m_]) == 0)
 
 #define END_DO_FOR_EACH_SIEVE_PRIME \
-      m_ = nextwheel30[m_];  if (m_ == 1) { d_++; } \
+      do { \
+        m_ = nextwheel30[m_]; \
+        if (m_ == 1) { \
+          do { d_++; } while (d_ <= lastd_ && sieve_[d_] == 0xFF); \
+          if (d_ > lastd_) break; \
+        } \
+      } while (sieve_[d_] & masktab30[m_]); \
       p = d_*30+m_; \
     } \
   }
@@ -93,6 +114,7 @@ static UV prev_prime_in_sieve(const unsigned char* sieve, UV p) {
     UV m_ = 7; \
     UV p  = a; \
     UV l_ = b; \
+    UV lastd_ = l_/30; \
     if (get_prime_cache(l_, &sieve_) < l_) { \
       release_prime_cache(sieve_); \
       croak("Could not generate sieve for %"UVuf, l_); \
@@ -103,10 +125,12 @@ static UV prev_prime_in_sieve(const unsigned char* sieve, UV p) {
       d_ = p/30; \
       m_ = p-d_*30; \
       m_ += distancewheel30[m_]; \
+      while (d_ <= lastd_ && (sieve_[d_] & masktab30[m_])) { \
+        m_ = nextwheel30[m_]; if (m_ == 1) { d_++; } \
+      } \
       p = d_*30 + m_; \
     } \
-    while ( p <= l_ ) { \
-      if (p < 7 || !(sieve_[d_] & masktab30[m_]))
+    while ( p <= l_ ) {
 
 #define RETURN_FROM_EACH_PRIME(x) \
     do { release_prime_cache(sieve_); return(x); } while (0)
@@ -115,7 +139,10 @@ static UV prev_prime_in_sieve(const unsigned char* sieve, UV p) {
       if (p < 7) { \
         p += 1 + (p > 2); \
       } else { \
-        m_ = nextwheel30[m_];  if (m_ == 1) { d_++; } \
+        do { \
+          m_ = nextwheel30[m_]; \
+          if (m_ == 1) { d_++; if (d_ > lastd_) break; } \
+        } while (sieve_[d_] & masktab30[m_]); \
         p = d_*30+m_; \
       } \
     } \
