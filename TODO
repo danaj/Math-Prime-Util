@@ -41,4 +41,6 @@
 
 - Rewrite 23-primality-proofs.t for new format (keep some of the old tests?).
 
-- Use Montgomery routines in more places: Factoring and Lucas tests.
+- Use Montgomery routines in more places: Factoring.
+
+- Tests for PrimeIterator

@@ -27,7 +27,7 @@ our @EXPORT_OK =
       miller_rabin
       lucas_sequence
       primes
-      forprimes prime_iterator
+      forprimes prime_iterator prime_iterator_object
       next_prime  prev_prime
       prime_count
       prime_count_lower prime_count_upper prime_count_approx
@@ -1517,6 +1517,13 @@ sub prime_iterator {
   }
 }
 
+sub prime_iterator_object {
+  my($start) = @_;
+  eval { require Math::Prime::Util::PrimeIterator; 1; }
+  or do { croak "Cannot load Math::Prime::Util::PrimeIterator"; };
+  return Math::Prime::Util::PrimeIterator->new($start);
+}
+
 # Omega function A001221.  Just an example.
 sub _omega {
   my($n) = @_;
@@ -1673,11 +1680,12 @@ sub _generic_is_prime {
   return 0 if defined $n && $n < 2;
   if (!_validate_num($n)) {
     $n = Math::BigInt->new("$n")
-       if defined $Math::BigInt::VERSION && ref($n) ne 'Math::BigInt';
+       if defined $Math::BigInt::VERSION && ref($_[0]) ne 'Math::BigInt';
     _validate_positive_integer($n);
   }
 
-  return _XS_is_prime("$n") if ref($n) ne 'Math::BigInt' && $n <= $_XS_MAXVAL;
+  return _XS_is_prime($n)
+    if ref($_[0]) ne 'Math::BigInt' && $n <= $_XS_MAXVAL;
   return Math::Prime::Util::GMP::is_prime($n) if $_HAVE_GMP;
 
   return 2 if ($n == 2) || ($n == 3) || ($n == 5);  # 2, 3, 5 are prime
@@ -1691,11 +1699,12 @@ sub _generic_is_prob_prime {
   return 0 if defined $n && $n < 2;
   if (!_validate_num($n)) {
     $n = Math::BigInt->new("$n")
-       if defined $Math::BigInt::VERSION && ref($n) ne 'Math::BigInt';
+       if defined $Math::BigInt::VERSION && ref($_[0]) ne 'Math::BigInt';
     _validate_positive_integer($n);
   }
 
-  return _XS_is_prob_prime($n) if ref($n) ne 'Math::BigInt' && $n<=$_XS_MAXVAL;
+  return _XS_is_prob_prime($n)
+    if ref($_[0]) ne 'Math::BigInt' && $n <= $_XS_MAXVAL;
   return Math::Prime::Util::GMP::is_prob_prime($n) if $_HAVE_GMP;
 
   return 2 if ($n == 2) || ($n == 3) || ($n == 5);  # 2, 3, 5 are prime
@@ -1709,8 +1718,9 @@ sub _generic_next_prime {
   _validate_num($n) || _validate_positive_integer($n);
 
   # If we have XS and n is either small or bigint is unknown, then use XS.
-  return _XS_next_prime($n) if ref($n) ne 'Math::BigInt' && $n <= $_XS_MAXVAL
-             && (!defined $bigint::VERSION || $n < $_Config{'maxprime'} );
+  return _XS_next_prime($n)
+    if ref($_[0]) ne 'Math::BigInt' && $n <= $_XS_MAXVAL
+    && (!defined $bigint::VERSION || $n < $_Config{'maxprime'});
 
   # Try to stick to the plan with respect to maximum return values.
   return 0 if ref($_[0]) ne 'Math::BigInt' && $n >= $_Config{'maxprime'};
@@ -1728,10 +1738,11 @@ sub _generic_prev_prime {
   my($n) = @_;
   _validate_num($n) || _validate_positive_integer($n);
 
-  return _XS_prev_prime($n) if ref($n) ne 'Math::BigInt' && $n <= $_XS_MAXVAL;
+  return _XS_prev_prime($n)
+    if ref($_[0]) ne 'Math::BigInt' && $n <= $_XS_MAXVAL;
   if ($_HAVE_GMP) {
     # If $n is a bigint object, try to make the return value the same
-    return (ref($n) eq 'Math::BigInt')
+    return (ref($_[0]) eq 'Math::BigInt')
         ?  $n->copy->bzero->badd(Math::Prime::Util::GMP::prev_prime($n))
         :  Math::Prime::Util::GMP::prev_prime($n);
   }
@@ -1789,7 +1800,7 @@ sub factor {
 
   if ($_HAVE_GMP) {
     my @factors = Math::Prime::Util::GMP::factor($n);
-    if (ref($n) eq 'Math::BigInt') {
+    if (ref($_[0]) eq 'Math::BigInt') {
       @factors = map { ($_ > ~0) ? $n->copy->bzero->badd($_) : $_ } @factors;
     }
     return @factors;
@@ -1828,7 +1839,7 @@ sub is_pseudoprime {
   _validate_num($n) || _validate_positive_integer($n);
   _validate_num($a) || _validate_positive_integer($a);
   return _XS_is_pseudoprime($n, $a)
-    if ref($n) ne 'Math::BigInt' && $n <= $_XS_MAXVAL;
+    if ref($_[0]) ne 'Math::BigInt' && $n <= $_XS_MAXVAL;
   return Math::Prime::Util::GMP::is_pseudoprime($n, $a)
     if $_HAVE_GMP && defined &Math::Prime::Util::GMP::is_pseudoprime;
   return Math::Prime::Util::PP::is_pseudoprime($n, $a);
@@ -1838,7 +1849,8 @@ sub is_strong_pseudoprime {
   my($n) = shift;
   _validate_num($n) || _validate_positive_integer($n);
   # validate bases?
-  return _XS_miller_rabin($n, @_) if ref($n) ne 'Math::BigInt' && $n <= $_XS_MAXVAL;
+  return _XS_miller_rabin($n, @_)
+    if ref($_[0]) ne 'Math::BigInt' && $n <= $_XS_MAXVAL;
   return Math::Prime::Util::GMP::is_strong_pseudoprime($n, @_) if $_HAVE_GMP;
   return Math::Prime::Util::PP::miller_rabin($n, @_);
 }
@@ -1847,7 +1859,7 @@ sub is_lucas_pseudoprime {
   my($n) = shift;
   _validate_num($n) || _validate_positive_integer($n);
   return _XS_is_lucas_pseudoprime($n)
-    if ref($n) ne 'Math::BigInt' && $n <= $_XS_MAXVAL;
+    if ref($_[0]) ne 'Math::BigInt' && $n <= $_XS_MAXVAL;
   return Math::Prime::Util::GMP::is_lucas_pseudoprime("$n")
     if $_HAVE_GMP && defined &Math::Prime::Util::GMP::is_lucas_pseudoprime;
   return Math::Prime::Util::PP::is_lucas_pseudoprime($n);
@@ -1857,7 +1869,7 @@ sub is_strong_lucas_pseudoprime {
   my($n) = shift;
   _validate_num($n) || _validate_positive_integer($n);
   return _XS_is_strong_lucas_pseudoprime($n)
-    if ref($n) ne 'Math::BigInt' && $n <= $_XS_MAXVAL;
+    if ref($_[0]) ne 'Math::BigInt' && $n <= $_XS_MAXVAL;
   return Math::Prime::Util::GMP::is_strong_lucas_pseudoprime("$n")
     if $_HAVE_GMP;
   return Math::Prime::Util::PP::is_strong_lucas_pseudoprime($n);
@@ -1867,7 +1879,7 @@ sub is_extra_strong_lucas_pseudoprime {
   my($n) = shift;
   _validate_num($n) || _validate_positive_integer($n);
   return _XS_is_extra_strong_lucas_pseudoprime($n)
-    if ref($n) ne 'Math::BigInt' && $n <= $_XS_MAXVAL;
+    if ref($_[0]) ne 'Math::BigInt' && $n <= $_XS_MAXVAL;
   return Math::Prime::Util::GMP::is_extra_strong_lucas_pseudoprime("$n")
     if $_HAVE_GMP
     && defined &Math::Prime::Util::GMP::is_extra_strong_lucas_pseudoprime;
@@ -1884,7 +1896,7 @@ sub is_almost_extra_strong_lucas_pseudoprime {
     || _validate_positive_integer($inc, 1, 256);
   }
   return _XS_is_almost_extra_strong_lucas_pseudoprime($n, $inc)
-    if ref($n) ne 'Math::BigInt' && $n <= $_XS_MAXVAL;
+    if ref($_[0]) ne 'Math::BigInt' && $n <= $_XS_MAXVAL;
   return Math::Prime::Util::GMP::is_almost_extra_strong_lucas_pseudoprime("$n", $inc)
     if $_HAVE_GMP
     && defined &Math::Prime::Util::GMP::is_almost_extra_strong_lucas_pseudoprime;
@@ -1895,7 +1907,7 @@ sub is_frobenius_underwood_pseudoprime {
   my($n) = shift;
   _validate_num($n) || _validate_positive_integer($n);
   return _XS_is_frobenius_underwood_pseudoprime($n)
-    if ref($n) ne 'Math::BigInt' && $n <= $_XS_MAXVAL;
+    if ref($_[0]) ne 'Math::BigInt' && $n <= $_XS_MAXVAL;
   return Math::Prime::Util::GMP::is_frobenius_underwood_pseudoprime("$n")
     if $_HAVE_GMP
     && defined &Math::Prime::Util::GMP::is_frobenius_underwood_pseudoprime;
@@ -1916,8 +1928,8 @@ sub lucas_sequence {
   { my $testQ = (!defined $Q || $Q >= 0) ? $Q : -$Q;
     _validate_num($testQ) || _validate_positive_integer($testQ); }
   return _XS_lucas_sequence($n, $P, $Q, $k)
-    if ref($n) ne 'Math::BigInt' && $n <= $_XS_MAXVAL
-    && ref($k) ne 'Math::BigInt' && $k <= $_XS_MAXVAL;
+    if ref($_[0]) ne 'Math::BigInt' && $n <= $_XS_MAXVAL
+    && ref($_[3]) ne 'Math::BigInt' && $k <= $_XS_MAXVAL;
   return Math::Prime::Util::GMP::lucas_sequence($n, $P, $Q, $k)
     if $_HAVE_GMP
     && defined &Math::Prime::Util::GMP::lucas_sequence;
@@ -1967,7 +1979,8 @@ sub is_provable_prime {
   return 0 if defined $n && $n < 2;
   _validate_num($n) || _validate_positive_integer($n);
 
-  return _XS_is_prime("$n") if ref($n) ne 'Math::BigInt' && $n <= $_XS_MAXVAL;
+  return _XS_is_prime($n)
+    if ref($_[0]) ne 'Math::BigInt' && $n <= $_XS_MAXVAL;
   return Math::Prime::Util::GMP::is_provable_prime($n)
          if $_HAVE_GMP && defined &Math::Prime::Util::GMP::is_provable_prime;
 
@@ -1989,7 +2002,7 @@ sub is_provable_prime_with_cert {
   _validate_num($n) || _validate_positive_integer($n);
   my $header = "[MPU - Primality Certificate]\nVersion 1.0\n\nProof for:\nN $n\n\n";
 
-  if (ref($n) ne 'Math::BigInt' && $n <= $_XS_MAXVAL) {
+  if (ref($_[0]) ne 'Math::BigInt' && $n <= $_XS_MAXVAL) {
     my $isp = _XS_is_prime("$n");
     return ($isp, '') unless $isp == 2;
     return (2, "[MPU - Primality Certificate]\nVersion 1.0\n\nProof for:\nN $n\n\nType Small\nN $n\n");
@@ -2082,7 +2095,7 @@ sub prime_count_approx {
   }
 
   # Turn on high precision FP if they gave us a big number.
-  $x = _upgrade_to_float($x) if ref($x) eq 'Math::BigInt';
+  $x = _upgrade_to_float($x) if ref($_[0]) eq 'Math::BigInt';
 
   #    Method             10^10 %error  10^19 %error
   #    -----------------  ------------  ------------
@@ -2122,7 +2135,7 @@ sub prime_count_lower {
 
   return $_prime_count_small[$x] if $x <= $#_prime_count_small;
 
-  $x = _upgrade_to_float($x) if ref($x) eq 'Math::BigInt';
+  $x = _upgrade_to_float($x) if ref($_[0]) eq 'Math::BigInt';
 
   my $flogx = log($x);
 
@@ -2168,7 +2181,7 @@ sub prime_count_upper {
 
   return $_prime_count_small[$x] if $x <= $#_prime_count_small;
 
-  $x = _upgrade_to_float($x) if ref($x) eq 'Math::BigInt';
+  $x = _upgrade_to_float($x) if ref($_[0]) eq 'Math::BigInt';
 
   # Chebyshev:            1.25506*x/logx       x >= 17
   # Rosser & Schoenfeld:  x/(logx-3/2)         x >= 67
@@ -2239,7 +2252,7 @@ sub nth_prime_approx {
 
   return $_primes_small[$n] if $n <= $#_primes_small;
 
-  $n = _upgrade_to_float($n) if ref($n) eq 'Math::BigInt';
+  $n = _upgrade_to_float($n) if ref($_[0]) eq 'Math::BigInt';
 
   my $flogn  = log($n);
   my $flog2n = log($flogn);
@@ -2293,7 +2306,7 @@ sub nth_prime_lower {
 
   return $_primes_small[$n] if $n <= $#_primes_small;
 
-  $n = _upgrade_to_float($n) if ref($n) eq 'Math::BigInt';
+  $n = _upgrade_to_float($n) if ref($_[0]) eq 'Math::BigInt';
 
   my $flogn  = log($n);
   my $flog2n = log($flogn);  # Note distinction between log_2(n) and log^2(n)
@@ -2318,7 +2331,7 @@ sub nth_prime_upper {
 
   return $_primes_small[$n] if $n <= $#_primes_small;
 
-  $n = _upgrade_to_float($n) if ref($n) eq 'Math::BigInt';
+  $n = _upgrade_to_float($n) if ref($_[0]) eq 'Math::BigInt';
 
   my $flogn  = log($n);
   my $flog2n = log($flogn);  # Note distinction between log_2(n) and log^2(n)
@@ -2411,7 +2424,7 @@ __END__
 
 =encoding utf8
 
-=for stopwords forprimes Möbius Deléglise totient moebius mertens znorder irand primesieve uniqued k-tuples von SoE pari yafu fonction qui compte le nombre nombres voor PhD superset sqrt(N) gcd(A^M
+=for stopwords forprimes Möbius Deléglise totient moebius mertens znorder irand primesieve uniqued k-tuples von SoE pari yafu fonction qui compte le nombre nombres voor PhD superset sqrt(N) gcd(A^M k-th
 
 
 =head1 NAME
@@ -2740,7 +2753,7 @@ strictly less than the input).  0 is returned if the input is C<2> or lower.
 
 =head2 forprimes
 
-  forprimes { say } 100,200;                  # print primes from 100-200
+  forprimes { say } 100,200;                  # print primes from 100 to 200
 
   $sum=0;  forprimes { $sum += $_ } 100000;   # sum primes to 100k
 
@@ -2749,8 +2762,13 @@ strictly less than the input).  0 is returned if the input is C<2> or lower.
 Given a block and either an end count or a start and end pair, calls the
 block for each prime in the range.  Compared to getting a big array of primes
 and iterating through it, this is more memory efficient and perhaps more
-convenient.  There is no way to exit the loop early, so the iterator may
-be more appropriate for those uses.
+convenient.  This will almost always be the fastest way to loop over a range
+of primes.  Nesting and using in threads are allowed.
+
+For some uses an iterator (L</prime_iterator>, L</prime_iterator_object>)
+or a tied array (L<Math::Prime::Util::PrimeArray>) may be more convenient.
+Objects can be passed to functions, and allow early loop exits which are
+only possible in L</forprimes> by using an exception.
 
 
 =head2 prime_iterator
@@ -2769,8 +2787,20 @@ will return 211 followed by 223, as those are the next primes E<gt>= 200.
 On each call, the iterator returns the current value and increments to
 the next prime.
 
-In general, L</forprimes> will be more efficient, but the generic iterator has
-more flexibility (e.g. exiting a loop early, or passing the iterator around).
+Other options include L</forprimes> (more efficiency, less flexibility),
+L<Math::Prime::Util::PrimeIterator> (an iterator with more functionality),
+or L<Math::Prime::Util::PrimeArray> (a tied array).
+
+
+=head2 prime_iterator_object
+
+  my $it = prime_iterator_object;
+  while ($it->value < 100) { say $it->value; $it->next; }
+  $sum += $it->iterate for 1..100000;
+
+Returns a L<Math::Prime::Util::PrimeIterator> object.  A shortcut that loads
+the package if needed, calls new, and returns the object.  See the
+documentation for that package for details.
 
 
 =head2 prime_count
