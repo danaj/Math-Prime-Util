@@ -2,7 +2,6 @@
 use strict;
 use warnings;
 use Math::Prime::Util ':all';
-use Math::Prime::Util::PrimeIterator;
 use Test::More;
 
 my @primes = qw/2 3 5 7 11 13 17 19 23 29 31 37 41 43 47 53 59 61 67 71 73 79 83 89 97/;
@@ -19,7 +18,15 @@ foreach my $b (0 .. $end) {
     is_deeply( gen_primes($b,$e), \@p, "primes($b,$e)");
     is_deeply( gen_forprimes($b,$e), \@p, "forprimes {} $b,$e");
     is_deeply( gen_piterate($b,$e), \@p, "prime_iterator($b) while <= $e");
-    is_deeply( gen_ooiterate($b,$e), \@p, "prime_iterator object $b to $e");
+  }
+}
+SKIP: {
+  skip "No OO iterator", (($end+1)*($end+2)/2) unless defined &Math::Prime::Util::prime_iterator_object;
+  foreach my $b (0 .. $end) {
+    foreach my $e ($b .. $end) {
+      my @p = grep { $_ >= $b && $_ <= $e } @primes;
+      is_deeply( gen_ooiterate($b,$e), \@p, "prime_iterator object $b to $e");
+    }
   }
 }
 
@@ -37,12 +44,15 @@ foreach my $bdelta (reverse 0 .. 100) {
     is_deeply( gen_piterate($b,$e), \@p, "prime_iterator($b) while <= $e");
   }
 }
-diag "\nChecking numbers near end with OO iterator\n";
-foreach my $bdelta (reverse 0 .. 100) {
-  foreach my $edelta (reverse 0 .. $bdelta) {
-    my ($b, $e) = (~0 - $bdelta, ~0 - $edelta);
-    my @p = grep { $_ >= $b && $_ <= $e } @lprimes;
-    is_deeply( gen_ooiterate($b,$e), \@p, "prime_iterator object $b to $e");
+SKIP: {
+  skip "No OO iterator", ((101*102)/2) unless defined &Math::Prime::Util::prime_iterator_object;
+  diag "\nChecking numbers near end with OO iterator\n";
+  foreach my $bdelta (reverse 0 .. 100) {
+    foreach my $edelta (reverse 0 .. $bdelta) {
+      my ($b, $e) = (~0 - $bdelta, ~0 - $edelta);
+      my @p = grep { $_ >= $b && $_ <= $e } @lprimes;
+      is_deeply( gen_ooiterate($b,$e), \@p, "prime_iterator object $b to $e");
+    }
   }
 }
 
@@ -114,7 +124,7 @@ sub gen_piterate {
 sub gen_ooiterate {
   my($b, $e) = @_;
   my @p;
-  my $it = Math::Prime::Util::PrimeIterator->new($b);
+  my $it = prime_iterator_object($b);
   push @p, $it->iterate while $it->value <= $e;
   return \@p;
 }
