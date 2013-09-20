@@ -1254,7 +1254,8 @@ sub moebius {
     my @mu = map { 1 } $lo .. $hi;
     $mu[0] = 0 if $lo == 0;
     my $sqrtn = int(sqrt($hi)+0.5);
-    foreach my $p ( @{ primes($sqrtn) } ) {
+    forprimes {
+      my $p = $_;
       my $i = $p * $p;
       $i = $i * int($lo/$i) + (($lo % $i)  ? $i : 0)  if $i < $lo;
       while ($i <= $hi) {
@@ -1267,7 +1268,7 @@ sub moebius {
         $mu[$i-$lo] *= -$p;
         $i += $p;
       }
-    }
+    } $sqrtn;
     foreach my $i ($lo .. $hi) {
       my $m = $mu[$i-$lo];
       $m *= -1 if abs($m) != $i;
@@ -1280,10 +1281,8 @@ sub moebius {
   # Quick check for small replicated factors
   return 0 if ($n >= 25) && (!($n % 4) || !($n % 9) || !($n % 25));
   my @factors = factor($n);
-  my $lastf = 0;
-  foreach my $factor (@factors) {
-    return 0 if $factor == $lastf;
-    $lastf = $factor;
+  foreach my $i (1 .. $#factors) {
+    return 0 if $factors[$i] == $factors[$i-1];
   }
   return (((scalar @factors) % 2) == 0) ? 1 : -1;
 }
@@ -4245,9 +4244,6 @@ Here's the best way for PE187.  Under 30 milliseconds from the command line:
 
 =head1 LIMITATIONS
 
-I have not completed testing all the functions near the word size limit
-(e.g. C<2^32> for 32-bit machines).  Please report any problems you find.
-
 Perl versions earlier than 5.8.0 have a rather broken 64-bit implementation,
 in that the values are accessed as doubles.  Hence any value larger
 than C<~ 2^49> will start losing bottom bits.  This causes numerous functions
@@ -4283,7 +4279,8 @@ functionality with small integers.  It's fast and simple, and has a good
 set of features.
 
 =item * L<Math::Primality> is the alternative module I use for primality
-testing on bigints.
+testing on bigints.  The downside is that it can be slow, and the functions
+other than primality tests are I<very> slow.
 
 =item * L<Math::Pari> if you want the kitchen sink and can install it and
 handle using it.  There are still some functions it doesn't do well
@@ -4292,15 +4289,17 @@ handle using it.  There are still some functions it doesn't do well
 =back
 
 
-L<Math::Prime::XS> has C<is_prime> and C<primes> functionality.  There is no
-bigint support.  The C<is_prime> function uses well-written trial division,
-meaning it is very fast for small numbers, but terribly slow for large
-64-bit numbers.  Because MPU does input validation and bigint conversion,
-there is about 20 microseconds of additional overhead making MPXS a little
-faster for tiny inputs, but once over 700k, MPU is faster for all values.
-MPXS's prime sieve is an unoptimized non-segmented SoE which returns an
-array.  It works well for 32-bit values, but speed and memory are problematic
-for larger values.
+L<Math::Prime::XS> has C<is_prime> and C<primes> functionality.  There is
+no bigint support.  The C<is_prime> function uses well-written trial
+division, meaning it is very fast for small numbers, but terribly slow for
+large 64-bit numbers.  Because MPU does input validation and bigint
+conversion, there is about 20 microseconds of additional overhead making
+MPXS a little faster for tiny inputs, but once over 700k MPU is faster
+for all values.  MPXS's prime sieve is an unoptimized non-segmented SoE
+which returns an array.  Sieve bases larger than C<10^7> start taking
+inordinately long and using a lot of memory (gigabytes beyond C<10^10>).
+E.g. C<primes(10**9, 10**9+1000)> takes 36 seconds with MPXS, but only
+0.00015 seconds with MPU.
 
 L<Math::Prime::FastSieve> supports C<primes>, C<is_prime>, C<next_prime>,
 C<prev_prime>, C<prime_count>, and C<nth_prime>.  The caveat is that all
@@ -4308,7 +4307,8 @@ functions only work within the sieved range, so are limited to about C<10^10>.
 It uses a fast SoE to generate the main sieve.  The sieve is 2-3x slower than
 the base sieve for MPU, and is non-segmented so cannot be used for
 larger values.  Since the functions work with the sieve, they are very fast.
-All this functionality is present in MPU as well, though not required.
+The fast bit-vector-lookup functionality can be replicated in MPU using
+C<prime_precalc> but is not required.
 
 L<Bit::Vector> supports the C<primes> and C<prime_count> functionality in a
 somewhat similar way to L<Math::Prime::FastSieve>.  It is the slowest of all
@@ -4335,7 +4335,7 @@ not support bigints.  Both are implemented with trial division, meaning they
 are very fast for really small values, but quickly become unusably slow
 (factoring 19 digit semiprimes is over 700 times slower).  It has additional
 functions C<count_prime_factors> (possible in MPU using C<scalar factor($n)>)
-and C<matches> which has no direct equivalent.
+and C<matches> which has no equivalent.
 
 L<Math::Big> version 1.12 includes C<primes> functionality.  The current
 code is only usable for very tiny inputs as it is incredibly slow and uses
@@ -4549,7 +4549,7 @@ C<is_prime>: my impressions for various sized inputs:
    (2) Trial division only.  Very fast if every factor is tiny.
    (3) Too much memory to hold the sieve (11dig = 6GB, 12dig = ~50GB)
    (4) By default L<Math::Pari> installs Pari 2.1.7, which uses 10 M-R tests
-       for is_prime and is not fast.  See notes below for 2.3.5.
+       for isprime and is not fast.  See notes below for 2.3.5.
 
 
 The differences are in the implementations:

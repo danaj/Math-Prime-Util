@@ -665,21 +665,21 @@ _XS_moebius(IN UV lo, IN UV hi = 0)
       Safefree(mu);
     } else {
       UV factors[MPU_MAX_FACTORS+1];
-      UV nfactors, lastf;
+      UV nfactors;
       UV n = lo;
 
       if (n <= 1)
         XSRETURN_IV(n);
-      if ( (n >= 25) && ( !(n%4) || !(n%9) || !(n%25) ) )
+
+      if ( (!(n% 4) && n >=  4) || (!(n% 9) && n >=  9) ||
+           (!(n%25) && n >= 25) || (!(n%49) && n >= 49) )
         XSRETURN_IV(0);
 
       nfactors = factor(n, factors);
-      lastf = 0;
-      for (i = 0; i < nfactors; i++) {
-        if (factors[i] == lastf)
+      for (i = 1; i < nfactors; i++)
+        if (factors[i] == factors[i-1])
           XSRETURN_IV(0);
-        lastf = factors[i];
-      }
+
       XSRETURN_IV( (nfactors % 2) ? -1 : 1 );
     }
 
