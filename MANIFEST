@@ -3,6 +3,7 @@ cpanfile
 lib/Math/Prime/Util.pm
 lib/Math/Prime/Util/MemFree.pm
 lib/Math/Prime/Util/PrimeArray.pm
+lib/Math/Prime/Util/PrimeIterator.pm
 lib/Math/Prime/Util/PP.pm
 lib/Math/Prime/Util/ZetaBigFloat.pm
 lib/Math/Prime/Util/ECAffinePoint.pm
@@ -101,6 +102,7 @@ xt/small-is-next-prev.pl
 xt/factor-holf.pl
 xt/make-script-test-data.pl
 xt/pari-totient-moebius.pl
+xt/primes-edgecases.pl
 xt/rwh_primecount.py
 xt/rwh_primecount_numpy.py
 xt/test-bpsw.pl
