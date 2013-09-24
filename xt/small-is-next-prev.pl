@@ -6,7 +6,6 @@ use Time::HiRes qw(gettimeofday tv_interval);
 $| = 1;  # fast pipes
 
 my $mpu_limit = shift || 50_000_000;
-my $mp_limit = shift || 20_000;
 
 # 1. forprimes does a segmented sieve and calls us for each prime.  This is
 #    independent of is_prime and the main sieve.  So for each entry let's
@@ -24,7 +23,7 @@ my $mp_limit = shift || 20_000;
   } $mpu_limit;
   my $seconds = tv_interval($start_time);
   my $micro_per_call = ($seconds * 1000000) / (2*prime_count($mpu_limit));
-  printf "\nSuccess using forprimes to $mpu_limit.  %6.2f uSec/call\n", $micro_per_call;
+  printf "Success using forprimes to $mpu_limit.  %6.2f uSec/call\n", $micro_per_call;
 }
 
 print "\n";
@@ -46,28 +45,83 @@ print "\n";
   } $mpu_limit;
   my $seconds = tv_interval($start_time);
   my $micro_per_call = ($seconds * 1000000) / (2*prime_count($mpu_limit));
-  printf "\nSuccess using forprimes/precalc to $mpu_limit.  %6.2f uSec/call\n", $micro_per_call;
+  printf "Success using forprimes/precalc to $mpu_limit.  %6.2f uSec/call\n", $micro_per_call;
 }
 
-print "\n";
+print "\n\n";
 
-# 3. Now we'll use Math::Primality to compare next_prime, prev_prime, and
-#    is_prime.
+# Now do some more comparative timing.
+my @pr = @{primes(10_000_000)};
+my $numpr = scalar @pr;
+prime_memfree();
+
 {
-  require Math::Primality;
-  print "Using Math::Primality to $mp_limit\n";
+  print "MPU             prev/next...";
   my $start_time = [gettimeofday];
-  foreach my $n (0 .. $mp_limit) {
-    die "next $n" unless next_prime($n) == Math::Primality::next_prime($n);
-    if ($n <= 2) {
-      die "prev $n" unless prev_prime($n) == 0;
-    } else {
-      die "prev $n" unless prev_prime($n) == Math::Primality::prev_prime($n);
-    }
-    die "is $n" unless is_prime($n) == Math::Primality::is_prime($n);
-    print "$n.." unless $n % 10000;
+  my $n = 0;
+  foreach my $p (@pr) {
+    my $next = next_prime($n);
+    die "MPU next($n) is not $p\n" unless $next == $p;
+    die "MPU prev($p) is not $n\n" unless $n == prev_prime($p);
+    $n = $next;
   }
   my $seconds = tv_interval($start_time);
-  my $micro_per_call = ($seconds * 1000000) / (6*prime_count($mp_limit));
-  printf "\nSuccess using Math::Primality to $mp_limit.  %6.2f uSec/call\n", $micro_per_call;
+  my $micro_per_call = ($seconds * 1000000) / (2*prime_count($numpr));
+  printf "%8.2f uSec/call\n", $micro_per_call;
 }
+{
+  print "MPU precalc     prev/next...";
+  my $start_time = [gettimeofday];
+  prime_precalc($pr[-1]+1000);
+  my $n = 0;
+  foreach my $p (@pr) {
+    my $next = next_prime($n);
+    die "MPU next($n) is not $p\n" unless $next == $p;
+    die "MPU prev($p) is not $n\n" unless $n == prev_prime($p);
+    $n = $next;
+  }
+  my $seconds = tv_interval($start_time);
+  my $micro_per_call = ($seconds * 1000000) / (2*prime_count($numpr));
+  printf "%8.2f uSec/call\n", $micro_per_call;
+  prime_memfree();
+}
+
+# 3. Now Math::Pari.
+if (eval { require Math::Pari; 1; }) {
+  print "Math::Pari      prec/next...";
+  my $start_time = [gettimeofday];
+  my $n = 0;
+  foreach my $p (@pr) {
+    my $next = Math::Pari::nextprime($n+1);
+    die "MPU next($n) is not $p\n" unless $next == $p;
+    die "MPU prev($p) is not $n\n" unless $n == Math::Pari::precprime($p-1);
+    $n = $next;
+  }
+  my $seconds = tv_interval($start_time);
+  my $micro_per_call = ($seconds * 1000000) / (2*prime_count($numpr));
+  printf "%8.2f uSec/call\n", $micro_per_call;
+} else {
+  print "Math::Pari not installed.  Skipping\n";
+}
+
+# 4. Math::Primality
+if (eval { require Math::Primality; 1; }) {
+  print "Math::Primality prev/next...";
+  my @mppr = @pr[0..50000];
+  my $nummppr = scalar @mppr;
+  my $start_time = [gettimeofday];
+  my $n = 0;
+  foreach my $p (@mppr) {
+    my $next = Math::Primality::next_prime($n);
+    my $prev = ($p == 2) ? 0 : Math::Primality::prev_prime($p);
+    die "MPU next($n) is not $p\n" unless $next == $p;
+    die "MPU prev($p) is not $n\n" unless $n == $prev;
+    $n = $next;
+  }
+  my $seconds = tv_interval($start_time);
+  my $micro_per_call = ($seconds * 1000000) / (2*prime_count($nummppr));
+  printf "%8.2f uSec/call\n", $micro_per_call;
+} else {
+  print "Math::Primality not installed.  Skipping\n";
+}
+
