@@ -543,11 +543,11 @@ sub primes {
         my $rbits = length($range->as_bin) - 2;   # bits in range
         my $rwords = int($rbits/32) + (($rbits % 32) ? 1 : 0);
         # Generate more bits so we rarely have to loop.
-        my $rmax = (($zero+2) ** ($rwords*32)) - 1;
+        my $rmax = Math::BigInt->bone->blsft($rwords*32)->bdec();
         my $remainder = $rmax % $range;
         do {
-          $U = $zero;
-          $U = ($U << 32) + $irandf->()  for 1 .. $rwords;
+          $U = $range->copy->from_hex
+            ("0x" . join '', map { sprintf("%08X", $irandf->()) } 1 .. $rwords);
         } while $U >= ($rmax - $remainder);
       } elsif ($range <= 4294967295) {
         my $remainder = 4294967295 % $range;
@@ -564,6 +564,39 @@ sub primes {
       return $U % $range;
     };
     return $randf;
+  }
+  # Returns a function that gets an nbit random number
+  sub _get_nbit_rand_func {
+    my $irandf = $_Config{'irand'};
+    if (!defined $irandf) {
+      $_BRS = Bytes::Random::Secure->new(NonBlocking=>1) unless defined $_BRS;
+      return sub {
+        my($bits) = @_;
+        return 0 if $bits <= 0;
+        return ($_BRS->irand() >> (32-$bits))
+          if $bits <= 32;
+        return ((($_BRS->irand() << 32) + $_BRS->irand()) >> (64-$bits))
+          if $bits <= 64 && ~0 > 4294967295;
+        my $bytes = int(($bits+7)/8);
+        my $n = Math::BigInt->from_hex('0x' . $_BRS->bytes_hex($bytes));
+        $n->brsft( 8*$bytes - $bits ) unless ($bits % 8) == 0;
+        return $n;
+      };
+    } else {
+      return sub {
+        my($bits) = @_;
+        return 0 if $bits <= 0;
+        return ($irandf->() >> (32-$bits))
+          if $bits <= 32;
+        return ((($irandf->() << 32) + $irandf->()) >> (64-$bits))
+          if $bits <= 64 && ~0 > 4294967295;
+        my $words = int(($bits+31)/32);
+        my $n = Math::BigInt->from_hex
+          ("0x" . join '', map { sprintf("%08X", $irandf->()) } 1 .. $words );
+        $n->brsft( 32*$words - $bits ) unless ($bits % 32) == 0;
+        return $n;
+      };
+    }
   }
 
   # Sub to call with low and high already primes and verified range.
@@ -865,13 +898,15 @@ sub primes {
     # slow, then A2 would look more promising.
     #
     if (1 && $bits > 64) {
-      my $irandf = _get_rand_func();
+      my $nrandf = _get_nbit_rand_func();
       my $l = ($_Config{'maxbits'} > 32 && $bits > 79)  ?  63  :  31;
       $l = 49 if $l == 63 && $] < 5.008;  # Fix for broken Perl 5.6
       $l = $bits-2 if $bits-2 < $l;
-      my $arange = (1 << $l) - 1;  # 2^$l-1
-      my $brange = Math::BigInt->new(2)->bpow($bits-$l-2)->bdec();
-      my $b = 2 * $irandf->($brange) + 1;
+
+      my $brand = $nrandf->($bits-$l-2);
+      $brand = Math::BigInt->new("$brand") unless ref($brand) eq 'Math::BigInt';
+      my $b = $brand->blsft(1)->binc();
+
       # Precalculate some modulii so we can do trial division on native int
       # 9699690 = 2*3*5*7*11*13*17*19, so later operations can be native ints
       my @premod;
@@ -886,7 +921,7 @@ sub primes {
       _make_big_gcds() if $_big_gcd_use < 0;
       my $loop_limit = 1_000_000;
       while ($loop_limit-- > 0) {
-        my $a = (1 << $l) + $irandf->($arange);
+        my $a = (1 << $l) + $nrandf->($l);
         # $a % s == $premod[s]  =>  $p % s == 0  =>  p will be composite
         next if $a %  3 == $premod[ 3] || $a %  5 == $premod[ 5]
              || $a %  7 == $premod[ 7] || $a % 11 == $premod[11]
@@ -912,6 +947,35 @@ sub primes {
       croak "Random function broken?";
     }
 
+    # The Trivial method.  Great uniformity, and fine for small sizes.  It
+    # gets very slow as the bit size increases, but that is why we have the
+    # method above for bigints.
+    if (1) {
+      my $nrandf = _get_nbit_rand_func();
+      if ($bits <= 4) {
+        return (2,3)[$nrandf->(1)] if $bits == 2;
+        return (5,7)[$nrandf->(1)] if $bits == 3;
+        return (11,13)[$nrandf->(1)] if $bits == 4;
+      }
+      my $loop_limit = 2_000_000;
+      if ($bits > $_Config{'maxbits'}) {
+        my $p = Math::BigInt->bone->blsft($bits-1)->binc();
+        while ($loop_limit-- > 0) {
+          my $n = Math::BigInt->new(''.$nrandf->($bits-2))->blsft(1)->badd($p);
+          return $n if is_prob_prime($n);
+        }
+      } else {
+        my $p = (1 << ($bits-1)) + 1;
+        while ($loop_limit-- > 0) {
+          my $n = $p + ($nrandf->($bits-2) << 1);
+          return $n if is_prob_prime($n);
+        }
+      }
+      croak "Random function broken?";
+    }
+
+    # Send through the generic random_prime function.  Decently fast, but
+    # quite a bit slower than the F&T A1 method above.
     if (!defined $_random_nbit_ranges[$bits]) {
       if ($bits > $_Config{'maxbits'}) {
         my $low  = Math::BigInt->new('2')->bpow($bits-1);
@@ -1117,7 +1181,7 @@ sub primes {
     my $k = shift;
     _validate_num($k, 2) || _validate_positive_integer($k, 2);
 
-    if ($_HAVE_GMP && $k <= 512) {
+    if ($_HAVE_GMP && $k <= 450) {
       my $n = random_nbit_prime($k);
       my ($isp, $cert) = is_provable_prime_with_cert($n);
       croak "small nbit prime could not be proven" if $isp != 2;
@@ -4646,8 +4710,9 @@ The C<n-1> proving algorithm in L<Math::Prime::Util::GMP> compares well to
 the version including in Pari.  Both are pretty fast to about 60 digits, and
 work reasonably well to 80 or so before starting to take over many minutes per
 number on a fast computer.  Version 0.09 and newer of MPU::GMP contain an
-ECPP implementation that works quite well, though is certainly not state of
-the art.  It averages less than a second for proving 200-digit primes,
+ECPP implementation that, while not state of the art compared to closed source
+solutions, works quite well.
+It averages less than a second for proving 200-digit primes
 including creating a certificate.  Times below 200 digits are faster than
 Pari 2.3.5's APR-CL proof.  For larger inputs the bottleneck is a limited set
 of discriminants, and time becomes more variable.  There is a larger set of
@@ -4658,15 +4723,16 @@ with very large numbers, I recommend L<Primo|http://www.ellipsa.eu/>.
 =head2 RANDOM PRIME GENERATION
 
 Seconds per prime for random prime generation on a circa-2009 workstation,
-with L<Math::Prime::Util::GMP> and L<Math::Random::ISAAC::XS> installed.
+with L<Math::BigInt::GMP>, L<Math::Prime::Util::GMP>, and
+L<Math::Random::ISAAC::XS> installed.
 
   bits    random   +testing  rand_prov   Maurer   CPMaurer
   -----  --------  --------  ---------  --------  --------
-     64    0.0001  +0.000003   0.0003     0.0001    0.022
-    128    0.0026  +0.00016    0.012      0.077     0.057
-    256    0.0044  +0.0004     0.059      0.19      0.16
-    512    0.012   +0.0012     0.47       0.50      0.41
-   1024    0.067   +0.0060     1.3        1.2       2.19
+     64    0.0001  +0.000003   0.0002     0.0001    0.022
+    128    0.0020  +0.00016    0.011      0.063     0.057
+    256    0.0034  +0.0004     0.058      0.13      0.16
+    512    0.0097  +0.0012     0.28       0.28      0.41
+   1024    0.060   +0.0060     0.65       0.65      2.19
    2048    0.57    +0.039      4.8        4.8      10.99
    4096    6.24    +0.25      31.9       31.9      79.71
    8192   58.6     +1.61     234.0      234.0     947.3
