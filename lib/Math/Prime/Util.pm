@@ -2828,10 +2828,16 @@ and iterating through it, this is more memory efficient and perhaps more
 convenient.  This will almost always be the fastest way to loop over a range
 of primes.  Nesting and using in threads are allowed.
 
+Math::BigInt objects may be used for the range.
+
 For some uses an iterator (L</prime_iterator>, L</prime_iterator_object>)
 or a tied array (L<Math::Prime::Util::PrimeArray>) may be more convenient.
-Objects can be passed to functions, and allow early loop exits which are
-only possible in L</forprimes> by using an exception.
+Objects can be passed to functions, and allow early loop exits without
+exceptions.  Here is a clumsy L</forprimes> exception example:
+
+  use bigint;
+  eval { forprimes { die "$_\n" if $_ % 123 == 1 } 2**100, 2**101 };
+  my $n = 0+$@;
 
 
 =head2 prime_iterator
@@ -2863,7 +2869,9 @@ or L<Math::Prime::Util::PrimeArray> (a tied array).
 
 Returns a L<Math::Prime::Util::PrimeIterator> object.  A shortcut that loads
 the package if needed, calls new, and returns the object.  See the
-documentation for that package for details.
+documentation for that package for details.  This object has more features
+than the simple one above (e.g. the iterator is bi-directional), and also
+handles iterating across bigints.
 
 
 =head2 prime_count

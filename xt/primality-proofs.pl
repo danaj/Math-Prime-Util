@@ -9,12 +9,19 @@ $|++;
 # The number of tests performed.  71 makes a nice display for 80 columns.
 my $num = 71;
 # Select random primes with sizes randomly between 4 and this number of bits.
-my $size = 300;
-# Which selection method?
-#    mpu is 2x faster than pari, but it's our code
-#    pari works pretty well, and is 2x faster than Crypt::Primes
-#    cpmaurer is slow and can produce composites
-my $prime_method = 'pari';   # mpu, pari, or cpmaurer
+my $size = 500;
+# Which selection method?  Ideally we would use some independent code.  Time
+# for one thousand random primes from rand(4-300) or rand(4-600) bits:
+#
+#    300bits  600bits  which
+#       2sec     6sec  mpu (with mpu::gmp installed)
+#      31sec   124sec  pari
+#      97sec   254sec  cpmaurer
+#
+# We don't seem to have any practical choice other than MPU's
+# random_nbit_prime as the other random prime code is just so slow.
+#
+my $prime_method = 'mpu';   # mpu, pari, or cpmaurer
 
 my @ns;
 print "Generate ";
@@ -29,6 +36,8 @@ foreach my $i (1..$num) {
   } elsif ($prime_method eq 'pari') {
     require Math::Pari;
     require Crypt::Random;
+    # This is ~4x faster, has awful distribution.  Still much slower than MPU.
+    # $n = Math::Pari::nextprime( ...makerandom... );
     do { $n = Crypt::Random::makerandom(Size=>$bits,Strength=>0); }
        while !Math::Pari::isprime($n);
   } elsif ($prime_method eq 'mpu') {
