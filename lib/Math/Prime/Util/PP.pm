@@ -1041,7 +1041,8 @@ sub lucas_sequence {
         else             { $Qk->bmul($Qk)->bmod($n); }
       }
     }
-    $Qk->neg if $qsign == 1;
+    if    ($qsign ==  1) { $Qk->bneg; }
+    elsif ($qsign == -1) { $Qk = $n->copy->bdec; }
   }
   $U->bmod($n);
   $V->bmod($n);
