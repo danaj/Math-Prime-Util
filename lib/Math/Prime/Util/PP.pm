@@ -799,13 +799,18 @@ sub miller_rabin {
 
   if ( ref($n) eq 'Math::BigInt' ) {
 
-    my $s = 0;
     my $nminus1 = $n->copy->bdec();
+    my $s = 0;
     my $d = $nminus1->copy;
     while ($d->is_even) {
       $s++;
       $d->brsft(1);
     }
+    # Different way of doing the above.  Fewer function calls, slower on ave.
+    #my $dbin = $nminus1->as_bin;
+    #my $last1 = rindex($dbin, '1');
+    #my $s = length($dbin)-2-$last1+1;
+    #my $d = $nminus1->copy->brsft($s);
 
     foreach my $a (@bases) {
       my $x = $n->copy->bzero->badd($a)->bmodpow($d,$n);
@@ -959,9 +964,6 @@ sub lucas_sequence {
   croak "lucas_sequence: P out of range" if $P < 0 || $P >= $n;
   croak "lucas_sequence: Q out of range" if $Q >= $n;
 
-  my $D = $P*$P - 4*$Q;
-  croak "lucas_sequence: D is zero" if $D == 0;
-
   if (ref($n) ne 'Math::BigInt') {
     if (!defined $Math::BigInt::VERSION) {
       eval { require Math::BigInt;  Math::BigInt->import(try=>'GMP,Pari'); 1; }
@@ -971,9 +973,15 @@ sub lucas_sequence {
   }
 
   my $ZERO = $n->copy->bzero;
-  my $U = $ZERO + 1;
-  my $V = $ZERO + $P;
-  my $Qk = $ZERO + $Q;
+  my $ONE = $ZERO + 1;
+  my $TWO = $ZERO + 2;
+  $P = $ZERO+$P unless ref($P) eq 'Math::BigInt';
+  $Q = $ZERO+$Q unless ref($Q) eq 'Math::BigInt';
+  my $D = $P*$P - 4*$Q;
+  croak "lucas_sequence: D is zero" if $D == 0;
+  my $U = $ONE->copy;
+  my $V = $P->copy;
+  my $Qk = $Q->copy;
 
   return ($ZERO, $ZERO+2) if $k == 0;
   $k = Math::BigInt->new("$k") unless ref($k) eq 'Math::BigInt';
@@ -981,53 +989,59 @@ sub lucas_sequence {
   my $bpos = 0;
 
   if ($Q == 1) {
-    my $Dinverse = ($ZERO+$D)->bmodinv($n);
-    if ($P > 2 && !$Dinverse->is_nan) {
+    my $Dinverse = $D->copy->bmodinv($n);
+    if ($P > $TWO && !$Dinverse->is_nan) {
       # Calculate V_k with U=V_{k+1}
-      $U = $ZERO + ($P*$P - 2);
+      $U = $P->copy->bmul($P)->bsub($TWO)->bmod($n);
       while (++$bpos < length($kstr)) {
         if (substr($kstr,$bpos,1)) {
-          $V->bmul($U)->bsub($P)->bmod($n);
-          $U->bmul($U)->bsub( 2)->bmod($n);
+          $V->bmul($U)->bsub($P  )->bmod($n);
+          $U->bmul($U)->bsub($TWO)->bmod($n);
         } else {
-          $U->bmul($V)->bsub($P)->bmod($n);
-          $V->bmul($V)->bsub( 2)->bmod($n);
+          $U->bmul($V)->bsub($P  )->bmod($n);
+          $V->bmul($V)->bsub($TWO)->bmod($n);
         }
       }
       # Crandall and Pomerance eq 3.13: U_n = D^-1 (2V_{n+1} - PV_n)
-      $U = $Dinverse * (2*$U - $P*$V);
+      $U = $Dinverse * ($TWO*$U - $P*$V);
     } else {
       while (++$bpos < length($kstr)) {
-        $U = ($U * $V) % $n;
-        $V = ($V * $V - 2) % $n;
+        $U->bmul($V)->bmod($n);
+        $V->bmul($V)->bsub($TWO)->bmod($n);
         if (substr($kstr,$bpos,1)) {
           my $T1 = $U->copy->bmul($D);
-          $U->bmul($P)->badd( $V)->badd( $U->is_odd ? $n : 0 )->brsft(1);
-          $V->bmul($P)->badd($T1)->badd( $V->is_odd ? $n : 0 )->brsft(1);
+          $U->bmul($P)->badd( $V)->badd( $U->is_odd ? $n : $ZERO )->brsft(1);
+          $V->bmul($P)->badd($T1)->badd( $V->is_odd ? $n : $ZERO )->brsft(1);
         }
       }
     }
   } else {
+    my $qsign = ($Q == -1) ? -1 : 0;
     while (++$bpos < length($kstr)) {
-      $U = ($U * $V) % $n;
-      $V = ($V * $V - 2*$Qk) % $n;
-      $Qk->bmul($Qk);
+      $U->bmul($V)->bmod($n);
+      if    ($qsign ==  1) { $V->bmul($V)->bsub($TWO)->bmod($n); }
+      elsif ($qsign == -1) { $V->bmul($V)->badd($TWO)->bmod($n); }
+      else { $V->bmul($V)->bsub($Qk->copy->blsft($ONE))->bmod($n); }
       if (substr($kstr,$bpos,1)) {
         my $T1 = $U->copy->bmul($D);
         $U->bmul($P);
         $U->badd($V);
         $U->badd($n) if $U->is_odd;
-        $U->brsft(1);
+        $U->brsft($ONE);
 
         $V->bmul($P);
         $V->badd($T1);
         $V->badd($n) if $V->is_odd;
-        $V->brsft(1);
+        $V->brsft($ONE);
 
-        $Qk->bmul($Q);
+        if ($qsign != 0) { $qsign = -1; }
+        else             { $Qk->bmul($Qk)->bmul($Q)->bmod($n); }
+      } else {
+        if ($qsign != 0) { $qsign = 1; }
+        else             { $Qk->bmul($Qk)->bmod($n); }
       }
-      $Qk->bmod($n);
     }
+    $Qk->neg if $qsign == 1;
   }
   $U->bmod($n);
   $V->bmod($n);
