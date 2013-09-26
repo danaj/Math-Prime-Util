@@ -120,7 +120,7 @@ sub add {
                                              $other->{'x'}, $other->{'y'});
   return $self;
 }
-  
+
 
 sub a { return shift->{'a'}; }
 sub b { return shift->{'b'}; }

@@ -345,7 +345,7 @@ sub RiemannZeta {
     my $dig = int($_Borwein_n / 1.3)+1;
     _Recompute_Dk( int($xdigits * 1.3) + 4 )  if $dig < $xdigits;
   }
-  
+
   if (ref $_Borwein_dk[0] ne 'Math::BigInt') {
     @_Borwein_dk = map { Math::BigInt->new("$_") } @_Borwein_dk;
   }
