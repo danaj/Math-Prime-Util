@@ -2,7 +2,6 @@ package Math::Prime::Util;
 use strict;
 use warnings;
 use Carp qw/croak confess carp/;
-use Bytes::Random::Secure;
 
 BEGIN {
   $Math::Prime::Util::AUTHORITY = 'cpan:DANAJ';
@@ -127,16 +126,6 @@ BEGIN {
                                   Math::Prime::Util::GMP->import();
                                   1; };
   }
-
-  # Try to figure out a system rand configuration that works for us.
-  # Using something other than the craptastic system rand would be best.
-  use Config;
-  $_Config{'system_randbits'} = $Config{'randbits'};
-  # Keep things in integer range.
-  $_Config{'system_randbits'} = $_Config{'maxbits'}-1 if $_Config{'system_randbits'} >= $_Config{'maxbits'};
-  # drand48 has an alternating last bit on almost every system.
-  $_Config{'system_randbits'}-- if $_Config{'system_randbits'} == 48;
-  no Config;
 
 }
 END {
@@ -398,8 +387,8 @@ sub primes {
 
 # For random primes, there are two good papers that should be examined:
 #
-#  "Fast Generation of Prime Numbers and Secure Public-Key Cryptographic Parameters"
-#  by Ueli M. Maurer, 1995
+#  "Fast Generation of Prime Numbers and Secure Public-Key
+#   Cryptographic Parameters" by Ueli M. Maurer, 1995
 #  http://citeseerx.ist.psu.edu/viewdoc/summary?doi=10.1.1.26.2151
 #  related discussions:
 #      http://www.daimi.au.dk/~ivan/provableprimesproject.pdf
@@ -409,42 +398,42 @@ sub primes {
 #   by Pierre-Alain Fouque and Mehdi Tibouchi, 2011
 #   http://eprint.iacr.org/2011/481
 #
-#
 #  Some things to note:
 #
 #    1) Joye and Paillier have patents on their methods.  Never use them.
 #
-#    2) The easy-peasy method of next_prime(random number) is fast but gives
-#       a terribly distribution, and not only in the obvious positive bias.
-#       The probability for a prime is proportional to its gap, which is
-#       really a bad distribution.
+#    2) The easy method of next_prime(random number), known as PRIMEINC, is
+#       fast but gives a terrible distribution.  It has a positive bias and
+#       most importantly the probability for a prime is proportional to its
+#       gap, which makes a terrible distribution (some numbers in the range
+#       will be thousands of times more likely than others).
 #
-# In this code, for ranges within randbits (typically 48 on UNIX system rand,
-# 31 for user-provided rand, and 16 for most Win32 systems), the results
-# are completely uniform.  For larger ranges it is close.
+# We use:
+#   TRIVIAL range within native integer size (2^32 or 2^64)
+#   FTA1    random_nbit_prime with 65+ bits
+#   INVA1   other ranges with 65+ bit range
+# where
+#   TRIVIAL = monte-carlo method or equivalent, perfect uniformity.
+#   FTA1    = Fouque/Tibouchi A1, very close to uniform
+#   INVA1   = inverted FTA1, less uniform but works with arbitrary ranges
 #
 # The random_maurer_prime function uses Maurer's FastPrime algorithm.
 #
-# These functions are quite fast for native size inputs, and reasonably fast
-# for bigints.  Some factors that make a significant difference:
-#   - Is Math::Prime::Util::GMP installed?
-#   - Using Math::BigInt::GMP or Math::BigInt::Pari?  Very important.
-#   - Which platform?  Typically x86_64 is best optimized.
-#   - If using system rand, is RANDBITS large?
-#   - What RNG?
+# If Math::Prime::Util::GMP is installed, these functions will be many times
+# faster than other methods (e.g. Math::Pari monte-carlo or Crypt::Primes).
 #
-# Timings using Math::BigInt::GMP, x86_64, system rand with 32+ randbits.
+# Timings on x86_64, with Math::BigInt::GMP and Math::Random::ISAAC::XS.
 #
 #                   random_nbit_prime         random_maurer_prime
 #    n-bits       no GMP   w/ MPU::GMP        no GMP   w/ MPU::GMP
 #    ----------  --------  -----------       --------  -----------
-#       24-bit       25uS      same             same       same
-#       64-bit       87uS      same             same       same
-#      128-bit     0.032s      0.0049s         0.098s      0.056s
-#      256-bit     0.062s      0.0097s         0.25s       0.15s
-#      512-bit     0.13s       0.019s          0.65s       0.30s
-#     1024-bit     0.28s       0.058s          1.3s        0.94s
-#     2048-bit     0.91s       0.4s            3.2s        3.1s
+#       24-bit       27uS      same             same       same
+#       64-bit       97uS      same             same       same
+#      128-bit     0.017s      0.0020s         0.098s      0.056s
+#      256-bit     0.033s      0.0033s         0.25s       0.15s
+#      512-bit     0.066s      0.0093s         0.65s       0.30s
+#     1024-bit     0.16s       0.060s          1.3s        0.94s
+#     2048-bit     0.83s       0.5s            3.2s        3.1s
 #     4096-bit     6.6s        4.0s           23s         12.0s
 #
 # Writing these entirely in GMP has a problem, which is that we want to use
@@ -452,14 +441,11 @@ sub primes {
 # possibility is to, if they do not supply a rand function, use the GMP MT
 # function with an appropriate seed.
 #
-# It will generate primes with more bits, but it slows down a lot.  The
-# time variation becomes quite extreme once bit sizes get over 6000 or so.
-#
 # Random timings for 10M calls:
 #    1.92    system rand
 #    2.62    Math::Random::MT::Auto
 #   12.0     Math::Random::Secure           w/ISAAC::XS
-#   12.6     Bytes::Random::Secure OO       w/ISAAC::XS
+#   12.6     Bytes::Random::Secure OO       w/ISAAC::XS     <==== our default
 #   31.1     Bytes::Random::Secure OO
 #   44.5     Bytes::Random::Secure function w/ISAAC::XS
 #   44.8     Math::Random::Secure
@@ -529,6 +515,7 @@ sub primes {
     # with bad system rand functions.
     my $irandf = $_Config{'irand'};
     if (!defined $irandf) {
+      require Bytes::Random::Secure;
       $_BRS = Bytes::Random::Secure->new(NonBlocking=>1) unless defined $_BRS;
       $irandf = sub { return $_BRS->irand(); };
     }
@@ -569,6 +556,7 @@ sub primes {
   sub _get_nbit_rand_func {
     my $irandf = $_Config{'irand'};
     if (!defined $irandf) {
+      require Bytes::Random::Secure;
       $_BRS = Bytes::Random::Secure->new(NonBlocking=>1) unless defined $_BRS;
       return sub {
         my($bits) = @_;
@@ -940,10 +928,13 @@ sub primes {
             next unless Math::BigInt::bgcd($p, $_big_gcd[2]) == 1;
             next unless Math::BigInt::bgcd($p, $_big_gcd[3]) == 1;
           }
-          next unless is_prob_prime($p);
+          # We know we don't have GMP and are > 2^64, so skip all the middle.
+          #next unless is_prob_prime($p);
+          next unless Math::Prime::Util::PP::miller_rabin($p, 2);
+          next unless Math::Prime::Util::PP::is_extra_strong_lucas_pseudoprime($p);
         }
         return $p;
-      } 
+      }
       croak "Random function broken?";
     }
 
@@ -1650,7 +1641,7 @@ sub carmichael_lambda {
   my @factors = grep { !$factor_mult{$_}++ }
                 ($n <= $_XS_MAXVAL) ? _XS_factor($n) : factor($n);
   $factor_mult{2}-- if defined $factor_mult{2} && $factor_mult{2} > 2;
-  
+
   if (!defined $Math::BigInt::VERSION) {
     eval { require Math::BigInt; Math::BigInt->import(try=>'GMP,Pari'); 1; }
     or do { croak "Cannot load Math::BigInt"; };
@@ -1751,8 +1742,7 @@ sub _generic_is_prime {
     if ref($_[0]) ne 'Math::BigInt' && $n <= $_XS_MAXVAL;
   return Math::Prime::Util::GMP::is_prime($n) if $_HAVE_GMP;
 
-  return 2 if ($n == 2) || ($n == 3) || ($n == 5);  # 2, 3, 5 are prime
-  return 0 if $n < 7;             # everything else below 7 is composite
+  if ($n < 7) { return ($n == 2) || ($n == 3) || ($n == 5) ? 2 : 0; }
   return 0 if !($n % 2) || !($n % 3) || !($n % 5);
   return Math::Prime::Util::PP::_is_prime7($n);
 }
@@ -1770,8 +1760,7 @@ sub _generic_is_prob_prime {
     if ref($_[0]) ne 'Math::BigInt' && $n <= $_XS_MAXVAL;
   return Math::Prime::Util::GMP::is_prob_prime($n) if $_HAVE_GMP;
 
-  return 2 if ($n == 2) || ($n == 3) || ($n == 5);  # 2, 3, 5 are prime
-  return 0 if $n < 7;             # everything else below 7 is composite
+  if ($n < 7) { return ($n == 2) || ($n == 3) || ($n == 5) ? 2 : 0; }
   return 0 if !($n % 2) || !($n % 3) || !($n % 5);
   return Math::Prime::Util::PP::_is_prime7($n);
 }
@@ -3688,7 +3677,7 @@ will be seen.  This is removes from consideration such algorithms as
 C<PRIMEINC>, which although efficient, gives very non-random output.  This
 also implies that the numbers will not be evenly distributed, since the
 primes are not evenly distributed.  Stated again, the random prime functions
-return a uniformly selected prime from the set of primes within the range.  
+return a uniformly selected prime from the set of primes within the range.
 Hence given C<random_prime(1000)>, the numbers 2, 3, 487, 631, and 997 all
 have the same probability of being returned.
 
@@ -3774,7 +3763,7 @@ on the values within the partition, which very slightly skews the results
 towards smaller numbers).
 
 The C<irand> function is used for randomness, so all the discussion in
-L</random_prime> about that applies here.  
+L</random_prime> about that applies here.
 The result will be a BigInt if the number of bits is greater than the native
 bit size.  For better performance with large bit sizes, install
 L<Math::Prime::Util::GMP>.

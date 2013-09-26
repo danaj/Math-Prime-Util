@@ -46,6 +46,8 @@ Revision history for Perl module Math::Prime::Util
     - Bytes::Random::Secure is loaded only when random prime functionality
       is used.  Shaves a few milliseconds and bytes off of startup.
 
+    - Speedup for Perl (no GMP) primality and random nbit primes.
+
 0.31  2013-08-07
 
     - Change proof certificate documentation to reflect the new text format.
