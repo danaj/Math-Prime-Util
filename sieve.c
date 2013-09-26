@@ -233,8 +233,11 @@ int sieve_segment(unsigned char* mem, UV startd, UV endd)
 
   START_DO_FOR_EACH_SIEVE_PRIME(sieve, 17, pcsize)
   {
-    /* p increments from 17 to at least sqrt(endp) */
-    UV p2 = p*p;   /* TODO: overflow */
+    /* p increments from 17 to at least sqrt(endp).  Note on overflow:
+     * 32-bit: limit=     65535, max p =      65521, p*p = ~0-1965854
+     * 64-bit: limit=4294967295, max p = 4294967291, p*p = ~0-42949672934
+     * No overflow here, but possible after the incrementing below. */
+    UV p2 = p*p;
     if (p2 > endp)  break;
     /* Find first multiple of p greater than p*p and larger than startp */
     if (p2 < startp) {

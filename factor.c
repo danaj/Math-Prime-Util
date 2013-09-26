@@ -320,7 +320,7 @@ UV _XS_divisor_sum(UV n, UV k)
       while (i+1 < nfac && f == factors[i+1]) { e++; i++; }
       if (e > 1) {
         UV pke = f;
-        for (j = 1; j < e; j++) {
+        for (j = 1; j < (int)e; j++) {
           pke *= f;
           fmult += pke;
         }
@@ -330,13 +330,13 @@ UV _XS_divisor_sum(UV n, UV k)
   } else {
     for (i = 0; i < nfac; i++) {
       UV e = 1,  f = factors[i];
-      UV fmult,  pk = f;
-      for (j = 1; j < k; j++)  pk *= f;
+      UV fmult, pk = f;
+      for (j = 1; j < (int)k; j++)  pk *= f;
       while (i+1 < nfac && f == factors[i+1]) { e++; i++; }
       fmult = 1 + pk;
       if (e > 1) {
         UV pke = pk;
-        for (j = 1; j < e; j++) {
+        for (j = 1; j < (int)e; j++) {
           pke *= pk;
           fmult += pke;
         }

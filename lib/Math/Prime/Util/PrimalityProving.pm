@@ -560,8 +560,8 @@ sub _verify_ecpp {
     unless Math::BigInt::bgcd(4*$a*$a*$a+27*$b*$b,$n) == 1;
   return _pfail "ECPP: $n failed Y^2 = X^3 + A*X + B mod N"
     unless ($y*$y) % $n == ($x*$x*$x + $a*$x + $b) % $n;
-  return _pfail "ECPP: $n failed M >= N - 2*sqrt(N) + 1" unless $m >= $n - 2*$n->copy->bsqrt() + 1;
-  return _pfail "ECPP: $n failed M <= N + 2*sqrt(N) + 1" unless $m <= $n + 2*$n->copy->bsqrt() + 1;
+  return _pfail "ECPP: $n failed M >= N - 2*sqrt(N) + 1" unless $m >= $n + 1 - $n->copy->bmul(4)->bsqrt();
+  return _pfail "ECPP: $n failed M <= N + 2*sqrt(N) + 1" unless $m <= $n + 1 + $n->copy->bmul(4)->bsqrt();
   return _pfail "ECPP: $n failed Q > (N^(1/4)+1)^2" unless $q > $n->copy->broot(4)->badd(1)->bpow(2);
   return _pfail "ECPP: $n failed Q < N" unless $q < $n;
   return _pfail "ECPP: $n failed M != Q" unless $m != $q;

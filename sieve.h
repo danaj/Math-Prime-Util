@@ -132,8 +132,8 @@ static UV prev_prime_in_sieve(const unsigned char* sieve, UV p) {
     } \
     while ( p <= l_ ) {
 
-#define RETURN_FROM_EACH_PRIME(x) \
-    do { release_prime_cache(sieve_); return(x); } while (0)
+#define RETURN_FROM_EACH_PRIME(retstmt) \
+    do { release_prime_cache(sieve_); retstmt; } while (0)
 
 #define END_DO_FOR_EACH_PRIME \
       if (p < 7) { \

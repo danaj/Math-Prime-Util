@@ -1,7 +1,4 @@
 
-- Examine behavior near 32-bit limit on 32-bit machines.
-  (done for factoring)
-
 - segment sieve should itself use a segment for its primes.
   Today we'd need sqrt(2^64) max = 140MB.  Segmenting would yield under 1MB.
 
@@ -41,4 +38,11 @@
 
 - Rewrite 23-primality-proofs.t for new format (keep some of the old tests?).
 
-- Use Montgomery routines in more places: Factoring and Lucas tests.
+- Use Montgomery routines in more places: Factoring.
+
+- More tests for PrimeIterator.
+
+- Put euler_phi and moebius directly in XS.
+    (1) optional second argument.  Easily handled, and not hard to do in
+        generic sub call.
+    (2) generic sub returns an array.  This is the sticking point.

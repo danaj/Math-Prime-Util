@@ -38,7 +38,7 @@ sub new {
   bless $self, $class;
   return $self;
 }
- 
+
 sub _addx {
   my ($x1, $x2, $xin, $n) = @_;
 

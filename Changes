@@ -7,6 +7,10 @@ Revision history for Perl module Math::Prime::Util
       - is_proven_prime_with_cert
       - carmichael_lambda
       - znorder
+      - prime_iterator_object
+
+    - Added Math::Prime::Util::PrimeIterator.  A more feature-rich iterator
+      than the simple closure one from prime_iterator.  Experimental.
 
     - Input validation accepts bigint objects and converts them to scalars
       entirely in XS.
@@ -36,6 +40,13 @@ Revision history for Perl module Math::Prime::Util
       speedup for 33 to 64-bit inputs on x86_64/gcc platforms.
 
     - Primality functions moved to their own file primality.c.
+
+    - Some fixes around near maxint primes, forprimes, etc.
+
+    - Bytes::Random::Secure is loaded only when random prime functionality
+      is used.  Shaves a few milliseconds and bytes off of startup.
+
+    - Speedup for Perl (no GMP) primality and random nbit primes.
 
 0.31  2013-08-07
 
@@ -120,7 +131,7 @@ Revision history for Perl module Math::Prime::Util
         $sum = 0;  forprimes { $sum += $_ } 1000,50000;  say $sum;
         forprimes { say if is_prime($_+2) } 10000;  # print twin primes
 
-    - my $it = prime_iterator(10000); say $it->(); 
+    - my $it = prime_iterator(10000); say $it->();
       This is experimental (that is, the interface may change).
 
 0.27  2013-05-20
@@ -450,7 +461,7 @@ Revision history for Perl module Math::Prime::Util
     [Minor Changes]
        - Make miller_rabin return 0 if given even number.
        - The XS miller_rabin code now works with large base > n.
-       - factor always returns sorted results 
+       - factor always returns sorted results
        - miller_rabin() deprecated.  Use is_strong_pseudoprime instead.
 
     [Support all functionality of:]

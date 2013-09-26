@@ -48,7 +48,10 @@
 #endif
 
 #if PERL_VERSION < 13 || (PERL_VERSION == 13 && PERL_SUBVERSION < 9)
-#  define PERL_HAS_BAD_MULTICALL_REFCOUNT
+#  define FIX_MULTICALL_REFCOUNT \
+      if (CvDEPTH(multicall_cv) > 1) SvREFCNT_inc(multicall_cv);
+#else
+#  define FIX_MULTICALL_REFCOUNT
 #endif
 #ifndef CvISXSUB
 #  define CvISXSUB(cv) CvXSUB(cv)
@@ -103,10 +106,11 @@ static int _validate_int(SV* n, int negok)
     return -1;
   if (len < uvmax_maxlen)              /* Valid small integer */
     return 1;
-  for (i = 0; i < uvmax_maxlen; i++)   /* Check if in range */
-    if (ptr[i] > uvmax_str[i])
-      return 0;
-  return 1;                            /* Looks good */
+  for (i = 0; i < uvmax_maxlen; i++) { /* Check if in range */
+    if (ptr[i] < uvmax_str[i]) return 1;
+    if (ptr[i] > uvmax_str[i]) return 0;
+  }
+  return 1;                            /* value = UV_MAX.  That's ok */
 }
 
 /* Call a Perl sub to handle work for us.
@@ -261,7 +265,7 @@ trial_primes(IN UV low, IN UV high)
     if (low <= high) {
       if (low >= 2) low--;   /* Make sure low gets included */
       curprime = _XS_next_prime(low);
-      while (curprime <= high) {
+      while (curprime <= high && curprime != 0) {
         av_push(av,newSVuv(curprime));
         curprime = _XS_next_prime(curprime);
       }
@@ -555,18 +559,24 @@ void
 next_prime(IN SV* n)
   ALIAS:
     prev_prime = 1
+  PREINIT:
+    UV val;
   PPCODE:
-    if (_validate_int(n, 0)) {
-      UV val;
-      set_val_from_sv(val, n);
-      if ( (ix && val < 3) || (!ix && val >= _max_prime) )  XSRETURN_UV(0);
-      if (ix) XSRETURN_UV(_XS_prev_prime(val));
-      else    XSRETURN_UV(_XS_next_prime(val));
+    if (ix) {
+      if (_validate_int(n, 0)) {
+        set_val_from_sv(val, n);
+        XSRETURN_UV( (val < 3) ? 0 : _XS_prev_prime(val));
+      }
     } else {
-      _vcallsub((ix == 0) ?  "Math::Prime::Util::_generic_next_prime" :
-                             "Math::Prime::Util::_generic_prev_prime" );
-      XSRETURN(1);
+      if (_validate_int(n, 0)) {
+        set_val_from_sv(val, n);
+        if (val < _max_prime)
+          XSRETURN_UV(_XS_next_prime(val));
+      }
     }
+    _vcallsub((ix == 0) ?  "Math::Prime::Util::_generic_next_prime" :
+                           "Math::Prime::Util::_generic_prev_prime" );
+    XSRETURN(1);
 
 double
 _XS_ExponentialIntegral(IN double x)
@@ -655,21 +665,21 @@ _XS_moebius(IN UV lo, IN UV hi = 0)
       Safefree(mu);
     } else {
       UV factors[MPU_MAX_FACTORS+1];
-      UV nfactors, lastf;
+      UV nfactors;
       UV n = lo;
 
       if (n <= 1)
         XSRETURN_IV(n);
-      if ( (n >= 25) && ( !(n%4) || !(n%9) || !(n%25) ) )
+
+      if ( (!(n% 4) && n >=  4) || (!(n% 9) && n >=  9) ||
+           (!(n%25) && n >= 25) || (!(n%49) && n >= 49) )
         XSRETURN_IV(0);
 
       nfactors = factor(n, factors);
-      lastf = 0;
-      for (i = 0; i < nfactors; i++) {
-        if (factors[i] == lastf)
+      for (i = 1; i < nfactors; i++)
+        if (factors[i] == factors[i-1])
           XSRETURN_IV(0);
-        lastf = factors[i];
-      }
+
       XSRETURN_IV( (nfactors % 2) ? -1 : 1 );
     }
 
@@ -746,7 +756,7 @@ forprimes (SV* block, IN SV* svbeg, IN SV* svend = 0)
     GV *gv;
     HV *stash;
     CV *cv;
-    SV* svarg;
+    SV* svarg;  /* We use svarg to prevent clobbering $_ outside the block */
     void* ctx;
     unsigned char* segment;
     UV seg_base, seg_low, seg_high;
@@ -778,7 +788,7 @@ forprimes (SV* block, IN SV* svbeg, IN SV* svend = 0)
     /* Handle early part */
     while (beg < 6) {
       dSP;
-      beg = (beg <= 2) ? 2 : (beg <= 3) ? 3 : 5; 
+      beg = (beg <= 2) ? 2 : (beg <= 3) ? 3 : 5;
       if (beg <= end) {
         sv_setuv(svarg, beg);
         GvSV(PL_defgv) = svarg;
@@ -787,7 +797,34 @@ forprimes (SV* block, IN SV* svbeg, IN SV* svend = 0)
       }
       beg += 1 + (beg > 2);
     }
-    if (beg <= end) {
+    /* For small ranges with large bases or tiny ranges, it will be faster
+     * and less memory to just iterate through the primes in range.  The
+     * exact limits will change based on the sieve vs. next_prime speed. */
+    if (beg <= end && !CvISXSUB(cv) && (
+#if BITS_PER_WORD == 64
+          (beg >= UVCONST(10000000000000000000) && end-beg < 100000000) ||
+          (beg >= UVCONST( 1000000000000000000) && end-beg <  25000000) ||
+          (beg >= UVCONST(  100000000000000000) && end-beg <   8000000) ||
+          (beg >= UVCONST(   10000000000000000) && end-beg <   1700000) ||
+          (beg >= UVCONST(    1000000000000000) && end-beg <    400000) ||
+          (beg >= UVCONST(     100000000000000) && end-beg <    130000) ||
+          (beg >= UVCONST(      10000000000000) && end-beg <     40000) ||
+          (beg >= UVCONST(       1000000000000) && end-beg <     17000) ||
+#endif
+          (                                        end-beg <       500) ) ) {
+      dMULTICALL;
+      I32 gimme = G_VOID;
+      PUSH_MULTICALL(cv);
+      beg = _XS_next_prime(beg-1);
+      while (beg <= end && beg != 0) {
+        sv_setuv(svarg, beg);
+        GvSV(PL_defgv) = svarg;
+        MULTICALL;
+        beg = _XS_next_prime(beg);
+      }
+      FIX_MULTICALL_REFCOUNT;
+      POP_MULTICALL;
+    } else if (beg <= end) {
       ctx = start_segment_primes(beg, end, &segment);
       while (next_segment_primes(ctx, &seg_base, &seg_low, &seg_high)) {
         if (!CvISXSUB(cv)) {
@@ -799,10 +836,7 @@ forprimes (SV* block, IN SV* svbeg, IN SV* svend = 0)
             GvSV(PL_defgv) = svarg;
             MULTICALL;
           } END_DO_FOR_EACH_SIEVE_PRIME
-#ifdef PERL_HAS_BAD_MULTICALL_REFCOUNT
-          if (CvDEPTH(multicall_cv) > 1)
-            SvREFCNT_inc(multicall_cv);
-#endif
+          FIX_MULTICALL_REFCOUNT;
           POP_MULTICALL;
         } else {
           START_DO_FOR_EACH_SIEVE_PRIME( segment, seg_low - seg_base, seg_high - seg_base ) {

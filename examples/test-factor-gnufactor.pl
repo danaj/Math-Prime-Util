@@ -29,7 +29,7 @@ my $num = 1000;
 # GNU factor gets its result by multiple shells out to /usr/bin/factor with
 # the numbers as command line arguments.  This adds a lot of overhead that
 # has nothing to do with their implementation.  For comparison, try turning
-# on the MPU factor.pl script, and weep for Perl's startup cost.
+# on the MPU factor.pl script, and weep at Perl's startup cost.
 
 my $do_gnu = 1;
 my $do_pari = 1;
