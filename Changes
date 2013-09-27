@@ -8,6 +8,7 @@ Revision history for Perl module Math::Prime::Util
       - carmichael_lambda
       - znorder
       - prime_iterator_object
+      - miller_rabin_random
 
     - Added Math::Prime::Util::PrimeIterator.  A more feature-rich iterator
       than the simple closure one from prime_iterator.  Experimental.

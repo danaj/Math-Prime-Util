@@ -23,7 +23,7 @@ our @EXPORT_OK =
       is_almost_extra_strong_lucas_pseudoprime
       is_frobenius_underwood_pseudoprime
       is_aks_prime
-      miller_rabin
+      miller_rabin miller_rabin_random
       lucas_sequence
       primes
       forprimes prime_iterator prime_iterator_object
@@ -1988,24 +1988,64 @@ sub lucas_sequence {
   return Math::Prime::Util::PP::lucas_sequence($n, $P, $Q, $k);
 }
 
+sub miller_rabin_random {
+  my($n, $k, $seed) = @_;
+  _validate_num($n) || _validate_positive_integer($n);
+  _validate_num($k) || _validate_positive_integer($k);
+
+  return 1 if $k <= 0;
+  return (is_prob_prime($n) > 0) if $n < 100;
+  return 0 unless $n & 1;
+  return Math::Prime::Util::GMP::miller_rabin_random($n, $k)
+    if $_HAVE_GMP
+    && defined &Math::Prime::Util::GMP::miller_rabin_random;
+
+  # Testing this many bases is silly, but let's pretend they have some
+  # good reason.  A composite n > 9 must have at least n/4 witnesses,
+  # hence we need to check only floor(3/4)+1 at most.  We could improve
+  # this is $_Config{'assume_rh'} is true, to 1 .. 2(logn)^2.
+  if ($k >= int(3*$n/4)) {
+    return is_strong_pseudoprime($n, 2 .. int(3*$n/4)+1+2 );
+  }
+
+  my $brange = $n-3;
+  my $irandf = _get_rand_func();
+  # Do one first before doing batches
+  return 0 unless is_strong_pseudoprime($n, $irandf->($brange)+2 );
+  $k--;
+  while ($k > 0) {
+    my $nbases = ($k >= 20) ? 20 : $k;
+    my @bases = map { $irandf->($brange)+2 } 1..$nbases;
+    if ($n <= $_XS_MAXVAL) {
+      return 0 unless _XS_miller_rabin($n, @bases);
+    } else {
+      return 0 unless is_strong_pseudoprime($n, @bases);
+    }
+    $k -= $nbases;
+  }
+  1;
+}
+
 
 #############################################################################
 
-  # Simple timings, do { is_strong_pseudoprime(2*$_+1,2) } for 1..1000000;
+  # Simple timings, with 0.32 code (Montgomery Reduction for 64-bit)
+  # my $n=2**20+1;  do { is_strong_pseudoprime($n,2); $n+=2 } for 1..1000000;
+  # my $n=2**47+1;  do { is_strong_pseudoprime($n,2); $n+=2 } for 1..1000000;
   #
   #      1.0 uS  XS 32-bit input, is_strong_pseudoprime
   #      1.8 uS  XS 64-bit input, is_strong_pseudoprime
-  #      1.4 uS  XS 32-bit input, is_strong_lucas_pseudoprime
-  #      3.0 uS  XS 64-bit input, is_strong_lucas_pseudoprime
+  #      1.3 uS  XS 32-bit input, is_strong_lucas_pseudoprime
+  #      1.9 uS  XS 64-bit input, is_strong_lucas_pseudoprime
   #      1.2 uS  XS 32-bit input, is_almost_extra_strong_lucas_pseudoprime
-  #      2.3 uS  XS 64-bit input, is_almost_extra_strong_lucas_pseudoprime
+  #      1.8 uS  XS 64-bit input, is_almost_extra_strong_lucas_pseudoprime
   #
-  #     12 uS  Perl 32-bit input, is_strong_pseudoprime
-  #   1200 uS  Perl 64-bit input, is_strong_pseudoprime
-  #   2000 uS  Perl 32-bit input, is_strong_lucas_pseudoprime
-  #   7840 uS  Perl 64-bit input, is_strong_lucas_pseudoprime
-  #    940 uS  Perl 32-bit input, is_almost_extra_strong_lucas_pseudoprime
-  #   3360 uS  Perl 64-bit input, is_almost_extra_strong_lucas_pseudoprime
+  #     13 uS  Perl 32-bit input, is_strong_pseudoprime
+  #    945 uS  Perl 64-bit input, is_strong_pseudoprime
+  #   1700 uS  Perl 32-bit input, is_strong_lucas_pseudoprime
+  #   3000 uS  Perl 64-bit input, is_strong_lucas_pseudoprime
+  #   1500 uS  Perl 32-bit input, is_almost_extra_strong_lucas_pseudoprime
+  #   3400 uS  Perl 64-bit input, is_almost_extra_strong_lucas_pseudoprime
 
 sub is_aks_prime {
   my($n) = @_;
@@ -2729,6 +2769,21 @@ and earlier with bignums.
 =back
 
 
+=head1 PRIMALITY TESTING
+
+This module provides three functions for general primality testing, as
+well as numerous specialized functions.  The three main functions are:
+L</is_prob_prime> and L</is_prime> for general use, and L</is_provable_prime>
+for proofs.  For inputs below C<2^64> the functions are identical and
+fast deterministic testing is performed.  That is, the results will always
+be correct and should take at most a few microseconds for any input.  This
+is hundreds to thousands of times faster than other CPAN modules.  For
+inputs larger than C<2^64>, an extra-strong
+L<BPSW test|http://en.wikipedia.org/wiki/Baillie-PSW_primality_test>
+is used.  See the L</PRIMALITY TESTING NOTES> section for more
+discussion.
+
+
 =head1 FUNCTIONS
 
 =head2 is_prime
@@ -3035,10 +3090,6 @@ Returning composite for all non-2 even input makes the function match most
 other implementations including L<Math::Primality>'s C<is_strong_pseudoprime>
 function.
 
-=head2 miller_rabin
-
-An alias for C<is_strong_pseudoprime>.  This name is deprecated.
-
 =head2 is_lucas_pseudoprime
 
 Takes a positive number as input, and returns 1 if the input is a standard
@@ -3099,6 +3150,19 @@ lambda+2 test (see Underwood 2012 "Quadratic Compositeness Tests"), where
 C<(L+2)^(n-1) = 5 + 2x mod (n, L^2 - Lx + 1)>.  The computational cost for this
 is between the cost of 2 and 3 strong pseudoprime tests.  There are no known
 counterexamples, but this is not a well studied test.
+
+=head2 miller_rabin_random
+
+Takes a positive number (C<n>) as input and a positive number (C<k>) of bases
+to use.  Performs C<k> Miller-Rabin tests using uniform random bases
+between 2 and C<n-2>.
+
+This should not be used in place of L</is_prob_prime>, L</is_prime>,
+or L</is_provable_prime>.  Those functions will be faster and provide
+better results than running C<k> Miller-Rabin tests.  This function can
+be used if one wants more assurances for non-proven primes, such as for
+cryptographic uses where the size is large enough that proven primes are
+not desired.
 
 
 
@@ -4257,7 +4321,7 @@ Project Euler, problem 21 (Amicable numbers):
 
 Project Euler, problem 41 (Pandigital prime), brute force command line:
 
-  perl -MMath::Prime::Util=:all -E 'my @p = grep { /1/&&/2/&&/3/&&/4/&&/5/&&/6/&&/7/} @{primes(1000000,9999999)}; say $p[-1];
+  perl -MMath::Prime::Util=:all -E 'my @p = grep { /1/&&/2/&&/3/&&/4/&&/5/&&/6/&&/7/} @{primes(1000000,9999999)}; say $p[-1];'
 
 Project Euler, problem 47 (Distinct primes factors):
 
@@ -4268,7 +4332,7 @@ Project Euler, problem 47 (Distinct primes factors):
   $n++ while (nfactors($n) != 4 || nfactors($n+1) != 4 || nfactors($n+2) != 4 || nfactors($n+3) != 4);
   say $n;
 
-Project Euler, problem 69, stupid brute force solution (about 5 seconds):
+Project Euler, problem 69, stupid brute force solution (about 2 seconds):
 
   use Math::Prime::Util qw/euler_phi/;
   my ($n, $max) = (0,0);
@@ -4278,14 +4342,14 @@ Project Euler, problem 69, stupid brute force solution (about 5 seconds):
   } for 1..1000000;
   say "$n  $max";
 
-Here's the right way to do PE problem 69 (under 0.03s):
+Here is the right way to do PE problem 69 (under 0.03s):
 
   use Math::Prime::Util qw/pn_primorial/;
   my $n = 0;
   $n++ while pn_primorial($n+1) < 1000000;
-  say pn_primorial($n);'
+  say pn_primorial($n);
 
-Project Euler, problem 187, stupid brute force solution, ~3 minutes:
+Project Euler, problem 187, stupid brute force solution, ~4 minutes:
 
   use Math::Prime::Util qw/factor -nobigint/;
   my $nsemis = 0;
@@ -4293,7 +4357,7 @@ Project Euler, problem 187, stupid brute force solution, ~3 minutes:
      for 1 .. int(10**8)-1;
   say $nsemis;
 
-Here's the best way for PE187.  Under 30 milliseconds from the command line:
+Here is the best way for PE187.  Under 30 milliseconds from the command line:
 
   use Math::Prime::Util qw/primes prime_count -nobigint/;
   use List::Util qw/sum/;
@@ -4301,6 +4365,78 @@ Here's the best way for PE187.  Under 30 milliseconds from the command line:
   my @primes = @{primes(int(sqrt($limit)))};
   say sum( map { prime_count(int(($limit-1)/$primes[$_-1])) - $_ + 1 }
                1 .. scalar @primes );
+
+
+=head1 PRIMALITY TESTING NOTES
+
+Above C<2^64>, L</is_prob_prime> performs an extra-strong
+L<BPSW test|http://en.wikipedia.org/wiki/Baillie-PSW_primality_test>
+which is fast (a little less than the time to perform 3 Miller-Rabin
+tests) and has no known counterexamples.  If you believe the primality
+testing done by Pari, Maple, SAGE, FLINT, etc., then this function
+should be appropriate for you.  L</is_prime> will do the same BPSW
+test as well as some additional testing, making it slightly more time
+consuming but less likely to produce a false result.  This is a little
+more stringent than Mathematica.  L</is_provable_prime> constructs a
+primality proof.  If a certificate is requested, then either BLS75
+theorem 5 or ECPP is performed.  Without a certificate, the method
+is implementation specific (currently it is identical, but later
+releases may use APRCL).  With L<Math::Prime::Util::GMP> installed,
+this is quite fast through 300 or so digits.
+
+Math systems 30 years ago used to use Miller-Rabin tests with C<k>
+bases (typically fixed bases, sometimes random) for primality
+testing, but these have generally been replaced by some form of BPSW
+as used in this module.  See Pinch's 1993 paper for examples of why
+using C<k> M-R tests leads to poor results.  The three exceptions in
+common contemporary use I am aware of are:
+
+=over 4
+
+=item libtommath
+
+Uses the first C<k> prime bases.  This is unacceptable for
+cryptographic use, as there are known methods (e.g. Arnault 1994) for
+constructing counterexamples.  The number of bases required to avoid
+false results is unreasonably high, hence performance is slow even
+if one ignores counterexamples.  Unfortunately this is the
+multi-precision math library used for Perl 6 and at least one CPAN
+Crypto module.
+
+=item GMP/MPIR
+
+Uses a set of C<k> static-random bases.  The bases are randomly chosen
+using a PRNG that is seeded identically each call (the seed changes
+with each release).  This offers a very slight advantage over using
+the first C<k> prime bases, but not much.  See, for example, Nicely's
+L<mpz_probab_prime_p pseudoprimes|http://www.trnicely.net/misc/mpzspsp.html>
+page.
+
+=item L<Math::Pari>
+
+Pari 2.1.7 is the default version installed with the L<Math::Pari>
+module.  It uses 10 random M-R bases (the PRNG uses a fixed seed
+set at compile time).  Pari 2.3.0 was released in May 2006 and it,
+like all later releases through at least 2.6.1, use BPSW / APRCL,
+after complaints of false results from using M-R tests.
+
+=back
+
+Basically the problem is that it is just too easy to get counterexamples
+from running C<k> M-R tests, forcing one to use a very large number of
+tests (at least 20) to avoid frequent false results.  Using the BPSW test
+results in no known counterexamples after 30+ years and runs much faster.
+It can be enhanced with one or more random bases if one desires, and
+will I<still> be much faster.
+
+Using C<k> fixed bases has another problem, which is that in any
+adversarial situation we can assume the inputs will be selected such
+that they are one of our counterexamples.  Now we need absurdly large
+numbers of tests.  This is like playing "pick my number" but the
+number is fixed forever at the start, the guesser gets to know
+everyone else's guesses and results who has every played, and can
+keep playing as long as they like.  It's only valid if the players
+are completely oblivious to what is happening.
 
 
 =head1 LIMITATIONS
@@ -4458,7 +4594,7 @@ Some of the highlights:
 
 =item C<isprime>
 
-Similar to MPU's L<is_prob_prime> or L<is_prime> functions.
+Similar to MPU's L</is_prob_prime> or L</is_prime> functions.
 MPU is deterministic for native integers, and uses a strong
 BPSW test for bigints (with a quick primality proof tried as well).  The
 default version of Pari used by L<Math::Pari> (2.1.7) uses 10 random M-R
@@ -4479,7 +4615,7 @@ function will perform a BPSW test similar to L</is_prob_prime>.
 
 =item C<primepi>
 
-Only available with version 2.3 of Pari.  Similar to MPU's L<prime_count>
+Only available with version 2.3 of Pari.  Similar to MPU's L</prime_count>
 function in API, but uses a naive counting algorithm with its precalculated
 primes, so is not of practical use.  Incidently, Pari 2.6 (not usable from
 Perl) has fixed the pre-calculation requirement so it is more useful, but is
@@ -4495,7 +4631,7 @@ doesn't support segmenting.
 
 =item C<factorint>
 
-Similar to MPU's L<factor> though with a different return (I
+Similar to MPU's L</factor> though with a different return (I
 find the result value quite inconvenient to work with, but others may like
 its vector of factor/exponent format).  Slower than MPU for all 64-bit inputs
 on an x86_64 platform, it may be faster for large values on other platforms.
@@ -4504,27 +4640,27 @@ faster in MPU.
 
 =item C<eulerphi>
 
-Similar to MPU's L<euler_phi>.  MPU is 2-20x faster for native integers.
+Similar to MPU's L</euler_phi>.  MPU is 2-20x faster for native integers.
 There is also support for a range, which can be much more efficient.
 Without L<Math::Prime::Util::GMP> installed, MPU is very slow with bigints.
 With it installed, it is about 2x slower than Math::Pari.
 
 =item C<moebius>
 
-Similar to MPU's L<moebius>.  Comparisons are similar to C<eulerphi>.
+Similar to MPU's L</moebius>.  Comparisons are similar to C<eulerphi>.
 
 =item C<sigma>
 
-Similar to MPU's L<divisor_sum>.  MPU is ~10x faster for native integers
+Similar to MPU's L</divisor_sum>.  MPU is ~10x faster for native integers
 and about 2x slower for bigints.
 
 =item C<eint1>
 
-Similar to MPU's L<ExponentialIntegral>.
+Similar to MPU's L</ExponentialIntegral>.
 
 =item C<zeta>
 
-A more feature-rich version MPU's L<RiemannZeta> function (supports negative
+A more feature-rich version MPU's L</RiemannZeta> function (supports negative
 and complex inputs).
 
 =back
