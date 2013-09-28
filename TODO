@@ -46,3 +46,10 @@
     (1) optional second argument.  Easily handled, and not hard to do in
         generic sub call.
     (2) generic sub returns an array.  This is the sticking point.
+
+- Factoring in PP code is really wasteful -- we're calling _isprime7 before
+  we've done enough trial division, and later we're calling it on known
+  composites.  Note how the XS code splits the factor code into the public
+  API (small factors, isprime, then call main code) and main code (just the
+  algorithm).  The PP code isn't doing that, which means we're doing lots of
+  extra primality checks, which aren't cheap in PP.

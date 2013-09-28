@@ -49,6 +49,11 @@ Revision history for Perl module Math::Prime::Util
 
     - Speedup for Perl (no GMP) primality and random nbit primes.
 
+    - factor() can be called in scalar context to give the number of
+      prime factors.  The XS function was ignoring the context, and now
+      is more consistent.  It also slightly speeds up looking at the
+      number of factors, e.g. Omega(x) A001222.
+
 0.31  2013-08-07
 
     - Change proof certificate documentation to reflect the new text format.

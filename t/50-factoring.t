@@ -74,7 +74,7 @@ my %all_factors = (
       0 => [],
 );
 
-plan tests =>  (2 * scalar @testn) + scalar(keys %all_factors) + 10*9 + 1;
+plan tests =>  (2 * scalar @testn) + scalar(keys %all_factors) + 10*9 + 8 + 1;
 
 foreach my $n (@testn) {
   my @f = factor($n);
@@ -126,3 +126,13 @@ sub extra_factor_test {
   is_deeply( [ sort {$a<=>$b} $fsub->(403) ], [13, 31],  "$fname(403)" );
   is_deeply( [ sort {$a<=>$b} $fsub->(549900) ], [2,2,3,3,5,5,13,47],  "$fname(549900)" );
 }
+
+# Factor in scalar context
+is( scalar factor(0), 1, "scalar factor(0) should be 1" );
+is( scalar factor(1), 1, "scalar factor(1) should be 1" );
+is( scalar factor(3), 1, "scalar factor(3) should be 1" );
+is( scalar factor(4), 2, "scalar factor(4) should be 2" );
+is( scalar factor(5), 1, "scalar factor(5) should be 1" );
+is( scalar factor(6), 2, "scalar factor(6) should be 2" );
+is( scalar factor(30107), 4, "scalar factor(30107) should be 4" );
+is( scalar factor(174636000), 15, "scalar factor(174636000) should be 15" );

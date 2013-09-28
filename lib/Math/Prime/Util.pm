@@ -3090,6 +3090,10 @@ Returning composite for all non-2 even input makes the function match most
 other implementations including L<Math::Primality>'s C<is_strong_pseudoprime>
 function.
 
+=head2 miller_rabin
+
+An alias for C<is_strong_pseudoprime>.  This name is deprecated.
+
 =head2 is_lucas_pseudoprime
 
 Takes a positive number as input, and returns 1 if the input is a standard
@@ -4018,6 +4022,10 @@ guarantees multiplying the factors together will always result in the
 input value, though those are the only cases where the returned factors
 are not prime.
 
+In scalar context, returns the number of prime factors with multiplicity
+(L<OEIS A001222|http://oeis.org/A001222>).  This is the expected result,
+as if we put the result into an array and then took the scalar result.
+
 The current algorithm for non-bigints is a sequence of small trial division,
 a few rounds of Pollard's Rho, SQUFOF, Pollard's p-1, Hart's OLF, a long
 run of Pollard's Rho, and finally trial division if anything survives.  This
@@ -4353,7 +4361,7 @@ Project Euler, problem 187, stupid brute force solution, ~4 minutes:
 
   use Math::Prime::Util qw/factor -nobigint/;
   my $nsemis = 0;
-  do { my @f = factor($_); $nsemis++ if scalar @f == 2; }
+  do { $nsemis++ if scalar factor($_) == 2; }
      for 1 .. int(10**8)-1;
   say $nsemis;
 

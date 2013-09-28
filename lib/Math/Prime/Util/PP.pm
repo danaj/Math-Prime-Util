@@ -1398,10 +1398,12 @@ sub trial_factor {
   _validate_positive_integer($n);
   $maxlim = $n unless defined $maxlim && _validate_positive_integer($maxlim);
 
-  # Don't use _basic factor here -- they want a trial forced.
-  #my @factors = _basic_factor($n);
-  return ($n) if $n < 4;
+  # Don't use _basic_factor here -- they want a trial forced.
   my @factors;
+  if ($n < 4) {
+    @factors = ($n);
+    return @factors;
+  }
   while ( !($n % 2) ) { push @factors, 2;  $n = int($n / 2); }
   while ( !($n % 3) ) { push @factors, 3;  $n = int($n / 3); }
   while ( !($n % 5) ) { push @factors, 5;  $n = int($n / 5); }
@@ -1499,7 +1501,8 @@ sub factor {
     }
     push @factors, $n  if $n != 1;
   }
-  sort {$a<=>$b} @factors;
+  @factors = sort {$a<=>$b} @factors;
+  return @factors;
 }
 
 sub _found_factor {
