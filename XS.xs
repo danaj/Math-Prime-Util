@@ -402,9 +402,13 @@ _XS_factor(IN UV n)
     int i, nfactors;
   PPCODE:
     nfactors = factor(n, factors);
-    EXTEND(SP, nfactors);
-    for (i = 0; i < nfactors; i++) {
-      PUSHs(sv_2mortal(newSVuv( factors[i] )));
+    if (GIMME_V == G_SCALAR) {
+      PUSHs(sv_2mortal(newSVuv(nfactors)));
+    } else if (GIMME_V == G_ARRAY) {
+      EXTEND(SP, nfactors);
+      for (i = 0; i < nfactors; i++) {
+        PUSHs(sv_2mortal(newSVuv( factors[i] )));
+      }
     }
 
 void

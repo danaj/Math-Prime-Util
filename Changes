@@ -8,6 +8,7 @@ Revision history for Perl module Math::Prime::Util
       - carmichael_lambda
       - znorder
       - prime_iterator_object
+      - miller_rabin_random
 
     - Added Math::Prime::Util::PrimeIterator.  A more feature-rich iterator
       than the simple closure one from prime_iterator.  Experimental.
@@ -47,6 +48,11 @@ Revision history for Perl module Math::Prime::Util
       is used.  Shaves a few milliseconds and bytes off of startup.
 
     - Speedup for Perl (no GMP) primality and random nbit primes.
+
+    - factor() can be called in scalar context to give the number of
+      prime factors.  The XS function was ignoring the context, and now
+      is more consistent.  It also slightly speeds up looking at the
+      number of factors, e.g. Omega(x) A001222.
 
 0.31  2013-08-07
 

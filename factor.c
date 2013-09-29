@@ -161,7 +161,7 @@ int trial_factor(UV n, UV *factors, UV maxtrial)
   if (maxtrial == 0)  maxtrial = UV_MAX;
 
   /* Cover the cases 0/1/2/3 now */
-  if ( (n < 4) || (maxtrial < 4) ) {
+  if (n < 4 || maxtrial < 2) {
     factors[0] = n;
     return 1;
   }
