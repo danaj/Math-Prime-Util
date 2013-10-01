@@ -210,8 +210,9 @@ sub prime_set_config {
     } elsif ($param eq 'nobigint') {
       $_Config{'nobigint'} = ($value) ? 1 : 0;
     } elsif ($param eq 'irand') {
-      croak "irand must supply a sub" unless ref($value) eq 'CODE';
+      croak "irand must supply a sub" unless (!defined $value) || (ref($value) eq 'CODE');
       $_Config{'irand'} = $value;
+      _clear_randf();  # Force a new randf to be generated
     } elsif ($param =~ /^(assume[_ ]?)?[ge]?rh$/ || $param =~ /riemann\s*h/) {
       $_Config{'assume_rh'} = ($value) ? 1 : 0;
     } elsif ($param eq 'verbose') {
@@ -427,8 +428,8 @@ sub primes {
 #                   random_nbit_prime         random_maurer_prime
 #    n-bits       no GMP   w/ MPU::GMP        no GMP   w/ MPU::GMP
 #    ----------  --------  -----------       --------  -----------
-#       24-bit       27uS      same             same       same
-#       64-bit       97uS      same             same       same
+#       24-bit       22uS      same             same       same
+#       64-bit       94uS      same             same       same
 #      128-bit     0.017s      0.0020s         0.098s      0.056s
 #      256-bit     0.033s      0.0033s         0.25s       0.15s
 #      512-bit     0.066s      0.0093s         0.65s       0.30s
@@ -445,8 +446,8 @@ sub primes {
 #    1.92    system rand
 #    2.62    Math::Random::MT::Auto
 #   12.0     Math::Random::Secure           w/ISAAC::XS
-#   12.6     Bytes::Random::Secure OO       w/ISAAC::XS     <==== our default
-#   31.1     Bytes::Random::Secure OO
+#   12.6     Bytes::Random::Secure OO       w/ISAAC::XS     <==== our
+#   31.1     Bytes::Random::Secure OO                       <==== default
 #   44.5     Bytes::Random::Secure function w/ISAAC::XS
 #   44.8     Math::Random::Secure
 #   71.5     Bytes::Random::Secure function
@@ -496,7 +497,9 @@ sub primes {
   # Returns a function that will get a uniform random number
   # between 0 and $max inclusive.  $max can be a bigint.
   my $_BRS;
-  sub _get_rand_func {
+  my $_RANDF;
+  my $_RANDF_NBIT;
+  sub _set_randf {
     # First define a function $irandf that returns a 32-bit integer.  This
     # corresponds to the irand function of many CPAN modules:
     #    Math::Random::MT
@@ -504,61 +507,11 @@ sub primes {
     #    Math::Random::Xorshift
     #    Math::Random::Secure
     # (but not Math::Random::MT::Auto which will return 64-bits)
-    #
-    # See if they passed one in via prime_set_config(irand=> \&irand).
-    # If not, make a Bytes::Random::Secure object with non-blocking seed, and
-    # use its irand method.
-    #
-    # This gives us a good starting point to make arbitrary size random
-    # numbers.  Bytes::Random::Secure will get us excellent quality 32-bit
-    # numbers on any platform, which means we can avoid possible nightmares
-    # with bad system rand functions.
     my $irandf = $_Config{'irand'};
-    if (!defined $irandf) {
+    if (!defined $irandf) {   # Default irand: BRS nonblocking
       require Bytes::Random::Secure;
       $_BRS = Bytes::Random::Secure->new(NonBlocking=>1) unless defined $_BRS;
-      $irandf = sub { return $_BRS->irand(); };
-    }
-    # OK, now we have a function irandf.  Use it.
-    my $randf = sub {
-      my($max) = @_;
-      return 0 if $max <= 0;
-      my $range = $max+1;
-      my $U;
-      if (ref($range) eq 'Math::BigInt') {
-        my $zero = $range->copy->bzero;
-        my $rbits = length($range->as_bin) - 2;   # bits in range
-        my $rwords = int($rbits/32) + (($rbits % 32) ? 1 : 0);
-        # Generate more bits so we rarely have to loop.
-        my $rmax = Math::BigInt->bone->blsft($rwords*32)->bdec();
-        my $remainder = $rmax % $range;
-        do {
-          $U = $range->copy->from_hex
-            ("0x" . join '', map { sprintf("%08X", $irandf->()) } 1 .. $rwords);
-        } while $U >= ($rmax - $remainder);
-      } elsif ($range <= 4294967295) {
-        my $remainder = 4294967295 % $range;
-        do {
-          $U = $irandf->();
-        } while $U >= (4294967295 - $remainder);
-      } else {
-        croak "randf given max out of bounds: $max" if $range > ~0;
-        my $remainder = 18446744073709551615 % $range;
-        do {
-          $U = ($irandf->() << 32) + $irandf->();
-        } while $U >= (18446744073709551615 - $remainder);
-      }
-      return $U % $range;
-    };
-    return $randf;
-  }
-  # Returns a function that gets an nbit random number
-  sub _get_nbit_rand_func {
-    my $irandf = $_Config{'irand'};
-    if (!defined $irandf) {
-      require Bytes::Random::Secure;
-      $_BRS = Bytes::Random::Secure->new(NonBlocking=>1) unless defined $_BRS;
-      return sub {
+      $_RANDF_NBIT = sub {
         my($bits) = @_;
         return 0 if $bits <= 0;
         return ($_BRS->irand() >> (32-$bits))
@@ -570,8 +523,35 @@ sub primes {
         $n->brsft( 8*$bytes - $bits ) unless ($bits % 8) == 0;
         return $n;
       };
-    } else {
-      return sub {
+      $_RANDF = sub {
+        my($max) = @_;
+        my $range = $max+1;
+        my $U;
+        if (ref($range) eq 'Math::BigInt') {
+          my $bits = length($range->as_bin) - 2;   # bits in range
+          my $bytes = int(($bits+7)/8);
+          # Generate more bits so we rarely have to loop.
+          my $rmax = Math::BigInt->bone->blsft($bytes*8)->bdec();
+          my $remainder = $rmax % $range;
+          do {
+            $U = Math::BigInt->from_hex('0x' . $_BRS->bytes_hex($bytes));
+          } while $U >= ($rmax - $remainder);
+        } elsif ($range <= 4294967295) {
+          my $remainder = 4294967295 % $range;
+          do {
+            $U = $_BRS->irand();
+          } while $U >= (4294967295 - $remainder);
+        } else {
+          croak "randf given max out of bounds: $max" if $range > ~0;
+          my $remainder = 18446744073709551615 % $range;
+          do {
+            $U = ($_BRS->irand() << 32) + $_BRS->irand();
+          } while $U >= (18446744073709551615 - $remainder);
+        }
+        return $U % $range;
+      };
+    } else { # Custom irand
+      $_RANDF_NBIT = sub {
         my($bits) = @_;
         return 0 if $bits <= 0;
         return ($irandf->() >> (32-$bits))
@@ -584,7 +564,50 @@ sub primes {
         $n->brsft( 32*$words - $bits ) unless ($bits % 32) == 0;
         return $n;
       };
+      $_RANDF = sub {
+        my($max) = @_;
+        return 0 if $max <= 0;
+        my $range = $max+1;
+        my $U;
+        if (ref($range) eq 'Math::BigInt') {
+          my $zero = $range->copy->bzero;
+          my $rbits = length($range->as_bin) - 2;   # bits in range
+          my $rwords = int($rbits/32) + (($rbits % 32) ? 1 : 0);
+          # Generate more bits so we rarely have to loop.
+          my $rmax = Math::BigInt->bone->blsft($rwords*32)->bdec();
+          my $remainder = $rmax % $range;
+          do {
+            $U = $range->copy->from_hex
+              ("0x" . join '', map { sprintf("%08X", $irandf->()) } 1 .. $rwords);
+          } while $U >= ($rmax - $remainder);
+        } elsif ($range <= 4294967295) {
+          my $remainder = 4294967295 % $range;
+          do {
+            $U = $irandf->();
+          } while $U >= (4294967295 - $remainder);
+        } else {
+          croak "randf given max out of bounds: $max" if $range > ~0;
+          my $remainder = 18446744073709551615 % $range;
+          do {
+            $U = ($irandf->() << 32) + $irandf->();
+          } while $U >= (18446744073709551615 - $remainder);
+        }
+        return $U % $range;
+      };
     }
+  }
+  sub _clear_randf {
+    undef $_RANDF;
+    undef $_RANDF_NBIT;
+    undef $_BRS;
+  }
+  sub _get_randf {
+    _set_randf() unless defined $_RANDF;
+    return $_RANDF;
+  }
+  sub _get_randf_nbit {
+    _set_randf() unless defined $_RANDF_NBIT;
+    return $_RANDF_NBIT;
   }
 
   # Sub to call with low and high already primes and verified range.
@@ -592,22 +615,21 @@ sub primes {
     my($low,$high) = @_;
     my $prime;
 
-    # irandf->($n) gives numbers in the range [0, $n].
-    my $irandf = _get_rand_func();
+    _set_randf() unless defined $_RANDF;
 
     #{ my $bsize = 100; my @bins; my $counts = 10000000;
     #  for my $c (1..$counts) { $bins[ $irandf->($bsize-1) ]++; }
     #  for my $b (0..$bsize) {printf("%4d %8.5f%%\n", $b, $bins[$b]/$counts);} }
 
-    # low and high are both primes, and low < high.
+    # low and high are both odds, and low < high.
 
-    # This is fast for small values, low memory, perfectly uniform, and consumes
-    # the absolute minimum amount of randomness needed.  But it isn't feasible
-    # with large values.
-    if ($high <= 131072 && $high <= $_XS_MAXVAL) {
+    # This is fast for small values, low memory, perfectly uniform, and
+    # consumes the minimum amount of randomness needed.  But it isn't feasible
+    # with large values.  Also note that low must be a prime.
+    if ($high <= 262144 && $high <= $_XS_MAXVAL) {
       my $li     = _XS_prime_count(2, $low);
       my $irange = _XS_prime_count($low, $high);
-      my $rand = $irandf->($irange-1);
+      my $rand = $_RANDF->($irange-1);
       return _XS_nth_prime($li + $rand);
     }
 
@@ -628,13 +650,13 @@ sub primes {
       my $loop_limit = 2000 * 1000;  # To protect against broken rand
       if ($low > 11) {
         while ($loop_limit-- > 0) {
-          $prime = $low + 2 * $irandf->($oddrange-1);
+          $prime = $low + 2 * $_RANDF->($oddrange-1);
           next if !($prime % 3) || !($prime % 5) || !($prime % 7) || !($prime % 11);
           return $prime if is_prob_prime($prime);
         }
       } else {
         while ($loop_limit-- > 0) {
-          $prime = $low + 2 * $irandf->($oddrange-1);
+          $prime = $low + 2 * $_RANDF->($oddrange-1);
           next if $prime > 11 && (!($prime % 3) || !($prime % 5) || !($prime % 7) || !($prime % 11));
           return 2 if $prime == 1;  # Remember the special case for 2.
           return $prime if is_prob_prime($prime);
@@ -715,7 +737,7 @@ sub primes {
     }
     $nparts-- if ($nparts * $binsize) == $oddrange;
 
-    my $rpart = $irandf->($nparts);
+    my $rpart = $_RANDF->($nparts);
 
     my $primelow = $low + 2 * $binsize * $rpart;
     my $partsize = ($rpart < $nparts) ? $binsize
@@ -732,7 +754,7 @@ sub primes {
     # Simply things for non-bigints.
     if (ref($low) ne 'Math::BigInt') {
       while ($loop_limit-- > 0) {
-        my $rand = $irandf->($partsize-1);
+        my $rand = $_RANDF->($partsize-1);
         $prime = $primelow + $rand + $rand;
         croak "random prime failure, $prime > $high" if $prime > $high;
         if ($prime <= 23) {
@@ -758,7 +780,7 @@ sub primes {
     _make_big_gcds() if $_big_gcd_use < 0;
 
     while ($loop_limit-- > 0) {
-      my $rand = $irandf->($partsize-1);
+      my $rand = $_RANDF->($partsize-1);
       # Check wheel-30 mod
       my $rand30 = $rand % 30;
       next if $w30[($primelow30 + 2*$rand30) % 30]
@@ -794,6 +816,25 @@ sub primes {
   # Cache of tight bounds for each digit.  Helps performance a lot.
   my @_random_ndigit_ranges = (undef, [2,7], [11,97] );
   my @_random_nbit_ranges   = (undef, undef, [2,3],[5,7] );
+  my %_random_cache_small;
+
+  # For fixed small ranges with XS, e.g. 6-digit, 18-bit
+  sub _random_xscount_prime {
+    my($low,$high) = @_;
+    my($istart, $irange);
+    my $cachearef = $_random_cache_small{$low,$high};
+    if (defined $cachearef) {
+      ($istart, $irange) = @$cachearef;
+    } else {
+      my $beg = ($low <= 2)  ?  2  :  next_prime($low-1);
+      my $end = ($high < ~0)  ?  prev_prime($high + 1)  :  prev_prime($high);
+      ($istart, $irange) = ( _XS_prime_count(2, $beg), _XS_prime_count($beg, $end) );
+      $_random_cache_small{$low,$high} = [$istart, $irange];
+    }
+    _set_randf() unless defined $_RANDF;
+    my $rand = $_RANDF->($irange-1);
+    return _XS_nth_prime($istart + $rand);
+  }
 
   sub random_prime {
     my $low = (@_ == 2)  ?  shift  :  2;
@@ -814,6 +855,9 @@ sub primes {
   sub random_ndigit_prime {
     my($digits) = @_;
     _validate_num($digits, 1) || _validate_positive_integer($digits, 1);
+
+    return _random_xscount_prime( int(10 ** ($digits-1)), int(10 ** $digits) )
+      if $digits <= 6 && int(10**$digits) <= $_XS_MAXVAL;
 
     my $bigdigits = $digits >= $_Config{'maxdigits'};
     croak "Large random primes not supported on old Perl" if $] < 5.008 && $_Config{'maxbits'} > 32 && !$bigdigits && $digits > 15;
@@ -858,6 +902,18 @@ sub primes {
     my($bits) = @_;
     _validate_num($bits, 2) || _validate_positive_integer($bits, 2);
 
+    _set_randf() unless defined $_RANDF_NBIT;
+
+    # Very small size, use the nth-prime method
+    if ($bits <= 18 && int(2**$bits) <= $_XS_MAXVAL) {
+      if ($bits <= 4) {
+        return (2,3)[$_RANDF_NBIT->(1)] if $bits == 2;
+        return (5,7)[$_RANDF_NBIT->(1)] if $bits == 3;
+        return (11,13)[$_RANDF_NBIT->(1)] if $bits == 4;
+      }
+      return _random_xscount_prime( 1 << ($bits-1), 1 << $bits );
+    }
+
     croak "Mid-size random primes not supported on broken old Perl"
       if $] < 5.008 && $bits > 49
       && $_Config{'maxbits'} > 32 && $bits <= $_Config{'maxbits'};
@@ -886,12 +942,11 @@ sub primes {
     # slow, then A2 would look more promising.
     #
     if (1 && $bits > 64) {
-      my $nrandf = _get_nbit_rand_func();
       my $l = ($_Config{'maxbits'} > 32 && $bits > 79)  ?  63  :  31;
       $l = 49 if $l == 63 && $] < 5.008;  # Fix for broken Perl 5.6
       $l = $bits-2 if $bits-2 < $l;
 
-      my $brand = $nrandf->($bits-$l-2);
+      my $brand = $_RANDF_NBIT->($bits-$l-2);
       $brand = Math::BigInt->new("$brand") unless ref($brand) eq 'Math::BigInt';
       my $b = $brand->blsft(1)->binc();
 
@@ -909,7 +964,7 @@ sub primes {
       _make_big_gcds() if $_big_gcd_use < 0;
       my $loop_limit = 1_000_000;
       while ($loop_limit-- > 0) {
-        my $a = (1 << $l) + $nrandf->($l);
+        my $a = (1 << $l) + $_RANDF_NBIT->($l);
         # $a % s == $premod[s]  =>  $p % s == 0  =>  p will be composite
         next if $a %  3 == $premod[ 3] || $a %  5 == $premod[ 5]
              || $a %  7 == $premod[ 7] || $a % 11 == $premod[11]
@@ -942,23 +997,17 @@ sub primes {
     # gets very slow as the bit size increases, but that is why we have the
     # method above for bigints.
     if (1) {
-      my $nrandf = _get_nbit_rand_func();
-      if ($bits <= 4) {
-        return (2,3)[$nrandf->(1)] if $bits == 2;
-        return (5,7)[$nrandf->(1)] if $bits == 3;
-        return (11,13)[$nrandf->(1)] if $bits == 4;
-      }
       my $loop_limit = 2_000_000;
       if ($bits > $_Config{'maxbits'}) {
         my $p = Math::BigInt->bone->blsft($bits-1)->binc();
         while ($loop_limit-- > 0) {
-          my $n = Math::BigInt->new(''.$nrandf->($bits-2))->blsft(1)->badd($p);
+          my $n = Math::BigInt->new(''.$_RANDF_NBIT->($bits-2))->blsft(1)->badd($p);
           return $n if is_prob_prime($n);
         }
       } else {
         my $p = (1 << ($bits-1)) + 1;
         while ($loop_limit-- > 0) {
-          my $n = $p + ($nrandf->($bits-2) << 1);
+          my $n = $p + ($_RANDF_NBIT->($bits-2) << 1);
           return $n if is_prob_prime($n);
         }
       }
@@ -1038,13 +1087,13 @@ sub primes {
     # Ignore Maurer's g and c that controls how much trial division is done.
     my $r = Math::BigFloat->new("0.5");   # relative size of the prime q
     my $m = 20;                           # makes sure R is big enough
-    my $irandf = _get_rand_func();
+    _set_randf() unless defined $_RANDF;
 
     # Generate a random prime q of size $r*$k, where $r >= 0.5.  Try to
     # cleverly select r to match the size of a typical random factor.
     if ($k > 2*$m) {
       do {
-        my $s = Math::BigFloat->new($irandf->(2147483647))->bdiv(2147483648);
+        my $s = Math::BigFloat->new($_RANDF->(2147483647))->bdiv(2147483648);
         $r = Math::BigFloat->new(2)->bpow($s-1);
       } while ($k*$r >= $k-$m);
     }
@@ -1063,7 +1112,7 @@ sub primes {
     my $loop_limit = 1_000_000 + $k * 1_000;
     while ($loop_limit-- > 0) {
       # R is a random number between $I+1 and 2*$I
-      my $R = $I + 1 + $irandf->( $I - 1 );
+      my $R = $I + 1 + $_RANDF->( $I - 1 );
       #my $n = 2 * $R * $q + 1;
       my $n = Math::BigInt->new(2)->bmul($R)->bmul($q)->binc();
       # We constructed a promising looking $n.  Now test it.
@@ -1128,7 +1177,7 @@ sub primes {
       eval { require Math::BigInt; Math::BigInt->import(try=>'GMP,Pari'); 1; }
       or do { croak "Cannot load Math::BigInt"; };
     }
-    my $irandf = _get_rand_func();
+    _set_randf() unless defined $_RANDF;
 
     my $l   = (($t+1) >> 1) - 2;
     my $lp  = int($t/2) - 20;
@@ -1142,7 +1191,7 @@ sub primes {
       $il++ if $rem > 0;
       $il = $il->as_int();
       my $iu = Math::BigInt->new(2)->bpow($l)->bsub(2)->bdiv(2*$qpp)->as_int();
-      my $istart = $il + $irandf->($iu - $il);
+      my $istart = $il + $_RANDF->($iu - $il);
       for (my $i = $istart; $i <= $iu; $i++) {  # Search for q
         my $q = 2 * $i * $qpp + 1;
         next unless is_prob_prime($q);
@@ -1151,7 +1200,7 @@ sub primes {
         $jl++ if $rem > 0;
         $jl = $jl->as_int();
         my $ju = Math::BigInt->new(2)->bpow($t)->bdec()->bsub($pp)->bdiv(2*$q*$qp)->as_int();
-        my $jstart = $jl + $irandf->($ju - $jl);
+        my $jstart = $jl + $_RANDF->($ju - $jl);
         for (my $j = $jstart; $j <= $ju; $j++) {  # Search for p
           my $p = $pp + 2 * $j * $q * $qp;
           return $p if is_prob_prime($p);
@@ -2009,7 +2058,7 @@ sub miller_rabin_random {
   }
 
   my $brange = $n-3;
-  my $irandf = _get_rand_func();
+  my $irandf = _get_randf();
   # Do one first before doing batches
   return 0 unless is_strong_pseudoprime($n, $irandf->($brange)+2 );
   $k--;
@@ -2516,7 +2565,7 @@ __END__
 
 =encoding utf8
 
-=for stopwords forprimes Möbius Deléglise totient moebius mertens znorder irand primesieve uniqued k-tuples von SoE pari yafu fonction qui compte le nombre nombres voor PhD superset sqrt(N) gcd(A^M k-th (10001st
+=for stopwords forprimes Möbius Deléglise totient moebius mertens znorder irand primesieve uniqued k-tuples von SoE pari yafu fonction qui compte le nombre nombres voor PhD superset sqrt(N) gcd(A^M k-th (10001st primegen libtommath
 
 
 =head1 NAME
@@ -4687,6 +4736,63 @@ minimal installation requirements.
 
 =head1 PERFORMANCE
 
+First, for those looking for the state of the art non-Perl solutions:
+
+=over 4
+
+=item Primality testing
+
+L<PFGW|http://sourceforge.net/projects/openpfgw/> is the fastest primality
+testing software I'm aware of once past 2000 or so digits, has fast trial
+division, and is especially fast on many special forms.  It does not have
+a BPSW test however, and there are quite a few counterexamples for a given
+base of its PRP test, so for primality testing it is most useful for fast
+filtering of very large candidates.  A test such as the BPSW test in this
+module is then recommended.
+
+=item Primality proofs
+
+L<Primo|http://www.ellipsa.eu/> is the best method for open source primality
+proving for inputs over 1000 digits.  Primo also does well below that size,
+but other good alternatives are
+L<WraithX APRCL|http://sourceforge.net/projects/mpzaprcl/>,
+the APRCL from the modern L<Pari|http://pari.math.u-bordeaux.fr/> package,
+or the standalone ECPP from this module with large polynomial set.
+
+=item Factoring
+
+L<yafu|http://sourceforge.net/projects/yafu/>,
+L<msieve|http://sourceforge.net/projects/msieve/>, and
+L<gmp-ecm|http://ecm.gforge.inria.fr/> are all good choices for large
+inputs.  The factoring code in this module (and all other CPAN modules) is
+very limited compared to those.
+
+=item Primes
+
+L<primesieve|http://code.google.com/p/primesieve/> is the fastest publically
+available code I am aware of.  It is much faster than any of the alternatives,
+and even more so when run multi-threaded.  Tomás Oliveira e Silva's private
+code may be faster for very large values, but it isn't available for testing.
+
+Note that the Sieve of Atkin is I<not> faster than the Sieve of Eratosthenes
+when both are well implemented.  The only Sieve of Atkin that is even
+competitive is Bernstein's super optimized I<primegen>, which runs about
+10% faster than the simple SoE in this module, slower than Pari and yafu's
+SoE implementations, and 2x slower than primesieve.
+
+=item Prime Counts and Nth Prime
+
+Up to a limit, extensive use of tables plus a good segmented sieve will
+produce the fastest results, but the number of tables needed to maintain
+good performance grows exponentially.  The code in this module approaches
+the best publically available results, with the notable exception of
+Christian Bau's L-M-O implementation.  The author of primesieve is also
+working on an L-M-O implementation.  None of these are state of the art
+compared to private research methods.
+
+=back
+
+
 =head2 PRIME COUNTS
 
 Counting the primes to C<10^10> (10 billion), with time in seconds.
@@ -4869,8 +4975,8 @@ L<Math::Random::ISAAC::XS> installed.
 
   bits    random   +testing  rand_prov   Maurer   CPMaurer
   -----  --------  --------  ---------  --------  --------
-     64    0.0001  +0.000003   0.0002     0.0001    0.022
-    128    0.0020  +0.00016    0.011      0.063     0.057
+     64    0.0001  +0.000008   0.0002     0.0001    0.022
+    128    0.0020  +0.00023    0.011      0.063     0.057
     256    0.0034  +0.0004     0.058      0.13      0.16
     512    0.0097  +0.0012     0.28       0.28      0.41
    1024    0.060   +0.0060     0.65       0.65      2.19

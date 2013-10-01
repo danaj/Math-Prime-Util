@@ -1986,7 +1986,7 @@ sub ecm_factor {
     $q = $k;
   }
   my @b2primes = ($B2 > $B1) ? @{primes($B1+1, $B2)} : ();
-  my $irandf = Math::Prime::Util::_get_rand_func();
+  my $irandf = Math::Prime::Util::_get_randf();
 
   foreach my $curve (1 .. $ncurves) {
     my $sigma = $irandf->($n-1-6) + 6;

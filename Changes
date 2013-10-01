@@ -16,8 +16,8 @@ Revision history for Perl module Math::Prime::Util
     - Input validation accepts bigint objects and converts them to scalars
       entirely in XS.
 
-    - random_nbit_prime now uses Fouque and Tibouchi A1.  Slightly better
-      uniformity and typically a bit faster.
+    - random_nbit_prime now uses Fouque and Tibouchi A1 for 65+ bits.
+      Slightly better uniformity and typically a bit faster.
 
     - Use MPU::GMP::pn_primorial if we have it.
 
@@ -47,7 +47,7 @@ Revision history for Perl module Math::Prime::Util
     - Bytes::Random::Secure is loaded only when random prime functionality
       is used.  Shaves a few milliseconds and bytes off of startup.
 
-    - Speedup for Perl (no GMP) primality and random nbit primes.
+    - Speedups for Perl (no GMP) primality and random primes.
 
     - factor() can be called in scalar context to give the number of
       prime factors.  The XS function was ignoring the context, and now
