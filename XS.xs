@@ -19,17 +19,14 @@
 #include "lehmer.h"
 #include "aks.h"
 
-#ifdef WIN32
-  #ifdef _MSC_VER
-    #include <stdlib.h>
-    #define PSTRTOULL(str, end, base) _strtoui64 (str, end, base)
-  #else
-    #define PSTRTOULL(str, end, base) strtoul (str, end, base)
-  #endif
-#else
+#if BITS_PER_WORD == 64 && defined(_MSC_VER)
+  #include <stdlib.h>
+  #define PSTRTOULL(str, end, base) _strtoui64 (str, end, base)
+#elif BITS_PER_WORD == 64 && (defined(__GNUC__) || QUADKIND==QUAD_IS_LONG_LONG)
   #define PSTRTOULL(str, end, base) strtoull (str, end, base)
+#else
+  #define PSTRTOULL(str, end, base) strtoul (str, end, base)
 #endif
-
 
 /* Workaround perl 5.6 UVs and bigints in later */
 #if PERL_REVISION <= 5 && PERL_VERSION <= 6 && BITS_PER_WORD == 64
