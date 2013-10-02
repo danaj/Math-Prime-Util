@@ -13,21 +13,12 @@ my ($s, $nlimit, $ilimit, $expect);
 
 if (1) {
 print '-' x 79, "\n";
-print "summation to 100k\n";
-print "Note: MPU::PrimeArray is about 30x faster than MPTA here.\n";
-print "      It seems slices are the fastest way to access the tied array\n";
-print "      Math::NumSeq::Primes is reasonable fast (not random access)\n";
-print "      MPU's forprimes smashes everything else (not random access)\n";
+print "summation to 100k, looking for best methods (typically slice)\n";
 $nlimit = 100000;
 $ilimit = prime_count($nlimit)-1;
 $expect = 0; forprimes { $expect += $_ } $nlimit;
 
 cmpthese($count,{
-  'primes'    => sub { $s=0; $s += $_ for @{primes($nlimit)}; die unless $s == $expect; },
-  'forprimes' => sub { $s=0; forprimes { $s += $_ } $nlimit;  die unless $s == $expect; },
-  'iterator'  => sub { $s=0; my $it = prime_iterator();
-                       $s += $it->() for 0..$ilimit;
-                       die unless $s == $expect; },
   'pa index'  => sub { $s=0; tie my @primes, "Math::Prime::Util::PrimeArray";
                        $s += $primes[$_] for 0..$ilimit;
                        die unless $s == $expect; },
@@ -43,11 +34,59 @@ cmpthese($count,{
   'pa shift'  => sub { $s=0; tie my @primes, "Math::Prime::Util::PrimeArray";
                        while ((my $p = shift @primes) <= $nlimit) { $s += $p; }
                        die unless $s == $expect; },
-  'numseq'    => sub { $s=0; my $seq = Math::NumSeq::Primes->new;
+});
+}
+
+if (1) {
+print '-' x 79, "\n";
+print "summation to 100k, looking for best MPTA extension (typically ~1000)\n";
+$nlimit = 100000;
+$ilimit = prime_count($nlimit)-1;
+$expect = 0; forprimes { $expect += $_ } $nlimit;
+
+cmpthese($count,{
+  'MPTA'       => sub { $s=0; tie my @primes, "Math::Prime::TiedArray";
+                       $s += $primes[$_] for 0..$ilimit;
+                       die unless $s == $expect; },
+  'MPTA 400'   => sub { $s=0; tie my @primes, "Math::Prime::TiedArray", extend_step => 400;
+                       $s += $primes[$_] for 0..$ilimit;
+                       die unless $s == $expect; },
+  'MPTA 1000'  => sub { $s=0; tie my @primes, "Math::Prime::TiedArray", extend_step => 1000;
+                       $s += $primes[$_] for 0..$ilimit;
+                       die unless $s == $expect; },
+  'MPTA 4000'  => sub { $s=0; tie my @primes, "Math::Prime::TiedArray", extend_step => 4000;
+                       $s += $primes[$_] for 0..$ilimit;
+                       die unless $s == $expect; },
+});
+}
+
+if (1) {
+print '-' x 79, "\n";
+print "summation to 100k\n";
+print "Note: MPU::PrimeArray is about 30x faster than MPTA here.\n";
+print "      Math::NumSeq::Primes is reasonable fast (not random access)\n";
+print "      MPU's forprimes smashes everything else (not random access)\n";
+$nlimit = 100000;
+$ilimit = prime_count($nlimit)-1;
+$expect = 0; forprimes { $expect += $_ } $nlimit;
+
+cmpthese($count,{
+  'primes'    => sub { $s=0; $s += $_ for @{primes($nlimit)}; die unless $s == $expect; },
+  'forprimes' => sub { $s=0; forprimes { $s += $_ } $nlimit;  die unless $s == $expect; },
+  'iterator'  => sub { $s=0; my $it = prime_iterator();
+                       $s += $it->() for 0..$ilimit;
+                       die unless $s == $expect; },
+  'OO iter'   => sub { $s=0; my $it = prime_iterator_object();
+                       $s += $it->iterate() for 0..$ilimit;
+                       die unless $s == $expect; },
+  'pa slice'  => sub { $s=0; tie my @primes, "Math::Prime::Util::PrimeArray";
+                       $s += $_ for @primes[0..$ilimit];
+                       die unless $s == $expect; },
+  'NumSeq'    => sub { $s=0; my $seq = Math::NumSeq::Primes->new;
                        while (1) { my($undev,$v) = $seq->next; last if $v > $nlimit; $s += $v; }
                        die $s unless $s == $expect; },
   # This was slightly faster than slice or shift
-  'tiedarray'  => sub { $s=0; tie my @primes, "Math::Prime::TiedArray", extend_step => 1000;
+  'MPTA'      => sub { $s=0; tie my @primes, "Math::Prime::TiedArray", extend_step => 1000;
                        $s += $primes[$_] for 0..$ilimit;
                        die unless $s == $expect; },
 });
@@ -100,6 +139,9 @@ cmpthese($count,{
   'nthprime'  => sub { $s=0; $s += nth_prime($_) for reverse 1..$ilimit+1; die unless $s == $expect; },
   'pa index'  => sub { $s=0; tie my @primes, "Math::Prime::Util::PrimeArray";
                        $s += $primes[$_] for reverse 0..$ilimit;
+                       die unless $s == $expect; },
+  'OO iter'   => sub { $s=0; my $it = prime_iterator_object($nlimit);
+                       $s += $it->prev->value() for 0..$ilimit;
                        die unless $s == $expect; },
   'tiedarray' => sub { $s=0; tie my @primes, "Math::Prime::TiedArray", extend_step => 1000;
                        $s += $primes[$_] for reverse 0..$ilimit;
