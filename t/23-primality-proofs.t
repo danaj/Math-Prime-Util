@@ -3,12 +3,17 @@ use strict;
 use warnings;
 
 use Test::More;
-use Test::Warn;
 use Math::Prime::Util qw/is_prime is_provable_prime is_provable_prime_with_cert
                          prime_certificate verify_prime
                          prime_get_config prime_set_config
                         /;
 use Math::BigInt try => 'GMP';
+
+my $use_test_warn;
+BEGIN {
+  eval "use Test::Warn";
+  $use_test_warn = $@ ? 0 : 1;
+}
 
 my $extra = defined $ENV{EXTENDED_TESTING} && $ENV{EXTENDED_TESTING};
 my $use64 = ~0 > 4294967295;
@@ -34,9 +39,9 @@ my @plist = qw/20907001 809120722675364249 677826928624294778921
 
 plan tests => 0
             + 2  # is_provable_prime
-            + 6 * scalar(@plist)
+            + 5 * scalar(@plist)
             + 6  # hand-done proofs
-            + 24 # borked up certificates generating warnings
+            + 28 # borked up certificates generate warnings
             + 6  # verification failures (tiny/BPSW)
             + 8  # verification failures (Lucas/Pratt)
             + 11 # verification failures (n-1)
@@ -132,7 +137,8 @@ SKIP: {
 # Failures for verify_prime
 
 # First, let's get the borked up formats, which is should warn about.
-{
+SKIP: {
+  skip "No Test::Warn", 28 unless $use_test_warn;
   my $result;
   warning_like { $result = verify_prime([1490266103, 'INVALID', 1, 2, 3]) }
                { carped => qr/^verify_prime: / },
