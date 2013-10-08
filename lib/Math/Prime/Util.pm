@@ -529,24 +529,23 @@ sub primes {
         my $U;
         if (ref($range) eq 'Math::BigInt') {
           my $bits = length($range->as_bin) - 2;   # bits in range
-          my $bytes = int(($bits+7)/8);
-          # Generate more bits so we rarely have to loop.
+          my $bytes = 1 + int(($bits+7)/8);  # extra byte to reduce ave. loops
           my $rmax = Math::BigInt->bone->blsft($bytes*8)->bdec();
-          my $remainder = $rmax % $range;
+          my $overflow = $rmax - ($rmax % $range);
           do {
             $U = Math::BigInt->from_hex('0x' . $_BRS->bytes_hex($bytes));
-          } while $U >= ($rmax - $remainder);
+          } while $U >= $overflow;
         } elsif ($range <= 4294967295) {
-          my $remainder = 4294967295 % $range;
+          my $overflow = 4294967295 - (4294967295 % $range);
           do {
             $U = $_BRS->irand();
-          } while $U >= (4294967295 - $remainder);
+          } while $U >= $overflow;
         } else {
           croak "randf given max out of bounds: $max" if $range > ~0;
-          my $remainder = 18446744073709551615 % $range;
+          my $overflow = 18446744073709551615 - (18446744073709551615 % $range);
           do {
             $U = ($_BRS->irand() << 32) + $_BRS->irand();
-          } while $U >= (18446744073709551615 - $remainder);
+          } while $U >= $overflow;
         }
         return $U % $range;
       };
@@ -573,24 +572,23 @@ sub primes {
           my $zero = $range->copy->bzero;
           my $rbits = length($range->as_bin) - 2;   # bits in range
           my $rwords = int($rbits/32) + (($rbits % 32) ? 1 : 0);
-          # Generate more bits so we rarely have to loop.
           my $rmax = Math::BigInt->bone->blsft($rwords*32)->bdec();
-          my $remainder = $rmax % $range;
+          my $overflow = $rmax - ($rmax % $range);
           do {
             $U = $range->copy->from_hex
               ("0x" . join '', map { sprintf("%08X", $irandf->()) } 1 .. $rwords);
-          } while $U >= ($rmax - $remainder);
+          } while $U >= $overflow;
         } elsif ($range <= 4294967295) {
-          my $remainder = 4294967295 % $range;
+          my $overflow = 4294967295 - (4294967295 % $range);
           do {
             $U = $irandf->();
-          } while $U >= (4294967295 - $remainder);
+          } while $U >= $overflow;
         } else {
           croak "randf given max out of bounds: $max" if $range > ~0;
-          my $remainder = 18446744073709551615 % $range;
+          my $overflow = 18446744073709551615 - (18446744073709551615 % $range);
           do {
             $U = ($irandf->() << 32) + $irandf->();
-          } while $U >= (18446744073709551615 - $remainder);
+          } while $U >= $overflow;
         }
         return $U % $range;
       };
