@@ -55,6 +55,9 @@ sub WriteMakefile1 {   # Cribbed from eumm-upgrade by Alexandr Ciornii
   my $eumm_version = $ExtUtils::MakeMaker::VERSION;
   $eumm_version = eval $eumm_version;
 
+  if ($params{TEST_REQUIRES} and $eumm_version < 6.6303) {
+      $params{BUILD_REQUIRES}={ %{$params{BUILD_REQUIRES} || {}} , %{$params{TEST_REQUIRES}} };
+  }
   if ($params{BUILD_REQUIRES} and $eumm_version < 6.5503) {
       #EUMM 6.5502 has problems with BUILD_REQUIRES
       $params{PREREQ_PM}={ %{$params{PREREQ_PM} || {}} , %{$params{BUILD_REQUIRES}} };
