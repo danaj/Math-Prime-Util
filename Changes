@@ -1,25 +1,20 @@
 Revision history for Perl module Math::Prime::Util
 
-0.32  2013-09
+0.32  2013-10-13
 
-    [Functions Added]
-      - is_proven_prime
-      - is_proven_prime_with_cert
-      - carmichael_lambda
-      - znorder
-      - prime_iterator_object
-      - miller_rabin_random
+    [ADDED]
+
+    - is_proven_prime
+    - is_proven_prime_with_cert
+    - carmichael_lambda
+    - znorder
+    - prime_iterator_object
+    - miller_rabin_random
+
+    [NEW FEATURES]
 
     - Added Math::Prime::Util::PrimeIterator.  A more feature-rich iterator
       than the simple closure one from prime_iterator.  Experimental.
-
-    - Input validation accepts bigint objects and converts them to scalars
-      entirely in XS.
-
-    - random_nbit_prime now uses Fouque and Tibouchi A1 for 65+ bits.
-      Slightly better uniformity and typically a bit faster.
-
-    - Use MPU::GMP::pn_primorial if we have it.
 
     - Make LMO primecount work (albeit a simplistic version).  Memory
       limiting features added to phi calculations, so the phi calculations
@@ -32,6 +27,21 @@ Revision history for Perl module Math::Prime::Util
       second arguments, the result will automatically be a bigint if needed.
       It is also much faster for larger inputs.
 
+    - factor() can be called in scalar context to give the number of
+      prime factors.  The XS function was ignoring the context, and now
+      is more consistent.  It also slightly speeds up looking at the
+      number of factors, e.g. Omega(x) A001222.
+
+    [FUNCTIONALITY AND PERFORMANCE]
+
+    - Use MPU::GMP::pn_primorial if we have it.
+
+    - Input validation accepts bigint objects and converts them to scalars
+      entirely in XS.
+
+    - random_nbit_prime now uses Fouque and Tibouchi A1 for 65+ bits.
+      Slightly better uniformity and typically a bit faster.
+
     - Incorporate Montgomery reduction for primality testing, thanks to
       Wojciech Izykowski.  This is a 1.3 to 1.5x speedup for is_prob_prime,
       is_prime, and is_strong_pseudoprime for numbers > 2^32 on x86_64.
@@ -40,8 +50,6 @@ Revision history for Perl module Math::Prime::Util
     - Montgomery reduction used in Lucas and Frobenius tests.  Up to 2x
       speedup for 33 to 64-bit inputs on x86_64/gcc platforms.
 
-    - Primality functions moved to their own file primality.c.
-
     - Some fixes around near maxint primes, forprimes, etc.
 
     - Bytes::Random::Secure is loaded only when random prime functionality
@@ -49,10 +57,9 @@ Revision history for Perl module Math::Prime::Util
 
     - Speedups for Perl (no GMP) primality and random primes.
 
-    - factor() can be called in scalar context to give the number of
-      prime factors.  The XS function was ignoring the context, and now
-      is more consistent.  It also slightly speeds up looking at the
-      number of factors, e.g. Omega(x) A001222.
+    [MISC]
+
+    - Primality functions moved to their own file primality.c.
 
 0.31  2013-08-07
 
