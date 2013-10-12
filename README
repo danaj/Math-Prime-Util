@@ -18,7 +18,7 @@ Current measurements show it is faster than:
   Crypt::Primes
 For non-bignums, it is typically faster than Math::Pari (and doesn't
 require Pari to be installed).  With Math::Prime::Util::GMP installed
-it is usually faster than Math::Pari for bigints;
+it is usually faster than Math::Pari for bigints.
 
 
 SYNOPSIS

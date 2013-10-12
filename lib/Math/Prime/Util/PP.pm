@@ -664,17 +664,21 @@ sub _mulmod {
   my($a, $b, $m) = @_;
   return (($a * $b) % $m) if ($a|$b) < $_half_word;
   my $r = 0;
-  while ($b > 0) {
-    if ($b & 1) {
-      if ($r == 0) {
-        $r = $a;
-      } else {
-        $r = $m - $r;
-        $r = ($a >= $r)  ?  $a - $r  :  $m - $r + $a;
-      }
+  $a %= $m if $a >= $m;
+  $b %= $m if $b >= $m;
+  ($a,$b) = ($b,$a) if $a < $b;
+  if ($m <= (~0 >> 1)) {
+    while ($b > 0) {
+      if ($b & 1) { $r += $a;  $r -= $m if $r >= $m; }
+      $b >>= 1;
+      if ($b)     { $a += $a;  $a -= $m if $a >= $m; }
     }
-    $a = ($a > ($m - $a))  ?  ($a - $m) + $a  :  $a + $a;
-    $b >>= 1;
+  } else {
+    while ($b > 0) {
+      if ($b & 1) { $r = $m-$r;  $r = ($a >= $r) ? $a-$r : $m-$r+$a; }
+      $b >>= 1;
+      if ($b)     { $a = ($a > ($m - $a))  ?  ($a - $m) + $a  :  $a + $a; }
+    }
   }
   $r;
 }
@@ -1458,10 +1462,11 @@ sub factor {
 
   return trial_factor($n) if $n < 1_000_000;
 
-  my @factors = _basic_factor($n);
-  return @factors if $n < 4;
-
-  # Use 'n = int($n/7)' instead of 'n/=7' to not "upgrade" n to a Math::BigFloat.
+  my @factors;
+  # Use 'n=int($n/7)' instead of 'n/=7' to not "upgrade" n to a Math::BigFloat.
+  while (($n %  2) == 0) { push @factors,  2;  $n = int($n /  2); }
+  while (($n %  3) == 0) { push @factors,  3;  $n = int($n /  3); }
+  while (($n %  5) == 0) { push @factors,  5;  $n = int($n /  5); }
   while (($n %  7) == 0) { push @factors,  7;  $n = int($n /  7); }
   while (($n % 11) == 0) { push @factors, 11;  $n = int($n / 11); }
   while (($n % 13) == 0) { push @factors, 13;  $n = int($n / 13); }
