@@ -50,7 +50,8 @@ Revision history for Perl module Math::Prime::Util
     - Montgomery reduction used in Lucas and Frobenius tests.  Up to 2x
       speedup for 33 to 64-bit inputs on x86_64/gcc platforms.
 
-    - Some fixes around near maxint primes, forprimes, etc.
+    - Some fixes around near maxint primes, forprimes, etc.  Includes
+      more workarounds for Math::BigInt::GMP's constructor sign bug.
 
     - Bytes::Random::Secure is loaded only when random prime functionality
       is used.  Shaves a few milliseconds and bytes off of startup.

@@ -1353,7 +1353,7 @@ sub is_aks_prime {
                     ->bsqrt->bmul($log2n)->bfloor->bstr);
 
   $_poly_bignum = 1;
-  if ( $n < ( (~0 == 4294967295) ? 65535 : 4294967295 ) ) {
+  if ( $n < ($_half_word-1) ) {
     $_poly_bignum = 0;
     $n = int($n->bstr) if ref($n) eq 'Math::BigInt';
   }

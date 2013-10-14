@@ -62,7 +62,6 @@ sub _import_nobigint {
   undef *nth_prime;       *nth_prime         = \&_XS_nth_prime;
   undef *is_pseudoprime;  *is_pseudoprime    = \&_XS_is_pseudoprime;
   undef *is_strong_pseudoprime;  *is_strong_pseudoprime = \&_XS_miller_rabin;
-  undef *miller_rabin;    *miller_rabin      = \&_XS_miller_rabin;
   undef *moebius;         *moebius           = \&_XS_moebius;
   undef *mertens;         *mertens           = \&_XS_mertens;
   undef *euler_phi;       *euler_phi         = \&_XS_totient;
@@ -1247,7 +1246,7 @@ sub primorial {
 
   if ($_HAVE_GMP && defined &Math::Prime::Util::GMP::primorial) {
     if (ref($pn) eq 'Math::BigInt') {
-      $pn->bzero->badd( Math::Prime::Util::GMP::primorial($n) );
+      $pn->bzero->badd( ''.Math::Prime::Util::GMP::primorial($n) );
     } else {
       $pn = int( Math::Prime::Util::GMP::primorial($n) );
     }
@@ -1265,7 +1264,7 @@ sub pn_primorial {
   _validate_num($n) || _validate_positive_integer($n);
   my $pn = Math::Prime::Util::GMP::pn_primorial($n);
   return int($pn) if $n < (($_Config{'maxbits'} == 32) ? 10 : 16);
-  return $_[0]->copy->bzero->badd($pn) if ref($_[0]) eq 'Math::BigInt';
+  return $_[0]->copy->bzero->badd("$pn") if ref($_[0]) eq 'Math::BigInt';
   if (!defined $Math::BigInt::VERSION) {
     eval { require Math::BigInt; Math::BigInt->import(try=>'GMP,Pari'); 1; }
     or do { croak "Cannot load Math::BigInt"; };
@@ -1827,10 +1826,11 @@ sub _generic_next_prime {
   if ($_HAVE_GMP) {
     # If $n is a bigint object, try to make the return value the same
     return (ref($_[0]) eq 'Math::BigInt')
-        ?  $_[0]->copy->bzero->badd(Math::Prime::Util::GMP::next_prime($n))
+        ?  $_[0]->copy->bzero->badd(''.Math::Prime::Util::GMP::next_prime($n))
         :  Math::Prime::Util::GMP::next_prime($n);
   }
-  return Math::Prime::Util::PP::next_prime($n);
+  # Pass original argument to preserve bigint status
+  return Math::Prime::Util::PP::next_prime($_[0]);
 }
 
 sub _generic_prev_prime {
@@ -1842,7 +1842,7 @@ sub _generic_prev_prime {
   if ($_HAVE_GMP) {
     # If $n is a bigint object, try to make the return value the same
     return (ref($_[0]) eq 'Math::BigInt')
-        ?  $n->copy->bzero->badd(Math::Prime::Util::GMP::prev_prime($n))
+        ?  $n->copy->bzero->badd(''.Math::Prime::Util::GMP::prev_prime($n))
         :  Math::Prime::Util::GMP::prev_prime($n);
   }
   return Math::Prime::Util::PP::prev_prime($n);
@@ -1900,7 +1900,7 @@ sub factor {
   if ($_HAVE_GMP) {
     my @factors = Math::Prime::Util::GMP::factor($n);
     if (ref($_[0]) eq 'Math::BigInt') {
-      @factors = map { ($_ > ~0) ? $n->copy->bzero->badd($_) : $_ } @factors;
+      @factors = map { ($_ > ~0) ? $n->copy->bzero->badd(''.$_) : $_ } @factors;
     }
     return @factors;
   }

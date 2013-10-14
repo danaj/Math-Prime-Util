@@ -14,23 +14,24 @@ our %EXPORT_TAGS = (all => [ @EXPORT_OK ]);
 
 use Math::Prime::Util qw/next_prime prev_prime/;
 use Math::BigInt try => "GMP,Pari";
-#use Carp qw/carp croak confess/;
+
+my $bigprime = Math::BigInt->new(
+  (~0 == 4294967295) ? "4294967311" : "18446744073709551629"
+);
 
 sub new {
-  my $class = shift;
-  my($start) = @_;
+  my ($class, $start) = @_;
   my $self = bless {
     p => 2,
   }, $class;
-  $self->rewind($start) if defined $start && $start > 2;
+  $self->rewind($start) if defined $start;
   return $self;
 }
 
 sub value { $_[0]->{p}; }
 sub next {
   my $self = shift;
-  my $np = next_prime($self->{p});
-  $np = next_prime(Math::BigInt->new(''.~0)) if $np == 0;
+  my $np = next_prime($self->{p}) || $bigprime;
   $self->{p} = $np;
   return $self;
 }
@@ -43,23 +44,20 @@ sub prev {
 sub iterate {
   my $self = shift;
   my $p = $self->{p};
-  my $np = next_prime($p);
-  $np = next_prime(Math::BigInt->new(''.~0)) if $np == 0;
+  my $np = next_prime($p) || $bigprime;
   $self->{p} = $np;
   return $p;
 }
 
 sub rewind {
-  my $self = shift;
-  my($start) = @_;
-  if (defined $start) {
+  my ($self, $start) = @_;
+  $self->{p} = 2;
+  if (defined $start && $start ne '2') {
     Math::Prime::Util::_validate_num($start)
       || Math::Prime::Util::_validate_positive_integer($start);
-    $self->{p} = ($start > 2) ? next_prime($start-1) : 2;
-    $self->{p} = next_prime(Math::BigInt->new(''.~0))
-      if $self->{p} == 0 && $start > 0;
-  } else {
-    $self->{p} = 2;
+    if ($start > 2) {
+      $self->{p} = next_prime($start-1) || $bigprime;
+    }
   }
   return $self;
 }
