@@ -14,7 +14,7 @@ plan tests => 8 + 5
             + 3 + 7
             + 2
             + 3 + 7
-            + 22
+            + 25
             + 0;
 
 ok(!eval { forprimes { 1 } undef; },   "forprimes undef");
@@ -174,8 +174,9 @@ ok(!eval { prime_iterator_object(4.5); }, "iterator 4.5");
   is( $it->ith(589), 4289, "iterator object ith returns nth prime");
   ok( $it->pred(577), "iterator object pred returns true if is_prime");
   is( $it->value_to_i(4289), 589, "iterator object value_to_i works");
-  # missing: value_to_i_ceil
-  # missing: value_to_i_floor
+  is( $it->value_to_i(4290), undef, "iterator object value_to_i for non-prime returns undef");
+  is( $it->value_to_i_floor(4290), 589, "iterator object value_to_i_floor");
+  is( $it->value_to_i_ceil(4290), 590, "iterator object value_to_i_ceil");
   my $est = $it->value_to_i_estimate( 4171510507 );
   my $act = 197710788;
   # We will get an estimate that is much, much closer than Math::NumSeq

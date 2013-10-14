@@ -40,8 +40,6 @@
 
 - Use Montgomery routines in more places: Factoring.
 
-- More tests for PrimeIterator.
-
 - Put euler_phi and moebius directly in XS.
     (1) optional second argument.  Easily handled, and not hard to do in
         generic sub call.

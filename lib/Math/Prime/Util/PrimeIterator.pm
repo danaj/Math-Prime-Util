@@ -12,7 +12,7 @@ our @EXPORT_OK = qw( );
 our %EXPORT_TAGS = (all => [ @EXPORT_OK ]);
 
 
-use Math::Prime::Util qw/next_prime prev_prime/;
+use Math::Prime::Util qw/next_prime prev_prime is_prime prime_count nth_prime/;
 use Math::BigInt try => "GMP,Pari";
 
 my $bigprime = Math::BigInt->new(
@@ -65,19 +65,19 @@ sub rewind {
 # Some methods to match Math::NumSeq
 sub tell_i {
   my $self = shift;
-  return Math::Prime::Util::prime_count($self->{p});
+  return prime_count($self->{p});
 }
 sub pred {
   my($self, $n) = @_;
-  return Math::Prime::Util::is_prime($n);
+  return is_prime($n);
 }
 sub ith {
   my($self, $n) = @_;
-  return Math::Prime::Util::nth_prime($n);
+  return nth_prime($n);
 }
 sub seek_to_i {
   my($self, $n) = @_;
-  $self->rewind( Math::Prime::Util::nth_prime($n) );
+  $self->rewind( nth_prime($n) );
 }
 sub seek_to_value {
   my($self, $n) = @_;
@@ -85,7 +85,16 @@ sub seek_to_value {
 }
 sub value_to_i {
   my($self, $n) = @_;
-  return Math::Prime::Util::prime_count($n);
+  return unless is_prime($n);
+  return prime_count($n);
+}
+sub value_to_i_ceil {
+  my($self, $n) = @_;
+  return prime_count(next_prime($n-1));
+}
+sub value_to_i_floor {
+  my($self, $n) = @_;
+  return prime_count($n);
 }
 sub value_to_i_estimate {
   my($self, $n) = @_;
@@ -216,7 +225,18 @@ Math::NumSeq::Primes returns 4708661.
 
 =head2 value_to_i
 
-Returns the index corresponding to the argument.
+If the argument is prime, then returns the index.  In this case:
+
+  ith( value_to_i( $n ) ) == $n
+
+Returns C<undef> if the argument is not prime.
+
+=head2 value_to_i_floor
+
+=head2 value_to_i_ceil
+
+Returns the index corresponding to the first prime less than or equal
+to the argument, or greater than or equal to the argument, respectively.
 
 =head2 seek_to_i
 
