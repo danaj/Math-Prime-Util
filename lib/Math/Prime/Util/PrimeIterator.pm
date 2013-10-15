@@ -214,18 +214,14 @@ The iterator is unchanged after this call.
 
 Returns an estimate of the index corresponding to the argument.  That is,
 given a value C<n>, we expect a prime approximately equal to C<n> to occur
-at this index..
+at this index.
 
 The estimate is performed using L<Math::Prime::Util/prime_count_approx>,
 which uses the estimates of Dusart 2010 (or better for small values).
-This has an error two or more orders of magnitude less than the estimate
-used by L<Math::NumSeq::Primes>.  E.g. given a value of 86028121 whose
-true index is 5000000, this method returns 5000067 while
-Math::NumSeq::Primes returns 4708661.
 
 =head2 value_to_i
 
-If the argument is prime, then returns the index.  In this case:
+If the argument is prime, returns the corresponding index, such that:
 
   ith( value_to_i( $n ) ) == $n
 
