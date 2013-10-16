@@ -56,6 +56,7 @@ examples/test-nextprime-yafu.pl
 examples/test-primes-yafu.pl
 examples/sophie_germain.pl
 examples/twin_primes.pl
+examples/abundant.pl
 examples/find_mr_bases.pl
 examples/parallel_fibprime.pl
 examples/test-factor-gnufactor.pl

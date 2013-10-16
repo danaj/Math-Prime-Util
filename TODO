@@ -27,8 +27,6 @@
   the sieve up to n/2, which is better than most people seem to use, but I'm
   not completely convinced we can't do better.
 
-- Implement S2 calculation for LMO prime count.
-
 - Big features:
    - LMO prime count
    - QS factoring
