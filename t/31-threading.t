@@ -5,7 +5,7 @@ use warnings;
 use Config;
 BEGIN {
   if (! $Config{useithreads} || $] < 5.008) {
-    print("1..0 # Skip Threads not supported\n");
+    print("1..0 # Skip perl isn't compiled with threading support\n");
     exit(0);
   }
   # Should be be looking for newer than 5.008?

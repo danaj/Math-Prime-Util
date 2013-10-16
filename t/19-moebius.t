@@ -9,6 +9,7 @@ use Math::Prime::Util
 
 my $extra = defined $ENV{EXTENDED_TESTING} && $ENV{EXTENDED_TESTING};
 my $use64 = Math::Prime::Util::prime_get_config->{'maxbits'} > 32;
+my $usexs = Math::Prime::Util::prime_get_config->{'xs'};
 my $broken64 = (18446744073709550592 == ~0);
 $use64 = 0 if $broken64;
 
@@ -181,6 +182,13 @@ my @mult_orders = (
   [7410,2147475467,39409],
   [31407,2147475467,266],
 );
+
+# These are slow with XS, and *really* slow with PP.
+if (!$usexs) {
+  %big_mertens = map { $_ => $big_mertens{$_} }
+                 grep { $_ < 100000000 }
+                 keys %big_mertens;
+}
 
 plan tests => 0 + 1
                 + 1 # Small Moebius

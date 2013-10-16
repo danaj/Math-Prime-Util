@@ -16,10 +16,13 @@ Revision history for Perl module Math::Prime::Util
     - Added Math::Prime::Util::PrimeIterator.  A more feature-rich iterator
       than the simple closure one from prime_iterator.  Experimental.
 
-    - Make LMO primecount work (albeit a simplistic version).  Memory
-      limiting features added to phi calculations, so the phi calculations
-      should stay under ~150MB even with giant sizes.
-      Thanks to Kim Walisch for all discussions about this.
+    - Make very simple LMO primecount work, and switch prime_count to use it.
+      It is slower for large inputs, but uses much less memory.  For smaller
+      inputs it it as fast or faster.  Lehmer code modified to constrain
+      memory use at the expense of speed (starts taking effect at ~ 10^16).
+      Thanks to Kim Walisch for discussions about this.  Note that this is
+      a very simple implementation -- better code could run 10x faster and
+      use even less memory.
 
     - divisor_sum can take an integer 'k' in the second argument to compute
       sigma_k.  This is much faster than using subs, especially when the

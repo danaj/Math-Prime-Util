@@ -87,7 +87,7 @@ plan tests => 0 + 1
                 + $use64 * 3 * scalar(keys %pivals64)
                 + scalar(keys %intervals)
                 + 1
-                + 6; # prime count specific methods
+                + 7; # prime count specific methods
 
 ok( eval { prime_count(13); 1; }, "prime_count in void context");
 
@@ -156,11 +156,12 @@ sub parse_range {
 
 # Make sure each specific algorithm isn't broken.
 SKIP: {
-  skip "Not XS -- skipping direct primecount tests", 4 unless $isxs;
+  skip "Not XS -- skipping direct primecount tests", 5 unless $isxs;
   # This has to be above lehmer.c's SIEVE_LIMIT or nothing happens.
   is(Math::Prime::Util::_XS_lehmer_pi  (66123456), 3903023, "XS Lehmer count");
   is(Math::Prime::Util::_XS_meissel_pi (66123456), 3903023, "XS Meissel count");
   is(Math::Prime::Util::_XS_legendre_pi(66123456), 3903023, "XS Legendre count");
+  is(Math::Prime::Util::_XS_LMO_pi     (66123456), 3903023, "XS LMO count");
   is(Math::Prime::Util::_XS_prime_count(66123456), 3903023, "XS sieve count");
 }
 is(Math::Prime::Util::PP::_lehmer_pi   (3456789), 247352, "PP Lehmer count");

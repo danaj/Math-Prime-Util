@@ -666,7 +666,7 @@ UV _XS_nth_prime(UV n)
       /* Calculate lower limit, get count, sieve to that */
       segment_size = lower_limit / 30;
       lower_limit = 30 * segment_size - 1;
-      count = _XS_lehmer_pi(lower_limit) - 3;
+      count = _XS_LMO_pi(lower_limit) - 3;
       MPUassert(count <= target, "Pi(nth_prime_lower(n))) > n");
     } else {
       /* Compute approximate nth prime via binary search on R(n) */
@@ -684,7 +684,7 @@ UV _XS_nth_prime(UV n)
       lower_limit = (UV) (double)(0.9999999*(lo-1));
       segment_size = lower_limit / 30;
       lower_limit = 30 * segment_size - 1;
-      count = _XS_lehmer_pi(lower_limit);
+      count = _XS_LMO_pi(lower_limit);
       /*
         printf("We've estimated %lu too %s.\n", (count>n)?count-n:n-count, (count>n)?"FAR":"little");
         printf("Our limit %lu %s a prime\n", lower_limit, _XS_is_prime(lower_limit) ? "is" : "is not");

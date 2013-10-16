@@ -1868,13 +1868,15 @@ sub prime_count {
       #                 + 0.0000000057 * $low**0.72;
       #if ($est_lehmer < $est_segment) {
       if ( ($high / ($high-$low+1)) < 100 ) {
-        $low = 2 if $low < 2;
-        return _XS_lehmer_pi($high) - _XS_lehmer_pi($low-1);
+        my $count;
+        $count  = _XS_LMO_pi($high);
+        $count -= _XS_LMO_pi($low-1) if $low > 2;
+        return $count;
       }
     }
     return _XS_prime_count($low,$high);
   }
-  # We can relax these constraints if MPU::GMP gets a Lehmer implementation.
+  # We can relax these constraints if MPU::GMP gets a fast implementation.
   return Math::Prime::Util::GMP::prime_count($low,$high) if $_HAVE_GMP
                        && defined &Math::Prime::Util::GMP::prime_count
                        && (   (ref($high) eq 'Math::BigInt')
@@ -2976,7 +2978,7 @@ count of primes between the ranges (e.g. C<(13,17)> returns 2, C<14,17>
 and C<13,16> return 1, and C<14,16> returns 0).
 
 The current implementation decides based on the ranges whether to use a
-segmented sieve with a fast bit count, or Lehmer's algorithm.  The former
+segmented sieve with a fast bit count, or the LMO algorithm.  The former
 is preferred for small sizes as well as small ranges.  The latter is much
 faster for large ranges.
 
@@ -2986,7 +2988,7 @@ where the first term is typically negligible below C<~ 10^11>.  Memory use
 is proportional only to C<sqrt(a)>, with total memory use under 1MB for any
 base under C<10^14>.
 
-Lehmer's method has complexity approximately C<O(b^0.7) + O(a^0.7)>.  It
+The LMO method has complexity approximately C<O(b^0.7) + O(a^0.7)>.  It
 does use more memory however.  A calculation of C<Pi(10^14)> completes in
 under 1 minute, C<Pi(10^15)> in under 5 minutes, and C<Pi(10^16)> in under
 20 minutes, however using about 500MB of peak memory for the last.
@@ -3057,9 +3059,9 @@ another way, this returns the smallest C<p> such that C<Pi(p) E<gt>= n>.
 For relatively small inputs (below 2 million or so), this does a sieve over
 a range containing the nth prime, then counts up to the number.  This is fairly
 efficient in time and memory.  For larger values, a binary search is performed
-between the Dusart 2010 bounds using Riemann's R function, then Lehmer's fast
+between the Dusart 2010 bounds using Riemann's R function, then a fast
 prime counting method is used to calculate the count up to that point, then
-sieving is done in the typically small error zone.
+sieving is done in the typically small difference zone.
 
 While this method is hundreds of times faster than generating primes, and
 doesn't involve big tables of precomputed values, it still can take a fair
@@ -4414,7 +4416,7 @@ Project Euler, problem 187, stupid brute force solution, ~4 minutes:
 
 Here is the best way for PE187.  Under 30 milliseconds from the command line:
 
-  use Math::Prime::Util qw/primes prime_count -nobigint/;
+  use Math::Prime::Util qw/primes prime_count/;
   use List::Util qw/sum/;
   my $limit = shift || int(10**8);
   my @primes = @{primes(int(sqrt($limit)))};

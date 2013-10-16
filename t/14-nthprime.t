@@ -6,6 +6,7 @@ use Test::More;
 use Math::Prime::Util qw/primes nth_prime nth_prime_lower nth_prime_upper nth_prime_approx/;
 
 my $use64 = Math::Prime::Util::prime_get_config->{'maxbits'} > 32;
+my $usexs = Math::Prime::Util::prime_get_config->{'xs'};
 my $extra = defined $ENV{EXTENDED_TESTING} && $ENV{EXTENDED_TESTING};
 my $broken64 = (18446744073709550592 == ~0);
 
@@ -59,7 +60,7 @@ plan tests => 0 + 2*scalar(keys %pivals32)
                 + $use64 * 3 * scalar(keys %nthprimes64)
                 + 4
                 + 3
-                + (($extra && $use64) ? 1 : 0);
+                + (($extra && $use64 && $usexs) ? 1 : 0);
 
 
 while (my($n, $pin) = each (%pivals32)) {
@@ -115,7 +116,7 @@ like($@, qr/overflow/, "nth_prime_approx($overindex) overflows");
 eval { nth_prime($overindex); };
 like($@, qr/overflow/, "nth_prime($overindex) overflows");
 
-if ($extra && $use64) {
+if ($extra && $use64 && $usexs) {
   # Test an nth prime value that uses the binary-search-on-R(n) algorithm
   is( nth_prime(21234567890), 551990503367, "nth_prime(21234567890)" );
 }

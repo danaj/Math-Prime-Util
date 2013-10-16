@@ -7,5 +7,6 @@ extern UV _XS_legendre_pi(UV n);
 extern UV _XS_meissel_pi(UV n);
 extern UV _XS_lehmer_pi(UV n);
 extern UV _XS_LMO_pi(UV n);
+extern UV _XS_legendre_phi(UV x, UV a);
 
 #endif

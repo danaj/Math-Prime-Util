@@ -15,28 +15,41 @@ my $sum;
 
 print "Direct sieving:\n";
 cmpthese($count,{
-    ' 2' => sub { $sum += Math::Prime::Util::_XS_prime_count($_) for @{$darray[2-2]} },
-    ' 3' => sub { $sum += Math::Prime::Util::_XS_prime_count($_) for @{$darray[3-2]} },
-    ' 4' => sub { $sum += Math::Prime::Util::_XS_prime_count($_) for @{$darray[4-2]} },
-    ' 5' => sub { $sum += Math::Prime::Util::_XS_prime_count($_) for @{$darray[5-2]} },
-    ' 6' => sub { $sum += Math::Prime::Util::_XS_prime_count($_) for @{$darray[6-2]} },
-    ' 7' => sub { $sum += Math::Prime::Util::_XS_prime_count($_) for @{$darray[7-2]} },
-    ' 8' => sub { $sum += Math::Prime::Util::_XS_prime_count($_) for @{$darray[8-2]} },
+    ' 2' => sub { prime_memfree(); $sum += Math::Prime::Util::_XS_prime_count($_) for @{$darray[2-2]} },
+    ' 3' => sub { prime_memfree(); $sum += Math::Prime::Util::_XS_prime_count($_) for @{$darray[3-2]} },
+    ' 4' => sub { prime_memfree(); $sum += Math::Prime::Util::_XS_prime_count($_) for @{$darray[4-2]} },
+    ' 5' => sub { prime_memfree(); $sum += Math::Prime::Util::_XS_prime_count($_) for @{$darray[5-2]} },
+    ' 6' => sub { prime_memfree(); $sum += Math::Prime::Util::_XS_prime_count($_) for @{$darray[6-2]} },
+    ' 7' => sub { prime_memfree(); $sum += Math::Prime::Util::_XS_prime_count($_) for @{$darray[7-2]} },
+    ' 8' => sub { prime_memfree(); $sum += Math::Prime::Util::_XS_prime_count($_) for @{$darray[8-2]} },
     #' 9' => sub { $sum += Math::Prime::Util::_XS_prime_count($_) for @{$darray[9-2]} },
     #'10' => sub { $sum += Math::Prime::Util::_XS_prime_count($_) for @{$darray[10-2]} },
 });
 print "\n";
 print "Direct Lehmer:\n";
 cmpthese($count,{
-    ' 2' => sub { $sum += Math::Prime::Util::_XS_lehmer_pi($_) for @{$darray[2-2]} },
-    ' 3' => sub { $sum += Math::Prime::Util::_XS_lehmer_pi($_) for @{$darray[3-2]} },
-    ' 4' => sub { $sum += Math::Prime::Util::_XS_lehmer_pi($_) for @{$darray[4-2]} },
-    ' 5' => sub { $sum += Math::Prime::Util::_XS_lehmer_pi($_) for @{$darray[5-2]} },
-    ' 6' => sub { $sum += Math::Prime::Util::_XS_lehmer_pi($_) for @{$darray[6-2]} },
-    ' 7' => sub { $sum += Math::Prime::Util::_XS_lehmer_pi($_) for @{$darray[7-2]} },
-    ' 8' => sub { $sum += Math::Prime::Util::_XS_lehmer_pi($_) for @{$darray[8-2]} },
-    ' 9' => sub { $sum += Math::Prime::Util::_XS_lehmer_pi($_) for @{$darray[9-2]} },
-    '10' => sub { $sum += Math::Prime::Util::_XS_lehmer_pi($_) for @{$darray[10-2]} },
+    ' 2' => sub { prime_memfree(); $sum += Math::Prime::Util::_XS_lehmer_pi($_) for @{$darray[2-2]} },
+    ' 3' => sub { prime_memfree(); $sum += Math::Prime::Util::_XS_lehmer_pi($_) for @{$darray[3-2]} },
+    ' 4' => sub { prime_memfree(); $sum += Math::Prime::Util::_XS_lehmer_pi($_) for @{$darray[4-2]} },
+    ' 5' => sub { prime_memfree(); $sum += Math::Prime::Util::_XS_lehmer_pi($_) for @{$darray[5-2]} },
+    ' 6' => sub { prime_memfree(); $sum += Math::Prime::Util::_XS_lehmer_pi($_) for @{$darray[6-2]} },
+    ' 7' => sub { prime_memfree(); $sum += Math::Prime::Util::_XS_lehmer_pi($_) for @{$darray[7-2]} },
+    ' 8' => sub { prime_memfree(); $sum += Math::Prime::Util::_XS_lehmer_pi($_) for @{$darray[8-2]} },
+    ' 9' => sub { prime_memfree(); $sum += Math::Prime::Util::_XS_lehmer_pi($_) for @{$darray[9-2]} },
+    '10' => sub { prime_memfree(); $sum += Math::Prime::Util::_XS_lehmer_pi($_) for @{$darray[10-2]} },
+});
+print "\n";
+print "Direct LMO:\n";
+cmpthese($count,{
+    ' 2' => sub { prime_memfree(); $sum += Math::Prime::Util::_XS_LMO_pi($_) for @{$darray[2-2]} },
+    ' 3' => sub { prime_memfree(); $sum += Math::Prime::Util::_XS_LMO_pi($_) for @{$darray[3-2]} },
+    ' 4' => sub { prime_memfree(); $sum += Math::Prime::Util::_XS_LMO_pi($_) for @{$darray[4-2]} },
+    ' 5' => sub { prime_memfree(); $sum += Math::Prime::Util::_XS_LMO_pi($_) for @{$darray[5-2]} },
+    ' 6' => sub { prime_memfree(); $sum += Math::Prime::Util::_XS_LMO_pi($_) for @{$darray[6-2]} },
+    ' 7' => sub { prime_memfree(); $sum += Math::Prime::Util::_XS_LMO_pi($_) for @{$darray[7-2]} },
+    ' 8' => sub { prime_memfree(); $sum += Math::Prime::Util::_XS_LMO_pi($_) for @{$darray[8-2]} },
+    ' 9' => sub { prime_memfree(); $sum += Math::Prime::Util::_XS_LMO_pi($_) for @{$darray[9-2]} },
+    '10' => sub { prime_memfree(); $sum += Math::Prime::Util::_XS_LMO_pi($_) for @{$darray[10-2]} },
 });
 print "\n";
 

@@ -46,7 +46,7 @@
  * with parallel primesieve it is over 10x faster.
  *   pix4(10^16) takes 124 minutes, this code + primesieve takes < 4 minutes.
  *
- * Timings with Perl + MPU with all-serial computation.
+ * Timings with Perl + MPU with all-serial computation, no memory limit.
  * The last column is the standalone time with 12-core parallel primesieve.
  *
  *    n     phi(x,a) mem/time  |  stage 4 mem/time  | total time | pps time
@@ -274,17 +274,26 @@ static UV icbrt(UV n)
  * this we can avoid caching prime counts and also skip most calls to the
  * segment siever.
  */
-static UV bs_prime_count(UV n, UV const* const primes, UV lastprime)
+static UV bs_prime_count(UV n, UV const* const primes, UV lastidx)
 {
   UV i, j;
-  if (n < 2)  return 0;
-  /* if (n > primes[lastprime])  return _XS_prime_count(2, n); */
-  if (n >= primes[lastprime]) {
-    if (n == primes[lastprime]) return lastprime;
-    croak("called bspc(%lu) with counts up to %lu\n", n, primes[lastprime]);
+  if (n <= 2)  return (n == 2);
+  /* if (n > primes[lastidx])  return _XS_prime_count(2, n); */
+  if (n >= primes[lastidx]) {
+    if (n == primes[lastidx]) return lastidx;
+    croak("called bspc(%lu) with counts up to %lu\n", n, primes[lastidx]);
   }
-  i = 1;
-  j = lastprime;
+  j = lastidx;
+  if (n < 8480) {
+    i = 1 + (n>>4);
+    if (j > 1060) j = 1060;
+  } else if (n < 25875000) {
+    i = 793 + (n>>5);
+    if (j > (n>>3)) j = n>>3;
+  } else {
+    i = 1617183;
+    if (j > (n>>4)) j = n>>4;
+  }
   while (i < j) {
     UV mid = (i+j)/2;
     if (primes[mid] <= n)  i = mid+1;
@@ -357,70 +366,66 @@ static uint32_t mapes7_32(uint32_t x) {
   return val;
 }
 
-/* Max memory = 2*A*X bytes, e.g. 2*400*16000 = 12.2 MB */
+/* Max memory = 2*A*X bytes, e.g. 2*400*24000 = 18.3 MB */
 #define PHICACHEA 400
-#define PHICACHEX 16000
-static uint32_t _phicache_max[PHICACHEA] = {0};
-static int16_t* _phicache[PHICACHEA] = {0};
-static void phicache_free(void) {
+#define PHICACHEX 24000
+typedef struct
+{
+  uint32_t max[PHICACHEA];
+  int16_t* val[PHICACHEA];
+} cache_t;
+static void phicache_init(cache_t* cache) {
   int a;
-#ifdef _OPENMP
-    #pragma omp critical(phicache)
-#endif
   for (a = 0; a < PHICACHEA; a++) {
-    if (_phicache[a] != 0)
-      Safefree(_phicache[a]);
-    _phicache[a] = 0;
-    _phicache_max[a] = 0;
+    cache->val[a] = 0;
+    cache->max[a] = 0;
   }
 }
+static void phicache_free(cache_t* cache) {
+  int a;
+  for (a = 0; a < PHICACHEA; a++) {
+    if (cache->val[a] != 0)
+      Safefree(cache->val[a]);
+    cache->val[a] = 0;
+    cache->max[a] = 0;
+  }
+}
+
 #define PHI_CACHE_POPULATED(x, a) \
   ((a) < PHICACHEA && (x) < PHICACHEX && \
-  _phicache_max[a] > (x) && _phicache[a][x] != 0)
+  cache->max[a] > (x) && cache->val[a][x] != 0)
 
-static void phi_cache_insert(UV x, UV a, IV sum) {
-#ifdef _OPENMP
-    #pragma omp critical(phicache)
-#endif
+static void phi_cache_insert(UV x, UV a, IV sum, cache_t* cache) {
   if (a < PHICACHEA && x < PHICACHEX) {
     uint32_t cap = ((x+1+31)/32)*32;
-    if (_phicache[a] == 0) {
-      Newz(0, _phicache[a], cap, int16_t);
-      _phicache_max[a] = cap;
-    } else if (_phicache_max[a] < cap) {
+    if (cache->val[a] == 0) {
+      Newz(0, cache->val[a], cap, int16_t);
+      cache->max[a] = cap;
+    } else if (cache->max[a] < cap) {
       uint32_t i;
-      Renew(_phicache[a], cap, int16_t);
-      for (i = _phicache_max[a]; i < cap; i++)
-        _phicache[a][i] = 0;
-      _phicache_max[a] = cap;
+      Renew(cache->val[a], cap, int16_t);
+      for (i = cache->max[a]; i < cap; i++)
+        cache->val[a][i] = 0;
+      cache->max[a] = cap;
     }
     if (sum < SHRT_MIN || sum > SHRT_MAX)
       croak("phi(%lu,%lu) 16-bit overflow: sum = %ld\n", x, a, sum);
-    _phicache[a][x] = sum;
+    cache->val[a][x] = sum;
   }
 }
-static size_t phicache_size(void) {
-  size_t sum = sizeof(_phicache);
-  int a;
-#ifdef _OPENMP
-    #pragma omp critical(phicache)
-#endif
-  for (a = 0; a < PHICACHEA; a++)
-    if (_phicache[a] != 0)
-      sum += _phicache_max[a] * sizeof(_phicache[a][0]);
-  return sum;
-}
 
-static IV _phi3(UV x, UV a, int sign, const UV* primes)
+static IV _phi3(UV x, UV a, int sign, const UV* const primes, const UV lastidx, cache_t* cache)
 {
   IV sum;
 
   if (a < 3)
     return sign * ((a==0) ? x : (a==1) ? x-x/2 : x-x/2-x/3+x/6);
   else if (PHI_CACHE_POPULATED(x, a))
-    return sign * _phicache[a][x];
+    return sign * cache->val[a][x];
   else if (x < primes[a+1])
     sum = sign;
+  else if (1 && x <= primes[lastidx] && x < primes[a]*primes[a])
+    sum = sign * (bs_prime_count(x, primes, lastidx) - a + 1);
   else {
     UV a2;
     if (a*a > x) {
@@ -428,19 +433,25 @@ static IV _phi3(UV x, UV a, int sign, const UV* primes)
       UV iters = bs_prime_count(ix, primes, a+1);
       sum = sign * (x - a + iters);
       for (a2 = 1; a2 <= iters; a2++)
-        sum += _phi3( FAST_DIV(x, primes[a2]), a2-1, -sign, primes);
-    } else {
-      sum = 0;
+        sum += _phi3( FAST_DIV(x, primes[a2]), a2-1, -sign, primes, lastidx, cache);
+    } else if (a >= 7) {
+      if (PHI_CACHE_POPULATED(x, 7))
+        sum = sign * cache->val[7][x];
+      else
+        sum = sign * mapes7(x);
       for (a2 = 8; a2 <= a; a2++)
-        sum += _phi3( FAST_DIV(x,primes[a2]), a2-1, -sign, primes);
-      a2 = (a > 7) ? 7 : a;
-      sum += sign * (PHI_CACHE_POPULATED(x, a2) ? _phicache[a2][x] : mapes(x, a2));
+        sum += _phi3( FAST_DIV(x,primes[a2]), a2-1, -sign, primes, lastidx, cache);
+    } else {
+      if (PHI_CACHE_POPULATED(x, a))
+        sum = sign * cache->val[a][x];
+      else
+        sum = sign * mapes(x, a);
     }
   }
-  phi_cache_insert(x, a, sign * sum);
+  phi_cache_insert(x, a, sign * sum, cache);
   return sum;
 }
-#define phi_small(x, a, primes)  _phi3(x, a, 1, primes)
+#define phi_small(x, a, primes, lastidx, cache)  _phi3(x, a, 1, primes, lastidx, cache)
 
 /******************************************************************************/
 /*   In-order lists for manipulating our UV value / IV count pairs            */
@@ -594,73 +605,93 @@ static void vcarray_remove_zeros(vcarray_t* a)
  * The main phi(x,a) algorithm.  In this implementation, it takes under 10%
  * of the total time for the Lehmer algorithm, but is a big memory consumer.
  */
+#define NTHRESH (MAX_PHI_MEM/16)
 
 static UV phi(UV x, UV a)
 {
-  UV i, val, sval;
+  UV i, val, sval, lastidx, lastprime;
   UV sum = 0;
   IV count;
   const UV* primes;
   vcarray_t a1, a2;
   vc_t* arr;
+  cache_t pcache; /* Cache for recursive phi */
 
   if (a == 1)  return ((x+1)/2);
   if (a <= 7)  return mapes(x, a);
 
-  primes = generate_small_primes(a+1);
+  lastidx = a+1;
+  primes = generate_small_primes(lastidx);
   if (primes == 0)
     croak("Could not generate primes for phi(%lu,%lu)\n", x, a);
-  if (x < primes[a+1])  { Safefree(primes); return (x > 0) ? 1 : 0; }
+  lastprime = primes[lastidx];
+  if (x < lastprime)  { Safefree(primes); return (x > 0) ? 1 : 0; }
+  phicache_init(&pcache);
 
   a1 = vcarray_create();
   a2 = vcarray_create();
   vcarray_insert(&a1, x, 1);
 
-  while (a > 7 && a1.n < (MAX_PHI_MEM/16)) {
+  while (a > 7) {
     UV primea = primes[a];
     UV sval_last = 0;
     IV sval_count = 0;
     arr = a1.a;
     for (i = 0; i < a1.n; i++) {
       count = arr[i].c;
-      if (count == 0) continue;      /* Skip if count = 0 */
       val  = arr[i].v;
       sval = FAST_DIV(val, primea);
       if (sval < primea) break;      /* stop inserting into a2 if small */
       if (sval != sval_last) {       /* non-merged value.  Insert into a2 */
-        if (sval_last != 0)
-          vcarray_insert(&a2, sval_last, sval_count);
+        if (sval_last != 0) {
+          if (sval_last <= lastprime && sval_last < primes[a-1]*primes[a-1])
+            sum += sval_count*(bs_prime_count(sval_last,primes,lastidx)-a+2);
+          else
+            vcarray_insert(&a2, sval_last, sval_count);
+        }
         sval_last = sval;
         sval_count = 0;
       }
       sval_count -= count;           /* Accumulate count for this sval */
     }
-    if (sval_last != 0)              /* Insert the last sval */
-      vcarray_insert(&a2, sval_last, sval_count);
+    if (sval_last != 0) {            /* Insert the last sval */
+      if (sval_last <= lastprime && sval_last < primes[a-1]*primes[a-1])
+        sum += sval_count*(bs_prime_count(sval_last,primes,lastidx)-a+2);
+      else
+        vcarray_insert(&a2, sval_last, sval_count);
+    }
     /* For each small sval, add up the counts */
     for ( ; i < a1.n; i++)
       sum -= arr[i].c;
     /* Merge a1 and a2 into a1.  a2 will be emptied. */
     vcarray_merge(&a1, &a2);
+    /* If we've grown too large, use recursive phi to clip. */
+    if ( a1.n > NTHRESH ) {
+      arr = a1.a;
+      if (verbose > 0) printf("clipping small values at a=%lu a1.n=%lu \n", a, a1.n);
+#ifdef _OPENMP
+      #pragma omp parallel for reduction(+: sum) firstprivate(pcache) schedule(dynamic, 16)
+#endif
+      for (i = 0; i < a1.n-NTHRESH+NTHRESH/50; i++) {
+        UV j = a1.n - 1 - i;
+        IV count = arr[j].c;
+        if (count != 0) {
+          sum += count * phi_small( arr[j].v, a-1, primes, lastidx, &pcache );
+          arr[j].c = 0;
+        }
+      }
+    }
     vcarray_remove_zeros(&a1);
     a--;
   }
+  phicache_free(&pcache);
   vcarray_destroy(&a2);
   arr = a1.a;
-  if (a > 7) {
-    if (verbose > 0) printf("CUT TO SMALL PHI AT a = %lu\n", a);
 #ifdef _OPENMP
-    #pragma omp parallel for reduction(+: sum) num_threads(2) schedule(dynamic, 16)
+  #pragma omp parallel for reduction(+: sum) schedule(dynamic, 16)
 #endif
-    for (i = 0; i < a1.n; i++)
-      sum += arr[i].c * phi_small( arr[i].v, a, primes );
-  } else {
-#ifdef _OPENMP
-    #pragma omp parallel for reduction(+: sum) schedule(dynamic, 16)
-#endif
-    for (i = 0; i < a1.n; i++)
-      sum += arr[i].c * mapes7( arr[i].v );
-  }
+  for (i = 0; i < a1.n; i++)
+    sum += arr[i].c * mapes7( arr[i].v );
   vcarray_destroy(&a1);
   Safefree(primes);
   return (UV) sum;
@@ -668,15 +699,11 @@ static UV phi(UV x, UV a)
 
 
 extern UV _XS_meissel_pi(UV n);
-static UV Pk_2(UV n, UV a)
+/* b = prime_count(isqrt(n)) */
+static UV Pk_2_p(UV n, UV a, UV b, const UV* primes, UV lastprime)
 {
-  UV b, lastprime, lastpc, lastw, lastwpc, i, P2;
-  const UV* primes; /* small prime cache, first b=pi(z)=pi(sqrt(n)) */
-
-  b = _XS_meissel_pi(isqrt(n));        /* b = pi(floor(n^1/2)) */
-  lastprime = b*SIEVE_MULT+1;
-  primes = generate_small_primes(lastprime);
-  lastpc = primes[lastprime];
+  UV lastw, lastwpc, i, P2;
+  UV lastpc = primes[lastprime];
 
   /* Ensure we have a large enough base sieve */
   prime_precalc(isqrt(n / primes[a+1]));
@@ -690,6 +717,13 @@ static UV Pk_2(UV n, UV a)
     P2 += lastwpc;
   }
   P2 -= ((b+a-2) * (b-a+1) / 2) - a + 1;
+  return P2;
+}
+static UV Pk_2(UV n, UV a, UV b)
+{
+  UV lastprime = b*SIEVE_MULT+1;
+  const UV* primes = generate_small_primes(lastprime);
+  UV P2 = Pk_2_p(n, a, b, primes, lastprime);
   Safefree(primes);
   return P2;
 }
@@ -705,7 +739,6 @@ UV _XS_legendre_pi(UV n)
 
   a = _XS_legendre_pi(isqrt(n));
   phina = phi(n, a);
-  phicache_free();
   return phina + a - 1;
 }
 
@@ -713,14 +746,14 @@ UV _XS_legendre_pi(UV n)
 /* Meissel's method. */
 UV _XS_meissel_pi(UV n)
 {
-  UV a, sum;
+  UV a, b, sum;
   if (n < SIEVE_LIMIT)
     return _XS_prime_count(2, n);
 
   a = _XS_meissel_pi(icbrt(n));        /* a = floor(n^1/3) */
+  b = _XS_meissel_pi(isqrt(n));        /* b = floor(n^1/2) */
 
-  sum = phi(n, a) + a - 1 - Pk_2(n, a);
-  phicache_free();
+  sum = phi(n, a) + a - 1 - Pk_2(n, a, b);
   return sum;
 }
 
@@ -754,8 +787,6 @@ UV _XS_lehmer_pi(UV n)
   if (verbose > 0) printf("lehmer %lu stage 2: phi(x,a) (z=%lu a=%lu b=%lu c=%lu)\n", n, z, a, b, c);
   TIMING_START;
   sum = phi(n, a) + ((b+a-2) * (b-a+1) / 2);
-  if (verbose > 1) printf("phicache size: %lu\n", (unsigned long)phicache_size());
-  phicache_free();
   TIMING_END_PRINT("phi(x,a)")
 
   /* We get an array of the first b primes.  This is used in stage 4.  If we
@@ -802,16 +833,20 @@ UV _XS_lehmer_pi(UV n)
 }
 
 
-/* The Lagarias-Miller-Odlyzko method.  Very simple implementation without
- * many optimizations.  It is very nice for memory use, but it isn't
- * particularly fast. */
+/* The Lagarias-Miller-Odlyzko method.
+ * Naive implementation without optimizations.
+ * About the same speed as Lehmer, a bit less memory.
+ * A better implementation can be 10-50x faster and much less memory.
+ */
 UV _XS_LMO_pi(UV n)
 {
   UV n12, n13, a, b, sum, i, j, k, lastprime, P2, S1, S2;
   const UV* primes = 0;  /* small prime cache */
   signed char* mu = 0;   /* moebius to n^1/3 */
   UV*   lpf = 0;         /* least prime factor to n^1/3 */
+  cache_t pcache; /* Cache for recursive phi */
   DECLARE_TIMING_VARIABLES;
+
   if (n < SIEVE_LIMIT)
     return _XS_prime_count(2, n);
 
@@ -831,13 +866,12 @@ UV _XS_LMO_pi(UV n)
   mu[0] = 0;
   for (i = 1; i <= n13; i++) {
     UV primei = primes[i];
-    UV j, isquared;
     for (j = primei; j <= n13; j += primei) {
       mu[j] = -mu[j];
       if (lpf[j] == 0) lpf[j] = primei;
     }
-    isquared = primei * primei;
-    for (j = isquared; j <= n13; j += isquared)
+    k = primei * primei;
+    for (j = k; j <= n13; j += k)
       mu[j] = 0;
   }
   lpf[1] = UV_MAX;  /* Set lpf[1] to max */
@@ -846,25 +880,39 @@ UV _XS_LMO_pi(UV n)
   k = (a < 7) ? a : 7;
   S1 = 0;
   S2 = 0;
+  phicache_init(&pcache);
+  TIMING_START;
   for (i = 1; i <= n13; i++)
     if (lpf[i] > primes[k])
-      S1 += mu[i] * phi_small(n/i, k, primes);
+      /* S1 += mu[i] * phi_small(n/i, k, primes, lastprime, &pcache); */
+      S1 += mu[i] * phi(n/i, k);
+  TIMING_END_PRINT("S1")
+
+  TIMING_START;
   for (i = k; i+1 < a; i++)
 #ifdef _OPENMP
-    #pragma omp parallel for reduction(+: S2) schedule(dynamic, 16) num_threads(2)
+    #pragma omp parallel for reduction(+: S2) firstprivate(pcache) schedule(dynamic, 16) num_threads(2)
 #endif
     for (j = (n13/primes[i+1])+1; j <= n13; j++)
       if (lpf[j] > primes[i+1])
-        S2 += -mu[j] * phi_small(n / (j*primes[i+1]), i, primes);
-  phicache_free();
+        S2 += -mu[j] * phi_small(n / (j*primes[i+1]), i, primes, lastprime, &pcache);
+  TIMING_END_PRINT("S2")
+  phicache_free(&pcache);
+  Safefree(lpf);
+  Safefree(mu);
 
-  P2 = Pk_2(n, a);
+  TIMING_START;
+  prime_precalc( (UV) pow(n, 2.9/5.0) );
+  P2 = Pk_2_p(n, a, b, primes, lastprime);
+  TIMING_END_PRINT("P2")
+  Safefree(primes);
 
   /* printf("S1 = %lu\nS2 = %lu\na  = %lu\nP2 = %lu\n", S1, S2, a, P2); */
   sum = (S1 + S2) + a - 1 - P2;
-  Safefree(primes);
   return sum;
 }
+
+UV _XS_legendre_phi(UV x, UV a) { return phi(x,a); }
 
 
 #ifdef PRIMESIEVE_STANDALONE
