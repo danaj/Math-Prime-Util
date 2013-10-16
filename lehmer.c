@@ -303,7 +303,7 @@ static UV bs_prime_count(UV n, UV const* const primes, UV lastidx)
 }
 
 #define FAST_DIV(x,y) \
-  ( ((x) <= 4294967295) ? (uint32_t)(x)/(uint32_t)(y) : (x)/(y) )
+  ( ((x) <= 4294967295U) ? (uint32_t)(x)/(uint32_t)(y) : (x)/(y) )
 
 /* Use Mapes' method to calculate phi(x,a) for small a.  This is really
  * convenient and a little Perl script will spit this code out for whatever
@@ -323,7 +323,7 @@ static UV mapes(UV x, UV a)
   return (UV) val;
 }
 
-#define mapes7(x) ((x <= 4294967295) ? mapes7_32(x) : mapes7_64(x))
+#define mapes7(x) (((x) <= 4294967295U) ? mapes7_32(x) : mapes7_64(x))
 static UV mapes7_64(UV x) {    /* A tiny bit faster setup for a=7 */
   UV val = x-x/2-x/3-x/5+x/6-x/7+x/10-x/11-x/13+x/14+x/15-x/17+x/21+x/22+x/26
           -x/30+x/33+x/34+x/35+x/39-x/42+x/51+x/55+x/65-x/66-x/70+x/77-x/78
