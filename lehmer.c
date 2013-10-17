@@ -3,7 +3,7 @@
 #include <string.h>
 #include <math.h>
 
-/* Below this size, just sieve. */
+/* Below this size, just sieve (with table speedup). */
 #define SIEVE_LIMIT  60000000
 #define MAX_PHI_MEM  (256*1024*1024)
 
@@ -368,7 +368,7 @@ static uint32_t mapes7_32(uint32_t x) {
 
 /* Max memory = 2*A*X bytes, e.g. 2*400*24000 = 18.3 MB */
 #define PHICACHEA 400
-#define PHICACHEX 24000
+#define PHICACHEX 32768
 typedef struct
 {
   uint32_t max[PHICACHEA];
@@ -410,6 +410,8 @@ static void phi_cache_insert(UV x, UV a, IV sum, cache_t* cache) {
     }
     if (sum < SHRT_MIN || sum > SHRT_MAX)
       croak("phi(%lu,%lu) 16-bit overflow: sum = %ld\n", x, a, sum);
+    if (cache->val[a] == 0)
+      croak("phi cache allocation failure");
     cache->val[a][x] = sum;
   }
 }
@@ -670,7 +672,7 @@ static UV phi(UV x, UV a)
       arr = a1.a;
       if (verbose > 0) printf("clipping small values at a=%lu a1.n=%lu \n", a, a1.n);
 #ifdef _OPENMP
-      #pragma omp parallel for reduction(+: sum) firstprivate(pcache) schedule(dynamic, 16)
+      /* #pragma omp parallel for reduction(+: sum) firstprivate(pcache) schedule(dynamic, 16) */
 #endif
       for (i = 0; i < a1.n-NTHRESH+NTHRESH/50; i++) {
         UV j = a1.n - 1 - i;
@@ -883,19 +885,19 @@ UV _XS_LMO_pi(UV n)
   phicache_init(&pcache);
   TIMING_START;
   for (i = 1; i <= n13; i++)
-    if (lpf[i] > primes[k])
+    if (lpf[i] > primes[k] && mu[i] != 0)
       /* S1 += mu[i] * phi_small(n/i, k, primes, lastprime, &pcache); */
       S1 += mu[i] * phi(n/i, k);
   TIMING_END_PRINT("S1")
 
   TIMING_START;
-  for (i = k; i+1 < a; i++)
-#ifdef _OPENMP
-    #pragma omp parallel for reduction(+: S2) firstprivate(pcache) schedule(dynamic, 16) num_threads(2)
-#endif
-    for (j = (n13/primes[i+1])+1; j <= n13; j++)
-      if (lpf[j] > primes[i+1])
-        S2 += -mu[j] * phi_small(n / (j*primes[i+1]), i, primes, lastprime, &pcache);
+  for (i = k; i+1 < a; i++) {
+    UV p = primes[i+1];
+    /* TODO: #pragma omp parallel for reduction(+: S2) firstprivate(pcache) schedule(dynamic, 16) */
+    for (j = (n13/p)+1; j <= n13; j++)
+      if (lpf[j] > p && mu[j] != 0)
+        S2 += -mu[j] * phi_small(n / (j*p), i, primes, lastprime, &pcache);
+  }
   TIMING_END_PRINT("S2")
   phicache_free(&pcache);
   Safefree(lpf);

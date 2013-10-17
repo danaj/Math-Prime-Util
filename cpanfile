@@ -12,13 +12,13 @@ requires 'Math::BigFloat', '1.59';
 
 requires 'Bytes::Random::Secure', '0.23';
 
-recommends 'Math::Prime::Util::GMP', '0.13';
+recommends 'Math::Prime::Util::GMP', '0.15';
 recommends 'Math::BigInt::GMP';
 recommends 'Math::MPFR', '2.03';
 
 
 on test => sub {
   requires 'Test::More', '0.45';
-  requires 'Test::Warn';
   requires 'bignum', '0.22';
+  recommends 'Test::Warn';
 };

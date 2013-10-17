@@ -493,7 +493,7 @@ UV _XS_prime_count(UV low, UV high)
         count += step_counts_30k[i++];
       }
       low = i * 30000;
-    } else if (high < (NSTEP_COUNTS_300K+1) * UVCONST(300000)) {
+    } else if (high < (10+NSTEP_COUNTS_300K+1) * UVCONST(300000)) {
       count = 216816;
       while (i < NSTEP_COUNTS_300K && high >= (i+11) * UVCONST(300000)) {
         count += step_counts_300k[i++];
