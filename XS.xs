@@ -409,6 +409,42 @@ _XS_factor(IN UV n)
     }
 
 void
+_XS_factor_exp(IN UV n)
+  PREINIT:
+    UV factors[MPU_MAX_FACTORS+1];
+    int i, j, nfactors;
+  PPCODE:
+    nfactors = factor(n, factors);
+    if (GIMME_V == G_SCALAR) {
+      /* Count unique prime factors and return the scalar */
+      for (i = 1, j = 1; i < nfactors; i++)
+        if (factors[i] != factors[i-1])
+          j++;
+      PUSHs(sv_2mortal(newSVuv(j)));
+    } else {
+      /* Return ( [p1, p2, p3, ...],  [e1, e2, e3, ...] ) */
+      UV exponents[MPU_MAX_FACTORS+1];
+      AV* fav = newAV();
+      AV* eav = newAV();
+      exponents[0] = 1;
+      for (i = 1, j = 1; i < nfactors; i++) {
+        if (factors[i] != factors[i-1]) {
+          exponents[j] = 1;
+          factors[j++] = factors[i];
+        } else {
+          exponents[j-1]++;
+        }
+      }
+      nfactors = j;
+      for (i = 0; i < nfactors; i++) {
+        av_push(fav, newSVuv(factors[i]));
+        av_push(eav, newSVuv(exponents[i]));
+      }
+      XPUSHs( sv_2mortal(newRV_noinc( (SV*) fav )) );
+      XPUSHs( sv_2mortal(newRV_noinc( (SV*) eav )) );
+    }
+
+void
 trial_factor(IN UV n, IN UV maxfactor = 0)
   PPCODE:
     SIMPLE_FACTOR(trial_factor, n, maxfactor);
