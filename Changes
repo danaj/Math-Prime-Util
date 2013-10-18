@@ -1,5 +1,11 @@
 Revision history for Perl module Math::Prime::Util
 
+0.33  2013-10
+
+    [MISC]
+
+    - Lucas sequence called with bigints will return bigint objects.
+
 0.32  2013-10-13
 
     [ADDED]

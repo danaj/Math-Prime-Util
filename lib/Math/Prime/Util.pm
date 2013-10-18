@@ -2031,9 +2031,10 @@ sub lucas_sequence {
   return _XS_lucas_sequence($n, $P, $Q, $k)
     if ref($_[0]) ne 'Math::BigInt' && $n <= $_XS_MAXVAL
     && ref($_[3]) ne 'Math::BigInt' && $k <= $_XS_MAXVAL;
-  return Math::Prime::Util::GMP::lucas_sequence($n, $P, $Q, $k)
-    if $_HAVE_GMP
-    && defined &Math::Prime::Util::GMP::lucas_sequence;
+  if ($_HAVE_GMP && defined &Math::Prime::Util::GMP::lucas_sequence) {
+    return map { ($_ > ~0) ? $n->copy->bzero->badd(''.$_) : $_ }
+           Math::Prime::Util::GMP::lucas_sequence($n, $P, $Q, $k);
+  }
   return Math::Prime::Util::PP::lucas_sequence($n, $P, $Q, $k);
 }
 

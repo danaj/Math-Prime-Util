@@ -1,6 +1,13 @@
+- Testing requirements after changes:
 
-- segment sieve should itself use a segment for its primes.
-  Today we'd need sqrt(2^64) max = 140MB.  Segmenting would yield under 1MB.
+  - Test all functions return either native or bigints.  Functions that
+    return raw MPU::GMP results will return strings, which isn't right.
+
+  - Valgrind, coverage
+
+  - compile with -O2 -g -Wall -Wextra -Wdeclaration-after-statement -fsigned-char
+
+
 
 - Add test to check maxbits in compiled library vs. Perl
 
@@ -15,9 +22,6 @@
 
 - Test all routines for numbers on word-size boundary, or ranges that cross.
 
-- Test all functions return either native or bigints.  Functions that return
-  raw MPU::GMP results will return strings, which isn't right.
-
 - An assembler version of mulmod for i386 would be _really_ helpful for
   all the non-x86-64 Intel machines.
 
@@ -30,6 +34,9 @@
 - Big features:
    - LMO prime count
    - QS factoring
+
+- segment sieve should itself use a segment for its primes.
+  Today we'd need sqrt(2^64) max = 140MB.  Segmenting would yield under 1MB.
 
 - Figure out a way to make the internal FOR_EACH_PRIME macros use a segmented
   sieve.
@@ -49,3 +56,5 @@
   API (small factors, isprime, then call main code) and main code (just the
   algorithm).  The PP code isn't doing that, which means we're doing lots of
   extra primality checks, which aren't cheap in PP.
+
+- high level routine for factor_exp.  Use factor_exp internally
