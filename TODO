@@ -57,4 +57,9 @@
   algorithm).  The PP code isn't doing that, which means we're doing lots of
   extra primality checks, which aren't cheap in PP.
 
-- high level routine for factor_exp.  Use factor_exp internally
+- tests for factor_exp, liouville, partitions.
+
+- document partitions()
+
+- speedups for partitions()
+

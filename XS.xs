@@ -422,10 +422,8 @@ _XS_factor_exp(IN UV n)
           j++;
       PUSHs(sv_2mortal(newSVuv(j)));
     } else {
-      /* Return ( [p1, p2, p3, ...],  [e1, e2, e3, ...] ) */
+      /* Return ( [p1,e1], [p2,e2], [p3,e3], ... ) */
       UV exponents[MPU_MAX_FACTORS+1];
-      AV* fav = newAV();
-      AV* eav = newAV();
       exponents[0] = 1;
       for (i = 1, j = 1; i < nfactors; i++) {
         if (factors[i] != factors[i-1]) {
@@ -437,11 +435,11 @@ _XS_factor_exp(IN UV n)
       }
       nfactors = j;
       for (i = 0; i < nfactors; i++) {
-        av_push(fav, newSVuv(factors[i]));
-        av_push(eav, newSVuv(exponents[i]));
+        AV* av = newAV();
+        av_push(av, newSVuv(factors[i]));
+        av_push(av, newSVuv(exponents[i]));
+        XPUSHs( sv_2mortal(newRV_noinc( (SV*) av )) );
       }
-      XPUSHs( sv_2mortal(newRV_noinc( (SV*) fav )) );
-      XPUSHs( sv_2mortal(newRV_noinc( (SV*) eav )) );
     }
 
 void

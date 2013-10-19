@@ -2,6 +2,23 @@ Revision history for Perl module Math::Prime::Util
 
 0.33  2013-10
 
+    [API Changes]
+
+      - all_factors now includes 1 and n, making it identical to Pari's
+        divisors(n) function, but no longer identical to Math::Factor::XS's
+        factors(n) function.  This change allows consistency between
+        divisor_sum(n,0) and scalar all_factors(n).
+
+    [ADDED]
+
+    - factor_exp    returns factors as ([p,e],[p,e],...)
+    - liouville     -1^(Omega(n)), OEIS A008836
+    - partitions    partition function p(n), OEIS A000041
+
+    [FUNCTIONALITY AND PERFORMANCE]
+
+    - all_factors in scalar context returns sigma_0(n).
+
     [MISC]
 
     - Lucas sequence called with bigints will return bigint objects.
