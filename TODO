@@ -59,7 +59,5 @@
 
 - tests for factor_exp, liouville, partitions.
 
-- document partitions()
-
 - speedups for partitions()
 

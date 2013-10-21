@@ -1660,14 +1660,11 @@ sub liouville {
   return $l;
 }
 
-# This is faster than most regular implementations I've seen, e.g. the ones
-# on stackoverflow or praxis.  The same algorithm in C+GMP is 300x faster.
-# It's much slower than Pari's floating point Rademacher algorithm.
 # See 2011+ FLINT and Fredrik Johansson's work for state of the art.
 #   Perl-comb   partitions(10^5)  ~ 300 seconds
 #   GMP-comb    partitions(10^6)  ~ 120 seconds  ( ~300x faster than Perl-comb)
 #   Pari        partitions(10^8)  ~ 100 seconds  (~1000x faster than GMP-comb)
-#   Bober       partitions(10^9)  ~  20 seconds  (~  50x faster than Pari)
+#   Bober 0.6   partitions(10^9)  ~  20 seconds  (~  50x faster than Pari)
 #   Johansson   partitions(10^12) ~  10 seconds  (>1000x faster than Pari)
 sub partitions {
   my($n) = @_;
@@ -1680,21 +1677,20 @@ sub partitions {
   if ($_HAVE_GMP && defined &Math::Prime::Util::GMP::partitions) {
     return Math::BigInt->new( '' . Math::Prime::Util::GMP::partitions($n) );
   }
-  my $d = int(sqrt($n+1));
+  my @part = (Math::BigInt->bone);
   my @pent = (1);
+  my $d = int(sqrt($n+1));
   foreach my $i ( 1 .. $d ) {
     push @pent, int(($i*(3*$i+1))/2), int((($i+1)*(3*$i+2))/2);
   }
-  my @part = (Math::BigInt->bone);
   foreach my $j (scalar @part .. $n) {
-    my $psum = Math::BigInt->bzero;
-    my $k = 1;
+    my ($psum1, $psum2, $k) = (Math::BigInt->bzero, Math::BigInt->bzero, 1);
     foreach my $p (@pent) {
       last if $p > $j;
-      if ((++$k) & 2) { $psum->badd( $part[ $j - $p ] ); }
-      else            { $psum->bsub( $part[ $j - $p ] ); }
+      if ((++$k) & 2) { $psum1->badd( $part[ $j - $p ] ); }
+      else            { $psum2->badd( $part[ $j - $p ] ); }
     }
-    $part[$j] = $psum;
+    $part[$j] = $psum1 - $psum2;
   }
   return $part[$n];
 }
@@ -3830,6 +3826,27 @@ to C<n>, resulting in much faster and memory-friendly results than using
 a factorial.
 
 
+=head2 partitions
+
+Calculates the partition function p(n) for a non-negative integer input.
+This is the number of ways of writing the integer n as a sum of positive
+integers, without restrictions.  This corresponds to Pari's C<numbpart>
+function and Mathematica's C<PartitionsP> function.  The values produced
+in order are L<OEIS series A000041|http://oeis.org/A000041>.
+
+This uses a combinatorial calculation, which means it will not be very
+fast compared to Pari, Mathematica, or FLINT which use the Rademacher
+formula using multiprecision floating point.  In 10 seconds, the pure
+Perl version can produce C<partitions(10000)> while with
+L<Math::Prime::Util::GMP> it can do C<partitions(200000)>.  In contrast,
+in about 10 seconds Pari can solve C<numbpart(22000000)>.
+
+If you want the enumerated partitions, see L<Integer::Partition>.  It is
+very fast and uses an extremely memory efficient iterator.  It is not,
+however, practical for producing the partition I<number> for values
+over 100 or so.
+
+
 =head2 carmichael_lambda
 
 Returns the Carmichael function (also called the reduced totient function,
@@ -4821,6 +4838,12 @@ Similar to MPU's L</moebius>.  Comparisons are similar to C<eulerphi>.
 
 Similar to MPU's L</divisor_sum>.  MPU is ~10x faster for native integers
 and about 2x slower for bigints.
+
+=item C<numbpart>
+
+Similar to MPU's L</partitions>.  This function is not in Pari 2.1, which
+is the default version used by Math::Pari.  With Pari 2.3 or newer, the
+functions produce identical results, but Pari is much, much faster.
 
 =item C<eint1>
 
