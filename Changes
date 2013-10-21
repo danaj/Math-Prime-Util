@@ -4,10 +4,10 @@ Revision history for Perl module Math::Prime::Util
 
     [API Changes]
 
-      - all_factors now includes 1 and n, making it identical to Pari's
-        divisors(n) function, but no longer identical to Math::Factor::XS's
-        factors(n) function.  This change allows consistency between
-        divisor_sum(n,0) and scalar all_factors(n).
+    - all_factors now includes 1 and n, making it identical to Pari's
+      divisors(n) function, but no longer identical to Math::Factor::XS's
+      factors(n) function.  This change allows consistency between
+      divisor_sum(n,0) and scalar all_factors(n).
 
     [ADDED]
 

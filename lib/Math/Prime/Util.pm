@@ -1660,35 +1660,43 @@ sub liouville {
   return $l;
 }
 
-{
-  my @pent = (0, 1);
-  my @part = (1);
-  # TODO: make this faster.  Pari is almost instant for n < 1000000.
-  # We do seem to be faster than the stackoverflow or praxis solutions.
-  sub partitions {
-    my($n) = @_;
-    return 1 if defined $n && $n <= 0;
-    _validate_num($n) || _validate_positive_integer($n);
-    return abs($part[$n]) if defined $part[$n];
-    if ($n >= 128 && !defined $Math::BigInt::VERSION) {
-      eval { require Math::BigInt; Math::BigInt->import(try=>'GMP,Pari'); 1; }
-      or do { croak "Cannot load Math::BigInt"; };
-    }
-    my $d = int(sqrt($n+1));
-    foreach my $i ( int((scalar @pent)/2) .. $d ) {
-      push @pent, int(($i*(3*$i+1))/2), int((($i+1)*(3*$i+2))/2);
-    }
-    foreach my $j (scalar @part .. $n) {
-      my $psum = ($n < 128) ? 0 : Math::BigInt->bzero;
-      foreach my $k (1 .. $n) {
-        last if $pent[$k] > $j;
-        my $gk = $part[ $j - $pent[$k] ];
-        $psum += (($k+1) & 2)  ?  $gk  :  -$gk;
-      }
-      $part[$j] = $psum;
-    }
-    return $part[$n];
+# This is faster than most regular implementations I've seen, e.g. the ones
+# on stackoverflow or praxis.  The same algorithm in C+GMP is 300x faster.
+# It's much slower than Pari's floating point Rademacher algorithm.
+# See 2011+ FLINT and Fredrik Johansson's work for state of the art.
+#   Perl-comb   partitions(10^5)  ~ 300 seconds
+#   GMP-comb    partitions(10^6)  ~ 120 seconds  ( ~300x faster than Perl-comb)
+#   Pari        partitions(10^8)  ~ 100 seconds  (~1000x faster than GMP-comb)
+#   Bober       partitions(10^9)  ~  20 seconds  (~  50x faster than Pari)
+#   Johansson   partitions(10^12) ~  10 seconds  (>1000x faster than Pari)
+sub partitions {
+  my($n) = @_;
+  return 1 if defined $n && $n <= 0;
+  _validate_num($n) || _validate_positive_integer($n);
+  if (!defined $Math::BigInt::VERSION) {
+    eval { require Math::BigInt; Math::BigInt->import(try=>'GMP,Pari'); 1; }
+    or do { croak "Cannot load Math::BigInt"; };
   }
+  if ($_HAVE_GMP && defined &Math::Prime::Util::GMP::partitions) {
+    return Math::BigInt->new( '' . Math::Prime::Util::GMP::partitions($n) );
+  }
+  my $d = int(sqrt($n+1));
+  my @pent = (1);
+  foreach my $i ( 1 .. $d ) {
+    push @pent, int(($i*(3*$i+1))/2), int((($i+1)*(3*$i+2))/2);
+  }
+  my @part = (Math::BigInt->bone);
+  foreach my $j (scalar @part .. $n) {
+    my $psum = Math::BigInt->bzero;
+    my $k = 1;
+    foreach my $p (@pent) {
+      last if $p > $j;
+      if ((++$k) & 2) { $psum->badd( $part[ $j - $p ] ); }
+      else            { $psum->bsub( $part[ $j - $p ] ); }
+    }
+    $part[$j] = $psum;
+  }
+  return $part[$n];
 }
 
 sub chebyshev_theta {
