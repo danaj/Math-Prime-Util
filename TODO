@@ -57,4 +57,4 @@
   algorithm).  The PP code isn't doing that, which means we're doing lots of
   extra primality checks, which aren't cheap in PP.
 
-- tests for factor_exp, liouville.
+- tests for factor_exp.
