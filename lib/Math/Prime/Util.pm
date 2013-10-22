@@ -1661,11 +1661,12 @@ sub liouville {
 }
 
 # See 2011+ FLINT and Fredrik Johansson's work for state of the art.
-#   Perl-comb   partitions(10^5)  ~ 300 seconds
-#   GMP-comb    partitions(10^6)  ~ 120 seconds  ( ~300x faster than Perl-comb)
-#   Pari        partitions(10^8)  ~ 100 seconds  (~1000x faster than GMP-comb)
-#   Bober 0.6   partitions(10^9)  ~  20 seconds  (~  50x faster than Pari)
-#   Johansson   partitions(10^12) ~  10 seconds  (>1000x faster than Pari)
+# Very crude timing estimates (ignores growth rates).
+#   Perl-comb   partitions(10^5)  ~ 300 seconds  ~200,000x slower than Pari
+#   GMP-comb    partitions(10^6)  ~ 120 seconds    ~1,000x slower than Pari
+#   Pari        partitions(10^8)  ~ 100 seconds
+#   Bober 0.6   partitions(10^9)  ~  20 seconds       ~50x faster than Pari
+#   Johansson   partitions(10^12) ~  10 seconds     >1000x faster than Pari
 sub partitions {
   my($n) = @_;
   return 1 if defined $n && $n <= 0;
