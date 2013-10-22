@@ -73,9 +73,10 @@ plan tests =>  0
              + scalar(keys %pseudoprimes)
              + 6   # PC lower, upper, approx
              + 6*2*$extra # more PC tests
-             + scalar(keys %factors)
+             + 2*scalar(keys %factors)
              + scalar(keys %allfactors)
              + 7   # moebius, euler_phi, jordan totient, divsum, znorder
+             + 2   # liouville
              + 15  # random primes
              + 0;
 
@@ -93,12 +94,14 @@ use Math::Prime::Util qw/
   nth_prime_upper
   nth_prime_approx
   factor
+  factor_exp
   all_factors
   moebius
   euler_phi
   jordan_totient
   divisor_sum
   znorder
+  liouville
   ExponentialIntegral
   LogarithmicIntegral
   RiemannR
@@ -200,6 +203,7 @@ SKIP: {
   skip "Your 64-bit Perl is broken, skipping bignum factoring tests", scalar(keys %factors) + scalar(keys %allfactors) if $broken64;
   while (my($n, $factors) = each(%factors)) {
     is_deeply( [factor($n)], $factors, "factor($n)" );
+    is_deeply( [factor_exp($n)], [linear_to_exp(@$factors)], "factor_exp($n)" );
   }
   while (my($n, $allfactors) = each(%allfactors)) {
     is_deeply( [all_factors($n)], $allfactors, "all_factors($n)" );
@@ -227,6 +231,10 @@ SKIP: {
   is(znorder(8267,927208363107752634625923),2843344277735759285436,"znorder 1");
   is(znorder(902,827208363107752634625947),undef,"znorder 2");
 }
+
+###############################################################################
+is( liouville(      48981631802481400359696467), -1, "liouville(a x b x c) = -1" );
+is( liouville(16091004845064967313564246070637),  1, "liouville(a x b x c x d) = 1" );
 
 ###############################################################################
 
@@ -302,3 +310,9 @@ sub check_pcbounds {
 }
 
 ###############################################################################
+
+sub linear_to_exp {   # Convert factor() output to factor_exp() output
+  my %exponents;
+  my @factors = grep { !$exponents{$_}++ } @_;
+  return (map { [$_, $exponents{$_}] } @factors);
+}

@@ -3,7 +3,7 @@ use strict;
 use warnings;
 
 use Test::More;
-use Math::Prime::Util qw/factor all_factors is_prime/;
+use Math::Prime::Util qw/factor factor_exp all_factors is_prime/;
 
 my $use64 = Math::Prime::Util::prime_get_config->{'maxbits'} > 32;
 my $extra = defined $ENV{EXTENDED_TESTING} && $ENV{EXTENDED_TESTING};
@@ -74,7 +74,7 @@ my %all_factors = (
       0 => [],
 );
 
-plan tests =>  (2 * scalar @testn) + scalar(keys %all_factors) + 10*9 + 8 + 1;
+plan tests =>  (3 * scalar @testn) + scalar(keys %all_factors) + 10*9 + 8 + 1;
 
 foreach my $n (@testn) {
   my @f = factor($n);
@@ -87,11 +87,14 @@ foreach my $n (@testn) {
   # Are they all prime?
   my $isprime = 1; $isprime *= is_prime($_) for @f;
   if ($n < 2) {
-    ok( !$isprime, "All factors [ $facstring ] of $n are not prime" );
+    ok( !$isprime, "   each factor is not prime" );
   } else {
-    ok( $isprime, "All factors [ $facstring ] of $n are prime" );
+    ok(  $isprime, "   each factor is prime" );
   }
-};
+
+  # Does factor_exp return the appropriate rearrangement?
+  is_deeply( [factor_exp($n)], [linear_to_exp(@f)], "   factor_exp looks right" );
+}
 
 while (my($n, $divisors) = each(%all_factors)) {
   is_deeply( [all_factors($n)], $divisors, "all_factors($n)" );
@@ -136,3 +139,9 @@ is( scalar factor(5), 1, "scalar factor(5) should be 1" );
 is( scalar factor(6), 2, "scalar factor(6) should be 2" );
 is( scalar factor(30107), 4, "scalar factor(30107) should be 4" );
 is( scalar factor(174636000), 15, "scalar factor(174636000) should be 15" );
+
+sub linear_to_exp {
+  my %exponents;
+  my @factors = grep { !$exponents{$_}++ } @_;
+  return (map { [$_, $exponents{$_}] } @factors);
+}
