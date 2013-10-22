@@ -16,7 +16,7 @@ if (!defined $Math::BigInt::VERSION) {
 
 BEGIN {
   $Math::Prime::Util::PrimalityProving::AUTHORITY = 'cpan:DANAJ';
-  $Math::Prime::Util::PrimalityProving::VERSION = '0.30';
+  $Math::Prime::Util::PrimalityProving::VERSION = '0.33';
 }
 
 my $_smallval = Math::BigInt->new("18446744073709551615");
@@ -849,7 +849,7 @@ Math::Prime::Util::PrimalityProving - Primality proofs and certificates
 
 =head1 VERSION
 
-Version 0.30
+Version 0.33
 
 
 =head1 SYNOPSIS

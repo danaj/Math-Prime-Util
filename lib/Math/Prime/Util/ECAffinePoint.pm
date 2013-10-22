@@ -10,7 +10,7 @@ if (!defined $Math::BigInt::VERSION) {
 
 BEGIN {
   $Math::Prime::Util::ECAffinePoint::AUTHORITY = 'cpan:DANAJ';
-  $Math::Prime::Util::ECAffinePoint::VERSION = '0.26';
+  $Math::Prime::Util::ECAffinePoint::VERSION = '0.33';
 }
 
 # Pure perl (with Math::BigInt) manipulation of Elliptic Curves
@@ -154,7 +154,7 @@ Math::Prime::Util::ECAffinePoint - Elliptic curve operations for affine points
 
 =head1 VERSION
 
-Version 0.26
+Version 0.33
 
 
 =head1 SYNOPSIS
