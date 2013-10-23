@@ -4393,8 +4393,10 @@ is 40 by default).
 
 If Math::MPFR is not installed, then results are calculated using either
 Borwein (1991) algorithm 2, or the basic series.  Full input accuracy is
-attempted, but there are defects in Math::BigFloat with high accuracy
-computations that make this difficult.  It is also very slow.  I highly
+attempted, but Math::BigFloat
+L<RT 43692|https://rt.cpan.org/Ticket/Display.html?id=43692>
+produces incorrect high-accuracy computations without the fix.
+It is also very slow.  I highly
 recommend installing Math::MPFR for BigFloat computations.
 
 

@@ -19,6 +19,15 @@ Revision history for Perl module Math::Prime::Util
 
     - all_factors in scalar context returns sigma_0(n).
 
+    - Perl RiemannZeta changes:
+
+      - Borwein Zeta calculations done in BigInt instead of BigFloat (speed).
+
+      - Patch submitted for the frustrating Math::BigFloat defect RT 43692.
+        With the patch applied, we get much, much better accuracy.
+
+      - Accuracy updates, especially with fixed BigFloat.
+
     [MISC]
 
     - Lucas sequence called with bigints will return bigint objects.
