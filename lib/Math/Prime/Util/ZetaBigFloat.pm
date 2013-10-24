@@ -291,10 +291,11 @@ sub RiemannZeta {
                                          : Math::BigFloat->new("$ix");
   my $xdigits = $x->accuracy || Math::BigFloat->accuracy() || Math::BigFloat->div_scale();
 
-  return $_Riemann_Zeta_Table[int($x)-2]
-       if $x == int($x)
-       && defined $_Riemann_Zeta_Table[int($x)-2]
-       && $xdigits <= 44;
+  if ($x == int($x) && $xdigits <= 44 && (int($x)-2) <= $#_Riemann_Zeta_Table) {
+    my $izeta = $_Riemann_Zeta_Table[int($x)-2]->copy;
+    $izeta->bround($xdigits);
+    return $izeta;
+  }
 
   my $extra_acc = 7;
   if    ($x > 50) { $extra_acc = 10; }
@@ -317,7 +318,7 @@ sub RiemannZeta {
   # We can fix some issues with large exponents (e.g. 6^-40.5) by turning it
   # into (6^-(40.5/4))^4  (assuming the base is positive).  Without that hack,
   # none of this would work at all.
-  # Even with the fix, it turns out this is significantly faster.
+  # There is a fix for the defect in the RT.
 
   my $superx = Math::BigInt->bone;
   my $subx = $x->copy;

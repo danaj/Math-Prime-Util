@@ -103,6 +103,7 @@ xt/primality-proofs.pl
 xt/small-is-next-prev.pl
 xt/factor-holf.pl
 xt/make-script-test-data.pl
+xt/measure_zeta_accuracy.pl
 xt/pari-totient-moebius.pl
 xt/primes-edgecases.pl
 xt/rwh_primecount.py
