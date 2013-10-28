@@ -2353,7 +2353,12 @@ sub RiemannZeta {
         eval { require Math::BigFloat;   Math::BigFloat->import(); 1; }
         or do { croak "Cannot load Math::BigFloat "; }
       }
-      $x = new Math::BigFloat "$x" if ref($x) ne 'Math::BigFloat';
+      if (ref($x) eq 'Math::BigInt') {
+        my $xacc = $x->accuracy();
+        $x = Math::BigFloat->new($x);
+        $x->accuracy($xacc) if $xacc;
+      }
+      $x = Math::BigFloat->new("$x") if ref($x) ne 'Math::BigFloat';
       $wantbf = 1;
       $xdigits = $x->accuracy || Math::BigFloat->accuracy() || Math::BigFloat->div_scale();
     }
@@ -2439,7 +2444,12 @@ sub RiemannR {
         eval { require Math::BigFloat;   Math::BigFloat->import(); 1; }
         or do { croak "Cannot load Math::BigFloat "; }
       }
-      $x = new Math::BigFloat "$x" if ref($x) ne 'Math::BigFloat';
+      if (ref($x) eq 'Math::BigInt') {
+        my $xacc = $x->accuracy();
+        $x = Math::BigFloat->new($x);
+        $x->accuracy($xacc) if $xacc;
+      }
+      $x = Math::BigFloat->new("$x") if ref($x) ne 'Math::BigFloat';
       $wantbf = 1;
       $xdigits = $x->accuracy || Math::BigFloat->accuracy() || Math::BigFloat->div_scale();
     }

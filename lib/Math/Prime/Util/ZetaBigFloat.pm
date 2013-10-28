@@ -394,7 +394,13 @@ sub RiemannZeta {
 sub RiemannR {
   my($x) = @_;
 
-  $x = new Math::BigFloat "$x" if ref($x) ne 'Math::BigFloat';
+  if (ref($x) eq 'Math::BigInt') {
+    my $xacc = $x->accuracy();
+    $x = Math::BigFloat->new($x);
+    $x->accuracy($xacc) if $xacc;
+  }
+  $x = Math::BigFloat->new("$x") if ref($x) ne 'Math::BigFloat';
+
   my $xdigits = $x->accuracy || Math::BigFloat->accuracy() || Math::BigFloat->div_scale();
   my $tol = 0.0 + "1e-$xdigits";
 
