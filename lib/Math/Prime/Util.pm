@@ -1418,10 +1418,12 @@ sub mertens {
     my $inner_sum = 0;
     my $lower = int($u/$m) + 1;
     my $last_nmk = int($n/($m*$lower));
-    my ($this_k, $next_k) = (0, int($n/($m*1)));
+    my ($denom, $this_k, $next_k) = ($m, 0, int($n/($m*1)));
     for my $nmk (1 .. $last_nmk) {
-      $this_k = $next_k;
-      $next_k = int($n/($m*($nmk+1)));
+      $denom += $m;
+      $this_k = int($n/$denom);
+      next if $this_k == $next_k;
+      ($this_k, $next_k) = ($next_k, $this_k);
       $inner_sum += $M[$nmk] * ($this_k - $next_k);
     }
     $sum -= $mu[$m] * $inner_sum;
@@ -1678,12 +1680,9 @@ sub partitions {
   if ($_HAVE_GMP && defined &Math::Prime::Util::GMP::partitions) {
     return Math::BigInt->new( '' . Math::Prime::Util::GMP::partitions($n) );
   }
-  my @part = (Math::BigInt->bone);
-  my @pent = (1);
   my $d = int(sqrt($n+1));
-  foreach my $i ( 1 .. $d ) {
-    push @pent, int(($i*(3*$i+1))/2), int((($i+1)*(3*$i+2))/2);
-  }
+  my @pent = (1, map { ($_*(3*$_+1))>>1, (($_+1)*(3*$_+2))>>1 } 1 .. $d);
+  my @part = (Math::BigInt->bone);
   foreach my $j (scalar @part .. $n) {
     my ($psum1, $psum2, $k) = (Math::BigInt->bzero, Math::BigInt->bzero, 1);
     foreach my $p (@pent) {

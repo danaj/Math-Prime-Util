@@ -145,10 +145,14 @@ sub _is_prime7 {  # n must not be divisible by 2, 3, or 5
     return 2;
   }
 
-  return 0 if !($n %  7) || !($n % 11) || !($n % 13) || !($n % 17) ||
-              !($n % 19) || !($n % 23) || !($n % 29) || !($n % 31) ||
-              !($n % 37) || !($n % 41) || !($n % 43) || !($n % 47) ||
-              !($n % 53) || !($n % 59);
+  if (ref($n) eq 'Math::BigInt') {
+    return 0 unless Math::BigInt::bgcd($n, "64092011671807087969")->is_one;
+  } else {
+    return 0 if !($n %  7) || !($n % 11) || !($n % 13) || !($n % 17) ||
+                !($n % 19) || !($n % 23) || !($n % 29) || !($n % 31) ||
+                !($n % 37) || !($n % 41) || !($n % 43) || !($n % 47) ||
+                !($n % 53) || !($n % 59);
+  }
 
   if ($n <= 1_000_000) {
     my $limit = int(sqrt($n));
@@ -792,9 +796,7 @@ sub miller_rabin {
   _validate_positive_integer($n);
   croak "No bases given to miller_rabin" unless @bases;
 
-  return 0 if ($n == 0) || ($n == 1);
-  return 1 if ($n == 2) || ($n == 3);
-  return 0 if !($n % 2);
+  return $n >> 1 if $n <= 3;
 
   # Die on invalid bases
   foreach my $base (@bases) { croak "Base $base is invalid" if $base < 2 }
@@ -803,6 +805,7 @@ sub miller_rabin {
 
   if ( ref($n) eq 'Math::BigInt' ) {
 
+    return 0 if $n->is_even;
     my $nminus1 = $n->copy->bdec();
     my $s = 0;
     my $d = $nminus1->copy;
@@ -829,6 +832,7 @@ sub miller_rabin {
 
   } else {
 
+   return 0 unless $n & 1;
    my $s = 0;
    my $d = $n - 1;
    while ( ($d & 1) == 0 ) {

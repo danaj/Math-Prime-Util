@@ -129,6 +129,7 @@ sub primality_proof_bls75 {
   my @factors = (2);
   croak "BLS75 error: n-1 not even" unless $nm1->is_even();
   my $trial_B = 20000;
+  $trial_B = 500 if ! prime_get_config->{'xs'};
   {
     while ($B->is_even) { $B /= 2; $A *= 2; }
     my @tf = Math::Prime::Util::PP::trial_factor($B, $trial_B);
