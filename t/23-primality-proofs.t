@@ -46,6 +46,7 @@ plan tests => 0
             + 8  # verification failures (Lucas/Pratt)
             + 11 # verification failures (n-1)
             + 7  # verification failures (ECPP)
+            + 3  # Verious other types
             + 0;
 
 is( is_provable_prime(871139809), 0, "871139809 is composite" );
@@ -259,3 +260,36 @@ is( verify_prime([1490266103, "ECPP",
                  [2780369, 2780360, 0, 2777444, 694361, [2481811, 1317449]],
                  [694361, 694358, 0, 695162, [26737, "n-1", [2],[2]], [348008, 638945]]]),
                  0, "ECPP non-prime last q" );
+
+my $header = "[MPU - Primality Certificate]\nVersion 1.0\nProof for:";
+{
+  my $cert = join "\n", $header,
+                       "N 2297612322987260054928384863",
+                       "Type Pocklington",
+                       "N  2297612322987260054928384863",
+                       "Q  16501461106821092981",
+                       "A  5";
+  is( verify_prime($cert), 1, "Verify Pocklington");
+}
+{
+  my $cert = join "\n", $header,
+                       "N 5659942549665396263282978117",
+                       "Type BLS15",
+                       "N  5659942549665396263282978117",
+                       "Q  42941814754495493",
+                       "LP 2",
+                       "LQ 3";
+  is( verify_prime($cert), 1, "Verify BLS15");
+}
+{
+  my $cert = join "\n", $header,
+                       "N 43055019307158602560279",
+                       "Type ECPP3",
+                       "N 43055019307158602560279",
+                       "S 106563369",
+                       "R 404032076977387",
+                       "A 0",
+                       "B 4",
+                       "T 1";
+  is( verify_prime($cert), 1, "Verify ECPP3");
+}

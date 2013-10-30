@@ -733,11 +733,6 @@ sub _gcd_ui {
   $x;
 }
 
-sub _lcm_ui {
-  my($x, $y) = @_;
-  return (abs($x) / _gcd_ui($x, $y)) * abs($y);
-}
-
 sub _is_perfect_power {
   my $n = shift;
   return 0 if $n <= 3 || $n != int($n);
@@ -761,14 +756,6 @@ sub _order {
     return $j if _powmod($n, $j, $r) == 1;
   }
   return $lim+1;
-}
-
-# same result as:  int($n->blog(2)->floor->bstr)
-sub _log2 {
-  my $n = shift;
-  my $log2n = 0;
-  $log2n++ while ($n >>= 1);
-  $log2n;
 }
 
 
@@ -1246,17 +1233,17 @@ sub _poly_new {
   return \@poly;
 }
 
-sub _poly_print {
-  my($poly) = @_;
-  carp "poly has null top degree" if $#$poly > 0 && !$poly->[-1];
-  foreach my $d (reverse 1 .. $#$poly) {
-    my $coef = $poly->[$d];
-    print "", ($coef != 1) ? $coef : "", ($d > 1) ? "x^$d" : "x", " + "
-      if $coef;
-  }
-  my $p0 = $poly->[0] || 0;
-  print "$p0\n";
-}
+#sub _poly_print {
+#  my($poly) = @_;
+#  carp "poly has null top degree" if $#$poly > 0 && !$poly->[-1];
+#  foreach my $d (reverse 1 .. $#$poly) {
+#    my $coef = $poly->[$d];
+#    print "", ($coef != 1) ? $coef : "", ($d > 1) ? "x^$d" : "x", " + "
+#      if $coef;
+#  }
+#  my $p0 = $poly->[0] || 0;
+#  print "$p0\n";
+#}
 
 sub _poly_mod_mul {
   my($px, $py, $r, $n) = @_;

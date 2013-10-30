@@ -78,6 +78,7 @@ plan tests =>  0
              + 7   # moebius, euler_phi, jordan totient, divsum, znorder
              + 2   # liouville
              + 15  # random primes
+             + 2   # miller-rabin random
              + 0;
 
 # Using GMP makes these tests run about 2x faster on some machines
@@ -118,6 +119,7 @@ use Math::Prime::Util qw/
   random_nbit_prime
   random_strong_prime
   random_maurer_prime
+  miller_rabin_random
   verify_prime
 /;
 # TODO:  is_strong_lucas_pseudoprime
@@ -267,6 +269,13 @@ SKIP: {
   cmp_ok( $randprime, '<', 2**80, "random 80-bit Maurer prime isn't too big");
   ok( is_prime($randprime), "random 80-bit Maurer prime is prime");
 }
+
+###############################################################################
+
+$randprime = random_nbit_prime(80);
+is( miller_rabin_random( $randprime, 20 ), 1, "80-bit prime passes Miller-Rabin with 20 random bases" );
+$randprime += 2 while is_prime($randprime);
+is( miller_rabin_random( $randprime, 40 ), 0, "80-bit composite fails Miller-Rabin with 40 random bases" );
 
 ###############################################################################
 

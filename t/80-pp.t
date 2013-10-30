@@ -55,7 +55,13 @@ my %pseudoprimes = (
   37 => [ qw/9 451 469 589 685 817 1333 3781 8905 9271 18631 19517 20591 25327 34237 45551 46981 47587 48133 59563 61337 68101 68251 73633 79381 79501 83333 84151 96727/ ],
   61 => [ qw/217 341 1261 2701 3661 6541 6697 7613 13213 16213 22177 23653 23959 31417 50117 61777 63139 67721 76301 77421 79381 80041/ ],
   73 => [ qw/205 259 533 1441 1921 2665 3439 5257 15457 23281 24617 26797 27787 28939 34219 39481 44671 45629 64681 67069 76429 79501 93521/ ],
- lucas      => [ qw/5459 5777 10877 16109 18971 22499 24569 25199 40309 58519 75077 97439/ ],
+ psp2       => [ qw/341 561 645 1105 1387 1729 1905 2047 2465 2701 2821 3277 4033 4369 4371 4681 5461 6601 7957 8321 8481 8911 10261 10585/ ],
+ psp3       => [ qw/91 121 286 671 703 949 1105 1541 1729 1891 2465 2665 2701 2821 3281 3367 3751 4961 5551 6601 7381 8401 8911 10585 11011/ ],
+ lucas      => [ qw/9179 10877 11419 11663 13919 14839 16109 16211 18407 18971 19043/ ],
+ slucas     => [ qw/5459 5777 10877 16109 18971 22499 24569 25199 40309 58519 75077/ ],
+ eslucas    => [ qw/989 3239 5777 10877 27971 29681 30739 31631 39059 72389 73919 75077 100127/ ],
+ aeslucas1  => [ qw/989 3239 5777 10469 10877 27971 29681 30739 31631 39059 72389 73919 75077 100127/ ],
+ aeslucas2  => [ qw/3239 4531 5777 10877 12209 21899 31631 31831 32129 34481 36079 37949 47849 50959/ ],
 );
 # Test a pseudoprime larger than 2^32.
 push @{$pseudoprimes{2}}, 75792980677 if $use64;
@@ -251,8 +257,8 @@ plan tests => 2 +
               1 + 1 +    # factor
               10 + 8*3 + # factoring subs
               10 +       # AKS
-              2 +        # Lucas and BLS75 primality proofs
-              3 +        # M-R and Lucas on bigint
+              3 +        # Lucas and BLS75 primality proofs
+              4 +        # M-R and Lucas on bigint
               13 +       # Misc util.pm functions
               scalar(keys %ipp) +
               1;
@@ -279,8 +285,13 @@ require_ok 'Math::Prime::Util::PrimalityProving';
     *next_prime     = \&Math::Prime::Util::PP::next_prime;
     *prev_prime     = \&Math::Prime::Util::PP::prev_prime;
 
-    *is_strong_lucas_pseudoprime = \&Math::Prime::Util::PP::is_strong_lucas_pseudoprime;
+    *is_pseudoprime = \&Math::Prime::Util::PP::is_pseudoprime;
     *miller_rabin   = \&Math::Prime::Util::PP::miller_rabin;
+    *is_lucas_pseudoprime = \&Math::Prime::Util::PP::is_lucas_pseudoprime;
+    *is_strong_lucas_pseudoprime = \&Math::Prime::Util::PP::is_strong_lucas_pseudoprime;
+    *is_extra_strong_lucas_pseudoprime = \&Math::Prime::Util::PP::is_extra_strong_lucas_pseudoprime;
+    *is_almost_extra_strong_lucas_pseudoprime = \&Math::Prime::Util::PP::is_almost_extra_strong_lucas_pseudoprime;
+    *is_frobenius_underwood_pseudoprime = \&Math::Prime::Util::PP::is_frobenius_underwood_pseudoprime;
     *is_aks_prime   = \&Math::Prime::Util::PP::is_aks_prime;
 
     *factor         = \&Math::Prime::Util::PP::factor;
@@ -396,8 +407,21 @@ while (my($base, $ppref) = each (%pseudoprimes)) {
   my $npseudos = scalar @$ppref;
   my @expmr = map { 1 } @$ppref;
   my @gotmr;
-  if ($base eq 'lucas') { @gotmr = map { is_strong_lucas_pseudoprime($_) } @$ppref; }
-  else                  { @gotmr = map { miller_rabin($_, $base) } @$ppref;         }
+  if ($base =~ /^psp(\d+)/) {
+     my $pbase = $1;
+     @gotmr = map { is_pseudoprime($_, $pbase) } @$ppref;
+  } elsif ($base =~ /^aeslucas(\d+)/) {
+     my $inc = $1;
+     @gotmr = map { is_almost_extra_strong_lucas_pseudoprime($_, $inc) } @$ppref;
+  } elsif ($base eq 'eslucas') {
+     @gotmr = map { is_extra_strong_lucas_pseudoprime($_) } @$ppref;
+  } elsif ($base eq 'slucas') {
+     @gotmr = map { is_strong_lucas_pseudoprime($_) } @$ppref;
+  } elsif ($base eq 'lucas') {
+     @gotmr = map { is_lucas_pseudoprime($_) } @$ppref;
+  } else {
+     @gotmr = map { miller_rabin($_, $base) } @$ppref;
+  }
   is_deeply(\@gotmr, \@expmr, "$npseudos pseudoprimes (base $base)");
 }
 
@@ -575,12 +599,16 @@ is_deeply( [Math::Prime::Util::PrimalityProving::primality_proof_lucas(100003)],
 is_deeply( [Math::Prime::Util::PrimalityProving::primality_proof_bls75(1490266103)],
            [2, "[MPU - Primality Certificate]\nVersion 1.0\n\nProof for:\nN 1490266103\n\nType BLS5\nN 1490266103\nQ[1] 13\nQ[2] 19\nQ[3] 1597\nQ[4] 1889\nA[0] 5\n----\n"],
            "primality_proof_bls75(1490266103)" );
+is_deeply( [Math::Prime::Util::PrimalityProving::primality_proof_bls75(27141057803)],
+           [2, "[MPU - Primality Certificate]\nVersion 1.0\n\nProof for:\nN 27141057803\n\nType BLS5\nN 27141057803\nQ[1] 47533\nQ[2] 285497\n----\n"],
+           "primality_proof_bls75(27141057803)" );
 
 {
   my $n = Math::BigInt->new("168790877523676911809192454171451");
   is( miller_rabin( $n, 2,3,5,7,11,13,17,19,23,29,31,37,41,43,47), 1, "168790877523676911809192454171451 looks prime with bases 2..52" );
   is( miller_rabin( $n, 53), 0, "168790877523676911809192454171451 found composite with base 53" );
   is ( is_strong_lucas_pseudoprime($n), 0, "168790877523676911809192454171451 is not a strong Lucas pseudoprime" );
+  is ( is_frobenius_underwood_pseudoprime($n), 0, "168790877523676911809192454171451 is not a Frobenius pseudoprime" );
 }
 
 {

@@ -11,11 +11,6 @@
 
 /* Primality related functions, including Montgomery math */
 
-/* TODO:
- *      - Convert F-U test to Montgomery
- *      - Convert Lucas tests to Montgomery
- */
-
 static const UV mr_bases_const2[1] = {2};
 
 /******************************************************************************

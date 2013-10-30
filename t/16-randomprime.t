@@ -7,8 +7,8 @@ use Test::More;
 #use Math::Random::MT::Auto qw/rand/;
 #sub rand { return 0.5; }
 use Math::Prime::Util qw/random_prime random_ndigit_prime random_nbit_prime
-                         random_maurer_prime is_prime
-                         prime_set_config/;
+                         random_maurer_prime random_proven_prime
+                         is_prime prime_set_config/;
 
 my $use64 = Math::Prime::Util::prime_get_config->{'maxbits'} > 32;
 my $extra = defined $ENV{EXTENDED_TESTING} && $ENV{EXTENDED_TESTING};
@@ -64,7 +64,8 @@ plan tests => 13+3+3+3
               + (2 * scalar (keys %ranges))
               + (2 * scalar @random_to)
               + (1 * scalar @random_ndigit_tests)
-              + (2 * scalar @random_nbit_tests)
+              + (3 * scalar @random_nbit_tests)
+              + 3 + 4
               + 0;
 
 my $infinity = 20**20**20;
@@ -163,6 +164,7 @@ SKIP: {
 foreach my $bits ( @random_nbit_tests ) {
   check_bits( random_nbit_prime($bits), $bits, "nbit" );
   check_bits( random_maurer_prime($bits), $bits, "Maurer" );
+  check_bits( random_proven_prime($bits), $bits, "proven" );
 }
 
 sub check_bits {
@@ -172,4 +174,32 @@ sub check_bits {
   $max = Math::BigInt->new("$max") if ref($n) eq 'Math::BigInt';
   ok ( $n >= $min && $n <= $max && is_prime($n),
        "$bits-bit random $what prime is in range and prime");
+}
+prime_set_config(nobigint=>0);
+
+# Now check with custom irand
+{
+  my $seed = 1;
+  sub mysrand { $seed = $_[0]; }
+  #sub irand { $seed = (1103515245*$seed + 12345) % 4294967296; }
+  sub irand { $seed = ( 16807 * $seed ) % 2147483647; }
+  prime_set_config( irand => \&irand );
+}
+is( random_nbit_prime(10), 571, "random 10-bit prime with custom irand" );
+is( random_nbit_prime(20), 558769, "random 20-bit prime with custom irand" );
+is( random_ndigit_prime(9), 756473437, "random 9-digit with custom irand" );
+
+{
+  my $n = random_nbit_prime(80);
+  is( ref($n), 'Math::BigInt', "random 80-bit prime returns a BigInt" );
+  ok(    $n >= Math::BigInt->new(2)->bpow(79)
+      && $n <= Math::BigInt->new(2)->bpow(80),
+      "random 80-bit prime is in range" );
+}
+{
+  my $n = random_ndigit_prime(30);
+  is( ref($n), 'Math::BigInt', "random 30-digit prime returns a BigInt" );
+  ok(    $n >= Math::BigInt->new(10)->bpow(29)
+      && $n <= Math::BigInt->new(10)->bpow(30),
+      "random 30-digit prime is in range" );
 }

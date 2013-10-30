@@ -73,6 +73,17 @@ my %pseudoprimes = (
  aeslucas1  => [ qw/989 3239 5777 10469 10877 27971 29681 30739 31631 39059 72389 73919 75077 100127 113573 125249 137549 137801 153931 154697 155819/ ],
  aeslucas2  => [ qw/3239 4531 5777 10877 12209 21899 31631 31831 32129 34481 36079 37949 47849 50959 51641 62479 73919 75077 97109 100127 108679 113573 116899 154697 161027/ ],
 );
+
+if ($use64) {
+  push @{$pseudoprimes{psp3}}, 4398117272641;
+  push @{$pseudoprimes{3}}, 1099558795087;
+  push @{$pseudoprimes{lucas}}, 2199055761527;
+  push @{$pseudoprimes{slucas}}, 12598021314449;
+  push @{$pseudoprimes{eslucas}}, 10099386070337;
+  push @{$pseudoprimes{aeslucas1}}, 10071551814917;
+  push @{$pseudoprimes{aeslucas2}}, 34372519409;
+}
+
 my $num_pseudoprimes = 0;
 foreach my $ppref (values %pseudoprimes) {
   $num_pseudoprimes += scalar @$ppref;
@@ -105,6 +116,7 @@ plan tests => 0 + 3
                 + scalar @small_lucas_trials
                 + scalar(keys %lucas_sequences)
                 + 1  # frob-underwood
+                + 2*$use64  # frob-underwood
                 + 1*$extra;
 
 ok(!eval { is_strong_pseudoprime(2047); }, "MR with no base fails");
@@ -215,4 +227,8 @@ while (my($params, $expect) = each (%lucas_sequences)) {
     }
   }
   is($fufail, 0, "is_frobenius_underwood_pseudoprime matches is_prime");
+}
+if ($use64) {
+  is( is_frobenius_underwood_pseudoprime(2727480595375747), 1, "frobenius with 52-bit prime" );
+  is( is_frobenius_underwood_pseudoprime(10099386070337), 0, "frobenius with 44-bit lucas pseudoprime" );
 }
