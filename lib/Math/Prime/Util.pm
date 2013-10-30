@@ -75,6 +75,7 @@ sub _import_nobigint {
   undef *is_prob_prime;   *is_prob_prime     = \&_XS_is_prob_prime;
   undef *next_prime;      *next_prime        = \&_XS_next_prime;
   undef *prev_prime;      *prev_prime        = \&_XS_prev_prime;
+  1;
 }
 
 BEGIN {
@@ -1681,7 +1682,7 @@ sub partitions {
     return Math::BigInt->new( '' . Math::Prime::Util::GMP::partitions($n) );
   }
   my $d = int(sqrt($n+1));
-  my @pent = (1, map { ($_*(3*$_+1))>>1, (($_+1)*(3*$_+2))>>1 } 1 .. $d);
+  my @pent = (1, map { (($_*(3*$_+1))>>1, (($_+1)*(3*$_+2))>>1) } 1 .. $d);
   my @part = (Math::BigInt->bone);
   foreach my $j (scalar @part .. $n) {
     my ($psum1, $psum2, $k) = (Math::BigInt->bzero, Math::BigInt->bzero, 1);

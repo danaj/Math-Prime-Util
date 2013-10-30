@@ -665,23 +665,23 @@ sub nth_prime {
 }
 
 sub _mulmod {
-  my($a, $b, $m) = @_;
-  return (($a * $b) % $m) if ($a|$b) < $_half_word;
+  my($x, $y, $n) = @_;
+  return (($x * $y) % $n) if ($x|$y) < $_half_word;
   my $r = 0;
-  $a %= $m if $a >= $m;
-  $b %= $m if $b >= $m;
-  ($a,$b) = ($b,$a) if $a < $b;
-  if ($m <= (~0 >> 1)) {
-    while ($b > 0) {
-      if ($b & 1) { $r += $a;  $r -= $m if $r >= $m; }
-      $b >>= 1;
-      if ($b)     { $a += $a;  $a -= $m if $a >= $m; }
+  $x %= $n if $x >= $n;
+  $y %= $n if $y >= $n;
+  ($x,$y) = ($y,$x) if $x < $y;
+  if ($n <= (~0 >> 1)) {
+    while ($y > 0) {
+      if ($y & 1) { $r += $x;  $r -= $n if $r >= $n; }
+      $y >>= 1;
+      if ($y)     { $x += $x;  $x -= $n if $x >= $n; }
     }
   } else {
-    while ($b > 0) {
-      if ($b & 1) { $r = $m-$r;  $r = ($a >= $r) ? $a-$r : $m-$r+$a; }
-      $b >>= 1;
-      if ($b)     { $a = ($a > ($m - $a))  ?  ($a - $m) + $a  :  $a + $a; }
+    while ($y > 0) {
+      if ($y & 1) { $r = $n-$r;  $r = ($x >= $r) ? $x-$r : $n-$r+$x; }
+      $y >>= 1;
+      if ($y)     { $x = ($x > ($n - $x))  ?  ($x - $n) + $x  :  $x + $x; }
     }
   }
   $r;
@@ -819,15 +819,15 @@ sub miller_rabin {
     #my $s = length($dbin)-2-$last1+1;
     #my $d = $nminus1->copy->brsft($s);
 
-    foreach my $a (@bases) {
-      my $x = $n->copy->bzero->badd($a)->bmodpow($d,$n);
+    foreach my $ma (@bases) {
+      my $x = $n->copy->bzero->badd($ma)->bmodpow($d,$n);
       next if ($x->is_one) || ($x->bcmp($nminus1) == 0);
       foreach my $r (1 .. $s-1) {
         $x->bmul($x); $x->bmod($n);
         return 0 if $x->is_one;
-        do { $a = 0; last; } if $x->bcmp($nminus1) == 0;
+        do { $ma = 0; last; } if $x->bcmp($nminus1) == 0;
       }
-      return 0 if $a != 0;
+      return 0 if $ma != 0;
     }
 
   } else {
@@ -841,8 +841,8 @@ sub miller_rabin {
    }
 
    if ($n < $_half_word) {
-    foreach my $a (@bases) {
-      my $x = _native_powmod($a, $d, $n);
+    foreach my $ma (@bases) {
+      my $x = _native_powmod($ma, $d, $n);
       next if ($x == 1) || ($x == ($n-1));
       foreach my $r (1 .. $s-1) {
         $x = ($x*$x) % $n;
@@ -852,8 +852,8 @@ sub miller_rabin {
       return 0 if $x != $n-1;
     }
    } else {
-    foreach my $a (@bases) {
-      my $x = _powmod($a, $d, $n);
+    foreach my $ma (@bases) {
+      my $x = _powmod($ma, $d, $n);
       next if ($x == 1) || ($x == ($n-1));
 
       foreach my $r (1 .. $s-1) {
@@ -1205,8 +1205,8 @@ sub is_frobenius_underwood_pseudoprime {
   }
 
   my $ZERO = $n->copy->bzero;
-  my $a = $ZERO + 1;
-  my $b = $ZERO + 2;
+  my $fa = $ZERO + 1;
+  my $fb = $ZERO + 2;
 
   my ($x, $t, $np1, $len, $na) = (0, -1, $n+1, 1, undef);
   while ( _jacobi($t, $n) != -1 ) {
@@ -1219,18 +1219,18 @@ sub is_frobenius_underwood_pseudoprime {
   $multiplier %= $n if $multiplier > $n;
   { my $v = $np1; $len++ while ($v >>= 1); }
   foreach my $bit (reverse 0 .. $len-2) {
-    $na = $a * (($a*$x) + ($b+$b));
-    $b = ( ($b + $a) * ($b - $a) ) % $n;
-    $a = $na % $n;
+    $na = $fa * (($fa*$x) + ($fb+$fb));
+    $fb = ( ($fb + $fa) * ($fb - $fa) ) % $n;
+    $fa = $na % $n;
     if ( ($np1 >> $bit) & 1 ) {
-      $na = $b + ($a * $multiplier);
-      $b += ($b - $a);
-      $a = $na;
+      $na = $fb + ($fa * $multiplier);
+      $fb += ($fb - $fa);
+      $fa = $na;
     }
   }
-  $a->bmod($n);
-  $b->bmod($n);
-  return ($a == 0 && $b == $result) ? 1 : 0;
+  $fa->bmod($n);
+  $fb->bmod($n);
+  return ($fa == 0 && $fb == $result) ? 1 : 0;
 }
 
 
@@ -1248,7 +1248,7 @@ sub _poly_new {
 
 sub _poly_print {
   my($poly) = @_;
-  warn "poly has null top degree" if $#$poly > 0 && !$poly->[-1];
+  carp "poly has null top degree" if $#$poly > 0 && !$poly->[-1];
   foreach my $d (reverse 1 .. $#$poly) {
     my $coef = $poly->[$d];
     print "", ($coef != 1) ? $coef : "", ($d > 1) ? "x^$d" : "x", " + "
@@ -1535,10 +1535,10 @@ sub _found_factor {
 sub squfof_factor { trial_factor(@_) }
 
 sub prho_factor {
-  my($n, $rounds, $a) = @_;
+  my($n, $rounds, $pa) = @_;
   _validate_positive_integer($n);
   $rounds = 4*1024*1024 unless defined $rounds;
-  $a = 3 unless defined $a;
+  $pa = 3 unless defined $pa;
 
   my @factors = _basic_factor($n);
   return @factors if $n < 4;
@@ -1552,10 +1552,10 @@ sub prho_factor {
     $U = $n->copy->bzero->badd($U);
     $V = $n->copy->bzero->badd($V);
     for my $i (1 .. $rounds) {
-      # Would use bmuladd here, but old Math::BigInt's barf with scalar $a.
-      $U->bmul($U)->badd($a)->bmod($n);
-      $V->bmul($V)->badd($a);
-      $V->bmul($V)->badd($a)->bmod($n);
+      # Would use bmuladd here, but old Math::BigInt's barf with scalar $pa.
+      $U->bmul($U)->badd($pa)->bmod($n);
+      $V->bmul($V)->badd($pa);
+      $V->bmul($V)->badd($pa)->bmod($n);
       my $f = Math::BigInt::bgcd( ($U > $V) ? $U-$V : $V-$U,  $n);
       if ($f == $n) {
         last if $inloop++;  # We've been here before
@@ -1567,9 +1567,9 @@ sub prho_factor {
   } elsif ($n < $_half_word) {
 
     for my $i (1 .. $rounds) {
-      $U = ($U * $U + $a) % $n;
-      $V = ($V * $V + $a) % $n;
-      $V = ($V * $V + $a) % $n;
+      $U = ($U * $U + $pa) % $n;
+      $V = ($V * $V + $pa) % $n;
+      $V = ($V * $V + $pa) % $n;
       my $f = _gcd_ui( ($U > $V) ? $U-$V : $V-$U,  $n );
       if ($f == $n) {
         last if $inloop++;  # We've been here before
@@ -1581,9 +1581,9 @@ sub prho_factor {
   } else {
 
     for my $i (1 .. $rounds) {
-      $U = _mulmod($U, $U, $n);  $U = (($n-$U) > $a)  ?  $U+$a  :  $U-$n+$a;
-      $V = _mulmod($V, $V, $n);  $V = (($n-$V) > $a)  ?  $V+$a  :  $V-$n+$a;
-      $V = _mulmod($V, $V, $n);  $V = (($n-$V) > $a)  ?  $V+$a  :  $V-$n+$a;
+      $U = _mulmod($U, $U, $n);  $U = (($n-$U) > $pa)  ?  $U+$pa  :  $U-$n+$pa;
+      $V = _mulmod($V, $V, $n);  $V = (($n-$V) > $pa)  ?  $V+$pa  :  $V-$n+$pa;
+      $V = _mulmod($V, $V, $n);  $V = (($n-$V) > $pa)  ?  $V+$pa  :  $V-$n+$pa;
       my $f = _gcd_ui( ($U > $V) ? $U-$V : $V-$U,  $n );
       if ($f == $n) {
         last if $inloop++;  # We've been here before
@@ -1598,10 +1598,10 @@ sub prho_factor {
 }
 
 sub pbrent_factor {
-  my($n, $rounds, $a) = @_;
+  my($n, $rounds, $pa) = @_;
   _validate_positive_integer($n);
   $rounds = 4*1024*1024 unless defined $rounds;
-  $a = 3 unless defined $a;
+  $pa = 3 unless defined $pa;
 
   my @factors = _basic_factor($n);
   return @factors if $n < 4;
@@ -1628,7 +1628,7 @@ sub pbrent_factor {
         my $m = $zero->copy->bone;
         $saveXi = $Xi->copy;
         foreach my $i (1 .. $dorounds) {
-          $Xi->bmul($Xi)->badd($a)->bmod($n);
+          $Xi->bmul($Xi)->badd($pa)->bmod($n);
           $m->bmul($Xi - $Xm);
         }
         $rleft -= $dorounds;
@@ -1645,7 +1645,7 @@ sub pbrent_factor {
       if ($f == $n) {  # back up to determine the factor
         $Xi = $saveXi->copy;
         do {
-          $Xi->bmul($Xi)->badd($a)->bmod($n);
+          $Xi->bmul($Xi)->badd($pa)->bmod($n);
           $f = Math::BigInt::bgcd( ($Xi > $Xm) ? $Xi-$Xm : $Xm-$Xi,  $n);
         } while ($f != 1 && $r-- != 0);
         last if $f == 1 || $f == $n;
@@ -1656,7 +1656,7 @@ sub pbrent_factor {
   } elsif ($n < $_half_word) {
 
     for my $i (1 .. $rounds) {
-      $Xi = ($Xi * $Xi + $a) % $n;
+      $Xi = ($Xi * $Xi + $pa) % $n;
       my $f = _gcd_ui( ($Xi > $Xm) ? $Xi-$Xm : $Xm-$Xi,  $n );
       return _found_factor($f, $n, "pbrent", @factors) if $f != 1 && $f != $n;
       $Xm = $Xi if ($i & ($i-1)) == 0;  # i is a power of 2
@@ -1667,7 +1667,7 @@ sub pbrent_factor {
     for my $i (1 .. $rounds) {
       # Xi^2+a % n
       $Xi = _mulmod($Xi, $Xi, $n);
-      $Xi = (($n-$Xi) > $a)  ?  $Xi+$a  :  $Xi+$a-$n;
+      $Xi = (($n-$Xi) > $pa)  ?  $Xi+$pa  :  $Xi+$pa-$n;
       my $f = _gcd_ui( ($Xi > $Xm) ? $Xi-$Xm : $Xm-$Xi,  $n );
       return _found_factor($f, $n, "pbrent", @factors) if $f != 1 && $f != $n;
       $Xm = $Xi if ($i & ($i-1)) == 0;  # i is a power of 2
@@ -1688,7 +1688,7 @@ sub pminus1_factor {
   if ( ref($n) ne 'Math::BigInt' ) {
     # Stage 1 only
     $B1 = 10_000_000 unless defined $B1;
-    my $a = 2;
+    my $pa = 2;
     my $f = 1;
     my($pc_beg, $pc_end, @bprimes);
     $pc_beg = 2;
@@ -1703,9 +1703,9 @@ sub pminus1_factor {
           my $kmin = int($B1 / $q);
           while ($k <= $kmin) { $k *= $q; }
         }
-        $a = _powmod($a, $k, $n);
-        if ($a == 0) { push @factors, $n; return @factors; }
-        my $f = _gcd_ui( $a-1, $n );
+        $pa = _powmod($pa, $k, $n);
+        if ($pa == 0) { push @factors, $n; return @factors; }
+        my $f = _gcd_ui( $pa-1, $n );
         return _found_factor($f, $n, "pminus1", @factors) if $f != 1;
       }
       last if $pc_end >= $B1;
@@ -1738,8 +1738,8 @@ sub pminus1_factor {
   my $one = $n->copy->bone;
   my ($j, $q, $saveq) = (32, 2, 2);
   my $t = $one->copy;
-  my $a = $one->copy->binc();
-  my $savea = $a->copy;
+  my $pa = $one->copy->binc();
+  my $savea = $pa->copy;
   my $f = 1;
   my($pc_beg, $pc_end, @bprimes);
 
@@ -1754,14 +1754,14 @@ sub pminus1_factor {
       $t *= $k;                         # accumulate powers for a
       if ( ($j++ % 64) == 0) {
         next if $pc_beg > 2 && ($j-1) % 256;
-        $a->bmodpow($t, $n);
+        $pa->bmodpow($t, $n);
         $t = $one->copy;
-        if ($a == 0) { push @factors, $n; return @factors; }
-        $f = Math::BigInt::bgcd( $a-1, $n );
+        if ($pa == 0) { push @factors, $n; return @factors; }
+        $f = Math::BigInt::bgcd( $pa-1, $n );
         last if $f == $n;
         return _found_factor($f, $n, "pminus1", @factors) if $f != 1;
         $saveq = $q;
-        $savea = $a->copy;
+        $savea = $pa->copy;
       }
     }
     $q = $bprimes[-1];
@@ -1770,17 +1770,17 @@ sub pminus1_factor {
     $pc_end += 500_000;
   }
   undef @bprimes;
-  $a->bmodpow($t, $n);
-  if ($a == 0) { push @factors, $n; return @factors; }
-  $f = Math::BigInt::bgcd( $a-1, $n );
+  $pa->bmodpow($t, $n);
+  if ($pa == 0) { push @factors, $n; return @factors; }
+  $f = Math::BigInt::bgcd( $pa-1, $n );
   if ($f == $n) {
     $q = $saveq;
-    $a = $savea->copy;
+    $pa = $savea->copy;
     while ($q <= $B1) {
       my ($k, $kmin) = ($q, int($B1 / $q));
       while ($k <= $kmin) { $k *= $q; }
-      $a->bmodpow($k, $n);
-      my $f = Math::BigInt::bgcd( $a-1, $n );
+      $pa->bmodpow($k, $n);
+      my $f = Math::BigInt::bgcd( $pa-1, $n );
       if ($f == $n) { push @factors, $n; return @factors; }
       last if $f != 1;
       $q = next_prime($q);
@@ -1788,14 +1788,14 @@ sub pminus1_factor {
   }
   # STAGE 2
   if ($f == 1 && $B2 > $B1) {
-    my $bm = $a->copy;
+    my $bm = $pa->copy;
     my $b = $one->copy;
     my @precomp_bm;
     $precomp_bm[0] = ($bm * $bm) % $n;
     foreach my $j (1..19) {
       $precomp_bm[$j] = ($precomp_bm[$j-1] * $bm * $bm) % $n;
     }
-    $a->bmodpow($q, $n);
+    $pa->bmodpow($q, $n);
     my $j = 1;
     $pc_beg = $q+1;
     $pc_end = $pc_beg + 100_000;
@@ -1809,9 +1809,9 @@ sub pminus1_factor {
         if (!defined $precomp_bm[$qdiff]) {
           $precomp_bm[$qdiff] = $bm->copy->bmodpow($diff, $n);
         }
-        $a->bmul($precomp_bm[$qdiff])->bmod($n);
-        if ($a == 0) { push @factors, $n; return @factors; }
-        $b->bmul($a-1);
+        $pa->bmul($precomp_bm[$qdiff])->bmod($n);
+        if ($pa == 0) { push @factors, $n; return @factors; }
+        $b->bmul($pa-1);
         if (($j++ % 128) == 0) {
           $b->bmod($n);
           $f = Math::BigInt::bgcd( $b, $n );
@@ -1883,40 +1883,40 @@ sub fermat_factor {
   return @factors if $n < 4;
 
   if ( ref($n) eq 'Math::BigInt' ) {
-    my $a = $n->copy->bsqrt->bfloor->as_int;
-    return _found_factor($a, $n, "Fermat", @factors) if $a*$a == $n;
-    $a++;
-    my $b2 = $a*$a - $n;
-    my $lasta = $a + $rounds;
-    while ($a <= $lasta) {
+    my $pa = $n->copy->bsqrt->bfloor->as_int;
+    return _found_factor($pa, $n, "Fermat", @factors) if $pa*$pa == $n;
+    $pa++;
+    my $b2 = $pa*$pa - $n;
+    my $lasta = $pa + $rounds;
+    while ($pa <= $lasta) {
       my $mc = int(($b2 & 31)->bstr);
       if ($mc==0||$mc==1||$mc==4||$mc==9||$mc==16||$mc==17||$mc==25) {
         my $s = $b2->copy->bsqrt->bfloor->as_int;
         if ($s*$s == $b2) {
-          my $i = $a-($lasta-$rounds)+1;
-          return _found_factor($a - $s, $n, "Fermat ($i rounds)", @factors);
+          my $i = $pa-($lasta-$rounds)+1;
+          return _found_factor($pa - $s, $n, "Fermat ($i rounds)", @factors);
         }
       }
-      $a++;
-      $b2 = $a*$a-$n;
+      $pa++;
+      $b2 = $pa*$pa-$n;
     }
   } else {
-    my $a = int(sqrt($n));
-    return _found_factor($a, $n, "Fermat", @factors) if $a*$a == $n;
-    $a++;
-    my $b2 = $a*$a - $n;
-    my $lasta = $a + $rounds;
-    while ($a <= $lasta) {
+    my $pa = int(sqrt($n));
+    return _found_factor($pa, $n, "Fermat", @factors) if $pa*$pa == $n;
+    $pa++;
+    my $b2 = $pa*$pa - $n;
+    my $lasta = $pa + $rounds;
+    while ($pa <= $lasta) {
       my $mc = $b2 & 31;
       if ($mc==0||$mc==1||$mc==4||$mc==9||$mc==16||$mc==17||$mc==25) {
         my $s = int(sqrt($b2));
         if ($s*$s == $b2) {
-          my $i = $a-($lasta-$rounds)+1;
-          return _found_factor($a - $s, $n, "Fermat ($i rounds)", @factors);
+          my $i = $pa-($lasta-$rounds)+1;
+          return _found_factor($pa - $s, $n, "Fermat ($i rounds)", @factors);
         }
       }
-      $a++;
-      $b2 = $a*$a-$n;
+      $pa++;
+      $b2 = $pa*$pa-$n;
     }
   }
   push @factors, $n;
@@ -2001,17 +2001,17 @@ sub ecm_factor {
     my $sigma = $irandf->($n-1-6) + 6;
     my ($u, $v) = ( ($sigma*$sigma - 5) % $n, (4 * $sigma) % $n );
     my ($x, $z) = ( ($u*$u*$u) % $n,  ($v*$v*$v) % $n );
-    my $b = (4 * $x * $v) % $n;
-    my $a = ( (($v-$u)**3) * (3*$u + $v) ) % $n;
-    my $f = Math::BigInt::bgcd( $b, $n );
+    my $cb = (4 * $x * $v) % $n;
+    my $ca = ( (($v-$u)**3) * (3*$u + $v) ) % $n;
+    my $f = Math::BigInt::bgcd( $cb, $n );
     $f = Math::BigInt::bgcd( $z, $n ) if $f == 1;
     next if $f == $n;
     return _found_factor($f,$n, "ECM B1=$B1 curve $curve", @factors) if $f != 1;
-    $b = Math::BigInt->new("$b") unless ref($b) eq 'Math::BigInt';
-    $u = $b->copy->bmodinv($n);
-    $a = (($a*$u) - 2) % $n;
+    $cb = Math::BigInt->new("$cb") unless ref($cb) eq 'Math::BigInt';
+    $u = $cb->copy->bmodinv($n);
+    $ca = (($ca*$u) - 2) % $n;
 
-    my $ECP = Math::Prime::Util::ECProjectivePoint->new($a, $n, $x, $z);
+    my $ECP = Math::Prime::Util::ECProjectivePoint->new($ca, $n, $x, $z);
     my $fm = $n-$n+1;
     my $i = 15;
 
@@ -2126,7 +2126,7 @@ sub ExponentialIntegral {
         eval { require Math::BigFloat;   Math::BigFloat->import(); 1; }
         or do { croak "Cannot load Math::BigFloat "; }
       }
-      $x = new Math::BigFloat "$x" if ref($x) ne 'Math::BigFloat';
+      $x = Math::BigFloat->new("$x") if ref($x) ne 'Math::BigFloat';
       $wantbf = 1;
       $xdigits = $x->accuracy || Math::BigFloat->accuracy() || Math::BigFloat->div_scale();
     }
@@ -2142,7 +2142,7 @@ sub ExponentialIntegral {
     return ($wantbf)  ?  Math::BigFloat->new($strval)  :  0.0 + $strval;
   }
 
-  $x = new Math::BigFloat "$x"  if defined $bignum::VERSION && ref($x) ne 'Math::BigFloat';
+  $x = Math::BigFloat->new("$x") if defined $bignum::VERSION && ref($x) ne 'Math::BigFloat';
 
   my $tol = 1e-16;
   my $sum = 0.0;
@@ -2230,7 +2230,7 @@ sub LogarithmicIntegral {
         eval { require Math::BigFloat;   Math::BigFloat->import(); 1; }
         or do { croak "Cannot load Math::BigFloat "; }
       }
-      $x = new Math::BigFloat "$x" if ref($x) ne 'Math::BigFloat';
+      $x = Math::BigFloat->new("$x") if ref($x) ne 'Math::BigFloat';
       $wantbf = 1;
       $xdigits = $x->accuracy || Math::BigFloat->accuracy() || Math::BigFloat->div_scale();
     }
@@ -2252,7 +2252,7 @@ sub LogarithmicIntegral {
     return $li2const;
   }
 
-  $x = new Math::BigFloat "$x" if defined $bignum::VERSION && ref($x) ne 'Math::BigFloat';
+  $x = Math::BigFloat->new("$x") if defined $bignum::VERSION && ref($x) ne 'Math::BigFloat';
   my $logx = log($x);
 
   # Do divergent series here for big inputs.  Common for big pc approximations.
@@ -2410,25 +2410,25 @@ sub RiemannZeta {
       282908877253042996618.18640556532523927,
   );
   my $s = 0.0;
-  my $b = 0.0;
+  my $rb = 0.0;
   foreach my $i (2 .. 10) {
-    $b = $i ** -$x;
-    $s += $b;
-    return $s if abs($b/$s) < $tol;
+    $rb = $i ** -$x;
+    $s += $rb;
+    return $s if abs($rb/$s) < $tol;
   }
   my $w = 10.0;
-  $s = $s  +  $b*$w/($x-1.0)  -  0.5*$b;
-  my $a = 1.0;
+  $s = $s  +  $rb*$w/($x-1.0)  -  0.5*$rb;
+  my $ra = 1.0;
   foreach my $i (0 .. 12) {
     my $k = 2*$i;
-    $a *= $x + $k;
-    $b /= $w;
-    my $t = $a*$b/$A[$i];
+    $ra *= $x + $k;
+    $rb /= $w;
+    my $t = $ra*$rb/$A[$i];
     $s += $t;
     $t = abs($t/$s);
     last if $t < $tol;
-    $a *= $x + $k + 1.0;
-    $b /= $w;
+    $ra *= $x + $k + 1.0;
+    $rb /= $w;
   }
   return $s;
 }
