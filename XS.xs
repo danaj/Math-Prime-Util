@@ -721,30 +721,39 @@ _XS_moebius(IN UV lo, IN UV hi = 0)
 IV
 _XS_mertens(IN UV n)
 
-UV
-_XS_exp_mangoldt(IN UV n)
-  CODE:
-    if (n <= 1)
-      RETVAL = 1;
-    else if ((n & (n-1)) == 0)  /* Power of 2 */
-      RETVAL = 2;
-    else if ((n & 1) == 0)      /* Even number */
-      RETVAL = 1;
-    /* else if (_XS_is_prime(n))  RETVAL = n; */
-    else {
-      UV factors[MPU_MAX_FACTORS+1];
-      UV nfactors, i;
-      /* We could try a partial factor, e.g. looking for two small factors */
-      /* We could also check powers of primes searching for n */
-      nfactors = factor(n, factors);
-      for (i = 1; i < nfactors; i++) {
-        if (factors[i] != factors[0])
-          XSRETURN_UV(1);
+void
+exp_mangoldt(IN SV* svn)
+  PREINIT:
+    int status;
+    UV n;
+  PPCODE:
+    status = _validate_int(svn, 1);
+    if (status == -1) {
+      XSRETURN_UV(1);
+    } else if (status == 1) {
+      set_val_from_sv(n, svn);
+      if (n <= 1)
+        XSRETURN_UV(1);
+      else if ((n & (n-1)) == 0)  /* Power of 2 */
+        XSRETURN_UV(2);
+      else if ((n & 1) == 0)      /* Even number */
+        XSRETURN_UV(1);
+      else {
+        UV factors[MPU_MAX_FACTORS+1];
+        UV nfactors, i;
+        /* We could try a partial factor, e.g. looking for two small factors */
+        /* We could also check powers of primes searching for n */
+        nfactors = factor(n, factors);
+        for (i = 1; i < nfactors; i++) {
+          if (factors[i] != factors[0])
+            XSRETURN_UV(1);
+        }
+        XSRETURN_UV(factors[0]);
       }
-      RETVAL = factors[0];
+    } else {
+      _vcallsub("Math::Prime::Util::_generic_exp_mangoldt");
+      XSRETURN(1);
     }
-  OUTPUT:
-    RETVAL
 
 int
 _validate_num(SV* n, ...)

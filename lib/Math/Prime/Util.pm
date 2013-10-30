@@ -67,7 +67,6 @@ sub _import_nobigint {
   undef *moebius;         *moebius           = \&_XS_moebius;
   undef *mertens;         *mertens           = \&_XS_mertens;
   undef *euler_phi;       *euler_phi         = \&_XS_totient;
-  undef *exp_mangoldt;    *exp_mangoldt      = \&_XS_exp_mangoldt;
   undef *chebyshev_theta; *chebyshev_theta   = \&_XS_chebyshev_theta;
   undef *chebyshev_psi;   *chebyshev_psi     = \&_XS_chebyshev_psi;
   # These should be fast anyway, but this skips validation.
@@ -997,6 +996,7 @@ sub primes {
     # gets very slow as the bit size increases, but that is why we have the
     # method above for bigints.
     if (1) {
+
       my $loop_limit = 2_000_000;
       if ($bits > $_Config{'maxbits'}) {
         my $p = Math::BigInt->bone->blsft($bits-1)->binc();
@@ -1012,29 +1012,32 @@ sub primes {
         }
       }
       croak "Random function broken?";
-    }
 
-    # Send through the generic random_prime function.  Decently fast, but
-    # quite a bit slower than the F&T A1 method above.
-    if (!defined $_random_nbit_ranges[$bits]) {
-      if ($bits > $_Config{'maxbits'}) {
-        my $low  = Math::BigInt->new('2')->bpow($bits-1);
-        my $high = Math::BigInt->new('2')->bpow($bits);
-        # Don't pull the range in to primes, just odds
-        $_random_nbit_ranges[$bits] = [$low+1, $high-1];
-      } else {
-        my $low  = 1 << ($bits-1);
-        my $high = ($bits == $_Config{'maxbits'})
-                   ? ~0-1
-                   : ~0 >> ($_Config{'maxbits'} - $bits);
-        $_random_nbit_ranges[$bits] = [next_prime($low-1),prev_prime($high+1)];
-        # Example: bits = 7.
-        #    low = 1<<6 = 64.            next_prime(64-1)  = 67
-        #    high = ~0 >> (64-7) = 127.  prev_prime(127+1) = 127
+    } else {
+
+      # Send through the generic random_prime function.  Decently fast, but
+      # quite a bit slower than the F&T A1 method above.
+      if (!defined $_random_nbit_ranges[$bits]) {
+        if ($bits > $_Config{'maxbits'}) {
+          my $low  = Math::BigInt->new('2')->bpow($bits-1);
+          my $high = Math::BigInt->new('2')->bpow($bits);
+          # Don't pull the range in to primes, just odds
+          $_random_nbit_ranges[$bits] = [$low+1, $high-1];
+        } else {
+          my $low  = 1 << ($bits-1);
+          my $high = ($bits == $_Config{'maxbits'})
+                     ? ~0-1
+                     : ~0 >> ($_Config{'maxbits'} - $bits);
+          $_random_nbit_ranges[$bits] = [next_prime($low-1),prev_prime($high+1)];
+          # Example: bits = 7.
+          #    low = 1<<6 = 64.            next_prime(64-1)  = 67
+          #    high = ~0 >> (64-7) = 127.  prev_prime(127+1) = 127
+        }
       }
+      my ($low, $high) = @{$_random_nbit_ranges[$bits]};
+      return $_random_prime->($low, $high);
+
     }
-    my ($low, $high) = @{$_random_nbit_ranges[$bits]};
-    return $_random_prime->($low, $high);
   }
 
   sub random_maurer_prime {
@@ -1637,16 +1640,13 @@ sub prime_iterator_object {
 
 # Exponential of Mangoldt function (A014963).
 # Return p if n = p^m [p prime, m >= 1], 1 otherwise.
-sub exp_mangoldt {
+sub _generic_exp_mangoldt {
   my($n) = @_;
-  return 1 if defined $n && $n <= 1;
   _validate_num($n) || _validate_positive_integer($n);
-  #return _XS_exp_mangoldt($n) if $n <= $_XS_MAXVAL;
 
-  # Power of 2
-  return 2 if ($n & ($n-1)) == 0;
-  # Even numbers can't be a power of an odd prime
-  return 1 unless $n & 1;
+  return 1 if $n <= 1;                # n <= 1
+  return 2 if ($n & ($n-1)) == 0;     # n power of 2
+  return 1 unless $n & 1;             # even n can't be p^m
 
   my @pe = ($n <= $_XS_MAXVAL) ? _XS_factor_exp($n) : factor_exp($n);
   return 1 if scalar @pe > 1;
@@ -2823,7 +2823,6 @@ Some of the functions, including:
   moebius
   mertens
   euler_phi
-  exp_mangoldt
   chebyshev_theta
   chebyshev_psi
   is_prime
@@ -2841,7 +2840,7 @@ will turn off bigint support for those functions.  Those functions will then
 go directly to the XS versions, which will speed up very small inputs a B<lot>.
 This is useful if you're using the functions in a loop, but since the difference
 is less than a millisecond, it's really not important in general.  The last
-four functions have shortcuts by default so will only skip validation.
+five functions have shortcuts by default so will only skip validation.
 
 
 If you are using bigints, here are some performance suggestions:
@@ -3338,8 +3337,8 @@ than Pari 2.1.7's C<is_prime(n,1)> which is the default for L<Math::Pari>.
 
 =head2 prime_certificate
 
-  my @cert = prime_certificate($n);
-  say verify_prime(@cert) ? "proven prime" : "not prime";
+  my $cert = prime_certificate($n);
+  say verify_prime($cert) ? "proven prime" : "not prime";
 
 Given a positive integer C<n> as input, returns a primality certificate
 as a multi-line string.  If we could not prove C<n> prime, an empty

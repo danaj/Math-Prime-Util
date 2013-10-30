@@ -19,6 +19,8 @@ Revision history for Perl module Math::Prime::Util
 
     - all_factors in scalar context returns sigma_0(n).
 
+    - exp_mangoldt defaults to XS for speed.
+
     - Perl RiemannZeta changes:
 
       - Borwein Zeta calculations done in BigInt instead of BigFloat (speed).
