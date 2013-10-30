@@ -101,6 +101,7 @@ BEGIN {
     *is_prime      = \&Math::Prime::Util::_generic_is_prime;
     *next_prime    = \&Math::Prime::Util::_generic_next_prime;
     *prev_prime    = \&Math::Prime::Util::_generic_prev_prime;
+    *exp_mangoldt  = \&Math::Prime::Util::_generic_exp_mangoldt;
     *forprimes     = sub (&$;$) { _generic_forprimes(@_); }; ## no critic qw(ProhibitSubroutinePrototypes)
 
     *_prime_memfreeall = \&Math::Prime::Util::PP::_prime_memfreeall;
@@ -1642,9 +1643,9 @@ sub prime_iterator_object {
 # Return p if n = p^m [p prime, m >= 1], 1 otherwise.
 sub _generic_exp_mangoldt {
   my($n) = @_;
+  return 1 if defined $n && $n <= 1;  # n <= 1
   _validate_num($n) || _validate_positive_integer($n);
 
-  return 1 if $n <= 1;                # n <= 1
   return 2 if ($n & ($n-1)) == 0;     # n power of 2
   return 1 unless $n & 1;             # even n can't be p^m
 

@@ -21,6 +21,8 @@ Revision history for Perl module Math::Prime::Util
 
     - exp_mangoldt defaults to XS for speed.
 
+    - Fixed Pure Perl 33- to 64-bit is_pseudoprime.
+
     - Perl RiemannZeta changes:
 
       - Borwein Zeta calculations done in BigInt instead of BigFloat (speed).

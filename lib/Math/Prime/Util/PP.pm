@@ -704,8 +704,8 @@ sub _powmod {
   my($n, $power, $m) = @_;
   my $t = 1;
 
+  $n %= $m if $n >= $m;
   if  ($m < $_half_word) {
-    $n %= $m;
     while ($power) {
       $t = ($t * $n) % $m if ($power & 1);
       $power >>= 1;
@@ -774,7 +774,7 @@ sub is_pseudoprime {
   }
   my $x = (ref($n) eq 'Math::BigInt')
         ? $n->copy->bzero->badd($base)->bmodpow($n-1,$n)
-        : _native_powmod($base, $n-1, $n);
+        : _powmod($base, $n-1, $n);
   return ($x == 1) ? 1 : 0;
 }
 

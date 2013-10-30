@@ -65,7 +65,7 @@ plan tests => 13+3+3+3
               + (2 * scalar @random_to)
               + (1 * scalar @random_ndigit_tests)
               + (3 * scalar @random_nbit_tests)
-              + 3 + 4
+              + 2 + 4
               + 0;
 
 my $infinity = 20**20**20;
@@ -179,15 +179,14 @@ prime_set_config(nobigint=>0);
 
 # Now check with custom irand
 {
-  my $seed = 1;
+  my $seed = 2389743;
   sub mysrand { $seed = $_[0]; }
   #sub irand { $seed = (1103515245*$seed + 12345) % 4294967296; }
   sub irand { $seed = ( 16807 * $seed ) % 2147483647; }
   prime_set_config( irand => \&irand );
 }
-is( random_nbit_prime(10), 571, "random 10-bit prime with custom irand" );
-is( random_nbit_prime(20), 558769, "random 20-bit prime with custom irand" );
-is( random_ndigit_prime(9), 756473437, "random 9-digit with custom irand" );
+is( random_nbit_prime(20), 771283, "random 20-bit prime with custom irand" );
+is( random_ndigit_prime(9), 980824987, "random 9-digit with custom irand" );
 
 {
   my $n = random_nbit_prime(80);
