@@ -23,6 +23,9 @@ Revision history for Perl module Math::Prime::Util
 
     - Fixed Pure Perl 33- to 64-bit is_pseudoprime.
 
+    - prime_count uses Lehmer below a threshold (8000M), LMO above.
+      This keeps good performance while still using low memory.
+
     - Perl RiemannZeta changes:
 
       - Borwein Zeta calculations done in BigInt instead of BigFloat (speed).

@@ -222,6 +222,9 @@ _XS_nth_prime(IN UV n)
 UV
 _XS_divisor_sum(IN UV n, IN UV k)
 
+UV
+_XS_legendre_phi(IN UV x, IN UV a)
+
 
 UV
 _get_prime_cache_size()
