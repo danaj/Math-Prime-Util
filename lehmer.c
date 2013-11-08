@@ -367,8 +367,8 @@ static uint32_t mapes7_32(uint32_t x) {
 }
 
 /* Max memory = 2*A*X bytes, e.g. 2*400*24000 = 18.3 MB */
-#define PHICACHEA 400
-#define PHICACHEX 32768
+#define PHICACHEA 257
+#define PHICACHEX 32769
 typedef struct
 {
   uint32_t max[PHICACHEA];
@@ -392,28 +392,25 @@ static void phicache_free(cache_t* cache) {
 }
 
 #define PHI_CACHE_POPULATED(x, a) \
-  ((a) < PHICACHEA && (x) < PHICACHEX && \
-  cache->max[a] > (x) && cache->val[a][x] != 0)
+  ((a) < PHICACHEA && (UV) cache->max[a] > (x) && cache->val[a][x] != 0)
 
-static void phi_cache_insert(UV x, UV a, IV sum, cache_t* cache) {
-  if (a < PHICACHEA && x < PHICACHEX) {
-    uint32_t cap = ((x+1+31)/32)*32;
-    if (cache->val[a] == 0) {
-      Newz(0, cache->val[a], cap, int16_t);
-      cache->max[a] = cap;
-    } else if (cache->max[a] < cap) {
-      uint32_t i;
-      Renew(cache->val[a], cap, int16_t);
-      for (i = cache->max[a]; i < cap; i++)
-        cache->val[a][i] = 0;
-      cache->max[a] = cap;
-    }
-    if (sum < SHRT_MIN || sum > SHRT_MAX)
-      croak("phi(%lu,%lu) 16-bit overflow: sum = %ld\n", x, a, sum);
-    if (cache->val[a] == 0)
-      croak("phi cache allocation failure");
-    cache->val[a][x] = sum;
+static void phi_cache_insert(uint32_t x, uint32_t a, IV sum, cache_t* cache) {
+  uint32_t cap = ( (x+32) >> 5) << 5;
+  if (cache->val[a] == 0) {
+    Newz(0, cache->val[a], cap, int16_t);
+    cache->max[a] = cap;
+  } else if (cache->max[a] < cap) {
+    uint32_t i;
+    Renew(cache->val[a], cap, int16_t);
+    for (i = cache->max[a]; i < cap; i++)
+      cache->val[a][i] = 0;
+    cache->max[a] = cap;
   }
+  if (sum < SHRT_MIN || sum > SHRT_MAX)
+    croak("phi(%lu,%lu) 16-bit overflow: sum = %ld\n", x, a, sum);
+  if (cache->val[a] == 0)
+    croak("phi cache allocation failure");
+  cache->val[a][x] = sum;
 }
 
 static IV _phi3(UV x, UV a, int sign, const UV* const primes, const UV lastidx, cache_t* cache)
@@ -450,7 +447,8 @@ static IV _phi3(UV x, UV a, int sign, const UV* const primes, const UV lastidx, 
         sum = sign * mapes(x, a);
     }
   }
-  phi_cache_insert(x, a, sign * sum, cache);
+  if (a < PHICACHEA && x < PHICACHEX)
+    phi_cache_insert(x, a, sign * sum, cache);
   return sum;
 }
 #define phi_small(x, a, primes, lastidx, cache)  _phi3(x, a, 1, primes, lastidx, cache)
@@ -878,6 +876,11 @@ UV _XS_LMO_pi(UV n)
   }
   lpf[1] = UV_MAX;  /* Set lpf[1] to max */
 
+  /* Remove mu[i] == 0 using lpf */
+  for (i = 1; i <= n13; i++)
+    if (mu[i] == 0)
+      lpf[i] = 0;
+
   /* Thanks to Kim Walisch for help with the S1+S2 calculations. */
   k = (a < 7) ? a : 7;
   S1 = 0;
@@ -885,7 +888,7 @@ UV _XS_LMO_pi(UV n)
   phicache_init(&pcache);
   TIMING_START;
   for (i = 1; i <= n13; i++)
-    if (lpf[i] > primes[k] && mu[i] != 0)
+    if (lpf[i] > primes[k])
       /* S1 += mu[i] * phi_small(n/i, k, primes, lastprime, &pcache); */
       S1 += mu[i] * phi(n/i, k);
   TIMING_END_PRINT("S1")
@@ -895,7 +898,7 @@ UV _XS_LMO_pi(UV n)
     UV p = primes[i+1];
     /* TODO: #pragma omp parallel for reduction(+: S2) firstprivate(pcache) schedule(dynamic, 16) */
     for (j = (n13/p)+1; j <= n13; j++)
-      if (lpf[j] > p && mu[j] != 0)
+      if (lpf[j] > p)
         S2 += -mu[j] * phi_small(n / (j*p), i, primes, lastprime, &pcache);
   }
   TIMING_END_PRINT("S2")
