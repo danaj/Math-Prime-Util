@@ -19,53 +19,67 @@ my $bigprime = Math::BigInt->new(
   (~0 == 4294967295) ? "4294967311" : "18446744073709551629"
 );
 
+# We're going to use a scalar rather than a hash because there is currently
+# only one data object (the current value) and this makes it little faster.
+
 sub new {
   my ($class, $start) = @_;
-  my $self = bless {
-    p => 2,
-  }, $class;
+  my $p = 2;
+  my $self = bless \$p, $class;
   $self->rewind($start) if defined $start;
   return $self;
 }
 
-sub value { $_[0]->{p}; }
+# To make Iterator::Simple happy.
+sub __iter__ {
+  my $self = shift;
+  require Iterator::Simple;
+  return Iterator::Simple::iterator(sub { $self->iterate });
+  $self;
+}
+
+sub value { ${$_[0]}; }
 sub next {
   my $self = shift;
-  my $np = next_prime($self->{p}) || $bigprime;
-  $self->{p} = $np;
+  $$self = next_prime($$self) || $bigprime;
   return $self;
 }
 sub prev {
   my $self = shift;
-  my $p = $self->{p};
-  $self->{p} = ($p <= 2) ? 2 : prev_prime($p);
+  my $p = $$self;
+  $$self = ($p <= 2) ? 2 : prev_prime($p);
   return $self;
 }
 sub iterate {
   my $self = shift;
-  my $p = $self->{p};
-  my $np = next_prime($p) || $bigprime;
-  $self->{p} = $np;
+  my $p = $$self;
+  $$self = next_prime($p) || $bigprime;
   return $p;
 }
 
 sub rewind {
   my ($self, $start) = @_;
-  $self->{p} = 2;
+  $$self = 2;
   if (defined $start && $start ne '2') {
     Math::Prime::Util::_validate_num($start)
       || Math::Prime::Util::_validate_positive_integer($start);
     if ($start > 2) {
-      $self->{p} = next_prime($start-1) || $bigprime;
+      $$self = next_prime($start-1) || $bigprime;
     }
   }
   return $self;
 }
 
+sub peek {
+  my $self = shift;
+  my $np = next_prime($$self) || $bigprime;
+  return $np;
+}
+
 # Some methods to match Math::NumSeq
 sub tell_i {
   my $self = shift;
-  return prime_count($self->{p});
+  return prime_count($$self);
 }
 sub pred {
   my($self, $n) = @_;
@@ -193,6 +207,10 @@ the next prime.
 
 Resets the current position to either 2 or, if given an integer argument,
 the least prime not less than the argument.
+
+=head2 peek
+
+Returns the value at the next position without moving the iterator.
 
 =head2 tell_i
 
