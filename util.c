@@ -837,7 +837,7 @@ signed char* _moebius_range(UV lo, UV hi)
 
 UV* _totient_range(UV lo, UV hi) {
   UV* totients;
-  UV i, hidiv2;
+  UV i;
   if (hi < lo) croak("_totient_range error hi %lu < lo %lu\n", hi, lo);
   New(0, totients, hi-lo+1, UV);
   if (totients == 0)
@@ -882,20 +882,24 @@ IV _XS_mertens(UV n) {
   }
   return -sum;
 #else
-  /* See Deléglise and Rivat (1996) for a segmented n^1/3 algorithm.
-   * This implementation uses their lemma 2.1 directly, so is n^1/2.
+  /* See Deléglise and Rivat (1996) for O(n^2/3 log(log(n))^1/3) algorithm.
+   * This implementation uses their lemma 2.1 directly, so is ~ O(n).
+   * In serial it is quite a bit faster than segmented summation of mu
+   * ranges, though the latter seems to be a favored method for GPUs.
    */
-  UV u, i, m, nmk;
+  UV u, i, m, nmk, maxmu;
   signed char* mu;
   IV* M;
   IV sum;
 
   if (n <= 1)  return n;
   u = isqrt(n);
-  mu = _moebius_range(0, u);
-  New(0, M, u+1, IV);
+  maxmu = (n/(u+1));              /* maxmu lets us handle u < sqrt(n) */
+  if (maxmu < u) maxmu = u;
+  mu = _moebius_range(0, maxmu);
+  New(0, M, maxmu+1, IV);
   M[0] = 0;
-  for (i = 1; i <= u; i++)
+  for (i = 1; i <= maxmu; i++)
     M[i] = M[i-1] + mu[i];
   sum = M[u];
   for (m = 1; m <= u; m++) {
@@ -905,9 +909,11 @@ IV _XS_mertens(UV n) {
       UV last_nmk = n/(m*lower);
       UV this_k = 0;
       UV next_k = n/(m*1);
-      for (nmk = 1; nmk <= last_nmk; nmk++) {
+      UV nmkm = m * 2;
+      for (nmk = 1; nmk <= last_nmk; nmk++, nmkm += m) {
         this_k = next_k;
-        next_k = n/(m*(nmk+1));
+        next_k = n/nmkm;
+        /* if (nmk > maxmu) croak("n = %lu  m = %lu u/m = %lu  n/m = %lu  nmk %lu\n", n, m, u/m, n/m, nmk); */
         inner_sum += M[nmk] * (this_k - next_k);
       }
       sum -= mu[m] * inner_sum;

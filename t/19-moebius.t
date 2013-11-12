@@ -71,7 +71,7 @@ if ($extra && $use64) {
       2**23 =>  -10,
 
      10**8  => 1928,
-     10**9  => -222,
+#     10**9  => -222,
 #  1*10**10 => -33722,  # From Deleglise and Rivat
 #  2*10**10 => -48723,  # Too slow with current method
   );
