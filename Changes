@@ -35,9 +35,11 @@ Revision history for Perl module Math::Prime::Util
 
       - Accuracy updates, especially with fixed BigFloat.
 
-    [MISC]
-
     - Lucas sequence called with bigints will return bigint objects.
+
+    - prime_iterator_object should now work with Iterator::Simple.
+
+    - chebyshev_theta and chebyshev_psi use segmented sieves.
 
 0.32  2013-10-13
 

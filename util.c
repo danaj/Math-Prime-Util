@@ -849,13 +849,12 @@ UV* _totient_range(UV lo, UV hi) {
     if (i % 5 == 0)  v -= v/5;
     totients[i-lo] = v;
   }
-  hidiv2 = hi/2;
-  START_DO_FOR_EACH_PRIME(2, hi) {
-    if (p >= lo)
-      totients[p-lo] = p-1;
-    if (p >= 7 && p <= hidiv2)
-      for (i = P2GTLO(2*p,p,lo); i <= hi; i += p)
-        totients[i-lo] -= totients[i-lo]/p;
+  START_DO_FOR_EACH_PRIME(lo, hi) {
+    totients[p-lo] = p-1;
+  } END_DO_FOR_EACH_PRIME
+  START_DO_FOR_EACH_PRIME(7, hi/2) {
+    for (i = P2GTLO(2*p,p,lo); i <= hi; i += p)
+      totients[i-lo] -= totients[i-lo]/p;
   } END_DO_FOR_EACH_PRIME
   return totients;
 }
@@ -920,28 +919,62 @@ IV _XS_mertens(UV n) {
 #endif
 }
 
-/* TODO: the two Chebyshev functions ought to use segmented sieves */
-
 double _XS_chebyshev_theta(UV n)
 {
   KAHAN_INIT(sum);
-  START_DO_FOR_EACH_PRIME(2, n) {
-    KAHAN_SUM(sum, logl(p));
-  } END_DO_FOR_EACH_PRIME
+
+  if (n < 10000) {    /* all in one */
+    START_DO_FOR_EACH_PRIME(2, n) {
+      KAHAN_SUM(sum, logl(p));
+    } END_DO_FOR_EACH_PRIME
+  } else {            /* Segmented */
+    UV seg_base, seg_low, seg_high;
+    unsigned char* segment;
+    void* ctx;
+    KAHAN_SUM(sum, logl(2));
+    KAHAN_SUM(sum, logl(3));
+    KAHAN_SUM(sum, logl(5));
+    ctx = start_segment_primes(7, n, &segment);
+    while (next_segment_primes(ctx, &seg_base, &seg_low, &seg_high)) {
+      START_DO_FOR_EACH_SIEVE_PRIME( segment, seg_low - seg_base, seg_high - seg_base ) {
+        KAHAN_SUM(sum, logl(seg_base + p));
+      } END_DO_FOR_EACH_SIEVE_PRIME
+    }
+    end_segment_primes(ctx);
+  }
   return (double) sum;
 }
 double _XS_chebyshev_psi(UV n)
 {
-  UV mults_are_one = 0;
-  long double logn, logp;
+  long double logn = logl(n);
+  UV sqrtn = isqrt(n);
   KAHAN_INIT(sum);
 
-  logn = logl(n);
-  START_DO_FOR_EACH_PRIME(2, n) {
-    logp = logl(p);
-    if (!mults_are_one && p > (n/p))   mults_are_one = 1;
-    KAHAN_SUM(sum, (mults_are_one) ? logp : logp * floorl(logn/logp + 1e-15));
+  if (n < 10000) {
+    START_DO_FOR_EACH_PRIME(2, n) {
+      long double logp = logl(p);
+      KAHAN_SUM(sum, (p > (n/p)) ? logp : logp * floorl(logn/logp + 1e-15));
+    } END_DO_FOR_EACH_PRIME
+    return (double) sum;
+  }
+
+  START_DO_FOR_EACH_PRIME(2, sqrtn) {
+    long double logp = logl(p);
+    KAHAN_SUM(sum, logp * floorl(logn/logp + 1e-15));
   } END_DO_FOR_EACH_PRIME
+
+  { /* Segment from sqrt(n) to n */
+    UV seg_base, seg_low, seg_high;
+    unsigned char* segment;
+    void* ctx;
+    ctx = start_segment_primes(sqrtn+1, n, &segment);
+    while (next_segment_primes(ctx, &seg_base, &seg_low, &seg_high)) {
+      START_DO_FOR_EACH_SIEVE_PRIME( segment, seg_low - seg_base, seg_high - seg_base ) {
+        KAHAN_SUM(sum, logl(seg_base + p));
+      } END_DO_FOR_EACH_SIEVE_PRIME
+    }
+    end_segment_primes(ctx);
+  }
   return (double) sum;
 }
 

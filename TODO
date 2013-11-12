@@ -56,5 +56,3 @@
   API (small factors, isprime, then call main code) and main code (just the
   algorithm).  The PP code isn't doing that, which means we're doing lots of
   extra primality checks, which aren't cheap in PP.
-
-- Add parallel gap verifier to examples.
