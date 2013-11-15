@@ -1552,6 +1552,9 @@ sub divisor_sum {
                     : ($k  > 5) ? 1
                     : $n >= $_ds_overflow[$k];
 
+  # Given a large enough primorial, even k=0 will overflow.
+  $will_overflow = 1 if $k==0 && ref($n) eq 'Math::BigInt' && $n->length > 123;
+
   return _XS_divisor_sum($n, $k) if $n <= $_XS_MAXVAL && !$will_overflow;
 
   if ($will_overflow) {
