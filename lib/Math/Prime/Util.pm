@@ -1525,16 +1525,22 @@ sub jordan_totient {
 
 my @_ds_overflow =  # We'll use BigInt math if the input is larger than this.
   (~0 > 4294967295)
-   ? (0, 3000000000000000000, 3000000000, 2487240, 64260, 7026)
-   : (0,           845404560,      52560,    1548,   252,   84);
+   ? (124, 3000000000000000000, 3000000000, 2487240, 64260, 7026)
+   : ( 50,           845404560,      52560,    1548,   252,   84);
 sub divisor_sum {
   my($n, $k) = @_;
   return (0,1)[$n] if defined $n && $n <= 1;
   _validate_num($n) || _validate_positive_integer($n);
 
-  # With no argument, call the XS routine for k=1 immediately if possible.
-  return _XS_divisor_sum($n, 1)
-    if !defined $k && $n <= $_XS_MAXVAL && $n < $_ds_overflow[1];
+  # Call the XS routine for k=0 and k=1 immediately if possible.
+  if ($n <= $_XS_MAXVAL) {
+    if (defined $k) {
+      return _XS_divisor_sum($n, 0) if $k eq '0';
+      return _XS_divisor_sum($n, 1) if $k eq '1' && $n < $_ds_overflow[1];
+    } else {
+      return _XS_divisor_sum($n, 1) if $n < $_ds_overflow[1];
+    }
+  }
 
   if (defined $k && ref($k) eq 'CODE') {
     my $sum = $n-$n;
@@ -1548,12 +1554,9 @@ sub divisor_sum {
     unless !defined $k || _validate_num($k) || _validate_positive_integer($k);
   $k = 1 if !defined $k;
 
-  my $will_overflow = ($k == 0) ? 0
-                    : ($k  > 5) ? 1
-                    : $n >= $_ds_overflow[$k];
-
-  # Given a large enough primorial, even k=0 will overflow.
-  $will_overflow = 1 if $k==0 && ref($n) eq 'Math::BigInt' && $n->length > 123;
+  my $will_overflow = ($k == 0) ? (length($n) >= $_ds_overflow[0])
+                    : ($k <= 5) ? ($n >= $_ds_overflow[$k])
+                    : 1;
 
   return _XS_divisor_sum($n, $k) if $n <= $_XS_MAXVAL && !$will_overflow;
 

@@ -75,7 +75,7 @@ plan tests =>  0
              + 6*2*$extra # more PC tests
              + 2*scalar(keys %factors)
              + scalar(keys %allfactors)
-             + 7   # moebius, euler_phi, jordan totient, divsum, znorder
+             + 10  # moebius, euler_phi, jordan totient, divsum, znorder
              + 2   # liouville
              + 15  # random primes
              + 2   # miller-rabin random
@@ -103,6 +103,7 @@ use Math::Prime::Util qw/
   divisor_sum
   znorder
   liouville
+  pn_primorial
   ExponentialIntegral
   LogarithmicIntegral
   RiemannR
@@ -215,7 +216,7 @@ SKIP: {
 ###############################################################################
 
 SKIP: {
-  skip "Your 64-bit Perl is broken, skipping moebius and euler_phi tests", 7 if $broken64;
+  skip "Your 64-bit Perl is broken, skipping moebius,euler_phi,divsum tests", 10 if $broken64;
   my $n;
   $n = 618970019642690137449562110;
   is( moebius($n), -1, "moebius($n)" );
@@ -226,6 +227,10 @@ SKIP: {
   # Done wrong, the following will have a bunch of extra zeros.
   my $hundredfac = Math::BigInt->new(100)->bfac;
   is( divisor_sum($hundredfac), 774026292208877355243820142464115597282472420387824628823543695735957009720184359087194959566149232506852422409529601312686157396490982598473425595924480000000, "Divisor sum of 100!" );
+  # These should yield bigint results.
+  is( divisor_sum(pn_primorial(71),0), 2361183241434822606848, "Divisor count(353#)" );
+  is( divisor_sum(pn_primorial(71),1), 592169807666179080336898884075191344863843751107274613826065194910163387683715846870630955555390054490059876013007363004327526400000000000000000, "Divisor sum(353#)" );
+  is( divisor_sum(pn_primorial(71),2), "12949784465615028275107011121945805610528825503288465119226912396970037707579655747291137846306343809131200618880146749230653882973421307691846381555612687582146340434261447200658536708625570145324567757917046739100833453606420350207262720000000000000000000000000000000000000000000000000", "sigma_2(353#)" );
   # Calc/FastCalc are slugs with this function, so tone things down.
   #is( znorder(82734587234,927208363107752634625923555185111613055040823736157),
   #    4360156780036190093445833597286118936800,
