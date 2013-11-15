@@ -851,7 +851,7 @@ typedef struct
   UV imax;
 } mult_t;
 
-// N < 2^63 (or 2^31).  *f == 1 if no factor found
+/* N < 2^63 (or 2^31).  *f == 1 if no factor found */
 static void squfof_unit(UV n, mult_t* mult_save, UV* f)
 {
   UV imax,i,Q0,b0,Qn,bn,P,bbn,Ro,S,So,t1,t2;
@@ -881,11 +881,11 @@ static void squfof_unit(UV n, mult_t* mult_save, UV* f)
     if (i & 0x1) {
       SQUARE_SEARCH_ITERATION;
     }
-    // i is now even
+    /* i is now even */
     while (1) {
-      // We need to know P, bn, Qn, Q0, iteration count, i  from prev
+      /* We need to know P, bn, Qn, Q0, iteration count, i  from prev */
       if (i >= imax) {
-        // save state and try another multiplier.
+        /* save state and try another multiplier. */
         mult_save->P = P;
         mult_save->bn = bn;
         mult_save->Qn = Qn;
@@ -897,22 +897,22 @@ static void squfof_unit(UV n, mult_t* mult_save, UV* f)
 
       SQUARE_SEARCH_ITERATION;
 
-      // Even iteration.  Check for square: Qn = S*S
+      /* Even iteration.  Check for square: Qn = S*S */
       if (is_perfect_square( Qn, &S ))
         break;
 
-      // Odd iteration.
+      /* Odd iteration. */
       SQUARE_SEARCH_ITERATION;
     }
     /* printf("found square %lu after %lu iterations with mult %d\n", Qn, i, mult_save->mult); */
 
-    // Reduce to G0
+    /*  Reduce to G0 */
     Ro = P + S*((b0 - P)/S);
     t1 = Ro;
     So = (n - t1*t1)/S;
     bbn = (b0+Ro)/So;
 
-    // Search for symmetry point
+    /* Search for symmetry point */
 #define SYMMETRY_POINT_ITERATION \
       t1 = Ro; \
       Ro = bbn*So - Ro; \
