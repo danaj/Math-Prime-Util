@@ -228,7 +228,8 @@ SKIP: {
   my $hundredfac = Math::BigInt->new(100)->bfac;
   is( divisor_sum($hundredfac), 774026292208877355243820142464115597282472420387824628823543695735957009720184359087194959566149232506852422409529601312686157396490982598473425595924480000000, "Divisor sum of 100!" );
   # These should yield bigint results.
-  is( divisor_sum(pn_primorial(71),0), 2361183241434822606848, "Divisor count(353#)" );
+  # Quoted 0 to prevent error in perl 5.8.2 + bigint 0.23 (0 turns into NaN)
+  is( divisor_sum(pn_primorial(71),"0"), 2361183241434822606848, "Divisor count(353#)" );
   is( divisor_sum(pn_primorial(71),1), 592169807666179080336898884075191344863843751107274613826065194910163387683715846870630955555390054490059876013007363004327526400000000000000000, "Divisor sum(353#)" );
   is( divisor_sum(pn_primorial(71),2), "12949784465615028275107011121945805610528825503288465119226912396970037707579655747291137846306343809131200618880146749230653882973421307691846381555612687582146340434261447200658536708625570145324567757917046739100833453606420350207262720000000000000000000000000000000000000000000000000", "sigma_2(353#)" );
   # Calc/FastCalc are slugs with this function, so tone things down.
@@ -280,7 +281,7 @@ SKIP: {
 $randprime = random_nbit_prime(80);
 is( miller_rabin_random( $randprime, 20 ), 1, "80-bit prime passes Miller-Rabin with 20 random bases" );
 $randprime += 2 while is_prime($randprime);
-is( miller_rabin_random( $randprime, 40 ), 0, "80-bit composite fails Miller-Rabin with 40 random bases" );
+is( miller_rabin_random( $randprime, 40 ), "0", "80-bit composite fails Miller-Rabin with 40 random bases" );
 
 ###############################################################################
 
