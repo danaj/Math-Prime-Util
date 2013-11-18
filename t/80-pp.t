@@ -608,7 +608,10 @@ is_deeply( [Math::Prime::Util::PrimalityProving::primality_proof_bls75(271410578
   is( miller_rabin( $n, 2,3,5,7,11,13,17,19,23,29,31,37,41,43,47), 1, "168790877523676911809192454171451 looks prime with bases 2..52" );
   is( miller_rabin( $n, 53), 0, "168790877523676911809192454171451 found composite with base 53" );
   is ( is_strong_lucas_pseudoprime($n), 0, "168790877523676911809192454171451 is not a strong Lucas pseudoprime" );
-  is ( is_frobenius_underwood_pseudoprime($n), 0, "168790877523676911809192454171451 is not a Frobenius pseudoprime" );
+  SKIP: {
+    skip "Old Perl+bigint segfaults in F-U code", 1 if $] < 5.008;
+    is ( is_frobenius_underwood_pseudoprime($n), 0, "168790877523676911809192454171451 is not a Frobenius pseudoprime" );
+  }
 }
 
 {

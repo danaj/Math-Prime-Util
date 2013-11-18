@@ -10,8 +10,7 @@ use Math::Prime::Util
 my $extra = defined $ENV{EXTENDED_TESTING} && $ENV{EXTENDED_TESTING};
 my $use64 = Math::Prime::Util::prime_get_config->{'maxbits'} > 32;
 my $usexs = Math::Prime::Util::prime_get_config->{'xs'};
-my $broken64 = (18446744073709550592 == ~0);
-$use64 = 0 if $broken64;
+$use64 = 0 if $use64 && 18446744073709550592 == ~0;
 
 my @moeb_vals = (qw/ 1 -1 -1 0 -1 1 -1 0 0 1 -1 0 -1 1 1 0 -1 0 -1 0 /);
 my %mertens = (

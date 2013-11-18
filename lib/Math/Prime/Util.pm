@@ -640,6 +640,8 @@ sub primes {
     #my $range = $high - $low + 1;
     my $oddrange = (($high - $low) >> 1) + 1;
 
+    croak "Large random primes not supported on old Perl" if $] < 5.008 && $_Config{'maxbits'} > 32 && $oddrange > 4294967295;
+
     # If $low is large (e.g. >10 digits) and $range is small (say ~10k), it
     # would be fastest to call primes in the range and randomly pick one.  I'm
     # not implementing it now because it seems like a rare case.
@@ -860,7 +862,6 @@ sub primes {
       if $digits <= 6 && int(10**$digits) <= $_XS_MAXVAL;
 
     my $bigdigits = $digits >= $_Config{'maxdigits'};
-    croak "Large random primes not supported on old Perl" if $] < 5.008 && $_Config{'maxbits'} > 32 && !$bigdigits && $digits > 15;
     if ($bigdigits && $_Config{'nobigint'}) {
       _validate_positive_integer($digits, 1, $_Config{'maxdigits'});
       # Special case for nobigint and threshold digits
@@ -1044,8 +1045,7 @@ sub primes {
   sub random_maurer_prime {
     my $k = shift;
     _validate_num($k, 2) || _validate_positive_integer($k, 2);
-    if ($k <= $_Config{'maxbits'}) {
-      croak "Random Maurer not supported on old Perl" if $k > 49 && $] < 5.008 && $_Config{'maxbits'} > 32;
+    if ($k <= $_Config{'maxbits'} && $] >= 5.008) {
       return random_nbit_prime($k);
     }
     my ($n, $cert) = random_maurer_prime_with_cert($k);
@@ -1057,16 +1057,10 @@ sub primes {
   sub random_maurer_prime_with_cert {
     my($k) = @_;
     _validate_num($k, 2) || _validate_positive_integer($k, 2);
-    if ($] < 5.008 && $_Config{'maxbits'} > 32) {
-      if ($k <= 49) {
-        my $n = random_nbit_prime($k);
-        return ($n, "[MPU - Primality Certificate]\nVersion 1.0\n\nProof for:\nN $n\n\nType Small\nN $n\n");
-      }
-      croak "Random Maurer not supported on old Perl";
-    }
 
     # Results for random_nbit_prime are proven for all native bit sizes.
     my $p0 = $_Config{'maxbits'};
+    $p0 = 49 if $] < 5.008 && $_Config{'maxbits'} > 49;
 
     if ($k <= $p0) {
       my $n = random_nbit_prime($k);

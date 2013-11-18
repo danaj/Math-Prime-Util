@@ -11,8 +11,8 @@ use Math::Prime::Util qw/random_prime random_ndigit_prime random_nbit_prime
                          is_prime prime_set_config/;
 
 my $use64 = Math::Prime::Util::prime_get_config->{'maxbits'} > 32;
-my $extra = defined $ENV{EXTENDED_TESTING} && $ENV{EXTENDED_TESTING};
 my $broken64 = (18446744073709550592 == ~0);
+my $extra = defined $ENV{EXTENDED_TESTING} && $ENV{EXTENDED_TESTING};
 my $maxbits = $use64 ? 64 : 32;
 
 my @random_to = (2, 3, 4, 5, 6, 7, 8, 9, 100, 1000, 1000000, 4294967295);
@@ -22,6 +22,13 @@ push @random_nbit_tests, (34) if $use64;
 @random_nbit_tests = (2 .. $maxbits) if $extra;
 
 my @random_ndigit_tests = (1 .. ($use64 ? 20 : 10));
+
+if ($use64 && $broken64) {
+  diag "Skipping some values for with broken 64-bit Perl\n";
+  @random_ndigit_tests = grep { $_ < 10 } @random_ndigit_tests;
+  @random_nbit_tests = grep { $_ < 50 } @random_nbit_tests;
+}
+
 
 my %ranges = (
   "2 to 20" => [2,19],
@@ -139,28 +146,12 @@ foreach my $high (@random_to) {
   ok($inrange, "All returned values for $high were in the range" );
 }
 
-SKIP: {
-  if ($use64 && $broken64) {
-    my $num_ndigit_tests = scalar @random_ndigit_tests;
-    @random_ndigit_tests = grep { $_ < 15 } @random_ndigit_tests;
-    my $nskip = $num_ndigit_tests - scalar @random_ndigit_tests;
-    skip "Skipping random 15+ digit primes on broken 64-bit Perl", $nskip;
-  }
-}
 foreach my $digits ( @random_ndigit_tests ) {
   my $n = random_ndigit_prime($digits);
   ok ( length($n) == $digits && is_prime($n),
        "$digits-digit random prime is in range and prime");
 }
 
-SKIP: {
-  if ($use64 && $broken64) {
-    my $num_nbit_tests = scalar @random_nbit_tests;
-    @random_nbit_tests = grep { $_ < 50 } @random_nbit_tests;
-    my $nskip = $num_nbit_tests - scalar @random_nbit_tests;
-    skip "Skipping random 50+ bit primes on broken 64-bit Perl", 2*$nskip;
-  }
-}
 foreach my $bits ( @random_nbit_tests ) {
   check_bits( random_nbit_prime($bits), $bits, "nbit" );
   check_bits( random_maurer_prime($bits), $bits, "Maurer" );
@@ -195,7 +186,8 @@ is( random_ndigit_prime(9), 980824987, "random 9-digit with custom irand" );
       && $n <= Math::BigInt->new(2)->bpow(80),
       "random 80-bit prime is in range" );
 }
-{
+SKIP: {
+  skip "Skipping 30-digit random prime with broken 64-bit Perl", 2 if $broken64;
   my $n = random_ndigit_prime(30);
   is( ref($n), 'Math::BigInt', "random 30-digit prime returns a BigInt" );
   ok(    $n >= Math::BigInt->new(10)->bpow(29)

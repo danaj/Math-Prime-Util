@@ -1195,16 +1195,16 @@ sub is_frobenius_underwood_pseudoprime {
   my $fa = $ZERO + 1;
   my $fb = $ZERO + 2;
 
-  my ($x, $t, $np1, $len, $na) = (0, -1, $n+1, 1, undef);
+  my ($x, $t, $np1, $na) = (0, -1, $n+1, undef);
   while ( _jacobi($t, $n) != -1 ) {
     $x++;
     $t = $x*$x - 4;
   }
+  my $len = length($np1->as_bin) - 2;
   my $result = $x+$x+5;
   my $multiplier = $x+2;
   $result %= $n if $result > $n;
   $multiplier %= $n if $multiplier > $n;
-  { my $v = $np1; $len++ while ($v >>= 1); }
   foreach my $bit (reverse 0 .. $len-2) {
     $na = $fa * (($fa*$x) + ($fb+$fb));
     $fb = ( ($fb + $fa) * ($fb - $fa) ) % $n;

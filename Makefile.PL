@@ -1,5 +1,20 @@
 use ExtUtils::MakeMaker;
 
+my $broken64 = (18446744073709550592 == ~0);
+if ($broken64) {
+  warn <<EOW;
+
+Your Perl has a broken 64-bit implementation.
+Arithmetic operations on numbers larger than 2^53 are wrong.
+
+Much core functionality will work, but some functions, especially
+random primes, will not work for large inputs.
+
+I highly recommend upgrading to a newer version of Perl.
+
+EOW
+}
+
 WriteMakefile1(
     NAME         => 'Math::Prime::Util',
     ABSTRACT     => 'Utilities related to prime numbers, including fast sieves and factoring',

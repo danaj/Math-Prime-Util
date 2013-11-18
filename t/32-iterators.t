@@ -9,6 +9,7 @@ use Math::BigInt try => "GMP,Pari";
 use Math::BigFloat;
 
 my $use64 = Math::Prime::Util::prime_get_config->{'maxbits'} > 32;
+my $broken64 = (18446744073709550592 == ~0);
 
 plan tests => 8        # forprimes errors
             + 12 + 5   # forprimes simple
@@ -160,17 +161,20 @@ ok(!eval { prime_iterator_object(4.5); }, "iterator 4.5");
   $it->rewind->next->next->next->prev;
   is( $it->value(), 5, "iterator object rewind and move returns 5");
   # Validate that it automatically handles bigint range traversal.
-  my $top_prime = prev_prime(~0);
-  my $big_prime = next_prime(Math::BigInt->new(''.~0));
-  ok( $big_prime > ~0, "internal check, next_prime on big int works");
-  $it->rewind($top_prime);
-  is( $it->value(), $top_prime, "iterator object can rewind to $top_prime");
-  $it->next;
-  is( $it->value(), $big_prime, "iterator object next is $big_prime");
-  $it->rewind(~0);
-  is( $it->value(), $big_prime, "iterator object rewound to ~0 is $big_prime");
-  $it->prev;
-  is( $it->value(), $top_prime, "iterator object prev goes back to $top_prime");
+  SKIP: {
+    skip "Skipping bigint traversals on a Perl that can't add correctly",5 if $broken64;
+    my $top_prime = prev_prime(~0);
+    my $big_prime = next_prime(Math::BigInt->new(''.~0));
+    ok( $big_prime > ~0, "internal check, next_prime on big int works");
+    $it->rewind($top_prime);
+    is( $it->value(), $top_prime, "iterator object can rewind to $top_prime");
+    $it->next;
+    is( $it->value(), $big_prime, "iterator object next is $big_prime");
+    $it->rewind(~0);
+    is( $it->value(), $big_prime, "iterator object rewound to ~0 is $big_prime");
+    $it->prev;
+    is( $it->value(), $top_prime, "iterator object prev goes back to $top_prime");
+  }
 
   # Validation for the Math::NumSeq compatiblity stuff
   $it->rewind;

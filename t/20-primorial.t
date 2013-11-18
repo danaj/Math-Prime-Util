@@ -41,10 +41,7 @@ my @pn_primorials = qw/
 31610054640417607788145206291543662493274686990
 /;
 
-my @small_primorials = grep { $_ <= ~0 } @pn_primorials;
-
 plan tests =>   0
-              + 2 * (scalar @small_primorials)
               + 2 * (scalar @pn_primorials)
               + 2;
 
@@ -65,20 +62,10 @@ sub nth_prime {
   $small_primes[$n-1];
 }
 
-# First we test native numbers
-foreach my $n (0 .. $#small_primorials) {
-  SKIP: {
-    skip "Broken 64-bit again...", 2 if $broken64 && $n >= 14 && $n <= 15;
-    is( primorial(nth_prime($n)), $pn_primorials[$n], "primorial(nth($n))" );
-    is( pn_primorial($n), $pn_primorials[$n], "pn_primorial($n)" );
-  }
-}
-
-# Then load up BigInt and make sure everything works for big numbers
-require Math::BigInt;
 foreach my $n (0 .. $#pn_primorials) {
   SKIP: {
-    skip "Broken 64-bit again...", 2 if $broken64 && $n >= 14 && $n <= 15;
+    skip "Primorials for 14,15 are broken when Perl is borked", 2
+         if $broken64 && $n >= 14 && $n <= 15;
     is( primorial(nth_prime($n)), $pn_primorials[$n], "primorial(nth($n))" );
     is( pn_primorial($n), $pn_primorials[$n], "pn_primorial($n)" );
   }

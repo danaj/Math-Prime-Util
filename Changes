@@ -41,6 +41,12 @@ Revision history for Perl module Math::Prime::Util
 
     - chebyshev_theta and chebyshev_psi use segmented sieves.
 
+    - More aggressive pruning of tests with 64-bit Perl 5.6.  I'd like to
+      just kill support for systems that can't even add two numbers
+      correctly, but too many other modules want 5.6 support, and lots of
+      our functionality *does* work (e.g. primes, prime count, etc.).
+
+
 0.32  2013-10-13
 
     [ADDED]

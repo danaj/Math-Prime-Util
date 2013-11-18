@@ -47,6 +47,7 @@ my %pseudoprimes = (
    '564132928021909221014087501701' => [ qw/2 3 5 7 11 13 17 19 23 29 31 37 325 9375/ ],
    #'1543267864443420616877677640751301' => [ qw/2 3 5 7 11 13 17 19 23 29 31 37 61 325 9375/ ],
 );
+delete $pseudoprimes{'3825123056546413051'} if $broken64;
 my $num_pseudoprime_tests = 0;
 foreach my $psrp (keys %pseudoprimes) {
   push @composites, $psrp;
@@ -183,13 +184,10 @@ is( prime_count(877777777777777777777752, 877777777777777777777872), 2, "prime_c
 ###############################################################################
 
 while (my($psrp, $baseref) = each (%pseudoprimes)) {
-  SKIP: {
-    skip "Your 64-bit Perl is broken, skipping pseudoprime tests for $psrp", 1 if $broken64 && $psrp == 3825123056546413051;
-    my $baselist = join(",", @$baseref);
-    my @expmr = map { (0!=1) } @$baseref;
-    my @gotmr = map { is_strong_pseudoprime($psrp, $_) } @$baseref;
-    is_deeply(\@gotmr, \@expmr, "$psrp is a strong pseudoprime to bases $baselist");
-  }
+  my $baselist = join(",", @$baseref);
+  my @expmr = map { (0!=1) } @$baseref;
+  my @gotmr = map { is_strong_pseudoprime($psrp, $_) } @$baseref;
+  is_deeply(\@gotmr, \@expmr, "$psrp is a strong pseudoprime to bases $baselist");
 }
 
 ###############################################################################
@@ -203,7 +201,7 @@ if ($extra) {
 ###############################################################################
 
 SKIP: {
-  skip "Your 64-bit Perl is broken, skipping bignum factoring tests", scalar(keys %factors) + scalar(keys %allfactors) if $broken64;
+  skip "Your 64-bit Perl is broken, skipping bignum factoring tests", 2*scalar(keys %factors) + scalar(keys %allfactors) if $broken64;
   while (my($n, $factors) = each(%factors)) {
     is_deeply( [factor($n)], $factors, "factor($n)" );
     is_deeply( [factor_exp($n)], [linear_to_exp(@$factors)], "factor_exp($n)" );
@@ -216,7 +214,7 @@ SKIP: {
 ###############################################################################
 
 SKIP: {
-  skip "Your 64-bit Perl is broken, skipping moebius,euler_phi,divsum tests", 10 if $broken64;
+  skip "Your 64-bit Perl is broken, skipping moebius, totient, etc.", 10 if $broken64;
   my $n;
   $n = 618970019642690137449562110;
   is( moebius($n), -1, "moebius($n)" );
@@ -248,15 +246,19 @@ is( liouville(10571644062695614514374497899),  1, "liouville(a x b x c x d) = 1"
 
 my $randprime;
 
-$randprime = random_prime(147573952590750158861, 340282366920939067930896100764782952647);
-cmp_ok( $randprime, '>=', 147573952590750158861, "random range prime isn't too small");
-cmp_ok( $randprime, '<=', 340282366920939067930896100764782952647, "random range prime isn't too big");
-ok( is_prime($randprime), "random range prime is prime");
+SKIP: {
+  skip "Skipping large random prime tests on broken 64-bit Perl", 6 if $broken64;
 
-$randprime = random_ndigit_prime(25);
-cmp_ok( $randprime, '>', 10**24, "random 25-digit prime isn't too small");
-cmp_ok( $randprime, '<', 10**25, "random 25-digit prime isn't too big");
-ok( is_prime($randprime), "random 25-digit prime is prime");
+  $randprime = random_prime(147573952590750158861, 340282366920939067930896100764782952647);
+  cmp_ok( $randprime, '>=', 147573952590750158861, "random range prime isn't too small");
+  cmp_ok( $randprime, '<=', 340282366920939067930896100764782952647, "random range prime isn't too big");
+  ok( is_prime($randprime), "random range prime is prime");
+
+  $randprime = random_ndigit_prime(25);
+  cmp_ok( $randprime, '>', 10**24, "random 25-digit prime isn't too small");
+  cmp_ok( $randprime, '<', 10**25, "random 25-digit prime isn't too big");
+  ok( is_prime($randprime), "random 25-digit prime is prime");
+}
 
 $randprime = random_nbit_prime(80);
 cmp_ok( $randprime, '>', 2**79, "random 80-bit prime isn't too small");
@@ -268,19 +270,16 @@ cmp_ok( $randprime, '>', 2**255, "random 256-bit strong prime isn't too small");
 cmp_ok( $randprime, '<', 2**256, "random 256-bit strong prime isn't too big");
 ok( is_prime($randprime), "random 80-bit strong prime is prime");
 
-SKIP: {
-  skip "Your 64-bit Perl is broken, skipping maurer prime", 3 if $broken64;
-  $randprime = random_maurer_prime(80);
-  cmp_ok( $randprime, '>', 2**79, "random 80-bit Maurer prime isn't too small");
-  cmp_ok( $randprime, '<', 2**80, "random 80-bit Maurer prime isn't too big");
-  ok( is_prime($randprime), "random 80-bit Maurer prime is prime");
-}
+$randprime = random_maurer_prime(80);
+cmp_ok( $randprime, '>', 2**79, "random 80-bit Maurer prime isn't too small");
+cmp_ok( $randprime, '<', 2**80, "random 80-bit Maurer prime isn't too big");
+ok( is_prime($randprime), "random 80-bit Maurer prime is prime");
 
 ###############################################################################
 
 $randprime = random_nbit_prime(80);
 is( miller_rabin_random( $randprime, 20 ), 1, "80-bit prime passes Miller-Rabin with 20 random bases" );
-$randprime += 2 while is_prime($randprime);
+do { $randprime += 2 } while is_prime($randprime);
 is( miller_rabin_random( $randprime, 40 ), "0", "80-bit composite fails Miller-Rabin with 40 random bases" );
 
 ###############################################################################

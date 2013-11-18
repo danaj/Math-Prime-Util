@@ -6,6 +6,7 @@ use Test::More;
 use Math::Prime::Util qw/primes prime_count/;
 
 my $use64 = Math::Prime::Util::prime_get_config->{'maxbits'} > 32;
+$use64 = 0 if 18446744073709550592 == ~0;
 
 plan tests => 12+3 + 12 + 1 + 19 + ($use64 ? 1 : 0) + 1 + 13*5;
 
