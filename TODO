@@ -59,3 +59,8 @@
 
 - I believe we can make the Lehmer/LMO small primes uint32_t, which will
   give some more memory reduction and a little speed.
+
+- use Math::BigInt instead of require, and return bigints as needed.
+  This is a fundamental change in how some functions operate, though likely
+  one that most people wouldn't see, and should be less surprise:
+  e.g. next_prime(~0) returns 18446744073709551629 rather than 0.

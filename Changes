@@ -1,5 +1,10 @@
 Revision history for Perl module Math::Prime::Util
 
+0.34  2013-11-19
+
+    - Fixed test that was using a 64-bit number on 32-bit machines.
+
+
 0.33  2013-11-18
 
     [API Changes]

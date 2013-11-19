@@ -10,7 +10,7 @@ if (!defined $Math::BigInt::VERSION) {
 
 BEGIN {
   $Math::Prime::Util::ECProjectivePoint::AUTHORITY = 'cpan:DANAJ';
-  $Math::Prime::Util::ECProjectivePoint::VERSION = '0.33';
+  $Math::Prime::Util::ECProjectivePoint::VERSION = '0.34';
 }
 
 # Pure perl (with Math::BigInt) manipulation of Elliptic Curves
@@ -201,7 +201,7 @@ Math::Prime::Util::ECProjectivePoint - Elliptic curve operations for projective 
 
 =head1 VERSION
 
-Version 0.33
+Version 0.34
 
 
 =head1 SYNOPSIS

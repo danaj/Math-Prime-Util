@@ -4,7 +4,7 @@ use warnings;
 
 BEGIN {
   $Math::Prime::Util::PrimeIterator::AUTHORITY = 'cpan:DANAJ';
-  $Math::Prime::Util::PrimeIterator::VERSION = '0.33';
+  $Math::Prime::Util::PrimeIterator::VERSION = '0.34';
 }
 
 use base qw( Exporter );
@@ -137,7 +137,7 @@ Math::Prime::Util::PrimeIterator - An object iterator for primes
 
 =head1 VERSION
 
-Version 0.33
+Version 0.34
 
 
 =head1 SYNOPSIS
