@@ -5,7 +5,6 @@ use Math::BigInt lib=>'GMP';
 use Math::BigFloat lib=>'GMP';
 use Math::Prime::Util qw/:all/;
 use Term::ANSIColor;
-use feature 'say';
 
 my $acc = 40;
 
