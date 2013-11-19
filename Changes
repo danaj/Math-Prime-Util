@@ -25,7 +25,8 @@ Revision history for Perl module Math::Prime::Util
 
     - prime_count uses Lehmer below a threshold (8000M), LMO above.
       This keeps good performance while still using low memory.  A small
-      speedup for small (3-6M) inputs has been added.
+      speedup for small (3-6M) inputs has been added.  Overall memory use
+      has been reduced by 2-4x for large inputs.
 
     - Perl RiemannZeta changes:
 
