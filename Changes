@@ -1,6 +1,6 @@
 Revision history for Perl module Math::Prime::Util
 
-0.33  2013-10
+0.33  2013-11-18
 
     [API Changes]
 
@@ -24,7 +24,8 @@ Revision history for Perl module Math::Prime::Util
     - Fixed Pure Perl 33- to 64-bit is_pseudoprime.
 
     - prime_count uses Lehmer below a threshold (8000M), LMO above.
-      This keeps good performance while still using low memory.
+      This keeps good performance while still using low memory.  A small
+      speedup for small (3-6M) inputs has been added.
 
     - Perl RiemannZeta changes:
 
