@@ -257,7 +257,7 @@ plan tests => 2 +
               1 + 1 +    # factor
               10 + 8*3 + # factoring subs
               10 +       # AKS
-              3 +        # Lucas and BLS75 primality proofs
+              ($use64 ? 3 : 2) +  # Lucas and BLS75 primality proofs
               4 +        # M-R and Lucas on bigint
               13 +       # Misc util.pm functions
               scalar(keys %ipp) +
@@ -599,9 +599,11 @@ is_deeply( [Math::Prime::Util::PrimalityProving::primality_proof_lucas(100003)],
 is_deeply( [Math::Prime::Util::PrimalityProving::primality_proof_bls75(1490266103)],
            [2, "[MPU - Primality Certificate]\nVersion 1.0\n\nProof for:\nN 1490266103\n\nType BLS5\nN 1490266103\nQ[1] 13\nQ[2] 19\nQ[3] 1597\nQ[4] 1889\nA[0] 5\n----\n"],
            "primality_proof_bls75(1490266103)" );
-is_deeply( [Math::Prime::Util::PrimalityProving::primality_proof_bls75(27141057803)],
+if ($use64) {
+  is_deeply( [Math::Prime::Util::PrimalityProving::primality_proof_bls75(27141057803)],
            [2, "[MPU - Primality Certificate]\nVersion 1.0\n\nProof for:\nN 27141057803\n\nType BLS5\nN 27141057803\nQ[1] 47533\nQ[2] 285497\n----\n"],
            "primality_proof_bls75(27141057803)" );
+}
 
 {
   my $n = Math::BigInt->new("168790877523676911809192454171451");
