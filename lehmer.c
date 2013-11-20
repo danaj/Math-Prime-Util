@@ -878,7 +878,7 @@ UV _XS_LMO_pi(UV n)
     for (j = k; j <= n13; j += k)
       mu[j] = 0;
   }
-  lpf[1] = 4294967295;  /* Set lpf[1] to max */
+  lpf[1] = UVCONST(4294967295);  /* Set lpf[1] to max */
 
   /* Remove mu[i] == 0 using lpf */
   for (i = 1; i <= n13; i++)
