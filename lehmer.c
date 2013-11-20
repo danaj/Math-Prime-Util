@@ -142,7 +142,7 @@ static UV isqrt(UV n)
 }
 
 /* Callback used for creating an array of primes. */
-static UV* sieve_array = 0;
+static uint32_t* sieve_array = 0;
 static UV sieve_k;
 static UV sieve_n;
 class stop_primesieve : public std::exception { };
@@ -158,10 +158,10 @@ void primesieve_callback(uint64_t pk) {
 /* Generate an array of n small primes, where the kth prime is element p[k].
  * Remember to free when done. */
 #define TINY_PRIME_SIZE 20000
-static UV* tiny_primes = 0;
-static UV* generate_small_primes(UV n)
+static uint32_t* tiny_primes = 0;
+static uint32_t* generate_small_primes(UV n)
 {
-  UV* primes;
+  uint32_t* primes;
   double fn = (double)n;
   double flogn  = log(fn);
   double flog2n  = log(flogn);
@@ -170,13 +170,13 @@ static UV* generate_small_primes(UV n)
      (n >= 178974) ? (UV) ceil(fn*(flogn+flog2n-1.0+((flog2n-1.95)/flogn))) :
      (n >= 18)     ? (UV) ceil(fn*(flogn+flog2n-1.0+((flog2n+0.30)/flogn)))
                    : 59;
-  New(0, primes, n+1, UV);
+  New(0, primes, n+1, uint32_t);
   if (primes == 0)
     croak("Can not allocate small primes\n");
   if (n < TINY_PRIME_SIZE) {
     if (tiny_primes == 0)
       tiny_primes = generate_small_primes(TINY_PRIME_SIZE+1);
-    memcpy(primes, tiny_primes, (n+1) * sizeof(UV));
+    memcpy(primes, tiny_primes, (n+1) * sizeof(uint32_t));
     return primes;
   }
   primes[0] = 0;
@@ -205,9 +205,9 @@ static UV* generate_small_primes(UV n)
 
 /* Generate an array of n small primes, where the kth prime is element p[k].
  * Remember to free when done. */
-static UV* generate_small_primes(UV n)
+static uint32_t* generate_small_primes(UV n)
 {
-  UV* primes;
+  uint32_t* primes;
   UV  i = 0;
   double fn = (double)n;
   double flogn  = log(fn);
@@ -218,7 +218,9 @@ static UV* generate_small_primes(UV n)
      (n >= 18)     ? (UV) ceil(fn*(flogn+flog2n-1.0+((flog2n+0.30)/flogn)))
                    : 59;
 
-  New(0, primes, n+1, UV);
+  if (n > 203280221)
+    croak("generate small primes with argument too large: %lu\n", (unsigned long)n);
+  New(0, primes, n+1, uint32_t);
   if (primes == 0)
     croak("Can not allocate small primes\n");
   primes[0] = 0;
@@ -228,7 +230,7 @@ static UV* generate_small_primes(UV n)
   } END_DO_FOR_EACH_PRIME
   if (i < n)
     croak("Did not generate enough small primes.\n");
-  if (verbose > 1) printf("generated %lu small primes, from 2 to %lu\n", i, primes[i]);
+  if (verbose > 1) printf("generated %lu small primes, from 2 to %lu\n", i, (unsigned long)primes[i]);
   return primes;
 }
 
@@ -274,14 +276,14 @@ static UV icbrt(UV n)
  * this we can avoid caching prime counts and also skip most calls to the
  * segment siever.
  */
-static UV bs_prime_count(UV n, UV const* const primes, UV lastidx)
+static UV bs_prime_count(uint32_t n, uint32_t const* const primes, uint32_t lastidx)
 {
   UV i, j;
   if (n <= 2)  return (n == 2);
   /* if (n > primes[lastidx])  return _XS_prime_count(2, n); */
   if (n >= primes[lastidx]) {
     if (n == primes[lastidx]) return lastidx;
-    croak("called bspc(%lu) with counts up to %lu\n", n, primes[lastidx]);
+    croak("called bspc(%u) with counts up to %u\n", n, primes[lastidx]);
   }
   j = lastidx;
   if (n < 8480) {
@@ -407,13 +409,13 @@ static void phi_cache_insert(uint32_t x, uint32_t a, IV sum, cache_t* cache) {
     cache->max[a] = cap;
   }
   if (sum < SHRT_MIN || sum > SHRT_MAX)
-    croak("phi(%lu,%lu) 16-bit overflow: sum = %ld\n", x, a, sum);
+    croak("phi(%u,%u) 16-bit overflow: sum = %ld\n", x, a, sum);
   if (cache->val[a] == 0)
     croak("phi cache allocation failure");
   cache->val[a][x] = sum;
 }
 
-static IV _phi3(UV x, UV a, int sign, const UV* const primes, const UV lastidx, cache_t* cache)
+static IV _phi3(UV x, UV a, int sign, const uint32_t* const primes, const uint32_t lastidx, cache_t* cache)
 {
   IV sum;
 
@@ -612,7 +614,7 @@ static UV phi(UV x, UV a)
   UV i, val, sval, lastidx, lastprime;
   UV sum = 0;
   IV count;
-  const UV* primes;
+  const uint32_t* primes;
   vcarray_t a1, a2;
   vc_t* arr;
   cache_t pcache; /* Cache for recursive phi */
@@ -700,10 +702,10 @@ static UV phi(UV x, UV a)
 
 extern UV _XS_meissel_pi(UV n);
 /* b = prime_count(isqrt(n)) */
-static UV Pk_2_p(UV n, UV a, UV b, const UV* primes, UV lastprime)
+static UV Pk_2_p(UV n, UV a, UV b, const uint32_t* primes, uint32_t lastidx)
 {
   UV lastw, lastwpc, i, P2;
-  UV lastpc = primes[lastprime];
+  UV lastpc = primes[lastidx];
 
   /* Ensure we have a large enough base sieve */
   prime_precalc(isqrt(n / primes[a+1]));
@@ -711,7 +713,7 @@ static UV Pk_2_p(UV n, UV a, UV b, const UV* primes, UV lastprime)
   P2 = lastw = lastwpc = 0;
   for (i = b; i > a; i--) {
     UV w = n / primes[i];
-    lastwpc = (w <= lastpc) ? bs_prime_count(w, primes, lastprime)
+    lastwpc = (w <= lastpc) ? bs_prime_count(w, primes, lastidx)
                             : lastwpc + _XS_prime_count(lastw+1, w);
     lastw = w;
     P2 += lastwpc;
@@ -722,7 +724,8 @@ static UV Pk_2_p(UV n, UV a, UV b, const UV* primes, UV lastprime)
 static UV Pk_2(UV n, UV a, UV b)
 {
   UV lastprime = b*SIEVE_MULT+1;
-  const UV* primes = generate_small_primes(lastprime);
+  if (lastprime > 203280221) lastprime = 203280221;
+  const uint32_t* primes = generate_small_primes(lastprime);
   UV P2 = Pk_2_p(n, a, b, primes, lastprime);
   Safefree(primes);
   return P2;
@@ -750,8 +753,8 @@ UV _XS_meissel_pi(UV n)
   if (n < SIEVE_LIMIT)
     return _XS_prime_count(2, n);
 
-  a = _XS_meissel_pi(icbrt(n));        /* a = floor(n^1/3) */
-  b = _XS_meissel_pi(isqrt(n));        /* b = floor(n^1/2) */
+  a = _XS_meissel_pi(icbrt(n));       /* a = Pi(floor(n^1/3)) [max    192725] */
+  b = _XS_meissel_pi(isqrt(n));       /* b = Pi(floor(n^1/2)) [max 203280221] */
 
   sum = phi(n, a) + a - 1 - Pk_2(n, a, b);
   return sum;
@@ -762,7 +765,7 @@ UV _XS_meissel_pi(UV n)
 UV _XS_lehmer_pi(UV n)
 {
   UV z, a, b, c, sum, i, j, lastprime, lastpc, lastw, lastwpc;
-  const UV* primes = 0; /* small prime cache, first b=pi(z)=pi(sqrt(n)) */
+  const uint32_t* primes = 0; /* small prime cache, first b=pi(z)=pi(sqrt(n)) */
   DECLARE_TIMING_VARIABLES;
 
   if (n < SIEVE_LIMIT)
@@ -779,9 +782,9 @@ UV _XS_lehmer_pi(UV n)
   if (verbose > 0) printf("lehmer %lu stage 1: calculate a,b,c \n", n);
   TIMING_START;
   z = isqrt(n);
-  a = _XS_lehmer_pi(isqrt(z));         /* a = floor(n^1/4) */
-  b = _XS_lehmer_pi(z);                /* b = floor(n^1/2) */
-  c = _XS_lehmer_pi(icbrt(n));         /* c = floor(n^1/3) */
+  a = _XS_lehmer_pi(isqrt(z));        /* a = Pi(floor(n^1/4)) [max      6542] */
+  b = _XS_lehmer_pi(z);               /* b = Pi(floor(n^1/2)) [max 203280221] */
+  c = _XS_lehmer_pi(icbrt(n));        /* c = Pi(floor(n^1/3)) [max    192725] */
   TIMING_END_PRINT("stage 1")
 
   if (verbose > 0) printf("lehmer %lu stage 2: phi(x,a) (z=%lu a=%lu b=%lu c=%lu)\n", n, z, a, b, c);
@@ -793,6 +796,7 @@ UV _XS_lehmer_pi(UV n)
    * get more than necessary, we can use them to speed up some.
    */
   lastprime = b*SIEVE_MULT+1;
+  if (lastprime > 203280221) lastprime = 203280221;
   if (verbose > 0) printf("lehmer %lu stage 3: %lu small primes\n", n, lastprime);
   TIMING_START;
   primes = generate_small_primes(lastprime);
@@ -840,32 +844,32 @@ UV _XS_lehmer_pi(UV n)
  */
 UV _XS_LMO_pi(UV n)
 {
-  UV n12, n13, a, b, sum, i, j, k, lastprime, P2, S1, S2;
-  const UV* primes = 0;  /* small prime cache */
+  UV n13, a, b, sum, i, j, k, lastprime, P2, S1, S2;
+  const uint32_t* primes = 0;  /* small prime cache */
   signed char* mu = 0;   /* moebius to n^1/3 */
-  UV*   lpf = 0;         /* least prime factor to n^1/3 */
+  uint32_t*   lpf = 0;   /* least prime factor to n^1/3 */
   cache_t pcache; /* Cache for recursive phi */
   DECLARE_TIMING_VARIABLES;
 
   if (n < SIEVE_LIMIT)
     return _XS_prime_count(2, n);
 
-  n13 = icbrt(n);
-  n12 = isqrt(n);
-  a = _XS_lehmer_pi(n13);
-  b = _XS_lehmer_pi(n12);
+  n13 = icbrt(n);                    /* n13 =  floor(n^1/3)  [max    2642245] */
+  a = _XS_lehmer_pi(n13);            /* a = Pi(floor(n^1/3)) [max     192725] */
+  b = _XS_lehmer_pi(isqrt(n));       /* b = Pi(floor(n^1/2)) [max  203280221] */
 
   lastprime = b*SIEVE_MULT+1;
+  if (lastprime > 203280221) lastprime = 203280221;
   if (lastprime < n13) lastprime = n13;
   primes = generate_small_primes(lastprime);
   if (primes == 0) croak("Error generating primes.\n");
 
   New(0, mu, n13+1, signed char);
   memset(mu, 1, sizeof(signed char) * (n13+1));
-  Newz(0, lpf, n13+1, UV);
+  Newz(0, lpf, n13+1, uint32_t);
   mu[0] = 0;
   for (i = 1; i <= n13; i++) {
-    UV primei = primes[i];
+    uint32_t primei = primes[i];
     for (j = primei; j <= n13; j += primei) {
       mu[j] = -mu[j];
       if (lpf[j] == 0) lpf[j] = primei;
@@ -874,7 +878,7 @@ UV _XS_LMO_pi(UV n)
     for (j = k; j <= n13; j += k)
       mu[j] = 0;
   }
-  lpf[1] = UV_MAX;  /* Set lpf[1] to max */
+  lpf[1] = 4294967295;  /* Set lpf[1] to max */
 
   /* Remove mu[i] == 0 using lpf */
   for (i = 1; i <= n13; i++)
@@ -895,7 +899,7 @@ UV _XS_LMO_pi(UV n)
 
   TIMING_START;
   for (i = k; i+1 < a; i++) {
-    UV p = primes[i+1];
+    uint32_t p = primes[i+1];
     /* TODO: #pragma omp parallel for reduction(+: S2) firstprivate(pcache) schedule(dynamic, 16) */
     for (j = (n13/p)+1; j <= n13; j++)
       if (lpf[j] > p)

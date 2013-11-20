@@ -4,6 +4,10 @@ Revision history for Perl module Math::Prime::Util
 
     - Fixed test that was using a 64-bit number on 32-bit machines.
 
+    - Switch a couple internal arrays from UV to uint32 in prime count.
+      This reduces memory consumption a little with big counts.  Total
+      memory use for counts > 10^15 is about 5x less than in version 0.31.
+
 
 0.33  2013-11-18
 
