@@ -869,7 +869,7 @@ UV _XS_LMO_pi(UV n)
   Newz(0, lpf, n13+1, uint32_t);
   mu[0] = 0;
   for (i = 1; i <= n13; i++) {
-    uint32_t primei = primes[i];
+    UV primei = primes[i];
     for (j = primei; j <= n13; j += primei) {
       mu[j] = -mu[j];
       if (lpf[j] == 0) lpf[j] = primei;
