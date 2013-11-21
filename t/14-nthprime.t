@@ -96,9 +96,9 @@ if ($use64) {
   }
 }
 
-my $maxindex   = $use64 ? 425656284035217743 : 203280221;
-my $maxindexp1 = $use64 ? 425656284035217744 : 203280222;
-my $maxprime   = $use64 ? 18446744073709551557 : 4294967291;
+my $maxindex   = $use64 ? '425656284035217743' : '203280221';
+my $maxindexp1 = $use64 ? '425656284035217744' : '203280222';
+my $maxprime   = $use64 ? '18446744073709551557' : '4294967291';
 cmp_ok( nth_prime_lower($maxindex), '<=', $maxprime, "nth_prime_lower(maxindex) <= maxprime");
 cmp_ok( nth_prime_upper($maxindex), '>=', $maxprime, "nth_prime_upper(maxindex) >= maxprime");
 cmp_ok( nth_prime_lower($maxindexp1), '>=', nth_prime_lower($maxindex), "nth_prime_lower(maxindex+1) >= nth_prime_lower(maxindex)");

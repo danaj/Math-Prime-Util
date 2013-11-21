@@ -2400,7 +2400,7 @@ sub nth_prime_upper {
   return $_primes_small[$n] if $n <= $#_primes_small;
 
   $n = _upgrade_to_float($n)
-    if ref($n) eq 'Math::BigInt' || $n >= $_Config{'maxprimeidx'};
+    if ref($n) eq 'Math::BigInt' || $n > $_Config{'maxprimeidx'};
 
   my $flogn  = log($n);
   my $flog2n = log($flogn);  # Note distinction between log_2(n) and log^2(n)
