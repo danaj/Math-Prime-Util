@@ -2378,8 +2378,7 @@ sub nth_prime_lower {
 
   return $_primes_small[$n] if $n <= $#_primes_small;
 
-  $n = _upgrade_to_float($n)
-    if ref($n) eq 'Math::BigInt' || $n > $_Config{'maxprimeidx'};
+  $n = _upgrade_to_float($n) if $n > $_Config{'maxprimeidx'} || $n > 2**45;
 
   my $flogn  = log($n);
   my $flog2n = log($flogn);  # Note distinction between log_2(n) and log^2(n)
@@ -2399,8 +2398,7 @@ sub nth_prime_upper {
 
   return $_primes_small[$n] if $n <= $#_primes_small;
 
-  $n = _upgrade_to_float($n)
-    if ref($n) eq 'Math::BigInt' || $n > $_Config{'maxprimeidx'};
+  $n = _upgrade_to_float($n) if $n > $_Config{'maxprimeidx'} || $n > 2**45;
 
   my $flogn  = log($n);
   my $flog2n = log($flogn);  # Note distinction between log_2(n) and log^2(n)
