@@ -7,6 +7,7 @@ BEGIN {
   $Math::Prime::Util::ZetaBigFloat::VERSION = '0.34';
 }
 
+use Math::BigInt try => "GMP,Pari";
 use Math::BigFloat;
 
 # Riemann Zeta($k) for integer $k.

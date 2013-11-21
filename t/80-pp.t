@@ -355,9 +355,9 @@ is( prev_prime(19610), 19609, "prev prime of 19610 is 19609" );
 
 is( prev_prime(2), 0, "Previous prime of 2 returns 0" );
 if ($use64) {
-  is( next_prime(18446744073709551611), 0, "Next prime of ~0-4 returns 0" );
+  is( next_prime(18446744073709551611), "18446744073709551629", "Next prime of ~0-4 returns bigint next prime" );
 } else {
-  is( next_prime(4294967291), 0, "Next prime of ~0-4 returns 0" );
+  is( next_prime(4294967291), "4294967311", "Next prime of ~0-4 returns bigint next prime" );
 }
 
 {

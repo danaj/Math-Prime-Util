@@ -1,5 +1,22 @@
 Revision history for Perl module Math::Prime::Util
 
+0.35  2013-11
+
+    [API Changes]
+
+    - We now use Math::BigInt in the module rather than dynamically loading
+      it, and will switch to BigInts as needed.  The most noticeable effect
+      of this is that next_prime() / prev_prime() will switch between BigInt
+      and native int at the boundary without regard to the input type or
+      whether bigint is in effect, and next_prime will never return 0.
+      Additionally, all functions will convert large decimal number strings
+      to BigInts if needed.
+
+      $pref = primes("1000000000000000000000", "1000000000000000000999");
+      is_prime("882249208105452588824618008529");
+      $a = euler_phi("801294088771394680000412");
+
+
 0.34  2013-11-19
 
     - Fixed test that was using a 64-bit number on 32-bit machines.

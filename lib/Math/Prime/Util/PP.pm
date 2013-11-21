@@ -2,6 +2,7 @@ package Math::Prime::Util::PP;
 use strict;
 use warnings;
 use Carp qw/carp croak confess/;
+use Math::BigInt try=>"GMP,Pari";
 
 BEGIN {
   $Math::Prime::Util::PP::AUTHORITY = 'cpan:DANAJ';
@@ -91,21 +92,12 @@ sub _validate_positive_integer {
         if ref($n) ne 'Math::BigInt' && $n =~ tr/0123456789//c;
   croak "Parameter '$n' must be >= $min" if defined $min && $n < $min;
   croak "Parameter '$n' must be <= $max" if defined $max && $n > $max;
-  if (ref($_[0])) {
-    $_[0] = Math::BigInt->new("$_[0]") unless ref($_[0]) eq 'Math::BigInt';
-    # Workarounds for Math::BigInt::GMP RT # 71548 and Perl 5.6
-    if ($_[0]->bacmp(''.~0) <= 0) {
-      my $intn = int($_[0]->bstr);
-      $_[0] = $intn if $_[0]->bcmp("$intn") == 0;
-    }
+  $_[0] = Math::BigInt->new("$_[0]") unless ref($_[0]) eq 'Math::BigInt';
+  if ($_[0]->bacmp(''.~0) <= 0) {
+    $_[0] = int($_[0]->bstr);
+  } else {
     # Stop BigFloat upgrade
     $_[0]->upgrade(undef) if ref($_[0]) && $_[0]->upgrade();
-  } else {
-    if ($n > ~0) {
-      croak "Parameter '$n' outside of integer range" if !defined $bigint::VERSION;
-      $_[0] = Math::BigInt->new("$n"); # Make $n a proper bigint object
-      $_[0]->upgrade(undef) if $_[0]->upgrade();  # Stop BigFloat upgrade
-    }
   }
   # One of these will be true:
   #     1) $n <= ~0 and $n is not a bigint
@@ -400,11 +392,13 @@ sub primes {
 sub next_prime {
   my($n) = @_;
   _validate_positive_integer($n);
-  if ($n >= ((_PP_prime_maxbits == 32) ? 4294967291 : 18446744073709551557)) {
-    return 0 if ref($_[0]) ne 'Math::BigInt';
-    $n = $_[0];  # $n is a bigint now
-  }
+
   return $_prime_next_small[$n] if $n <= $#_prime_next_small;
+
+  if (ref($n) ne 'Math::BigInt' &&
+      $n >= ((_PP_prime_maxbits == 32) ? 4294967291 : 18446744073709551557)) {
+    $n = Math::BigInt->new(''.$n);
+  }
 
   # Be careful trying to do:
   #     my $d = int($n/30);
@@ -619,16 +613,14 @@ sub nth_prime {
 
   return $_primes_small[$n] if $n <= $#_primes_small;
 
-  if (!defined $bigint::VERSION) { # This isn't ideal.
-    if (_PP_prime_maxbits == 32) {
-      croak "nth_prime($n) overflow" if $n > 203280221;
-    } else {
-      croak "nth_prime($n) overflow" if $n > 425656284035217743;
-    }
+  my $max = (_PP_prime_maxbits == 32) ? 203280221 : 425656284035217743;
+  if ($n > $max && ref($n) ne 'Math::BigFloat') {
+    do { require Math::BigFloat; Math::BigFloat->import(); }
+      if !defined $Math::BigFloat::VERSION;
+    $n = Math::BigFloat->new("$n")
   }
 
   my $prime = 0;
-
   my $count = 1;
   my $start = 3;
 
@@ -959,13 +951,7 @@ sub lucas_sequence {
   croak "lucas_sequence: P out of range" if $P < 0 || $P >= $n;
   croak "lucas_sequence: Q out of range" if $Q >= $n;
 
-  if (ref($n) ne 'Math::BigInt') {
-    if (!defined $Math::BigInt::VERSION) {
-      eval { require Math::BigInt;  Math::BigInt->import(try=>'GMP,Pari'); 1; }
-      or do { croak "Cannot load Math::BigInt "; }
-    }
-    $n = Math::BigInt->new("$n");
-  }
+  $n = Math::BigInt->new("$n") unless ref($n) eq 'Math::BigInt';
 
   my $ZERO = $n->copy->bzero;
   my $ONE = $ZERO + 1;
@@ -1111,13 +1097,7 @@ sub is_extra_strong_lucas_pseudoprime {
   }
   # We have to convert n to a bigint or Math::BigInt::GMP's stupid set_si bug
   # (RT 71548) will hit us and make the test $V == $n-2 always return false.
-  if (ref($n) ne 'Math::BigInt') {
-    if (!defined $Math::BigInt::VERSION) {
-      eval { require Math::BigInt;  Math::BigInt->import(try=>'GMP,Pari'); 1; }
-      or do { croak "Cannot load Math::BigInt "; }
-    }
-    $n = Math::BigInt->new("$n");
-  }
+  $n = Math::BigInt->new("$n") unless ref($n) eq 'Math::BigInt';
   my($U, $V, $Qk) = lucas_sequence($n, $P, $Q, $k);
 
   return 1 if $U->is_zero && ($V == 2 || $V == ($n-2));
@@ -1142,13 +1122,7 @@ sub is_almost_extra_strong_lucas_pseudoprime {
   return 0 if $D == 0;  # We found a divisor in the sequence
   die "Lucas parameter error: $D, $P, $Q\n" if ($D != $P*$P - 4*$Q);
 
-  if (ref($n) ne 'Math::BigInt') {
-    if (!defined $Math::BigInt::VERSION) {
-      eval { require Math::BigInt;  Math::BigInt->import(try=>'GMP,Pari'); 1; }
-      or do { croak "Cannot load Math::BigInt "; }
-    }
-    $n = Math::BigInt->new("$n");
-  }
+  $n = Math::BigInt->new("$n") unless ref($n) eq 'Math::BigInt';
 
   my $ZERO = $n->copy->bzero;
   my $V = $ZERO + $P;        # V_{k}
@@ -1183,13 +1157,7 @@ sub is_frobenius_underwood_pseudoprime {
   return 0 if ($n % 2) == 0;
   return 0 if _is_perfect_square($n);
 
-  if (ref($n) ne 'Math::BigInt') {
-    if (!defined $Math::BigInt::VERSION) {
-      eval { require Math::BigInt;  Math::BigInt->import(try=>'GMP,Pari'); 1; }
-      or do { croak "Cannot load Math::BigInt "; }
-    }
-    $n = Math::BigInt->new("$n");
-  }
+  $n = Math::BigInt->new("$n") unless ref($n) eq 'Math::BigInt';
 
   my $ZERO = $n->copy->bzero;
   my $fa = $ZERO + 1;
@@ -1302,19 +1270,13 @@ sub _test_anr {
 sub is_aks_prime {
   my $n = shift;
 
-  if (!defined $Math::BigInt::VERSION) {
-    eval { require Math::BigInt;  Math::BigInt->import(try=>'GMP,Pari'); 1; }
-    or do { croak "Cannot load Math::BigInt "; }
-  }
-  if (!defined $Math::BigFloat::VERSION) {
-    eval { require Math::BigFloat;   Math::BigFloat->import(); 1; }
-    or do { croak "Cannot load Math::BigFloat "; }
-  }
   $n = Math::BigInt->new("$n") unless ref($n) eq 'Math::BigInt';
 
   return 0 if $n < 2;
   return 0 if _is_perfect_power($n);
 
+  do { require Math::BigFloat; Math::BigFloat->import(); }
+    if !defined $Math::BigFloat::VERSION;
   # limit = floor( log2(n) * log2(n) ).  o_r(n) must be larger than this
   my $floatn = Math::BigFloat->new($n);
   my $sqrtn = int($floatn->copy->bsqrt->bfloor->bstr);
@@ -2109,10 +2071,8 @@ sub ExponentialIntegral {
     my $wantbf = 0;
     my $xdigits = 17;
     if (defined $bignum::VERSION || ref($x) =~ /^Math::Big/) {
-      if (!defined $Math::BigFloat::VERSION) {
-        eval { require Math::BigFloat;   Math::BigFloat->import(); 1; }
-        or do { croak "Cannot load Math::BigFloat "; }
-      }
+      do { require Math::BigFloat; Math::BigFloat->import(); }
+        if !defined $Math::BigFloat::VERSION;
       $x = Math::BigFloat->new("$x") if ref($x) ne 'Math::BigFloat';
       $wantbf = 1;
       $xdigits = $x->accuracy || Math::BigFloat->accuracy() || Math::BigFloat->div_scale();
@@ -2213,10 +2173,8 @@ sub LogarithmicIntegral {
     my $wantbf = 0;
     my $xdigits = 17;
     if (defined $bignum::VERSION || ref($x) =~ /^Math::Big/) {
-      if (!defined $Math::BigFloat::VERSION) {
-        eval { require Math::BigFloat;   Math::BigFloat->import(); 1; }
-        or do { croak "Cannot load Math::BigFloat "; }
-      }
+      do { require Math::BigFloat; Math::BigFloat->import(); }
+        if !defined $Math::BigFloat::VERSION;
       $x = Math::BigFloat->new("$x") if ref($x) ne 'Math::BigFloat';
       $wantbf = 1;
       $xdigits = $x->accuracy || Math::BigFloat->accuracy() || Math::BigFloat->div_scale();
@@ -2340,10 +2298,8 @@ sub RiemannZeta {
     my $wantbf = 0;
     my $xdigits = 17;
     if (defined $bignum::VERSION || ref($x) =~ /^Math::Big/) {
-      if (!defined $Math::BigFloat::VERSION) {
-        eval { require Math::BigFloat;   Math::BigFloat->import(); 1; }
-        or do { croak "Cannot load Math::BigFloat "; }
-      }
+      do { require Math::BigFloat; Math::BigFloat->import(); }
+        if !defined $Math::BigFloat::VERSION;
       if (ref($x) eq 'Math::BigInt') {
         my $xacc = $x->accuracy();
         $x = Math::BigFloat->new($x);
@@ -2431,10 +2387,8 @@ sub RiemannR {
     my $wantbf = 0;
     my $xdigits = 17;
     if (defined $bignum::VERSION || ref($x) =~ /^Math::Big/) {
-      if (!defined $Math::BigFloat::VERSION) {
-        eval { require Math::BigFloat;   Math::BigFloat->import(); 1; }
-        or do { croak "Cannot load Math::BigFloat "; }
-      }
+      do { require Math::BigFloat; Math::BigFloat->import(); }
+        if !defined $Math::BigFloat::VERSION;
       if (ref($x) eq 'Math::BigInt') {
         my $xacc = $x->accuracy();
         $x = Math::BigFloat->new($x);

@@ -15,10 +15,6 @@ our %EXPORT_TAGS = (all => [ @EXPORT_OK ]);
 use Math::Prime::Util qw/next_prime prev_prime is_prime prime_count nth_prime/;
 use Math::BigInt try => "GMP,Pari";
 
-my $bigprime = Math::BigInt->new(
-  (~0 == 4294967295) ? "4294967311" : "18446744073709551629"
-);
-
 # We're going to use a scalar rather than a hash because there is currently
 # only one data object (the current value) and this makes it little faster.
 
@@ -41,7 +37,7 @@ sub __iter__ {
 sub value { ${$_[0]}; }
 sub next {
   my $self = shift;
-  $$self = next_prime($$self) || $bigprime;
+  $$self = next_prime($$self);
   return $self;
 }
 sub prev {
@@ -53,7 +49,7 @@ sub prev {
 sub iterate {
   my $self = shift;
   my $p = $$self;
-  $$self = next_prime($p) || $bigprime;
+  $$self = next_prime($p);
   return $p;
 }
 
@@ -63,17 +59,14 @@ sub rewind {
   if (defined $start && $start ne '2') {
     Math::Prime::Util::_validate_num($start)
       || Math::Prime::Util::_validate_positive_integer($start);
-    if ($start > 2) {
-      $$self = next_prime($start-1) || $bigprime;
-    }
+    $$self = next_prime($start-1) if $start > 2;
   }
   return $self;
 }
 
 sub peek {
   my $self = shift;
-  my $np = next_prime($$self) || $bigprime;
-  return $np;
+  return next_prime($$self);
 }
 
 # Some methods to match Math::NumSeq
