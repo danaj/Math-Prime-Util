@@ -22,6 +22,8 @@
 
 - Test all routines for numbers on word-size boundary, or ranges that cross.
 
+- More testing on 32-bit machines.
+
 - An assembler version of mulmod for i386 would be _really_ helpful for
   all the non-x86-64 Intel machines.
 
@@ -57,7 +59,4 @@
   algorithm).  The PP code isn't doing that, which means we're doing lots of
   extra primality checks, which aren't cheap in PP.
 
-- use Math::BigInt instead of require, and return bigints as needed.
-  This is a fundamental change in how some functions operate, though likely
-  one that most people wouldn't see, and should be less surprise:
-  e.g. next_prime(~0) returns 18446744073709551629 rather than 0.
+- Consider using Test::Number::Delta for many tests

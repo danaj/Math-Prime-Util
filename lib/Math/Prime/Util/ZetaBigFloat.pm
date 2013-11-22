@@ -374,19 +374,18 @@ sub RiemannZeta {
   my $divisor = $one->copy->bsub($d1)->bmul(-$_Borwein_dk[$n]);
   $tol = $divisor->copy->bmul($tol)->babs();
 
-  my $sum = $zero->copy;
+  my ($sum, $bigk) = ($zero->copy, $one->copy);
   foreach my $k (1 .. $n-1) {
+    my $den = $bigk->binc()->copy->bpow($subx,$xdigits)->bpow($superx,$xdigits);
     my $term = ($k % 2)
              ? $zero->copy->badd($_Borwein_dk[$n])->bsub($_Borwein_dk[$k])
              : $zero->copy->badd($_Borwein_dk[$k])->bsub($_Borwein_dk[$n]);
-    my $den = $zero->copy->badd($k+1);
-    $den = ($den ** $subx) ** $superx;
-    $term /= $den;
-    $sum += $term;
+    $term->bdiv($den);
+    $sum->badd($term);
     last if $term->copy->babs() < $tol;
   }
   $sum->badd($one->copy->bsub($_Borwein_dk[$n]));  # term k=0
-  $sum->bdiv( $divisor )->bdec;
+  $sum->bdiv($divisor,$xdigits)->bdec;
   $sum->bround($xdigits-$extra_acc);
   return $sum;
 }

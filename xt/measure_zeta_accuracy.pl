@@ -6,7 +6,8 @@ use Math::BigFloat lib=>'GMP';
 use Math::Prime::Util qw/:all/;
 use Term::ANSIColor;
 
-my $acc = 40;
+my $acc = shift || 40;
+die "Max accuracy for this test = 130 digits\n" if $acc > 130;
 
 # gp
 # \p 200
@@ -23,12 +24,25 @@ my %rvals = (
   '200' => '0.0000000000000000000000000000000000000000000000000000000000006223015277861141707144064053780124278238871664711431331935339387492776093057166188727575094880097645495454472391197851568776550275806071517',
 );
 
+my $acctext = ($acc == 40) ? "default 40-digit" : "$acc-digit";
+print <<EOT;
+Using $acctext accuracy.
+
+The first number is the precalculated correct value.
+The second number is the answer RiemannZeta is giving.
+Differences are highlighted in red.
+
+Either Math::MPFR or the Math::BigInt patch from RT43692
+are needed to prevent differences for accuracy > 38 digits.
+EOT
+
+
 foreach my $vstr (sort { $a <=> $b } keys %rvals) {
   my $zeta_str = $rvals{$vstr};
   my $lead = index($zeta_str, '.');
   my $v    = Math::BigFloat->new($vstr);
   my $zeta = Math::BigFloat->new($rvals{$vstr});
-  $v->accuracy($acc) if defined $acc && $acc != 40;
+  $v->accuracy($acc) if $acc != 40;
   #print "zeta($v) = $zeta\n";
   my $mpuzeta = RiemannZeta($v);
   my $mpuzeta_str = ref($mpuzeta) eq 'Math::BigFloat'
@@ -37,7 +51,7 @@ foreach my $vstr (sort { $a <=> $b } keys %rvals) {
   my $mzlen = length($mpuzeta_str);
   # Truncate zeta_str to length of mpuzeta_str, with rounding.
   {
-    $zeta_str = Math::BigFloat->new($zeta_str)->bmul(1,$acc||40)->bstr;
+    $zeta_str = Math::BigFloat->new($zeta_str)->bmul(1,$acc)->bstr;
   }
   if ($zeta_str ne $mpuzeta_str) {
     my $n = 0;

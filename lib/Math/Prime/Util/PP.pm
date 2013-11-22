@@ -2310,7 +2310,7 @@ sub RiemannZeta {
       $xdigits = $x->accuracy || Math::BigFloat->accuracy() || Math::BigFloat->div_scale();
     }
     my $rnd = 0;  # MPFR_RNDN;
-    my $bit_precision = int($xdigits * 3.322) + 5;
+    my $bit_precision = int($xdigits * 3.322) + 7;
     my $rx = Math::MPFR->new();
     Math::MPFR::Rmpfr_set_prec($rx, $bit_precision);
     Math::MPFR::Rmpfr_set_str($rx, "$x", 10, $rnd);
