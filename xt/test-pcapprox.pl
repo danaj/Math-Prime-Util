@@ -2,6 +2,7 @@
 use strict;
 use warnings;
 use Math::Prime::Util qw/prime_count prime_count_approx prime_count_lower prime_count_upper LogarithmicIntegral RiemannR/;
+use Math::BigFloat;
 $| = 1;  # fast pipes
 
 
@@ -20,11 +21,11 @@ my %pivals = (
        1000000000000 => 37607912018,
       10000000000000 => 346065536839,
      100000000000000 => 3204941750802,
-    1000000000000000 => 29844570422669,
-   10000000000000000 => 279238341033925,
-  100000000000000000 => 2623557157654233,
- 1000000000000000000 => 24739954287740860,
-10000000000000000000 => 234057667276344607,
+    '1000000000000000' => 29844570422669,
+   '10000000000000000' => 279238341033925,
+  '100000000000000000' => 2623557157654233,
+ '1000000000000000000' => 24739954287740860,
+'10000000000000000000' => 234057667276344607,
 );
 
 printf("  N    %12s  %12s  %12s  %12s\n", "pc_approx", "Li", "LiCor", "R");
@@ -53,10 +54,9 @@ print "\n";
 printf("  N    %12s  %12s  %12s  %12s\n", "lower", "upper", "SchoenfeldL", "SchoenfeldU");
 printf("-----  %12s  %12s  %12s  %12s\n", '-'x12,'-'x12,'-'x12,'-'x12);
 foreach my $n (sort {$a<=>$b} keys %pivals) {
-  my $pin  = $pivals{$n};
-  my $pcl  = prime_count_lower($n);
-  my $pcu  = prime_count_upper($n);
-  my ($scl,$scu) = stoll($n);
+  my ($pin, $pcl, $pcu, $scl, $scu) =
+    map { Math::BigFloat->new($_) }
+    ($pivals{$n}, prime_count_lower($n), prime_count_upper($n), stoll($n));
 
   #printf "10^%2d  %12d  %12d\n", length($n)-1, $pin-$pcl, $pcu-$pin;
   printf "10^%2d  %12.7f  %12.7f  %12.7f  %12.7f\n",

@@ -72,18 +72,22 @@ foreach my $r (1 .. $nrandom) {
   die "MR(2) failure for $n" unless Math::Prime::Util::is_strong_pseudoprime($n,2) == Math::Primality::is_strong_pseudoprime($n,2);
   die "MR($rand_base) failure for $n" unless Math::Prime::Util::is_strong_pseudoprime($n,$rand_base) == Math::Primality::is_strong_pseudoprime($n,$rand_base);
   die "SLPSP failure for $n" unless Math::Prime::Util::is_strong_lucas_pseudoprime($n) == Math::Primality::is_strong_lucas_pseudoprime($n);
-  die "Prime failure for $n" unless (Math::Prime::Util::is_prime($n)?1:0) == Math::Primality::is_prime($n);
+  my $ip1 = Math::Primality::is_prime($n);
+  my $ip2 = Math::Prime::Util::is_prime($n);
+  die "Prime failure for $n ($ip1,$ip2)" unless !!$ip1 == !!$ip2;
   print "." if ($r % 256) == 0;
 }
 print "\n";
+}
 
+if (1) {
 use bigint try => 'GMP';
 my $big_base = 2**64 + 1;
 my $range = 2**1024 - 1;
 my $end_base = $big_base + $range;
 print "Testing random numbers from $big_base to $end_base\n";
 
-foreach my $r (1 .. int($nrandom/50)) {
+foreach my $r (1 .. int($nrandom/100)) {
   my $n = $big_base + $rgen->($range);
   my $rand_base = 2 + $rgen->($n-4);
   die "MR(2) failure for $n" unless Math::Prime::Util::is_strong_pseudoprime($n,2) == Math::Primality::is_strong_pseudoprime("$n","2");
@@ -95,6 +99,8 @@ foreach my $r (1 .. int($nrandom/50)) {
 }
 print "\n";
 }
+
+print "\nBenchmarks\n";
 
 my $num_rns = 100;
 my $len_rns = 100;

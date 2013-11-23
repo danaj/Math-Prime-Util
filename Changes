@@ -16,6 +16,12 @@ Revision history for Perl module Math::Prime::Util
       is_prime("882249208105452588824618008529");
       $a = euler_phi("801294088771394680000412");
 
+    [FUNCTIONALITY AND PERFORMANCE]
+
+    - Some fixes for 32-bit.
+
+    - prime_count_approx, upper, and lower return exact answers in more cases.
+
 
 0.34  2013-11-19
 

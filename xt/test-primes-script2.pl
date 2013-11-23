@@ -28,7 +28,7 @@ compare('Sophie Germain',
 #   2) it supports bignums, which is required for Fib, Euclid, Lucas, etc.
 
 compare('Palindromic',
-        '10**11',
+        (~0 > 4294967295)  ?  '10**11'  :  '10**10',
         "$FindBin::Bin/../bin/primes.pl --palin 1 LASTNUM",
         q/perl -MMath::Prime::Util=is_prime -MMath::NumSeq::Palindromes -e 'my $seq = Math::NumSeq::Palindromes->new; while (1) { my $v = ($seq->next)[1]; last if $v > LASTNUM; print "$v\n" if is_prime($v); }'/);
 
