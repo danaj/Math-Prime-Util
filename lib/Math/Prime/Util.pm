@@ -240,15 +240,19 @@ my @_primes_small = (
    101,103,107,109,113,127,131,137,139,149,151,157,163,167,173,179,181,191,
    193,197,199,211,223,227,229,233,239,241,251,257,263,269,271,277,281,283,
    293,307,311,313,317,331,337,347,349,353,359,367,373,379,383,389,397,401,
-   409,419,421,431,433,439,443,449,457,461,463,467,479,487,491,499);
-my @_prime_count_small = (
-   0,0,1,2,2,3,3,4,4,4,4,5,5,6,6,6,6,7,7,8,8,8,8,9,9,9,9,9,9,10,10,
-   11,11,11,11,11,11,12,12,12,12,13,13,14,14,14,14,15,15,15,15,15,15,
-   16,16,16,16,16,16,17,17,18,18,18,18,18,18,19);
-#my @_prime_next_small = (
-#   2,2,3,5,5,7,7,11,11,11,11,13,13,17,17,17,17,19,19,23,23,23,23,
-#   29,29,29,29,29,29,31,31,37,37,37,37,37,37,41,41,41,41,43,43,47,
-#   47,47,47,53,53,53,53,53,53,59,59,59,59,59,59,61,61,67,67,67,67,67,67,71);
+   409,419,421,431,433,439,443,449,457,461,463,467,479,487,491,499,503,509);
+sub _tiny_prime_count {
+  my($n) = @_;
+  return if $n >= $_primes_small[-1];
+  my $j = $#_primes_small;
+  my $i = 1 + ($n >> 4);
+  while ($i < $j) {
+    my $mid = ($i+$j)>>1;
+    if ($_primes_small[$mid] <= $n) { $i = $mid+1; }
+    else                            { $j = $mid;   }
+  }
+  return $i-1;
+}
 
 
 
@@ -2162,7 +2166,10 @@ sub prime_count_approx {
   my($x) = @_;
   _validate_num($x) || _validate_positive_integer($x);
 
-  return $_prime_count_small[$x] if $x <= $#_prime_count_small;
+  # With XS using 30k tables, this is super fast.
+  return _XS_prime_count(2,$x) if $x < $_XS_MAXVAL && $x < 3_000_000;
+  # Give an exact answer for what we have in our little table.
+  return _tiny_prime_count($x) if $x < $_primes_small[-1];
 
   # Below 2^58th or so, all differences between the high precision and C double
   # precision result are less than 0.5.
@@ -2209,9 +2216,13 @@ sub prime_count_lower {
   my($x) = @_;
   _validate_num($x) || _validate_positive_integer($x);
 
-  return $_prime_count_small[$x] if $x <= $#_prime_count_small;
+  # With XS using 30k tables, this is super fast.
+  return _XS_prime_count(2,$x) if $x < $_XS_MAXVAL && $x < 3_000_000;
+  # Give an exact answer for what we have in our little table.
+  return _tiny_prime_count($x) if $x < $_primes_small[-1];
 
-  $x = _upgrade_to_float($x) if ref($_[0]) eq 'Math::BigInt';
+  $x = _upgrade_to_float($x)
+    if ref($x) eq 'Math::BigInt' || ref($_[0]) eq 'Math::BigInt';
 
   my $flogx = log($x);
 
@@ -2255,9 +2266,13 @@ sub prime_count_upper {
   my($x) = @_;
   _validate_num($x) || _validate_positive_integer($x);
 
-  return $_prime_count_small[$x] if $x <= $#_prime_count_small;
+  # With XS using 30k tables, this is super fast.
+  return _XS_prime_count(2,$x) if $x < $_XS_MAXVAL && $x < 3_000_000;
+  # Give an exact answer for what we have in our little table.
+  return _tiny_prime_count($x) if $x < $_primes_small[-1];
 
-  $x = _upgrade_to_float($x) if ref($_[0]) eq 'Math::BigInt';
+  $x = _upgrade_to_float($x)
+    if ref($x) eq 'Math::BigInt' || ref($_[0]) eq 'Math::BigInt';
 
   # Chebyshev:            1.25506*x/logx       x >= 17
   # Rosser & Schoenfeld:  x/(logx-3/2)         x >= 67
@@ -2312,7 +2327,6 @@ sub prime_count_upper {
     #else                    { $a = 2.51;  } # Dusart 1999, page 14
 
     # Old versions of Math::BigFloat will do the Wrong Thing with this.
-    #return int( ($x/$flogx) * (1.0 + 1.0/$flogx + $a/($flogx*$flogx)) + 1.0 );
     $result = ($x/$flogx) * (1.0 + 1.0/$flogx + $a/($flogx*$flogx)) + 1.0;
   }
 
