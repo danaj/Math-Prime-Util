@@ -522,10 +522,17 @@ sub _count_with_sieve {
 sub _lehmer_pi {
   my $x = shift;
   return _sieve_prime_count($x) if $x < 1_000;
-  my $z = int(sqrt($x+0.5));
+  my $z = (ref($x) ne 'Math::BigInt')
+        ? int(sqrt($x+0.5))
+        : int(Math::BigFloat->new($x)->badd(0.5)->bsqrt->bfloor->bstr);
   my $a = _lehmer_pi(int(sqrt($z)+0.5));
   my $b = _lehmer_pi($z);
-  my $c = _lehmer_pi(int($x**(1/3)+0.5));
+  my $c = _lehmer_pi(int( (ref($x) ne 'Math::BigInt')
+                          ? $x**(1/3)+0.5
+                          : Math::BigFloat->new($x)->broot(3)->badd(0.5)->bfloor
+                     ));
+  ($z, $a, $b, $c) = map { (ref($_) =~ /^Math::Big/) ? int($_->bstr) : $_ }
+                     ($z, $a, $b, $c);
 
   # Generate at least b primes.
   my $bth_prime_upper = ($b <= 10) ? 29 : int($b*(log($b) + log(log($b)))) + 1;
