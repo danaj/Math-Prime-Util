@@ -50,10 +50,10 @@
 /* Below this size, just sieve (with table speedup). */
 #define SIEVE_LIMIT  60000000
 /* Adjust to get best performance */
-#define M_FACTOR(n)     (UV) ((double)n * (log(n)/log(3)))
+#define M_FACTOR(n)     (UV) ((double)n * (log(n)/log(6)))
 /* Size of segment used for previous primes, must be >= 21 */
 #define PREV_SIEVE_SIZE 512
-/* Phi sieve multiplier, adjust for best performance */
+/* Phi sieve multiplier, adjust for best performance and memory use. */
 #define PHI_SIEVE_MULT 13
 
 #define FUNC_icbrt 1
