@@ -6,7 +6,7 @@ use Math::BigInt try=>"GMP,Pari";
 
 BEGIN {
   $Math::Prime::Util::AUTHORITY = 'cpan:DANAJ';
-  $Math::Prime::Util::VERSION = '0.34';
+  $Math::Prime::Util::VERSION = '0.35';
 }
 
 # parent is cleaner, and in the Perl 5.10.1 / 5.12.0 core, but not earlier.
@@ -2508,7 +2508,7 @@ Math::Prime::Util - Utilities related to prime numbers, including fast sieves an
 
 =head1 VERSION
 
-Version 0.34
+Version 0.35
 
 
 =head1 SYNOPSIS
@@ -2910,9 +2910,9 @@ count of primes between the ranges (e.g. C<(13,17)> returns 2, C<14,17>
 and C<13,16> return 1, and C<14,16> returns 0).
 
 The current implementation decides based on the ranges whether to use a
-segmented sieve with a fast bit count, or the LMO algorithm.  The former
-is preferred for small sizes as well as small ranges.  The latter is much
-faster for large ranges.
+segmented sieve with a fast bit count, or the extended LMO algorithm.
+The former is preferred for small sizes as well as small ranges.
+The latter is much faster for large ranges.
 
 The segmented sieve is very memory efficient and is quite fast even with
 large base values.  Its complexity is approximately C<O(sqrt(a) + (b-a))>,
@@ -2920,11 +2920,11 @@ where the first term is typically negligible below C<~ 10^11>.  Memory use
 is proportional only to C<sqrt(a)>, with total memory use under 1MB for any
 base under C<10^14>.
 
-The LMO method has complexity approximately C<O(b^0.7) + O(a^0.7)>.  It
-does use more memory however.  A calculation of C<Pi(10^14)> completes in
-under 1 minute, C<Pi(10^15)> in under 5 minutes, and C<Pi(10^16)> in under
-20 minutes, however using about 500MB of peak memory for the last.
-In contrast, even primesieve using 12 cores would take over a week on this
+The extended LMO method has complexity approximately
+C<O(b^(2/3)) + O(a^(2/3))>, and also uses low memory.
+A calculation of C<Pi(10^14)> completes in a few seconds, C<Pi(10^15)>
+in well under a minute, and C<Pi(10^16)> in about one minute.  In
+contrast, even primesieve using 12 cores would take over a week on this
 same computer to determine C<Pi(10^16)>.
 
 Also see the function L</prime_count_approx> which gives a very good
@@ -2997,11 +2997,11 @@ sieving is done in the typically small difference zone.
 
 While this method is hundreds of times faster than generating primes, and
 doesn't involve big tables of precomputed values, it still can take a fair
-amount of time and space for large inputs.  Calculating the C<10^11th> prime
-takes a bit under 2 seconds, the C<10^12th> prime takes 10 seconds, and the
-C<10^13th> prime (323780508946331) takes 1 minute.  Think about whether
-a bound or approximation would be acceptable, as they can be computed
-analytically.
+amount of time for large inputs.  Calculating the C<10^12th> prime takes
+about 1 second, the C<10^13th> prime takes under 10 seconds, and the
+C<10^14th> prime (3475385758524527) takes under one minute.  Think about
+whether a bound or approximation would be acceptable, as they can be
+computed analytically.
 
 If the bigint or bignum module is not in use, this will generate an overflow
 exception if the number requested would result in a prime that cannot fit in
@@ -4833,6 +4833,7 @@ Perl modules, counting the primes to C<800_000_000> (800 million):
 
   Time (s)   Module                      Version  Notes
   ---------  --------------------------  -------  -----------
+       0.002 Math::Prime::Util           0.35     using extended LMO
        0.007 Math::Prime::Util           0.12     using Lehmer's method
        0.27  Math::Prime::Util           0.17     segmented mod-30 sieve
        0.39  Math::Prime::Util::PP       0.24     Perl (Lehmer's method)
@@ -5072,6 +5073,10 @@ Gabriel Mincu, "An Asymptotic Expansion", I<Journal of Inequalities in Pure and 
 
 =item *
 
+Christian Bau, "The Extended Meissel-Lehmer Algorithm", 2003, preprint with example C++ implementation.  Very detailed implementation-specific paper which was used for the implementation here.  Highly recommended for implementing a sieve-based LMO.  L<http://cs.swan.ac.uk/~csoliver/ok-sat-library/OKplatform/ExternalSources/sources/NumberTheory/ChristianBau/>
+
+=item *
+
 David M. Smith, "Multiple-Precision Exponential Integral and Related Functions", I<ACM Transactions on Mathematical Software>, v37, n4, 2011.  L<http://myweb.lmu.edu/dmsmith/toms2011.pdf>
 
 =item *
@@ -5131,7 +5136,7 @@ John Brillhart, D. H. Lehmer, and J. L. Selfridge, "New Primality Criteria and F
 
 =head1 COPYRIGHT
 
-Copyright 2011-2012 by Dana Jacobsen E<lt>dana@acm.orgE<gt>
+Copyright 2011-2013 by Dana Jacobsen E<lt>dana@acm.orgE<gt>
 
 This program is free software; you can redistribute it and/or modify it under the same terms as Perl itself.
 

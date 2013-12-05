@@ -6,7 +6,7 @@ use Math::BigInt try=>"GMP,Pari";
 
 BEGIN {
   $Math::Prime::Util::PP::AUTHORITY = 'cpan:DANAJ';
-  $Math::Prime::Util::PP::VERSION = '0.34';
+  $Math::Prime::Util::PP::VERSION = '0.35';
 }
 
 # The Pure Perl versions of all the Math::Prime::Util routines.
@@ -2493,7 +2493,7 @@ Math::Prime::Util::PP - Pure Perl version of Math::Prime::Util
 
 =head1 VERSION
 
-Version 0.34
+Version 0.35
 
 
 =head1 SYNOPSIS
