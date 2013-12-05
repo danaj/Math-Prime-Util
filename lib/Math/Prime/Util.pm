@@ -1791,10 +1791,8 @@ sub prime_count {
       #if ($est_lehmer < $est_segment) {
       if ( ($high / ($high-$low+1)) < 100 ) {
         my $count;
-        $count  =   ($high > 8_000_000_000) ? _XS_LMO_pi($high)  : _XS_lehmer_pi($high);
-        if ($low > 2) {
-          $count -= ($low  > 8_000_000_000) ? _XS_LMO_pi($low-1) : _XS_lehmer_pi($low-1);
-        }
+        $count  =  _XS_LMO_pi($high);
+        $count -=  _XS_LMO_pi($low-1) if $low > 2;
         return $count;
       }
     }

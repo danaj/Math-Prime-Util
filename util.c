@@ -60,7 +60,7 @@
 #include "sieve.h"
 #include "primality.h"
 #include "cache.h"
-#include "lehmer.h"
+#include "lmo.h"
 
 static int _verbose = 0;
 void _XS_set_verbose(int v) { _verbose = v; }

@@ -18,9 +18,14 @@ Revision history for Perl module Math::Prime::Util
 
     [FUNCTIONALITY AND PERFORMANCE]
 
+    - Switched to extended LMO algorithm for prime_count.  Much better memory
+      use and much faster for large values.  Speeds up nth_prime also.
+
     - Some fixes for 32-bit.
 
     - prime_count_approx, upper, and lower return exact answers in more cases.
+
+    - Fixed a problem with Lehmer prime_count introduced in 0.34.
 
 
 0.34  2013-11-19

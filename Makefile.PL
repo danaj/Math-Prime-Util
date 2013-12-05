@@ -27,6 +27,7 @@ WriteMakefile1(
                     'primality.o '.
                     'aks.o '      .
                     'lehmer.o '   .
+                    'lmo.o '      .
                     'sieve.o '    .
                     'util.o '     .
                     'XS.o',

@@ -17,6 +17,7 @@
 #include "primality.h"
 #include "factor.h"
 #include "lehmer.h"
+#include "lmo.h"
 #include "aks.h"
 
 #if BITS_PER_WORD == 64 && defined(_MSC_VER)
@@ -202,6 +203,7 @@ _XS_nth_prime(IN UV n)
     _XS_meissel_pi = 4
     _XS_lehmer_pi = 5
     _XS_LMO_pi = 6
+    _XS_LMOS_pi = 7
   PREINIT:
     UV ret;
   CODE:
@@ -213,6 +215,7 @@ _XS_nth_prime(IN UV n)
       case 4: ret = _XS_meissel_pi(n); break;
       case 5: ret = _XS_lehmer_pi(n); break;
       case 6: ret = _XS_LMO_pi(n); break;
+      case 7: ret = _XS_LMOS_pi(n); break;
       default: croak("_XS_nth_prime: Unknown function alias"); break;
     }
     RETVAL = ret;

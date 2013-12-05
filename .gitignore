@@ -10,6 +10,7 @@ factor.o
 sieve.o
 util.o
 lehmer.o
+lmo.o
 primality.o
 aks.o
 blib*
