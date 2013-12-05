@@ -56,6 +56,7 @@
 /* Phi sieve multiplier, adjust for best performance */
 #define PHI_SIEVE_MULT 13
 
+#define FUNC_icbrt 1
 #include "lmo.h"
 #include "util.h"
 #include "cache.h"
@@ -64,21 +65,6 @@
 typedef unsigned char  uint8;
 typedef unsigned short uint16;
 typedef uint32_t       uint32;
-
-static UV icbrt(UV n) {
-  UV b, root = 0;
-  int s = 63;
-  if (n >= UVCONST(18446724184312856125)) return UVCONST(2642245);
-  for (; s >= 0; s -= 3) {
-    root += root;
-    b = 3*root*(root+1)+1;
-    if ((n >> s) >= b) {
-      n -= b << s;
-      root++;
-    }
-  }
-  return root;
-}
 
 static const unsigned char byte_ones[256] =
   {0,1,1,2,1,2,2,3,1,2,2,3,2,3,3,4,1,2,2,3,2,3,3,4,2,3,3,4,3,4,4,5,

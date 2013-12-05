@@ -130,14 +130,31 @@ typedef   signed long IV;
 #define prime_precalc(n)          /* */
 #define BITS_PER_WORD             ((ULONG_MAX <= 4294967295UL) ? 32 : 64)
 
-static UV isqrt(UV n)
-{
+static UV isqrt(UV n) {
   UV root;
   if (sizeof(UV) == 8 && n >= 18446744065119617025UL)  return 4294967295UL;
   if (sizeof(UV) == 4 && n >= 4294836225UL)            return 65535UL;
   root = (UV) sqrt((double)n);
   while (root*root > n)  root--;
   while ((root+1)*(root+1) <= n)  root++;
+  return root;
+}
+static UV icbrt(UV n) {
+  UV b, root = 0;
+  int s;
+  if (sizeof(UV) == 8) {
+    s = 63;  if (n >= 18446724184312856125UL)  return 2642245UL;
+  } else {
+    s = 30;  if (n >= 4291015625UL)            return 1625UL;
+  }
+  for ( ; s >= 0; s -= 3) {
+    root += root;
+    b = 3*root*(root+1)+1;
+    if ((n >> s) >= b) {
+      n -= b << s;
+      root++;
+    }
+  }
   return root;
 }
 
@@ -198,6 +215,7 @@ static uint32_t* generate_small_primes(UV n)
 /* We will use pre-sieving to speed up counting for small ranges */
 #define SIEVE_MULT   1
 
+#define FUNC_icbrt 1
 #include "lehmer.h"
 #include "util.h"
 #include "cache.h"
@@ -233,42 +251,7 @@ static uint32_t* generate_small_primes(UV n)
   if (verbose > 1) printf("generated %lu small primes, from 2 to %lu\n", i, (unsigned long)primes[i]);
   return primes;
 }
-
 #endif
-
-static UV icbrt(UV n)
-{
-  UV root = 0;
-  /* int s = BITS_PER_WORD - (BITS_PER_WORD % 3); */
-#if BITS_PER_WORD == 32
-  int s = 30;
-  if (n >= UVCONST(4291015625)) return UVCONST(1625);
-#else
-  int s = 63;
-  if (n >= UVCONST(18446724184312856125)) return UVCONST(2642245);
-#endif
-#if 0
-  /* The integer cube root code is about 30% faster for me */
-  root = (UV) pow(n, 1.0/3.0);
-  if (root*root*root > n) {
-    root--;
-    while (root*root*root > n)  root--;
-  } else {
-    while ((root+1)*(root+1)*(root+1) <= n)  root++;
-  }
-#else
-  for ( ; s >= 0; s -= 3) {
-    UV b;
-    root += root;
-    b = 3*root*(root+1)+1;
-    if ((n >> s) >= b) {
-      n -= b << s;
-      root++;
-    }
-  }
-#endif
-  return root;
-}
 
 
 /* Given an array of primes[1..lastprime], return Pi(n) where n <= lastprime.
