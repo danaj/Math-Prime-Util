@@ -238,6 +238,7 @@ typedef struct {
   uint32   *first_bit_index;       /* offset relative to start for this prime */
   uint8    *multiplier;            /* mod-30 wheel of each prime */
   UV        start;                 /* x value of first bit of segment */
+  UV        phi_total;             /* cumulative bit count before removal */
   uint32    size;                  /* segment size in bits */
   uint32    first_prime;           /* index of first prime in segment */
   uint32    last_prime;            /* index of last prime in segment */
@@ -303,13 +304,13 @@ static UV _sieve_phi(UV segment_x, const uint32_t* sieve, const uint32* sieve_wo
                 mult = (casenum+1) % 8; \
                 if (si >= size) break;
 
-static UV remove_primes(uint32 index, uint32 last_index, sieve_t* s, const uint32_t* primes)
+static void remove_primes(uint32 index, uint32 last_index, sieve_t* s, const uint32_t* primes)
 {
   uint32    size = (s->size + 1) / 2;
   uint32_t *sieve = s->sieve;
   uint8    *word_count = s->word_count;
-  UV        total = s->totals[last_index];
 
+  s->phi_total = s->totals[last_index];
   for ( ;index <= last_index; index++) {
     if (index >= s->first_prime && index <= s->last_prime) {
       uint32 b = (primes[index] - (uint32) s->start - 1) / 2;
@@ -338,7 +339,6 @@ static UV remove_primes(uint32 index, uint32 last_index, sieve_t* s, const uint3
     }
   }
   s->totals[last_index] += make_sieve_sums(s->size, s->word_count, s->word_count_sum);
-  return total;
 }
 
 static void word_tile (uint32_t* source, uint32 from, uint32 to) {
@@ -349,7 +349,7 @@ static void word_tile (uint32_t* source, uint32 from, uint32 to) {
   }
 }
 
-static UV init_segment(sieve_t* s, UV segment_start, uint32 size, uint32 start_prime_index, uint32 sieve_last, const uint32_t* primes)
+static void init_segment(sieve_t* s, UV segment_start, uint32 size, uint32 start_prime_index, uint32 sieve_last, const uint32_t* primes)
 {
   uint32    i, words;
   uint32_t* sieve = s->sieve;
@@ -415,7 +415,7 @@ static UV init_segment(sieve_t* s, UV segment_start, uint32 size, uint32 start_p
       sieve_zero(sieve, b, word_count);
     }
   }
-  return remove_primes(6, start_prime_index, s, primes);
+  remove_primes(6, start_prime_index, s, primes);
 }
 
 /* However we want to handle reduced prime counts */
@@ -424,12 +424,12 @@ static UV init_segment(sieve_t* s, UV segment_start, uint32 size, uint32 start_p
 #define prev_sieve_prime(n) \
   prev_sieve_prime(n, &prev_sieve[0], &ps_start, ps_max, primes)
 #define sieve_phi(x) \
-  phi_total + _sieve_phi((x) - ss.start, ss.sieve, ss.word_count_sum)
+  ss.phi_total + _sieve_phi((x) - ss.start, ss.sieve, ss.word_count_sum)
 
 
 UV _XS_LMO_pi(UV n)
 {
-  UV        N2, N3, K2, K3, M, sum1, sum2, phi_total, phi_value;
+  UV        N2, N3, K2, K3, M, sum1, sum2, phi_value;
   UV        sieve_start, sieve_end, least_divisor, step7_max, last_phi_sieve;
   uint32    j, k, piM, KM, end, prime, prime_index;
   uint32    ps_start, ps_max, smallest_divisor, nprimes;
@@ -551,7 +551,7 @@ UV _XS_LMO_pi(UV n)
     /* Only divisors s.t. sieve_start <= N / divisor < sieve_end considered. */
     least_divisor = n / sieve_end;
     /* Initialize the sieve segment and all associated variables. */
-    phi_total = init_segment(&ss, sieve_start, sieve_end - sieve_start, c, K3, primes);
+    init_segment(&ss, sieve_start, sieve_end - sieve_start, c, K3, primes);
 
     /* Step 6:  For c < k < KM:  For 1+M/primes[k+1] <= x <= M, x square-free
      * and has no factor <= primes[k+1], sum phi(n / (x*primes[k+1]), k). */
@@ -560,7 +560,7 @@ UV _XS_LMO_pi(UV n)
       uint32 start = (least_divisor >= pk * U32_CONST(0xFFFFFFFE))
                    ? U32_CONST(0xFFFFFFFF)
                    : (least_divisor / pk + 1)/2;
-      phi_total = remove_primes(k, k, &ss, primes);
+      remove_primes(k, k, &ss, primes);
       for (j = ss.prime_index[k] - 1; j >= start; j--) {
         uint32 lpf = factor_table[j];
         if (lpf > pk) {
@@ -574,7 +574,7 @@ UV _XS_LMO_pi(UV n)
     /* Step 7:  For KM <= K < Pi_M:  For primes[k+2] <= x <= M,
      * sum phi(n / (x*primes[k+1]), k). */
     for (; k < step7_max; k++) {
-      phi_total = remove_primes(k, k, &ss, primes);
+      remove_primes(k, k, &ss, primes);
       if (ss.prime_index[k] >= k+2) {
         UV pk = primes[k+1];
         for (j = ss.prime_index[k]; j >= k+2; j--) {
@@ -590,7 +590,7 @@ UV _XS_LMO_pi(UV n)
       step7_max--;
 
     /* Step 8:  For KM <= K < K3, sum -phi(n / primes[k+1], k) */
-    phi_total = remove_primes(k, K3, &ss, primes);
+    remove_primes(k, K3, &ss, primes);
     /* Step 9:  For K3 <= k < K2, sum -phi(n / primes[k+1], k) + (k-K3). */
     while (prime > least_divisor && prime_index >= piM) {
       sum1 += prime_index - K3;
