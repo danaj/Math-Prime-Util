@@ -5,7 +5,7 @@ use warnings;
 # This is a subset of our tests.  You really should run the whole test suite
 # on the PP code.  What this will do is basic regression testing.
 my $extra = defined $ENV{EXTENDED_TESTING} && $ENV{EXTENDED_TESTING};
-my $use64 = ~0 > 4294967295;
+my $use64 = ~0 > 4294967295 && ~0 != 18446744073709550592;
 
 use Test::More;
 my @small_primes = qw/
