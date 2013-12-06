@@ -650,12 +650,8 @@ UV _XS_nth_prime(UV n)
 
   /* For relatively small values, generate a sieve and count the results.
    *
-   * For larger values, compute a lower bound, use Lehmer's algorithm to get
-   * a fast prime count, then start segment sieving from there.
-   *
-   * For very large values, binary search on Riemann's R function to get a
-   * good approximation, use Lehmer's algorithm to get the count, then walk
-   * backwards or sieve forwards.
+   * For larger values, compute an approximate low estimate, use our fast
+   * prime count, then segment sieve forwards or backwards for the rest.
    */
   if (upper_limit <= get_prime_cache(0, 0) || upper_limit <= 32*1024*30) {
     /* Generate a sieve and count. */
@@ -665,50 +661,30 @@ UV _XS_nth_prime(UV n)
       count += count_segment_maxcount(cache_sieve, segment_size, target, &p);
     release_prime_cache(cache_sieve);
   } else {
-    double fn = n;
-    double flogn = log(fn);
-    double flog2n = log(flogn);   /* Dusart 2010, page 2, n >= 3 */
-    UV lower_limit = fn * (flogn + flog2n - 1.0 + ((flog2n-2.10)/flogn));
-#if BITS_PER_WORD == 32
-    if (1) {
-#else
-    if (n <= UVCONST(20000000000)) {
-#endif
-      /* Calculate lower limit, get count, sieve to that */
-      segment_size = lower_limit / 30;
-      lower_limit = 30 * segment_size - 1;
-      count = _XS_LMO_pi(lower_limit) - 3;
-      MPUassert(count <= target, "Pi(nth_prime_lower(n))) > n");
-    } else {
-      /* Compute approximate nth prime via binary search on R(n) */
-      UV lo = lower_limit;
-      UV hi = upper_limit;
-      double lor = _XS_RiemannR(lo);
-      double hir = _XS_RiemannR(hi);
-      while (lor < hir) {
-        UV mid = (UV)  ((lo + hi) / 2);
-        double midr = _XS_RiemannR(mid);
-        if (midr <= n) { lo = mid+1;  lor = _XS_RiemannR(lo); }
-        else           { hi = mid; hir = midr; }
-      }
-      /* Bias toward lower, because we want to sieve up if possible */
-      lower_limit = (UV) (double)(0.9999999*(lo-1));
-      segment_size = lower_limit / 30;
-      lower_limit = 30 * segment_size - 1;
-      count = _XS_LMO_pi(lower_limit);
-      /*
-        printf("We've estimated %lu too %s.\n", (count>n)?count-n:n-count, (count>n)?"FAR":"little");
-        printf("Our limit %lu %s a prime\n", lower_limit, _XS_is_prime(lower_limit) ? "is" : "is not");
-      */
+    /* A binary search on RiemannR is nice, but ends up either often being
+     * being higher (requiring going backwards) or biased and then far too
+     * low.  Using the inverse Li is easier and more consistent. */
+    UV lower_limit = _XS_Inverse_Li(n);
+    /* For even better performance, add in half the usual correction, which
+     * will get us even closer, so even less sieving required.  However, it
+     * is now possible to get a result higher than the value, so we'll need
+     * to handle that case.  It still ends up being a better deal than R,
+     * given that we don't have a fast backward sieve. */
+    lower_limit += _XS_Inverse_Li(isqrt(n))/4;
+    segment_size = lower_limit / 30;
+    lower_limit = 30 * segment_size - 1;
+    count = _XS_LMO_pi(lower_limit);
 
-      if (count > n) { /* Too far.  Walk backwards */
-        if (_XS_is_prime(lower_limit)) count--;
-        for (p = 0; p <= (count-n); p++)
-          lower_limit = _XS_prev_prime(lower_limit);
-        return lower_limit;
-      }
-      count -= 3;
+    /* printf("We've estimated %lu too %s.\n", (count>n)?count-n:n-count, (count>n)?"FAR":"little"); */
+    /* printf("Our limit %lu %s a prime\n", lower_limit, _XS_is_prime(lower_limit) ? "is" : "is not"); */
+
+    if (count >= n) { /* Too far.  Walk backwards */
+      if (_XS_is_prime(lower_limit)) count--;
+      for (p = 0; p <= (count-n); p++)
+        lower_limit = _XS_prev_prime(lower_limit);
+      return lower_limit;
     }
+    count -= 3;
 
     /* Make sure the segment siever won't have to keep resieving. */
     prime_precalc(isqrt(upper_limit));
@@ -1109,6 +1085,25 @@ double _XS_LogarithmicIntegral(double x) {
   if (x <= 0) croak("Invalid input to LogarithmicIntegral:  x must be > 0");
   return _XS_ExponentialIntegral(log(x));
 }
+
+/* Thanks to Kim Walisch for this idea */
+UV _XS_Inverse_Li(UV x) {
+  double n = x;
+  double logn = log(n);
+  UV lo = (UV) (n*logn);
+  UV hi = (UV) (n*logn * 2 + 2);
+
+  if (x < 1)  return 0;
+  if (hi <= lo) hi = UV_MAX;
+  while (lo < hi) {
+    UV mid = lo + (hi-lo)/2;
+    if (_XS_LogarithmicIntegral(mid) < x) lo = mid+1;
+    else                                  hi = mid;
+  }
+  return lo;
+}
+
+
 
 /*
  * Storing the first 10-20 Zeta values makes sense.  Past that it is purely
