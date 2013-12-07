@@ -2180,6 +2180,7 @@ sub prime_count_approx {
 
   #    Method             10^10 %error  10^19 %error
   #    -----------------  ------------  ------------
+  #    n/(log(n)-1)        .22%          .06%
   #    average bounds      .01%          .0002%
   #    li(n)               .0007%        .00000004%
   #    li(n)-li(n^.5)/2    .0004%        .00000001%
@@ -2906,8 +2907,8 @@ handles iterating across bigints.
 
 Returns the Prime Count function C<Pi(n)>, also called C<primepi> in some
 math packages.  When given two arguments, it returns the inclusive
-count of primes between the ranges (e.g. C<(13,17)> returns 2, C<14,17>
-and C<13,16> return 1, and C<14,16> returns 0).
+count of primes between the ranges.  E.g. C<(13,17)> returns 2, C<(14,17)>
+and C<(13,16)> return 1, C<(14,16)> returns 0.
 
 The current implementation decides based on the ranges whether to use a
 segmented sieve with a fast bit count, or the extended LMO algorithm.
@@ -2924,8 +2925,8 @@ The extended LMO method has complexity approximately
 C<O(b^(2/3)) + O(a^(2/3))>, and also uses low memory.
 A calculation of C<Pi(10^14)> completes in a few seconds, C<Pi(10^15)>
 in well under a minute, and C<Pi(10^16)> in about one minute.  In
-contrast, even primesieve using 12 cores would take over a week on this
-same computer to determine C<Pi(10^16)>.
+contrast, even parallel primesieve would take over a week on a
+similar machine to determine C<Pi(10^16)>.
 
 Also see the function L</prime_count_approx> which gives a very good
 approximation to the prime count, and L</prime_count_lower> and
@@ -2988,14 +2989,13 @@ the upper and lower bounds.
 Returns the prime that lies in index C<n> in the array of prime numbers.  Put
 another way, this returns the smallest C<p> such that C<Pi(p) E<gt>= n>.
 
-For relatively small inputs (below 2 million or so), this does a sieve over
+For relatively small inputs (below 1 million or so), this does a sieve over
 a range containing the nth prime, then counts up to the number.  This is fairly
-efficient in time and memory.  For larger values, a binary search is performed
-between the Dusart 2010 bounds using Riemann's R function, then a fast
-prime counting method is used to calculate the count up to that point, then
-sieving is done in the typically small difference zone.
+efficient in time and memory.  For larger values, create a low-biased estimate
+using the inverse logarithmic integral, use a fast prime count, then sieve in
+the small difference.
 
-While this method is hundreds of times faster than generating primes, and
+While this method is thousands of times faster than generating primes, and
 doesn't involve big tables of precomputed values, it still can take a fair
 amount of time for large inputs.  Calculating the C<10^12th> prime takes
 about 1 second, the C<10^13th> prime takes under 10 seconds, and the
@@ -3003,10 +3003,8 @@ C<10^14th> prime (3475385758524527) takes under one minute.  Think about
 whether a bound or approximation would be acceptable, as they can be
 computed analytically.
 
-If the bigint or bignum module is not in use, this will generate an overflow
-exception if the number requested would result in a prime that cannot fit in
-a native type.  If bigints are in use, then the calculation will proceed,
-though it will be exceedingly slow.  A later version of
+If the result is larger than a native integer size (32-bit or 64-bit), the
+result will take a very long time.  A later version of
 L<Math::Prime::Util::GMP> may include this functionality which would help for
 32-bit machines.
 
