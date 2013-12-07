@@ -280,7 +280,7 @@ static UV bs_prime_count(uint32_t n, uint32_t const* const primes, uint32_t last
     if (j > (n>>4)) j = n>>4;
   }
   while (i < j) {
-    UV mid = (i+j)/2;
+    UV mid = i + (j-i)/2;
     if (primes[mid] <= n)  i = mid+1;
     else                   j = mid;
   }
