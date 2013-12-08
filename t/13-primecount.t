@@ -156,7 +156,7 @@ sub parse_range {
 
 # Make sure each specific algorithm isn't broken.
 SKIP: {
-  skip "Not XS -- skipping direct primecount tests", 5 unless $isxs;
+  skip "Not XS -- skipping direct primecount tests", 6 unless $isxs;
   # This has to be above SIEVE_LIMIT in lehmer.c and lmo.c or nothing happens.
   is(Math::Prime::Util::_XS_lehmer_pi  (66123456), 3903023, "XS Lehmer count");
   is(Math::Prime::Util::_XS_meissel_pi (66123456), 3903023, "XS Meissel count");
