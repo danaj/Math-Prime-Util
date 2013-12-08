@@ -34,7 +34,6 @@
   not completely convinced we can't do better.
 
 - Big features:
-   - LMO prime count
    - QS factoring
 
 - segment sieve should itself use a segment for its primes.
@@ -60,3 +59,10 @@
   extra primality checks, which aren't cheap in PP.
 
 - Consider using Test::Number::Delta for many tests
+
+- More tweaking of LMO prime count.
+    - Consider using UV size for sieve
+    - is there any way to see if we could safely use asm popcnt?
+    - OpenMP.  The step 7 inner loop is available.
+
+- Add Inverse Li and Legendre Phi to API?
