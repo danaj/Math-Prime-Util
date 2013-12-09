@@ -64,5 +64,6 @@
     - Consider using UV size for sieve
     - is there any way to see if we could safely use asm popcnt?
     - OpenMP.  The step 7 inner loop is available.
+    - Convert to 32-bit+GMP to support large inputs, add to MPU::GMP.
 
 - Add Inverse Li and Legendre Phi to API?
