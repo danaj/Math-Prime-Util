@@ -82,7 +82,7 @@ static uint32_t bitcount(uint32_t b) {
 #if 1
   return byte_ones[b&0xFF] + byte_ones[(b>>8)&0xFF] + byte_ones[(b>>16)&0xFF] + byte_ones[b>>24];
 #else
-  uint32 ret;
+  uint32_t ret;
   __asm__("popcnt %1, %0" : "=r" (ret) : "r" (b));
   return ret;
 #endif
@@ -122,8 +122,8 @@ static uint32 prev_sieve_max(UV maxprime) {
 }
 
 /* Simple SoE filling a segment */
-static void _prev_sieve_fill(uint32 start, uint8* sieve, const uint32_t* primes) {
-  uint32 i, j, p;
+static void _prev_sieve_fill(UV start, uint8* sieve, const uint32_t* primes) {
+  UV i, j, p;
   memset( sieve, 0xFF, PREV_SIEVE_SIZE );
   for (i = 2, p = 3; p*p < start + (16*PREV_SIEVE_SIZE); p = primes[++i])
     for (j = (start == 0) ? p*p/2 : (p-1) - ((start+(p-1))/2) % p;
@@ -407,14 +407,8 @@ static void init_segment(sieve_t* s, UV segment_start, uint32 size, uint32 start
     sieve[words-1] &= ~ (0xffffffffUL << (size % 32));
   memset(sieve + words, 0x00, 4*(PHI_SIEVE_WORDS+2-words));
 
-  /* Now remove the rest of the primes and create counts+sums. */
+  /* Create counts, remove primes (updating counts and sums). */
   make_sieve_counts(sieve, s->size, word_count);
-  for (i = 6; i <= start_prime_index; i++) {
-    if (i >= s->first_prime && i <= s->last_prime) {
-      uint32 b = (primes[i] - segment_start - 1) / 2;
-      sieve_zero(sieve, b, word_count);
-    }
-  }
   remove_primes(6, start_prime_index, s, primes);
 }
 
