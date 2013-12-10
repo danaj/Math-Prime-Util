@@ -141,14 +141,6 @@ static int monty_mr64(const uint64_t n, const UV* bases, int cnt)
   }
   return 1;
 }
-#else
-#if defined(__GNUC__)
-#define UNUSEDVAR __attribute__ ((unused))
-#else
-#define UNUSEDVAR
-#endif
-static int monty_mr64(const UNUSEDVAR uint64_t n, const UNUSEDVAR UV* bases, int UNUSEDVAR cnt)
-{ croak("configuration error in primality.c"); }
 #endif
 /******************************************************************************/
 
@@ -217,8 +209,10 @@ int _XS_miller_rabin(UV const n, const UV *bases, int nbases)
   MPUassert(n > 3, "MR called with n <= 3");
   if ((n & 1) == 0) return 0;
 
-  if (USE_MONT_PRIMALITY && n >= UVCONST(4294967295))
+#if USE_MONT_PRIMALITY
+  if (n >= UVCONST(4294967295))
     return monty_mr64((uint64_t)n, bases, nbases);
+#endif
 
   while (!(d&1)) {  s++;  d >>= 1;  }
 
