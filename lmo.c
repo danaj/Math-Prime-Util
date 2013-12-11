@@ -14,14 +14,16 @@
  * This file is part of the Math::Prime::Util Perl module, but it should
  * not be difficult to turn it into standalone code.
  *
- * The main references I used were:
+ * The algorithm details are based on Christian Bau's earlier work.
+ *
+ * References:
  *  - Christian Bau's paper and example implementation, 2003, Christian Bau
  *    This was of immense help.  References to "step #" refer to this preprint.
  *  - "Computing Pi(x): the combinatorial method", 2006, Tomás Oliveira e Silva
  *  - "Computing Pi(x): The Meissel, Lehmer, Lagarias, Miller, Odlyzko Method"
  *    1996, Deléglise and Rivat.
  *
- * Comparisons to the other prime counting implementations here:
+ * Comparisons to the other prime counting implementations in this package:
  *
  * Meissel: Combinatorial phi.  Simple implementation.
  * Lehmer:  Combinatorial phi.  Memory use grows rapidly.
@@ -496,7 +498,7 @@ UV _XS_LMO_pi(UV n)
   end = (M+1)/2;
 
   /* Start at index K2, which is the prime preceeding N^1/2 */
-  prime = prev_sieve_prime(N2+1);
+  prime = prev_sieve_prime( (N2 >= ps_start) ? ps_start : N2+1 );
   prime_index = K2 - 1;
   step7_max = K3;
 
