@@ -159,9 +159,10 @@ static uint32 prev_sieve_prime(uint32 n, uint8* sieve, uint32* segment_start, ui
 }
 
 /* Create factor table.
- * In lehmer.c we create mu and lpf arrays, which I suspect is faster.
- * Here we use Christian Bau's method, which is more memory efficient.
- * TODO: Neither the speed nor space really matter, but we should measure them.
+ * In lehmer.c we create mu and lpf arrays.  Here we use Christian Bau's
+ * method, which is slightly more memory efficient and also a bit faster than
+ * the code there (which does not use our fast ranged moebius).  It makes
+ * very little difference -- mainly using this table is more convenient.
  *
  * In a uint16 we have stored:
  *    0     moebius(n) = 0
