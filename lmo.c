@@ -14,7 +14,7 @@
  * This file is part of the Math::Prime::Util Perl module, but it should
  * not be difficult to turn it into standalone code.
  *
- * The algorithm details are based on Christian Bau's earlier work.
+ * The structure of the main routine is based on Christian Bau's earlier work.
  *
  * References:
  *  - Christian Bau's paper and example implementation, 2003, Christian Bau
