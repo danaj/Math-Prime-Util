@@ -450,7 +450,7 @@ UV _XS_LMO_pi(UV n)
   K3 = simple_pi(N3);        /* Pi(N3) */
 
   /* M is N^1/3 times a tunable performance factor. */
-  M = M_FACTOR(N3);
+  M = (N3 > 500) ? M_FACTOR(N3) : N3+N3/2;
   if (M >= N2) M = N2 - 1;         /* M must be smaller than N^1/2 */
   if (M < N3) M = N3;              /* M must be at least N^1/3 */
 
