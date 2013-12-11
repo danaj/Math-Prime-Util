@@ -25,9 +25,12 @@
  *
  * Comparisons to the other prime counting implementations in this package:
  *
+ * Sieve:   Segmented, single threaded, thread-safe.  Small table enhanced,
+ *          fastest for n < 60M.  Bad growth rate (like all sieves will have).
+ * Legendre:Combinatorial phi.  Simple implementation.
  * Meissel: Combinatorial phi.  Simple implementation.
  * Lehmer:  Combinatorial phi.  Memory use grows rapidly.
- * LMOS:    Combinatorial phi.  Very basic LMO implementation.
+ * LMOS:    Combinatorial phi.  Basic LMO implementation.
  * LMO:     Sieve phi.  10-50x faster than LMOS, better growth rate,
  *          Much, much better memory use than the others.
  *
@@ -51,7 +54,7 @@
 
 /* Below this size, just sieve (with table speedup). */
 #define SIEVE_LIMIT  60000000
-/* Adjust to get best performance */
+/* Adjust to get best performance.  Alpha from TOS paper. */
 #define M_FACTOR(n)     (UV) ((double)n * (log(n)/log(5.2)) * (log(log(n))-1.4))
 /* Size of segment used for previous primes, must be >= 21 */
 #define PREV_SIEVE_SIZE 512
