@@ -395,9 +395,9 @@ sub next_prime {
 
   return $_prime_next_small[$n] if $n <= $#_prime_next_small;
 
-  if (ref($n) ne 'Math::BigInt' &&
-      $n >= ((_PP_prime_maxbits == 32) ? 4294967291 : 18446744073709551557)) {
-    $n = Math::BigInt->new(''.$n);
+  if (ref($n) ne 'Math::BigInt' && $n >= 4294967291) {
+    $n = Math::BigInt->new(''.$_[0])
+       if _PP_prime_maxbits == 32 || $n >= 18446744073709551557;
   }
 
   # Be careful trying to do:

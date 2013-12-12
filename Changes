@@ -1,5 +1,13 @@
 Revision history for Perl module Math::Prime::Util
 
+0.36  2013-12
+
+    - Some 5.6.2-is-broken workarounds.
+
+    - Some LMO edge cases:  small numbers that only show up if a #define is
+      changed, and counts > 18440000000000000000.  Tested through 2^64-1 now.
+
+
 0.35  2013-12-08
 
     [API Changes]

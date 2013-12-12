@@ -108,6 +108,7 @@ xt/make-script-test-data.pl
 xt/measure_zeta_accuracy.pl
 xt/pari-totient-moebius.pl
 xt/nthprime.t
+xt/primecount-approx.t
 xt/primecount-many.t
 xt/primes-edgecases.pl
 xt/rwh_primecount.py

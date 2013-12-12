@@ -1198,7 +1198,7 @@ sub consecutive_integer_lcm {
   _validate_num($n) || _validate_positive_integer($n);
   return 0 if $n < 1;
 
-  my $max = ($_Config{'maxbits'} == 32) ? 22 : ($] < 5.008) ? 43 : 46;
+  my $max = ($_Config{'maxbits'} == 32) ? 22 : ($] < 5.008) ? 37 : 46;
 
   if ($_HAVE_GMP && defined &Math::Prime::Util::GMP::consecutive_integer_lcm) {
     my $clcm = Math::Prime::Util::GMP::consecutive_integer_lcm($n);
