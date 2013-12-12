@@ -67,9 +67,15 @@
 #include "cache.h"
 #include "sieve.h"
 
-typedef unsigned char  uint8;
-typedef unsigned short uint16;
-typedef uint32_t       uint32;
+#ifdef _MSC_VER
+  typedef unsigned __int8   uint8;
+  typedef unsigned __int16  uint16;
+  typedef unsigned __int32  uint32;
+#else
+  typedef unsigned char  uint8;
+  typedef unsigned short uint16;
+  typedef uint32_t       uint32;
+#endif
 
 static const unsigned char byte_ones[256] =
   {0,1,1,2,1,2,2,3,1,2,2,3,2,3,3,4,1,2,2,3,2,3,3,4,2,3,3,4,3,4,4,5,
