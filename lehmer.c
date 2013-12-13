@@ -723,7 +723,16 @@ UV _XS_legendre_pi(UV n)
     return _XS_prime_count(2, n);
 
   a = _XS_legendre_pi(isqrt(n));
-  phina = phi(n, a);
+  /* phina = phi(n, a); */
+  { /* The small phi routine is faster for large a */
+    cache_t pcache;
+    const uint32_t* primes = 0;
+    primes = generate_small_primes(a+1);
+    phicache_init(&pcache);
+    phina = phi_small(n, a, primes, a+1, &pcache);
+    phicache_free(&pcache);
+    Safefree(primes);
+  }
   return phina + a - 1;
 }
 
