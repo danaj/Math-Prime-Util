@@ -591,10 +591,11 @@ sub primes {
     }
 
     $low-- if $low == 2;  # Low of 2 becomes 1 for our program.
+    # Math::BigInt::GMP's RT 71548 will wreak havoc if we don't do this.
+    $low = Math::BigInt->new("$low") if ref($high) eq 'Math::BigInt';
     confess "Invalid _random_prime parameters: $low, $high" if ($low % 2) == 0 || ($high % 2) == 0;
 
     # We're going to look at the odd numbers only.
-    #my $range = $high - $low + 1;
     my $oddrange = (($high - $low) >> 1) + 1;
 
     croak "Large random primes not supported on old Perl" if $] < 5.008 && $_Config{'maxbits'} > 32 && $oddrange > 4294967295;
@@ -677,7 +678,7 @@ sub primes {
     if (ref($oddrange) eq 'Math::BigInt') {
       # Go to some trouble here because some systems are wonky, such as
       # giving us +a/+b = -r.  Also note the quotes for the bigint argument.
-      # Without that, Math::BigInt::GMP on 32-bit Win32 will return garbage.
+      # Without that, Math::BigInt::GMP can return garbage.
       my($nbins, $rem);
       ($nbins, $rem) = $oddrange->copy->bdiv( "$rand_part_size" );
       $nbins++ if $rem > 0;
@@ -2826,10 +2827,10 @@ using wheel factorization, or a segmented sieve.
 
   $n = next_prime($n);
 
-Returns the next prime greater than the input number.  If the input is not a
-bigint, then 0 is returned if the next prime is larger than a native integer
-type (the last representable primes being C<4,294,967,291> in 32-bit Perl and
-C<18,446,744,073,709,551,557> in 64-bit).
+Returns the next prime greater than the input number.  The result will be a
+bigint if it can not be exactly represented in the native int type
+(larger than C<4,294,967,291> in 32-bit Perl;
+larger than C<18,446,744,073,709,551,557> in 64-bit).
 
 
 =head2 prev_prime
@@ -4062,8 +4063,9 @@ still 100x slower than the real GMP code).
   # returns (2,2,2,2,2,3,3,3,3,5,5,5,7,7,11,13,13)
 
 Produces pairs of prime factors and exponents in numerical factor order.
-This may be more convenient for some algorithms.  This is the same form
-that Mathematica's C<FactorInteger[n]> function returns.
+This is more convenient for some algorithms.  This is the same form that
+Mathematica's C<FactorInteger[n]> and Pari/GP's C<factorint> functions
+return.  Note that L<Math::Pari> transposes the Pari result matrix.
 
 In scalar context, returns ω(n), the number of unique prime factors
 (L<OEIS A001221|http://oeis.org/A001221>).
@@ -4778,7 +4780,7 @@ very limited compared to those.
 L<primesieve|http://code.google.com/p/primesieve/> is the fastest publically
 available code I am aware of.  It is much faster than any of the alternatives,
 and even more so when run multi-threaded.  Tomás Oliveira e Silva's private
-code may be faster for very large values, but it isn't available for testing.
+code may be faster for very large values, but isn't available for testing.
 
 Note that the Sieve of Atkin is I<not> faster than the Sieve of Eratosthenes
 when both are well implemented.  The only Sieve of Atkin that is even
@@ -4788,46 +4790,22 @@ SoE implementations, and 2x slower than primesieve.
 
 =item Prime Counts and Nth Prime
 
-Up to a limit, extensive use of tables plus a good segmented sieve will
-produce the fastest results, but the number of tables needed to maintain
-good performance grows exponentially.  The code in this module approaches
-the best publically available results, with the notable exception of
-Christian Bau's L-M-O implementation.  The author of primesieve is also
-working on an L-M-O implementation.  None of these are state of the art
-compared to private research methods.
+Outside of private research implementations doing prime counts for
+C<n E<gt> 2^64>, this module should be close to state of the art in
+performance, and supports results up to C<2^64>.  Further performance
+improvements are planned, as well as expansion to larger values.
+
+The fastest solution for small inputs is a hybrid table/sieve method.
+This module does this for values below 60M.  As the inputs get larger,
+either the tables have to grow exponentially or speed must be
+sacrificed.  Hence this is not a good general solution for most uses.
 
 =back
 
 
 =head2 PRIME COUNTS
 
-Counting the primes to C<10^10> (10 billion), with time in seconds.
-Pi(10^10) = 455,052,511.
-The numbers below are for sieving.  Calculating C<Pi(10^10)> takes 0.064
-seconds using the Lehmer algorithm in version 0.12.
-
-   External C programs in C / C++:
-
-       1.9  primesieve 3.6 forced to use only a single thread
-       2.2  yafu 1.31
-       3.8  primegen (optimized Sieve of Atkin, conf-word 8192)
-       5.6  Tomás Oliveira e Silva's unoptimized segmented sieve v2 (Sep 2010)
-       6.7  Achim Flammenkamp's prime_sieve (32k segments)
-       9.3  http://tverniquet.com/prime/ (mod 2310, single thread)
-      11.2  Tomás Oliveira e Silva's unoptimized segmented sieve v1 (May 2003)
-      17.0  Pari 2.3.5 (primepi)
-
-   Small portable functions suitable for plugging into XS:
-
-       4.1  My segmented SoE used in this module (with unrolled inner loop)
-      15.6  My Sieve of Eratosthenes using a mod-30 wheel
-      17.2  A slightly modified verion of Terje Mathisen's mod-30 sieve
-      35.5  Basic Sieve of Eratosthenes on odd numbers
-      33.4  Sieve of Atkin, from Praxis (not correct)
-      72.8  Sieve of Atkin, 10-minute fixup of basic algorithm
-      91.6  Sieve of Atkin, Wikipedia-like
-
-Perl modules, counting the primes to C<800_000_000> (800 million):
+Counting the primes to C<800_000_000> (800 million):
 
   Time (s)   Module                      Version  Notes
   ---------  --------------------------  -------  -----------
@@ -4843,7 +4821,6 @@ Perl modules, counting the primes to C<800_000_000> (800 million):
      170.0   Faster Perl sieve (net)     2012-01  array of odds
      548.1   RosettaCode sieve (net)     2012-06  simplistic Perl
     3048.1   Math::Primality             0.08     Perl + Math::GMPz
-  ~11000     Math::Primality             0.04     Perl + Math::GMPz
   >20000     Math::Big                   1.12     Perl, > 26GB RAM used
 
 Python's standard modules are very slow: MPMATH v0.17 C<primepi> takes 169.5s
@@ -4903,7 +4880,7 @@ uses GMP (in Perl) for all work.  Under ~32-bits it uses 2 or 3 MR tests,
 while above 4759123141 it performs a BPSW test.  This is great for
 bigints over 2^64, but it is significantly slower than native precision
 tests.  With 64-bit numbers it is generally an order of magnitude or more
-slower than any of the others.  Once bigints are being used, its
+slower than any of the others.  Once bigints are being used, its relative
 performance is quite good.  It is faster than this module unless
 L<Math::Prime::Util::GMP> has been installed, in which case Math::Prime::Util
 is faster.
@@ -4912,9 +4889,8 @@ is faster.
 
 has some very effective code, but it has some overhead to get to it from
 Perl.  That means for small numbers it is relatively slow: an order of
-magnitude slower than M::P::XS and M::P::Util (though arguably this is
-only important for benchmarking since "slow" is ~2 microseconds).  Large
-numbers transition over to smarter tests so don't slow down much.  With
+magnitude slower than M::P::XS and M::P::Util (arguably this is
+only important for benchmarking since "slow" is ~2 microseconds).  With
 the default Pari version, C<isprime> will do M-R tests for 10 randomly
 chosen bases, but can perform a Pocklington-Lehmer proof if requested using
 C<isprime(x,1)>.  Both could fail to identify a composite.  If pari 2.3.5

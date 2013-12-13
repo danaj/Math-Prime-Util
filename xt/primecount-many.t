@@ -6,6 +6,8 @@ use Test::More;
 use Math::Prime::Util qw/prime_count prime_count_lower prime_count_upper prime_count_approx/;
 use Digest::SHA qw/sha256_hex/;
 
+my $use64 = ~0 > 4294967295;
+
 my %pivals = (
                 1000 =>                168,
                10000 =>               1229,
@@ -104,6 +106,14 @@ my %pivals = (
  2305843009213693952 =>  55890484045084135,
  4611686018427387904 => 109932807585469973,
  9223372036854775808 => 216289611853439384,
+# Leading up to 2**32-1
+4294000000 => 203236859,
+4294900000 => 203277205,
+4294960000 => 203279882,
+4294967000 => 203280211,
+4294967200 => 203280218,
+4294967290 => 203280220,
+4294967295 => 203280221,
 # From http://trac.sagemath.org/ticket/7539 plus sieving
 # 11000000000000000000 => 256890014776557326,
 # 12000000000000000000 => 279675001309887227,
@@ -131,6 +141,10 @@ my %pivals = (
 #
 );
 
+if (!$use64) {
+  delete @pivals{ grep { $_ > ~0 } keys %pivals };
+}
+
 plan tests => 5 + scalar(keys %pivals);
 
 # Test prime counts using sampling
@@ -145,11 +159,15 @@ diag "Sampling small prime counts, should take < 1 minute";
   is(sha256_hex($countstr), "d73736c54362136aa0a48bab44b55004b2e63e0d1d03a6cbe1aab42c6a579d0c", "prime counts 10^7..10^8 (sample 10k)");
   $countstr = join(" ", map { prime_count(500000*$_ + 250837 + $_) } 200 .. 2000);
   is(sha256_hex($countstr), "00a580b2f52b661f065f5ce49bd2aeacb3b169d8903cf824b65731441e40f0b9", "prime counts 10^8..10^9 (sample 500k)");
-  $countstr = join(" ", map { prime_count(10000000*$_ + 250837 + $_) } 100 .. 1000);
-  is(sha256_hex($countstr), "9fd78debf4b510ee6d230cabf314ebef5eb253ee63d5df658e45414613f7b8c2", "prime counts 10^9..10^10 (sample 10M)");
+  SKIP: {
+    skip "Skipping 10^9 to 10^10 if 32-bit", 1 unless $use64;
+    $countstr = join(" ", map { prime_count(10000000*$_ + 250837 + $_) } 100 .. 1000);
+    is(sha256_hex($countstr), "9fd78debf4b510ee6d230cabf314ebef5eb253ee63d5df658e45414613f7b8c2", "prime counts 10^9..10^10 (sample 10M)");
+  }
 }
 
-diag "Prime counts, will take a very long time";
+diag "Selected prime counts, will take hours to complete"
+  if $use64;
 foreach my $n (sort {$a <=> $b} keys %pivals) {
   my $pin = $pivals{$n};
   is( prime_count($n), $pin, "Pi($n) = $pin" );

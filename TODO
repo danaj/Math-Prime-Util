@@ -1,12 +1,9 @@
 - Testing requirements after changes:
-
-  - Test all functions return either native or bigints.  Functions that
+  * Test all functions return either native or bigints.  Functions that
     return raw MPU::GMP results will return strings, which isn't right.
-
-  - Valgrind, coverage
-
-  - compile with -O2 -g -Wall -Wextra -Wdeclaration-after-statement -fsigned-char
-
+  * Valgrind, coverage
+  * use:  -O2 -g -Wall -Wextra -Wdeclaration-after-statement -fsigned-char
+  * Test on 32-bit Perl.  Test on Win32.
 
 
 - Add test to check maxbits in compiled library vs. Perl
@@ -20,14 +17,10 @@
 
 - finish test suite for bignum.  Work on making it faster.
 
-- Test all routines for numbers on word-size boundary, or ranges that cross.
-
-- More testing on 32-bit machines.
-
-- An assembler version of mulmod for i386 would be _really_ helpful for
-  all the non-x86-64 Intel machines.
+- An assembler version of mulmod for i386.
 
 - More efficient Mertens.  The current version has poor growth.
+  For 32-bit, consider doing XS followed by sum for remainder.
 
 - It may be possible to have a more efficient ranged totient.  We're using
   the sieve up to n/2, which is better than most people seem to use, but I'm
