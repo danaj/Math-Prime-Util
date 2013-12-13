@@ -77,6 +77,26 @@
   typedef uint32_t       uint32;
 #endif
 
+typedef  UV  sword_t;
+#define SWORD_BITS  BITS_PER_WORD
+#define SWORD_ONES  UV_MAX
+#define SWORD_MASKBIT(bits)  (UVCONST(1) << ((bits) % SWORD_BITS))
+#define SWORD_CLEAR(s,bits)  s[bits/SWORD_BITS] &= ~SWORD_MASKBIT(bits)
+
+#if defined(__GNUC__) && defined(__SSE4_2__)
+static sword_t bitcount(sword_t b) {
+  sword_t ret;
+  __asm__("popcnt %1, %0" : "=r" (ret) : "r" (b));
+  return ret;
+}
+#elif SWORD_BITS == 64
+static sword_t bitcount(sword_t b) {
+  b -= (b >> 1) & 0x5555555555555555;
+  b = (b & 0x3333333333333333) + ((b >> 2) & 0x3333333333333333);
+  b = (b + (b >> 4)) & 0x0f0f0f0f0f0f0f0f;
+  return (b * 0x0101010101010101)>>56;
+}
+#else   /* Faster than __builtin_popcount */
 static const unsigned char byte_ones[256] =
   {0,1,1,2,1,2,2,3,1,2,2,3,2,3,3,4,1,2,2,3,2,3,3,4,2,3,3,4,3,4,4,5,
    1,2,2,3,2,3,3,4,2,3,3,4,3,4,4,5,2,3,3,4,3,4,4,5,3,4,4,5,4,5,5,6,
@@ -86,24 +106,12 @@ static const unsigned char byte_ones[256] =
    2,3,3,4,3,4,4,5,3,4,4,5,4,5,5,6,3,4,4,5,4,5,5,6,4,5,5,6,5,6,6,7,
    2,3,3,4,3,4,4,5,3,4,4,5,4,5,5,6,3,4,4,5,4,5,5,6,4,5,5,6,5,6,6,7,
    3,4,4,5,4,5,5,6,4,5,5,6,5,6,6,7,4,5,5,6,5,6,6,7,5,6,6,7,6,7,7,8};
-
-static uint32_t bitcount(uint32_t b) {
-  /* The simple table method is faster than __builtin_popcount or
-   * using a 11-bit word table.  It is slower than the Nahalem asm. */
-#if 1
-  return byte_ones[b&0xFF] + byte_ones[(b>>8)&0xFF] + byte_ones[(b>>16)&0xFF] + byte_ones[b>>24];
-#else
-  uint32_t ret;
-  __asm__("popcnt %1, %0" : "=r" (ret) : "r" (b));
-  return ret;
-#endif
+static sword_t bitcount(sword_t b) {
+  return byte_ones[(b    )&0xFF] + byte_ones[(b>> 8)&0xFF]
+       + byte_ones[(b>>16)&0xFF] + byte_ones[(b>>24)     ];
 }
+#endif
 
-/* static uint32 count_one_bits(const unsigned char* m, uint32 nbytes) {
-  uint32 count = 0;
-  while (nbytes--)  count += byte_ones[*m++];
-  return count;
-} */
 
 /* Create array of small primes: 0,2,3,5,...,prev_prime(n+1) */
 static uint32_t* make_primelist(uint32 n, uint32* number_of_primes)
@@ -242,7 +250,7 @@ static UV mapes(UV x, uint32 a)
 }
 
 typedef struct {
-  uint32_t *sieve;                 /* segment bit mask */
+  sword_t  *sieve;                 /* segment bit mask */
   uint8    *word_count;            /* bit count in each 64-bit word */
   uint32   *word_count_sum;        /* cumulative sum of word_count */
   UV       *totals;                /* total bit count for all phis at index */
@@ -257,22 +265,15 @@ typedef struct {
   uint32    last_prime_to_remove;  /* index of last prime p, p^2 in segment */
 } sieve_t;
 
-/* Size of phi sieve in 32-bit words.  Multiple of 2*2*3*5*7*11 bytes. */
+/* Size of phi sieve in words.  Multiple of 3*5*7*11 words. */
 #define PHI_SIEVE_WORDS (1155 * PHI_SIEVE_MULT)
 
 /* Bit counting using cumulative sums.  A bit slower than using a running sum,
  * but a little simpler and can be run in parallel. */
-static void make_sieve_counts(const uint32_t* sieve, uint32 sieve_size, uint8* sieve_word_count) {
-  uint32 lwords = (sieve_size + 127) / 128;
-  while (lwords--) {
-    *sieve_word_count++ = bitcount(sieve[0]) + bitcount(sieve[1]);
-    sieve += 2;
-  }
-}
 static uint32 make_sieve_sums(uint32 sieve_size, const uint8* sieve_word_count, uint32* sieve_word_count_sum) {
-  uint32 i, bc, lwords = (sieve_size + 127) / 128;
+  uint32 i, bc, words = (sieve_size + 2*SWORD_BITS-1) / (2*SWORD_BITS);
   sieve_word_count_sum[0] = 0;
-  for (i = 0, bc = 0; i+7 < lwords; i += 8) {
+  for (i = 0, bc = 0; i+7 < words; i += 8) {
     const uint8* cntptr = sieve_word_count + i;
     uint32* sumptr = sieve_word_count_sum + i;
     sumptr[1] = bc += cntptr[0];
@@ -284,17 +285,16 @@ static uint32 make_sieve_sums(uint32 sieve_size, const uint8* sieve_word_count, 
     sumptr[7] = bc += cntptr[6];
     sumptr[8] = bc += cntptr[7];
   }
-  for (; i < lwords; i++)
+  for (; i < words; i++)
     sieve_word_count_sum[i+1] = sieve_word_count_sum[i] + sieve_word_count[i];
-  return sieve_word_count_sum[lwords];
+  return sieve_word_count_sum[words];
 }
 
-static UV _sieve_phi(UV segment_x, const uint32_t* sieve, const uint32* sieve_word_count_sum) {
+static UV _sieve_phi(UV segment_x, const sword_t* sieve, const uint32* sieve_word_count_sum) {
   uint32 bits = (segment_x + 1) / 2;
-  uint32 words = bits / 32;
-  uint32 sieve_sum = sieve_word_count_sum[words/2];
-  if (words & 1) sieve_sum += bitcount( sieve[words-1] );
-  sieve_sum += bitcount( sieve[words] & ~(0xfffffffful << (bits % 32)) );
+  uint32 words = bits / SWORD_BITS;
+  uint32 sieve_sum = sieve_word_count_sum[words];
+  sieve_sum += bitcount( sieve[words] & ~(SWORD_ONES << (bits % SWORD_BITS)) );
   return sieve_sum;
 }
 
@@ -303,11 +303,11 @@ static UV _sieve_phi(UV segment_x, const uint32_t* sieve, const uint32* sieve_wo
  * clever, and does the job. */
 
 #define sieve_zero(sieve, si, wordcount) \
-  { uint32 index = si/32; \
-    uint32 mask = 1UL << (si % 32); \
+  { uint32  index = si/SWORD_BITS; \
+    sword_t mask  = SWORD_MASKBIT(si); \
     if (sieve[index] & mask) { \
       sieve[index] &= ~mask; \
-      wordcount[index/2]--; \
+      wordcount[index]--; \
     }  }
 
 #define sieve_case_zero(casenum, skip, si, p, size, mult, sieve, wordcount) \
@@ -319,7 +319,7 @@ static UV _sieve_phi(UV segment_x, const uint32_t* sieve, const uint32* sieve_wo
 static void remove_primes(uint32 index, uint32 last_index, sieve_t* s, const uint32_t* primes)
 {
   uint32    size = (s->size + 1) / 2;
-  uint32_t *sieve = s->sieve;
+  sword_t  *sieve = s->sieve;
   uint8    *word_count = s->word_count;
 
   s->phi_total = s->totals[last_index];
@@ -353,10 +353,10 @@ static void remove_primes(uint32 index, uint32 last_index, sieve_t* s, const uin
   s->totals[last_index] += make_sieve_sums(s->size, s->word_count, s->word_count_sum);
 }
 
-static void word_tile (uint32_t* source, uint32 from, uint32 to) {
+static void word_tile (sword_t* source, uint32 from, uint32 to) {
   while (from < to) {
     uint32 words = (2*from > to) ? to-from : from;
-    memcpy(source+from, source, 4*words);
+    memcpy(source+from, source, sizeof(sword_t)*words);
     from += words;
   }
 }
@@ -364,7 +364,7 @@ static void word_tile (uint32_t* source, uint32 from, uint32 to) {
 static void init_segment(sieve_t* s, UV segment_start, uint32 size, uint32 start_prime_index, uint32 sieve_last, const uint32_t* primes)
 {
   uint32    i, words;
-  uint32_t* sieve = s->sieve;
+  sword_t*  sieve = s->sieve;
   uint8*    word_count = s->word_count;
 
   s->start = segment_start;
@@ -391,36 +391,37 @@ static void init_segment(sieve_t* s, UV segment_start, uint32 size, uint32 start
     s->multiplier[s->last_prime_to_remove] = (p % 30) * 8 / 30;
   }
 
-  memset(sieve, 0xFF, 3*4);        /* Set first 3 words to all 1 bits */
+  memset(sieve, 0xFF, 3*sizeof(sword_t));  /* Set first 3 words to all 1 bits */
   if (start_prime_index >= 3)      /* Remove multiples of 3. */
-    for (i = 3/2; i < 3 * 32; i += 3)
-      sieve[i / 32] &= ~(1ul << (i % 32));
+    for (i = 3/2; i < 3 * SWORD_BITS; i += 3)
+      SWORD_CLEAR(sieve, i);
 
   word_tile(sieve, 3, 15);         /* Copy to first 15 = 3*5 words */
   if (start_prime_index >= 3)      /* Remove multiples of 5. */
-    for (i = 5/2; i < 15 * 32; i += 5)
-      sieve[i / 32] &= ~(1ul << (i % 32));
+    for (i = 5/2; i < 15 * SWORD_BITS; i += 5)
+      SWORD_CLEAR(sieve, i);
 
   word_tile(sieve, 15, 105);       /* Copy to first 105 = 3*5*7 words */
   if (start_prime_index >= 4)      /* Remove multiples of 7. */
-    for (i = 7/2; i < 105 * 32; i += 7)
-      sieve[i / 32] &= ~(1ul << (i % 32));
+    for (i = 7/2; i < 105 * SWORD_BITS; i += 7)
+      SWORD_CLEAR(sieve, i);
 
   word_tile(sieve, 105, 1155);     /* Copy to first 1155 = 3*5*7*11 words */
   if (start_prime_index >= 5)      /* Remove multiples of 11. */
-    for (i = 11/2; i < 1155 * 32; i += 11)
-      sieve[i / 32] &= ~(1ul << (i % 32));
+    for (i = 11/2; i < 1155 * SWORD_BITS; i += 11)
+      SWORD_CLEAR(sieve, i);
 
   size = (size+1) / 2;             /* size to odds */
-  words = (size + 31) / 32;        /* sieve size in 32-bit words */
+  words = (size + SWORD_BITS-1) / SWORD_BITS;   /* sieve size in words */
   word_tile(sieve, 1155, words);   /* Copy first 1155 words to rest */
   /* Zero all unused bits and words */
-  if (size % 32)
-    sieve[words-1] &= ~ (0xffffffffUL << (size % 32));
-  memset(sieve + words, 0x00, 4*(PHI_SIEVE_WORDS+2-words));
+  if (size % SWORD_BITS)
+    sieve[words-1] &= ~(SWORD_ONES << (size % SWORD_BITS));
+  memset(sieve + words, 0x00, sizeof(sword_t)*(PHI_SIEVE_WORDS+2 - words));
 
   /* Create counts, remove primes (updating counts and sums). */
-  make_sieve_counts(sieve, s->size, word_count);
+  for (i = 0; i < words; i++)
+    word_count[i] = bitcount(sieve[i]);
   remove_primes(6, start_prime_index, s, primes);
 }
 
@@ -467,9 +468,9 @@ UV _XS_LMO_pi(UV n)
     croak("Allocation failure in LMO Pi\n");
 
   /* Create other arrays */
-  New(0, ss.sieve,           PHI_SIEVE_WORDS   + 2, uint32_t);
-  New(0, ss.word_count,      PHI_SIEVE_WORDS/2 + 2, uint8);
-  New(0, ss.word_count_sum,  PHI_SIEVE_WORDS/2 + 2, uint32);
+  New(0, ss.sieve,           PHI_SIEVE_WORDS   + 2, sword_t);
+  New(0, ss.word_count,      PHI_SIEVE_WORDS   + 2, uint8);
+  New(0, ss.word_count_sum,  PHI_SIEVE_WORDS   + 2, uint32);
   New(0, ss.totals,          K3+2, UV);
   New(0, ss.prime_index,     K3+2, uint32);
   New(0, ss.first_bit_index, K3+2, uint32);
@@ -552,8 +553,8 @@ UV _XS_LMO_pi(UV n)
 
   for (sieve_start = 0; sieve_start < last_phi_sieve; sieve_start = sieve_end) {
     /* This phi segment goes from sieve_start to sieve_end. */
-    sieve_end = ((sieve_start + 64*PHI_SIEVE_WORDS) <  last_phi_sieve)
-              ?   sieve_start + 64*PHI_SIEVE_WORDS  :  last_phi_sieve;
+    sieve_end = ((sieve_start + 2*SWORD_BITS*PHI_SIEVE_WORDS) <  last_phi_sieve)
+              ?   sieve_start + 2*SWORD_BITS*PHI_SIEVE_WORDS  :  last_phi_sieve;
     /* Only divisors s.t. sieve_start <= N / divisor < sieve_end considered. */
     least_divisor = n / sieve_end;
     /* Initialize the sieve segment and all associated variables. */
