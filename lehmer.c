@@ -5,7 +5,7 @@
 
 /* Below this size, just sieve (with table speedup). */
 #define SIEVE_LIMIT  60000000
-#define MAX_PHI_MEM  (256*1024*1024)
+#define MAX_PHI_MEM  (896*1024*1024)
 
 /*****************************************************************************
  *
@@ -31,40 +31,23 @@
  * As with all Lehmer-Meissel-Legendre algorithms, memory use will be a
  * constraint with large values of x (see the table below).
  *
- * If you want something better, I highly recommend the paper "Computing
- * Pi(x): the combinatorial method" (2006) by Tomás Oliveira e Silva.  His
- * implementation is certainly much faster and lower memory than this.  I have
- * briefly run Christian Bau's LMO implementation which has the big advantage
- * of using almost no memory.  On the same machine that ran the times below,
- * I got 10^16 in 36s, 10^17 in 165s, 10^18 in 769s, 10^19 in 4162s.  All
- * using a single core.  That's 10-50x faster than this code.
+ * Math::Prime::Util now includes an extended LMO implementation, which will
+ * be quite a bit faster and much less memory than this code.  It is the
+ * default method for large counts.  Timing comparisons are in that file.
  *
- * Using my sieve code with everything running in serial, calculating pi(10^12)
- * is done under 1 second on my computer.  pi(10^14) takes under 30 seconds,
- * pi(10^16) in under 20 minutes.  Compared with Thomas R. Nicely's pix4
- * program, this one is 5x faster and uses 10x less memory.  When compiled
- * with parallel primesieve it is over 10x faster.
- *   pix4(10^16) takes 124 minutes, this code + primesieve takes < 4 minutes.
+ * Times and memory use for prime_count(10^15) on a Haswell 4770K:
  *
- * Timings with Perl + MPU with all-serial computation, no memory limit.
- * The last column is the standalone time with 12-core parallel primesieve.
- *
- *    n     phi(x,a) mem/time  |  stage 4 mem/time  | total time | pps time
- *   10^19  17884MB   1979.41  | 9144MB             |            | 7h 26m
- *   10^18   5515MB    483.46  | 2394MB             |            | 87m  0s
- *   10^17   1698MB    109.56  |  634MB   9684.1    | 163m 36  s | 17m 45s
- *   10^16    522MB     24.14  |  171MB   1066.3    |  18m 12  s |  3m 44s
- *   10^15    159MB      5.58  |   47MB    142.5    |   2m 28  s |   47.66 s
- *   10^14     48MB      1.28  |   13MB     22.26   |    23.61 s |   10.25 s
- *   10^13     14MB      0.294 |    4MB      3.82   |     4.12 s |    2.21 s
- *   10^12      4MB      0.070 |    1MB      0.707  |     0.78 s |    0.459s
- *   10^11      1MB      0.015 |             0.135  |     0.158s |    0.097s
- *   10^10               0.003 |             0.029  |     0.028s |    0.025s
- *
- * Using the standalone program with parallel primesieve speeds up stage 4
- * a lot for large values, as can be seen by the last column.  It does use
- * quite a bit more memory in stage 4 however (lowering SIEVE_MULT can reduce
- * it by as much as 10x, at the expense of some performance).
+ *       4.80s    1.3MB    LMO
+ *      27.51s* 136.0MB    Lehmer    Walisch primecount v0.7, 8 threads
+ *      42.99s* 159.4MB    Lehmer    standalone, 8 threads
+ *      50.82s* 136.2MB    Meissel   Walisch primecount v0.7, 8 threads
+ *      64.06s* 144.3MB    Legendre  Walisch primecount v0.7, 8 threads
+ *     114.40s   28.4MB    Lehmer    Walisch primecount v0.7, 1 thread
+ *     118.69s   27.1MB    LMOS
+ *     120.39s  158.4MB    Lehmer
+ *     112.40s  286.6MB    Meissel
+ *     303.77s   28.0MB    Legendre
+ *     868.96s 1668.1MB    Lehmer    pix4 by T.R. Nicely
  *
  * Reference: Hans Riesel, "Prime Numbers and Computer Methods for
  * Factorization", 2nd edition, 1994.

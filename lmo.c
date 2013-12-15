@@ -27,29 +27,30 @@
  *
  * Sieve:   Segmented, single threaded, thread-safe.  Small table enhanced,
  *          fastest for n < 60M.  Bad growth rate (like all sieves will have).
- * Legendre:Combinatorial phi.  Simple implementation.
- * Meissel: Combinatorial phi.  Simple implementation.
- * Lehmer:  Combinatorial phi.  Memory use grows rapidly.
- * LMOS:    Combinatorial phi.  Basic LMO implementation.
- * LMO:     Sieve phi.  10-50x faster than LMOS, better growth rate,
- *          Much, much better memory use than the others.
+ * Legendre:Simple.  Recursive caching phi.
+ * Meissel: Simple.  Non-recursive phi, lots of memory.
+ * Lehmer:  Non-recursive phi, tries to restrict memory.
+ * LMOS:    Simple.  Non-recursive phi, less memory than Lehmer above.
+ * LMO:     Sieve phi.  Much faster and less memory than the others.
  *
- * Performance is slightly worse than Christian Bau's implementation, but
- * in theory this implementation has more parallelization opportunities.
- * Timing below is single core using MPU.
+ * Timing below is single core Haswell 4770K using Math::Prime::Util.
  *
- *  |   n   |  Meissel |  Lehmer  |   LMOS   |    LMO    |
- *  +-------+----------+----------+----------+-----------+
- *  | 10^19 |          |          |          | 3765.02   |
- *  | 10^18 |          |          |          |  778.21   |
- *  | 10^17 |          |          | 8844.2   |  163.77   |
- *  | 10^16 | 1410.2   | 1043.6   | 1058.9   |   34.81   |
- *  | 10^15 |  137.1   |  137.3   |  142.7   |    7.905  |
- *  | 10^14 |   26.18  |   21.74  |   21.29  |    1.726  |
- *  | 10^13 |    5.155 |    3.947 |    3.353 |    0.405  |
- *  | 10^12 |    1.059 |    0.700 |    0.626 |    0.0936 |
- *  | 10^11 |    0.227 |    0.138 |    0.124 |    0.0227 |
- *  | 10^10 |    0.0509|    0.0309|    0.0286|    0.00589|
+ *  |   n   | Legendre |  Meissel |  Lehmer  |   LMOS   |    LMO    |
+ *  +-------+----------+----------+----------+----------+-----------+
+ *  | 10^19 |          |          |          |          | 2493.4    |
+ *  | 10^18 |          |          |          |          |  498.16   |
+ *  | 10^17 |          | 2950.9   | 7499.0   | 7125.7   |  103.03   |
+ *  | 10^16 | 2422.7   |  575.8   |  872.5   |  884.9   |   21.94   |
+ *  | 10^15 |  303.3   |  112.1   |  119.3   |  119.1   |    4.786  |
+ *  | 10^14 |   40.10  |   22.06  |   19.06  |   17.58  |    1.052  |
+ *  | 10^13 |    5.678 |    4.330 |    3.316 |    2.810 |    0.237  |
+ *  | 10^12 |    0.901 |    0.889 |    0.617 |    0.524 |    54.9ms |
+ *  | 10^11 |    0.182 |    0.192 |    0.122 |    0.114 |    13.80ms|
+ *  | 10^10 |    40.2ms|    41.7ms|    26.6ms|    25.6ms|     3.64ms|
+ *
+ * Run with high memory limits: Meissel uses 1GB for 10^16, ~3GB for 10^17.
+ * Lehmer is limited at high n values by sieving speed.  It is much faster
+ * using parallel primesieve, though cannot come close to LMO.
  */
 
 /* Below this size, just sieve (with table speedup). */
@@ -77,26 +78,27 @@
   typedef uint32_t       uint32;
 #endif
 
+/* UV is either uint32 or uint64 depending on Perl.  We use this native size
+ * for the basic unit of the phi sieve.  It can be easily overridden here. */
 typedef  UV  sword_t;
 #define SWORD_BITS  BITS_PER_WORD
 #define SWORD_ONES  UV_MAX
 #define SWORD_MASKBIT(bits)  (UVCONST(1) << ((bits) % SWORD_BITS))
 #define SWORD_CLEAR(s,bits)  s[bits/SWORD_BITS] &= ~SWORD_MASKBIT(bits)
 
-#if defined(__GNUC__) && defined(__SSE4_2__)
-static sword_t bitcount(sword_t b) {
-  sword_t ret;
-  __asm__("popcnt %1, %0" : "=r" (ret) : "r" (b));
-  return ret;
-}
-#elif SWORD_BITS == 64
-static sword_t bitcount(sword_t b) {
-  b -= (b >> 1) & 0x5555555555555555;
-  b = (b & 0x3333333333333333) + ((b >> 2) & 0x3333333333333333);
-  b = (b + (b >> 4)) & 0x0f0f0f0f0f0f0f0f;
-  return (b * 0x0101010101010101)>>56;
-}
-#else   /* Faster than __builtin_popcount */
+/* Compile with -march=native to get a large speedup on Nahalem and newer */
+#if SWORD_BITS == 64
+ #if defined(__GNUC__) && (__GNUC__ > 4 || (__GNUC__ == 4 && __GNUC_MINOR > 1))
+   #define bitcount(b)  __builtin_popcountll(b)
+ #else
+   static sword_t bitcount(sword_t b) {
+     b -= (b >> 1) & 0x5555555555555555;
+     b = (b & 0x3333333333333333) + ((b >> 2) & 0x3333333333333333);
+     b = (b + (b >> 4)) & 0x0f0f0f0f0f0f0f0f;
+     return (b * 0x0101010101010101)>>56;
+   }
+ #endif
+#else
 static const unsigned char byte_ones[256] =
   {0,1,1,2,1,2,2,3,1,2,2,3,2,3,3,4,1,2,2,3,2,3,3,4,2,3,3,4,3,4,4,5,
    1,2,2,3,2,3,3,4,2,3,3,4,3,4,4,5,2,3,3,4,3,4,4,5,3,4,4,5,4,5,5,6,
@@ -124,15 +126,27 @@ static uint32_t* make_primelist(uint32 n, uint32* number_of_primes)
                    : (n/log(n)) * (1.0+1.0/logn+2.51/(logn*logn));
   *number_of_primes = 0;
   New(0, plist, max_index+1, uint32_t);
-  if (plist == 0)
-    croak("Can not allocate small primes\n");
+  if (plist == 0)  croak("Can not allocate small primes\n");
   plist[0] = 0;
+  /* We could do a simple SoE here.  This is not time critical. */
   START_DO_FOR_EACH_PRIME(2, n) {
     plist[++i] = p;
   } END_DO_FOR_EACH_PRIME;
   *number_of_primes = i;
   return plist;
 }
+#if 0  /* primesieve 5.0 example */
+#include <primesieve.h>
+static uint32_t* make_primelist(uint32 n, uint32* number_of_primes) {
+  uint32_t plist;
+  uint32_t* psprimes = generate_primes(2, n, number_of_primes, UINT_PRIMES);
+  New(0, plist, *number_of_primes + 1, uint32_t);
+  plist[0] = 0;
+  memcpy(plist+1, psprimes, *number_of_primes * sizeof(uint32_t));
+  primesieve_free(psprimes);
+  return plist;
+}
+#endif
 
 /* Given a max prime in small prime list, return max prev prime input */
 static uint32 prev_sieve_max(UV maxprime) {
