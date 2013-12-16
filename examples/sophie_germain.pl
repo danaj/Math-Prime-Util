@@ -39,15 +39,13 @@ sub get_sophie_germain_iterator {
   };
 }
 my $sgit = get_sophie_germain_iterator();
-for (1..$count) {
-  print $sgit->(), "\n";
-}
+print $sgit->(), "\n" for 1 .. $count;
 
 # Method 2.  At 300k this is 70x faster than Math::NumSeq::SophieGermainPrimes.
 #
 #my $estimate = 100 + int( nth_prime_upper($count) * 1.6 * log($count) );
 #prime_precalc(2 * $estimate);
-# 
+#
 #my $prime = 2;
 #for (1..$count) {
 #  $prime = next_prime($prime) while (!is_prime(2*$prime+1));

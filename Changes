@@ -7,6 +7,9 @@ Revision history for Perl module Math::Prime::Util
     - Some LMO edge cases:  small numbers that only show up if a #define is
       changed, and counts > 18440000000000000000.  Tested through 2^64-1 now.
 
+    - LMO much faster if -march=native is used for gcc on a platform with
+      asm popcnt (e.g. Nahalem+, Barcelona+, ARM Neon, SPARC, Power7, etc.).
+
 
 0.35  2013-12-08
 

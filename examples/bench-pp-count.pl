@@ -179,8 +179,8 @@ sub rosetta3 {
   my @s;
   my $count = scalar
               grep { not $s[ $i  = $_ ] and do
-		 { $s[ $i += $_ ]++ while $i <= $max; 1 }
-	} 2 .. $max;
+                     { $s[ $i += $_ ]++ while $i <= $max; 1 }
+                   } 2 .. $max;
   #print "R3 size: ", total_size(\@s), "\n" if $max > 90000;
   $count; #scalar @primes;
 }
@@ -195,8 +195,8 @@ sub rosetta4 {
   my $s = '';
   my $count = scalar
               grep { not vec $s, $i  = $_, 1 and do
-		 { (vec $s, $i += $_, 1) = 1 while $i <= $max; 1 }
-	} 2 .. $max;
+                     { (vec $s, $i += $_, 1) = 1 while $i <= $max; 1 }
+                   } 2 .. $max;
   #print "R4 size: ", total_size(\$s), "\n" if $max > 90000;
   $count; #scalar @primes;
 }
@@ -272,7 +272,7 @@ sub atkin {
 # faster than your Sieve of Eratosthenes, then I strongly suggest you verify
 # your code actually _works_, and secondly I would bet you made stupid mistakes
 # in your SoE implementation.  If your SoA code even remotely resembles the
-# Wikipedia code and it comes out faster than SoE, then I _guarantee_ your
+# Wikipedia code and it comes out faster than SoE, then I *guarantee* your
 # SoE is borked.
 #
 # SoA does have a slightly better asymptotic operation count O(N/loglogN) vs.

@@ -3707,15 +3707,17 @@ in order are L<OEIS series A000041|http://oeis.org/A000041>.
 
 This uses a combinatorial calculation, which means it will not be very
 fast compared to Pari, Mathematica, or FLINT which use the Rademacher
-formula using multi-precision floating point.  In 10 seconds, the pure
-Perl version can produce C<partitions(10000)> while with
-L<Math::Prime::Util::GMP> it can do C<partitions(200000)>.  In contrast,
-in about 10 seconds Pari can solve C<numbpart(22000000)>.
+formula using multi-precision floating point.  In 10 seconds:
 
-If you want the enumerated partitions, see L<Integer::Partition>.  It is
-very fast and uses an extremely memory efficient iterator.  It is not,
-however, practical for producing the partition I<number> for values
-over 100 or so.
+           65    Integer::Partition
+       10_000    MPU pure Perl partitions
+      200_000    MPU GMP partitions
+   22_000_000    Pari's numbpart
+  500_000_000    Jonathan Bober's partitions_c.cc v0.6
+
+If you want the enumerated partitions, see L<Integer::Partition>.  It uses
+a memory efficient iterator and is very fast for enumeration.  It is not
+practical for producing large partition numbers as seen above.
 
 
 =head2 carmichael_lambda
@@ -4336,9 +4338,7 @@ Construct and use a Sophie-Germain prime iterator:
     };
   }
   my $sgit = make_sophie_germain_iterator();
-  for (1 .. 10000) {
-    print $sgit->(), "\n";
-  }
+  print $sgit->(), "\n"  for 1 .. 10000;
 
 Project Euler, problem 3 (Largest prime factor):
 
@@ -4416,13 +4416,21 @@ Here is the best way for PE187.  Under 30 milliseconds from the command line:
   say sum( map { prime_count(int(($limit-1)/$primes[$_-1])) - $_ + 1 }
                1 .. scalar @primes );
 
+Produce the C<matches> result from L<Math::Factor::XS> without skipping:
+
+  use Math::Prime::Util qw/all_factors/;
+  use Algorithm::Combinatorics qw/combinations_with_repetition/;
+  my $n = 139650;
+  my @matches = grep { $_->[0] * $_->[1] == $n && $_->[0] > 1 }
+                combinations_with_repetition( [all_factors($n)], 2 );
+
 
 =head1 PRIMALITY TESTING NOTES
 
 Above C<2^64>, L</is_prob_prime> performs an extra-strong
 L<BPSW test|http://en.wikipedia.org/wiki/Baillie-PSW_primality_test>
 which is fast (a little less than the time to perform 3 Miller-Rabin
-tests) and has no known counterexamples.  If you believe the primality
+tests) and has no known counterexamples.  If you trust the primality
 testing done by Pari, Maple, SAGE, FLINT, etc., then this function
 should be appropriate for you.  L</is_prime> will do the same BPSW
 test as well as some additional testing, making it slightly more time
@@ -4541,8 +4549,8 @@ no bigint support.  The C<is_prime> function uses well-written trial
 division, meaning it is very fast for small numbers, but terribly slow for
 large 64-bit numbers.  Because MPU does input validation and bigint
 conversion, there is about 20 microseconds of additional overhead making
-MPXS a little faster for tiny inputs, but once over 700k MPU is faster
-for all values.  MPXS's prime sieve is an unoptimized non-segmented SoE
+MPXS a little faster for tiny inputs, but once over ~700k MPU is faster.
+MPXS's prime sieve is an unoptimized non-segmented SoE
 which returns an array.  Sieve bases larger than C<10^7> start taking
 inordinately long and using a lot of memory (gigabytes beyond C<10^10>).
 E.g. C<primes(10**9, 10**9+1000)> takes 36 seconds with MPXS, but only
@@ -4574,15 +4582,16 @@ Crypt::Primes is hardcoded to use L<Crypt::Random>, while MPU uses
 L<Bytes::Random::Secure>, and also allows plugging in a random function.
 This is more flexible, faster, has fewer dependencies, and uses a CSPRNG
 for security.  MPU can return a primality certificate.
-What Crypt::Primes has that MPU does not is support for returning a generator.
+What Crypt::Primes has that MPU does not is the ability to return a generator.
 
 L<Math::Factor::XS> calculates prime factors and factors, which correspond to
 the L</factor> and L</all_factors> functions of MPU.  These functions do
 not support bigints.  Both are implemented with trial division, meaning they
 are very fast for really small values, but quickly become unusably slow
-(factoring 19 digit semiprimes is over 700 times slower).  It has additional
-functions C<count_prime_factors> (possible in MPU using C<scalar factor($n)>)
-and C<matches> which has no equivalent.
+(factoring 19 digit semiprimes is over 700 times slower).  The function
+C<count_prime_factors> can be done in MPU using C<scalar factor($n)>.
+MPU has no equivalent to C<matches>, but see the L</"EXAMPLES"> section
+for a way to produce the results.
 
 L<Math::Big> version 1.12 includes C<primes> functionality.  The current
 code is only usable for very tiny inputs as it is incredibly slow and uses
@@ -4612,8 +4621,8 @@ L<Math::Primality> supports C<is_prime>, C<is_pseudoprime>,
 C<is_strong_pseudoprime>, C<is_strong_lucas_pseudoprime>, C<next_prime>,
 C<prev_prime>, C<prime_count>, and C<is_aks_prime> functionality.
 This is a great little module that implements
-primality functionality.  It was the first module to support the BPSW and
-AKS tests.  All inputs are processed using GMP, so it of course supports
+primality functionality.  It was the first CPAN module to support the BPSW
+test.  All inputs are processed using GMP, so it of course supports
 bigints.  In fact, Math::Primality was made originally with bigints in mind,
 while MPU was originally targeted to native integers, but both have added
 better support for the other.  The main differences are extra functionality
@@ -4624,15 +4633,15 @@ which case MPU is ~2x faster.  L<Math::Primality> also installs
 a C<primes.pl> program, but it has much less functionality than the one
 included with MPU.
 
-L<Math::NumSeq> is more a related module rather than one with direct
-functionality.  It does however offer a way to get similar results such as
+L<Math::NumSeq> does not have a one-to-one mapping between functions in MPU,
+but it does offer a way to get many similar results such as
 primes, twin primes, Sophie-Germain primes, lucky primes, moebius, divisor
-count, factor count, Euler totient, primorials, etc.  Math::NumSeq is mainly
-set up for accessing these values in order, rather than for arbitrary values,
-though some sequences support that.  The primary advantage I see is the
-uniform access mechanism for a I<lot> of sequences.  For those methods that
-overlap, MPU is usually much faster.  Importantly, most of the sequences in
-Math::NumSeq are limited to 32-bit indices.
+count, factor count, Euler totient, primorials, etc.  Math::NumSeq is
+set up for accessing these values in order rather than for arbitrary values,
+though a few sequences support random access.  The primary advantage I see
+is the uniform access mechanism for a I<lot> of sequences.  For those methods
+that overlap, MPU is usually much faster.  Importantly, most of the sequences
+in Math::NumSeq are limited to 32-bit indices.
 
 L<Math::Pari> supports a lot of features, with a great deal of overlap.  In
 general, MPU will be faster for native 64-bit integers, while it's differs
@@ -4669,7 +4678,7 @@ Only available with version 2.3 of Pari.  Similar to MPU's L</prime_count>
 function in API, but uses a naive counting algorithm with its precalculated
 primes, so is not of practical use.  Incidently, Pari 2.6 (not usable from
 Perl) has fixed the pre-calculation requirement so it is more useful, but is
-still hundreds of times slower than MPU.
+still thousands of times slower than MPU.
 
 =item C<primes>
 
@@ -4686,7 +4695,8 @@ L</factor> for a linear array of prime factors where
    n = p1 * p2 * p3 * ...   as (p1,p2,p3,...)
 and L</factor_exp> for an array of factor/exponent pairs where:
    n = p1^e1 * p2^e2 * ...  as ([p1,e1],[p2,e2],...)
-while Pari returns a 2D Pari matrix which may be interpreted as:
+Pari/GP returns an array similar to the latter.  L<Math::Pari> returns
+a transposed matrix like:
    n = p1^e1 * p2^e2 * ...  as ([p1,p2,...],[e1,e2,...])
 Slower than MPU for all 64-bit inputs on an x86_64 platform, it may be
 faster for large values on other platforms.  With the newer
@@ -4750,13 +4760,15 @@ First, for those looking for the state of the art non-Perl solutions:
 
 =item Primality testing
 
+For general numbers smaller than 2000 or so digits, I believe MPU is the
+fastest solution (it is faster than Pari 2.6.2 and PFGW), though FLINT
+might be a little faster for native sizes.  For large inputs,
 L<PFGW|http://sourceforge.net/projects/openpfgw/> is the fastest primality
-testing software I'm aware of once past 2000 or so digits, has fast trial
-division, and is especially fast on many special forms.  It does not have
-a BPSW test however, and there are quite a few counterexamples for a given
-base of its PRP test, so for primality testing it is most useful for fast
-filtering of very large candidates.  A test such as the BPSW test in this
-module is then recommended.
+testing software I'm aware of.  It has fast trial division, and is especially
+fast on many special forms.  It does not have a BPSW test however, and there
+are quite a few counterexamples for a given base of its PRP test, so for
+primality testing it is most useful for fast filtering of very large
+candidates.  A test such as the BPSW test in this module is then recommended.
 
 =item Primality proofs
 
@@ -4786,7 +4798,7 @@ Note that the Sieve of Atkin is I<not> faster than the Sieve of Eratosthenes
 when both are well implemented.  The only Sieve of Atkin that is even
 competitive is Bernstein's super optimized I<primegen>, which runs about
 10% faster than the simple SoE in this module, slower than Pari and yafu's
-SoE implementations, and 2x slower than primesieve.
+SoE implementations, and over 2x slower than primesieve.
 
 =item Prime Counts and Nth Prime
 
@@ -4938,7 +4950,7 @@ warrant distributed processing.
 
 The C<n-1> proving algorithm in L<Math::Prime::Util::GMP> compares well to
 the version including in Pari.  Both are pretty fast to about 60 digits, and
-work reasonably well to 80 or so before starting to take over many minutes per
+work reasonably well to 80 or so before starting to take many minutes per
 number on a fast computer.  Version 0.09 and newer of MPU::GMP contain an
 ECPP implementation that, while not state of the art compared to closed source
 solutions, works quite well.
@@ -4968,7 +4980,7 @@ L<Math::Random::ISAAC::XS> installed.
    8192   58.6     +1.61     234.0      234.0     947.3
 
   random    = random_nbit_prime  (results pass BPSW)
-  random+   = additional time for 3 M-R and a frobenius test
+  random+   = additional time for 3 M-R and a Frobenius test
   rand_prov = random_proven_prime
   maurer    = random_maurer_prime
   CPMaurer  = Crypt::Primes::maurer
@@ -5027,6 +5039,10 @@ Ben's later code as well as Jason Papadopoulos's public domain implementations
 are planned for a later version.  The old SQUFOF implementation, still included
 in the code, is my modifications to Ben Buhrow's modifications to Bob
 Silverman's code.
+
+The LMO implementation is based on the 2003 preprint from Christian Bau,
+as well as the 2006 paper from Tomás Oliveira e Silva.  I also want to
+thank Kim Walisch for the many discussions about prime counting.
 
 
 =head1 REFERENCES
