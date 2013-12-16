@@ -784,7 +784,7 @@ int squfof_factor(UV n, UV *factors, UV rounds)
 
   qlast = r;
   p = p + r*((s - p)/r);
-  q = (n - (p*p)) / qlast;			/* q = (n - p*p)/qlast (div is exact)*/
+  q = (n - (p*p)) / qlast;               /* q = (n - p*p)/qlast (div is exact)*/
   for (iter=0; iter<rounds2; iter++) {   /* unrolled second main loop */
     iq = (s + p)/q;
     pnext = iq*q - p;

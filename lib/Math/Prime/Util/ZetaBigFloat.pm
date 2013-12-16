@@ -273,8 +273,8 @@ sub _Recompute_Dk {
     my $gcd;
     foreach my $i (0 .. $k) {
       # ad + cb  /  bd
-      $sum_n->bmul($d)->badd( $sum_d->copy->bmul($n) );   
-      $sum_d->bmul($d);                                   
+      $sum_n->bmul($d)->badd( $sum_d->copy->bmul($n) );
+      $sum_d->bmul($d);
       $gcd = Math::BigInt::bgcd($sum_n, $sum_d);
       do { $sum_n /= $gcd;  $sum_d /= $gcd; } unless $gcd->is_one;
       my $dmul = (2*$i+1) * (2*$i+2);

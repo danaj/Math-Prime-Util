@@ -47,7 +47,7 @@ sub test_proofs {
     my $bits = int(rand($size-$minsize)) + $minsize;
     my $n;
     if      ($prime_method eq 'cpmaurer') {
-      $n = Crypt::Primes::maurer(Size=>$bits); 
+      $n = Crypt::Primes::maurer(Size=>$bits);
     } elsif ($prime_method eq 'pari') {
       # This is ~4x faster, has awful distribution.  Still much slower than MPU.
       # $n = Math::Pari::nextprime( ...makerandom... );

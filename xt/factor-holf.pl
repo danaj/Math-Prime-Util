@@ -14,7 +14,7 @@ for (2 .. 100000000) {
 
   my @p_holf;
   push @fs, $_;
-  while (@fs) { 
+  while (@fs) {
     my $n = pop @fs;
     if (is_prime($n)) { push @p_holf, $n; }
     else              { push @fs, Math::Prime::Util::holf_factor($n); }
