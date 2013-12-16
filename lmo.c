@@ -80,13 +80,13 @@
 
 /* UV is either uint32 or uint64 depending on Perl.  We use this native size
  * for the basic unit of the phi sieve.  It can be easily overridden here. */
-typedef  UV  sword_t;
+typedef UV sword_t;
 #define SWORD_BITS  BITS_PER_WORD
 #define SWORD_ONES  UV_MAX
 #define SWORD_MASKBIT(bits)  (UVCONST(1) << ((bits) % SWORD_BITS))
 #define SWORD_CLEAR(s,bits)  s[bits/SWORD_BITS] &= ~SWORD_MASKBIT(bits)
 
-/* Compile with -march=native to get a large speedup on Nahalem and newer */
+/* Compile with -march=native to get a very large speedup on new processors */
 #if SWORD_BITS == 64
  #if defined(__GNUC__) && (__GNUC__ > 4 || (__GNUC__ == 4 && __GNUC_MINOR > 1))
    #define bitcount(b)  __builtin_popcountll(b)
@@ -95,23 +95,17 @@ typedef  UV  sword_t;
      b -= (b >> 1) & 0x5555555555555555;
      b = (b & 0x3333333333333333) + ((b >> 2) & 0x3333333333333333);
      b = (b + (b >> 4)) & 0x0f0f0f0f0f0f0f0f;
-     return (b * 0x0101010101010101)>>56;
+     return (b * 0x0101010101010101) >> 56;
    }
  #endif
 #else
-static const unsigned char byte_ones[256] =
-  {0,1,1,2,1,2,2,3,1,2,2,3,2,3,3,4,1,2,2,3,2,3,3,4,2,3,3,4,3,4,4,5,
-   1,2,2,3,2,3,3,4,2,3,3,4,3,4,4,5,2,3,3,4,3,4,4,5,3,4,4,5,4,5,5,6,
-   1,2,2,3,2,3,3,4,2,3,3,4,3,4,4,5,2,3,3,4,3,4,4,5,3,4,4,5,4,5,5,6,
-   2,3,3,4,3,4,4,5,3,4,4,5,4,5,5,6,3,4,4,5,4,5,5,6,4,5,5,6,5,6,6,7,
-   1,2,2,3,2,3,3,4,2,3,3,4,3,4,4,5,2,3,3,4,3,4,4,5,3,4,4,5,4,5,5,6,
-   2,3,3,4,3,4,4,5,3,4,4,5,4,5,5,6,3,4,4,5,4,5,5,6,4,5,5,6,5,6,6,7,
-   2,3,3,4,3,4,4,5,3,4,4,5,4,5,5,6,3,4,4,5,4,5,5,6,4,5,5,6,5,6,6,7,
-   3,4,4,5,4,5,5,6,4,5,5,6,5,6,6,7,4,5,5,6,5,6,6,7,5,6,6,7,6,7,7,8};
-static sword_t bitcount(sword_t b) {
-  return byte_ones[(b    )&0xFF] + byte_ones[(b>> 8)&0xFF]
-       + byte_ones[(b>>16)&0xFF] + byte_ones[(b>>24)     ];
-}
+   /* An 8-bit table version is usually a little faster, but this is simpler. */
+   static sword_t bitcount(sword_t b) {
+     b -= (b >> 1) & 0x55555555;
+     b = (b & 0x33333333) + ((b >> 2) & 0x33333333);
+     b = (b + (b >> 4)) & 0x0f0f0f0f;
+     return (b * 0x01010101) >> 24;
+   }
 #endif
 
 
@@ -219,7 +213,7 @@ static uint16* ft_create(uint32 max)
   factor_table[0] = 65534;
   for (i = 1; i < tableSize; ++i)
     factor_table[i] = 65535;
-  
+
   /* Process each odd. */
   for (i = 1; i < tableSize; ++i) {
     uint32 factor, max_factor;
