@@ -1227,6 +1227,7 @@ sub all_factors {
 
   _validate_num($n) || _validate_positive_integer($n);
 
+  return () if $n == 1;
   return _XS_divisors($n) if $n <= $_XS_MAXVAL;
 
   my %all_factors;
@@ -1832,6 +1833,7 @@ sub factor {
   my($n) = @_;
   _validate_num($n) || _validate_positive_integer($n);
 
+  return () if $n == 1;
   return _XS_factor($n) if $n <= $_XS_MAXVAL;
 
   if ($_HAVE_GMP) {

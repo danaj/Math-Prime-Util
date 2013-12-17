@@ -163,7 +163,7 @@ int trial_factor(UV n, UV *factors, UV maxtrial)
   /* Cover the cases 0/1/2/3 now */
   if (n < 4 || maxtrial < 2) {
     factors[0] = n;
-    return 1;
+    return (n == 1) ? 0 : 1;
   }
   /* Trial division for 2, 3, 5, 7, and see if we're done */
   while ( (n & 1) == 0 ) { factors[nfactors++] = 2; n /= 2; }

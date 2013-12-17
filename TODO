@@ -67,3 +67,5 @@
 - Add fordivisors as XS.
 
 - Make divisors() an alias for all_factors().
+
+- Document changes to factor(1)

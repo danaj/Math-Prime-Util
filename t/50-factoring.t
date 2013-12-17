@@ -79,7 +79,7 @@ my %all_factors = (
       4 => [1,2,4],
       3 => [1,3],
       2 => [1,2],
-      1 => [1],
+      1 => [],
       0 => [],
 );
 
@@ -95,7 +95,7 @@ foreach my $n (@testn) {
 
   # Are they all prime?
   my $isprime = 1; $isprime *= is_prime($_) for @f;
-  if ($n < 2) {
+  if ($n < 1) {
     ok( !$isprime, "   each factor is not prime" );
   } else {
     ok(  $isprime, "   each factor is prime" );
@@ -127,7 +127,7 @@ sub extra_factor_test {
   my $fname = shift;
   my $fsub = shift;
 
-  is_deeply( [ sort {$a<=>$b} $fsub->(1)   ], [1],       "$fname(1)" );
+  is_deeply( [ sort {$a<=>$b} $fsub->(1)   ], [],        "$fname(1)" );
   is_deeply( [ sort {$a<=>$b} $fsub->(4)   ], [2, 2],    "$fname(4)" );
   is_deeply( [ sort {$a<=>$b} $fsub->(9)   ], [3, 3],    "$fname(9)" );
   is_deeply( [ sort {$a<=>$b} $fsub->(11)  ], [11],      "$fname(11)" );
@@ -141,7 +141,7 @@ sub extra_factor_test {
 
 # Factor in scalar context
 is( scalar factor(0), 1, "scalar factor(0) should be 1" );
-is( scalar factor(1), 1, "scalar factor(1) should be 1" );
+is( scalar factor(1), 0, "scalar factor(1) should be 0" );
 is( scalar factor(3), 1, "scalar factor(3) should be 1" );
 is( scalar factor(4), 2, "scalar factor(4) should be 2" );
 is( scalar factor(5), 1, "scalar factor(5) should be 1" );

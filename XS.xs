@@ -362,7 +362,8 @@ erat_primes(IN UV low, IN UV high)
 
 #define SIMPLE_FACTOR(func, n, arg1) \
     if (n <= 1) { \
-      XPUSHs(sv_2mortal(newSVuv( n ))); \
+      if (n == 0) \
+        XPUSHs(sv_2mortal(newSVuv( n ))); \
     } else { \
       while ( (n% 2) == 0 ) {  n /=  2;  XPUSHs(sv_2mortal(newSVuv( 2 ))); } \
       while ( (n% 3) == 0 ) {  n /=  3;  XPUSHs(sv_2mortal(newSVuv( 3 ))); } \
@@ -381,7 +382,8 @@ erat_primes(IN UV low, IN UV high)
 #define SIMPLE_FACTOR_2ARG(func, n, arg1, arg2) \
     /* Stupid MSVC won't bring its C compiler out of the 1980s. */ \
     if (n <= 1) { \
-      XPUSHs(sv_2mortal(newSVuv( n ))); \
+      if (n == 0) \
+        XPUSHs(sv_2mortal(newSVuv( n ))); \
     } else { \
       while ( (n% 2) == 0 ) {  n /=  2;  XPUSHs(sv_2mortal(newSVuv( 2 ))); } \
       while ( (n% 3) == 0 ) {  n /=  3;  XPUSHs(sv_2mortal(newSVuv( 3 ))); } \
@@ -418,18 +420,20 @@ void
 _XS_factor_exp(IN UV n)
   PREINIT:
     UV factors[MPU_MAX_FACTORS+1];
+    UV exponents[MPU_MAX_FACTORS+1];
     int i, j, nfactors;
   PPCODE:
     nfactors = factor(n, factors);
     if (GIMME_V == G_SCALAR) {
       /* Count unique prime factors and return the scalar */
+      if (n == 1)  XSRETURN_UV(0);
       for (i = 1, j = 1; i < nfactors; i++)
         if (factors[i] != factors[i-1])
           j++;
       PUSHs(sv_2mortal(newSVuv(j)));
     } else {
       /* Return ( [p1,e1], [p2,e2], [p3,e3], ... ) */
-      UV exponents[MPU_MAX_FACTORS+1];
+      if (n == 1)  XSRETURN_EMPTY;
       exponents[0] = 1;
       for (i = 1, j = 1; i < nfactors; i++) {
         if (factors[i] != factors[i-1]) {
