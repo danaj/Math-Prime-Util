@@ -18,6 +18,7 @@ extern int pplus1_factor(UV n, UV *factors, UV B);
 extern int squfof_factor(UV n, UV *factors, UV rounds);
 extern int racing_squfof_factor(UV n, UV *factors, UV rounds);
 
-extern UV _XS_divisor_sum(UV n, UV k);
+extern UV  _XS_divisor_sum(UV n, UV k);
+extern UV* _divisor_list(UV n, UV *num_divisors);
 
 #endif

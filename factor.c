@@ -292,6 +292,76 @@ static int is_perfect_square(UV n, UV* sqrtn)
   return 1;
 }
 
+static int _divisors_from_factors(UV v, UV npe, UV* fp, UV* fe, UV* res) {
+  UV p, e, i;
+  if (npe == 0) return 0;
+  p = *fp++;
+  e = *fe++;
+  if (npe == 1) {
+    for (i = 0; i <= e; i++) {
+      *res++ = v;
+      v *= p;
+    }
+    return e+1;
+  } else {
+    int nret = 0;;
+    for (i = 0; i <= e; i++) {
+      int nres = _divisors_from_factors(v, npe-1, fp, fe, res);
+      v *= p;
+      res += nres;
+      nret += nres;
+    }
+    return nret;
+  }
+}
+
+UV* _divisor_list(UV n, UV *num_divisors)
+{
+  UV factors[MPU_MAX_FACTORS+1];
+  UV exponents[MPU_MAX_FACTORS+1];
+  UV* divs;
+  int i, j, nfactors, ndivisors;
+
+  if (n <= 1) {
+    New(0, divs, 1, UV);
+    divs[0] = 1;
+    *num_divisors = n;
+    return divs;
+  }
+  /* Factor and convert to factor/exponent pair */
+  nfactors = factor(n, factors);
+  exponents[0] = 1;
+  for (i = 1, j = 1; i < nfactors; i++) {
+    if (factors[i] != factors[i-1]) {
+      exponents[j] = 1;
+      factors[j++] = factors[i];
+    } else {
+      exponents[j-1]++;
+    }
+  }
+  nfactors = j;
+  /* Calculate number of divisors, allocate space, fill with divisors */
+  ndivisors = exponents[0] + 1;
+  for (i = 1; i < nfactors; i++)
+    ndivisors *= (exponents[i] + 1);
+  New(0, divs, ndivisors, UV);
+  (void) _divisors_from_factors(1, nfactors, factors, exponents, divs);
+  { /* Sort (Shell sort is easy and efficient) */
+    static UV gaps[] = {301, 132, 57, 23, 10, 4, 1, 0};
+    UV gap, gapi = 0;
+    for (gap = gaps[gapi]; gap > 0; gap = gaps[++gapi]) {
+      for (i = gap; i < ndivisors; i++) {
+        UV v = divs[i];
+        for (j = i; j >= gap && divs[j-gap] > v; j -= gap)
+          divs[j] = divs[j-gap];
+        divs[j] = v;
+      }
+    }
+  }
+  *num_divisors = ndivisors;
+  return divs;
+}
+
 
 /*
  * The usual method, on OEIS for instance, is:

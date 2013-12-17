@@ -27,7 +27,8 @@ our @EXPORT_OK =
       miller_rabin miller_rabin_random
       lucas_sequence
       primes
-      forprimes prime_iterator prime_iterator_object
+      forprimes forcomposites
+      prime_iterator prime_iterator_object
       next_prime  prev_prime
       prime_count
       prime_count_lower prime_count_upper prime_count_approx
@@ -1218,41 +1219,31 @@ sub consecutive_integer_lcm {
   return $pn;
 }
 
-
 sub all_factors {
   my $n = shift;
 
   # In scalar context, returns sigma_0(n).  Very fast.
   return divisor_sum($n,0) unless wantarray;
 
-  my $use_bigint = !($n < $_Config{'maxparam'} || int($n) eq $_Config{'maxparam'});
-  my @factors = factor($n);
-  if ($n <= 0) { @factors = (); return @factors; }
+  _validate_num($n) || _validate_positive_integer($n);
+
+  return _XS_divisors($n) if $n <= $_XS_MAXVAL;
+
   my %all_factors;
-  if ($use_bigint) {
-    foreach my $f1 (@factors) {
-      next if $f1 >= $n;
-      my $big_f1 = Math::BigInt->new("$f1");
-      my @to_add = map { ($_ <= ~0) ? int($_->bstr) : $_ }
-                   grep { $_ < $n }
-                   map { $big_f1 * $_ }
-                   keys %all_factors;
-      undef @all_factors{ $f1, @to_add };
-    }
-  } else {
-    foreach my $f1 (@factors) {
-      next if $f1 >= $n;
-      my @to_add = grep { $_ < $n }
-                   map { int($f1 * $_) }
-                   keys %all_factors;
-      undef @all_factors{ $f1, @to_add };
-    }
+  foreach my $f1 (factor($n)) {
+    next if $f1 >= $n;
+    my $big_f1 = Math::BigInt->new("$f1");
+    my @to_add = map { ($_ <= ~0) ? int($_->bstr) : $_ }
+                 grep { $_ < $n }
+                 map { $big_f1 * $_ }
+                 keys %all_factors;
+    undef @all_factors{ $f1, @to_add };
   }
   # Add 1 and n
   undef $all_factors{1};
   undef $all_factors{$n};
-  @factors = sort {$a<=>$b} keys %all_factors;
-  return @factors;
+  my @divisors = sort {$a<=>$b} keys %all_factors;
+  return @divisors;
 }
 
 
@@ -1519,6 +1510,25 @@ sub _generic_forprimes (&$;$) {    ## no critic qw(ProhibitSubroutinePrototypes)
     for (my $p = next_prime($beg-1);  $p <= $end;  $p = next_prime($p)) {
       $pp = $p;
       $sub->();
+    }
+  }
+}
+
+sub forcomposites(&$;$) {    ## no critic qw(ProhibitSubroutinePrototypes)
+  my($sub, $beg, $end) = @_;
+  if (!defined $end) { $end = $beg; $beg = 4; }
+  _validate_num($beg) || _validate_positive_integer($beg);
+  _validate_num($end) || _validate_positive_integer($end);
+  $beg = 4 if $beg < 4;
+  $end = Math::BigInt->new(''.~0) if ref($end) ne 'Math::BigInt' && $end == ~0;
+  {
+    my $pp;
+    local *_ = \$pp;
+    for ( ; $beg <= $end ; $beg++ ) {
+      if (!is_prime($beg)) {
+        $pp = $beg;
+        $sub->();
+      }
     }
   }
 }

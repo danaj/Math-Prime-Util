@@ -2,6 +2,12 @@ Revision history for Perl module Math::Prime::Util
 
 0.36  2013-12
 
+    [ADDED]
+
+    - forcomposites    like forprimes, but on composites.  See Pari 2.6.x.
+
+    [FUNCTIONALITY AND PERFORMANCE]
+
     - Some 5.6.2-is-broken workarounds.
 
     - Some LMO edge cases:  small numbers that only show up if a #define is
@@ -9,6 +15,10 @@ Revision history for Perl module Math::Prime::Util
 
     - LMO much faster if -march=native is used for gcc on a platform with
       asm popcnt (e.g. Nahalem+, Barcelona+, ARM Neon, SPARC, Power7, etc.).
+
+    - all_factors is faster for native size numbers with many factors.  This
+      is mostly in preparation for a alldivisors function, and moving a few
+      more functions to XS/Perl from Perl/XS to cut overhead.
 
 
 0.35  2013-12-08

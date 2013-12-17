@@ -449,6 +449,19 @@ _XS_factor_exp(IN UV n)
     }
 
 void
+_XS_divisors(IN UV n)
+  PPCODE:
+    if (GIMME_V == G_SCALAR) {
+      PUSHs(sv_2mortal(newSVuv( _XS_divisor_sum(n, 0) )));
+    } else {
+      UV i, ndivisors;
+      UV* divs = _divisor_list(n, &ndivisors);
+      for (i = 0; i < ndivisors; i++)
+        XPUSHs(sv_2mortal(newSVuv(divs[i])));
+      Safefree(divs);
+    }
+
+void
 trial_factor(IN UV n, IN UV maxfactor = 0)
   PPCODE:
     SIMPLE_FACTOR(trial_factor, n, maxfactor);

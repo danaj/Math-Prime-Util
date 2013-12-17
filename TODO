@@ -61,3 +61,9 @@
     - look at sieve.c style prime walking
 
 - Add Inverse Li and Legendre Phi to API?
+
+- Document forcomposites.  Consider XS for it.
+
+- Add fordivisors as XS.
+
+- Make divisors() an alias for all_factors().
