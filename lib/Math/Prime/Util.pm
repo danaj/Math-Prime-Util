@@ -1249,7 +1249,7 @@ sub divisors {
 }
 
 # alias the old "all_factors" to the new name: divisors
-*all_factors = \&_XS_divisors;
+*all_factors = \&divisors;
 
 
 # A008683 Moebius function mu(n)
@@ -4094,6 +4094,8 @@ The internals are identical to L</factor>, so all comments there apply.
 Just the way the factors are arranged is different.
 
 
+=head2 all_factors
+
 =head2 divisors
 
   my @divisors = divisors(30);   # returns (1, 2, 3, 5, 6, 10, 15, 30)
@@ -4107,6 +4109,8 @@ functions.
 In scalar context this returns the sigma0 function,
 the sigma function (see Hardy and Wright section 16.7, or OEIS A000203).
 This is the same result as evaluating the array in scalar context.
+
+C<all_factors> is the deprecated name for this function.
 
 
 =head2 trial_factor
