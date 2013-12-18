@@ -97,7 +97,7 @@ use Math::Prime::Util qw/
   nth_prime_approx
   factor
   factor_exp
-  all_factors
+  divisors
   moebius
   euler_phi
   jordan_totient
@@ -207,7 +207,7 @@ SKIP: {
     is_deeply( [factor_exp($n)], [linear_to_exp(@$factors)], "factor_exp($n)" );
   }
   while (my($n, $allfactors) = each(%allfactors)) {
-    is_deeply( [all_factors($n)], $allfactors, "all_factors($n)" );
+    is_deeply( [divisors($n)], $allfactors, "divisors($n)" );
   }
 }
 

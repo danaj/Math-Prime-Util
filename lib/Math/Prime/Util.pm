@@ -37,7 +37,7 @@ our @EXPORT_OK =
       random_proven_prime random_proven_prime_with_cert
       random_maurer_prime random_maurer_prime_with_cert
       primorial pn_primorial consecutive_integer_lcm
-      factor factor_exp all_factors
+      factor factor_exp all_factors divisors
       moebius mertens euler_phi jordan_totient exp_mangoldt liouville
       partitions
       chebyshev_theta chebyshev_psi
@@ -62,6 +62,7 @@ sub _import_nobigint {
   return unless $_Config{'xs'};
   undef *factor;          *factor            = \&_XS_factor;
   undef *factor_exp;      *factor_exp        = \&_XS_factor_exp;
+  undef *divisors;        *divisors          = \&_XS_divisors;
  #undef *prime_count;     *prime_count       = \&_XS_prime_count;
   undef *nth_prime;       *nth_prime         = \&_XS_nth_prime;
   undef *is_pseudoprime;  *is_pseudoprime    = \&_XS_is_pseudoprime;
@@ -1219,16 +1220,16 @@ sub consecutive_integer_lcm {
   return $pn;
 }
 
-sub all_factors {
+sub divisors {
   my $n = shift;
-
-  # In scalar context, returns sigma_0(n).  Very fast.
-  return divisor_sum($n,0) unless wantarray;
 
   _validate_num($n) || _validate_positive_integer($n);
 
-  return () if $n == 1;
   return _XS_divisors($n) if $n <= $_XS_MAXVAL;
+
+  # In scalar context, returns sigma_0(n).  Very fast.
+  return divisor_sum($n,0) unless wantarray;
+  return ($n == 0) ? (0,1) : (1)  if $n <= 1;
 
   my %all_factors;
   foreach my $f1 (factor($n)) {
@@ -1246,6 +1247,9 @@ sub all_factors {
   my @divisors = sort {$a<=>$b} keys %all_factors;
   return @divisors;
 }
+
+# alias the old "all_factors" to the new name: divisors
+*all_factors = \&_XS_divisors;
 
 
 # A008683 Moebius function mu(n)
@@ -1427,7 +1431,7 @@ my @_ds_overflow =  # We'll use BigInt math if the input is larger than this.
    : ( 50,           845404560,      52560,    1548,   252,   84);
 sub divisor_sum {
   my($n, $k) = @_;
-  return (0,1)[$n] if defined $n && $n <= 1;
+  return 1 if defined $n && $n == 1;
   _validate_num($n) || _validate_positive_integer($n);
 
   # Call the XS routine for k=0 and k=1 immediately if possible.
@@ -1442,7 +1446,7 @@ sub divisor_sum {
 
   if (defined $k && ref($k) eq 'CODE') {
     my $sum = $n-$n;
-    foreach my $f (all_factors($n)) {
+    foreach my $f (divisors($n)) {
       $sum += $k->($f);
     }
     return $sum;
@@ -1666,8 +1670,8 @@ sub znorder {
   return if Math::BigInt::bgcd($a, $n) > 1;
   # Method 1:  check all a^k 1 .. $n-1.
   #            Naive and terrible slow.
-  # Method 2:  check all k in (all_factors(euler_phi($n), $n).
-  # Method 3:  check all k in (all_factors(carmichael_lambda($n), $n).
+  # Method 2:  check all k in (divisors(euler_phi($n), $n).
+  # Method 3:  check all k in (divisors(carmichael_lambda($n), $n).
   #            Good for most cases, but slow when factor quantity is large.
   # Method 4:  Das algorithm 1.7, just enough multiples of p
   #            Fastest.
@@ -1693,7 +1697,7 @@ sub znorder {
 
   # Method 3:
   # my $cl = carmichael_lambda($n);
-  # foreach my $k (all_factors($cl), $cl) {
+  # foreach my $k (divisors($cl), $cl) {
   #   my $t = $a->copy->bmodpow("$k", $n);
   #   return $k if $t->is_one;
   # }
@@ -1833,13 +1837,15 @@ sub factor {
   my($n) = @_;
   _validate_num($n) || _validate_positive_integer($n);
 
-  return () if $n == 1;
   return _XS_factor($n) if $n <= $_XS_MAXVAL;
 
   if ($_HAVE_GMP) {
-    my @factors = Math::Prime::Util::GMP::factor($n);
-    if (ref($_[0]) eq 'Math::BigInt') {
-      @factors = map { ($_ > ~0) ? Math::BigInt->new(''.$_) : $_ } @factors;
+    my @factors;
+    if ($n != 1) {
+      @factors = Math::Prime::Util::GMP::factor($n);
+      if (ref($_[0]) eq 'Math::BigInt') {
+        @factors = map { ($_ > ~0) ? Math::BigInt->new(''.$_) : $_ } @factors;
+      }
     }
     return @factors;
   }
@@ -2594,7 +2600,7 @@ Version 0.35
   @pe = factor_exp( $n );
 
   # Get all divisors other than 1 and n
-  @divisors = all_factors( $n );
+  @divisors = divisors( $n );
 
   # Euler phi (Euler's totient) on a large number
   use bigint;  say euler_phi( 801294088771394680000412 );
@@ -4038,10 +4044,8 @@ Allows setting of some parameters.  Currently the only parameters are:
   # returns (204518747,16476429743)
 
 Produces the prime factors of a positive number input, in numerical order.
-The special cases of C<n = 0> and C<n = 1> will return C<n>, which
-guarantees multiplying the factors together will always result in the
-input value, though those are the only cases where the returned factors
-are not prime.
+The product of the returned factors will be equal to the input.  C<n = 1>
+will return an empty list, and C<n = 0> will return 0.  This matches Pari.
 
 In scalar context, returns Ω(n), the total number of prime factors
 (L<OEIS A001222|http://oeis.org/A001222>).
@@ -4049,8 +4053,6 @@ This corresponds to Pari's C<bigomega(n)> function and Mathematica's
 C<PrimeOmega[n]> function.
 This is same result that we would get if we evaluated the resulting
 array in scalar context.
-Do note that the inputs of C<0> and C<1> will return C<1>, contrary
-to the standard definition of Omega.
 
 The current algorithm for non-bigints is a sequence of small trial division,
 a few rounds of Pollard's Rho, SQUFOF, Pollard's p-1, Hart's OLF, a long
@@ -4087,24 +4089,24 @@ This corresponds to Pari's C<omega(n)> function and Mathematica's
 C<PrimeNu[n]> function.
 This is same result that we would get if we evaluated the resulting
 array in scalar context.
-Do note that the inputs of C<0> and C<1> will return C<1>, contrary
-to the standard definition of omega.
 
 The internals are identical to L</factor>, so all comments there apply.
 Just the way the factors are arranged is different.
 
 
-=head2 all_factors
+=head2 divisors
 
-  my @divisors = all_factors(30);   # returns (1, 2, 3, 5, 6, 10, 15, 30)
+  my @divisors = divisors(30);   # returns (1, 2, 3, 5, 6, 10, 15, 30)
 
 Produces all the divisors of a positive number input, including 1 and
 the input number.  The divisors are a power set of multiplications of
 the prime factors, returned as a uniqued sorted list.  The result is
-identical to that of Pari's C<divisors> function.
+identical to that of Pari's C<divisors> and Mathematica's C<Divisors[n]>
+functions.
 
 In scalar context this returns the sigma0 function,
 the sigma function (see Hardy and Wright section 16.7, or OEIS A000203).
+This is the same result as evaluating the array in scalar context.
 
 
 =head2 trial_factor
@@ -4112,8 +4114,7 @@ the sigma function (see Hardy and Wright section 16.7, or OEIS A000203).
   my @factors = trial_factor($n);
 
 Produces the prime factors of a positive number input.  The factors will be
-in numerical order.  The special cases of C<n = 0> and C<n = 1> will return
-C<n>, while with all other inputs the factors are guaranteed to be prime.
+in numerical order.
 For large inputs this will be very slow.
 
 =head2 fermat_factor
@@ -4430,11 +4431,11 @@ Here is the best way for PE187.  Under 30 milliseconds from the command line:
 
 Produce the C<matches> result from L<Math::Factor::XS> without skipping:
 
-  use Math::Prime::Util qw/all_factors/;
+  use Math::Prime::Util qw/divisors/;
   use Algorithm::Combinatorics qw/combinations_with_repetition/;
   my $n = 139650;
   my @matches = grep { $_->[0] * $_->[1] == $n && $_->[0] > 1 }
-                combinations_with_repetition( [all_factors($n)], 2 );
+                combinations_with_repetition( [divisors($n)], 2 );
 
 
 =head1 PRIMALITY TESTING NOTES
@@ -4597,7 +4598,7 @@ for security.  MPU can return a primality certificate.
 What Crypt::Primes has that MPU does not is the ability to return a generator.
 
 L<Math::Factor::XS> calculates prime factors and factors, which correspond to
-the L</factor> and L</all_factors> functions of MPU.  These functions do
+the L</factor> and L</divisors> functions of MPU.  These functions do
 not support bigints.  Both are implemented with trial division, meaning they
 are very fast for really small values, but quickly become unusably slow
 (factoring 19 digit semiprimes is over 700 times slower).  The function
@@ -4702,8 +4703,8 @@ doesn't support segmenting.
 
 =item C<factorint>
 
-Similar to MPU's L</factor> though with a different return.  MPU offers
-L</factor> for a linear array of prime factors where
+Similar to MPU's L</factor_exp> though with a slightly different return.
+MPU offers L</factor> for a linear array of prime factors where
    n = p1 * p2 * p3 * ...   as (p1,p2,p3,...)
 and L</factor_exp> for an array of factor/exponent pairs where:
    n = p1^e1 * p2^e2 * ...  as ([p1,e1],[p2,e2],...)
@@ -4717,7 +4718,7 @@ faster on average in MPU.
 
 =item C<divisors>
 
-Similar to MPU's L</all_factors>.
+Similar to MPU's L</divisors>.
 
 =item C<eulerphi>
 

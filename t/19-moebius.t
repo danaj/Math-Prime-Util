@@ -289,8 +289,8 @@ while (my($k, $tref) = each (%jordan_totients)) {
 }
 
 {
-  my @J5_moebius = map { divisor_sum($_, sub { my $d=shift; $d**5 * moebius($_/$d); }) } (0 .. 100);
-  my @J5_jordan = map { jordan_totient(5, $_) } (0 .. 100);
+  my @J5_moebius = map { divisor_sum($_, sub { my $d=shift; $d**5 * moebius($_/$d); }) } (1 .. 100);
+  my @J5_jordan = map { jordan_totient(5, $_) } (1 .. 100);
   is_deeply( \@J5_moebius, \@J5_jordan, "Calculate J5 two different ways");
 }
 

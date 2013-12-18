@@ -2,6 +2,16 @@ Revision history for Perl module Math::Prime::Util
 
 0.36  2013-12
 
+    [API Changes]
+
+    - factor behavior for 0 and 1 more consistent.  The results for factor,
+      factor_exp, divisors, and divisor_sum should now match Pari, and the
+      omega/Omega exception for 1 is removed.
+
+      Thanks to Hugo van der Sanden for bringing this up.
+
+    - all_factors changed to divisors.  The old name still remains aliased.
+
     [ADDED]
 
     - forcomposites    like forprimes, but on composites.  See Pari 2.6.x.

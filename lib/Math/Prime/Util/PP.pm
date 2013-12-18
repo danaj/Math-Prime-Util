@@ -1328,7 +1328,7 @@ sub is_aks_prime {
 
 sub _basic_factor {
   # MODIFIES INPUT SCALAR
-  return ($_[0]) if $_[0] < 4;
+  return ($_[0] == 1) ? () : ($_[0])   if $_[0] < 4;
 
   my @factors;
   if (ref($_[0]) ne 'Math::BigInt') {
@@ -1365,7 +1365,7 @@ sub trial_factor {
   # Don't use _basic_factor here -- they want a trial forced.
   my @factors;
   if ($n < 4) {
-    @factors = ($n);
+    @factors = ($n == 1) ? () : ($n);
     return @factors;
   }
   while ( !($n % 2) ) { push @factors, 2;  $n = int($n / 2); }
@@ -2996,7 +2996,7 @@ Operations that are slower include:
 
   primes
   random_prime / random_ndigit_prime
-  factor / all_factors
+  factor / factor_exp / divisors
   nth_prime
   primecount
 

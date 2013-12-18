@@ -20,7 +20,8 @@ my @functions =  qw(
       miller_rabin_random
       lucas_sequence
       primes
-      forprimes prime_iterator prime_iterator_object
+      forprimes forcomposites
+      prime_iterator prime_iterator_object
       next_prime  prev_prime
       prime_count
       prime_count_lower prime_count_upper prime_count_approx
@@ -29,8 +30,9 @@ my @functions =  qw(
       random_proven_prime random_proven_prime_with_cert
       random_maurer_prime random_maurer_prime_with_cert
       primorial pn_primorial consecutive_integer_lcm
-      factor all_factors
-      moebius mertens euler_phi jordan_totient exp_mangoldt
+      factor factor_exp divisors
+      moebius mertens euler_phi jordan_totient exp_mangoldt liouville
+      partitions
       chebyshev_theta chebyshev_psi
       divisor_sum
       carmichael_lambda znorder

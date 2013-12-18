@@ -323,9 +323,9 @@ UV* _divisor_list(UV n, UV *num_divisors)
   int i, j, nfactors, ndivisors;
 
   if (n <= 1) {
-    New(0, divs, 1, UV);
-    divs[0] = 1;
-    *num_divisors = n;
+    New(0, divs, 2, UV);
+    if (n == 0) {  divs[0] = 0;  divs[1] = 1;  *num_divisors = 2;  }
+    if (n == 1) {  divs[0] = 1;                *num_divisors = 1;  }
     return divs;
   }
   /* Factor and convert to factor/exponent pair */
@@ -375,7 +375,8 @@ UV _XS_divisor_sum(UV n, UV k)
   int nfac, i, j;
   UV product = 1;
 
-  if (n <= 1) return n;
+  if (n == 0) return (k == 0) ? 2 : 1;  /* divisors are [0,1] */
+  if (n == 1) return 1;                 /* divisors are [1]   */
   nfac = factor(n, factors);
   if (k == 0) {
     for (i = 0; i < nfac; i++) {
