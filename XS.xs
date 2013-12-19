@@ -963,16 +963,29 @@ forcomposites (SV* block, IN SV* svbeg, IN SV* svend = 0)
     svarg = newSVuv(0);
 #if USE_MULTICALL
     if (!CvISXSUB(cv)) {
+      unsigned char* segment;
+      UV seg_base, seg_low, seg_high, c, cbeg, cend, last;
+      void* ctx;
       dMULTICALL;
       I32 gimme = G_VOID;
       PUSH_MULTICALL(cv);
-      for (i = beg; i <= end; i++) {
-        if (!_XS_is_prob_prime(i)) {
-          sv_setuv(svarg, i);
-          GvSV(PL_defgv) = svarg;
-          MULTICALL;
-        }
+      if (beg <= 4) { /* sieve starts at 7, so handle this here */
+        sv_setuv(svarg, 4);  GvSV(PL_defgv) = svarg;  MULTICALL;
+        beg = 6;
       }
+      last = _XS_prev_prime(beg);
+      ctx = start_segment_primes(beg, _XS_next_prime(end), &segment);
+      while (next_segment_primes(ctx, &seg_base, &seg_low, &seg_high)) {
+        START_DO_FOR_EACH_SIEVE_PRIME( segment, seg_low - seg_base, seg_high - seg_base ) {
+          cbeg = (last+1 < beg)   ? beg : last+1;
+          last = seg_base + p;
+          cend = (last-1 > end)   ? end : last-1;
+          for (c = cbeg; c <= cend; c++) {
+            sv_setuv(svarg, c);  GvSV(PL_defgv) = svarg;  MULTICALL;
+          }
+        } END_DO_FOR_EACH_SIEVE_PRIME
+      }
+      end_segment_primes(ctx);
       FIX_MULTICALL_REFCOUNT;
       POP_MULTICALL;
     }

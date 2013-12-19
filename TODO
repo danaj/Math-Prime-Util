@@ -61,5 +61,3 @@
     - look at sieve.c style prime walking
 
 - Add Inverse Li and Legendre Phi to API?
-
-- More efficient forcomposites
