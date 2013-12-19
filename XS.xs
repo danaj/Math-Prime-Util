@@ -958,7 +958,6 @@ forcomposites (SV* block, IN SV* svbeg, IN SV* svend = 0)
     if (beg > end)
       XSRETURN_UNDEF;
 
-    /* TODO: segment sieve and walk composites */
     SAVESPTR(GvSV(PL_defgv));
     svarg = newSVuv(0);
 #if USE_MULTICALL

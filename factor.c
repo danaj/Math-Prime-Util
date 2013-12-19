@@ -347,8 +347,8 @@ UV* _divisor_list(UV n, UV *num_divisors)
   New(0, divs, ndivisors, UV);
   (void) _divisors_from_factors(1, nfactors, factors, exponents, divs);
   { /* Sort (Shell sort is easy and efficient) */
-    static UV gaps[] = {301, 132, 57, 23, 10, 4, 1, 0};
-    UV gap, gapi = 0;
+    static int gaps[] = {301, 132, 57, 23, 10, 4, 1, 0};
+    int gap, gapi = 0;
     for (gap = gaps[gapi]; gap > 0; gap = gaps[++gapi]) {
       for (i = gap; i < ndivisors; i++) {
         UV v = divs[i];
