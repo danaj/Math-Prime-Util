@@ -27,7 +27,7 @@ our @EXPORT_OK =
       miller_rabin miller_rabin_random
       lucas_sequence
       primes
-      forprimes forcomposites
+      forprimes forcomposites fordivisors
       prime_iterator prime_iterator_object
       next_prime  prev_prime
       prime_count
@@ -106,6 +106,8 @@ BEGIN {
     *prev_prime    = \&Math::Prime::Util::_generic_prev_prime;
     *exp_mangoldt  = \&Math::Prime::Util::_generic_exp_mangoldt;
     *forprimes     = sub (&$;$) { _generic_forprimes(@_); }; ## no critic qw(ProhibitSubroutinePrototypes)
+    *fordivisors   = sub (&$) { _generic_fordivisors(@_); }; ## no critic qw(ProhibitSubroutinePrototypes)
+    *forcomposites = sub (&$) { _generic_forcomposites(@_); }; ## no critic qw(ProhibitSubroutinePrototypes)
 
     *_prime_memfreeall = \&Math::Prime::Util::PP::_prime_memfreeall;
     *prime_memfree  = \&Math::Prime::Util::PP::prime_memfree;
@@ -1446,8 +1448,11 @@ sub divisor_sum {
 
   if (defined $k && ref($k) eq 'CODE') {
     my $sum = $n-$n;
-    foreach my $f (divisors($n)) {
-      $sum += $k->($f);
+    if (ref($n) eq 'Math::BigInt') {
+      # If the original number was a bigint, make sure all divisors are.
+      fordivisors { $sum += $k->(Math::BigInt->new("$_")); } $n;
+    } else {
+      fordivisors { $sum += $k->($_); } $n;
     }
     return $sum;
   }
@@ -1519,7 +1524,7 @@ sub _generic_forprimes (&$;$) {    ## no critic qw(ProhibitSubroutinePrototypes)
   }
 }
 
-sub forcomposites(&$;$) {    ## no critic qw(ProhibitSubroutinePrototypes)
+sub _generic_forcomposites(&$;$) { ## no critic qw(ProhibitSubroutinePrototypes)
   my($sub, $beg, $end) = @_;
   if (!defined $end) { $end = $beg; $beg = 4; }
   _validate_num($beg) || _validate_positive_integer($beg);
@@ -1534,6 +1539,20 @@ sub forcomposites(&$;$) {    ## no critic qw(ProhibitSubroutinePrototypes)
         $pp = $beg;
         $sub->();
       }
+    }
+  }
+}
+
+sub _generic_fordivisors (&$) {    ## no critic qw(ProhibitSubroutinePrototypes)
+  my($sub, $n) = @_;
+  _validate_num($n) || _validate_positive_integer($n);
+  my @divisors = ($n <= $_XS_MAXVAL) ? _XS_divisors($n) : divisors($n);
+  {
+    my $pp;
+    local *_ = \$pp;
+    foreach my $d (@divisors) {
+      $pp = $d;
+      $sub->();
     }
   }
 }
@@ -1693,6 +1712,7 @@ sub znorder {
       $k *= $pi;
     }
   }
+  $k = int($k->bstr) if $k->bacmp(''.~0) <= 0;
   return $k;
 
   # Method 3:
@@ -2549,6 +2569,8 @@ Version 0.35
 
   # You can do something for every prime in a range.  Twin primes to 10k:
   forprimes { say if is_prime($_+2) } 10000;
+  # Or for the composites in a range
+  forcomposites { say if is_strong_pseudoprime($_,2) } 10000, 10**6;
 
   # For non-bigints, is_prime and is_prob_prime will always be 0 or 2.
   # They return 0 (composite), 2 (prime), or 1 (probably prime)
@@ -2601,6 +2623,8 @@ Version 0.35
 
   # Get all divisors other than 1 and n
   @divisors = divisors( $n );
+  # Or just apply a block for each one
+  fordivisors  { $sum += $_ + $_*$_ }  $n;
 
   # Euler phi (Euler's totient) on a large number
   use bigint;  say euler_phi( 801294088771394680000412 );
@@ -2883,6 +2907,16 @@ exceptions.  Here is a clumsy L</forprimes> exception example:
   use bigint;
   eval { forprimes { die "$_\n" if $_ % 123 == 1 } 2**100, 2**101 };
   my $n = 0+$@;
+
+
+=head2 forcomposites
+
+  forcomposites { say } 1000;
+  forcomposites { say } 2000,2020;
+
+Given a block and either an end number or a start and end pair, calls the
+block for each composite in the inclusive range.  Starting at 2, the
+composites are the non-primes (C<0> and C<1> are neither prime nor composite).
 
 
 =head2 prime_iterator
@@ -3501,6 +3535,14 @@ The following conditions must hold:
   - C<< Q < n >>
   - C<< k >= 0 >>
   - C<< n >= 2 >>
+
+
+=head2 fordivisors
+
+  fordivisors { $prod *= $_ } $n;
+
+Given a block and a non-negative number C<n>, the block is called with
+C<$_> set to each divisor in sorted order.  Also see L</divisor_sum>.
 
 
 =head2 moebius
@@ -4441,6 +4483,12 @@ Produce the C<matches> result from L<Math::Factor::XS> without skipping:
   my @matches = grep { $_->[0] * $_->[1] == $n && $_->[0] > 1 }
                 combinations_with_repetition( [divisors($n)], 2 );
 
+Compute L<OEIS A054903|http://oeis.org/A054903> just like CRG4's Pari example:
+
+  use Math::Prime::Util qw/forcomposite divisor_sum/;
+  forcomposites {
+    say if divisor_sum($_)+6 == divisor_sum($_+6)
+  } 9,1e7;
 
 =head1 PRIMALITY TESTING NOTES
 
@@ -4723,6 +4771,11 @@ faster on average in MPU.
 =item C<divisors>
 
 Similar to MPU's L</divisors>.
+
+=item C<forprime>, C<forcomposite>, C<fordiv>, C<sumdiv>
+
+Similar to MPU's L</forprimes>, L</forcomposites>, L<fordivisors>, and
+L<divisor_sum>.
 
 =item C<eulerphi>
 

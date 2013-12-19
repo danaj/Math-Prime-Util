@@ -96,7 +96,7 @@ my %jordan_totients = (
   # A059377
   4 => [1, 15, 80, 240, 624, 1200, 2400, 3840, 6480, 9360, 14640, 19200, 28560, 36000, 49920, 61440, 83520, 97200, 130320, 149760, 192000, 219600, 279840, 307200, 390000, 428400, 524880, 576000, 707280, 748800, 923520, 983040, 1171200],
   # A059378
-  5 => [1, 31, 242, 992, 3124, 7502, 16806, 31744, 58806, 96844, 161050, 240064, 371292, 520986, 756008, 1015808, 1419856, 1822986, 2476098, 3099008, 4067052, 4992550, 6436342, 7682048, 9762500, 11510052, 14289858, 16671552, 20511148],
+  5 => [1, 31, 242, 992, 3124, 7502, 16806, 31744, 58806, 96844, 161050, 240064, 371292, 520986, 756008, 1015808, 1419856, 1822986, 2476098, 3099008, 4067052, 4992550, 6436342, 7682048, 9762500, 11510052, 14289858, 16671552, 20511148, 23436248, 28629150, 32505856, 38974100, 44015536, 52501944, 58335552, 69343956, 76759038, 89852664, 99168256, 115856200, 126078612, 147008442, 159761600, 183709944, 199526602, 229345006, 245825536, 282458442, 302637500, 343605152, 368321664],
   # A069091
   6 => [1, 63, 728, 4032, 15624, 45864, 117648, 258048, 530712, 984312, 1771560, 2935296, 4826808, 7411824, 11374272, 16515072, 24137568, 33434856, 47045880, 62995968, 85647744, 111608280, 148035888, 187858944, 244125000, 304088904, 386889048],
   # A069092
@@ -113,6 +113,8 @@ my %sigmak = (
   # A001158
   3 => [1, 9, 28, 73, 126, 252, 344, 585, 757, 1134, 1332, 2044, 2198, 3096, 3528, 4681, 4914, 6813, 6860, 9198, 9632, 11988, 12168, 16380, 15751, 19782, 20440, 25112, 24390, 31752, 29792, 37449, 37296, 44226, 43344, 55261, 50654, 61740, 61544],
 );
+
+my @tau4 = (1,4,4,10,4,16,4,20,10,16,4,40,4,16,16,35,4,40,4,40,16,16,4,80,10,16,20,40,4,64,4,56,16,16,16,100,4,16,16,80,4,64,4,40,40,16,4,140,10,40,16,40,4,80,16,80,16,16,4,160,4,16,40,84,16,64,4,40,16,64,4,200,4,16,40,40,16);
 
 my %mangoldt = (
 -13 => 1,
@@ -219,9 +221,9 @@ plan tests => 0 + 1
                 + scalar(@mult_orders)
                 + scalar(keys %jordan_totients)
                 + 2  # Dedekind psi calculated two ways
-                + 1  # Calculate J5 two different ways
+                + 2  # Calculate J5 two different ways
                 + 2 * $use64 # Jordan totient example
-                + 1 + 2*scalar(keys %sigmak) + 2
+                + 1 + 2*scalar(keys %sigmak) + 3
                 + scalar(keys %mangoldt)
                 + scalar(keys %chebyshev1)
                 + scalar(keys %chebyshev2)
@@ -270,10 +272,7 @@ is_deeply( [euler_phi(10,20)], [4,10,4,12,6,8,8,16,6,18,8], "euler_phi 10-20" );
 
 ###### Jordan Totient
 while (my($k, $tref) = each (%jordan_totients)) {
-  my @tlist;
-  foreach my $n (1 .. scalar @$tref) {
-    push @tlist, jordan_totient($k, $n);
-  }
+  my @tlist = map { jordan_totient($k, $_) } 1 .. scalar @$tref;
   is_deeply( \@tlist, $tref, "Jordan's Totient J_$k" );
 }
 
@@ -289,9 +288,11 @@ while (my($k, $tref) = each (%jordan_totients)) {
 }
 
 {
-  my @J5_moebius = map { divisor_sum($_, sub { my $d=shift; $d**5 * moebius($_/$d); }) } (1 .. 100);
-  my @J5_jordan = map { jordan_totient(5, $_) } (1 .. 100);
-  is_deeply( \@J5_moebius, \@J5_jordan, "Calculate J5 two different ways");
+  my $J5 = $jordan_totients{5};
+  my @J5_jordan = map { jordan_totient(5, $_) } 1 .. scalar @$J5;
+  is_deeply( \@J5_jordan, $J5, "Jordan totient 5, using jordan_totient");
+  my @J5_moebius = map { my $n = $_; divisor_sum($n, sub { my $d=shift; $d**5 * moebius($n/$d); }) } 1 .. scalar @$J5;
+  is_deeply( \@J5_moebius, $J5, "Jordan totient 5, using divisor sum" );
 }
 
 if ($use64) {
@@ -328,6 +329,15 @@ while (my($k, $sigmaref) = each (%sigmak)) {
   my @slist2 = map { divisor_sum($_, 0      ) } 1 .. $len;
   is_deeply( \@slist1, $sigmak{0}, "tau as divisor_sum(n, sub {1})" );
   is_deeply( \@slist2, $sigmak{0}, "tau as divisor_sum(n, 0)" );
+}
+
+{
+  # tau_4 A007426
+  my @t;
+  foreach my $n (1 .. scalar @tau4) {
+    push @t, divisor_sum($n, sub { divisor_sum($_[0],sub { divisor_sum($_[0],0) }) });
+  }
+  is_deeply( \@t, \@tau4, "Tau4 (A007426), nested divisor sums" );
 }
 
 ###### Exponential of von Mangoldt

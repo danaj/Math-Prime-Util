@@ -62,6 +62,4 @@
 
 - Add Inverse Li and Legendre Phi to API?
 
-- Document forcomposites.  Consider XS for it.
-
-- Add fordivisors as XS.
+- More efficient forcomposites

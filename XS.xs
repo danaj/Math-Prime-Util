@@ -39,7 +39,7 @@
 #endif
 
 /* multicall compatibility stuff */
-#if PERL_REVISION <= 5 && PERL_VERSION < 7
+#if (PERL_REVISION <= 5 && PERL_VERSION < 7) || !defined(dMULTICALL)
 # define USE_MULTICALL 0   /* Too much trouble to work around it */
 #else
 # define USE_MULTICALL 1
@@ -47,7 +47,7 @@
 
 #if PERL_VERSION < 13 || (PERL_VERSION == 13 && PERL_SUBVERSION < 9)
 #  define FIX_MULTICALL_REFCOUNT \
-      if (CvDEPTH(multicall_cv) > 1) SvREFCNT_inc(multicall_cv);
+      if (CvDEPTH(multicall_cv) > 1) SvREFCNT_inc_simple_void_NN(multicall_cv);
 #else
 #  define FIX_MULTICALL_REFCOUNT
 #endif
@@ -919,5 +919,136 @@ forprimes (SV* block, IN SV* svbeg, IN SV* svend = 0)
     }
     SvREFCNT_dec(svarg);
 #endif
+    XSRETURN_UNDEF;
+  }
+
+void
+forcomposites (SV* block, IN SV* svbeg, IN SV* svend = 0)
+  PROTOTYPE: &$;$
+  CODE:
+  {
+    UV i, beg, end;
+    GV *gv;
+    HV *stash;
+    SV* svarg;  /* We use svarg to prevent clobbering $_ outside the block */
+    CV *cv = sv_2cv(block, &stash, &gv, 0);
+
+    if (cv == Nullcv)
+      croak("Not a subroutine reference");
+    if (items <= 1) XSRETURN_UNDEF;
+
+    if (!_validate_int(svbeg, 0) || (items >= 3 && !_validate_int(svend,0))) {
+      dSP;
+      PUSHMARK(SP);
+      XPUSHs(block); XPUSHs(svbeg); XPUSHs(svend);
+      PUTBACK;
+      (void) call_pv("Math::Prime::Util::_generic_forcomposites", G_VOID|G_DISCARD);
+      SPAGAIN;
+      XSRETURN_UNDEF;
+    }
+
+    if (items < 3) {
+      beg = 4;
+      set_val_from_sv(end, svbeg);
+    } else {
+      set_val_from_sv(beg, svbeg);
+      set_val_from_sv(end, svend);
+      if (beg < 4) beg = 4;
+    }
+    if (beg > end)
+      XSRETURN_UNDEF;
+
+    /* TODO: segment sieve and walk composites */
+    SAVESPTR(GvSV(PL_defgv));
+    svarg = newSVuv(0);
+#if USE_MULTICALL
+    if (!CvISXSUB(cv)) {
+      dMULTICALL;
+      I32 gimme = G_VOID;
+      PUSH_MULTICALL(cv);
+      for (i = beg; i <= end; i++) {
+        if (!_XS_is_prob_prime(i)) {
+          sv_setuv(svarg, i);
+          GvSV(PL_defgv) = svarg;
+          MULTICALL;
+        }
+      }
+      FIX_MULTICALL_REFCOUNT;
+      POP_MULTICALL;
+    }
+    else
+#endif
+    {
+      for (i = beg; i <= end; i++) {
+        if (!_XS_is_prob_prime(i)) {
+          dSP;
+          sv_setuv(svarg, i);
+          GvSV(PL_defgv) = svarg;
+          PUSHMARK(SP);
+          call_sv((SV*)cv, G_VOID|G_DISCARD);
+        }
+      }
+    }
+    SvREFCNT_dec(svarg);
+    XSRETURN_UNDEF;
+  }
+
+void
+fordivisors (SV* block, IN SV* svn)
+  PROTOTYPE: &$
+  CODE:
+  {
+    UV i, n, ndivisors;
+    UV *divs;
+    GV *gv;
+    HV *stash;
+    SV* svarg;  /* We use svarg to prevent clobbering $_ outside the block */
+    CV *cv = sv_2cv(block, &stash, &gv, 0);
+
+    if (cv == Nullcv)
+      croak("Not a subroutine reference");
+    if (items <= 1) XSRETURN_UNDEF;
+
+    if (!_validate_int(svn, 0)) {
+      dSP;
+      PUSHMARK(SP);
+      XPUSHs(block); XPUSHs(svn);
+      PUTBACK;
+      (void) call_pv("Math::Prime::Util::_generic_fordivisors", G_VOID|G_DISCARD);
+      SPAGAIN;
+      XSRETURN_UNDEF;
+    }
+
+    set_val_from_sv(n, svn);
+    divs = _divisor_list(n, &ndivisors);
+
+    SAVESPTR(GvSV(PL_defgv));
+    svarg = newSVuv(0);
+#if USE_MULTICALL
+    if (!CvISXSUB(cv)) {
+      dMULTICALL;
+      I32 gimme = G_VOID;
+      PUSH_MULTICALL(cv);
+      for (i = 0; i < ndivisors; i++) {
+        sv_setuv(svarg, divs[i]);
+        GvSV(PL_defgv) = svarg;
+        MULTICALL;
+      }
+      FIX_MULTICALL_REFCOUNT;
+      POP_MULTICALL;
+    }
+    else
+#endif
+    {
+      for (i = 0; i < ndivisors; i++) {
+        dSP;
+        sv_setuv(svarg, divs[i]);
+        GvSV(PL_defgv) = svarg;
+        PUSHMARK(SP);
+        call_sv((SV*)cv, G_VOID|G_DISCARD);
+      }
+    }
+    SvREFCNT_dec(svarg);
+    Safefree(divs);
     XSRETURN_UNDEF;
   }

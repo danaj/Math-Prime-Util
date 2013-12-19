@@ -15,6 +15,7 @@ Revision history for Perl module Math::Prime::Util
     [ADDED]
 
     - forcomposites    like forprimes, but on composites.  See Pari 2.6.x.
+    - fordivisors      calls a block for each divisor
 
     [FUNCTIONALITY AND PERFORMANCE]
 

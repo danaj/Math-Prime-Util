@@ -4,7 +4,8 @@ use warnings;
 
 use Test::More;
 use Math::Prime::Util qw/primes prev_prime next_prime
-                         forprimes prime_iterator prime_iterator_object/;
+                         forprimes forcomposites fordivisors
+                         prime_iterator prime_iterator_object/;
 use Math::BigInt try => "GMP,Pari";
 use Math::BigFloat;
 
@@ -13,6 +14,8 @@ my $broken64 = (18446744073709550592 == ~0);
 
 plan tests => 8        # forprimes errors
             + 12 + 5   # forprimes simple
+            + 1        # forcomposites simple
+            + 2        # fordivisors simple
             + 3        # iterator errors
             + 7        # iterator simple
             + 2        # forprimes/iterator nesting
@@ -60,6 +63,23 @@ ok(!eval { forprimes { 1 } 5.6; },   "forprimes abc");
 }
 { my @t; forprimes { push @t, $_ } 31398, 31468;
   is_deeply( [@t], [], "forprimes 31398,31468 (empty region)" );
+}
+{ my @t; forcomposites { push @t, $_ } 50;
+  is_deeply( [@t], [qw/4 6 8 9 10 12 14 15 16 18 20 21 22 24 25 26 27 28 30 32 33 34 35 36 38 39 40 42 44 45 46 48 49 50/], "forcomposites 50" );
+}
+{
+  my $a = 0;
+  fordivisors { $a += $_ + $_*$_ } 54321;
+  is($a, 3287796520, "fordivisors: d|54321: a+=d+d^2");
+  # Matches Math::Pari:
+  #   my $a = PARI(0); my $j; fordiv(54321,$j,sub { $a += $j + $j**2 });
+}
+{
+  # Pari: v=List(); for(n=1, 50, fordiv(n, d, listput(v, d))); Vec(v)
+  my @A027750 = (1,1,2,1,3,1,2,4,1,5,1,2,3,6,1,7,1,2,4,8,1,3,9,1,2,5,10,1,11,1,2,3,4,6,12,1,13,1,2,7,14,1,3,5,15,1,2,4,8,16,1,17,1,2,3,6,9,18,1,19,1,2,4,5,10,20,1,3,7,21,1,2,11,22,1,23,1,2,3,4,6,8,12,24,1,5,25,1,2,13,26,1,3,9,27,1,2,4,7,14,28,1,29,1,2,3,5,6,10,15,30,1,31,1,2,4,8,16,32,1,3,11,33,1,2,17,34,1,5,7,35,1,2,3,4,6,9,12,18,36,1,37,1,2,19,38,1,3,13,39,1,2,4,5,8,10,20,40,1,41,1,2,3,6,7,14,21,42,1,43,1,2,4,11,22,44,1,3,5,9,15,45,1,2,23,46,1,47,1,2,3,4,6,8,12,16,24,48,1,7,49,1,2,5,10,25,50);
+  my @a;
+  do { fordivisors { push @a, $_ } $_ } for 1..50;
+  is_deeply(\@a, \@A027750, "A027750 using fordivisors");
 }
 
 ok(!eval { prime_iterator(-2); }, "iterator -2");
