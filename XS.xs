@@ -927,7 +927,7 @@ forcomposites (SV* block, IN SV* svbeg, IN SV* svend = 0)
   PROTOTYPE: &$;$
   CODE:
   {
-    UV i, beg, end;
+    UV beg, end;
     GV *gv;
     HV *stash;
     SV* svarg;  /* We use svarg to prevent clobbering $_ outside the block */
@@ -953,7 +953,6 @@ forcomposites (SV* block, IN SV* svbeg, IN SV* svend = 0)
     } else {
       set_val_from_sv(beg, svbeg);
       set_val_from_sv(end, svend);
-      if (beg < 4) beg = 4;
     }
     if (beg > end)
       XSRETURN_UNDEF;
@@ -961,9 +960,9 @@ forcomposites (SV* block, IN SV* svbeg, IN SV* svend = 0)
     SAVESPTR(GvSV(PL_defgv));
     svarg = newSVuv(0);
 #if USE_MULTICALL
-    if (!CvISXSUB(cv)) {
+    if (!CvISXSUB(cv) && (end-beg) > 200) {
       unsigned char* segment;
-      UV seg_base, seg_low, seg_high, c, cbeg, cend, last;
+      UV seg_base, seg_low, seg_high, c, cbeg, cend, prevprime, nextprime;
       void* ctx;
       dMULTICALL;
       I32 gimme = G_VOID;
@@ -972,29 +971,34 @@ forcomposites (SV* block, IN SV* svbeg, IN SV* svend = 0)
         sv_setuv(svarg, 4);  GvSV(PL_defgv) = svarg;  MULTICALL;
         beg = 6;
       }
-      last = _XS_prev_prime(beg);
-      ctx = start_segment_primes(beg, _XS_next_prime(end), &segment);
+      /* Find the two primes that bound their interval. */
+      /* If beg or end are >= _max_prime, then this will die. */
+      prevprime = _XS_prev_prime(beg);
+      nextprime = _XS_next_prime(end);
+      ctx = start_segment_primes(beg, nextprime, &segment);
       while (next_segment_primes(ctx, &seg_base, &seg_low, &seg_high)) {
         START_DO_FOR_EACH_SIEVE_PRIME( segment, seg_low - seg_base, seg_high - seg_base ) {
-          cbeg = (last+1 < beg)   ? beg : last+1;
-          last = seg_base + p;
-          cend = (last-1 > end)   ? end : last-1;
+          cbeg = (prevprime+1 < beg)   ? beg : prevprime+1;
+          prevprime = seg_base + p;
+          cend = (prevprime-1 > end)   ? end : prevprime-1;
           for (c = cbeg; c <= cend; c++) {
             sv_setuv(svarg, c);  GvSV(PL_defgv) = svarg;  MULTICALL;
           }
         } END_DO_FOR_EACH_SIEVE_PRIME
       }
       end_segment_primes(ctx);
+      MPUassert( nextprime >= end, "composite sieve skipped end numbers" );
       FIX_MULTICALL_REFCOUNT;
       POP_MULTICALL;
     }
     else
 #endif
     {
-      for (i = beg; i <= end; i++) {
-        if (!_XS_is_prob_prime(i)) {
+      beg = (beg <= 4) ? 3 : beg-1;
+      while (beg++ < end) {
+        if (!_XS_is_prob_prime(beg)) {
           dSP;
-          sv_setuv(svarg, i);
+          sv_setuv(svarg, beg);
           GvSV(PL_defgv) = svarg;
           PUSHMARK(SP);
           call_sv((SV*)cv, G_VOID|G_DISCARD);
