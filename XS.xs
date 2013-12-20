@@ -47,7 +47,7 @@
 
 #if PERL_VERSION < 13 || (PERL_VERSION == 13 && PERL_SUBVERSION < 9)
 #  define FIX_MULTICALL_REFCOUNT \
-      if (CvDEPTH(multicall_cv) > 1) SvREFCNT_inc_simple_void_NN(multicall_cv);
+      if (CvDEPTH(multicall_cv) > 1) SvREFCNT_inc(multicall_cv);
 #else
 #  define FIX_MULTICALL_REFCOUNT
 #endif

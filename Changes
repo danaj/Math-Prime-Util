@@ -27,13 +27,11 @@ Revision history for Perl module Math::Prime::Util
     - LMO much faster if -march=native is used for gcc on a platform with
       asm popcnt (e.g. Nahalem+, Barcelona+, ARM Neon, SPARC, Power7, etc.).
 
-    - all_factors is faster for native size numbers with many factors.  This
-      is mostly in preparation for a alldivisors function, and moving a few
-      more functions to XS/Perl from Perl/XS to cut overhead.
+    - divisors (all_factors) faster for native size numbers with many factors.
 
-    - Switch from mapes to a cached primorial/totient small phi method.
-      Really only affects LMOS and Legendre, but it's pretty significant
-      for them.  Thanks to Kim Walisch for pointing this out.
+    - Switch from mapes to a cached primorial/totient small phi method in
+      lehmer.c.  Really only affects LMOS and Legendre, but it's significant
+      for them.  Thanks to Kim Walisch for questioning my earlier decision.
 
 
 0.35  2013-12-08
