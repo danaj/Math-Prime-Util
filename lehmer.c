@@ -273,66 +273,48 @@ static UV bs_prime_count(uint32_t n, uint32_t const* const primes, uint32_t last
 #define FAST_DIV(x,y) \
   ( ((x) <= 4294967295U) ? (uint32_t)(x)/(uint32_t)(y) : (x)/(y) )
 
-/* Use Mapes' method to calculate phi(x,a) for small a.  This is really
- * convenient and a little Perl script will spit this code out for whatever
- * limit we select.  It gets unwieldy with large a values.
- */
-static UV mapes(UV x, UV a)
-{
-  IV val;
-  if (a == 0)  return x;
-  if (a == 1)  return x-x/2;
-  val = x-x/2-x/3+x/6;
-  if (a >= 3) val += 0-x/5+x/10+x/15-x/30;
-  if (a >= 4) val += 0-x/7+x/14+x/21-x/42+x/35-x/70-x/105+x/210;
-  if (a >= 5) val += 0-x/11+x/22+x/33-x/66+x/55-x/110-x/165+x/330+x/77-x/154-x/231+x/462-x/385+x/770+x/1155-x/2310;
-  if (a >= 6) val += 0-x/13+x/26+x/39-x/78+x/65-x/130-x/195+x/390+x/91-x/182-x/273+x/546-x/455+x/910+x/1365-x/2730+x/143-x/286-x/429+x/858-x/715+x/1430+x/2145-x/4290-x/1001+x/2002+x/3003-x/6006+x/5005-x/10010-x/15015+x/30030;
-  if (a >= 7) val += 0-x/17+x/34+x/51-x/102+x/85-x/170-x/255+x/510+x/119-x/238-x/357+x/714-x/595+x/1190+x/1785-x/3570+x/187-x/374-x/561+x/1122-x/935+x/1870+x/2805-x/5610-x/1309+x/2618+x/3927-x/7854+x/6545-x/13090-x/19635+x/39270+x/221-x/442-x/663+x/1326-x/1105+x/2210+x/3315-x/6630-x/1547+x/3094+x/4641-x/9282+x/7735-x/15470-x/23205+x/46410-x/2431+x/4862+x/7293-x/14586+x/12155-x/24310-x/36465+x/72930+x/17017-x/34034-x/51051+x/102102-x/85085+x/170170+x/255255-x/510510;
-  return (UV) val;
+/* static uint32_t sprime[] = {0,2, 3, 5, 7, 11, 13, 17, 19, 23};   */
+/* static uint32_t sprimorial[] = {1,2,6,30,210,2310,30030,510510}; */
+/* static uint32_t stotient[]   = {1,1,2, 8, 48, 480, 5760, 92160}; */
+static const uint16_t _s0[ 1] = {0};
+static const uint16_t _s1[ 2] = {0,1};
+static const uint16_t _s2[ 6] = {0,1,1,1,1,2};
+static const uint16_t _s3[30] = {0,1,1,1,1,1,1,2,2,2,2,3,3,4,4,4,4,5,5,6,6,6,6,7,7,7,7,7,7,8};
+static uint16_t _s4[210];
+static uint16_t _s5[2310];
+static uint16_t _s6[30030];
+static const uint16_t* sphicache[7] = { _s0,_s1,_s2,_s3,_s4,_s5,_s6 };
+static int sphi_init = 0;
+
+static UV tablephi(UV x, uint32_t a) {
+  switch (a) {
+    case 0: return x;
+    case 1: return x-x/2;
+    case 2: return x-x/2-x/3+x/6;
+    case 3: return (x/    30U) *     8U + sphicache[3][x %     30U];
+    case 4: return (x/   210U) *    48U + sphicache[4][x %    210U];
+    case 5: return (x/  2310U) *   480U + sphicache[5][x %   2310U];
+    case 6: return (x/ 30030U) *  5760U + sphicache[6][x %  30030U];
+    default: {
+               UV xp  = x / 17U;
+               return ((x /30030U) * 5760U + sphicache[6][x  % 30030U]) -
+                      ((xp/30030U) * 5760U + sphicache[6][xp % 30030U]);
+             }
+  }
+}
+static void phitableinit(void) {
+  if (sphi_init == 0) {
+    int x;
+    for (x = 0; x <   210; x++)
+      _s4[x] = ((x/  30)*  8+_s3[x%  30])-(((x/ 7)/  30)*  8+_s3[(x/ 7)%  30]);
+    for (x = 0; x <  2310; x++)
+      _s5[x] = ((x/ 210)* 48+_s4[x% 210])-(((x/11)/ 210)* 48+_s4[(x/11)% 210]);
+    for (x = 0; x < 30030; x++)
+      _s6[x] = ((x/2310)*480+_s5[x%2310])-(((x/13)/2310)*480+_s5[(x/13)%2310]);
+    sphi_init = 1;
+  }
 }
 
-#define mapes7(x) (((x) <= 4294967295U) ? mapes7_32(x) : mapes7_64(x))
-static UV mapes7_64(UV x) {    /* A tiny bit faster setup for a=7 */
-  UV val = x-x/2-x/3-x/5+x/6-x/7+x/10-x/11-x/13+x/14+x/15-x/17+x/21+x/22+x/26
-          -x/30+x/33+x/34+x/35+x/39-x/42+x/51+x/55+x/65-x/66-x/70+x/77-x/78
-          +x/85+x/91-x/102-x/105-x/110+x/119-x/130+x/143-x/154-x/165-x/170
-          -x/182+x/187-x/195+x/210+x/221-x/231-x/238-x/255-x/273-x/286+x/330
-          -x/357-x/374-x/385+x/390-x/429-x/442-x/455+x/462+x/510+x/546-x/561
-          -x/595-x/663+x/714;
-  if (x >= 715) {
-    val += 0-x/715+x/770+x/858+x/910-x/935-x/1001-x/1105+x/1122+x/1155+x/1190
-            -x/1309+x/1326+x/1365+x/1430-x/1547+x/1785+x/1870+x/2002+x/2145
-            +x/2210-x/2310-x/2431+x/2618-x/2730+x/2805+x/3003+x/3094+x/3315
-            -x/3570+x/3927-x/4290+x/4641+x/4862+x/5005-x/5610-x/6006+x/6545
-            -x/6630+x/7293+x/7735-x/7854;
-    if (x >= 9282)
-      val += 0-x/9282-x/10010+x/12155-x/13090-x/14586-x/15015-x/15470+x/17017
-              -x/19635-x/23205-x/24310+x/30030-x/34034-x/36465+x/39270+x/46410
-              -x/51051+x/72930-x/85085+x/102102+x/170170+x/255255-x/510510;
-  }
-  return val;
-}
-
-static uint32_t mapes7_32(uint32_t x) {
-  uint32_t val = x-x/2-x/3-x/5+x/6-x/7+x/10-x/11-x/13+x/14+x/15-x/17+x/21
-          +x/22+x/26-x/30+x/33+x/34+x/35+x/39-x/42+x/51+x/55+x/65-x/66-x/70
-          +x/77-x/78+x/85+x/91-x/102-x/105-x/110+x/119-x/130+x/143-x/154
-          -x/165-x/170-x/182+x/187-x/195+x/210+x/221-x/231-x/238-x/255-x/273
-          -x/286+x/330-x/357-x/374-x/385+x/390-x/429-x/442-x/455+x/462+x/510
-          +x/546-x/561-x/595-x/663+x/714;
-  if (x >= 715) {
-    val += 0-x/715+x/770+x/858+x/910-x/935-x/1001-x/1105+x/1122+x/1155+x/1190
-            -x/1309+x/1326+x/1365+x/1430-x/1547+x/1785+x/1870+x/2002+x/2145
-            +x/2210-x/2310-x/2431+x/2618-x/2730+x/2805+x/3003+x/3094+x/3315
-            -x/3570+x/3927-x/4290+x/4641+x/4862+x/5005-x/5610-x/6006+x/6545
-            -x/6630+x/7293+x/7735-x/7854;
-    if (x >= 9282)
-      val += 0-x/9282-x/10010+x/12155-x/13090-x/14586-x/15015-x/15470+x/17017
-              -x/19635-x/23205-x/24310+x/30030-x/34034-x/36465+x/39270+x/46410
-              -x/51051+x/72930-x/85085+x/102102+x/170170+x/255255-x/510510;
-  }
-  return val;
-}
 
 /* Max memory = 2*A*X bytes, e.g. 2*400*24000 = 18.3 MB */
 #define PHICACHEA 257
@@ -348,6 +330,7 @@ static void phicache_init(cache_t* cache) {
     cache->val[a] = 0;
     cache->max[a] = 0;
   }
+  phitableinit();
 }
 static void phicache_free(cache_t* cache) {
   int a;
@@ -385,13 +368,13 @@ static IV _phi3(UV x, UV a, int sign, const uint32_t* const primes, const uint32
 {
   IV sum;
 
-  if (a < 3)
-    return sign * ((a==0) ? x : (a==1) ? x-x/2 : x-x/2-x/3+x/6);
-  else if (PHI_CACHE_POPULATED(x, a))
+  if (PHI_CACHE_POPULATED(x, a))
     return sign * cache->val[a][x];
   else if (x < primes[a+1])
     sum = sign;
-  else if (1 && x <= primes[lastidx] && x < primes[a]*primes[a])
+  else if (a <= 7)
+    sum = sign * tablephi(x,a);
+  else if (x <= primes[lastidx] && x < primes[a]*primes[a])
     sum = sign * (bs_prime_count(x, primes, lastidx) - a + 1);
   else {
     UV a2;
@@ -401,18 +384,13 @@ static IV _phi3(UV x, UV a, int sign, const uint32_t* const primes, const uint32
       sum = sign * (x - a + iters);
       for (a2 = 1; a2 <= iters; a2++)
         sum += _phi3( FAST_DIV(x, primes[a2]), a2-1, -sign, primes, lastidx, cache);
-    } else if (a >= 7) {
+    } else {
       if (PHI_CACHE_POPULATED(x, 7))
         sum = sign * cache->val[7][x];
       else
-        sum = sign * mapes7(x);
+        sum = sign * tablephi(x, 7);
       for (a2 = 8; a2 <= a; a2++)
         sum += _phi3( FAST_DIV(x,primes[a2]), a2-1, -sign, primes, lastidx, cache);
-    } else {
-      if (PHI_CACHE_POPULATED(x, a))
-        sum = sign * cache->val[a][x];
-      else
-        sum = sign * mapes(x, a);
     }
   }
   if (a < PHICACHEA && x < PHICACHEX)
@@ -585,8 +563,9 @@ static UV phi(UV x, UV a)
   vc_t* arr;
   cache_t pcache; /* Cache for recursive phi */
 
+  phitableinit();
   if (a == 1)  return ((x+1)/2);
-  if (a <= 7)  return mapes(x, a);
+  if (a <= 7)  return tablephi(x, a);
 
   lastidx = a+1;
   primes = generate_small_primes(lastidx);
@@ -659,7 +638,7 @@ static UV phi(UV x, UV a)
   #pragma omp parallel for reduction(+: sum) schedule(dynamic, 16)
 #endif
   for (i = 0; i < a1.n; i++)
-    sum += arr[i].c * mapes7( arr[i].v );
+    sum += arr[i].c * tablephi( arr[i].v, 7 );
   vcarray_destroy(&a1);
   Safefree(primes);
   return (UV) sum;
@@ -902,14 +881,13 @@ static const unsigned char primes_small[] =
 
 UV _XS_legendre_phi(UV x, UV a) {
   /* For small values, calculate directly */
-  if (a < 3)  return (a == 0) ? x : (a == 1) ? x-x/2 : x-x/2-x/3+x/6;
-  if (a <= 7) return mapes(x, a);
+  if (a <= 7) return tablephi(x, a);
   /* For large values, do our non-recursive phi */
   if (a > NPRIMES_SMALL) return phi(x,a);
   /* Otherwise, recurse */
   {
     UV i;
-    UV sum = mapes7(x);
+    UV sum = tablephi(x, 7);
     for (i = 8; i <= a; i++) {
       uint32_t p = primes_small[i];
       UV xp = x/p;

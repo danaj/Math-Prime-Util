@@ -31,6 +31,10 @@ Revision history for Perl module Math::Prime::Util
       is mostly in preparation for a alldivisors function, and moving a few
       more functions to XS/Perl from Perl/XS to cut overhead.
 
+    - Switch from mapes to a cached primorial/totient small phi method.
+      Really only affects LMOS and Legendre, but it's pretty significant
+      for them.  Thanks to Kim Walisch for pointing this out.
+
 
 0.35  2013-12-08
 

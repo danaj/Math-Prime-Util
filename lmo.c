@@ -453,7 +453,7 @@ UV _XS_LMO_pi(UV n)
   uint16   *factor_table;
   sieve_t   ss;
 
-  const uint32 c = 7;  /* We can use out Mapes function for c <= 7 */
+  const uint32 c = 7;  /* We can use our Mapes function for c <= 7 */
 
   /* For "small" n, use our table+segment sieve. */
   if (n < SIEVE_LIMIT || n < 10000)  return _XS_prime_count(2, n);
