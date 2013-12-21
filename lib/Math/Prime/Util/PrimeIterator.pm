@@ -145,7 +145,7 @@ Version 0.35
   my $v = $it->value();     # Return current value
   $it->next();              # Move to next prime (returns self)
   $it->prev();              # Move to prev prime (returns self)
-  my $v = $it->iterate();   # Returns current value and moves to next prime
+  my $v = $it->iterate();   # Returns current value; moves to next prime
   $it->rewind();            # Resets position to 2
   $it->rewind($n);          # Resets position to next_prime($n-1)
 
