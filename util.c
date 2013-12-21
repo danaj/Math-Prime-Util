@@ -70,6 +70,32 @@ static int _call_gmp = 0;
 void _XS_set_callgmp(int v) { _call_gmp = v; }
 int  _XS_get_callgmp(void) { return _call_gmp; }
 
+#if BITS_PER_WORD == 64
+ #if defined(__GNUC__) && (__GNUC__> 4 || (__GNUC__== 4 && __GNUC_MINOR__> 1))
+   #define popcnt(b)  __builtin_popcountll(b)
+ #else
+   static UV popcnt(UV b) {
+     b -= (b >> 1) & 0x5555555555555555;
+     b = (b & 0x3333333333333333) + ((b >> 2) & 0x3333333333333333);
+     b = (b + (b >> 4)) & 0x0f0f0f0f0f0f0f0f;
+     return (b * 0x0101010101010101) >> 56;
+   }
+ #endif
+#else
+   static UV popcnt(UV b) {
+     b -= (b >> 1) & 0x55555555;
+     b = (b & 0x33333333) + ((b >> 2) & 0x33333333);
+     b = (b + (b >> 4)) & 0x0f0f0f0f;
+     return (b * 0x01010101) >> 24;
+   }
+#endif
+
+#if defined(__GNUC__)
+ #define word_aligned(m,wordsize)  ((uintptr_t)m & (wordsize-1))
+#else  /* uintptr_t is part of C99 */
+ #define word_aligned(m,wordsize)  ((unsigned int)m & (wordsize-1))
+#endif
+
 
 static const unsigned char byte_zeros[256] =
   {8,7,7,6,7,6,6,5,7,6,6,5,6,5,5,4,7,6,6,5,6,5,5,4,6,5,5,4,5,4,4,3,
@@ -83,6 +109,22 @@ static const unsigned char byte_zeros[256] =
 static UV count_zero_bits(const unsigned char* m, UV nbytes)
 {
   UV count = 0;
+#if BITS_PER_WORD == 64
+  if (nbytes >= 16) {
+    while ( word_aligned(m,sizeof(UV)) && nbytes--)
+      count += byte_zeros[*m++];
+    if (nbytes >= 8) {
+      UV* wordptr = (UV*)m;
+      UV nwords = nbytes / 8;
+      UV nzeros = nwords * 64;
+      m += nwords * 8;
+      nbytes %= 8;
+      while (nwords--)
+        nzeros -= popcnt(*wordptr++);
+      count += nzeros;
+    }
+  }
+#endif
   while (nbytes--)
     count += byte_zeros[*m++];
   return count;
