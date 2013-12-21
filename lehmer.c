@@ -286,6 +286,8 @@ static uint16_t _s6[30030];
 static const uint16_t* sphicache[7] = { _s0,_s1,_s2,_s3,_s4,_s5,_s6 };
 static int sphi_init = 0;
 
+#define PHIC 7
+
 static UV tablephi(UV x, uint32_t a) {
   switch (a) {
     case 0: return x;
@@ -295,11 +297,25 @@ static UV tablephi(UV x, uint32_t a) {
     case 4: return (x/   210U) *    48U + sphicache[4][x %    210U];
     case 5: return (x/  2310U) *   480U + sphicache[5][x %   2310U];
     case 6: return (x/ 30030U) *  5760U + sphicache[6][x %  30030U];
-    default: {
+#if PHIC >= 7
+    case 7:  {
                UV xp  = x / 17U;
                return ((x /30030U) * 5760U + sphicache[6][x  % 30030U]) -
                       ((xp/30030U) * 5760U + sphicache[6][xp % 30030U]);
              }
+#endif
+#if PHIC >= 8
+    case 8: {
+               UV xp  = x / 17U;
+               UV x2  = x / 19U;
+               UV x2p = x2 / 17U;
+               return ((x  /30030U) * 5760U + sphicache[6][x  % 30030U]) -
+                      ((xp /30030U) * 5760U + sphicache[6][xp % 30030U]) -
+                      ((x2 /30030U) * 5760U + sphicache[6][x2 % 30030U]) +
+                      ((x2p/30030U) * 5760U + sphicache[6][x2p% 30030U]);
+             }
+#endif
+    default: croak("a %u too large for tablephi\n", a);
   }
 }
 static void phitableinit(void) {
@@ -316,9 +332,9 @@ static void phitableinit(void) {
 }
 
 
-/* Max memory = 2*A*X bytes, e.g. 2*400*24000 = 18.3 MB */
-#define PHICACHEA 257
-#define PHICACHEX 32769
+/* Max memory = 2*X*A bytes, e.g. 2*65536*256 = 32 MB */
+#define PHICACHEA 512
+#define PHICACHEX 65536
 typedef struct
 {
   uint32_t max[PHICACHEA];
@@ -370,10 +386,10 @@ static IV _phi3(UV x, UV a, int sign, const uint32_t* const primes, const uint32
 
   if (PHI_CACHE_POPULATED(x, a))
     return sign * cache->val[a][x];
+  else if (a <= PHIC)
+    sum = sign * tablephi(x,a);
   else if (x < primes[a+1])
     sum = sign;
-  else if (a <= 7)
-    sum = sign * tablephi(x,a);
   else if (x <= primes[lastidx] && x < primes[a]*primes[a])
     sum = sign * (bs_prime_count(x, primes, lastidx) - a + 1);
   else {
@@ -385,11 +401,11 @@ static IV _phi3(UV x, UV a, int sign, const uint32_t* const primes, const uint32
       for (a2 = 1; a2 <= iters; a2++)
         sum += _phi3( FAST_DIV(x, primes[a2]), a2-1, -sign, primes, lastidx, cache);
     } else {
-      if (PHI_CACHE_POPULATED(x, 7))
-        sum = sign * cache->val[7][x];
+      if (PHI_CACHE_POPULATED(x, PHIC))
+        sum = sign * cache->val[PHIC][x];
       else
-        sum = sign * tablephi(x, 7);
-      for (a2 = 8; a2 <= a; a2++)
+        sum = sign * tablephi(x, PHIC);
+      for (a2 = PHIC+1; a2 <= a; a2++)
         sum += _phi3( FAST_DIV(x,primes[a2]), a2-1, -sign, primes, lastidx, cache);
     }
   }
@@ -565,7 +581,7 @@ static UV phi(UV x, UV a)
 
   phitableinit();
   if (a == 1)  return ((x+1)/2);
-  if (a <= 7)  return tablephi(x, a);
+  if (a <= PHIC)  return tablephi(x, a);
 
   lastidx = a+1;
   primes = generate_small_primes(lastidx);
@@ -579,7 +595,7 @@ static UV phi(UV x, UV a)
   a2 = vcarray_create();
   vcarray_insert(&a1, x, 1);
 
-  while (a > 7) {
+  while (a > PHIC) {
     UV primea = primes[a];
     UV sval_last = 0;
     IV sval_count = 0;
@@ -638,7 +654,7 @@ static UV phi(UV x, UV a)
   #pragma omp parallel for reduction(+: sum) schedule(dynamic, 16)
 #endif
   for (i = 0; i < a1.n; i++)
-    sum += arr[i].c * tablephi( arr[i].v, 7 );
+    sum += arr[i].c * tablephi( arr[i].v, PHIC );
   vcarray_destroy(&a1);
   Safefree(primes);
   return (UV) sum;
@@ -881,14 +897,14 @@ static const unsigned char primes_small[] =
 
 UV _XS_legendre_phi(UV x, UV a) {
   /* For small values, calculate directly */
-  if (a <= 7) return tablephi(x, a);
+  if (a <= PHIC) return tablephi(x, a);
   /* For large values, do our non-recursive phi */
   if (a > NPRIMES_SMALL) return phi(x,a);
   /* Otherwise, recurse */
   {
     UV i;
-    UV sum = tablephi(x, 7);
-    for (i = 8; i <= a; i++) {
+    UV sum = tablephi(x, PHIC);
+    for (i = PHIC+1; i <= a; i++) {
       uint32_t p = primes_small[i];
       UV xp = x/p;
       if (xp < p) {
