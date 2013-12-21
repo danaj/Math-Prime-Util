@@ -95,29 +95,115 @@ static const unsigned char presieve13[PRESIEVE_SIZE] =
   0x18,0x89,0x08,0x25,0x44,0x22,0x30,0x14,0xc3,0x88,0x86,0x40,0x1a,
   0x28,0x30,0x85,0x09,0x54,0x60,0x43,0x24,0x92,0x81,0x08,0x04,0x70};
 
-#define FIND_COMPOSITE_POS(i,j) \
-  { \
-    UV dlast = d; \
-    do { \
-      d += dinc; \
-      m += minc; \
-      if (m >= 30) { d++; m -= 30; } \
-    } while ( masktab30[m] == 0 ); \
-    wdinc[i] = d - dlast; \
-    wmask[j] = masktab30[m]; \
-  }
-#define FIND_COMPOSITE_POSITIONS(p) \
+static const unsigned char stepdata[8][8][8] = {
+  { {96,65,34,67,36,69,102,47},
+    {64,47,75,106,46,105,77,44},
+    {32,86,33,87,115,45,114,84},
+    {72,46,85,42,73,127,44,123},
+    {96,35,100,79,33,66,37,78},
+    {64,108,34,109,67,47,65,46},
+    {32,76,117,33,118,74,35,87},
+    {32,127,86,45,84,43,82,121},
+  },
+  { {65,34,67,36,69,102,47,96},
+    {105,77,44,64,47,75,106,46},
+    {33,87,115,45,114,84,32,86},
+    {73,127,44,123,72,46,85,42},
+    {33,66,37,78,96,35,100,79},
+    {65,46,64,108,34,109,67,47},
+    {33,118,74,35,87,32,76,117},
+    {121,32,127,86,45,84,43,82},
+  },
+  { {34,67,36,69,102,47,96,65},
+    {106,46,105,77,44,64,47,75},
+    {114,84,32,86,33,87,115,45},
+    {42,73,127,44,123,72,46,85},
+    {66,37,78,96,35,100,79,33},
+    {34,109,67,47,65,46,64,108},
+    {74,35,87,32,76,117,33,118},
+    {82,121,32,127,86,45,84,43},
+  },
+  { {67,36,69,102,47,96,65,34},
+    {75,106,46,105,77,44,64,47},
+    {115,45,114,84,32,86,33,87},
+    {123,72,46,85,42,73,127,44},
+    {35,100,79,33,66,37,78,96},
+    {67,47,65,46,64,108,34,109},
+    {35,87,32,76,117,33,118,74},
+    {43,82,121,32,127,86,45,84},
+  },
+  { {36,69,102,47,96,65,34,67},
+    {44,64,47,75,106,46,105,77},
+    {84,32,86,33,87,115,45,114},
+    {44,123,72,46,85,42,73,127},
+    {100,79,33,66,37,78,96,35},
+    {108,34,109,67,47,65,46,64},
+    {76,117,33,118,74,35,87,32},
+    {84,43,82,121,32,127,86,45},
+  },
+  { {69,102,47,96,65,34,67,36},
+    {77,44,64,47,75,106,46,105},
+    {45,114,84,32,86,33,87,115},
+    {85,42,73,127,44,123,72,46},
+    {37,78,96,35,100,79,33,66},
+    {109,67,47,65,46,64,108,34},
+    {117,33,118,74,35,87,32,76},
+    {45,84,43,82,121,32,127,86},
+  },
+  { {102,47,96,65,34,67,36,69},
+    {46,105,77,44,64,47,75,106},
+    {86,33,87,115,45,114,84,32},
+    {46,85,42,73,127,44,123,72},
+    {78,96,35,100,79,33,66,37},
+    {46,64,108,34,109,67,47,65},
+    {118,74,35,87,32,76,117,33},
+    {86,45,84,43,82,121,32,127},
+  },
+  { {47,96,65,34,67,36,69,102},
+    {47,75,106,46,105,77,44,64},
+    {87,115,45,114,84,32,86,33},
+    {127,44,123,72,46,85,42,73},
+    {79,33,66,37,78,96,35,100},
+    {47,65,46,64,108,34,109,67},
+    {87,32,76,117,33,118,74,35},
+    {127,86,45,84,43,82,121,32},
+  },
+};
+
+static const int wheelmap[30] =
+  {0,0,0,0,0,0,0,1,0,0,0,2,0,3,0,0,0,4,0,5,0,0,0,6,0,0,0,0,0,7};
+static const int wheel2xmap[30] =     /* (2*p)%30 => 2,14,22,26,4,8,16,28 */
+  {0,0,0,0,4,0,0,0,5,0,0,0,0,0,1,0,6,0,0,0,0,0,2,0,0,0,3,0,7,0};
+/*     2   4       8          14  16          22      26  28     (2*p)%30 */
+
+#define FIND_COMPOSITE_POSITIONS(d, m, p) \
   do { \
-    FIND_COMPOSITE_POS(0,1) \
-    FIND_COMPOSITE_POS(1,2) \
-    FIND_COMPOSITE_POS(2,3) \
-    FIND_COMPOSITE_POS(3,4) \
-    FIND_COMPOSITE_POS(4,5) \
-    FIND_COMPOSITE_POS(5,6) \
-    FIND_COMPOSITE_POS(6,7) \
-    FIND_COMPOSITE_POS(7,0) \
-    d -= p; \
+    int v; \
+    UV dinc = (2*p) / 30; \
+    UV minc = (2*p) - dinc*30; \
+    const unsigned char* steps = stepdata [wheelmap[m]] [wheel2xmap[minc]]; \
+    v = steps[0]; wdinc[0] = dinc*(v>>5)+((v>>3)&0x3); wmask[0] = 1<<(v&0x7); \
+    v = steps[1]; wdinc[1] = dinc*(v>>5)+((v>>3)&0x3); wmask[1] = 1<<(v&0x7); \
+    v = steps[2]; wdinc[2] = dinc*(v>>5)+((v>>3)&0x3); wmask[2] = 1<<(v&0x7); \
+    v = steps[3]; wdinc[3] = dinc*(v>>5)+((v>>3)&0x3); wmask[3] = 1<<(v&0x7); \
+    v = steps[4]; wdinc[4] = dinc*(v>>5)+((v>>3)&0x3); wmask[4] = 1<<(v&0x7); \
+    v = steps[5]; wdinc[5] = dinc*(v>>5)+((v>>3)&0x3); wmask[5] = 1<<(v&0x7); \
+    v = steps[6]; wdinc[6] = dinc*(v>>5)+((v>>3)&0x3); wmask[6] = 1<<(v&0x7); \
+    v = steps[7]; wdinc[7] = dinc*(v>>5)+((v>>3)&0x3); wmask[7] = 1<<(v&0x7); \
   } while (0)
+
+/* For advancing in prime steps in the segment sieve */
+static const unsigned char primestepadvance30[15][30] = {
+ {1,0,5,4,3,2,1,0,3,2,1,0,1,0,3,2,1,0,1,0,3,2,1,0,5,4,3,2,1,0}, {0}, {0},
+ {1,0,3,2,1,2,1,0,3,2,1,0,1,0,5,2,1,0,5,0,3,4,1,0,1,4,3,2,3,0}, {0},
+ {1,0,1,4,3,4,1,0,1,2,3,0,1,0,3,2,3,0,1,0,1,2,5,0,5,2,1,2,3,0},
+ {1,0,3,2,1,2,1,0,3,4,1,0,5,0,3,2,1,0,1,0,3,2,3,0,1,4,5,2,1,0}, {0},
+ {1,0,1,2,5,4,1,0,3,2,3,0,1,0,1,2,3,0,5,0,1,4,3,0,1,2,1,2,3,0},
+ {1,0,3,2,1,2,5,0,5,2,1,0,1,0,3,2,3,0,1,0,3,2,1,0,1,4,3,4,1,0}, {0},
+ {1,0,3,2,3,4,1,0,1,4,3,0,5,0,1,2,5,0,1,0,1,2,3,0,1,2,1,2,3,0}, {0},{0},
+ {1,0,1,2,3,4,5,0,1,2,3,0,1,0,1,2,3,0,1,0,1,2,3,0,1,2,3,4,5,0}
+};
+
 
 static void sieve_prefill(unsigned char* mem, UV startd, UV endd)
 {
@@ -141,8 +227,6 @@ static void sieve_prefill(unsigned char* mem, UV startd, UV endd)
   }
 }
 
-
-
 /* Wheel 30 sieve.  Ideas from Terje Mathisen and Quesada / Van Pelt. */
 unsigned char* sieve_erat30(UV end)
 {
@@ -164,15 +248,14 @@ unsigned char* sieve_erat30(UV end)
 
   limit = isqrt(end);  /* prime*prime can overflow */
   for (prime = 17; prime <= limit; prime = next_prime_in_sieve(mem,prime)) {
-    UV d = (prime*prime)/30;
-    UV m = (prime*prime) - d*30;
-    UV dinc = (2*prime)/30;
-    UV minc = (2*prime) - dinc*30;
+    UV p2 = prime*prime;
+    UV d = p2 / 30;
+    UV m = p2 - d*30;
     UV wdinc[8];
     unsigned char wmask[8];
 
     /* Find the positions of the next composites we will mark */
-    FIND_COMPOSITE_POSITIONS(prime);
+    FIND_COMPOSITE_POSITIONS(d, m, prime);
 #if 0
     assert(d == ((prime*prime)/30));
     assert(d < max_buf);
@@ -257,16 +340,14 @@ int sieve_segment(unsigned char* mem, UV startd, UV endd)
         do { p2 += 2*p; } while (masktab30[p2%30] == 0);
       } while ( (p2 <= endp) && (p2 >= startp) );
 #else
-      UV d = (p2)/30;
-      UV m = (p2) - d*30;
-      UV dinc = (2*p)/30;
-      UV minc = (2*p) - dinc*30;
+      UV d = p2 / 30;
+      UV m = p2 - d*30;
       UV wdinc[8];
       unsigned char wmask[8];
       UV offset_endd = endd - startd;
 
       /* Find the positions of the next composites we will mark */
-      FIND_COMPOSITE_POSITIONS(p);
+      FIND_COMPOSITE_POSITIONS(d, m, p);
       d -= startd;
       /* Unrolled inner loop for marking composites */
       while ( (d+p) <= offset_endd ) {
