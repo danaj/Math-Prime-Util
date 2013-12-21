@@ -584,7 +584,7 @@ int _XS_is_almost_extra_strong_lucas_pseudoprime(UV n, UV increment)
   if (n < 7) return (n == 2 || n == 3 || n == 5);
   if ((n % 2) == 0 || n == UV_MAX) return 0;
   if (increment < 1 || increment > 256)
-    croak("Invalid lucas paramater increment: %"UVuf"\n", increment);
+    croak("Invalid lucas parameter increment: %"UVuf"\n", increment);
 
   P = 3;
   while (1) {
