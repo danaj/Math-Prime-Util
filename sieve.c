@@ -192,17 +192,7 @@ static const int wheel2xmap[30] =     /* (2*p)%30 => 2,14,22,26,4,8,16,28 */
     v = steps[7]; wdinc[7] = dinc*(v>>5)+((v>>3)&0x3); wmask[7] = 1<<(v&0x7); \
   } while (0)
 
-/* For advancing in prime steps in the segment sieve */
-static const unsigned char primestepadvance30[15][30] = {
- {1,0,5,4,3,2,1,0,3,2,1,0,1,0,3,2,1,0,1,0,3,2,1,0,5,4,3,2,1,0}, {0}, {0},
- {1,0,3,2,1,2,1,0,3,2,1,0,1,0,5,2,1,0,5,0,3,4,1,0,1,4,3,2,3,0}, {0},
- {1,0,1,4,3,4,1,0,1,2,3,0,1,0,3,2,3,0,1,0,1,2,5,0,5,2,1,2,3,0},
- {1,0,3,2,1,2,1,0,3,4,1,0,5,0,3,2,1,0,1,0,3,2,3,0,1,4,5,2,1,0}, {0},
- {1,0,1,2,5,4,1,0,3,2,3,0,1,0,1,2,3,0,5,0,1,4,3,0,1,2,1,2,3,0},
- {1,0,3,2,1,2,5,0,5,2,1,0,1,0,3,2,3,0,1,0,3,2,1,0,1,4,3,4,1,0}, {0},
- {1,0,3,2,3,4,1,0,1,4,3,0,5,0,1,2,5,0,1,0,1,2,3,0,1,2,1,2,3,0}, {0},{0},
- {1,0,1,2,3,4,5,0,1,2,3,0,1,0,1,2,3,0,1,0,1,2,3,0,1,2,3,4,5,0}
-};
+static const UV max_sieve_prime = (BITS_PER_WORD==64) ? 4294967291U : 65521U;
 
 
 static void sieve_prefill(unsigned char* mem, UV startd, UV endd)
@@ -305,8 +295,9 @@ int sieve_segment(unsigned char* mem, UV startd, UV endd)
   /* Fill buffer with marked 7, 11, and 13 */
   sieve_prefill(mem, startd, endd);
 
-  limit = isqrt(endp);
-  if (limit*limit < endp) limit++;  /* ceil(sqrt(endp)) */
+  limit = isqrt(endp);  /* floor(sqrt(n)), will include p if p*p=endp */
+  /* Don't use a sieve prime such that p*p > UV_MAX */
+  if (limit > max_sieve_prime)  limit = max_sieve_prime;
   /* printf("segment sieve from %"UVuf" to %"UVuf" (aux sieve to %"UVuf")\n", startp, endp, limit); */
   pcsize = get_prime_cache(limit, &sieve);
   if (pcsize < limit) {
@@ -314,22 +305,15 @@ int sieve_segment(unsigned char* mem, UV startd, UV endd)
     return 0;
   }
 
-  START_DO_FOR_EACH_SIEVE_PRIME(sieve, 17, pcsize)
+  START_DO_FOR_EACH_SIEVE_PRIME(sieve, 17, limit)
   {
-    /* p increments from 17 to at least sqrt(endp).  Note on overflow:
+    /* p increments from 17 to at most sqrt(endp).  Note on overflow:
      * 32-bit: limit=     65535, max p =      65521, p*p = ~0-1965854
      * 64-bit: limit=4294967295, max p = 4294967291, p*p = ~0-42949672934
      * No overflow here, but possible after the incrementing below. */
-    UV p2 = p*p;
-    if (p2 > endp)  break;
-    /* Find first multiple of p greater than p*p and larger than startp */
-    if (p2 < startp) {
-      p2 = (startp / p) * p;
-      if (p2 < startp)  p2 += p;
-    }
-    /* Bump to next multiple that isn't divisible by 2, 3, or 5 */
-    /* while (masktab30[p2%30] == 0) { p2 += p; } */
-    p2 += p * primestepadvance30[m_>>1][p2%30];
+    UV f, p2 = p*p;
+    f = (p2 >= startp) ? p : 1+(startp-1)/p;   /* careful with overflow */
+    p2 = p * (f + distancewheel30[f%30]);
     /* It is possible we've overflowed p2, so check for that */
     if ( (p2 <= endp) && (p2 >= startp) ) {
       /* Sieve from startd to endd starting at p2, stepping p */
@@ -342,33 +326,39 @@ int sieve_segment(unsigned char* mem, UV startd, UV endd)
 #else
       UV d = p2 / 30;
       UV m = p2 - d*30;
-      UV wdinc[8];
-      unsigned char wmask[8];
-      UV offset_endd = endd - startd;
 
-      /* Find the positions of the next composites we will mark */
-      FIND_COMPOSITE_POSITIONS(d, m, p);
-      d -= startd;
-      /* Unrolled inner loop for marking composites */
-      while ( (d+p) <= offset_endd ) {
-        mem[d] |= wmask[0];  d += wdinc[0];
-        mem[d] |= wmask[1];  d += wdinc[1];
-        mem[d] |= wmask[2];  d += wdinc[2];
-        mem[d] |= wmask[3];  d += wdinc[3];
-        mem[d] |= wmask[4];  d += wdinc[4];
-        mem[d] |= wmask[5];  d += wdinc[5];
-        mem[d] |= wmask[6];  d += wdinc[6];
-        mem[d] |= wmask[7];  d += wdinc[7];
-      }
-      while (1) {
-        mem[d] |= wmask[0];  d += wdinc[0];  if (d > offset_endd) break;
-        mem[d] |= wmask[1];  d += wdinc[1];  if (d > offset_endd) break;
-        mem[d] |= wmask[2];  d += wdinc[2];  if (d > offset_endd) break;
-        mem[d] |= wmask[3];  d += wdinc[3];  if (d > offset_endd) break;
-        mem[d] |= wmask[4];  d += wdinc[4];  if (d > offset_endd) break;
-        mem[d] |= wmask[5];  d += wdinc[5];  if (d > offset_endd) break;
-        mem[d] |= wmask[6];  d += wdinc[6];  if (d > offset_endd) break;
-        mem[d] |= wmask[7];  d += wdinc[7];  if (d > offset_endd) break;
+      if ((p2 + 2*p) > endp) {
+        /* There is only one composite to be marked in this segment */
+        mem[d-startd] |= masktab30[m];
+      } else {
+        UV wdinc[8];
+        unsigned char wmask[8];
+        UV offset_endd = endd - startd;
+        UV unrolls = (endd-d+1) / p;
+        /* Find the positions of the next composites we will mark */
+        FIND_COMPOSITE_POSITIONS(d, m, p);
+        d -= startd;
+        /* Unrolled inner loop for marking composites */
+        while ( unrolls-- > 0) {
+          mem[d] |= wmask[0];  d += wdinc[0];
+          mem[d] |= wmask[1];  d += wdinc[1];
+          mem[d] |= wmask[2];  d += wdinc[2];
+          mem[d] |= wmask[3];  d += wdinc[3];
+          mem[d] |= wmask[4];  d += wdinc[4];
+          mem[d] |= wmask[5];  d += wdinc[5];
+          mem[d] |= wmask[6];  d += wdinc[6];
+          mem[d] |= wmask[7];  d += wdinc[7];
+        }
+        while (d <= offset_endd) {
+          mem[d] |= wmask[0];  d += wdinc[0];  if (d > offset_endd) break;
+          mem[d] |= wmask[1];  d += wdinc[1];  if (d > offset_endd) break;
+          mem[d] |= wmask[2];  d += wdinc[2];  if (d > offset_endd) break;
+          mem[d] |= wmask[3];  d += wdinc[3];  if (d > offset_endd) break;
+          mem[d] |= wmask[4];  d += wdinc[4];  if (d > offset_endd) break;
+          mem[d] |= wmask[5];  d += wdinc[5];  if (d > offset_endd) break;
+          mem[d] |= wmask[6];  d += wdinc[6];  if (d > offset_endd) break;
+          mem[d] |= wmask[7];  d += wdinc[7];
+        }
       }
 #endif
     }
