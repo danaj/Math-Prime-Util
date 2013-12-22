@@ -311,9 +311,11 @@ int sieve_segment(unsigned char* mem, UV startd, UV endd)
      * 32-bit: limit=     65535, max p =      65521, p*p = ~0-1965854
      * 64-bit: limit=4294967295, max p = 4294967291, p*p = ~0-42949672934
      * No overflow here, but possible after the incrementing below. */
-    UV f, p2 = p*p;
-    f = (p2 >= startp) ? p : 1+(startp-1)/p;   /* careful with overflow */
-    p2 = p * (f + distancewheel30[f%30]);
+    UV p2 = p*p;
+    if (p2 < startp) {
+      UV f = 1+(startp-1)/p;
+      p2 = p * (f + distancewheel30[f%30]);
+    }
     /* It is possible we've overflowed p2, so check for that */
     if ( (p2 <= endp) && (p2 >= startp) ) {
       /* Sieve from startd to endd starting at p2, stepping p */
@@ -416,9 +418,17 @@ void* start_segment_primes(UV low, UV high, unsigned char** segmentmem)
     croak("start_segment_primes: Could not get segment");
   *segmentmem = ctx->segment;
 
+#if 0
+  /* If we used this, we would be independent of the primary cache.
+   * I think instead, sieve_segment ought to use an aux segmented sieve */
   ctx->base = sieve_erat30( isqrt(ctx->endp)+1 );
   if (ctx->base == 0)
     croak("start_segment_primes: Could not get base");
+#else
+  ctx->base = 0;
+  /* Expand primary cache so we won't regen each call */
+  get_prime_cache( isqrt(ctx->endp)+1 , 0);
+#endif
 
   return (void*) ctx;
 }
