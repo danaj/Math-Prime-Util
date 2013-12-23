@@ -86,9 +86,12 @@ typedef UV sword_t;
 #define SWORD_MASKBIT(bits)  (UVCONST(1) << ((bits) % SWORD_BITS))
 #define SWORD_CLEAR(s,bits)  s[bits/SWORD_BITS] &= ~SWORD_MASKBIT(bits)
 
-/* Compile with -march=native to get a very large speedup on new processors */
+/* GCC 3.4-4.1 has broken 64-bit popcount.  4.2+ can generate awful code when
+ * it doesn't have asm.  4.8 seems to generate similar code to the below.
+ * Hence, only use the builtin when we have asm.
+ * Compile with -march=native to get a big speedup on newer processors. */
 #if SWORD_BITS == 64
- #if defined(__GNUC__) && (__GNUC__> 4 || (__GNUC__== 4 && __GNUC_MINOR__> 1))
+ #if defined(__POPCNT__) && defined(__GNUC__) && (__GNUC__> 4 || (__GNUC__== 4 && __GNUC_MINOR__> 1))
    #define bitcount(b)  __builtin_popcountll(b)
  #else
    static sword_t bitcount(sword_t b) {
@@ -590,13 +593,14 @@ UV _XS_LMO_pi(UV n)
      * phi(n / (x*primes[k+1]), k).  The inner for loop can be parallelized. */
     for (; k < step7_max; k++) {
       remove_primes(k, k, &ss, primes);
-      if (ss.prime_index[k] >= k+2) {
+      j = ss.prime_index[k];
+      if (j >= k+2) {
         UV pk = primes[k+1];
-        UV endj = ss.prime_index[k];
+        UV endj = j;
         while (endj > 7 && endj-7 >= k+2 && pk*primes[endj-7] > least_divisor) endj -= 8;
         while (            endj   >= k+2 && pk*primes[endj  ] > least_divisor) endj--;
         /* Now that we know how far to go, do the summations */
-        for (j = ss.prime_index[k]; j > endj; j--)
+        for ( ; j > endj; j--)
           sum1 += sieve_phi(n / (pk*primes[j]));
         ss.prime_index[k] = endj;
       }
