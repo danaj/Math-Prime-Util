@@ -262,15 +262,13 @@ sieve_primes(IN UV low, IN UV high)
 SV*
 trial_primes(IN UV low, IN UV high)
   PREINIT:
-    UV  curprime;
+    UV  p;
     AV* av = newAV();
   CODE:
     if (low <= high) {
       if (low >= 2) low--;   /* Make sure low gets included */
-      curprime = _XS_next_prime(low);
-      while (curprime <= high && curprime != 0) {
-        av_push(av,newSVuv(curprime));
-        curprime = _XS_next_prime(curprime);
+      for (p = _XS_next_prime(low); p <= high && p != 0; p = _XS_next_prime(p)) {
+        av_push(av,newSVuv(p));
       }
     }
     RETVAL = newRV_noinc( (SV*) av );
@@ -282,53 +280,20 @@ segment_primes(IN UV low, IN UV high);
   PREINIT:
     AV* av = newAV();
   CODE:
-    /* Could rewrite using {start/next/end}_segment_primes functions */
     if ((low <= 2) && (high >= 2)) { av_push(av, newSVuv( 2 )); }
     if ((low <= 3) && (high >= 3)) { av_push(av, newSVuv( 3 )); }
     if ((low <= 5) && (high >= 5)) { av_push(av, newSVuv( 5 )); }
     if (low < 7)  low = 7;
     if (low <= high) {
-      /* Call the segment siever one or more times */
-      UV low_d, high_d, segment_size;
-      unsigned char* sieve = get_prime_segment(&segment_size);
-      if (sieve == 0)
-        croak("Could not get segment cache");
-
-      /* To protect vs. overflow, work entirely with d. */
-      low_d  = low  / 30;
-      high_d = high / 30;
-
-      {  /* Avoid recalculations of this */
-        UV endp = (high_d >= (UV_MAX/30))  ?  UV_MAX-2  :  30*high_d+29;
-        prime_precalc(isqrt(endp) + 1 );
-      }
-
-      while ( low_d <= high_d ) {
-        UV seghigh_d = ((high_d - low_d) < segment_size)
-                       ? high_d
-                       : (low_d + segment_size-1);
-        UV range_d = seghigh_d - low_d + 1;
-        UV seghigh = (seghigh_d == high_d) ? high : (seghigh_d*30+29);
-        UV segbase = low_d * 30;
-        /* printf("  startd = %"UVuf"  endd = %"UVuf"\n", startd, endd); */
-
-        MPUassert( seghigh_d >= low_d, "segment_primes highd < lowd");
-        MPUassert( range_d <= segment_size, "segment_primes range > segment size");
-
-        /* Sieve from startd*30+1 to endd*30+29.  */
-        if (sieve_segment(sieve, low_d, seghigh_d) == 0) {
-          release_prime_segment(sieve);
-          croak("Could not segment sieve from %"UVuf" to %"UVuf, segbase+1, seghigh);
-        }
-
-        START_DO_FOR_EACH_SIEVE_PRIME( sieve, low - segbase, seghigh - segbase )
-          av_push(av,newSVuv( segbase + p ));
+      unsigned char* segment;
+      UV seg_base, seg_low, seg_high;
+      void* ctx = start_segment_primes(low, high, &segment);
+      while (next_segment_primes(ctx, &seg_base, &seg_low, &seg_high)) {
+        START_DO_FOR_EACH_SIEVE_PRIME( segment, seg_low - seg_base, seg_high - seg_base )
+          av_push(av,newSVuv( seg_base + p ));
         END_DO_FOR_EACH_SIEVE_PRIME
-
-        low_d += range_d;
-        low = seghigh+2;
       }
-      release_prime_segment(sieve);
+      end_segment_primes(ctx);
     }
     RETVAL = newRV_noinc( (SV*) av );
   OUTPUT:
@@ -869,8 +834,8 @@ forprimes (SV* block, IN SV* svbeg, IN SV* svend = 0)
      * exact limits will change based on the sieve vs. next_prime speed. */
     if (beg <= end && !CvISXSUB(cv) && (
 #if BITS_PER_WORD == 64
-          (beg >= UVCONST(10000000000000000000) && end-beg < 100000000) ||
-          (beg >= UVCONST( 1000000000000000000) && end-beg <  25000000) ||
+          (beg >= UVCONST(10000000000000000000) && end-beg <1000000000) ||
+          (beg >= UVCONST( 1000000000000000000) && end-beg <  95000000) ||
           (beg >= UVCONST(  100000000000000000) && end-beg <   8000000) ||
           (beg >= UVCONST(   10000000000000000) && end-beg <   1700000) ||
           (beg >= UVCONST(    1000000000000000) && end-beg <    400000) ||
@@ -882,12 +847,10 @@ forprimes (SV* block, IN SV* svbeg, IN SV* svend = 0)
       dMULTICALL;
       I32 gimme = G_VOID;
       PUSH_MULTICALL(cv);
-      beg = _XS_next_prime(beg-1);
-      while (beg <= end && beg != 0) {
+      for (beg = _XS_next_prime(beg-1); beg <= end && beg != 0; beg = _XS_next_prime(beg)) {
         sv_setuv(svarg, beg);
         GvSV(PL_defgv) = svarg;
         MULTICALL;
-        beg = _XS_next_prime(beg);
       }
       FIX_MULTICALL_REFCOUNT;
       POP_MULTICALL;
