@@ -23,6 +23,12 @@ static const unsigned char prevwheel30[30] = {
 static const unsigned char masktab30[30] = {
     0,  1,  0,  0,  0,  0,  0,  2,  0,  0,  0,  4,  0,  8,  0,
     0,  0, 16,  0, 32,  0,  0,  0, 64,  0,  0,  0,  0,  0,128  };
+/* Inverse of masktab30 */
+static const unsigned char imask30[129] = {
+0,1,7,0,11,0,0,0,13,0,0,0,0,0,0,0,17,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,19,
+0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,23,
+0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,29};
 /* Add this to a number and you'll ensure you're on a wheel location */
 static const unsigned char distancewheel30[30] =
     {1,0,5,4,3,2,1,0,3,2,1,0,1,0,3,2,1,0,1,0,3,2,1,0,5,4,3,2,1,0};
@@ -75,49 +81,49 @@ static UV prev_prime_in_sieve(const unsigned char* sieve, UV p) {
     UV p = a; \
     UV l_ = b; \
     UV d_ = p/30; \
-    UV m_ = p-d_*30; \
     UV lastd_ = l_/30; \
-    m_ += distancewheel30[m_]; \
-    while (d_ <= lastd_ && (sieve_[d_] & masktab30[m_])) { \
-      m_ = nextwheel30[m_]; if (m_ == 1) { d_++; } \
+    UV mask_ = masktab30[ p-d_*30 + distancewheel30[ p-d_*30 ] ]; \
+    UV s_ = sieve_[d_]; \
+    while (d_ <= lastd_ && (s_ & mask_)) { \
+      mask_ <<= 1;  if (mask_ > 128) { s_ = sieve_[++d_]; mask_ = 1; } \
     } \
-    p = d_*30 + m_; \
+    p = d_*30 + imask30[mask_]; \
     while ( p <= l_ ) { \
 
 #define END_DO_FOR_EACH_SIEVE_PRIME \
       do { \
-        m_ = nextwheel30[m_]; \
-        if (m_ == 1) { \
-          do { d_++; } while (d_ <= lastd_ && sieve_[d_] == 0xFF); \
+        mask_ <<= 1; \
+        if (mask_ > 128) { \
+          do { s_ = sieve_[++d_]; } while (d_ <= lastd_ && s_ == 0xFF); \
           if (d_ > lastd_) break; \
+          mask_ = 1; \
         } \
-      } while (sieve_[d_] & masktab30[m_]); \
-      p = d_*30+m_; \
+      } while (s_ & mask_); \
+      p = d_*30 + imask30[mask_]; \
     } \
   }
 
 #define START_DO_FOR_EACH_PRIME(a, b) \
   { \
     const unsigned char* sieve_; \
-    UV d_ = 0; \
-    UV m_ = 7; \
     UV p  = a; \
     UV l_ = b; \
+    UV d_ = p/30; \
+    UV s_, mask_ = 2; \
     UV lastd_ = l_/30; \
     if (get_prime_cache(l_, &sieve_) < l_) { \
       release_prime_cache(sieve_); \
       croak("Could not generate sieve for %"UVuf, l_); \
     } \
+    s_ = sieve_[d_]; \
     if (p <= 5) { \
       p = (p <= 2) ? 2 : (p <= 3) ? 3 : 5; \
-    } else { \
-      d_ = p/30; \
-      m_ = p-d_*30; \
-      m_ += distancewheel30[m_]; \
-      while (d_ <= lastd_ && (sieve_[d_] & masktab30[m_])) { \
-        m_ = nextwheel30[m_]; if (m_ == 1) { d_++; } \
+    } else if (p != 7) { \
+      mask_ = masktab30[ p-d_*30 + distancewheel30[ p-d_*30 ] ]; \
+      while (d_ <= lastd_ && (s_ & mask_)) { \
+        mask_ <<= 1;  if (mask_ > 128) { s_ = sieve_[++d_]; mask_ = 1; } \
       } \
-      p = d_*30 + m_; \
+      p = d_*30 + imask30[mask_]; \
     } \
     while ( p <= l_ ) {
 
@@ -129,10 +135,14 @@ static UV prev_prime_in_sieve(const unsigned char* sieve, UV p) {
         p += 1 + (p > 2); \
       } else { \
         do { \
-          m_ = nextwheel30[m_]; \
-          if (m_ == 1) { d_++; if (d_ > lastd_) break; } \
-        } while (sieve_[d_] & masktab30[m_]); \
-        p = d_*30+m_; \
+          mask_ <<= 1; \
+          if (mask_ > 128) { \
+            if (++d_ > lastd_) break; \
+            s_ = sieve_[d_]; \
+            mask_ = 1; \
+          } \
+        } while (s_ & mask_); \
+        p = d_*30 + imask30[mask_]; \
       } \
     } \
     release_prime_cache(sieve_); \
