@@ -16,37 +16,38 @@
  * the same terms as the Perl 5 programming language system itself.
  *
  * This file is part of the Math::Prime::Util Perl module, but also can be
- * compiled as a standalone UNIX program using the primesieve package.
+ * compiled as a standalone UNIX program using primesieve 5.x.
  *
  *    g++ -O3 -DPRIMESIEVE_STANDALONE lehmer.c -o prime_count -lprimesieve
  *
- * For faster prime counting in stage 4 with multiprocessor machines:
- *
- *    g++ -O3 -DPRIMESIEVE_STANDALONE -DPRIMESIEVE_PARALLEL lehmer.c -o prime_count -lprimesieve -lgomp
- *
  * The phi(x,a) calculation is unique, to the best of my knowledge.  It uses
  * two lists of all x values + signed counts for the given 'a' value, and walks
- * 'a' down until it is small enough to calculate directly using Mapes' method.
+ * 'a' down until it is small enough to calculate directly using a table.
  * This is relatively fast and low memory compared to many other solutions.
  * As with all Lehmer-Meissel-Legendre algorithms, memory use will be a
- * constraint with large values of x (see the table below).
+ * constraint with large values of x.
  *
  * Math::Prime::Util now includes an extended LMO implementation, which will
  * be quite a bit faster and much less memory than this code.  It is the
  * default method for large counts.  Timing comparisons are in that file.
  *
- * Times and memory use for prime_count(10^15) on a Haswell 4770K:
+ * Times and memory use for prime_count(10^15) on a Haswell 4770K, asterisk
+ * indicates parallel operation.  The standalone versions of my code use
+ * Kim Walisch's excellent primesieve, which is about 2x faster than mine
+ * (and even faster in parallel).  His Lehmer/Meissel/Legendre seem a bit
+ * slower in serial, but parallelize much better than mine.
  *
  *       4.80s    1.3MB    LMO
  *      27.51s* 136.0MB    Lehmer    Walisch primecount v0.7, 8 threads
- *      42.99s* 159.4MB    Lehmer    standalone, 8 threads
+ *      42.64s* 159.4MB    Lehmer    standalone, 8 threads
  *      50.82s* 136.2MB    Meissel   Walisch primecount v0.7, 8 threads
+ *      51.65s  154.1MB    LMOS      standalone, 1 thread
  *      64.06s* 144.3MB    Legendre  Walisch primecount v0.7, 8 threads
+ *      66.41s   67.0MB    LMOS
+ *      92.98s  286.6MB    Meissel
+ *      99.97s  159.6MB    Lehmer
  *     114.40s   28.4MB    Lehmer    Walisch primecount v0.7, 1 thread
- *     118.69s   27.1MB    LMOS
- *     120.39s  158.4MB    Lehmer
- *     112.40s  286.6MB    Meissel
- *     303.77s   28.0MB    Legendre
+ *     171.24s   83.5MB    Legendre
  *     868.96s 1668.1MB    Lehmer    pix4 by T.R. Nicely
  *
  * Reference: Hans Riesel, "Prime Numbers and Computer Methods for
@@ -80,25 +81,6 @@ static int const verbose = 0;
  * crossover point is lower (better). */
 #define SIEVE_MULT   10
 
-#include <limits.h>
-#include <sys/time.h>
-#ifdef PRIMESIEVE_PARALLEL
- #include <primesieve/soe/ParallelPrimeSieve.h>
- ParallelPrimeSieve ps;
- #define SET_PPS_PARALLEL ps.setNumThreads(ParallelPrimeSieve::getMaxThreads())
- #define SET_PPS_SERIAL   ps.setNumThreads(1)
-#else
- #include <primesieve/soe/PrimeSieve.h>
- PrimeSieve ps;
- #define SET_PPS_PARALLEL /* */
- #define SET_PPS_SERIAL   /* */
-#endif
-
-#ifdef _OPENMP
-  #include <omp.h>
-  int omp_threads = 8;  /* will get replaced */
-#endif
-
 /* Translations from Perl + Math::Prime::Util  to  C/C++ + primesieve */
 typedef unsigned long UV;
 typedef   signed long IV;
@@ -108,7 +90,6 @@ typedef   signed long IV;
 #define Newz(id, mem, size, type) mem = (type*) calloc(size, sizeof(type))
 #define Renew(mem, size, type)    mem = (type*) realloc(mem,(size)*sizeof(type))
 #define Safefree(mem)             free((void*)mem)
-#define _XS_prime_count(a, b)     ps.countPrimes(a, b)
 #define croak(fmt,...)            { printf(fmt,##__VA_ARGS__); exit(1); }
 #define prime_precalc(n)          /* */
 #define BITS_PER_WORD             ((ULONG_MAX <= 4294967295UL) ? 32 : 64)
@@ -141,19 +122,16 @@ static UV icbrt(UV n) {
   return root;
 }
 
-/* Callback used for creating an array of primes. */
-static uint32_t* sieve_array = 0;
-static UV sieve_k;
-static UV sieve_n;
-class stop_primesieve : public std::exception { };
-void primesieve_callback(uint64_t pk) {
-  if (sieve_k > sieve_n) throw stop_primesieve();
-  /*
-  if (pk < sieve_array[sieve_k-1])
-    croak("Primes generated out of order.  Switch to serial mode.\n");
-  */
-  sieve_array[sieve_k++] = pk;
-}
+/* Use version 5.x of PrimeSieve */
+#include <limits.h>
+#include <sys/time.h>
+#include <primesieve.hpp>
+#include <vector>
+#ifdef _OPENMP
+  #include <omp.h>
+#endif
+
+#define _XS_prime_count(a, b)     primesieve::parallel_count_primes(a, b)
 
 /* Generate an array of n small primes, where the kth prime is element p[k].
  * Remember to free when done. */
@@ -162,14 +140,6 @@ static uint32_t* tiny_primes = 0;
 static uint32_t* generate_small_primes(UV n)
 {
   uint32_t* primes;
-  double fn = (double)n;
-  double flogn  = log(fn);
-  double flog2n  = log(flogn);
-  UV nth_prime =  /* Dusart 2010 for > 179k, custom for 18-179k */
-     (n >= 688383) ? (UV) ceil(fn*(flogn+flog2n-1.0+((flog2n-2.00)/flogn))) :
-     (n >= 178974) ? (UV) ceil(fn*(flogn+flog2n-1.0+((flog2n-1.95)/flogn))) :
-     (n >= 18)     ? (UV) ceil(fn*(flogn+flog2n-1.0+((flog2n+0.30)/flogn)))
-                   : 59;
   New(0, primes, n+1, uint32_t);
   if (primes == 0)
     croak("Can not allocate small primes\n");
@@ -180,16 +150,11 @@ static uint32_t* generate_small_primes(UV n)
     return primes;
   }
   primes[0] = 0;
-  sieve_array = primes;
-  sieve_n = n;
-  sieve_k = 1;
   {
-    PrimeSieve sps;
-    try {
-      sps.generatePrimes(2, nth_prime, primesieve_callback);
-    } catch (stop_primesieve&) { }
+    std::vector<uint32_t> v;
+    primesieve::generate_n_primes(n, &v);
+    memcpy(primes+1,  &v[0],  n * sizeof(uint32_t));
   }
-  sieve_array = 0;
   return primes;
 }
 
@@ -384,7 +349,9 @@ static IV _phi3(UV x, UV a, int sign, const uint32_t* const primes, const uint32
 {
   IV sum;
 
-  if (PHI_CACHE_POPULATED(x, a))
+  if (a <= 1)
+    return (a == 0) ? x : x-x/2;   /* Allows PHICACHEX be larger */
+  else if (PHI_CACHE_POPULATED(x, a))
     return sign * cache->val[a][x];
   else if (a <= PHIC)
     sum = sign * tablephi(x,a);
@@ -938,7 +905,6 @@ int main(int argc, char *argv[])
 
   gettimeofday(&t0, 0);
 
-  SET_PPS_PARALLEL;
   if      (!strcasecmp(method, "lehmer"))   { pi = _XS_lehmer_pi(n);      }
   else if (!strcasecmp(method, "meissel"))  { pi = _XS_meissel_pi(n);     }
   else if (!strcasecmp(method, "legendre")) { pi = _XS_legendre_pi(n);    }
