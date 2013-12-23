@@ -584,33 +584,20 @@ UV _XS_prime_count(UV low, UV high)
     }
 
     low_d = segment_size;
+    low = 30*low_d;
   }
   release_prime_cache(cache_sieve);
 
   /* More primes needed.  Repeatedly segment sieve. */
-  segment = get_prime_segment(&segment_size);
-  if (segment == 0)
-    croak("Could not get segment memory");
-
-  while (low_d <= high_d)
   {
-    UV seghigh_d = ((high_d - low_d) < segment_size)
-                   ? high_d
-                   : (low_d + segment_size-1);
-    UV range_d = seghigh_d - low_d + 1;
-    UV seglow  = (low_d*30 < low) ? low : low_d*30;
-    UV seghigh = (seghigh_d == high_d) ? high : (seghigh_d*30+29);
-
-    if (sieve_segment(segment, low_d, seghigh_d) == 0) {
-      release_prime_segment(segment);
-      croak("Could not segment sieve from %"UVuf" to %"UVuf, low_d*30+1, 30*seghigh_d+29);
+    void* ctx = start_segment_primes(low, high, &segment);
+    UV seg_base, seg_low, seg_high;
+    while (next_segment_primes(ctx, &seg_base, &seg_low, &seg_high)) {
+      segment_size = seg_high/30 - seg_low/30 + 1;
+      count += count_segment_ranged(segment, segment_size, seg_low-seg_base, seg_high-seg_base);
     }
-
-    count += count_segment_ranged(segment, segment_size, seglow - low_d*30, seghigh - low_d*30);
-
-    low_d += range_d;
+    end_segment_primes(ctx);
   }
-  release_prime_segment(segment);
 
   return count;
 }
@@ -763,7 +750,7 @@ UV _XS_nth_prime(UV n)
   return ( (segbase*30) + p );
 }
 
-/* Return a char array with lo-hi+1 elements.  mu[k-lo] = µ(k) for k = lo .. hi.
+/* Return a char array with lo-hi+1 elements. mu[k-lo] = µ(k) for k = lo .. hi.
  * It is the callers responsibility to call Safefree on the result. */
 #define PGTLO(p,lo)  ((p) >= lo) ? (p) : ((p)*(lo/(p)) + ((lo%(p))?(p):0))
 #define P2GTLO(pinit, p, lo) \
@@ -773,59 +760,10 @@ signed char* _moebius_range(UV lo, UV hi)
   signed char* mu;
   UV i;
   UV sqrtn = isqrt(hi);
-#if 0
-  /* Simple char method.  Needs way too many primes. */
-  New(0, mu, hi-lo+1, signed char);
-  if (mu == 0)
-    croak("Could not get memory for %"UVuf" moebius results\n", hi-lo+1);
-  memset(mu, 1, hi-lo+1);
-  if (lo == 0)  mu[0] = 0;
-  prime_precalc( _XS_nth_prime_upper(hi) );
-  START_DO_FOR_EACH_PRIME(2, hi) {
-    UV p2 = p*p;
-    for (i = PGTLO(p2, lo); i <= hi; i += p2)
-      mu[i-lo] = 0;
-    for (i = PGTLO(p, lo); i <= hi; i += p)
-      mu[i-lo] = -mu[i-lo];
-  } END_DO_FOR_EACH_PRIME
-#endif
 
-#if 0
-  /* This implementation follows Deléglise & Rivat (1996), which is a
-   * segmented version of Lioen & van de Lune (1994).  Downside is that it
-   * uses an array of IV's, so too much memory.  Pawleicz (2011) shows a small
-   * variation but seems to just be a rearrangement -- there is no time or
-   * space difference on my machines. */
-  IV* A;
-  New(0, A, hi-lo+1, IV);
-  if (A == 0)
-    croak("Could not get memory for %"UVuf" moebius results\n", hi-lo+1);
-  for (i = lo; i <= hi; i++)
-    A[i-lo] = 1;
-  START_DO_FOR_EACH_PRIME(2, sqrtn) {
-    UV p2 = p*p;
-    for (i = PGTLO(p2, lo); i <= hi; i += p2)
-      A[i-lo] = 0;
-    for (i = PGTLO(p, lo); i <= hi; i += p)
-      A[i-lo] *= -(IV)p;
-  } END_DO_FOR_EACH_PRIME
-  New(0, mu, hi-lo+1, signed char);
-  if (mu == 0)
-    croak("Could not get memory for %"UVuf" moebius results\n", hi-lo+1);
-  memset(mu, 0, hi-lo+1);
-  for (i = lo; i <= hi; i++) {
-    IV a = A[i-lo];
-    if (a != 0)
-      mu[i-lo] = (a != (IV)i && -a != (IV)i)  ?  (a<0) - (a>0)
-                                              :  (a>0) - (a<0);
-  }
-  Safefree(A);
-#endif
-
-#if 1
   /* Kuznetsov indicates that the Deléglise & Rivat (1996) method can be
    * modified to work on logs, which allows us to operate with no
-   * intermediate memory at all.  There isn't really any time savings. */
+   * intermediate memory at all.  Same time as the D&R method, less memory. */
   unsigned char* A;
   unsigned char logp;
   UV nextlog;
@@ -860,7 +798,7 @@ signed char* _moebius_range(UV lo, UV hi)
     else                { mu[i-lo] = -1 + 2*(a&1); }
   }
   if (lo == 0)  mu[0] = 0;
-#endif
+
   return mu;
 }
 
@@ -889,28 +827,6 @@ UV* _totient_range(UV lo, UV hi) {
 }
 
 IV _XS_mertens(UV n) {
-#if 0
-  /* Benito and Varona 2008, theorem 3.  Segment. */
-  IV* mu;
-  UV k;
-  UV limit = 1000000;
-  UV n3 = n/3;
-  IV sum = 0;
-  UV startk = 1;
-  UV endk = limit;
-  prime_precalc( (UV) (sqrt(n)+0.5) );
-  while (startk <= n3) {
-    if (endk > n3) endk = n3;
-    mu = _moebius_range(startk, endk);
-    for (k = startk; k <= endk; k++)
-      if (mu[k-startk] != 0)
-        sum += mu[k-startk] * ((n-k)/(2*k));
-    Safefree(mu);
-    startk = endk+1;
-    endk += limit;
-  }
-  return -sum;
-#else
   /* See Deléglise and Rivat (1996) for O(n^2/3 log(log(n))^1/3) algorithm.
    * This implementation uses their lemma 2.1 directly, so is ~ O(n).
    * In serial it is quite a bit faster than segmented summation of mu
@@ -951,7 +867,6 @@ IV _XS_mertens(UV n) {
   Safefree(M);
   Safefree(mu);
   return sum;
-#endif
 }
 
 double _XS_chebyshev_theta(UV n)
