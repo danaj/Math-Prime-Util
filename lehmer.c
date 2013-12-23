@@ -33,18 +33,18 @@
  *
  * Times and memory use for prime_count(10^15) on a Haswell 4770K, asterisk
  * indicates parallel operation.  The standalone versions of my code use
- * Kim Walisch's excellent primesieve, which is about 2x faster than mine
- * (and even faster in parallel).  His Lehmer/Meissel/Legendre seem a bit
- * slower in serial, but parallelize much better than mine.
+ * Kim Walisch's excellent primesieve, which faster than my sieve.
+ * His Lehmer/Meissel/Legendre seem a bit slower in serial, but
+ * parallelize much better.
  *
  *       4.80s    1.3MB    LMO
  *      27.51s* 136.0MB    Lehmer    Walisch primecount v0.7, 8 threads
- *      42.64s* 159.4MB    Lehmer    standalone, 8 threads
+ *      42.52s* 159.4MB    Lehmer    standalone, 8 threads
  *      50.82s* 136.2MB    Meissel   Walisch primecount v0.7, 8 threads
- *      51.65s  154.1MB    LMOS      standalone, 1 thread
+ *      51.55s  154.1MB    LMOS      standalone, 1 thread
  *      64.06s* 144.3MB    Legendre  Walisch primecount v0.7, 8 threads
  *      66.41s   67.0MB    LMOS
- *      92.98s  286.6MB    Meissel
+ *      80.85s  286.6MB    Meissel
  *      99.97s  159.6MB    Lehmer
  *     114.40s   28.4MB    Lehmer    Walisch primecount v0.7, 1 thread
  *     171.24s   83.5MB    Legendre
@@ -350,7 +350,7 @@ static IV _phi3(UV x, UV a, int sign, const uint32_t* const primes, const uint32
   IV sum;
 
   if (a <= 1)
-    return (a == 0) ? x : x-x/2;   /* Allows PHICACHEX be larger */
+    return sign * ((a == 0) ? x : x-x/2);   /* Allows PHICACHEX be larger */
   else if (PHI_CACHE_POPULATED(x, a))
     return sign * cache->val[a][x];
   else if (a <= PHIC)
@@ -651,7 +651,7 @@ static UV Pk_2_p(UV n, UV a, UV b, const uint32_t* primes, uint32_t lastidx)
 }
 static UV Pk_2(UV n, UV a, UV b)
 {
-  UV lastprime = ((b*SIEVE_MULT+1) > 203280221) ? 203280221 : b*SIEVE_MULT+1;
+  UV lastprime = ((b*3+1) > 203280221) ? 203280221 : b*3+1;
   const uint32_t* primes = generate_small_primes(lastprime);
   UV P2 = Pk_2_p(n, a, b, primes, lastprime);
   Safefree(primes);
