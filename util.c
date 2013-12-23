@@ -584,7 +584,7 @@ UV _XS_prime_count(UV low, UV high)
     }
 
     low_d = segment_size;
-    low = 30*low_d;
+    if (30*low_d > low)  low = 30*low_d;
   }
   release_prime_cache(cache_sieve);
 
