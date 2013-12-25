@@ -863,14 +863,14 @@ static const unsigned char primes_small[] =
 #define NPRIMES_SMALL (sizeof(primes_small)/sizeof(primes_small[0]))
 
 UV _XS_legendre_phi(UV x, UV a) {
+  phitableinit();
   /* For small values, calculate directly */
   if (a <= PHIC) return tablephi(x, a);
   /* For large values, do our non-recursive phi */
-  if (a > NPRIMES_SMALL) return phi(x,a);
+  if (a >= NPRIMES_SMALL) return phi(x,a);
   /* Otherwise, recurse */
   {
-    UV i;
-    UV sum = tablephi(x, PHIC);
+    UV i, sum = tablephi(x, PHIC);
     for (i = PHIC+1; i <= a; i++) {
       uint32_t p = primes_small[i];
       UV xp = x/p;
