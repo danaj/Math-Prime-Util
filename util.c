@@ -70,8 +70,12 @@ static int _call_gmp = 0;
 void _XS_set_callgmp(int v) { _call_gmp = v; }
 int  _XS_get_callgmp(void) { return _call_gmp; }
 
+/* GCC 3.4 - 4.1 has broken 64-bit popcount.
+ * GCC 4.2+ can generate awful code when it doesn't have asm (GCC bug 36041).
+ * When the asm is present (e.g. compile with -march=native on a platform that
+ * has them, like Nahelem+), then it is almost as fast as the direct asm. */
 #if BITS_PER_WORD == 64
- #if defined(__GNUC__) && (__GNUC__> 4 || (__GNUC__== 4 && __GNUC_MINOR__> 1))
+ #if defined(__POPCNT__) && defined(__GNUC__) && (__GNUC__> 4 || (__GNUC__== 4 && __GNUC_MINOR__> 1))
    #define popcnt(b)  __builtin_popcountll(b)
  #else
    static UV popcnt(UV b) {
@@ -91,9 +95,9 @@ int  _XS_get_callgmp(void) { return _call_gmp; }
 #endif
 
 #if defined(__GNUC__)
- #define word_aligned(m,wordsize)  ((uintptr_t)m & (wordsize-1))
+ #define word_unaligned(m,wordsize)  ((uintptr_t)m & (wordsize-1))
 #else  /* uintptr_t is part of C99 */
- #define word_aligned(m,wordsize)  ((unsigned int)m & (wordsize-1))
+ #define word_unaligned(m,wordsize)  ((unsigned int)m & (wordsize-1))
 #endif
 
 
@@ -111,7 +115,7 @@ static UV count_zero_bits(const unsigned char* m, UV nbytes)
   UV count = 0;
 #if BITS_PER_WORD == 64
   if (nbytes >= 16) {
-    while ( word_aligned(m,sizeof(UV)) && nbytes--)
+    while ( word_unaligned(m,sizeof(UV)) && nbytes--)
       count += byte_zeros[*m++];
     if (nbytes >= 8) {
       UV* wordptr = (UV*)m;
@@ -318,7 +322,7 @@ UV _XS_prev_prime(UV n)
  * (2) we hit maxcount: set position to the index of the maxcount'th prime
  *     and return count (which will be equal to maxcount).
  */
-static UV count_segment_maxcount(const unsigned char* sieve, UV nbytes, UV maxcount, UV* pos)
+static UV count_segment_maxcount(const unsigned char* sieve, UV base, UV nbytes, UV maxcount, UV* pos)
 {
   UV count = 0;
   UV byte = 0;
@@ -331,11 +335,22 @@ static UV count_segment_maxcount(const unsigned char* sieve, UV nbytes, UV maxco
   if ( (nbytes == 0) || (maxcount == 0) )
     return 0;
 
+  /* Do fixed-length word counts to start, with possible overcounting */
+  while ((count+64) < maxcount && sieveptr < maxsieve) {
+    UV top = base + 3*maxcount;
+    UV div = (top <       8000) ? 8 :     /* 8 cannot overcount */
+             (top <    1000000) ? 4 :
+             (top <   10000000) ? 3 : 2;
+    UV minbytes = (maxcount-count)/div;
+    if (minbytes > (maxsieve-sieveptr)) minbytes = maxsieve-sieveptr;
+    count += count_zero_bits(sieveptr, minbytes);
+    sieveptr += minbytes;
+  }
   /* Count until we reach the end or >= maxcount */
   while ( (sieveptr < maxsieve) && (count < maxcount) )
     count += byte_zeros[*sieveptr++];
-  /* If we went one too far, back up.  Count will always be < maxcount */
-  if (count >= maxcount)
+  /* If we went too far, back up. */
+  while (count >= maxcount)
     count -= byte_zeros[*--sieveptr];
   /* We counted this many bytes */
   byte = sieveptr - sieve;
@@ -687,7 +702,7 @@ UV _XS_nth_prime(UV n)
     segment_size = get_prime_cache(upper_limit, &cache_sieve) / 30;
     /* Count up everything in the cached sieve. */
     if (segment_size > 0)
-      count += count_segment_maxcount(cache_sieve, segment_size, target, &p);
+      count += count_segment_maxcount(cache_sieve, 0, segment_size, target, &p);
     release_prime_cache(cache_sieve);
   } else {
     /* A binary search on RiemannR is nice, but ends up either often being
@@ -740,7 +755,7 @@ UV _XS_nth_prime(UV n)
     }
 
     /* Count up everything in this segment */
-    count += count_segment_maxcount(segment, segment_size, target-count, &p);
+    count += count_segment_maxcount(segment, 30*segbase, segment_size, target-count, &p);
 
     if (count < target)
       segbase += segment_size;
