@@ -33,7 +33,7 @@
  *
  * Times and memory use for prime_count(10^15) on a Haswell 4770K, asterisk
  * indicates parallel operation.  The standalone versions of my code use
- * Kim Walisch's excellent primesieve, which faster than my sieve.
+ * Kim Walisch's excellent primesieve, which is faster than my sieve.
  * His Lehmer/Meissel/Legendre seem a bit slower in serial, but
  * parallelize much better.
  *

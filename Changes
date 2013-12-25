@@ -33,7 +33,8 @@ Revision history for Perl module Math::Prime::Util
       lehmer.c.  Really only affects LMOS and Legendre, but it's significant
       for them.  Thanks to Kim Walisch for questioning my earlier decision.
 
-    - Rewrite sieve composite map.  Segment sieving is faster.
+    - Rewrite sieve composite map.  Segment sieving is faster.  It's a little
+      faster than primegen for me, but still slower than primesieve and yafu.
 
 
 0.35  2013-12-08
