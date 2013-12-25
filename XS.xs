@@ -834,12 +834,7 @@ forprimes (SV* block, IN SV* svbeg, IN SV* svend = 0)
      * exact limits will change based on the sieve vs. next_prime speed. */
     if (beg <= end && !CvISXSUB(cv) && (
 #if BITS_PER_WORD == 64
-          (beg >= UVCONST(10000000000000000000) && end-beg <1000000000) ||
-          (beg >= UVCONST( 1000000000000000000) && end-beg <  95000000) ||
-          (beg >= UVCONST(  100000000000000000) && end-beg <   8000000) ||
-          (beg >= UVCONST(   10000000000000000) && end-beg <   1700000) ||
-          (beg >= UVCONST(    1000000000000000) && end-beg <    400000) ||
-          (beg >= UVCONST(     100000000000000) && end-beg <    130000) ||
+          (beg >= UVCONST(     100000000000000) && end-beg <    100000) ||
           (beg >= UVCONST(      10000000000000) && end-beg <     40000) ||
           (beg >= UVCONST(       1000000000000) && end-beg <     17000) ||
 #endif

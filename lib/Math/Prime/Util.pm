@@ -2857,12 +2857,12 @@ less memory than returning an array directly).
 
   my @primes = @{ primes( 500 ) };
 
-  print "$_\n" for (@{primes( 20, 100 )});
+  print "$_\n" for @{primes(20,100)};
 
 Sieving will be done if required.  The algorithm used will depend on the range
-and whether a sieve result already exists.  Possibilities include trial
-division (for ranges with only one expected prime), a Sieve of Eratosthenes
-using wheel factorization, or a segmented sieve.
+and whether a sieve result already exists.  Possibilities include primality
+testing (for very small ranges), a Sieve of Eratosthenes using wheel
+factorization, or a segmented sieve.
 
 
 =head2 next_prime
@@ -4866,9 +4866,9 @@ code may be faster for very large values, but isn't available for testing.
 
 Note that the Sieve of Atkin is I<not> faster than the Sieve of Eratosthenes
 when both are well implemented.  The only Sieve of Atkin that is even
-competitive is Bernstein's super optimized I<primegen>, which runs about
-10% faster than the simple SoE in this module, slower than Pari and yafu's
-SoE implementations, and over 2x slower than primesieve.
+competitive is Bernstein's super optimized I<primegen>, which runs slightly
+slower than the SoE in this module.  The SoE's in Pari, yafu, and primesieve
+are all faster.
 
 =item Prime Counts and Nth Prime
 

@@ -9,6 +9,9 @@
 #include "cache.h"
 #include "util.h"
 
+/* If the base sieve is larger than this, presieve and test */
+#define BASE_SIEVE_LIMIT  4000000
+
 
 /* 1001 bytes of presieved mod-30 bytes.  If the area to be sieved is
  * appropriately filled with this data, then 7, 11, and 13 do not have
@@ -284,8 +287,7 @@ unsigned char* sieve_erat30(UV end)
 int sieve_segment(unsigned char* mem, UV startd, UV endd)
 {
   const unsigned char* sieve;
-  UV limit;
-  UV pcsize;
+  UV limit, slimit;
   UV startp = 30*startd;
   UV endp = (endd >= (UV_MAX/30))  ?  UV_MAX-2  :  30*endd+29;
 
@@ -298,14 +300,15 @@ int sieve_segment(unsigned char* mem, UV startd, UV endd)
   limit = isqrt(endp);  /* floor(sqrt(n)), will include p if p*p=endp */
   /* Don't use a sieve prime such that p*p > UV_MAX */
   if (limit > max_sieve_prime)  limit = max_sieve_prime;
-  /* printf("segment sieve from %"UVuf" to %"UVuf" (aux sieve to %"UVuf")\n", startp, endp, limit); */
-  pcsize = get_prime_cache(limit, &sieve);
-  if (pcsize < limit) {
+  slimit = limit;
+  if (slimit > BASE_SIEVE_LIMIT) slimit = BASE_SIEVE_LIMIT;
+  /* printf("segment sieve from %"UVuf" to %"UVuf" (aux sieve to %"UVuf")\n", startp, endp, slimit); */
+  if (get_prime_cache(slimit, &sieve) < slimit) {
     release_prime_cache(sieve);
     return 0;
   }
 
-  START_DO_FOR_EACH_SIEVE_PRIME(sieve, 17, limit)
+  START_DO_FOR_EACH_SIEVE_PRIME(sieve, 17, slimit)
   {
     /* p increments from 17 to at most sqrt(endp).  Note on overflow:
      * 32-bit: limit=     65535, max p =      65521, p*p = ~0-1965854
@@ -366,8 +369,14 @@ int sieve_segment(unsigned char* mem, UV startd, UV endd)
     }
   }
   END_DO_FOR_EACH_SIEVE_PRIME;
-
   release_prime_cache(sieve);
+
+  if (limit > slimit) { /* We've sieved out most composites, but not all. */
+    START_DO_FOR_EACH_SIEVE_PRIME(mem, 0, endp-startp) {
+      if (!_XS_BPSW(startp + p))    /* If the candidate is not prime, */
+        mem[d_] |= mask_;           /* mark the sieve location.       */
+    } END_DO_FOR_EACH_SIEVE_PRIME;
+  }
   return 1;
 }
 
@@ -404,6 +413,7 @@ typedef struct {
 void* start_segment_primes(UV low, UV high, unsigned char** segmentmem)
 {
   segment_context_t* ctx;
+  UV slimit;
 
   MPUassert( high >= low, "start_segment_primes bad arguments");
   New(0, ctx, 1, segment_context_t);
@@ -418,17 +428,11 @@ void* start_segment_primes(UV low, UV high, unsigned char** segmentmem)
     croak("start_segment_primes: Could not get segment");
   *segmentmem = ctx->segment;
 
-#if 0
-  /* If we used this, we would be independent of the primary cache.
-   * I think instead, sieve_segment ought to use an aux segmented sieve */
-  ctx->base = sieve_erat30( isqrt(ctx->endp)+1 );
-  if (ctx->base == 0)
-    croak("start_segment_primes: Could not get base");
-#else
   ctx->base = 0;
   /* Expand primary cache so we won't regen each call */
-  get_prime_cache( isqrt(ctx->endp)+1 , 0);
-#endif
+  slimit = isqrt(ctx->endp)+1;
+  if (slimit > BASE_SIEVE_LIMIT) slimit = BASE_SIEVE_LIMIT;
+  get_prime_cache( slimit, 0);
 
   return (void*) ctx;
 }
