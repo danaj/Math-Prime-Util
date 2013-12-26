@@ -163,6 +163,7 @@ static uint32_t* generate_small_primes(UV n)
 /* We will use pre-sieving to speed up counting for small ranges */
 #define SIEVE_MULT   1
 
+#define FUNC_isqrt 1
 #define FUNC_icbrt 1
 #include "lehmer.h"
 #include "util.h"

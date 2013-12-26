@@ -7,7 +7,9 @@
 #include "sieve.h"
 #include "ptypes.h"
 #include "cache.h"
+#define FUNC_isqrt 1
 #include "util.h"
+#include "primality.h"
 
 /* If the base sieve is larger than this, presieve and test */
 #define BASE_SIEVE_LIMIT  4000000

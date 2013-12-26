@@ -26,6 +26,7 @@
 
 #include "ptypes.h"
 #include "aks.h"
+#define FUNC_isqrt 1
 #include "util.h"
 #include "cache.h"
 #include "mulmod.h"
@@ -84,6 +85,7 @@ static int is_perfect_power(UV n) {
   return 0;
 }
 
+/* Naive znorder.  Works well here because limit will be very small. */
 static UV order(UV r, UV n, UV limit) {
   UV j;
   UV t = 1;

@@ -35,6 +35,7 @@ extern UV _XS_Inverse_Li(UV x);
   #define MPU_PROB_PRIME_BEST  UVCONST(100000000)
 #endif
 
+#ifdef FUNC_isqrt
 static UV isqrt(UV n) {
   UV root;
 #if BITS_PER_WORD == 32
@@ -47,6 +48,7 @@ static UV isqrt(UV n) {
   while ((root+1)*(root+1) <= n)  root++;
   return root;
 }
+#endif
 
 #ifdef FUNC_icbrt
 static UV icbrt(UV n) {

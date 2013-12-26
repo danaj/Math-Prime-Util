@@ -56,6 +56,7 @@
 
 
 #include "ptypes.h"
+#define FUNC_isqrt 1
 #include "util.h"
 #include "sieve.h"
 #include "primality.h"
@@ -342,7 +343,7 @@ static UV count_segment_maxcount(const unsigned char* sieve, UV base, UV nbytes,
              (top <    1000000) ? 4 :
              (top <   10000000) ? 3 : 2;
     UV minbytes = (maxcount-count)/div;
-    if (minbytes > (maxsieve-sieveptr)) minbytes = maxsieve-sieveptr;
+    if (minbytes > (UV)(maxsieve-sieveptr)) minbytes = maxsieve-sieveptr;
     count += count_zero_bits(sieveptr, minbytes);
     sieveptr += minbytes;
   }

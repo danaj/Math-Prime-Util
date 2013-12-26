@@ -62,6 +62,7 @@
 /* Phi sieve multiplier, adjust for best performance and memory use. */
 #define PHI_SIEVE_MULT 13
 
+#define FUNC_isqrt 1
 #define FUNC_icbrt 1
 #include "lmo.h"
 #include "util.h"

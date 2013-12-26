@@ -9,7 +9,8 @@
 #include "mulmod.h"
 #include "cache.h"
 #include "primality.h"
-#define FUNC_gcd_ui
+#define FUNC_isqrt  1
+#define FUNC_gcd_ui 1
 #include "util.h"
 
 /*

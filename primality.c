@@ -6,7 +6,8 @@
 #include "ptypes.h"
 #include "primality.h"
 #include "mulmod.h"
-#define FUNC_gcd_ui
+#define FUNC_isqrt  1
+#define FUNC_gcd_ui 1
 #include "util.h"
 
 /* Primality related functions, including Montgomery math */
