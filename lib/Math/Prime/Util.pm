@@ -1687,19 +1687,28 @@ sub znorder {
 
   # Sadly, Calc/FastCalc are horrendously slow for this function.
   return if Math::BigInt::bgcd($a, $n) > 1;
-  # Method 1:  check all a^k 1 .. $n-1.
-  #            Naive and terrible slow.
+  # Method 1:  check all a^k 1 .. $n-1.   Naive and terrible slow.
   # Method 2:  check all k in (divisors(euler_phi($n), $n).
+  #            Much better, but slow with many divisors.
   # Method 3:  check all k in (divisors(carmichael_lambda($n), $n).
-  #            Good for most cases, but slow when factor quantity is large.
-  # Method 4:  Das algorithm 1.7, just enough multiples of p
-  #            Fastest.
+  #            Stronger result, but still can have too many divisors.
+  # Method 4:  Abhijit Das, alg 1.7, just enough multiples of p.
+  #            Combine this with method 3.
   #
   # Most of the time is spent factoring $n and $phi.  We could do the phi
   # construction here and build its factors to save a little more time.
 
   $a = Math::BigInt->new("$a") unless ref($a) eq 'Math::BigInt';
-  my $phi = Math::BigInt->new('' . euler_phi($n));
+
+  # Method 3:
+  # foreach my $k (divisors(carmichael_lambda($n))) {
+  #   return $k if $k != 1 && $a->copy->bmodpow("$k", $n)->is_one;
+  # }
+  # return;
+
+  # Method 4 (Das algorithm 1.7 applied to Carmichael Lambda)
+  #my $phi = Math::BigInt->new('' . euler_phi($n));
+  my $phi = Math::BigInt->new('' . carmichael_lambda($n));
   my @pe = ($phi <= $_XS_MAXVAL) ? _XS_factor_exp($phi) : factor_exp($phi);
   my $k = Math::BigInt->bone;
   foreach my $f (@pe) {
@@ -1714,14 +1723,6 @@ sub znorder {
   }
   $k = int($k->bstr) if $k->bacmp(''.~0) <= 0;
   return $k;
-
-  # Method 3:
-  # my $cl = carmichael_lambda($n);
-  # foreach my $k (divisors($cl), $cl) {
-  #   my $t = $a->copy->bmodpow("$k", $n);
-  #   return $k if $t->is_one;
-  # }
-  # return;
 }
 
 
@@ -3794,8 +3795,10 @@ This is L<OEIS series A002322|http://oeis.org/A002322>.
 
 Given two positive integers C<a> and C<n>, returns the multiplicative order
 of C<a> modulo <n>.  This is the smallest positive integer C<k> such that
-C<a^k ≡ 1 mod n>.  Returns 1 if C<a = 1>.  Return undef if C<a = 0> or if
+C<a^k ≡ 1 mod n>.  Returns 1 if C<a = 1>.  Returns undef if C<a = 0> or if
 C<a> and C<n> are not coprime, since no value will result in 1 mod n.
+This corresponds to Pari's C<znorder(Mod(a,n))> function and Mathematica's
+C<MultiplicativeOrder[n]> function.
 
 
 =head2 random_prime
