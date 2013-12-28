@@ -27,6 +27,15 @@ extern long double ld_riemann_zeta(long double x);
 extern double _XS_RiemannR(double x);
 extern UV _XS_Inverse_Li(UV x);
 
+extern int kronecker_uu(UV a, UV b);
+extern int kronecker_su(IV a, UV b);
+extern int kronecker_ss(IV a, IV b);
+
+extern UV totient(UV n);
+extern UV carmichael_lambda(UV n);
+extern UV znprimroot(UV n);
+extern UV znorder(UV n);
+
 /* Above this value, is_prime will do deterministic Miller-Rabin */
 /* With 64-bit math, we can do much faster mulmods from 2^16-2^32 */
 #if (BITS_PER_WORD == 64) || HAVE_STD_U64
@@ -72,7 +81,7 @@ static UV icbrt(UV n) {
 }
 #endif
 
-#ifdef FUNC_gcd_ui
+#if defined(FUNC_gcd_ui) || defined(FUNC_lcm_ui)
 static UV gcd_ui(UV x, UV y) {
   UV t;
   if (y < x) { t = x; x = y; y = t; }
@@ -80,6 +89,13 @@ static UV gcd_ui(UV x, UV y) {
     t = y;  y = x % y;  x = t;  /* y1 <- x0 % y0 ; x1 <- y0 */
   }
   return x;
+}
+#endif
+
+#ifdef FUNC_lcm_ui
+static UV lcm_ui(UV x, UV y) {
+  /* Can overflow if lcm(x,y) > 2^64 (e.g. two primes each > 2^32) */
+  return x * (y / gcd_ui(x,y));
 }
 #endif
 

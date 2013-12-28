@@ -57,11 +57,14 @@
 
 #include "ptypes.h"
 #define FUNC_isqrt 1
+#define FUNC_lcm_ui 1
 #include "util.h"
 #include "sieve.h"
 #include "primality.h"
 #include "cache.h"
 #include "lmo.h"
+#include "factor.h"
+#include "mulmod.h"
 
 static int _verbose = 0;
 void _XS_set_verbose(int v) { _verbose = v; }
@@ -884,6 +887,118 @@ IV _XS_mertens(UV n) {
   Safefree(mu);
   return sum;
 }
+
+
+static int padic2(UV n) {  /* How many times does 2 divide n? */
+  UV p = 0;
+  while (n && n % 2 == 0) { n >>= 1;  p++; }
+  return p;
+}
+#define IS_MOD8_3OR5(x)  (((x)&7)==3 || ((x)&7)==5)
+
+static int kronecker_uu_sign(UV a, UV b, int s) {
+  while (a) {
+    int r = padic2(a);
+    if (r) {
+      if ((r&1)  &&  IS_MOD8_3OR5(b))  s = -s;
+      a >>= r;
+    }
+    if (a & b & 2)  s = -s;
+    { UV t = b % a;  b = a;  a = t; }
+  }
+  return (b == 1) ? s : 0;
+}
+
+int kronecker_uu(UV a, UV b) {
+  int r, s;
+  if (b & 1)   return kronecker_uu_sign(a, b, 1);
+  if (!(a&1))  return 0;
+  s = 1;
+  r = padic2(b);
+  if (r) {
+    if ((r&1) && IS_MOD8_3OR5(a))  s = -s;
+    b >>= r;
+  }
+  return kronecker_uu_sign(a, b, s);
+}
+
+int kronecker_su(IV a, UV b) {
+  int r, s;
+  if (a >= 0)  return kronecker_uu(a, b);
+  if (b == 0)  return (a == 1 || a == -1) ? 1 : 0;
+  s = 1;
+  r = padic2(b);
+  if (r) {
+    if (!(a&1))  return 0;
+    if ((r&1) && IS_MOD8_3OR5(a))  s = -s;
+    b >>= r;
+  }
+  a %= (IV) b;
+  if (a < 0)  a += b;
+  return kronecker_uu_sign(a, b, s);
+}
+
+int kronecker_ss(IV a, IV b) {
+  if (a >= 0 && b >= 0)
+    return (b & 1)  ?  kronecker_uu_sign(a, b, 1)  :  kronecker_uu(a,b);
+  if (b >= 0)
+    return kronecker_su(a, b);
+  return kronecker_su(a, -b) * ((a < 0) ? -1 : 1);
+}
+
+UV totient(UV n) {
+  UV i, facs[MPU_MAX_FACTORS+1];
+  UV nfacs = factor(n, facs);
+  UV totient = 1;
+  UV lastf = 0;
+  if (n <= 1) return n;
+  for (i = 0; i < nfacs; i++) {
+    UV f = facs[i];
+    if (f == lastf) { totient *= f;               }
+    else            { totient *= f-1;  lastf = f; }
+  }
+  return totient;
+}
+
+UV carmichael_lambda(UV n) {
+  UV fac[MPU_MAX_FACTORS+1];
+  UV exp[MPU_MAX_FACTORS+1];
+  int i, j, nfactors;
+  UV lambda = 1;
+
+  if (n < 8) return totient(n);
+  if ((n & (n-1)) == 0)  return totient(n)/2;
+
+  nfactors = factor_exp(n, fac, exp);
+  if (fac[0] == 2 && exp[0] > 2)  exp[0]--;
+  for (i = 0; i < nfactors; i++) {
+    UV pk = fac[i]-1;
+    for (j = 1; j < exp[i]; j++)
+      pk *= fac[i];
+    lambda = lcm_ui(lambda, pk);
+  }
+  return lambda;
+}
+  
+UV znprimroot(UV n) {
+  UV fac[MPU_MAX_FACTORS+1];
+  UV exp[MPU_MAX_FACTORS+1];
+  UV a, phi;
+  int i, nfactors;
+  if (n <= 4) return (n == 0) ? 0 : n-1;
+  phi = totient(n);
+  nfactors = factor_exp(phi, fac, exp);
+  for (i = 0; i < nfactors; i++)
+    exp[i] = phi / fac[i];  /* exp[i] = phi(n) / i-th-factor-of-phi(n) */
+  for (a = 2; a < n; a++) {
+    if (kronecker_uu(a, n) == 0)  continue;
+    for (i = 0; i < nfactors; i++) {
+      if (powmod(a, exp[i], n) == 1) break;
+    }
+    if (i == nfactors) return a;
+  }
+}
+
 
 double _XS_chebyshev_theta(UV n)
 {
