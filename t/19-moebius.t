@@ -5,7 +5,9 @@ use warnings;
 use Test::More;
 use Math::Prime::Util
    qw/moebius mertens euler_phi jordan_totient divisor_sum exp_mangoldt
-      chebyshev_theta chebyshev_psi carmichael_lambda znorder liouville/;
+      chebyshev_theta chebyshev_psi carmichael_lambda znorder liouville
+      znprimroot
+     /;
 
 my $extra = defined $ENV{EXTENDED_TESTING} && $ENV{EXTENDED_TESTING};
 my $use64 = Math::Prime::Util::prime_get_config->{'maxbits'} > 32;
@@ -192,6 +194,38 @@ my @mult_orders = (
   [31407,2147475467,266],
 );
 
+my %primroots = (
+   -11 => 2,
+     0 => undef,
+     1 => 0,
+     2 => 1,
+     3 => 2,
+     4 => 3,
+     5 => 2,
+     6 => 5,
+     7 => 3,
+     8 => undef,
+     9 => 2,
+    10 => 3,       # 3 is the smallest root.  Pari gives the other root 7.
+  1729 => undef,
+   5109721 =>  94,
+  17551561 =>  97,
+  90441961 => 113,
+1407827621 =>   2,
+1520874431 =>  17,
+1685283601 => 164,
+);
+if ($use64) {
+  $primroots{2232881419280027} = 6;
+  $primroots{14123555781055773271} = 6;
+  $primroots{89637484042681} = 335;
+}
+
+# znprimroot:
+#   1729
+#   2232881419280027        factor divide goes to FP
+#   14123555781055773271    bmodpow hits RT 71548
+
 # These are slow with XS, and *really* slow with PP.
 if (!$usexs) {
   %big_mertens = map { $_ => $big_mertens{$_} }
@@ -219,6 +253,7 @@ plan tests => 0 + 1
                 + 7 + scalar(keys %totients)
                 + 1 # Small Carmichael Lambda
                 + scalar(@mult_orders)
+                + scalar(keys %primroots)
                 + scalar(keys %jordan_totients)
                 + 2  # Dedekind psi calculated two ways
                 + 2  # Calculate J5 two different ways
@@ -364,6 +399,10 @@ foreach my $moarg (@mult_orders) {
   my ($a, $n, $exp) = @$moarg;
   my $zn = znorder($a, $n);
   is( $zn, $exp, "znorder($a, $n) = " . ((defined $exp) ? $exp : "<undef>") );
+}
+###### znprimroot
+while (my($n, $root) = each (%primroots)) {
+  is( znprimroot($n), $root, "znprimroot($n) == " . ((defined $root) ? $root : "<undef>") );
 }
 ###### liouville
 foreach my $i (@liouville_pos) {

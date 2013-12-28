@@ -739,6 +739,42 @@ carmichael_lambda(IN SV* svn)
     _vcallsub("Math::Prime::Util::_generic_carmichael_lambda");
     XSRETURN(1);
 
+int
+znorder(IN SV* sva, IN SV* svn)
+  PREINIT:
+    int astatus, nstatus;
+  PPCODE:
+    astatus = _validate_int(sva, 0);
+    nstatus = _validate_int(svn, 0);
+    if (astatus == 1 && nstatus == 1) {
+      UV a, n, order;
+      set_val_from_sv(a, sva);
+      set_val_from_sv(n, svn);
+      order = znorder(a, n);
+      if (order == 0) XSRETURN_UNDEF;
+      XSRETURN_UV(order);
+    } else {
+      dTHX;
+      dSP;
+      int count;
+      ENTER;
+      SAVETMPS;
+      (void) POPs;  (void) POPs;
+      PUSHMARK(SP);
+      XPUSHs(sva);
+      XPUSHs(svn);
+      PUTBACK;
+      count = call_pv("Math::Prime::Util::_generic_znorder", G_SCALAR);
+      SPAGAIN;
+      if (count != 1) croak("callback sub should return one value");
+      TOPs = SvREFCNT_inc(TOPs);
+      PUTBACK;
+      FREETMPS;
+      LEAVE;
+      TOPs = sv_2mortal(TOPs);
+      XSRETURN(1);
+    }
+
 void
 _XS_moebius(IN UV lo, IN UV hi = 0)
   PREINIT:

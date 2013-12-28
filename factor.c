@@ -396,31 +396,26 @@ UV _XS_divisor_sum(UV n, UV k)
     }
   } else if (k == 1) {
     for (i = 0; i < nfac; i++) {
-      UV e = 1,  f = factors[i];
-      UV fmult = 1 + f;
-      while (i+1 < nfac && f == factors[i+1]) { e++; i++; }
-      if (e > 1) {
-        UV pke = f;
-        for (j = 1; j < (int)e; j++) {
-          pke *= f;
-          fmult += pke;
-        }
+      UV f = factors[i];
+      UV pke = f, fmult = 1 + f;
+      while (i+1 < nfac && f == factors[i+1]) {
+        pke *= f;
+        fmult += pke;
+        i++;
       }
       product *= fmult;
     }
   } else {
     for (i = 0; i < nfac; i++) {
-      UV e = 1,  f = factors[i];
-      UV fmult, pk = f;
+      UV f = factors[i];
+      UV fmult, pke, pk = f;
       for (j = 1; j < (int)k; j++)  pk *= f;
-      while (i+1 < nfac && f == factors[i+1]) { e++; i++; }
       fmult = 1 + pk;
-      if (e > 1) {
-        UV pke = pk;
-        for (j = 1; j < (int)e; j++) {
-          pke *= pk;
-          fmult += pke;
-        }
+      pke = pk;
+      while (i+1 < nfac && f == factors[i+1]) {
+        pke *= pk;
+        fmult += pke;
+        i++;
       }
       product *= fmult;
     }

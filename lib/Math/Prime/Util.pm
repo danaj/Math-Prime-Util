@@ -107,6 +107,7 @@ BEGIN {
     *exp_mangoldt  = \&Math::Prime::Util::_generic_exp_mangoldt;
     *carmichael_lambda = \&Math::Prime::Util::_generic_carmichael_lambda;
     *kronecker     = \&Math::Prime::Util::_generic_kronecker;
+    *znorder       = \&Math::Prime::Util::_generic_znorder;
     *znprimroot    = \&Math::Prime::Util::_generic_znprimroot;
     *forprimes     = sub (&$;$) { _generic_forprimes(@_); }; ## no critic qw(ProhibitSubroutinePrototypes)
     *fordivisors   = sub (&$) { _generic_fordivisors(@_); }; ## no critic qw(ProhibitSubroutinePrototypes)
@@ -1678,7 +1679,7 @@ sub _generic_carmichael_lambda {
   return $lcm;
 }
 
-sub znorder {
+sub _generic_znorder {
   my($a, $n) = @_;
   _validate_num($a) || _validate_positive_integer($a);
   _validate_num($n) || _validate_positive_integer($n);
@@ -1688,33 +1689,25 @@ sub znorder {
 
   # Sadly, Calc/FastCalc are horrendously slow for this function.
   return if Math::BigInt::bgcd($a, $n) > 1;
-  # Method 1:  check all a^k 1 .. $n-1.   Naive and terrible slow.
-  # Method 2:  check all k in (divisors(euler_phi($n), $n).
-  #            Much better, but slow with many divisors.
-  # Method 3:  check all k in (divisors(carmichael_lambda($n), $n).
-  #            Stronger result, but still can have too many divisors.
-  # Method 4:  Abhijit Das, alg 1.7, just enough multiples of p.
-  #            Combine this with method 3.
-  #
-  # Most of the time is spent factoring $n and $phi.  We could do the phi
-  # construction here and build its factors to save a little more time.
 
+  # The answer is one of the divisors of phi(n) and lambda(n).
+  my $lambda = carmichael_lambda($n);
   $a = Math::BigInt->new("$a") unless ref($a) eq 'Math::BigInt';
 
-  # Method 3:
-  # foreach my $k (divisors(carmichael_lambda($n))) {
-  #   return $k if $k != 1 && $a->copy->bmodpow("$k", $n)->is_one;
-  # }
-  # return;
+  # This is easy and usually fast, but can bog down with too many divisors.
+  if ($lambda <= $_XS_MAXVAL) {
+    foreach my $k (_XS_divisors($lambda)) {
+      return $k if $a->copy->bmodpow("$k", $n)->is_one;
+    }
+    return;
+  }
 
-  # Method 4 (Das algorithm 1.7 applied to Carmichael Lambda)
-  #my $phi = Math::BigInt->new('' . euler_phi($n));
-  my $phi = Math::BigInt->new('' . carmichael_lambda($n));
-  my @pe = ($phi <= $_XS_MAXVAL) ? _XS_factor_exp($phi) : factor_exp($phi);
+  # Algorithm 1.7 from A. Das applied to Carmichael Lambda.
+  $lambda = Math::BigInt->new("$lambda") unless ref($lambda) eq 'Math::BigInt';
   my $k = Math::BigInt->bone;
-  foreach my $f (@pe) {
+  foreach my $f (factor_exp($lambda)) {
     my($pi, $ei, $enum) = (Math::BigInt->new("$f->[0]"), $f->[1], 0);
-    my $phidiv = $phi / ($pi**$ei);
+    my $phidiv = $lambda / ($pi**$ei);
     my $b = $a->copy->bmodpow($phidiv, $n);
     while ($b != 1) {
       return if $enum++ >= $ei;
@@ -3856,11 +3849,18 @@ C<MultiplicativeOrder[n]> function.
 
 =head2 znprimroot
 
-Given a positive integer C<n>, returns a primitive root of C<(Z/nZ)^*>.
-A root exists when C<euler_phi($n) == carmichael_lambda($n)>, which will
-be true for all prime C<n> and some composites.  
-(L<OEIS A033948|http://oeis.org/A033948>) is the list of such values.
-If a primitive root does not exist for C<n>, this function returns undef.
+Given a positive integer C<n>, returns the smallest primitive root
+of C<(Z/nZ)^*>, or C<undef> if no root exists.  A root exists when
+C<euler_phi($n) == carmichael_lambda($n)>, which will be true for
+all prime C<n> and some composites.
+
+L<OEIS A033948|http://oeis.org/A033948> is a sequence of integers where
+the primitive root exists, while L<OEIS A046145|http://oeis.org/A046145>
+is a list of the smallest primitive roots, which is what this function
+produces.
+
+This will always produce the smallest primitive root.  Pari does not
+necessarily produce the smallest result for composites.
 
 
 =head2 random_prime
