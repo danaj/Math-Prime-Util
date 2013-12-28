@@ -6,6 +6,7 @@
 #define MPU_MAX_FACTORS 64
 
 extern int factor(UV n, UV *factors);
+extern int factor_exp(UV n, UV *factors, UV* exponents);
 
 extern int trial_factor(UV n, UV *factors, UV maxtrial);
 

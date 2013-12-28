@@ -132,6 +132,25 @@ int factor(UV n, UV *factors)
   return nfactors;
 }
 
+int factor_exp(UV n, UV *factors, UV* exponents)
+{
+  int i, j, nfactors = factor(n, factors);
+
+  if (n == 1) return 0;
+  exponents[0] = 1;
+  for (i = 1, j = 1; i < nfactors; i++) {
+    if (factors[i] != factors[i-1]) {
+      exponents[j] = 1;
+      factors[j++] = factors[i];
+    } else {
+      exponents[j-1]++;
+    }
+  }
+  return j;
+}
+
+
+
 static const unsigned short primes_small[] =
   {0,2,3,5,7,11,13,17,19,23,29,31,37,41,43,47,53,59,61,67,71,73,79,83,89,97,
    101,103,107,109,113,127,131,137,139,149,151,157,163,167,173,179,181,191,
@@ -330,17 +349,7 @@ UV* _divisor_list(UV n, UV *num_divisors)
     return divs;
   }
   /* Factor and convert to factor/exponent pair */
-  nfactors = factor(n, factors);
-  exponents[0] = 1;
-  for (i = 1, j = 1; i < nfactors; i++) {
-    if (factors[i] != factors[i-1]) {
-      exponents[j] = 1;
-      factors[j++] = factors[i];
-    } else {
-      exponents[j-1]++;
-    }
-  }
-  nfactors = j;
+  nfactors = factor_exp(n, factors, exponents);
   /* Calculate number of divisors, allocate space, fill with divisors */
   ndivisors = exponents[0] + 1;
   for (i = 1; i < nfactors; i++)
