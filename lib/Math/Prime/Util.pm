@@ -1830,8 +1830,8 @@ sub _generic_kronecker {
   my($a, $b) = @_;
   croak "Parameter must be defined" if !defined $a;
   croak "Parameter must be defined" if !defined $b;
-  croak "Parameter '$a' must be an integer" unless $a =~ /^-?\d+/;
-  croak "Parameter '$b' must be an integer" unless $b =~ /^-?\d+/;
+  croak "Parameter '$a' must be an integer" unless $a =~ /^[-+]?\d+/;
+  croak "Parameter '$b' must be an integer" unless $b =~ /^[-+]?\d+/;
 
   return Math::BigInt->new(''.Math::Prime::Util::GMP::kronecker($a,$b))
     if $_HAVE_GMP && defined &Math::Prime::Util::GMP::kronecker;
@@ -3860,9 +3860,6 @@ the primitive root exists, while L<OEIS A046145|http://oeis.org/A046145>
 is a list of the smallest primitive roots, which is what this function
 produces.
 
-This will always produce the smallest primitive root.  Pari does not
-necessarily produce the smallest result for composites.
-
 
 =head2 random_prime
 
@@ -4556,6 +4553,17 @@ Compute L<OEIS A054903|http://oeis.org/A054903> just like CRG4's Pari example:
     say if divisor_sum($_)+6 == divisor_sum($_+6)
   } 9,1e7;
 
+Construct the table shown in L<OEIS A046147|http://oeis.org/A046147>:
+
+  use Math::Prime::Util qw/znorder euler_phi/;
+  foreach my $n (1..100) {
+    my $phi = euler_phi($n);
+    my @r = grep {    Math::BigInt::bgcd($_,$n) == 1
+                   && znorder($_,$n) == $phi
+                 } 1..$n-1;
+    say "$n ", join(" ", @r);
+  }
+
 =head1 PRIMALITY TESTING NOTES
 
 Above C<2^64>, L</is_prob_prime> performs an extra-strong
@@ -4853,7 +4861,12 @@ Math::Pari.
 
 =item C<kronecker>, C<znorder>, C<znprimroot>
 
-Similar to MPU's L</kronecker>, L</znorder>, and L</znprimroot>.
+Similar to MPU's L</kronecker>, L</znorder>, and L</znprimroot>.  Pari's
+C<znprimroot> only returns the smallest root for prime powers.  The
+behavior is undefined when the group is not cyclic (sometimes it throws
+an exception, sometimes it returns an incorrect answer).
+MPU's L</znprimroot> will always return the smallest root if it exists,
+and C<undef> otherwise.
 
 =item C<sigma>
 

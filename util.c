@@ -1015,17 +1015,21 @@ UV znprimroot(UV n) {
   UV a, phi;
   int i, nfactors;
   if (n <= 4) return (n == 0) ? 0 : n-1;
+  if (n % 4 == 0)  return 0;
   phi = totient(n);
+  /* Check if a primitive root exists. */
+  if (!_XS_is_prob_prime(n) && phi != carmichael_lambda(n))  return 0;
   nfactors = factor_exp(phi, fac, exp);
   for (i = 0; i < nfactors; i++)
     exp[i] = phi / fac[i];  /* exp[i] = phi(n) / i-th-factor-of-phi(n) */
   for (a = 2; a < n; a++) {
     if (kronecker_uu(a, n) == 0)  continue;
-    for (i = 0; i < nfactors; i++) {
-      if (powmod(a, exp[i], n) == 1) break;
-    }
+    for (i = 0; i < nfactors; i++)
+      if (powmod(a, exp[i], n) == 1)
+        break;
     if (i == nfactors) return a;
   }
+  return 0;
 }
 
 

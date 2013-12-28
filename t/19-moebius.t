@@ -214,6 +214,7 @@ my %primroots = (
 1407827621 =>   2,
 1520874431 =>  17,
 1685283601 => 164,
+ 100000001 => undef,
 );
 if ($use64) {
   $primroots{2232881419280027} = 6;
@@ -253,7 +254,7 @@ plan tests => 0 + 1
                 + 7 + scalar(keys %totients)
                 + 1 # Small Carmichael Lambda
                 + scalar(@mult_orders)
-                + scalar(keys %primroots)
+                + scalar(keys %primroots) + 2
                 + scalar(keys %jordan_totients)
                 + 2  # Dedekind psi calculated two ways
                 + 2  # Calculate J5 two different ways
@@ -404,6 +405,8 @@ foreach my $moarg (@mult_orders) {
 while (my($n, $root) = each (%primroots)) {
   is( znprimroot($n), $root, "znprimroot($n) == " . ((defined $root) ? $root : "<undef>") );
 }
+is( znprimroot("-100000898"), 31, "znprimroot(\"-100000898\") == 31" );
+is( znprimroot("+100000898"), 31, "znprimroot(\"+100000898\") == 31" );
 ###### liouville
 foreach my $i (@liouville_pos) {
   is( liouville($i),  1, "liouville($i) = 1" );
