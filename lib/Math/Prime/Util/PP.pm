@@ -78,7 +78,7 @@ sub _validate_num {
   croak "Parameter must be defined" if !defined $n;
   return 0 if ref($n);
   croak "Parameter '$n' must be a positive integer"
-          if $n eq '' || $n =~ tr/0123456789//c;
+          if $n eq '' || ($n =~ tr/0123456789//c && $n !~ /^\+\d+/);
   croak "Parameter '$n' must be >= $min" if defined $min && $n < $min;
   croak "Parameter '$n' must be <= $max" if defined $max && $n > $max;
   return 0 unless $n < ~0 || int($n) eq ''.~0;
@@ -89,7 +89,7 @@ sub _validate_positive_integer {
   my($n, $min, $max) = @_;
   croak "Parameter must be defined" if !defined $n;
   croak "Parameter '$n' must be a positive integer"
-        if ref($n) ne 'Math::BigInt' && $n =~ tr/0123456789//c;
+     if ref($n) ne 'Math::BigInt' && ($n =~ tr/0123456789//c && $n !~ /^\+\d+/);
   croak "Parameter '$n' must be >= $min" if defined $min && $n < $min;
   croak "Parameter '$n' must be <= $max" if defined $max && $n > $max;
   $_[0] = Math::BigInt->new("$_[0]") unless ref($_[0]) eq 'Math::BigInt';
