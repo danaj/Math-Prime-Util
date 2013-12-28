@@ -1008,7 +1008,7 @@ UV znorder(UV a, UV n) {
   }
   return k;
 }
-  
+
 UV znprimroot(UV n) {
   UV fac[MPU_MAX_FACTORS+1];
   UV exp[MPU_MAX_FACTORS+1];

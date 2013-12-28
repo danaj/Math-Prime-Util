@@ -2764,6 +2764,23 @@ The following conditions must hold:
   - C<< k >= 0 >>
   - C<< n >= 2 >>
 
+=head2 kronecker
+
+Returns the Kronecker symbol C<(a|n)> for two integers.  The possible
+return values with their meanings for odd positive C<n> are:
+
+   0   a = 0 mod n
+   1   a is a quadratic residue modulo n (a = x^2 mod n for some x)
+  -1   a is a quadratic non-residue modulo n
+
+and the return value is congruent to C<a^((n-1)/2)>.  The Kronecker
+symbol is an extension of the Jacobi symbol to all integer values of
+C<n> from its domain of positive odd values of C<n>.  The Jacobi
+symbol is itself an extension of the Legendre symbol, which is
+only defined for odd prime values of C<n>.  This corresponds to Pari's
+C<kronecker(a,n)> function and Mathematica's C<KroneckerSymbol[n,m]>
+function.
+
 
 =head1 UTILITY FUNCTIONS
 

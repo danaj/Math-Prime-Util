@@ -1721,8 +1721,9 @@ sub _generic_znorder {
 
 sub _generic_znprimroot {
   my($n) = @_;
+  $n = -$n if defined $n && $n =~ /^-\d+/;   # TODO: fix this for string bigints
   _validate_num($n) || _validate_positive_integer($n);
-  return if $n <= 0;
+  return if $n == 0;
   return $n-1 if $n <= 4;
   my $a = 1;
   my $phi = euler_phi($n);
@@ -2570,7 +2571,7 @@ __END__
 
 =encoding utf8
 
-=for stopwords forprimes forcomposites fordivisors Möbius Deléglise totient moebius mertens liouville znorder irand primesieve uniqued k-tuples von SoE pari yafu fonction qui compte le nombre nombres voor PhD superset sqrt(N) gcd(A^M k-th (10001st primegen libtommath
+=for stopwords forprimes forcomposites fordivisors Möbius Deléglise totient moebius mertens liouville znorder irand primesieve uniqued k-tuples von SoE pari yafu fonction qui compte le nombre nombres voor PhD superset sqrt(N) gcd(A^M k-th (10001st primegen libtommath kronecker znprimroot
 
 
 =head1 NAME
