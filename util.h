@@ -34,7 +34,6 @@ extern int kronecker_ss(IV a, IV b);
 extern UV totient(UV n);
 extern UV carmichael_lambda(UV n);
 extern UV znprimroot(UV n);
-extern UV znorder(UV n);
 
 /* Above this value, is_prime will do deterministic Miller-Rabin */
 /* With 64-bit math, we can do much faster mulmods from 2^16-2^32 */

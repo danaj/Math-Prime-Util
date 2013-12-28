@@ -20,22 +20,30 @@
 #include "lmo.h"
 #include "aks.h"
 
-#if BITS_PER_WORD == 64 && defined(_MSC_VER)
-  #include <stdlib.h>
-  #define PSTRTOULL(str, end, base) _strtoui64 (str, end, base)
-#elif BITS_PER_WORD == 64 && (defined(__GNUC__) || QUADKIND==QUAD_IS_LONG_LONG)
+#if BITS_PER_WORD == 64
+  #if defined(_MSC_VER)
+    #include <stdlib.h>
+    #define strtoull _strtoui64
+    #define strtoll  _strtoi64
+  #endif
   #define PSTRTOULL(str, end, base) strtoull (str, end, base)
+  #define PSTRTOLL(str, end, base)  strtoll (str, end, base)
 #else
   #define PSTRTOULL(str, end, base) strtoul (str, end, base)
+  #define PSTRTOLL(str, end, base)  strtol (str, end, base)
 #endif
 
 /* Workaround perl 5.6 UVs and bigints in later */
 #if PERL_REVISION <= 5 && PERL_VERSION <= 6 && BITS_PER_WORD == 64
  #define set_val_from_sv(val, sv) \
-   val = PSTRTOULL(SvPV_nolen(sv), NULL, 10);
+   do { val = PSTRTOULL(SvPV_nolen(sv), NULL, 10); } while(0)
+ #define set_sval_from_sv(val, sv) \
+   do { val = PSTRTOLL(SvPV_nolen(sv), NULL, 10); } while(0)
 #else
  #define set_val_from_sv(val, sv) \
-   val = (!SvROK(sv)) ? SvUV(sv) : PSTRTOULL(SvPV_nolen(sv), NULL, 10);
+   do { val = (!SvROK(sv)) ? SvUV(sv) : PSTRTOULL(SvPV_nolen(sv), NULL, 10); } while(0)
+ #define set_sval_from_sv(val, sv) \
+   do { val = (!SvROK(sv)) ? SvIV(sv) : PSTRTOLL(SvPV_nolen(sv), NULL, 10); } while(0)
 #endif
 
 /* multicall compatibility stuff */
@@ -66,10 +74,14 @@ static int pbrent_factor_a1(UV n, UV *factors, UV maxrounds) {
 
 #if BITS_PER_WORD == 32
   static const unsigned int uvmax_maxlen = 10;
+  static const unsigned int ivmax_maxlen = 10;
   static const char uvmax_str[] = "4294967295";
+  static const char ivmax_str[] = "2147483648";
 #else
   static const unsigned int uvmax_maxlen = 20;
+  static const unsigned int ivmax_maxlen = 19;
   static const char uvmax_str[] = "18446744073709551615";
+  static const char ivmax_str[] =  "9223372036854775808";
 #endif
 
 /* Is this a pedantically valid integer?
@@ -80,13 +92,19 @@ static int pbrent_factor_a1(UV n, UV *factors, UV maxrounds) {
 static int _validate_int(SV* n, int negok)
 {
   dTHX;
+  const char* maxstr;
   char* ptr;
-  STRLEN i, len;
-  int isneg = 0;
+  STRLEN i, len, maxlen;
+  int ret, isneg = 0;
 
   if (!SvOK(n))  croak("Parameter must be defined");
+  if (SvIOK(n)) {                      /* If defined as number, use that */
+    if (SvIsUV(n) || SvIV(n) >= 0)  return 1;
+    if (negok)  return -1;
+    else      croak("Parameter '%s' must be a positive integer", SvPV_nolen(n));
+  }
   if (SvROK(n) && !sv_isa(n, "Math::BigInt"))  return 0;
-  ptr = SvPV(n, len);  /* This will stringify bigints for us, yay */
+  ptr = SvPV(n, len);                  /* Includes stringifying bigints */
   if (len == 0 || ptr == 0)  croak("Parameter '' must be a positive integer");
   if (ptr[0] == '-') {                 /* Read negative sign */
     if (negok) { isneg = 1; ptr++; len--; }
@@ -100,15 +118,18 @@ static int _validate_int(SV* n, int negok)
   for (i = 0; i < len; i++)            /* Ensure all characters are digits */
     if (!isDIGIT(ptr[i]))
       croak("Parameter '%s' must be a positive integer", ptr);
-  if (isneg)                           /* Negative number (ignore overflow) */
+  if (isneg == 1)                      /* Negative number (ignore overflow) */
     return -1;
-  if (len < uvmax_maxlen)              /* Valid small integer */
-    return 1;
-  for (i = 0; i < uvmax_maxlen; i++) { /* Check if in range */
-    if (ptr[i] < uvmax_str[i]) return 1;
-    if (ptr[i] > uvmax_str[i]) return 0;
+  ret    = isneg ? -1           : 1;
+  maxlen = isneg ? ivmax_maxlen : uvmax_maxlen;
+  maxstr = isneg ? ivmax_str    : uvmax_str;
+  if (len < maxlen)                    /* Valid small integer */
+    return ret;
+  for (i = 0; i < maxlen; i++) {       /* Check if in range */
+    if (ptr[i] < maxstr[i]) return ret;
+    if (ptr[i] > maxstr[i]) return 0;
   }
-  return 1;                            /* value = UV_MAX.  That's ok */
+  return ret;                          /* value = UV_MAX/UV_MIN.  That's ok */
 }
 
 /* Call a Perl sub to handle work for us.
@@ -386,29 +407,14 @@ _XS_factor_exp(IN UV n)
   PREINIT:
     UV factors[MPU_MAX_FACTORS+1];
     UV exponents[MPU_MAX_FACTORS+1];
-    int i, j, nfactors;
+    int i, nfactors;
   PPCODE:
-    nfactors = factor(n, factors);
+    nfactors = factor_exp(n, factors, exponents);
     if (GIMME_V == G_SCALAR) {
-      /* Count unique prime factors and return the scalar */
-      if (n == 1)  XSRETURN_UV(0);
-      for (i = 1, j = 1; i < nfactors; i++)
-        if (factors[i] != factors[i-1])
-          j++;
-      PUSHs(sv_2mortal(newSVuv(j)));
+      PUSHs(sv_2mortal(newSVuv(nfactors)));
     } else {
       /* Return ( [p1,e1], [p2,e2], [p3,e3], ... ) */
       if (n == 1)  XSRETURN_EMPTY;
-      exponents[0] = 1;
-      for (i = 1, j = 1; i < nfactors; i++) {
-        if (factors[i] != factors[i-1]) {
-          exponents[j] = 1;
-          factors[j++] = factors[i];
-        } else {
-          exponents[j-1]++;
-        }
-      }
-      nfactors = j;
       for (i = 0; i < nfactors; i++) {
         AV* av = newAV();
         av_push(av, newSVuv(factors[i]));
@@ -601,6 +607,63 @@ next_prime(IN SV* n)
                            "Math::Prime::Util::_generic_prev_prime" );
     XSRETURN(1);
 
+void
+znprimroot(IN SV* svn)
+  PREINIT:
+    int status;
+  PPCODE:
+    status = _validate_int(svn, 1);
+    if (status != 0) {
+      UV n, r;
+      set_val_from_sv(n, svn);
+      if (status == -1)
+        n = -(IV)n;
+      r = znprimroot(n);
+      if (r == 0 && n != 1) XSRETURN_EMPTY;
+      XSRETURN_UV(r);
+    }
+    _vcallsub("Math::Prime::Util::_generic_znprimroot");
+    XSRETURN(1);
+
+int
+kronecker(IN SV* sva, IN SV* svb)
+  PREINIT:
+    int astatus, bstatus;
+  CODE:
+    astatus = _validate_int(sva, 2);
+    bstatus = _validate_int(svb, 2);
+    if (astatus == 1 && bstatus == 1) {
+      UV a, b;
+      set_val_from_sv(a, sva);
+      set_val_from_sv(b, svb);
+      RETVAL = kronecker_uu(a, b);
+    } else if (astatus != 0 && SvIOK(sva) && !SvIsUV(sva) &&
+               bstatus != 0 && SvIOK(svb) && !SvIsUV(svb) ) {
+      IV a, b;
+      set_sval_from_sv(a, sva);
+      set_sval_from_sv(b, svb);
+      RETVAL = kronecker_ss(a, b);
+    } else {
+      dTHX;
+      dSP;
+      int count;
+      ENTER;
+      SAVETMPS;
+      PUSHMARK(SP);
+      XPUSHs(sva);
+      XPUSHs(svb);
+      PUTBACK;
+      count = call_pv("Math::Prime::Util::_generic_kronecker", G_SCALAR);
+      SPAGAIN;
+      if (count != 1) croak("callback sub should return one value");
+      RETVAL = POPi;
+      PUTBACK;
+      FREETMPS;
+      LEAVE;
+    }
+  OUTPUT:
+    RETVAL
+
 double
 _XS_ExponentialIntegral(IN double x)
   ALIAS:
@@ -659,20 +722,22 @@ _XS_totient(IN UV lo, IN UV hi = 0)
         Safefree(totients);
       }
     } else {
-      UV facs[MPU_MAX_FACTORS+1];  /* maximum number of factors is log2n */
-      UV nfacs, totient, lastf;
-      UV n = lo;
-      if (n <= 1) XSRETURN_UV(n);
-      nfacs = factor(n, facs);
-      totient = 1;
-      lastf = 0;
-      for (i = 0; i < nfacs; i++) {
-        UV f = facs[i];
-        if (f == lastf) { totient *= f;               }
-        else            { totient *= f-1;  lastf = f; }
-      }
-      PUSHs(sv_2mortal(newSVuv(totient)));
+      XSRETURN_UV(totient(lo));
     }
+
+void
+carmichael_lambda(IN SV* svn)
+  PREINIT:
+    int status;
+  PPCODE:
+    status = _validate_int(svn, 0);
+    if (status == 1) {
+      UV n;
+      set_val_from_sv(n, svn);
+      XSRETURN_UV(carmichael_lambda(n));
+    }
+    _vcallsub("Math::Prime::Util::_generic_carmichael_lambda");
+    XSRETURN(1);
 
 void
 _XS_moebius(IN UV lo, IN UV hi = 0)
