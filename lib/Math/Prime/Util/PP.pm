@@ -854,6 +854,40 @@ sub miller_rabin {
   }
   1;
 }
+# Calculate Kronecker symbol (a|b).  Cohen Algorithm 1.4.10.
+# Extension of the Jacobi symbol, itself an extension of the Legendre symbol.
+sub kronecker {
+  my($a, $b) = @_;
+  return (abs($a) == 1) ? 1 : 0  if $b == 0;
+  my $k = 1;
+  if ($b % 2 == 0) {
+    return 0 if $a % 2 == 0;
+    my $v = 0;
+    do { $v++; $b /= 2; } while $b % 2 == 0;
+    $k = -$k if $v % 2 == 1 && ($a % 8 == 3 || $a % 8 == 5);
+  }
+  if ($b < 0) {
+    $b = -$b;
+    $k = -$k if $a < 0;
+  }
+  if ($a < 0) { $a = -$a; $k = -$k if $b % 4 == 3; }
+  # Now:  b > 0, b odd, a >= 0
+  while ($a != 0) {
+    if ($a % 2 == 0) {
+      my $v = 0;
+      do { $v++; $a /= 2; } while $a % 2 == 0;
+      $k = -$k if $v % 2 == 1 && ($b % 8 == 3 || $b % 8 == 5);
+    }
+    $k = -$k if $a % 4 == 3 && $b % 4 == 3;
+    ($a, $b) = ($b % $a, $a);
+    # If a,b are bigints and now small enough, finish as native.
+    if (   ref($a) eq 'Math::BigInt' && $a <= ''.~0
+        && ref($b) eq 'Math::BigInt' && $b <= ''.~0) {
+      return $k * kronecker(int($a->bstr), int($b->bstr));
+    }
+  }
+  return ($b == 1) ? $k : 0;
+}
 
 sub _is_perfect_square {
   my($n) = @_;
@@ -875,39 +909,6 @@ sub _is_perfect_square {
   0;
 }
 
-# Calculate Jacobi symbol (M|N)
-sub _jacobi {
-  my($n, $m) = @_;
-  return 0 if $m <= 0 || ($m % 2) == 0;
-  my $j = 1;
-  if ($n < 0) {
-    $n = -$n;
-    $j = -$j if ($m % 4) == 3;
-  }
-  # Split loop so we can reduce n/m to non-bigints after first iteration.
-  if ($n != 0) {
-    while (($n % 2) == 0) {
-      $n >>= 1;
-      $j = -$j if ($m % 8) == 3 || ($m % 8) == 5;
-    }
-    ($n, $m) = ($m, $n);
-    $j = -$j if ($n % 4) == 3 && ($m % 4) == 3;
-    $n = $n % $m;
-    $n = int($n->bstr) if ref($n) eq 'Math::BigInt' && $n <= ''.~0;
-    $m = int($m->bstr) if ref($m) eq 'Math::BigInt' && $m <= ''.~0;
-  }
-  while ($n != 0) {
-    while (($n % 2) == 0) {
-      $n >>= 1;
-      $j = -$j if ($m % 8) == 3 || ($m % 8) == 5;
-    }
-    ($n, $m) = ($m, $n);
-    $j = -$j if ($n % 4) == 3 && ($m % 4) == 3;
-    $n = $n % $m;
-  }
-  return ($m == 1) ? $j : 0;
-}
-
 # Find first D in sequence (5,-7,9,-11,13,-15,...) where (D|N) == -1
 sub _lucas_selfridge_params {
   my($n) = @_;
@@ -920,7 +921,7 @@ sub _lucas_selfridge_params {
     my $gcd = (ref($n) eq 'Math::BigInt') ? Math::BigInt::bgcd($d, $n)
                                           : _gcd_ui($d, $n);
     return (0,0,0) if $gcd > 1 && $gcd != $n;  # Found divisor $d
-    my $j = _jacobi($d * $sign, $n);
+    my $j = kronecker($d * $sign, $n);
     last if $j == -1;
     $d += 2;
     croak "Could not find Jacobi sequence for $n" if $d > 4_000_000_000;
@@ -941,7 +942,7 @@ sub _lucas_extrastrong_params {
     my $gcd = (ref($n) eq 'Math::BigInt') ? Math::BigInt::bgcd($D, $n)
                                           : _gcd_ui($D, $n);
     return (0,0,0) if $gcd > 1 && $gcd != $n;  # Found divisor $d
-    last if _jacobi($D, $n) == -1;
+    last if kronecker($D, $n) == -1;
     $P += $increment;
     croak "Could not find Jacobi sequence for $n" if $P > 65535;
     $D = $P*$P - 4;
@@ -1171,7 +1172,7 @@ sub is_frobenius_underwood_pseudoprime {
   my $fb = $ZERO + 2;
 
   my ($x, $t, $np1, $na) = (0, -1, $n+1, undef);
-  while ( _jacobi($t, $n) != -1 ) {
+  while ( kronecker($t, $n) != -1 ) {
     $x++;
     $t = $x*$x - 4;
   }

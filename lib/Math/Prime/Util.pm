@@ -42,7 +42,7 @@ our @EXPORT_OK =
       partitions
       chebyshev_theta chebyshev_psi
       divisor_sum
-      carmichael_lambda znorder
+      carmichael_lambda kronecker znorder znprimroot
       ExponentialIntegral LogarithmicIntegral RiemannZeta RiemannR
   );
 our %EXPORT_TAGS = (all => [ @EXPORT_OK ]);
@@ -105,6 +105,9 @@ BEGIN {
     *next_prime    = \&Math::Prime::Util::_generic_next_prime;
     *prev_prime    = \&Math::Prime::Util::_generic_prev_prime;
     *exp_mangoldt  = \&Math::Prime::Util::_generic_exp_mangoldt;
+    *carmichael_lambda = \&Math::Prime::Util::_generic_carmichael_lambda;
+    *kronecker     = \&Math::Prime::Util::_generic_kronecker;
+    *znprimroot    = \&Math::Prime::Util::_generic_znprimroot;
     *forprimes     = sub (&$;$) { _generic_forprimes(@_); }; ## no critic qw(ProhibitSubroutinePrototypes)
     *fordivisors   = sub (&$) { _generic_fordivisors(@_); }; ## no critic qw(ProhibitSubroutinePrototypes)
     *forcomposites = sub (&$) { _generic_forcomposites(@_); }; ## no critic qw(ProhibitSubroutinePrototypes)
@@ -1595,8 +1598,6 @@ sub _generic_exp_mangoldt {
 
 sub liouville {
   my($n) = @_;
-  # Note the special behavior for n = 1
-  return 1 if defined $n && $n <= 1;
   _validate_num($n) || _validate_positive_integer($n);
   my $l = ($n <= $_XS_MAXVAL)  ?  (-1) ** scalar _XS_factor($n)
                                :  (-1) ** scalar factor($n);
@@ -1657,7 +1658,7 @@ sub chebyshev_psi {
   return $sum;
 }
 
-sub carmichael_lambda {
+sub _generic_carmichael_lambda {
   my($n) = @_;
   _validate_num($n) || _validate_positive_integer($n);
   # lambda(n) = phi(n) for n < 8
@@ -1723,6 +1724,30 @@ sub znorder {
   }
   $k = int($k->bstr) if $k->bacmp(''.~0) <= 0;
   return $k;
+}
+
+sub _generic_znprimroot {
+  my($n) = @_;
+  _validate_num($n) || _validate_positive_integer($n);
+  return if $n <= 0;
+  return $n-1 if $n <= 4;
+  my $a = 1;
+  my $phi = euler_phi($n);
+  my @exp = map { int($phi/$_->[0]) } factor_exp($phi);
+  #print "phi: $phi  factors: ", join(",",factor($phi)), "\n";
+  #print "  exponents: ", join(",", @exp), "\n";
+  while (1) {
+    my $fail = 0;
+    do { $a++; } while kronecker($a,$n) == 0;
+    return if $a >= $n;
+    foreach my $f (@exp) {
+      # As usual, quotes for RT 71548
+      my $e = Math::BigInt->new($a)->bmodpow("$f", "$n");
+      #print "  $a^$f mod $n = $e\n";
+      if ($e == 1) { $fail = 1; last; }
+    }
+    return $a if !$fail;
+  }
 }
 
 
@@ -1805,6 +1830,19 @@ sub _generic_prev_prime {
   }
 
   return Math::Prime::Util::PP::prev_prime($_[0]);
+}
+
+sub _generic_kronecker {
+  my($a, $b) = @_;
+  croak "Parameter must be defined" if !defined $a;
+  croak "Parameter must be defined" if !defined $b;
+  croak "Parameter '$a' must be an integer" unless $a =~ /^-?\d+/;
+  croak "Parameter '$b' must be an integer" unless $b =~ /^-?\d+/;
+
+  return Math::BigInt->new(''.Math::Prime::Util::GMP::kronecker($a,$b))
+    if $_HAVE_GMP && defined &Math::Prime::Util::GMP::kronecker;
+
+  return Math::Prime::Util::PP::kronecker(@_);
 }
 
 sub prime_count {
@@ -3788,6 +3826,22 @@ or Carmichael λ(n)) of a positive integer argument.  It is the smallest
 positive integer m such that a^m = 1 mod n for every integer a coprime to n.
 This is L<OEIS series A002322|http://oeis.org/A002322>.
 
+=head2 kronecker
+
+Returns the Kronecker symbol C<(a|n)> for two integers.  The possible
+return values with their meanings for odd positive C<n> are:
+
+   0   a = 0 mod n
+   1   a is a quadratic residue modulo n (a = x^2 mod n for some x)
+  -1   a is a quadratic non-residue modulo n
+
+and the return value is congruent to C<a^((n-1)/2)>.  The Kronecker
+symbol is an extension of the Jacobi symbol to all integer values of
+C<n> from its domain of positive odd values of C<n>.  The Jacobi
+symbol is itself an extension of the Legendre symbol, which is
+only defined for odd prime values of C<n>.  This corresponds to Pari's
+C<kronecker(a,n)> function and Mathematica's C<KroneckerSymbol[n,m]>
+function.
 
 =head2 znorder
 
@@ -3799,6 +3853,14 @@ C<a^k ≡ 1 mod n>.  Returns 1 if C<a = 1>.  Returns undef if C<a = 0> or if
 C<a> and C<n> are not coprime, since no value will result in 1 mod n.
 This corresponds to Pari's C<znorder(Mod(a,n))> function and Mathematica's
 C<MultiplicativeOrder[n]> function.
+
+=head2 znprimroot
+
+Given a positive integer C<n>, returns a primitive root of C<(Z/nZ)^*>.
+A root exists when C<euler_phi($n) == carmichael_lambda($n)>, which will
+be true for all prime C<n> and some composites.  
+(L<OEIS A033948|http://oeis.org/A033948>) is the list of such values.
+If a primitive root does not exist for C<n>, this function returns undef.
 
 
 =head2 random_prime
@@ -4780,16 +4842,17 @@ Similar to MPU's L</divisors>.
 Similar to MPU's L</forprimes>, L</forcomposites>, L<fordivisors>, and
 L<divisor_sum>.
 
-=item C<eulerphi>
+=item C<eulerphi>, C<moebius>
 
-Similar to MPU's L</euler_phi>.  MPU is 2-20x faster for native integers.
-There is also support for a range, which can be much more efficient.
-Without L<Math::Prime::Util::GMP> installed, MPU is very slow with bigints.
-With it installed, it is about 2x slower than Math::Pari.
+Similar to MPU's L</euler_phi> and L</moebius>.  MPU is 2-20x faster for
+native integers.  There is also support for a range, which can be much
+more efficient.  Without L<Math::Prime::Util::GMP> installed, MPU is
+very slow with bigints.  With it installed, it is about 2x slower than
+Math::Pari.
 
-=item C<moebius>
+=item C<kronecker>, C<znorder>, C<znprimroot>
 
-Similar to MPU's L</moebius>.  Comparisons are similar to C<eulerphi>.
+Similar to MPU's L</kronecker>, L</znorder>, and L</znprimroot>.
 
 =item C<sigma>
 
@@ -5121,6 +5184,14 @@ thank Kim Walisch for the many discussions about prime counting.
 =head1 REFERENCES
 
 =over 4
+
+=item *
+
+Henri Cohen, "A Course in Computational Algebraic Number Theory", Springer, 1996.  Practical computational number theory from the team lead of L<Pari|http://pari.math.u-bordeaux.fr/>.  Lots of explicit algorithms.
+
+=item *
+
+Hans Riesel, "Prime Numbers and Computer Methods for Factorization", Birkh?user, 2nd edition, 1994.  Lots of information, some code, easy to follow.
 
 =item *
 

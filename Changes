@@ -16,8 +16,13 @@ Revision history for Perl module Math::Prime::Util
 
     - forcomposites    like forprimes, but on composites.  See Pari 2.6.x.
     - fordivisors      calls a block for each divisor
+    - kronecker        Kronecker symbol (extension of Jacobi symbol)
+    - znprimroot       Primative root modulo n
 
     [FUNCTIONALITY AND PERFORMANCE]
+
+    - Speedup for input number validation: speedup for all functions,
+      especially noticeable with fast functions (e.g. small n is_prime(n)).
 
     - Some 5.6.2-is-broken workarounds.
 
@@ -35,6 +40,10 @@ Revision history for Perl module Math::Prime::Util
 
     - Rewrite sieve composite map.  Segment sieving is faster.  It's a little
       faster than primegen for me, but still slower than primesieve and yafu.
+
+    - znorder uses Carmichael Lambda instead of Euler Phi.  Faster.
+
+    - carmichael_lambda switched to XS->Perl from Perl->XS.
 
 
 0.35  2013-12-08
