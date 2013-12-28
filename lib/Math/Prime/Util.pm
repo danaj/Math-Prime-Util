@@ -1723,10 +1723,15 @@ sub _generic_znprimroot {
   my($n) = @_;
   $n = -$n if defined $n && $n =~ /^-\d+/;   # TODO: fix this for string bigints
   _validate_num($n) || _validate_positive_integer($n);
-  return if $n == 0;
-  return $n-1 if $n <= 4;
+  if ($n <= 4) {
+    return if $n == 0;
+    return $n-1;
+  }
+  return if $n % 4 == 0;
   my $a = 1;
   my $phi = euler_phi($n);
+  # Check that a primitive root exists.
+  return if !is_prob_prime($n) && $phi != carmichael_lambda($n);
   my @exp = map { int($phi/$_->[0]) } factor_exp($phi);
   #print "phi: $phi  factors: ", join(",",factor($phi)), "\n";
   #print "  exponents: ", join(",", @exp), "\n";
