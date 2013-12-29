@@ -37,17 +37,21 @@
  * His Lehmer/Meissel/Legendre seem a bit slower in serial, but
  * parallelize much better.
  *
- *       4.80s    1.3MB    LMO
- *      27.51s* 136.0MB    Lehmer    Walisch primecount v0.7, 8 threads
+ *       4.74s    1.3MB    LMO
+ *      24.53s* 137.9MB    Lehmer    Walisch primecount v0.9, 8 threads
+ *      38.74s* 150.3MB    LMOS      Walisch primecount v0.9, 8 threads
  *      42.52s* 159.4MB    Lehmer    standalone, 8 threads
- *      50.82s* 136.2MB    Meissel   Walisch primecount v0.7, 8 threads
- *      51.55s  154.1MB    LMOS      standalone, 1 thread
- *      64.06s* 144.3MB    Legendre  Walisch primecount v0.7, 8 threads
- *      66.41s   67.0MB    LMOS
- *      80.85s  286.6MB    Meissel
- *      99.97s  159.6MB    Lehmer
- *     114.40s   28.4MB    Lehmer    Walisch primecount v0.7, 1 thread
- *     171.24s   83.5MB    Legendre
+ *      42.82s* 137.9MB    Meissel   Walisch primecount v0.9, 8 threads
+ *      51.88s  153.9MB    LMOS      standalone, 1 thread
+ *      52.01s* 145.5MB    Legendre  Walisch primecount v0.9, 8 threads
+ *      64.96s  160.3MB    Lehmer    standalone, 1 thread
+ *      67.16s   67.0MB    LMOS
+ *      80.42s  286.6MB    Meissel
+ *      99.70s  159.6MB    Lehmer
+ *     107.43s   28.5MB    Lehmer    Walisch primecount v0.9, 1 thread
+ *     174.51s   83.5MB    Legendre
+ *     185.11s   25.6MB    LMOS      Walisch primecount v0.9, 1 thread
+ *     191.19s   24.8MB    Meissel   Walisch primecount v0.9, 1 thread
  *     868.96s 1668.1MB    Lehmer    pix4 by T.R. Nicely
  *
  * Reference: Hans Riesel, "Prime Numbers and Computer Methods for
@@ -212,11 +216,12 @@ static UV bs_prime_count(uint32_t n, uint32_t const* const primes, uint32_t last
 {
   UV i, j;
   if (n <= 2)  return (n == 2);
-  /* if (n > primes[lastidx])  return _XS_prime_count(2, n); */
-  if (n >= primes[lastidx]) {
-    if (n == primes[lastidx]) return lastidx;
-    croak("called bspc(%u) with counts up to %u\n", n, primes[lastidx]);
-  }
+  /* If n is out of range, we could:
+   *  1. return _XS_prime_count(2, n);
+   *  2. if (n == primes[lastidx]) return lastidx else croak("bspc range");
+   *  3. if (n >= primes[lastidx]) return lastidx;
+   */
+  if (n >= primes[lastidx]) return lastidx;
   j = lastidx;
   if (n < 8480) {
     i = 1 + (n>>4);
@@ -233,6 +238,7 @@ static UV bs_prime_count(uint32_t n, uint32_t const* const primes, uint32_t last
     if (primes[mid] <= n)  i = mid+1;
     else                   j = mid;
   }
+  /* if (i-1 != _XS_prime_count(2, n)) croak("wrong count for %lu: %lu vs. %lu\n", n, i-1, _XS_prime_count(2, n)); */
   return i-1;
 }
 
@@ -329,53 +335,45 @@ static void phicache_free(cache_t* cache) {
 
 static void phi_cache_insert(uint32_t x, uint32_t a, IV sum, cache_t* cache) {
   uint32_t cap = ( (x+32) >> 5) << 5;
+  /* If sum is too large for the cache, just ignore it. */
+  if (sum < SHRT_MIN || sum > SHRT_MAX) return;
   if (cache->val[a] == 0) {
     Newz(0, cache->val[a], cap, int16_t);
+    if (cache->val[a] == 0) croak("phi cache allocation failure");
     cache->max[a] = cap;
   } else if (cache->max[a] < cap) {
     uint32_t i;
     Renew(cache->val[a], cap, int16_t);
+    if (cache->val[a] == 0) croak("phi cache allocation failure");
     for (i = cache->max[a]; i < cap; i++)
       cache->val[a][i] = 0;
     cache->max[a] = cap;
   }
-  if (sum < SHRT_MIN || sum > SHRT_MAX)
-    croak("phi(%u,%u) 16-bit overflow: sum = %ld\n", x, a, sum);
-  if (cache->val[a] == 0)
-    croak("phi cache allocation failure");
   cache->val[a][x] = sum;
 }
 
 static IV _phi3(UV x, UV a, int sign, const uint32_t* const primes, const uint32_t lastidx, cache_t* cache)
 {
   IV sum;
+  UV a2, iters, c;
 
   if (a <= 1)
-    return sign * ((a == 0) ? x : x-x/2);   /* Allows PHICACHEX be larger */
+    return sign * ((a == 0) ? x : x-x/2);
   else if (PHI_CACHE_POPULATED(x, a))
     return sign * cache->val[a][x];
   else if (a <= PHIC)
     sum = sign * tablephi(x,a);
   else if (x < primes[a+1])
     sum = sign;
-  else if (x <= primes[lastidx] && x < primes[a]*primes[a])
+  else if (x <= primes[lastidx] && x < primes[a+1]*primes[a+1])
     sum = sign * (bs_prime_count(x, primes, lastidx) - a + 1);
   else {
-    UV a2;
-    if (a*a > x) {
-      UV ix = isqrt(x);
-      UV iters = bs_prime_count(ix, primes, a+1);
-      sum = sign * (x - a + iters);
-      for (a2 = 1; a2 <= iters; a2++)
-        sum += _phi3( FAST_DIV(x, primes[a2]), a2-1, -sign, primes, lastidx, cache);
-    } else {
-      if (PHI_CACHE_POPULATED(x, PHIC))
-        sum = sign * cache->val[PHIC][x];
-      else
-        sum = sign * tablephi(x, PHIC);
-      for (a2 = PHIC+1; a2 <= a; a2++)
-        sum += _phi3( FAST_DIV(x,primes[a2]), a2-1, -sign, primes, lastidx, cache);
-    }
+    iters = (a*a > x) ? iters = bs_prime_count( isqrt(x), primes, a) : a;
+    c = (iters > PHIC) ? PHIC : iters;
+    a2 = PHI_CACHE_POPULATED(x, c) ? cache->val[c][x] : tablephi(x, c);
+    sum = sign * (iters - a + a2);
+    for (a2 = c+1; a2 <= iters; a2++)
+      sum += _phi3(FAST_DIV(x,primes[a2]), a2-1, -sign, primes, lastidx, cache);
   }
   if (a < PHICACHEA && x < PHICACHEX)
     phi_cache_insert(x, a, sign * sum, cache);
@@ -456,10 +454,10 @@ static void vcarray_merge(vcarray_t* a, vcarray_t* b)
 
   /* Merge anything in B that appears in A. */
   for (ai = 0, bi = 0, bj = 0; bi < bn; bi++) {
-    /* Skip forward in A until empty or aa[ai].v <= ba[bi].v */
     UV bval = ba[bi].v;
-    while (ai < an && aa[ai].v > bval)
-      ai++;
+    /* Skip forward in A until empty or aa[ai].v <= ba[bi].v */
+    while (ai+8 < an && aa[ai+8].v > bval)  ai += 8;
+    while (ai   < an && aa[ai  ].v > bval)  ai++;
     /* if A empty then copy the remaining elements */
     if (ai >= an) {
       if (bi == bj)
@@ -495,16 +493,17 @@ static void vcarray_merge(vcarray_t* a, vcarray_t* b)
   /* merge A and B.  Very simple using reverse merge. */
   ai = an-1;
   bi = bn-1;
-  for (k = kn-1; k >= 0; k--) {
-    if (ai < 0) { /* A is exhausted, just filling in B */
-      if (bi < 0) croak("ran out of data during merge");
-      aa[k] = ba[bi--];
-    } else if (bi < 0) { /* We've caught up with A */
-      break;
-    } else if (aa[ai].v < ba[bi].v) {
-      aa[k] = aa[ai--];
+  for (k = kn-1; k >= 0 && bi >= 0; k--) {
+    UV bval = ba[bi].v;
+    long startai = ai;
+    while (ai >= 15 && aa[ai-15].v < bval) ai -= 16;
+    while (ai >=  3 && aa[ai- 3].v < bval) ai -= 4;
+    while (ai >=  0 && aa[ai   ].v < bval) ai--;
+    if (startai > ai) {
+      k = k - (startai - ai) + 1;
+      memmove(aa+k, aa+ai+1, (startai-ai) * sizeof(vc_t));
     } else {
-      if (aa[ai].v == ba[bi].v) croak("deduplication error");
+      if (ai >= 0 && aa[ai].v == bval) croak("deduplication error");
       aa[k] = ba[bi--];
     }
   }
