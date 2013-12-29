@@ -6,7 +6,7 @@ use Test::More;
 use Math::Prime::Util
    qw/moebius mertens euler_phi jordan_totient divisor_sum exp_mangoldt
       chebyshev_theta chebyshev_psi carmichael_lambda znorder liouville
-      znprimroot
+      znprimroot kronecker
      /;
 
 my $extra = defined $ENV{EXTENDED_TESTING} && $ENV{EXTENDED_TESTING};
@@ -206,26 +206,39 @@ my %primroots = (
      7 => 3,
      8 => undef,
      9 => 2,
-    10 => 3,       # 3 is the smallest root.  Pari gives the other root 7.
-  1729 => undef,
+    10 => 3,          # 3 is the smallest root.  Pari gives the other root 7.
+      1729 => undef,  # Pari goes into an infinite loop.
    5109721 =>  94,
   17551561 =>  97,
   90441961 => 113,
 1407827621 =>   2,
 1520874431 =>  17,
 1685283601 => 164,
- 100000001 => undef,
+ 100000001 => undef,  # Without an early exit, this will essentially hang.
 );
 if ($use64) {
-  $primroots{2232881419280027} = 6;
-  $primroots{14123555781055773271} = 6;
-  $primroots{89637484042681} = 335;
+  $primroots{2232881419280027} = 6;         # factor divide goes to FP
+  $primroots{14123555781055773271} = 6;     # bmodpow hits RT 71548
+  $primroots{89637484042681} = 335;         # smallest root is large
 }
 
-# znprimroot:
-#   1729
-#   2232881419280027        factor divide goes to FP
-#   14123555781055773271    bmodpow hits RT 71548
+my @kroneckers = (
+  [ 109981, 737777,  1],
+  [ 737779, 121080, -1],
+  [-737779, 121080,  1],
+  [ 737779,-121080, -1],
+  [-737779,-121080, -1],
+  [12345,331,-1],
+  [1001,9907,-1],
+  [19,45,1],
+  [8,21,-1],
+  [5,21,1],
+  [5,1237,-1],
+  [3,18,0], [3,-18,0],
+  [-2, 0, 0],  [-1, 0, 1],  [ 0, 0, 0],  [ 1, 0, 1],  [ 2, 0, 0],
+  [-2, 1, 1],  [-1, 1, 1],  [ 0, 1, 1],  [ 1, 1, 1],  [ 2, 1, 1],
+  [-2,-1,-1],  [-1,-1,-1],  [ 0,-1, 1],  [ 1,-1, 1],  [ 2,-1, 1],
+);
 
 # These are slow with XS, and *really* slow with PP.
 if (!$usexs) {
@@ -253,6 +266,7 @@ plan tests => 0 + 1
                 + 2 # Small Phi
                 + 7 + scalar(keys %totients)
                 + 1 # Small Carmichael Lambda
+                + scalar(@kroneckers)
                 + scalar(@mult_orders)
                 + scalar(keys %primroots) + 2
                 + scalar(keys %jordan_totients)
@@ -394,6 +408,12 @@ while (my($n, $c2) = each (%chebyshev2)) {
 {
   my @lambda = map { carmichael_lambda($_) } (0 .. $#A002322);
   is_deeply( \@lambda, \@A002322, "carmichael_lambda with range: 0, $#A000010" );
+}
+###### kronecker
+foreach my $karg (@kroneckers) {
+  my($a, $n, $exp) = @$karg;
+  my $k = kronecker($a, $n);
+  is( $k, $exp, "kronecker($a, $n) = $exp" );
 }
 ###### znorder
 foreach my $moarg (@mult_orders) {
