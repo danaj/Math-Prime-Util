@@ -81,9 +81,8 @@
  * Returns 0 if it is an object or a string too large for a UV.
  * Returns 1 if it is good to process by XS.
  */
-static int _validate_int(SV* n, int negok)
+static int _validate_int(pTHX_ SV* n, int negok)
 {
-  dTHX;
   const char* maxstr;
   char* ptr;
   STRLEN i, len, maxlen;
@@ -127,15 +126,14 @@ static int _validate_int(SV* n, int negok)
 }
 
 /* Call a Perl sub to handle work for us. */
-static int _vcallsubn(I32 flags, const char* name, int nargs)
+static int _vcallsubn(pTHX_ I32 flags, const char* name, int nargs)
 {
-    dTHX;
     dSP;
     PUSHMARK(SP-nargs);
     PUTBACK;
     return call_pv(name, flags);
 }
-#define _vcallsub(func) (void)_vcallsubn(G_SCALAR, func, 1)
+#define _vcallsub(func) (void)_vcallsubn(aTHX_ G_SCALAR, func, 1)
 
 #if BITS_PER_WORD == 64
 static const UV _max_prime = UVCONST(18446744073709551557);
@@ -450,7 +448,7 @@ is_prime(IN SV* svn)
   PREINIT:
     int status;
   PPCODE:
-    status = _validate_int(svn, 1);
+    status = _validate_int(aTHX_ svn, 1);
     if (status == -1) {
       XSRETURN_UV(0);
     } else if (status == 1) {
@@ -473,7 +471,7 @@ next_prime(IN SV* svn)
   ALIAS:
     prev_prime = 1
   PPCODE:
-    if (_validate_int(svn, 0)) {
+    if (_validate_int(aTHX_ svn, 0)) {
       UV n = my_svuv(svn);
       if (ix) {
         XSRETURN_UV( (n < 3) ? 0 : _XS_prev_prime(n));
@@ -489,7 +487,7 @@ next_prime(IN SV* svn)
 void
 factor(IN SV* svn)
   PPCODE:
-    int status = _validate_int(svn, 0);
+    int status = _validate_int(aTHX_ svn, 0);
     if (status == 1) {
       UV factors[MPU_MAX_FACTORS+1];
       UV n = my_svuv(svn);
@@ -503,7 +501,7 @@ factor(IN SV* svn)
         }
       }
     } else {
-      XSRETURN(_vcallsubn(GIMME_V, "Math::Prime::Util::_generic_factor", 1));
+      XSRETURN(_vcallsubn(aTHX_ GIMME_V, "Math::Prime::Util::_generic_factor", 1));
     }
 
 
@@ -512,8 +510,8 @@ znorder(IN SV* sva, IN SV* svn)
   PREINIT:
     int astatus, nstatus;
   PPCODE:
-    astatus = _validate_int(sva, 0);
-    nstatus = _validate_int(svn, 0);
+    astatus = _validate_int(aTHX_ sva, 0);
+    nstatus = _validate_int(aTHX_ svn, 0);
     if (astatus == 1 && nstatus == 1) {
       UV a = my_svuv(sva);
       UV n = my_svuv(svn);
@@ -521,14 +519,14 @@ znorder(IN SV* sva, IN SV* svn)
       if (order == 0) XSRETURN_UNDEF;
       XSRETURN_UV(order);
     }
-    XSRETURN( _vcallsubn(G_SCALAR, "Math::Prime::Util::_generic_znorder", 2) );
+    XSRETURN( _vcallsubn(aTHX_ G_SCALAR, "Math::Prime::Util::_generic_znorder", 2) );
 
 void
 znprimroot(IN SV* svn)
   PREINIT:
     int status;
   PPCODE:
-    status = _validate_int(svn, 1);
+    status = _validate_int(aTHX_ svn, 1);
     if (status != 0) {
       UV r, n = my_svuv(svn);
       if (status == -1)
@@ -545,8 +543,8 @@ kronecker(IN SV* sva, IN SV* svb)
   PREINIT:
     int astatus, bstatus;
   PPCODE:
-    astatus = _validate_int(sva, 2);
-    bstatus = _validate_int(svb, 2);
+    astatus = _validate_int(aTHX_ sva, 2);
+    bstatus = _validate_int(aTHX_ svb, 2);
     if (astatus == 1 && bstatus == 1) {
       UV a = my_svuv(sva);
       UV b = my_svuv(svb);
@@ -557,7 +555,7 @@ kronecker(IN SV* sva, IN SV* svb)
       IV b = my_sviv(svb);
       XSRETURN_IV( kronecker_ss(a, b) );
     }
-    XSRETURN(_vcallsubn(G_SCALAR, "Math::Prime::Util::_generic_kronecker", 2));
+    XSRETURN(_vcallsubn(aTHX_ G_SCALAR, "Math::Prime::Util::_generic_kronecker", 2));
 
 double
 _XS_ExponentialIntegral(IN SV* x)
@@ -587,19 +585,19 @@ void
 euler_phi(IN SV* svlo, ...)
   PPCODE:
     if (items == 1) {
-      int lostatus = _validate_int(svlo, 1);
+      int lostatus = _validate_int(aTHX_ svlo, 1);
       if (lostatus == -1) {      /*  I like SAGE's decision that    */
         XSRETURN_UV(0);          /*  totient(n) = 0 if n <= 0       */
       } else if (lostatus == 1) {
         UV lo = my_svuv(svlo);
         XSRETURN_UV(totient(lo));
       } else {
-        XSRETURN( _vcallsubn(G_SCALAR, "Math::Prime::Util::_generic_euler_phi", 1) );
+        XSRETURN( _vcallsubn(aTHX_ G_SCALAR, "Math::Prime::Util::_generic_euler_phi", 1) );
       }
     } else if (items == 2) {
       SV* svhi = ST(1);
-      int lostatus = _validate_int(svlo, 1);
-      int histatus = _validate_int(svhi, 1);
+      int lostatus = _validate_int(aTHX_ svlo, 1);
+      int histatus = _validate_int(aTHX_ svhi, 1);
       if (lostatus == 1 && histatus == 1) {
         UV lo = my_svuv(svlo);
         UV hi = my_svuv(svhi);
@@ -619,7 +617,7 @@ euler_phi(IN SV* svlo, ...)
           Safefree(totients);
         }
       } else {
-        XSRETURN( _vcallsubn(G_ARRAY, "Math::Prime::Util::_generic_euler_phi", 2) );
+        XSRETURN( _vcallsubn(aTHX_ G_ARRAY, "Math::Prime::Util::_generic_euler_phi", 2) );
       }
     } else {
       croak("Usage: euler_phi(n) or euler_phi(1o,hi)");
@@ -629,17 +627,17 @@ void
 moebius(IN SV* svlo, ...)
   PPCODE:
     if (items == 1) {
-      int nstatus = _validate_int(svlo, 0);
+      int nstatus = _validate_int(aTHX_ svlo, 0);
       if (nstatus == 1) {
         UV n = my_svuv(svlo);
         XSRETURN_IV(moebius(n));
       } else {
-        XSRETURN(_vcallsubn(G_SCALAR, "Math::Prime::Util::_generic_moebius",1));
+        XSRETURN(_vcallsubn(aTHX_ G_SCALAR, "Math::Prime::Util::_generic_moebius",1));
       }
     } else if (items == 2) {
       SV* svhi = ST(1);
-      int lostatus = _validate_int(svlo, 0);
-      int histatus = _validate_int(svhi, 0);
+      int lostatus = _validate_int(aTHX_ svlo, 0);
+      int histatus = _validate_int(aTHX_ svhi, 0);
       if (lostatus == 1 && histatus == 1) {
         UV lo = my_svuv(svlo);
         UV hi = my_svuv(svhi);
@@ -655,7 +653,7 @@ moebius(IN SV* svlo, ...)
           Safefree(mu);
         }
       } else {
-        XSRETURN(_vcallsubn(G_ARRAY, "Math::Prime::Util::_generic_moebius",2));
+        XSRETURN(_vcallsubn(aTHX_ G_ARRAY, "Math::Prime::Util::_generic_moebius",2));
       }
     } else {
       croak("Usage: moebius(n) or moebius(1o,hi)");
@@ -672,7 +670,7 @@ carmichael_lambda(IN SV* svn)
   PREINIT:
     int status;
   PPCODE:
-    status = _validate_int(svn, (ix == 0) ? 0 : 1);
+    status = _validate_int(aTHX_ svn, (ix == 0) ? 0 : 1);
     if (status == -1) {
       XSRETURN_UV(1);
     } else if (status == 1) {
@@ -688,7 +686,7 @@ int
 _validate_num(SV* svn, ...)
   CODE:
     RETVAL = 0;
-    if (_validate_int(svn, 0)) {
+    if (_validate_int(aTHX_ svn, 0)) {
       if (SvROK(svn)) {  /* Convert small Math::BigInt object into scalar */
         UV n = my_svuv(svn);
         sv_setuv(svn, n);
@@ -732,7 +730,7 @@ forprimes (SV* block, IN SV* svbeg, IN SV* svend = 0)
     unsigned char* segment;
     UV seg_base, seg_low, seg_high;
 
-    if (!_validate_int(svbeg, 0) || (items >= 3 && !_validate_int(svend,0))) {
+    if (!_validate_int(aTHX_ svbeg, 0) || (items >= 3 && !_validate_int(aTHX_ svend,0))) {
       dSP;
       PUSHMARK(SP);
       XPUSHs(block); XPUSHs(svbeg); XPUSHs(svend);
@@ -833,8 +831,7 @@ forcomposites (SV* block, IN SV* svbeg, IN SV* svend = 0)
       croak("Not a subroutine reference");
     if (items <= 1) XSRETURN(0);
 
-    if (!_validate_int(svbeg, 0) || (items >= 3 && !_validate_int(svend,0))) {
-      dSP;
+    if (!_validate_int(aTHX_ svbeg, 0) || (items >= 3 && !_validate_int(aTHX_ svend,0))) {
       PUSHMARK(SP);
       XPUSHs(block); XPUSHs(svbeg); XPUSHs(svend);
       PUTBACK;
@@ -920,7 +917,7 @@ fordivisors (SV* block, IN SV* svn)
       croak("Not a subroutine reference");
     if (items <= 1) XSRETURN(0);
 
-    if (!_validate_int(svn, 0)) {
+    if (!_validate_int(aTHX_ svn, 0)) {
       dSP;
       PUSHMARK(SP);
       XPUSHs(block); XPUSHs(svn);
