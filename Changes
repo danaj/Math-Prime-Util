@@ -21,6 +21,10 @@ Revision history for Perl module Math::Prime::Util
 
     [FUNCTIONALITY AND PERFORMANCE]
 
+    - Win32 fixes from bulk88 / bulkdd.  Thanks!
+
+    - Lots of XS interface reorgs.
+
     - Speedup for input number validation: speedup for all functions,
       especially noticeable with fast functions (e.g. small n is_prime(n)).
 
@@ -42,8 +46,6 @@ Revision history for Perl module Math::Prime::Util
       faster than primegen for me, but still slower than primesieve and yafu.
 
     - znorder uses Carmichael Lambda instead of Euler Phi.  Faster.
-
-    - carmichael_lambda switched to XS->Perl from Perl->XS.
 
 
 0.35  2013-12-08

@@ -825,6 +825,7 @@ UV* _totient_range(UV lo, UV hi) {
   UV* totients;
   UV i;
   if (hi < lo) croak("_totient_range error hi %lu < lo %lu\n", hi, lo);
+  /* TODO: When is it faster to just do individual calls? */
   New(0, totients, hi-lo+1, UV);
   if (totients == 0)
     croak("Could not get memory for %"UVuf" totients\n", hi);
@@ -979,6 +980,37 @@ UV carmichael_lambda(UV n) {
   }
   return lambda;
 }
+
+int moebius(UV n) {
+  UV factors[MPU_MAX_FACTORS+1];
+  UV i, nfactors;
+  if (n <= 1) return (int)n;
+
+  if ( (!(n% 4) && n >=  4) || (!(n% 9) && n >=  9) ||
+       (!(n%25) && n >= 25) || (!(n%49) && n >= 49) )
+    return 0;
+
+  nfactors = factor(n, factors);
+  for (i = 1; i < nfactors; i++)
+    if (factors[i] == factors[i-1])
+      return 0;
+  return (nfactors % 2) ? -1 : 1;
+}
+
+UV exp_mangoldt(UV n) {
+  if      (n <= 1)           return 1;
+  else if ((n & (n-1)) == 0) return 2;     /* Power of 2 */
+  else if ((n & 1) == 0)     return 1;     /* Even number (not 2) */
+  else {
+    UV i, factors[MPU_MAX_FACTORS+1];
+    UV nfactors = factor(n, factors);
+    for (i = 1; i < nfactors; i++) 
+      if (factors[i] != factors[0])
+        return 1;
+    return factors[0];
+  }
+}
+
 
 UV znorder(UV a, UV n) {
   UV fac[MPU_MAX_FACTORS+1];

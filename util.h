@@ -32,6 +32,8 @@ extern int kronecker_su(IV a, UV b);
 extern int kronecker_ss(IV a, IV b);
 
 extern UV totient(UV n);
+extern int moebius(UV n);
+extern UV exp_mangoldt(UV n);
 extern UV carmichael_lambda(UV n);
 extern UV znprimroot(UV n);
 extern UV znorder(UV a, UV n);
