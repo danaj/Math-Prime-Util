@@ -81,6 +81,7 @@ sub _validate_num {
           if $n eq '' || ($n =~ tr/0123456789//c && $n !~ /^\+\d+/);
   croak "Parameter '$n' must be >= $min" if defined $min && $n < $min;
   croak "Parameter '$n' must be <= $max" if defined $max && $n > $max;
+  substr($_[0],0,1,'') if substr($n,0,1) eq '+';
   return 0 unless $n < ~0 || int($n) eq ''.~0;
   1;
 }
