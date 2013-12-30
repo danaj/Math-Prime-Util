@@ -35,15 +35,11 @@
 
 /* Workaround perl 5.6 UVs and bigints in later */
 #if PERL_REVISION <= 5 && PERL_VERSION <= 6 && BITS_PER_WORD == 64
- #define set_val_from_sv(val, sv) \
-   do { val = PSTRTOULL(SvPV_nolen(sv), NULL, 10); } while(0)
- #define set_sval_from_sv(val, sv) \
-   do { val = PSTRTOLL(SvPV_nolen(sv), NULL, 10); } while(0)
+ #define my_svuv(sv)  PSTRTOULL(SvPV_nolen(sv), NULL, 10)
+ #define my_sviv(sv)  PSTRTOLL(SvPV_nolen(sv), NULL, 10)
 #else
- #define set_val_from_sv(val, sv) \
-   do { val = (!SvROK(sv)) ? SvUV(sv) : PSTRTOULL(SvPV_nolen(sv), NULL, 10); } while(0)
- #define set_sval_from_sv(val, sv) \
-   do { val = (!SvROK(sv)) ? SvIV(sv) : PSTRTOLL(SvPV_nolen(sv), NULL, 10); } while(0)
+ #define my_svuv(sv)  (!SvROK(sv)) ? SvUV(sv) : PSTRTOULL(SvPV_nolen(sv), NULL, 10)
+ #define my_sviv(sv)  (!SvROK(sv)) ? SvIV(sv) : PSTRTOLL(SvPV_nolen(sv), NULL, 10)
 #endif
 
 /* multicall compatibility stuff */
@@ -87,11 +83,11 @@
  */
 static int _validate_int(SV* n, int negok)
 {
-  pTHX_;
   const char* maxstr;
   char* ptr;
   STRLEN i, len, maxlen;
   int ret, isneg = 0;
+  pTHX_;
 
   /* TODO: magic, grok_number, etc. */
   if (SvGAMAGIC(n)) return 0;          /* Leave while we still can */
@@ -133,8 +129,8 @@ static int _validate_int(SV* n, int negok)
 /* Call a Perl sub to handle work for us. */
 static int _vcallsubn(I32 flags, const char* name, int nargs)
 {
-      pTHX_;
       dSP;
+      pTHX_;
       PUSHMARK(SP-nargs);
       PUTBACK;
       return call_pv(name, flags);
@@ -458,8 +454,7 @@ is_prime(IN SV* svn)
     if (status == -1) {
       XSRETURN_UV(0);
     } else if (status == 1) {
-      UV n;
-      set_val_from_sv(n, svn);
+      UV n = my_svuv(svn);
       XSRETURN_UV(_XS_is_prime(n));
     } else {
       const char* sub = 0;
@@ -474,22 +469,17 @@ is_prime(IN SV* svn)
     }
 
 void
-next_prime(IN SV* n)
+next_prime(IN SV* svn)
   ALIAS:
     prev_prime = 1
-  PREINIT:
-    UV val;
   PPCODE:
-    if (ix) {
-      if (_validate_int(n, 0)) {
-        set_val_from_sv(val, n);
-        XSRETURN_UV( (val < 3) ? 0 : _XS_prev_prime(val));
-      }
-    } else {
-      if (_validate_int(n, 0)) {
-        set_val_from_sv(val, n);
-        if (val < _max_prime)
-          XSRETURN_UV(_XS_next_prime(val));
+    if (_validate_int(svn, 0)) {
+      UV n = my_svuv(svn);
+      if (ix) {
+        XSRETURN_UV( (n < 3) ? 0 : _XS_prev_prime(n));
+      } else {
+        if (n < _max_prime)
+          XSRETURN_UV(_XS_next_prime(n));
       }
     }
     _vcallsub((ix == 0) ?  "Math::Prime::Util::_generic_next_prime" :
@@ -498,14 +488,12 @@ next_prime(IN SV* n)
 
 void
 factor(IN SV* svn)
-  PREINIT:
-    int status, i, nfactors;
   PPCODE:
-    status = _validate_int(svn, 0);
+    int status = _validate_int(svn, 0);
     if (status == 1) {
-      UV n, factors[MPU_MAX_FACTORS+1];
-      set_val_from_sv(n, svn);
-      nfactors = factor(n, factors);
+      UV factors[MPU_MAX_FACTORS+1];
+      UV n = my_svuv(svn);
+      int i, nfactors = factor(n, factors);
       if (GIMME_V == G_SCALAR) {
         PUSHs(sv_2mortal(newSVuv(nfactors)));
       } else if (GIMME_V == G_ARRAY) {
@@ -527,15 +515,13 @@ znorder(IN SV* sva, IN SV* svn)
     astatus = _validate_int(sva, 0);
     nstatus = _validate_int(svn, 0);
     if (astatus == 1 && nstatus == 1) {
-      UV a, n, order;
-      set_val_from_sv(a, sva);
-      set_val_from_sv(n, svn);
-      order = znorder(a, n);
+      UV a = my_svuv(sva);
+      UV n = my_svuv(svn);
+      UV order = znorder(a, n);
       if (order == 0) XSRETURN_UNDEF;
       XSRETURN_UV(order);
-    } else {
-      XSRETURN( _vcallsubn(G_SCALAR, "Math::Prime::Util::_generic_znorder", 2) );
     }
+    XSRETURN( _vcallsubn(G_SCALAR, "Math::Prime::Util::_generic_znorder", 2) );
 
 void
 znprimroot(IN SV* svn)
@@ -544,8 +530,7 @@ znprimroot(IN SV* svn)
   PPCODE:
     status = _validate_int(svn, 1);
     if (status != 0) {
-      UV n, r;
-      set_val_from_sv(n, svn);
+      UV r, n = my_svuv(svn);
       if (status == -1)
         n = -(IV)n;
       r = znprimroot(n);
@@ -563,19 +548,16 @@ kronecker(IN SV* sva, IN SV* svb)
     astatus = _validate_int(sva, 2);
     bstatus = _validate_int(svb, 2);
     if (astatus == 1 && bstatus == 1) {
-      UV a, b;
-      set_val_from_sv(a, sva);
-      set_val_from_sv(b, svb);
+      UV a = my_svuv(sva);
+      UV b = my_svuv(svb);
       XSRETURN_IV( kronecker_uu(a, b) );
     } else if (astatus != 0 && SvIOK(sva) && !SvIsUV(sva) &&
                bstatus != 0 && SvIOK(svb) && !SvIsUV(svb) ) {
-      IV a, b;
-      set_sval_from_sv(a, sva);
-      set_sval_from_sv(b, svb);
+      IV a = my_sviv(sva);
+      IV b = my_sviv(svb);
       XSRETURN_IV( kronecker_ss(a, b) );
-    } else {
-      XSRETURN( _vcallsubn(G_SCALAR, "Math::Prime::Util::_generic_kronecker", 2) );
     }
+    XSRETURN(_vcallsubn(G_SCALAR, "Math::Prime::Util::_generic_kronecker", 2));
 
 double
 _XS_ExponentialIntegral(IN SV* x)
@@ -595,7 +577,7 @@ _XS_ExponentialIntegral(IN SV* x)
       case 3: ret = _XS_RiemannR(SvNV(x)); break;
       case 4: ret = _XS_chebyshev_theta(SvUV(x)); break;
       case 5: ret = _XS_chebyshev_psi(SvUV(x)); break;
-      default: break;
+      default: ret = 0;
     }
     RETVAL = ret;
   OUTPUT:
@@ -603,17 +585,13 @@ _XS_ExponentialIntegral(IN SV* x)
 
 void
 euler_phi(IN SV* svlo, ...)
-  PREINIT:
-    int lostatus, histatus;
-    UV i, lo, hi;
   PPCODE:
     if (items == 1) {
       int lostatus = _validate_int(svlo, 1);
       if (lostatus == -1) {      /*  I like SAGE's decision that    */
         XSRETURN_UV(0);          /*  totient(n) = 0 if n <= 0       */
       } else if (lostatus == 1) {
-        UV lo;
-        set_val_from_sv(lo, svlo);
+        UV lo = my_svuv(svlo);
         XSRETURN_UV(totient(lo));
       } else {
         XSRETURN( _vcallsubn(G_SCALAR, "Math::Prime::Util::_generic_euler_phi", 1) );
@@ -623,9 +601,8 @@ euler_phi(IN SV* svlo, ...)
       int lostatus = _validate_int(svlo, 1);
       int histatus = _validate_int(svhi, 1);
       if (lostatus == 1 && histatus == 1) {
-        UV lo, hi;
-        set_val_from_sv(lo, svlo);
-        set_val_from_sv(hi, svhi);
+        UV lo = my_svuv(svlo);
+        UV hi = my_svuv(svhi);
         if (hi < lo) XSRETURN_EMPTY;
         if (lo < 2) {
           if (lo <= 0           ) XPUSHs(sv_2mortal(newSVuv(0)));
@@ -633,6 +610,7 @@ euler_phi(IN SV* svlo, ...)
           lo = 2;
         }
         if (hi >= lo) {
+          UV i;
           UV* totients = _totient_range(lo, hi);
           /* Extend the stack to handle how many items we'll return */
           EXTEND(SP, hi-lo+1);
@@ -646,15 +624,14 @@ euler_phi(IN SV* svlo, ...)
     } else {
       croak("Usage: euler_phi(n) or euler_phi(1o,hi)");
     }
- 
+
 void
 moebius(IN SV* svlo, ...)
   PPCODE:
     if (items == 1) {
       int nstatus = _validate_int(svlo, 0);
       if (nstatus == 1) {
-        UV n;
-        set_val_from_sv(n, svlo);
+        UV n = my_svuv(svlo);
         XSRETURN_IV(moebius(n));
       } else {
         XSRETURN(_vcallsubn(G_SCALAR, "Math::Prime::Util::_generic_moebius",1));
@@ -664,11 +641,12 @@ moebius(IN SV* svlo, ...)
       int lostatus = _validate_int(svlo, 0);
       int histatus = _validate_int(svhi, 0);
       if (lostatus == 1 && histatus == 1) {
-        UV i, lo, hi;
-        set_val_from_sv(lo, svlo);
-        set_val_from_sv(hi, svhi);
-        if (hi < lo) XSRETURN_EMPTY;
-        if (hi >= lo) {
+        UV lo = my_svuv(svlo);
+        UV hi = my_svuv(svhi);
+        if (hi < lo) {
+          XSRETURN_EMPTY;
+        } else {
+          UV i;
           signed char* mu = _moebius_range(lo, hi);
           MPUassert( mu != 0, "_moebius_range returned 0" );
           EXTEND(SP, hi-lo+1);
@@ -693,14 +671,12 @@ carmichael_lambda(IN SV* svn)
     exp_mangoldt = 1
   PREINIT:
     int status;
-    UV n;
   PPCODE:
     status = _validate_int(svn, (ix == 0) ? 0 : 1);
     if (status == -1) {
       XSRETURN_UV(1);
     } else if (status == 1) {
-      UV n;
-      set_val_from_sv(n, svn);
+      UV n = my_svuv(svn);
       if (ix == 0) XSRETURN_UV(carmichael_lambda(n));
       else         XSRETURN_UV(exp_mangoldt(n));
     }
@@ -709,25 +685,23 @@ carmichael_lambda(IN SV* svn)
     XSRETURN(1);
 
 int
-_validate_num(SV* n, ...)
+_validate_num(SV* svn, ...)
   CODE:
     RETVAL = 0;
-    if (_validate_int(n, 0)) {
-      if (SvROK(n)) {  /* Convert small Math::BigInt object into scalar */
-        UV val;
-        set_val_from_sv(val, n);
-        sv_setuv(n, val);
+    if (_validate_int(svn, 0)) {
+      if (SvROK(svn)) {  /* Convert small Math::BigInt object into scalar */
+        UV n = my_svuv(svn);
+        sv_setuv(svn, n);
       }
       if (items > 1 && SvOK(ST(1))) {
-        UV val, min, max;
-        set_val_from_sv(val, n);
-        set_val_from_sv(min, ST(1));
-        if (val < min)
-          croak("Parameter '%"UVuf"' must be >= %"UVuf, val, min);
+        UV n = my_svuv(svn);
+        UV min = my_svuv(ST(1));
+        if (n < min)
+          croak("Parameter '%"UVuf"' must be >= %"UVuf, n, min);
         if (items > 2 && SvOK(ST(2))) {
-          set_val_from_sv(max, ST(2));
-          if (val > max)
-            croak("Parameter '%"UVuf"' must be <= %"UVuf, val, max);
+          UV max = my_svuv(ST(2));
+          if (n > max)
+            croak("Parameter '%"UVuf"' must be <= %"UVuf, n, max);
           MPUassert( items <= 3, "_validate_num takes at most 3 parameters");
         }
       }
@@ -739,7 +713,7 @@ _validate_num(SV* n, ...)
 void
 forprimes (SV* block, IN SV* svbeg, IN SV* svend = 0)
   PROTOTYPE: &$;$
-  CODE:
+  PPCODE:
   {
 #if !USE_MULTICALL
     dSP;
@@ -765,17 +739,17 @@ forprimes (SV* block, IN SV* svbeg, IN SV* svend = 0)
       PUTBACK;
       (void) call_pv("Math::Prime::Util::_generic_forprimes", G_VOID|G_DISCARD);
       SPAGAIN;
-      XSRETURN_UNDEF;
+      XSRETURN(0);
     }
     if (items < 3) {
       beg = 2;
-      set_val_from_sv(end, svbeg);
+      end = my_svuv(svbeg);
     } else {
-      set_val_from_sv(beg, svbeg);
-      set_val_from_sv(end, svend);
+      beg = my_svuv(svbeg);
+      end = my_svuv(svend);
     }
     if (beg > end)
-      XSRETURN_UNDEF;
+      XSRETURN(0);
 
     cv = sv_2cv(block, &stash, &gv, 0);
     if (cv == Nullcv)
@@ -842,13 +816,12 @@ forprimes (SV* block, IN SV* svbeg, IN SV* svend = 0)
     }
     SvREFCNT_dec(svarg);
 #endif
-    XSRETURN_UNDEF;
   }
 
 void
 forcomposites (SV* block, IN SV* svbeg, IN SV* svend = 0)
   PROTOTYPE: &$;$
-  CODE:
+  PPCODE:
   {
     UV beg, end;
     GV *gv;
@@ -858,7 +831,7 @@ forcomposites (SV* block, IN SV* svbeg, IN SV* svend = 0)
 
     if (cv == Nullcv)
       croak("Not a subroutine reference");
-    if (items <= 1) XSRETURN_UNDEF;
+    if (items <= 1) XSRETURN(0);
 
     if (!_validate_int(svbeg, 0) || (items >= 3 && !_validate_int(svend,0))) {
       dSP;
@@ -867,18 +840,18 @@ forcomposites (SV* block, IN SV* svbeg, IN SV* svend = 0)
       PUTBACK;
       (void) call_pv("Math::Prime::Util::_generic_forcomposites", G_VOID|G_DISCARD);
       SPAGAIN;
-      XSRETURN_UNDEF;
+      XSRETURN(0);
     }
 
     if (items < 3) {
       beg = 4;
-      set_val_from_sv(end, svbeg);
+      end = my_svuv(svbeg);
     } else {
-      set_val_from_sv(beg, svbeg);
-      set_val_from_sv(end, svend);
+      beg = my_svuv(svbeg);
+      end = my_svuv(svend);
     }
     if (beg > end)
-      XSRETURN_UNDEF;
+      XSRETURN(0);
 
     SAVESPTR(GvSV(PL_defgv));
     svarg = newSVuv(0);
@@ -929,13 +902,12 @@ forcomposites (SV* block, IN SV* svbeg, IN SV* svend = 0)
       }
     }
     SvREFCNT_dec(svarg);
-    XSRETURN_UNDEF;
   }
 
 void
 fordivisors (SV* block, IN SV* svn)
   PROTOTYPE: &$
-  CODE:
+  PPCODE:
   {
     UV i, n, ndivisors;
     UV *divs;
@@ -946,7 +918,7 @@ fordivisors (SV* block, IN SV* svn)
 
     if (cv == Nullcv)
       croak("Not a subroutine reference");
-    if (items <= 1) XSRETURN_UNDEF;
+    if (items <= 1) XSRETURN(0);
 
     if (!_validate_int(svn, 0)) {
       dSP;
@@ -955,10 +927,10 @@ fordivisors (SV* block, IN SV* svn)
       PUTBACK;
       (void) call_pv("Math::Prime::Util::_generic_fordivisors", G_VOID|G_DISCARD);
       SPAGAIN;
-      XSRETURN_UNDEF;
+      XSRETURN(0);
     }
 
-    set_val_from_sv(n, svn);
+    n = my_svuv(svn);
     divs = _divisor_list(n, &ndivisors);
 
     SAVESPTR(GvSV(PL_defgv));
@@ -989,5 +961,4 @@ fordivisors (SV* block, IN SV* svn)
     }
     SvREFCNT_dec(svarg);
     Safefree(divs);
-    XSRETURN_UNDEF;
   }

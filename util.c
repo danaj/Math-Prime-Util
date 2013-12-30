@@ -964,8 +964,8 @@ UV totient(UV n) {
 UV carmichael_lambda(UV n) {
   UV fac[MPU_MAX_FACTORS+1];
   UV exp[MPU_MAX_FACTORS+1];
-  int i, j, nfactors;
-  UV lambda = 1;
+  int i, nfactors;
+  UV j, lambda = 1;
 
   if (n < 8) return totient(n);
   if ((n & (n-1)) == 0)  return totient(n)/2;
@@ -1015,8 +1015,8 @@ UV exp_mangoldt(UV n) {
 UV znorder(UV a, UV n) {
   UV fac[MPU_MAX_FACTORS+1];
   UV exp[MPU_MAX_FACTORS+1];
-  int i, j, nfactors;
-  UV phi, k = 1;
+  int i, nfactors;
+  UV j, phi, k = 1;
 
   if (n == 0 || a == 0) return 0;
   if (n == 1 || a == 1) return 1;

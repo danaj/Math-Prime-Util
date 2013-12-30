@@ -56,7 +56,7 @@ static int is_perfect_power(UV n) {
     /* Simple floating point method.  Fast, but need enough mantissa. */
     b = isqrt(n); if (b*b == n)  return 1; /* perfect square */
     for (b = 3; b < last; b = _XS_next_prime(b)) {
-      UV root = pow(n, 1.0 / (double)b) + 0.5;
+      UV root = (UV) (pow(n, 1.0 / (double)b) + 0.5);
       if ( ((UV)(pow(root, b)+0.5)) == n)  return 1;
     }
   } else {

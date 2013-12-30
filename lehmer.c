@@ -349,14 +349,12 @@ static void phi_cache_insert(uint32_t x, uint32_t a, IV sum, cache_t* cache) {
       cache->val[a][i] = 0;
     cache->max[a] = cap;
   }
-  cache->val[a][x] = sum;
+  cache->val[a][x] = (int16_t) sum;
 }
 
 static IV _phi3(UV x, UV a, int sign, const uint32_t* const primes, const uint32_t lastidx, cache_t* cache)
 {
   IV sum;
-  UV a2, iters, c;
-
   if (a <= 1)
     return sign * ((a == 0) ? x : x-x/2);
   else if (PHI_CACHE_POPULATED(x, a))
@@ -368,10 +366,10 @@ static IV _phi3(UV x, UV a, int sign, const uint32_t* const primes, const uint32
   else if (x <= primes[lastidx] && x < primes[a+1]*primes[a+1])
     sum = sign * (bs_prime_count(x, primes, lastidx) - a + 1);
   else {
-    iters = (a*a > x) ? iters = bs_prime_count( isqrt(x), primes, a) : a;
-    c = (iters > PHIC) ? PHIC : iters;
-    a2 = PHI_CACHE_POPULATED(x, c) ? cache->val[c][x] : tablephi(x, c);
-    sum = sign * (iters - a + a2);
+    UV a2, iters = (a*a > x)  ?  bs_prime_count( isqrt(x), primes, a)  :  a;
+    UV c = (iters > PHIC) ? PHIC : iters;
+    IV phixc = PHI_CACHE_POPULATED(x, c) ? cache->val[c][x] : (IV)tablephi(x,c);
+    sum = sign * (iters - a + phixc);
     for (a2 = c+1; a2 <= iters; a2++)
       sum += _phi3(FAST_DIV(x,primes[a2]), a2-1, -sign, primes, lastidx, cache);
   }

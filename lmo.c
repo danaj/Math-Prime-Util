@@ -121,7 +121,7 @@ static uint32_t* make_primelist(uint32 n, uint32* number_of_primes)
   double logn = log(n);
   uint32 max_index = (n < 67)     ? 18
                    : (n < 355991) ? 15+(n/(logn-1.09))
-                   : (n/log(n)) * (1.0+1.0/logn+2.51/(logn*logn));
+                   : (n/logn) * (1.0+1.0/logn+2.51/(logn*logn));
   *number_of_primes = 0;
   New(0, plist, max_index+1, uint32_t);
   if (plist == 0)  croak("Can not allocate small primes\n");
@@ -400,7 +400,7 @@ static void init_segment(sieve_t* s, UV segment_start, uint32 size, uint32 start
       break;
     s->last_prime_to_remove++;
     s->first_bit_index[s->last_prime_to_remove] = (p2 - segment_start - 1) / 2;
-    s->multiplier[s->last_prime_to_remove] = (p % 30) * 8 / 30;
+    s->multiplier[s->last_prime_to_remove] = (uint8) ((p % 30) * 8 / 30);
   }
 
   memset(sieve, 0xFF, 3*sizeof(sword_t));  /* Set first 3 words to all 1 bits */
@@ -433,7 +433,7 @@ static void init_segment(sieve_t* s, UV segment_start, uint32 size, uint32 start
 
   /* Create counts, remove primes (updating counts and sums). */
   for (i = 0; i < words; i++)
-    word_count[i] = bitcount(sieve[i]);
+    word_count[i] = (uint8) bitcount(sieve[i]);
   remove_primes(6, start_prime_index, s, primes);
 }
 
