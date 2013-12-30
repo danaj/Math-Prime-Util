@@ -447,6 +447,104 @@ sub prev_prime {
   #$d*30+$m;
 }
 
+sub euler_phi {
+  my($n) = @_;
+  return 0 if $n < 0;
+  return $n if $n <= 1;
+
+  my @pe = Math::Prime::Util::factor_exp($n);
+  my $totient = $n - $n + 1;
+
+  if (ref($n) ne 'Math::BigInt') {
+    foreach my $f (@pe) {
+      my ($p, $e) = @$f;
+      $totient *= $p - 1;
+      $totient *= $p for 2 .. $e;
+    }
+  } else {
+    my $zero = $n->copy->bzero;
+    foreach my $f (@pe) {
+      my ($p, $e) = @$f;
+      $p = $zero->copy->badd("$p");
+      $totient->bmul($p->copy->bdec());
+      $totient->bmul($p) for 2 .. $e;
+    }
+  }
+  return $totient;
+}
+
+sub euler_phi_range {
+  my($n, $nend) = @_;
+  return () if $nend < $n;
+  return euler_phi($n) if $n == $nend;
+  my @totients;
+  if ($nend > 2**30) {
+    while ($n < $nend) {
+      push @totients, euler_phi($n++);
+    }
+  } else {
+    @totients = (0 .. $nend);
+    foreach my $i (2 .. $nend) {
+      next unless $totients[$i] == $i;
+      $totients[$i] = $i-1;
+      foreach my $j (2 .. int($nend / $i)) {
+        $totients[$i*$j] -= $totients[$i*$j]/$i;
+      }
+    }
+    splice(@totients, 0, $n) if $n > 0;
+  }
+  return @totients;
+}
+
+sub moebius {
+  my($n) = @_;
+  return 0 if $n <= 0;
+  return 1 if $n == 1;
+  return 0 if ($n >= 25) && (!($n % 4) || !($n % 9) || !($n % 25));
+  my @factors = Math::Prime::Util::factor($n);
+  foreach my $i (1 .. $#factors) {
+    return 0 if $factors[$i] == $factors[$i-1];
+  }
+  return (((scalar @factors) % 2) == 0) ? 1 : -1;
+}
+
+sub moebius_range {
+  my($lo, $hi) = @_;
+  return () if $hi < $lo;
+  return moebius($lo) if $lo == $hi;
+  if ($hi > 2**32) {
+    my @mu;
+    while ($lo < $hi) {
+      push @mu, moebius($lo++);
+    }
+    return @mu;
+  }
+  my @mu = map { 1 } $lo .. $hi;
+  $mu[0] = 0 if $lo == 0;
+  my($p, $sqrtn) = (2, int(sqrt($hi)+0.5));
+  while ($p <= $sqrtn) {
+    my $i = $p * $p;
+    $i = $i * int($lo/$i) + (($lo % $i)  ? $i : 0)  if $i < $lo;
+    while ($i <= $hi) {
+      $mu[$i-$lo] = 0;
+      $i += $p * $p;
+    }
+    $i = $p;
+    $i = $i * int($lo/$i) + (($lo % $i)  ? $i : 0)  if $i < $lo;
+    while ($i <= $hi) {
+      $mu[$i-$lo] *= -$p;
+      $i += $p;
+    }
+    $p = next_prime($p);
+  }
+  foreach my $i ($lo .. $hi) {
+    my $m = $mu[$i-$lo];
+    $m *= -1 if abs($m) != $i;
+    $mu[$i-$lo] = ($m>0) - ($m<0);
+  }
+  return @mu;
+}
+
 #############################################################################
 #                       Lehmer prime count
 #

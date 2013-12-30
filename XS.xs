@@ -68,10 +68,6 @@
 #endif
 
 
-static int pbrent_factor_a1(UV n, UV *factors, UV maxrounds) {
-  return pbrent_factor(n, factors, maxrounds, 1);
-}
-
 #if BITS_PER_WORD == 32
   static const unsigned int uvmax_maxlen = 10;
   static const unsigned int ivmax_maxlen = 10;
@@ -91,12 +87,14 @@ static int pbrent_factor_a1(UV n, UV *factors, UV maxrounds) {
  */
 static int _validate_int(SV* n, int negok)
 {
-  dTHX;
+  pTHX_;
   const char* maxstr;
   char* ptr;
   STRLEN i, len, maxlen;
   int ret, isneg = 0;
 
+  /* TODO: magic, grok_number, etc. */
+  if (SvGAMAGIC(n)) return 0;          /* Leave while we still can */
   if (!SvOK(n))  croak("Parameter must be defined");
   if (SvIOK(n)) {                      /* If defined as number, use that */
     if (SvIsUV(n) || SvIV(n) >= 0)  return 1;
@@ -132,38 +130,16 @@ static int _validate_int(SV* n, int negok)
   return ret;                          /* value = UV_MAX/UV_MIN.  That's ok */
 }
 
-/* Call a Perl sub to handle work for us.
- *   The input is a single SV on the top of the stack.
- *   The output is a single mortal SV that is on the stack.
- */
-static void _vcallsub(const char* name)
+/* Call a Perl sub to handle work for us. */
+static int _vcallsubn(I32 flags, const char* name, int nargs)
 {
-  dTHX;
-  dSP;                               /* Local copy of stack pointer         */
-  int count;
-  SV* arg;
-
-  ENTER;                             /* Start wrapper                       */
-  SAVETMPS;                          /* Start (2)                           */
-
-  arg = POPs;                        /* Get argument value from stack       */
-  PUSHMARK(SP);                      /* Start args: note our SP             */
-  XPUSHs(arg);
-  PUTBACK;                           /* End args:   set global SP to ours   */
-
-  count = call_pv(name, G_SCALAR);   /* Call the sub                        */
-  SPAGAIN;                           /* refresh local stack pointer         */
-
-  if (count != 1)
-    croak("callback sub should return one value");
-
-  TOPs = SvREFCNT_inc(TOPs);         /* Make sure FREETMPS doesn't kill it  */
-
-  PUTBACK;
-  FREETMPS;                          /* End wrapper                         */
-  LEAVE;                             /* End (2)                             */
-  TOPs = sv_2mortal(TOPs);           /* mortalize it.  refcnt will be 1.    */
+      pTHX_;
+      dSP;
+      PUSHMARK(SP-nargs);
+      PUTBACK;
+      return call_pv(name, flags);
 }
+#define _vcallsub(func) (void)_vcallsubn(G_SCALAR, func, 1)
 
 #if BITS_PER_WORD == 64
 static const UV _max_prime = UVCONST(18446744073709551557);
@@ -267,37 +243,10 @@ _XS_prime_maxbits()
 
 SV*
 sieve_primes(IN UV low, IN UV high)
-  PREINIT:
-    AV* av = newAV();
-  CODE:
-    if (low <= high) {
-      START_DO_FOR_EACH_PRIME(low, high) {
-        av_push(av,newSVuv(p));
-      } END_DO_FOR_EACH_PRIME
-    }
-    RETVAL = newRV_noinc( (SV*) av );
-  OUTPUT:
-    RETVAL
-
-
-SV*
-trial_primes(IN UV low, IN UV high)
-  PREINIT:
-    UV  p;
-    AV* av = newAV();
-  CODE:
-    if (low <= high) {
-      if (low >= 2) low--;   /* Make sure low gets included */
-      for (p = _XS_next_prime(low); p <= high && p != 0; p = _XS_next_prime(p)) {
-        av_push(av,newSVuv(p));
-      }
-    }
-    RETVAL = newRV_noinc( (SV*) av );
-  OUTPUT:
-    RETVAL
-
-SV*
-segment_primes(IN UV low, IN UV high);
+  ALIAS:
+    trial_primes = 1
+    erat_primes = 2
+    segment_primes = 3
   PREINIT:
     AV* av = newAV();
   CODE:
@@ -306,101 +255,38 @@ segment_primes(IN UV low, IN UV high);
     if ((low <= 5) && (high >= 5)) { av_push(av, newSVuv( 5 )); }
     if (low < 7)  low = 7;
     if (low <= high) {
-      unsigned char* segment;
-      UV seg_base, seg_low, seg_high;
-      void* ctx = start_segment_primes(low, high, &segment);
-      while (next_segment_primes(ctx, &seg_base, &seg_low, &seg_high)) {
-        START_DO_FOR_EACH_SIEVE_PRIME( segment, seg_low - seg_base, seg_high - seg_base )
-          av_push(av,newSVuv( seg_base + p ));
-        END_DO_FOR_EACH_SIEVE_PRIME
-      }
-      end_segment_primes(ctx);
-    }
-    RETVAL = newRV_noinc( (SV*) av );
-  OUTPUT:
-    RETVAL
-
-SV*
-erat_primes(IN UV low, IN UV high)
-  PREINIT:
-    unsigned char* sieve;
-    AV* av = newAV();
-  CODE:
-    if (low <= high) {
-      sieve = sieve_erat30(high);
-      if (sieve == 0) {
-        croak("Could not generate sieve for %"UVuf, high);
-      } else {
-        if ((low <= 2) && (high >= 2)) { av_push(av, newSVuv( 2 )); }
-        if ((low <= 3) && (high >= 3)) { av_push(av, newSVuv( 3 )); }
-        if ((low <= 5) && (high >= 5)) { av_push(av, newSVuv( 5 )); }
-        if (low < 7) { low = 7; }
+      if (ix == 0) {                          /* Sieve */
+        START_DO_FOR_EACH_PRIME(low, high) {
+          av_push(av,newSVuv(p));
+        } END_DO_FOR_EACH_PRIME
+      } else if (ix == 1) {                   /* Trial */
+        for (low = _XS_next_prime(low-1);
+             low <= high && low != 0;
+             low = _XS_next_prime(low) ) {
+          av_push(av,newSVuv(low));
+        }
+      } else if (ix == 2) {                   /* Erat */
+        unsigned char* sieve = sieve_erat30(high);
+        if (sieve == 0) croak("Could not generate sieve for %"UVuf, high);
         START_DO_FOR_EACH_SIEVE_PRIME( sieve, low, high ) {
            av_push(av,newSVuv(p));
         } END_DO_FOR_EACH_SIEVE_PRIME
         Safefree(sieve);
+      } else if (ix == 3) {                   /* Segment */
+        unsigned char* segment;
+        UV seg_base, seg_low, seg_high;
+        void* ctx = start_segment_primes(low, high, &segment);
+        while (next_segment_primes(ctx, &seg_base, &seg_low, &seg_high)) {
+          START_DO_FOR_EACH_SIEVE_PRIME( segment, seg_low - seg_base, seg_high - seg_base )
+            av_push(av,newSVuv( seg_base + p ));
+          END_DO_FOR_EACH_SIEVE_PRIME
+        }
+        end_segment_primes(ctx);
       }
     }
     RETVAL = newRV_noinc( (SV*) av );
   OUTPUT:
     RETVAL
-
-
-#define SIMPLE_FACTOR(func, n, arg1) \
-    if (n <= 1) { \
-      if (n == 0) \
-        XPUSHs(sv_2mortal(newSVuv( n ))); \
-    } else { \
-      while ( (n% 2) == 0 ) {  n /=  2;  XPUSHs(sv_2mortal(newSVuv( 2 ))); } \
-      while ( (n% 3) == 0 ) {  n /=  3;  XPUSHs(sv_2mortal(newSVuv( 3 ))); } \
-      while ( (n% 5) == 0 ) {  n /=  5;  XPUSHs(sv_2mortal(newSVuv( 5 ))); } \
-      if (n == 1) {  /* done */ } \
-      else if (_XS_is_prime(n)) { XPUSHs(sv_2mortal(newSVuv( n ))); } \
-      else { \
-        UV factors[MPU_MAX_FACTORS+1]; \
-        int i, nfactors; \
-        nfactors = func(n, factors, arg1); \
-        for (i = 0; i < nfactors; i++) { \
-          XPUSHs(sv_2mortal(newSVuv( factors[i] ))); \
-        } \
-      } \
-    }
-#define SIMPLE_FACTOR_2ARG(func, n, arg1, arg2) \
-    /* Stupid MSVC won't bring its C compiler out of the 1980s. */ \
-    if (n <= 1) { \
-      if (n == 0) \
-        XPUSHs(sv_2mortal(newSVuv( n ))); \
-    } else { \
-      while ( (n% 2) == 0 ) {  n /=  2;  XPUSHs(sv_2mortal(newSVuv( 2 ))); } \
-      while ( (n% 3) == 0 ) {  n /=  3;  XPUSHs(sv_2mortal(newSVuv( 3 ))); } \
-      while ( (n% 5) == 0 ) {  n /=  5;  XPUSHs(sv_2mortal(newSVuv( 5 ))); } \
-      if (n == 1) {  /* done */ } \
-      else if (_XS_is_prime(n)) { XPUSHs(sv_2mortal(newSVuv( n ))); } \
-      else { \
-        UV factors[MPU_MAX_FACTORS+1]; \
-        int i, nfactors; \
-        nfactors = func(n, factors, arg1, arg2); \
-        for (i = 0; i < nfactors; i++) { \
-          XPUSHs(sv_2mortal(newSVuv( factors[i] ))); \
-        } \
-      } \
-    }
-
-void
-_XS_factor(IN UV n)
-  PREINIT:
-    UV factors[MPU_MAX_FACTORS+1];
-    int i, nfactors;
-  PPCODE:
-    nfactors = factor(n, factors);
-    if (GIMME_V == G_SCALAR) {
-      PUSHs(sv_2mortal(newSVuv(nfactors)));
-    } else if (GIMME_V == G_ARRAY) {
-      EXTEND(SP, nfactors);
-      for (i = 0; i < nfactors; i++) {
-        PUSHs(sv_2mortal(newSVuv( factors[i] )));
-      }
-    }
 
 void
 _XS_factor_exp(IN UV n)
@@ -437,51 +323,54 @@ _XS_divisors(IN UV n)
     }
 
 void
-trial_factor(IN UV n, IN UV maxfactor = 0)
+trial_factor(IN UV n, ...)
+  ALIAS:
+    fermat_factor = 1
+    holf_factor = 2
+    squfof_factor = 3
+    rsqufof_factor = 4
+    pbrent_factor = 5
+    prho_factor = 6
+    pplus1_factor = 7
+    pminus1_factor = 8
   PPCODE:
-    SIMPLE_FACTOR(trial_factor, n, maxfactor);
-
-void
-fermat_factor(IN UV n, IN UV maxrounds = 64*1024*1024)
-  PPCODE:
-    SIMPLE_FACTOR(fermat_factor, n, maxrounds);
-
-void
-holf_factor(IN UV n, IN UV maxrounds = 8*1024*1024)
-  PPCODE:
-    SIMPLE_FACTOR(holf_factor, n, maxrounds);
-
-void
-squfof_factor(IN UV n, IN UV maxrounds = 4*1024*1024)
-  PPCODE:
-    SIMPLE_FACTOR(squfof_factor, n, maxrounds);
-
-void
-rsqufof_factor(IN UV n, IN UV maxrounds = 4*1024*1024)
-  PPCODE:
-    SIMPLE_FACTOR(racing_squfof_factor, n, maxrounds);
-
-void
-pbrent_factor(IN UV n, IN UV maxrounds = 4*1024*1024)
-  PPCODE:
-    SIMPLE_FACTOR(pbrent_factor_a1, n, maxrounds);
-
-void
-prho_factor(IN UV n, IN UV maxrounds = 4*1024*1024)
-  PPCODE:
-    SIMPLE_FACTOR(prho_factor, n, maxrounds);
-
-void
-pminus1_factor(IN UV n, IN UV B1 = 1*1024*1024, IN UV B2 = 0)
-  PPCODE:
-    if (B2 == 0)
-      B2 = 10*B1;
-    SIMPLE_FACTOR_2ARG(pminus1_factor, n, B1, B2);
-
-void
-pplus1_factor(IN UV n, IN UV B = 200)
-  PPCODE:
-    SIMPLE_FACTOR(pplus1_factor, n, B);
+    if (n == 0)  XSRETURN_UV(0);
+    while ( (n% 2) == 0 ) {  n /=  2;  XPUSHs(sv_2mortal(newSVuv( 2 ))); }
+    while ( (n% 3) == 0 ) {  n /=  3;  XPUSHs(sv_2mortal(newSVuv( 3 ))); }
+    while ( (n% 5) == 0 ) {  n /=  5;  XPUSHs(sv_2mortal(newSVuv( 5 ))); }
+    if (n == 1) {  /* done */ }
+    else if (_XS_is_prime(n)) { XPUSHs(sv_2mortal(newSVuv( n ))); }
+    else {
+      UV arg1, arg2, factors[MPU_MAX_FACTORS+1];
+      int i, nfactors = 0;
+      switch (ix) {
+        case 0:  arg1 = (items < 2)  ?  0             : SvUV(ST(1));
+                 nfactors = trial_factor  (n, factors, arg1);  break;
+        case 1:  arg1 = (items < 2)  ?  64*1024*1024  : SvUV(ST(1));
+                 nfactors = fermat_factor (n, factors, arg1);  break;
+        case 2:  arg1 = (items < 2)  ?   8*1024*1024  : SvUV(ST(1));
+                 nfactors = holf_factor   (n, factors, arg1);  break;
+        case 3:  arg1 = (items < 2)  ?   4*1024*1024  : SvUV(ST(1));
+                 nfactors = squfof_factor (n, factors, arg1);  break;
+        case 4:  arg1 = (items < 2)  ?   4*1024*1024  : SvUV(ST(1));
+                 nfactors = racing_squfof_factor(n, factors, arg1);  break;
+        case 5:  arg1 = (items < 2)  ?   4*1024*1024  : SvUV(ST(1));
+                 arg2 = (items < 3)  ?             1  : SvUV(ST(2));
+                 nfactors = pbrent_factor (n, factors, arg1, arg2);  break;
+        case 6:  arg1 = (items < 2)  ?   4*1024*1024  : SvUV(ST(1));
+                 nfactors = prho_factor   (n, factors, arg1);  break;
+        case 7:  arg1 = (items < 2)  ?           200  : SvUV(ST(1));
+                 nfactors = pplus1_factor (n, factors, arg1);  break;
+        case 8:  arg1 = (items < 2)  ?   1*1024*1024  : SvUV(ST(1));
+                 arg2 = (items < 3)  ?             0  : SvUV(ST(2));
+                 if (arg2 == 0) arg2 = 10*arg1;  /* default B2 */
+                 nfactors = pminus1_factor(n, factors, arg1, arg2);  break;
+        default: break;
+      }
+      EXTEND(SP, nfactors);
+      for (i = 0; i < nfactors; i++)
+        PUSHs(sv_2mortal(newSVuv( factors[i] )));
+    }
 
 int
 _XS_is_pseudoprime(IN UV n, IN UV a)
@@ -558,7 +447,7 @@ _XS_is_almost_extra_strong_lucas_pseudoprime(IN UV n, IN UV increment = 1)
   OUTPUT:
     RETVAL
 
-int
+void
 is_prime(IN SV* svn)
   ALIAS:
     is_prob_prime = 1
@@ -608,6 +497,47 @@ next_prime(IN SV* n)
     XSRETURN(1);
 
 void
+factor(IN SV* svn)
+  PREINIT:
+    int status, i, nfactors;
+  PPCODE:
+    status = _validate_int(svn, 0);
+    if (status == 1) {
+      UV n, factors[MPU_MAX_FACTORS+1];
+      set_val_from_sv(n, svn);
+      nfactors = factor(n, factors);
+      if (GIMME_V == G_SCALAR) {
+        PUSHs(sv_2mortal(newSVuv(nfactors)));
+      } else if (GIMME_V == G_ARRAY) {
+        EXTEND(SP, nfactors);
+        for (i = 0; i < nfactors; i++) {
+          PUSHs(sv_2mortal(newSVuv( factors[i] )));
+        }
+      }
+    } else {
+      XSRETURN(_vcallsubn(GIMME_V, "Math::Prime::Util::_generic_factor", 1));
+    }
+
+
+void
+znorder(IN SV* sva, IN SV* svn)
+  PREINIT:
+    int astatus, nstatus;
+  PPCODE:
+    astatus = _validate_int(sva, 0);
+    nstatus = _validate_int(svn, 0);
+    if (astatus == 1 && nstatus == 1) {
+      UV a, n, order;
+      set_val_from_sv(a, sva);
+      set_val_from_sv(n, svn);
+      order = znorder(a, n);
+      if (order == 0) XSRETURN_UNDEF;
+      XSRETURN_UV(order);
+    } else {
+      XSRETURN( _vcallsubn(G_SCALAR, "Math::Prime::Util::_generic_znorder", 2) );
+    }
+
+void
 znprimroot(IN SV* svn)
   PREINIT:
     int status;
@@ -625,224 +555,158 @@ znprimroot(IN SV* svn)
     _vcallsub("Math::Prime::Util::_generic_znprimroot");
     XSRETURN(1);
 
-int
+void
 kronecker(IN SV* sva, IN SV* svb)
   PREINIT:
     int astatus, bstatus;
-  CODE:
+  PPCODE:
     astatus = _validate_int(sva, 2);
     bstatus = _validate_int(svb, 2);
     if (astatus == 1 && bstatus == 1) {
       UV a, b;
       set_val_from_sv(a, sva);
       set_val_from_sv(b, svb);
-      RETVAL = kronecker_uu(a, b);
+      XSRETURN_IV( kronecker_uu(a, b) );
     } else if (astatus != 0 && SvIOK(sva) && !SvIsUV(sva) &&
                bstatus != 0 && SvIOK(svb) && !SvIsUV(svb) ) {
       IV a, b;
       set_sval_from_sv(a, sva);
       set_sval_from_sv(b, svb);
-      RETVAL = kronecker_ss(a, b);
+      XSRETURN_IV( kronecker_ss(a, b) );
     } else {
-      dTHX;
-      dSP;
-      int count;
-      ENTER;
-      SAVETMPS;
-      PUSHMARK(SP);
-      XPUSHs(sva);
-      XPUSHs(svb);
-      PUTBACK;
-      count = call_pv("Math::Prime::Util::_generic_kronecker", G_SCALAR);
-      SPAGAIN;
-      if (count != 1) croak("callback sub should return one value");
-      RETVAL = POPi;
-      PUTBACK;
-      FREETMPS;
-      LEAVE;
+      XSRETURN( _vcallsubn(G_SCALAR, "Math::Prime::Util::_generic_kronecker", 2) );
     }
-  OUTPUT:
-    RETVAL
 
 double
-_XS_ExponentialIntegral(IN double x)
+_XS_ExponentialIntegral(IN SV* x)
   ALIAS:
     _XS_LogarithmicIntegral = 1
     _XS_RiemannZeta = 2
     _XS_RiemannR = 3
+    _XS_chebyshev_theta = 4
+    _XS_chebyshev_psi = 5
   PREINIT:
     double ret;
   CODE:
     switch (ix) {
-      case 0: ret = _XS_ExponentialIntegral(x); break;
-      case 1: ret = _XS_LogarithmicIntegral(x); break;
-      case 2: ret = (double) ld_riemann_zeta(x); break;
-      case 3: ret = _XS_RiemannR(x); break;
-      default: croak("_XS_ExponentialIntegral: Unknown function alias"); break;
-    }
-    RETVAL = ret;
-  OUTPUT:
-    RETVAL
-
-double
-_XS_chebyshev_theta(IN UV n)
-  ALIAS:
-    _XS_chebyshev_psi = 1
-  PREINIT:
-    double ret;
-  CODE:
-    switch (ix) {
-      case 0: ret = _XS_chebyshev_theta(n); break;
-      case 1: ret = _XS_chebyshev_psi(n); break;
-      default: croak("_XS_chebyshev_theta: Unknown function alias"); break;
+      case 0: ret = _XS_ExponentialIntegral(SvNV(x)); break;
+      case 1: ret = _XS_LogarithmicIntegral(SvNV(x)); break;
+      case 2: ret = (double) ld_riemann_zeta(SvNV(x)); break;
+      case 3: ret = _XS_RiemannR(SvNV(x)); break;
+      case 4: ret = _XS_chebyshev_theta(SvUV(x)); break;
+      case 5: ret = _XS_chebyshev_psi(SvUV(x)); break;
+      default: break;
     }
     RETVAL = ret;
   OUTPUT:
     RETVAL
 
 void
-_XS_totient(IN UV lo, IN UV hi = 0)
+euler_phi(IN SV* svlo, ...)
   PREINIT:
-    UV i;
+    int lostatus, histatus;
+    UV i, lo, hi;
   PPCODE:
-    if (hi != lo && hi != 0) { /* Totients in a range, returns array */
-      UV* totients;
-      if (hi < lo) XSRETURN_EMPTY;
-      if (lo < 2) {
-        if (lo <= 0           ) XPUSHs(sv_2mortal(newSVuv(0)));
-        if (lo <= 1 && hi >= 1) XPUSHs(sv_2mortal(newSVuv(1)));
-        lo = 2;
+    if (items == 1) {
+      int lostatus = _validate_int(svlo, 1);
+      if (lostatus == -1) {      /*  I like SAGE's decision that    */
+        XSRETURN_UV(0);          /*  totient(n) = 0 if n <= 0       */
+      } else if (lostatus == 1) {
+        UV lo;
+        set_val_from_sv(lo, svlo);
+        XSRETURN_UV(totient(lo));
+      } else {
+        XSRETURN( _vcallsubn(G_SCALAR, "Math::Prime::Util::_generic_euler_phi", 1) );
       }
-      if (hi >= lo) {
-        totients = _totient_range(lo, hi);
-        /* Extend the stack to handle how many items we'll return */
-        EXTEND(SP, hi-lo+1);
-        for (i = lo; i <= hi; i++)
-          PUSHs(sv_2mortal(newSVuv(totients[i-lo])));
-        Safefree(totients);
+    } else if (items == 2) {
+      SV* svhi = ST(1);
+      int lostatus = _validate_int(svlo, 1);
+      int histatus = _validate_int(svhi, 1);
+      if (lostatus == 1 && histatus == 1) {
+        UV lo, hi;
+        set_val_from_sv(lo, svlo);
+        set_val_from_sv(hi, svhi);
+        if (hi < lo) XSRETURN_EMPTY;
+        if (lo < 2) {
+          if (lo <= 0           ) XPUSHs(sv_2mortal(newSVuv(0)));
+          if (lo <= 1 && hi >= 1) XPUSHs(sv_2mortal(newSVuv(1)));
+          lo = 2;
+        }
+        if (hi >= lo) {
+          UV* totients = _totient_range(lo, hi);
+          /* Extend the stack to handle how many items we'll return */
+          EXTEND(SP, hi-lo+1);
+          for (i = lo; i <= hi; i++)
+            PUSHs(sv_2mortal(newSVuv(totients[i-lo])));
+          Safefree(totients);
+        }
+      } else {
+        XSRETURN( _vcallsubn(G_ARRAY, "Math::Prime::Util::_generic_euler_phi", 2) );
       }
     } else {
-      XSRETURN_UV(totient(lo));
+      croak("Usage: euler_phi(n) or euler_phi(1o,hi)");
     }
-
+ 
 void
-carmichael_lambda(IN SV* svn)
-  PREINIT:
-    int status;
+moebius(IN SV* svlo, ...)
   PPCODE:
-    status = _validate_int(svn, 0);
-    if (status == 1) {
-      UV n;
-      set_val_from_sv(n, svn);
-      XSRETURN_UV(carmichael_lambda(n));
-    }
-    _vcallsub("Math::Prime::Util::_generic_carmichael_lambda");
-    XSRETURN(1);
-
-int
-znorder(IN SV* sva, IN SV* svn)
-  PREINIT:
-    int astatus, nstatus;
-  PPCODE:
-    astatus = _validate_int(sva, 0);
-    nstatus = _validate_int(svn, 0);
-    if (astatus == 1 && nstatus == 1) {
-      UV a, n, order;
-      set_val_from_sv(a, sva);
-      set_val_from_sv(n, svn);
-      order = znorder(a, n);
-      if (order == 0) XSRETURN_UNDEF;
-      XSRETURN_UV(order);
+    if (items == 1) {
+      int nstatus = _validate_int(svlo, 0);
+      if (nstatus == 1) {
+        UV n;
+        set_val_from_sv(n, svlo);
+        XSRETURN_IV(moebius(n));
+      } else {
+        XSRETURN(_vcallsubn(G_SCALAR, "Math::Prime::Util::_generic_moebius",1));
+      }
+    } else if (items == 2) {
+      SV* svhi = ST(1);
+      int lostatus = _validate_int(svlo, 0);
+      int histatus = _validate_int(svhi, 0);
+      if (lostatus == 1 && histatus == 1) {
+        UV i, lo, hi;
+        set_val_from_sv(lo, svlo);
+        set_val_from_sv(hi, svhi);
+        if (hi < lo) XSRETURN_EMPTY;
+        if (hi >= lo) {
+          signed char* mu = _moebius_range(lo, hi);
+          MPUassert( mu != 0, "_moebius_range returned 0" );
+          EXTEND(SP, hi-lo+1);
+          for (i = lo; i <= hi; i++)
+            PUSHs(sv_2mortal(newSViv(mu[i-lo])));
+          Safefree(mu);
+        }
+      } else {
+        XSRETURN(_vcallsubn(G_ARRAY, "Math::Prime::Util::_generic_moebius",2));
+      }
     } else {
-      dTHX;
-      dSP;
-      int count;
-      ENTER;
-      SAVETMPS;
-      (void) POPs;  (void) POPs;
-      PUSHMARK(SP);
-      XPUSHs(sva);
-      XPUSHs(svn);
-      PUTBACK;
-      count = call_pv("Math::Prime::Util::_generic_znorder", G_SCALAR);
-      SPAGAIN;
-      if (count != 1) croak("callback sub should return one value");
-      TOPs = SvREFCNT_inc(TOPs);
-      PUTBACK;
-      FREETMPS;
-      LEAVE;
-      TOPs = sv_2mortal(TOPs);
-      XSRETURN(1);
-    }
-
-void
-_XS_moebius(IN UV lo, IN UV hi = 0)
-  PREINIT:
-    UV i;
-  PPCODE:
-    if (hi != lo && hi != 0) {   /* mobius in a range */
-      signed char* mu = _moebius_range(lo, hi);
-      MPUassert( mu != 0, "_moebius_range returned 0" );
-      EXTEND(SP, hi-lo+1);
-      for (i = lo; i <= hi; i++)
-        PUSHs(sv_2mortal(newSViv(mu[i-lo])));
-      Safefree(mu);
-    } else {
-      UV factors[MPU_MAX_FACTORS+1];
-      UV nfactors;
-      UV n = lo;
-
-      if (n <= 1)
-        XSRETURN_IV(n);
-
-      if ( (!(n% 4) && n >=  4) || (!(n% 9) && n >=  9) ||
-           (!(n%25) && n >= 25) || (!(n%49) && n >= 49) )
-        XSRETURN_IV(0);
-
-      nfactors = factor(n, factors);
-      for (i = 1; i < nfactors; i++)
-        if (factors[i] == factors[i-1])
-          XSRETURN_IV(0);
-
-      XSRETURN_IV( (nfactors % 2) ? -1 : 1 );
+      croak("Usage: moebius(n) or moebius(1o,hi)");
     }
 
 IV
 _XS_mertens(IN UV n)
 
+
 void
-exp_mangoldt(IN SV* svn)
+carmichael_lambda(IN SV* svn)
+  ALIAS:
+    exp_mangoldt = 1
   PREINIT:
     int status;
     UV n;
   PPCODE:
-    status = _validate_int(svn, 1);
+    status = _validate_int(svn, (ix == 0) ? 0 : 1);
     if (status == -1) {
       XSRETURN_UV(1);
     } else if (status == 1) {
+      UV n;
       set_val_from_sv(n, svn);
-      if (n <= 1)
-        XSRETURN_UV(1);
-      else if ((n & (n-1)) == 0)  /* Power of 2 */
-        XSRETURN_UV(2);
-      else if ((n & 1) == 0)      /* Even number */
-        XSRETURN_UV(1);
-      else {
-        UV factors[MPU_MAX_FACTORS+1];
-        UV nfactors, i;
-        /* We could try a partial factor, e.g. looking for two small factors */
-        /* We could also check powers of primes searching for n */
-        nfactors = factor(n, factors);
-        for (i = 1; i < nfactors; i++) {
-          if (factors[i] != factors[0])
-            XSRETURN_UV(1);
-        }
-        XSRETURN_UV(factors[0]);
-      }
-    } else {
-      _vcallsub("Math::Prime::Util::_generic_exp_mangoldt");
-      XSRETURN(1);
+      if (ix == 0) XSRETURN_UV(carmichael_lambda(n));
+      else         XSRETURN_UV(exp_mangoldt(n));
     }
+    _vcallsub( (ix == 0) ? "Math::Prime::Util::_generic_carmichael_lambda"
+                         : "Math::Prime::Util::_generic_exp_mangoldt" );
+    XSRETURN(1);
 
 int
 _validate_num(SV* n, ...)

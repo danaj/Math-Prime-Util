@@ -60,7 +60,6 @@ sub import {
 sub _import_nobigint {
   $_Config{'nobigint'} = 1;
   return unless $_Config{'xs'};
-  undef *factor;          *factor            = \&_XS_factor;
   undef *factor_exp;      *factor_exp        = \&_XS_factor_exp;
   undef *divisors;        *divisors          = \&_XS_divisors;
  #undef *prime_count;     *prime_count       = \&_XS_prime_count;
@@ -69,7 +68,6 @@ sub _import_nobigint {
   undef *is_strong_pseudoprime;  *is_strong_pseudoprime = \&_XS_miller_rabin;
   undef *moebius;         *moebius           = \&_XS_moebius;
   undef *mertens;         *mertens           = \&_XS_mertens;
-  undef *euler_phi;       *euler_phi         = \&_XS_totient;
   undef *chebyshev_theta; *chebyshev_theta   = \&_XS_chebyshev_theta;
   undef *chebyshev_psi;   *chebyshev_psi     = \&_XS_chebyshev_psi;
   # These should be fast anyway, but this skips validation.
@@ -105,10 +103,13 @@ BEGIN {
     *next_prime    = \&Math::Prime::Util::_generic_next_prime;
     *prev_prime    = \&Math::Prime::Util::_generic_prev_prime;
     *exp_mangoldt  = \&Math::Prime::Util::_generic_exp_mangoldt;
+    *euler_phi     = \&Math::Prime::Util::_generic_euler_phi;
+    *moebius       = \&Math::Prime::Util::_generic_moebius;
     *carmichael_lambda = \&Math::Prime::Util::_generic_carmichael_lambda;
     *kronecker     = \&Math::Prime::Util::_generic_kronecker;
     *znorder       = \&Math::Prime::Util::_generic_znorder;
     *znprimroot    = \&Math::Prime::Util::_generic_znprimroot;
+    *factor        = \&Math::Prime::Util::_generic_factor;
     *forprimes     = sub (&$;$) { _generic_forprimes(@_); }; ## no critic qw(ProhibitSubroutinePrototypes)
     *fordivisors   = sub (&$) { _generic_fordivisors(@_); }; ## no critic qw(ProhibitSubroutinePrototypes)
     *forcomposites = sub (&$) { _generic_forcomposites(@_); }; ## no critic qw(ProhibitSubroutinePrototypes)
@@ -219,7 +220,11 @@ sub prime_set_config {
 
 sub _validate_positive_integer {
   my($n, $min, $max) = @_;
-  # We've gone through _validate_num already, so we just need to handle bigints
+  # We need to handle bigints, magic variables, and coderefs
+  if (ref($n) eq 'CODE') {
+    $_[0] = $_[0]->();
+    $n = $_[0];
+  }
   croak "Parameter '$n' must be a positive integer"
      if ref($n) eq 'Math::BigInt' && $n->sign() ne '+';
   croak "Parameter '$n' must be >= $min" if defined $min && $n < $min;
@@ -1257,58 +1262,15 @@ sub divisors {
 # alias the old "all_factors" to the new name: divisors
 *all_factors = \&divisors;
 
-
 # A008683 Moebius function mu(n)
 # A030059, A013929, A030229, A002321, A005117, A013929 all relate.
-sub moebius {
+sub _generic_moebius {
   my($n, $nend) = @_;
+  return 0 if defined $n && $n < 0;
   _validate_num($n) || _validate_positive_integer($n);
-
-  if (defined $nend) {
-    _validate_num($nend) || _validate_positive_integer($nend);
-    return if $nend < $n;
-  } else {
-    $nend = $n;
-  }
-  return _XS_moebius($n, $nend) if $nend <= $_XS_MAXVAL;
-
-  # Moebius over a range.
-  if ($nend != $n) {
-    my ($lo,$hi) = ($n,$nend);
-    my @mu = map { 1 } $lo .. $hi;
-    $mu[0] = 0 if $lo == 0;
-    my $sqrtn = int(sqrt($hi)+0.5);
-    forprimes {
-      my $p = $_;
-      my $i = $p * $p;
-      $i = $i * int($lo/$i) + (($lo % $i)  ? $i : 0)  if $i < $lo;
-      while ($i <= $hi) {
-        $mu[$i-$lo] = 0;
-        $i += $p * $p;
-      }
-      $i = $p;
-      $i = $i * int($lo/$i) + (($lo % $i)  ? $i : 0)  if $i < $lo;
-      while ($i <= $hi) {
-        $mu[$i-$lo] *= -$p;
-        $i += $p;
-      }
-    } $sqrtn;
-    foreach my $i ($lo .. $hi) {
-      my $m = $mu[$i-$lo];
-      $m *= -1 if abs($m) != $i;
-      $mu[$i-$lo] = ($m>0) - ($m<0);
-    }
-    return @mu;
-  }
-
-  return $n if $n <= 1;
-  # Quick check for small replicated factors
-  return 0 if ($n >= 25) && (!($n % 4) || !($n % 9) || !($n % 25));
-  my @factors = factor($n);
-  foreach my $i (1 .. $#factors) {
-    return 0 if $factors[$i] == $factors[$i-1];
-  }
-  return (((scalar @factors) % 2) == 0) ? 1 : -1;
+  return Math::Prime::Util::PP::moebius($n) if !defined $nend;
+  _validate_num($nend) || _validate_positive_integer($nend);
+  return Math::Prime::Util::PP::moebius_range($n, $nend);
 }
 
 # A002321 Mertens' function.  mertens(n) = sum(moebius(1,n))
@@ -1346,56 +1308,13 @@ sub mertens {
 
 
 # A000010 Euler Phi, aka Euler Totient
-sub euler_phi {
+sub _generic_euler_phi {
   my($n, $nend) = @_;
-  # SAGE defines this to be 0 for all n <= 0.  Others choose differently.
-  # I am following SAGE's decision for n <= 0.
   return 0 if defined $n && $n < 0;
   _validate_num($n) || _validate_positive_integer($n);
-  if (defined $nend) {
-    _validate_num($nend) || _validate_positive_integer($nend);
-    return if $nend < $n;
-  } else {
-    $nend = $n;
-  }
-  return _XS_totient($n, $nend) if $nend <= $_XS_MAXVAL;
-
-  # Totient over a range.  Could be improved, as this can use huge memory.
-  if ($nend != $n) {
-    return () if $nend < $n;
-    my @totients = (0 .. $nend);
-    foreach my $i (2 .. $nend) {
-      next unless $totients[$i] == $i;
-      $totients[$i] = $i-1;
-      foreach my $j (2 .. int($nend / $i)) {
-        $totients[$i*$j] -= $totients[$i*$j]/$i;
-      }
-    }
-    splice(@totients, 0, $n) if $n > 0;
-    return @totients;
-  }
-
-  return $n if $n <= 1;
-
-  my @pe = factor_exp($n);
-  my $totient = $n - $n + 1;
-
-  if (ref($n) ne 'Math::BigInt') {
-    foreach my $f (@pe) {
-      my ($p, $e) = @$f;
-      $totient *= $p - 1;
-      $totient *= $p for 2 .. $e;
-    }
-  } else {
-    my $zero = $n->copy->bzero;
-    foreach my $f (@pe) {
-      my ($p, $e) = @$f;
-      $p = $zero->copy->badd("$p");
-      $totient->bmul($p->copy->bdec());
-      $totient->bmul($p) for 2 .. $e;
-    }
-  }
-  return $totient;
+  return Math::Prime::Util::PP::euler_phi($n) if !defined $nend;
+  _validate_num($nend) || _validate_positive_integer($nend);
+  return Math::Prime::Util::PP::euler_phi_range($n, $nend);
 }
 
 # Jordan's totient -- a generalization of Euler's totient.
@@ -1600,8 +1519,7 @@ sub _generic_exp_mangoldt {
 sub liouville {
   my($n) = @_;
   _validate_num($n) || _validate_positive_integer($n);
-  my $l = ($n <= $_XS_MAXVAL)  ?  (-1) ** scalar _XS_factor($n)
-                               :  (-1) ** scalar factor($n);
+  my $l = (-1) ** scalar factor($n);
   return $l;
 }
 
@@ -1891,7 +1809,7 @@ sub nth_prime {
   return Math::Prime::Util::PP::nth_prime($n);
 }
 
-sub factor {
+sub _generic_factor {
   my($n) = @_;
   _validate_num($n) || _validate_positive_integer($n);
 
