@@ -3,6 +3,7 @@ Makefile
 Makefile.old
 MYMETA.*
 Util.bs
+Util.def
 pm_to_blib
 XS.[co]
 cache.o
@@ -13,6 +14,16 @@ lehmer.o
 lmo.o
 primality.o
 aks.o
+XS.obj
+cache.obj
+factor.obj
+sieve.obj
+util.obj
+lehmer.obj
+lmo.obj
+primality.obj
+aks.obj
+*.pdb
 blib*
 b[0-9][0-9][0-9][0-9][0-9][0-9].txt
 script-test-data.bs
