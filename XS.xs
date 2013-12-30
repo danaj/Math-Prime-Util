@@ -83,11 +83,11 @@
  */
 static int _validate_int(SV* n, int negok)
 {
+  dTHX;
   const char* maxstr;
   char* ptr;
   STRLEN i, len, maxlen;
   int ret, isneg = 0;
-  pTHX_;
 
   /* TODO: magic, grok_number, etc. */
   if (SvGAMAGIC(n)) return 0;          /* Leave while we still can */
@@ -129,11 +129,11 @@ static int _validate_int(SV* n, int negok)
 /* Call a Perl sub to handle work for us. */
 static int _vcallsubn(I32 flags, const char* name, int nargs)
 {
-      dSP;
-      pTHX_;
-      PUSHMARK(SP-nargs);
-      PUTBACK;
-      return call_pv(name, flags);
+    dTHX;
+    dSP;
+    PUSHMARK(SP-nargs);
+    PUTBACK;
+    return call_pv(name, flags);
 }
 #define _vcallsub(func) (void)_vcallsubn(G_SCALAR, func, 1)
 
