@@ -7,6 +7,7 @@
 
 extern int factor(UV n, UV *factors);
 extern int factor_exp(UV n, UV *factors, UV* exponents);
+extern UV  divisor_sum(UV n, UV k);
 
 extern int trial_factor(UV n, UV *factors, UV maxtrial);
 
@@ -19,7 +20,6 @@ extern int pplus1_factor(UV n, UV *factors, UV B);
 extern int squfof_factor(UV n, UV *factors, UV rounds);
 extern int racing_squfof_factor(UV n, UV *factors, UV rounds);
 
-extern UV  _XS_divisor_sum(UV n, UV k);
 extern UV* _divisor_list(UV n, UV *num_divisors);
 
 #endif

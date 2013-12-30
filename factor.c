@@ -373,18 +373,25 @@ UV* _divisor_list(UV n, UV *num_divisors)
 }
 
 
-/*
- * The usual method, on OEIS for instance, is:
+/* The usual method, on OEIS for instance, is:
  *    (p^(k*(e+1))-1) / (p^k-1)
  * but that overflows quicky.  Instead we rearrange as:
  *    1 + p^k + p^k^2 + ... p^k^e
+ * Return 0 if the result overflowed.
  */
-UV _XS_divisor_sum(UV n, UV k)
+static const UV sigma_overflow[5] =
+#if BITS_PER_WORD == 64
+         {3000000000000000000, 3000000000, 2487240, 64260, 7026};
+#else
+         {          845404560,      52560,    1548,   252,   84};
+#endif
+UV divisor_sum(UV n, UV k)
 {
   UV factors[MPU_MAX_FACTORS+1];
   int nfac, i, j;
   UV product = 1;
 
+  if (k > 5 || (k > 0 && n >= sigma_overflow[k-1])) return 0;
   if (n == 0) return (k == 0) ? 2 : 1;  /* divisors are [0,1] */
   if (n == 1) return 1;                 /* divisors are [1]   */
   nfac = factor(n, factors);
@@ -784,15 +791,11 @@ int pplus1_factor(UV n, UV *factors, UV B1)
 
 /* My modification of Ben Buhrow's modification of Bob Silverman's SQUFOF code.
  */
-static IV qqueue[100+1];
-static IV qpoint;
-static void enqu(IV q, IV *iter) {
-  qqueue[qpoint] = q;
-  if (++qpoint >= 100) *iter = -1;
-}
 
 int squfof_factor(UV n, UV *factors, UV rounds)
 {
+  IV qqueue[100+1];
+  IV qpoint;
   IV rounds2 = (IV) (rounds/16);
   UV temp;
   IV iq,ll,l2,p,pnext,q,qlast,r,s,t,i;
@@ -827,10 +830,8 @@ int squfof_factor(UV n, UV *factors, UV rounds)
     iq = (s + p)/q;
     pnext = iq*q - p;
     if (q <= ll) {
-      if ((q & 1) == 0)
-        enqu(q/2,&jter);
-      else if (q <= l2)
-        enqu(q,&jter);
+      if ((q & 1) == 0) { qqueue[qpoint] = q/2; if (++qpoint>=100) jter = -1; }
+      else if (q <= l2) { qqueue[qpoint] = q;   if (++qpoint>=100) jter = -1; }
       if (jter < 0) {
         factors[0] = n;  return 1;
       }

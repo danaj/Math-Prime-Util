@@ -546,6 +546,75 @@ sub moebius_range {
   return @mu;
 }
 
+my @_ds_overflow =  # We'll use BigInt math if the input is larger than this.
+  (~0 > 4294967295)
+   ? (124, 3000000000000000000, 3000000000, 2487240, 64260, 7026)
+   : ( 50,           845404560,      52560,    1548,   252,   84);
+sub divisor_sum {
+  my($n, $k) = @_;
+  return 1 if defined $n && $n == 1;
+
+  if (defined $k && ref($k) eq 'CODE') {
+    my $sum = $n-$n;
+    if (ref($n) eq 'Math::BigInt') {
+      # If the original number was a bigint, make sure all divisors are.
+      foreach my $d (Math::Prime::Util::divisors($n)) {
+        $sum += $k->(Math::BigInt->new("$d"));
+      }
+    } else {
+      foreach my $d (Math::Prime::Util::divisors($n)) {
+        $sum += $k->($d);
+      }
+    }
+    return $sum;
+  }
+
+  croak "Second argument must be a code ref or number"
+    unless !defined $k || _validate_num($k) || _validate_positive_integer($k);
+  $k = 1 if !defined $k;
+
+  my $will_overflow = ($k == 0) ? (length($n) >= $_ds_overflow[0])
+                    : ($k <= 5) ? ($n >= $_ds_overflow[$k])
+                    : 1;
+
+  # The standard way is:
+  #    my $pk = $f ** $k;  $product *= ($pk ** ($e+1) - 1) / ($pk - 1);
+  # But we get less overflow using:
+  #    my $pk = $f ** $k;  $product *= $pk**E for E in 0 .. e
+  # Also separate BigInt and do fiddly bits for better performance.
+
+  my $product = 1;
+  if (!$will_overflow) {
+    foreach my $f (Math::Prime::Util::factor_exp($n)) {
+      my ($p, $e) = @$f;
+      if ($k == 0) {
+        $product *= ($e+1);
+      } else {
+        my $pk = $p ** $k;
+        my $fmult = $pk + 1;
+        foreach my $E (2 .. $e) { $fmult += $pk**$E }
+        $product *= $fmult;
+      }
+    }
+  } else {
+    $product = Math::BigInt->bone;
+    my $bik = Math::BigInt->new("$k");
+    foreach my $f (Math::Prime::Util::factor_exp($n)) {
+      my ($p, $e) = @$f;
+      my $pk = Math::BigInt->new("$p")->bpow($bik);
+      if    ($e == 1) { $pk->binc(); $product->bmul($pk); }
+      elsif ($e == 2) { $pk->badd($pk*$pk)->binc(); $product->bmul($pk); }
+      else {
+        my $fmult = $pk;
+        foreach my $E (2 .. $e) { $fmult += $pk->copy->bpow($E) }
+        $fmult->binc();
+        $product *= $fmult;
+      }
+    }
+  }
+  return $product;
+}
+
 #############################################################################
 #                       Lehmer prime count
 #

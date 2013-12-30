@@ -38,8 +38,8 @@
  #define my_svuv(sv)  PSTRTOULL(SvPV_nolen(sv), NULL, 10)
  #define my_sviv(sv)  PSTRTOLL(SvPV_nolen(sv), NULL, 10)
 #else
- #define my_svuv(sv)  (!SvROK(sv)) ? SvUV(sv) : PSTRTOULL(SvPV_nolen(sv), NULL, 10)
- #define my_sviv(sv)  (!SvROK(sv)) ? SvIV(sv) : PSTRTOLL(SvPV_nolen(sv), NULL, 10)
+ #define my_svuv(sv)  ((!SvROK(sv)) ? SvUV(sv) : PSTRTOULL(SvPV_nolen(sv), NULL, 10))
+ #define my_sviv(sv)  ((!SvROK(sv)) ? SvIV(sv) : PSTRTOLL(SvPV_nolen(sv), NULL, 10))
 #endif
 
 /* multicall compatibility stuff */
@@ -148,42 +148,50 @@ PROTOTYPES: ENABLE
 
 
 void
-_XS_set_verbose(IN int verbose)
-
-int
-_XS_get_verbose()
-
-void
-_XS_set_callgmp(IN int call_gmp)
-
-int
-_XS_get_callgmp()
-
+prime_memfree()
+  ALIAS:
+    _prime_memfreeall = 1
+    _XS_get_verbose = 2
+    _XS_get_callgmp = 3
+    _get_prime_cache_size = 4
+    _XS_prime_maxbits = 5
+  PPCODE:
+    UV ret = 0;
+    switch (ix) {
+      case 0:  prime_memfree();     break;
+      case 1:  _prime_memfreeall(); break;
+      case 2:  ret = _XS_get_verbose(); break;
+      case 3:  ret = _XS_get_callgmp(); break;
+      case 4:  ret = get_prime_cache(0,0); break;
+      case 5:  ret = BITS_PER_WORD;     break;
+    }
+    if (ix > 1) XSRETURN_UV(ret);
 
 void
 prime_precalc(IN UV n)
+  ALIAS:
+    _XS_set_verbose = 1
+    _XS_set_callgmp = 2
+  PPCODE:
+    switch (ix) {
+      case 0:  prime_precalc(n);    break;
+      case 1:  _XS_set_verbose(n);  break;
+      default: _XS_set_callgmp(n);  break;
+    }
+
 
 void
-prime_memfree()
-
-void
-_prime_memfreeall()
-
-UV
 _XS_prime_count(IN UV low, IN UV high = 0)
-  CODE:
+  PPCODE:
     if (high == 0) {   /* Without a Perl layer in front of this, we'll have */
       high = low;      /* the pathological case of a-0 turning into 0-a.    */
       low = 0;
     }
     if (GIMME_V == G_VOID) {
       prime_precalc(high);
-      RETVAL = 0;
     } else {
-      RETVAL = _XS_prime_count(low, high);
+      PUSHs(sv_2mortal(newSVuv( _XS_prime_count(low, high) )));
     }
-  OUTPUT:
-    RETVAL
 
 UV
 _XS_nth_prime(IN UV n)
@@ -193,8 +201,8 @@ _XS_nth_prime(IN UV n)
     _XS_legendre_pi = 3
     _XS_meissel_pi = 4
     _XS_lehmer_pi = 5
-    _XS_LMO_pi = 6
-    _XS_LMOS_pi = 7
+    _XS_LMOS_pi = 6
+    _XS_LMO_pi = 7
   PREINIT:
     UV ret;
   CODE:
@@ -205,34 +213,15 @@ _XS_nth_prime(IN UV n)
       case 3: ret = _XS_legendre_pi(n); break;
       case 4: ret = _XS_meissel_pi(n); break;
       case 5: ret = _XS_lehmer_pi(n); break;
-      case 6: ret = _XS_LMO_pi(n); break;
-      case 7: ret = _XS_LMOS_pi(n); break;
-      default: croak("_XS_nth_prime: Unknown function alias"); break;
+      case 6: ret = _XS_LMOS_pi(n); break;
+      default:ret = _XS_LMO_pi(n); break;
     }
     RETVAL = ret;
   OUTPUT:
     RETVAL
 
 UV
-_XS_divisor_sum(IN UV n, IN UV k)
-
-UV
 _XS_legendre_phi(IN UV x, IN UV a)
-
-
-UV
-_get_prime_cache_size()
-  CODE:
-    RETVAL = get_prime_cache(0, 0);
-  OUTPUT:
-    RETVAL
-
-int
-_XS_prime_maxbits()
-  CODE:
-    RETVAL = BITS_PER_WORD;
-  OUTPUT:
-    RETVAL
 
 
 SV*
@@ -307,7 +296,7 @@ void
 _XS_divisors(IN UV n)
   PPCODE:
     if (GIMME_V == G_SCALAR) {
-      PUSHs(sv_2mortal(newSVuv( _XS_divisor_sum(n, 0) )));
+      PUSHs(sv_2mortal(newSVuv( divisor_sum(n, 0) )));
     } else {
       UV i, ndivisors;
       UV* divs = _divisor_list(n, &ndivisors);
@@ -427,8 +416,7 @@ _XS_is_prime(IN UV n)
       case 4: ret = _XS_is_lucas_pseudoprime(n, 2); break;
       case 5: ret = _XS_is_frobenius_underwood_pseudoprime(n); break;
       case 6: ret = _XS_is_aks_prime(n); break;
-      case 7: ret = _XS_BPSW(n); break;
-      default: croak("_XS_is_prime: Unknown function alias"); break;
+      default:ret = _XS_BPSW(n); break;
     }
     RETVAL = ret;
   OUTPUT:
@@ -463,7 +451,7 @@ is_prime(IN SV* svn)
         sub = (ix == 0) ? "Math::Prime::Util::_generic_is_prime"
                         : "Math::Prime::Util::_generic_is_prob_prime";
       _vcallsub(sub);
-      XSRETURN(1);
+      return; /* skip implicit PUTBACK */
     }
 
 void
@@ -482,7 +470,7 @@ next_prime(IN SV* svn)
     }
     _vcallsub((ix == 0) ?  "Math::Prime::Util::_generic_next_prime" :
                            "Math::Prime::Util::_generic_prev_prime" );
-    XSRETURN(1);
+    return; /* skip implicit PUTBACK */
 
 void
 factor(IN SV* svn)
@@ -505,14 +493,27 @@ factor(IN SV* svn)
       return; /* skip implicit PUTBACK */
     }
 
+void
+divisor_sum(IN SV* svn, ...)
+  PPCODE:
+    SV* svk = (items > 1) ? ST(1) : 0;
+    int nstatus = _validate_int(aTHX_ svn, 0);
+    int kstatus = (items == 1 || (SvIOK(svk) && SvIV(svk)))  ?  1  :  0;
+    if (nstatus == 1 && kstatus == 1) {
+      UV n = my_svuv(svn);
+      UV k = (items > 1) ? my_svuv(svk) : 1;
+      UV sigma = divisor_sum(n, k);
+      if (sigma != 0)  XSRETURN_UV(sigma);   /* sigma 0 means overflow */
+    }
+    _vcallsubn(aTHX_ G_SCALAR, "Math::Prime::Util::_generic_divisor_sum",items);
+    return; /* skip implicit PUTBACK */
+
 
 void
 znorder(IN SV* sva, IN SV* svn)
-  PREINIT:
-    int astatus, nstatus;
   PPCODE:
-    astatus = _validate_int(aTHX_ sva, 0);
-    nstatus = _validate_int(aTHX_ svn, 0);
+    int astatus = _validate_int(aTHX_ sva, 0);
+    int nstatus = _validate_int(aTHX_ svn, 0);
     if (astatus == 1 && nstatus == 1) {
       UV a = my_svuv(sva);
       UV n = my_svuv(svn);
@@ -525,10 +526,8 @@ znorder(IN SV* sva, IN SV* svn)
 
 void
 znprimroot(IN SV* svn)
-  PREINIT:
-    int status;
   PPCODE:
-    status = _validate_int(aTHX_ svn, 1);
+    int status = _validate_int(aTHX_ svn, 1);
     if (status != 0) {
       UV r, n = my_svuv(svn);
       if (status == -1)
@@ -538,15 +537,13 @@ znprimroot(IN SV* svn)
       XSRETURN_UV(r);
     }
     _vcallsub("Math::Prime::Util::_generic_znprimroot");
-    XSRETURN(1);
+    return; /* skip implicit PUTBACK */
 
 void
 kronecker(IN SV* sva, IN SV* svb)
-  PREINIT:
-    int astatus, bstatus;
   PPCODE:
-    astatus = _validate_int(aTHX_ sva, 2);
-    bstatus = _validate_int(aTHX_ svb, 2);
+    int astatus = _validate_int(aTHX_ sva, 2);
+    int bstatus = _validate_int(aTHX_ svb, 2);
     if (astatus == 1 && bstatus == 1) {
       UV a = my_svuv(sva);
       UV b = my_svuv(svb);
@@ -577,8 +574,7 @@ _XS_ExponentialIntegral(IN SV* x)
       case 2: ret = (double) ld_riemann_zeta(SvNV(x)); break;
       case 3: ret = _XS_RiemannR(SvNV(x)); break;
       case 4: ret = _XS_chebyshev_theta(SvUV(x)); break;
-      case 5: ret = _XS_chebyshev_psi(SvUV(x)); break;
-      default: ret = 0;
+      default:ret = _XS_chebyshev_psi(SvUV(x)); break;
     }
     RETVAL = ret;
   OUTPUT:
@@ -621,7 +617,7 @@ euler_phi(IN SV* svlo, ...)
           Safefree(totients);
         }
       } else {
-        _vcallsubn(aTHX_ G_ARRAY, "Math::Prime::Util::_generic_euler_phi", 2);
+        _vcallsubn(aTHX_ G_ARRAY,"Math::Prime::Util::_generic_euler_phi",items);
         return; /* skip implicit PUTBACK */
       }
     } else {
@@ -659,7 +655,7 @@ moebius(IN SV* svlo, ...)
           Safefree(mu);
         }
       } else {
-        _vcallsubn(aTHX_ G_ARRAY, "Math::Prime::Util::_generic_moebius",2);
+        _vcallsubn(aTHX_ G_ARRAY, "Math::Prime::Util::_generic_moebius",items);
         return; /* skip implicit PUTBACK */
       }
     } else {
@@ -687,7 +683,7 @@ carmichael_lambda(IN SV* svn)
     }
     _vcallsub( (ix == 0) ? "Math::Prime::Util::_generic_carmichael_lambda"
                          : "Math::Prime::Util::_generic_exp_mangoldt" );
-    XSRETURN(1);
+    return; /* skip implicit PUTBACK */
 
 int
 _validate_num(SV* svn, ...)
@@ -721,7 +717,6 @@ forprimes (SV* block, IN SV* svbeg, IN SV* svend = 0)
   PPCODE:
   {
 #if !USE_MULTICALL
-    dSP;
     PUSHMARK(SP);
     XPUSHs(block); XPUSHs(svbeg); if (svend) XPUSHs(svend);
     PUTBACK;
@@ -738,13 +733,12 @@ forprimes (SV* block, IN SV* svbeg, IN SV* svend = 0)
     UV seg_base, seg_low, seg_high;
 
     if (!_validate_int(aTHX_ svbeg, 0) || (items >= 3 && !_validate_int(aTHX_ svend,0))) {
-      dSP;
       PUSHMARK(SP);
       XPUSHs(block); XPUSHs(svbeg); if (svend) XPUSHs(svend);
       PUTBACK;
       (void) call_pv("Math::Prime::Util::_generic_forprimes", G_VOID|G_DISCARD);
       SPAGAIN;
-      XSRETURN(0);
+      return;
     }
     if (items < 3) {
       beg = 2;
@@ -754,7 +748,7 @@ forprimes (SV* block, IN SV* svbeg, IN SV* svend = 0)
       end = my_svuv(svend);
     }
     if (beg > end)
-      XSRETURN(0);
+      return;
 
     cv = sv_2cv(block, &stash, &gv, 0);
     if (cv == Nullcv)
@@ -764,7 +758,6 @@ forprimes (SV* block, IN SV* svbeg, IN SV* svend = 0)
     GvSV(PL_defgv) = svarg;
     /* Handle early part */
     while (beg < 6) {
-      dSP;
       beg = (beg <= 2) ? 2 : (beg <= 3) ? 3 : 5;
       if (beg <= end) {
         sv_setuv(svarg, beg);
@@ -807,7 +800,6 @@ forprimes (SV* block, IN SV* svbeg, IN SV* svend = 0)
           POP_MULTICALL;
         } else {
           START_DO_FOR_EACH_SIEVE_PRIME( segment, seg_low - seg_base, seg_high - seg_base ) {
-            dSP;
             sv_setuv(svarg, seg_base + p);
             PUSHMARK(SP);
             call_sv((SV*)cv, G_VOID|G_DISCARD);
@@ -833,7 +825,7 @@ forcomposites (SV* block, IN SV* svbeg, IN SV* svend = 0)
 
     if (cv == Nullcv)
       croak("Not a subroutine reference");
-    if (items <= 1) XSRETURN(0);
+    if (items <= 1) return;
 
     if (!_validate_int(aTHX_ svbeg, 0) || (items >= 3 && !_validate_int(aTHX_ svend,0))) {
       PUSHMARK(SP);
@@ -841,7 +833,7 @@ forcomposites (SV* block, IN SV* svbeg, IN SV* svend = 0)
       PUTBACK;
       (void) call_pv("Math::Prime::Util::_generic_forcomposites", G_VOID|G_DISCARD);
       SPAGAIN;
-      XSRETURN(0);
+      return;
     }
 
     if (items < 3) {
@@ -852,7 +844,7 @@ forcomposites (SV* block, IN SV* svbeg, IN SV* svend = 0)
       end = my_svuv(svend);
     }
     if (beg > end)
-      XSRETURN(0);
+      return;
 
     SAVESPTR(GvSV(PL_defgv));
     svarg = newSVuv(0);
@@ -895,7 +887,6 @@ forcomposites (SV* block, IN SV* svbeg, IN SV* svend = 0)
       beg = (beg <= 4) ? 3 : beg-1;
       while (beg++ < end) {
         if (!_XS_is_prob_prime(beg)) {
-          dSP;
           sv_setuv(svarg, beg);
           PUSHMARK(SP);
           call_sv((SV*)cv, G_VOID|G_DISCARD);
@@ -919,16 +910,15 @@ fordivisors (SV* block, IN SV* svn)
 
     if (cv == Nullcv)
       croak("Not a subroutine reference");
-    if (items <= 1) XSRETURN(0);
+    if (items <= 1) return;
 
     if (!_validate_int(aTHX_ svn, 0)) {
-      dSP;
       PUSHMARK(SP);
       XPUSHs(block); XPUSHs(svn);
       PUTBACK;
       (void) call_pv("Math::Prime::Util::_generic_fordivisors", G_VOID|G_DISCARD);
       SPAGAIN;
-      XSRETURN(0);
+      return;
     }
 
     n = my_svuv(svn);
@@ -953,7 +943,6 @@ fordivisors (SV* block, IN SV* svn)
 #endif
     {
       for (i = 0; i < ndivisors; i++) {
-        dSP;
         sv_setuv(svarg, divs[i]);
         PUSHMARK(SP);
         call_sv((SV*)cv, G_VOID|G_DISCARD);

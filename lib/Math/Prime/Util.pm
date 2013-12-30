@@ -107,6 +107,7 @@ BEGIN {
     *moebius       = \&Math::Prime::Util::_generic_moebius;
     *carmichael_lambda = \&Math::Prime::Util::_generic_carmichael_lambda;
     *kronecker     = \&Math::Prime::Util::_generic_kronecker;
+    *divisor_sum   = \&Math::Prime::Util::_generic_divisor_sum;
     *znorder       = \&Math::Prime::Util::_generic_znorder;
     *znprimroot    = \&Math::Prime::Util::_generic_znprimroot;
     *factor        = \&Math::Prime::Util::_generic_factor;
@@ -1350,84 +1351,10 @@ sub jordan_totient {
   return $totient;
 }
 
-my @_ds_overflow =  # We'll use BigInt math if the input is larger than this.
-  (~0 > 4294967295)
-   ? (124, 3000000000000000000, 3000000000, 2487240, 64260, 7026)
-   : ( 50,           845404560,      52560,    1548,   252,   84);
-sub divisor_sum {
-  my($n, $k) = @_;
-  return 1 if defined $n && $n == 1;
+sub _generic_divisor_sum {
+  my($n) = @_;
   _validate_num($n) || _validate_positive_integer($n);
-
-  # Call the XS routine for k=0 and k=1 immediately if possible.
-  if ($n <= $_XS_MAXVAL) {
-    if (defined $k) {
-      return _XS_divisor_sum($n, 0) if $k eq '0';
-      return _XS_divisor_sum($n, 1) if $k eq '1' && $n < $_ds_overflow[1];
-    } else {
-      return _XS_divisor_sum($n, 1) if $n < $_ds_overflow[1];
-    }
-  }
-
-  if (defined $k && ref($k) eq 'CODE') {
-    my $sum = $n-$n;
-    if (ref($n) eq 'Math::BigInt') {
-      # If the original number was a bigint, make sure all divisors are.
-      fordivisors { $sum += $k->(Math::BigInt->new("$_")); } $n;
-    } else {
-      fordivisors { $sum += $k->($_); } $n;
-    }
-    return $sum;
-  }
-
-  croak "Second argument must be a code ref or number"
-    unless !defined $k || _validate_num($k) || _validate_positive_integer($k);
-  $k = 1 if !defined $k;
-
-  my $will_overflow = ($k == 0) ? (length($n) >= $_ds_overflow[0])
-                    : ($k <= 5) ? ($n >= $_ds_overflow[$k])
-                    : 1;
-
-  return _XS_divisor_sum($n, $k) if $n <= $_XS_MAXVAL && !$will_overflow;
-
-  # The standard way is:
-  #    my $pk = $f ** $k;  $product *= ($pk ** ($e+1) - 1) / ($pk - 1);
-  # But we get less overflow using:
-  #    my $pk = $f ** $k;  $product *= $pk**E for E in 0 .. e
-  # Also separate BigInt and do fiddly bits for better performance.
-
-  my $product = 1;
-  my @pe = ($n <= $_XS_MAXVAL) ? _XS_factor_exp($n) : factor_exp($n);
-
-  if (!$will_overflow) {
-    foreach my $f (@pe) {
-      my ($p, $e) = @$f;
-      if ($k == 0) {
-        $product *= ($e+1);
-      } else {
-        my $pk = $p ** $k;
-        my $fmult = $pk + 1;
-        foreach my $E (2 .. $e) { $fmult += $pk**$E }
-        $product *= $fmult;
-      }
-    }
-  } else {
-    $product = Math::BigInt->bone;
-    my $bik = Math::BigInt->new("$k");
-    foreach my $f (@pe) {
-      my ($p, $e) = @$f;
-      my $pk = Math::BigInt->new("$p")->bpow($bik);
-      if    ($e == 1) { $pk->binc(); $product->bmul($pk); }
-      elsif ($e == 2) { $pk->badd($pk*$pk)->binc(); $product->bmul($pk); }
-      else {
-        my $fmult = $pk;
-        foreach my $E (2 .. $e) { $fmult += $pk->copy->bpow($E) }
-        $fmult->binc();
-        $product *= $fmult;
-      }
-    }
-  }
-  return $product;
+  return Math::Prime::Util::PP::divisor_sum(@_);
 }
 
                                    # Need proto for the block
