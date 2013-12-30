@@ -501,7 +501,8 @@ factor(IN SV* svn)
         }
       }
     } else {
-      XSRETURN(_vcallsubn(aTHX_ GIMME_V, "Math::Prime::Util::_generic_factor", 1));
+      _vcallsubn(aTHX_ GIMME_V, "Math::Prime::Util::_generic_factor", 1);
+      return; /* skip implicit PUTBACK */
     }
 
 
@@ -519,7 +520,8 @@ znorder(IN SV* sva, IN SV* svn)
       if (order == 0) XSRETURN_UNDEF;
       XSRETURN_UV(order);
     }
-    XSRETURN( _vcallsubn(aTHX_ G_SCALAR, "Math::Prime::Util::_generic_znorder", 2) );
+    _vcallsubn(aTHX_ G_SCALAR, "Math::Prime::Util::_generic_znorder", 2);
+    return; /* skip implicit PUTBACK */
 
 void
 znprimroot(IN SV* svn)
@@ -555,7 +557,8 @@ kronecker(IN SV* sva, IN SV* svb)
       IV b = my_sviv(svb);
       XSRETURN_IV( kronecker_ss(a, b) );
     }
-    XSRETURN(_vcallsubn(aTHX_ G_SCALAR, "Math::Prime::Util::_generic_kronecker", 2));
+    _vcallsubn(aTHX_ G_SCALAR, "Math::Prime::Util::_generic_kronecker", 2);
+    return; /* skip implicit PUTBACK */
 
 double
 _XS_ExponentialIntegral(IN SV* x)
@@ -592,7 +595,8 @@ euler_phi(IN SV* svlo, ...)
         UV lo = my_svuv(svlo);
         XSRETURN_UV(totient(lo));
       } else {
-        XSRETURN( _vcallsubn(aTHX_ G_SCALAR, "Math::Prime::Util::_generic_euler_phi", 1) );
+        _vcallsubn(aTHX_ G_SCALAR, "Math::Prime::Util::_generic_euler_phi", 1);
+        return; /* skip implicit PUTBACK */
       }
     } else if (items == 2) {
       SV* svhi = ST(1);
@@ -617,7 +621,8 @@ euler_phi(IN SV* svlo, ...)
           Safefree(totients);
         }
       } else {
-        XSRETURN( _vcallsubn(aTHX_ G_ARRAY, "Math::Prime::Util::_generic_euler_phi", 2) );
+        _vcallsubn(aTHX_ G_ARRAY, "Math::Prime::Util::_generic_euler_phi", 2);
+        return; /* skip implicit PUTBACK */
       }
     } else {
       croak("Usage: euler_phi(n) or euler_phi(1o,hi)");
@@ -632,7 +637,8 @@ moebius(IN SV* svlo, ...)
         UV n = my_svuv(svlo);
         XSRETURN_IV(moebius(n));
       } else {
-        XSRETURN(_vcallsubn(aTHX_ G_SCALAR, "Math::Prime::Util::_generic_moebius",1));
+        _vcallsubn(aTHX_ G_SCALAR, "Math::Prime::Util::_generic_moebius",1);
+        return; /* skip implicit PUTBACK */
       }
     } else if (items == 2) {
       SV* svhi = ST(1);
@@ -653,7 +659,8 @@ moebius(IN SV* svlo, ...)
           Safefree(mu);
         }
       } else {
-        XSRETURN(_vcallsubn(aTHX_ G_ARRAY, "Math::Prime::Util::_generic_moebius",2));
+        _vcallsubn(aTHX_ G_ARRAY, "Math::Prime::Util::_generic_moebius",2);
+        return; /* skip implicit PUTBACK */
       }
     } else {
       croak("Usage: moebius(n) or moebius(1o,hi)");
