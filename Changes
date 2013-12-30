@@ -25,6 +25,8 @@ Revision history for Perl module Math::Prime::Util
 
     - Lots of XS interface reorgs.
 
+    - XS reduncies and fixes from bulk88 and leont.
+
     - Speedup for input number validation: speedup for all functions,
       especially noticeable with fast functions (e.g. small n is_prime(n)).
 

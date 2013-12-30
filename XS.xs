@@ -718,7 +718,7 @@ forprimes (SV* block, IN SV* svbeg, IN SV* svend = 0)
 #if !USE_MULTICALL
     dSP;
     PUSHMARK(SP);
-    XPUSHs(block); XPUSHs(svbeg); XPUSHs(svend);
+    XPUSHs(block); XPUSHs(svbeg); if (svend) XPUSHs(svend);
     PUTBACK;
     (void) call_pv("Math::Prime::Util::_generic_forprimes", G_VOID|G_DISCARD);
     SPAGAIN;
@@ -735,7 +735,7 @@ forprimes (SV* block, IN SV* svbeg, IN SV* svend = 0)
     if (!_validate_int(svbeg, 0) || (items >= 3 && !_validate_int(svend,0))) {
       dSP;
       PUSHMARK(SP);
-      XPUSHs(block); XPUSHs(svbeg); XPUSHs(svend);
+      XPUSHs(block); XPUSHs(svbeg); if (svend) XPUSHs(svend);
       PUTBACK;
       (void) call_pv("Math::Prime::Util::_generic_forprimes", G_VOID|G_DISCARD);
       SPAGAIN;
@@ -756,13 +756,13 @@ forprimes (SV* block, IN SV* svbeg, IN SV* svend = 0)
       croak("Not a subroutine reference");
     SAVESPTR(GvSV(PL_defgv));
     svarg = newSVuv(0);
+    GvSV(PL_defgv) = svarg;
     /* Handle early part */
     while (beg < 6) {
       dSP;
       beg = (beg <= 2) ? 2 : (beg <= 3) ? 3 : 5;
       if (beg <= end) {
         sv_setuv(svarg, beg);
-        GvSV(PL_defgv) = svarg;
         PUSHMARK(SP);
         call_sv((SV*)cv, G_VOID|G_DISCARD);
       }
@@ -783,7 +783,6 @@ forprimes (SV* block, IN SV* svbeg, IN SV* svend = 0)
       PUSH_MULTICALL(cv);
       for (beg = _XS_next_prime(beg-1); beg <= end && beg != 0; beg = _XS_next_prime(beg)) {
         sv_setuv(svarg, beg);
-        GvSV(PL_defgv) = svarg;
         MULTICALL;
       }
       FIX_MULTICALL_REFCOUNT;
@@ -797,7 +796,6 @@ forprimes (SV* block, IN SV* svbeg, IN SV* svend = 0)
           PUSH_MULTICALL(cv);
           START_DO_FOR_EACH_SIEVE_PRIME( segment, seg_low - seg_base, seg_high - seg_base ) {
             sv_setuv(svarg, seg_base + p);
-            GvSV(PL_defgv) = svarg;
             MULTICALL;
           } END_DO_FOR_EACH_SIEVE_PRIME
           FIX_MULTICALL_REFCOUNT;
@@ -806,7 +804,6 @@ forprimes (SV* block, IN SV* svbeg, IN SV* svend = 0)
           START_DO_FOR_EACH_SIEVE_PRIME( segment, seg_low - seg_base, seg_high - seg_base ) {
             dSP;
             sv_setuv(svarg, seg_base + p);
-            GvSV(PL_defgv) = svarg;
             PUSHMARK(SP);
             call_sv((SV*)cv, G_VOID|G_DISCARD);
           } END_DO_FOR_EACH_SIEVE_PRIME
@@ -836,7 +833,7 @@ forcomposites (SV* block, IN SV* svbeg, IN SV* svend = 0)
     if (!_validate_int(svbeg, 0) || (items >= 3 && !_validate_int(svend,0))) {
       dSP;
       PUSHMARK(SP);
-      XPUSHs(block); XPUSHs(svbeg); XPUSHs(svend);
+      XPUSHs(block); XPUSHs(svbeg); if (svend) XPUSHs(svend);
       PUTBACK;
       (void) call_pv("Math::Prime::Util::_generic_forcomposites", G_VOID|G_DISCARD);
       SPAGAIN;
@@ -855,6 +852,7 @@ forcomposites (SV* block, IN SV* svbeg, IN SV* svend = 0)
 
     SAVESPTR(GvSV(PL_defgv));
     svarg = newSVuv(0);
+    GvSV(PL_defgv) = svarg;
 #if USE_MULTICALL
     if (!CvISXSUB(cv) && (end-beg) > 200) {
       unsigned char* segment;
@@ -864,7 +862,7 @@ forcomposites (SV* block, IN SV* svbeg, IN SV* svend = 0)
       I32 gimme = G_VOID;
       PUSH_MULTICALL(cv);
       if (beg <= 4) { /* sieve starts at 7, so handle this here */
-        sv_setuv(svarg, 4);  GvSV(PL_defgv) = svarg;  MULTICALL;
+        sv_setuv(svarg, 4);  MULTICALL;
         beg = 6;
       }
       /* Find the two primes that bound their interval. */
@@ -878,7 +876,7 @@ forcomposites (SV* block, IN SV* svbeg, IN SV* svend = 0)
           prevprime = seg_base + p;
           cend = (prevprime-1 > end)   ? end : prevprime-1;
           for (c = cbeg; c <= cend; c++) {
-            sv_setuv(svarg, c);  GvSV(PL_defgv) = svarg;  MULTICALL;
+            sv_setuv(svarg, c);  MULTICALL;
           }
         } END_DO_FOR_EACH_SIEVE_PRIME
       }
@@ -895,7 +893,6 @@ forcomposites (SV* block, IN SV* svbeg, IN SV* svend = 0)
         if (!_XS_is_prob_prime(beg)) {
           dSP;
           sv_setuv(svarg, beg);
-          GvSV(PL_defgv) = svarg;
           PUSHMARK(SP);
           call_sv((SV*)cv, G_VOID|G_DISCARD);
         }
@@ -935,6 +932,7 @@ fordivisors (SV* block, IN SV* svn)
 
     SAVESPTR(GvSV(PL_defgv));
     svarg = newSVuv(0);
+    GvSV(PL_defgv) = svarg;
 #if USE_MULTICALL
     if (!CvISXSUB(cv)) {
       dMULTICALL;
@@ -942,7 +940,6 @@ fordivisors (SV* block, IN SV* svn)
       PUSH_MULTICALL(cv);
       for (i = 0; i < ndivisors; i++) {
         sv_setuv(svarg, divs[i]);
-        GvSV(PL_defgv) = svarg;
         MULTICALL;
       }
       FIX_MULTICALL_REFCOUNT;
@@ -954,7 +951,6 @@ fordivisors (SV* block, IN SV* svn)
       for (i = 0; i < ndivisors; i++) {
         dSP;
         sv_setuv(svarg, divs[i]);
-        GvSV(PL_defgv) = svarg;
         PUSHMARK(SP);
         call_sv((SV*)cv, G_VOID|G_DISCARD);
       }
