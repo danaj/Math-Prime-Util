@@ -11,6 +11,35 @@
   *  Thanks to Sisyphus for bringing the MSC issue to my attention (and even
   *  submitting a working patch!).
   */
+typedef unsigned __int8  uint8_t;
+typedef unsigned __int16 uint16_t;
+typedef unsigned __int32 uint32_t;
+typedef unsigned __int64 uint64_t;
+typedef __int64 int64_t;
+typedef __int32 int32_t;
+typedef __int16 int16_t;
+typedef __int8 int8_t;
+#define inline __inline
+
+#ifdef _M_X64
+#  define __x86_64__
+#  define __x86_64
+#  define __amd64__
+#  define __amd64
+#endif
+#ifdef _M_IX86
+#  define __i386__
+#  define __i386
+#  define i386
+#  define _X86_
+#endif
+#ifdef _M_IA64
+#  define __ia64__
+#  define __ia64
+#  define __IA64__
+#  define __itanium__
+#endif
+
 #elif defined(__sun) || defined(__sun__)
  /* stdint.h is only in Solaris 10+. */
  #if defined(__SunOS_5_10) || defined(__SunOS_5_11) || defined(__SunOS_5_12)
