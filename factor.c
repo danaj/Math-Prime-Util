@@ -381,9 +381,9 @@ UV* _divisor_list(UV n, UV *num_divisors)
  */
 static const UV sigma_overflow[5] =
 #if BITS_PER_WORD == 64
-         {3000000000000000000, 3000000000, 2487240, 64260, 7026};
+         {UVCONST(3000000000000000000),UVCONST(3000000000),2487240,64260,7026};
 #else
-         {          845404560,      52560,    1548,   252,   84};
+         {UVCONST(          845404560),             52560,    1548,  252,  84};
 #endif
 UV divisor_sum(UV n, UV k)
 {
