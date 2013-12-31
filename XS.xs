@@ -38,8 +38,8 @@
  #define my_svuv(sv)  PSTRTOULL(SvPV_nolen(sv), NULL, 10)
  #define my_sviv(sv)  PSTRTOLL(SvPV_nolen(sv), NULL, 10)
 #else
-  #define my_svuv(sv)  ((!SvROK(sv)) ? SvUV(sv) : PSTRTOULL(SvPV_nolen(sv), NULL, 10))
- #define my_sviv(sv)  ((!SvROK(sv)) ? SvIV(sv) : PSTRTOLL(SvPV_nolen(sv), NULL, 10))
+ #define my_svuv(sv) SvUV(sv)
+ #define my_sviv(sv) SvIV(sv)
 #endif
 
 /* multicall compatibility stuff */
