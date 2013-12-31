@@ -739,11 +739,12 @@ static void pp1_pow(UV *cX, unsigned long exp, UV n)
     bit = 1UL << (b-2);
   }
   while (bit) {
+    UV T = mulsubmod(X, Y, X0, n);
     if ( exp & bit ) {
-      X = mulsubmod(X, Y, X0, n);
+      X = T;
       Y = mulsubmod(Y, Y, 2, n);
     } else {
-      Y = mulsubmod(X, Y, X0, n);
+      Y = T;
       X = mulsubmod(X, X, 2, n);
     }
     bit >>= 1;

@@ -237,15 +237,19 @@ void prime_precalc(UV n)
 
 void prime_memfree(void)
 {
+  unsigned char* local_prime_segment = 0;
   MPUassert(mutex_init == 1, "cache mutexes have not been initialized");
 
   MUTEX_LOCK(&segment_mutex);
   /* Don't free if another thread is using it */
-  if ( (prime_segment != 0) && (prime_segment_is_available) ) {
-    Safefree(prime_segment);
-    prime_segment = 0;
+  if ( (prime_segment != local_prime_segment) && (prime_segment_is_available) ) {\
+    /* hint to use xchg op */
+    unsigned char* local_prime_segment2 = local_prime_segment;
+    local_prime_segment = prime_segment;
+    prime_segment = local_prime_segment2;
   }
   MUTEX_UNLOCK(&segment_mutex);
+  if(local_prime_segment) Safefree(local_prime_segment);
 
   WRITE_LOCK_START;
     /* Put primary cache back to initial state */
