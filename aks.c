@@ -217,7 +217,7 @@ int _XS_is_aks_prime(UV n)
 {
   UV sqrtn, limit, r, rlimit, a;
   double log2n;
-  int verbose = _XS_get_verbose();
+  int verbose;
 
   if (n < 2)
     return 0;
@@ -231,6 +231,7 @@ int _XS_is_aks_prime(UV n)
   log2n = log(n) / log(2);   /* C99 has a log2() function */
   limit = (UV) floor(log2n * log2n);
 
+  verbose = _XS_get_verbose();
   if (verbose) { printf("# aks limit is %lu\n", (unsigned long) limit); }
 
   for (r = 2; r < n; r++) {

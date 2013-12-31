@@ -292,6 +292,10 @@ UV _XS_prev_prime(UV n)
   m = n - d*30;
 
   if (n < 30*NPRIME_SIEVE30) {
+    /* don't merge this loop with the next loop prime_sieve30 is a C static,
+       which on CISC CPUs can be accessed with instruction pointer relative
+       addressing, instead of a pointer in a register deref addressing which
+       frees a register */
     do {
       m = prevwheel30[m];
       if (m==29) { MPUassert(d>0, "d 0 in prev_prime");  d--; }
@@ -377,21 +381,19 @@ static UV count_segment_maxcount(const unsigned char* sieve, UV base, UV nbytes,
  */
 static UV count_segment_ranged(const unsigned char* sieve, UV nbytes, UV lowp, UV highp)
 {
+  MPUassert( sieve != 0, "count_segment_ranged incorrect args");
+  if (nbytes == 0) return 0;
+{
   UV count = 0;
 
-  UV lo_d = lowp/30;
-  UV lo_m = lowp - lo_d*30;
   UV hi_d = highp/30;
-  UV hi_m = highp - hi_d*30;
-
-  MPUassert( sieve != 0, "count_segment_ranged incorrect args");
 
   if (hi_d >= nbytes) {
     hi_d = nbytes-1;
     highp = hi_d*30+29;
   }
 
-  if ( (nbytes == 0) || (highp < lowp) )
+  if (highp < lowp)
     return 0;
 
 #if 0
@@ -401,7 +403,9 @@ static UV count_segment_ranged(const unsigned char* sieve, UV nbytes, UV lowp, U
   END_DO_FOR_EACH_SIEVE_PRIME;
   return count;
 #endif
-
+{
+  UV lo_d = lowp/30;
+  UV lo_m = lowp - lo_d*30;
   /* Count first fragment */
   if (lo_m > 1) {
     UV upper = (highp <= (lo_d*30+29)) ? highp : (lo_d*30+29);
@@ -417,6 +421,7 @@ static UV count_segment_ranged(const unsigned char* sieve, UV nbytes, UV lowp, U
 
   /* Count bytes in the middle */
   {
+    UV hi_m = highp - hi_d*30;
     UV count_bytes = hi_d - lo_d + (hi_m == 29);
     if (count_bytes > 0) {
       count += count_zero_bits(sieve+lo_d, count_bytes);
@@ -434,6 +439,8 @@ static UV count_segment_ranged(const unsigned char* sieve, UV nbytes, UV lowp, U
   END_DO_FOR_EACH_SIEVE_PRIME;
 
   return count;
+}
+}
 }
 
 

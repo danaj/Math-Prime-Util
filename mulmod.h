@@ -118,6 +118,7 @@ static INLINE UV submod(UV a, UV b, UV n) {
 /* a^2 + c mod n */
 #define sqraddmod(a, c, n)     addmod(sqrmod(a,n),   c, n)
 /* a*b + c mod n */
+/* TODO mulmod is a function, addmod is a multi eval macro == mulmod called 3x uselessly */
 #define muladdmod(a, b, c, n)  addmod(mulmod(a,b,n), c, n)
 /* a*b - c mod n */
 #define mulsubmod(a, b, c, n)  submod(mulmod(a,b,n), c, n)
