@@ -66,8 +66,6 @@ sub _import_nobigint {
   undef *nth_prime;       *nth_prime         = \&_XS_nth_prime;
   undef *is_pseudoprime;  *is_pseudoprime    = \&_XS_is_pseudoprime;
   undef *is_strong_pseudoprime;  *is_strong_pseudoprime = \&_XS_miller_rabin;
-  undef *moebius;         *moebius           = \&_XS_moebius;
-  undef *mertens;         *mertens           = \&_XS_mertens;
   undef *chebyshev_theta; *chebyshev_theta   = \&_XS_chebyshev_theta;
   undef *chebyshev_psi;   *chebyshev_psi     = \&_XS_chebyshev_psi;
   # These should be fast anyway, but this skips validation.
@@ -105,6 +103,7 @@ BEGIN {
     *exp_mangoldt  = \&Math::Prime::Util::_generic_exp_mangoldt;
     *euler_phi     = \&Math::Prime::Util::_generic_euler_phi;
     *moebius       = \&Math::Prime::Util::_generic_moebius;
+    *mertens       = \&Math::Prime::Util::_generic_mertens;
     *carmichael_lambda = \&Math::Prime::Util::_generic_carmichael_lambda;
     *kronecker     = \&Math::Prime::Util::_generic_kronecker;
     *divisor_sum   = \&Math::Prime::Util::_generic_divisor_sum;
@@ -1275,10 +1274,9 @@ sub _generic_moebius {
 }
 
 # A002321 Mertens' function.  mertens(n) = sum(moebius(1,n))
-sub mertens {
+sub _generic_mertens {
   my($n) = @_;
   _validate_num($n) || _validate_positive_integer($n);
-  return _XS_mertens($n) if $n <= $_XS_MAXVAL;
   # This is the most basic Deléglise and Rivat algorithm.  u = n^1/2
   # and no segmenting is done.  Their algorithm uses u = n^1/3, breaks
   # the summation into two parts, and calculates those in segments.  Their
@@ -4343,7 +4341,7 @@ Project Euler, problem 21 (Amicable numbers):
 
 Project Euler, problem 41 (Pandigital prime), brute force command line:
 
-  perl -MMath::Prime::Util=:all -E 'my @p = grep { /1/&&/2/&&/3/&&/4/&&/5/&&/6/&&/7/} @{primes(1000000,9999999)}; say $p[-1];'
+  perl -MMath::Prime::Util=primes -MList::Util=first -E 'say first { /1/&&/2/&&/3/&&/4/&&/5/&&/6/&&/7/} reverse @{primes(1000000,9999999)};'
 
 Project Euler, problem 47 (Distinct primes factors):
 

@@ -197,17 +197,15 @@ static const unsigned char prime_sieve30[] =
 /* Return of 2 if n is prime, 0 if not.  Do it fast. */
 int _XS_is_prime(UV n)
 {
+  if (n <= 10)
+    return (n == 2 || n == 3 || n == 5 || n == 7) ? 2 : 0;
+
   if (n < UVCONST(2000000000)) {
-    UV d, m;
-    unsigned char mtab;
+    UV d = n/30;
+    UV m = n - d*30;
+    unsigned char mtab = masktab30[m];  /* Bitmask in mod30 wheel */
     const unsigned char* sieve;
-    int isprime = -1;
-
-    if (n <= 10)  return (n == 2 || n == 3 || n == 5 || n == 7) ? 2 : 0;
-
-    d = n/30;
-    m = n - d*30;
-    mtab = masktab30[m];  /* Bitmask in mod30 wheel */
+    int isprime;
 
     /* Return 0 if a multiple of 2, 3, or 5 */
     if (mtab == 0)
@@ -220,6 +218,7 @@ int _XS_is_prime(UV n)
     if (!(n%7) || !(n%11) || !(n%13)) return 0;
 
     /* Check primary cache */
+    isprime = -1;
     if (n <= get_prime_cache(0, &sieve))
       isprime = 2*((sieve[d] & mtab) == 0);
     release_prime_cache(sieve);
@@ -635,12 +634,12 @@ static const unsigned short primes_small[] =
 /* The nth prime will be less or equal to this number */
 static UV _XS_nth_prime_upper(UV n)
 {
-  double fn = (double) n;
-  double flogn, flog2n, upper;
+  double fn, flogn, flog2n, upper;
 
   if (n < NPRIMES_SMALL)
     return primes_small[n];
 
+  fn     = (double) n;
   flogn  = log(n);
   flog2n = log(flogn);    /* Note distinction between log_2(n) and log^2(n) */
 
@@ -846,7 +845,7 @@ UV* _totient_range(UV lo, UV hi) {
   return totients;
 }
 
-IV _XS_mertens(UV n) {
+IV mertens(UV n) {
   /* See Deléglise and Rivat (1996) for O(n^2/3 log(log(n))^1/3) algorithm.
    * This implementation uses their lemma 2.1 directly, so is ~ O(n).
    * In serial it is quite a bit faster than segmented summation of mu
@@ -948,11 +947,11 @@ int kronecker_ss(IV a, IV b) {
 }
 
 UV totient(UV n) {
-  UV i, facs[MPU_MAX_FACTORS+1];
-  UV nfacs = factor(n, facs);
-  UV totient = 1;
-  UV lastf = 0;
+  UV i, nfacs, totient, lastf, facs[MPU_MAX_FACTORS+1];
   if (n <= 1) return n;
+  nfacs = factor(n, facs);
+  totient = 1;
+  lastf = 0;
   for (i = 0; i < nfacs; i++) {
     UV f = facs[i];
     if (f == lastf) { totient *= f;               }
@@ -1235,7 +1234,7 @@ double _XS_LogarithmicIntegral(double x) {
   if (x == 0) return 0;
   if (x == 1) return -INFINITY;
   if (x == 2) return li2;
-  if (x <= 0) croak("Invalid input to LogarithmicIntegral:  x must be > 0");
+  if (x < 0) croak("Invalid input to LogarithmicIntegral:  x must be >= 0");
   return _XS_ExponentialIntegral(log(x));
 }
 
@@ -1246,7 +1245,7 @@ UV _XS_Inverse_Li(UV x) {
   UV lo = (UV) (n*logn);
   UV hi = (UV) (n*logn * 2 + 2);
 
-  if (x < 1)  return 0;
+  if (x == 0)  return 0;
   if (hi <= lo) hi = UV_MAX;
   while (lo < hi) {
     UV mid = lo + (hi-lo)/2;

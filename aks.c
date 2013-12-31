@@ -43,7 +43,6 @@ static int is_perfect_power(UV n) {
   UV b, last;
   if ((n <= 3) || (n == UV_MAX)) return 0;
   if ((n & (n-1)) == 0)  return 1;          /* powers of 2    */
-  last = log2floor(n-1) + 1;
 #if (BITS_PER_WORD == 32) || (DBL_DIG > 19)
   if (1) {
 #elif DBL_DIG == 10
@@ -54,13 +53,16 @@ static int is_perfect_power(UV n) {
   if ( n < (UV) pow(10, DBL_DIG) ) {
 #endif
     /* Simple floating point method.  Fast, but need enough mantissa. */
-    b = isqrt(n); if (b*b == n)  return 1; /* perfect square */
+    b = isqrt(n);
+    if (b*b == n)  return 1; /* perfect square */
+    last = log2floor(n-1) + 1;
     for (b = 3; b < last; b = _XS_next_prime(b)) {
       UV root = (UV) (pow(n, 1.0 / (double)b) + 0.5);
       if ( ((UV)(pow(root, b)+0.5)) == n)  return 1;
     }
   } else {
     /* Dietzfelbinger, algorithm 2.3.5 (without optimized exponential) */
+    last = log2floor(n-1) + 1;
     for (b = 2; b <= last; b++) {
       UV a = 1;
       UV c = n;

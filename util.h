@@ -17,7 +17,7 @@ extern UV  _XS_nth_prime(UV x);
 
 extern signed char* _moebius_range(UV low, UV high);
 extern UV*    _totient_range(UV low, UV high);
-extern IV     _XS_mertens(UV n);
+extern IV     mertens(UV n);
 extern double _XS_chebyshev_theta(UV n);
 extern double _XS_chebyshev_psi(UV n);
 
