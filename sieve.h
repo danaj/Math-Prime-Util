@@ -111,10 +111,7 @@ static UV prev_prime_in_sieve(const unsigned char* sieve, UV p) {
     UV d_ = p/30; \
     UV s_, mask_ = 2; \
     UV lastd_ = l_/30; \
-    if (get_prime_cache(l_, &sieve_) < l_) { \
-      release_prime_cache(sieve_); \
-      croak("Could not generate sieve for %"UVuf, l_); \
-    } \
+    get_prime_cache(l_, &sieve_); \
     s_ = sieve_[d_]; \
     if (p <= 5) { \
       p = (p <= 2) ? 2 : (p <= 3) ? 3 : 5; \

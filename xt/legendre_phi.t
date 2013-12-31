@@ -22,7 +22,7 @@ foreach my $a (0 .. $sqrtx+1) {
   if ($a > $pcsqrtx) {
     is ( $expect, $pcx - $a + 1, "sieved phi($x,$a) = Pi($x) - $a + 1" );
   }
-  my $phixa = Math::Prime::Util::_XS_legendre_phi($x, $a);
+  my $phixa = Math::Prime::Util::legendre_phi($x, $a);
   is( $phixa, $expect, "Legendre phi($x,$a) = $expect" );
 }
 done_testing();

@@ -755,7 +755,7 @@ int pplus1_factor(UV n, UV *factors, UV B1)
 {
   UV X1, X2, f;
   UV sqrtB1 = isqrt(B1);
-  MPUassert( (n >= 3) && ((n%2) != 0) , "bad n in pminus1_factor");
+  MPUassert( (n >= 3) && ((n%2) != 0) , "bad n in pplus1_factor");
 
   X1 =  7 % n;
   X2 = 11 % n;

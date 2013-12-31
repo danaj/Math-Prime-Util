@@ -1,11 +1,9 @@
+#if defined(LEHMER) || defined(PRIMESIEVE_STANDALONE)
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
-
-/* Below this size, just sieve (with table speedup). */
-#define SIEVE_LIMIT  60000000
-#define MAX_PHI_MEM  (896*1024*1024)
 
 /*****************************************************************************
  *
@@ -57,6 +55,10 @@
  * Reference: Hans Riesel, "Prime Numbers and Computer Methods for
  * Factorization", 2nd edition, 1994.
  */
+
+/* Below this size, just sieve (with table speedup). */
+#define SIEVE_LIMIT  60000000
+#define MAX_PHI_MEM  (896*1024*1024)
 
 static int const verbose = 0;
 #define STAGE_TIMING 0
@@ -844,35 +846,6 @@ UV _XS_LMOS_pi(UV n)
   return sum;
 }
 
-static const unsigned char primes_small[] =
-  {0,2,3,5,7,11,13,17,19,23,29,31,37,41,43,47,53,59,61,67,71,73,79,83,89,97,
-   101,103,107,109,113,127,131,137,139,149,151,157,163,167,173,179,181,191};
-#define NPRIMES_SMALL (sizeof(primes_small)/sizeof(primes_small[0]))
-
-UV _XS_legendre_phi(UV x, UV a) {
-  phitableinit();
-  /* For small values, calculate directly */
-  if (a <= PHIC) return tablephi(x, a);
-  /* For large values, do our non-recursive phi */
-  if (a >= NPRIMES_SMALL) return phi(x,a);
-  /* Otherwise, recurse */
-  {
-    UV i, sum = tablephi(x, PHIC);
-    for (i = PHIC+1; i <= a; i++) {
-      uint32_t p = primes_small[i];
-      UV xp = x/p;
-      if (xp < p) {
-        while (x < primes_small[a])
-          a--;
-        return (sum - a + i - 1);
-      }
-      sum -= _XS_legendre_phi(xp, i-1);
-    }
-    return sum;
-  }
-}
-
-
 #ifdef PRIMESIEVE_STANDALONE
 int main(int argc, char *argv[])
 {
@@ -906,4 +879,14 @@ int main(int argc, char *argv[])
   printf("%8s Pi(%lu) = %lu   in %10.5fs\n", method, n, pi, t / 1000000.0);
   return(0);
 }
+#endif
+
+#else
+
+#include "lehmer.h"
+UV _XS_LMOS_pi(UV n)            { croak("Not compiled with Lehmer support"); }
+UV _XS_lehmer_pi(UV n)          { croak("Not compiled with Lehmer support"); }
+UV _XS_meissel_pi(UV n)         { croak("Not compiled with Lehmer support"); }
+UV _XS_legendre_pi(UV n)        { croak("Not compiled with Lehmer support"); }
+
 #endif

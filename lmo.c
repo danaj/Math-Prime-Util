@@ -259,6 +259,30 @@ static UV mapes(UV x, uint32 a)
   return (UV) val;
 }
 
+/* TODO: This is pretty simplistic. */
+UV legendre_phi(UV x, UV a) {
+  UV i, c = (a > 7) ? 7 : a;
+  UV sum = mapes(x, c);
+  if (a > c) {
+    UV p  = _XS_nth_prime(c);
+    UV pa = _XS_nth_prime(a);
+    for (i = c+1; i <= a; i++) {
+      p = _XS_next_prime(p);
+      UV xp = x/p;
+      if (xp < p) {
+        while (x < pa) {
+          a--;
+          pa = _XS_prev_prime(pa);
+        }
+        return (sum - a + i - 1);
+      }
+      sum -= legendre_phi(xp, i-1);
+    }
+  }
+  return sum;
+}
+
+
 typedef struct {
   sword_t  *sieve;                 /* segment bit mask */
   uint8    *word_count;            /* bit count in each 64-bit word */

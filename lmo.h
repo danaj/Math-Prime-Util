@@ -5,4 +5,6 @@
 
 extern UV _XS_LMO_pi(UV n);
 
+extern UV legendre_phi(UV n, UV a);
+
 #endif

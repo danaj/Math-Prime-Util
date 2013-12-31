@@ -49,6 +49,9 @@ Revision history for Perl module Math::Prime::Util
 
     - znorder uses Carmichael Lambda instead of Euler Phi.  Faster.
 
+    - Legendre, Meissel, Lehmer, and LMOS methods are no longer compiled by
+      default.  Add -DLEHMER if you really want access to them.
+
 
 0.35  2013-12-08
 

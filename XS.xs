@@ -231,9 +231,6 @@ _XS_nth_prime(IN UV n)
   OUTPUT:
     RETVAL
 
-UV
-_XS_legendre_phi(IN UV x, IN UV a)
-
 SV*
 sieve_primes(IN UV low, IN UV high)
   ALIAS:
@@ -564,6 +561,9 @@ kronecker(IN SV* sva, IN SV* svb)
     }
     _vcallsubn(aTHX_ G_SCALAR, "_generic_kronecker", 2);
     return; /* skip implicit PUTBACK */
+
+UV
+legendre_phi(IN UV n, IN UV a)
 
 double
 _XS_ExponentialIntegral(IN SV* x)

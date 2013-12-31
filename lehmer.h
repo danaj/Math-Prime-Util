@@ -8,6 +8,4 @@ extern UV _XS_meissel_pi(UV n);
 extern UV _XS_lehmer_pi(UV n);
 extern UV _XS_LMOS_pi(UV n);
 
-extern UV _XS_legendre_phi(UV x, UV a);
-
 #endif
