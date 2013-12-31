@@ -2,14 +2,10 @@
 #define MPU_PTYPES_H
 
 #ifdef _MSC_VER
- /* No stdint.h for MS C, so we lose the chance to possibly optimize
-  * some operations on 64-bit machines running a 32-bit Perl.  It's probably
-  * a rare enough case that we don't need to be too concerned.  If we do want,
-  * see:  http://gauss.cs.ucsb.edu/~aydin/CombBLAS/html/stdint_8h_source.html
-  * for some ideas.
+ /* No stdint.h for MS C, but all the types can be defined.
   *
-  *  Thanks to Sisyphus for bringing the MSC issue to my attention (and even
-  *  submitting a working patch!).
+  * Thanks to Sisyphus and bulk88 for all the help with MSC,
+  * including working patches.
   */
 typedef unsigned __int8  uint8_t;
 typedef unsigned __int16 uint16_t;
@@ -94,6 +90,8 @@ typedef __int8 int8_t;
     #undef HAVE_STD_U64
     #define HAVE_STD_U64 1
   #endif
+#elif defined(_MSC_VER)   /* We set up the types earlier */
+ #define HAVE_STD_U64 1
 #endif
 
 #define MAXBIT        (BITS_PER_WORD-1)

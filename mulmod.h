@@ -105,20 +105,19 @@
 #endif
 
 #ifndef addmod
-  #define addmod(a,b,n) ((((n)-(a)) > (b))  ?  ((a)+(b))  :  ((a)+(b)-(n)))
+  static INLINE UV addmod(UV a, UV b, UV n) {
+    return ((n-a) > b) ?  a+b  :  a+b-n;
+  }
 #endif
 
-/* We need to make sure a and b get evaluated into UVs, then do the
- * subtract into a UV before the addmod. */
 static INLINE UV submod(UV a, UV b, UV n) {
-  UV t1 = n - b;
-  return addmod(a, t1, n);
+  UV t = n-b;  /* Evaluate as UV, then hand to addmod */
+  return addmod(a, t, n);
 }
 
 /* a^2 + c mod n */
 #define sqraddmod(a, c, n)     addmod(sqrmod(a,n),   c, n)
 /* a*b + c mod n */
-/* TODO mulmod is a function, addmod is a multi eval macro == mulmod called 3x uselessly */
 #define muladdmod(a, b, c, n)  addmod(mulmod(a,b,n), c, n)
 /* a*b - c mod n */
 #define mulsubmod(a, b, c, n)  submod(mulmod(a,b,n), c, n)

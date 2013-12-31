@@ -292,13 +292,11 @@ UV _XS_prev_prime(UV n)
   m = n - d*30;
 
   if (n < 30*NPRIME_SIEVE30) {
-    /* don't merge this loop with the next loop prime_sieve30 is a C static,
-       which on CISC CPUs can be accessed with instruction pointer relative
-       addressing, instead of a pointer in a register deref addressing which
-       frees a register */
+    /* Don't try to merge this loop with the next one.  prime_sieve30 is a
+     * static, so this can be faster. */
     do {
       m = prevwheel30[m];
-      if (m==29) { MPUassert(d>0, "d 0 in prev_prime");  d--; }
+      if (m==29) d--;
     } while (prime_sieve30[d] & masktab30[m]);
     return(d*30+m);
   }
@@ -307,14 +305,14 @@ UV _XS_prev_prime(UV n)
   if (n < sieve_size) {
     do {
       m = prevwheel30[m];
-      if (m==29) { MPUassert(d>0, "d 0 in prev_prime");  d--; }
+      if (m==29) d--;
     } while (sieve[d] & masktab30[m]);
     release_prime_cache(sieve);
   } else {
     release_prime_cache(sieve);
     do {
       m = prevwheel30[m];
-      if (m==29) { MPUassert(d>0, "d 0 in prev_prime");  d--; }
+      if (m==29) d--;
     } while (!_is_prime7(d*30+m));
   }
   return(d*30+m);
@@ -381,12 +379,13 @@ static UV count_segment_maxcount(const unsigned char* sieve, UV base, UV nbytes,
  */
 static UV count_segment_ranged(const unsigned char* sieve, UV nbytes, UV lowp, UV highp)
 {
+  UV count, hi_d, lo_d, lo_m;
+
   MPUassert( sieve != 0, "count_segment_ranged incorrect args");
   if (nbytes == 0) return 0;
-{
-  UV count = 0;
 
-  UV hi_d = highp/30;
+  count = 0;
+  hi_d = highp/30;
 
   if (hi_d >= nbytes) {
     hi_d = nbytes-1;
@@ -403,9 +402,9 @@ static UV count_segment_ranged(const unsigned char* sieve, UV nbytes, UV lowp, U
   END_DO_FOR_EACH_SIEVE_PRIME;
   return count;
 #endif
-{
-  UV lo_d = lowp/30;
-  UV lo_m = lowp - lo_d*30;
+
+  lo_d = lowp/30;
+  lo_m = lowp - lo_d*30;
   /* Count first fragment */
   if (lo_m > 1) {
     UV upper = (highp <= (lo_d*30+29)) ? highp : (lo_d*30+29);
@@ -439,8 +438,6 @@ static UV count_segment_ranged(const unsigned char* sieve, UV nbytes, UV lowp, U
   END_DO_FOR_EACH_SIEVE_PRIME;
 
   return count;
-}
-}
 }
 
 
