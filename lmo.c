@@ -124,7 +124,6 @@ static uint32_t* make_primelist(uint32 n, uint32* number_of_primes)
                    : (n/logn) * (1.0+1.0/logn+2.51/(logn*logn));
   *number_of_primes = 0;
   New(0, plist, max_index+1, uint32_t);
-  if (plist == 0)  croak("Can not allocate small primes\n");
   plist[0] = 0;
   /* We could do a simple SoE here.  This is not time critical. */
   START_DO_FOR_EACH_PRIME(2, n) {
@@ -211,7 +210,6 @@ static uint16* ft_create(uint32 max)
   uint32 max_prime = (tableLimit - 1) / 3 + 1;
 
   New(0, factor_table, tableSize, uint16);
-  if (factor_table == 0)  return 0;
 
   /* Set all values to 65535 (a large prime), set 0 to 65534. */
   factor_table[0] = 65534;
@@ -476,8 +474,6 @@ UV _XS_LMO_pi(UV n)
   /* Create the array of small primes, and least-prime-factor/moebius table */
   primes = make_primelist( M + 500, &nprimes );
   factor_table = ft_create( M );
-  if (primes == 0 || factor_table == 0)
-    croak("Allocation failure in LMO Pi\n");
 
   /* Create other arrays */
   New(0, ss.sieve,           PHI_SIEVE_WORDS   + 2, sword_t);

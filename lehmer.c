@@ -145,8 +145,6 @@ static uint32_t* generate_small_primes(UV n)
 {
   uint32_t* primes;
   New(0, primes, n+1, uint32_t);
-  if (primes == 0)
-    croak("Can not allocate small primes\n");
   if (n < TINY_PRIME_SIZE) {
     if (tiny_primes == 0)
       tiny_primes = generate_small_primes(TINY_PRIME_SIZE+1);
@@ -192,8 +190,6 @@ static uint32_t* generate_small_primes(UV n)
   if (n > 203280221)
     croak("generate small primes with argument too large: %lu\n", (unsigned long)n);
   New(0, primes, n+1, uint32_t);
-  if (primes == 0)
-    croak("Can not allocate small primes\n");
   primes[0] = 0;
   START_DO_FOR_EACH_PRIME(2, nth_prime) {
     if (i >= n) break;
@@ -339,12 +335,10 @@ static void phi_cache_insert(uint32_t x, uint32_t a, IV sum, cache_t* cache) {
   if (sum < SHRT_MIN || sum > SHRT_MAX) return;
   if (cache->val[a] == 0) {
     Newz(0, cache->val[a], cap, int16_t);
-    if (cache->val[a] == 0) croak("phi cache allocation failure");
     cache->max[a] = cap;
   } else if (cache->max[a] < cap) {
     uint32_t i;
     Renew(cache->val[a], cap, int16_t);
-    if (cache->val[a] == 0) croak("phi cache allocation failure");
     for (i = cache->max[a]; i < cap; i++)
       cache->val[a][i] = 0;
     cache->max[a] = cap;
@@ -429,7 +423,6 @@ static void vcarray_insert(vcarray_t* l, UV val, IV count)
       if (verbose>2) printf("REALLOCing list %p, new size %lu (%luk)\n",l->a,new_size, new_size*sizeof(vc_t)/1024);
       Renew( l->a, new_size, vc_t );
     }
-    if (l->a == 0) croak("could not allocate list\n");
     l->size = new_size;
   }
   /* printf(" inserting %lu %ld\n", val, count); */
@@ -550,8 +543,6 @@ static UV phi(UV x, UV a)
 
   lastidx = a+1;
   primes = generate_small_primes(lastidx);
-  if (primes == 0)
-    croak("Could not generate primes for phi(%lu,%lu)\n", x, a);
   lastprime = primes[lastidx];
   if (x < lastprime)  { Safefree(primes); return (x > 0) ? 1 : 0; }
   phicache_init(&pcache);
@@ -734,7 +725,6 @@ UV _XS_lehmer_pi(UV n)
   if (verbose > 0) printf("lehmer %lu stage 3: %lu small primes\n", n, lastprime);
   TIMING_START;
   primes = generate_small_primes(lastprime);
-  if (primes == 0) croak("Error generating primes.\n");
   lastpc = primes[lastprime];
   TIMING_END_PRINT("small primes")
 
@@ -796,7 +786,6 @@ UV _XS_LMOS_pi(UV n)
   if (lastprime > 203280221) lastprime = 203280221;
   if (lastprime < n13) lastprime = n13;
   primes = generate_small_primes(lastprime);
-  if (primes == 0) croak("Error generating primes.\n");
 
   New(0, mu, n13+1, signed char);
   memset(mu, 1, sizeof(signed char) * (n13+1));

@@ -233,10 +233,6 @@ unsigned char* sieve_erat30(UV end)
   /* Round up to a word */
   max_buf = ((max_buf + sizeof(UV) - 1) / sizeof(UV)) * sizeof(UV);
   New(0, mem, max_buf, unsigned char );
-  if (mem == 0) {
-    croak("allocation failure in sieve_erat30: could not alloc %"UVuf" bytes", max_buf);
-    return 0;
-  }
 
   /* Fill buffer with marked 7, 11, and 13 */
   sieve_prefill(mem, 0, max_buf-1);
@@ -305,10 +301,7 @@ int sieve_segment(unsigned char* mem, UV startd, UV endd)
   slimit = limit;
   if (slimit > BASE_SIEVE_LIMIT) slimit = BASE_SIEVE_LIMIT;
   /* printf("segment sieve from %"UVuf" to %"UVuf" (aux sieve to %"UVuf")\n", startp, endp, slimit); */
-  if (get_prime_cache(slimit, &sieve) < slimit) {
-    release_prime_cache(sieve);
-    return 0;
-  }
+  get_prime_cache(slimit, &sieve);
 
   START_DO_FOR_EACH_SIEVE_PRIME(sieve, 17, slimit)
   {
@@ -426,8 +419,6 @@ void* start_segment_primes(UV low, UV high, unsigned char** segmentmem)
   ctx->endp = (ctx->hid >= (UV_MAX/30))  ?  UV_MAX-2  :  30*ctx->hid+29;
 
   ctx->segment = get_prime_segment( &(ctx->segment_size) );
-  if (ctx->segment == 0)
-    croak("start_segment_primes: Could not get segment");
   *segmentmem = ctx->segment;
 
   ctx->base = 0;
@@ -457,9 +448,7 @@ int next_segment_primes(void* vctx, UV* base, UV* low, UV* high)
   MPUassert( seghigh_d >= ctx->lod, "next_segment_primes: highd < lowd");
   MPUassert( range_d <= ctx->segment_size, "next_segment_primes: range > segment size");
 
-  if (sieve_segment(ctx->segment, ctx->lod, seghigh_d) == 0) {
-    croak("Could not segment sieve from %"UVuf" to %"UVuf, *base+1, *high);
-  }
+  sieve_segment(ctx->segment, ctx->lod, seghigh_d);
 
   ctx->lod += range_d;
   ctx->low = *high + 2;

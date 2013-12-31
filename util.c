@@ -747,8 +747,6 @@ UV _XS_nth_prime(UV n)
   /* Start segment sieving.  Get memory to sieve into. */
   segbase = segment_size;
   segment = get_prime_segment(&segment_size);
-  if (segment == 0)
-    croak("Could not get segment memory");
 
   while (count < target) {
     /* Limit the segment size if we know the answer comes earlier */
@@ -756,10 +754,7 @@ UV _XS_nth_prime(UV n)
       segment_size = (upper_limit - segbase*30 + 30) / 30;
 
     /* Do the actual sieving in the range */
-    if (sieve_segment(segment, segbase, segbase + segment_size-1) == 0) {
-      release_prime_segment(segment);
-      croak("Could not segment sieve from %"UVuf" to %"UVuf, 30*segbase+1, 30*(segbase+segment_size)+29);
-    }
+    sieve_segment(segment, segbase, segbase + segment_size-1);
 
     /* Count up everything in this segment */
     count += count_segment_maxcount(segment, 30*segbase, segment_size, target-count, &p);
@@ -791,8 +786,6 @@ signed char* _moebius_range(UV lo, UV hi)
   UV nextlog;
 
   Newz(0, mu, hi-lo+1, signed char);
-  if (mu == 0)
-    croak("Could not get memory for %"UVuf" moebius results\n", hi-lo+1);
   A = (unsigned char*) mu;
   if (sqrtn*sqrtn != hi) sqrtn++;  /* ceil sqrtn */
 
@@ -830,8 +823,6 @@ UV* _totient_range(UV lo, UV hi) {
   if (hi < lo) croak("_totient_range error hi %lu < lo %lu\n", hi, lo);
   /* TODO: When is it faster to just do individual calls? */
   New(0, totients, hi-lo+1, UV);
-  if (totients == 0)
-    croak("Could not get memory for %"UVuf" totients\n", hi);
   for (i = lo; i <= hi; i++) {
     UV v = i;
     if (i % 2 == 0)  v -= v/2;

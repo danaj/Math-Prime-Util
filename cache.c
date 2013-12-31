@@ -106,8 +106,8 @@ static void _erase_and_fill_prime_cache(UV n) {
 
   if (n > 0) {
     prime_cache_sieve = sieve_erat30(padded_n);
-    if (prime_cache_sieve != 0)
-      prime_cache_size = padded_n;
+    MPUassert(prime_cache_sieve != 0, "sieve returned null");
+    prime_cache_size = padded_n;
   }
 }
 
@@ -153,6 +153,7 @@ UV get_prime_cache(UV n, const unsigned char** sieve)
 #else
   if (prime_cache_size < n)
     _erase_and_fill_prime_cache(n);
+  MPUassert(prime_cache_size >= n, "prime cache is too small!");
   if (sieve != 0)
     *sieve = prime_cache_sieve;
   return prime_cache_size;
@@ -196,9 +197,7 @@ unsigned char* get_prime_segment(UV *size) {
     New(0, mem, SECONDARY_SEGMENT_CHUNK_SIZE, unsigned char);
     *size = SECONDARY_SEGMENT_CHUNK_SIZE;
   }
-
-  if (mem == 0)
-    croak("Could not allocate %"UVuf" bytes for segment sieve", *size);
+  MPUassert(mem != 0, "get_prime_segment allocation failure");
 
   return mem;
 }

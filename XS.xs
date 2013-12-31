@@ -260,7 +260,6 @@ sieve_primes(IN UV low, IN UV high)
         }
       } else if (ix == 2) {                   /* Erat */
         unsigned char* sieve = sieve_erat30(high);
-        if (sieve == 0) croak("Could not generate sieve for %"UVuf, high);
         START_DO_FOR_EACH_SIEVE_PRIME( sieve, low, high ) {
            av_push(av,newSVuv(p));
         } END_DO_FOR_EACH_SIEVE_PRIME
