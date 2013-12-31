@@ -38,7 +38,7 @@
  #define my_svuv(sv)  PSTRTOULL(SvPV_nolen(sv), NULL, 10)
  #define my_sviv(sv)  PSTRTOLL(SvPV_nolen(sv), NULL, 10)
 #else
- #define my_svuv(sv)  ((!SvROK(sv)) ? SvUV(sv) : PSTRTOULL(SvPV_nolen(sv), NULL, 10))
+  #define my_svuv(sv)  ((!SvROK(sv)) ? SvUV(sv) : PSTRTOULL(SvPV_nolen(sv), NULL, 10))
  #define my_sviv(sv)  ((!SvROK(sv)) ? SvIV(sv) : PSTRTOLL(SvPV_nolen(sv), NULL, 10))
 #endif
 
@@ -89,19 +89,20 @@ static int _validate_int(pTHX_ SV* n, int negok)
   int ret, isneg = 0;
 
   /* TODO: magic, grok_number, etc. */
+  /* fix multiple magic aware Sv*V getters */
   if (SvGAMAGIC(n)) return 0;          /* Leave while we still can */
   if (!SvOK(n))  croak("Parameter must be defined");
   if (SvIOK(n)) {                      /* If defined as number, use that */
     if (SvIsUV(n) || SvIV(n) >= 0)  return 1;
     if (negok)  return -1;
-    else      croak("Parameter '%s' must be a positive integer", SvPV_nolen(n));
+    else      croak("Parameter '" SVf "' must be a positive integer", n);
   }
   if (SvROK(n) && !sv_isa(n, "Math::BigInt"))  return 0;
   ptr = SvPV(n, len);                  /* Includes stringifying bigints */
-  if (len == 0 || ptr == 0)  croak("Parameter '' must be a positive integer");
+  if (len == 0 || ptr == 0)  croak("Parameter '" SVf "' must be a positive integer", n);
   if (ptr[0] == '-') {                 /* Read negative sign */
     if (negok) { isneg = 1; ptr++; len--; }
-    else       croak("Parameter '%s' must be a positive integer", ptr);
+    else       croak("Parameter '" SVf "' must be a positive integer", n);
   }
   if (ptr[0] == '+') { ptr++; len--; } /* Allow a single plus sign */
   while (len > 0 && *ptr == '0')       /* Strip all leading zeros */
@@ -110,7 +111,7 @@ static int _validate_int(pTHX_ SV* n, int negok)
     return 0;
   for (i = 0; i < len; i++)            /* Ensure all characters are digits */
     if (!isDIGIT(ptr[i]))
-      croak("Parameter '%s' must be a positive integer", ptr);
+      croak("Parameter '" SVf "' must be a positive integer", n);
   if (isneg == 1)                      /* Negative number (ignore overflow) */
     return -1;
   ret    = isneg ? -1           : 1;
@@ -148,6 +149,12 @@ MODULE = Math::Prime::Util	PACKAGE = Math::Prime::Util
 
 PROTOTYPES: ENABLE
 
+BOOT:
+{
+    SV * sv = newSViv(BITS_PER_WORD);
+    HV * stash = gv_stashpv("Math::Prime::Util", TRUE);
+    newCONSTSUB(stash, "_XS_prime_maxbits", sv);
+}
 
 void
 prime_memfree()
@@ -156,18 +163,18 @@ prime_memfree()
     _XS_get_verbose = 2
     _XS_get_callgmp = 3
     _get_prime_cache_size = 4
-    _XS_prime_maxbits = 5
   PPCODE:
-    UV ret = 0;
+    UV ret;
     switch (ix) {
-      case 0:  prime_memfree();     break;
-      case 1:  _prime_memfreeall(); break;
+      case 0:  prime_memfree(); goto return_nothing;
+      case 1:  _prime_memfreeall(); goto return_nothing;
       case 2:  ret = _XS_get_verbose(); break;
       case 3:  ret = _XS_get_callgmp(); break;
-      case 4:  ret = get_prime_cache(0,0); break;
-      default: ret = BITS_PER_WORD;     break;
+      case 4:
+      default:  ret = get_prime_cache(0,0); break;
     }
-    if (ix > 1) XSRETURN_UV(ret);
+    XSRETURN_UV(ret);
+    return_nothing:
 
 void
 prime_precalc(IN UV n)
@@ -175,12 +182,14 @@ prime_precalc(IN UV n)
     _XS_set_verbose = 1
     _XS_set_callgmp = 2
   PPCODE:
+    PUTBACK; /* SP is never used again, the 3 next func calls are tailcall
+    friendly since this XSUB has nothing to do after the 3 calls return */
     switch (ix) {
       case 0:  prime_precalc(n);    break;
       case 1:  _XS_set_verbose(n);  break;
       default: _XS_set_callgmp(n);  break;
     }
-
+    return; /* skip implicit PUTBACK */
 
 void
 _XS_prime_count(IN UV low, IN UV high = 0)
@@ -285,11 +294,12 @@ _XS_factor_exp(IN UV n)
     } else {
       /* Return ( [p1,e1], [p2,e2], [p3,e3], ... ) */
       if (n == 1)  XSRETURN_EMPTY;
+      EXTEND(SP, nfactors);
       for (i = 0; i < nfactors; i++) {
         AV* av = newAV();
         av_push(av, newSVuv(factors[i]));
         av_push(av, newSVuv(exponents[i]));
-        XPUSHs( sv_2mortal(newRV_noinc( (SV*) av )) );
+        PUSHs( sv_2mortal(newRV_noinc( (SV*) av )) );
       }
     }
 
@@ -358,28 +368,29 @@ trial_factor(IN UV n, ...)
 
 int
 _XS_miller_rabin(IN UV n, ...)
-  PREINIT:
-    UV bases[64];
-    int prob_prime = 1;
-    int c = 1;
   CODE:
     if (items < 2)
       croak("No bases given to miller_rabin");
-    if ( (n == 0) || (n == 1) ) XSRETURN_IV(0);   /* 0 and 1 are composite */
-    if ( (n == 2) || (n == 3) ) XSRETURN_IV(1);   /* 2 and 3 are prime */
-    if (( n % 2 ) == 0)  XSRETURN_IV(0);          /* MR works with odd n */
-    while (c < items) {
-      int b = 0;
+    if      ( (n == 0) || (n == 1) ) { RETVAL = 0; }  /* 0 and 1 composite */
+    else if ( (n == 2) || (n == 3) ) { RETVAL = 1; }  /* 2 and 3 prime */
+    else if ( (n % 2) == 0 )         { RETVAL = 0; }  /* MR works on odds */
+    else {
+      UV bases[64];
+      int prob_prime = 1;
+      int c = 1;
       while (c < items) {
-        bases[b++] = SvUV(ST(c));
-        c++;
-        if (b == 64) break;
+        int b = 0;
+        while (c < items) {
+          bases[b++] = SvUV(ST(c));
+          c++;
+          if (b == 64) break;
+        }
+        prob_prime = _XS_miller_rabin(n, bases, b);
+        if (prob_prime != 1)
+          break;
       }
-      prob_prime = _XS_miller_rabin(n, bases, b);
-      if (prob_prime != 1)
-        break;
+      RETVAL = prob_prime;
     }
-    RETVAL = prob_prime;
   OUTPUT:
     RETVAL
 
@@ -389,9 +400,9 @@ _XS_lucas_sequence(IN UV n, IN IV P, IN IV Q, IN UV k)
     UV U, V, Qk;
   PPCODE:
     lucas_seq(&U, &V, &Qk,  n, P, Q, k);
-    XPUSHs(sv_2mortal(newSVuv( U )));
-    XPUSHs(sv_2mortal(newSVuv( V )));
-    XPUSHs(sv_2mortal(newSVuv( Qk )));
+    PUSHs(sv_2mortal(newSVuv( U )));    /* 4 args in, 3 out, no EXTEND needed */
+    PUSHs(sv_2mortal(newSVuv( V )));
+    PUSHs(sv_2mortal(newSVuv( Qk )));
 
 int
 _XS_is_prime(IN UV n, ...)
@@ -472,21 +483,22 @@ next_prime(IN SV* svn)
 void
 factor(IN SV* svn)
   PPCODE:
+    U32 gimme_v =  GIMME_V;
     int status = _validate_int(aTHX_ svn, 0);
     if (status == 1) {
       UV factors[MPU_MAX_FACTORS+1];
       UV n = my_svuv(svn);
       int i, nfactors = factor(n, factors);
-      if (GIMME_V == G_SCALAR) {
+      if (gimme_v == G_SCALAR) {
         PUSHs(sv_2mortal(newSVuv(nfactors)));
-      } else if (GIMME_V == G_ARRAY) {
+      } else if (gimme_v == G_ARRAY) {
         EXTEND(SP, nfactors);
         for (i = 0; i < nfactors; i++) {
           PUSHs(sv_2mortal(newSVuv( factors[i] )));
         }
       }
     } else {
-      _vcallsubn(aTHX_ GIMME_V, "_generic_factor", 1);
+      _vcallsubn(aTHX_ gimme_v, "_generic_factor", 1);
       return; /* skip implicit PUTBACK */
     }
 
@@ -565,13 +577,22 @@ _XS_ExponentialIntegral(IN SV* x)
   PREINIT:
     double ret;
   CODE:
-    switch (ix) {
-      case 0: ret = _XS_ExponentialIntegral(SvNV(x)); break;
-      case 1: ret = _XS_LogarithmicIntegral(SvNV(x)); break;
-      case 2: ret = (double) ld_riemann_zeta(SvNV(x)); break;
-      case 3: ret = _XS_RiemannR(SvNV(x)); break;
-      case 4: ret = _XS_chebyshev_theta(SvUV(x)); break;
-      default:ret = _XS_chebyshev_psi(SvUV(x)); break;
+    if (ix < 4) {
+      NV nv = SvNV(x);
+      switch (ix) {
+        case 0: ret = _XS_ExponentialIntegral(nv); break;
+        case 1: ret = _XS_LogarithmicIntegral(nv); break;
+        case 2: ret = (double) ld_riemann_zeta(nv); break;
+        case 3:
+        default:ret = _XS_RiemannR(nv); break;
+      }
+    } else {
+      UV uv = SvUV(x);
+      switch (ix) {
+        case 4: ret = _XS_chebyshev_theta(uv); break;
+        case 5:
+        default:ret = _XS_chebyshev_psi(uv); break;
+      }
     }
     RETVAL = ret;
   OUTPUT:
@@ -682,6 +703,9 @@ carmichael_lambda(IN SV* svn)
 
 int
 _validate_num(SV* svn, ...)
+  PREINIT:
+    SV* sv1;
+    SV* sv2;
   CODE:
     RETVAL = 0;
     if (_validate_int(aTHX_ svn, 0)) {
@@ -689,13 +713,13 @@ _validate_num(SV* svn, ...)
         UV n = my_svuv(svn);
         sv_setuv(svn, n);
       }
-      if (items > 1 && SvOK(ST(1))) {
+      if (items > 1 && ((sv1 = ST(1)), SvOK(sv1))) {
         UV n = my_svuv(svn);
-        UV min = my_svuv(ST(1));
+        UV min = my_svuv(sv1);
         if (n < min)
           croak("Parameter '%"UVuf"' must be >= %"UVuf, n, min);
-        if (items > 2 && SvOK(ST(2))) {
-          UV max = my_svuv(ST(2));
+        if (items > 2 && ((sv2 = ST(2)), SvOK(sv2))) {
+          UV max = my_svuv(sv2);
           if (n > max)
             croak("Parameter '%"UVuf"' must be <= %"UVuf, n, max);
           MPUassert( items <= 3, "_validate_num takes at most 3 parameters");
