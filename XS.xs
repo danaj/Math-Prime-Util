@@ -146,6 +146,12 @@ MODULE = Math::Prime::Util	PACKAGE = Math::Prime::Util
 
 PROTOTYPES: ENABLE
 
+BOOT:
+{
+    SV * sv = newSViv(BITS_PER_WORD);
+    HV * stash = gv_stashpv("Math::Prime::Util", TRUE);
+    newCONSTSUB(stash, "_XS_prime_maxbits", sv);
+}
 
 void
 prime_memfree()
@@ -154,7 +160,6 @@ prime_memfree()
     _XS_get_verbose = 2
     _XS_get_callgmp = 3
     _get_prime_cache_size = 4
-    _XS_prime_maxbits = 5
   PPCODE:
     UV ret = 0;
     switch (ix) {
@@ -163,7 +168,6 @@ prime_memfree()
       case 2:  ret = _XS_get_verbose(); break;
       case 3:  ret = _XS_get_callgmp(); break;
       case 4:  ret = get_prime_cache(0,0); break;
-      case 5:  ret = BITS_PER_WORD;     break;
     }
     if (ix > 1) XSRETURN_UV(ret);
 
@@ -182,16 +186,30 @@ prime_precalc(IN UV n)
 
 void
 _XS_prime_count(IN UV low, IN UV high = 0)
-  PPCODE:
+  CODE:
     if (high == 0) {   /* Without a Perl layer in front of this, we'll have */
       high = low;      /* the pathological case of a-0 turning into 0-a.    */
       low = 0;
     }
     if (GIMME_V == G_VOID) {
       prime_precalc(high);
+      /* doing PPCODE: (implied XSprePUSH) and jumping to the PUTBACK was less
+      efficient machine code wise than these 2 return paths*/
+      XSRETURN(0);
     } else {
-      PUSHs(sv_2mortal(newSVuv( _XS_prime_count(low, high) )));
+      UV RETVAL;
+      RETVAL = _XS_prime_count(low, high);
+      {
+        dXSTARG;
+        sv_setuv(TARG, RETVAL);
+        SvSETMAGIC(TARG);
+        XSprePUSH;
+        PUSHs(TARG);
+        PUTBACK;
+        return;
+      }
     }
+    /*unreachable*/
 
 UV
 _XS_nth_prime(IN UV n)
@@ -367,9 +385,9 @@ _XS_miller_rabin(IN UV n, ...)
   CODE:
     if (items < 2)
       croak("No bases given to miller_rabin");
-    if ( (n == 0) || (n == 1) ) XSRETURN_IV(0);   /* 0 and 1 are composite */
-    if ( (n == 2) || (n == 3) ) XSRETURN_IV(1);   /* 2 and 3 are prime */
-    if (( n % 2 ) == 0)  XSRETURN_IV(0);          /* MR works with odd n */
+    if ( (n == 0) || (n == 1) ) {RETVAL = 0; goto return_iv;}   /* 0 and 1 are composite */
+    if ( (n == 2) || (n == 3) ) {RETVAL = 1; goto return_iv;}   /* 2 and 3 are prime */
+    if (( n % 2 ) == 0) {RETVAL = 0; goto return_iv;}          /* MR works with odd n */
     while (c < items) {
       int b = 0;
       while (c < items) {
@@ -382,6 +400,7 @@ _XS_miller_rabin(IN UV n, ...)
         break;
     }
     RETVAL = prob_prime;
+    return_iv:
   OUTPUT:
     RETVAL
 
@@ -568,13 +587,22 @@ _XS_ExponentialIntegral(IN SV* x)
   PREINIT:
     double ret;
   CODE:
-    switch (ix) {
-      case 0: ret = _XS_ExponentialIntegral(SvNV(x)); break;
-      case 1: ret = _XS_LogarithmicIntegral(SvNV(x)); break;
-      case 2: ret = (double) ld_riemann_zeta(SvNV(x)); break;
-      case 3: ret = _XS_RiemannR(SvNV(x)); break;
-      case 4: ret = _XS_chebyshev_theta(SvUV(x)); break;
-      default:ret = _XS_chebyshev_psi(SvUV(x)); break;
+    if(ix < 4 ) {
+      NV nv = SvNV(x);
+      switch (ix) {
+        case 0: ret = _XS_ExponentialIntegral(nv); break;
+        case 1: ret = _XS_LogarithmicIntegral(nv); break;
+        case 2: ret = (double) ld_riemann_zeta(nv); break;
+        case 3: ret = _XS_RiemannR(nv); break;
+        default: MPUNOT_REACHED; break; /* CC thinks ix is negative */
+      }
+    } else {
+      UV uv = SvUV(x);
+      switch (ix) {
+        case 4: ret = _XS_chebyshev_theta(uv); break;
+        case 5:
+        default: ret = _XS_chebyshev_psi(uv); break;
+      }
     }
     RETVAL = ret;
   OUTPUT:
@@ -687,6 +715,9 @@ carmichael_lambda(IN SV* svn)
 
 int
 _validate_num(SV* svn, ...)
+  PREINIT:
+    SV* sv1;
+    SV* sv2;
   CODE:
     RETVAL = 0;
     if (_validate_int(aTHX_ svn, 0)) {
@@ -694,13 +725,13 @@ _validate_num(SV* svn, ...)
         UV n = my_svuv(svn);
         sv_setuv(svn, n);
       }
-      if (items > 1 && SvOK(ST(1))) {
+      if (items > 1 && ((sv1 = ST(1)), SvOK(sv1))) {
         UV n = my_svuv(svn);
-        UV min = my_svuv(ST(1));
+        UV min = my_svuv(sv1);
         if (n < min)
           croak("Parameter '%"UVuf"' must be >= %"UVuf, n, min);
-        if (items > 2 && SvOK(ST(2))) {
-          UV max = my_svuv(ST(2));
+        if (items > 2 && ((sv2 = ST(2)), SvOK(sv2))) {
+          UV max = my_svuv(sv2);
           if (n > max)
             croak("Parameter '%"UVuf"' must be <= %"UVuf, n, max);
           MPUassert( items <= 3, "_validate_num takes at most 3 parameters");

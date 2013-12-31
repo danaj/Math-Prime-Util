@@ -102,4 +102,23 @@ typedef __int8 int8_t;
 
 #define MPUassert(c,text) if (!(c)) { croak("Math::Prime::Util internal error: " text); }
 
+#ifndef DEBUGGING
+#  if __has_builtin(__builtin_unreachable) \
+     || (__GNUC__ == 4 && __GNUC_MINOR__ >= 5 || __GNUC__ > 5) /* 4.5 -> */
+#    define MPUASSUME(x) ((x) ? (void) 0 : __builtin_unreachable())
+#  elif defined(_MSC_VER)
+#    define MPUASSUME(x) __assume(x)
+#  elif defined(__ARMCC_VERSION) /* untested */
+#    define MPUASSUME(x) __promise(x)
+#  else
+/* a random compiler might define assert to its own special optimization token
+   so pass it through to C lib as a last resort */
+#    define MPUASSUME(x) assert(x)
+#  endif
+#else
+#  define MPUASSUME(x) assert(x)
+#endif
+
+#define MPUNOT_REACHED MPUASSUME(0)
+
 #endif
