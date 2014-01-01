@@ -884,9 +884,9 @@ int main(int argc, char *argv[])
 #else
 
 #include "lehmer.h"
-UV _XS_LMOS_pi(UV n)            { croak("Not compiled with Lehmer support"); }
-UV _XS_lehmer_pi(UV n)          { croak("Not compiled with Lehmer support"); }
-UV _XS_meissel_pi(UV n)         { croak("Not compiled with Lehmer support"); }
-UV _XS_legendre_pi(UV n)        { croak("Not compiled with Lehmer support"); }
+UV _XS_LMOS_pi(UV n)      { n=0; croak("Not compiled with Lehmer support"); }
+UV _XS_lehmer_pi(UV n)    { n=0; croak("Not compiled with Lehmer support"); }
+UV _XS_meissel_pi(UV n)   { n=0; croak("Not compiled with Lehmer support"); }
+UV _XS_legendre_pi(UV n)  { n=0; croak("Not compiled with Lehmer support"); }
 
 #endif

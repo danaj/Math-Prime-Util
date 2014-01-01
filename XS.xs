@@ -95,23 +95,25 @@ static int _validate_int(pTHX_ SV* n, int negok)
   if (SvIOK(n)) {                      /* If defined as number, use that */
     if (SvIsUV(n) || SvIV(n) >= 0)  return 1;
     if (negok)  return -1;
-    else      croak("Parameter '" SVf "' must be a positive integer", n);
+    else      croak("Parameter '%" SVf "' must be a positive integer", n);
   }
   if (SvROK(n) && !sv_isa(n, "Math::BigInt"))  return 0;
   ptr = SvPV(n, len);                  /* Includes stringifying bigints */
-  if (len == 0 || ptr == 0)  croak("Parameter '" SVf "' must be a positive integer", n);
-  if (ptr[0] == '-') {                 /* Read negative sign */
-    if (negok) { isneg = 1; ptr++; len--; }
-    else       croak("Parameter '" SVf "' must be a positive integer", n);
+  if (len == 0 || ptr == 0)  croak("Parameter must be a positive integer");
+  if (ptr[0] == '-' && negok) {
+    isneg = 1; ptr++; len--;           /* Read negative sign */
+  } else if (ptr[0] == '+') {
+    ptr++; len--;                      /* Allow a single plus sign */
   }
-  if (ptr[0] == '+') { ptr++; len--; } /* Allow a single plus sign */
+  if (len == 0 || !isDIGIT(ptr[0]))
+    croak("Parameter '%" SVf "' must be a positive integer", n);
   while (len > 0 && *ptr == '0')       /* Strip all leading zeros */
     { ptr++; len--; }
   if (len > uvmax_maxlen)              /* Huge number, don't even look at it */
     return 0;
   for (i = 0; i < len; i++)            /* Ensure all characters are digits */
     if (!isDIGIT(ptr[i]))
-      croak("Parameter '" SVf "' must be a positive integer", n);
+      croak("Parameter '%" SVf "' must be a positive integer", n);
   if (isneg == 1)                      /* Negative number (ignore overflow) */
     return -1;
   ret    = isneg ? -1           : 1;
@@ -484,7 +486,7 @@ factor(IN SV* svn)
                      UV ndivisors;
                      UV* divs = _divisor_list(n, &ndivisors);
                      EXTEND(SP, ndivisors);
-                     for (i = 0; i < ndivisors; i++)
+                     for (i = 0; (UV)i < ndivisors; i++)
                        PUSHs(sv_2mortal(newSVuv( divs[i] )));
                      Safefree(divs);
                    }
@@ -613,7 +615,7 @@ euler_phi(IN SV* svlo, ...)
         UV n = (lostatus == -1) ? 0 : my_svuv(svlo);
         XSRETURN_UV(totient(n));
       } else {
-        IV n = (lostatus == -1) ? -(my_sviv(svlo)) : my_svuv(svlo);
+        UV n = (lostatus == -1) ? (UV)(-(my_sviv(svlo))) : my_svuv(svlo);
         XSRETURN_IV(moebius(n));
       }
     } else if (items == 2 && lostatus == 1 && histatus == 1) {

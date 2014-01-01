@@ -236,6 +236,7 @@ sub _validate_positive_integer {
   croak "Parameter '$n' must be <= $max" if defined $max && $n > $max;
 
   $_[0] = Math::BigInt->new("$_[0]") unless ref($_[0]) eq 'Math::BigInt';
+  croak "Parameter '$_[0]' must be a positive integer" unless $_[0]->is_int();
   if ($_[0]->bacmp(''.~0) <= 0 && $] >= 5.008) {
     $_[0] = int($_[0]->bstr);
   } else {
