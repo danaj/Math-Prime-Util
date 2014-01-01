@@ -42,7 +42,7 @@ WriteMakefile1(
     PREREQ_PM    => {
                       'Exporter'         => '5.562',
                       'XSLoader'         => '0.01',
-                      'Carp'             => 0,
+                      'Carp'             => '1.17',
                       'Tie::Array'       => 0,
                       'base'             => 0,
                       'Config'           => 0,

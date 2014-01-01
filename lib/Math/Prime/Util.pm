@@ -237,7 +237,7 @@ sub _validate_positive_integer {
 
   $_[0] = Math::BigInt->new("$_[0]") unless ref($_[0]) eq 'Math::BigInt';
   croak "Parameter '$_[0]' must be a positive integer" unless $_[0]->is_int();
-  if ($_[0]->bacmp(''.~0) <= 0 && $] >= 5.008) {
+  if ($_[0]->bacmp(''.~0) <= 0) {
     $_[0] = int($_[0]->bstr);
   } else {
     $_[0]->upgrade(undef) if $_[0]->upgrade();  # Stop BigFloat upgrade

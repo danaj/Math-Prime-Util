@@ -5,10 +5,13 @@
 #include "perl.h"
 #include "XSUB.h"
 #include "multicall.h"  /* only works in 5.6 and newer */
-/* We're not using anything for which we need ppport.h */
-#ifndef XSRETURN_UV   /* Er, almost.  Fix 21086 from Sep 2003 */
+/* Perhaps we should use ppport.h */
+#ifndef XSRETURN_UV   /* Fix 21086 from Sep 2003 */
   #define XST_mUV(i,v)  (ST(i) = sv_2mortal(newSVuv(v))  )
   #define XSRETURN_UV(v) STMT_START { XST_mUV(0,v);  XSRETURN(1); } STMT_END
+#endif
+#if PERL_REVISION <= 5 && (PERL_VERSION < 7 || (PERL_VERSION == 7 && PERL_SUBVERSION <= 2))
+  #define SvPV_nomg SvPV
 #endif
 #include "ptypes.h"
 #include "cache.h"

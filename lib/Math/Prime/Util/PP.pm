@@ -77,8 +77,9 @@ sub _validate_num {
   my($n, $min, $max) = @_;
   croak "Parameter must be defined" if !defined $n;
   return 0 if ref($n);
+  croak "Parameter must be a positive integer" if $n eq '';
   croak "Parameter '$n' must be a positive integer"
-          if $n eq '' || ($n =~ tr/0123456789//c && $n !~ /^\+\d+/);
+          if $n =~ tr/0123456789//c && $n !~ /^\+\d+/;
   croak "Parameter '$n' must be >= $min" if defined $min && $n < $min;
   croak "Parameter '$n' must be <= $max" if defined $max && $n > $max;
   substr($_[0],0,1,'') if substr($n,0,1) eq '+';
@@ -94,7 +95,7 @@ sub _validate_positive_integer {
   croak "Parameter '$n' must be >= $min" if defined $min && $n < $min;
   croak "Parameter '$n' must be <= $max" if defined $max && $n > $max;
   $_[0] = Math::BigInt->new("$_[0]") unless ref($_[0]) eq 'Math::BigInt';
-  if ($_[0]->bacmp(''.~0) <= 0 && $] >= 5.008) {
+  if ($_[0]->bacmp(''.~0) <= 0) {
     $_[0] = int($_[0]->bstr);
   } else {
     # Stop BigFloat upgrade
