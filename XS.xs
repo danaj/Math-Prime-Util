@@ -602,84 +602,51 @@ _XS_ExponentialIntegral(IN SV* x)
 
 void
 euler_phi(IN SV* svlo, ...)
+  ALIAS:
+    moebius = 1
+  PREINIT:
+    int lostatus, histatus;
   PPCODE:
-    if (items == 1) {
-      int lostatus = _validate_int(aTHX_ svlo, 1);
-      if (lostatus == -1) {      /*  I like SAGE's decision that    */
-        XSRETURN_UV(0);          /*  totient(n) = 0 if n <= 0       */
-      } else if (lostatus == 1) {
-        UV lo = my_svuv(svlo);
-        XSRETURN_UV(totient(lo));
+    lostatus = _validate_int(aTHX_ svlo, 2);
+    histatus = (items == 1 || _validate_int(aTHX_ ST(1), 0));
+    if (items == 1 && lostatus != 0) {
+      /* input is a single value and in UV/IV range */
+      if (ix == 0) {
+        UV n = (lostatus == -1) ? 0 : my_svuv(svlo);
+        XSRETURN_UV(totient(n));
       } else {
-        _vcallsubn(aTHX_ G_SCALAR, "_generic_euler_phi", 1);
-        return; /* skip implicit PUTBACK */
+        IV n = (lostatus == -1) ? -(my_sviv(svlo)) : my_svuv(svlo);
+        XSRETURN_IV(moebius(n));
       }
-    } else if (items == 2) {
-      SV* svhi = ST(1);
-      int lostatus = _validate_int(aTHX_ svlo, 1);
-      int histatus = _validate_int(aTHX_ svhi, 1);
-      if (lostatus == 1 && histatus == 1) {
-        UV lo = my_svuv(svlo);
-        UV hi = my_svuv(svhi);
-        if (hi < lo) XSRETURN_EMPTY;
-        if (lo < 2) {
-          if (lo <= 0           ) XPUSHs(sv_2mortal(newSVuv(0)));
-          if (lo <= 1 && hi >= 1) XPUSHs(sv_2mortal(newSVuv(1)));
-          lo = 2;
-        }
-        if (hi >= lo) {
-          UV i;
+    } else if (items == 2 && lostatus == 1 && histatus == 1) {
+      /* input is a range and both lo and hi are non-negative */
+      UV lo = my_svuv(svlo);
+      UV hi = my_svuv(ST(1));
+      if (lo <= hi) {
+        UV i;
+        if (ix == 0) {
           UV* totients = _totient_range(lo, hi);
-          /* Extend the stack to handle how many items we'll return */
           EXTEND(SP, hi-lo+1);
           for (i = lo; i <= hi; i++)
             PUSHs(sv_2mortal(newSVuv(totients[i-lo])));
           Safefree(totients);
-        }
-      } else {
-        _vcallsubn(aTHX_ G_ARRAY,"_generic_euler_phi",items);
-        return; /* skip implicit PUTBACK */
-      }
-    } else {
-      croak("Usage: euler_phi(n) or euler_phi(1o,hi)");
-    }
-
-void
-moebius(IN SV* svlo, ...)
-  PPCODE:
-    if (items == 1) {
-      int nstatus = _validate_int(aTHX_ svlo, 0);
-      if (nstatus == 1) {
-        UV n = my_svuv(svlo);
-        XSRETURN_IV(moebius(n));
-      } else {
-        _vcallsubn(aTHX_ G_SCALAR, "_generic_moebius",1);
-        return; /* skip implicit PUTBACK */
-      }
-    } else if (items == 2) {
-      SV* svhi = ST(1);
-      int lostatus = _validate_int(aTHX_ svlo, 0);
-      int histatus = _validate_int(aTHX_ svhi, 0);
-      if (lostatus == 1 && histatus == 1) {
-        UV lo = my_svuv(svlo);
-        UV hi = my_svuv(svhi);
-        if (hi < lo) {
-          XSRETURN_EMPTY;
         } else {
-          UV i;
           signed char* mu = _moebius_range(lo, hi);
-          MPUassert( mu != 0, "_moebius_range returned 0" );
           EXTEND(SP, hi-lo+1);
           for (i = lo; i <= hi; i++)
             PUSHs(sv_2mortal(newSViv(mu[i-lo])));
           Safefree(mu);
         }
-      } else {
-        _vcallsubn(aTHX_ G_ARRAY, "_generic_moebius",items);
-        return; /* skip implicit PUTBACK */
       }
     } else {
-      croak("Usage: moebius(n) or moebius(1o,hi)");
+      /* Whatever we didn't handle above */
+      U32 gimme_v = GIMME_V;
+      switch (ix) {
+        case 0:  _vcallsubn(aTHX_ gimme_v, "_generic_euler_phi", items); break;
+        case 1:
+        default: _vcallsubn(aTHX_ gimme_v, "_generic_moebius", items);   break;
+      }
+      return;
     }
 
 void

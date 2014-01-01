@@ -2575,35 +2575,13 @@ By default all functions support bignums.  For performance, you should
 install and use L<Math::BigInt::GMP> or L<Math::BigInt::Pari>, and
 L<Math::Prime::Util::GMP>.
 
-Some of the functions, including:
-
-  factor
-  factor_exp
-  is_pseudoprime
-  is_strong_pseudoprime
-  nth_prime
-  moebius
-  mertens
-  euler_phi
-  chebyshev_theta
-  chebyshev_psi
-  is_prime
-  is_prob_prime
-  next_prime
-  prev_prime
-
-work very fast (under 1 microsecond) on small inputs, but the wrappers for
-input validation and bigint support take more time than the function itself.
-Using the flag '-bigint', e.g.:
+Using the flag C<-bigint>, e.g.
 
   use Math::Prime::Util qw(-bigint);
 
-will turn off bigint support for those functions.  Those functions will then
-go directly to the XS versions, which will speed up very small inputs a B<lot>.
-This is useful if you're using the functions in a loop, but since the difference
-is less than a millisecond, it's really not important in general.  The last
-five functions have shortcuts by default so will only skip validation.
-
+will turn off bigint support for some functions.  This turns off input
+validation and some complicated conversions.  It is not recommended and
+will likely go away in future version.
 
 If you are using bigints, here are some performance suggestions:
 
@@ -3397,7 +3375,7 @@ C<$_> set to each divisor in sorted order.  Also see L</divisor_sum>.
   $sum += moebius($_) for (1..200); say "Mertens(200) = $sum";
 
 Returns μ(n), the Möbius function (also called the Moebius, Mobius, or
-MoebiusMu function) for a non-negative integer input.  This function is 1 if
+MoebiusMu function) for an integer input.  This function is 1 if
 C<n = 1>, 0 if C<n> is not square free (i.e. C<n> has a repeated factor),
 and C<-1^t> if C<n> is a product of C<t> distinct primes.  This is an
 important function in prime number theory.  Like SAGE, we define
@@ -3420,9 +3398,8 @@ for large inputs.  For example, computing Mertens(100M) takes:
 
    time    approx mem
      0.4s      0.1MB   mertens(100_000_000)
-    74.8s   7000MB     List::Util::sum(moebius(1,100_000_000))
-    88.5s      0MB     $sum += moebius($_) for 1..100_000_000   [-nobigint]
-   181.8s      0MB     $sum += moebius($_) for 1..100_000_000
+     5.5s   7000MB     List::Util::sum(moebius(1,100_000_000))
+    91.2s      0MB     $sum += moebius($_) for 1..100_000_000
 
 The summation of individual terms via factoring is quite expensive in time,
 though uses O(1) space.  This function will generate the equivalent output
