@@ -267,8 +267,9 @@ UV legendre_phi(UV x, UV a) {
     UV p  = _XS_nth_prime(c);
     UV pa = _XS_nth_prime(a);
     for (i = c+1; i <= a; i++) {
+      UV xp;
       p = _XS_next_prime(p);
-      UV xp = x/p;
+      xp = x/p;
       if (xp < p) {
         while (x < pa) {
           a--;

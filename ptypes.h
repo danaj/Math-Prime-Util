@@ -91,6 +91,7 @@ typedef __int8 int8_t;
     #define HAVE_STD_U64 1
   #endif
 #elif defined(_MSC_VER)   /* We set up the types earlier */
+ #undef HAVE_STD_U64
  #define HAVE_STD_U64 1
 #endif
 
