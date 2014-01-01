@@ -60,8 +60,6 @@ sub import {
 sub _import_nobigint {
   $_Config{'nobigint'} = 1;
   return unless $_Config{'xs'};
-  undef *factor_exp;      *factor_exp        = \&_XS_factor_exp;
-  undef *divisors;        *divisors          = \&_XS_divisors;
  #undef *prime_count;     *prime_count       = \&_XS_prime_count;
   undef *nth_prime;       *nth_prime         = \&_XS_nth_prime;
   undef *is_pseudoprime;  *is_pseudoprime    = \&_XS_is_pseudoprime;
@@ -110,6 +108,8 @@ BEGIN {
     *znorder       = \&Math::Prime::Util::_generic_znorder;
     *znprimroot    = \&Math::Prime::Util::_generic_znprimroot;
     *factor        = \&Math::Prime::Util::_generic_factor;
+    *factor_exp    = \&Math::Prime::Util::_generic_factor_exp;
+    *divisors      = \&Math::Prime::Util::_generic_divisors;
     *forprimes     = sub (&$;$) { _generic_forprimes(@_); }; ## no critic qw(ProhibitSubroutinePrototypes)
     *fordivisors   = sub (&$) { _generic_fordivisors(@_); }; ## no critic qw(ProhibitSubroutinePrototypes)
     *forcomposites = sub (&$) { _generic_forcomposites(@_); }; ## no critic qw(ProhibitSubroutinePrototypes)
@@ -129,6 +129,10 @@ BEGIN {
     *pminus1_factor = \&Math::Prime::Util::PP::pminus1_factor;
     *pplus1_factor  = \&Math::Prime::Util::PP::pminus1_factor;   # TODO: implement PP p+1.
   };
+
+  # aliases for deprecated names.  Will eventually be removed.
+  *all_factors = \&divisors;
+  *miller_rabin = \&is_strong_pseudoprime;
 
   $_Config{'nobigint'} = 0;
   $_Config{'gmp'} = 0;
@@ -1231,37 +1235,6 @@ sub consecutive_integer_lcm {
   return $pn;
 }
 
-sub divisors {
-  my $n = shift;
-
-  _validate_num($n) || _validate_positive_integer($n);
-
-  return _XS_divisors($n) if $n <= $_XS_MAXVAL;
-
-  # In scalar context, returns sigma_0(n).  Very fast.
-  return divisor_sum($n,0) unless wantarray;
-  return ($n == 0) ? (0,1) : (1)  if $n <= 1;
-
-  my %all_factors;
-  foreach my $f1 (factor($n)) {
-    next if $f1 >= $n;
-    my $big_f1 = Math::BigInt->new("$f1");
-    my @to_add = map { ($_ <= ~0) ? int($_->bstr) : $_ }
-                 grep { $_ < $n }
-                 map { $big_f1 * $_ }
-                 keys %all_factors;
-    undef @all_factors{ $f1, @to_add };
-  }
-  # Add 1 and n
-  undef $all_factors{1};
-  undef $all_factors{$n};
-  my @divisors = sort {$a<=>$b} keys %all_factors;
-  return @divisors;
-}
-
-# alias the old "all_factors" to the new name: divisors
-*all_factors = \&divisors;
-
 # A008683 Moebius function mu(n)
 # A030059, A013929, A030229, A002321, A005117, A013929 all relate.
 sub _generic_moebius {
@@ -1326,7 +1299,7 @@ sub jordan_totient {
   _validate_num($n) || _validate_positive_integer($n);
   return 1 if $n <= 1;
 
-  my @pe = ($n <= $_XS_MAXVAL) ? _XS_factor_exp($n) : factor_exp($n);
+  my @pe = factor_exp($n);
 
   my $totient = $n - $n + 1;
 
@@ -1394,7 +1367,7 @@ sub _generic_forcomposites(&$;$) { ## no critic qw(ProhibitSubroutinePrototypes)
 sub _generic_fordivisors (&$) {    ## no critic qw(ProhibitSubroutinePrototypes)
   my($sub, $n) = @_;
   _validate_num($n) || _validate_positive_integer($n);
-  my @divisors = ($n <= $_XS_MAXVAL) ? _XS_divisors($n) : divisors($n);
+  my @divisors = divisors($n);
   {
     my $pp;
     local *_ = \$pp;
@@ -1436,7 +1409,7 @@ sub _generic_exp_mangoldt {
   return 2 if ($n & ($n-1)) == 0;     # n power of 2
   return 1 unless $n & 1;             # even n can't be p^m
 
-  my @pe = ($n <= $_XS_MAXVAL) ? _XS_factor_exp($n) : factor_exp($n);
+  my @pe = factor_exp($n);
   return 1 if scalar @pe > 1;
   return $pe[0]->[0];
 }
@@ -1510,7 +1483,7 @@ sub _generic_carmichael_lambda {
   # lambda(n) = phi(n)/2 for powers of two greater than 4
   return euler_phi($n)/2 if ($n & ($n-1)) == 0;
 
-  my @pe = ($n <= $_XS_MAXVAL) ? _XS_factor_exp($n) : factor_exp($n);
+  my @pe = factor_exp($n);
   $pe[0]->[1]-- if $pe[0]->[0] == 2 && $pe[0]->[1] > 2;
 
   my $lcm = Math::BigInt::blcm(
@@ -1539,7 +1512,7 @@ sub _generic_znorder {
 
   # This is easy and usually fast, but can bog down with too many divisors.
   if ($lambda <= $_XS_MAXVAL) {
-    foreach my $k (_XS_divisors($lambda)) {
+    foreach my $k (divisors($lambda)) {
       return $k if $a->copy->bmodpow("$k", $n)->is_one;
     }
     return;
@@ -1738,8 +1711,6 @@ sub _generic_factor {
   my($n) = @_;
   _validate_num($n) || _validate_positive_integer($n);
 
-  return _XS_factor($n) if $n <= $_XS_MAXVAL;
-
   if ($_HAVE_GMP) {
     my @factors;
     if ($n != 1) {
@@ -1754,11 +1725,9 @@ sub _generic_factor {
   return Math::Prime::Util::PP::factor($n);
 }
 
-sub factor_exp {
+sub _generic_factor_exp {
   my($n) = @_;
   _validate_num($n) || _validate_positive_integer($n);
-
-  return _XS_factor_exp($n) if ref($n) ne 'Math::BigInt' && $n <= $_XS_MAXVAL;
 
   my %exponents;
   my @factors = grep { !$exponents{$_}++ } factor($n);
@@ -1766,30 +1735,31 @@ sub factor_exp {
   return (map { [$_, $exponents{$_}] } @factors);
 }
 
-#sub trial_factor {
-#  my($n, $limit) = @_;
-#  _validate_num($n) || _validate_positive_integer($n);
-#  $limit = 2147483647 unless defined $limit;
-#  _validate_num($limit) || _validate_positive_integer($limit);
-#  return _XS_trial_factor($n, $limit) if $n <= $_XS_MAXVAL;
-#  if ($_HAVE_GMP) {
-#    my @factors;
-#    while (1) {
-#      last if $n <= 1 || is_prob_prime($n);
-#      my @f = sort { $a <=> $b }
-#              Math::Prime::Util::GMP::trial_factor($n, $limit);
-#      pop(@f);  # Remove remainder
-#      last unless scalar @f > 0;
-#      foreach my $f (@f) {
-#        push @factors, $f;
-#        $n /= $f;
-#      }
-#    }
-#    push @factors, $n if $n > 1;
-#    return @factors;
-#  }
-#  return Math::Prime::Util::PP::trial_factor($n, $limit);
-#}
+sub _generic_divisors {
+  my($n) = @_;
+  _validate_num($n) || _validate_positive_integer($n);
+
+  # In scalar context, returns sigma_0(n).  Very fast.
+  return divisor_sum($n,0) unless wantarray;
+  return ($n == 0) ? (0,1) : (1)  if $n <= 1;
+
+  my %all_factors;
+  foreach my $f1 (factor($n)) {
+    next if $f1 >= $n;
+    my $big_f1 = Math::BigInt->new("$f1");
+    my @to_add = map { ($_ <= ~0) ? int($_->bstr) : $_ }
+                 grep { $_ < $n }
+                 map { $big_f1 * $_ }
+                 keys %all_factors;
+    undef @all_factors{ $f1, @to_add };
+  }
+  # Add 1 and n
+  undef $all_factors{1};
+  undef $all_factors{$n};
+  my @divisors = sort {$a<=>$b} keys %all_factors;
+  return @divisors;
+}
+
 
 sub is_pseudoprime {
   my($n, $a) = @_;
@@ -1869,11 +1839,6 @@ sub is_frobenius_underwood_pseudoprime {
     if $_HAVE_GMP
     && defined &Math::Prime::Util::GMP::is_frobenius_underwood_pseudoprime;
   return Math::Prime::Util::PP::is_frobenius_underwood_pseudoprime($n);
-}
-
-sub miller_rabin {
-  #warn "miller_rabin() is deprecated. Use is_strong_pseudoprime instead.";
-  return is_strong_pseudoprime(@_);
 }
 
 sub lucas_sequence {

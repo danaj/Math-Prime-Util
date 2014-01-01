@@ -278,41 +278,6 @@ sieve_primes(IN UV low, IN UV high)
     RETVAL
 
 void
-_XS_factor_exp(IN UV n)
-  PREINIT:
-    UV factors[MPU_MAX_FACTORS+1];
-    UV exponents[MPU_MAX_FACTORS+1];
-    int i, nfactors;
-  PPCODE:
-    nfactors = factor_exp(n, factors, exponents);
-    if (GIMME_V == G_SCALAR) {
-      PUSHs(sv_2mortal(newSVuv(nfactors)));
-    } else {
-      /* Return ( [p1,e1], [p2,e2], [p3,e3], ... ) */
-      if (n == 1)  XSRETURN_EMPTY;
-      EXTEND(SP, nfactors);
-      for (i = 0; i < nfactors; i++) {
-        AV* av = newAV();
-        av_push(av, newSVuv(factors[i]));
-        av_push(av, newSVuv(exponents[i]));
-        PUSHs( sv_2mortal(newRV_noinc( (SV*) av )) );
-      }
-    }
-
-void
-_XS_divisors(IN UV n)
-  PPCODE:
-    if (GIMME_V == G_SCALAR) {
-      PUSHs(sv_2mortal(newSVuv( divisor_sum(n, 0) )));
-    } else {
-      UV i, ndivisors;
-      UV* divs = _divisor_list(n, &ndivisors);
-      for (i = 0; i < ndivisors; i++)
-        XPUSHs(sv_2mortal(newSVuv(divs[i])));
-      Safefree(divs);
-    }
-
-void
 trial_factor(IN UV n, ...)
   ALIAS:
     fermat_factor = 1
@@ -478,25 +443,63 @@ next_prime(IN SV* svn)
 
 void
 factor(IN SV* svn)
+  ALIAS:
+    factor_exp = 1
+    divisors = 2
+  PREINIT:
+    U32 gimme_v;
+    int status, i, nfactors;
   PPCODE:
-    U32 gimme_v =  GIMME_V;
-    int status = _validate_int(aTHX_ svn, 0);
+    gimme_v = GIMME_V;
+    status = _validate_int(aTHX_ svn, 0);
     if (status == 1) {
       UV factors[MPU_MAX_FACTORS+1];
+      UV exponents[MPU_MAX_FACTORS+1];
       UV n = my_svuv(svn);
-      int i, nfactors = factor(n, factors);
       if (gimme_v == G_SCALAR) {
-        PUSHs(sv_2mortal(newSVuv(nfactors)));
+        switch (ix) {
+          case 0:  nfactors = factor(n, factors);        break;
+          case 1:  nfactors = factor_exp(n, factors, 0); break;
+          default: nfactors = divisor_sum(n, 0);         break;
+        }
+        PUSHs(sv_2mortal(newSVuv( nfactors )));
       } else if (gimme_v == G_ARRAY) {
-        EXTEND(SP, nfactors);
-        for (i = 0; i < nfactors; i++) {
-          PUSHs(sv_2mortal(newSVuv( factors[i] )));
+        switch (ix) {
+          case 0:  nfactors = factor(n, factors);
+                   EXTEND(SP, nfactors);
+                   for (i = 0; i < nfactors; i++)
+                     PUSHs(sv_2mortal(newSVuv( factors[i] )));
+                   break;
+          case 1:  nfactors = factor_exp(n, factors, exponents);
+                   /* if (n == 1)  XSRETURN_EMPTY; */
+                   EXTEND(SP, nfactors);
+                   for (i = 0; i < nfactors; i++) {
+                     AV* av = newAV();
+                     av_push(av, newSVuv(factors[i]));
+                     av_push(av, newSVuv(exponents[i]));
+                     PUSHs( sv_2mortal(newRV_noinc( (SV*) av )) );
+                   }
+                   break;
+          default: {
+                     UV ndivisors;
+                     UV* divs = _divisor_list(n, &ndivisors);
+                     EXTEND(SP, ndivisors);
+                     for (i = 0; i < ndivisors; i++)
+                       PUSHs(sv_2mortal(newSVuv( divs[i] )));
+                     Safefree(divs);
+                   }
+                   break;
         }
       }
     } else {
-      _vcallsubn(aTHX_ gimme_v, "_generic_factor", 1);
+      switch (ix) {
+        case 0:  _vcallsubn(aTHX_ gimme_v, "_generic_factor", 1);     break;
+        case 1:  _vcallsubn(aTHX_ gimme_v, "_generic_factor_exp", 1); break;
+        default: _vcallsubn(aTHX_ gimme_v, "_generic_divisors", 1);   break;
+      }
       return; /* skip implicit PUTBACK */
     }
+
 
 void
 divisor_sum(IN SV* svn, ...)
