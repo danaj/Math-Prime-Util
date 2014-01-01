@@ -616,11 +616,12 @@ int _XS_is_almost_extra_strong_lucas_pseudoprime(UV n, UV increment)
     W = submod(  mont_prod64( montP, montP, n, npi),  mont2, n);
     V = montP;
     while (b--) {
+      UV T = submod(  mont_prod64(V, W, n, npi),  montP, n);
       if ( (d >> b) & UVCONST(1) ) {
-        V = submod(  mont_prod64(V, W, n, npi),  montP, n);
+        V = T;
         W = submod(  mont_prod64(W, W, n, npi),  mont2, n);
       } else {
-        W = submod(  mont_prod64(V, W, n, npi),  montP, n);
+        W = T;
         V = submod(  mont_prod64(V, V, n, npi),  mont2, n);
       }
     }

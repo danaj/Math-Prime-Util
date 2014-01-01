@@ -1028,13 +1028,13 @@ static void squfof_unit(UV n, mult_t* mult_save, UV* f)
   }
 }
 
-#define NSQUFOF_MULT (sizeof(multipliers)/sizeof(multipliers[0]))
+static const UV squfof_multipliers[] =
+  { 3*5*7*11, 3*5*7, 3*5*11, 3*5, 3*7*11, 3*7, 5*7*11, 5*7,
+    3*11,     3,     5*11,   5,   7*11,   7,   11,     1     };
+#define NSQUFOF_MULT (sizeof(squfof_multipliers)/sizeof(squfof_multipliers[0]))
 
 int racing_squfof_factor(UV n, UV *factors, UV rounds)
 {
-  const UV multipliers[] = {
-    3*5*7*11, 3*5*7, 3*5*11, 3*5, 3*7*11, 3*7, 5*7*11, 5*7,
-    3*11,     3,     5*11,   5,   7*11,   7,   11,     1   };
   const UV big2 = UV_MAX >> 2;
   mult_t mult_save[NSQUFOF_MULT];
   int still_racing;
@@ -1050,7 +1050,7 @@ int racing_squfof_factor(UV n, UV *factors, UV rounds)
   }
 
   for (i = 0; i < NSQUFOF_MULT; i++) {
-    mult = multipliers[i];
+    mult = squfof_multipliers[i];
     nn64 = n * mult;
     mult_save[i].mult = mult;
     if ((big2 / mult) < n) {
@@ -1083,11 +1083,11 @@ int racing_squfof_factor(UV n, UV *factors, UV rounds)
     for (i = 0; i < NSQUFOF_MULT; i++) {
       if (!mult_save[i].valid)
         continue;
-      nn64 = n * (UV)multipliers[i];
+      nn64 = n * squfof_multipliers[i];
       squfof_unit(nn64, &mult_save[i], &f64);
       if (f64 > 1) {
-        if (f64 != multipliers[i]) {
-          f64 /= gcd_ui(f64, multipliers[i]);
+        if (f64 != squfof_multipliers[i]) {
+          f64 /= gcd_ui(f64, squfof_multipliers[i]);
           if (f64 != 1) {
             factors[0] = f64;
             factors[1] = n / f64;

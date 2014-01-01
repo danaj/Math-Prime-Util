@@ -676,6 +676,11 @@ _validate_num(SV* svn, ...)
     SV* sv1;
     SV* sv2;
   CODE:
+    /* Internal function.  Emulate the PP version of this:
+     *   $is_valid = _validate_num( $n [, $min [, $max] ] )
+     * Return 0 if we're befuddled by the input.
+     * Otherwise croak if n isn't >= 0 and integer, n < min, or n > max.
+     */
     RETVAL = 0;
     if (_validate_int(aTHX_ svn, 0)) {
       if (SvROK(svn)) {  /* Convert small Math::BigInt object into scalar */
@@ -805,7 +810,6 @@ forcomposites (SV* block, IN SV* svbeg, IN SV* svend = 0)
 
     if (cv == Nullcv)
       croak("Not a subroutine reference");
-    if (items <= 1) return;
 
     if (!_validate_int(aTHX_ svbeg, 0) || (items >= 3 && !_validate_int(aTHX_ svend,0))) {
       _vcallsubn(aTHX_ G_VOID|G_DISCARD, "_generic_forcomposites",items);
@@ -886,7 +890,6 @@ fordivisors (SV* block, IN SV* svn)
 
     if (cv == Nullcv)
       croak("Not a subroutine reference");
-    if (items <= 1) return;
 
     if (!_validate_int(aTHX_ svn, 0)) {
       _vcallsubn(aTHX_ G_VOID|G_DISCARD, "_generic_fordivisors",2);
