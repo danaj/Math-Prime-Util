@@ -756,7 +756,7 @@ forprimes (SV* block, IN SV* svbeg, IN SV* svend = 0)
       end = my_svuv(svend);
     }
     if (beg > end)
-      return;
+      XSRETURN(0);
 
     cv = sv_2cv(block, &stash, &gv, 0);
     if (cv == Nullcv)

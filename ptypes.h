@@ -75,6 +75,10 @@ typedef __int8 int8_t;
 #endif
 
 
+/* See:
+ *   http://www.nntp.perl.org/group/perl.perl5.porters/2013/09/msg207524.html
+ * for some discussion.
+ */
 #ifdef HAS_QUAD
   #define BITS_PER_WORD  64
   #define UVCONST(x)     U64_CONST(x)

@@ -17,27 +17,15 @@ BEGIN {
 # Most of these are pretty simple.  Also, you really should look at the C
 # code for more detailed comments, including references to papers.
 
-my $_uv_size;
 BEGIN {
   use Config;
-  $_uv_size =
-   (   (defined $Config{'use64bitint'} && $Config{'use64bitint'} eq 'define')
-    || (defined $Config{'use64bitall'} && $Config{'use64bitall'} eq 'define')
-    || (defined $Config{'longsize'} && $Config{'longsize'} >= 8)
-   )
-   ? 64
-   : 32;
+  use constant OLD_PERL_VERSION =>  ($] < 5.008);
+  use constant MPU_MAXBITS      =>  8 * $Config{uvsize};
+  use constant MPU_64BIT        =>  ($Config{uvsize} == 8);
+  use constant MPU_32BIT        =>  ($Config{uvsize} == 4);
+  use constant MPU_HALFWORD     =>  ($Config{uvsize} == 4) ? 65536 : ($] < 5.008) ? 33554432 : 4294967296;
   no Config;
 }
-sub _PP_prime_maxbits { $_uv_size }
-
-# If $n < $_half_word, then $n*$n will be exact.
-my $_half_word = (~0 == 18446744073709551615) ? 4294967296 :    # 64-bit
-                 (~0 ==           4294967295) ?      65536 :    # 32-bit
-                 (~0 ==                   -1) ?   1000**10 :    # bignum
-                                                         0 ;    # No idea
-# With Perl 5.6.2, (114438327*114438327) % 122164969  !=  75730585
-$_half_word >>= 7 if $_uv_size == 64 && $] < 5.008;
 
 # Infinity in Perl is rather O/S specific.
 our $_Infinity = 0+'inf';
@@ -399,7 +387,7 @@ sub next_prime {
 
   if (ref($n) ne 'Math::BigInt' && $n >= 4294967291) {
     $n = Math::BigInt->new(''.$_[0])
-       if _PP_prime_maxbits == 32 || $n >= 18446744073709551557;
+       if MPU_32BIT || $n >= 18446744073709551557;
   }
 
   # Be careful trying to do:
@@ -790,7 +778,7 @@ sub nth_prime {
 
   return $_primes_small[$n] if $n <= $#_primes_small;
 
-  my $max = (_PP_prime_maxbits == 32) ? 203280221 : 425656284035217743;
+  my $max = (MPU_32BIT) ? 203280221 : 425656284035217743;
   if ($n > $max && ref($n) ne 'Math::BigFloat') {
     do { require Math::BigFloat; Math::BigFloat->import(); }
       if !defined $Math::BigFloat::VERSION;
@@ -835,7 +823,7 @@ sub nth_prime {
 
 sub _mulmod {
   my($x, $y, $n) = @_;
-  return (($x * $y) % $n) if ($x|$y) < $_half_word;
+  return (($x * $y) % $n) if ($x|$y) < MPU_HALFWORD;
   my $r = 0;
   $x %= $n if $x >= $n;
   $y %= $n if $y >= $n;
@@ -874,7 +862,7 @@ sub _powmod {
   my $t = 1;
 
   $n %= $m if $n >= $m;
-  if  ($m < $_half_word) {
+  if ($m < MPU_HALFWORD) {
     while ($power) {
       $t = ($t * $n) % $m if ($power & 1);
       $power >>= 1;
@@ -996,7 +984,7 @@ sub miller_rabin {
      $d >>= 1;
    }
 
-   if ($n < $_half_word) {
+   if ($n < MPU_HALFWORD) {
     foreach my $ma (@bases) {
       my $x = _native_powmod($ma, $d, $n);
       next if ($x == 1) || ($x == ($n-1));
@@ -1013,7 +1001,7 @@ sub miller_rabin {
       next if ($x == 1) || ($x == ($n-1));
 
       foreach my $r (1 .. $s-1) {
-        $x = ($x < $_half_word) ? ($x*$x) % $n : _mulmod($x, $x, $n);
+        $x = ($x < MPU_HALFWORD) ? ($x*$x) % $n : _mulmod($x, $x, $n);
         return 0 if $x == 1;
         last if $x == $n-1;
       }
@@ -1484,7 +1472,7 @@ sub is_aks_prime {
                     ->bsqrt->bmul($log2n)->bfloor->bstr);
 
   $_poly_bignum = 1;
-  if ( $n < ($_half_word-1) ) {
+  if ( $n < (MPU_HALFWORD-1) ) {
     $_poly_bignum = 0;
     $n = int($n->bstr) if ref($n) eq 'Math::BigInt';
   }
@@ -1691,7 +1679,7 @@ sub prho_factor {
       }
     }
 
-  } elsif ($n < $_half_word) {
+  } elsif ($n < MPU_HALFWORD) {
 
     for my $i (1 .. $rounds) {
       $U = ($U * $U + $pa) % $n;
@@ -1780,7 +1768,7 @@ sub pbrent_factor {
       return _found_factor($f, $n, "pbrent", @factors);
     }
 
-  } elsif ($n < $_half_word) {
+  } elsif ($n < MPU_HALFWORD) {
 
     for my $i (1 .. $rounds) {
       $Xi = ($Xi * $Xi + $pa) % $n;
@@ -1987,7 +1975,7 @@ sub holf_factor {
     for my $i ($startrounds .. $rounds) {
       my $s = int(sqrt($n * $i));
       $s++ if ($s * $s) != ($n * $i);
-      my $m = ($s < $_half_word) ? ($s*$s) % $n : _mulmod($s, $s, $n);
+      my $m = ($s < MPU_HALFWORD) ? ($s*$s) % $n : _mulmod($s, $s, $n);
       # Check for perfect square
       my $mc = $m & 31;
       next unless $mc==0||$mc==1||$mc==4||$mc==9||$mc==16||$mc==17||$mc==25;

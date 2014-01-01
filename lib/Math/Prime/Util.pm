@@ -76,6 +76,17 @@ sub _import_nobigint {
 
 BEGIN {
 
+  use Config;
+  use constant OLD_PERL_VERSION =>  ($] < 5.008);
+  use constant MPU_MAXBITS      =>  8 * $Config{uvsize};
+  use constant MPU_64BIT        =>  ($Config{uvsize} == 8);
+  use constant MPU_32BIT        =>  ($Config{uvsize} == 4);
+  use constant MPU_MAXPARAM     =>  ($Config{uvsize} == 4) ? 4294967295 : 18446744073709551615;
+  use constant MPU_MAXDIGITS    =>  ($Config{uvsize} == 4) ? 10 : 20;
+  use constant MPU_MAXPRIME     =>  ($Config{uvsize} == 4) ? 4294967291 : 18446744073709551557;
+  use constant MPU_MAXPRIMEIDX  =>  ($Config{uvsize} == 4) ?  203280221 :   425656284035217743;
+  no Config;
+
   # Load PP code.  Nothing exported.
   require Math::Prime::Util::PP;  Math::Prime::Util::PP->import();
 
@@ -84,14 +95,14 @@ BEGIN {
     require XSLoader;
     XSLoader::load(__PACKAGE__, $Math::Prime::Util::VERSION);
     prime_precalc(0);
-    $_Config{'xs'} = 1;
     $_Config{'maxbits'} = _XS_prime_maxbits();
+    $_Config{'xs'} = 1;
     1;
   } or do {
     #carp "Using Pure Perl implementation: $@";
 
     $_Config{'xs'} = 0;
-    $_Config{'maxbits'} = Math::Prime::Util::PP::_PP_prime_maxbits();
+    $_Config{'maxbits'} = MPU_MAXBITS;
 
     *_validate_num = \&Math::Prime::Util::PP::_validate_num;
     *is_prob_prime = \&Math::Prime::Util::_generic_is_prob_prime;
@@ -149,25 +160,21 @@ END {
   _prime_memfreeall;
 }
 
-if ($_Config{'maxbits'} == 32) {
-  $_Config{'maxparam'}    = 4294967295;
-  $_Config{'maxdigits'}   = 10;
-  $_Config{'maxprime'}    = 4294967291;
-  $_Config{'maxprimeidx'} = 203280221;
-} else {
-  $_Config{'maxparam'}    = 18446744073709551615;
-  $_Config{'maxdigits'}   = 20;
-  $_Config{'maxprime'}    = 18446744073709551557;
-  $_Config{'maxprimeidx'} = 425656284035217743;
-}
-$_Config{'assume_rh'} = 0;
-$_Config{'verbose'} = 0;
-$_Config{'irand'} = undef;
+croak "Perl and XS don't agree on bit size"
+      if MPU_MAXBITS != _XS_prime_maxbits();
+
+$_Config{'maxparam'}    = MPU_MAXPARAM;
+$_Config{'maxdigits'}   = MPU_MAXDIGITS;
+$_Config{'maxprime'}    = MPU_MAXPRIME;
+$_Config{'maxprimeidx'} = MPU_MAXPRIMEIDX;
+$_Config{'assume_rh'}   = 0;
+$_Config{'verbose'}     = 0;
+$_Config{'irand'}       = undef;
 
 # used for code like:
 #    return _XS_foo($n)  if $n <= $_XS_MAXVAL
 # which builds into one scalar whether XS is available and if we can call it.
-my $_XS_MAXVAL = $_Config{'xs'}  ?  $_Config{'maxparam'}  :  -1;
+my $_XS_MAXVAL = $_Config{'xs'}  ?  MPU_MAXPARAM  :  -1;
 my $_HAVE_GMP = $_Config{'gmp'};
 _XS_set_callgmp($_HAVE_GMP) if $_Config{'xs'};
 
@@ -195,13 +202,14 @@ sub prime_set_config {
     # dispatch table should go here.
     if      ($param eq 'xs') {
       $_Config{'xs'} = ($value) ? 1 : 0;
-      $_XS_MAXVAL = $_Config{'xs'}  ?  $_Config{'maxparam'}  :  -1;
+      $_XS_MAXVAL = $_Config{'xs'}  ?  MPU_MAXPARAM  :  -1;
     } elsif ($param eq 'gmp') {
       $_Config{'gmp'} = ($value) ? 1 : 0;
       $_HAVE_GMP = $_Config{'gmp'};
       _XS_set_callgmp($_HAVE_GMP) if $_Config{'xs'};
     } elsif ($param eq 'nobigint') {
       $_Config{'nobigint'} = ($value) ? 1 : 0;
+      # TODO: Actually make this turn it on or off.
     } elsif ($param eq 'irand') {
       croak "irand must supply a sub" unless (!defined $value) || (ref($value) eq 'CODE');
       $_Config{'irand'} = $value;
@@ -514,7 +522,8 @@ sub primes {
             $U = Math::BigInt->from_hex('0x' . $_BRS->bytes_hex($bytes));
           } while $U >= $overflow;
         } elsif ($range <= 4294967295) {
-          my $overflow = 4294967295 - (4294967295 % $range);
+          my $overflow = (OLD_PERL_VERSION) ? 4294967295-(4294967295.0%$range)
+                                            : 4294967295-(4294967295 % $range);
           do {
             $U = $_BRS->irand();
           } while $U >= $overflow;
@@ -534,7 +543,7 @@ sub primes {
         return ($irandf->() >> (32-$bits))
           if $bits <= 32;
         return ((($irandf->() << 32) + $irandf->()) >> (64-$bits))
-          if $bits <= 64 && ~0 > 4294967295;
+          if $bits <= 64 && MPU_64BIT;
         my $words = int(($bits+31)/32);
         my $n = Math::BigInt->from_hex
           ("0x" . join '', map { sprintf("%08X", $irandf->()) } 1 .. $words );
@@ -617,7 +626,8 @@ sub primes {
     # We're going to look at the odd numbers only.
     my $oddrange = (($high - $low) >> 1) + 1;
 
-    croak "Large random primes not supported on old Perl" if $] < 5.008 && $_Config{'maxbits'} > 32 && $oddrange > 4294967295;
+    croak "Large random primes not supported on old Perl"
+      if OLD_PERL_VERSION && MPU_64BIT && $oddrange > 4294967295;
 
     # If $low is large (e.g. >10 digits) and $range is small (say ~10k), it
     # would be fastest to call primes in the range and randomly pick one.  I'm
@@ -625,7 +635,7 @@ sub primes {
 
     # If the range is reasonably small, generate using simple Monte Carlo
     # method (aka the 'trivial' method).  Completely uniform.
-    if ($oddrange < $_Config{'maxparam'}) {
+    if ($oddrange < MPU_MAXPARAM) {
       my $loop_limit = 2000 * 1000;  # To protect against broken rand
       if ($low > 11) {
         while ($loop_limit-- > 0) {
@@ -693,7 +703,7 @@ sub primes {
     # which accounts for the prime distribution.
 
     my($binsize, $nparts);
-    my $rand_part_size = 1 << (($_Config{'maxbits'} > 32) ? 32 : 31);
+    my $rand_part_size = 1 << (MPU_64BIT ? 32 : 31);
     if (ref($oddrange) eq 'Math::BigInt') {
       # Go to some trouble here because some systems are wonky, such as
       # giving us +a/+b = -r.  Also note the quotes for the bigint argument.
@@ -838,9 +848,9 @@ sub primes {
     return _random_xscount_prime( int(10 ** ($digits-1)), int(10 ** $digits) )
       if $digits <= 6 && int(10**$digits) <= $_XS_MAXVAL;
 
-    my $bigdigits = $digits >= $_Config{'maxdigits'};
+    my $bigdigits = $digits >= MPU_MAXDIGITS;
     if ($bigdigits && $_Config{'nobigint'}) {
-      _validate_positive_integer($digits, 1, $_Config{'maxdigits'});
+      _validate_positive_integer($digits, 1, MPU_MAXDIGITS);
       # Special case for nobigint and threshold digits
       if (!defined $_random_ndigit_ranges[$digits]) {
         my $low  = int(10 ** ($digits-1));
@@ -889,8 +899,7 @@ sub primes {
     }
 
     croak "Mid-size random primes not supported on broken old Perl"
-      if $] < 5.008 && $bits > 49
-      && $_Config{'maxbits'} > 32 && $bits <= $_Config{'maxbits'};
+      if OLD_PERL_VERSION && MPU_64BIT && $bits > 49 && $bits <= 64;
 
     # Fouque and Tibouchi (2011) Algorithm 1 (basic)
     # Modified to make sure the nth bit is always set.
@@ -910,8 +919,8 @@ sub primes {
     # slow, then A2 would look more promising.
     #
     if (1 && $bits > 64) {
-      my $l = ($_Config{'maxbits'} > 32 && $bits > 79)  ?  63  :  31;
-      $l = 49 if $l == 63 && $] < 5.008;  # Fix for broken Perl 5.6
+      my $l = (MPU_64BIT && $bits > 79)  ?  63  :  31;
+      $l = 49 if $l == 63 && OLD_PERL_VERSION;  # Fix for broken Perl 5.6
       $l = $bits-2 if $bits-2 < $l;
 
       my $brand = $_RANDF_NBIT->($bits-$l-2);
@@ -967,7 +976,7 @@ sub primes {
     if (1) {
 
       my $loop_limit = 2_000_000;
-      if ($bits > $_Config{'maxbits'}) {
+      if ($bits > MPU_MAXBITS) {
         my $p = Math::BigInt->bone->blsft($bits-1)->binc();
         while ($loop_limit-- > 0) {
           my $n = Math::BigInt->new(''.$_RANDF_NBIT->($bits-2))->blsft(1)->badd($p);
@@ -987,16 +996,16 @@ sub primes {
       # Send through the generic random_prime function.  Decently fast, but
       # quite a bit slower than the F&T A1 method above.
       if (!defined $_random_nbit_ranges[$bits]) {
-        if ($bits > $_Config{'maxbits'}) {
+        if ($bits > MPU_MAXBITS) {
           my $low  = Math::BigInt->new('2')->bpow($bits-1);
           my $high = Math::BigInt->new('2')->bpow($bits);
           # Don't pull the range in to primes, just odds
           $_random_nbit_ranges[$bits] = [$low+1, $high-1];
         } else {
           my $low  = 1 << ($bits-1);
-          my $high = ($bits == $_Config{'maxbits'})
+          my $high = ($bits == MPU_MAXBITS)
                      ? ~0-1
-                     : ~0 >> ($_Config{'maxbits'} - $bits);
+                     : ~0 >> (MPU_MAXBITS - $bits);
           $_random_nbit_ranges[$bits] = [next_prime($low-1),prev_prime($high+1)];
           # Example: bits = 7.
           #    low = 1<<6 = 64.            next_prime(64-1)  = 67
@@ -1012,7 +1021,7 @@ sub primes {
   sub random_maurer_prime {
     my $k = shift;
     _validate_num($k, 2) || _validate_positive_integer($k, 2);
-    if ($k <= $_Config{'maxbits'} && $] >= 5.008) {
+    if ($k <= MPU_MAXBITS && !OLD_PERL_VERSION) {
       return random_nbit_prime($k);
     }
     my ($n, $cert) = random_maurer_prime_with_cert($k);
@@ -1026,8 +1035,8 @@ sub primes {
     _validate_num($k, 2) || _validate_positive_integer($k, 2);
 
     # Results for random_nbit_prime are proven for all native bit sizes.
-    my $p0 = $_Config{'maxbits'};
-    $p0 = 49 if $] < 5.008 && $_Config{'maxbits'} > 49;
+    my $p0 = MPU_MAXBITS;
+    $p0 = 49 if OLD_PERL_VERSION && MPU_MAXBITS > 49;
 
     if ($k <= $p0) {
       my $n = random_nbit_prime($k);
@@ -1130,7 +1139,8 @@ sub primes {
   sub random_strong_prime {
     my($t) = @_;
     _validate_num($t, 128) || _validate_positive_integer($t, 128);
-    croak "Random strong primes must be >= 173 bits on old Perl" if $] < 5.008 && $_Config{'maxbits'} > 32 && $t < 173;
+    croak "Random strong primes must be >= 173 bits on old Perl"
+      if OLD_PERL_VERSION && MPU_64BIT && $t < 173;
 
     _set_randf() unless defined $_RANDF;
 
@@ -1194,7 +1204,7 @@ sub primorial {
   return Math::BigInt->new(''.Math::Prime::Util::GMP::primorial($n))
     if $_HAVE_GMP && defined &Math::Prime::Util::GMP::primorial;
 
-  my $max = ($_Config{'maxbits'} == 32) ? 29 : 53;
+  my $max = (MPU_32BIT) ? 29 : 53;
   my $pn = (ref($_[0]) eq 'Math::BigInt') ? $_[0]->copy->bone()
          : ($n >= $max) ? Math::BigInt->bone()
          : 1;
@@ -1218,7 +1228,7 @@ sub consecutive_integer_lcm {
   _validate_num($n) || _validate_positive_integer($n);
   return 0 if $n < 1;
 
-  my $max = ($_Config{'maxbits'} == 32) ? 22 : ($] < 5.008) ? 37 : 46;
+  my $max = (MPU_32BIT) ? 22 : (OLD_PERL_VERSION) ? 37 : 46;
 
   if ($_HAVE_GMP && defined &Math::Prime::Util::GMP::consecutive_integer_lcm) {
     my $clcm = Math::Prime::Util::GMP::consecutive_integer_lcm($n);
@@ -1581,7 +1591,7 @@ sub _generic_znprimroot {
 # Doing a sub here like:
 #
 #   sub foo {  my($n) = @_;  _validate_positive_integer($n);
-#              return _XS_... if $_Config{'xs'} && $n <= $_Config{'maxparam'}; }
+#              return _XS_... if $n <= $_XS_MAXVAL; }
 #
 # takes about 0.7uS on my machine.  Operations like is_prime and factor run
 # on small inputs typically take a lot less time than this.  So the overhead
@@ -1622,11 +1632,11 @@ sub _generic_next_prime {
   _validate_num($n) || _validate_positive_integer($n);
 
   return _XS_next_prime($n)
-    if $n <= $_XS_MAXVAL && $n < $_Config{'maxprime'};
+    if $n <= $_XS_MAXVAL && $n < MPU_MAXPRIME;
 
   if ($_HAVE_GMP) {
     my $r = Math::Prime::Util::GMP::next_prime($n);
-    return (ref($n) eq 'Math::BigInt' || $n >= $_Config{'maxprime'})
+    return (ref($n) eq 'Math::BigInt' || $n >= MPU_MAXPRIME)
            ?  Math::BigInt->new("$r")  :  int($r);
   }
 
@@ -1642,7 +1652,7 @@ sub _generic_prev_prime {
 
   if ($_HAVE_GMP) {
     my $r = Math::Prime::Util::GMP::prev_prime($n);
-    return (ref($n) eq 'Math::BigInt' && $r > $_Config{'maxprime'})
+    return (ref($n) eq 'Math::BigInt' && $r > MPU_MAXPRIME)
            ?  Math::BigInt->new("$r")  :  int($r);
   }
 
@@ -1704,7 +1714,7 @@ sub nth_prime {
   _validate_num($n) || _validate_positive_integer($n);
 
   return _XS_nth_prime($n)
-    if $n <= $_XS_MAXVAL && $n < $_Config{'maxprimeidx'};
+    if $n <= $_XS_MAXVAL && $n < MPU_MAXPRIMEIDX;
 
   return Math::Prime::Util::PP::nth_prime($n);
 }
@@ -2229,7 +2239,7 @@ sub nth_prime_approx {
   return $_primes_small[$n] if $n <= $#_primes_small;
 
   $n = _upgrade_to_float($n)
-    if ref($n) eq 'Math::BigInt' || $n >= $_Config{'maxprimeidx'};
+    if ref($n) eq 'Math::BigInt' || $n >= MPU_MAXPRIMEIDX;
 
   my $flogn  = log($n);
   my $flog2n = log($flogn);
@@ -2278,7 +2288,7 @@ sub nth_prime_lower {
 
   return $_primes_small[$n] if $n <= $#_primes_small;
 
-  $n = _upgrade_to_float($n) if $n > $_Config{'maxprimeidx'} || $n > 2**45;
+  $n = _upgrade_to_float($n) if $n > MPU_MAXPRIMEIDX || $n > 2**45;
 
   my $flogn  = log($n);
   my $flog2n = log($flogn);  # Note distinction between log_2(n) and log^2(n)
@@ -2298,7 +2308,7 @@ sub nth_prime_upper {
 
   return $_primes_small[$n] if $n <= $#_primes_small;
 
-  $n = _upgrade_to_float($n) if $n > $_Config{'maxprimeidx'} || $n > 2**45;
+  $n = _upgrade_to_float($n) if $n > MPU_MAXPRIMEIDX || $n > 2**45;
 
   my $flogn  = log($n);
   my $flog2n = log($flogn);  # Note distinction between log_2(n) and log^2(n)
@@ -3400,8 +3410,8 @@ for large inputs.  For example, computing Mertens(100M) takes:
 
    time    approx mem
      0.4s      0.1MB   mertens(100_000_000)
-     5.5s   7000MB     List::Util::sum(moebius(1,100_000_000))
-    91.2s      0MB     $sum += moebius($_) for 1..100_000_000
+     6s     4000MB     List::Util::sum(moebius(1,100_000_000))
+    89s        0MB     $sum += moebius($_) for 1..100_000_000
 
 The summation of individual terms via factoring is quite expensive in time,
 though uses O(1) space.  This function will generate the equivalent output
