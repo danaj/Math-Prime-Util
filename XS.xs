@@ -245,7 +245,7 @@ sieve_primes(IN UV low, IN UV high)
     if ((low <= 5) && (high >= 5)) { av_push(av, newSVuv( 5 )); }
     if (low < 7)  low = 7;
     if (low <= high) {
-      if (ix == 0) {                          /* Sieve */
+      if (ix == 0) {                          /* Sieve with primary cache */
         START_DO_FOR_EACH_PRIME(low, high) {
           av_push(av,newSVuv(p));
         } END_DO_FOR_EACH_PRIME
@@ -255,7 +255,7 @@ sieve_primes(IN UV low, IN UV high)
              low = _XS_next_prime(low) ) {
           av_push(av,newSVuv(low));
         }
-      } else if (ix == 2) {                   /* Erat */
+      } else if (ix == 2) {                   /* Erat with private memory */
         unsigned char* sieve = sieve_erat30(high);
         START_DO_FOR_EACH_SIEVE_PRIME( sieve, low, high ) {
            av_push(av,newSVuv(p));
@@ -519,54 +519,52 @@ divisor_sum(IN SV* svn, ...)
 
 void
 znorder(IN SV* sva, IN SV* svn)
+  ALIAS:
+    legendre_phi = 1
   PPCODE:
     int astatus = _validate_int(aTHX_ sva, 0);
     int nstatus = _validate_int(aTHX_ svn, 0);
     if (astatus == 1 && nstatus == 1) {
       UV a = my_svuv(sva);
       UV n = my_svuv(svn);
-      UV order = znorder(a, n);
-      if (order == 0) XSRETURN_UNDEF;
-      XSRETURN_UV(order);
+      UV ret;
+      switch (ix) {
+        case 0:  ret = znorder(a,n);
+                 if (ret == 0) XSRETURN_UNDEF;  /* not defined */
+                 break;
+        default: ret = legendre_phi(a, n);
+                 break;
+      }
+      XSRETURN_UV(ret);
     }
-    _vcallsubn(aTHX_ G_SCALAR, "_generic_znorder", 2);
-    return; /* skip implicit PUTBACK */
-
-void
-znprimroot(IN SV* svn)
-  PPCODE:
-    int status = _validate_int(aTHX_ svn, 1);
-    if (status != 0) {
-      UV r, n = my_svuv(svn);
-      if (status == -1)
-        n = -(IV)n;
-      r = znprimroot(n);
-      if (r == 0 && n != 1) XSRETURN_EMPTY;
-      XSRETURN_UV(r);
+    switch (ix) {
+      case 0:  _vcallsubn(aTHX_ G_SCALAR, "_generic_znorder", 2);  break;
+      /* TODO: Fixup public PP legendre_phi */
+      default: _vcallsubn(aTHX_ G_SCALAR, "PP::_legendre_phi", 2); break;
     }
-    _vcallsub("_generic_znprimroot");
     return; /* skip implicit PUTBACK */
 
 void
 kronecker(IN SV* sva, IN SV* svb)
+  PREINIT:
+    int astatus, bstatus, abpositive, abnegative;
   PPCODE:
-    int astatus = _validate_int(aTHX_ sva, 2);
-    int bstatus = _validate_int(aTHX_ svb, 2);
-    if (astatus == 1 && bstatus == 1) {
+    astatus = _validate_int(aTHX_ sva, 2);
+    bstatus = _validate_int(aTHX_ svb, 2);
+    /* Are both a and b positive? */
+    abpositive = astatus == 1 && bstatus == 1;
+    /* Will both fit in IVs?  We should use a bitmask return. */
+    abnegative = !abpositive
+                 && (astatus != 0 && SvIOK(sva) && !SvIsUV(sva))
+                 && (bstatus != 0 && SvIOK(svb) && !SvIsUV(svb));
+    if (abpositive || abnegative) {
       UV a = my_svuv(sva);
       UV b = my_svuv(svb);
-      XSRETURN_IV( kronecker_uu(a, b) );
-    } else if (astatus != 0 && SvIOK(sva) && !SvIsUV(sva) &&
-               bstatus != 0 && SvIOK(svb) && !SvIsUV(svb) ) {
-      IV a = my_sviv(sva);
-      IV b = my_sviv(svb);
-      XSRETURN_IV( kronecker_ss(a, b) );
+      IV k = (abpositive) ? kronecker_uu(a,b) : kronecker_ss(a,b);
+      XSRETURN_IV( k );
     }
     _vcallsubn(aTHX_ G_SCALAR, "_generic_kronecker", 2);
     return; /* skip implicit PUTBACK */
-
-UV
-legendre_phi(IN UV n, IN UV a)
 
 double
 _XS_ExponentialIntegral(IN SV* x)
@@ -624,15 +622,14 @@ euler_phi(IN SV* svlo, ...)
       UV hi = my_svuv(ST(1));
       if (lo <= hi) {
         UV i;
+        EXTEND(SP, hi-lo+1);
         if (ix == 0) {
           UV* totients = _totient_range(lo, hi);
-          EXTEND(SP, hi-lo+1);
           for (i = lo; i <= hi; i++)
             PUSHs(sv_2mortal(newSVuv(totients[i-lo])));
           Safefree(totients);
         } else {
           signed char* mu = _moebius_range(lo, hi);
-          EXTEND(SP, hi-lo+1);
           for (i = lo; i <= hi; i++)
             PUSHs(sv_2mortal(newSViv(mu[i-lo])));
           Safefree(mu);
@@ -654,8 +651,11 @@ carmichael_lambda(IN SV* svn)
   ALIAS:
     mertens = 1
     exp_mangoldt = 2
+    znprimroot = 3
+  PREINIT:
+    int status;
   PPCODE:
-    int status = _validate_int(aTHX_ svn, (ix > 1) ? 1 : 0);
+    status = _validate_int(aTHX_ svn, (ix > 1) ? 1 : 0);
     switch (ix) {
       case 0: if (status == 1) XSRETURN_UV(carmichael_lambda(my_svuv(svn)));
               _vcallsub("_generic_carmichael_lambda");
@@ -663,9 +663,21 @@ carmichael_lambda(IN SV* svn)
       case 1: if (status == 1) XSRETURN_IV(mertens(my_svuv(svn)));
               _vcallsub("_generic_mertens");
               break;
-      default:if (status ==-1) XSRETURN_UV(1);
+      case 2: if (status ==-1) XSRETURN_UV(1);
               if (status == 1) XSRETURN_UV(exp_mangoldt(my_svuv(svn)));
               _vcallsub("_generic_exp_mangoldt");
+              break;
+      case 3:
+      default:if (status != 0) {
+                UV r, n = my_svuv(svn);
+                if (status == -1) n = -(IV)n;
+                r = znprimroot(n);
+                if (r == 0 && n != 1)
+                  XSRETURN_UNDEF;   /* No root, return undef */
+                else
+                  XSRETURN_UV(r);
+              }
+              _vcallsub("_generic_znprimroot");
               break;
     }
     return; /* skip implicit PUTBACK */

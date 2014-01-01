@@ -42,7 +42,7 @@ our @EXPORT_OK =
       partitions
       chebyshev_theta chebyshev_psi
       divisor_sum
-      carmichael_lambda kronecker znorder znprimroot
+      carmichael_lambda kronecker znorder znprimroot legendre_phi
       ExponentialIntegral LogarithmicIntegral RiemannZeta RiemannR
   );
 our %EXPORT_TAGS = (all => [ @EXPORT_OK ]);
@@ -107,6 +107,7 @@ BEGIN {
     *divisor_sum   = \&Math::Prime::Util::_generic_divisor_sum;
     *znorder       = \&Math::Prime::Util::_generic_znorder;
     *znprimroot    = \&Math::Prime::Util::_generic_znprimroot;
+    *legendre_phi  = \&Math::Prime::Util::PP::_legendre_phi;
     *factor        = \&Math::Prime::Util::_generic_factor;
     *factor_exp    = \&Math::Prime::Util::_generic_factor_exp;
     *divisors      = \&Math::Prime::Util::_generic_divisors;
