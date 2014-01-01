@@ -89,16 +89,21 @@ static int _validate_int(pTHX_ SV* n, int negok)
   int ret, isneg = 0;
 
   /* TODO: magic, grok_number, etc. */
-  /* fix multiple magic aware Sv*V getters */
+  if ((SvFLAGS(n) & (SVf_IOK |
+#if PERL_REVISION >=5 && PERL_VERSION >= 9 && PERL_SUBVERSION >= 4
+                     SVf_ROK |
+#else
+                     SVf_AMAGIC |
+#endif
+                     SVs_GMG )) == SVf_IOK) { /* If defined as number, use it */
+    if (SvIsUV(n) || SvIVX(n) >= 0)  return 1; /* The normal case */
+    if (negok)  return -1;
+    else croak("Parameter '%" SVf "' must be a positive integer", n);
+  }
   if (SvGAMAGIC(n)) return 0;          /* Leave while we still can */
   if (!SvOK(n))  croak("Parameter must be defined");
-  if (SvIOK(n)) {                      /* If defined as number, use that */
-    if (SvIsUV(n) || SvIV(n) >= 0)  return 1;
-    if (negok)  return -1;
-    else      croak("Parameter '%" SVf "' must be a positive integer", n);
-  }
   if (SvROK(n) && !sv_isa(n, "Math::BigInt"))  return 0;
-  ptr = SvPV(n, len);                  /* Includes stringifying bigints */
+  ptr = SvPV_nomg(n, len);             /* Includes stringifying bigints */
   if (len == 0 || ptr == 0)  croak("Parameter must be a positive integer");
   if (ptr[0] == '-' && negok) {
     isneg = 1; ptr++; len--;           /* Read negative sign */
@@ -684,7 +689,7 @@ carmichael_lambda(IN SV* svn)
     }
     return; /* skip implicit PUTBACK */
 
-int
+bool
 _validate_num(SV* svn, ...)
   PREINIT:
     SV* sv1;
@@ -694,8 +699,9 @@ _validate_num(SV* svn, ...)
      *   $is_valid = _validate_num( $n [, $min [, $max] ] )
      * Return 0 if we're befuddled by the input.
      * Otherwise croak if n isn't >= 0 and integer, n < min, or n > max.
+     * Small bigints will be converted to scalars.
      */
-    RETVAL = 0;
+    RETVAL = FALSE;
     if (_validate_int(aTHX_ svn, 0)) {
       if (SvROK(svn)) {  /* Convert small Math::BigInt object into scalar */
         UV n = my_svuv(svn);
@@ -713,7 +719,7 @@ _validate_num(SV* svn, ...)
           MPUassert( items <= 3, "_validate_num takes at most 3 parameters");
         }
       }
-      RETVAL = 1;
+      RETVAL = TRUE;
     }
   OUTPUT:
     RETVAL
