@@ -2,15 +2,11 @@ package Math::Prime::Util::ECAffinePoint;
 use strict;
 use warnings;
 use Carp qw/carp croak confess/;
-
-if (!defined $Math::BigInt::VERSION) {
-  eval { require Math::BigInt;   Math::BigInt->import(try=>'GMP,Pari'); 1; }
-  or do { croak "Cannot load Math::BigInt"; };
-}
+use Math::BigInt try=>"GMP,Pari";
 
 BEGIN {
   $Math::Prime::Util::ECAffinePoint::AUTHORITY = 'cpan:DANAJ';
-  $Math::Prime::Util::ECAffinePoint::VERSION = '0.35';
+  $Math::Prime::Util::ECAffinePoint::VERSION = '0.36';
 }
 
 # Pure perl (with Math::BigInt) manipulation of Elliptic Curves
@@ -154,7 +150,7 @@ Math::Prime::Util::ECAffinePoint - Elliptic curve operations for affine points
 
 =head1 VERSION
 
-Version 0.35
+Version 0.36
 
 
 =head1 SYNOPSIS

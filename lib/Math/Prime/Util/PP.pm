@@ -6,7 +6,7 @@ use Math::BigInt try=>"GMP,Pari";
 
 BEGIN {
   $Math::Prime::Util::PP::AUTHORITY = 'cpan:DANAJ';
-  $Math::Prime::Util::PP::VERSION = '0.35';
+  $Math::Prime::Util::PP::VERSION = '0.36';
 }
 
 # The Pure Perl versions of all the Math::Prime::Util routines.
@@ -637,7 +637,6 @@ sub _legendre_phi {
   my ($x, $a, $primes) = @_;
   return _mapes($x,$a) if $a <= 6;
   $primes = primes(Math::Prime::Util::nth_prime_upper($a+1)) unless defined $primes;
-print "a: $a  ", join(",",@$primes), "\n";
   return ($x > 0 ? 1 : 0) if $x < $primes->[$a];
 
   my $sum = 0;
@@ -2667,7 +2666,7 @@ Math::Prime::Util::PP - Pure Perl version of Math::Prime::Util
 
 =head1 VERSION
 
-Version 0.35
+Version 0.36
 
 
 =head1 SYNOPSIS

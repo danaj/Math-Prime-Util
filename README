@@ -1,4 +1,4 @@
-Math::Prime::Util version 0.34
+Math::Prime::Util version 0.36
 
 A set of utilities related to prime numbers.  These include multiple sieving
 methods, is_prime, prime_count, nth_prime, approximations and bounds for
@@ -59,7 +59,7 @@ Bytes::Random::Secure 0.23 or later.
 
 COPYRIGHT AND LICENCE
 
-Copyright (C) 2011-2013 by Dana Jacobsen <dana@acm.org>
+Copyright (C) 2011-2014 by Dana Jacobsen <dana@acm.org>
 
 This library is free software; you can redistribute it and/or modify
 it under the same terms as Perl itself.

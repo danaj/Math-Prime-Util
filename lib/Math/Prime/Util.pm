@@ -6,7 +6,7 @@ use Math::BigInt try=>"GMP,Pari";
 
 BEGIN {
   $Math::Prime::Util::AUTHORITY = 'cpan:DANAJ';
-  $Math::Prime::Util::VERSION = '0.35';
+  $Math::Prime::Util::VERSION = '0.36';
 }
 
 # parent is cleaner, and in the Perl 5.10.1 / 5.12.0 core, but not earlier.
@@ -2382,7 +2382,7 @@ Math::Prime::Util - Utilities related to prime numbers, including fast sieves an
 
 =head1 VERSION
 
-Version 0.35
+Version 0.36
 
 
 =head1 SYNOPSIS
@@ -5062,7 +5062,7 @@ John Brillhart, D. H. Lehmer, and J. L. Selfridge, "New Primality Criteria and F
 
 =head1 COPYRIGHT
 
-Copyright 2011-2013 by Dana Jacobsen E<lt>dana@acm.orgE<gt>
+Copyright 2011-2014 by Dana Jacobsen E<lt>dana@acm.orgE<gt>
 
 This program is free software; you can redistribute it and/or modify it under the same terms as Perl itself.
 

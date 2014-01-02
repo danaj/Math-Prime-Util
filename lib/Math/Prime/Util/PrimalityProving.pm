@@ -12,7 +12,7 @@ use Math::Prime::Util qw/is_prob_prime is_strong_pseudoprime
 
 BEGIN {
   $Math::Prime::Util::PrimalityProving::AUTHORITY = 'cpan:DANAJ';
-  $Math::Prime::Util::PrimalityProving::VERSION = '0.35';
+  $Math::Prime::Util::PrimalityProving::VERSION = '0.36';
 }
 
 my $_smallval = Math::BigInt->new("18446744073709551615");
@@ -61,11 +61,6 @@ sub primality_proof_lucas {
   return @composite if !defined $n || $n < 2;
   return (2, _small_cert($n)) if $n < 4;
   return @composite if is_strong_pseudoprime($n,2,15,325) == 0;
-
-  if (!defined $Math::BigInt::VERSION) {
-    eval { require Math::BigInt;   Math::BigInt->import(try=>'GMP,Pari'); 1; }
-    or do { croak "Cannot load Math::BigInt"; };
-  }
 
   my $nm1 = $n-1;
   my @factors = factor($nm1);
@@ -849,7 +844,7 @@ Math::Prime::Util::PrimalityProving - Primality proofs and certificates
 
 =head1 VERSION
 
-Version 0.35
+Version 0.36
 
 
 =head1 SYNOPSIS

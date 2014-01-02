@@ -2,15 +2,11 @@ package Math::Prime::Util::ECProjectivePoint;
 use strict;
 use warnings;
 use Carp qw/carp croak confess/;
-
-if (!defined $Math::BigInt::VERSION) {
-  eval { require Math::BigInt;   Math::BigInt->import(try=>'GMP,Pari'); 1; }
-  or do { croak "Cannot load Math::BigInt"; };
-}
+use Math::BigInt try=>"GMP,Pari";
 
 BEGIN {
   $Math::Prime::Util::ECProjectivePoint::AUTHORITY = 'cpan:DANAJ';
-  $Math::Prime::Util::ECProjectivePoint::VERSION = '0.35';
+  $Math::Prime::Util::ECProjectivePoint::VERSION = '0.36';
 }
 
 # Pure perl (with Math::BigInt) manipulation of Elliptic Curves
@@ -201,7 +197,7 @@ Math::Prime::Util::ECProjectivePoint - Elliptic curve operations for projective 
 
 =head1 VERSION
 
-Version 0.35
+Version 0.36
 
 
 =head1 SYNOPSIS
