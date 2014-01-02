@@ -255,25 +255,25 @@ SKIP: {
   ok( is_prime($randprime), "random range prime is prime");
 
   $randprime = random_ndigit_prime(25);
-  cmp_ok( $randprime, '>', 10**24, "random 25-digit prime isn't too small");
-  cmp_ok( $randprime, '<', 10**25, "random 25-digit prime isn't too big");
-  ok( is_prime($randprime), "random 25-digit prime is prime");
+  cmp_ok( $randprime, '>', 10**24, "random 25-digit prime is not too small");
+  cmp_ok( $randprime, '<', 10**25, "random 25-digit prime is not too big");
+  ok( is_prime($randprime), "random 25-digit prime is just right");
 }
 
 $randprime = random_nbit_prime(80);
-cmp_ok( $randprime, '>', 2**79, "random 80-bit prime isn't too small");
-cmp_ok( $randprime, '<', 2**80, "random 80-bit prime isn't too big");
-ok( is_prime($randprime), "random 80-bit prime is prime");
+cmp_ok( $randprime, '>', 2**79, "random 80-bit prime is not too small");
+cmp_ok( $randprime, '<', 2**80, "random 80-bit prime is not too big");
+ok( is_prime($randprime), "random 80-bit prime is just right");
 
 $randprime = random_strong_prime(256);
-cmp_ok( $randprime, '>', 2**255, "random 256-bit strong prime isn't too small");
-cmp_ok( $randprime, '<', 2**256, "random 256-bit strong prime isn't too big");
-ok( is_prime($randprime), "random 80-bit strong prime is prime");
+cmp_ok( $randprime, '>', 2**255, "random 256-bit strong prime is not too small");
+cmp_ok( $randprime, '<', 2**256, "random 256-bit strong prime is not too big");
+ok( is_prime($randprime), "random 256-bit strong prime is just right");
 
 $randprime = random_maurer_prime(80);
-cmp_ok( $randprime, '>', 2**79, "random 80-bit Maurer prime isn't too small");
-cmp_ok( $randprime, '<', 2**80, "random 80-bit Maurer prime isn't too big");
-ok( is_prime($randprime), "random 80-bit Maurer prime is prime");
+cmp_ok( $randprime, '>', 2**79, "random 80-bit Maurer prime is not too small");
+cmp_ok( $randprime, '<', 2**80, "random 80-bit Maurer prime is not too big");
+ok( is_prime($randprime), "random 80-bit Maurer prime is just right");
 
 ###############################################################################
 

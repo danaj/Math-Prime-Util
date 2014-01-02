@@ -24,6 +24,7 @@ BEGIN {
   use constant MPU_64BIT        =>  ($Config{uvsize} == 8);
   use constant MPU_32BIT        =>  ($Config{uvsize} == 4);
   use constant MPU_HALFWORD     =>  ($Config{uvsize} == 4) ? 65536 : ($] < 5.008) ? 33554432 : 4294967296;
+  use constant UVPACKLET        =>  ($Config{uvsize} == 8 ? 'Q' : 'L');
   no Config;
 }
 
@@ -61,13 +62,18 @@ sub _is_positive_int {
   ((defined $_[0]) && $_[0] ne '' && ($_[0] !~ tr/0123456789//c));
 }
 
+sub _bigint_to_int {
+  return (OLD_PERL_VERSION) ? unpack(UVPACKLET,pack(UVPACKLET,$_[0]->bstr))
+                            : int($_[0]->bstr);
+}
+
 sub _validate_num {
   my($n, $min, $max) = @_;
   croak "Parameter must be defined" if !defined $n;
   return 0 if ref($n);
   croak "Parameter must be a positive integer" if $n eq '';
   croak "Parameter '$n' must be a positive integer"
-          if $n =~ tr/0123456789//c && $n !~ /^\+\d+/;
+          if $n =~ tr/0123456789//c && $n !~ /^\+\d+$/;
   croak "Parameter '$n' must be >= $min" if defined $min && $n < $min;
   croak "Parameter '$n' must be <= $max" if defined $max && $n > $max;
   substr($_[0],0,1,'') if substr($n,0,1) eq '+';
@@ -78,20 +84,28 @@ sub _validate_num {
 sub _validate_positive_integer {
   my($n, $min, $max) = @_;
   croak "Parameter must be defined" if !defined $n;
-  croak "Parameter '$n' must be a positive integer"
-     if ref($n) ne 'Math::BigInt' && ($n =~ tr/0123456789//c && $n !~ /^\+\d+/);
-  croak "Parameter '$n' must be >= $min" if defined $min && $n < $min;
-  croak "Parameter '$n' must be <= $max" if defined $max && $n > $max;
-  $_[0] = Math::BigInt->new("$_[0]") unless ref($_[0]) eq 'Math::BigInt';
-  if ($_[0]->bacmp(''.~0) <= 0) {
-    $_[0] = int($_[0]->bstr);
-  } else {
-    # Stop BigFloat upgrade
-    $_[0]->upgrade(undef) if ref($_[0]) && $_[0]->upgrade();
+  if (ref($n) eq 'CODE') {
+    $_[0] = $_[0]->();
+    $n = $_[0];
   }
-  # One of these will be true:
-  #     1) $n <= ~0 and $n is not a bigint
-  #     2) $n  > ~0 and $n is a bigint
+  if (ref($n) eq 'Math::BigInt') {
+    croak "Parameter '$n' must be a positive integer"
+      if $n->sign() ne '+' || !$n->is_int();
+    $_[0] = _bigint_to_int($_[0]) 
+      if $n <= (OLD_PERL_VERSION ? 562949953421312 : ~0);
+  } else {
+    my $strn = "$n";
+    croak "Parameter '$strn' must be a positive integer"
+      if $strn =~ tr/0123456789//c && $strn !~ /^\+?\d+$/;
+    if ($n <= (OLD_PERL_VERSION ? 562949953421312 : ~0)) {
+      $_[0] = $strn if ref($n);
+    } else {
+      $_[0] = Math::BigInt->new($strn) 
+    }
+  }
+  $_[0]->upgrade(undef) if ref($_[0]) && $_[0]->upgrade();
+  croak "Parameter '$_[0]' must be >= $min" if defined $min && $_[0] < $min;
+  croak "Parameter '$_[0]' must be <= $max" if defined $max && $_[0] > $max;
   1;
 }
 
@@ -689,7 +703,7 @@ sub _lehmer_pi {
                           ? $x**(1/3)+0.5
                           : Math::BigFloat->new($x)->broot(3)->badd(0.5)->bfloor
                      ));
-  ($z, $a, $b, $c) = map { (ref($_) =~ /^Math::Big/) ? int($_->bstr) : $_ }
+  ($z, $a, $b, $c) = map { (ref($_) =~ /^Math::Big/) ? _bigint_to_int($_) : $_ }
                      ($z, $a, $b, $c);
 
   # Generate at least b primes.
@@ -1041,7 +1055,7 @@ sub kronecker {
     # If a,b are bigints and now small enough, finish as native.
     if (   ref($a) eq 'Math::BigInt' && $a <= ''.~0
         && ref($b) eq 'Math::BigInt' && $b <= ''.~0) {
-      return $k * kronecker(int($a->bstr), int($b->bstr));
+      return $k * kronecker(_bigint_to_int($a),_bigint_to_int($b));
     }
   }
   return ($b == 1) ? $k : 0;
@@ -1051,7 +1065,7 @@ sub _is_perfect_square {
   my($n) = @_;
 
   if (ref($n) eq 'Math::BigInt') {
-    my $mc = int(($n & 31)->bstr);
+    my $mc = _bigint_to_int($n & 31);
     if ($mc==0||$mc==1||$mc==4||$mc==9||$mc==16||$mc==17||$mc==25) {
       my $sq = $n->copy->bsqrt->bfloor;
       $sq->bmul($sq);
@@ -1445,12 +1459,12 @@ sub is_aks_prime {
     if !defined $Math::BigFloat::VERSION;
   # limit = floor( log2(n) * log2(n) ).  o_r(n) must be larger than this
   my $floatn = Math::BigFloat->new($n);
-  my $sqrtn = int($floatn->copy->bsqrt->bfloor->bstr);
+  my $sqrtn = _bigint_to_int($floatn->copy->bsqrt->bfloor);
   # The following line seems to trigger a memory leak in Math::BigFloat::blog
   # (the part where $MBI is copied to $int) if $n is a Math::BigInt::GMP.
   my $log2n = $floatn->copy->blog(2);
   my $log2_squared_n = $log2n * $log2n;
-  my $limit = int($log2_squared_n->bfloor->bstr);
+  my $limit = _bigint_to_int($log2_squared_n->bfloor);
 
   my $r = next_prime($limit);
   foreach my $f (@{primes(0,$r-1)}) {
@@ -1468,13 +1482,13 @@ sub is_aks_prime {
   return 1 if $r >= $n;
 
   # Since r is a prime, phi(r) = r-1
-  my $rlimit = int( Math::BigFloat->new("$r")->bdec()
-                    ->bsqrt->bmul($log2n)->bfloor->bstr);
+  my $rlimit = _bigint_to_int( Math::BigFloat->new("$r")->bdec()
+                               ->bsqrt->bmul($log2n)->bfloor);
 
   $_poly_bignum = 1;
   if ( $n < (MPU_HALFWORD-1) ) {
     $_poly_bignum = 0;
-    $n = int($n->bstr) if ref($n) eq 'Math::BigInt';
+    $n = _bigint_to_int($n) if ref($n) eq 'Math::BigInt';
   }
 
   for (my $a = 1; $a <= $rlimit; $a++) {
@@ -1506,7 +1520,7 @@ sub _basic_factor {
         }
       }
     }
-    $_[0] = int($_[0]->bstr) if $_[0] <= ''.~0;
+    $_[0] = _bigint_to_int($_[0]) if $_[0] <= ''.~0;
   }
 
   if ( ($_[0] > 1) && _is_prime7($_[0]) ) {
@@ -1530,7 +1544,7 @@ sub trial_factor {
   while ( !($n % 2) ) { push @factors, 2;  $n = int($n / 2); }
   while ( !($n % 3) ) { push @factors, 3;  $n = int($n / 3); }
   while ( !($n % 5) ) { push @factors, 5;  $n = int($n / 5); }
-  $n = int($n->bstr) if ref($n) eq 'Math::BigInt' && $n <= ''.~0;
+  $n = _bigint_to_int($n) if ref($n) eq 'Math::BigInt' && $n <= ''.~0;
   return @factors if $n < 4;
 
   my $limit = int(sqrt($n) + 0.001);
@@ -1540,7 +1554,7 @@ sub trial_factor {
     foreach my $finc (4, 2, 4, 2, 4, 6, 2, 6) {
       if ( (($n % $f) == 0) && ($f <= $limit) ) {
         do { push @factors, $f; $n = int($n/$f); } while (($n % $f) == 0);
-        $n = int($n->bstr) if ref($n) eq 'Math::BigInt' && $n <= ''.~0;
+        $n = _bigint_to_int($n) if ref($n) eq 'Math::BigInt' && $n <= ''.~0;
         #last SEARCH if $n == 1 || Math::Prime::Util::is_prob_prime($n);
         last SEARCH if $n == 1;
         $limit = int( sqrt($n) + 0.001);
@@ -1602,7 +1616,7 @@ sub factor {
   while (@nstack) {
     $n = pop @nstack;
     # Don't use bignum on $n if it has gotten small enough.
-    $n = int($n->bstr) if ref($n) eq 'Math::BigInt' && $n <= ''.~0;
+    $n = _bigint_to_int($n) if ref($n) eq 'Math::BigInt' && $n <= ''.~0;
     #print "Looking at $n with stack ", join(",",@nstack), "\n";
     while ( ($n >= (31*31)) && !_is_prime7($n) ) {
       my @ftry;
@@ -1964,7 +1978,7 @@ sub holf_factor {
       $s->binc;
       my $m = ($s * $s) - $ni;
       # Check for perfect square
-      my $mc = int(($m & 31)->bstr);
+      my $mc = _bigint_to_int($m & 31);
       next unless $mc==0||$mc==1||$mc==4||$mc==9||$mc==16||$mc==17||$mc==25;
       my $f = $m->copy->bsqrt->bfloor->as_int;
       next unless ($f*$f) == $m;
@@ -2004,7 +2018,7 @@ sub fermat_factor {
     my $b2 = $pa*$pa - $n;
     my $lasta = $pa + $rounds;
     while ($pa <= $lasta) {
-      my $mc = int(($b2 & 31)->bstr);
+      my $mc = _bigint_to_int($b2 & 31);
       if ($mc==0||$mc==1||$mc==4||$mc==9||$mc==16||$mc==17||$mc==25) {
         my $s = $b2->copy->bsqrt->bfloor->as_int;
         if ($s*$s == $b2) {

@@ -63,7 +63,6 @@ sub _import_nobigint {
  #undef *prime_count;     *prime_count       = \&_XS_prime_count;
   undef *nth_prime;       *nth_prime         = \&_XS_nth_prime;
   undef *is_pseudoprime;  *is_pseudoprime    = \&_XS_is_pseudoprime;
-  undef *is_strong_pseudoprime;  *is_strong_pseudoprime = \&_XS_miller_rabin;
   undef *chebyshev_theta; *chebyshev_theta   = \&_XS_chebyshev_theta;
   undef *chebyshev_psi;   *chebyshev_psi     = \&_XS_chebyshev_psi;
   # These should be fast anyway, but this skips validation.
@@ -85,6 +84,7 @@ BEGIN {
   use constant MPU_MAXDIGITS    =>  ($Config{uvsize} == 4) ? 10 : 20;
   use constant MPU_MAXPRIME     =>  ($Config{uvsize} == 4) ? 4294967291 : 18446744073709551557;
   use constant MPU_MAXPRIMEIDX  =>  ($Config{uvsize} == 4) ?  203280221 :   425656284035217743;
+  use constant UVPACKLET        =>  ($Config{uvsize} == 8 ? 'Q' : 'L');
   no Config;
 
   # Load PP code.  Nothing exported.
@@ -119,6 +119,7 @@ BEGIN {
     *znorder       = \&Math::Prime::Util::_generic_znorder;
     *znprimroot    = \&Math::Prime::Util::_generic_znprimroot;
     *legendre_phi  = \&Math::Prime::Util::PP::_legendre_phi;
+    *is_strong_pseudoprime=\&Math::Prime::Util::_generic_is_strong_pseudoprime;
     *factor        = \&Math::Prime::Util::_generic_factor;
     *factor_exp    = \&Math::Prime::Util::_generic_factor_exp;
     *divisors      = \&Math::Prime::Util::_generic_divisors;
@@ -161,7 +162,7 @@ END {
 }
 
 croak "Perl and XS don't agree on bit size"
-      if MPU_MAXBITS != _XS_prime_maxbits();
+      if $_Config{'xs'} && MPU_MAXBITS != _XS_prime_maxbits();
 
 $_Config{'maxparam'}    = MPU_MAXPARAM;
 $_Config{'maxdigits'}   = MPU_MAXDIGITS;
@@ -231,30 +232,13 @@ sub prime_set_config {
   1;
 }
 
-sub _validate_positive_integer {
-  my($n, $min, $max) = @_;
-  # We need to handle bigints, magic variables, and coderefs
-  if (ref($n) eq 'CODE') {
-    $_[0] = $_[0]->();
-    $n = $_[0];
-  }
-  croak "Parameter '$n' must be a positive integer"
-     if ref($n) eq 'Math::BigInt' && $n->sign() ne '+';
-  croak "Parameter '$n' must be >= $min" if defined $min && $n < $min;
-  croak "Parameter '$n' must be <= $max" if defined $max && $n > $max;
 
-  $_[0] = Math::BigInt->new("$_[0]") unless ref($_[0]) eq 'Math::BigInt';
-  croak "Parameter '$_[0]' must be a positive integer" unless $_[0]->is_int();
-  if ($_[0]->bacmp(''.~0) <= 0) {
-    $_[0] = int($_[0]->bstr);
-  } else {
-    $_[0]->upgrade(undef) if $_[0]->upgrade();  # Stop BigFloat upgrade
-  }
-  # One of these will be true:
-  #     1) $n <= ~0 and $n is not a bigint
-  #     2) $n  > ~0 and $n is a bigint
-  1;
+sub _bigint_to_int {
+  return (OLD_PERL_VERSION) ? unpack(UVPACKLET,pack(UVPACKLET,$_[0]->bstr))
+                            : int($_[0]->bstr);
 }
+
+*_validate_positive_integer = \&Math::Prime::Util::PP::_validate_positive_integer;
 
 sub _upgrade_to_float {
   do { require Math::BigFloat; Math::BigFloat->import(); }
@@ -731,7 +715,7 @@ sub primes {
     my $primelow = $low + 2 * $binsize * $rpart;
     my $partsize = ($rpart < $nparts) ? $binsize
                                       : $oddrange - ($nparts * $binsize);
-    $partsize = int($partsize->bstr) if ref($partsize) eq 'Math::BigInt';
+    $partsize = _bigint_to_int($partsize) if ref($partsize) eq 'Math::BigInt';
     #warn "range $oddrange  = $nparts * $binsize + ", $oddrange - ($nparts * $binsize), "\n";
     #warn "  chose part $rpart size $partsize\n";
     #warn "  primelow is $low + 2 * $binsize * $rpart = $primelow\n";
@@ -763,7 +747,7 @@ sub primes {
     # of 2, 3, or 5, without even having to create the bigint prime.
     my @w30 = (1,0,5,4,3,2,1,0,3,2,1,0,1,0,3,2,1,0,1,0,3,2,1,0,5,4,3,2,1,0);
     my $primelow30 = $primelow % 30;
-    $primelow30 = int($primelow30->bstr) if ref($primelow30) eq 'Math::BigInt';
+    $primelow30 = _bigint_to_int($primelow30) if ref($primelow30) eq 'Math::BigInt';
 
     # Big GCD's are hugely fast with GMP or Pari, but super slow with Calc.
     _make_big_gcds() if $_big_gcd_use < 0;
@@ -930,8 +914,8 @@ sub primes {
       # Precalculate some modulii so we can do trial division on native int
       # 9699690 = 2*3*5*7*11*13*17*19, so later operations can be native ints
       my @premod;
-      my $bpremod = int($b->copy->bmod(9699690)->bstr);
-      my $twopremod = int(Math::BigInt->new(2)->bmodpow($bits-$l-1, 9699690)->bstr);
+      my $bpremod = _bigint_to_int($b->copy->bmod(9699690));
+      my $twopremod = _bigint_to_int(Math::BigInt->new(2)->bmodpow($bits-$l-1, 9699690));
       foreach my $zi (0 .. 19-1) {
         foreach my $pm (3, 5, 7, 11, 13, 17, 19) {
           next if $zi >= $pm || defined $premod[$pm];
@@ -1098,7 +1082,7 @@ sub primes {
           next unless Math::BigInt::bgcd($n, $_big_gcd[3]) == 1;
         }
         print "+" if $verbose > 2;
-        next unless Math::Prime::Util::is_strong_pseudoprime($n, 3);
+        next unless is_strong_pseudoprime($n, 3);
       }
       print "*" if $verbose > 2;
 
@@ -1503,7 +1487,7 @@ sub _generic_carmichael_lambda {
     map { [ map { Math::BigInt->new("$_") } @$_ ] }
     @pe
   );
-  $lcm = int($lcm->bstr) if $lcm->bacmp(''.~0) <= 0;
+  $lcm = _bigint_to_int($lcm) if $lcm->bacmp(''.~0) <= 0;
   return $lcm;
 }
 
@@ -1543,7 +1527,7 @@ sub _generic_znorder {
       $k *= $pi;
     }
   }
-  $k = int($k->bstr) if $k->bacmp(''.~0) <= 0;
+  $k = _bigint_to_int($k) if $k->bacmp(''.~0) <= 0;
   return $k;
 }
 
@@ -1606,7 +1590,6 @@ sub _generic_is_prime {
   return 0 if defined $n && $n < 2;
   _validate_num($n) || _validate_positive_integer($n);
 
-  return _XS_is_prime($n) if $n <= $_XS_MAXVAL;
   return Math::Prime::Util::GMP::is_prime($n) if $_HAVE_GMP;
 
   if ($n < 7) { return ($n == 2) || ($n == 3) || ($n == 5) ? 2 : 0; }
@@ -1619,7 +1602,6 @@ sub _generic_is_prob_prime {
   return 0 if defined $n && $n < 2;
   _validate_num($n) || _validate_positive_integer($n);
 
-  return _XS_is_prob_prime($n) if $n <= $_XS_MAXVAL;
   return Math::Prime::Util::GMP::is_prob_prime($n) if $_HAVE_GMP;
 
   if ($n < 7) { return ($n == 2) || ($n == 3) || ($n == 5) ? 2 : 0; }
@@ -1759,7 +1741,7 @@ sub _generic_divisors {
   foreach my $f1 (factor($n)) {
     next if $f1 >= $n;
     my $big_f1 = Math::BigInt->new("$f1");
-    my @to_add = map { ($_ <= ~0) ? int($_->bstr) : $_ }
+    my @to_add = map { ($_ <= ''.~0) ? _bigint_to_int($_) : $_ }
                  grep { $_ < $n }
                  map { $big_f1 * $_ }
                  keys %all_factors;
@@ -1784,12 +1766,10 @@ sub is_pseudoprime {
   return Math::Prime::Util::PP::is_pseudoprime($n, $a);
 }
 
-sub is_strong_pseudoprime {
+sub _generic_is_strong_pseudoprime {
   my($n) = shift;
   _validate_num($n) || _validate_positive_integer($n);
   # validate bases?
-  return _XS_miller_rabin($n, @_)
-    if $n <= $_XS_MAXVAL;
   return Math::Prime::Util::GMP::is_strong_pseudoprime($n, @_) if $_HAVE_GMP;
   return Math::Prime::Util::PP::miller_rabin($n, @_);
 }
@@ -1899,11 +1879,7 @@ sub miller_rabin_random {
   while ($k > 0) {
     my $nbases = ($k >= 20) ? 20 : $k;
     my @bases = map { $irandf->($brange)+2 } 1..$nbases;
-    if ($n <= $_XS_MAXVAL) {
-      return 0 unless _XS_miller_rabin($n, @bases);
-    } else {
-      return 0 unless is_strong_pseudoprime($n, @bases);
-    }
+    return 0 unless is_strong_pseudoprime($n, @bases);
     $k -= $nbases;
   }
   1;

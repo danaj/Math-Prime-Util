@@ -89,7 +89,7 @@ static int _validate_int(pTHX_ SV* n, int negok)
   const char* maxstr;
   char* ptr;
   STRLEN i, len, maxlen;
-  int ret, isneg = 0;
+  int ret, isbignum = 0, isneg = 0;
 
   /* TODO: magic, grok_number, etc. */
   if ((SvFLAGS(n) & (SVf_IOK |
@@ -103,9 +103,16 @@ static int _validate_int(pTHX_ SV* n, int negok)
     if (negok)  return -1;
     else croak("Parameter '%" SVf "' must be a positive integer", n);
   }
-  if (SvGAMAGIC(n)) return 0;          /* Leave while we still can */
+  if (SvROK(n)) {
+    if (sv_isa(n, "Math::BigInt") || sv_isa(n, "Math::BigFloat") ||
+        sv_isa(n, "Math::GMP") || sv_isa(n, "Math::GMPz") )
+      isbignum = 1;
+    else
+      return 0;
+  }
+  /* Without being very careful, don't process magic variables here */
+  if (SvGAMAGIC(n) && !isbignum) return 0;
   if (!SvOK(n))  croak("Parameter must be defined");
-  if (SvROK(n) && !sv_isa(n, "Math::BigInt"))  return 0;
   ptr = SvPV_nomg(n, len);             /* Includes stringifying bigints */
   if (len == 0 || ptr == 0)  croak("Parameter must be a positive integer");
   if (ptr[0] == '-' && negok) {
@@ -337,33 +344,35 @@ trial_factor(IN UV n, ...)
         PUSHs(sv_2mortal(newSVuv( factors[i] )));
     }
 
-int
-_XS_miller_rabin(IN UV n, ...)
-  CODE:
+void
+is_strong_pseudoprime(IN SV* svn, ...)
+  PREINIT:
+    int status;
+  PPCODE:
     if (items < 2)
       croak("No bases given to miller_rabin");
-    if      ( (n == 0) || (n == 1) ) { RETVAL = 0; }  /* 0 and 1 composite */
-    else if ( (n == 2) || (n == 3) ) { RETVAL = 1; }  /* 2 and 3 prime */
-    else if ( (n % 2) == 0 )         { RETVAL = 0; }  /* MR works on odds */
-    else {
-      UV bases[64];
-      int prob_prime = 1;
-      int c = 1;
-      while (c < items) {
-        int b = 0;
-        while (c < items) {
-          bases[b++] = SvUV(ST(c));
-          c++;
-          if (b == 64) break;
+    status = _validate_int(aTHX_ svn, 0);
+    if (status == 1) {
+      UV n = my_svuv(svn);
+      int b, c, ret = 1;
+      if      (n < 4)        { ret = (n >= 2); } /* 0,1 composite; 2,3 prime */
+      else if ((n % 2) == 0) { ret = 0; }        /* evens composite */
+      else {
+        UV bases[32];
+        for (c = 1; c < items && ret == 1; ) {
+          for (b = 0; b < 32 && c < items; c++)
+            bases[b++] = my_svuv(ST(c));
+          ret = _XS_miller_rabin(n, bases, b);
         }
-        prob_prime = _XS_miller_rabin(n, bases, b);
-        if (prob_prime != 1)
-          break;
       }
-      RETVAL = prob_prime;
+      XSRETURN_UV(ret);
+    } else {
+      _vcallsubn(G_SCALAR,
+                 _XS_get_callgmp() ? "GMP::is_strong_pseudoprime"
+                                   : "_generic_is_strong_pseudoprime",
+                 items);
+      return; /* skip implicit PUTBACK */
     }
-  OUTPUT:
-    RETVAL
 
 void
 _XS_lucas_sequence(IN UV n, IN IV P, IN IV Q, IN UV k)
