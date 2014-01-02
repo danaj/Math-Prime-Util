@@ -636,7 +636,8 @@ sub _mapes {
 sub _legendre_phi {
   my ($x, $a, $primes) = @_;
   return _mapes($x,$a) if $a <= 6;
-  $primes = primes(next_prime($a)) unless defined $primes;
+  $primes = primes(Math::Prime::Util::nth_prime_upper($a+1)) unless defined $primes;
+print "a: $a  ", join(",",@$primes), "\n";
   return ($x > 0 ? 1 : 0) if $x < $primes->[$a];
 
   my $sum = 0;
