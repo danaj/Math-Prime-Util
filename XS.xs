@@ -367,10 +367,9 @@ is_strong_pseudoprime(IN SV* svn, ...)
       }
       XSRETURN_UV(ret);
     } else {
-      _vcallsubn(G_SCALAR,
-                 _XS_get_callgmp() ? "GMP::is_strong_pseudoprime"
-                                   : "_generic_is_strong_pseudoprime",
-                 items);
+      const char* sub = _XS_get_callgmp() ? "GMP::is_strong_pseudoprime"
+                                          : "_generic_is_strong_pseudoprime";
+      _vcallsubn(aTHX_ G_SCALAR, sub, items);
       return; /* skip implicit PUTBACK */
     }
 
