@@ -76,7 +76,7 @@ plan tests =>  0
              + 6*2*$extra # more PC tests
              + 2*scalar(keys %factors)
              + scalar(keys %allfactors)
-             + 10  # moebius, euler_phi, jordan totient, divsum, znorder
+             + 13  # moebius, euler_phi, jordan totient, divsum, znorder, etc.
              + 2   # liouville
              + 15  # random primes
              + 2   # miller-rabin random
@@ -98,11 +98,14 @@ use Math::Prime::Util qw/
   factor
   factor_exp
   divisors
+  kronecker
   moebius
   euler_phi
+  carmichael_lambda
   jordan_totient
   divisor_sum
   znorder
+  znprimroot
   liouville
   pn_primorial
   ExponentialIntegral
@@ -214,11 +217,12 @@ SKIP: {
 ###############################################################################
 
 SKIP: {
-  skip "Your 64-bit Perl is broken, skipping moebius, totient, etc.", 10 if $broken64;
+  skip "Your 64-bit Perl is broken, skipping moebius, totient, etc.", 13 if $broken64;
   my $n;
   $n = 618970019642690137449562110;
   is( moebius($n), -1, "moebius($n)" );
   is( euler_phi($n), 145857122964987051805507584, "euler_phi($n)" );
+  is( carmichael_lambda($n), 3271601336256, "carmichael_lambda($n)" );
   $n = 48981631802481400359696467;
   is( jordan_totient(5,$n), 281946200770875813001683560563488308767928594805846855593191749929654015729263525162226378019837608857421063724603387506651820000, "jordan_totient(5,$n)" );
   is( divisor_sum( $n, sub { my $d=shift; $d**5 * moebius($n/$d); }), 281946200770875813001683560563488308767928594805846855593191749929654015729263525162226378019837608857421063724603387506651820000, "jordan totient using divisor_sum and moebius" );
@@ -236,6 +240,11 @@ SKIP: {
   #    "znorder" );
   is(znorder(8267,927208363107752634625923),2843344277735759285436,"znorder 1");
   is(znorder(902,827208363107752634625947),undef,"znorder 2");
+
+  is( kronecker(878944444444444447324234,216539985579699669610468715172511426009), -1, "kronecker(..., ...)" );
+
+  is( znprimroot(333822190384002421914469856494764513809), 3, "znprimroot(333822190384002421914469856494764513809)" );
+
 }
 
 ###############################################################################
