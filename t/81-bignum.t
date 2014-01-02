@@ -80,7 +80,7 @@ plan tests =>  0
              + 2   # liouville
              + 15  # random primes
              + 2   # miller-rabin random
-             + 0;
+             + 1;
 
 # Using GMP makes these tests run about 2x faster on some machines
 use bigint try => 'GMP';   #  <--------------- large numbers ahead!  > 2^64
@@ -142,6 +142,8 @@ diag "BigInt $bignumver/$bigintver, lib: $bigintlib.  MPU::GMP $mpugmpver\n";
 
 
 ###############################################################################
+
+$_ = 'this should not change';
 
 foreach my $n (@primes) {
   ok( is_prime($n), "$n is prime" );
@@ -292,6 +294,8 @@ do { $randprime += 2 } while is_prime($randprime);
 is( miller_rabin_random( $randprime, 40 ), "0", "80-bit composite fails Miller-Rabin with 40 random bases" );
 
 ###############################################################################
+
+is( $_, 'this should not change', "Nobody clobbered \$_" );
 
 
 sub check_pcbounds {
