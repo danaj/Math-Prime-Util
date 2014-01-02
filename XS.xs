@@ -76,12 +76,17 @@
   static const unsigned int ivmax_maxlen = 10;
   static const char uvmax_str[] = "4294967295";
   static const char ivmax_str[] = "2147483648";
+  static const UV _max_prime    = UVCONST(4294967291);
+  static const UV _max_primeidx = UVCONST(203280221);
 #else
   static const unsigned int uvmax_maxlen = 20;
   static const unsigned int ivmax_maxlen = 19;
   static const char uvmax_str[] = "18446744073709551615";
   static const char ivmax_str[] =  "9223372036854775808";
+  static const UV _max_prime    = UVCONST(18446744073709551557);
+  static const UV _max_primeidx = UVCONST(425656284035217743);
 #endif
+
 
 /* Is this a pedantically valid integer?
  * Croaks if undefined or invalid.
@@ -159,12 +164,6 @@ static int _vcallsubn(pTHX_ I32 flags, const char* name, int nargs)
 }
 #define _vcallsub(func) (void)_vcallsubn(aTHX_ G_SCALAR, func, 1)
 
-#if BITS_PER_WORD == 64
-static const UV _max_prime = UVCONST(18446744073709551557);
-#else
-static const UV _max_prime = UVCONST(4294967291);
-#endif
-
 
 MODULE = Math::Prime::Util	PACKAGE = Math::Prime::Util
 
@@ -213,40 +212,54 @@ prime_precalc(IN UV n)
     return; /* skip implicit PUTBACK */
 
 void
-_XS_prime_count(IN UV low, IN UV high = 0)
+prime_count(IN SV* svlo, ...)
+  ALIAS:
+    _XS_segment_pi = 1
+  PREINIT:
+    int lostatus, histatus;
+    UV lo, hi;
   PPCODE:
-    if (high == 0) {   /* Without a Perl layer in front of this, we'll have */
-      high = low;      /* the pathological case of a-0 turning into 0-a.    */
-      low = 0;
+    lostatus = _validate_int(aTHX_ svlo, 0);
+    histatus = (items == 1 || _validate_int(aTHX_ ST(1), 0));
+    if (lostatus == 1 && histatus == 1) {
+      UV count = 0;
+      if (items == 1) {
+        lo = 2;
+        hi = my_svuv(svlo);
+      } else {
+        lo = my_svuv(svlo);
+        hi = my_svuv(ST(1));
+      }
+      if (lo <= hi) {
+        if (ix == 1 || (hi / (hi-lo+1)) > 100) {
+          count = _XS_prime_count(lo, hi);
+        } else {
+          count = _XS_LMO_pi(hi);
+          if (lo > 2)
+            count -= _XS_LMO_pi(lo-1);
+        }
+      }
+      XSRETURN_UV(count);
     }
-    if (GIMME_V == G_VOID) {
-      prime_precalc(high);
-    } else {
-      PUSHs(sv_2mortal(newSVuv( _XS_prime_count(low, high) )));
-    }
+    _vcallsubn(aTHX_ GIMME_V, "_generic_prime_count", items);
+    return; /* skip implicit PUTBACK */
 
 UV
-_XS_nth_prime(IN UV n)
+_XS_LMO_pi(IN UV n)
   ALIAS:
-    _XS_next_prime = 1
-    _XS_prev_prime = 2
-    _XS_legendre_pi = 3
-    _XS_meissel_pi = 4
-    _XS_lehmer_pi = 5
-    _XS_LMOS_pi = 6
-    _XS_LMO_pi = 7
+    _XS_legendre_pi = 1
+    _XS_meissel_pi = 2
+    _XS_lehmer_pi = 3
+    _XS_LMOS_pi = 4
   PREINIT:
     UV ret;
   CODE:
     switch (ix) {
-      case 0: ret = _XS_nth_prime(n); break;
-      case 1: ret = _XS_next_prime(n); break;
-      case 2: ret = _XS_prev_prime(n); break;
-      case 3: ret = _XS_legendre_pi(n); break;
-      case 4: ret = _XS_meissel_pi(n); break;
-      case 5: ret = _XS_lehmer_pi(n); break;
-      case 6: ret = _XS_LMOS_pi(n); break;
-      default:ret = _XS_LMO_pi(n); break;
+      case 0: ret = _XS_LMO_pi(n); break;
+      case 1: ret = _XS_legendre_pi(n); break;
+      case 2: ret = _XS_meissel_pi(n); break;
+      case 3: ret = _XS_lehmer_pi(n); break;
+      default:ret = _XS_LMOS_pi(n); break;
     }
     RETVAL = ret;
   OUTPUT:
@@ -388,31 +401,27 @@ _XS_lucas_sequence(IN UV n, IN IV P, IN IV Q, IN UV k)
     PUSHs(sv_2mortal(newSVuv( Qk )));
 
 int
-_XS_is_prime(IN UV n, ...)
+_XS_is_lucas_pseudoprime(IN UV n, ...)
   ALIAS:
-    _XS_is_prob_prime = 1
-    _XS_is_lucas_pseudoprime = 2
-    _XS_is_strong_lucas_pseudoprime = 3
-    _XS_is_extra_strong_lucas_pseudoprime = 4
-    _XS_is_frobenius_underwood_pseudoprime = 5
-    _XS_is_almost_extra_strong_lucas_pseudoprime = 6
-    _XS_is_pseudoprime = 7
-    _XS_is_aks_prime = 8
-    _XS_BPSW = 9
+    _XS_is_strong_lucas_pseudoprime = 1
+    _XS_is_extra_strong_lucas_pseudoprime = 2
+    _XS_is_frobenius_underwood_pseudoprime = 3
+    _XS_is_almost_extra_strong_lucas_pseudoprime = 4
+    _XS_is_pseudoprime = 5
+    _XS_is_aks_prime = 6
+    _XS_BPSW = 7
   PREINIT:
     int ret;
   CODE:
     switch (ix) {
-      case 0: ret = _XS_is_prime(n); break;
-      case 1: ret = _XS_is_prob_prime(n); break;
-      case 2: ret = _XS_is_lucas_pseudoprime(n, 0); break;
-      case 3: ret = _XS_is_lucas_pseudoprime(n, 1); break;
-      case 4: ret = _XS_is_lucas_pseudoprime(n, 2); break;
-      case 5: ret = _XS_is_frobenius_underwood_pseudoprime(n); break;
-      case 6: ret = _XS_is_almost_extra_strong_lucas_pseudoprime
+      case 0: ret = _XS_is_lucas_pseudoprime(n, 0); break;
+      case 1: ret = _XS_is_lucas_pseudoprime(n, 1); break;
+      case 2: ret = _XS_is_lucas_pseudoprime(n, 2); break;
+      case 3: ret = _XS_is_frobenius_underwood_pseudoprime(n); break;
+      case 4: ret = _XS_is_almost_extra_strong_lucas_pseudoprime
                     ( n, (items == 1) ? 1 : my_svuv(ST(1)) );  break;
-      case 7: ret = _XS_is_pseudoprime(n, my_svuv(ST(1)));     break;
-      case 8: ret = _XS_is_aks_prime(n); break;
+      case 5: ret = _XS_is_pseudoprime(n, my_svuv(ST(1)));     break;
+      case 6: ret = _XS_is_aks_prime(n); break;
       default:ret = _XS_BPSW(n); break;
     }
     RETVAL = ret;
@@ -449,18 +458,29 @@ void
 next_prime(IN SV* svn)
   ALIAS:
     prev_prime = 1
+    nth_prime = 2
   PPCODE:
     if (_validate_int(aTHX_ svn, 0)) {
       UV n = my_svuv(svn);
-      if (ix) {
-        XSRETURN_UV( (n < 3) ? 0 : _XS_prev_prime(n));
+      if ( ((ix == 0) && (n >= _max_prime))    ||
+           ((ix == 2) && (n >= _max_primeidx)) ) {
+        /* Out of range.  Fall through to Perl. */
       } else {
-        if (n < _max_prime)
-          XSRETURN_UV(_XS_next_prime(n));
+        UV ret;
+        switch (ix) {
+          case 0: ret = _XS_next_prime(n);  break;
+          case 1: ret = (n < 3) ? 0 : _XS_prev_prime(n);  break;
+          case 2:
+          default:ret = _XS_nth_prime(n);  break;
+        }
+        XSRETURN_UV(ret);
       }
     }
-    _vcallsub((ix == 0) ?  "_generic_next_prime" :
-                           "_generic_prev_prime" );
+    switch (ix) {
+      case 0:  _vcallsub("_generic_next_prime");     break;
+      case 1:  _vcallsub("_generic_prev_prime");     break;
+      default: _vcallsub("PP::nth_prime");           break;
+    }
     return; /* skip implicit PUTBACK */
 
 void

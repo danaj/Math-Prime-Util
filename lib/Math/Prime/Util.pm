@@ -60,16 +60,9 @@ sub import {
 sub _import_nobigint {
   $_Config{'nobigint'} = 1;
   return unless $_Config{'xs'};
- #undef *prime_count;     *prime_count       = \&_XS_prime_count;
-  undef *nth_prime;       *nth_prime         = \&_XS_nth_prime;
   undef *is_pseudoprime;  *is_pseudoprime    = \&_XS_is_pseudoprime;
   undef *chebyshev_theta; *chebyshev_theta   = \&_XS_chebyshev_theta;
   undef *chebyshev_psi;   *chebyshev_psi     = \&_XS_chebyshev_psi;
-  # These should be fast anyway, but this skips validation.
-  undef *is_prime;        *is_prime          = \&_XS_is_prime;
-  undef *is_prob_prime;   *is_prob_prime     = \&_XS_is_prob_prime;
-  undef *next_prime;      *next_prime        = \&_XS_next_prime;
-  undef *prev_prime;      *prev_prime        = \&_XS_prev_prime;
   1;
 }
 
@@ -113,6 +106,8 @@ BEGIN {
     *euler_phi     = \&Math::Prime::Util::_generic_euler_phi;
     *moebius       = \&Math::Prime::Util::_generic_moebius;
     *mertens       = \&Math::Prime::Util::_generic_mertens;
+    *prime_count   = \&Math::Prime::Util::_generic_prime_count;
+    *nth_prime     = \&Math::Prime::Util::PP::nth_prime;
     *carmichael_lambda = \&Math::Prime::Util::_generic_carmichael_lambda;
     *kronecker     = \&Math::Prime::Util::_generic_kronecker;
     *divisor_sum   = \&Math::Prime::Util::_generic_divisor_sum;
@@ -596,10 +591,10 @@ sub primes {
     # consumes the minimum amount of randomness needed.  But it isn't feasible
     # with large values.  Also note that low must be a prime.
     if ($high <= 262144 && $high <= $_XS_MAXVAL) {
-      my $li     = _XS_prime_count(2, $low);
-      my $irange = _XS_prime_count($low, $high);
+      my $li     = prime_count(2, $low);
+      my $irange = prime_count($low, $high);
       my $rand = $_RANDF->($irange-1);
-      return _XS_nth_prime($li + $rand);
+      return nth_prime($li + $rand);
     }
 
     $low-- if $low == 2;  # Low of 2 becomes 1 for our program.
@@ -801,12 +796,12 @@ sub primes {
     } else {
       my $beg = ($low <= 2)  ?  2  :  next_prime($low-1);
       my $end = ($high < ~0)  ?  prev_prime($high + 1)  :  prev_prime($high);
-      ($istart, $irange) = ( _XS_prime_count(2, $beg), _XS_prime_count($beg, $end) );
+      ($istart, $irange) = ( prime_count(2, $beg), prime_count($beg, $end) );
       $_random_cache_small{$low,$high} = [$istart, $irange];
     }
     _set_randf() unless defined $_RANDF;
     my $rand = $_RANDF->($irange-1);
-    return _XS_nth_prime($istart + $rand);
+    return nth_prime($istart + $rand);
   }
 
   sub random_prime {
@@ -1380,7 +1375,7 @@ sub prime_iterator {
   _validate_num($start) || _validate_positive_integer($start);
   my $p = ($start > 0) ? $start-1 : 0;
   if (ref($p) ne 'Math::BigInt' && $p <= $_XS_MAXVAL) {
-    return sub { $p = _XS_next_prime($p); return $p; };
+    return sub { $p = next_prime($p); return $p; };
   } elsif ($_HAVE_GMP) {
     return sub { $p = $p-$p+Math::Prime::Util::GMP::next_prime($p); return $p;};
   } else {
@@ -1654,7 +1649,7 @@ sub _generic_kronecker {
   return Math::Prime::Util::PP::kronecker(@_);
 }
 
-sub prime_count {
+sub _generic_prime_count {
   my($low,$high) = @_;
   if (defined $high) {
     _validate_num($low) || _validate_positive_integer($low);
@@ -1665,23 +1660,6 @@ sub prime_count {
   }
   return 0 if $high < 2  ||  $low > $high;
 
-  if ($high <= $_XS_MAXVAL) {
-    if ($high > 4_000_000) {
-      # These estimates need a lot of work.
-      #my $est_segment = 10.0 * 1.5**(log($high / 10**16) / log(10))
-      #                  + (($high-$low)/10**12);
-      #my $est_lehmer = 0.0000000057 * $high**0.72
-      #                 + 0.0000000057 * $low**0.72;
-      #if ($est_lehmer < $est_segment) {
-      if ( ($high / ($high-$low+1)) < 100 ) {
-        my $count;
-        $count  =  _XS_LMO_pi($high);
-        $count -=  _XS_LMO_pi($low-1) if $low > 2;
-        return $count;
-      }
-    }
-    return _XS_prime_count($low,$high);
-  }
   # We can relax these constraints if MPU::GMP gets a fast implementation.
   return Math::Prime::Util::GMP::prime_count($low,$high) if $_HAVE_GMP
                        && defined &Math::Prime::Util::GMP::prime_count
@@ -1689,16 +1667,6 @@ sub prime_count {
                            || (($high-$low) < int($low/1_000_000))
                           );
   return Math::Prime::Util::PP::prime_count($low,$high);
-}
-
-sub nth_prime {
-  my($n) = @_;
-  _validate_num($n) || _validate_positive_integer($n);
-
-  return _XS_nth_prime($n)
-    if $n <= $_XS_MAXVAL && $n < MPU_MAXPRIMEIDX;
-
-  return Math::Prime::Util::PP::nth_prime($n);
 }
 
 sub _generic_factor {
@@ -1930,8 +1898,7 @@ sub is_provable_prime {
   return 0 if defined $n && $n < 2;
   _validate_num($n) || _validate_positive_integer($n);
 
-  return _XS_is_prime($n)
-    if $n <= $_XS_MAXVAL;
+  return is_prime($n) if $n <= $_XS_MAXVAL;
   return Math::Prime::Util::GMP::is_provable_prime($n)
          if $_HAVE_GMP && defined &Math::Prime::Util::GMP::is_provable_prime;
 
@@ -1954,7 +1921,7 @@ sub is_provable_prime_with_cert {
   my $header = "[MPU - Primality Certificate]\nVersion 1.0\n\nProof for:\nN $n\n\n";
 
   if ($n <= $_XS_MAXVAL) {
-    my $isp = _XS_is_prime("$n");
+    my $isp = is_prime("$n");
     return ($isp, '') unless $isp == 2;
     return (2, "[MPU - Primality Certificate]\nVersion 1.0\n\nProof for:\nN $n\n\nType Small\nN $n\n");
   }
@@ -2038,7 +2005,7 @@ sub prime_count_approx {
   _validate_num($x) || _validate_positive_integer($x);
 
   # With XS using 30k tables, this is super fast.
-  return _XS_prime_count(2,$x) if $x < $_XS_MAXVAL && $x < 3_000_000;
+  return prime_count($x) if $x < $_XS_MAXVAL && $x < 3_000_000;
   # Give an exact answer for what we have in our little table.
   return _tiny_prime_count($x) if $x < $_primes_small[-1];
 
@@ -2089,7 +2056,7 @@ sub prime_count_lower {
   _validate_num($x) || _validate_positive_integer($x);
 
   # With XS using 30k tables, this is super fast.
-  return _XS_prime_count(2,$x) if $x < $_XS_MAXVAL && $x < 3_000_000;
+  return prime_count($x) if $x < $_XS_MAXVAL && $x < 3_000_000;
   # Give an exact answer for what we have in our little table.
   return _tiny_prime_count($x) if $x < $_primes_small[-1];
 
@@ -2139,7 +2106,7 @@ sub prime_count_upper {
   _validate_num($x) || _validate_positive_integer($x);
 
   # With XS using 30k tables, this is super fast.
-  return _XS_prime_count(2,$x) if $x < $_XS_MAXVAL && $x < 3_000_000;
+  return prime_count($x) if $x < $_XS_MAXVAL && $x < 3_000_000;
   # Give an exact answer for what we have in our little table.
   return _tiny_prime_count($x) if $x < $_primes_small[-1];
 

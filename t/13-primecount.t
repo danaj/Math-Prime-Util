@@ -163,7 +163,7 @@ SKIP: {
   #is(Math::Prime::Util::_XS_legendre_pi(66123456),3903023,"XS Legendre count");
   #is(Math::Prime::Util::_XS_LMOS_pi    (66123456),3903023,"XS LMOS count");
   is(Math::Prime::Util::_XS_LMO_pi     (66123456), 3903023,"XS LMO count");
-  is(Math::Prime::Util::_XS_prime_count(66123456), 3903023,"XS sieve count");
+  is(Math::Prime::Util::_XS_segment_pi (66123456), 3903023,"XS segment count");
 }
 is(Math::Prime::Util::PP::_lehmer_pi   (1456789), 111119, "PP Lehmer count");
 is(Math::Prime::Util::PP::_sieve_prime_count(1456789), 111119, "PP sieve count");
