@@ -36,10 +36,14 @@
   #define PSTRTOLL(str, end, base)  strtol (str, end, base)
 #endif
 
-/* Workaround perl 5.6 UVs and bigints in later */
 #if PERL_REVISION <= 5 && PERL_VERSION <= 6 && BITS_PER_WORD == 64
+ /* Workaround perl 5.6 UVs and bigints */
  #define my_svuv(sv)  PSTRTOULL(SvPV_nolen(sv), NULL, 10)
  #define my_sviv(sv)  PSTRTOLL(SvPV_nolen(sv), NULL, 10)
+#elif PERL_REVISION <= 5 && PERL_VERSION < 14 && BITS_PER_WORD == 64
+ /* Workaround RT 49569 in Math::BigInt::FastCalc (pre 5.14.0) */
+ #define my_svuv(sv) ( (!SvROK(sv)) ? SvUV(sv) : PSTRTOULL(SvPV_nolen(sv),NULL,10) )
+ #define my_sviv(sv) ( (!SvROK(sv)) ? SvIV(sv) : PSTRTOLL(SvPV_nolen(sv),NULL,10) )
 #else
  #define my_svuv(sv) SvUV(sv)
  #define my_sviv(sv) SvIV(sv)

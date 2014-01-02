@@ -47,6 +47,7 @@ WriteMakefile1(
                       'base'             => 0,
                       'constant'         => 0,
                       'Config'           => 0,
+                      # 1.99 fixes the FastCalc SvUV bug, we work around it.
                       'Math::BigInt'     => '1.88',
                       'Math::BigFloat'   => '1.59',
                       'Bytes::Random::Secure' => '0.23',

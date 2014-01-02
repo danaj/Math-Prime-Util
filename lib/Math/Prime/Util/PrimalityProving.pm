@@ -2,17 +2,13 @@ package Math::Prime::Util::PrimalityProving;
 use strict;
 use warnings;
 use Carp qw/carp croak confess/;
+use Math::BigInt try=>"GMP,Pari";
 use Math::Prime::Util qw/is_prob_prime is_strong_pseudoprime
                          is_provable_prime_with_cert
                          lucas_sequence
                          factor
                          prime_get_config
                         /;
-
-if (!defined $Math::BigInt::VERSION) {
-  eval { require Math::BigInt;   Math::BigInt->import(try=>'GMP,Pari'); 1; }
-  or do { croak "Cannot load Math::BigInt"; };
-}
 
 BEGIN {
   $Math::Prime::Util::PrimalityProving::AUTHORITY = 'cpan:DANAJ';
@@ -378,12 +374,12 @@ sub convert_array_cert_to_string {
 ###############################################################################
 
 sub _primality_error ($) {  ## no critic qw(ProhibitSubroutinePrototypes)
-  print "primality fail: $_[0]" if prime_get_config->{'verbose'};
+  print "primality fail: $_[0]\n" if prime_get_config->{'verbose'};
   return;  # error in certificate
 }
 
 sub _pfail ($) {            ## no critic qw(ProhibitSubroutinePrototypes)
-  print "primality fail: $_[0]" if prime_get_config->{'verbose'};
+  print "primality fail: $_[0]\n" if prime_get_config->{'verbose'};
   return;  # Failed a condition
 }
 
@@ -788,7 +784,10 @@ sub verify_cert {
     if ( ($cert_type eq 'PRIMO' && $line =~ /^\[Candidate\]/) || ($cert_type eq 'MPU' && $line =~ /^Proof for:/) ) {
       return _primality_error "Certificate with multiple N values" if defined $N;
       ($N) = _read_vars($lines, 'Proof for', qw/N/);
-      return 0 unless is_prob_prime($N);
+      if (!is_prob_prime($N)) {
+        _pfail "N '$N' does not look prime.";
+        return 0;
+      }
       next;
     }
     if ($line =~ /^Base (\d+)/) {
