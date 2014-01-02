@@ -6,7 +6,7 @@ use Test::More;
 use Math::Prime::Util
    qw/moebius mertens euler_phi jordan_totient divisor_sum exp_mangoldt
       chebyshev_theta chebyshev_psi carmichael_lambda znorder liouville
-      znprimroot kronecker
+      znprimroot kronecker legendre_phi
      /;
 
 my $extra = defined $ENV{EXTENDED_TESTING} && $ENV{EXTENDED_TESTING};
@@ -255,6 +255,23 @@ if ($use64) {
   push @kroneckers, [-5694706465843977004,9365273357682496999,-1];
 }
 
+my @legendre_sums = (
+  [ 89, 4, 21 ],
+  [ 46, 4, 11 ],
+  [ 47, 4, 12 ],
+  [ 48, 4, 12 ],
+  [ 52, 4, 12 ],
+  [ 53, 4, 13 ],
+  [10000, 5, 2077],
+  [526, 7, 95],
+  [588, 6, 111],
+  [100000, 5, 20779],
+  [5882, 6, 1128],
+  [100000, 7, 18053],
+  [10000, 8, 1711],
+  [1000000, 168, 78331],
+);
+
 # These are slow with XS, and *really* slow with PP.
 if (!$usexs) {
   %big_mertens = map { $_ => $big_mertens{$_} }
@@ -283,6 +300,7 @@ plan tests => 0 + 1
                 + 1 # Small Carmichael Lambda
                 + scalar(@kroneckers)
                 + scalar(@mult_orders)
+                + scalar(@legendre_sums)
                 + scalar(keys %primroots) + 2
                 + scalar(keys %jordan_totients)
                 + 2  # Dedekind psi calculated two ways
@@ -448,6 +466,11 @@ foreach my $i (@liouville_pos) {
 }
 foreach my $i (@liouville_neg) {
   is( liouville($i), -1, "liouville($i) = -1" );
+}
+###### Legendre phi
+foreach my $r (@legendre_sums) {
+  my($x, $a, $exp) = @$r;
+  is( legendre_phi($x, $a), $exp, "legendre_phi($x,$a) = $exp" );
 }
 
 sub cmp_closeto {
