@@ -92,12 +92,12 @@ sub _validate_positive_integer {
     croak "Parameter '$n' must be a positive integer"
       if $n->sign() ne '+' || !$n->is_int();
     $_[0] = _bigint_to_int($_[0]) 
-      if $n <= (OLD_PERL_VERSION ? 562949953421312 : ~0);
+      if $n <= (OLD_PERL_VERSION ? 562949953421312 : ''.~0);
   } else {
     my $strn = "$n";
     croak "Parameter '$strn' must be a positive integer"
       if $strn =~ tr/0123456789//c && $strn !~ /^\+?\d+$/;
-    if ($n <= (OLD_PERL_VERSION ? 562949953421312 : ~0)) {
+    if ($n <= (OLD_PERL_VERSION ? 562949953421312 : ''.~0)) {
       $_[0] = $strn if ref($n);
     } else {
       $_[0] = Math::BigInt->new($strn) 

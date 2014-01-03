@@ -1014,6 +1014,8 @@ sub primes {
   sub random_maurer_prime_with_cert {
     my($k) = @_;
     _validate_num($k, 2) || _validate_positive_integer($k, 2);
+    # This should never happen.  Trap now to prevent infinite loop.
+    croak "number of bits must not be a bigint" if ref($k) eq 'Math::BigInt';
 
     # Results for random_nbit_prime are proven for all native bit sizes.
     my $p0 = MPU_MAXBITS;
