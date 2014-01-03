@@ -15,7 +15,7 @@ BEGIN {
   }
 }
 
-use Test::More 'tests' => 9;
+use Test::More 'tests' => 10;
 use Math::Prime::Util ":all";
 
 my $extra = defined $ENV{EXTENDED_TESTING} && $ENV{EXTENDED_TESTING};
@@ -91,6 +91,10 @@ thread_test(
 thread_test(
   sub { my $sum = 0;  $sum += is_prime($_) for (@randn); return $sum;},
   $numthreads, "is_prime");
+
+thread_test(
+  sub { my $sum = 0;  foreach my $n (@randn) { $sum += $_ for moebius($n,$n+50); } return $sum;},
+  $numthreads, "moebius");
 
 # Custom rand, so we get the same result each time.
 {

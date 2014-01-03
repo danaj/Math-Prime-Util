@@ -3194,6 +3194,10 @@ from low to high inclusive.  Large values of high will result in a lot of
 memory use.  The algorithm used is Deléglise and Rivat (1996) algorithm 4.1,
 which is a segmented version of Lioen and van de Lune (1994) algorithm 3.2.
 
+The return values are read-only constants.  This should almost never come up,
+but it does mean trying to modify aliased return values will cause an
+exception (modifying the returned scalar or array is fine).
+
 
 =head2 mertens
 
@@ -3204,13 +3208,15 @@ function is defined as C<sum(moebius(1..n))>, but calculated more efficiently
 for large inputs.  For example, computing Mertens(100M) takes:
 
    time    approx mem
-     0.4s      0.1MB   mertens(100_000_000)
-     4s      890MB     List::Util::sum(moebius(1,100_000_000))
-    89s        0MB     $sum += moebius($_) for 1..100_000_000
+     0.3s      0.1MB   mertens(100_000_000)
+     1.2s    890MB     List::Util::sum(moebius(1,100_000_000))
+    77s        0MB     $sum += moebius($_) for 1..100_000_000
 
 The summation of individual terms via factoring is quite expensive in time,
-though uses O(1) space.  This function will generate the equivalent output
-via a sieving method, which will use some more memory, but be much faster.
+though uses O(1) space.  Using the range version of moebius is much faster,
+but returns a 100M element array which is not good for memory with this many
+items.  In comparison, this function will generate the equivalent output
+via a sieving method that is relatively sparse memory and very fast.
 The current method is a simple C<n^1/2> version of Deléglise and Rivat (1996),
 which involves calculating all moebius values to C<n^1/2>, which in turn will
 require prime sieving to C<n^1/4>.

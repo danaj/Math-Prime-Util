@@ -173,13 +173,26 @@ static int _vcallsubn(pTHX_ I32 flags, const char* gmp_name, const char* name, i
 #define _vcallsub(func) (void)_vcallsubn(aTHX_ G_SCALAR, 0, func, items)
 #define _vcallsub_with_gmp(func) (void)_vcallsubn(aTHX_ G_SCALAR, "GMP::" func, "PP::" func, items)
 
-static SV* const_int[4] = {0};   /* -1, 0, 1, 2 */
-/* I wish I had a better name for this */
-#define RETURN_NPARITY(ret) \
-  do { int r_ = ret; \
-       if (r_ >= -1 && r_ <= 2) { ST(0) = const_int[r_+1]; XSRETURN(1); } \
-       else                     { XSRETURN_IV(r_);                      } \
-  } while (0)
+/* In my testing, this constant return works fine with threads, but to be
+ * correct (see perlxs) one has to make a context, store separate copies in
+ * each one, then retrieve them from a struct using a hash index.  This
+ * defeats the purpose if only done once. */
+#ifdef MULTIPLICITY
+  #define RETURN_NPARITY(ret)  XSRETURN_IV(ret)
+  #define PUSH_NPARITY(ret)    PUSHs(sv_2mortal(newSViv( ret )))
+#else
+  static SV* const_int[4] = {0};   /* -1, 0, 1, 2 */
+  #define RETURN_NPARITY(ret) \
+    do { int r_ = ret; \
+         if (r_ >= -1 && r_ <= 2) { ST(0) = const_int[r_+1]; XSRETURN(1); } \
+         else                     { XSRETURN_IV(r_);                      } \
+    } while (0)
+  #define PUSH_NPARITY(ret) \
+    do { int r_ = ret; \
+         if (r_ >= -1 && r_ <= 2) { PUSHs( const_int[r_+1] );       } \
+         else                     { PUSHs(sv_2mortal(newSViv(r_))); } \
+    } while (0)
+#endif
 
 MODULE = Math::Prime::Util	PACKAGE = Math::Prime::Util
 
@@ -187,14 +200,17 @@ PROTOTYPES: ENABLE
 
 BOOT:
 {
-    int i;
     SV * sv = newSViv(BITS_PER_WORD);
     HV * stash = gv_stashpv("Math::Prime::Util", TRUE);
     newCONSTSUB(stash, "_XS_prime_maxbits", sv);
-    for (i = 0; i <= 3; i++) {
-      const_int[i] = newSViv(i-1);
-      SvREADONLY_on(const_int[i]);
+#ifndef MULTIPLICITY
+    { int i;
+      for (i = 0; i <= 3; i++) {
+        const_int[i] = newSViv(i-1);
+        SvREADONLY_on(const_int[i]);
+      }
     }
+#endif
 }
 
 void
@@ -689,9 +705,16 @@ euler_phi(IN SV* svlo, ...)
           Safefree(totients);
         } else {
           signed char* mu = _moebius_range(lo, hi);
-          /* TODO: assert these are -1,0,1 */
+#ifndef MULTIPLICITY
           for (i = lo; i <= hi; i++)
-            PUSHs(const_int[mu[i-lo]+1]);
+            PUSH_NPARITY(mu[i-lo]);
+#else
+          SV* csv[3];
+          for (i = 0; i < 3; i++)
+            { csv[i] = sv_2mortal(newSViv(i-1));  SvREADONLY_on(csv[i]); }
+          for (i = lo; i <= hi; i++)
+            PUSHs(csv[mu[i-lo]+1]);
+#endif
           Safefree(mu);
         }
       }
