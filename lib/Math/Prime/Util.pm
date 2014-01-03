@@ -59,10 +59,6 @@ sub import {
 
 sub _import_nobigint {
   $_Config{'nobigint'} = 1;
-  return unless $_Config{'xs'};
-  undef *is_pseudoprime;  *is_pseudoprime    = \&_XS_is_pseudoprime;
-  undef *chebyshev_theta; *chebyshev_theta   = \&_XS_chebyshev_theta;
-  undef *chebyshev_psi;   *chebyshev_psi     = \&_XS_chebyshev_psi;
   1;
 }
 
@@ -98,8 +94,16 @@ BEGIN {
     $_Config{'maxbits'} = MPU_MAXBITS;
 
     *_validate_num = \&Math::Prime::Util::PP::_validate_num;
-    *is_prob_prime = \&Math::Prime::Util::_generic_is_prob_prime;
-    *is_prime      = \&Math::Prime::Util::_generic_is_prime;
+    *is_prime      = \&Math::Prime::Util::PP::is_prime;
+    *is_prob_prime = \&Math::Prime::Util::PP::is_prob_prime;
+    *is_pseudoprime=\&Math::Prime::Util::PP::is_pseudoprime;
+    *is_strong_pseudoprime=\&Math::Prime::Util::PP::is_strong_pseudoprime;
+    *is_lucas_pseudoprime=\&Math::Prime::Util::PP::is_lucas_pseudoprime;
+    *is_strong_lucas_pseudoprime=\&Math::Prime::Util::PP::is_strong_lucas_pseudoprime;
+    *is_extra_strong_lucas_pseudoprime=\&Math::Prime::Util::PP::is_extra_strong_lucas_pseudoprime;
+    *is_almost_extra_strong_lucas_pseudoprime=\&Math::Prime::Util::PP::is_almost_extra_strong_lucas_pseudoprime;
+    *is_frobenius_underwood_pseudoprime=\&Math::Prime::Util::PP::is_frobenius_underwood_pseudoprime;
+    *is_aks_prime  =\&Math::Prime::Util::PP::is_aks_prime;
     *next_prime    = \&Math::Prime::Util::_generic_next_prime;
     *prev_prime    = \&Math::Prime::Util::_generic_prev_prime;
     *exp_mangoldt  = \&Math::Prime::Util::_generic_exp_mangoldt;
@@ -114,7 +118,6 @@ BEGIN {
     *znorder       = \&Math::Prime::Util::_generic_znorder;
     *znprimroot    = \&Math::Prime::Util::_generic_znprimroot;
     *legendre_phi  = \&Math::Prime::Util::PP::_legendre_phi;
-    *is_strong_pseudoprime=\&Math::Prime::Util::_generic_is_strong_pseudoprime;
     *factor        = \&Math::Prime::Util::_generic_factor;
     *factor_exp    = \&Math::Prime::Util::_generic_factor_exp;
     *divisors      = \&Math::Prime::Util::_generic_divisors;
@@ -205,7 +208,6 @@ sub prime_set_config {
       _XS_set_callgmp($_HAVE_GMP) if $_Config{'xs'};
     } elsif ($param eq 'nobigint') {
       $_Config{'nobigint'} = ($value) ? 1 : 0;
-      # TODO: Actually make this turn it on or off.
     } elsif ($param eq 'irand') {
       croak "irand must supply a sub" unless (!defined $value) || (ref($value) eq 'CODE');
       $_Config{'irand'} = $value;
@@ -941,7 +943,7 @@ sub primes {
           }
           # We know we don't have GMP and are > 2^64, so skip all the middle.
           #next unless is_prob_prime($p);
-          next unless Math::Prime::Util::PP::miller_rabin($p, 2);
+          next unless Math::Prime::Util::PP::is_strong_pseudoprime($p, 2);
           next unless Math::Prime::Util::PP::is_extra_strong_lucas_pseudoprime($p);
         }
         return $p;
@@ -1567,43 +1569,6 @@ sub _generic_znprimroot {
 # based on the input (XS, GMP, PP).
 #############################################################################
 
-# Doing a sub here like:
-#
-#   sub foo {  my($n) = @_;  _validate_positive_integer($n);
-#              return _XS_... if $n <= $_XS_MAXVAL; }
-#
-# takes about 0.7uS on my machine.  Operations like is_prime and factor run
-# on small inputs typically take a lot less time than this.  So the overhead
-# for these is significantly more than just the XS call itself.  For some
-# functions we have inverted the operation, so the XS function gets called,
-# does validation, and calls the _generic_* sub here if it doesn't know what
-# to do.  This removes all the overhead, making functions like is_prime run
-# about 5x faster for very small inputs.
-
-sub _generic_is_prime {
-  my($n) = @_;
-  return 0 if defined $n && $n < 2;
-  _validate_num($n) || _validate_positive_integer($n);
-
-  return Math::Prime::Util::GMP::is_prime($n) if $_HAVE_GMP;
-
-  if ($n < 7) { return ($n == 2) || ($n == 3) || ($n == 5) ? 2 : 0; }
-  return 0 if !($n % 2) || !($n % 3) || !($n % 5);
-  return Math::Prime::Util::PP::_is_prime7($n);
-}
-
-sub _generic_is_prob_prime {
-  my($n) = @_;
-  return 0 if defined $n && $n < 2;
-  _validate_num($n) || _validate_positive_integer($n);
-
-  return Math::Prime::Util::GMP::is_prob_prime($n) if $_HAVE_GMP;
-
-  if ($n < 7) { return ($n == 2) || ($n == 3) || ($n == 5) ? 2 : 0; }
-  return 0 if !($n % 2) || !($n % 3) || !($n % 5);
-  return Math::Prime::Util::PP::_is_prime7($n);
-}
-
 sub _generic_next_prime {
   my($n) = @_;
   _validate_num($n) || _validate_positive_integer($n);
@@ -1723,84 +1688,6 @@ sub _generic_divisors {
 }
 
 
-sub is_pseudoprime {
-  my($n, $a) = @_;
-  _validate_num($n) || _validate_positive_integer($n);
-  _validate_num($a) || _validate_positive_integer($a);
-  return _XS_is_pseudoprime($n, $a)
-    if $n <= $_XS_MAXVAL;
-  return Math::Prime::Util::GMP::is_pseudoprime($n, $a)
-    if $_HAVE_GMP && defined &Math::Prime::Util::GMP::is_pseudoprime;
-  return Math::Prime::Util::PP::is_pseudoprime($n, $a);
-}
-
-sub _generic_is_strong_pseudoprime {
-  my($n) = shift;
-  _validate_num($n) || _validate_positive_integer($n);
-  # validate bases?
-  return Math::Prime::Util::GMP::is_strong_pseudoprime($n, @_) if $_HAVE_GMP;
-  return Math::Prime::Util::PP::miller_rabin($n, @_);
-}
-
-sub is_lucas_pseudoprime {
-  my($n) = shift;
-  _validate_num($n) || _validate_positive_integer($n);
-  return _XS_is_lucas_pseudoprime($n)
-    if $n <= $_XS_MAXVAL;
-  return Math::Prime::Util::GMP::is_lucas_pseudoprime("$n")
-    if $_HAVE_GMP && defined &Math::Prime::Util::GMP::is_lucas_pseudoprime;
-  return Math::Prime::Util::PP::is_lucas_pseudoprime($n);
-}
-
-sub is_strong_lucas_pseudoprime {
-  my($n) = shift;
-  _validate_num($n) || _validate_positive_integer($n);
-  return _XS_is_strong_lucas_pseudoprime($n)
-    if $n <= $_XS_MAXVAL;
-  return Math::Prime::Util::GMP::is_strong_lucas_pseudoprime("$n")
-    if $_HAVE_GMP;
-  return Math::Prime::Util::PP::is_strong_lucas_pseudoprime($n);
-}
-
-sub is_extra_strong_lucas_pseudoprime {
-  my($n) = shift;
-  _validate_num($n) || _validate_positive_integer($n);
-  return _XS_is_extra_strong_lucas_pseudoprime($n)
-    if $n <= $_XS_MAXVAL;
-  return Math::Prime::Util::GMP::is_extra_strong_lucas_pseudoprime("$n")
-    if $_HAVE_GMP
-    && defined &Math::Prime::Util::GMP::is_extra_strong_lucas_pseudoprime;
-  return Math::Prime::Util::PP::is_extra_strong_lucas_pseudoprime($n);
-}
-
-sub is_almost_extra_strong_lucas_pseudoprime {
-  my($n, $inc) = @_;
-  _validate_num($n) || _validate_positive_integer($n);
-  if (!defined $inc) {
-    $inc = 1;
-  } elsif ($inc ne '1' && $inc ne '2') {
-    (_validate_num($inc) && $inc > 0 && $inc < 257)
-    || _validate_positive_integer($inc, 1, 256);
-  }
-  return _XS_is_almost_extra_strong_lucas_pseudoprime($n, $inc)
-    if $n <= $_XS_MAXVAL;
-  return Math::Prime::Util::GMP::is_almost_extra_strong_lucas_pseudoprime("$n", $inc)
-    if $_HAVE_GMP
-    && defined &Math::Prime::Util::GMP::is_almost_extra_strong_lucas_pseudoprime;
-  return Math::Prime::Util::PP::is_almost_extra_strong_lucas_pseudoprime($n, $inc);
-}
-
-sub is_frobenius_underwood_pseudoprime {
-  my($n) = shift;
-  _validate_num($n) || _validate_positive_integer($n);
-  return _XS_is_frobenius_underwood_pseudoprime($n)
-    if $n <= $_XS_MAXVAL;
-  return Math::Prime::Util::GMP::is_frobenius_underwood_pseudoprime("$n")
-    if $_HAVE_GMP
-    && defined &Math::Prime::Util::GMP::is_frobenius_underwood_pseudoprime;
-  return Math::Prime::Util::PP::is_frobenius_underwood_pseudoprime($n);
-}
-
 sub lucas_sequence {
   my($n, $P, $Q, $k) = @_;
   _validate_num($n) || _validate_positive_integer($n);
@@ -1855,35 +1742,6 @@ sub miller_rabin_random {
 
 
 #############################################################################
-
-  # Simple timings, with 0.32 code (Montgomery Reduction for 64-bit)
-  # my $n=2**20+1;  do { is_strong_pseudoprime($n,2); $n+=2 } for 1..1000000;
-  # my $n=2**47+1;  do { is_strong_pseudoprime($n,2); $n+=2 } for 1..1000000;
-  #
-  #      1.0 uS  XS 32-bit input, is_strong_pseudoprime
-  #      1.8 uS  XS 64-bit input, is_strong_pseudoprime
-  #      1.3 uS  XS 32-bit input, is_strong_lucas_pseudoprime
-  #      1.9 uS  XS 64-bit input, is_strong_lucas_pseudoprime
-  #      1.2 uS  XS 32-bit input, is_almost_extra_strong_lucas_pseudoprime
-  #      1.8 uS  XS 64-bit input, is_almost_extra_strong_lucas_pseudoprime
-  #
-  #     13 uS  Perl 32-bit input, is_strong_pseudoprime
-  #    945 uS  Perl 64-bit input, is_strong_pseudoprime
-  #   1700 uS  Perl 32-bit input, is_strong_lucas_pseudoprime
-  #   3000 uS  Perl 64-bit input, is_strong_lucas_pseudoprime
-  #   1500 uS  Perl 32-bit input, is_almost_extra_strong_lucas_pseudoprime
-  #   3400 uS  Perl 64-bit input, is_almost_extra_strong_lucas_pseudoprime
-
-sub is_aks_prime {
-  my($n) = @_;
-  return 0 if defined $n && $n < 2;
-  _validate_num($n) || _validate_positive_integer($n);
-
-  return _XS_is_aks_prime($n) if $n <= $_XS_MAXVAL;
-  return Math::Prime::Util::GMP::is_aks_prime($n) if $_HAVE_GMP
-                       && defined &Math::Prime::Util::GMP::is_aks_prime;
-  return Math::Prime::Util::PP::is_aks_prime($n);
-}
 
 # For stripping off the header on certificates so they can be combined.
 sub _strip_proof_header {
@@ -2530,14 +2388,6 @@ By default all functions support bignums.  For performance, you should
 install and use L<Math::BigInt::GMP> or L<Math::BigInt::Pari>, and
 L<Math::Prime::Util::GMP>.
 
-Using the flag C<-bigint>, e.g.
-
-  use Math::Prime::Util qw(-bigint);
-
-will turn off bigint support for some functions.  This turns off input
-validation and some complicated conversions.  It is not recommended and
-will likely go away in future version.
-
 If you are using bigints, here are some performance suggestions:
 
 =over 4
@@ -2568,7 +2418,9 @@ and are able to provide higher accuracy.
 I have run these functions on many versions of Perl, and my experience is that
 if you're using anything older than Perl 5.14, I would recommend you upgrade
 if you are using bignums a lot.  There are some brittle behaviors on 5.12.4
-and earlier with bignums.
+and earlier with bignums.  For example, the default BigInt backend in older
+versions of Perl will sometimes convert small results to doubles, resulting
+in corrupted output.
 
 =back
 
@@ -3353,7 +3205,7 @@ for large inputs.  For example, computing Mertens(100M) takes:
 
    time    approx mem
      0.4s      0.1MB   mertens(100_000_000)
-     6s     4000MB     List::Util::sum(moebius(1,100_000_000))
+     4s      890MB     List::Util::sum(moebius(1,100_000_000))
     89s        0MB     $sum += moebius($_) for 1..100_000_000
 
 The summation of individual terms via factoring is quite expensive in time,
@@ -3381,7 +3233,7 @@ Returns φ(n), the Euler totient function (also called Euler's phi or phi
 function) for an integer value.  This is an arithmetic function that counts
 the number of positive integers less than or equal to C<n> that are relatively
 prime to C<n>.  Given the definition used, C<euler_phi> will return 0 for all
-C<n E<lt> 1>.  This follows the logic used by SAGE.  Mathematic/WolframAlpha
+C<n E<lt> 1>.  This follows the logic used by SAGE.  Mathematica
 also returns 0 for input 0, but returns C<euler_phi(-n)> for C<n E<lt> 0>.
 
 If called with two arguments, they define a range C<low> to C<high>, and the
@@ -3408,7 +3260,7 @@ the Dedikind psi function, where C<psi(n) = J(2,n) / J(1,n)>.
 
 Returns EXP(Λ(n)), the exponential of the Mangoldt function (also known
 as von Mangoldt's function) for an integer value.
-It is equal to log p if n is prime or a power of a prime,
+The Mangoldt function is equal to log p if n is prime or a power of a prime,
 and 0 otherwise.  We return the exponential so all results are integers.
 Hence the return value for C<exp_mangoldt> is:
 
@@ -3681,9 +3533,10 @@ digits between 1 and the maximum native type (10 for 32-bit, 20 for 64-bit,
 C<irand> function as described above.
 
 If the number of digits is greater than or equal to the maximum native type,
-then the result will be returned as a BigInt.  However, if the C<-nobigint>
-tag was used, then numbers larger than the threshold will be flagged as an
-error, and numbers on the threshold will be restricted to native numbers.
+then the result will be returned as a BigInt.  However, if the C<nobigint>
+configuration option is on, then output will be restricted to native size
+numbers, and requests for more digits than natively supported will result
+in an error.
 For better performance with large bit sizes, install L<Math::Prime::Util::GMP>.
 
 
@@ -4268,7 +4121,7 @@ Here is the right way to do PE problem 69 (under 0.03s):
 
 Project Euler, problem 187, stupid brute force solution, ~4 minutes:
 
-  use Math::Prime::Util qw/factor -nobigint/;
+  use Math::Prime::Util qw/factor/;
   my $nsemis = 0;
   do { $nsemis++ if scalar factor($_) == 2; }
      for 1 .. int(10**8)-1;
@@ -4326,8 +4179,8 @@ is implementation specific (currently it is identical, but later
 releases may use APRCL).  With L<Math::Prime::Util::GMP> installed,
 this is quite fast through 300 or so digits.
 
-Math systems 30 years ago used to use Miller-Rabin tests with C<k>
-bases (typically fixed bases, sometimes random) for primality
+Math systems 30 years ago typically used Miller-Rabin tests with C<k>
+bases (usually fixed bases, sometimes random) for primality
 testing, but these have generally been replaced by some form of BPSW
 as used in this module.  See Pinch's 1993 paper for examples of why
 using C<k> M-R tests leads to poor results.  The three exceptions in
@@ -4383,13 +4236,13 @@ are completely oblivious to what is happening.
 
 =head1 LIMITATIONS
 
-Perl versions earlier than 5.8.0 have a rather broken 64-bit implementation,
-in that the values are accessed as doubles.  Hence any value larger
-than C<~ 2^49> will start losing bottom bits.  This causes numerous functions
-to not work properly.  The test suite will try to determine if your Perl is
-broken (this only applies to really old versions of Perl compiled for 64-bit
-when using numbers larger than C<~ 2^49>).  The best solution is updating to
-a more recent Perl.
+Perl versions earlier than 5.8.0 have problems doing exact integer math.
+Some operations will flip signs, and many operations will convert intermediate
+or output results to doubles, which loses precision on 64-bit systems.
+This causes numerous functions to not work properly.  The test suite will
+try to determine if your Perl is broken (this only applies to really old
+versions of Perl compiled for 64-bit when using numbers larger than
+C<~ 2^49>).  The best solution is updating to a more recent Perl.
 
 The module is thread-safe and should allow good concurrency on all platforms
 that support Perl threads except Win32.  With Win32, either don't use threads
@@ -4431,9 +4284,8 @@ handle using it.  There are still some functions it doesn't do well
 L<Math::Prime::XS> has C<is_prime> and C<primes> functionality.  There is
 no bigint support.  The C<is_prime> function uses well-written trial
 division, meaning it is very fast for small numbers, but terribly slow for
-large 64-bit numbers.  Because MPU does input validation and bigint
-conversion, there is about 20 microseconds of additional overhead making
-MPXS a little faster for tiny inputs, but once over ~700k MPU is faster.
+large 64-bit numbers.  MPU is similarly fast with small numbers, but becomes
+faster as the size increases.
 MPXS's prime sieve is an unoptimized non-segmented SoE
 which returns an array.  Sieve bases larger than C<10^7> start taking
 inordinately long and using a lot of memory (gigabytes beyond C<10^10>).
@@ -4599,7 +4451,7 @@ L<divisor_sum>.
 =item C<eulerphi>, C<moebius>
 
 Similar to MPU's L</euler_phi> and L</moebius>.  MPU is 2-20x faster for
-native integers.  There is also support for a range, which can be much
+native integers.  MPU also supported range inputs, which can be much
 more efficient.  Without L<Math::Prime::Util::GMP> installed, MPU is
 very slow with bigints.  With it installed, it is about 2x slower than
 Math::Pari.

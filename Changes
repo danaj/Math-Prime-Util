@@ -4,9 +4,9 @@ Revision history for Perl module Math::Prime::Util
 
     [API Changes]
 
-    - factor behavior for 0 and 1 more consistent.  The results for factor,
-      factor_exp, divisors, and divisor_sum should now match Pari, and the
-      omega/Omega exception for 1 is removed.
+    - factor behavior for 0 and 1 more consistent.  The results for
+      factor, factor_exp, divisors, and divisor_sum now match Pari,
+      and the omega(1)/Omega(1) exception is removed.
 
       Thanks to Hugo van der Sanden for bringing this up.
 
@@ -23,12 +23,22 @@ Revision history for Perl module Math::Prime::Util
 
     - Win32 fixes from bulk88 / bulkdd.  Thanks!
 
-    - Lots of XS interface reorgs.
+    - XS redundancy removal and fixes from bulk88 and leont.  Smaller DLL.
+      This almost includes not compiling a number of prime count methods
+      (Legendre, Meissel, Lehmer, and LMOS) that are not used.  Using
+      "-DLEHMER" in the Makefile will compile them, but there should not
+      be any reason to do so.
 
-    - XS reduncies and fixes from bulk88 and leont.
+    - Big XS interface reorg.  Most functions now go straight to XS, which
+      reduces their overhead.  Input number validation is much faster for
+      the general case.  Those two combined meant the '-nobigint' import
+      no longer serves any good purpose.
 
-    - Speedup for input number validation: speedup for all functions,
-      especially noticeable with fast functions (e.g. small n is_prime(n)).
+    - More functions will go from XS directly to the GMP module, bypassing
+      the Perl layer entirely.  The upside is less overhead, both for the
+      case of having GMP, and without.  In the contrived case of having XS
+      turned off but the GMP module enabled, things will run slower since
+      they no longer go to GMP.
 
     - Some 5.6.2-is-broken workarounds.
 
@@ -41,16 +51,13 @@ Revision history for Perl module Math::Prime::Util
     - divisors (all_factors) faster for native size numbers with many factors.
 
     - Switch from mapes to a cached primorial/totient small phi method in
-      lehmer.c.  Really only affects LMOS and Legendre, but it's significant
-      for them.  Thanks to Kim Walisch for questioning my earlier decision.
+      lehmer.c.  Significant for LMOS and Legendre (no longer used or compiled,
+      see earlier.  Thanks to Kim Walisch for questioning my earlier decision.
 
     - Rewrite sieve composite map.  Segment sieving is faster.  It's a little
       faster than primegen for me, but still slower than primesieve and yafu.
 
     - znorder uses Carmichael Lambda instead of Euler Phi.  Faster.
-
-    - Legendre, Meissel, Lehmer, and LMOS methods are no longer compiled by
-      default.  Add -DLEHMER if you really want access to them.
 
 
 0.35  2013-12-08

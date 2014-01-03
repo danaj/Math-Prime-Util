@@ -153,17 +153,33 @@ static int _validate_int(pTHX_ SV* n, int negok)
 }
 
 /* Call a Perl sub to handle work for us. */
-static int _vcallsubn(pTHX_ I32 flags, const char* name, int nargs)
+static int _vcallsubn(pTHX_ I32 flags, const char* gmp_name, const char* name, int nargs)
 {
     dSP;
     char fullname[80] = "Math::Prime::Util::";
-    strncat(fullname, name, 60);
+    /* If given a GMP function, and GMP enabled, and function exists, use it. */
+    int use_gmp = gmp_name != 0 && _XS_get_callgmp();
+    if (use_gmp) {
+      strncat(fullname, gmp_name, 60);
+      if (get_cv(fullname, flags) == 0)
+        use_gmp = 0;
+    }
+    if (!use_gmp)
+      strncat(fullname, name, 60);
     PUSHMARK(SP-nargs);
     PUTBACK;
     return call_pv(fullname, flags);
 }
-#define _vcallsub(func) (void)_vcallsubn(aTHX_ G_SCALAR, func, 1)
+#define _vcallsub(func) (void)_vcallsubn(aTHX_ G_SCALAR, 0, func, items)
+#define _vcallsub_with_gmp(func) (void)_vcallsubn(aTHX_ G_SCALAR, "GMP::" func, "PP::" func, items)
 
+static SV* const_int[4] = {0};   /* -1, 0, 1, 2 */
+/* I wish I had a better name for this */
+#define RETURN_NPARITY(ret) \
+  do { int r_ = ret; \
+       if (r_ >= -1 && r_ <= 2) { ST(0) = const_int[r_+1]; XSRETURN(1); } \
+       else                     { XSRETURN_IV(r_);                      } \
+  } while (0)
 
 MODULE = Math::Prime::Util	PACKAGE = Math::Prime::Util
 
@@ -171,9 +187,14 @@ PROTOTYPES: ENABLE
 
 BOOT:
 {
+    int i;
     SV * sv = newSViv(BITS_PER_WORD);
     HV * stash = gv_stashpv("Math::Prime::Util", TRUE);
     newCONSTSUB(stash, "_XS_prime_maxbits", sv);
+    for (i = 0; i <= 3; i++) {
+      const_int[i] = newSViv(i-1);
+      SvREADONLY_on(const_int[i]);
+    }
 }
 
 void
@@ -191,7 +212,7 @@ prime_memfree()
       case 2:  ret = _XS_get_verbose(); break;
       case 3:  ret = _XS_get_callgmp(); break;
       case 4:
-      default:  ret = get_prime_cache(0,0); break;
+      default: ret = get_prime_cache(0,0); break;
     }
     XSRETURN_UV(ret);
     return_nothing:
@@ -241,7 +262,7 @@ prime_count(IN SV* svlo, ...)
       }
       XSRETURN_UV(count);
     }
-    _vcallsubn(aTHX_ GIMME_V, "_generic_prime_count", items);
+    _vcallsubn(aTHX_ GIMME_V, 0, "_generic_prime_count", items);
     return; /* skip implicit PUTBACK */
 
 UV
@@ -382,13 +403,10 @@ is_strong_pseudoprime(IN SV* svn, ...)
           ret = _XS_miller_rabin(n, bases, b);
         }
       }
-      XSRETURN_UV(ret);
-    } else {
-      const char* sub = _XS_get_callgmp() ? "GMP::is_strong_pseudoprime"
-                                          : "_generic_is_strong_pseudoprime";
-      _vcallsubn(aTHX_ G_SCALAR, sub, items);
-      return; /* skip implicit PUTBACK */
+      RETURN_NPARITY(ret);
     }
+    _vcallsub_with_gmp("is_strong_pseudoprime");
+    return; /* skip implicit PUTBACK */
 
 void
 _XS_lucas_sequence(IN UV n, IN IV P, IN IV Q, IN UV k)
@@ -400,59 +418,58 @@ _XS_lucas_sequence(IN UV n, IN IV P, IN IV Q, IN UV k)
     PUSHs(sv_2mortal(newSVuv( V )));
     PUSHs(sv_2mortal(newSVuv( Qk )));
 
-int
-_XS_is_lucas_pseudoprime(IN UV n, ...)
-  ALIAS:
-    _XS_is_strong_lucas_pseudoprime = 1
-    _XS_is_extra_strong_lucas_pseudoprime = 2
-    _XS_is_frobenius_underwood_pseudoprime = 3
-    _XS_is_almost_extra_strong_lucas_pseudoprime = 4
-    _XS_is_pseudoprime = 5
-    _XS_is_aks_prime = 6
-    _XS_BPSW = 7
-  PREINIT:
-    int ret;
-  CODE:
-    switch (ix) {
-      case 0: ret = _XS_is_lucas_pseudoprime(n, 0); break;
-      case 1: ret = _XS_is_lucas_pseudoprime(n, 1); break;
-      case 2: ret = _XS_is_lucas_pseudoprime(n, 2); break;
-      case 3: ret = _XS_is_frobenius_underwood_pseudoprime(n); break;
-      case 4: ret = _XS_is_almost_extra_strong_lucas_pseudoprime
-                    ( n, (items == 1) ? 1 : my_svuv(ST(1)) );  break;
-      case 5: ret = _XS_is_pseudoprime(n, my_svuv(ST(1)));     break;
-      case 6: ret = _XS_is_aks_prime(n); break;
-      default:ret = _XS_BPSW(n); break;
-    }
-    RETVAL = ret;
-  OUTPUT:
-    RETVAL
-
-
 void
-is_prime(IN SV* svn)
+is_prime(IN SV* svn, ...)
   ALIAS:
     is_prob_prime = 1
+    is_bpsw = 2
+    is_lucas_pseudoprime = 3
+    is_strong_lucas_pseudoprime = 4
+    is_extra_strong_lucas_pseudoprime = 5
+    is_frobenius_underwood_pseudoprime = 6
+    is_aks_prime = 7
+    is_pseudoprime = 8
+    is_almost_extra_strong_lucas_pseudoprime = 9
   PREINIT:
     int status;
   PPCODE:
     status = _validate_int(aTHX_ svn, 1);
-    if (status == -1) {
-      XSRETURN_UV(0);
-    } else if (status == 1) {
-      UV n = my_svuv(svn);
-      XSRETURN_UV(_XS_is_prime(n));
-    } else {
-      const char* sub = 0;
-      if (_XS_get_callgmp())
-        sub = (ix == 0) ? "GMP::is_prime"
-                        : "GMP::is_prob_prime";
-      else
-        sub = (ix == 0) ? "_generic_is_prime"
-                        : "_generic_is_prob_prime";
-      _vcallsub(sub);
-      return; /* skip implicit PUTBACK */
+    if (status != 0) {
+      int ret = 0;
+      if (status == 1) {
+        UV n = my_svuv(svn);
+        UV a = (items == 1) ? 0 : my_svuv(ST(1));
+        switch (ix) {
+          case 0:
+          case 1:  ret = _XS_is_prime(n);  break;
+          case 2:  ret = _XS_BPSW(n);      break;
+          case 3:  ret = _XS_is_lucas_pseudoprime(n, 0); break;
+          case 4:  ret = _XS_is_lucas_pseudoprime(n, 1); break;
+          case 5:  ret = _XS_is_lucas_pseudoprime(n, 2); break;
+          case 6:  ret = _XS_is_frobenius_underwood_pseudoprime(n); break;
+          case 7:  ret = _XS_is_aks_prime(n); break;
+          case 8:  ret = _XS_is_pseudoprime(n, (items == 1) ? 2 : a); break;
+          case 9:
+          default: ret = _XS_is_almost_extra_strong_lucas_pseudoprime
+                         (n, (items == 1) ? 1 : a); break;
+        }
+      }
+      RETURN_NPARITY(ret);
     }
+    switch (ix) {
+      case 0: _vcallsub_with_gmp("is_prime");       break;
+      case 1:
+      case 2: _vcallsub_with_gmp("is_prob_prime");  break;
+      case 3: _vcallsub_with_gmp("is_lucas_pseudoprime"); break;
+      case 4: _vcallsub_with_gmp("is_strong_lucas_pseudoprime"); break;
+      case 5: _vcallsub_with_gmp("is_extra_strong_lucas_pseudoprime"); break;
+      case 6: _vcallsub_with_gmp("is_frobenius_underwood_pseudoprime"); break;
+      case 7: _vcallsub_with_gmp("is_aks_prime"); break;
+      case 8: _vcallsub_with_gmp("is_pseudoprime"); break;
+      case 9:
+      default:_vcallsub_with_gmp("is_almost_extra_strong_lucas_pseudoprime"); break;
+    }
+    return; /* skip implicit PUTBACK */
 
 void
 next_prime(IN SV* svn)
@@ -535,9 +552,9 @@ factor(IN SV* svn)
       }
     } else {
       switch (ix) {
-        case 0:  _vcallsubn(aTHX_ gimme_v, "_generic_factor", 1);     break;
-        case 1:  _vcallsubn(aTHX_ gimme_v, "_generic_factor_exp", 1); break;
-        default: _vcallsubn(aTHX_ gimme_v, "_generic_divisors", 1);   break;
+        case 0:  _vcallsubn(aTHX_ gimme_v, 0, "_generic_factor", 1);     break;
+        case 1:  _vcallsubn(aTHX_ gimme_v, 0, "_generic_factor_exp", 1); break;
+        default: _vcallsubn(aTHX_ gimme_v, 0, "_generic_divisors", 1);   break;
       }
       return; /* skip implicit PUTBACK */
     }
@@ -555,7 +572,7 @@ divisor_sum(IN SV* svn, ...)
       UV sigma = divisor_sum(n, k);
       if (sigma != 0)  XSRETURN_UV(sigma);   /* sigma 0 means overflow */
     }
-    _vcallsubn(aTHX_ G_SCALAR, "_generic_divisor_sum",items);
+    _vcallsub("_generic_divisor_sum");
     return; /* skip implicit PUTBACK */
 
 
@@ -580,9 +597,9 @@ znorder(IN SV* sva, IN SV* svn)
       XSRETURN_UV(ret);
     }
     switch (ix) {
-      case 0:  _vcallsubn(aTHX_ G_SCALAR, "_generic_znorder", 2);  break;
+      case 0:  _vcallsub("_generic_znorder");  break;
       /* TODO: Fixup public PP legendre_phi */
-      default: _vcallsubn(aTHX_ G_SCALAR, "PP::_legendre_phi", 2); break;
+      default: _vcallsub("PP::_legendre_phi"); break;
     }
     return; /* skip implicit PUTBACK */
 
@@ -602,10 +619,10 @@ kronecker(IN SV* sva, IN SV* svb)
     if (abpositive || abnegative) {
       UV a = my_svuv(sva);
       UV b = my_svuv(svb);
-      IV k = (abpositive) ? kronecker_uu(a,b) : kronecker_ss(a,b);
-      XSRETURN_IV( k );
+      int k = (abpositive) ? kronecker_uu(a,b) : kronecker_ss(a,b);
+      RETURN_NPARITY(k);
     }
-    _vcallsubn(aTHX_ G_SCALAR, "_generic_kronecker", 2);
+    _vcallsub("_generic_kronecker");
     return; /* skip implicit PUTBACK */
 
 double
@@ -656,7 +673,7 @@ euler_phi(IN SV* svlo, ...)
         XSRETURN_UV(totient(n));
       } else {
         UV n = (lostatus == -1) ? (UV)(-(my_sviv(svlo))) : my_svuv(svlo);
-        XSRETURN_IV(moebius(n));
+        RETURN_NPARITY(moebius(n));
       }
     } else if (items == 2 && lostatus == 1 && histatus == 1) {
       /* input is a range and both lo and hi are non-negative */
@@ -672,8 +689,9 @@ euler_phi(IN SV* svlo, ...)
           Safefree(totients);
         } else {
           signed char* mu = _moebius_range(lo, hi);
+          /* TODO: assert these are -1,0,1 */
           for (i = lo; i <= hi; i++)
-            PUSHs(sv_2mortal(newSViv(mu[i-lo])));
+            PUSHs(const_int[mu[i-lo]+1]);
           Safefree(mu);
         }
       }
@@ -681,9 +699,9 @@ euler_phi(IN SV* svlo, ...)
       /* Whatever we didn't handle above */
       U32 gimme_v = GIMME_V;
       switch (ix) {
-        case 0:  _vcallsubn(aTHX_ gimme_v, "_generic_euler_phi", items); break;
+        case 0:  _vcallsubn(aTHX_ gimme_v, 0,"_generic_euler_phi", items);break;
         case 1:
-        default: _vcallsubn(aTHX_ gimme_v, "_generic_moebius", items);   break;
+        default: _vcallsubn(aTHX_ gimme_v, 0,"_generic_moebius", items);  break;
       }
       return;
     }
@@ -765,7 +783,7 @@ forprimes (SV* block, IN SV* svbeg, IN SV* svend = 0)
   PPCODE:
   {
 #if !USE_MULTICALL
-    _vcallsubn(aTHX_ G_VOID|G_DISCARD, "_generic_forprimes",items);
+    _vcallsubn(aTHX_ G_VOID|G_DISCARD, 0, "_generic_forprimes", items);
 #else
     UV beg, end;
     GV *gv;
@@ -777,7 +795,7 @@ forprimes (SV* block, IN SV* svbeg, IN SV* svend = 0)
     UV seg_base, seg_low, seg_high;
 
     if (!_validate_int(aTHX_ svbeg, 0) || (items >= 3 && !_validate_int(aTHX_ svend,0))) {
-      _vcallsubn(aTHX_ G_VOID|G_DISCARD, "_generic_forprimes",items);
+      _vcallsubn(aTHX_ G_VOID|G_DISCARD, 0, "_generic_forprimes", items);
       return;
     }
     if (items < 3) {
@@ -867,7 +885,7 @@ forcomposites (SV* block, IN SV* svbeg, IN SV* svend = 0)
       croak("Not a subroutine reference");
 
     if (!_validate_int(aTHX_ svbeg, 0) || (items >= 3 && !_validate_int(aTHX_ svend,0))) {
-      _vcallsubn(aTHX_ G_VOID|G_DISCARD, "_generic_forcomposites",items);
+      _vcallsubn(aTHX_ G_VOID|G_DISCARD, 0, "_generic_forcomposites", items);
       return;
     }
 
@@ -947,7 +965,7 @@ fordivisors (SV* block, IN SV* svn)
       croak("Not a subroutine reference");
 
     if (!_validate_int(aTHX_ svn, 0)) {
-      _vcallsubn(aTHX_ G_VOID|G_DISCARD, "_generic_fordivisors",2);
+      _vcallsubn(aTHX_ G_VOID|G_DISCARD, 0, "_generic_fordivisors", 2);
       return;
     }
 

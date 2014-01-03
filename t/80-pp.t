@@ -286,7 +286,7 @@ require_ok 'Math::Prime::Util::PrimalityProving';
     *prev_prime     = \&Math::Prime::Util::PP::prev_prime;
 
     *is_pseudoprime = \&Math::Prime::Util::PP::is_pseudoprime;
-    *miller_rabin   = \&Math::Prime::Util::PP::miller_rabin;
+    *is_strong_pseudoprime = \&Math::Prime::Util::PP::is_strong_pseudoprime;
     *is_lucas_pseudoprime = \&Math::Prime::Util::PP::is_lucas_pseudoprime;
     *is_strong_lucas_pseudoprime = \&Math::Prime::Util::PP::is_strong_lucas_pseudoprime;
     *is_extra_strong_lucas_pseudoprime = \&Math::Prime::Util::PP::is_extra_strong_lucas_pseudoprime;
@@ -398,10 +398,10 @@ while (my($n, $nth) = each (%nthprimes_small)) {
 
 ###############################################################################
 
-is( miller_rabin(0, 2), 0, "MR with 0 shortcut composite");
-is( miller_rabin(1, 2), 0, "MR with 0 shortcut composite");
-is( miller_rabin(2, 2), 1, "MR with 2 shortcut prime");
-is( miller_rabin(3, 2), 1, "MR with 3 shortcut prime");
+is( is_strong_pseudoprime(0, 2), 0, "MR with 0 shortcut composite");
+is( is_strong_pseudoprime(1, 2), 0, "MR with 0 shortcut composite");
+is( is_strong_pseudoprime(2, 2), 1, "MR with 2 shortcut prime");
+is( is_strong_pseudoprime(3, 2), 1, "MR with 3 shortcut prime");
 
 while (my($base, $ppref) = each (%pseudoprimes)) {
   my $npseudos = scalar @$ppref;
@@ -420,7 +420,7 @@ while (my($base, $ppref) = each (%pseudoprimes)) {
   } elsif ($base eq 'lucas') {
      @gotmr = map { is_lucas_pseudoprime($_) } @$ppref;
   } else {
-     @gotmr = map { miller_rabin($_, $base) } @$ppref;
+     @gotmr = map { is_strong_pseudoprime($_, $base) } @$ppref;
   }
   is_deeply(\@gotmr, \@expmr, "$npseudos pseudoprimes (base $base)");
 }
@@ -607,8 +607,8 @@ if ($use64) {
 
 {
   my $n = Math::BigInt->new("168790877523676911809192454171451");
-  is( miller_rabin( $n, 2,3,5,7,11,13,17,19,23,29,31,37,41,43,47), 1, "168790877523676911809192454171451 looks prime with bases 2..52" );
-  is( miller_rabin( $n, 53), 0, "168790877523676911809192454171451 found composite with base 53" );
+  is( is_strong_pseudoprime( $n, 2,3,5,7,11,13,17,19,23,29,31,37,41,43,47), 1, "168790877523676911809192454171451 looks prime with bases 2..52" );
+  is( is_strong_pseudoprime( $n, 53), 0, "168790877523676911809192454171451 found composite with base 53" );
   is ( is_strong_lucas_pseudoprime($n), 0, "168790877523676911809192454171451 is not a strong Lucas pseudoprime" );
   SKIP: {
     skip "Old Perl+bigint segfaults in F-U code", 1 if $] < 5.008;

@@ -200,7 +200,7 @@ int _XS_is_prime(UV n)
   if (n <= 10)
     return (n == 2 || n == 3 || n == 5 || n == 7) ? 2 : 0;
 
-  if (n < UVCONST(2000000000)) {
+  if (n < UVCONST(2000000)) {
     UV d = n/30;
     UV m = n - d*30;
     unsigned char mtab = masktab30[m];  /* Bitmask in mod30 wheel */

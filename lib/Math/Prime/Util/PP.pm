@@ -189,7 +189,7 @@ sub _is_prime7 {  # n must not be divisible by 2, 3, or 5
     elsif ($n <   47636622961201) { @bases = ( 2, 2570940, 211991001, 3749873356); }
     elsif ($n < 3770579582154547) { @bases = ( 2, 2570940, 880937, 610386380, 4130785767); }
     else                          { @bases = ( 2, 325, 9375, 28178, 450775, 9780504, 1795265022); }
-    return miller_rabin($n, @bases)  ?  2  :  0;
+    return is_strong_pseudoprime($n, @bases)  ?  2  :  0;
   }
 
   # BPSW probable prime.  No composites are known to have passed this test
@@ -197,7 +197,7 @@ sub _is_prime7 {  # n must not be divisible by 2, 3, or 5
   # It has also been verified that no 64-bit composite will return true.
   # Slow since it's all in PP and uses bigints.
 
-  return 0 unless miller_rabin($n, 2);
+  return 0 unless is_strong_pseudoprime($n, 2);
   if ($n <= 18446744073709551615) {
     return is_almost_extra_strong_lucas_pseudoprime($n) ? 2 : 0;
   }
@@ -206,13 +206,16 @@ sub _is_prime7 {  # n must not be divisible by 2, 3, or 5
 
 sub is_prime {
   my($n) = @_;
+  return 0 if defined $n && int($n) < 0;
   _validate_positive_integer($n);
 
-  return 2 if ($n == 2) || ($n == 3) || ($n == 5);  # 2, 3, 5 are prime
-  return 0 if $n < 7;             # everything else below 7 is composite
+  if ($n < 7) { return ($n == 2) || ($n == 3) || ($n == 5) ? 2 : 0; }
   return 0 if !($n % 2) || !($n % 3) || !($n % 5);
   return _is_prime7($n);
 }
+
+# is_prob_prime is the same thing for us.
+*is_prob_prime = \&is_prime;
 
 # Possible sieve storage:
 #   1) vec with mod-30 wheel:   8 bits  / 30
@@ -933,11 +936,11 @@ sub _order {
 
 sub is_pseudoprime {
   my($n, $base) = @_;
+  return 0 if defined $n && int($n) < 0;
   _validate_positive_integer($n);
   _validate_positive_integer($base);
 
-  return 1 if $n == 2 || $n == 3;
-  return 0 if $n < 5;
+  if ($n < 5) { return ($n == 2) || ($n == 3) ? 1 : 0; }
   croak "Base $base is invalid" if $base < 2;
   if ($base >= $n) {
     $base = $base % $n;
@@ -949,8 +952,9 @@ sub is_pseudoprime {
   return ($x == 1) ? 1 : 0;
 }
 
-sub miller_rabin {
+sub is_strong_pseudoprime {
   my($n, @bases) = @_;
+  return 0 if defined $n && int($n) < 0;
   _validate_positive_integer($n);
   croak "No bases given to miller_rabin" unless @bases;
 
@@ -1212,6 +1216,7 @@ sub lucas_sequence {
 
 sub is_lucas_pseudoprime {
   my($n) = @_;
+  return 0 if defined $n && int($n) < 0;
   _validate_positive_integer($n);
 
   return 1 if $n == 2;
@@ -1228,6 +1233,7 @@ sub is_lucas_pseudoprime {
 
 sub is_strong_lucas_pseudoprime {
   my($n) = @_;
+  return 0 if defined $n && int($n) < 0;
   _validate_positive_integer($n);
 
   return 1 if $n == 2;
@@ -1259,6 +1265,7 @@ sub is_strong_lucas_pseudoprime {
 
 sub is_extra_strong_lucas_pseudoprime {
   my($n) = @_;
+  return 0 if defined $n && int($n) < 0;
   _validate_positive_integer($n);
 
   return 1 if $n == 2;
@@ -1290,9 +1297,13 @@ sub is_extra_strong_lucas_pseudoprime {
 
 sub is_almost_extra_strong_lucas_pseudoprime {
   my($n, $increment) = @_;
+  return 0 if defined $n && int($n) < 0;
   _validate_positive_integer($n);
-  $increment = 1 unless defined $increment;
-  _validate_positive_integer($increment, 1, 256);
+  if (defined $increment) {
+    _validate_positive_integer($increment, 1, 256);
+  } else {
+    $increment = 1;
+  }
 
   return 1 if $n == 2;
   return 0 if $n < 2 || ($n % 2) == 0;
@@ -1331,6 +1342,7 @@ sub is_almost_extra_strong_lucas_pseudoprime {
 
 sub is_frobenius_underwood_pseudoprime {
   my($n) = @_;
+  return 0 if defined $n && int($n) < 0;
   _validate_positive_integer($n);
   return 0 if $n < 2;
   return 1 if $n < 4;
@@ -1449,6 +1461,8 @@ sub _test_anr {
 
 sub is_aks_prime {
   my $n = shift;
+  return 0 if defined $n && int($n) < 0;
+  _validate_positive_integer($n);
 
   $n = Math::BigInt->new("$n") unless ref($n) eq 'Math::BigInt';
 
@@ -2851,8 +2865,6 @@ L<OEIS A001567|http://oeis.org/A001567>.
 
 =head2 is_strong_pseudoprime
 
-=head2 miller_rabin
-
   my $maybe_prime = is_strong_pseudoprime($n, 2);
   my $probably_prime = is_strong_pseudoprime($n, 2, 3, 5, 7, 11, 13, 17);
 
@@ -3178,7 +3190,7 @@ operations that are relatively close for small and medium-size values:
 
   next_prime / prev_prime
   is_prime / is_prob_prime
-  miller_rabin
+  is_strong_pseudoprime
   ExponentialIntegral / LogarithmicIntegral / RiemannR
   primearray
 
