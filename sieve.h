@@ -94,7 +94,7 @@ static UV prev_prime_in_sieve(const unsigned char* sieve, UV p) {
       do { \
         mask_ <<= 1; \
         if (mask_ > 128) { \
-          do { s_ = sieve_[++d_]; } while (d_ <= lastd_ && s_ == 0xFF); \
+          while (++d_ <= lastd_) { s_ = sieve_[d_]; if (s_ != 0xFF) break; } \
           if (d_ > lastd_) break; \
           mask_ = 1; \
         } \
