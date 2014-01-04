@@ -200,34 +200,42 @@ static const int wheel2xmap[30] =     /* (2*p)%30 => 2,14,22,26,4,8,16,28 */
 static const UV max_sieve_prime = (BITS_PER_WORD==64) ? 4294967291U : 65521U;
 
 
-static void sieve_prefill(unsigned char* mem, UV startd, UV endd)
+static void memtile(unsigned char* src, UV from, UV to) {
+  while (from < to) {
+    UV bytes = (2*from > to) ? to-from : from;
+    memcpy(src+from, src, bytes);
+    from += bytes;
+  }
+}
+
+static UV sieve_prefill(unsigned char* mem, UV startd, UV endd)
 {
+  UV next_prime = 17;
   UV nbytes = endd - startd + 1;
   MPUassert( (mem != 0) && (endd >= startd), "sieve_prefill bad arguments");
 
-  /* Walk the memory, tiling in the presieve area using memcpy.
-   * This is pretty fast, but it might still benefit from using copy
-   * doubling (where we copy to the memory, then copy memory to memory
-   * doubling in size each time), as memcpy usually loves big chunks.
-   */
-  while (startd <= endd) {
+  if (startd != 0) {
     UV pstartd = startd % PRESIEVE_SIZE;
-    UV sieve_bytes = PRESIEVE_SIZE - pstartd;
-    UV bytes = (nbytes > sieve_bytes) ? sieve_bytes : nbytes;
-    memcpy(mem, presieve13 + pstartd, bytes);
-    if (startd == 0)  mem[0] = 0x01; /* Correct first byte */
-    startd += bytes;
-    mem += bytes;
-    nbytes -= bytes;
+    UV tailbytes = PRESIEVE_SIZE - pstartd;
+    if (tailbytes > nbytes) tailbytes = nbytes;
+    memcpy(mem, presieve13 + pstartd, tailbytes); /* Copy tail to mem */
+    mem += tailbytes;    /* Advance so mem points at the beginning */
+    nbytes -= tailbytes;
   }
+  if (nbytes > 0) {
+    memcpy(mem, presieve13, (nbytes < PRESIEVE_SIZE) ? nbytes : PRESIEVE_SIZE);
+    memtile(mem, PRESIEVE_SIZE, nbytes);
+    if (startd == 0) mem[0] = 0x01; /* Correct first byte */
+  }
+  /* Leaving option open to tile 17 out and sieve, then return 19 */
+  return next_prime;
 }
 
 /* Wheel 30 sieve.  Ideas from Terje Mathisen and Quesada / Van Pelt. */
 unsigned char* sieve_erat30(UV end)
 {
   unsigned char* mem;
-  UV max_buf, limit;
-  UV prime;
+  UV max_buf, limit, prime;
 
   max_buf = (end/30) + ((end%30) != 0);
   /* Round up to a word */
@@ -235,10 +243,10 @@ unsigned char* sieve_erat30(UV end)
   New(0, mem, max_buf, unsigned char );
 
   /* Fill buffer with marked 7, 11, and 13 */
-  sieve_prefill(mem, 0, max_buf-1);
+  prime = sieve_prefill(mem, 0, max_buf-1);
 
   limit = isqrt(end);  /* prime*prime can overflow */
-  for (prime = 17; prime <= limit; prime = next_prime_in_sieve(mem,prime)) {
+  for (  ; prime <= limit; prime = next_prime_in_sieve(mem,prime)) {
     UV p2 = prime*prime;
     UV d = p2 / 30;
     UV m = p2 - d*30;
@@ -285,7 +293,7 @@ unsigned char* sieve_erat30(UV end)
 int sieve_segment(unsigned char* mem, UV startd, UV endd)
 {
   const unsigned char* sieve;
-  UV limit, slimit;
+  UV limit, slimit, start_base_prime;
   UV startp = 30*startd;
   UV endp = (endd >= (UV_MAX/30))  ?  UV_MAX-2  :  30*endd+29;
 
@@ -293,7 +301,7 @@ int sieve_segment(unsigned char* mem, UV startd, UV endd)
              "sieve_segment bad arguments");
 
   /* Fill buffer with marked 7, 11, and 13 */
-  sieve_prefill(mem, startd, endd);
+  start_base_prime = sieve_prefill(mem, startd, endd);
 
   limit = isqrt(endp);  /* floor(sqrt(n)), will include p if p*p=endp */
   /* Don't use a sieve prime such that p*p > UV_MAX */
@@ -303,7 +311,7 @@ int sieve_segment(unsigned char* mem, UV startd, UV endd)
   /* printf("segment sieve from %"UVuf" to %"UVuf" (aux sieve to %"UVuf")\n", startp, endp, slimit); */
   get_prime_cache(slimit, &sieve);
 
-  START_DO_FOR_EACH_SIEVE_PRIME(sieve, 17, slimit)
+  START_DO_FOR_EACH_SIEVE_PRIME(sieve, start_base_prime, slimit)
   {
     /* p increments from 17 to at most sqrt(endp).  Note on overflow:
      * 32-bit: limit=     65535, max p =      65521, p*p = ~0-1965854
