@@ -500,7 +500,7 @@ static const unsigned short step_counts_30k[] =  /* starts at 7 */
    1903,1970,1962,1905,1905};
 #define NSTEP_COUNTS_30K  (sizeof(step_counts_30k)/sizeof(step_counts_30k[0]))
 
-/* mpu '$step=300_000; $pc=prime_count(20*$step); print "$pc\n", join(",", map { $spc=$pc; $pc=prime_count($_*$step); $pc-$spc; } 21..100), "\n"' */
+/* mpu '$step=300_000; $pc=prime_count(20*$step); print "$pc\n", join(",", map { $spc=$pc; $pc=prime_count($_*$step); $pc-$spc; } 21..212), "\n"' */
 static const unsigned short step_counts_300k[] =  /* starts at 6M */
   {19224,19086,19124,19036,18942,18893,18870,18853,18837,18775,18688,18674,
    18594,18525,18639,18545,18553,18424,18508,18421,18375,18366,18391,18209,
