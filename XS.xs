@@ -839,24 +839,23 @@ _validate_num(SV* svn, ...)
 void
 forprimes (SV* block, IN SV* svbeg, IN SV* svend = 0)
   PROTOTYPE: &$;$
-  PPCODE:
-  {
-#if !USE_MULTICALL
-    _vcallsubn(aTHX_ G_VOID|G_DISCARD, 0, "_generic_forprimes", items);
-#else
-    UV beg, end;
+  PREINIT:
     GV *gv;
     HV *stash;
+    SV* svarg;
     CV *cv;
-    SV* svarg;  /* We use svarg to prevent clobbering $_ outside the block */
-    void* ctx;
     unsigned char* segment;
-    UV seg_base, seg_low, seg_high;
+    UV beg, end, seg_base, seg_low, seg_high;
+  PPCODE:
+    cv = sv_2cv(block, &stash, &gv, 0);
+    if (cv == Nullcv)
+      croak("Not a subroutine reference");
 
     if (!_validate_int(aTHX_ svbeg, 0) || (items >= 3 && !_validate_int(aTHX_ svend,0))) {
       _vcallsubn(aTHX_ G_VOID|G_DISCARD, 0, "_generic_forprimes", items);
       return;
     }
+
     if (items < 3) {
       beg = 2;
       end = my_svuv(svbeg);
@@ -864,12 +863,7 @@ forprimes (SV* block, IN SV* svbeg, IN SV* svend = 0)
       beg = my_svuv(svbeg);
       end = my_svuv(svend);
     }
-    if (beg > end)
-      XSRETURN(0);
 
-    cv = sv_2cv(block, &stash, &gv, 0);
-    if (cv == Nullcv)
-      croak("Not a subroutine reference");
     SAVESPTR(GvSV(PL_defgv));
     svarg = newSVuv(0);
     GvSV(PL_defgv) = svarg;
@@ -883,63 +877,61 @@ forprimes (SV* block, IN SV* svbeg, IN SV* svend = 0)
       }
       beg += 1 + (beg > 2);
     }
-    /* For small ranges with large bases or tiny ranges, it will be faster
-     * and less memory to just iterate through the primes in range.  The
-     * exact limits will change based on the sieve vs. next_prime speed. */
-    if (beg <= end && !CvISXSUB(cv) && (
+#if USE_MULTICALL
+    if (!CvISXSUB(cv) && beg <= end) {
+      dMULTICALL;
+      I32 gimme = G_VOID;
+      PUSH_MULTICALL(cv);
+      if (
 #if BITS_PER_WORD == 64
           (beg >= UVCONST(     100000000000000) && end-beg <    100000) ||
           (beg >= UVCONST(      10000000000000) && end-beg <     40000) ||
           (beg >= UVCONST(       1000000000000) && end-beg <     17000) ||
 #endif
-          (                                        end-beg <       500) ) ) {
-      dMULTICALL;
-      I32 gimme = G_VOID;
-      PUSH_MULTICALL(cv);
-      for (beg = _XS_next_prime(beg-1); beg <= end && beg != 0; beg = _XS_next_prime(beg)) {
-        sv_setuv(svarg, beg);
-        MULTICALL;
-      }
-      FIX_MULTICALL_REFCOUNT;
-      POP_MULTICALL;
-    } else if (beg <= end) {
-      ctx = start_segment_primes(beg, end, &segment);
-      while (next_segment_primes(ctx, &seg_base, &seg_low, &seg_high)) {
-        if (!CvISXSUB(cv)) {
-          dMULTICALL;
-          I32 gimme = G_VOID;
-          PUSH_MULTICALL(cv);
+          ((end-beg) < 500) ) {     /* MULTICALL next prime */
+        for (beg = _XS_next_prime(beg-1); beg <= end && beg != 0; beg = _XS_next_prime(beg)) {
+          sv_setuv(svarg, beg);
+          MULTICALL;
+        }
+      } else {                      /* MULTICALL segment sieve */
+        void* ctx = start_segment_primes(beg, end, &segment);
+        while (next_segment_primes(ctx, &seg_base, &seg_low, &seg_high)) {
           START_DO_FOR_EACH_SIEVE_PRIME( segment, seg_low - seg_base, seg_high - seg_base ) {
             sv_setuv(svarg, seg_base + p);
             MULTICALL;
           } END_DO_FOR_EACH_SIEVE_PRIME
-          FIX_MULTICALL_REFCOUNT;
-          POP_MULTICALL;
-        } else {
-          START_DO_FOR_EACH_SIEVE_PRIME( segment, seg_low - seg_base, seg_high - seg_base ) {
-            sv_setuv(svarg, seg_base + p);
-            PUSHMARK(SP);
-            call_sv((SV*)cv, G_VOID|G_DISCARD);
-          } END_DO_FOR_EACH_SIEVE_PRIME
         }
+        end_segment_primes(ctx);
+      }
+      FIX_MULTICALL_REFCOUNT;
+      POP_MULTICALL;
+    }
+    else
+#endif
+    if (beg <= end) {               /* NO-MULTICALL segment sieve */
+      void* ctx = start_segment_primes(beg, end, &segment);
+      while (next_segment_primes(ctx, &seg_base, &seg_low, &seg_high)) {
+        START_DO_FOR_EACH_SIEVE_PRIME( segment, seg_low - seg_base, seg_high - seg_base ) {
+          sv_setuv(svarg, seg_base + p);
+          PUSHMARK(SP);
+          call_sv((SV*)cv, G_VOID|G_DISCARD);
+        } END_DO_FOR_EACH_SIEVE_PRIME
       }
       end_segment_primes(ctx);
     }
     SvREFCNT_dec(svarg);
-#endif
-  }
 
 void
 forcomposites (SV* block, IN SV* svbeg, IN SV* svend = 0)
   PROTOTYPE: &$;$
-  PPCODE:
-  {
+  PREINIT:
     UV beg, end;
     GV *gv;
     HV *stash;
     SV* svarg;  /* We use svarg to prevent clobbering $_ outside the block */
-    CV *cv = sv_2cv(block, &stash, &gv, 0);
-
+    CV *cv;
+  PPCODE:
+    cv = sv_2cv(block, &stash, &gv, 0);
     if (cv == Nullcv)
       croak("Not a subroutine reference");
 
@@ -955,8 +947,6 @@ forcomposites (SV* block, IN SV* svbeg, IN SV* svend = 0)
       beg = my_svuv(svbeg);
       end = my_svuv(svend);
     }
-    if (beg > end)
-      return;
 
     SAVESPTR(GvSV(PL_defgv));
     svarg = newSVuv(0);
@@ -995,7 +985,7 @@ forcomposites (SV* block, IN SV* svbeg, IN SV* svend = 0)
     }
     else
 #endif
-    {
+    if (beg <= end) {
       beg = (beg <= 4) ? 3 : beg-1;
       while (beg++ < end) {
         if (!_XS_is_prob_prime(beg)) {
@@ -1006,20 +996,19 @@ forcomposites (SV* block, IN SV* svbeg, IN SV* svend = 0)
       }
     }
     SvREFCNT_dec(svarg);
-  }
 
 void
 fordivisors (SV* block, IN SV* svn)
   PROTOTYPE: &$
-  PPCODE:
-  {
+  PREINIT:
     UV i, n, ndivisors;
     UV *divs;
     GV *gv;
     HV *stash;
     SV* svarg;  /* We use svarg to prevent clobbering $_ outside the block */
-    CV *cv = sv_2cv(block, &stash, &gv, 0);
-
+    CV *cv;
+  PPCODE:
+    cv = sv_2cv(block, &stash, &gv, 0);
     if (cv == Nullcv)
       croak("Not a subroutine reference");
 
@@ -1057,4 +1046,3 @@ fordivisors (SV* block, IN SV* svn)
     }
     SvREFCNT_dec(svarg);
     Safefree(divs);
-  }
