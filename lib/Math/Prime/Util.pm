@@ -37,7 +37,7 @@ our @EXPORT_OK =
       random_proven_prime random_proven_prime_with_cert
       random_maurer_prime random_maurer_prime_with_cert
       primorial pn_primorial consecutive_integer_lcm
-      factor factor_exp all_factors divisors
+      gcd factor factor_exp all_factors divisors
       moebius mertens euler_phi jordan_totient exp_mangoldt liouville
       partitions
       chebyshev_theta chebyshev_psi
@@ -118,12 +118,13 @@ BEGIN {
     *znorder       = \&Math::Prime::Util::_generic_znorder;
     *znprimroot    = \&Math::Prime::Util::_generic_znprimroot;
     *legendre_phi  = \&Math::Prime::Util::PP::_legendre_phi;
+    *gcd           = \&Math::Prime::Util::PP::gcd;
     *factor        = \&Math::Prime::Util::_generic_factor;
     *factor_exp    = \&Math::Prime::Util::_generic_factor_exp;
     *divisors      = \&Math::Prime::Util::_generic_divisors;
     *forprimes     = sub (&$;$) { _generic_forprimes(@_); }; ## no critic qw(ProhibitSubroutinePrototypes)
+    *forcomposites = sub (&$;$) { _generic_forcomposites(@_); }; ## no critic qw(ProhibitSubroutinePrototypes)
     *fordivisors   = sub (&$) { _generic_fordivisors(@_); }; ## no critic qw(ProhibitSubroutinePrototypes)
-    *forcomposites = sub (&$) { _generic_forcomposites(@_); }; ## no critic qw(ProhibitSubroutinePrototypes)
 
     *_prime_memfreeall = \&Math::Prime::Util::PP::_prime_memfreeall;
     *prime_memfree  = \&Math::Prime::Util::PP::prime_memfree;
@@ -2552,7 +2553,15 @@ block for each composite in the inclusive range.  Starting at 2, the
 composites are the non-primes (C<0> and C<1> are neither prime nor composite).
 
 
+=head2 fordivisors
+
+  fordivisors { $prod *= $_ } $n;
+
+Given a block and a non-negative number C<n>, the block is called with
+C<$_> set to each divisor in sorted order.  Also see L</divisor_sum>.
+
 =head2 prime_iterator
+
 
   my $it = prime_iterator;
   $sum += $it->() for 1..100000;
@@ -3170,13 +3179,10 @@ The following conditions must hold:
   - C<< n >= 2 >>
 
 
-=head2 fordivisors
+=head2 gcd
 
-  fordivisors { $prod *= $_ } $n;
-
-Given a block and a non-negative number C<n>, the block is called with
-C<$_> set to each divisor in sorted order.  Also see L</divisor_sum>.
-
+Given a list of integers, returns the greatest common divisor.  This is
+often used to test for coprimality.
 
 =head2 moebius
 
@@ -4027,17 +4033,17 @@ is 40 by default).  Accuracy without MPFR should be 35 digits.
 
 Print strong pseudoprimes to base 17 up to 10M:
 
-    # Similar to A001262's isStrongPsp function, but over 4x faster
-    perl -MMath::Prime::Util=:all -E 'my $n=3; while($n <= 10000000) { print "$n " if is_strong_pseudoprime($n,$base) && !is_prime($n); $n+=2; } BEGIN {$|=1; $base=17}'
-
-or, slightly faster, use forprimes and loop over the odds between primes:
-
-   perl -MMath::Prime::Util=:all -E '$|=1; $base=17; my $prev = 1; forprimes { $prev += 2; while ($prev < $_) { print "$prev " if is_strong_pseudoprime($prev,$base); $prev += 2; } } 3,10000000'
+    # Similar to A001262's isStrongPsp function, but much faster
+    perl -MMath::Prime::Util=:all -E 'forcomposites { say if is_strong_pseudoprime($_,17) } 10000000;'
 
 Print some primes above 64-bit range:
 
     perl -MMath::Prime::Util=:all -Mbigint -E 'my $start=100000000000000000000; say join "\n", @{primes($start,$start+1000)}'
-    # Similar code using Pari:
+
+    # Another way
+    perl -MMath::Prime::Util=:all -E 'forprimes { say } "100000000000000000039", "100000000000000000993"'
+
+    # Similar using Math::Pari:
     # perl -MMath::Pari=:int,PARI,nextprime -E 'my $start = PARI "100000000000000000000"; my $end = $start+1000; my $p=nextprime($start); while ($p <= $end) { say $p; $p = nextprime($p+1); }'
 
 Examining the η3(x) function of Planat and Solé (2011):
@@ -4072,7 +4078,7 @@ Project Euler, problem 3 (Largest prime factor):
 
   use Math::Prime::Util qw/factor/;
   use bigint;  # Only necessary for 32-bit machines.
-  say "", (factor(600851475143))[-1]
+  say 0+(factor(600851475143))[-1]
 
 Project Euler, problem 7 (10001st prime):
 
@@ -4081,9 +4087,9 @@ Project Euler, problem 7 (10001st prime):
 
 Project Euler, problem 10 (summation of primes):
 
-  use Math::Prime::Util qw/primes/;
+  use Math::Prime::Util qw/forprimes/;
   my $sum = 0;
-  $sum += $_ for @{primes(2_000_000)};
+  forprimes { $sum += $_ } 2_000_000;
   say $sum;
 
 Project Euler, problem 21 (Amicable numbers):
@@ -4103,14 +4109,13 @@ Project Euler, problem 41 (Pandigital prime), brute force command line:
 
 Project Euler, problem 47 (Distinct primes factors):
 
-  use Math::Prime::Util qw/pn_primorial factor/;
-  use List::MoreUtils qw/distinct/;
-  sub nfactors { scalar distinct factor(shift); }
+  use Math::Prime::Util qw/pn_primorial factor_exp/;
   my $n = pn_primorial(4);  # Start with the first 4-factor number
-  $n++ while (nfactors($n) != 4 || nfactors($n+1) != 4 || nfactors($n+2) != 4 || nfactors($n+3) != 4);
+  # factor_exp in scalar context returns the number of distinct prime factors
+  $n++ while (factor_exp($n) != 4 || factor_exp($n+1) != 4 || factor_exp($n+2) != 4 || factor_exp($n+3) != 4);
   say $n;
 
-Project Euler, problem 69, stupid brute force solution (about 2 seconds):
+Project Euler, problem 69, stupid brute force solution (about 1 second):
 
   use Math::Prime::Util qw/euler_phi/;
   my ($n, $max) = (0,0);
@@ -4127,7 +4132,7 @@ Here is the right way to do PE problem 69 (under 0.03s):
   $n++ while pn_primorial($n+1) < 1000000;
   say pn_primorial($n);
 
-Project Euler, problem 187, stupid brute force solution, ~4 minutes:
+Project Euler, problem 187, stupid brute force solution, ~3 minutes:
 
   use Math::Prime::Util qw/factor/;
   my $nsemis = 0;
@@ -4161,13 +4166,15 @@ Compute L<OEIS A054903|http://oeis.org/A054903> just like CRG4's Pari example:
 
 Construct the table shown in L<OEIS A046147|http://oeis.org/A046147>:
 
-  use Math::Prime::Util qw/znorder euler_phi/;
+  use Math::Prime::Util qw/znorder euler_phi gcd/;
   foreach my $n (1..100) {
-    my $phi = euler_phi($n);
-    my @r = grep {    Math::BigInt::bgcd($_,$n) == 1
-                   && znorder($_,$n) == $phi
-                 } 1..$n-1;
-    say "$n ", join(" ", @r);
+    if (!znprimroot($n)) {
+      say "$n -";
+    } else {
+      my $phi = euler_phi($n);
+      my @r = grep { gcd($_,$n) == 1 && znorder($_,$n) == $phi } 1..$n-1;
+      say "$n ", join(" ", @r);
+    }
   }
 
 =head1 PRIMALITY TESTING NOTES

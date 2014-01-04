@@ -17,7 +17,8 @@ Revision history for Perl module Math::Prime::Util
     - forcomposites    like forprimes, but on composites.  See Pari 2.6.x.
     - fordivisors      calls a block for each divisor
     - kronecker        Kronecker symbol (extension of Jacobi symbol)
-    - znprimroot       Primative root modulo n
+    - znprimroot       Primitive root modulo n
+    - gcd              Greatest common divisor
 
     [FUNCTIONALITY AND PERFORMANCE]
 
@@ -58,6 +59,9 @@ Revision history for Perl module Math::Prime::Util
       faster than primegen for me, but still slower than primesieve and yafu.
 
     - znorder uses Carmichael Lambda instead of Euler Phi.  Faster.
+
+    - While Math::BigInt has the bgcd function, it is slow for native numbers,
+      even with the Pari or GMP back ends.  The gcd here is 20-100x faster.
 
 
 0.35  2013-12-08

@@ -16,6 +16,7 @@
 #include "ptypes.h"
 #include "cache.h"
 #include "sieve.h"
+#define FUNC_gcd_ui
 #include "util.h"
 #include "primality.h"
 #include "factor.h"
@@ -160,9 +161,14 @@ static int _vcallsubn(pTHX_ I32 flags, const char* gmp_name, const char* name, i
     /* If given a GMP function, and GMP enabled, and function exists, use it. */
     int use_gmp = gmp_name != 0 && _XS_get_callgmp();
     if (use_gmp) {
+      CV* cv;
       strncat(fullname, gmp_name, 60);
-      if (get_cv(fullname, flags) == 0)
+      cv = get_cv(fullname, flags);
+      /* This isn't covering every case for arbitrary functions */
+      if (cv == 0 || (!CvROOT(cv) && !CvXSUB(cv))) {
         use_gmp = 0;
+        fullname[19] = '\0';
+      }
     }
     if (!use_gmp)
       strncat(fullname, name, 60);
@@ -220,8 +226,9 @@ prime_memfree()
     _XS_get_verbose = 2
     _XS_get_callgmp = 3
     _get_prime_cache_size = 4
-  PPCODE:
+  PREINIT:
     UV ret;
+  PPCODE:
     switch (ix) {
       case 0:  prime_memfree(); goto return_nothing;
       case 1:  _prime_memfreeall(); goto return_nothing;
@@ -401,14 +408,17 @@ trial_factor(IN UV n, ...)
 void
 is_strong_pseudoprime(IN SV* svn, ...)
   PREINIT:
-    int status;
+    int c, status = 1;
   PPCODE:
     if (items < 2)
       croak("No bases given to miller_rabin");
-    status = _validate_int(aTHX_ svn, 0);
+    /* Check all arguments */
+    for (c = 0; c < items && status == 1; c++)
+      if (_validate_int(aTHX_ ST(c), 0) != 1)
+        status = 0;
     if (status == 1) {
       UV n = my_svuv(svn);
-      int b, c, ret = 1;
+      int b, ret = 1;
       if      (n < 4)        { ret = (n >= 2); } /* 0,1 composite; 2,3 prime */
       else if ((n % 2) == 0) { ret = 0; }        /* evens composite */
       else {
@@ -422,6 +432,27 @@ is_strong_pseudoprime(IN SV* svn, ...)
       RETURN_NPARITY(ret);
     }
     _vcallsub_with_gmp("is_strong_pseudoprime");
+    return; /* skip implicit PUTBACK */
+
+void
+gcd(...)
+  PROTOTYPE: @
+  PREINIT:
+    int i, status = 1;
+    UV ret = 0;
+  PPCODE:
+    /* For each arg, while valid input, validate+gcd.  Shortcut stop if 1. */
+    for (i = 0; i < items && status == 1 && ret != 1; i++) {
+      if (_validate_int(aTHX_ ST(i), 1) != 1) {
+        status = 0;
+      } else {
+        UV n = my_svuv(ST(i));
+        ret = (ret == 0) ? n : gcd_ui(ret, n);
+      }
+    }
+    if (status == 1)
+      XSRETURN_UV(ret);
+    _vcallsub_with_gmp("gcd");
     return; /* skip implicit PUTBACK */
 
 void
@@ -578,10 +609,13 @@ factor(IN SV* svn)
 
 void
 divisor_sum(IN SV* svn, ...)
+  PREINIT:
+    SV* svk;
+    int nstatus, kstatus;
   PPCODE:
-    SV* svk = (items > 1) ? ST(1) : 0;
-    int nstatus = _validate_int(aTHX_ svn, 0);
-    int kstatus = (items == 1 || (SvIOK(svk) && SvIV(svk)))  ?  1  :  0;
+    svk = (items > 1) ? ST(1) : 0;
+    nstatus = _validate_int(aTHX_ svn, 0);
+    kstatus = (items == 1 || (SvIOK(svk) && SvIV(svk)))  ?  1  :  0;
     if (nstatus == 1 && kstatus == 1) {
       UV n = my_svuv(svn);
       UV k = (items > 1) ? my_svuv(svk) : 1;
@@ -591,30 +625,32 @@ divisor_sum(IN SV* svn, ...)
     _vcallsub("_generic_divisor_sum");
     return; /* skip implicit PUTBACK */
 
-
 void
 znorder(IN SV* sva, IN SV* svn)
   ALIAS:
     legendre_phi = 1
+  PREINIT:
+    int astatus, nstatus;
   PPCODE:
-    int astatus = _validate_int(aTHX_ sva, 0);
-    int nstatus = _validate_int(aTHX_ svn, 0);
+    astatus = _validate_int(aTHX_ sva, 0);
+    nstatus = _validate_int(aTHX_ svn, 0);
     if (astatus == 1 && nstatus == 1) {
       UV a = my_svuv(sva);
       UV n = my_svuv(svn);
       UV ret;
       switch (ix) {
-        case 0:  ret = znorder(a,n);
+        case 0:  ret = znorder(a, n);
                  if (ret == 0) XSRETURN_UNDEF;  /* not defined */
                  break;
-        default: ret = legendre_phi(a, n);
-                 break;
+        case 1:
+        default: ret = legendre_phi(a, n); break;
       }
       XSRETURN_UV(ret);
     }
     switch (ix) {
       case 0:  _vcallsub("_generic_znorder");  break;
       /* TODO: Fixup public PP legendre_phi */
+      case 1:
       default: _vcallsub("PP::_legendre_phi"); break;
     }
     return; /* skip implicit PUTBACK */
@@ -946,7 +982,7 @@ forcomposites (SV* block, IN SV* svbeg, IN SV* svend = 0)
         START_DO_FOR_EACH_SIEVE_PRIME( segment, seg_low - seg_base, seg_high - seg_base ) {
           cbeg = prevprime+1;  if (cbeg < beg) cbeg = beg;
           prevprime = seg_base + p;
-          cend = prevprime-1;  if (cend > end) cbeg = end;
+          cend = prevprime-1;  if (cend > end) cend = end;
           for (c = cbeg; c <= cend; c++) {
             sv_setuv(svarg, c);  MULTICALL;
           }

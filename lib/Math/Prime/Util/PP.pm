@@ -895,6 +895,11 @@ sub _powmod {
   $t;
 }
 
+sub gcd {
+  # As usual, bend over backwards to work around RT71548
+  return Math::BigInt::bgcd(map { ($_ < 2147483647 || ref($_) eq 'Math::BigInt') ? $_ : "$_" } @_);
+}
+# unsigned, no validation
 sub _gcd_ui {
   my($x, $y) = @_;
   if ($y < $x) { ($x, $y) = ($y, $x); }

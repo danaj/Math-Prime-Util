@@ -6,7 +6,7 @@ use Test::More;
 use Math::Prime::Util
    qw/moebius mertens euler_phi jordan_totient divisor_sum exp_mangoldt
       chebyshev_theta chebyshev_psi carmichael_lambda znorder liouville
-      znprimroot kronecker legendre_phi
+      znprimroot kronecker legendre_phi gcd
      /;
 
 my $extra = defined $ENV{EXTENDED_TESTING} && $ENV{EXTENDED_TESTING};
@@ -274,6 +274,30 @@ my @legendre_sums = (
   [1000000, 168, 78331],
 );
 
+my @gcds = (
+  [ [], 0],
+  [ [8], 8],
+  [ [9,9], 9],
+  [ [0,0], 0],
+  [ [1, 0, 0], 1],
+  [ [0, 0, 1], 1],
+  [ [17,19], 1 ],
+  [ [54,24], 6 ],
+  [ [42,56], 14],
+  [ [ 9,28], 1 ],
+  [ [48,180], 12],
+  [ [2705353758,2540073744,3512215098,2214052398], 18],
+  [ [2301535282,3609610580,3261189640], 106],
+  [ [694966514,510402262,195075284,609944479], 181],
+  [ [294950648,651855678,263274296,493043500,581345426], 58 ],
+  [ [-30,-90,90], 30],
+  [ [-3,-9,-18], 3],
+);
+if ($use64) {
+  push @gcds, [ [12848174105599691600,15386870946739346600,11876770906605497900], 700];
+  push @gcds, [ [9785375481451202685,17905669244643674637,11069209430356622337], 117];
+}
+
 # These are slow with XS, and *really* slow with PP.
 if (!$usexs) {
   %big_mertens = map { $_ => $big_mertens{$_} }
@@ -301,6 +325,7 @@ plan tests => 0 + 1
                 + 7 + scalar(keys %totients)
                 + 1 # Small Carmichael Lambda
                 + scalar(@kroneckers)
+                + scalar(@gcds)
                 + scalar(@mult_orders)
                 + scalar(@legendre_sums)
                 + scalar(keys %primroots) + 2
@@ -449,6 +474,12 @@ foreach my $karg (@kroneckers) {
   my($a, $n, $exp) = @$karg;
   my $k = kronecker($a, $n);
   is( $k, $exp, "kronecker($a, $n) = $exp" );
+}
+###### gcd
+foreach my $garg (@gcds) {
+  my($aref, $exp) = @$garg;
+  my $gcd = gcd(@$aref);
+  is( $gcd, $exp, "gcd(".join(",",@$aref).") = $exp" );
 }
 ###### znorder
 foreach my $moarg (@mult_orders) {
