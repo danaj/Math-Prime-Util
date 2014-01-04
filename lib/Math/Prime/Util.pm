@@ -65,15 +65,16 @@ sub _import_nobigint {
 BEGIN {
 
   use Config;
-  use constant OLD_PERL_VERSION =>  ($] < 5.008);
-  use constant MPU_MAXBITS      =>  8 * $Config{uvsize};
-  use constant MPU_64BIT        =>  ($Config{uvsize} == 8);
-  use constant MPU_32BIT        =>  ($Config{uvsize} == 4);
-  use constant MPU_MAXPARAM     =>  ($Config{uvsize} == 4) ? 4294967295 : 18446744073709551615;
-  use constant MPU_MAXDIGITS    =>  ($Config{uvsize} == 4) ? 10 : 20;
-  use constant MPU_MAXPRIME     =>  ($Config{uvsize} == 4) ? 4294967291 : 18446744073709551557;
-  use constant MPU_MAXPRIMEIDX  =>  ($Config{uvsize} == 4) ?  203280221 :   425656284035217743;
-  use constant UVPACKLET        =>  ($Config{uvsize} == 8 ? 'Q' : 'L');
+  use constant { OLD_PERL_VERSION =>  ($] < 5.008),
+                 MPU_MAXBITS      =>  8 * $Config{uvsize},
+                 MPU_64BIT        =>  ($Config{uvsize} == 8),
+                 MPU_32BIT        =>  ($Config{uvsize} == 4),
+                 MPU_MAXPARAM     =>  ($Config{uvsize} == 4) ? 4294967295 : 18446744073709551615,
+                 MPU_MAXDIGITS    =>  ($Config{uvsize} == 4) ? 10 : 20,
+                 MPU_MAXPRIME     =>  ($Config{uvsize} == 4) ? 4294967291 : 18446744073709551557,
+                 MPU_MAXPRIMEIDX  =>  ($Config{uvsize} == 4) ?  203280221 :   425656284035217743,
+                 UVPACKLET        =>  ($Config{uvsize} == 8 ? 'Q' : 'L'),
+               };
   no Config;
 
   # Load PP code.  Nothing exported.

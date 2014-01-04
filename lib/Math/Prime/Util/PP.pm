@@ -19,12 +19,17 @@ BEGIN {
 
 BEGIN {
   use Config;
-  use constant OLD_PERL_VERSION =>  ($] < 5.008);
-  use constant MPU_MAXBITS      =>  8 * $Config{uvsize};
-  use constant MPU_64BIT        =>  ($Config{uvsize} == 8);
-  use constant MPU_32BIT        =>  ($Config{uvsize} == 4);
-  use constant MPU_HALFWORD     =>  ($Config{uvsize} == 4) ? 65536 : ($] < 5.008) ? 33554432 : 4294967296;
-  use constant UVPACKLET        =>  ($Config{uvsize} == 8 ? 'Q' : 'L');
+  use constant { OLD_PERL_VERSION =>  ($] < 5.008),
+                 MPU_MAXBITS      =>  8 * $Config{uvsize},
+                 MPU_64BIT        =>  ($Config{uvsize} == 8),
+                 MPU_32BIT        =>  ($Config{uvsize} == 4),
+                 #MPU_MAXPARAM     =>  ($Config{uvsize} == 4) ? 4294967295 : 18446744073709551615,
+                 #MPU_MAXDIGITS    =>  ($Config{uvsize} == 4) ? 10 : 20,
+                 #MPU_MAXPRIME     =>  ($Config{uvsize} == 4) ? 4294967291 : 18446744073709551557,
+                 MPU_MAXPRIMEIDX  =>  ($Config{uvsize} == 4) ?  203280221 :   425656284035217743,
+                 MPU_HALFWORD     =>  ($Config{uvsize} == 4) ? 65536 : ($] < 5.008) ? 33554432 : 4294967296,
+                 UVPACKLET        =>  ($Config{uvsize} == 8 ? 'Q' : 'L'),
+               };
   no Config;
 }
 
@@ -795,8 +800,7 @@ sub nth_prime {
 
   return $_primes_small[$n] if $n <= $#_primes_small;
 
-  my $max = (MPU_32BIT) ? 203280221 : 425656284035217743;
-  if ($n > $max && ref($n) ne 'Math::BigFloat') {
+  if ($n > MPU_MAXPRIMEIDX && ref($n) ne 'Math::BigFloat') {
     do { require Math::BigFloat; Math::BigFloat->import(); }
       if !defined $Math::BigFloat::VERSION;
     $n = Math::BigFloat->new("$n")

@@ -121,7 +121,7 @@ print "Starting benchmarks, $num_rns $len_rns-digit random numbers...\n";
 if (1) {
   print "\nMiller-Rabin, one base:\n";
   cmpthese($count, {
-    "MPU:PP"  => sub { Math::Prime::Util::PP::miller_rabin($_,2) for @rns; },
+    "MPU:PP"  => sub { Math::Prime::Util::PP::is_strong_pseudoprime($_,2) for @rns; },
     "MPU:GMP" => sub { Math::Prime::Util::GMP::is_strong_pseudoprime($_,2) for @rns; },
     "MPU"     => sub { Math::Prime::Util::is_strong_pseudoprime($_,2) for @rns; },
     "MP"      => sub { Math::Primality::is_strong_pseudoprime("$_","2") for @rns; },
@@ -142,7 +142,7 @@ if (1) {
   print "\nBPSW test:\n";
   cmpthese($count, {
     "MPU:PP"  => sub { my $sum = 0;
-               do { $sum += ( Math::Prime::Util::PP::miller_rabin($_, 2) &&
+               do { $sum += ( Math::Prime::Util::PP::is_strong_pseudoprime($_, 2) &&
                       Math::Prime::Util::PP::is_strong_lucas_pseudoprime($_) )
                       ? 1 : 0 } for @rns; },
     "MPU:GMP" => sub { Math::Prime::Util::GMP::is_prob_prime($_) for @rns; },
