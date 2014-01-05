@@ -350,21 +350,15 @@ sub lucky_primes {
 # This is not a general palindromic digit function!
 sub ndig_palindromes {
   my $digits = shift;
-  return (2,3,5,7,9) if $digits == 1;
+  return (2,3,5,7) if $digits == 1;
   return (11) if $digits == 2;
   return () if ($digits % 2) == 0;
 
-  my @prefixes = (1,3,7,9);
-  my $inner_digits = ($digits-1) / 2 - 1;
-  foreach my $d (1 .. $inner_digits) {
-    @prefixes = map { ($_.'0', $_.'1', $_.'2', $_.'3', $_.'4',
-                       $_.'5', $_.'6', $_.'7', $_.'8', $_.'9',); } @prefixes;
-  }
-  return map { my $r = reverse($_);
-               ($_.'0'.$r, $_.'1'.$r, $_.'2'.$r, $_.'3'.$r,
-                $_.'4'.$r, $_.'5'.$r, $_.'6'.$r, $_.'7'.$r,
-                $_.'8'.$r, $_.'9'.$r,);
-             } @prefixes;
+  my $rhdig = int(($digits - 1) / 2);
+  return grep { is_prime($_) }
+         map { $_ . reverse substr($_,0,$rhdig) }
+         map { $_ * int(10**$rhdig) .. ($_+1) * int(10**$rhdig) - 1 }
+         1, 3, 7, 9;
 }
 
 # See: http://en.wikipedia.org/wiki/Pillai_prime
@@ -433,6 +427,7 @@ sub gen_and_filter {
   my ($start, $end) = @_;
   my $gen;
   my $p = [];
+  $end-- if ($end % 2) == 0 && $end > 2;
 
   if (exists $opts{'lucas'}) {
     merge_primes(\$gen, $p, 'lucas', lucas_primes($start, $end));
@@ -461,7 +456,7 @@ sub gen_and_filter {
   if (exists $opts{'palindromic'}) {
     if (!defined $gen) {
       foreach my $d (length($start) .. length($end)) {
-        push @$p, grep { $_ >= $start && $_ <= $end && is_prime($_) }
+        push @$p, grep { $_ >= $start && $_ <= $end }
                   ndig_palindromes($d);
       }
       $gen = 'palindromic';
