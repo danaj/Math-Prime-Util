@@ -136,7 +136,6 @@ BEGIN {
     *fermat_factor  = \&Math::Prime::Util::PP::fermat_factor;
     *holf_factor    = \&Math::Prime::Util::PP::holf_factor;
     *squfof_factor  = \&Math::Prime::Util::PP::squfof_factor;
-    *rsqufof_factor = \&Math::Prime::Util::PP::squfof_factor;
     *pbrent_factor  = \&Math::Prime::Util::PP::pbrent_factor;
     *prho_factor    = \&Math::Prime::Util::PP::prho_factor;
     *pminus1_factor = \&Math::Prime::Util::PP::pminus1_factor;
@@ -3863,10 +3862,7 @@ same advantages and disadvantages as Fermat's method.
 
 =head2 squfof_factor
 
-=head2 rsqufof_factor
-
   my @factors = squfof_factor($n);
-  my @factors = rsqufof_factor($n);  # racing multiplier version
 
 Produces factors, not necessarily prime, of the positive number input.  An
 optional number of rounds can be given as a second parameter.  It is possible
@@ -4799,9 +4795,7 @@ The current implementation does not use these ideas.  Future versions might.
 The SQUFOF implementation being used is a slight modification to the public
 domain racing version written by Ben Buhrow.  Enhancements with ideas from
 Ben's later code as well as Jason Papadopoulos's public domain implementations
-are planned for a later version.  The old SQUFOF implementation, still included
-in the code, is my modifications to Ben Buhrow's modifications to Bob
-Silverman's code.
+are planned for a later version.
 
 The LMO implementation is based on the 2003 preprint from Christian Bau,
 as well as the 2006 paper from Tomás Oliveira e Silva.  I also want to

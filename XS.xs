@@ -361,11 +361,10 @@ trial_factor(IN UV n, ...)
     fermat_factor = 1
     holf_factor = 2
     squfof_factor = 3
-    rsqufof_factor = 4
-    pbrent_factor = 5
-    prho_factor = 6
-    pplus1_factor = 7
-    pminus1_factor = 8
+    pbrent_factor = 4
+    prho_factor = 5
+    pplus1_factor = 6
+    pminus1_factor = 7
   PPCODE:
     if (n == 0)  XSRETURN_UV(0);
     while ( (n% 2) == 0 ) {  n /=  2;  XPUSHs(sv_2mortal(newSVuv( 2 ))); }
@@ -386,19 +385,16 @@ trial_factor(IN UV n, ...)
         case 3:  arg1 = (items < 2)  ?   4*1024*1024  : SvUV(ST(1));
                  nfactors = squfof_factor (n, factors, arg1);  break;
         case 4:  arg1 = (items < 2)  ?   4*1024*1024  : SvUV(ST(1));
-                 nfactors = racing_squfof_factor(n, factors, arg1);  break;
-        case 5:  arg1 = (items < 2)  ?   4*1024*1024  : SvUV(ST(1));
                  arg2 = (items < 3)  ?             1  : SvUV(ST(2));
                  nfactors = pbrent_factor (n, factors, arg1, arg2);  break;
-        case 6:  arg1 = (items < 2)  ?   4*1024*1024  : SvUV(ST(1));
+        case 5:  arg1 = (items < 2)  ?   4*1024*1024  : SvUV(ST(1));
                  nfactors = prho_factor   (n, factors, arg1);  break;
-        case 7:  arg1 = (items < 2)  ?           200  : SvUV(ST(1));
+        case 6:  arg1 = (items < 2)  ?           200  : SvUV(ST(1));
                  nfactors = pplus1_factor (n, factors, arg1);  break;
-        case 8:  arg1 = (items < 2)  ?   1*1024*1024  : SvUV(ST(1));
-                 arg2 = (items < 3)  ?             0  : SvUV(ST(2));
-                 if (arg2 == 0) arg2 = 10*arg1;  /* default B2 */
+        case 7:
+        default: arg1 = (items < 2)  ?   1*1024*1024  : SvUV(ST(1));
+                 arg2 = (items < 3)  ?       10*arg1  : SvUV(ST(2));
                  nfactors = pminus1_factor(n, factors, arg1, arg2);  break;
-        default: break;
       }
       EXTEND(SP, nfactors);
       for (i = 0; i < nfactors; i++)
@@ -605,7 +601,6 @@ factor(IN SV* svn)
       }
       return; /* skip implicit PUTBACK */
     }
-
 
 void
 divisor_sum(IN SV* svn, ...)

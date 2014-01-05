@@ -46,7 +46,7 @@ extern UV znorder(UV a, UV n);
   #define MPU_PROB_PRIME_BEST  UVCONST(100000000)
 #endif
 
-#ifdef FUNC_isqrt
+#if defined(FUNC_isqrt) || defined(FUNC_is_perfect_square)
 static UV isqrt(UV n) {
   UV root;
 #if BITS_PER_WORD == 32
@@ -100,5 +100,23 @@ static UV lcm_ui(UV x, UV y) {
   return x * (y / gcd_ui(x,y));
 }
 #endif
+
+#ifdef FUNC_is_perfect_square
+/* See:  http://mersenneforum.org/showpost.php?p=110896 */
+static int is_perfect_square(UV n)
+{
+  UV m;
+  m = n & 127;
+  if ((m*0x8bc40d7d) & (m*0xa1e2f5d1) & 0x14020a)  return 0;
+  /* If your sqrt is particularly slow, this cuts out another 80%:
+     m = n % 63; if ((m*0x3d491df7) & (m*0xc824a9f9) & 0x10f14008) return 0;
+     and this cuts out some more:
+     m = n % 25; if ((m*0x1929fc1b) & (m*0x4c9ea3b2) & 0x51001005) return 0;
+   */
+  m = (UV) ( sqrt((double) n) + 0.5 );
+  return m*m == n;
+}
+#endif
+
 
 #endif

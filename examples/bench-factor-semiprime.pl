@@ -4,7 +4,7 @@ use warnings;
 $| = 1;  # fast pipes
 srand(377);
 
-use Math::Prime::Util qw/factor -nobigint/;
+use Math::Prime::Util qw/factor/;
 use Math::Factor::XS qw/prime_factors/;
 use Math::Pari qw/factorint/;
 use Benchmark qw/:all/;
@@ -93,9 +93,9 @@ foreach my $sp (@semiprimes) {
 print "OK\n";
 
 my %compare = (
-    'MPU'   => sub { factor($_) for @semiprimes; },
-    'MFXS'  => sub { prime_factors($_) for @semiprimes; },
-    'Pari'  => sub { foreach my $n (@semiprimes) { my @factors; my ($pn,$pc) = @{factorint($n)}; push @factors, (int($pn->[$_])) x $pc->[$_] for (0 .. $#{$pn}); } }
+    'MPU'   => sub { do { my @f = factor($_) } for @semiprimes; },
+    'MFXS'  => sub { do { my @f = prime_factors($_) } for @semiprimes; },
+    'Pari'  => sub { do { my ($pn,$pc) = @{factorint($_)}; my @f = map { int($pn->[$_]) x $pc->[$_] } 0 .. $#$pn; } for @semiprimes; },
 );
 delete $compare{'MFXS'} if $skip_mfxs;
 

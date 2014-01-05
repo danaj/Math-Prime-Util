@@ -113,7 +113,7 @@ plan tests => (3 * scalar @testn)
             + 2*scalar(keys %prime_factors)
             + 4*scalar(keys %all_factors)
             + 2*scalar(keys %factor_exponents)
-            + 10*9
+            + 10*8  # 10 extra factoring tests * 8 algorithms
             + 8
             + 1;
 
@@ -159,7 +159,6 @@ extra_factor_test("trial_factor",  sub {Math::Prime::Util::trial_factor(shift)})
 extra_factor_test("fermat_factor", sub {Math::Prime::Util::fermat_factor(shift)});
 extra_factor_test("holf_factor",   sub {Math::Prime::Util::holf_factor(shift)});
 extra_factor_test("squfof_factor", sub {Math::Prime::Util::squfof_factor(shift)});
-extra_factor_test("rsqufof_factor", sub {Math::Prime::Util::rsqufof_factor(shift)});
 extra_factor_test("pbrent_factor", sub {Math::Prime::Util::pbrent_factor(shift)});
 extra_factor_test("prho_factor",   sub {Math::Prime::Util::prho_factor(shift)});
 extra_factor_test("pminus1_factor",sub {Math::Prime::Util::pminus1_factor(shift)});

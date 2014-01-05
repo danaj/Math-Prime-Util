@@ -8,6 +8,7 @@
 #include "mulmod.h"
 #define FUNC_isqrt  1
 #define FUNC_gcd_ui 1
+#define FUNC_is_perfect_square
 #include "util.h"
 
 /* Primality related functions, including Montgomery math */
@@ -148,19 +149,6 @@ static int monty_mr64(const uint64_t n, const UV* bases, int cnt)
 
 
 
-/* Helper functions */
-static int is_perfect_square(UV n, UV* sqrtn)
-{
-  UV m;
-  m = n & 127;
-  if ((m*0x8bc40d7d) & (m*0xa1e2f5d1) & 0x14020a)  return 0;
-  m = isqrt(n);
-  if (n != (m*m))
-    return 0;
-  if (sqrtn != 0)
-    *sqrtn = m;
-  return 1;
-}
 static int jacobi_iu(IV in, UV m) {
   int j = 1;
   UV n = (in < 0) ? -in : in;
@@ -286,7 +274,7 @@ int _XS_BPSW(UV const n)
         return 0;
       if (jacobi_iu(D, n) == -1)
         break;
-      if (P == (3+20) && is_perfect_square(n, 0)) return 0;
+      if (P == (3+20) && is_perfect_square(n)) return 0;
       P++;
       if (P > 65535)
         croak("lucas_extrastrong_params: P exceeded 65535");
@@ -423,7 +411,7 @@ int _XS_is_lucas_pseudoprime(UV n, int strength)
       if (gcd_ui(Du, n) > 1 && gcd_ui(Du, n) != n) return 0;
       if (jacobi_iu(D, n) == -1)
         break;
-      if (Du == 21 && is_perfect_square(n, 0)) return 0;
+      if (Du == 21 && is_perfect_square(n)) return 0;
       Du += 2;
       sign = -sign;
     }
@@ -437,7 +425,7 @@ int _XS_is_lucas_pseudoprime(UV n, int strength)
       if (gcd_ui(D, n) > 1 && gcd_ui(D, n) != n) return 0;
       if (jacobi_iu(D, n) == -1)
         break;
-      if (P == 21 && is_perfect_square(n, 0)) return 0;
+      if (P == 21 && is_perfect_square(n)) return 0;
       P++;
     }
   }
@@ -595,7 +583,7 @@ int _XS_is_almost_extra_strong_lucas_pseudoprime(UV n, UV increment)
       return 0;
     if (jacobi_iu(D, n) == -1)
       break;
-    if (P == (3+20*increment) && is_perfect_square(n, 0)) return 0;
+    if (P == (3+20*increment) && is_perfect_square(n)) return 0;
     P += increment;
     if (P > 65535)
       croak("lucas_extrastrong_params: P exceeded 65535");
@@ -680,7 +668,7 @@ int _XS_is_frobenius_underwood_pseudoprime(UV n)
 
   if (n < 7) return (n == 2 || n == 3 || n == 5);
   if ((n % 2) == 0 || n == UV_MAX) return 0;
-  if (is_perfect_square(n,0)) return 0;
+  if (is_perfect_square(n)) return 0;
 
   x = 0;
   t = -1;

@@ -63,6 +63,9 @@ Revision history for Perl module Math::Prime::Util
     - While Math::BigInt has the bgcd function, it is slow for native numbers,
       even with the Pari or GMP back ends.  The gcd here is 20-100x faster.
 
+    - Removed the old SQUFOF code, so the racing version is the only one.  It
+      was already the only one being used.
+
 
 0.35  2013-12-08
 

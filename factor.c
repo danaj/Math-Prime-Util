@@ -11,7 +11,11 @@
 #include "primality.h"
 #define FUNC_isqrt  1
 #define FUNC_gcd_ui 1
+#define FUNC_is_perfect_square 1
 #include "util.h"
+
+/* factor will do trial division through this prime number, must be in table */
+#define TRIAL_TO_PRIME 81
 
 /*
  * You need to remember to use UV for unsigned and IV for signed types that
@@ -24,6 +28,29 @@
  * match the native integer type used inside our Perl, so just use those.
  */
 
+static const unsigned short primes_small[] =
+  {0,2,3,5,7,11,13,17,19,23,29,31,37,41,43,47,53,59,61,67,71,73,79,83,89,97,
+   101,103,107,109,113,127,131,137,139,149,151,157,163,167,173,179,181,191,
+   193,197,199,211,223,227,229,233,239,241,251,257,263,269,271,277,281,283,
+   293,307,311,313,317,331,337,347,349,353,359,367,373,379,383,389,397,401,
+   409,419,421,431,433,439,443,449,457,461,463,467,479,487,491,499,503,509,
+   521,523,541,547,557,563,569,571,577,587,593,599,601,607,613,617,619,631,
+   641,643,647,653,659,661,673,677,683,691,701,709,719,727,733,739,743,751,
+   757,761,769,773,787,797,809,811,821,823,827,829,839,853,857,859,863,877,
+   881,883,887,907,911,919,929,937,941,947,953,967,971,977,983,991,997,1009,
+   1013,1019,1021,1031,1033,1039,1049,1051,1061,1063,1069,1087,1091,1093,
+   1097,1103,1109,1117,1123,1129,1151,1153,1163,1171,1181,1187,1193,1201,
+   1213,1217,1223,1229,1231,1237,1249,1259,1277,1279,1283,1289,1291,1297,
+   1301,1303,1307,1319,1321,1327,1361,1367,1373,1381,1399,1409,1423,1427,
+   1429,1433,1439,1447,1451,1453,1459,1471,1481,1483,1487,1489,1493,1499,
+   1511,1523,1531,1543,1549,1553,1559,1567,1571,1579,1583,1597,1601,1607,
+   1609,1613,1619,1621,1627,1637,1657,1663,1667,1669,1693,1697,1699,1709,
+   1721,1723,1733,1741,1747,1753,1759,1777,1783,1787,1789,1801,1811,1823,
+   1831,1847,1861,1867,1871,1873,1877,1879,1889,1901,1907,1913,1931,1933,
+   1949,1951,1973,1979,1987,1993,1997,1999,2003,2011};
+#define NPRIMES_SMALL (sizeof(primes_small)/sizeof(primes_small[0]))
+
+
 /* The main factoring loop */
 /* Puts factors in factors[] and returns the number found. */
 int factor(UV n, UV *factors)
@@ -31,23 +58,41 @@ int factor(UV n, UV *factors)
   int nfactors = 0;           /* Number of factored in factors result */
 
   int const verbose = _XS_get_verbose();
-  UV const tlim_lower = 401;  /* Trial division through this prime */
-  UV const tlim = 409;        /* This means we've checked through here */
+  UV f;
   UV tofac_stack[MPU_MAX_FACTORS+1];
   UV fac_stack[MPU_MAX_FACTORS+1];
   int ntofac = 0;             /* Number of items on tofac_stack */
   int nfac = 0;               /* Number of items on fac_stack */
 
-  if (n < 10000000)
-    return trial_factor(n, factors, 0);
+  if (n < 4) {
+    factors[0] = n;
+    return (n == 1) ? 0 : 1;
+  }
+  while ( (n & 1) == 0 ) { factors[nfactors++] = 2; n /= 2; }
+  while ( (n % 3) == 0 ) { factors[nfactors++] = 3; n /= 3; }
+  while ( (n % 5) == 0 ) { factors[nfactors++] = 5; n /= 5; }
+  f = 7;
 
-  /* Trial division for all factors below tlim */
-  nfactors = trial_factor(n, factors, tlim_lower);
-  n = factors[--nfactors];
+  if (f*f <= n) {
+    UV sp = 3;
+    while (++sp < TRIAL_TO_PRIME) {
+      f = primes_small[sp];
+      if (f*f > n) break;
+      while ( (n%f) == 0 ) {
+        factors[nfactors++] = f;
+        n /= f;
+      }
+    }
+  }
+  if (n < f*f) {
+    if (n != 1)
+      factors[nfactors++] = n;
+    return nfactors;
+  }
 
   /* loop over each remaining factor, until ntofac == 0 */
   do {
-    while ( (n >= (tlim*tlim)) && (!_XS_is_prime(n)) ) {
+    while ( (n >= f*f) && (!_XS_is_prime(n)) ) {
       int split_success = 0;
       /* Adjust the number of rounds based on the number size */
       UV const br_rounds = ((n>>29) < 100000) ?  1500 :  1500;
@@ -60,8 +105,8 @@ int factor(UV n, UV *factors)
       }
       /* SQUFOF with these parameters gets 99.9% of everything left */
       if (!split_success && n < (UV_MAX>>2)) {
-        split_success = racing_squfof_factor(n,tofac_stack+ntofac, sq_rounds)-1;
-        if (verbose) printf("rsqufof %d\n", split_success);
+        split_success = squfof_factor(n,tofac_stack+ntofac, sq_rounds)-1;
+        if (verbose) printf("squfof %d\n", split_success);
       }
       /* At this point we should only have 16+ digit semiprimes. */
       /* This p-1 gets about 2/3 of what makes it through the above */
@@ -89,8 +134,7 @@ int factor(UV n, UV *factors)
         n = tofac_stack[ntofac];  /* Set n to the other one */
       } else {
         /* Factor via trial division.  Nothing should make it here. */
-        UV f = tlim;
-        UV m = tlim % 30;
+        UV m = f % 30;
         UV limit = isqrt(n);
         if (verbose) printf("doing trial on %"UVuf"\n", n);
         while (f <= limit) {
@@ -132,6 +176,7 @@ int factor(UV n, UV *factors)
   return nfactors;
 }
 
+
 int factor_exp(UV n, UV *factors, UV* exponents)
 {
   int i, j, nfactors;
@@ -159,32 +204,8 @@ int factor_exp(UV n, UV *factors, UV* exponents)
 }
 
 
-
-static const unsigned short primes_small[] =
-  {0,2,3,5,7,11,13,17,19,23,29,31,37,41,43,47,53,59,61,67,71,73,79,83,89,97,
-   101,103,107,109,113,127,131,137,139,149,151,157,163,167,173,179,181,191,
-   193,197,199,211,223,227,229,233,239,241,251,257,263,269,271,277,281,283,
-   293,307,311,313,317,331,337,347,349,353,359,367,373,379,383,389,397,401,
-   409,419,421,431,433,439,443,449,457,461,463,467,479,487,491,499,503,509,
-   521,523,541,547,557,563,569,571,577,587,593,599,601,607,613,617,619,631,
-   641,643,647,653,659,661,673,677,683,691,701,709,719,727,733,739,743,751,
-   757,761,769,773,787,797,809,811,821,823,827,829,839,853,857,859,863,877,
-   881,883,887,907,911,919,929,937,941,947,953,967,971,977,983,991,997,1009,
-   1013,1019,1021,1031,1033,1039,1049,1051,1061,1063,1069,1087,1091,1093,
-   1097,1103,1109,1117,1123,1129,1151,1153,1163,1171,1181,1187,1193,1201,
-   1213,1217,1223,1229,1231,1237,1249,1259,1277,1279,1283,1289,1291,1297,
-   1301,1303,1307,1319,1321,1327,1361,1367,1373,1381,1399,1409,1423,1427,
-   1429,1433,1439,1447,1451,1453,1459,1471,1481,1483,1487,1489,1493,1499,
-   1511,1523,1531,1543,1549,1553,1559,1567,1571,1579,1583,1597,1601,1607,
-   1609,1613,1619,1621,1627,1637,1657,1663,1667,1669,1693,1697,1699,1709,
-   1721,1723,1733,1741,1747,1753,1759,1777,1783,1787,1789,1801,1811,1823,
-   1831,1847,1861,1867,1871,1873,1877,1879,1889,1901,1907,1913,1931,1933,
-   1949,1951,1973,1979,1987,1993,1997,1999,2003,2011};
-#define NPRIMES_SMALL (sizeof(primes_small)/sizeof(primes_small[0]))
-
 int trial_factor(UV n, UV *factors, UV maxtrial)
 {
-  UV f, limit, newlimit;
   int nfactors = 0;
 
   if (maxtrial == 0)  maxtrial = UV_MAX;
@@ -194,56 +215,38 @@ int trial_factor(UV n, UV *factors, UV maxtrial)
     factors[0] = n;
     return (n == 1) ? 0 : 1;
   }
-  /* Trial division for 2, 3, 5, 7, and see if we're done */
+  /* Trial division for 2, 3, 5 immediately */
   while ( (n & 1) == 0 ) { factors[nfactors++] = 2; n /= 2; }
   if (3<=maxtrial) while ( (n % 3) == 0 ) { factors[nfactors++] = 3; n /= 3; }
   if (5<=maxtrial) while ( (n % 5) == 0 ) { factors[nfactors++] = 5; n /= 5; }
-  if (7<=maxtrial) while ( (n % 7) == 0 ) { factors[nfactors++] = 7; n /= 7; }
-  f = 11;
-  if ( (n < (f*f)) || (maxtrial < f) ) {
-    if (n != 1)
-      factors[nfactors++] = n;
-    return nfactors;
-  }
 
-  /* Trial division to this number at most.  Reduced as we find factors. */
-  limit = isqrt(n);
-  if (limit > maxtrial)
-    limit = maxtrial;
-
-  /* Use the table of small primes to quickly do trial division. */
-  {
-    UV sp = 5;
-    UV slimit = (limit < 2003) ? limit : 2003;
-    f = primes_small[sp];
-    while (f <= slimit) {
-      if ( (n%f) == 0 ) {
-        do {
-          factors[nfactors++] = f;
-          n /= f;
-        } while ( (n%f) == 0 );
-        newlimit = isqrt(n);
-        if (newlimit < slimit)  slimit = newlimit;
-        if (newlimit < limit)   limit = newlimit;
+  if (7*7 <= n) {
+    UV f, sp = 3;
+    while (++sp < NPRIMES_SMALL) {
+      f = primes_small[sp];
+      if (f*f > n || f > maxtrial) break;
+      while ( (n%f) == 0 ) {
+        factors[nfactors++] = f;
+        n /= f;
       }
-      f = primes_small[++sp];
     }
-  }
-
-  /* Trial division using a mod-30 wheel for larger values */
-  if (f <= limit) {
-    UV m = f % 30;
-    while (f <= limit) {
-      if ( (n%f) == 0 ) {
-        do {
-          factors[nfactors++] = f;
-          n /= f;
-        } while ( (n%f) == 0 );
-        newlimit = isqrt(n);
-        if (newlimit < limit)  limit = newlimit;
+    /* Trial division using a mod-30 wheel for larger values */
+    if (f*f <= n && f <= maxtrial) {
+      UV newlimit, limit = isqrt(n);
+      if (limit > maxtrial) limit = maxtrial;
+      UV m = f % 30;
+      while (f <= limit) {
+        if ( (n%f) == 0 ) {
+          do {
+            factors[nfactors++] = f;
+            n /= f;
+          } while ( (n%f) == 0 );
+          newlimit = isqrt(n);
+          if (newlimit < limit)  limit = newlimit;
+        }
+        f += wheeladvance30[m];
+        m = nextwheel30[m];
       }
-      f += wheeladvance30[m];
-      m = nextwheel30[m];
     }
   }
   /* All done! */
@@ -252,74 +255,6 @@ int trial_factor(UV n, UV *factors, UV maxtrial)
   return nfactors;
 }
 
-
-/* Return 0 if n is not a perfect square.  Set sqrtn to int(sqrt(n)) if so.
- *
- * Some simple solutions:
- *
- *     return ( ((n&2)!= 0) || ((n&7)==5) || ((n&11) == 8) )  ?  0  :  1;
- *
- * or:
- *
- *     m = n & 31;
- *     if ( m==0 || m==1 || m==4 || m==9 || m==16 || m==17 || m==25 )
- *       ...test for perfect square...
- *
- * or:
- *
- *     if (  ((0x0202021202030213ULL >> (n & 63)) & 1) &&
- *           ((0x0402483012450293ULL >> (n % 63)) & 1) &&
- *           ((0x218a019866014613ULL >> ((n % 65) & 63)) & 1) &&
- *           ((0x23b                 >> (n % 11) & 1)) ) {
- *
- *
- * The following Bloom filter cascade works very well indeed.  Read all
- * about it here: http://mersenneforum.org/showpost.php?p=110896
- */
-static int is_perfect_square(UV n, UV* sqrtn)
-{
-  UV m;
-  m = n & 127;
-  if ((m*0x8bc40d7d) & (m*0xa1e2f5d1) & 0x14020a)  return 0;
-  /* 82% of non-squares rejected here */
-
-#if 0
-  /* The big deal with this technique is that you do two total operations,
-   * one cheap (the & 127 above), one expensive (the modulo below) on n.
-   * The rest of the operations are 32-bit operations.  This is a huge win
-   * if n is multiprecision.
-   * However, in this file we're doing native precision sqrt, so it just
-   * isn't expensive enough to justify this second filter set.
-   */
-  lm = n % UVCONST(63*25*11*17*19*23*31);
-  m = lm % 63;
-  if ((m*0x3d491df7) & (m*0xc824a9f9) & 0x10f14008) return 0;
-  m = lm % 25;
-  if ((m*0x1929fc1b) & (m*0x4c9ea3b2) & 0x51001005) return 0;
-  m = 0xd10d829a*(lm%31);
-  if (m & (m+0x672a5354) & 0x21025115) return 0;
-  m = lm % 23;
-  if ((m*0x7bd28629) & (m*0xe7180889) & 0xf8300) return 0;
-  m = lm % 19;
-  if ((m*0x1b8bead3) & (m*0x4d75a124) & 0x4280082b) return 0;
-  m = lm % 17;
-  if ((m*0x6736f323) & (m*0x9b1d499) & 0xc0000300) return 0;
-  m = lm % 11;
-  if ((m*0xabf1a3a7) & (m*0x2612bf93) & 0x45854000) return 0;
-  /* 99.92% of non-squares are rejected now */
-#endif
-#if 0
-  /* This could save time on some platforms, but not on x86 */
-  m = n % 63;
-  if ((m*0x3d491df7) & (m*0xc824a9f9) & 0x10f14008) return 0;
-#endif
-  m = isqrt(n);
-  if (n != (m*m))
-    return 0;
-
-  if (sqrtn != 0) *sqrtn = m;
-  return 1;
-}
 
 static int _divisors_from_factors(UV v, UV npe, UV* fp, UV* fe, UV* res) {
   UV p, e, i;
@@ -401,9 +336,9 @@ UV divisor_sum(UV n, UV k)
   UV product = 1;
 
   if (k > 5 || (k > 0 && n >= sigma_overflow[k-1])) return 0;
-  if (n == 0) return (k == 0) ? 2 : 1;  /* divisors are [0,1] */
-  if (n == 1) return 1;                 /* divisors are [1]   */
-  nfac = factor(n, factors);
+  if (n <= 1)                               /* n=0  divisors are [0,1] */
+    return (n == 1) ? 1 : (k == 0) ? 2 : 1; /* n=1  divisors are [1]   */
+  nfac = factor(n,factors);
   if (k == 0) {
     for (i = 0; i < nfac; i++) {
       UV e = 1,  f = factors[i];
@@ -491,7 +426,8 @@ int holf_factor(UV n, UV *factors, UV rounds)
      * so we won't be able to accurately detect it anyway. */
     s++;    /* s = ceil(sqrt(n*i)) */
     m = sqrmod(s, n);
-    if (is_perfect_square(m, &f)) {
+    if (is_perfect_square(m)) {
+      f = isqrt(m);
       f = gcd_ui( (s>f) ? s-f : f-s, n);
       /* This should always succeed, but with overflow concerns.... */
       if ((f == 1) || (f == n))
@@ -799,131 +735,7 @@ int pplus1_factor(UV n, UV *factors, UV B1)
 }
 
 
-/* My modification of Ben Buhrow's modification of Bob Silverman's SQUFOF code.
- */
-
-int squfof_factor(UV n, UV *factors, UV rounds)
-{
-  IV qqueue[100+1];
-  IV qpoint;
-  IV rounds2 = (IV) (rounds/16);
-  UV temp;
-  IV iq,ll,l2,p,pnext,q,qlast,r,s,t,i;
-  IV jter, iter;
-  int reloop;
-
-  MPUassert( (n >= 3) && ((n%2) != 0) , "bad n in squfof_factor");
-
-  /* TODO:  What value of n leads to overflow? */
-
-  qlast = 1;
-  s = isqrt(n);
-
-  p = s;
-  temp = n - (s*s);                 /* temp = n - floor(sqrt(n))^2   */
-  if (temp == 0) {
-    factors[0] = s;
-    factors[1] = s;
-    return 2;
-  }
-
-  q = temp;              /* q = excess of n over next smaller square */
-  ll = 1 + 2*(IV)sqrt((double)(p+p));
-  l2 = ll/2;
-  qpoint = 0;
-
-  /*  In the loop below, we need to check if q is a square right before   */
-  /*  the end of the loop.  Is there a faster way? The current way is     */
-  /*  EXPENSIVE! (many branches and double prec sqrt)                     */
-
-  for (jter=0; (UV)jter < rounds; jter++) {
-    iq = (s + p)/q;
-    pnext = iq*q - p;
-    if (q <= ll) {
-      if ((q & 1) == 0) { qqueue[qpoint] = q/2; if (++qpoint>=100) jter = -1; }
-      else if (q <= l2) { qqueue[qpoint] = q;   if (++qpoint>=100) jter = -1; }
-      if (jter < 0) {
-        factors[0] = n;  return 1;
-      }
-    }
-
-    t = qlast + iq*(p - pnext);
-    qlast = q;
-    q = t;
-    p = pnext;                          /* check for square; even iter   */
-    if (jter & 1) continue;             /* jter is odd:omit square test  */
-    r = isqrt(q);                       /* r = floor(sqrt(q))      */
-    if (q != r*r) continue;
-    if (qpoint == 0) break;
-    qqueue[qpoint] = 0;
-    reloop = 0;
-    for (i=0; i<qpoint-1; i+=2) {    /* treat queue as list for simplicity*/
-      if (r == qqueue[i]) { reloop = 1; break; }
-      if (r == qqueue[i+1]) { reloop = 1; break; }
-    }
-    if (reloop || (r == qqueue[qpoint-1])) continue;
-    break;
-  }   /* end of main loop */
-
-  if ((UV)jter >= rounds) {
-    factors[0] = n;  return 1;
-  }
-
-  qlast = r;
-  p = p + r*((s - p)/r);
-  q = (n - (p*p)) / qlast;               /* q = (n - p*p)/qlast (div is exact)*/
-  for (iter=0; iter<rounds2; iter++) {   /* unrolled second main loop */
-    iq = (s + p)/q;
-    pnext = iq*q - p;
-    if (p == pnext) break;
-    t = qlast + iq*(p - pnext);
-    qlast = q;
-    q = t;
-    p = pnext;
-    iq = (s + p)/q;
-    pnext = iq*q - p;
-    if (p == pnext) break;
-    t = qlast + iq*(p - pnext);
-    qlast = q;
-    q = t;
-    p = pnext;
-    iq = (s + p)/q;
-    pnext = iq*q - p;
-    if (p == pnext) break;
-    t = qlast + iq*(p - pnext);
-    qlast = q;
-    q = t;
-    p = pnext;
-    iq = (s + p)/q;
-    pnext = iq*q - p;
-    if (p == pnext) break;
-    t = qlast + iq*(p - pnext);
-    qlast = q;
-    q = t;
-    p = pnext;
-  }
-
-  if (iter >= rounds2) {
-    factors[0] = n;  return 1;
-  }
-
-  if ((q & 1) == 0) q/=2;      /* q was factor or 2*factor   */
-
-  if ( (q == 1) || ((UV)q == n) ) {
-    factors[0] = n;  return 1;
-  }
-
-  p = n/q;
-
-  /* printf(" squfof found %lu = %lu * %lu in %ld/%ld rounds\n", n, p, q, jter, iter); */
-
-  factors[0] = p;
-  factors[1] = q;
-  MPUassert( factors[0] * factors[1] == n , "incorrect factoring");
-  return 2;
-}
-
-/* Another version, based on Ben Buhrow's racing SQUFOF. */
+/* SQUFOF, based on Ben Buhrow's racing version. */
 
 typedef struct
 {
@@ -985,15 +797,16 @@ static void squfof_unit(UV n, mult_t* mult_save, UV* f)
       SQUARE_SEARCH_ITERATION;
 
       /* Even iteration.  Check for square: Qn = S*S */
-      if (is_perfect_square( Qn, &S ))
+      if (is_perfect_square(Qn))
         break;
 
       /* Odd iteration. */
       SQUARE_SEARCH_ITERATION;
     }
+    S = isqrt(Qn);
     /* printf("found square %lu after %lu iterations with mult %d\n", Qn, i, mult_save->mult); */
 
-    /*  Reduce to G0 */
+    /* Reduce to G0 */
     Ro = P + S*((b0 - P)/S);
     t1 = Ro;
     So = (n - t1*t1)/S;
@@ -1033,7 +846,7 @@ static const UV squfof_multipliers[] =
     3*11,     3,     5*11,   5,   7*11,   7,   11,     1     };
 #define NSQUFOF_MULT (sizeof(squfof_multipliers)/sizeof(squfof_multipliers[0]))
 
-int racing_squfof_factor(UV n, UV *factors, UV rounds)
+int squfof_factor(UV n, UV *factors, UV rounds)
 {
   const UV big2 = UV_MAX >> 2;
   mult_t mult_save[NSQUFOF_MULT];
@@ -1042,7 +855,7 @@ int racing_squfof_factor(UV n, UV *factors, UV rounds)
   UV rounds_done = 0;
 
   /* Caller should have handled these trivial cases */
-  MPUassert( (n >= 3) && ((n%2) != 0) , "bad n in racing_squfof_factor");
+  MPUassert( (n >= 3) && ((n%2) != 0) , "bad n in squfof_factor");
 
   /* Too big */
   if (n > big2) {

@@ -58,7 +58,6 @@ sub test_at_digits {
     $nfactored{'pminus1'} += $calc_nfacs->(Math::Prime::Util::pminus1_factor($_, $p1smooth));
     $nfactored{'pplus1'} += $calc_nfacs->(Math::Prime::Util::pplus1_factor($_, $p1smooth));
     $nfactored{'squfof'} += $calc_nfacs->(Math::Prime::Util::squfof_factor($_, $sqrounds));
-    $nfactored{'rsqufof'} += $calc_nfacs->(Math::Prime::Util::rsqufof_factor($_, $rsqrounds));
     #$nfactored{'trial'} += $calc_nfacs->(Math::Prime::Util::trial_factor($_));
     #$nfactored{'fermat'} += $calc_nfacs->(Math::Prime::Util::fermat_factor($_, $rounds));
     $nfactored{'holf'} += $calc_nfacs->(Math::Prime::Util::holf_factor($_, $hrounds));
@@ -79,7 +78,6 @@ sub test_at_digits {
     "fermat"  => sub { Math::Prime::Util::fermat_factor($_, $rounds) for @nums},
     "holf"    => sub { Math::Prime::Util::holf_factor($_, $hrounds) for @nums },
     "squfof"  => sub { Math::Prime::Util::squfof_factor($_, $sqrounds) for @nums },
-    "rsqufof" => sub { Math::Prime::Util::rsqufof_factor($_) for @nums },
     "trial"   => sub { Math::Prime::Util::trial_factor($_) for @nums },
   };
   delete $lref->{'fermat'} if $digits >= 9;

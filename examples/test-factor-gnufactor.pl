@@ -25,15 +25,16 @@ my $num = 1000;
 # large numbers.  You'll probably want to turn it off here as it will be
 # many thousands of times slower than MPU and Pari.
 
-# A performance note: MPU and Pari get their results by calling a function.
-# GNU factor gets its result by multiple shells out to /usr/bin/factor with
-# the numbers as command line arguments.  This adds a lot of overhead that
-# has nothing to do with their implementation.  For comparison, try turning
-# on the MPU factor.pl script, and weep at Perl's startup cost.
+# A benchmarking note: in this script, getting MPU and Pari results are done
+# by calling a function, where getting GNU factor results are done via
+# multiple shells to /usr/bin/factor with the inputs as command line
+# arguments.  This adds a lot of overhead that has nothing to do with their
+# implementation.  For comparison, I've included an option for getting MPU
+# factoring via calling the factor.pl script.  Weep at the startup cost.
 
 my $do_gnu = 1;
 my $do_pari = 1;
-my $use_mpu_factor_script = 0;
+my $use_mpu_factor_script = 1;
 
 my $rgen = sub {
   my $range = shift;
