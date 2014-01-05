@@ -95,8 +95,8 @@ int factor(UV n, UV *factors)
     while ( (n >= f*f) && (!_XS_is_prime(n)) ) {
       int split_success = 0;
       /* Adjust the number of rounds based on the number size */
-      UV const br_rounds = ((n>>29) < 100000) ?  1500 :  1500;
-      UV const sq_rounds = 80000; /* 20k 91%, 40k 98%, 80k 99.9%, 120k 99.99% */
+      UV const br_rounds = ((n>>29) < 100000) ?  1500 :  2000;
+      UV const sq_rounds =100000; /* 20k 91%, 40k 98%, 80k 99.9%, 120k 99.99% */
 
       /* 99.7% of 32-bit, 94% of 64-bit random inputs factored here */
       if (!split_success) {
@@ -111,7 +111,7 @@ int factor(UV n, UV *factors)
       /* At this point we should only have 16+ digit semiprimes. */
       /* This p-1 gets about 2/3 of what makes it through the above */
       if (!split_success) {
-        split_success = pminus1_factor(n, tofac_stack+ntofac, 5000, 80000)-1;
+        split_success = pminus1_factor(n, tofac_stack+ntofac, 5000, 100000)-1;
         if (verbose) printf("pminus1 %d\n", split_success);
       }
       /* Some rounds of HOLF, good for close to perfect squares which are
@@ -446,7 +446,7 @@ int holf_factor(UV n, UV *factors, UV rounds)
 /* Pollard / Brent.  Brent's modifications to Pollard's Rho.  Maybe faster. */
 int pbrent_factor(UV n, UV *factors, UV rounds, UV a)
 {
-  UV f, i, r;
+  UV f, m, r;
   UV Xi = 2;
   UV Xm = 2;
   const UV inner = 64;
@@ -460,15 +460,16 @@ int pbrent_factor(UV n, UV *factors, UV rounds, UV a)
     /* Do rleft rounds, inner at a time */
     while (rleft > 0) {
       UV dorounds = (rleft > inner) ? inner : rleft;
-      UV m = 1;
       saveXi = Xi;
-      for (i = 0; i < dorounds; i++) {
+      rleft -= dorounds;
+      rounds -= dorounds;
+      Xi = sqraddmod(Xi, a, n);        /* First iteration, no mulmod needed */
+      m = (Xi>Xm) ? Xi-Xm : Xm-Xi;
+      while (--dorounds > 0) {         /* Now do inner-1=63 more iterations */
         Xi = sqraddmod(Xi, a, n);
         f = (Xi>Xm) ? Xi-Xm : Xm-Xi;
         m = mulmod(m, f, n);
       }
-      rleft -= dorounds;
-      rounds -= dorounds;
       f = gcd_ui(m, n);
       if (f != 1)
         break;
@@ -739,8 +740,7 @@ int pplus1_factor(UV n, UV *factors, UV B1)
 
 typedef struct
 {
-  UV mult;
-  UV valid;
+  int valid;
   UV P;
   UV bn;
   UV Qn;
@@ -750,13 +750,11 @@ typedef struct
   UV imax;
 } mult_t;
 
-/* N < 2^63 (or 2^31).  *f == 1 if no factor found */
-static void squfof_unit(UV n, mult_t* mult_save, UV* f)
+/* N < 2^63 (or 2^31).  Returns 0 or a factor */
+static UV squfof_unit(UV n, mult_t* mult_save)
 {
   UV imax,i,Q0,b0,Qn,bn,P,bbn,Ro,S,So,t1,t2;
   int j;
-
-  *f = 0;
 
   P = mult_save->P;
   bn = mult_save->bn;
@@ -790,8 +788,7 @@ static void squfof_unit(UV n, mult_t* mult_save, UV* f)
         mult_save->Qn = Qn;
         mult_save->Q0 = Q0;
         mult_save->it = i;
-        *f = 0;
-        return;
+        return 0;
       }
 
       SQUARE_SEARCH_ITERATION;
@@ -830,25 +827,34 @@ static void squfof_unit(UV n, mult_t* mult_save, UV* f)
       SYMMETRY_POINT_ITERATION;
       if (j++ > 2000000) {
          mult_save->valid = 0;
-         *f = 0;
-         return;
+         return 0;
       }
     }
 
-    *f = gcd_ui(Ro, n);
-    if (*f > 1)
-      return;
+    t1 = gcd_ui(Ro, n);
+    if (t1 > 1)
+      return t1;
   }
 }
 
+/* Gower and Wagstaff 2008:
+ *    http://www.ams.org/journals/mcom/2008-77-261/S0025-5718-07-02010-8/
+ * Section 5.3.  I've added some with 13,17,19.  Sorted by F(). */
 static const UV squfof_multipliers[] =
-  { 3*5*7*11, 3*5*7, 3*5*11, 3*5, 3*7*11, 3*7, 5*7*11, 5*7,
-    3*11,     3,     5*11,   5,   7*11,   7,   11,     1     };
+  /* { 3*5*7*11, 3*5*7, 3*5*11, 3*5, 3*7*11, 3*7, 5*7*11, 5*7,
+       3*11,     3,     5*11,   5,   7*11,   7,   11,     1   }; */
+  { 3*5*7*11, 3*5*7,  3*5*7*11*13, 3*5*7*13, 3*5*7*11*17, 3*5*11,
+    3*5*7*17, 3*5,    3*5*7*11*19, 3*5*11*13,3*5*7*19,    3*5*7*13*17,
+    3*5*13,   3*7*11, 3*7,         5*7*11,   3*7*13,      5*7,
+    3*5*17,   5*7*13, 3*5*19,      3*11,     3*7*17,      3,
+    3*11*13,  5*11,   3*7*19,      3*13,     5,           5*11*13,
+    5*7*19,   5*13,   7*11,        7,        3*17,        7*13,
+    11,       1 };
 #define NSQUFOF_MULT (sizeof(squfof_multipliers)/sizeof(squfof_multipliers[0]))
 
 int squfof_factor(UV n, UV *factors, UV rounds)
 {
-  const UV big2 = UV_MAX >> 2;
+  const UV big2 = UV_MAX;
   mult_t mult_save[NSQUFOF_MULT];
   int still_racing;
   UV i, nn64, mult, f64;
@@ -862,45 +868,42 @@ int squfof_factor(UV n, UV *factors, UV rounds)
     factors[0] = n;  return 1;
   }
 
-  for (i = 0; i < NSQUFOF_MULT; i++) {
-    mult = squfof_multipliers[i];
-    nn64 = n * mult;
-    mult_save[i].mult = mult;
-    if ((big2 / mult) < n) {
-      mult_save[i].valid = 0; /* This multiplier would overflow 64-bit */
-      continue;
-    }
-    mult_save[i].valid = 1;
-
-    mult_save[i].b0 = isqrt(nn64);
-    mult_save[i].imax = (UV) (sqrt(mult_save[i].b0) / 3);
-    if (mult_save[i].imax < 20)     mult_save[i].imax = 20;
-    if (mult_save[i].imax > rounds) mult_save[i].imax = rounds;
-
-    mult_save[i].Q0 = 1;
-    mult_save[i].P  = mult_save[i].b0;
-    mult_save[i].Qn = nn64 - (mult_save[i].b0 * mult_save[i].b0);
-    if (mult_save[i].Qn == 0) {
-      factors[0] = mult_save[i].b0;
-      factors[1] = n / mult_save[i].b0;
-      MPUassert( factors[0] * factors[1] == n , "incorrect factoring");
-      return 2;
-    }
-    mult_save[i].bn = (mult_save[i].b0 + mult_save[i].P) / mult_save[i].Qn;
-    mult_save[i].it = 0;
-  }
+  for (i = 0; i < NSQUFOF_MULT; i++)
+    mult_save[i].valid = -1;
 
   /* Process the multipliers a little at a time: 0.33*(n*mult)^1/4: 20-20k */
   do {
     still_racing = 0;
     for (i = 0; i < NSQUFOF_MULT; i++) {
-      if (!mult_save[i].valid)
-        continue;
-      nn64 = n * squfof_multipliers[i];
-      squfof_unit(nn64, &mult_save[i], &f64);
+      if (mult_save[i].valid == 0)  continue;
+      mult = squfof_multipliers[i];
+      nn64 = n * mult;
+      if (mult_save[i].valid == -1) {
+        if ((big2 / mult) < n) {
+          mult_save[i].valid = 0; /* This multiplier would overflow 64-bit */
+          continue;
+        }
+        mult_save[i].valid = 1;
+        mult_save[i].b0 = isqrt(nn64);
+        mult_save[i].imax = (UV) (sqrt(mult_save[i].b0) / 16);
+        if (mult_save[i].imax < 20)     mult_save[i].imax = 20;
+        if (mult_save[i].imax > rounds) mult_save[i].imax = rounds;
+        mult_save[i].Q0 = 1;
+        mult_save[i].P  = mult_save[i].b0;
+        mult_save[i].Qn = nn64 - (mult_save[i].b0 * mult_save[i].b0);
+        if (mult_save[i].Qn == 0) {
+          factors[0] = mult_save[i].b0;
+          factors[1] = n / mult_save[i].b0;
+          MPUassert( factors[0] * factors[1] == n , "incorrect factoring");
+          return 2;
+        }
+        mult_save[i].bn = (mult_save[i].b0 + mult_save[i].P) / mult_save[i].Qn;
+        mult_save[i].it = 0;
+      }
+      f64 = squfof_unit(nn64, &mult_save[i]);
       if (f64 > 1) {
-        if (f64 != squfof_multipliers[i]) {
-          f64 /= gcd_ui(f64, squfof_multipliers[i]);
+        if (f64 != mult) {
+          f64 /= gcd_ui(f64, mult);
           if (f64 != 1) {
             factors[0] = f64;
             factors[1] = n / f64;
