@@ -465,7 +465,7 @@ void
 is_prime(IN SV* svn, ...)
   ALIAS:
     is_prob_prime = 1
-    is_bpsw = 2
+    is_bpsw_prime = 2
     is_lucas_pseudoprime = 3
     is_strong_lucas_pseudoprime = 4
     is_extra_strong_lucas_pseudoprime = 5
@@ -501,8 +501,8 @@ is_prime(IN SV* svn, ...)
     }
     switch (ix) {
       case 0: _vcallsub_with_gmp("is_prime");       break;
-      case 1:
-      case 2: _vcallsub_with_gmp("is_prob_prime");  break;
+      case 1: _vcallsub_with_gmp("is_prob_prime");  break;
+      case 2: _vcallsub_with_gmp("is_bpsw_prime");  break;
       case 3: _vcallsub_with_gmp("is_lucas_pseudoprime"); break;
       case 4: _vcallsub_with_gmp("is_strong_lucas_pseudoprime"); break;
       case 5: _vcallsub_with_gmp("is_extra_strong_lucas_pseudoprime"); break;

@@ -197,11 +197,7 @@ sub _is_prime7 {  # n must not be divisible by 2, 3, or 5
     return is_strong_pseudoprime($n, @bases)  ?  2  :  0;
   }
 
-  # BPSW probable prime.  No composites are known to have passed this test
-  # since it was published in 1980, though we know infinitely many exist.
-  # It has also been verified that no 64-bit composite will return true.
-  # Slow since it's all in PP and uses bigints.
-
+  # Inlined BPSW
   return 0 unless is_strong_pseudoprime($n, 2);
   if ($n <= 18446744073709551615) {
     return is_almost_extra_strong_lucas_pseudoprime($n) ? 2 : 0;
@@ -221,6 +217,20 @@ sub is_prime {
 
 # is_prob_prime is the same thing for us.
 *is_prob_prime = \&is_prime;
+
+# BPSW probable prime.  No composites are known to have passed this test
+# since it was published in 1980, though we know infinitely many exist.
+# It has also been verified that no 64-bit composite will return true.
+# Slow since it's all in PP and uses bigints.
+sub is_bpsw_prime {
+  my($n) = @_;
+  _validate_positive_integer($n);
+  return 0 unless is_strong_pseudoprime($n, 2);
+  if ($n <= 18446744073709551615) {
+    return is_almost_extra_strong_lucas_pseudoprime($n) ? 2 : 0;
+  }
+  return is_extra_strong_lucas_pseudoprime($n) ? 1 : 0;
+}
 
 # Possible sieve storage:
 #   1) vec with mod-30 wheel:   8 bits  / 30

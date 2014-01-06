@@ -131,7 +131,7 @@ BEGIN {
     *prime_memfree  = \&Math::Prime::Util::PP::prime_memfree;
     *prime_precalc  = \&Math::Prime::Util::PP::prime_precalc;
 
-    # These probably shouldn't even be exported
+    # These probably shouldn't even be aliased, as they're not public
     *trial_factor   = \&Math::Prime::Util::PP::trial_factor;
     *fermat_factor  = \&Math::Prime::Util::PP::fermat_factor;
     *holf_factor    = \&Math::Prime::Util::PP::holf_factor;
