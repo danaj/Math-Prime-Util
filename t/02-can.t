@@ -17,10 +17,10 @@ my @functions =  qw(
       is_almost_extra_strong_lucas_pseudoprime
       is_frobenius_underwood_pseudoprime
       is_aks_prime
-      miller_rabin_random
+      miller_rabin miller_rabin_random
       lucas_sequence
       primes
-      forprimes forcomposites
+      forprimes forcomposites fordivisors
       prime_iterator prime_iterator_object
       next_prime  prev_prime
       prime_count
@@ -30,12 +30,12 @@ my @functions =  qw(
       random_proven_prime random_proven_prime_with_cert
       random_maurer_prime random_maurer_prime_with_cert
       primorial pn_primorial consecutive_integer_lcm
-      factor factor_exp divisors
+      gcd lcm factor factor_exp all_factors divisors
       moebius mertens euler_phi jordan_totient exp_mangoldt liouville
       partitions
       chebyshev_theta chebyshev_psi
       divisor_sum
-      carmichael_lambda znorder
+      carmichael_lambda kronecker znorder znprimroot legendre_phi
       ExponentialIntegral LogarithmicIntegral RiemannZeta RiemannR
                    );
 can_ok( 'Math::Prime::Util', @functions);

@@ -20,6 +20,58 @@ plan skip_all => "Test::Pod::Coverage 1.08 required for testing POD coverage"
 my @modules = Test::Pod::Coverage::all_modules();
 plan tests => scalar @modules;
 
+#my $ppsubclass = { trustme => [mpu_public_regex()] };
+
 foreach my $m (@modules) {
-  pod_coverage_ok( $m, { also_private => [ qr/^(erat|segment|trial|sieve)_primes$/ ] } );
+  my $param = {
+    also_private => [ qr/^(erat|segment|trial|sieve)_primes$/ ],
+  };
+  $param->{trustme} = [mpu_public_regex(), mpu_factor_regex()]
+    if $m eq 'Math::Prime::Util::PP';
+  pod_coverage_ok( $m, $param );
+}
+
+sub mpu_public_regex {
+  my @funcs =
+  qw/ prime_get_config prime_set_config
+      prime_precalc prime_memfree
+      is_prime is_prob_prime is_provable_prime is_provable_prime_with_cert
+      prime_certificate verify_prime
+      is_pseudoprime is_strong_pseudoprime
+      is_lucas_pseudoprime
+      is_strong_lucas_pseudoprime
+      is_extra_strong_lucas_pseudoprime
+      is_almost_extra_strong_lucas_pseudoprime
+      is_frobenius_underwood_pseudoprime
+      is_aks_prime is_bpsw_prime
+      miller_rabin miller_rabin_random
+      lucas_sequence
+      primes
+      forprimes forcomposites fordivisors
+      prime_iterator prime_iterator_object
+      next_prime  prev_prime
+      prime_count
+      prime_count_lower prime_count_upper prime_count_approx
+      nth_prime nth_prime_lower nth_prime_upper nth_prime_approx
+      random_prime random_ndigit_prime random_nbit_prime random_strong_prime
+      random_proven_prime random_proven_prime_with_cert
+      random_maurer_prime random_maurer_prime_with_cert
+      primorial pn_primorial consecutive_integer_lcm
+      gcd lcm factor factor_exp all_factors divisors
+      moebius mertens euler_phi jordan_totient exp_mangoldt liouville
+      partitions
+      chebyshev_theta chebyshev_psi
+      divisor_sum
+      carmichael_lambda kronecker znorder znprimroot legendre_phi
+      ExponentialIntegral LogarithmicIntegral RiemannZeta RiemannR
+  /;
+  my $pattern = '^(' . join('|', @funcs) . ')$';
+  return qr/$pattern/;
+}
+
+sub mpu_factor_regex {
+  my @funcs = qw/ ecm_factor fermat_factor holf_factor pbrent_factor
+                  pminus1_factor prho_factor squfof_factor trial_factor/;
+  my $pattern = '^(' . join('|', @funcs) . ')$';
+  return qr/$pattern/;
 }

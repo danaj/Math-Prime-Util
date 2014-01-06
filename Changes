@@ -19,6 +19,8 @@ Revision history for Perl module Math::Prime::Util
     - kronecker        Kronecker symbol (extension of Jacobi symbol)
     - znprimroot       Primitive root modulo n
     - gcd              Greatest common divisor
+    - lcm              Least common multiple
+    - legendre_phi     Legendre's sum
 
     [FUNCTIONALITY AND PERFORMANCE]
 
@@ -60,8 +62,9 @@ Revision history for Perl module Math::Prime::Util
 
     - znorder uses Carmichael Lambda instead of Euler Phi.  Faster.
 
-    - While Math::BigInt has the bgcd function, it is slow for native numbers,
-      even with the Pari or GMP back ends.  The gcd here is 20-100x faster.
+    - While Math::BigInt has the bgcd and blcm functions, they are slow for
+      native numbers, even with the Pari or GMP back ends.  The gcd/lcm here
+      are 20-100x faster.  LCM also returns results consistent with Pari.
 
     - Removed the old SQUFOF code, so the racing version is the only one.  It
       was already the only one being used.

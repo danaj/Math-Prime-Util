@@ -6,7 +6,7 @@ use Test::More;
 use Math::Prime::Util
    qw/moebius mertens euler_phi jordan_totient divisor_sum exp_mangoldt
       chebyshev_theta chebyshev_psi carmichael_lambda znorder liouville
-      znprimroot kronecker legendre_phi gcd
+      znprimroot kronecker legendre_phi gcd lcm
      /;
 
 my $extra = defined $ENV{EXTENDED_TESTING} && $ENV{EXTENDED_TESTING};
@@ -166,6 +166,10 @@ if ($extra) {
   $chebyshev1{1234567} = 1233272.80087825;
   $chebyshev2{1234567} = 1234515.17962833;
 }
+if (!$usexs && !$extra) {
+  delete $chebyshev1{$_} for grep { $_ > 50000 } keys %chebyshev1;
+  delete $chebyshev2{$_} for grep { $_ > 50000 } keys %chebyshev2;
+}
 
 my @A002322 = (0,1,1,2,2,4,2,6,2,6,4,10,2,12,6,4,4,16,6,18,4,6,10,22,2,20,12,18,6,28,4,30,8,10,16,12,6,36,18,12,4,40,6,42,10,12,22,46,4,42,20,16,12,52,18,20,6,18,28,58,4,60,30,6,16,12,10,66,16,22,12,70,6,72,36,20,18,30,12,78,4,54,40,82,6,16,42,28,10,88,12,12,22,30,46,36,8,96,42,30,20,100,16,102,12,12,52,106,18,108,20,36,12,112,18,44,28,12,58,48,4,110,60,40,30,100,6,126,32,42,12,130,10,18,66,36,16,136,22,138,12,46,70,60,12,28,72,42,36,148,20,150,18,48,30,60,12,156,78,52,8,66,54,162,40,20,82,166,6,156,16,18,42,172,28,60,20,58,88,178,12,180,12,60,22,36,30,80,46,18,36,190,16,192,96,12,42,196,30,198,20);
 
@@ -293,9 +297,32 @@ my @gcds = (
   [ [-30,-90,90], 30],
   [ [-3,-9,-18], 3],
 );
+my @lcms = (
+  [ [], 0],
+  [ [8], 8],
+  [ [9,9], 9],
+  [ [0,0], 0],
+  [ [1, 0, 0], 0],
+  [ [0, 0, 1], 0],
+  [ [17,19], 323 ],
+  [ [54,24], 216 ],
+  [ [42,56], 168],
+  [ [ 9,28], 252 ],
+  [ [48,180], 720],
+  [ [36,45], 180],
+  [ [-36,45], 180],
+  [ [-36,-45], 180],
+  [ [30,15,5], 30],
+  [ [2,3,4,5], 60],
+  [ [30245, 114552], 3464625240],
+  [ [11926,78001,2211], 2790719778],
+  [ [1426,26195,3289,8346], 4254749070],
+);
 if ($use64) {
   push @gcds, [ [12848174105599691600,15386870946739346600,11876770906605497900], 700];
   push @gcds, [ [9785375481451202685,17905669244643674637,11069209430356622337], 117];
+  push @lcms, [ [26505798,9658520,967043,18285904], 15399063829732542960];
+  push @lcms, [ [267220708,143775143,261076], 15015659316963449908];
 }
 
 # These are slow with XS, and *really* slow with PP.
@@ -326,6 +353,7 @@ plan tests => 0 + 1
                 + 1 # Small Carmichael Lambda
                 + scalar(@kroneckers)
                 + scalar(@gcds)
+                + scalar(@lcms)
                 + scalar(@mult_orders)
                 + scalar(@legendre_sums)
                 + scalar(keys %primroots) + 2
@@ -480,6 +508,12 @@ foreach my $garg (@gcds) {
   my($aref, $exp) = @$garg;
   my $gcd = gcd(@$aref);
   is( $gcd, $exp, "gcd(".join(",",@$aref).") = $exp" );
+}
+###### lcm
+foreach my $garg (@lcms) {
+  my($aref, $exp) = @$garg;
+  my $lcm = lcm(@$aref);
+  is( $lcm, $exp, "lcm(".join(",",@$aref).") = $exp" );
 }
 ###### znorder
 foreach my $moarg (@mult_orders) {

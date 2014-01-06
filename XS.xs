@@ -433,22 +433,40 @@ is_strong_pseudoprime(IN SV* svn, ...)
 void
 gcd(...)
   PROTOTYPE: @
+  ALIAS:
+    lcm = 1
   PREINIT:
     int i, status = 1;
-    UV ret = 0;
+    UV ret, nullv, n;
   PPCODE:
-    /* For each arg, while valid input, validate+gcd.  Shortcut stop if 1. */
-    for (i = 0; i < items && status == 1 && ret != 1; i++) {
-      if (_validate_int(aTHX_ ST(i), 1) != 1) {
-        status = 0;
+    /* For each arg, while valid input, validate+gcd/lcm.  Shortcut stop. */
+    if (ix == 0) { ret = 0; nullv = 1; }
+    else         { ret = (items == 0) ? 0 : 1; nullv = 0; }
+    for (i = 0; i < items && ret != nullv && status != 0; i++) {
+      status = _validate_int(aTHX_ ST(i), 2);
+      if (status == 0)
+        break;
+      n = status * my_svuv(ST(i));  /* n = abs(arg) */
+      if (i == 0) {
+        ret = n;
       } else {
-        UV n = my_svuv(ST(i));
-        ret = (ret == 0) ? n : gcd_ui(ret, n);
+        UV gcd = gcd_ui(ret, n);
+        if (ix == 0) {
+          ret = gcd;
+        } else {
+          n /= gcd;
+          if (n <= (UV_MAX / ret) )    ret *= n;
+          else                         status = 0;   /* Overflow */
+        }
       }
     }
-    if (status == 1)
+    if (status != 0)
       XSRETURN_UV(ret);
-    _vcallsub_with_gmp("gcd");
+    switch (ix) {
+      case 0: _vcallsub_with_gmp("gcd");  break;
+      case 1:
+      default:_vcallsub_with_gmp("lcm");  break;
+    }
     return; /* skip implicit PUTBACK */
 
 void
@@ -644,9 +662,8 @@ znorder(IN SV* sva, IN SV* svn)
     }
     switch (ix) {
       case 0:  _vcallsub("PP::znorder");  break;
-      /* TODO: Fixup public PP legendre_phi */
       case 1:
-      default: _vcallsub("PP::_legendre_phi"); break;
+      default: _vcallsub("PP::legendre_phi"); break;
     }
     return; /* skip implicit PUTBACK */
 

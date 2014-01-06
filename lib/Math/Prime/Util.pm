@@ -37,7 +37,7 @@ our @EXPORT_OK =
       random_proven_prime random_proven_prime_with_cert
       random_maurer_prime random_maurer_prime_with_cert
       primorial pn_primorial consecutive_integer_lcm
-      gcd factor factor_exp all_factors divisors
+      gcd lcm factor factor_exp all_factors divisors
       moebius mertens euler_phi jordan_totient exp_mangoldt liouville
       partitions
       chebyshev_theta chebyshev_psi
@@ -118,8 +118,9 @@ BEGIN {
     *divisor_sum   = \&Math::Prime::Util::_generic_divisor_sum;
     *znorder       = \&Math::Prime::Util::PP::znorder;
     *znprimroot    = \&Math::Prime::Util::_generic_znprimroot;
-    *legendre_phi  = \&Math::Prime::Util::PP::_legendre_phi;
+    *legendre_phi  = \&Math::Prime::Util::PP::legendre_phi;
     *gcd           = \&Math::Prime::Util::PP::gcd;
+    *lcm           = \&Math::Prime::Util::PP::lcm;
     *factor        = \&Math::Prime::Util::_generic_factor;
     *factor_exp    = \&Math::Prime::Util::_generic_factor_exp;
     *divisors      = \&Math::Prime::Util::_generic_divisors;
@@ -1504,18 +1505,21 @@ sub _generic_znprimroot {
   my $phi = euler_phi($n);
   # Check that a primitive root exists.
   return if !is_prob_prime($n) && $phi != carmichael_lambda($n);
-  my @exp = map { int($phi/$_->[0]) } factor_exp($phi);
+  my @exp = map { Math::BigInt->new("$_") }
+            map { int($phi/$_->[0]) }
+            factor_exp($phi);
   #print "phi: $phi  factors: ", join(",",factor($phi)), "\n";
   #print "  exponents: ", join(",", @exp), "\n";
+  my $bign = (ref($n) eq 'Math::BigInt') ? $n : Math::BigInt->new("$n");
   while (1) {
     my $fail = 0;
-    do { $a++; } while kronecker($a,$n) == 0;
+    do { $a++ } while kronecker($a,$n) == 0;
     return if $a >= $n;
     foreach my $f (@exp) {
-      # As usual, quotes for RT 71548
-      my $e = Math::BigInt->new($a)->bmodpow("$f", "$n");
-      #print "  $a^$f mod $n = $e\n";
-      if ($e == 1) { $fail = 1; last; }
+      if ( Math::BigInt->new($a)->bmodpow($f, $bign)->is_one ) {
+        $fail = 1;
+        last;
+      }
     }
     return $a if !$fail;
   }
@@ -1634,14 +1638,25 @@ sub _generic_divisors {
   return ($n == 0) ? (0,1) : (1)  if $n <= 1;
 
   my %all_factors;
-  foreach my $f1 (factor($n)) {
-    next if $f1 >= $n;
-    my $big_f1 = Math::BigInt->new("$f1");
-    my @to_add = map { ($_ <= ''.~0) ? _bigint_to_int($_) : $_ }
-                 grep { $_ < $n }
-                 map { $big_f1 * $_ }
-                 keys %all_factors;
-    undef @all_factors{ $f1, @to_add };
+  my @factors = factor($n);
+  return (1,$n) if scalar @factors == 1;
+
+  if (ref($n) eq 'Math::BigInt') {
+    foreach my $f1 (@factors) {
+      my $big_f1 = Math::BigInt->new("$f1");
+      my @to_add = map { ($_ <= ''.~0) ? _bigint_to_int($_) : $_ }
+                   grep { $_ < $n }
+                   map { $big_f1 * $_ }
+                   keys %all_factors;
+      undef @all_factors{ $f1, @to_add };
+    }
+  } else {
+    foreach my $f1 (@factors) {
+      my @to_add = grep { $_ < $n }
+                   map { $f1 * $_ }
+                   keys %all_factors;
+      undef @all_factors{ $f1, @to_add };
+    }
   }
   # Add 1 and n
   undef $all_factors{1};
@@ -2161,7 +2176,7 @@ __END__
 
 =encoding utf8
 
-=for stopwords forprimes forcomposites fordivisors Möbius Deléglise totient moebius mertens liouville znorder irand primesieve uniqued k-tuples von SoE pari yafu fonction qui compte le nombre nombres voor PhD superset sqrt(N) gcd(A^M k-th (10001st primegen libtommath kronecker znprimroot
+=for stopwords forprimes forcomposites fordivisors Möbius Deléglise totient moebius mertens liouville znorder irand primesieve uniqued k-tuples von SoE pari yafu fonction qui compte le nombre nombres voor PhD superset sqrt(N) gcd(A^M k-th (10001st primegen libtommath kronecker znprimroot gcd lcm
 
 
 =head1 NAME
@@ -2830,6 +2845,16 @@ While we believe (Pomerance 1984) that an infinite number of counterexamples
 exist, there is a weak conjecture (Martin) that none exist under 10000 digits.
 
 
+=head2 is_bpsw_prime
+
+Given a positive number input, returns 0 (composite), 2 (definitely prime),
+or 1 (probably prime), using the BPSW primality test (extra-strong variant).
+Normally one of the L<Math::Prime::Util/is_prime> or
+L<Math::Prime::Util/is_prob_prime> functions will suffice, but those
+functions do pre-tests to find easy composites.  If you know this is not
+necessary, then calling L</is_bpsw_prime> may save a small amount of time.
+
+
 =head2 is_provable_prime
 
   say "$n is definitely prime" if is_provable_prime($n) == 2;
@@ -3143,7 +3168,15 @@ The following conditions must hold:
 =head2 gcd
 
 Given a list of integers, returns the greatest common divisor.  This is
-often used to test for coprimality.
+often used to test for L<coprimality|https://oeis.org/wiki/Coprimality>.
+
+=head2 lcm
+
+Given a list of integers, returns the least common multiple.  Note that we
+follow the semantics of Mathematica, Pari, and Perl 6, re:
+
+  lcm(0, n) = 0              Any zero in list results in zero return
+  lcm(n,-m) = lcm(n, m)      We use the absolute values
 
 =head2 moebius
 
@@ -3432,6 +3465,17 @@ the primitive root exists, while L<OEIS A046145|http://oeis.org/A046145>
 is a list of the smallest primitive roots, which is what this function
 produces.
 
+=head2 legendre_phi
+
+  $phi = legendre_phi(1000000000, 41);
+
+Given a non-negative integer C<n> and a non-negative prime number C<a>,
+returns the Legendre phi function (also called Legendre's sum).  This is
+the count of positive integers E<lt>= C<n> which are not divisible by any
+of the first C<a> primes.
+
+
+=head1 RANDOM PRIMES
 
 =head2 random_prime
 
@@ -3772,9 +3816,9 @@ The internals are identical to L</factor>, so all comments there apply.
 Just the way the factors are arranged is different.
 
 
-=head2 all_factors
-
 =head2 divisors
+
+=head2 all_factors
 
   my @divisors = divisors(30);   # returns (1, 2, 3, 5, 6, 10, 15, 30)
 
@@ -3787,6 +3831,8 @@ functions.
 In scalar context this returns the sigma0 function,
 the sigma function (see Hardy and Wright section 16.7, or OEIS A000203).
 This is the same result as evaluating the array in scalar context.
+
+Also see the L</for_divisors> functions for looping over the divisors.
 
 C<all_factors> is the deprecated name for this function.
 
@@ -4355,7 +4401,9 @@ in Math::NumSeq are limited to 32-bit indices.
 L<Math::Pari> supports a lot of features, with a great deal of overlap.  In
 general, MPU will be faster for native 64-bit integers, while it's differs
 for bigints (Pari will always be faster if L<Math::Prime::Util::GMP> is not
-installed; with it, it varies by function).
+installed; with it, it varies by function).  Note that Pari extends many of
+these functions to other spaces (Gaussian integers, complex numbers, vectors,
+matrices, polynomials, etc.) which are beyond the realm of this module.
 Some of the highlights:
 
 =over 4
@@ -4429,14 +4477,14 @@ more efficient.  Without L<Math::Prime::Util::GMP> installed, MPU is
 very slow with bigints.  With it installed, it is about 2x slower than
 Math::Pari.
 
-=item C<kronecker>, C<znorder>, C<znprimroot>
+=item C<gcd>, C<lcm>, C<kronecker>, C<znorder>, C<znprimroot>
 
-Similar to MPU's L</kronecker>, L</znorder>, and L</znprimroot>.  Pari's
-C<znprimroot> only returns the smallest root for prime powers.  The
-behavior is undefined when the group is not cyclic (sometimes it throws
-an exception, sometimes it returns an incorrect answer).
-MPU's L</znprimroot> will always return the smallest root if it exists,
-and C<undef> otherwise.
+Similar to MPU's L</gcd>, L</lcm>, L</kronecker>, L</znorder>,
+and L</znprimroot>.  Pari's C<znprimroot> only returns the smallest
+root for prime powers.  The behavior is undefined when the group is
+not cyclic (sometimes it throws an exception, sometimes it returns
+an incorrect answer).  MPU's L</znprimroot> will always return the
+smallest root if it exists, and C<undef> otherwise.
 
 =item C<sigma>
 

@@ -422,18 +422,21 @@ sub next_prime {
        if MPU_32BIT || $n >= 18446744073709551557;
   }
 
-  # Be careful trying to do:
-  #     my $d = int($n/30);
-  #     my $m = $n - $d*30;
-  # See:  int(9999999999999999403 / 30) => 333333333333333312  (off by 1)
+  #$n = ($n+1) | 1;
+  #while (    !($n%3) || !($n%5) || !($n%7) || !($n%11) || !($n%13)
+  #        || !_is_prime7($n) ) {
+  #  $n += 2;
+  #}
   my $m = $n % 30;
   my $d = ($n - $m) / 30;
   if ($m == 29) { $d++;  $m = 1;} else { $m = $_nextwheel30[$m]; }
-  while (!_is_prime7($d*30+$m)) {
+  $n = $d*30+$m;
+  while ( !($n%7) || !_is_prime7($n) ) {
     $m = $_nextwheel30[$m];
     $d++ if $m == 1;
+    $n = $d*30+$m;
   }
-  $d*30 + $m;
+  return $n;
 }
 
 sub prev_prime {
@@ -520,14 +523,13 @@ sub euler_phi_range {
 
 sub moebius {
   my($n) = @_;
-  return 0 if $n <= 0;
-  return 1 if $n == 1;
-  return 0 if ($n >= 25) && (!($n % 4) || !($n % 9) || !($n % 25));
-  my @factors = Math::Prime::Util::factor($n);
+  return ($n == 1) ? 1 : 0  if $n <= 1;
+  return 0 if ($n >= 49) && (!($n % 4) || !($n % 9) || !($n % 25) || !($n%49) );
+  my @factors = ($n < 1_000_000) ? trial_factor($n) : factor($n);
   foreach my $i (1 .. $#factors) {
     return 0 if $factors[$i] == $factors[$i-1];
   }
-  return (((scalar @factors) % 2) == 0) ? 1 : -1;
+  return ((scalar @factors) % 2) ? -1 : 1;
 }
 
 sub moebius_range {
@@ -639,21 +641,32 @@ sub divisor_sum {
 #############################################################################
 #                       Lehmer prime count
 #
-sub _mapes {
-  my($v, $ma) = @_;
-  return $v if $ma == 0;
-  my $val = $v-int($v/2);
-  $val += -int($v/3)+int($v/6) if $ma >= 2;
-  $val += -int($v/5)+int($v/10)+int($v/15)-int($v/30) if $ma >= 3;
-  $val += -int($v/7)+int($v/14)+int($v/21)-int($v/42)+int($v/35)-int($v/70)-int($v/105)+int($v/210) if $ma >= 4;
-  $val += -int($v/11)+int($v/22)+int($v/33)-int($v/66)+int($v/55)-int($v/110)-int($v/165)+int($v/330)+int($v/77)-int($v/154)-int($v/231)+int($v/462)-int($v/385)+int($v/770)+int($v/1155)-int($v/2310) if $ma >= 5;
-  $val += -int($v/13)+int($v/26)+int($v/39)-int($v/78)+int($v/65)-int($v/130)-int($v/195)+int($v/390)+int($v/91)-int($v/182)-int($v/273)+int($v/546)-int($v/455)+int($v/910)+int($v/1365)-int($v/2730)+int($v/143)-int($v/286)-int($v/429)+int($v/858)-int($v/715)+int($v/1430)+int($v/2145)-int($v/4290)-int($v/1001)+int($v/2002)+int($v/3003)-int($v/6006)+int($v/5005)-int($v/10010)-int($v/15015)+int($v/30030) if $ma >= 6;
-  return $val;
+#my @_s0 = (0);
+#my @_s1 = (0,1);
+#my @_s2 = (0,1,1,1,1,2);
+my @_s3 = (0,1,1,1,1,1,1,2,2,2,2,3,3,4,4,4,4,5,5,6,6,6,6,7,7,7,7,7,7,8);
+my @_s4 = (0,1,1,1,1,1,1,1,1,1,1,2,2,3,3,3,3,4,4,5,5,5,5,6,6,6,6,6,6,7,7,8,8,8,8,8,8,9,9,9,9,10,10,11,11,11,11,12,12,12,12,12,12,13,13,13,13,13,13,14,14,15,15,15,15,15,15,16,16,16,16,17,17,18,18,18,18,18,18,19,19,19,19,20,20,20,20,20,20,21,21,21,21,21,21,21,21,22,22,22,22,23,23,24,24,24,24,25,25,26,26,26,26,27,27,27,27,27,27,27,27,28,28,28,28,28,28,29,29,29,29,30,30,30,30,30,30,31,31,32,32,32,32,33,33,33,33,33,33,34,34,35,35,35,35,35,35,36,36,36,36,36,36,37,37,37,37,38,38,39,39,39,39,40,40,40,40,40,40,41,41,42,42,42,42,42,42,43,43,43,43,44,44,45,45,45,45,46,46,47,47,47,47,47,47,47,47,47,47,48);
+sub _tablephi {
+  my($x, $a) = @_;
+  if ($a == 0) { return $x; }
+  elsif ($a == 1) { return $x-int($x/2); }
+  elsif ($a == 2) { return $x-int($x/2) - int($x/3) + int($x/6); }
+  elsif ($a == 3) { return  8 * int($x /  30) + $_s3[$x %  30]; }
+  elsif ($a == 4) { return 48 * int($x / 210) + $_s4[$x % 210]; }
+  elsif ($a == 5) { my $xp = int($x/11);
+                    return ( (48 * int($x   / 210) + $_s4[$x   % 210]) -
+                             (48 * int($xp  / 210) + $_s4[$xp  % 210]) ); }
+  else            { my ($xp,$x2) = (int($x/11),int($x/13));
+                    my $x2p = int($x2/11);
+                    return ( (48 * int($x   / 210) + $_s4[$x   % 210]) -
+                             (48 * int($xp  / 210) + $_s4[$xp  % 210]) -
+                             (48 * int($x2  / 210) + $_s4[$x2  % 210]) +
+                             (48 * int($x2p / 210) + $_s4[$x2p % 210]) ); }
 }
 
-sub _legendre_phi {
+sub legendre_phi {
   my ($x, $a, $primes) = @_;
-  return _mapes($x,$a) if $a <= 6;
+  return _tablephi($x,$a) if $a <= 6;
   $primes = primes(Math::Prime::Util::nth_prime_upper($a+1)) unless defined $primes;
   return ($x > 0 ? 1 : 0) if $x < $primes->[$a];
 
@@ -678,7 +691,7 @@ sub _legendre_phi {
     $a--;
   }
   while (my($v,$c) = each %vals) {
-    $sum += $c * _mapes($v, $a);
+    $sum += $c * _tablephi($v, $a);
   }
   return $sum;
 }
@@ -729,7 +742,7 @@ sub _lehmer_pi {
   my $primes = primes( $bth_prime_upper );
 
   my $sum = int(($b + $a - 2) * ($b - $a + 1) / 2);
-  $sum += _legendre_phi($x, $a, $primes);
+  $sum += legendre_phi($x, $a, $primes);
 
   # Get a big sieve for our primecounts.  The C code compromises with either
   # b*10 or x^3/5, as that cuts out all the inner loop sieves and about half
@@ -909,10 +922,26 @@ sub _powmod {
   $t;
 }
 
+# Make sure to work around RT71548 here, and correct lcm semantics.
 sub gcd {
-  # As usual, bend over backwards to work around RT71548
-  return Math::BigInt::bgcd(map { ($_ < 2147483647 || ref($_) eq 'Math::BigInt') ? $_ : "$_" } @_);
+  my $gcd = Math::BigInt::bgcd( map {
+    my $v = ($_ < 2147483647 || ref($_) eq 'Math::BigInt') ? $_ : "$_";
+    $v;
+  } @_ );
+  $gcd = _bigint_to_int($gcd) if $gcd->bacmp(''.~0) <= 0;
+  return $gcd;
 }
+sub lcm {
+  my $lcm = Math::BigInt::blcm( map {
+    my $v = ($_ < 2147483647 || ref($_) eq 'Math::BigInt') ? $_ : "$_";
+    return 0 if $v == 0;
+    $v = -$v if $v < 0;
+    $v;
+  } @_ );
+  $lcm = _bigint_to_int($lcm) if $lcm->bacmp(''.~0) <= 0;
+  return $lcm;
+}
+
 # unsigned, no validation
 sub _gcd_ui {
   my($x, $y) = @_;
@@ -1593,8 +1622,7 @@ sub _basic_factor {
 
 sub trial_factor {
   my($n, $maxlim) = @_;
-  _validate_positive_integer($n);
-  $maxlim = $n unless defined $maxlim && _validate_positive_integer($maxlim);
+  $maxlim = $n unless defined $maxlim;
 
   # Don't use _basic_factor here -- they want a trial forced.
   my @factors;
@@ -1652,9 +1680,10 @@ my @_fsublist = (
 sub factor {
   my($n) = @_;
   _validate_positive_integer($n);
-  $n = $n->copy if ref($n) eq 'Math::BigInt';
 
   return trial_factor($n) if $n < 1_000_000;
+
+  $n = $n->copy if ref($n) eq 'Math::BigInt';
 
   my @factors;
   # Use 'n=int($n/7)' instead of 'n/=7' to not "upgrade" n to a Math::BigFloat.
@@ -2733,78 +2762,12 @@ Version 0.36
 =head1 SYNOPSIS
 
 The functionality is basically identical to L<Math::Prime::Util>, as this
-module is just the Pure Perl implementation.
+module is just the Pure Perl implementation.  This documentation will only
+note differences.
 
   # Normally you would just import the functions you are using.
   # Nothing is exported by default.
   use Math::Prime::Util ':all';
-
-
-  # Get a big array reference of many primes
-  my $aref = primes( 100_000_000 );
-
-  # All the primes between 5k and 10k inclusive
-  my $aref = primes( 5_000, 10_000 );
-
-  # If you want them in an array instead
-  my @primes = @{primes( 500 )};
-
-
-  # is_prime returns 0 for composite, 2 for prime
-  say "$n is prime"  if is_prime($n);
-
-  # is_prob_prime returns 0 for composite, 2 for prime, and 1 for maybe prime
-  say "$n is ", qw(composite maybe_prime? prime)[is_prob_prime($n)];
-
-
-  # step to the next prime (returns 0 if the next one is more than ~0)
-  $n = next_prime($n);
-
-  # step back (returns 0 if given input less than 2)
-  $n = prev_prime($n);
-
-
-  # Return Pi(n) -- the number of primes E<lt>= n.
-  $primepi = prime_count( 1_000_000 );
-  $primepi = prime_count( 10**14, 10**14+1000 );  # also does ranges
-
-  # Quickly return an approximation to Pi(n)
-  my $approx_number_of_primes = prime_count_approx( 10**17 );
-
-  # Lower and upper bounds.  lower <= Pi(n) <= upper for all n
-  die unless prime_count_lower($n) <= prime_count($n);
-  die unless prime_count_upper($n) >= prime_count($n);
-
-
-  # Return p_n, the nth prime
-  say "The ten thousandth prime is ", nth_prime(10_000);
-
-  # Return a quick approximation to the nth prime
-  say "The one trillionth prime is ~ ", nth_prime_approx(10**12);
-
-  # Lower and upper bounds.   lower <= nth_prime(n) <= upper for all n
-  die unless nth_prime_lower($n) <= nth_prime($n);
-  die unless nth_prime_upper($n) >= nth_prime($n);
-
-
-  # Get the prime factors of a number
-  @prime_factors = factor( $n );
-
-
-  # Precalculate a sieve, possibly speeding up later work.
-  prime_precalc( 1_000_000_000 );
-
-  # Free any memory used by the module.
-  prime_memfree;
-
-  # Alternate way to free.  When this leaves scope, memory is freed.
-  my $mf = Math::Prime::Util::MemFree->new;
-
-
-  # Random primes
-  my $small_prime = random_prime(1000);      # random prime <= limit
-  my $rand_prime = random_prime(100, 10000); # random prime within a range
-  my $rand_prime = random_ndigit_prime(6);   # random 6-digit prime
 
 
 =head1 DESCRIPTION
@@ -2829,397 +2792,23 @@ functions.  Alternately, L<Math::Pari> has a lot of these types of functions.
 
 =head1 FUNCTIONS
 
-=head2 is_prime
+=head2 euler_phi
 
-  print "$n is prime" if is_prime($n);
+Takes a I<single> integer input and returns the Euler totient.
 
-Returns 2 if the number is prime, 0 if not.  For numbers larger than C<2^64>
-it will return 0 for composite and 1 for probably prime, using an
-extra-strong BPSW test.  Also note there are probabilistic prime testing
-functions available.
+=head2 euler_phi_range
 
+Takes two values defining a range C<low> to C<high> and returns an array
+with the totient of each value in the range, inclusive.
 
-=head2 primes
+=head2 moebius
 
-Returns all the primes between the lower and upper limits (inclusive), with
-a lower limit of C<2> if none is given.
+Takes a I<single> integer input and returns the Moebius function.
 
-An array reference is returned (with large lists this is much faster and uses
-less memory than returning an array directly).
+=head2 moebius_range
 
-  my $aref1 = primes( 1_000_000 );
-  my $aref2 = primes( 1_000_000_000_000, 1_000_000_001_000 );
-
-  my @primes = @{ primes( 500 ) };
-
-  print "$_\n" for (@{primes( 20, 100 )});
-
-Sieving will be done if required.  The algorithm used will depend on the range
-and whether a sieve result already exists.  Possibilities include trial
-division (for ranges with only one expected prime), a Sieve of Eratosthenes
-using wheel factorization, or a segmented sieve.
-
-
-=head2 next_prime
-
-  $n = next_prime($n);
-
-Returns the next prime greater than the input number.  If the input is not a
-bigint, then 0 is returned if the next prime is larger than a native integer
-type (the last representable primes being C<4,294,967,291> in 32-bit Perl and
-C<18,446,744,073,709,551,557> in 64-bit).
-
-
-=head2 prev_prime
-
-  $n = prev_prime($n);
-
-Returns the prime smaller than the input number.  0 is returned if the
-input is C<2> or lower.
-
-
-=head2 prime_count
-
-  my $primepi = prime_count( 1_000 );
-  my $pirange = prime_count( 1_000, 10_000 );
-
-Returns the Prime Count function C<Pi(n)>, also called C<primepi> in some
-math packages.  When given two arguments, it returns the inclusive
-count of primes between the ranges (e.g. C<(13,17)> returns 2, C<14,17>
-and C<13,16> return 1, and C<14,16> returns 0).
-
-The Lehmer method is used for large values, which greatly speeds up results.
-
-
-=head2 nth_prime
-
-  say "The ten thousandth prime is ", nth_prime(10_000);
-
-Returns the prime that lies in index C<n> in the array of prime numbers.  Put
-another way, this returns the smallest C<p> such that C<Pi(p) E<gt>= n>.
-
-The Lehmer prime count is used to speed up results for large inputs, but both
-methods take quite a bit of time and space.  Think abut whether a bound or
-approximation would be acceptable instead.
-
-
-=head2 is_pseudoprime
-
-Takes a positive number C<n> and a base C<a> as input, and returns 1 if
-C<n> is a probable prime to base C<a>.  This is the simple Fermat primality
-test.  Removing primes, given base 2 this produces the sequence
-L<OEIS A001567|http://oeis.org/A001567>.
-
-=head2 is_strong_pseudoprime
-
-  my $maybe_prime = is_strong_pseudoprime($n, 2);
-  my $probably_prime = is_strong_pseudoprime($n, 2, 3, 5, 7, 11, 13, 17);
-
-Takes a positive number as input and one or more bases.  The bases must be
-greater than C<1>.  Returns 1 if the input is a strong probable prime
-to all of the bases, and 0 if not.
-
-If 0 is returned, then the number really is a composite.  If 1 is returned,
-then it is either a prime or a strong pseudoprime to all the given bases.
-Given enough distinct bases, the chances become very, very strong that the
-number is actually prime.
-
-This is usually used in combination with other tests to make either stronger
-tests (e.g. the strong BPSW test) or deterministic results for numbers less
-than some verified limit.
-
-
-=head2 is_lucas_pseudoprime
-
-Takes a positive number as input, and returns 1 if the input is a standard
-Lucas probable prime using the Selfridge method of choosing D, P, and Q (some
-sources call this a Lucas-Selfridge pseudoprime).
-
-=head2 is_strong_lucas_pseudoprime
-
-Takes a positive number as input, and returns 1 if the input is a strong
-Lucas pseudoprime using the Selfridge method of choosing D, P, and Q (some
-sources call this a strong Lucas-Selfridge pseudoprime).  This is one half
-of the BPSW primality test (the Miller-Rabin strong pseudoprime test with
-base 2 being the other half).
-
-=head2 is_extra_strong_lucas_pseudoprime
-
-Takes a positive number as input, and returns 1 if the input passes the extra
-strong Lucas test (as defined in
-L<Grantham 2000|http://www.ams.org/mathscinet-getitem?mr=1680879>).
-This has slightly more restrictive conditions than the strong Lucas test,
-but uses different starting parameters so is not directly comparable.
-
-=head2 is_almost_extra_strong_lucas_pseudoprime
-
-Takes a positive number as input, and returns 1 if the input passes the extra
-strong Lucas test, ignoring the C<U_n = 0> condition.  This produces about 5%
-more pseudoprimes than the extra strong test, but 66% fewer than the strong
-test.
-
-An optional second argument (an integer between 1 and 256) indicates the
-increment used when selecting the C<P> parameter.  A default value of 1
-creates the same parameters as the extra strong test, so the pseudoprime
-sequence from this function will contain all the extra strong Lucas
-pseudoprimes.  A value of 2 yields the method used by
-L<Pari|http://pari.math.u-bordeaux.fr/faq.html#primetest>.
-
-=head2 is_frobenius_underwood_pseudoprime
-
-Takes a positive number as input, and returns 1 if the input passes the minimal
-lambda+2 test (see Underwood 2012 "Quadratic Compositeness Tests"), where
-C<(L+2)^(n-1) = 5 + 2x mod (n, L^2 - Lx + 1)>.  The computational cost for this
-is between the cost of 2 and 3 strong pseudoprime tests.  There are no known
-counterexamples, but this is not a well studied test.
-
-=head2 is_aks_prime
-
-Takes a positive number as input, and returns 1 if the input can be proven
-prime using the AKS primality test.  This code is included for completeness
-and as an example, but is impractically slow.
-
-=head2 lucas_sequence
-
-  my($U, $V, $Qk) = lucas_sequence($n, $P, $Q, $k)
-
-Computes C<U_k>, C<V_k>, and C<Q_k> for the Lucas sequence defined by
-C<P>,C<Q>, modulo C<n>.  The modular Lucas sequence is used in a
-number of primality tests and proofs.
-
-The following conditions must hold:
-  - C<< D = P*P - 4*Q  !=  0 >>
-  - C<< P > 0 >>
-  - C<< P < n >>
-  - C<< Q < n >>
-  - C<< k >= 0 >>
-  - C<< n >= 2 >>
-
-=head2 kronecker
-
-Returns the Kronecker symbol C<(a|n)> for two integers.  The possible
-return values with their meanings for odd positive C<n> are:
-
-   0   a = 0 mod n
-   1   a is a quadratic residue modulo n (a = x^2 mod n for some x)
-  -1   a is a quadratic non-residue modulo n
-
-and the return value is congruent to C<a^((n-1)/2)>.  The Kronecker
-symbol is an extension of the Jacobi symbol to all integer values of
-C<n> from its domain of positive odd values of C<n>.  The Jacobi
-symbol is itself an extension of the Legendre symbol, which is
-only defined for odd prime values of C<n>.  This corresponds to Pari's
-C<kronecker(a,n)> function and Mathematica's C<KroneckerSymbol[n,m]>
-function.
-
-
-=head1 UTILITY FUNCTIONS
-
-=head2 prime_precalc
-
-  prime_precalc( 1_000_000_000 );
-
-Let the module prepare for fast operation up to a specific number.  It is not
-necessary to call this, but it gives you more control over when memory is
-allocated and gives faster results for multiple calls in some cases.  In the
-current implementation this will calculate a sieve for all numbers up to the
-specified number.
-
-
-=head2 prime_memfree
-
-  prime_memfree;
-
-Frees any extra memory the module may have allocated.  Like with
-C<prime_precalc>, it is not necessary to call this, but if you're done
-making calls, or want things cleanup up, you can use this.  The object method
-might be a better choice for complicated uses.
-
-
-=head1 FACTORING FUNCTIONS
-
-=head2 factor
-
-  my @factors = factor(3_369_738_766_071_892_021);
-  # returns (204518747,16476429743)
-
-Produces the prime factors of a positive number input, in numerical order.
-The special cases of C<n = 0> and C<n = 1> will return C<n>, which
-guarantees multiplying the factors together will always result in the
-input value, though those are the only cases where the returned factors
-are not prime.
-
-
-=head2 trial_factor
-
-  my @factors = trial_factor($n);
-
-Produces the prime factors of a positive number input.  The factors will be
-in numerical order.  The special cases of C<n = 0> and C<n = 1> will return
-C<n>, while with all other inputs the factors are guaranteed to be prime.
-For large inputs this will be very slow.
-
-=head2 fermat_factor
-
-  my @factors = fermat_factor($n);
-
-Produces factors, not necessarily prime, of the positive number input.  This
-uses Fermat's classic algorithm, without any special improvements (e.g.
-Lehman or McKee).  This is typically slow and usually L</holf_factor> will
-be faster.
-
-=head2 holf_factor
-
-  my @factors = holf_factor($n);
-
-Produces factors, not necessarily prime, of the positive number input.  An
-optional number of rounds can be given as a second parameter.  It is possible
-the function will be unable to find a factor, in which case a single element,
-the input, is returned.  This uses Hart's One Line Factorization with no
-premultiplier.  It is an interesting alternative to Fermat's algorithm,
-and there are some inputs it can rapidly factor.  In the long run it has the
-same advantages and disadvantages as Fermat's method.
-
-=head2 squfof_factor
-
-  my @factors = squfof_factor($n);
-
-Currently not implemented in Perl.
-
-=head2 prho_factor
-
-=head2 pbrent_factor
-
-  my @factors = prho_factor($n);
-
-  # Use a very small number of rounds
-  my @factors = prho_factor($n, 1000);
-
-Produces factors, not necessarily prime, of the positive number input.  An
-optional number of rounds can be given as a second parameter.  An optional
-additive factor may be given as a third parameter (default 3).  These methods
-attempt to find a single factor using Pollard's Rho algorithm (or Brent's
-alternative which is typically faster).
-These methods can quickly find small factors.  If the
-input is prime or they run out of rounds, they will return the single
-input value.  On some inputs they will take a very long time, while on
-others they succeed in a remarkably short time.
-
-=head2 pminus1_factor
-
-  my @factors = pminus1_factor($n);
-  my @factors = pminus1_factor($n, 1_000);          # set B1 smoothness
-  my @factors = pminus1_factor($n, 1_000, 50_000);  # set B1 and B2
-
-Produces factors, not necessarily prime, of the positive number input.  This
-is Pollard's C<p-1> method, using two stages.  The default with no B1 or B2
-given is to run with increasing B1 factors.
-This method can rapidly find a factor C<p> of C<n> where C<p-1> is smooth
-(i.e. C<p-1> has no large factors).
-
-=head2 ecm_factor
-
-  my @factors = ecm_factor($n);
-  my @factors = ecm_factor($n, 1000);           # B1 = B2 = 1000, curves = 10
-  my @factors = ecm_factor($n, 1000, 5000, 10); # Set B1, B2, and ncurves
-
-Given a positive number input, tries to discover a factor using ECM.  The
-resulting array will contain either two factors (it succeeded) or the original
-number (no factor was found).  In either case, multiplying @factors yields the
-original input.  The B1 and B2 smoothness factors for stage 1 and stage 2
-respectively may be supplied, as can be number of curves to try.
-
-
-
-
-=head1 MATHEMATICAL FUNCTIONS
-
-=head2 ExponentialIntegral
-
-  my $Ei = ExponentialIntegral($x);
-
-Given a non-zero floating point input C<x>, this returns the real-valued
-exponential integral of C<x>, defined as the integral of C<e^t/t dt>
-from C<-infinity> to C<x>.
-
-If the bignum module has been loaded, all inputs will be treated as if they
-were Math::BigFloat objects.
-
-We first check to see if the Math::MPFR module is installed.  If so, then
-it is used, as it will return results much faster and can be more accurate.
-Accuracy when using MPFR will be 17 digits for non-BigInt/BigFloats, and
-for BigInt/BigFloat inputs will be equal to the C<accuracy()> value of the
-input (or the default BigFloat accuracy, which is 40 by default).
-
-MPFR is used for positive inputs only.  If Math::MPFR is not installed or the
-input is negative, then other methods are used:
-continued fractions (C<x E<lt> -1>),
-rational Chebyshev approximation (C< -1 E<lt> x E<lt> 0>),
-a convergent series (small positive C<x>),
-or an asymptotic divergent series (large positive C<x>).
-Accuracy should be at least 14 digits.
-
-
-=head2 LogarithmicIntegral
-
-  my $li = LogarithmicIntegral($x)
-
-Given a positive floating point input, returns the floating point logarithmic
-integral of C<x>, defined as the integral of C<dt/ln t> from C<0> to C<x>.
-If given a negative input, the function will croak.  The function returns
-0 at C<x = 0>, and C<-infinity> at C<x = 1>.
-
-This is often known as C<li(x)>.  A related function is the offset logarithmic
-integral, sometimes known as C<Li(x)> which avoids the singularity at 1.  It
-may be defined as C<Li(x) = li(x) - li(2)>.
-
-We first check to see if the Math::MPFR module is installed.  If so, then
-it is used, as it will return results much faster and can be more accurate.
-Accuracy when using MPFR will be 17 digits for non-BigInt/BigFloats, and
-for BigInt/BigFloat inputs will be equal to the C<accuracy()> value of the
-input (or the default BigFloat accuracy, which is 40 by default).
-
-MPFR is used for inputs greater than 1 only.  If Math::MPFR is not installed or
-the input is less than 1, results will be calculated as C<Ei(ln x)>.
-
-=head2 RiemannZeta
-
-  my $z = RiemannZeta($s);
-
-Given a floating point input C<s> where C<s E<gt>= 0.5>, returns the floating
-point value of ζ(s)-1, where ζ(s) is the Riemann zeta function.  One is
-subtracted to ensure maximum precision for large values of C<s>.  The zeta
-function is the sum from k=1 to infinity of C<1 / k^s>
-
-If the bignum module has been loaded, all inputs will be treated as if they
-were Math::BigFloat objects.
-
-We first check to see if the Math::MPFR module is installed.  If so, then
-it is used, as it will return results much faster and can be more accurate.
-Accuracy when using MPFR will be 17 digits for non-BigInt/BigFloats, and
-for BigInt/BigFloat inputs will be equal to the C<accuracy()> value of the
-input (or the default BigFloat accuracy, which is 40 by default).
-
-If Math::MPFR is not installed, then results are calculated either from a
-table, rational Chebyshev approximation, or via a series.
-
-
-=head2 RiemannR
-
-  my $r = RiemannR($x);
-
-Given a positive non-zero floating point input, returns the floating
-point value of Riemann's R function.  Riemann's R function gives a very close
-approximation to the prime counting function.
-
-If the bignum module has been loaded, all inputs will be treated as if they
-were Math::BigFloat objects.
-
-We first check to see if the Math::MPFR module is installed.  If so, then
-it is used, as it will return results much faster and can be more accurate.
-Accuracy when using MPFR will be 17 digits for non-BigInt/BigFloats, and
-for BigInt/BigFloat inputs will be equal to the C<accuracy()> value of the
-input (or the default BigFloat accuracy, which is 40 by default).
+Takes two values defining a range C<low> to C<high> and returns an array
+with the Moebius function of each value in the range, inclusive.
 
 
 =head1 LIMITATIONS
@@ -3247,7 +2836,8 @@ Operations that are slower include:
   random_prime / random_ndigit_prime
   factor / factor_exp / divisors
   nth_prime
-  primecount
+  prime_count
+  is_aks_prime
 
 Performance improvement in this code is still possible.  The prime sieve is
 over 2x faster than anything I was able to find online, but it is still has
@@ -3279,7 +2869,7 @@ Dana Jacobsen E<lt>dana@acm.orgE<gt>
 
 =head1 COPYRIGHT
 
-Copyright 2012-2013 by Dana Jacobsen E<lt>dana@acm.orgE<gt>
+Copyright 2012-2014 by Dana Jacobsen E<lt>dana@acm.orgE<gt>
 
 This program is free software; you can redistribute it and/or modify it under the same terms as Perl itself.
 
