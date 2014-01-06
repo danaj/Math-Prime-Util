@@ -156,7 +156,6 @@ static int _validate_int(pTHX_ SV* n, int negok)
 /* Call a Perl sub to handle work for us. */
 static int _vcallsubn(pTHX_ I32 flags, const char* gmp_name, const char* name, int nargs)
 {
-    dSP;
     char fullname[80] = "Math::Prime::Util::";
     /* If given a GMP function, and GMP enabled, and function exists, use it. */
     int use_gmp = gmp_name != 0 && _XS_get_callgmp();
@@ -172,8 +171,10 @@ static int _vcallsubn(pTHX_ I32 flags, const char* gmp_name, const char* name, i
     }
     if (!use_gmp)
       strncat(fullname, name, 60);
-    PUSHMARK(SP-nargs);
-    PUTBACK;
+    /* use PL_stack_sp in PUSHMARK macro directly it will be read after
+      the possible mark stack extend */
+    PUSHMARK(PL_stack_sp-nargs);
+    /* no PUTBACK bc we didn't move global SP */
     return call_pv(fullname, flags);
 }
 #define _vcallsub(func) (void)_vcallsubn(aTHX_ G_SCALAR, 0, func, items)
@@ -309,15 +310,22 @@ _XS_LMO_pi(IN UV n)
   OUTPUT:
     RETVAL
 
-SV*
+void
 sieve_primes(IN UV low, IN UV high)
   ALIAS:
     trial_primes = 1
     erat_primes = 2
     segment_primes = 3
   PREINIT:
-    AV* av = newAV();
-  CODE:
+    AV* av;
+  PPCODE:
+    av = newAV();
+    {
+      SV * retsv = sv_2mortal(newRV_noinc( (SV*) av ));
+      PUSHs(retsv);
+      PUTBACK;
+      SP = NULL; /* never use SP again, poison */
+    }
     if ((low <= 2) && (high >= 2)) { av_push(av, newSVuv( 2 )); }
     if ((low <= 3) && (high >= 3)) { av_push(av, newSVuv( 3 )); }
     if ((low <= 5) && (high >= 5)) { av_push(av, newSVuv( 5 )); }
@@ -351,9 +359,7 @@ sieve_primes(IN UV low, IN UV high)
         end_segment_primes(ctx);
       }
     }
-    RETVAL = newRV_noinc( (SV*) av );
-  OUTPUT:
-    RETVAL
+    return; /* skip implicit PUTBACK */
 
 void
 trial_factor(IN UV n, ...)
@@ -361,9 +367,9 @@ trial_factor(IN UV n, ...)
     fermat_factor = 1
     holf_factor = 2
     squfof_factor = 3
-    pbrent_factor = 4
-    prho_factor = 5
-    pplus1_factor = 6
+    prho_factor = 4
+    pplus1_factor = 5
+    pbrent_factor = 6
     pminus1_factor = 7
   PPCODE:
     if (n == 0)  XSRETURN_UV(0);
@@ -385,12 +391,12 @@ trial_factor(IN UV n, ...)
         case 3:  arg1 = (items < 2)  ?   4*1024*1024  : SvUV(ST(1));
                  nfactors = squfof_factor (n, factors, arg1);  break;
         case 4:  arg1 = (items < 2)  ?   4*1024*1024  : SvUV(ST(1));
+                 nfactors = prho_factor   (n, factors, arg1);  break;
+        case 5:  arg1 = (items < 2)  ?           200  : SvUV(ST(1));
+                 nfactors = pplus1_factor (n, factors, arg1);  break;
+        case 6:  arg1 = (items < 2)  ?   4*1024*1024  : SvUV(ST(1));
                  arg2 = (items < 3)  ?             1  : SvUV(ST(2));
                  nfactors = pbrent_factor (n, factors, arg1, arg2);  break;
-        case 5:  arg1 = (items < 2)  ?   4*1024*1024  : SvUV(ST(1));
-                 nfactors = prho_factor   (n, factors, arg1);  break;
-        case 6:  arg1 = (items < 2)  ?           200  : SvUV(ST(1));
-                 nfactors = pplus1_factor (n, factors, arg1);  break;
         case 7:
         default: arg1 = (items < 2)  ?   1*1024*1024  : SvUV(ST(1));
                  arg2 = (items < 3)  ?       10*arg1  : SvUV(ST(2));
