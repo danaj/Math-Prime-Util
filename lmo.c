@@ -244,25 +244,54 @@ static uint16* ft_create(uint32 max)
   return factor_table;
 }
 
+#define PHIC 6
 
-static UV mapes(UV x, uint32 a)
+static const uint8_t _s0[ 1] = {0};
+static const uint8_t _s1[ 2] = {0,1};
+static const uint8_t _s2[ 6] = {0,1,1,1,1,2};
+static const uint8_t _s3[30] = {0,1,1,1,1,1,1,2,2,2,2,3,3,4,4,4,4,5,5,6,6,6,6,7,7,7,7,7,7,8};
+static const uint8_t _s4[210]= {0,1,1,1,1,1,1,1,1,1,1,2,2,3,3,3,3,4,4,5,5,5,5,6,6,6,6,6,6,7,7,8,8,8,8,8,8,9,9,9,9,10,10,11,11,11,11,12,12,12,12,12,12,13,13,13,13,13,13,14,14,15,15,15,15,15,15,16,16,16,16,17,17,18,18,18,18,18,18,19,19,19,19,20,20,20,20,20,20,21,21,21,21,21,21,21,21,22,22,22,22,23,23,24,24,24,24,25,25,26,26,26,26,27,27,27,27,27,27,27,27,28,28,28,28,28,28,29,29,29,29,30,30,30,30,30,30,31,31,32,32,32,32,33,33,33,33,33,33,34,34,35,35,35,35,35,35,36,36,36,36,36,36,37,37,37,37,38,38,39,39,39,39,40,40,40,40,40,40,41,41,42,42,42,42,42,42,43,43,43,43,44,44,45,45,45,45,46,46,47,47,47,47,47,47,47,47,47,47,48};
+static UV tablephi(UV x, uint32 a)
 {
-  UV val;
-  if (a == 0)  return x;
-  if (a == 1)  return x-x/2;
-  val = x-x/2-x/3+x/6;
-  if (a >= 3) val += 0-x/5+x/10+x/15-x/30;
-  if (a >= 4) val += 0-x/7+x/14+x/21-x/42+x/35-x/70-x/105+x/210;
-  if (a >= 5) val += 0-x/11+x/22+x/33-x/66+x/55-x/110-x/165+x/330+x/77-x/154-x/231+x/462-x/385+x/770+x/1155-x/2310;
-  if (a >= 6) val += 0-x/13+x/26+x/39-x/78+x/65-x/130-x/195+x/390+x/91-x/182-x/273+x/546-x/455+x/910+x/1365-x/2730+x/143-x/286-x/429+x/858-x/715+x/1430+x/2145-x/4290-x/1001+x/2002+x/3003-x/6006+x/5005-x/10010-x/15015+x/30030;
-  if (a >= 7) val += 0-x/17+x/34+x/51-x/102+x/85-x/170-x/255+x/510+x/119-x/238-x/357+x/714-x/595+x/1190+x/1785-x/3570+x/187-x/374-x/561+x/1122-x/935+x/1870+x/2805-x/5610-x/1309+x/2618+x/3927-x/7854+x/6545-x/13090-x/19635+x/39270+x/221-x/442-x/663+x/1326-x/1105+x/2210+x/3315-x/6630-x/1547+x/3094+x/4641-x/9282+x/7735-x/15470-x/23205+x/46410-x/2431+x/4862+x/7293-x/14586+x/12155-x/24310-x/36465+x/72930+x/17017-x/34034-x/51051+x/102102-x/85085+x/170170+x/255255-x/510510;
-  return (UV) val;
+  switch (a) {
+    case 0: return x;
+    case 1: return x-x/2;
+    case 2: return x-x/2-x/3+x/6;
+    case 3: return (x/    30U) *     8U + _s3[x %     30U];
+    case 4: return (x/   210U) *    48U + _s4[x %    210U];
+    case 5: {
+              UV xp  = x / 11U;
+              return ((x /210) * 48 + _s4[x  % 210]) -
+                     ((xp/210) * 48 + _s4[xp % 210]);
+             }
+    case 6:
+    default:{
+              UV xp  = x / 11U;
+              UV x2  = x / 13U;
+              UV x2p = x2 / 11U;
+              return ((x  /210) * 48 + _s4[x  % 210]) -
+                     ((xp /210) * 48 + _s4[xp % 210]) -
+                     ((x2 /210) * 48 + _s4[x2 % 210]) +
+                     ((x2p/210) * 48 + _s4[x2p% 210]);
+            }
+    /* case 7: return tablephi(x,a-1)-tablephi(x/17,a-1); */  /* Hack hack */
+  }
 }
 
-/* TODO: This is pretty simplistic. */
-UV legendre_phi(UV x, UV a) {
-  UV i, c = (a > 7) ? 7 : a;
-  UV sum = mapes(x, c);
+/****************************************************************************/
+/*              Legendre Phi.  Not used by LMO, but exported.               */
+/****************************************************************************/
+
+/*
+ * Choices include:
+ *   1) recursive, memory-less.  We use this for small values.
+ *   2) recursive, caching.  We use a this for larger values w/ 32MB cache.
+ *   3) a-walker sorted list.  lehmer.c has this implementation.  It is
+ *      faster for some values, but big and memory intensive.
+ */
+static UV _phi_recurse(UV x, UV a) {
+  UV i, c = (a > PHIC) ? PHIC : a;
+  UV sum = tablephi(x, c);
   if (a > c) {
     UV p  = _XS_nth_prime(c);
     UV pa = _XS_nth_prime(a);
@@ -282,6 +311,48 @@ UV legendre_phi(UV x, UV a) {
   }
   return sum;
 }
+
+#define PHICACHEA 256
+#define PHICACHEX 65536
+#define PHICACHE_EXISTS(x,a) \
+  ((x < PHICACHEX && a < PHICACHEA) ? cache[a*PHICACHEX+x] : 0)
+static IV _phi(UV x, UV a, int sign, const uint32_t* const primes, const uint32_t lastidx, uint16_t* cache)
+{
+  IV sum;
+  if      (PHICACHE_EXISTS(x,a))  return sign * cache[a*PHICACHEX+x];
+  else if (a <= PHIC)             return sign * tablephi(x, a);
+  else if (x < primes[a+1])       sum = sign;
+  else {
+    /* sum = _phi(x, a-1, sign, primes, lastidx, cache) +              */
+    /*       _phi(x/primes[a], a-1, -sign, primes, lastidx, cache);    */
+    UV a2, iters = (a*a > x)  ?  _XS_prime_count(2,isqrt(x))  :  a;
+    UV c = (iters > PHIC) ? PHIC : iters;
+    IV phixc = PHICACHE_EXISTS(x,c) ? cache[a*PHICACHEX+x] : tablephi(x,c);
+    sum = sign * (iters - a + phixc);
+    for (a2 = c+1; a2 <= iters; a2++)
+      sum += _phi(x/primes[a2], a2-1, -sign, primes, lastidx, cache);
+  }
+  if (x < PHICACHEX && a < PHICACHEA && sign*sum <= SHRT_MAX)
+    cache[a*PHICACHEX+x] = sign * sum;
+  return sum;
+}
+UV legendre_phi(UV x, UV a) {
+  /* TODO: tune these */
+  if ( (x > PHIC && a > 200) || (x > 1000000000 && a > 30) ) {
+    uint16_t* cache;
+    uint32_t* primes;
+    uint32_t lastidx;
+    UV res, max_cache_a = (a >= PHICACHEA) ? PHICACHEA : a+1;
+    Newz(0, cache, PHICACHEX * max_cache_a, uint16_t);
+    primes = make_primelist(_XS_nth_prime(a+1), &lastidx);
+    res = (UV) _phi(x, a, 1, primes, lastidx, cache);
+    Safefree(primes);
+    Safefree(cache);
+    return res;
+  }
+  return _phi_recurse(x, a);
+}
+/****************************************************************************/
 
 
 typedef struct {
@@ -480,7 +551,7 @@ UV _XS_LMO_pi(UV n)
   uint16   *factor_table;
   sieve_t   ss;
 
-  const uint32 c = 7;  /* We can use our Mapes function for c <= 7 */
+  const uint32 c = PHIC;  /* We can use our fast function for this */
 
   /* For "small" n, use our table+segment sieve. */
   if (n < SIEVE_LIMIT || n < 10000)  return _XS_prime_count(2, n);
@@ -550,7 +621,7 @@ UV _XS_LMO_pi(UV n)
   for (j = 0; j < end; j++) {
     uint32 lpf = factor_table[j];
     if (lpf > primes[c]) {
-      phi_value = mapes(n / (2*j+1), c);   /* x = 2j+1 */
+      phi_value = tablephi(n / (2*j+1), c);   /* x = 2j+1 */
       if (lpf & 0x01) sum2 += phi_value; else sum1 += phi_value;
     }
   }
@@ -562,7 +633,7 @@ UV _XS_LMO_pi(UV n)
     for (j = (1+M/pc_1)/2; j < end; j++) {
       uint32 lpf = factor_table[j];
       if (lpf > pc_1) {
-        phi_value = mapes(n / (pc_1 * (2*j+1)), c);   /* x = 2j+1 */
+        phi_value = tablephi(n / (pc_1 * (2*j+1)), c);   /* x = 2j+1 */
         if (lpf & 0x01) sum1 += phi_value; else sum2 += phi_value;
       }
     }
