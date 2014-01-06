@@ -46,7 +46,7 @@ extern UV znorder(UV a, UV n);
   #define MPU_PROB_PRIME_BEST  UVCONST(100000000)
 #endif
 
-#if defined(FUNC_isqrt) || defined(FUNC_is_perfect_square)
+#if defined(FUNC_isqrt)
 static UV isqrt(UV n) {
   UV root;
 #if BITS_PER_WORD == 32

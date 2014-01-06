@@ -6,7 +6,6 @@
 #include "ptypes.h"
 #include "primality.h"
 #include "mulmod.h"
-#define FUNC_isqrt  1
 #define FUNC_gcd_ui 1
 #define FUNC_is_perfect_square
 #include "util.h"
