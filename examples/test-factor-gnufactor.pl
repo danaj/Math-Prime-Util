@@ -2,7 +2,6 @@
 use strict;
 use warnings;
 use Math::Prime::Util qw/factor/;
-use Math::Pari qw/factorint/;
 use File::Temp qw/tempfile/;
 use Math::BigInt try => 'GMP,Pari';
 use Config;
@@ -34,7 +33,11 @@ my $num = 1000;
 
 my $do_gnu = 1;
 my $do_pari = 1;
-my $use_mpu_factor_script = 1;
+my $use_mpu_factor_script = 0;
+
+if ($do_pari) {
+  $do_pari = 0 unless eval { require Math::Pari; Math::Pari->import(); 1; };
+}
 
 my $rgen = sub {
   my $range = shift;
@@ -180,7 +183,7 @@ sub pari_factors {
   my @piarray;
   foreach my $n (@_) {
     my @factors;
-    my ($pn,$pc) = @{factorint($n)};
+    my ($pn,$pc) = @{Math::Pari::factorint($n)};
     # Map the Math::Pari objects returned into Math::BigInts, because Pari will
     # throw a hissy fit later when we try to compare them to anything else.
     push @piarray, [ $n, map { (Math::BigInt->new($pn->[$_])) x $pc->[$_] } (0 .. $#$pn) ];
