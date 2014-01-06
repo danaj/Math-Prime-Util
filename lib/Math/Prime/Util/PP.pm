@@ -940,18 +940,6 @@ sub _is_perfect_power {
   0;
 }
 
-sub _order {
-  my($r, $n, $lim) = @_;
-  $lim = $r unless defined $lim;
-
-  return 1 if ($n % $r) == 1;
-  for (my $j = 2; $j <= $lim; $j++) {
-    return $j if _powmod($n, $j, $r) == 1;
-  }
-  return $lim+1;
-}
-
-
 
 sub is_pseudoprime {
   my($n, $base) = @_;
@@ -1102,6 +1090,46 @@ sub _is_perfect_square {
     }
   }
   0;
+}
+
+sub znorder {
+  my($a, $n) = @_;
+  _validate_num($a) || _validate_positive_integer($a);
+  _validate_num($n) || _validate_positive_integer($n);
+  return if $n <= 0;
+  return (undef,1)[$a] if $a <= 1;
+  return 1 if $n == 1;
+
+  # Sadly, Calc/FastCalc are horrendously slow for this function.
+  return if Math::BigInt::bgcd($a, $n) > 1;
+
+  # The answer is one of the divisors of phi(n) and lambda(n).
+  my $lambda = Math::Prime::Util::carmichael_lambda($n);
+  $a = Math::BigInt->new("$a") unless ref($a) eq 'Math::BigInt';
+
+  # This is easy and usually fast, but can bog down with too many divisors.
+  if ($lambda <= 2**64) {
+    foreach my $k (Math::Prime::Util::divisors($lambda)) {
+      return $k if $a->copy->bmodpow("$k", $n)->is_one;
+    }
+    return;
+  }
+
+  # Algorithm 1.7 from A. Das applied to Carmichael Lambda.
+  $lambda = Math::BigInt->new("$lambda") unless ref($lambda) eq 'Math::BigInt';
+  my $k = Math::BigInt->bone;
+  foreach my $f (Math::Prime::Util::factor_exp($lambda)) {
+    my($pi, $ei, $enum) = (Math::BigInt->new("$f->[0]"), $f->[1], 0);
+    my $phidiv = $lambda / ($pi**$ei);
+    my $b = $a->copy->bmodpow($phidiv, $n);
+    while ($b != 1) {
+      return if $enum++ >= $ei;
+      $b = $b->copy->bmodpow($pi, $n);
+      $k *= $pi;
+    }
+  }
+  $k = _bigint_to_int($k) if $k->bacmp(''.~0) <= 0;
+  return $k;
 }
 
 # Find first D in sequence (5,-7,9,-11,13,-15,...) where (D|N) == -1
@@ -1508,7 +1536,7 @@ sub is_aks_prime {
   while ($r < $n) {
     return 0 if !($n % $r);
     #return 1 if $r >= $sqrtn;
-    last if _order($r, $n, $limit) > $limit;
+    last if znorder($r, $n) > $limit;
     $r = next_prime($r);
   }
 

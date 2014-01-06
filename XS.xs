@@ -643,7 +643,7 @@ znorder(IN SV* sva, IN SV* svn)
       XSRETURN_UV(ret);
     }
     switch (ix) {
-      case 0:  _vcallsub("_generic_znorder");  break;
+      case 0:  _vcallsub("PP::znorder");  break;
       /* TODO: Fixup public PP legendre_phi */
       case 1:
       default: _vcallsub("PP::_legendre_phi"); break;

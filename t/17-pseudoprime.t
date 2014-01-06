@@ -14,6 +14,7 @@ use Math::Prime::Util qw/is_prime
                          lucas_sequence/;
 
 my $use64 = Math::Prime::Util::prime_get_config->{'maxbits'} > 32;
+my $usexs = Math::Prime::Util::prime_get_config->{'xs'};
 my $extra = defined $ENV{EXTENDED_TESTING} && $ENV{EXTENDED_TESTING};
 
 # small primes
@@ -207,18 +208,16 @@ if ($extra) {
   is($mr2fail, 0, "is_strong_pseudoprime bases 2,3 matches is_prime");
 }
 
-# Lucas sequences, used for quite a few tests
-sub lucas_sequence_to_native {
-  map { (ref($_) eq 'Math::BigInt') ? int($_->bstr) : $_ } lucas_sequence(@_);
-}
+# Lucas sequences, used for quite a few primality tests
 while (my($params, $expect) = each (%lucas_sequences)) {
-  is_deeply( [lucas_sequence_to_native(split(' ', $params))], $expect, "Lucas sequence $params" );
+  is_deeply( [lucas_sequence(split(' ', $params))], $expect, "Lucas sequence $params" );
 }
 
 SKIP: {
   skip "Old Perl+bigint segfaults in F-U code",1+2*$use64 if $] < 5.008;
   my $fufail = 0;
-  foreach my $i (1 .. 100) {
+  my $ntests = ($usexs) ? 100 : 2;
+  foreach my $i (1 .. $ntests) {
     my $n = 2*int(rand(1000000000)) + 1;
     my $ispfu = !!is_frobenius_underwood_pseudoprime($n);
     my $prime = !!is_prime($n);

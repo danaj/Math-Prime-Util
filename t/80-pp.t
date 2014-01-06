@@ -254,13 +254,15 @@ plan tests => 2 +
               4 + scalar(keys %pseudoprimes) +
               scalar(keys %eivals) + scalar(keys %livals) + scalar(keys %rvals) + scalar(keys %rzvals) +
               ($extra ? 4 : 0) +  # Bigfloat RiemannZeta
-              1 + 1 +    # factor
-              10 + 8*3 + # factoring subs
-              10 +       # AKS
+              1 + 1 +             # factor
+              10 + 7*3 +          # factoring subs
+              1 +                 # HOLF
+              ($extra ? 3 : 0) +  # HOLF extra
+              10 +                # AKS
               ($use64 ? 3 : 2) +  # Lucas and BLS75 primality proofs
-              4 +        # M-R and Lucas on bigint
-              13 +       # Misc util.pm functions
-              scalar(keys %ipp) +
+              4 +                 # M-R and Lucas on bigint
+              13 +                # Misc util.pm functions
+              scalar(keys %ipp) + # is_prob_prime
               1;
 
 use Math::Prime::Util qw/primes prime_count_approx prime_count_lower
@@ -529,10 +531,6 @@ if ($extra) {
   # 1013 4294967197 4294967291
   my $nbig = Math::BigInt->new("18686551294184381720251");
   my @nfac;
-  @nfac = sort {$a<=>$b} Math::Prime::Util::PP::holf_factor($nbig);
-  is(scalar @nfac, 2, "holf finds a factor of 18686551294184381720251");
-  is($nfac[0] * $nfac[1], $nbig, "holf found a correct factor");
-  ok($nfac[0] != 1 && $nfac[1] != 1, "holf didn't return a degenerate factor");
   @nfac = sort {$a<=>$b} Math::Prime::Util::PP::prho_factor($nbig);
   is(scalar @nfac, 2, "prho finds a factor of 18686551294184381720251");
   is($nfac[0] * $nfac[1], $nbig, "prho found a correct factor");
@@ -563,6 +561,17 @@ if ($extra) {
   is(scalar @nfac, 2, "fermat finds a factor of 73786976930493367637");
   is($nfac[0] * $nfac[1], $nbig, "fermat found a correct factor");
   ok($nfac[0] != 1 && $nfac[1] != 1, "fermat didn't return a degenerate factor");
+  if ($extra) {
+    @nfac = sort {$a<=>$b} Math::Prime::Util::PP::holf_factor($nbig);
+    is(scalar @nfac, 2, "holf finds a factor of 18686551294184381720251");
+    is($nfac[0] * $nfac[1], $nbig, "holf found a correct factor");
+    ok($nfac[0] != 1 && $nfac[1] != 1, "holf didn't return a degenerate factor");
+  }
+  {
+    $nbig = Math::BigInt->new("99999999999979999998975857");
+    @nfac = sort {$a<=>$b} Math::Prime::Util::PP::holf_factor($nbig);
+    is_deeply(\@nfac, [9999999998987,10000000001011], "holf correctly factors 99999999999979999998975857");
+  }
   SKIP: {
     # Unfortunately we can't guarantee this isn't found in stage 1.
     skip "ecm stage 2", 3 unless $extra;

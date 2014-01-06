@@ -290,11 +290,12 @@ int _XS_BPSW(UV const n)
       V = montP;
       { UV v = d; b = 1; while (v >>= 1) b++; }
       while (b-- > 1) {
+        UV T = submod(  mont_prod64(V, W, n, npi),  montP, n);
         if ( (d >> (b-1)) & UVCONST(1) ) {
-          V = submod(  mont_prod64(V, W, n, npi),  montP, n);
+          V = T;
           W = submod(  mont_prod64(W, W, n, npi),  mont2, n);
         } else {
-          W = submod(  mont_prod64(V, W, n, npi),  montP, n);
+          W = T;
           V = submod(  mont_prod64(V, V, n, npi),  mont2, n);
         }
       }
@@ -628,11 +629,12 @@ int _XS_is_almost_extra_strong_lucas_pseudoprime(UV n, UV increment)
   W = mulsubmod(P, P, 2, n);
   V = P;
   while (b--) {
+    UV T = mulsubmod(V, W, P, n);
     if ( (d >> b) & UVCONST(1) ) {
-      V = mulsubmod(V, W, P, n);
+      V = T;
       W = mulsubmod(W, W, 2, n);
     } else {
-      W = mulsubmod(V, W, P, n);
+      W = T;
       V = mulsubmod(V, V, 2, n);
     }
   }

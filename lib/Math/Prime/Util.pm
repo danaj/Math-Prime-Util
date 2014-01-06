@@ -116,7 +116,7 @@ BEGIN {
     *carmichael_lambda = \&Math::Prime::Util::_generic_carmichael_lambda;
     *kronecker     = \&Math::Prime::Util::_generic_kronecker;
     *divisor_sum   = \&Math::Prime::Util::_generic_divisor_sum;
-    *znorder       = \&Math::Prime::Util::_generic_znorder;
+    *znorder       = \&Math::Prime::Util::PP::znorder;
     *znprimroot    = \&Math::Prime::Util::_generic_znprimroot;
     *legendre_phi  = \&Math::Prime::Util::PP::_legendre_phi;
     *gcd           = \&Math::Prime::Util::PP::gcd;
@@ -1491,46 +1491,6 @@ sub _generic_carmichael_lambda {
   return $lcm;
 }
 
-sub _generic_znorder {
-  my($a, $n) = @_;
-  _validate_num($a) || _validate_positive_integer($a);
-  _validate_num($n) || _validate_positive_integer($n);
-  return if $n <= 0;
-  return (undef,1)[$a] if $a <= 1;
-  return 1 if $n == 1;
-
-  # Sadly, Calc/FastCalc are horrendously slow for this function.
-  return if Math::BigInt::bgcd($a, $n) > 1;
-
-  # The answer is one of the divisors of phi(n) and lambda(n).
-  my $lambda = carmichael_lambda($n);
-  $a = Math::BigInt->new("$a") unless ref($a) eq 'Math::BigInt';
-
-  # This is easy and usually fast, but can bog down with too many divisors.
-  if ($lambda <= $_XS_MAXVAL) {
-    foreach my $k (divisors($lambda)) {
-      return $k if $a->copy->bmodpow("$k", $n)->is_one;
-    }
-    return;
-  }
-
-  # Algorithm 1.7 from A. Das applied to Carmichael Lambda.
-  $lambda = Math::BigInt->new("$lambda") unless ref($lambda) eq 'Math::BigInt';
-  my $k = Math::BigInt->bone;
-  foreach my $f (factor_exp($lambda)) {
-    my($pi, $ei, $enum) = (Math::BigInt->new("$f->[0]"), $f->[1], 0);
-    my $phidiv = $lambda / ($pi**$ei);
-    my $b = $a->copy->bmodpow($phidiv, $n);
-    while ($b != 1) {
-      return if $enum++ >= $ei;
-      $b = $b->copy->bmodpow($pi, $n);
-      $k *= $pi;
-    }
-  }
-  $k = _bigint_to_int($k) if $k->bacmp(''.~0) <= 0;
-  return $k;
-}
-
 sub _generic_znprimroot {
   my($n) = @_;
   $n = -$n if defined $n && $n =~ /^-\d+/;   # TODO: fix this for string bigints
@@ -1703,10 +1663,11 @@ sub lucas_sequence {
     if ref($_[0]) ne 'Math::BigInt' && $n <= $_XS_MAXVAL
     && ref($_[3]) ne 'Math::BigInt' && $k <= $_XS_MAXVAL;
   if ($_HAVE_GMP && defined &Math::Prime::Util::GMP::lucas_sequence) {
-    return map { ($_ > ~0) ? Math::BigInt->new(''.$_) : $_ }
+    return map { ($_ > ''.~0) ? Math::BigInt->new(''.$_) : $_ }
            Math::Prime::Util::GMP::lucas_sequence($n, $P, $Q, $k);
   }
-  return Math::Prime::Util::PP::lucas_sequence($n, $P, $Q, $k);
+  return map { ($_ <= ''.~0) ? _bigint_to_int($_) : $_ }
+         Math::Prime::Util::PP::lucas_sequence($n, $P, $Q, $k);
 }
 
 sub miller_rabin_random {
