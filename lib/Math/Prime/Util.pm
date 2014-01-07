@@ -42,7 +42,7 @@ our @EXPORT_OK =
       partitions
       chebyshev_theta chebyshev_psi
       divisor_sum
-      carmichael_lambda kronecker znorder znprimroot legendre_phi
+      carmichael_lambda kronecker znorder znprimroot znlog legendre_phi
       ExponentialIntegral LogarithmicIntegral RiemannZeta RiemannR
   );
 our %EXPORT_TAGS = (all => [ @EXPORT_OK ]);

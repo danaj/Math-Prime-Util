@@ -115,7 +115,8 @@ static int _validate_int(pTHX_ SV* n, int negok)
   }
   if (SvROK(n)) {
     if (sv_isa(n, "Math::BigInt") || sv_isa(n, "Math::BigFloat") ||
-        sv_isa(n, "Math::GMP") || sv_isa(n, "Math::GMPz") )
+        sv_isa(n, "Math::Pari") || sv_isa(n, "Math::GMP") ||
+        sv_isa(n, "Math::GMPz") )
       isbignum = 1;
     else
       return 0;
@@ -665,6 +666,22 @@ znorder(IN SV* sva, IN SV* svn)
       case 1:
       default: _vcallsub("PP::legendre_phi"); break;
     }
+    return; /* skip implicit PUTBACK */
+
+void
+znlog(IN SV* sva, IN SV* svg, IN SV* svp)
+  PREINIT:
+    int astatus, gstatus, pstatus;
+  PPCODE:
+    astatus = _validate_int(aTHX_ sva, 0);
+    gstatus = _validate_int(aTHX_ svg, 0);
+    pstatus = _validate_int(aTHX_ svp, 0);
+    if (astatus == 1 && gstatus == 1 && pstatus == 1) {
+      UV ret = znlog(my_svuv(sva), my_svuv(svg), my_svuv(svp));
+      if (ret == 0) XSRETURN_UNDEF;
+      XSRETURN_UV(ret);
+    }
+    _vcallsub("PP::znlog");
     return; /* skip implicit PUTBACK */
 
 void

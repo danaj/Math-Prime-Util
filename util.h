@@ -37,6 +37,7 @@ extern UV exp_mangoldt(UV n);
 extern UV carmichael_lambda(UV n);
 extern UV znprimroot(UV n);
 extern UV znorder(UV a, UV n);
+extern UV znlog(UV a, UV g, UV p);
 
 /* Above this value, is_prime will do deterministic Miller-Rabin */
 /* With 64-bit math, we can do much faster mulmods from 2^16-2^32 */

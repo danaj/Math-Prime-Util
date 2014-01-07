@@ -1058,6 +1058,18 @@ UV znprimroot(UV n) {
   return 0;
 }
 
+/* Find smallest n where a = g^n mod p */
+/* This implementation is just a stupid placeholder. */
+UV znlog(UV a, UV g, UV p) {
+  UV t, n = 1;
+  if (a == 0 || g == 0 || p < 2) return 0;
+  for (n = 1; n < p; n++) {
+    t = powmod(g, n, p);
+    if (t == a)
+      return n;
+  }
+  return 0;
+}
 
 double _XS_chebyshev_theta(UV n)
 {
