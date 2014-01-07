@@ -76,7 +76,7 @@ plan tests =>  0
              + 6*2*$extra # more PC tests
              + 2*scalar(keys %factors)
              + scalar(keys %allfactors)
-             + 13  # moebius, euler_phi, jordan totient, divsum, znorder, etc.
+             + 13+4*$extra  # moebius, euler_phi, jordan totient, divsum, etc.
              + 2   # liouville
              + 3   # gcd
              + 3   # lcm
@@ -136,12 +136,12 @@ use Math::Prime::Util qw/
 #        LogarithmicIntegral
 #        RiemannR
 
+my $usegmp = Math::Prime::Util::prime_get_config->{gmp};
 my $bignumver = $bigint::VERSION;
 my $bigintver = $Math::BigInt::VERSION;
 my $bigintlib = Math::BigInt->config()->{lib};
-$bigintlib =~ s/^Math::BigInt:://;
-my $mpugmpver = Math::Prime::Util::prime_get_config->{gmp}
-                ? $Math::Prime::Util::GMP::VERSION : "<none>";
+   $bigintlib =~ s/^Math::BigInt:://;
+my $mpugmpver = $usegmp ? $Math::Prime::Util::GMP::VERSION : "<none>";
 diag "BigInt $bignumver/$bigintver, lib: $bigintlib.  MPU::GMP $mpugmpver\n";
 
 
@@ -160,8 +160,10 @@ foreach my $n (@composites) {
 foreach my $n (@proveprimes) {
   ok( is_prime($n), "$n is prime" );
   SKIP: {
-    skip "Large proof on 32-bit machine.", 1
+    skip "Large proof on 32-bit machine without EXTENDED_TESTING.", 1
       if !$use64 && !$extra && $n > 2**66;
+    skip "Large proof without GMP or EXTENDED_TESTING.", 1
+      if !$usegmp && !$extra && $n > 2**66;
     skip "Skipping provable primes on broken 64-bit", 1 if $broken64;
     ok( is_provable_prime($n), "$n is provably prime" );
   }
@@ -223,23 +225,34 @@ SKIP: {
 ###############################################################################
 
 SKIP: {
-  skip "Your 64-bit Perl is broken, skipping moebius, totient, etc.", 13 if $broken64;
+  skip "Your 64-bit Perl is broken, skipping moebius, totient, etc.", 13+4*$extra if $broken64;
   my $n;
   $n = 618970019642690137449562110;
   is( moebius($n), -1, "moebius($n)" );
   is( euler_phi($n), 145857122964987051805507584, "euler_phi($n)" );
   is( carmichael_lambda($n), 3271601336256, "carmichael_lambda($n)" );
-  $n = 48981631802481400359696467;
-  is( jordan_totient(5,$n), 281946200770875813001683560563488308767928594805846855593191749929654015729263525162226378019837608857421063724603387506651820000, "jordan_totient(5,$n)" );
-  is( divisor_sum( $n, sub { my $d=shift; $d**5 * moebius($n/$d); }), 281946200770875813001683560563488308767928594805846855593191749929654015729263525162226378019837608857421063724603387506651820000, "jordan totient using divisor_sum and moebius" );
+
+  $n = 2188536338969724335807;
+  is( jordan_totient(5,$n), 50207524710890617788554288878260755791080217791665431423557510096680804997771551711694188532723268222129800, "jordan_totient(5,$n)" );
+  is( divisor_sum( $n, sub { my $d=shift; $d**5 * moebius($n/$d); }), 50207524710890617788554288878260755791080217791665431423557510096680804997771551711694188532723268222129800, "jordan totient using divisor_sum and moebius" );
+
+  if ($extra) {
+    $n = 48981631802481400359696467;
+    is( jordan_totient(5,$n), "281946200770875813001683560563488308767928594805846855593191749929654015729263525162226378019837608857421063724603387506651820000", "jordan_totient(5,$n)" );
+    is( divisor_sum( $n, sub { my $d=shift; $d**5 * moebius($n/$d); }), "281946200770875813001683560563488308767928594805846855593191749929654015729263525162226378019837608857421063724603387506651820000", "jordan totient using divisor_sum and moebius" );
+  }
+
   # Done wrong, the following will have a bunch of extra zeros.
   my $hundredfac = Math::BigInt->new(100)->bfac;
   is( divisor_sum($hundredfac), 774026292208877355243820142464115597282472420387824628823543695735957009720184359087194959566149232506852422409529601312686157396490982598473425595924480000000, "Divisor sum of 100!" );
   # These should yield bigint results.
   # Quoted 0 to prevent error in perl 5.8.2 + bigint 0.23 (0 turns into NaN)
-  is( divisor_sum(pn_primorial(71),"0"), 2361183241434822606848, "Divisor count(353#)" );
-  is( divisor_sum(pn_primorial(71),1), 592169807666179080336898884075191344863843751107274613826065194910163387683715846870630955555390054490059876013007363004327526400000000000000000, "Divisor sum(353#)" );
-  is( divisor_sum(pn_primorial(71),2), "12949784465615028275107011121945805610528825503288465119226912396970037707579655747291137846306343809131200618880146749230653882973421307691846381555612687582146340434261447200658536708625570145324567757917046739100833453606420350207262720000000000000000000000000000000000000000000000000", "sigma_2(353#)" );
+  is( divisor_sum(pn_primorial(27),"0"), 134217728, "Divisor count(103#)" );
+  is( divisor_sum(pn_primorial(27),1), "123801167235014219383860918985791897600000", "Divisor sum(103#)" );
+  is( divisor_sum(pn_primorial(27),2), "872887488619258559049272439859735080160421720974947767918289356800000000000000000", "sigma_2(103#)" );
+  if ($extra) {
+    is( divisor_sum(pn_primorial(71),"0"), 2361183241434822606848, "Divisor count(353#)" );
+  }
   # Calc/FastCalc are slugs with this function, so tone things down.
   #is( znorder(82734587234,927208363107752634625923555185111613055040823736157),
   #    4360156780036190093445833597286118936800,
@@ -287,10 +300,10 @@ cmp_ok( $randprime, '>', 2**79, "random 80-bit prime is not too small");
 cmp_ok( $randprime, '<', 2**80, "random 80-bit prime is not too big");
 ok( is_prime($randprime), "random 80-bit prime is just right");
 
-$randprime = random_strong_prime(256);
-cmp_ok( $randprime, '>', 2**255, "random 256-bit strong prime is not too small");
-cmp_ok( $randprime, '<', 2**256, "random 256-bit strong prime is not too big");
-ok( is_prime($randprime), "random 256-bit strong prime is just right");
+$randprime = random_strong_prime(190);
+cmp_ok( $randprime, '>', 2**189, "random 190-bit strong prime is not too small");
+cmp_ok( $randprime, '<', 2**190, "random 190-bit strong prime is not too big");
+ok( is_prime($randprime), "random 190-bit strong prime is just right");
 
 $randprime = random_maurer_prime(80);
 cmp_ok( $randprime, '>', 2**79, "random 80-bit Maurer prime is not too small");

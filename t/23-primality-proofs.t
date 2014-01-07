@@ -60,6 +60,8 @@ foreach my $p (@plist) {
     ok( is_prime($p), "$p is prime" );
     skip "These take a long time on non-64-bit.  Skipping", 5
       if !$use64 && !$extra && $p =~ /^(6778|9800)/;
+    skip "Skipping a certificate without GMP", 5
+      if !prime_get_config->{'gmp'} && !$extra && $p =~ /^9800/;
     my($isp, $cert) = is_provable_prime_with_cert($p);
     is( $isp, 2, "   is_provable_prime_with_cert returns 2" );
     ok( defined($cert) && $cert =~ /^Type/m,

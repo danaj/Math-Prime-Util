@@ -1193,7 +1193,11 @@ sub primorial {
   my $pn = (ref($_[0]) eq 'Math::BigInt') ? $_[0]->copy->bone()
          : ($n >= $max) ? Math::BigInt->bone()
          : 1;
-  forprimes { $pn *= $_ } $n;
+  if (ref($pn) eq 'Math::BigInt') {
+    $pn->bmul($_) for map { Math::BigInt->new($_) } @{primes(2,$n)};
+  } else {
+    forprimes { $pn *= $_ } $n;
+  }
   return $pn;
 }
 
@@ -1758,9 +1762,9 @@ sub is_provable_prime_with_cert {
   my $header = "[MPU - Primality Certificate]\nVersion 1.0\n\nProof for:\nN $n\n\n";
 
   if ($n <= $_XS_MAXVAL) {
-    my $isp = is_prime("$n");
+    my $isp = is_prime($n);
     return ($isp, '') unless $isp == 2;
-    return (2, "[MPU - Primality Certificate]\nVersion 1.0\n\nProof for:\nN $n\n\nType Small\nN $n\n");
+    return (2, $header . "Type Small\nN $n\n");
   }
 
   if ($_HAVE_GMP && defined &Math::Prime::Util::GMP::is_provable_prime_with_cert) {
@@ -1783,7 +1787,7 @@ sub is_provable_prime_with_cert {
   {
     my $isp = is_prob_prime($n);
     return ($isp, '') if $isp == 0;
-    return (2, "[MPU - Primality Certificate]\nVersion 1.0\n\nProof for:\nN $n\n\nType Small\nN $n\n") if $isp == 2;
+    return (2, $header . "Type Small\nN $n\n") if $isp == 2;
   }
 
   # Choice of methods for proof:
