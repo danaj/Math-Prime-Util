@@ -53,20 +53,26 @@ sub _add3 {
   my $u = ($x2 - $z2) * ($x1 + $z1);
   my $v = ($x2 + $z2) * ($x1 - $z1);
 
-  my $upv2 = ($u + $v) ** 2;
-  my $umv2 = ($u - $v) ** 2;
+  my $upv2 = $u + $v;  $upv2->bmul($upv2);
+  my $umv2 = $u - $v;  $umv2->bmul($umv2);
 
-  return ( ($upv2*$zin) % $n, ($umv2*$xin) % $n );
+  $upv2->bmul($zin)->bmod($n);
+  $umv2->bmul($xin)->bmod($n);
+  return ($upv2, $umv2);
 }
 
 sub _double {
   my ($x, $z, $n, $d) = @_;
 
-  my $u = ($x + $z) ** 2;
-  my $v = ($x - $z) ** 2;
+  my $u = $x + $z;   $u->bmul($u);
+  my $v = $x - $z;   $v->bmul($v);
+
   my $w = $u - $v;
   my $t = $d * $w + $v;
-  return ( ($u * $v) % $n  ,  ($w * $t) % $n );
+
+  $u->bmul($v)->bmod($n);
+  $w->bmul($t)->bmod($n);
+  return ($u, $w);
 }
 
 sub mul {

@@ -114,17 +114,23 @@ sub primality_proof_bls75 {
   return @composite if is_strong_pseudoprime($n,2,15,325) == 0;
 
   $n = Math::BigInt->new("$n") unless ref($n) eq 'Math::BigInt';
-  my $nm1 = $n-1;
-  my $A = $nm1->copy->bone;   # factored part
+  my $nm1 = $n->copy->bdec;
+  my $ONE = $nm1->copy->bone;
+  my $TWO = $ONE->copy->binc;
+  my $A = $ONE->copy;         # factored part
   my $B = $nm1->copy;         # unfactored part
-  my @factors = (2);
+  my @factors = ($TWO);
   croak "BLS75 error: n-1 not even" unless $nm1->is_even();
-  my $trial_B = 20000;
-  $trial_B = 500 if ! prime_get_config->{'xs'};
   {
-    while ($B->is_even) { $B /= 2; $A *= 2; }
-    my @tf = Math::Prime::Util::PP::trial_factor($B, $trial_B);
-    pop @tf if $tf[-1] > $trial_B;
+    while ($B->is_even) { $B->bdiv($TWO); $A->bmul($TWO); }
+    my @tf;
+    if ($B <= ''.~0 && prime_get_config->{'xs'}) {
+      @tf = Math::Prime::Util::trial_factor($B, 20000);
+      pop @tf if $tf[-1] > 20000;
+    } else {
+      @tf = Math::Prime::Util::PP::trial_factor($B, 500);
+      pop @tf if $tf[-1] > 500;
+    }
     foreach my $f (@tf) {
       next if $f == $factors[-1];
       push @factors, $f;
@@ -133,7 +139,7 @@ sub primality_proof_bls75 {
   }
   my @nstack;
   # nstack should only hold composites
-  if ($B == 1) {
+  if ($B->is_one) {
     # Completely factored.  Nothing.
   } elsif (is_prob_prime($B)) {
     push @factors, $B;
@@ -142,8 +148,8 @@ sub primality_proof_bls75 {
     push @nstack, $B;
   }
   while (@nstack) {
-    my ($s,$r) = $B->copy->bdiv($A->copy->bmul(2));
-    my $fpart = ($A+1) * (2*$A*$A + ($r-1) * $A + 1);
+    my ($s,$r) = $B->copy->bdiv($A->copy->bmul($TWO));
+    my $fpart = ($A+$ONE) * ($TWO*$A*$A + ($r-$ONE) * $A + $ONE);
     last if $n < $fpart;
 
     my $m = pop @nstack;
@@ -159,33 +165,33 @@ sub primality_proof_bls75 {
     next unless scalar @ftry > 1;
     # Process each factor
     foreach my $f (@ftry) {
-      croak "Invalid factoring: B=$B m=$m f=$f" if $f == 1 || $f == $m || ($B%$f) != 0;
+      croak "Invalid factoring: B=$B m=$m f=$f" if $f == 1 || $f == $m || !$B->copy->bmod($f)->is_zero;
       if (is_prob_prime($f)) {
         push @factors, $f;
-        do { $B /= $f;  $A *= $f; } while (($B % $f) == 0);
+        do { $B /= $f;  $A *= $f; } while $B->copy->bmod($f)->is_zero;
       } else {
         push @nstack, $f;
       }
-    }
-  }
-  # Just in case:
-  foreach my $f (@factors) {
-    while (($B % $f) == 0) {
-      $B /= $f;  $A *= $f;
     }
   }
   { # remove duplicate factors and make a sorted array of bigints
     my %uf = map { $_ => 1 } @factors;
     @factors = sort {$a<=>$b} map { Math::BigInt->new("$_") } keys %uf;
   }
+  # Just in case:
+  foreach my $f (@factors) {
+    while ($B->copy->bmod($f)->is_zero) {
+      $B /= $f;  $A *= $f;
+    }
+  }
   # Did we factor enough?
-  my ($s,$r) = $B->copy->bdiv($A->copy->bmul(2));
-  my $fpart = ($A+1) * (2*$A*$A + ($r-1) * $A + 1);
+  my ($s,$r) = $B->copy->bdiv($A->copy->bmul($TWO));
+  my $fpart = ($A+$ONE) * ($TWO*$A*$A + ($r-$ONE) * $A + $ONE);
   return (1,'') if $n >= $fpart;
   # Check we didn't mess up
   croak "BLS75 error: $A * $B != $nm1" unless $A*$B == $nm1;
   croak "BLS75 error: $A not even" unless $A->is_even();
-  croak "BLS75 error: A and B not coprime" unless Math::BigInt::bgcd($A, $B)==1;
+  croak "BLS75 error: A and B not coprime" unless Math::BigInt::bgcd($A, $B)->is_one;
 
   my $rtest = $r*$r - 8*$s;
   my $rtestroot = $rtest->copy->bsqrt;
@@ -203,10 +209,11 @@ sub primality_proof_bls75 {
     } else {
       $cert .= "Q[$qnum] $f\n";
     }
+    my $nm1_div_f = $nm1 / $f;
     foreach my $a (2 .. 10000) {
       my $ap = Math::BigInt->new($a);
-      next unless $ap->copy->bmodpow($nm1, $n) == 1;
-      next unless Math::BigInt::bgcd($ap->copy->bmodpow($nm1/$f, $n)->bsub(1), $n) == 1;
+      next unless $ap->copy->bmodpow($nm1, $n)->is_one;
+      next unless Math::BigInt::bgcd($ap->copy->bmodpow($nm1_div_f, $n)->bdec, $n)->is_one;
       $atext .= "A[$qnum] $a\n" unless $a == 2;
       $success = 1;
       last;
@@ -707,9 +714,9 @@ sub _verify_bls5 {
     my $a = $A[$i];
     my $q = $Q[$i];
     return _pfail "BLS5: $n failed A[i]^(N-1) mod N = 1"
-      unless $a->copy->bmodpow($nm1, $n) == 1;
+      unless $a->copy->bmodpow($nm1, $n)->is_one;
     return _pfail "BLS5: $n failed gcd(A[i]^((N-1)/Q[i])-1, N) = 1"
-      unless Math::BigInt::bgcd($a->copy->bmodpow($nm1/$q, $n)-1, $n) == 1;
+      unless Math::BigInt::bgcd($a->copy->bmodpow($nm1/$q, $n)->bdec, $n)->is_one;
   }
   ($n, @Q);
 }
