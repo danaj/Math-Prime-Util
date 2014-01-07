@@ -1544,9 +1544,6 @@ sub _generic_next_prime {
   my($n) = @_;
   _validate_num($n) || _validate_positive_integer($n);
 
-  return _XS_next_prime($n)
-    if $n <= $_XS_MAXVAL && $n < MPU_MAXPRIME;
-
   if ($_HAVE_GMP) {
     my $r = Math::Prime::Util::GMP::next_prime($n);
     return (ref($n) eq 'Math::BigInt' || $n >= MPU_MAXPRIME)
@@ -1559,9 +1556,6 @@ sub _generic_next_prime {
 sub _generic_prev_prime {
   my($n) = @_;
   _validate_num($n) || _validate_positive_integer($n);
-
-  return _XS_prev_prime($n)
-    if $n <= $_XS_MAXVAL;
 
   if ($_HAVE_GMP) {
     my $r = Math::Prime::Util::GMP::prev_prime($n);

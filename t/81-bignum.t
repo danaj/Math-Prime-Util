@@ -76,7 +76,7 @@ plan tests =>  0
              + 6*2*$extra # more PC tests
              + 2*scalar(keys %factors)
              + scalar(keys %allfactors)
-             + 13+4*$extra  # moebius, euler_phi, jordan totient, divsum, etc.
+             + 13+3*$extra  # moebius, euler_phi, jordan totient, divsum, etc.
              + 2   # liouville
              + 3   # gcd
              + 3   # lcm
@@ -225,7 +225,7 @@ SKIP: {
 ###############################################################################
 
 SKIP: {
-  skip "Your 64-bit Perl is broken, skipping moebius, totient, etc.", 13+4*$extra if $broken64;
+  skip "Your 64-bit Perl is broken, skipping moebius, totient, etc.", 13+3*$extra if $broken64;
   my $n;
   $n = 618970019642690137449562110;
   is( moebius($n), -1, "moebius($n)" );
