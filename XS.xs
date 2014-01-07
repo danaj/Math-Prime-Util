@@ -163,7 +163,7 @@ static int _vcallsubn(pTHX_ I32 flags, const char* gmp_name, const char* name, i
     if (use_gmp) {
       CV* cv;
       strncat(fullname, gmp_name, 60);
-      cv = get_cv(fullname, flags);
+      cv = get_cv(fullname, 0);
       /* This isn't covering every case for arbitrary functions */
       if (cv == 0 || (!CvROOT(cv) && !CvXSUB(cv))) {
         use_gmp = 0;
