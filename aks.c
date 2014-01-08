@@ -114,20 +114,44 @@ static void poly_print(UV* poly, UV r)
 
 static void poly_mod_mul(UV* px, UV* py, UV* res, UV r, UV mod)
 {
+  UV degpx, degpy;
   UV i, j, pxi, pyj, rindex;
 
   memset(res, 0, r * sizeof(UV));
-  for (i = 0; i < r; i++) {
-    pxi = px[i];
-    if (pxi == 0)  continue;
-    for (j = 0; j < r; j++) {
-      pyj = py[j];
-      if (pyj == 0)  continue;
-      rindex = (i+j) < r ? i+j : i+j-r; /* (i+j) % r */
+
+  /* Determine max degree of px and py */
+  for (degpx = r-1; degpx > 0 && !px[degpx]; degpx--) ; /* */
+  for (degpy = r-1; degpy > 0 && !py[degpy]; degpy--) ; /* */
+  /* We can sum at least j values at once */
+  j = (mod >= HALF_WORD) ? 0 : (UV_MAX / ((mod-1)*(mod-1)));
+
+  if (j >= degpx || j >= degpy) {
+    for (rindex = 0; rindex < r; rindex++) {
+      UV sum = 0;
+      j = rindex;
+      for (i = 0; i <= degpx; i++) {
+        if (j <= degpy)
+          sum += px[i] * py[j];
+        j = (j == 0) ? r-1 : j-1;
+      }
+      res[rindex] = sum % mod;
+    }
+  } else {
+    for (i = 0; i <= degpx; i++) {
+      pxi = px[i];
+      if (pxi == 0)  continue;
       if (mod < HALF_WORD) {
-        res[rindex] = (res[rindex] + (pxi*pyj) ) % mod;
+        for (j = 0; j <= degpy; j++) {
+          pyj = py[j];
+          rindex = i+j;   if (rindex >= r)  rindex -= r;
+          res[rindex] = (res[rindex] + (pxi*pyj) ) % mod;
+        }
       } else {
-        res[rindex] = muladdmod(pxi, pyj, res[rindex], mod);
+        for (j = 0; j <= degpy; j++) {
+          pyj = py[j];
+          rindex = i+j;   if (rindex >= r)  rindex -= r;
+          res[rindex] = muladdmod(pxi, pyj, res[rindex], mod);
+        }
       }
     }
   }
