@@ -591,10 +591,10 @@ is( is_aks_prime(4), 0, "AKS: 4 is composite" );
 is( is_aks_prime(64), 0, "AKS: 64 is composite (perfect power)" );
 is( is_aks_prime(65), 0, "AKS: 65 is composite (caught in trial)" );
 is( is_aks_prime(23), 1, "AKS: 23 is prime (r >= n)" );
-is( is_aks_prime(101), 1, "AKS: 101 is prime (passed anr test)" );
 is( is_aks_prime(70747), 0, "AKS: 70747 is composite (n mod r)" );
 SKIP: {
-  skip "Skipping PP AKS test on 32-bit machine", 1 unless $use64 || $extra;
+  skip "Skipping PP AKS test without EXTENDED_TESTING", 2 unless $extra;
+  is( is_aks_prime(101), 1, "AKS: 101 is prime (passed anr test)" );
   is( is_aks_prime(74513), 0, "AKS: 74513 is composite (failed anr test)" );
 }
 
