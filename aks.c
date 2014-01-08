@@ -170,14 +170,16 @@ static void poly_mod_sqr(UV* px, UV* res, UV r, UV mod)
   maxpx = s;
   /* 1D convolution */
   for (d = 0; d <= 2*degree; d++) {
+    UV *pp1, *pp2, *ppend;
     UV s_beg = (d <= degree) ? 0 : d-degree;
     UV s_end = ((d/2) <= maxpx) ? d/2 : maxpx;
     if (s_end < s_beg) continue;
     sum = 0;
-    for (s = s_beg; s < s_end; s++) {
-      c = px[s];
-      sum += 2*c * px[d-s];
-    }
+    pp1 = px + s_beg;
+    pp2 = px + d - s_beg;
+    ppend = px + s_end;
+    while (pp1 < ppend)
+      sum += 2 * *pp1++  *  *pp2--;
     /* Special treatment for last point */
     c = px[s_end];
     sum += (s_end*2 == d)  ?  c*c  :  2*c*px[d-s_end];
