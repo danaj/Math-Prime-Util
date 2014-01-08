@@ -18,25 +18,20 @@ BEGIN {
 # code for more detailed comments, including references to papers.
 
 BEGIN {
-  use Config;
-  use constant { OLD_PERL_VERSION =>  ($] < 5.008),
-                 MPU_MAXBITS      =>  8 * $Config{uvsize},
-                 MPU_64BIT        =>  ($Config{uvsize} == 8),
-                 MPU_32BIT        =>  ($Config{uvsize} == 4),
-                 #MPU_MAXPARAM     =>  ($Config{uvsize} == 4) ? 4294967295 : 18446744073709551615,
-                 #MPU_MAXDIGITS    =>  ($Config{uvsize} == 4) ? 10 : 20,
-                 #MPU_MAXPRIME     =>  ($Config{uvsize} == 4) ? 4294967291 : 18446744073709551557,
-                 MPU_MAXPRIMEIDX  =>  ($Config{uvsize} == 4) ?  203280221 :   425656284035217743,
-                 MPU_HALFWORD     =>  ($Config{uvsize} == 4) ? 65536 : ($] < 5.008) ? 33554432 : 4294967296,
-                 UVPACKLET        =>  ($Config{uvsize} == 8 ? 'Q' : 'L'),
-               };
-  no Config;
+  use constant OLD_PERL_VERSION=> $] < 5.008;
+  use constant MPU_MAXBITS     => (~0 == 4294967295) ? 32 : 64;
+  use constant MPU_64BIT       => MPU_MAXBITS == 64;
+  use constant MPU_32BIT       => MPU_MAXBITS == 32;
+ #use constant MPU_MAXPARAM    => MPU_32BIT ? 4294967295 : 18446744073709551615;
+ #use constant MPU_MAXDIGITS   => MPU_32BIT ? 10 : 20;
+ #use constant MPU_MAXPRIME    => MPU_32BIT ? 4294967291 : 18446744073709551557;
+  use constant MPU_MAXPRIMEIDX => MPU_32BIT ?  203280221 :  425656284035217743;
+  use constant MPU_HALFWORD    => MPU_32BIT ? 65536 : OLD_PERL_VERSION ? 33554432 : 4294967296;
+  use constant UVPACKLET       => MPU_32BIT ? 'L' : 'Q';
+  use constant MPU_INFINITY    => (65535 > 0+'inf') ? 20**20**20 : 0+'inf';
+  use constant CONST_EULER     => '0.577215664901532860606512090082402431042159335939923598805767';
+  use constant CONST_LI2       => '1.04516378011749278484458888919461313652261557815120157583290914407501320521';
 }
-
-# Infinity in Perl is rather O/S specific.
-our $_Infinity = 0+'inf';
-$_Infinity = 20**20**20 if 65535 > $_Infinity;   # E.g. Windows
-our $_Neg_Infinity = -$_Infinity;
 
 {
   my $_have_MPFR = -1;
@@ -2385,14 +2380,11 @@ sub ecm_factor {
 
 
 
-my $_const_euler = 0.57721566490153286060651209008240243104215933593992;
-my $_const_li2 = 1.045163780117492784844588889194613136522615578151;
-
 sub ExponentialIntegral {
   my($x) = @_;
-  return $_Neg_Infinity if $x == 0;
-  return 0              if $x == $_Neg_Infinity;
-  return $_Infinity     if $x == $_Infinity;
+  return - MPU_INFINITY if $x == 0;
+  return 0              if $x == - MPU_INFINITY;
+  return MPU_INFINITY   if $x == MPU_INFINITY;
 
   # Gotcha -- MPFR decided to make negative inputs return NaN.  Grrr.
   if ($x > 0 && _MPFR_available()) {
@@ -2459,7 +2451,7 @@ sub ExponentialIntegral {
   } elsif ($x < -log($tol)) {
     # Convergent series
     my $fact_n = 1;
-    $y = $_const_euler-$c; $t = $sum+$y; $c = ($t-$sum)-$y; $sum = $t;
+    $y = CONST_EULER-$c; $t = $sum+$y; $c = ($t-$sum)-$y; $sum = $t;
     $y = log($x)-$c; $t = $sum+$y; $c = ($t-$sum)-$y; $sum = $t;
     for my $n (1 .. 200) {
       $fact_n *= $x/$n;
@@ -2492,8 +2484,8 @@ sub ExponentialIntegral {
 sub LogarithmicIntegral {
   my($x) = @_;
   return 0              if $x == 0;
-  return $_Neg_Infinity if $x == 1;
-  return $_Infinity     if $x == $_Infinity;
+  return - MPU_INFINITY if $x == 1;
+  return MPU_INFINITY   if $x == MPU_INFINITY;
   croak "Invalid input to LogarithmicIntegral:  x must be > 0" if $x <= 0;
 
   # Remember MPFR eint doesn't handle negative inputs
@@ -2521,7 +2513,7 @@ sub LogarithmicIntegral {
   }
 
   if ($x == 2) {
-    my $li2const = (ref($x) eq 'Math::BigFloat') ? Math::BigFloat->new('1.04516378011749278484458888919461313652261557815120157583290914407501320521') : $_const_li2;
+    my $li2const = (ref($x) eq 'Math::BigFloat') ? Math::BigFloat->new(CONST_LI2) : 0.0+CONST_LI2;
     return $li2const;
   }
 
@@ -2566,7 +2558,7 @@ sub LogarithmicIntegral {
       $sum += $term;
       last if $term < $tol;
     }
-    my $eulerconst = (ref($x) eq 'Math::BigFloat') ? Math::BigFloat->new('0.577215664901532860606512090082402431042159335939923598805767') : $_const_euler;
+    my $eulerconst = (ref($x) eq 'Math::BigFloat') ? Math::BigFloat->new(CONST_EULER) : 0.0+CONST_EULER;
     my $val = $eulerconst + log($logx) + $sum;
     return $val;
   }

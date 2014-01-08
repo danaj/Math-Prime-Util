@@ -64,18 +64,17 @@ sub _import_nobigint {
 
 BEGIN {
 
-  use Config;
-  use constant { OLD_PERL_VERSION =>  ($] < 5.008),
-                 MPU_MAXBITS      =>  8 * $Config{uvsize},
-                 MPU_64BIT        =>  ($Config{uvsize} == 8),
-                 MPU_32BIT        =>  ($Config{uvsize} == 4),
-                 MPU_MAXPARAM     =>  ($Config{uvsize} == 4) ? 4294967295 : 18446744073709551615,
-                 MPU_MAXDIGITS    =>  ($Config{uvsize} == 4) ? 10 : 20,
-                 MPU_MAXPRIME     =>  ($Config{uvsize} == 4) ? 4294967291 : 18446744073709551557,
-                 MPU_MAXPRIMEIDX  =>  ($Config{uvsize} == 4) ?  203280221 :   425656284035217743,
-                 UVPACKLET        =>  ($Config{uvsize} == 8 ? 'Q' : 'L'),
-               };
-  no Config;
+  # Separate lines to keep compatible with default from 5.6.2.
+  # We could alternately use Config's $Config{uvsize} for MAXBITS
+  use constant OLD_PERL_VERSION=> $] < 5.008;
+  use constant MPU_MAXBITS     => (~0 == 4294967295) ? 32 : 64;
+  use constant MPU_64BIT       => MPU_MAXBITS == 64;
+  use constant MPU_32BIT       => MPU_MAXBITS == 32;
+  use constant MPU_MAXPARAM    => MPU_32BIT ? 4294967295 : 18446744073709551615;
+  use constant MPU_MAXDIGITS   => MPU_32BIT ?         10 : 20;
+  use constant MPU_MAXPRIME    => MPU_32BIT ? 4294967291 : 18446744073709551557;
+  use constant MPU_MAXPRIMEIDX => MPU_32BIT ?  203280221 :   425656284035217743;
+  use constant UVPACKLET       => MPU_32BIT ?        'L' : 'Q';
 
   # Load PP code.  Nothing exported.
   require Math::Prime::Util::PP;  Math::Prime::Util::PP->import();
@@ -155,7 +154,6 @@ BEGIN {
                                   Math::Prime::Util::GMP->import();
                                   1; };
   }
-
 }
 END {
   _prime_memfreeall;
