@@ -754,7 +754,6 @@ typedef struct
 static UV squfof_unit(UV n, mult_t* mult_save)
 {
   UV imax,i,Q0,b0,Qn,bn,P,bbn,Ro,S,So,t1,t2;
-  int j;
 
   P = mult_save->P;
   bn = mult_save->bn;
@@ -774,7 +773,7 @@ static UV squfof_unit(UV n, mult_t* mult_save)
       i++;
 
   while (1) {
-    j = 0;
+    int j = 0;
     if (i & 0x1) {
       SQUARE_SEARCH_ITERATION;
     }

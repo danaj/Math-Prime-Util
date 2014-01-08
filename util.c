@@ -413,7 +413,6 @@ static UV count_segment_ranged(const unsigned char* sieve, UV nbytes, UV lowp, U
     END_DO_FOR_EACH_SIEVE_PRIME;
     lowp = upper+2;
     lo_d = lowp/30;
-    lo_m = lowp - lo_d*30;
   }
   if (highp < lowp)
     return count;
@@ -425,8 +424,6 @@ static UV count_segment_ranged(const unsigned char* sieve, UV nbytes, UV lowp, U
     if (count_bytes > 0) {
       count += count_zero_bits(sieve+lo_d, count_bytes);
       lowp += 30*count_bytes;
-      lo_d = lowp/30;
-      lo_m = lowp - lo_d*30;
     }
   }
   if (highp < lowp)
@@ -1167,9 +1164,9 @@ double _XS_ExponentialIntegral(double x) {
     /* Continued fraction, good for x < -1 */
     long double lc = 0;
     long double ld = 1.0L / (1.0L - (long double)x);
-    long double old, t, n2;
     val = ld * (-expl(x));
     for (n = 1; n <= 100000; n++) {
+      long double old, t, n2;
       t = (long double)(2*n + 1) - (long double) x;
       n2 = n * n;
       lc = 1.0L / (t - n2 * lc);
