@@ -15,7 +15,7 @@ use Math::Prime::Util qw/is_prime
 
 my $use64 = Math::Prime::Util::prime_get_config->{'maxbits'} > 32;
 my $usexs = Math::Prime::Util::prime_get_config->{'xs'};
-my $extra = defined $ENV{EXTENDED_TESTING} && $ENV{EXTENDED_TESTING};
+my $extra = 0+(defined $ENV{EXTENDED_TESTING} && $ENV{EXTENDED_TESTING});
 
 # small primes
 my @sp = qw/2 3 5 7 11 13 17 19 23 29 31 37/;

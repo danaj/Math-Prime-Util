@@ -9,7 +9,7 @@ use warnings;
 # a small memory leak.  So running the test suite through valgrind will show
 # some small leaks in this test, which has nothing to do with the module.
 
-my $extra = defined $ENV{EXTENDED_TESTING} && $ENV{EXTENDED_TESTING};
+my $extra = 0+(defined $ENV{EXTENDED_TESTING} && $ENV{EXTENDED_TESTING});
 my $use64 = ~0 > 4294967295;
 my $broken64 = (18446744073709550592 == ~0);
 

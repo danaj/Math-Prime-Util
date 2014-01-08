@@ -7,7 +7,7 @@ use Math::Prime::Util qw/prime_count prime_count_lower prime_count_upper prime_c
 
 my $isxs  = Math::Prime::Util::prime_get_config->{'xs'};
 my $use64 = Math::Prime::Util::prime_get_config->{'maxbits'} > 32;
-my $extra = defined $ENV{EXTENDED_TESTING} && $ENV{EXTENDED_TESTING};
+my $extra = 0+(defined $ENV{EXTENDED_TESTING} && $ENV{EXTENDED_TESTING});
 
 #  Powers of 2:  http://oeis.org/A007053/b007053.txt
 #  Powers of 10: http://oeis.org/A006880/b006880.txt
