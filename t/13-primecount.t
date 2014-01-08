@@ -166,7 +166,7 @@ SKIP: {
   is(Math::Prime::Util::_XS_segment_pi (66123456), 3903023,"XS segment count");
 }
 is(Math::Prime::Util::PP::_lehmer_pi   (1456789), 111119, "PP Lehmer count");
-is(Math::Prime::Util::PP::_sieve_prime_count(1456789), 111119, "PP sieve count");
+is(Math::Prime::Util::PP::_sieve_prime_count(145678), 13478, "PP sieve count");
 if ($extra) {
   is(Math::Prime::Util::PP::_lehmer_pi   (3456789), 247352, "PP Lehmer count");
   is(Math::Prime::Util::PP::_sieve_prime_count(3456789), 247352, "PP sieve count");
