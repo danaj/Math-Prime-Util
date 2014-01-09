@@ -119,28 +119,40 @@ static int is_perfect_square(UV n)
 }
 #endif
 
-/* clz gives floor(log2(n)).  ctz gives number of times divisible by 2 */
-#if defined(FUNC_clz) || defined(FUNC_ctz)
+#if defined(FUNC_clz) || defined(FUNC_ctz) || defined(FUNC_log2floor)
+/* log2floor(n) gives the location of the first set bit (starting from left)
+ * ctz(n)       gives the number of times n is divisible by 2
+ * clz(n)       gives the number of zeros on the left                       */
 #ifdef __GNUC__
  #if BITS_PER_WORD == 64
-  #define ctz(n)  ((n)?__builtin_ctzll(n):64)
-  #define clz(n)  ((n)?__builtin_clzll(n):64)
+  #define ctz(n)        ((n) ?    __builtin_ctzll(n) : 64)
+  #define clz(n)        ((n) ?    __builtin_clzll(n) : 64)
+  #define log2floor(n)  ((n) ? 63-__builtin_clzll(n) : 0)
  #else
-  #define ctz(n)  ((n)?__builtin_ctzl(n):32)
-  #define clz(n)  ((n)?__builtin_clzl(n):32)
+  #define ctz(n)        ((n) ?    __builtin_ctzl(n) : 32)
+  #define clz(n)        ((n) ?    __builtin_clzl(n) : 32)
+  #define log2floor(n)  ((n) ? 31-__builtin_clzl(n) : 0)
  #endif
 #elif defined (_MSC_VER)
  #include <intrin.h>
  #ifdef FUNC_ctz
   static int ctz(UV n) {
     UV tz = 0;
-    if (_BitScanForward(&tz, n)) return tz; else return BITS_PER_WORD;
+   #ifdef BITS_PER_WORD == 64
+    if (_BitScanForward64(&tz, n)) return tz; else return 64;
+   #else
+    if (_BitScanForward(&tz, n))   return tz; else return 32;
+   #endif
   }
  #endif
- #ifdef FUNC_clz
-  static int clz(UV n) {
+ #if defined(FUNC_clz) || defined(FUNC_log2floor)
+  static int log2floor(UV n) {
     UV lz = 0;
-    if (_BitScanReverse(&lz, n)) return BITS_PER_WORD-1-lz; else return BITS_PER_WORD;
+   #ifdef BITS_PER_WORD == 64
+    if (_BitScanReverse64(&lz, n)) return lz; else return 0;
+   #else
+    if (_BitScanReverse(&lz, n))   return lz; else return 0;
+   #endif
   }
  #endif
 #elif BITS_PER_WORD == 64
@@ -153,12 +165,12 @@ static int is_perfect_square(UV n)
      return n ? _debruijn64[((n & -n)*UVCONST(0x07EDD5E59A4E28C2)) >> 58] : 64;
    }
  #endif
- #ifdef FUNC_clz
-   static unsigned int clz(UV n) {
-     if (n == 0) return 64;
+ #if defined(FUNC_clz) || defined(FUNC_log2floor)
+   static unsigned int log2floor(UV n) {
+     if (n == 0) return 0;
      n |= n >> 1;   n |= n >> 2;   n |= n >> 4;
      n |= n >> 8;   n |= n >> 16;  n |= n >> 32;
-     return 63 - _debruijn64[((n-(n>>1))*UVCONST(0x07EDD5E59A4E28C2)) >> 58];
+     return _debruijn64[((n-(n>>1))*UVCONST(0x07EDD5E59A4E28C2)) >> 58];
    }
  #endif
 #else
@@ -170,17 +182,20 @@ static int is_perfect_square(UV n)
      return n ? _trail_debruijn32[((n & -n) * UVCONST(0x077CB531)) >> 27] : 32;
    }
  #endif
- #ifdef FUNC_clz
+ #if defined(FUNC_clz) || defined(FUNC_log2floor)
    static const unsigned char _lead_debruijn32[32] = {
       0, 9, 1, 10, 13, 21, 2, 29, 11, 14, 16, 18, 22, 25, 3, 30,
       8, 12, 20, 28, 15, 17, 24, 7, 19, 27, 23, 6, 26, 5, 4, 31 };
-   static unsigned int clz(UV n) {
-     if (n == 0) return 32;
+   static unsigned int log2floor(UV n) {
+     if (n == 0) return 0;
      n |= n >> 1;   n |= n >> 2;   n |= n >> 4;   n |= n >> 8;   n |= n >> 16;
-     return 31 - _lead_debruijn32[(n * UVCONST(0x07C4ACDD)) >> 27];
+     return _lead_debruijn32[(n * UVCONST(0x07C4ACDD)) >> 27];
    }
  #endif
 #endif
-#endif  /* End of clz and ctz */
+#if defined(FUNC_clz) && !defined(clz)
+ #define clz(n)  ( (n) ? BITS_PER_WORD-1-log2floor(n) : BITS_PER_WORD )
+#endif
+#endif  /* End of log2floor, clz, and ctz */
 
 #endif
