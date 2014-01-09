@@ -852,7 +852,11 @@ _validate_num(SV* svn, ...)
     if (_validate_int(aTHX_ svn, 0)) {
       if (SvROK(svn)) {  /* Convert small Math::BigInt object into scalar */
         UV n = my_svuv(svn);
+#if PERL_REVISION <= 5 && PERL_VERSION < 8 && BITS_PER_WORD == 64
+        sv_setpviv(svn, n);
+#else
         sv_setuv(svn, n);
+#endif
       }
       if (items > 1 && ((sv1 = ST(1)), SvOK(sv1))) {
         UV n = my_svuv(svn);
