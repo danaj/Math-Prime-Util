@@ -37,8 +37,15 @@
   #define floorl(x)   (long double) floor( (double) (x) )
 #endif
 
-#ifndef INFINITY
+#ifdef LDBL_INFINITY
+  #undef INFINITY
+  #define INFINITY LDBL_INFINITY
+#elif !defined(INFINITY)
   #define INFINITY (DBL_MAX + DBL_MAX)
+#endif
+
+#ifndef LDBL_EPSILON
+  #define LDBL_EPSILON 1e-16
 #endif
 
 #define KAHAN_INIT(s) \
@@ -1068,7 +1075,7 @@ UV znlog(UV a, UV g, UV p) {
   return 0;
 }
 
-double _XS_chebyshev_theta(UV n)
+long double _XS_chebyshev_theta(UV n)
 {
   KAHAN_INIT(sum);
 
@@ -1091,9 +1098,9 @@ double _XS_chebyshev_theta(UV n)
     }
     end_segment_primes(ctx);
   }
-  return (double) sum;
+  return sum;
 }
-double _XS_chebyshev_psi(UV n)
+long double _XS_chebyshev_psi(UV n)
 {
   long double logn = logl(n);
   UV sqrtn = isqrt(n);
@@ -1124,7 +1131,7 @@ double _XS_chebyshev_psi(UV n)
     }
     end_segment_primes(ctx);
   }
-  return (double) sum;
+  return sum;
 }
 
 
@@ -1153,7 +1160,6 @@ static long double const euler_mascheroni = 0.5772156649015328606065120900824024
 static long double const li2 = 1.045163780117492784844588889194613136522615578151L;
 
 long double _XS_ExponentialIntegral(long double x) {
-  long double const tol = 1e-17;
   long double val, term;
   unsigned int n;
   KAHAN_INIT(sum);
@@ -1173,7 +1179,7 @@ long double _XS_ExponentialIntegral(long double x) {
       ld = 1.0L / (t - n2 * ld);
       old = val;
       val *= ld/lc;
-      if ( fabsl(val-old) <= tol*fabsl(val) )
+      if ( fabsl(val-old) <= LDBL_EPSILON*fabsl(val) )
         break;
     }
   } else if (x < 0) {
@@ -1195,7 +1201,7 @@ long double _XS_ExponentialIntegral(long double x) {
     long double sumn = C6p[0]-x*(C6p[1]-x*(C6p[2]-x*(C6p[3]-x*(C6p[4]-x*(C6p[5]-x*C6p[6])))));
     long double sumd = C6q[0]-x*(C6q[1]-x*(C6q[2]-x*(C6q[3]-x*(C6q[4]-x*(C6q[5]-x*C6q[6])))));
     val = logl(-x) - sumn/sumd;
-  } else if (x < -logl(tol)) {
+  } else if (x < -logl(LDBL_EPSILON)) {
     /* Convergent series */
     long double fact_n = x;
     for (n = 2; n <= 200; n++) {
@@ -1204,7 +1210,7 @@ long double _XS_ExponentialIntegral(long double x) {
       term = fact_n * invn;
       KAHAN_SUM(sum, term);
       /* printf("C  after adding %.8lf, val = %.8lf\n", term, sum); */
-      if ( term < tol*sum) break;
+      if ( term < LDBL_EPSILON*sum) break;
     }
     KAHAN_SUM(sum, euler_mascheroni);
     KAHAN_SUM(sum, logl(x));
@@ -1217,7 +1223,7 @@ long double _XS_ExponentialIntegral(long double x) {
     for (n = 1; n <= 200; n++) {
       long double last_term = term;
       term = term * ( (long double)n * invx );
-      if (term < tol*sum) break;
+      if (term < LDBL_EPSILON*sum) break;
       if (term < last_term) {
         KAHAN_SUM(sum, term);
         /* printf("A  after adding %.20llf, sum = %.20llf\n", term, sum); */
@@ -1324,7 +1330,6 @@ static const long double riemann_zeta_table[] = {
  * we had quad floats, we could use the 9-term polynomial.
  */
 long double ld_riemann_zeta(long double x) {
-  long double const tol = 1e-17;
   int i;
 
   if (x < 0)  croak("Invalid input to RiemannZeta:  x must be >= 0");
@@ -1376,7 +1381,7 @@ long double ld_riemann_zeta(long double x) {
     for (i = 5; i <= 1000000; i++) {
       long double term = powl(i, -x);
       KAHAN_SUM(sum, term);
-      if (term < tol*sum) break;
+      if (term < LDBL_EPSILON*sum) break;
     }
     KAHAN_SUM(sum, powl(4, -x) );
     KAHAN_SUM(sum, powl(3, -x) );
@@ -1410,7 +1415,7 @@ long double ld_riemann_zeta(long double x) {
     for (i = 2; i < 11; i++) {
       b = powl( i, -x );
       s += b;
-      if (fabsl(b/s) < tol)
+      if (fabsl(b/s) < LDBL_EPSILON)
          return s;
     }
     s = s + b*w/(x-1.0) - 0.5 * b;
@@ -1422,7 +1427,7 @@ long double ld_riemann_zeta(long double x) {
       t = a*b/A[i];
       s = s + t;
       t = fabsl(t/s);
-      if (t < tol)
+      if (t < LDBL_EPSILON)
         break;
       a *= x + k + 1.0;
       b /= w;
@@ -1432,7 +1437,6 @@ long double ld_riemann_zeta(long double x) {
 }
 
 long double _XS_RiemannR(long double x) {
-  long double const tol = 1e-17;
   long double part_term, term, flogx;
   unsigned int k;
   KAHAN_INIT(sum);
@@ -1449,7 +1453,7 @@ long double _XS_RiemannR(long double x) {
     term = part_term / (k + k * ld_riemann_zeta(k+1));
     KAHAN_SUM(sum, term);
     /* printf("R  after adding %.15lg, sum = %.15lg\n", term, sum); */
-    if (fabsl(term/sum) < tol) break;
+    if (fabsl(term/sum) < LDBL_EPSILON) break;
   }
 
   return sum;
