@@ -303,6 +303,9 @@ require_ok 'Math::Prime::Util::PrimalityProving';
     *LogarithmicIntegral = \&Math::Prime::Util::PP::LogarithmicIntegral;
     *ExponentialIntegral = \&Math::Prime::Util::PP::ExponentialIntegral;
 
+# Turn off use of BRS - ECM tries to use this.
+prime_set_config( irand => sub { int(rand(4294967296.0)) } );
+
 ###############################################################################
 
 $_ = 'this should not change';
