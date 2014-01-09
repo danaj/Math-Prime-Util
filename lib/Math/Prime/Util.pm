@@ -157,9 +157,6 @@ BEGIN {
                                   1; };
   }
 }
-END {
-  _prime_memfreeall;
-}
 
 croak "Perl and XS don't agree on bit size"
       if $_Config{'xs'} && MPU_MAXBITS != _XS_prime_maxbits();
