@@ -88,7 +88,8 @@ BEGIN {
     $_Config{'xs'} = 1;
     1;
   } or do {
-    #carp "Using Pure Perl implementation: $@";
+    carp "Using Pure Perl implementation: $@"
+      unless defined $ENV{MPU_NO_XS} && $ENV{MPU_NO_XS} == 1;
 
     $_Config{'xs'} = 0;
     $_Config{'maxbits'} = MPU_MAXBITS;
@@ -943,8 +944,9 @@ sub primes {
           }
           # We know we don't have GMP and are > 2^64, so skip all the middle.
           #next unless is_prob_prime($p);
-          next unless Math::Prime::Util::PP::is_strong_pseudoprime($p, 2);
-          next unless Math::Prime::Util::PP::is_extra_strong_lucas_pseudoprime($p);
+          #next unless Math::Prime::Util::PP::is_strong_pseudoprime($p, 2);
+          #next unless Math::Prime::Util::PP::is_extra_strong_lucas_pseudoprime($p);
+          next unless Math::Prime::Util::PP::is_bpsw_prime($p);
         }
         return $p;
       }
@@ -1050,7 +1052,7 @@ sub primes {
     }
 
     # I've seen +0, +1, and +2 here.  Maurer uses +0.  Menezes uses +1.
-    my ($q, $qcert) = random_maurer_prime_with_cert( ($r * $k)->bfloor + 1 );
+    my ($q, $qcert) = random_maurer_prime_with_cert( ($r * $k)->bfloor->binc );
     $q = Math::BigInt->new("$q") unless ref($q) eq 'Math::BigInt';
     my $I = Math::BigInt->new(2)->bpow($k-2)->bdiv($q)->bfloor->as_int();
     print "r = $r  k = $k  q = $q  I = $I\n" if $verbose && $verbose != 3;
@@ -1059,13 +1061,17 @@ sub primes {
 
     # Big GCD's are hugely fast with GMP or Pari, but super slow with Calc.
     _make_big_gcds() if $_big_gcd_use < 0;
+    my $ONE = Math::BigInt->bone;
+    my $TWO = $ONE->copy->binc;
 
     my $loop_limit = 1_000_000 + $k * 1_000;
     while ($loop_limit-- > 0) {
       # R is a random number between $I+1 and 2*$I
-      my $R = $I + 1 + $_RANDF->( $I - 1 );
+      #my $R = $I + 1 + $_RANDF->( $I - 1 );
+      my $R = $I->copy->binc->badd( $_RANDF->($I->copy->bdec) );
       #my $n = 2 * $R * $q + 1;
-      my $n = Math::BigInt->new(2)->bmul($R)->bmul($q)->binc();
+      my $nm1 = $TWO->copy->bmul($R)->bmul($q);
+      my $n = $nm1->copy->binc;
       # We constructed a promising looking $n.  Now test it.
       print "." if $verbose > 2;
       if ($_HAVE_GMP) {
@@ -1073,12 +1079,12 @@ sub primes {
         next unless Math::Prime::Util::GMP::is_prob_prime($n);
       } else {
         # No GMP, so first do trial divisions, then a SPSP test.
-        next unless Math::BigInt::bgcd($n, 111546435) == 1;
+        next unless Math::BigInt::bgcd($n, 111546435)->is_one;
         if ($_big_gcd_use && $n > $_big_gcd_top) {
-          next unless Math::BigInt::bgcd($n, $_big_gcd[0]) == 1;
-          next unless Math::BigInt::bgcd($n, $_big_gcd[1]) == 1;
-          next unless Math::BigInt::bgcd($n, $_big_gcd[2]) == 1;
-          next unless Math::BigInt::bgcd($n, $_big_gcd[3]) == 1;
+          next unless Math::BigInt::bgcd($n, $_big_gcd[0])->is_one;
+          next unless Math::BigInt::bgcd($n, $_big_gcd[1])->is_one;
+          next unless Math::BigInt::bgcd($n, $_big_gcd[2])->is_one;
+          next unless Math::BigInt::bgcd($n, $_big_gcd[3])->is_one;
         }
         print "+" if $verbose > 2;
         next unless is_strong_pseudoprime($n, 3);
@@ -1093,9 +1099,9 @@ sub primes {
       # BLS75 theorem 4 (Pocklington) used by Maurer's paper.
 
       # Check conditions -- these should be redundant.
-      my $m = 2 * $R;
+      my $m = $TWO * $R;
       if (! ($q->is_odd && $q > 2 && $m > 0 &&
-             $m * $q + 1 == $n && 2*$q+1 > $n->copy->bsqrt()) ) {
+             $m * $q + $ONE == $n && $TWO*$q+$ONE > $n->copy->bsqrt()) ) {
         carp "Maurer prime failed BLS75 theorem 3 conditions.  Retry.";
         next;
       }
@@ -1103,8 +1109,8 @@ sub primes {
       foreach my $trya (2, 3, 5, 7, 11, 13) {
         my $a = Math::BigInt->new($trya);
         # m/2 = R    (n-1)/2 = (2*R*q)/2 = R*q
-        next unless $a->copy->bmodpow($R, $n) != $n-1;
-        next unless $a->copy->bmodpow($R*$q, $n) == $n-1;
+        next unless $a->copy->bmodpow($R, $n) != $nm1;
+        next unless $a->copy->bmodpow($R*$q, $n) == $nm1;
         print "($k)" if $verbose > 2;
         croak "Maurer prime $n=2*$R*$q+1 failed BPSW" unless is_prob_prime($n);
         my $cert = "[MPU - Primality Certificate]\nVersion 1.0\n\n" .
@@ -1187,12 +1193,24 @@ sub primorial {
   return Math::BigInt->new(''.Math::Prime::Util::GMP::primorial($n))
     if $_HAVE_GMP && defined &Math::Prime::Util::GMP::primorial;
 
-  my $max = (MPU_32BIT) ? 29 : 53;
+  my $max = (MPU_32BIT) ? 29 : (OLD_PERL_VERSION) ? 43 : 53;
   my $pn = (ref($_[0]) eq 'Math::BigInt') ? $_[0]->copy->bone()
          : ($n >= $max) ? Math::BigInt->bone()
          : 1;
   if (ref($pn) eq 'Math::BigInt') {
-    $pn->bmul($_) for map { Math::BigInt->new($_) } @{primes(2,$n)};
+    my $start = 2;
+    if ($n >= 97) {
+      $start = 101;
+      $pn->bdec->badd(Math::BigInt->new("2305567963945518424753102147331756070"));
+    }
+    my @plist = @{primes($start,$n)};
+    while (@plist > 2 && $plist[2] < 1625) {
+      $pn->bmul( Math::BigInt->new(shift(@plist)*shift(@plist)*shift(@plist)) );
+    }
+    while (@plist > 1 && $plist[1] < 65536) {
+      $pn->bmul( Math::BigInt->new(shift(@plist)*shift(@plist)) );
+    }
+    $pn->bmul($_) for @plist;
   } else {
     forprimes { $pn *= $_ } $n;
   }

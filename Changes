@@ -43,6 +43,10 @@ Revision history for Perl module Math::Prime::Util
       turned off but the GMP module enabled, things will run slower since
       they no longer go to GMP.
 
+    - Test suite should run faster.  Combination of small speedups to hot
+      spots as well as pushing a few slow tasks to EXTENDED_TESTING (these
+      are generally things never used, like pure Perl AKS).
+
     - Some 5.6.2-is-broken workarounds.
 
     - Some LMO edge cases:  small numbers that only show up if a #define is
