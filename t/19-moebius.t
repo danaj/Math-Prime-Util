@@ -6,7 +6,7 @@ use Test::More;
 use Math::Prime::Util
    qw/moebius mertens euler_phi jordan_totient divisor_sum exp_mangoldt
       chebyshev_theta chebyshev_psi carmichael_lambda znorder liouville
-      znprimroot kronecker legendre_phi gcd lcm
+      znprimroot znlog kronecker legendre_phi gcd lcm
      /;
 
 my $extra = defined $ENV{EXTENDED_TESTING} && $ENV{EXTENDED_TESTING};
@@ -325,6 +325,19 @@ if ($use64) {
   push @lcms, [ [267220708,143775143,261076], 15015659316963449908];
 }
 
+my @znlogs = (
+ [ [5,2,1019], 10],
+ [ [2,4,17], undef],
+ [ [7,3,8], undef],
+ [ [3,3,8], 1],
+ [ [10,2,101], 25],
+ [ [2,55,101], 73],         # 2 = 55^73 mod 101
+ [ [3061666278, 499998, 3332205179], 22],
+);
+if ($usexs) {
+  push @znlogs, [ [5678,5,10007], 8620];  # 5678 = 5^8620 mod 10007
+}
+
 # These are slow with XS, and *really* slow with PP.
 if (!$usexs) {
   %big_mertens = map { $_ => $big_mertens{$_} }
@@ -355,6 +368,7 @@ plan tests => 0 + 1
                 + scalar(@gcds)
                 + scalar(@lcms)
                 + scalar(@mult_orders)
+                + scalar(@znlogs)
                 + scalar(@legendre_sums)
                 + scalar(keys %primroots) + 2
                 + scalar(keys %jordan_totients)
@@ -527,6 +541,13 @@ while (my($n, $root) = each (%primroots)) {
 }
 is( znprimroot("-100000898"), 31, "znprimroot(\"-100000898\") == 31" );
 is( znprimroot("+100000898"), 31, "znprimroot(\"+100000898\") == 31" );
+###### znlog
+foreach my $arg (@znlogs) {
+  my($aref, $exp) = @$arg;
+  my ($a, $g, $p) = @$aref;
+  my $k = znlog($a,$g,$p);
+  is( $k, $exp, "znlog($a,$g,$p) = " . ((defined $exp) ? $exp : "<undef>") );
+}
 ###### liouville
 foreach my $i (@liouville_pos) {
   is( liouville($i),  1, "liouville($i) = 1" );

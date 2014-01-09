@@ -1245,6 +1245,22 @@ sub znorder {
   return $k;
 }
 
+sub znlog {
+  my($a,$g,$p) = @_;
+  # This is just a stupid brute force search.
+  $a = Math::BigInt->new("$a") unless ref($a) eq 'Math::BigInt';
+  $g = Math::BigInt->new("$g") unless ref($g) eq 'Math::BigInt';
+  $p = Math::BigInt->new("$p") unless ref($p) eq 'Math::BigInt';
+  for (my $n = BONE->copy; $n < $p; $n->binc) {
+    my $t = $g->copy->bmodpow($n, $p);
+    if ($t == $a) {
+      $n = _bigint_to_int($n) if $n->bacmp(''.~0) <= 0;
+      return $n;
+    }
+  }
+  return;
+}
+
 # Find first D in sequence (5,-7,9,-11,13,-15,...) where (D|N) == -1
 sub _lucas_selfridge_params {
   my($n) = @_;

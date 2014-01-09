@@ -118,6 +118,7 @@ BEGIN {
     *divisor_sum   = \&Math::Prime::Util::_generic_divisor_sum;
     *znorder       = \&Math::Prime::Util::PP::znorder;
     *znprimroot    = \&Math::Prime::Util::_generic_znprimroot;
+    *znlog         = \&Math::Prime::Util::PP::znlog;
     *legendre_phi  = \&Math::Prime::Util::PP::legendre_phi;
     *gcd           = \&Math::Prime::Util::PP::gcd;
     *lcm           = \&Math::Prime::Util::PP::lcm;
@@ -1090,6 +1091,12 @@ sub primes {
         next unless is_strong_pseudoprime($n, 3);
       }
       print "*" if $verbose > 2;
+
+      # We could pick a random generator by doing:
+      #   Step 1: pick a random r
+      #   Step 2: compute g = r^((n-1)/q) mod p
+      #   Step 3: if g == 1, goto Step 1.
+      # Note that n = 2*R*q+1, hence the exponent is 2*R.
 
       # We could set r = 0.3333 earlier, then use BLS75 theorem 5 here.
       # The chain would be shorter, requiring less overall work for
@@ -3478,6 +3485,15 @@ L<OEIS A033948|http://oeis.org/A033948> is a sequence of integers where
 the primitive root exists, while L<OEIS A046145|http://oeis.org/A046145>
 is a list of the smallest primitive roots, which is what this function
 produces.
+
+=head2 znlog
+
+  $k = znlog($b, $g, $p)
+
+Returns the integer C<k> that solves the equation C<b^k = g mod p>, or
+undef if no solution is found.  This is the discrete logarithm problem.
+The implementation in this version is not very useful, but may be improved.
+
 
 =head2 legendre_phi
 
