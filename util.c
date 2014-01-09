@@ -1152,8 +1152,8 @@ double _XS_chebyshev_psi(UV n)
 static long double const euler_mascheroni = 0.57721566490153286060651209008240243104215933593992L;
 static long double const li2 = 1.045163780117492784844588889194613136522615578151L;
 
-double _XS_ExponentialIntegral(double x) {
-  long double const tol = 1e-16;
+long double _XS_ExponentialIntegral(long double x) {
+  long double const tol = 1e-17;
   long double val, term;
   unsigned int n;
   KAHAN_INIT(sum);
@@ -1220,10 +1220,10 @@ double _XS_ExponentialIntegral(double x) {
       if (term < tol*sum) break;
       if (term < last_term) {
         KAHAN_SUM(sum, term);
-        /* printf("A  after adding %.8lf, sum = %.8lf\n", term, sum); */
+        /* printf("A  after adding %.20llf, sum = %.20llf\n", term, sum); */
       } else {
         KAHAN_SUM(sum, (-last_term/3) );
-        /* printf("A  after adding %.8lf, sum = %.8lf\n", -last_term/3, sum); */
+        /* printf("A  after adding %.20llf, sum = %.20llf\n", -last_term/3, sum); */
         break;
       }
     }
@@ -1234,12 +1234,12 @@ double _XS_ExponentialIntegral(double x) {
   return val;
 }
 
-double _XS_LogarithmicIntegral(double x) {
+long double _XS_LogarithmicIntegral(long double x) {
   if (x == 0) return 0;
   if (x == 1) return -INFINITY;
   if (x == 2) return li2;
   if (x < 0) croak("Invalid input to LogarithmicIntegral:  x must be >= 0");
-  return _XS_ExponentialIntegral(log(x));
+  return _XS_ExponentialIntegral(logl(x));
 }
 
 /* Thanks to Kim Walisch for this idea */
@@ -1431,8 +1431,8 @@ long double ld_riemann_zeta(long double x) {
   }
 }
 
-double _XS_RiemannR(double x) {
-  long double const tol = 1e-16;
+long double _XS_RiemannR(long double x) {
+  long double const tol = 1e-17;
   long double part_term, term, flogx;
   unsigned int k;
   KAHAN_INIT(sum);

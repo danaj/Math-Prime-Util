@@ -726,11 +726,11 @@ _XS_ExponentialIntegral(IN SV* x)
     if (ix < 4) {
       NV nv = SvNV(x);
       switch (ix) {
-        case 0: ret = _XS_ExponentialIntegral(nv); break;
-        case 1: ret = _XS_LogarithmicIntegral(nv); break;
+        case 0: ret = (double) _XS_ExponentialIntegral(nv); break;
+        case 1: ret = (double) _XS_LogarithmicIntegral(nv); break;
         case 2: ret = (double) ld_riemann_zeta(nv); break;
         case 3:
-        default:ret = _XS_RiemannR(nv); break;
+        default:ret = (double) _XS_RiemannR(nv); break;
       }
     } else {
       UV uv = SvUV(x);

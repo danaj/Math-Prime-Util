@@ -21,10 +21,10 @@ extern IV     mertens(UV n);
 extern double _XS_chebyshev_theta(UV n);
 extern double _XS_chebyshev_psi(UV n);
 
-extern double _XS_ExponentialIntegral(double x);
-extern double _XS_LogarithmicIntegral(double x);
+extern long double _XS_ExponentialIntegral(long double x);
+extern long double _XS_LogarithmicIntegral(long double x);
 extern long double ld_riemann_zeta(long double x);
-extern double _XS_RiemannR(double x);
+extern long double _XS_RiemannR(long double x);
 extern UV _XS_Inverse_Li(UV x);
 
 extern int kronecker_uu(UV a, UV b);
