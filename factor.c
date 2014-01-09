@@ -12,6 +12,7 @@
 #define FUNC_isqrt  1
 #define FUNC_gcd_ui 1
 #define FUNC_is_perfect_square 1
+#define FUNC_clz 1
 #include "util.h"
 
 /* factor will do trial division through this prime number, must be in table */
@@ -677,13 +678,7 @@ static void pp1_pow(UV *cX, unsigned long exp, UV n)
   UV X0 = *cX;
   UV X  = *cX;
   UV Y = mulsubmod(X, X, 2, n);
-  unsigned long bit;
-  {
-    unsigned long v = exp;
-    unsigned long b = 1;
-    while (v >>= 1) b++;
-    bit = 1UL << (b-2);
-  }
+  unsigned long bit = 1UL << (clz(exp)-1);
   while (bit) {
     UV T = mulsubmod(X, Y, X0, n);
     if ( exp & bit ) {

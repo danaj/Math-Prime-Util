@@ -65,6 +65,7 @@
 #include "ptypes.h"
 #define FUNC_isqrt 1
 #define FUNC_lcm_ui 1
+#define FUNC_ctz 1
 #include "util.h"
 #include "sieve.h"
 #include "primality.h"
@@ -888,11 +889,8 @@ IV mertens(UV n) {
 }
 
 
-static int padic2(UV n) {  /* How many times does 2 divide n? */
-  UV p = 0;
-  while (n && n % 2 == 0) { n >>= 1;  p++; }
-  return p;
-}
+/* How many times does 2 divide n? */
+#define padic2(n)  ctz(n)
 #define IS_MOD8_3OR5(x)  (((x)&7)==3 || ((x)&7)==5)
 
 static int kronecker_uu_sign(UV a, UV b, int s) {

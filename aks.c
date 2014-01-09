@@ -27,16 +27,10 @@
 #include "ptypes.h"
 #include "aks.h"
 #define FUNC_isqrt 1
+#define FUNC_log2floor 1
 #include "util.h"
 #include "cache.h"
 #include "mulmod.h"
-
-static UV log2floor(UV n) {
-  UV log2n = 0;
-  while (n >>= 1)
-    log2n++;
-  return log2n;
-}
 
 /* Bach and Sorenson (1993) would be better */
 static int is_perfect_power(UV n) {
