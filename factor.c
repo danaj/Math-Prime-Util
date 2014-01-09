@@ -232,9 +232,9 @@ int trial_factor(UV n, UV *factors, UV maxtrial)
     }
     /* Trial division using a mod-30 wheel for larger values */
     if (f*f <= n && f <= maxtrial) {
-      UV newlimit, limit = isqrt(n);
+      UV m, newlimit, limit = isqrt(n);
       if (limit > maxtrial) limit = maxtrial;
-      UV m = f % 30;
+      m = f % 30;
       while (f <= limit) {
         if ( (n%f) == 0 ) {
           do {
