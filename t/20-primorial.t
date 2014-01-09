@@ -5,8 +5,6 @@ use warnings;
 use Test::More;
 use Math::Prime::Util qw/primorial pn_primorial/;
 
-my $broken64 = (18446744073709550592 == ~0);
-
 my @pn_primorials = qw/
 1
 2
@@ -63,12 +61,8 @@ sub nth_prime {
 }
 
 foreach my $n (0 .. $#pn_primorials) {
-  SKIP: {
-    skip "Primorials for 14,15 are broken when Perl is borked", 2
-         if $broken64 && $n >= 14 && $n <= 15;
-    is( primorial(nth_prime($n)), $pn_primorials[$n], "primorial(nth($n))" );
-    is( pn_primorial($n), $pn_primorials[$n], "pn_primorial($n)" );
-  }
+  is( primorial(nth_prime($n)), $pn_primorials[$n], "primorial(nth($n))" );
+  is( pn_primorial($n), $pn_primorials[$n], "pn_primorial($n)" );
 }
 
 

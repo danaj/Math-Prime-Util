@@ -24,7 +24,7 @@ push @random_nbit_tests, (34) if $use64;
 my @random_ndigit_tests = (1 .. ($use64 ? 20 : 10));
 
 if ($use64 && $broken64) {
-  diag "Skipping some values with broken 64-bit Perl\n";
+  diag "Skipping some tests with broken 64-bit Perl\n";
   @random_ndigit_tests = grep { $_ < 10 } @random_ndigit_tests;
   @random_nbit_tests = grep { $_ < 50 } @random_nbit_tests;
 }

@@ -213,8 +213,7 @@ while (my($params, $expect) = each (%lucas_sequences)) {
   is_deeply( [lucas_sequence(split(' ', $params))], $expect, "Lucas sequence $params" );
 }
 
-SKIP: {
-  skip "Old Perl+bigint segfaults in F-U code",1+2*$use64 if $] < 5.008;
+{
   my $fufail = 0;
   my $ntests = ($usexs) ? 100 : 2;
   foreach my $i (1 .. $ntests) {
@@ -228,7 +227,7 @@ SKIP: {
   }
   is($fufail, 0, "is_frobenius_underwood_pseudoprime matches is_prime");
   if ($use64) {
-    is( is_frobenius_underwood_pseudoprime(2727480595375747), 1, "frobenius with 52-bit prime" );
+    is( is_frobenius_underwood_pseudoprime("2727480595375747"), 1, "frobenius with 52-bit prime" );
     is( is_frobenius_underwood_pseudoprime(10099386070337), 0, "frobenius with 44-bit lucas pseudoprime" );
   }
 }
