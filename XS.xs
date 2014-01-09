@@ -16,7 +16,7 @@
 #include "ptypes.h"
 #include "cache.h"
 #include "sieve.h"
-#define FUNC_gcd_ui
+#define FUNC_gcd_ui 1
 #include "util.h"
 #include "primality.h"
 #include "factor.h"
@@ -372,35 +372,36 @@ trial_factor(IN UV n, ...)
     pplus1_factor = 5
     pbrent_factor = 6
     pminus1_factor = 7
+  PREINIT:
+    UV arg1, arg2;
+    static const UV default_arg1[] =
+       {0,     64000000, 8000000, 4000000, 4000000, 200, 4000000, 1000000};
+     /* Trial, Fermat,   Holf,    SQUFOF,  PRHO,    P+1, Brent,    P-1 */
   PPCODE:
     if (n == 0)  XSRETURN_UV(0);
+    /* Must read arguments before pushing anything */
+    arg1 = (items >= 2) ? my_svuv(ST(1)) : default_arg1[ix];
+    arg2 = (items >= 3) ? my_svuv(ST(2)) : 0;
+    /* Small factors */
     while ( (n% 2) == 0 ) {  n /=  2;  XPUSHs(sv_2mortal(newSVuv( 2 ))); }
     while ( (n% 3) == 0 ) {  n /=  3;  XPUSHs(sv_2mortal(newSVuv( 3 ))); }
     while ( (n% 5) == 0 ) {  n /=  5;  XPUSHs(sv_2mortal(newSVuv( 5 ))); }
     if (n == 1) {  /* done */ }
     else if (_XS_is_prime(n)) { XPUSHs(sv_2mortal(newSVuv( n ))); }
     else {
-      UV arg1, arg2, factors[MPU_MAX_FACTORS+1];
+      UV factors[MPU_MAX_FACTORS+1];
       int i, nfactors = 0;
       switch (ix) {
-        case 0:  arg1 = (items < 2)  ?  0             : SvUV(ST(1));
-                 nfactors = trial_factor  (n, factors, arg1);  break;
-        case 1:  arg1 = (items < 2)  ?  64*1024*1024  : SvUV(ST(1));
-                 nfactors = fermat_factor (n, factors, arg1);  break;
-        case 2:  arg1 = (items < 2)  ?   8*1024*1024  : SvUV(ST(1));
-                 nfactors = holf_factor   (n, factors, arg1);  break;
-        case 3:  arg1 = (items < 2)  ?   4*1024*1024  : SvUV(ST(1));
-                 nfactors = squfof_factor (n, factors, arg1);  break;
-        case 4:  arg1 = (items < 2)  ?   4*1024*1024  : SvUV(ST(1));
-                 nfactors = prho_factor   (n, factors, arg1);  break;
-        case 5:  arg1 = (items < 2)  ?           200  : SvUV(ST(1));
-                 nfactors = pplus1_factor (n, factors, arg1);  break;
-        case 6:  arg1 = (items < 2)  ?   4*1024*1024  : SvUV(ST(1));
-                 arg2 = (items < 3)  ?             1  : SvUV(ST(2));
+        case 0:  nfactors = trial_factor  (n, factors, arg1);  break;
+        case 1:  nfactors = fermat_factor (n, factors, arg1);  break;
+        case 2:  nfactors = holf_factor   (n, factors, arg1);  break;
+        case 3:  nfactors = squfof_factor (n, factors, arg1);  break;
+        case 4:  nfactors = prho_factor   (n, factors, arg1);  break;
+        case 5:  nfactors = pplus1_factor (n, factors, arg1);  break;
+        case 6:  if (items < 3) arg2 = 1;
                  nfactors = pbrent_factor (n, factors, arg1, arg2);  break;
         case 7:
-        default: arg1 = (items < 2)  ?   1*1024*1024  : SvUV(ST(1));
-                 arg2 = (items < 3)  ?       10*arg1  : SvUV(ST(2));
+        default: if (items < 3) arg2 = 10*arg1;
                  nfactors = pminus1_factor(n, factors, arg1, arg2);  break;
       }
       EXTEND(SP, nfactors);
