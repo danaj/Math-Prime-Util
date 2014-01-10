@@ -5,14 +5,10 @@
 #include "perl.h"
 #include "XSUB.h"
 #include "multicall.h"  /* only works in 5.6 and newer */
-/* Perhaps we should use ppport.h */
-#ifndef XSRETURN_UV   /* Fix 21086 from Sep 2003 */
-  #define XST_mUV(i,v)  (ST(i) = sv_2mortal(newSVuv(v))  )
-  #define XSRETURN_UV(v) STMT_START { XST_mUV(0,v);  XSRETURN(1); } STMT_END
-#endif
-#if PERL_REVISION <= 5 && (PERL_VERSION < 7 || (PERL_VERSION == 7 && PERL_SUBVERSION <= 2))
-  #define SvPV_nomg SvPV
-#endif
+
+#define NEED_sv_2pv_flags
+#include "ppport.h"
+
 #include "ptypes.h"
 #include "cache.h"
 #include "sieve.h"
@@ -56,21 +52,25 @@
 #else
 # define USE_MULTICALL 1
 #endif
-
 #if PERL_VERSION < 13 || (PERL_VERSION == 13 && PERL_SUBVERSION < 9)
 #  define FIX_MULTICALL_REFCOUNT \
       if (CvDEPTH(multicall_cv) > 1) SvREFCNT_inc(multicall_cv);
 #else
 #  define FIX_MULTICALL_REFCOUNT
 #endif
+
 #ifndef CvISXSUB
 #  define CvISXSUB(cv) CvXSUB(cv)
 #endif
+
 /* Not right, but close */
 #if !defined cxinc && ( (PERL_VERSION == 8 && PERL_SUBVERSION >= 2) || (PERL_VERSION == 10 && PERL_SUBVERSION <= 1) )
 # define cxinc() Perl_cxinc(aTHX)
 #endif
 
+#if PERL_VERSION < 17 || (PERL_VERSION == 17 && PERL_SUBVERSION < 7)
+#  define SvREFCNT_dec_NN(sv)    SvREFCNT_dec(sv)
+#endif
 
 #if BITS_PER_WORD == 32
   static const unsigned int uvmax_maxlen = 10;
@@ -88,6 +88,15 @@
   static const UV _max_primeidx = UVCONST(425656284035217743);
 #endif
 
+#define MY_CXT_KEY "Math::Prime::Util::API_guts"
+typedef struct {
+  SV* const_int[4];   /* -1, 0, 1, 2 */
+  HV* MPUroot;
+  HV* MPUGMP;
+  HV* MPUPP;
+} my_cxt_t;
+
+START_MY_CXT
 
 /* Is this a pedantically valid integer?
  * Croaks if undefined or invalid.
@@ -154,53 +163,51 @@ static int _validate_int(pTHX_ SV* n, int negok)
   return ret;                          /* value = UV_MAX/UV_MIN.  That's ok */
 }
 
+#define VCALL_ROOT 0x0
+#define VCALL_PP 0x1
+#define VCALL_GMP 0x2
 /* Call a Perl sub to handle work for us. */
-static int _vcallsubn(pTHX_ I32 flags, const char* gmp_name, const char* name, int nargs)
+static int _vcallsubn(pTHX_ I32 flags, I32 stashflags, const char* name, int nargs)
 {
-    char fullname[80] = "Math::Prime::Util::";
+    GV* gv = NULL;
+    dMY_CXT;
+    Size_t namelen = strlen(name);
     /* If given a GMP function, and GMP enabled, and function exists, use it. */
-    int use_gmp = gmp_name != 0 && _XS_get_callgmp();
+    int use_gmp = stashflags & VCALL_GMP && _XS_get_callgmp();
+    assert(!(stashflags & ~(VCALL_PP|VCALL_GMP)));
     if (use_gmp) {
-      CV* cv;
-      strncat(fullname, gmp_name, 60);
-      cv = get_cv(fullname, 0);
-      /* This isn't covering every case for arbitrary functions */
-      if (cv == 0 || (!CvROOT(cv) && !CvXSUB(cv))) {
-        use_gmp = 0;
-        fullname[19] = '\0';
-      }
+      GV ** gvp = (GV**)hv_fetch(MY_CXT.MPUGMP,name,namelen,0);
+      if (gvp) gv = *gvp;
     }
-    if (!use_gmp)
-      strncat(fullname, name, 60);
+    if (!gv) {
+      GV ** gvp = (GV**)hv_fetch(stashflags & VCALL_PP? MY_CXT.MPUPP : MY_CXT.MPUroot, name,namelen,0);
+      if (gvp) gv = *gvp;
+    }
     /* use PL_stack_sp in PUSHMARK macro directly it will be read after
       the possible mark stack extend */
     PUSHMARK(PL_stack_sp-nargs);
     /* no PUTBACK bc we didn't move global SP */
-    return call_pv(fullname, flags);
+    return call_sv((SV*)gv, flags);
 }
-#define _vcallsub(func) (void)_vcallsubn(aTHX_ G_SCALAR, 0, func, items)
-#define _vcallsub_with_gmp(func) (void)_vcallsubn(aTHX_ G_SCALAR, "GMP::" func, "PP::" func, items)
+#define _vcallsub(func) (void)_vcallsubn(aTHX_ G_SCALAR, VCALL_ROOT, func, items)
+#define _vcallsub_with_gmp(func) (void)_vcallsubn(aTHX_ G_SCALAR, VCALL_GMP|VCALL_PP, func, items)
+#define _vcallsub_with_pp(func) (void)_vcallsubn(aTHX_ G_SCALAR, VCALL_PP, func, items)
 
 /* In my testing, this constant return works fine with threads, but to be
  * correct (see perlxs) one has to make a context, store separate copies in
  * each one, then retrieve them from a struct using a hash index.  This
  * defeats the purpose if only done once. */
-#ifdef MULTIPLICITY
-  #define RETURN_NPARITY(ret)  XSRETURN_IV(ret)
-  #define PUSH_NPARITY(ret)    PUSHs(sv_2mortal(newSViv( ret )))
-#else
-  static SV* const_int[4] = {0};   /* -1, 0, 1, 2 */
-  #define RETURN_NPARITY(ret) \
-    do { int r_ = ret; \
-         if (r_ >= -1 && r_ <= 2) { ST(0) = const_int[r_+1]; XSRETURN(1); } \
-         else                     { XSRETURN_IV(r_);                      } \
-    } while (0)
-  #define PUSH_NPARITY(ret) \
-    do { int r_ = ret; \
-         if (r_ >= -1 && r_ <= 2) { PUSHs( const_int[r_+1] );       } \
-         else                     { PUSHs(sv_2mortal(newSViv(r_))); } \
-    } while (0)
-#endif
+#define RETURN_NPARITY(ret) \
+  do { int r_ = ret; \
+       dMY_CXT; \
+       if (r_ >= -1 && r_ <= 2) { ST(0) = MY_CXT.const_int[r_+1]; XSRETURN(1); } \
+       else                     { XSRETURN_IV(r_);                      } \
+  } while (0)
+#define PUSH_NPARITY(ret) \
+  do { int r_ = ret; \
+       if (r_ >= -1 && r_ <= 2) { PUSHs( MY_CXT.const_int[r_+1] );       } \
+       else                     { PUSHs(sv_2mortal(newSViv(r_))); } \
+  } while (0)
 
 MODULE = Math::Prime::Util	PACKAGE = Math::Prime::Util
 
@@ -211,32 +218,70 @@ BOOT:
     SV * sv = newSViv(BITS_PER_WORD);
     HV * stash = gv_stashpv("Math::Prime::Util", TRUE);
     newCONSTSUB(stash, "_XS_prime_maxbits", sv);
-#ifndef MULTIPLICITY
     { int i;
+      MY_CXT_INIT;
+      MY_CXT.MPUroot = stash;
       for (i = 0; i <= 3; i++) {
-        const_int[i] = newSViv(i-1);
-        SvREADONLY_on(const_int[i]);
+        MY_CXT.const_int[i] = newSViv(i-1);
+        SvREADONLY_on(MY_CXT.const_int[i]);
       }
+      MY_CXT.MPUGMP = gv_stashpv("Math::Prime::Util::GMP", TRUE);
+      MY_CXT.MPUPP = gv_stashpv("Math::Prime::Util::PP", TRUE);
     }
-#endif
 }
+
+#if defined(USE_ITHREADS) && defined(MY_CXT_KEY)
+
+void
+CLONE(...)
+PREINIT:
+  int i;
+PPCODE:
+  {
+    MY_CXT_CLONE; /* possible declaration */
+    for (i = 0; i <= 3; i++) {
+      MY_CXT.const_int[i] = newSViv(i-1);
+      SvREADONLY_on(MY_CXT.const_int[i]);
+    }
+    MY_CXT.MPUroot = gv_stashpv("Math::Prime::Util", TRUE);
+    MY_CXT.MPUGMP = gv_stashpv("Math::Prime::Util::GMP", TRUE);
+    MY_CXT.MPUPP = gv_stashpv("Math::Prime::Util::PP", TRUE);
+  }
+  return; /* skip implicit PUTBACK, returning @_ to caller, more efficient*/
+
+#endif
+
+void
+END(...)
+PREINIT:
+  dMY_CXT;
+  int i;
+PPCODE:
+  for (i = 0; i <= 3; i++) {
+    SV * const sv = MY_CXT.const_int[i];
+    MY_CXT.const_int[i] = NULL;
+    SvREFCNT_dec_NN(sv);
+  } /* stashes are owned by stash tree, no refcount on them in MY_CXT */
+  MY_CXT.MPUroot = NULL;
+  MY_CXT.MPUGMP = NULL;
+  MY_CXT.MPUPP = NULL;
+  _prime_memfreeall();
+  return; /* skip implicit PUTBACK, returning @_ to caller, more efficient*/
 
 void
 prime_memfree()
   ALIAS:
-    _prime_memfreeall = 1
-    _XS_get_verbose = 2
-    _XS_get_callgmp = 3
-    _get_prime_cache_size = 4
+    _XS_get_verbose = 1
+    _XS_get_callgmp = 2
+    _get_prime_cache_size = 3
   PREINIT:
     UV ret;
   PPCODE:
     switch (ix) {
       case 0:  prime_memfree(); goto return_nothing;
-      case 1:  _prime_memfreeall(); goto return_nothing;
-      case 2:  ret = _XS_get_verbose(); break;
-      case 3:  ret = _XS_get_callgmp(); break;
-      case 4:
+      case 1:  ret = _XS_get_verbose(); break;
+      case 2:  ret = _XS_get_callgmp(); break;
+      case 3:
       default: ret = get_prime_cache(0,0); break;
     }
     XSRETURN_UV(ret);
@@ -287,7 +332,7 @@ prime_count(IN SV* svlo, ...)
       }
       XSRETURN_UV(count);
     }
-    _vcallsubn(aTHX_ GIMME_V, 0, "_generic_prime_count", items);
+    _vcallsubn(aTHX_ GIMME_V, VCALL_ROOT, "_generic_prime_count", items);
     return; /* skip implicit PUTBACK */
 
 UV
@@ -565,7 +610,7 @@ next_prime(IN SV* svn)
     switch (ix) {
       case 0:  _vcallsub("_generic_next_prime");     break;
       case 1:  _vcallsub("_generic_prev_prime");     break;
-      default: _vcallsub("PP::nth_prime");           break;
+      default: _vcallsub_with_pp("nth_prime");           break;
     }
     return; /* skip implicit PUTBACK */
 
@@ -621,9 +666,9 @@ factor(IN SV* svn)
       }
     } else {
       switch (ix) {
-        case 0:  _vcallsubn(aTHX_ gimme_v, 0, "_generic_factor", 1);     break;
-        case 1:  _vcallsubn(aTHX_ gimme_v, 0, "_generic_factor_exp", 1); break;
-        default: _vcallsubn(aTHX_ gimme_v, 0, "_generic_divisors", 1);   break;
+        case 0:  _vcallsubn(aTHX_ gimme_v, VCALL_ROOT, "_generic_factor", 1);     break;
+        case 1:  _vcallsubn(aTHX_ gimme_v, VCALL_ROOT, "_generic_factor_exp", 1); break;
+        default: _vcallsubn(aTHX_ gimme_v, VCALL_ROOT, "_generic_divisors", 1);   break;
       }
       return; /* skip implicit PUTBACK */
     }
@@ -669,9 +714,9 @@ znorder(IN SV* sva, IN SV* svn)
       XSRETURN_UV(ret);
     }
     switch (ix) {
-      case 0:  _vcallsub("PP::znorder");  break;
+      case 0:  _vcallsub_with_pp("znorder");  break;
       case 1:
-      default: _vcallsub("PP::legendre_phi"); break;
+      default: _vcallsub_with_pp("legendre_phi"); break;
     }
     return; /* skip implicit PUTBACK */
 
@@ -688,7 +733,7 @@ znlog(IN SV* sva, IN SV* svg, IN SV* svp)
       if (ret == 0) XSRETURN_UNDEF;
       XSRETURN_UV(ret);
     }
-    _vcallsub("PP::znlog");
+    _vcallsub_with_pp("znlog");
     return; /* skip implicit PUTBACK */
 
 void
@@ -777,16 +822,9 @@ euler_phi(IN SV* svlo, ...)
           Safefree(totients);
         } else {
           signed char* mu = _moebius_range(lo, hi);
-#ifndef MULTIPLICITY
+          dMY_CXT;
           for (i = lo; i <= hi; i++)
             PUSH_NPARITY(mu[i-lo]);
-#else
-          SV* csv[3];
-          for (i = 0; i < 3; i++)
-            { csv[i] = sv_2mortal(newSViv(i-1));  SvREADONLY_on(csv[i]); }
-          for (i = lo; i <= hi; i++)
-            PUSHs(csv[mu[i-lo]+1]);
-#endif
           Safefree(mu);
         }
       }
@@ -794,9 +832,9 @@ euler_phi(IN SV* svlo, ...)
       /* Whatever we didn't handle above */
       U32 gimme_v = GIMME_V;
       switch (ix) {
-        case 0:  _vcallsubn(aTHX_ gimme_v, 0,"_generic_euler_phi", items);break;
+        case 0:  _vcallsubn(aTHX_ gimme_v, VCALL_ROOT,"_generic_euler_phi", items);break;
         case 1:
-        default: _vcallsubn(aTHX_ gimme_v, 0,"_generic_moebius", items);  break;
+        default: _vcallsubn(aTHX_ gimme_v, VCALL_ROOT,"_generic_moebius", items);  break;
       }
       return;
     }
@@ -892,7 +930,7 @@ forprimes (SV* block, IN SV* svbeg, IN SV* svend = 0)
       croak("Not a subroutine reference");
 
     if (!_validate_int(aTHX_ svbeg, 0) || (items >= 3 && !_validate_int(aTHX_ svend,0))) {
-      _vcallsubn(aTHX_ G_VOID|G_DISCARD, 0, "_generic_forprimes", items);
+      _vcallsubn(aTHX_ G_VOID|G_DISCARD, VCALL_ROOT, "_generic_forprimes", items);
       return;
     }
 
@@ -976,7 +1014,7 @@ forcomposites (SV* block, IN SV* svbeg, IN SV* svend = 0)
       croak("Not a subroutine reference");
 
     if (!_validate_int(aTHX_ svbeg, 0) || (items >= 3 && !_validate_int(aTHX_ svend,0))) {
-      _vcallsubn(aTHX_ G_VOID|G_DISCARD, 0, "_generic_forcomposites", items);
+      _vcallsubn(aTHX_ G_VOID|G_DISCARD, VCALL_ROOT, "_generic_forcomposites", items);
       return;
     }
 
@@ -1053,7 +1091,7 @@ fordivisors (SV* block, IN SV* svn)
       croak("Not a subroutine reference");
 
     if (!_validate_int(aTHX_ svn, 0)) {
-      _vcallsubn(aTHX_ G_VOID|G_DISCARD, 0, "_generic_fordivisors", 2);
+      _vcallsubn(aTHX_ G_VOID|G_DISCARD, VCALL_ROOT, "_generic_fordivisors", 2);
       return;
     }
 
