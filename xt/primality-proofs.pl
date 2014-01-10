@@ -4,6 +4,9 @@ use strict;
 use Math::Prime::Util ':all';
 use Math::BigInt lib=>"GMP";
 
+if (!Math::Prime::Util::prime_get_config->{gmp}) {
+  print "\nYou should install Math::Prime::Util::GMP.\n\n";
+}
 $|++;
 
 print "random prime proofs: 50, 100, 200, 300, 400 +/- 50 digits\n";

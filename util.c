@@ -280,11 +280,13 @@ UV _XS_next_prime(UV n)
   m = n - d*30;
   /* Move forward one, knowing we may not be on the wheel */
   if (m == 29) { d++; m = 1; } else  { m = nextwheel30[m]; }
-  while (!_is_prime7(d*30+m)) {
+  n = d*30+m;
+  while (!_is_prime7(n)) {
     /* Move forward one, knowing we are on the wheel */
-    m = nextwheel30[m];  if (m == 1) d++;
+    n += wheeladvance30[m];
+    m = nextwheel30[m];
   }
-  return(d*30+m);
+  return(n);
 }
 
 

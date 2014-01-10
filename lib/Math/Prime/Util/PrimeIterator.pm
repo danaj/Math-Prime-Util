@@ -36,9 +36,9 @@ sub __iter__ {
 
 sub value { ${$_[0]}; }
 sub next {
-  my $self = shift;
-  $$self = next_prime($$self);
-  return $self;
+  #my $self = shift;  $$self = next_prime($$self);  return $self;
+  ${$_[0]} = next_prime(${$_[0]});
+  return $_[0];
 }
 sub prev {
   my $self = shift;
@@ -47,9 +47,9 @@ sub prev {
   return $self;
 }
 sub iterate {
-  my $self = shift;
-  my $p = $$self;
-  $$self = next_prime($p);
+  #my $self = shift;  my $p = $$self;  $$self = next_prime($p);  return $p;
+  my $p = ${$_[0]};
+  ${$_[0]} = next_prime(${$_[0]});
   return $p;
 }
 
@@ -65,14 +65,12 @@ sub rewind {
 }
 
 sub peek {
-  my $self = shift;
-  return next_prime($$self);
+  return next_prime(${$_[0]});
 }
 
 # Some methods to match Math::NumSeq
 sub tell_i {
-  my $self = shift;
-  return prime_count($$self);
+  return prime_count(${$_[0]});
 }
 sub pred {
   my($self, $n) = @_;
