@@ -61,3 +61,12 @@
     - look at sieve.c style prime walking
 
 - Add Inverse Li and Legendre Phi to API?
+
+- Iterators speedup:
+  1) config option for sieved next_prime.  Very general, would make
+     next_prime run fast when called many times sequentially.  Nasty
+     mixing with threads.
+  2) iterator, PrimeIterator, or PrimeArray in XS using segment sieve.
+
+- Perhaps have main segment know the filled in range.  That would allow
+  a sieved next_prime, and might speed up some counts and the like.

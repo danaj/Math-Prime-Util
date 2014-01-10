@@ -1062,17 +1062,66 @@ UV znprimroot(UV n) {
   return 0;
 }
 
-/* Find smallest n where a = g^n mod p */
-/* This implementation is just a stupid placeholder. */
+/* Calculate 1/a mod p.  From William Hart. */
+UV modinverse(UV a, UV p) {
+  IV u1 = 1, u3 = a;
+  IV v1 = 0, v3 = p;
+  IV t1 = 0, t3 = 0;
+  IV quot;
+  while (v3) {
+    quot = u3 - v3;
+    if (u3 < (v3<<2)) {
+      if (quot < v3) {
+        if (quot < 0) {
+          t1 = u1; u1 = v1; v1 = t1;
+          t3 = u3; u3 = v3; v3 = t3;
+        } else {
+          t1 = u1 - v1; u1 = v1; v1 = t1;
+          t3 = u3 - v3; u3 = v3; v3 = t3;
+        }
+      } else if (quot < (v3<<1)) {
+        t1 = u1 - (v1<<1); u1 = v1; v1 = t1;
+        t3 = u3 - (v3<<1); u3 = v3; v3 = t3;
+      } else {
+        t1 = u1 - v1*3; u1 = v1; v1 = t1;
+        t3 = u3 - v3*3; u3 = v3; v3 = t3;
+      }
+    } else {
+      quot = u3 / v3;
+      t1 = u1 - v1*quot; u1 = v1; v1 = t1;
+      t3 = u3 - v3*quot; u3 = v3; v3 = t3;
+    }
+ }
+ if (u1 < 0) u1 += p;
+ return u1;
+}
+
+UV divmod(UV a, UV b, UV n) {   /* a / b  mod n */
+  UV binv = modinverse(b, n);
+  if (binv == 0)  return 0;
+  return mulmod(a, binv, n);
+}
+
+/* Find smallest n where a = g^n mod p
+ * This implementation is just a stupid placeholder.
+ * When prho or bsgs gets working well, lower the trial limit
+ */
+#define DLP_TRIAL_NUM  1000000
 UV znlog(UV a, UV g, UV p) {
-  UV t, n = 1;
-  if (a == 0 || g == 0 || p < 2) return 0;
-  for (n = 1; n < p; n++) {
-    t = powmod(g, n, p);
-    if (t == a)
-      return n;
-  }
-  return 0;
+  UV k;
+  const int verbose = _XS_get_verbose();
+  if (a == 0 || g == 0 || p < 2)
+    return 0;
+  k = dlp_trial(a, g, p, DLP_TRIAL_NUM);
+  if (k != 0 || p <= DLP_TRIAL_NUM)
+    return k;
+  if (verbose) printf("  dlp trial failed.  Trying prho\n");
+  k = dlp_prho(a, g, p, 1000000);
+  if (k != 0)
+    return k;
+  if (verbose) printf("  dlp prho failed.  Back to trial\n");
+  k = dlp_trial(a, g, p, p);
+  return k;
 }
 
 long double _XS_chebyshev_theta(UV n)

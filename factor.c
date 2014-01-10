@@ -920,3 +920,56 @@ int squfof_factor(UV n, UV *factors, UV rounds)
   factors[0] = n;
   return 1;
 }
+
+UV dlp_trial(UV a, UV g, UV p, UV maxrounds) {
+  UV t, n = 1;
+  if (maxrounds > p) maxrounds = p;
+  for (n = 1; n < maxrounds; n++) {
+    t = powmod(g, n, p);
+    if (t == a)
+      return n;
+  }
+  return 0;
+}
+
+#define pollard_rho_cycle(u,v,w,p,n,a,g) \
+    switch (u % 3) { \
+      case 0: u = mulmod(u,u,p);  v = mulmod(v,2,n);  w = mulmod(w,2,n); break;\
+      case 1: u = mulmod(u,a,p);  v = addmod(v,1,n);                     break;\
+      case 2: u = mulmod(u,g,p);                      w = addmod(w,1,n); break;\
+    }
+
+UV dlp_prho(UV a, UV g, UV p, UV maxrounds) {
+  UV i;
+  UV n = znorder(g, p);
+  UV u=1, v=0, w=0;
+  UV U=u, V=v, W=w;
+  int const verbose = _XS_get_verbose();
+
+  if (verbose > 1 && n != p-1) printf("for g=%lu p=%lu, order is %lu\n", g, p, n);
+  if (maxrounds > n) maxrounds = n;
+  for (i = 1; i < maxrounds; i++) {
+    pollard_rho_cycle(u,v,w,p,n,a,g);   /* xi, ai, bi */
+    pollard_rho_cycle(U,V,W,p,n,a,g);
+    pollard_rho_cycle(U,V,W,p,n,a,g);   /* x2i, a2i, b2i */
+    if (verbose > 3) printf( "%3lu  %4lu %3lu %3lu  %4lu %3lu %3lu\n", i, u, v, w, U, V, W );
+    if (u == U) {
+      UV r1, r2, k;
+      r1 = submod(v, V, n);
+      if (r1 == 0) {
+        if (verbose) printf("DLP Rho failure, r=0\n");
+        return 0;
+      }
+      r2 = submod(W, w, n);
+      k = divmod(r2, r1, n);
+      if (powmod(g,k,p) != a) {
+        if (verbose > 2) printf("r1 = %lu  r2 = %lu k = %lu\n", r1, r2, k);
+        if (verbose) printf("Incorrect DLP Rho solution: %lu\n", k);
+        return 0;
+      }
+      if (verbose) printf("DLP Rho solution found after %lu steps\n", i);
+      return k;
+    }
+  }
+  return 0;
+}
