@@ -28,6 +28,7 @@ lehmer.h
 lehmer.c
 lmo.h
 lmo.c
+ppport.h
 primality.h
 primality.c
 sieve.h
