@@ -96,7 +96,7 @@ sub _validate_positive_integer {
   if (ref($n) eq 'Math::BigInt') {
     croak "Parameter '$n' must be a positive integer"
       if $n->sign() ne '+' || !$n->is_int();
-    $_[0] = _bigint_to_int($_[0]) 
+    $_[0] = _bigint_to_int($_[0])
       if $n <= (OLD_PERL_VERSION ? 562949953421312 : ''.~0);
   } else {
     my $strn = "$n";
@@ -105,7 +105,7 @@ sub _validate_positive_integer {
     if ($n <= (OLD_PERL_VERSION ? 562949953421312 : ''.~0)) {
       $_[0] = $strn if ref($n);
     } else {
-      $_[0] = Math::BigInt->new($strn) 
+      $_[0] = Math::BigInt->new($strn)
     }
   }
   $_[0]->upgrade(undef) if ref($_[0]) && $_[0]->upgrade();

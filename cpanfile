@@ -6,6 +6,7 @@ requires 'XSLoader', '0.01';
 requires 'Carp';
 requires 'Tie::Array';
 requires 'base';
+requires 'constant';
 requires 'Config';
 requires 'Math::BigInt', '1.88';
 requires 'Math::BigFloat', '1.59';

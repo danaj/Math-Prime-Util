@@ -66,6 +66,7 @@
 #define FUNC_isqrt 1
 #define FUNC_lcm_ui 1
 #define FUNC_ctz 1
+#define FUNC_log2floor 1
 #include "util.h"
 #include "sieve.h"
 #include "primality.h"
@@ -807,8 +808,7 @@ signed char* _moebius_range(UV lo, UV hi)
       A[i-lo] |= 0x80;
   } END_DO_FOR_EACH_PRIME
 
-  logp = 0; nextlog = lo;
-  while (nextlog >>= 1)  logp++;
+  logp = log2floor(lo);
   nextlog = 2UL << logp;
   for (i = lo; i <= hi; i++) {
     unsigned char a = A[i-lo];
@@ -1000,7 +1000,7 @@ UV exp_mangoldt(UV n) {
   else {
     UV i, factors[MPU_MAX_FACTORS+1];
     UV nfactors = factor(n, factors);
-    for (i = 1; i < nfactors; i++) 
+    for (i = 1; i < nfactors; i++)
       if (factors[i] != factors[0])
         return 1;
     return factors[0];
