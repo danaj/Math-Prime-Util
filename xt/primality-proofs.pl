@@ -2,7 +2,7 @@
 use warnings;
 use strict;
 use Math::Prime::Util ':all';
-use Math::BigInt lib=>"GMP";
+use Math::BigInt lib=>"GMP,Pari";
 
 if (!Math::Prime::Util::prime_get_config->{gmp}) {
   print "\nYou should install Math::Prime::Util::GMP.\n\n";

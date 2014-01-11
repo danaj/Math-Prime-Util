@@ -81,7 +81,7 @@ print "\n";
 }
 
 if (1) {
-use bigint try => 'GMP';
+use bigint try => 'GMP,Pari';
 my $big_base = 2**64 + 1;
 my $range = 2**1024 - 1;
 my $end_base = $big_base + $range;
@@ -106,7 +106,7 @@ my $num_rns = 100;
 my $len_rns = 100;
 my $count = -1;
 
-use bigint try => 'GMP';
+use bigint try => 'GMP,Pari';
 
 my @rns;  # make the primality tests at least lift a finger.
 while (@rns < $num_rns) {
