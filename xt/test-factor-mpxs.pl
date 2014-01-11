@@ -3,7 +3,7 @@ use strict;
 use warnings;
 $| = 1;  # fast pipes
 
-use Math::Prime::Util qw/factor -nobigint/;
+use Math::Prime::Util qw/factor/;
 use Math::Factor::XS qw/prime_factors/;
 use Config;
 

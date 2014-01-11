@@ -2,8 +2,7 @@
 use strict;
 use warnings;
 
-use Math::Prime::Util qw/-nobigint
-                         prime_iterator is_prime
+use Math::Prime::Util qw/prime_iterator is_prime
                          next_prime nth_prime_upper prime_precalc forprimes/;
 
 my $count = shift || 20;

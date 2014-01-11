@@ -3,7 +3,7 @@ use strict;
 use warnings;
 $| = 1;  # fast pipes
 
-use Math::Prime::Util qw/-nobigint/;
+use Math::Prime::Util;
 use Math::Pari;
 
 my $nlinear = 100000;

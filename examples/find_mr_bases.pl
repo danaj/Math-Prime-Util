@@ -3,7 +3,7 @@ use warnings;
 use strict;
 use threads;
 use threads::shared;
-use Math::Prime::Util qw/-nobigint is_prime is_strong_pseudoprime/;
+use Math::Prime::Util qw/is_prime is_strong_pseudoprime/;
 my $nthreads = 12;
 
 # Single base.
