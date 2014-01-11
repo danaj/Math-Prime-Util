@@ -385,15 +385,14 @@ UV divisor_sum(UV n, UV k)
 int fermat_factor(UV n, UV *factors, UV rounds)
 {
   IV sqn, x, y, r;
-
   MPUassert( (n >= 3) && ((n%2) != 0) , "bad n in fermat_factor");
-
   sqn = isqrt(n);
   x = 2 * sqn + 1;
   y = 1;
   r = (sqn*sqn) - n;
 
   while (r != 0) {
+    if (rounds-- == 0) { factors[0] = n; return 1; }
     r += x;
     x += 2;
     do {
