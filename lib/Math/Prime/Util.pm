@@ -2,12 +2,19 @@ package Math::Prime::Util;
 use strict;
 use warnings;
 use Carp qw/croak confess carp/;
-use Math::BigInt try=>"GMP,Pari";
 
 BEGIN {
   $Math::Prime::Util::AUTHORITY = 'cpan:DANAJ';
   $Math::Prime::Util::VERSION = '0.36';
 }
+
+BEGIN {
+  # If they have used Math::BigInt already, make sure we don't change the
+  # back end.  If they have not, try to get one of the fast ones.
+  do { require Math::BigInt;  Math::BigInt->import(try=>"GMP,Pari"); }
+    unless defined $Math::BigInt::VERSION;
+}
+
 
 # parent is cleaner, and in the Perl 5.10.1 / 5.12.0 core, but not earlier.
 # use parent qw( Exporter );

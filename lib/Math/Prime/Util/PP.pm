@@ -2,11 +2,15 @@ package Math::Prime::Util::PP;
 use strict;
 use warnings;
 use Carp qw/carp croak confess/;
-use Math::BigInt try=>"GMP,Pari";
 
 BEGIN {
   $Math::Prime::Util::PP::AUTHORITY = 'cpan:DANAJ';
   $Math::Prime::Util::PP::VERSION = '0.36';
+}
+
+BEGIN {
+  do { require Math::BigInt;  Math::BigInt->import(try=>"GMP,Pari"); }
+    unless defined $Math::BigInt::VERSION;
 }
 
 # The Pure Perl versions of all the Math::Prime::Util routines.

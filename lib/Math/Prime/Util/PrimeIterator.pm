@@ -13,7 +13,6 @@ our %EXPORT_TAGS = (all => [ @EXPORT_OK ]);
 
 
 use Math::Prime::Util qw/next_prime prev_prime is_prime prime_count nth_prime/;
-use Math::BigInt try => "GMP,Pari";
 
 # We're going to use a scalar rather than a hash because there is currently
 # only one data object (the current value) and this makes it little faster.

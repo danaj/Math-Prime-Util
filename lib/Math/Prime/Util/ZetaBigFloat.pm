@@ -7,8 +7,12 @@ BEGIN {
   $Math::Prime::Util::ZetaBigFloat::VERSION = '0.36';
 }
 
-use Math::BigInt try => "GMP,Pari";
-use Math::BigFloat;
+BEGIN {
+  do { require Math::BigInt;  Math::BigInt->import(try=>"GMP,Pari"); }
+    unless defined $Math::BigInt::VERSION;
+  use Math::BigFloat;
+}
+
 
 # Riemann Zeta($k) for integer $k.
 # So many terms and digits are used so we can quickly do bignum R.

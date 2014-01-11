@@ -2,7 +2,6 @@ package Math::Prime::Util::PrimalityProving;
 use strict;
 use warnings;
 use Carp qw/carp croak confess/;
-use Math::BigInt try=>"GMP,Pari";
 use Math::Prime::Util qw/is_prob_prime is_strong_pseudoprime
                          is_provable_prime_with_cert
                          lucas_sequence
@@ -13,6 +12,11 @@ use Math::Prime::Util qw/is_prob_prime is_strong_pseudoprime
 BEGIN {
   $Math::Prime::Util::PrimalityProving::AUTHORITY = 'cpan:DANAJ';
   $Math::Prime::Util::PrimalityProving::VERSION = '0.36';
+}
+
+BEGIN {
+  do { require Math::BigInt;  Math::BigInt->import(try=>"GMP,Pari"); }
+    unless defined $Math::BigInt::VERSION;
 }
 
 my $_smallval = Math::BigInt->new("18446744073709551615");

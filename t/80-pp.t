@@ -271,7 +271,7 @@ use Math::Prime::Util qw/primes prime_count_approx prime_count_lower
                          exp_mangoldt chebyshev_theta chebyshev_psi
                          is_prob_prime
                         /;
-use Math::BigInt try => 'GMP';
+use Math::BigInt;
 use Math::BigFloat;
 require_ok 'Math::Prime::Util::PP';
 require_ok 'Math::Prime::Util::PrimalityProving';

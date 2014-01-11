@@ -85,7 +85,7 @@ plan tests =>  0
              + 1;
 
 # Using GMP makes these tests run about 2x faster on some machines
-use bigint try => 'GMP';   #  <--------------- large numbers ahead!  > 2^64
+use bigint try => 'GMP,Pari'; #  <--------------- large numbers ahead!  > 2^64
 use Math::BigFloat;
 
 use Math::Prime::Util qw/

@@ -7,7 +7,6 @@ use Math::Prime::Util qw/is_prime is_provable_prime is_provable_prime_with_cert
                          prime_certificate verify_prime
                          prime_get_config prime_set_config
                         /;
-use Math::BigInt try => 'GMP';
 
 my $use_test_warn;
 BEGIN {
@@ -41,10 +40,6 @@ if ($extra || prime_get_config->{'gmp'}) {
 #
 #push @plist, '531137992816767098689588206552468627329593117727031923199444138200403559860852242739162502265229285668889329486246501015346579337652707239409519978766587351943831270835393219031728127'
 #             if $extra && prime_get_config->{'gmp'};
-
-@plist = sort { $a<=>$b }
-         map { $_ > ~0 ? Math::BigInt->new("$_") : $_ }
-         @plist;
 
 plan tests => 0
             + 2  # is_provable_prime
