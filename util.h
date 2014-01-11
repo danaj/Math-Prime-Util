@@ -141,7 +141,7 @@ static int is_perfect_square(UV n)
  #ifdef FUNC_ctz
   static int ctz(UV n) {
     UV tz = 0;
-   #ifdef BITS_PER_WORD == 64
+   #if BITS_PER_WORD == 64
     if (_BitScanForward64(&tz, n)) return tz; else return 64;
    #else
     if (_BitScanForward(&tz, n))   return tz; else return 32;
@@ -151,7 +151,7 @@ static int is_perfect_square(UV n)
  #if defined(FUNC_clz) || defined(FUNC_log2floor)
   static int log2floor(UV n) {
     UV lz = 0;
-   #ifdef BITS_PER_WORD == 64
+   #if BITS_PER_WORD == 64
     if (_BitScanReverse64(&lz, n)) return lz; else return 0;
    #else
     if (_BitScanReverse(&lz, n))   return lz; else return 0;
