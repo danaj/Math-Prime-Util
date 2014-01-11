@@ -22,6 +22,7 @@ aks.h
 aks.c
 cache.h
 cache.c
+constants.h
 factor.h
 factor.c
 lehmer.h

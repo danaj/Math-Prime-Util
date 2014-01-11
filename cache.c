@@ -5,6 +5,7 @@
 #include "ptypes.h"
 #include "cache.h"
 #include "sieve.h"
+#include "constants.h"   /* _MPU_FILL_EXTRA_N and _MPU_INITIAL_CACHE_SIZE */
 
 #include "EXTERN.h"
 #include "perl.h"
@@ -82,18 +83,15 @@ static int mutex_init = 0;
 static unsigned char* prime_cache_sieve = 0;
 static UV             prime_cache_size = 0;
 
-/* To avoid thrashing, sieve a little farther than we absolutely need to. */
-#define FILL_EXTRA_N (128*30)
-
 /* Erase the primary cache and fill up to n. */
 /* Note: You must have a write lock before calling this! */
 static void _erase_and_fill_prime_cache(UV n) {
   UV padded_n;
 
-  if (n >= (UV_MAX-FILL_EXTRA_N))
+  if (n >= (UV_MAX-_MPU_FILL_EXTRA_N))
     padded_n = UV_MAX;
   else
-    padded_n = ((n + FILL_EXTRA_N)/30)*30;
+    padded_n = ((n + _MPU_FILL_EXTRA_N)/30)*30;
 
   /* If new size isn't larger or smaller, then we're done. */
   if (prime_cache_size == padded_n)
@@ -215,7 +213,6 @@ void release_prime_segment(unsigned char* mem) {
 
 
 
-#define INITIAL_CACHE_SIZE ((1024-16)*30 - FILL_EXTRA_N)
 void prime_precalc(UV n)
 {
   if (!mutex_init) {
@@ -225,9 +222,9 @@ void prime_precalc(UV n)
     mutex_init = 1;
   }
 
-  /* On initialization, make a few primes (2-30k using 1k memory) */
+  /* On initialization, make a few primes (30k per 1k memory) */
   if (n == 0)
-    n = INITIAL_CACHE_SIZE;
+    n = _MPU_INITIAL_CACHE_SIZE;
   get_prime_cache(n, 0);   /* Sieve to n */
 
   /* TODO: should we prealloc the segment here? */
@@ -251,7 +248,7 @@ void prime_memfree(void)
 
   WRITE_LOCK_START;
     /* Put primary cache back to initial state */
-    _erase_and_fill_prime_cache(INITIAL_CACHE_SIZE);
+    _erase_and_fill_prime_cache(_MPU_INITIAL_CACHE_SIZE);
   WRITE_LOCK_END;
 }
 

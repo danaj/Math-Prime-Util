@@ -19,6 +19,7 @@
 #include "lehmer.h"
 #include "lmo.h"
 #include "aks.h"
+#include "constants.h"
 
 #if BITS_PER_WORD == 64
   #if defined(_MSC_VER)
@@ -77,15 +78,11 @@
   static const unsigned int ivmax_maxlen = 10;
   static const char uvmax_str[] = "4294967295";
   static const char ivmax_str[] = "2147483648";
-  static const UV _max_prime    = UVCONST(4294967291);
-  static const UV _max_primeidx = UVCONST(203280221);
 #else
   static const unsigned int uvmax_maxlen = 20;
   static const unsigned int ivmax_maxlen = 19;
   static const char uvmax_str[] = "18446744073709551615";
   static const char ivmax_str[] =  "9223372036854775808";
-  static const UV _max_prime    = UVCONST(18446744073709551557);
-  static const UV _max_primeidx = UVCONST(425656284035217743);
 #endif
 
 #define MY_CXT_KEY "Math::Prime::Util::API_guts"
@@ -593,8 +590,8 @@ next_prime(IN SV* svn)
   PPCODE:
     if (_validate_int(aTHX_ svn, 0)) {
       UV n = my_svuv(svn);
-      if ( ((ix == 0) && (n >= _max_prime))    ||
-           ((ix == 2) && (n >= _max_primeidx)) ) {
+      if ( ((ix == 0) && (n >= MPU_MAX_PRIME))    ||
+           ((ix == 2) && (n >= MPU_MAX_PRIME_IDX)) ) {
         /* Out of range.  Fall through to Perl. */
       } else {
         UV ret;
@@ -1042,7 +1039,7 @@ forcomposites (SV* block, IN SV* svbeg, IN SV* svend = 0)
         beg = 6;
       }
       /* Find the two primes that bound their interval. */
-      /* If beg or end are >= _max_prime, then this will die. */
+      /* If beg or end are >= max_prime, then this will die. */
       prevprime = _XS_prev_prime(beg);
       nextprime = _XS_next_prime(end);
       ctx = start_segment_primes(beg, nextprime, &segment);
