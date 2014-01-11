@@ -147,6 +147,32 @@ static UV count_zero_bits(const unsigned char* m, UV nbytes)
   return count;
 }
 
+#if _MSC_VER < 1300
+/* used for testing
+ unsigned char __fastcall _2BitScanForward(unsigned long* Index, unsigned long Mask) {
+    return _BitScanForward(Index,Mask);
+}
+unsigned char __fastcall _2BitScanReverse(unsigned long* Index, unsigned long Mask) {
+    return _BitScanReverse(Index,Mask);
+}*/
+
+unsigned char __declspec( naked ) __fastcall _BitScanForward(unsigned long* Index, unsigned long Mask) {
+    __asm {
+        bsf     eax, edx /* edx is Mask */
+        mov     [ecx], eax /*ecx is Index */
+        setnz   al
+        retn
+    };
+}
+unsigned char __declspec( naked ) __fastcall _BitScanReverse(unsigned long* Index, unsigned long Mask) {
+    __asm {
+        bsr     eax, edx /* edx is Mask */
+        mov     [ecx], eax /*ecx is Index */
+        setnz   al
+        retn
+    };
+}
+#endif
 
 /* Does trial division or prob tests, assuming x not divisible by 2, 3, or 5 */
 static int _is_prime7(UV n)
