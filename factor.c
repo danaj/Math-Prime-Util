@@ -15,8 +15,8 @@
 #define FUNC_clz 1
 #include "util.h"
 
-/* factor will do trial division through this prime number, must be in table */
-#define TRIAL_TO_PRIME 81
+/* factor will do trial division through this prime index, must be in table */
+#define TRIAL_TO_PRIME 84
 
 /*
  * You need to remember to use UV for unsigned and IV for signed types that
@@ -57,31 +57,22 @@ static const unsigned short primes_small[] =
 int factor(UV n, UV *factors)
 {
   int nfactors = 0;           /* Number of factored in factors result */
+  UV f = 7;
 
-  int const verbose = _XS_get_verbose();
-  UV f;
-  UV tofac_stack[MPU_MAX_FACTORS+1];
-  UV fac_stack[MPU_MAX_FACTORS+1];
-  int ntofac = 0;             /* Number of items on tofac_stack */
-  int nfac = 0;               /* Number of items on fac_stack */
+  if (n > 1) {
+    while ( (n & 1) == 0 ) { factors[nfactors++] = 2; n /= 2; }
+    while ( (n % 3) == 0 ) { factors[nfactors++] = 3; n /= 3; }
+    while ( (n % 5) == 0 ) { factors[nfactors++] = 5; n /= 5; }
 
-  if (n < 4) {
-    factors[0] = n;
-    return (n == 1) ? 0 : 1;
-  }
-  while ( (n & 1) == 0 ) { factors[nfactors++] = 2; n /= 2; }
-  while ( (n % 3) == 0 ) { factors[nfactors++] = 3; n /= 3; }
-  while ( (n % 5) == 0 ) { factors[nfactors++] = 5; n /= 5; }
-  f = 7;
-
-  if (f*f <= n) {
-    UV sp = 3;
-    while (++sp < TRIAL_TO_PRIME) {
-      f = primes_small[sp];
-      if (f*f > n) break;
-      while ( (n%f) == 0 ) {
-        factors[nfactors++] = f;
-        n /= f;
+    if (f*f <= n) {
+      UV sp = 3;
+      while (++sp < TRIAL_TO_PRIME) {
+        f = primes_small[sp];
+        if (f*f > n) break;
+        while ( (n%f) == 0 ) {
+          factors[nfactors++] = f;
+          n /= f;
+        }
       }
     }
   }
@@ -90,6 +81,12 @@ int factor(UV n, UV *factors)
       factors[nfactors++] = n;
     return nfactors;
   }
+
+  {
+  UV tofac_stack[MPU_MAX_FACTORS+1];
+  int i, j, ntofac = 0;
+  int nsmallfactors = nfactors;
+  int const verbose = _XS_get_verbose();
 
   /* loop over each remaining factor, until ntofac == 0 */
   do {
@@ -142,7 +139,7 @@ int factor(UV n, UV *factors)
           if ( (n%f) == 0 ) {
             do {
               n /= f;
-              fac_stack[nfac++] = f;
+              factors[nfactors++] = f;
             } while ( (n%f) == 0 );
             limit = isqrt(n);
           }
@@ -153,26 +150,18 @@ int factor(UV n, UV *factors)
       }
     }
     /* n is now prime (or 1), so add to already-factored stack */
-    if (n != 1)  fac_stack[nfac++] = n;
+    if (n != 1)  factors[nfactors++] = n;
     /* Pop the next number off the to-factor stack */
     if (ntofac > 0)  n = tofac_stack[ntofac-1];
   } while (ntofac-- > 0);
 
-  /* Sort all the results from fac_stack and put into factors result */
-  {
-    int i, j;
-    for (i = 0; i < nfac; i++) {
-      int mini = i;
-      for (j = i+1; j < nfac; j++)
-        if (fac_stack[j] < fac_stack[mini])
-          mini = j;
-      if (mini != i) {
-        UV t = fac_stack[mini];
-        fac_stack[mini] = fac_stack[i];
-        fac_stack[i] = t;
-      }
-      factors[nfactors++] = fac_stack[i];
-    }
+  /* Sort the non-small factors */
+  for (i = nsmallfactors+1; i < nfactors; i++) {
+    UV f = factors[i];
+    for (j = i; j > 0 && factors[j-1] > f; j--)
+      factors[j] = factors[j-1];
+    factors[j] = f;
+  }
   }
   return nfactors;
 }
