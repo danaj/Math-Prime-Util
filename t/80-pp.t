@@ -267,8 +267,8 @@ plan tests => 2 +
 
 use Math::Prime::Util qw/primes prime_count_approx prime_count_lower
                          prime_get_config prime_set_config
-                         consecutive_integer_lcm moebius mertens euler_phi
-                         exp_mangoldt chebyshev_theta chebyshev_psi
+                         consecutive_integer_lcm
+                         chebyshev_theta chebyshev_psi
                          is_prob_prime
                         /;
 use Math::BigInt;
@@ -297,6 +297,11 @@ require_ok 'Math::Prime::Util::PrimalityProving';
     *is_aks_prime   = \&Math::Prime::Util::PP::is_aks_prime;
 
     *factor         = \&Math::Prime::Util::PP::factor;
+
+    *moebius        = \&Math::Prime::Util::_generic_moebius;
+    *euler_phi      = \&Math::Prime::Util::_generic_euler_phi;
+    *mertens        = \&Math::Prime::Util::_generic_mertens;
+    *exp_mangoldt   = \&Math::Prime::Util::_generic_exp_mangoldt;
 
     *RiemannR            = \&Math::Prime::Util::PP::RiemannR;
     *RiemannZeta         = \&Math::Prime::Util::PP::RiemannZeta;

@@ -3271,7 +3271,7 @@ also returns 0 for input 0, but returns C<euler_phi(-n)> for C<n E<lt> 0>.
 
 If called with two arguments, they define a range C<low> to C<high>, and the
 function returns an array with the totient of every n from low to high
-inclusive.  Large values of high will result in a lot of memory use.
+inclusive.
 
 
 =head2 jordan_totient

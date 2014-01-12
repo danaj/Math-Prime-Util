@@ -363,7 +363,7 @@ plan tests => 0 + 1
                 + 3*scalar(keys %mertens)
                 + 1*scalar(keys %big_mertens)
                 + 2 # Small Phi
-                + 7 + scalar(keys %totients)
+                + 8 + scalar(keys %totients)
                 + 1 # Small Carmichael Lambda
                 + scalar(@kroneckers)
                 + scalar(@gcds)
@@ -422,6 +422,10 @@ is_deeply( [euler_phi(1,2)], [1,1],   "euler_phi 1-2" );
 is_deeply( [euler_phi(1,3)], [1,1,2], "euler_phi 1-3" );
 is_deeply( [euler_phi(2,3)], [1,2],   "euler_phi 2-3" );
 is_deeply( [euler_phi(10,20)], [4,10,4,12,6,8,8,16,6,18,8], "euler_phi 10-20" );
+is_deeply( [euler_phi(1513,1537)],
+   [qw/1408 756 800 756 1440 440 1260 576 936 760 1522 504 1200 648
+       1016 760 1380 384 1530 764 864 696 1224 512 1456/],
+           "euler_phi(1513,1537)" );
 
 ###### Jordan Totient
 while (my($k, $tref) = each (%jordan_totients)) {
