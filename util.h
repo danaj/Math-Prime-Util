@@ -9,8 +9,8 @@ extern int  _XS_get_callgmp(void);
 extern void _XS_set_callgmp(int v);
 
 extern int _XS_is_prime(UV x);
-extern UV  _XS_next_prime(UV x);
-extern UV  _XS_prev_prime(UV x);
+extern UV  next_prime(UV x);
+extern UV  prev_prime(UV x);
 
 extern UV  _XS_prime_count(UV low, UV high);
 extern UV  _XS_nth_prime(UV x);
@@ -40,14 +40,6 @@ extern UV carmichael_lambda(UV n);
 extern UV znprimroot(UV n);
 extern UV znorder(UV a, UV n);
 extern UV znlog(UV a, UV g, UV p);
-
-/* Above this value, is_prime will do deterministic Miller-Rabin */
-/* With 64-bit math, we can do much faster mulmods from 2^16-2^32 */
-#if (BITS_PER_WORD == 64) || HAVE_STD_U64
-  #define MPU_PROB_PRIME_BEST  UVCONST(100000)
-#else
-  #define MPU_PROB_PRIME_BEST  UVCONST(100000000)
-#endif
 
 #if defined(FUNC_isqrt)
 static UV isqrt(UV n) {

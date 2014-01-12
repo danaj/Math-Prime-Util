@@ -82,6 +82,7 @@
     UV r = 0;
     if (a >= n) a %= n;   /* Careful attention from the caller should make */
     if (b >= n) b %= n;   /* these unnecessary.                            */
+    if ((a|b) < HALF_WORD) return (a*b) % n;
     if (a < b) { UV t = a; a = b; b = t; }
     if (n <= (UV_MAX>>1)) {
       while (b > 0) {
@@ -99,8 +100,8 @@
     return r;
   }
 
-  #define mulmod(a,b,n) ((((a)|(b)) < HALF_WORD) ? ((a)*(b))%(n):_mulmod(a,b,n))
-  #define sqrmod(a,n)   (((a) < HALF_WORD)       ? ((a)*(a))%(n):_mulmod(a,a,n))
+  #define mulmod(a,b,n) _mulmod(a,b,n)
+  #define sqrmod(a,n)   _mulmod(a,a,n)
 
 #endif
 

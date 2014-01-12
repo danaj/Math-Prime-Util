@@ -593,9 +593,9 @@ int pminus1_factor(UV n, UV *factors, UV B1, UV B2)
         break;
     } END_DO_FOR_EACH_PRIME
     /* If f == n again, we could do:
-     * for (savea = 3; f == n && savea < 100; savea = _XS_next_prime(savea)) {
+     * for (savea = 3; f == n && savea < 100; savea = next_prime(savea)) {
      *   a = savea;
-     *   for (q = 2; q <= B1; q = _XS_next_prime(q)) {
+     *   for (q = 2; q <= B1; q = next_prime(q)) {
      *     ...
      *   }
      * }

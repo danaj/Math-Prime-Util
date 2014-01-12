@@ -664,7 +664,7 @@ int _XS_is_almost_extra_strong_lucas_pseudoprime(UV n, UV increment)
 int _XS_is_frobenius_underwood_pseudoprime(UV n)
 {
   int bit;
-  UV x, result, a, b, np1, len, t1, t2, na;
+  UV x, result, a, b, np1, len, t1;
   IV t;
 
   if (n < 7) return (n == 2 || n == 3 || n == 5);
@@ -694,38 +694,26 @@ int _XS_is_frobenius_underwood_pseudoprime(UV n)
     if (x == 0) {
       result = mont5;
       for (bit = len-2; bit >= 0; bit--) {
-        t2 = addmod(b, b, n);
-        na = mont_prod64(a, t2, n, npi);
-        t1 = addmod(b, a, n);
-        t2 = submod(b, a, n);
-        b = mont_prod64(t1, t2, n, npi);
-        a = na;
+        t1 = addmod(b, b, n);
+        b = mont_prod64(submod(b, a, n), addmod(b, a, n), n, npi);
+        a = mont_prod64(a, t1, n, npi);
         if ( (np1 >> bit) & UVCONST(1) ) {
-          t1 = addmod(a, a, n);
-          na = addmod(t1, b, n);
-          t1 = addmod(b, b, n);
-          b = submod(t1, a, n);
-          a = na;
+          t1 = b;
+          b = submod( addmod(b, b, n), a, n);
+          a = addmod( addmod(a, a, n), t1, n);
         }
       }
     } else {
       UV multiplier = addmod(x, mont2, n);
       result = addmod( addmod(x, x, n), mont5, n);
       for (bit = len-2; bit >= 0; bit--) {
-        t1 = mont_prod64(a, x, n, npi);
-        t2 = addmod(b, b, n);
-        t1 = addmod(t1, t2, n);
-        na = mont_prod64(a, t1, n, npi);
-        t1 = addmod(b, a, n);
-        t2 = submod(b, a, n);
-        b = mont_prod64(t1, t2, n, npi);
-        a = na;
+        t1 = addmod( mont_prod64(a, x, n, npi), addmod(b, b, n), n);
+        b = mont_prod64(submod(b, a, n), addmod(b, a, n), n, npi);
+        a = mont_prod64(a, t1, n, npi);
         if ( (np1 >> bit) & UVCONST(1) ) {
-          t1 = mont_prod64(a, multiplier, n, npi);
-          na = addmod(t1, b, n);
-          t1 = addmod(b, b, n);
-          b = submod(t1, a, n);
-          a = na;
+          t1 = b;
+          b = submod( addmod(b, b, n), a, n);
+          a = addmod( mont_prod64(a, multiplier, n, npi), t1, n);
         }
       }
     }
@@ -738,38 +726,26 @@ int _XS_is_frobenius_underwood_pseudoprime(UV n)
   if (x == 0) {
     result = 5;
     for (bit = len-2; bit >= 0; bit--) {
-      t2 = addmod(b, b, n);
-      na = mulmod(a, t2, n);
-      t1 = addmod(b, a, n);
-      t2 = submod(b, a, n);
-      b = mulmod(t1, t2, n);
-      a = na;
+      t1 = addmod(b, b, n);
+      b = mulmod( submod(b, a, n), addmod(b, a, n), n);
+      a = mulmod(a, t1, n);
       if ( (np1 >> bit) & UVCONST(1) ) {
-        t1 = addmod(a, a, n);
-        na = addmod(t1, b, n);
-        t1 = addmod(b, b, n);
-        b = submod(t1, a, n);
-        a = na;
+        t1 = b;
+        b = submod( addmod(b, b, n), a, n);
+        a = addmod( addmod(a, a, n), t1, n);
       }
     }
   } else {
     UV multiplier = addmod(x, 2, n);
     result = addmod( addmod(x, x, n), 5, n);
     for (bit = len-2; bit >= 0; bit--) {
-      t1 = mulmod(a, x, n);
-      t2 = addmod(b, b, n);
-      t1 = addmod(t1, t2, n);
-      na = mulmod(a, t1, n);
-      t1 = addmod(b, a, n);
-      t2 = submod(b, a, n);
-      b = mulmod(t1, t2, n);
-      a = na;
+      t1 = addmod( mulmod(a, x, n), addmod(b, b, n), n);
+      b = mulmod(submod(b, a, n), addmod(b, a, n), n);
+      a = mulmod(a, t1, n);
       if ( (np1 >> bit) & UVCONST(1) ) {
-        t1 = mulmod(a, multiplier, n);
-        na = addmod(t1, b, n);
-        t1 = addmod(b, b, n);
-        b = submod(t1, a, n);
-        a = na;
+        t1 = b;
+        b = submod( addmod(b, b, n), a, n);
+        a = addmod( mulmod(a, multiplier, n), t1, n);
       }
     }
   }
@@ -798,7 +774,7 @@ static const UV mr_bases_large_3[3] = { UVCONST(  4230279247111683200 ),
 static const UV mr_bases_large_7[7] = { 2, 325, 9375, 28178, 450775, 9780504, 1795265022 };
 #endif
 
-int _XS_is_prob_prime(UV n)
+int is_prob_prime(UV n)
 {
   int ret;
 

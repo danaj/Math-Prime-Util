@@ -50,7 +50,7 @@ static int is_perfect_power(UV n) {
     b = isqrt(n);
     if (b*b == n)  return 1; /* perfect square */
     last = log2floor(n-1) + 1;
-    for (b = 3; b < last; b = _XS_next_prime(b)) {
+    for (b = 3; b < last; b = next_prime(b)) {
       UV root = (UV) (pow(n, 1.0 / (double)b) + 0.5);
       if ( ((UV)(pow(root, b)+0.5)) == n)  return 1;
     }

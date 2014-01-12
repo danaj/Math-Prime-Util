@@ -210,7 +210,7 @@ static void memtile(unsigned char* src, UV from, UV to) {
 
 static UV sieve_prefill(unsigned char* mem, UV startd, UV endd)
 {
-  UV next_prime = 17;
+  UV vnext_prime = 17;
   UV nbytes = endd - startd + 1;
   MPUassert( (mem != 0) && (endd >= startd), "sieve_prefill bad arguments");
 
@@ -228,7 +228,7 @@ static UV sieve_prefill(unsigned char* mem, UV startd, UV endd)
     if (startd == 0) mem[0] = 0x01; /* Correct first byte */
   }
   /* Leaving option open to tile 17 out and sieve, then return 19 */
-  return next_prime;
+  return vnext_prime;
 }
 
 /* Wheel 30 sieve.  Ideas from Terje Mathisen and Quesada / Van Pelt. */

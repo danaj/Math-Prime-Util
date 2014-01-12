@@ -151,29 +151,6 @@ static UV count_zero_bits(const unsigned char* m, UV nbytes)
 }
 
 
-/* Does trial division or prob tests, assuming x not divisible by 2, 3, or 5 */
-static int _is_prime7(UV n)
-{
-  UV limit, i;
-
-  if (n > MPU_PROB_PRIME_BEST)
-    return _XS_is_prob_prime(n);  /* We know this works for all 64-bit n */
-
-  limit = isqrt(n);
-  i = 7;
-  while (1) {   /* trial division, skipping multiples of 2/3/5 */
-    if (i > limit) break;  if ((n % i) == 0) return 0;  i += 4;
-    if (i > limit) break;  if ((n % i) == 0) return 0;  i += 2;
-    if (i > limit) break;  if ((n % i) == 0) return 0;  i += 4;
-    if (i > limit) break;  if ((n % i) == 0) return 0;  i += 2;
-    if (i > limit) break;  if ((n % i) == 0) return 0;  i += 4;
-    if (i > limit) break;  if ((n % i) == 0) return 0;  i += 6;
-    if (i > limit) break;  if ((n % i) == 0) return 0;  i += 2;
-    if (i > limit) break;  if ((n % i) == 0) return 0;  i += 6;
-  }
-  return 2;
-}
-
 
 /* We'll use this little static sieve to quickly answer small values of
  *   is_prime, next_prime, prev_prime, prime_count
@@ -237,11 +214,11 @@ int _XS_is_prime(UV n)
     if (isprime >= 0)
       return isprime;
   }
-  return _XS_is_prob_prime(n);
+  return is_prob_prime(n);
 }
 
 
-UV _XS_next_prime(UV n)
+UV next_prime(UV n)
 {
   UV d, m, sieve_size, next;
   const unsigned char* sieve;
@@ -263,7 +240,7 @@ UV _XS_next_prime(UV n)
   /* Move forward one, knowing we may not be on the wheel */
   if (m == 29) { d++; m = 1; } else  { m = nextwheel30[m]; }
   n = d*30+m;
-  while (!_is_prime7(n)) {
+  while (!is_prob_prime(n)) {
     /* Move forward one, knowing we are on the wheel */
     n += wheeladvance30[m];
     m = nextwheel30[m];
@@ -272,7 +249,7 @@ UV _XS_next_prime(UV n)
 }
 
 
-UV _XS_prev_prime(UV n)
+UV prev_prime(UV n)
 {
   const unsigned char* sieve;
   UV d, m, prev;
@@ -293,7 +270,7 @@ UV _XS_prev_prime(UV n)
     m = prevwheel30[m];
     if (m==29) d--;
     n = d*30+m;
-  } while (!_is_prime7(n));
+  } while (!is_prob_prime(n));
   return n;
 }
 
@@ -704,7 +681,7 @@ UV _XS_nth_prime(UV n)
     if (count >= n) { /* Too far.  Walk backwards */
       if (_XS_is_prime(lower_limit)) count--;
       for (p = 0; p <= (count-n); p++)
-        lower_limit = _XS_prev_prime(lower_limit);
+        lower_limit = prev_prime(lower_limit);
       return lower_limit;
     }
     count -= 3;
@@ -753,12 +730,10 @@ signed char* _moebius_range(UV lo, UV hi)
   /* Kuznetsov indicates that the Deléglise & Rivat (1996) method can be
    * modified to work on logs, which allows us to operate with no
    * intermediate memory at all.  Same time as the D&R method, less memory. */
-  unsigned char* A;
   unsigned char logp;
   UV nextlog;
 
   Newz(0, mu, hi-lo+1, signed char);
-  A = (unsigned char*) mu;
   if (sqrtn*sqrtn != hi) sqrtn++;  /* ceil sqrtn */
 
   logp = 1; nextlog = 3; /* 2+1 */
@@ -769,19 +744,20 @@ signed char* _moebius_range(UV lo, UV hi)
       nextlog = ((nextlog-1)*4)+1;
     }
     for (i = PGTLO(p, lo); i <= hi; i += p)
-      A[i-lo] += logp;
+      mu[i-lo] += logp;
     for (i = PGTLO(p2, lo); i <= hi; i += p2)
-      A[i-lo] |= 0x80;
+      mu[i-lo] |= 0x80;
   } END_DO_FOR_EACH_PRIME
 
   logp = log2floor(lo);
   nextlog = 2UL << logp;
   for (i = lo; i <= hi; i++) {
-    unsigned char a = A[i-lo];
+    unsigned char a = mu[i-lo];
     if (i >= nextlog) {  logp++;  nextlog *= 2;  } /* logp is log(p)/log(2) */
-    if (a & 0x80)       { mu[i-lo] = 0; }
-    else if (a >= logp) { mu[i-lo] =  1 - 2*(a&1); }
-    else                { mu[i-lo] = -1 + 2*(a&1); }
+    if (a & 0x80)       { a = 0; }
+    else if (a >= logp) { a =  1 - 2*(a&1); }
+    else                { a = -1 + 2*(a&1); }
+    mu[i-lo] = a;
   }
   if (lo == 0)  mu[0] = 0;
 
@@ -1006,15 +982,13 @@ UV znorder(UV a, UV n) {
   phi = carmichael_lambda(n);
   nfactors = factor_exp(phi, fac, exp);
   for (i = 0; i < nfactors; i++) {
-    UV b, ek;
-    UV pi = fac[i], ei = exp[i];
+    UV b, ek, pi = fac[i], ei = exp[i];
     UV phidiv = phi / pi;
-    for (j = 1; j < ei; j++)  phidiv /= pi;
+    for (j = 1; j < ei; j++)
+      phidiv /= pi;
     b = powmod(a, phidiv, n);
-    ek = 0;
-    while (b != 1) {
+    for (ek = 0; b != 1; b = powmod(b, pi, n)) {
       if (ek++ >= ei) return 0;
-      b = powmod(b, pi, n);
       k *= pi;
     }
   }
@@ -1030,7 +1004,7 @@ UV znprimroot(UV n) {
   if (n % 4 == 0)  return 0;
   phi = totient(n);
   /* Check if a primitive root exists. */
-  if (!_XS_is_prob_prime(n) && phi != carmichael_lambda(n))  return 0;
+  if (!is_prob_prime(n) && phi != carmichael_lambda(n))  return 0;
   nfactors = factor_exp(phi, fac, exp);
   for (i = 0; i < nfactors; i++)
     exp[i] = phi / fac[i];  /* exp[i] = phi(n) / i-th-factor-of-phi(n) */

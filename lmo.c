@@ -297,12 +297,12 @@ static UV _phi_recurse(UV x, UV a) {
     UV pa = _XS_nth_prime(a);
     for (i = c+1; i <= a; i++) {
       UV xp;
-      p = _XS_next_prime(p);
+      p = next_prime(p);
       xp = x/p;
       if (xp < p) {
         while (x < pa) {
           a--;
-          pa = _XS_prev_prime(pa);
+          pa = prev_prime(pa);
         }
         return (sum - a + i - 1);
       }

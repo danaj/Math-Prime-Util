@@ -379,9 +379,9 @@ sieve_primes(IN UV low, IN UV high)
           av_push(av,newSVuv(p));
         } END_DO_FOR_EACH_PRIME
       } else if (ix == 1) {                   /* Trial */
-        for (low = _XS_next_prime(low-1);
+        for (low = next_prime(low-1);
              low <= high && low != 0;
-             low = _XS_next_prime(low) ) {
+             low = next_prime(low) ) {
           av_push(av,newSVuv(low));
         }
       } else if (ix == 2) {                   /* Erat with private memory */
@@ -596,8 +596,8 @@ next_prime(IN SV* svn)
       } else {
         UV ret;
         switch (ix) {
-          case 0: ret = _XS_next_prime(n);  break;
-          case 1: ret = (n < 3) ? 0 : _XS_prev_prime(n);  break;
+          case 0: ret = next_prime(n);  break;
+          case 1: ret = (n < 3) ? 0 : prev_prime(n);  break;
           case 2:
           default:ret = _XS_nth_prime(n);  break;
         }
@@ -960,7 +960,7 @@ forprimes (SV* block, IN SV* svbeg, IN SV* svend = 0)
           (beg >= UVCONST(       1000000000000) && end-beg <     17000) ||
 #endif
           ((end-beg) < 500) ) {     /* MULTICALL next prime */
-        for (beg = _XS_next_prime(beg-1); beg <= end && beg != 0; beg = _XS_next_prime(beg)) {
+        for (beg = next_prime(beg-1); beg <= end && beg != 0; beg = next_prime(beg)) {
           sv_setuv(svarg, beg);
           MULTICALL;
         }
@@ -1036,8 +1036,8 @@ forcomposites (SV* block, IN SV* svbeg, IN SV* svend = 0)
       }
       /* Find the two primes that bound their interval. */
       /* If beg or end are >= max_prime, then this will die. */
-      prevprime = _XS_prev_prime(beg);
-      nextprime = _XS_next_prime(end);
+      prevprime = prev_prime(beg);
+      nextprime = next_prime(end);
       ctx = start_segment_primes(beg, nextprime, &segment);
       while (next_segment_primes(ctx, &seg_base, &seg_low, &seg_high)) {
         START_DO_FOR_EACH_SIEVE_PRIME( segment, seg_low - seg_base, seg_high - seg_base ) {
@@ -1059,7 +1059,7 @@ forcomposites (SV* block, IN SV* svbeg, IN SV* svend = 0)
     if (beg <= end) {
       beg = (beg <= 4) ? 3 : beg-1;
       while (beg++ < end) {
-        if (!_XS_is_prob_prime(beg)) {
+        if (!is_prob_prime(beg)) {
           sv_setuv(svarg, beg);
           PUSHMARK(SP);
           call_sv((SV*)cv, G_VOID|G_DISCARD);
