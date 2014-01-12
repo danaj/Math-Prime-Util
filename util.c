@@ -790,10 +790,20 @@ signed char* _moebius_range(UV lo, UV hi)
 
 UV* _totient_range(UV lo, UV hi) {
   UV* totients;
-  UV i;
+  UV i, seg_base, seg_low, seg_high;
+  unsigned char* segment;
+  void* ctx;
+
   if (hi < lo) croak("_totient_range error hi %lu < lo %lu\n", hi, lo);
-  /* TODO: When is it faster to just do individual calls? */
   New(0, totients, hi-lo+1, UV);
+
+  /* Do via factoring if very small or if we have a small range */
+  if (hi < 100 || hi/(hi-lo+1) > 1000) {
+    for (i = lo; i <= hi; i++)
+      totients[i-lo] = totient(i);
+    return totients;
+  }
+
   for (i = lo; i <= hi; i++) {
     UV v = i;
     if (i % 2 == 0)  v -= v/2;
@@ -801,13 +811,22 @@ UV* _totient_range(UV lo, UV hi) {
     if (i % 5 == 0)  v -= v/5;
     totients[i-lo] = v;
   }
-  START_DO_FOR_EACH_PRIME(lo, hi) {
-    totients[p-lo] = p-1;
-  } END_DO_FOR_EACH_PRIME
-  START_DO_FOR_EACH_PRIME(7, hi/2) {
-    for (i = P2GTLO(2*p,p,lo); i <= hi; i += p)
-      totients[i-lo] -= totients[i-lo]/p;
-  } END_DO_FOR_EACH_PRIME
+
+  ctx = start_segment_primes(7, hi/2, &segment);
+  while (next_segment_primes(ctx, &seg_base, &seg_low, &seg_high)) {
+    START_DO_FOR_EACH_SIEVE_PRIME( segment, seg_low - seg_base, seg_high - seg_base ) {
+      p += seg_base;
+      for (i = P2GTLO(2*p,p,lo); i <= hi; i += p)
+        totients[i-lo] -= totients[i-lo]/p;
+    } END_DO_FOR_EACH_SIEVE_PRIME
+  }
+  end_segment_primes(ctx);
+
+  /* Fill in all primes */
+  for (i = lo | 1; i <= hi; i += 2)
+    if (totients[i-lo] == i)
+      totients[i-lo]--;
+
   return totients;
 }
 
@@ -930,7 +949,7 @@ UV carmichael_lambda(UV n) {
   UV j, lambda = 1;
 
   if (n < 8) return totient(n);
-  if ((n & (n-1)) == 0)  return totient(n)/2;
+  if ((n & (n-1)) == 0) return n >> 2;
 
   nfactors = factor_exp(n, fac, exp);
   if (fac[0] == 2 && exp[0] > 2)  exp[0]--;
@@ -946,10 +965,9 @@ UV carmichael_lambda(UV n) {
 int moebius(UV n) {
   UV factors[MPU_MAX_FACTORS+1];
   UV i, nfactors;
-  if (n <= 1) return (int)n;
 
-  if ( (!(n% 4) && n >=  4) || (!(n% 9) && n >=  9) ||
-       (!(n%25) && n >= 25) || (!(n%49) && n >= 49) )
+  if (n <= 1) return (int)n;
+  if ( n >= 49 && (!(n% 4) || !(n% 9) || !(n%25) || !(n%49)) )
     return 0;
 
   nfactors = factor(n, factors);
