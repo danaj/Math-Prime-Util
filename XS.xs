@@ -777,11 +777,7 @@ _XS_ExponentialIntegral(IN SV* x)
       }
     } else {
       UV uv = SvUV(x);
-      switch (ix) {
-        case 4: ret = (NV) _XS_chebyshev_theta(uv); break;
-        case 5:
-        default:ret = (NV) _XS_chebyshev_psi(uv); break;
-      }
+      ret = (NV) chebyshev_function(uv, ix-4);
     }
     RETVAL = ret;
   OUTPUT:

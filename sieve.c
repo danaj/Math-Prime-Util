@@ -246,7 +246,7 @@ unsigned char* sieve_erat30(UV end)
   prime = sieve_prefill(mem, 0, max_buf-1);
 
   limit = isqrt(end);  /* prime*prime can overflow */
-  for (  ; prime <= limit; prime = next_prime_in_sieve(mem,prime)) {
+  for (  ; prime <= limit; prime = next_prime_in_sieve(mem,prime,end)) {
     UV p2 = prime*prime;
     UV d = p2 / 30;
     UV m = p2 - d*30;
@@ -293,12 +293,20 @@ unsigned char* sieve_erat30(UV end)
 int sieve_segment(unsigned char* mem, UV startd, UV endd)
 {
   const unsigned char* sieve;
-  UV limit, slimit, start_base_prime;
+  UV limit, slimit, start_base_prime, sieve_size;
   UV startp = 30*startd;
   UV endp = (endd >= (UV_MAX/30))  ?  UV_MAX-2  :  30*endd+29;
 
   MPUassert( (mem != 0) && (endd >= startd) && (endp >= startp),
              "sieve_segment bad arguments");
+
+  /* It's possible we can just use the primary cache */
+  sieve_size = get_prime_cache(0, &sieve);
+  if (sieve_size >= endp) {
+    memcpy(mem, sieve+startd, endd-startd+1);
+    release_prime_cache(sieve);
+    return 1;
+  }
 
   /* Fill buffer with marked 7, 11, and 13 */
   start_base_prime = sieve_prefill(mem, startd, endd);
@@ -309,7 +317,10 @@ int sieve_segment(unsigned char* mem, UV startd, UV endd)
   slimit = limit;
   if (slimit > BASE_SIEVE_LIMIT) slimit = BASE_SIEVE_LIMIT;
   /* printf("segment sieve from %"UVuf" to %"UVuf" (aux sieve to %"UVuf")\n", startp, endp, slimit); */
-  get_prime_cache(slimit, &sieve);
+  if (slimit > sieve_size) {
+    release_prime_cache(sieve);
+    get_prime_cache(slimit, &sieve);
+  }
 
   START_DO_FOR_EACH_SIEVE_PRIME(sieve, start_base_prime, slimit)
   {

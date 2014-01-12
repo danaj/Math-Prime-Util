@@ -46,18 +46,22 @@ static int is_prime_in_sieve(const unsigned char* sieve, UV p) {
 #endif
 
 #ifdef FUNC_next_prime_in_sieve
-/* Warning -- can go off the end of the sieve */
-static UV next_prime_in_sieve(const unsigned char* sieve, UV p) {
+/* Will return 0 if it goes past lastp */
+static UV next_prime_in_sieve(const unsigned char* sieve, UV p, UV lastp) {
   UV d, m;
   if (p < 7)
     return (p < 2) ? 2 : (p < 3) ? 3 : (p < 5) ? 5 : 7;
   d = p/30;
   m = p - d*30;
   do {
-    if (m==29) { d++; m = 1; while (sieve[d] == 0xFF) d++; }
-    else       { m = nextwheel30[m]; }
+    if (m != 29) {
+      m = nextwheel30[m];
+    } else {
+      d++; m = 1;
+      if (d*30 >= lastp) return 0; /* sieves have whole bytes filled */
+    }
   } while (sieve[d] & masktab30[m]);
-  return(d*30+m);
+  return d*30+m;
 }
 #endif
 #ifdef FUNC_prev_prime_in_sieve
@@ -68,7 +72,8 @@ static UV prev_prime_in_sieve(const unsigned char* sieve, UV p) {
   d = p/30;
   m = p - d*30;
   do {
-    m = prevwheel30[m];  if (m==29) { if (d == 0) return 0;  d--; }
+    m = prevwheel30[m];
+    if (m==29) { if (d == 0) return 0;  d--; }
   } while (sieve[d] & masktab30[m]);
   return(d*30+m);
 }

@@ -67,6 +67,8 @@
 #define FUNC_lcm_ui 1
 #define FUNC_ctz 1
 #define FUNC_log2floor 1
+#define FUNC_next_prime_in_sieve 1
+#define FUNC_prev_prime_in_sieve 1
 #include "util.h"
 #include "sieve.h"
 #include "primality.h"
@@ -74,6 +76,7 @@
 #include "lmo.h"
 #include "factor.h"
 #include "mulmod.h"
+#include "constants.h"
 
 static int _verbose = 0;
 void _XS_set_verbose(int v) { _verbose = v; }
@@ -240,41 +243,20 @@ int _XS_is_prime(UV n)
 
 UV _XS_next_prime(UV n)
 {
-  UV d, m;
+  UV d, m, sieve_size, next;
   const unsigned char* sieve;
-  UV sieve_size;
 
-  if (n <= 10) {
-    switch (n) {
-      case 0: case 1:  return  2; break;
-      case 2:          return  3; break;
-      case 3: case 4:  return  5; break;
-      case 5: case 6:  return  7; break;
-      default:         return 11; break;
-    }
-  }
   if (n < 30*NPRIME_SIEVE30) {
-    START_DO_FOR_EACH_SIEVE_PRIME(prime_sieve30, n+1, 30*NPRIME_SIEVE30)
-      return p;
-    END_DO_FOR_EACH_SIEVE_PRIME;
+    next = next_prime_in_sieve(prime_sieve30, n,30*NPRIME_SIEVE30);
+    if (next != 0) return next;
   }
 
-  /* Overflow */
-#if BITS_PER_WORD == 32
-  if (n >= UVCONST(4294967291))  return 0;
-#else
-  if (n >= UVCONST(18446744073709551557))  return 0;
-#endif
+  if (n >= MPU_MAX_PRIME) return 0; /* Overflow */
 
   sieve_size = get_prime_cache(0, &sieve);
-  if (n < sieve_size) {
-    START_DO_FOR_EACH_SIEVE_PRIME(sieve, n+1, sieve_size)
-      { release_prime_cache(sieve); return p; }
-    END_DO_FOR_EACH_SIEVE_PRIME;
-    /* Not found, so must be larger than the cache size */
-    n = sieve_size;
-  }
+  next = (n < sieve_size)  ?  next_prime_in_sieve(sieve, n, sieve_size)  :  0;
   release_prime_cache(sieve);
+  if (next != 0) return next;
 
   d = n/30;
   m = n - d*30;
@@ -292,41 +274,27 @@ UV _XS_next_prime(UV n)
 
 UV _XS_prev_prime(UV n)
 {
-  UV d, m;
   const unsigned char* sieve;
-  UV sieve_size;
+  UV d, m, prev;
 
-  if (n <= 7)
-    return (n <= 2) ? 0 : (n <= 3) ? 2 : (n <= 5) ? 3 : 5;
+  if (n < 30*NPRIME_SIEVE30)
+    return prev_prime_in_sieve(prime_sieve30, n);
+
+  if (n < get_prime_cache(0, &sieve)) {
+    prev = prev_prime_in_sieve(sieve, n);
+    release_prime_cache(sieve);
+    return prev;
+  }
+  release_prime_cache(sieve);
 
   d = n/30;
   m = n - d*30;
-
-  if (n < 30*NPRIME_SIEVE30) {
-    /* Don't try to merge this loop with the next one.  prime_sieve30 is a
-     * static, so this can be faster. */
-    do {
-      m = prevwheel30[m];
-      if (m==29) d--;
-    } while (prime_sieve30[d] & masktab30[m]);
-    return(d*30+m);
-  }
-
-  sieve_size = get_prime_cache(0, &sieve);
-  if (n < sieve_size) {
-    do {
-      m = prevwheel30[m];
-      if (m==29) d--;
-    } while (sieve[d] & masktab30[m]);
-    release_prime_cache(sieve);
-  } else {
-    release_prime_cache(sieve);
-    do {
-      m = prevwheel30[m];
-      if (m==29) d--;
-    } while (!_is_prime7(d*30+m));
-  }
-  return(d*30+m);
+  do {
+    m = prevwheel30[m];
+    if (m==29) d--;
+    n = d*30+m;
+  } while (!_is_prime7(n));
+  return n;
 }
 
 
@@ -678,11 +646,7 @@ static UV _XS_nth_prime_upper(UV n)
    */
   /* Watch out for  overflow */
   if (upper >= (double)UV_MAX) {
-#if BITS_PER_WORD == 32
-    if (n <= UVCONST(203280221)) return UVCONST(4294967291);
-#else
-    if (n <= UVCONST(425656284035217743)) return UVCONST(18446744073709551557);
-#endif
+    if (n <= MPU_MAX_PRIME_IDX) return MPU_MAX_PRIME;
     croak("nth_prime_upper(%"UVuf") overflow", n);
   }
 
@@ -1124,58 +1088,37 @@ UV znlog(UV a, UV g, UV p) {
   return k;
 }
 
-long double _XS_chebyshev_theta(UV n)
+long double chebyshev_function(UV n, int which)
 {
+  long double logp, logn = logl(n);
+  UV sqrtn = which ? isqrt(n) : 0;  /* for theta, p <= sqrtn always false */
   KAHAN_INIT(sum);
 
-  if (n < 10000) {    /* all in one */
-    START_DO_FOR_EACH_PRIME(2, n) {
-      KAHAN_SUM(sum, logl(p));
-    } END_DO_FOR_EACH_PRIME
-  } else {            /* Segmented */
+  if (n < primes_small[NPRIMES_SMALL-1]) {
+    UV p, pi;
+    for (pi = 1;  (p = primes_small[pi]) <= n; pi++) {
+      logp = logl(p);
+      if (p <= sqrtn) logp *= floorl(logn/logp+1e-15);
+      KAHAN_SUM(sum, logp);
+    }
+  } else {
     UV seg_base, seg_low, seg_high;
     unsigned char* segment;
     void* ctx;
-    KAHAN_SUM(sum, logl(2));
-    KAHAN_SUM(sum, logl(3));
-    KAHAN_SUM(sum, logl(5));
+    if (!which) {
+      KAHAN_SUM(sum,logl(2)); KAHAN_SUM(sum,logl(3)); KAHAN_SUM(sum,logl(5));
+    } else {
+      KAHAN_SUM(sum, logl(2) * floorl(logn/logl(2) + 1e-15));
+      KAHAN_SUM(sum, logl(3) * floorl(logn/logl(3) + 1e-15));
+      KAHAN_SUM(sum, logl(5) * floorl(logn/logl(5) + 1e-15));
+    }
     ctx = start_segment_primes(7, n, &segment);
     while (next_segment_primes(ctx, &seg_base, &seg_low, &seg_high)) {
       START_DO_FOR_EACH_SIEVE_PRIME( segment, seg_low - seg_base, seg_high - seg_base ) {
-        KAHAN_SUM(sum, logl(seg_base + p));
-      } END_DO_FOR_EACH_SIEVE_PRIME
-    }
-    end_segment_primes(ctx);
-  }
-  return sum;
-}
-long double _XS_chebyshev_psi(UV n)
-{
-  long double logn = logl(n);
-  UV sqrtn = isqrt(n);
-  KAHAN_INIT(sum);
-
-  if (n < 10000) {
-    START_DO_FOR_EACH_PRIME(2, n) {
-      long double logp = logl(p);
-      KAHAN_SUM(sum, (p > (n/p)) ? logp : logp * floorl(logn/logp + 1e-15));
-    } END_DO_FOR_EACH_PRIME
-    return (double) sum;
-  }
-
-  START_DO_FOR_EACH_PRIME(2, sqrtn) {
-    long double logp = logl(p);
-    KAHAN_SUM(sum, logp * floorl(logn/logp + 1e-15));
-  } END_DO_FOR_EACH_PRIME
-
-  { /* Segment from sqrt(n) to n */
-    UV seg_base, seg_low, seg_high;
-    unsigned char* segment;
-    void* ctx;
-    ctx = start_segment_primes(sqrtn+1, n, &segment);
-    while (next_segment_primes(ctx, &seg_base, &seg_low, &seg_high)) {
-      START_DO_FOR_EACH_SIEVE_PRIME( segment, seg_low - seg_base, seg_high - seg_base ) {
-        KAHAN_SUM(sum, logl(seg_base + p));
+        p += seg_base;
+        logp = logl(p);
+        if (p <= sqrtn) logp *= floorl(logn/logp+1e-15);
+        KAHAN_SUM(sum, logp);
       } END_DO_FOR_EACH_SIEVE_PRIME
     }
     end_segment_primes(ctx);
