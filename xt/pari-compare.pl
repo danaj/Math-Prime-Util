@@ -63,7 +63,7 @@ while (1) {
 
 }
 
-{ my $n = int(rand(10**5));
+{ my $n = 1+int(rand(10**5));  # Pari doesn't like 0
   die "nth_prime($n)" unless Math::Pari::prime($n) == nth_prime($n);
 }
 

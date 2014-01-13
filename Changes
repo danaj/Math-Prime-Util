@@ -169,8 +169,8 @@ Revision history for Perl module Math::Prime::Util
 
     [ADDED]
 
-    - is_proven_prime
-    - is_proven_prime_with_cert
+    - is_provable_prime
+    - is_provable_prime_with_cert
     - carmichael_lambda
     - znorder
     - prime_iterator_object
