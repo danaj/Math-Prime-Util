@@ -918,6 +918,34 @@ UV totient(UV n) {
   return totient;
 }
 
+static const UV jordan_overflow[5] =
+#if BITS_PER_WORD == 64
+  {UVCONST(4294967311), 2642249, 65537, 7133, 1627};
+#else
+  {UVCONST(     65537),    1627,   257,   85,   41};
+#endif
+UV jordan_totient(UV k, UV n) {
+  UV factors[MPU_MAX_FACTORS+1];
+  int nfac, i, j;
+  UV totient;
+  if (k == 0 || n <= 1) return (n == 1);
+  if (k > 6 || (k > 1 && n >= jordan_overflow[k-2])) return 0;
+
+  totient = 1;
+  nfac = factor(n,factors);
+  for (i = 0; i < nfac; i++) {
+    UV p = factors[i];
+    UV pk = p;
+    for (j = 1; j < k; j++)  pk *= p;
+    totient *= (pk-1);
+    while (i+1 < nfac && p == factors[i+1]) {
+      i++;
+      totient *= pk;
+    }
+  }
+  return totient;
+}
+
 UV carmichael_lambda(UV n) {
   UV fac[MPU_MAX_FACTORS+1];
   UV exp[MPU_MAX_FACTORS+1];

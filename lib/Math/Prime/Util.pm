@@ -116,6 +116,7 @@ BEGIN {
     *prev_prime    = \&Math::Prime::Util::_generic_prev_prime;
     *exp_mangoldt  = \&Math::Prime::Util::_generic_exp_mangoldt;
     *euler_phi     = \&Math::Prime::Util::_generic_euler_phi;
+    *jordan_totient= \&Math::Prime::Util::PP::jordan_totient;
     *moebius       = \&Math::Prime::Util::_generic_moebius;
     *mertens       = \&Math::Prime::Util::_generic_mertens;
     *prime_count   = \&Math::Prime::Util::_generic_prime_count;
@@ -1315,40 +1316,6 @@ sub _generic_euler_phi {
   return Math::Prime::Util::PP::euler_phi($n) if !defined $nend;
   _validate_num($nend) || _validate_positive_integer($nend);
   return Math::Prime::Util::PP::euler_phi_range($n, $nend);
-}
-
-# Jordan's totient -- a generalization of Euler's totient.
-sub jordan_totient {
-  my($k, $n) = @_;
-  _validate_num($k, 1) || _validate_positive_integer($k, 1);
-  return euler_phi($n) if $k == 1;
-
-  return 0 if defined $n && $n <= 0;  # Following SAGE's logic here.
-  _validate_num($n) || _validate_positive_integer($n);
-  return 1 if $n <= 1;
-
-  my @pe = factor_exp($n);
-
-  $n = Math::BigInt->new("$n") if ref($_[1]) eq 'Math::BigInt';
-  my $totient = $n - $n + 1;
-
-  if (ref($n) ne 'Math::BigInt') {
-    foreach my $f (@pe) {
-      my ($p, $e) = @$f;
-      my $fmult = int($p ** $k);
-      $totient *= ($fmult - 1);
-      $totient *= $fmult for (2 .. $e);
-    }
-  } else {
-    my $zero = $n->copy->bzero;
-    foreach my $f (@pe) {
-      my ($p, $e) = @$f;
-      my $fmult = $zero->copy->badd("$p")->bpow($k);
-      $totient->bmul($fmult->copy->bdec());
-      $totient->bmul($fmult) for (2 .. $e);
-    }
-  }
-  return $totient;
 }
 
 sub _generic_divisor_sum {

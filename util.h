@@ -37,6 +37,7 @@ extern UV totient(UV n);
 extern int moebius(UV n);
 extern UV exp_mangoldt(UV n);
 extern UV carmichael_lambda(UV n);
+extern UV jordan_totient(UV k, UV n);
 extern UV znprimroot(UV n);
 extern UV znorder(UV a, UV n);
 extern UV znlog(UV a, UV g, UV p);

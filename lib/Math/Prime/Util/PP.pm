@@ -494,6 +494,29 @@ sub prev_prime {
   #$d*30+$m;
 }
 
+sub jordan_totient {
+  my($k, $n) = @_;
+  _validate_num($k) || _validate_positive_integer($k);
+  return ($n == 1) ? 1 : 0  if $k == 0;
+  return euler_phi($n)      if $k == 1;
+  return 0 if defined $n && $n < 0;  # Following SAGE's logic here.
+  _validate_num($n) || _validate_positive_integer($n);
+  return ($n == 1) ? 1 : 0  if $n <= 1;
+
+  my @pe = Math::Prime::Util::factor_exp($n);
+  $n = Math::BigInt->new("$n") unless ref($n) eq 'Math::BigInt';
+  my $totient = BONE->copy;
+  foreach my $f (@pe) {
+    my ($p, $e) = @$f;
+    $p = Math::BigInt->new("$p") unless ref($p) eq 'Math::BigInt';
+    $p->bpow($k);
+    $totient->bmul($p->copy->bdec());
+    $totient->bmul($p) for 2 .. $e;
+  }
+  $totient = _bigint_to_int($totient) if $totient->bacmp(''.~0) <= 0;
+  return $totient;
+}
+  
 sub euler_phi {
   my($n) = @_;
   return 0 if $n < 0;
