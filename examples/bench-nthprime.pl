@@ -11,10 +11,10 @@ my $count = shift || -5;
 
 srand(29);
 my @darray;
-push @darray, [gendigits($_,int(5400/($_*$_*$_)))]  for (2 .. 10);
+push @darray, [gendigits($_,int(5400/($_*$_*$_)))]  for 2 .. 13;
 
 my $sum;
-foreach my $digits (3 .. 10) {
+foreach my $digits (3 .. 12) {
   my @digarray = @{$darray[$digits-2]};
   my $numitems = scalar @digarray;
   my $timing = cmpthese(

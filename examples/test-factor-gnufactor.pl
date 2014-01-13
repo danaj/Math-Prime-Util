@@ -117,9 +117,9 @@ sub test_array {
   # We should ignore the small digits, since we're comparing direct
   # Perl functions with multiple command line invocations.  It really
   # doesn't make sense until we're over 1ms per number.
-  printf "  MPU:%8.3f ms", (($mpusec*1000) / scalar @narray);
-  printf("  GNU:%8.3f ms", (($gnusec*1000) / scalar @narray)) if $do_gnu;
-  printf("  Pari:%8.3f ms", (($parisec*1000) / scalar @narray)) if $do_pari;
+  printf "  MPU:%8.4f ms", (($mpusec*1000) / scalar @narray);
+  printf("  GNU:%8.4f ms", (($gnusec*1000) / scalar @narray)) if $do_gnu;
+  printf("  Pari:%8.4f ms", (($parisec*1000) / scalar @narray)) if $do_pari;
   print "\n";
 }
 

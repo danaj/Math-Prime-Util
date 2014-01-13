@@ -1249,12 +1249,10 @@ sub znorder {
   return $k;
 }
 
+# This is just a stupid brute force search.
 sub znlog {
-  my($a,$g,$p) = @_;
-  # This is just a stupid brute force search.
-  $a = Math::BigInt->new("$a") unless ref($a) eq 'Math::BigInt';
-  $g = Math::BigInt->new("$g") unless ref($g) eq 'Math::BigInt';
-  $p = Math::BigInt->new("$p") unless ref($p) eq 'Math::BigInt';
+  my ($a,$g,$p) =
+    map { ref($_) eq 'Math::BigInt' ? $_ : Math::BigInt->new("$_") } @_;
   for (my $n = BONE->copy; $n < $p; $n->binc) {
     my $t = $g->copy->bmodpow($n, $p);
     if ($t == $a) {
