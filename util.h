@@ -127,7 +127,13 @@ static int is_perfect_square(UV n)
   #define clz(n)        ((n) ?    __builtin_clzl(n) : 32)
   #define log2floor(n)  ((n) ? 31-__builtin_clzl(n) : 0)
  #endif
-#elif defined (_MSC_VER)
+
+ /* For MSC, we need to use _BitScanForward and _BitScanReverse.  The way to
+  * get to them has changed, so we're going to only use them on new systems.
+  * The performance of these functions are not super critical.
+  * What is:  popcnt, mulmod, and muladd.
+  */
+#elif defined (_MSC_VER) && _MSC_VER >= 1400
  #include <intrin.h>
  #ifdef FUNC_ctz
   static int ctz(UV n) {
@@ -170,7 +176,7 @@ static int is_perfect_square(UV n)
 #else
  #ifdef FUNC_ctz
    static const unsigned char _trail_debruijn32[32] = {
-      0, 1,28, 2,29,14,24, 3,30,22,20,15,25,17, 4, 8, 
+      0, 1,28, 2,29,14,24, 3,30,22,20,15,25,17, 4, 8,
      31,27,13,23,21,19,16, 7,26,12,18, 6,11, 5,10, 9 };
    static unsigned int ctz(UV n) {
      return n ? _trail_debruijn32[((n & -n) * UVCONST(0x077CB531)) >> 27] : 32;

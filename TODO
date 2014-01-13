@@ -60,7 +60,6 @@
     - Variable sieve size
     - look at sieve.c style prime walking
 
-- Add Inverse Li and Legendre Phi to API?
 
 - Iterators speedup:
   1) config option for sieved next_prime.  Very general, would make
@@ -70,3 +69,27 @@
 
 - Perhaps have main segment know the filled in range.  That would allow
   a sieved next_prime, and might speed up some counts and the like.
+
+- Consider exporting is_bpsw_prime
+
+- Add Inverse Li to API?
+
+- Benchmark simple SoEs, SoA.  Include Sisyphus SoE hidden in Math::GMPz.
+
+- Redo trial vs. segment test in Util.pm primes().
+
+- commit Porter example
+
+- Try using malloc/free for win32 cache memory.  #define NO_XSLOCKS
+
+- Investigate optree constant folding in PP compilation for performance.
+  Use B::Deparse to check.
+
+- Move more functions from _generic_... to PP::
+
+- Ensure a fast path for Math::GMP from MPU -> MPU:GMP -> GMP, and back.
+
+- znlog bignum tests, znlog better implementation
+
+- Make a test that takes each function with a Pari equivalent, constructs
+  random arguments, and compares.  Loop over all functions.
