@@ -1329,6 +1329,7 @@ sub jordan_totient {
 
   my @pe = factor_exp($n);
 
+  $n = Math::BigInt->new("$n") if ref($_[1]) eq 'Math::BigInt';
   my $totient = $n - $n + 1;
 
   if (ref($n) ne 'Math::BigInt') {
