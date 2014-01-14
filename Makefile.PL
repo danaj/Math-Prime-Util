@@ -1,4 +1,5 @@
 use ExtUtils::MakeMaker;
+use Config;
 
 my $broken64 = (18446744073709550592 == ~0);
 if ($broken64) {
@@ -13,6 +14,24 @@ random primes, will not work for large inputs.
 I highly recommend upgrading to a newer version of Perl.
 
 EOW
+}
+
+my $msvc_Oi = !!0;
+{
+    my ($cc, $ver) = $Config{cc};
+    if ($cc eq 'cl') {
+        my @ver = `$cc 2>&1`;    # Interesting output in STDERR
+        $ver = join('', @ver);
+
+        #print 'VER:'.$ver.':'."\n";
+        if ($ver =~ /Version (\d[\d\.]+)/ms) {
+            $ver = $1;
+        }
+        else {
+            die "Unknown version of Microsoft Visual C";
+        }
+        $msvc_Oi = '-Oi' if $ver < 14 && $ver >= 13; #VC2002/2003 only
+    }
 }
 
 WriteMakefile1(
@@ -81,6 +100,7 @@ WriteMakefile1(
              },
 
     MIN_PERL_VERSION => 5.006002,
+    DEFINE => $msvc_Oi,
 );
 
 sub WriteMakefile1 {   # Cribbed from eumm-upgrade by Alexandr Ciornii

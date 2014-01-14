@@ -137,7 +137,26 @@ static int is_perfect_square(UV n)
   #define log2floor(n)  ((n) ? 31-__builtin_clzl(n) : 0)
  #endif
 #elif defined (_MSC_VER)
+ #if _MSC_VER >= 1400
  #include <intrin.h>
+ #elif _MSC_VER >= 1300
+/* undocumented for VC 2003, not in headers or .libs
+  -Oi required for this to work in -O1 or -Od mode
+  http://www.geoffchappell.com/studies/msvc/language/preprocessor/directives/pragma/intrinsic.htm
+*/
+  unsigned char _BitScanForward(unsigned long* Index, unsigned long Mask);
+  unsigned char _BitScanReverse(unsigned long* Index, unsigned long Mask);
+  unsigned char _BitScanForward64(unsigned long * Index,unsigned __int64 Mask);
+  unsigned char _BitScanReverse64(unsigned long * Index,unsigned __int64 Mask);
+  #pragma intrinsic(_BitScanForward)
+  #pragma intrinsic(_BitScanReverse)
+  #pragma intrinsic(_BitScanForward64)
+  #pragma intrinsic(_BitScanReverse64)
+ #else
+  unsigned char __fastcall _BitScanForward(unsigned long* Index, unsigned long Mask);
+  unsigned char __fastcall _BitScanReverse(unsigned long* Index, unsigned long Mask);
+ #endif
+
  #ifdef FUNC_ctz
   static int ctz(UV n) {
     UV tz = 0;
