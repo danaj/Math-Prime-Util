@@ -926,8 +926,8 @@ static const UV jordan_overflow[5] =
 #endif
 UV jordan_totient(UV k, UV n) {
   UV factors[MPU_MAX_FACTORS+1];
-  int nfac, i, j;
-  UV totient;
+  int nfac, i;
+  UV j, totient;
   if (k == 0 || n <= 1) return (n == 1);
   if (k > 6 || (k > 1 && n >= jordan_overflow[k-2])) return 0;
 
