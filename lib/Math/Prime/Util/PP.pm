@@ -516,7 +516,7 @@ sub jordan_totient {
   $totient = _bigint_to_int($totient) if $totient->bacmp(''.~0) <= 0;
   return $totient;
 }
-  
+
 sub euler_phi {
   my($n) = @_;
   return 0 if $n < 0;
@@ -2639,15 +2639,27 @@ sub LogarithmicIntegral {
   }
 
   $x = Math::BigFloat->new("$x") if defined $bignum::VERSION && ref($x) ne 'Math::BigFloat';
-  my $logx = log($x);
 
   # Do divergent series here for big inputs.  Common for big pc approximations.
   # Why is this here?
   #   1) exp(log(x)) results in a lot of lost precision
   #   2) exp(x) with lots of precision turns out to be really slow, and in
   #      this case it was unnecessary.
+  my $tol = 1e-16;
+  my $xdigits = 0;
+  my $finalacc = 0;
+  if (ref($x) =~ /^Math::Big/) {
+    $xdigits = $x->accuracy || Math::BigFloat->accuracy() || Math::BigFloat->div_scale();
+    my $xlen = length($x->bfloor->bstr());
+    $xdigits = $xlen if $xdigits < $xlen;
+    $finalacc = $xdigits;
+    $xdigits += length(int(log(0.0+"$x"))) + 1;
+    $tol = Math::BigFloat->new(10)->bpow(-$xdigits);
+    $x->accuracy($xdigits);
+  }
+  my $logx = $xdigits ? $x->copy->blog(undef,$xdigits) : log($x);
+
   if ($x > 1e16) {
-    my $tol = 1e-20;
     my $invx = 1.0 / $logx;
     # n = 0  =>  0!/(logx)^0 = 1/1 = 1
     # n = 1  =>  1!/(logx)^1 = 1/logx
@@ -2663,13 +2675,14 @@ sub LogarithmicIntegral {
         $sum -= ($last_term/3);
         last;
       }
+      $term->bround($xdigits) if $xdigits;
     }
     my $val = $x * $invx * $sum;
+    $val->accuracy($finalacc) if $xdigits;
     return $val;
   }
   # Convergent series.
   if ($x >= 1) {
-    my $tol  = 1e-20;
     my $fact_n = 1.0;
     my $nfac = 1.0;
     my $sum  = 0.0;
@@ -2678,9 +2691,11 @@ sub LogarithmicIntegral {
       my $term = $fact_n / $n;
       $sum += $term;
       last if $term < $tol;
+      $term->bround($xdigits) if $xdigits;
     }
     my $eulerconst = (ref($x) eq 'Math::BigFloat') ? Math::BigFloat->new(CONST_EULER) : 0.0+CONST_EULER;
     my $val = $eulerconst + log($logx) + $sum;
+    $val->accuracy($finalacc) if $xdigits;
     return $val;
   }
 
