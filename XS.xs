@@ -734,8 +734,9 @@ znlog(IN SV* sva, IN SV* svg, IN SV* svp)
     gstatus = _validate_int(aTHX_ svg, 0);
     pstatus = _validate_int(aTHX_ svp, 0);
     if (astatus == 1 && gstatus == 1 && pstatus == 1) {
-      UV ret = znlog(my_svuv(sva), my_svuv(svg), my_svuv(svp));
-      if (ret == 0) XSRETURN_UNDEF;
+      UV a = my_svuv(sva), g = my_svuv(svg), p = my_svuv(svp);
+      UV ret = znlog(a, g, p);
+      if (ret == 0 && a > 1) XSRETURN_UNDEF;
       XSRETURN_UV(ret);
     }
     _vcallsub_with_pp("znlog");

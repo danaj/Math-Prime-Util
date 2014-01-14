@@ -1002,8 +1002,8 @@ UV znorder(UV a, UV n) {
   int i, nfactors;
   UV j, phi, k = 1;
 
-  if (n == 0 || a == 0) return 0;
-  if (n == 1 || a == 1) return 1;
+  if (n <= 1) return n;   /* znorder(x,0) = 0, znorder(x,1) = 1          */
+  if (a <= 1) return a;   /* znorder(0,x) = 0, znorder(1,x) = 1  (x > 1) */
   if (gcd_ui(a,n) > 1)  return 0;
 
   /* Abhijit Das, algorithm 1.7, applied to Carmichael Lambda */
@@ -1094,7 +1094,7 @@ UV divmod(UV a, UV b, UV n) {   /* a / b  mod n */
 UV znlog(UV a, UV g, UV p) {
   UV k;
   const int verbose = _XS_get_verbose();
-  if (a == 0 || g == 0 || p < 2)
+  if (a <= 1 || g == 0 || p < 2)
     return 0;
   k = dlp_trial(a, g, p, DLP_TRIAL_NUM);
   if (k != 0 || p <= DLP_TRIAL_NUM)
@@ -1221,7 +1221,7 @@ long double _XS_ExponentialIntegral(long double x) {
       fact_n *= (long double)x * invn;
       term = fact_n * invn;
       KAHAN_SUM(sum, term);
-      /* printf("C  after adding %.8lf, val = %.8lf\n", term, sum); */
+      /* printf("C  after adding %.20Lf, val = %.20Lf\n", term, sum); */
       if ( term < LDBL_EPSILON*sum) break;
     }
     KAHAN_SUM(sum, euler_mascheroni);
