@@ -100,6 +100,7 @@ t/90-release-perlcritic.t
 t/91-release-pod-syntax.t
 t/92-release-pod-coverage.t
 t/93-release-spelling.t
+t/94-weaken.t
 xt/moebius-mertens.pl
 xt/totient-range.pl
 xt/primality-small.pl
@@ -112,7 +113,7 @@ xt/make-script-test-data.pl
 xt/measure_zeta_accuracy.pl
 xt/pari-totient-moebius.pl
 xt/nthprime.t
-xt/paricompare.t
+xt/pari-compare.pl
 xt/primecount-approx.t
 xt/primecount-many.t
 xt/primes-edgecases.pl
