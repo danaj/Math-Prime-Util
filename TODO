@@ -90,6 +90,3 @@
 - Ensure a fast path for Math::GMP from MPU -> MPU:GMP -> GMP, and back.
 
 - znlog bignum tests, znlog better implementation
-
-- Make a test that takes each function with a Pari equivalent, constructs
-  random arguments, and compares.  Loop over all functions.
