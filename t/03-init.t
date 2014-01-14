@@ -17,7 +17,7 @@ my $diag = "Using " .
   ((Math::Prime::Util::prime_get_config->{xs})
     ? "XS"
     : "PP") .
-  ((Math::Prime::Util::prime_get_config->{gmp}) 
+  ((Math::Prime::Util::prime_get_config->{gmp})
     ? " with MPU::GMP version $Math::Prime::Util::GMP::VERSION."
     : ".") .
   "\n";

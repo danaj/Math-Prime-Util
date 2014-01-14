@@ -62,7 +62,7 @@ is( is_provable_prime(871139809), 0, "871139809 is composite" );
 is( is_provable_prime(1490266103), 2, "1490266103 is provably prime" );
 
 foreach my $p (@plist) {
- 
+
   SKIP: {
     skip "Broken 64-bit causes trial factor to barf", 6
       if $broken64 && $p > 2**60;

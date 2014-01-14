@@ -4211,7 +4211,7 @@ common contemporary use I am aware of are:
 
 =item libtommath
 
-Uses the first C<k> prime bases.  This is unacceptable for
+Uses the first C<k> prime bases.  This is problematic for
 cryptographic use, as there are known methods (e.g. Arnault 1994) for
 constructing counterexamples.  The number of bases required to avoid
 false results is unreasonably high, hence performance is slow even
@@ -4250,9 +4250,9 @@ adversarial situation we can assume the inputs will be selected such
 that they are one of our counterexamples.  Now we need absurdly large
 numbers of tests.  This is like playing "pick my number" but the
 number is fixed forever at the start, the guesser gets to know
-everyone else's guesses and results who has every played, and can
-keep playing as long as they like.  It's only valid if the players
-are completely oblivious to what is happening.
+everyone else's guesses and results, and can keep playing as long as
+they like.  It's only valid if the players are completely oblivious to
+what is happening.
 
 
 =head1 LIMITATIONS
