@@ -1125,12 +1125,15 @@ long double chebyshev_function(UV n, int which)
     UV seg_base, seg_low, seg_high;
     unsigned char* segment;
     void* ctx;
+    long double logl2 = logl(2);
+    long double logl3 = logl(3);
+    long double logl5 = logl(5);
     if (!which) {
-      KAHAN_SUM(sum,logl(2)); KAHAN_SUM(sum,logl(3)); KAHAN_SUM(sum,logl(5));
+      KAHAN_SUM(sum,logl2); KAHAN_SUM(sum,logl3); KAHAN_SUM(sum,logl5);
     } else {
-      KAHAN_SUM(sum, logl(2) * floorl(logn/logl(2) + 1e-15));
-      KAHAN_SUM(sum, logl(3) * floorl(logn/logl(3) + 1e-15));
-      KAHAN_SUM(sum, logl(5) * floorl(logn/logl(5) + 1e-15));
+      KAHAN_SUM(sum, logl2 * floorl(logn/logl2 + 1e-15));
+      KAHAN_SUM(sum, logl3 * floorl(logn/logl3 + 1e-15));
+      KAHAN_SUM(sum, logl5 * floorl(logn/logl5 + 1e-15));
     }
     ctx = start_segment_primes(7, n, &segment);
     while (next_segment_primes(ctx, &seg_base, &seg_low, &seg_high)) {
