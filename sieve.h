@@ -32,9 +32,13 @@ static const unsigned char imask30[129] = {
 /* Add this to a number and you'll ensure you're on a wheel location */
 static const unsigned char distancewheel30[30] =
     {1,0,5,4,3,2,1,0,3,2,1,0,1,0,3,2,1,0,1,0,3,2,1,0,5,4,3,2,1,0};
-/* Once on the wheel, add this to get to next spot.  In p space, not m. */
+/* add this to n to get to the next wheel location */
 static const unsigned char wheeladvance30[30] =
-    {0,6,0,0,0,0,0,4,0,0,0,2,0,4,0,0,0,2,0,4,0,0,0,6,0,0,0,0,0,2};
+    {1,6,5,4,3,2,1,4,3,2,1,2,1,4,3,2,1,2,1,4,3,2,1,6,5,4,3,2,1,2};
+/* subtract this from n to get to the previous wheel location */
+static const unsigned char wheelretreat[30] =
+    {1,2,1,2,3,4,5,6,1,2,3,4,1,2,1,2,3,4,1,2,1,2,3,4,1,2,3,4,5,6};
+
 
 #ifdef FUNC_is_prime_in_sieve
 static int is_prime_in_sieve(const unsigned char* sieve, UV p) {

@@ -131,7 +131,7 @@ int factor(UV n, UV *factors)
           croak("bad factor\n");
         n = tofac_stack[ntofac];  /* Set n to the other one */
       } else {
-        /* Factor via trial division.  Nothing should make it here. */
+        /* Factor via trial division.  Nothing should ever get here. */
         UV m = f % 30;
         UV limit = isqrt(n);
         if (verbose) printf("doing trial on %"UVuf"\n", n);

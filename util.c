@@ -235,17 +235,12 @@ UV next_prime(UV n)
   release_prime_cache(sieve);
   if (next != 0) return next;
 
-  d = n/30;
-  m = n - d*30;
-  /* Move forward one, knowing we may not be on the wheel */
-  if (m == 29) { d++; m = 1; } else  { m = nextwheel30[m]; }
-  n = d*30+m;
-  while (!is_prob_prime(n)) {
-    /* Move forward one, knowing we are on the wheel */
+  m = n % 30;
+  do { /* Move forward one. */
     n += wheeladvance30[m];
     m = nextwheel30[m];
-  }
-  return(n);
+  } while (!is_prob_prime(n));
+  return n;
 }
 
 
@@ -264,12 +259,10 @@ UV prev_prime(UV n)
   }
   release_prime_cache(sieve);
 
-  d = n/30;
-  m = n - d*30;
-  do {
+  m = n % 30;
+  do { /* Move back one. */
+    n -= wheelretreat[m];
     m = prevwheel30[m];
-    if (m==29) d--;
-    n = d*30+m;
   } while (!is_prob_prime(n));
   return n;
 }
