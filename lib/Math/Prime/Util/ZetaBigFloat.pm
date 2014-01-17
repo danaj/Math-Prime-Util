@@ -280,7 +280,10 @@ sub _Recompute_Dk {
       $sum_n->bmul($d)->badd( $sum_d->copy->bmul($n) );
       $sum_d->bmul($d);
       $gcd = Math::BigInt::bgcd($sum_n, $sum_d);
-      do { $sum_n /= $gcd;  $sum_d /= $gcd; } unless $gcd->is_one;
+      do {
+        $sum_n = int($sum_n / $gcd);
+        $sum_d = int($sum_d / $gcd);
+      } unless $gcd->is_one;
       my $dmul = (2*$i+1) * (2*$i+2);
       $n->bmul($nterms+$i)->blsft(2);
       $d->bdiv($nterms-$i)->bmul($dmul);
