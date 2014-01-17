@@ -2418,12 +2418,14 @@ discussion.
 
   print "$n is prime" if is_prime($n);
 
-Returns 2 if the number is prime, 0 if not.  For numbers larger than C<2^64>
-it will return 0 for composite and 1 for probably prime, using an
-extra-strong BPSW test.  If L<Math::Prime::Util::GMP> is installed, some
-additional primality tests are also performed on large inputs, and a
-quick attempt is made to perform a primality proof, so it will
-return 2 for many other inputs.
+Returns 0 is the number is composite, 1 if it is probably prime, and 2 if
+it is definitely prime.  For numbers smaller than C<2^64> it will only
+return 0 (composite) or 2 (definitely prime), as this range has been
+exhaustively tested and has no counterexamples.  For larger numbers,
+an extra-strong BPSW test is used.
+If L<Math::Prime::Util::GMP> is installed, some additional primality tests
+are also performed, and a quick attempt is made to perform a primality
+proof, so it will return 2 for many other inputs.
 
 Also see the L</is_prob_prime> function, which will never do additional
 tests, and the L</is_provable_prime> function which will construct a proof
@@ -2439,12 +2441,13 @@ published in 1980.
 
 For cryptographic key generation, you may want even more testing for probable
 primes (NIST recommends some additional M-R tests).  This can be done using
-additional random bases with L</is_strong_pseudoprime>, or a different test
-such as L</is_frobenius_underwood_pseudoprime>.  Even better, make sure
-L<Math::Prime::Util::GMP> is installed and use L</is_provable_prime> which
-should be reasonably fast for sizes under 2048 bits.
-Another possibility is to use L<Math::Prime::Util/random_maurer_prime> which
-constructs a random provable prime.
+a different test (e.g. L</is_frobenius_underwood_pseudoprime>) or using
+additional M-R tests with random bases with L</miller_rabin_random>.
+Even better, make sure L<Math::Prime::Util::GMP> is installed and use
+L</is_provable_prime> which should be reasonably fast for sizes under
+2048 bits.  Another possibility is to use
+L<Math::Prime::Util/random_maurer_prime> which constructs a random
+provable prime.
 
 
 =head2 primes
@@ -2498,18 +2501,13 @@ Given a block and either an end count or a start and end pair, calls the
 block for each prime in the range.  Compared to getting a big array of primes
 and iterating through it, this is more memory efficient and perhaps more
 convenient.  This will almost always be the fastest way to loop over a range
-of primes.  Nesting and using in threads are allowed.
+of primes.  Nesting and use in threads are allowed.
 
 Math::BigInt objects may be used for the range.
 
 For some uses an iterator (L</prime_iterator>, L</prime_iterator_object>)
 or a tied array (L<Math::Prime::Util::PrimeArray>) may be more convenient.
-Objects can be passed to functions, and allow early loop exits without
-exceptions.  Here is a clumsy L</forprimes> exception example:
-
-  use bigint;
-  eval { forprimes { die "$_\n" if $_ % 123 == 1 } 2**100, 2**101 };
-  my $n = 0+$@;
+Objects can be passed to functions, and allow early loop exits.
 
 
 =head2 forcomposites
@@ -2518,8 +2516,9 @@ exceptions.  Here is a clumsy L</forprimes> exception example:
   forcomposites { say } 2000,2020;
 
 Given a block and either an end number or a start and end pair, calls the
-block for each composite in the inclusive range.  Starting at 2, the
-composites are the non-primes (C<0> and C<1> are neither prime nor composite).
+block for each composite in the inclusive range.  The composites are the
+numbers greater than 1 which are not prime:
+C<4, 6, 8, 9, 10, 12, 14, 15, ...>
 
 
 =head2 fordivisors
@@ -3133,12 +3132,12 @@ Takes a positive number as input, and returns 1 if the input passes the
 Agrawal-Kayal-Saxena (AKS) primality test.  This is a deterministic
 unconditional primality test which runs in polynomial time for general input.
 
-This function is only included for completeness and as an example.  The Perl
-implementation is fast compared to the only other Perl implementation
-available (in L<Math::Primality>), and the implementation in
-L<Math::Prime::Util::GMP> compares favorably to others in the literature.
-However AKS in general is far too slow to be of practical use.  R.P. Brent,
-2010: "AKS is not a practical algorithm.  ECPP is much faster."
+While this is an important theoretical algorithm, and makes an interesting
+example, it is hard to overstate just how impractically slow it is in
+practice.  It is not used for any purpose in non-theoretical work, as it is
+literally B<millions> of times slower than other algorithms.  From R.P.
+Brent, 2010:  "AKS is not a practical algorithm.  ECPP is much faster."
+We have ECPP, and indeed it is much faster.
 
 
 =head2 lucas_sequence
@@ -3148,14 +3147,12 @@ However AKS in general is far too slow to be of practical use.  R.P. Brent,
 Computes C<U_k>, C<V_k>, and C<Q_k> for the Lucas sequence defined by
 C<P>,C<Q>, modulo C<n>.  The modular Lucas sequence is used in a
 number of primality tests and proofs.
-
 The following conditions must hold:
-  - C<< D = P*P - 4*Q  !=  0 >>
-  - C<< P > 0 >>
-  - C<< P < n >>
-  - C<< Q < n >>
-  - C<< k >= 0 >>
-  - C<< n >= 2 >>
+C< D = P*P - 4*Q != 0>  ;
+C< 0 E<lt> P E<lt> n>  ;
+C< Q E<lt> n>  ;
+C< k E<gt>= 0>  ;
+C< n E<gt>= 2>.
 
 
 =head2 gcd
@@ -3176,7 +3173,7 @@ follow the semantics of Mathematica, Pari, and Perl 6, re:
   say "$n is square free" if moebius($n) != 0;
   $sum += moebius($_) for (1..200); say "Mertens(200) = $sum";
 
-Returns μ(n), the Möbius function (also called the Moebius, Mobius, or
+Returns μ(n), the Möbius function (also known as the Moebius, Mobius, or
 MoebiusMu function) for an integer input.  This function is 1 if
 C<n = 1>, 0 if C<n> is not square free (i.e. C<n> has a repeated factor),
 and C<-1^t> if C<n> is a product of C<t> distinct primes.  This is an
@@ -3186,11 +3183,12 @@ C<moebius(0) = 0> for convenience.
 If called with two arguments, they define a range C<low> to C<high>, and the
 function returns an array with the value of the Möbius function for every n
 from low to high inclusive.  Large values of high will result in a lot of
-memory use.  The algorithm used is Deléglise and Rivat (1996) algorithm 4.1,
-which is a segmented version of Lioen and van de Lune (1994) algorithm 3.2.
+memory use.  The algorithm used for ranges is Deléglise and Rivat (1996)
+algorithm 4.1, which is a segmented version of Lioen and van de Lune (1994)
+algorithm 3.2.
 
 The return values are read-only constants.  This should almost never come up,
-but it does mean trying to modify aliased return values will cause an
+but it means trying to modify aliased return values will cause an
 exception (modifying the returned scalar or array is fine).
 
 
@@ -3231,11 +3229,12 @@ theoretically used to create a faster solution.
   say "The Euler totient of $n is ", euler_phi($n);
 
 Returns φ(n), the Euler totient function (also called Euler's phi or phi
-function) for an integer value.  This is an arithmetic function that counts
+function) for an integer value.  This is an arithmetic function which counts
 the number of positive integers less than or equal to C<n> that are relatively
 prime to C<n>.  Given the definition used, C<euler_phi> will return 0 for all
-C<n E<lt> 1>.  This follows the logic used by SAGE.  Mathematica
-also returns 0 for input 0, but returns C<euler_phi(-n)> for C<n E<lt> 0>.
+C<n E<lt> 1>.  This follows the logic used by SAGE.  Mathematica and Pari
+return C<euler_phi(-n)> for C<n E<lt> 0>.  Mathematica returns 0 for C<n = 0>
+while Pari raises an exception.
 
 If called with two arguments, they define a range C<low> to C<high>, and the
 function returns an array with the totient of every n from low to high
@@ -3297,10 +3296,10 @@ yield similar results, albeit slower and using more memory.
   say chebyshev_psi(10000);
 
 Returns ψ(n), the second Chebyshev function for a non-negative integer input.
-This is the sum of the logarithm of each prime where C<p^k E<lt>= n> for an
-integer k.  An alternate computation is as the summatory Mangoldt function.
-Another alternate computation is as the logarithm of LCM(1,2,...,n).
-Hence these functions:
+This is the sum of the logarithm of each prime power where C<p^k E<lt>= n>
+for an integer k.  An alternate computation is as the summatory Mangoldt
+function.  Another alternate computation is as the logarithm of
+LCM(1,2,...,n).  Hence these functions:
 
   use List::Util qw/sum/;  use Math::BigFloat;
 
@@ -3313,25 +3312,29 @@ yield similar results, albeit slower and using more memory.
 =head2 divisor_sum
 
   say "Sum of divisors of $n:", divisor_sum( $n );
+  say "sigma_2($n) = ", divisor_sum($n, 2);
+  say "Number of divisors: sigma_0($n) = ", divisor_sum($n, 0);
 
-This function takes a positive integer as input and returns the sum of the
-k-th powers of the divisors of the input, including 1 and itself.  If the
-second argument (C<k>) is omitted it is assumed to be 1.  This is known as
-the sigma function (see Hardy and Wright section 16.7, or OEIS A000203).
-The API is identical to Pari/GP's C<sigma> function.
+This function takes a positive integer as input and returns the sum of
+its divisors, including 1 and itself.  An optional second argument C<k>
+may be given, which will result in the sum of the C<k-th> powers of the
+divisors to be returned.
 
-The second argument can be a code reference, which is called for each divisor
-and the results are summed.  This allows computation of other functions,
-but will be less efficient than using the numeric second argument.
+This is known as the sigma function (see Hardy and Wright section 16.7,
+or OEIS A000203).  The API is identical to Pari/GP's C<sigma> function.
+This function is useful for calculating things like aliquot sums, abundant
+numbers, perfect numbers, etc.
+
+The second argument may also be a code reference, which is called for each
+divisor and the results are summed.  This allows computation of other
+functions, but will be less efficient than using the numeric second argument.
+This corresponds to Pari/GP's C<sumdiv> function.
 
 An example of the 5th Jordan totient (OEIS A059378):
 
   divisor_sum( $n, sub { my $d=shift; $d**5 * moebius($n/$d); } );
 
 though we have a function L</jordan_totient> which is more efficient.
-
-This function is useful for calculating things like aliquot sums, abundant
-numbers, perfect numbers, etc.
 
 For numeric second arguments (sigma computations), the result will be a bigint
 if necessary.  For the code reference case, the user must take care to return
@@ -3415,8 +3418,8 @@ practical for producing large partition numbers as seen above.
 
 Returns the Carmichael function (also called the reduced totient function,
 or Carmichael λ(n)) of a positive integer argument.  It is the smallest
-positive integer m such that a^m = 1 mod n for every integer a coprime to n.
-This is L<OEIS series A002322|http://oeis.org/A002322>.
+positive integer C<m> such that C<a^m = 1 mod n> for every integer C<a>
+coprime to C<n>.  This is L<OEIS series A002322|http://oeis.org/A002322>.
 
 =head2 kronecker
 
@@ -3427,10 +3430,9 @@ return values with their meanings for odd positive C<n> are:
    1   a is a quadratic residue modulo n (a = x^2 mod n for some x)
   -1   a is a quadratic non-residue modulo n
 
-and the return value is congruent to C<a^((n-1)/2)>.  The Kronecker
-symbol is an extension of the Jacobi symbol to all integer values of
-C<n> from its domain of positive odd values of C<n>.  The Jacobi
-symbol is itself an extension of the Legendre symbol, which is
+The Kronecker symbol is an extension of the Jacobi symbol to all integer
+values of C<n> from the latter's domain of positive odd values of C<n>.
+The Jacobi symbol is itself an extension of the Legendre symbol, which is
 only defined for odd prime values of C<n>.  This corresponds to Pari's
 C<kronecker(a,n)> function and Mathematica's C<KroneckerSymbol[n,m]>
 function.
@@ -3440,7 +3442,7 @@ function.
   $order = znorder(2, next_prime(10**19)-6);
 
 Given two positive integers C<a> and C<n>, returns the multiplicative order
-of C<a> modulo <n>.  This is the smallest positive integer C<k> such that
+of C<a> modulo C<n>.  This is the smallest positive integer C<k> such that
 C<a^k ≡ 1 mod n>.  Returns 1 if C<a = 1>.  Returns undef if C<a = 0> or if
 C<a> and C<n> are not coprime, since no value will result in 1 mod n.
 This corresponds to Pari's C<znorder(Mod(a,n))> function and Mathematica's
@@ -3494,10 +3496,10 @@ meaning for each prime in the range, the chances are equally likely that it
 will be seen.  This is removes from consideration such algorithms as
 C<PRIMEINC>, which although efficient, gives very non-random output.  This
 also implies that the numbers will not be evenly distributed, since the
-primes are not evenly distributed.  Stated again, the random prime functions
-return a uniformly selected prime from the set of primes within the range.
-Hence given C<random_prime(1000)>, the numbers 2, 3, 487, 631, and 997 all
-have the same probability of being returned.
+primes are not evenly distributed.  Stated differently, the random prime
+functions return a uniformly selected prime from the set of primes within
+the range.  Hence given C<random_prime(1000)>, the numbers 2, 3, 487, 631,
+and 997 all have the same probability of being returned.
 
 For small numbers, a random index selection is done, which gives ideal
 uniformity and is very efficient with small inputs.  For ranges larger than
@@ -3522,6 +3524,9 @@ where using the blocking random source may be preferred.
 
 Examples of various ways to set your own irand function:
 
+  # System rand.  You probably don't want to do this.
+  prime_set_config(irand => sub { int(rand(4294967296)) });
+
   # Math::Random::Secure.  Uses ISAAC and strong seed methods.
   use Math::Random::Secure;
   prime_set_config(irand => \&Math::Random::Secure::irand);
@@ -3542,16 +3547,18 @@ Examples of various ways to set your own irand function:
   use Math::Random::MT::Auto;
   prime_set_config(irand=>sub {Math::Random::MT::Auto::irand() & 0xFFFFFFFF});
 
+  # Go back to MPU's default configuration
+  prime_set_config(irand => undef);
+
 
 =head2 random_ndigit_prime
 
   say "My 4-digit prime number is: ", random_ndigit_prime(4);
 
 Selects a random n-digit prime, where the input is an integer number of
-digits between 1 and the maximum native type (10 for 32-bit, 20 for 64-bit,
-10000 if bigint is active).  One of the primes within that range
-(e.g. 1000 - 9999 for 4-digits) will be uniformly selected using the
-C<irand> function as described above.
+digits.  One of the primes within that range (e.g. 1000 - 9999 for
+4-digits) will be uniformly selected using the C<irand> function as
+described above.
 
 If the number of digits is greater than or equal to the maximum native type,
 then the result will be returned as a BigInt.  However, if the C<nobigint>
@@ -3565,11 +3572,9 @@ For better performance with large bit sizes, install L<Math::Prime::Util::GMP>.
 
   my $bigprime = random_nbit_prime(512);
 
-Selects a random n-bit prime, where the input is an integer number of bits
-between 2 and the maximum representable bits (32, 64, or 100000 for native
-32-bit, native 64-bit, and bigint respectively).  A prime with the nth bit
-set will be uniformly selected, with randomness supplied via calls to the
-C<irand> function as described above.
+Selects a random n-bit prime, where the input is an integer number of bits.
+A prime with the nth bit set will be uniformly selected, with randomness
+supplied via calls to the C<irand> function as described above.
 
 For bit sizes of 64 and lower, L</random_prime> is used, which gives completely
 uniform results in this range.  For sizes larger than 64, Algorithm 1 of
@@ -4412,24 +4417,32 @@ Some of the highlights:
 
 =item C<isprime>
 
-Similar to MPU's L</is_prob_prime> or L</is_prime> functions.
-MPU is deterministic for native integers, and uses a strong
-BPSW test for bigints (with a quick primality proof tried as well).  The
-default version of Pari used by L<Math::Pari> (2.1.7) uses 10 random M-R
-bases, which is a probable prime test usually considered much weaker than the
-BPSW test used by MPU and newer versions of Pari (though better than a fixed
-set of bases).  Calling as C<isprime($n,1)> performs a Pocklington-Lehmer
-C<n-1> proof.  This is comparable in performance to MPU:GMP's C<n-1> proof
-implementation, and is reasonably fast for about 70 digits, but much slower
-than ECPP.
+The default L<Math::Pari> is built with Pari 2.1.7.  This uses 10 M-R
+tests with randomly chosen bases (fixed seed, but doesn't reset each
+invocation like GMP's C<is_probab_prime>).  This has a greater chance
+of false positives compared to the BPSW test.  Calling with
+C<isprime($n,1)> will perform a Pocklington-Lehmer C<n-1> proof,
+but this becomes unreasonably slow past 70 or so digits.
 
-If L<Math::Pari> is compiled with version 2.3.5 of Pari (this is not easy to
-do on many platforms), then the algorithms are completely different.  The
-C<isprime> function now acts like L</is_provable_prime> -- an APRCL proof
-is performed, which is quite efficient though requires using a larger stack
-for numbers of 300+ digits.  It is somewhat comparable in speed to MPU:GMP's
-ECPP proof method, but without a certificate.  Using the C<ispseudoprime>
-function will perform a BPSW test similar to L</is_prob_prime>.
+If L<Math::Pari> is built using Pari 2.3.5 (this requires manual
+configuration) then the primality tests are completely different.  Using
+C<ispseudoprime> will perform a BPSW test and is quite a bit faster than
+the older test.  C<isprime> now does an APR-CL proof (fast, but no
+certificate).
+
+L<Math::Primality> uses a strong BPSW test, which is the standard BPSW
+test based on the 1980 paper.  It has no known counterexamples (though
+like all these tests, we know some exist).  Pari 2.3.5 (and through at
+least 2.6.2) uses an almost-extra-strong BPSW test for its
+C<ispseudoprime> function.  This is deterministic for native integers,
+and should be excellent for bigints, with a slightly lower chance of
+counterexamples than the traditional strong test.
+L<Math::Prime::Util> uses the
+full extra-strong BPSW test, which has an even lower chance of
+counterexample.
+With L<Math::Prime::Util::GMP>, C<is_prime> adds 1 to 5 extra M-R tests
+using random bases, which further reduces the probability of a composite
+being allowed to pass.
 
 =item C<primepi>
 
@@ -4468,8 +4481,8 @@ Similar to MPU's L</divisors>.
 
 =item C<forprime>, C<forcomposite>, C<fordiv>, C<sumdiv>
 
-Similar to MPU's L</forprimes>, L</forcomposites>, L<fordivisors>, and
-L<divisor_sum>.
+Similar to MPU's L</forprimes>, L</forcomposites>, L</fordivisors>, and
+L</divisor_sum>.
 
 =item C<eulerphi>, C<moebius>
 
@@ -4505,8 +4518,8 @@ Similar to MPU's L</ExponentialIntegral>.
 
 =item C<zeta>
 
-A more feature-rich version MPU's L</RiemannZeta> function (supports negative
-and complex inputs).
+MPU has L</RiemannZeta> which takes non-negative real inputs, while Pari's
+function supports negative and complex inputs.
 
 =back
 
@@ -4559,15 +4572,18 @@ very limited compared to those.
 
 =item Primes
 
-L<primesieve|http://code.google.com/p/primesieve/> is the fastest publically
-available code I am aware of.  It is much faster than any of the alternatives,
-and even more so when run multi-threaded.  Tomás Oliveira e Silva's private
-code may be faster for very large values, but isn't available for testing.
+L<primesieve|http://code.google.com/p/primesieve/> and
+L<yafu|http://sourceforge.net/projects/yafu/>
+are the fastest publically available code I am aware of.  Primesieve
+will additionally take advantage of multiple cores with excellent
+efficiency.
+Tomás Oliveira e Silva's private code may be faster for very large
+values, but isn't available for testing.
 
 Note that the Sieve of Atkin is I<not> faster than the Sieve of Eratosthenes
 when both are well implemented.  The only Sieve of Atkin that is even
-competitive is Bernstein's super optimized I<primegen>, which runs slightly
-slower than the SoE in this module.  The SoE's in Pari, yafu, and primesieve
+competitive is Bernstein's super optimized I<primegen>, which runs on par
+with the SoE in this module.  The SoE's in Pari, yafu, and primesieve
 are all faster.
 
 =item Prime Counts and Nth Prime
@@ -4612,75 +4628,59 @@ directory of this distribution): pure Python in 12.1s and NUMPY in 2.8s.
 
 =head2 PRIMALITY TESTING
 
-C<is_prime>: my impressions for various sized inputs:
+=over 4
 
-   Module                   1-10 digits  10-20 digits  BigInts
-   -----------------------  -----------  ------------  --------------
-   Math::Prime::Util        Very fast    Very fast     Slow / Very Fast (1)
-   Math::Prime::XS          Very fast    Very slow (2) --
-   Math::Prime::FastSieve   Very fast    N/A (3)       --
-   Math::Primality          Very slow    Very slow     Fast
-   Math::Pari               Slow         OK            OK / Fast (4)
+=item Small inputs:  is_prime from 1 to 20M
 
-   (1) Without / With L<Math::Prime::Util::GMP> installed.
-   (2) Trial division only.  Very fast if every factor is tiny.
-   (3) Too much memory to hold the sieve (11dig = 6GB, 12dig = ~50GB)
-   (4) By default L<Math::Pari> installs Pari 2.1.7, which uses 10 M-R tests
-       for isprime and is not fast.  See notes below for 2.3.5.
+    2.6s  Math::Prime::Util      (sieve lookup if prime_precalc used)
+    3.4s  Math::Prime::FastSieve (sieve lookup)
+    4.4s  Math::Prime::Util      (trial + deterministic M-R)
+   10.9s  Math::Prime::XS        (trial)
+   36.5s  Math::Pari w/2.3.5     (BPSW)
+   78.2s  Math::Pari             (10 random M-R)
+  501.3s  Math::Primality        (deterministic M-R)
 
+=item Large native inputs:  is_prime from 10^16 to 10^16 + 20M
 
-The differences are in the implementations:
+    7.0s  Math::Prime::Util      (BPSW)
+   42.6s  Math::Pari w/2.3.5     (BPSW)
+  144.3s  Math::Pari             (10 random M-R)
+  664.0s  Math::Primality        (BPSW)
+  30 HRS  Math::Prime::XS        (trial)
+
+  These inputs are too large for Math::Prime::FastSieve.
+
+=item bigints:  is_prime from 10^100 to 10^100 + 0.2M
+
+    2.5s  Math::Prime::Util          (BPSW + 1 random M-R)
+    3.0s  Math::Pari w/2.3.5         (BPSW)
+   12.9s  Math::Primality            (BPSW)
+   35.3s  Math::Pari                 (10 random M-R)
+   53.5s  Math::Prime::Util w/o GMP  (BPSW)
+   94.4s  Math::Prime::Util          (n-1 or ECPP proof)
+  102.7s  Math::Pari w/2.3.5         (APR-CL proof)
+
+=back
 
 =over 4
 
-=item L<Math::Prime::Util>
+=item *
 
-first does simple divisibility tests to quickly recognize composites, then
-looks in the sieve for a fast bit lookup if possible (default up to 30,000
-but can be expanded via C<prime_precalc>).  Next, for relatively small inputs,
-a deterministic set of Miller-Rabin tests are used, while for larger inputs
-a strong BPSW test is performed.  For native integers, this is faster than
-any of the other modules.  With Bigints, you need the L<Math::Prime::Util::GMP>
-module installed to get good performance.  With that installed, it is about
-2x faster than Math::Primality and 10x faster than Math::Pari (default 2.1.7).
+MPU is consistently the fastest solution, and performs the most
+stringent probable prime tests on bigints.
 
-=item L<Math::Prime::XS>
+=item *
 
-does trial divisions, which is wonderful if the input has a small factor
-(or is small itself).  If given a large prime it can be tens of thousands of
-times slower than MPU.  It does not support bigints.
+Math::Primality has a lot of overhead that makes it quite slow for
+native size integers.  With bigints we finally see it work well.
 
-=item L<Math::Prime::FastSieve>
+=item *
 
-only works in a sieved range, which is really fast if you can do it
-(M::P::U will do the same if you call C<prime_precalc>).  Larger inputs
-just need too much time and memory for the sieve.
-
-=item L<Math::Primality>
-
-uses GMP (in Perl) for all work.  Under ~32-bits it uses 2 or 3 MR tests,
-while above 4759123141 it performs a BPSW test.  This is great for
-bigints over 2^64, but it is significantly slower than native precision
-tests.  With 64-bit numbers it is generally an order of magnitude or more
-slower than any of the others.  Once bigints are being used, its relative
-performance is quite good.  It is faster than this module unless
-L<Math::Prime::Util::GMP> has been installed, in which case Math::Prime::Util
-is faster.
-
-=item L<Math::Pari>
-
-has some very effective code, but it has some overhead to get to it from
-Perl.  That means for small numbers it is relatively slow: an order of
-magnitude slower than M::P::XS and M::P::Util (arguably this is
-only important for benchmarking since "slow" is ~2 microseconds).  With
-the default Pari version, C<isprime> will do M-R tests for 10 randomly
-chosen bases, but can perform a Pocklington-Lehmer proof if requested using
-C<isprime(x,1)>.  Both could fail to identify a composite.  If pari 2.3.5
-is used instead (this requires hand-building the Math::Pari module) then
-the options are quite different.  C<ispseudoprime(x,0)> performs a strong
-BPSW test, while C<isprime> now performs a primality proof using a fast
-implementation of the APRCL method.  While the APRCL method is very fast
-it is still much, much slower than a BPSW probable prime test for large inputs.
+Math::Pari build with 2.3.5 not only has a better primality test, but
+runs faster.  It still has quite a bit of overhead with native size
+integers.  Pari/gp 2.5.0's takes 11.3s, 16.9s, and 2.9s respectively
+for the tests above.  MPU is still faster, but clearly the time for
+native integers is dominated by the calling overhead.
 
 =back
 
