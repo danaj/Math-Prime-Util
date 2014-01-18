@@ -76,8 +76,6 @@
 
 - Benchmark simple SoEs, SoA.  Include Sisyphus SoE hidden in Math::GMPz.
 
-- Redo trial vs. segment test in Util.pm primes().
-
 - commit Porter example
 
 - Try using malloc/free for win32 cache memory.  #define NO_XSLOCKS
