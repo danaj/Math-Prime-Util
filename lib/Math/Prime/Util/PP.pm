@@ -371,19 +371,16 @@ sub trial_primes {
 }
 
 sub primes {
-  my $optref = (ref $_[0] eq 'HASH')  ?  shift  :  {};
-  croak "no parameters to primes" unless scalar @_ > 0;
-  croak "too many parameters to primes" unless scalar @_ <= 2;
-  my $low = (@_ == 2)  ?  shift  :  2;
-  my $high = shift;
+  my($low,$high) = @_;
+  if (scalar @_ > 1) {
+    _validate_positive_integer($low);
+    _validate_positive_integer($high);
+  } else {
+    ($low,$high) = (2, $low);
+    _validate_positive_integer($high);
+  }
   my $sref = [];
-
-  _validate_positive_integer($low);
-  _validate_positive_integer($high);
-
   return $sref if ($low > $high) || ($high < 2);
-
-  # Ignore method options in this code
 
   # At some point even the pretty-fast pure perl sieve is going to be a
   # dog, and we should move to trials.  This is typical with a small range

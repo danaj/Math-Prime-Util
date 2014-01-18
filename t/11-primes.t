@@ -7,8 +7,19 @@ use Math::Prime::Util qw/primes prime_count/;
 
 my $use64 = Math::Prime::Util::prime_get_config->{'maxbits'} > 32;
 $use64 = 0 if 18446744073709550592 == ~0;
+my $usexs = Math::Prime::Util::prime_get_config->{'xs'};
 
-plan tests => 12+3 + 12 + 1 + 19 + ($use64 ? 1 : 0) + 1 + 13*5;
+my %primesubs = (
+  trial   => \&Math::Prime::Util::trial_primes,
+  erat    => \&Math::Prime::Util::erat_primes,
+  segment => \&Math::Prime::Util::segment_primes,
+  sieve   => \&Math::Prime::Util::sieve_primes,
+  primes  => \&Math::Prime::Util::primes,
+);
+# Don't test the private XS methods if we're not using XS.
+delete @primesubs{qw/trial erat segment sieve/} unless $usexs;
+
+plan tests => 12+3 + 12 + 1 + 19 + ($use64 ? 1 : 0) + 1 + 13*scalar(keys(%primesubs));
 
 ok(!eval { primes(undef); },   "primes(undef)");
 ok(!eval { primes("a"); },     "primes(a)");
@@ -112,19 +123,19 @@ if ($use64) {
 
 is( scalar @{primes(474973,838390)}, prime_count(838390) - prime_count(474973), "count primes within a range" );
 
-
-foreach my $method (qw/trial erat segment sieve dynamic/) {
-  is_deeply( primes({method=>$method}, 0, 3572), \@small_primes, "Primes between 0 and 3572" );
-  is_deeply( primes({method=>$method}, 2, 20), [2,3,5,7,11,13,17,19], "Primes between 2 and 20" );
-  is_deeply( primes({method=>$method}, 30, 70), [31,37,41,43,47,53,59,61,67], "Primes between 30 and 70" );
-  is_deeply( primes({method=>$method}, 30, 70), [31,37,41,43,47,53,59,61,67], "Primes between 30 and 70" );
-  is_deeply( primes({method=>$method}, 20, 2), [], "Primes between 20 and 2" );
-  is_deeply( primes({method=>$method}, 1, 1), [], "Primes ($method) between 1 and 1" );
-  is_deeply( primes({method=>$method}, 2, 2), [2], "Primes ($method) between 2 and 2" );
-  is_deeply( primes({method=>$method}, 3, 3), [3], "Primes ($method) between 3 and 3" );
-  is_deeply( primes({method=>$method}, 2010733, 2010733+148), [2010733,2010733+148], "Primegap 21 inclusive" );
-  is_deeply( primes({method=>$method}, 2010733+1, 2010733+148-2), [], "Primegap 21 exclusive" );
-  is_deeply( primes({method=>$method}, 3088, 3164), [3089,3109,3119,3121,3137,3163], "Primes between 3088 and 3164" );
-  is_deeply( primes({method=>$method}, 3089, 3163), [3089,3109,3119,3121,3137,3163], "Primes between 3089 and 3163" );
-  is_deeply( primes({method=>$method}, 3090, 3162), [3109,3119,3121,3137], "Primes between 3090 and 3162" );
+# Test individual methods
+while (my($method, $sub) = each (%primesubs)) {
+  is_deeply( $sub->(0, 3572), \@small_primes, "$method(0, 3572)" );
+  is_deeply( $sub->(2, 20), [2,3,5,7,11,13,17,19], "$method(2, 20)" );
+  is_deeply( $sub->(30, 70), [31,37,41,43,47,53,59,61,67], "$method(30, 70)" );
+  is_deeply( $sub->(30, 70), [31,37,41,43,47,53,59,61,67], "$method(30, 70)" );
+  is_deeply( $sub->(20, 2), [], "$method(20, 2)" );
+  is_deeply( $sub->(1, 1), [], "$method(1, 1)" );
+  is_deeply( $sub->(2, 2), [2], "$method(2, 2)" );
+  is_deeply( $sub->(3, 3), [3], "$method(3, 3)" );
+  is_deeply( $sub->(2010733, 2010733+148), [2010733,2010733+148], "$method Primegap 21 inclusive" );
+  is_deeply( $sub->(2010733+1, 2010733+148-2), [], "$method Primegap 21 exclusive" );
+  is_deeply( $sub->(3088, 3164), [3089,3109,3119,3121,3137,3163], "$method(3088, 3164)" );
+  is_deeply( $sub->(3089, 3163), [3089,3109,3119,3121,3137,3163], "$method(3089, 3163)" );
+  is_deeply( $sub->(3090, 3162), [3109,3119,3121,3137], "$method(3090, 3162)" );
 }

@@ -1,5 +1,12 @@
 Revision history for Perl module Math::Prime::Util
 
+0.37  2014-02
+
+    [FUNCTIONALITY AND PERFORMANCE]
+
+    - Simplified primes().  No longer takes an optional hashref as first arg,
+      which was awkward and never documented.
+
 0.36  2014-01-13
 
     [API Changes]

@@ -29,9 +29,6 @@
 - Big features:
    - QS factoring
 
-- segment sieve should itself use a segment for its primes.
-  Today we'd need sqrt(2^64) max = 140MB.  Segmenting would yield under 1MB.
-
 - Figure out a way to make the internal FOR_EACH_PRIME macros use a segmented
   sieve.
 

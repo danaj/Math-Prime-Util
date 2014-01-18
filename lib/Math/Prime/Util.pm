@@ -276,14 +276,14 @@ sub _tiny_prime_count {
 #############################################################################
 
 sub primes {
-  my $optref = (ref $_[0] eq 'HASH')  ?  shift  :  {};
-  croak "no parameters to primes" unless scalar @_ > 0;
-  croak "too many parameters to primes" unless scalar @_ <= 2;
-  my $low = (@_ == 2)  ?  shift  :  2;
-  my $high = shift;
-
-  _validate_num($low) || _validate_positive_integer($low);
-  _validate_num($high) || _validate_positive_integer($high);
+  my($low,$high) = @_;
+  if (scalar @_ > 1) {
+    _validate_num($low) || _validate_positive_integer($low);
+    _validate_num($high) || _validate_positive_integer($high);
+  } else {
+    ($low,$high) = (2, $low);
+    _validate_num($high) || _validate_positive_integer($high);
+  }
 
   my $sref = [];
   return $sref if ($low > $high) || ($high < 2);
@@ -302,54 +302,31 @@ sub primes {
     return Math::Prime::Util::PP::primes($low,$high);
   }
 
-  my $method = $optref->{'method'};
-  $method = 'Dynamic' unless defined $method;
+  # Decide the method to use.  We have four to choose from:
+  #  1. Trial     No memory, no overhead, but more time per prime.
+  #  2. Sieve     Monolithic cached sieve.
+  #  3. Erat      Monolithic uncached sieve.
+  #  4. Segment   Segment sieve.  Never a bad decision.
 
-  if ($method =~ /^(Dyn\w*|Default|Generate)$/i) {
-    # Dynamic -- we should try to do something smart.
+  if (($low+1) >= $high ||                      # Tiny range, or
+      $high > 10**14 && ($high-$low) < 50000) { # Small relative range
 
-    # Tiny range?
-    if (($low+1) >= $high) {
-      $method = 'Trial';
+      $sref = trial_primes($low, $high);
 
-    # Fast for cached sieve?
-    } elsif (($high <= (65536*30)) || ($high <= _get_prime_cache_size())) {
-      $method = 'Sieve';
+  } elsif ($high <= (65536*30) ||                # Very small, or
+           $high <= _get_prime_cache_size()) {   # already in the main cache.
 
-    # At some point the segmented sieve is faster than the base sieve, not
-    # to mention using much less memory.
-    } elsif ($high > (1024*1024*30)) {
-      $method = 'Segment';
-      # Our segment sieve is pretty good about not using too many resources,
-      # but with a very small range, it's better to just do trial.
-      $method = 'Trial' if $high > 10**14 && ($high-$low) < 50000;
+      $sref = sieve_primes($low, $high);
 
-    # Only want half or less of the range low-high ?
-    } elsif ( int($high / ($high-$low)) >= 2 ) {
-      $method = 'Segment';
+  } else {
 
-    } else {
-      $method = 'Sieve';
-    }
+      $sref = segment_primes($low, $high);
+
   }
 
-  if ($method =~ /^Simple\w*$/i) {
-    carp "Method 'Simple' is deprecated.";
-    $method = 'Erat';
-  }
-
-  if    ($method =~ /^Trial$/i)     { $sref = trial_primes($low, $high); }
-  elsif ($method =~ /^Erat\w*$/i)   { $sref = erat_primes($low, $high); }
-  elsif ($method =~ /^Seg\w*$/i)    { $sref = segment_primes($low, $high); }
-  elsif ($method =~ /^Sieve$/i)     { $sref = sieve_primes($low, $high); }
-  else { croak "Unknown prime method: $method"; }
-
-  # Using this line:
+  # We could return an array ref in scalar context, array in list context with:
   #   return (wantarray) ? @{$sref} : $sref;
-  # would allow us to return an array ref in scalar context, and an array
-  # in array context.  Handy for people who might write:
-  #   @primes = primes(100);
-  # but I think the dual interface could bite us later.
+  # but I think the dual interface could be confusing, albeit often handy.
   return $sref;
 }
 

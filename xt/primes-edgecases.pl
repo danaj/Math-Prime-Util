@@ -72,36 +72,32 @@ foreach my $bdelta (reverse 0 .. 100) {
     is_deeply( gen_forprimes($b,$e), \@p, "forprimes {} $b,$e");
   }
 }
-diag "\nChecking numbers near end with segment primes().  Very slow.\n";
+diag "\nChecking numbers near end with segment primes().\n";
 {
   my $b = $lprimes[-1] - 1;
   my $e = ~0;
   my @p = ($lprimes[-1]);
   diag "\n    Window around $lprimes[-1]\n";
-  is_deeply( gen_primes({method => 'Segment'}, $b, $b), [], "primes($b,$b)");
-  is_deeply( gen_primes({method => 'Segment'}, $b, $b+1), \@p, "primes($b,$b+1)");
-  is_deeply( gen_primes({method => 'Segment'}, $b, $b+2), \@p, "primes($b,$b+2)");
-  is_deeply( gen_primes({method => 'Segment'}, $b+1, $b+1), \@p, "primes($b+1,$b+1)");
-  is_deeply( gen_primes({method => 'Segment'}, $b+1, $b+2), \@p, "primes($b+1,$b+2)");
-  is_deeply( gen_primes({method => 'Segment'}, $b+2, $b+2), [], "primes($b+2,$b+2)");
+  is_deeply( gen_segment_primes($b, $b), [], "primes($b,$b)");
+  is_deeply( gen_segment_primes($b, $b+1), \@p, "primes($b,$b+1)");
+  is_deeply( gen_segment_primes($b, $b+2), \@p, "primes($b,$b+2)");
+  is_deeply( gen_segment_primes($b+1, $b+1), \@p, "primes($b+1,$b+1)");
+  is_deeply( gen_segment_primes($b+1, $b+2), \@p, "primes($b+1,$b+2)");
+  is_deeply( gen_segment_primes($b+2, $b+2), [], "primes($b+2,$b+2)");
   diag "\n    Window around $e\n";
-  is_deeply( gen_primes({method => 'Segment'}, $e-2, $e-2), [], "primes($e-2,$e-2)");
-  is_deeply( gen_primes({method => 'Segment'}, $e-2, $e), [], "primes($e-2,$e)");
-  is_deeply( gen_primes({method => 'Segment'}, $e-1, $e), [], "primes($e-1,$e)");
-  is_deeply( gen_primes({method => 'Segment'}, $e, $e), [], "primes($e,$e)");
+  is_deeply( gen_segment_primes($e-2, $e-2), [], "primes($e-2,$e-2)");
+  is_deeply( gen_segment_primes($e-2, $e), [], "primes($e-2,$e)");
+  is_deeply( gen_segment_primes($e-1, $e), [], "primes($e-1,$e)");
+  is_deeply( gen_segment_primes($e, $e), [], "primes($e,$e)");
 }
 
-#diag "\nChecking numbers near end with forprimes.  This will take a *very* long time.\n";
-#foreach my $bdelta (reverse 0 .. 9) {
-#  foreach my $edelta (reverse 0 .. $bdelta) {
-#    my ($b, $e) = (~0 - $bdelta, ~0 - $edelta);
-#    my @p = grep { $_ >= $b && $_ <= $e } @lprimes;
-#    is_deeply( gen_forprimes($b,$e), \@p, "forprimes {} $b,$e");
-#  }
-#}
 
 sub gen_primes {
   return primes(@_);
+}
+sub gen_segment_primes {
+  my($low, $high) = @_;
+  return Math::Prime::Util::segment_primes($low,$high);     # Private function
 }
 sub gen_forprimes {
   my($b, $e) = @_;
