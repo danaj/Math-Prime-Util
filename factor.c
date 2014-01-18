@@ -658,12 +658,12 @@ int pminus1_factor(UV n, UV *factors, UV B1, UV B2)
 }
 
 /* Simple Williams p+1 */
-static void pp1_pow(UV *cX, unsigned long exp, UV n)
+static void pp1_pow(UV *cX, UV exp, UV n)
 {
   UV X0 = *cX;
   UV X  = *cX;
   UV Y = mulsubmod(X, X, 2, n);
-  unsigned long bit = 1UL << (clz(exp)-1);
+  UV bit = UVCONST(1) << (clz(exp)-1);
   while (bit) {
     UV T = mulsubmod(X, Y, X0, n);
     if ( exp & bit ) {
@@ -937,7 +937,7 @@ UV dlp_prho(UV a, UV g, UV p, UV maxrounds) {
     pollard_rho_cycle(u,v,w,p,n,a,g);   /* xi, ai, bi */
     pollard_rho_cycle(U,V,W,p,n,a,g);
     pollard_rho_cycle(U,V,W,p,n,a,g);   /* x2i, a2i, b2i */
-    if (verbose > 3) printf( "%3lu  %4lu %3lu %3lu  %4lu %3lu %3lu\n", i, u, v, w, U, V, W );
+    if (verbose > 3) printf( "%3"UVuf"  %4"UVuf" %3"UVuf" %3"UVuf"  %4"UVuf" %3"UVuf" %3"UVuf"\n", i, u, v, w, U, V, W );
     if (u == U) {
       UV r1, r2, k;
       r1 = submod(v, V, n);
@@ -948,11 +948,11 @@ UV dlp_prho(UV a, UV g, UV p, UV maxrounds) {
       r2 = submod(W, w, n);
       k = divmod(r2, r1, n);
       if (powmod(g,k,p) != a) {
-        if (verbose > 2) printf("r1 = %lu  r2 = %lu k = %lu\n", r1, r2, k);
-        if (verbose) printf("Incorrect DLP Rho solution: %lu\n", k);
+        if (verbose > 2) printf("r1 = %"UVuf"  r2 = %"UVuf" k = %"UVuf"\n", r1, r2, k);
+        if (verbose) printf("Incorrect DLP Rho solution: %"UVuf"\n", k);
         return 0;
       }
-      if (verbose) printf("DLP Rho solution found after %lu steps\n", i);
+      if (verbose) printf("DLP Rho solution found after %"UVuf" steps\n", i);
       return k;
     }
   }

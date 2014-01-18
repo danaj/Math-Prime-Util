@@ -763,7 +763,7 @@ UV* _totient_range(UV lo, UV hi) {
   unsigned char* segment;
   void* ctx;
 
-  if (hi < lo) croak("_totient_range error hi %lu < lo %lu\n", hi, lo);
+  if (hi < lo) croak("_totient_range error hi %"UVuf" < lo %"UVuf"\n", hi, lo);
   New(0, totients, hi-lo+1, UV);
 
   /* Do via factoring if very small or if we have a small range */
