@@ -93,7 +93,7 @@ int factor(UV n, UV *factors)
     while ( (n >= f*f) && (!_XS_is_prime(n)) ) {
       int split_success = 0;
       /* Adjust the number of rounds based on the number size */
-      UV const br_rounds = ((n>>29) < 100000) ?  1500 :  2000;
+      UV const br_rounds = ((n>>29) < 100000) ?  1500 :  4000;
       UV const sq_rounds =100000; /* 20k 91%, 40k 98%, 80k 99.9%, 120k 99.99% */
 
       /* 99.7% of 32-bit, 94% of 64-bit random inputs factored here */
@@ -107,21 +107,18 @@ int factor(UV n, UV *factors)
         if (verbose) printf("squfof %d\n", split_success);
       }
       /* At this point we should only have 16+ digit semiprimes. */
-      /* This p-1 gets about 2/3 of what makes it through the above */
       if (!split_success) {
-        split_success = pminus1_factor(n, tofac_stack+ntofac, 5000, 100000)-1;
+        split_success = pminus1_factor(n, tofac_stack+ntofac, 8000, 120000)-1;
         if (verbose) printf("pminus1 %d\n", split_success);
-      }
-      /* Some rounds of HOLF, good for close to perfect squares which are
-       * the worst case for the next step */
-      if (!split_success) {
-        split_success = holf_factor(n, tofac_stack+ntofac, 2000)-1;
-        if (verbose) printf("holf %d\n", split_success);
-      }
-      /* The catch-all.  Should factor anything. */
-      if (!split_success) {
-        split_success = prho_factor(n, tofac_stack+ntofac, 256*1024)-1;
-        if (verbose) printf("long prho %d\n", split_success);
+        /* Get the stragglers */
+        if (!split_success) {
+          split_success = prho_factor(n, tofac_stack+ntofac, 120000)-1;
+          if (verbose) printf("long prho %d\n", split_success);
+          if (!split_success) {
+            split_success = pbrent_factor(n, tofac_stack+ntofac, 500000, 7)-1;
+            if (verbose) printf("long pbrent %d\n", split_success);
+          }
+        }
       }
 
       if (split_success) {
