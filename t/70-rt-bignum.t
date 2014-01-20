@@ -10,6 +10,7 @@ use warnings;
 # The second method in theory is all that is needed.
 
 use Math::Prime::Util qw/:all/;
+use Math::Prime::Util::PP;
 use bignum;
 
 use Test::More tests => 2;

@@ -145,7 +145,7 @@ my $mpugmpver = $usegmp ? $Math::Prime::Util::GMP::VERSION : "<none>";
 diag "BigInt $bignumver/$bigintver, lib: $bigintlib.  MPU::GMP $mpugmpver\n";
 
 # Turn off use of BRS - ECM tries to use this.
-prime_set_config( irand => sub { int(rand(4294967296.0)) } );
+prime_set_config( irand => sub { int(rand(4294967296)) } );
 
 
 ###############################################################################

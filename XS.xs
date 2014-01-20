@@ -176,6 +176,8 @@ static int _vcallsubn(pTHX_ I32 flags, I32 stashflags, const char* name, int nar
       GV ** gvp = (GV**)hv_fetch(MY_CXT.MPUGMP,name,namelen,0);
       if (gvp) gv = *gvp;
     }
+    if (!gv && (stashflags & VCALL_PP))
+      perl_require_pv("Math/Prime/Util/PP.pm");
     if (!gv) {
       GV ** gvp = (GV**)hv_fetch(stashflags & VCALL_PP? MY_CXT.MPUPP : MY_CXT.MPUroot, name,namelen,0);
       if (gvp) gv = *gvp;

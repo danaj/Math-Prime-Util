@@ -117,6 +117,7 @@ sub primality_proof_bls75 {
   return @composite if ($n & 1) == 0;
   return @composite if is_strong_pseudoprime($n,2,15,325) == 0;
 
+  require Math::Prime::Util::PP;
   $n = Math::BigInt->new("$n") unless ref($n) eq 'Math::BigInt';
   my $nm1 = $n->copy->bdec;
   my $ONE = $nm1->copy->bone;

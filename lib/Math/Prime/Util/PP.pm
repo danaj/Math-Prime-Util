@@ -5,7 +5,7 @@ use Carp qw/carp croak confess/;
 
 BEGIN {
   $Math::Prime::Util::PP::AUTHORITY = 'cpan:DANAJ';
-  $Math::Prime::Util::PP::VERSION = '0.36';
+  $Math::Prime::Util::PP::VERSION = '0.37';
 }
 
 BEGIN {
@@ -72,8 +72,8 @@ sub _is_positive_int {
 }
 
 sub _bigint_to_int {
-  return (OLD_PERL_VERSION) ? unpack(UVPACKLET,pack(UVPACKLET,$_[0]->bstr))
-                            : int($_[0]->bstr);
+  return (OLD_PERL_VERSION) ? unpack(UVPACKLET,pack(UVPACKLET,"$_[0]"))
+                            : int("$_[0]");
 }
 
 sub _validate_num {
@@ -489,6 +489,65 @@ sub prev_prime {
   #  $d-- if $m == 29;
   #} while (!_is_prime7($d*30+$m));
   #$d*30+$m;
+}
+
+sub partitions {
+  my $n = shift;
+
+  my $d = int(sqrt($n+1));
+  my @pent = (1, map { (($_*(3*$_+1))>>1, (($_+1)*(3*$_+2))>>1) } 1 .. $d);
+  my @part = (Math::BigInt->bone);
+  foreach my $j (scalar @part .. $n) {
+    my ($psum1, $psum2, $k) = (Math::BigInt->bzero, Math::BigInt->bzero, 1);
+    foreach my $p (@pent) {
+      last if $p > $j;
+      if ((++$k) & 2) { $psum1->badd( $part[ $j - $p ] ); }
+      else            { $psum2->badd( $part[ $j - $p ] ); }
+    }
+    $part[$j] = $psum1 - $psum2;
+  }
+  return $part[$n];
+}
+
+sub primorial {
+  my $n = shift;
+
+  my $max = (MPU_32BIT) ? 29 : (OLD_PERL_VERSION) ? 43 : 53;
+  my $pn = (ref($_[0]) eq 'Math::BigInt') ? $_[0]->copy->bone()
+         : ($n >= $max) ? Math::BigInt->bone()
+         : 1;
+  if (ref($pn) eq 'Math::BigInt') {
+    my $start = 2;
+    if ($n >= 97) {
+      $start = 101;
+      $pn->bdec->badd(Math::BigInt->new("2305567963945518424753102147331756070"));
+    }
+    my @plist = @{primes($start,$n)};
+    while (@plist > 2 && $plist[2] < 1625) {
+      $pn->bmul( Math::BigInt->new(shift(@plist)*shift(@plist)*shift(@plist)) );
+    }
+    while (@plist > 1 && $plist[1] < 65536) {
+      $pn->bmul( Math::BigInt->new(shift(@plist)*shift(@plist)) );
+    }
+    $pn->bmul($_) for @plist;
+  } else {
+    foreach my $p (@{primes($n)}) {  $pn *= $p;  }
+  }
+  return $pn;
+}
+
+sub consecutive_integer_lcm {
+  my $n = shift;
+
+  my $max = (MPU_32BIT) ? 22 : (OLD_PERL_VERSION) ? 37 : 46;
+  my $pn = ref($n) ? ref($n)->new(1) : ($n >= $max) ? Math::BigInt->bone() : 1;
+  foreach my $p (@{primes($n)}) {
+    my($p_power, $pmin) = ($p, int($n/$p));
+    $p_power *= $p while $p_power <= $pmin;
+    $pn *= $p_power;
+  }
+  $pn = _bigint_to_int($pn) if $pn <= ''.~0;
+  return $pn;
 }
 
 sub jordan_totient {
@@ -2370,10 +2429,8 @@ sub ecm_factor {
   #  }
   #}
 
-  if (!defined $Math::Prime::Util::ECProjectivePoint::VERSION) {
-    eval { require Math::Prime::Util::ECProjectivePoint; 1; }
-    or do { croak "Cannot load Math::Prime::Util::ECProjectivePoint"; };
-  }
+  require Math::Prime::Util::ECProjectivePoint;
+  require Math::Prime::Util::RandomPrimes;
 
   # With multiple curves, it's better to get all the primes at once.
   # The downside is this can kill memory with a very large B1.
@@ -2385,7 +2442,7 @@ sub ecm_factor {
     $q = $k;
   }
   my @b2primes = ($B2 > $B1) ? @{primes($B1+1, $B2)} : ();
-  my $irandf = Math::Prime::Util::_get_randf();
+  my $irandf = Math::Prime::Util::RandomPrimes::get_randf();
 
   foreach my $curve (1 .. $ncurves) {
     my $sigma = $irandf->($n-1-6) + 6;

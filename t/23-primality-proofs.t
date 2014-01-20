@@ -20,6 +20,7 @@ my $broken64 = (18446744073709550592 == ~0);
 # Do some tests only if:
 #   EXTENDED_TESTING is on OR we have the GMP backend
 # Note that with Calc, these things are incredibly slow.
+use Math::BigInt try=>"GMP,Pari";
 my $doexpensive = 0 + ($extra || ( (!$use64 || !$broken64) && Math::BigInt->config()->{lib} eq 'Math::BigInt::GMP' ));
 
 my @plist = qw/20907001 809120722675364249/;

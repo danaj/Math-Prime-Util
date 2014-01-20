@@ -78,3 +78,12 @@
 - Ensure a fast path for Math::GMP from MPU -> MPU:GMP -> GMP, and back.
 
 - znlog bignum tests, znlog better implementation
+
+- PP cleanup:
+  1) Put front ends for all functions in a PPFE module.
+     PPFE uses PP.
+     PPFE does validation.
+     PP does no validation.
+  2) No-XS segment will require PPFE and do aliases.
+  3) XS code will call PP only.  We've already validated input.
+  4) Move some more of the functions to XS.

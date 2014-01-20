@@ -87,7 +87,7 @@ plan tests => 0 + 1
                 + $use64 * 3 * scalar(keys %pivals64)
                 + scalar(keys %intervals)
                 + 1
-                + 4 + 2*$extra; # prime count specific methods
+                + 5 + 2*$extra; # prime count specific methods
 
 ok( eval { prime_count(13); 1; }, "prime_count in void context");
 
@@ -165,6 +165,8 @@ SKIP: {
   is(Math::Prime::Util::_XS_LMO_pi     (66123456), 3903023,"XS LMO count");
   is(Math::Prime::Util::_XS_segment_pi (66123456), 3903023,"XS segment count");
 }
+
+require_ok 'Math::Prime::Util::PP';
 is(Math::Prime::Util::PP::_lehmer_pi   (1456789), 111119, "PP Lehmer count");
 is(Math::Prime::Util::PP::_sieve_prime_count(145678), 13478, "PP sieve count");
 if ($extra) {
