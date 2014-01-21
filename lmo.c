@@ -293,8 +293,8 @@ static UV _phi_recurse(UV x, UV a) {
   UV i, c = (a > PHIC) ? PHIC : a;
   UV sum = tablephi(x, c);
   if (a > c) {
-    UV p  = _XS_nth_prime(c);
-    UV pa = _XS_nth_prime(a);
+    UV p  = nth_prime(c);
+    UV pa = nth_prime(a);
     for (i = c+1; i <= a; i++) {
       UV xp;
       p = next_prime(p);
@@ -344,7 +344,7 @@ UV legendre_phi(UV x, UV a) {
     uint32_t lastidx;
     UV res, max_cache_a = (a >= PHICACHEA) ? PHICACHEA : a+1;
     Newz(0, cache, PHICACHEX * max_cache_a, uint16_t);
-    primes = make_primelist(_XS_nth_prime(a+1), &lastidx);
+    primes = make_primelist(nth_prime(a+1), &lastidx);
     res = (UV) _phi(x, a, 1, primes, lastidx, cache);
     Safefree(primes);
     Safefree(cache);

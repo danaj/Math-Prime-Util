@@ -150,7 +150,7 @@ sub mpu_factors {
     my @ns = @_;
     my $numpercommand = int( (4000-30)/(length($ns[-1])+1) );
     while (@ns) {
-      my $cs = join(" ", 'factor.pl', splice(@ns, 0, $numpercommand));
+      my $cs = join(" ", 'perl -Iblib/lib -Iblib/arch bin/factor.pl', splice(@ns, 0, $numpercommand));
       my $fout = qx{$cs};
       my @flines = split(/\n/, $fout);
       foreach my $fline (@flines) {

@@ -2,10 +2,8 @@
 use strict;
 use warnings;
 use Getopt::Long;
-use bigint try => 'GMP';
 use Math::Prime::Util qw/factor nth_prime prime_set_config/;
 $| = 1;
-no bigint;
 
 # Allow execution of any of these functions in the command line
 my @mpu_funcs = (qw/next_prime prev_prime prime_count nth_prime random_prime
@@ -23,7 +21,7 @@ GetOptions(\%opts,
           ) || die_usage();
 if (exists $opts{'version'}) {
   my $version_str =
-   "factor.pl version 1.1 using Math::Prime::Util $Math::Prime::Util::VERSION";
+   "factor.pl version 1.2 using Math::Prime::Util $Math::Prime::Util::VERSION";
   $version_str .= " and MPU::GMP $Math::Prime::Util::GMP::VERSION"
     if Math::Prime::Util::prime_get_config->{'gmp'};
   $version_str .= "\nWritten by Dana Jacobsen.\n";
@@ -69,6 +67,7 @@ sub eval_expr {
     $expr =~ s/:$mpu_func_map{$func}\(/Math::Prime::Util::$func(/g;
   }
   $expr =~ s/(\d+)/ Math::BigInt->new("$1") /g;
+  $expr = 'use Math::BigInt try=>"GMP"; ' . $expr;
   my $res = eval $expr; ## no critic
   die "Cannot eval: $expr\n" if !defined $res;
   $res = int($res->bstr) if ref($res) eq 'Math::BigInt' && $res <= ~0;

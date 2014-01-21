@@ -29,12 +29,14 @@
   extern long double logl(long double);
   extern long double fabsl(long double);
   extern long double floorl(long double);
+  extern long double ceill(long double);
 #else
   #define powl(x, y)  (long double) pow( (double) (x), (double) (y) )
   #define expl(x)     (long double) exp( (double) (x) )
   #define logl(x)     (long double) log( (double) (x) )
   #define fabsl(x)    (long double) fabs( (double) (x) )
   #define floorl(x)   (long double) floor( (double) (x) )
+  #define ceill(x)    (long double) ceil( (double) (x) )
 #endif
 
 #ifdef LDBL_INFINITY
@@ -570,7 +572,90 @@ UV _XS_prime_count(UV low, UV high)
   return count;
 }
 
+UV prime_count_approx(UV n)
+{
+  if (n < 3000000) return _XS_prime_count(2, n);
+  return (UV) (_XS_RiemannR( (long double) n ) + 0.5 );
+}
 
+UV prime_count_lower(UV n)
+{
+  long double fn, flogn, lower, a;
+
+  if (n < 33000) return _XS_prime_count(2, n);
+
+  fn     = (long double) n;
+  flogn  = logl(n);
+
+  if      (n <   176000)  a = 1.80;
+  else if (n <   315000)  a = 2.10;
+  else if (n <  1100000)  a = 2.20;
+  else if (n <  4500000)  a = 2.31;
+  else if (n <233000000)  a = 2.36;
+#if BITS_PER_WORD == 32
+  else a = 2.32;
+#else
+  else if (n < UVCONST( 5433800000)) a = 2.32;
+  else if (n < UVCONST(60000000000)) a = 2.15;
+  else a = 2.00;
+#endif
+
+  lower = fn/flogn * (1.0 + 1.0/flogn + a/(flogn*flogn));
+  return (UV) floorl(lower);
+}
+
+typedef struct {
+  UV thresh;
+  float aval;
+} thresh_t;
+
+static const thresh_t _upper_thresh[] = {
+  {     59000, 2.48 },
+  {    350000, 2.52 },
+  {    355991, 2.54 },
+  {    356000, 2.51 },
+  {   3550000, 2.50 },
+  {   3560000, 2.49 },
+  {   5000000, 2.48 },
+  {   8000000, 2.47 },
+  {  13000000, 2.46 },
+  {  18000000, 2.45 },
+  {  31000000, 2.44 },
+  {  41000000, 2.43 },
+  {  48000000, 2.42 },
+  { 119000000, 2.41 },
+  { 182000000, 2.40 },
+  { 192000000, 2.395 },
+  { 213000000, 2.390 },
+  { 271000000, 2.385 },
+  { 322000000, 2.380 },
+  { 400000000, 2.375 },
+  { 510000000, 2.370 },
+  { 682000000, 2.367 },
+  { UVCONST(2953652287), 2.362 }
+};
+#define NUPPER_THRESH (sizeof(_upper_thresh)/sizeof(_upper_thresh[0]))
+
+UV prime_count_upper(UV n)
+{
+  int i;
+  long double fn, flogn, upper, a;
+
+  if (n < 33000) return _XS_prime_count(2, n);
+
+  fn     = (long double) n;
+  flogn  = logl(n);
+
+  for (i = 0; i < NUPPER_THRESH; i++)
+    if (n < _upper_thresh[i].thresh)
+      break;
+
+  if (i < NUPPER_THRESH)   a = _upper_thresh[i].aval;
+  else                     a = 2.334;   /* Dusart 2010, page 2 */
+
+  upper = fn/flogn * (1.0 + 1.0/flogn + a/(flogn*flogn));
+  return (UV) ceill(upper);
+}
 
 static const unsigned short primes_small[] =
   {0,2,3,5,7,11,13,17,19,23,29,31,37,41,43,47,53,59,61,67,71,73,79,83,89,97,
@@ -580,18 +665,17 @@ static const unsigned short primes_small[] =
    409,419,421,431,433,439,443,449,457,461,463,467,479,487,491,499};
 #define NPRIMES_SMALL (sizeof(primes_small)/sizeof(primes_small[0]))
 
-/* Note: We're keeping this here because we use it for nth_prime */
 /* The nth prime will be less or equal to this number */
-static UV _XS_nth_prime_upper(UV n)
+UV nth_prime_upper(UV n)
 {
-  double fn, flogn, flog2n, upper;
+  long double fn, flogn, flog2n, upper;
 
   if (n < NPRIMES_SMALL)
     return primes_small[n];
 
-  fn     = (double) n;
-  flogn  = log(n);
-  flog2n = log(flogn);    /* Note distinction between log_2(n) and log^2(n) */
+  fn     = (long double) n;
+  flogn  = logl(n);
+  flog2n = logl(flogn);    /* Note distinction between log_2(n) and log^2(n) */
 
   if      (n >= 688383)    /* Dusart 2010 page 2 */
     upper = fn * (flogn + flog2n - 1.0 + ((flog2n-2.00)/flogn));
@@ -615,16 +699,73 @@ static UV _XS_nth_prime_upper(UV n)
    *    nth_prime_lower(n)  <=  nth_prime(n)  <=  nth_prime_upper(n)
    */
   /* Watch out for  overflow */
-  if (upper >= (double)UV_MAX) {
+  if (upper >= (long double)UV_MAX) {
     if (n <= MPU_MAX_PRIME_IDX) return MPU_MAX_PRIME;
     croak("nth_prime_upper(%"UVuf") overflow", n);
   }
 
-  return (UV) ceil(upper);
+  return (UV) ceill(upper);
+}
+
+/* The nth prime will be greater than or equal to this number */
+UV nth_prime_lower(UV n)
+{
+  long double fn, flogn, flog2n, lower;
+
+  if (n < NPRIMES_SMALL)
+    return primes_small[n];
+
+  fn     = (long double) n;
+  flogn  = logl(n);
+  flog2n = logl(flogn);    /* Note distinction between log_2(n) and log^2(n) */
+
+  /* Dusart 2010 page 2, for all n >= 3 */
+  lower = fn * (flogn + flog2n - 1.0 + ((flog2n-2.10)/flogn));
+
+  return (UV) floorl(lower);
+}
+
+UV nth_prime_approx(UV n)
+{
+  long double fn, flogn, flog2n, approx, order;
+
+  if (n < NPRIMES_SMALL)
+    return primes_small[n];
+
+  fn     = (long double) n;
+  flogn  = logl(n);
+  flog2n = logl(flogn);    /* Note distinction between log_2(n) and log^2(n) */
+
+  /* Cipolla 1902:
+   *    m=0   fn * ( flogn + flog2n - 1 );
+   *    m=1   + ((flog2n - 2)/flogn) );
+   *    m=2   - (((flog2n*flog2n) - 6*flog2n + 11) / (2*flogn*flogn))
+   *    + O((flog2n/flogn)^3)
+   */
+
+  approx = fn * (  flogn + flog2n - 1.0
+                 + ((flog2n - 2.0) / flogn)
+                 - (((flog2n*flog2n) - 6.0*flog2n + 11.0) / (2*flogn*flogn))
+                );
+
+  /* Apply a correction */
+  order = flog2n / flogn;
+  order = order * order * order * fn;
+  if      (n <      259) { approx += 10.4  * order; }
+  else if (n <      775) { approx +=  7.52 * order; }
+  else if (n <     1271) { approx +=  5.6  * order; }
+  else if (n <     2000) { approx +=  5.2  * order; }
+  else if (n <     4000) { approx +=  4.3  * order; }
+  else if (n <    12000) { approx +=  3.0  * order; }
+  else if (n <   150000) { approx +=  2.1  * order; }
+  else if (n <200000000) {                          }
+  else                   { approx += -0.01 * order; } /* -0.25 is closer */
+
+  return (UV) floorl(approx + 0.5);
 }
 
 
-UV _XS_nth_prime(UV n)
+UV nth_prime(UV n)
 {
   const unsigned char* cache_sieve;
   unsigned char* segment;
@@ -638,7 +779,7 @@ UV _XS_nth_prime(UV n)
     return primes_small[n];
 
   /* Determine a bound on the nth prime.  We know it comes before this. */
-  upper_limit = _XS_nth_prime_upper(n);
+  upper_limit = nth_prime_upper(n);
   MPUassert(upper_limit > 0, "nth_prime got an upper limit of 0");
 
   /* For relatively small values, generate a sieve and count the results.

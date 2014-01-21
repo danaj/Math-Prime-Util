@@ -13,7 +13,13 @@ extern UV  next_prime(UV x);
 extern UV  prev_prime(UV x);
 
 extern UV  _XS_prime_count(UV low, UV high);
-extern UV  _XS_nth_prime(UV x);
+extern UV  nth_prime(UV x);
+extern UV  nth_prime_upper(UV x);
+extern UV  nth_prime_lower(UV x);
+extern UV  nth_prime_approx(UV x);
+extern UV  prime_count_lower(UV x);
+extern UV  prime_count_upper(UV x);
+extern UV  prime_count_approx(UV x);
 
 extern signed char* _moebius_range(UV low, UV high);
 extern UV*    _totient_range(UV low, UV high);

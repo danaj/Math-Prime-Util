@@ -589,27 +589,46 @@ next_prime(IN SV* svn)
   ALIAS:
     prev_prime = 1
     nth_prime = 2
+    nth_prime_upper = 3
+    nth_prime_lower = 4
+    nth_prime_approx = 5
+    prime_count_upper = 6
+    prime_count_lower = 7
+    prime_count_approx = 8
   PPCODE:
     if (_validate_int(aTHX_ svn, 0)) {
       UV n = my_svuv(svn);
-      if ( ((ix == 0) && (n >= MPU_MAX_PRIME))    ||
-           ((ix == 2) && (n >= MPU_MAX_PRIME_IDX)) ) {
+      if ( (n >= MPU_MAX_PRIME     && ix == 0) ||
+           (n >= MPU_MAX_PRIME_IDX && (ix==2 || ix==3 || ix==4 || ix==5)) ) {
         /* Out of range.  Fall through to Perl. */
       } else {
         UV ret;
         switch (ix) {
           case 0: ret = next_prime(n);  break;
           case 1: ret = (n < 3) ? 0 : prev_prime(n);  break;
-          case 2:
-          default:ret = _XS_nth_prime(n);  break;
+          case 2: ret = nth_prime(n); break;
+          case 3: ret = nth_prime_upper(n); break;
+          case 4: ret = nth_prime_lower(n); break;
+          case 5: ret = nth_prime_approx(n); break;
+          case 6: ret = prime_count_upper(n); break;
+          case 7: ret = prime_count_lower(n); break;
+          case 8:
+          default:ret = prime_count_approx(n); break;
         }
         XSRETURN_UV(ret);
       }
     }
     switch (ix) {
-      case 0:  _vcallsub("_generic_next_prime");     break;
-      case 1:  _vcallsub("_generic_prev_prime");     break;
-      default: _vcallsub_with_pp("nth_prime");           break;
+      case 0:  _vcallsub("_generic_next_prime");        break;
+      case 1:  _vcallsub("_generic_prev_prime");        break;
+      case 2:  _vcallsub_with_pp("nth_prime");          break;
+      case 3:  _vcallsub_with_pp("nth_prime_upper");    break;
+      case 4:  _vcallsub_with_pp("nth_prime_lower");    break;
+      case 5:  _vcallsub_with_pp("nth_prime_approx");   break;
+      case 6:  _vcallsub_with_pp("prime_count_upper");  break;
+      case 7:  _vcallsub_with_pp("prime_count_lower");  break;
+      case 8:
+      default: _vcallsub_with_pp("prime_count_approx"); break;
     }
     return; /* skip implicit PUTBACK */
 
