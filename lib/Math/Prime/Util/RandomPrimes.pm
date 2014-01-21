@@ -93,7 +93,7 @@ sub _set_randf {
       return 0 if $bits <= 0;
       return ($_BRS->irand() >> (32-$bits))
         if $bits <= 32;
-      return ((($_BRS->irand() << 32) + $_BRS->irand()) >> (64-$bits))
+      return ( (($_BRS->irand() << 32) + $_BRS->irand()) >> (64-$bits) )
         if $bits <= 64 && ~0 > 4294967295;
       my $bytes = int(($bits+7)/8);
       my $n = Math::BigInt->from_hex('0x' . $_BRS->bytes_hex($bytes));
@@ -555,6 +555,7 @@ my @_random_nbit_arange;
 sub random_nbit_prime {
   my($bits) = @_;
   croak "random_nbit_prime, bits must be >= 2" unless $bits >= 2;
+  $bits = int("$bits");
 
   _set_randf();
 
@@ -691,6 +692,7 @@ sub random_nbit_prime {
 sub random_maurer_prime {
   my $k = shift;
   croak "random_maurer_prime, bits must be >= 2" unless $k >= 2;
+  $k = int("$k");
 
   return random_nbit_prime($k)  if $k <= MPU_MAXBITS && !OLD_PERL_VERSION;
 
@@ -703,6 +705,7 @@ sub random_maurer_prime {
 sub random_maurer_prime_with_cert {
   my $k = shift;
   croak "random_maurer_prime, bits must be >= 2" unless $k >= 2;
+  $k = int("$k");
 
   # This should never happen.  Trap now to prevent infinite loop.
   croak "number of bits must not be a bigint" if ref($k) eq 'Math::BigInt';
@@ -822,6 +825,7 @@ sub random_maurer_prime_with_cert {
 sub random_strong_prime {
   my $t = shift;
   croak "random_strong_prime, bits must be >= 128" unless $t >= 128;
+  $t = int("$t");
 
   croak "Random strong primes must be >= 173 bits on old Perl"
     if OLD_PERL_VERSION && MPU_64BIT && $t < 173;
