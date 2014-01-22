@@ -3380,7 +3380,7 @@ Math::Prime::Util::PP - Pure Perl version of Math::Prime::Util
 
 =head1 VERSION
 
-Version 0.36
+Version 0.37
 
 
 =head1 SYNOPSIS

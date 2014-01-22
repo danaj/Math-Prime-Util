@@ -889,7 +889,7 @@ Math::Prime::Util - Utilities related to prime numbers, including fast sieves an
 
 =head1 VERSION
 
-Version 0.36
+Version 0.37
 
 
 =head1 SYNOPSIS
