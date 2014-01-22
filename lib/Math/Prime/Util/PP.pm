@@ -227,6 +227,8 @@ sub _is_prime7 {  # n must not be divisible by 2, 3, or 5
 
 sub is_prime {
   my($n) = @_;
+  return 0 if int($n) < 0;
+  _validate_positive_integer($n);
 
   if (ref($n) eq 'Math::BigInt') {
     return 0 unless Math::BigInt::bgcd($n, B_PRIM235)->is_one;
@@ -1396,6 +1398,7 @@ sub _is_perfect_power {
 sub is_pseudoprime {
   my($n, $base) = @_;
   return 0 if int($n) < 0;
+  _validate_positive_integer($n);
 
   if ($n < 5) { return ($n == 2) || ($n == 3) ? 1 : 0; }
   croak "Base $base is invalid" if $base < 2;
@@ -1466,6 +1469,8 @@ sub _miller_rabin_2 {
 
 sub is_strong_pseudoprime {
   my($n, @bases) = @_;
+  return 0 if int($n) < 0;
+  _validate_positive_integer($n);
 
   return 0+($n >= 2) if $n < 4;
   return 0 if ($n % 2) == 0;

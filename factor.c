@@ -90,7 +90,8 @@ int factor(UV n, UV *factors)
 
   /* loop over each remaining factor, until ntofac == 0 */
   do {
-    while ( (n >= f*f) && (!_XS_is_prime(n)) ) {
+    //while ( (n >= f*f) && (!_XS_is_prime(n)) ) {
+    while ( (n >= f*f) && (!is_prob_prime(n)) ) {
       int split_success = 0;
       /* Adjust the number of rounds based on the number size */
       UV const br_rounds = ((n>>29) < 100000) ?  1500 :  4000;
