@@ -67,13 +67,11 @@ BEGIN {
   # We could alternately use Config's $Config{uvsize} for MAXBITS
   use constant OLD_PERL_VERSION=> $] < 5.008;
   use constant MPU_MAXBITS     => (~0 == 4294967295) ? 32 : 64;
-  use constant MPU_64BIT       => MPU_MAXBITS == 64;
   use constant MPU_32BIT       => MPU_MAXBITS == 32;
   use constant MPU_MAXPARAM    => MPU_32BIT ? 4294967295 : 18446744073709551615;
   use constant MPU_MAXDIGITS   => MPU_32BIT ?         10 : 20;
   use constant MPU_MAXPRIME    => MPU_32BIT ? 4294967291 : 18446744073709551557;
   use constant MPU_MAXPRIMEIDX => MPU_32BIT ?  203280221 :   425656284035217743;
-  use constant MPU_MAXNATIVE   => OLD_PERL_VERSION ? 999999999999999 : ~0;
   use constant UVPACKLET       => MPU_32BIT ?        'L' : 'Q';
 
   eval {
@@ -94,41 +92,17 @@ BEGIN {
     # Load PP front end code
     require Math::Prime::Util::PPFE;
 
-    *_validate_num = \&Math::Prime::Util::PP::_validate_num;
-    *is_lucas_pseudoprime=\&Math::Prime::Util::PP::is_lucas_pseudoprime;
-    *is_strong_lucas_pseudoprime=\&Math::Prime::Util::PP::is_strong_lucas_pseudoprime;
-    *is_extra_strong_lucas_pseudoprime=\&Math::Prime::Util::PP::is_extra_strong_lucas_pseudoprime;
-    *is_almost_extra_strong_lucas_pseudoprime=\&Math::Prime::Util::PP::is_almost_extra_strong_lucas_pseudoprime;
-    *is_frobenius_underwood_pseudoprime=\&Math::Prime::Util::PP::is_frobenius_underwood_pseudoprime;
-    *is_aks_prime  =\&Math::Prime::Util::PP::is_aks_prime;
     *next_prime    = \&Math::Prime::Util::_generic_next_prime;
     *prev_prime    = \&Math::Prime::Util::_generic_prev_prime;
     *exp_mangoldt  = \&Math::Prime::Util::_generic_exp_mangoldt;
     *prime_count   = \&Math::Prime::Util::_generic_prime_count;
     *divisor_sum   = \&Math::Prime::Util::_generic_divisor_sum;
-    *legendre_phi  = \&Math::Prime::Util::PP::legendre_phi;
-    *gcd           = \&Math::Prime::Util::PP::gcd;
-    *lcm           = \&Math::Prime::Util::PP::lcm;
     *factor        = \&Math::Prime::Util::_generic_factor;
     *factor_exp    = \&Math::Prime::Util::_generic_factor_exp;
     *divisors      = \&Math::Prime::Util::_generic_divisors;
     *forprimes     = sub (&$;$) { _generic_forprimes(@_); }; ## no critic qw(ProhibitSubroutinePrototypes)
     *forcomposites = sub (&$;$) { _generic_forcomposites(@_); }; ## no critic qw(ProhibitSubroutinePrototypes)
     *fordivisors   = sub (&$) { _generic_fordivisors(@_); }; ## no critic qw(ProhibitSubroutinePrototypes)
-
-    *_prime_memfreeall = \&Math::Prime::Util::PP::_prime_memfreeall;
-    *prime_memfree  = \&Math::Prime::Util::PP::prime_memfree;
-    *prime_precalc  = \&Math::Prime::Util::PP::prime_precalc;
-
-    # These probably shouldn't even be aliased, as they're not public
-    *trial_factor   = \&Math::Prime::Util::PP::trial_factor;
-    *fermat_factor  = \&Math::Prime::Util::PP::fermat_factor;
-    *holf_factor    = \&Math::Prime::Util::PP::holf_factor;
-    *squfof_factor  = \&Math::Prime::Util::PP::squfof_factor;
-    *pbrent_factor  = \&Math::Prime::Util::PP::pbrent_factor;
-    *prho_factor    = \&Math::Prime::Util::PP::prho_factor;
-    *pminus1_factor = \&Math::Prime::Util::PP::pminus1_factor;
-    *pplus1_factor  = \&Math::Prime::Util::PP::pminus1_factor;   # TODO: implement PP p+1.
   };
 
   # aliases for deprecated names.  Will eventually be removed.

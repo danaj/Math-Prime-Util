@@ -1822,8 +1822,6 @@ sub lucas_sequence {
 
 sub is_lucas_pseudoprime {
   my($n) = @_;
-  return 0 if defined $n && int($n) < 0;
-  _validate_positive_integer($n);
 
   return 0+($n >= 2) if $n < 4;
   return 0 if ($n % 2) == 0 || _is_perfect_square($n);
@@ -1838,8 +1836,6 @@ sub is_lucas_pseudoprime {
 
 sub is_strong_lucas_pseudoprime {
   my($n) = @_;
-  return 0 if defined $n && int($n) < 0;
-  _validate_positive_integer($n);
 
   return 0+($n >= 2) if $n < 4;
   return 0 if ($n % 2) == 0 || _is_perfect_square($n);
@@ -1869,8 +1865,6 @@ sub is_strong_lucas_pseudoprime {
 
 sub is_extra_strong_lucas_pseudoprime {
   my($n) = @_;
-  return 0 if defined $n && int($n) < 0;
-  _validate_positive_integer($n);
 
   return 0+($n >= 2) if $n < 4;
   return 0 if ($n % 2) == 0 || _is_perfect_square($n);
@@ -1901,13 +1895,7 @@ sub is_extra_strong_lucas_pseudoprime {
 
 sub is_almost_extra_strong_lucas_pseudoprime {
   my($n, $increment) = @_;
-  return 0 if defined $n && int($n) < 0;
-  _validate_positive_integer($n);
-  if (defined $increment) {
-    _validate_positive_integer($increment, 1, 256);
-  } else {
-    $increment = 1;
-  }
+  $increment = 1 unless defined $increment;
 
   return 0+($n >= 2) if $n < 4;
   return 0 if ($n % 2) == 0 || _is_perfect_square($n);
@@ -1946,8 +1934,6 @@ sub is_almost_extra_strong_lucas_pseudoprime {
 
 sub is_frobenius_underwood_pseudoprime {
   my($n) = @_;
-  return 0 if defined $n && int($n) < 0;
-  _validate_positive_integer($n);
   return 0+($n >= 2) if $n < 4;
   return 0 if ($n % 2) == 0 || _is_perfect_square($n);
 
@@ -2064,11 +2050,7 @@ sub _test_anr {
 
 sub is_aks_prime {
   my $n = shift;
-  return 0 if defined $n && int($n) < 0;
-  _validate_positive_integer($n);
-
-  return 0 if $n < 2;
-  return 0 if _is_perfect_power($n);
+  return 0 if $n < 2 || _is_perfect_power($n);
 
   my($log2n, $limit);
   if ($n > 2**48) {
@@ -2133,6 +2115,9 @@ sub _basic_factor {
     while ( !($_[0] % 3) ) { push @factors, 3;  $_[0] = int($_[0] / 3); }
     while ( !($_[0] % 5) ) { push @factors, 5;  $_[0] = int($_[0] / 5); }
   } else {
+    # Without this, the bdivs will try to convert the results to BigFloat
+    # and lose precision.
+    $_[0]->upgrade(undef) if ref($_[0]) && $_[0]->upgrade();
     if (!Math::BigInt::bgcd($_[0], B_PRIM235)->is_one) {
       while ( $_[0]->is_even)   { push @factors, 2;  $_[0]->brsft(BONE); }
       foreach my $div (3, 5) {
@@ -2327,7 +2312,6 @@ sub squfof_factor { trial_factor(@_) }
 
 sub prho_factor {
   my($n, $rounds, $pa) = @_;
-  _validate_positive_integer($n);
   $rounds = 4*1024*1024 unless defined $rounds;
   $pa = 3 unless defined $pa;
 
@@ -2397,7 +2381,6 @@ sub prho_factor {
 
 sub pbrent_factor {
   my($n, $rounds, $pa) = @_;
-  _validate_positive_integer($n);
   $rounds = 4*1024*1024 unless defined $rounds;
   $pa = 3 unless defined $pa;
 
@@ -2478,7 +2461,6 @@ sub pbrent_factor {
 
 sub pminus1_factor {
   my($n, $B1, $B2) = @_;
-  _validate_positive_integer($n);
 
   my @factors = _basic_factor($n);
   return @factors if $n < 4;
@@ -2627,7 +2609,6 @@ sub pminus1_factor {
 
 sub holf_factor {
   my($n, $rounds, $startrounds) = @_;
-  _validate_positive_integer($n);
   $rounds = 64*1024*1024 unless defined $rounds;
   $startrounds = 1 unless defined $startrounds;
   $startrounds = 1 if $startrounds < 1;
@@ -2674,7 +2655,6 @@ sub holf_factor {
 
 sub fermat_factor {
   my($n, $rounds) = @_;
-  _validate_positive_integer($n);
   $rounds = 64*1024*1024 unless defined $rounds;
 
   my @factors = _basic_factor($n);
@@ -2724,7 +2704,6 @@ sub fermat_factor {
 
 sub ecm_factor {
   my($n, $B1, $B2, $ncurves) = @_;
-  _validate_positive_integer($n);
 
   my @factors = _basic_factor($n);
   return @factors if $n < 4;
