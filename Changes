@@ -9,14 +9,18 @@ Revision history for Perl module Math::Prime::Util
 
     - Dynamically loads the PP code and Math::BigInt only when needed.  This
       removes a lot of bloat for the usual cases:
+
         2.0 MB  perl -E 'say 1'
-        4.3 MB  MPU 0.37
+        4.2 MB  MPU 0.37
         4.5 MB  Math::Prime::XS + Math::Factor::XS
         5.3 MB  Math::Pari
+        7.6 MB  MPU 0.34
         9.6 MB  MPU 0.36
-       10.0 MB  MPU 0.35
+        9.7 MB  MPU 0.35
 
-    - Together with the previous, adjusted factor script.  Over 2x faster
+    - Combined with the above, this reduces startup overhead a lot (~3x).
+
+    - Adjusted factor script to lower startup costs.  Over 2x faster
       with native integer (non-expression) arguments.  This is just not
       loading thousands of lines of Perl code that aren't used, which
       was more time-consuming than the actual factoring.
