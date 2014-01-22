@@ -227,8 +227,6 @@ sub _is_prime7 {  # n must not be divisible by 2, 3, or 5
 
 sub is_prime {
   my($n) = @_;
-  return 0 if defined $n && int($n) < 0;
-  _validate_positive_integer($n);
 
   if (ref($n) eq 'Math::BigInt') {
     return 0 unless Math::BigInt::bgcd($n, B_PRIM235)->is_one;
@@ -567,11 +565,9 @@ sub consecutive_integer_lcm {
 
 sub jordan_totient {
   my($k, $n) = @_;
-  _validate_num($k) || _validate_positive_integer($k);
   return ($n == 1) ? 1 : 0  if $k == 0;
   return euler_phi($n)      if $k == 1;
-  return 0 if defined $n && $n < 0;  # Following SAGE's logic here.
-  _validate_num($n) || _validate_positive_integer($n);
+  return 0 if $n < 0;
   return ($n == 1) ? 1 : 0  if $n <= 1;
 
   my @pe = Math::Prime::Util::factor_exp($n);
@@ -589,6 +585,7 @@ sub jordan_totient {
 }
 
 sub euler_phi {
+  return euler_phi_range(@_) if scalar @_ > 1;
   my($n) = @_;
   return 0 if $n < 0;
   return $n if $n <= 1;
@@ -638,6 +635,7 @@ sub euler_phi_range {
 }
 
 sub moebius {
+  return moebius_range(@_) if scalar @_ > 1;
   my($n) = @_;
   return ($n == 1) ? 1 : 0  if $n <= 1;
   return 0 if ($n >= 49) && (!($n % 4) || !($n % 9) || !($n % 25) || !($n%49) );
@@ -684,6 +682,54 @@ sub moebius_range {
   }
   return @mu;
 }
+
+sub mertens {
+  my($n) = @_;
+    # This is the most basic Deléglise and Rivat algorithm.  u = n^1/2
+  # and no segmenting is done.  Their algorithm uses u = n^1/3, breaks
+  # the summation into two parts, and calculates those in segments.  Their
+  # computation time growth is half of this code.
+  return $n if $n <= 1;
+  my $u = int(sqrt($n));
+  my @mu = (0, Math::Prime::Util::moebius(1, $u)); # Hold values of mu for 0-u
+  my $musum = 0;
+  my @M = map { $musum += $_; } @mu;     # Hold values of M for 0-u
+  my $sum = $M[$u];
+  foreach my $m (1 .. $u) {
+    next if $mu[$m] == 0;
+    my $inner_sum = 0;
+    my $lower = int($u/$m) + 1;
+    my $last_nmk = int($n/($m*$lower));
+    my ($denom, $this_k, $next_k) = ($m, 0, int($n/($m*1)));
+    for my $nmk (1 .. $last_nmk) {
+      $denom += $m;
+      $this_k = int($n/$denom);
+      next if $this_k == $next_k;
+      ($this_k, $next_k) = ($next_k, $this_k);
+      $inner_sum += $M[$nmk] * ($this_k - $next_k);
+    }
+    $sum -= $mu[$m] * $inner_sum;
+  }
+  return $sum;
+}
+
+sub carmichael_lambda {
+  my($n) = @_;
+  return euler_phi($n) if $n < 8;                # = phi(n) for n < 8
+  return euler_phi($n)/2 if ($n & ($n-1)) == 0;  # = phi(n)/2 for 2^k, k>2
+
+  my @pe = Math::Prime::Util::factor_exp($n);
+  $pe[0]->[1]-- if $pe[0]->[0] == 2 && $pe[0]->[1] > 2;
+
+  my $lcm = Math::BigInt::blcm(
+    map { $_->[0]->copy->bpow($_->[1]->copy->bdec)->bmul($_->[0]->copy->bdec) }
+    map { [ map { Math::BigInt->new("$_") } @$_ ] }
+    @pe
+  );
+  $lcm = _bigint_to_int($lcm) if $lcm->bacmp(''.~0) <= 0;
+  return $lcm;
+}
+
 
 my @_ds_overflow =  # We'll use BigInt math if the input is larger than this.
   (~0 > 4294967295)
@@ -1349,9 +1395,7 @@ sub _is_perfect_power {
 
 sub is_pseudoprime {
   my($n, $base) = @_;
-  return 0 if defined $n && int($n) < 0;
-  _validate_positive_integer($n);
-  _validate_positive_integer($base);
+  return 0 if int($n) < 0;
 
   if ($n < 5) { return ($n == 2) || ($n == 3) ? 1 : 0; }
   croak "Base $base is invalid" if $base < 2;
@@ -1422,9 +1466,6 @@ sub _miller_rabin_2 {
 
 sub is_strong_pseudoprime {
   my($n, @bases) = @_;
-  return 0 if defined $n && int($n) < 0;
-  _validate_positive_integer($n);
-  croak "No bases given to miller_rabin" unless @bases;
 
   return 0+($n >= 2) if $n < 4;
   return 0 if ($n % 2) == 0;
@@ -1562,8 +1603,6 @@ sub _is_perfect_square {
 
 sub znorder {
   my($a, $n) = @_;
-  _validate_num($a) || _validate_positive_integer($a);
-  _validate_num($n) || _validate_positive_integer($n);
   return if $n <= 0;
   return (undef,1)[$a] if $a <= 1;
   return 1 if $n == 1;
@@ -1613,6 +1652,39 @@ sub znlog {
   }
   return;
 }
+
+sub znprimroot {
+  my($n) = @_;
+  $n = -$n if $n < 0;
+  if ($n <= 4) {
+    return if $n == 0;
+    return $n-1;
+  }
+  return if $n % 4 == 0;
+  my $a = 1;
+  my $phi = euler_phi($n);
+  # Check that a primitive root exists.
+  return if !is_prob_prime($n) && $phi != Math::Prime::Util::carmichael_lambda($n);
+  my @exp = map { Math::BigInt->new("$_") }
+            map { int($phi/$_->[0]) }
+            Math::Prime::Util::factor_exp($phi);
+  #print "phi: $phi  factors: ", join(",",factor($phi)), "\n";
+  #print "  exponents: ", join(",", @exp), "\n";
+  my $bign = (ref($n) eq 'Math::BigInt') ? $n : Math::BigInt->new("$n");
+  while (1) {
+    my $fail = 0;
+    do { $a++ } while kronecker($a,$n) == 0;
+    return if $a >= $n;
+    foreach my $f (@exp) {
+      if ( Math::BigInt->new($a)->bmodpow($f, $bign)->is_one ) {
+        $fail = 1;
+        last;
+      }
+    }
+    return $a if !$fail;
+  }
+}
+
 
 # Find first D in sequence (5,-7,9,-11,13,-15,...) where (D|N) == -1
 sub _lucas_selfridge_params {

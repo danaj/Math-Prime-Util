@@ -91,14 +91,10 @@ BEGIN {
     $_Config{'xs'} = 0;
     $_Config{'maxbits'} = MPU_MAXBITS;
 
-    # Load PP code now.  Nothing is exported.
-    require Math::Prime::Util::PP;  Math::Prime::Util::PP->import();
+    # Load PP front end code
+    require Math::Prime::Util::PPFE;
 
     *_validate_num = \&Math::Prime::Util::PP::_validate_num;
-    *is_prime      = \&Math::Prime::Util::PP::is_prime;
-    *is_prob_prime = \&Math::Prime::Util::PP::is_prob_prime;
-    *is_pseudoprime=\&Math::Prime::Util::PP::is_pseudoprime;
-    *is_strong_pseudoprime=\&Math::Prime::Util::PP::is_strong_pseudoprime;
     *is_lucas_pseudoprime=\&Math::Prime::Util::PP::is_lucas_pseudoprime;
     *is_strong_lucas_pseudoprime=\&Math::Prime::Util::PP::is_strong_lucas_pseudoprime;
     *is_extra_strong_lucas_pseudoprime=\&Math::Prime::Util::PP::is_extra_strong_lucas_pseudoprime;
@@ -108,24 +104,8 @@ BEGIN {
     *next_prime    = \&Math::Prime::Util::_generic_next_prime;
     *prev_prime    = \&Math::Prime::Util::_generic_prev_prime;
     *exp_mangoldt  = \&Math::Prime::Util::_generic_exp_mangoldt;
-    *euler_phi     = \&Math::Prime::Util::_generic_euler_phi;
-    *jordan_totient= \&Math::Prime::Util::PP::jordan_totient;
-    *moebius       = \&Math::Prime::Util::_generic_moebius;
-    *mertens       = \&Math::Prime::Util::_generic_mertens;
     *prime_count   = \&Math::Prime::Util::_generic_prime_count;
-    *nth_prime     = \&Math::Prime::Util::PP::nth_prime;
-    *nth_prime_upper=\&Math::Prime::Util::PP::nth_prime_upper;
-    *nth_prime_lower=\&Math::Prime::Util::PP::nth_prime_lower;
-    *nth_prime_approx=\&Math::Prime::Util::PP::nth_prime_approx;
-    *prime_count_upper=\&Math::Prime::Util::PP::prime_count_upper;
-    *prime_count_lower=\&Math::Prime::Util::PP::prime_count_lower;
-    *prime_count_approx=\&Math::Prime::Util::PP::prime_count_approx;
-    *carmichael_lambda = \&Math::Prime::Util::_generic_carmichael_lambda;
-    *kronecker     = \&Math::Prime::Util::_generic_kronecker;
     *divisor_sum   = \&Math::Prime::Util::_generic_divisor_sum;
-    *znorder       = \&Math::Prime::Util::PP::znorder;
-    *znprimroot    = \&Math::Prime::Util::_generic_znprimroot;
-    *znlog         = \&Math::Prime::Util::PP::znlog;
     *legendre_phi  = \&Math::Prime::Util::PP::legendre_phi;
     *gcd           = \&Math::Prime::Util::PP::gcd;
     *lcm           = \&Math::Prime::Util::PP::lcm;
@@ -286,12 +266,6 @@ sub _validate_positive_integer {
   1;
 }
 
-sub _upgrade_to_float {
-  do { require Math::BigFloat; Math::BigFloat->import(); }
-    if !defined $Math::BigFloat::VERSION;
-  return Math::BigFloat->new($_[0]);
-}
-
 
 #############################################################################
 
@@ -448,62 +422,6 @@ sub consecutive_integer_lcm {
   return Math::Prime::Util::PP::consecutive_integer_lcm($n);
 }
 
-# A008683 Moebius function mu(n)
-# A030059, A013929, A030229, A002321, A005117, A013929 all relate.
-sub _generic_moebius {
-  my($n, $nend) = @_;
-  return 0 if defined $n && $n < 0;
-  require Math::Prime::Util::PP;
-  _validate_num($n) || _validate_positive_integer($n);
-  return Math::Prime::Util::PP::moebius($n) if !defined $nend;
-  _validate_num($nend) || _validate_positive_integer($nend);
-  return Math::Prime::Util::PP::moebius_range($n, $nend);
-}
-
-# A002321 Mertens' function.  mertens(n) = sum(moebius(1,n))
-sub _generic_mertens {
-  my($n) = @_;
-  _validate_num($n) || _validate_positive_integer($n);
-  # This is the most basic Deléglise and Rivat algorithm.  u = n^1/2
-  # and no segmenting is done.  Their algorithm uses u = n^1/3, breaks
-  # the summation into two parts, and calculates those in segments.  Their
-  # computation time growth is half of this code.
-  return $n if $n <= 1;
-  my $u = int(sqrt($n));
-  my @mu = (0, moebius(1, $u));          # Hold values of mu for 0-u
-  my $musum = 0;
-  my @M = map { $musum += $_; } @mu;     # Hold values of M for 0-u
-  my $sum = $M[$u];
-  foreach my $m (1 .. $u) {
-    next if $mu[$m] == 0;
-    my $inner_sum = 0;
-    my $lower = int($u/$m) + 1;
-    my $last_nmk = int($n/($m*$lower));
-    my ($denom, $this_k, $next_k) = ($m, 0, int($n/($m*1)));
-    for my $nmk (1 .. $last_nmk) {
-      $denom += $m;
-      $this_k = int($n/$denom);
-      next if $this_k == $next_k;
-      ($this_k, $next_k) = ($next_k, $this_k);
-      $inner_sum += $M[$nmk] * ($this_k - $next_k);
-    }
-    $sum -= $mu[$m] * $inner_sum;
-  }
-  return $sum;
-}
-
-
-# A000010 Euler Phi, aka Euler Totient
-sub _generic_euler_phi {
-  my($n, $nend) = @_;
-  return 0 if defined $n && $n < 0;
-  require Math::Prime::Util::PP;
-  _validate_num($n) || _validate_positive_integer($n);
-  return Math::Prime::Util::PP::euler_phi($n) if !defined $nend;
-  _validate_num($nend) || _validate_positive_integer($nend);
-  return Math::Prime::Util::PP::euler_phi_range($n, $nend);
-}
-
 sub _generic_divisor_sum {
   my($n) = @_;
   _validate_num($n) || _validate_positive_integer($n);
@@ -649,63 +567,6 @@ sub chebyshev_psi {
   return $sum;
 }
 
-sub _generic_carmichael_lambda {
-  my($n) = @_;
-  _validate_num($n) || _validate_positive_integer($n);
-  # lambda(n) = phi(n) for n < 8
-  return euler_phi($n) if $n < 8;
-  # lambda(n) = phi(n)/2 for powers of two greater than 4
-  return euler_phi($n)/2 if ($n & ($n-1)) == 0;
-
-  my @pe = factor_exp($n);
-  $pe[0]->[1]-- if $pe[0]->[0] == 2 && $pe[0]->[1] > 2;
-
-  my $lcm = Math::BigInt::blcm(
-    map { $_->[0]->copy->bpow($_->[1]->copy->bdec)->bmul($_->[0]->copy->bdec) }
-    map { [ map { Math::BigInt->new("$_") } @$_ ] }
-    @pe
-  );
-  $lcm = _bigint_to_int($lcm) if $lcm->bacmp(''.~0) <= 0;
-  return $lcm;
-}
-
-sub _generic_znprimroot {
-  my($n) = @_;
-  $n = -$n if defined $n && $n =~ /^-\d+/;   # TODO: fix this for string bigints
-  _validate_num($n) || _validate_positive_integer($n);
-  if ($n <= 4) {
-    return if $n == 0;
-    return $n-1;
-  }
-  return if $n % 4 == 0;
-  my $a = 1;
-  my $phi = euler_phi($n);
-  # Check that a primitive root exists.
-  return if !is_prob_prime($n) && $phi != carmichael_lambda($n);
-  my @exp = map { Math::BigInt->new("$_") }
-            map { int($phi/$_->[0]) }
-            factor_exp($phi);
-  #print "phi: $phi  factors: ", join(",",factor($phi)), "\n";
-  #print "  exponents: ", join(",", @exp), "\n";
-  my $bign = (ref($n) eq 'Math::BigInt') ? $n : Math::BigInt->new("$n");
-  while (1) {
-    my $fail = 0;
-    do { $a++ } while kronecker($a,$n) == 0;
-    return if $a >= $n;
-    foreach my $f (@exp) {
-      if ( Math::BigInt->new($a)->bmodpow($f, $bign)->is_one ) {
-        $fail = 1;
-        last;
-      }
-    }
-    return $a if !$fail;
-  }
-}
-
-
-
-
-
 #############################################################################
 # Front ends to functions.
 #
@@ -735,20 +596,6 @@ sub _generic_prev_prime {
 
   require Math::Prime::Util::PP;
   return Math::Prime::Util::PP::prev_prime($_[0]);
-}
-
-sub _generic_kronecker {
-  my($a, $b) = @_;
-  croak "Parameter must be defined" if !defined $a;
-  croak "Parameter must be defined" if !defined $b;
-  croak "Parameter '$a' must be an integer" unless $a =~ /^[-+]?\d+/;
-  croak "Parameter '$b' must be an integer" unless $b =~ /^[-+]?\d+/;
-
-  return Math::BigInt->new(''.Math::Prime::Util::GMP::kronecker($a,$b))
-    if $_HAVE_GMP && defined &Math::Prime::Util::GMP::kronecker;
-
-  require Math::Prime::Util::PP;
-  return Math::Prime::Util::PP::kronecker(@_);
 }
 
 sub _generic_prime_count {

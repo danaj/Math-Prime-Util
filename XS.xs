@@ -782,7 +782,7 @@ kronecker(IN SV* sva, IN SV* svb)
       int k = (abpositive) ? kronecker_uu(a,b) : kronecker_ss(a,b);
       RETURN_NPARITY(k);
     }
-    _vcallsub("_generic_kronecker");
+    _vcallsub_with_gmp("kronecker");
     return; /* skip implicit PUTBACK */
 
 double
@@ -855,9 +855,9 @@ euler_phi(IN SV* svlo, ...)
       /* Whatever we didn't handle above */
       U32 gimme_v = GIMME_V;
       switch (ix) {
-        case 0:  _vcallsubn(aTHX_ gimme_v, VCALL_ROOT,"_generic_euler_phi", items);break;
+        case 0:  _vcallsubn(aTHX_ gimme_v, VCALL_PP, "euler_phi", items);break;
         case 1:
-        default: _vcallsubn(aTHX_ gimme_v, VCALL_ROOT,"_generic_moebius", items);  break;
+        default: _vcallsubn(aTHX_ gimme_v, VCALL_PP, "moebius", items);  break;
       }
       return;
     }
@@ -874,10 +874,10 @@ carmichael_lambda(IN SV* svn)
     status = _validate_int(aTHX_ svn, (ix > 1) ? 1 : 0);
     switch (ix) {
       case 0: if (status == 1) XSRETURN_UV(carmichael_lambda(my_svuv(svn)));
-              _vcallsub("_generic_carmichael_lambda");
+              _vcallsub_with_gmp("carmichael_lambda");
               break;
       case 1: if (status == 1) XSRETURN_IV(mertens(my_svuv(svn)));
-              _vcallsub("_generic_mertens");
+              _vcallsub_with_pp("mertens");
               break;
       case 2: if (status ==-1) XSRETURN_UV(1);
               if (status == 1) XSRETURN_UV(exp_mangoldt(my_svuv(svn)));
@@ -893,7 +893,7 @@ carmichael_lambda(IN SV* svn)
                 else
                   XSRETURN_UV(r);
               }
-              _vcallsub("_generic_znprimroot");
+              _vcallsub_with_gmp("znprimroot");
               break;
     }
     return; /* skip implicit PUTBACK */

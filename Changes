@@ -10,7 +10,7 @@ Revision history for Perl module Math::Prime::Util
     - Dynamically loads the PP code and Math::BigInt only when needed.  This
       removes a lot of bloat for the usual cases:
         2.0 MB  perl -E 'say 1'
-        4.4 MB  MPU 0.37
+        4.3 MB  MPU 0.37
         4.5 MB  Math::Prime::XS + Math::Factor::XS
         5.3 MB  Math::Pari
         9.6 MB  MPU 0.36
