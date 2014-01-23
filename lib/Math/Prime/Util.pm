@@ -511,8 +511,7 @@ sub prime_iterator {
 
 sub prime_iterator_object {
   my($start) = @_;
-  eval { require Math::Prime::Util::PrimeIterator; 1; }
-  or do { croak "Cannot load Math::Prime::Util::PrimeIterator"; };
+  require Math::Prime::Util::PrimeIterator;
   return Math::Prime::Util::PrimeIterator->new($start);
 }
 
@@ -623,13 +622,6 @@ sub lucas_sequence {
 
 #############################################################################
 
-# For stripping off the header on certificates so they can be combined.
-sub _strip_proof_header {
-  my $proof = shift;
-  $proof =~ s/^\[MPU - Primality Certificate\]\nVersion \S+\n+Proof for:\nN (\d+)\n+//ms;
-  return $proof;
-}
-
 # Return just the non-cert portion.
 sub is_provable_prime {
   my($n) = @_;
@@ -674,10 +666,7 @@ sub is_provable_prime_with_cert {
       return ($isp, $cert);
     }
     # Old version.  Convert.
-    if (!defined $Math::Prime::Util::PrimalityProving::VERSION) {
-      eval { require Math::Prime::Util::PrimalityProving; 1; }
-      or do { croak "Cannot load Math::Prime::Util::PrimalityProving"; };
-    }
+    require Math::Prime::Util::PrimalityProving;
     return ($isp, Math::Prime::Util::PrimalityProving::convert_array_cert_to_string($cert));
   }
 
@@ -700,11 +689,7 @@ sub is_provable_prime_with_cert {
   #   AKS          horribly slow
   # See http://primes.utm.edu/prove/merged.html or other sources.
 
-  if (!defined $Math::Prime::Util::PrimalityProving::VERSION) {
-    eval { require Math::Prime::Util::PrimalityProving; 1; }
-    or do { croak "Cannot load Math::Prime::Util::PrimalityProving"; };
-  }
-
+  require Math::Prime::Util::PrimalityProving;
   #my ($isp, $pref) = Math::Prime::Util::PrimalityProving::primality_proof_lucas($n);
   my ($isp, $pref) = Math::Prime::Util::PrimalityProving::primality_proof_bls75($n);
   carp "proved $n is not prime\n" if !$isp;
@@ -715,11 +700,7 @@ sub is_provable_prime_with_cert {
 sub verify_prime {
   my @cdata = @_;
 
-  if (!defined $Math::Prime::Util::PrimalityProving::VERSION) {
-    eval { require Math::Prime::Util::PrimalityProving; 1; }
-    or do { croak "Cannot load Math::Prime::Util::PrimalityProving"; };
-  }
-
+  require Math::Prime::Util::PrimalityProving;
   my $cert = '';
   if (scalar @cdata == 1 && ref($cdata[0]) eq '') {
     $cert = $cdata[0];

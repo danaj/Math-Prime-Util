@@ -57,6 +57,14 @@ sub _small_cert {
                     "";
 }
 
+# For stripping off the header on certificates so they can be combined.
+sub _strip_proof_header {
+  my $proof = shift;
+  $proof =~ s/^\[MPU - Primality Certificate\]\nVersion \S+\n+Proof for:\nN (\d+)\n+//ms;
+  return $proof;
+}
+
+
 sub primality_proof_lucas {
   my ($n) = shift;
   my @composite = (0, '');
@@ -96,7 +104,7 @@ sub primality_proof_lucas {
         carp "could not prove primality of $n.\n";
         return (1, '');
       }
-      push @fac_proofs, Math::Prime::Util::_strip_proof_header($fproof) if $f > $_smallval;
+      push @fac_proofs, _strip_proof_header($fproof) if $f > $_smallval;
     }
     $cert .= "A $a\n";
     foreach my $proof (@fac_proofs) {
@@ -230,7 +238,7 @@ sub primality_proof_bls75 {
       carp "could not prove primality of $n.\n";
       return (1, '');
     }
-    push @fac_proofs, Math::Prime::Util::_strip_proof_header($fproof) if $f > $_smallval;
+    push @fac_proofs, _strip_proof_header($fproof) if $f > $_smallval;
   }
   $cert .= $atext;
   $cert .= "----\n";

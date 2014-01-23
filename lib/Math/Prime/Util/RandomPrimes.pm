@@ -689,6 +689,15 @@ sub random_nbit_prime {
   }
 }
 
+
+# For stripping off the header on certificates so they can be combined.
+sub _strip_proof_header {
+  my $proof = shift;
+  $proof =~ s/^\[MPU - Primality Certificate\]\nVersion \S+\n+Proof for:\nN (\d+)\n+//ms;
+  return $proof;
+}
+
+
 sub random_maurer_prime {
   my $k = shift;
   croak "random_maurer_prime, bits must be >= 2" unless $k >= 2;
@@ -743,7 +752,9 @@ sub random_maurer_prime_with_cert {
   }
 
   # I've seen +0, +1, and +2 here.  Maurer uses +0.  Menezes uses +1.
-  my ($q, $qcert) = random_maurer_prime_with_cert( ($r * $k)->bfloor->binc );
+  # We can use +1 because we're using BLS75 theorem 3 later.
+  my $smallk = int(($r * $k)->bfloor->bstr) + 1;
+  my ($q, $qcert) = random_maurer_prime_with_cert($smallk);
   $q = Math::BigInt->new("$q") unless ref($q) eq 'Math::BigInt';
   my $I = Math::BigInt->new(2)->bpow($k-2)->bdiv($q)->bfloor->as_int();
   print "r = $r  k = $k  q = $q  I = $I\n" if $verbose && $verbose != 3;
