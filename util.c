@@ -1460,6 +1460,22 @@ static const long double riemann_zeta_table[] = {
   0.0000000000036379795473786511902372363L,
   0.0000000000018189896503070659475848321L,
   0.0000000000009094947840263889282533118L,
+  0.0000000000004547473783042154026799112L,
+  0.0000000000002273736845824652515226821L,
+  0.0000000000001136868407680227849349105L,
+  0.0000000000000568434198762758560927718L,
+  0.0000000000000284217097688930185545507L,
+  0.0000000000000142108548280316067698343L,
+  0.00000000000000710542739521085271287735L,
+  0.00000000000000355271369133711367329847L,
+  0.00000000000000177635684357912032747335L,
+  0.000000000000000888178421093081590309609L,
+  0.000000000000000444089210314381336419777L,
+  0.000000000000000222044605079804198399932L,
+  0.000000000000000111022302514106613372055L,
+  0.0000000000000000555111512484548124372374L,
+  0.0000000000000000277555756213612417258163L,
+  0.0000000000000000138777878097252327628391L,
 };
 #define NPRECALC_ZETA (sizeof(riemann_zeta_table)/sizeof(riemann_zeta_table[0]))
 
@@ -1469,9 +1485,9 @@ static const long double riemann_zeta_table[] = {
  * The Cephes zeta function uses a series (2k)!/B_2k which converges rapidly
  * and has a very wide range of values.  We use it here for some values.
  *
- * Note: Calculations here are done on long doubles and we try to generate ~17
- *       digits of accuracy.  When these are returned to Perl they get put in
- *       a standard 64-bit double, so don't expect more than 15 digits.
+ * Note: Calculations here are done on long doubles and we try to generate as
+ *       much accuracy as possible.  They will get returned to Perl as an NV,
+ *       which is typically a 64-bit double with 15 digits.
  *
  * For values 0.5 to 5, this code uses the rational Chebyshev approximation
  * from Cody and Thacher.  This method is extraordinarily fast and very
