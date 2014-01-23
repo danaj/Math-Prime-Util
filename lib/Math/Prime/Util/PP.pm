@@ -40,6 +40,7 @@ BEGIN {
   use constant BTWO            => Math::BigInt->new(2);
   use constant B_PRIM759       => Math::BigInt->new("64092011671807087969");
   use constant B_PRIM235       => Math::BigInt->new("30");
+  use constant PI_TIMES_8      => 25.13274122871834590770114707;
 }
 
 {
@@ -81,6 +82,29 @@ sub _upgrade_to_float {
     if !defined $Math::BigFloat::VERSION;
   return Math::BigFloat->new($_[0]);
 }
+
+# Get the accuracy of variable x, or the max default from BigInt/BigFloat
+# One might think to use ref($x)->accuracy() but numbers get upgraded and
+# downgraded willy-nilly, and it will do the wrong thing from the user's
+# perspective.
+sub _find_big_acc {
+  my($x) = @_;
+
+  $b = $x->accuracy();
+  return $b if defined $b;
+
+  my ($i,$f) = (Math::BigInt->accuracy(), Math::BigFloat->accuracy());
+  return (($i > $f) ? $i : $f)   if defined $i && defined $f;
+  return $i if defined $i;
+  return $f if defined $f;
+
+  ($i,$f) = (Math::BigInt->div_scale(), Math::BigFloat->div_scale());
+  return (($i > $f) ? $i : $f)   if defined $i && defined $f;
+  return $i if defined $i;
+  return $f if defined $f;
+  return 18;
+}
+
 
 sub _validate_num {
   my($n, $min, $max) = @_;
@@ -556,7 +580,7 @@ sub consecutive_integer_lcm {
 
   my $max = (MPU_32BIT) ? 22 : (OLD_PERL_VERSION) ? 37 : 46;
   my $pn = ref($n) ? ref($n)->new(1) : ($n >= $max) ? Math::BigInt->bone() : 1;
-  foreach my $p (@{primes($n)}) {
+  for (my $p = 2; $p <= $n; $p = next_prime($p)) {
     my($p_power, $pmin) = ($p, int($n/$p));
     $p_power *= $p while $p_power <= $pmin;
     $pn *= $p_power;
@@ -715,6 +739,25 @@ sub mertens {
   return $sum;
 }
 
+sub liouville {
+  my($n) = @_;
+  my $l = (-1) ** scalar factor($n);
+  return $l;
+}
+
+# Exponential of Mangoldt function (A014963).
+# Return p if n = p^m [p prime, m >= 1], 1 otherwise.
+sub exp_mangoldt {
+  my($n) = @_;
+  return 1 if defined $n && $n <= 1;  # n <= 1
+  return 2 if ($n & ($n-1)) == 0;     # n power of 2
+  return 1 unless $n & 1;             # even n can't be p^m
+
+  my @pe = Math::Prime::Util::factor_exp($n);
+  return 1 if scalar @pe > 1;
+  return $pe[0]->[0];
+}
+
 sub carmichael_lambda {
   my($n) = @_;
   return euler_phi($n) if $n < 8;                # = phi(n) for n < 8
@@ -739,19 +782,13 @@ my @_ds_overflow =  # We'll use BigInt math if the input is larger than this.
    : ( 50,           845404560,      52560,    1548,   252,   84);
 sub divisor_sum {
   my($n, $k) = @_;
-  return 1 if defined $n && $n == 1;
+  return 1 if $n == 1;
 
   if (defined $k && ref($k) eq 'CODE') {
     my $sum = $n-$n;
-    if (ref($n) eq 'Math::BigInt') {
-      # If the original number was a bigint, make sure all divisors are.
-      foreach my $d (Math::Prime::Util::divisors($n)) {
-        $sum += $k->(Math::BigInt->new("$d"));
-      }
-    } else {
-      foreach my $d (Math::Prime::Util::divisors($n)) {
-        $sum += $k->($d);
-      }
+    my $refn = ref($n);
+    foreach my $d (Math::Prime::Util::divisors($n)) {
+      $sum += $k->( $refn ? $refn->new("$d") : $d );
     }
     return $sum;
   }
@@ -1185,10 +1222,15 @@ sub prime_count_lower {
 
   my $result;
   if ($x > 1000_000_000_000 && Math::Prime::Util::prime_get_config()->{'assume_rh'}) {
+    # Schoenfeld bound
     my $lix = LogarithmicIntegral($x);
     my $sqx = sqrt($x);
-    # Schoenfeld bound:    (constant is 8 * Pi)
-    $result = $lix - (($sqx*$flogx) / 25.13274122871834590770114707);
+    if (ref($x) eq 'Math::BigFloat') {
+      my $xdigits = _find_big_acc($x);
+      $result = $lix - (($sqx*$flogx) / (Math::BigFloat->bpi($xdigits)*8));
+    } else {
+      $result = $lix - (($sqx*$flogx) / PI_TIMES_8);
+    }
   } elsif ($x < 599) {
     $result = $x / ($flogx - 0.7);   # For smaller numbers this works out well.
   } else {
@@ -1237,10 +1279,15 @@ sub prime_count_upper {
 
   my $result;
   if ($x > 10000_000_000_000 && Math::Prime::Util::prime_get_config()->{'assume_rh'}) {
+    # Schoenfeld bound
     my $lix = LogarithmicIntegral($x);
     my $sqx = sqrt($x);
-    # Schoenfeld bound:    (constant is 8 * Pi)
-    $result = $lix + (($sqx*$flogx) / 25.13274122871834590770114707);
+    if (ref($x) eq 'Math::BigFloat') {
+      my $xdigits = _find_big_acc($x);
+      $result = $lix + (($sqx*$flogx) / (Math::BigFloat->bpi($xdigits)*8));
+    } else {
+      $result = $lix + (($sqx*$flogx) / PI_TIMES_8);
+    }
   } elsif ($x <  1621) { $result = ($x / ($flogx - 1.048)) + 1.0; }
     elsif ($x <  5000) { $result = ($x / ($flogx - 1.071)) + 1.0; }
     elsif ($x < 15900) { $result = ($x / ($flogx - 1.098)) + 1.0; }
@@ -2883,7 +2930,7 @@ sub ecm_factor {
 
 sub divisors {
   my($n) = @_;
-  _validate_num($n) || _validate_positive_integer($n);
+  _validate_positive_integer($n);
 
   # In scalar context, returns sigma_0(n).  Very fast.
   return Math::Prime::Util::divisor_sum($n,0) unless wantarray;
@@ -2918,6 +2965,33 @@ sub divisors {
 }
 
 
+sub chebyshev_theta {
+  my($n) = @_;
+  my $sum = 0.0;
+  for (my $p = 2; $p <= $n; $p = next_prime($p)) {
+    $sum += log($p);
+  }
+  return $sum;
+}
+
+sub chebyshev_psi {
+  my($n) = @_;
+  return 0 if $n <= 1;
+
+  my ($sum, $p, $logn, $sqrtn) = (0.0, 2, log($n), int(sqrt($n)));
+
+  for ( ; $p <= $sqrtn; $p = next_prime($p)) {
+    my $logp = log($p);
+    $sum += $logp * int($logn/$logp+1e-15);
+  }
+
+  for ( ; $p <= $n; $p = next_prime($p)) {
+    $sum += log($p);
+  }
+
+  return $sum;
+}
+
 sub ExponentialIntegral {
   my($x) = @_;
   return - MPU_INFINITY if $x == 0;
@@ -2932,8 +3006,8 @@ sub ExponentialIntegral {
       do { require Math::BigFloat; Math::BigFloat->import(); }
         if !defined $Math::BigFloat::VERSION;
       $x = Math::BigFloat->new("$x") if ref($x) ne 'Math::BigFloat';
-      $wantbf = 1;
-      $xdigits = $x->accuracy || Math::BigFloat->accuracy() || Math::BigFloat->div_scale();
+      $wantbf = _find_big_acc($x);
+      $xdigits = $wantbf;
     }
     my $rnd = 0;  # MPFR_RNDN;
     my $bit_precision = int($xdigits * 3.322) + 4;
@@ -2944,7 +3018,7 @@ sub ExponentialIntegral {
     Math::MPFR::Rmpfr_set_prec($eix, $bit_precision);
     Math::MPFR::Rmpfr_eint($eix, $rx, $rnd);
     my $strval = Math::MPFR::Rmpfr_get_str($eix, 10, 0, $rnd);
-    return ($wantbf)  ?  Math::BigFloat->new($strval)  :  0.0 + $strval;
+    return ($wantbf)  ?  Math::BigFloat->new($strval,$wantbf)  :  0.0 + $strval;
   }
 
   $x = Math::BigFloat->new("$x") if defined $bignum::VERSION && ref($x) ne 'Math::BigFloat';
@@ -3031,8 +3105,8 @@ sub LogarithmicIntegral {
     my $wantbf = 0;
     my $xdigits = 18;
     if (defined $bignum::VERSION || ref($x) =~ /^Math::Big/) {
-      $wantbf = 1;
-      $xdigits = $x->accuracy || Math::BigInt->accuracy() || Math::BigInt->div_scale();
+      $wantbf = _find_big_acc($x);
+      $xdigits = $wantbf;
     }
     $xdigits += length(int(log(0.0+"$x"))) + 1;
     my $rnd = 0;  # MPFR_RNDN;
@@ -3045,9 +3119,7 @@ sub LogarithmicIntegral {
     Math::MPFR::Rmpfr_set_prec($lix, $bit_precision);
     Math::MPFR::Rmpfr_eint($lix, $rx, $rnd);
     my $strval = Math::MPFR::Rmpfr_get_str($lix, 10, 0, $rnd);
-    return Math::BigFloat->new($strval, ($x->accuracy || Math::BigInt->accuracy() || Math::BigInt->div_scale()))
-      if $wantbf;
-    return 0.0 + $strval;
+    return ($wantbf)  ?  Math::BigFloat->new($strval,$wantbf)  :  0.0 + $strval;
   }
 
   if ($x == 2) {
@@ -3066,7 +3138,7 @@ sub LogarithmicIntegral {
   my $xdigits = 0;
   my $finalacc = 0;
   if (ref($x) =~ /^Math::Big/) {
-    $xdigits = $x->accuracy || Math::BigFloat->accuracy() || Math::BigFloat->div_scale();
+    $xdigits = _find_big_acc($x);
     my $xlen = length($x->bfloor->bstr());
     $xdigits = $xlen if $xdigits < $xlen;
     $finalacc = $xdigits;
@@ -3179,8 +3251,8 @@ sub RiemannZeta {
         $x->accuracy($xacc) if $xacc;
       }
       $x = Math::BigFloat->new("$x") if ref($x) ne 'Math::BigFloat';
-      $wantbf = 1;
-      $xdigits = $x->accuracy || Math::BigFloat->accuracy() || Math::BigFloat->div_scale();
+      $wantbf = _find_big_acc($x);
+      $xdigits = $wantbf;
     }
     my $rnd = 0;  # MPFR_RNDN;
     my $bit_precision = int($xdigits * 3.322) + 7;
@@ -3194,7 +3266,7 @@ sub RiemannZeta {
     Math::MPFR::Rmpfr_zeta($zetax, $rx, $rnd);
     Math::MPFR::Rmpfr_sub_ui($zetax, $zetax, 1, $rnd);
     my $strval = Math::MPFR::Rmpfr_get_str($zetax, 10, $xdigits, $rnd);
-    return ($wantbf)  ?  Math::BigFloat->new($strval)  :  0.0 + $strval;
+    return ($wantbf)  ?  Math::BigFloat->new($strval,$wantbf)  :  0.0 + $strval;
   }
 
   if (defined $bignum::VERSION || ref($x) =~ /^Math::Big/) {
@@ -3268,8 +3340,8 @@ sub RiemannR {
         $x->accuracy($xacc) if $xacc;
       }
       $x = Math::BigFloat->new("$x") if ref($x) ne 'Math::BigFloat';
-      $wantbf = 1;
-      $xdigits = $x->accuracy || Math::BigFloat->accuracy() || Math::BigFloat->div_scale();
+      $wantbf = _find_big_acc($x);
+      $xdigits = $wantbf;
     }
     my $rnd = 0;  # MPFR_RNDN;
     my $bit_precision = int($xdigits * 3.322) + 8;  # Add some extra
@@ -3310,7 +3382,7 @@ sub RiemannR {
       Math::MPFR::Rmpfr_add($rsum, $rsum, $rterm, $rnd);
     }
     my $strval = Math::MPFR::Rmpfr_get_str($rsum, 10, $xdigits, $rnd);
-    return ($wantbf)  ?  Math::BigFloat->new($strval)  :  0.0 + $strval;
+    return ($wantbf)  ?  Math::BigFloat->new($strval,$wantbf)  :  0.0 + $strval;
   }
 
   if (defined $bignum::VERSION || ref($x) =~ /^Math::Big/) {

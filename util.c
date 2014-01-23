@@ -222,7 +222,7 @@ int _XS_is_prime(UV n)
 
 UV next_prime(UV n)
 {
-  UV d, m, sieve_size, next;
+  UV m, sieve_size, next;
   const unsigned char* sieve;
 
   if (n < 30*NPRIME_SIEVE30) {
@@ -249,7 +249,7 @@ UV next_prime(UV n)
 UV prev_prime(UV n)
 {
   const unsigned char* sieve;
-  UV d, m, prev;
+  UV m, prev;
 
   if (n < 30*NPRIME_SIEVE30)
     return prev_prime_in_sieve(prime_sieve30, n);
@@ -646,12 +646,12 @@ UV prime_count_upper(UV n)
   fn     = (long double) n;
   flogn  = logl(n);
 
-  for (i = 0; i < NUPPER_THRESH; i++)
+  for (i = 0; i < (int)NUPPER_THRESH; i++)
     if (n < _upper_thresh[i].thresh)
       break;
 
-  if (i < NUPPER_THRESH)   a = _upper_thresh[i].aval;
-  else                     a = 2.334;   /* Dusart 2010, page 2 */
+  if (i < (int)NUPPER_THRESH) a = _upper_thresh[i].aval;
+  else                        a = 2.334;   /* Dusart 2010, page 2 */
 
   upper = fn/flogn * (1.0 + 1.0/flogn + a/(flogn*flogn));
   return (UV) ceill(upper);
@@ -1516,12 +1516,8 @@ long double ld_riemann_zeta(long double x) {
     return sum;
   }
 
-  if (x > 2000.0) {
-    /* 1) zeta(2000)-1 is about 8.7E-603, which is far less than a IEEE-754
-     *    64-bit double can represent.  A 128-bit quad could go to ~16000.
-     * 2) pow / powl start getting obnoxiously slow with values like -7500. */
+  if (x > 17000.0)
     return 0.0;
-  }
 
 #if 0
   {
@@ -1564,8 +1560,8 @@ long double ld_riemann_zeta(long double x) {
     for (i = 2; i < 11; i++) {
       b = powl( i, -x );
       s += b;
-      if (fabsl(b/s) < LDBL_EPSILON)
-         return s;
+      if (fabsl(b) < fabsl(LDBL_EPSILON * s))
+        return s;
     }
     s = s + b*w/(x-1.0) - 0.5 * b;
     a = 1.0;
@@ -1575,8 +1571,7 @@ long double ld_riemann_zeta(long double x) {
       b /= w;
       t = a*b/A[i];
       s = s + t;
-      t = fabsl(t/s);
-      if (t < LDBL_EPSILON)
+      if (fabsl(t) < fabsl(LDBL_EPSILON * s))
         break;
       a *= x + k + 1.0;
       b /= w;
@@ -1601,8 +1596,8 @@ long double _XS_RiemannR(long double x) {
     part_term *= flogx / k;
     term = part_term / (k + k * ld_riemann_zeta(k+1));
     KAHAN_SUM(sum, term);
-    /* printf("R  after adding %.15lg, sum = %.15lg\n", term, sum); */
-    if (fabsl(term/sum) < LDBL_EPSILON) break;
+    /* printf("R %5d after adding %.18Lg, sum = %.19Lg\n", k, term, sum); */
+    if (fabsl(term) < fabsl(LDBL_EPSILON*sum)) break;
   }
 
   return sum;

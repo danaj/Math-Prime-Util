@@ -1,21 +1,19 @@
-# The PP front end, only loaded if XS is not used.  It is intended to load
-# directly into the package namespace.
-
+package Math::Prime::Util::PPFE;
 use strict;
 use warnings;
 use Math::Prime::Util::PP;
+use Carp qw/carp croak confess/;
+
+# The PP front end, only loaded if XS is not used.
+# It is intended to load directly into the MPU namespace.
+
+package Math::Prime::Util;
 
 *_validate_num = \&Math::Prime::Util::PP::_validate_num;
 *_prime_memfreeall = \&Math::Prime::Util::PP::_prime_memfreeall;
 *prime_memfree  = \&Math::Prime::Util::PP::prime_memfree;
 *prime_precalc  = \&Math::Prime::Util::PP::prime_precalc;
 
-
-sub mertens {
-  my($n) = @_;
-  _validate_positive_integer($n);
-  return Math::Prime::Util::PP::mertens(@_);
-}
 
 sub moebius {
   if (scalar @_ <= 1) {
@@ -47,18 +45,35 @@ sub jordan_totient {
   _validate_positive_integer($k);
   return 0 if defined $n && $n < 0;
   _validate_positive_integer($n);
-  return Math::Prime::Util::PP::jordan_totient(@_);
+  return Math::Prime::Util::PP::jordan_totient($k, $n);
 }
 sub carmichael_lambda {
   my($n) = @_;
   _validate_positive_integer($n);
-  return Math::Prime::Util::PP::carmichael_lambda(@_);
+  return Math::Prime::Util::PP::carmichael_lambda($n);
 }
+sub mertens {
+  my($n) = @_;
+  _validate_positive_integer($n);
+  return Math::Prime::Util::PP::mertens($n);
+}
+sub liouville {
+  my($n) = @_;
+  _validate_positive_integer($n);
+  return Math::Prime::Util::PP::liouville($n);
+}
+sub exp_mangoldt {
+  my($n) = @_;
+  return 1 if defined $n && $n <= 1;
+  _validate_positive_integer($n);
+  return Math::Prime::Util::PP::exp_mangoldt($n);
+}
+
 
 sub nth_prime {
   my($n) = @_;
   _validate_positive_integer($n);
-  return Math::Prime::Util::PP::nth_prime(@_);
+  return Math::Prime::Util::PP::nth_prime($n);
 }
 sub nth_prime_lower {
   my($n) = @_;
@@ -90,7 +105,7 @@ sub prime_count_approx {
   _validate_positive_integer($n);
   return Math::Prime::Util::PP::prime_count_approx($n);
 }
-  
+
 
 sub is_prime {
   my($n) = @_;
@@ -261,6 +276,19 @@ sub ecm_factor {
   Math::Prime::Util::PP::ecm_factor($n, $B1, $B2, $ncurves);
 }
 
+sub divisors {
+  my($n) = @_;
+  _validate_positive_integer($n);
+  return Math::Prime::Util::PP::divisors($n);
+}
+
+sub divisor_sum {
+  my($n, $k) = @_;
+  _validate_positive_integer($n);
+  _validate_positive_integer($k) if defined $k && ref($k) ne 'CODE';
+  return Math::Prime::Util::PP::divisor_sum($n, $k);
+}
+
 sub gcd {
   return Math::Prime::Util::PP::gcd(@_);
 }
@@ -275,4 +303,103 @@ sub legendre_phi {
   return Math::Prime::Util::PP::legendre_phi($x, $a);
 }
 
+sub chebyshev_theta {
+  my($n) = @_;
+  _validate_positive_integer($n);
+  return Math::Prime::Util::PP::chebyshev_theta($n);
+}
+sub chebyshev_psi {
+  my($n) = @_;
+  _validate_positive_integer($n);
+  return Math::Prime::Util::PP::chebyshev_psi($n);
+}
+
+#############################################################################
+
+sub forprimes (&$;$) {    ## no critic qw(ProhibitSubroutinePrototypes)
+  my($sub, $beg, $end) = @_;
+  if (!defined $end) { $end = $beg; $beg = 2; }
+  _validate_num($beg) || _validate_positive_integer($beg);
+  _validate_num($end) || _validate_positive_integer($end);
+  $beg = 2 if $beg < 2;
+  {
+    my $pp;
+    local *_ = \$pp;
+    for (my $p = next_prime($beg-1);  $p <= $end;  $p = next_prime($p)) {
+      $pp = $p;
+      $sub->();
+    }
+  }
+}
+
+sub forcomposites(&$;$) { ## no critic qw(ProhibitSubroutinePrototypes)
+  my($sub, $beg, $end) = @_;
+  if (!defined $end) { $end = $beg; $beg = 4; }
+  _validate_num($beg) || _validate_positive_integer($beg);
+  _validate_num($end) || _validate_positive_integer($end);
+  $beg = 4 if $beg < 4;
+  $end = Math::BigInt->new(''.~0) if ref($end) ne 'Math::BigInt' && $end == ~0;
+  {
+    my $pp;
+    local *_ = \$pp;
+    for ( ; $beg <= $end ; $beg++ ) {
+      if (!is_prime($beg)) {
+        $pp = $beg;
+        $sub->();
+      }
+    }
+  }
+}
+
+sub fordivisors (&$) {    ## no critic qw(ProhibitSubroutinePrototypes)
+  my($sub, $n) = @_;
+  _validate_num($n) || _validate_positive_integer($n);
+  my @divisors = divisors($n);
+  {
+    my $pp;
+    local *_ = \$pp;
+    foreach my $d (@divisors) {
+      $pp = $d;
+      $sub->();
+    }
+  }
+}
+
 1;
+
+__END__
+
+=pod
+
+=head1 NAME
+
+Math::Prime::Util::PPFE - PP front end for Math::Prime::Util
+
+=head1 SYNOPSIS
+
+This loads the PP code and adds input validation front ends.  It is only
+meant to be used when XS is not used.
+
+=head1 DESCRIPTION
+
+Loads PP module and implements PP front-end functions for all XS code.
+This is used only if the XS code is not loaded.
+
+=head1 SEE ALSO
+
+L<Math::Prime::Util>
+
+L<Math::Prime::Util::PP>
+
+=head1 AUTHORS
+
+Dana Jacobsen E<lt>dana@acm.orgE<gt>
+
+
+=head1 COPYRIGHT
+
+Copyright 2014 by Dana Jacobsen E<lt>dana@acm.orgE<gt>
+
+This program is free software; you can redistribute it and/or modify it under the same terms as Perl itself.
+
+=cut

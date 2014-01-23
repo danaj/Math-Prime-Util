@@ -17,7 +17,9 @@ eval "use Test::Pod::Coverage 1.08";
 plan skip_all => "Test::Pod::Coverage 1.08 required for testing POD coverage"
   if $@;
 
-my @modules = Test::Pod::Coverage::all_modules();
+my @modules = grep { $_ ne 'Math::Prime::Util::PPFE' }
+              Test::Pod::Coverage::all_modules();
+
 plan tests => scalar @modules;
 
 #my $ppsubclass = { trustme => [mpu_public_regex()] };

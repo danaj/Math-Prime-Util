@@ -686,7 +686,7 @@ factor(IN SV* svn)
       switch (ix) {
         case 0:  _vcallsubn(aTHX_ gimme_v, VCALL_ROOT, "_generic_factor", 1);     break;
         case 1:  _vcallsubn(aTHX_ gimme_v, VCALL_ROOT, "_generic_factor_exp", 1); break;
-        default: _vcallsubn(aTHX_ gimme_v, VCALL_ROOT, "_generic_divisors", 1);   break;
+        default: _vcallsubn(aTHX_ gimme_v, VCALL_GMP|VCALL_PP, "divisors", 1);   break;
       }
       return; /* skip implicit PUTBACK */
     }
@@ -706,7 +706,7 @@ divisor_sum(IN SV* svn, ...)
       UV sigma = divisor_sum(n, k);
       if (sigma != 0)  XSRETURN_UV(sigma);   /* sigma 0 means overflow */
     }
-    _vcallsub("_generic_divisor_sum");
+    _vcallsub_with_gmp("divisor_sum");
     return; /* skip implicit PUTBACK */
 
 void
@@ -785,29 +785,22 @@ kronecker(IN SV* sva, IN SV* svb)
     _vcallsub_with_gmp("kronecker");
     return; /* skip implicit PUTBACK */
 
-double
+NV
 _XS_ExponentialIntegral(IN SV* x)
   ALIAS:
     _XS_LogarithmicIntegral = 1
     _XS_RiemannZeta = 2
     _XS_RiemannR = 3
-    _XS_chebyshev_theta = 4
-    _XS_chebyshev_psi = 5
   PREINIT:
-    double ret;
+    NV nv, ret;
   CODE:
-    if (ix < 4) {
-      NV nv = SvNV(x);
-      switch (ix) {
-        case 0: ret = (NV) _XS_ExponentialIntegral(nv); break;
-        case 1: ret = (NV) _XS_LogarithmicIntegral(nv); break;
-        case 2: ret = (NV) ld_riemann_zeta(nv); break;
-        case 3:
-        default:ret = (NV) _XS_RiemannR(nv); break;
-      }
-    } else {
-      UV uv = SvUV(x);
-      ret = (NV) chebyshev_function(uv, ix-4);
+    nv = SvNV(x);
+    switch (ix) {
+      case 0: ret = (NV) _XS_ExponentialIntegral(nv); break;
+      case 1: ret = (NV) _XS_LogarithmicIntegral(nv); break;
+      case 2: ret = (NV) ld_riemann_zeta(nv); break;
+      case 3:
+      default:ret = (NV) _XS_RiemannR(nv); break;
     }
     RETVAL = ret;
   OUTPUT:
@@ -866,12 +859,15 @@ void
 carmichael_lambda(IN SV* svn)
   ALIAS:
     mertens = 1
-    exp_mangoldt = 2
-    znprimroot = 3
+    liouville = 2
+    chebyshev_theta = 3
+    chebyshev_psi = 4
+    exp_mangoldt = 5
+    znprimroot = 6
   PREINIT:
     int status;
   PPCODE:
-    status = _validate_int(aTHX_ svn, (ix > 1) ? 1 : 0);
+    status = _validate_int(aTHX_ svn, (ix >= 5) ? 1 : 0);
     switch (ix) {
       case 0: if (status == 1) XSRETURN_UV(carmichael_lambda(my_svuv(svn)));
               _vcallsub_with_gmp("carmichael_lambda");
@@ -879,11 +875,24 @@ carmichael_lambda(IN SV* svn)
       case 1: if (status == 1) XSRETURN_IV(mertens(my_svuv(svn)));
               _vcallsub_with_pp("mertens");
               break;
-      case 2: if (status ==-1) XSRETURN_UV(1);
-              if (status == 1) XSRETURN_UV(exp_mangoldt(my_svuv(svn)));
-              _vcallsub("_generic_exp_mangoldt");
+      case 2: if (status == 1) {
+                UV factors[MPU_MAX_FACTORS+1];
+                int nfactors = factor(my_svuv(svn), factors);
+                RETURN_NPARITY( (nfactors & 1) ? -1 : 1 );
+              }
+              _vcallsub_with_gmp("liouville");
               break;
-      case 3:
+      case 3: if (status == 1) XSRETURN_NV(chebyshev_function(my_svuv(svn),0));
+              _vcallsub_with_pp("chebyshev_theta");
+              break;
+      case 4: if (status == 1) XSRETURN_NV(chebyshev_function(my_svuv(svn),1));
+              _vcallsub_with_pp("chebyshev_psi");
+              break;
+      case 5: if (status != 0)
+                XSRETURN_UV( (status == -1) ? 1 : exp_mangoldt(my_svuv(svn)) );
+              _vcallsub_with_gmp("exp_mangoldt");
+              break;
+      case 6:
       default:if (status != 0) {
                 UV r, n = my_svuv(svn);
                 if (status == -1) n = -(IV)n;

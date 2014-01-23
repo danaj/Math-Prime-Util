@@ -94,15 +94,9 @@ BEGIN {
 
     *next_prime    = \&Math::Prime::Util::_generic_next_prime;
     *prev_prime    = \&Math::Prime::Util::_generic_prev_prime;
-    *exp_mangoldt  = \&Math::Prime::Util::_generic_exp_mangoldt;
     *prime_count   = \&Math::Prime::Util::_generic_prime_count;
-    *divisor_sum   = \&Math::Prime::Util::_generic_divisor_sum;
     *factor        = \&Math::Prime::Util::_generic_factor;
     *factor_exp    = \&Math::Prime::Util::_generic_factor_exp;
-    *divisors      = \&Math::Prime::Util::_generic_divisors;
-    *forprimes     = sub (&$;$) { _generic_forprimes(@_); }; ## no critic qw(ProhibitSubroutinePrototypes)
-    *forcomposites = sub (&$;$) { _generic_forcomposites(@_); }; ## no critic qw(ProhibitSubroutinePrototypes)
-    *fordivisors   = sub (&$) { _generic_fordivisors(@_); }; ## no critic qw(ProhibitSubroutinePrototypes)
   };
 
   # aliases for deprecated names.  Will eventually be removed.
@@ -299,6 +293,10 @@ sub primes {
   return $sref;
 }
 
+#############################################################################
+# Random primes.  These are front end functions that do input validation,
+# load the RandomPrimes module, and call its function.
+
 sub random_prime {
   my($low,$high) = @_;
   if (scalar @_ > 1) {
@@ -361,6 +359,29 @@ sub random_proven_prime_with_cert {
   return Math::Prime::Util::RandomPrimes::random_proven_prime_with_cert($bits);
 }
 
+sub miller_rabin_random {
+  my($n, $k, $seed) = @_;
+  _validate_num($n) || _validate_positive_integer($n);
+  _validate_num($k) || _validate_positive_integer($k);
+
+  return 1 if $k <= 0;
+  return (is_prob_prime($n) > 0) if $n < 100;
+  return 0 unless $n & 1;
+
+  return Math::Prime::Util::GMP::miller_rabin_random($n, $k)
+    if $_HAVE_GMP
+    && defined &Math::Prime::Util::GMP::miller_rabin_random;
+
+  require Math::Prime::Util::RandomPrimes;
+  return Math::Prime::Util::RandomPrimes::miller_rabin_random($n, $k, $seed);
+}
+
+
+#############################################################################
+# These functions almost always return bigints, so there is no XS
+# implementation.  Try to run the GMP version, and if it isn't available,
+# load PP and call it.
+
 sub primorial {
   my($n) = @_;
   _validate_num($n) || _validate_positive_integer($n);
@@ -396,19 +417,36 @@ sub consecutive_integer_lcm {
   return Math::Prime::Util::PP::consecutive_integer_lcm($n);
 }
 
-sub _generic_divisor_sum {
+# See 2011+ FLINT and Fredrik Johansson's work for state of the art.
+# Very crude timing estimates (ignores growth rates).
+#   Perl-comb   partitions(10^5)  ~ 300 seconds  ~200,000x slower than Pari
+#   GMP-comb    partitions(10^6)  ~ 120 seconds    ~1,000x slower than Pari
+#   Pari        partitions(10^8)  ~ 100 seconds
+#   Bober 0.6   partitions(10^9)  ~  20 seconds       ~50x faster than Pari
+#   Johansson   partitions(10^12) ~  10 seconds     >1000x faster than Pari
+sub partitions {
   my($n) = @_;
+  return 1 if defined $n && $n <= 0;
   _validate_num($n) || _validate_positive_integer($n);
+
+  if ($_HAVE_GMP && defined &Math::Prime::Util::GMP::partitions) {
+    return _reftyped($_[0],Math::Prime::Util::GMP::partitions($n));
+  }
+
   require Math::Prime::Util::PP;
-  return Math::Prime::Util::PP::divisor_sum(@_);
+  return Math::Prime::Util::PP::partitions($n);
 }
 
-                                   # Need proto for the block
-sub _generic_forprimes (&$;$) {    ## no critic qw(ProhibitSubroutinePrototypes)
+
+#############################################################################
+# forprimes, forcomposites, fordivisors.
+# These are used when the XS code can't handle it.
+
+sub _generic_forprimes {
   my($sub, $beg, $end) = @_;
   if (!defined $end) { $end = $beg; $beg = 2; }
-  _validate_num($beg) || _validate_positive_integer($beg);
-  _validate_num($end) || _validate_positive_integer($end);
+  _validate_positive_integer($beg);
+  _validate_positive_integer($end);
   $beg = 2 if $beg < 2;
   {
     my $pp;
@@ -420,11 +458,11 @@ sub _generic_forprimes (&$;$) {    ## no critic qw(ProhibitSubroutinePrototypes)
   }
 }
 
-sub _generic_forcomposites(&$;$) { ## no critic qw(ProhibitSubroutinePrototypes)
+sub _generic_forcomposites {
   my($sub, $beg, $end) = @_;
   if (!defined $end) { $end = $beg; $beg = 4; }
-  _validate_num($beg) || _validate_positive_integer($beg);
-  _validate_num($end) || _validate_positive_integer($end);
+  _validate_positive_integer($beg);
+  _validate_positive_integer($end);
   $beg = 4 if $beg < 4;
   $end = Math::BigInt->new(''.~0) if ref($end) ne 'Math::BigInt' && $end == ~0;
   {
@@ -439,9 +477,9 @@ sub _generic_forcomposites(&$;$) { ## no critic qw(ProhibitSubroutinePrototypes)
   }
 }
 
-sub _generic_fordivisors (&$) {    ## no critic qw(ProhibitSubroutinePrototypes)
+sub _generic_fordivisors {
   my($sub, $n) = @_;
-  _validate_num($n) || _validate_positive_integer($n);
+  _validate_positive_integer($n);
   my @divisors = divisors($n);
   {
     my $pp;
@@ -452,6 +490,9 @@ sub _generic_fordivisors (&$) {    ## no critic qw(ProhibitSubroutinePrototypes)
     }
   }
 }
+
+#############################################################################
+# Iterators
 
 sub prime_iterator {
   my($start) = @_;
@@ -473,72 +514,6 @@ sub prime_iterator_object {
   eval { require Math::Prime::Util::PrimeIterator; 1; }
   or do { croak "Cannot load Math::Prime::Util::PrimeIterator"; };
   return Math::Prime::Util::PrimeIterator->new($start);
-}
-
-# Exponential of Mangoldt function (A014963).
-# Return p if n = p^m [p prime, m >= 1], 1 otherwise.
-sub _generic_exp_mangoldt {
-  my($n) = @_;
-  return 1 if defined $n && $n <= 1;  # n <= 1
-  _validate_num($n) || _validate_positive_integer($n);
-
-  return 2 if ($n & ($n-1)) == 0;     # n power of 2
-  return 1 unless $n & 1;             # even n can't be p^m
-
-  my @pe = factor_exp($n);
-  return 1 if scalar @pe > 1;
-  return $pe[0]->[0];
-}
-
-sub liouville {
-  my($n) = @_;
-  _validate_num($n) || _validate_positive_integer($n);
-  my $l = (-1) ** scalar factor($n);
-  return $l;
-}
-
-# See 2011+ FLINT and Fredrik Johansson's work for state of the art.
-# Very crude timing estimates (ignores growth rates).
-#   Perl-comb   partitions(10^5)  ~ 300 seconds  ~200,000x slower than Pari
-#   GMP-comb    partitions(10^6)  ~ 120 seconds    ~1,000x slower than Pari
-#   Pari        partitions(10^8)  ~ 100 seconds
-#   Bober 0.6   partitions(10^9)  ~  20 seconds       ~50x faster than Pari
-#   Johansson   partitions(10^12) ~  10 seconds     >1000x faster than Pari
-sub partitions {
-  my($n) = @_;
-  return 1 if defined $n && $n <= 0;
-  _validate_num($n) || _validate_positive_integer($n);
-
-  if ($_HAVE_GMP && defined &Math::Prime::Util::GMP::partitions) {
-    return _reftyped($_[0],Math::Prime::Util::GMP::partitions($n));
-  }
-
-  require Math::Prime::Util::PP;
-  return Math::Prime::Util::PP::partitions($n);
-}
-
-sub chebyshev_theta {
-  my($n) = @_;
-  _validate_num($n) || _validate_positive_integer($n);
-  return _XS_chebyshev_theta($n) if $n <= $_XS_MAXVAL;
-  my $sum = 0.0;
-  forprimes { $sum += log($_); } $n;
-  return $sum;
-}
-sub chebyshev_psi {
-  my($n) = @_;
-  _validate_num($n) || _validate_positive_integer($n);
-  return 0 if $n <= 1;
-  return _XS_chebyshev_psi($n) if $n <= $_XS_MAXVAL;
-  my ($sum, $logn, $sqrtn) = (0.0, log($n), int(sqrt($n)));
-  forprimes {
-    my $logp = log($_);
-    $sum += $logp * int($logn/$logp+1e-15);
-  } $sqrtn;
-  forprimes {
-    $sum += log($_);
-  } $sqrtn+1, $n;
-  return $sum;
 }
 
 #############################################################################
@@ -622,14 +597,6 @@ sub _generic_factor_exp {
   return (map { [$_, $exponents{$_}] } @factors);
 }
 
-sub _generic_divisors {
-  my($n) = @_;
-  _validate_num($n) || _validate_positive_integer($n);
-
-  require Math::Prime::Util::PP;
-  return Math::Prime::Util::PP::divisors($n);
-}
-
 
 sub lucas_sequence {
   my($n, $P, $Q, $k) = @_;
@@ -639,9 +606,11 @@ sub lucas_sequence {
     _validate_num($testP) || _validate_positive_integer($testP); }
   { my $testQ = (!defined $Q || $Q >= 0) ? $Q : -$Q;
     _validate_num($testQ) || _validate_positive_integer($testQ); }
+
   return _XS_lucas_sequence($n, $P, $Q, $k)
     if ref($_[0]) ne 'Math::BigInt' && $n <= $_XS_MAXVAL
     && ref($_[3]) ne 'Math::BigInt' && $k <= $_XS_MAXVAL;
+
   if ($_HAVE_GMP && defined &Math::Prime::Util::GMP::lucas_sequence) {
     return map { ($_ > ''.~0) ? Math::BigInt->new(''.$_) : $_ }
            Math::Prime::Util::GMP::lucas_sequence($n, $P, $Q, $k);
@@ -649,23 +618,6 @@ sub lucas_sequence {
   require Math::Prime::Util::PP;
   return map { ($_ <= ''.~0) ? _bigint_to_int($_) : $_ }
          Math::Prime::Util::PP::lucas_sequence($n, $P, $Q, $k);
-}
-
-sub miller_rabin_random {
-  my($n, $k, $seed) = @_;
-  _validate_num($n) || _validate_positive_integer($n);
-  _validate_num($k) || _validate_positive_integer($k);
-
-  return 1 if $k <= 0;
-  return (is_prob_prime($n) > 0) if $n < 100;
-  return 0 unless $n & 1;
-
-  return Math::Prime::Util::GMP::miller_rabin_random($n, $k)
-    if $_HAVE_GMP
-    && defined &Math::Prime::Util::GMP::miller_rabin_random;
-
-  require Math::Prime::Util::RandomPrimes;
-  return Math::Prime::Util::RandomPrimes::miller_rabin_random($n, $k, $seed);
 }
 
 
