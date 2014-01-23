@@ -60,9 +60,7 @@
 - Perhaps have main segment know the filled in range.  That would allow
   a sieved next_prime, and might speed up some counts and the like.
 
-- Consider exporting is_bpsw_prime
-
-- Add Inverse Li to API?
+- Consider exporting is_bpsw_prime and inverse Li
 
 - Benchmark simple SoEs, SoA.  Include Sisyphus SoE hidden in Math::GMPz.
 
@@ -73,17 +71,6 @@
 - Investigate optree constant folding in PP compilation for performance.
   Use B::Deparse to check.
 
-- Move more functions from _generic_... to PP::
-
 - Ensure a fast path for Math::GMP from MPU -> MPU:GMP -> GMP, and back.
 
 - znlog bignum tests, znlog better implementation
-
-- PP cleanup:
-  1) Put front ends for all functions in a PPFE module.
-     PPFE uses PP.
-     PPFE does validation.
-     PP does no validation.
-  2) No-XS segment will require PPFE and do aliases.
-  3) XS code will call PP only.  We've already validated input.
-  4) Move some more of the functions to XS.
