@@ -1610,7 +1610,8 @@ long double _XS_RiemannR(long double x) {
 
   for (k = 1; k <= 10000; k++) {
     part_term *= flogx / k;
-    term = part_term / (k + k * ld_riemann_zeta(k+1));
+    if (k-1 < NPRECALC_ZETA)  term = part_term / (k+k*riemann_zeta_table[k-1]);
+    else                      term = part_term / (k+k*ld_riemann_zeta(k+1));
     KAHAN_SUM(sum, term);
     /* printf("R %5d after adding %.18Lg, sum = %.19Lg\n", k, term, sum); */
     if (fabsl(term) < fabsl(LDBL_EPSILON*sum)) break;
