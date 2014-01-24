@@ -158,10 +158,12 @@ UV get_prime_cache(UV n, const unsigned char** sieve)
 #endif
 }
 
+#ifdef USE_ITHREADS
 void release_prime_cache(const unsigned char* mem) {
   (void)mem; /* We don't currently care about the pointer */
   READ_LOCK_END;
 }
+#endif
 
 
 

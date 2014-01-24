@@ -30,7 +30,11 @@ extern void  _prime_memfreeall(void);
    */
 extern UV   get_prime_cache(UV n, const unsigned char** sieve);
   /* Inform the system we're done using the primary cache if we got a ptr. */
+#ifdef USE_ITHREADS
 extern void release_prime_cache(const unsigned char* sieve);
+#else
+ #define release_prime_cache(mem)
+#endif
 
   /* Get the segment cache.  Set size to its size. */
 extern unsigned char* get_prime_segment(UV* size);
