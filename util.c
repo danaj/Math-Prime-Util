@@ -1220,9 +1220,9 @@ UV divmod(UV a, UV b, UV n) {   /* a / b  mod n */
   return mulmod(a, binv, n);
 }
 
-/* Find smallest n where a = g^n mod p
+/* Find smallest k where a = g^k mod p
  * This implementation is just a stupid placeholder.
- * When prho or bsgs gets working well, lower the trial limit
+ * When prho or bsgs starts working well, lower the trial limit
  */
 #define DLP_TRIAL_NUM  1000000
 UV znlog(UV a, UV g, UV p) {
@@ -1399,10 +1399,9 @@ long double _XS_LogarithmicIntegral(long double x) {
 
 /* Thanks to Kim Walisch for this idea */
 UV _XS_Inverse_Li(UV x) {
-  double n = x;
-  double logn = log(n);
-  UV lo = (UV) (n*logn);
-  UV hi = (UV) (n*logn * 2 + 2);
+  double nlogn = (double)x * log((double)x);
+  UV lo = (UV) (nlogn);
+  UV hi = (UV) (nlogn * 2 + 2);
 
   if (x == 0)  return 0;
   if (hi <= lo) hi = UV_MAX;

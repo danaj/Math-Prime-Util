@@ -739,7 +739,7 @@ znorder(IN SV* sva, IN SV* svn)
     }
     overflow:
     switch (ix) {
-      case 0:  _vcallsub_with_pp("znorder");  break;
+      case 0:  _vcallsub_with_gmp("znorder");  break;
       case 1:  _vcallsub_with_pp("jordan_totient");  break;
       case 2:
       default: _vcallsub_with_pp("legendre_phi"); break;
@@ -760,7 +760,7 @@ znlog(IN SV* sva, IN SV* svg, IN SV* svp)
       if (ret == 0 && a > 1) XSRETURN_UNDEF;
       XSRETURN_UV(ret);
     }
-    _vcallsub_with_pp("znlog");
+    _vcallsub_with_gmp("znlog");
     return; /* skip implicit PUTBACK */
 
 void

@@ -28,6 +28,8 @@ Revision history for Perl module Math::Prime::Util
     - nth_prime_{lower,upper,approx} and prime_count_{lower,upper,approx}
       moved to XS->PP.  This helps us slim down and cut startup overhead.
 
+    - Fix doc for znlog:   znlog(a,g,p) finds k s.t. a = g^k mod p
+
 
 0.36  2014-01-13
 

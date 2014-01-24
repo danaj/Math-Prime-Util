@@ -499,6 +499,9 @@ sub prime_iterator {
   $start = 0 unless defined $start;
   _validate_num($start) || _validate_positive_integer($start);
   my $p = ($start > 0) ? $start-1 : 0;
+  # This works fine:
+  #   return sub { $p = next_prime($p); return $p; };
+  # but we can optimize a little
   if (ref($p) ne 'Math::BigInt' && $p <= $_XS_MAXVAL) {
     return sub { $p = next_prime($p); return $p; };
   } elsif ($_HAVE_GMP) {
@@ -2079,9 +2082,9 @@ produces.
 
 =head2 znlog
 
-  $k = znlog($b, $g, $p)
+  $k = znlog($a, $g, $p)
 
-Returns the integer C<k> that solves the equation C<b^k = g mod p>, or
+Returns the integer C<k> that solves the equation C<a = g^k mod p>, or
 undef if no solution is found.  This is the discrete logarithm problem.
 The implementation in this version is not very useful, but may be improved.
 

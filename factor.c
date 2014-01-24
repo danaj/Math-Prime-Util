@@ -908,12 +908,12 @@ int squfof_factor(UV n, UV *factors, UV rounds)
 }
 
 UV dlp_trial(UV a, UV g, UV p, UV maxrounds) {
-  UV t, n = 1;
+  UV t, k = 1;
   if (maxrounds > p) maxrounds = p;
-  for (n = 1; n < maxrounds; n++) {
-    t = powmod(g, n, p);
+  for (k = 1; k < maxrounds; k++) {
+    t = powmod(g, k, p);
     if (t == a)
-      return n;
+      return k;
   }
   return 0;
 }

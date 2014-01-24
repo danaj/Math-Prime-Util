@@ -73,4 +73,4 @@
 
 - Ensure a fast path for Math::GMP from MPU -> MPU:GMP -> GMP, and back.
 
-- znlog bignum tests, znlog better implementation
+- znlog better implementation

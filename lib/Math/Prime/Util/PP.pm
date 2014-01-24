@@ -1695,11 +1695,11 @@ sub znorder {
 sub znlog {
   my ($a,$g,$p) =
     map { ref($_) eq 'Math::BigInt' ? $_ : Math::BigInt->new("$_") } @_;
-  for (my $n = BONE->copy; $n < $p; $n->binc) {
-    my $t = $g->copy->bmodpow($n, $p);
+  for (my $k = BONE->copy; $k < $p; $k->binc) {
+    my $t = $g->copy->bmodpow($k, $p);
     if ($t == $a) {
-      $n = _bigint_to_int($n) if $n->bacmp(''.~0) <= 0;
-      return $n;
+      $k = _bigint_to_int($k) if $k->bacmp(''.~0) <= 0;
+      return $k;
     }
   }
   return;
