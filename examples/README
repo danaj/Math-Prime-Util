@@ -1,108 +1,51 @@
 
-There are two main types of scripts here:  benchmarks and correctness tests.
+abundant.pl
 
-The test-* scripts are generally trying to test one part of the module
-against another part of the module, an external module, or an external program.
-These usually consist of a combination of fixed tests and a long sequence of
-testing with random numbers, trying to find things the standard testing might
-have missed.
+  Prints the first N abundant (or deficient, or perfect) numbers.  E.g:
+
+  perl abundant.pl 100  abundant
+  perl abundant.pl 100  deficient
+  perl abundant.pl 15   perfect
+
+sophie_germain.pl
+
+  Prints the first N Sophie-Germain primes.  E.g.:
+
+  perl sophia_germain.pl 100000
+
+twin_primes.pl
+
+  Prints the first N twin-primes (first value of the pair).  E.g.:
+
+  perl twin_primes.pl 100000
 
 
-test-factor-yafu.pl
+find_mr_bases.pl
+  
+  An example using threads to do a parallel search for good deterministic
+  bases for a Miller-Rabin test.  This is definitely not the fastest way
+  to find these, but it's a decent example of quickly trying out an idea.
+  Be sure to set $nthreads to the right value for your machine.  It should
+  fully load your CPUs.
 
-  Tests factorization compared with YAFU (v1.31.1).  No arguments.
 
-test-factor-mpxs.pl
+parallel_fibprime.pl
 
-  Tests factorization compared with Math::Factor::XS (v0.26).
-  One argument gives the number of random tests to perform.
+  Find Fibonacci primes, in parallel.  You will want Math::Prime::Util::GMP
+  installed, as these are many-thousand-digit numbers.
 
-test-nextprime-yafu.pl
+verify-cert.pl
 
-  Tests next_prime() compared with YAFU (v1.31.1).  No arguments.
+  Takes an MPU or Primo primality certificate and verifies it.  This is
+  obsolete, as Math::Prime::Util::GMP now includes C code for this.
 
-test-primes-yafu.pl
+verify-gmp-ecpp-cert.pl
 
-  Tests primes($a,$b+$interval) compared with YAFU (v1.31.1).  No arguments.
-  The interval is currently 8000.
+  Parses the verbose output of GMP-ECPP to construct a certificate, then
+  runs it through the verification process.
 
-test-holf.pl
+verify-sage-ecpp-cert.pl
 
-  Tests the holf_factor() function vs. the factor() function.  Given enough
-  rounds, HOLF (like Fermat) should be able to factor a number.  We keep
-  calling it on each non-prime return value until it's done.
-
-test-nthapprox.pl
-
-  Tests the nth_prime approximation and upper/lower bounds vs. known values
-  for the nth prime on large values.
-
-test-pcapprox.pl
-
-  Tests the prime_count approximation and upper/lower bounds vs. known values
-  for Pi(x) on large values.  Also examines the Schoenfeld and Stoll
-  inequalities.
-
-bench-factor-extra.pl
-
-  Benchmarks the various factoring options (prho, pbrent, pminus1, fermat, holf,
-  squfof, trial) on random n-digit numbers.  Also gives the percent of the time
-  solutions were found with the given number of rounds (256k for SQUFOF, 2000
-  for HOLF, and 400 for probabilistic methods).
-
-bench-factor.pl
-
-  Benchmarks factoring random and semiprime n-digit numbers using the factor
-  method, and compares vs. Math::Factor::XS (v0.26).  The latter uses a trial
-  division algorithm.  MPU 0.05 and later use a threshold of 10M (8 digits)
-  to switch between trial division and methods like SQUFOF, Pollard's Rho, and
-  HOLF.
-
-bench-factor-semiprime.pl
-
-  Benchmarks factoring semiprimes, and compares with Math::Prime::XS and
-  Math::Pari.  Takes two optional arguments: the number of digits (default 15)
-  and the benchmark count (default -2, meaning 2 seconds).
-
-bench-is-prime.pl
-
-  Benchmarks is_prime on random n-digit numbers, n from 5 to 10/20.  Compares
-  MPU's is_prime and is_prob_prime vs. Math::Prime::XS and optionally
-  Math::Primality, Math::Pari, and Math::Prime::FastSieve.  The first two of
-  the optional modules use methods more appropriate for big numbers, so are up
-  to an order of magnitude slower for 64-bit numbers.  The last module (MPFS)
-  is extremely fast, but requires presieving to at least the number to be
-  tested, which is great for small numbers, but not for large.
-    Also, no additional precalc is done for MPU.  If you really want blazing
-  fast is_prime and don't care about the memory and time to sieve, run
-  prime_precalc to the limit of your numbers and is_prime will turn into a
-  sub-100 microsecond bit array lookup for any number in the range.
-    Takes one optional argument of the benchmark count (default -5).
-
-bench-miller-rabin.pl
-
-  Benchmarks the strong miller_rabin test using 7 bases at various digit counts.
-  Takes one optional argument of the benchmark count (default -5).
-
-bench-nthprime.pl
-
-  Benchmarks the speed of nth_prime with various digit sizes.
-
-bench-pcapprox.pl
-
-  Benchmarks the speed of prime_count related functions for random n-digit
-  numbers (n = 5 to 10/20).  This includes lower bound, lower/upper average,
-  the prime_count_approx function, li(x), and R(x).
-  Takes one optional argument of the benchmark count (default -5).
-
-bench-primecount.pl
-
-  Benchmarks the speed of prime_count on random n-digit numbers (n = 2 .. 8).
-  Takes one optional argument of the benchmark count (default -5).
-  I'll note you can easily see the transition from where we're just counting
-  existing value to where we have to sieve.  Adding a prime_precalc(10**9)
-  line will speed up the 5-,6-,7-, and 8-digit prime_counts greatly.
-
-bench-random-prime.pl
-
-  Benchmarks the speed of random_ndigit_prime for various digits.
+  Verifies the output of SAGE's ECPP.  The SAGE module looks like it died
+  in development and never got into SAGE.  NZMath's ECPP doesn't seem to
+  output a certificate, which makes it much less useful.

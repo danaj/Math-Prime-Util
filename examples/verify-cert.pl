@@ -367,7 +367,7 @@ sub verify_bls15 {
   fail "BLS15: $n failed 2Q-1 > sqrt(N)" unless 2*$q-1 > $n->copy->bsqrt();
   my $D = $lp*$lp - 4*$lq;
   fail "BLS15: $n failed D != 0" unless $D != 0;
-  fail "BLS15: $n failed jacobi(D,N) = -1" unless _jacobi($D,$n) == -1;
+  fail "BLS15: $n failed jacobi(D,N) = -1" unless kronecker($D,$n) == -1;
   fail "BLS15: $n failed V_{m/2} mod N != 0"
       unless (lucas_sequence($n, $lp, $lq, $m/2))[1] != 0;
   fail "BLS15: $n failed V_{(N+1)/2} mod N == 0"
@@ -562,37 +562,4 @@ sub _is_perfect_square {
     }
   }
   0;
-}
-
-# Calculate Jacobi symbol (M|N)
-sub _jacobi {
-  my($n, $m) = @_;
-  return 0 if $m <= 0 || ($m % 2) == 0;
-  my $j = 1;
-  if ($n < 0) {
-    $n = -$n;
-    $j = -$j if ($m % 4) == 3;
-  }
-  # Split loop so we can reduce n/m to non-bigints after first iteration.
-  if ($n != 0) {
-    while (($n % 2) == 0) {
-      $n >>= 1;
-      $j = -$j if ($m % 8) == 3 || ($m % 8) == 5;
-    }
-    ($n, $m) = ($m, $n);
-    $j = -$j if ($n % 4) == 3 && ($m % 4) == 3;
-    $n = $n % $m;
-    $n = int($n->bstr) if ref($n) eq 'Math::BigInt' && $n <= ''.~0;
-    $m = int($m->bstr) if ref($m) eq 'Math::BigInt' && $m <= ''.~0;
-  }
-  while ($n != 0) {
-    while (($n % 2) == 0) {
-      $n >>= 1;
-      $j = -$j if ($m % 8) == 3 || ($m % 8) == 5;
-    }
-    ($n, $m) = ($m, $n);
-    $j = -$j if ($n % 4) == 3 && ($m % 4) == 3;
-    $n = $n % $m;
-  }
-  return ($m == 1) ? $j : 0;
 }

@@ -3,7 +3,19 @@ use strict;
 use warnings;
 use threads;
 use threads::shared;
-use Math::BigInt lib => 'GMP';
+
+# Overkill, but let's try to select a good bigint module.
+my $bigint_class;
+if      (eval { require Math::GMPz; 1; }) {
+  $bigint_class = "Math::GMPz";
+} elsif (eval { require Math::GMP; 1; }) {
+  $bigint_class = "Math::GMP";
+} else {
+  require Math::BigInt;
+  Math::BigInt->import(try=>"GMP,Pari");
+  $bigint_class = "Math::BigInt";
+}
+
 use Math::Prime::Util ':all';
 use Time::HiRes qw(gettimeofday tv_interval);
 $| = 1;
@@ -51,7 +63,7 @@ my @found :shared;     # push the primes found here
 my @karray : shared;   # array of min k for each thread
 
 my @threads;
-push @threads, threads->create('fibprime', $_) for (1..$nthreads);
+push @threads, threads->create('fibprime', $_) for 1 .. $nthreads;
 
 # Let the threads work for a little before starting the display loop
 sleep 2;
@@ -80,7 +92,7 @@ $_->join() for (@threads);
 
 sub fib_n {
   my ($n, $fibstate) = @_;
-  @$fibstate = (1, Math::BigInt->new(0), Math::BigInt->new(1))
+  @$fibstate = (1, $bigint_class->new(0), $bigint_class->new(1))
      unless defined $fibstate->[0];
   my ($curn, $a, $b) = @$fibstate;
   die "fib_n only increases" if $n < $curn;
