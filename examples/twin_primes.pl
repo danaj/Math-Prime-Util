@@ -2,8 +2,7 @@
 use strict;
 use warnings;
 
-use Math::Prime::Util qw/-nobigint
-                         prime_iterator  prime_iterator_object
+use Math::Prime::Util qw/prime_iterator  prime_iterator_object
                          next_prime  is_prime
                          nth_prime_upper  prime_precalc/;
 
@@ -12,16 +11,25 @@ my $count = shift || 20;
 # Find twin primes (numbers where p and p+2 are prime)
 
 # Time for the first 300k:
+#
+# Not iterators:
+#   0.6s   forprimes { say $l if $l+2==$_; $l=$_; } 64764841
 #   1.0s   bin/primes.pl --twin 2 64764839
-#   1.4s   get_twin_prime_iterator2
-#   2.3s   get_twin_prime_iterator1
-#   4.1s   get_twin_prime_iterator3
-#   6.1s   get_twin_prime_iterator3 (object iterator)
-#   7.6s   get_twin_prime_iterator2 without precalc
-#   8.4s   get_twin_prime_iterator1 without precalc
-#  10.9s   get_twin_prime_iterator3 without precalc
-#  13.1s   get_twin_prime_iterator3 without precalc (object iterator)
-# 219.8s   Math::NumSeq::TwinPrimes (Perl 5.19.4 with v66)
+#
+# Iterators with precalc:
+#   1.6s   get_twin_prime_iterator2
+#   2.4s   get_twin_prime_iterator1
+#   4.2s   get_twin_prime_iterator3
+#   4.5s   get_twin_prime_iterator4 (object iterator)
+#
+# Iterators without precalc:
+#   7.7s   get_twin_prime_iterator2
+#   8.5s   get_twin_prime_iterator1
+#  10.8s   get_twin_prime_iterator3
+#  16.7s   get_twin_prime_iterator4 (object iterator)
+#
+# Alternatives:
+# 251.9s   Math::NumSeq::TwinPrimes (Perl 5.19.7, Math::NumSeq 67)
 
 # This speeds things up, but isn't necessary.
 my $estimate = 5000 + int( nth_prime_upper($count) * 1.4 * log($count) );

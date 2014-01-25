@@ -5,7 +5,6 @@ use warnings;
 # Find the first N abundant, deficient, or perfect numbers.
 
 use Math::Prime::Util qw/divisor_sum next_prime is_prime/;
-use Math::BigInt try => "GMP,Pari";
 
 my $count = shift || 20;
 my $type = lc(shift || 'abundant');
@@ -26,6 +25,7 @@ if ($type eq 'abundant') {
   # We just look for 2^(p-1)*(2^p-1) where 2^p-1 is prime.
   # Basically we're just finding Mersenne primes.
   # It's possible there are odd perfect numbers larger than 10^1500.
+  do { require Math::BigInt;  Math::BigInt->import(try=>"GMP,Pari"); };
   while ($count-- > 0) {
     while (1) {
       $p = next_prime($p);
