@@ -56,15 +56,13 @@ bench/bench-pp-sieve.pl
 bench/bench-mp-nextprime.pl
 bench/bench-mp-psrp.pl
 bench/bench-mp-prime_count.pl
+bench/factor-gnufactor.pl
 examples/README
-examples/test-factor-yafu.pl
-examples/test-nextprime-yafu.pl
 examples/sophie_germain.pl
 examples/twin_primes.pl
 examples/abundant.pl
 examples/find_mr_bases.pl
 examples/parallel_fibprime.pl
-examples/test-factor-gnufactor.pl
 examples/verify-gmp-ecpp-cert.pl
 examples/verify-sage-ecpp-cert.pl
 examples/verify-cert.pl
@@ -126,4 +124,6 @@ xt/test-nthapprox.pl
 xt/test-pcapprox.pl
 xt/test-primes-script.pl
 xt/test-primes-script2.pl
+xt/test-factor-yafu.pl
+xt/test-nextprime-yafu.pl
 .travis.yml
