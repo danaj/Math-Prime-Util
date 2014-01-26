@@ -103,13 +103,6 @@ int  _XS_get_callgmp(void) { return _call_gmp; }
      return (b * 0x0101010101010101) >> 56;
    }
  #endif
-#else
-   static UV popcnt(UV b) {
-     b -= (b >> 1) & 0x55555555;
-     b = (b & 0x33333333) + ((b >> 2) & 0x33333333);
-     b = (b + (b >> 4)) & 0x0f0f0f0f;
-     return (b * 0x01010101) >> 24;
-   }
 #endif
 
 #if defined(__GNUC__)
