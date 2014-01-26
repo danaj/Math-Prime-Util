@@ -7,11 +7,13 @@ abundant.pl
   perl abundant.pl 100  deficient
   perl abundant.pl 15   perfect
 
+
 sophie_germain.pl
 
   Prints the first N Sophie-Germain primes.  E.g.:
 
   perl sophia_germain.pl 100000
+
 
 twin_primes.pl
 
@@ -33,6 +35,15 @@ parallel_fibprime.pl
 
   Find Fibonacci primes, in parallel.  You will want Math::Prime::Util::GMP
   installed, as these are many-thousand-digit numbers.
+
+
+porter.pl
+
+  Various ways of constructing a sequence suggested by Michael B. Porter:
+    a(n) = m s.t. sigma(m) + sigma(m+1) + ... + sigma(m+n-1) is prime.
+  Includes comparison to Pari/GP.
+
+
 
 verify-cert.pl
 
