@@ -229,7 +229,7 @@ SKIP: {
 ###############################################################################
 
 SKIP: {
-  skip "Your 64-bit Perl is broken, skipping moebius, totient, etc.", 13+3*$extra if $broken64;
+  skip "Your 64-bit Perl is broken, skipping moebius, totient, etc.", 14+3*$extra if $broken64;
   my $n;
   $n = 618970019642690137449562110;
   is( moebius($n), -1, "moebius($n)" );
