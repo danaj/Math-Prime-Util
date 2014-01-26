@@ -59,7 +59,6 @@ bench/bench-mp-prime_count.pl
 examples/README
 examples/test-factor-yafu.pl
 examples/test-nextprime-yafu.pl
-examples/test-primes-yafu.pl
 examples/sophie_germain.pl
 examples/twin_primes.pl
 examples/abundant.pl

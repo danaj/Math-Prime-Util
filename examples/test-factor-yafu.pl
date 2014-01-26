@@ -50,7 +50,7 @@ sub test_array {
   my @yafuarray = yafu_factors(@narray);
   print ".";
   if ($#mpuarray != $#yafuarray) {
-    die "MPU got $#mpuarray primes, YAFU got $#yafuarray\n";
+    die "MPU got $#mpuarray factors, YAFU got $#yafuarray\n";
   }
   foreach my $n (@narray) {
     my @mpu = @{shift @mpuarray};
@@ -110,7 +110,7 @@ sub yafu_factors {
     } elsif (/^C\d+ = (\d+)/) {
       # Yafu didn't factor this one completely.  Sneakily do it ourselves.
       push @curfactors, factor( Math::BigInt->new("$1") );
-    } elsif (/ans = (\d+)/) {
+    } elsif (/ans = (\d+)/ || /^1$/) {
       push @piarray, [shift @ns, sort {$a<=>$b} @curfactors];
       @curfactors = ();
     }

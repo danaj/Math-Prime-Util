@@ -67,8 +67,9 @@ sub yafu_next_primes {
 
   open my $yafu, "yafu \"nextprime(\@)\" -batchfile $yafu_fname |";
   while (<$yafu>) {
-    next unless /ans = (\d+)/;
-    push @nparray, $1;
+    if (/^(ans = )?(\d+)\s*$/) {
+      push @nparray, $2;
+    }
   }
   close($yafu);
   @nparray;
