@@ -3296,11 +3296,11 @@ native size integers.  With bigints we finally see it work well.
 
 =item *
 
-Math::Pari build with 2.3.5 not only has a better primality test, but
-runs faster.  It still has quite a bit of overhead with native size
-integers.  Pari/gp 2.5.0's takes 11.3s, 16.9s, and 2.9s respectively
-for the tests above.  MPU is still faster, but clearly the time for
-native integers is dominated by the calling overhead.
+Math::Pari built with 2.3.5 not only has a better primality test vs.
+the default 2.1.7, but runs faster.  It still has quite a bit of overhead
+with native size integers.  Pari/GP 2.5.0 takes 11.3s, 16.9s, and 2.9s
+respectively for the tests above.  MPU is still faster, but clearly the
+time for native integers is dominated by the calling overhead.
 
 =back
 
