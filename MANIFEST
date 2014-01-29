@@ -67,6 +67,15 @@ examples/porter.pl
 examples/verify-gmp-ecpp-cert.pl
 examples/verify-sage-ecpp-cert.pl
 examples/verify-cert.pl
+examples/project_euler_010.pl
+examples/project_euler_021.pl
+examples/project_euler_037.pl
+examples/project_euler_047.pl
+examples/project_euler_049.pl
+examples/project_euler_069.pl
+examples/project_euler_070.pl
+examples/project_euler_095.pl
+examples/project_euler_357.pl
 bin/primes.pl
 bin/factor.pl
 t/01-load.t
