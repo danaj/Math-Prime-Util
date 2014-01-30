@@ -1015,11 +1015,19 @@ static const UV perfect_powers[] =
 };
 #define NPOWERS (sizeof(perfect_powers)/sizeof(perfect_powers[0]))
 
-int is_perfect_power(UV n) {
+/* TODO: This has to be redone to properly return the highest power */
+int is_power(UV n) {
+  int next;
   if ((n <= 3) || (n == UV_MAX)) return 0;
-  if ((n & (n-1)) == 0)          return 1;       /* powers of 2    */
-  if (is_perfect_square(n))      return 1;       /* perfect square */
-  if (is_perfect_cube(n))        return 1;       /* perfect cube   */
+  if ((n & (n-1)) == 0)          return ctz(n);  /* powers of 2    */
+  if (is_perfect_square(n)) {
+    next = is_power(isqrt(n));
+    return (next == 0) ? 2 : 2*next;
+  }
+  if (is_perfect_cube(n)) {
+    next = is_power(icbrt(n));
+    return (next == 0) ? 3 : 3*next;
+  }
   {
     UV lo = 0;
     UV hi = NPOWERS-1;
@@ -1033,17 +1041,17 @@ int is_perfect_power(UV n) {
   }
 #if BITS_PER_WORD == 64
   {  /* n > 2**32.  If n = p^k, then p in (3 .. 7131) and k in (5,7,11,13) */
-    int ib, k;
+    int ib;
     for (ib = 3; ib <= 6; ib++) { /* prime exponents from 5 to 13 */
-      UV b = primes_small[ib];
+      UV k, b = primes_small[ib];
       UV root = (UV) ( powl(n, 1.0L / b ) + 0.01 );
-      UV pk = 1;
-      while (b) {
-        if (b & 1)  pk *= root;
-        b >>= 1;
-        if (b)      root *= root;
+      UV pk = root * root * root * root * root;
+      for (k = 5; k < b; k++)
+        pk *= root;
+      if (n == pk) {
+        next = is_power(root);
+        return (next == 0) ? b : b*next;
       }
-      if (n == pk) return 1;
     }
   }
 #endif

@@ -13,7 +13,6 @@
 #include "cache.h"
 #include "sieve.h"
 #define FUNC_gcd_ui 1
-#define FUNC_is_perfect_square 1
 #include "util.h"
 #include "primality.h"
 #include "factor.h"
@@ -542,11 +541,9 @@ is_prime(IN SV* svn, ...)
     is_extra_strong_lucas_pseudoprime = 5
     is_frobenius_underwood_pseudoprime = 6
     is_aks_prime = 7
-    is_perfect_square = 8
-    is_perfect_cube = 9
-    is_perfect_power = 10
-    is_pseudoprime = 11
-    is_almost_extra_strong_lucas_pseudoprime = 12
+    is_power = 8
+    is_pseudoprime = 9
+    is_almost_extra_strong_lucas_pseudoprime = 10
   PREINIT:
     int status;
   PPCODE:
@@ -565,11 +562,9 @@ is_prime(IN SV* svn, ...)
           case 5:  ret = _XS_is_lucas_pseudoprime(n, 2); break;
           case 6:  ret = _XS_is_frobenius_underwood_pseudoprime(n); break;
           case 7:  ret = _XS_is_aks_prime(n); break;
-          case 8:  ret = is_perfect_square(n);  break;
-          case 9:  ret = is_perfect_cube(n);  break;
-          case 10: ret = is_perfect_power(n); break;
-          case 11: ret = _XS_is_pseudoprime(n, (items == 1) ? 2 : a); break;
-          case 12:
+          case 8:  ret = (a == 0) ? is_power(n) : !(is_power(n) % a);  break;
+          case 9:  ret = _XS_is_pseudoprime(n, (items == 1) ? 2 : a); break;
+          case 10:
           default: ret = _XS_is_almost_extra_strong_lucas_pseudoprime
                          (n, (items == 1) ? 1 : a); break;
         }
@@ -585,11 +580,9 @@ is_prime(IN SV* svn, ...)
       case 5: _vcallsub_with_gmp("is_extra_strong_lucas_pseudoprime"); break;
       case 6: _vcallsub_with_gmp("is_frobenius_underwood_pseudoprime"); break;
       case 7: _vcallsub_with_gmp("is_aks_prime"); break;
-      case 8: _vcallsub_with_gmp("is_perfect_square"); break;
-      case 9: _vcallsub_with_gmp("is_perfect_cube"); break;
-      case 10:_vcallsub_with_gmp("is_perfect_power"); break;
-      case 11:_vcallsub_with_gmp("is_pseudoprime"); break;
-      case 12:
+      case 8: _vcallsub_with_gmp("is_power"); break;
+      case 9:_vcallsub_with_gmp("is_pseudoprime"); break;
+      case 10:
       default:_vcallsub_with_gmp("is_almost_extra_strong_lucas_pseudoprime"); break;
     }
     return; /* skip implicit PUTBACK */

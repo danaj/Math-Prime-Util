@@ -23,7 +23,7 @@ our @EXPORT_OK =
       is_almost_extra_strong_lucas_pseudoprime
       is_frobenius_underwood_pseudoprime
       is_aks_prime
-      is_perfect_power
+      is_power
       miller_rabin miller_rabin_random
       lucas_sequence
       primes
@@ -1761,9 +1761,22 @@ Brent, 2010:  "AKS is not a practical algorithm.  ECPP is much faster."
 We have ECPP, and indeed it is much faster.
 
 
-=head2 is_perfect_power
+=head2 is_power
 
-Given a positive integer input n, returns 1 if C<n = p^k> for C<k E<gt> 1>.
+  say "$n is a perfect square" if is_power($n, 2);
+  say "$n is a perfect cube" if is_power($n, 3);
+  say "$n is a ", is_power($n), "-th power";
+
+Given a single positive integer input C<n>, returns k if C<n = p^k> for
+some integer C<p E<gt> 1, k E<gt> 1>, and 0 otherwise.  The k returned is
+the largest possible.  This can be used in a boolean statement to
+determine if C<n> is a perfect power.
+
+If given two arguments C<n> and C<k>, returns 1 if C<n> is a C<k-th> power,
+and 0 otherwise.
+
+This corresponds to Pari/GP's C<ispower> function, with the limitations of
+only integer arguments and no third argument may be given returning the root.
 
 
 =head2 lucas_sequence
