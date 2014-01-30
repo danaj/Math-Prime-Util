@@ -314,6 +314,13 @@ sub chebyshev_psi {
   return Math::Prime::Util::PP::chebyshev_psi($n);
 }
 
+sub is_power {
+  my($x, $a) = @_;
+  _validate_positive_integer($x);
+  _validate_positive_integer($a) if defined $a;
+  return Math::Prime::Util::PP::is_power($x, $a);
+}
+
 #############################################################################
 
 sub forprimes (&$;$) {    ## no critic qw(ProhibitSubroutinePrototypes)

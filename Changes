@@ -1,5 +1,12 @@
 Revision history for Perl module Math::Prime::Util
 
+0.38  2014-02
+
+    [ADDED]
+
+    - is_power         Returns max k if n=p^k.  See Pari 2.4.x.
+
+
 0.37  2014-01-26
 
     [FUNCTIONALITY AND PERFORMANCE]

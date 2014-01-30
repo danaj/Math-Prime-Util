@@ -21,7 +21,8 @@ extern UV  prime_count_lower(UV x);
 extern UV  prime_count_upper(UV x);
 extern UV  prime_count_approx(UV x);
 
-extern int is_power(UV n);
+extern int powerof(UV n);
+extern int is_power(UV n, UV a);
 
 extern signed char* _moebius_range(UV low, UV high);
 extern UV*    _totient_range(UV low, UV high);

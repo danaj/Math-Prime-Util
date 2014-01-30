@@ -978,85 +978,81 @@ IV mertens(UV n) {
   return sum;
 }
 
-int is_perfect_cube(UV n)
-{
-  UV r = icbrt(n);
-  return (r*r*r == n);
-}
-
-/* All 32-bit perfect powers, and all for k=17,19,23,31,37 */
-static const UV perfect_powers[] =
- {243,2187,3125,7776,16807,78125,100000,161051,177147,248832,279936,371293,
-  537824,759375,823543,1419857,1594323,1889568,2476099,3200000,4084101,5153632,
-  6436343,7962624,10000000,11881376,17210368,19487171,20511149,24300000,
-  28629151,33554432,35831808,39135393,45435424,48828125,52521875,62748517,
-  69343957,79235168,90224199,102400000,105413504,115856201,129140163,130691232,
-  147008443,164916224,170859375,184528125,205962976,229345007,254803968,
-  312500000,345025251,362797056,380204032,410338673,418195493,459165024,
-  503284375,550731776,601692057,612220032,656356768,714924299,777600000,
-  844596301,893871739,916132832,992436543,1160290625,1162261467,1220703125,
-  1252332576,1280000000,1350125107,1453933568,1564031349,1680700000,1801088541,
-  1804229351,1934917632,1977326743,2073071593,
-  UVCONST(2219006624), UVCONST(2373046875), UVCONST(2494357888),
-  UVCONST(2535525376), UVCONST(2706784157), UVCONST(2887174368),
-  UVCONST(3077056399), UVCONST(3276800000), UVCONST(3404825447),
-  UVCONST(3707398432), UVCONST(3939040643), UVCONST(4182119424)
-#if BITS_PER_WORD == 64
- ,UVCONST(         94143178827), UVCONST(       762939453125),
-  UVCONST(      16926659444736), UVCONST(     19073486328125),
-  UVCONST(      68630377364883), UVCONST(    232630513987207),
-  UVCONST(     609359740010496), UVCONST(    617673396283947),
-  UVCONST(   11398895185373143), UVCONST(  11920928955078125),
-  UVCONST(  100000000000000000), UVCONST( 450283905890997363),
-  UVCONST(  505447028499293771), UVCONST( 789730223053602816),
-  UVCONST( 2218611106740436992), UVCONST(8650415919381337933),
-  UVCONST(10000000000000000000)
-#endif
-};
-#define NPOWERS (sizeof(perfect_powers)/sizeof(perfect_powers[0]))
-
-/* TODO: This has to be redone to properly return the highest power */
-int is_power(UV n) {
-  int next;
-  if ((n <= 3) || (n == UV_MAX)) return 0;
+/* There are at least 4 ways to do this, plus hybrids.
+ * 1) use a table.  Great for 32-bit, too big for 64-bit.
+ * 2) Use pow() to check.  Relatively slow and FP is always dangerous.
+ * 3) factor or trial factor.  Slow for 64-bit.
+ * 4) Dietzfelbinger algorithm 2.3.5.  Quite slow.
+ * This currently uses a hybrid of 1 and 2.
+ */
+int powerof(UV n) {
+  int ib;
+  const int iblast = (n > UVCONST(4294967295)) ? 6 : 4;
+  if ((n <= 3) || (n == UV_MAX)) return 1;
   if ((n & (n-1)) == 0)          return ctz(n);  /* powers of 2    */
-  if (is_perfect_square(n)) {
-    next = is_power(isqrt(n));
-    return (next == 0) ? 2 : 2*next;
+  if (is_perfect_square(n))      return 2 * powerof(isqrt(n));
+  { UV cb = icbrt(n);  if (cb*cb*cb==n) return 3 * powerof(cb); }
+  for (ib = 3; ib <= iblast; ib++) { /* prime exponents from 5 to 7-or-13 */
+    UV k, pk, root, b = primes_small[ib];
+    root = (UV) ( pow(n, 1.0 / b ) + 0.01 );
+    pk = root * root * root * root * root;
+    for (k = 5; k < b; k++)
+      pk *= root;
+    if (n == pk) return b * powerof(root);
   }
-  if (is_perfect_cube(n)) {
-    next = is_power(icbrt(n));
-    return (next == 0) ? 3 : 3*next;
-  }
-  {
-    UV lo = 0;
-    UV hi = NPOWERS-1;
-    while (lo < hi) {
-      UV mid = lo + (hi-lo)/2;
-      if (perfect_powers[mid] < n) lo = mid+1;
-      else                         hi = mid;
+  if (n > 177146) {
+    switch (n) { /* Check for powers of 11, 13, 17, 19 within 32 bits */
+      case 177147: case 48828125: case 362797056: case 1977326743: return 11;
+      case 1594323: case 1220703125: return 13;
+      case 129140163: return 17;
+      case 1162261467: return 19;
+      default:  break;
     }
-    if (n <= UVCONST(4294967295) || perfect_powers[lo] == n)
-      return (perfect_powers[lo] == n);
-  }
 #if BITS_PER_WORD == 64
-  {  /* n > 2**32.  If n = p^k, then p in (3 .. 7131) and k in (5,7,11,13) */
-    int ib;
-    for (ib = 3; ib <= 6; ib++) { /* prime exponents from 5 to 13 */
-      UV k, b = primes_small[ib];
-      UV root = (UV) ( powl(n, 1.0L / b ) + 0.01 );
-      UV pk = root * root * root * root * root;
-      for (k = 5; k < b; k++)
-        pk *= root;
-      if (n == pk) {
-        next = is_power(root);
-        return (next == 0) ? b : b*next;
-      }
+    if (n > UVCONST(4294967295)) {
+    switch (n) {
+      case UVCONST(762939453125):
+      case UVCONST(16926659444736):
+      case UVCONST(232630513987207):
+      case UVCONST(100000000000000000):
+      case UVCONST(505447028499293771):
+      case UVCONST(2218611106740436992):
+      case UVCONST(8650415919381337933):  return 17;
+      case UVCONST(19073486328125):
+      case UVCONST(609359740010496):
+      case UVCONST(11398895185373143):
+      case UVCONST(10000000000000000000): return 19;
+      case UVCONST(94143178827):
+      case UVCONST(11920928955078125):
+      case UVCONST(789730223053602816):   return 23;
+      case UVCONST(68630377364883):       return 29;
+      case UVCONST(617673396283947):      return 31;
+      case UVCONST(450283905890997363):   return 37;
+      default:  break;
     }
-  }
+    }
 #endif
-  return 0;
+  }
+  return 1;
 }
+int is_power(UV n, UV a)
+{
+  int ret;
+  if (a > 0) {
+    if (a == 1 || n <= 1) return 1;
+    if ((a % 2) == 0)
+      return is_perfect_square(n) ? is_power(isqrt(n),a>>1) : 0;
+    if ((a % 3) == 0)
+      { UV cb = icbrt(n); return (cb*cb*cb == n) ? is_power(cb, a/3) : 0; }
+    if ((a % 5) == 0)
+      { UV r5 = (UV)(pow(n,0.2) + 0.1);
+        return (r5*r5*r5*r5*r5 == n) ? is_power(r5, a/5) : 0; }
+  }
+  ret = powerof(n);
+  if (a == 0 && ret == 1) ret = 0;
+  return (a == 0) ? ret : !(ret % a);
+}
+
 
 /* How many times does 2 divide n? */
 #define padic2(n)  ctz(n)

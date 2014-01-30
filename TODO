@@ -74,9 +74,3 @@
 - Ensure a fast path for Math::GMP from MPU -> MPU:GMP -> GMP, and back.
 
 - znlog better implementation
-
-- consider following Pari and doing is_power($n) / is_power($n, $k) instead
-  of the three:  is_perfect_power, is_perfect_square, is_perfect_cube.
-  Document power.  Tests for power.
-  From Sage:  ispower(3089265681159475043336839581081873360674602365963130114355701114591322241990483812812582393906477998611814245513881) should return 14.
-  Pari's ispower had some problems in 2.4

@@ -6,7 +6,7 @@ use Test::More;
 use Math::Prime::Util
    qw/moebius mertens euler_phi jordan_totient divisor_sum exp_mangoldt
       chebyshev_theta chebyshev_psi carmichael_lambda znorder liouville
-      znprimroot znlog kronecker legendre_phi gcd lcm
+      znprimroot znlog kronecker legendre_phi gcd lcm is_power
      /;
 
 my $extra = defined $ENV{EXTENDED_TESTING} && $ENV{EXTENDED_TESTING};
@@ -339,6 +339,21 @@ if ($usexs) {
   push @znlogs, [ [5678,5,10007], 8620];  # 5678 = 5^8620 mod 10007
 }
 
+my %powers = (
+  0 => [-2, -1, 0, 1, 2, 3, 5, 6, 7, 10, 11, 12, 13, 14, 15, 17, 18, 19],
+  2 => [4, 9, 25, 36, 49],
+  3 => [8, 27, 125, 343, 17576],
+  4 => [16, 38416],
+  9 => [19683, 1000000000],
+);
+if ($use64) {
+  push @{$powers{0}}, 9908918038843197151;
+  push @{$powers{2}}, 18446743927680663841;
+  push @{$powers{3}}, 2250923753991375;
+  push @{$powers{4}}, 1150530828529256001;
+  push @{$powers{9}}, 118587876497;
+}
+
 # These are slow with XS, and *really* slow with PP.
 if (!$usexs) {
   %big_mertens = map { $_ => $big_mertens{$_} }
@@ -371,6 +386,7 @@ plan tests => 0 + 1
                 + scalar(@mult_orders)
                 + scalar(@znlogs)
                 + scalar(@legendre_sums)
+                + scalar(keys %powers)
                 + scalar(keys %primroots) + 2
                 + scalar(keys %jordan_totients)
                 + 2  # Dedekind psi calculated two ways
@@ -564,6 +580,15 @@ foreach my $i (@liouville_neg) {
 foreach my $r (@legendre_sums) {
   my($x, $a, $exp) = @$r;
   is( legendre_phi($x, $a), $exp, "legendre_phi($x,$a) = $exp" );
+}
+
+###### is_power
+while (my($e, $vals) = each (%powers)) {
+  my @fail;
+  foreach my $val (@$vals) {
+    push @fail, $val unless is_power($val) == $e;
+  }
+  ok( @fail == 0, "is_power returns $e for " . join(",",@fail) );
 }
 
 sub cmp_closeto {

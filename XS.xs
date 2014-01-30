@@ -562,7 +562,7 @@ is_prime(IN SV* svn, ...)
           case 5:  ret = _XS_is_lucas_pseudoprime(n, 2); break;
           case 6:  ret = _XS_is_frobenius_underwood_pseudoprime(n); break;
           case 7:  ret = _XS_is_aks_prime(n); break;
-          case 8:  ret = (a == 0) ? is_power(n) : !(is_power(n) % a);  break;
+          case 8:  ret = is_power(n, a); break;
           case 9:  ret = _XS_is_pseudoprime(n, (items == 1) ? 2 : a); break;
           case 10:
           default: ret = _XS_is_almost_extra_strong_lucas_pseudoprime

@@ -1427,16 +1427,21 @@ sub _gcd_ui {
   $x;
 }
 
-sub is_perfect_power {
-  my $n = shift;
+sub is_power {
+  my ($n, $a) = @_;
   return 0 if $n <= 3 || $n != int($n);
-  return 1 if ($n & ($n-1)) == 0;                       # Power of 2
+  return !(is_power($n) % $a) if defined $a && $a != 0;
+  #return 2 if _is_perfect_square($n);
   $n = Math::BigInt->new("$n") unless ref($n) eq 'Math::BigInt';
   # Perl 5.6.2 chokes on this, so do it via as_bin
   # my $log2n = 0; { my $num = $n; $log2n++ while $num >>= 1; }
   my $log2n = length($n->as_bin) - 2;
   for (my $e = 2; $e <= $log2n; $e = next_prime($e)) {
-    return 1 if $n->copy()->broot($e)->bpow($e) == $n;
+    my $root = $n->copy()->broot($e);
+    if ($root->copy->bpow($e) == $n) {
+      my $next = is_power($root);
+      return ($next == 0) ? $e : $e * $next;
+    }
   }
   0;
 }
@@ -2097,7 +2102,7 @@ sub _test_anr {
 
 sub is_aks_prime {
   my $n = shift;
-  return 0 if $n < 2 || is_perfect_power($n);
+  return 0 if $n < 2 || is_power($n);
 
   my($log2n, $limit);
   if ($n > 2**48) {

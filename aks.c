@@ -194,7 +194,7 @@ int _XS_is_aks_prime(UV n)
   if (n == 2)
     return 1;
 
-  if (is_perfect_power(n))
+  if (is_power(n, 0))
     return 0;
 
   sqrtn = isqrt(n);
