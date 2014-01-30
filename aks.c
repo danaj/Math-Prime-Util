@@ -27,59 +27,9 @@
 #include "ptypes.h"
 #include "aks.h"
 #define FUNC_isqrt 1
-#define FUNC_log2floor 1
 #include "util.h"
 #include "cache.h"
 #include "mulmod.h"
-
-/* Bach and Sorenson (1993) would be better */
-static int is_perfect_power(UV n) {
-  UV b, last;
-  if ((n <= 3) || (n == UV_MAX)) return 0;
-  if ((n & (n-1)) == 0)  return 1;          /* powers of 2    */
-#if (BITS_PER_WORD == 32) || (DBL_DIG > 19)
-  if (1) {
-#elif DBL_DIG == 10
-  if (n < UVCONST(10000000000)) {
-#elif DBL_DIG == 15
-  if (n < UVCONST(1000000000000000)) {
-#else
-  if ( n < (UV) pow(10, DBL_DIG) ) {
-#endif
-    /* Simple floating point method.  Fast, but need enough mantissa. */
-    b = isqrt(n);
-    if (b*b == n)  return 1; /* perfect square */
-    last = log2floor(n-1) + 1;
-    for (b = 3; b < last; b = next_prime(b)) {
-      UV root = (UV) (pow(n, 1.0 / (double)b) + 0.5);
-      if ( ((UV)(pow(root, b)+0.5)) == n)  return 1;
-    }
-  } else {
-    /* Dietzfelbinger, algorithm 2.3.5 (without optimized exponential) */
-    last = log2floor(n-1) + 1;
-    for (b = 2; b <= last; b++) {
-      UV a = 1;
-      UV c = n;
-      while (c >= HALF_WORD) c = (1+c)>>1;
-      while ((c-a) >= 2) {
-        UV m, maxm, p, i;
-        m = (a+c) >> 1;
-        maxm = UV_MAX / m;
-        p = m;
-        for (i = 2; i <= b; i++) {
-          if (p > maxm) { p = n+1; break; }
-          p *= m;
-        }
-        if (p == n)  return 1;
-        if (p < n)
-          a = m;
-        else
-          c = m;
-      }
-    }
-  }
-  return 0;
-}
 
 /* Naive znorder.  Works well here because limit will be very small. */
 static UV order(UV r, UV n, UV limit) {

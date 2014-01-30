@@ -23,6 +23,7 @@ our @EXPORT_OK =
       is_almost_extra_strong_lucas_pseudoprime
       is_frobenius_underwood_pseudoprime
       is_aks_prime
+      is_perfect_power
       miller_rabin miller_rabin_random
       lucas_sequence
       primes
@@ -1760,6 +1761,11 @@ Brent, 2010:  "AKS is not a practical algorithm.  ECPP is much faster."
 We have ECPP, and indeed it is much faster.
 
 
+=head2 is_perfect_power
+
+Given a positive integer input n, returns 1 if C<n = p^k> for C<k E<gt> 1>.
+
+
 =head2 lucas_sequence
 
   my($U, $V, $Qk) = lucas_sequence($n, $P, $Q, $k)
@@ -2765,20 +2771,21 @@ Here is the right way to do PE problem 69 (under 0.03s):
 
 Project Euler, problem 187, stupid brute force solution, ~3 minutes:
 
-  use Math::Prime::Util qw/factor/;
+  use Math::Prime::Util qw/forcomposites factor/;
   my $nsemis = 0;
-  do { $nsemis++ if scalar factor($_) == 2; }
-     for 1 .. int(10**8)-1;
+  forcomposites { $nsemis++ if scalar factor($_) == 2; } int(10**8)-1;
   say $nsemis;
 
-Here is the best way for PE187.  Under 30 milliseconds from the command line:
+Here is one of the best ways for PE187:  under 20 milliseconds from the
+command line.  This is faster than Mathematica until C<10^13>.
 
-  use Math::Prime::Util qw/primes prime_count/;
-  use List::Util qw/sum/;
-  my $limit = shift || int(10**8);
-  my @primes = @{primes(int(sqrt($limit)))};
-  say sum( map { prime_count(int(($limit-1)/$primes[$_-1])) - $_ + 1 }
-               1 .. scalar @primes );
+  use Math::Prime::Util qw/forprimes prime_count/;
+  my $limit = shift || int(10**8)-1;
+  my ($sum, $pc) = (0, 1);
+  forprimes {
+    $sum += prime_count(int($limit/$_)) + 1 - $pc++;
+  } int(sqrt($limit));
+  say $sum;
 
 Produce the C<matches> result from L<Math::Factor::XS> without skipping:
 
