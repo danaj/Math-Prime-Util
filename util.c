@@ -66,9 +66,11 @@
 
 #include "ptypes.h"
 #define FUNC_isqrt 1
+#define FUNC_icbrt 1
 #define FUNC_lcm_ui 1
 #define FUNC_ctz 1
 #define FUNC_log2floor 1
+#define FUNC_is_perfect_square
 #define FUNC_next_prime_in_sieve 1
 #define FUNC_prev_prime_in_sieve 1
 #include "util.h"
@@ -976,6 +978,77 @@ IV mertens(UV n) {
   return sum;
 }
 
+int is_perfect_cube(UV n)
+{
+  UV r = icbrt(n);
+  return (r*r*r == n);
+}
+
+/* All 32-bit perfect powers, and all for k=17,19,23,31,37 */
+static const UV perfect_powers[] =
+ {243,2187,3125,7776,16807,78125,100000,161051,177147,248832,279936,371293,
+  537824,759375,823543,1419857,1594323,1889568,2476099,3200000,4084101,5153632,
+  6436343,7962624,10000000,11881376,17210368,19487171,20511149,24300000,
+  28629151,33554432,35831808,39135393,45435424,48828125,52521875,62748517,
+  69343957,79235168,90224199,102400000,105413504,115856201,129140163,130691232,
+  147008443,164916224,170859375,184528125,205962976,229345007,254803968,
+  312500000,345025251,362797056,380204032,410338673,418195493,459165024,
+  503284375,550731776,601692057,612220032,656356768,714924299,777600000,
+  844596301,893871739,916132832,992436543,1160290625,1162261467,1220703125,
+  1252332576,1280000000,1350125107,1453933568,1564031349,1680700000,1801088541,
+  1804229351,1934917632,1977326743,2073071593,
+  UVCONST(2219006624), UVCONST(2373046875), UVCONST(2494357888),
+  UVCONST(2535525376), UVCONST(2706784157), UVCONST(2887174368),
+  UVCONST(3077056399), UVCONST(3276800000), UVCONST(3404825447),
+  UVCONST(3707398432), UVCONST(3939040643), UVCONST(4182119424)
+#if BITS_PER_WORD == 64
+ ,UVCONST(         94143178827), UVCONST(       762939453125),
+  UVCONST(      16926659444736), UVCONST(     19073486328125),
+  UVCONST(      68630377364883), UVCONST(    232630513987207),
+  UVCONST(     609359740010496), UVCONST(    617673396283947),
+  UVCONST(   11398895185373143), UVCONST(  11920928955078125),
+  UVCONST(  100000000000000000), UVCONST( 450283905890997363),
+  UVCONST(  505447028499293771), UVCONST( 789730223053602816),
+  UVCONST( 2218611106740436992), UVCONST(8650415919381337933),
+  UVCONST(10000000000000000000)
+#endif
+};
+#define NPOWERS (sizeof(perfect_powers)/sizeof(perfect_powers[0]))
+
+int is_perfect_power(UV n) {
+  if ((n <= 3) || (n == UV_MAX)) return 0;
+  if ((n & (n-1)) == 0)          return 1;       /* powers of 2    */
+  if (is_perfect_square(n))      return 1;       /* perfect square */
+  if (is_perfect_cube(n))        return 1;       /* perfect cube   */
+  {
+    UV lo = 0;
+    UV hi = NPOWERS-1;
+    while (lo < hi) {
+      UV mid = lo + (hi-lo)/2;
+      if (perfect_powers[mid] < n) lo = mid+1;
+      else                         hi = mid;
+    }
+    if (n <= UVCONST(4294967295) || perfect_powers[lo] == n)
+      return (perfect_powers[lo] == n);
+  }
+#if BITS_PER_WORD == 64
+  {  /* n > 2**32.  If n = p^k, then p in (3 .. 7131) and k in (5,7,11,13) */
+    int ib, k;
+    for (ib = 3; ib <= 6; ib++) { /* prime exponents from 5 to 13 */
+      UV b = primes_small[ib];
+      UV root = (UV) ( powl(n, 1.0L / b ) + 0.01 );
+      UV pk = 1;
+      while (b) {
+        if (b & 1)  pk *= root;
+        b >>= 1;
+        if (b)      root *= root;
+      }
+      if (n == pk) return 1;
+    }
+  }
+#endif
+  return 0;
+}
 
 /* How many times does 2 divide n? */
 #define padic2(n)  ctz(n)

@@ -1427,7 +1427,7 @@ sub _gcd_ui {
   $x;
 }
 
-sub _is_perfect_power {
+sub is_perfect_power {
   my $n = shift;
   return 0 if $n <= 3 || $n != int($n);
   return 1 if ($n & ($n-1)) == 0;                       # Power of 2
@@ -2097,7 +2097,7 @@ sub _test_anr {
 
 sub is_aks_prime {
   my $n = shift;
-  return 0 if $n < 2 || _is_perfect_power($n);
+  return 0 if $n < 2 || is_perfect_power($n);
 
   my($log2n, $limit);
   if ($n > 2**48) {
