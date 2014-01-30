@@ -1761,6 +1761,11 @@ Brent, 2010:  "AKS is not a practical algorithm.  ECPP is much faster."
 We have ECPP, and indeed it is much faster.
 
 
+=head2 is_perfect_power
+
+Given a positive integer input n, returns 1 if C<n = p^k> for C<k E<gt> 1>.
+
+
 =head2 lucas_sequence
 
   my($U, $V, $Qk) = lucas_sequence($n, $P, $Q, $k)

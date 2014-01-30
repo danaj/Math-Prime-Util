@@ -74,3 +74,7 @@
 - Ensure a fast path for Math::GMP from MPU -> MPU:GMP -> GMP, and back.
 
 - znlog better implementation
+
+- consider following Pari and doing is_power($n) / is_power($n, $k) instead
+  of the three:  is_perfect_power, is_perfect_square, is_perfect_cube.
+  Document power.  Tests for power.
