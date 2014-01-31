@@ -1433,15 +1433,15 @@ sub is_power {
   return !(is_power($n) % $a) if defined $a && $a != 0;
   #return 2 if _is_perfect_square($n);
   $n = Math::BigInt->new("$n") unless ref($n) eq 'Math::BigInt';
-  # Perl 5.6.2 chokes on this, so do it via as_bin
-  # my $log2n = 0; { my $num = $n; $log2n++ while $num >>= 1; }
-  my $log2n = length($n->as_bin) - 2;
-  for (my $e = 2; $e <= $log2n; $e = next_prime($e)) {
+  my $e = 2;
+  while (1) {
     my $root = $n->copy()->broot($e);
+    last if $root->is_one();
     if ($root->copy->bpow($e) == $n) {
       my $next = is_power($root);
       return ($next == 0) ? $e : $e * $next;
     }
+    $e = next_prime($e);
   }
   0;
 }

@@ -315,10 +315,11 @@ sub chebyshev_psi {
 }
 
 sub is_power {
-  my($x, $a) = @_;
-  _validate_positive_integer($x);
+  my($n, $a) = @_;
+  return 0 if defined $n && $n < 0;
+  _validate_positive_integer($n);
   _validate_positive_integer($a) if defined $a;
-  return Math::Prime::Util::PP::is_power($x, $a);
+  return Math::Prime::Util::PP::is_power($n, $a);
 }
 
 #############################################################################
