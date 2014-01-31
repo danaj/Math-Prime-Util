@@ -930,7 +930,11 @@ UV dlp_prho(UV a, UV g, UV p, UV maxrounds) {
   UV n = znorder(g, p);
   UV u=1, v=0, w=0;
   UV U=u, V=v, W=w;
+#ifdef DEBUG
   int const verbose = _XS_get_verbose();
+#else
+  int const verbose = 0;
+#endif
 
   if (verbose > 1 && n != p-1) printf("for g=%lu p=%lu, order is %lu\n", g, p, n);
   if (maxrounds > n) maxrounds = n;
