@@ -6,10 +6,6 @@
   * Test on 32-bit Perl.  Test on Win32.
 
 
-- Figure out documentation solution for PP.pm
-
-- Is the current PP.pm setup the way we want to do it?
-
 - Move .c / .h files into separate directory.
   version does it in a painful way.  Something simpler to be had?
 
@@ -63,8 +59,6 @@
 - Consider exporting is_bpsw_prime and inverse Li
 
 - Benchmark simple SoEs, SoA.  Include Sisyphus SoE hidden in Math::GMPz.
-
-- commit Porter example
 
 - Try using malloc/free for win32 cache memory.  #define NO_XSLOCKS
 

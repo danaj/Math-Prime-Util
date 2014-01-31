@@ -638,9 +638,6 @@ UV prime_count_upper(UV n)
 
   if (n < 33000) return _XS_prime_count(2, n);
 
-  fn     = (long double) n;
-  flogn  = logl(n);
-
   for (i = 0; i < (int)NUPPER_THRESH; i++)
     if (n < _upper_thresh[i].thresh)
       break;
@@ -648,6 +645,8 @@ UV prime_count_upper(UV n)
   if (i < (int)NUPPER_THRESH) a = _upper_thresh[i].aval;
   else                        a = 2.334;   /* Dusart 2010, page 2 */
 
+  fn     = (long double) n;
+  flogn  = logl(n);
   upper = fn/flogn * (1.0 + 1.0/flogn + a/(flogn*flogn));
   return (UV) ceill(upper);
 }
@@ -1049,8 +1048,8 @@ int is_power(UV n, UV a)
         return (r5*r5*r5*r5*r5 == n) ? is_power(r5, a/5) : 0; }
   }
   ret = powerof(n);
-  if (a == 0 && ret == 1) ret = 0;
-  return (a == 0) ? ret : !(ret % a);
+  if (a != 0) return !(ret % a);  /* Is the max power divisible by a? */
+  return (ret == 1) ? 0 : ret;
 }
 
 
