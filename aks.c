@@ -61,8 +61,6 @@ static void poly_mod_mul(UV* px, UV* py, UV* res, UV r, UV mod)
   UV degpx, degpy;
   UV i, j, pxi, pyj, rindex;
 
-  memset(res, 0, r * sizeof(UV));
-
   /* Determine max degree of px and py */
   for (degpx = r-1; degpx > 0 && !px[degpx]; degpx--) ; /* */
   for (degpy = r-1; degpy > 0 && !py[degpy]; degpy--) ; /* */
@@ -70,6 +68,7 @@ static void poly_mod_mul(UV* px, UV* py, UV* res, UV r, UV mod)
   j = (mod >= HALF_WORD) ? 0 : (UV_MAX / ((mod-1)*(mod-1)));
 
   if (j >= degpx || j >= degpy) {
+    /* res will be written completely, so no need to set */
     for (rindex = 0; rindex < r; rindex++) {
       UV sum = 0;
       j = rindex;
@@ -81,6 +80,7 @@ static void poly_mod_mul(UV* px, UV* py, UV* res, UV r, UV mod)
       res[rindex] = sum % mod;
     }
   } else {
+    memset(res, 0, r * sizeof(UV));  /* Zero result accumulator */
     for (i = 0; i <= degpx; i++) {
       pxi = px[i];
       if (pxi == 0)  continue;
@@ -141,9 +141,6 @@ static UV* poly_mod_pow(UV* pn, UV power, UV r, UV mod)
 
   Newz(0, res, r, UV);
   New(0, temp, r, UV);
-  if ( (res == 0) || (temp == 0) )
-    croak("Couldn't allocate space for polynomial of degree %lu\n", (unsigned long) r);
-
   res[0] = 1;
 
   while (power) {
@@ -166,8 +163,6 @@ static int test_anr(UV a, UV n, UV r)
   int retval = 1;
 
   Newz(0, pn, r, UV);
-  if (pn == 0)
-    croak("Couldn't allocate space for polynomial of degree %lu\n", (unsigned long) r);
   a %= r;
   pn[0] = a;
   pn[1] = 1;
