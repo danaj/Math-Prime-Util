@@ -9,10 +9,10 @@ sub is_perm {
          join("",sort split(//,$a)) eq join("",sort split(//,$b));
 }
 
-my ($maxn, $minratio) = (0, 1000000);
+my ($maxn, $minratio, $totient, $ratio) = (0, 1000000);
 foreach my $n (2 .. 10_000_000) {
-  my $totient = euler_phi($n);
-  my $ratio = $n / $totient;
+  $totient = euler_phi($n);
+  $ratio = $n / $totient;
   ($maxn, $minratio) = ($n, $ratio) if $ratio < $minratio && is_perm($totient, $n);
 }
 print "$maxn  $minratio\n";

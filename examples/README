@@ -43,6 +43,18 @@ porter.pl
     a(n) = m s.t. sigma(m) + sigma(m+1) + ... + sigma(m+n-1) is prime.
   Includes comparison to Pari/GP.
 
+inverse_totient.pl
+
+  Computes the image of phi(n) for a given m.  That is, given a number m,
+  the function computes all n where euler_phi(n) = m.  It returns just the
+  count in scalar context (which can be faster and lower memory for inputs
+  such as factorials that have huge images).
+
+project_euler_*.pl
+
+  Example solutions for some Project Euler problems.  If you participate
+  in PE, you really should solve the problems yourself first.  These
+  provide good examples how how to use some of the module functionality.
 
 
 verify-cert.pl

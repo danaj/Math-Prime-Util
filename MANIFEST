@@ -62,6 +62,7 @@ examples/sophie_germain.pl
 examples/twin_primes.pl
 examples/abundant.pl
 examples/find_mr_bases.pl
+examples/inverse_totient.pl
 examples/parallel_fibprime.pl
 examples/porter.pl
 examples/verify-gmp-ecpp-cert.pl
