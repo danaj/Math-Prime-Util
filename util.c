@@ -930,6 +930,7 @@ UV* _totient_range(UV lo, UV hi) {
   for (i = lo | 1; i <= hi; i += 2)
     if (totients[i-lo] == i)
       totients[i-lo]--;
+  if (lo <= 1) totients[1-lo] = 1;
 
   return totients;
 }
