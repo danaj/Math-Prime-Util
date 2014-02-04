@@ -1431,9 +1431,9 @@ sub is_power {
   my ($n, $a) = @_;
   return 0 if $n <= 3 || $n != int($n);
   if (defined $a && $a != 0) {
-    my $power = is_power($n);
-    return 0 unless $power != 0;
-    return !($power % $a);
+    return _is_perfect_square($n) if $a == 2;
+    $n = Math::BigInt->new("$n") unless ref($n) eq 'Math::BigInt';
+    return $n->copy->broot($a)->bint->bpow($a) == $n;
   }
   #return 2 if _is_perfect_square($n);
   $n = Math::BigInt->new("$n") unless ref($n) eq 'Math::BigInt';
