@@ -1430,7 +1430,11 @@ sub _gcd_ui {
 sub is_power {
   my ($n, $a) = @_;
   return 0 if $n <= 3 || $n != int($n);
-  return !(is_power($n) % $a) if defined $a && $a != 0;
+  if (defined $a && $a != 0) {
+    my $power = is_power($n);
+    return 0 unless $power != 0;
+    return !($power % $a);
+  }
   #return 2 if _is_perfect_square($n);
   $n = Math::BigInt->new("$n") unless ref($n) eq 'Math::BigInt';
   my $e = 2;
