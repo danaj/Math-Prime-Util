@@ -31,7 +31,7 @@ sub inverse_euler_phi {
     eval { use Math::GMPz; $do_bigint = "Math::GMPz"; 1; } || 
     eval { use Math::GMP; $do_bigint = "Math::GMP"; 1; } || 
     eval { use Math::BigInt try=>"GMP,Pari"; $do_bigint = "Math::BigInt"; 1; };
-    $N = $do_bigint->new("$n");
+    $N = $do_bigint->new("$N");
   }
 
   return wantarray ? (1,2) : 2 if $N == 1;
