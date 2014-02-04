@@ -1429,13 +1429,12 @@ sub _gcd_ui {
 
 sub is_power {
   my ($n, $a) = @_;
-  return 0 if $n <= 3 || $n != int($n);
+  return 0 if $n <= 3;
   if (defined $a && $a != 0) {
     return _is_perfect_square($n) if $a == 2;
     $n = Math::BigInt->new("$n") unless ref($n) eq 'Math::BigInt';
     return $n->copy->broot($a)->bint->bpow($a) == $n;
   }
-  #return 2 if _is_perfect_square($n);
   $n = Math::BigInt->new("$n") unless ref($n) eq 'Math::BigInt';
   my $e = 2;
   while (1) {
