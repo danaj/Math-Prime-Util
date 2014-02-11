@@ -90,12 +90,16 @@ int factor(UV n, UV *factors)
 
   /* loop over each remaining factor, until ntofac == 0 */
   do {
-    //while ( (n >= f*f) && (!_XS_is_prime(n)) ) {
     while ( (n >= f*f) && (!is_prob_prime(n)) ) {
       int split_success = 0;
-      /* Adjust the number of rounds based on the number size */
-      UV const br_rounds = ((n>>29) < 100000) ?  1500 :  4000;
-      UV const sq_rounds =100000; /* 20k 91%, 40k 98%, 80k 99.9%, 120k 99.99% */
+      /* Adjust the number of rounds based on the number size and speed */
+#if MULMODS_ARE_FAST
+      UV const br_rounds = ((n>>29) < 100000) ?  4000 :  6000;
+      UV const sq_rounds = 100000; /* 20k 91%, 40k 98%, 80k 99.9%, 120k 99.99%*/
+#else
+      UV const br_rounds = ((n>>29) < 100000) ?   500 :  2000;
+      UV const sq_rounds = 150000;
+#endif
 
       /* 99.7% of 32-bit, 94% of 64-bit random inputs factored here */
       if (!split_success) {

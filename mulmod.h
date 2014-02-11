@@ -13,6 +13,8 @@
 
 /* if n is smaller than this, you can multiply without overflow */
 #define HALF_WORD (UVCONST(1) << (BITS_PER_WORD/2))
+/* This will be true if we think mulmods are fast */
+#define MULMODS_ARE_FAST 1
 
 #if (BITS_PER_WORD == 32) && HAVE_STD_U64
 
@@ -76,6 +78,8 @@
 #else
 
   /* UV is the largest integral type available (that we know of). */
+#undef MULMODS_ARE_FAST
+#define MULMODS_ARE_FAST 0
 
   /* Do it by hand */
   static INLINE UV _mulmod(UV a, UV b, UV n) {
