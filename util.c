@@ -1041,12 +1041,13 @@ int is_power(UV n, UV a)
   if (a > 0) {
     if (a == 1 || n <= 1) return 1;
     if ((a % 2) == 0)
-      return is_perfect_square(n) ? is_power(isqrt(n),a>>1) : 0;
+      return !is_perfect_square(n) ? 0 : (a == 2) ? 1 : is_power(isqrt(n),a>>1);
     if ((a % 3) == 0)
-      { UV cb = icbrt(n); return (cb*cb*cb == n) ? is_power(cb, a/3) : 0; }
+      { UV cb = icbrt(n);
+        return (cb*cb*cb != n)       ? 0 : (a == 3) ? 1 : is_power(cb, a/3); }
     if ((a % 5) == 0)
-      { UV r5 = (UV)(pow(n,0.2) + 0.1);
-        return (r5*r5*r5*r5*r5 == n) ? is_power(r5, a/5) : 0; }
+      { UV r5 = (UV)(pow(n,0.2) + 0.0001);
+        return (r5*r5*r5*r5*r5 != n) ? 0 : (a == 5) ? 1 : is_power(r5, a/5); }
   }
   ret = powerof(n);
   if (a != 0) return !(ret % a);  /* Is the max power divisible by a? */
