@@ -81,6 +81,28 @@ int factor(UV n, UV *factors)
       factors[nfactors++] = n;
     return nfactors;
   }
+  /* Perfect powers.  Factor root only once. */
+  {
+    int i, j, k = powerof(n);
+    if (k > 1) {
+      UV p = (k == 2) ? isqrt(n) : (UV) (pow(n, 1.0/(double)k) + 0.01);
+      UV pk = p*p;
+      for (i = 2; i < k; i++)  pk *= p;
+      MPUassert( pk == n, "incorrect root in factor" );
+      if (is_prob_prime(p)) {
+        for (j = 0; j < k; j++)
+          factors[nfactors++] = p;
+        return nfactors;
+      } else {
+        int nsmallfactors = nfactors;
+        nfactors = factor(p, factors+nsmallfactors);
+        for (i = nfactors; i >= 0; i--)
+          for (j = 0; j < k; j++)
+            factors[nsmallfactors+k*i+j] = factors[nsmallfactors+i];
+        return nsmallfactors + k*nfactors;
+      }
+    }
+  }
 
   {
   UV tofac_stack[MPU_MAX_FACTORS+1];

@@ -6,6 +6,13 @@ Revision history for Perl module Math::Prime::Util
 
     - is_power         Returns max k if n=p^k.  See Pari 2.4.x.
 
+    [FUNCTIONALITY AND PERFORMANCE]
+
+    - Factoring powers is much faster.
+
+    [OTHER]
+
+    - Added some Project Euler examples.
 
 0.37  2014-01-26
 
