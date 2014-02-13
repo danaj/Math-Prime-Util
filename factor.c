@@ -10,6 +10,7 @@
 #include "cache.h"
 #include "primality.h"
 #define FUNC_isqrt  1
+#define FUNC_icbrt  1
 #define FUNC_gcd_ui 1
 #define FUNC_is_perfect_square 1
 #define FUNC_clz 1
@@ -81,14 +82,11 @@ int factor(UV n, UV *factors)
       factors[nfactors++] = n;
     return nfactors;
   }
-  /* Perfect powers.  Factor root only once. */
+  /* Perfect squares and cubes.  Factor root only once. */
   {
-    int i, j, k = powerof(n);
+    int i, j, k = is_power(n,2) ? 2 : is_power(n,3) ? 3 : 1;
     if (k > 1) {
-      UV p = (k == 2) ? isqrt(n) : (UV) (pow(n, 1.0/(double)k) + 0.01);
-      UV pk = p*p;
-      for (i = 2; i < k; i++)  pk *= p;
-      MPUassert( pk == n, "incorrect root in factor" );
+      UV p = (k == 2) ? isqrt(n) : icbrt(n);
       if (is_prob_prime(p)) {
         for (j = 0; j < k; j++)
           factors[nfactors++] = p;

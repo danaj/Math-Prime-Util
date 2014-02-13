@@ -46,6 +46,7 @@ sub mpu_public_regex {
       is_almost_extra_strong_lucas_pseudoprime
       is_frobenius_underwood_pseudoprime
       is_aks_prime is_bpsw_prime
+      is_power
       miller_rabin miller_rabin_random
       lucas_sequence
       primes
