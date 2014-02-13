@@ -77,6 +77,8 @@ examples/project_euler_069.pl
 examples/project_euler_070.pl
 examples/project_euler_072.pl
 examples/project_euler_095.pl
+examples/project_euler_131.pl
+examples/project_euler_142.pl
 examples/project_euler_211.pl
 examples/project_euler_214.pl
 examples/project_euler_342.pl
@@ -141,4 +143,5 @@ xt/test-primes-script.pl
 xt/test-primes-script2.pl
 xt/test-factor-yafu.pl
 xt/test-nextprime-yafu.pl
+xt/test-ispower.pl
 .travis.yml
