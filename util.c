@@ -1112,8 +1112,12 @@ int kronecker_ss(IV a, IV b) {
 UV totient(UV n) {
   UV i, nfacs, totient, lastf, facs[MPU_MAX_FACTORS+1];
   if (n <= 1) return n;
-  nfacs = factor(n, facs);
   totient = 1;
+  /* phi(2m) = 2phi(m) if m even, phi(m) if m odd */
+  while ((n & 0x3) == 0) { n >>= 1; totient <<= 1; }
+  if ((n & 0x1) == 0) { n >>= 1; }
+  /* factor and calculate totient */
+  nfacs = factor(n, facs);
   lastf = 0;
   for (i = 0; i < nfacs; i++) {
     UV f = facs[i];
