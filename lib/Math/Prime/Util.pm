@@ -2800,13 +2800,24 @@ command line.  This is faster than Mathematica until C<10^13>.
   } int(sqrt($limit));
   say $sum;
 
-Produce the C<matches> result from L<Math::Factor::XS> without skipping:
+To get the result of L<Math::Factor::XS/matches>:
 
   use Math::Prime::Util qw/divisors/;
-  use Algorithm::Combinatorics qw/combinations_with_repetition/;
+  sub matches {
+    my @d = divisors(shift);
+    return map { [$d[$_],$d[$#d-$_]] } 1..(@d-1)>>1;
+  }
   my $n = 139650;
-  my @matches = grep { $_->[0] * $_->[1] == $n && $_->[0] > 1 }
-                combinations_with_repetition( [divisors($n)], 2 );
+  say "$n = ", join(" = ", map { "$_->[0]·$_->[1]" } matches($n));
+
+or its C<matches> function with the C<skip_multiples> option:
+
+  sub matches {
+    my @d = divisors(shift);
+    return map { [$d[$_],$d[$#d-$_]] }
+           grep { my $div=$d[$_]; !scalar(grep {!($div % $d[$_])} 1..$_-1) }
+           1..(@d-1)>>1; }
+  }
 
 Compute L<OEIS A054903|http://oeis.org/A054903> just like CRG4's Pari example:
 
@@ -2992,8 +3003,7 @@ not support bigints.  Both are implemented with trial division, meaning they
 are very fast for really small values, but quickly become unusably slow
 (factoring 19 digit semiprimes is over 700 times slower).  The function
 C<count_prime_factors> can be done in MPU using C<scalar factor($n)>.
-MPU has no equivalent to C<matches>, but see the L</"EXAMPLES"> section
-for a way to produce the results.
+See the L</"EXAMPLES"> section for a 2-line function replicating C<matches>.
 
 L<Math::Big> version 1.12 includes C<primes> functionality.  The current
 code is only usable for very tiny inputs as it is incredibly slow and uses
@@ -3316,7 +3326,7 @@ native size integers.  With bigints we finally see it work well.
 
 =item *
 
-Math::Pari built with 2.3.5 not only has a better primality test vs.
+Math::Pari built with 2.3.5 not only has a better primality test versus
 the default 2.1.7, but runs faster.  It still has quite a bit of overhead
 with native size integers.  Pari/GP 2.5.0 takes 11.3s, 16.9s, and 2.9s
 respectively for the tests above.  MPU is still faster, but clearly the

@@ -20,8 +20,8 @@ use Math::GMPz;
 # TIMING:
 #              10^7    2*10^7   10^8     10^10
 # Clever       0.07s    0.09s   0.24s    5s
-# Brute        5.8s    11.0s   53.9s     5 hours
-# Simple MPU  13.9s    29.7s  192s       1-2 days?
+# Brute        5.7s    11.0s   53.9s     5 hours
+# Simple MPU  12.0s    27.3s  174s       1-2 days?
 # Simple Pari 13.6s    33.4s  277s       5 days?
 #   
 
