@@ -75,6 +75,7 @@ int factor(UV n, UV *factors)
           n /= f;
         }
       }
+      f = primes_small[sp];
     }
   }
   if (n < f*f) {
@@ -84,7 +85,7 @@ int factor(UV n, UV *factors)
   }
   /* Perfect squares and cubes.  Factor root only once. */
   {
-    int i, j, k = is_power(n,2) ? 2 : is_power(n,3) ? 3 : 1;
+    int i, j, k = is_power(n,2) ? 2 : (n >= f*f*f && is_power(n,3)) ? 3 : 1;
     if (k > 1) {
       UV p = (k == 2) ? isqrt(n) : icbrt(n);
       if (is_prob_prime(p)) {
