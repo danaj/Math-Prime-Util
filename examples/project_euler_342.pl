@@ -33,7 +33,6 @@ my $sum = 0;
 
 if ($method eq 'clever') {
   # About 5 seconds for 10^10-1
-  my $sqlimit = Math::GMPz->new($limit) * $limit;
   my $cblimit = int( ($limit*$limit) ** 0.3334 + 0.01 );
   foreach my $k (2 .. $cblimit) {
     next if $k & 1;
