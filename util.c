@@ -967,7 +967,6 @@ IV mertens(UV n) {
       for (nmk = 1; nmk <= last_nmk; nmk++, nmkm += m) {
         this_k = next_k;
         next_k = n/nmkm;
-        /* if (nmk > maxmu) croak("n = %lu  m = %lu u/m = %lu  n/m = %lu  nmk %lu\n", n, m, u/m, n/m, nmk); */
         inner_sum += M[nmk] * (this_k - next_k);
       }
       sum -= mu[m] * inner_sum;
