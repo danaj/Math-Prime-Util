@@ -1890,7 +1890,7 @@ is a generalization of Euler's totient, where
 This counts the number of k-tuples less than or equal to n that form a coprime
 tuple with n.  As with C<euler_phi>, 0 is returned for all C<n E<lt> 1>.
 This function can be used to generate some other useful functions, such as
-the Dedikind psi function, where C<psi(n) = J(2,n) / J(1,n)>.
+the Dedekind psi function, where C<psi(n) = J(2,n) / J(1,n)>.
 
 
 =head2 exp_mangoldt

@@ -456,8 +456,8 @@ while (my($k, $tref) = each (%jordan_totients)) {
     push @psi_viaj, int(jordan_totient(2, $n) / jordan_totient(1, $n));
     push @psi_viamobius, int($n * divisor_sum( $n, sub { moebius($_[0])**2 / $_[0] } ) + 0.5);
   }
-  is_deeply( \@psi_viaj, \@A001615, "Dedikind psi(n) = J_2(n)/J_1(n)" );
-  is_deeply( \@psi_viamobius, \@A001615, "Dedikind psi(n) = divisor_sum(n, moebius(d)^2 / d)" );
+  is_deeply( \@psi_viaj, \@A001615, "Dedekind psi(n) = J_2(n)/J_1(n)" );
+  is_deeply( \@psi_viamobius, \@A001615, "Dedekind psi(n) = divisor_sum(n, moebius(d)^2 / d)" );
 }
 
 {
