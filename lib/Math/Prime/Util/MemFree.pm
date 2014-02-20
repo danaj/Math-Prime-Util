@@ -4,7 +4,7 @@ use warnings;
 
 BEGIN {
   $Math::Prime::Util::MemFree::AUTHORITY = 'cpan:DANAJ';
-  $Math::Prime::Util::MemFree::VERSION = '0.37';
+  $Math::Prime::Util::MemFree::VERSION = '0.38';
 }
 
 use base qw( Exporter );
@@ -44,7 +44,7 @@ Math::Prime::Util::MemFree - An auto-free object for Math::Prime::Util
 
 =head1 VERSION
 
-Version 0.37
+Version 0.38
 
 
 =head1 SYNOPSIS
