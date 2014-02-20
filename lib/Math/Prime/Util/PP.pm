@@ -1722,9 +1722,12 @@ sub znprimroot {
   }
   return if $n % 4 == 0;
   my $a = 1;
-  my $phi = euler_phi($n);
-  # Check that a primitive root exists.
-  return if !is_prob_prime($n) && $phi != Math::Prime::Util::carmichael_lambda($n);
+  my $phi = $n-1;
+  if (!is_prob_prime($n)) {
+    $phi = euler_phi($n);
+    # Check that a primitive root exists.
+    return if $phi != Math::Prime::Util::carmichael_lambda($n);
+  }
   my @exp = map { Math::BigInt->new("$_") }
             map { int($phi/$_->[0]) }
             Math::Prime::Util::factor_exp($phi);
