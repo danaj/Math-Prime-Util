@@ -1918,17 +1918,10 @@ This is -1 raised to Ω(n) (the total number of prime factors).
   say chebyshev_theta(10000);
 
 Returns θ(n), the first Chebyshev function for a non-negative integer input.
-This is the sum of the logarithm of each prime where C<p E<lt>= n>.  An
-alternate computation is as the logarithm of n primorial.
-Hence these functions:
+This is the sum of the logarithm of each prime where C<p E<lt>= n>.  This
+is effectively:
 
-  use List::Util qw/sum/;  use Math::BigFloat;
-
-  sub c1a { 0+sum( map { log($_) } @{primes(shift)} ) }
-  sub c1b { Math::BigFloat->new(primorial(shift))->blog }
-
-yield similar results, albeit slower and using more memory.
-
+  my $s = 0;  forprimes { $s += log($_) } $n;  return $s;
 
 =head2 chebyshev_psi
 
@@ -1936,16 +1929,10 @@ yield similar results, albeit slower and using more memory.
 
 Returns ψ(n), the second Chebyshev function for a non-negative integer input.
 This is the sum of the logarithm of each prime power where C<p^k E<lt>= n>
-for an integer k.  An alternate computation is as the summatory Mangoldt
-function.  Another alternate computation is as the logarithm of
-LCM(1,2,...,n).  Hence these functions:
+for an integer k.  An alternate but slower computation is as the summatory
+Mangoldt function, such as:
 
-  use List::Util qw/sum/;  use Math::BigFloat;
-
-  sub c2a { 0+sum( map { log(exp_mangoldt($_)) } 1 .. shift ) }
-  sub c2b { Math::BigFloat->new(consecutive_integer_lcm(shift))->blog }
-
-yield similar results, albeit slower and using more memory.
+  my $s = 0;  for (1..$n) { $s += log(exp_mangoldt($_)) }  return $s;
 
 
 =head2 divisor_sum
@@ -2181,6 +2168,12 @@ Examples of various ways to set your own irand function:
   # Crypt::Random.  Uses Pari and /dev/random.  Very slow.
   use Crypt::Random qw/makerandom/;
   prime_set_config(irand => sub { makerandom(Size=>32, Uniform=>1); });
+
+  # Net::Random.  You probably don't want to use this, but if you do:
+  use Net::Random;
+  { my $rng = Net::Random->new(src=>"fourmilab.ch",max=>0xFFFFFFFF);
+    sub nr_irand { return $rng->get(1); } }
+  prime_set_config(irand => \&nr_irand);
 
   # Mersenne Twister.  Very fast, decent RNG, auto seeding.
   use Math::Random::MT::Auto;
