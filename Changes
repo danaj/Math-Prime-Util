@@ -10,6 +10,9 @@ Revision history for Perl module Math::Prime::Util
 
     - Factoring powers is much faster.
 
+    - Add Bernstein+Voloch improvements to AKS.
+      Much faster, though of course still much slower than BPSW.
+
     [OTHER]
 
     - Added some Project Euler examples.

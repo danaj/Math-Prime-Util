@@ -8,6 +8,11 @@
  * The AKS v6 algorithm, for native integers.  Based on the AKS v6 paper.
  * As with most AKS implementations, it's really slow.
  *
+ * If we know there is a lgamma function (C99), then this uses the
+ * improvements from Folkmar Bornemann's 2002 Pari implementation.  This
+ * includes Bernstein and Voloch's much, much better r/s selection.  The
+ * performance difference is huge.
+ *
  * When n < 2^(wordbits/2)-1, we can do a straightforward intermediate:
  *      r = (r + a * b) % n
  * If n is larger, then these are replaced with:
@@ -19,10 +24,17 @@
  *
  * This is all much easier in GMP.
  *
- * Copyright 2012, Dana Jacobsen.
+ * Copyright 2012-2014, Dana Jacobsen.
  */
 
 #define SQRTN_SHORTCUT 1
+
+/* Use the improvements from Bornemann's 2002 implementation */
+#if (defined __USE_MISC || defined __USE_XOPEN || defined __USE_ISOC99) && !defined(_MSC_VER)
+#define IMPL_BORNEMANN 1
+#else
+#define IMPL_BORNEMANN 0
+#endif
 
 #include "ptypes.h"
 #include "aks.h"
@@ -30,7 +42,22 @@
 #include "util.h"
 #include "cache.h"
 #include "mulmod.h"
+#include "factor.h"
 
+#if IMPL_BORNEMANN
+static int is_primitive_root(UV n, UV r)
+{
+  UV fac[MPU_MAX_FACTORS+1];
+  int i, nfacs;
+  /* if ( (r&1) & powmod(n, (r-1)>>1, r) == 1 )  return 0; */
+  nfacs = factor_exp(r-1, fac, 0);
+  for (i = 0; i < nfacs; i++) {
+    UV m = powmod(n, (r-1)/fac[i], r);
+    if (m == 1) return 0;
+  }
+  return 1;
+}
+#else
 /* Naive znorder.  Works well here because limit will be very small. */
 static UV order(UV r, UV n, UV limit) {
   UV j;
@@ -42,6 +69,7 @@ static UV order(UV r, UV n, UV limit) {
   }
   return j;
 }
+#endif
 
 #if 0
 static void poly_print(UV* poly, UV r)
@@ -178,10 +206,16 @@ static int test_anr(UV a, UV n, UV r)
   return retval;
 }
 
+/*
+ * Avanzi and Mihǎilescu, 2007
+ * http://www.uni-math.gwdg.de/preda/mihailescu-papers/ouraks3.pdf
+ * "As a consequence, one cannot expect the present variants of AKS to
+ *  compete with the earlier primality proving methods like ECPP and
+ *  cyclotomy." - conclusion regarding memory consumption
+ */
 int _XS_is_aks_prime(UV n)
 {
-  UV sqrtn, limit, r, rlimit, a;
-  double log2n;
+  UV r, s, a;
   int verbose;
 
   if (n < 2)
@@ -192,32 +226,74 @@ int _XS_is_aks_prime(UV n)
   if (is_power(n, 0))
     return 0;
 
-  sqrtn = isqrt(n);
-  log2n = log(n) / log(2);   /* C99 has a log2() function */
-  limit = (UV) floor(log2n * log2n);
+  if (n > 11 && ( !(n%2) || !(n%3) || !(n%5) || !(n%7) || !(n%11) )) return 0;
+  /* if (!is_prob_prime(n)) return 0; */
 
   verbose = _XS_get_verbose();
-  if (verbose) { printf("# aks limit is %lu\n", (unsigned long) limit); }
+#if IMPL_BORNEMANN == 0
+  {
+    UV sqrtn = isqrt(n);
+    double log2n = log(n) / log(2);   /* C99 has a log2() function */
+    UV limit = (UV) floor(log2n * log2n);
 
-  for (r = 2; r < n; r++) {
-    if ((n % r) == 0)
-      return 0;
+    if (verbose) { printf("# aks limit is %lu\n", (unsigned long) limit); }
+
+    for (r = 2; r < n; r++) {
+      if ((n % r) == 0)
+        return 0;
 #if SQRTN_SHORTCUT
-    if (r > sqrtn)
-      return 1;
+      if (r > sqrtn)
+        return 1;
 #endif
-    if (order(r, n, limit) > limit)
-      break;
+      if (order(r, n, limit) > limit)
+        break;
+    }
+
+    if (r >= n)
+      return 1;
+
+    s = (UV) floor(sqrt(r-1) * log2n);
+
+    if (verbose) { printf("# aks r = %lu  s = %lu\n", (unsigned long) r, (unsigned long) s); }
   }
+#else
+  {
+    UV fac[MPU_MAX_FACTORS+1];
+    UV slim;
+    double c1, c2;
+    double const t = 48;
+    double const t1 = (1.0/((t+1)*log(t+1)-t*log(t)));
+    r = next_prime( (UV) (t1*t1 * log(n)*log(n)) );
+    while (!is_primitive_root(n,r))
+      r = next_prime(r);
 
-  if (r >= n)
-    return 1;
+    slim = (UV) (2*t*(r-1));
+    c1 = lgamma(r-1);
+    c2 = log(n) * floor(sqrt(r));
+    { /* Binary search for first s in [1,slim] where x >= 0 */
+      UV i = 1;
+      UV j = slim;
+      while (i < j) {
+        s = i + (j-i)/2;
+        double x = (lgamma(r-1+s) - c1 - lgamma(s+1)) / c2 - 1.0;
+        if (x < 0)  i = s+1;
+        else        j = s;
+      }
+      s = i-1;
+    }
+    s = (s+3) >> 1;
+    /* Check for any factors less than (s-1)^2 */
+    slim = (s-1)*(s-1);
+    if (verbose > 1) printf("# aks trial to %lu\n", slim);
+    if (trial_factor(n, fac, slim) > 1)
+      return 0;
+    if (slim >= HALF_WORD || (slim*slim) >= n)
+      return 1;
+  }
+  if (verbose) { printf("# aks r = %lu  s = %lu\n", (unsigned long) r, (unsigned long) s); }
+#endif
 
-  rlimit = (UV) floor(sqrt(r-1) * log2n);
-
-  if (verbose) { printf("# aks r = %lu  rlimit = %lu\n", (unsigned long) r, (unsigned long) rlimit); }
-
-  for (a = 1; a <= rlimit; a++) {
+  for (a = 1; a <= s; a++) {
     if (! test_anr(a, n, r) )
       return 0;
     if (verbose>1) { printf("."); fflush(stdout); }
