@@ -260,30 +260,32 @@ int _XS_is_aks_prime(UV n)
   {
     UV fac[MPU_MAX_FACTORS+1];
     UV slim;
-    double c1, c2;
+    double c1, c2, x;
     double const t = 48;
     double const t1 = (1.0/((t+1)*log(t+1)-t*log(t)));
-    r = next_prime( (UV) (t1*t1 * log(n)*log(n)) );
+    double const dlogn = log(n);
+    r = next_prime( (UV) (t1*t1 * dlogn*dlogn) );
     while (!is_primitive_root(n,r))
       r = next_prime(r);
 
     slim = (UV) (2*t*(r-1));
     c1 = lgamma(r-1);
-    c2 = log(n) * floor(sqrt(r));
+    c2 = dlogn * floor(sqrt(r));
     { /* Binary search for first s in [1,slim] where x >= 0 */
       UV i = 1;
       UV j = slim;
       while (i < j) {
         s = i + (j-i)/2;
-        double x = (lgamma(r-1+s) - c1 - lgamma(s+1)) / c2 - 1.0;
+        x = (lgamma(r-1+s) - c1 - lgamma(s+1)) / c2 - 1.0;
         if (x < 0)  i = s+1;
         else        j = s;
       }
       s = i-1;
     }
     s = (s+3) >> 1;
-    /* Check for any factors less than (s-1)^2 */
-    slim = (s-1)*(s-1);
+    /* Bornemann checks factors up to (s-1)^2, we check to max(r,s) */
+    /* slim = (s-1)*(s-1); */
+    slim = (r > s) ? r : s;
     if (verbose > 1) printf("# aks trial to %lu\n", slim);
     if (trial_factor(n, fac, slim) > 1)
       return 0;
