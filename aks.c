@@ -29,8 +29,9 @@
 
 #define SQRTN_SHORTCUT 1
 
-/* Use the improvements from Bornemann's 2002 implementation */
-#if (defined __USE_MISC || defined __USE_XOPEN || defined __USE_ISOC99) && !defined(_MSC_VER)
+/* Use improvements from Bornemann's 2002 implementation if we have lgamma */
+#if !defined(_MSC_VER) && \
+    (defined(__USE_ISOC99) || defined(_ISOC99_SOURCE) || defined(_NETBSD_SOURCE) || defined(__cplusplus) || !defined(__STRICT_ANSI__) || __STDC_VERSION__ >= 199901L || _POSIX_C_SOURCE >= 200112L || _XOPEN_SOURCE >= 600)
 #define IMPL_BORNEMANN 1
 #else
 #define IMPL_BORNEMANN 0
