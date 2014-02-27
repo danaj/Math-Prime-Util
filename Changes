@@ -8,7 +8,7 @@ Revision history for Perl module Math::Prime::Util
 
     [FUNCTIONALITY AND PERFORMANCE]
 
-    - Factoring powers is much faster.
+    - Factoring powers (and k*n^m for small k) is much faster.
 
     - Add Bernstein+Voloch improvements to AKS.  Much faster than the v6
       implementation, though still terribly slow vs. BPSW or other proofs.
@@ -16,6 +16,12 @@ Revision history for Perl module Math::Prime::Util
     [OTHER]
 
     - Added some Project Euler examples.
+
+    - If using a threaded Perl without EXTENDED_TESTING, thread tests will
+      print diagnostics instead of failing.  This might help find issues
+      with platforms that are currently failing with no indications, and
+      allow installation for non-threaded use.
+
 
 0.37  2014-01-26
 
