@@ -29,13 +29,8 @@
 
 #define SQRTN_SHORTCUT 1
 
-/* Use improvements from Bornemann's 2002 implementation if we have lgamma */
-#if !defined(_MSC_VER) && \
-    (defined(__USE_ISOC99) || defined(_ISOC99_SOURCE) || defined(_NETBSD_SOURCE) || defined(__cplusplus) || !defined(__STRICT_ANSI__) || __STDC_VERSION__ >= 199901L || _POSIX_C_SOURCE >= 200112L || _XOPEN_SOURCE >= 600)
+/* Use improvements from Bornemann's 2002 implementation */
 #define IMPL_BORNEMANN 1
-#else
-#define IMPL_BORNEMANN 0
-#endif
 
 #include "ptypes.h"
 #include "aks.h"
@@ -58,6 +53,28 @@ static int is_primitive_root(UV n, UV r)
   }
   return 1;
 }
+/* We could use lgamma, but it isn't in MSVC and not in pre-C99.  The only
+ * sure way to find if it is available is test compilation (ala autoconf).
+ * Instead, we'll just use our own implementation.
+ * See http://mrob.com/pub/ries/lanczos-gamma.html for alternates. */
+static double lanczos_coef[8+1] =
+{ 0.99999999999980993, 676.5203681218851, -1259.1392167224028,
+  771.32342877765313, -176.61502916214059, 12.507343278686905,
+  -0.13857109526572012, 9.9843695780195716e-6, 1.5056327351493116e-7 };
+static double log_sqrt_two_pi =  0.91893853320467274178;
+static double log_gamma(double x)
+{
+  double base = x + 7 + 0.5;
+  double sum = 0;
+  int i;
+  for (i = 8; i >= 1; i--)
+    sum += lanczos_coef[i] / (x + (double)i);
+  sum += lanczos_coef[0];
+  sum = log_sqrt_two_pi + logl(sum/x) + ( (x+0.5)*logl(base) - base );
+  return sum;
+}
+#undef lgamma
+#define lgamma(x) log_gamma(x)
 #else
 /* Naive znorder.  Works well here because limit will be very small. */
 static UV order(UV r, UV n, UV limit) {
@@ -254,8 +271,6 @@ int _XS_is_aks_prime(UV n)
       return 1;
 
     s = (UV) floor(sqrt(r-1) * log2n);
-
-    if (verbose) { printf("# aks r = %lu  s = %lu\n", (unsigned long) r, (unsigned long) s); }
   }
 #else
   {
@@ -293,8 +308,9 @@ int _XS_is_aks_prime(UV n)
     if (slim >= HALF_WORD || (slim*slim) >= n)
       return 1;
   }
-  if (verbose) { printf("# aks r = %lu  s = %lu\n", (unsigned long) r, (unsigned long) s); }
 #endif
+
+  if (verbose) { printf("# aks r = %lu  s = %lu\n", (unsigned long) r, (unsigned long) s); }
 
   for (a = 1; a <= s; a++) {
     if (! test_anr(a, n, r) )

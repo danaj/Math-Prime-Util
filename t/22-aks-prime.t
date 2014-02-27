@@ -37,11 +37,7 @@ SKIP: {
   # If we're pure Perl, then this is definitely too slow.
   # Arguably we should check to see if they have the GMP code.
   skip "Skipping PP AKS on PP -- just too slow.", 1 if $ispp;
-  # If we have 64-bit available in the compiler (e.g. uint64_t), this can
-  # still be quite fast.  However for pretty much everyone else, this is
-  # just far too slow for running in a test suite.
-  skip "Skipping PP AKS on 32-bit -- just too slow.", 1 if !$use64;
-  # The first number that makes it past the sqrt test to actually run.
+  # The least number that performs the full test with either implementation.
   is( is_aks_prime(69197), 1, "is_aks_prime(69197) is true" );
 }
 
