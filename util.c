@@ -49,6 +49,9 @@
 #ifndef LDBL_EPSILON
   #define LDBL_EPSILON 1e-16
 #endif
+#ifndef LDBL_MAX
+  #define LDBL_MAX DBL_MAX
+#endif
 
 #define KAHAN_INIT(s) \
   long double s ## _y, s ## _t; \
@@ -1388,6 +1391,9 @@ long double _XS_ExponentialIntegral(long double x) {
   KAHAN_INIT(sum);
 
   if (x == 0) croak("Invalid input to ExponentialIntegral:  x must be != 0");
+  /* Protect against messed up rounding modes */
+  if (x >=  12000) return INFINITY;
+  if (x <= -12000) return 0;
 
   if (x < -1) {
     /* Continued fraction, good for x < -1 */
@@ -1468,6 +1474,7 @@ long double _XS_LogarithmicIntegral(long double x) {
   if (x == 1) return -INFINITY;
   if (x == 2) return li2;
   if (x < 0) croak("Invalid input to LogarithmicIntegral:  x must be >= 0");
+  if (x >= LDBL_MAX) return INFINITY;
   return _XS_ExponentialIntegral(logl(x));
 }
 
