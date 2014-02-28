@@ -13,7 +13,8 @@ my $numbers = 1000;
 
 my $is64bit = (~0 > 4294967295);
 my $maxdigits = ($is64bit) ? 20 : 10;  # Noting the range is limited for max.
-my $randf = Math::Prime::Util::_get_rand_func();
+use Math::Prime::Util::RandomPrimes;
+my $randf = Math::Prime::Util::RandomPrimes::get_randf();
 
 my $rand_ndigit_gen = sub {
   my $digits = shift;

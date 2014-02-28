@@ -5,6 +5,7 @@ use Math::Primality;
 use Math::Prime::XS;
 use Math::Prime::Util;
 use Math::Prime::Util::GMP;
+use Math::BigInt try=>"GMP,Pari";
 #use Math::Prime::FastSieve;
 use Benchmark qw/:all/;
 use List::Util qw/min max/;

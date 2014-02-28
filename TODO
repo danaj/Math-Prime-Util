@@ -68,3 +68,5 @@
 - Ensure a fast path for Math::GMP from MPU -> MPU:GMP -> GMP, and back.
 
 - znlog better implementation
+
+- Add Shawe-Taylor random primes, from FIPS-186-4.
