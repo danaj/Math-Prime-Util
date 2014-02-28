@@ -4,7 +4,6 @@ use warnings;
 
 use Test::More;
 use Math::Prime::Util qw/prime_count prime_count_lower prime_count_upper prime_count_approx/;
-use Digest::SHA qw/sha256_hex/;
 
 my %pivals = (
                 1000 =>                168,
@@ -130,13 +129,17 @@ my %pivals = (
  18446744073709551615 => 425656284035217743,
 );
 
+use Math::BigInt try=>"GMP,Pari";
 plan tests => 3*scalar(keys %pivals);
 
 foreach my $n (sort {$a <=> $b} keys %pivals) {
   my $pin = $pivals{$n};
-  cmp_ok( prime_count_upper($n), '>=', $pin, "Pi($n) <= upper estimate" );
-  cmp_ok( prime_count_lower($n), '<=', $pin, "Pi($n) >= lower estimate" );
-  my $approx = prime_count_approx($n);
+  $n = Math::BigInt->new($n) if $n > ~0;
+  # stringify to work around Math::BigInt::GMP's stupid bug
+  cmp_ok( ''.prime_count_upper($n), '>=', $pin, "Pi($n) <= upper estimate" );
+  cmp_ok( ''.prime_count_lower($n), '<=', $pin, "Pi($n) >= lower estimate" );
+  # Result may be bigint, so turn into float for percentage comparison
+  my $approx = 0.0 + ''.prime_count_approx($n);
   my $percent_limit = ($n > 1000000000000) ? 0.00005
                     : ($n >   10000000000) ? 0.0002
                     : ($n >     100000000) ? 0.002
