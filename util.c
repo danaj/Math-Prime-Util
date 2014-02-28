@@ -1237,8 +1237,8 @@ UV znorder(UV a, UV n) {
 UV znprimroot(UV n) {
   UV fac[MPU_MAX_FACTORS+1];
   UV exp[MPU_MAX_FACTORS+1];
-  UV a, phi;
-  int i, j, nfactors;
+  UV a, j, phi;
+  int i, nfactors;
   if (n <= 4) return (n == 0) ? 0 : n-1;
   if (n % 4 == 0)  return 0;
   if (is_prob_prime(n)) {
