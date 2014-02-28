@@ -143,7 +143,7 @@ static int is_perfect_square(UV n)
   * The performance of these functions are not super critical.
   * What is:  popcnt, mulmod, and muladd.
   */
-#elif defined (_MSC_VER) && _MSC_VER >= 1400 && !defined(__clang__)
+#elif defined (_MSC_VER) && _MSC_VER >= 1400 && !defined(__clang__) && !defined(_WIN32_WCE)
  #include <intrin.h>
  #ifdef FUNC_ctz
   static int ctz(UV n) {
