@@ -10,6 +10,8 @@ Revision history for Perl module Math::Prime::Util
 
     - Factoring powers (and k*n^m for small k) is much faster.
 
+    - Speed up znprimroot.
+
     - Add Bernstein+Voloch improvements to AKS.  Much faster than the v6
       implementation, though still terribly slow vs. BPSW or other proofs.
 

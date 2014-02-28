@@ -1238,12 +1238,25 @@ UV znprimroot(UV n) {
   UV fac[MPU_MAX_FACTORS+1];
   UV exp[MPU_MAX_FACTORS+1];
   UV a, phi;
-  int i, nfactors;
+  int i, j, nfactors;
   if (n <= 4) return (n == 0) ? 0 : n-1;
   if (n % 4 == 0)  return 0;
-  phi = totient(n);
-  /* Check if a primitive root exists. */
-  if (!is_prob_prime(n) && phi != carmichael_lambda(n))  return 0;
+  if (is_prob_prime(n)) {
+    phi = n-1;
+  } else {  /* Calculate Totient and Carmichael Lambda at same time */
+    UV lambda = 1;
+    nfactors = factor_exp(n, fac, exp);
+    phi = 1;
+    for (i = 0; i < nfactors; i++) {
+      UV pk = fac[i]-1;
+      for (j = 1; j < exp[i]; j++)
+        pk *= fac[i];
+      phi *= pk;
+      if (i == 0 && fac[0] == 2 && exp[0] > 2)  pk >>= 1;
+      lambda = lcm_ui(lambda, pk);
+    }
+    if (phi != lambda) return 0; /* prim root exists only if phi(n) = CL(n) */
+  }
   nfactors = factor_exp(phi, fac, exp);
   for (i = 0; i < nfactors; i++)
     exp[i] = phi / fac[i];  /* exp[i] = phi(n) / i-th-factor-of-phi(n) */
