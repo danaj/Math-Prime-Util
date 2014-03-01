@@ -535,13 +535,14 @@ sub partitions {
 
   my $d = int(sqrt($n+1));
   my @pent = (1, map { (($_*(3*$_+1))>>1, (($_+1)*(3*$_+2))>>1) } 1 .. $d);
-  my @part = (Math::BigInt->bone);
+  my $ZERO = ($n >= ((~0 > 4294967295) ? 400 : 270)) ? BZERO : 0;
+  my @part = ($ZERO+1);
   foreach my $j (scalar @part .. $n) {
-    my ($psum1, $psum2, $k) = (Math::BigInt->bzero, Math::BigInt->bzero, 1);
+    my ($psum1, $psum2, $k) = ($ZERO, $ZERO, 1);
     foreach my $p (@pent) {
       last if $p > $j;
-      if ((++$k) & 2) { $psum1->badd( $part[ $j - $p ] ); }
-      else            { $psum2->badd( $part[ $j - $p ] ); }
+      if ((++$k) & 2) { $psum1 += $part[ $j - $p ] }
+      else            { $psum2 += $part[ $j - $p ] }
     }
     $part[$j] = $psum1 - $psum2;
   }
