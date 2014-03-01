@@ -1,5 +1,9 @@
 Revision history for Perl module Math::Prime::Util
 
+0.39  2014-03-01
+
+    - Changed logl to log in AKS.
+
 0.38  2014-02-28
 
     [ADDED]
