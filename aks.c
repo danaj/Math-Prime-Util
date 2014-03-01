@@ -70,7 +70,7 @@ static double log_gamma(double x)
   for (i = 8; i >= 1; i--)
     sum += lanczos_coef[i] / (x + (double)i);
   sum += lanczos_coef[0];
-  sum = log_sqrt_two_pi + logl(sum/x) + ( (x+0.5)*logl(base) - base );
+  sum = log_sqrt_two_pi + log(sum/x) + ( (x+0.5)*log(base) - base );
   return sum;
 }
 #undef lgamma
