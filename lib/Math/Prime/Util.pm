@@ -5,7 +5,7 @@ use Carp qw/croak confess carp/;
 
 BEGIN {
   $Math::Prime::Util::AUTHORITY = 'cpan:DANAJ';
-  $Math::Prime::Util::VERSION = '0.39';
+  $Math::Prime::Util::VERSION = '0.40';
 }
 
 # parent is cleaner, and in the Perl 5.10.1 / 5.12.0 core, but not earlier.
@@ -800,7 +800,7 @@ Math::Prime::Util - Utilities related to prime numbers, including fast sieves an
 
 =head1 VERSION
 
-Version 0.39
+Version 0.40
 
 
 =head1 SYNOPSIS
@@ -955,7 +955,10 @@ most methods will be much slower than the C+GMP alternative.
 The module is thread-safe and allows concurrency between Perl threads while
 still sharing a prime cache.  It is not itself multi-threaded.  See the
 L<Limitations|/"LIMITATIONS"> section if you are using Win32 and threads in
-your program.
+your program.  Also note that L<Math::Pari> is not thread-safe (and will
+crash as soon as it is loaded in threads), so if you use
+L<Math::BigInt::Pari> rather than L<Math::BigInt::GMP> or the default backend,
+things will go pear-shaped.
 
 Two scripts are also included and installed by default:
 

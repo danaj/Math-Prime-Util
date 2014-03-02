@@ -4,7 +4,7 @@ use warnings;
 
 BEGIN {
   $Math::Prime::Util::PrimeArray::AUTHORITY = 'cpan:DANAJ';
-  $Math::Prime::Util::PrimeArray::VERSION = '0.39';
+  $Math::Prime::Util::PrimeArray::VERSION = '0.40';
 }
 
 # parent is cleaner, and in the Perl 5.10.1 / 5.12.0 core, but not earlier.
@@ -135,7 +135,7 @@ Math::Prime::Util::PrimeArray - A tied array for primes
 
 =head1 VERSION
 
-Version 0.39
+Version 0.40
 
 
 =head1 SYNOPSIS
