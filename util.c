@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <float.h>
 #include <math.h>
 
 /* Use long double to get a little more precision when we're calculating the

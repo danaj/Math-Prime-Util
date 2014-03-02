@@ -7,6 +7,8 @@ Revision history for Perl module Math::Prime::Util
     - Make sure we don't use Math::BigInt::Pari in threading tests.
       threads + Math::Pari = segfault on UNIX and Windows.
 
+    - Various minor changes trying to guess what ActiveState is doing.
+
 
 0.38  2014-02-28
 
