@@ -2,7 +2,11 @@ Revision history for Perl module Math::Prime::Util
 
 0.39  2014-03-01
 
-    - Changed logl to log in AKS.
+    - Changed logl to log in AKS.  Critical for FreeBSD and NetBSD.
+
+    - Make sure we don't use Math::BigInt::Pari in threading tests.
+      threads + Math::Pari = segfault on UNIX and Windows.
+
 
 0.38  2014-02-28
 

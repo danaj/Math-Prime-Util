@@ -15,6 +15,8 @@ BEGIN {
   }
 }
 
+# Math::Pari + threads = crossing the streams.  Instant segfault.
+use Math::BigInt lib=>"Calc";
 use Test::More 'tests' => 10;
 use Math::Prime::Util ":all";
 
