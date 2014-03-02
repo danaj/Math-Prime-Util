@@ -602,8 +602,7 @@ sub jordan_totient {
   my $totient = BONE->copy;
   foreach my $f (@pe) {
     my ($p, $e) = @$f;
-    $p = Math::BigInt->new("$p") unless ref($p) eq 'Math::BigInt';
-    $p->bpow($k);
+    $p = Math::BigInt->new("$p")->bpow($k);
     $totient->bmul($p->copy->bdec());
     $totient->bmul($p) for 2 .. $e;
   }
