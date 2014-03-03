@@ -63,11 +63,17 @@ my $infinity = 0+'inf';  # Might be 0 on some platforms.
 $infinity = +(20**20**20) if 65535 > $infinity;
 my $nan = -sin($infinity);
 
-eval { next_prime($infinity); };
-like($@, qr/must be a positive integer/, "next_prime( infinity )");
+SKIP: {
+  skip "Your machine seems to not have infinity", 1 if 65535 > $infinity;
+  eval { next_prime($infinity); };
+  like($@, qr/must be a positive integer/, "next_prime( infinity )");
+}
 
-eval { next_prime($nan); };
-like($@, qr/must be a positive integer/, "next_prime( nan ) [nan = '$nan']");
+SKIP: {
+  skip "Your machine seems to not have NaN", 1 if $nan == 0;
+  eval { next_prime($nan); };
+  like($@, qr/must be a positive integer/, "next_prime( nan ) [nan = '$nan']");
+}
 
 
 SKIP: {
