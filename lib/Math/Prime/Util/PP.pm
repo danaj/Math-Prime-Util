@@ -1993,41 +1993,43 @@ sub is_almost_extra_strong_lucas_pseudoprime {
 sub is_frobenius_underwood_pseudoprime {
   my($n) = @_;
   return 0+($n >= 2) if $n < 4;
-  return 0 if ($n % 2) == 0 || _is_perfect_square($n);
 
   $n = Math::BigInt->new("$n") unless ref($n) eq 'Math::BigInt';
+  return 0 if $n->is_even || _is_perfect_square($n);
 
   my $ZERO = $n->copy->bzero;
   my $ONE = $ZERO->copy->binc;
+  my $TWO = $ONE->copy->binc;
   my $fa = $ZERO + 1;
   my $fb = $ZERO + 2;
+  my $x;
 
-  my ($x, $t, $np1, $na) = (0, -1, $n+1, undef);
-  while ( kronecker($t, $n) != -1 ) {
-    $x++;
-    $t = $x*$x - 4;
+  if ($n % 4 == 3) {
+    $x = 0;
+  } elsif ($n % 6 == 5) {
+    $x = 1;
+  } else {
+    $x = 3;
+    $x++ while kronecker($x*$x-4, $n) == 1;
+    return 0 if kronecker($x*$x-4, $n) == 0; # gcd(x*x-4,n) is a factor
   }
-  my $len = length($np1->as_bin) - 2;
-  my $result = $x+$x+5;
+  my $np1string = substr( $n->copy->binc->as_bin, 2);
+  my $np1len = length($np1string);
   my $multiplier = $x+2;
-  $result %= $n if $result > $n;
   $multiplier %= $n if $multiplier > $n;
-  foreach my $bit (reverse 0 .. $len-2) {
-    $na = ($fa * $x) + ($fb + $fb);
-    $t = $fb + $fa;
-    $fb->bsub($fa)->bmul($t)->bmod($n);
-    $fa->bmul($na)->bmod($n);
-
-    #if ( ($np1 >> $bit) & 1 ) {
-    if ( $np1->copy->brsft($bit)->is_odd ) {
-      $t = $fb->copy;
-      $fb->badd($fb)->bsub($fa);
-      $fa->bmul($multiplier)->badd($t);
+  foreach my $bit (1 .. $np1len-1) {
+    my $t = ( $fa * ( $fa * $x + $TWO * $fb ) ) % $n;
+    $fb   = ( ( $fb - $fa ) * ( $fb + $fa ) ) % $n;
+    $fa   = $t;
+    if ( substr( $np1string, $bit, 1 ) ) {
+      $t  = $fa * $multiplier + $fb;
+      $fb = $fb * $TWO - $fa;
+      $fa = $t;
     }
   }
-  $fa->bmod($n);
-  $fb->bmod($n);
-  return ($fa == 0 && $fb == $result) ? 1 : 0;
+  $fa %= $n;
+  $fb %= $n;
+  return ($fa == 0 && $fb == (($TWO * $x + 5) % $n)) ? 1 : 0;
 }
 
 
