@@ -1197,13 +1197,14 @@ UV exp_mangoldt(UV n) {
   if      (n <= 1)           return 1;
   else if ((n & (n-1)) == 0) return 2;     /* Power of 2 */
   else if ((n & 1) == 0)     return 1;     /* Even number (not 2) */
+  else if (is_prob_prime(n)) return n;
   else {
-    UV i, factors[MPU_MAX_FACTORS+1];
-    UV nfactors = factor(n, factors);
-    for (i = 1; i < nfactors; i++)
-      if (factors[i] != factors[0])
-        return 1;
-    return factors[0];
+    int k = powerof(n);
+    if (k >= 2) {
+      n = (k==2) ? isqrt(n) : (UV)(pow(n,1.0/k)+0.0000001);
+      if (is_prob_prime(n)) return n;
+    }
+    return 1;
   }
 }
 

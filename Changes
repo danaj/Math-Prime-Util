@@ -4,6 +4,8 @@ Revision history for Perl module Math::Prime::Util
 
     - Update PP Frobenius-Underwood test.
 
+    - Speed up exp_mangoldt.
+
 
 0.39  2014-03-01
 
