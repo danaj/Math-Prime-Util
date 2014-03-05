@@ -30,6 +30,8 @@ foreach my $m (@modules) {
   };
   $param->{trustme} = [mpu_public_regex(), mpu_factor_regex()]
     if $m eq 'Math::Prime::Util::PP';
+  $param->{trustme} = [qw/miller rabin all_factors/]
+    if $m eq 'Math::Prime::Util';
   pod_coverage_ok( $m, $param );
 }
 
