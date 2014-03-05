@@ -25,11 +25,9 @@ ok(!is_aks_prime(-2), '-2 is not prime');
 # Simple number (cought by sqrt test)
 is( is_aks_prime(877), 1, "is_aks_prime(877) is true" );
 
-# Perhaps let them know this is probably not a hung test?
-# This runs in milliseconds on an i3930K, but 1.5 minutes on an UltraSPARC.
-# These are the smallest numbers that actually run the code, so I don't know
-# how to make them run any faster.  On the 32-bit UltraSPARC, it's the mulmod
-# that is painfully slow.
+# This test can take a very long time if mulmods are very slow (e.g. on
+# UltraSPARC).  With the B+V improvements this should be fast enough for
+# the little example that we are ok.
 
 #diag "Unfortunately these tests are very slow.";
 

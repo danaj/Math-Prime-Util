@@ -752,10 +752,14 @@ sub exp_mangoldt {
   return 1 if defined $n && $n <= 1;  # n <= 1
   return 2 if ($n & ($n-1)) == 0;     # n power of 2
   return 1 unless $n & 1;             # even n can't be p^m
+  return $n if Math::Prime::Util::is_prob_prime($n); # prime n returns n
 
-  my @pe = Math::Prime::Util::factor_exp($n);
-  return 1 if scalar @pe > 1;
-  return $pe[0]->[0];
+  my $k = Math::Prime::Util::is_power($n);
+  if ($k >= 2) {
+    my $root = Math::BigInt->new("$n")->broot($k);
+    return $root if Math::Prime::Util::is_prob_prime($root);
+  }
+  1;
 }
 
 sub carmichael_lambda {
