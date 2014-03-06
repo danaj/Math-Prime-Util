@@ -36,6 +36,7 @@ our @EXPORT_OK =
       random_prime random_ndigit_prime random_nbit_prime random_strong_prime
       random_proven_prime random_proven_prime_with_cert
       random_maurer_prime random_maurer_prime_with_cert
+      random_shawe_taylor_prime
       primorial pn_primorial consecutive_integer_lcm
       gcd lcm factor factor_exp all_factors divisors
       moebius mertens euler_phi jordan_totient exp_mangoldt liouville
@@ -333,6 +334,13 @@ sub random_maurer_prime {
   _validate_num($bits, 2) || _validate_positive_integer($bits, 2);
   require Math::Prime::Util::RandomPrimes;
   return Math::Prime::Util::RandomPrimes::random_maurer_prime($bits);
+}
+
+sub random_shawe_taylor_prime {
+  my($bits) = @_;
+  _validate_num($bits, 2) || _validate_positive_integer($bits, 2);
+  require Math::Prime::Util::RandomPrimes;
+  return Math::Prime::Util::RandomPrimes::random_shawe_taylor_prime(@_);
 }
 
 sub random_maurer_prime_with_cert {

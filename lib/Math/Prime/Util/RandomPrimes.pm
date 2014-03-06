@@ -832,6 +832,106 @@ sub random_maurer_prime_with_cert {
   croak "Failure in random_maurer_prime, could not find a prime\n";
 } # End of random_maurer_prime
 
+sub random_shawe_taylor_prime {
+  my $k = shift;
+  my $which = shift;
+
+  my $seed;
+  {
+    # TODO: should go through RANDF
+    if (!defined $_BRS) {
+      require Bytes::Random::Secure;
+      $_BRS = Bytes::Random::Secure->new(NonBlocking=>1);
+    }
+    $seed = $_BRS->bytes(512/8);
+  }
+
+  my($status,$prime,$prime_seed,$prime_gen_counter)
+     = _ST_Random_prime($k, $seed);
+  croak "Shawe-Taylor random prime failure: loop overflow" unless $status;
+
+  return $prime;
+}
+
+sub _seed_plus_one {
+    my($s) = @_;
+    for (my $i = length($s)-1; $i >= 0; $i--) {
+        vec($s, $i, 8)++;
+        last unless vec($s, $i, 8) == 0;
+    }
+    return $s;
+}
+
+sub _ST_Random_prime {  # From FIPS 186-4
+  my($k, $input_seed) = @_;
+  croak "Shawe-Taylor random prime must have length >= 2"  if $k < 2;
+  $k = int("$k");
+
+  croak "Shawe-Taylor random prime, invalid input seed"
+     unless defined $input_seed && length($input_seed) >= 32;
+
+  if (!defined $Digest::SHA::VERSION) {
+    eval { require Digest::SHA; $Digest::SHA::VERSION >= 2.00; }
+      or do { croak "Must have Digest::SHA 2.00 or later"; };
+  }
+
+  my $k2 = Math::BigInt->new(2)->bpow($k-1);
+
+  if ($k < 33) {
+    my $seed = $input_seed;
+    my $prime_gen_counter = 0;
+    while (1) {
+      my $seedp1 = _seed_plus_one($seed);
+      my $cvec = Digest::SHA::sha256($seed) ^ Digest::SHA::sha256($seedp1);
+      my $c = Math::BigInt->from_hex('0x' . unpack("H*", $cvec));
+      $c = $k2 + ($c % $k2);
+      $c = (2 * ($c >> 1)) + 1;
+      $prime_gen_counter++;
+      $seed = _seed_plus_one($seedp1);
+      # c is small so we can provably test it.
+      return (1,$c,$seed,$prime_gen_counter) if is_prob_prime($c);
+      return (0,0,0,0) if $prime_gen_counter > 4*$k;
+    }
+  }
+  my($status,$c0,$seed,$prime_gen_counter)
+     = _ST_Random_prime( (($k+1)>>1)+1, $input_seed);
+  return (0,0,0,0) unless $status;
+  my $iterations = int(($k + 255) / 256) - 1;  # SHA256 generates 256 bits
+  my $old_counter = $prime_gen_counter;
+  my $xstr = '';
+  for my $i (0 .. $iterations) {
+    $xstr = Digest::SHA::sha256_hex($seed) . $xstr;
+    $seed = _seed_plus_one($seed);
+  }
+  my $x = Math::BigInt->from_hex('0x'.$xstr);
+  $x = $k2 + ($x % $k2);
+  my $t = ($x + 2*$c0 - 1) / (2*$c0);
+  while (1) {
+    if (2*$t*$c0 + 1 > 2*$k2) { $t = ($k2 + 2*$c0 - 1) / (2*$c0); }
+    my $c = 2*$t*$c0 + 1;
+    $prime_gen_counter++;
+    # Only do this if we're pretty sure the candidate is prime.
+    if (is_prob_prime($c)) {
+      my $astr = '';
+      for my $i (0 .. $iterations) {
+        $astr = Digest::SHA::sha256_hex($seed) . $astr;
+        $seed = _seed_plus_one($seed);
+      }
+      my $a = Math::BigInt->from_hex('0x'.$astr);
+      $a = ($a % ($c-3)) + 2;
+      my $z = $a->copy->bmodpow(2*$t,$c);
+      if (Math::BigInt::bgcd($z-1,$c)->is_one && $z->copy->bmodpow($c0,$c)->is_one) {
+        croak "Shawe-Taylor random prime failure at ($k): $c not prime"
+          unless is_prob_prime($c);
+        return (1, $c, $seed, $prime_gen_counter);
+      }
+    }
+    return (0,0,0,0) if $prime_gen_counter > 4*$k + $old_counter;
+    $t++;
+  }
+}
+
+
 # Gordon's algorithm for generating a strong prime.
 sub random_strong_prime {
   my $t = shift;
