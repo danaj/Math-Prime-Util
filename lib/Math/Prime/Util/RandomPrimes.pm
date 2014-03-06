@@ -894,7 +894,7 @@ sub _ST_Random_prime {  # From FIPS 186-4
       # c is small so we can provably test it.
       my ($isp, $cert) = is_provable_prime_with_cert($c);
       return (1,$c,$seed,$prime_gen_counter,$cert) if $isp;
-      return (0,0,0,0) if $prime_gen_counter > 4*$k;
+      return (0,0,0,0) if $prime_gen_counter > 10000 + 16*$k;
     }
   }
   my($status,$c0,$seed,$prime_gen_counter,$cert)
@@ -956,7 +956,7 @@ sub _ST_Random_prime {  # From FIPS 186-4
         return (1, $c, $seed, $prime_gen_counter, $cert);
       }
     }
-    return (0,0,0,0) if $prime_gen_counter > 4*$k + $old_counter;
+    return (0,0,0,0) if $prime_gen_counter > 10000 + 16*$k + $old_counter;
     $t++;
   }
 }
