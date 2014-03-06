@@ -36,7 +36,7 @@ our @EXPORT_OK =
       random_prime random_ndigit_prime random_nbit_prime random_strong_prime
       random_proven_prime random_proven_prime_with_cert
       random_maurer_prime random_maurer_prime_with_cert
-      random_shawe_taylor_prime
+      random_shawe_taylor_prime random_shawe_taylor_prime_with_cert
       primorial pn_primorial consecutive_integer_lcm
       gcd lcm factor factor_exp all_factors divisors
       moebius mertens euler_phi jordan_totient exp_mangoldt liouville
@@ -336,18 +336,26 @@ sub random_maurer_prime {
   return Math::Prime::Util::RandomPrimes::random_maurer_prime($bits);
 }
 
-sub random_shawe_taylor_prime {
-  my($bits) = @_;
-  _validate_num($bits, 2) || _validate_positive_integer($bits, 2);
-  require Math::Prime::Util::RandomPrimes;
-  return Math::Prime::Util::RandomPrimes::random_shawe_taylor_prime(@_);
-}
-
 sub random_maurer_prime_with_cert {
   my($bits) = @_;
   _validate_num($bits, 2) || _validate_positive_integer($bits, 2);
   require Math::Prime::Util::RandomPrimes;
   return Math::Prime::Util::RandomPrimes::random_maurer_prime_with_cert($bits);
+}
+
+sub random_shawe_taylor_prime {
+  my($bits) = @_;
+  _validate_num($bits, 2) || _validate_positive_integer($bits, 2);
+  require Math::Prime::Util::RandomPrimes;
+  my ($n, $cert) = Math::Prime::Util::RandomPrimes::random_shawe_taylor_prime_with_cert($bits);
+  return $n;
+}
+
+sub random_shawe_taylor_prime_with_cert {
+  my($bits) = @_;
+  _validate_num($bits, 2) || _validate_positive_integer($bits, 2);
+  require Math::Prime::Util::RandomPrimes;
+  return Math::Prime::Util::RandomPrimes::random_shawe_taylor_prime_with_cert($bits);
 }
 
 sub random_strong_prime {
@@ -940,6 +948,7 @@ Version 0.40
   my $rand_prime = random_nbit_prime(128);   # random 128-bit prime
   my $rand_prime = random_strong_prime(256); # random 256-bit strong prime
   my $rand_prime = random_maurer_prime(256); # random 256-bit provable prime
+  my $rand_prime = random_shawe_taylor_prime(256);  # as above
 
 
 =head1 DESCRIPTION
@@ -1081,8 +1090,9 @@ additional M-R tests with random bases with L</miller_rabin_random>.
 Even better, make sure L<Math::Prime::Util::GMP> is installed and use
 L</is_provable_prime> which should be reasonably fast for sizes under
 2048 bits.  Another possibility is to use
-L<Math::Prime::Util/random_maurer_prime> which constructs a random
-provable prime.
+L<Math::Prime::Util/random_maurer_prime> or
+L<Math::Prime::Util/random_shawe_taylor_prime> which construct random
+provable primes.
 
 
 =head2 primes
@@ -2306,7 +2316,8 @@ Construct an n-bit provable prime, using the FastPrime algorithm of
 Ueli Maurer (1995).  This is the same algorithm used by L<Crypt::Primes>.
 Similar to L</random_nbit_prime>, the result will be a BigInt if the
 number of bits is greater than the native bit size.  For better performance
-with large bit sizes, install L<Math::Prime::Util::GMP>.
+with large bit sizes, install L<Math::Prime::Util::GMP>.  Also see
+L</random_shawe_taylor_prime>.
 
 The differences between this function and that in L<Crypt::Primes> are
 described in the L</"SEE ALSO"> section.
@@ -2335,6 +2346,39 @@ is the same as produced by L</prime_certificate> or
 L</is_provable_prime_with_cert>, and can be parsed by L</verify_prime> or
 any other software that understands MPU primality certificates.
 The proof construction consists of a single chain of C<BLS3> types.
+
+
+=head2 random_shawe_taylor_prime
+
+  my $bigprime = random_shawe_taylor_prime(8192);
+
+Construct an n-bit provable prime, using the Shawe-Taylor algorithm in
+section C.6 of FIPS 186-4.  This uses 512 bits of randomness and SHA-256
+as the hash.  This is a slightly simpler and older (1986) method than
+Maurer's 1999 construction.  The primary reason to use this rather than
+Maurer's method is to use FIPS 186-4 algorithm.
+
+Similar to L</random_nbit_prime>, the result will be a BigInt if the
+number of bits is greater than the native bit size.  For better performance
+with large bit sizes, install L<Math::Prime::Util::GMP>.  Also see
+L</random_maurer_prime> and L</random_proven_prime>.
+
+Internally this additionally runs the BPSW probable prime test on every
+partial result, and constructs a primality certificate for the final
+result, which is verified.  These provide additional checks that the resulting
+value has been properly constructed.
+
+
+=head2 random_shawe_taylor_prime_with_cert
+
+  my($n, $cert) = random_shawe_taylor_prime_with_cert(4096)
+
+As with L</random_shawe_taylor_prime>, but returns a two-element array
+containing the n-bit provable prime along with a primality certificate.
+The certificate is the same as produced by L</prime_certificate> or
+L</is_provable_prime_with_cert>, and can be parsed by L</verify_prime> or
+any other software that understands MPU primality certificates.
+The proof construction consists of a single chain of C<Pocklington> types.
 
 
 

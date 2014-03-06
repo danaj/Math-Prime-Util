@@ -2,6 +2,13 @@ Revision history for Perl module Math::Prime::Util
 
 0.40  2014-03
 
+    [ADDED]
+
+    - random_shawe_taylor_prime              FIPS 186-4 random proven prime
+    - random_shawe_taylor_prime_with_cert    as above with certificate
+
+    [FUNCTIONALITY AND PERFORMANCE]
+
     - Update PP Frobenius-Underwood test.
 
     - Speed up exp_mangoldt.

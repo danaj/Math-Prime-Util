@@ -832,25 +832,28 @@ sub random_maurer_prime_with_cert {
   croak "Failure in random_maurer_prime, could not find a prime\n";
 } # End of random_maurer_prime
 
-sub random_shawe_taylor_prime {
+
+sub random_shawe_taylor_prime_with_cert {
   my $k = shift;
-  my $which = shift;
 
   my $seed;
-  {
-    # TODO: should go through RANDF
+  my $irandf = prime_get_config->{'irand'};
+  if (!defined $irandf) {
     if (!defined $_BRS) {
       require Bytes::Random::Secure;
       $_BRS = Bytes::Random::Secure->new(NonBlocking=>1);
     }
     $seed = $_BRS->bytes(512/8);
+  } else {
+    $seed = pack("L*", map { $irandf->() } 0 .. (512>>5));
   }
 
-  my($status,$prime,$prime_seed,$prime_gen_counter)
+  my($status,$prime,$prime_seed,$prime_gen_counter,$cert)
      = _ST_Random_prime($k, $seed);
-  croak "Shawe-Taylor random prime failure: loop overflow" unless $status;
+  croak "Shawe-Taylor random prime failure" unless $status;
+  croak "Shawe-Taylor random prime failure: prime $prime failed certificate verification!" unless verify_prime($cert);
 
-  return $prime;
+  return ($prime,$cert);
 }
 
 sub _seed_plus_one {
@@ -871,8 +874,8 @@ sub _ST_Random_prime {  # From FIPS 186-4
      unless defined $input_seed && length($input_seed) >= 32;
 
   if (!defined $Digest::SHA::VERSION) {
-    eval { require Digest::SHA; $Digest::SHA::VERSION >= 2.00; }
-      or do { croak "Must have Digest::SHA 2.00 or later"; };
+    eval { require Digest::SHA; $Digest::SHA::VERSION >= 4.00; }
+      or do { croak "Must have Digest::SHA 4.00 or later"; };
   }
 
   my $k2 = Math::BigInt->new(2)->bpow($k-1);
@@ -889,13 +892,16 @@ sub _ST_Random_prime {  # From FIPS 186-4
       $prime_gen_counter++;
       $seed = _seed_plus_one($seedp1);
       # c is small so we can provably test it.
-      return (1,$c,$seed,$prime_gen_counter) if is_prob_prime($c);
+      my ($isp, $cert) = is_provable_prime_with_cert($c);
+      return (1,$c,$seed,$prime_gen_counter,$cert) if $isp;
       return (0,0,0,0) if $prime_gen_counter > 4*$k;
     }
   }
-  my($status,$c0,$seed,$prime_gen_counter)
+  my($status,$c0,$seed,$prime_gen_counter,$cert)
      = _ST_Random_prime( (($k+1)>>1)+1, $input_seed);
   return (0,0,0,0) unless $status;
+  $cert = ($c0 < Math::BigInt->new("18446744073709551615"))
+          ? "" : _strip_proof_header($cert);
   my $iterations = int(($k + 255) / 256) - 1;  # SHA256 generates 256 bits
   my $old_counter = $prime_gen_counter;
   my $xstr = '';
@@ -906,12 +912,32 @@ sub _ST_Random_prime {  # From FIPS 186-4
   my $x = Math::BigInt->from_hex('0x'.$xstr);
   $x = $k2 + ($x % $k2);
   my $t = ($x + 2*$c0 - 1) / (2*$c0);
+  _make_big_gcds() if $_big_gcd_use < 0;
   while (1) {
     if (2*$t*$c0 + 1 > 2*$k2) { $t = ($k2 + 2*$c0 - 1) / (2*$c0); }
     my $c = 2*$t*$c0 + 1;
     $prime_gen_counter++;
-    # Only do this if we're pretty sure the candidate is prime.
-    if (is_prob_prime($c)) {
+
+    # Don't do the Pocklington check unless the candidate looks prime
+    my $looks_prime = 0;
+    if (MPU_USE_GMP) {
+      # MPU::GMP::is_prob_prime has fast tests built in.
+      $looks_prime = Math::Prime::Util::GMP::is_prob_prime($c);
+    } else {
+      # No GMP, so first do trial divisions, then a SPSP test.
+      $looks_prime = Math::BigInt::bgcd($c, 111546435)->is_one;
+      if ($looks_prime && $_big_gcd_use && $c > $_big_gcd_top) {
+        $looks_prime = Math::BigInt::bgcd($c, $_big_gcd[0])->is_one &&
+                       Math::BigInt::bgcd($c, $_big_gcd[1])->is_one &&
+                       Math::BigInt::bgcd($c, $_big_gcd[2])->is_one &&
+                       Math::BigInt::bgcd($c, $_big_gcd[3])->is_one;
+      }
+      $looks_prime = 0 if $looks_prime && !is_strong_pseudoprime($c, 3);
+    }
+
+    if ($looks_prime) {
+      # We really should do what Maurer does and just test a in (2,3,5,7,11,13).
+      # Instead we'll do the FIPS 186-4 method, which is rather stupid.
       my $astr = '';
       for my $i (0 .. $iterations) {
         $astr = Digest::SHA::sha256_hex($seed) . $astr;
@@ -923,7 +949,11 @@ sub _ST_Random_prime {  # From FIPS 186-4
       if (Math::BigInt::bgcd($z-1,$c)->is_one && $z->copy->bmodpow($c0,$c)->is_one) {
         croak "Shawe-Taylor random prime failure at ($k): $c not prime"
           unless is_prob_prime($c);
-        return (1, $c, $seed, $prime_gen_counter);
+        $cert = "[MPU - Primality Certificate]\nVersion 1.0\n\n" .
+                 "Proof for:\nN $c\n\n" .
+                 "Type Pocklington\nN $c\nQ $c0\nA $a\n" .
+                 $cert;
+        return (1, $c, $seed, $prime_gen_counter, $cert);
       }
     }
     return (0,0,0,0) if $prime_gen_counter > 4*$k + $old_counter;
@@ -1083,6 +1113,18 @@ algorithm.  C<n> must be at least 2.
 =head2 random_maurer_prime_with_cert
 
 Construct a random provable prime of C<n> bits using Maurer's FastPrime
+algorithm.  C<n> must be at least 2.  Returns a list of two items: the
+prime and the certificate.
+
+=head2 random_shawe_taylor_prime
+
+Construct a random provable prime of C<n> bits using Shawe-Taylor's
+algorithm.  C<n> must be at least 2.  The implementation is from
+FIPS 186-4 and uses SHA-256 with 512 bits of randomness.
+
+=head2 random_shawe_taylor_prime_with_cert
+
+Construct a random provable prime of C<n> bits using Shawe-Taylor's
 algorithm.  C<n> must be at least 2.  Returns a list of two items: the
 prime and the certificate.
 

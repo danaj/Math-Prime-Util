@@ -7,13 +7,16 @@ use Test::More;
 #use Math::Random::MT::Auto qw/rand/;
 #sub rand { return 0.5; }
 use Math::Prime::Util qw/random_prime random_ndigit_prime random_nbit_prime
-                         random_maurer_prime random_proven_prime
+                         random_maurer_prime random_shawe_taylor_prime
+                         random_proven_prime
                          is_prime prime_set_config/;
 
 my $use64 = Math::Prime::Util::prime_get_config->{'maxbits'} > 32;
 my $broken64 = (18446744073709550592 == ~0);
 my $extra = defined $ENV{EXTENDED_TESTING} && $ENV{EXTENDED_TESTING};
 my $maxbits = $use64 ? 64 : 32;
+my $do_st = 1;
+$do_st = 0 unless eval { require Digest::SHA; $Digest::SHA::VERSION >= 4.00; };
 
 my @random_to = (2, 3, 4, 5, 6, 7, 8, 9, 100, 1000, 1000000, 4294967295);
 
@@ -65,13 +68,13 @@ my %range_edge_empty = (
   "3842610774 to 3842611108" => [],
 );
 
-plan tests => 13+3+3+3
+plan tests => 13+3+3+3+3
               + (1 * scalar (keys %range_edge_empty))
               + (3 * scalar (keys %range_edge))
               + (2 * scalar (keys %ranges))
               + (2 * scalar @random_to)
               + (1 * scalar @random_ndigit_tests)
-              + (3 * scalar @random_nbit_tests)
+              + (4 * scalar @random_nbit_tests)
               + 2 + 4
               + 0;
 
@@ -103,6 +106,10 @@ ok(!eval { random_nbit_prime(-5); }, "random_nbit_prime(-5)");
 ok(!eval { random_maurer_prime(undef); }, "random_maurer_prime(undef)");
 ok(!eval { random_maurer_prime(0); }, "random_maurer_prime(0)");
 ok(!eval { random_maurer_prime(-5); }, "random_maurer_prime(-5)");
+
+ok(!eval { random_shawe_taylor_prime(undef); }, "random_shawe_taylor_prime(undef)");
+ok(!eval { random_shawe_taylor_prime(0); }, "random_shawe_taylor_prime(0)");
+ok(!eval { random_shawe_taylor_prime(-5); }, "random_shawe_taylor_prime(-5)");
 
 while (my($range, $expect) = each (%range_edge_empty)) {
   my($low,$high) = $range =~ /(\d+) to (\d+)/;
@@ -155,6 +162,10 @@ foreach my $digits ( @random_ndigit_tests ) {
 foreach my $bits ( @random_nbit_tests ) {
   check_bits( random_nbit_prime($bits), $bits, "nbit" );
   check_bits( random_maurer_prime($bits), $bits, "Maurer" );
+  SKIP: {
+    skip "random Shawe-Taylor prime generation requires Digest::SHA",1 unless $do_st;
+    check_bits( random_shawe_taylor_prime($bits), $bits, "Shawe-Taylor" );
+  }
   check_bits( random_proven_prime($bits), $bits, "proven" );
 }
 
