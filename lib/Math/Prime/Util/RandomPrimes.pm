@@ -883,15 +883,18 @@ sub _ST_Random_prime {  # From FIPS 186-4
   if ($k < 33) {
     my $seed = $input_seed;
     my $prime_gen_counter = 0;
+    my $kmask    = 0xFFFFFFFF >> (32-$k);    # Does the mod operation
+    my $kstencil = (1 << ($k-1)) + ($k > 2); # Sets high and low bits
     while (1) {
       my $seedp1 = _seed_plus_one($seed);
       my $cvec = Digest::SHA::sha256($seed) ^ Digest::SHA::sha256($seedp1);
-      my $c = Math::BigInt->from_hex('0x' . unpack("H*", $cvec));
-      $c = $k2 + ($c % $k2);
-      $c = (2 * ($c >> 1)) + 1;
+      # my $c = Math::BigInt->from_hex('0x' . unpack("H*", $cvec));
+      # $c = $k2 + ($c % $k2);
+      # $c = (2 * ($c >> 1)) + 1;
+      my($c) = unpack("L*", substr($cvec,-4,4));
+      $c = ($c & $kmask) | $kstencil;
       $prime_gen_counter++;
       $seed = _seed_plus_one($seedp1);
-      # c is small so we can provably test it.
       my ($isp, $cert) = is_provable_prime_with_cert($c);
       return (1,$c,$seed,$prime_gen_counter,$cert) if $isp;
       return (0,0,0,0) if $prime_gen_counter > 10000 + 16*$k;
@@ -936,8 +939,7 @@ sub _ST_Random_prime {  # From FIPS 186-4
     }
 
     if ($looks_prime) {
-      # We really should do what Maurer does and just test a in (2,3,5,7,11,13).
-      # Instead we'll do the FIPS 186-4 method, which is rather stupid.
+      # We could use a in (2,3,5,7,11,13), but pedantically use FIPS 186-4.
       my $astr = '';
       for my $i (0 .. $iterations) {
         $astr = Digest::SHA::sha256_hex($seed) . $astr;

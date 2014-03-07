@@ -2355,8 +2355,9 @@ The proof construction consists of a single chain of C<BLS3> types.
 Construct an n-bit provable prime, using the Shawe-Taylor algorithm in
 section C.6 of FIPS 186-4.  This uses 512 bits of randomness and SHA-256
 as the hash.  This is a slightly simpler and older (1986) method than
-Maurer's 1999 construction.  The primary reason to use this rather than
-Maurer's method is to use FIPS 186-4 algorithm.
+Maurer's 1999 construction.  It is a bit faster than Maurer's method, and
+uses less system entropy for large sizes.  The primary reason to use this
+rather than Maurer's method is to use FIPS 186-4 algorithm.
 
 Similar to L</random_nbit_prime>, the result will be a BigInt if the
 number of bits is greater than the native bit size.  For better performance
@@ -3455,21 +3456,22 @@ Seconds per prime for random prime generation on a circa-2009 workstation,
 with L<Math::BigInt::GMP>, L<Math::Prime::Util::GMP>, and
 L<Math::Random::ISAAC::XS> installed.
 
-  bits    random   +testing  rand_prov   Maurer   CPMaurer
-  -----  --------  --------  ---------  --------  --------
-     64    0.0001  +0.000008   0.0002     0.0001    0.022
-    128    0.0020  +0.00023    0.011      0.063     0.057
-    256    0.0034  +0.0004     0.058      0.13      0.16
-    512    0.0097  +0.0012     0.28       0.28      0.41
-   1024    0.060   +0.0060     0.65       0.65      2.19
-   2048    0.57    +0.039      4.8        4.8      10.99
-   4096    6.24    +0.25      31.9       31.9      79.71
-   8192   58.6     +1.61     234.0      234.0     947.3
+  bits    random   +testing  rand_prov   Maurer   Shw-Tylr  CPMaurer
+  -----  --------  --------  ---------  --------  --------  --------
+     64    0.0001  +0.000008   0.0002     0.0001    0.010     0.022
+    128    0.0020  +0.00023    0.011      0.063     0.028     0.057
+    256    0.0034  +0.0004     0.058      0.13      0.042     0.16
+    512    0.0097  +0.0012     0.28       0.28      0.085     0.41
+   1024    0.060   +0.0060     0.65       0.65      0.24      2.19
+   2048    0.57    +0.039      4.8        4.8       1.0      10.99
+   4096    6.24    +0.25      31.9       31.9       8.2      79.71
+   8192   58.6     +1.61     234.0      234.0     112.9     947.3
 
   random    = random_nbit_prime  (results pass BPSW)
   random+   = additional time for 3 M-R and a Frobenius test
   rand_prov = random_proven_prime
   maurer    = random_maurer_prime
+  Shw-Tylr  = random_shawe_taylor_prime
   CPMaurer  = Crypt::Primes::maurer
 
 L</random_nbit_prime> is reasonably fast, and for most purposes should
@@ -3492,6 +3494,11 @@ certificate which is verified at the end (and can be returned).  While the
 result is uniformly distributed, only about 10% of the primes in the range
 are selected for output.  This is a result of the FastPrime algorithm and
 is usually unimportant.
+
+L</random_shawe_taylor_prime> similarly constructs a provable prime.  It
+uses a simpler construction method.  The implementation uses a single large
+random seed followed by SHA-256 as specified by FIPS 186-4.  As seen, it
+is a bit faster than the Maurer implementation.
 
 L<Crypt::Primes/maurer> times are included for comparison.  It is pretty
 fast for small sizes but gets slow as the size increases.  It does not
