@@ -3325,7 +3325,7 @@ Counting the primes to C<800_000_000> (800 million):
 
   Time (s)   Module                      Version  Notes
   ---------  --------------------------  -------  -----------
-       0.002 Math::Prime::Util           0.35     using extended LMO
+       0.001 Math::Prime::Util           0.37     using extended LMO
        0.007 Math::Prime::Util           0.12     using Lehmer's method
        0.27  Math::Prime::Util           0.17     segmented mod-30 sieve
        0.39  Math::Prime::Util::PP       0.24     Perl (Lehmer's method)
