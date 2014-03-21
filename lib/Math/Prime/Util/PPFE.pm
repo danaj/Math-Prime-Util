@@ -105,6 +105,17 @@ sub prime_count_approx {
   _validate_positive_integer($n);
   return Math::Prime::Util::PP::prime_count_approx($n);
 }
+sub twin_prime_count {
+  my($low,$high) = @_;
+  if (scalar @_ > 1) {
+    _validate_positive_integer($low);
+    _validate_positive_integer($high);
+  } else {
+    ($low,$high) = (2, $low);
+    _validate_positive_integer($high);
+  }
+  return Math::Prime::Util::PP::twin_prime_count($low,$high);
+}
 
 
 sub is_prime {

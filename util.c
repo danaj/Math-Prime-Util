@@ -848,6 +848,62 @@ UV nth_prime(UV n)
   return ( (segbase*30) + p );
 }
 
+UV twin_prime_count(UV beg, UV end)
+{
+  unsigned char* segment;
+  UV sum = 0;
+
+  if (beg <= 2) {
+#if BITS_PER_WORD == 64
+         if(end>=UVCONST(10000000000000)){sum=15834664872;beg=10000000000000;}
+    else if(end>=UVCONST( 1000000000000)){sum= 1870585220;beg= 1000000000000;}
+    else if(end>=UVCONST(  100000000000)){sum=  224376048;beg=  100000000000;}
+    else if(end>=UVCONST(   10000000000)){sum=   27412679;beg=   10000000000;}
+    else if(end>=UVCONST(    1000000000)){sum=    3424506;beg=    1000000000;}
+#else
+         if(end>=UVCONST(    1000000000)){sum=    3424506;beg=    1000000000;}
+#endif
+  }
+
+  if (beg <= 3 && end >= 3) sum++;
+  if (beg <= 5 && end >= 5) sum++;
+  if (beg < 11) beg = 7;
+  if (beg <= end) {
+    /* Make end points odd */
+    beg |= 1;
+    end = (end-1) | 1;
+    /* Cheesy way of counting the partial-byte edges */
+    while ((beg % 30) != 1) {
+      if (_XS_is_prime(beg) && _XS_is_prime(beg+2) && beg <= end) sum++;
+      beg += 2;
+    }
+    while ((end % 30) != 29) {
+      if (_XS_is_prime(end) && _XS_is_prime(end+2) && beg <= end) sum++;
+      end -= 2;  if (beg > end) break;
+    }
+  }
+  if (beg <= end) {
+    UV seg_base, seg_low, seg_high;
+    void* ctx = start_segment_primes(beg, end, &segment);
+    while (next_segment_primes(ctx, &seg_base, &seg_low, &seg_high)) {
+      UV p, bytes = (seg_high-seg_low+29)/30;
+      for (p = 0; p < bytes; p++) {
+        UV s = segment[p];
+        if (!(s & 0x0C)) sum++;
+        if (!(s & 0x30)) sum++;
+        if (!(s & 0x80)) {
+          if (p+1 < bytes) { if (!(segment[p+1] & 0x01))   sum++; }
+          else             { if (_XS_is_prime(seg_high+2)) sum++; }
+        }
+      }
+    }
+    end_segment_primes(ctx);
+  }
+  return sum;
+}
+
+
+
 /* Return a char array with lo-hi+1 elements. mu[k-lo] = µ(k) for k = lo .. hi.
  * It is the callers responsibility to call Safefree on the result. */
 #define PGTLO(p,lo)  ((p) >= lo) ? (p) : ((p)*(lo/(p)) + ((lo%(p))?(p):0))

@@ -305,6 +305,7 @@ void
 prime_count(IN SV* svlo, ...)
   ALIAS:
     _XS_segment_pi = 1
+    twin_prime_count = 2
   PREINIT:
     int lostatus, histatus;
     UV lo, hi;
@@ -321,7 +322,9 @@ prime_count(IN SV* svlo, ...)
         hi = my_svuv(ST(1));
       }
       if (lo <= hi) {
-        if (ix == 1 || (hi / (hi-lo+1)) > 100) {
+        if (ix == 2) {
+          count = twin_prime_count(lo, hi);
+        } else if (ix == 1 || (hi / (hi-lo+1)) > 100) {
           count = _XS_prime_count(lo, hi);
         } else {
           count = _XS_LMO_pi(hi);
@@ -331,7 +334,12 @@ prime_count(IN SV* svlo, ...)
       }
       XSRETURN_UV(count);
     }
-    _vcallsubn(aTHX_ GIMME_V, VCALL_ROOT, "_generic_prime_count", items);
+    switch (ix) {
+      case 0:
+      case 1: _vcallsubn(aTHX_ GIMME_V, VCALL_ROOT, "_generic_prime_count", items); break;
+      case 2:
+      default:_vcallsub_with_pp("twin_prime_count");  break;
+    }
     return; /* skip implicit PUTBACK */
 
 UV

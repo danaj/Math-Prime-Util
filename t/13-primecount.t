@@ -3,7 +3,8 @@ use strict;
 use warnings;
 
 use Test::More;
-use Math::Prime::Util qw/prime_count prime_count_lower prime_count_upper prime_count_approx/;
+use Math::Prime::Util qw/prime_count twin_prime_count
+                        prime_count_lower prime_count_upper prime_count_approx/;
 
 my $isxs  = Math::Prime::Util::prime_get_config->{'xs'};
 my $use64 = Math::Prime::Util::prime_get_config->{'maxbits'} > 32;
@@ -87,7 +88,8 @@ plan tests => 0 + 1
                 + $use64 * 3 * scalar(keys %pivals64)
                 + scalar(keys %intervals)
                 + 1
-                + 5 + 2*$extra; # prime count specific methods
+                + 5 + 2*$extra # prime count specific methods
+                + 3;           # twin prime counts
 
 ok( eval { prime_count(13); 1; }, "prime_count in void context");
 
@@ -173,3 +175,8 @@ if ($extra) {
   is(Math::Prime::Util::PP::_lehmer_pi   (3456789), 247352, "PP Lehmer count");
   is(Math::Prime::Util::PP::_sieve_prime_count(3456789), 247352, "PP sieve count");
 }
+
+####### Twin prime counts
+is(twin_prime_count(13,31), 2, "twin prime count 13 to 31");
+is(twin_prime_count(10**8,10**8+34587), 137, "twin prime count 10^8 to +34587");
+is(twin_prime_count(654321), 5744, "twin prime count 654321");

@@ -30,7 +30,7 @@ our @EXPORT_OK =
       forprimes forcomposites fordivisors
       prime_iterator prime_iterator_object
       next_prime  prev_prime
-      prime_count
+      prime_count twin_prime_count
       prime_count_lower prime_count_upper prime_count_approx
       nth_prime nth_prime_lower nth_prime_upper nth_prime_approx
       random_prime random_ndigit_prime random_nbit_prime random_strong_prime
@@ -1288,6 +1288,24 @@ R function, it still should have error less than C<0.00000000000000001%>.
 
 A slightly faster but much less accurate answer can be obtained by averaging
 the upper and lower bounds.
+
+
+=head2 twin_prime_count
+
+Similar to prime count, but returns the count of twin primes (primes C<p>
+where C<p+2> is also prime).  Takes either a single number indicating a count
+from 2 to the argument, or two numbers indicating a range.
+
+The primes being counted are the first value, so a range of C<(3,5)> will
+return a count of two, because both C<3> and C<5> are counted as twin primes.
+A range of C<(12,13)> will return a count of zero, because neither C<12+2>
+nor C<13+2> are prime.  In contrast, C<primesieve> requires all elements of
+a constellation to be within the range to be counted, so would return one for
+the first example (C<5> is not counted because its pair C<7> is not in the
+range).
+
+There is no useful formula known for this, unlike prime counts.  We sieve
+for the answer, using some small table acceleration.
 
 
 =head2 nth_prime

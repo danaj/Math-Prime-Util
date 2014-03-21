@@ -1334,6 +1334,21 @@ sub prime_count_upper {
   return int($result);
 }
 
+sub twin_prime_count {
+  my($low,$high) = @_;
+  my $sum = 0;
+  # TODO: I suspect calling primes() on segments would be faster in most cases.
+  if ($high >= $low) {
+    my $p = next_prime($low-1);
+    my $p2 = next_prime($p);
+    while ($p <= $high) {
+      $sum++ if ($p2-$p) == 2;
+      ($p, $p2) = ($p2, next_prime($p2));
+    }
+  }
+  $sum;
+}
+
 
 #############################################################################
 
