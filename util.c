@@ -577,6 +577,17 @@ UV prime_count_approx(UV n)
   return (UV) (_XS_RiemannR( (long double) n ) + 0.5 );
 }
 
+/* See http://numbers.computation.free.fr/Constants/Primes/twin.pdf, page 5 */
+UV twin_prime_count_approx(UV n)
+{
+  const long double two_C2 = 1.32032363169373914785562422L;
+  const long double two_over_log_two = 2.8853900817779268147198494L;
+  long double ln = (long double) n;
+  long double logn = logl(ln);
+  long double li2 = _XS_ExponentialIntegral(logn) + two_over_log_two - ln/logn;
+  return (UV) (two_C2 * li2 + 0.5L);
+}
+
 UV prime_count_lower(UV n)
 {
   long double fn, flogn, lower, a;

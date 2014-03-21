@@ -606,6 +606,7 @@ next_prime(IN SV* svn)
     prime_count_upper = 6
     prime_count_lower = 7
     prime_count_approx = 8
+    twin_prime_count_approx = 9
   PPCODE:
     if (_validate_int(aTHX_ svn, 0)) {
       UV n = my_svuv(svn);
@@ -623,8 +624,9 @@ next_prime(IN SV* svn)
           case 5: ret = nth_prime_approx(n); break;
           case 6: ret = prime_count_upper(n); break;
           case 7: ret = prime_count_lower(n); break;
-          case 8:
-          default:ret = prime_count_approx(n); break;
+          case 8 :ret = prime_count_approx(n); break;
+          case 9:
+          default:ret = twin_prime_count_approx(n); break;
         }
         XSRETURN_UV(ret);
       }
@@ -642,8 +644,9 @@ next_prime(IN SV* svn)
       case 5:  _vcallsub_with_pp("nth_prime_approx");   break;
       case 6:  _vcallsub_with_pp("prime_count_upper");  break;
       case 7:  _vcallsub_with_pp("prime_count_lower");  break;
-      case 8:
-      default: _vcallsub_with_pp("prime_count_approx"); break;
+      case 8:  _vcallsub_with_pp("prime_count_approx"); break;
+      case 9:
+      default: _vcallsub_with_pp("twin_prime_count_approx"); break;
     }
     return; /* skip implicit PUTBACK */
 

@@ -30,9 +30,10 @@ our @EXPORT_OK =
       forprimes forcomposites fordivisors
       prime_iterator prime_iterator_object
       next_prime  prev_prime
-      prime_count twin_prime_count
+      prime_count
       prime_count_lower prime_count_upper prime_count_approx
       nth_prime nth_prime_lower nth_prime_upper nth_prime_approx
+      twin_prime_count twin_prime_count_approx
       random_prime random_ndigit_prime random_nbit_prime random_strong_prime
       random_proven_prime random_proven_prime_with_cert
       random_maurer_prime random_maurer_prime_with_cert
@@ -1306,6 +1307,12 @@ range).
 
 There is no useful formula known for this, unlike prime counts.  We sieve
 for the answer, using some small table acceleration.
+
+=head2 twin_prime_count_approx
+
+Returns an approximation to the twin prime count of C<n>.  This returns
+quickly and has a very small error for large values.  The method used is
+conjecture B of Hardy and Littlewood 1922, as stated in Sebah and Gourdon 2002.
 
 
 =head2 nth_prime
