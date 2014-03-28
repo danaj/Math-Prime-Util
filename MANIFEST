@@ -145,4 +145,5 @@ xt/test-primes-script2.pl
 xt/test-factor-yafu.pl
 xt/test-nextprime-yafu.pl
 xt/test-ispower.pl
+xt/twin_prime_count.t
 .travis.yml

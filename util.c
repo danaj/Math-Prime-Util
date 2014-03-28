@@ -966,14 +966,14 @@ UV nth_twin_prime(UV n)
     void* ctx = start_segment_primes(beg, end, &segment);
     while (next_segment_primes(ctx, &seg_base, &seg_low, &seg_high)) {
       UV p, bytes = (seg_high-seg_low+29)/30;
+      UV s = ((UV)segment[0]) << 8;
       for (p = 0; p < bytes; p++) {
-        UV s = segment[p];
-        int twin1 = !(s & 0x0C);
-        int twin2 = !(s & 0x30);
-        int twin3 = !(s & 0x80) && ((p+1 < bytes) ? !(segment[p+1] & 0x01) : _XS_is_prime(seg_high+2));
-        if (twin1 && !--n) { nth=seg_base+p*30+11; break; }
-        if (twin2 && !--n) { nth=seg_base+p*30+17; break; }
-        if (twin3 && !--n) { nth=seg_base+p*30+29; break; }
+        s >>= 8;
+        if (p+1 < bytes)                    s |= (((UV)segment[p+1]) << 8);
+        else if (!_XS_is_prime(seg_high+2)) s |= 0xFF00;
+        if (!(s & 0x000C) && !--n) { nth=seg_base+p*30+11; break; }
+        if (!(s & 0x0030) && !--n) { nth=seg_base+p*30+17; break; }
+        if (!(s & 0x0180) && !--n) { nth=seg_base+p*30+29; break; }
       }
       if (n == 0) break;
     }
