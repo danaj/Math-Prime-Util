@@ -4,14 +4,21 @@
 #include <math.h>
 #include <float.h>
 
-/*
- * The AKS v6 algorithm, for native integers.  Based on the AKS v6 paper.
- * As with most AKS implementations, it's really slow.
+/* The AKS primality algorithm for native integers.
  *
- * If we know there is a lgamma function (C99), then this uses the
- * improvements from Folkmar Bornemann's 2002 Pari implementation.  This
- * includes Bernstein and Voloch's much, much better r/s selection.  The
- * performance difference is huge.
+ * There are two versions here.  The v6 algorithm from the latest AKS paper,
+ * as well as one with improvements from Bernstein and Voloch and better r/s
+ * selection derived from Folkmar Bornemann's 2002 Pari implementation.
+ *
+ * Note that AKS is very, very slow compared to other methods.  It is, however,
+ * polynomial in log(N), and log-log performance graphs show nice straight
+ * lines for both implementations.  However APR-CL and ECPP both start out
+ * much faster and the slope will be less for any sizes of N that we're
+ * interested in.
+ *
+ * For native 64-bit integers this is purely a coding exercise, as BPSW is
+ * a million times faster and gives proven results.
+ *
  *
  * When n < 2^(wordbits/2)-1, we can do a straightforward intermediate:
  *      r = (r + a * b) % n
