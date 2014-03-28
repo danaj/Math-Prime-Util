@@ -1349,6 +1349,16 @@ sub twin_prime_count {
   $sum;
 }
 
+sub nth_twin_prime {
+  my($n) = @_;
+  my($nth, $p, $p2) = (0, 0, 3);
+  while ($n > 0) {
+    if (($p2-$p) == 2) { $nth = $p; $n--; }
+    ($p, $p2) = ($p2, next_prime($p2));
+  }
+  $nth;
+}
+
 
 #############################################################################
 
@@ -2176,9 +2186,14 @@ sub is_aks_prime {
     $n = Math::BigInt->new("$n") unless ref($n) eq 'Math::BigInt';
   }
 
+  my $_verbose = Math::Prime::Util::prime_get_config()->{'verbose'};
+  print "# aks r = $r  s = $rlimit\n" if $_verbose;
+  local $| = 1 if $_verbose > 1;
   for (my $a = 1; $a <= $rlimit; $a++) {
     return 0 unless _test_anr($a, $n, $r);
+    print "." if $_verbose > 1;
   }
+  print "\n" if $_verbose > 1;
 
   return 1;
 }
