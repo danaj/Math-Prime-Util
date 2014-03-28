@@ -3,7 +3,8 @@ use strict;
 use warnings;
 
 use Test::More;
-use Math::Prime::Util qw/primes nth_prime nth_prime_lower nth_prime_upper nth_prime_approx/;
+use Math::Prime::Util qw/primes nth_prime nth_twin_prime
+                         nth_prime_lower nth_prime_upper nth_prime_approx/;
 
 my $use64 = Math::Prime::Util::prime_get_config->{'maxbits'} > 32;
 my $usexs = Math::Prime::Util::prime_get_config->{'xs'};
@@ -66,7 +67,8 @@ plan tests => 0 + 2*scalar(keys %pivals32)
                 + 3*scalar(keys %nthprimes32)
                 + scalar(keys %nthprimes_small)
                 + $use64 * 3 * scalar(keys %nthprimes64)
-                + 3
+                + 3   # nth_prime_lower with max index
+                + 3   # nth_twin_prime
                 + (($extra && $use64 && $usexs) ? 1 : 0);
 
 
@@ -117,3 +119,9 @@ if ($extra && $use64 && $usexs) {
   # Test an nth prime value that uses the binary-search-on-R(n) algorithm
   is( nth_prime(21234567890), 551990503367, "nth_prime(21234567890)" );
 }
+
+####################################3
+
+is( nth_twin_prime(0), 0, "nth_twin_prime(0) = 0" );
+is( nth_twin_prime(17), 239, "239 = 17th twin prime" );
+is( nth_twin_prime(1234), 101207, "101207 = 1234'th twin prime" );
