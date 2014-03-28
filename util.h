@@ -22,6 +22,7 @@ extern UV  prime_count_upper(UV x);
 extern UV  prime_count_approx(UV x);
 extern UV  twin_prime_count(UV low, UV high);
 extern UV  twin_prime_count_approx(UV n);
+extern UV  nth_twin_prime(UV n);
 
 extern int powerof(UV n);
 extern int is_power(UV n, UV a);

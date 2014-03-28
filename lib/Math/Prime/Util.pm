@@ -33,7 +33,7 @@ our @EXPORT_OK =
       prime_count
       prime_count_lower prime_count_upper prime_count_approx
       nth_prime nth_prime_lower nth_prime_upper nth_prime_approx
-      twin_prime_count twin_prime_count_approx
+      twin_prime_count twin_prime_count_approx nth_twin_prime
       random_prime random_ndigit_prime random_nbit_prime random_strong_prime
       random_proven_prime random_proven_prime_with_cert
       random_maurer_prime random_maurer_prime_with_cert
@@ -1366,6 +1366,12 @@ for small C<n>.
 Returns an approximation to the C<nth_prime> function, without having to
 generate any primes.  Uses the Cipolla 1902 approximation with two
 polynomials, plus a correction for small values to reduce the error.
+
+
+=head2 nth_twin_prime
+
+Returns the Nth twin prime.  This is done via sieving and counting, so
+is not very fast for large values.
 
 
 =head2 is_pseudoprime

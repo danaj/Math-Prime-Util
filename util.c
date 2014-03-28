@@ -940,6 +940,47 @@ UV twin_prime_count(UV beg, UV end)
   return sum;
 }
 
+UV nth_twin_prime(UV n)
+{
+  unsigned char* segment;
+  UV nth = 0;
+  UV beg, end;
+
+  if (n < 6) {
+    switch (n) {
+      case 0:  nth = 0; break;
+      case 1:  nth = 3; break;
+      case 2:  nth = 5; break;
+      case 3:  nth =11; break;
+      case 4:  nth =17; break;
+      case 5:
+      default: nth =29; break;
+    }
+    return nth;
+  }
+  n -= 5;
+  beg = 31;
+  end = UV_MAX - 16;
+  {
+    UV seg_base, seg_low, seg_high;
+    void* ctx = start_segment_primes(beg, end, &segment);
+    while (next_segment_primes(ctx, &seg_base, &seg_low, &seg_high)) {
+      UV p, bytes = (seg_high-seg_low+29)/30;
+      for (p = 0; p < bytes; p++) {
+        UV s = segment[p];
+        int twin1 = !(s & 0x0C);
+        int twin2 = !(s & 0x30);
+        int twin3 = !(s & 0x80) && ((p+1 < bytes) ? !(segment[p+1] & 0x01) : _XS_is_prime(seg_high+2));
+        if (twin1 && !--n) { nth=seg_base+p*30+11; break; }
+        if (twin2 && !--n) { nth=seg_base+p*30+17; break; }
+        if (twin3 && !--n) { nth=seg_base+p*30+29; break; }
+      }
+      if (n == 0) break;
+    }
+    end_segment_primes(ctx);
+  }
+  return nth;
+}
 
 
 /* Return a char array with lo-hi+1 elements. mu[k-lo] = µ(k) for k = lo .. hi.
