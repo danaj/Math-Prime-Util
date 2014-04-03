@@ -1336,6 +1336,9 @@ sub prime_count_upper {
 
 sub twin_prime_count {
   my($low,$high) = @_;
+  if (defined $high) { _validate_positive_integer($low); }
+  else               { ($low,$high) = (2, $low);         }
+  _validate_positive_integer($high);
   my $sum = 0;
   # TODO: I suspect calling primes() on segments would be faster in most cases.
   if ($high >= $low) {
@@ -1351,6 +1354,7 @@ sub twin_prime_count {
 
 sub twin_prime_count_approx {
   my($n) = @_;
+  $n = _upgrade_to_float($n) if ref($n);
   my $logn = log($n);
   my $li2 = ExponentialIntegral($logn) + 2.8853900817779268147198494 - ($n/$logn);
   return int(1.32032363169373914785562422 * $li2 + 0.5);

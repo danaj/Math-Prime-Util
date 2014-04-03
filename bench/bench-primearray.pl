@@ -29,6 +29,7 @@ cmpthese($count,{
                        $s += $_ for @primes[0..$ilimit];
                        die unless $s == $expect; },
   'pa each'   => sub { $s=0; tie my @primes, "Math::Prime::Util::PrimeArray";
+                       # Note: using last inside each is Very Bad Stuff.
                        while(my(undef,$v) = each @primes) { last if $v > $nlimit; $s += $v; }
                        die $s unless $s == $expect; },
   'pa shift'  => sub { $s=0; tie my @primes, "Math::Prime::Util::PrimeArray";

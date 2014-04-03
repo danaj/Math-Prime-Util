@@ -104,6 +104,7 @@ t/20-primorial.t
 t/21-conseq-lcm.t
 t/22-aks-prime.t
 t/23-primality-proofs.t
+t/23-random-certs.t
 t/24-partitions.t
 t/30-relations.t
 t/31-threading.t

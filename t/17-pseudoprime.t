@@ -79,9 +79,9 @@ if ($use64) {
   push @{$pseudoprimes{psp3}}, 4398117272641;
   push @{$pseudoprimes{3}}, 1099558795087;
   push @{$pseudoprimes{lucas}}, 2199055761527;
-  push @{$pseudoprimes{slucas}}, 12598021314449;
-  push @{$pseudoprimes{eslucas}}, 10099386070337;
-  push @{$pseudoprimes{aeslucas1}}, 10071551814917;
+  push @{$pseudoprimes{slucas}}, 4294967311,4294967357,12598021314449;
+  push @{$pseudoprimes{eslucas}}, 4294967311,4294967357,10099386070337;
+  push @{$pseudoprimes{aeslucas1}}, 4294967311,4294967357,10071551814917;
   push @{$pseudoprimes{aeslucas2}}, 34372519409;
 }
 

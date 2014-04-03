@@ -13,13 +13,13 @@ my $use64 = Math::Prime::Util::prime_get_config->{'maxbits'} > 32;
 my $broken64 = (18446744073709550592 == ~0);
 
 plan tests => 8        # forprimes errors
-            + 12 + 6   # forprimes simple
+            + 12 + 7   # forprimes simple
             + 3        # forcomposites simple
             + 2        # fordivisors simple
             + 3        # iterator errors
             + 7        # iterator simple
             + 2        # forprimes/iterator nesting
-            + 2        # forprimes BigInt/BigFloat
+            + 3        # forprimes BigInt/BigFloat
             + 3        # oo iterator errors
             + 7        # oo iterator simple
             + 25       # oo iterator methods
@@ -66,6 +66,9 @@ ok(!eval { forprimes { 1 } 5.6; },   "forprimes abc");
 }
 { my @t; forprimes { push @t, $_ } 2147483647,2147483659;
   is_deeply( [@t], [2147483647,2147483659], "forprimes 2147483647,2147483659" );
+}
+{ my @t; forprimes { push @t, $_ } 3842610774,3842611326;
+  is_deeply( [@t], [3842611109,3842611139,3842611163,3842611181,3842611211,3842611229,3842611249,3842611259,3842611261,3842611291,3842611301], "forprimes 3842610774,3842611326" );
 }
 { my @t; forcomposites { push @t, $_ } 2147483647,2147483659;
   is_deeply( [@t], [qw/2147483648 2147483649 2147483650 2147483651 2147483652 2147483653 2147483654 2147483655 2147483656 2147483657 2147483658/], "forcomposites 2147483647,2147483659" );
@@ -150,6 +153,11 @@ ok(!eval { prime_iterator(4.5); }, "iterator 4.5");
 { my @t;
   forprimes { push @t, $_ } Math::BigFloat->new("5"), Math::BigFloat->new("11");
   is_deeply( [@t], [5,7,11], "forprimes with BigFloat range" );
+}
+{my $it = prime_iterator(Math::BigInt->new("68719476736"));
+  is_deeply( [map { $it->() } 1..3],
+             [68719476767,68719476851,68719476853],
+             "iterator 3 primes with BigInt start" );
 }
 
 # Test new object iterator

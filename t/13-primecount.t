@@ -89,7 +89,7 @@ plan tests => 0 + 1
                 + scalar(keys %intervals)
                 + 1
                 + 5 + 2*$extra # prime count specific methods
-                + 3;           # twin prime counts
+                + 3 + (($isxs && $use64) ? 1 : 0); # twin prime counts
 
 ok( eval { prime_count(13); 1; }, "prime_count in void context");
 
@@ -180,3 +180,6 @@ if ($extra) {
 is(twin_prime_count(13,31), 2, "twin prime count 13 to 31");
 is(twin_prime_count(10**8,10**8+34587), 137, "twin prime count 10^8 to +34587");
 is(twin_prime_count(654321), 5744, "twin prime count 654321");
+if ($isxs && $use64) {
+  is(twin_prime_count(1000000000123456), 1177209242446, "twin prime count 1000000000123456");
+}

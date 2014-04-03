@@ -250,6 +250,7 @@ plan tests => 2 +
               3 + scalar(keys %small_single) + scalar(keys %small_range) +
               2*scalar(keys %primegaps) + 8 + 1 + 1 + 1 +
               scalar(keys %pivals_small) + scalar(keys %pi_intervals) +
+              6 +                 # PC, pc approx
               2*scalar(keys %pivals_small) + scalar(keys %nthprimes_small) +
               4 + scalar(keys %pseudoprimes) +
               scalar(keys %eivals) + scalar(keys %livals) + scalar(keys %rvals) + scalar(keys %rzvals) +
@@ -258,17 +259,20 @@ plan tests => 2 +
               10 + 7*3 +          # factoring subs
               1 +                 # HOLF
               ($extra ? 3 : 0) +  # HOLF extra
+              3 +                 # factor stage 2
               10 +                # AKS
               ($use64 ? 3 : 2) +  # Lucas and BLS75 primality proofs
               4 +                 # M-R and Lucas on bigint
-              13 +                # Misc util.pm functions
+              2 +                 # PC and NP approx
+              26 +                # Misc util.pm functions
               scalar(keys %ipp) + # is_prob_prime
               1;
 
-use Math::Prime::Util qw/primes prime_count_approx prime_count_lower
+use Math::Prime::Util qw/primes
+                         prime_count_approx nth_prime_approx
                          prime_get_config prime_set_config
                          consecutive_integer_lcm
-                         chebyshev_theta chebyshev_psi
+                         primorial pn_primorial partitions miller_rabin_random
                          is_prob_prime
                         /;
 use Math::BigInt;
@@ -281,7 +285,17 @@ require_ok 'Math::Prime::Util::PrimalityProving';
     *primes             = \&Math::Prime::Util::PP::primes;
 
     *prime_count        = \&Math::Prime::Util::PP::prime_count;
+    *prime_count_lower  = \&Math::Prime::Util::PP::prime_count_lower;
+    *prime_count_upper  = \&Math::Prime::Util::PP::prime_count_upper;
     *nth_prime          = \&Math::Prime::Util::PP::nth_prime;
+    undef *prime_count_approx;
+    undef *nth_prime_approx;
+    *prime_count_approx = \&Math::Prime::Util::PP::prime_count_approx;
+    *nth_prime_approx   = \&Math::Prime::Util::PP::nth_prime_approx;
+
+    *twin_prime_count   = \&Math::Prime::Util::PP::twin_prime_count;
+    *nth_twin_prime     = \&Math::Prime::Util::PP::nth_twin_prime;
+    *twin_prime_count_approx = \&Math::Prime::Util::PP::twin_prime_count_approx;
 
     *is_prime       = \&Math::Prime::Util::PP::is_prime;
     *next_prime     = \&Math::Prime::Util::PP::next_prime;
@@ -298,10 +312,15 @@ require_ok 'Math::Prime::Util::PrimalityProving';
 
     *factor         = \&Math::Prime::Util::PP::factor;
 
+    *gcd            = \&Math::Prime::Util::PP::gcd;
+    *lcm            = \&Math::Prime::Util::PP::lcm;
+
     *moebius        = \&Math::Prime::Util::PP::moebius;
     *euler_phi      = \&Math::Prime::Util::PP::euler_phi;
     *mertens        = \&Math::Prime::Util::PP::mertens;
     *exp_mangoldt   = \&Math::Prime::Util::PP::exp_mangoldt;
+    *chebyshev_theta= \&Math::Prime::Util::PP::chebyshev_theta;
+    *chebyshev_psi  = \&Math::Prime::Util::PP::chebyshev_psi;
 
     *RiemannR            = \&Math::Prime::Util::PP::RiemannR;
     *RiemannZeta         = \&Math::Prime::Util::PP::RiemannZeta;
@@ -393,6 +412,15 @@ while (my($range, $expect) = each (%pi_intervals)) {
   my($low,$high) = parse_range($range);
   is( prime_count($low,$high), $expect, "prime_count($range) = $expect");
 }
+
+# These are small enough they should be exact.
+is( prime_count_lower(450), 87, "prime_count_lower(450)" );
+is( prime_count_upper(450), 87, "prime_count_upper(450)" );
+# Make sure these are about right
+cmp_closeto( prime_count_lower(1234567), 95327, 10, "prime_count_lower(1234567) in range" );
+cmp_closeto( prime_count_upper(1234567), 95413, 10, "prime_count_upper(1234567) in range" );
+cmp_closeto( prime_count_lower(412345678), 21956686, 1000, "prime_count_lower(412345678) in range" );
+cmp_closeto( prime_count_upper(412345678), 21959328, 1000, "prime_count_upper(412345678) in range" );
 
 ###############################################################################
 
@@ -591,6 +619,18 @@ if ($extra) {
   }
 }
 
+##### Some numbers that go to stage 2 of tests
+{
+  my $nbig = Math::BigInt->new("9087500560545072247139");
+  my @nfac;
+  @nfac = sort {$a<=>$b} Math::Prime::Util::PP::pminus1_factor($nbig,1000,10000);
+  is_deeply( [@nfac], ["24133","376559091722747783"], "p-1 stage 2 finds factors of $nbig" );
+  @nfac = sort {$a<=>$b} Math::Prime::Util::PP::trial_factor($nbig, 50000);
+  is_deeply( [@nfac], ["24133","376559091722747783"], "trial factor finds factors of $nbig" );
+  @nfac = sort {$a<=>$b} Math::Prime::Util::PP::ecm_factor($nbig, 10,1000,100);
+  is_deeply( [@nfac], ["24133","376559091722747783"], "ecm factor finds factors of $nbig" );
+}
+
 ##### AKS primality test.  Be very careful with performance.
 is( is_aks_prime(1), 0, "AKS: 1 is composite (less than 2)" );
 is( is_aks_prime(2), 1, "AKS: 2 is prime" );
@@ -603,7 +643,7 @@ is( is_aks_prime(70747), 0, "AKS: 70747 is composite (n mod r)" );
 SKIP: {
   skip "Skipping PP AKS test without EXTENDED_TESTING", 2 unless $extra;
   diag "32-bit Perl will be very slow for AKS" unless $use64;
-  is( is_aks_prime(101), 1, "AKS: 101 is prime (passed anr test)" );
+  is( is_aks_prime(1009), 1, "AKS: 1009 is prime (passed anr test)" );
   is( is_aks_prime(74513), 0, "AKS: 74513 is composite (failed anr test)" );
 }
 
@@ -632,6 +672,13 @@ if ($use64) {
     skip "Old Perl+bigint segfaults in F-U code", 1 if $] < 5.008;
     is ( is_frobenius_underwood_pseudoprime($n), 0, "168790877523676911809192454171451 is not a Frobenius pseudoprime" );
   }
+}
+
+{
+  my $ntha = nth_prime_approx(1287248);
+  ok( $ntha >= 20274907 && $ntha <= 20284058, "nth_prime_approx(1287248) in range" );
+  my $pca = prime_count_approx(128722248);
+  ok( $pca >= 7309252 && $pca <= 7310044, "prime_count_approx(128722248) in range" );
 }
 
 {
@@ -667,6 +714,33 @@ if ($use64) {
   while (my($n, $isp) = each (%ipp)) {
     is( is_prob_prime($n), $isp, "is_prob_prime($n) should be $isp" );
   }
+
+  is( primorial(24), 223092870, "primorial(24)" );
+  is( primorial(118), "31610054640417607788145206291543662493274686990", "primorial(118)" );
+  is( pn_primorial(7), 510510, "pn_primorial(7)" );
+  is( partitions(74), 7089500, "partitions(74)" );
+  is( miller_rabin_random(4294967281, 20), "0", "Miller-Rabin random 40 on composite" );
+
+  { my @t;
+    Math::Prime::Util::_generic_forprimes(sub {push @t,$_}, 2387234,2387303);
+    is_deeply( [@t], [2387237,2387243,2387249,2387269,2387291,2387299,2387303],
+               "generic forprimes 2387234,2387303" );
+  }
+  { my @t;
+    Math::Prime::Util::_generic_forcomposites(sub {push @t,$_}, 15202630,15202641);
+    is_deeply( [@t], [15202630,15202632,15202634,15202635,15202636,15202638,15202640,15202641], "generic forcomposites 15202630,15202641" );
+  }
+  { my $k = 0;
+    Math::Prime::Util::_generic_fordivisors(sub {$k += $_+int(sqrt($_))},92834);
+    is( $k, 168921, "generic fordivisors: d|92834: k+=d+int(sqrt(d))" );
+  }
+
+  is( gcd(-30,-90,90), 30, "gcd(-30,-90,90) = 30" );
+  is( lcm(11926,78001,2211), 2790719778, "lcm(11926,78001,2211) = 2790719778" );
+
+  is( twin_prime_count(4321), 114, "twin_prime_count(4321)" );
+  cmp_closeto( twin_prime_count_approx(Math::BigInt->new("412345678412345678412345678")), "149939117920176008847283", 1e10, "twin_prime_count_approx(412345678412345678412345678)" );
+  is( nth_twin_prime(977), 76871, "nth_twin_prime(977)" );
 
   prime_set_config(xs=>$xs, gmp=>$gmp, verbose=>$verbose);
 }
