@@ -2388,7 +2388,7 @@ section C.6 of FIPS 186-4.  This uses 512 bits of randomness and SHA-256
 as the hash.  This is a slightly simpler and older (1986) method than
 Maurer's 1999 construction.  It is a bit faster than Maurer's method, and
 uses less system entropy for large sizes.  The primary reason to use this
-rather than Maurer's method is to use FIPS 186-4 algorithm.
+rather than Maurer's method is to use the FIPS 186-4 algorithm.
 
 Similar to L</random_nbit_prime>, the result will be a BigInt if the
 number of bits is greater than the native bit size.  For better performance
@@ -2584,7 +2584,8 @@ C<all_factors> is the deprecated name for this function.
 Produces the prime factors of a positive number input.
 The factors will be in numerical order.
 For large inputs this will be very slow.
-Not exported.
+Like all the specific-algorithm C<*_factor> routines, this is not exported
+unless explicitly requested.
 
 =head2 fermat_factor
 
@@ -3169,7 +3170,7 @@ of false positives compared to the BPSW test -- some composites such as
 C<9>, C<88831>, C<38503>, etc. 
 (L<OEIS A141768|http://oeis.org/A141768>)
 have a surprisingly high chance of being indicated prime.
-Using C<isprime($n,1)> will perform a Pocklington-Lehmer C<n-1> proof,
+Using C<isprime($n,1)> will perform an C<n-1> proof,
 but this becomes unreasonably slow past 70 or so digits.
 
 If L<Math::Pari> is built using Pari 2.3.5 (this requires manual
