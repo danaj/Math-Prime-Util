@@ -259,7 +259,7 @@ plan tests => 2 +
               10 + 7*3 +          # factoring subs
               1 +                 # HOLF
               ($extra ? 3 : 0) +  # HOLF extra
-              3 +                 # factor stage 2
+              ($extra ? 3 : 0) +  # factor stage 2
               10 +                # AKS
               ($use64 ? 3 : 2) +  # Lucas and BLS75 primality proofs
               4 +                 # M-R and Lucas on bigint
@@ -620,7 +620,7 @@ if ($extra) {
 }
 
 ##### Some numbers that go to stage 2 of tests
-{
+if ($extra) {
   my $nbig = Math::BigInt->new("9087500560545072247139");
   my @nfac;
   @nfac = sort {$a<=>$b} Math::Prime::Util::PP::pminus1_factor($nbig,1000,10000);
@@ -708,8 +708,8 @@ if ($use64) {
   is( exp_mangoldt(23), 23, "exp_mangoldt of 23 = 23" );
   is( exp_mangoldt(27), 3, "exp_mangoldt of 27 (3^3) = 3" );
 
-  cmp_closeto( chebyshev_theta(27001), 26837.3487140827, 0.00027, "chebyshev_theta(27001) =~ 26837.35");
-  cmp_closeto( chebyshev_psi(87001), 86964.5577535435, 0.00087, "chebyshev_psi(87001) =~ 86964.56");
+  cmp_closeto( chebyshev_theta(7001), 6929.27483821865062, 0.006929, "chebyshev_theta(7001) =~ 6929.2748");
+  cmp_closeto( chebyshev_psi(6588), 6597.07452996633704, 0.006597, "chebyshev_psi(6588) =~ 6597.07453");
 
   while (my($n, $isp) = each (%ipp)) {
     is( is_prob_prime($n), $isp, "is_prob_prime($n) should be $isp" );
@@ -740,7 +740,7 @@ if ($use64) {
 
   is( twin_prime_count(4321), 114, "twin_prime_count(4321)" );
   cmp_closeto( twin_prime_count_approx(Math::BigInt->new("412345678412345678412345678")), "149939117920176008847283", 1e10, "twin_prime_count_approx(412345678412345678412345678)" );
-  is( nth_twin_prime(977), 76871, "nth_twin_prime(977)" );
+  is( nth_twin_prime(249), 13217, "nth_twin_prime(249)" );
 
   prime_set_config(xs=>$xs, gmp=>$gmp, verbose=>$verbose);
 }
