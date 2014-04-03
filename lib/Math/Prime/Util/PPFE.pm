@@ -116,6 +116,11 @@ sub twin_prime_count {
   }
   return Math::Prime::Util::PP::twin_prime_count($low,$high);
 }
+sub twin_prime_count_approx {
+  my($n) = @_;
+  _validate_positive_integer($n);
+  return Math::Prime::Util::PP::twin_prime_count_approx($n);
+}
 sub nth_twin_prime {
   my($n) = @_;
   _validate_positive_integer($n);

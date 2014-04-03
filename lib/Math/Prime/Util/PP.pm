@@ -1349,6 +1349,13 @@ sub twin_prime_count {
   $sum;
 }
 
+sub twin_prime_count_approx {
+  my($n) = @_;
+  my $logn = log($n);
+  my $li2 = ExponentialIntegral($logn) + 2.8853900817779268147198494 - ($n/$logn);
+  return int(1.32032363169373914785562422 * $li2 + 0.5);
+}
+
 sub nth_twin_prime {
   my($n) = @_;
   my($nth, $p, $p2) = (0, 0, 3);
