@@ -156,7 +156,8 @@ sub prime_get_config {
 # loaded.  Your calls will probably die horribly.
 sub prime_set_config {
   my %params = (@_);  # no defaults
-  while (my($param, $value) = each %params) {
+  foreach my $param (keys %params) {
+    my $value = $params{$param};
     $param = lc $param;
     # dispatch table should go here.
     if      ($param eq 'xs') {
