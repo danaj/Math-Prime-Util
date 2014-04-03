@@ -543,11 +543,8 @@ sub gen_and_filter {
   $p;
 }
 
-sub find_mod210_restriction {
-  my %mods_left;
-  undef @mods_left{ grep { ($_%2) && ($_%3) && ($_%5) && ($_%7) } (0..209) };
-  
-  my %mod210_restrict = (
+{
+  my %_mod210_restrict = (
     cuban1     => {min=> 7, mod=>[1,19,37,61,79,121,127,169,187]},
     cuban2     => {min=> 2, mod=>[1,13,43,109,139,151,169,181,193]},
     twin       => {min=> 5, mod=>[11,17,29,41,59,71,101,107,137,149,167,179,191,197,209]},
@@ -561,17 +558,22 @@ sub find_mod210_restriction {
     # Nothing for good, pillai, palindromic, fib, lucas, mersenne, primorials
   );
 
-  my $min = 0;
-  while (my($filter,$data) = each %mod210_restrict) {
-    next unless exists $opts{$filter};
-    $min = $data->{min} if $min < $data->{min};
-    my %thismod;
-    undef @thismod{ @{$data->{mod}} };
-    foreach my $m (keys %mods_left) {
-      delete $mods_left{$m} unless exists $thismod{$m};
+  sub find_mod210_restriction {
+    my %mods_left;
+    undef @mods_left{ grep { ($_%2) && ($_%3) && ($_%5) && ($_%7) } (0..209) };
+  
+    my $min = 0;
+    while (my($filter,$data) = each %_mod210_restrict) {
+      next unless exists $opts{$filter};
+      $min = $data->{min} if $min < $data->{min};
+      my %thismod;
+      undef @thismod{ @{$data->{mod}} };
+      foreach my $m (keys %mods_left) {
+        delete $mods_left{$m} unless exists $thismod{$m};
+      }
     }
+    return ($min, %mods_left);
   }
-  return ($min, %mods_left);
 }
 
 # This is rather braindead.  We're going to eval their input so they can give
