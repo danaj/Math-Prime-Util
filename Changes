@@ -16,6 +16,10 @@ Revision history for Perl module Math::Prime::Util
 
     - Speed up exp_mangoldt.
 
+    - nth_prime_approx uses inverse RiemannR in XS code for better accuracy.
+      Cippola 1902 is still used for PP and large values, with a slightly
+      more accurate third order correction.
+
 
 0.39  2014-03-01
 

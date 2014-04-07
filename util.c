@@ -736,41 +736,24 @@ UV nth_prime_lower(UV n)
 
 UV nth_prime_approx(UV n)
 {
-  long double fn, flogn, flog2n, approx, order;
+  long double fn, flogn;
+  UV lo, hi;
 
   if (n < NPRIMES_SMALL)
     return primes_small[n];
 
-  fn     = (long double) n;
-  flogn  = logl(n);
-  flog2n = logl(flogn);    /* Note distinction between log_2(n) and log^2(n) */
-
-  /* Cipolla 1902:
-   *    m=0   fn * ( flogn + flog2n - 1 );
-   *    m=1   + ((flog2n - 2)/flogn) );
-   *    m=2   - (((flog2n*flog2n) - 6*flog2n + 11) / (2*flogn*flogn))
-   *    + O((flog2n/flogn)^3)
-   */
-
-  approx = fn * (  flogn + flog2n - 1.0
-                 + ((flog2n - 2.0) / flogn)
-                 - (((flog2n*flog2n) - 6.0*flog2n + 11.0) / (2*flogn*flogn))
-                );
-
-  /* Apply a correction */
-  order = flog2n / flogn;
-  order = order * order * order * fn;
-  if      (n <      259) { approx += 10.4  * order; }
-  else if (n <      775) { approx +=  7.52 * order; }
-  else if (n <     1271) { approx +=  5.6  * order; }
-  else if (n <     2000) { approx +=  5.2  * order; }
-  else if (n <     4000) { approx +=  4.3  * order; }
-  else if (n <    12000) { approx +=  3.0  * order; }
-  else if (n <   150000) { approx +=  2.1  * order; }
-  else if (n <200000000) {                          }
-  else                   { approx += -0.01 * order; } /* -0.25 is closer */
-
-  return (UV) floorl(approx + 0.5);
+  /* Binary search for inverse Riemann R */
+  fn    = (long double) n;
+  flogn = logl(n);
+  lo    = (UV) (fn * flogn);
+  hi    = (UV) (fn * flogn * 2 + 2);
+  if (hi <= lo) hi = UV_MAX;
+  while (lo < hi) {
+    UV mid = lo + (hi-lo)/2;
+    if (_XS_RiemannR(mid) < fn) lo = mid+1;
+    else                        hi = mid;
+  }
+  return lo;
 }
 
 

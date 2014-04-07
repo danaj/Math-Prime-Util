@@ -1333,7 +1333,7 @@ While this method is thousands of times faster than generating primes, and
 doesn't involve big tables of precomputed values, it still can take a fair
 amount of time for large inputs.  Calculating the C<10^12th> prime takes
 about 1 second, the C<10^13th> prime takes under 10 seconds, and the
-C<10^14th> prime (3475385758524527) takes under one minute.  Think about
+C<10^14th> prime (3475385758524527) takes under 30 seconds.  Think about
 whether a bound or approximation would be acceptable, as they can be
 computed analytically.
 
@@ -1365,8 +1365,10 @@ for small C<n>.
   say "The one trillionth prime is ~ ", nth_prime_approx(10**12);
 
 Returns an approximation to the C<nth_prime> function, without having to
-generate any primes.  Uses the Cipolla 1902 approximation with two
-polynomials, plus a correction for small values to reduce the error.
+generate any primes.  For values where the nth prime is smaller than
+C<2^64>, an inverse Riemann R function is used.  For larger values, uses the
+Cipolla 1902 approximation with up to 2nd order terms, plus a third order
+correction.
 
 
 =head2 nth_twin_prime

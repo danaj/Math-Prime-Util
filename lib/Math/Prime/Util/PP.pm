@@ -1159,9 +1159,8 @@ sub nth_prime_approx {
   elsif ($n <      12000) { $approx +=  3.0 * $order; }
   elsif ($n <     150000) { $approx +=  2.1 * $order; }
   elsif ($n <  200000000) { $approx +=  0.0 * $order; }
-  else                    { $approx += -0.010 * $order; }
-  # $approx = -0.025 is better for the last, but it gives problems with some
-  # other code that always wants the asymptotic approximation to be >= actual.
+  else                    { $approx += -0.025 * $order; }
+  # If we want the asymptotic approximation to be >= actual, use -0.010.
 
   return int($approx + 0.5);
 }
