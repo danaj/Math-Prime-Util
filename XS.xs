@@ -604,10 +604,11 @@ next_prime(IN SV* svn)
     nth_prime_lower = 4
     nth_prime_approx = 5
     nth_twin_prime = 6
-    prime_count_upper = 7
-    prime_count_lower = 8
-    prime_count_approx = 9
-    twin_prime_count_approx = 10
+    nth_twin_prime_approx = 7
+    prime_count_upper = 8
+    prime_count_lower = 9
+    prime_count_approx = 10
+    twin_prime_count_approx = 11
   PPCODE:
     if (_validate_int(aTHX_ svn, 0)) {
       UV n = my_svuv(svn);
@@ -624,10 +625,11 @@ next_prime(IN SV* svn)
           case 4: ret = nth_prime_lower(n); break;
           case 5: ret = nth_prime_approx(n); break;
           case 6: ret = nth_twin_prime(n); break;
-          case 7: ret = prime_count_upper(n); break;
-          case 8: ret = prime_count_lower(n); break;
-          case 9 :ret = prime_count_approx(n); break;
-          case 10:
+          case 7: ret = nth_twin_prime_approx(n); break;
+          case 8: ret = prime_count_upper(n); break;
+          case 9: ret = prime_count_lower(n); break;
+          case 10:ret = prime_count_approx(n); break;
+          case 11:
           default:ret = twin_prime_count_approx(n); break;
         }
         XSRETURN_UV(ret);
@@ -645,10 +647,11 @@ next_prime(IN SV* svn)
       case 4:  _vcallsub_with_pp("nth_prime_lower");    break;
       case 5:  _vcallsub_with_pp("nth_prime_approx");   break;
       case 6:  _vcallsub_with_pp("nth_twin_prime");     break;
-      case 7:  _vcallsub_with_pp("prime_count_upper");  break;
-      case 8:  _vcallsub_with_pp("prime_count_lower");  break;
-      case 9:  _vcallsub_with_pp("prime_count_approx"); break;
-      case 10:
+      case 7:  _vcallsub_with_pp("nth_twin_prime_approx"); break;
+      case 8:  _vcallsub_with_pp("prime_count_upper");  break;
+      case 9:  _vcallsub_with_pp("prime_count_lower");  break;
+      case 10: _vcallsub_with_pp("prime_count_approx"); break;
+      case 11:
       default: _vcallsub_with_pp("twin_prime_count_approx"); break;
     }
     return; /* skip implicit PUTBACK */

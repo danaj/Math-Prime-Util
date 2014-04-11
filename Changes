@@ -9,6 +9,7 @@ Revision history for Perl module Math::Prime::Util
     - twin_prime_count                       counts twin primes in range
     - twin_prime_count_approx                fast approximation to Pi_2(n)
     - nth_twin_prime                         returns the nth twin prime
+    - nth_twin_prime_approx                  estimates the nth twin prime
 
     [FUNCTIONALITY AND PERFORMANCE]
 

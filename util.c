@@ -580,12 +580,21 @@ UV prime_count_approx(UV n)
 /* See http://numbers.computation.free.fr/Constants/Primes/twin.pdf, page 5 */
 UV twin_prime_count_approx(UV n)
 {
-  const long double two_C2 = 1.32032363169373914785562422L;
-  const long double two_over_log_two = 2.8853900817779268147198494L;
-  long double ln = (long double) n;
-  long double logn = logl(ln);
-  long double li2 = _XS_ExponentialIntegral(logn) + two_over_log_two - ln/logn;
-  return (UV) (two_C2 * li2 + 0.5L);
+  /* Best would be another estimate for n < ~ 5000 */
+  if (n < 2000) return twin_prime_count(3,n);
+  {
+    const long double two_C2 = 1.32032363169373914785562422L;
+    const long double two_over_log_two = 2.8853900817779268147198494L;
+    long double ln = (long double) n;
+    long double logn = logl(ln);
+    long double li2 = _XS_ExponentialIntegral(logn) + two_over_log_two-ln/logn;
+    /* try to minimize MSE */
+    if      (n <    7000) li2 *= 0.8991 * logl(logl(logl(ln*4000)));
+    else if (n <  200000) li2 *= 0.8938 * logl(logl(logl(ln*4000)));
+    else if (n < 1000000) li2 *= 0.8794 * logl(logl(logl(ln*4000)));
+    else if (n < 2000000) li2 *= 0.8808 * logl(logl(logl(ln*4000)));
+    return (UV) (two_C2 * li2 + 0.5L);
+  }
 }
 
 UV prime_count_lower(UV n)
@@ -963,6 +972,29 @@ UV nth_twin_prime(UV n)
     end_segment_primes(ctx);
   }
   return nth;
+}
+
+UV nth_twin_prime_approx(UV n)
+{
+  long double fn = (long double) n;
+  long double flogn = logl(n);
+  UV lo, hi;
+
+  if (n < 6)
+    return nth_twin_prime(n);
+
+  /* Binary search on the TPC estimate.
+   * Good results require that the TPC estimate is both fast and accurate.
+   */
+  lo = (UV) (1.0 * fn * flogn * flogn);
+  hi = (UV) (3.0 * fn * flogn * flogn + 3);
+  if (hi <= lo) hi = UV_MAX;
+  while (lo < hi) {
+    UV mid = lo + (hi-lo)/2;
+    if (twin_prime_count_approx(mid) < fn) lo = mid+1;
+    else                                   hi = mid;
+  }
+  return lo;
 }
 
 

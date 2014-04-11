@@ -33,7 +33,8 @@ our @EXPORT_OK =
       prime_count
       prime_count_lower prime_count_upper prime_count_approx
       nth_prime nth_prime_lower nth_prime_upper nth_prime_approx
-      twin_prime_count twin_prime_count_approx nth_twin_prime
+      twin_prime_count twin_prime_count_approx
+      nth_twin_prime nth_twin_prime_approx
       random_prime random_ndigit_prime random_nbit_prime random_strong_prime
       random_proven_prime random_proven_prime_with_cert
       random_maurer_prime random_maurer_prime_with_cert
