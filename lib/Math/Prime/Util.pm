@@ -1314,7 +1314,9 @@ for the answer, using some small table acceleration.
 
 Returns an approximation to the twin prime count of C<n>.  This returns
 quickly and has a very small error for large values.  The method used is
-conjecture B of Hardy and Littlewood 1922, as stated in Sebah and Gourdon 2002.
+conjecture B of Hardy and Littlewood 1922, as stated in
+Sebah and Gourdon 2002.  For inputs under 10M, a correction factor is 
+additionally applied to reduce the mean squared error.
 
 
 =head2 nth_prime
@@ -1376,6 +1378,12 @@ correction.
 
 Returns the Nth twin prime.  This is done via sieving and counting, so
 is not very fast for large values.
+
+=head2 nth_twin_prime_approx
+
+Returns an approximation to the Nth twin prime.  A curve fit is used for
+small inputs (under 1200), while for larger inputs a binary search is done
+on the approximate twin prime count.
 
 
 =head2 is_pseudoprime

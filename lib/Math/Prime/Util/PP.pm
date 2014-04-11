@@ -149,12 +149,15 @@ sub _validate_positive_integer {
 }
 
 
-my @_primes_small = (
-   0,2,3,5,7,11,13,17,19,23,29,31,37,41,43,47,53,59,61,67,71,73,79,83,89,97,
-   101,103,107,109,113,127,131,137,139,149,151,157,163,167,173,179,181,191,
-   193,197,199,211,223,227,229,233,239,241,251,257,263,269,271,277,281,283,
-   293,307,311,313,317,331,337,347,349,353,359,367,373,379,383,389,397,401,
-   409,419,421,431,433,439,443,449,457,461,463,467,479,487,491,499,503,509);
+my @_primes_small = (0,2,3,5);
+{
+  my $sieveref = _sieve_erat_string(5000);
+  my $n = 5;
+  foreach my $s (split("0", substr($$sieveref, 3), -1)) {
+    $n += 2 + 2 * length($s);
+    push @_primes_small, $n if $n <= 5000;
+  }
+}
 my @_prime_next_small = (
    2,2,3,5,5,7,7,11,11,11,11,13,13,17,17,17,17,19,19,23,23,23,23,
    29,29,29,29,29,29,31,31,37,37,37,37,37,37,41,41,41,41,43,43,47,
@@ -459,6 +462,11 @@ sub next_prime {
   _validate_positive_integer($n);
 
   return $_prime_next_small[$n] if $n <= $#_prime_next_small;
+  if ($n < $_primes_small[-1]) {
+    my $i = _tiny_prime_count($n);  # Binary search
+    return $_primes_small[$i+1];
+  }
+
 
   $n = Math::BigInt->new(''.$_[0])
      if ref($n) ne 'Math::BigInt' && $n >= MPU_MAXPRIME;
@@ -1353,9 +1361,17 @@ sub twin_prime_count {
 
 sub twin_prime_count_approx {
   my($n) = @_;
+  return twin_prime_count(3,$n) if $n < 2000;
   $n = _upgrade_to_float($n) if ref($n);
   my $logn = log($n);
   my $li2 = ExponentialIntegral($logn) + 2.8853900817779268147198494 - ($n/$logn);
+  if    ($n <     4000) { $li2 *= 1.0005 * log(log(log($n*4000))); }
+  elsif ($n <     8000) { $li2 *= 0.9734 * log(log(log($n*4000))); }
+  elsif ($n <    32000) { $li2 *= 0.8967 * log(log(log($n*4000))); }
+  elsif ($n <   200000) { $li2 *= 0.8937 * log(log(log($n*4000))); }
+  elsif ($n <  1000000) { $li2 *= 0.8793 * log(log(log($n*4000))); }
+  elsif ($n <  4000000) { $li2 *= 0.8766 * log(log(log($n*4000))); }
+  elsif ($n < 10000000) { $li2 *= 0.8664 * log(log(log($n*4000))); }
   return int(1.32032363169373914785562422 * $li2 + 0.5);
 }
 
@@ -1367,6 +1383,23 @@ sub nth_twin_prime {
     ($p, $p2) = ($p2, next_prime($p2));
   }
   $nth;
+}
+
+sub nth_twin_prime_approx {
+  my($n) = @_;
+  return nth_twin_prime($n) if $n < 6;
+  $n = _upgrade_to_float($n) if ref($n);
+  my $nlogn2 = $n * log($n) * log($n);
+  return int(5.023 * $nlogn2/log(log(1600*$n*$n))) if $n > 59 && $n < 1200;
+
+  my $lo = int(1.0 * $nlogn2);
+  my $hi = int(3.0 * $nlogn2 + 3);
+  while ($lo < $hi) {
+    my $mid = $lo + (($hi-$lo) >> 1);
+    if (twin_prime_count_approx($mid) < $n) { $lo = $mid+1; }
+    else                                    { $hi = $mid;   }
+  }
+  return $lo;
 }
 
 

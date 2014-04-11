@@ -4,7 +4,8 @@ use warnings;
 
 use Test::More;
 use Math::Prime::Util qw/prime_count twin_prime_count
-                        prime_count_lower prime_count_upper prime_count_approx/;
+                         prime_count_lower prime_count_upper
+                         prime_count_approx twin_prime_count_approx/;
 
 my $isxs  = Math::Prime::Util::prime_get_config->{'xs'};
 my $use64 = Math::Prime::Util::prime_get_config->{'maxbits'} > 32;
@@ -82,6 +83,16 @@ my %intervals = (
 );
 delete @intervals{ grep { (parse_range($_))[1] > ~0 } keys %intervals };
 
+my %tpcs = (
+              5000 =>           126,
+            500000 =>          4565,
+          50000000 =>        239101,
+        5000000000 =>      14618166,
+      500000000000 =>     986222314,
+    50000000000000 =>   71018282471,
+  5000000000000000 => 5357875276068,
+);
+
 plan tests => 0 + 1
                 + 3*scalar(keys %pivals32)
                 + scalar(keys %pivals_small)
@@ -89,7 +100,7 @@ plan tests => 0 + 1
                 + scalar(keys %intervals)
                 + 1
                 + 5 + 2*$extra # prime count specific methods
-                + 3 + (($isxs && $use64) ? 1 : 0); # twin prime counts
+                + 3 + (($isxs && $use64) ? 1+2*scalar(keys %tpcs) : 0);# twin pc
 
 ok( eval { prime_count(13); 1; }, "prime_count in void context");
 
@@ -182,4 +193,10 @@ is(twin_prime_count(10**8,10**8+34587), 137, "twin prime count 10^8 to +34587");
 is(twin_prime_count(654321), 5744, "twin prime count 654321");
 if ($isxs && $use64) {
   is(twin_prime_count(1000000000123456), 1177209242446, "twin prime count 1000000000123456");
+  while (my($n, $tpc) = each (%tpcs)) {
+    is(twin_prime_count($n), $tpc, "twin prime count $n");
+    my $errorp = 100 * abs($tpc - twin_prime_count_approx($n)) / $tpc;
+    my $estr = sprintf "%8.6f%%", $errorp;
+    cmp_ok( $errorp, '<=', 2, "twin_prime_count_approx($n) is $estr");
+  }
 }

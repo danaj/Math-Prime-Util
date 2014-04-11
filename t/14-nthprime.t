@@ -4,7 +4,8 @@ use warnings;
 
 use Test::More;
 use Math::Prime::Util qw/primes nth_prime nth_twin_prime
-                         nth_prime_lower nth_prime_upper nth_prime_approx/;
+                         nth_prime_lower nth_prime_upper
+                         nth_prime_approx nth_twin_prime_approx/;
 
 my $use64 = Math::Prime::Util::prime_get_config->{'maxbits'} > 32;
 my $usexs = Math::Prime::Util::prime_get_config->{'xs'};
@@ -62,6 +63,19 @@ my %nthprimes_small = map { $_ => $nthprimes32{$_} }
 
 my @small_primes = (0, @{primes($nth_small_prime)});
 
+my %ntpcs = (
+             5 =>                   29,
+            50 =>                 1487,
+           500 =>                32411,
+          5000 =>               557519,
+         50000 =>              8264957,
+        500000 =>            115438667,
+       5000000 =>           1523975909,
+      50000000 =>          19358093939,
+     500000000 =>         239211160649,
+);
+
+
 plan tests => 0 + 2*scalar(keys %pivals32)
                 + 1
                 + 3*scalar(keys %nthprimes32)
@@ -69,6 +83,7 @@ plan tests => 0 + 2*scalar(keys %pivals32)
                 + $use64 * 3 * scalar(keys %nthprimes64)
                 + 3   # nth_prime_lower with max index
                 + 3   # nth_twin_prime
+                + scalar(keys %ntpcs)   # nth_twin_prime_approx
                 + (($extra && $use64 && $usexs) ? 1 : 0);
 
 
@@ -125,3 +140,9 @@ if ($extra && $use64 && $usexs) {
 is( nth_twin_prime(0), 0, "nth_twin_prime(0) = 0" );
 is( nth_twin_prime(17), 239, "239 = 17th twin prime" );
 is( nth_twin_prime(1234), 101207, "101207 = 1234'th twin prime" );
+
+while (my($n, $nthtpc) = each (%ntpcs)) {
+  my $errorp = 100 * abs($nthtpc - nth_twin_prime_approx($n)) / $nthtpc;
+  my $estr = sprintf "%8.6f%%", $errorp;
+  cmp_ok( $errorp, '<=', 2, "nth_twin_prime_approx($n) is $estr");
+}

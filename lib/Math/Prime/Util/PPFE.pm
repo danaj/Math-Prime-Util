@@ -126,6 +126,11 @@ sub nth_twin_prime {
   _validate_positive_integer($n);
   return Math::Prime::Util::PP::nth_twin_prime($n);
 }
+sub nth_twin_prime_approx {
+  my($n) = @_;
+  _validate_positive_integer($n);
+  return Math::Prime::Util::PP::nth_twin_prime_approx($n);
+}
 
 
 sub is_prime {

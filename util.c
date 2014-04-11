@@ -589,10 +589,13 @@ UV twin_prime_count_approx(UV n)
     long double logn = logl(ln);
     long double li2 = _XS_ExponentialIntegral(logn) + two_over_log_two-ln/logn;
     /* try to minimize MSE */
-    if      (n <    7000) li2 *= 0.8991 * logl(logl(logl(ln*4000)));
-    else if (n <  200000) li2 *= 0.8938 * logl(logl(logl(ln*4000)));
-    else if (n < 1000000) li2 *= 0.8794 * logl(logl(logl(ln*4000)));
-    else if (n < 2000000) li2 *= 0.8808 * logl(logl(logl(ln*4000)));
+    if      (n <    4000) li2 *= 1.0005 * logl(logl(logl(ln*4000)));
+    if      (n <    8000) li2 *= 0.9734 * logl(logl(logl(ln*4000)));
+    if      (n <   32000) li2 *= 0.8967 * logl(logl(logl(ln*4000)));
+    else if (n <  200000) li2 *= 0.8937 * logl(logl(logl(ln*4000)));
+    else if (n < 1000000) li2 *= 0.8793 * logl(logl(logl(ln*4000)));
+    else if (n < 4000000) li2 *= 0.8766 * logl(logl(logl(ln*4000)));
+    else if (n <10000000) li2 *= 0.8664 * logl(logl(logl(ln*4000)));
     return (UV) (two_C2 * li2 + 0.5L);
   }
 }
@@ -982,11 +985,13 @@ UV nth_twin_prime_approx(UV n)
 
   if (n < 6)
     return nth_twin_prime(n);
+  if (n > 59 && n < 1200)  /* Curve fit */
+    return (UV) (5.023 * fn*flogn*flogn / logl(logl(1600*fn*fn)));
 
   /* Binary search on the TPC estimate.
    * Good results require that the TPC estimate is both fast and accurate.
    */
-  lo = (UV) (1.0 * fn * flogn * flogn);
+  lo = (UV) (0.0 * fn * flogn * flogn);
   hi = (UV) (3.0 * fn * flogn * flogn + 3);
   if (hi <= lo) hi = UV_MAX;
   while (lo < hi) {

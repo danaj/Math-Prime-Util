@@ -68,5 +68,3 @@
 - Ensure a fast path for Math::GMP from MPU -> MPU:GMP -> GMP, and back.
 
 - znlog better implementation
-
-- Documentation, PP implementation, tests for nth_twin_prime_approx
