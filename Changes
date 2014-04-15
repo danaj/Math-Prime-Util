@@ -21,6 +21,8 @@ Revision history for Perl module Math::Prime::Util
       Cippola 1902 is still used for PP and large values, with a slightly
       more accurate third order correction.
 
+    - Tighten nth_prime_lower and nth_prime_upper for very small values.
+
 
 0.39  2014-03-01
 

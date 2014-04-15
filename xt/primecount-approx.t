@@ -139,7 +139,8 @@ foreach my $n (sort {$a <=> $b} keys %pivals) {
   cmp_ok( ''.prime_count_upper($n), '>=', $pin, "Pi($n) <= upper estimate" );
   cmp_ok( ''.prime_count_lower($n), '<=', $pin, "Pi($n) >= lower estimate" );
   # Result may be bigint, so turn into float for percentage comparison
-  my $approx = 0.0 + ''.prime_count_approx($n);
+  print "n = '$n'\n";
+  my $approx = 0.0 + (''.prime_count_approx($n));
   my $percent_limit = ($n > 1000000000000) ? 0.00005
                     : ($n >   10000000000) ? 0.0002
                     : ($n >     100000000) ? 0.002

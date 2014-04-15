@@ -705,7 +705,7 @@ UV nth_prime_upper(UV n)
   else if (n >=  39017)    /* Dusart 1999 page 14 */
     upper = fn * (flogn + flog2n - 0.9484);
   else if (n >=     6)     /* Modified from Robin 1983 for 6-39016 _only_ */
-    upper = fn * ( flogn  +  0.6000 * flog2n );
+    upper = fn * ( flogn  +  0.5982 * flog2n ) - 5;
   else
     upper = fn * ( flogn + flog2n );
 
@@ -742,6 +742,9 @@ UV nth_prime_lower(UV n)
 
   /* Dusart 2010 page 2, for all n >= 3 */
   lower = fn * (flogn + flog2n - 1.0 + ((flog2n-2.10)/flogn));
+  /* Tighten small values */
+  if      (n <  2679) lower = 1.003 * lower + 23;
+  else if (n < 14353) lower = 1.001 * lower + 21;
 
   return (UV) floorl(lower);
 }
