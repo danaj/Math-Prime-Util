@@ -613,7 +613,8 @@ next_prime(IN SV* svn)
     if (_validate_int(aTHX_ svn, 0)) {
       UV n = my_svuv(svn);
       if ( (n >= MPU_MAX_PRIME     && ix == 0) ||
-           (n >= MPU_MAX_PRIME_IDX && (ix==2 || ix==3 || ix==4 || ix==5)) ) {
+           (n >= MPU_MAX_PRIME_IDX && (ix==2 || ix==3 || ix==4 || ix==5)) ||
+           (n >= MPU_MAX_TWIN_PRIME_IDX && (ix==6 || ix==7)) ) {
         /* Out of range.  Fall through to Perl. */
       } else {
         UV ret;
