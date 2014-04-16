@@ -336,7 +336,10 @@ static IV _phi(UV x, UV a, int sign, const uint32_t* const primes, const uint32_
     cache[a*PHICACHEX+x] = sign * sum;
   return sum;
 }
-UV legendre_phi(UV x, UV a) {
+UV legendre_phi(UV x, UV a)
+{
+  if (x <= PHIC)
+    return tablephi(x, (a > PHIC) ? PHIC : a);
   /* TODO: tune these */
   if ( (x > PHIC && a > 200) || (x > 1000000000 && a > 30) ) {
     uint16_t* cache;

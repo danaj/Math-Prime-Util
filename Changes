@@ -23,6 +23,8 @@ Revision history for Perl module Math::Prime::Util
 
     - Tighten nth_prime_lower and nth_prime_upper for very small values.
 
+    - Fix legendre_phi when given tiny x and large a (odd test case).
+
 
 0.39  2014-03-01
 
