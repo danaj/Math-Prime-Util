@@ -338,18 +338,28 @@ static IV _phi(UV x, UV a, int sign, const uint32_t* const primes, const uint32_
 }
 UV legendre_phi(UV x, UV a)
 {
+  /* If 'x' is very small, give a quick answer with any 'a' */
   if (x <= PHIC)
     return tablephi(x, (a > PHIC) ? PHIC : a);
 
   /* Shortcuts for large values, from R. Andrew Ohana */
   if (a > (x >> 1))  return 1;
+  /* If a > prime_count(2^32), then we can need not be concerned with composite
+   * x values with all factors > 2^32, as x is limited to 64-bit. */
   if (a > 203280221) {  /* prime_count(2**32) */
     UV pc = _XS_LMO_pi(x);
     return (a > pc)  ?  1  :  pc - a + 1;
   }
+  /* If a is large enough, check the ratios */
+  if (a > 1000000 && x < a*21) {  /* x always less than 2^32 */
+    if ( _XS_LMO_pi(x) < a)  return 1;
+  }
 
-  /* TODO: tune these */
-  if ( (x > PHIC && a > 200) || (x > 1000000000 && a > 30) ) {
+  /* TODO:  R. Andrew Ohana's 2011 SAGE code is faster as the a value
+   * increases.  It uses a primelist as in the caching code below, as
+   * well as a binary search prime count on it (like in our lehmer). */
+
+  if ( a > 254 || (x > 1000000000 && a > 30) ) {
     uint16_t* cache;
     uint32_t* primes;
     uint32_t lastidx;
