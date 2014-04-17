@@ -340,6 +340,14 @@ UV legendre_phi(UV x, UV a)
 {
   if (x <= PHIC)
     return tablephi(x, (a > PHIC) ? PHIC : a);
+
+  /* Shortcuts for large values, from R. Andrew Ohana */
+  if (a > (x >> 1))  return 1;
+  if (a > 203280221) {  /* prime_count(2**32) */
+    UV pc = _XS_LMO_pi(x);
+    return (a > pc)  ?  1  :  pc - a + 1;
+  }
+
   /* TODO: tune these */
   if ( (x > PHIC && a > 200) || (x > 1000000000 && a > 30) ) {
     uint16_t* cache;
@@ -353,6 +361,7 @@ UV legendre_phi(UV x, UV a)
     Safefree(cache);
     return res;
   }
+
   return _phi_recurse(x, a);
 }
 /****************************************************************************/
