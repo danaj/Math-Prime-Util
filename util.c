@@ -583,6 +583,7 @@ UV twin_prime_count_approx(UV n)
   /* Best would be another estimate for n < ~ 5000 */
   if (n < 2000) return twin_prime_count(3,n);
   {
+    /* Sebah and Gourdon 2002 */
     const long double two_C2 = 1.32032363169373914785562422L;
     const long double two_over_log_two = 2.8853900817779268147198494L;
     long double ln = (long double) n;
@@ -1064,9 +1065,43 @@ UV* _totient_range(UV lo, UV hi) {
   New(0, totients, hi-lo+1, UV);
 
   /* Do via factoring if very small or if we have a small range */
-  if (hi < 100 || hi/(hi-lo+1) > 1000) {
+  if (hi < 100 || (hi-lo) < 10 || hi/(hi-lo+1) > 1000) {
     for (i = lo; i <= hi; i++)
       totients[i-lo] = totient(i);
+    return totients;
+  }
+
+  /* If doing a full sieve, do it monolithic.  More aux memory, but faster. */
+  if (lo == 0) {
+    UV* prime;
+    char* setb;
+    double loghi = log(hi);
+    UV max_index = (hi < 67)     ? 18
+                 : (hi < 355991) ? 15+(hi/(loghi-1.09))
+                 : (hi/loghi) * (1.0+1.0/loghi+2.51/(loghi*loghi));
+    UV j, index, nprimes = 0;
+
+    New(0, prime, max_index, UV);  /* could use prime_count_upper(hi) */
+    Newz(0, setb, (hi+1+7)/8, char);
+    for (i = 2; i <= hi; i++) {
+      if ( (setb[i/8] & (1 << i%8)) == 0 ) {
+        totients[i] = i-1;
+        prime[nprimes++] = i;
+      }
+      for (j=0, index=2*i; j < nprimes && index <= hi; index = i*prime[++j]) {
+        setb[index/8] |= 1 << (index%8);
+        if (i % prime[j] == 0) {
+          totients[index] = totients[i]*prime[j];
+          break;
+        } else {
+          totients[index] = totients[i]*(prime[j]-1);
+        }
+      }
+    }
+    Safefree(setb);
+    Safefree(prime);
+    totients[1] = 1;
+    totients[0] = 0;
     return totients;
   }
 

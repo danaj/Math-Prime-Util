@@ -14,9 +14,10 @@ print "...";
 unshift @phi, 0;
 print "...done\n";
 
+print "Running non-stop random tests.  Break when desired.\n";
 while (1) {
-  my $beg = 1 + int(rand($limit));
-  my $end = 1 + int(rand($limit));
+  my $beg = 0 + int(rand($limit));
+  my $end = 0 + int(rand($limit));
   ($beg,$end) = ($end,$beg) if $beg > $end;
 
   # Does range return the same values?

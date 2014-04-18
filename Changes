@@ -26,6 +26,8 @@ Revision history for Perl module Math::Prime::Util
     - Fix legendre_phi when given tiny x and large a (odd test case).
       Some speedups for huge a, from R. Andrew Ohana.
 
+    - Ranged totient is slightly faster with start of 0.
+
 
 0.39  2014-03-01
 
