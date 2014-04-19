@@ -501,8 +501,7 @@ sub random_prime {
 
   # Tighten the range to the nearest prime.
   $low = ($low <= 2)  ?  2  :  next_prime($low-1);
-  # TODO: if high is bigint, we should do high++?
-  $high = ($high < ~0)  ?  prev_prime($high + 1)  :  prev_prime($high);
+  $high = ($high == ~0) ? prev_prime($high) : prev_prime($high + 1);
   return $low if ($low == $high) && is_prob_prime($low);
   return if $low >= $high;
 

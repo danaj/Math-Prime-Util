@@ -1315,7 +1315,7 @@ for the answer, using some small table acceleration.
 Returns an approximation to the twin prime count of C<n>.  This returns
 quickly and has a very small error for large values.  The method used is
 conjecture B of Hardy and Littlewood 1922, as stated in
-Sebah and Gourdon 2002.  For inputs under 10M, a correction factor is 
+Sebah and Gourdon 2002.  For inputs under 10M, a correction factor is
 additionally applied to reduce the mean squared error.
 
 
@@ -3179,7 +3179,7 @@ The default L<Math::Pari> is built with Pari 2.1.7.  This uses 10 M-R
 tests with randomly chosen bases (fixed seed, but doesn't reset each
 invocation like GMP's C<is_probab_prime>).  This has a greater chance
 of false positives compared to the BPSW test -- some composites such as
-C<9>, C<88831>, C<38503>, etc. 
+C<9>, C<88831>, C<38503>, etc.
 (L<OEIS A141768|http://oeis.org/A141768>)
 have a surprisingly high chance of being indicated prime.
 Using C<isprime($n,1)> will perform an C<n-1> proof,

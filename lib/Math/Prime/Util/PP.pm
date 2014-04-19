@@ -2308,7 +2308,7 @@ sub trial_factor {
       foreach my $finc (@incs) {
         if ($n->copy->bmod($f)->is_zero && $f->bacmp($limit) <= 0) {
           my $sf = ($f <= ''.~0) ? _bigint_to_int($f) : $f;
-          do { push @factors, $sf; $n = int($n/$f); } while (($n % $f) == 0);
+          do { push @factors, $sf; $n = ($n/$f)->bfloor(); } while (($n % $f) == 0);
           last SEARCH if $n->is_one;
           $limit = int( sqrt($n) + 0.001);
           $limit = $maxlim if $limit > $maxlim;

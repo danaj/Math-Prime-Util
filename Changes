@@ -28,6 +28,8 @@ Revision history for Perl module Math::Prime::Util
 
     - Ranged totient is slightly faster with start of 0.
 
+    - Fix random_prime with a bigint prime high value.
+
 
 0.39  2014-03-01
 
