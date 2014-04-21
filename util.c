@@ -1071,10 +1071,9 @@ UV* _totient_range(UV lo, UV hi) {
     return totients;
   }
 
-  /* If doing a full sieve, do it monolithic.  More aux memory, but faster. */
+  /* If doing a full sieve, do it monolithic.  Faster. */
   if (lo == 0) {
     UV* prime;
-    char* setb;
     double loghi = log(hi);
     UV max_index = (hi < 67)     ? 18
                  : (hi < 355991) ? 15+(hi/(loghi-1.09))
@@ -1082,24 +1081,32 @@ UV* _totient_range(UV lo, UV hi) {
     UV j, index, nprimes = 0;
 
     New(0, prime, max_index, UV);  /* could use prime_count_upper(hi) */
-    Newz(0, setb, (hi+1+7)/8, char);
-    for (i = 2; i <= hi; i++) {
-      if ( (setb[i/8] & (1 << i%8)) == 0 ) {
-        totients[i] = i-1;
-        prime[nprimes++] = i;
-      }
-      for (j=0, index=2*i; j < nprimes && index <= hi; index = i*prime[++j]) {
-        setb[index/8] |= 1 << (index%8);
-        if (i % prime[j] == 0) {
-          totients[index] = totients[i]*prime[j];
-          break;
-        } else {
-          totients[index] = totients[i]*(prime[j]-1);
+    memset(totients, 0, (hi-lo+1) * sizeof(UV));
+    for (i = 2; i <= hi/2; i++) {
+      index = 2*i;
+      if ( !(i&1) ) {
+        if (i == 2) { totients[2] = 1; prime[nprimes++] = 2; }
+        totients[index] = totients[i]*2;
+      } else {
+        if (totients[i] == 0) {
+          totients[i] = i-1;
+          prime[nprimes++] = i;
+        }
+        for (j=0; j < nprimes && index <= hi; index = i*prime[++j]) {
+          if (i % prime[j] == 0) {
+            totients[index] = totients[i]*prime[j];
+            break;
+          } else {
+            totients[index] = totients[i]*(prime[j]-1);
+          }
         }
       }
     }
-    Safefree(setb);
     Safefree(prime);
+    /* All totient values have been filled in except the primes.  Mark them. */
+    for (i = ((hi/2) + 1) | 1; i <= hi; i += 2)
+      if (totients[i] == 0)
+        totients[i] = i-1;
     totients[1] = 1;
     totients[0] = 0;
     return totients;
