@@ -16,7 +16,10 @@ my $broken64 = (18446744073709550592 == ~0);
 my $extra = defined $ENV{EXTENDED_TESTING} && $ENV{EXTENDED_TESTING};
 my $maxbits = $use64 ? 64 : 32;
 my $do_st = 1;
-$do_st = 0 unless eval { require Digest::SHA; $Digest::SHA::VERSION >= 4.00; };
+$do_st = 0 unless eval { require Digest::SHA;
+                         my $version = $Digest::SHA::VERSION;
+                         $version =~ s/[^\d.]//g;
+                         $version >= 4.00; };
 
 my @random_to = (2, 3, 4, 5, 6, 7, 8, 9, 100, 1000, 1000000, 4294967295);
 

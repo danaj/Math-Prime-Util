@@ -873,7 +873,10 @@ sub _ST_Random_prime {  # From FIPS 186-4
      unless defined $input_seed && length($input_seed) >= 32;
 
   if (!defined $Digest::SHA::VERSION) {
-    eval { require Digest::SHA; $Digest::SHA::VERSION >= 4.00; }
+    eval { require Digest::SHA;
+           my $version = $Digest::SHA::VERSION;
+           $version =~ s/[^\d.]//g;
+           $version >= 4.00; }
       or do { croak "Must have Digest::SHA 4.00 or later"; };
   }
 
