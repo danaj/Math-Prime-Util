@@ -147,4 +147,5 @@ xt/test-factor-yafu.pl
 xt/test-nextprime-yafu.pl
 xt/test-ispower.pl
 xt/twin_prime_count.t
+xt/nth_twin_prime.t
 .travis.yml

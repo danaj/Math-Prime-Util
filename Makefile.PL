@@ -70,7 +70,7 @@ WriteMakefile1(
                      'Math::Prime::Util::GMP' => 0.16,
                      'Math::BigInt::GMP'      => 0,
                      'Math::MPFR'             => 2.03,
-                     'Digest::SHA'            => 4.00,
+                     'Digest::SHA'            => 5.87,
                    },
                  },
                  test  => {

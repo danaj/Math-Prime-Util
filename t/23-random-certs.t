@@ -11,6 +11,12 @@ use Math::Prime::Util qw/is_prime verify_prime
 
 use Math::BigInt try=>"GMP,Pari";
 
+my $do_st = 1;
+$do_st = 0 unless eval { require Digest::SHA;
+                         my $version = $Digest::SHA::VERSION;
+                         $version =~ s/[^\d.]//g;
+                         $version >= 4.00; };
+
 plan tests => 3*2;
 
 {
@@ -19,7 +25,8 @@ plan tests => 3*2;
   ok( verify_prime($cert), "   with a valid certificate" );
 }
 
-{
+SKIP: {
+  skip "random Shawe-Taylor prime generation requires Digest::SHA",2 unless $do_st;
   my($n,$cert) = random_shawe_taylor_prime_with_cert(80);
   ok( is_prime($n), "Random Shawe-Taylor prime returns a prime" );
   ok( verify_prime($cert), "   with a valid certificate" );
