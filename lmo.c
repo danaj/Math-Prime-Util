@@ -7,7 +7,7 @@
  *
  * Prime counts using the extended Lagarias-Miller-Odlyzko combinatorial method.
  *
- * Copyright (c) 2013 Dana Jacobsen (dana@acm.org)
+ * Copyright (c) 2013-2014 Dana Jacobsen (dana@acm.org)
  * This is free software; you can redistribute it and/or modify it under
  * the same terms as the Perl 5 programming language system itself.
  *
@@ -344,7 +344,7 @@ UV legendre_phi(UV x, UV a)
 
   /* Shortcuts for large values, from R. Andrew Ohana */
   if (a > (x >> 1))  return 1;
-  /* If a > prime_count(2^32), then we can need not be concerned with composite
+  /* If a > prime_count(2^32), then we need not be concerned with composite
    * x values with all factors > 2^32, as x is limited to 64-bit. */
   if (a > 203280221) {  /* prime_count(2**32) */
     UV pc = _XS_LMO_pi(x);
