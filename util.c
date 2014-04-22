@@ -1344,6 +1344,9 @@ UV jordan_totient(UV k, UV n) {
   if (k > 6 || (k > 1 && n >= jordan_overflow[k-2])) return 0;
 
   totient = 1;
+  /* Similar to Euler totient, shortcut even inputs */
+  while ((n & 0x3) == 0) { n >>= 1; totient *= (1<<k); }
+  if ((n & 0x1) == 0) { n >>= 1; totient *= ((1<<k)-1); }
   nfac = factor(n,factors);
   for (i = 0; i < nfac; i++) {
     UV p = factors[i];
