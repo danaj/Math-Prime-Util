@@ -1,34 +1,31 @@
 #!/usr/bin/env perl
 use strict;
 use warnings;
+use Math::Prime::Util qw/is_aks_prime is_prime primes/;
 $| = 1;  # fast pipes
 
-my $limit = shift || 10_000_000;
+my $limit = shift || 2_000_000_000;
+my $nrand = 8000;
 
-use Math::Prime::Util qw/is_aks_prime next_prime/;
+my %isprime = map { $_ => 1 } @{primes(160_000)};
 
-# It doesn't really matter for this use, but try to use independent code for
-# next_prime.  Math::Prime::FastSieve works well.
-my $sieve;
-if (eval { require Math::Prime::FastSieve; Math::Prime::FastSieve->import(); require Math::Prime::FastSieve::Sieve; 1; }) {
-  $sieve = Math::Prime::FastSieve::Sieve->new($limit + 10_000);
-}
-
-if (1) {
-  my $n = 2;
-  my $i = 1;
-  while ($n <= $limit) {
-    print "$n\n" unless $i++ % 1000;
-    die "$n should be prime" unless is_aks_prime($n);
-    my $next = (defined $sieve) ? $sieve->nearest_ge( $n+1 ) : next_prime($n);
-    my $diff = ($next - $n) >> 1;
-    if ($diff > 1) {
-      foreach my $d (1 .. $diff-1) {
-        my $cn = $n + 2*$d;
-        die "$cn should be composite" if is_aks_prime($cn);
-      }
-    }
-    $n = $next;
+print "Testing AKS for all numbers from 1 to 160,000:\n";
+foreach my $n (1 .. 160_000) {
+  print "." unless $n % 2000;
+  if ($isprime{$n}) {
+    die "\n$n is prime\n" unless is_aks_prime($n);
+  } else {
+    die "\n$n is composite\n" if is_aks_prime($n);
   }
-  print "Success to $limit!\n";
+}
+print "\n";
+print "Testing $nrand random numbers from 1 to $limit:\n";
+for (1 .. $nrand) {
+  print "." unless $_ % 100;
+  my $n = 1 + int(rand($limit));
+  if (is_prime($n)) {
+    die "\n$n is prime\n" unless is_aks_prime($n);
+  } else {
+    die "\n$n is composite\n" if is_aks_prime($n);
+  }
 }

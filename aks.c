@@ -82,8 +82,10 @@ static double log_gamma(double x)
 }
 #undef lgamma
 #define lgamma(x) log_gamma(x)
-#else
-/* Naive znorder.  Works well here because limit will be very small. */
+#endif
+
+#if 0
+/* Naive znorder.  Works well if limit is small.  Note arguments.  */
 static UV order(UV r, UV n, UV limit) {
   UV j;
   UV t = 1;
@@ -94,9 +96,6 @@ static UV order(UV r, UV n, UV limit) {
   }
   return j;
 }
-#endif
-
-#if 0
 static void poly_print(UV* poly, UV r)
 {
   int i;
@@ -270,7 +269,7 @@ int _XS_is_aks_prime(UV n)
       if (r > sqrtn)
         return 1;
 #endif
-      if (order(r, n, limit) > limit)
+      if (znorder(n, r) > limit)
         break;
     }
 
@@ -319,6 +318,9 @@ int _XS_is_aks_prime(UV n)
 
   if (verbose) { printf("# aks r = %lu  s = %lu\n", (unsigned long) r, (unsigned long) s); }
 
+  /* Almost every composite will get recognized by the first test.
+   * However, we need to run 's' tests to have the result proven for all n
+   * based on the theorems we have available at this time. */
   for (a = 1; a <= s; a++) {
     if (! test_anr(a, n, r) )
       return 0;

@@ -4,6 +4,8 @@ Revision history for Perl module Math::Prime::Util
 
     - Small improvement to twin_prime_count_approx and nth_twin_prime_approx.
 
+    - Better AKS testing in xt/primality-aks.pl.
+
 
 0.40  2014-04-21
 

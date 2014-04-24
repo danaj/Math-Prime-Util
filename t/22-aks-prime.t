@@ -15,6 +15,12 @@ plan tests =>   6   # range
               + 1*$extra
               + 0;
 
+# Note: AKS testing is *extremely* sparse due to its lack of speed.
+#       This does almost nothing to test whether AKS is working properly.
+# 
+# If you are concerned about AKS correctness, you really need to use
+# the xt/primality-aks.pl test.
+
 ok(!eval { is_aks_prime(undef); }, "is_prime(undef)");
 ok( is_aks_prime(2),  '2 is prime');
 ok(!is_aks_prime(1),  '1 is not prime');
@@ -28,8 +34,6 @@ is( is_aks_prime(877), 1, "is_aks_prime(877) is true" );
 # This test can take a very long time if mulmods are very slow (e.g. on
 # UltraSPARC).  With the B+V improvements this should be fast enough for
 # the little example that we are ok.
-
-#diag "Unfortunately these tests are very slow.";
 
 SKIP: {
   # If we're pure Perl, then this is definitely too slow.
