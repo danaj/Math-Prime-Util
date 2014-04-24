@@ -116,6 +116,7 @@ while (@rns < $num_rns) {
 }
 
 use Benchmark qw/:all/;
+require Math::Prime::Util::PP;
 print "Starting benchmarks, $num_rns $len_rns-digit random numbers...\n";
 
 if (1) {
