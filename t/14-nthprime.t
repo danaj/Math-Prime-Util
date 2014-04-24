@@ -142,7 +142,8 @@ is( nth_twin_prime(17), 239, "239 = 17th twin prime" );
 is( nth_twin_prime(1234), 101207, "101207 = 1234'th twin prime" );
 
 while (my($n, $nthtpc) = each (%ntpcs)) {
-  my $errorp = 100 * abs($nthtpc - nth_twin_prime_approx($n)) / $nthtpc;
+  my $approx = nth_twin_prime_approx($n);
+  my $errorp = 100 * abs($nthtpc - $approx) / $nthtpc;
   my $estr = sprintf "%8.6f%%", $errorp;
-  cmp_ok( $errorp, '<=', 2, "nth_twin_prime_approx($n) is $estr");
+  cmp_ok( $errorp, '<=', 2, "nth_twin_prime_approx($n) is $estr (got $approx, expected ~$nthtpc)");
 }

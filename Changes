@@ -1,5 +1,10 @@
 Revision history for Perl module Math::Prime::Util
 
+0.41  2014-05
+
+    - Small improvement to twin_prime_count_approx and nth_twin_prime_approx.
+
+
 0.40  2014-04-21
 
     [ADDED]
