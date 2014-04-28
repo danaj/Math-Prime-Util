@@ -74,3 +74,5 @@
   (10**13,10**5) takes 2.5x longer, albeit with 6x less memory.
 
 - lucas_sequence with n = 0 or 1
+
+- valuation
