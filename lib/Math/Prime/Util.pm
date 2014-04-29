@@ -626,6 +626,7 @@ sub _generic_factor_exp {
 sub lucas_sequence {
   my($n, $P, $Q, $k) = @_;
   _validate_num($n) || _validate_positive_integer($n);
+  croak("Invalid input to lucas_sequence:  modulus n must be > 1") if $n <= 1;
   _validate_num($k) || _validate_positive_integer($k);
   { my $testP = (!defined $P || $P >= 0) ? $P : -$P;
     _validate_num($testP) || _validate_positive_integer($testP); }

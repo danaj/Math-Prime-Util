@@ -320,6 +320,7 @@ void lucas_seq(UV* Uret, UV* Vret, UV* Qkret, UV n, IV P, IV Q, UV k)
 {
   UV U, V, b, Dmod, Qmod, Pmod, Qk;
 
+  MPUassert(n > 1, "lucas_sequence:  modulus n must be > 1");
   if (k == 0) {
     *Uret = 0;
     *Vret = 2;
