@@ -40,7 +40,7 @@ our @EXPORT_OK =
       random_maurer_prime random_maurer_prime_with_cert
       random_shawe_taylor_prime random_shawe_taylor_prime_with_cert
       primorial pn_primorial consecutive_integer_lcm
-      gcd lcm factor factor_exp all_factors divisors
+      gcd lcm factor factor_exp all_factors divisors valuation
       moebius mertens euler_phi jordan_totient exp_mangoldt liouville
       partitions
       chebyshev_theta chebyshev_psi
@@ -1877,6 +1877,16 @@ follow the semantics of Mathematica, Pari, and Perl 6, re:
 
   lcm(0, n) = 0              Any zero in list results in zero return
   lcm(n,-m) = lcm(n, m)      We use the absolute values
+
+=head2 valuation
+
+  say "$n is divisible by 2 ", valuation($n,2), " times.";
+
+Given integers C<n> and C<k>, returns the numbers of times C<n> is divisible
+by C<k>.  This is a very limited version of the algebraic valuation meaning,
+just applied to integers.
+This corresponds to Pari's C<valuation> function.
+C<0> is returned if C<n> or C<k> is one of the values C<-1>, C<0>, or C<1>.
 
 =head2 moebius
 

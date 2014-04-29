@@ -1257,6 +1257,18 @@ int is_power(UV n, UV a)
   return (ret == 1) ? 0 : ret;
 }
 
+UV valuation(UV n, UV k)
+{
+  UV v = 0;
+  UV kpower = k;
+  if (k < 2 || n < 2) return 0;
+  if (k == 2) return ctz(n);
+  while ( !(n % kpower) ) {
+    kpower *= k;
+    v++;
+  }
+  return v;
+}
 
 /* How many times does 2 divide n? */
 #define padic2(n)  ctz(n)

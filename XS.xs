@@ -790,24 +790,38 @@ znlog(IN SV* sva, IN SV* svg, IN SV* svp)
 
 void
 kronecker(IN SV* sva, IN SV* svb)
+  ALIAS:
+    valuation = 1
   PREINIT:
     int astatus, bstatus, abpositive, abnegative;
   PPCODE:
     astatus = _validate_int(aTHX_ sva, 2);
     bstatus = _validate_int(aTHX_ svb, 2);
-    /* Are both a and b positive? */
-    abpositive = astatus == 1 && bstatus == 1;
-    /* Will both fit in IVs?  We should use a bitmask return. */
-    abnegative = !abpositive
-                 && (astatus != 0 && SvIOK(sva) && !SvIsUV(sva))
-                 && (bstatus != 0 && SvIOK(svb) && !SvIsUV(svb));
-    if (abpositive || abnegative) {
-      UV a = my_svuv(sva);
-      UV b = my_svuv(svb);
-      int k = (abpositive) ? kronecker_uu(a,b) : kronecker_ss(a,b);
-      RETURN_NPARITY(k);
+    if (ix == 0) {
+      /* Are both a and b positive? */
+      abpositive = astatus == 1 && bstatus == 1;
+      /* Will both fit in IVs?  We should use a bitmask return. */
+      abnegative = !abpositive
+                   && (astatus != 0 && SvIOK(sva) && !SvIsUV(sva))
+                   && (bstatus != 0 && SvIOK(svb) && !SvIsUV(svb));
+      if (abpositive || abnegative) {
+        UV a = my_svuv(sva);
+        UV b = my_svuv(svb);
+        int k = (abpositive) ? kronecker_uu(a,b) : kronecker_ss(a,b);
+        RETURN_NPARITY(k);
+      }
+    } else {
+      if (astatus != 0 && bstatus != 0) {
+        UV n = (astatus == -1) ? (UV)(-(my_sviv(sva))) : my_svuv(sva);
+        UV k = (bstatus == -1) ? (UV)(-(my_sviv(svb))) : my_svuv(svb);
+        XSRETURN_UV( valuation(n, k) );
+      }
     }
-    _vcallsub_with_gmp("kronecker");
+    switch (ix) {
+      case 0:  _vcallsub_with_gmp("kronecker");  break;
+      case 1:
+      default: _vcallsub_with_gmp("valuation"); break;
+    }
     return; /* skip implicit PUTBACK */
 
 NV

@@ -83,6 +83,7 @@ plan tests =>  0
              + 2   # ispower
              + 15  # random primes
              + 2   # miller-rabin random
+             + 1   # valuation
              + 1;
 
 # Using GMP makes these tests run about 2x faster on some machines
@@ -133,6 +134,7 @@ use Math::Prime::Util qw/
   random_maurer_prime
   miller_rabin_random
   verify_prime
+  valuation
 /;
 # TODO:  is_strong_lucas_pseudoprime
 #        ExponentialIntegral
@@ -327,6 +329,10 @@ $randprime = random_nbit_prime(80);
 is( miller_rabin_random( $randprime, 20 ), 1, "80-bit prime passes Miller-Rabin with 20 random bases" );
 do { $randprime += 2 } while is_prime($randprime);
 is( miller_rabin_random( $randprime, 40 ), "0", "80-bit composite fails Miller-Rabin with 40 random bases" );
+
+###############################################################################
+
+is( valuation(6**10000-1,5), 5, "valuation(6^10000,5) = 5" );
 
 ###############################################################################
 

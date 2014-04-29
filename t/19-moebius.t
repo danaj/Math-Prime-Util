@@ -6,7 +6,7 @@ use Test::More;
 use Math::Prime::Util
    qw/moebius mertens euler_phi jordan_totient divisor_sum exp_mangoldt
       chebyshev_theta chebyshev_psi carmichael_lambda znorder liouville
-      znprimroot znlog kronecker legendre_phi gcd lcm is_power
+      znprimroot znlog kronecker legendre_phi gcd lcm is_power valuation
      /;
 
 my $extra = defined $ENV{EXTENDED_TESTING} && $ENV{EXTENDED_TESTING};
@@ -261,6 +261,14 @@ if ($use64) {
   push @kroneckers, [-5694706465843977004,9365273357682496999,-1];
 }
 
+my @valuations = (
+  [-4,2, 2],
+  [0,0, 0],
+  [1,0, 0],
+  [96552,6, 3],
+  [1879048192,2, 28],
+);
+
 my @legendre_sums = (
   [ 0,  92372, 0],
   [ 5,  15, 1],
@@ -390,6 +398,7 @@ plan tests => 0 + 1
                 + scalar(@mult_orders)
                 + scalar(@znlogs)
                 + scalar(@legendre_sums)
+                + scalar(@valuations)
                 + scalar(keys %powers)
                 + scalar(keys %primroots) + 2
                 + scalar(keys %jordan_totients)
@@ -593,6 +602,12 @@ while (my($e, $vals) = each (%powers)) {
     push @fail, $val unless is_power($val) == $e;
   }
   ok( @fail == 0, "is_power returns $e for " . join(",",@fail) );
+}
+
+###### valuation
+foreach my $r (@valuations) {
+  my($n, $k, $exp) = @$r;
+  is( valuation($n, $k), $exp, "valuation($n,$k) = $exp" );
 }
 
 sub cmp_closeto {

@@ -347,6 +347,14 @@ sub is_power {
   _validate_positive_integer($a) if defined $a;
   return Math::Prime::Util::PP::is_power($n, $a);
 }
+sub valuation {
+  my($n, $k) = @_;
+  $n = -$n if defined $n && $n < 0;
+  $k = -$k if defined $k && $k < 0;
+  _validate_positive_integer($n);
+  _validate_positive_integer($k);
+  return Math::Prime::Util::PP::valuation($n, $k);
+}
 
 #############################################################################
 

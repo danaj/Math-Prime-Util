@@ -1521,6 +1521,17 @@ sub is_power {
   0;
 }
 
+sub valuation {
+  my($n, $k) = @_;
+  return 0 if $n < 2 || $k < 2;
+  my $v = 0;
+  while ( !($n % $k) ) {
+    $n /= $k;
+    $v++;
+  }
+  $v;
+}
+
 
 sub is_pseudoprime {
   my($n, $base) = @_;

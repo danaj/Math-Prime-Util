@@ -2,6 +2,12 @@ Revision history for Perl module Math::Prime::Util
 
 0.41  2014-05
 
+    [ADDED]
+
+    - valuation(n,k)                         how many times does k divide n?
+
+    [FUNCTIONALITY AND PERFORMANCE]
+
     - Small improvement to twin_prime_count_approx and nth_twin_prime_approx.
 
     - Better AKS testing in xt/primality-aks.pl.

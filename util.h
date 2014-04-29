@@ -27,6 +27,7 @@ extern UV  nth_twin_prime_approx(UV n);
 
 extern int powerof(UV n);
 extern int is_power(UV n, UV a);
+extern UV valuation(UV n, UV k);
 
 extern signed char* _moebius_range(UV low, UV high);
 extern UV*    _totient_range(UV low, UV high);
