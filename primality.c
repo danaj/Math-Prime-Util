@@ -331,7 +331,13 @@ void lucas_seq(UV* Uret, UV* Vret, UV* Qkret, UV n, IV P, IV Q, UV k)
   Qmod = (Q < 0)  ?  (UV)(Q + (IV)n)  :  (UV)Q;
   Pmod = (P < 0)  ?  (UV)(P + (IV)n)  :  (UV)P;
   Dmod = submod( mulmod(Pmod, Pmod, n), mulmod(4, Qmod, n), n);
-  MPUassert(Dmod != 0, "lucas_seq: D is 0");
+  if (Dmod == 0) {
+    b = Pmod >> 1;
+    *Uret = mulmod(k, powmod(b, k-1, n), n);
+    *Vret = mulmod(2, powmod(b, k, n), n);
+    *Qkret = powmod(Qmod, k, n);
+    return;
+  }
   U = 1;
   V = Pmod;
   Qk = Qmod;

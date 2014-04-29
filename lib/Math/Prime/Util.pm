@@ -1859,9 +1859,8 @@ Computes C<U_k>, C<V_k>, and C<Q_k> for the Lucas sequence defined by
 C<P>,C<Q>, modulo C<n>.  The modular Lucas sequence is used in a
 number of primality tests and proofs.
 The following conditions must hold:
-C< D = P*P - 4*Q != 0>  ;
-C< 0 E<lt> P E<lt> n>  ;
-C< Q E<lt> n>  ;
+C< |P| E<lt> n>  ;
+C< |Q| E<lt> n>  ;
 C< k E<gt>= 0>  ;
 C< n E<gt>= 2>.
 

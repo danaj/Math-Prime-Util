@@ -12,6 +12,9 @@ Revision history for Perl module Math::Prime::Util
 
     - Better AKS testing in xt/primality-aks.pl.
 
+    - Loosen requirements of lucas_sequence.  More useful for general seqs.
+      Add tests for some common sequences.
+
 
 0.40  2014-04-21
 

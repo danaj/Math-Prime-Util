@@ -1879,8 +1879,8 @@ sub lucas_sequence {
 
   croak "lucas_sequence: n must be >= 2" if $n < 2;
   croak "lucas_sequence: k must be >= 0" if $k < 0;
-  croak "lucas_sequence: P out of range" if $P < 0 || $P >= $n;
-  croak "lucas_sequence: Q out of range" if $Q >= $n;
+  croak "lucas_sequence: P out of range" if abs($P) >= $n;
+  croak "lucas_sequence: Q out of range" if abs($Q) >= $n;
 
   $n = Math::BigInt->new("$n") unless ref($n) eq 'Math::BigInt';
 
@@ -1888,7 +1888,13 @@ sub lucas_sequence {
   $P = $ZERO+$P unless ref($P) eq 'Math::BigInt';
   $Q = $ZERO+$Q unless ref($Q) eq 'Math::BigInt';
   my $D = $P*$P - BTWO*BTWO*$Q;
-  croak "lucas_sequence: D is zero" if $D->is_zero;
+  if ($D->is_zero) {
+    my $S = ($ZERO+$P) >> 1;
+    my $U = $S->copy->bmodpow($k-1,$n)->bmul($k)->bmod($n);
+    my $V = $S->copy->bmodpow($k,$n)->bmul(BTWO)->bmod($n);
+    my $Qk = ($ZERO+$Q)->bmodpow($k, $n);
+    return ($U, $V, $Qk);
+  }
   my $U = BONE->copy;
   my $V = $P->copy;
   my $Qk = $Q->copy;
