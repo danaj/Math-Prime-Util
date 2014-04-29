@@ -215,6 +215,20 @@ if      ($type eq 'Abundant') {
   }
 } elsif ($type eq 'Primorials') {
   print join " ", map { pn_primorial($_) } 0..$count-1;
+} elsif ($type eq 'PythagoreanHypots') {
+  my $i = 2;
+  if ($arg eq 'primitive') {
+    while (@n < $count) {
+      $i++ while scalar grep { 0 != ($_-1) % 4 } factor($i);
+      push @n, $i++;
+    }
+  } else {
+    while (@n < $count) {
+      $i++ while !scalar grep { 0 == ($_-1) % 4 } factor($i);
+      push @n, $i++;
+    }
+  }
+  print join " ", @n;
 } elsif ($type eq 'SophieGermainPrimes') {
   my $estimate = sg_upper_bound($count);
   my $numfound = 0;
@@ -309,12 +323,11 @@ if      ($type eq 'Abundant') {
 # Odd
 # Palindromes
 # Perrin
-# PisanoPeriod
+# PisanoPeriod                 MNS uses factoring
 # PisanoPeriodSteps
 # Polygonal
 # Pronic
 # ProthNumbers
-# PythagoranHypots
 # RadixConversion
 # RadixWithoutDigit
 # ReReplace
