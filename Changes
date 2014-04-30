@@ -8,6 +8,9 @@ Revision history for Perl module Math::Prime::Util
 
     [FUNCTIONALITY AND PERFORMANCE]
 
+    - New modular inverse from W. Izykowski, from Arazi (1994).  This is a
+      substantial (10-20%) speedup for 64-bit primality testing.
+
     - Small improvement to twin_prime_count_approx and nth_twin_prime_approx.
 
     - Better AKS testing in xt/primality-aks.pl.

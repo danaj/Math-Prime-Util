@@ -18,7 +18,7 @@ static const UV mr_bases_const2[1] = {2};
   Code inside USE_MONT_PRIMALITY is Montgomery math and efficient M-R from
   Wojciech Izykowski.  See:  https://github.com/wizykowski/miller-rabin
 
-Copyright (c) 2013, Wojciech Izykowski
+Copyright (c) 2013-2014, Wojciech Izykowski
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -68,28 +68,20 @@ static INLINE UV mont_powmod64(uint64_t a, uint64_t k, uint64_t one, uint64_t n,
   }
   return t;
 }
+/* Returns -a^-1 mod 2^64.  From B. Arazi "On Primality Testing Using Purely
+ * Divisionless Operations", Computer Journal (1994) 37 (3): 219-222, Proc 5 */
 static INLINE uint64_t modular_inverse64(const uint64_t a)
 {
-  uint64_t u,x,w,z,q;
-
-  x = 1; z = a;
-
-  q = (-z)/z + 1;  /* = 2^64 / z                 */
-  u = - q;         /* = -q * x                   */
-  w = - q * z;     /* = b - q * z = 2^64 - q * z */
-
-  /* after first iteration all variables are 64-bit */
-
-  while (w) {
-    if (w < z) {
-      q = u; u = x; x = q; /* swap(u, x) */
-      q = w; w = z; z = q; /* swap(w, z) */
+  uint64_t S = 1, J = 0;
+  int i;
+  for (i = 0; i < 64; i++) {
+    if (S & 1) {
+      J |= (1ULL << i);
+      S += a;
     }
-    q = w / z;
-    u -= q * x;
-    w -= q * z;
+    S >>= 1;
   }
-  return x;
+  return J;
 }
 static INLINE uint64_t compute_modn64(const uint64_t n)
 {
@@ -118,7 +110,7 @@ static INLINE uint64_t compute_2_65_mod_n(const uint64_t n, const uint64_t modn)
 static int monty_mr64(const uint64_t n, const UV* bases, int cnt)
 {
   int i, j, t;
-  const uint64_t npi = modular_inverse64(-((int64_t)n));
+  const uint64_t npi = modular_inverse64(n);
   const uint64_t r = compute_modn64(n);
   uint64_t u = n - 1;
   const uint64_t nr = n - r;
@@ -239,7 +231,7 @@ int _XS_BPSW(UV const n)
     return    _XS_miller_rabin(n, mr_bases_const2, 1)
            && _XS_is_almost_extra_strong_lucas_pseudoprime(n,1);
   } else {
-    const uint64_t npi = modular_inverse64(-((int64_t)n));
+    const uint64_t npi = modular_inverse64(n);
     const uint64_t montr = compute_modn64(n);
     const uint64_t mont2 = compute_2_65_mod_n(n, montr);
     uint64_t u = n-1;
@@ -445,7 +437,7 @@ int _XS_is_lucas_pseudoprime(UV n, int strength)
 
 #if USE_MONT_PRIMALITY
   if (n > UVCONST(4294967295)) {
-    const uint64_t npi = modular_inverse64(-((int64_t)n));
+    const uint64_t npi = modular_inverse64(n);
     const uint64_t mont1 = compute_modn64(n);
     const uint64_t mont2 = compute_2_65_mod_n(n, mont1);
     const uint64_t montP = (P == 1) ? mont1
@@ -604,7 +596,7 @@ int _XS_is_almost_extra_strong_lucas_pseudoprime(UV n, UV increment)
 
 #if USE_MONT_PRIMALITY
   if (n > UVCONST(4294967295)) {
-    const uint64_t npi = modular_inverse64(-((int64_t)n));
+    const uint64_t npi = modular_inverse64(n);
     const uint64_t montr = compute_modn64(n);
     const uint64_t mont2 = compute_2_65_mod_n(n, montr);
     const uint64_t montP = compute_a_times_2_64_mod_n(P, n, montr);
@@ -689,7 +681,7 @@ int _XS_is_frobenius_underwood_pseudoprime(UV n)
 
 #if USE_MONT_PRIMALITY
   if (n > UVCONST(4294967295)) {
-    const uint64_t npi = modular_inverse64(-((int64_t)n));
+    const uint64_t npi = modular_inverse64(n);
     const uint64_t mont1 = compute_modn64(n);
     const uint64_t mont2 = compute_2_65_mod_n(n, mont1);
     const uint64_t mont5 = compute_a_times_2_64_mod_n(5, n, mont1);
