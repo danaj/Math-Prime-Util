@@ -212,10 +212,8 @@ int _XS_miller_rabin(UV const n, const UV *bases, int nbases)
   if ((n & 1) == 0) return 0;
 
 #if USE_MONT_PRIMALITY
-  if (n >= UVCONST(4294967295))
-    return monty_mr64((uint64_t)n, bases, nbases);
-#endif
-
+  return monty_mr64((uint64_t)n, bases, nbases);
+#else
   while (!(d&1)) {  s++;  d >>= 1;  }
 
   for (b = 0; b < nbases; b++) {
@@ -238,6 +236,7 @@ int _XS_miller_rabin(UV const n, const UV *bases, int nbases)
     if (r >= s)  return 0;
   }
   return 1;
+#endif
 }
 
 int _XS_BPSW(UV const n)
@@ -249,10 +248,7 @@ int _XS_BPSW(UV const n)
   return    _XS_miller_rabin(n, mr_bases_const2, 1)
          && _XS_is_almost_extra_strong_lucas_pseudoprime(n,1);
 #else
-  if (n < UVCONST(4294967295)) {
-    return    _XS_miller_rabin(n, mr_bases_const2, 1)
-           && _XS_is_almost_extra_strong_lucas_pseudoprime(n,1);
-  } else {
+  {
     const uint64_t npi = modular_inverse64(n);
     const uint64_t montr = compute_modn64(n);
     const uint64_t mont2 = compute_2_65_mod_n(n, montr);
@@ -458,7 +454,7 @@ int _XS_is_lucas_pseudoprime(UV n, int strength)
     while ( (d & 1) == 0 ) {  s++;  d >>= 1; }
 
 #if USE_MONT_PRIMALITY
-  if (n > UVCONST(4294967295)) {
+  {
     const uint64_t npi = modular_inverse64(n);
     const uint64_t mont1 = compute_modn64(n);
     const uint64_t mont2 = compute_2_65_mod_n(n, mont1);
@@ -541,8 +537,7 @@ int _XS_is_lucas_pseudoprime(UV n, int strength)
     }
     return 0;
   }
-#endif
-
+#else
   lucas_seq(&U, &V, &Qk, n, P, Q, d);
 
   if (strength == 0) {
@@ -573,14 +568,17 @@ int _XS_is_lucas_pseudoprime(UV n, int strength)
     }
   }
   return 0;
+#endif
 }
 
 /* A generalization of Pari's shortcut to the extra-strong Lucas test.
+ *
+ * This only calculates and tests V, which means less work, but it does result
+ * in a few more pseudoprimes than the full extra-strong test.
+ *
  * I've added a gcd check at the top, which needs to be done and also results
  * in fewer pseudoprimes.  Pari always does trial division to 100 first so
- * is unlikely to come up there.  This only calculate V, which can be done
- * faster, but that means we have more pseudoprimes than the standard
- * extra-strong test.
+ * is unlikely to come up there.
  *
  * increment:  1 for Baillie OEIS, 2 for Pari.
  *
@@ -617,7 +615,7 @@ int _XS_is_almost_extra_strong_lucas_pseudoprime(UV n, UV increment)
   { UV v = d; b = 0; while (v >>= 1) b++; }
 
 #if USE_MONT_PRIMALITY
-  if (n > UVCONST(4294967295)) {
+  {
     const uint64_t npi = modular_inverse64(n);
     const uint64_t montr = compute_modn64(n);
     const uint64_t mont2 = compute_2_65_mod_n(n, montr);
@@ -646,7 +644,7 @@ int _XS_is_almost_extra_strong_lucas_pseudoprime(UV n, UV increment)
     }
     return 0;
   }
-#endif
+#else
   W = mulsubmod(P, P, 2, n);
   V = P;
   while (b--) {
@@ -669,6 +667,7 @@ int _XS_is_almost_extra_strong_lucas_pseudoprime(UV n, UV increment)
       return 0;
   }
   return 0;
+#endif
 }
 
 /*
@@ -702,7 +701,7 @@ int _XS_is_frobenius_underwood_pseudoprime(UV n)
   { UV v = np1; len = 1;  while (v >>= 1) len++; }
 
 #if USE_MONT_PRIMALITY
-  if (n > UVCONST(4294967295)) {
+  {
     const uint64_t npi = modular_inverse64(n);
     const uint64_t mont1 = compute_modn64(n);
     const uint64_t mont2 = compute_2_65_mod_n(n, mont1);
@@ -740,7 +739,7 @@ int _XS_is_frobenius_underwood_pseudoprime(UV n)
     }
     return (a == 0 && b == result);
   }
-#endif
+#else
   a = 1;
   b = 2;
 
@@ -775,6 +774,7 @@ int _XS_is_frobenius_underwood_pseudoprime(UV n)
   if (a == 0 && b == result)
     return 1;
   return 0;
+#endif
 }
 
 
