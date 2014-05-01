@@ -46,16 +46,14 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 static INLINE uint64_t mont_prod64(uint64_t a, uint64_t b, uint64_t n, uint64_t npi)
 {
   uint64_t t_hi, t_lo, m, mn_hi, mn_lo, u;
-  int carry;
   /* t_hi * 2^64 + t_lo = a*b */
   asm("mulq %3" : "=a"(t_lo), "=d"(t_hi) : "a"(a), "rm"(b));
   m = t_lo * npi;
   /* mn_hi * 2^64 + mn_lo = m*n */
   asm("mulq %3" : "=a"(mn_lo), "=d"(mn_hi) : "a"(m), "rm"(n));
-  carry = t_lo + mn_lo < t_lo ? 1 : 0;
-  u = t_hi + mn_hi + carry;
-  if (u < t_hi) return u-n;
-  return u >= n ? u-n : u;
+  u = t_hi + mn_hi;
+  if (t_lo + mn_lo < t_lo) u++;
+  return (u < t_hi || u >= n)  ?  u-n  :  u;
 }
 #define mont_square64(a, n, npi)  mont_prod64(a, a, n, npi)
 static INLINE UV mont_powmod64(uint64_t a, uint64_t k, uint64_t one, uint64_t n, uint64_t npi)
@@ -72,6 +70,7 @@ static INLINE UV mont_powmod64(uint64_t a, uint64_t k, uint64_t one, uint64_t n,
  * Divisionless Operations", Computer Journal (1994) 37 (3): 219-222, Proc 5 */
 static INLINE uint64_t modular_inverse64(const uint64_t a)
 {
+#if 0
   uint64_t S = 1, J = 0;
   int i;
   for (i = 0; i < 64; i++) {
@@ -81,6 +80,29 @@ static INLINE uint64_t modular_inverse64(const uint64_t a)
     }
     S >>= 1;
   }
+#else
+  /* 2 at a time. */
+  uint64_t S = 1, J = 0;
+  const uint64_t a1p = (a>>1)+1, a2 = a>>2, a2p = a2+1;
+  int i;
+  if (a & 2) {
+    const uint64_t tab[4] = { 0,  a2p,  a1p,  a1p+a2p };
+    for (i = 0; i < 32; i++) {
+      uint64_t S2 = S >> 2;
+      int index = S & 3;
+      J |= (uint64_t)index << (2 * i);
+      S = S2 + tab[index];
+    }
+  } else {
+    const uint64_t tab[4] = { 0,  a1p+a2,  a1p,  a2p };
+    for (i = 0; i < 32; i++) {
+      uint64_t S2 = S >> 2;
+      int index = S & 3;
+      J |= (uint64_t)((4-index)&3) << (2 * i);
+      S = S2 + tab[index];
+    }
+  }
+#endif
   return J;
 }
 static INLINE uint64_t compute_modn64(const uint64_t n)
