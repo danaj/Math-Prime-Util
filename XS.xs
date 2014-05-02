@@ -1115,7 +1115,7 @@ forcomposites (SV* block, IN SV* svbeg, IN SV* svend = 0)
       /* Find the two primes that bound their interval. */
       /* If beg or end are >= max_prime, then this will die. */
       prevprime = prev_prime(beg);
-      nextprime = next_prime(end);
+      nextprime = (end >= MPU_MAX_PRIME) ? MPU_MAX_PRIME : next_prime(end);
       ctx = start_segment_primes(beg, nextprime, &segment);
       while (next_segment_primes(ctx, &seg_base, &seg_low, &seg_high)) {
         START_DO_FOR_EACH_SIEVE_PRIME( segment, seg_low - seg_base, seg_high - seg_base ) {
@@ -1128,11 +1128,13 @@ forcomposites (SV* block, IN SV* svbeg, IN SV* svend = 0)
         } END_DO_FOR_EACH_SIEVE_PRIME
       }
       end_segment_primes(ctx);
-      MPUassert( nextprime >= end, "composite sieve skipped end numbers" );
+      beg = nextprime + 1;
+      if (beg != MPU_MAX_PRIME+1)
+        MPUassert( beg >= end, "composite sieve skipped end numbers" );
       FIX_MULTICALL_REFCOUNT;
       POP_MULTICALL;
     }
-    else
+    /* Fall through to handle the edge case */
 #endif
     if (beg <= end) {
       beg = (beg <= 4) ? 3 : beg-1;
