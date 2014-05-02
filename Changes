@@ -23,6 +23,8 @@ Revision history for Perl module Math::Prime::Util
     - Loosen requirements of lucas_sequence.  More useful for general seqs.
       Add tests for some common sequences.
 
+    - forcomposites handles beg and end near ~0.
+
 
 0.40  2014-04-21
 
