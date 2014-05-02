@@ -16,9 +16,6 @@
 #define FUNC_clz 1
 #include "util.h"
 
-/* factor will do trial division through this prime index, must be in table */
-#define TRIAL_TO_PRIME 84
-
 /*
  * You need to remember to use UV for unsigned and IV for signed types that
  * are large enough to hold our data.
@@ -67,7 +64,8 @@ int factor(UV n, UV *factors)
 
     if (f*f <= n) {
       UV sp = 3;
-      while (++sp < TRIAL_TO_PRIME) {
+      UV const lastsp = (n < 20000000)  ?  NPRIMES_SMALL-1  :  83;
+      while (++sp < lastsp) {
         f = primes_small[sp];
         if (f*f > n) break;
         while ( (n%f) == 0 ) {

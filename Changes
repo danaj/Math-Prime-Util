@@ -13,6 +13,9 @@ Revision history for Perl module Math::Prime::Util
       changes in the Montgomery math section -- an improvement to mont_prod64
       and using a new modular inverse from W. Izykowski based on Arazi (1994).
 
+    - factoring small inputs (n < 20M) is ~10% faster, which speeds up some
+      misc functions (e.g. euler_phi, divisor_sum) for small inputs.
+
     - Small improvement to twin_prime_count_approx and nth_twin_prime_approx.
 
     - Better AKS testing in xt/primality-aks.pl.
