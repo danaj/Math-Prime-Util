@@ -1460,19 +1460,13 @@ UV znprimroot(UV n) {
   if (n % 4 == 0)  return 0;
   if (is_prob_prime(n)) {
     phi = n-1;
-  } else {  /* Calculate Totient and Carmichael Lambda at same time */
-    UV lambda = 1;
-    nfactors = factor_exp(n, fac, exp);
-    phi = 1;
-    for (i = 0; i < nfactors; i++) {
-      UV pk = fac[i]-1;
-      for (j = 1; j < exp[i]; j++)
-        pk *= fac[i];
-      phi *= pk;
-      if (i == 0 && fac[0] == 2 && exp[0] > 2)  pk >>= 1;
-      lambda = lcm_ui(lambda, pk);
-    }
-    if (phi != lambda) return 0; /* prim root exists only if phi(n) = CL(n) */
+  } else {  /* prim root exists if n is 2, 4, p^a, or 2(p^a) for odd prime p */
+    if (n & 0x3) nfactors = factor_exp( (n&1) ? n : n>>1, fac, exp);
+    else         nfactors = 0;
+    if (nfactors != 1) return 0;
+    phi = fac[0]-1;  /* n = p^a for odd prime p.  Calculate totient. */
+    for (i = 1; i < exp[0]; i++)
+      phi *= fac[0];
   }
   nfactors = factor_exp(phi, fac, exp);
   for (i = 0; i < nfactors; i++)
