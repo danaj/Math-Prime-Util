@@ -2899,7 +2899,7 @@ Here is the right way to do PE problem 69 (under 0.03s):
   $n++ while pn_primorial($n+1) < 1000000;
   say pn_primorial($n);
 
-Project Euler, problem 187, stupid brute force solution, ~3 minutes:
+Project Euler, problem 187, stupid brute force solution, 2 to 3 minutes:
 
   use Math::Prime::Util qw/forcomposites factor/;
   my $nsemis = 0;
@@ -2907,10 +2907,11 @@ Project Euler, problem 187, stupid brute force solution, ~3 minutes:
   say $nsemis;
 
 Here is one of the best ways for PE187:  under 20 milliseconds from the
-command line.  This is faster than Mathematica until C<10^13>.
+command line.  Much faster than Pari, and competitive with Mathematica.
 
   use Math::Prime::Util qw/forprimes prime_count/;
-  my $limit = shift || int(10**8)-1;
+  my $limit = shift || int(10**8);
+  $limit--;
   my ($sum, $pc) = (0, 1);
   forprimes {
     $sum += prime_count(int($limit/$_)) + 1 - $pc++;

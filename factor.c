@@ -61,24 +61,32 @@ int factor(UV n, UV *factors)
     while ( (n & 1) == 0 ) { factors[nfactors++] = 2; n /= 2; }
     while ( (n % 3) == 0 ) { factors[nfactors++] = 3; n /= 3; }
     while ( (n % 5) == 0 ) { factors[nfactors++] = 5; n /= 5; }
+  }
 
-    if (f*f <= n) {
-      UV sp = 3;
-      UV const lastsp = (n < 20000000)  ?  NPRIMES_SMALL-1  :  83;
-      while (++sp < lastsp) {
-        f = primes_small[sp];
+  if (f*f <= n) {
+    UV sp = 4, lastsp = 83;
+    while (sp < lastsp) {            /* Trial division from 7 to 421 */
+      if (f*f > n) break;
+      while ( (n%f) == 0 ) {
+        factors[nfactors++] = f;
+        n /= f;
+      }
+      f = primes_small[++sp];
+    }
+    /* If n is small and still composite, finish it here */
+    if (n < 2011*2011 && f*f <= n) {  /* Trial division from 431 to 2003 */
+      while (sp < NPRIMES_SMALL) {
         if (f*f > n) break;
         while ( (n%f) == 0 ) {
           factors[nfactors++] = f;
           n /= f;
         }
+        f = primes_small[++sp];
       }
-      f = primes_small[sp];
     }
   }
-  if (n < f*f) {
-    if (n != 1)
-      factors[nfactors++] = n;
+  if (f*f > n) {
+    if (n != 1) factors[nfactors++] = n;
     return nfactors;
   }
   /* Perfect squares and cubes.  Factor root only once. */
