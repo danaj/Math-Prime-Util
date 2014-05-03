@@ -196,6 +196,17 @@ while (1) {
 
   # TODO: carmichael lambda?  Pari doesn't have it.
 
+  # TODO: if we ever export out modular inverse, here's a test:
+  #    use Math::Pari qw/PARI lift/;
+  #    for (1..1000) {
+  #       my $p = random_nbit_prime(64);
+  #       for $i (2..100) {
+  #         my $mpu = znorder($i,$p);
+  #         my $pari = lift(PARI "Mod(1/$i,$p)");
+  #         die "$i $p" unless $pari == $mpu;
+  #       }
+  #     }
+
   { my $m = int(rand($n-1));
     my $mn = PARI "Mod($m,$n)";
     my $order = znorder($m, $n);

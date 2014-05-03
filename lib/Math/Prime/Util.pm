@@ -1165,9 +1165,9 @@ Objects can be passed to functions, and allow early loop exits.
   forcomposites { say } 2000,2020;
 
 Given a block and either an end number or a start and end pair, calls the
-block for each composite in the inclusive range.  The composites are the
-numbers greater than 1 which are not prime:
-C<4, 6, 8, 9, 10, 12, 14, 15, ...>
+block for each composite in the inclusive range.  The composites,
+L<OEIS A002808|http://oeis.org/A002808>, are the numbers greater than 1
+which are not prime:  C<4, 6, 8, 9, 10, 12, 14, 15, ...>
 
 
 =head2 fordivisors

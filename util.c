@@ -1481,38 +1481,18 @@ UV znprimroot(UV n) {
   return 0;
 }
 
-/* Calculate 1/a mod p.  From William Hart. */
-UV modinverse(UV a, UV p) {
-  IV u1 = 1, u3 = a;
-  IV v1 = 0, v3 = p;
-  IV t1 = 0, t3 = 0;
-  IV quot;
-  while (v3) {
-    quot = u3 - v3;
-    if (u3 < (v3<<2)) {
-      if (quot < v3) {
-        if (quot < 0) {
-          t1 = u1; u1 = v1; v1 = t1;
-          t3 = u3; u3 = v3; v3 = t3;
-        } else {
-          t1 = u1 - v1; u1 = v1; v1 = t1;
-          t3 = u3 - v3; u3 = v3; v3 = t3;
-        }
-      } else if (quot < (v3<<1)) {
-        t1 = u1 - (v1<<1); u1 = v1; v1 = t1;
-        t3 = u3 - (v3<<1); u3 = v3; v3 = t3;
-      } else {
-        t1 = u1 - v1*3; u1 = v1; v1 = t1;
-        t3 = u3 - v3*3; u3 = v3; v3 = t3;
-      }
-    } else {
-      quot = u3 / v3;
-      t1 = u1 - v1*quot; u1 = v1; v1 = t1;
-      t3 = u3 - v3*quot; u3 = v3; v3 = t3;
-    }
- }
- if (u1 < 0) u1 += p;
- return u1;
+/* Calculate 1/a mod n. */
+UV modinverse(UV a, UV n) {
+  IV t = 0;  UV nt = 1;
+  UV r = n;  UV nr = a;
+  while (nr != 0) {
+    UV quot = r / nr;
+    { UV tmp = nt;  nt = t - quot*nt;  t = tmp; }
+    { UV tmp = nr;  nr = r - quot*nr;  r = tmp; }
+  }
+  if (r > 1) return 1;  /* No inverse */
+  if (t < 0) t += n;
+  return t;
 }
 
 UV divmod(UV a, UV b, UV n) {   /* a / b  mod n */
