@@ -40,7 +40,7 @@ our @EXPORT_OK =
       random_maurer_prime random_maurer_prime_with_cert
       random_shawe_taylor_prime random_shawe_taylor_prime_with_cert
       primorial pn_primorial consecutive_integer_lcm
-      gcd lcm factor factor_exp all_factors divisors valuation
+      gcd lcm factor factor_exp all_factors divisors valuation invmod
       moebius mertens euler_phi jordan_totient exp_mangoldt liouville
       partitions
       chebyshev_theta chebyshev_psi
@@ -1877,6 +1877,14 @@ follow the semantics of Mathematica, Pari, and Perl 6, re:
 
   lcm(0, n) = 0              Any zero in list results in zero return
   lcm(n,-m) = lcm(n, m)      We use the absolute values
+
+=head invmod
+
+  say "The inverse of 42 mod 2017 = ", invmod(42,2017);
+
+Given two integers C<a> and C<n>, return the inverse of C<a> modulo C<n>.
+If not defined, undef is returned.  If defined, then multiplying the return
+value by C<a>, modulo C<n>, will equal 1.
 
 =head2 valuation
 

@@ -321,6 +321,9 @@ sub gcd {
 sub lcm {
   return Math::Prime::Util::PP::lcm(@_);
 }
+sub invmod {
+  return Math::Prime::Util::PP::invmod(@_);
+}
 
 sub legendre_phi {
   my($x, $a) = @_;

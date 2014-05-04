@@ -1490,7 +1490,7 @@ UV modinverse(UV a, UV n) {
     { UV tmp = nt;  nt = t - quot*nt;  t = tmp; }
     { UV tmp = nr;  nr = r - quot*nr;  r = tmp; }
   }
-  if (r > 1) return 1;  /* No inverse */
+  if (r > 1) return 0;  /* No inverse */
   if (t < 0) t += n;
   return t;
 }

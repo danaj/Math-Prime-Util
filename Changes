@@ -5,6 +5,7 @@ Revision history for Perl module Math::Prime::Util
     [ADDED]
 
     - valuation(n,k)                         how many times does k divide n?
+    - invmod(a,n)                            inverse of a modulo n
 
     [FUNCTIONALITY AND PERFORMANCE]
 

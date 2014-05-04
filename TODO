@@ -72,3 +72,5 @@
 - We don't use legendre_phi for other functions any more, but it'd be nice
   to speed it up using some ideas from the Ohana 2011 SAGE branch.  For example
   (10**13,10**5) takes 2.5x longer, albeit with 6x less memory.
+
+- tests for invmod, inc negatives, undef, non-numeric, high-bit, and no inv.

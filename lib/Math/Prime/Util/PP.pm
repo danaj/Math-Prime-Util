@@ -1484,6 +1484,25 @@ sub lcm {
   $lcm = _bigint_to_int($lcm) if $lcm->bacmp(''.~0) <= 0;
   return $lcm;
 }
+sub invmod {
+  my($a,$n) = @_;
+  if ($n > (~0>>1)) {
+    my $invmod = Math::BigInt->new("$a")->bmodinv($n);
+    return if !defined $invmod || $invmod->is_nan;
+    $invmod = _bigint_to_int($invmod) if $invmod->bacmp(''.~0) <= 0;
+    return $invmod;
+  }
+  my($t,$nt,$r,$nr) = (0, 1, $n, $a);
+  use integer;
+  while ($nr != 0) {
+    my $quot = int($r/$nr);
+    ($nt,$t) = ($t-$quot*$nt,$nt);
+    ($nr,$r) = ($r-$quot*$nr,$nr);
+  }
+  return if $r > 1;
+  $t += $n if $t < 0;
+  $t;
+}
 
 # no validation, x is allowed to be negative, y must be >= 0
 sub _gcd_ui {

@@ -77,9 +77,21 @@ foreach my $n (0 .. $small) {
 
   { my $m = int(rand($n-1));
     my $mn = PARI "Mod($m,$n)";
+    my $invmod = invmod($m, $n);
+    if (defined $invmod) {
+      die "invmod($m, $n)" unless Math::Pari::lift(PARI "Mod(1/$m,$n)") == $invmod;
+    } else {
+      eval { PARI "Mod(1/$m,$n)" };
+      die "invmod($m, $n) defined in Pari" unless $@ =~ /impossible inverse/
+        || ($m == 0 && $@ =~ /division by zero/);
+    }
+  }
+
+  { my $m = int(rand($n-1));
+    my $mn = PARI "Mod($m,$n)";
     my $order = znorder($m, $n);
     if (defined $order) {
-      die "znorder($m, $n)" unless Math::Pari::znorder($mn) == znorder($m,$n);
+      die "znorder($m, $n)" unless Math::Pari::znorder($mn) == $order
     } else {
       eval { Math::Pari::znorder($mn); };
       die "znorder($m, $n) defined in Pari" unless $@ =~ /not an element/;
@@ -196,22 +208,23 @@ while (1) {
 
   # TODO: carmichael lambda?  Pari doesn't have it.
 
-  # TODO: if we ever export out modular inverse, here's a test:
-  #    use Math::Pari qw/PARI lift/;
-  #    for (1..1000) {
-  #       my $p = random_nbit_prime(64);
-  #       for $i (2..100) {
-  #         my $mpu = znorder($i,$p);
-  #         my $pari = lift(PARI "Mod(1/$i,$p)");
-  #         die "$i $p" unless $pari == $mpu;
-  #       }
-  #     }
+  { my $m = int(rand($n-1));
+    my $mn = PARI "Mod($m,$n)";
+    my $invmod = invmod($m, $n);
+    if (defined $invmod) {
+      die "invmod($m, $n)" unless Math::Pari::lift(PARI "Mod(1/$m,$n)") == $invmod;
+    } else {
+      eval { PARI "Mod(1/$m,$n)" };
+      die "invmod($m, $n) defined in Pari" unless $@ =~ /impossible inverse/
+        || ($m == 0 && $@ =~ /division by zero/);
+    }
+  }
 
   { my $m = int(rand($n-1));
     my $mn = PARI "Mod($m,$n)";
     my $order = znorder($m, $n);
     if (defined $order) {
-      die "znorder($m, $n)" unless Math::Pari::znorder($mn) == znorder($m,$n);
+      die "znorder($m, $n)" unless Math::Pari::znorder($mn) == $order;
     } else {
       eval { Math::Pari::znorder($mn); };
       die "znorder($m, $n) defined in Pari" unless $@ =~ /not an element/;
