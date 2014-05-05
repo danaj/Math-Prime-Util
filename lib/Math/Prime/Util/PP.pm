@@ -1561,6 +1561,7 @@ sub is_pseudoprime {
   _validate_positive_integer($n);
 
   if ($n < 5) { return ($n == 2) || ($n == 3) ? 1 : 0; }
+  $base = 2 if !defined $base;
   croak "Base $base is invalid" if $base < 2;
   if ($base >= $n) {
     $base = $base % $n;

@@ -467,7 +467,7 @@ is_strong_pseudoprime(IN SV* svn, ...)
     int c, status = 1;
   PPCODE:
     if (items < 2)
-      croak("No bases given to miller_rabin");
+      croak("No bases given to is_strong_pseudoprime");
     /* Check all arguments */
     for (c = 0; c < items && status == 1; c++)
       if (_validate_int(aTHX_ ST(c), 0) != 1)
@@ -589,7 +589,7 @@ is_prime(IN SV* svn, ...)
       case 6: _vcallsub_with_gmp("is_frobenius_underwood_pseudoprime"); break;
       case 7: _vcallsub_with_gmp("is_aks_prime"); break;
       case 8: _vcallsub_with_gmp("is_power"); break;
-      case 9:_vcallsub_with_gmp("is_pseudoprime"); break;
+      case 9: _vcallsub_with_gmp("is_pseudoprime"); break;
       case 10:
       default:_vcallsub_with_gmp("is_almost_extra_strong_lucas_pseudoprime"); break;
     }
