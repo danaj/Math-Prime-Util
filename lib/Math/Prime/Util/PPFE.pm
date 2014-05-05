@@ -322,6 +322,12 @@ sub lcm {
   return Math::Prime::Util::PP::lcm(@_);
 }
 sub invmod {
+  my ($a, $n) = @_;
+  my ($va, $vn) = ($a, $n);
+  $va = -$va if defined $va && $va < 0;
+  $vn = -$vn if defined $vn && $vn < 0;
+  _validate_positive_integer($va);
+  _validate_positive_integer($vn);
   return Math::Prime::Util::PP::invmod(@_);
 }
 

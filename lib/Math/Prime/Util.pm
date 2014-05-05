@@ -813,7 +813,7 @@ __END__
 
 =encoding utf8
 
-=for stopwords forprimes forcomposites fordivisors Möbius Deléglise totient moebius mertens liouville znorder irand primesieve uniqued k-tuples von SoE pari yafu fonction qui compte le nombre nombres voor PhD superset sqrt(N) gcd(A^M k-th (10001st primegen libtommath kronecker znprimroot znlog gcd lcm
+=for stopwords forprimes forcomposites fordivisors Möbius Deléglise totient moebius mertens liouville znorder irand primesieve uniqued k-tuples von SoE pari yafu fonction qui compte le nombre nombres voor PhD superset sqrt(N) gcd(A^M k-th (10001st primegen libtommath kronecker znprimroot znlog gcd lcm invmod
 
 
 =head1 NAME
@@ -1878,13 +1878,18 @@ follow the semantics of Mathematica, Pari, and Perl 6, re:
   lcm(0, n) = 0              Any zero in list results in zero return
   lcm(n,-m) = lcm(n, m)      We use the absolute values
 
-=head invmod
+=head2 invmod
 
   say "The inverse of 42 mod 2017 = ", invmod(42,2017);
 
 Given two integers C<a> and C<n>, return the inverse of C<a> modulo C<n>.
-If not defined, undef is returned.  If defined, then multiplying the return
-value by C<a>, modulo C<n>, will equal 1.
+If not defined, undef is returned.  If defined, then the return value
+multiplied by C<a> equals C<1> modulo C<n>.
+
+This results correspond to the Pari result of C<lift(Mod(1/a,n))>.  The
+semantics with respect to negative arguments match Pari.  Notably, a
+negative C<n> is negated, which is different from Math::BigInt, but in both
+cases the return value is still congruent to C<1> modulo C<n> as expected.
 
 =head2 valuation
 

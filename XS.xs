@@ -737,9 +737,8 @@ divisor_sum(IN SV* svn, ...)
 void
 znorder(IN SV* sva, IN SV* svn)
   ALIAS:
-    invmod = 1
-    jordan_totient = 2
-    legendre_phi = 3
+    jordan_totient = 1
+    legendre_phi = 2
   PREINIT:
     int astatus, nstatus;
   PPCODE:
@@ -752,25 +751,22 @@ znorder(IN SV* sva, IN SV* svn)
       switch (ix) {
         case 0:  ret = znorder(a, n);
                  break;
-        case 1:  ret = modinverse(a, n);
-                 break;
-        case 2:  ret = jordan_totient(a, n);
+        case 1:  ret = jordan_totient(a, n);
                  if (ret == 0 && n > 1)
                    goto overflow;
                  break;
-        case 3:
+        case 2:
         default: ret = legendre_phi(a, n);
                  break;
       }
-      if (ret == 0 && (ix == 0 || ix == 1))  XSRETURN_UNDEF;  /* not defined */
+      if (ret == 0 && ix == 0)  XSRETURN_UNDEF;  /* not defined */
       XSRETURN_UV(ret);
     }
     overflow:
     switch (ix) {
       case 0:  _vcallsub_with_gmp("znorder");  break;
-      case 1:  _vcallsub_with_gmp("invmod");  break;
-      case 2:  _vcallsub_with_pp("jordan_totient");  break;
-      case 3:
+      case 1:  _vcallsub_with_pp("jordan_totient");  break;
+      case 2:
       default: _vcallsub_with_pp("legendre_phi"); break;
     }
     return; /* skip implicit PUTBACK */
@@ -796,35 +792,50 @@ void
 kronecker(IN SV* sva, IN SV* svb)
   ALIAS:
     valuation = 1
+    invmod = 2
   PREINIT:
     int astatus, bstatus, abpositive, abnegative;
   PPCODE:
     astatus = _validate_int(aTHX_ sva, 2);
     bstatus = _validate_int(aTHX_ svb, 2);
-    if (ix == 0) {
-      /* Are both a and b positive? */
-      abpositive = astatus == 1 && bstatus == 1;
-      /* Will both fit in IVs?  We should use a bitmask return. */
-      abnegative = !abpositive
-                   && (astatus != 0 && SvIOK(sva) && !SvIsUV(sva))
-                   && (bstatus != 0 && SvIOK(svb) && !SvIsUV(svb));
-      if (abpositive || abnegative) {
-        UV a = my_svuv(sva);
-        UV b = my_svuv(svb);
-        int k = (abpositive) ? kronecker_uu(a,b) : kronecker_ss(a,b);
-        RETURN_NPARITY(k);
-      }
-    } else {
-      if (astatus != 0 && bstatus != 0) {
+    if (astatus != 0 && bstatus != 0) {
+      if (ix == 0) {
+        /* Are both a and b positive? */
+        abpositive = astatus == 1 && bstatus == 1;
+        /* Will both fit in IVs?  We should use a bitmask return. */
+        abnegative = !abpositive
+                     && (SvIOK(sva) && !SvIsUV(sva))
+                     && (SvIOK(svb) && !SvIsUV(svb));
+        if (abpositive || abnegative) {
+          UV a = my_svuv(sva);
+          UV b = my_svuv(svb);
+          int k = (abpositive) ? kronecker_uu(a,b) : kronecker_ss(a,b);
+          RETURN_NPARITY(k);
+        }
+      } else if (ix == 1) {
         UV n = (astatus == -1) ? (UV)(-(my_sviv(sva))) : my_svuv(sva);
         UV k = (bstatus == -1) ? (UV)(-(my_sviv(svb))) : my_svuv(svb);
         XSRETURN_UV( valuation(n, k) );
+      } else {
+        UV a, n, ret = 0;
+        n = (bstatus != -1) ? my_svuv(svb) : (UV)(-(my_sviv(svb)));
+        if (n > 0) {
+          a = (astatus != -1) ? my_svuv(sva)
+                              : n * ((UV)(-my_sviv(sva))/n + 1) + my_sviv(sva);
+          if (a > 0) {
+            if (n == 1) XSRETURN_UV(0);
+            ret = modinverse(a, n);
+          }
+        }
+        if (ret == 0) XSRETURN_UNDEF;
+        XSRETURN_UV(ret);
       }
     }
     switch (ix) {
       case 0:  _vcallsub_with_gmp("kronecker");  break;
-      case 1:
-      default: _vcallsub_with_gmp("valuation"); break;
+      case 1:  _vcallsub_with_gmp("valuation"); break;
+      case 2:
+      default: _vcallsub_with_gmp("invmod"); break;
     }
     return; /* skip implicit PUTBACK */
 
