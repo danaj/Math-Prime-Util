@@ -2245,7 +2245,7 @@ sub is_aks_prime {
   while ($r < $n) {
     return 0 if !($n % $r);
     #return 1 if $r >= $sqrtn;
-    last if znorder($r, $n) > $limit;
+    last if znorder($n, $r) > $limit;  # Note the arguments!
     $r = next_prime($r);
   }
 
