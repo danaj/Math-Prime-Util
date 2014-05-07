@@ -205,17 +205,18 @@ int _XS_is_pseudoprime(UV const n, UV a)
  */
 int _XS_miller_rabin(UV const n, const UV *bases, int nbases)
 {
+#if USE_MONT_PRIMALITY
+  MPUassert(n > 3, "MR called with n <= 3");
+  if ((n & 1) == 0) return 0;
+  return monty_mr64((uint64_t)n, bases, nbases);
+#else
   UV d = n-1;
   int b, r, s = 0;
 
   MPUassert(n > 3, "MR called with n <= 3");
   if ((n & 1) == 0) return 0;
 
-#if USE_MONT_PRIMALITY
-  return monty_mr64((uint64_t)n, bases, nbases);
-#else
   while (!(d&1)) {  s++;  d >>= 1;  }
-
   for (b = 0; b < nbases; b++) {
     UV x, a = bases[b];
     if (a < 2)  croak("Base %"UVuf" is invalid", a);

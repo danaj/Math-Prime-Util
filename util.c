@@ -1454,7 +1454,7 @@ UV znorder(UV a, UV n) {
 UV znprimroot(UV n) {
   UV fac[MPU_MAX_FACTORS+1];
   UV exp[MPU_MAX_FACTORS+1];
-  UV a, j, phi;
+  UV a, phi;
   int i, nfactors;
   if (n <= 4) return (n == 0) ? 0 : n-1;
   if (n % 4 == 0)  return 0;
@@ -1465,7 +1465,7 @@ UV znprimroot(UV n) {
     else         nfactors = 0;
     if (nfactors != 1) return 0;
     phi = fac[0]-1;  /* n = p^a for odd prime p.  Calculate totient. */
-    for (i = 1; i < exp[0]; i++)
+    for (i = 1; i < (int)exp[0]; i++)
       phi *= fac[0];
   }
   nfactors = factor_exp(phi, fac, exp);
