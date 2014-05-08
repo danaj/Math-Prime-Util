@@ -1251,14 +1251,16 @@ forpart (SV* block, IN SV* svn)
     New(0, x, n+1, UV);
     for(i = 0; i <= n; i++)  x[i] = 1;
     x[1] = n;
-    m = 1;
+    m = (n > 0) ? 1 : 0;   /* n=0 => one call with empty list */
     h = 1;
     {
-      { dSP; ENTER; SAVETMPS; PUSHMARK(SP);
-        XPUSHs(sv_2mortal(newSVuv(n)));
-        PUTBACK; call_sv((SV*)cv, G_VOID|G_DISCARD); FREETMPS; LEAVE;
-      }
-      while (x[1] != 1) {
+      while (1) {
+        { dSP; ENTER; SAVETMPS; PUSHMARK(SP); EXTEND(SP, m);
+          for (i = m; i >= 1; i--) { PUSH_NPARITY(x[i]); }
+          PUTBACK; call_sv((SV*)cv, G_VOID|G_DISCARD); FREETMPS; LEAVE;
+        }
+        if (x[1] <= 1)
+          break;
         if (x[h] == 2) {
           m++;
           x[h] = 1;
@@ -1271,10 +1273,6 @@ forpart (SV* block, IN SV* svn)
           while (t >= r) {  h++;  x[h] = r;  t -= r;  }
           if (t == 0) { m = h; }
           else        { m = h+1;  if (t > 1) {  h++;  x[h] = t;  }  }
-        }
-        { dSP; ENTER; SAVETMPS; PUSHMARK(SP);
-          for (i = m; i >= 1; i--) { XPUSHs(sv_2mortal(newSVuv(x[i]))); }
-          PUTBACK; call_sv((SV*)cv, G_VOID|G_DISCARD); FREETMPS; LEAVE;
         }
       }
     }
