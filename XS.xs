@@ -1227,3 +1227,55 @@ fordivisors (SV* block, IN SV* svn)
     }
     SvREFCNT_dec(svarg);
     Safefree(divs);
+
+void
+forpart (SV* block, IN SV* svn)
+  PROTOTYPE: &$
+  PREINIT:
+    UV i, m, h, n;
+    UV *x;
+    GV *gv;
+    HV *stash;
+    CV *cv;
+  PPCODE:
+    cv = sv_2cv(block, &stash, &gv, 0);
+    if (cv == Nullcv)
+      croak("Not a subroutine reference");
+    if (!_validate_int(aTHX_ svn, 0)) {
+      _vcallsubn(aTHX_ G_VOID|G_DISCARD, VCALL_ROOT, "_generic_forpart", 2);
+      return;
+    }
+    n = my_svuv(svn);
+
+    /* ZS1 algorithm from Zoghbi and Stojmenovic 1998) */
+    New(0, x, n+1, UV);
+    for(i = 0; i <= n; i++)  x[i] = 1;
+    x[1] = n;
+    m = 1;
+    h = 1;
+    {
+      { dSP; ENTER; SAVETMPS; PUSHMARK(SP);
+        XPUSHs(sv_2mortal(newSVuv(n)));
+        PUTBACK; call_sv((SV*)cv, G_VOID|G_DISCARD); FREETMPS; LEAVE;
+      }
+      while (x[1] != 1) {
+        if (x[h] == 2) {
+          m++;
+          x[h] = 1;
+          h--;
+        } else {
+          UV r,t;
+          r = x[h]-1;
+          t = m-h+1;
+          x[h] = r;
+          while (t >= r) {  h++;  x[h] = r;  t -= r;  }
+          if (t == 0) { m = h; }
+          else        { m = h+1;  if (t > 1) {  h++;  x[h] = t;  }  }
+        }
+        { dSP; ENTER; SAVETMPS; PUSHMARK(SP);
+          for (i = m; i >= 1; i--) { XPUSHs(sv_2mortal(newSVuv(x[i]))); }
+          PUTBACK; call_sv((SV*)cv, G_VOID|G_DISCARD); FREETMPS; LEAVE;
+        }
+      }
+    }
+    Safefree(x);
