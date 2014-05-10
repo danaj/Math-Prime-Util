@@ -27,7 +27,7 @@ our @EXPORT_OK =
       miller_rabin miller_rabin_random
       lucas_sequence
       primes
-      forprimes forcomposites fordivisors
+      forprimes forcomposites fordivisors forpart
       prime_iterator prime_iterator_object
       next_prime  prev_prime
       prime_count
@@ -2123,15 +2123,14 @@ This uses a combinatorial calculation, which means it will not be very
 fast compared to Pari, Mathematica, or FLINT which use the Rademacher
 formula using multi-precision floating point.  In 10 seconds:
 
-           65    Integer::Partition
+           70    Integer::Partition
+           90    MPU forpart { $n++ }
        10_000    MPU pure Perl partitions
-      200_000    MPU GMP partitions
-   22_000_000    Pari's numbpart
+      250_000    MPU GMP partitions
+   35_000_000    Pari's numbpart
   500_000_000    Jonathan Bober's partitions_c.cc v0.6
 
-If you want the enumerated partitions, see L<Integer::Partition>.  It uses
-a memory efficient iterator and is very fast for enumeration.  It is not
-practical for producing large partition numbers as seen above.
+If you want the enumerated partitions, see L</forpart>.
 
 
 =head2 carmichael_lambda

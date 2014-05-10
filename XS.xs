@@ -208,6 +208,29 @@ static int _vcallsubn(pTHX_ I32 flags, I32 stashflags, const char* name, int nar
        else                     { PUSHs(sv_2mortal(newSViv(r_))); } \
   } while (0)
 
+static void part_setminmax(UV* min, UV* max, SV* sv, const char* text) {
+  if (!sv) return;
+  if (SvIOK(sv)) {
+    *min = 0;
+    *max = my_svuv(sv);
+  } else if (SvROK(sv) && SvTYPE(SvRV(sv)) == SVt_PVAV) {
+    SV** svmin;
+    SV** svmax;
+    AV* array_a = (AV*) SvRV(sv);
+    if (av_len(array_a)+1 != 2)
+      croak("%s must have exactly 2 elements", text);
+    svmin = av_fetch(array_a, 0, 0);
+    svmax = av_fetch(array_a, 1, 0);
+    if (!svmin || !svmax || !SvIOK(*svmin) || !SvIOK(*svmax))
+      croak("Invalid data in %s", text);
+    *min = my_svuv(*svmin);
+    *max = my_svuv(*svmax);
+  } else {
+    /* Allow fall through for non-existant arg */
+    /* croak("Invalid data in %s", text); */
+  }
+}
+
 MODULE = Math::Prime::Util	PACKAGE = Math::Prime::Util
 
 PROTOTYPES: ENABLE
@@ -1229,14 +1252,15 @@ fordivisors (SV* block, IN SV* svn)
     Safefree(divs);
 
 void
-forpart (SV* block, IN SV* svn)
-  PROTOTYPE: &$
+forpart (SV* block, IN SV* svn, IN SV* svra = 0, IN SV* svrn = 0)
+  PROTOTYPE: &$;$$
   PREINIT:
-    UV i, m, h, n;
+    UV i, m, h, n, mina, maxa, minn, maxn;
     UV *x;
     GV *gv;
     HV *stash;
     CV *cv;
+    SV** svals;
   PPCODE:
     cv = sv_2cv(block, &stash, &gv, 0);
     if (cv == Nullcv)
@@ -1247,17 +1271,29 @@ forpart (SV* block, IN SV* svn)
     }
     n = my_svuv(svn);
 
+    New(0, svals, n+1, SV*);
+    for (i = 0; i <= n; i++) {
+      svals[i] = newSVuv(i);
+      SvREADONLY_on(svals[i]);
+    }
+
     /* ZS1 algorithm from Zoghbi and Stojmenovic 1998) */
     New(0, x, n+1, UV);
     for(i = 0; i <= n; i++)  x[i] = 1;
     x[1] = n;
     m = (n > 0) ? 1 : 0;   /* n=0 => one call with empty list */
     h = 1;
+
+    mina = 0;  maxa = n;  minn = 0;  maxn = n;
+    if (svra != 0) part_setminmax( &mina, &maxa, svra, "forpart A arg" );
+    if (svrn != 0) part_setminmax( &minn, &maxn, svrn, "forpart N arg" );
+
     {
       while (1) {
-        { dSP; ENTER; SAVETMPS; PUSHMARK(SP); EXTEND(SP, m);
-          for (i = m; i >= 1; i--) { PUSH_NPARITY(x[i]); }
-          PUTBACK; call_sv((SV*)cv, G_VOID|G_DISCARD); FREETMPS; LEAVE;
+        if (m >= minn && m <= maxn && x[m] >= mina && x[1] <= maxa)
+        { dSP; ENTER; PUSHMARK(SP);
+          EXTEND(SP, m); for (i=1; i <= m; i++) { PUSHs(svals[x[i]]); }
+          PUTBACK; call_sv((SV*)cv, G_VOID|G_DISCARD); LEAVE;
         }
         if (x[1] <= 1)
           break;
@@ -1277,3 +1313,6 @@ forpart (SV* block, IN SV* svn)
       }
     }
     Safefree(x);
+    for (i = 0; i <= n; i++)
+      SvREFCNT_dec(svals[i]);
+    Safefree(svals);
