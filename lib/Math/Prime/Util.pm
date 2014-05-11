@@ -813,7 +813,7 @@ __END__
 
 =encoding utf8
 
-=for stopwords forprimes forcomposites fordivisors Möbius Deléglise totient moebius mertens liouville znorder irand primesieve uniqued k-tuples von SoE pari yafu fonction qui compte le nombre nombres voor PhD superset sqrt(N) gcd(A^M k-th (10001st primegen libtommath kronecker znprimroot znlog gcd lcm invmod
+=for stopwords forprimes forcomposites fordivisors forpart Möbius Deléglise totient moebius mertens liouville znorder irand primesieve uniqued k-tuples von SoE pari yafu fonction qui compte le nombre nombres voor PhD superset sqrt(N) gcd(A^M k-th (10001st primegen libtommath kronecker znprimroot znlog gcd lcm invmod
 
 
 =head1 NAME
@@ -916,6 +916,8 @@ Version 0.41
   say chebyshev_psi(234984);
   say chebyshev_theta(92384234);
   say partitions(1000);
+  # Show all prime partitions of 25
+  forpart { say "@_" unless scalar grep { !is_prime($_) } @_ } 25;
 
   # divisor sum
   $sigma  = divisor_sum( $n );       # sum of divisors
@@ -1176,6 +1178,30 @@ which are not prime:  C<4, 6, 8, 9, 10, 12, 14, 15, ...>
 
 Given a block and a non-negative number C<n>, the block is called with
 C<$_> set to each divisor in sorted order.  Also see L</divisor_sum>.
+
+
+=head2 forpart
+
+  forpart { say "@_" } 25;           # unrestricted partitions
+  forpart { say "@_" } 25,{n=>5}     # ... with exactly 5 values
+  forpart { say "@_" } 25,{nmax=>5}  # ... with <=5 values
+
+Given a non-negative number C<n>, the block is called with C<@_> set to
+the array of additive integer partitions.  The operation is very similar
+to the C<forpart> function in Pari/GP 2.6.x, though the ordering is
+different.  The algorithm is ZS1 from Zoghbi and Stojmenović (1998), hence
+the ordering is identical to that of L<Integer::Partition>.
+Use L</partitions> to get just the count of unrestricted partitions.
+
+
+An optional hash reference may be given to produce restricted partitions.
+Each value must be a non-negative integer.  The allowable keys are:
+
+  n       restrict to exactly this many values
+  amin    all elements must be at least this value
+  amax    all elements must be at most this value
+  nmin    the array must have at least this many values
+  nmax    the array must have at most this many values
 
 =head2 prime_iterator
 

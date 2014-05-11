@@ -52,7 +52,7 @@ sub mpu_public_regex {
       miller_rabin miller_rabin_random
       lucas_sequence
       primes
-      forprimes forcomposites fordivisors
+      forprimes forcomposites fordivisors forpart
       prime_iterator prime_iterator_object
       next_prime  prev_prime
       prime_count

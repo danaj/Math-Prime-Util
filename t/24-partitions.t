@@ -3,7 +3,7 @@ use strict;
 use warnings;
 
 use Test::More;
-use Math::Prime::Util qw/partitions/;
+use Math::Prime::Util qw/partitions forpart/;
 my $extra = defined $ENV{EXTENDED_TESTING} && $ENV{EXTENDED_TESTING};
 
 my @parts = qw/
@@ -76,7 +76,7 @@ if (!$extra) {
   foreach my $n (@ns) { delete $bparts{$n} }
 }
 
-plan tests => scalar(@parts) + scalar(keys(%bparts));
+plan tests => scalar(@parts) + scalar(keys(%bparts)) + 14;
 
 
 foreach my $n (0..$#parts) {
@@ -86,3 +86,63 @@ foreach my $n (0..$#parts) {
 while (my($n, $epart) = each (%bparts)) {
   is( partitions($n), $epart, "partitions($n)" );
 }
+
+################### forpart
+
+{ my @p=(); forpart { push @p, [@_] } 0;
+  is_deeply( [@p], [[]], "forpart 0" ); }
+
+{ my @p=(); forpart { push @p, [@_] } 1;
+  is_deeply( [@p], [[1]], "forpart 1" ); }
+
+{ my @p=(); forpart { push @p, [@_] } 2;
+  is_deeply( [@p], [[2],[1,1]], "forpart 2" ); }
+
+{ my @p=(); forpart { push @p, [@_] } 3;
+  is_deeply( [@p], [[3],[2,1],[1,1,1]], "forpart 3" ); }
+
+{ my @p=(); forpart { push @p, [@_] } 3;
+  is_deeply( [@p], [[3],[2,1],[1,1,1]], "forpart 3" ); }
+
+{ my @p=(); forpart { push @p, [@_] } 6;
+  is_deeply( [@p], [[6],[5,1],[4,2],[4,1,1],[3,3],[3,2,1],[3,1,1,1],[2,2,2],[2,2,1,1],[2,1,1,1,1],[1,1,1,1,1,1]], "forpart 6" ); }
+
+{ my @p=(); forpart { push @p, [@_] } 17,{n=>2};
+  is_deeply( [@p], [[16,1],[15,2],[14,3],[13,4],[12,5],[11,6],[10,7],[9,8]], "forpart 17 restricted n=[2,2]" ); }
+
+{ my @p1 = (); my @p2 = ();
+  forpart { push @p1, [@_] if @_ <= 5 } 27;
+  forpart { push @p2, [@_] } 27, {nmax=>5};
+  is_deeply( [@p1], [@p2], "forpart 27 restricted nmax 5" ); }
+
+{ my @p1 = (); my @p2 = ();
+  forpart { push @p1, [@_] if @_ >= 20 } 27;
+  forpart { push @p2, [@_] } 27, {nmin=>20};
+  is_deeply( [@p1], [@p2], "forpart 27 restricted nmin 20" ); }
+
+{ my @p1 = (); my @p2 = ();
+  forpart { push @p1, [@_] if @_ >= 10 && @_ <= 13 } 19;
+  forpart { push @p2, [@_] } 19, {nmin=>10,nmax=>13};
+  is_deeply( [@p1], [@p2], "forpart 19 restricted n=[10..13]" ); }
+
+{ my @p1 = (); my @p2 = ();
+  forpart { push @p1, [@_] unless scalar grep { $_ > 4 } @_ } 20;
+  forpart { push @p2, [@_] } 20, {amax=>4};
+  is_deeply( [@p1], [@p2], "forpart 20 restricted amax 4" ); }
+
+{ my @p1 = (); my @p2 = ();
+  forpart { push @p1, [@_] unless scalar grep { $_ < 4 } @_ } 15;
+  forpart { push @p2, [@_] } 15, {amin=>4};
+  is_deeply( [@p1], [@p2], "forpart 15 restricted amin 4" ); }
+
+{ my @p1 = (); my @p2 = ();
+  forpart { push @p1, [@_] unless scalar grep { $_ < 3 || $_ > 6 } @_ } 21;
+  forpart { push @p2, [@_] } 21, {amin=>3,amax=>6};
+  is_deeply( [@p1], [@p2], "forpart 21 restricted a=[3..6]" ); }
+
+#{ my @p1 = (); my @p2 = ();
+#  forpart { push @p1, [@_] unless @_ != 4 || scalar grep { $_ < 2 || $_ > 8 } @_ } 22;
+#  forpart { push @p2, [@_] } 22, {amin=>2,amax=>8,n=>4};
+#  is_deeply( [@p1], [@p2], "forpart 22 restricted n=4 and a=[3..6]" ); }
+{ my @p=(); forpart { push @p, [@_] } 22, {amin=>2,amax=>8,n=>4};
+  is_deeply( [@p], [[8,8,4,2],[8,8,3,3],[8,7,5,2],[8,7,4,3],[8,6,6,2], [8,6,5,3], [8,6,4,4], [8,5,5,4], [7,7,6,2], [7,7,5,3], [7,7,4,4], [7,6,6,3], [7,6,5,4], [7,5,5,5], [6,6,6,4], [6,6,5,5]], "forpart 22 restricted n=4 and a=[3..6]" ); }

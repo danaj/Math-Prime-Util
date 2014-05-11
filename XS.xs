@@ -208,28 +208,6 @@ static int _vcallsubn(pTHX_ I32 flags, I32 stashflags, const char* name, int nar
        else                     { PUSHs(sv_2mortal(newSViv(r_))); } \
   } while (0)
 
-static void part_setminmax(UV* min, UV* max, SV* sv, const char* text) {
-  if (!sv) return;
-  if (SvIOK(sv)) {
-    *min = 0;
-    *max = my_svuv(sv);
-  } else if (SvROK(sv) && SvTYPE(SvRV(sv)) == SVt_PVAV) {
-    SV** svmin;
-    SV** svmax;
-    AV* array_a = (AV*) SvRV(sv);
-    if (av_len(array_a)+1 != 2)
-      croak("%s must have exactly 2 elements", text);
-    svmin = av_fetch(array_a, 0, 0);
-    svmax = av_fetch(array_a, 1, 0);
-    if (!svmin || !svmax || !SvIOK(*svmin) || !SvIOK(*svmax))
-      croak("Invalid data in %s", text);
-    *min = my_svuv(*svmin);
-    *max = my_svuv(*svmax);
-  } else {
-    /* Allow fall through for non-existant arg */
-    /* croak("Invalid data in %s", text); */
-  }
-}
 
 MODULE = Math::Prime::Util	PACKAGE = Math::Prime::Util
 
@@ -1252,11 +1230,10 @@ fordivisors (SV* block, IN SV* svn)
     Safefree(divs);
 
 void
-forpart (SV* block, IN SV* svn, IN SV* svra = 0, IN SV* svrn = 0)
-  PROTOTYPE: &$;$$
+forpart (SV* block, IN SV* svn, IN SV* svh = 0)
+  PROTOTYPE: &$;$
   PREINIT:
-    UV i, m, h, n, mina, maxa, minn, maxn;
-    UV *x;
+    UV i, n, amin, amax, nmin, nmax;
     GV *gv;
     HV *stash;
     CV *cv;
@@ -1266,7 +1243,7 @@ forpart (SV* block, IN SV* svn, IN SV* svra = 0, IN SV* svrn = 0)
     if (cv == Nullcv)
       croak("Not a subroutine reference");
     if (!_validate_int(aTHX_ svn, 0)) {
-      _vcallsubn(aTHX_ G_VOID|G_DISCARD, VCALL_ROOT, "_generic_forpart", 2);
+      _vcallsub_with_pp("forpart");
       return;
     }
     n = my_svuv(svn);
@@ -1277,42 +1254,54 @@ forpart (SV* block, IN SV* svn, IN SV* svra = 0, IN SV* svrn = 0)
       SvREADONLY_on(svals[i]);
     }
 
-    /* ZS1 algorithm from Zoghbi and Stojmenovic 1998) */
-    New(0, x, n+1, UV);
-    for(i = 0; i <= n; i++)  x[i] = 1;
-    x[1] = n;
-    m = (n > 0) ? 1 : 0;   /* n=0 => one call with empty list */
-    h = 1;
+    amin = 0;  amax = n;  nmin = 0;  nmax = n;
+    if (svh != 0) {
+      HV* rhash;
+      SV** svp;
+      if (!SvROK(svh) || SvTYPE(SvRV(svh)) != SVt_PVHV)
+        croak("forpart second argument must be a hash reference");
+      rhash = (HV*) SvRV(svh);
+      if ((svp = hv_fetchs(rhash, "n", 0)) != NULL)
+        { nmin = my_svuv(*svp);  nmax = nmin; }
+      if ((svp = hv_fetchs(rhash, "amin", 0)) != NULL) amin = my_svuv(*svp);
+      if ((svp = hv_fetchs(rhash, "amax", 0)) != NULL) amax = my_svuv(*svp);
+      if ((svp = hv_fetchs(rhash, "nmin", 0)) != NULL) nmin = my_svuv(*svp);
+      if ((svp = hv_fetchs(rhash, "nmax", 0)) != NULL) nmax = my_svuv(*svp);
+      if (amin < 1) amin = 1;
+      if (amax > n) amax = n;
+      if (nmax > n) nmax = n;
+    }
 
-    mina = 0;  maxa = n;  minn = 0;  maxn = n;
-    if (svra != 0) part_setminmax( &mina, &maxa, svra, "forpart A arg" );
-    if (svrn != 0) part_setminmax( &minn, &maxn, svrn, "forpart N arg" );
+    { /* ZS1 algorithm from Zoghbi and Stojmenovic 1998) */
+      UV *x, m, h;
+      New(0, x, n+1, UV);
+      for(i = 2; i <= n; i++)  x[i] = 1;
+      x[1] = n;
+      m = (n > 0) ? 1 : 0;   /* n=0 => one call with empty list */
+      h = 1;
 
-    {
+      /* We could add some optimizations for amin, amax, nmin, nmax.
+       * Pari is seriously fast for some restrictions. */
       while (1) {
-        if (m >= minn && m <= maxn && x[m] >= mina && x[1] <= maxa)
+        if (m >= nmin && m <= nmax && x[m] >= amin && x[1] <= amax)
         { dSP; ENTER; PUSHMARK(SP);
           EXTEND(SP, m); for (i=1; i <= m; i++) { PUSHs(svals[x[i]]); }
           PUTBACK; call_sv((SV*)cv, G_VOID|G_DISCARD); LEAVE;
         }
-        if (x[1] <= 1)
-          break;
+        if (x[1] <= 1) break;
         if (x[h] == 2) {
-          m++;
-          x[h] = 1;
-          h--;
+          m++;  x[h--] = 1;
         } else {
-          UV r,t;
-          r = x[h]-1;
-          t = m-h+1;
+          UV r = x[h]-1;
+          UV t = m-h+1;
           x[h] = r;
-          while (t >= r) {  h++;  x[h] = r;  t -= r;  }
+          while (t >= r) {  x[++h] = r;  t -= r;  }
           if (t == 0) { m = h; }
-          else        { m = h+1;  if (t > 1) {  h++;  x[h] = t;  }  }
+          else        { m = h+1;  if (t > 1) {  x[++h] = t;  }  }
         }
       }
+      Safefree(x);
     }
-    Safefree(x);
     for (i = 0; i <= n; i++)
       SvREFCNT_dec(svals[i]);
     Safefree(svals);

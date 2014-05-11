@@ -73,8 +73,8 @@
   to speed it up using some ideas from the Ohana 2011 SAGE branch.  For example
   (10**13,10**5) takes 2.5x longer, albeit with 6x less memory.
 
-- forpart:
-    - alias with fordivisors to save space
-    - consider use of const_int since so many entries will be 1 or 2
-    - documentation (mention for partitions function, mention Pari 2.7)
-    - tests
+- XS alias forprimes, forcomposites, forpart
+
+- More Pari:  vecsum, parforprime, binomial
+
+- is_power should take a third argument that gets set to the root
