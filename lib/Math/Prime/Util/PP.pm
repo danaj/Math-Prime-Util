@@ -1484,6 +1484,19 @@ sub lcm {
   $lcm = _bigint_to_int($lcm) if $lcm->bacmp(''.~0) <= 0;
   return $lcm;
 }
+sub vecsum {
+  my $sum = 0;
+  my $neglim = -(~0 >> 1) - 1;
+  foreach my $v (@_) {
+    $sum += $v;
+    if ($sum > ~0 || $sum < $neglim) {
+      $sum = BZERO->copy;
+      $sum->badd("$_") for @_;
+      return $sum;
+    }
+  }
+  $sum;
+}
 sub invmod {
   my($a,$n) = @_;
   return if $n == 0 || $a == 0;

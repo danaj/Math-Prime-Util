@@ -7,7 +7,7 @@ use Math::Prime::Util
    qw/moebius mertens euler_phi jordan_totient divisor_sum exp_mangoldt
       chebyshev_theta chebyshev_psi carmichael_lambda znorder liouville
       znprimroot znlog kronecker legendre_phi gcd lcm is_power valuation
-      invmod
+      invmod vecsum
      /;
 
 my $extra = defined $ENV{EXTENDED_TESTING} && $ENV{EXTENDED_TESTING};
@@ -384,6 +384,19 @@ if ($use64) {
  push @invmods, [ 14, 18446744073709551615, 17129119497016012214 ];
 }
 
+my @vecsums = (
+  [ 0 ],
+  [ -1, -1 ],
+  [ 0, 1,-1 ],
+  [ 0, -1,1 ],
+  [ 0, -1,1 ],
+  [ 0, -2147483648,2147483648 ],
+  [ 0, "-4294967296","4294967296" ],
+  [ 0, "-9223372036854775808","9223372036854775808" ],
+  [ "18446744073709551615", "18446744073709551615","-18446744073709551615","18446744073709551615" ],
+  [ "55340232221128654848", "18446744073709551616","18446744073709551616","18446744073709551616" ],
+);
+
 # These are slow with XS, and *really* slow with PP.
 if (!$usexs) {
   %big_mertens = map { $_ => $big_mertens{$_} }
@@ -418,6 +431,7 @@ plan tests => 0 + 1
                 + scalar(@legendre_sums)
                 + scalar(@valuations)
                 + 3 + scalar(@invmods)
+                + scalar(@vecsums)
                 + scalar(keys %powers)
                 + scalar(keys %primroots) + 2
                 + scalar(keys %jordan_totients)
@@ -636,6 +650,11 @@ ok(!eval { invmod('nan',11); }, "invmod('nan',11)");
 foreach my $r (@invmods) {
   my($a, $n, $exp) = @$r;
   is( invmod($a,$n), $exp, "invmod($a,$n) = ".((defined $exp)?$exp:"<undef>") );
+}
+###### vecsum
+foreach my $r (@vecsums) {
+  my($exp, @vals) = @$r;
+  is( vecsum(@vals), $exp, "vecsum(@vals) = $exp" );
 }
 
 sub cmp_closeto {

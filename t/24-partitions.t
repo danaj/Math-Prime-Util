@@ -3,7 +3,7 @@ use strict;
 use warnings;
 
 use Test::More;
-use Math::Prime::Util qw/partitions forpart/;
+use Math::Prime::Util qw/partitions forpart is_prime/;
 my $extra = defined $ENV{EXTENDED_TESTING} && $ENV{EXTENDED_TESTING};
 
 my @parts = qw/
@@ -76,7 +76,7 @@ if (!$extra) {
   foreach my $n (@ns) { delete $bparts{$n} }
 }
 
-plan tests => scalar(@parts) + scalar(keys(%bparts)) + 14;
+plan tests => scalar(@parts) + scalar(keys(%bparts)) + 15;
 
 
 foreach my $n (0..$#parts) {
@@ -146,3 +146,8 @@ while (my($n, $epart) = each (%bparts)) {
 #  is_deeply( [@p1], [@p2], "forpart 22 restricted n=4 and a=[3..6]" ); }
 { my @p=(); forpart { push @p, [@_] } 22, {amin=>2,amax=>8,n=>4};
   is_deeply( [@p], [[8,8,4,2],[8,8,3,3],[8,7,5,2],[8,7,4,3],[8,6,6,2], [8,6,5,3], [8,6,4,4], [8,5,5,4], [7,7,6,2], [7,7,5,3], [7,7,4,4], [7,6,6,3], [7,6,5,4], [7,5,5,5], [6,6,6,4], [6,6,5,5]], "forpart 22 restricted n=4 and a=[3..6]" ); }
+
+{ my @p = ();
+  forpart { push @p, [@_] unless scalar grep {!is_prime($_)} @_ } 20,{amin=>3};
+  is_deeply( [@p], [[17,3], [13,7], [11,3,3,3], [7,7,3,3], [7,5,5,3], [5,5,5,5], [5,3,3,3,3,3]], "forpart 20 restricted to odd primes" );
+}

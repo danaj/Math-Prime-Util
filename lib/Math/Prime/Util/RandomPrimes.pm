@@ -242,19 +242,21 @@ sub get_randf_nbit {
 # possibility is to, if they do not supply a rand function, use the GMP MT
 # function with an appropriate seed.
 #
-# Random timings for 10M calls:
-#    1.92    system rand
-#    2.62    Math::Random::MT::Auto
-#   12.0     Math::Random::Secure           w/ISAAC::XS
-#   12.6     Bytes::Random::Secure OO       w/ISAAC::XS     <==== our
-#   31.1     Bytes::Random::Secure OO                       <==== default
-#   44.5     Bytes::Random::Secure function w/ISAAC::XS
-#   44.8     Math::Random::Secure
-#   71.5     Bytes::Random::Secure function
-# 1840       Crypt::Random
+# Random timings for 10M calls on i4770K:
+#    0.39   Math::Random::MTwist 0.13
+#    0.89   system rand
+#    1.76   Math::Random::MT::Auto
+#    5.35   Bytes::Random::Secure OO       w/ISAAC::XS     <==== our
+#    7.43   Math::Random::Secure           w/ISAAC::XS
+#   12.40   Math::Random::Secure
+#   12.78   Bytes::Random::Secure OO                       <==== default
+#   13.86   Bytes::Random::Secure function w/ISAAC::XS
+#   21.95   Bytes::Random::Secure function
+#  822.1    Crypt::Random
 #
+# time perl -E 'use Math::Random::MTwist "irand32"; irand32() for 1..10000000;'
 # time perl -E 'sub irand {int(rand(4294967296));} irand() for 1..10000000;'
-# time perl -E 'use Math::Random::MT::Auto qw/irand/; irand() for 1..10000000;'
+# time perl -E 'use Math::Random::MT::Auto; sub irand { Math::Random::MT::Auto::irand() & 0xFFFFFFFF } irand() for 1..10000000;'
 # time perl -E 'use Math::Random::Secure qw/irand/; irand() for 1..10000000;'
 # time perl -E 'use Bytes::Random::Secure qw/random_bytes/; sub irand {return unpack("L",random_bytes(4));} irand() for 1..10000000;'
 # time perl -E 'use Bytes::Random::Secure; my $rng = Bytes::Random::Secure->new(); sub irand {return $rng->irand;} irand() for 1..10000000;'

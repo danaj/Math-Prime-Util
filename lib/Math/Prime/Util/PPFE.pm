@@ -321,6 +321,9 @@ sub gcd {
 sub lcm {
   return Math::Prime::Util::PP::lcm(@_);
 }
+sub vecsum {
+  return Math::Prime::Util::PP::vecsum(@_);
+}
 sub invmod {
   my ($a, $n) = @_;
   my ($va, $vn) = ($a, $n);

@@ -7,6 +7,7 @@ Revision history for Perl module Math::Prime::Util
     - valuation(n,k)                         how many times does k divide n?
     - invmod(a,n)                            inverse of a modulo n
     - forpart { ... } n[,{...}]              loop over partitions (Pari 2.6.x)
+    - vecsum(...)                            sum list of integers
 
     [FUNCTIONALITY AND PERFORMANCE]
 

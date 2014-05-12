@@ -40,7 +40,7 @@ our @EXPORT_OK =
       random_maurer_prime random_maurer_prime_with_cert
       random_shawe_taylor_prime random_shawe_taylor_prime_with_cert
       primorial pn_primorial consecutive_integer_lcm
-      gcd lcm factor factor_exp all_factors divisors valuation invmod
+      gcd lcm factor factor_exp all_factors divisors valuation invmod vecsum
       moebius mertens euler_phi jordan_totient exp_mangoldt liouville
       partitions
       chebyshev_theta chebyshev_psi
@@ -1904,6 +1904,19 @@ follow the semantics of Mathematica, Pari, and Perl 6, re:
   lcm(0, n) = 0              Any zero in list results in zero return
   lcm(n,-m) = lcm(n, m)      We use the absolute values
 
+
+=head2 vecsum
+
+  say "Totient sum 500,000: ", vecsum(euler_phi(0,500_000));
+
+Returns the sum of all arguments, each of which must be an integer.  This
+is similar to List::Util's L<List::Util/sum0> function, but has a very
+important difference.  List::Util turns all inputs into doubles and returns
+a double, which will mean incorrect results with large integers.  C<vecsum>
+sums (signed) integers and returns the untruncated result.  Processing is
+done on native integers while possible.
+
+
 =head2 invmod
 
   say "The inverse of 42 mod 2017 = ", invmod(42,2017);
@@ -2274,6 +2287,10 @@ Examples of various ways to set your own irand function:
   # System rand.  You probably don't want to do this.
   prime_set_config(irand => sub { int(rand(4294967296)) });
 
+  # Math::Random::MTwist.  Fastest RNG by quite a bit.
+  use Math::Random::MTwist;
+  prime_set_config(irand => \&Math::Random::MTwist::irand32);
+
   # Math::Random::Secure.  Uses ISAAC and strong seed methods.
   use Math::Random::Secure;
   prime_set_config(irand => \&Math::Random::Secure::irand);
@@ -2286,7 +2303,7 @@ Examples of various ways to set your own irand function:
   }
   prime_set_config(irand => \&irand);
 
-  # Crypt::Random.  Uses Pari and /dev/random.  Very slow.
+  # Crypt::Random.  Uses Pari and /dev/random.  *VERY* slow.
   use Crypt::Random qw/makerandom/;
   prime_set_config(irand => sub { makerandom(Size=>32, Uniform=>1); });
 
@@ -2295,10 +2312,6 @@ Examples of various ways to set your own irand function:
   { my $rng = Net::Random->new(src=>"fourmilab.ch",max=>0xFFFFFFFF);
     sub nr_irand { return $rng->get(1); } }
   prime_set_config(irand => \&nr_irand);
-
-  # Mersenne Twister.  Very fast, decent RNG, auto seeding.
-  use Math::Random::MT::Auto;
-  prime_set_config(irand=>sub {Math::Random::MT::Auto::irand() & 0xFFFFFFFF});
 
   # Go back to MPU's default configuration
   prime_set_config(irand => undef);
