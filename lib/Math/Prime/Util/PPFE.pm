@@ -10,6 +10,7 @@ use Carp qw/carp croak confess/;
 package Math::Prime::Util;
 
 *_validate_num = \&Math::Prime::Util::PP::_validate_num;
+*_validate_integer = \&Math::Prime::Util::PP::_validate_integer;
 *_prime_memfreeall = \&Math::Prime::Util::PP::_prime_memfreeall;
 *prime_memfree  = \&Math::Prime::Util::PP::prime_memfree;
 *prime_precalc  = \&Math::Prime::Util::PP::prime_precalc;
@@ -316,22 +317,25 @@ sub divisor_sum {
 }
 
 sub gcd {
-  return Math::Prime::Util::PP::gcd(@_);
+  my(@v) = @_;
+  _validate_integer($_) for @v;
+  return Math::Prime::Util::PP::gcd(@v);
 }
 sub lcm {
-  return Math::Prime::Util::PP::lcm(@_);
+  my(@v) = @_;
+  _validate_integer($_) for @v;
+  return Math::Prime::Util::PP::lcm(@v);
 }
 sub vecsum {
-  return Math::Prime::Util::PP::vecsum(@_);
+  my(@v) = @_;
+  _validate_integer($_) for @v;
+  return Math::Prime::Util::PP::vecsum(@v);
 }
 sub invmod {
   my ($a, $n) = @_;
-  my ($va, $vn) = ($a, $n);
-  $va = -$va if defined $va && $va < 0;
-  $vn = -$vn if defined $vn && $vn < 0;
-  _validate_positive_integer($va);
-  _validate_positive_integer($vn);
-  return Math::Prime::Util::PP::invmod(@_);
+  _validate_integer($a);
+  _validate_integer($n);
+  return Math::Prime::Util::PP::invmod($a,$n);
 }
 
 sub legendre_phi {

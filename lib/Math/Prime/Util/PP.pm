@@ -148,6 +148,32 @@ sub _validate_positive_integer {
   1;
 }
 
+sub _validate_integer {
+  my($n) = @_;
+  croak "Parameter must be defined" if !defined $n;
+  if (ref($n) eq 'CODE') {
+    $_[0] = $_[0]->();
+    $n = $_[0];
+  }
+  my $poscmp = OLD_PERL_VERSION ?  562949953421312 : ''.~0;
+  my $negcmp = OLD_PERL_VERSION ? -562949953421312 : -(~0 >> 1);
+  if (ref($n) eq 'Math::BigInt') {
+    croak "Parameter '$n' must be an integer" if !$n->is_int();
+    $_[0] = _bigint_to_int($_[0]) if $n <= $poscmp && $n >= $negcmp;
+  } else {
+    my $strn = "$n";
+    croak "Parameter '$strn' must be an integer"
+      if $strn =~ tr/-0123456789//c && $strn !~ /^[-+]?\d+$/;
+    if ($n <= $poscmp && $n >= $negcmp) {
+      $_[0] = $strn if ref($n);
+    } else {
+      $_[0] = Math::BigInt->new($strn)
+    }
+  }
+  $_[0]->upgrade(undef) if ref($_[0]) && $_[0]->upgrade();
+  1;
+}
+
 
 my @_primes_small = (0,2,3,5);
 {
