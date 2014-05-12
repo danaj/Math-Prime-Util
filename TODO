@@ -75,6 +75,6 @@
 
 - XS alias forprimes, forcomposites, forpart
 
-- More Pari:  vecsum, parforprime, binomial
+- More Pari:  parforprime, vecmin, vecmax
 
 - is_power should take a third argument that gets set to the root

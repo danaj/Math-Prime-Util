@@ -7,7 +7,7 @@ use Math::Prime::Util
    qw/moebius mertens euler_phi jordan_totient divisor_sum exp_mangoldt
       chebyshev_theta chebyshev_psi carmichael_lambda znorder liouville
       znprimroot znlog kronecker legendre_phi gcd lcm is_power valuation
-      invmod vecsum
+      invmod vecsum binomial
      /;
 
 my $extra = defined $ENV{EXTENDED_TESTING} && $ENV{EXTENDED_TESTING};
@@ -397,6 +397,20 @@ my @vecsums = (
   [ "55340232221128654848", "18446744073709551616","18446744073709551616","18446744073709551616" ],
 );
 
+my @binomials = (
+ [ 0,0, 1 ],
+ [ 0,1, 0 ],
+ [ 1,0, 1 ],
+ [ 1,1, 1 ],
+ [ 1,2, 0 ],
+ [ 13,13, 1 ],
+ [ 13,14, 0 ],
+ [ 40,19, "131282408400" ],
+ [ 67,31, "11923179284862717872" ],
+ [ 228,12, "30689926618143230620" ],
+ [ 177,78, "3314450882216440395106465322941753788648564665022000" ],
+);
+
 # These are slow with XS, and *really* slow with PP.
 if (!$usexs) {
   %big_mertens = map { $_ => $big_mertens{$_} }
@@ -432,6 +446,7 @@ plan tests => 0 + 1
                 + scalar(@valuations)
                 + 3 + scalar(@invmods)
                 + scalar(@vecsums)
+                + scalar(@binomials)
                 + scalar(keys %powers)
                 + scalar(keys %primroots) + 2
                 + scalar(keys %jordan_totients)
@@ -655,6 +670,11 @@ foreach my $r (@invmods) {
 foreach my $r (@vecsums) {
   my($exp, @vals) = @$r;
   is( vecsum(@vals), $exp, "vecsum(@vals) = $exp" );
+}
+###### binomial
+foreach my $r (@binomials) {
+  my($n, $k, $exp) = @$r;
+  is( binomial($n,$k), $exp, "binomial($n,$k)) = $exp" );
 }
 
 sub cmp_closeto {

@@ -760,8 +760,9 @@ divisor_sum(IN SV* svn, ...)
 void
 znorder(IN SV* sva, IN SV* svn)
   ALIAS:
-    jordan_totient = 1
-    legendre_phi = 2
+    binomial = 1
+    jordan_totient = 2
+    legendre_phi = 3
   PREINIT:
     int astatus, nstatus;
   PPCODE:
@@ -774,11 +775,15 @@ znorder(IN SV* sva, IN SV* svn)
       switch (ix) {
         case 0:  ret = znorder(a, n);
                  break;
-        case 1:  ret = jordan_totient(a, n);
+        case 1:  ret = binomial(a, n);
+                 if (ret == 0 && n <= a)
+                   goto overflow;
+                 break;
+        case 2:  ret = jordan_totient(a, n);
                  if (ret == 0 && n > 1)
                    goto overflow;
                  break;
-        case 2:
+        case 3:
         default: ret = legendre_phi(a, n);
                  break;
       }
@@ -788,8 +793,9 @@ znorder(IN SV* sva, IN SV* svn)
     overflow:
     switch (ix) {
       case 0:  _vcallsub_with_gmp("znorder");  break;
-      case 1:  _vcallsub_with_pp("jordan_totient");  break;
-      case 2:
+      case 1:  _vcallsub_with_gmp("binomial");  break;
+      case 2:  _vcallsub_with_pp("jordan_totient");  break;
+      case 3:
       default: _vcallsub_with_pp("legendre_phi"); break;
     }
     return; /* skip implicit PUTBACK */

@@ -210,6 +210,13 @@ sub kronecker {
   return Math::Prime::Util::PP::kronecker(@_);
 }
 
+sub binomial {
+  my($n, $k) = @_;
+  _validate_positive_integer($n);
+  _validate_positive_integer($k);
+  return Math::Prime::Util::PP::binomial($n, $k);
+}
+
 sub znorder {
   my($a, $n) = @_;
   _validate_positive_integer($a);

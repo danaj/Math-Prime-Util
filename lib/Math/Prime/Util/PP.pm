@@ -1785,6 +1785,12 @@ sub kronecker {
   }
   return ($b == 1) ? $k : 0;
 }
+sub binomial {
+  my($n, $k) = @_;
+  my $r = Math::BigInt->new("$n")->bnok("$k");
+  $r = _bigint_to_int($r) if $r->bacmp(''.~0) <= 0;
+  return $r;
+}
 
 sub _is_perfect_square {
   my($n) = @_;

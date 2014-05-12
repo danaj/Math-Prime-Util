@@ -44,8 +44,8 @@ our @EXPORT_OK =
       moebius mertens euler_phi jordan_totient exp_mangoldt liouville
       partitions
       chebyshev_theta chebyshev_psi
-      divisor_sum
-      carmichael_lambda kronecker znorder znprimroot znlog legendre_phi
+      divisor_sum carmichael_lambda
+      kronecker binomial znorder znprimroot znlog legendre_phi
       ExponentialIntegral LogarithmicIntegral RiemannZeta RiemannR
   );
 our %EXPORT_TAGS = (all => [ @EXPORT_OK ]);
@@ -2197,6 +2197,14 @@ only defined for odd prime values of C<n>.  This corresponds to Pari's
 C<kronecker(a,n)> function, Mathematica's C<KroneckerSymbol[n,m]>
 function, and GMP's C<mpz_kronecker(a,n)>, C<mpz_jacobi(a,n)>, and
 C<mpz_legendre(a,n)> functions.
+
+
+=head2 binomial
+
+Given non-negative arguments C<n> and C<k>, returns the binomial
+coefficient C<n*(n-1)*...*(n-k+1)/k!>, also known as the choose function.
+This corresponds to Pari's C<binomial(n,k)> function, Mathematica's
+C<Binomial[n,k]> function, and GMP's C<mpz_bin_ui> function.
 
 
 =head2 znorder

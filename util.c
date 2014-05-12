@@ -1324,6 +1324,26 @@ int kronecker_ss(IV a, IV b) {
   return kronecker_su(a, -b) * ((a < 0) ? -1 : 1);
 }
 
+/* Thanks to MJD and RosettaCode */
+UV binomial(UV n, UV k) {
+  UV d, r = 1;
+  if (k >= n) return (k == n);
+  if (k > n/2) k = n-k;
+  for (d = 1; d <= k; d++) {
+    if (r >= UV_MAX/n) {  /* Possible overflow */
+      UV g = gcd_ui(r, d);
+      r /= g;
+      if (r >= UV_MAX/n) return 0;  /* Unavoidable overflow */
+      r *= n--;
+      r /= (d/g);
+    } else {
+      r *= n--;
+      r /= d;
+    }
+  }
+  return r;
+}
+
 UV totient(UV n) {
   UV i, nfacs, totient, lastf, facs[MPU_MAX_FACTORS+1];
   if (n <= 1) return n;
