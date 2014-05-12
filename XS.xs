@@ -1302,15 +1302,28 @@ forpart (SV* block, IN SV* svn, IN SV* svh = 0)
       m = (n > 0) ? 1 : 0;   /* n=0 => one call with empty list */
       h = 1;
 
-      /* We could add some optimizations for amin, amax, nmin, nmax.
-       * Pari is seriously fast for some restrictions. */
+      if (x[1] > amax) { /* x[1] is always decreasing, so handle it here */
+        UV t = n - amax;
+        x[h] = amax;
+        while (t >= amax) {  x[++h] = amax;  t -= amax;  }
+        m = h + (t > 0);
+        if (t > 1)  x[++h] = t;
+      }
+
+      /* More restriction optimizations would be useful. */
       while (1) {
-        if (m >= nmin && m <= nmax && x[m] >= amin && x[1] <= amax)
+        if (m >= nmin && m <= nmax && x[m] >= amin)
         { dSP; ENTER; PUSHMARK(SP);
           EXTEND(SP, m); for (i=1; i <= m; i++) { PUSHs(svals[x[i]]); }
           PUTBACK; call_sv((SV*)cv, G_VOID|G_DISCARD); LEAVE;
         }
-        if (x[1] <= 1) break;
+        if (x[1] <= 1 || x[1] < amin) break;
+        /* Skip forward if restricted and we can move on. */
+        if (x[2] < amin || (m > nmax && (n-x[1]+x[2]-1)/x[2] >= nmax)) {
+          for (m = 1; n >= (x[1] + m); m++)
+            x[m+1] = 1;
+          h = 1;
+        }
         if (x[h] == 2) {
           m++;  x[h--] = 1;
         } else {
@@ -1318,8 +1331,8 @@ forpart (SV* block, IN SV* svn, IN SV* svh = 0)
           UV t = m-h+1;
           x[h] = r;
           while (t >= r) {  x[++h] = r;  t -= r;  }
-          if (t == 0) { m = h; }
-          else        { m = h+1;  if (t > 1) {  x[++h] = t;  }  }
+          m = h + (t > 0);
+          if (t > 1)  x[++h] = t;
         }
       }
       Safefree(x);

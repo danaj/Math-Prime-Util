@@ -1944,6 +1944,7 @@ C<0> is returned if C<n> or C<k> is one of the values C<-1>, C<0>, or C<1>.
 
   say "$n is square free" if moebius($n) != 0;
   $sum += moebius($_) for (1..200); say "Mertens(200) = $sum";
+  say "Mertens(2000) = ", vecsum(moebius(0,2000));
 
 Returns μ(n), the Möbius function (also known as the Moebius, Mobius, or
 MoebiusMu function) for an integer input.  This function is 1 if
@@ -1973,15 +1974,16 @@ function is defined as C<sum(moebius(1..n))>, but calculated more efficiently
 for large inputs.  For example, computing Mertens(100M) takes:
 
    time    approx mem
-     0.3s      0.1MB   mertens(100_000_000)
-     1.2s    890MB     List::Util::sum(moebius(1,100_000_000))
-    77s        0MB     $sum += moebius($_) for 1..100_000_000
+     0.4s      0.1MB   mertens(100_000_000)
+     5.6s    880MB     vecsum(moebius(1,100_000_000))
+   102s        0MB     $sum += moebius($_) for 1..100_000_000
 
 The summation of individual terms via factoring is quite expensive in time,
 though uses O(1) space.  Using the range version of moebius is much faster,
-but returns a 100M element array which is not good for memory with this many
-items.  In comparison, this function will generate the equivalent output
-via a sieving method that is relatively sparse memory and very fast.
+but returns a 100M element array which, even though they are shared constants,
+is not good for memory at this size.
+In comparison, this function will generate the equivalent output
+via a sieving method that is relatively memory frugal and very fast.
 The current method is a simple C<n^1/2> version of Deléglise and Rivat (1996),
 which involves calculating all moebius values to C<n^1/2>, which in turn will
 require prime sieving to C<n^1/4>.
@@ -2910,6 +2912,9 @@ Project Euler, problem 10 (summation of primes):
   my $sum = 0;
   forprimes { $sum += $_ } 2_000_000;
   say $sum;
+  # Or (fine for this size, not good for very large values)
+  use Math::Prime::Util qw/vecsum primes/;
+  say vecsum( @{primes(2_000_000)} );
 
 Project Euler, problem 21 (Amicable numbers):
 
@@ -2920,6 +2925,12 @@ Project Euler, problem 21 (Amicable numbers):
     $sum += $x + $y if $y > $x && $x == divisor_sum($y)-$y;
   }
   say $sum;
+  # Or using a pipeline:
+  use Math::Prime::Util qw/vecsum divisor_sum/;
+  say vecsum( map { divisor_sum($_) }
+              grep { my $y = divisor_sum($_)-$_;
+                     $y > $_ && $_==(divisor_sum($y)-$y) }
+              1 .. 10000 );
 
 Project Euler, problem 41 (Pandigital prime), brute force command line:
 
@@ -3329,11 +3340,15 @@ return the smallest root if it exists, and C<undef> otherwise.
 Similar to MPU's L</divisor_sum>.  MPU is ~10x faster for native integers
 and about 2x slower for bigints.
 
-=item C<numbpart>
+=item C<numbpart>, C<forpart>
 
-Similar to MPU's L</partitions>.  This function is not in Pari 2.1, which
-is the default version used by Math::Pari.  With Pari 2.3 or newer, the
-functions produce identical results, but Pari is much, much faster.
+Similar to MPU's L</partitions> and L</forpart>.  These functions were
+introduced in Pari 2.3 and 2.6, hence are not in Math::Pari.  C<numbpart>
+produce identical results to C<partitions>, but Pari is I<much> faster.
+L<forpart> is very similar to Pari's function, but produces a different
+ordering (MPU is the standard anti-lexicographical, Pari uses a size sort).
+Currently Pari is somewhat faster due to Perl function call overhead.  When
+using restrictions, Pari has much better optimizations.
 
 =item C<eint1>
 
@@ -3367,15 +3382,15 @@ First, for those looking for the state of the art non-Perl solutions:
 
 =item Primality testing
 
-For general numbers smaller than 2000 or so digits, I believe MPU is the
-fastest solution (it is faster than Pari 2.6.2 and PFGW), though FLINT
-might be a little faster for native sizes.  For large inputs,
+For general numbers smaller than 2000 or so digits, MPU is the fastest
+solution I am aware of (it is faster than Pari 2.7, PFGW, and FLINT).
+For very large inputs,
 L<PFGW|http://sourceforge.net/projects/openpfgw/> is the fastest primality
 testing software I'm aware of.  It has fast trial division, and is especially
 fast on many special forms.  It does not have a BPSW test however, and there
-are quite a few counterexamples for a given base of its PRP test, so for
-primality testing it is most useful for fast filtering of very large
-candidates.  A test such as the BPSW test in this module is then recommended.
+are quite a few counterexamples for a given base of its PRP test, so it is
+commonly used for fast filtering of large candidates.
+A test such as the BPSW test in this module is then recommended.
 
 =item Primality proofs
 
