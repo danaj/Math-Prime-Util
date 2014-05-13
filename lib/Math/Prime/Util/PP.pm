@@ -3193,6 +3193,7 @@ sub ExponentialIntegral {
     Math::MPFR::Rmpfr_set_prec($eix, $bit_precision);
     Math::MPFR::Rmpfr_eint($eix, $rx, $rnd);
     my $strval = Math::MPFR::Rmpfr_get_str($eix, 10, 0, $rnd);
+    Math::MPFR::Rmpfr_free_cache();
     return ($wantbf)  ?  Math::BigFloat->new($strval,$wantbf)  :  0.0 + $strval;
   }
 
@@ -3294,6 +3295,7 @@ sub LogarithmicIntegral {
     Math::MPFR::Rmpfr_set_prec($lix, $bit_precision);
     Math::MPFR::Rmpfr_eint($lix, $rx, $rnd);
     my $strval = Math::MPFR::Rmpfr_get_str($lix, 10, 0, $rnd);
+    Math::MPFR::Rmpfr_free_cache();
     return ($wantbf)  ?  Math::BigFloat->new($strval,$wantbf)  :  0.0 + $strval;
   }
 
