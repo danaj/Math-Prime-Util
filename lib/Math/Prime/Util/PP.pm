@@ -1793,7 +1793,10 @@ sub binomial {
   }
 
   return 0 if $n >= 0 && ($k < 0 || $k > $n);
-  return 0 if $n < 0  && $k < 0 && $k > $n;
+  if ($n < 0 && $k < 0) {
+    return 0 if $k > $n;
+    $k = $n-$k;
+  }
   return 1 if $k == 0;        # Work around bug in old
   return $n if $k == $n-1;    # Math::BigInt (fixed in 1.90)
   my $r;
@@ -1801,7 +1804,6 @@ sub binomial {
     $r = Math::BigInt->new("$n")->bnok("$k");
     $r = _bigint_to_int($r) if $r->bacmp(''.~0) <= 0;
   } else { # Math::BigInt is incorrect for negative n
-    $k = $n-$k if $k < 0;
     $r = Math::BigInt->new( ''.(-$n+$k-1) )->bnok("$k");
     if ($k & 1) {
       $r->bneg;
