@@ -1789,6 +1789,8 @@ sub binomial {
   my($n, $k) = @_;
   return 0 if $n >= 0 && ($k < 0 || $k > $n);
   return 0 if $n < 0  && $k < 0 && $k > $n;
+  return 1 if $k == 0;        # Work around bug in old
+  return $n if $k == $n-1;    # Math::BigInt (fixed in 1.90)
   my $r;
   if ($n >= 0) {
     $r = Math::BigInt->new("$n")->bnok("$k");
