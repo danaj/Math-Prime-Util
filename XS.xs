@@ -1304,7 +1304,7 @@ forpart (SV* block, IN SV* svn, IN SV* svh = 0)
     { /* ZS1 algorithm from Zoghbi and Stojmenovic 1998) */
       UV *x, m, h;
       New(0, x, n+2, UV);  /* plus 2 because of n=0 */
-      for(i = 2; i <= n; i++)  x[i] = 1;
+      for (i = 0; i <= n; i++)  x[i] = 1;
       x[1] = n;
       m = (n > 0) ? 1 : 0;   /* n=0 => one call with empty list */
       h = 1;
