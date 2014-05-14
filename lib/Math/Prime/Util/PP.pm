@@ -1787,13 +1787,14 @@ sub kronecker {
 }
 sub binomial {
   my($n, $k) = @_;
-  if ($k <= 0) { return ($k == 0) ? 1 : 0; }
+  return 0 if $n >= 0 && ($k < 0 || $k > $n);
+  return 0 if $n < 0  && $k < 0 && $k > $n;
   my $r;
   if ($n >= 0) {
     $r = Math::BigInt->new("$n")->bnok("$k");
     $r = _bigint_to_int($r) if $r->bacmp(''.~0) <= 0;
-  } else {
-    # Math::BigInt is incorrect for negative n
+  } else { # Math::BigInt is incorrect for negative n
+    $k = $n-$k if $k < 0;
     $r = Math::BigInt->new( ''.(-$n+$k-1) )->bnok("$k");
     if ($k & 1) {
       $r->bneg;

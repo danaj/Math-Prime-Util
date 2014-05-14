@@ -775,16 +775,19 @@ znorder(IN SV* sva, IN SV* svn)
       switch (ix) {
         case 0:  ret = znorder(a, n);
                  break;
-        case 1:  if (nstatus == -1) {
-                   ret = 0;
-                 } else if (astatus == -1) {
+        case 1:  if ( (astatus == 1 && (nstatus == -1 || n > a)) ||
+                      (astatus ==-1 && (nstatus == -1 && n > a)) )
+                   { ret = 0; break; }
+                 if (nstatus == -1)
+                   n = a - n; /* n<0,k<=n:  (-1)^(n-k) * binomial(-k-1,n-k) */
+                 if (astatus == -1) {
                    ret = binomial( -my_sviv(sva)+n-1, n );
                    if (ret > 0 && ret <= (UV)IV_MAX)
                      XSRETURN_IV( (IV)ret * ((n&1) ? -1 : 1) );
                    goto overflow;
                  } else {
                    ret = binomial(a, n);
-                   if (ret == 0 && n <= a)
+                   if (ret == 0)
                      goto overflow;
                  }
                  break;
