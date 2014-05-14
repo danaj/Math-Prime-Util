@@ -2,7 +2,6 @@
 use warnings;
 use strict;
 use Math::Prime::Util qw/:all/;
-use List::Util qw/sum max/;
 use Math::BigInt try=>"GMP";
 
 # This shows examples of many sequences from:
@@ -74,6 +73,10 @@ if      ($type eq 'Abundant') {
     $i++ while scalar factor($i) != $arg;
     push @n, $i++;
   }
+  print join " ", @n;
+} elsif ($type eq 'Catalan') {
+  # Done via pred.  Much faster than MNS pred, but much slower than iterator
+  @n = map { binomial( $_<<1, $_) / ($_+1) } 0 .. $count-1;
   print join " ", @n;
 } elsif ($type eq 'Cubes') {
   # Done via pred to show use
@@ -245,7 +248,7 @@ if      ($type eq 'Abundant') {
 } elsif ($type eq 'Totient') {
   print join " ", euler_phi(1,$count);
 } elsif ($type eq 'TotientCumulative') {
-  # pred:   sum(euler_phi(0,$_[0]));
+  # pred:   vecsum(euler_phi(0,$_[0]));
   my $c = 0;
   print join " ", map { $c += euler_phi($_) } 0..$count-1;
 } elsif ($type eq 'TotientPerfect') {
@@ -278,7 +281,6 @@ if      ($type eq 'Abundant') {
 # Base::IteratePred
 # BaumSweet
 # Beastly
-# Catalan
 # CollatzSteps
 # ConcatNumbers
 # CullenNumbers
