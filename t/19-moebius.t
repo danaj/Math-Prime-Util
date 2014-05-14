@@ -691,7 +691,7 @@ is_deeply( [map { binomial(10, $_) } -15 .. 15],
            "binomial(10,n) for n in -15 .. 15" );
 is_deeply( [map { binomial(-10, $_) } -15 .. 15],
            [qw/-2002 715 -220 55 -10 1 0 0 0 0 0 0 0 0 0 1 -10 55 -220 715 -2002 5005 -11440 24310 -48620 92378 -167960 293930 -497420 817190 -1307504/],
-           "binomial(10,n) for n in -15 .. 15" );
+           "binomial(-10,n) for n in -15 .. 15" );
 
 sub cmp_closeto {
   my $got = shift;
