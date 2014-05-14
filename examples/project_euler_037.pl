@@ -2,7 +2,6 @@
 use warnings;
 use strict;
 use Math::Prime::Util qw/:all/;
-use List::Util qw/sum/;
 
 my @tp;
 my $p = 7;
@@ -17,4 +16,4 @@ while (1) {
   push @tp, $p;
   last if scalar @tp >= 11;
 }
-print sum(@tp), "\n";
+print vecsum(@tp), "\n";

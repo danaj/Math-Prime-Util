@@ -3,7 +3,6 @@ use warnings;
 use strict;
 use 5.14.0;
 use Math::Prime::Util qw/:all/;
-use List::Util qw/sum/;
 use Benchmark qw/:all/;
 
 my $lim = shift || 1000;

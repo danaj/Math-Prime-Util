@@ -3,8 +3,7 @@ use strict;
 use warnings;
 $| = 1;  # fast pipes
 
-use Math::Prime::Util qw/euler_phi/;
-use List::Util qw/sum/;
+use Math::Prime::Util qw/euler_phi vecsum/;
 
 my $limit = shift || 1_000_000;
 
@@ -21,11 +20,9 @@ while (1) {
   ($beg,$end) = ($end,$beg) if $beg > $end;
 
   # Does range return the same values?
-  my @phi_range = @phi[ $beg .. $end ];
-  my @totients = euler_phi($beg,$end);
+  my $sum1 = vecsum(  @phi[ $beg .. $end ]  );
+  my $sum2 = vecsum(  euler_phi($beg,$end)  );
 
-  my $sum1 = sum(@phi_range);
-  my $sum2 = sum(@totients);
   warn "\nbeg $beg  end $end  sum $sum1  range sum $sum2\n"
        unless $sum1 == $sum2;
   print ".";

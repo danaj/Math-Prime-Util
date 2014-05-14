@@ -3,8 +3,7 @@ use strict;
 use warnings;
 $| = 1;  # fast pipes
 
-use Math::Prime::Util qw/moebius mertens/;
-use List::Util qw/sum/;
+use Math::Prime::Util qw/moebius mertens vecsum/;
 
 my $limit = shift || 1_000_000;
 
@@ -23,8 +22,8 @@ while (1) {
   my @mu_range = @mu[ $beg .. $end ];
   my @mobius = moebius($beg,$end);
 
-  my $mu_sum = sum(@mu_range);
-  my $mo_sum = sum(@mobius);
+  my $mu_sum = vecsum(@mu_range);
+  my $mo_sum = vecsum(@mobius);
   my $mert_sum = mertens($end) - mertens($beg-1);
   warn "\nbeg $beg  end $end  sum $mu_sum  range sum $mo_sum\n"
        unless $mu_sum == $mo_sum;
