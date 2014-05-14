@@ -1787,6 +1787,11 @@ sub kronecker {
 }
 sub binomial {
   my($n, $k) = @_;
+
+  if (defined &Math::Prime::Util::GMP::binomial && Math::Prime::Util::prime_get_config()->{'gmp'}) {
+    return Math::Prime::Util::_reftyped($_[0], Math::Prime::Util::GMP::binomial($n,$k));
+  }
+
   return 0 if $n >= 0 && ($k < 0 || $k > $n);
   return 0 if $n < 0  && $k < 0 && $k > $n;
   return 1 if $k == 0;        # Work around bug in old

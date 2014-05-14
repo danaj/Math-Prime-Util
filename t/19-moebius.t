@@ -456,7 +456,7 @@ plan tests => 0 + 1
                 + scalar(@valuations)
                 + 3 + scalar(@invmods)
                 + scalar(@vecsums)
-                + scalar(@binomials)
+                + 2 + scalar(@binomials)
                 + scalar(keys %powers)
                 + scalar(keys %primroots) + 2
                 + scalar(keys %jordan_totients)
@@ -686,6 +686,12 @@ foreach my $r (@binomials) {
   my($n, $k, $exp) = @$r;
   is( binomial($n,$k), $exp, "binomial($n,$k)) = $exp" );
 }
+is_deeply( [map { binomial(10, $_) } -15 .. 15],
+           [qw/0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 10 45 120 210 252 210 120 45 10 1 0 0 0 0 0/],
+           "binomial(10,n) for n in -15 .. 15" );
+is_deeply( [map { binomial(-10, $_) } -15 .. 15],
+           [qw/-2002 715 -220 55 -10 1 0 0 0 0 0 0 0 0 0 1 -10 55 -220 715 -2002 5005 -11440 24310 -48620 92378 -167960 293930 -497420 817190 -1307504/],
+           "binomial(10,n) for n in -15 .. 15" );
 
 sub cmp_closeto {
   my $got = shift;
