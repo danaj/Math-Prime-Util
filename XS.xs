@@ -766,18 +766,27 @@ znorder(IN SV* sva, IN SV* svn)
   PREINIT:
     int astatus, nstatus;
   PPCODE:
-    astatus = _validate_int(aTHX_ sva, 0);
-    nstatus = _validate_int(aTHX_ svn, 0);
-    if (astatus == 1 && nstatus == 1) {
+    astatus = _validate_int(aTHX_ sva, (ix==1) ? 2 : 0);
+    nstatus = _validate_int(aTHX_ svn, (ix==1) ? 2 : 0);
+    if (astatus != 0 && nstatus != 0) {
       UV a = my_svuv(sva);
       UV n = my_svuv(svn);
       UV ret;
       switch (ix) {
         case 0:  ret = znorder(a, n);
                  break;
-        case 1:  ret = binomial(a, n);
-                 if (ret == 0 && n <= a)
+        case 1:  if (nstatus == -1) {
+                   ret = 0;
+                 } else if (astatus == -1) {
+                   ret = binomial( -my_sviv(sva)+n-1, n );
+                   if (ret > 0 && ret <= (UV)IV_MAX)
+                     XSRETURN_IV( (IV)ret * ((n&1) ? -1 : 1) );
                    goto overflow;
+                 } else {
+                   ret = binomial(a, n);
+                   if (ret == 0 && n <= a)
+                     goto overflow;
+                 }
                  break;
         case 2:  ret = jordan_totient(a, n);
                  if (ret == 0 && n > 1)
@@ -844,7 +853,8 @@ kronecker(IN SV* sva, IN SV* svb)
       } else if (ix == 1) {
         UV n = (astatus == -1) ? (UV)(-(my_sviv(sva))) : my_svuv(sva);
         UV k = (bstatus == -1) ? (UV)(-(my_sviv(svb))) : my_svuv(svb);
-        XSRETURN_UV( valuation(n, k) );
+        /* valuation of 0-2 is very common, so return a constant if possible */
+        RETURN_NPARITY( valuation(n, k) );
       } else {
         UV a, n, ret = 0;
         n = (bstatus != -1) ? my_svuv(svb) : (UV)(-(my_sviv(svb)));

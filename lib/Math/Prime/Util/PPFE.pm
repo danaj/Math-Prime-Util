@@ -212,8 +212,8 @@ sub kronecker {
 
 sub binomial {
   my($n, $k) = @_;
-  _validate_positive_integer($n);
-  _validate_positive_integer($k);
+  _validate_integer($n);
+  _validate_integer($k);
   return Math::Prime::Util::PP::binomial($n, $k);
 }
 

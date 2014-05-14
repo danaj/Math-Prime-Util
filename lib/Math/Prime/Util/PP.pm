@@ -1787,9 +1787,22 @@ sub kronecker {
 }
 sub binomial {
   my($n, $k) = @_;
-  my $r = Math::BigInt->new("$n")->bnok("$k");
-  $r = _bigint_to_int($r) if $r->bacmp(''.~0) <= 0;
-  return $r;
+  if ($k <= 0) { return ($k == 0) ? 1 : 0; }
+  my $r;
+  if ($n >= 0) {
+    $r = Math::BigInt->new("$n")->bnok("$k");
+    $r = _bigint_to_int($r) if $r->bacmp(''.~0) <= 0;
+  } else {
+    # Math::BigInt is incorrect for negative n
+    $r = Math::BigInt->new( ''.(-$n+$k-1) )->bnok("$k");
+    if ($k & 1) {
+      $r->bneg;
+      $r = _bigint_to_int($r) if $r->bacmp(''.(~0>>1)) <= 0;
+    } else {
+      $r = _bigint_to_int($r) if $r->bacmp(''.~0) <= 0;
+    }
+  }
+  $r;
 }
 
 sub _is_perfect_square {

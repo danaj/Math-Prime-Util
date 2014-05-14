@@ -2201,10 +2201,16 @@ C<mpz_legendre(a,n)> functions.
 
 =head2 binomial
 
-Given non-negative arguments C<n> and C<k>, returns the binomial
-coefficient C<n*(n-1)*...*(n-k+1)/k!>, also known as the choose function.
+Given integer arguments C<n> and C<k>, returns the binomial coefficient
+C<n*(n-1)*...*(n-k+1)/k!>, also known as the choose function.  Negative
+arguments use the L<Kronenburg extensions|http://arxiv.org/abs/1105.3689/>.
 This corresponds to Pari's C<binomial(n,k)> function, Mathematica's
 C<Binomial[n,k]> function, and GMP's C<mpz_bin_ui> function.
+
+The rules for negative C<n> follow the same rules as the functions mentioned,
+which does not match Math::BigInt.  Additionally, Pari does not use the
+extension for C<n E<lt>0 ; k E<lt>= n>, while GMP's API doesn't allow this
+case at all.
 
 
 =head2 znorder
