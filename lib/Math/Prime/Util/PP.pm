@@ -1586,6 +1586,15 @@ sub valuation {
   my($n, $k) = @_;
   return 0 if $n < 2 || $k < 2;
   my $v = 0;
+  if ($k == 2) { # Accelerate power of 2
+    if (ref($n) eq 'Math::BigInt') {   # This can pay off for big inputs
+      return 0 unless $n->is_even;
+      my $s = $n->as_bin;              # We could do same for k=10
+      return length($s) - rindex($s,'1') - 1;
+    }
+    while (!($n & 0xFFFF) ) {  $n >>=16;  $v +=16;  }
+    while (!($n & 0x000F) ) {  $n >>= 4;  $v += 4;  }
+  }
   while ( !($n % $k) ) {
     $n /= $k;
     $v++;

@@ -7,14 +7,14 @@ use Math::BigInt try=>"GMP";
 # This shows examples of many sequences from:
 #   https://metacpan.org/release/Math-NumSeq
 # Some of them are faster, some are much faster, a few are slower.
-# This usually shows up once past ~ 10k values, or for large preds.
+# This usually shows up once past ~ 10k values, or for large preds/iths.
 
 # In general, these will work just fine for values up to 2^64, and typically
 # quite well beyond that.  This is in contrast to most Math::NumSeq sequences
 # which limit themselves to 2^32 because Math::Factor::XS and Math::Prime::XS
-# use naive implementations which do not scale well.
+# do not scale well.
 
-# The argument method is crippled here, just used for quick examples.
+# The argument method is really simple -- this is just to show code.
 
 # Note that this completely lacks the framework of the module, and Math::NumSeq
 # often implements various options that aren't always here.  It's just
@@ -75,7 +75,7 @@ if      ($type eq 'Abundant') {
   }
   print join " ", @n;
 } elsif ($type eq 'Catalan') {
-  # Done via pred.  Much faster than MNS pred, but much slower than iterator
+  # Done via ith.  Much faster than MNS ith, but much slower than iterator
   @n = map { binomial( $_<<1, $_) / ($_+1) } 0 .. $count-1;
   print join " ", @n;
 } elsif ($type eq 'Cubes') {
@@ -128,8 +128,7 @@ if      ($type eq 'Abundant') {
   }
 } elsif ($type eq 'Fibonacci') {
   # This is not a good way to do it, but does show a use for the function.
-  my $lim = ~0;
-  $lim = Math::BigInt->new(2) ** $count  if $count > 70;
+  my $lim = ($count <= 70)  ?  ~0  :  Math::BigInt->new(2) ** $count;
   print join " ", map { (lucas_sequence($lim, 1, -1, $_))[0] } 0..$count-1;
 } elsif ($type eq 'GoldbachCount') {
   if ($arg eq 'even') {
@@ -143,9 +142,10 @@ if      ($type eq 'Abundant') {
   print join " ", map { liouville($_) } 1..$count;
 } elsif ($type eq 'LucasNumbers') {
   # This is not a good way to do it, but does show a use for the function.
-  my $lim = ~0;
-  $lim = Math::BigInt->new(2) ** $count  if $count > 91;
+  my $lim = ($count <= 91)  ?  ~0  :  Math::BigInt->new(2) ** $count;
   print join " ", map { (lucas_sequence($lim, 1, -1, $_))[1] } 1..$count;
+} elsif ($type eq 'MephistoWaltz') {
+  print join " ", map { mephisto_waltz($_) } 0..$count-1;
 } elsif ($type eq 'MobiusFunction') {
   print join " ", moebius(1,$count);
 } elsif ($type eq 'MoranNumbers') {
@@ -157,9 +157,10 @@ if      ($type eq 'Abundant') {
   print join " ", @n;
 } elsif ($type eq 'Pell') {
   # This is not a good way to do it, but does show a use for the function.
-  my $lim = ~0;
-  $lim = Math::BigInt->new(3) ** $count  if $count > 51;
+  my $lim = ($count <= 51)  ?  ~0  :  Math::BigInt->new(3) ** $count;
   print join " ", map { (lucas_sequence($lim, 2, -1, $_))[0] } 0..$count-1;
+} elsif ($type eq 'PisanoPeriod') {
+  print join " ", map { pisano($_) } 1..$count;
 } elsif ($type eq 'PolignacObstinate') {
   my $i = 1;
   while (@n < $count) {
@@ -184,7 +185,7 @@ if      ($type eq 'Abundant') {
     my(@pe,$nmore);
     $i = 0;
     while (@n < $count) {
-      do { 
+      do {
         @pe = factor_exp(++$i);
         $nmore = scalar grep { $_->[1] >= $power } @pe;
       } while ($which eq 'some' && $nmore == 0)
@@ -218,6 +219,14 @@ if      ($type eq 'Abundant') {
   }
 } elsif ($type eq 'Primorials') {
   print join " ", map { pn_primorial($_) } 0..$count-1;
+} elsif ($type eq 'ProthNumbers') {
+  # The pred is faster and far simpler than MNS's pred, but slow as a sequence.
+  my $i = 0;
+  while (@n < $count) {
+    $i++ while !is_proth($i);
+    push @n, $i++;
+  }
+  print join " ", @n;
 } elsif ($type eq 'PythagoreanHypots') {
   my $i = 2;
   if ($arg eq 'primitive') {
@@ -248,7 +257,7 @@ if      ($type eq 'Abundant') {
 } elsif ($type eq 'Totient') {
   print join " ", euler_phi(1,$count);
 } elsif ($type eq 'TotientCumulative') {
-  # pred:   vecsum(euler_phi(0,$_[0]));
+  # ith:   vecsum(euler_phi(0,$_[0]));
   my $c = 0;
   print join " ", map { $c += euler_phi($_) } 0..$count-1;
 } elsif ($type eq 'TotientPerfect') {
@@ -277,7 +286,7 @@ if      ($type eq 'Abundant') {
 # AllDigits
 # AsciiSelf
 # BalancedBinary
-# Base::IteraeIth
+# Base::IterateIth
 # Base::IteratePred
 # BaumSweet
 # Beastly
@@ -315,7 +324,6 @@ if      ($type eq 'Abundant') {
 # Kolakoski
 # LuckyNumbers
 # MaxDigitCount
-# MephistoWaltz
 # Modulo
 # Multiples
 # NumAronson
@@ -325,11 +333,9 @@ if      ($type eq 'Abundant') {
 # Odd
 # Palindromes
 # Perrin
-# PisanoPeriod                 MNS uses factoring
 # PisanoPeriodSteps
 # Polygonal
 # Pronic
-# ProthNumbers
 # RadixConversion
 # RadixWithoutDigit
 # ReReplace
@@ -347,7 +353,8 @@ if      ($type eq 'Abundant') {
 # SqrtDigits
 # SqrtEngel
 # StarNumbers
-# SternDiatomic
+# SternDiatomic    # vecsum( map { binomial($n-$_-1,$_) % 2 } 0..(($n-1)>>1) )
+#                  # ^^ works but very slow
 # Tetrahedral
 # Triangular
 # UlamSequence
@@ -405,7 +412,12 @@ sub is_polignac_obstinate {
   }
   1;
 }
-  
+
+sub is_proth {
+  my $v = $_[0] - 1;
+  my $n2 = 1 << valuation($v,2);
+  $v/$n2 < $n2 && $v > 1;
+}
 
 # Lemoine Count (A046926)
 sub lemoine_count {
@@ -528,6 +540,17 @@ sub power_part {
   1;
 }
 
+# This isn't faster, but it was interesting.
+sub mephisto_waltz {
+  my($n,$i) = (shift, 0);
+  while ($n > 1) {
+    $n /= 3**valuation($n,3);
+    $i++ if 2 == $n % 3;
+    $n = int($n/3);
+  }
+  $i % 2;
+}
+
 # This is simple and low memory, but not as fast as can be done with a prime
 # list.  See Data::BitStream::Code::Additive for example.
 sub goldbach_count {
@@ -538,4 +561,23 @@ sub goldbach_count {
     $count++ if is_prime($n-$_);
   } int($n/2);
   $count;
+}
+
+sub pisano {
+  my $i = shift;
+  my @pe = factor_exp($i);
+  my @periods = (1);
+  foreach my $pe (@pe) {
+    my $period = $pe->[0] ** ($pe->[1] - 1);
+    my $modulus = $pe->[0];
+    {
+      my($f0,$f1,$per) = (0,1,1);
+      for ($per = 0; $f0 != 0 || $f1 != 1 || !$per; $per++) {
+        ($f0,$f1) = ($f1, ($f0+$f1) % $modulus);
+      }
+      $period *= $per;
+    }
+    push @periods, $period;
+  }
+  lcm(@periods);
 }
