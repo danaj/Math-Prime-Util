@@ -1828,6 +1828,7 @@ sub binomial {
   if ($n >= 0) {  return 0 if $k < 0 || $k > $n;  }
   else         {  return 0 if $k < 0 && $k > $n;  }
   $k = $n - $k if $k < 0;
+
   # 3. Try to do in integer Perl
   my $r;
   if ($n >= 0) {

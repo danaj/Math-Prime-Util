@@ -17,7 +17,7 @@ plan tests =>   6   # range
 
 # Note: AKS testing is *extremely* sparse due to its lack of speed.
 #       This does almost nothing to test whether AKS is working properly.
-# 
+#
 # If you are concerned about AKS correctness, you really need to use
 # the xt/primality-aks.pl test.
 

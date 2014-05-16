@@ -194,7 +194,7 @@ while (1) {
         == jordan_totient(3,$n);
 
   # TODO: exp_mangoldt:
-  # Lambda(n)={ 
+  # Lambda(n)={
   #   v=factor(n);
   #   if(matsize(v)[1]!=1,return(0),return(log(v[1,1])));
   # };

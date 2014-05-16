@@ -31,7 +31,7 @@ my $count = shift || 20;
 # Alternatives:
 # 229.6s   Math::NumSeq::TwinPrimes (Perl 5.19.7, Math::NumSeq 69)
 #   6.6s - perl -MMath::PariInit=primes=65000000 -MMath::Pari=forprime,PARI -E
-#          '$l=2;forprime($x,2,64764841,sub{say $l if $l+2==$x;$l=int("$x");});' 
+#          '$l=2;forprime($x,2,64764841,sub{say $l if $l+2==$x;$l=int("$x");});'
 
 # This speeds things up, but isn't necessary.
 #  Easy but estimates very high:

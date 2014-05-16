@@ -19,11 +19,11 @@ use Math::GMPz;
 #
 # TIMING:
 #              10^7    2*10^7   10^8     10^10
-# Clever       0.07s    0.09s   0.24s    5s
-# Brute        5.7s    11.0s   53.9s     5 hours
-# Simple MPU  12.0s    27.3s  174s       1-2 days?
+# Clever       0.06s    0.09s   0.24s    5s
+# Brute        5.0s    10.2s   52.9s     5 hours
+# Simple MPU  10.8s    24.6s  159s       1 day?
 # Simple Pari 13.6s    33.4s  277s       5 days?
-#   
+#
 
 my $limit = shift || 10**10-1;
 my $method = lc(shift || 'clever');

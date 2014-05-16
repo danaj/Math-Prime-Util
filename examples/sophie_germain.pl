@@ -71,7 +71,7 @@ if ($method eq 'forprimes') {
 
   # Use Math::NumSeq
   require Math::NumSeq::SophieGermainPrimes;
-  my $seq = Math::NumSeq::SophieGermainPrimes->new; 
+  my $seq = Math::NumSeq::SophieGermainPrimes->new;
   for (1 .. $count) {
     print 0+($seq->next)[1];
   }

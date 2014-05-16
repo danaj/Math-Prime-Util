@@ -9,9 +9,9 @@ my $method = shift || 'mertens';
 # See http://arxiv.org/pdf/1107.4890v1.pdf
 
 #  2.9s  mertens
-#  9.9s  block     
+#  9.8s  block
 # 10.0s  monolithic
-# 36.0s  simple
+# 33.0s  simple
 # lots   brute
 
 my $sum = 0;

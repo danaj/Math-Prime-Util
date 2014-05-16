@@ -28,8 +28,8 @@ sub inverse_euler_phi {
   my $do_bigint = ($N > 2**49);
   if ($do_bigint) {
     # Math::GMPz and Math::GMP are fast.  Math::BigInt::GMP is 10x slower.
-    eval { use Math::GMPz; $do_bigint = "Math::GMPz"; 1; } || 
-    eval { use Math::GMP; $do_bigint = "Math::GMP"; 1; } || 
+    eval { use Math::GMPz; $do_bigint = "Math::GMPz"; 1; } ||
+    eval { use Math::GMP; $do_bigint = "Math::GMP"; 1; } ||
     eval { use Math::BigInt try=>"GMP,Pari"; $do_bigint = "Math::BigInt"; 1; };
     $N = $do_bigint->new("$N");
   }

@@ -2306,7 +2306,7 @@ Examples of various ways to set your own irand function:
 
   # Math::Random::MTwist.  Fastest RNG by quite a bit.
   use Math::Random::MTwist;
-  prime_set_config(irand => \&Math::Random::MTwist::irand32);
+  prime_set_config(irand => \&Math::Random::MTwist::_irand32);
 
   # Math::Random::Secure.  Uses ISAAC and strong seed methods.
   use Math::Random::Secure;
