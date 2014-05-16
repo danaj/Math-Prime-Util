@@ -1794,26 +1794,59 @@ sub kronecker {
   }
   return ($b == 1) ? $k : 0;
 }
+
+sub _binomialu {
+  my($r, $n, $k) = (1, @_);
+  return ($k == $n) ? 1 : 0 if $k >= $n;
+  $k = $n - $k if $k > ($n >> 1);
+  foreach my $d (1 .. $k) {
+    if ($r >= int(~0/$n)) {
+      my($g, $nr, $dr);
+      $g = _gcd_ui($n, $d);   $nr = int($n/$g);   $dr = int($d/$g);
+      $g = _gcd_ui($r, $dr);  $r  = int($r/$g);   $dr = int($dr/$g);
+      return 0 if $r >= int(~0/$nr);
+      $r *= $nr;
+      $r = int($r/$dr);
+    } else {
+      $r *= $n;
+      $r = int($r/$d);
+    }
+    $n--;
+  }
+  $r;
+}
+
 sub binomial {
   my($n, $k) = @_;
 
+  # 1. Try GMP
   if (defined &Math::Prime::Util::GMP::binomial && Math::Prime::Util::prime_get_config()->{'gmp'}) {
     return Math::Prime::Util::_reftyped($_[0], Math::Prime::Util::GMP::binomial($n,$k));
   }
 
-  return 0 if $n >= 0 && ($k < 0 || $k > $n);
-  if ($n < 0 && $k < 0) {
-    return 0 if $k > $n;
-    $k = $n-$k;
-  }
-  return 1 if $k == 0;        # Work around bug in old
-  return $n if $k == $n-1;    # Math::BigInt (fixed in 1.90)
+  # 2. Exit early for known 0 cases, and adjust k to be positive.
+  if ($n >= 0) {  return 0 if $k < 0 || $k > $n;  }
+  else         {  return 0 if $k < 0 && $k > $n;  }
+  $k = $n - $k if $k < 0;
+  # 3. Try to do in integer Perl
   my $r;
   if ($n >= 0) {
-    $r = Math::BigInt->new("$n")->bnok("$k");
+    $r = _binomialu($n, $k);
+    return $r  if $r > 0;
+  } else {
+    $r = _binomialu(-$n+$k-1, $k);
+    return $r   if $r > 0 && !($k & 1);
+    return -$r  if $r > 0 && $r <= (~0>>1);
+  }
+
+  # 4. Overflow.  Solve using Math::BigInt
+  return 1 if $k == 0;        # Work around bug in old
+  return $n if $k == $n-1;    # Math::BigInt (fixed in 1.90)
+  if ($n >= 0) {
+    $r = Math::BigInt->new($n)->bnok($k);
     $r = _bigint_to_int($r) if $r->bacmp(''.~0) <= 0;
   } else { # Math::BigInt is incorrect for negative n
-    $r = Math::BigInt->new( ''.(-$n+$k-1) )->bnok("$k");
+    $r = Math::BigInt->new(-$n+$k-1)->bnok($k);
     if ($k & 1) {
       $r->bneg;
       $r = _bigint_to_int($r) if $r->bacmp(''.(~0>>1)) <= 0;
