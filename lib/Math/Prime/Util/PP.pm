@@ -1528,16 +1528,16 @@ sub invmod {
   return if $n == 0 || $a == 0;
   return 0 if $n == 1;
   $n = -$n if $n < 0;  # Pari semantics
-  if ($n > (~0>>1)) {
+  if ($n > ~0) {
     my $invmod = Math::BigInt->new("$a")->bmodinv("$n");
     return if !defined $invmod || $invmod->is_nan;
     $invmod = _bigint_to_int($invmod) if $invmod->bacmp(''.~0) <= 0;
     return $invmod;
   }
-  my($t,$nt,$r,$nr) = (0, 1, $n, $a);
-  use integer;
+  my($t,$nt,$r,$nr) = (0, 1, $n, $a % $n);
   while ($nr != 0) {
-    my $quot = int($r/$nr);
+    # Use mod before divide to force correct behavior with high bit set
+    my $quot = int( ($r-($r % $nr))/$nr );
     ($nt,$t) = ($t-$quot*$nt,$nt);
     ($nr,$r) = ($r-$quot*$nr,$nr);
   }
