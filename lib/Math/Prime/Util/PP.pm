@@ -1515,7 +1515,7 @@ sub vecsum {
   my $neglim = -(~0 >> 1) - 1;
   foreach my $v (@_) {
     $sum += $v;
-    if ($sum > ~0 || $sum < $neglim) {
+    if ($sum > (~0-250) || $sum < $neglim) {
       $sum = BZERO->copy;
       $sum->badd("$_") for @_;
       return $sum;
