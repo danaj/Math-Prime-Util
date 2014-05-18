@@ -14,10 +14,11 @@ BEGIN {
   no Config;
 }
 
-my $small = 100000;
+my $small = 80_000;
 print "Comparing for small inputs: 0 - $small\n";
 
 foreach my $n (0 .. $small) {
+  print '.' unless ($n+1) % int($small/80);
   die "isprime($n)" unless Math::Pari::isprime($n) == !!is_prime($n);
   die "is_prob_prime($n)" unless Math::Pari::isprime($n) == !!is_prob_prime($n);
   die "next_prime($n)" unless Math::Pari::nextprime($n+1) == next_prime($n);
@@ -36,6 +37,10 @@ foreach my $n (0 .. $small) {
   die "bigomega($n)" unless Math::Pari::bigomega($n) == factor($n);
   die "numdiv($n)" unless Math::Pari::numdiv($n) == divisors($n);
 
+  for my $k (2,3,9,10) {
+    die "valuation($n,$k)" unless Math::Pari::valuation($n,$k) == valuation($n,$k);
+  }
+
   foreach my $k (0..4) {
     die "sigma($n,$k)" unless Math::Pari::sigma($n,$k) == divisor_sum($n,$k);
   }
@@ -50,6 +55,15 @@ foreach my $n (0 .. $small) {
   die "jordan_totient(3,$n)"
     unless Math::Pari::sumdiv($n,"d","d^3*moebius($n/d)")
         == jordan_totient(3,$n);
+
+  if ($n > 1) {
+    for (1..10) {
+      my $k;  do { $k = int(rand(50)) } while !($k % $n);
+      die "binomial($n,$k)" unless Math::Pari::binomial($n,$k) == binomial($n,$k);
+      my $negn = - ($n >> 1);
+      die "binomial($negn,$k)" unless Math::Pari::binomial($negn,$k) == binomial($negn,$k);
+    }
+  }
 
   die "nth_prime($n)" unless Math::Pari::prime($n) == nth_prime($n);
 
@@ -76,7 +90,6 @@ foreach my $n (0 .. $small) {
   }
 
   { my $m = int(rand($n-1));
-    my $mn = PARI "Mod($m,$n)";
     my $invmod = invmod($m, $n);
     if (defined $invmod) {
       die "invmod($m, $n)" unless Math::Pari::lift(PARI "Mod(1/$m,$n)") == $invmod;
@@ -134,7 +147,7 @@ foreach my $n (0 .. $small) {
     }
   }
 
-  print "." unless $n % 1250;
+  #print "." unless $n % 1250;
 }
 
 print "\nkronecker, gcd, and lcm for small values\n";
@@ -177,6 +190,10 @@ while (1) {
   die "bigomega($n)" unless Math::Pari::bigomega($n) == factor($n);
   die "numdiv($n)" unless Math::Pari::numdiv($n) == divisors($n);
 
+  for my $k (2,3,9,10) {
+    die "valuation($n,$k)" unless Math::Pari::valuation($n,$k) == valuation($n,$k);
+  }
+
   foreach my $k (0..4) {
     die "sigma($n,$k)" unless Math::Pari::sigma($n,$k) == divisor_sum($n,$k);
   }
@@ -192,6 +209,15 @@ while (1) {
   die "jordan_totient(3,$n)"
     unless Math::Pari::sumdiv($n,"d","d^3*moebius($n/d)")
         == jordan_totient(3,$n);
+
+  if ($n > 2) {
+    for (1..10) {
+      my $k;  do { $k = int(rand(10)) } while !($k % $n);
+      die "binomial($n,$k)" unless Math::Pari::binomial($n,$k) == binomial($n,$k);
+      my $negn = - ($n >> 1);
+      die "binomial($negn,$k)" unless Math::Pari::binomial($negn,$k) == binomial($negn,$k);
+    }
+  }
 
   # TODO: exp_mangoldt:
   # Lambda(n)={
@@ -209,7 +235,6 @@ while (1) {
   # TODO: carmichael lambda?  Pari doesn't have it.
 
   { my $m = int(rand($n-1));
-    my $mn = PARI "Mod($m,$n)";
     my $invmod = invmod($m, $n);
     if (defined $invmod) {
       die "invmod($m, $n)" unless Math::Pari::lift(PARI "Mod(1/$m,$n)") == $invmod;
