@@ -65,12 +65,12 @@ sub mpu_public_regex {
       random_maurer_prime random_maurer_prime_with_cert
       random_shawe_taylor_prime random_shawe_taylor_prime_with_cert
       primorial pn_primorial consecutive_integer_lcm
-      gcd lcm factor factor_exp all_factors divisors valuation invmod
+      gcd lcm factor factor_exp all_factors divisors valuation invmod vecsum
       moebius mertens euler_phi jordan_totient exp_mangoldt liouville
       partitions
       chebyshev_theta chebyshev_psi
-      divisor_sum
-      carmichael_lambda kronecker znorder znprimroot znlog legendre_phi
+      divisor_sum carmichael_lambda
+      kronecker binomial znorder znprimroot znlog legendre_phi
       ExponentialIntegral LogarithmicIntegral RiemannZeta RiemannR
   /;
   my $pattern = '^(' . join('|', @funcs) . ')$';
