@@ -493,9 +493,9 @@ sub next_prime {
     return $_primes_small[$i+1];
   }
 
-
-  $n = Math::BigInt->new(''.$_[0])
-     if ref($n) ne 'Math::BigInt' && $n >= MPU_MAXPRIME;
+  return Math::BigInt->new(MPU_32BIT ? "4294967311" : "18446744073709551629")
+    if ref($n) ne 'Math::BigInt' && $n >= MPU_MAXPRIME;
+  # n is now either 1) not bigint and < maxprime, or (2) bigint and >= uvmax
 
   #$n = ($n+1) | 1;
   #while (    !($n%3) || !($n%5) || !($n%7) || !($n%11) || !($n%13)
