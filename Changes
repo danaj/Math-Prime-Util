@@ -1,5 +1,11 @@
 Revision history for Perl module Math::Prime::Util
 
+0.42  2014-06
+
+    [FUNCTIONALITY AND PERFORMANCE]
+
+    - DLP rho (used in znlog) works better.
+
 0.41  2014-05-18
 
     [ADDED]

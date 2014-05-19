@@ -982,7 +982,10 @@ UV dlp_prho(UV a, UV g, UV p, UV maxrounds) {
         return 0;
       }
       r2 = submod(W, w, n);
-      k = divmod(r2, r1, n);
+      {
+        UV G = gcd_ui(gcd_ui(r1,r2), n);
+        k = divmod(r2/G, r1/G, n/G);
+      }
       if (powmod(g,k,p) != a) {
         if (verbose > 2) printf("r1 = %"UVuf"  r2 = %"UVuf" k = %"UVuf"\n", r1, r2, k);
         if (verbose) printf("Incorrect DLP Rho solution: %"UVuf"\n", k);

@@ -1537,7 +1537,7 @@ UV znlog(UV a, UV g, UV p) {
   if (k != 0 || p <= DLP_TRIAL_NUM)
     return k;
   if (verbose) printf("  dlp trial failed.  Trying prho\n");
-  k = dlp_prho(a, g, p, 1000000);
+  k = dlp_prho(a, g, p, 10000000);
   if (k != 0)
     return k;
   if (verbose) printf("  dlp prho failed.  Back to trial\n");
