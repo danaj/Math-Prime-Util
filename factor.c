@@ -975,17 +975,27 @@ UV dlp_prho(UV a, UV g, UV p, UV maxrounds) {
     pollard_rho_cycle(U,V,W,p,n,a,g);   /* x2i, a2i, b2i */
     if (verbose > 3) printf( "%3"UVuf"  %4"UVuf" %3"UVuf" %3"UVuf"  %4"UVuf" %3"UVuf" %3"UVuf"\n", i, u, v, w, U, V, W );
     if (u == U) {
-      UV r1, r2, k;
+      UV r1, r2, k, G, G2;
       r1 = submod(v, V, n);
-      if (r1 == 0) {
-        if (verbose) printf("DLP Rho failure, r=0\n");
-        return 0;
-      }
+      if (r1 == 0) { if (verbose) printf("DLP Rho failure, r=0\n"); return 0; }
       r2 = submod(W, w, n);
-      {
-        UV G = gcd_ui(gcd_ui(r1,r2), n);
-        k = divmod(r2/G, r1/G, n/G);
+
+      G = gcd_ui(r1,n);
+      G2 = gcd_ui(G,r2);
+      k = divmod(r2/G2, r1/G2, n/G2);
+      if (G > 1) {
+        if (powmod(g,k,p) == a) {
+          if (verbose > 2) printf("  common GCD %lu\n", G2);
+        } else {
+          UV m, l = divmod(r2, r1, n/G);
+          for (m = 0; m < G; m++) {
+            k = addmod(l, mulmod(m,(n/G),n), n);
+            if (powmod(g,k,p) == a) break;
+          }
+          if (m<G && verbose > 2) printf("  GCD %lu, found with m=%lu\n", G, m);
+        }
       }
+
       if (powmod(g,k,p) != a) {
         if (verbose > 2) printf("r1 = %"UVuf"  r2 = %"UVuf" k = %"UVuf"\n", r1, r2, k);
         if (verbose) printf("Incorrect DLP Rho solution: %"UVuf"\n", k);

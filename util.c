@@ -1527,7 +1527,7 @@ UV divmod(UV a, UV b, UV n) {   /* a / b  mod n */
  * This implementation is just a stupid placeholder.
  * When prho or bsgs starts working well, lower the trial limit
  */
-#define DLP_TRIAL_NUM  1000000
+#define DLP_TRIAL_NUM  10000
 UV znlog(UV a, UV g, UV p) {
   UV k;
   const int verbose = _XS_get_verbose();
