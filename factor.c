@@ -1014,10 +1014,6 @@ UV dlp_prho(UV a, UV g, UV p, UV n, UV maxrounds) {
 /* DLP - BSGS */
 /******************************************************************************/
 
-/* TODO: Entries should come from a slot allocator (aka pool allocator).
- * This would cut memory and time overhead for creating entries, as well
- * as simplifying and speeding up the destruction. */
-
 #define HASHMAP_COUNT ((UV) (1UL<<17) + 29)
 
 typedef struct bsgs_hash_t {
@@ -1026,7 +1022,43 @@ typedef struct bsgs_hash_t {
   struct bsgs_hash_t* next;
 } bsgs_hash_t;
 
-static int bsgs_hash_put(bsgs_hash_t** table, UV idx, UV K, UV V) {
+/****************************************/
+/*  Simple and limited pool allocation  */
+#define BSGS_ENTRIES_PER_PAGE 8000
+typedef struct bsgs_page_top_t {
+  struct bsgs_page_t* first;
+  int nused;
+  int npages;
+} bsgs_page_top_t;
+
+typedef struct bsgs_page_t {
+  bsgs_hash_t entries[BSGS_ENTRIES_PER_PAGE];
+  struct bsgs_page_t* next;
+} bsgs_page_t;
+
+static bsgs_hash_t* get_entry(bsgs_page_top_t* top) {
+  if (top->nused == 0 || top->nused >= BSGS_ENTRIES_PER_PAGE) {
+    bsgs_page_t* newpage;
+    Newz(0, newpage, 1, bsgs_page_t);
+    newpage->next = top->first;
+    top->first = newpage;
+    top->nused = 0;
+    top->npages++;
+  }
+  return top->first->entries + top->nused++;
+}
+static void destroy_pages(bsgs_page_top_t* top) {
+  bsgs_page_t* head = top->first;
+  while (head != 0) {
+    bsgs_page_t* next = head->next;
+    Safefree(head);
+    head = next;
+  }
+  top->first = 0;
+}
+/****************************************/
+  
+static int bsgs_hash_put(bsgs_page_top_t* pagetop, bsgs_hash_t** table, UV idx, UV K, UV V) {
   bsgs_hash_t* entry = table[idx];
 
   while (entry && entry->key != K)
@@ -1037,12 +1069,12 @@ static int bsgs_hash_put(bsgs_hash_t** table, UV idx, UV K, UV V) {
     return 0;
   }
 
-  New(0, entry, 1, bsgs_hash_t);
+  entry = get_entry(pagetop);
   entry->key = K;
   entry->val = V;
   entry->next = table[idx];
   table[idx] = entry;
-  return sizeof(bsgs_hash_t*);
+  return sizeof(bsgs_hash_t);
 }
 
 static UV bsgs_hash_get(bsgs_hash_t* entry, UV K) {
@@ -1051,18 +1083,8 @@ static UV bsgs_hash_get(bsgs_hash_t* entry, UV K) {
   return (entry) ? entry->val : 0;
 }
 
-static void bsgs_hash_free(bsgs_hash_t** table) {
-  UV i;
-  if (!table) return;
-  for (i = 0; i < HASHMAP_COUNT; i++) {
-    bsgs_hash_t* entry = table[i];
-    while (entry)
-      {  bsgs_hash_t* next = entry->next;  Safefree(entry);  entry = next;  }
-  }
-}
-
-
 UV dlp_bsgs(UV a, UV g, UV p, UV n, UV maxbytes) {
+  bsgs_page_top_t PAGES = {0, 0, 0};
   bsgs_hash_t** table;
   UV m, maxm, invg;
   UV result = 0;
@@ -1087,20 +1109,20 @@ UV dlp_bsgs(UV a, UV g, UV p, UV n, UV maxbytes) {
     UV bytes_used = 0;
     UV am = 1;
     for (m = 0; m <= maxm && bytes_used < maxbytes; m++) {
-      bytes_used += bsgs_hash_put(table, am % HASHMAP_COUNT, am, m);
+      bytes_used += bsgs_hash_put(&PAGES, table, am % HASHMAP_COUNT, am, m);
       am = mulmod(am, g, p);
       if (am == a) {  /* We discovered the solution! */
         if (verbose) printf("  dlp bsgs: discovered solution during baby steps\n");
-        bsgs_hash_free(table);
-        Safefree(table);
-        return m+1;
+        result = m+1;
+        break;
       }
     }
     if (m > maxm) m = maxm;
   }
+  if (verbose) printf("  dlp bsgs using %d pages (%.1fMB) for hash\n", PAGES.npages, ((double)PAGES.npages * sizeof(bsgs_page_t)) / (1024*1024));
 
   /* 3. Giant Step.  Search for solution. */
-  {
+  if (result == 0) {
     UV b = (p+m-1)/m;
     UV gm = powmod(invg, m, p);
     UV pow, key = a;
@@ -1116,7 +1138,7 @@ UV dlp_bsgs(UV a, UV g, UV p, UV n, UV maxbytes) {
       key = mulmod(key, gm, p);
     }
   }
-  bsgs_hash_free(table);
+  destroy_pages(&PAGES);
   Safefree(table);
   if (result != 0 && powmod(g,result,p) != a) {
     if (verbose) printf("Incorrect DLP BSGS solution: %"UVuf"\n", result);

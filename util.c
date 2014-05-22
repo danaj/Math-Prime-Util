@@ -1552,22 +1552,26 @@ UV znlog(UV a, UV g, UV p) {
       if (k != 0 || p <= DLP_RHO_NUM) return k;
     }
 
-    /* This BSGS should succeed on almost all input */
-    if (n <= UVCONST(4294967295)) {
-      k = dlp_bsgs(a, g, p, n, 1U<<18);
-      if (verbose) printf("  dlp bsgs 256k %s\n", k!=0 ? "success" : "failure");
-    } else {
-      k = dlp_bsgs(a, g, p, n, 1U<<21);
-      if (verbose) printf("  dlp bsgs 2M %s\n", k!=0 ? "success" : "failure");
-    }
+    /* Try BSGS in increasing sizes.  A bit inefficient. */
+    k = dlp_bsgs(a, g, p, n, 1U<<17);
+    if (verbose) printf("  dlp bsgs 200k %s\n", k!=0 ? "success" : "failure");
     if (k != 0) return k;
 
-    k = dlp_prho(a, g, p, n, 2000000);
-    if (verbose) printf("  dlp rho 2M %s\n", (k!=0 || p<= 2000000) ? "success" : "failure");
-    if (k != 0 || p <= 2000000) return k;
+    k = dlp_bsgs(a, g, p, n, 1U<<21);
+    if (verbose) printf("  dlp bsgs 2M %s\n", k!=0 ? "success" : "failure");
+    if (k != 0) return k;
 
-    k = dlp_bsgs(a, g, p, n, 1U << 26);
-    if (verbose) printf("  dlp bsgs 64M %s\n", k!=0 ? "success" : "failure");
+    k = dlp_bsgs(a, g, p, n, 1U << 24);
+    if (verbose) printf("  dlp bsgs 16M %s\n", k!=0 ? "success" : "failure");
+    if (k != 0) return k;
+
+    /* A slight chance that Rho might get it before going very big */
+    k = dlp_prho(a, g, p, n, 10000000);
+    if (verbose) printf("  dlp rho 10M %s\n", (k!=0 || p<= 10000000) ? "success" : "failure");
+    if (k != 0 || p <= 10000000) return k;
+
+    k = dlp_bsgs(a, g, p, n, 1U << 27);
+    if (verbose) printf("  dlp bsgs 128MB %s\n", k!=0 ? "success" : "failure");
     if (k != 0) return k;
 
   }
