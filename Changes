@@ -4,7 +4,8 @@ Revision history for Perl module Math::Prime::Util
 
     [FUNCTIONALITY AND PERFORMANCE]
 
-    - DLP rho (used in znlog) works better.
+    - znlog (XS) is *much* faster.  Added BSGS and fixed some Rho issues.
+
 
 0.41  2014-05-18
 

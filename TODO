@@ -67,8 +67,6 @@
 
 - Ensure a fast path for Math::GMP from MPU -> MPU:GMP -> GMP, and back.
 
-- znlog better implementation
-
 - We don't use legendre_phi for other functions any more, but it'd be nice
   to speed it up using some ideas from the Ohana 2011 SAGE branch.  For example
   (10**13,10**5) takes 2.5x longer, albeit with 6x less memory.
@@ -78,3 +76,5 @@
 - More Pari:  parforprime, vecmin, vecmax
 
 - is_power should take a third argument that gets set to the root
+
+- PP BSGS for znlog, and for GMP.  Pohlig-Hellman.

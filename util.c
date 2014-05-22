@@ -1523,24 +1523,56 @@ UV divmod(UV a, UV b, UV n) {   /* a / b  mod n */
   return mulmod(a, binv, n);
 }
 
-/* Find smallest k where a = g^k mod p
- * This implementation is just a stupid placeholder.
- * When prho or bsgs starts working well, lower the trial limit
- */
-#define DLP_TRIAL_NUM  10000
+/* Find smallest k where a = g^k mod p */
+#define DLP_TRIAL_NUM  1000
+#define DLP_RHO_NUM    40000
 UV znlog(UV a, UV g, UV p) {
-  UV k;
+  UV k, n;
   const int verbose = _XS_get_verbose();
+
+  if (a >= p) a %= p;
+  if (g >= p) g %= p;
+
   if (a <= 1 || g == 0 || p < 2)
     return 0;
+
   k = dlp_trial(a, g, p, DLP_TRIAL_NUM);
-  if (k != 0 || p <= DLP_TRIAL_NUM)
-    return k;
-  if (verbose) printf("  dlp trial failed.  Trying prho\n");
-  k = dlp_prho(a, g, p, 10000000);
-  if (k != 0)
-    return k;
-  if (verbose) printf("  dlp prho failed.  Back to trial\n");
+  if (verbose) printf("  dlp trial 1k %s\n", (k!=0 || p<= DLP_TRIAL_NUM) ? "success" : "failure");
+  if (k != 0 || p <= DLP_TRIAL_NUM) return k;
+
+  n = znorder(g, p);
+  if (verbose > 1 && n != p-1) printf("  g=%lu p=%lu, order %lu\n", g, p, n);
+
+  if (n != 0) {
+
+    /* Rho has low overhead and works well for small values */
+    if (n <= UVCONST(100000000)) {
+      k = dlp_prho(a, g, p, n, DLP_RHO_NUM);
+      if (verbose) printf("  dlp rho 40k %s\n", (k!=0 || p<= DLP_RHO_NUM) ? "success" : "failure");
+      if (k != 0 || p <= DLP_RHO_NUM) return k;
+    }
+
+    /* This BSGS should succeed on almost all input */
+    if (n <= UVCONST(4294967295)) {
+      k = dlp_bsgs(a, g, p, n, 1U<<18);
+      if (verbose) printf("  dlp bsgs 256k %s\n", k!=0 ? "success" : "failure");
+    } else {
+      k = dlp_bsgs(a, g, p, n, 1U<<21);
+      if (verbose) printf("  dlp bsgs 2M %s\n", k!=0 ? "success" : "failure");
+    }
+    if (k != 0) return k;
+
+    k = dlp_prho(a, g, p, n, 2000000);
+    if (verbose) printf("  dlp rho 2M %s\n", (k!=0 || p<= 2000000) ? "success" : "failure");
+    if (k != 0 || p <= 2000000) return k;
+
+    k = dlp_bsgs(a, g, p, n, 1U << 26);
+    if (verbose) printf("  dlp bsgs 64M %s\n", k!=0 ? "success" : "failure");
+    if (k != 0) return k;
+
+  }
+
+  if (verbose) printf("  dlp doing exhaustive trial\n");
   k = dlp_trial(a, g, p, p);
   return k;
 }

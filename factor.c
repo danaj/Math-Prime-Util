@@ -939,15 +939,19 @@ int squfof_factor(UV n, UV *factors, UV rounds)
 }
 
 UV dlp_trial(UV a, UV g, UV p, UV maxrounds) {
-  UV t, k = 1;
+  UV k, t = g;
   if (maxrounds > p) maxrounds = p;
   for (k = 1; k < maxrounds; k++) {
-    t = powmod(g, k, p);
     if (t == a)
       return k;
+    t = mulmod(t, g, p);
   }
   return 0;
 }
+
+/******************************************************************************/
+/* DLP - Pollard Rho */
+/******************************************************************************/
 
 #define pollard_rho_cycle(u,v,w,p,n,a,g) \
     switch (u % 3) { \
@@ -956,9 +960,8 @@ UV dlp_trial(UV a, UV g, UV p, UV maxrounds) {
       case 2: u = mulmod(u,g,p);                      w = addmod(w,1,n); break;\
     }
 
-UV dlp_prho(UV a, UV g, UV p, UV maxrounds) {
+UV dlp_prho(UV a, UV g, UV p, UV n, UV maxrounds) {
   UV i;
-  UV n = znorder(g, p);
   UV u=1, v=0, w=0;
   UV U=u, V=v, W=w;
 #ifdef DEBUG
@@ -967,7 +970,6 @@ UV dlp_prho(UV a, UV g, UV p, UV maxrounds) {
   int const verbose = 0;
 #endif
 
-  if (verbose > 1 && n != p-1) printf("for g=%lu p=%lu, order is %lu\n", g, p, n);
   if (maxrounds > n) maxrounds = n;
   for (i = 1; i < maxrounds; i++) {
     pollard_rho_cycle(u,v,w,p,n,a,g);   /* xi, ai, bi */
@@ -1006,4 +1008,119 @@ UV dlp_prho(UV a, UV g, UV p, UV maxrounds) {
     }
   }
   return 0;
+}
+
+/******************************************************************************/
+/* DLP - BSGS */
+/******************************************************************************/
+
+/* TODO: Entries should come from a slot allocator (aka pool allocator).
+ * This would cut memory and time overhead for creating entries, as well
+ * as simplifying and speeding up the destruction. */
+
+#define HASHMAP_COUNT ((UV) (1UL<<17) + 29)
+
+typedef struct bsgs_hash_t {
+  UV key;
+  UV val;
+  struct bsgs_hash_t* next;
+} bsgs_hash_t;
+
+static int bsgs_hash_put(bsgs_hash_t** table, UV idx, UV K, UV V) {
+  bsgs_hash_t* entry = table[idx];
+
+  while (entry && entry->key != K)
+    entry = entry->next;
+
+  if (entry) {
+    entry->val = V;
+    return 0;
+  }
+
+  New(0, entry, 1, bsgs_hash_t);
+  entry->key = K;
+  entry->val = V;
+  entry->next = table[idx];
+  table[idx] = entry;
+  return sizeof(bsgs_hash_t*);
+}
+
+static UV bsgs_hash_get(bsgs_hash_t* entry, UV K) {
+  while (entry && entry->key != K)
+    entry = entry->next;
+  return (entry) ? entry->val : 0;
+}
+
+static void bsgs_hash_free(bsgs_hash_t** table) {
+  UV i;
+  if (!table) return;
+  for (i = 0; i < HASHMAP_COUNT; i++) {
+    bsgs_hash_t* entry = table[i];
+    while (entry)
+      {  bsgs_hash_t* next = entry->next;  Safefree(entry);  entry = next;  }
+  }
+}
+
+
+UV dlp_bsgs(UV a, UV g, UV p, UV n, UV maxbytes) {
+  bsgs_hash_t** table;
+  UV m, maxm, invg;
+  UV result = 0;
+#ifdef DEBUG
+  int const verbose = _XS_get_verbose();
+#else
+  int const verbose = 0;
+#endif
+
+  invg = modinverse(g, p);
+  if (invg == 0) {
+    if (verbose) printf("  dlp bsgs: no inverse of %lu mod %lu\n", g, p);
+    return 0;
+  }
+  maxm = isqrt(n) + 1;
+
+  /* 1. Create table.  Size: 8*HASHMAP_COUNT bytes. */
+  Newz(0, table, HASHMAP_COUNT, bsgs_hash_t*);
+
+  /* 2. Baby Step.  Build hash. */
+  {
+    UV bytes_used = 0;
+    UV am = 1;
+    for (m = 0; m <= maxm && bytes_used < maxbytes; m++) {
+      bytes_used += bsgs_hash_put(table, am % HASHMAP_COUNT, am, m);
+      am = mulmod(am, g, p);
+      if (am == a) {  /* We discovered the solution! */
+        if (verbose) printf("  dlp bsgs: discovered solution during baby steps\n");
+        bsgs_hash_free(table);
+        Safefree(table);
+        return m+1;
+      }
+    }
+    if (m > maxm) m = maxm;
+  }
+
+  /* 3. Giant Step.  Search for solution. */
+  {
+    UV b = (p+m-1)/m;
+    UV gm = powmod(invg, m, p);
+    UV pow, key = a;
+    /* If we didn't fill all baby step values, limit our search */
+    if (m < maxm && b > 8*m) b = 8*m;
+    for (pow = 0; pow < b; pow++) {
+      result = bsgs_hash_get(table[key % HASHMAP_COUNT], key);
+      if (result) {
+        /* printf("result is %lu + %lu * %lu\n", result, pow, m); */
+        result = addmod(result, mulmod(pow, m, p), p);
+        break;
+      }
+      key = mulmod(key, gm, p);
+    }
+  }
+  bsgs_hash_free(table);
+  Safefree(table);
+  if (result != 0 && powmod(g,result,p) != a) {
+    if (verbose) printf("Incorrect DLP BSGS solution: %"UVuf"\n", result);
+    return 0;
+  }
+  return result;
 }
