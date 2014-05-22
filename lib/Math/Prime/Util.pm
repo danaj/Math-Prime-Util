@@ -2243,7 +2243,11 @@ produces.
 
 Returns the integer C<k> that solves the equation C<a = g^k mod p>, or
 undef if no solution is found.  This is the discrete logarithm problem.
-The implementation in this version is not very useful, but may be improved.
+
+The current implementation is a relatively fast and memory efficient
+Shanks' BSGS for native integers (XS code), with a Pollard Rho and trial
+as backups.  The PP implementation is also BSGS, but more limited and
+much more memory heavy.
 
 
 =head2 legendre_phi

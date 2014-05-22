@@ -1916,18 +1916,83 @@ sub znorder {
   return $k;
 }
 
-# This is just a stupid brute force search.
-sub znlog {
-  my ($a,$g,$p) =
-    map { ref($_) eq 'Math::BigInt' ? $_ : Math::BigInt->new("$_") } @_;
+sub _dlp_trial {
+  my ($a,$g,$p) = @_;
+  my $t = $g->copy;
   for (my $k = BONE->copy; $k < $p; $k->binc) {
-    my $t = $g->copy->bmodpow($k, $p);
     if ($t == $a) {
       $k = _bigint_to_int($k) if $k->bacmp(''.~0) <= 0;
       return $k;
     }
+    $t->bmul($g)->bmod($p);
   }
-  return;
+  0;
+}
+sub _dlp_bsgs {
+  my ($a,$g,$p,$n,$_verbose) = @_;
+  my $invg = $g->copy->bmodinv($p);
+  return if $invg eq 'NaN';
+  my $maxm = $n->copy->bsqrt->binc;
+  my $b = ($p + $maxm - 1) / $maxm;
+  # Limit for time and space.
+  $b = ($b > 4_000_000) ? 4_000_000 : int("$b");
+  $maxm = ($maxm > $b) ? $b : int("$maxm");
+
+  my %hash;
+  my $am = BONE->copy;
+  my $gm = $invg->copy->bmodpow($maxm,$p);
+  my $key = $a->copy;
+  my $r;
+
+  foreach my $m (0 .. $b) {
+    # Baby Step
+    if ($m <= $maxm) {
+      $r = $hash{"$am"};
+      if (defined $r) {
+        print "  bsgs found in stage 1 after $m tries\n" if $_verbose;
+        $r = (Math::BigInt->new($m) + Math::BigInt->new($r) * $maxm) % $p;
+        return $r;
+      }
+      $hash{"$am"} = $m;
+      $am->bmul($g)->bmod($p);
+      if ($am == $a) {
+        print "  bsgs found during bs\n" if $_verbose;
+        return $m+1;
+      }
+    }
+
+    # Giant Step
+    $r = $hash{"$key"};
+    if (defined $r) {
+      print "  bsgs found in stage 2 after $m tries\n" if $_verbose;
+      $r = (Math::BigInt->new($r) + Math::BigInt->new($m) * $maxm) % $p;
+      return $r;
+    }
+    $hash{"$key"} = $m if $m <= $maxm;
+    $key->bmul($gm)->bmod($p);
+  }
+  0;
+}
+
+sub znlog {
+  my ($a,$g,$p) =
+    map { ref($_) eq 'Math::BigInt' ? $_ : Math::BigInt->new("$_") } @_;
+  $a->bmod($p);
+  $g->bmod($p);
+  my $_verbose = Math::Prime::Util::prime_get_config()->{'verbose'};
+
+  my $n = znorder($g, $p);
+  if (defined $n && $n > 1000) {
+    $n = Math::BigInt->new("$n") unless ref($n) eq 'Math::BigInt';
+    my $x = _dlp_bsgs($a, $g, $p, $n, $_verbose);
+    $x = _bigint_to_int($x) if ref($x) && $x->bacmp(''.~0) <= 0;
+    return $x if $x > 0 && $g->copy->bmodpow($x, $p) == $a;
+    print "  BSGS giving up\n" if $x == 0 && $_verbose;
+    print "  BSGS incorrect answer $x\n" if $x > 0 && $_verbose > 1;
+  }
+  my $x = _dlp_trial($a,$g,$p);
+  $x = _bigint_to_int($x) if ref($x) && $x->bacmp(''.~0) <= 0;
+  return ($x == 0) ? undef : $x;
 }
 
 sub znprimroot {
