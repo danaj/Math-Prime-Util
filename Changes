@@ -4,7 +4,7 @@ Revision history for Perl module Math::Prime::Util
 
     [FUNCTIONALITY AND PERFORMANCE]
 
-    - znlog (XS) is *much* faster.  Added BSGS and fixed some Rho issues.
+    - znlog is *much* faster.  Added BSGS for XS and PP, Rho works better.
 
 
 0.41  2014-05-18

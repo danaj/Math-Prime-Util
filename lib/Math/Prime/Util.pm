@@ -3353,6 +3353,10 @@ smallest root for prime powers.  The behavior is undefined when the group is
 not cyclic (sometimes it throws an exception, sometimes it returns
 an incorrect answer, sometimes it hangs).  MPU's L</znprimroot> will always
 return the smallest root if it exists, and C<undef> otherwise.
+Similarly, MPU's L</znlog> will return the smallest C<x> and work with
+non-primitive-root C<g>, which is similar to Pari/GP 2.6, but not the
+older versions in L<Math::Pari>.  The performance of L</znlog> is fairly
+good compared to older Pari/GP, but much worse than 2.6's new methods.
 
 =item C<sigma>
 
