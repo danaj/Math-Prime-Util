@@ -1561,14 +1561,13 @@ UV znlog(UV a, UV g, UV p) {
     if (verbose) printf("  dlp bsgs 2M %s\n", k!=0 ? "success" : "failure");
     if (k != 0) return k;
 
+    k = dlp_prho(a, g, p, n, 10000000);
+    if (verbose) printf("  dlp rho 10M %s\n", (k!=0 || p<=10000000) ? "success" : "failure");
+    if (k != 0 || p <= 10000000) return k;
+
     k = dlp_bsgs(a, g, p, n, 1U << 24);
     if (verbose) printf("  dlp bsgs 16M %s\n", k!=0 ? "success" : "failure");
     if (k != 0) return k;
-
-    /* A slight chance that Rho might get it before going very big */
-    k = dlp_prho(a, g, p, n, 10000000);
-    if (verbose) printf("  dlp rho 10M %s\n", (k!=0 || p<= 10000000) ? "success" : "failure");
-    if (k != 0 || p <= 10000000) return k;
 
     k = dlp_bsgs(a, g, p, n, 1U << 27);
     if (verbose) printf("  dlp bsgs 128MB %s\n", k!=0 ? "success" : "failure");
