@@ -78,5 +78,8 @@
 - is_power should take a third argument that gets set to the root
 
 - GMP BSGS for znlog.  Pohlig-Hellman.
-  example for PH: say znlog(5489679500557563605,12,6043832232636232187)'
+  examples for PH:
+     znlog(5489679500557563605,12,6043832232636232187)'
+     znlog(5489679500557563605,2,6043832232636232187)
+  These are fine in Pari.  Our BSGS fails.  Our DLP Rho takes 2974M steps.
   Experiment with Wang/Zhang 2012 Rho cycle finding

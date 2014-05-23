@@ -1546,10 +1546,10 @@ UV znlog(UV a, UV g, UV p) {
   if (n != 0) {
 
     /* Rho has low overhead and works well for small values */
-    if (n <= UVCONST(100000000)) {
+    if (n <= UVCONST(1000000)) {
       k = dlp_prho(a, g, p, n, DLP_RHO_NUM);
-      if (verbose) printf("  dlp rho 40k %s\n", (k!=0 || p<= DLP_RHO_NUM) ? "success" : "failure");
-      if (k != 0 || p <= DLP_RHO_NUM) return k;
+      if (verbose) printf("  dlp rho 40k %s\n", k!=0 ? "success" : "failure");
+      if (k != 0) return k;
     }
 
     /* Try BSGS in increasing sizes.  A bit inefficient. */
@@ -1562,15 +1562,19 @@ UV znlog(UV a, UV g, UV p) {
     if (k != 0) return k;
 
     k = dlp_prho(a, g, p, n, 10000000);
-    if (verbose) printf("  dlp rho 10M %s\n", (k!=0 || p<=10000000) ? "success" : "failure");
-    if (k != 0 || p <= 10000000) return k;
+    if (verbose) printf("  dlp rho 10M %s\n", k!=0 ? "success" : "failure");
+    if (k != 0) return k;
 
     k = dlp_bsgs(a, g, p, n, 1U << 24);
     if (verbose) printf("  dlp bsgs 16M %s\n", k!=0 ? "success" : "failure");
     if (k != 0) return k;
 
-    k = dlp_bsgs(a, g, p, n, 1U << 27);
-    if (verbose) printf("  dlp bsgs 128MB %s\n", k!=0 ? "success" : "failure");
+    k = dlp_bsgs(a, g, p, n, 1U << 28);
+    if (verbose) printf("  dlp bsgs 256MB %s\n", k!=0 ? "success" : "failure");
+    if (k != 0) return k;
+
+    k = dlp_prho(a, g, p, n, 0xFFFFFFFFUL);
+    if (verbose) printf("  dlp rho 4000M %s\n", k!=0 ? "success" : "failure");
     if (k != 0) return k;
 
   }

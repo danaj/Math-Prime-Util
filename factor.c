@@ -1014,8 +1014,6 @@ UV dlp_prho(UV a, UV g, UV p, UV n, UV maxrounds) {
 /* DLP - BSGS */
 /******************************************************************************/
 
-#define HASHMAP_COUNT ((UV) (1UL<<17) + 29)
-
 typedef struct bsgs_hash_t {
   UV key;
   UV val;
@@ -1057,24 +1055,20 @@ static void destroy_pages(bsgs_page_top_t* top) {
   top->first = 0;
 }
 /****************************************/
-  
-static int bsgs_hash_put(bsgs_page_top_t* pagetop, bsgs_hash_t** table, UV idx, UV K, UV V) {
+
+static void bsgs_hash_put(bsgs_page_top_t* pagetop, bsgs_hash_t** table, UV idx, UV K, UV V) {
   bsgs_hash_t* entry = table[idx];
 
   while (entry && entry->key != K)
     entry = entry->next;
 
-  if (entry) {
+  if (!entry) {
+    entry = get_entry(pagetop);
+    entry->key = K;
     entry->val = V;
-    return 0;
+    entry->next = table[idx];
+    table[idx] = entry;
   }
-
-  entry = get_entry(pagetop);
-  entry->key = K;
-  entry->val = V;
-  entry->next = table[idx];
-  table[idx] = entry;
-  return sizeof(bsgs_hash_t);
 }
 
 static UV bsgs_hash_get(bsgs_hash_t* entry, UV K) {
@@ -1086,7 +1080,7 @@ static UV bsgs_hash_get(bsgs_hash_t* entry, UV K) {
 UV dlp_bsgs(UV a, UV g, UV p, UV n, UV maxbytes) {
   bsgs_page_top_t PAGES = {0, 0, 0};
   bsgs_hash_t** table;
-  UV m, maxm, invg;
+  UV i, m, maxm, invg, hashmap_count;
   UV result = 0;
 #ifdef DEBUG
   int const verbose = _XS_get_verbose();
@@ -1100,24 +1094,28 @@ UV dlp_bsgs(UV a, UV g, UV p, UV n, UV maxbytes) {
     return 0;
   }
   maxm = isqrt(n) + 1;
+  maxbytes /= sizeof(bsgs_hash_t);  /* maxbytes is now the max entries */
+  m = (maxm > maxbytes) ? maxbytes : maxm;
 
-  /* 1. Create table.  Size: 8*HASHMAP_COUNT bytes. */
-  Newz(0, table, HASHMAP_COUNT, bsgs_hash_t*);
+  /* We will be adding m items.  Keep average depth around 2. */
+  hashmap_count = next_prime( maxbytes / 2 );
+  if (hashmap_count < 65537) hashmap_count = 65537;
+
+  /* 1. Create table.  Size: 8*hashmap_count bytes. */
+  Newz(0, table, hashmap_count, bsgs_hash_t*);
 
   /* 2. Baby Step.  Build hash. */
   {
-    UV bytes_used = 0;
     UV am = 1;
-    for (m = 0; m <= maxm && bytes_used < maxbytes; m++) {
-      bytes_used += bsgs_hash_put(&PAGES, table, am % HASHMAP_COUNT, am, m);
+    for (i = 0; i <= m; i++) {
+      bsgs_hash_put(&PAGES, table, am % hashmap_count, am, i);
       am = mulmod(am, g, p);
       if (am == a) {  /* We discovered the solution! */
         if (verbose) printf("  dlp bsgs: discovered solution during baby steps\n");
-        result = m+1;
+        result = i+1;
         break;
       }
     }
-    if (m > maxm) m = maxm;
   }
   if (verbose) printf("  dlp bsgs using %d pages (%.1fMB) for hash\n", PAGES.npages, ((double)PAGES.npages * sizeof(bsgs_page_t)) / (1024*1024));
 
@@ -1125,14 +1123,14 @@ UV dlp_bsgs(UV a, UV g, UV p, UV n, UV maxbytes) {
   if (result == 0) {
     UV b = (p+m-1)/m;
     UV gm = powmod(invg, m, p);
-    UV pow, key = a;
+    UV key = a;
     /* If we didn't fill all baby step values, limit our search */
     if (m < maxm && b > 8*m) b = 8*m;
-    for (pow = 0; pow < b; pow++) {
-      result = bsgs_hash_get(table[key % HASHMAP_COUNT], key);
+    for (i = 0; i < b; i++) {
+      result = bsgs_hash_get(table[key % hashmap_count], key);
       if (result) {
-        /* printf("result is %lu + %lu * %lu\n", result, pow, m); */
-        result = addmod(result, mulmod(pow, m, p), p);
+        /* printf("result is %lu + %lu * %lu\n", result, i, m); */
+        result = addmod(result, mulmod(i, m, p), p);
         break;
       }
       key = mulmod(key, gm, p);
