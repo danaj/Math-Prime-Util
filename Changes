@@ -6,6 +6,9 @@ Revision history for Perl module Math::Prime::Util
 
     - znlog is *much* faster.  Added BSGS for XS and PP, Rho works better.
 
+    - Another inverse improvement from W. Izykowski, doing 8 bits at a time.
+      A further 1% to 15% speedup in primality testing.
+
 
 0.41  2014-05-18
 
