@@ -77,9 +77,12 @@
 
 - is_power should take a third argument that gets set to the root
 
-- GMP BSGS for znlog.  Pohlig-Hellman.
-  examples for PH:
-     znlog(5489679500557563605,12,6043832232636232187)'
-     znlog(5489679500557563605,2,6043832232636232187)
-  These are fine in Pari.  Our BSGS fails.  Our DLP Rho takes 2974M steps.
-  Experiment with Wang/Zhang 2012 Rho cycle finding
+- znlog:
+    = GMP BSGS for znlog.
+    = Clean up znlog (PH, BSGS, Rho).
+    = Experiment with Wang/Zhang 2012 Rho cycle finding
+
+- export chinese?
+    Mathematica   ChineseRemainder[{a1, a2, ...}{m1, m2, ...}]
+    Pari          chinese( [Mod(a1,m1),Mod(a2,m2),Mod(a3,m3),...] )
+    Math::ModInt  cr_combine(mod(a1,m1),mod(a2,m2),mod(a3,m3),...)

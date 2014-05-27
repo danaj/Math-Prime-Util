@@ -1523,63 +1523,18 @@ UV divmod(UV a, UV b, UV n) {   /* a / b  mod n */
   return mulmod(a, binv, n);
 }
 
-/* Find smallest k where a = g^k mod p */
-#define DLP_TRIAL_NUM  10000
-#define DLP_RHO_NUM    40000
-UV znlog(UV a, UV g, UV p) {
-  UV i, k, n, sqrtn;
-  const int verbose = _XS_get_verbose();
-  const UV bsgs_maxent[] = {10000,100000,1000000,10000000};
-
-  if (a >= p) a %= p;
-  if (g >= p) g %= p;
-
-  if (a == 1 || g == 0 || p < 2)
-    return 0;
-
-  n = znorder(g, p);
-  if (verbose > 1 && n != p-1) printf("  g=%lu p=%lu, order %lu\n", g, p, n);
-  if (n == 0) {
-    sqrtn = 0;
-    n = p;
-    k = dlp_trial(a, g, p, DLP_TRIAL_NUM);
-    if (verbose) printf("  dlp trial 1k %s\n", (k!=0 || p<= DLP_TRIAL_NUM) ? "success" : "failure");
-    if (k != 0 || p <= DLP_TRIAL_NUM) return k;
-  } else {
-    /* Simple existence check (not very thorough) */
-    if (powmod(a, n, p) != 1) return 0;
-    sqrtn = isqrt(n);
+UV chinese(UV* a, UV* n, UV num) {
+  UV p, i, prod = 1, sum = 0;
+  for (i = 0; i < num; i++)
+    prod *= n[i];
+  for (i = 0; i < num; i++) {
+    UV p = prod / n[i];
+    UV inv = modinverse(p, n[i]);
+    UV m1 = mulmod(a[i], inv, prod);
+    UV m2 = mulmod(m1, p, prod);
+    sum = addmod(sum, m2, prod);
   }
-
-  /* Rho has low overhead and works well for small values */
-  if (n <= UVCONST(1000000)) {
-    k = dlp_prho(a, g, p, n, DLP_RHO_NUM);
-    if (verbose) printf("  dlp rho 40k %s\n", k!=0 ? "success" : "failure");
-    if (k != 0) return k;
-  }
-
-  /* Try BSGS in increasing sizes.  Not the most efficient method. */
-  for (i = 0; i < 4; i++) {
-    UV maxent = bsgs_maxent[i];
-    k = dlp_bsgs(a, g, p, n, maxent);
-    if (verbose) printf("  dlp bsgs %luk %s\n", maxent/1000, k!=0 ? "success" : "failure");
-    if (k != 0) return k;
-    if (sqrtn > 0 && sqrtn < maxent) return 0;
-
-    if (i == 2) {
-      k = dlp_prho(a, g, p, n, 10000000);
-      if (verbose) printf("  dlp rho 10M %s\n", k!=0 ? "success" : "failure");
-      if (k != 0) return k;
-    }
-  }
-
-  k = dlp_prho(a, g, p, n, 0xFFFFFFFFUL);
-  if (verbose) printf("  dlp rho 4000M %s\n", k!=0 ? "success" : "failure");
-  if (k != 0) return k;
-
-  if (verbose) printf("  dlp doing exhaustive trial\n");
-  k = dlp_trial(a, g, p, p);
-  return k;
+  return sum;
 }
 
 long double chebyshev_function(UV n, int which)

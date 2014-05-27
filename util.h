@@ -45,8 +45,9 @@ extern int kronecker_su(IV a, UV b);
 extern int kronecker_ss(IV a, IV b);
 
 extern UV binomial(UV n, UV k);
-extern UV modinverse(UV a, UV p);    /* Returns 1/a mod p */
-extern UV divmod(UV a, UV b, UV n);  /* Returns a/b mod n */
+extern UV modinverse(UV a, UV p);        /* Returns 1/a mod p */
+extern UV divmod(UV a, UV b, UV n);      /* Returns a/b mod n */
+extern UV chinese(UV* a, UV* n, UV num); /* Chinese Remainder Theorem */
 
 extern UV totient(UV n);
 extern int moebius(UV n);
