@@ -407,49 +407,68 @@ sub RiemannR {
     $x->accuracy($xacc) if $xacc;
   }
   $x = Math::BigFloat->new("$x") if ref($x) ne 'Math::BigFloat';
-
   my $xdigits = $x->accuracy || Math::BigFloat->accuracy() || Math::BigFloat->div_scale();
-  my $tol = 0.0 + "1e-$xdigits";
+  my $extra_acc = 1;
+  $xdigits += $extra_acc;
+  $x->accuracy($xdigits);
+  my $tol = $x->copy->bone->brsft($xdigits-1, 10);
+  my $sum = $x->copy->bone;
 
-  # TODO: The default table is only 44 digits.
-  if ( (scalar @_Riemann_Zeta_Premult == 0) || ($_Riemann_Zeta_Premult_accuracy < $xdigits) ) {
-    $_Riemann_Zeta_Premult_accuracy = $xdigits;
-    @_Riemann_Zeta_Premult = map { my $v = Math::BigFloat->bone;
-                                   $v->accuracy($xdigits);
-                                   $v / ($_Riemann_Zeta_Table[$_-1] * $_ + $_) }
-                             (1 .. @_Riemann_Zeta_Table);
-  }
+  if ($xdigits <= length($x->copy->as_int->bstr())) {
 
-  my $sum = Math::BigFloat->bone;
-
-  my $flogx = log($x);
-  my $part_term = Math::BigFloat->bone;
-
-  for my $k (1 .. 10000) {
-    my $zeta_term = $_Riemann_Zeta_Premult[$k-1];
-    if (!defined $zeta_term) {
-      my $zeta = $_Riemann_Zeta_Table[$k-1];
-      if (!defined $zeta) {
-        my $kz = Math::BigFloat->new($k+1);
-        $kz->accuracy($xdigits);
-        if ($kz >= 100 && $xdigits <= 40) {
-          # For this accuracy level, two terms are more than enough.  Also,
-          # we should be able to miss the Math::BigFloat accuracy bug.  If we
-          # try to do this for higher accuracy, things will go very bad.
-          $zeta = Math::BigFloat->new(3)->bpow(-$kz)
-                + Math::BigFloat->new(2)->bpow(-$kz);
-        } else {
-          $zeta = Math::Prime::Util::ZetaBigFloat::RiemannZeta( $kz );
-        }
-      }
-      $zeta_term = Math::BigFloat->bone / ($zeta * $k + $k);
+    for my $k (1 .. 1000) {
+      my $mob = Math::Prime::Util::moebius($k);
+      next if $mob == 0;
+      $mob = Math::BigFloat->new($mob);  $mob->accuracy($xdigits);
+      my $term = $mob->bdiv($k) *
+                 Math::Prime::Util::LogarithmicIntegral($x->copy->broot($k));
+      $sum += $term;
+      #warn "k = $k  term = $term  sum = $sum\n";
+      last if abs($term) < ($tol * abs($sum));
     }
-    $part_term *= $flogx / $k;
-    my $term = $part_term * $zeta_term;
-    #warn "k = $k  term = $term  sum = $sum\n";
-    $sum += $term;
-    last if $term < ($tol*$sum);
+
+  } else {
+
+    # TODO: The default table is only 44 digits.
+    if ( (scalar @_Riemann_Zeta_Premult == 0) || ($_Riemann_Zeta_Premult_accuracy < $xdigits) ) {
+      $_Riemann_Zeta_Premult_accuracy = $xdigits;
+      @_Riemann_Zeta_Premult = map { my $v = Math::BigFloat->bone;
+                                     $v->accuracy($xdigits);
+                                     $v / ($_Riemann_Zeta_Table[$_-1]*$_ + $_) }
+                               (1 .. @_Riemann_Zeta_Table);
+    }
+
+    my $flogx = log($x);
+    my $part_term = Math::BigFloat->bone;
+
+    for my $k (1 .. 10000) {
+      my $zeta_term = $_Riemann_Zeta_Premult[$k-1];
+      if (!defined $zeta_term) {
+        my $zeta = $_Riemann_Zeta_Table[$k-1];
+        if (!defined $zeta) {
+          my $kz = Math::BigFloat->new($k+1);
+          $kz->accuracy($xdigits);
+          if ($kz >= 100 && $xdigits <= 40) {
+            # For this accuracy level, two terms are more than enough.  Also,
+            # we should be able to miss the Math::BigFloat accuracy bug.  If we
+            # try to do this for higher accuracy, things will go very bad.
+            $zeta = Math::BigFloat->new(3)->bpow(-$kz)
+                  + Math::BigFloat->new(2)->bpow(-$kz);
+          } else {
+            $zeta = Math::Prime::Util::ZetaBigFloat::RiemannZeta( $kz );
+          }
+        }
+        $zeta_term = Math::BigFloat->bone / ($zeta * $k + $k);
+      }
+      $part_term *= $flogx / $k;
+      my $term = $part_term * $zeta_term;
+      $sum += $term;
+      #warn "k = $k  term = $term  sum = $sum\n";
+      last if $term < ($tol*$sum);
+    }
+
   }
+  $sum->bround($xdigits-$extra_acc);
   return $sum;
 }
 
