@@ -1015,8 +1015,8 @@ UV dlp_prho(UV a, UV g, UV p, UV n, UV maxrounds) {
 /******************************************************************************/
 
 typedef struct bsgs_hash_t {
-  UV key;
-  UV val;
+  UV M;    /* The baby step index */
+  UV V;    /* The powmod value */
   struct bsgs_hash_t* next;
 } bsgs_hash_t;
 
@@ -1025,6 +1025,8 @@ typedef struct bsgs_hash_t {
 #define BSGS_ENTRIES_PER_PAGE 8000
 typedef struct bsgs_page_top_t {
   struct bsgs_page_t* first;
+  bsgs_hash_t** table;
+  UV  size;
   int nused;
   int npages;
 } bsgs_page_top_t;
@@ -1056,31 +1058,33 @@ static void destroy_pages(bsgs_page_top_t* top) {
 }
 /****************************************/
 
-static void bsgs_hash_put(bsgs_page_top_t* pagetop, bsgs_hash_t** table, UV idx, UV K, UV V) {
+static void bsgs_hash_put(bsgs_page_top_t* pagetop, UV v, UV i) {
+  UV idx = v % pagetop->size;
+  bsgs_hash_t** table = pagetop->table;
   bsgs_hash_t* entry = table[idx];
 
-  while (entry && entry->key != K)
+  while (entry && entry->V != v)
     entry = entry->next;
 
   if (!entry) {
     entry = get_entry(pagetop);
-    entry->key = K;
-    entry->val = V;
+    entry->M = i;
+    entry->V = v;
     entry->next = table[idx];
     table[idx] = entry;
   }
 }
 
-static UV bsgs_hash_get(bsgs_hash_t* entry, UV K) {
-  while (entry && entry->key != K)
+static UV bsgs_hash_get(bsgs_page_top_t* pagetop, UV v) {
+  bsgs_hash_t* entry = pagetop->table[v % pagetop->size];
+  while (entry && entry->V != v)
     entry = entry->next;
-  return (entry) ? entry->val : 0;
+  return (entry) ? entry->M : 0;
 }
 
-UV dlp_bsgs(UV a, UV g, UV p, UV n, UV maxbytes) {
-  bsgs_page_top_t PAGES = {0, 0, 0};
-  bsgs_hash_t** table;
-  UV i, m, maxm, invg, hashmap_count;
+UV dlp_bsgs(UV a, UV g, UV p, UV n, UV maxent) {
+  bsgs_page_top_t PAGES;
+  UV i, m, maxm, hashmap_count;
   UV result = 0;
 #ifdef DEBUG
   int const verbose = _XS_get_verbose();
@@ -1088,30 +1092,31 @@ UV dlp_bsgs(UV a, UV g, UV p, UV n, UV maxbytes) {
   int const verbose = 0;
 #endif
 
-  invg = modinverse(g, p);
-  if (invg == 0) {
-    if (verbose) printf("  dlp bsgs: no inverse of %lu mod %lu\n", g, p);
-    return 0;
-  }
-  maxm = isqrt(n) + 1;
-  maxbytes /= sizeof(bsgs_hash_t);  /* maxbytes is now the max entries */
-  m = (maxm > maxbytes) ? maxbytes : maxm;
+  if (a == 0) return 0;  /* We don't handle this case */
+
+  maxm = isqrt(n);
+  m = (maxent > maxm) ? maxm : maxent;
 
   /* We will be adding m items.  Keep average depth around 2. */
-  hashmap_count = next_prime( maxbytes / 2 );
+  hashmap_count = next_prime( m / 2 );
   if (hashmap_count < 65537) hashmap_count = 65537;
 
   /* 1. Create table.  Size: 8*hashmap_count bytes. */
-  Newz(0, table, hashmap_count, bsgs_hash_t*);
+  PAGES.size = hashmap_count;
+  PAGES.first = 0;
+  PAGES.nused = 0;
+  PAGES.npages = 0;
+  Newz(0, PAGES.table, hashmap_count, bsgs_hash_t*);
 
   /* 2. Baby Step.  Build hash. */
   {
-    UV am = 1;
+    UV S = a;
+    UV aa = mulmod(a,a,p);
     for (i = 0; i <= m; i++) {
-      bsgs_hash_put(&PAGES, table, am % hashmap_count, am, i);
-      am = mulmod(am, g, p);
-      if (am == a) {  /* We discovered the solution! */
-        if (verbose) printf("  dlp bsgs: discovered solution during baby steps\n");
+      bsgs_hash_put(&PAGES, S, i);
+      S = mulmod(S, g, p);
+      if (S == aa) {  /* We discovered the solution! */
+        if (verbose) printf("  dlp bsgs: solution at BS step %lu\n", i+1);
         result = i+1;
         break;
       }
@@ -1122,22 +1127,22 @@ UV dlp_bsgs(UV a, UV g, UV p, UV n, UV maxbytes) {
   /* 3. Giant Step.  Search for solution. */
   if (result == 0) {
     UV b = (p+m-1)/m;
-    UV gm = powmod(invg, m, p);
-    UV key = a;
+    UV gm = powmod(g, m, p);
+    UV T = gm;
     /* If we didn't fill all baby step values, limit our search */
     if (m < maxm && b > 8*m) b = 8*m;
-    for (i = 0; i < b; i++) {
-      result = bsgs_hash_get(table[key % hashmap_count], key);
+    for (i = 1; i < b; i++) {
+      result = bsgs_hash_get(&PAGES, T);
       if (result) {
         /* printf("result is %lu + %lu * %lu\n", result, i, m); */
-        result = addmod(result, mulmod(i, m, p), p);
+        result = submod(mulmod(i, m, p), result, p);
         break;
       }
-      key = mulmod(key, gm, p);
+      T = mulmod(T, gm, p);
     }
   }
   destroy_pages(&PAGES);
-  Safefree(table);
+  Safefree(PAGES.table);
   if (result != 0 && powmod(g,result,p) != a) {
     if (verbose) printf("Incorrect DLP BSGS solution: %"UVuf"\n", result);
     return 0;

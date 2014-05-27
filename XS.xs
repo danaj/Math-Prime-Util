@@ -823,6 +823,7 @@ znlog(IN SV* sva, IN SV* svg, IN SV* svp)
     if (astatus == 1 && gstatus == 1 && pstatus == 1) {
       UV a = my_svuv(sva), g = my_svuv(svg), p = my_svuv(svp);
       UV ret = znlog(a, g, p);
+      /* TODO: perhaps return p to mean no solution? */
       if (ret == 0 && a > 1) XSRETURN_UNDEF;
       XSRETURN_UV(ret);
     }
