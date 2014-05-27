@@ -1213,8 +1213,8 @@ UV znlog_solve(UV a, UV g, UV p) {
 UV znlog_ph(UV a, UV g, UV p) {
   UV fac[MPU_MAX_FACTORS+1];
   UV exp[MPU_MAX_FACTORS+1];
-  int i, j, nfactors;
-  UV x, p1 = znorder(g,p);
+  int i, nfactors;
+  UV x, j, p1 = znorder(g,p);
 
   if (p1 == 0) return 0;   /* TODO: Should we plow on with p1=p-1? */
   nfactors = factor_exp(p1, fac, exp);
@@ -1237,9 +1237,8 @@ UV znlog_ph(UV a, UV g, UV p) {
 
 /* Find smallest k where a = g^k mod p */
 UV znlog(UV a, UV g, UV p) {
-  UV i, k, n, sqrtn;
+  UV k;
   const int verbose = _XS_get_verbose();
-  const UV bsgs_maxent[] = {10000,100000,1000000,10000000};
 
   if (a >= p) a %= p;
   if (g >= p) g %= p;

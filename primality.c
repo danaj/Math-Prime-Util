@@ -71,7 +71,7 @@ static INLINE UV mont_powmod64(uint64_t a, uint64_t k, uint64_t one, uint64_t n,
 static INLINE uint64_t modular_inverse64(const uint64_t a)
 {
   uint64_t S = 1, J = 0;
-  int i, idx;
+  int idx;
   /* Basic algorithm:
    *    for (i = 0; i < 64; i++) {
    *      if (S & 1)  {  J |= (1ULL << i);  S += a;  }
