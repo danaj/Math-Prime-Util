@@ -1229,11 +1229,21 @@ sub prime_count_approx {
   if ( $x < 1e36 || _MPFR_available() ) {
     if (ref($x) eq 'Math::BigFloat') {
       # Make sure we get enough accuracy, and also not too much more than needed
-      $x->accuracy(length($x->bfloor->bstr())+2);
+      $x->accuracy(length($x->copy->as_int->bstr())+2);
     }
     $result = RiemannR($x) + 0.5;
   } else {
-    $result = int(LogarithmicIntegral($x) - LogarithmicIntegral(sqrt($x))/2);
+    # Math::BigInt's default Calc backend takes *ages* to do a cube root, so
+    # limit ourselves to just the first two terms.
+    $result = int(
+        LogarithmicIntegral($x)
+      - LogarithmicIntegral(sqrt($x))/2
+    #  - LogarithmicIntegral($x**(1.0/3.0))/3
+    #  - LogarithmicIntegral($x**(1.0/5.0))/5
+    #  + LogarithmicIntegral($x**(1.0/6.0))/6
+    #  - LogarithmicIntegral($x**(1.0/7.0))/7
+    #  ...
+    );
   }
 
   return Math::BigInt->new($result->bfloor->bstr()) if ref($result) eq 'Math::BigFloat';
@@ -3448,7 +3458,7 @@ sub LogarithmicIntegral {
   my $finalacc = 0;
   if (ref($x) =~ /^Math::Big/) {
     $xdigits = _find_big_acc($x);
-    my $xlen = length($x->bfloor->bstr());
+    my $xlen = length($x->copy->bfloor->bstr());
     $xdigits = $xlen if $xdigits < $xlen;
     $finalacc = $xdigits;
     $xdigits += length(int(log(0.0+"$x"))) + 1;
@@ -3699,24 +3709,31 @@ sub RiemannR {
     return Math::Prime::Util::ZetaBigFloat::RiemannR($x);
   }
 
-
-  my $tol = 1e-16;
   my $sum = 0.0;
-  my($y, $t);
-  my $c = 0.0;
-
-  $y = 1.0-$c; $t = $sum+$y; $c = ($t-$sum)-$y; $sum = $t;
-  my $flogx = log($x);
-  my $part_term = 1.0;
-  for my $k (1 .. 10000) {
-    # Small k from table, larger k from function
-    my $zeta = ($k <= $#_Riemann_Zeta_Table)
-               ? $_Riemann_Zeta_Table[$k+1-2]
-               : RiemannZeta($k+1);
-    $part_term *= $flogx / $k;
-    my $term = $part_term / ($k + $k * $zeta);
-    $y = $term-$c; $t = $sum+$y; $c = ($t-$sum)-$y; $sum = $t;
-    last if $term < ($tol * $sum);
+  my $tol = 1e-18;
+  my($c, $y, $t) = (0.0);
+  if ($x > 10**17) {
+    my @mob = Math::Prime::Util::moebius(0,300);
+    for my $k (1 .. 300) {
+      next if $mob[$k] == 0;
+      my $term = $mob[$k] / $k *
+                 Math::Prime::Util::LogarithmicIntegral($x**(1.0/$k));
+      $y = $term-$c; $t = $sum+$y; $c = ($t-$sum)-$y; $sum = $t;
+      last if abs($term) < ($tol * abs($sum));
+    }
+  } else {
+    $y = 1.0-$c; $t = $sum+$y; $c = ($t-$sum)-$y; $sum = $t;
+    my $flogx = log($x);
+    my $part_term = 1.0;
+    for my $k (1 .. 10000) {
+      my $zeta = ($k <= $#_Riemann_Zeta_Table)
+                 ? $_Riemann_Zeta_Table[$k+1-2]    # Small k from table
+                 : RiemannZeta($k+1);              # Large k from function
+      $part_term *= $flogx / $k;
+      my $term = $part_term / ($k + $k * $zeta);
+      $y = $term-$c; $t = $sum+$y; $c = ($t-$sum)-$y; $sum = $t;
+      last if $term < ($tol * $sum);
+    }
   }
   return $sum;
 }
