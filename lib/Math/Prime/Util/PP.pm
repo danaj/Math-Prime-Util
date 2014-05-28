@@ -1989,7 +1989,7 @@ sub znlog {
     map { ref($_) eq 'Math::BigInt' ? $_ : Math::BigInt->new("$_") } @_;
   $a->bmod($p);
   $g->bmod($p);
-  return 0 if $a <= 1 || $g == 0 || $p < 2;
+  return 0 if $a == 1 || $g == 0 || $p < 2;
   my $_verbose = Math::Prime::Util::prime_get_config()->{'verbose'};
 
   my $n = znorder($g, $p);

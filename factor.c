@@ -1156,7 +1156,7 @@ UV dlp_bsgs(UV a, UV g, UV p, UV n, UV maxent) {
 UV znlog_solve(UV a, UV g, UV p) {
   UV i, k, n, sqrtn;
   const int verbose = _XS_get_verbose();
-  const UV bsgs_maxent[] = {10000,100000,1000000,10000000};
+  const UV bsgs_maxent[] = {8000,80000,800000,10000000};
 
   if (a >= p) a %= p;
   if (g >= p) g %= p;
@@ -1179,7 +1179,7 @@ UV znlog_solve(UV a, UV g, UV p) {
   }
 
   /* Rho has low overhead and works well for small values */
-  if (n <= UVCONST(1000000)) {
+  if (sqrtn > 0 && n <= UVCONST(1000000)) {
     k = dlp_prho(a, g, p, n, DLP_RHO_NUM);
     if (verbose) printf("  dlp rho 40k %s\n", k!=0 ? "success" : "failure");
     if (k != 0) return k;
@@ -1193,16 +1193,18 @@ UV znlog_solve(UV a, UV g, UV p) {
     if (k != 0) return k;
     if (sqrtn > 0 && sqrtn < maxent) return 0;
 
-    if (i == 2) {
+    if (i == 2 && sqrtn > 0) {
       k = dlp_prho(a, g, p, n, 10000000);
       if (verbose) printf("  dlp rho 10M %s\n", k!=0 ? "success" : "failure");
       if (k != 0) return k;
     }
   }
 
-  k = dlp_prho(a, g, p, n, 0xFFFFFFFFUL);
-  if (verbose) printf("  dlp rho 4000M %s\n", k!=0 ? "success" : "failure");
-  if (k != 0) return k;
+  if (sqrtn > 0) {
+    k = dlp_prho(a, g, p, n, 0xFFFFFFFFUL);
+    if (verbose) printf("  dlp rho 4000M %s\n", k!=0 ? "success" : "failure");
+    if (k != 0) return k;
+  }
 
   if (verbose) printf("  dlp doing exhaustive trial\n");
   k = dlp_trial(a, g, p, p);

@@ -2007,8 +2007,8 @@ function) for an integer value.  This is an arithmetic function which counts
 the number of positive integers less than or equal to C<n> that are relatively
 prime to C<n>.  Given the definition used, C<euler_phi> will return 0 for all
 C<n E<lt> 1>.  This follows the logic used by SAGE.  Mathematica and Pari
-return C<euler_phi(-n)> for C<n E<lt> 0>.  Mathematica returns 0 for C<n = 0>
-while Pari raises an exception.
+return C<euler_phi(-n)> for C<n E<lt> 0>.  Mathematica returns 0 for C<n = 0>,
+Pari pre-2.6.2 raises and exception, and Pari 2.6.2 and newer returns 2.
 
 If called with two arguments, they define a range C<low> to C<high>, and the
 function returns an array with the totient of every n from low to high
@@ -2244,10 +2244,13 @@ produces.
 Returns the integer C<k> that solves the equation C<a = g^k mod p>, or
 undef if no solution is found.  This is the discrete logarithm problem.
 
-The current implementation is a relatively fast Shanks' BSGS for native
-integers (XS code), as well as trial and Pollard's DLP Rho.
-The PP implementation is also BSGS, but more limited and much more
-memory heavy.
+The implementation for native integers first applies Silver-Pohlig-Hellman
+on the group order to possibly reduce the problem to a set of smaller
+problems.  The solutions are then performed using a relatively fast Shanks
+BSGS, as well as trial and Pollard's DLP Rho.
+
+The PP implementation is less sophisticated, with only a memory-heavy BSGS
+being used.
 
 
 =head2 legendre_phi
