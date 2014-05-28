@@ -1901,6 +1901,20 @@ long double _XS_RiemannR(long double x) {
 
   if (x <= 0) croak("Invalid input to ReimannR:  x must be > 0");
 
+  if (x > 1e19) {
+    const signed char* amob = _moebius_range(0, 100);
+    KAHAN_SUM(sum, _XS_ExponentialIntegral(logl(x)));
+    for (k = 2; k <= 100; k++) {
+      if (amob[k] == 0) continue;
+      long double ki = 1.0L / (long double) k;
+      term = amob[k] * ki * _XS_ExponentialIntegral(logl(powl(x,ki)));
+      KAHAN_SUM(sum, term);
+      if (fabsl(term) < fabsl(LDBL_EPSILON*sum)) break;
+    }
+    Safefree(amob);
+    return sum;
+  }
+
   KAHAN_SUM(sum, 1.0);
 
   flogx = logl(x);

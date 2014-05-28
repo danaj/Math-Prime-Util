@@ -752,8 +752,11 @@ sub RiemannZeta {
   my($n) = @_;
   croak("Invalid input to ReimannZeta:  x must be > 0") if $n <= 0;
 
+  return $n-$n if $n > 10_000_000;   # Over 3M leading zeros
+
   return _XS_RiemannZeta($n)
-    if !defined $bignum::VERSION && ref($n) ne 'Math::BigFloat' && $n <= $_XS_MAXVAL;
+  if !defined $bignum::VERSION && ref($n) ne 'Math::BigFloat' && $_Config{'xs'};
+
   require Math::Prime::Util::PP;
   return Math::Prime::Util::PP::RiemannZeta($n);
 }
@@ -763,7 +766,8 @@ sub RiemannR {
   croak("Invalid input to ReimannR:  x must be > 0") if $n <= 0;
 
   return _XS_RiemannR($n)
-    if !defined $bignum::VERSION && ref($n) ne 'Math::BigFloat' && $n <= $_XS_MAXVAL;
+  if !defined $bignum::VERSION && ref($n) ne 'Math::BigFloat' && $_Config{'xs'};
+
   require Math::Prime::Util::PP;
   return Math::Prime::Util::PP::RiemannR($n);
 }
@@ -775,7 +779,7 @@ sub ExponentialIntegral {
   return $_Infinity     if $n == $_Infinity;
 
   return _XS_ExponentialIntegral($n)
-   if !defined $bignum::VERSION && ref($n) ne 'Math::BigFloat' && $_Config{'xs'};
+  if !defined $bignum::VERSION && ref($n) ne 'Math::BigFloat' && $_Config{'xs'};
 
   require Math::Prime::Util::PP;
   return Math::Prime::Util::PP::ExponentialIntegral($n);

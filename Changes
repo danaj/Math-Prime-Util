@@ -11,6 +11,11 @@ Revision history for Perl module Math::Prime::Util
 
     - An alternate method for calculating RiemannR used when appropriate.
 
+    - RiemannZeta caps at 10M even with MPFR.  This has over 300k leading 0s.
+
+    - RiemannR will use the C code if not a BigFloat or without bignum loaded.
+      The C code should only take a few microseconds for any value.
+
 
 0.41  2014-05-18
 
