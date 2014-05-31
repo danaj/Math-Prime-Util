@@ -7,7 +7,7 @@ use Math::Prime::Util
    qw/moebius mertens euler_phi jordan_totient divisor_sum exp_mangoldt
       chebyshev_theta chebyshev_psi carmichael_lambda znorder liouville
       znprimroot znlog kronecker legendre_phi gcd lcm is_power valuation
-      invmod vecsum binomial
+      invmod vecsum binomial chinese
      /;
 
 my $extra = defined $ENV{EXTENDED_TESTING} && $ENV{EXTENDED_TESTING};
@@ -341,6 +341,21 @@ if ($use64) {
   push @lcms, [ [267220708,143775143,261076], 15015659316963449908];
 }
 
+my @crts = (
+  [ [], 0 ],
+  [ [[4,5]], 4 ],
+  [ [[0,5],[0,6]], 0 ],
+  [ [[14,5],[0,6]], 24 ],
+  [ [[10,11],[4,22],[9,19]], undef ],
+  [ [[2,3],[3,5],[2,7]], 23 ],
+  [ [[10,11],[4,12],[12,13]], 1000 ],
+  [ [[42,127],[24,128]], 2328 ],             # Some tests from Mod::Int
+  [ [[32,126],[23,129]], 410 ],
+  [ [[2328,16256],[410,5418]], 28450328 ],
+  [ [[1,10],[11,100]], 11 ],
+  [ [[11,100],[22,100]], undef ],
+);
+
 my @znlogs = (
  [ [5,2,1019], 10],
  [ [2,4,17], undef],
@@ -471,6 +486,7 @@ plan tests => 0 + 1
                 + scalar(@kroneckers)
                 + scalar(@gcds)
                 + scalar(@lcms)
+                + scalar(@crts)
                 + scalar(@mult_orders)
                 + scalar(@znlogs)
                 + scalar(@legendre_sums)
@@ -641,6 +657,12 @@ foreach my $garg (@lcms) {
   my($aref, $exp) = @$garg;
   my $lcm = lcm(@$aref);
   is( $lcm, $exp, "lcm(".join(",",@$aref).") = $exp" );
+}
+###### chinese
+foreach my $carg (@crts) {
+  my($aref, $exp) = @$carg;
+  my $crt = chinese(@$aref);
+  is( $crt, $exp, "crt(".join(",",map { "[@$_]" } @$aref).") = " . ((defined $exp) ? $exp : "<undef>") );
 }
 ###### znorder
 foreach my $moarg (@mult_orders) {

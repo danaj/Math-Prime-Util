@@ -553,6 +553,41 @@ gcd(...)
     return; /* skip implicit PUTBACK */
 
 void
+chinese(...)
+  PROTOTYPE: @
+  PREINIT:
+    int i, status;
+    UV* an;
+    UV ret;
+  PPCODE:
+    status = 1;
+    New(0, an, 2*items, UV);
+    ret = 0;
+    for (i = 0; i < items; i++) {
+      AV* av;
+      SV** psva;
+      SV** psvn;
+      if (!SvROK(ST(i)) || SvTYPE(SvRV(ST(i))) != SVt_PVAV || av_len((AV*)SvRV(ST(i))) != 1)
+        croak("chinese arguments are two-element array references");
+      av = (AV*) SvRV(ST(i));
+      psva = av_fetch(av, 0, 0);
+      psvn = av_fetch(av, 1, 0);
+      if (psva == 0 || psvn == 0 || !_validate_int(aTHX_ *psva, 0) || !_validate_int(aTHX_ *psvn, 0)) {
+        status = 0;
+        break;
+      }
+      an[i+0]     = my_svuv(*psva);
+      an[i+items] = my_svuv(*psvn);
+    }
+    if (status)
+      ret = chinese(an, an+items, items, &status);
+    Safefree(an);
+    if (status == -1) XSRETURN_UNDEF;
+    if (status)       XSRETURN_UV(ret);
+    _vcallsub_with_pp("chinese");
+    return; /* skip implicit PUTBACK */
+
+void
 _XS_lucas_sequence(IN UV n, IN IV P, IN IV Q, IN UV k)
   PREINIT:
     UV U, V, Qk;
@@ -881,6 +916,28 @@ kronecker(IN SV* sva, IN SV* svb)
       default: _vcallsub_with_gmp("invmod"); break;
     }
     return; /* skip implicit PUTBACK */
+
+void
+gcdext(IN SV* sva, IN SV* svb)
+  PREINIT:
+    int astatus, bstatus;
+  PPCODE:
+    astatus = _validate_int(aTHX_ sva, 2);
+    bstatus = _validate_int(aTHX_ svb, 2);
+    if (astatus == -1 && !SvIOK(sva)) astatus = 0;  /* too large */
+    if (bstatus == -1 && !SvIOK(svb)) bstatus = 0;
+    if (astatus != 0 && bstatus != 0) {
+      IV u, v, d;
+      IV a = my_sviv(sva);
+      IV b = my_sviv(svb);
+      d = gcdext(a, b, &u, &v, 0, 0);
+      XPUSHs(sv_2mortal(newSViv( u )));
+      XPUSHs(sv_2mortal(newSViv( v )));
+      XPUSHs(sv_2mortal(newSViv( d )));
+    } else {
+      _vcallsub_with_pp("gcdext");
+      return; /* skip implicit PUTBACK */
+    }
 
 NV
 _XS_ExponentialIntegral(IN SV* x)

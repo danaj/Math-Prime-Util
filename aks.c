@@ -42,6 +42,7 @@
 #include "ptypes.h"
 #include "aks.h"
 #define FUNC_isqrt 1
+#define FUNC_gcd_ui 1
 #include "util.h"
 #include "cache.h"
 #include "mulmod.h"
@@ -58,7 +59,7 @@ static int is_primitive_root(UV n, UV r)
     UV m = powmod(n, (r-1)/fac[i], r);
     if (m == 1) return 0;
   }
-  return 1;
+  return (gcd_ui(n,r) == 1);
 }
 /* We could use lgamma, but it isn't in MSVC and not in pre-C99.  The only
  * sure way to find if it is available is test compilation (ala autoconf).

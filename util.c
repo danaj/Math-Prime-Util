@@ -1503,6 +1503,25 @@ UV znprimroot(UV n) {
   return 0;
 }
 
+IV gcdext(IV a, IV b, IV* u, IV* v, IV* cs, IV* ct) {
+  IV s = 0;  IV os = 1;
+  IV t = 1;  IV ot = 0;
+  IV r = b;  IV or = a;
+  while (r != 0) {
+    IV quot = or / r;
+    { IV tmp = r; r = or - quot * r;  or = tmp; }
+    { IV tmp = s; s = os - quot * s;  os = tmp; }
+    { IV tmp = t; t = ot - quot * t;  ot = tmp; }
+  }
+  if (or < 0) /* correct sign */
+    { or = -or; os = -os; ot = -ot; }
+  if (u  != 0) *u = os;
+  if (v  != 0) *v = ot;
+  if (cs != 0) *cs = s;
+  if (ct != 0) *ct = t;
+  return or;
+}
+
 /* Calculate 1/a mod n. */
 UV modinverse(UV a, UV n) {
   IV t = 0;  UV nt = 1;
@@ -1523,16 +1542,33 @@ UV divmod(UV a, UV b, UV n) {   /* a / b  mod n */
   return mulmod(a, binv, n);
 }
 
-UV chinese(UV* a, UV* n, UV num) {
-  UV p, i, prod = 1, sum = 0;
-  for (i = 0; i < num; i++)
-    prod *= n[i];
-  for (i = 0; i < num; i++) {
-    UV p = prod / n[i];
-    UV inv = modinverse(p, n[i]);
-    UV m1 = mulmod(a[i], inv, prod);
-    UV m2 = mulmod(m1, p, prod);
-    sum = addmod(sum, m2, prod);
+/* status: 1 ok, -1 no inverse, 0 overflow */
+UV chinese(UV* a, UV* n, UV num, int* status) {
+  UV p, gcd, inv, i, j, lcm, sum;
+  *status = 1;
+  if (num == 0) return 0;
+
+  /* Sort modulii, largest first */
+  for (i = 1; i < num; i++)
+    for (j = i; j > 0 && n[j-1] < n[j]; j--)
+      { p=n[j-1]; n[j-1]=n[j]; n[j]=p;   p=a[j-1]; a[j-1]=a[j]; a[j]=p; }
+
+  if (n[0] > IV_MAX) { *status = 0; return 0; }
+  lcm = n[0]; sum = a[0];
+  for (i = 1; i < num; i++) {
+    IV u, v, t, s;
+    UV vs, ut;
+    gcd = gcdext(lcm, n[i], &u, &v, &s, &t);
+    if (s < 0) s = -s;
+    if (t < 0) t = -t;
+    if (s > (IV_MAX/lcm)) { *status = 0; return 0; }
+    lcm *= s;
+    if (u < 0) u += lcm;
+    if (v < 0) v += lcm;
+    vs = mulmod((UV)v, (UV)s, lcm);
+    ut = mulmod((UV)u, (UV)t, lcm);
+    if (gcd != 1 && ((sum % gcd) != (a[i] % gcd))) { *status = -1; return 0; }
+    sum = addmod(  mulmod(vs, sum, lcm),  mulmod(ut, a[i], lcm),  lcm  );
   }
   return sum;
 }

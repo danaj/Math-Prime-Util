@@ -333,6 +333,12 @@ sub lcm {
   _validate_integer($_) for @v;
   return Math::Prime::Util::PP::lcm(@v);
 }
+sub gcdext {
+  my($a,$b) = @_;
+  _validate_integer($a);
+  _validate_integer($b);
+  return Math::Prime::Util::PP::gcdext($a,$b);
+}
 sub vecsum {
   my(@v) = @_;
   _validate_integer($_) for @v;

@@ -1520,6 +1520,67 @@ sub lcm {
   $lcm = _bigint_to_int($lcm) if $lcm->bacmp(''.~0) <= 0;
   return $lcm;
 }
+sub gcdext_rec {
+  my($a,$b) = @_;
+  if ($a == 0) { return (0, ($b<0) ? -1 : 1, abs($b)); }
+  if ($b == 0) { return (($a<0) ? -1 : 1, 0, abs($a)); }
+  ($a,$b) = map { Math::BigInt->new("$_") } ($a,$b);
+  my ($q,$r) = $b->copy->bdiv($a);
+  my ($u,$v,$d) = gcdext($r, $a);
+  $d = $u*$r + $v*$a;
+  return ($v-$u*$q,$u,$d);
+}
+sub gcdext {
+  my($x,$y) = @_;
+  if ($x == 0) { return (0, ($y<0) ? -1 : 1, abs($y)); }
+  if ($y == 0) { return (($x<0) ? -1 : 1, 0, abs($x)); }
+  my($a,$b,$g,$u,$v,$w);
+  if (abs($x) < (~0>>1) || abs($y) < (~0>>1)) {
+    $x = _bigint_to_int($x) if ref($x) eq 'Math::BigInt';
+    $y = _bigint_to_int($y) if ref($y) eq 'Math::BigInt';
+    ($a,$b,$g,$u,$v,$w) = (1,0,$x,0,1,$y);
+    while ($w > 0) {
+      my $q = int($g/$w);   # int(($g-($g%$w))/$w);
+      ($a,$b,$g,$u,$v,$w) = ($u,$v,$w,$a-$q*$u,$b-$q*$v,$g-$q*$w);
+    }
+  } else {
+    ($a,$b,$g,$u,$v,$w) = (BONE,BZERO,Math::BigInt->new("$x"),BZERO,BONE,Math::BigInt->new("$y"));
+    while ($w > 0) {
+      my $q = $g->copy->bdiv($w);
+      ($a,$b,$g,$u,$v,$w) = ($u,$v,$w,$a-$q*$u,$b-$q*$v,$g-$q*$w);
+    }
+    $a = _bigint_to_int($a) if $a->bacmp(''.~0) <= 0;
+    $b = _bigint_to_int($b) if $b->bacmp(''.~0) <= 0;
+    $g = _bigint_to_int($g) if $g->bacmp(''.~0) <= 0;
+  }
+  return ($a,$b,$g);
+}
+
+sub chinese {
+  my $ret = 0;
+  my(@a, @n);
+  foreach my $aref (@_) {
+    die "chinese arguments are two-element array references"
+    unless ref($aref) eq 'ARRAY' && scalar @$aref == 2;
+  }
+  foreach my $aref (sort { $a->[1] <=> $b->[1] } @_) {
+    push @a, $aref->[0];
+    push @n, $aref->[1];
+  }
+  # TODO: handle general case (where modulos aren't co-prime)
+  return 0 unless scalar @a;
+  my $lcm = Math::Prime::Util::lcm(@n);
+  $lcm = Math::BigInt->new("$lcm");
+  my $sum = 0;
+  foreach my $i (0 .. $#a) {
+    my $p = $lcm / $n[$i];
+    my $inv = Math::Prime::Util::invmod($p, $n[$i]);
+    return unless defined $inv;
+    $sum = ($sum + $p * $a[$i] * $inv) % $lcm;
+  }
+  $sum;
+}
+
 sub vecsum {
   my $sum = 0;
   my $neglim = -(~0 >> 1) - 1;

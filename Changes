@@ -2,6 +2,11 @@ Revision history for Perl module Math::Prime::Util
 
 0.42  2014-06
 
+    [ADDED]
+
+    - gcdext(x,y)                            extended Euclidian algorithm
+    - chinese([a,n],[a,n],...)               Chinese Remainder
+
     [FUNCTIONALITY AND PERFORMANCE]
 
     - znlog is *much* faster.  Added BSGS for XS and PP, Rho works better.
