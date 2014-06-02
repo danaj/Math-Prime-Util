@@ -1908,6 +1908,15 @@ follow the semantics of Mathematica, Pari, and Perl 6, re:
   lcm(0, n) = 0              Any zero in list results in zero return
   lcm(n,-m) = lcm(n, m)      We use the absolute values
 
+=head2 gcdext
+
+Given two integers C<x> and C<y>, returns C<u,v,d> such that C<d = gcd(x,y)>
+and C<u*x + v*y = d>.  This uses the extended Euclidian algorithm to compute
+the values satisfying Bézout's Identity.
+
+This corresponds to Pari's C<gcdext> function, which was renamed from
+C<bezout> out Pari 2.6.  The results will hence match L<Math::Pari/bezout>.
+
 
 =head2 vecsum
 

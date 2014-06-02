@@ -1503,6 +1503,16 @@ sub _powmod {
 
 # Make sure to work around RT71548 here, and correct lcm semantics.
 sub gcd {
+  # First see if all inputs are non-bigints  5-10x faster if so.
+  if (0 == scalar(grep { ref($_) } @_)) {
+    my($x,$y) = (shift || 0, 0);
+    while (@_) {
+      $y = shift;
+      while ($y) {  ($x,$y) = ($y, $x % $y);  }
+      $x = -$x if $x < 0;
+    }
+    return $x;
+  }
   my $gcd = Math::BigInt::bgcd( map {
     my $v = ($_ < 2147483647 || ref($_) eq 'Math::BigInt') ? $_ : "$_";
     $v;
@@ -1520,39 +1530,32 @@ sub lcm {
   $lcm = _bigint_to_int($lcm) if $lcm->bacmp(''.~0) <= 0;
   return $lcm;
 }
-sub gcdext_rec {
-  my($a,$b) = @_;
-  if ($a == 0) { return (0, ($b<0) ? -1 : 1, abs($b)); }
-  if ($b == 0) { return (($a<0) ? -1 : 1, 0, abs($a)); }
-  ($a,$b) = map { Math::BigInt->new("$_") } ($a,$b);
-  my ($q,$r) = $b->copy->bdiv($a);
-  my ($u,$v,$d) = gcdext($r, $a);
-  $d = $u*$r + $v*$a;
-  return ($v-$u*$q,$u,$d);
-}
 sub gcdext {
   my($x,$y) = @_;
   if ($x == 0) { return (0, ($y<0) ? -1 : 1, abs($y)); }
   if ($y == 0) { return (($x<0) ? -1 : 1, 0, abs($x)); }
   my($a,$b,$g,$u,$v,$w);
-  if (abs($x) < (~0>>1) || abs($y) < (~0>>1)) {
+  if (abs($x) < (~0>>1) && abs($y) < (~0>>1)) {
     $x = _bigint_to_int($x) if ref($x) eq 'Math::BigInt';
     $y = _bigint_to_int($y) if ref($y) eq 'Math::BigInt';
     ($a,$b,$g,$u,$v,$w) = (1,0,$x,0,1,$y);
-    while ($w > 0) {
-      my $q = int($g/$w);   # int(($g-($g%$w))/$w);
-      ($a,$b,$g,$u,$v,$w) = ($u,$v,$w,$a-$q*$u,$b-$q*$v,$g-$q*$w);
+    while ($w != 0) {
+      my $r = $g % $w;
+      my $q = int(($g-$r)/$w);
+      ($a,$b,$g,$u,$v,$w) = ($u,$v,$w,$a-$q*$u,$b-$q*$v,$r);
     }
   } else {
-    ($a,$b,$g,$u,$v,$w) = (BONE,BZERO,Math::BigInt->new("$x"),BZERO,BONE,Math::BigInt->new("$y"));
-    while ($w > 0) {
-      my $q = $g->copy->bdiv($w);
-      ($a,$b,$g,$u,$v,$w) = ($u,$v,$w,$a-$q*$u,$b-$q*$v,$g-$q*$w);
+    ($a,$b,$g,$u,$v,$w) = (BONE->copy,BZERO->copy,Math::BigInt->new("$x"),
+                           BZERO->copy,BONE->copy,Math::BigInt->new("$y"));
+    while ($w != 0) {
+      my ($q,$r) = $g->copy->bdiv($w);  # $r = $g-$q*$w
+      ($a,$b,$g,$u,$v,$w) = ($u,$v,$w,$a-$q*$u,$b-$q*$v,$r);
     }
     $a = _bigint_to_int($a) if $a->bacmp(''.~0) <= 0;
     $b = _bigint_to_int($b) if $b->bacmp(''.~0) <= 0;
     $g = _bigint_to_int($g) if $g->bacmp(''.~0) <= 0;
   }
+  if ($g < 0) { ($a,$b,$g) = (-$a,-$b,-$g); }
   return ($a,$b,$g);
 }
 

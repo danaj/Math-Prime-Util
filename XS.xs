@@ -924,8 +924,8 @@ gcdext(IN SV* sva, IN SV* svb)
   PPCODE:
     astatus = _validate_int(aTHX_ sva, 2);
     bstatus = _validate_int(aTHX_ svb, 2);
-    if (astatus == -1 && !SvIOK(sva)) astatus = 0;  /* too large */
-    if (bstatus == -1 && !SvIOK(svb)) bstatus = 0;
+    if (astatus == 1 && SvIsUV(sva)) astatus = 0;  /* too large */
+    if (bstatus == 1 && SvIsUV(svb)) bstatus = 0;  /* too large */
     if (astatus != 0 && bstatus != 0) {
       IV u, v, d;
       IV a = my_sviv(sva);
@@ -935,7 +935,7 @@ gcdext(IN SV* sva, IN SV* svb)
       XPUSHs(sv_2mortal(newSViv( v )));
       XPUSHs(sv_2mortal(newSViv( d )));
     } else {
-      _vcallsub_with_pp("gcdext");
+      _vcallsubn(aTHX_ GIMME_V, VCALL_PP, "gcdext", items);
       return; /* skip implicit PUTBACK */
     }
 

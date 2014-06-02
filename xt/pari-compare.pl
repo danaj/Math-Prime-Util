@@ -65,6 +65,13 @@ foreach my $n (0 .. $small) {
     }
   }
 
+  {
+    my $d = $n+3;
+    my @gmpu  = gcdext($n,$d);
+    my $gpari = Math::Pari::bezout($n,$d);
+    die "gcdext($n,$d)" unless $gmpu[0] == $gpari->[0] && $gmpu[1] == $gpari->[1] && $gmpu[2] == $gpari->[2];
+  }
+
   die "nth_prime($n)" unless Math::Pari::prime($n) == nth_prime($n);
 
   # All the pari2iv calls are very time-consuming
@@ -298,6 +305,9 @@ while (1) {
   $b >>= 1 if $b > 2**63;
   die "kronecker($a,-$b)" unless Math::Pari::kronecker($a,-$b) == kronecker($a,-$b);
   die "kronecker(-$a,-$b)" unless Math::Pari::kronecker(-$a,-$b) == kronecker(-$a,-$b);
+
+  { my @gmpu  = gcdext($a,$b);   my $gpari = Math::Pari::bezout($a,$b);
+    die "gcdext($a,$b)" unless $gmpu[0] == $gpari->[0] && $gmpu[1] == $gpari->[1] && $gmpu[2] == $gpari->[2]; }
 }
 { my $a = int(rand(2**32));
   my $b = int(rand(2**32));

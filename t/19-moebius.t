@@ -7,7 +7,7 @@ use Math::Prime::Util
    qw/moebius mertens euler_phi jordan_totient divisor_sum exp_mangoldt
       chebyshev_theta chebyshev_psi carmichael_lambda znorder liouville
       znprimroot znlog kronecker legendre_phi gcd lcm is_power valuation
-      invmod vecsum binomial chinese
+      invmod vecsum binomial gcdext chinese
      /;
 
 my $extra = defined $ENV{EXTENDED_TESTING} && $ENV{EXTENDED_TESTING};
@@ -341,6 +341,23 @@ if ($use64) {
   push @lcms, [ [267220708,143775143,261076], 15015659316963449908];
 }
 
+my @gcdexts = (
+  [ [0, 28], [0, 1,28] ],
+  [ [ 28,0], [ 1,0,28] ],
+  [ [0,-28], [0,-1,28] ],
+  [ [-28,0], [-1,0,28] ],
+  [ [ 3706259912, 1223661804], [ 123862139,-375156991, 4] ],
+  [ [ 3706259912,-1223661804], [ 123862139, 375156991, 4] ],
+  [ [-3706259912, 1223661804], [-123862139,-375156991, 4] ],
+  [ [-3706259912,-1223661804], [-123862139, 375156991, 4] ],
+  [ [22,242], [1, 0, 22] ],
+  [ [2731583792,3028241442], [-187089956, 168761937, 2] ],
+  [ [42272720,12439910], [-21984, 74705, 70] ],
+);
+if ($use64) {
+  push @gcdexts, [ [10139483024654235947,8030280778952246347], [-2715309548282941287,3428502169395958570,1] ];
+}
+
 my @crts = (
   [ [], 0 ],
   [ [[4,5]], 4 ],
@@ -486,6 +503,7 @@ plan tests => 0 + 1
                 + scalar(@kroneckers)
                 + scalar(@gcds)
                 + scalar(@lcms)
+                + scalar(@gcdexts)
                 + scalar(@crts)
                 + scalar(@mult_orders)
                 + scalar(@znlogs)
@@ -657,6 +675,12 @@ foreach my $garg (@lcms) {
   my($aref, $exp) = @$garg;
   my $lcm = lcm(@$aref);
   is( $lcm, $exp, "lcm(".join(",",@$aref).") = $exp" );
+}
+###### gcdext
+foreach my $garg (@gcdexts) {
+  my($aref, $eref) = @$garg;
+  my($x,$y) = @$aref;
+  is_deeply( [gcdext($x,$y)], $eref, "gcdext($x,$y) = [@$eref]" );
 }
 ###### chinese
 foreach my $carg (@crts) {

@@ -89,8 +89,7 @@
 
 - CRT and gcdext:
     = crt doc, crt PP general case, crt PPFE
-    = gcdext doc, tests
-    = Math::Pari compare bezout/gcdext, chinese
+    = Math::Pari compare chinese
     = high bits, bigints
     = performance:
          0.092  time mpu 'for (1..100000) { chinese([11,14],[1,10]) }'
