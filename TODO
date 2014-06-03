@@ -82,19 +82,6 @@
     = Clean up znlog (PH, BSGS, Rho).
     = Experiment with Wang/Zhang 2012 Rho cycle finding
 
-- export chinese?
-    Mathematica   ChineseRemainder[{a1, a2, ...}{m1, m2, ...}]
-    Pari          chinese( [Mod(a1,m1),Mod(a2,m2),Mod(a3,m3),...] )
-    Math::ModInt  cr_combine(mod(a1,m1),mod(a2,m2),mod(a3,m3),...)
-
 - CRT and gcdext:
-    = crt doc, crt PP general case, crt PPFE
     = Math::Pari compare chinese
-    = high bits, bigints
-    = performance:
-         0.092  time mpu 'for (1..100000) { chinese([11,14],[1,10]) }'
-         0.168  time perl -MMath::Pari=chinese,PARI -E 'my $a = PARI "Mod(11,14)"; my $b = PARI "Mod(1,10)"; for (1..100000) { chinese($a,$b); }'
-         3.756  time perl -MMath::ModInt::ChineseRemainder=cr_combine -MMath::ModInt=mod -E 'for (1..100000) { cr_combine(mod(11,14),mod(1,10)) }'
-        55.323  time MPU_NO_XS=1 mpu 'for (1..100000) { Math::Prime::Util::PP::chinese([11,14],[1,10]) }'
-      The PP performance here is awful.  Even with bigints, Math::ModInt is
-      over 10x faster.  We really should be beating Pari by a larger amount.
+    = better chinese testing: high bits, negative

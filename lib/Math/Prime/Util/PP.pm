@@ -1560,27 +1560,44 @@ sub gcdext {
 }
 
 sub chinese {
-  my $ret = 0;
-  my(@a, @n);
-  foreach my $aref (@_) {
-    die "chinese arguments are two-element array references"
-    unless ref($aref) eq 'ARRAY' && scalar @$aref == 2;
+  return 0 unless scalar @_;
+  return $_[0]->[0] % $_[0]->[1] if scalar @_ == 1;
+  my($lcm, $sum);
+  foreach my $aref (sort { $b->[1] <=> $a->[1] } @_) {
+    my($ai, $ni) = @$aref;
+    if (!defined $lcm) {
+      ($sum,$lcm) = ($ai % $ni, $ni);
+      next;
+    }
+    # gcdext
+    my($u,$v,$g,$s,$t,$w) = (1,0,$lcm,0,1,$ni);
+    while ($w != 0) {
+      my $r = $g % $w;
+      my $q = int(($g-$r)/$w);
+      ($u,$v,$g,$s,$t,$w) = ($s,$t,$w,$u-$q*$s,$v-$q*$t,$r);
+    }
+    ($u,$v,$g) = (-$u,-$v,-$g)  if $g < 0;
+    return if $g != 1 && ($sum % $g) != ($ai % $g);  # Not co-prime
+    $s = -$s if $s < 0;
+    $t = -$t if $t < 0;
+    # Convert to bigint if necessary.  Performance goes to hell.
+    if (!ref($lcm) && ($lcm*$s) > ~0) { $lcm = Math::BigInt->new("$lcm"); }
+    $lcm *= $s;
+    $u += $lcm if $u < 0;
+    $v += $lcm if $v < 0;
+    if (ref($lcm)) {
+      my $m1 = Math::BigInt->new("$v")->bmul("$s")->bmod($lcm)->bmul("$sum")->bmod($lcm);
+      my $m2 = Math::BigInt->new("$u")->bmul("$t")->bmod($lcm)->bmul("$ai")->bmod($lcm);
+      $sum = $m1->badd($m2)->bmod($lcm);
+    } else {
+      my $vs = _mulmod($v,$s,$lcm);
+      my $ut = _mulmod($u,$t,$lcm);
+      my $m1 = _mulmod($sum,$vs,$lcm);
+      my $m2 = _mulmod($ut,$ai % $lcm,$lcm);
+      $sum = (($m1+$m2) > $lcm) ?  $m1-$lcm+$m2  :  $m1+$m2;
+    }
   }
-  foreach my $aref (sort { $a->[1] <=> $b->[1] } @_) {
-    push @a, $aref->[0];
-    push @n, $aref->[1];
-  }
-  # TODO: handle general case (where modulos aren't co-prime)
-  return 0 unless scalar @a;
-  my $lcm = Math::Prime::Util::lcm(@n);
-  $lcm = Math::BigInt->new("$lcm");
-  my $sum = 0;
-  foreach my $i (0 .. $#a) {
-    my $p = $lcm / $n[$i];
-    my $inv = Math::Prime::Util::invmod($p, $n[$i]);
-    return unless defined $inv;
-    $sum = ($sum + $p * $a[$i] * $inv) % $lcm;
-  }
+  $sum = _bigint_to_int($sum) if ref($sum) && $sum->bacmp(''.~0) <= 0;
   $sum;
 }
 

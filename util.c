@@ -1554,11 +1554,12 @@ UV chinese(UV* a, UV* n, UV num, int* status) {
       { p=n[j-1]; n[j-1]=n[j]; n[j]=p;   p=a[j-1]; a[j-1]=a[j]; a[j]=p; }
 
   if (n[0] > IV_MAX) { *status = 0; return 0; }
-  lcm = n[0]; sum = a[0];
+  lcm = n[0]; sum = a[0] % n[0];
   for (i = 1; i < num; i++) {
     IV u, v, t, s;
     UV vs, ut;
     gcd = gcdext(lcm, n[i], &u, &v, &s, &t);
+    if (gcd != 1 && ((sum % gcd) != (a[i] % gcd))) { *status = -1; return 0; }
     if (s < 0) s = -s;
     if (t < 0) t = -t;
     if (s > (IV_MAX/lcm)) { *status = 0; return 0; }
@@ -1567,7 +1568,6 @@ UV chinese(UV* a, UV* n, UV num, int* status) {
     if (v < 0) v += lcm;
     vs = mulmod((UV)v, (UV)s, lcm);
     ut = mulmod((UV)u, (UV)t, lcm);
-    if (gcd != 1 && ((sum % gcd) != (a[i] % gcd))) { *status = -1; return 0; }
     sum = addmod(  mulmod(vs, sum, lcm),  mulmod(ut, a[i], lcm),  lcm  );
   }
   return sum;

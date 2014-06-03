@@ -817,7 +817,7 @@ __END__
 
 =encoding utf8
 
-=for stopwords forprimes forcomposites fordivisors forpart Möbius Deléglise totient moebius mertens liouville znorder irand primesieve uniqued k-tuples von SoE pari yafu fonction qui compte le nombre nombres voor PhD superset sqrt(N) gcd(A^M k-th (10001st primegen libtommath kronecker znprimroot znlog gcd lcm invmod untruncated vecsum
+=for stopwords forprimes forcomposites fordivisors forpart Möbius Deléglise Bézout totient moebius mertens liouville znorder irand primesieve uniqued k-tuples von SoE pari yafu fonction qui compte le nombre nombres voor PhD superset sqrt(N) gcd(A^M k-th (10001st primegen libtommath kronecker znprimroot znlog gcd lcm invmod untruncated vecsum gcdext chinese
 
 
 =head1 NAME
@@ -1917,6 +1917,29 @@ the values satisfying Bézout's Identity.
 This corresponds to Pari's C<gcdext> function, which was renamed from
 C<bezout> out Pari 2.6.  The results will hence match L<Math::Pari/bezout>.
 
+=head2 chinese
+
+  say chinese( [14,643], [254,419], [87,733] );  # 87041638
+
+Solves a system of simultaneous congruences using the Chinese Remainder
+Theorem (with extension to non-coprime moduli).  A list of C<[a,n]> pairs
+are taken as input, each representing an equation C<x ≡ a mod n>.  If no
+solution exists, C<undef> is returned.  If a solution is returned, the
+modulus is equal to the lcm of all the given moduli (see L</lcm>.  In
+the standard case where all values of C<n> are coprime, this is just the
+product.  The C<n> values must be positive integers, while the C<a> values
+are integers.
+
+Comparison to similar functions in other software:
+
+  Math::ModInt::ChineseRemainder:
+    cr_combine( mod(a1,m1), mod(a2,m2), ... )
+
+  Pari/GP:
+    chinese( [Mod(a1,m1), Mod(a2,m2), ...] )
+
+  Mathematica:
+    ChineseRemainder[{a1, a2, ...}{m1, m2, ...}]
 
 =head2 vecsum
 
@@ -3270,6 +3293,12 @@ though a few sequences support random access.  The primary advantage I see
 is the uniform access mechanism for a I<lot> of sequences.  For those methods
 that overlap, MPU is usually much faster.  Importantly, most of the sequences
 in Math::NumSeq are limited to 32-bit indices.
+
+L<Math::ModInt::ChineseRemainder/cr_combine> is similar to MPU's L</chinese>,
+and in fact they use the same algorithm.  The former module uses caching
+of moduli to speed up further operations.  MPU does not do this.  This would
+only be important for cases where the lcm is larger than a native int (noting
+that use in cryptography would always have large moduli).
 
 L<Math::Pari> supports a lot of features, with a great deal of overlap.  In
 general, MPU will be faster for native 64-bit integers, while it's differs

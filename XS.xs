@@ -572,7 +572,7 @@ chinese(...)
       av = (AV*) SvRV(ST(i));
       psva = av_fetch(av, 0, 0);
       psvn = av_fetch(av, 1, 0);
-      if (psva == 0 || psvn == 0 || !_validate_int(aTHX_ *psva, 0) || !_validate_int(aTHX_ *psvn, 0)) {
+      if (psva == 0 || psvn == 0 || _validate_int(aTHX_ *psva, 1) != 1 || !_validate_int(aTHX_ *psvn, 0)) {
         status = 0;
         break;
       }

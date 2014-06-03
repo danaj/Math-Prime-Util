@@ -64,7 +64,7 @@ sub mpu_public_regex {
       random_proven_prime random_proven_prime_with_cert
       random_maurer_prime random_maurer_prime_with_cert
       random_shawe_taylor_prime random_shawe_taylor_prime_with_cert
-      primorial pn_primorial consecutive_integer_lcm
+      primorial pn_primorial consecutive_integer_lcm gcdext chinese
       gcd lcm factor factor_exp all_factors divisors valuation invmod vecsum
       moebius mertens euler_phi jordan_totient exp_mangoldt liouville
       partitions
