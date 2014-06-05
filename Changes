@@ -14,6 +14,8 @@ Revision history for Perl module Math::Prime::Util
     - Another inverse improvement from W. Izykowski, doing 8 bits at a time.
       A further 1% to 15% speedup in primality testing.
 
+    - A 35% reduction in overhead for forprimes with multicall.
+
     - An alternate method for calculating RiemannR used when appropriate.
 
     - RiemannZeta caps at 10M even with MPFR.  This has over 300k leading 0s.

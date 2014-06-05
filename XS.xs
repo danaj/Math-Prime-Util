@@ -1129,7 +1129,7 @@ forprimes (SV* block, IN SV* svbeg, IN SV* svend = 0)
     }
 
     SAVESPTR(GvSV(PL_defgv));
-    svarg = newSVuv(0);
+    svarg = newSVuv(beg);
     GvSV(PL_defgv) = svarg;
     /* Handle early part */
     while (beg < 6) {
@@ -1160,8 +1160,12 @@ forprimes (SV* block, IN SV* svbeg, IN SV* svend = 0)
       } else {                      /* MULTICALL segment sieve */
         void* ctx = start_segment_primes(beg, end, &segment);
         while (next_segment_primes(ctx, &seg_base, &seg_low, &seg_high)) {
+          int crossuv = (seg_high > IV_MAX) && !SvIsUV(svarg);
           START_DO_FOR_EACH_SIEVE_PRIME( segment, seg_low - seg_base, seg_high - seg_base ) {
-            sv_setuv(svarg, seg_base + p);
+            /* sv_setuv(svarg, seg_base + p); */
+            if (crossuv && seg_base+p > IV_MAX)
+              { sv_setuv(svarg, seg_base+p);   crossuv = 0; }
+            SvUV_set(svarg, seg_base+p);
             MULTICALL;
           } END_DO_FOR_EACH_SIEVE_PRIME
         }
