@@ -12,8 +12,11 @@
 #include "primality.h"
 
 /* If the base sieve is larger than this, presieve and test */
-#define BASE_SIEVE_LIMIT  4000000
-
+#if USE_MONT_PRIMALITY
+ #define BASE_SIEVE_LIMIT  170000000
+#else
+ #define BASE_SIEVE_LIMIT  600000000
+#endif
 
 /* 1001 bytes of presieved mod-30 bytes.  If the area to be sieved is
  * appropriately filled with this data, then 7, 11, and 13 do not have
@@ -315,7 +318,7 @@ int sieve_segment(unsigned char* mem, UV startd, UV endd)
   /* Don't use a sieve prime such that p*p > UV_MAX */
   if (limit > max_sieve_prime)  limit = max_sieve_prime;
   slimit = limit;
-  if (slimit > BASE_SIEVE_LIMIT) slimit = BASE_SIEVE_LIMIT;
+  if (slimit > BASE_SIEVE_LIMIT) slimit >>= 10;
   /* printf("segment sieve from %"UVuf" to %"UVuf" (aux sieve to %"UVuf")\n", startp, endp, slimit); */
   if (slimit > sieve_size) {
     release_prime_cache(sieve);
