@@ -964,6 +964,8 @@ sub _count_with_sieve {
 sub _lehmer_pi {
   my $x = shift;
   return _sieve_prime_count($x) if $x < 1_000;
+  do { require Math::BigFloat; Math::BigFloat->import(); }
+    if ref($x) eq 'Math::BigInt';
   my $z = (ref($x) ne 'Math::BigInt')
         ? int(sqrt($x+0.5))
         : int(Math::BigFloat->new($x)->badd(0.5)->bsqrt->bfloor->bstr);
