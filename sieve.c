@@ -318,7 +318,9 @@ int sieve_segment(unsigned char* mem, UV startd, UV endd)
   /* Don't use a sieve prime such that p*p > UV_MAX */
   if (limit > max_sieve_prime)  limit = max_sieve_prime;
   slimit = limit;
+#if 0  /* Don't do this any more -- we use bigger segments now */
   if (slimit > BASE_SIEVE_LIMIT) slimit >>= 10;
+#endif
   /* printf("segment sieve from %"UVuf" to %"UVuf" (aux sieve to %"UVuf")\n", startp, endp, slimit); */
   if (slimit > sieve_size) {
     release_prime_cache(sieve);
@@ -388,12 +390,15 @@ int sieve_segment(unsigned char* mem, UV startd, UV endd)
   END_DO_FOR_EACH_SIEVE_PRIME;
   release_prime_cache(sieve);
 
+  MPUassert( limit == slimit, "partial segment sieve!" );
+#if 0
   if (limit > slimit) { /* We've sieved out most composites, but not all. */
     START_DO_FOR_EACH_SIEVE_PRIME(mem, 0, endp-startp) {
       if (!_XS_BPSW(startp + p))    /* If the candidate is not prime, */
         mem[d_] |= mask_;           /* mark the sieve location.       */
     } END_DO_FOR_EACH_SIEVE_PRIME;
   }
+#endif
   return 1;
 }
 
@@ -440,6 +445,20 @@ void* start_segment_primes(UV low, UV high, unsigned char** segmentmem)
   ctx->hid = high / 30;
   ctx->endp = (ctx->hid >= (UV_MAX/30))  ?  UV_MAX-2  :  30*ctx->hid+29;
 
+#if BITS_PER_WORD == 64
+  if (high > 1e11 && high-low > 1e6) {
+    UV range = (high-low+29)/30;
+    /* Select what we think would be a good segment size */
+    UV size = isqrt(isqrt(high)) * ((high < 1e15) ? 500 : 250);
+    /* Evenly split the range into segments */
+    UV div = (range+size-1)/size;
+    size = (div <= 1)  ?  range  :  (range+div-1)/div;
+    if (_XS_get_verbose() >= 2)
+      printf("segment sieve: byte range %lu split into %lu segments of size %lu\n", (unsigned long)range, (unsigned long)div, (unsigned long)size);
+    ctx->segment_size = size;
+    New(0, ctx->segment, size, unsigned char);
+  } else
+#endif
   ctx->segment = get_prime_segment( &(ctx->segment_size) );
   *segmentmem = ctx->segment;
 

@@ -942,6 +942,7 @@ UV twin_prime_count(UV beg, UV end)
 UV nth_twin_prime(UV n)
 {
   unsigned char* segment;
+  double dend;
   UV nth = 0;
   UV beg, end;
 
@@ -957,9 +958,11 @@ UV nth_twin_prime(UV n)
     }
     return nth;
   }
-  n -= 5;
   beg = 31;
   end = UV_MAX - 16;
+  dend = 400.0 + 1.01L * (double)nth_twin_prime_approx(n);
+  if (dend < (double)end) end = (UV) dend;
+  n -= 5;
   {
     UV seg_base, seg_low, seg_high;
     void* ctx = start_segment_primes(beg, end, &segment);

@@ -86,6 +86,8 @@
     = Math::Pari compare chinese
     = better chinese testing: high bits, negative
 
-- Have get_prime_segment take the "high" value that will be used, so it
-  can decide to use larger segments.  The 256k segment is just too small
-  when using large bases.
+- Document behavior ala https://rt.cpan.org/Ticket/Display.html?id=95409.
+  This is a very odd thing to do, but ....
+    forprimes { my $var = "p is $_"; push @subs, sub { print "$var\n" }; } 50;
+    $_->() for @subs;
+  shows the issue.  Wrapping inside another brace works.

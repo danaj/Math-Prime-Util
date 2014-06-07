@@ -16,6 +16,11 @@ Revision history for Perl module Math::Prime::Util
 
     - A 35% reduction in overhead for forprimes with multicall.
 
+    - prime segment sieving over large ranges will use larger segment sizes
+      when given large bases.  This uses some more memory, but is much faster.
+      This supercedes the partial-sieve-plus-test method from v0.36 that was
+      trying to solve the same problem.
+
     - An alternate method for calculating RiemannR used when appropriate.
 
     - RiemannZeta caps at 10M even with MPFR.  This has over 300k leading 0s.
