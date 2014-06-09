@@ -3,10 +3,28 @@ use strict;
 use warnings;
 use Math::BigInt try => "GMP,Pari";
 use Math::Prime::Util qw/:all/;
+use Bytes::Random::Secure;
 $|=1;
 
 # Example of Blum-Micali and Blum-Blum-Shub CSPRNGs.
 # Not very practical, but works as an example.
+
+if (!@ARGV) {
+  die <<EOU;
+Usage: $0 <nbits> [<type>] [<bits>]
+
+An example showing two classic CSPRNGs (cryptographically secure pseudorandom
+number generators).  These are generally not used in practice for performance
+reasons, with things like AES-CTR, ISAAC, Yarrow/Fortuna, or stream ciphers
+like Salsa20 instead being used.
+
+<nbits>: how many bits should be generated.
+
+<type>: one of "BM" (Blum-Micali) or "BBS" (Blum-Blum-Shub).  Default BBS.
+
+<bits>: How large of primes are used for P (BM) or P*Q (BBS).  Default 512.
+EOU
+}
 
 my $nbits = shift || 10;
 my $type = shift || 'BBS';  # BM or BBS
@@ -14,17 +32,19 @@ my $bits = shift || 512;
 
 die "Type must be BM or BBS" unless $type =~ /^(BBS|BM)$/;
 
+my $rng = Bytes::Random::Secure->new(NonBlocking => 1);
+my $rbytes = int(($bits+7)/8);
+
 if ($type eq 'BM') {
-  my($p, $x0);
+  my($p, $xn);
   # Select P
   do { $p = 2*random_nbit_prime($bits-1)+1 } while !is_prime($p);
   # Get generator
   my $g = Math::BigInt->new( "" . znprimroot($p) );
-  # Select X0.  This could be done better.
-  do { $x0 = random_nbit_prime($bits) ^ (random_nbit_prime($bits) >> 1) }
-    while $x0 <= 1;
+  do {  # Select the seed x0
+    $xn = Math::BigInt->new("0x".$rng->bytes_hex($rbytes))->bmod($p);
+  } while $xn <= 1;
   # Generate bits
-  my $xn = Math::BigInt->new("$x0");
   my $thresh = ($p-1) >> 1;
   while ($nbits-- > 0) {
     $xn = $g->copy->bmodpow($xn,$p);
@@ -32,7 +52,7 @@ if ($type eq 'BM') {
   }
   print "\n";
 } else {
-  my($M,$x0);
+  my($M,$xn);
   # Select M = p*q
   while (1) {
     my($p,$q);
@@ -45,11 +65,10 @@ if ($type eq 'BM') {
     $M = $p * $q;
     last;
   }
-  # Select X0.  This could be done better.
-  do { $x0 = random_nbit_prime($bits) ^ (random_nbit_prime($bits) >> 1) }
-    while $x0 <= 1 || gcd($x0,$M) != 1;
+  do {  # Select the seed x0
+    $xn = Math::BigInt->new("0x".$rng->bytes_hex($rbytes))->bmod($M);
+  } while $xn <= 1 || gcd($xn,$M) != 1;
   # Generate bits
-  my $xn = Math::BigInt->new("$x0");
   my $two = Math::BigInt->new(2);
   while ($nbits-- > 0) {
     $xn->bmodpow($two,$M);
