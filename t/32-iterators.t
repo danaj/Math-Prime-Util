@@ -18,6 +18,7 @@ plan tests => 8        # forprimes errors
             + 2        # fordivisors simple
             + 3        # iterator errors
             + 7        # iterator simple
+            + 1        # other forprimes
             + 2        # forprimes/iterator nesting
             + 3        # forprimes BigInt/BigFloat
             + 3        # oo iterator errors
@@ -118,6 +119,12 @@ ok(!eval { prime_iterator(4.5); }, "iterator 4.5");
 }
 {my $it = prime_iterator(31398);
   is_deeply( [map { $it->() } 1..3], [31469,31477,31481], "iterator 3 primes starting at 31398" );
+}
+
+# Make sure things work when the type of $_ changes
+{ my $sum = 0;
+  forprimes { $sum += int(12345/$_) } 1000;
+  is(27053, $sum, "forprimes handles \$_ type changes");
 }
 
 # For fun, nest them.

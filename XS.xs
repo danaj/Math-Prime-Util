@@ -1162,10 +1162,11 @@ forprimes (SV* block, IN SV* svbeg, IN SV* svend = 0)
         while (next_segment_primes(ctx, &seg_base, &seg_low, &seg_high)) {
           int crossuv = (seg_high > IV_MAX) && !SvIsUV(svarg);
           START_DO_FOR_EACH_SIEVE_PRIME( segment, seg_low - seg_base, seg_high - seg_base ) {
-            /* sv_setuv(svarg, seg_base + p); */
-            if (crossuv && seg_base+p > IV_MAX)
-              { sv_setuv(svarg, seg_base+p);   crossuv = 0; }
-            SvUV_set(svarg, seg_base+p);
+            p += seg_base;
+            /* sv_setuv(svarg, p); */
+            if      (SvTYPE(svarg) != SVt_IV) { sv_setuv(svarg, p);            }
+            else if (crossuv && p > IV_MAX)   { sv_setuv(svarg, p); crossuv=0; }
+            else                              { SvUV_set(svarg, p);            }
             MULTICALL;
           } END_DO_FOR_EACH_SIEVE_PRIME
         }
