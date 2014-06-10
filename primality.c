@@ -43,16 +43,23 @@ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ******************************************************************************/
 #if USE_MONT_PRIMALITY
+
+#if defined(__GNUC__) && (__GNUC__ >= 3)
+ #define MPU_UNLIKELY(x) __builtin_expect(!!(x), 0)
+#else
+ #define MPU_UNLIKELY(x) (x)
+#endif
+
 static INLINE uint64_t mont_prod64(uint64_t a, uint64_t b, uint64_t n, uint64_t npi)
 {
   uint64_t t_hi, t_lo, m, mn_hi, mn_lo, u;
   /* t_hi * 2^64 + t_lo = a*b */
   asm("mulq %3" : "=a"(t_lo), "=d"(t_hi) : "a"(a), "rm"(b));
+  if (MPU_UNLIKELY(t_lo == 0)) return t_hi;
   m = t_lo * npi;
   /* mn_hi * 2^64 + mn_lo = m*n */
   asm("mulq %3" : "=a"(mn_lo), "=d"(mn_hi) : "a"(m), "rm"(n));
-  u = t_hi + mn_hi;
-  if (t_lo + mn_lo < t_lo) u++;
+  u = t_hi + mn_hi + 1;
   return (u < t_hi || u >= n)  ?  u-n  :  u;
 }
 #define mont_square64(a, n, npi)  mont_prod64(a, a, n, npi)
