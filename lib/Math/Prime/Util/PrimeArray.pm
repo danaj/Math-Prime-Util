@@ -222,39 +222,39 @@ use C<shift> on the tied array.
 
   MPU forprimes:  forprimes { $sum += $_ } nth_prime(100_000);
   MPU iterator:   my $it = prime_iterator; $sum += $it->() for 1..100000;
-  MPU array:      $sum += $_ for @{primes(nth_prime(100_000))};
+  MPU array:      $sum = vecsum( @{primes(nth_prime(100_000))} );
   MPUPA:          tie my @primes, ...; $sum += $primes[$_] for 0..99999;
   MNSP:           my $seq = Math::NumSeq::Primes->new;
                   $sum += ($seq->next)[1] for 1..100000;
   MPTA:           tie my @primes, ...; $sum += $primes[$_] for 0..99999;
 
 Memory use is comparing the delta between just loading the module and running
-the test.  Perl 5.19.2, Math::NumSeq v61, Math::Prime::TiedArray v0.04.
+the test.  Perl 5.20.0, Math::NumSeq v70, Math::Prime::TiedArray v0.04.
 
 Summing the first 0.1M primes via walking the array:
 
-       7ms     52k    Math::Prime::Util      forprimes
-     140ms      0     Math::Prime::Util      prime_iterator
-      12ms   4400k    Math::Prime::Util      sum big array
-     220ms    840k    Math::Prime::Util::PrimeArray
-     130ms    280k    Math::NumSeq::Primes   sequence iterator
-    7560ms   65 MB    Math::Prime::TiedArray (extend 1k)
+       6ms     56k    Math::Prime::Util      forprimes
+       7ms    4 MB    Math::Prime::Util      sum big array
+     110ms      0     Math::Prime::Util      prime_iterator
+     155ms    644k    Math::Prime::Util::PrimeArray
+     120ms   1476k    Math::NumSeq::Primes   sequence iterator
+    7540ms   61 MB    Math::Prime::TiedArray (extend 1k)
 
 Summing the first 1M primes via walking the array:
 
-      0.1s    300k    Math::Prime::Util      forprimes
-      1.8s      0     Math::Prime::Util      prime_iterator
-      0.2s   40 MB    Math::Prime::Util      sum big array
-      1.9s   1.1MB    Math::Prime::Util::PrimeArray
-      7.5s   1.2MB    Math::NumSeq::Primes   sequence iterator
-    110.5s  785 MB    Math::Prime::TiedArray (extend 1k)
+      0.07s   268k    Math::Prime::Util      forprimes
+      0.09s  41 MB    Math::Prime::Util      sum big array
+      1.4s      0     Math::Prime::Util      prime_iterator
+      1.6s    644k    Math::Prime::Util::PrimeArray
+      7.1s   2428k    Math::NumSeq::Primes   sequence iterator
+    108.4s  760 MB    Math::Prime::TiedArray (extend 1k)
 
 Summing the first 10M primes via walking the array:
 
-      0.8s   5.9MB    Math::Prime::Util      forprimes
-     22.4s      0     Math::Prime::Util      prime_iterator
-      1.5s  368 MB    Math::Prime::Util      sum big array
-     19.1s   1.2MB    Math::Prime::Util::PrimeArray
+      0.7s    432k    Math::Prime::Util      forprimes
+      0.9s  394 MB    Math::Prime::Util      sum big array
+     16.9s      0     Math::Prime::Util      prime_iterator
+     15.4s    772k    Math::Prime::Util::PrimeArray
    3680  s  11.1MB    Math::NumSeq::Primes   sequence iterator
           >5000 MB    Math::Primes::TiedArray (extend 1k)
 
@@ -262,17 +262,19 @@ L<Math::Prime::Util> offers three obvious solutions: a big array, an iterator,
 and the C<forprimes> construct.  The big array is fast but uses a B<lot> of
 memory, forcing the user to start programming segments.  Using the iterator
 avoids all the memory use, but isn't as fast (this may improve in a later
-release, as this is a new feature).  The C<forprimes> construct is by far
-the fastest, but it isn't quite as flexible as the iterator (most notably
+release, as this is a new feature).  The C<forprimes> construct is both fast
+and low memory, but it isn't quite as flexible as the iterator (most notably
 there is no way to exit early, and it doesn't lend itself to wrapping inside
 a filter).
 
 L<Math::NumSeq::Primes> offers an iterator alternative, and works quite well
-for reasonably small numbers.  It does not support random access.  It is
-very fast for small values, but is very slow with large counts.
+for reasonably small numbers.  It does not support random access.  It has
+reasonable performance for the first few hundred thousand, but each
+successive value takes much longer to generate, and once past 1 million it
+isn't very practical.
 
 L<Math::Primes::TiedArray> is remarkably impractical for anything other
-than very small numbers.
+than tiny numbers.
 
 
 =head1 SEE ALSO
