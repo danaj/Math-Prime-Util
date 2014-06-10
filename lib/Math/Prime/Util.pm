@@ -3167,6 +3167,17 @@ C<prime_count>, or C<nth_prime> with large inputs.  This is B<only>
 an issue if you use non-Cygwin Win32 B<and> call these routines from within
 Perl threads.
 
+Because the loop functions like L</forprimes> use C<MULTICALL>, there is
+some odd bahavior with anonymous sub creation inside the block.  This is
+shared with most XS modules that use C<MULTICALL>, and is rarely seen
+because it is such an unusual use.  An example is:
+
+  forprimes { my $var = "p is $_"; push @subs, sub {say $var}; } 50;
+  $_->() for @subs;
+
+This can be worked around by using double braces for the function, e.g.
+C<forprimes {{ ... }} 50>.
+
 
 =head1 SEE ALSO
 
@@ -3539,33 +3550,33 @@ directory of this distribution): pure Python in 12.1s and NUMPY in 2.8s.
 
 =item Small inputs:  is_prime from 1 to 20M
 
-    2.6s  Math::Prime::Util      (sieve lookup if prime_precalc used)
-    3.4s  Math::Prime::FastSieve (sieve lookup)
-    4.4s  Math::Prime::Util      (trial + deterministic M-R)
-   10.9s  Math::Prime::XS        (trial)
-   36.5s  Math::Pari w/2.3.5     (BPSW)
-   78.2s  Math::Pari             (10 random M-R)
-  501.3s  Math::Primality        (deterministic M-R)
+    2.0s  Math::Prime::Util      (sieve lookup if prime_precalc used)
+    2.5s  Math::Prime::FastSieve (sieve lookup)
+    3.3s  Math::Prime::Util      (trial + deterministic M-R)
+   10.4s  Math::Prime::XS        (trial)
+   19.1s  Math::Pari w/2.3.5     (BPSW)
+   52.4s  Math::Pari             (10 random M-R)
+  480s    Math::Primality        (deterministic M-R)
 
 =item Large native inputs:  is_prime from 10^16 to 10^16 + 20M
 
-    7.0s  Math::Prime::Util      (BPSW)
-   42.6s  Math::Pari w/2.3.5     (BPSW)
-  144.3s  Math::Pari             (10 random M-R)
-  664.0s  Math::Primality        (BPSW)
+    4.5s  Math::Prime::Util      (BPSW)
+   24.9s  Math::Pari w/2.3.5     (BPSW)
+  117.0s  Math::Pari             (10 random M-R)
+  682s    Math::Primality        (BPSW)
   30 HRS  Math::Prime::XS        (trial)
 
   These inputs are too large for Math::Prime::FastSieve.
 
 =item bigints:  is_prime from 10^100 to 10^100 + 0.2M
 
-    2.5s  Math::Prime::Util          (BPSW + 1 random M-R)
-    3.0s  Math::Pari w/2.3.5         (BPSW)
-   12.9s  Math::Primality            (BPSW)
-   35.3s  Math::Pari                 (10 random M-R)
-   53.5s  Math::Prime::Util w/o GMP  (BPSW)
-   94.4s  Math::Prime::Util          (n-1 or ECPP proof)
-  102.7s  Math::Pari w/2.3.5         (APR-CL proof)
+    2.2s  Math::Prime::Util          (BPSW + 1 random M-R)
+    2.7s  Math::Pari w/2.3.5         (BPSW)
+   13.0s  Math::Primality            (BPSW)
+   35.2s  Math::Pari                 (10 random M-R)
+   38.6s  Math::Prime::Util w/o GMP  (BPSW)
+   70.7s  Math::Prime::Util          (n-1 or ECPP proof)
+  102.9s  Math::Pari w/2.3.5         (APR-CL proof)
 
 =back
 
@@ -3712,9 +3723,6 @@ primes.
 
 Terje Mathisen, A.R. Quesada, and B. Van Pelt all had useful ideas which I
 used in my wheel sieve.
-
-Tomás Oliveira e Silva has released the source for a very fast segmented sieve.
-The current implementation does not use these ideas.  Future versions might.
 
 The SQUFOF implementation being used is a slight modification to the public
 domain racing version written by Ben Buhrow.  Enhancements with ideas from
