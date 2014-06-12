@@ -112,6 +112,7 @@ t/25-lucas_sequences.t
 t/30-relations.t
 t/31-threading.t
 t/32-iterators.t
+t/33-examples.t
 t/50-factoring.t
 t/51-primearray.t
 t/70-rt-bignum.t
