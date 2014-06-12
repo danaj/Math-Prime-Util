@@ -557,7 +557,7 @@ sub _generic_next_prime {
   }
 
   require Math::Prime::Util::PP;
-  return Math::Prime::Util::PP::next_prime($_[0]);
+  return Math::Prime::Util::PP::next_prime($n);
 }
 
 sub _generic_prev_prime {
@@ -569,7 +569,7 @@ sub _generic_prev_prime {
   }
 
   require Math::Prime::Util::PP;
-  return Math::Prime::Util::PP::prev_prime($_[0]);
+  return Math::Prime::Util::PP::prev_prime($n);
 }
 
 sub _generic_prime_count {
@@ -2012,7 +2012,7 @@ for large inputs.  For example, computing Mertens(100M) takes:
    time    approx mem
      0.4s      0.1MB   mertens(100_000_000)
      5.6s    880MB     vecsum(moebius(1,100_000_000))
-   102s        0MB     $sum += moebius($_) for 1..100_000_000
+    98s        0MB     $sum += moebius($_) for 1..100_000_000
 
 The summation of individual terms via factoring is quite expensive in time,
 though uses O(1) space.  Using the range version of moebius is much faster,

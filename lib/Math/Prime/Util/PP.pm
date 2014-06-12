@@ -193,6 +193,8 @@ my @_prime_next_small = (
 my @_prime_indices = (1, 7, 11, 13, 17, 19, 23, 29);
 my @_nextwheel30 = (1,7,7,7,7,7,7,11,11,11,11,13,13,17,17,17,17,19,19,23,23,23,23,29,29,29,29,29,29,1);
 my @_prevwheel30 = (29,29,1,1,1,1,1,1,7,7,7,7,11,11,13,13,13,13,17,17,19,19,19,19,23,23,23,23,23,23);
+my @_wheeladvance30 = (1,6,5,4,3,2,1,4,3,2,1,2,1,4,3,2,1,2,1,4,3,2,1,6,5,4,3,2,1,2);
+my @_wheelretreat30 = (1,2,1,2,3,4,5,6,1,2,3,4,1,2,1,2,3,4,1,2,1,2,3,4,1,2,3,4,5,6);
 
 sub _tiny_prime_count {
   my($n) = @_;
@@ -230,29 +232,29 @@ sub _is_prime7 {  # n must not be divisible by 2, 3, or 5
               !($n % 37) || !($n % 41) || !($n % 43) || !($n % 47) ||
               !($n % 53) || !($n % 59);
 
-  if ($n <= 1_000_000) {
-    $n = _bigint_to_int($n) if ref($n) eq 'Math::BigInt';
+  # We could do:
+  #   return is_strong_pseudoprime($n, (2,299417)) if $n < 19471033;
+  # or:
+  #   foreach my $p (@_primes_small[18..168]) {
+  #     last if $p > $limit;
+  #     return 0 unless $n % $p;
+  #   }
+  #   return 2;
+
+  if ($n <= 1_500_000) {
     my $limit = int(sqrt($n));
     my $i = 61;
     while (($i+30) <= $limit) {
-      return 0 if !($n % $i);  $i += 6;
-      return 0 if !($n % $i);  $i += 4;
-      return 0 if !($n % $i);  $i += 2;
-      return 0 if !($n % $i);  $i += 4;
-      return 0 if !($n % $i);  $i += 2;
-      return 0 if !($n % $i);  $i += 4;
-      return 0 if !($n % $i);  $i += 6;
-      return 0 if !($n % $i);  $i += 2;
+      return 0 unless ($n% $i    ) && ($n%($i+ 6)) &&
+                      ($n%($i+10)) && ($n%($i+12)) &&
+                      ($n%($i+16)) && ($n%($i+18)) &&
+                      ($n%($i+22)) && ($n%($i+28));
+      $i += 30;
     }
-    while (1) {
-      last if $i > $limit;  return 0 if !($n % $i);  $i += 6;
-      last if $i > $limit;  return 0 if !($n % $i);  $i += 4;
-      last if $i > $limit;  return 0 if !($n % $i);  $i += 2;
-      last if $i > $limit;  return 0 if !($n % $i);  $i += 4;
-      last if $i > $limit;  return 0 if !($n % $i);  $i += 2;
-      last if $i > $limit;  return 0 if !($n % $i);  $i += 4;
-      last if $i > $limit;  return 0 if !($n % $i);  $i += 6;
-      last if $i > $limit;  return 0 if !($n % $i);  $i += 2;
+    for my $inc (6,4,2,4,2,4,6,2) {
+      last if $i > $limit;
+      return 0 if !($n % $i);
+      $i += $inc;
     }
     return 2;
   }
@@ -485,8 +487,6 @@ sub primes {
 
 sub next_prime {
   my($n) = @_;
-  _validate_positive_integer($n);
-
   return $_prime_next_small[$n] if $n <= $#_prime_next_small;
   if ($n < $_primes_small[-1]) {
     my $i = _tiny_prime_count($n);  # Binary search
@@ -497,71 +497,19 @@ sub next_prime {
     if ref($n) ne 'Math::BigInt' && $n >= MPU_MAXPRIME;
   # n is now either 1) not bigint and < maxprime, or (2) bigint and >= uvmax
 
-  #$n = ($n+1) | 1;
-  #while (    !($n%3) || !($n%5) || !($n%7) || !($n%11) || !($n%13)
-  #        || !_is_prime7($n) ) {
-  #  $n += 2;
-  #}
-  my $m = $n % 30;
-  my $d = ($n - $m) / 30;
-  if ($m == 29) { $d++;  $m = 1;} else { $m = $_nextwheel30[$m]; }
-  $n = $d*30+$m;
-  while ( !($n%7) || !_is_prime7($n) ) {
-    $m = $_nextwheel30[$m];
-    $d++ if $m == 1;
-    $n = $d*30+$m;
-  }
-  return $n;
+  do {
+    $n += $_wheeladvance30[$n%30];
+  } while !($n%7) || !_is_prime7($n);
+  $n;
 }
 
 sub prev_prime {
   my($n) = @_;
-  _validate_positive_integer($n);
-  if ($n <= 11) {
-    return ($n <= 2) ? 0 : ($n <= 3) ? 2 : ($n <= 5) ? 3 : ($n <= 7) ? 5 : 7;
-  }
-
-  #$n++ if ($n % 2) == 0;
-  #do {
-  #  $n -= 2;
-  #} while ( (($n % 3) == 0) || (($n % 5) == 0) || (!_is_prime7($n)) );
-  #return $n;
-
-  $n -= ($n & 1) ? 2 : 1;
-  my $nmod6 = $n % 6;
-  if ($nmod6 == 5) {
-    return $n if ($n % 5) != 0 && ($n % 7) != 0 && _is_prime7($n);
-    $n -= 4;
-  } elsif ($nmod6 == 3) {
-    $n -= 2;
-  }
-
-  while (1) {
-    return $n if ($n % 5) != 0 && ($n % 7) != 0 && _is_prime7($n);
-    $n -= 2;
-    return $n if ($n % 5) != 0 && ($n % 7) != 0 && _is_prime7($n);
-    $n -= 4;
-  }
-  return $n;
-
-  # This is faster for larger intervals, slower for short ones.
-  #my $base = 30 * int($n/30);
-  #my $in = 0;  $in++ while ($n - $base) > $_prime_indices[$in];
-  #if (--$in < 0) {  $base -= 30; $in = 7;  }
-  #$n = $base + $_prime_indices[$in];
-  #while (!_is_prime7($n)) {
-  #  if (--$in < 0) {  $base -= 30; $in = 7;  }
-  #  $n = $base + $_prime_indices[$in];
-  #}
-  #$n;
-
-  #my $m = $n % 30;
-  #my $d = int( ($n - $m) / 30 );
-  #do {
-  #  $m = $_prevwheel30[$m];
-  #  $d-- if $m == 29;
-  #} while (!_is_prime7($d*30+$m));
-  #$d*30+$m;
+  return (0,0,0,2,3,3,5,5,7,7,7,7)[$n] if $n <= 11;
+  do {
+    $n -= $_wheelretreat30[$n%30];
+  } while !($n%7) || !_is_prime7($n);
+  $n;
 }
 
 sub partitions {
@@ -791,7 +739,10 @@ sub exp_mangoldt {
   my $k = Math::Prime::Util::is_power($n);
   if ($k >= 2) {
     my $root = Math::BigInt->new("$n")->broot($k);
-    return $root if Math::Prime::Util::is_prob_prime($root);
+    if (Math::Prime::Util::is_prob_prime($root)) {
+      $root = _bigint_to_int($root) if $root->bacmp(''.~0) <= 0;
+      return $root;
+    }
   }
   1;
 }
@@ -1978,7 +1929,7 @@ sub znorder {
   return 1 if $n == 1;
 
   # Sadly, Calc/FastCalc are horrendously slow for this function.
-  return if Math::BigInt::bgcd($a, $n) > 1;
+  return if Math::Prime::Util::gcd($a, $n) > 1;
 
   # The answer is one of the divisors of phi(n) and lambda(n).
   my $lambda = Math::Prime::Util::carmichael_lambda($n);
@@ -3366,30 +3317,32 @@ sub divisors {
 
 
 sub chebyshev_theta {
-  my($n) = @_;
-  my $sum = 0.0;
-  for (my $p = 2; $p <= $n; $p = next_prime($p)) {
-    $sum += log($p);
+  my($n,$low) = @_;
+  $low = 2 unless defined $low;
+  my($sum,$high) = (0.0, 0);
+  while ($low <= $n) {
+    $high = $low + 1e6;
+    $high = $n if $high > $n;
+    $sum += log($_) for @{primes($low,$high)};
+    $low = $high+1;
   }
-  return $sum;
+  $sum;
 }
 
 sub chebyshev_psi {
   my($n) = @_;
   return 0 if $n <= 1;
+  my ($sum, $logn, $sqrtn) = (0.0, log($n), int(sqrt($n)));
 
-  my ($sum, $p, $logn, $sqrtn) = (0.0, 2, log($n), int(sqrt($n)));
-
-  for ( ; $p <= $sqrtn; $p = next_prime($p)) {
+  # Sum the log of prime powers first
+  for my $p (@{primes($sqrtn)}) {
     my $logp = log($p);
     $sum += $logp * int($logn/$logp+1e-15);
   }
+  # The rest all have exponent 1: add them in using the segmenting theta code
+  $sum += chebyshev_theta($n, $sqrtn+1);
 
-  for ( ; $p <= $n; $p = next_prime($p)) {
-    $sum += log($p);
-  }
-
-  return $sum;
+  $sum;
 }
 
 sub ExponentialIntegral {
