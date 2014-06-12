@@ -28,7 +28,8 @@ Revision history for Perl module Math::Prime::Util
     - RiemannR will use the C code if not a BigFloat or without bignum loaded.
       The C code should only take a few microseconds for any value.
 
-    - Refactor some PP code: {next,prev}_prime, chebyshev_{theta,psi}
+    - Refactor some PP code: {next,prev}_prime, chebyshev_{theta,psi}.
+      In addition, PP sieving uses less memory.
 
 
 0.41  2014-05-18

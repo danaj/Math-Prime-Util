@@ -177,11 +177,11 @@ sub _validate_integer {
 
 my @_primes_small = (0,2,3,5);
 {
-  my $sieveref = _sieve_erat_string(5000);
-  my $n = 5;
-  foreach my $s (split("0", substr($$sieveref, 3), -1)) {
-    $n += 2 + 2 * length($s);
-    push @_primes_small, $n if $n <= 5000;
+  my($n, $s, $sieveref) = (7-2, 3, _sieve_erat_string(5000));
+  while ( (my $nexts = 1 + index($$sieveref, "0", $s)) > 0 ) {
+    $n += 2 * ($nexts - $s);
+    $s = $nexts;
+    push @_primes_small, $n;
   }
 }
 my @_prime_next_small = (
@@ -330,7 +330,7 @@ sub is_bpsw_prime {
 # We're using method 4, though sadly it is memory intensive relative to the
 # other methods.  I will point out that it is 30-60x less memory than sieves
 # using an array, and the performance of this function is over 10x that
-# of naive sieves like found on RosettaCode.
+# of naive sieves.
 
 sub _sieve_erat_string {
   my($end) = @_;
@@ -339,7 +339,7 @@ sub _sieve_erat_string {
 
   my $whole = int( $s_end / 15);   # Prefill with 3 and 5 already marked.
   croak "Sieve too large" if $whole > 1_145_324_612;  # ~32 GB string
-  my $sieve = "100010010010110" . "011010010010110" x $whole;
+  my $sieve = '100010010010110' . '011010010010110' x $whole;
   substr($sieve, $s_end+1) = '';   # Ensure we don't make too many entries
   my ($n, $limit) = ( 7, int(sqrt($end)) );
   while ( $n <= $limit ) {
@@ -382,27 +382,28 @@ sub _sieve_segment {
   # Prefill with 3 and 5 already marked, and offset to the segment start.
   my $whole = int( ($range+14) / 15);
   my $startp = ($beg % 30) >> 1;
-  my $sieve = substr("011010010010110", $startp) . "011010010010110" x $whole;
+  my $sieve = substr('011010010010110', $startp) . '011010010010110' x $whole;
   # Set 3 and 5 to prime if we're sieving them.
-  substr($sieve,0,2) = "00" if $beg == 3;
-  substr($sieve,0,1) = "0"  if $beg == 5;
+  substr($sieve,0,2) = '00' if $beg == 3;
+  substr($sieve,0,1) = '0'  if $beg == 5;
   # Get rid of any extra we added.
   substr($sieve, $range) = '';
 
   # If the end value is below 7^2, then the pre-sieve is all we needed.
   return \$sieve if $end < 49;
 
-  my $limit = int(sqrt($end)) + 1;
+  my $limit = int(sqrt($end)+0.0000001);
   # For large value of end, it's a huge win to just walk primes.
-  my $primesieveref = _sieve_erat($limit);
-  my $p = 7-2;
-  foreach my $s (split("0", substr($$primesieveref, 3), -1)) {
-    $p += 2 + 2 * length($s);
+
+  my($p, $s, $primesieveref) = (7-2, 3, _sieve_erat($limit));
+  while ( (my $nexts = 1 + index($$primesieveref, '0', $s)) > 0 ) {
+    $p += 2 * ($nexts - $s);
+    $s = $nexts;
     my $p2 = $p*$p;
     if ($p2 < $beg) {
       my $f = 1+int(($beg-1)/$p);
       $p2 = $p * ($f + !($f & 1));
-    } elsif ($p2 > $end) { last; }
+    }
     # With large bases and small segments, it's common to find we don't hit
     # the segment at all.  Skip all the setup if we find this now.
     if ($p2 <= $end) {
@@ -467,20 +468,14 @@ sub primes {
   $high-- if ($high % 2) == 0;
   return $sref if $low > $high;
 
-  if ($low == 7) {
-    my $sieveref = _sieve_erat($high);
-    my $n = $low - 2;
-    foreach my $s (split("0", substr($$sieveref, 3), -1)) {
-      $n += 2 + 2 * length($s);
-      push @$sref, $n if $n <= $high;
-    }
-  } else {
-    my $sieveref = _sieve_segment($low,$high);
-    my $n = $low - 2;
-    foreach my $s (split("0", $$sieveref, -1)) {
-      $n += 2 + 2 * length($s);
-      push @$sref, $n if $n <= $high;
-    }
+  my($n, $s, $sieveref) = ($low-2);
+  if ($low == 7) { ($s, $sieveref) = ( 3, _sieve_erat($high)         ); }
+  else           { ($s, $sieveref) = ( 0, _sieve_segment($low,$high) ); }
+
+  while ( (my $nexts = 1 + index($$sieveref, "0", $s)) > 0 ) {
+    $n += 2 * ($nexts - $s);
+    $s = $nexts;
+    push @$sref, $n;
   }
   $sref;
 }
@@ -488,10 +483,8 @@ sub primes {
 sub next_prime {
   my($n) = @_;
   return $_prime_next_small[$n] if $n <= $#_prime_next_small;
-  if ($n < $_primes_small[-1]) {
-    my $i = _tiny_prime_count($n);  # Binary search
-    return $_primes_small[$i+1];
-  }
+  # This turns out not to be faster.
+  # return $_primes_small[1+_tiny_prime_count($n)] if $n < $_primes_small[-1];
 
   return Math::BigInt->new(MPU_32BIT ? "4294967311" : "18446744073709551629")
     if ref($n) ne 'Math::BigInt' && $n >= MPU_MAXPRIME;
