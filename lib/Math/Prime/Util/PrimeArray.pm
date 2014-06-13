@@ -18,6 +18,8 @@ use Math::Prime::Util qw/nth_prime nth_prime_upper nth_prime_lower primes prime_
 use Tie::Array;
 use Carp qw/carp croak confess/;
 
+use constant SEGMENT_SIZE  =>  10_000;
+
 sub TIEARRAY {
   my $class = shift;
   if (@_) {
@@ -49,8 +51,7 @@ sub FETCHSIZE { 0x7FFF_FFFF }   # Even on 64-bit
 # sub FETCH { return nth_prime($_[1]+1); }
 
 sub FETCH {
-  my $self = shift;
-  my $index = shift;
+  my ($self, $index) = @_;
   # We actually don't get negative indices -- they get turned into big numbers
   croak "Negative index given to prime array" if $index < 0;
   $index += $self->{SHIFTINDEX};  # take into account any shifts
@@ -63,7 +64,7 @@ sub FETCH {
 
       $self->{ACCESS_TYPE}++;
       if ($self->{ACCESS_TYPE} > 2) {
-        my $end_prime = nth_prime_upper($index + 10_000);
+        my $end_prime = nth_prime_upper($index + SEGMENT_SIZE);
         $self->{PRIMES} = primes( $self->{PRIMES}->[-1]+1, $end_prime );
         $begidx = $endidx+1;
       } else {
@@ -74,8 +75,8 @@ sub FETCH {
 
       $self->{ACCESS_TYPE}--;
       if ($self->{ACCESS_TYPE} < -2) {
-        my $num = 10_000;
-        my $beg_prime = $index <= $num ? 2 : nth_prime_lower($index - $num );
+        my $beg_prime = $index <= SEGMENT_SIZE
+                               ?  2  :  nth_prime_lower($index - SEGMENT_SIZE);
         $self->{PRIMES} = primes($beg_prime, $self->{PRIMES}->[0]-1);
         $begidx -= scalar @{ $self->{PRIMES} };
       } else {
@@ -86,7 +87,8 @@ sub FETCH {
     } else {                         # Random access
 
       $self->{ACCESS_TYPE} = int($self->{ACCESS_TYPE} / 2);
-      # Alternately we could get a small window
+      # Alternately we could get a small window, but that will be quite
+      # a bit slower if true random access.
       $begidx = $index;
       $self->{PRIMES} = [nth_prime($begidx+1)];
 
@@ -105,8 +107,8 @@ sub SHIFT {
   $head;
 }
 sub UNSHIFT {
-  my $self = shift;
-  my $shiftamount = defined $_[0] ? shift : 1;
+  my ($self, $shiftamount) = @_;
+  $shiftamount = 1 unless defined $shiftamount;
   $self->{SHIFTINDEX} = ($shiftamount >= $self->{SHIFTINDEX})
                         ? 0
                         : $self->{SHIFTINDEX} - $shiftamount;
@@ -146,24 +148,24 @@ Version 0.41
   tie my @primes, 'Math::Prime::Util::PrimeArray';
 
   # Use in a loop by index:
-  for my $n (1..10) {
+  for my $n (0..9) {
     print "prime $n = $primes[$n]\n";
   }
 
   # Use in a loop over array:
   for my $p (@primes) {
-    print "$p\n";
     last if $p > $limit;   # stop sometime
+    print "$p\n";
   }
 
   # Use via array slice:
-  print join(",", @primes[0..50]), "\n";
+  print join(",", @primes[0..49]), "\n";
 
   # Use via each:
   use 5.012;
   while( my($index,$value) = each @primes ) {
-    print "The ${index}th prime is $value\n";
     last if $p > $limit;   # stop sometime
+    print "The ${index}th prime is $value\n";
   }
 
   # Use with shift:
@@ -184,8 +186,10 @@ then C<nth_prime> is used.
 
 Shifting acts like the array is losing elements at the front, so after two
 shifts, C<$primes[0] == 5>.  Unshift will move the internal shift index back
-one, unless given an argument which is the number to move back (it silently
-truncates so it does not shift past the beginning).
+one, unless given an argument which is the number to move back.  It will
+not shift past the beginning, so C<unshift @primes, ~0> is a useful way to
+reset from any shifts.
+
 Example:
 
   say shift @primes;     # 2
@@ -213,9 +217,9 @@ using the C<shift> operation, consider the iterator.
 The size of the array will always be shown as 2147483647 (IV32 max), even in
 a 64-bit environment where primes through C<2^64> are available.
 
-There are some people that find the idea of shifting a prime array abhorrent,
-as after two shifts, "the second prime is 7?!".  If this bothers you, do not
-use C<shift> on the tied array.
+Some people find the idea of shifting a prime array abhorrent, as after
+two shifts, "the second prime is 7?!".  If this bothers you, do not use
+C<shift> on the tied array.
 
 
 =head1 PERFORMANCE
@@ -268,8 +272,8 @@ there is no way to exit early, and it doesn't lend itself to wrapping inside
 a filter).
 
 L<Math::NumSeq::Primes> offers an iterator alternative, and works quite well
-for reasonably small numbers.  It does not support random access.  It has
-reasonable performance for the first few hundred thousand, but each
+as long as you don't need lots of primes.  It does not support random access.
+It has reasonable performance for the first few hundred thousand, but each
 successive value takes much longer to generate, and once past 1 million it
 isn't very practical.
 

@@ -3,6 +3,7 @@ use strict;
 use warnings;
 use Test::More;
 use Math::Prime::Util qw/:all/;
+use Math::Prime::Util::PrimeArray;
 use List::Util qw/first/;
 
 # Make sure things used as examples in the documentation work.
@@ -13,7 +14,7 @@ BEGIN {
   }
 }
 
-plan tests => 88;
+plan tests => 94;
 
 {
   my @nums;
@@ -314,6 +315,40 @@ is( nth_prime(10001), 104743, "nth_prime(10001)");
   }
   my @expect = split(/\|/, "1 -|2 1|3 2|4 3|5 2 3|6 5|7 3 5|8 -|9 2 5|10 3 7|11 2 6 7 8|12 -|13 2 6 7 11|14 3 5|15 -|16 -|17 3 5 6 7 10 11 12 14|18 5 11|19 2 3 10 13 14 15|20 -|21 -|22 7 13 17 19|23 5 7 10 11 14 15 17 19 20 21|24 -|25 2 3 8 12 13 17 22 23|26 7 11 15 19|27 2 5 11 14 20 23|28 -|29 2 3 8 10 11 14 15 18 19 21 26 27|30 -|");
   is_deeply(\@s,\@expect,"znprimroot table 1..30");
+}
+
+##############################################################################
+
+tie my @primes, 'Math::Prime::Util::PrimeArray';
+{
+  my @plist;
+  for my $n (0..9) { push @plist, $primes[$n]; }
+  is_deeply(\@plist, primes(nth_prime(10)), "PrimeArray for index loop");
+}
+{
+  my @plist;
+  for my $p (@primes) { last if $p > 79; push @plist, $p; }
+  is_deeply(\@plist, primes(79), "PrimeArray for primes loop");
+}
+{
+  my @plist;
+  is_deeply([@primes[0..49]], primes(nth_prime(50)), "PrimeArray array slice");
+}
+SKIP: {
+  skip "hash each requires 5.12 or newer", 1 if $] < 5.012;
+  my @plist;
+  while (  my($index,$value) = each @primes ) {
+    last if $value > 147;
+    push @plist, $value;
+  }
+  is_deeply(\@plist, primes(147), "PrimeArray each primes loop");
+}
+{
+  my @plist;
+  while ((my $p = shift @primes) < 250) { push @plist, $p; }
+  is_deeply(\@plist, primes(250), "PrimeArray shift");
+  unshift @primes, ~0;  # put primes back.
+  is($primes[0], 2, "unshift puts it back");
 }
 
 ##############################################################################

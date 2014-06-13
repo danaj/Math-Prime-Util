@@ -1547,7 +1547,7 @@ UV divmod(UV a, UV b, UV n) {   /* a / b  mod n */
 
 /* status: 1 ok, -1 no inverse, 0 overflow */
 UV chinese(UV* a, UV* n, UV num, int* status) {
-  UV p, gcd, inv, i, j, lcm, sum;
+  UV p, gcd, i, j, lcm, sum;
   *status = 1;
   if (num == 0) return 0;
 
@@ -1565,7 +1565,7 @@ UV chinese(UV* a, UV* n, UV num, int* status) {
     if (gcd != 1 && ((sum % gcd) != (a[i] % gcd))) { *status = -1; return 0; }
     if (s < 0) s = -s;
     if (t < 0) t = -t;
-    if (s > (IV_MAX/lcm)) { *status = 0; return 0; }
+    if (s > (IV)(IV_MAX/lcm)) { *status = 0; return 0; }
     lcm *= s;
     if (u < 0) u += lcm;
     if (v < 0) v += lcm;
