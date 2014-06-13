@@ -11,12 +11,21 @@
 #include "util.h"
 #include "primality.h"
 
-/* If the base sieve is larger than this, presieve and test */
-#if USE_MONT_PRIMALITY
- #define BASE_SIEVE_LIMIT  170000000
-#else
- #define BASE_SIEVE_LIMIT  600000000
+/* Is it better to do a partial sieve + primality tests vs. full sieve? */
+static int do_partial_sieve(UV startp, UV endp) {
+  UV range = endp - startp;
+  if (USE_MONT_PRIMALITY) range /= 8;  /* Fast primality tests */
+#if BITS_PER_WORD == 64
+  if ( (startp > UVCONST(     100000000000000) && range <     20000) ||
+       (startp > UVCONST(    1000000000000000) && range <    100000) ||
+       (startp > UVCONST(   10000000000000000) && range <    200000) ||
+       (startp > UVCONST(  100000000000000000) && range <   2000000) ||
+       (startp > UVCONST( 1000000000000000000) && range <  10000000) ||
+       (startp > UVCONST(10000000000000000000) && range <  20000000) )
+    return 1;
 #endif
+  return 0;
+}
 
 /* 1001 bytes of presieved mod-30 bytes.  If the area to be sieved is
  * appropriately filled with this data, then 7, 11, and 13 do not have
@@ -318,9 +327,8 @@ int sieve_segment(unsigned char* mem, UV startd, UV endd)
   /* Don't use a sieve prime such that p*p > UV_MAX */
   if (limit > max_sieve_prime)  limit = max_sieve_prime;
   slimit = limit;
-#if 0  /* Don't do this any more -- we use bigger segments now */
-  if (slimit > BASE_SIEVE_LIMIT) slimit >>= 10;
-#endif
+  if (do_partial_sieve(startp, endp))
+    slimit >>= ((startp < (UV)1e16) ? 8 : 10);
   /* printf("segment sieve from %"UVuf" to %"UVuf" (aux sieve to %"UVuf")\n", startp, endp, slimit); */
   if (slimit > sieve_size) {
     release_prime_cache(sieve);
@@ -390,15 +398,12 @@ int sieve_segment(unsigned char* mem, UV startd, UV endd)
   END_DO_FOR_EACH_SIEVE_PRIME;
   release_prime_cache(sieve);
 
-  MPUassert( limit == slimit, "partial segment sieve!" );
-#if 0
   if (limit > slimit) { /* We've sieved out most composites, but not all. */
     START_DO_FOR_EACH_SIEVE_PRIME(mem, 0, endp-startp) {
       if (!_XS_BPSW(startp + p))    /* If the candidate is not prime, */
         mem[d_] |= mask_;           /* mark the sieve location.       */
     } END_DO_FOR_EACH_SIEVE_PRIME;
   }
-#endif
   return 1;
 }
 
@@ -465,7 +470,7 @@ void* start_segment_primes(UV low, UV high, unsigned char** segmentmem)
   ctx->base = 0;
   /* Expand primary cache so we won't regen each call */
   slimit = isqrt(ctx->endp)+1;
-  if (slimit > BASE_SIEVE_LIMIT) slimit = BASE_SIEVE_LIMIT;
+  if (do_partial_sieve(low, high))  slimit >>= 8;
   get_prime_cache( slimit, 0);
 
   return (void*) ctx;
