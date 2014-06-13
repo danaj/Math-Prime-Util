@@ -6,6 +6,8 @@
 #include "XSUB.h"
 #include "multicall.h"  /* only works in 5.6 and newer */
 
+#define NEED_newCONSTSUB
+#define NEED_newRV_noinc
 #define NEED_sv_2pv_flags
 #include "ppport.h"
 

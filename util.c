@@ -1934,7 +1934,7 @@ long double ld_riemann_zeta(long double x) {
 }
 
 long double _XS_RiemannR(long double x) {
-  long double part_term, term, flogx;
+  long double part_term, term, flogx, ki;
   unsigned int k;
   KAHAN_INIT(sum);
 
@@ -1945,7 +1945,7 @@ long double _XS_RiemannR(long double x) {
     KAHAN_SUM(sum, _XS_ExponentialIntegral(logl(x)));
     for (k = 2; k <= 100; k++) {
       if (amob[k] == 0) continue;
-      long double ki = 1.0L / (long double) k;
+      ki = 1.0L / (long double) k;
       term = amob[k] * ki * _XS_ExponentialIntegral(logl(powl(x,ki)));
       KAHAN_SUM(sum, term);
       if (fabsl(term) < fabsl(LDBL_EPSILON*sum)) break;
