@@ -204,11 +204,11 @@ sub _reftyped {
   if ($ref0) {
     return  ($ref0 eq ref($_[1])) ?  $_[1]  :  $ref0->new("$_[1]");
   }
-  my $strn = "$_[1]";
-  return $_[1] if $strn <= ~0;
+  # The edge case is crazy, as Perl keeps trying to make things into doubles.
+  return $_[1] if $_[1] <= 18446744073709550591 || ''.int($_[1]) <= ~0;
   do { require Math::BigInt;  Math::BigInt->import(try=>"GMP,Pari"); }
     unless defined $Math::BigInt::VERSION;
-  return Math::BigInt->new($strn);
+  return Math::BigInt->new("$_[1]");
 }
 
 
