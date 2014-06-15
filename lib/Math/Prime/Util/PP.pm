@@ -1881,10 +1881,10 @@ sub binomial {
   return 1 if $k == 0;        # Work around bug in old
   return $n if $k == $n-1;    # Math::BigInt (fixed in 1.90)
   if ($n >= 0) {
-    $r = Math::BigInt->new($n)->bnok($k);
+    $r = Math::BigInt->new(''.$n)->bnok($k);
     $r = _bigint_to_int($r) if $r->bacmp(''.~0) <= 0;
   } else { # Math::BigInt is incorrect for negative n
-    $r = Math::BigInt->new(-$n+$k-1)->bnok($k);
+    $r = Math::BigInt->new(''.(-$n+$k-1))->bnok($k);
     if ($k & 1) {
       $r->bneg;
       $r = _bigint_to_int($r) if $r->bacmp(''.(~0>>1)) <= 0;
@@ -1918,8 +1918,9 @@ sub _is_perfect_square {
 sub znorder {
   my($a, $n) = @_;
   return if $n <= 0;
-  return (undef,1)[$a] if $a <= 1;
   return 1 if $n == 1;
+  return if $a <= 0;
+  return 1 if $a == 1;
 
   # Sadly, Calc/FastCalc are horrendously slow for this function.
   return if Math::Prime::Util::gcd($a, $n) > 1;

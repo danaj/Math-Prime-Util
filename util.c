@@ -1330,6 +1330,8 @@ int kronecker_ss(IV a, IV b) {
 /* Thanks to MJD and RosettaCode */
 UV binomial(UV n, UV k) {
   UV d, g, r = 1;
+  if (k == 0) return 1;
+  if (k == 1) return n;
   if (k >= n) return (k == n);
   if (k > n/2) k = n-k;
   for (d = 1; d <= k; d++) {
