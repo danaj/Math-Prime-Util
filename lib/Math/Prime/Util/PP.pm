@@ -1954,9 +1954,10 @@ sub znorder {
 }
 
 sub _dlp_trial {
-  my ($a,$g,$p) = @_;
+  my ($a,$g,$p,$limit) = @_;
+  $limit = $p if !defined $limit || $limit > $p;
   my $t = $g->copy;
-  for (my $k = BONE->copy; $k < $p; $k->binc) {
+  for (my $k = BONE->copy; $k < $limit; $k->binc) {
     if ($t == $a) {
       $k = _bigint_to_int($k) if $k->bacmp(''.~0) <= 0;
       return $k;
@@ -2019,16 +2020,20 @@ sub znlog {
   return 0 if $a == 1 || $g == 0 || $p < 2;
   my $_verbose = Math::Prime::Util::prime_get_config()->{'verbose'};
 
-  my $n = znorder($g, $p);
-  if (defined $n && $n > 1000) {
-    $n = Math::BigInt->new("$n") unless ref($n) eq 'Math::BigInt';
-    my $x = _dlp_bsgs($a, $g, $p, $n, $_verbose);
-    $x = _bigint_to_int($x) if ref($x) && $x->bacmp(''.~0) <= 0;
-    return $x if $x > 0 && $g->copy->bmodpow($x, $p) == $a;
-    print "  BSGS giving up\n" if $x == 0 && $_verbose;
-    print "  BSGS incorrect answer $x\n" if $x > 0 && $_verbose > 1;
+  # For large p, znorder can be very slow.  Do trial test first.
+  my $x = _dlp_trial($a, $g, $p, 100);
+  if ($x == 0) {
+    my $n = znorder($g, $p);
+    if (defined $n && $n > 1000) {
+      $n = Math::BigInt->new("$n") unless ref($n) eq 'Math::BigInt';
+      $x = _dlp_bsgs($a, $g, $p, $n, $_verbose);
+      $x = _bigint_to_int($x) if ref($x) && $x->bacmp(''.~0) <= 0;
+      return $x if $x > 0 && $g->copy->bmodpow($x, $p) == $a;
+      print "  BSGS giving up\n" if $x == 0 && $_verbose;
+      print "  BSGS incorrect answer $x\n" if $x > 0 && $_verbose > 1;
+    }
+    $x = _dlp_trial($a,$g,$p);
   }
-  my $x = _dlp_trial($a,$g,$p);
   $x = _bigint_to_int($x) if ref($x) && $x->bacmp(''.~0) <= 0;
   return ($x == 0) ? undef : $x;
 }
@@ -2715,9 +2720,10 @@ sub prho_factor {
 
   if ( ref($n) eq 'Math::BigInt' ) {
 
-    $pa = Math::BigInt->new("$pa");
-    $U = $n->copy->bzero->badd($U);
-    $V = $n->copy->bzero->badd($V);
+    my $zero = $n->copy->bzero;
+    $pa = $zero->badd("$pa");
+    $U = $zero->copy->badd($U);
+    $V = $zero->copy->badd($V);
     for my $i (1 .. $rounds) {
       # Would use bmuladd here, but old Math::BigInt's barf with scalar $pa.
       $U->bmul($U)->badd($pa)->bmod($n);
@@ -2792,6 +2798,7 @@ sub pbrent_factor {
     my $f;
     $Xi = $zero->copy->badd($Xi);
     $Xm = $zero->copy->badd($Xm);
+    $pa = $zero->copy->badd($pa);
     my $r = 1;
     while ($rounds > 0) {
       my $rleft = ($r > $rounds) ? $rounds : $r;
@@ -2928,7 +2935,7 @@ sub pminus1_factor {
         $pa->bmodpow($t, $n);
         $t = $one->copy;
         if ($pa == 0) { push @factors, $n; return @factors; }
-        $f = Math::BigInt::bgcd( $pa-1, $n );
+        $f = Math::BigInt::bgcd( $pa->copy->bdec, $n );
         last if $f == $n;
         return _found_factor($f, $n, "pminus1", @factors) unless $f->is_one;
         $saveq = $q;
