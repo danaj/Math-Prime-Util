@@ -73,6 +73,7 @@ sub _is_positive_int {
 }
 
 sub _bigint_to_int {
+  # Note that this still has issues with 5.6.2: e.g. 11923179284862717872
   return (OLD_PERL_VERSION) ? unpack(UVPACKLET,pack(UVPACKLET,"$_[0]"))
                             : int("$_[0]");
 }
@@ -1494,7 +1495,9 @@ sub gcdext {
     ($a,$b,$g,$u,$v,$w) = (BONE->copy,BZERO->copy,Math::BigInt->new("$x"),
                            BZERO->copy,BONE->copy,Math::BigInt->new("$y"));
     while ($w != 0) {
-      my ($q,$r) = $g->copy->bdiv($w);  # $r = $g-$q*$w
+      # Using the array bdiv is logical, but is the wrong sign.
+      my $r = $g->copy->bmod($w);
+      my $q = $g->copy->bsub($r)->bdiv($w);
       ($a,$b,$g,$u,$v,$w) = ($u,$v,$w,$a-$q*$u,$b-$q*$v,$r);
     }
     $a = _bigint_to_int($a) if $a->bacmp(''.~0) <= 0;

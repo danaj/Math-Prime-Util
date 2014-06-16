@@ -204,8 +204,13 @@ sub _reftyped {
   if ($ref0) {
     return  ($ref0 eq ref($_[1])) ?  $_[1]  :  $ref0->new("$_[1]");
   }
-  # The edge case is crazy, as Perl keeps trying to make things into doubles.
-  return $_[1] if $_[1] <= 18446744073709550591 || ''.int($_[1]) <= ~0;
+  if (OLD_PERL_VERSION) {
+    # Perl 5.6 truncates arguments to doubles if you look at them funny
+    return "$_[1]" if "$_[1]" <= 562949953421312;
+  } else {
+    # Perl 5.20.0 brought back a stupid double conversion bug
+    return $_[1] if $_[1] <= 18446744073709550591 || ''.int($_[1]) <= ~0;
+  }
   do { require Math::BigInt;  Math::BigInt->import(try=>"GMP,Pari"); }
     unless defined $Math::BigInt::VERSION;
   return Math::BigInt->new("$_[1]");

@@ -926,8 +926,11 @@ gcdext(IN SV* sva, IN SV* svb)
   PPCODE:
     astatus = _validate_int(aTHX_ sva, 2);
     bstatus = _validate_int(aTHX_ svb, 2);
-    if (astatus == 1 && SvIsUV(sva)) astatus = 0;  /* too large */
-    if (bstatus == 1 && SvIsUV(svb)) bstatus = 0;  /* too large */
+    /* TODO: These should be built into validate_int */
+    if ( (astatus == 1 && SvIsUV(sva)) || (astatus == -1 && !SvIOK(sva)) )
+      astatus = 0;  /* too large */
+    if ( (bstatus == 1 && SvIsUV(svb)) || (bstatus == -1 && !SvIOK(svb)) )
+      bstatus = 0;  /* too large */
     if (astatus != 0 && bstatus != 0) {
       IV u, v, d;
       IV a = my_sviv(sva);
