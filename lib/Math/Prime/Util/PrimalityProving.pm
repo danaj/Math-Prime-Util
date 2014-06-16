@@ -167,7 +167,11 @@ sub primality_proof_bls75 {
 
     my $m = pop @nstack;
     # Don't use bignum if it has gotten small enough.
-    $m = int($m->bstr) if ref($m) eq 'Math::BigInt' && $m <= ''.~0;
+    if ($] < 5.008) {
+      $m = int($m->bstr) if ref($m) eq 'Math::BigInt' && $m <= 562949953421312;
+    } else {
+      $m = int($m->bstr) if ref($m) eq 'Math::BigInt' && $m <= ''.~0;
+    }
     # Try to find factors of m, using the default set of factor subs.
     my @ftry;
     foreach my $sub (@_fsublist) {

@@ -2529,7 +2529,7 @@ sub _basic_factor {
         }
       }
     }
-    $_[0] = _bigint_to_int($_[0]) if $_[0] <= ''.~0;
+    $_[0] = _bigint_to_int($_[0]) if $] >= 5.008 && $_[0] <= ''.~0;
   }
 
   if ( ($_[0] > 1) && _is_prime7($_[0]) ) {
@@ -2549,13 +2549,24 @@ sub trial_factor {
     @factors = ($n == 1) ? () : ($n);
     return @factors;
   }
-  if (ref($n) ne 'Math::BigInt' || !Math::BigInt::bgcd($n, 30030)->is_one) {
+  if (ref($n) ne 'Math::BigInt') {
     while ( !($n % 2) ) { push @factors, 2;  $n = int($n / 2); }
     while ( !($n % 3) ) { push @factors, 3;  $n = int($n / 3); }
     while ( !($n % 5) ) { push @factors, 5;  $n = int($n / 5); }
     while ( !($n % 7) ) { push @factors, 7;  $n = int($n / 7); }
     while ( !($n %11) ) { push @factors,11;  $n = int($n /11); }
     while ( !($n %13) ) { push @factors,13;  $n = int($n /13); }
+  } else {
+    foreach my $div (2, 3, 5, 7, 11, 13) {
+      my($q,$r);
+      do {
+        ($q, $r) = $n->copy->bdiv($div);
+        if ($r->is_zero) {
+          push @factors, $div;
+          $n = $q;
+        }
+      } while $r->is_zero;
+    }
   }
   $n = _bigint_to_int($n) if ref($n) eq 'Math::BigInt' && $n <= ''.~0;
   return @factors if $n < 4;
