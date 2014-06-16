@@ -3614,7 +3614,7 @@ sub RiemannZeta {
       $xdigits = $wantbf;
     }
     my $rnd = 0;  # MPFR_RNDN;
-    my $bit_precision = int($xdigits * 3.322) + 7;
+    my $bit_precision = int($xdigits * 3.322) + 8;
     my $rx = Math::MPFR->new();
     Math::MPFR::Rmpfr_set_prec($rx, $bit_precision);
     Math::MPFR::Rmpfr_set_str($rx, "$x", 10, $rnd);
