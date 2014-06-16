@@ -166,7 +166,7 @@ is(pn_primorial(5), 2310, "pn_primorial(5)");
 is(primorial(0), 1, "primorial(0)");
 is(pn_primorial(0), 1, "pn_primorial(0)");
 
-is(znorder(2, next_prime(int(1e16))-6), 40177783100, "znorder(2,10000000000000061)");
+is(znorder(2, next_prime("10000000000000000")-6), 40177783100, "znorder(2,10000000000000061)");
 is(legendre_phi(1000000000, 41), 106614188, "Legendre phi 1e9,41");
 
 ##############################################################################
@@ -358,7 +358,7 @@ sub cmp_closeto {
   my $expect = shift;
   my $tolerance = shift;
   my $message = shift;
-  my $error = abs($got - $expect) / $expect;
+  my $error = sprintf("%g", abs($got - $expect) / $expect);
   my $errorpr = sprintf "%.2g", $error;
   cmp_ok( $error, '<=', $tolerance, "$message ($errorpr)");
 }
