@@ -3173,7 +3173,7 @@ an issue if you use non-Cygwin Win32 B<and> call these routines from within
 Perl threads.
 
 Because the loop functions like L</forprimes> use C<MULTICALL>, there is
-some odd bahavior with anonymous sub creation inside the block.  This is
+some odd behavior with anonymous sub creation inside the block.  This is
 shared with most XS modules that use C<MULTICALL>, and is rarely seen
 because it is such an unusual use.  An example is:
 
