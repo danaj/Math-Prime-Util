@@ -320,10 +320,10 @@ cmp_ok( $randprime, '>', 2**79, "random 80-bit prime is not too small");
 cmp_ok( $randprime, '<', 2**80, "random 80-bit prime is not too big");
 ok( is_prime($randprime), "random 80-bit prime is just right");
 
-$randprime = random_strong_prime(140);
-cmp_ok( $randprime, '>', 2**139, "random 140-bit strong prime is not too small");
-cmp_ok( $randprime, '<', 2**140, "random 140-bit strong prime is not too big");
-ok( is_prime($randprime), "random 140-bit strong prime is just right");
+$randprime = random_strong_prime(180);
+cmp_ok( $randprime, '>', 2**179, "random 180-bit strong prime is not too small");
+cmp_ok( $randprime, '<', 2**180, "random 180-bit strong prime is not too big");
+ok( is_prime($randprime), "random 180-bit strong prime is just right");
 
 $randprime = random_maurer_prime(80);
 cmp_ok( $randprime, '>', 2**79, "random 80-bit Maurer prime is not too small");
