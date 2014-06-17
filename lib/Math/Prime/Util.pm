@@ -207,9 +207,11 @@ sub _reftyped {
   if (OLD_PERL_VERSION) {
     # Perl 5.6 truncates arguments to doubles if you look at them funny
     return "$_[1]" if "$_[1]" <= 562949953421312;
-  } else {
+  } elsif ($_[1] >= 0) {
     # Perl 5.20.0 brought back a stupid double conversion bug
     return $_[1] if $_[1] <= 18446744073709550591 || ''.int($_[1]) <= ~0;
+  } else {
+    return $_[1] if ''.int($_[1]) >= -(~0>>1);
   }
   do { require Math::BigInt;  Math::BigInt->import(try=>"GMP,Pari"); }
     unless defined $Math::BigInt::VERSION;
