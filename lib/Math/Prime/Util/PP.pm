@@ -1540,14 +1540,17 @@ sub chinese {
     $t = -$t if $t < 0;
     # Convert to bigint if necessary.  Performance goes to hell.
     if (!ref($lcm) && ($lcm*$s) > ~0) { $lcm = Math::BigInt->new("$lcm"); }
-    $lcm *= $s;
-    $u += $lcm if $u < 0;
-    $v += $lcm if $v < 0;
     if (ref($lcm)) {
-      my $m1 = Math::BigInt->new("$v")->bmul("$s")->bmod($lcm)->bmul("$sum")->bmod($lcm);
-      my $m2 = Math::BigInt->new("$u")->bmul("$t")->bmod($lcm)->bmul("$ai")->bmod($lcm);
+      $lcm->bmul("$s");
+      my $m1 = Math::BigInt->new("$v")->bmul("$s")->bmod($lcm);
+      my $m2 = Math::BigInt->new("$u")->bmul("$t")->bmod($lcm);
+      $m1->bmul("$sum")->bmod($lcm);
+      $m2->bmul("$ai")->bmod($lcm);
       $sum = $m1->badd($m2)->bmod($lcm);
     } else {
+      $lcm *= $s;
+      $u += $lcm if $u < 0;
+      $v += $lcm if $v < 0;
       my $vs = _mulmod($v,$s,$lcm);
       my $ut = _mulmod($u,$t,$lcm);
       my $m1 = _mulmod($sum,$vs,$lcm);
