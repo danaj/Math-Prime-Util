@@ -174,7 +174,7 @@ static int _vcallsubn(pTHX_ I32 flags, I32 stashflags, const char* name, int nar
     /* If given a GMP function, and GMP enabled, and function exists, use it. */
     int use_gmp = stashflags & VCALL_GMP && _XS_get_callgmp();
     assert(!(stashflags & ~(VCALL_PP|VCALL_GMP)));
-    if (use_gmp) {
+    if (use_gmp && hv_exists(MY_CXT.MPUGMP,name,namelen)) {
       GV ** gvp = (GV**)hv_fetch(MY_CXT.MPUGMP,name,namelen,0);
       if (gvp) gv = *gvp;
     }
@@ -550,7 +550,7 @@ gcd(...)
       case 0: _vcallsub_with_gmp("gcd");  break;
       case 1: _vcallsub_with_gmp("lcm");  break;
       case 2:
-      default:_vcallsub_with_gmp("vecsum");  break;
+      default:_vcallsub_with_pp("vecsum");  break;
     }
     return; /* skip implicit PUTBACK */
 
