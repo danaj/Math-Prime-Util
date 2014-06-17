@@ -1481,6 +1481,15 @@ sub gcdext {
   my($x,$y) = @_;
   if ($x == 0) { return (0, ($y<0) ? -1 : 1, abs($y)); }
   if ($y == 0) { return (($x<0) ? -1 : 1, 0, abs($x)); }
+
+  if (defined &Math::Prime::Util::GMP::gcdext && Math::Prime::Util::prime_get_config()->{'gmp'}) {
+    my($a,$b,$g) = Math::Prime::Util::GMP::gcdext($x,$y);
+    $a = Math::Prime::Util::_reftyped($_[0], $a);
+    $b = Math::Prime::Util::_reftyped($_[0], $b);
+    $g = Math::Prime::Util::_reftyped($_[0], $g);
+    return ($a,$b,$g);
+  }
+
   my($a,$b,$g,$u,$v,$w);
   if (abs($x) < (~0>>1) && abs($y) < (~0>>1)) {
     $x = _bigint_to_int($x) if ref($x) eq 'Math::BigInt';
@@ -1551,6 +1560,9 @@ sub chinese {
 }
 
 sub vecsum {
+  if (defined &Math::Prime::Util::GMP::vecsum && Math::Prime::Util::prime_get_config()->{'gmp'}) {
+    return Math::Prime::Util::_reftyped($_[0], Math::Prime::Util::GMP::vecsum(@_));
+  }
   my $sum = 0;
   my $neglim = -(~0 >> 1) - 1;
   foreach my $v (@_) {
