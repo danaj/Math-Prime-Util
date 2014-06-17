@@ -2611,14 +2611,14 @@ sub trial_factor {
 
 my $_holf_r;
 my @_fsublist = (
-  sub { prho_factor   (shift,    8*1024, 3) },
-  sub { pminus1_factor(shift,    10_000); },
-  sub { pbrent_factor (shift,   32*1024, 1) },
-  sub { pminus1_factor(shift, 1_000_000); },
-  sub { pbrent_factor (shift,  512*1024, 7) },
+  sub { prho_factor   (shift,    8*1024, 3, 1) },
+  sub { pminus1_factor(shift,    10_000, undef, 1); },
+  sub { pbrent_factor (shift,   32*1024, 1, 1) },
+  sub { pminus1_factor(shift, 1_000_000, undef, 1); },
+  sub { pbrent_factor (shift,  512*1024, 7, 1) },
   sub { ecm_factor    (shift,     1_000,   5_000, 10) },
-  sub { pminus1_factor(shift, 4_000_000); },
-  sub { pbrent_factor (shift,  512*1024, 11) },
+  sub { pminus1_factor(shift, 4_000_000, undef, 1); },
+  sub { pbrent_factor (shift,  512*1024, 11, 1) },
   sub { ecm_factor    (shift,    10_000,  50_000, 10) },
   sub { holf_factor   (shift, 256*1024, $_holf_r); $_holf_r += 256*1024; },
   sub { pminus1_factor(shift,20_000_000); },
@@ -2722,12 +2722,15 @@ sub _found_factor {
 sub squfof_factor { trial_factor(@_) }
 
 sub prho_factor {
-  my($n, $rounds, $pa) = @_;
+  my($n, $rounds, $pa, $skipbasic) = @_;
   $rounds = 4*1024*1024 unless defined $rounds;
   $pa = 3 unless defined $pa;
 
-  my @factors = _basic_factor($n);
-  return @factors if $n < 4;
+  my @factors;
+  if (!$skipbasic) {
+    @factors = _basic_factor($n);
+    return @factors if $n < 4;
+  }
 
   my $inloop = 0;
   my $U = 7;
@@ -2792,12 +2795,15 @@ sub prho_factor {
 }
 
 sub pbrent_factor {
-  my($n, $rounds, $pa) = @_;
+  my($n, $rounds, $pa, $skipbasic) = @_;
   $rounds = 4*1024*1024 unless defined $rounds;
   $pa = 3 unless defined $pa;
 
-  my @factors = _basic_factor($n);
-  return @factors if $n < 4;
+  my @factors;
+  if (!$skipbasic) {
+    @factors = _basic_factor($n);
+    return @factors if $n < 4;
+  }
 
   my $Xi = 2;
   my $Xm = 2;
@@ -2873,10 +2879,13 @@ sub pbrent_factor {
 }
 
 sub pminus1_factor {
-  my($n, $B1, $B2) = @_;
+  my($n, $B1, $B2, $skipbasic) = @_;
 
-  my @factors = _basic_factor($n);
-  return @factors if $n < 4;
+  my @factors;
+  if (!$skipbasic) {
+    @factors = _basic_factor($n);
+    return @factors if $n < 4;
+  }
 
   if ( ref($n) ne 'Math::BigInt' ) {
     # Stage 1 only
