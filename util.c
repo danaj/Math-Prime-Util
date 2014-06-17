@@ -1948,7 +1948,9 @@ long double _XS_RiemannR(long double x) {
     for (k = 2; k <= 100; k++) {
       if (amob[k] == 0) continue;
       ki = 1.0L / (long double) k;
-      term = amob[k] * ki * _XS_ExponentialIntegral(logl(powl(x,ki)));
+      part_term = powl(x,ki);
+      if (part_term > LDBL_MAX) return INFINITY;
+      term = amob[k] * ki * _XS_ExponentialIntegral(logl(part_term));
       KAHAN_SUM(sum, term);
       if (fabsl(term) < fabsl(LDBL_EPSILON*sum)) break;
     }
