@@ -960,7 +960,7 @@ UV nth_twin_prime(UV n)
   }
   beg = 31;
   end = UV_MAX - 16;
-  dend = 400.0 + 1.01L * (double)nth_twin_prime_approx(n);
+  dend = 800.0 + 1.01L * (double)nth_twin_prime_approx(n);
   if (dend < (double)end) end = (UV) dend;
   n -= 5;
   {
