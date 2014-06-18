@@ -29,6 +29,8 @@ Revision history for Perl module Math::Prime::Util
     - Refactor some PP code: {next,prev}_prime, chebyshev_{theta,psi}.
       In addition, PP sieving uses less memory.
 
+    - Accelerate nth_twin_prime using the sparse twin_prime_count table.
+
 
 0.41  2014-05-18
 

@@ -958,11 +958,25 @@ UV nth_twin_prime(UV n)
     }
     return nth;
   }
-  beg = 31;
+
   end = UV_MAX - 16;
   dend = 800.0 + 1.01L * (double)nth_twin_prime_approx(n);
   if (dend < (double)end) end = (UV) dend;
-  n -= 5;
+
+  beg = 2;
+  if (n > 58980) { /* Use twin_prime_count tables to accelerate if possible */
+    UV mult, exp, step = 0, base = 10000000;
+    for (exp = 0; exp < twin_num_exponents && end >= base; exp++) {
+      for (mult = 1; mult < 10 && n > twin_steps[step]; mult++) {
+        n -= twin_steps[step++];
+        beg = mult*base;
+        if (exp == twin_num_exponents-1 && mult >= twin_last_mult) break;
+      }
+      base *= 10;
+    }
+  }
+  if (beg == 2) { beg = 31; n -= 5; }
+
   {
     UV seg_base, seg_low, seg_high;
     void* ctx = start_segment_primes(beg, end, &segment);
