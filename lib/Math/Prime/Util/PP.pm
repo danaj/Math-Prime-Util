@@ -1413,6 +1413,16 @@ sub _mulmod {
   }
   $r;
 }
+sub _addmod {
+  my($x, $y, $n) = @_;
+  $x %= $n if $x >= $n;
+  $y %= $n if $y >= $n;
+  if (($n-$x) <= $y) {
+    ($x,$y) = ($y,$x) if $y > $x;
+    $x -= $n;
+  }
+  $x + $y;
+}
 
 # Note that Perl 5.6.2 with largish 64-bit numbers will break.  As usual.
 sub _native_powmod {
@@ -1555,7 +1565,7 @@ sub chinese {
       my $ut = _mulmod($u,$t,$lcm);
       my $m1 = _mulmod($sum,$vs,$lcm);
       my $m2 = _mulmod($ut,$ai % $lcm,$lcm);
-      $sum = (($m1+$m2) > $lcm) ?  $m1-$lcm+$m2  :  $m1+$m2;
+      $sum = _addmod($m1, $m2, $lcm);
     }
   }
   $sum = _bigint_to_int($sum) if ref($sum) && $sum->bacmp(''.~0) <= 0;
@@ -2792,9 +2802,12 @@ sub prho_factor {
        $V = _mulmod($V, $V, $n);  $V += $pa;  # Let the mulmod handle it
        $V = _mulmod($V, $V, $n);  $V += $pa;  $V -= $n if $V >= $n;
       } else {
-       $U = _mulmod($U, $U, $n); $U=$n-$U;  $U = ($pa>=$U) ? $pa-$U : $n-$U+$pa;
-       $V = _mulmod($V, $V, $n); $V=$n-$V;  $V = ($pa>=$V) ? $pa-$V : $n-$V+$pa;
-       $V = _mulmod($V, $V, $n); $V=$n-$V;  $V = ($pa>=$V) ? $pa-$V : $n-$V+$pa;
+       #$U = _mulmod($U, $U, $n); $U=$n-$U; $U = ($pa>=$U) ? $pa-$U : $n-$U+$pa;
+       #$V = _mulmod($V, $V, $n); $V=$n-$V; $V = ($pa>=$V) ? $pa-$V : $n-$V+$pa;
+       #$V = _mulmod($V, $V, $n); $V=$n-$V; $V = ($pa>=$V) ? $pa-$V : $n-$V+$pa;
+       $U = _mulmod($U, $U, $n);  $U = _addmod($U, $pa, $n);
+       $V = _mulmod($V, $V, $n);  $V = _addmod($V, $pa, $n);
+       $V = _mulmod($V, $V, $n);  $V = _addmod($V, $pa, $n);
       }
       my $f = _gcd_ui( $U-$V,  $n );
       if ($f == $n) {
@@ -2882,7 +2895,8 @@ sub pbrent_factor {
     for my $i (1 .. $rounds) {
       # Xi^2+a % n
       $Xi = _mulmod($Xi, $Xi, $n);
-      $Xi = (($n-$Xi) > $pa)  ?  $Xi+$pa  :  $Xi+$pa-$n;
+      #$Xi = (($n-$Xi) > $pa)  ?  $Xi+$pa  :  $Xi+$pa-$n;
+      $Xi = _addmod($Xi, $pa, $n);
       my $f = _gcd_ui($Xm-$Xi, $n);
       return _found_factor($f, $n, "pbrent", @factors) if $f != 1 && $f != $n;
       $Xm = $Xi if ($i & ($i-1)) == 0;  # i is a power of 2
