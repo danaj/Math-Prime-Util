@@ -37,7 +37,7 @@ my $count = shift || 20;
 #  Easy but estimates very high:
 #my $estimate = 5000 + int( nth_prime_upper($count) * 1.4 * log($count) );
 #  Relatively tight upper bound
-#my $estimate = 400 + int(1.01 * nth_twin_prime_approx($count));
+#my $estimate = 800 + int(1.01 * nth_twin_prime_approx($count));
 #  Simple and fastest:  Use the estimate directly.
 my $estimate = nth_twin_prime_approx($count);
 prime_precalc($estimate);
