@@ -12,7 +12,7 @@ use Math::Prime::Util qw/ prime_get_config
 
 BEGIN {
   $Math::Prime::Util::RandomPrimes::AUTHORITY = 'cpan:DANAJ';
-  $Math::Prime::Util::RandomPrimes::VERSION = '0.41';
+  $Math::Prime::Util::RandomPrimes::VERSION = '0.42';
 }
 
 BEGIN {
@@ -1073,7 +1073,7 @@ Math::Prime::Util::RandomPrimes - Generate random primes
 
 =head1 VERSION
 
-Version 0.41
+Version 0.42
 
 
 =head1 SYNOPSIS

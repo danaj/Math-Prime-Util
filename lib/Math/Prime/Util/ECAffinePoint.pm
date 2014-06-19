@@ -5,7 +5,7 @@ use Carp qw/carp croak confess/;
 
 BEGIN {
   $Math::Prime::Util::ECAffinePoint::AUTHORITY = 'cpan:DANAJ';
-  $Math::Prime::Util::ECAffinePoint::VERSION = '0.41';
+  $Math::Prime::Util::ECAffinePoint::VERSION = '0.42';
 }
 
 BEGIN {
@@ -199,7 +199,7 @@ Math::Prime::Util::ECAffinePoint - Elliptic curve operations for affine points
 
 =head1 VERSION
 
-Version 0.41
+Version 0.42
 
 
 =head1 SYNOPSIS
