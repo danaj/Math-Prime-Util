@@ -27,37 +27,29 @@ $| = 1;
 # This will fully utilize however many cores you choose (using the $nthreads
 # variable).  It spreads the numbers across threads, where each one runs a
 # BPSW test.  A separate thread handles the in-order display.  I have tested
-# it on machines with 2, 4, 8, 12, 24, and 64 cores.
+# it on machines with 2, 4, 8, 12, 24, 32, and 64 cores.
+#
+# You will want Math::Prime::Util::GMP installed for performance.
+#
+# Also see the MCE example.
 #
 # On my 12-core computer:
-#    24    5387              0.65488
-#    25    9311              4.39227
-#    26    9677              4.54363
-#    27   14431             18.82531
-#    28   25561            121.34584
-#    29   30757            212.99409
-#    30   35999            376.59567
-#    31   37511            432.10713
-#    32   50833           1151.85562
-#
-# Using 60 cores of a Power 7 machine (each one slower than the x86 above)
-#    27   14431             14.23748
-#    28   25561             81.95451
-#    29   30757            117.95914
-#    30   35999            224.14832
-#    31   37511            267.01445
-#    32   50833            677.61661
-#    33   81839           3230.63871
-#    34  104911           7861.65752
-#    35  130021          16170.56098
-#    36  148091          24841.65174
+#    24    5387              0.51088
+#    25    9311              2.74327
+#    26    9677              3.56398
+#    27   14431             11.46177
+#    28   25561             76.52618
+#    29   30757            130.26143
+#    30   35999            262.94690
+#    31   37511            306.67707
+#    32   50833            746.35491
 #
 # Though not as pretty as the Haskell solution on haskell.org, it is a
 # different way of solving the problem that is faster and more scalable.
 
 my $time_start = [gettimeofday];
 my $nthreads = 12;
-prime_precalc(1_000_000);
+prime_precalc(10_000_000);
 
 my @found :shared;     # push the primes found here
 my @karray : shared;   # array of min k for each thread

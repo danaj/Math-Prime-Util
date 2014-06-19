@@ -65,7 +65,9 @@ examples/abundant.pl
 examples/find_mr_bases.pl
 examples/inverse_totient.pl
 examples/numseqs.pl
-examples/parallel_fibprime.pl
+examples/fibprime-serial.pl
+examples/fibprime-threads.pl
+examples/fibprime-mce.pl
 examples/porter.pl
 examples/verify-gmp-ecpp-cert.pl
 examples/verify-sage-ecpp-cert.pl
