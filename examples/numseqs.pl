@@ -254,6 +254,11 @@ if      ($type eq 'Abundant') {
     push @n, $i++;
   }
   print join " ", @n;
+} elsif ($type eq 'SternDiatomic') {
+  # Slow direct way for ith value:
+  #   vecsum( map { binomial($i-$_-1,$_) % 2 } 0..(($i-1)>>1) );
+  # Bitwise method described in MNS documentation:
+  print join " ", map { stern_diatomic($_) } 0..$count-1;
 } elsif ($type eq 'Totient') {
   print join " ", euler_phi(1,$count);
 } elsif ($type eq 'TotientCumulative') {
@@ -353,13 +358,12 @@ if      ($type eq 'Abundant') {
 # SqrtDigits
 # SqrtEngel
 # StarNumbers
-# SternDiatomic    # vecsum( map { binomial($n-$_-1,$_) % 2 } 0..(($n-1)>>1) )
-#                  # ^^ works but very slow
 # Tetrahedral
 # Triangular
 # UlamSequence
 # UndulatingNumbers
 # WoodallNumbers
+# Xenodromes
 
   die "sequence '$type' is not implemented here\n";
 }
@@ -580,4 +584,13 @@ sub pisano {
     push @periods, $period;
   }
   lcm(@periods);
+}
+
+sub stern_diatomic {
+  my ($p,$q,$i) = (0,1,shift);
+  while ($i) {
+    if ($i & 1) { $p += $q; } else { $q += $p; }
+    $i >>= 1;
+  }
+  $p;
 }
