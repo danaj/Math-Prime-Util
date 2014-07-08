@@ -1533,6 +1533,8 @@ sub chinese {
   my($lcm, $sum);
   foreach my $aref (sort { $b->[1] <=> $a->[1] } @_) {
     my($ai, $ni) = @$aref;
+    $ai = Math::BigInt->new("$ai") if !ref($ai) && abs($ai) > ~0;
+    $ni = Math::BigInt->new("$ni") if !ref($ni) && abs($ni) > ~0;
     if (!defined $lcm) {
       ($sum,$lcm) = ($ai % $ni, $ni);
       next;
