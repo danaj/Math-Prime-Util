@@ -654,7 +654,7 @@ sub moebius_range {
   return moebius($lo) if $lo == $hi;
   if ($hi > 2**32) {
     my @mu;
-    while ($lo < $hi) {
+    while ($lo <= $hi) {
       push @mu, moebius($lo++);
     }
     return @mu;
