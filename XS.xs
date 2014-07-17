@@ -1009,7 +1009,7 @@ euler_phi(IN SV* svlo, ...)
       switch (ix) {
         case 0:  _vcallsubn(aTHX_ gimme_v, VCALL_PP, "euler_phi", items);break;
         case 1:
-        default: _vcallsubn(aTHX_ gimme_v, VCALL_PP, "moebius", items);  break;
+        default: _vcallsubn(aTHX_ gimme_v, VCALL_GMP|VCALL_PP, "moebius", items);  break;
       }
       return;
     }
