@@ -570,8 +570,12 @@ sub jordan_totient {
   my($k, $n) = @_;
   return ($n == 1) ? 1 : 0  if $k == 0;
   return euler_phi($n)      if $k == 1;
-  return 0 if $n < 0;
   return ($n == 1) ? 1 : 0  if $n <= 1;
+
+  if (defined &Math::Prime::Util::GMP::jordan_totient && Math::Prime::Util::prime_get_config()->{'gmp'}) {
+    return Math::Prime::Util::_reftyped($_[0], Math::Prime::Util::GMP::jordan_totient($k, $n));
+  }
+
 
   my @pe = Math::Prime::Util::factor_exp($n);
   $n = Math::BigInt->new("$n") unless ref($n) eq 'Math::BigInt';
@@ -589,11 +593,34 @@ sub jordan_totient {
 sub euler_phi {
   return euler_phi_range(@_) if scalar @_ > 1;
   my($n) = @_;
+
+  if (defined &Math::Prime::Util::GMP::totient && Math::Prime::Util::prime_get_config()->{'gmp'}) {
+    return Math::Prime::Util::_reftyped($_[0], Math::Prime::Util::GMP::totient($n));
+  }
+
+  _validate_positive_integer($n);
   return 0 if $n < 0;
   return $n if $n <= 1;
 
-  my @pe = Math::Prime::Util::factor_exp($n);
   my $totient = $n - $n + 1;
+
+  # Fast reduction of multiples of 2, may also reduce n for factoring
+  if (ref($n) eq 'Math::BigInt') {
+    #while ($n->is_even) {
+    #  $n->brsft(BONE);
+    #  $totient->blsft(BONE) if $n->is_even;
+    #}
+    my $s = 0;
+    if ($n->is_even) {
+      do { $n->brsft(BONE); $s++; } while $n->is_even;
+      $totient->blsft($s-1) if $s > 1;
+    }
+  } else {
+    while (($n % 4) == 0) { $n >>= 1;  $totient <<= 1; }
+    if (($n % 2) == 0) { $n >>= 1; }
+  }
+
+  my @pe = Math::Prime::Util::factor_exp($n);
 
   if (ref($n) ne 'Math::BigInt') {
     foreach my $f (@pe) {
@@ -610,6 +637,8 @@ sub euler_phi {
       $totient->bmul($p) for 2 .. $e;
     }
   }
+  $totient = _bigint_to_int($totient) if ref($totient) eq 'Math::BigInt'
+                                      && $totient->bacmp(''.~0) <= 0;
   return $totient;
 }
 

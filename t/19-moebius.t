@@ -532,7 +532,7 @@ plan tests => 0 + 1
                 + scalar(@vecsums)
                 + 2 + scalar(@binomials)
                 + scalar(keys %powers)
-                + scalar(keys %primroots) + 2
+                + scalar(keys %primroots) + 1
                 + scalar(keys %jordan_totients)
                 + 2  # Dedekind psi calculated two ways
                 + 2  # Calculate J5 two different ways
@@ -718,7 +718,10 @@ while (my($n, $root) = each (%primroots)) {
   is( znprimroot($n), $root, "znprimroot($n) == " . ((defined $root) ? $root : "<undef>") );
 }
 is( znprimroot("-100000898"), 31, "znprimroot(\"-100000898\") == 31" );
-is( znprimroot("+100000898"), 31, "znprimroot(\"+100000898\") == 31" );
+
+# I don't think we should rely on this parsing correctly.
+#is( znprimroot("+100000898"), 31, "znprimroot(\"+100000898\") == 31" );
+
 ###### znlog
 foreach my $arg (@znlogs) {
   my($aref, $exp) = @$arg;
