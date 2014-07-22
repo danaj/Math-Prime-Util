@@ -1,6 +1,14 @@
 Revision history for Perl module Math::Prime::Util
 
 
+0.43  2014-08
+
+    [FUNCTIONALITY AND PERFORMANCE]
+
+    - Divisors sorted with qsort instead of Shell sort.  No appreciable time
+      difference, but slightly less code size.
+
+
 0.42  2014-06-18
 
     [ADDED]

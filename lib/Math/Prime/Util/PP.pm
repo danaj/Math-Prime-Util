@@ -1981,6 +1981,11 @@ sub znorder {
   return if $a <= 0;
   return 1 if $a == 1;
 
+  if (defined &Math::Prime::Util::GMP::znorder && Math::Prime::Util::prime_get_config()->{'gmp'}) {
+    return Math::Prime::Util::_reftyped($_[0], Math::Prime::Util::GMP::znorder($a,$n));
+  }
+
+
   # Sadly, Calc/FastCalc are horrendously slow for this function.
   return if Math::Prime::Util::gcd($a, $n) > 1;
 
