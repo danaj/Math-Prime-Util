@@ -200,6 +200,7 @@ sub _to_bigint {
   return Math::BigInt->new("$_[0]");
 }
 sub _reftyped {
+  return unless defined $_[1];
   my $ref0 = ref($_[0]);
   if ($ref0) {
     return  ($ref0 eq ref($_[1])) ?  $_[1]  :  $ref0->new("$_[1]");
