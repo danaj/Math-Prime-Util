@@ -31,6 +31,7 @@ my $type = shift || 'BBS';  # BM or BBS
 my $bits = shift || 512;
 
 die "Type must be BM or BBS" unless $type =~ /^(BBS|BM)$/;
+die "Bits must be > 64" unless $bits > 64;
 
 my $rng = Bytes::Random::Secure->new(NonBlocking => 1);
 my $rbytes = int(($bits+7)/8);
