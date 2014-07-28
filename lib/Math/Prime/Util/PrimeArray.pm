@@ -154,7 +154,7 @@ Version 0.42
 
   # Use in a loop over array:
   for my $p (@primes) {
-    last if $p > $limit;   # stop sometime
+    last if $p > 1000;   # stop sometime
     print "$p\n";
   }
 
@@ -164,12 +164,12 @@ Version 0.42
   # Use via each:
   use 5.012;
   while( my($index,$value) = each @primes ) {
-    last if $p > $limit;   # stop sometime
+    last if $value > 1000;   # stop sometime
     print "The ${index}th prime is $value\n";
   }
 
   # Use with shift:
-  while ((my $p = shift @primes) < $limit) {
+  while ((my $p = shift @primes) < 1000) {
     print "$p\n";
   }
 

@@ -860,6 +860,7 @@ Version 0.42
 
   # For non-bigints, is_prime and is_prob_prime will always be 0 or 2.
   # They return 0 (composite), 2 (prime), or 1 (probably prime)
+  my $n = 1000003;  # for example
   say "$n is prime"  if is_prime($n);
   say "$n is ", (qw(composite maybe_prime? prime))[is_prob_prime($n)];
 
@@ -902,13 +903,13 @@ Version 0.42
 
 
   # Get the prime factors of a number
-  @prime_factors = factor( $n );
+  my @prime_factors = factor( $n );
 
   # Return ([p1,e1],[p2,e2], ...) for $n = p1^e1 * p2*e2 * ...
-  @pe = factor_exp( $n );
+  my @pe = factor_exp( $n );
 
   # Get all divisors other than 1 and n
-  @divisors = divisors( $n );
+  my @divisors = divisors( $n );
   # Or just apply a block for each one
   fordivisors  { $sum += $_ + $_*$_ }  $n;
 

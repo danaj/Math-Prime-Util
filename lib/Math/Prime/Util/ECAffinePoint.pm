@@ -208,10 +208,10 @@ Version 0.42
   my $ECP = Math::Prime::Util::ECAffinePoint->new($a, $b, $n, 0, 1);
 
   # scalar multiplication by k.
-  $ECP->mul($k)
+  $ECP->mul($k);
 
   # add two points on the same curve
-  $ECP->add($ECP2)
+  $ECP->add($ECP2);
 
   say "P = O" if $ECP->is_infinity();
 
