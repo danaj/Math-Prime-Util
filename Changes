@@ -8,6 +8,8 @@ Revision history for Perl module Math::Prime::Util
     - Divisors sorted with qsort instead of Shell sort.  No appreciable time
       difference, but slightly less code size.
 
+    - Added Micali-Schnorr generator to examples/csrand.pl.
+
 
 0.42  2014-06-18
 

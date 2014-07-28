@@ -6,7 +6,7 @@ use Math::Prime::Util qw/:all/;
 use Bytes::Random::Secure;
 $|=1;
 
-# Example of Blum-Micali and Blum-Blum-Shub CSPRNGs.
+# Example of Blum-Micali, Blum-Blum-Shub, and Micali-Schnorr CSPRNGs.
 # Not very practical, but works as an example.
 
 if (!@ARGV) {
@@ -20,17 +20,20 @@ like Salsa20 instead being used.
 
 <nbits>: how many bits should be generated.
 
-<type>: one of "BM" (Blum-Micali) or "BBS" (Blum-Blum-Shub).  Default BBS.
+<type>: one of:
+    "MS"  (Micali-Schnorr)       <- default
+    "BM"  (Blum-Micali)
+    "BBS" (Blum-Blum-Shub)
 
-<bits>: How large of primes are used for P (BM) or P*Q (BBS).  Default 512.
+<bits>: How large of primes are used for P (BM) or P,Q (BBS,MS).  Default 512.
 EOU
 }
 
 my $nbits = shift || 10;
-my $type = shift || 'BBS';  # BM or BBS
+my $type = shift || 'MS';  # BM or BBS or MS
 my $bits = shift || 512;
 
-die "Type must be BM or BBS" unless $type =~ /^(BBS|BM)$/;
+die "Type must be BM, BBS, or MS" unless $type =~ /^(BBS|BM|MS)$/;
 die "Bits must be > 64" unless $bits > 64;
 
 my $rng = Bytes::Random::Secure->new(NonBlocking => 1);
@@ -52,7 +55,7 @@ if ($type eq 'BM') {
     print 0 + ($xn < $thresh);
   }
   print "\n";
-} else {
+} elsif ($type eq 'BBS') {
   my($M,$xn);
   # Select M = p*q
   while (1) {
@@ -74,6 +77,38 @@ if ($type eq 'BM') {
   while ($nbits-- > 0) {
     $xn->bmodpow($two,$M);
     print $xn->is_odd ? 1 : 0;
+  }
+  print "\n";
+} else {  # Micali-Schnorr
+  die "Micali-Schnorr must have bits >= 120\n" unless $bits >= 120;
+  my $tries = 1;
+  my ($n, $e, $N);
+  while (1) {
+    my $p = random_nbit_prime($bits);
+    my $q = random_nbit_prime($bits);
+    $n = $p * $q;
+    my $phi = ($p-1) * ($q-1);
+    $N = length($n->as_bin)-2;
+    # For efficiency, choose largest e possible.  e will always be odd.
+    $e = int($N/80);
+    $e-- while $e > 1 && gcd($e,$phi) != 1;
+    last if $e > 1 && $e < $phi && 80*$e <= $N && gcd($e,$phi) == 1;
+    die "Unable to find a proper e for MS\n" if $tries++ > 100;
+  }
+  my $k = int($N * (1-2/$e));
+  my $r = $N - $k;
+  my $xn = Math::BigInt->new("0x".$rng->bytes_hex(int(($r+7)/8)))->bmod(Math::BigInt->new(2)->bpow($r));
+
+  while ($nbits > 0) {
+    # y_i = x_{i-1} ^ e mod n
+    my $yistr = $xn->copy->bmodpow($e, $n)->as_bin;
+    # x_i = r most significant bits of y_i
+    $xn = $xn->from_bin(substr($yistr, 0, 2+$r));
+    # z_i = k least significant bits of y_i
+    # output is the sequence of z_i
+    my $outbits = ($nbits >= $k) ? $k : $nbits;
+    print substr($yistr,-$outbits);
+    $nbits -= $outbits;
   }
   print "\n";
 }
