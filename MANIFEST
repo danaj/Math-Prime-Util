@@ -59,6 +59,7 @@ bench/bench-mp-prime_count.pl
 bench/factor-gnufactor.pl
 examples/README
 examples/csrand.pl
+examples/csrand-gmp.pl
 examples/sophie_germain.pl
 examples/twin_primes.pl
 examples/abundant.pl
