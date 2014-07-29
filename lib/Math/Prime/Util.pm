@@ -827,6 +827,7 @@ __END__
 
 =for stopwords forprimes forcomposites fordivisors forpart Möbius Deléglise Bézout totient moebius mertens liouville znorder irand primesieve uniqued k-tuples von SoE pari yafu fonction qui compte le nombre nombres voor PhD superset sqrt(N) gcd(A^M k-th (10001st primegen libtommath kronecker znprimroot znlog gcd lcm invmod untruncated vecsum gcdext chinese
 
+=for test_synopsis use v5.14;  my($k,$x);
 
 =head1 NAME
 
@@ -849,7 +850,7 @@ Version 0.42
   my $aref = primes( 100_000_000 );
 
   # All the primes between 5k and 10k inclusive
-  my $aref = primes( 5_000, 10_000 );
+  $aref = primes( 5_000, 10_000 );
 
   # If you want them in an array instead
   my @primes = @{primes( 500 )};
@@ -881,7 +882,7 @@ Version 0.42
 
 
   # Return Pi(n) -- the number of primes E<lt>= n.
-  $primepi = prime_count( 1_000_000 );
+  my $primepi = prime_count( 1_000_000 );
   $primepi = prime_count( 10**14, 10**14+1000 );  # also does ranges
 
   # Quickly return an approximation to Pi(n)
@@ -912,7 +913,7 @@ Version 0.42
   # Get all divisors other than 1 and n
   my @divisors = divisors( $n );
   # Or just apply a block for each one
-  fordivisors  { $sum += $_ + $_*$_ }  $n;
+  my $sum = 0; fordivisors  { $sum += $_ + $_*$_ }  $n;
 
   # Euler phi (Euler's totient) on a large number
   use bigint;  say euler_phi( 801294088771394680000412 );
@@ -933,10 +934,10 @@ Version 0.42
   forpart { say "@_" unless scalar grep { !is_prime($_) } @_ } 25;
 
   # divisor sum
-  $sigma  = divisor_sum( $n );       # sum of divisors
-  $sigma0 = divisor_sum( $n, 0 );    # count of divisors
-  $sigmak = divisor_sum( $n, $k );
-  $sigmaf = divisor_sum( $n, sub { log($_[0]) } ); # arbitrary func
+  my $sigma  = divisor_sum( $n );       # sum of divisors
+  my $sigma0 = divisor_sum( $n, 0 );    # count of divisors
+  my $sigmak = divisor_sum( $n, $k );
+  my $sigmaf = divisor_sum( $n, sub { log($_[0]) } ); # arbitrary func
 
   # primorial n#, primorial p(n)#, and lcm
   say "The product of primes below 47 is ",     primorial(47);
@@ -946,8 +947,8 @@ Version 0.42
   # Ei, li, and Riemann R functions
   my $ei   = ExponentialIntegral($x);   # $x a real: $x != 0
   my $li   = LogarithmicIntegral($x);   # $x a real: $x >= 0
-  my $R    = RiemannR($x)               # $x a real: $x > 0
-  my $Zeta = RiemannZeta($x)            # $x a real: $x >= 0
+  my $R    = RiemannR($x);              # $x a real: $x > 0
+  my $Zeta = RiemannZeta($x);           # $x a real: $x >= 0
 
 
   # Precalculate a sieve, possibly speeding up later work.
@@ -961,13 +962,14 @@ Version 0.42
 
 
   # Random primes
-  my $small_prime = random_prime(1000);      # random prime <= limit
-  my $rand_prime = random_prime(100, 10000); # random prime within a range
-  my $rand_prime = random_ndigit_prime(6);   # random 6-digit prime
-  my $rand_prime = random_nbit_prime(128);   # random 128-bit prime
-  my $rand_prime = random_strong_prime(256); # random 256-bit strong prime
-  my $rand_prime = random_maurer_prime(256); # random 256-bit provable prime
-  my $rand_prime = random_shawe_taylor_prime(256);  # as above
+  my($rand_prime);
+  $rand_prime = random_prime(1000);        # random prime <= limit
+  $rand_prime = random_prime(100, 10000);  # random prime within a range
+  $rand_prime = random_ndigit_prime(6);    # random 6-digit prime
+  $rand_prime = random_nbit_prime(128);    # random 128-bit prime
+  $rand_prime = random_strong_prime(256);  # random 256-bit strong prime
+  $rand_prime = random_maurer_prime(256);  # random 256-bit provable prime
+  $rand_prime = random_shawe_taylor_prime(256);  # as above
 
 
 =head1 DESCRIPTION

@@ -199,6 +199,8 @@ __END__
 
 =for stopwords mul
 
+=for test_synopsis use v5.14;  my($c,$n,$k,$ECP2);
+
 
 =head1 NAME
 

@@ -192,6 +192,9 @@ __END__
 
 =for stopwords mul
 
+=for test_synopsis use v5.14;  my($a,$b,$n,$k,$ECP2);
+
+
 =head1 NAME
 
 Math::Prime::Util::ECAffinePoint - Elliptic curve operations for affine points

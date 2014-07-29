@@ -126,6 +126,7 @@ t/91-release-pod-syntax.t
 t/92-release-pod-coverage.t
 t/93-release-spelling.t
 t/94-weaken.t
+t/97-synopsis.t
 xt/chinese.pl
 xt/moebius-mertens.pl
 xt/totient-range.pl
