@@ -31,9 +31,10 @@ EOU
 
 my $nbits = shift || 10;
 my $type = shift || 'MS';  # BM or BBS or MS
-my $bits = shift || 512;
+my $bits = shift;
 
 die "Type must be BM, BBS, or MS" unless $type =~ /^(BBS|BM|MS)$/;
+if (!defined $bits) { $bits = ($type eq 'BBS') ? 4096 : 512; }
 die "Bits must be > 64" unless $bits > 64;
 
 my $rng = Bytes::Random::Secure->new(NonBlocking => 1);
@@ -56,6 +57,7 @@ if ($type eq 'BM') {
   }
   print "\n";
 } elsif ($type eq 'BBS') {
+  die "Blum-Blum-Shub must have bits >= 3500\n" unless $bits >= 3500;
   my($M,$xn);
   # Select M = p*q
   while (1) {
