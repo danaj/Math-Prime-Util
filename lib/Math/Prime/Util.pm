@@ -24,7 +24,7 @@ our @EXPORT_OK =
       is_frobenius_underwood_pseudoprime
       is_aks_prime
       is_power
-      miller_rabin miller_rabin_random
+      miller_rabin_random
       lucas_sequence
       primes
       forprimes forcomposites foroddcomposites fordivisors forpart
@@ -40,7 +40,7 @@ our @EXPORT_OK =
       random_maurer_prime random_maurer_prime_with_cert
       random_shawe_taylor_prime random_shawe_taylor_prime_with_cert
       primorial pn_primorial consecutive_integer_lcm gcdext chinese
-      gcd lcm factor factor_exp all_factors divisors valuation invmod vecsum
+      gcd lcm factor factor_exp divisors valuation invmod vecsum
       moebius mertens euler_phi jordan_totient exp_mangoldt liouville
       partitions
       chebyshev_theta chebyshev_psi
@@ -105,10 +105,6 @@ BEGIN {
     *factor        = \&Math::Prime::Util::_generic_factor;
     *factor_exp    = \&Math::Prime::Util::_generic_factor_exp;
   };
-
-  # aliases for deprecated names.  Will eventually be removed.
-  *all_factors = \&divisors;
-  *miller_rabin = \&is_strong_pseudoprime;
 
   $_Config{'nobigint'} = 0;
   $_Config{'gmp'} = 0;
@@ -2746,8 +2742,6 @@ the sigma function (see Hardy and Wright section 16.7, or OEIS A000203).
 This is the same result as evaluating the array in scalar context.
 
 Also see the L</for_divisors> functions for looping over the divisors.
-
-C<all_factors> is the deprecated name for this function.
 
 
 =head2 trial_factor

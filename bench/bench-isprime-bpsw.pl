@@ -54,12 +54,11 @@ my $sum = 0;
 cmpthese($count, {
   "MP  MR" => sub { $sum += Math::Primality::is_strong_pseudoprime("$_","2") for @rns; },
   "MPU MR" => sub { $sum += Math::Prime::Util::GMP::is_strong_pseudoprime($_,2) for @rns; },
-  #"MPUxMR" => sub { Math::Prime::Util::miller_rabin($_,2) for @rns; },
+  #"MPUxMR" => sub { Math::Prime::Util::is_strong_pseudoprime($_,2) for @rns; },
   "MP  LP" => sub { $sum += Math::Primality::is_strong_lucas_pseudoprime("$_") for @rns;},
   "MPU LP" => sub { $sum += Math::Prime::Util::GMP::is_strong_lucas_pseudoprime($_) for @rns;},
   "MPU ELP" => sub { $sum += Math::Prime::Util::GMP::is_extra_strong_lucas_pseudoprime($_) for @rns;},
-  #"MPU AELP" => sub { $sum += Math::Prime::Util::GMP::is_almost_extra_strong_lucas_pseudoprime($_) for @rns;},
+  "MPU AELP" => sub { $sum += Math::Prime::Util::GMP::is_almost_extra_strong_lucas_pseudoprime($_) for @rns;},
   "MP  IP" => sub { $sum += Math::Primality::is_prime("$_") for @rns;},
   "MPU IP" => sub { $sum += Math::Prime::Util::is_prime($_) for @rns;},
-  #"MPUxIP" => sub { Math::Prime::Util::is_prime($_) for @rns;},
 });
