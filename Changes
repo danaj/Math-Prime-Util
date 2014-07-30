@@ -3,12 +3,18 @@ Revision history for Perl module Math::Prime::Util
 
 0.43  2014-08
 
+    [ADDED]
+
+    - foroddcomposites    like forcomposites, but skips even numbers
+
     [FUNCTIONALITY AND PERFORMANCE]
 
     - Divisors sorted with qsort instead of Shell sort.  No appreciable time
       difference, but slightly less code size.
 
     - Added Micali-Schnorr generator to examples/csrand.pl.
+
+    - Added synopsis release test.  Thanks to Neil Bowers and Toby Inkster.
 
 
 0.42  2014-06-18

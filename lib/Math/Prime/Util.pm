@@ -27,7 +27,7 @@ our @EXPORT_OK =
       miller_rabin miller_rabin_random
       lucas_sequence
       primes
-      forprimes forcomposites fordivisors forpart
+      forprimes forcomposites foroddcomposites fordivisors forpart
       prime_iterator prime_iterator_object
       next_prime  prev_prime
       prime_count
@@ -508,6 +508,26 @@ sub _generic_forcomposites {
   }
 }
 
+sub _generic_foroddcomposites {
+  my($sub, $beg, $end) = @_;
+  if (!defined $end) { $end = $beg; $beg = 9; }
+  _validate_positive_integer($beg);
+  _validate_positive_integer($end);
+  $beg = 9 if $beg < 9;
+  $beg++ unless $beg & 1;
+  $end = Math::BigInt->new(''.~0) if ref($end) ne 'Math::BigInt' && $end == ~0;
+  {
+    my $pp;
+    local *_ = \$pp;
+    for ( ; $beg <= $end ; $beg += 2 ) {
+      if (!is_prime($beg)) {
+        $pp = $beg;
+        $sub->();
+      }
+    }
+  }
+}
+
 sub _generic_fordivisors {
   my($sub, $n) = @_;
   _validate_positive_integer($n);
@@ -825,9 +845,10 @@ __END__
 
 =encoding utf8
 
-=for stopwords forprimes forcomposites fordivisors forpart Möbius Deléglise Bézout totient moebius mertens liouville znorder irand primesieve uniqued k-tuples von SoE pari yafu fonction qui compte le nombre nombres voor PhD superset sqrt(N) gcd(A^M k-th (10001st primegen libtommath kronecker znprimroot znlog gcd lcm invmod untruncated vecsum gcdext chinese
+=for stopwords forprimes forcomposites foroddcomposites fordivisors forpart Möbius Deléglise Bézout totient moebius mertens liouville znorder irand primesieve uniqued k-tuples von SoE pari yafu fonction qui compte le nombre nombres voor PhD superset sqrt(N) gcd(A^M k-th (10001st primegen libtommath kronecker znprimroot znlog gcd lcm invmod untruncated vecsum gcdext chinese
 
 =for test_synopsis use v5.14;  my($k,$x);
+
 
 =head1 NAME
 
@@ -1184,7 +1205,15 @@ Objects can be passed to functions, and allow early loop exits.
 Given a block and either an end number or a start and end pair, calls the
 block for each composite in the inclusive range.  The composites,
 L<OEIS A002808|http://oeis.org/A002808>, are the numbers greater than 1
-which are not prime:  C<4, 6, 8, 9, 10, 12, 14, 15, ...>
+which are not prime:  C<4, 6, 8, 9, 10, 12, 14, 15, ...>.
+
+
+=head2 foroddcomposites
+
+Similar to L</forcomposites>, but skipping all even numbers.
+The odd composites, L<OEIS A071904|http://oeis.org/A071904>, are the
+numbers greater than 1 which are not prime and not divisible by two:
+C<9, 15, 21, 25, 27, 33, 35, ...>.
 
 
 =head2 fordivisors
@@ -2935,6 +2964,10 @@ Print some primes above 64-bit range:
 
     # Similar using Math::Pari:
     # perl -MMath::Pari=:int,PARI,nextprime -E 'my $start = PARI "100000000000000000000"; my $end = $start+1000; my $p=nextprime($start); while ($p <= $end) { say $p; $p = nextprime($p+1); }'
+
+Generate Carmichael numbers (L<OEIS A002997|http://oeis.org/A002997>):
+
+    perl -MMath::Prime::Util=:all -E 'foroddcomposites { say if $_ % carmichael_lambda($_) == 1 } 1e6;'
 
 Examining the η3(x) function of Planat and Solé (2011):
 

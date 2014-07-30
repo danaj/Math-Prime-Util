@@ -264,7 +264,7 @@ plan tests => 2 +
               ($use64 ? 3 : 2) +  # Lucas and BLS75 primality proofs
               4 +                 # M-R and Lucas on bigint
               2 +                 # PC and NP approx
-              26 +                # Misc util.pm functions
+              27 +                # Misc util.pm functions
               scalar(keys %ipp) + # is_prob_prime
               1;
 
@@ -729,6 +729,10 @@ if ($use64) {
   { my @t;
     Math::Prime::Util::_generic_forcomposites(sub {push @t,$_}, 15202630,15202641);
     is_deeply( [@t], [15202630,15202632,15202634,15202635,15202636,15202638,15202640,15202641], "generic forcomposites 15202630,15202641" );
+  }
+  { my @t;
+    Math::Prime::Util::_generic_foroddcomposites(sub {push @t,$_}, 15202630,15202641);
+    is_deeply( [@t], [15202635,15202641], "generic foroddcomposites 15202630,15202641" );
   }
   { my $k = 0;
     Math::Prime::Util::_generic_fordivisors(sub {$k += $_+int(sqrt($_))},92834);

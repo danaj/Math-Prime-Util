@@ -30,7 +30,7 @@ foreach my $m (@modules) {
   };
   $param->{trustme} = [mpu_public_regex(), mpu_factor_regex()]
     if $m eq 'Math::Prime::Util::PP';
-  $param->{trustme} = [qw/miller rabin all_factors/]
+  $param->{trustme} = [qw/miller rabin all_factors ecm_factor/]
     if $m eq 'Math::Prime::Util';
   pod_coverage_ok( $m, $param );
 }
@@ -52,7 +52,7 @@ sub mpu_public_regex {
       miller_rabin miller_rabin_random
       lucas_sequence
       primes
-      forprimes forcomposites fordivisors forpart
+      forprimes forcomposites foroddcomposites fordivisors forpart
       prime_iterator prime_iterator_object
       next_prime  prev_prime
       prime_count

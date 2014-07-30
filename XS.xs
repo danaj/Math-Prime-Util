@@ -1197,6 +1197,8 @@ forprimes (SV* block, IN SV* svbeg, IN SV* svend = 0)
 
 void
 forcomposites (SV* block, IN SV* svbeg, IN SV* svend = 0)
+  ALIAS:
+    foroddcomposites = 1
   PROTOTYPE: &$;$
   PREINIT:
     UV beg, end;
@@ -1210,12 +1212,12 @@ forcomposites (SV* block, IN SV* svbeg, IN SV* svend = 0)
       croak("Not a subroutine reference");
 
     if (!_validate_int(aTHX_ svbeg, 0) || (items >= 3 && !_validate_int(aTHX_ svend,0))) {
-      _vcallsubn(aTHX_ G_VOID|G_DISCARD, VCALL_ROOT, "_generic_forcomposites", items);
+      _vcallsubn(aTHX_ G_VOID|G_DISCARD, VCALL_ROOT, (ix == 0) ? "_generic_forcomposites" : "_generic_foroddcomposites", items);
       return;
     }
 
     if (items < 3) {
-      beg = 4;
+      beg = ix ? 9 : 4;
       end = my_svuv(svbeg);
     } else {
       beg = my_svuv(svbeg);
@@ -1243,11 +1245,13 @@ forcomposites (SV* block, IN SV* svbeg, IN SV* svend = 0)
         beg = (beg <= 4) ? 3 : beg-1;
         nextprime = next_prime(beg);
         while (beg++ < end) {
-          if (beg == nextprime)  nextprime = next_prime(beg);
-          else                   { sv_setuv(svarg, beg); MULTICALL; }
+          if (beg == nextprime)     nextprime = next_prime(beg);
+          else if (!ix || beg & 1)  { sv_setuv(svarg, beg); MULTICALL; }
         }
       } else {
-        if (beg <= 4) { /* sieve starts at 7, so handle this here */
+        if (ix) {
+          if (beg < 9)  beg = 9;
+        } else if (beg <= 4) { /* sieve starts at 7, so handle this here */
           sv_setuv(svarg, 4);  MULTICALL;
           beg = 6;
         }
@@ -1262,14 +1266,15 @@ forcomposites (SV* block, IN SV* svbeg, IN SV* svend = 0)
             prevprime = seg_base + p;
             cend = prevprime-1;  if (cend > end) cend = end;
             for (c = cbeg; c <= cend; c++) {
-              sv_setuv(svarg, c);  MULTICALL;
+              if (!ix || c & 1) { sv_setuv(svarg, c);  MULTICALL; }
             }
           } END_DO_FOR_EACH_SIEVE_PRIME
         }
         end_segment_primes(ctx);
         if (end > nextprime)   /* Complete the case where end > max_prime */
           while (nextprime++ < end)
-            { sv_setuv(svarg, nextprime);  MULTICALL; }
+            if (!ix || nextprime & 1)
+              { sv_setuv(svarg, nextprime);  MULTICALL; }
       }
       FIX_MULTICALL_REFCOUNT;
       POP_MULTICALL;
@@ -1279,7 +1284,7 @@ forcomposites (SV* block, IN SV* svbeg, IN SV* svend = 0)
     if (beg <= end) {
       beg = (beg <= 4) ? 3 : beg-1;
       while (beg++ < end) {
-        if (!is_prob_prime(beg)) {
+        if ((!ix || beg&1) && !is_prob_prime(beg)) {
           sv_setuv(svarg, beg);
           PUSHMARK(SP);
           call_sv((SV*)cv, G_VOID|G_DISCARD);

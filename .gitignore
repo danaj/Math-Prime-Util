@@ -27,3 +27,4 @@ aks.obj
 blib*
 b[0-9][0-9][0-9][0-9][0-9][0-9].txt
 script-test-data.bs
+.coveralls.yml
