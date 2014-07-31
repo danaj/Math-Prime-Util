@@ -1428,10 +1428,13 @@ UV carmichael_lambda(UV n) {
     n >>= i;
     lambda <<= (i>2) ? i-2 : i-1;
   }
-  nfactors = factor_exp(n, fac, exp);
+  nfactors = factor(n, fac);
   for (i = 0; i < nfactors; i++) {
-    UV pk = fac[i]-1, e = exp[i];
-    while (--e)  pk *= fac[i];
+    UV p = fac[i], pk = p-1;
+    while (i+1 < nfactors && p == fac[i+1]) {
+      i++;
+      pk *= p;
+    }
     lambda = lcm_ui(lambda, pk);
   }
   return lambda;

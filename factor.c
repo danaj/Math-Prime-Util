@@ -66,22 +66,22 @@ int factor(UV n, UV *factors)
   if (f*f <= n) {
     UV sp = 4, lastsp = 83;
     while (sp < lastsp) {            /* Trial division from 7 to 421 */
-      if (f*f > n) break;
       while ( (n%f) == 0 ) {
         factors[nfactors++] = f;
         n /= f;
       }
       f = primes_small[++sp];
+      if (f*f > n) break;
     }
     /* If n is small and still composite, finish it here */
     if (n < 2011*2011 && f*f <= n) {  /* Trial division from 431 to 2003 */
       while (sp < NPRIMES_SMALL) {
-        if (f*f > n) break;
         while ( (n%f) == 0 ) {
           factors[nfactors++] = f;
           n /= f;
         }
         f = primes_small[++sp];
+        if (f*f > n) break;
       }
     }
   }
