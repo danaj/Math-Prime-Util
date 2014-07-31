@@ -1418,17 +1418,20 @@ UV carmichael_lambda(UV n) {
   UV fac[MPU_MAX_FACTORS+1];
   UV exp[MPU_MAX_FACTORS+1];
   int i, nfactors;
-  UV j, lambda = 1;
+  UV lambda = 1;
 
   if (n < 8) return totient(n);
   if ((n & (n-1)) == 0) return n >> 2;
 
+  i = ctz(n);
+  if (i > 0) {
+    n >>= i;
+    lambda <<= (i>2) ? i-2 : i-1;
+  }
   nfactors = factor_exp(n, fac, exp);
-  if (fac[0] == 2 && exp[0] > 2)  exp[0]--;
   for (i = 0; i < nfactors; i++) {
-    UV pk = fac[i]-1;
-    for (j = 1; j < exp[i]; j++)
-      pk *= fac[i];
+    UV pk = fac[i]-1, e = exp[i];
+    while (--e)  pk *= fac[i];
     lambda = lcm_ui(lambda, pk);
   }
   return lambda;

@@ -198,19 +198,18 @@ int factor(UV n, UV *factors)
 
 int factor_exp(UV n, UV *factors, UV* exponents)
 {
-  int i, j, nfactors;
+  int i = 1, j = 1, nfactors;
 
   if (n == 1) return 0;
-  /* MPUassert(factors != 0, "factors array is null"); */
   nfactors = factor(n, factors);
 
   if (exponents == 0) {
-    for (i = 1, j = 1; i < nfactors; i++)
+    for (; i < nfactors; i++)
       if (factors[i] != factors[i-1])
         factors[j++] = factors[i];
   } else {
     exponents[0] = 1;
-    for (i = 1, j = 1; i < nfactors; i++) {
+    for (; i < nfactors; i++) {
       if (factors[i] != factors[i-1]) {
         exponents[j] = 1;
         factors[j++] = factors[i];
