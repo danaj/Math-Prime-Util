@@ -26,7 +26,7 @@ our @EXPORT_OK =
       is_power
       miller_rabin_random
       lucas_sequence
-      primes
+      primes twin_primes
       forprimes forcomposites foroddcomposites fordivisors forpart
       prime_iterator prime_iterator_object
       next_prime  prev_prime
@@ -253,11 +253,10 @@ sub primes {
   my($low,$high) = @_;
   if (scalar @_ > 1) {
     _validate_num($low) || _validate_positive_integer($low);
-    _validate_num($high) || _validate_positive_integer($high);
   } else {
     ($low,$high) = (2, $low);
-    _validate_num($high) || _validate_positive_integer($high);
   }
+  _validate_num($high) || _validate_positive_integer($high);
 
   my $sref = [];
   return $sref if ($low > $high) || ($high < 2);
@@ -303,6 +302,32 @@ sub primes {
   #   return (wantarray) ? @{$sref} : $sref;
   # but I think the dual interface could be confusing, albeit often handy.
   return $sref;
+}
+
+sub twin_primes {
+  my($low,$high) = @_;
+  if (scalar @_ > 1) {
+    _validate_num($low) || _validate_positive_integer($low);
+  } else {
+    ($low,$high) = (2, $low);
+  }
+  _validate_num($high) || _validate_positive_integer($high);
+
+  my $sref = [];
+  return $sref if ($low > $high) || ($high < 2);
+
+  if ($high > $_XS_MAXVAL) {
+    my $lastp = -1;
+    ($low, $high) = (next_prime($low-1), $high + 2);
+    while ($low <= $high) {
+      #warn "low $low high $high lastp $lastp\n";
+      push @$sref, $lastp if $lastp+2 == $low;
+      ($lastp, $low) = ($low, next_prime($low));
+    }
+    return $sref;
+  }
+
+  return segment_twin_primes($low, $high);
 }
 
 #############################################################################
@@ -1358,6 +1383,19 @@ R function, it still should have error less than C<0.00000000000000001%>.
 
 A slightly faster but much less accurate answer can be obtained by averaging
 the upper and lower bounds.
+
+
+=head2 twin_primes
+
+Returns all the twin primes (first element of the pair) between the lower
+and upper limits (inclusive), with a lower limit of C<2> if none is given.
+Given a twin prime pair C<(p,q)> with C<q = p + 2>, C<p prime>,
+and <q prime>, this function uses C<p> to represent the pair.  Hence the
+bounds need to include C<p>, and the returned list will have C<p> but not C<q>.
+
+This works just like the L</primes> function, though only the first primes of
+twin prime pairs are returned.  Like that function, an array reference is
+returned.
 
 
 =head2 twin_prime_count

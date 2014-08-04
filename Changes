@@ -6,6 +6,7 @@ Revision history for Perl module Math::Prime::Util
     [ADDED]
 
     - foroddcomposites    like forcomposites, but skips even numbers
+    - twin_primes         as primes but for twin primes
 
     [REMOVED DEPRECATED NAMES]
 

@@ -26,7 +26,7 @@ plan tests => scalar @modules;
 
 foreach my $m (@modules) {
   my $param = {
-    also_private => [ qr/^(erat|segment|trial|sieve)_primes$/ ],
+    also_private => [ qr/^(erat|segment|trial|sieve|segment_twin)_primes$/ ],
   };
   $param->{trustme} = [mpu_public_regex(), mpu_factor_regex()]
     if $m eq 'Math::Prime::Util::PP';
@@ -51,7 +51,7 @@ sub mpu_public_regex {
       is_power
       miller_rabin_random
       lucas_sequence
-      primes
+      primes twin_primes
       forprimes forcomposites foroddcomposites fordivisors forpart
       prime_iterator prime_iterator_object
       next_prime  prev_prime

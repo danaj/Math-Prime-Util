@@ -372,6 +372,7 @@ sieve_primes(IN UV low, IN UV high)
     trial_primes = 1
     erat_primes = 2
     segment_primes = 3
+    segment_twin_primes = 4
   PREINIT:
     AV* av;
   PPCODE:
@@ -382,11 +383,12 @@ sieve_primes(IN UV low, IN UV high)
       PUTBACK;
       SP = NULL; /* never use SP again, poison */
     }
-    if ((low <= 2) && (high >= 2)) { av_push(av, newSVuv( 2 )); }
+    if ((low <= 2) && (high >= 2) && ix != 4) { av_push(av, newSVuv( 2 )); }
     if ((low <= 3) && (high >= 3)) { av_push(av, newSVuv( 3 )); }
     if ((low <= 5) && (high >= 5)) { av_push(av, newSVuv( 5 )); }
     if (low < 7)  low = 7;
     if (low <= high) {
+      if (ix == 4) high += 2;
       if (ix == 0) {                          /* Sieve with primary cache */
         START_DO_FOR_EACH_PRIME(low, high) {
           av_push(av,newSVuv(p));
@@ -403,16 +405,18 @@ sieve_primes(IN UV low, IN UV high)
            av_push(av,newSVuv(p));
         } END_DO_FOR_EACH_SIEVE_PRIME
         Safefree(sieve);
-      } else if (ix == 3) {                   /* Segment */
+      } else if (ix == 3 || ix == 4) {        /* Segment */
         unsigned char* segment;
-        UV seg_base, seg_low, seg_high;
+        UV seg_base, seg_low, seg_high, lastp = 0;
         void* ctx = start_segment_primes(low, high, &segment);
         while (next_segment_primes(ctx, &seg_base, &seg_low, &seg_high)) {
           START_DO_FOR_EACH_SIEVE_PRIME( segment, seg_low - seg_base, seg_high - seg_base )
-            av_push(av,newSVuv( seg_base + p ));
+            p += seg_base;
+            if (ix == 3)            av_push(av,newSVuv( p ));
+            else if (lastp+2 == p)  av_push(av,newSVuv( lastp ));
+            lastp = p;
           END_DO_FOR_EACH_SIEVE_PRIME
         }
-        end_segment_primes(ctx);
       }
     }
     return; /* skip implicit PUTBACK */
