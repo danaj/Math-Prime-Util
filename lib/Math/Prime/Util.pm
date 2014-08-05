@@ -313,18 +313,12 @@ sub twin_primes {
   }
   _validate_num($high) || _validate_positive_integer($high);
 
-  my $sref = [];
-  return $sref if ($low > $high) || ($high < 2);
+  return [] if ($low > $high) || ($high < 2);
 
   if ($high > $_XS_MAXVAL) {
-    my $lastp = -1;
-    ($low, $high) = (next_prime($low-1), $high + 2);
-    while ($low <= $high) {
-      #warn "low $low high $high lastp $lastp\n";
-      push @$sref, $lastp if $lastp+2 == $low;
-      ($lastp, $low) = ($low, next_prime($low));
-    }
-    return $sref;
+    my($lp, @tp) = (-1);
+    forprimes { push @tp, $lp if $lp+2 == $_; $lp = $_; } $low,$high+2;
+    return \@tp;
   }
 
   return segment_twin_primes($low, $high);
