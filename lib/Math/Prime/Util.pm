@@ -1381,8 +1381,9 @@ the upper and lower bounds.
 
 =head2 twin_primes
 
-Returns all the twin primes (first element of the pair) between the lower
-and upper limits (inclusive), with a lower limit of C<2> if none is given.
+Returns the lesser of twin primes between the lower and upper limits
+(inclusive), with a lower limit of C<2> if none is given.  This is
+L<OEIS A001359|http://oeis.org/A001359>.
 Given a twin prime pair C<(p,q)> with C<q = p + 2>, C<p prime>,
 and <q prime>, this function uses C<p> to represent the pair.  Hence the
 bounds need to include C<p>, and the returned list will have C<p> but not C<q>.
