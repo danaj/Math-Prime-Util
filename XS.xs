@@ -1386,11 +1386,12 @@ forpart (SV* block, IN SV* svn, IN SV* svh = 0)
       if ((svp = hv_fetchs(rhash, "amax", 0)) != NULL) amax = my_svuv(*svp);
       if ((svp = hv_fetchs(rhash, "nmin", 0)) != NULL) nmin = my_svuv(*svp);
       if ((svp = hv_fetchs(rhash, "nmax", 0)) != NULL) nmax = my_svuv(*svp);
-      if (amin < 1) amin = 1;
+
       if (amax > n) amax = n;
       if (nmax > n) nmax = n;
     }
 
+    if (n==0 || (nmin <= nmax && amin <= amax && nmax > 0 && amax > 0))
     { /* ZS1 algorithm from Zoghbi and Stojmenovic 1998) */
       UV *x, m, h;
       New(0, x, n+2, UV);  /* plus 2 because of n=0 */

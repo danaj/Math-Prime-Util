@@ -13,7 +13,7 @@ my $count = shift || 20;
 # Time for the first 300k:
 #
 # Not iterators:
-#   0.2s   say join "\n", @{twin_primes(2,nth_twin_prime(3e5))}
+#   0.19s  say join "\n", @{twin_primes(2,nth_twin_prime(3e5))}
 #   0.5s   $l=2; forprimes { say $l if $l+2==$_; $l=$_; } 2+nth_twin_prime(3e5)
 #   0.8s   bin/primes.pl --twin 2 64764839
 #
