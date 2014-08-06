@@ -76,7 +76,7 @@ if (!$extra) {
   foreach my $n (@ns) { delete $bparts{$n} }
 }
 
-plan tests => scalar(@parts) + scalar(keys(%bparts)) + 15;
+plan tests => scalar(@parts) + scalar(keys(%bparts)) + 16;
 
 
 foreach my $n (0..$#parts) {
@@ -151,3 +151,6 @@ while (my($n, $epart) = each (%bparts)) {
   forpart { push @p, [@_] unless scalar grep {!is_prime($_)} @_ } 20,{amin=>3};
   is_deeply( [@p], [[17,3], [13,7], [11,3,3,3], [7,7,3,3], [7,5,5,3], [5,5,5,5], [5,3,3,3,3,3]], "forpart 20 restricted to odd primes" );
 }
+
+{ my @p=(); forpart { push @p, [@_] } 21, {amax=>0};
+  is_deeply( [@p], [], "forpart 21 restricted amax 0" ); }
