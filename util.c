@@ -923,16 +923,20 @@ UV twin_prime_count(UV beg, UV end)
     UV seg_base, seg_low, seg_high;
     void* ctx = start_segment_primes(beg, end, &segment);
     while (next_segment_primes(ctx, &seg_base, &seg_low, &seg_high)) {
-      UV p, bytes = (seg_high-seg_low+29)/30;
-      for (p = 0; p < bytes; p++) {
-        UV s = segment[p];
+      UV bytes = (seg_high-seg_low+29)/30;
+      unsigned char s;
+      const unsigned char* sp = segment;
+      const unsigned char* const spend = segment + bytes - 1;
+      while (sp < spend) {
+        s = *sp++;
         if (!(s & 0x0C)) sum++;
         if (!(s & 0x30)) sum++;
-        if (!(s & 0x80)) {
-          if (p+1 < bytes) { if (!(segment[p+1] & 0x01))   sum++; }
-          else             { if (_XS_is_prime(seg_high+2)) sum++; }
-        }
+        if (!(s & 0x80) && !(*sp & 0x01)) sum++;
       }
+      s = *sp;
+      if (!(s & 0x0C)) sum++;
+      if (!(s & 0x30)) sum++;
+      if (!(s & 0x80) && _XS_is_prime(seg_high+2)) sum++;
     }
     end_segment_primes(ctx);
   }
