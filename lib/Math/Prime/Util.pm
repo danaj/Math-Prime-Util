@@ -1010,15 +1010,16 @@ Version 0.42
 
 =head1 DESCRIPTION
 
-A set of utilities related to prime numbers.  These include multiple sieving
-methods, is_prime, prime_count, nth_prime, approximations and bounds for
-the prime_count and nth prime, next_prime and prev_prime, factoring utilities,
-and more.
+A module for number theory in Perl.  This includes prime sieving, primality
+tests, primality proofs, integer factoring, counts / bounds / approximations
+for primes, nth primes, and twin primes, random prime generation,
+and much more.
 
-The default sieving and factoring are intended to be (and currently are)
-the fastest on CPAN, including L<Math::Prime::XS>, L<Math::Prime::FastSieve>,
-L<Math::Factor::XS>, L<Math::Prime::TiedArray>, L<Math::Big::Factors>,
-L<Math::Factoring>, and L<Math::Primality> (when the GMP module is available).
+This module is the fastest on CPAN for almost all operations.  Only
+L<Math::Pari> is faster for a few operations.  This includes
+L<Math::Prime::XS>, L<Math::Prime::FastSieve>, L<Math::Factor::XS>,
+L<Math::Prime::TiedArray>, L<Math::Big::Factors>, L<Math::Factoring>,
+and L<Math::Primality> (when the GMP module is available).
 For numbers in the 10-20 digit range, it is often orders of magnitude faster.
 Typically it is faster than L<Math::Pari> for 64-bit operations.
 
