@@ -705,7 +705,7 @@ UV nth_prime_upper(UV n)
     upper = fn * (flogn + flog2n - 1.0 + ((flog2n-1.95)/flogn));
   else if (n >=  39017)    /* Dusart 1999 page 14 */
     upper = fn * (flogn + flog2n - 0.9484);
-  else if (n >=     6)     /* Modified from Robin 1983 for 6-39016 _only_ */
+  else if (n >=     6)     /* Modified from Robin 1983 for 50-39016 _only_ */
     upper = fn * ( flogn  +  0.5982 * flog2n ) - 5;
   else
     upper = fn * ( flogn + flog2n );
