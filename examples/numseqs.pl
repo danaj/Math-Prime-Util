@@ -8,6 +8,9 @@ use Math::BigInt try=>"GMP";
 #   https://metacpan.org/release/Math-NumSeq
 # Some of them are faster, some are much faster, a few are slower.
 # This usually shows up once past ~ 10k values, or for large preds/iths.
+#
+# For comparison, we can use something like:
+#  perl -MMath::NumSeq::Emirps -E 'my $seq = Math::NumSeq::Emirps->new; say 0+($seq->next)[1] for 1..1000'
 
 # In general, these will work just fine for values up to 2^64, and typically
 # quite well beyond that.  This is in contrast to most Math::NumSeq sequences
@@ -108,12 +111,15 @@ if      ($type eq 'Abundant') {
   }
   print join " ", @n;
 } elsif ($type eq 'Emirps') {
-  my $i = 13;
+  # About 15x faster until 200k or so, then exponentially faster.
+  my($i, $inc) = (13, 100+10*$count);
   while (@n < $count) {
-    $i = next_prime($i) while !is_prime(reverse $i) || $i eq reverse($i);
-    push @n, $i;
-    $i = next_prime($i);
+    forprimes {
+      push @n, $_ if is_prime(reverse $_) && $_ ne reverse($_)
+    } $i, $i+$inc-1;
+    ($i, $inc) = ($i+$inc, int($inc * 1.03) + 1000);
   }
+  splice @n, $count;
   print join " ", @n;
 } elsif ($type eq 'ErdosSelfridgeClass') {
   if ($arg eq 'primes') {
