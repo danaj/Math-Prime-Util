@@ -12,7 +12,7 @@
  * so it may buy us nothing.  But it's worth trying.
  */
 
-/* These math functions are a clusterfrack.  They're defined by C99, but
+/* The C99 LD math functions are a clusterfrack.  They're defined by C99, but
  * NetBSD doesn't have them.  You need them in both the headers and libraries,
  * but there is no standard way to find out if the libraries have them.  The
  * best way (I believe) to deal with this is having the make system do test

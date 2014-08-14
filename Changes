@@ -1,12 +1,13 @@
 Revision history for Perl module Math::Prime::Util
 
 
-0.43  2014-08
+0.43  2014-08-16
 
     [ADDED]
 
-    - foroddcomposites    like forcomposites, but skips even numbers
-    - twin_primes         as primes but for twin primes
+    - foroddcomposites      like forcomposites, but skips even numbers
+    - twin_primes           as primes but for twin primes
+    - config: use_primeinc  allow the fast but bad PRIMEINC random prime method
 
     [REMOVED DEPRECATED NAMES]
 
