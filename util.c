@@ -1420,7 +1420,6 @@ UV jordan_totient(UV k, UV n) {
 
 UV carmichael_lambda(UV n) {
   UV fac[MPU_MAX_FACTORS+1];
-  UV exp[MPU_MAX_FACTORS+1];
   int i, nfactors;
   UV lambda = 1;
 

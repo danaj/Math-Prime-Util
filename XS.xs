@@ -995,9 +995,10 @@ euler_phi(IN SV* svlo, ...)
         UV i;
         EXTEND(SP, hi-lo+1);
         if (ix == 0) {
-          UV* totients = _totient_range(lo, hi);
+          UV  arraylo = (lo < 100)  ?  0  :  lo;
+          UV* totients = _totient_range(arraylo, hi);
           for (i = lo; i <= hi; i++)
-            PUSHs(sv_2mortal(newSVuv(totients[i-lo])));
+            PUSHs(sv_2mortal(newSVuv(totients[i-arraylo])));
           Safefree(totients);
         } else {
           signed char* mu = _moebius_range(lo, hi);

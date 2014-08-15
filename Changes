@@ -24,6 +24,8 @@ Revision history for Perl module Math::Prime::Util
 
     - Added synopsis release test.  Thanks to Neil Bowers and Toby Inkster.
 
+    - ranged euler_phi is more efficient when lo < 100.
+
 
 0.42  2014-06-18
 
