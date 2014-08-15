@@ -26,11 +26,11 @@ plan tests => scalar @modules;
 
 foreach my $m (@modules) {
   my $param = {
-    also_private => [ qr/^(erat|segment|trial|sieve)_primes$/ ],
+    also_private => [ qr/^(erat|segment|trial|sieve|segment_twin)_primes$/ ],
   };
   $param->{trustme} = [mpu_public_regex(), mpu_factor_regex()]
     if $m eq 'Math::Prime::Util::PP';
-  $param->{trustme} = [qw/miller rabin all_factors/]
+  $param->{trustme} = [qw/ecm_factor/]
     if $m eq 'Math::Prime::Util';
   pod_coverage_ok( $m, $param );
 }
@@ -49,10 +49,10 @@ sub mpu_public_regex {
       is_frobenius_underwood_pseudoprime
       is_aks_prime is_bpsw_prime
       is_power
-      miller_rabin miller_rabin_random
+      miller_rabin_random
       lucas_sequence
-      primes
-      forprimes forcomposites fordivisors forpart
+      primes twin_primes
+      forprimes forcomposites foroddcomposites fordivisors forpart
       prime_iterator prime_iterator_object
       next_prime  prev_prime
       prime_count
@@ -65,7 +65,7 @@ sub mpu_public_regex {
       random_maurer_prime random_maurer_prime_with_cert
       random_shawe_taylor_prime random_shawe_taylor_prime_with_cert
       primorial pn_primorial consecutive_integer_lcm gcdext chinese
-      gcd lcm factor factor_exp all_factors divisors valuation invmod vecsum
+      gcd lcm factor factor_exp divisors valuation invmod vecsum
       moebius mertens euler_phi jordan_totient exp_mangoldt liouville
       partitions
       chebyshev_theta chebyshev_psi

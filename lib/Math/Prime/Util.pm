@@ -24,10 +24,10 @@ our @EXPORT_OK =
       is_frobenius_underwood_pseudoprime
       is_aks_prime
       is_power
-      miller_rabin miller_rabin_random
+      miller_rabin_random
       lucas_sequence
-      primes
-      forprimes forcomposites fordivisors forpart
+      primes twin_primes
+      forprimes forcomposites foroddcomposites fordivisors forpart
       prime_iterator prime_iterator_object
       next_prime  prev_prime
       prime_count
@@ -40,7 +40,7 @@ our @EXPORT_OK =
       random_maurer_prime random_maurer_prime_with_cert
       random_shawe_taylor_prime random_shawe_taylor_prime_with_cert
       primorial pn_primorial consecutive_integer_lcm gcdext chinese
-      gcd lcm factor factor_exp all_factors divisors valuation invmod vecsum
+      gcd lcm factor factor_exp divisors valuation invmod vecsum
       moebius mertens euler_phi jordan_totient exp_mangoldt liouville
       partitions
       chebyshev_theta chebyshev_psi
@@ -106,10 +106,6 @@ BEGIN {
     *factor_exp    = \&Math::Prime::Util::_generic_factor_exp;
   };
 
-  # aliases for deprecated names.  Will eventually be removed.
-  *all_factors = \&divisors;
-  *miller_rabin = \&is_strong_pseudoprime;
-
   $_Config{'nobigint'} = 0;
   $_Config{'gmp'} = 0;
   # See if they have the GMP module and haven't requested it not to be used.
@@ -130,6 +126,7 @@ $_Config{'maxprimeidx'} = MPU_MAXPRIMEIDX;
 $_Config{'assume_rh'}   = 0;
 $_Config{'verbose'}     = 0;
 $_Config{'irand'}       = undef;
+$_Config{'use_primeinc'} = 0;
 
 # used for code like:
 #    return _XS_foo($n)  if $n <= $_XS_MAXVAL
@@ -170,6 +167,8 @@ sub prime_set_config {
       _XS_set_callgmp($_HAVE_GMP) if $_Config{'xs'};
     } elsif ($param eq 'nobigint') {
       $_Config{'nobigint'} = ($value) ? 1 : 0;
+    } elsif ($param eq 'use_primeinc') {
+      $_Config{'use_primeinc'} = ($value) ? 1 : 0;
     } elsif ($param eq 'irand') {
       croak "irand must supply a sub" unless (!defined $value) || (ref($value) eq 'CODE');
       $_Config{'irand'} = $value;
@@ -200,6 +199,7 @@ sub _to_bigint {
   return Math::BigInt->new("$_[0]");
 }
 sub _reftyped {
+  return unless defined $_[1];
   my $ref0 = ref($_[0]);
   if ($ref0) {
     return  ($ref0 eq ref($_[1])) ?  $_[1]  :  $ref0->new("$_[1]");
@@ -256,11 +256,10 @@ sub primes {
   my($low,$high) = @_;
   if (scalar @_ > 1) {
     _validate_num($low) || _validate_positive_integer($low);
-    _validate_num($high) || _validate_positive_integer($high);
   } else {
     ($low,$high) = (2, $low);
-    _validate_num($high) || _validate_positive_integer($high);
   }
+  _validate_num($high) || _validate_positive_integer($high);
 
   my $sref = [];
   return $sref if ($low > $high) || ($high < 2);
@@ -306,6 +305,26 @@ sub primes {
   #   return (wantarray) ? @{$sref} : $sref;
   # but I think the dual interface could be confusing, albeit often handy.
   return $sref;
+}
+
+sub twin_primes {
+  my($low,$high) = @_;
+  if (scalar @_ > 1) {
+    _validate_num($low) || _validate_positive_integer($low);
+  } else {
+    ($low,$high) = (2, $low);
+  }
+  _validate_num($high) || _validate_positive_integer($high);
+
+  return [] if ($low > $high) || ($high < 2);
+
+  if ($high > $_XS_MAXVAL) {
+    my($lp, @tp) = (-1);
+    forprimes { push @tp, $lp if $lp+2 == $_; $lp = $_; } $low,$high+2;
+    return \@tp;
+  }
+
+  return segment_twin_primes($low, $high);
 }
 
 #############################################################################
@@ -499,6 +518,26 @@ sub _generic_forcomposites {
     my $pp;
     local *_ = \$pp;
     for ( ; $beg <= $end ; $beg++ ) {
+      if (!is_prime($beg)) {
+        $pp = $beg;
+        $sub->();
+      }
+    }
+  }
+}
+
+sub _generic_foroddcomposites {
+  my($sub, $beg, $end) = @_;
+  if (!defined $end) { $end = $beg; $beg = 9; }
+  _validate_positive_integer($beg);
+  _validate_positive_integer($end);
+  $beg = 9 if $beg < 9;
+  $beg++ unless $beg & 1;
+  $end = Math::BigInt->new(''.~0) if ref($end) ne 'Math::BigInt' && $end == ~0;
+  {
+    my $pp;
+    local *_ = \$pp;
+    for ( ; $beg <= $end ; $beg += 2 ) {
       if (!is_prime($beg)) {
         $pp = $beg;
         $sub->();
@@ -824,7 +863,9 @@ __END__
 
 =encoding utf8
 
-=for stopwords forprimes forcomposites fordivisors forpart Möbius Deléglise Bézout totient moebius mertens liouville znorder irand primesieve uniqued k-tuples von SoE pari yafu fonction qui compte le nombre nombres voor PhD superset sqrt(N) gcd(A^M k-th (10001st primegen libtommath kronecker znprimroot znlog gcd lcm invmod untruncated vecsum gcdext chinese
+=for stopwords forprimes forcomposites foroddcomposites fordivisors forpart Möbius Deléglise Bézout totient moebius mertens liouville znorder irand primesieve uniqued k-tuples von SoE pari yafu fonction qui compte le nombre nombres voor PhD superset sqrt(N) gcd(A^M k-th (10001st primegen libtommath kronecker znprimroot znlog gcd lcm invmod untruncated vecsum gcdext chinese
+
+=for test_synopsis use v5.14;  my($k,$x);
 
 
 =head1 NAME
@@ -848,7 +889,7 @@ Version 0.42
   my $aref = primes( 100_000_000 );
 
   # All the primes between 5k and 10k inclusive
-  my $aref = primes( 5_000, 10_000 );
+  $aref = primes( 5_000, 10_000 );
 
   # If you want them in an array instead
   my @primes = @{primes( 500 )};
@@ -860,6 +901,7 @@ Version 0.42
 
   # For non-bigints, is_prime and is_prob_prime will always be 0 or 2.
   # They return 0 (composite), 2 (prime), or 1 (probably prime)
+  my $n = 1000003;  # for example
   say "$n is prime"  if is_prime($n);
   say "$n is ", (qw(composite maybe_prime? prime))[is_prob_prime($n)];
 
@@ -879,7 +921,7 @@ Version 0.42
 
 
   # Return Pi(n) -- the number of primes E<lt>= n.
-  $primepi = prime_count( 1_000_000 );
+  my $primepi = prime_count( 1_000_000 );
   $primepi = prime_count( 10**14, 10**14+1000 );  # also does ranges
 
   # Quickly return an approximation to Pi(n)
@@ -902,15 +944,15 @@ Version 0.42
 
 
   # Get the prime factors of a number
-  @prime_factors = factor( $n );
+  my @prime_factors = factor( $n );
 
   # Return ([p1,e1],[p2,e2], ...) for $n = p1^e1 * p2*e2 * ...
-  @pe = factor_exp( $n );
+  my @pe = factor_exp( $n );
 
   # Get all divisors other than 1 and n
-  @divisors = divisors( $n );
+  my @divisors = divisors( $n );
   # Or just apply a block for each one
-  fordivisors  { $sum += $_ + $_*$_ }  $n;
+  my $sum = 0; fordivisors  { $sum += $_ + $_*$_ }  $n;
 
   # Euler phi (Euler's totient) on a large number
   use bigint;  say euler_phi( 801294088771394680000412 );
@@ -931,10 +973,10 @@ Version 0.42
   forpart { say "@_" unless scalar grep { !is_prime($_) } @_ } 25;
 
   # divisor sum
-  $sigma  = divisor_sum( $n );       # sum of divisors
-  $sigma0 = divisor_sum( $n, 0 );    # count of divisors
-  $sigmak = divisor_sum( $n, $k );
-  $sigmaf = divisor_sum( $n, sub { log($_[0]) } ); # arbitrary func
+  my $sigma  = divisor_sum( $n );       # sum of divisors
+  my $sigma0 = divisor_sum( $n, 0 );    # count of divisors
+  my $sigmak = divisor_sum( $n, $k );
+  my $sigmaf = divisor_sum( $n, sub { log($_[0]) } ); # arbitrary func
 
   # primorial n#, primorial p(n)#, and lcm
   say "The product of primes below 47 is ",     primorial(47);
@@ -944,8 +986,8 @@ Version 0.42
   # Ei, li, and Riemann R functions
   my $ei   = ExponentialIntegral($x);   # $x a real: $x != 0
   my $li   = LogarithmicIntegral($x);   # $x a real: $x >= 0
-  my $R    = RiemannR($x)               # $x a real: $x > 0
-  my $Zeta = RiemannZeta($x)            # $x a real: $x >= 0
+  my $R    = RiemannR($x);              # $x a real: $x > 0
+  my $Zeta = RiemannZeta($x);           # $x a real: $x >= 0
 
 
   # Precalculate a sieve, possibly speeding up later work.
@@ -959,26 +1001,28 @@ Version 0.42
 
 
   # Random primes
-  my $small_prime = random_prime(1000);      # random prime <= limit
-  my $rand_prime = random_prime(100, 10000); # random prime within a range
-  my $rand_prime = random_ndigit_prime(6);   # random 6-digit prime
-  my $rand_prime = random_nbit_prime(128);   # random 128-bit prime
-  my $rand_prime = random_strong_prime(256); # random 256-bit strong prime
-  my $rand_prime = random_maurer_prime(256); # random 256-bit provable prime
-  my $rand_prime = random_shawe_taylor_prime(256);  # as above
+  my($rand_prime);
+  $rand_prime = random_prime(1000);        # random prime <= limit
+  $rand_prime = random_prime(100, 10000);  # random prime within a range
+  $rand_prime = random_ndigit_prime(6);    # random 6-digit prime
+  $rand_prime = random_nbit_prime(128);    # random 128-bit prime
+  $rand_prime = random_strong_prime(256);  # random 256-bit strong prime
+  $rand_prime = random_maurer_prime(256);  # random 256-bit provable prime
+  $rand_prime = random_shawe_taylor_prime(256);  # as above
 
 
 =head1 DESCRIPTION
 
-A set of utilities related to prime numbers.  These include multiple sieving
-methods, is_prime, prime_count, nth_prime, approximations and bounds for
-the prime_count and nth prime, next_prime and prev_prime, factoring utilities,
-and more.
+A module for number theory in Perl.  This includes prime sieving, primality
+tests, primality proofs, integer factoring, counts / bounds / approximations
+for primes, nth primes, and twin primes, random prime generation,
+and much more.
 
-The default sieving and factoring are intended to be (and currently are)
-the fastest on CPAN, including L<Math::Prime::XS>, L<Math::Prime::FastSieve>,
-L<Math::Factor::XS>, L<Math::Prime::TiedArray>, L<Math::Big::Factors>,
-L<Math::Factoring>, and L<Math::Primality> (when the GMP module is available).
+This module is the fastest on CPAN for almost all operations.  Only
+L<Math::Pari> is faster for a few operations.  This includes
+L<Math::Prime::XS>, L<Math::Prime::FastSieve>, L<Math::Factor::XS>,
+L<Math::Prime::TiedArray>, L<Math::Big::Factors>, L<Math::Factoring>,
+and L<Math::Primality> (when the GMP module is available).
 For numbers in the 10-20 digit range, it is often orders of magnitude faster.
 Typically it is faster than L<Math::Pari> for 64-bit operations.
 
@@ -1180,7 +1224,15 @@ Objects can be passed to functions, and allow early loop exits.
 Given a block and either an end number or a start and end pair, calls the
 block for each composite in the inclusive range.  The composites,
 L<OEIS A002808|http://oeis.org/A002808>, are the numbers greater than 1
-which are not prime:  C<4, 6, 8, 9, 10, 12, 14, 15, ...>
+which are not prime:  C<4, 6, 8, 9, 10, 12, 14, 15, ...>.
+
+
+=head2 foroddcomposites
+
+Similar to L</forcomposites>, but skipping all even numbers.
+The odd composites, L<OEIS A071904|http://oeis.org/A071904>, are the
+numbers greater than 1 which are not prime and not divisible by two:
+C<9, 15, 21, 25, 27, 33, 35, ...>.
 
 
 =head2 fordivisors
@@ -1329,6 +1381,20 @@ R function, it still should have error less than C<0.00000000000000001%>.
 
 A slightly faster but much less accurate answer can be obtained by averaging
 the upper and lower bounds.
+
+
+=head2 twin_primes
+
+Returns the lesser of twin primes between the lower and upper limits
+(inclusive), with a lower limit of C<2> if none is given.  This is
+L<OEIS A001359|http://oeis.org/A001359>.
+Given a twin prime pair C<(p,q)> with C<q = p + 2>, C<p prime>,
+and <q prime>, this function uses C<p> to represent the pair.  Hence the
+bounds need to include C<p>, and the returned list will have C<p> but not C<q>.
+
+This works just like the L</primes> function, though only the first primes of
+twin prime pairs are returned.  Like that function, an array reference is
+returned.
 
 
 =head2 twin_prime_count
@@ -2328,6 +2394,12 @@ functions return a uniformly selected prime from the set of primes within
 the range.  Hence given C<random_prime(1000)>, the numbers 2, 3, 487, 631,
 and 997 all have the same probability of being returned.
 
+The configuration option C<use_primeinc> can be set to override this and
+use the PRIMEINC algorithm for non-trivial sizes.  This applies to all
+random prime functions.  Never use this for crypto or if uniformly random
+primes are desired, but if you really don't care and just want any old
+prime in the range, setting this may make this run 2-4x faster.
+
 For small numbers, a random index selection is done, which gives ideal
 uniformity and is very efficient with small inputs.  For ranges larger than
 this ~16-bit threshold but within the native bit size, a Monte Carlo method
@@ -2605,6 +2677,7 @@ the configuration, so changing it has no effect.  The settings include:
   maxprime        the largest representable prime, without bigint
   maxprimeidx     the index of maxprime, without bigint
   assume_rh       whether to assume the Riemann hypothesis (default 0)
+  use_primeinc    allow the PRIMEINC random prime algorithm
 
 =head2 prime_set_config
 
@@ -2641,6 +2714,10 @@ Allows setting of some parameters.  Currently the only parameters are:
   irand        Takes a code ref to an irand function returning a
                uniform number between 0 and 2**32-1.  This will be
                used for all random number generation in the module.
+
+  use_primeinc When generating random primes, allow the PRIMEINC algorithm
+               to be used.  This can be 2-4x faster than the default
+               methods, but gives bad uniformity.
 
 
 =head1 FACTORING FUNCTIONS
@@ -2713,8 +2790,6 @@ the sigma function (see Hardy and Wright section 16.7, or OEIS A000203).
 This is the same result as evaluating the array in scalar context.
 
 Also see the L</for_divisors> functions for looping over the divisors.
-
-C<all_factors> is the deprecated name for this function.
 
 
 =head2 trial_factor
@@ -2931,6 +3006,10 @@ Print some primes above 64-bit range:
 
     # Similar using Math::Pari:
     # perl -MMath::Pari=:int,PARI,nextprime -E 'my $start = PARI "100000000000000000000"; my $end = $start+1000; my $p=nextprime($start); while ($p <= $end) { say $p; $p = nextprime($p+1); }'
+
+Generate Carmichael numbers (L<OEIS A002997|http://oeis.org/A002997>):
+
+    perl -MMath::Prime::Util=:all -E 'foroddcomposites { say if $_ % carmichael_lambda($_) == 1 } 1e6;'
 
 Examining the η3(x) function of Planat and Solé (2011):
 
@@ -3682,11 +3761,12 @@ L<Math::Random::ISAAC::XS> installed.
   CPMaurer  = Crypt::Primes::maurer
 
 L</random_nbit_prime> is reasonably fast, and for most purposes should
-suffice.  For cryptographic purposes, one may want additional tests or a
-proven prime.  Additional tests are quite cheap, as shown by the time for
-three extra M-R and a Frobenius test.  At these bit sizes, the chances a
-composite number passes BPSW, three more M-R tests, and a Frobenius test
-is I<extraordinarily> small.
+suffice.  If good uniformity isn't important, the C<use_primeinc> config
+option can be set and double the speed.  For cryptographic purposes, one
+may want additional tests or a proven prime.  Additional tests are quite
+cheap, as shown by the time for three extra M-R and a Frobenius test.  At
+these bit sizes, the chances a composite number passes BPSW, three more
+M-R tests, and a Frobenius test is I<extraordinarily> small.
 
 L</random_proven_prime> provides a randomly selected prime with an optional
 certificate, without specifying the particular method.  Below 512 bits,

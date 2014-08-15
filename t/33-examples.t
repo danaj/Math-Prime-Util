@@ -14,7 +14,7 @@ BEGIN {
   }
 }
 
-plan tests => 94;
+plan tests => 96;
 
 {
   my @nums;
@@ -207,6 +207,14 @@ is_deeply([divisors(30)], [1, 2, 3, 5, 6, 10, 15, 30], "divisors(30)");
   is_deeply($aref,$eref,"primes(10^20,10^20+1000)");
   $aref = [];
   forprimes { push @$aref,$_ } "100000000000000000039", "100000000000000000993";
+}
+{
+  my @c;
+  foroddcomposites { push @c,$_ if $_ % carmichael_lambda($_) == 1 } 10000;
+  is_deeply(\@c,[qw/561 1105 1729 2465 2821 6601 8911/], "carmichael numbers under 10000");
+  @c=();
+  foroddcomposites { push @c,$_ if $_ % carmichael_lambda($_) == 1 } 1020000,1085000;
+  is_deeply(\@c,[qw/1024651 1033669 1050985 1082809/], "carmichael numbers from 1020k to 1085k");
 }
 {
   my $nu3 = sub {

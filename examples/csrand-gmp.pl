@@ -1,7 +1,7 @@
 #!/usr/bin/env perl
 use strict;
 use warnings;
-use Math::BigInt try => "GMP,Pari";
+use Math::GMP;
 use Math::Prime::Util qw/:all/;
 use Bytes::Random::Secure;
 $|=1;
@@ -43,16 +43,16 @@ my $rbytes = int(($bits+7)/8);
 if ($type eq 'BM') {
   my($p, $xn);
   # Select P
-  do { $p = 2*random_nbit_prime($bits-1)+1 } while !is_prime($p);
+  do { $p = 2 * Math::GMP->new(random_nbit_prime($bits-1))+1 } while !is_prime($p);
   # Get generator
-  my $g = Math::BigInt->new( "" . znprimroot($p) );
+  my $g = Math::GMP->new(znprimroot($p));
   do {  # Select the seed x0
-    $xn = Math::BigInt->new("0x".$rng->bytes_hex($rbytes))->bmod($p);
+    $xn = Math::GMP->new($rng->bytes_hex($rbytes), 16) % $p;
   } while $xn <= 1;
   # Generate bits
-  my $thresh = ($p-1) >> 1;
+  my $thresh = Math::GMP::div_2exp_gmp($p-1, 1);
   while ($nbits-- > 0) {
-    $xn = $g->copy->bmodpow($xn,$p);
+    $xn = Math::GMP::powm_gmp($g, $xn, $p);
     print 0 + ($xn < $thresh);
   }
   print "\n";
@@ -62,8 +62,8 @@ if ($type eq 'BM') {
   # Select M = p*q
   while (1) {
     my($p,$q);
-    do { $p = random_nbit_prime($bits); } while ($p % 4) != 3;
-    do { $q = random_nbit_prime($bits); } while ($q % 4) != 3;
+    do { $p = Math::GMP->new(random_nbit_prime($bits)); } while ($p % 4) != 3;
+    do { $q = Math::GMP->new(random_nbit_prime($bits)); } while ($q % 4) != 3;
     if ($bits < 200) {
       my $gcd = gcd(euler_phi($p-1),euler_phi($q-1));
       next if $gcd > 10000;
@@ -72,13 +72,13 @@ if ($type eq 'BM') {
     last;
   }
   do {  # Select the seed x0
-    $xn = Math::BigInt->new("0x".$rng->bytes_hex($rbytes))->bmod($M);
+    $xn = Math::GMP->new($rng->bytes_hex($rbytes), 16) % $M;
   } while $xn <= 1 || gcd($xn,$M) != 1;
   # Generate bits
-  my $two = Math::BigInt->new(2);
+  my $two = Math::GMP->new(2);
   while ($nbits-- > 0) {
-    $xn->bmodpow($two,$M);
-    print $xn->is_odd ? 1 : 0;
+    $xn = Math::GMP::powm_gmp($xn, $two, $M);
+    print Math::GMP::gmp_tstbit($xn,0) ? "1" : "0";
   }
   print "\n";
 } else {  # Micali-Schnorr
@@ -86,11 +86,11 @@ if ($type eq 'BM') {
   my $tries = 1;
   my ($n, $e, $N);
   while (1) {
-    my $p = random_nbit_prime($bits);
-    my $q = random_nbit_prime($bits);
+    my $p = Math::GMP->new(random_nbit_prime($bits));
+    my $q = Math::GMP->new(random_nbit_prime($bits));
     $n = $p * $q;
     my $phi = ($p-1) * ($q-1);
-    $N = length($n->as_bin)-2;
+    $N = Math::GMP::sizeinbase_gmp($n, 2);
     # For efficiency, choose largest e possible.  e will always be odd.
     $e = int($N/80);
     $e-- while $e > 1 && gcd($e,$phi) != 1;
@@ -99,18 +99,21 @@ if ($type eq 'BM') {
   }
   my $k = int($N * (1-2/$e));
   my $r = $N - $k;
-  my $xn = Math::BigInt->new("0x".$rng->bytes_hex(int(($r+7)/8)))->bmod(Math::BigInt->new(2)->bpow($r));
+  my $xn = Math::GMP->new($rng->bytes_hex(int(($r+7)/8)),16) % (Math::GMP->new(2) ** $r);
+  my $twok = Math::GMP->new(2) ** $k;
 
   while ($nbits > 0) {
     # y_i = x_{i-1} ^ e mod n
-    my $yistr = $xn->copy->bmodpow($e, $n)->as_bin;
+    my $yi = Math::GMP::powm_gmp($xn, $e, $n);
+
     # x_i = r most significant bits of y_i
-    $xn = $xn->from_bin(substr($yistr, 0, 2+$r));
+    $xn = Math::GMP::div_2exp_gmp($yi, $k);   # $xn = $yi >> $k;
+
     # z_i = k least significant bits of y_i
     # output is the sequence of z_i
-    my $outbits = ($nbits >= $k) ? $k : $nbits;
-    print substr($yistr,-$outbits);
-    $nbits -= $outbits;
+    $twok = Math::GMP->new(2) ** $nbits if $nbits < $k;
+    print Math::GMP::get_str_gmp( $yi % $twok, 2);
+    $nbits -= $k;
   }
   print "\n";
 }

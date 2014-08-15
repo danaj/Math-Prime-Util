@@ -1,6 +1,32 @@
 Revision history for Perl module Math::Prime::Util
 
 
+0.43  2014-08-16
+
+    [ADDED]
+
+    - foroddcomposites      like forcomposites, but skips even numbers
+    - twin_primes           as primes but for twin primes
+    - config: use_primeinc  allow the fast but bad PRIMEINC random prime method
+
+    [REMOVED DEPRECATED NAMES]
+
+    - all_factors         replaced in 0.36 by divisors
+    - miller_rabin        replaced in 0.10 by is_strong_pseudoprime
+
+    [FUNCTIONALITY AND PERFORMANCE]
+
+    - Divisors sorted with qsort instead of Shell sort.  No appreciable time
+      difference, but slightly less code size.
+
+    - Added Micali-Schnorr generator to examples/csrand.pl.  Made a version
+      of csrand that uses Math::GMP for faster operation.
+
+    - Added synopsis release test.  Thanks to Neil Bowers and Toby Inkster.
+
+    - ranged euler_phi is more efficient when lo < 100.
+
+
 0.42  2014-06-18
 
     [ADDED]

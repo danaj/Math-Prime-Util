@@ -45,7 +45,7 @@
     - Try __int128.
     - Variable sieve size
     - look at sieve.c style prime walking
-
+    - Fenwick trees for prefix sums
 
 - Iterators speedup:
   1) config option for sieved next_prime.  Very general, would make
@@ -84,4 +84,3 @@
 
 - CRT and gcdext:
     = Math::Pari compare chinese
-    = better chinese testing: high bits, negative

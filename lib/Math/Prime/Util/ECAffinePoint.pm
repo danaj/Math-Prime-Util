@@ -192,6 +192,9 @@ __END__
 
 =for stopwords mul
 
+=for test_synopsis use v5.14;  my($a,$b,$n,$k,$ECP2);
+
+
 =head1 NAME
 
 Math::Prime::Util::ECAffinePoint - Elliptic curve operations for affine points
@@ -208,10 +211,10 @@ Version 0.42
   my $ECP = Math::Prime::Util::ECAffinePoint->new($a, $b, $n, 0, 1);
 
   # scalar multiplication by k.
-  $ECP->mul($k)
+  $ECP->mul($k);
 
   # add two points on the same curve
-  $ECP->add($ECP2)
+  $ECP->add($ECP2);
 
   say "P = O" if $ECP->is_infinity();
 

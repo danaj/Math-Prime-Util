@@ -3,7 +3,7 @@ use strict;
 use warnings;
 
 use Test::More;
-use Math::Prime::Util qw/factor factor_exp all_factors divisor_sum is_prime/;
+use Math::Prime::Util qw/factor factor_exp divisors divisor_sum is_prime/;
 
 my $use64 = Math::Prime::Util::prime_get_config->{'maxbits'} > 32;
 my $extra = defined $ENV{EXTENDED_TESTING} && $ENV{EXTENDED_TESTING};
@@ -145,8 +145,8 @@ while (my($n, $factors) = each(%prime_factors)) {
 }
 
 while (my($n, $divisors) = each(%all_factors)) {
-  is_deeply( [all_factors($n)], $divisors, "all_factors($n)" );
-  is( scalar all_factors($n), scalar @$divisors, "scalar all_factors($n)" );
+  is_deeply( [divisors($n)], $divisors, "divisors($n)" );
+  is( scalar divisors($n), scalar @$divisors, "scalar divisors($n)" );
   is( divisor_sum($n,0), scalar @$divisors, "divisor_sum($n,0)" );
   my $sum = 0;  foreach my $f (@$divisors) { $sum += $f; }
   is( divisor_sum($n), $sum, "divisor_sum($n)" );

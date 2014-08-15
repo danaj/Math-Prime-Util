@@ -120,6 +120,8 @@ __END__
 
 =for stopwords prev pred ith i'th
 
+=for test_synopsis use v5.14;  my ($i,$n) = (2,2);
+
 =head1 NAME
 
 Math::Prime::Util::PrimeIterator - An object iterator for primes
@@ -136,13 +138,13 @@ Version 0.42
   my $it = Math::Prime::Util::PrimeIterator->new();
 
   # Simple use: return current value and move forward.
-  $sum += $it->iterate() for 1..10000;
+  my $sum = 0;  $sum += $it->iterate() for 1..10000;
 
   # Methods
   my $v = $it->value();     # Return current value
   $it->next();              # Move to next prime (returns self)
   $it->prev();              # Move to prev prime (returns self)
-  my $v = $it->iterate();   # Returns current value; moves to next prime
+  $v = $it->iterate();      # Returns current value; moves to next prime
   $it->rewind();            # Resets position to 2
   $it->rewind($n);          # Resets position to next_prime($n-1)
 
@@ -150,8 +152,8 @@ Version 0.42
   $it->tell_i();            # Returns the index of the current position
   $it->pred($n);            # Returns true if $n is prime
   $it->ith($i);             # Returns the $ith prime
-  $it->value_to_i($n)       # Returns the index of the first prime >= $n
-  $it->value_to_i_estimate($n)  # Approx index of value $n
+  $it->value_to_i($n);      # Returns the index of the first prime >= $n
+  $it->value_to_i_estimate($n);  # Approx index of value $n
 
   # Methods similar to Math::NumSeq, changes iterator
   $it->seek_to_i($i);       # Resets position to the $ith prime

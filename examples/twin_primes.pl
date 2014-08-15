@@ -13,7 +13,8 @@ my $count = shift || 20;
 # Time for the first 300k:
 #
 # Not iterators:
-#   0.5s   $l=2; forprimes { say $l if $l+2==$_; $l=$_; } 64764841
+#   0.19s  say join "\n", @{twin_primes(2,nth_twin_prime(3e5))}
+#   0.5s   $l=2; forprimes { say $l if $l+2==$_; $l=$_; } 2+nth_twin_prime(3e5)
 #   0.8s   bin/primes.pl --twin 2 64764839
 #
 # Iterators with precalc:
@@ -29,8 +30,8 @@ my $count = shift || 20;
 #  16.7s   get_twin_prime_iterator4 (object iterator)
 #
 # Alternatives:
-# 229.6s   Math::NumSeq::TwinPrimes (Perl 5.19.7, Math::NumSeq 69)
-#   6.6s - perl -MMath::PariInit=primes=65000000 -MMath::Pari=forprime,PARI -E
+# 228.3s   Math::NumSeq::TwinPrimes (Perl 5.20.0, Math::NumSeq 71)
+#   5.9s - perl -MMath::PariInit=primes=65000000 -MMath::Pari=forprime,PARI -E
 #          '$l=2;forprime($x,2,64764841,sub{say $l if $l+2==$x;$l=int("$x");});'
 
 # This speeds things up, but isn't necessary.

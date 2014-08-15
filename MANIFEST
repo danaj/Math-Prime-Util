@@ -59,6 +59,7 @@ bench/bench-mp-prime_count.pl
 bench/factor-gnufactor.pl
 examples/README
 examples/csrand.pl
+examples/csrand-gmp.pl
 examples/sophie_germain.pl
 examples/twin_primes.pl
 examples/abundant.pl
@@ -96,6 +97,7 @@ t/03-init.t
 t/04-inputvalidation.t
 t/10-isprime.t
 t/11-primes.t
+t/11-twinprimes.t
 t/12-nextprime.t
 t/13-primecount.t
 t/14-nthprime.t
@@ -125,6 +127,7 @@ t/91-release-pod-syntax.t
 t/92-release-pod-coverage.t
 t/93-release-spelling.t
 t/94-weaken.t
+t/97-synopsis.t
 xt/chinese.pl
 xt/moebius-mertens.pl
 xt/totient-range.pl

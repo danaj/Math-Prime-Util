@@ -12,7 +12,7 @@
  * so it may buy us nothing.  But it's worth trying.
  */
 
-/* These math functions are a clusterfrack.  They're defined by C99, but
+/* The C99 LD math functions are a clusterfrack.  They're defined by C99, but
  * NetBSD doesn't have them.  You need them in both the headers and libraries,
  * but there is no standard way to find out if the libraries have them.  The
  * best way (I believe) to deal with this is having the make system do test
@@ -705,7 +705,7 @@ UV nth_prime_upper(UV n)
     upper = fn * (flogn + flog2n - 1.0 + ((flog2n-1.95)/flogn));
   else if (n >=  39017)    /* Dusart 1999 page 14 */
     upper = fn * (flogn + flog2n - 0.9484);
-  else if (n >=     6)     /* Modified from Robin 1983 for 6-39016 _only_ */
+  else if (n >=     6)     /* Modified from Robin 1983 for 50-39016 _only_ */
     upper = fn * ( flogn  +  0.5982 * flog2n ) - 5;
   else
     upper = fn * ( flogn + flog2n );
@@ -923,16 +923,20 @@ UV twin_prime_count(UV beg, UV end)
     UV seg_base, seg_low, seg_high;
     void* ctx = start_segment_primes(beg, end, &segment);
     while (next_segment_primes(ctx, &seg_base, &seg_low, &seg_high)) {
-      UV p, bytes = (seg_high-seg_low+29)/30;
-      for (p = 0; p < bytes; p++) {
-        UV s = segment[p];
+      UV bytes = (seg_high-seg_low+29)/30;
+      unsigned char s;
+      const unsigned char* sp = segment;
+      const unsigned char* const spend = segment + bytes - 1;
+      while (sp < spend) {
+        s = *sp++;
         if (!(s & 0x0C)) sum++;
         if (!(s & 0x30)) sum++;
-        if (!(s & 0x80)) {
-          if (p+1 < bytes) { if (!(segment[p+1] & 0x01))   sum++; }
-          else             { if (_XS_is_prime(seg_high+2)) sum++; }
-        }
+        if (!(s & 0x80) && !(*sp & 0x01)) sum++;
       }
+      s = *sp;
+      if (!(s & 0x0C)) sum++;
+      if (!(s & 0x30)) sum++;
+      if (!(s & 0x80) && _XS_is_prime(seg_high+2)) sum++;
     }
     end_segment_primes(ctx);
   }
@@ -1416,19 +1420,24 @@ UV jordan_totient(UV k, UV n) {
 
 UV carmichael_lambda(UV n) {
   UV fac[MPU_MAX_FACTORS+1];
-  UV exp[MPU_MAX_FACTORS+1];
   int i, nfactors;
-  UV j, lambda = 1;
+  UV lambda = 1;
 
   if (n < 8) return totient(n);
   if ((n & (n-1)) == 0) return n >> 2;
 
-  nfactors = factor_exp(n, fac, exp);
-  if (fac[0] == 2 && exp[0] > 2)  exp[0]--;
+  i = ctz(n);
+  if (i > 0) {
+    n >>= i;
+    lambda <<= (i>2) ? i-2 : i-1;
+  }
+  nfactors = factor(n, fac);
   for (i = 0; i < nfactors; i++) {
-    UV pk = fac[i]-1;
-    for (j = 1; j < exp[i]; j++)
-      pk *= fac[i];
+    UV p = fac[i], pk = p-1;
+    while (i+1 < nfactors && p == fac[i+1]) {
+      i++;
+      pk *= p;
+    }
     lambda = lcm_ui(lambda, pk);
   }
   return lambda;

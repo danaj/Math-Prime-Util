@@ -1,9 +1,9 @@
 Math::Prime::Util version 0.42
 
-A set of utilities related to prime numbers.  These include multiple sieving
-methods, is_prime, prime_count, nth_prime, approximations and bounds for
-the prime_count and nth prime, next_prime and prev_prime, moebius and totient
-functions, random primes, integer factoring, primality proofs, and more.
+A module for number theory in Perl.  This includes prime sieving, primality
+tests, primality proofs, integer factoring, counts / bounds / approximations
+for primes, nth primes, and twin primes, random prime generation,
+and much more.
 
 The default sieving and factoring are intended to be the fastest on CPAN.
 Current measurements show it is faster than:

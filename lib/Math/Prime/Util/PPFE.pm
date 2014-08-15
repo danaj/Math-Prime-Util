@@ -432,6 +432,26 @@ sub forcomposites(&$;$) { ## no critic qw(ProhibitSubroutinePrototypes)
   }
 }
 
+sub foroddcomposites(&$;$) { ## no critic qw(ProhibitSubroutinePrototypes)
+  my($sub, $beg, $end) = @_;
+  if (!defined $end) { $end = $beg; $beg = 9; }
+  _validate_num($beg) || _validate_positive_integer($beg);
+  _validate_num($end) || _validate_positive_integer($end);
+  $beg = 9 if $beg < 9;
+  $beg++ unless $beg & 1;
+  $end = Math::BigInt->new(''.~0) if ref($end) ne 'Math::BigInt' && $end == ~0;
+  {
+    my $pp;
+    local *_ = \$pp;
+    for ( ; $beg <= $end ; $beg += 2 ) {
+      if (!is_prime($beg)) {
+        $pp = $beg;
+        $sub->();
+      }
+    }
+  }
+}
+
 sub fordivisors (&$) {    ## no critic qw(ProhibitSubroutinePrototypes)
   my($sub, $n) = @_;
   _validate_num($n) || _validate_positive_integer($n);

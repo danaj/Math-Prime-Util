@@ -372,6 +372,7 @@ sieve_primes(IN UV low, IN UV high)
     trial_primes = 1
     erat_primes = 2
     segment_primes = 3
+    segment_twin_primes = 4
   PREINIT:
     AV* av;
   PPCODE:
@@ -382,11 +383,12 @@ sieve_primes(IN UV low, IN UV high)
       PUTBACK;
       SP = NULL; /* never use SP again, poison */
     }
-    if ((low <= 2) && (high >= 2)) { av_push(av, newSVuv( 2 )); }
+    if ((low <= 2) && (high >= 2) && ix != 4) { av_push(av, newSVuv( 2 )); }
     if ((low <= 3) && (high >= 3)) { av_push(av, newSVuv( 3 )); }
     if ((low <= 5) && (high >= 5)) { av_push(av, newSVuv( 5 )); }
     if (low < 7)  low = 7;
     if (low <= high) {
+      if (ix == 4) high += 2;
       if (ix == 0) {                          /* Sieve with primary cache */
         START_DO_FOR_EACH_PRIME(low, high) {
           av_push(av,newSVuv(p));
@@ -403,16 +405,18 @@ sieve_primes(IN UV low, IN UV high)
            av_push(av,newSVuv(p));
         } END_DO_FOR_EACH_SIEVE_PRIME
         Safefree(sieve);
-      } else if (ix == 3) {                   /* Segment */
+      } else if (ix == 3 || ix == 4) {        /* Segment */
         unsigned char* segment;
-        UV seg_base, seg_low, seg_high;
+        UV seg_base, seg_low, seg_high, lastp = 0;
         void* ctx = start_segment_primes(low, high, &segment);
         while (next_segment_primes(ctx, &seg_base, &seg_low, &seg_high)) {
           START_DO_FOR_EACH_SIEVE_PRIME( segment, seg_low - seg_base, seg_high - seg_base )
-            av_push(av,newSVuv( seg_base + p ));
+            p += seg_base;
+            if (ix == 3)            av_push(av,newSVuv( p ));
+            else if (lastp+2 == p)  av_push(av,newSVuv( lastp ));
+            lastp = p;
           END_DO_FOR_EACH_SIEVE_PRIME
         }
-        end_segment_primes(ctx);
       }
     }
     return; /* skip implicit PUTBACK */
@@ -841,7 +845,7 @@ znorder(IN SV* sva, IN SV* svn)
     }
     overflow:
     switch (ix) {
-      case 0:  _vcallsub_with_gmp("znorder");  break;
+      case 0:  _vcallsub_with_pp("znorder");  break;
       case 1:  _vcallsub_with_pp("binomial");  break;
       case 2:  _vcallsub_with_pp("jordan_totient");  break;
       case 3:
@@ -991,9 +995,10 @@ euler_phi(IN SV* svlo, ...)
         UV i;
         EXTEND(SP, hi-lo+1);
         if (ix == 0) {
-          UV* totients = _totient_range(lo, hi);
+          UV  arraylo = (lo < 100)  ?  0  :  lo;
+          UV* totients = _totient_range(arraylo, hi);
           for (i = lo; i <= hi; i++)
-            PUSHs(sv_2mortal(newSVuv(totients[i-lo])));
+            PUSHs(sv_2mortal(newSVuv(totients[i-arraylo])));
           Safefree(totients);
         } else {
           signed char* mu = _moebius_range(lo, hi);
@@ -1009,7 +1014,7 @@ euler_phi(IN SV* svlo, ...)
       switch (ix) {
         case 0:  _vcallsubn(aTHX_ gimme_v, VCALL_PP, "euler_phi", items);break;
         case 1:
-        default: _vcallsubn(aTHX_ gimme_v, VCALL_PP, "moebius", items);  break;
+        default: _vcallsubn(aTHX_ gimme_v, VCALL_GMP|VCALL_PP, "moebius", items);  break;
       }
       return;
     }
@@ -1197,6 +1202,8 @@ forprimes (SV* block, IN SV* svbeg, IN SV* svend = 0)
 
 void
 forcomposites (SV* block, IN SV* svbeg, IN SV* svend = 0)
+  ALIAS:
+    foroddcomposites = 1
   PROTOTYPE: &$;$
   PREINIT:
     UV beg, end;
@@ -1210,12 +1217,12 @@ forcomposites (SV* block, IN SV* svbeg, IN SV* svend = 0)
       croak("Not a subroutine reference");
 
     if (!_validate_int(aTHX_ svbeg, 0) || (items >= 3 && !_validate_int(aTHX_ svend,0))) {
-      _vcallsubn(aTHX_ G_VOID|G_DISCARD, VCALL_ROOT, "_generic_forcomposites", items);
+      _vcallsubn(aTHX_ G_VOID|G_DISCARD, VCALL_ROOT, (ix == 0) ? "_generic_forcomposites" : "_generic_foroddcomposites", items);
       return;
     }
 
     if (items < 3) {
-      beg = 4;
+      beg = ix ? 9 : 4;
       end = my_svuv(svbeg);
     } else {
       beg = my_svuv(svbeg);
@@ -1243,11 +1250,13 @@ forcomposites (SV* block, IN SV* svbeg, IN SV* svend = 0)
         beg = (beg <= 4) ? 3 : beg-1;
         nextprime = next_prime(beg);
         while (beg++ < end) {
-          if (beg == nextprime)  nextprime = next_prime(beg);
-          else                   { sv_setuv(svarg, beg); MULTICALL; }
+          if (beg == nextprime)     nextprime = next_prime(beg);
+          else if (!ix || beg & 1)  { sv_setuv(svarg, beg); MULTICALL; }
         }
       } else {
-        if (beg <= 4) { /* sieve starts at 7, so handle this here */
+        if (ix) {
+          if (beg < 9)  beg = 9;
+        } else if (beg <= 4) { /* sieve starts at 7, so handle this here */
           sv_setuv(svarg, 4);  MULTICALL;
           beg = 6;
         }
@@ -1262,14 +1271,15 @@ forcomposites (SV* block, IN SV* svbeg, IN SV* svend = 0)
             prevprime = seg_base + p;
             cend = prevprime-1;  if (cend > end) cend = end;
             for (c = cbeg; c <= cend; c++) {
-              sv_setuv(svarg, c);  MULTICALL;
+              if (!ix || c & 1) { sv_setuv(svarg, c);  MULTICALL; }
             }
           } END_DO_FOR_EACH_SIEVE_PRIME
         }
         end_segment_primes(ctx);
         if (end > nextprime)   /* Complete the case where end > max_prime */
           while (nextprime++ < end)
-            { sv_setuv(svarg, nextprime);  MULTICALL; }
+            if (!ix || nextprime & 1)
+              { sv_setuv(svarg, nextprime);  MULTICALL; }
       }
       FIX_MULTICALL_REFCOUNT;
       POP_MULTICALL;
@@ -1279,7 +1289,7 @@ forcomposites (SV* block, IN SV* svbeg, IN SV* svend = 0)
     if (beg <= end) {
       beg = (beg <= 4) ? 3 : beg-1;
       while (beg++ < end) {
-        if (!is_prob_prime(beg)) {
+        if ((!ix || beg&1) && !is_prob_prime(beg)) {
           sv_setuv(svarg, beg);
           PUSHMARK(SP);
           call_sv((SV*)cv, G_VOID|G_DISCARD);
@@ -1377,11 +1387,12 @@ forpart (SV* block, IN SV* svn, IN SV* svh = 0)
       if ((svp = hv_fetchs(rhash, "amax", 0)) != NULL) amax = my_svuv(*svp);
       if ((svp = hv_fetchs(rhash, "nmin", 0)) != NULL) nmin = my_svuv(*svp);
       if ((svp = hv_fetchs(rhash, "nmax", 0)) != NULL) nmax = my_svuv(*svp);
-      if (amin < 1) amin = 1;
+
       if (amax > n) amax = n;
       if (nmax > n) nmax = n;
     }
 
+    if (n==0 || (nmin <= nmax && amin <= amax && nmax > 0 && amax > 0))
     { /* ZS1 algorithm from Zoghbi and Stojmenovic 1998) */
       UV *x, m, h;
       New(0, x, n+2, UV);  /* plus 2 because of n=0 */

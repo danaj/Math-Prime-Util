@@ -53,7 +53,7 @@ Version 0.42
 
   {
     my $mf = Math::Prime::Util::MemFree->new;
-    ... do things with Math::Prime::Util ...
+    # ... do things with Math::Prime::Util ...
   }
   # When the last object leaves scope, prime_memfree is called.
 

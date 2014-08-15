@@ -199,6 +199,8 @@ __END__
 
 =for stopwords mul
 
+=for test_synopsis use v5.14;  my($c,$n,$k,$ECP2);
+
 
 =head1 NAME
 
@@ -215,11 +217,11 @@ Version 0.42
   # Create a point on a curve (a,b,n) with coordinates 0,1
   my $ECP = Math::Prime::Util::ECProjectivePoint->new($c, $n, 0, 1);
 
-  # scalar multiplication by k.
-  $ECP->mul($k)
+  # scalar multiplication by $k.
+  $ECP->mul($k);
 
   # add two points on the same curve
-  $ECP->add($ECP2)
+  $ECP->add($ECP2);
 
   say "P = O" if $ECP->is_infinity();
 
