@@ -174,7 +174,21 @@ static int jacobi_iu(IV in, UV m) {
   return (m == 1) ? j : 0;
 }
 
-
+static UV select_extra_strong_parameters(UV n, UV increment) {
+  UV P = 3;
+  while (1) {
+    UV D = P*P - 4;
+    if (gcd_ui(D, n) > 1 && gcd_ui(D, n) != n) return 0;
+    if (jacobi_iu(D, n) == -1)
+      break;
+    if (P == (3+20*increment) && is_perfect_square(n)) return 0;
+    P += increment;
+    if (P > 65535)
+      croak("lucas_extrastrong_params: P exceeded 65535");
+  }
+  if (P >= n)  P %= n;   /* Never happens with increment < 4 */
+  return P;
+}
 
 
 /* Fermat pseudoprime */
@@ -270,19 +284,8 @@ int _XS_BPSW(UV const n)
       }
     }
     /* AES Lucas test */
-    P = 3;
-    while (1) {
-      UV D = P*P - 4;
-      d = gcd_ui(D, n);
-      if (d > 1 && d < n)
-        return 0;
-      if (jacobi_iu(D, n) == -1)
-        break;
-      if (P == (3+20) && is_perfect_square(n)) return 0;
-      P++;
-      if (P > 65535)
-        croak("lucas_extrastrong_params: P exceeded 65535");
-    }
+    P = select_extra_strong_parameters(n, 1);
+    if (P == 0) return 0;
 
     d = n+1;
     s = 0;
@@ -430,16 +433,10 @@ int _XS_is_lucas_pseudoprime(UV n, int strength)
     P = 1;
     Q = (1 - D) / 4;
   } else {
-    P = 3;
+    P = select_extra_strong_parameters(n, 1);
+    if (P == 0) return 0;
     Q = 1;
-    while (1) {
-      D = P*P - 4;
-      if (gcd_ui(D, n) > 1 && gcd_ui(D, n) != n) return 0;
-      if (jacobi_iu(D, n) == -1)
-        break;
-      if (P == 21 && is_perfect_square(n)) return 0;
-      P++;
-    }
+    D = P*P - 4;
   }
   MPUassert( D == (P*P - 4*Q) , "is_lucas_pseudoprime: incorrect DPQ");
 
@@ -589,20 +586,8 @@ int _XS_is_almost_extra_strong_lucas_pseudoprime(UV n, UV increment)
   if (increment < 1 || increment > 256)
     croak("Invalid lucas parameter increment: %"UVuf"\n", increment);
 
-  P = 3;
-  while (1) {
-    UV D = P*P - 4;
-    d = gcd_ui(D, n);
-    if (d > 1 && d < n)
-      return 0;
-    if (jacobi_iu(D, n) == -1)
-      break;
-    if (P == (3+20*increment) && is_perfect_square(n)) return 0;
-    P += increment;
-    if (P > 65535)
-      croak("lucas_extrastrong_params: P exceeded 65535");
-  }
-  if (P >= n)  P %= n;   /* Never happens with increment < 4 */
+  P = select_extra_strong_parameters(n, increment);
+  if (P == 0) return 0;
 
   d = n+1;
   s = 0;
