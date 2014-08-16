@@ -447,12 +447,15 @@ sub primes {
   if (scalar @_ > 1) {
     _validate_positive_integer($low);
     _validate_positive_integer($high);
+    $low = 2 if $low < 2;
   } else {
     ($low,$high) = (2, $low);
     _validate_positive_integer($high);
   }
   my $sref = [];
   return $sref if ($low > $high) || ($high < 2);
+  return [grep { $_ >= $low && $_ <= $high } @_primes_small]
+    if $high <= $_primes_small[-1];
 
   # At some point even the pretty-fast pure perl sieve is going to be a
   # dog, and we should move to trials.  This is typical with a small range

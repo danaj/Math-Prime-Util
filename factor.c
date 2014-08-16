@@ -133,6 +133,11 @@ int factor(UV n, UV *factors)
         split_success = pbrent_factor(n, tofac_stack+ntofac, br_rounds, 3)-1;
         if (verbose) { if (split_success) printf("pbrent 1:  %"UVuf" %"UVuf"\n", tofac_stack[ntofac], tofac_stack[ntofac+1]); else printf("pbrent 0\n"); }
       }
+      /* Give larger inputs a run with p-1 before SQUFOF */
+      if (!split_success && n > (UV_MAX >> 15) && MULMODS_ARE_FAST) {
+        split_success = pminus1_factor(n, tofac_stack+ntofac, 2000, 20000)-1;
+        if (verbose) printf("small p-1 %d\n", split_success);
+      }
       /* SQUFOF with these parameters gets 99.9% of everything left */
       if (!split_success && n < (UV_MAX>>2)) {
         split_success = squfof_factor(n,tofac_stack+ntofac, sq_rounds)-1;
@@ -430,6 +435,26 @@ int holf_factor(UV n, UV *factors, UV rounds)
   UV i, s, m, f;
 
   MPUassert( (n >= 3) && ((n%2) != 0) , "bad n in holf_factor");
+
+  if (n <= (UV_MAX >> 9)) {    /* Try with premultiplier first */
+    UV npre = n * 480;
+    UV ni = npre;
+    while (rounds--) {
+      s = isqrt(ni) + 1;
+      m = (s*s) - ni;
+      if (is_perfect_square(m)) {
+        f = gcd_ui(n, s - isqrt(m));
+        if (f > 1 && f < n) {
+          factors[0] = f;
+          factors[1] = n/f;
+          MPUassert( factors[0] * factors[1] == n , "incorrect factoring");
+          return 2;
+        }
+      }
+      if (ni >= (ni+npre)) break;
+      ni += npre;
+    }
+  }
 
   for (i = 1; i <= rounds; i++) {
     s = (UV) sqrt( (double)n * (double)i );

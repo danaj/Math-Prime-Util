@@ -26,6 +26,11 @@ Revision history for Perl module Math::Prime::Util
 
     - ranged euler_phi is more efficient when lo < 100.
 
+    - factor for 49 to 64-bit numbers sped up slightly (a small p-1 is tried
+      before SQUFOF for these sizes).
+
+    - HOLF factoring sped up using premultiplier first.
+
 
 0.42  2014-06-18
 

@@ -1,23 +1,21 @@
 #!/usr/bin/env perl
 use strict;
 use warnings;
-use Math::Prime::Util qw/is_prime/;
-use List::Util qw/min max/;
-my $count = shift || -2;
-my $is64bit = (~0 > 4294967295);
-my $maxdigits = ($is64bit) ? 20 : 10;  # Noting the range is limited for max.
+use Math::Prime::Util qw/is_prime factor holf_factor/;
 
-my $hrounds = 64*1024*1024;
-for (2 .. 100000000) {
+my $hrounds = 512*1024*1024;
+for (2 .. 1e10) {
   my @fs;
-  my $s_fact = join(".",sort {$a<=>$b} Math::Prime::Util::factor($_));
+  my $s_fact = join(".",sort {$a<=>$b} factor($_));
 
   my @p_holf;
   push @fs, $_;
   while (@fs) {
     my $n = pop @fs;
     if (is_prime($n)) { push @p_holf, $n; }
-    else              { push @fs, Math::Prime::Util::holf_factor($n); }
+    else              { my @f = holf_factor($n,$hrounds);
+                        die "Could not factor $n\n" if scalar @f == 1;
+                        push @fs, @f;  }
   }
   my $s_holf = join(".",sort {$a<=>$b} @p_holf);
 
