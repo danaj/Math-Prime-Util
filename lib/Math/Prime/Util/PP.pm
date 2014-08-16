@@ -1562,8 +1562,8 @@ sub chinese {
   my($lcm, $sum);
   foreach my $aref (sort { $b->[1] <=> $a->[1] } @_) {
     my($ai, $ni) = @$aref;
-    $ai = Math::BigInt->new("$ai") if !ref($ai) && abs($ai) > ~0;
-    $ni = Math::BigInt->new("$ni") if !ref($ni) && abs($ni) > ~0;
+    $ai = Math::BigInt->new("$ai") if !ref($ai) && (abs($ai) > (~0>>1) || OLD_PERL_VERSION);
+    $ni = Math::BigInt->new("$ni") if !ref($ni) && (abs($ni) > (~0>>1) || OLD_PERL_VERSION);
     if (!defined $lcm) {
       ($sum,$lcm) = ($ai % $ni, $ni);
       next;
@@ -1572,7 +1572,7 @@ sub chinese {
     my($u,$v,$g,$s,$t,$w) = (1,0,$lcm,0,1,$ni);
     while ($w != 0) {
       my $r = $g % $w;
-      my $q = int(($g-$r)/$w);
+      my $q = ref($g)  ?  $g->copy->bsub($r)->bdiv($w)  :  int(($g-$r)/$w);
       ($u,$v,$g,$s,$t,$w) = ($s,$t,$w,$u-$q*$s,$v-$q*$t,$r);
     }
     ($u,$v,$g) = (-$u,-$v,-$g)  if $g < 0;
