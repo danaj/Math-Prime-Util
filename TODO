@@ -18,7 +18,9 @@
 
 - It may be possible to have a more efficient ranged totient.  We're using
   the sieve up to n/2, which is better than most people seem to use, but I'm
-  not completely convinced we can't do better.
+  not completely convinced we can't do better.  The method at:
+  http://codegolf.stackexchange.com/a/26747/30069 ends up very similar.  For
+  the monolithic results the main bottleneck seems to be the array return.
 
 - Big features:
    - QS factoring
