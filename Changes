@@ -7,6 +7,8 @@ Revision history for Perl module Math::Prime::Util
 
     - znorder algorithm changed from Das to Cohen for ~1% speedup.
 
+    - factoring sped up a bit for 15-19 digits.
+
 
 0.43  2014-08-16
 

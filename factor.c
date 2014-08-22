@@ -120,13 +120,9 @@ int factor(UV n, UV *factors)
     while ( (n >= f*f) && (!is_prob_prime(n)) ) {
       int split_success = 0;
       /* Adjust the number of rounds based on the number size and speed */
-#if MULMODS_ARE_FAST
-      UV const br_rounds = ((n>>29) < 100000) ?  4000 :  6000;
-      UV const sq_rounds = 100000; /* 20k 91%, 40k 98%, 80k 99.9%, 120k 99.99%*/
-#else
-      UV const br_rounds = ((n>>29) < 100000) ?   500 :  2000;
-      UV const sq_rounds = 150000;
-#endif
+      UV const br_rounds = ((n>>29)<100000) ? (MULMODS_ARE_FAST ? 4000 :  500)
+                                            : (MULMODS_ARE_FAST ? 2000 : 2000);
+      UV const sq_rounds = 200000; /* 20k 91%, 40k 98%, 80k 99.9%, 120k 99.99%*/
 
       /* 99.7% of 32-bit, 94% of 64-bit random inputs factored here */
       if (!split_success) {
@@ -135,7 +131,7 @@ int factor(UV n, UV *factors)
       }
       /* Give larger inputs a run with p-1 before SQUFOF */
       if (!split_success && n > (UV_MAX >> 15) && MULMODS_ARE_FAST) {
-        split_success = pminus1_factor(n, tofac_stack+ntofac, 2000, 20000)-1;
+        split_success = pminus1_factor(n, tofac_stack+ntofac, 1000, 20000)-1;
         if (verbose) printf("small p-1 %d\n", split_success);
       }
       /* SQUFOF with these parameters gets 99.9% of everything left */
