@@ -1478,25 +1478,24 @@ UV znorder(UV a, UV n) {
   UV fac[MPU_MAX_FACTORS+1];
   UV exp[MPU_MAX_FACTORS+1];
   int i, nfactors;
-  UV j, phi, k = 1;
+  UV j, k, phi;
 
   if (n <= 1) return n;   /* znorder(x,0) = 0, znorder(x,1) = 1          */
   if (a <= 1) return a;   /* znorder(0,x) = 0, znorder(1,x) = 1  (x > 1) */
   if (gcd_ui(a,n) > 1)  return 0;
 
-  /* Abhijit Das, algorithm 1.7, applied to Carmichael Lambda */
+  /* Cohen 1.4.3 using Carmichael Lambda */
   phi = carmichael_lambda(n);
   nfactors = factor_exp(phi, fac, exp);
+  k = phi;
   for (i = 0; i < nfactors; i++) {
-    UV b, ek, pi = fac[i], ei = exp[i];
-    UV phidiv = phi / pi;
-    for (j = 1; j < ei; j++)
-      phidiv /= pi;
-    b = powmod(a, phidiv, n);
-    for (ek = 0; b != 1; b = powmod(b, pi, n)) {
-      if (ek++ >= ei) return 0;
+    UV b, a1, ek, pi = fac[i], ei = exp[i];
+    b = pi; for (j = 1; j < ei; j++)  b *= pi;
+    k /= b;
+    a1 = powmod(a, k, n);
+    for (ek = 0; a1 != 1 && ek++ <= ei; a1 = powmod(a1, pi, n))
       k *= pi;
-    }
+    if (ek > ei) return 0;
   }
   return k;
 }
