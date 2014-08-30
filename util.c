@@ -24,6 +24,9 @@
 #elif defined(__MATH_DECLARE_LDOUBLE) || \
       defined(__LONG_DOUBLE_128__) || \
       defined(__LONGDOUBLE128)
+#if defined(__IBMC__) || defined(__IBMCPP__)
+  /* XLC is different  */
+#else
   /* GLIBC */
   extern long double powl(long double, long double);
   extern long double expl(long double);
@@ -31,6 +34,7 @@
   extern long double fabsl(long double);
   extern long double floorl(long double);
   extern long double ceill(long double);
+#endif
 #else
   #define powl(x, y)  (long double) pow( (double) (x), (double) (y) )
   #define expl(x)     (long double) exp( (double) (x) )

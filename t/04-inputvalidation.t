@@ -70,7 +70,7 @@ SKIP: {
 }
 
 SKIP: {
-  skip "Your machine seems to not have NaN", 1 if $nan == 0;
+  skip "Your machine seems to not have NaN", 1 if $nan == 0 || $nan eq '0';
   eval { next_prime($nan); };
   like($@, qr/must be a positive integer/, "next_prime( nan ) [nan = '$nan']");
 }
