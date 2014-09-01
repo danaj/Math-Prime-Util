@@ -779,6 +779,37 @@ int is_prob_prime(UV n)
 {
   int ret;
 
+#if !USE_MONT_PRIMALITY
+  /* On some platforms, especially where UV is a long long, trial division
+   * for small inputs can be much faster.  The exact crossover will differ. */
+  if (n < 20000000) {
+    unsigned int m = n;
+    if (m < 11) {
+      if (n == 2 || n == 3 || n == 5 || n == 7)     return 2;
+      else                                          return 0;
+    }
+    if (!(m%2) || !(m%3) || !(m%5) || !(m%7))       return 0;
+    if (m >= 121) {
+      unsigned int f = 11;
+      unsigned int limit = isqrt(n);
+      while (f <= limit) {
+        if ((m%f) == 0)  return 0;  f += 2;
+        if ((m%f) == 0)  return 0;  f += 4;
+        if ((m%f) == 0)  return 0;  f += 2;
+        if ((m%f) == 0)  return 0;  f += 4;
+        if ((m%f) == 0)  return 0;  f += 6;
+        if ((m%f) == 0)  return 0;  f += 2;
+        if ((m%f) == 0)  return 0;  f += 6;
+        if ((m%f) == 0)  return 0;  f += 4;
+      }
+    }
+    return 2;
+  }
+  if (!(n%2) || !(n%3) || !(n%5) || !(n%7))       return 0;
+  if (!(n%11) || !(n%13) || !(n%17) || !(n%19) ||
+      !(n%23) || !(n%29) || !(n%31) || !(n%37) ||
+      !(n%41) || !(n%43) || !(n%47) || !(n%53))   return 0;
+#else
   if (n < 11) {
     if (n == 2 || n == 3 || n == 5 || n == 7)     return 2;
     else                                          return 0;
@@ -789,6 +820,7 @@ int is_prob_prime(UV n)
       !(n%23) || !(n%29) || !(n%31) || !(n%37) ||
       !(n%41) || !(n%43) || !(n%47) || !(n%53))   return 0;
   if (n < 3481) /* 59*59 */                       return 2;
+#endif
 
 #if BITS_PER_WORD == 32
   /* We could use one base when n < 49191, two when n < 360018361. */
