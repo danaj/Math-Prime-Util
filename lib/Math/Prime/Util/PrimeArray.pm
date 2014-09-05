@@ -231,9 +231,11 @@ C<shift> on the tied array.
   MNSP:           my $seq = Math::NumSeq::Primes->new;
                   $sum += ($seq->next)[1] for 1..100000;
   MPTA:           tie my @primes, ...; $sum += $primes[$_] for 0..99999;
+  List::Gen       $sum = primes->take(100000)->sum
 
 Memory use is comparing the delta between just loading the module and running
-the test.  Perl 5.20.0, Math::NumSeq v70, Math::Prime::TiedArray v0.04.
+the test.  Perl 5.20.0, Math::NumSeq v70, Math::Prime::TiedArray v0.04,
+List::Gen 0.974.
 
 Summing the first 0.1M primes via walking the array:
 
@@ -242,6 +244,7 @@ Summing the first 0.1M primes via walking the array:
      110ms      0     Math::Prime::Util      prime_iterator
      155ms    644k    Math::Prime::Util::PrimeArray
      120ms   1476k    Math::NumSeq::Primes   sequence iterator
+    4656ms   32 MB    List::Gen              sequence
     7540ms   61 MB    Math::Prime::TiedArray (extend 1k)
 
 Summing the first 1M primes via walking the array:
@@ -251,6 +254,7 @@ Summing the first 1M primes via walking the array:
       1.4s      0     Math::Prime::Util      prime_iterator
       1.6s    644k    Math::Prime::Util::PrimeArray
       7.1s   2428k    Math::NumSeq::Primes   sequence iterator
+     91.3s   93 MB    List::Gen              sequence
     108.4s  760 MB    Math::Prime::TiedArray (extend 1k)
 
 Summing the first 10M primes via walking the array:
@@ -260,6 +264,7 @@ Summing the first 10M primes via walking the array:
      16.9s      0     Math::Prime::Util      prime_iterator
      15.4s    772k    Math::Prime::Util::PrimeArray
    3680  s  11.1MB    Math::NumSeq::Primes   sequence iterator
+   5555  s  874 MB    List::Gen              sequence
           >5000 MB    Math::Primes::TiedArray (extend 1k)
 
 L<Math::Prime::Util> offers three obvious solutions: a big array, an iterator,
@@ -280,6 +285,9 @@ isn't very practical.
 L<Math::Primes::TiedArray> is remarkably impractical for anything other
 than tiny numbers.
 
+L<List::Gen> includes a built-in prime sequence.  It uses an inefficient
+Perl sieve for numbers below 10M and has some performance defects when
+getting large numbers of primes.
 
 =head1 SEE ALSO
 

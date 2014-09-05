@@ -274,6 +274,8 @@ L<Math::Prime::Util::PrimeArray>
 
 L<Math::NumSeq::Primes>
 
+L<List::Gen>
+
 =head1 AUTHORS
 
 Dana Jacobsen E<lt>dana@acm.orgE<gt>

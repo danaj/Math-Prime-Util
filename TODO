@@ -86,3 +86,7 @@
 
 - CRT and gcdext:
     = Math::Pari compare chinese
+
+- Like gmpy:  lucasu, lucasv, lucasu_mod, lucasv_mod  e.g. lucasu_mod(p,q,k,n)
+  See: http://joye.site88.net/papers/JQ96lucas.pdf to make sure we're being
+  efficient.
