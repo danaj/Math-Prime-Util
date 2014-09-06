@@ -92,3 +92,5 @@
   efficient.
 
 - tests for forcomb.  write _generic_forcomb
+
+- Simple test for ntheory alias
