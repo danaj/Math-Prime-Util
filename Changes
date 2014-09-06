@@ -6,12 +6,18 @@ Revision history for Perl module Math::Prime::Util
     [ADDED]
 
     - forcomb { ... } n, k    combinations iterator
+    - forperm { ... } n       permutations iterator
 
     [FUNCTIONALITY AND PERFORMANCE]
 
     - znorder algorithm changed from Das to Cohen for ~1% speedup.
 
     - factoring sped up a bit for 15-19 digits.
+
+    [OTHER]
+
+    - Alias added for the module name "ntheory".  The module has grown
+      enough that it seems more appropriate.
 
 
 0.43  2014-08-16

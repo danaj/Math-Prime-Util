@@ -27,7 +27,8 @@ our @EXPORT_OK =
       miller_rabin_random
       lucas_sequence
       primes twin_primes
-      forprimes forcomposites foroddcomposites fordivisors forpart forcomb
+      forprimes forcomposites foroddcomposites fordivisors
+      forpart forcomb forperm
       prime_iterator prime_iterator_object
       next_prime  prev_prime
       prime_count
@@ -863,7 +864,7 @@ __END__
 
 =encoding utf8
 
-=for stopwords forprimes forcomposites foroddcomposites fordivisors forpart forcomb Möbius Deléglise Bézout totient moebius mertens liouville znorder irand primesieve uniqued k-tuples von SoE pari yafu fonction qui compte le nombre nombres voor PhD superset sqrt(N) gcd(A^M k-th (10001st primegen libtommath kronecker znprimroot znlog gcd lcm invmod untruncated vecsum gcdext chinese
+=for stopwords forprimes forcomposites foroddcomposites fordivisors forpart forcomb forperm Möbius Deléglise Bézout totient moebius mertens liouville znorder irand primesieve uniqued k-tuples von SoE pari yafu fonction qui compte le nombre nombres voor PhD superset sqrt(N) gcd(A^M k-th (10001st primegen libtommath kronecker znprimroot znlog gcd lcm invmod untruncated vecsum gcdext chinese
 
 =for test_synopsis use v5.14;  my($k,$x);
 
@@ -973,7 +974,9 @@ Version 0.43
   forpart { say "@_" unless scalar grep { !is_prime($_) } @_ } 25;
   # List all 3-way combinations of an array
   my @cdata = qw/apple bread curry donut eagle/;
-  forcomb { say join " ", @cdata[@_] } @cdata, 3;
+  forcomb { say "@cdata[@_]" } @cdata, 3;
+  # or all permutations
+  forperm { say "@cdata[@_]" } @cdata;
 
   # divisor sum
   my $sigma  = divisor_sum( $n );       # sum of divisors
@@ -1269,6 +1272,9 @@ Each value must be a non-negative integer.  The allowable keys are:
   nmin    the array must have at least this many values
   nmax    the array must have at most this many values
 
+Like forcomb and forperm, the partition return values are read-only.  Any
+attempt to modify them will result in undefined behavior.
+
 
 =head2 forcomb
 
@@ -1280,15 +1286,34 @@ this function can be used to enumerate the choices.
 Rather than give a data array as input, an integer is used for C<n>.
 A convenient way to map to array elements is:
 
-  forcomb { say join " ", @cdata[@_] } @cdata, 3;
+  forcomb { say "@cdata[@_]" } @cdata, 3;
 
 where the block maps the combination array C<@_> to array values, the
 argument for C<n> is given the array since it will be evaluated as a scalar
 and hence give the size, and the argument for C<k> is the desired size of
 the combinations.
 
-Like forpart, the index return values are read-only.  Any attempt to
-modify them will result in undefined behavior.
+Like forpart and forperm, the index return values are read-only.  Any
+attempt to modify them will result in undefined behavior.
+
+
+=head2 forperm
+
+Given non-negative argument C<n>, the block is called with C<@_> set to
+the C<k> element array of values from C<0> to C<n-1> representing
+permutations.   The total number of calls will be C<n!>.
+
+Rather than give a data array as input, an integer is used for C<n>.
+A convenient way to map to array elements is:
+
+  forperm { say "@cdata[@_]" } @cdata;
+
+where the block maps the permutation array C<@_> to array values, and the
+argument for C<n> is given the array since it will be evaluated as a scalar
+and hence give the size.
+
+Like forpart and forcomb, the index return values are read-only.  Any
+attempt to modify them will result in undefined behavior.
 
 
 =head2 prime_iterator
@@ -3426,9 +3451,9 @@ of moduli to speed up further operations.  MPU does not do this.  This would
 only be important for cases where the lcm is larger than a native int (noting
 that use in cryptography would always have large moduli).
 
-L<Math::Combinatorics> also has a combination iterator.  It is much slower
-than the XS version in MPU.  Both are memory efficient.  It has more features
-as well as permutations, derangements, and multisets.
+L<Math::Combinatorics> also has combination and permutation iterators.  They
+are much slower than the XS version in MPU.  Both are memory efficient.
+Math::Combinatorics has more features as well as derangements and multisets.
 
 L<Math::Pari> supports a lot of features, with a great deal of overlap.  In
 general, MPU will be faster for native 64-bit integers, while it's differs

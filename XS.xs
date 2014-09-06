@@ -1446,8 +1446,10 @@ forpart (SV* block, IN SV* svn, IN SV* svh = 0)
     Safefree(svals);
 
 void
-forcomb (SV* block, IN SV* svn, IN SV* svk)
-  PROTOTYPE: &$$
+forcomb (SV* block, IN SV* svn, IN SV* svk = 0)
+  ALIAS:
+    forperm = 1
+  PROTOTYPE: &$;$
   PREINIT:
     UV i, n, k;
     GV *gv;
@@ -1460,19 +1462,22 @@ forcomb (SV* block, IN SV* svn, IN SV* svk)
     if (cv == Nullcv)
       croak("Not a subroutine reference");
 
-    if (!_validate_int(aTHX_ svn, 0) || !_validate_int(aTHX_ svk, 0)) {
-      _vcallsubn(aTHX_ G_VOID|G_DISCARD, VCALL_ROOT, "_generic_forcomb", 3);
+    if (!_validate_int(aTHX_ svn, 0) || (svk != 0 && !_validate_int(aTHX_ svk, 0))) {
+      _vcallsubn(aTHX_ G_VOID|G_DISCARD, VCALL_ROOT, (ix == 0) ? "_generic_forcomb" : "_generic_forperm", items);
       return;
     }
 
     n = my_svuv(svn);
-    k = my_svuv(svk);
+    k = (svk == 0) ? n : my_svuv(svk);
     if (k > n || n == 0 || k == 0)
       return;
 
-    New(0, cm, k, UV);
-    for (i = 0; i < k; i++)
-      cm[i] = k-i;
+    if (ix == 0) {
+      New(0, cm, k, UV);
+      for (i = 0; i < k; i++)  cm[i] = k-i;
+    } else {
+      Newz(0, cm, k, UV);
+    }
 
     New(0, svals, n, SV*);
     for (i = 0; i < n; i++) {
@@ -1480,16 +1485,27 @@ forcomb (SV* block, IN SV* svn, IN SV* svk)
       SvREADONLY_on(svals[i]);
     }
 
+    /* TODO: permutations are not in lexicographic order */
     while (1) {
       { dSP; ENTER; PUSHMARK(SP);                /* Send the values */
-        EXTEND(SP, k); for (i = 1; i <= k; i++) { PUSHs(svals[ cm[k-i]-1 ]); }
+        EXTEND(SP, k);
+        for (i = 0; i < k; i++) { PUSHs(svals[ (ix==0) ? cm[k-i-1]-1 : i ]); }
         PUTBACK; call_sv((SV*)cv, G_VOID|G_DISCARD); LEAVE;
       }
-      if (cm[0]++ < n)  continue;                /* Increment last value */
-      for (i = 1; i < k && cm[i] >= n-i; i++) ;  /* Find next index to change */
-      if (i >= k)  break;                        /* Done! */
-      cm[i]++;                                   /* Increment this one */
-      while (i-- > 0)  cm[i] = cm[i+1] + 1;      /* Set the rest */
+      if (ix == 0) {
+        if (cm[0]++ < n)  continue;                /* Increment last value */
+        for (i = 1; i < k && cm[i] >= n-i; i++) ;  /* Find next index to incr */
+        if (i >= k)  break;                        /* Done! */
+        cm[i]++;                                   /* Increment this one */
+        while (i-- > 0)  cm[i] = cm[i+1] + 1;      /* Set the rest */
+      } else {
+        for (i = 1; i < k && cm[i] >= i; i++) ;  /* Find next index to change */
+        if (i >= k)  break;                      /* Done! */
+        { UV j = (i&1) ? cm[i] : 0;              /* Swap values */
+          SV* t = svals[j];  svals[j] = svals[i];  svals[i] = t; }
+        cm[i]++;                                 /* Increment next index */
+        while (i > 1)  cm[--i] = 0;              /* Set rest to zero */
+      }
     }
     Safefree(cm);
     for (i = 0; i < n; i++)
