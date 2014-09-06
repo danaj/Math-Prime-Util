@@ -3452,8 +3452,16 @@ only be important for cases where the lcm is larger than a native int (noting
 that use in cryptography would always have large moduli).
 
 L<Math::Combinatorics> also has combination and permutation iterators.  They
-are much slower than the XS version in MPU.  Both are memory efficient.
+are much slower than the XS code in MPU.  Both are memory efficient.
 Math::Combinatorics has more features as well as derangements and multisets.
+The iterator pattern vs. MPU's block multicall is more flexible.
+
+L<Algorithm::Combinatorics> also has combination and permutation iterators.
+They are about 5-10x slower than the XS code in MPU, but both are faster
+than L<Math::Combinatorics>.  Both are memory efficient.
+Algorithm::Combinatorics has more features as well as other
+combinatorial sequences.
+The iterator pattern vs. MPU's block multicall is more flexible.
 
 L<Math::Pari> supports a lot of features, with a great deal of overlap.  In
 general, MPU will be faster for native 64-bit integers, while it's differs
