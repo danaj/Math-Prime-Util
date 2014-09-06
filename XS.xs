@@ -1444,3 +1444,54 @@ forpart (SV* block, IN SV* svn, IN SV* svh = 0)
     for (i = 0; i <= n; i++)
       SvREFCNT_dec(svals[i]);
     Safefree(svals);
+
+void
+forcomb (SV* block, IN SV* svn, IN SV* svk)
+  PROTOTYPE: &$$
+  PREINIT:
+    UV i, n, k;
+    GV *gv;
+    HV *stash;
+    CV *cv;
+    SV** svals;
+    UV*  cm;
+  PPCODE:
+    cv = sv_2cv(block, &stash, &gv, 0);
+    if (cv == Nullcv)
+      croak("Not a subroutine reference");
+
+    if (!_validate_int(aTHX_ svn, 0) || !_validate_int(aTHX_ svk, 0)) {
+      _vcallsubn(aTHX_ G_VOID|G_DISCARD, VCALL_ROOT, "_generic_forcomb", 3);
+      return;
+    }
+
+    n = my_svuv(svn);
+    k = my_svuv(svk);
+    if (k > n || n == 0 || k == 0)
+      return;
+
+    New(0, cm, k, UV);
+    for (i = 0; i < k; i++)
+      cm[i] = k-i;
+
+    New(0, svals, n, SV*);
+    for (i = 0; i < n; i++) {
+      svals[i] = newSVuv(i);
+      SvREADONLY_on(svals[i]);
+    }
+
+    while (1) {
+      { dSP; ENTER; PUSHMARK(SP);                /* Send the values */
+        EXTEND(SP, k); for (i = 1; i <= k; i++) { PUSHs(svals[ cm[k-i]-1 ]); }
+        PUTBACK; call_sv((SV*)cv, G_VOID|G_DISCARD); LEAVE;
+      }
+      if (cm[0]++ < n)  continue;                /* Increment last value */
+      for (i = 1; i < k && cm[i] >= n-i; i++) ;  /* Find next index to change */
+      if (i >= k)  break;                        /* Done! */
+      cm[i]++;                                   /* Increment this one */
+      while (i-- > 0)  cm[i] = cm[i+1] + 1;      /* Set the rest */
+    }
+    Safefree(cm);
+    for (i = 0; i < n; i++)
+      SvREFCNT_dec(svals[i]);
+    Safefree(svals);
