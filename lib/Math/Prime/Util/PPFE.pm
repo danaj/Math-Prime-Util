@@ -469,6 +469,12 @@ sub fordivisors (&$) {    ## no critic qw(ProhibitSubroutinePrototypes)
 sub forpart (&$;$) {    ## no critic qw(ProhibitSubroutinePrototypes)
   Math::Prime::Util::PP::forpart(@_);
 }
+sub forcomb (&$;$) {    ## no critic qw(ProhibitSubroutinePrototypes)
+  Math::Prime::Util::PP::forcomb(@_);
+}
+sub forperm (&$;$) {    ## no critic qw(ProhibitSubroutinePrototypes)
+  Math::Prime::Util::PP::forperm(@_);
+}
 
 1;
 

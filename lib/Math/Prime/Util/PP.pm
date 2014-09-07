@@ -3903,6 +3903,51 @@ sub forpart {
     }
   }
 }
+sub forcomb {
+  my($sub, $n, $k) = @_;
+  _validate_positive_integer($n);
+  if (defined $k) {
+    _validate_positive_integer($k);
+  } else {
+    $k = $n;
+  }
+  my @x = (0, 0 .. $n);
+  my @c = reverse 1 .. $k;
+  while (1) {
+    $sub->(@x[reverse @c]);
+    next if $c[0]++ < $n;
+    my $i = 1;
+    $i++ while $i < $k && $c[$i] >= $n-$i;
+    last if $i >= $k;
+    $c[$i]++;
+    while ($i-- > 0) { $c[$i] = $c[$i+1] + 1; }
+  }
+}
+sub forperm {
+  my($sub, $n, $k) = @_;
+  _validate_positive_integer($n);
+  if (defined $k) {
+    _validate_positive_integer($k);
+  } else {
+    $k = $n;
+  }
+  my @c = reverse 0 .. $k-1;
+  my $inc = 0;
+  while (1) {
+    $sub->(reverse @c);
+    if (++$inc & 1) {
+      @c[0,1] = @c[1,0];
+      next;
+    }
+    my $j = 2;
+    $j++ while $j < $k && $c[$j] > $c[$j-1];
+    last if $j >= $k;
+    my $m = 0;
+    $m++ while $c[$j] > $c[$m];
+    @c[$j,$m] = @c[$m,$j];
+    @c[0..$j-1] = reverse @c[0..$j-1];
+  }
+}
 
 1;
 

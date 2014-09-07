@@ -1463,7 +1463,7 @@ forcomb (SV* block, IN SV* svn, IN SV* svk = 0)
       croak("Not a subroutine reference");
 
     if (!_validate_int(aTHX_ svn, 0) || (svk != 0 && !_validate_int(aTHX_ svk, 0))) {
-      _vcallsubn(aTHX_ G_VOID|G_DISCARD, VCALL_ROOT, (ix == 0) ? "_generic_forcomb" : "_generic_forperm", items);
+      _vcallsub_with_pp( (ix == 0) ? "forcomb" : "forperm" );
       return;
     }
 
