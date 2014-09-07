@@ -1451,7 +1451,7 @@ forcomb (SV* block, IN SV* svn, IN SV* svk = 0)
     forperm = 1
   PROTOTYPE: &$;$
   PREINIT:
-    UV i, n, k;
+    UV i, n, k, j, m;
     GV *gv;
     HV *stash;
     CV *cv;
@@ -1472,12 +1472,9 @@ forcomb (SV* block, IN SV* svn, IN SV* svk = 0)
     if (k > n || n == 0 || k == 0)
       return;
 
-    if (ix == 0) {
-      New(0, cm, k, UV);
-      for (i = 0; i < k; i++)  cm[i] = k-i;
-    } else {
-      Newz(0, cm, k, UV);
-    }
+    New(0, cm, k, UV);
+    for (i = 0; i < k; i++)
+      cm[i] = k-i;
 
     New(0, svals, n, SV*);
     for (i = 0; i < n; i++) {
@@ -1485,11 +1482,10 @@ forcomb (SV* block, IN SV* svn, IN SV* svk = 0)
       SvREADONLY_on(svals[i]);
     }
 
-    /* TODO: permutations are not in lexicographic order */
     while (1) {
       { dSP; ENTER; PUSHMARK(SP);                /* Send the values */
         EXTEND(SP, k);
-        for (i = 0; i < k; i++) { PUSHs(svals[ (ix==0) ? cm[k-i-1]-1 : i ]); }
+        for (i = 0; i < k; i++) { PUSHs(svals[ cm[k-i-1]-1 ]); }
         PUTBACK; call_sv((SV*)cv, G_VOID|G_DISCARD); LEAVE;
       }
       if (ix == 0) {
@@ -1499,12 +1495,12 @@ forcomb (SV* block, IN SV* svn, IN SV* svk = 0)
         cm[i]++;                                   /* Increment this one */
         while (i-- > 0)  cm[i] = cm[i+1] + 1;      /* Set the rest */
       } else {
-        for (i = 1; i < k && cm[i] >= i; i++) ;  /* Find next index to change */
-        if (i >= k)  break;                      /* Done! */
-        { UV j = (i&1) ? cm[i] : 0;              /* Swap values */
-          SV* t = svals[j];  svals[j] = svals[i];  svals[i] = t; }
-        cm[i]++;                                 /* Increment next index */
-        while (i > 1)  cm[--i] = 0;              /* Set rest to zero */
+        for (j = 1; j < k && cm[j] > cm[j-1]; j++) ;    /* Find last decrease */
+        if (j >= k) break;                              /* Done! */
+        for (m = 0; cm[j] > cm[m]; m++) ;               /* Find next greater */
+        { UV t = cm[j];  cm[j] = cm[m];  cm[m] = t; }   /* Swap */
+        for (i = j-1, m = 0;  m < i;  i--, m++)         /* Reverse the end */
+          { UV t = cm[i];  cm[i] = cm[m];  cm[m] = t; }
       }
     }
     Safefree(cm);

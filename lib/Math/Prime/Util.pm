@@ -1280,13 +1280,13 @@ attempt to modify them will result in undefined behavior.
 
 Given non-negative arguments C<n> and C<k>, the block is called with C<@_>
 set to the C<k> element array of values from C<0> to C<n-1> representing
-the combinations.  While the L<binomial> function gives the total number,
-this function can be used to enumerate the choices.
+the combinations in lexicographical order.  While the L<binomial> function
+gives the total number, this function can be used to enumerate the choices.
 
 Rather than give a data array as input, an integer is used for C<n>.
 A convenient way to map to array elements is:
 
-  forcomb { say "@cdata[@_]" } @cdata, 3;
+  forcomb { say "@data[@_]" } @data, 3;
 
 where the block maps the combination array C<@_> to array values, the
 argument for C<n> is given the array since it will be evaluated as a scalar
@@ -1301,12 +1301,13 @@ attempt to modify them will result in undefined behavior.
 
 Given non-negative argument C<n>, the block is called with C<@_> set to
 the C<k> element array of values from C<0> to C<n-1> representing
-permutations.   The total number of calls will be C<n!>.
+permutations in lexicographical order.
+The total number of calls will be C<n!>.
 
 Rather than give a data array as input, an integer is used for C<n>.
 A convenient way to map to array elements is:
 
-  forperm { say "@cdata[@_]" } @cdata;
+  forperm { say "@data[@_]" } @data;
 
 where the block maps the permutation array C<@_> to array values, and the
 argument for C<n> is given the array since it will be evaluated as a scalar
@@ -3451,17 +3452,16 @@ of moduli to speed up further operations.  MPU does not do this.  This would
 only be important for cases where the lcm is larger than a native int (noting
 that use in cryptography would always have large moduli).
 
-L<Math::Combinatorics> also has combination and permutation iterators.  They
-are much slower than the XS code in MPU.  Both are memory efficient.
-Math::Combinatorics has more features as well as derangements and multisets.
-The iterator pattern vs. MPU's block multicall is more flexible.
-
-L<Algorithm::Combinatorics> also has combination and permutation iterators.
-They are about 5-10x slower than the XS code in MPU, but both are faster
-than L<Math::Combinatorics>.  Both are memory efficient.
-Algorithm::Combinatorics has more features as well as other
-combinatorial sequences.
-The iterator pattern vs. MPU's block multicall is more flexible.
+For combinations and permutations there are many alternatives.  One
+difference with nearly all of them is that MPU's L</forcomb> and
+L</forperm> functions don't operate directly on a user array but on
+generic indices.
+L<Math::Combinatorics> and L<Algorithm::Combinatorics> have more features,
+but will be slower.
+L<List::Permutor> does permutations with an iterator.
+L<Algorithm::FastPermute> and L<Algorithm::Permute> are very similar
+but can be 2-10x faster than MPU (they use the same user-block
+structure but twiddle the user array each call).
 
 L<Math::Pari> supports a lot of features, with a great deal of overlap.  In
 general, MPU will be faster for native 64-bit integers, while it's differs

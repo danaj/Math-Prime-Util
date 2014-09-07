@@ -785,7 +785,7 @@ int is_prob_prime(UV n)
   if (n < 20000000) {
     unsigned int m = n;
     if (m < 11) {
-      if (n == 2 || n == 3 || n == 5 || n == 7)     return 2;
+      if (m == 2 || m == 3 || m == 5 || m == 7)     return 2;
       else                                          return 0;
     }
     if (!(m%2) || !(m%3) || !(m%5) || !(m%7))       return 0;
