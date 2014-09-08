@@ -134,18 +134,10 @@ sub nth_twin_prime_approx {
 }
 
 
-sub is_prime {
-  my($n) = @_;
-  return 0 if defined $n && int($n) < 0;
-  _validate_positive_integer($n);
-  return Math::Prime::Util::PP::is_prime($n);
-}
-sub is_prob_prime {
-  my($n) = @_;
-  return 0 if defined $n && int($n) < 0;
-  _validate_positive_integer($n);
-  return Math::Prime::Util::PP::is_prob_prime($n);
-}
+*is_prime       = \&Math::Prime::Util::PP::is_prime;
+*is_prob_prime  = \&Math::Prime::Util::PP::is_prob_prime;
+*is_bpsw_prime  = \&Math::Prime::Util::PP::is_bpsw_prime;
+
 sub is_pseudoprime {
   my($n, $base) = @_;
   return 0 if defined $n && int($n) < 0;
@@ -307,14 +299,6 @@ sub pminus1_factor {
   Math::Prime::Util::PP::pminus1_factor($n, $B1, $B2);
 }
 *pplus1_factor = \&pminus1_factor;
-sub ecm_factor {
-  my($n, $B1, $B2, $ncurves) = @_;
-  _validate_positive_integer($n);
-  _validate_positive_integer($B1) if defined $B1;
-  _validate_positive_integer($B2) if defined $B2;
-  _validate_positive_integer($ncurves) if defined $ncurves;
-  Math::Prime::Util::PP::ecm_factor($n, $B1, $B2, $ncurves);
-}
 
 sub divisors {
   my($n) = @_;

@@ -5,7 +5,7 @@ use Carp qw/croak confess carp/;
 
 BEGIN {
   $Math::Prime::Util::AUTHORITY = 'cpan:DANAJ';
-  $Math::Prime::Util::VERSION = '0.43';
+  $Math::Prime::Util::VERSION = '0.44';
 }
 
 # parent is cleaner, and in the Perl 5.10.1 / 5.12.0 core, but not earlier.
@@ -22,7 +22,7 @@ our @EXPORT_OK =
       is_extra_strong_lucas_pseudoprime
       is_almost_extra_strong_lucas_pseudoprime
       is_frobenius_underwood_pseudoprime
-      is_aks_prime
+      is_aks_prime is_bpsw_prime
       is_power
       miller_rabin_random
       lucas_sequence
@@ -52,7 +52,7 @@ our @EXPORT_OK =
 our %EXPORT_TAGS = (all => [ @EXPORT_OK ]);
 
 # These are only exported if specifically asked for
-push @EXPORT_OK, (qw/trial_factor fermat_factor holf_factor squfof_factor prho_factor pbrent_factor pminus1_factor pplus1_factor/);
+push @EXPORT_OK, (qw/trial_factor fermat_factor holf_factor squfof_factor prho_factor pbrent_factor pminus1_factor pplus1_factor ecm_factor/);
 
 my %_Config;
 
@@ -793,6 +793,23 @@ sub verify_prime {
 
 #############################################################################
 
+sub ecm_factor {
+  my($n, $B1, $B2, $ncurves) = @_;
+  _validate_positive_integer($n);
+  _validate_positive_integer($B1) if defined $B1;
+  _validate_positive_integer($B2) if defined $B2;
+  _validate_positive_integer($ncurves) if defined $ncurves;
+  if ($_HAVE_GMP) {
+    my @factors = Math::Prime::Util::GMP::ecm_factor($n, $B1, $ncurves);
+    if (ref($_[0]) eq 'Math::BigInt') {
+      @factors = map { ($_ > ~0) ? Math::BigInt->new(''.$_) : $_ } @factors;
+    }
+    return @factors;
+  }
+  require Math::Prime::Util::PP;
+  Math::Prime::Util::PP::ecm_factor($n, $B1, $B2, $ncurves);
+}
+
 #############################################################################
 
 sub RiemannZeta {
@@ -876,7 +893,7 @@ Math::Prime::Util - Utilities related to prime numbers, including fast sieves an
 
 =head1 VERSION
 
-Version 0.43
+Version 0.44
 
 
 =head1 SYNOPSIS
@@ -2928,6 +2945,14 @@ find a factor C<p> of C<n> where C<p-1> is smooth (it has no large factors).
 
 Produces factors, not necessarily prime, of the positive number input.  This
 is Williams' C<p+1> method, using one stage and two predefined initial points.
+
+=head2 ecm_factor
+
+  my @factors = ecm_factor($n);
+  my @factors = ecm_factor($n, 100, 400, 10);      # B1, B2, # of curves
+
+Produces factors, not necessarily prime, of the positive number input.  This
+is the elliptic curve method using two stages.
 
 
 

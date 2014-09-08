@@ -5,7 +5,7 @@ use Carp qw/carp croak confess/;
 
 BEGIN {
   $Math::Prime::Util::PP::AUTHORITY = 'cpan:DANAJ';
-  $Math::Prime::Util::PP::VERSION = '0.43';
+  $Math::Prime::Util::PP::VERSION = '0.44';
 }
 
 BEGIN {
@@ -283,7 +283,7 @@ sub _is_prime7 {  # n must not be divisible by 2, 3, or 5
 
 sub is_prime {
   my($n) = @_;
-  return 0 if int($n) < 0;
+  return 0 if defined($n) && int($n) < 0;
   _validate_positive_integer($n);
 
   if (ref($n) eq 'Math::BigInt') {
@@ -304,6 +304,7 @@ sub is_prime {
 # Slow since it's all in PP and uses bigints.
 sub is_bpsw_prime {
   my($n) = @_;
+  return 0 if defined($n) && int($n) < 0;
   _validate_positive_integer($n);
   return 0 unless _miller_rabin_2($n);
   if ($n <= 18446744073709551615) {
@@ -3975,7 +3976,7 @@ Math::Prime::Util::PP - Pure Perl version of Math::Prime::Util
 
 =head1 VERSION
 
-Version 0.43
+Version 0.44
 
 
 =head1 SYNOPSIS
