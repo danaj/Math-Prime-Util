@@ -30,8 +30,8 @@ foreach my $m (@modules) {
   };
   $param->{trustme} = [mpu_public_regex(), mpu_factor_regex()]
     if $m eq 'Math::Prime::Util::PP';
-  $param->{trustme} = [qw/ecm_factor/]
-    if $m eq 'Math::Prime::Util';
+  $param->{trustme} = [mpu_public_regex(), mpu_factor_regex()]
+    if $m eq 'ntheory';
   pod_coverage_ok( $m, $param );
 }
 
@@ -52,7 +52,8 @@ sub mpu_public_regex {
       miller_rabin_random
       lucas_sequence
       primes twin_primes
-      forprimes forcomposites foroddcomposites fordivisors forpart
+      forprimes forcomposites foroddcomposites fordivisors
+      forpart forcomb forperm
       prime_iterator prime_iterator_object
       next_prime  prev_prime
       prime_count
@@ -70,7 +71,7 @@ sub mpu_public_regex {
       partitions
       chebyshev_theta chebyshev_psi
       divisor_sum carmichael_lambda
-      kronecker binomial znorder znprimroot znlog legendre_phi
+      kronecker binomial factorial znorder znprimroot znlog legendre_phi
       ExponentialIntegral LogarithmicIntegral RiemannZeta RiemannR
   /;
   my $pattern = '^(' . join('|', @funcs) . ')$';
@@ -78,8 +79,7 @@ sub mpu_public_regex {
 }
 
 sub mpu_factor_regex {
-  my @funcs = qw/ ecm_factor fermat_factor holf_factor pbrent_factor
-                  pminus1_factor prho_factor squfof_factor trial_factor/;
+  my @funcs = (qw/trial_factor fermat_factor holf_factor squfof_factor prho_factor pbrent_factor pminus1_factor pplus1_factor ecm_factor/);
   my $pattern = '^(' . join('|', @funcs) . ')$';
   return qr/$pattern/;
 }

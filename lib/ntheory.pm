@@ -4,7 +4,7 @@ use warnings;
 
 BEGIN {
   $ntheory::AUTHORITY = 'cpan:DANAJ';
-  $ntheory::VERSION = '0.43';
+  $ntheory::VERSION = '0.44';
 }
 
 BEGIN {
@@ -21,6 +21,8 @@ __END__
 # ABSTRACT: Number theory utilities
 
 =pod
+
+=for stopwords ntheory
 
 =head1 NAME
 

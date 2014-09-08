@@ -8,6 +8,7 @@ Revision history for Perl module Math::Prime::Util
     - forcomb { ... } n, k    combinations iterator
     - forperm { ... } n       permutations iterator
     - factorial(n)            n!
+    - is_bpsw_prime(n)        primality test with no pretests, just ES BPSW
 
     [FUNCTIONALITY AND PERFORMANCE]
 

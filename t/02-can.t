@@ -16,18 +16,20 @@ my @functions =  qw(
       is_extra_strong_lucas_pseudoprime
       is_almost_extra_strong_lucas_pseudoprime
       is_frobenius_underwood_pseudoprime
-      is_aks_prime
+      is_aks_prime is_bpsw_prime
       is_power
       miller_rabin_random
       lucas_sequence
-      primes
-      forprimes forcomposites foroddcomposites fordivisors forpart
+      primes twin_primes
+      forprimes forcomposites foroddcomposites fordivisors
+      forpart forcomb forperm
       prime_iterator prime_iterator_object
       next_prime  prev_prime
       prime_count
       prime_count_lower prime_count_upper prime_count_approx
       nth_prime nth_prime_lower nth_prime_upper nth_prime_approx
-      twin_prime_count twin_prime_count_approx nth_twin_prime
+      twin_prime_count twin_prime_count_approx
+      nth_twin_prime nth_twin_prime_approx
       random_prime random_ndigit_prime random_nbit_prime random_strong_prime
       random_proven_prime random_proven_prime_with_cert
       random_maurer_prime random_maurer_prime_with_cert
@@ -38,7 +40,7 @@ my @functions =  qw(
       partitions
       chebyshev_theta chebyshev_psi
       divisor_sum carmichael_lambda
-      kronecker binomial znorder znprimroot znlog legendre_phi
+      kronecker binomial factorial znorder znprimroot znlog legendre_phi
       ExponentialIntegral LogarithmicIntegral RiemannZeta RiemannR
                    );
 can_ok( 'Math::Prime::Util', @functions);
