@@ -799,7 +799,10 @@ sub ecm_factor {
   _validate_positive_integer($B1) if defined $B1;
   _validate_positive_integer($B2) if defined $B2;
   _validate_positive_integer($ncurves) if defined $ncurves;
+  return if $n == 1;
   if ($_HAVE_GMP) {
+    $B1 = 0 if !defined $B1;
+    $ncurves = 0 if !defined $ncurves;
     my @factors = Math::Prime::Util::GMP::ecm_factor($n, $B1, $ncurves);
     if (ref($_[0]) eq 'Math::BigInt') {
       @factors = map { ($_ > ~0) ? Math::BigInt->new(''.$_) : $_ } @factors;
