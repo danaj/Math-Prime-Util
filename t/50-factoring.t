@@ -115,7 +115,7 @@ plan tests => (3 * scalar @testn)
             + 2*scalar(keys %prime_factors)
             + 4*scalar(keys %all_factors)
             + 2*scalar(keys %factor_exponents)
-            + 10*9  # 10 extra factoring tests * 9 algorithms
+            + 10*8  # 10 extra factoring tests * 8 algorithms
             + 8
             + 1;
 
@@ -165,7 +165,8 @@ extra_factor_test("pbrent_factor", sub {Math::Prime::Util::pbrent_factor(shift)}
 extra_factor_test("prho_factor",   sub {Math::Prime::Util::prho_factor(shift)});
 extra_factor_test("pminus1_factor",sub {Math::Prime::Util::pminus1_factor(shift)});
 extra_factor_test("pplus1_factor", sub {Math::Prime::Util::pplus1_factor(shift)});
-extra_factor_test("ecm_factor", sub {Math::Prime::Util::ecm_factor(shift)});
+# TODO: old versions of MPUGMP didn't pull out factors of 3 or 5.
+#extra_factor_test("ecm_factor", sub {Math::Prime::Util::ecm_factor(shift)});
 
 # To hit some extra coverage
 is_deeply( [Math::Prime::Util::trial_factor(5514109)], [2203,2503], "trial factor 2203*2503" );

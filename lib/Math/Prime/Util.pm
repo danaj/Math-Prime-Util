@@ -209,8 +209,8 @@ sub _reftyped {
     # Perl 5.6 truncates arguments to doubles if you look at them funny
     return "$_[1]" if "$_[1]" <= 562949953421312;
   } elsif ($_[1] >= 0) {
-    # Perl 5.20.0 brought back a stupid double conversion bug
-    return $_[1] if $_[1] <= 18446744073709550591 || ''.int($_[1]) <= ~0;
+    # TODO: This wasn't working right in 5.20.0-RC1, verify correct
+    return $_[1] if $_[1] <= ~0;
   } else {
     return $_[1] if ''.int($_[1]) >= -(~0>>1);
   }
