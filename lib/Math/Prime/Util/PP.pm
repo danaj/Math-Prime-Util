@@ -1957,6 +1957,13 @@ sub binomial {
   $r;
 }
 
+sub factorial {
+  my($n) = @_;
+  my $r = Math::BigInt->new(''.$n)->bfac();
+  $r = _bigint_to_int($r) if $r->bacmp(''.~0) <= 0;
+  $r;
+}
+
 sub _is_perfect_square {
   my($n) = @_;
 
@@ -3911,6 +3918,7 @@ sub forcomb {
   } else {
     $k = $n;
   }
+  return if $k > $n || $n == 0 || $k == 0;
   my @x = (0, 0 .. $n);
   my @c = reverse 1 .. $k;
   while (1) {
@@ -3926,11 +3934,10 @@ sub forcomb {
 sub forperm {
   my($sub, $n, $k) = @_;
   _validate_positive_integer($n);
-  if (defined $k) {
-    _validate_positive_integer($k);
-  } else {
-    $k = $n;
-  }
+  croak "Too many arguments for forperm" if defined $k;
+  $k = $n;
+  return if $k > $n || $n == 0 || $k == 0;
+  if ($n < 2) { $sub->(0) if $n == 1; return; }
   my @c = reverse 0 .. $k-1;
   my $inc = 0;
   while (1) {

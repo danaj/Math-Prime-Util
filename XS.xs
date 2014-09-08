@@ -1031,48 +1031,45 @@ carmichael_lambda(IN SV* svn)
     liouville = 2
     chebyshev_theta = 3
     chebyshev_psi = 4
-    exp_mangoldt = 5
-    znprimroot = 6
+    factorial = 5
+    exp_mangoldt = 6
+    znprimroot = 7
   PREINIT:
     int status;
   PPCODE:
-    status = _validate_int(aTHX_ svn, (ix >= 5) ? 1 : 0);
+    status = _validate_int(aTHX_ svn, (ix >= 6) ? 1 : 0);
+    if (status != 0) {
+      UV r, n = my_svuv(svn);
+      switch (ix) {
+        case 0:  XSRETURN_UV(carmichael_lambda(n)); break;
+        case 1:  XSRETURN_IV(mertens(n)); break;
+        case 2:  { UV factors[MPU_MAX_FACTORS+1];
+                   int nfactors = factor(my_svuv(svn), factors);
+                   RETURN_NPARITY( (nfactors & 1) ? -1 : 1 ); }
+                 break;
+        case 3:  XSRETURN_NV(chebyshev_function(n, 0)); break;
+        case 4:  XSRETURN_NV(chebyshev_function(n, 1)); break;
+        case 5:  r = factorial(n);
+                 if (r != 0) XSRETURN_UV(r);
+                 status = 0; break;
+        case 6:  XSRETURN_UV( (status == -1) ? 1 : exp_mangoldt(n) ); break;
+        case 7:
+        default: if (status == -1) n = -(IV)n;
+                 r = znprimroot(n);
+                 if (r == 0 && n != 1)  XSRETURN_UNDEF;  /* No root */
+                 XSRETURN_UV(r);  break;
+      }
+    }
     switch (ix) {
-      case 0: if (status == 1) XSRETURN_UV(carmichael_lambda(my_svuv(svn)));
-              _vcallsub_with_gmp("carmichael_lambda");
-              break;
-      case 1: if (status == 1) XSRETURN_IV(mertens(my_svuv(svn)));
-              _vcallsub_with_pp("mertens");
-              break;
-      case 2: if (status == 1) {
-                UV factors[MPU_MAX_FACTORS+1];
-                int nfactors = factor(my_svuv(svn), factors);
-                RETURN_NPARITY( (nfactors & 1) ? -1 : 1 );
-              }
-              _vcallsub_with_gmp("liouville");
-              break;
-      case 3: if (status == 1) XSRETURN_NV(chebyshev_function(my_svuv(svn),0));
-              _vcallsub_with_pp("chebyshev_theta");
-              break;
-      case 4: if (status == 1) XSRETURN_NV(chebyshev_function(my_svuv(svn),1));
-              _vcallsub_with_pp("chebyshev_psi");
-              break;
-      case 5: if (status != 0)
-                XSRETURN_UV( (status == -1) ? 1 : exp_mangoldt(my_svuv(svn)) );
-              _vcallsub_with_gmp("exp_mangoldt");
-              break;
-      case 6:
-      default:if (status != 0) {
-                UV r, n = my_svuv(svn);
-                if (status == -1) n = -(IV)n;
-                r = znprimroot(n);
-                if (r == 0 && n != 1)
-                  XSRETURN_UNDEF;   /* No root, return undef */
-                else
-                  XSRETURN_UV(r);
-              }
-              _vcallsub_with_gmp("znprimroot");
-              break;
+      case 0:  _vcallsub_with_gmp("carmichael_lambda");  break;
+      case 1:  _vcallsub_with_pp("mertens"); break;
+      case 2:  _vcallsub_with_gmp("liouville"); break;
+      case 3:  _vcallsub_with_pp("chebyshev_theta"); break;
+      case 4:  _vcallsub_with_pp("chebyshev_psi"); break;
+      case 5:  _vcallsub_with_pp("factorial"); break;
+      case 6:  _vcallsub_with_gmp("exp_mangoldt"); break;
+      case 7:
+      default: _vcallsub_with_gmp("znprimroot");
     }
     return; /* skip implicit PUTBACK */
 
@@ -1461,6 +1458,8 @@ forcomb (SV* block, IN SV* svn, IN SV* svk = 0)
     cv = sv_2cv(block, &stash, &gv, 0);
     if (cv == Nullcv)
       croak("Not a subroutine reference");
+    if (ix == 1 && svk != 0)
+      croak("Too many arguments for forperm");
 
     if (!_validate_int(aTHX_ svn, 0) || (svk != 0 && !_validate_int(aTHX_ svk, 0))) {
       _vcallsub_with_pp( (ix == 0) ? "forcomb" : "forperm" );

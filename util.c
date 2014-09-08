@@ -1349,8 +1349,15 @@ int kronecker_ss(IV a, IV b) {
   return kronecker_su(a, -b) * ((a < 0) ? -1 : 1);
 }
 
-/* Thanks to MJD and RosettaCode */
-UV binomial(UV n, UV k) {
+UV factorial(UV n) {
+  UV i, r = 1;
+  if ( (n > 12 && sizeof(UV) <= 4) || (n > 20 && sizeof(UV) <= 8) ) return 0;
+  for (i = 2; i <= n; i++)
+    r *= i;
+  return r;
+}
+
+UV binomial(UV n, UV k) {    /* Thanks to MJD and RosettaCode for ideas */
   UV d, g, r = 1;
   if (k == 0) return 1;
   if (k == 1) return n;

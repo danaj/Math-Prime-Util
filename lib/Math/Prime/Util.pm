@@ -46,7 +46,7 @@ our @EXPORT_OK =
       partitions
       chebyshev_theta chebyshev_psi
       divisor_sum carmichael_lambda
-      kronecker binomial znorder znprimroot znlog legendre_phi
+      kronecker binomial factorial znorder znprimroot znlog legendre_phi
       ExponentialIntegral LogarithmicIntegral RiemannZeta RiemannR
   );
 our %EXPORT_TAGS = (all => [ @EXPORT_OK ]);
@@ -2357,6 +2357,14 @@ only defined for odd prime values of C<n>.  This corresponds to Pari's
 C<kronecker(a,n)> function, Mathematica's C<KroneckerSymbol[n,m]>
 function, and GMP's C<mpz_kronecker(a,n)>, C<mpz_jacobi(a,n)>, and
 C<mpz_legendre(a,n)> functions.
+
+
+=head2 factorial
+
+Given positive integer argument C<n>, returns the factorial of C<n>,
+defined as the product of the integers 1 to C<n> with the special case
+of C<factorial(0) = 1>.  This corresponds to Pari's C<factorial(n)>
+and Mathematica's C<Factorial[n]> functions.
 
 
 =head2 binomial

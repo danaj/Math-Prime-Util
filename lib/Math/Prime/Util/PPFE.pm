@@ -210,6 +210,12 @@ sub kronecker {
   return Math::Prime::Util::PP::kronecker(@_);
 }
 
+sub factorial {
+  my($n) = @_;
+  _validate_integer($n);
+  return Math::Prime::Util::PP::factorial($n);
+}
+
 sub binomial {
   my($n, $k) = @_;
   _validate_integer($n);
