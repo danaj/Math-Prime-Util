@@ -3919,17 +3919,17 @@ sub forcomb {
   } else {
     $k = $n;
   }
-  return if $k > $n || $n == 0 || $k == 0;
-  my @x = (0, 0 .. $n);
-  my @c = reverse 1 .. $k;
+  return $sub->() if $k == 0;
+  return if $k > $n || $n == 0;
+  my @c = 0 .. $k-1;
   while (1) {
-    $sub->(@x[reverse @c]);
-    next if $c[0]++ < $n;
-    my $i = 1;
-    $i++ while $i < $k && $c[$i] >= $n-$i;
-    last if $i >= $k;
+    $sub->(@c);
+    next if $c[-1]++ < $n-1;
+    my $i = $k-2;
+    $i-- while $i >= 0 && $c[$i] >= $n-($k-$i);
+    last if $i < 0;
     $c[$i]++;
-    while ($i-- > 0) { $c[$i] = $c[$i+1] + 1; }
+    while (++$i < $k) { $c[$i] = $c[$i-1] + 1; }
   }
 }
 sub forperm {
@@ -3937,8 +3937,8 @@ sub forperm {
   _validate_positive_integer($n);
   croak "Too many arguments for forperm" if defined $k;
   $k = $n;
-  return if $k > $n || $n == 0 || $k == 0;
-  if ($n < 2) { $sub->(0) if $n == 1; return; }
+  return $sub->() if $n == 0;
+  return $sub->(0) if $n == 1;
   my @c = reverse 0 .. $k-1;
   my $inc = 0;
   while (1) {
