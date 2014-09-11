@@ -1767,6 +1767,36 @@ long double _XS_LogarithmicIntegral(long double x) {
   if (x == 2) return li2;
   if (x < 0) croak("Invalid input to LogarithmicIntegral:  x must be >= 0");
   if (x >= LDBL_MAX) return INFINITY;
+
+#if 0
+  /* We could calculate this here directly using Ramaujan's series.
+   * I did not find this any faster or more accuracte than using Ei. */
+  if (x > 1) {
+    long double flogx, numer, denom, factn, inner_sum, power2, term;
+    unsigned int n, k;
+    KAHAN_INIT(sum);
+
+    flogx = logl(x);
+    numer = flogx;
+    inner_sum = 1.0L;
+    factn = 1.0L;
+    power2 = 2.0L;
+    KAHAN_SUM(sum, flogx);
+    for (n = 2, k = 1; n < 10000; n++) {
+      factn *= n;
+      numer *= -flogx;
+      denom = factn * power2;
+      power2 *= 2;
+      for (; k <= (n-1) >> 1; k++)
+        inner_sum += 1.0L / (2 * k + 1);
+      term = (numer / denom) * inner_sum;
+      KAHAN_SUM(sum, term);
+      if (fabsl(term) < LDBL_EPSILON*fabsl(sum)) break;
+    }
+    return euler_mascheroni + logl(flogx) + sqrtl(x) * sum;
+  }
+#endif
+
   return _XS_ExponentialIntegral(logl(x));
 }
 

@@ -94,3 +94,5 @@
 - Simple test for ntheory alias
 
 - combinations n,0 and permutations 0 should get called with the empty argument
+
+- consider using Ramanujan Li for PP code.
