@@ -3961,7 +3961,7 @@ Marc Deléglise and Joöl Rivat, "Computing the summation of the Möbius functio
 
 =item *
 
-Pierre Dusart, "Autour de la fonction qui compte le nombre de nombres premiers", PhD thesis, 1998.  In French.  The mathematics is readable and highly recommended reading if you're interesting in prime number bounds.  L<http://www.unilim.fr/laco/theses/1998/T1998_01.html>
+Pierre Dusart, "Autour de la fonction qui compte le nombre de nombres premiers", PhD thesis, 1998.  In French.  The mathematics is readable and highly recommended reading if you're interested in prime number bounds.  L<http://www.unilim.fr/laco/theses/1998/T1998_01.html>
 
 =item *
 
