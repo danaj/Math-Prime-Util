@@ -9,7 +9,7 @@ my $extra = defined $ENV{EXTENDED_TESTING} && $ENV{EXTENDED_TESTING};
 use Math::BigInt try => "GMP,Pari";
 
 my %perms = (
- 0 => [],
+ 0 => [[]],
  1 => [[0]],
  2 => [[0,1],[1,0]],
  3 => [[0,1,2],[0,2,1],[1,0,2],[1,2,0],[2,0,1],[2,1,0]],
@@ -32,13 +32,13 @@ sub fact { my $n = Math::BigInt->new("$_[0]"); $n->bfac; }
 
 
 { my @p = (); forcomb { push @p, [@_] } 0;
-  is_deeply( [@p], [], "forcomb 0" ); }
+  is_deeply( [@p], [[]], "forcomb 0" ); }
 { my @p = (); forcomb { push @p, [@_] } 1;
   is_deeply( [@p], [[0]], "forcomb 1" ); }
 { my @p = (); forcomb { push @p, [@_] } 0,0;
-  is_deeply( [@p], [], "forcomb 0,0" ); }
+  is_deeply( [@p], [[]], "forcomb 0,0" ); }
 { my @p = (); forcomb { push @p, [@_] } 5,0;
-  is_deeply( [@p], [], "forcomb 5,0" ); }
+  is_deeply( [@p], [[]], "forcomb 5,0" ); }
 { my @p = (); forcomb { push @p, [@_] } 5,6;
   is_deeply( [@p], [], "forcomb 5,6" ); }
 { my @p = (); forcomb { push @p, [@_] } 5,5;

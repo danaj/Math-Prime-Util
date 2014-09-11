@@ -1468,7 +1468,7 @@ forcomb (SV* block, IN SV* svn, IN SV* svk = 0)
 
     n = my_svuv(svn);
     k = (svk == 0) ? n : my_svuv(svk);
-    if (k > n || n == 0 || k == 0)
+    if (k > n)
       return;
 
     New(0, cm, k, UV);
