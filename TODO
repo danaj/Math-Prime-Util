@@ -73,8 +73,6 @@
   to speed it up using some ideas from the Ohana 2011 SAGE branch.  For example
   (10**13,10**5) takes 2.5x longer, albeit with 6x less memory.
 
-- XS alias forprimes, forcomposites, forpart
-
 - More Pari:  parforprime, vecmin, vecmax
 
 - is_power should take a third argument that gets set to the root
@@ -92,7 +90,5 @@
   efficient.
 
 - Simple test for ntheory alias
-
-- combinations n,0 and permutations 0 should get called with the empty argument
 
 - consider using Ramanujan Li for PP code.
