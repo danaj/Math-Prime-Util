@@ -69,6 +69,8 @@ if ($usexs || !$usegmp) {
 }
 
 my @oeis_81264 = (323, 377, 1891, 3827, 4181, 5777, 6601, 6721, 8149, 10877, 11663, 13201, 13981, 15251, 17119, 17711, 18407, 19043, 23407, 25877, 27323, 30889, 34561, 34943, 35207, 39203, 40501, 50183, 51841, 51983, 52701, 53663, 60377, 64079, 64681);
+# The PP lucas sequence is really slow.
+$#oeis_81264 = 2 unless $usexs || $usegmp;
 
 plan tests => 0 + scalar(@lucas_seqs) + 1;
 
@@ -86,6 +88,6 @@ foreach my $seqs (@lucas_seqs) {
     my $t = (($_%5)==2||($_%5)==3) ? $_+1 : $_-1;
     my($U,$V) = lucas_sequence($_,1,-1,$t);
     push @p, $_ if $U == 0;
-  } 65000;
+  } $oeis_81264[-1];
   is_deeply( \@p, \@oeis_81264, "OEIS 81264: Odd Fibonacci pseudoprimes" );
 }
