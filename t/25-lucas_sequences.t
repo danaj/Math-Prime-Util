@@ -3,7 +3,7 @@ use strict;
 use warnings;
 
 use Test::More;
-use Math::Prime::Util qw/lucas_sequence/;
+use Math::Prime::Util qw/lucas_sequence foroddcomposites/;
 
 #my $use64 = Math::Prime::Util::prime_get_config->{'maxbits'} > 32;
 my $usexs = Math::Prime::Util::prime_get_config->{'xs'};
@@ -68,7 +68,9 @@ if ($usexs || !$usegmp) {
     [0, 1, 4, 12, 32, 80, 192, 448, 1024, 2304, 5120, 11264, 24576, 53248] ],
 }
 
-plan tests => 0 + scalar(@lucas_seqs);
+my @oeis_81264 = (323, 377, 1891, 3827, 4181, 5777, 6601, 6721, 8149, 10877, 11663, 13201, 13981, 15251, 17119, 17711, 18407, 19043, 23407, 25877, 27323, 30889, 34561, 34943, 35207, 39203, 40501, 50183, 51841, 51983, 52701, 53663, 60377, 64079, 64681);
+
+plan tests => 0 + scalar(@lucas_seqs) + 1;
 
 foreach my $seqs (@lucas_seqs) {
   my($apq, $isneg, $uorv, $name, $exp) = @$seqs;
@@ -76,4 +78,14 @@ foreach my $seqs (@lucas_seqs) {
   my @seq = map { (lucas_sequence(2**32-1, @$apq, $_))[$idx] } 0 .. $#$exp;
   do { for (@seq) { $_ -= (2**32-1) if $_ > 2**31; } } if $isneg;
   is_deeply( [@seq], $exp, "${uorv}_n(@$apq) -- $name" );
+}
+
+{
+  my @p;
+  foroddcomposites {
+    my $t = (($_%5)==2||($_%5)==3) ? $_+1 : $_-1;
+    my($U,$V) = lucas_sequence($_,1,-1,$t);
+    push @p, $_ if $U == 0;
+  } 65000;
+  is_deeply( \@p, \@oeis_81264, "OEIS 81264: Odd Fibonacci pseudoprimes" );
 }
