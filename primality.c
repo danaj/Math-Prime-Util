@@ -650,6 +650,21 @@ int _XS_is_almost_extra_strong_lucas_pseudoprime(UV n, UV increment)
 #endif
 }
 
+int is_frobenius_pseudoprime(UV n)
+{
+  UV U, V, Qk;
+  int k;
+
+  if (n < 7) return (n == 2 || n == 3 || n == 5);
+  if ((n % 2) == 0 || n == UV_MAX) return 0;
+
+  k = kronecker_uu(5, n);
+  lucas_seq(&U, &V, &Qk, n, 1, -1, n-k);
+  if (U != 0) return 0;
+  if (V != ((k==1) ? 2 : n-2)) return 0;
+  return 1;
+}
+
 /*
  * The Frobenius-Underwood test has no known counterexamples below 10^13, but
  * has not been extensively tested above that.  This is the Minimal Lambda+2

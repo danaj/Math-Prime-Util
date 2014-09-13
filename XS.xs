@@ -616,11 +616,12 @@ is_prime(IN SV* svn, ...)
     is_lucas_pseudoprime = 3
     is_strong_lucas_pseudoprime = 4
     is_extra_strong_lucas_pseudoprime = 5
-    is_frobenius_underwood_pseudoprime = 6
-    is_aks_prime = 7
-    is_power = 8
-    is_pseudoprime = 9
-    is_almost_extra_strong_lucas_pseudoprime = 10
+    is_frobenius_pseudoprime = 6
+    is_frobenius_underwood_pseudoprime = 7
+    is_aks_prime = 8
+    is_power = 9
+    is_pseudoprime = 10
+    is_almost_extra_strong_lucas_pseudoprime = 11
   PREINIT:
     int status;
   PPCODE:
@@ -637,11 +638,12 @@ is_prime(IN SV* svn, ...)
           case 3:  ret = _XS_is_lucas_pseudoprime(n, 0); break;
           case 4:  ret = _XS_is_lucas_pseudoprime(n, 1); break;
           case 5:  ret = _XS_is_lucas_pseudoprime(n, 2); break;
-          case 6:  ret = _XS_is_frobenius_underwood_pseudoprime(n); break;
-          case 7:  ret = _XS_is_aks_prime(n); break;
-          case 8:  ret = is_power(n, a); break;
-          case 9:  ret = _XS_is_pseudoprime(n, (items == 1) ? 2 : a); break;
-          case 10:
+          case 6:  ret = is_frobenius_pseudoprime(n); break;
+          case 7:  ret = _XS_is_frobenius_underwood_pseudoprime(n); break;
+          case 8:  ret = _XS_is_aks_prime(n); break;
+          case 9:  ret = is_power(n, a); break;
+          case 10: ret = _XS_is_pseudoprime(n, (items == 1) ? 2 : a); break;
+          case 11:
           default: ret = _XS_is_almost_extra_strong_lucas_pseudoprime
                          (n, (items == 1) ? 1 : a); break;
         }

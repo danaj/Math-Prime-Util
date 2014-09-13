@@ -92,3 +92,5 @@
 - Simple test for ntheory alias
 
 - consider using Ramanujan Li for PP code.
+
+- Tests and documentation for is_frobenius_pseudoprime
