@@ -657,11 +657,12 @@ is_prime(IN SV* svn, ...)
       case 3: _vcallsub_with_gmp("is_lucas_pseudoprime"); break;
       case 4: _vcallsub_with_gmp("is_strong_lucas_pseudoprime"); break;
       case 5: _vcallsub_with_gmp("is_extra_strong_lucas_pseudoprime"); break;
-      case 6: _vcallsub_with_gmp("is_frobenius_underwood_pseudoprime"); break;
-      case 7: _vcallsub_with_gmp("is_aks_prime"); break;
-      case 8: _vcallsub_with_gmp("is_power"); break;
-      case 9: _vcallsub_with_gmp("is_pseudoprime"); break;
-      case 10:
+      case 6: _vcallsub_with_gmp("is_frobenius_pseudoprime"); break;
+      case 7: _vcallsub_with_gmp("is_frobenius_underwood_pseudoprime"); break;
+      case 8: _vcallsub_with_gmp("is_aks_prime"); break;
+      case 9: _vcallsub_with_gmp("is_power"); break;
+      case 10:_vcallsub_with_gmp("is_pseudoprime"); break;
+      case 11:
       default:_vcallsub_with_gmp("is_almost_extra_strong_lucas_pseudoprime"); break;
     }
     return; /* skip implicit PUTBACK */
