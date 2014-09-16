@@ -710,7 +710,7 @@ int is_frobenius_pseudoprime(UV n, IV P, IV Q)
       if (P == 3) P = 5;  /* P=3,Q=2 -> D=9-8=1 => k=1, so skip */
       D = P*P-4*Q;
       Du = D >= 0 ? D : -D;
-      if (P >= n || Du >= n) break;
+      if ((UV)P >= n || Du >= n) break;
       k = kronecker_su(D, n);
       if (k == 0) return 0;
     }
