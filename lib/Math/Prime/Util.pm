@@ -48,7 +48,7 @@ our @EXPORT_OK =
       chebyshev_theta chebyshev_psi
       divisor_sum carmichael_lambda
       kronecker binomial factorial znorder znprimroot znlog legendre_phi
-      ExponentialIntegral LogarithmicIntegral RiemannZeta RiemannR
+      ExponentialIntegral LogarithmicIntegral RiemannZeta RiemannR LambertW
   );
 our %EXPORT_TAGS = (all => [ @EXPORT_OK ]);
 
@@ -870,6 +870,16 @@ sub LogarithmicIntegral {
   return Math::Prime::Util::PP::LogarithmicIntegral($n);
 }
 
+sub LambertW {
+  my($k) = @_;
+
+  return _XS_LambertW($k)
+  if !defined $bignum::VERSION && ref($k) ne 'Math::BigFloat' && $_Config{'xs'};
+
+  require Math::Prime::Util::PP;
+  return Math::Prime::Util::PP::LambertW($k);
+}
+
 #############################################################################
 
 use Math::Prime::Util::MemFree;
@@ -1668,8 +1678,9 @@ but still quite slow compared to the other probable prime tests.
 Takes a positive number C<n> as input, and two optional parameters C<a> and
 C<b>, and returns 1 if the C<n> is a Frobenius probable prime with respect
 to the polynomial C<x^2 - ax + b>.  Without the parameters, C<b = 2> and
-C<a> is the least positive odd number such that C<(a^2-4b|n) = -1 && a != 3>.
-This selection has no pseudoprimes below C<2^64> and none known.
+C<a> is the least positive odd number such that C<(a^2-4b|n) = -1>.
+This selection has no pseudoprimes below C<2^64> and none known.  In any
+case, the discriminant C<a^2-4b> must not be a perfect square.
 
 Some authors use the Fibonacci polynomial C<x^2-x-1> corresponding to
 C<(1,-1)> as the default method for a Frobenius probable prime test.
@@ -3123,6 +3134,13 @@ and can be more accurate.  Accuracy when using MPFR will be equal to the
 C<accuracy()> value of the input (or the default BigFloat accuracy, which
 is 40 by default).  Accuracy without MPFR should be 35 digits.
 
+
+=head2 LambertW
+
+Returns the principal branch of the Lambert W function of a real value.
+Given a value C<k> this solves for C<W> in the equation C<k = We^W>.  The
+input must not be less than C<-1/e>.  This corresponds to Pari's C<lambertw>
+function and Mathematica's C<LambertW> function.
 
 
 =head1 EXAMPLES

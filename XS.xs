@@ -971,6 +971,7 @@ _XS_ExponentialIntegral(IN SV* x)
     _XS_LogarithmicIntegral = 1
     _XS_RiemannZeta = 2
     _XS_RiemannR = 3
+    _XS_LambertW = 4
   PREINIT:
     NV nv, ret;
   CODE:
@@ -979,8 +980,9 @@ _XS_ExponentialIntegral(IN SV* x)
       case 0: ret = (NV) _XS_ExponentialIntegral(nv); break;
       case 1: ret = (NV) _XS_LogarithmicIntegral(nv); break;
       case 2: ret = (NV) ld_riemann_zeta(nv); break;
-      case 3:
-      default:ret = (NV) _XS_RiemannR(nv); break;
+      case 3: ret = (NV) _XS_RiemannR(nv); break;
+      case 4:
+      default:ret = (NV) lambertw(nv); break;
     }
     RETVAL = ret;
   OUTPUT:

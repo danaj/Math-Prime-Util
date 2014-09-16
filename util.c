@@ -2037,3 +2037,27 @@ long double _XS_RiemannR(long double x) {
 
   return sum;
 }
+
+long double lambertw(long double k) {
+  long double x, lastx;
+  int i;
+
+  if (k < -0.36787944118L)
+    croak("Invalid input to LambertW:  k must be >= -1/e");
+  /* Make first estimate */
+  if (k > 1) {
+    long double lk = logl(k);
+    long double llk = logl(lk);
+    x = lk - llk - logl(1 - llk/lk)/2;
+  } else {
+    x = 0.567 * k;
+  }
+  lastx = x;
+  for (i = 0; i < 100; i++) {
+    long double ex = expl(x);
+    x = x - ( (x*ex-k) / (x*ex+ex-((x+2)*(x*ex-k)/(2*x+2))) );
+    if (fabsl(lastx-x) < fabsl(LDBL_EPSILON)) break;
+    lastx = x;
+  }
+  return x;
+}

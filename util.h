@@ -38,6 +38,7 @@ extern long double _XS_ExponentialIntegral(long double x);
 extern long double _XS_LogarithmicIntegral(long double x);
 extern long double ld_riemann_zeta(long double x);
 extern long double _XS_RiemannR(long double x);
+extern long double lambertw(long double k);
 extern UV _XS_Inverse_Li(UV x);
 
 extern int kronecker_uu(UV a, UV b);
