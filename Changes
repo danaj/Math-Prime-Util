@@ -10,12 +10,15 @@ Revision history for Perl module Math::Prime::Util
     - factorial(n)              n!
     - is_bpsw_prime(n)          primality test with no pretests, just ES BPSW
     - is_frobenius_pseudoprime  Frobenius x^2-x-1 primality test
+    - LambertW(k)               Solves for W in k = W*exp(W)
 
     [FUNCTIONALITY AND PERFORMANCE]
 
     - znorder algorithm changed from Das to Cohen for ~1% speedup.
 
     - factoring sped up a bit for 15-19 digits.
+
+    - speedup for divisor_sum with very large exponents.
 
     [OTHER]
 

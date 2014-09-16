@@ -845,10 +845,13 @@ sub divisor_sum {
       if    ($e == 1) { $pk->binc(); $product->bmul($pk); }
       elsif ($e == 2) { $pk->badd($pk*$pk)->binc(); $product->bmul($pk); }
       else {
-        my $fmult = $pk;
-        foreach my $E (2 .. $e) { $fmult += $pk->copy->bpow($E) }
-        $fmult->binc();
-        $product *= $fmult;
+        my $fmult = $pk->copy->binc;
+        my $pke = $pk->copy;
+        for my $E (2 .. $e) {
+          $pke->bmul($pk);
+          $fmult->badd($pke);
+        }
+        $product->bmul($fmult);
       }
     }
   }
@@ -3874,9 +3877,9 @@ sub RiemannR {
   return $sum;
 }
 
-sub lambertw {
+sub LambertW {
   my $k = shift;
-  croak "k must be >= 0" if $k < 0;
+  croak "Invalid input to LambertW:  k must be >= -1/e" if $k < -0.36787944118;
   $k = _upgrade_to_float($k) if ref($k) eq 'Math::BigInt';
   my $kacc = ref($k) ? _find_big_acc($k) : 0;
   my $x;
