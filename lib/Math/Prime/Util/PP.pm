@@ -3874,6 +3874,33 @@ sub RiemannR {
   return $sum;
 }
 
+sub lambertw {
+  my $k = shift;
+  croak "k must be >= 0" if $k < 0;
+  $k = _upgrade_to_float($k) if ref($k) eq 'Math::BigInt';
+  my $kacc = ref($k) ? _find_big_acc($k) : 0;
+  my $x;
+  if ($k > 1) {
+    my $lk = log($k);
+    my $llk = log($lk);
+    $x = $lk - $llk - log(1-$llk/$lk)/2;   # Estimate
+  } else {
+    $x = 0.567 * $k;
+  }
+  my $lastx = $x;
+  for (1..100) {                           # TODO: adaptive
+   # Newton
+   # $x = $x*($lk - log($x) + 1) / ($x+1);
+   # Halley, converges much faster
+   my $ex = exp($x);
+   $x = $x - ( ($x*$ex-$k) / ($x*$ex+$ex-(($x+2)*($x*$ex-$k)/(2*$x+2))) );
+   $x->accuracy($kacc) if $kacc;
+   last if $x == $lastx;
+   $lastx = $x;
+  }
+  $x;
+}
+
 sub forpart {
   my($sub, $n, $rhash) = @_;
   _validate_positive_integer($n);
