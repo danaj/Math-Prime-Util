@@ -336,8 +336,10 @@ void lucas_seq(UV* Uret, UV* Vret, UV* Qkret, UV n, IV P, IV Q, UV k)
     return;
   }
 
-  Qmod = (Q < 0)  ?  (UV)(Q + (IV)n)  :  (UV)Q;
-  Pmod = (P < 0)  ?  (UV)(P + (IV)n)  :  (UV)P;
+  //Qmod = (Q < 0)  ?  (UV)(Q + (IV)n)  :  (UV)Q;
+  //Pmod = (P < 0)  ?  (UV)(P + (IV)n)  :  (UV)P;
+  Qmod = (Q < 0)  ?  (UV) (Q + (IV)(((-Q/n)+1)*n))  :  (UV)Q;
+  Pmod = (P < 0)  ?  (UV) (P + (IV)(((-P/n)+1)*n))  :  (UV)P;
   Dmod = submod( mulmod(Pmod, Pmod, n), mulmod(4, Qmod, n), n);
   if (Dmod == 0) {
     b = Pmod >> 1;
@@ -650,19 +652,91 @@ int _XS_is_almost_extra_strong_lucas_pseudoprime(UV n, UV increment)
 #endif
 }
 
-int is_frobenius_pseudoprime(UV n)
+static void mat_mulmod_3x3(UV* a, UV* b, UV n) {
+  int i, row, col;
+  UV i1, i2, i3, t[9];
+  for (row = 0; row < 3; row++) {
+    for (col = 0; col < 3; col++) {
+      if (n < HALF_WORD/2) {
+        i1 = a[3*row+0] * b[0+col];
+        i2 = a[3*row+1] * b[3+col];
+        i3 = a[3*row+2] * b[6+col];
+        t[3*row+col] = (i1 + i2 + i3) % n;
+      } else {
+        i1 = mulmod(a[3*row+0], b[0+col], n);
+        i2 = mulmod(a[3*row+1], b[3+col], n);
+        i3 = mulmod(a[3*row+2], b[6+col], n);
+        t[3*row+col] = addmod( addmod(i1, i2, n), i3, n );
+      }
+    }
+  }
+  for (i = 0; i < 9; i++) a[i] = t[i];
+}
+static void mat_powmod_3x3(UV* m, UV k, UV n) {
+  UV res[9] = {1,0,0, 0,1,0, 0,0,1};
+  int i;
+
+  while (k) {
+    if (k & 1)  mat_mulmod_3x3(res, m, n);
+    k >>= 1;
+    if (k)      mat_mulmod_3x3(m, m, n);
+  }
+  for (i = 0; i < 9; i++)  m[i] = res[i];
+}
+
+int is_perrin_pseudoprime(UV n)
 {
-  UV U, V, Qk;
-  int k;
+  UV m[9] = {0,1,0, 0,0,1, 1,1,0};
+  mat_powmod_3x3(m, n, n);
+  return (addmod( addmod(m[0], m[4], n), m[8], n) == 0);
+}
+
+int is_frobenius_pseudoprime(UV n, IV P, IV Q)
+{
+  UV U, V, Qk, Vcomp;
+  int k = 0;
+  IV D;
+  UV Du, Pu, Qu;
 
   if (n < 7) return (n == 2 || n == 3 || n == 5);
   if ((n % 2) == 0 || n == UV_MAX) return 0;
+  if (is_perfect_square(n)) return 0;
 
-  k = kronecker_uu(5, n);
-  lucas_seq(&U, &V, &Qk, n, 1, -1, n-k);
-  if (U != 0) return 0;
-  if (V != ((k==1) ? 2 : n-2)) return 0;
-  return 1;
+  if (P == 0 && Q == 0) {
+    P = -1; Q = 2;
+    while (k != -1) {
+      P += 2;
+      if (P == 3) P = 5;  /* P=3,Q=2 -> D is perfect square, so skip */
+      D = P*P-4*Q;
+      Du = D >= 0 ? D : -D;
+      if (P >= n || Du >= n) break;
+      k = kronecker_su(D, n);
+      if (k == 0) return 0;
+    }
+    if (_XS_get_verbose()) printf("%"UVuf" Frobenius (%"IVdf",%"IVdf") : x^2 - %"IVdf"x + %"IVdf"\n", n, P, Q, P, Q);
+    Vcomp = 4;
+  } else {
+    D = P*P-4*Q;
+    Du = D >= 0 ? D : -D;
+    if (D != 5 && is_perfect_square(Du))
+      croak("Frobenius invalid P,Q: (%"IVdf",%"IVdf")", P, Q);
+  }
+  Pu = P >= 0 ? P : -P;
+  Qu = Q >= 0 ? Q : -Q;
+
+  if (n <= Du || n <= Qu || n <= Pu) return is_prob_prime(n);
+  if (gcd_ui(n, Pu*Qu*Du) != 1) return 0;
+  if (k == 0) {
+    k = kronecker_su(D, n);
+    if (k == 0) return 0;
+    Qu = addmod(Qu,Qu,n);
+    Vcomp = (k == 1)  ?  2  :  Q >= 0 ? Qu : n-Qu;
+  }
+
+  lucas_seq(&U, &V, &Qk, n, P, Q, n-k);
+  /* if (_XS_get_verbose()) printf("%"UVuf" Frobenius U = %"UVuf" V = %"UVuf"\n", n, U, V); */
+  if (U == 0 && V == Vcomp) return 1;
+  return 0;
 }
 
 /*

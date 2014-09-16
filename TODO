@@ -94,3 +94,7 @@
 - consider using Ramanujan Li for PP code.
 
 - Tests, documentation, PP code for is_frobenius_pseudoprime
+
+- Tests, documentation, PP code for is_perrin_pseudoprime
+
+- Complete LambertW

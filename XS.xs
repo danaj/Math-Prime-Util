@@ -613,15 +613,16 @@ is_prime(IN SV* svn, ...)
   ALIAS:
     is_prob_prime = 1
     is_bpsw_prime = 2
-    is_lucas_pseudoprime = 3
-    is_strong_lucas_pseudoprime = 4
-    is_extra_strong_lucas_pseudoprime = 5
-    is_frobenius_pseudoprime = 6
-    is_frobenius_underwood_pseudoprime = 7
-    is_aks_prime = 8
-    is_power = 9
-    is_pseudoprime = 10
-    is_almost_extra_strong_lucas_pseudoprime = 11
+    is_aks_prime = 3
+    is_lucas_pseudoprime = 4
+    is_strong_lucas_pseudoprime = 5
+    is_extra_strong_lucas_pseudoprime = 6
+    is_frobenius_pseudoprime = 7
+    is_frobenius_underwood_pseudoprime = 8
+    is_perrin_pseudoprime = 9
+    is_power = 10
+    is_pseudoprime = 11
+    is_almost_extra_strong_lucas_pseudoprime = 12
   PREINIT:
     int status;
   PPCODE:
@@ -635,15 +636,22 @@ is_prime(IN SV* svn, ...)
           case 0:
           case 1:  ret = _XS_is_prime(n);  break;
           case 2:  ret = _XS_BPSW(n);      break;
-          case 3:  ret = _XS_is_lucas_pseudoprime(n, 0); break;
-          case 4:  ret = _XS_is_lucas_pseudoprime(n, 1); break;
-          case 5:  ret = _XS_is_lucas_pseudoprime(n, 2); break;
-          case 6:  ret = is_frobenius_pseudoprime(n); break;
-          case 7:  ret = _XS_is_frobenius_underwood_pseudoprime(n); break;
-          case 8:  ret = _XS_is_aks_prime(n); break;
-          case 9:  ret = is_power(n, a); break;
-          case 10: ret = _XS_is_pseudoprime(n, (items == 1) ? 2 : a); break;
-          case 11:
+          case 3:  ret = _XS_is_aks_prime(n); break;
+          case 4:  ret = _XS_is_lucas_pseudoprime(n, 0); break;
+          case 5:  ret = _XS_is_lucas_pseudoprime(n, 1); break;
+          case 6:  ret = _XS_is_lucas_pseudoprime(n, 2); break;
+          case 7:  {
+                     /* IV P = 1, Q = -1; */ /* Fibonacci polynomial */
+                     IV P = 0, Q = 0;        /* Q=2,P=least odd s.t. (D|n)=-1 */
+                     if (items == 3) { P = my_sviv(ST(1)); Q = my_sviv(ST(2)); }
+                     else if (items != 1) croak("is_frobenius_pseudoprime takes P,Q");
+                     ret = is_frobenius_pseudoprime(n, P, Q);
+                   } break;
+          case 8:  ret = _XS_is_frobenius_underwood_pseudoprime(n); break;
+          case 9:  ret = is_perrin_pseudoprime(n); break;
+          case 10: ret = is_power(n, a); break;
+          case 11: ret = _XS_is_pseudoprime(n, (items == 1) ? 2 : a); break;
+          case 12:
           default: ret = _XS_is_almost_extra_strong_lucas_pseudoprime
                          (n, (items == 1) ? 1 : a); break;
         }
@@ -654,15 +662,16 @@ is_prime(IN SV* svn, ...)
       case 0: _vcallsub_with_gmp("is_prime");       break;
       case 1: _vcallsub_with_gmp("is_prob_prime");  break;
       case 2: _vcallsub_with_gmp("is_bpsw_prime");  break;
-      case 3: _vcallsub_with_gmp("is_lucas_pseudoprime"); break;
-      case 4: _vcallsub_with_gmp("is_strong_lucas_pseudoprime"); break;
-      case 5: _vcallsub_with_gmp("is_extra_strong_lucas_pseudoprime"); break;
-      case 6: _vcallsub_with_gmp("is_frobenius_pseudoprime"); break;
-      case 7: _vcallsub_with_gmp("is_frobenius_underwood_pseudoprime"); break;
-      case 8: _vcallsub_with_gmp("is_aks_prime"); break;
-      case 9: _vcallsub_with_gmp("is_power"); break;
-      case 10:_vcallsub_with_gmp("is_pseudoprime"); break;
-      case 11:
+      case 3: _vcallsub_with_gmp("is_aks_prime"); break;
+      case 4: _vcallsub_with_gmp("is_lucas_pseudoprime"); break;
+      case 5: _vcallsub_with_gmp("is_strong_lucas_pseudoprime"); break;
+      case 6: _vcallsub_with_gmp("is_extra_strong_lucas_pseudoprime"); break;
+      case 7: _vcallsub_with_gmp("is_frobenius_pseudoprime"); break;
+      case 8: _vcallsub_with_gmp("is_frobenius_underwood_pseudoprime"); break;
+      case 9: _vcallsub_with_gmp("is_perrin_pseudoprime"); break;
+      case 10:_vcallsub_with_gmp("is_power"); break;
+      case 11:_vcallsub_with_gmp("is_pseudoprime"); break;
+      case 12:
       default:_vcallsub_with_gmp("is_almost_extra_strong_lucas_pseudoprime"); break;
     }
     return; /* skip implicit PUTBACK */

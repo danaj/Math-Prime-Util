@@ -22,6 +22,7 @@ our @EXPORT_OK =
       is_extra_strong_lucas_pseudoprime
       is_almost_extra_strong_lucas_pseudoprime
       is_frobenius_pseudoprime
+      is_perrin_pseudoprime
       is_frobenius_underwood_pseudoprime is_aks_prime is_bpsw_prime
       is_power
       miller_rabin_random
