@@ -688,6 +688,7 @@ int is_perrin_pseudoprime(UV n)
 {
   UV m[9] = {0,1,0, 0,0,1, 1,1,0};
   mat_powmod_3x3(m, n, n);
+  /* P(n) = sum of diagonal  =  3*top-left + 2*top-right */
   return (addmod( addmod(m[0], m[4], n), m[8], n) == 0);
 }
 

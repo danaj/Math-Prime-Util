@@ -1649,13 +1649,60 @@ pseudoprimes than the extra-strong Lucas test.  However this is still only
 66% of the number produced by the strong Lucas-Selfridge test.  No BPSW
 counterexamples have been found with any of the Lucas tests described.
 
+=head2 is_perrin_pseudoprime
+
+Takes a positive number C<n> as input and returns 1 if C<n> divides C<P(n)>
+where C<P(n)> is the Perrin number of C<n>.  The Perrin sequence is defined by
+
+   C<P(0) = 3, P(1) = 0, P(2) = 2;  P(n) = P(n-2) + P(n-3)>
+
+While pseudoprimes are relatively rare (the first two are 271441 and 904631),
+infinitely many exist.
+The pseudoprime sequence is L<OEIS A013998|http://oeis.org/A013998>.
+
+The implementation uses modular 3x3 matrix exponentiation, which is efficient
+but still quite slow compared to the other probable prime tests.
+
+=head2 is_frobenius_pseudoprime
+
+Takes a positive number C<n> as input, and two optional parameters C<a> and
+C<b>, and returns 1 if the C<n> is a Frobenius probable prime with respect
+to the polynomial C<x^2 - ax + b>.  Without the parameters, C<b = 2> and
+C<a> is the least positive odd number such that C<(a^2-4b|n) = -1 && a != 3>.
+This selection has no pseudoprimes below C<2^64> and none known.
+
+Some authors use the Fibonacci polynomial C<x^2-x-1> corresponding to
+C<(1,-1)> as the default method for a Frobenius probable prime test.
+This creates a weaker test than most other parameter choices (e.g. over
+twenty times more pseudoprimes than C<(3,-5)>), so is not used as the
+default here.  With the C<(1,-1)> parameters the pseudoprime sequence
+is L<OEIS A212424|http://oeis.org/A212424>.
+
+The Frobenius test is a stronger test than the Lucas test.  Any Frobenius
+C<(a,b)> pseudoprime is also a Lucas C<(a,b)> pseudoprime but the converse
+is not true, as any Frobenius C<(a,b)> pseudoprime is also as pseudoprime
+to the base C<|b|>.  We can see that with the default parameters this is
+similar to, but somewhat weaker than, the BPSW test used by this module
+(which uses the strong and extra-strong versions of the probable prime and
+Lucas tests respectively).
+
+The performance cost is slightly more than 3 strong pseudoprime tests.  Also
+see L</is_frobenius_underwood_pseudoprime> which is an extremely efficient
+construction of a Frobenius test using good parameter selection, allowing it
+to run 1.5 to 2 times faster than the general Frobenius test.
+
 =head2 is_frobenius_underwood_pseudoprime
 
-Takes a positive number as input, and returns 1 if the input passes the minimal
-lambda+2 test (see Underwood 2012 "Quadratic Compositeness Tests"), where
-C<(L+2)^(n-1) = 5 + 2x mod (n, L^2 - Lx + 1)>.  The computational cost for this
-is between the cost of 2 and 3 strong pseudoprime tests.  There are no known
-counterexamples, but this is not a well studied test.
+Takes a positive number as input, and returns 1 if the input passes the
+efficient Frobenius test of Paul Underwood.  This selects a parameter C<a>
+as the least positive integer such that C<(a^2-4|n)=-1>, then verifies that
+C<(2+2)^(n+1) = 2a + 5 mod (x^2-ax+1,n)>.  This combines a Fermat and Lucas
+test with a cost of only slightly more than 2 strong pseudoprime tests.  This
+makes it similar to, but faster than, a Frobenius test.
+
+There are no known pseudoprimes to this test.  This test also has no overlap
+with the BPSW test, making it a very effective method for adding additional
+certainty.
 
 =head2 miller_rabin_random
 
