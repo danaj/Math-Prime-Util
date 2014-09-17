@@ -2442,6 +2442,79 @@ sub is_frobenius_underwood_pseudoprime {
   return ($fa == 0 && $fb == (($TWO * $x + 5) % $n)) ? 1 : 0;
 }
 
+sub _mat_mulmod_3x3 {
+  my($aref, $bref, $n) = @_;
+  my @t;
+  for my $row (0..2) {
+    for my $col (0..2) {
+      my $i1 = $aref->[3*$row+0] * $bref->[0+$col];
+      my $i2 = $aref->[3*$row+1] * $bref->[3+$col];
+      my $i3 = $aref->[3*$row+2] * $bref->[6+$col];
+      push @t, ($i1 + $i2 + $i3) % $n;
+    }
+  }
+  @$aref = @t;
+}
+sub _mat_powmod_3x3 {
+  my($mref, $k, $n) = @_;
+  my $res = [1,0,0,  0,1,0,  0,0,1];
+  while ($k) {
+    _mat_mulmod_3x3($res, $mref, $n)  if $k & 1;
+    $k >>= 1;
+    _mat_mulmod_3x3($mref, $mref, $n) if $k;
+  }
+  @$mref = @$res;
+}
+
+sub is_perrin_pseudoprime {
+  my($n) = @_;
+  $n = Math::BigInt->new("$n") unless ref($n) eq 'Math::BigInt' || $n < (MPU_HALFWORD >> 1);
+  my @m = (0,1,0,  0,0,1,  1,1,0);
+  _mat_powmod_3x3(\@m, $n, $n);
+  my $trace = ($m[0] + $m[4] + $m[8]) % $n;
+  return ($trace == 0) ? 1 : 0;
+}
+
+sub is_frobenius_pseudoprime {
+  my($n, $P, $Q) = @_;
+  ($P,$Q) = (0,0) unless defined $P && defined $Q;
+  return 0+($n >= 2) if $n < 4;
+
+  $n = Math::BigInt->new("$n") unless ref($n) eq 'Math::BigInt';
+  return 0 if $n->is_even || _is_perfect_square($n);
+
+  my($k, $Vcomp, $D, $Du) = (0, 4);
+  if ($P == 0 && $Q == 0) {
+    ($P,$Q) = (-1,2);
+    while ($k != -1) {
+      $P += 2;
+      $P = 5 if $P == 3;  # Skip 3
+      $D = $P*$P-4*$Q;
+      $Du = ($D >= 0) ? $D : -$D;
+      last if $P >= $n || $Du >= $n;
+      $k = kronecker($D, $n);
+      return 0 if $k == 0;
+    }
+  } else {
+    $D = $P*$P-4*$Q;
+    $Du = ($D >= 0) ? $D : -$D;
+    croak "Frobenius invalid P,Q: ($P,$Q)" if _is_perfect_square($Du);
+  }
+  return is_prime($n) if $n <= $Du || $n <= abs($Q) || $n <= abs($P);
+  return 0 if Math::Prime::Util::gcd(abs($P*$Q*$D), $n) > 1;
+
+  if ($k == 0) {
+    $k = kronecker($D, $n);
+    return 0 if $k == 0;
+    my $Q2 = 2*abs($Q);
+    $Vcomp = ($k == 1) ? 2 : ($Q >= 0) ? $Q2 : $n-$Q2;
+  }
+
+  my($U, $V, $Qk) = lucas_sequence($n, $P, $Q, $n-$k);
+  return 1 if $U == 0 && $V == $Vcomp;
+  0;
+}
+
 
 my $_poly_bignum;
 sub _poly_new {

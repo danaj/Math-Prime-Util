@@ -178,6 +178,19 @@ sub is_almost_extra_strong_lucas_pseudoprime {
   } else                  { $increment = 1; }
   return Math::Prime::Util::PP::is_almost_extra_strong_lucas_pseudoprime($n, $increment);
 }
+sub is_perrin_pseudoprime {
+  my($n) = @_;
+  return 0 if defined $n && int($n) < 0;
+  _validate_positive_integer($n);
+  return Math::Prime::Util::PP::is_perrin_pseudoprime($n);
+}
+sub is_frobenius_pseudoprime {
+  my($n, $P, $Q) = @_;
+  return 0 if defined $n && int($n) < 0;
+  _validate_positive_integer($n);
+  # TODO: validate P & Q
+  return Math::Prime::Util::PP::is_frobenius_pseudoprime($n, $P, $Q);
+}
 sub is_frobenius_underwood_pseudoprime {
   my($n) = @_;
   return 0 if defined $n && int($n) < 0;
