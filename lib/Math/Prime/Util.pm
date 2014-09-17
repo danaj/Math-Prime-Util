@@ -1691,7 +1691,7 @@ is L<OEIS A212424|http://oeis.org/A212424>.
 
 The Frobenius test is a stronger test than the Lucas test.  Any Frobenius
 C<(a,b)> pseudoprime is also a Lucas C<(a,b)> pseudoprime but the converse
-is not true, as any Frobenius C<(a,b)> pseudoprime is also as pseudoprime
+is not true, as any Frobenius C<(a,b)> pseudoprime is also a Fermat pseudoprime
 to the base C<|b|>.  We can see that with the default parameters this is
 similar to, but somewhat weaker than, the BPSW test used by this module
 (which uses the strong and extra-strong versions of the probable prime and
