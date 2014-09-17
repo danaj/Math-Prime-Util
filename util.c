@@ -2053,9 +2053,13 @@ long double lambertw(long double k) {
     x = 0.567 * k;
   }
   lastx = x;
-  for (i = 0; i < 100; i++) {
+  for (i = 0; i < 100; i++) {   /* Use Halley's method */
     long double ex = expl(x);
-    x = x - ( (x*ex-k) / (x*ex+ex-((x+2)*(x*ex-k)/(2*x+2))) );
+    long double xex = x * ex;
+    long double xexk = xex - k;
+    long double x1 = x + 1;
+    x = x - xexk / (ex * x1 - (x+2) * xexk/(2*x1));
+    /* x = x - ( (x*ex-k) / (x*ex+ex-((x+2)*(x*ex-k)/(2*x+2))) ); */
     if (fabsl(lastx-x) < fabsl(LDBL_EPSILON)) break;
     lastx = x;
   }

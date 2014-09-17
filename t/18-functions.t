@@ -4,7 +4,8 @@ use warnings;
 
 use Test::More;
 use Math::Prime::Util qw/
-    prime_count ExponentialIntegral LogarithmicIntegral RiemannR RiemannZeta
+    prime_count
+    ExponentialIntegral LogarithmicIntegral RiemannR RiemannZeta LambertW
 /;
 
 my $infinity = 20**20**20;
@@ -65,12 +66,25 @@ my %rzvals = (
            20.6 =>  0.0000006293391573578212882457,
 );
 
+my %lamvals = (
+            -0.3678794411714423215955237701614608674458 => -0.99999995824889,  # Ideally this would be -1
+            -.1 => -0.11183255915896296483356945682026584227264536229126586332968,
+            0 => 0,
+            0.3678794411714423215955237701614608674458 => 0.278464542761073795109358739022980155439470898229676526861772,
+            1 => 0.567143290409783872999968662210355549753815787186512508135131,
+            10 => 1.7455280027406993830743012648753899115,
+            10000 => 7.2318460380933727064756185001412538839,
+            100000000000 => 22.227122734961075624690200512898589272,
+            18446744073709551615 => 40.656266572498926634921823566267328254,
+);
+
 
 plan tests => 3 + 6 + 1
               + scalar(keys(%eivals))
               + scalar(keys(%livals))
               + scalar(keys(%rvals))
               + scalar(keys(%rzvals))
+              + scalar(keys(%lamvals))
               ;
 
 eval { LogarithmicIntegral(-1); };
@@ -105,6 +119,9 @@ while (my($n, $rin) = each (%rvals)) {
 
 while (my($n, $zin) = each (%rzvals)) {
   cmp_closeto( RiemannZeta($n), $zin, 0.00000001 * abs($zin), "Zeta($n) ~= $zin");
+}
+while (my($n, $lin) = each (%lamvals)) {
+  cmp_closeto( LambertW($n), $lin, 0.00000001 * abs($lin), "LambertW($n) ~= $lin");
 }
 
 
