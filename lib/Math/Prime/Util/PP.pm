@@ -1278,7 +1278,7 @@ sub prime_count_lower {
     elsif ($x < 5433800000) { $a = 2.32; }
     elsif ($x <60000000000) { $a = 2.15; }
     else                    { $a = 2.00; } # Dusart 2010, page 2
-    my $one = $x->copy->bone;
+    my $one = (ref($x) eq 'Math::BigFloat') ? $x->copy->bone : $x-$x+1.0;
     $result = ($x/$flogx) * ($one + $one/$flogx + $a/($flogx*$flogx));
   }
 
@@ -1354,7 +1354,7 @@ sub prime_count_upper {
     #else                    { $a = 2.51;  } # Dusart 1999, page 14
 
     # Old versions of Math::BigFloat will do the Wrong Thing with this.
-    my $one = $x->copy->bone;
+    my $one = (ref($x) eq 'Math::BigFloat') ? $x->copy->bone : $x-$x+1.0;
     $result = ($x/$flogx) * ($one + $one/$flogx + $a/($flogx*$flogx)) + $one;
   }
 
