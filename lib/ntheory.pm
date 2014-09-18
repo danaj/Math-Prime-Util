@@ -39,33 +39,33 @@ See L<Math::Prime::Util> for complete documentation.
 
   is_prime(n)                    primality test (BPSW + extra)
   is_prob_prime(n)               primality test (BPSW)
-  is_provable_prime(n)           primality test (BLS75+ECPP)
+  is_provable_prime(n)           primality test with proof (BLS75+ECPP)
   is_provable_prime_with_cert(n) primality test returning (isprime,cert)
   prime_certificate(n)           returns just the primality certificate
-  verify_prime(cert)             does verification of a certificate
+  verify_prime(cert)             verify a primality certificate
   is_aks_prime                   AKS deterministic test (slow)
 
 =head2 PROBABLE PRIME TESTS
 
-  is_pseudoprime(n,bases)                Fermat probable prime tests to bases
+  is_pseudoprime(n,bases)                Fermat probable prime tests
   is_strong_pseudoprime(n,bases)         Miller-Rabin tests to bases
   is_lucas_pseudoprime(n)                Lucas test
   is_strong_lucas_pseudoprime(n)         strong Lucas test
-  is_almost_extra_strong_lucas_pseudoprime(n, [increment])  AES Lucas test
+  is_almost_extra_strong_lucas_pseudoprime(n, [incr])   AES Lucas test
   is_extra_strong_lucas_pseudoprime(n)   extra strong Lucas test
   is_frobenius_pseudoprime(n, [a,b])     Frobenius quadratic test
   is_perrin_pseudoprime(n)               Perrin test
   is_frobenius_underwood_pseudoprime(n)  combined PSP and Lucas
   is_bpsw_prime(n)                       combined SPSP-2 and ES Lucas
-  miller_rabin_random(n, ntests)         run a number of random-base MR tests
+  miller_rabin_random(n, ntests)         perform random-base MR tests
 
 =head2 PRIMES
 
   primes([start,] end)                array ref of primes
   twin_primes([start,] end)           array ref of twin primes
-  next_prime(n)                       next prime E<gt> n
-  prev_prime(n)                       previos prime E<lt> n
-  prime_count(n)                      count of primes E<lt>= n
+  next_prime(n)                       next prime > n
+  prev_prime(n)                       previous prime < n
+  prime_count(n)                      count of primes <= n
   prime_count(start, end)             count of primes in range
   prime_count_lower(n)                fast lower bound for prime count
   prime_count_upper(n)                fast upper bound for prime count
@@ -74,12 +74,12 @@ See L<Math::Prime::Util> for complete documentation.
   nth_prime_lower(n)                  fast lower bound for nth prime
   nth_prime_upper(n)                  fast upper bound for nth prime
   nth_prime_approx(n)                 fast approximate nth prime
-  twin_prime_count(n)                 count of twin primes E<lt>= n
+  twin_prime_count(n)                 count of twin primes <= n
   twin_prime_count(start, end)        count of twin primes in range
-  twin_prime_count_approx(n)          fast approximate count of twin primes
+  twin_prime_count_approx(n)          fast approx count of twin primes
   nth_twin_prime(n)                   the nth twin prime (n=1 returns 3)
   nth_twin_prime_approx(n)            fast approximate nth twin prime
-  legendre_phi(n,a)                   count below n not div by first a primes
+  legendre_phi(n,a)                   count below n !div by first a primes
   prime_precalc(n)                    precalculate primes to n
 
 =head2 FACTORING
@@ -98,7 +98,7 @@ See L<Math::Prime::Util> for complete documentation.
   forcomposites { ... } [start,] end  loop over composites in range
   foroddcomposites {...} [start,] end loop over odd composites in range
   fordivisors { ... } n               loop over the divisors of n
-  forpart { ... } n [,{...}]          loop over [restricted] integer partitions
+  forpart { ... } n [,{...}]          loop over integer partitions
   forcomb { ... } n, k                loop over combinations
   forperm { ... } n                   loop over permutations
   prime_iterator                      returns a simple prime iterator
@@ -112,14 +112,14 @@ See L<Math::Prime::Util> for complete documentation.
   random_strong_prime(n)              random strong prime with n bits
   random_proven_prime(n)              random n-bit prime with proof
   random_proven_prime_with_cert(n)    as above and include certificate
-  random_maurer_prime(n)              random n-bit prime with Maurer's alg.
+  random_maurer_prime(n)              random n-bit prime w/ Maurer's alg.
   random_maurer_prime_with_cert(n)    as above and include certificate
   random_shawe_taylor_prime(n)        random n-bit prime with S-T alg.
-  random_shawe_taylor_prime_with_cert(n)    as above and include certificate
+  random_shawe_taylor_prime_with_cert(n) as above including certificate
 
 =head2 MATH
 
-  vecsum(@list)                       sum of list
+  vecsum(@list)                       integer sum of list
   is_power(n)                         return k if n = p^k for integer p
   gcd(@list)                          greatest common divisor
   lcm(@list)                          least common multiple
@@ -127,7 +127,7 @@ See L<Math::Prime::Util> for complete documentation.
   chinese([a,mod1],[b,mod2],...)      Chinese Remainder Theorem
   primorial(n)                        product of primes below n
   pn_primorial(n)                     product of first n primes
-  factorial(n)                        n!
+  factorial(n)                        product of first n integers: n!
   binomial(n,k)                       binomial coefficient
   partitions(n)                       number of integer partitions
   valuation(n,k)                      number of times n is divisible by k
@@ -137,7 +137,7 @@ See L<Math::Prime::Util> for complete documentation.
   moebius(beg, end)                   array of Moebius in range
   mertens(n)                          sum of Moebius for 1 to n
   euler_phi(n)                        Euler totient of n
-  euler_phi(beg, end)                 Euler totient over a range
+  euler_phi(beg, end)                 Euler totient for a range
   jordan_totient(n,k)                 Jordan's totient
   carmichael_lambda(n)                Carmichael's Lambda function
   exp_mangoldt                        exponential of Mangoldt function
