@@ -64,16 +64,28 @@ WriteMakefile1(
                     url  => 'https://github.com/danaj/Math-Prime-Util',
                   },
                },
-               #provides => {
-               #  'Math::Prime::Util' => {
-               #     file    => 'lib/Math/Prime/Util.pm',
-               #     version => '0.44',
-               #  },
-               #  'ntheory' => {
-               #     file    => 'lib/ntheory.pm',
-               #     version => '0.44',
-               #  },
-               #},
+               provides => {
+                 'ntheory' => {
+                    version => '0.44', file => 'lib/ntheory.pm',
+                 },
+                 'Math::Prime::Util' => {
+                    version => '0.44', file => 'lib/Math/Prime/Util.pm',
+                 },
+                 'Math::Prime::Util::MemFree' => {
+                    version => '0.44', file => 'lib/Math/Prime/Util/MemFree.pm',
+                 },
+                 'Math::Prime::Util::PP' => {
+                    version => '0.44', file => 'lib/Math/Prime/Util/PP.pm',
+                 },
+                 'Math::Prime::Util::PrimeArray' => {
+                    version => '0.44', file => 'lib/Math/Prime/Util/PrimeArray.pm',
+                 },
+                 'Math::Prime::Util::PrimeIterator' => {
+                    version => '0.44', file => 'lib/Math/Prime/Util/PrimeIterator.pm',
+                 },
+                 # Skip: PPFE, PrimalityProving, RandomPrimes, ZetaBigFloat,
+                 #       ECAffinePoint, ECProjectivePoint
+               },
                prereqs => {
                  runtime => {
                    recommends => {
