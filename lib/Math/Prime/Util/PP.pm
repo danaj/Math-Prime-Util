@@ -1721,6 +1721,38 @@ sub valuation {
   $v;
 }
 
+sub _bernden {
+  my $n = shift;
+  return 2 if $n == 1;
+  return 1 if $n & 1 || $n <= 1;
+  my $p = Math::BigInt->new(1);
+  Math::Prime::Util::fordivisors { $p *= $_+1 if is_prime($_+1) } $n;
+  $p = _bigint_to_int($p) if $p->bacmp(''.~0) <= 0;
+  $p;
+}
+sub _bernnum {
+  my($n, $denominator) = @_;
+  return -1 if $n == 1;
+  return 0 if $n & 1 || $n <= 1;
+  # This works ok with MPFR, but horrible without.
+  $n = _upgrade_to_float($n);
+  my $xdigits = 3 * $n;  # This is *wrong*
+  $n->accuracy($xdigits);
+  my $pi = Math::BigFloat->bpi($xdigits);
+  my $b = 2 * (-1)**(($n>>1)-1) * factorial($n) / (2*$pi)**$n * (1+RiemannZeta($n));
+  $b *= $denominator;
+  # Round to nearest int
+  my $x = $b->as_int;
+  if ($b-$x >= 0.5) { $x++ } elsif ($b-$x <= -0.5) { $x-- }
+  $x;
+}
+
+sub bernfrac {
+  my $n = shift;
+  my $den = _bernden($n);
+  ( _bernnum($n, $den), $den );
+}
+
 
 sub is_pseudoprime {
   my($n, $base) = @_;
