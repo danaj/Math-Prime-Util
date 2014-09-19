@@ -502,12 +502,40 @@ gcd(...)
   PROTOTYPE: @
   ALIAS:
     lcm = 1
-    vecsum = 2
+    vecmin = 2
+    vecmax = 3
+    vecsum = 4
   PREINIT:
     int i, status = 1;
     UV ret, nullv, n;
   PPCODE:
-    if (ix == 2) {
+    if (ix == 2 || ix == 3) {
+      UV sign, retindex = 0;
+      int minmax = (ix == 2);
+      if (items == 0) XSRETURN_UNDEF;
+      if (items == 1) XSRETURN(1);
+      status = _validate_int(aTHX_ ST(0), 2);
+      if (status != 0 && items > 1) {
+        sign = status;
+        ret = my_svuv(ST(0));
+        for (i = 1; i < items; i++) {
+          status = _validate_int(aTHX_ ST(i), 2);
+          if (status == 0) break;
+          n = my_svuv(ST(i));
+          if (( (sign == -1 && status == 1) ||
+                (n >= ret && sign == status)
+              ) ? !minmax : minmax ) {
+            sign = status;
+            ret = n;
+            retindex = i;
+          }
+        }
+      }
+      if (status != 0) {
+        ST(0) = ST(retindex);
+        XSRETURN(1);
+      }
+    } else if (ix == 4) {
       UV lo = 0;
       IV hi = 0;
       for (ret = i = 0; i < items; i++) {
@@ -556,9 +584,11 @@ gcd(...)
     if (status != 0)
       XSRETURN_UV(ret);
     switch (ix) {
-      case 0: _vcallsub_with_gmp("gcd");  break;
-      case 1: _vcallsub_with_gmp("lcm");  break;
-      case 2:
+      case 0: _vcallsub_with_gmp("gcd");   break;
+      case 1: _vcallsub_with_gmp("lcm");   break;
+      case 2: _vcallsub_with_gmp("vecmin"); break;
+      case 3: _vcallsub_with_gmp("vecmax"); break;
+      case 4:
       default:_vcallsub_with_pp("vecsum");  break;
     }
     return; /* skip implicit PUTBACK */

@@ -12,6 +12,8 @@ Revision history for Perl module Math::Prime::Util
     - is_frobenius_pseudoprime  Frobenius quadratic primality test
     - is_perrin_pseudoprime     Perrin primality test (unrestricted)
     - LambertW(k)               Solves for W in k = W*exp(W)
+    - vecmin(@list)             minimum of list of integers
+    - vecmax(@list)             maximum of list of integers
 
     [FUNCTIONALITY AND PERFORMANCE]
 

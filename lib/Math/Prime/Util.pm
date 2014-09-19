@@ -42,7 +42,7 @@ our @EXPORT_OK =
       random_maurer_prime random_maurer_prime_with_cert
       random_shawe_taylor_prime random_shawe_taylor_prime_with_cert
       primorial pn_primorial consecutive_integer_lcm gcdext chinese
-      gcd lcm factor factor_exp divisors valuation invmod vecsum
+      gcd lcm factor factor_exp divisors valuation invmod vecsum vecmin vecmax
       moebius mertens euler_phi jordan_totient exp_mangoldt liouville
       partitions
       chebyshev_theta chebyshev_psi
@@ -895,7 +895,7 @@ __END__
 
 =encoding utf8
 
-=for stopwords forprimes forcomposites foroddcomposites fordivisors forpart forcomb forperm Möbius Deléglise Bézout totient moebius mertens liouville znorder irand primesieve uniqued k-tuples von SoE pari yafu fonction qui compte le nombre nombres voor PhD superset sqrt(N) gcd(A^M k-th (10001st primegen libtommath kronecker znprimroot znlog gcd lcm invmod untruncated vecsum gcdext chinese LambertW
+=for stopwords forprimes forcomposites foroddcomposites fordivisors forpart forcomb forperm Möbius Deléglise Bézout totient moebius mertens liouville znorder irand primesieve uniqued k-tuples von SoE pari yafu fonction qui compte le nombre nombres voor PhD superset sqrt(N) gcd(A^M k-th (10001st primegen libtommath kronecker znprimroot znlog gcd lcm invmod untruncated vecsum vecmin vecmax gcdext chinese LambertW
 
 =for test_synopsis use v5.14;  my($k,$x);
 
@@ -2154,6 +2154,30 @@ important difference.  List::Util turns all inputs into doubles and returns
 a double, which will mean incorrect results with large integers.  C<vecsum>
 sums (signed) integers and returns the untruncated result.  Processing is
 done on native integers while possible.
+
+=head2 vecmin
+
+  say "Smallest Totient 100k-200k: ", vecmin(euler_phi(100_000,200_000));
+
+Returns the minimum of all arguments, each of which must be an integer.
+This is similar to List::Util's L<List::Util/min> function, but has a very
+important difference.  List::Util turns all inputs into doubles and returns
+a double, which gives incorrect results with large integers.  C<vecmin>
+validates and compares all results as integers.  The validation step will
+make it a little slower than L<List::Util/min> but this prevents accidental
+and unintentional use of floats.
+
+=head2 vecmax
+
+  say "Largest Totient 100k-200k: ", vecmax(euler_phi(100_000,200_000));
+
+Returns the maximum of all arguments, each of which must be an integer.
+This is similar to List::Util's L<List::Util/max> function, but has a very
+important difference.  List::Util turns all inputs into doubles and returns
+a double, which gives incorrect results with large integers.  C<vecmax>
+validates and compares all results as integers.  The validation step will
+make it a little slower than L<List::Util/max> but this prevents accidental
+and unintentional use of floats.
 
 
 =head2 invmod

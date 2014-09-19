@@ -357,6 +357,16 @@ sub vecsum {
   _validate_integer($_) for @v;
   return Math::Prime::Util::PP::vecsum(@v);
 }
+sub vecmin {
+  my(@v) = @_;
+  _validate_integer($_) for @v;
+  return Math::Prime::Util::PP::vecmin(@v);
+}
+sub vecmax {
+  my(@v) = @_;
+  _validate_integer($_) for @v;
+  return Math::Prime::Util::PP::vecmax(@v);
+}
 sub invmod {
   my ($a, $n) = @_;
   _validate_integer($a);

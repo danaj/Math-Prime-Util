@@ -7,7 +7,7 @@ use Math::Prime::Util
    qw/moebius mertens euler_phi jordan_totient divisor_sum exp_mangoldt
       chebyshev_theta chebyshev_psi carmichael_lambda znorder liouville
       znprimroot znlog kronecker legendre_phi gcd lcm is_power valuation
-      invmod vecsum binomial gcdext chinese
+      invmod vecsum binomial gcdext chinese vecmin vecmax
      /;
 
 my $extra = defined $ENV{EXTENDED_TESTING} && $ENV{EXTENDED_TESTING};
@@ -464,10 +464,46 @@ my @vecsums = (
   [ "18446744073709551615", "18446744073709551615","-18446744073709551615","18446744073709551615" ],
   [ "55340232221128654848", "18446744073709551616","18446744073709551616","18446744073709551616" ],
 );
-
 if ($use64) {
   push @vecsums, [ "18446744073709620400", 18446744073709540400, (1000) x 80 ];
 }
+
+my @vecmins = (
+  [ ],
+  [ 1, 1 ],
+  [ 0, 0 ],
+  [ -1, -1 ],
+  [ 1, 1, 2 ],
+  [ 1, 2, 1 ],
+  [ 1, 2, 1 ],
+  [ -6, 0, 4, -5, 6, -6, 0 ],
+  [ -6, 0, 4, -5, 7, -6, 0 ],
+);
+if ($use64) {
+  # List::Util::min gets these wrong
+  push @vecmins, [ qw/18446744073702958477   18446744073704516093 18446744073706008451 18446744073706436837 18446744073707776433 18446744073702959347 18446744073702958477/ ];
+  push @vecmins, [ qw/-9223372036852260731   -9223372036852260673 -9223372036852260731 -9223372036850511139 -9223372036850207017 -9223372036852254557 -9223372036849473359/ ];
+  push @vecmins, [ qw/-9223372036853497843   9223372036852278343 -9223372036853497487 -9223372036844936897 -9223372036850971897 -9223372036853497843 9223372036848046999/ ];
+}
+my @vecmaxs = (
+  [ ],
+  [ 1, 1 ],
+  [ 0, 0 ],
+  [ -1, -1 ],
+  [ 2, 1, 2 ],
+  [ 2, 2, 1 ],
+  [ 2, 2, 1 ],
+  [  6, 0, 4, -5, 6, -6, 0 ],
+  [  7, 0, 4, -5, 7, -8, 0 ],
+);
+if ($use64) {
+  # List::Util::max gets these wrong
+  push @vecmaxs, [ qw/18446744072030630259   18446744070011576186 18446744070972009258 18446744071127815503 18446744072030630259 18446744072030628952 18446744071413452589/ ];
+  push @vecmaxs, [ qw/18446744073707508539   18446744073702156661 18446744073707508539 18446744073700111529 18446744073707506771 18446744073707086091 18446744073704381821/ ];
+  push @vecmaxs, [ qw/-9223372036847631197   -9223372036853227739 -9223372036847631197 -9223372036851632173 -9223372036847631511 -9223372036852712261 -9223372036851707899/ ];
+  push @vecmaxs, [ qw/9223372036846154833   -9223372036846673813 9223372036846154833 -9223372036851103423 9223372036846154461 -9223372036849190963 -9223372036847538803/ ];
+}
+
 
 my @binomials = (
  [ 0,0, 1 ],
@@ -530,6 +566,8 @@ plan tests => 0 + 1
                 + scalar(@valuations)
                 + 3 + scalar(@invmods)
                 + scalar(@vecsums)
+                + scalar(@vecmins)
+                + scalar(@vecmaxs)
                 + 2 + scalar(@binomials)
                 + scalar(keys %powers)
                 + scalar(keys %primroots) + 1
@@ -769,6 +807,24 @@ foreach my $r (@invmods) {
 foreach my $r (@vecsums) {
   my($exp, @vals) = @$r;
   is( vecsum(@vals), $exp, "vecsum(@vals) = $exp" );
+}
+###### vecmin
+foreach my $r (@vecmins) {
+  if (@$r == 0) {
+    is(vecmin(), undef, "vecmin() = undef");
+  } else {
+    my($exp, @vals) = @$r;
+    is( vecmin(@vals), $exp, "vecmin(@vals) = $exp" );
+  }
+}
+###### vecmax
+foreach my $r (@vecmaxs) {
+  if (@$r == 0) {
+    is(vecmax(), undef, "vecmax() = undef");
+  } else {
+    my($exp, @vals) = @$r;
+    is( vecmax(@vals), $exp, "vecmax(@vals) = $exp" );
+  }
 }
 ###### binomial
 foreach my $r (@binomials) {

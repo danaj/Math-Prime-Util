@@ -1628,6 +1628,20 @@ sub vecsum {
   }
   $sum;
 }
+
+sub vecmin {
+  return unless @_;
+  my $min = shift;
+  for (@_) { $min = $_ if $_ < $min; }
+  $min;
+}
+sub vecmax {
+  return unless @_;
+  my $max = shift;
+  for (@_) { $max = $_ if $_ > $max; }
+  $max;
+}
+
 sub invmod {
   my($a,$n) = @_;
   return if $n == 0 || $a == 0;
