@@ -115,6 +115,7 @@ t/23-random-certs.t
 t/24-partitions.t
 t/25-lucas_sequences.t
 t/26-combinatorial.t
+t/27-bernfrac.t
 t/30-relations.t
 t/31-threading.t
 t/32-iterators.t
