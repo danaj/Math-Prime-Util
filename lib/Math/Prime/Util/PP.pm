@@ -1761,24 +1761,42 @@ sub _bernoulli_at { # Simple Akiyama-Tanigawa algorithm
   }
   ($anum[0],$aden[0]);
 }
-sub _bernoulli_bh { # Brent-Harvey (Luschny)
-  my $n = shift;
+{ # Brent-Harvey (Luschny)
   # See:  http://oeis.org/wiki/User:Peter_Luschny/ComputationAndAsymptoticsOfBernoulliNumbers#Brent-Harvey
-  $n >>= 1;
-  my @T = (BZERO, BONE);
-  $T[$_] = ($_-1) * $T[$_-1]  for 2 .. $n;
-  for my $k (2 .. $n-1) {
-    for my $j ($k .. $n) {
-      $T[$j] = ($j-$k) * $T[$j-1] + ($j-$k+2) * $T[$j];
+  my @_T = (BZERO, BONE);
+  my $fillsub = sub {
+    my($T, $n) = @_;
+    return if defined $T->[$n];
+    $T->[$_] = ($_-1) * $T->[$_-1]  for 2 .. $n;
+    for my $k (2 .. $n) {
+      for my $j ($k .. $n) {
+        $T->[$j] = ($j-$k) * $T->[$j-1] + ($j-$k+2) * $T->[$j];
+      }
     }
-  }
+  };
+  sub _bernoulli_bh {
+    my($n) = @_;
+    $n >>= 1;
+    my $Tn = $_T[$n];
 
-  my $E = ($n & 1) ? BTWO : - BTWO;
-  my $num = $T[$n]  *  $n  *  $E;
-  my $U = BONE << (2*$n);
-  $num /= Math::BigInt::bgcd($num, $U * ($U - BONE));
-  # Denominator = U*(U-1) / gcd but faster to just get it from function
-  ($num, _bernden(2*$n));
+    if (!defined $Tn) {
+      if ($n <= 100) {
+        $fillsub->(\@_T, $n < 70 ? $n+30 : $n+10);
+        $Tn = $_T[$n];
+      } else {
+        my @T = (BZERO, BONE);
+        $fillsub->(\@T, $n);
+        $Tn = $T[$n];
+      }
+    }
+
+    my $E = ($n & 1) ? BTWO : - BTWO;
+    my $num = $Tn  *  $n  *  $E;
+    my $U = BONE << (2*$n);
+    $num /= Math::BigInt::bgcd($num, $U * ($U - BONE));
+    # Denominator = U*(U-1) / gcd but faster to just get it from function
+    ($num, _bernden(2*$n));
+  }
 }
 
 sub bernfrac {
