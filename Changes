@@ -14,6 +14,8 @@ Revision history for Perl module Math::Prime::Util
     - LambertW(k)               Solves for W in k = W*exp(W)
     - vecmin(@list)             minimum of list of integers
     - vecmax(@list)             maximum of list of integers
+    - bernfrac(n)               returns (num,den) of Bernoulli number
+    - bernreal(n)               returns Bernoulli number as BigFloat
 
     [FUNCTIONALITY AND PERFORMANCE]
 

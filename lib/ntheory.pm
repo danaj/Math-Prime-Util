@@ -150,7 +150,8 @@ See L<Math::Prime::Util> for complete documentation.
   chebyshev_psi(n)                    second Chebyshev function
   consecutive_integer_lcm(n)          lcm(1 .. n)
   lucas_sequence(n, P, Q, k)          (U_k,V_k,Q_k) for Lucas(P,Q) mod n
-
+  bernfrac(n)                         Bernoulli number as (num,den)
+  bernreal(n)                         Bernoulli number as BigFloat
   
 =head2 NON-INTEGER MATH
 

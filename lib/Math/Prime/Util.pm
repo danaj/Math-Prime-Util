@@ -44,7 +44,7 @@ our @EXPORT_OK =
       primorial pn_primorial consecutive_integer_lcm gcdext chinese
       gcd lcm factor factor_exp divisors valuation invmod vecsum vecmin vecmax
       moebius mertens euler_phi jordan_totient exp_mangoldt liouville
-      partitions
+      partitions bernfrac bernreal
       chebyshev_theta chebyshev_psi
       divisor_sum carmichael_lambda
       kronecker binomial factorial znorder znprimroot znlog legendre_phi
@@ -878,6 +878,25 @@ sub LambertW {
 
   require Math::Prime::Util::PP;
   return Math::Prime::Util::PP::LambertW($k);
+}
+
+sub bernfrac {
+  my($n) = @_;
+  return map { _to_bigint($_) } (0,1) if defined $n && $n < 0;
+  _validate_num($n) || _validate_positive_integer($n);
+
+  if ($_HAVE_GMP && defined &Math::Prime::Util::GMP::bernfrac) {
+    return map { _to_bigint($_) } Math::Prime::Util::GMP::bernfrac($n);
+  }
+
+  require Math::Prime::Util::PP;
+  return Math::Prime::Util::PP::bernfrac($n);
+}
+sub bernreal {
+  do { require Math::BigFloat; Math::BigFloat->import(); }
+    if !defined $Math::BigFloat::VERSION;
+  my ($num, $den) = map { Math::BigFloat->new($_) } bernfrac(@_);
+  $num/$den;
 }
 
 #############################################################################
@@ -2483,6 +2502,23 @@ the C<n E<lt> 0, k E<lt>= n> extension and instead returns C<0> for this
 case.  GMP's API does not allow negative C<k> but otherwise matches.
 L<Math::BigInt> does not implement any extensions and the results for
 C<n E<lt> 0, k > 0> are undefined.
+
+
+=head2 bernfrac
+
+Returns the Bernoulli number C<B_n> for an integer argument C<n>, as a
+rational number represented by two L<Math::BigInt> objects.  B_1 = 1/2.
+This corresponds to Pari's C<bernfrac(n)> and Mathematica's C<BernoulliB>
+functions.
+
+This currently uses the simple Brent-Harvey recurrence, so will not be
+nearly as fast as Pari or Mathematica which use high-precision values of
+Pi and Zeta.
+
+=head2 bernreal
+
+Returns the Bernoulli number C<B_n> for an integer argument C<n>, as
+a L<Math::BigFloat> object using the default precision.
 
 
 =head2 znorder

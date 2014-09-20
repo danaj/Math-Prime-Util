@@ -1723,20 +1723,18 @@ sub valuation {
 
 sub _bernden {
   my $n = shift;
-  return 2 if $n == 1;
-  return 1 if $n & 1 || $n <= 1;
-  my $p = Math::BigInt->new(1);
+  return BTWO if $n == 1;
+  return BONE if $n & 1 || $n <= 1;
+  my $p = BONE;
   Math::Prime::Util::fordivisors { $p *= $_+1 if is_prime($_+1) } $n;
-  $p = _bigint_to_int($p) if $p->bacmp(''.~0) <= 0;
+  #$p = _bigint_to_int($p) if $p->bacmp(''.~0) <= 0;
   $p;
 }
-sub _bernnum {
+sub _bernoulli_zeta {
   my($n, $denominator) = @_;
-  return -1 if $n == 1;
-  return 0 if $n & 1 || $n <= 1;
   # This works ok with MPFR, but horrible without.
   $n = _upgrade_to_float($n);
-  my $xdigits = 3 * $n;  # This is *wrong*
+  my $xdigits = 2 * $n;  # This is *wrong*
   $n->accuracy($xdigits);
   my $pi = Math::BigFloat->bpi($xdigits);
   my $b = 2 * (-1)**(($n>>1)-1) * factorial($n) / (2*$pi)**$n * (1+RiemannZeta($n));
@@ -1744,13 +1742,53 @@ sub _bernnum {
   # Round to nearest int
   my $x = $b->as_int;
   if ($b-$x >= 0.5) { $x++ } elsif ($b-$x <= -0.5) { $x-- }
-  $x;
+  ($x, _bernden($n));
+}
+sub _bernoulli_at { # Simple Akiyama-Tanigawa algorithm
+  my $n = shift;
+  my(@anum,@aden);
+  for my $m (0..$n) {
+    $anum[$m] = Math::BigInt->new(1);
+    $aden[$m] = Math::BigInt->new($m)->binc();
+    for my $j (reverse 1..$m) {
+      my($anj1,$anj,$adj1,$adj) = ($anum[$j-1],$anum[$j],$aden[$j-1],$aden[$j]);
+      $anj1 = $j * ($adj * $anj1 - $adj1 * $anj);
+      $adj1 = $adj1 * $adj;
+      my $F = Math::BigInt::bgcd($anj1, $adj1);
+      do { $anj1 /= $F;  $adj1 /= $F } if $F != 1;
+      ($anum[$j-1],$aden[$j-1]) = ($anj1, $adj1);
+    }
+  }
+  ($anum[0],$aden[0]);
+}
+sub _bernoulli_bh { # Brent-Harvey (Luschny)
+  my $n = shift;
+  # See:  http://oeis.org/wiki/User:Peter_Luschny/ComputationAndAsymptoticsOfBernoulliNumbers#Brent-Harvey
+  $n >>= 1;
+  my @T = (BZERO, BONE);
+  $T[$_] = ($_-1) * $T[$_-1]  for 2 .. $n;
+  for my $k (2 .. $n-1) {
+    for my $j ($k .. $n) {
+      $T[$j] = ($j-$k) * $T[$j-1] + ($j-$k+2) * $T[$j];
+    }
+  }
+
+  my $E = ($n & 1) ? BTWO : - BTWO;
+  my $num = $T[$n]  *  $n  *  $E;
+  my $U = BONE << (2*$n);
+  $num /= Math::BigInt::bgcd($num, $U * ($U - BONE));
+  # Denominator = U*(U-1) / gcd but faster to just get it from function
+  ($num, _bernden(2*$n));
 }
 
 sub bernfrac {
   my $n = shift;
-  my $den = _bernden($n);
-  ( _bernnum($n, $den), $den );
+  return (BONE,BONE) if $n == 0;
+  return (BONE,BTWO) if $n == 1;    # We're choosing 1/2 instead of -1/2
+  return (BZERO,BONE) if $n < 0 || $n & 1;
+
+  # With MPFR, using _bernnum_zeta is ok, but horrible without it.
+  _bernoulli_bh($n);
 }
 
 
