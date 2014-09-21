@@ -48,7 +48,7 @@ our @EXPORT_OK =
       chebyshev_theta chebyshev_psi
       divisor_sum carmichael_lambda
       kronecker binomial factorial znorder znprimroot znlog legendre_phi
-      ExponentialIntegral LogarithmicIntegral RiemannZeta RiemannR LambertW
+      ExponentialIntegral LogarithmicIntegral RiemannZeta RiemannR LambertW Pi
   );
 our %EXPORT_TAGS = (all => [ @EXPORT_OK ]);
 
@@ -893,10 +893,11 @@ sub bernfrac {
   return Math::Prime::Util::PP::bernfrac($n);
 }
 sub bernreal {
+  my($n, $precision) = @_;
   do { require Math::BigFloat; Math::BigFloat->import(); }
     if !defined $Math::BigFloat::VERSION;
-  my ($num, $den) = map { Math::BigFloat->new($_) } bernfrac(@_);
-  $num/$den;
+  my ($num, $den) = map { Math::BigFloat->new($_) } bernfrac($n);
+  scalar $num->bdiv($den, $precision);
 }
 
 #############################################################################
@@ -2518,7 +2519,8 @@ Pi and Zeta.
 =head2 bernreal
 
 Returns the Bernoulli number C<B_n> for an integer argument C<n>, as
-a L<Math::BigFloat> object using the default precision.
+a L<Math::BigFloat> object using the default precision.  An optional
+second argument may be given specifying the precision to be used.
 
 
 =head2 znorder
@@ -3202,6 +3204,23 @@ Given a value C<k> this solves for C<W> in the equation C<k = We^W>.  The
 input must not be less than C<-1/e>.  This corresponds to Pari's C<lambertw>
 function and Mathematica's C<LambertW> function.
 
+=head2 Pi
+
+  my $tau = 2 * Pi;     # $tau = 6.28318530717959
+  my $tau = 2 * Pi(40); # $tau = 6.283185307179586476925286766559005768394
+
+With no arguments, returns the value of Pi as an NV.  With a positive
+integer argument, returns the value of Pi with the requested number of
+digits (including the leading 3).  The return value will be an NV if the
+number of digits fits in an NV (typically 15 or less), or a L<Math::BigFloat>
+object otherwise.
+
+If L<Math::MPFR> is available, it will be used for non-trivial sizes as it
+is significantly faster than the other methods.  Otherwise, for large
+inputs, if L<Math::BigInt::GMP> is available an AGM method is used.  A
+simple spigot algorithm in C is used otherwise, with L<Math::BigFloat/bpi>
+as the fallback.
+
 
 =head1 EXAMPLES
 
@@ -3375,6 +3394,16 @@ Construct the table shown in L<OEIS A046147|http://oeis.org/A046147>:
       say "$n ", join(" ", @r);
     }
   }
+
+Find the 7-digit palindromic primes in the first 100k digits of Pi:
+
+  use Math::Prime::Util qw/Pi is_prime/;
+  my $pi = "".Pi(100000);  # make sure it is a string
+  for my $pos (2 .. length($pi)-7) {
+    my $s = substr($pi, $pos, 7);
+    say "$s at $pos" if is_prime($s) && $s eq reverse($s);
+  }
+
 
 =head1 PRIMALITY TESTING NOTES
 

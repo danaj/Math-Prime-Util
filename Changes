@@ -16,6 +16,7 @@ Revision history for Perl module Math::Prime::Util
     - vecmax(@list)             maximum of list of integers
     - bernfrac(n)               returns (num,den) of Bernoulli number
     - bernreal(n)               returns Bernoulli number as BigFloat
+    - Pi([digits])              returns Pi as NV or with requested digits
 
     [FUNCTIONALITY AND PERFORMANCE]
 

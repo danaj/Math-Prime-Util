@@ -768,6 +768,68 @@ next_prime(IN SV* svn)
     }
     return; /* skip implicit PUTBACK */
 
+void Pi(IN UV digits = 0)
+  PREINIT:
+    NV pival = 3.141592653589793238462643383279502884197169L;
+    int mantsize = (DBL_MANT_DIG == 53) ? 15 : log( 1UL << DBL_MANT_DIG ) / log(10);
+  PPCODE:
+    if (digits == 0 || digits == mantsize) {
+      XSRETURN_NV( pival );
+    } else if (digits <= mantsize && digits <= 40) {
+      char t[40+2];
+      (void)sprintf(t, "%.*lf", digits-1, pival);
+      XSRETURN_NV( strtod(t, NULL) );
+    } else {
+      _vcallsub_with_pp("Pi");
+      return;
+    }
+
+void
+_pidigits(IN int digits)
+  PPCODE:
+    if (digits == 1) {
+      XSRETURN_UV(3);
+    } else {
+      char *out;
+      IV  *a;
+      IV b, c, d, e, f, g, h, i,  d4, d3, d2, d1;
+
+      digits++;   /* For rounding */
+      b = d = e = g = i = 0;  f = 10000;
+      c = 14*(digits/4 + 2);
+      New(0, a, c, IV);
+      New(0, out, digits+5+1, char);
+      *out++ = '3';  /* We'll turn "31415..." into "3.1415..." */
+      for (b = 0; b < c; b++)  a[b] = 20000000;
+      
+      while ((b = c -= 14) > 0 && i < digits) {
+        d = e = d % f;
+        while (--b > 0) {
+          d = d * b + a[b];
+          g = (b << 1) - 1;
+          a[b] = (d % g) * f;
+          d /= g;
+        }
+        /* sprintf(out+i, "%04d", e+d/f);   i += 4; */
+        d4 = e+d/f; if (d4 > 9999) d4=0;
+        d3 = d4/10;  d2 = d3/10;  d1 = d2/10;
+        out[i++] = '0' + d1;
+        out[i++] = '0' + d2-d1*10;
+        out[i++] = '0' + d3-d2*10;
+        out[i++] = '0' + d4-d3*10;
+      }
+      Safefree(a);
+      if (out[digits-1] >= '5') out[digits-2]++;  /* Round */
+      for (i = digits-2; out[i] == '9'+1; i--)    /* Keep rounding */
+        { out[i] = '0';  out[i-1]++; }
+      digits--;  /* Undo the extra digit we used for rounding */
+      out[digits] = '\0';
+      *out-- = '.';
+      XPUSHs(sv_2mortal(newSVpvn(out, digits+1)));
+      Safefree(out);
+    }
+
+
 void
 factor(IN SV* svn)
   ALIAS:

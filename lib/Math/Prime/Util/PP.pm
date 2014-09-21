@@ -81,7 +81,7 @@ sub _bigint_to_int {
 sub _upgrade_to_float {
   do { require Math::BigFloat; Math::BigFloat->import(); }
     if !defined $Math::BigFloat::VERSION;
-  return Math::BigFloat->new($_[0]);
+  Math::BigFloat->new($_[0]);
 }
 
 # Get the accuracy of variable x, or the max default from BigInt/BigFloat
@@ -1726,7 +1726,7 @@ sub _bernden {
   return BTWO if $n == 1;
   return BONE if $n & 1 || $n <= 1;
   my $p = BONE;
-  Math::Prime::Util::fordivisors { $p *= $_+1 if is_prime($_+1) } $n;
+  Math::Prime::Util::fordivisors(sub { $p *= $_+1 if is_prime($_+1) }, $n);
   #$p = _bigint_to_int($p) if $p->bacmp(''.~0) <= 0;
   $p;
 }
@@ -2067,7 +2067,23 @@ sub binomial {
 
 sub factorial {
   my($n) = @_;
-  my $r = Math::BigInt->new(''.$n)->bfac();
+  return (1,1,2,6,24,120,720,5040,40320,362880,3628800,39916800,479001600)[$n] if $n <= 12;
+  return Math::GMP::bfac($n) if ref($n) eq 'Math::GMP';
+  do { my $r = Math::GMPz->new(); Math::GMPz::Rmpz_fac_ui($r,$n); return $r; }
+    if ref($n) eq 'Math::GMPz';
+  if (Math::BigInt->config()->{lib} !~ /GMP|Pari/) {
+    # It's not a GMP or GMPz object, and we have a slow bigint library.
+    my $r;
+    if (defined $Math::GMPz::VERSION) {
+      $r = Math::GMPz->new(); Math::GMPz::Rmpz_fac_ui($r,$n);
+    } elsif (defined $Math::GMP::VERSION) {
+      $r = Math::GMP::bfac($n);
+    } elsif (defined &Math::Prime::Util::GMP::factorial && Math::Prime::Util::prime_get_config()->{'gmp'}) {
+      $r = Math::Prime::Util::GMP::factorial($n);
+    }
+    return Math::Prime::Util::_reftyped($_[0], $r)    if defined $r;
+  }
+  my $r = Math::BigInt->new($n)->bfac();
   $r = _bigint_to_int($r) if $r->bacmp(''.~0) <= 0;
   $r;
 }
@@ -4079,6 +4095,57 @@ sub LambertW {
    $lastx = $x;
   }
   $x;
+}
+
+sub Pi {
+  my $digits = shift;
+  return 3.14159265358979323846264338 unless $digits;
+  my $have_bigint_gmp = Math::BigInt->config()->{lib} =~ /GMP/;
+  my $have_xdigits    = Math::Prime::Util::prime_get_config()->{'xs'};
+
+  # MPFR wipes the floor with everything else in performance.
+  if ( !$have_xdigits || $digits > 60 && _MPFR_available()) {
+    my $rnd = 0;  # MPFR_RNDN;
+    my $bit_precision = int($digits * 3.322) + 4;
+    my $pi = Math::MPFR->new();
+    Math::MPFR::Rmpfr_set_prec($pi, $bit_precision);
+    Math::MPFR::Rmpfr_const_pi($pi, $rnd);
+    my $strval = Math::MPFR::Rmpfr_get_str($pi, 10, $digits, $rnd);
+    Math::MPFR::Rmpfr_free_cache();
+    return _upgrade_to_float($strval);
+  }
+
+  # We could consider looking for Pari
+
+  # This has a *much* better growth rate than the other non-MPFR solutions.
+  if ( !$have_xdigits || ($digits > 2000 && $have_bigint_gmp) ) {
+    # Brent-Salamin (aka AGM or Gauss-Legendre)
+    $digits += 8;
+    my $HALF = _upgrade_to_float(0.5);
+    my ($an, $bn, $tn, $pn) = ($HALF->copy->bone, $HALF->copy->bsqrt($digits),
+                               $HALF->copy->bmul($HALF), $HALF->copy->bone);
+    while ($pn < $digits) {
+      my $prev_an = $an->copy;
+      $an->badd($bn)->bmul($HALF, $digits);
+      $bn->bmul($prev_an)->bsqrt($digits);
+      $prev_an->bsub($an);
+      $tn->bsub($pn * $prev_an * $prev_an);
+      $pn->badd($pn);
+    }
+    $an->badd($bn);
+    $an->bmul($an,$digits)->bdiv(4*$tn, $digits-8);
+    return $an;
+  }
+
+  # Spigot method in C.  Low overhead but not good growth rate.
+  return _upgrade_to_float(Math::Prime::Util::_pidigits($digits))
+    if $have_xdigits;
+
+  # Sigh, use the default Math::BigFloat code.
+  # 1) it rounds incorrectly (e.g. at 761, 1372, 1509, ...)
+  # 2) AGM is *much* faster once past ~2000 digits
+  # 3) without the GMP or Pari backends, it's horribly slow.
+  return Math::BigFloat::bpi(_upgrade_to_float($digits));
 }
 
 sub forpart {
