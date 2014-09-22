@@ -70,11 +70,11 @@ sub mpu_public_regex {
       primorial pn_primorial consecutive_integer_lcm gcdext chinese
       gcd lcm factor factor_exp divisors valuation invmod vecsum vecmin vecmax
       moebius mertens euler_phi jordan_totient exp_mangoldt liouville
-      partitions
+      partitions bernfrac bernreal
       chebyshev_theta chebyshev_psi
       divisor_sum carmichael_lambda
       kronecker binomial factorial znorder znprimroot znlog legendre_phi
-      ExponentialIntegral LogarithmicIntegral RiemannZeta RiemannR LambertW
+      ExponentialIntegral LogarithmicIntegral RiemannZeta RiemannR LambertW Pi
   /;
   my $pattern = '^(' . join('|', @funcs) . ')$';
   return qr/$pattern/;
