@@ -510,8 +510,8 @@ gcd(...)
     UV ret, nullv, n;
   PPCODE:
     if (ix == 2 || ix == 3) {
-      UV sign, retindex = 0;
-      int minmax = (ix == 2);
+      UV retindex = 0;
+      int sign, minmax = (ix == 2);
       if (items == 0) XSRETURN_UNDEF;
       if (items == 1) XSRETURN(1);
       status = _validate_int(aTHX_ ST(0), 2);
@@ -771,13 +771,13 @@ next_prime(IN SV* svn)
 void Pi(IN UV digits = 0)
   PREINIT:
     NV pival = 3.141592653589793238462643383279502884197169L;
-    int mantsize = (DBL_MANT_DIG == 53) ? 15 : log( 1UL << DBL_MANT_DIG ) / log(10);
+    UV mantsize = (DBL_MANT_DIG == 53) ? 15 : log( 1UL << DBL_MANT_DIG ) / log(10);
   PPCODE:
     if (digits == 0 || digits == mantsize) {
       XSRETURN_NV( pival );
     } else if (digits <= mantsize && digits <= 40) {
       char t[40+2];
-      (void)sprintf(t, "%.*lf", digits-1, pival);
+      (void)sprintf(t, "%.*lf", (int)(digits-1), pival);
       XSRETURN_NV( strtod(t, NULL) );
     } else {
       _vcallsub_with_pp("Pi");
