@@ -3394,13 +3394,18 @@ Construct the table shown in L<OEIS A046147|http://oeis.org/A046147>:
     }
   }
 
-Find the 7-digit palindromic primes in the first 100k digits of Pi:
+Find the 7-digit palindromic primes in the first 20k digits of Pi:
 
   use Math::Prime::Util qw/Pi is_prime/;
-  my $pi = "".Pi(100000);  # make sure we only stringify once
+  my $pi = "".Pi(20000);  # make sure we only stringify once
   for my $pos (2 .. length($pi)-7) {
     my $s = substr($pi, $pos, 7);
     say "$s at $pos" if $s eq reverse($s) && is_prime($s);
+  }
+
+  # Or we could use the regex engine to find the palindromes:
+  while ($pi =~ /(([1379])(\d)(\d)\d\4\3\2)/g) {
+    say "$1 at ",pos($pi)-7 if is_prime($1)
   }
 
 

@@ -4101,6 +4101,7 @@ my $_Pi = "3.14159265358979323846264338328";
 sub Pi {
   my $digits = shift;
   return 0.0+$_Pi unless $digits;
+  return 0.0+sprintf("%.*lf", $digits-1, $_Pi) if $digits < 15;
   return _upgrade_to_float($_Pi, $digits) if $digits < 30;
 
   # Performance ranking:
@@ -4154,7 +4155,7 @@ sub Pi {
   # We could consider looking for Pari
 
   # This has a *much* better growth rate than the later solutions.
-  if ( !$have_xdigits || ($have_bigint_gmp && $digits > 1500) ) {
+  if ( !$have_xdigits || ($have_bigint_gmp && $digits > 100) ) {
     print "  using Perl AGM for Pi($digits)\n" if $_verbose;
     # Brent-Salamin (aka AGM or Gauss-Legendre)
     $digits += 8;
@@ -4180,13 +4181,32 @@ sub Pi {
     return _upgrade_to_float(Math::Prime::Util::_pidigits($digits));
   }
 
-  # Sigh, use the default Math::BigFloat code.
-  # 1) it rounds incorrectly (e.g. at 761, 1372, 1509, ...)
+  # We're going to have to use the Math::BigFloat code.
+  # 1) it rounds incorrectly (e.g. 761, 1372, 1509,...).
+  #    Fix by adding some digits and rounding.
   # 2) AGM is *much* faster once past ~2000 digits
-  # 3) without the GMP or Pari backends, it's horribly slow.
-  # 4) even with Pari backend it's awfully slow
+  # 3) It is very slow without the GMP backend.  The Pari backend helps
+  #    but it still pretty bad.  With Calc it's glacial for large inputs.
+
+  #           Math::BigFloat                AGM              spigot   AGM
+  # Size     GMP    Pari  Calc        GMP    Pari  Calc        C      C+GMP
+  #   500   0.04    0.60   0.30      0.08    0.10   0.47      0.09    0.06
+  #  1000   0.04    0.11   1.82      0.09    0.14   1.82      0.09    0.06
+  #  2000   0.07    0.37  13.5       0.09    0.34   9.16      0.10    0.06
+  #  4000   0.14    2.17 107.8       0.12    1.14  39.7       0.20    0.06
+  #  8000   0.52   15.7              0.22    4.63 186.2       0.56    0.08
+  # 16000   2.73  121.8              0.52   19.2              2.00    0.08
+  # 32000  15.4                      1.42                     7.78    0.12
+  #                                   ^                        ^       ^
+  #                                   |      use this THIRD ---+       |
+  #                use this SECOND ---+                                |
+  #                                                  use this FIRST ---+
+  # approx
+  # growth  5.6x    7.6x   8.0x      2.7x    4.1x   4.7x      3.9x    2.0x
+
   print "  using BigFloat for Pi($digits)\n" if $_verbose;
-  return Math::BigFloat::bpi(_upgrade_to_float($digits));
+  _upgrade_to_float(0);
+  return Math::BigFloat::bpi($digits+10)->round($digits);
 }
 
 sub forpart {

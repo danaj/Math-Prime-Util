@@ -20,7 +20,7 @@ plan tests => 3 + $roundt*11;
 
 is(Pi(0), 0+$Pi, "Pi(0) gives floating point pi");
 is(Pi(1), 3, "Pi(1) = 3");
-is_deeply( [map { Pi($_) } 2 .. $ninitial],
+is_deeply( [map { stringPi($_) } 2 .. $ninitial],
            [map { roundpi($_) } 2 ..  $ninitial],
            "Pi(2 .. $ninitial)" );
 
@@ -33,6 +33,12 @@ if ($roundt) {
 sub roundpi {
   my $n = shift;
   my $pi = Math::BigFloat->new($Pi, $n);
+  $pi =~ s/0*$//;
+  $pi;
+}
+sub stringPi {
+  my $n = shift;
+  my $pi = Pi($_);
   $pi =~ s/0*$//;
   $pi;
 }
