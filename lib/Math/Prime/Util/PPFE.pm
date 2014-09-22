@@ -408,6 +408,12 @@ sub valuation {
   return Math::Prime::Util::PP::valuation($n, $k);
 }
 
+sub Pi {
+  my $digits = @_;
+  _validate_positive_integer($digits) if defined $digits;
+  return Math::Prime::Util::PP::Pi($digits);
+}
+
 #############################################################################
 
 sub forprimes (&$;$) {    ## no critic qw(ProhibitSubroutinePrototypes)

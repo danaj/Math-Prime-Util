@@ -81,7 +81,7 @@ sub _bigint_to_int {
 sub _upgrade_to_float {
   do { require Math::BigFloat; Math::BigFloat->import(); }
     if !defined $Math::BigFloat::VERSION;
-  Math::BigFloat->new($_[0]);
+  Math::BigFloat->new(@_);
 }
 
 # Get the accuracy of variable x, or the max default from BigInt/BigFloat
@@ -4097,16 +4097,52 @@ sub LambertW {
   $x;
 }
 
+my $_Pi = "3.14159265358979323846264338328";
 sub Pi {
   my $digits = shift;
-  return 3.14159265358979323846264338 unless $digits;
+  return 0.0+$_Pi unless $digits;
+  return _upgrade_to_float($_Pi, $digits) if $digits < 30;
+
+  # Performance ranking:
+  #   MPFR             The first two are fastest by a wide margin
+  #   MPU::GMP         Both use AGM.  MPFR is very slightly faster.
+  #   Perl AGM w/GMP   also AGM, nice growth rate, but slower than above
+  #   C xdigits        much worse than above, but faster than the others
+  #   Perl AGM         without Math::BigInt::GMP, it's sluggish
+  #   Math::BigFloat   much slower than AGM
+  #
+  # With a few thousand digits, any of the top 4 are fine.
+  # At 10k digits, the first two are pulling away.
+  # At 50k digits, the first three are 5-20x faster than C xdigits, and
+  #   pray you're not having to the Perl BigFloat methods without GMP.
+  # At 100k digits, the first two are 15x faster than the third, C xdigits
+  #   is 200x slower, and the rest thousands of times slower.
+  # At 1M digits, the first two are under 2 seconds, the third is over a
+  #   minute, and C xdigits at over 30 minutes.
+  #
+  # Interestingly, Math::BigInt::Pari, while greatly faster than Calc, is
+  # *much* slower than GMP for these operations (both AGM and Machin).  While
+  # Perl AGM with the Math::BigInt::GMP backend will pull away from C xdigits,
+  # using it with the other backends doesn't do so.
+  #
+  # The GMP program at https://gmplib.org/download/misc/gmp-chudnovsky.c
+  # will run ~4x faster than the MPFR code.
+
   my $have_bigint_gmp = Math::BigInt->config()->{lib} =~ /GMP/;
   my $have_xdigits    = Math::Prime::Util::prime_get_config()->{'xs'};
+  my $_verbose = Math::Prime::Util::prime_get_config()->{'verbose'};
 
-  # MPFR wipes the floor with everything else in performance.
-  if ( !$have_xdigits || $digits > 60 && _MPFR_available()) {
+  # Uses AGM to get performance almost as good as MPFR
+  if (defined &Math::Prime::Util::GMP::Pi && Math::Prime::Util::prime_get_config()->{'gmp'}) {
+    print "  using MPUGMP for Pi($digits)\n" if $_verbose;
+    return _upgrade_to_float( Math::Prime::Util::GMP::Pi($digits) );
+  }
+
+  # MPFR is a bit faster than MPU-GMP's AGM.  Both are much faster than others.
+  if ( (!$have_xdigits || $digits > 60) && _MPFR_available()) {
+    print "  using MPFR for Pi($digits)\n" if $_verbose;
     my $rnd = 0;  # MPFR_RNDN;
-    my $bit_precision = int($digits * 3.322) + 4;
+    my $bit_precision = int($digits * 3.322) + 40;
     my $pi = Math::MPFR->new();
     Math::MPFR::Rmpfr_set_prec($pi, $bit_precision);
     Math::MPFR::Rmpfr_const_pi($pi, $rnd);
@@ -4117,8 +4153,9 @@ sub Pi {
 
   # We could consider looking for Pari
 
-  # This has a *much* better growth rate than the other non-MPFR solutions.
-  if ( !$have_xdigits || ($digits > 2000 && $have_bigint_gmp) ) {
+  # This has a *much* better growth rate than the later solutions.
+  if ( !$have_xdigits || $have_bigint_gmp ) {
+    print "  using Perl AGM for Pi($digits)\n" if $_verbose;
     # Brent-Salamin (aka AGM or Gauss-Legendre)
     $digits += 8;
     my $HALF = _upgrade_to_float(0.5);
@@ -4138,13 +4175,17 @@ sub Pi {
   }
 
   # Spigot method in C.  Low overhead but not good growth rate.
-  return _upgrade_to_float(Math::Prime::Util::_pidigits($digits))
-    if $have_xdigits;
+  if ($have_xdigits) {
+    print "  using XS spigot for Pi($digits)\n" if $_verbose;
+    return _upgrade_to_float(Math::Prime::Util::_pidigits($digits))
+  }
 
   # Sigh, use the default Math::BigFloat code.
   # 1) it rounds incorrectly (e.g. at 761, 1372, 1509, ...)
   # 2) AGM is *much* faster once past ~2000 digits
   # 3) without the GMP or Pari backends, it's horribly slow.
+  # 4) even with Pari backend it's awfully slow
+  print "  using BigFloat for Pi($digits)\n" if $_verbose;
   return Math::BigFloat::bpi(_upgrade_to_float($digits));
 }
 

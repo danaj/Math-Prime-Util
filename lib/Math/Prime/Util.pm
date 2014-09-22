@@ -3215,11 +3215,9 @@ digits (including the leading 3).  The return value will be an NV if the
 number of digits fits in an NV (typically 15 or less), or a L<Math::BigFloat>
 object otherwise.
 
-If L<Math::MPFR> is available, it will be used for non-trivial sizes as it
-is significantly faster than the other methods.  Otherwise, for large
-inputs, if L<Math::BigInt::GMP> is available an AGM method is used.  A
-simple spigot algorithm in C is used otherwise, with L<Math::BigFloat/bpi>
-as the fallback.
+For sizes over 10k digits, having one of L<Math::MPFR>,
+L<Math::Prime::Util::GMP>, or L<Math::BigInt::GMP> installed will help
+performance.  For sizes over 50k one of the first two are highly recommended.
 
 
 =head1 EXAMPLES
@@ -3375,7 +3373,7 @@ or its C<matches> function with the C<skip_multiples> option:
            1..(@d-1)>>1; }
   }
 
-Compute L<OEIS A054903|http://oeis.org/A054903> just like CRG4's Pari example:
+Compute L<OEIS A054903|http://oeis.org/A054903> just like CRG4s Pari example:
 
   use Math::Prime::Util qw/forcomposite divisor_sum/;
   forcomposites {
@@ -3398,7 +3396,7 @@ Construct the table shown in L<OEIS A046147|http://oeis.org/A046147>:
 Find the 7-digit palindromic primes in the first 100k digits of Pi:
 
   use Math::Prime::Util qw/Pi is_prime/;
-  my $pi = "".Pi(100000);  # make sure it is a string
+  my $pi = "".Pi(100000);  # make sure we only stringify once
   for my $pos (2 .. length($pi)-7) {
     my $s = substr($pi, $pos, 7);
     say "$s at $pos" if is_prime($s) && $s eq reverse($s);
