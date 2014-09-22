@@ -94,6 +94,8 @@ bin/primes.pl
 bin/factor.pl
 t/01-load.t
 t/02-can.t
+t/011-load-ntheory.t
+t/022-can-ntheory.t
 t/03-init.t
 t/04-inputvalidation.t
 t/10-isprime.t
