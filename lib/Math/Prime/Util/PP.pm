@@ -1736,7 +1736,7 @@ sub _bernoulli_zeta {
   $n = _upgrade_to_float($n);
   my $xdigits = 2 * $n;  # This is *wrong*
   $n->accuracy($xdigits);
-  my $pi = Math::BigFloat->bpi($xdigits);
+  my $pi = Math::Prime::Util::Pi($xdigits);
   my $b = 2 * (-1)**(($n>>1)-1) * factorial($n) / (2*$pi)**$n * (1+RiemannZeta($n));
   $b *= $denominator;
   # Round to nearest int
@@ -4107,22 +4107,22 @@ sub Pi {
   #   MPFR             The first two are fastest by a wide margin
   #   MPU::GMP         Both use AGM.  MPFR is very slightly faster.
   #   Perl AGM w/GMP   also AGM, nice growth rate, but slower than above
-  #   C xdigits        much worse than above, but faster than the others
+  #   C pidigits       much worse than above, but faster than the others
   #   Perl AGM         without Math::BigInt::GMP, it's sluggish
   #   Math::BigFloat   much slower than AGM
   #
   # With a few thousand digits, any of the top 4 are fine.
   # At 10k digits, the first two are pulling away.
-  # At 50k digits, the first three are 5-20x faster than C xdigits, and
+  # At 50k digits, the first three are 5-20x faster than C pidigits, and
   #   pray you're not having to the Perl BigFloat methods without GMP.
-  # At 100k digits, the first two are 15x faster than the third, C xdigits
+  # At 100k digits, the first two are 15x faster than the third, C pidigits
   #   is 200x slower, and the rest thousands of times slower.
   # At 1M digits, the first two are under 2 seconds, the third is over a
-  #   minute, and C xdigits at over 30 minutes.
+  #   minute, and C pixigits at 1.5 hours.
   #
   # Interestingly, Math::BigInt::Pari, while greatly faster than Calc, is
   # *much* slower than GMP for these operations (both AGM and Machin).  While
-  # Perl AGM with the Math::BigInt::GMP backend will pull away from C xdigits,
+  # Perl AGM with the Math::BigInt::GMP backend will pull away from C pidigits,
   # using it with the other backends doesn't do so.
   #
   # The GMP program at https://gmplib.org/download/misc/gmp-chudnovsky.c
@@ -4154,7 +4154,7 @@ sub Pi {
   # We could consider looking for Pari
 
   # This has a *much* better growth rate than the later solutions.
-  if ( !$have_xdigits || $have_bigint_gmp ) {
+  if ( !$have_xdigits || ($have_bigint_gmp && $digits > 1500) ) {
     print "  using Perl AGM for Pi($digits)\n" if $_verbose;
     # Brent-Salamin (aka AGM or Gauss-Legendre)
     $digits += 8;
@@ -4177,7 +4177,7 @@ sub Pi {
   # Spigot method in C.  Low overhead but not good growth rate.
   if ($have_xdigits) {
     print "  using XS spigot for Pi($digits)\n" if $_verbose;
-    return _upgrade_to_float(Math::Prime::Util::_pidigits($digits))
+    return _upgrade_to_float(Math::Prime::Util::_pidigits($digits));
   }
 
   # Sigh, use the default Math::BigFloat code.

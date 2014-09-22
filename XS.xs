@@ -792,7 +792,7 @@ _pidigits(IN int digits)
     } else {
       char *out;
       IV  *a;
-      IV b, c, d, e, f, g, h, i,  d4, d3, d2, d1;
+      IV b, c, d, e, f, g, i,  d4, d3, d2, d1;
 
       digits++;   /* For rounding */
       b = d = e = g = i = 0;  f = 10000;
@@ -811,7 +811,12 @@ _pidigits(IN int digits)
           d /= g;
         }
         /* sprintf(out+i, "%04d", e+d/f);   i += 4; */
-        d4 = e+d/f; if (d4 > 9999) d4=0;
+        d4 = e+d/f;
+        if (d4 > 9999) {
+          d4 -= 10000;
+          out[i-1]++;
+          for (b=i-1; out[b] == '0'+1; b--) { out[b]='0'; out[b-1]++; }
+        }
         d3 = d4/10;  d2 = d3/10;  d1 = d2/10;
         out[i++] = '0' + d1;
         out[i++] = '0' + d2-d1*10;

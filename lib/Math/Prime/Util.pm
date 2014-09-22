@@ -2514,7 +2514,8 @@ functions.
 
 This currently uses the simple Brent-Harvey recurrence, so will not be
 nearly as fast as Pari or Mathematica which use high-precision values of
-Pi and Zeta.
+Pi and Zeta.  With L<Math::Prime::Util::GMP> installed it is, however,
+faster than L<Math::Pari> which uses an older algorithm.
 
 =head2 bernreal
 
@@ -3399,7 +3400,7 @@ Find the 7-digit palindromic primes in the first 100k digits of Pi:
   my $pi = "".Pi(100000);  # make sure we only stringify once
   for my $pos (2 .. length($pi)-7) {
     my $s = substr($pi, $pos, 7);
-    say "$s at $pos" if is_prime($s) && $s eq reverse($s);
+    say "$s at $pos" if $s eq reverse($s) && is_prime($s);
   }
 
 
