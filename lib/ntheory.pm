@@ -160,6 +160,7 @@ See L<Math::Prime::Util> for complete documentation.
   RiemannZeta(x)                      ζ(s)-1, real-valued Riemann Zeta
   RiemannR(x)                         Riemann's R function
   LambertW(k)                         Lambert W: W for C<k = W exp(W)>
+  Pi([n])                             The constant π (NV or n digits)
   
 =head2 SUPPORT
 
