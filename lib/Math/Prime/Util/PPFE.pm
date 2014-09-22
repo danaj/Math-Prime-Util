@@ -409,7 +409,7 @@ sub valuation {
 }
 
 sub Pi {
-  my $digits = @_;
+  my($digits) = @_;
   _validate_positive_integer($digits) if defined $digits;
   return Math::Prime::Util::PP::Pi($digits);
 }
