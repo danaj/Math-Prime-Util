@@ -59,9 +59,11 @@ while (my($v, $expect) = each (%correct)) {
 }
 
 # The actual strings can be implementation specific.
-my $infinity = 0+'inf';  # Might be 0 on some platforms.
+my ($infinity, $nan) = (0+'inf', 0+'nan');
+$infinity = Math::BigInt->binf()->numify() if 65535 > $infinity;
 $infinity = +(20**20**20) if 65535 > $infinity;
-my $nan = -sin($infinity);
+$nan      = Math::BigInt->bnan()->numify() if $nan == 0;
+$nan      = -sin($infinity) if $nan == 0;
 
 SKIP: {
   skip "Your machine seems to not have infinity", 1 if 65535 > $infinity;
@@ -70,7 +72,8 @@ SKIP: {
 }
 
 SKIP: {
-  skip "Your machine seems to not have NaN", 1 if $nan == 0 || $nan eq '0';
+  skip "Your machine seems to not have NaN", 1 if $nan == 0 || $nan =~ /^\d*$/;
+  #skip "Skipping NaN test on Win32", 1 if $^O eq 'MSWin32';
   eval { next_prime($nan); };
   like($@, qr/must be a positive integer/, "next_prime( nan ) [nan = '$nan']");
 }
