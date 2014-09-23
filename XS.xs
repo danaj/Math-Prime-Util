@@ -1608,7 +1608,8 @@ forcomb (SV* block, IN SV* svn, IN SV* svk = 0)
     if (k > n)
       return;
 
-    New(0, cm, k, UV);
+    New(0, cm, k+1, UV);
+    cm[0] = UV_MAX;
     for (i = 0; i < k; i++)
       cm[i] = k-i;
 
