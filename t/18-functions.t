@@ -121,7 +121,8 @@ while (my($n, $zin) = each (%rzvals)) {
   cmp_closeto( RiemannZeta($n), $zin, 0.00000001 * abs($zin), "Zeta($n) ~= $zin");
 }
 while (my($n, $lin) = each (%lamvals)) {
-  cmp_closeto( LambertW($n), $lin, 0.00000001 * abs($lin), "LambertW($n) ~= $lin");
+  # Machines with long double will be a little different near -1/e
+  cmp_closeto( LambertW($n), $lin, 0.0000001 * abs($lin), "LambertW($n) ~= $lin");
 }
 
 

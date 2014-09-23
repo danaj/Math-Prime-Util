@@ -35,6 +35,9 @@
   #define PSTRTOULL(str, end, base) strtoul (str, end, base)
   #define PSTRTOLL(str, end, base)  strtol (str, end, base)
 #endif
+#if defined(_MSC_VER) && !defined(strtold)
+  #define strtold strtod
+#endif
 
 #if PERL_REVISION <= 5 && PERL_VERSION <= 6 && BITS_PER_WORD == 64
  /* Workaround perl 5.6 UVs and bigints */
@@ -788,14 +791,20 @@ next_prime(IN SV* svn)
 void Pi(IN UV digits = 0)
   PREINIT:
     NV pival = 3.141592653589793238462643383279502884197169L;
-    UV mantsize = (DBL_MANT_DIG == 53) ? 15 : log( 1UL << DBL_MANT_DIG ) / log(10);
+    UV mantsize = DBL_MANT_DIG / 3.322;   /* Let long doubles go to BF */
   PPCODE:
-    if (digits == 0 || digits == mantsize) {
+    if (digits == 0) {
       XSRETURN_NV( pival );
     } else if (digits <= mantsize && digits <= 40) {
       char t[40+2];
-      (void)sprintf(t, "%.*lf", (int)(digits-1), pival);
-      XSRETURN_NV( strtod(t, NULL) );
+      NV pi;
+      (void)sprintf(t, "%.*"NVff, (int)(digits-1), pival);
+#if defined(USE_LONG_DOUBLE) && defined(HAS_LONG_DOUBLE)
+      pi = strtold(t, NULL);
+#else
+      pi = strtod(t, NULL);
+#endif
+      XSRETURN_NV( pi );
     } else {
       _vcallsub_with_pp("Pi");
       return;
