@@ -505,6 +505,7 @@ gcd(...)
     vecmin = 2
     vecmax = 3
     vecsum = 4
+    vecprod = 5
   PREINIT:
     int i, status = 1;
     UV ret, nullv, n;
@@ -558,6 +559,21 @@ gcd(...)
        * Sad, because this will now be wasted work and slow. */
       if (hi != 0) status = 0;  /* Overflow */
       ret = lo;
+    } else if (ix == 5) {
+      int sign = 1;
+      ret = 1;
+      for (i = 0; i < items; i++) {
+        status = _validate_int(aTHX_ ST(i), 2);
+        if (status == 0) break;
+        n = (status == 1) ? my_svuv(ST(i)) : -my_sviv(ST(i));
+        if (ret > 0 && n > UV_MAX/ret) { status = 0; break; }
+        sign *= status;
+        ret *= n;
+      }
+      if (sign == -1 && status != 0) {
+        if (ret <= (UV)IV_MAX)  XSRETURN_IV(-(IV)ret);
+        else                    status = 0;
+      }
     } else {
       /* For each arg, while valid input, validate+gcd/lcm.  Shortcut stop. */
       if (ix == 0) { ret = 0; nullv = 1; }
@@ -588,8 +604,9 @@ gcd(...)
       case 1: _vcallsub_with_gmp("lcm");   break;
       case 2: _vcallsub_with_gmp("vecmin"); break;
       case 3: _vcallsub_with_gmp("vecmax"); break;
-      case 4:
-      default:_vcallsub_with_pp("vecsum");  break;
+      case 4: _vcallsub_with_pp("vecsum");  break;
+      case 5:
+      default:_vcallsub_with_pp("vecprod");  break;
     }
     return; /* skip implicit PUTBACK */
 

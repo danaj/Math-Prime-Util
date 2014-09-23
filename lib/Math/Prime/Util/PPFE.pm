@@ -357,6 +357,11 @@ sub vecsum {
   _validate_integer($_) for @v;
   return Math::Prime::Util::PP::vecsum(@v);
 }
+sub vecprod {
+  my(@v) = @_;
+  _validate_integer($_) for @v;
+  return Math::Prime::Util::PP::vecprod(@v);
+}
 sub vecmin {
   my(@v) = @_;
   _validate_integer($_) for @v;

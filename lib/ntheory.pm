@@ -120,6 +120,7 @@ See L<Math::Prime::Util> for complete documentation.
 =head2 MATH
 
   vecsum(@list)                       integer sum of list
+  vecprod(@list)                      integer product of list
   vecmin(@list)                       minimum of list of integers
   vecmax(@list)                       maximum of list of integers
   is_power(n)                         return k if n = p^k for integer p

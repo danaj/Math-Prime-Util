@@ -42,7 +42,8 @@ our @EXPORT_OK =
       random_maurer_prime random_maurer_prime_with_cert
       random_shawe_taylor_prime random_shawe_taylor_prime_with_cert
       primorial pn_primorial consecutive_integer_lcm gcdext chinese
-      gcd lcm factor factor_exp divisors valuation invmod vecsum vecmin vecmax
+      gcd lcm factor factor_exp divisors valuation invmod
+      vecsum vecmin vecmax vecprod
       moebius mertens euler_phi jordan_totient exp_mangoldt liouville
       partitions bernfrac bernreal
       chebyshev_theta chebyshev_psi
@@ -488,7 +489,6 @@ sub partitions {
   return Math::Prime::Util::PP::partitions($n);
 }
 
-
 #############################################################################
 # forprimes, forcomposites, fordivisors.
 # These are used when the XS code can't handle it.
@@ -915,7 +915,7 @@ __END__
 
 =encoding utf8
 
-=for stopwords forprimes forcomposites foroddcomposites fordivisors forpart forcomb forperm Möbius Deléglise Bézout totient moebius mertens liouville znorder irand primesieve uniqued k-tuples von SoE pari yafu fonction qui compte le nombre nombres voor PhD superset sqrt(N) gcd(A^M k-th (10001st primegen libtommath kronecker znprimroot znlog gcd lcm invmod untruncated vecsum vecmin vecmax gcdext chinese LambertW bernfrac bernreal
+=for stopwords forprimes forcomposites foroddcomposites fordivisors forpart forcomb forperm Möbius Deléglise Bézout totient moebius mertens liouville znorder irand primesieve uniqued k-tuples von SoE pari yafu fonction qui compte le nombre nombres voor PhD superset sqrt(N) gcd(A^M k-th (10001st primegen libtommath kronecker znprimroot znlog gcd lcm invmod untruncated vecsum vecprod vecmin vecmax gcdext chinese LambertW bernfrac bernreal
 
 =for test_synopsis use v5.14;  my($k,$x);
 
@@ -2174,6 +2174,14 @@ important difference.  List::Util turns all inputs into doubles and returns
 a double, which will mean incorrect results with large integers.  C<vecsum>
 sums (signed) integers and returns the untruncated result.  Processing is
 done on native integers while possible.
+
+=head2 vecprod
+
+  say "Totient product 5,000: ", vecprod(euler_phi(1,5_000));
+
+Returns the product of all arguments, each of which must be an integer.  This
+is similar to List::Util's L<List::Util/product> function, but keeps all
+results as integers and automatically switches to bigints if needed.
 
 =head2 vecmin
 

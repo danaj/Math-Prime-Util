@@ -7,7 +7,7 @@ use Math::Prime::Util
    qw/moebius mertens euler_phi jordan_totient divisor_sum exp_mangoldt
       chebyshev_theta chebyshev_psi carmichael_lambda znorder liouville
       znprimroot znlog kronecker legendre_phi gcd lcm is_power valuation
-      invmod vecsum binomial gcdext chinese vecmin vecmax
+      invmod vecsum vecprod binomial gcdext chinese vecmin vecmax factorial
      /;
 
 my $extra = defined $ENV{EXTENDED_TESTING} && $ENV{EXTENDED_TESTING};
@@ -467,6 +467,17 @@ my @vecsums = (
 if ($use64) {
   push @vecsums, [ "18446744073709620400", 18446744073709540400, (1000) x 80 ];
 }
+my @vecprods = (
+  [ 1 ],
+  [ 1,  1 ],
+  [ -1,  -1 ],
+  [ 2,  -1, -2 ],
+  [ 2,  -1, -2 ],
+  [ "-2147385345", 32767, -65535 ],
+  [ "-2147385345", 32767, -65535 ],
+  [ "-2147450880", 32768, -65535 ],
+  [ "-2147483648", 32768, -65536 ],
+);
 
 my @vecmins = (
   [ ],
@@ -566,6 +577,7 @@ plan tests => 0 + 1
                 + scalar(@valuations)
                 + 3 + scalar(@invmods)
                 + scalar(@vecsums)
+                + 1 + scalar(@vecprods)
                 + scalar(@vecmins)
                 + scalar(@vecmaxs)
                 + 2 + scalar(@binomials)
@@ -807,6 +819,19 @@ foreach my $r (@invmods) {
 foreach my $r (@vecsums) {
   my($exp, @vals) = @$r;
   is( vecsum(@vals), $exp, "vecsum(@vals) = $exp" );
+}
+###### vecprod
+foreach my $r (@vecprods) {
+  my($exp, @vals) = @$r;
+  is( vecprod(@vals), $exp, "vecprod(@vals) = $exp" );
+}
+{
+  my(@prod,@fact);
+  for my $f (0 .. 50) {
+    push @fact, factorial($f);
+    push @prod, vecprod(1 .. $f);
+  }
+  is_deeply(\@prod, \@fact, "vecprod matches factorial for 0 .. 50");
 }
 ###### vecmin
 foreach my $r (@vecmins) {

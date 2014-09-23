@@ -1629,6 +1629,14 @@ sub vecsum {
   $sum;
 }
 
+sub vecprod {
+  my $prod = BONE->copy;
+  # A product tree might be nice, but there is so much other overhead...
+  $prod *= "$_" for @_;
+  $prod = _bigint_to_int($prod) if $prod->bacmp(''.~0) <= 0 && $prod > -(~0 >> 1) - 1;
+  $prod;
+}
+
 sub vecmin {
   return unless @_;
   my $min = shift;
