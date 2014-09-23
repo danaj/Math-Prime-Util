@@ -11,12 +11,12 @@ Revision history for Perl module Math::Prime::Util
     - is_bpsw_prime(n)          primality test with no pretests, just ES BPSW
     - is_frobenius_pseudoprime  Frobenius quadratic primality test
     - is_perrin_pseudoprime     Perrin primality test (unrestricted)
-    - LambertW(k)               Solves for W in k = W*exp(W)
     - vecmin(@list)             minimum of list of integers
     - vecmax(@list)             maximum of list of integers
     - vecprod(@list)            product of list of integers
     - bernfrac(n)               returns (num,den) of Bernoulli number
     - bernreal(n)               returns Bernoulli number as BigFloat
+    - LambertW(k)               Solves for W in k = W*exp(W)
     - Pi([digits])              returns Pi as NV or with requested digits
 
     [FUNCTIONALITY AND PERFORMANCE]

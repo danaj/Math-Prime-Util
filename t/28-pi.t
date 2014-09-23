@@ -26,7 +26,7 @@ is_deeply( [map { stringPi($_) } 2 .. $ninitial],
 
 if ($roundt) {
   for my $len (760 .. 770) {
-    is( Pi($len), roundpi($len), "Pi($len)" );
+    is( stringPi($len), roundpi($len), "Pi($len)" );
   }
 }
 
@@ -38,7 +38,7 @@ sub roundpi {
 }
 sub stringPi {
   my $n = shift;
-  my $pi = Pi($_);
+  my $pi = Pi($n);
   $pi =~ s/0*$//;
   $pi;
 }

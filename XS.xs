@@ -565,7 +565,7 @@ gcd(...)
       for (i = 0; i < items; i++) {
         status = _validate_int(aTHX_ ST(i), 2);
         if (status == 0) break;
-        n = (status == 1) ? my_svuv(ST(i)) : -my_sviv(ST(i));
+        n = (status == 1) ? my_svuv(ST(i)) : (UV)-my_sviv(ST(i));
         if (ret > 0 && n > UV_MAX/ret) { status = 0; break; }
         sign *= status;
         ret *= n;
