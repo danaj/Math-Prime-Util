@@ -35,6 +35,9 @@ Revision history for Perl module Math::Prime::Util
     - Big build change: Try a GMP compilation and add Math::Prime::Util::GMP
       to dependency list if it succeeds.
 
+    - Fixed a memory leak in segment_primes / segment_twin_primes introduced
+      in previous release.  Thanks Valgrind!
+
 
 0.43  2014-08-16
 

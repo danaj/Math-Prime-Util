@@ -420,6 +420,7 @@ sieve_primes(IN UV low, IN UV high)
             lastp = p;
           END_DO_FOR_EACH_SIEVE_PRIME
         }
+        end_segment_primes(ctx);
       }
     }
     return; /* skip implicit PUTBACK */
