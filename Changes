@@ -32,6 +32,9 @@ Revision history for Perl module Math::Prime::Util
     - Alias added for the module name "ntheory".  The module has grown
       enough that it seems more appropriate.
 
+    - Big build change: Try a GMP compilation and add Math::Prime::Util::GMP
+      to dependency list if it succeeds.
+
 
 0.43  2014-08-16
 
