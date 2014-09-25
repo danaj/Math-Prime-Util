@@ -1089,6 +1089,30 @@ gcdext(IN SV* sva, IN SV* svb)
       return; /* skip implicit PUTBACK */
     }
 
+void
+stirling(IN UV n, IN UV m, IN UV type = 1)
+  PPCODE:
+    if (type != 1 && type != 2)
+      croak("stirling type must be 1 or 2");
+    if (n == m)
+      XSRETURN_UV(1);
+    else if (n == 0 || m == 0 || m > n)
+      XSRETURN_UV(0);
+    else if (m == 1 && type == 2)
+      XSRETURN_UV(1);
+    else if (m == 1 && type == 1) {
+      UV f = factorial(n-1);
+      if (f != 0 && f <= (UV)IV_MAX) XSRETURN_IV( f * ((n&1) ? 1 : -1) );
+    } else if (type == 2) {
+      IV s = stirling2(n, m);
+      if (s != 0) XSRETURN_IV(s);
+    } else if (type == 1) {
+      IV s = stirling1(n, m);
+      if (s != 0) XSRETURN_IV(s);
+    }
+    _vcallsub_with_gmp("stirling");
+    return;
+
 NV
 _XS_ExponentialIntegral(IN SV* x)
   ALIAS:

@@ -1380,6 +1380,41 @@ UV binomial(UV n, UV k) {    /* Thanks to MJD and RosettaCode for ideas */
   return r;
 }
 
+IV stirling2(UV n, UV m) {
+  UV f;
+  IV j, k, t, s = 0;
+  
+  if (m == n) return 1;
+  if (n == 0 || m == 0 || m > n) return 0;
+  if (m == 1) return 1;
+  if ((f = factorial(m)) == 0) return 0;
+  for (j = 1; j <= (IV)m; j++) {
+    t = binomial(m, j);
+    for (k = 1; k <= (IV)n; k++) {
+      if (t == 0 || j >= IV_MAX/t) return 0;
+      t *= j;
+    }
+    if ((m-j) & 1) t *= -1;
+    s += t;
+  }
+  return s/f;
+}
+
+IV stirling1(UV n, UV m) {
+  IV k, t, b1, b2, s2, s = 0;
+  for (k = 1; k <= (IV)(n-m); k++) {
+    b1 = binomial(k + n - 1, k + n - m);
+    b2 = binomial(2 * n - m, n - k - m);
+    s2 = stirling2(k - m + n, k);
+    if (b1 == 0 || b2 == 0 || s2 == 0 || b1 > IV_MAX/b2) return 0;
+    t = b1 * b2;
+    if (s2 > IV_MAX/t) return 0;
+    t *= s2;
+    s += (k & 1) ? -t : t;
+  }
+  return s;
+}
+
 UV totient(UV n) {
   UV i, nfacs, totient, lastf, facs[MPU_MAX_FACTORS+1];
   if (n <= 1) return n;

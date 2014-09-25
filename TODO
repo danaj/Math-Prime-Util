@@ -91,5 +91,4 @@
 - xt/pari-compare:  add chinese, factorial, vecmin, vecmax,
                         bernfrac, bernreal, LambertW.
 
-- Add stirling to XS, docs, tests
-  XS can go to 13,16 in 32-bit,  20,26 in 64-bit  (max n for type 1,2)
+- Add stirling to docs, tests

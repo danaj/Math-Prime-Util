@@ -61,6 +61,9 @@ extern UV znprimroot(UV n);
 extern UV znorder(UV a, UV n);
 extern UV znlog(UV a, UV g, UV p);
 
+extern IV stirling2(UV n, UV m);
+extern IV stirling1(UV n, UV m);
+
 #if defined(FUNC_isqrt) || defined(FUNC_is_perfect_square)
 static UV isqrt(UV n) {
   UV root;

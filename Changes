@@ -14,10 +14,11 @@ Revision history for Perl module Math::Prime::Util
     - vecmin(@list)             minimum of list of integers
     - vecmax(@list)             maximum of list of integers
     - vecprod(@list)            product of list of integers
-    - bernfrac(n)               returns (num,den) of Bernoulli number
-    - bernreal(n)               returns Bernoulli number as BigFloat
+    - bernfrac(n)               (num,den) of Bernoulli number
+    - bernreal(n)               Bernoulli number as BigFloat
+    - stirling(n,m,[type])      Stirling numbers of first or second kind
     - LambertW(k)               Solves for W in k = W*exp(W)
-    - Pi([digits])              returns Pi as NV or with requested digits
+    - Pi([digits])              Pi as NV or with requested digits
 
     [FUNCTIONALITY AND PERFORMANCE]
 

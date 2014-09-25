@@ -47,8 +47,8 @@ our @EXPORT_OK =
       moebius mertens euler_phi jordan_totient exp_mangoldt liouville
       partitions bernfrac bernreal
       chebyshev_theta chebyshev_psi
-      divisor_sum carmichael_lambda
-      kronecker binomial factorial znorder znprimroot znlog legendre_phi
+      divisor_sum carmichael_lambda kronecker
+      binomial factorial stirling znorder znprimroot znlog legendre_phi
       ExponentialIntegral LogarithmicIntegral RiemannZeta RiemannR LambertW Pi
   );
 our %EXPORT_TAGS = (all => [ @EXPORT_OK ]);
@@ -3415,6 +3415,11 @@ Find the 7-digit palindromic primes in the first 20k digits of Pi:
   while ($pi =~ /(([1379])(\d)(\d)\d\4\3\2)/g) {
     say "$1 at ",pos($pi)-7 if is_prime($1)
   }
+
+The L<Bell numbers|https://en.wikipedia.org/wiki/Bell_number> B_n:
+
+  sub B { my $n = shift; vecsum(map { stirling($n,$_,2) } 0..$n) }
+  say "$_  ",B($_) for 1..50;
 
 
 =head1 PRIMALITY TESTING NOTES
