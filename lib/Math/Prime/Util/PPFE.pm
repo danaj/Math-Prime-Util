@@ -228,6 +228,14 @@ sub binomial {
   return Math::Prime::Util::PP::binomial($n, $k);
 }
 
+sub stirling {
+  my($n, $k, $type) = @_;
+  _validate_positive_integer($n);
+  _validate_positive_integer($k);
+  _validate_positive_integer($type) if defined $type;
+  return Math::Prime::Util::PP::stirling($n, $k, $type);
+}
+
 sub znorder {
   my($a, $n) = @_;
   _validate_positive_integer($a);
