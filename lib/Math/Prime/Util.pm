@@ -915,7 +915,7 @@ __END__
 
 =encoding utf8
 
-=for stopwords forprimes forcomposites foroddcomposites fordivisors forpart forcomb forperm Möbius Deléglise Bézout totient moebius mertens liouville znorder irand primesieve uniqued k-tuples von SoE pari yafu fonction qui compte le nombre nombres voor PhD superset sqrt(N) gcd(A^M k-th (10001st primegen libtommath kronecker znprimroot znlog gcd lcm invmod untruncated vecsum vecprod vecmin vecmax gcdext chinese LambertW bernfrac bernreal
+=for stopwords forprimes forcomposites foroddcomposites fordivisors forpart forcomb forperm Möbius Deléglise Bézout totient moebius mertens liouville znorder irand primesieve uniqued k-tuples von SoE pari yafu fonction qui compte le nombre nombres voor PhD superset sqrt(N) gcd(A^M k-th (10001st primegen libtommath kronecker znprimroot znlog gcd lcm invmod untruncated vecsum vecprod vecmin vecmax gcdext chinese LambertW bernfrac bernreal stirling
 
 =for test_synopsis use v5.14;  my($k,$x);
 
@@ -2530,6 +2530,21 @@ faster than L<Math::Pari> which uses an older algorithm.
 Returns the Bernoulli number C<B_n> for an integer argument C<n>, as
 a L<Math::BigFloat> object using the default precision.  An optional
 second argument may be given specifying the precision to be used.
+
+=head2 stirling
+
+  say "s(14,2) = ", stirling(14, 2);
+  say "S(14,2) = ", stirling(14, 2, 2);
+
+Returns the Stirling numbers of either the first kind (default) or
+second kind (with a third argument of 2).  It takes two non-negative integer
+arguments C<n< and C<k>.  This corresponds to Pari's C<stirling(n,k,{type})>
+function and Mathematica's C<StirlingS1> / C<StirlingS2> functions.
+
+Stirling numbers of the first kind are C<-1^(n-k)> times the number of
+permutations of C<n> symbols with exactly C<k> cycles.  Stirling numbers
+of the second kind are the number of ways to partition a set of C<n>
+elements into C<k> non-empty subsets.
 
 
 =head2 znorder

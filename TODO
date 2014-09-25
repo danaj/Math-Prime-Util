@@ -90,5 +90,3 @@
 
 - xt/pari-compare:  add chinese, factorial, vecmin, vecmax,
                         bernfrac, bernreal, LambertW.
-
-- Add stirling to docs, tests
