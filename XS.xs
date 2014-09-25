@@ -1110,7 +1110,7 @@ stirling(IN UV n, IN UV m, IN UV type = 1)
       IV s = stirling1(n, m);
       if (s != 0) XSRETURN_IV(s);
     }
-    _vcallsub_with_gmp("stirling");
+    _vcallsub_with_pp("stirling");
     return;
 
 NV

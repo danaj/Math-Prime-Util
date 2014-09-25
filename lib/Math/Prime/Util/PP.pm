@@ -1822,23 +1822,28 @@ sub stirling {
   return 1 if $m == $n;
   return 0 if $n == 0 || $m == 0 || $m > $n;
   $type = 1 unless defined $type;
+  croak "stirling type must be 1 or 2" unless $type == 1 || $type == 2;
   if ($m == 1) {
     return ($type == 2)  ?  1  :  factorial($n-1) * (($n&1) ? 1 : -1);
   }
+  if (defined &Math::Prime::Util::GMP::stirling && Math::Prime::Util::prime_get_config()->{'gmp'}) {
+    return Math::Prime::Util::_reftyped($_[0], Math::Prime::Util::GMP::stirling($n,$m,$type));
+  }
   my $s = BZERO->copy;
   if ($type == 2) {
-    for my $j (0 .. $m) {
-      my $t = (Math::BigInt->new($j) ** $n) * binomial($m,$j);
+    for my $j (1 .. $m) {
+      # Another *stupid* workaround for RT 71548.
+      my $t = (Math::BigInt->new($j) ** $n) * Math::BigInt->new("".binomial($m,$j));
       $s = (($m-$j) & 1)  ?  $s - $t  :  $s + $t;
     }
     $s /= factorial($m);
   } else {
-    for my $k (0 .. $n-$m) {
+    for my $k (1 .. $n-$m) {
       my $t = BONE->copy;
       $t *= -1 if $k & 1;
-      $t *= binomial($k + $n - 1, $k + $n - $m);
-      $t *= binomial(2 * $n - $m, $n - $k - $m);
-      $t *= stirling($k - $m + $n, $k, 2);
+      $t *= Math::BigInt->new("".binomial($k + $n - 1, $k + $n - $m));
+      $t *= Math::BigInt->new("".binomial(2 * $n - $m, $n - $k - $m));
+      $t *= Math::BigInt->new("".stirling($k - $m + $n, $k, 2));
       $s += $t;
     }
   }
