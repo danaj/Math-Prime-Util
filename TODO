@@ -82,13 +82,14 @@
     = Clean up znlog (PH, BSGS, Rho).
     = Experiment with Wang/Zhang 2012 Rho cycle finding
 
-- CRT and gcdext:
-    = Math::Pari compare chinese
-
 - Like gmpy:  lucasu, lucasv, lucasu_mod, lucasv_mod  e.g. lucasu_mod(p,q,k,n)
   See: http://joye.site88.net/papers/JQ96lucas.pdf to make sure we're being
   efficient.
 
-- Simple test for ntheory alias
-
 - consider using Ramanujan Li for PP code.
+
+- xt/pari-compare:  add chinese, factorial, vecmin, vecmax,
+                        bernfrac, bernreal, LambertW.
+
+- Add stirling to XS, docs, tests
+  XS can go to 13,16 in 32-bit,  20,26 in 64-bit  (max n for type 1,2)

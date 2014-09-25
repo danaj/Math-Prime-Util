@@ -1817,6 +1817,33 @@ sub bernfrac {
   _bernoulli_bh($n);
 }
 
+sub stirling {
+  my($n, $m, $type) = @_;
+  return 1 if $m == $n;
+  return 0 if $n == 0 || $m == 0 || $m > $n;
+  $type = 1 unless defined $type;
+  if ($m == 1) {
+    return ($type == 2)  ?  1  :  factorial($n-1) * (($n&1) ? 1 : -1);
+  }
+  my $s = BZERO->copy;
+  if ($type == 2) {
+    for my $j (0 .. $m) {
+      my $t = (Math::BigInt->new($j) ** $n) * binomial($m,$j);
+      $s = (($m-$j) & 1)  ?  $s - $t  :  $s + $t;
+    }
+    $s /= factorial($m);
+  } else {
+    for my $k (0 .. $n-$m) {
+      my $t = BONE->copy;
+      $t *= -1 if $k & 1;
+      $t *= binomial($k + $n - 1, $k + $n - $m);
+      $t *= binomial(2 * $n - $m, $n - $k - $m);
+      $t *= stirling($k - $m + $n, $k, 2);
+      $s += $t;
+    }
+  }
+  $s;
+}
 
 sub is_pseudoprime {
   my($n, $base) = @_;
