@@ -37,27 +37,27 @@ See L<Math::Prime::Util> for complete documentation.
 
 =head2 PRIMALITY
 
-  is_prime(n)                    primality test (BPSW + extra)
-  is_prob_prime(n)               primality test (BPSW)
-  is_provable_prime(n)           primality test with proof (BLS75+ECPP)
-  is_provable_prime_with_cert(n) primality test returning (isprime,cert)
-  prime_certificate(n)           returns just the primality certificate
-  verify_prime(cert)             verify a primality certificate
-  is_aks_prime                   AKS deterministic test (slow)
+  is_prob_prime(n)                    primality test (BPSW)
+  is_prime(n)                         primality test (BPSW + extra)
+  is_provable_prime(n)                primality test with proof
+  is_provable_prime_with_cert(n)      primality test: (isprime,cert)
+  prime_certificate(n)                as above with just certificate
+  verify_prime(cert)                  verify a primality certificate
+  is_aks_prime                        AKS deterministic test (slow)
 
 =head2 PROBABLE PRIME TESTS
 
-  is_pseudoprime(n,bases)                Fermat probable prime tests
-  is_strong_pseudoprime(n,bases)         Miller-Rabin tests to bases
-  is_lucas_pseudoprime(n)                Lucas test
-  is_strong_lucas_pseudoprime(n)         strong Lucas test
+  is_pseudoprime(n,bases)                  Fermat probable prime tests
+  is_strong_pseudoprime(n,bases)           Miller-Rabin tests to bases
+  is_lucas_pseudoprime(n)                  Lucas test
+  is_strong_lucas_pseudoprime(n)           strong Lucas test
   is_almost_extra_strong_lucas_pseudoprime(n, [incr])   AES Lucas test
-  is_extra_strong_lucas_pseudoprime(n)   extra strong Lucas test
-  is_frobenius_pseudoprime(n, [a,b])     Frobenius quadratic test
-  is_perrin_pseudoprime(n)               Perrin test
-  is_frobenius_underwood_pseudoprime(n)  combined PSP and Lucas
-  is_bpsw_prime(n)                       combined SPSP-2 and ES Lucas
-  miller_rabin_random(n, ntests)         perform random-base MR tests
+  is_extra_strong_lucas_pseudoprime(n)     extra strong Lucas test
+  is_frobenius_pseudoprime(n, [a,b])       Frobenius quadratic test
+  is_perrin_pseudoprime(n)                 Perrin test
+  is_frobenius_underwood_pseudoprime(n)    combined PSP and Lucas
+  is_bpsw_prime(n)                         combined SPSP-2 and ES Lucas
+  miller_rabin_random(n, ntests)           perform random-base MR tests
 
 =head2 PRIMES
 
@@ -79,7 +79,7 @@ See L<Math::Prime::Util> for complete documentation.
   twin_prime_count_approx(n)          fast approx count of twin primes
   nth_twin_prime(n)                   the nth twin prime (n=1 returns 3)
   nth_twin_prime_approx(n)            fast approximate nth twin prime
-  legendre_phi(n,a)                   count below n !div by first a primes
+  legendre_phi(n,a)                   # below n not div by first a primes
   prime_precalc(n)                    precalculate primes to n
 
 =head2 FACTORING

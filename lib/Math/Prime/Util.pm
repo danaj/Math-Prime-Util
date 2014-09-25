@@ -894,10 +894,10 @@ sub bernfrac {
 }
 sub bernreal {
   my($n, $precision) = @_;
-  do { require Math::BigFloat; Math::BigFloat->import(); }
-    if !defined $Math::BigFloat::VERSION;
-  my ($num, $den) = map { Math::BigFloat->new($_) } bernfrac($n);
-  scalar $num->bdiv($den, $precision);
+  my($num,$den) = bernfrac($n);
+  do { require Math::BigFloat; Math::BigFloat->import(); } unless defined $Math::BigFloat::VERSION;
+  return Math::BigFloat->bzero if $num->is_zero;
+  scalar Math::BigFloat->new($num)->bdiv($den, $precision);
 }
 
 #############################################################################
