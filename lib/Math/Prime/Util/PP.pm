@@ -1630,9 +1630,13 @@ sub vecsum {
 }
 
 sub vecprod {
-  my $prod = BONE->copy;
-  # A product tree might be nice, but there is so much other overhead...
-  $prod *= "$_" for @_;
+  if (defined &Math::Prime::Util::GMP::vecprod && Math::Prime::Util::prime_get_config()->{'gmp'}) {
+    return Math::Prime::Util::_reftyped($_[0], Math::Prime::Util::GMP::vecprod(@_));
+  }
+  # Product tree:
+  my $prod = _product(0, $#_, [map { Math::BigInt->new("$_") } @_]);
+  # Linear:
+  # my $prod = BONE->copy;  $prod *= "$_" for @_;
   $prod = _bigint_to_int($prod) if $prod->bacmp(''.~0) <= 0 && $prod > -(~0 >> 1) - 1;
   $prod;
 }
@@ -2103,6 +2107,21 @@ sub binomial {
     }
   }
   $r;
+}
+
+sub _product {
+  my($a, $b, $r) = @_;
+  if ($b <= $a) {
+  } elsif ($b == $a+1) {
+    $r->[$a] -> bmul( $r->[$b] );
+  } elsif ($b == $a+2) {
+    $r->[$a] -> bmul( $r->[$a+1] ) -> bmul( $r->[$a+2] );
+  } else {
+    my $c = $a + (($b-$a+1)>>1);
+    _product($a, $c-1, $r);
+    _product($c, $b, $r);
+    $r->[$a] -> bmul( $r->[$c] );
+  }
 }
 
 sub factorial {
