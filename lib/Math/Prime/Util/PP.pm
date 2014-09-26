@@ -1630,6 +1630,7 @@ sub vecsum {
 }
 
 sub vecprod {
+  return 1 unless @_;
   if (defined &Math::Prime::Util::GMP::vecprod && Math::Prime::Util::prime_get_config()->{'gmp'}) {
     return Math::Prime::Util::_reftyped($_[0], Math::Prime::Util::GMP::vecprod(@_));
   }
@@ -2112,6 +2113,7 @@ sub binomial {
 sub _product {
   my($a, $b, $r) = @_;
   if ($b <= $a) {
+    $r->[$a];
   } elsif ($b == $a+1) {
     $r->[$a] -> bmul( $r->[$b] );
   } elsif ($b == $a+2) {
