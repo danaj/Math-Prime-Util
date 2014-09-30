@@ -2,12 +2,12 @@ package Math::Prime::Util::PPFE;
 use strict;
 use warnings;
 use Math::Prime::Util::PP;
-use Carp qw/carp croak confess/;
 
 # The PP front end, only loaded if XS is not used.
 # It is intended to load directly into the MPU namespace.
 
 package Math::Prime::Util;
+use Carp qw/carp croak confess/;
 
 *_validate_num = \&Math::Prime::Util::PP::_validate_num;
 *_validate_integer = \&Math::Prime::Util::PP::_validate_integer;

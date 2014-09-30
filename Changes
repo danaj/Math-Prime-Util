@@ -1,6 +1,13 @@
 Revision history for Perl module Math::Prime::Util
 
 
+0.46  2014-?
+
+    [OTHER]
+
+    - Syntax fix from Salvatore.
+
+
 0.45  2014-09-26
 
     [ADDED]
