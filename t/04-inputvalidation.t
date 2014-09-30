@@ -6,6 +6,7 @@ use Test::More;
 use Math::Prime::Util qw/next_prime/;
 use Math::BigInt try=>"GMP,Pari";
 use Math::BigFloat;
+use Config;
 use Carp;
 
 my @incorrect = (
@@ -21,10 +22,10 @@ my @incorrect = (
   '1.1e12',
   '1e8',
   'NaN',
-  Math::BigInt->bnan(),
   Math::BigInt->new("-4"),
   Math::BigFloat->new("15.6"),
 );
+push @incorrect, Math::BigInt->bnan() if $Config{d_isnan};
 
 my %correct = (
   4       => 5,
@@ -58,22 +59,23 @@ while (my($v, $expect) = each (%correct)) {
   is(next_prime($v), $expect, "Correct: next_prime($v)");
 }
 
-# The actual strings can be implementation specific.
-my ($infinity, $nan) = (0+'inf', 0+'nan');
-$infinity = Math::BigInt->binf()->numify() if 65535 > $infinity;
-$infinity = +(20**20**20) if 65535 > $infinity;
-$nan      = Math::BigInt->bnan()->numify() if $nan == 0;
-$nan      = -sin($infinity) if $nan == 0;
-
+# The next two tests really are not critical, but are nice to check.
 SKIP: {
+  skip "Your machine does not have NaN" unless $Config{d_isinf};
+  my $infinity = ($^O ne 'MSWin32') ? 0+'inf' : '1.#INF';
+  $infinity = Math::BigInt->binf()->numify() if 65535 > $infinity;
+  $infinity = +(20**20**20) if 65535 > $infinity;
   skip "Your machine seems to not have infinity", 1 if 65535 > $infinity;
   eval { next_prime($infinity); };
   like($@, qr/must be a positive integer/, "next_prime( infinity )");
 }
 
 SKIP: {
-  skip "Your machine seems to not have NaN", 1 if $nan == 0 || $nan =~ /^\d*$/;
-  #skip "Skipping NaN test on Win32", 1 if $^O eq 'MSWin32';
+  skip "Your machine does not have NaN" unless $Config{d_isnan};
+  my $nan = ($^O ne 'MSWin32') ? 0+'nan' : '1.#IND';
+  $nan      = Math::BigInt->bnan()->numify() if $nan >= 0;
+  $nan      = -sin('inf') if $nan >= 0;
+  skip "Your machine seems to not have NaN", 1 if $nan >= 0 || $nan =~ /^\d*$/;
   eval { next_prime($nan); };
   like($@, qr/must be a positive integer/, "next_prime( nan ) [nan = '$nan']");
 }
