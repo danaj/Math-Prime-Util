@@ -7,6 +7,8 @@ Revision history for Perl module Math::Prime::Util
 
     - Syntax fix from Salvatore.
 
+    - Revamp PP RiemannZeta.  Fixes some bignum output, but requires RT fixes.
+
 
 0.45  2014-09-26
 

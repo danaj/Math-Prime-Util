@@ -270,26 +270,20 @@ sub _Recompute_Dk {
   my $nterms = shift;
   $_Borwein_n = $nterms;
   @_Borwein_dk = ();
+  my $orig_acc = Math::BigFloat->accuracy();
+  Math::BigFloat->accuracy($nterms);
   foreach my $k (0 .. $nterms) {
-    my $n = Math::BigInt->new($nterms-1)->bfac;
-    my $d = Math::BigInt->new($nterms)->bfac;
-    my ($sum_n, $sum_d) = (Math::BigInt->bone, Math::BigInt->bone);
-    my $gcd;
+    my $sum = Math::BigInt->bzero;
+    my $num = Math::BigInt->new($nterms-1)->bfac();
     foreach my $i (0 .. $k) {
-      # ad + cb  /  bd
-      $sum_n->bmul($d)->badd( $sum_d->copy->bmul($n) );
-      $sum_d->bmul($d);
-      $gcd = Math::BigInt::bgcd($sum_n, $sum_d);
-      do {
-        $sum_n = int($sum_n / $gcd);
-        $sum_d = int($sum_d / $gcd);
-      } unless $gcd->is_one;
-      my $dmul = (2*$i+1) * (2*$i+2);
-      $n->bmul($nterms+$i)->blsft(2);
-      $d->bdiv($nterms-$i)->bmul($dmul);
+      my $den = Math::BigInt->new($nterms - $i)->bfac * Math::BigInt->new(2*$i)->bfac;
+      $sum += $num->copy->bdiv($den);
+      $num->bmul(4 * ($nterms+$i));
     }
-    $_Borwein_dk[$k] = $sum_n->bmul($nterms)->bdiv($sum_d);
+    $sum->bmul($nterms);
+    $_Borwein_dk[$k] = $sum;
   }
+  Math::BigFloat->accuracy($orig_acc);
 }
 
 sub RiemannZeta {
@@ -305,66 +299,65 @@ sub RiemannZeta {
     return $izeta;
   }
 
-  my $extra_acc = 7;
-  if    ($x > 50) { $extra_acc = 10; }
-  elsif ($x > 30) { $extra_acc = 28; }
-  elsif ($x > 15) { $extra_acc = 15; }
+  # Note, this code likely will not work correctly without fixes for RTs:
+  #
+  #   43692 : blog and others broken
+  #   43460 : exp and powers broken
+  #
+  # E.g:
+  #   my $n = Math::BigFloat->new(11); $n->accuracy(64); say $n**1.1;  # 13.98
+  #   my $n = Math::BigFloat->new(11); $n->accuracy(67); say $n**1.1;  # 29.98
+  #
+  # There is a hack that tries to work around some of the problem, but it
+  # can't cover everything and it slows things down a lot.  There just isn't
+  # any way to do this if the basic math operations don't work right.
+
+  my $orig_acc = Math::BigFloat->accuracy();
+  my $extra_acc = 5;
+  if ($x > 15 && $x <= 50) { $extra_acc = 15; }
+  #if    ($x > 60) { $extra_acc = 10; }  # For basic formula
+  #elsif ($x > 15) { $extra_acc = 15; }
   $xdigits += $extra_acc;
+  Math::BigFloat->accuracy($xdigits);
   $x->accuracy($xdigits);
   my $zero= $x->copy->bzero;
   my $one = $x->copy->bone;
   my $two = $one->copy->binc;
 
-  my $tol = $one->copy->brsft($xdigits-1, 10);
+  my $tol = ref($x)->new('0.' . '0' x ($xdigits-1) . '1');
 
   # Note: with bignum on, $d1->bpow($one-$x) doesn't change d1 !
 
-  # Trying to work around Math::BigFloat bugs RT 43692 and RT 77105 which make
-  # a right mess of things.  Watch this:
-  #   my $n = Math::BigFloat->new(11); $n->accuracy(64); say $n**1.1;  # 13.98
-  #   my $n = Math::BigFloat->new(11); $n->accuracy(67); say $n**1.1;  # 29.98
-  # We can fix some issues with large exponents (e.g. 6^-40.5) by turning it
-  # into (6^-(40.5/4))^4  (assuming the base is positive).  Without that hack,
-  # none of this would work at all.
-  # There is a fix for the defect in the RT.
+  # This is a hack to turn 6^-40.5 into (6^-(40.5/4))^4.  It helps work around
+  # the two RTs listed earlier, though does not completely fix their bugs.
+  # It has the downside of making integer arguments very slow.
 
   my $superx = Math::BigInt->bone;
   my $subx = $x->copy;
-  while ($subx > 1) {
-    $superx->blsft(1);
-    $subx /= $two;
+  if ($Math::BigFloat::VERSION < 1.9996 || $x != int($x)) {
+    while ($subx > 1) {
+      $superx->blsft(1);
+      $subx /= $two;
+    }
   }
 
-  # Go with the basic formula for large x, as it best works around the mess,
-  # though is unfortunately much slower.
-  if ($x > 50) {
+  # Go with the basic formula for large x.
+  if (1 && $x >= 50) {
     my $negsubx = $subx->copy->bneg;
     my $sum = $zero->copy;
     my $k = $two->copy->binc;
     while ($k->binc <= 1000) {
       my $term = $k->copy->bpow($negsubx)->bpow($superx);
-      $sum->badd($term);
+      $sum += $term;
       last if $term < ($sum*$tol);
     }
-    $sum->badd( $two->copy->binc->bpow($negsubx)->bpow($superx) );
-    $sum->badd( $two->copy      ->bpow($negsubx)->bpow($superx) );
+    $k = $two+$two;
+    $k->bdec(); $sum += $k->copy->bpow($negsubx)->bpow($superx);
+    $k->bdec(); $sum += $k->copy->bpow($negsubx)->bpow($superx);
     $sum->bround($xdigits-$extra_acc);
+    Math::BigFloat->accuracy($orig_acc);
     return $sum;
   }
-  #if ($x > 25) {
-  #  my $sum = 0.0;
-  #  my $divisor = 1.0 - ((2 ** -$subx) ** $superx);
-  #  for my $k (2 .. 1000) {
-  #    my $term = ( (2*$k+1) ** -$subx )  ** $superx;
-  #    $sum += $term;
-  #    last if $term < ($tol*$divisor);
-  #  }
-  #  $sum += (3 ** -$subx) ** $superx;
-  #  my $t = 1.0 / $divisor;
-  #  $sum *= $t;
-  #  $sum += ($t - 1.0);
-  #  return $sum;
-  #}
 
   {
     my $dig = int($_Borwein_n / 1.3)+1;
@@ -378,22 +371,24 @@ sub RiemannZeta {
   my $n = $_Borwein_n;
 
   my $d1 = $two ** ($one - $x);
-  my $divisor = $one->copy->bsub($d1)->bmul(-$_Borwein_dk[$n]);
-  $tol = $divisor->copy->bmul($tol)->babs();
+  my $divisor = ($one - $d1) * $_Borwein_dk[$n];
+  $divisor->bneg;
+  $tol = ($divisor * $tol)->babs();
 
   my ($sum, $bigk) = ($zero->copy, $one->copy);
+  my $negsubx = $subx->copy->bneg;
   foreach my $k (1 .. $n-1) {
-    my $den = $bigk->binc()->copy->bpow($subx,$xdigits)->bpow($superx,$xdigits);
-    my $term = ($k % 2)
-             ? $zero->copy->badd($_Borwein_dk[$n])->bsub($_Borwein_dk[$k])
-             : $zero->copy->badd($_Borwein_dk[$k])->bsub($_Borwein_dk[$n]);
-    $term->bdiv($den);
-    $sum->badd($term);
+    my $den = $bigk->binc()->copy->bpow($negsubx)->bpow($superx);
+    my $term = ($k % 2) ? ($_Borwein_dk[$n] - $_Borwein_dk[$k])
+                        : ($_Borwein_dk[$k] - $_Borwein_dk[$n]);
+    $term = Math::BigFloat->new($term) unless ref($term) eq 'Math::BigFloat';
+    $sum += $term * $den;
     last if $term->copy->babs() < $tol;
   }
-  $sum->badd($one->copy->bsub($_Borwein_dk[$n]));  # term k=0
-  $sum->bdiv($divisor,$xdigits)->bdec;
-  $sum->bround($xdigits-$extra_acc);
+  $sum += $_Borwein_dk[0] - $_Borwein_dk[$n];
+  $sum = $sum->bdiv($divisor);
+  $sum->bdec->bround($xdigits-$extra_acc);
+  Math::BigFloat->accuracy($orig_acc);
   return $sum;
 }
 
