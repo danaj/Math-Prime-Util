@@ -8,7 +8,7 @@ BEGIN {
 }
 
 BEGIN {
-  require Math::Prime::Util; 
+  require Math::Prime::Util;
   *ntheory:: = *Math::Prime::Util::;
 }
 
@@ -153,7 +153,7 @@ See L<Math::Prime::Util> for complete documentation.
   lucas_sequence(n, P, Q, k)          (U_k,V_k,Q_k) for Lucas(P,Q) mod n
   bernfrac(n)                         Bernoulli number as (num,den)
   bernreal(n)                         Bernoulli number as BigFloat
-  
+
 =head2 NON-INTEGER MATH
 
   ExponentialIntegral(x)              Ei(x)
@@ -162,7 +162,7 @@ See L<Math::Prime::Util> for complete documentation.
   RiemannR(x)                         Riemann's R function
   LambertW(k)                         Lambert W: W for C<k = W exp(W)>
   Pi([n])                             The constant π (NV or n digits)
-  
+
 =head2 SUPPORT
 
   prime_get_config                    gets hash ref of current settings

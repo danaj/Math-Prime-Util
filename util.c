@@ -1383,7 +1383,7 @@ UV binomial(UV n, UV k) {    /* Thanks to MJD and RosettaCode for ideas */
 IV stirling2(UV n, UV m) {
   UV f;
   IV j, k, t, s = 0;
-  
+
   if (m == n) return 1;
   if (n == 0 || m == 0 || m > n) return 0;
   if (m == 1) return 1;
@@ -1990,20 +1990,25 @@ long double ld_riemann_zeta(long double x) {
 
   /* The 2n!/B_2k series used by the Cephes library. */
   {
-    /* gp/pari: factorial(2n)/bernfrac(2n) */
+    /* gp/pari:
+     *   for(i=1,13,printf("%.38g\n",(2*i)!/bernreal(2*i)))
+     * MPU:
+     *   use bignum;
+     *   say +(factorial(2*$_)/bernreal(2*$_))->bround(38) for 1..13;
+     */
     static const long double A[] = {
       12.0L,
      -720.0L,
       30240.0L,
      -1209600.0L,
       47900160.0L,
-     -1892437580.3183791606367583212735166426L,
+     -1892437580.3183791606367583212735166425L,
       74724249600.0L,
      -2950130727918.1642244954382084600497650L,
-      116467828143500.67248729113000661089202L,
-     -4597978722407472.6105457273596737891657L,
+      116467828143500.67248729113000661089201L,
+     -4597978722407472.6105457273596737891656L,
       181521054019435467.73425331153534235290L,
-     -7166165256175667011.3346447367083352776L,
+     -7166165256175667011.3346447367083352775L,
       282908877253042996618.18640556532523927L,
     };
     long double a, b, s, t;

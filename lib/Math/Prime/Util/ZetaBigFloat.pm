@@ -315,8 +315,7 @@ sub RiemannZeta {
   my $orig_acc = Math::BigFloat->accuracy();
   my $extra_acc = 5;
   if ($x > 15 && $x <= 50) { $extra_acc = 15; }
-  #if    ($x > 60) { $extra_acc = 10; }  # For basic formula
-  #elsif ($x > 15) { $extra_acc = 15; }
+
   $xdigits += $extra_acc;
   Math::BigFloat->accuracy($xdigits);
   $x->accuracy($xdigits);
@@ -334,11 +333,33 @@ sub RiemannZeta {
 
   my $superx = Math::BigInt->bone;
   my $subx = $x->copy;
-  if ($Math::BigFloat::VERSION < 1.9996 || $x != int($x)) {
+  my $intx = int("$x");
+  if ($Math::BigFloat::VERSION < 1.9996 || $x != $intx) {
     while ($subx > 1) {
       $superx->blsft(1);
       $subx /= $two;
     }
+  }
+
+  if (1 && $x == $intx && $x >= 2 && !($intx & 1) && $intx < 100) {
+    # Mathworld equation 63.  How fast this is relative to the others is
+    # dependent on the backend library and if we have MPUGMP.
+    $x = int("$x");
+    my $den = Math::Prime::Util::factorial($x);
+    $xdigits -= $extra_acc;
+    $extra_acc += length($den);
+    $xdigits += $extra_acc;
+    $one->accuracy($xdigits); $two->accuracy($xdigits);
+    Math::BigFloat->accuracy($xdigits);
+    my $Pix = Math::Prime::Util::Pi($xdigits)->bpow($subx)->bpow($superx);
+    my $Bn = Math::Prime::Util::bernreal($x);  $Bn = -$Bn if $Bn < 0;
+    my $twox1 = $two->copy->bpow($x-1);
+    #my $num = $Pix  *  $Bn  *  $twox1;
+    #my $res = $num->bdiv($den)->bdec->bround($xdigits - $extra_acc);
+    my $res = $Bn->bdiv($den)->bmul($Pix)->bmul($twox1)->bdec
+              ->bround($xdigits-$extra_acc);
+    Math::BigFloat->accuracy($orig_acc);
+    return $res;
   }
 
   # Go with the basic formula for large x.
