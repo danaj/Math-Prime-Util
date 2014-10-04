@@ -2538,7 +2538,7 @@ second argument may be given specifying the precision to be used.
 
 Returns the Stirling numbers of either the first kind (default) or
 second kind (with a third argument of 2).  It takes two non-negative integer
-arguments C<n< and C<k>.  This corresponds to Pari's C<stirling(n,k,{type})>
+arguments C<n> and C<k>.  This corresponds to Pari's C<stirling(n,k,{type})>
 function and Mathematica's C<StirlingS1> / C<StirlingS2> functions.
 
 Stirling numbers of the first kind are C<-1^(n-k)> times the number of

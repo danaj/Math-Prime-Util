@@ -73,8 +73,8 @@ sub mpu_public_regex {
       moebius mertens euler_phi jordan_totient exp_mangoldt liouville
       partitions bernfrac bernreal
       chebyshev_theta chebyshev_psi
-      divisor_sum carmichael_lambda
-      kronecker binomial factorial znorder znprimroot znlog legendre_phi
+      divisor_sum carmichael_lambda kronecker
+      binomial factorial stirling znorder znprimroot znlog legendre_phi
       ExponentialIntegral LogarithmicIntegral RiemannZeta RiemannR LambertW Pi
   /;
   my $pattern = '^(' . join('|', @funcs) . ')$';
