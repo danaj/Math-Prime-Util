@@ -1565,9 +1565,18 @@ forpart (SV* block, IN SV* svn, IN SV* svh = 0)
       m = (n > 0) ? 1 : 0;   /* n=0 => one call with empty list */
       h = 1;
 
+      if (nmin > 1) {
+        UV max = n - nmin + 1;
+        UV t = n - max;
+        x[h=1] = max;
+        while (t >= max) {  x[++h] = max;  t -= max;  }
+        m = h + (t > 0);
+        if (t > 1)  x[++h] = t;
+      }
+
       if (x[1] > amax) { /* x[1] is always decreasing, so handle it here */
         UV t = n - amax;
-        x[h] = amax;
+        x[h=1] = amax;
         while (t >= amax) {  x[++h] = amax;  t -= amax;  }
         m = h + (t > 0);
         if (t > 1)  x[++h] = t;
