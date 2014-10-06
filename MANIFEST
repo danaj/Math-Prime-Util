@@ -90,6 +90,7 @@ examples/project_euler_211.pl
 examples/project_euler_214.pl
 examples/project_euler_342.pl
 examples/project_euler_357.pl
+examples/verify-primegaps.pl
 bin/primes.pl
 bin/factor.pl
 t/01-load.t

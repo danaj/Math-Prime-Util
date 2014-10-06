@@ -9,6 +9,8 @@ Revision history for Perl module Math::Prime::Util
 
     - Revamp PP RiemannZeta.  Fixes some bignum output, but requires RT fixes.
 
+    - Add example for verifying prime gaps, similar to Nicely's cglp4.
+
 
 0.45  2014-09-26
 
