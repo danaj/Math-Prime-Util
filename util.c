@@ -2105,3 +2105,38 @@ long double lambertw(long double k) {
   }
   return x;
 }
+
+/* 1. Perform signed integer validation on b/blen.
+ * 2. Compare to a/alen using min or max based on first arg.
+ * 3. Return 0 to select a, 1 to select b.
+ */
+int strnum_minmax(int min, char* a, STRLEN alen, char* b, STRLEN blen)
+{
+  int aneg, bneg;
+  STRLEN i;
+  /* a is checked, process b */
+  if (b == 0 || blen == 0) croak("Parameter must be a positive integer");
+  bneg = (b[0] == '-');
+  if (b[0] == '-' || b[0] == '+') { b++; blen--; }
+  while (blen > 0 && *b == '0') { b++; blen--; }
+  for (i = 0; i < blen; i++)
+    if (!isDIGIT(b[i]))
+      break;
+  if (blen == 0 || i < blen)
+    croak("Parameter must be a positive integer");
+
+  if (a == 0) return 1;
+
+  aneg = (a[0] == '-');
+  if (a[0] == '-' || a[0] == '+') { a++; alen--; }
+  while (alen > 0 && *a == '0') { a++; alen--; }
+
+  if (aneg != bneg)  return  min  ?  (bneg == 1)  :  (aneg == 1);
+  if (aneg == 1)  min = !min;
+  if (alen != blen)  return  min  ?  (alen > blen) :  (blen > alen);
+
+  for (i = 0; i < blen; i++)
+    if (a[i] != b[i])
+      return  min  ?  (a[i] > b[i])  :  (b[i] > a[i]);
+  return 0; /* equal */
+}

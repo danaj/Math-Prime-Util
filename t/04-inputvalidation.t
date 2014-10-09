@@ -61,7 +61,7 @@ while (my($v, $expect) = each (%correct)) {
 
 # The next two tests really are not critical, but are nice to check.
 SKIP: {
-  skip "Your machine does not have NaN" unless $Config{d_isinf};
+  skip "Your machine does not have NaN", 1 unless $Config{d_isinf};
   my $infinity = ($^O ne 'MSWin32') ? 0+'inf' : '1.#INF';
   $infinity = Math::BigInt->binf()->numify() if 65535 > $infinity;
   $infinity = +(20**20**20) if 65535 > $infinity;

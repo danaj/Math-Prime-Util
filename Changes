@@ -11,6 +11,8 @@ Revision history for Perl module Math::Prime::Util
 
     - Add example for verifying prime gaps, similar to Nicely's cglp4.
 
+    - vecmin / vecmax in XS, if overflows UV do via strings to avoid PP.
+
 
 0.45  2014-09-26
 

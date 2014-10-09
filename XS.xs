@@ -9,6 +9,7 @@
 #define NEED_newCONSTSUB
 #define NEED_newRV_noinc
 #define NEED_sv_2pv_flags
+#define NEED_HvNAME_get
 #include "ppport.h"
 
 #include "ptypes.h"
@@ -124,10 +125,13 @@ static int _validate_int(pTHX_ SV* n, int negok)
     if (negok)  return -1;
     else croak("Parameter '%" SVf "' must be a positive integer", n);
   }
-  if (SvROK(n)) {
-    if (sv_isa(n, "Math::BigInt") || sv_isa(n, "Math::BigFloat") ||
-        sv_isa(n, "Math::Pari") || sv_isa(n, "Math::GMP") ||
-        sv_isa(n, "Math::GMPz") )
+  if (sv_isobject(n)) {
+    const char *hvname = HvNAME_get(SvSTASH(SvRV(n)));
+    if (hvname == 0)
+      return 0;
+    if (strEQ(hvname, "Math::BigInt") || strEQ(hvname, "Math::BigFloat") ||
+        strEQ(hvname, "Math::GMPz")   || strEQ(hvname, "Math::GMP") ||
+        strEQ(hvname, "Math::Pari") )
       isbignum = 1;
     else
       return 0;
@@ -603,6 +607,25 @@ gcd(...)
     }
     if (status != 0)
       XSRETURN_UV(ret);
+    /* For min/max, use string compare if not an object */
+    if ((ix == 2 || ix == 3) && !sv_isobject(ST(0))) {
+      int i, retindex = 0;
+      int minmax = (ix == 2);
+      STRLEN alen, blen;
+      char *aptr, *bptr;
+      aptr = SvPV_nomg(ST(0), alen);
+      (void) strnum_minmax(minmax, 0, 0, aptr, alen);
+      for (i = 1; i < items; i++) {
+        bptr = SvPV_nomg(ST(i), blen);
+        if (strnum_minmax(minmax, aptr, alen, bptr, blen)) {
+          aptr = bptr;
+          alen = blen;
+          retindex = i;
+        }
+      }
+      ST(0) = ST(retindex);
+      XSRETURN(1);
+    }
     switch (ix) {
       case 0: _vcallsub_with_gmp("gcd");   break;
       case 1: _vcallsub_with_gmp("lcm");   break;

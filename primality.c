@@ -336,8 +336,6 @@ void lucas_seq(UV* Uret, UV* Vret, UV* Qkret, UV n, IV P, IV Q, UV k)
     return;
   }
 
-  //Qmod = (Q < 0)  ?  (UV)(Q + (IV)n)  :  (UV)Q;
-  //Pmod = (P < 0)  ?  (UV)(P + (IV)n)  :  (UV)P;
   Qmod = (Q < 0)  ?  (UV) (Q + (IV)(((-Q/n)+1)*n))  :  (UV)Q;
   Pmod = (P < 0)  ?  (UV) (P + (IV)(((-P/n)+1)*n))  :  (UV)P;
   Dmod = submod( mulmod(Pmod, Pmod, n), mulmod(4, Qmod, n), n);

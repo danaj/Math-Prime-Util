@@ -64,6 +64,8 @@ extern UV znlog(UV a, UV g, UV p);
 extern IV stirling2(UV n, UV m);
 extern IV stirling1(UV n, UV m);
 
+extern int strnum_minmax(int min, char* a, STRLEN alen, char* b, STRLEN blen);
+
 #if defined(FUNC_isqrt) || defined(FUNC_is_perfect_square)
 static UV isqrt(UV n) {
   UV root;
