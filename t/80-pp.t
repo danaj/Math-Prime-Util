@@ -265,6 +265,7 @@ plan tests => 2 +
               4 +                 # M-R and Lucas on bigint
               2 +                 # PC and NP approx
               27 +                # Misc util.pm functions
+              ($extra ? 1 : 0) +  # twin prime count approx
               scalar(keys %ipp) + # is_prob_prime
               1;
 
@@ -743,7 +744,10 @@ if ($use64) {
   is( lcm(11926,78001,2211), 2790719778, "lcm(11926,78001,2211) = 2790719778" );
 
   is( twin_prime_count(4321), 114, "twin_prime_count(4321)" );
-  cmp_closeto( twin_prime_count_approx(Math::BigInt->new("412345678412345678412345678")), "149939117920176008847283", 1e10, "twin_prime_count_approx(412345678412345678412345678)" );
+  cmp_closeto( twin_prime_count_approx(Math::BigInt->new("4123456784123")), "6950213327", 14937 * 2, "twin_prime_count_approx(4123456784123)" );
+  if ($extra) {
+    cmp_closeto( twin_prime_count_approx(Math::BigInt->new("412345678412345678412345678")), "149939117920176008847283", 1e10, "twin_prime_count_approx(412345678412345678412345678)" );
+  }
   is( nth_twin_prime(249), 13217, "nth_twin_prime(249)" );
 
   prime_set_config(xs=>$xs, gmp=>$gmp, verbose=>$verbose);
