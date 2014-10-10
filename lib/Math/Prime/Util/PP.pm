@@ -41,7 +41,7 @@ BEGIN {
   use constant BMAX            => (!OLD_PERL_VERSION || MPU_32BIT)
                                 ? Math::BigInt->new(''.~0)
                                 : Math::BigInt->new("562949953421312");
-  use constant B_PRIM759       => Math::BigInt->new("64092011671807087969");
+  use constant B_PRIM767       => Math::BigInt->new("261944051702675568529303");
   use constant B_PRIM235       => Math::BigInt->new("30");
   use constant PI_TIMES_8      => 25.13274122871834590770114707;
 }
@@ -217,8 +217,9 @@ sub _tiny_prime_count {
 sub _is_prime7 {  # n must not be divisible by 2, 3, or 5
   my($n) = @_;
 
+  $n = _bigint_to_int($n) if ref($n) eq 'Math::BigInt' && $n <= BMAX;
   if (ref($n) eq 'Math::BigInt') {
-    return 0 unless Math::BigInt::bgcd($n, B_PRIM759)->is_one;
+    return 0 unless Math::BigInt::bgcd($n, B_PRIM767)->is_one;
     return 0 unless _miller_rabin_2($n);
     my $is_esl_prime = is_extra_strong_lucas_pseudoprime($n);
     return ($is_esl_prime)  ?  (($n <= "18446744073709551615") ? 2 : 1)  :  0;
