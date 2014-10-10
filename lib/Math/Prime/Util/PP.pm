@@ -38,7 +38,9 @@ BEGIN {
   use constant BZERO           => Math::BigInt->bzero;
   use constant BONE            => Math::BigInt->bone;
   use constant BTWO            => Math::BigInt->new(2);
-  use constant BMAX            => Math::BigInt->new(''.~0);
+  use constant BMAX            => (!OLD_PERL_VERSION || MPU_32BIT)
+                                ? Math::BigInt->new(''.~0)
+                                : Math::BigInt->new("562949953421312");
   use constant B_PRIM759       => Math::BigInt->new("64092011671807087969");
   use constant B_PRIM235       => Math::BigInt->new("30");
   use constant PI_TIMES_8      => 25.13274122871834590770114707;
@@ -74,9 +76,11 @@ sub _is_positive_int {
 }
 
 sub _bigint_to_int {
-  # Note that this still has issues with 5.6.2: e.g. 11923179284862717872
-  return (OLD_PERL_VERSION) ? unpack(UVPACKLET,pack(UVPACKLET,"$_[0]"))
-                            : int("$_[0]");
+  #if (OLD_PERL_VERSION) {
+  #  my $pack = ($_[0] < 0) ? lc(UVPACKLET) : UVPACKLET;
+  #  return unpack($pack,pack($pack,"$_[0]"));
+  #}
+  int("$_[0]");
 }
 
 sub _upgrade_to_float {
@@ -132,13 +136,12 @@ sub _validate_positive_integer {
   if (ref($n) eq 'Math::BigInt') {
     croak "Parameter '$n' must be a positive integer"
       if $n->sign() ne '+' || !$n->is_int();
-    $_[0] = _bigint_to_int($_[0])
-      if $n <= (OLD_PERL_VERSION ? 562949953421312 : ''.~0);
+    $_[0] = _bigint_to_int($_[0]) if $n <= BMAX;
   } else {
     my $strn = "$n";
     croak "Parameter '$strn' must be a positive integer"
       if $strn =~ tr/0123456789//c && $strn !~ /^\+?\d+$/;
-    if ($n <= (OLD_PERL_VERSION ? 562949953421312 : ''.~0)) {
+    if ($n <= BMAX) {
       $_[0] = $strn if ref($n);
     } else {
       $_[0] = Math::BigInt->new($strn)
@@ -1639,7 +1642,7 @@ sub vecprod {
   my $prod = _product(0, $#_, [map { Math::BigInt->new("$_") } @_]);
   # Linear:
   # my $prod = BONE->copy;  $prod *= "$_" for @_;
-  $prod = _bigint_to_int($prod) if $prod->bacmp(BMAX) <= 0 && $prod > -(~0 >> 1) - 1;
+  $prod = _bigint_to_int($prod) if $prod->bacmp(BMAX) <= 0 && $prod->bcmp(- BMAX) > 0;
   $prod;
 }
 

@@ -20,6 +20,7 @@ BEGIN {
 }
 
 my $_smallval = Math::BigInt->new("18446744073709551615");
+my $_maxint = Math::BigInt->new( (~0 > 4294967296 && $] < 5.008) ? "562949953421312" : ''.~0 );
 
 
 ###############################################################################
@@ -137,8 +138,8 @@ sub primality_proof_bls75 {
   {
     while ($B->is_even) { $B->bdiv($TWO); $A->bmul($TWO); }
     my @tf;
-    if ($B <= ''.~0 && prime_get_config->{'xs'}) {
-      @tf = Math::Prime::Util::trial_factor($B, 20000);
+    if ($B <= $_maxint && prime_get_config->{'xs'}) {
+      @tf = Math::Prime::Util::trial_factor("$B", 20000);
       pop @tf if $tf[-1] > 20000;
     } else {
       @tf = Math::Prime::Util::PP::trial_factor($B, 500);
@@ -167,11 +168,7 @@ sub primality_proof_bls75 {
 
     my $m = pop @nstack;
     # Don't use bignum if it has gotten small enough.
-    if ($] < 5.008) {
-      $m = int($m->bstr) if ref($m) eq 'Math::BigInt' && $m <= 562949953421312;
-    } else {
-      $m = int($m->bstr) if ref($m) eq 'Math::BigInt' && $m <= ''.~0;
-    }
+    $m = int($m->bstr) if ref($m) eq 'Math::BigInt' && $m <= $_maxint;
     # Try to find factors of m, using the default set of factor subs.
     my @ftry;
     foreach my $sub (@_fsublist) {
@@ -466,8 +463,8 @@ sub _jacobi {
     ($n, $m) = ($m, $n);
     $j = -$j if ($n % 4) == 3 && ($m % 4) == 3;
     $n = $n % $m;
-    $n = int($n->bstr) if ref($n) eq 'Math::BigInt' && $n <= ''.~0;
-    $m = int($m->bstr) if ref($m) eq 'Math::BigInt' && $m <= ''.~0;
+    $n = int($n->bstr) if ref($n) eq 'Math::BigInt' && $n <= $_maxint;
+    $m = int($m->bstr) if ref($m) eq 'Math::BigInt' && $m <= $_maxint;
   }
   while ($n != 0) {
     while (($n % 2) == 0) {
