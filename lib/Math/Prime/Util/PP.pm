@@ -141,7 +141,7 @@ sub _validate_positive_integer {
     my $strn = "$n";
     croak "Parameter '$strn' must be a positive integer"
       if $strn =~ tr/0123456789//c && $strn !~ /^\+?\d+$/;
-    if ($n <= BMAX) {
+    if ($n <= (OLD_PERL_VERSION ? 562949953421312 : ~0)) {
       $_[0] = $strn if ref($n);
     } else {
       $_[0] = Math::BigInt->new($strn)
@@ -2033,6 +2033,8 @@ sub kronecker {
     $k = -$k if $a < 0;
   }
   if ($a < 0) { $a = -$a; $k = -$k if $b % 4 == 3; }
+  $b = _bigint_to_int($b) if ref($b) eq 'Math::BigInt' && $b <= BMAX;
+  $a = _bigint_to_int($a) if ref($a) eq 'Math::BigInt' && $a <= BMAX;
   # Now:  b > 0, b odd, a >= 0
   while ($a != 0) {
     if ($a % 2 == 0) {
@@ -2588,43 +2590,50 @@ sub is_almost_extra_strong_lucas_pseudoprime {
 sub is_frobenius_underwood_pseudoprime {
   my($n) = @_;
   return 0+($n >= 2) if $n < 4;
+  return 0 unless $n % 2;
+
+  my($a, $temp1, $temp2);
+  if ($n % 4 == 3) {
+    $a = 0;
+  } else {
+    for ($a = 1; $a < 1000000; $a++) {
+      next if $a==2 || $a==4 || $a==7 || $a==8 || $a==10 || $a==14 || $a==16 || $a==18;
+      my $j = kronecker($a*$a - 4, $n);
+      last if $j == -1;
+      return 0 if $j == 0 || ($a == 20 && _is_perfect_square($n));
+    }
+  }
+  $temp1 = Math::Prime::Util::gcd(($a+4)*(2*$a+5), $n);
+  return 0 if $temp1 != 1 && $temp1 != $n;
 
   $n = Math::BigInt->new("$n") unless ref($n) eq 'Math::BigInt';
-  return 0 if $n->is_even || _is_perfect_square($n);
-
   my $ZERO = $n->copy->bzero;
   my $ONE = $ZERO->copy->binc;
   my $TWO = $ONE->copy->binc;
-  my $fa = $ZERO + 1;
-  my $fb = $ZERO + 2;
-  my $x;
+  my($s, $t) = ($ONE->copy, $TWO->copy);
 
-  if ($n % 4 == 3) {
-    $x = 0;
-  } elsif ($n % 6 == 5) {
-    $x = 1;
-  } else {
-    $x = 3;
-    $x++ while kronecker($x*$x-4, $n) == 1;
-    return 0 if kronecker($x*$x-4, $n) == 0; # gcd(x*x-4,n) is a factor
-  }
+  my $ap2 = $TWO + $a;
   my $np1string = substr( $n->copy->binc->as_bin, 2);
   my $np1len = length($np1string);
-  my $multiplier = $x+2;
-  $multiplier %= $n if $multiplier > $n;
+
   foreach my $bit (1 .. $np1len-1) {
-    my $t = ( $fa * ( $fa * $x + $TWO * $fb ) ) % $n;
-    $fb   = ( ( $fb - $fa ) * ( $fb + $fa ) ) % $n;
-    $fa   = $t;
+    $temp2 = $t+$t;
+    $temp2 += ($s * $a)  if $a != 0;
+    $temp1 = $temp2 * $s;
+    $temp2 = $t - $s;
+    $s += $t;
+    $t = ($s * $temp2) % $n;
+    $s = $temp1 % $n;
     if ( substr( $np1string, $bit, 1 ) ) {
-      $t  = $fa * $multiplier + $fb;
-      $fb = $fb * $TWO - $fa;
-      $fa = $t;
+      if ($a == 0)  { $temp1 = $s + $s; }
+      else          { $temp1 = $s * $ap2; }
+      $temp1 += $t;
+      $t->badd($t)->bsub($s);   # $t = ($t+$t) - $s;
+      $s = $temp1;
     }
   }
-  $fa %= $n;
-  $fb %= $n;
-  return ($fa == 0 && $fb == (($TWO * $x + 5) % $n)) ? 1 : 0;
+  $temp1 = (2*$a+5) % $n;
+  return ($s == 0 && $t == $temp1) ? 1 : 0;
 }
 
 sub _mat_mulmod_3x3 {
@@ -2644,6 +2653,8 @@ sub _mat_powmod_3x3 {
   my($mref, $k, $n) = @_;
   my $res = [1,0,0,  0,1,0,  0,0,1];
   while ($k) {
+    # The next line prevents Perl 5.6.2 from segfaulting
+    $k = _bigint_to_int($k) if ref($k) && $k <= BMAX;
     _mat_mulmod_3x3($res, $mref, $n)  if $k & 1;
     $k >>= 1;
     _mat_mulmod_3x3($mref, $mref, $n) if $k;
