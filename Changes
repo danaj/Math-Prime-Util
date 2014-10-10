@@ -13,6 +13,10 @@ Revision history for Perl module Math::Prime::Util
 
     - vecmin / vecmax in XS, if overflows UV do via strings to avoid PP.
 
+    - Optimization for PP comparison to ~0.
+
+    - Large speedup for PP divisors for bigints in 64-100 bit range.
+
 
 0.45  2014-09-26
 

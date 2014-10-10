@@ -38,6 +38,7 @@ BEGIN {
   use constant BZERO           => Math::BigInt->bzero;
   use constant BONE            => Math::BigInt->bone;
   use constant BTWO            => Math::BigInt->new(2);
+  use constant BMAX            => Math::BigInt->new(''.~0);
   use constant B_PRIM759       => Math::BigInt->new("64092011671807087969");
   use constant B_PRIM235       => Math::BigInt->new("30");
   use constant PI_TIMES_8      => 25.13274122871834590770114707;
@@ -566,7 +567,7 @@ sub consecutive_integer_lcm {
     $p_power *= $p while $p_power <= $pmin;
     $pn *= $p_power;
   }
-  $pn = _bigint_to_int($pn) if $pn <= ''.~0;
+  $pn = _bigint_to_int($pn) if $pn <= BMAX;
   return $pn;
 }
 
@@ -590,7 +591,7 @@ sub jordan_totient {
     $totient->bmul($p->copy->bdec());
     $totient->bmul($p) for 2 .. $e;
   }
-  $totient = _bigint_to_int($totient) if $totient->bacmp(''.~0) <= 0;
+  $totient = _bigint_to_int($totient) if $totient->bacmp(BMAX) <= 0;
   return $totient;
 }
 
@@ -642,7 +643,7 @@ sub euler_phi {
     }
   }
   $totient = _bigint_to_int($totient) if ref($totient) eq 'Math::BigInt'
-                                      && $totient->bacmp(''.~0) <= 0;
+                                      && $totient->bacmp(BMAX) <= 0;
   return $totient;
 }
 
@@ -767,7 +768,7 @@ sub exp_mangoldt {
   if ($k >= 2) {
     my $root = Math::BigInt->new("$n")->broot($k);
     if (Math::Prime::Util::is_prob_prime($root)) {
-      $root = _bigint_to_int($root) if $root->bacmp(''.~0) <= 0;
+      $root = _bigint_to_int($root) if $root->bacmp(BMAX) <= 0;
       return $root;
     }
   }
@@ -787,7 +788,7 @@ sub carmichael_lambda {
     map { [ map { Math::BigInt->new("$_") } @$_ ] }
     @pe
   );
-  $lcm = _bigint_to_int($lcm) if $lcm->bacmp(''.~0) <= 0;
+  $lcm = _bigint_to_int($lcm) if $lcm->bacmp(BMAX) <= 0;
   return $lcm;
 }
 
@@ -1512,7 +1513,7 @@ sub gcd {
     my $v = ($_ < 2147483647 || ref($_) eq 'Math::BigInt') ? $_ : "$_";
     $v;
   } @_ );
-  $gcd = _bigint_to_int($gcd) if $gcd->bacmp(''.~0) <= 0;
+  $gcd = _bigint_to_int($gcd) if $gcd->bacmp(BMAX) <= 0;
   return $gcd;
 }
 sub lcm {
@@ -1522,7 +1523,7 @@ sub lcm {
     $v = -$v if $v < 0;
     $v;
   } @_ );
-  $lcm = _bigint_to_int($lcm) if $lcm->bacmp(''.~0) <= 0;
+  $lcm = _bigint_to_int($lcm) if $lcm->bacmp(BMAX) <= 0;
   return $lcm;
 }
 sub gcdext {
@@ -1557,9 +1558,9 @@ sub gcdext {
       my $q = $g->copy->bsub($r)->bdiv($w);
       ($a,$b,$g,$u,$v,$w) = ($u,$v,$w,$a-$q*$u,$b-$q*$v,$r);
     }
-    $a = _bigint_to_int($a) if $a->bacmp(''.~0) <= 0;
-    $b = _bigint_to_int($b) if $b->bacmp(''.~0) <= 0;
-    $g = _bigint_to_int($g) if $g->bacmp(''.~0) <= 0;
+    $a = _bigint_to_int($a) if $a->bacmp(BMAX) <= 0;
+    $b = _bigint_to_int($b) if $b->bacmp(BMAX) <= 0;
+    $g = _bigint_to_int($g) if $g->bacmp(BMAX) <= 0;
   }
   if ($g < 0) { ($a,$b,$g) = (-$a,-$b,-$g); }
   return ($a,$b,$g);
@@ -1608,7 +1609,7 @@ sub chinese {
       $sum = _addmod($m1, $m2, $lcm);
     }
   }
-  $sum = _bigint_to_int($sum) if ref($sum) && $sum->bacmp(''.~0) <= 0;
+  $sum = _bigint_to_int($sum) if ref($sum) && $sum->bacmp(BMAX) <= 0;
   $sum;
 }
 
@@ -1638,7 +1639,7 @@ sub vecprod {
   my $prod = _product(0, $#_, [map { Math::BigInt->new("$_") } @_]);
   # Linear:
   # my $prod = BONE->copy;  $prod *= "$_" for @_;
-  $prod = _bigint_to_int($prod) if $prod->bacmp(''.~0) <= 0 && $prod > -(~0 >> 1) - 1;
+  $prod = _bigint_to_int($prod) if $prod->bacmp(BMAX) <= 0 && $prod > -(~0 >> 1) - 1;
   $prod;
 }
 
@@ -1663,7 +1664,7 @@ sub invmod {
   if ($n > ~0) {
     my $invmod = Math::BigInt->new("$a")->bmodinv("$n");
     return if !defined $invmod || $invmod->is_nan;
-    $invmod = _bigint_to_int($invmod) if $invmod->bacmp(''.~0) <= 0;
+    $invmod = _bigint_to_int($invmod) if $invmod->bacmp(BMAX) <= 0;
     return $invmod;
   }
   my($t,$nt,$r,$nr) = (0, 1, $n, $a % $n);
@@ -2039,8 +2040,8 @@ sub kronecker {
     $k = -$k if $a % 4 == 3 && $b % 4 == 3;
     ($a, $b) = ($b % $a, $a);
     # If a,b are bigints and now small enough, finish as native.
-    if (   ref($a) eq 'Math::BigInt' && $a <= ''.~0
-        && ref($b) eq 'Math::BigInt' && $b <= ''.~0) {
+    if (   ref($a) eq 'Math::BigInt' && $a <= BMAX
+        && ref($b) eq 'Math::BigInt' && $b <= BMAX) {
       return $k * kronecker(_bigint_to_int($a),_bigint_to_int($b));
     }
   }
@@ -2097,14 +2098,14 @@ sub binomial {
   return $n if $k == $n-1;    # Math::BigInt (fixed in 1.90)
   if ($n >= 0) {
     $r = Math::BigInt->new(''.$n)->bnok($k);
-    $r = _bigint_to_int($r) if $r->bacmp(''.~0) <= 0;
+    $r = _bigint_to_int($r) if $r->bacmp(BMAX) <= 0;
   } else { # Math::BigInt is incorrect for negative n
     $r = Math::BigInt->new(''.(-$n+$k-1))->bnok($k);
     if ($k & 1) {
       $r->bneg;
       $r = _bigint_to_int($r) if $r->bacmp(''.(~0>>1)) <= 0;
     } else {
-      $r = _bigint_to_int($r) if $r->bacmp(''.~0) <= 0;
+      $r = _bigint_to_int($r) if $r->bacmp(BMAX) <= 0;
     }
   }
   $r;
@@ -2145,7 +2146,7 @@ sub factorial {
     return Math::Prime::Util::_reftyped($_[0], $r)    if defined $r;
   }
   my $r = Math::BigInt->new($n)->bfac();
-  $r = _bigint_to_int($r) if $r->bacmp(''.~0) <= 0;
+  $r = _bigint_to_int($r) if $r->bacmp(BMAX) <= 0;
   $r;
 }
 
@@ -2209,7 +2210,7 @@ sub znorder {
       $k *= $pi;
     }
   }
-  $k = _bigint_to_int($k) if $k->bacmp(''.~0) <= 0;
+  $k = _bigint_to_int($k) if $k->bacmp(BMAX) <= 0;
   return $k;
 }
 
@@ -2219,7 +2220,7 @@ sub _dlp_trial {
   my $t = $g->copy;
   for (my $k = BONE->copy; $k < $limit; $k->binc) {
     if ($t == $a) {
-      $k = _bigint_to_int($k) if $k->bacmp(''.~0) <= 0;
+      $k = _bigint_to_int($k) if $k->bacmp(BMAX) <= 0;
       return $k;
     }
     $t->bmul($g)->bmod($p);
@@ -2287,14 +2288,14 @@ sub znlog {
     if (defined $n && $n > 1000) {
       $n = Math::BigInt->new("$n") unless ref($n) eq 'Math::BigInt';
       $x = _dlp_bsgs($a, $g, $p, $n, $_verbose);
-      $x = _bigint_to_int($x) if ref($x) && $x->bacmp(''.~0) <= 0;
+      $x = _bigint_to_int($x) if ref($x) && $x->bacmp(BMAX) <= 0;
       return $x if $x > 0 && $g->copy->bmodpow($x, $p) == $a;
       print "  BSGS giving up\n" if $x == 0 && $_verbose;
       print "  BSGS incorrect answer $x\n" if $x > 0 && $_verbose > 1;
     }
     $x = _dlp_trial($a,$g,$p);
   }
-  $x = _bigint_to_int($x) if ref($x) && $x->bacmp(''.~0) <= 0;
+  $x = _bigint_to_int($x) if ref($x) && $x->bacmp(BMAX) <= 0;
   return ($x == 0) ? undef : $x;
 }
 
@@ -2858,7 +2859,7 @@ sub _basic_factor {
         }
       }
     }
-    $_[0] = _bigint_to_int($_[0]) if $] >= 5.008 && $_[0] <= ''.~0;
+    $_[0] = _bigint_to_int($_[0]) if $] >= 5.008 && $_[0] <= BMAX;
   }
 
   if ( ($_[0] > 1) && _is_prime7($_[0]) ) {
@@ -2897,7 +2898,7 @@ sub trial_factor {
       } while $r->is_zero;
     }
   }
-  $n = _bigint_to_int($n) if ref($n) eq 'Math::BigInt' && $n <= ''.~0;
+  $n = _bigint_to_int($n) if ref($n) eq 'Math::BigInt' && $n <= BMAX;
   return @factors if $n < 4;
 
   my $limit = int(sqrt($n) + 0.001);
@@ -2910,7 +2911,7 @@ sub trial_factor {
     SEARCH: while ($f <= $limit) {
       foreach my $finc (@incs) {
         if ($n->copy->bmod($f)->is_zero && $f->bacmp($limit) <= 0) {
-          my $sf = ($f <= ''.~0) ? _bigint_to_int($f) : $f;
+          my $sf = ($f <= BMAX) ? _bigint_to_int($f) : $f;
           do { push @factors, $sf; $n = ($n/$f)->bfloor(); } while (($n % $f) == 0);
           last SEARCH if $n->is_one;
           $limit = int( sqrt($n) + 0.001);
@@ -3002,7 +3003,7 @@ sub factor {
   while (@nstack) {
     $n = pop @nstack;
     # Don't use bignum on $n if it has gotten small enough.
-    $n = _bigint_to_int($n) if ref($n) eq 'Math::BigInt' && $n <= ''.~0;
+    $n = _bigint_to_int($n) if ref($n) eq 'Math::BigInt' && $n <= BMAX;
     #print "Looking at $n with stack ", join(",",@nstack), "\n";
     while ( ($n >= (31*31)) && !_is_prime7($n) ) {
       my @ftry;
@@ -3014,7 +3015,7 @@ sub factor {
       if (scalar @ftry > 1) {
         #print "  split into ", join(",",@ftry), "\n";
         $n = shift @ftry;
-        $n = _bigint_to_int($n) if ref($n) eq 'Math::BigInt' && $n <= ''.~0;
+        $n = _bigint_to_int($n) if ref($n) eq 'Math::BigInt' && $n <= BMAX;
         push @nstack, @ftry;
       } else {
         #warn "trial factor $n\n";
@@ -3644,32 +3645,27 @@ sub divisors {
   return Math::Prime::Util::divisor_sum($n,0) unless wantarray;
   return ($n == 0) ? (0,1) : (1)  if $n <= 1;
 
-  my %all_factors;
   my @factors = Math::Prime::Util::factor($n);
   return (1,$n) if scalar @factors == 1;
 
-  if (ref($n) eq 'Math::BigInt') {
-    foreach my $f1 (@factors) {
-      my $big_f1 = Math::BigInt->new("$f1");
-      my @to_add = map { ($_ <= ''.~0) ? _bigint_to_int($_) : $_ }
-                   grep { $_ < $n }
-                   map { $big_f1 * $_ }
-                   keys %all_factors;
-      undef @all_factors{ $f1, @to_add };
-    }
-  } else {
-    foreach my $f1 (@factors) {
-      my @to_add = grep { $_ < $n }
-                   map { $f1 * $_ }
-                   keys %all_factors;
-      undef @all_factors{ $f1, @to_add };
+  my $bigint = ref($n) eq 'Math::BigInt';
+  @factors = map { Math::BigInt->new("$_") } @factors  if $bigint;
+  my @d = $bigint ? (BONE->copy()) : (1);
+
+  while (my $p = shift @factors) {
+    my $e = 1;
+    while (@factors && $p == $factors[0]) { $e++; shift(@factors); }
+    if ($e == 1) { # Factor appears once.  Multiply through.
+      push @d, map { $_ * $p } @d;
+    } else {       # Factor appears $e times.  Multiply through p, p^2, p^3, ...
+      my @t = @d;
+      push @d,  @t = map { $_ * $p } @t   for 1 .. $e;
     }
   }
-  # Add 1 and n
-  undef $all_factors{1};
-  undef $all_factors{$n};
-  my @divisors = sort {$a<=>$b} keys %all_factors;
-  return @divisors;
+
+  @d = map { $_->bacmp(BMAX) <= 0 ? _bigint_to_int($_) : $_ } @d   if $bigint;
+  @d = sort { $a <=> $b } @d;
+  @d;
 }
 
 
