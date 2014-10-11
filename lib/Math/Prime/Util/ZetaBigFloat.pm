@@ -202,7 +202,6 @@ my @_Riemann_Zeta_Table = (
 # for k = 1 .. n :  (1 / (zeta(k+1) * k + k)
 # Makes RiemannR run about twice as fast.
 my @_Riemann_Zeta_Premult;
-my $_Riemann_Zeta_Premult_accuracy;
 
 # Select n = 55, good for 46ish digits of accuracy.
 my $_Borwein_n = 55;
@@ -445,26 +444,19 @@ sub RiemannR {
 
   } else {
 
-    # TODO: The default table is only 44 digits.
-    if ( (scalar @_Riemann_Zeta_Premult == 0) || ($_Riemann_Zeta_Premult_accuracy < $xdigits) ) {
-      $_Riemann_Zeta_Premult_accuracy = $xdigits;
-      @_Riemann_Zeta_Premult = map { my $v = Math::BigFloat->bone;
-                                     $v->accuracy($xdigits);
-                                     $v / ($_Riemann_Zeta_Table[$_-1]*$_ + $_) }
-                               (1 .. @_Riemann_Zeta_Table);
-    }
-
     my $flogx = log($x);
     my $part_term = Math::BigFloat->bone;
 
+    my ($fone, $bigk) = (Math::BigFloat->bone, Math::BigInt->bone);
+    $fone->accuracy($xdigits);
     for my $k (1 .. 10000) {
       my $zeta_term = $_Riemann_Zeta_Premult[$k-1];
+      # TODO: The default table is only 44 digits.
       if (!defined $zeta_term) {
         my $zeta = $_Riemann_Zeta_Table[$k-1];
         if (!defined $zeta) {
-          my $kz = Math::BigFloat->new($k+1);
-          $kz->accuracy($xdigits);
-          if ($kz >= 100 && $xdigits <= 40) {
+          my $kz = $fone->copy->badd($bigk);  # kz is k+1
+          if (($k+1) >= 100 && $xdigits <= 40) {
             # For this accuracy level, two terms are more than enough.  Also,
             # we should be able to miss the Math::BigFloat accuracy bug.  If we
             # try to do this for higher accuracy, things will go very bad.
@@ -474,13 +466,15 @@ sub RiemannR {
             $zeta = Math::Prime::Util::ZetaBigFloat::RiemannZeta( $kz );
           }
         }
-        $zeta_term = Math::BigFloat->bone / ($zeta * $k + $k);
+        $zeta_term = $fone / ($zeta * $bigk + $bigk);
+        $_Riemann_Zeta_Premult[$k-1] = $zeta_term if defined $_Riemann_Zeta_Table[$k-1];
       }
-      $part_term *= $flogx / $k;
+      $part_term *= $flogx / $bigk;
       my $term = $part_term * $zeta_term;
       $sum += $term;
       #warn "k = $k  term = $term  sum = $sum\n";
       last if $term < ($tol*$sum);
+      $bigk->binc;
     }
 
   }
