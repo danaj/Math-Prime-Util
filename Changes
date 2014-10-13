@@ -17,6 +17,9 @@ Revision history for Perl module Math::Prime::Util
 
     - Large speedup for PP divisors for bigints in 64-100 bit range.
 
+    - PP factoring is a bit faster, especially for small inputs (something
+      only used when XS disabled).
+
 
 0.45  2014-09-26
 

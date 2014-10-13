@@ -1689,10 +1689,7 @@ sub _gcd_ui {
   if ($y < $x) { ($x, $y) = ($y, $x); }
   elsif ($x < 0) { $x = -$x; }
   while ($y > 0) {
-    # y1 <- x0 % y0 ; x1 <- y0
-    my $t = $y;
-    $y = $x % $y;
-    $x = $t;
+    ($x, $y) = ($y, $x % $y);
   }
   $x;
 }
@@ -2885,8 +2882,7 @@ sub _basic_factor {
 }
 
 sub trial_factor {
-  my($n, $maxlim) = @_;
-  $maxlim = $n unless defined $maxlim;
+  my($n, $limit) = @_;
 
   # Don't use _basic_factor here -- they want a trial forced.
   my @factors;
@@ -2894,60 +2890,70 @@ sub trial_factor {
     @factors = ($n == 1) ? () : ($n);
     return @factors;
   }
-  if (ref($n) ne 'Math::BigInt') {
-    while ( !($n % 2) ) { push @factors, 2;  $n = int($n / 2); }
-    while ( !($n % 3) ) { push @factors, 3;  $n = int($n / 3); }
-    while ( !($n % 5) ) { push @factors, 5;  $n = int($n / 5); }
-    while ( !($n % 7) ) { push @factors, 7;  $n = int($n / 7); }
-    while ( !($n %11) ) { push @factors,11;  $n = int($n /11); }
-    while ( !($n %13) ) { push @factors,13;  $n = int($n /13); }
+
+  my $sqrtn = int(sqrt($n) + 0.001);
+  if (defined $limit) {
+    $limit = $sqrtn if $limit > $sqrtn;
   } else {
-    foreach my $div (2, 3, 5, 7, 11, 13) {
-      my($q,$r);
-      do {
-        ($q, $r) = $n->copy->bdiv($div);
-        if ($r->is_zero) {
-          push @factors, $div;
-          $n = $q;
-        }
-      } while $r->is_zero;
-    }
+    $limit = $sqrtn;
   }
-  $n = _bigint_to_int($n) if ref($n) eq 'Math::BigInt' && $n <= BMAX;
+
+  if (ref($n) ne 'Math::BigInt') {
+    for my $i (1 .. $#_primes_small) {
+      my $p = $_primes_small[$i];
+      last if $p > $limit;
+      if (($n % $p) == 0) {
+        do { push @factors, $p;  $n = int($n/$p); } while ($n % $p) == 0;
+        last if $n == 1;
+        my $newlim = int( sqrt($n) + 0.001);
+        $limit = $newlim if $newlim < $limit;
+      }
+    }
+    if ($_primes_small[-1] < $limit) {
+      my $inc = (($_primes_small[-1] % 6) == 1) ? 4 : 2;
+      my $p = $_primes_small[-1] + $inc;
+      while ($p <= $limit) {
+        if (($n % $p) == 0) {
+          do { push @factors, $p;  $n = int($n/$p); } while ($n % $p) == 0;
+          last if $n == 1;
+          my $newlim = int( sqrt($n) + 0.001);
+          $limit = $newlim if $newlim < $limit;
+        }
+        #$p += 2;
+        $p += ($inc ^= 6);
+      }
+    }
+    push @factors, $n  if $n > 1;
+    return @factors;
+  }
+
+  # It's a bigint.
+  foreach my $div (2, 3, 5, 7, 11, 13) {
+    my($q,$r);
+    do {
+      ($q, $r) = $n->copy->bdiv($div);
+      if ($r->is_zero) {
+        push @factors, $div;
+        $n = $q;
+      }
+    } while $r->is_zero;
+  }
   return @factors if $n < 4;
 
-  my $limit = int(sqrt($n) + 0.001);
-  $limit = $maxlim if $limit > $maxlim;
-
-  if (ref($n) eq 'Math::BigInt') {
-    my $f = Math::BigInt->new(17);
-    $limit = Math::BigInt->new("$limit");
-    my @incs = map { Math::BigInt->new($_) } (2, 4, 6, 2, 6, 4, 2, 4);
-    SEARCH: while ($f <= $limit) {
-      foreach my $finc (@incs) {
-        if ($n->copy->bmod($f)->is_zero && $f->bacmp($limit) <= 0) {
-          my $sf = ($f <= BMAX) ? _bigint_to_int($f) : $f;
-          do { push @factors, $sf; $n = ($n/$f)->bfloor(); } while (($n % $f) == 0);
-          last SEARCH if $n->is_one;
-          $limit = int( sqrt($n) + 0.001);
-          $limit = $maxlim if $limit > $maxlim;
-          $limit = Math::BigInt->new("$limit");
-        }
-        $f->badd($finc);
+  my $f = Math::BigInt->new(17);
+  $limit = Math::BigInt->new("$limit");
+  my @incs = map { Math::BigInt->new($_) } (2, 4, 6, 2, 6, 4, 2, 4);
+  SEARCH: while ($f <= $limit) {
+    foreach my $finc (@incs) {
+      if ($n->copy->bmod($f)->is_zero && $f->bacmp($limit) <= 0) {
+        my $sf = ($f <= BMAX) ? _bigint_to_int($f) : $f;
+        do { push @factors, $sf; $n = ($n/$f)->bfloor(); } while (($n % $f) == 0);
+        last SEARCH if $n->is_one;
+        my $newlim = int( sqrt($n) + 0.001);
+        $limit = $newlim if $limit > $newlim;
+        $limit = Math::BigInt->new("$limit");
       }
-    }
-  } else {
-    my $f = 17;
-    SEARCH: while ($f <= $limit) {
-      foreach my $finc (2, 4, 6, 2, 6, 4, 2, 4) {
-        if ( (($n % $f) == 0) && ($f <= $limit) ) {
-          do { push @factors, $f; $n = int($n/$f); } while (($n % $f) == 0);
-          last SEARCH if $n == 1;
-          $limit = int( sqrt($n) + 0.001);
-          $limit = $maxlim if $limit > $maxlim;
-        }
-        $f += $finc;
-      }
+      $f->badd($finc);
     }
   }
   push @factors, $n  if $n > 1;
@@ -2979,8 +2985,6 @@ sub factor {
   my($n) = @_;
   _validate_positive_integer($n);
 
-  return trial_factor($n) if $n < 1_000_000;
-
   $n = $n->copy if ref($n) eq 'Math::BigInt';
 
   my @factors;
@@ -2997,7 +3001,8 @@ sub factor {
         }
       }
     }
-  } else {
+    $n = _bigint_to_int($n) if ref($n) eq 'Math::BigInt' && $n <= BMAX;
+  } elsif ($n > 0) {
     while (($n %  2) == 0) { push @factors,  2;  $n = int($n /  2); }
     while (($n %  3) == 0) { push @factors,  3;  $n = int($n /  3); }
     while (($n %  5) == 0) { push @factors,  5;  $n = int($n /  5); }
@@ -3009,10 +3014,15 @@ sub factor {
     while (($n % 23) == 0) { push @factors, 23;  $n = int($n / 23); }
     while (($n % 29) == 0) { push @factors, 29;  $n = int($n / 29); }
   }
-  if ($n < (31*31)) {
-    push @factors, $n  if $n != 1;
+  if ($n < 50_000_000) {
+    push @factors, ($n == 1) ? () : ($n < 31*31) ? $n : trial_factor($n);
     return @factors;
   }
+
+  # More trial division...
+  my $lim = 4999;
+  push @factors, trial_factor($n, $lim);
+  $n = pop(@factors);
 
   my @nstack = ($n);
   while (@nstack) {
@@ -3020,7 +3030,7 @@ sub factor {
     # Don't use bignum on $n if it has gotten small enough.
     $n = _bigint_to_int($n) if ref($n) eq 'Math::BigInt' && $n <= BMAX;
     #print "Looking at $n with stack ", join(",",@nstack), "\n";
-    while ( ($n >= (31*31)) && !_is_prime7($n) ) {
+    while ( ($n >= ($lim*$lim)) && !_is_prime7($n) ) {
       my @ftry;
       $_holf_r = 1;
       foreach my $sub (@_fsublist) {
@@ -3102,16 +3112,32 @@ sub prho_factor {
 
   } elsif ($n < MPU_HALFWORD) {
 
-    for my $i (1 .. $rounds) {
-      $U = ($U * $U + $pa) % $n;
-      $V = ($V * $V + $pa) % $n;
-      $V = ($V * $V + $pa) % $n;
-      my $f = _gcd_ui( $U-$V,  $n );
-      if ($f == $n) {
-        last if $inloop++;  # We've been here before
-      } elsif ($f != 1) {
-        return _found_factor($f, $n, "prho", @factors);
+    my $inner = 32;
+    $rounds = int( ($rounds + $inner-1) / $inner );
+    while ($rounds-- > 0) {
+      my($m, $oldU, $oldV, $f) = (1, $U, $V);
+      for my $i (1 .. $inner) {
+        $U = ($U * $U + $pa) % $n;
+        $V = ($V * $V + $pa) % $n;
+        $V = ($V * $V + $pa) % $n;
+        $f = ($U > $V) ? $U-$V : $V-$U;
+        $m = ($m * $f) % $n;
       }
+      $f = _gcd_ui( $m, $n );
+      next if $f == 1;
+      if ($f == $n) {
+        ($U, $V) = ($oldU, $oldV);
+        for my $i (1 .. $inner) {
+          $U = ($U * $U + $pa) % $n;
+          $V = ($V * $V + $pa) % $n;
+          $V = ($V * $V + $pa) % $n;
+          $f = ($U > $V) ? $U-$V : $V-$U;
+          $f = _gcd_ui( $f, $n);
+          last if $f != 1;
+        }
+        last if $f == 1 || $f == $n;
+      }
+      return _found_factor($f, $n, "prho", @factors);
     }
 
   } else {
