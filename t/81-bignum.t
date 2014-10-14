@@ -70,7 +70,9 @@ my %allfactors = (
 plan tests =>  0
              + 2*(@primes + @composites + @proveprimes)
              + 1   # primes
+             + 1   # twin primes
              + 2   # next/prev prime
+             + 1   # prime_iterator
              + 1   # primecount large base small range
              + scalar(keys %pseudoprimes)
              + 6   # PC lower, upper, approx
@@ -85,7 +87,7 @@ plan tests =>  0
              + 1   # chinese
              + 2   # ispower
              + 15  # random primes
-             + 2   # miller-rabin random
+             + 7   # miller-rabin random
              + 1   # valuation
              + 1;
 
@@ -125,12 +127,14 @@ use Math::Prime::Util qw/
   LogarithmicIntegral
   RiemannR
   primes
+  twin_primes
   prime_count
   nth_prime
   is_prime
   is_provable_prime
   next_prime
   prev_prime
+  prime_iterator
   is_strong_pseudoprime
   random_prime
   random_ndigit_prime
@@ -191,8 +195,20 @@ is_deeply( primes(73786976294838206464, 73786976294838206564),
 
 ###############################################################################
 
+is_deeply( twin_primes(18446744073709558000, 18446744073709559000),
+           [18446744073709558601,18446744073709558727],
+           "twin_primes( 18446744073709558000, +1000)" );
+
+###############################################################################
+
 is( next_prime(777777777777777777777777), 777777777777777777777787, "next_prime(777777777777777777777777)");
 is( prev_prime(777777777777777777777777), 777777777777777777777767, "prev_prime(777777777777777777777777)");
+
+###############################################################################
+
+{my $it = prime_iterator(10**24+910);
+  is_deeply( [map { $it->() } 1..3], [1000000000000000000000921,1000000000000000000000931,1000000000000000000000949], "iterator 3 primes starting at 10^24+910" );
+}
 
 ###############################################################################
 
@@ -336,6 +352,13 @@ $randprime = random_nbit_prime(80);
 is( miller_rabin_random( $randprime, 20 ), 1, "80-bit prime passes Miller-Rabin with 20 random bases" );
 do { $randprime += 2 } while is_prime($randprime);
 is( miller_rabin_random( $randprime, 40 ), "0", "80-bit composite fails Miller-Rabin with 40 random bases" );
+
+# Failure and shortcuts for MRR:
+ok(!eval { miller_rabin_random(undef,undef); },   "MRR(undef,undef)");
+ok(!eval { miller_rabin_random(10007,-4); },   "MRR(10007,-4)");
+is(miller_rabin_random(10007, 0), 1, "MRR(n,0) = 1");
+is(miller_rabin_random(61, 17), 1, "MRR(61,17) = 1");
+is(miller_rabin_random(62, 17), 0, "MRR(62,17) = 0");
 
 ###############################################################################
 

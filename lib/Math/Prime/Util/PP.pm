@@ -1745,37 +1745,6 @@ sub _bernden {
   #$p = _bigint_to_int($p) if $p->bacmp(''.~0) <= 0;
   $p;
 }
-sub _bernoulli_zeta {
-  my($n, $denominator) = @_;
-  # This works ok with MPFR, but horrible without.
-  $n = _upgrade_to_float($n);
-  my $xdigits = 2 * $n;  # This is *wrong*
-  $n->accuracy($xdigits);
-  my $pi = Math::Prime::Util::Pi($xdigits);
-  my $b = 2 * (-1)**(($n>>1)-1) * factorial($n) / (2*$pi)**$n * (1+RiemannZeta($n));
-  $b *= $denominator;
-  # Round to nearest int
-  my $x = $b->as_int;
-  if ($b-$x >= 0.5) { $x++ } elsif ($b-$x <= -0.5) { $x-- }
-  ($x, _bernden($n));
-}
-sub _bernoulli_at { # Simple Akiyama-Tanigawa algorithm
-  my $n = shift;
-  my(@anum,@aden);
-  for my $m (0..$n) {
-    $anum[$m] = Math::BigInt->new(1);
-    $aden[$m] = Math::BigInt->new($m)->binc();
-    for my $j (reverse 1..$m) {
-      my($anj1,$anj,$adj1,$adj) = ($anum[$j-1],$anum[$j],$aden[$j-1],$aden[$j]);
-      $anj1 = $j * ($adj * $anj1 - $adj1 * $anj);
-      $adj1 = $adj1 * $adj;
-      my $F = Math::BigInt::bgcd($anj1, $adj1);
-      do { $anj1 /= $F;  $adj1 /= $F } if $F != 1;
-      ($anum[$j-1],$aden[$j-1]) = ($anj1, $adj1);
-    }
-  }
-  ($anum[0],$aden[0]);
-}
 { # Brent-Harvey (Luschny)
   # See:  http://oeis.org/wiki/User:Peter_Luschny/ComputationAndAsymptoticsOfBernoulliNumbers#Brent-Harvey
   my @_T = (BZERO, BONE);

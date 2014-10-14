@@ -142,18 +142,18 @@ sub double {
   return $self;
 }
 
-sub _extended_gcd {
-  my ($a, $b) = @_;
-  my $zero = $a-$a;
-  my ($x, $lastx, $y, $lasty) = ($zero, $zero+1, $zero+1, $zero);
-  while ($b != 0) {
-    my $q = int($a/$b);
-    ($a, $b) = ($b, $a % $b);
-    ($x, $lastx) = ($lastx - $q*$x, $x);
-    ($y, $lasty) = ($lasty - $q*$y, $y);
-  }
-  return ($a, $lastx, $lasty);
-}
+#sub _extended_gcd {
+#  my ($a, $b) = @_;
+#  my $zero = $a-$a;
+#  my ($x, $lastx, $y, $lasty) = ($zero, $zero+1, $zero+1, $zero);
+#  while ($b != 0) {
+#    my $q = int($a/$b);
+#    ($a, $b) = ($b, $a % $b);
+#    ($x, $lastx) = ($lastx - $q*$x, $x);
+#    ($y, $lasty) = ($lasty - $q*$y, $y);
+#  }
+#  return ($a, $lastx, $lasty);
+#}
 
 sub normalize {
   my ($self) = @_;

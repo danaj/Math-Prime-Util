@@ -262,9 +262,9 @@ plan tests => 2 +
               ($extra ? 3 : 0) +  # factor stage 2
               10 +                # AKS
               ($use64 ? 3 : 2) +  # Lucas and BLS75 primality proofs
-              4 +                 # M-R and Lucas on bigint
+              6 +                 # M-R and Lucas on bigint
               2 +                 # PC and NP approx
-              27 +                # Misc util.pm functions
+              65 +                # Misc util.pm functions
               ($extra ? 1 : 0) +  # twin prime count approx
               scalar(keys %ipp) + # is_prob_prime
               1;
@@ -309,6 +309,8 @@ require_ok 'Math::Prime::Util::PrimalityProving';
     *is_extra_strong_lucas_pseudoprime = \&Math::Prime::Util::PP::is_extra_strong_lucas_pseudoprime;
     *is_almost_extra_strong_lucas_pseudoprime = \&Math::Prime::Util::PP::is_almost_extra_strong_lucas_pseudoprime;
     *is_frobenius_underwood_pseudoprime = \&Math::Prime::Util::PP::is_frobenius_underwood_pseudoprime;
+    *is_perrin_pseudoprime = \&Math::Prime::Util::PP::is_perrin_pseudoprime;
+    *is_frobenius_pseudoprime = \&Math::Prime::Util::PP::is_frobenius_pseudoprime;
     *is_aks_prime   = \&Math::Prime::Util::PP::is_aks_prime;
 
     *factor         = \&Math::Prime::Util::PP::factor;
@@ -318,15 +320,37 @@ require_ok 'Math::Prime::Util::PrimalityProving';
 
     *moebius        = \&Math::Prime::Util::PP::moebius;
     *euler_phi      = \&Math::Prime::Util::PP::euler_phi;
+    *jordan_totient = \&Math::Prime::Util::PP::jordan_totient;
     *mertens        = \&Math::Prime::Util::PP::mertens;
     *exp_mangoldt   = \&Math::Prime::Util::PP::exp_mangoldt;
     *chebyshev_theta= \&Math::Prime::Util::PP::chebyshev_theta;
     *chebyshev_psi  = \&Math::Prime::Util::PP::chebyshev_psi;
 
+    *znprimroot     = \&Math::Prime::Util::PP::znprimroot;
+    *znorder        = \&Math::Prime::Util::PP::znorder;
+    *znlog          = \&Math::Prime::Util::PP::znlog;
+    *binomial       = \&Math::Prime::Util::PP::binomial;
+    *stirling       = \&Math::Prime::Util::PP::stirling;
+    *bernfrac       = \&Math::Prime::Util::PP::bernfrac;
+    *valuation      = \&Math::Prime::Util::PP::valuation;
+    *gcdext         = \&Math::Prime::Util::PP::gcdext;
+    *invmod         = \&Math::Prime::Util::PP::invmod;
+    *vecmin         = \&Math::Prime::Util::PP::vecmin;
+    *vecmax         = \&Math::Prime::Util::PP::vecmax;
+    *vecsum         = \&Math::Prime::Util::PP::vecsum;
+    *vecprod        = \&Math::Prime::Util::PP::vecprod;
+    *liouville      = \&Math::Prime::Util::PP::liouville;
+    *carmichael_lambda = \&Math::Prime::Util::PP::carmichael_lambda;
+    *forperm        = \&Math::Prime::Util::PP::forperm;
+    *forcomb        = \&Math::Prime::Util::PP::forcomb;
+    *forpart        = \&Math::Prime::Util::PP::forpart;
+    *Pi             = \&Math::Prime::Util::PP::Pi;
+
     *RiemannR            = \&Math::Prime::Util::PP::RiemannR;
     *RiemannZeta         = \&Math::Prime::Util::PP::RiemannZeta;
     *LogarithmicIntegral = \&Math::Prime::Util::PP::LogarithmicIntegral;
     *ExponentialIntegral = \&Math::Prime::Util::PP::ExponentialIntegral;
+    *LambertW            = \&Math::Prime::Util::PP::LambertW;
 
 # Turn off use of BRS - ECM tries to use this.
 prime_set_config( irand => sub { int(rand(4294967296.0)) } );
@@ -478,6 +502,7 @@ while (my($n, $rin) = each (%rvals)) {
 while (my($n, $zin) = each (%rzvals)) {
   cmp_closeto( RiemannZeta($n), $zin, 0.00000001 * abs($zin), "Zeta($n) ~= $zin");
 }
+cmp_closeto( LambertW(6588), 6.86636957140619, 0.000000001, "LambertW(6588)");
 if ($extra) {
   my ($n, $zin);
   ($n, $zin) = (4.5, $rzvals{4.5});
@@ -555,9 +580,13 @@ if ($extra) {
   is_deeply( [ sort {$a<=>$b} Math::Prime::Util::PP::pbrent_factor(851981) ],
              [ 13, 65537 ],
              "pbrent(851981)" );
-  is_deeply( [ sort {$a<=>$b} Math::Prime::Util::PP::ecm_factor(851981) ],
-             [ 13, 65537 ],
-             "ecm(851981)" );
+  #is_deeply( [ sort {$a<=>$b} Math::Prime::Util::PP::ecm_factor(851981) ],
+  #           [ 13, 65537 ],
+  #           "ecm(851981)" );
+  # Try to force using stage 2.
+  is_deeply( [ sort {$a<=>$b} Math::Prime::Util::PP::ecm_factor(101303039, 5, 100000,100) ],
+             [ 1013, 100003 ],
+             "ecm(101303039)" );
   my $n64 = $use64 ? 55834573561 : Math::BigInt->new("55834573561");
   is_deeply( [ sort {$a<=>$b} Math::Prime::Util::PP::prho_factor($n64) ],
              [ 13, 4294967197 ],
@@ -668,11 +697,14 @@ if ($use64) {
   my $n = Math::BigInt->new("168790877523676911809192454171451");
   is( is_strong_pseudoprime( $n, 2,3,5,7,11,13,17,19,23,29,31,37,41,43,47), 1, "168790877523676911809192454171451 looks prime with bases 2..52" );
   is( is_strong_pseudoprime( $n, 53), 0, "168790877523676911809192454171451 found composite with base 53" );
-  is ( is_strong_lucas_pseudoprime($n), 0, "168790877523676911809192454171451 is not a strong Lucas pseudoprime" );
+  is( is_strong_lucas_pseudoprime($n), 0, "168790877523676911809192454171451 is not a strong Lucas pseudoprime" );
   SKIP: {
     skip "Old Perl+bigint segfaults in F-U code", 1 if $] < 5.008;
-    is ( is_frobenius_underwood_pseudoprime($n), 0, "168790877523676911809192454171451 is not a Frobenius pseudoprime" );
+    is( is_frobenius_underwood_pseudoprime($n), 0, "168790877523676911809192454171451 is not a Frobenius pseudoprime" );
   }
+  #is( is_perrin_pseudoprime($n), 0, "168790877523676911809192454171451 is not a Perrin pseudoprime" );
+  is(is_perrin_pseudoprime(517697641), 1, "517697641 is a Perrin pseudoprime");
+  is(is_frobenius_pseudoprime(517697641), 0, "517697641 is not a Frobenius pseudoprime");
 }
 
 {
@@ -695,6 +727,9 @@ if ($use64) {
   is_deeply( [moebius(513,537)],
              [qw/0 1 1 0 1 -1 1 0 -1 0 -1 0 0 1 1 0 0 -1 0 0 1 -1 1 0 1/],
              "moebius(513,537)" );
+  is( moebius(42199), 1, "moebius(42199)" );
+  is( liouville(444456), 1, "liouville(444456)" );
+  is( liouville(562894), -1, "liouville(562894)" );
 
   is( mertens(4219), -13, "mertens(4219)" );
 
@@ -702,12 +737,54 @@ if ($use64) {
              [qw/1408 756 800 756 1440 440 1260 576 936 760 1522 504 1200 648 1016 760 1380 384 1530 764 864 696 1224 512 1456/],
              "euler_phi(1513,1537)" );
   is( euler_phi(324234), 108072, "euler_phi(324234)" );
+  is( jordan_totient(4, 899), "653187225600", "jordan_totient(4, 899)" );
+  is( carmichael_lambda(324234), 18012, "carmichael_lambda(324234)" );
 
   is( exp_mangoldt(16), 2, "exp_mangoldt of power of 2 = 2" );
   is( exp_mangoldt(14), 1, "exp_mangoldt of even = 1" );
   is( exp_mangoldt(21), 1, "exp_mangoldt of 21 = 1" );
   is( exp_mangoldt(23), 23, "exp_mangoldt of 23 = 23" );
   is( exp_mangoldt(27), 3, "exp_mangoldt of 27 (3^3) = 3" );
+
+  is_deeply( [map { scalar znprimroot($_) } (-11, 0, 8, 3, 1729, 10, 5109721)],
+             [2, undef, undef, 2, undef, 3, 94],
+             "znprimroot" );
+
+  is(znorder(2,35), 12, "znorder(2,35) = 12");
+  is(znorder(7,35), undef, "znorder(7,35) = undef");
+  is(znorder(67,999999749), 30612237, "znorder(67,999999749) = 30612237");
+
+  is(znlog(5678, 5, 10007), 8620, "znlog(5678, 5, 10007)");
+
+  is(binomial(35,16), 4059928950, "binomial(35,16)");
+  is(binomial(228,12), "30689926618143230620", "binomial(228,12)");
+  is(binomial(-23,-26), -2300, "binomial(-23,-26) should be -2300");
+
+  is(stirling(12,4,2), '611501', "S(12,4)" );
+  is(stirling(12,4,1), '105258076', "s(12,4)" );
+
+  is_deeply( [bernfrac(0)], [1,1], "bernfrac(0)" );
+  is_deeply( [bernfrac(1)], [1,2], "bernfrac(1)" );
+  is_deeply( [bernfrac(2)], [1,6], "bernfrac(2)" );
+  is_deeply( [bernfrac(3)], [0,1], "bernfrac(3)" );
+  is_deeply( [bernfrac(12)], [-691,2730], "bernfrac(12)" );
+  is_deeply( [bernfrac(13)], [0,1], "bernfrac(12)" );
+
+  is_deeply( [gcdext(23948236,3498248)], [2263, -15492, 52], "gcdext(23948236,3498248)" );
+
+  is( valuation(1879048192,2), 28, "valuation(1879048192,2)");
+  is( valuation(96552,6), 3, "valuation(96552,6)");
+
+  is(invmod(45,59), 21, "invmod(45,59)");
+  is(invmod(14,28474), undef, "invmod(14,28474)");
+  is(invmod(42,-2017), 1969, "invmod(42,-2017)");
+
+  is(vecsum(15, 30, 45), 90, "vecsum(15,30,45)");
+  is(vecsum(4294966296,4294965296,4294964296), "12884895888", "vecsum(2^32-1000,2^32-2000,2^32-3000)");
+  is(vecprod(15, 30, 45), 20250, "vecprod(15,30,45)");
+  is(vecprod(4294966296,4294965296,4294964296), "79228051833847139970490254336", "vecprod(2^32-1000,2^32-2000,2^32-3000)");
+  is(vecmin(4294966296,4294965296,4294964296), 4294964296, "vecmin(2^32-1000,2^32-2000,2^32-3000)");
+  is(vecmax(4294966296,4294965296,4294964296), 4294966296, "vecmax(2^32-1000,2^32-2000,2^32-3000)");
 
   cmp_closeto( chebyshev_theta(7001), 6929.27483821865062, 0.006929, "chebyshev_theta(7001) =~ 6929.2748");
   cmp_closeto( chebyshev_psi(6588), 6597.07452996633704, 0.006597, "chebyshev_psi(6588) =~ 6597.07453");
@@ -739,6 +816,21 @@ if ($use64) {
     Math::Prime::Util::_generic_fordivisors(sub {$k += $_+int(sqrt($_))},92834);
     is( $k, 168921, "generic fordivisors: d|92834: k+=d+int(sqrt(d))" );
   }
+
+  { my @p;
+    forcomb(sub { push @p, [@_] }, 3, 2);
+    is_deeply( \@p, [ [0,1], [0,2], [1,2] ], "forcomb(3,2)" );
+  }
+  { my @p;
+    forperm(sub { push @p, [@_] }, 3);
+    is_deeply( \@p, [ [0,1,2], [0,2,1], [1,0,2], [1,2,0], [2,0,1], [2,1,0] ], "forperm(3)" );
+  }
+  { my @p;
+    forpart(sub { push @p, [@_] }, 4);
+    is_deeply( \@p, [ [4],[3,1],[2,2],[2,1,1],[1,1,1,1] ], "forpart(4)" );
+  }
+
+  is( Pi(82), "3.141592653589793238462643383279502884197169399375105820974944592307816406286208999", "Pi(82)" );
 
   is( gcd(-30,-90,90), 30, "gcd(-30,-90,90) = 30" );
   is( lcm(11926,78001,2211), 2790719778, "lcm(11926,78001,2211) = 2790719778" );

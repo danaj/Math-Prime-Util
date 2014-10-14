@@ -490,6 +490,7 @@ my @vecmins = (
   [ 1, 2, 1 ],
   [ -6, 0, 4, -5, 6, -6, 0 ],
   [ -6, 0, 4, -5, 7, -6, 0 ],
+  [ "27944220269257565027", "81033966278481626507", "27944220269257565027" ],
 );
 if ($use64) {
   # List::Util::min gets these wrong
@@ -507,6 +508,7 @@ my @vecmaxs = (
   [ 2, 2, 1 ],
   [  6, 0, 4, -5, 6, -6, 0 ],
   [  7, 0, 4, -5, 7, -8, 0 ],
+  [ "81033966278481626507" , "27944220269257565027", "81033966278481626507" ],
 );
 if ($use64) {
   # List::Util::max gets these wrong
@@ -565,7 +567,7 @@ plan tests => 0 + 1
                 + 3*scalar(keys %mertens)
                 + 1*scalar(keys %big_mertens)
                 + 2 # Small Phi
-                + 8 + scalar(keys %totients)
+                + 9 + scalar(keys %totients)
                 + 1 # Small Carmichael Lambda
                 + scalar(@kroneckers)
                 + scalar(@gcds)
@@ -623,6 +625,11 @@ while (my($n, $mertens) = each (%big_mertens)) {
 {
   my @phi = euler_phi(0, $#A000010);
   is_deeply( \@phi, \@A000010, "euler_phi with range: 0, $#A000010" );
+}
+{
+  my $s = 0;
+  $s += $_ for euler_phi(1, 240);
+  is($s, 17544, "sum of totients to 240");
 }
 while (my($n, $phi) = each (%totients)) {
   is( euler_phi($n), $phi, "euler_phi($n) == $phi" );

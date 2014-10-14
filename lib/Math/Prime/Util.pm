@@ -417,7 +417,7 @@ sub miller_rabin_random {
   _validate_num($k) || _validate_positive_integer($k);
 
   return 1 if $k <= 0;
-  return (is_prob_prime($n) > 0) if $n < 100;
+  return (is_prob_prime($n) ? 1 : 0) if $n < 100;
   return 0 unless $n & 1;
 
   return Math::Prime::Util::GMP::miller_rabin_random($n, $k)
