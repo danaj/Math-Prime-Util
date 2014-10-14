@@ -3686,22 +3686,19 @@ sub divisors {
   return Math::Prime::Util::divisor_sum($n,0) unless wantarray;
   return ($n == 0) ? (0,1) : (1)  if $n <= 1;
 
-  my @factors = Math::Prime::Util::factor($n);
+  my(@factors, @d, @t);
+  @factors = Math::Prime::Util::factor($n);
   return (1,$n) if scalar @factors == 1;
 
   my $bigint = ref($n) eq 'Math::BigInt';
   @factors = map { Math::BigInt->new("$_") } @factors  if $bigint;
-  my @d = $bigint ? (BONE->copy()) : (1);
+  @d = $bigint ? (BONE->copy()) : (1);
 
   while (my $p = shift @factors) {
     my $e = 1;
     while (@factors && $p == $factors[0]) { $e++; shift(@factors); }
-    if ($e == 1) { # Factor appears once.  Multiply through.
-      push @d, map { $_ * $p } @d;
-    } else {       # Factor appears $e times.  Multiply through p, p^2, p^3, ...
-      my @t = @d;
-      push @d,  @t = map { $_ * $p } @t   for 1 .. $e;
-    }
+    push @d,  @t = map { $_ * $p } @d;               # multiply through once
+    push @d,  @t = map { $_ * $p } @t   for 2 .. $e; # repeat
   }
 
   @d = map { $_->bacmp(BMAX) <= 0 ? _bigint_to_int($_) : $_ } @d   if $bigint;
