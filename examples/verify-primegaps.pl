@@ -5,8 +5,9 @@
 #
 # This is an alternative to T.R. Nicely's cglp4 program from:
 #      http://www.trnicely.net/#Downloads
-# This runs 2-4x faster on my machines.  If cglp4 can use pfgw, it
-# may be faster for endpoints over 5000 digits.
+# This runs 2-4x faster on my machines.  If cglp4 can use PFGW, then it will
+# cross over sped around 3000 digits, and PFGW is much faster at 10k+.
+#
 # It will use the extra-strong BPSW test plus a Frobenius-Underwood test
 # for the endpoints so is more stringent about endpoint testing (cglp4 uses
 # the strong BPSW test).
@@ -20,6 +21,8 @@
 # preferable to printing a 0 result in a list which may be thousands of
 # lines long, and hence missed.  If the gaps have been properly supplied,
 # this should never come up.
+#
+# TODO: For large inputs, try calling PFGW.
 
 use warnings;
 use strict;

@@ -7,18 +7,16 @@ Revision history for Perl module Math::Prime::Util
 
     - Syntax fix from Salvatore.
 
-    - Revamp PP RiemannZeta.  Fixes some bignum output, but requires RT fixes.
+    - vecmin / vecmax in XS, if overflows UV do via strings to avoid PP.
 
     - Add example for verifying prime gaps, similar to Nicely's cglp4.
 
-    - vecmin / vecmax in XS, if overflows UV do via strings to avoid PP.
-
-    - Optimization for PP comparison to ~0.
-
-    - Large speedup for PP divisors for bigints in 64-100 bit range.
-
-    - PP factoring is a bit faster, especially for small inputs (something
-      only used when XS disabled).
+    - PP updates.
+       - Large speedup for PP divisors for bigints in 64-100 bit range.
+       - Revamp RiemannZeta.  Fixes some bignum output, but requires RT fixes.
+       - Optimization for PP comparison to ~0.
+       - PP factoring is a bit faster, especially for small inputs (something
+         only used when XS disabled).
 
 
 0.45  2014-09-26
