@@ -3791,8 +3791,11 @@ good compared to older Pari/GP, but much worse than 2.6's new methods.
 
 =item C<sigma>
 
-Similar to MPU's L</divisor_sum>.  MPU is ~10x faster for native integers
-and about 2x slower for bigints.
+Similar to MPU's L</divisor_sum>.  MPU is ~10x faster when the result
+fits in a native integer.  Once things overflow it is fairly similar in
+performance.  However, using L<Math::BigInt> can slow things down quite
+a bit, so for best performance in these cases using a L<Math::GMP> object
+is best.
 
 =item C<numbpart>, C<forpart>
 

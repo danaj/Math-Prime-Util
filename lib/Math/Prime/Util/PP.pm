@@ -819,23 +819,36 @@ sub divisor_sum {
   #    my $pk = $f ** $k;  $product *= $pk**E for E in 0 .. e
   # Also separate BigInt and do fiddly bits for better performance.
 
-  my $product = 1;
-  if (!$will_overflow) {
-    foreach my $f (Math::Prime::Util::factor_exp($n)) {
+  my @factors = Math::Prime::Util::factor_exp($n);
+  my $product = (!$will_overflow) ? 1 : BONE->copy;
+  if ($k == 0) {
+    foreach my $f (@factors) {
+      $product *= ($f->[1] + 1);
+    }
+  } elsif (!$will_overflow) {
+    foreach my $f (@factors) {
       my ($p, $e) = @$f;
-      if ($k == 0) {
-        $product *= ($e+1);
-      } else {
-        my $pk = $p ** $k;
-        my $fmult = $pk + 1;
-        foreach my $E (2 .. $e) { $fmult += $pk**$E }
-        $product *= $fmult;
+      my $pk = $p ** $k;
+      my $fmult = $pk + 1;
+      foreach my $E (2 .. $e) { $fmult += $pk**$E }
+      $product *= $fmult;
+    }
+  } elsif (ref($n) && ref($n) ne 'Math::BigInt') {
+    # This can help a lot for Math::GMP, etc.
+    $product = ref($n)->new(1);
+    foreach my $f (@factors) {
+      my ($p, $e) = @$f;
+      my $pk = ref($n)->new($p) ** $k;
+      my $fmult = $pk;  $fmult++;
+      if ($e >= 2) {
+        my $pke = $pk;
+        for (2 .. $e) { $pke *= $pk; $fmult += $pke; }
       }
+      $product *= $fmult;
     }
   } else {
-    $product = Math::BigInt->bone;
     my $bik = Math::BigInt->new("$k");
-    foreach my $f (Math::Prime::Util::factor_exp($n)) {
+    foreach my $f (@factors) {
       my ($p, $e) = @$f;
       my $pk = Math::BigInt->new("$p")->bpow($bik);
       if    ($e == 1) { $pk->binc(); $product->bmul($pk); }
@@ -851,7 +864,7 @@ sub divisor_sum {
       }
     }
   }
-  return $product;
+  $product;
 }
 
 #############################################################################

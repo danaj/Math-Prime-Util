@@ -11,6 +11,9 @@ Revision history for Perl module Math::Prime::Util
 
     - Add example for verifying prime gaps, similar to Nicely's cglp4.
 
+    - divisor_sum wasn't running XS code for k=0.  Refactor PP code,
+      includes speedup when input is a non-Math::BigInt (e.g. Math::GMP).
+
     - Improve test coverage.
 
     [PP Updates]

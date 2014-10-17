@@ -952,7 +952,10 @@ divisor_sum(IN SV* svn, ...)
   PPCODE:
     svk = (items > 1) ? ST(1) : 0;
     nstatus = _validate_int(aTHX_ svn, 0);
-    kstatus = (items == 1 || (SvIOK(svk) && SvIV(svk)))  ?  1  :  0;
+    kstatus = (items == 1 || (SvIOK(svk) && SvIV(svk) >= 0))  ?  1  :  0;
+    /* The above doesn't understand small bigints */
+    if (nstatus == 1 && kstatus == 0 && SvROK(svk) && sv_isa(svk, "Math::BigInt") || sv_isa(svk, "Math::GMP"))
+      kstatus = _validate_int(aTHX_ svk, 0);
     if (nstatus == 1 && kstatus == 1) {
       UV n = my_svuv(svn);
       UV k = (items > 1) ? my_svuv(svk) : 1;
