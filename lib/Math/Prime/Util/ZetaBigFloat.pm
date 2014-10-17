@@ -289,9 +289,9 @@ sub _Recompute_Dk {
 sub RiemannZeta {
   my($ix) = @_;
 
-  my $x = (ref($ix) eq 'Math::BigFloat') ? $ix->copy
-                                         : Math::BigFloat->new("$ix");
-  my $xdigits = $x->accuracy || Math::BigFloat->accuracy() || Math::BigFloat->div_scale();
+  my $x = (ref($ix) eq 'Math::BigFloat') ? $ix->copy : Math::BigFloat->new("$ix");
+  $x->accuracy($ix->accuracy) if $ix->accuracy;
+  my $xdigits = $ix->accuracy() || Math::BigFloat->accuracy() || Math::BigFloat->div_scale();
 
   if ($x == int($x) && $xdigits <= 44 && (int($x)-2) <= $#_Riemann_Zeta_Table) {
     my $izeta = $_Riemann_Zeta_Table[int($x)-2]->copy;
@@ -320,7 +320,7 @@ sub RiemannZeta {
   Math::BigFloat->accuracy($xdigits);
   $x->accuracy($xdigits);
   my $zero= $x->copy->bzero;
-  my $one = $x->copy->bone;
+  my $one = $zero->copy->binc;
   my $two = $one->copy->binc;
 
   my $tol = ref($x)->new('0.' . '0' x ($xdigits-1) . '1');
@@ -351,6 +351,7 @@ sub RiemannZeta {
     $xdigits += $extra_acc;
     $one->accuracy($xdigits); $two->accuracy($xdigits);
     Math::BigFloat->accuracy($xdigits);
+    $subx->accuracy($xdigits);  $superx->accuracy($xdigits);
     my $Pix = Math::Prime::Util::Pi($xdigits)->bpow($subx)->bpow($superx);
     my $Bn = Math::Prime::Util::bernreal($x);  $Bn = -$Bn if $Bn < 0;
     my $twox1 = $two->copy->bpow($x-1);
