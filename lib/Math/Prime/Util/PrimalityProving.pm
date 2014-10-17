@@ -11,7 +11,7 @@ use Math::Prime::Util qw/is_prob_prime is_strong_pseudoprime
 
 BEGIN {
   $Math::Prime::Util::PrimalityProving::AUTHORITY = 'cpan:DANAJ';
-  $Math::Prime::Util::PrimalityProving::VERSION = '0.45';
+  $Math::Prime::Util::PrimalityProving::VERSION = '0.46';
 }
 
 BEGIN {
@@ -28,15 +28,13 @@ my $_maxint = Math::BigInt->new( (~0 > 4294967296 && $] < 5.008) ? "562949953421
 ###############################################################################
 
 my @_fsublist = (
-  sub { Math::Prime::Util::PP::prho_factor   (shift,    8*1024, 3) },
-  sub { Math::Prime::Util::PP::pminus1_factor(shift,    10_000) },
   sub { Math::Prime::Util::PP::pbrent_factor (shift,   32*1024, 1) },
   sub { Math::Prime::Util::PP::pminus1_factor(shift, 1_000_000) },
+  sub { Math::Prime::Util::PP::ecm_factor    (shift,     1_000,   5_000, 15) },
   sub { Math::Prime::Util::PP::pbrent_factor (shift,  512*1024, 7) },
-  sub { Math::Prime::Util::PP::ecm_factor    (shift,     1_000,   5_000, 10) },
   sub { Math::Prime::Util::PP::pminus1_factor(shift, 4_000_000) },
-  sub { Math::Prime::Util::PP::pbrent_factor (shift,  512*1024, 11) },
   sub { Math::Prime::Util::PP::ecm_factor    (shift,    10_000,  50_000, 10) },
+  sub { Math::Prime::Util::PP::pbrent_factor (shift,  512*1024, 11) },
   sub { Math::Prime::Util::PP::pminus1_factor(shift,20_000_000) },
   sub { Math::Prime::Util::PP::ecm_factor    (shift,   100_000, 800_000, 10) },
   sub { Math::Prime::Util::PP::pbrent_factor (shift, 2048*1024, 13) },
@@ -865,7 +863,7 @@ Math::Prime::Util::PrimalityProving - Primality proofs and certificates
 
 =head1 VERSION
 
-Version 0.45
+Version 0.46
 
 
 =head1 SYNOPSIS
