@@ -142,8 +142,8 @@ sub primality_proof_bls75 {
       @tf = Math::Prime::Util::trial_factor("$B", 20000);
       pop @tf if $tf[-1] > 20000;
     } else {
-      @tf = Math::Prime::Util::PP::trial_factor($B, 500);
-      pop @tf if $tf[-1] > 500;
+      @tf = Math::Prime::Util::PP::trial_factor($B, 5000);
+      pop @tf if $tf[-1] > 5000;
     }
     foreach my $f (@tf) {
       next if $f == $factors[-1];

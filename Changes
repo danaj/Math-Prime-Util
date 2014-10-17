@@ -21,8 +21,7 @@ Revision history for Perl module Math::Prime::Util
 
     - Optimization for PP comparison to ~0.
 
-    - PP factoring is a bit faster, especially for small inputs (something
-      only used when XS disabled).
+    - PP factoring is faster, especially for small inputs.
 
 
 0.45  2014-09-26

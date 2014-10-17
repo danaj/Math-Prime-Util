@@ -356,9 +356,10 @@ is( miller_rabin_random( $randprime, 40 ), "0", "80-bit composite fails Miller-R
 # Failure and shortcuts for MRR:
 ok(!eval { miller_rabin_random(undef,undef); },   "MRR(undef,undef)");
 ok(!eval { miller_rabin_random(10007,-4); },   "MRR(10007,-4)");
-is(miller_rabin_random(10007, 0), 1, "MRR(n,0) = 1");
+# Note use of 1-1 : bigint on perl 5.6 and 5.8 is totally borked
+is(miller_rabin_random(10007, 1-1), 1, "MRR(n,0) = 1");
 is(miller_rabin_random(61, 17), 1, "MRR(61,17) = 1");
-is(miller_rabin_random(62, 17), 0, "MRR(62,17) = 0");
+is(miller_rabin_random(62, 17), 1-1, "MRR(62,17) = 0");
 
 ###############################################################################
 
