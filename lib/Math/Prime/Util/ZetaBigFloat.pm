@@ -202,6 +202,7 @@ my @_Riemann_Zeta_Table = (
 # for k = 1 .. n :  (1 / (zeta(k+1) * k + k)
 # Makes RiemannR run about twice as fast.
 my @_Riemann_Zeta_Premult;
+my $_Riemann_Zeta_premult_accuracy = 0;
 
 # Select n = 55, good for 46ish digits of accuracy.
 my $_Borwein_n = 55;
@@ -425,6 +426,8 @@ sub RiemannR {
   my $xdigits = $x->accuracy || Math::BigFloat->accuracy() || Math::BigFloat->div_scale();
   my $extra_acc = 1;
   $xdigits += $extra_acc;
+  my $orig_acc = Math::BigFloat->accuracy();
+  Math::BigFloat->accuracy($xdigits);
   $x->accuracy($xdigits);
   my $tol = $x->copy->bone->brsft($xdigits-1, 10);
   my $sum = $x->copy->bone;
@@ -434,7 +437,7 @@ sub RiemannR {
     for my $k (1 .. 1000) {
       my $mob = Math::Prime::Util::moebius($k);
       next if $mob == 0;
-      $mob = Math::BigFloat->new($mob);  $mob->accuracy($xdigits);
+      $mob = Math::BigFloat->new($mob);
       my $term = $mob->bdiv($k) *
                  Math::Prime::Util::LogarithmicIntegral($x->copy->broot($k));
       $sum += $term;
@@ -444,16 +447,18 @@ sub RiemannR {
 
   } else {
 
-    my $flogx = log($x);
-    my $part_term = Math::BigFloat->bone;
+    my ($flogx, $part_term, $fone, $bigk)
+    = (log($x), Math::BigFloat->bone, Math::BigFloat->bone, Math::BigInt->bone);
 
-    my ($fone, $bigk) = (Math::BigFloat->bone, Math::BigInt->bone);
-    $fone->accuracy($xdigits);
+    if ($_Riemann_Zeta_premult_accuracy < $xdigits) {
+      @_Riemann_Zeta_Premult = ();
+      $_Riemann_Zeta_premult_accuracy = $xdigits;
+    }
+
     for my $k (1 .. 10000) {
       my $zeta_term = $_Riemann_Zeta_Premult[$k-1];
-      # TODO: The default table is only 44 digits.
       if (!defined $zeta_term) {
-        my $zeta = $_Riemann_Zeta_Table[$k-1];
+        my $zeta = ($xdigits > 44) ? undef : $_Riemann_Zeta_Table[$k-1];
         if (!defined $zeta) {
           my $kz = $fone->copy->badd($bigk);  # kz is k+1
           if (($k+1) >= 100 && $xdigits <= 40) {
@@ -479,6 +484,7 @@ sub RiemannR {
 
   }
   $sum->bround($xdigits-$extra_acc);
+  Math::BigFloat->accuracy($orig_acc);
   return $sum;
 }
 
