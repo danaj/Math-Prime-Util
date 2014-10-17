@@ -121,6 +121,7 @@ plan tests => 0 + 3
                 + scalar @phis
                 + 1  # mr base 2    2-4k
                 + 9  # mr with large bases
+                + 3  # multi-base Fermat/strong pseudoprimes
                 + scalar @small_lucas_trials
                 + scalar(keys %lucas_sequences)
                 + 1  # frob-underwood
@@ -202,6 +203,11 @@ is( is_strong_pseudoprime(367, 1101), 1, "spsp(367, 1101)");
 is( is_strong_pseudoprime(49001, 921211727), 0, "spsp(49001, 921211727)");
 is( is_strong_pseudoprime(  331, 921211727), 1, "spsp(  331, 921211727)");
 is( is_strong_pseudoprime(49117, 921211727), 1, "spsp(49117, 921211727)");
+
+# Some examples of Fermat and strong pseudoprimes
+is(is_pseudoprime(143168581, 2, 3, 5, 7, 11), 1, "143168581 is a Fermat pseudoprime to bases 2,3,5,7,11");
+is(is_strong_pseudoprime(3215031751, 2, 3, 5, 7), 1, "3215031751 is a strong pseudoprime to bases 2,3,5,7");
+is(is_strong_pseudoprime("2152302898747", 2, 3, 5, 7, 11), 1, "2152302898747 is a strong pseudoprime to bases 2,3,5,7,11");
 
 # Verify Lucas for some small numbers
 for my $n (@small_lucas_trials) {

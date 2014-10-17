@@ -266,7 +266,7 @@ is( nth_prime(10001), 104743, "nth_prime(10001)");
   is($pd, 7652413, "largest 7-digit pandigital prime");
 }
 {
-  my $n = pn_primorial(4); 
+  my $n = pn_primorial(4);
   $n++ while (factor_exp($n) != 4 || factor_exp($n+1) != 4 || factor_exp($n+2) != 4 || factor_exp($n+3) != 4);
   is($n, 134043, "first number in sequence of four 4-factor numbers");
 }

@@ -478,6 +478,8 @@ trial_factor(IN UV n, ...)
 
 void
 is_strong_pseudoprime(IN SV* svn, ...)
+  ALIAS:
+    is_pseudoprime = 1
   PREINIT:
     int c, status = 1;
   PPCODE:
@@ -490,9 +492,14 @@ is_strong_pseudoprime(IN SV* svn, ...)
     if (status == 1) {
       UV n = my_svuv(svn);
       int b, ret = 1;
-      if      (n < 4)        { ret = (n >= 2); } /* 0,1 composite; 2,3 prime */
-      else if ((n % 2) == 0) { ret = 0; }        /* evens composite */
-      else {
+      if        (n < 4) {                        /* 0,1 composite; 2,3 prime */
+        ret = (n >= 2);
+      } else if (ix == 1) {                      /* Fermat test */
+        for (c = 1; c < items && ret == 1; c++)
+          ret = _XS_is_pseudoprime(n, my_svuv(ST(c)));
+      } else if ((n % 2) == 0) {                 /* evens composite */
+         ret = 0;
+      } else {
         UV bases[32];
         for (c = 1; c < items && ret == 1; ) {
           for (b = 0; b < 32 && c < items; c++)
@@ -502,7 +509,11 @@ is_strong_pseudoprime(IN SV* svn, ...)
       }
       RETURN_NPARITY(ret);
     }
-    _vcallsub_with_gmp("is_strong_pseudoprime");
+    switch (ix) {
+      case 0: _vcallsub_with_gmp("is_strong_pseudoprime"); break;
+      case 1:
+      default:_vcallsub_with_gmp("is_pseudoprime");  break;
+    }
     return; /* skip implicit PUTBACK */
 
 void
@@ -695,8 +706,7 @@ is_prime(IN SV* svn, ...)
     is_frobenius_underwood_pseudoprime = 8
     is_perrin_pseudoprime = 9
     is_power = 10
-    is_pseudoprime = 11
-    is_almost_extra_strong_lucas_pseudoprime = 12
+    is_almost_extra_strong_lucas_pseudoprime = 11
   PREINIT:
     int status;
   PPCODE:
@@ -724,8 +734,7 @@ is_prime(IN SV* svn, ...)
           case 8:  ret = _XS_is_frobenius_underwood_pseudoprime(n); break;
           case 9:  ret = is_perrin_pseudoprime(n); break;
           case 10: ret = is_power(n, a); break;
-          case 11: ret = _XS_is_pseudoprime(n, (items == 1) ? 2 : a); break;
-          case 12:
+          case 11:
           default: ret = _XS_is_almost_extra_strong_lucas_pseudoprime
                          (n, (items == 1) ? 1 : a); break;
         }
@@ -744,8 +753,7 @@ is_prime(IN SV* svn, ...)
       case 8: _vcallsub_with_gmp("is_frobenius_underwood_pseudoprime"); break;
       case 9: _vcallsub_with_gmp("is_perrin_pseudoprime"); break;
       case 10:_vcallsub_with_gmp("is_power"); break;
-      case 11:_vcallsub_with_gmp("is_pseudoprime"); break;
-      case 12:
+      case 11:
       default:_vcallsub_with_gmp("is_almost_extra_strong_lucas_pseudoprime"); break;
     }
     return; /* skip implicit PUTBACK */
@@ -851,7 +859,7 @@ _pidigits(IN int digits)
       New(0, out, digits+5+1, char);
       *out++ = '3';  /* We'll turn "31415..." into "3.1415..." */
       for (b = 0; b < c; b++)  a[b] = 20000000;
-      
+
       while ((b = c -= 14) > 0 && i < digits) {
         d = e = d % f;
         while (--b > 0) {
@@ -954,7 +962,7 @@ divisor_sum(IN SV* svn, ...)
     nstatus = _validate_int(aTHX_ svn, 0);
     kstatus = (items == 1 || (SvIOK(svk) && SvIV(svk) >= 0))  ?  1  :  0;
     /* The above doesn't understand small bigints */
-    if (nstatus == 1 && kstatus == 0 && SvROK(svk) && sv_isa(svk, "Math::BigInt") || sv_isa(svk, "Math::GMP"))
+    if (nstatus == 1 && kstatus == 0 && SvROK(svk) && (sv_isa(svk, "Math::BigInt") || sv_isa(svk, "Math::GMP")))
       kstatus = _validate_int(aTHX_ svk, 0);
     if (nstatus == 1 && kstatus == 1) {
       UV n = my_svuv(svn);

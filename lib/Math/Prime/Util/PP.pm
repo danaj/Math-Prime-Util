@@ -1831,21 +1831,23 @@ sub stirling {
 }
 
 sub is_pseudoprime {
-  my($n, $base) = @_;
+  my($n, @bases) = @_;
   return 0 if int($n) < 0;
   _validate_positive_integer($n);
+  croak("No bases given to is_pseudoprime") unless scalar(@bases) > 0;
+  return 0+($n >= 2) if $n < 4;
 
-  if ($n < 5) { return ($n == 2) || ($n == 3) ? 1 : 0; }
-  $base = 2 if !defined $base;
-  croak "Base $base is invalid" if $base < 2;
-  if ($base >= $n) {
-    $base = $base % $n;
-    return 1 if $base <= 1 || $base == $n-1;
-  }
-  my $x = (ref($n) eq 'Math::BigInt')
-        ? $n->copy->bzero->badd($base)->bmodpow($n-1,$n)
+  foreach my $base (@bases) {
+    croak "Base $base is invalid" if $base < 2;
+    $base = $base % $n if $base >= $n;
+    if ($base > 1 && $base != $n-1) {
+      my $x = (ref($n) eq 'Math::BigInt')
+        ? $n->copy->bzero->badd($base)->bmodpow($n-1,$n)->is_one
         : _powmod($base, $n-1, $n);
-  return ($x == 1) ? 1 : 0;
+      return 0 unless $x == 1;
+    }
+  }
+  1;
 }
 
 sub _miller_rabin_2 {
@@ -1907,6 +1909,7 @@ sub is_strong_pseudoprime {
   my($n, @bases) = @_;
   return 0 if int($n) < 0;
   _validate_positive_integer($n);
+  croak("No bases given to is_strong_pseudoprime") unless scalar(@bases) > 0;
 
   return 0+($n >= 2) if $n < 4;
   return 0 if ($n % 2) == 0;

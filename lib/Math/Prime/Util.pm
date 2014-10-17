@@ -1594,23 +1594,25 @@ on the approximate twin prime count.
 
 =head2 is_pseudoprime
 
-Takes a positive number C<n> and a base C<a> as input, and returns 1 if
-C<n> is a probable prime to base C<a>.  This is the simple Fermat primality
-test.  Removing primes, given base 2 this produces the sequence
-L<OEIS A001567|http://oeis.org/A001567>.
+Takes a positive number C<n> and one or more non-zero positive bases as input.
+Returns C<1> if the input is a probable prime to each base, C<0> if not.
+This is the simple Fermat primality test.
+Removing primes, given base 2 this produces the sequence L<OEIS A001567|http://oeis.org/A001567>.
+
+For practical use, L</is_strong_pseudoprime> is a much stronger test with
+similar or better performance.
 
 =head2 is_strong_pseudoprime
 
   my $maybe_prime = is_strong_pseudoprime($n, 2);
   my $probably_prime = is_strong_pseudoprime($n, 2, 3, 5, 7, 11, 13, 17);
 
-Takes a positive number as input and one or more bases.  The bases must be
-greater than C<1>.  Returns 1 if the input is a strong probable prime
-to all of the bases, and 0 if not.
+Takes a positive number C<n> and one or more non-zero positive bases as input.
+Returns C<1> if the input is a strong probable prime to each base, C<0> if not.
 
 If 0 is returned, then the number really is a composite.  If 1 is returned,
 then it is either a prime or a strong pseudoprime to all the given bases.
-Given enough distinct bases, the chances become very, very strong that the
+Given enough distinct bases, the chances become very, very high that the
 number is actually prime.
 
 This is usually used in combination with other tests to make either stronger

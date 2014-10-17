@@ -90,3 +90,6 @@
 
 - xt/pari-compare:  add chinese, factorial, vecmin, vecmax,
                         bernfrac, bernreal, LambertW.
+
+- reduce:  vecreduce, vecfold, fold, reduce.  Probably make this identical
+  to List::Util::reduce for portability ease.

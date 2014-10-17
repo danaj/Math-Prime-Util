@@ -561,7 +561,7 @@ sub gen_and_filter {
   sub find_mod210_restriction {
     my %mods_left;
     undef @mods_left{ grep { ($_%2) && ($_%3) && ($_%5) && ($_%7) } (0..209) };
-  
+
     my $min = 0;
     while (my($filter,$data) = each %_mod210_restrict) {
       next unless exists $opts{$filter};
