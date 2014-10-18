@@ -1622,6 +1622,8 @@ sub chinese {
 }
 
 sub vecsum {
+  return Math::Prime::Util::_reftyped($_[0], @_ ? $_[0] : 0)  if @_ <= 1;
+
   if (defined &Math::Prime::Util::GMP::vecsum && Math::Prime::Util::prime_get_config()->{'gmp'}) {
     return Math::Prime::Util::_reftyped($_[0], Math::Prime::Util::GMP::vecsum(@_));
   }

@@ -93,3 +93,13 @@
 
 - reduce:  vecreduce, vecfold, fold, reduce.  Probably make this identical
   to List::Util::reduce for portability ease.
+
+- In vecsum, we could create the string and call vecsum with 1 argument.  The
+  trick is telling vecsum we only want one thing.  Idea:
+
+      if (status != 0) {
+        dSP; ENTER; PUSHMARK(SP);
+        XPUSHs(sv_2mortal(newSVpvn("123456789012345678901234567890", 30)));
+        PUTBACK; _vcallsubn(aTHX_ G_SCALAR, VCALL_PP, "vecsum", 1); LEAVE;
+        return;
+      }
