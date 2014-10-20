@@ -3,12 +3,14 @@ Revision history for Perl module Math::Prime::Util
 
 0.46  2014-?
 
-    [Misc]
+    [API Changes]
 
-    - is_pseudoprime arguments act like is_strong_pseudoprime now.  That is,
-      it requires one or more bases.  Previously it took only one base and
-      defaulted to 2.  Since the default was not documented, this should be
-      backward-compatible.
+    - is_pseudoprime has the same signature as is_strong_pseudoprime now.
+      This means it requires one or more bases and has no default base.
+      The documentation had never mentioned the default, so this should
+      have little impact, and the common signature makes more sense.
+
+    [Misc]
 
     - Syntax fix from Salvatore.
 
