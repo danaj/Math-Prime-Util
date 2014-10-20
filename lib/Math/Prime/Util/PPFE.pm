@@ -420,6 +420,12 @@ sub valuation {
   _validate_positive_integer($k);
   return Math::Prime::Util::PP::valuation($n, $k);
 }
+sub hammingweight {
+  my($n) = @_;
+  $n = -$n if defined $n && $n < 0;
+  _validate_positive_integer($n);
+  return Math::Prime::Util::PP::hammingweight($n);
+}
 
 sub Pi {
   my($digits) = @_;

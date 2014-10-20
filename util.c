@@ -1295,6 +1295,38 @@ UV valuation(UV n, UV k)
   return v;
 }
 
+UV popcount(UV n) {  return popcnt(n);  }
+
+UV popcount_string(const char* ptr, int len)
+{
+  int *s, *sptr;
+  UV i, count = 0;
+
+  while (len > 0 && (*ptr == '0' || *ptr == '+' || *ptr == '-'))
+    {  ptr++;  len--;  }
+
+  New(0, s, len, int);
+  for (i = 0; i < len; i++)
+    s[i] = ptr[i] - '0';
+
+  while (len > 0) {
+    if (s[len-1] & 1)  count++;
+    /* divide by 2 */
+    sptr = s;
+    if (s[0] == 1) {
+      if (--len == 0) break;
+      *++sptr += 10;
+    }
+    for (i = 0; i < len; i++) {
+      if ( (i+1) < len  &&  sptr[i] & 1 ) sptr[i+1] += 10;
+      s[i] = sptr[i] / 2;
+    }
+  }
+  Safefree(s);
+  return count;
+}
+
+
 /* How many times does 2 divide n? */
 #define padic2(n)  ctz(n)
 #define IS_MOD8_3OR5(x)  (((x)&7)==3 || ((x)&7)==5)

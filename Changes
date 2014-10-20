@@ -10,6 +10,10 @@ Revision history for Perl module Math::Prime::Util
       The documentation had never mentioned the default, so this should
       have little impact, and the common signature makes more sense.
 
+    [ADDED]
+
+    - hammingweight(n)          Population count (count binary 1s)
+
     [Misc]
 
     - Syntax fix from Salvatore.

@@ -1742,6 +1742,11 @@ sub valuation {
   $v;
 }
 
+sub hammingweight {
+  my $n = shift;
+  return 0 + (Math::BigInt->new("$n")->as_bin() =~ tr/1//);
+}
+
 sub _bernden {
   my $n = shift;
   return BTWO if $n == 1;

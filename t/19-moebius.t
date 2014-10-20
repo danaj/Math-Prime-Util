@@ -8,6 +8,7 @@ use Math::Prime::Util
       chebyshev_theta chebyshev_psi carmichael_lambda znorder liouville
       znprimroot znlog kronecker legendre_phi gcd lcm is_power valuation
       invmod vecsum vecprod binomial gcdext chinese vecmin vecmax factorial
+      hammingweight
      /;
 
 my $extra = defined $ENV{EXTENDED_TESTING} && $ENV{EXTENDED_TESTING};
@@ -273,6 +274,17 @@ my @valuations = (
   [1,0, 0],
   [96552,6, 3],
   [1879048192,2, 28],
+);
+
+my @popcounts = (
+  [0, 0],
+  [1, 1],
+  [2, 1],
+  [3, 2],
+  [452398, 12],
+  [-452398, 12],
+  [4294967295, 32],
+  ["777777777777777714523989234823498234098249108234236", 83],
 );
 
 my @legendre_sums = (
@@ -578,6 +590,7 @@ plan tests => 0 + 1
                 + scalar(@znlogs)
                 + scalar(@legendre_sums)
                 + scalar(@valuations)
+                + scalar(@popcounts)
                 + 3 + scalar(@invmods)
                 + scalar(@vecsums)
                 + 1 + scalar(@vecprods)
@@ -813,6 +826,11 @@ while (my($e, $vals) = each (%powers)) {
 foreach my $r (@valuations) {
   my($n, $k, $exp) = @$r;
   is( valuation($n, $k), $exp, "valuation($n,$k) = $exp" );
+}
+###### hammingweight
+foreach my $r (@popcounts) {
+  my($n, $exp) = @$r;
+  is( hammingweight($n), $exp, "hammingweight($n) = $exp" );
 }
 ###### invmod
 ok(!eval { invmod(undef,11); }, "invmod(undef,11)");

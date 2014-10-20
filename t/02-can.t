@@ -35,12 +35,13 @@ my @functions =  qw(
       random_maurer_prime random_maurer_prime_with_cert
       random_shawe_taylor_prime random_shawe_taylor_prime_with_cert
       primorial pn_primorial consecutive_integer_lcm gcdext chinese
-      gcd lcm factor factor_exp divisors valuation invmod vecsum vecmin vecmax
+      gcd lcm factor factor_exp divisors valuation invmod hammingweight
+      vecsum vecmin vecmax vecprod
       moebius mertens euler_phi jordan_totient exp_mangoldt liouville
-      partitions
+      partitions bernfrac bernreal
       chebyshev_theta chebyshev_psi
-      divisor_sum carmichael_lambda
-      kronecker binomial factorial znorder znprimroot znlog legendre_phi
-      ExponentialIntegral LogarithmicIntegral RiemannZeta RiemannR
+      divisor_sum carmichael_lambda kronecker
+      binomial factorial stirling znorder znprimroot znlog legendre_phi
+      ExponentialIntegral LogarithmicIntegral RiemannZeta RiemannR LambertW Pi
                    );
 can_ok( 'Math::Prime::Util', @functions);

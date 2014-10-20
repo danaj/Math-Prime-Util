@@ -42,7 +42,7 @@ our @EXPORT_OK =
       random_maurer_prime random_maurer_prime_with_cert
       random_shawe_taylor_prime random_shawe_taylor_prime_with_cert
       primorial pn_primorial consecutive_integer_lcm gcdext chinese
-      gcd lcm factor factor_exp divisors valuation invmod
+      gcd lcm factor factor_exp divisors valuation invmod hammingweight
       vecsum vecmin vecmax vecprod
       moebius mertens euler_phi jordan_totient exp_mangoldt liouville
       partitions bernfrac bernreal
@@ -2232,6 +2232,13 @@ by C<k>.  This is a very limited version of the algebraic valuation meaning,
 just applied to integers.
 This corresponds to Pari's C<valuation> function.
 C<0> is returned if C<n> or C<k> is one of the values C<-1>, C<0>, or C<1>.
+
+=head2 hammingweight
+
+Given an integer C<n>, returns the binary Hamming weight of C<abs(n)>.  This
+is also called the population count, and is the number of 1s in the binary
+representation.  This corresponds to Pari's C<hammingweight> function for
+C<t_INT> arguments.
 
 =head2 moebius
 

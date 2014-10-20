@@ -1230,6 +1230,7 @@ carmichael_lambda(IN SV* svn)
     factorial = 5
     exp_mangoldt = 6
     znprimroot = 7
+    hammingweight = 8
   PREINIT:
     int status;
   PPCODE:
@@ -1249,11 +1250,13 @@ carmichael_lambda(IN SV* svn)
                  if (r != 0) XSRETURN_UV(r);
                  status = 0; break;
         case 6:  XSRETURN_UV( (status == -1) ? 1 : exp_mangoldt(n) ); break;
-        case 7:
-        default: if (status == -1) n = -(IV)n;
+        case 7:  if (status == -1) n = -(IV)n;
                  r = znprimroot(n);
                  if (r == 0 && n != 1)  XSRETURN_UNDEF;  /* No root */
                  XSRETURN_UV(r);  break;
+        case 8:
+        default: if (status == -1) n = -(IV)n;
+                 XSRETURN_UV(popcount(n));  break;
       }
     }
     switch (ix) {
@@ -1264,8 +1267,11 @@ carmichael_lambda(IN SV* svn)
       case 4:  _vcallsub_with_pp("chebyshev_psi"); break;
       case 5:  _vcallsub_with_pp("factorial"); break;
       case 6:  _vcallsub_with_gmp("exp_mangoldt"); break;
-      case 7:
-      default: _vcallsub_with_gmp("znprimroot");
+      case 7:  _vcallsub_with_gmp("znprimroot"); break;
+      case 8:
+      default: { char* ptr;  STRLEN len;  ptr = SvPV_nomg(svn, len);
+                 XSRETURN_UV(popcount_string(ptr, len)); }
+               break;
     }
     return; /* skip implicit PUTBACK */
 
