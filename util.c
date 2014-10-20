@@ -1299,8 +1299,8 @@ UV popcount(UV n) {  return popcnt(n);  }
 
 UV popcount_string(const char* ptr, int len)
 {
-  int *s, *sptr;
-  UV i, count = 0;
+  int i, *s, *sptr;
+  UV count = 0;
 
   while (len > 0 && (*ptr == '0' || *ptr == '+' || *ptr == '-'))
     {  ptr++;  len--;  }
