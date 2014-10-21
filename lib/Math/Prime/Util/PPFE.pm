@@ -514,6 +514,17 @@ sub forperm (&$;$) {    ## no critic qw(ProhibitSubroutinePrototypes)
   Math::Prime::Util::PP::forperm(@_);
 }
 
+sub vecreduce (&@) {    ## no critic qw(ProhibitSubroutinePrototypes)
+  my($sub, @v) = @_;
+  my $count = shift @v;
+  for my $v (@v) {
+    no strict 'refs'; ## no critic(strict)
+    local( ${caller() . '::a'}, ${caller() . '::b'} ) = ($count, $v);
+    $count = $sub->();
+  }
+  $count;
+}
+
 1;
 
 __END__

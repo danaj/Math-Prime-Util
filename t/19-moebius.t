@@ -8,7 +8,7 @@ use Math::Prime::Util
       chebyshev_theta chebyshev_psi carmichael_lambda znorder liouville
       znprimroot znlog kronecker legendre_phi gcd lcm is_power valuation
       invmod vecsum vecprod binomial gcdext chinese vecmin vecmax factorial
-      hammingweight
+      hammingweight vecreduce
      /;
 
 my $extra = defined $ENV{EXTENDED_TESTING} && $ENV{EXTENDED_TESTING};
@@ -596,6 +596,7 @@ plan tests => 0 + 1
                 + 1 + scalar(@vecprods)
                 + scalar(@vecmins)
                 + scalar(@vecmaxs)
+                + 4  # vecreduce
                 + 2 + scalar(@binomials)
                 + scalar(keys %powers)
                 + scalar(keys %primroots) + 1
@@ -876,6 +877,14 @@ foreach my $r (@vecmaxs) {
     my($exp, @vals) = @$r;
     is( vecmax(@vals), $exp, "vecmax(@vals) = $exp" );
   }
+}
+###### vecreduce
+{
+  my $fail = 0;
+  is(vecreduce(sub{ $a + $b },()), undef, "vecreduce with empty list is undef");
+  is(vecreduce(sub{ $fail = 1; 0; },(15)), 15+$fail, "vecreduce with (a) is a and does not call the sub");
+  is(vecreduce(sub{ $a ^ $b },(4,2)), 6, "vecreduce [xor] (4,2) => 6");
+  is(vecreduce(sub{ $a * $b**2 },(1, 17, 18, 19)), 17**2 * 18**2 * 19**2, "vecreduce product of squares");
 }
 ###### binomial
 foreach my $r (@binomials) {

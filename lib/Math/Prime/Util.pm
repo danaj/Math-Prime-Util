@@ -43,7 +43,7 @@ our @EXPORT_OK =
       random_shawe_taylor_prime random_shawe_taylor_prime_with_cert
       primorial pn_primorial consecutive_integer_lcm gcdext chinese
       gcd lcm factor factor_exp divisors valuation invmod hammingweight
-      vecsum vecmin vecmax vecprod
+      vecsum vecmin vecmax vecprod vecreduce
       moebius mertens euler_phi jordan_totient exp_mangoldt liouville
       partitions bernfrac bernreal
       chebyshev_theta chebyshev_psi
@@ -60,6 +60,12 @@ my %_Config;
 
 # Similar to how boolean handles its option
 sub import {
+    if ($] < 5.020) {   # Prevent "used only once" warnings
+      my $pkg = caller;
+      no strict 'refs';  ## no critic(strict)
+      ${"${pkg}::a"} = ${"${pkg}::a"};
+      ${"${pkg}::b"} = ${"${pkg}::b"};
+    }
     my @options = grep $_ ne '-nobigint', @_;
     $_[0]->_import_nobigint if @options != @_;
     @_ = @options;
@@ -915,7 +921,7 @@ __END__
 
 =encoding utf8
 
-=for stopwords forprimes forcomposites foroddcomposites fordivisors forpart forcomb forperm Möbius Deléglise Bézout totient moebius mertens liouville znorder irand primesieve uniqued k-tuples von SoE pari yafu fonction qui compte le nombre nombres voor PhD superset sqrt(N) gcd(A^M k-th (10001st primegen libtommath kronecker znprimroot znlog gcd lcm invmod untruncated vecsum vecprod vecmin vecmax gcdext chinese LambertW bernfrac bernreal stirling hammingweight
+=for stopwords forprimes forcomposites foroddcomposites fordivisors forpart forcomb forperm Möbius Deléglise Bézout totient moebius mertens liouville znorder irand primesieve uniqued k-tuples von SoE pari yafu fonction qui compte le nombre nombres voor PhD superset sqrt(N) gcd(A^M k-th (10001st primegen libtommath kronecker znprimroot znlog gcd lcm invmod untruncated vecsum vecprod vecmin vecmax vecreduce gcdext chinese LambertW bernfrac bernreal stirling hammingweight
 
 =for test_synopsis use v5.14;  my($k,$x);
 
@@ -2209,6 +2215,27 @@ validates and compares all results as integers.  The validation step will
 make it a little slower than L<List::Util/max> but this prevents accidental
 and unintentional use of floats.
 
+=head2 vecreduce
+
+  say "Count of non-zero elements: ", vecreduce { $a + !!$b } (0,@v);
+  my $checksum = vecreduce { $a ^ $b } @{twin_primes(1000000)};
+
+Does a reduce operation via left fold.  Takes a block and a list as arguments.
+The block uses the special local variables C<a> and C<b> representing the
+accumulation and next element respectively, with the result of the block being
+used for the new accumulation.  No initial element is used, so C<undef>
+will be returned with an empty list.
+
+The interface is exactly the same as L<List::Util/reduce>.  This was done to
+increase portability and minimize confusion.  See chapter 7 of Higher Order
+Perl (or many other references) for a discussion of reduce with empty or
+singular-element lists.  It is often a good idea to give an identity element
+as the first list argument.
+
+While operations like L<vecmin>, L<vecmax>, L<vecsum>, L<vecprod>, etc. can
+be fairly easily done with this function, it will not be as efficient.  There
+are a wide variety of other functions that can be easily made with reduce,
+making it a useful tool.
 
 =head2 invmod
 

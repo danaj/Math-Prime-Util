@@ -1718,3 +1718,52 @@ forcomb (SV* block, IN SV* svn, IN SV* svk = 0)
     for (i = 0; i < n; i++)
       SvREFCNT_dec(svals[i]);
     Safefree(svals);
+
+void
+vecreduce(SV* block, ...)
+PROTOTYPE: &@
+CODE:
+{   /* This is basically reduce from List::Util.  Try to maintain compat. */
+    SV *ret = sv_newmortal();
+    int i;
+    GV *agv,*bgv,*gv;
+    HV *stash;
+    SV **args = &PL_stack_base[ax];
+    CV *cv = sv_2cv(block, &stash, &gv, 0);
+
+    if (cv == Nullcv) croak("Not a subroutine reference");
+    if (items <= 1) XSRETURN_UNDEF;
+
+    agv = gv_fetchpv("a", GV_ADD, SVt_PV);
+    bgv = gv_fetchpv("b", GV_ADD, SVt_PV);
+    SAVESPTR(GvSV(agv));
+    SAVESPTR(GvSV(bgv));
+    GvSV(agv) = ret;
+    SvSetMagicSV(ret, args[1]);
+#ifdef dMULTICALL
+    if (!CvISXSUB(cv)) {
+      dMULTICALL;
+      I32 gimme = G_SCALAR;
+      PUSH_MULTICALL(cv);
+      for (i = 2; i < items; i++) {
+        GvSV(bgv) = args[i];
+        MULTICALL;
+        SvSetMagicSV(ret, *PL_stack_sp);
+      }
+      FIX_MULTICALL_REFCOUNT;
+      POP_MULTICALL;
+    }
+    else
+#endif
+    {
+      for (i = 2; i < items; i++) {
+        dSP;
+        GvSV(bgv) = args[i];
+        PUSHMARK(SP);
+        call_sv((SV*)cv, G_SCALAR);
+        SvSetMagicSV(ret, *PL_stack_sp);
+      }
+    }
+    ST(0) = ret;
+    XSRETURN(1);
+}

@@ -13,6 +13,7 @@ Revision history for Perl module Math::Prime::Util
     [ADDED]
 
     - hammingweight(n)          Population count (count binary 1s)
+    - vecreduce {...} @v        Reduce/fold, exactly like List::Util::reduce
 
     [Misc]
 
