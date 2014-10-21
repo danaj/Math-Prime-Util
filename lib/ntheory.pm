@@ -123,6 +123,7 @@ See L<Math::Prime::Util> for complete documentation.
   vecprod(@list)                      integer product of list
   vecmin(@list)                       minimum of list of integers
   vecmax(@list)                       maximum of list of integers
+  vecreduce { ... } @list             reduce / left fold applied to list
   is_power(n)                         return k if n = p^k for integer p
   gcd(@list)                          greatest common divisor
   lcm(@list)                          least common multiple
@@ -134,6 +135,7 @@ See L<Math::Prime::Util> for complete documentation.
   binomial(n,k)                       binomial coefficient
   partitions(n)                       number of integer partitions
   valuation(n,k)                      number of times n is divisible by k
+  hammingweight(n)                    population count (# of binary 1s)
   kronecker(a,b)                      Kronecker (Jacobi) symbol
   invmod(a,n)                         inverse of a modulo n
   moebius(n)                          Moebius function of n
