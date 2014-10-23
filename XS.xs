@@ -1256,7 +1256,7 @@ carmichael_lambda(IN SV* svn)
                  XSRETURN_UV(r);  break;
         case 8:
         default: if (status == -1) n = -(IV)n;
-                 XSRETURN_UV(popcount(n));  break;
+                 XSRETURN_UV(mpu_popcount(n));  break;
       }
     }
     switch (ix) {
@@ -1270,7 +1270,7 @@ carmichael_lambda(IN SV* svn)
       case 7:  _vcallsub_with_gmp("znprimroot"); break;
       case 8:
       default: { char* ptr;  STRLEN len;  ptr = SvPV_nomg(svn, len);
-                 XSRETURN_UV(popcount_string(ptr, len)); }
+                 XSRETURN_UV(mpu_popcount_string(ptr, len)); }
                break;
     }
     return; /* skip implicit PUTBACK */

@@ -1302,9 +1302,9 @@ UV valuation(UV n, UV k)
   return v;
 }
 
-UV popcount(UV n) {  return popcnt(n);  }
+UV mpu_popcount(UV n) {  return popcnt(n);  }
 
-UV popcount_string(const char* ptr, int len)
+UV mpu_popcount_string(const char* ptr, int len)
 {
   int i, *s, *sptr;
   UV count = 0;

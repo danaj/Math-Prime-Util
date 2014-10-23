@@ -1,6 +1,11 @@
 Revision history for Perl module Math::Prime::Util
 
 
+0.47  2014-10-?
+
+    - NetBSD improperly exports symbols in string.h, including popcount.
+      Rename our internal function to work around it.
+
 0.46  2014-10-21
 
     [API Changes]

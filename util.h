@@ -28,8 +28,8 @@ extern UV  nth_twin_prime_approx(UV n);
 extern int powerof(UV n);
 extern int is_power(UV n, UV a);
 extern UV valuation(UV n, UV k);
-extern UV popcount(UV n);
-extern UV popcount_string(const char* ptr, int len);
+extern UV mpu_popcount(UV n);
+extern UV mpu_popcount_string(const char* ptr, int len);
 
 extern signed char* _moebius_range(UV low, UV high);
 extern UV*    _totient_range(UV low, UV high);
