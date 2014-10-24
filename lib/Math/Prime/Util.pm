@@ -2107,9 +2107,17 @@ determine if C<n> is a perfect power.
 
 If given two arguments C<n> and C<k>, returns 1 if C<n> is a C<k-th> power,
 and 0 otherwise.  For example, if C<k=2> then this detects perfect squares.
+Setting C<k=0> gives behavior like the first case (the largest root is found
+and its value is returned).
 
-This corresponds to Pari/GP's C<ispower> function, with the limitations of
-only integer arguments and no third argument may be given to return the root.
+If a third argument is present, it must be a scalar reference.  If C<n> is
+a k-th power, then this will be set to the k-th root of C<n>.  For example:
+
+  my $n = 222657534574035968;
+  if (my $pow = is_power($n, 0, \my $root)) { say "$n = $root^$pow" }
+  # prints:  222657534574035968 = 2948^5
+
+This corresponds to Pari/GP's C<ispower> function with integer arguments.
 
 
 =head2 lucas_sequence

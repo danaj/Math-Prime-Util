@@ -27,6 +27,7 @@ extern UV  nth_twin_prime_approx(UV n);
 
 extern int powerof(UV n);
 extern int is_power(UV n, UV a);
+extern UV rootof(UV n, UV k);
 extern UV valuation(UV n, UV k);
 extern UV mpu_popcount(UV n);
 extern UV mpu_popcount_string(const char* ptr, int len);

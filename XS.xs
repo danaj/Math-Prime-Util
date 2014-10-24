@@ -733,7 +733,12 @@ is_prime(IN SV* svn, ...)
                    } break;
           case 8:  ret = _XS_is_frobenius_underwood_pseudoprime(n); break;
           case 9:  ret = is_perrin_pseudoprime(n); break;
-          case 10: ret = is_power(n, a); break;
+          case 10: ret = is_power(n, a);
+                   if (ret && items == 3) {
+                     if (!SvROK(ST(2))) croak("is_power third argument not a scalar reference");
+                     sv_setuv(SvRV(ST(2)), rootof(n, a ? a : ret));
+                   }
+                   break;
           case 11:
           default: ret = _XS_is_almost_extra_strong_lucas_pseudoprime
                          (n, (items == 1) ? 1 : a); break;
@@ -752,7 +757,12 @@ is_prime(IN SV* svn, ...)
       case 7: _vcallsub_with_gmp("is_frobenius_pseudoprime"); break;
       case 8: _vcallsub_with_gmp("is_frobenius_underwood_pseudoprime"); break;
       case 9: _vcallsub_with_gmp("is_perrin_pseudoprime"); break;
-      case 10:_vcallsub_with_gmp("is_power"); break;
+      case 10:if (items == 3) {
+                _vcallsub_with_pp("is_power");
+              } else {
+                _vcallsub_with_gmp("is_power");
+              }
+              break;
       case 11:
       default:_vcallsub_with_gmp("is_almost_extra_strong_lucas_pseudoprime"); break;
     }

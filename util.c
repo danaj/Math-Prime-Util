@@ -1288,6 +1288,16 @@ int is_power(UV n, UV a)
   if (a != 0) return !(ret % a);  /* Is the max power divisible by a? */
   return (ret == 1) ? 0 : ret;
 }
+UV rootof(UV n, UV k)
+{
+  switch (k) {
+    case 0:  return 0;
+    case 1:  return n;
+    case 2:  return isqrt(n);
+    case 3:  return icbrt(n);
+    default: return (UV) powl((long double)n, 1.0L/(long double)k);
+  }
+}
 
 UV valuation(UV n, UV k)
 {
