@@ -158,6 +158,7 @@ static void poly_mod_sqr(UV* px, UV* res, UV r, UV mod)
 {
   UV c, d, s, sum, rindex, maxpx;
   UV degree = r-1;
+  int native_sqr = (mod > isqrt(UV_MAX/r)) ? 0 : 1;
 
   memset(res, 0, r * sizeof(UV)); /* zero out sums */
   /* Discover index of last non-zero value in px */
@@ -175,22 +176,35 @@ static void poly_mod_sqr(UV* px, UV* res, UV r, UV mod)
     pp1 = px + s_beg;
     pp2 = px + d - s_beg;
     ppend = px + s_end;
-    while (pp1 < ppend)
-      sum += 2 * *pp1++  *  *pp2--;
-    /* Special treatment for last point */
-    c = px[s_end];
-    sum += (s_end*2 == d)  ?  c*c  :  2*c*px[d-s_end];
-    rindex = (d < r) ? d : d-r;  /* d % r */
-    res[rindex] = (res[rindex] + sum) % mod;
+    if (native_sqr) {
+      while (pp1 < ppend)
+        sum += 2 * *pp1++  *  *pp2--;
+      /* Special treatment for last point */
+      c = px[s_end];
+      sum += (s_end*2 == d)  ?  c*c  :  2*c*px[d-s_end];
+      rindex = (d < r) ? d : d-r;  /* d % r */
+      res[rindex] = (res[rindex] + sum) % mod;
+    } else {
+      while (pp1 < ppend) {
+        UV p1 = *pp1++;
+        UV p2 = *pp2--;
+        sum = addmod(sum, mulmod(2, mulmod(p1, p2, mod), mod), mod);
+      }
+      c = px[s_end];
+      if (s_end*2 == d)
+        sum = addmod(sum, sqrmod(c, mod), mod);
+      else
+        sum = addmod(sum, mulmod(2, mulmod(c, px[d-s_end], mod), mod), mod);
+      rindex = (d < r) ? d : d-r;  /* d % r */
+      res[rindex] = addmod(res[rindex], sum, mod);
+    }
   }
   memcpy(px, res, r * sizeof(UV)); /* put result in px */
 }
 
 static UV* poly_mod_pow(UV* pn, UV power, UV r, UV mod)
 {
-  UV* res;
-  UV* temp;
-  int use_sqr = (mod > isqrt(UV_MAX/r)) ? 0 : 1;
+  UV *res, *temp;
 
   Newz(0, res, r, UV);
   New(0, temp, r, UV);
@@ -199,10 +213,7 @@ static UV* poly_mod_pow(UV* pn, UV power, UV r, UV mod)
   while (power) {
     if (power & 1)  poly_mod_mul(res, pn, temp, r, mod);
     power >>= 1;
-    if (power) {
-      if (use_sqr)  poly_mod_sqr(pn, temp, r, mod);
-      else          poly_mod_mul(pn, pn, temp, r, mod);
-    }
+    if (power)      poly_mod_sqr(pn, temp, r, mod);
   }
   Safefree(temp);
   return res;
