@@ -9,6 +9,8 @@ Revision history for Perl module Math::Prime::Util
     - is_power now takes an optional scalar reference third argument which
       will be set to the root if found.
 
+    - AKS is ~20% faster for larger than half-word inputs.
+
 
 0.46  2014-10-21
 
