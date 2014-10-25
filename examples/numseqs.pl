@@ -541,10 +541,8 @@ sub power_part {
   my($n, $power) = @_;
   return 1 if $power == 2 && moebius($n);
   foreach my $d (reverse divisors($n)) {
-    if (is_power($d,$power)) {
-      return ($power == 2) ? int(sqrt($d))
-                           : int($d ** (1.0/$power) + 0.000000001);
-#                          : int(Math::BigInt->new("$d")->broot($power)->bstr);
+    if (is_power($d,$power,\my $root)) {
+      return $root;
     }
   }
   1;

@@ -1229,7 +1229,7 @@ int powerof(UV n) {
   { UV cb = icbrt(n);  if (cb*cb*cb==n) return 3 * powerof(cb); }
   for (ib = 3; ib <= iblast; ib++) { /* prime exponents from 5 to 7-or-13 */
     UV k, pk, root, b = primes_small[ib];
-    root = (UV) ( pow(n, 1.0 / b ) + 0.01 );
+    root = (UV) ( pow(n, 1.0 / b ) + 1e-6 );
     pk = root * root * root * root * root;
     for (k = 5; k < b; k++)
       pk *= root;
@@ -1281,7 +1281,7 @@ int is_power(UV n, UV a)
       { UV cb = icbrt(n);
         return (cb*cb*cb != n)       ? 0 : (a == 3) ? 1 : is_power(cb, a/3); }
     if ((a % 5) == 0)
-      { UV r5 = (UV)(pow(n,0.2) + 0.0001);
+      { UV r5 = (UV)(pow(n,0.2) + 1e-6);
         return (r5*r5*r5*r5*r5 != n) ? 0 : (a == 5) ? 1 : is_power(r5, a/5); }
   }
   ret = powerof(n);
@@ -1295,7 +1295,7 @@ UV rootof(UV n, UV k)
     case 1:  return n;
     case 2:  return isqrt(n);
     case 3:  return icbrt(n);
-    default: return (UV) powl((long double)n, 1.0L/(long double)k);
+    default: return (UV) (pow((double)n, 1.0/(double)k)+1e-6);
   }
 }
 
