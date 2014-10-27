@@ -1,4 +1,4 @@
-Math::Prime::Util version 0.46
+Math::Prime::Util version 0.47
 
 A module for number theory in Perl.  This includes prime sieving, primality
 tests, primality proofs, integer factoring, counts / bounds / approximations
@@ -16,6 +16,7 @@ Current measurements show it is faster than:
   Math::Primality
   Math::Prime::TiedArray
   Crypt::Primes
+  Math::ModInt::ChineseRemainder
 For non-bignums, it is typically faster than Math::Pari (and doesn't
 require Pari to be installed).  With Math::Prime::Util::GMP installed
 it is usually faster than Math::Pari for bigints.

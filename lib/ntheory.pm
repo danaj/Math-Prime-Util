@@ -4,7 +4,7 @@ use warnings;
 
 BEGIN {
   $ntheory::AUTHORITY = 'cpan:DANAJ';
-  $ntheory::VERSION = '0.46';
+  $ntheory::VERSION = '0.47';
 }
 
 BEGIN {
@@ -124,7 +124,9 @@ See L<Math::Prime::Util> for complete documentation.
   vecmin(@list)                       minimum of list of integers
   vecmax(@list)                       maximum of list of integers
   vecreduce { ... } @list             reduce / left fold applied to list
-  is_power(n)                         return k if n = p^k for integer p
+  is_power(n)                         return k if n = p^k for integer p, max k
+  is_power(n,k)                       return 1 if n = p^k for integer p and k
+  is_power(n,k,\$root)                as above but set root to p.
   gcd(@list)                          greatest common divisor
   lcm(@list)                          least common multiple
   gcdext(x,y)                         return (u,v,d) where u*x+v*y=d

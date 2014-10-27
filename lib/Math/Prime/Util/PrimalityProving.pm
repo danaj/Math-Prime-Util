@@ -11,7 +11,7 @@ use Math::Prime::Util qw/is_prob_prime is_strong_pseudoprime
 
 BEGIN {
   $Math::Prime::Util::PrimalityProving::AUTHORITY = 'cpan:DANAJ';
-  $Math::Prime::Util::PrimalityProving::VERSION = '0.46';
+  $Math::Prime::Util::PrimalityProving::VERSION = '0.47';
 }
 
 BEGIN {
@@ -863,7 +863,7 @@ Math::Prime::Util::PrimalityProving - Primality proofs and certificates
 
 =head1 VERSION
 
-Version 0.46
+Version 0.47
 
 
 =head1 SYNOPSIS
