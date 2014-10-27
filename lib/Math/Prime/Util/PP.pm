@@ -490,6 +490,7 @@ sub primes {
 
 sub next_prime {
   my($n) = @_;
+  _validate_positive_integer($n);
   return $_prime_next_small[$n] if $n <= $#_prime_next_small;
   # This turns out not to be faster.
   # return $_primes_small[1+_tiny_prime_count($n)] if $n < $_primes_small[-1];
@@ -506,6 +507,7 @@ sub next_prime {
 
 sub prev_prime {
   my($n) = @_;
+  _validate_positive_integer($n);
   return (0,0,0,2,3,3,5,5,7,7,7,7)[$n] if $n <= 11;
   do {
     $n -= $_wheelretreat30[$n%30];
