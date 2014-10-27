@@ -1734,8 +1734,8 @@ to run 1.5 to 2 times faster than the general Frobenius test.
 
 Takes a positive number as input, and returns 1 if the input passes the
 efficient Frobenius test of Paul Underwood.  This selects a parameter C<a>
-as the least positive integer such that C<(a^2-4|n)=-1>, then verifies that
-C<(2+2)^(n+1) = 2a + 5 mod (x^2-ax+1,n)>.  This combines a Fermat and Lucas
+as the least non-negative integer such that C<(a^2-4|n)=-1>, then verifies that
+C<(x+2)^(n+1) = 2a + 5 mod (x^2-ax+1,n)>.  This combines a Fermat and Lucas
 test with a cost of only slightly more than 2 strong pseudoprime tests.  This
 makes it similar to, but faster than, a Frobenius test.
 
