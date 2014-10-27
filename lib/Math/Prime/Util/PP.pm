@@ -1712,7 +1712,7 @@ sub is_power {
       }
     } else {
       $n = Math::BigInt->new("$n") unless ref($n) eq 'Math::BigInt';
-      my $root = $n->copy->broot($a)->bint;
+      my $root = $n->copy->broot($a)->bfloor;
       if ($root->copy->bpow($a) == $n) {
         $$refp = $root if defined $refp;
         return 1;
@@ -1722,7 +1722,7 @@ sub is_power {
     $n = Math::BigInt->new("$n") unless ref($n) eq 'Math::BigInt';
     my $e = 2;
     while (1) {
-      my $root = $n->copy()->broot($e)->bint;
+      my $root = $n->copy()->broot($e)->bfloor;
       last if $root->is_one();
       if ($root->copy->bpow($e) == $n) {
         my $next = is_power($root, 0, $refp);
