@@ -13,6 +13,9 @@ Revision history for Perl module Math::Prime::Util
 
     - Standalone compilation (e.g. factoring without Perl installed) is easier.
 
+    - next_prime and prev_prime, for bigints, call GMP directly then a root
+      PP function to convert to a Math::BigInt.  Much less overhead.
+
 
 0.46  2014-10-21
 

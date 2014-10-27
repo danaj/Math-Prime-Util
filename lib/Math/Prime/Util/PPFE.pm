@@ -71,6 +71,16 @@ sub exp_mangoldt {
 }
 
 
+sub next_prime {
+  my($n) = @_;
+  _validate_positive_integer($n);
+  return Math::Prime::Util::PP::next_prime($n);
+}
+sub prev_prime {
+  my($n) = @_;
+  _validate_positive_integer($n);
+  return Math::Prime::Util::PP::prev_prime($n);
+}
 sub nth_prime {
   my($n) = @_;
   _validate_positive_integer($n);

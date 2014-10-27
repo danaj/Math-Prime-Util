@@ -809,13 +809,14 @@ next_prime(IN SV* svn)
         XSRETURN_UV(ret);
       }
     }
+    if ((ix == 0 || ix == 1) && _XS_get_callgmp()) {
+      _vcallsub_with_gmp( ix ? "prev_prime" : "next_prime");
+      _vcallsub("_to_bigint");
+      return;
+    }
     switch (ix) {
-      /*
-      case 0:  _vcallsub_with_gmp("next_prime");        break;
-      case 1:  _vcallsub_with_gmp("prev_prime");        break;
-      */
-      case 0:  _vcallsub("_generic_next_prime");        break;
-      case 1:  _vcallsub("_generic_prev_prime");        break;
+      case 0:  _vcallsub_with_pp("next_prime");         break;
+      case 1:  _vcallsub_with_pp("prev_prime");         break;
       case 2:  _vcallsub_with_pp("nth_prime");          break;
       case 3:  _vcallsub_with_pp("nth_prime_upper");    break;
       case 4:  _vcallsub_with_pp("nth_prime_lower");    break;

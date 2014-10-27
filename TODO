@@ -95,6 +95,6 @@
       if (status != 0) {
         dSP; ENTER; PUSHMARK(SP);
         XPUSHs(sv_2mortal(newSVpvn("123456789012345678901234567890", 30)));
-        PUTBACK; _vcallsubn(aTHX_ G_SCALAR, VCALL_PP, "vecsum", 1); LEAVE;
+        PUTBACK; _vcallsubn(aTHX_ G_SCALAR, VCALL_ROOT, "_to_bigint", 1); LEAVE;
         return;
       }

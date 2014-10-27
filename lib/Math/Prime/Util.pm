@@ -108,8 +108,6 @@ BEGIN {
     # Load PP front end code
     require Math::Prime::Util::PPFE;
 
-    *next_prime    = \&Math::Prime::Util::_generic_next_prime;
-    *prev_prime    = \&Math::Prime::Util::_generic_prev_prime;
     *prime_count   = \&Math::Prime::Util::_generic_prime_count;
     *factor        = \&Math::Prime::Util::_generic_factor;
     *factor_exp    = \&Math::Prime::Util::_generic_factor_exp;
@@ -205,7 +203,7 @@ sub _bigint_to_int {
 sub _to_bigint {
   do { require Math::BigInt;  Math::BigInt->import(try=>"GMP,Pari"); }
     unless defined $Math::BigInt::VERSION;
-  return Math::BigInt->new("$_[0]");
+  return (ref($_[0]) eq 'Math::BigInt') ? $_[0] : Math::BigInt->new("$_[0]");
 }
 sub _reftyped {
   return unless defined $_[1];
@@ -244,7 +242,7 @@ sub _validate_positive_integer {
   } else {
     my $strn = "$n";
     croak "Parameter '$strn' must be a positive integer"
-      if $strn =~ tr/0123456789//c && $strn !~ /^\+?\d+$/;
+      if $strn eq '' || ($strn =~ tr/0123456789//c && $strn !~ /^\+?\d+$/);
     if ($n <= (OLD_PERL_VERSION ? 562949953421312 : ''.~0)) {
       $_[0] = $strn if ref($n);
     } else {
@@ -601,30 +599,6 @@ sub prime_iterator_object {
 # These will do input validation, then call the appropriate internal function
 # based on the input (XS, GMP, PP).
 #############################################################################
-
-sub _generic_next_prime {
-  my($n) = @_;
-  _validate_num($n) || _validate_positive_integer($n);
-
-  if ($_HAVE_GMP) {
-    return _reftyped($_[0], Math::Prime::Util::GMP::next_prime($n));
-  }
-
-  require Math::Prime::Util::PP;
-  return Math::Prime::Util::PP::next_prime($n);
-}
-
-sub _generic_prev_prime {
-  my($n) = @_;
-  _validate_num($n) || _validate_positive_integer($n);
-
-  if ($_HAVE_GMP) {
-    return _reftyped($_[0], Math::Prime::Util::GMP::prev_prime($n));
-  }
-
-  require Math::Prime::Util::PP;
-  return Math::Prime::Util::PP::prev_prime($n);
-}
 
 sub _generic_prime_count {
   my($low,$high) = @_;

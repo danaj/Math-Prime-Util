@@ -115,9 +115,8 @@ sub _validate_num {
   my($n, $min, $max) = @_;
   croak "Parameter must be defined" if !defined $n;
   return 0 if ref($n);
-  croak "Parameter must be a positive integer" if $n eq '';
   croak "Parameter '$n' must be a positive integer"
-          if $n =~ tr/0123456789//c && $n !~ /^\+\d+$/;
+          if $n eq '' || ($n =~ tr/0123456789//c && $n !~ /^\+\d+$/);
   croak "Parameter '$n' must be >= $min" if defined $min && $n < $min;
   croak "Parameter '$n' must be <= $max" if defined $max && $n > $max;
   substr($_[0],0,1,'') if substr($n,0,1) eq '+';
@@ -139,7 +138,7 @@ sub _validate_positive_integer {
   } else {
     my $strn = "$n";
     croak "Parameter '$strn' must be a positive integer"
-      if $strn =~ tr/0123456789//c && $strn !~ /^\+?\d+$/;
+      if $strn eq '' || ($strn =~ tr/0123456789//c && $strn !~ /^\+?\d+$/);
     if ($n <= (OLD_PERL_VERSION ? 562949953421312 : ~0)) {
       $_[0] = $strn if ref($n);
     } else {
@@ -167,7 +166,7 @@ sub _validate_integer {
   } else {
     my $strn = "$n";
     croak "Parameter '$strn' must be an integer"
-      if $strn =~ tr/-0123456789//c && $strn !~ /^[-+]?\d+$/;
+      if $strn eq '' || ($strn =~ tr/-0123456789//c && $strn !~ /^[-+]?\d+$/);
     if ($n <= $poscmp && $n >= $negcmp) {
       $_[0] = $strn if ref($n);
     } else {
