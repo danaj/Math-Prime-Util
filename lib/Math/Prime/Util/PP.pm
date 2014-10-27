@@ -1701,23 +1701,36 @@ sub _gcd_ui {
 }
 
 sub is_power {
-  my ($n, $a) = @_;
+  my ($n, $a, $refp) = @_;
+  croak("is_power third argument not a scalar reference") if defined($refp) && !ref($refp);
   return 0 if $n <= 3;
   if (defined $a && $a != 0) {
-    return _is_perfect_square($n) if $a == 2;
-    $n = Math::BigInt->new("$n") unless ref($n) eq 'Math::BigInt';
-    return $n->copy->broot($a)->bint->bpow($a) == $n;
-  }
-  $n = Math::BigInt->new("$n") unless ref($n) eq 'Math::BigInt';
-  my $e = 2;
-  while (1) {
-    my $root = $n->copy()->broot($e);
-    last if $root->is_one();
-    if ($root->copy->bpow($e) == $n) {
-      my $next = is_power($root);
-      return ($next == 0) ? $e : $e * $next;
+    if ($a == 2) {
+      if (_is_perfect_square($n)) {
+        $$refp = int(sqrt($n)) if defined $refp;
+        return 1;
+      }
+    } else {
+      $n = Math::BigInt->new("$n") unless ref($n) eq 'Math::BigInt';
+      my $root = $n->copy->broot($a)->bint;
+      if ($root->copy->bpow($a) == $n) {
+        $$refp = $root if defined $refp;
+        return 1;
+      }
     }
-    $e = next_prime($e);
+  } else {
+    $n = Math::BigInt->new("$n") unless ref($n) eq 'Math::BigInt';
+    my $e = 2;
+    while (1) {
+      my $root = $n->copy()->broot($e)->bint;
+      last if $root->is_one();
+      if ($root->copy->bpow($e) == $n) {
+        my $next = is_power($root, 0, $refp);
+        $$refp = $root if !$next && defined $refp;
+        return ($next == 0) ? $e : $e * $next;
+      }
+      $e = next_prime($e);
+    }
   }
   0;
 }

@@ -406,11 +406,11 @@ sub chebyshev_psi {
 }
 
 sub is_power {
-  my($n, $a) = @_;
+  my($n, $a, $refp) = @_;
   return 0 if defined $n && $n < 0;
   _validate_positive_integer($n);
   _validate_positive_integer($a) if defined $a;
-  return Math::Prime::Util::PP::is_power($n, $a);
+  return Math::Prime::Util::PP::is_power($n, $a, $refp);
 }
 sub valuation {
   my($n, $k) = @_;

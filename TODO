@@ -75,8 +75,6 @@
 
 - More Pari:  parforprime
 
-- is_power should take a third argument that gets set to the root
-
 - znlog:
     = GMP BSGS for znlog.
     = Clean up znlog (PH, BSGS, Rho).

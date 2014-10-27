@@ -598,7 +598,7 @@ plan tests => 0 + 1
                 + scalar(@vecmaxs)
                 + 4  # vecreduce
                 + 2 + scalar(@binomials)
-                + scalar(keys %powers)
+                + 6 + scalar(keys %powers)
                 + scalar(keys %primroots) + 1
                 + scalar(keys %jordan_totients)
                 + 2  # Dedekind psi calculated two ways
@@ -822,7 +822,18 @@ while (my($e, $vals) = each (%powers)) {
   }
   ok( @fail == 0, "is_power returns $e for " . join(",",@fail) );
 }
-
+{
+  my($ispow, $root);
+  $ispow = is_power(24, 2, \$root);
+  is( $ispow, 0, "24 isn't a perfect square...");
+  is( $root, undef, "...and the root wasn't set");
+  $ispow = is_power( 1000031**3 , 3, \$root);
+  is( $ispow, 1, "1000031^3 is a perfect cube...");
+  is( $root, 1000031, "...and the root was set");
+  $ispow = is_power( 36**5 , 0, \$root);
+  is( $ispow, 10, "36^5 is a 10th power...");
+  is( $root, 6, "...and the root is 6");
+}
 ###### valuation
 foreach my $r (@valuations) {
   my($n, $k, $exp) = @$r;
