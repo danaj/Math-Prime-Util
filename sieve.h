@@ -1,8 +1,7 @@
 #ifndef MPU_SIEVE_H
 #define MPU_SIEVE_H
 
-#include "EXTERN.h"
-#include "perl.h"
+#include "ptypes.h"
 
 extern unsigned char* sieve_erat30(UV end);
 extern int sieve_segment(unsigned char* mem, UV startd, UV endd);

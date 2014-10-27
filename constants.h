@@ -1,8 +1,7 @@
 #ifndef MPU_CONSTANTS_H
 #define MPU_CONSTANTS_H
 
-#include "EXTERN.h"
-#include "perl.h"
+#include "ptypes.h"
 
 #if BITS_PER_WORD == 32
  #define MPU_MAX_PRIME      UVCONST(4294967291)

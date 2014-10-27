@@ -47,6 +47,36 @@ typedef __int8 int8_t;
 #include <stdint.h>
 #endif
 
+#ifdef STANDALONE
+  #include <limits.h>
+  #include <stdio.h>
+  #include <stdlib.h>
+  #include <ctype.h>
+  typedef unsigned long UV;
+  typedef   signed long IV;
+  typedef size_t        STRLEN;
+  #define UV_MAX ULONG_MAX
+  #define IV_MAX LONG_MAX
+  #define UVCONST(x) ((unsigned long)x##UL)
+  #define U32_CONST(x) ((unsigned int)x##U)
+  #define UVuf "lu"
+  #define IVdf "ld"
+  #define croak(fmt,...)            { printf(fmt,##__VA_ARGS__); exit(3); }
+  #define New(id, mem, size, type)  mem = (type*) malloc((size)*sizeof(type))
+  #define Newz(id, mem, size, type) mem = (type*) calloc(size, sizeof(type))
+  #define Renew(mem, size, type)    mem =(type*)realloc(mem,(size)*sizeof(type))
+  #define Safefree(mem)             free((void*)mem)
+  #define isDIGIT(x)                isdigit(x)
+#if ULONG_MAX >> 31 == 1
+  #define BITS_PER_WORD  32
+#elif ULONG_MAX >> 63 == 1
+  #define BITS_PER_WORD  64
+#else
+  #error Unsupported bits per word (must be 32 or 64)
+#endif
+
+#else
+
 #include "EXTERN.h"
 #include "perl.h"
 
@@ -97,6 +127,8 @@ typedef __int8 int8_t;
 #elif defined(_MSC_VER)   /* We set up the types earlier */
  #undef HAVE_STD_U64
  #define HAVE_STD_U64 1
+#endif
+
 #endif
 
 #define MAXBIT        (BITS_PER_WORD-1)

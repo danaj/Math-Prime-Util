@@ -736,7 +736,7 @@ is_prime(IN SV* svn, ...)
           case 10: ret = is_power(n, a);
                    if (ret && items == 3) {
                      if (!SvROK(ST(2))) croak("is_power third argument not a scalar reference");
-                     sv_setuv(SvRV(ST(2)), rootof(n, a ? a : ret));
+                     sv_setuv(SvRV(ST(2)), rootof(n, a ? a : (UV)ret));
                    }
                    break;
           case 11:

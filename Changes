@@ -11,6 +11,8 @@ Revision history for Perl module Math::Prime::Util
 
     - AKS is ~20% faster for larger than half-word inputs.
 
+    - Standalone compilation (e.g. factoring without Perl installed) is easier.
+
 
 0.46  2014-10-21
 

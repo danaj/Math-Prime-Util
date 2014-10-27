@@ -7,9 +7,15 @@
 #include "sieve.h"
 #include "constants.h"   /* _MPU_FILL_EXTRA_N and _MPU_INITIAL_CACHE_SIZE */
 
-#include "EXTERN.h"
-#include "perl.h"
-#include "XSUB.h"
+#ifdef STANDALONE
+  #undef USE_ITHREADS
+  #define MUTEX_INIT(x)
+  #define MUTEX_LOCK(x)
+  #define MUTEX_UNLOCK(x)
+  #define MUTEX_DESTROY(x)
+  #define COND_INIT(x)
+  #define COND_DESTROY(x)
+#endif
 
 /*
  * These functions are used internally by the .c and .xs files.

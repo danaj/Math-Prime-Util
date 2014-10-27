@@ -1,8 +1,7 @@
 #ifndef MPU_CACHE_H
 #define MPU_CACHE_H
 
-#include "EXTERN.h"
-#include "perl.h"
+#include "ptypes.h"
 
   /* Sieve from 0 to x and store in primary cache */
 extern void  prime_precalc(UV x);

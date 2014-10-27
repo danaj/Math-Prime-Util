@@ -1271,3 +1271,29 @@ UV znlog(UV a, UV g, UV p) {
 
   return znlog_solve(a, g, p);
 }
+
+/* Compile with:
+ *  gcc -O3 -fomit-frame-pointer -march=native -Wall -DFACTOR_STANDALONE -DSTANDALONE factor.c util.c sieve.c cache.c primality.c lmo.c -lm
+ */
+#ifdef FACTOR_STANDALONE
+#include <errno.h>
+int main(int argc, char *argv[])
+{
+  UV n;
+  UV factors[MPU_MAX_FACTORS+1];
+  int nfactors, i;
+
+  if (argc <= 1) { printf("usage: %s  <n>\n", argv[0]); return(1); }
+  n = strtoul(argv[1], 0, 10);
+  if (n == ULONG_MAX && errno == ERANGE) { printf("Argument larger than ULONG_MAX\n"); return(-1); }
+
+  nfactors = factor(n, factors);
+
+  printf("%lu:", n);
+  for (i = 0; i < nfactors; i++)
+    printf(" %lu", factors[i]);
+  printf("\n");
+
+  return(0);
+}
+#endif
