@@ -650,31 +650,6 @@ sub _generic_factor_exp {
   return (map { [$_, $exponents{$_}] } @factors);
 }
 
-
-sub lucas_sequence {
-  my($n, $P, $Q, $k) = @_;
-  _validate_num($n) || _validate_positive_integer($n);
-  croak("Invalid input to lucas_sequence:  modulus n must be > 1") if $n <= 1;
-  _validate_num($k) || _validate_positive_integer($k);
-  { my $testP = (!defined $P || $P >= 0) ? $P : -$P;
-    _validate_num($testP) || _validate_positive_integer($testP); }
-  { my $testQ = (!defined $Q || $Q >= 0) ? $Q : -$Q;
-    _validate_num($testQ) || _validate_positive_integer($testQ); }
-
-  return _XS_lucas_sequence($n, $P, $Q, $k)
-    if ref($_[0]) ne 'Math::BigInt' && $n <= $_XS_MAXVAL
-    && ref($_[3]) ne 'Math::BigInt' && $k <= $_XS_MAXVAL;
-
-  if ($_HAVE_GMP && defined &Math::Prime::Util::GMP::lucas_sequence) {
-    return map { ($_ > ''.~0) ? Math::BigInt->new(''.$_) : $_ }
-           Math::Prime::Util::GMP::lucas_sequence($n, $P, $Q, $k);
-  }
-  require Math::Prime::Util::PP;
-  return map { ($_ <= ''.~0) ? _bigint_to_int($_) : $_ }
-         Math::Prime::Util::PP::lucas_sequence($n, $P, $Q, $k);
-}
-
-
 #############################################################################
 
 # Return just the non-cert portion.

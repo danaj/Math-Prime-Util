@@ -215,6 +215,18 @@ sub is_aks_prime {
 }
 
 
+sub lucas_sequence {
+  my($n, $P, $Q, $k) = @_;
+  my ($vp, $vq) = ($P, $Q);
+  $vp = -$vp if defined $vp && $vp < 0;
+  $vq = -$vq if defined $vq && $vq < 0;
+  _validate_positive_integer($n);
+  _validate_positive_integer($vp);
+  _validate_positive_integer($vq);
+  _validate_positive_integer($k);
+  return Math::Prime::Util::PP::lucas_sequence(@_);
+}
+
 sub kronecker {
   my($a, $b) = @_;
   my ($va, $vb) = ($a, $b);

@@ -684,14 +684,23 @@ chinese(...)
     return; /* skip implicit PUTBACK */
 
 void
-_XS_lucas_sequence(IN UV n, IN IV P, IN IV Q, IN UV k)
+lucas_sequence(...)
   PREINIT:
-    UV U, V, Qk;
+    UV n, k, U, V, Qk;
+    IV P, Q;
   PPCODE:
-    lucas_seq(&U, &V, &Qk,  n, P, Q, k);
-    PUSHs(sv_2mortal(newSVuv( U )));    /* 4 args in, 3 out, no EXTEND needed */
-    PUSHs(sv_2mortal(newSVuv( V )));
-    PUSHs(sv_2mortal(newSVuv( Qk )));
+    if (items != 4) croak("lucas_sequence: n, P, Q, k");
+    if (_validate_int(aTHX_ ST(0), 0) && _validate_int(aTHX_ ST(1), 1) &&
+        _validate_int(aTHX_ ST(2), 1) && _validate_int(aTHX_ ST(3), 0)) {
+      lucas_seq(&U, &V, &Qk,
+                my_svuv(ST(0)), my_sviv(ST(1)), my_sviv(ST(2)), my_svuv(ST(3)));
+      PUSHs(sv_2mortal(newSVuv( U )));  /* 4 args in, 3 out, no EXTEND needed */
+      PUSHs(sv_2mortal(newSVuv( V )));
+      PUSHs(sv_2mortal(newSVuv( Qk )));
+    } else {
+      _vcallsubn(aTHX_ GIMME_V, VCALL_PP, "lucas_sequence", items);
+      return;
+    }
 
 void
 is_prime(IN SV* svn, ...)

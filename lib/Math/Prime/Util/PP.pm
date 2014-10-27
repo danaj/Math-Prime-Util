@@ -2383,6 +2383,11 @@ sub lucas_sequence {
   croak "lucas_sequence: P out of range" if abs($P) >= $n;
   croak "lucas_sequence: Q out of range" if abs($Q) >= $n;
 
+  if (defined &Math::Prime::Util::GMP::lucas_sequence && Math::Prime::Util::prime_get_config()->{'gmp'}) {
+    return map { ($_ > ''.~0) ? Math::BigInt->new(''.$_) : $_ }
+           Math::Prime::Util::GMP::lucas_sequence($n, $P, $Q, $k);
+  }
+
   $n = Math::BigInt->new("$n") unless ref($n) eq 'Math::BigInt';
 
   my $ZERO = $n->copy->bzero;
@@ -2400,7 +2405,7 @@ sub lucas_sequence {
   my $V = $P->copy;
   my $Qk = $Q->copy;
 
-  return (BZERO->copy, BTWO->copy) if $k == 0;
+  return (BZERO->copy, BTWO->copy, $Qk) if $k == 0;
   $k = Math::BigInt->new("$k") unless ref($k) eq 'Math::BigInt';
   my $kstr = substr($k->as_bin, 2);
   my $bpos = 0;
@@ -2479,7 +2484,7 @@ sub is_lucas_pseudoprime {
   die "Lucas parameter error: $D, $P, $Q\n" if ($D != $P*$P - 4*$Q);
 
   my($U, $V, $Qk) = lucas_sequence($n, $P, $Q, $n+1);
-  return $U->is_zero ? 1 : 0;
+  return ($U == 0) ? 1 : 0;
 }
 
 sub is_strong_lucas_pseudoprime {
@@ -2500,7 +2505,9 @@ sub is_strong_lucas_pseudoprime {
   }
   my($U, $V, $Qk) = lucas_sequence($n, $P, $Q, $k);
 
-  return 1 if $U->is_zero;
+  return 1 if $U == 0;
+  $V = Math::BigInt->new("$V") unless ref($V) eq 'Math::BigInt';
+  $Qk = Math::BigInt->new("$Qk") unless ref($Qk) eq 'Math::BigInt';
   foreach my $r (0 .. $s-1) {
     return 1 if $V->is_zero;
     if ($r < ($s-1)) {
@@ -2533,7 +2540,8 @@ sub is_extra_strong_lucas_pseudoprime {
 
   my($U, $V, $Qk) = lucas_sequence($n, $P, $Q, $k);
 
-  return 1 if $U->is_zero && ($V == BTWO || $V == ($n - BTWO));
+  return 1 if $U == 0 && ($V == BTWO || $V == ($n - BTWO));
+  $V = Math::BigInt->new("$V") unless ref($V) eq 'Math::BigInt';
   foreach my $r (0 .. $s-2) {
     return 1 if $V->is_zero;
     $V->bmul($V)->bsub(BTWO)->bmod($n);

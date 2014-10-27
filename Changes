@@ -16,6 +16,8 @@ Revision history for Perl module Math::Prime::Util
     - next_prime and prev_prime, for bigints, call GMP directly then a root
       PP function to convert to a Math::BigInt.  Much less overhead.
 
+    - lucas_sequence goes from PP->[XS,GMP,PP] to XS[->PP[->GMP]].
+
 
 0.46  2014-10-21
 
