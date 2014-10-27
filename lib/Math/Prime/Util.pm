@@ -1081,8 +1081,8 @@ tests, primality proofs, integer factoring, counts / bounds / approximations
 for primes, nth primes, and twin primes, random prime generation,
 and much more.
 
-This module is the fastest on CPAN for almost all operations.  Only
-L<Math::Pari> is faster for a few operations.  This includes
+This module is the fastest on CPAN for almost all operations it supports.
+ Only L<Math::Pari> is faster for a few operations.  This includes
 L<Math::Prime::XS>, L<Math::Prime::FastSieve>, L<Math::Factor::XS>,
 L<Math::Prime::TiedArray>, L<Math::Big::Factors>, L<Math::Factoring>,
 and L<Math::Primality> (when the GMP module is available).
