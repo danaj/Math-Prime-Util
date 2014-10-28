@@ -3497,9 +3497,22 @@ sub fermat_factor {
 
 sub ecm_factor {
   my($n, $B1, $B2, $ncurves) = @_;
+  _validate_positive_integer($n);
 
   my @factors = _basic_factor($n);
   return @factors if $n < 4;
+
+  if (defined &Math::Prime::Util::GMP::ecm_factor && Math::Prime::Util::prime_get_config()->{'gmp'}) {
+    $B1 = 0 if !defined $B1;
+    $ncurves = 0 if !defined $ncurves;
+    my @ef = Math::Prime::Util::GMP::ecm_factor($n, $B1, $ncurves);
+    if (@ef > 1) {
+      my $ecmfac = Math::Prime::Util::_reftyped($n, $ef[-1]);
+      return _found_factor($ecmfac, $n, "ECM (GMP) B1=$B1 curves $ncurves", @factors);
+    }
+    push @factors, $n;
+    return @factors;
+  }
 
   $ncurves = 10 unless defined $ncurves;
 

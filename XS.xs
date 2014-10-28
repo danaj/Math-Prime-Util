@@ -439,6 +439,7 @@ trial_factor(IN UV n, ...)
     pplus1_factor = 5
     pbrent_factor = 6
     pminus1_factor = 7
+    ecm_factor = 8
   PREINIT:
     UV arg1, arg2;
     static const UV default_arg1[] =
@@ -446,6 +447,10 @@ trial_factor(IN UV n, ...)
      /* Trial, Fermat,   Holf,    SQUFOF,  PRHO,    P+1, Brent,    P-1 */
   PPCODE:
     if (n == 0)  XSRETURN_UV(0);
+    if (ix == 8) {  /* We don't have an ecm_factor, call PP. */
+      _vcallsubn(aTHX_ GIMME_V, VCALL_PP, "ecm_factor", 1);
+      return;
+    }
     /* Must read arguments before pushing anything */
     arg1 = (items >= 2) ? my_svuv(ST(1)) : default_arg1[ix];
     arg2 = (items >= 3) ? my_svuv(ST(2)) : 0;
