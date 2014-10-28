@@ -763,8 +763,9 @@ sub _verify_lucas {
 }
 
 sub verify_cert {
-  my $cert = shift;
+  my $cert = (@_ == 1) ? $_[0] : convert_array_cert_to_string(@_);
   $cert = convert_array_cert_to_string($cert) if ref($cert) eq 'ARRAY';
+  return 0 if $cert eq '';
 
   my %parts;  # Map of "N is prime if Q is prime"
   my %proof_funcs = (

@@ -728,22 +728,8 @@ sub is_provable_prime_with_cert {
 
 
 sub verify_prime {
-  my @cdata = @_;
-
   require Math::Prime::Util::PrimalityProving;
-  my $cert = '';
-  if (scalar @cdata == 1 && ref($cdata[0]) eq '') {
-    $cert = $cdata[0];
-  } else {
-    # We've been given an old array cert
-    $cert = Math::Prime::Util::PrimalityProving::convert_array_cert_to_string(@cdata);
-    if ($cert eq '') {
-      print "primality fail: error converting old certificate" if $_Config{'verbose'};
-      return 0;
-    }
-  }
-  return 0 if $cert eq '';
-  return Math::Prime::Util::PrimalityProving::verify_cert($cert);
+  return Math::Prime::Util::PrimalityProving::verify_cert(@_);
 }
 
 #############################################################################
