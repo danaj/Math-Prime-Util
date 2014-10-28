@@ -217,6 +217,19 @@ static int _vcallsubn(pTHX_ I32 flags, I32 stashflags, const char* name, int nar
        else                     { PUSHs(sv_2mortal(newSViv(r_))); } \
   } while (0)
 
+#define OBJECTIFY_RESULT(input, output) \
+  if (!sv_isobject(output)) { \
+    SV* resptr = output; \
+    const char *iname = sv_isobject(input) \
+                      ? HvNAME_get(SvSTASH(SvRV(input))) : 0; \
+    if (iname == 0 || strEQ(iname, "Math::BigInt")) { \
+      _vcallsub("_to_bigint"); /* Turn into bigint */ \
+    } else { /* Return it as: ref(input)->new(result) */ \
+      dSP;  ENTER;  PUSHMARK(SP); \
+      XPUSHs(sv_2mortal(newSVpv(iname, 0)));  XPUSHs(resptr); \
+      PUTBACK;  call_method("new", G_SCALAR);  LEAVE; \
+    } \
+  }
 
 MODULE = Math::Prime::Util	PACKAGE = Math::Prime::Util
 
@@ -825,7 +838,7 @@ next_prime(IN SV* svn)
     }
     if ((ix == 0 || ix == 1) && _XS_get_callgmp()) {
       _vcallsub_with_gmp( ix ? "prev_prime" : "next_prime");
-      _vcallsub("_to_bigint");
+      OBJECTIFY_RESULT(svn, ST(0));
       return;
     }
     switch (ix) {

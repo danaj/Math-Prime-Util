@@ -13,8 +13,8 @@ Revision history for Perl module Math::Prime::Util
 
     - Standalone compilation (e.g. factoring without Perl installed) is easier.
 
-    - next_prime and prev_prime, for bigints, call GMP directly then a root
-      PP function to convert to a Math::BigInt.  Much less overhead.
+    - For next_prime and prev_prime with bigints, stay in XS as long as
+      possible to cut overhead.  Up to 1.5x faster.
 
     - Changes to trim a little memory use.  lucas_sequence goes from
       PP->[XS,GMP,PP] to XS[->PP[->GMP]].  ecm_factor is moved out of root.
