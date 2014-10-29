@@ -827,7 +827,7 @@ while (my($e, $vals) = each (%powers)) {
   $ispow = is_power(24, 2, \$root);
   is( $ispow, 0, "24 isn't a perfect square...");
   is( $root, undef, "...and the root wasn't set");
-  $ispow = is_power( 1000031**3 , 3, \$root);
+  $ispow = is_power( "1000093002883029791", 3, \$root);
   is( $ispow, 1, "1000031^3 is a perfect cube...");
   is( $root, 1000031, "...and the root was set");
   $ispow = is_power( 36**5 , 0, \$root);
