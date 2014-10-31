@@ -1704,7 +1704,7 @@ sub _gcd_ui {
 sub is_power {
   my ($n, $a, $refp) = @_;
   croak("is_power third argument not a scalar reference") if defined($refp) && !ref($refp);
-  return 0 if $n <= 3;
+  return 0 if abs($n) <= 3;
   if (defined $a && $a != 0) {
     if ($a == 2) {
       if (_is_perfect_square($n)) {
@@ -1721,14 +1721,20 @@ sub is_power {
     }
   } else {
     $n = Math::BigInt->new("$n") unless ref($n) eq 'Math::BigInt';
+    my $absn = $n->copy->babs;
     my $e = 2;
     while (1) {
-      my $root = $n->copy()->broot($e)->bfloor;
+      my $root = $absn->copy()->broot($e)->bfloor;
       last if $root->is_one();
-      if ($root->copy->bpow($e) == $n) {
+      if ($root->copy->bpow($e) == $absn) {
         my $next = is_power($root, 0, $refp);
         $$refp = $root if !$next && defined $refp;
-        return ($next == 0) ? $e : $e * $next;
+        if ($n < 0 && $e == 2) {
+          $next = 0 if ($next % 2) == 0;
+          return $next;
+        }
+        $e *= $next if $next != 0;
+        return $e;
       }
       $e = next_prime($e);
     }

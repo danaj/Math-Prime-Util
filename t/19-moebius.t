@@ -447,6 +447,7 @@ if ($use64) {
   push @{$powers{4}}, 1150530828529256001;
   push @{$powers{9}}, 118587876497;
 }
+my @negpowers = (0,0,0,3,0,5,3,7,0,9,5);
 
 my @invmods = (
  [ 0, 0, undef],
@@ -598,7 +599,7 @@ plan tests => 0 + 1
                 + scalar(@vecmaxs)
                 + 4  # vecreduce
                 + 2 + scalar(@binomials)
-                + 6 + scalar(keys %powers)
+                + 6 + scalar(keys %powers) + scalar(@negpowers)
                 + scalar(keys %primroots) + 1
                 + scalar(keys %jordan_totients)
                 + 2  # Dedekind psi calculated two ways
@@ -821,6 +822,9 @@ while (my($e, $vals) = each (%powers)) {
     push @fail, $val unless is_power($val) == $e;
   }
   ok( @fail == 0, "is_power returns $e for " . join(",",@fail) );
+}
+while ( my($e,$value) = each @negpowers ) {
+  is( is_power(-7 ** $e), $value, "is_power(-7 ** $e ) = $value" );
 }
 {
   my($ispow, $root);

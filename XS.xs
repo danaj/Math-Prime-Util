@@ -732,15 +732,15 @@ is_prime(IN SV* svn, ...)
     is_frobenius_pseudoprime = 7
     is_frobenius_underwood_pseudoprime = 8
     is_perrin_pseudoprime = 9
-    is_power = 10
-    is_almost_extra_strong_lucas_pseudoprime = 11
+    is_almost_extra_strong_lucas_pseudoprime = 10
+    is_power = 11
   PREINIT:
     int status;
   PPCODE:
     status = _validate_int(aTHX_ svn, 1);
     if (status != 0) {
       int ret = 0;
-      if (status == 1) {
+      if (status == 1 && ix != 11) {
         UV n = my_svuv(svn);
         UV a = (items == 1) ? 0 : my_svuv(ST(1));
         switch (ix) {
@@ -760,15 +760,25 @@ is_prime(IN SV* svn, ...)
                    } break;
           case 8:  ret = _XS_is_frobenius_underwood_pseudoprime(n); break;
           case 9:  ret = is_perrin_pseudoprime(n); break;
-          case 10: ret = is_power(n, a);
-                   if (ret && items == 3) {
-                     if (!SvROK(ST(2))) croak("is_power third argument not a scalar reference");
-                     sv_setuv(SvRV(ST(2)), rootof(n, a ? a : (UV)ret));
-                   }
-                   break;
-          case 11:
+          case 10:
           default: ret = _XS_is_almost_extra_strong_lucas_pseudoprime
                          (n, (items == 1) ? 1 : a); break;
+        }
+      } else if (ix == 11) {
+        UV n = (status == 1) ? my_svuv(svn) : (UV) -my_sviv(svn);
+        UV a = (items == 1) ? 0 : my_svuv(ST(1));
+        if (status == 1 || a == 0 || a & 1) {
+          ret = is_power(n, a);
+          if (status == -1 && a == 0) {
+            ret >>= valuation(ret,2);
+            if (ret == 1) ret = 0;
+          }
+          if (ret && items == 3) {
+            UV root = rootof(n, a ? a : (UV)ret);
+            if (!SvROK(ST(2))) croak("is_power third argument not a scalar reference");
+            if (status == 1) sv_setuv(SvRV(ST(2)),  root);
+            else             sv_setiv(SvRV(ST(2)), -root);
+          }
         }
       }
       RETURN_NPARITY(ret);
@@ -784,14 +794,19 @@ is_prime(IN SV* svn, ...)
       case 7: _vcallsub_with_gmp("is_frobenius_pseudoprime"); break;
       case 8: _vcallsub_with_gmp("is_frobenius_underwood_pseudoprime"); break;
       case 9: _vcallsub_with_gmp("is_perrin_pseudoprime"); break;
-      case 10:if (items == 3) {
-                _vcallsub_with_pp("is_power");
-              } else {
-                _vcallsub_with_gmp("is_power");
-              }
-              break;
+      case 10:_vcallsub_with_gmp("is_almost_extra_strong_lucas_pseudoprime"); break;
       case 11:
-      default:_vcallsub_with_gmp("is_almost_extra_strong_lucas_pseudoprime"); break;
+      default:if (items != 3 && status != -1) {
+                STRLEN len;
+                char* ptr = SvPV_nomg(svn, len);
+                if (len > 0 && ptr[0] != '-') {
+                  /* items != 3 and not negative */
+                  _vcallsub_with_gmp("is_power");
+                  return;
+                }
+              }
+              _vcallsub_with_pp("is_power");
+              break;
     }
     return; /* skip implicit PUTBACK */
 
