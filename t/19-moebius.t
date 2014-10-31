@@ -823,8 +823,8 @@ while (my($e, $vals) = each (%powers)) {
   }
   ok( @fail == 0, "is_power returns $e for " . join(",",@fail) );
 }
-while ( my($e,$value) = each @negpowers ) {
-  is( is_power(-7 ** $e), $value, "is_power(-7 ** $e ) = $value" );
+foreach my $e (0 .. $#negpowers) {
+  is( is_power(-7 ** $e), $negpowers[$e], "is_power(-7^$e ) = $negpowers[$e]" );
 }
 {
   my($ispow, $root);
