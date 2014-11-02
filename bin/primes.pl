@@ -115,6 +115,7 @@ if (exists $opts{'version'}) {
 die_usage() if exists $opts{'help'};
 
 # Get the start and end values.  Verify they're positive integers.
+@ARGV = (0,@ARGV) if @ARGV == 1;
 die_usage() unless @ARGV == 2;
 my ($start, $end) = @ARGV;
 # Allow some expression evaluation on the input, but don't just eval it.
@@ -596,12 +597,13 @@ sub eval_expr {
 
 sub die_usage {
   die <<EOU;
-Usage: $0 [options]  START  END
+Usage: $0 [options]  [START]  END
 
 Displays all primes between the positive integers START and END, inclusive.
 The START and END values must be integers or simple expressions.  This allows
 inputs like "10**500+100" or "2**64-1000" or "2 * nth_prime(560)".
 Additionally, if END starts with '+' then it is assumed to add to START.
+If only one number is given, primes up to that number are shown (START = 0).
 
 General options:
 

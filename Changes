@@ -20,6 +20,8 @@ Revision history for Perl module Math::Prime::Util
       PP->[XS,GMP,PP] to XS[->PP[->GMP]].  ecm_factor is moved out of root.
       Moved some primality proving logic out of root.
 
+    - primes.pl when given one argument will show primes up to that number.
+
 
 0.46  2014-10-21
 
