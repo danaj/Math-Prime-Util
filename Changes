@@ -3,11 +3,7 @@ Revision history for Perl module Math::Prime::Util
 
 0.47  2014-10-?
 
-    - NetBSD improperly exports symbols in string.h, including popcount.
-      Rename our internal function to work around it.
-
-    - is_power now takes an optional scalar reference third argument which
-      will be set to the root if found.  It also works for negative n.
+    [FUNCTIONALITY AND PERFORMANCE]
 
     - AKS is ~20% faster for larger than half-word inputs.
 
@@ -15,6 +11,16 @@ Revision history for Perl module Math::Prime::Util
 
     - For next_prime and prev_prime with bigints, stay in XS as long as
       possible to cut overhead.  Up to 1.5x faster.
+
+    - Factoring on 64-bit platforms is faster for 32-bit inputs.
+
+    [OTHER]
+
+    - NetBSD improperly exports symbols in string.h, including popcount.
+      Rename our internal function to work around it.
+
+    - is_power now takes an optional scalar reference third argument which
+      will be set to the root if found.  It also works for negative n.
 
     - Changes to trim a little memory use.  lucas_sequence goes from
       PP->[XS,GMP,PP] to XS[->PP[->GMP]].  ecm_factor is moved out of root.
