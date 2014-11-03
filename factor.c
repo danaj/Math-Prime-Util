@@ -55,7 +55,7 @@ static const unsigned short primes_small[] =
 int factor(UV n, UV *factors)
 {
   int nfactors = 0;           /* Number of factored in factors result */
-  UV f = 7;
+  unsigned int f = 7;
 
   if (n > 1) {
     while ( (n & 1) == 0 ) { factors[nfactors++] = 2; n /= 2; }
@@ -65,17 +65,20 @@ int factor(UV n, UV *factors)
 
   if (f*f <= n) {
     UV sp = 4, lastsp = 83;
-    while (sp < lastsp) {            /* Trial division from 7 to 421 */
-      while ( (n%f) == 0 ) {
-        factors[nfactors++] = f;
-        n /= f;
+    /* Trial division from 7 to 421.  Use 32-bit if possible. */
+    if (n <= 4294967295U) {
+      unsigned int un = n;
+      while (sp < lastsp) {
+        while ( (un%f) == 0 ) {
+          factors[nfactors++] = f;
+          un /= f;
+        }
+        f = primes_small[++sp];
+        if (f*f > un) break;
       }
-      f = primes_small[++sp];
-      if (f*f > n) break;
-    }
-    /* If n is small and still composite, finish it here */
-    if (n < 2011*2011 && f*f <= n) {  /* Trial division from 431 to 2003 */
-      while (sp < NPRIMES_SMALL) {
+      n = un;
+    } else {
+      while (sp < lastsp) {
         while ( (n%f) == 0 ) {
           factors[nfactors++] = f;
           n /= f;
@@ -84,11 +87,33 @@ int factor(UV n, UV *factors)
         if (f*f > n) break;
       }
     }
+    /* If n is small and still composite, finish it here */
+    if (n < 2011*2011 && f*f <= n) {  /* Trial division from 431 to 2003 */
+      unsigned int un = n;
+      while (sp < NPRIMES_SMALL) {
+        while ( (un%f) == 0 ) {
+          factors[nfactors++] = f;
+          un /= f;
+        }
+        f = primes_small[++sp];
+        if (f*f > un) break;
+      }
+      n = un;
+    }
   }
   if (f*f > n) {
     if (n != 1) factors[nfactors++] = n;
     return nfactors;
   }
+#if BITS_PER_WORD == 64   /* this is slower in 32-bit */
+  /* For small values less than f^3, use simple factor to split semiprime */
+  if (n < 200000000 && n < f*f*f) {
+    if (is_prob_prime(n)) factors[nfactors++] = n;
+    else                  nfactors += holf_factor(n, factors+nfactors, 1000000);
+    return nfactors;
+  }
+#endif
+
   /* Perfect squares and cubes.  Factor root only once. */
   {
     int i, j, k = is_power(n,2) ? 2 : (n >= f*f*f && is_power(n,3)) ? 3 : 1;
@@ -390,6 +415,20 @@ UV divisor_sum(UV n, UV k)
 
 
 
+static int found_factor(UV n, UV f, UV* factors)
+{
+  UV f2 = n/f;
+  int i = f > f2;
+  if (f == 1 || f2 == 1) {
+    factors[0] = n;
+    return 1;
+  }
+  factors[i] = f;
+  factors[1-i] = f2;
+  MPUassert( factors[0] * factors[1] == n , "incorrect factoring");
+  return 2;
+}
+
 /* Knuth volume 2, algorithm C.
  * Very fast for small numbers, grows rapidly.
  * SQUFOF is better for numbers nearing the 64-bit limit.
@@ -413,39 +452,29 @@ int fermat_factor(UV n, UV *factors, UV rounds)
     } while (r > 0);
   }
   r = (x-y)/2;
-  if ( (r != 1) && ((UV)r != n) ) {
-    factors[0] = r;
-    factors[1] = n/r;
-    MPUassert( factors[0] * factors[1] == n , "incorrect factoring");
-    return 2;
-  }
-  factors[0] = n;
-  return 1;
+  return found_factor(n, r, factors);
 }
 
-/* Hart's One Line Factorization.
- * Missing premult (hard to do in native precision without overflow)
- */
+/* Hart's One Line Factorization. */
 int holf_factor(UV n, UV *factors, UV rounds)
 {
   UV i, s, m, f;
 
   MPUassert( (n >= 3) && ((n%2) != 0) , "bad n in holf_factor");
 
-  if (n <= (UV_MAX >> 9)) {    /* Try with premultiplier first */
-    UV npre = n * 480;
+  if (n <= (UV_MAX >> 6)) {    /* Try with premultiplier first */
+    UV npre = n * ( (n <= (UV_MAX >> 13)) ? 720 :
+                    (n <= (UV_MAX >> 11)) ? 480 :
+                    (n <= (UV_MAX >> 10)) ? 360 :
+                    (n <= (UV_MAX >>  8)) ?  60 : 30 );
     UV ni = npre;
     while (rounds--) {
       s = isqrt(ni) + 1;
       m = (s*s) - ni;
       if (is_perfect_square(m)) {
         f = gcd_ui(n, s - isqrt(m));
-        if (f > 1 && f < n) {
-          factors[0] = f;
-          factors[1] = n/f;
-          MPUassert( factors[0] * factors[1] == n , "incorrect factoring");
-          return 2;
-        }
+        if (f > 1 && f < n)
+          return found_factor(n, f, factors);
       }
       if (ni >= (ni+npre)) break;
       ni += npre;
@@ -462,12 +491,7 @@ int holf_factor(UV n, UV *factors, UV rounds)
       f = isqrt(m);
       f = gcd_ui( (s>f) ? s-f : f-s, n);
       /* This should always succeed, but with overflow concerns.... */
-      if ((f == 1) || (f == n))
-        break;
-      factors[0] = f;
-      factors[1] = n/f;
-      MPUassert( factors[0] * factors[1] == n , "incorrect factoring");
-      return 2;
+      return found_factor(n, f, factors);
     }
   }
   factors[0] = n;
@@ -518,12 +542,8 @@ int pbrent_factor(UV n, UV *factors, UV rounds, UV a)
         Xi = sqraddmod(Xi, a, n);
         f = gcd_ui( (Xi>Xm) ? Xi-Xm : Xm-Xi, n);
       } while (f == 1 && r-- != 0);
-      if ( (f == 1) || (f == n) ) break;
     }
-    factors[0] = f;
-    factors[1] = n/f;
-    MPUassert( factors[0] * factors[1] == n , "incorrect factoring");
-    return 2;
+    return found_factor(n, f, factors);
   }
   factors[0] = n;
   return 1;
@@ -571,13 +591,8 @@ int prho_factor(UV n, UV *factors, UV rounds)
         V = sqraddmod(V, a, n);
         f = gcd_ui( (U > V) ? U-V : V-U, n);
       } while (f == 1 && i-- != 0);
-      if ( (f == 1) || (f == n) )
-        break;
     }
-    factors[0] = f;
-    factors[1] = n/f;
-    MPUassert( factors[0] * factors[1] == n , "incorrect factoring");
-    return 2;
+    return found_factor(n, f, factors);
   }
   factors[0] = n;
   return 1;
@@ -693,14 +708,7 @@ int pminus1_factor(UV n, UV *factors, UV B1, UV B2)
     } END_DO_FOR_EACH_PRIME
     f = gcd_ui(b, n);
   }
-  if ( (f != 1) && (f != n) ) {
-    factors[0] = f;
-    factors[1] = n/f;
-    MPUassert( factors[0] * factors[1] == n , "incorrect factoring");
-    return 2;
-  }
-  factors[0] = n;
-  return 1;
+  return found_factor(n, f, factors);
 }
 
 /* Simple Williams p+1 */
@@ -751,14 +759,7 @@ int pplus1_factor(UV n, UV *factors, UV B1)
     }
   } END_DO_FOR_EACH_PRIME
 
-  if ( (f != 1) && (f != n) ) {
-    factors[0] = f;
-    factors[1] = n/f;
-    MPUassert( factors[0] * factors[1] == n , "incorrect factoring");
-    return 2;
-  }
-  factors[0] = n;
-  return 1;
+  return found_factor(n, f, factors);
 }
 
 
@@ -929,12 +930,8 @@ int squfof_factor(UV n, UV *factors, UV rounds)
       if (f64 > 1) {
         if (f64 != mult) {
           f64 /= gcd_ui(f64, mult);
-          if (f64 != 1) {
-            factors[0] = f64;
-            factors[1] = n / f64;
-            MPUassert( factors[0] * factors[1] == n , "incorrect factoring");
-            return 2;
-          }
+          if (f64 != 1)
+            return found_factor(n, f64, factors);
         }
         /* Found trivial factor.  Quit working with this multiplier. */
         mult_save[i].valid = 0;
