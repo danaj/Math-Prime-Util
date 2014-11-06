@@ -5,14 +5,15 @@ Revision history for Perl module Math::Prime::Util
 
     [FUNCTIONALITY AND PERFORMANCE]
 
-    - AKS is ~20% faster for larger than half-word inputs.
-
     - Standalone compilation (e.g. factoring without Perl installed) is easier.
 
     - For next_prime and prev_prime with bigints, stay in XS as long as
       possible to cut overhead.  Up to 1.5x faster.
 
     - Factoring on 64-bit platforms is faster for 32-bit inputs.
+
+    - AKS is faster for larger than half-word inputs, especially on 64-bit
+      machines with gcc's 128-bit types.
 
     [OTHER]
 

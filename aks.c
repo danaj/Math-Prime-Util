@@ -158,7 +158,7 @@ static void poly_mod_sqr(UV* px, UV* res, UV r, UV mod)
 {
   UV c, d, s, sum, rindex, maxpx;
   UV degree = r-1;
-  int native_sqr = (mod > isqrt(UV_MAX/r)) ? 0 : 1;
+  int native_sqr = (mod > isqrt(UV_MAX/(2*r))) ? 0 : 1;
 
   memset(res, 0, r * sizeof(UV)); /* zero out sums */
   /* Discover index of last non-zero value in px */
@@ -184,6 +184,33 @@ static void poly_mod_sqr(UV* px, UV* res, UV r, UV mod)
       sum += (s_end*2 == d)  ?  c*c  :  2*c*px[d-s_end];
       rindex = (d < r) ? d : d-r;  /* d % r */
       res[rindex] = (res[rindex] + sum) % mod;
+#if defined(HAVE_UINT128)
+    } else {
+      uint128_t max = ((uint128_t)1 << 127) - 1;
+      uint128_t c128, sum128 = 0;
+
+      while (pp1 < ppend) {
+        c128 = ((uint128_t)*pp1++)  *  ((uint128_t)*pp2--);
+        if (c128 > max) c128 %= mod;
+        c128 <<= 1;
+        if (c128 > max) c128 %= mod;
+        sum128 += c128;
+        if (sum128 > max) sum128 %= mod;
+      }
+      c128 = px[s_end];
+      if (s_end*2 == d) {
+        c128 *= c128;
+      } else {
+        c128 *= px[d-s_end];
+        if (c128 > max) c128 %= mod;
+        c128 <<= 1;
+      }
+      if (c128 > max) c128 %= mod;
+      sum128 += c128;
+      if (sum128 > max) sum128 %= mod;
+      rindex = (d < r) ? d : d-r;  /* d % r */
+      res[rindex] = ((uint128_t)res[rindex] + sum128) % mod;
+#else
     } else {
       while (pp1 < ppend) {
         UV p1 = *pp1++;
@@ -197,6 +224,7 @@ static void poly_mod_sqr(UV* px, UV* res, UV r, UV mod)
         sum = addmod(sum, mulmod(2, mulmod(c, px[d-s_end], mod), mod), mod);
       rindex = (d < r) ? d : d-r;  /* d % r */
       res[rindex] = addmod(res[rindex], sum, mod);
+#endif
     }
   }
   memcpy(px, res, r * sizeof(UV)); /* put result in px */
