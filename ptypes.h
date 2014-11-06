@@ -161,4 +161,13 @@ typedef __int8 int8_t;
 
 #define MPUNOT_REACHED MPUASSUME(0)
 
+#if __GNUC__ == 4 && __GNUC_MINOR__ >= 4 && (defined(__x86_64__) || defined(__powerpc64__))
+#define HAVE_UINT128 1
+  #if __GNUC__ == 4 && __GNUC_MINOR__ >= 4 && __GNUC_MINOR__ < 6
+    typedef unsigned int uint128_t __attribute__ ((__mode__ (TI)));
+  #else
+    typedef unsigned __int128 uint128_t;
+  #endif
+#endif
+
 #endif

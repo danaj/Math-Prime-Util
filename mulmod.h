@@ -61,16 +61,10 @@
   }
   #define addmod(a,b,n) _addmod(a,b,n)
 
-#elif BITS_PER_WORD == 64 && __GNUC__ == 4 && __GNUC_MINOR__ >= 4 && (defined(__x86_64__) || defined(__powerpc64__))
+#elif BITS_PER_WORD == 64 && defined(HAVE_UINT128)
 
   /* We're 64-bit, using a modern gcc, and the target has some 128-bit type.
    * The actual number of targets that have this implemented are limited. */
-
-  #if __GNUC__ == 4 && __GNUC_MINOR__ >= 4 && __GNUC_MINOR__ < 6
-    typedef unsigned int uint128_t __attribute__ ((__mode__ (TI)));
-  #else
-    typedef unsigned __int128 uint128_t;
-  #endif
 
   #define mulmod(a,b,n) (UV)( ((uint128_t)(a) * (b)) % (n) )
   #define sqrmod(a,n)   (UV)( ((uint128_t)(a) * (a)) % (n) )
