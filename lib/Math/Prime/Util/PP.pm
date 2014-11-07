@@ -2722,11 +2722,17 @@ sub is_frobenius_pseudoprime {
 
 sub is_mersenne_prime {
   my $p = shift;
+
   return 1 if $p == 2;
   return 0 unless is_prob_prime($p);
   return 0 if $p > 3 && $p % 4 == 3 && $p < ((~0)>>1) && is_prob_prime($p*2+1);
+  my $mp = BONE->copy->blsft($p)->bdec;
+
+  # Definitely faster than using Math::BigInt
+  return (0 == (Math::Prime::Util::GMP::lucas_sequence($mp, 4, 1, $mp+1))[0])
+  if defined &Math::Prime::Util::GMP::lucas_sequence && Math::Prime::Util::prime_get_config()->{'gmp'};
+
   my $V = Math::BigInt->new(4);
-  my $mp = BTWO->copy->bpow($p)->bdec;
   for my $k (3 .. $p) {
     $V->bmul($V)->bsub(BTWO)->bmod($mp);
   }

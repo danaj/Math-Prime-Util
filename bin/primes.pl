@@ -4,8 +4,8 @@ use warnings;
 use Getopt::Long;
 use Math::BigInt try => 'GMP';
 use Math::Prime::Util qw/primes  prime_count  next_prime  prev_prime
-                         is_prime  is_provable_prime  nth_prime
-                         prime_count  primorial  pn_primorial/;
+                         is_prime  is_provable_prime  is_mersenne_prime
+                         nth_prime  prime_count  primorial  pn_primorial/;
 $| = 1;
 
 # For many more types, see:
@@ -249,10 +249,9 @@ sub mersenne_primes {
   while (1) {
     $p = next_prime($p);  # Mp is not prime if p is not prime
     next if $p > 3 && ($p % 4) == 3 && is_prime(2*$p+1);
-    my $Mp = Math::BigInt->bone->blsft($p)->bsub(1);
+    my $Mp = Math::BigInt->bone->blsft($p)->bdec;
     last if $Mp > $end;
-    # Lucas-Lehmer test would be faster
-    push @mprimes, $Mp if $Mp >= $start && is_prime($Mp);
+    push @mprimes, $Mp if $Mp >= $start && is_mersenne_prime($p);
   }
   @mprimes;
 }
