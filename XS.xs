@@ -856,7 +856,7 @@ next_prime(IN SV* svn)
         XSRETURN_UV(ret);
       }
     }
-    if ((ix == 0 || ix == 1) && _XS_get_callgmp()) {
+    if ((ix == 0 || ix == 1) && _XS_get_callgmp() && PERL_REVISION >= 5 && PERL_VERSION > 8) {
       _vcallsub_with_gmp( ix ? "prev_prime" : "next_prime");
       OBJECTIFY_RESULT(svn, ST(0));
       return;

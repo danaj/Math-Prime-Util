@@ -37,7 +37,8 @@ is_deeply( \@partial_factor, \@expected_factors,
 ################################################################################
 
 # Here is another test case that has to do with reference counting
-# in the XS subroutine callback code.
+# in the XS subroutine callback code.  Perl 5.8.x [x < 8] will get lost
+# and just exit with no message.
 SKIP: {
   skip "No MPU::GMP, skipping callback test",1 unless prime_get_config->{'gmp'};
   my $n = 10**1200+5226;

@@ -499,6 +499,10 @@ sub next_prime {
     if ref($n) ne 'Math::BigInt' && $n >= MPU_MAXPRIME;
   # n is now either 1) not bigint and < maxprime, or (2) bigint and >= uvmax
 
+  if ($n > 4294967295 && Math::Prime::Util::prime_get_config()->{'gmp'}) {
+    return Math::Prime::Util::_reftyped($_[0], Math::Prime::Util::GMP::next_prime($n));
+  }
+
   do {
     $n += $_wheeladvance30[$n%30];
   } while !($n%7) || !_is_prime7($n);
@@ -509,6 +513,10 @@ sub prev_prime {
   my($n) = @_;
   _validate_positive_integer($n);
   return (0,0,0,2,3,3,5,5,7,7,7,7)[$n] if $n <= 11;
+  if ($n > 4294967295 && Math::Prime::Util::prime_get_config()->{'gmp'}) {
+    return Math::Prime::Util::_reftyped($_[0], Math::Prime::Util::GMP::prev_prime($n));
+  }
+
   do {
     $n -= $_wheelretreat30[$n%30];
   } while !($n%7) || !_is_prime7($n);
