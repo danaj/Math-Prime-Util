@@ -120,6 +120,7 @@ t/25-lucas_sequences.t
 t/26-combinatorial.t
 t/27-bernfrac.t
 t/28-pi.t
+t/29-mersenne.t
 t/30-relations.t
 t/31-threading.t
 t/32-iterators.t

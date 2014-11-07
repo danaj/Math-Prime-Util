@@ -17,6 +17,7 @@ extern int is_frobenius_pseudoprime(UV n, IV P, IV Q);
 extern int is_perrin_pseudoprime(UV n);
 extern int _XS_is_frobenius_underwood_pseudoprime(UV n);
 extern int _XS_is_almost_extra_strong_lucas_pseudoprime(UV n, UV increment);
+extern int lucas_lehmer(UV p);
 
 extern int _XS_BPSW(UV const n);
 extern int is_prob_prime(UV n);

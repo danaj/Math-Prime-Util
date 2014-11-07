@@ -3,6 +3,10 @@ Revision history for Perl module Math::Prime::Util
 
 0.47  2014-10-?
 
+    [ADDED]
+
+    - is_mersenne_prime(p)      returns 1 iff 2^p-1 is prime
+
     [FUNCTIONALITY AND PERFORMANCE]
 
     - Standalone compilation (e.g. factoring without Perl installed) is easier.

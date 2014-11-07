@@ -213,6 +213,11 @@ sub is_aks_prime {
   _validate_positive_integer($n);
   return Math::Prime::Util::PP::is_aks_prime($n);
 }
+sub is_mersenne_prime {
+  my($p) = @_;
+  _validate_positive_integer($p);
+  return Math::Prime::Util::PP::is_mersenne_prime($p);
+}
 
 
 sub lucas_sequence {

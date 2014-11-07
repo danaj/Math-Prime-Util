@@ -733,14 +733,15 @@ is_prime(IN SV* svn, ...)
     is_frobenius_underwood_pseudoprime = 8
     is_perrin_pseudoprime = 9
     is_almost_extra_strong_lucas_pseudoprime = 10
-    is_power = 11
+    is_mersenne_prime = 11
+    is_power = 12
   PREINIT:
     int status;
   PPCODE:
     status = _validate_int(aTHX_ svn, 1);
     if (status != 0) {
       int ret = 0;
-      if (status == 1 && ix != 11) {
+      if (status == 1 && ix != 12) {
         UV n = my_svuv(svn);
         UV a = (items == 1) ? 0 : my_svuv(ST(1));
         switch (ix) {
@@ -760,11 +761,14 @@ is_prime(IN SV* svn, ...)
                    } break;
           case 8:  ret = _XS_is_frobenius_underwood_pseudoprime(n); break;
           case 9:  ret = is_perrin_pseudoprime(n); break;
-          case 10:
-          default: ret = _XS_is_almost_extra_strong_lucas_pseudoprime
+          case 10: ret = _XS_is_almost_extra_strong_lucas_pseudoprime
                          (n, (items == 1) ? 1 : a); break;
+          case 11:
+          default: if (n > BITS_PER_WORD) status = 0;
+                   else                   ret = lucas_lehmer(n);
+                   break;
         }
-      } else if (ix == 11) {
+      } else if (ix == 12) {
         UV n = (status == 1) ? my_svuv(svn) : (UV) -my_sviv(svn);
         UV a = (items == 1) ? 0 : my_svuv(ST(1));
         if (status == 1 || a == 0 || a & 1) {
@@ -781,7 +785,7 @@ is_prime(IN SV* svn, ...)
           }
         }
       }
-      RETURN_NPARITY(ret);
+      if (status != 0) RETURN_NPARITY(ret);
     }
     switch (ix) {
       case 0: _vcallsub_with_gmp("is_prime");       break;
@@ -795,7 +799,8 @@ is_prime(IN SV* svn, ...)
       case 8: _vcallsub_with_gmp("is_frobenius_underwood_pseudoprime"); break;
       case 9: _vcallsub_with_gmp("is_perrin_pseudoprime"); break;
       case 10:_vcallsub_with_gmp("is_almost_extra_strong_lucas_pseudoprime"); break;
-      case 11:
+      case 11:_vcallsub_with_gmp("is_mersenne_prime"); break;
+      case 12:
       default:if (items != 3 && status != -1) {
                 STRLEN len;
                 char* ptr = SvPV_nomg(svn, len);

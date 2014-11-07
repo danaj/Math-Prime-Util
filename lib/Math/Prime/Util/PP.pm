@@ -2720,6 +2720,19 @@ sub is_frobenius_pseudoprime {
   0;
 }
 
+sub is_mersenne_prime {
+  my $p = shift;
+  return 1 if $p == 2;
+  return 0 unless is_prob_prime($p);
+  return 0 if $p > 3 && $p % 4 == 3 && $p < ((~0)>>1) && is_prob_prime($p*2+1);
+  my $V = Math::BigInt->new(4);
+  my $mp = BTWO->copy->bpow($p)->bdec;
+  for my $k (3 .. $p) {
+    $V->bmul($V)->bsub(BTWO)->bmod($mp);
+  }
+  return $V->is_zero;
+}
+
 
 my $_poly_bignum;
 sub _poly_new {

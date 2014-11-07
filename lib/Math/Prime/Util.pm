@@ -24,6 +24,7 @@ our @EXPORT_OK =
       is_frobenius_pseudoprime
       is_perrin_pseudoprime
       is_frobenius_underwood_pseudoprime is_aks_prime is_bpsw_prime
+      is_mersenne_prime
       is_power
       miller_rabin_random
       lucas_sequence
@@ -2004,6 +2005,17 @@ a binary segmentation method for modular polynomial multiplication
 (see Bernstein's 2007 Quartic paper), which reduces to a single scalar
 multiplication, at which GMP excels.  Because of this, the GMP
 implementation is likely to be faster once the input is larger than C<2^32>.
+
+
+=head2 is_mersenne_prime
+
+  say "2^607-1 (M607) is a Mersenne prime" if is_mersenne_prime(607);
+
+Takes a positive number C<p> as input and returns 1 if C<2^p-1> is prime.
+After some pre-testing, the Lucas-Lehmer test is performed.
+This is a deterministic unconditional test that runs very fast compared
+to other primality methods for numbers of comparable size, and vastly
+faster than any known general-form primality proof methods.
 
 
 =head2 is_power

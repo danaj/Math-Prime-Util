@@ -845,6 +845,22 @@ int _XS_is_frobenius_underwood_pseudoprime(UV n)
 #endif
 }
 
+int lucas_lehmer(UV p)
+{
+  UV k, V, mp;
+  int res;
+
+  if (p == 2) return 1;
+  if (!is_prob_prime(p))  return 0;
+  if (p > BITS_PER_WORD) croak("lucas_lehmer with p > BITS_PER_WORD");
+  V = 4;
+  mp = UV_MAX >> (BITS_PER_WORD - p);
+  for (k = 3; k <= p; k++) {
+    V = mulsubmod(V, V, 2, mp);
+  }
+  return (V == 0);
+}
+
 
 /******************************************************************************/
 
