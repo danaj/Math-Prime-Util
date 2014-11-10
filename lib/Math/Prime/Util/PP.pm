@@ -1714,6 +1714,8 @@ sub is_power {
   croak("is_power third argument not a scalar reference") if defined($refp) && !ref($refp);
   return 0 if abs($n) <= 3;
   if (defined $a && $a != 0) {
+    return 1 if $a == 1;                  # Everything is a 1st power
+    return 0 if $n < 0 && $a % 2 == 0;    # Negative n never an even power
     if ($a == 2) {
       if (_is_perfect_square($n)) {
         $$refp = int(sqrt($n)) if defined $refp;
@@ -1721,7 +1723,8 @@ sub is_power {
       }
     } else {
       $n = Math::BigInt->new("$n") unless ref($n) eq 'Math::BigInt';
-      my $root = $n->copy->broot($a)->bfloor;
+      my $root = $n->copy->babs->broot($a)->bfloor;
+      $root->bneg if $n->is_neg;
       if ($root->copy->bpow($a) == $n) {
         $$refp = $root if defined $refp;
         return 1;
