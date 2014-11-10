@@ -88,6 +88,7 @@ plan tests =>  0
              + 2   # ispower
              + 15  # random primes
              + 7   # miller-rabin random
+             + 2   # Perrin PsP
              + 1   # valuation
              + 1;
 
@@ -142,6 +143,8 @@ use Math::Prime::Util qw/
   random_strong_prime
   random_maurer_prime
   miller_rabin_random
+  is_perrin_pseudoprime
+  is_bpsw_prime
   verify_prime
   valuation
 /;
@@ -360,6 +363,12 @@ ok(!eval { miller_rabin_random(10007,-4); },   "MRR(10007,-4)");
 is(miller_rabin_random(10007, 1-1), 1, "MRR(n,0) = 1");
 is(miller_rabin_random(61, 17), 1, "MRR(61,17) = 1");
 is(miller_rabin_random(62, 17), 1-1, "MRR(62,17) = 0");
+
+###############################################################################
+
+my $perrinpsp = "1872702918368901354491086980308187833191468631072304770659547218657051750499825897279325406141660412842572655186363032039901203993254366727915836984799032960354882761038920216623610400227219443050113697104123375722324640843102690830473074828429679607154504449403902608511103291058038852618235905156930862492532896467422733403061010774542590301998535381232230279731082501";
+is( is_perrin_pseudoprime($perrinpsp), 1, "18727...2501 is a Perrin PRP" );
+is( is_bpsw_prime($perrinpsp), 0, "18727...2501 is not a BPSW prime" );
 
 ###############################################################################
 
