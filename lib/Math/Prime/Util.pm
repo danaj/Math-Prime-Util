@@ -2012,10 +2012,19 @@ implementation is likely to be faster once the input is larger than C<2^32>.
   say "2^607-1 (M607) is a Mersenne prime" if is_mersenne_prime(607);
 
 Takes a positive number C<p> as input and returns 1 if C<2^p-1> is prime.
-After some pre-testing, the Lucas-Lehmer test is performed.
-This is a deterministic unconditional test that runs very fast compared
-to other primality methods for numbers of comparable size, and vastly
-faster than any known general-form primality proof methods.
+Since an enormous effort has gone into testing these, a list of known
+Mersenne primes is used to accelerate this.  Beyond the highest sequential
+Mersenne prime (currently 32,582,657) this performs pretesting followed by
+the Lucas-Lehmer test.
+
+The Lucas-Lehmer test is a deterministic unconditional test that runs
+very fast compared to other primality methods for numbers of comparable
+size, and vastly faster than any known general-form primality proof methods.
+While this test is fast, the GMP implementation is not nearly as fast as
+specialized programs such as C<prime95>.  Additionally, since we use the
+table for "small" numbers, testing via this function call will only occur
+for numbers with over 9.8 million digits.  At this size, tools such as
+C<prime95> are greatly preferred.
 
 
 =head2 is_power

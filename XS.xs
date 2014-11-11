@@ -764,8 +764,8 @@ is_prime(IN SV* svn, ...)
           case 10: ret = _XS_is_almost_extra_strong_lucas_pseudoprime
                          (n, (items == 1) ? 1 : a); break;
           case 11:
-          default: if (n > BITS_PER_WORD) status = 0;
-                   else                   ret = lucas_lehmer(n);
+          default: ret = is_mersenne_prime(n);
+                   if (ret == -1) status = 0;
                    break;
         }
       } else if (ix == 12) {

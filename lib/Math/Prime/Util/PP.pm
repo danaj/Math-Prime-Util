@@ -2740,8 +2740,20 @@ sub is_frobenius_pseudoprime {
   0;
 }
 
+# Since people have graciously donated millions of CPU years to doing these
+# tests, it would be rude of us not to use the results.  This means we don't
+# actually use the pretest and Lucas-Lehmer test coded below for any reasonable
+# size number.
+my %_mersenne_primes;
+undef @_mersenne_primes{2,3,5,7,13,17,19,31,61,89,107,127,521,607,1279,2203,2281,3217,4253,4423,9689,9941,11213,19937,21701,23209,44497,86243,110503,132049,216091,756839,859433,1257787,1398269,2976221,3021377,6972593,13466917,20996011,24036583,25964951,30402457,32582657,37156667,42643801,43112609,57885161};
+
 sub is_mersenne_prime {
   my $p = shift;
+
+  # Use the known Mersenne primes
+  return 1 if exists $_mersenne_primes{$p};
+  return 0 if $p < 32582657; # GIMPS has checked all below
+  # Past this we do a generic Mersenne prime test
 
   return 1 if $p == 2;
   return 0 unless is_prob_prime($p);

@@ -845,6 +845,21 @@ int _XS_is_frobenius_underwood_pseudoprime(UV n)
 #endif
 }
 
+/* We have a native-UV Lucas-Lehmer test with simple pretest.  If 2^p-1 is
+ * prime but larger than a UV, we'll have to bail, and they'll run the nice
+ * GMP version.  However, they're just asking if this is a Mersenne prime, and
+ * there are millions of CPU years that have gone into enumerating them, so
+ * instead we'll use a table. */
+#define NUM_KNOWN_MERSENNE_PRIMES 48
+static const uint32_t _mersenne_primes[NUM_KNOWN_MERSENNE_PRIMES] = {2,3,5,7,13,17,19,31,61,89,107,127,521,607,1279,2203,2281,3217,4253,4423,9689,9941,11213,19937,21701,23209,44497,86243,110503,132049,216091,756839,859433,1257787,1398269,2976221,3021377,6972593,13466917,20996011,24036583,25964951,30402457,32582657,37156667,42643801,43112609,57885161};
+int is_mersenne_prime(UV p)
+{
+  int i;
+  for (i = 0; i < NUM_KNOWN_MERSENNE_PRIMES; i++)
+    if (p == _mersenne_primes[i])
+      return 1;
+  return (p < 32582657) ? 0 : -1;
+}
 int lucas_lehmer(UV p)
 {
   UV k, V, mp;

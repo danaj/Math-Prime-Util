@@ -43,8 +43,8 @@ See L<Math::Prime::Util> for complete documentation.
   is_provable_prime_with_cert(n)      primality test: (isprime,cert)
   prime_certificate(n)                as above with just certificate
   verify_prime(cert)                  verify a primality certificate
-  is_mersenne_prime                   Lucas-Lehmer deterministic test
-  is_aks_prime                        AKS deterministic test (slow)
+  is_mersenne_prime(p)                is 2^p-1 prime or composite
+  is_aks_prime(n)                     AKS deterministic test (slow)
 
 =head2 PROBABLE PRIME TESTS
 
