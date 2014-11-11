@@ -771,7 +771,8 @@ is_prime(IN SV* svn, ...)
       } else if (ix == 12) {
         UV n = (status == 1) ? my_svuv(svn) : (UV) -my_sviv(svn);
         UV a = (items == 1) ? 0 : my_svuv(ST(1));
-        if (status == 1 || a == 0 || a & 1) {
+        if (status == -1 && n > (UV)IV_MAX) { status = 0; }
+        if (status == 1 || (status == -1 && (a == 0 || a & 1))) {
           ret = is_power(n, a);
           if (status == -1 && a == 0) {
             ret >>= valuation(ret,2);

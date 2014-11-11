@@ -1732,18 +1732,27 @@ sub is_power {
     }
   } else {
     $n = Math::BigInt->new("$n") unless ref($n) eq 'Math::BigInt';
-    my $absn = $n->copy->babs;
+    if ($n < 0) {
+      my $absn = $n->copy->babs;
+      my $root = is_power($absn, 0, $refp);
+      return 0 unless $root;
+      if ($root % 2 == 0) {
+        my $power = valuation($root, 2);
+        $root >>= $power;
+        return 0 if $root == 1;
+        $power = BTWO->copy->bpow($power);
+        $$refp = $$refp ** $power if defined $refp;
+      }
+      $$refp = -$$refp if defined $refp;
+      return $root;
+    }
     my $e = 2;
     while (1) {
-      my $root = $absn->copy()->broot($e)->bfloor;
+      my $root = $n->copy()->broot($e)->bfloor;
       last if $root->is_one();
-      if ($root->copy->bpow($e) == $absn) {
+      if ($root->copy->bpow($e) == $n) {
         my $next = is_power($root, 0, $refp);
         $$refp = $root if !$next && defined $refp;
-        if ($n < 0 && $e == 2) {
-          $next = 0 if ($next % 2) == 0;
-          return $next;
-        }
         $e *= $next if $next != 0;
         return $e;
       }
