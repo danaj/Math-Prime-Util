@@ -863,7 +863,6 @@ int is_mersenne_prime(UV p)
 int lucas_lehmer(UV p)
 {
   UV k, V, mp;
-  int res;
 
   if (p == 2) return 1;
   if (!is_prob_prime(p))  return 0;

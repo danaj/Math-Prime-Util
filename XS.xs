@@ -704,8 +704,7 @@ chinese(...)
 void
 lucas_sequence(...)
   PREINIT:
-    UV n, k, U, V, Qk;
-    IV P, Q;
+    UV U, V, Qk;
   PPCODE:
     if (items != 4) croak("lucas_sequence: n, P, Q, k");
     if (_validate_int(aTHX_ ST(0), 0) && _validate_int(aTHX_ ST(1), 1) &&
