@@ -1,7 +1,7 @@
 Revision history for Perl module Math::Prime::Util
 
 
-0.47  2014-10-?
+0.47  2014-11-18
 
     [ADDED]
 
@@ -19,7 +19,8 @@ Revision history for Perl module Math::Prime::Util
     - AKS is faster for larger than half-word inputs, especially on 64-bit
       machines with gcc's 128-bit types.
 
-    - is_provable_prime goes through XS first, so can run *much* faster.
+    - is_provable_prime goes through XS first, so can run *much* faster for
+      small inputs.
 
     [OTHER]
 
