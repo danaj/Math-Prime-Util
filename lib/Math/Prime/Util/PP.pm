@@ -2513,6 +2513,24 @@ sub lucas_sequence {
   $V->bmod($n);
   return ($U, $V, $Qk);
 }
+sub _lucasuv {
+  my($P, $Q, $k) = @_;
+
+  croak "lucas_sequence: k must be >= 0" if $k < 0;
+  return (0,2) if $k == 0;
+
+  # TODO: This needs to be written properly.
+
+  #my($Uh,$Vl, $Vh, $Ql, $Qh) = (BONE->copy, BTWO->copy, BZERO+$P, BONE->copy, BONE->copy);
+  #my($s, $n) = (0, 0);
+  #{ my $v = $k; while (!($v&1)) { $v >>= 1; $s++; } }
+  #{ my $v = $k; while ($v >>= 1) { $n++; } }
+  return lucas_sequence(Math::BigInt->new(2)->bpow($k), $P, $Q, $k);
+  #return map { ($_ > ''.~0) ? Math::BigInt->new(''.$_) : $_ }
+  #       Math::Prime::Util::GMP::lucas_sequence(Math::BigInt->new(2)->bpow(1024), $P, $Q, $k);
+}
+sub lucasu { (_lucasuv(@_))[0] }
+sub lucasv { (_lucasuv(@_))[1] }
 
 sub is_lucas_pseudoprime {
   my($n) = @_;

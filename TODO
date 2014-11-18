@@ -80,10 +80,6 @@
     = Clean up znlog (PH, BSGS, Rho).
     = Experiment with Wang/Zhang 2012 Rho cycle finding
 
-- Like gmpy:  lucasu, lucasv, lucasu_mod, lucasv_mod  e.g. lucasu_mod(p,q,k,n)
-  See: http://joye.site88.net/papers/JQ96lucas.pdf to make sure we're being
-  efficient.
-
 - consider using Ramanujan Li for PP code.
 
 - xt/pari-compare:  add chinese, factorial, vecmin, vecmax,
@@ -100,3 +96,5 @@
       }
 
 - Proth test using LLR.  Change mersenne test file to test both.
+
+- lucasu / lucasv need proper PP and GMP implementations.
