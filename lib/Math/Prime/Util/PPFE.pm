@@ -144,9 +144,10 @@ sub nth_twin_prime_approx {
 }
 
 
-*is_prime       = \&Math::Prime::Util::PP::is_prime;
-*is_prob_prime  = \&Math::Prime::Util::PP::is_prob_prime;
-*is_bpsw_prime  = \&Math::Prime::Util::PP::is_bpsw_prime;
+*is_prime          = \&Math::Prime::Util::PP::is_prime;
+*is_prob_prime     = \&Math::Prime::Util::PP::is_prob_prime;
+*is_provable_prime = \&Math::Prime::Util::PP::is_provable_prime;
+*is_bpsw_prime     = \&Math::Prime::Util::PP::is_bpsw_prime;
 
 sub is_pseudoprime {
   my($n, $base) = @_;

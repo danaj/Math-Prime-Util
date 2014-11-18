@@ -653,20 +653,6 @@ sub _generic_factor_exp {
 
 #############################################################################
 
-# Return just the non-cert portion.
-sub is_provable_prime {
-  my($n) = @_;
-  return 0 if defined $n && $n < 2;
-  _validate_num($n) || _validate_positive_integer($n);
-
-  return is_prime($n) if $n <= $_XS_MAXVAL;
-  return Math::Prime::Util::GMP::is_provable_prime($n)
-         if $_HAVE_GMP && defined &Math::Prime::Util::GMP::is_provable_prime;
-
-  my ($is_prime, $cert) = is_provable_prime_with_cert($n);
-  return $is_prime;
-}
-
 # Return just the cert portion.
 sub prime_certificate {
   my($n) = @_;

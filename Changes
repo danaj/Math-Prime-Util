@@ -19,6 +19,8 @@ Revision history for Perl module Math::Prime::Util
     - AKS is faster for larger than half-word inputs, especially on 64-bit
       machines with gcc's 128-bit types.
 
+    - is_provable_prime goes through XS first, so can run *much* faster.
+
     [OTHER]
 
     - NetBSD improperly exports symbols in string.h, including popcount.

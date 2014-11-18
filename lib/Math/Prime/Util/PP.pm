@@ -316,6 +316,19 @@ sub is_bpsw_prime {
   return is_extra_strong_lucas_pseudoprime($n) ? 1 : 0;
 }
 
+sub is_provable_prime {
+  my($n) = @_;
+  return 0 if defined $n && $n < 2;
+  _validate_positive_integer($n);
+  if ($n <= 18446744073709551615) {
+    return 0 unless _miller_rabin_2($n);
+    return 0 unless is_almost_extra_strong_lucas_pseudoprime($n);
+    return 2;
+  }
+  my($is_prime, $cert) = Math::Prime::Util::is_provable_prime_with_cert($n);
+  $is_prime;
+}
+
 # Possible sieve storage:
 #   1) vec with mod-30 wheel:   8 bits  / 30
 #   2) vec with mod-2 wheel :  15 bits  / 30
