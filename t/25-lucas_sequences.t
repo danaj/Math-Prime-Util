@@ -3,7 +3,7 @@ use strict;
 use warnings;
 
 use Test::More;
-use Math::Prime::Util qw/lucas_sequence foroddcomposites/;
+use Math::Prime::Util qw/lucas_sequence lucasu lucasv foroddcomposites/;
 
 #my $use64 = Math::Prime::Util::prime_get_config->{'maxbits'} > 32;
 my $usexs = Math::Prime::Util::prime_get_config->{'xs'};
@@ -72,14 +72,23 @@ my @oeis_81264 = (323, 377, 1891, 3827, 4181, 5777, 6601, 6721, 8149, 10877, 116
 # The PP lucas sequence is really slow.
 $#oeis_81264 = 2 unless $usexs || $usegmp;
 
-plan tests => 0 + scalar(@lucas_seqs) + 1;
+plan tests => 0 + 2*scalar(@lucas_seqs) + 1;
 
 foreach my $seqs (@lucas_seqs) {
   my($apq, $isneg, $uorv, $name, $exp) = @$seqs;
   my $idx = ($uorv eq 'U') ? 0 : 1;
   my @seq = map { (lucas_sequence(2**32-1, @$apq, $_))[$idx] } 0 .. $#$exp;
   do { for (@seq) { $_ -= (2**32-1) if $_ > 2**31; } } if $isneg;
-  is_deeply( [@seq], $exp, "${uorv}_n(@$apq) -- $name" );
+  is_deeply( [@seq], $exp, "lucas_sequence ${uorv}_n(@$apq) -- $name" );
+}
+
+foreach my $seqs (@lucas_seqs) {
+  my($apq, $isneg, $uorv, $name, $exp) = @$seqs;
+  if ($uorv eq 'U') {
+    is_deeply([map { lucasu(@$apq,$_) } 0..$#$exp], $exp, "lucasu(@$apq) -- $name");
+  } else {
+    is_deeply([map { lucasv(@$apq,$_) } 0..$#$exp], $exp, "lucasv(@$apq) -- $name");
+  }
 }
 
 {

@@ -2513,6 +2513,63 @@ sub lucas_sequence {
   $V->bmod($n);
   return ($U, $V, $Qk);
 }
+sub _lucasuv {
+  my($P, $Q, $k) = @_;
+
+  croak "lucas_sequence: k must be >= 0" if $k < 0;
+  return (0,2) if $k == 0;
+
+  $P = Math::BigInt->new("$P") unless ref($P) eq 'Math::BigInt';
+  $Q = Math::BigInt->new("$Q") unless ref($Q) eq 'Math::BigInt';
+
+  # Simple way, very slow as k increases:
+  #my($U0, $U1) = (BZERO->copy, BONE->copy);
+  #my($V0, $V1) = (BTWO->copy, Math::BigInt->new("$P"));
+  #for (2 .. $k) {
+  #  ($U0,$U1) = ($U1, $P*$U1 - $Q*$U0);
+  #  ($V0,$V1) = ($V1, $P*$V1 - $Q*$V0);
+  #}
+  #return ($U1, $V1);
+
+  my($Uh,$Vl, $Vh, $Ql, $Qh) = (BONE->copy, BTWO->copy, $P->copy, BONE->copy, BONE->copy);
+  $k = Math::BigInt->new("$k") unless ref($k) eq 'Math::BigInt';
+  my $kstr = substr($k->as_bin, 2);
+  my ($n,$s) = (length($kstr)-1, 0);
+  if ($kstr =~ /(0+)$/) { $s = length($1); }
+  for my $bpos (0 .. $n-$s-1) {
+    $Ql->bmul($Qh);
+    if (substr($kstr,$bpos,1)) {
+      $Qh = $Ql * $Q;
+      #$Uh = $Uh * $Vh;
+      #$Vl = $Vh * $Vl - $P * $Ql;
+      #$Vh = $Vh * $Vh - BTWO * $Qh;
+      $Uh->bmul($Vh);
+      $Vl->bmul($Vh)->bsub($P * $Ql);
+      $Vh->bmul($Vh)->bsub(BTWO * $Qh);
+    } else {
+      $Qh = $Ql->copy;
+      #$Uh = $Uh * $Vl - $Ql;
+      #$Vh = $Vh * $Vl - $P * $Ql;
+      #$Vl = $Vl * $Vl - BTWO * $Ql;
+      $Uh->bmul($Vl)->bsub($Ql);
+      $Vh->bmul($Vl)->bsub($P * $Ql);
+      $Vl->bmul($Vl)->bsub(BTWO * $Ql);
+    }
+  }
+  $Ql->bmul($Qh);
+  $Qh = $Ql * $Q;
+  $Uh->bmul($Vl)->bsub($Ql);
+  $Vl->bmul($Vh)->bsub($P * $Ql);
+  $Ql->bmul($Qh);
+  for (1 .. $s) {
+    $Uh->bmul($Vl);
+    $Vl->bmul($Vl)->bsub(BTWO * $Ql);
+    $Ql->bmul($Ql);
+  }
+  return map { ($_ > ''.~0) ? Math::BigInt->new(''.$_) : $_ } ($Uh, $Vl);
+}
+sub lucasu { (_lucasuv(@_))[0] }
+sub lucasv { (_lucasuv(@_))[1] }
 
 sub is_lucas_pseudoprime {
   my($n) = @_;

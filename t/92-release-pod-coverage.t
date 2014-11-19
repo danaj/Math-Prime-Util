@@ -52,7 +52,7 @@ sub mpu_public_regex {
       is_aks_prime is_bpsw_prime is_mersenne_prime
       is_power
       miller_rabin_random
-      lucas_sequence
+      lucas_sequence lucasu lucasv
       primes twin_primes
       forprimes forcomposites foroddcomposites fordivisors
       forpart forcomb forperm

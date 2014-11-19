@@ -703,9 +703,26 @@ chinese(...)
 
 void
 lucas_sequence(...)
+  ALIAS:
+    lucasu = 1
+    lucasv = 2
   PREINIT:
     UV U, V, Qk;
   PPCODE:
+    if (ix == 1 || ix == 2) {
+      if (items != 3) croak("lucasu: P, Q, k");
+      if (_validate_int(aTHX_ ST(0), 1) && _validate_int(aTHX_ ST(1), 1) &&
+          _validate_int(aTHX_ ST(2), 0)) {
+        IV P = my_sviv(ST(0));
+        IV Q = my_sviv(ST(1));
+        UV k = my_svuv(ST(2));
+        IV ret;
+        int ok = (ix == 1) ? lucasu(&ret, P, Q, k) : lucasv(&ret, P, Q, k);
+        if (ok) XSRETURN_IV(ret);
+      }
+      _vcallsub_with_gmp( (ix==1) ? "lucasu" : "lucasv" );
+      return;
+    }
     if (items != 4) croak("lucas_sequence: n, P, Q, k");
     if (_validate_int(aTHX_ ST(0), 0) && _validate_int(aTHX_ ST(1), 1) &&
         _validate_int(aTHX_ ST(2), 1) && _validate_int(aTHX_ ST(3), 0)) {

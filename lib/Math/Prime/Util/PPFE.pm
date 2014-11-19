@@ -232,6 +232,26 @@ sub lucas_sequence {
   _validate_positive_integer($k);
   return Math::Prime::Util::PP::lucas_sequence(@_);
 }
+sub lucasu {
+  my($P, $Q, $k) = @_;
+  my ($vp, $vq) = ($P, $Q);
+  $vp = -$vp if defined $vp && $vp < 0;
+  $vq = -$vq if defined $vq && $vq < 0;
+  _validate_positive_integer($vp);
+  _validate_positive_integer($vq);
+  _validate_positive_integer($k);
+  return Math::Prime::Util::PP::lucasu(@_);
+}
+sub lucasv {
+  my($P, $Q, $k) = @_;
+  my ($vp, $vq) = ($P, $Q);
+  $vp = -$vp if defined $vp && $vp < 0;
+  $vq = -$vq if defined $vq && $vq < 0;
+  _validate_positive_integer($vp);
+  _validate_positive_integer($vq);
+  _validate_positive_integer($k);
+  return Math::Prime::Util::PP::lucasv(@_);
+}
 
 sub kronecker {
   my($a, $b) = @_;
