@@ -96,5 +96,3 @@
       }
 
 - Proth test using LLR.  Change mersenne test file to test both.
-
-- lucasu / lucasv need proper PP and GMP implementations.

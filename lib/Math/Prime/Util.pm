@@ -820,7 +820,7 @@ __END__
 
 =encoding utf8
 
-=for stopwords forprimes forcomposites foroddcomposites fordivisors forpart forcomb forperm Möbius Deléglise Bézout totient moebius mertens liouville znorder irand primesieve uniqued k-tuples von SoE pari yafu fonction qui compte le nombre nombres voor PhD superset sqrt(N) gcd(A^M k-th (10001st primegen libtommath kronecker znprimroot znlog gcd lcm invmod untruncated vecsum vecprod vecmin vecmax vecreduce gcdext chinese LambertW bernfrac bernreal stirling hammingweight
+=for stopwords forprimes forcomposites foroddcomposites fordivisors forpart forcomb forperm Möbius Deléglise Bézout totient moebius mertens liouville znorder irand primesieve uniqued k-tuples von SoE pari yafu fonction qui compte le nombre nombres voor PhD superset sqrt(N) gcd(A^M k-th (10001st primegen libtommath kronecker znprimroot znlog gcd lcm invmod untruncated vecsum vecprod vecmin vecmax vecreduce gcdext chinese LambertW bernfrac bernreal stirling hammingweight lucasu lucasv OpenPFGW gmpy2
 
 =for test_synopsis use v5.14;  my($k,$x);
 
@@ -2038,6 +2038,29 @@ a k-th power, then this will be set to the k-th root of C<n>.  For example:
 
 This corresponds to Pari/GP's C<ispower> function with integer arguments.
 
+
+=head2 lucasu
+
+  say "Fibonacci($_) = ", lucasu(1,-1,$_) for 0..100;
+
+Given integers C<P>, C<Q>, and the non-negative integer C<k>,
+computes C<U_k> for the Lucas sequence defined by C<P>,C<Q>.  These include
+the Fibonacci numbers (C<1,-1>), the Pell numbers (C<2,-1>), the Jacobsthal
+numbers (C<1,-2>), the Mersenne numbers (C<3,2>), and more.
+
+This corresponds to OpenPFGW's C<lucasU> function and gmpy2's C<lucasu>
+function.
+
+=head2 lucasv
+
+  say "Lucas($_) = ", lucasv(1,-1,$_) for 0..100;
+
+Given integers C<P>, C<Q>, and the non-negative integer C<k>,
+computes C<V_k> for the Lucas sequence defined by C<P>,C<Q>.  These include
+the Lucas numbers (C<1,-1>).
+
+This corresponds to OpenPFGW's C<lucasV> function and gmpy2's C<lucasv>
+function.
 
 =head2 lucas_sequence
 

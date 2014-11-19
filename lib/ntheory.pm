@@ -155,6 +155,8 @@ See L<Math::Prime::Util> for complete documentation.
   chebyshev_theta(n)                  first Chebyshev function
   chebyshev_psi(n)                    second Chebyshev function
   consecutive_integer_lcm(n)          lcm(1 .. n)
+  lucasu(P, Q, k)                     U_k for Lucas(P,Q)
+  lucasv(P, Q, k)                     V_k for Lucas(P,Q)
   lucas_sequence(n, P, Q, k)          (U_k,V_k,Q_k) for Lucas(P,Q) mod n
   bernfrac(n)                         Bernoulli number as (num,den)
   bernreal(n)                         Bernoulli number as BigFloat
