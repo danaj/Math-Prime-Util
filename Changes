@@ -1,5 +1,12 @@
 Revision history for Perl module Math::Prime::Util
 
+0.48  2014-?
+
+    [ADDED]
+
+    - lucasu(P, Q, k)           U_k for Lucas(P,Q)
+    - lucasv(P, Q, k)           V_k for Lucas(P,Q)
+
 
 0.47  2014-11-18
 
