@@ -10,12 +10,16 @@ use Math::BigInt try=>"GMP";
 # This usually shows up once past ~ 10k values, or for large preds/iths.
 #
 # For comparison, we can use something like:
+
 #  perl -MMath::NumSeq::Emirps -E 'my $seq = Math::NumSeq::Emirps->new; say 0+($seq->next)[1] for 1..1000'
 
+#  perl -MMath::NumSeq::Factorials -E 'my $seq = Math::NumSeq::Factorials->new; say join(" ",map { ($seq->next)[1] } 1..1000)' | md5sum
+
 # In general, these will work just fine for values up to 2^64, and typically
-# quite well beyond that.  This is in contrast to most Math::NumSeq sequences
+# quite well beyond that.  This is in contrast to many Math::NumSeq sequences
 # which limit themselves to 2^32 because Math::Factor::XS and Math::Prime::XS
-# do not scale well.
+# do not scale well.  Some other sequences such as Factorials and LucasNumbers
+# are implemented well in Math::NumSeq.
 
 # The argument method is really simple -- this is just to show code.
 
@@ -132,10 +136,10 @@ if      ($type eq 'Abundant') {
     $arg = 1 unless $arg =~ /^-?\d+$/;
     print join " ", map { erdos_selfridge_class($_,$arg) } 1..$count;
   }
+} elsif ($type eq 'Factorials') {
+  print join " ", map { factorial($_) } 0..$count-1;
 } elsif ($type eq 'Fibonacci') {
-  # This is not a good way to do it, but does show a use for the function.
-  my $lim = ($count <= 70)  ?  ~0  :  Math::BigInt->new(2) ** $count;
-  print join " ", map { (lucas_sequence($lim, 1, -1, $_))[0] } 0..$count-1;
+  print join " ", map { lucasu(1, -1, $_) } 0..$count-1;
 } elsif ($type eq 'GoldbachCount') {
   if ($arg eq 'even') {
     print join " ", map { goldbach_count($_<<1) } 1..$count;
@@ -147,9 +151,8 @@ if      ($type eq 'Abundant') {
 } elsif ($type eq 'LiouvilleFunction') {
   print join " ", map { liouville($_) } 1..$count;
 } elsif ($type eq 'LucasNumbers') {
-  # This is not a good way to do it, but does show a use for the function.
-  my $lim = ($count <= 91)  ?  ~0  :  Math::BigInt->new(2) ** $count;
-  print join " ", map { (lucas_sequence($lim, 1, -1, $_))[1] } 1..$count;
+  # Note the different starting point
+  print join " ", map { lucasv(1, -1, $_) } 1..$count;
 } elsif ($type eq 'MephistoWaltz') {
   print join " ", map { mephisto_waltz($_) } 0..$count-1;
 } elsif ($type eq 'MobiusFunction') {
@@ -162,9 +165,7 @@ if      ($type eq 'Abundant') {
   }
   print join " ", @n;
 } elsif ($type eq 'Pell') {
-  # This is not a good way to do it, but does show a use for the function.
-  my $lim = ($count <= 51)  ?  ~0  :  Math::BigInt->new(3) ** $count;
-  print join " ", map { (lucas_sequence($lim, 2, -1, $_))[0] } 0..$count-1;
+  print join " ", map { lucasu(2, -1, $_) } 0..$count-1;
 } elsif ($type eq 'PisanoPeriod') {
   print join " ", map { pisano($_) } 1..$count;
 } elsif ($type eq 'PolignacObstinate') {
@@ -315,7 +316,6 @@ if      ($type eq 'Abundant') {
 # DigitSumModulo
 # Even
 # Expression
-# Factorials
 # Fibbinary
 # FibbinaryBitCount
 # FibonacciRepresentations
@@ -365,7 +365,7 @@ if      ($type eq 'Abundant') {
 # SqrtEngel
 # StarNumbers
 # Tetrahedral
-# Triangular
+# Triangular            -stirling($_+1,$_) is a complicated solution
 # UlamSequence
 # UndulatingNumbers
 # WoodallNumbers
