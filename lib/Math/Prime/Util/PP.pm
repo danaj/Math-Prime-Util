@@ -2536,6 +2536,53 @@ sub _lucasuv {
   my $kstr = substr($k->as_bin, 2);
   my ($n,$s) = (length($kstr)-1, 0);
   if ($kstr =~ /(0+)$/) { $s = length($1); }
+
+  if ($Q == -1) {
+    # This could be simplified, and it's running 10x slower than it should.
+    my ($ql,$qh) = (1,1);
+    for my $bpos (0 .. $n-$s-1) {
+      $ql *= $qh;
+      if (substr($kstr,$bpos,1)) {
+        $qh = -$ql;
+        $Uh->bmul($Vh);
+        if ($ql == 1) {
+          $Vl->bmul($Vh)->bsub( $P );
+          $Vh->bmul($Vh)->badd( BTWO );
+        } else {
+          $Vl->bmul($Vh)->badd( $P );
+          $Vh->bmul($Vh)->bsub( BTWO );
+        }
+      } else {
+        $qh = $ql;
+        if ($ql == 1) {
+          $Uh->bmul($Vl)->bdec;
+          $Vh->bmul($Vl)->bsub($P);
+          $Vl->bmul($Vl)->bsub(BTWO);
+        } else {
+          $Uh->bmul($Vl)->binc;
+          $Vh->bmul($Vl)->badd($P);
+          $Vl->bmul($Vl)->badd(BTWO);
+        }
+      }
+    }
+    $ql *= $qh;
+    $qh = -$ql;
+    if ($ql == 1) {
+      $Uh->bmul($Vl)->bdec;
+      $Vl->bmul($Vh)->bsub($P);
+    } else {
+      $Uh->bmul($Vl)->binc;
+      $Vl->bmul($Vh)->badd($P);
+    }
+    $ql *= $qh;
+    for (1 .. $s) {
+      $Uh->bmul($Vl);
+      if ($ql == 1) { $Vl->bmul($Vl)->bsub(BTWO); $ql *= $ql; }
+      else          { $Vl->bmul($Vl)->badd(BTWO); $ql *= $ql; }
+    }
+    return map { ($_ > ''.~0) ? Math::BigInt->new(''.$_) : $_ } ($Uh, $Vl);
+  }
+
   for my $bpos (0 .. $n-$s-1) {
     $Ql->bmul($Qh);
     if (substr($kstr,$bpos,1)) {
