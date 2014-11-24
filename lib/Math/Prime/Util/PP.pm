@@ -1224,7 +1224,8 @@ sub prime_count_approx {
   #    Method             10^10 %error  10^19 %error
   #    -----------------  ------------  ------------
   #    n/(log(n)-1)        .22%          .06%
-  #    average bounds      .01%          .0002%
+  #    average bounds      .0005%        .0000002%
+  #    asymp               .0006%        .00000004%
   #    li(n)               .0007%        .00000004%
   #    li(n)-li(n^.5)/2    .0004%        .00000001%
   #    R(n)                .0004%        .00000001%
@@ -1259,6 +1260,9 @@ sub prime_count_approx {
     #  ...
     );
   }
+  # Asymp:
+  #   my $l1 = log($x);  my $l2 = $l1*$l1;  my $l4 = $l2*$l2;
+  #   $result = int( $x/$l1 + $x/$l2 + 2*$x/($l2*$l1) + 6*$x/($l4) + 24*$x/($l4*$l1) + 120*$x/($l4*$l2) + 720*$x/($l4*$l2*$l1) + 5040*$x/($l4*$l4) + 40320*$x/($l4*$l4*$l1) + 0.5 );
 
   return Math::BigInt->new($result->bfloor->bstr()) if ref($result) eq 'Math::BigFloat';
   return int($result);
