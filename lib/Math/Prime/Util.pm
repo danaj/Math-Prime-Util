@@ -1360,12 +1360,7 @@ primes.  It may be desirable to use a bit more memory than is necessary, to
 avoid calling C<prime_count>.
 
 These routines use verified tight limits below a range at least C<2^35>, and
-use the Dusart (2010) bounds of
-
-    x/logx * (1 + 1/logx + 2.000/log^2x) <= Pi(x)
-
-    x/logx * (1 + 1/logx + 2.334/log^2x) >= Pi(x)
-
+use either the Dusart (2010) bounds or the Axler (2014) bounds
 above that range.  These bounds do not assume the Riemann Hypothesis.  If the
 configuration option C<assume_rh> has been set (it is off by default), then
 the Schoenfeld (1976) bounds are used for large values.
@@ -1638,7 +1633,8 @@ C<(x+2)^(n+1) = 2a + 5 mod (x^2-ax+1,n)>.  This combines a Fermat and Lucas
 test with a cost of only slightly more than 2 strong pseudoprime tests.  This
 makes it similar to, but faster than, a Frobenius test.
 
-There are no known pseudoprimes to this test.  This test also has no overlap
+There are no known pseudoprimes to this test and extensive computation has
+shown no counterexamples under C<2^50>.  This test also has no overlap
 with the BPSW test, making it a very effective method for adding additional
 certainty.
 
@@ -3232,6 +3228,10 @@ performance.  For sizes over 50k one of the first two are highly recommended.
 
 =head1 EXAMPLES
 
+Print Fibonacci numbers:
+
+    perl -Mntheory=:all -E 'say lucasu(1,-1,$_) for 0..20'
+
 Print strong pseudoprimes to base 17 up to 10M:
 
     # Similar to A001262's isStrongPsp function, but much faster
@@ -4102,6 +4102,10 @@ thank Kim Walisch for the many discussions about prime counting.
 =head1 REFERENCES
 
 =over 4
+
+=item *
+
+Christian Axler, "New bounds for the prime counting function π(x)", September 2014.  For large values, improved limits versus Dusart 2010.  L<http://arxiv.org/abs/1409.1780>
 
 =item *
 

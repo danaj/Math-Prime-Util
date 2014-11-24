@@ -614,12 +614,20 @@ UV twin_prime_count_approx(UV n)
 
 UV prime_count_lower(UV n)
 {
-  long double fn, flogn, lower, a;
+  long double fn, fl1, fl2, lower, a;
 
   if (n < 33000) return _XS_prime_count(2, n);
 
-  fn     = (long double) n;
-  flogn  = logl(n);
+  fn  = (long double) n;
+  fl1 = logl(n);
+  fl2 = fl1 * fl1;
+
+  if (n > 1332479531) {
+    long double fl4 = fl2*fl2;
+    /* Axler, Sep 2014, theorem 1.4 */
+    lower = fl1 - 1.0L - 1.0L/fl1 - 2.65L/fl2 - 13.35L/(fl2*fl1) - 70.3L/fl4 - 455.6275L/(fl4*fl1) - 3404.4225L/(fl4*fl2);
+    return (UV) ceill(fn / lower);
+  }
 
   if      (n <   176000)  a = 1.80;
   else if (n <   315000)  a = 2.10;
@@ -634,7 +642,7 @@ UV prime_count_lower(UV n)
   else a = 2.00;
 #endif
 
-  lower = fn/flogn * (1.0 + 1.0/flogn + a/(flogn*flogn));
+  lower = fn/fl1 * (1.0 + 1.0/fl1 + a/fl2);
   return (UV) floorl(lower);
 }
 
@@ -673,9 +681,20 @@ static const thresh_t _upper_thresh[] = {
 UV prime_count_upper(UV n)
 {
   int i;
-  long double fn, flogn, upper, a;
+  long double fn, fl1, fl2, upper, a;
 
   if (n < 33000) return _XS_prime_count(2, n);
+
+  fn  = (long double) n;
+  fl1 = logl(n);
+  fl2 = fl1 * fl1;
+
+  if (fn > 10666844954.0) {
+    long double fl4 = fl2*fl2;
+    /* Axler, Sep 2014, theorem 1.3 */
+    upper = fl1 - 1.0L - 1.0L/fl1 - 3.35L/fl2 - 12.65L/(fl2*fl1) - 71.7L/fl4 - 466.1275L/(fl4*fl1) - 3489.8225L/(fl4*fl2);
+    return (UV) floorl(fn / upper);
+  }
 
   for (i = 0; i < (int)NUPPER_THRESH; i++)
     if (n < _upper_thresh[i].thresh)
@@ -684,9 +703,7 @@ UV prime_count_upper(UV n)
   if (i < (int)NUPPER_THRESH) a = _upper_thresh[i].aval;
   else                        a = 2.334;   /* Dusart 2010, page 2 */
 
-  fn     = (long double) n;
-  flogn  = logl(n);
-  upper = fn/flogn * (1.0 + 1.0/flogn + a/(flogn*flogn));
+  upper = fn/fl1 * (1.0 + 1.0/fl1 + a/fl2);
   return (UV) ceill(upper);
 }
 

@@ -1294,6 +1294,12 @@ sub prime_count_lower {
     }
   } elsif ($x < 599) {
     $result = $x / ($flogx - 0.7);   # For smaller numbers this works out well.
+  } elsif ($x > 1332479531) {
+      my $fl1 = $flogx;
+      my $fl2 = $fl1 * $fl1;
+      my $fl4 = $fl2 * $fl2;
+      # Axler 2014, thorem 1.3
+      $result = $x / ( $fl1 - 1.0 - 1.0/$fl1 - 2.65/$fl2 - 13.35/($fl2*$fl1) - 70.3/$fl4 - 455.6275/($fl4*$fl1) - 3404.4225/($fl4*$fl2) );
   } else {
     my $a;
     # Hand tuned for small numbers (< 60_000M)
@@ -1331,8 +1337,9 @@ sub prime_count_upper {
   # Rosser & Schoenfeld:  x/(logx-3/2)         x >= 67
   # Dusart 1999:          x/logx*(1+1/logx+2.51/logxlogx)   x >= 355991
   # Dusart 2010:          x/logx*(1+1/logx+2.334/logxlogx)  x >= 2_953_652_287
+  # Axler 2014:           x/(logx-1-1/logx-3.35/logxlogx...) x >= e^3.804
 
-  # As with the lower bounds, Dusart bounds are best by far.
+  # As with the lower bounds, Dusart and Axler bounds are best by far.
 
   # Another possibility here for numbers under 3000M is to use Li(x)
   # minus a correction.
@@ -1353,7 +1360,13 @@ sub prime_count_upper {
   } elsif ($x <  1621) { $result = ($x / ($flogx - 1.048)) + 1.0; }
     elsif ($x <  5000) { $result = ($x / ($flogx - 1.071)) + 1.0; }
     elsif ($x < 15900) { $result = ($x / ($flogx - 1.098)) + 1.0; }
-    else {
+    elsif ($x > 10666844954) {
+      my $fl1 = $flogx;
+      my $fl2 = $fl1 * $fl1;
+      my $fl4 = $fl2 * $fl2;
+      # Axler 2014, thorem 1.3
+      $result = $x / ( $fl1 - 1.0 - 1.0/$fl1 - 3.35/$fl2 - 12.65/($fl2*$fl1) - 71.7/$fl4 - 466.1275/($fl4*$fl1) - 3489.8225/($fl4*$fl2) );
+    } else {
     my $a;
     # Hand tuned for small numbers (< 60_000M)
     if    ($x <      24000) { $a = 2.30; }
@@ -2861,6 +2874,7 @@ sub is_frobenius_pseudoprime {
 # tests, it would be rude of us not to use the results.  This means we don't
 # actually use the pretest and Lucas-Lehmer test coded below for any reasonable
 # size number.
+# See: http://www.mersenne.org/report_milestones/
 my %_mersenne_primes;
 undef @_mersenne_primes{2,3,5,7,13,17,19,31,61,89,107,127,521,607,1279,2203,2281,3217,4253,4423,9689,9941,11213,19937,21701,23209,44497,86243,110503,132049,216091,756839,859433,1257787,1398269,2976221,3021377,6972593,13466917,20996011,24036583,25964951,30402457,32582657,37156667,42643801,43112609,57885161};
 
@@ -2869,7 +2883,7 @@ sub is_mersenne_prime {
 
   # Use the known Mersenne primes
   return 1 if exists $_mersenne_primes{$p};
-  return 0 if $p < 32582657; # GIMPS has checked all below
+  return 0 if $p < 32593019; # GIMPS has checked all below
   # Past this we do a generic Mersenne prime test
 
   return 1 if $p == 2;

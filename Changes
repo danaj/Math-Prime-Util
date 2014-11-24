@@ -7,6 +7,10 @@ Revision history for Perl module Math::Prime::Util
     - lucasu(P, Q, k)           U_k for Lucas(P,Q)
     - lucasv(P, Q, k)           V_k for Lucas(P,Q)
 
+    [Misc]
+
+    - Use Axler (2014) bounds for prime count where they improve on Dusart.
+
 
 0.47  2014-11-18
 
