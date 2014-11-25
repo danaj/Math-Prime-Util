@@ -505,7 +505,7 @@ int pbrent_factor(UV n, UV *factors, UV rounds, UV a)
   UV f, m, r;
   UV Xi = 2;
   UV Xm = 2;
-  const UV inner = 64;
+  const UV inner = (n <= 4000000000UL) ? 32 : 160;
 
   MPUassert( (n >= 3) && ((n%2) != 0) , "bad n in pbrent_factor");
 
