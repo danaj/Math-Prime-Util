@@ -156,7 +156,7 @@ int factor(UV n, UV *factors)
       }
       /* Give larger inputs a run with p-1 before SQUFOF */
       if (!split_success && n > (UV_MAX >> 15) && MULMODS_ARE_FAST) {
-        split_success = pminus1_factor(n, tofac_stack+ntofac, 1000, 20000)-1;
+        split_success = pminus1_factor(n, tofac_stack+ntofac, 1500, 20000)-1;
         if (verbose) printf("small p-1 %d\n", split_success);
       }
       /* SQUFOF with these parameters gets 99.9% of everything left */
@@ -601,49 +601,52 @@ int prho_factor(UV n, UV *factors, UV rounds)
 /* Pollard's P-1 */
 int pminus1_factor(UV n, UV *factors, UV B1, UV B2)
 {
-  UV f;
-  UV q = 2;
-  UV a = 2;
-  UV savea = 2;
-  UV saveq = 2;
+  UV f, k, kmin;
+  UV a     = 2, q     = 2;
+  UV savea = 2, saveq = 2;
   UV j = 1;
   UV sqrtB1 = isqrt(B1);
   MPUassert( (n >= 3) && ((n%2) != 0) , "bad n in pminus1_factor");
 
-  START_DO_FOR_EACH_PRIME(2, sqrtB1) {
-    UV k = p*p;
-    UV kmin = B1/p;
-    while (k <= kmin)
-      k *= p;
-    a = powmod(a, k, n);
-    q = p;
-  } END_DO_FOR_EACH_PRIME
-  if (a == 0) { factors[0] = n; return 1; }
-  f = gcd_ui(a-1, n);
-  if (f == 1) {
-    savea = a;
-    saveq = q;
-    START_DO_FOR_EACH_PRIME(q+1, B1) {
-      q = p;
-      a = powmod(a, q, n);
+  if (B1 <= primes_small[NPRIMES_SMALL-2]) {
+    UV i;
+    for (i = 1; primes_small[i] <= B1; i++) {
+      q = k = primes_small[i];
+      if (q <= sqrtB1) {
+        k = q*q;  kmin = B1/q;
+        while (k <= kmin)  k *= q;
+      }
+      a = powmod(a, k, n);
       if ( (j++ % 32) == 0) {
         if (a == 0 || gcd_ui(a-1, n) != 1)
           break;
-        savea = a;
-        saveq = q;
+        savea = a;  saveq = q;
+      }
+    }
+  } else {
+    START_DO_FOR_EACH_PRIME(2, B1) {
+      q = k = p;
+      if (q <= sqrtB1) {
+        k = q*q;  kmin = B1/q;
+        while (k <= kmin)  k *= q;
+      }
+      a = powmod(a, k, n);
+      if ( (j++ % 32) == 0) {
+        if (a == 0 || gcd_ui(a-1, n) != 1)
+          break;
+        savea = a;  saveq = q;
       }
     } END_DO_FOR_EACH_PRIME
-    if (a == 0) { factors[0] = n; return 1; }
-    f = gcd_ui(a-1, n);
   }
+  if (a == 0) { factors[0] = n; return 1; }
+  f = gcd_ui(a-1, n);
+
   /* If we found more than one factor in stage 1, backup and single step */
   if (f == n) {
     a = savea;
     START_DO_FOR_EACH_PRIME(saveq, B1) {
-      UV k = p;
-      UV kmin = B1/p;
-      while (k <= kmin)
-        k *= p;
+      k = p;  kmin = B1/p;
+      while (k <= kmin)  k *= p;
       a = powmod(a, k, n);
       f = gcd_ui(a-1, n);
       q = p;
