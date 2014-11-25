@@ -1786,7 +1786,8 @@ forcomb (SV* block, IN SV* svn, IN SV* svk = 0)
       } else {
         for (j = 1; j < k && cm[j] > cm[j-1]; j++) ;    /* Find last decrease */
         if (j >= k) break;                              /* Done! */
-        for (m = 0; cm[j] > cm[m]; m++) ;               /* Find next greater */
+        for (m = 0; cm[j] > cm[m]; m++)                 /* Find next greater */
+          ;
         { UV t = cm[j];  cm[j] = cm[m];  cm[m] = t; }   /* Swap */
         for (i = j-1, m = 0;  m < i;  i--, m++)         /* Reverse the end */
           { UV t = cm[i];  cm[i] = cm[m];  cm[m] = t; }

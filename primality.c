@@ -402,7 +402,7 @@ void lucas_seq(UV* Uret, UV* Vret, UV* Qkret, UV n, IV P, IV Q, UV k)
   *Qkret = Qk;
 }
 
-#define OVERHALF(v)  ( ((v>=0)?v:-v) > (UVCONST(1) << (BITS_PER_WORD/2-1)) )
+#define OVERHALF(v)  ( (UV)((v>=0)?v:-v) > (UVCONST(1) << (BITS_PER_WORD/2-1)) )
 int lucasu(IV* U, IV P, IV Q, UV k)
 {
   IV Uh, Vl, Vh, Ql, Qh;
@@ -972,10 +972,12 @@ static const UV mr_bases_small_3[3] = {2, 7, 61};
 static const UV mr_bases_large_1[1] = { UVCONST(  9345883071009581737 ) };
 static const UV mr_bases_large_2[2] = { UVCONST(         336781006125 ),
                                         UVCONST(     9639812373923155 ) };
+#if 0
 static const UV mr_bases_large_3[3] = { UVCONST(  4230279247111683200 ),
                                         UVCONST( 14694767155120705706 ),
                                         UVCONST( 16641139526367750375 ) };
 static const UV mr_bases_large_7[7] = { 2, 325, 9375, 28178, 450775, 9780504, 1795265022 };
+#endif
 #endif
 
 int is_prob_prime(UV n)
