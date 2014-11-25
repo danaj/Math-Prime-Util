@@ -6,7 +6,7 @@
 # This is an alternative to T.R. Nicely's cglp4 program from:
 #      http://www.trnicely.net/#Downloads
 # This runs 2-4x faster on my machines.  If cglp4 can use PFGW, then it will
-# cross over sped around 3000 digits, and PFGW is much faster at 10k+.
+# cross over speed around 3000 digits, and PFGW is much faster at 10k+.
 #
 # It will use the extra-strong BPSW test plus a Frobenius-Underwood test
 # for the endpoints so is more stringent about endpoint testing (cglp4 uses
