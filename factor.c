@@ -145,8 +145,8 @@ int factor(UV n, UV *factors)
     while ( (n >= f*f) && (!is_prob_prime(n)) ) {
       int split_success = 0;
       /* Adjust the number of rounds based on the number size and speed */
-      UV const br_rounds = ((n>>29)<100000) ? (MULMODS_ARE_FAST ? 4000 :  500)
-                                            : (MULMODS_ARE_FAST ? 2000 : 2000);
+      UV const br_rounds = ((n>>29)<100000) ? (MULMODS_ARE_FAST ? 6000 :  500)
+                                            : (MULMODS_ARE_FAST ? 4000 : 2000);
       UV const sq_rounds = 200000; /* 20k 91%, 40k 98%, 80k 99.9%, 120k 99.99%*/
 
       /* 99.7% of 32-bit, 94% of 64-bit random inputs factored here */
