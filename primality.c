@@ -431,9 +431,10 @@ int lucasu(IV* U, IV P, IV Q, UV k)
       Vl = Vl * Vl - 2 * Ql;
     }
   }
-  if (OVERHALF(Uh) || OVERHALF(Vh) || OVERHALF(Vl) || OVERHALF(Ql) || OVERHALF(Qh)) return 0;
+  if (OVERHALF(Ql) || OVERHALF(Qh)) return 0;
   Ql = Ql * Qh;
   Qh = Ql * Q;
+  if (OVERHALF(Uh) || OVERHALF(Vh) || OVERHALF(Vl) || OVERHALF(Ql) || OVERHALF(Qh)) return 0;
   Uh = Uh * Vl - Ql;
   Vl = Vh * Vl - P * Ql;
   Ql = Ql * Qh;
@@ -472,13 +473,14 @@ int lucasv(IV* V, IV P, IV Q, UV k)
       Vl = Vl * Vl - 2 * Ql;
     }
   }
-  if (OVERHALF(Vh) || OVERHALF(Vl) || OVERHALF(Ql) || OVERHALF(Qh)) return 0;
+  if (OVERHALF(Ql) || OVERHALF(Qh)) return 0;
   Ql = Ql * Qh;
   Qh = Ql * Q;
+  if (OVERHALF(Vh) || OVERHALF(Vl) || OVERHALF(Ql) || OVERHALF(Qh)) return 0;
   Vl = Vh * Vl - P * Ql;
   Ql = Ql * Qh;
   for (j = 0; j < s; j++) {
-    if (OVERHALF(Vl)) return 0;
+    if (OVERHALF(Vl) || OVERHALF(Ql)) return 0;
     Vl = Vl * Vl - 2 * Ql;
     Ql *= Ql;
   }
