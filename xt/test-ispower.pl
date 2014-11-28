@@ -28,8 +28,8 @@ foreach my $i (1 .. 80*$int) {
   my @iroots = (0,0,map { int($i ** (1.0/$_) + 0.00001) ** $_ } 2 .. 12);
   my $r;
   foreach my $e (2 .. 12) {
-    if (is_power($i,$e,\$r)) { die "$i $e" unless $iroots[$e] == $i && $r ** $e == $i; }
-    else                     { die "$i $e" unless $iroots[$e] != $i; }
+    if (is_power($i,$e,\$r)) { die "1 $i $e $r" unless $iroots[$e] == $i && $r ** $e == $i; }
+    else                     { die "0 $i $e" unless $iroots[$e] != $i; }
   }
 }
 print "\n";

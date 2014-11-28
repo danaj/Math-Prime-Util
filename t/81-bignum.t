@@ -315,10 +315,19 @@ is( chinese([26,17179869209],[17,34359738421]), 103079215280, "chinese([26,17179
 
 is( is_power(18475335773296164196), "0", "ispower(18475335773296164196) == 0" );
 is( is_power(3089265681159475043336839581081873360674602365963130114355701114591322241990483812812582393906477998611814245513881), 14, "ispower(150607571^14) == 14" );
-my @negpowers = (0,0,0,3,0,5,3,7,0,9,5,11,3,13,7,15,0,17,9,19,5,21,11,23,3,25,13,27,7,29,15,31);
+my @negpowers = (qw/0 0 0 3 0 5 3 7 0 9 5 11 3 13 7 15 0 17 9 19 5 21 11 23 3 25 13 27 7 29 15 31/);
 push @negpowers, (0,33,17,35,9,37,19,39,5,41,21,43,11,45,23,47,3,49,25,51,13,53,27,55,7,57,29,59,15,61,31,63,0,65,33,67,17,69,35,71,9,73,37,75,19,77,39,79,5,81,41,83,21,85,43,87,11,89,45,91,23,93,47,95,3,97,49,99,25,101,51,103,13,105,53,107,27,109,55,111,7,113,57,115,29,117,59,119,15,121,61,123,31,125,63,127,0,129,65,131,33,133,67,135,17,137,69,139,35,141,71,143,9,145,73,147,37,149,75) if $extra;
-is_deeply( [map { is_power(-7 ** $_) } 0 .. $#negpowers], \@negpowers, "-7 ^ i for 0 .. $#negpowers" );
-is_deeply( [map { my $r; my $p=is_power(-7 ** $_, 0, \$r); $p ? (0+$r) ** $p : -7 ** $_; } 0 .. $#negpowers], [map { -7 ** $_ } 0 .. $#negpowers], "correct root from is_power for -7^i for 0 .. $#negpowers" );
+# Work around bug in Math::BigInt::Pari and Perl pre-5.18.
+if ($bigintlib eq 'Pari' && $] < "5.018") {
+  is_deeply( [map { is_power("".-7 ** $_) } 0 .. $#negpowers], \@negpowers, "-7 ^ i for 0 .. $#negpowers" );
+  is_deeply( [map { my $r; my $p=is_power("".-7 ** $_, "0", \$r); $p ? (0+$r) ** $p : -7 ** $_; } 0 .. $#negpowers], [map { -7 ** $_ } 0 .. $#negpowers], "correct root from is_power for -7^i for 0 .. $#negpowers" );
+} else {
+  is_deeply( [map { is_power(-7 ** $_) } 0 .. $#negpowers], \@negpowers, "-7 ^ i for 0 .. $#negpowers" );
+  SKIP: {
+    skip "Skipping some is_power tests on broken 64-bit Perl", 1 if $broken64;
+    is_deeply( [map { my $r; my $p=is_power(-7 ** $_, "0", \$r); $p ? (0+$r) ** $p : -7 ** $_; } 0 .. $#negpowers], [map { -7 ** $_ } 0 .. $#negpowers], "correct root from is_power for -7^i for 0 .. $#negpowers" );
+  }
+}
 
 ###############################################################################
 
@@ -372,8 +381,9 @@ is(miller_rabin_random(62, 17), 1-1, "MRR(62,17) = 0");
 
 my $perrinpsp = "1872702918368901354491086980308187833191468631072304770659547218657051750499825897279325406141660412842572655186363032039901203993254366727915836984799032960354882761038920216623610400227219443050113697104123375722324640843102690830473074828429679607154504449403902608511103291058038852618235905156930862492532896467422733403061010774542590301998535381232230279731082501";
 SKIP: {
-  skip "Perrin pseudoprime tests without GMP or EXTENDED_TESTING.", 2
-      if !$usegmp && !$extra;
+  # It's fast with a *new* version of the GMP code (that has the test).
+  skip "Perrin pseudoprime tests without EXTENDED_TESTING.", 2
+      if !$extra;
   is( is_perrin_pseudoprime($perrinpsp), 1, "18727...2501 is a Perrin PRP" );
   is( is_bpsw_prime($perrinpsp), 0, "18727...2501 is not a BPSW prime" );
 }

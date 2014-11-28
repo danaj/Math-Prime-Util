@@ -46,6 +46,7 @@
  #define my_sviv(sv)  PSTRTOLL(SvPV_nolen(sv), NULL, 10)
 #elif PERL_REVISION <= 5 && PERL_VERSION < 14 && BITS_PER_WORD == 64
  /* Workaround RT 49569 in Math::BigInt::FastCalc (pre 5.14.0) */
+ /* TODO: Math::BigInt::Pari has the same problem with negs pre-5.18.0 */
  #define my_svuv(sv) ( (!SvROK(sv)) ? SvUV(sv) : PSTRTOULL(SvPV_nolen(sv),NULL,10) )
  #define my_sviv(sv) ( (!SvROK(sv)) ? SvIV(sv) : PSTRTOLL(SvPV_nolen(sv),NULL,10) )
 #else

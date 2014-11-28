@@ -584,9 +584,12 @@ if ($extra) {
   #           [ 13, 65537 ],
   #           "ecm(851981)" );
   # Try to force using stage 2.
-  is_deeply( [ sort {$a<=>$b} Math::Prime::Util::PP::ecm_factor(101303039, 5, 100000,100) ],
-             [ 1013, 100003 ],
-             "ecm(101303039)" );
+  SKIP: {
+    skip "Skipping ecm stage 2 tests", 1 if defined $Math::Prime::Util::GMP::VERSION && $Math::Prime::Util::GMP::VERSION < 0.20;
+    is_deeply( [ sort {$a<=>$b} Math::Prime::Util::PP::ecm_factor(101303039, 5, 100000,100) ],
+               [ 1013, 100003 ],
+               "ecm(101303039)" );
+  }
   my $n64 = $use64 ? 55834573561 : Math::BigInt->new("55834573561");
   is_deeply( [ sort {$a<=>$b} Math::Prime::Util::PP::prho_factor($n64) ],
              [ 13, 4294967197 ],
@@ -610,9 +613,12 @@ if ($extra) {
   is($nfac[0] * $nfac[1], $nbig, "pminus1 found a correct factor");
   ok($nfac[0] != 1 && $nfac[1] != 1, "pminus1 didn't return a degenerate factor");
   @nfac = sort {$a<=>$b} Math::Prime::Util::PP::ecm_factor($nbig);
-  is(scalar @nfac, 2, "ecm finds a factor of 18686551294184381720251");
-  is($nfac[0] * $nfac[1], $nbig, "ecm found a correct factor");
-  ok($nfac[0] != 1 && $nfac[1] != 1, "ecm didn't return a degenerate factor");
+  SKIP: {
+    skip "Skipping ecm test", 3 if defined $Math::Prime::Util::GMP::VERSION && $Math::Prime::Util::GMP::VERSION < 0.20;
+    is(scalar @nfac, 2, "ecm finds a factor of 18686551294184381720251");
+    is($nfac[0] * $nfac[1], $nbig, "ecm found a correct factor");
+    ok($nfac[0] != 1 && $nfac[1] != 1, "ecm didn't return a degenerate factor");
+  }
 
   $nbig = Math::BigInt->new("73786976930493367637");
   # Check stage 2 p-1.  Fast with Math::BigInt::GMP, slow without.
