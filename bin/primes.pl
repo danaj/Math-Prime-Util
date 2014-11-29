@@ -5,6 +5,7 @@ use Getopt::Long;
 use Math::BigInt try => 'GMP';
 use Math::Prime::Util qw/primes  prime_count  next_prime  prev_prime
                          is_prime  is_provable_prime  is_mersenne_prime
+                         lucasu lucasv
                          nth_prime  prime_count  primorial  pn_primorial/;
 $| = 1;
 
@@ -188,57 +189,26 @@ if ($start > $end) {
 }
 
 
-# Fibonacci numbers
-{
-  my @fibs;
-  sub fib {
-    my $n = shift;
-    return $n if $n < 2;
-    if (!defined $fibs[$n]) {
-      @fibs = (Math::BigInt->new(0), Math::BigInt->new(1)) if scalar @fibs == 0;
-      my ($nm2, $nm1) = ($fibs[-2],$fibs[-1]);
-      for (scalar @fibs .. $n) {
-        ($nm2, $nm1) = ($nm1, $nm2 + $nm1);
-        push @fibs, $nm1;
-      }
-    }
-    return $fibs[$n];
-  }
-}
-
 # This is OEIS A000032, Lucas numbers beginning at 2.
-# Use identity:  L_n = F_n-1 + F_n+1.  Would be faster if calculated directly.
 sub lucas_primes {
   my ($start, $end) = @_;
-  my @lprimes;
-  my $k = 0;
-  my $Lk = 2;
-  while ($Lk < $start) {
+  my ($k, $Lk, @lprimes) = (0);
+  do {
+    $Lk = lucasv(1,-1,$k);
+    push @lprimes, $Lk if $Lk >= $start && is_prime($Lk);
     $k++;
-    $Lk = fib($k+1) + fib($k-1);
-  }
-  while ($Lk <= $end) {
-    push @lprimes, $Lk if is_prime($Lk);
-    $k++;
-    $Lk = fib($k+1) + fib($k-1);
-  }
+  } while $Lk < $end;
   @lprimes;
 }
 
 sub fibonacci_primes {
   my ($start, $end) = @_;
-  my @fprimes;
-  my $k = 3;
-  my $Fk = fib($k);
-  while ($Fk < $start) {
-    $Fk = fib(++$k);
-  }
-  while ($Fk <= $end) {
-    push @fprimes, $Fk if is_prime($Fk);
-    # For all but k=4, F_k is prime only when k is prime.
+  my ($k, $Fk, @fprimes) = (3);
+  do {
+    $Fk = lucasu(1,-1,$k);
+    push @fprimes, $Fk if $Fk >= $start && is_prime($Fk);
     $k = ($k <= 4)  ?  $k+1  :  next_prime($k);
-    $Fk = fib($k);
-  }
+  } while $Fk < $end;
   @fprimes;
 }
 
