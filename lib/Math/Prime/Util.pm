@@ -1462,11 +1462,9 @@ L<Math::Prime::Util::GMP> may include this functionality which would help for
 
 Returns an analytical upper or lower bound on the Nth prime.  These are very
 fast as they do not need to sieve or search through primes or tables.  An
-exact answer is returned for tiny values of C<n>.  The lower limit uses the
-Dusart 2010 bound for all C<n>, while the upper bound uses one of the two
-Dusart 2010 bounds for C<n E<gt>= 178974>, a Dusart 1999 bound for
-C<n E<gt>= 39017>, and a simple bound of C<n * (logn + 0.6 * loglogn)>
-for small C<n>.
+exact answer is returned for tiny values of C<n>.  The limits are either
+the Axler 2013 bounds or Dusart 2010 bounds for large C<n>, with adjustments
+to tighten for small values (under approximately 1 million).
 
 
 =head2 nth_prime_approx
