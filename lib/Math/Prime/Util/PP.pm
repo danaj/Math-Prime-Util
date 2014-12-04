@@ -1918,29 +1918,23 @@ sub _harmonic_split { # From Fredrik Johansson
 
 sub harmfrac {
   my($n) = @_;
-  if (defined &Math::Prime::Util::GMP::harmfrac && Math::Prime::Util::prime_get_config()->{'gmp'}) {
-    my($num,$den) = Math::Prime::Util::GMP::harmfrac($n);
-    return map { Math::Prime::Util::_reftyped($_[0], $_) } ($num,$den);
-  }
+  return (BZERO,BONE) if $n <= 0;
   $n = Math::BigInt->new("$n") unless ref($n) eq 'Math::BigInt';
-  _harmonic_split($n-$n+1, $n+1);
+  my($p,$q) = _harmonic_split($n-$n+1, $n+1);
+  my $gcd = Math::BigInt::bgcd($p,$q);
+  ( scalar $p->bdiv($gcd), scalar $q->bdiv($gcd) );
 }
 
-# TODO: general ($k).
-# TODO: put in MPU or XS
 sub harmreal {
-  my($n) = @_;
-  my $h;
-  if (defined $bignum::VERSION || ref($n) =~ /^Math::Big/) {
-    my($num, $den) = harmfrac($n);
-    $h = _upgrade_to_float($num) / _upgrade_to_float($den);
-  } elsif ($n < 100) {
-    $h += 1/$_ for 1..$n;
-  } else {
-    my $n2 = $n*$n;
-    $h = log($n) + CONST_EULER + 1/(2*$n) - 1/(12*$n2) + 1/(120*$n2*$n2);
-  }
-  $h;
+  my($n, $precision) = @_;
+
+  # If we didn't want bigfloat we could do:
+  # if ($n < 100) { my $h = 1; $h += 1/$_ for 2..$n; return $h; }
+  # else          { my $h = log($n) + CONST_EULER + 1/(2*$n) - 1/(12*$n*$n) + 1/(120*$n*$n*$n*$n); return $h; }
+
+  $n = Math::BigInt->new("$n") unless ref($n) eq 'Math::BigInt';
+  my($num, $den) = map { _upgrade_to_float($_) } harmfrac($n);
+  scalar $num->bdiv($den, $precision);
 }
 
 sub is_pseudoprime {

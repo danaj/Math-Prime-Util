@@ -38,7 +38,7 @@ my @functions =  qw(
       gcd lcm factor factor_exp divisors valuation invmod hammingweight
       vecsum vecmin vecmax vecprod vecreduce
       moebius mertens euler_phi jordan_totient exp_mangoldt liouville
-      partitions bernfrac bernreal
+      partitions bernfrac bernreal harmfrac harmreal
       chebyshev_theta chebyshev_psi
       divisor_sum carmichael_lambda kronecker
       binomial factorial stirling znorder znprimroot znlog legendre_phi
