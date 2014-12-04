@@ -1907,6 +1907,42 @@ sub stirling {
   $s;
 }
 
+sub _harmonic_split { # From Fredrik Johansson
+  my($a,$b) = @_;
+  return (BONE, $a) if $b - $a == BONE;
+  my $m = $a->copy->badd($b)->brsft(BONE);
+  my ($p,$q) = _harmonic_split($a, $m);
+  my ($r,$s) = _harmonic_split($m, $b);
+  ($p*$s+$q*$r, $q*$s);
+}
+
+sub harmfrac {
+  my($n) = @_;
+  if (defined &Math::Prime::Util::GMP::harmfrac && Math::Prime::Util::prime_get_config()->{'gmp'}) {
+    my($num,$den) = Math::Prime::Util::GMP::harmfrac($n);
+    return map { Math::Prime::Util::_reftyped($_[0], $_) } ($num,$den);
+  }
+  $n = Math::BigInt->new("$n") unless ref($n) eq 'Math::BigInt';
+  _harmonic_split($n-$n+1, $n+1);
+}
+
+# TODO: general ($k).
+# TODO: put in MPU or XS
+sub harmreal {
+  my($n) = @_;
+  my $h;
+  if (defined $bignum::VERSION || ref($n) =~ /^Math::Big/) {
+    my($num, $den) = harmfrac($n);
+    $h = _upgrade_to_float($num) / _upgrade_to_float($den);
+  } elsif ($n < 100) {
+    $h += 1/$_ for 1..$n;
+  } else {
+    my $n2 = $n*$n;
+    $h = log($n) + CONST_EULER + 1/(2*$n) - 1/(12*$n2) + 1/(120*$n2*$n2);
+  }
+  $h;
+}
+
 sub is_pseudoprime {
   my($n, @bases) = @_;
   return 0 if int($n) < 0;
