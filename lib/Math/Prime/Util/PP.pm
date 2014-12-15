@@ -4105,6 +4105,7 @@ sub LogarithmicIntegral {
   }
 
   $x = Math::BigFloat->new("$x") if defined $bignum::VERSION && ref($x) ne 'Math::BigFloat';
+  $x = _upgrade_to_float($x) if ref($x) && ref($x) ne 'Math::BigFloat' && $x > 1e16;
 
   # Do divergent series here for big inputs.  Common for big pc approximations.
   # Why is this here?
@@ -4126,7 +4127,7 @@ sub LogarithmicIntegral {
   my $logx = $xdigits ? $x->copy->blog(undef,$xdigits) : log($x);
 
   if ($x > 1e16) {
-    my $invx = 1.0 / $logx;
+    my $invx = ref($logx) ? Math::BigFloat->bone / $logx : 1.0/$logx;
     # n = 0  =>  0!/(logx)^0 = 1/1 = 1
     # n = 1  =>  1!/(logx)^1 = 1/logx
     my $term = $invx;
