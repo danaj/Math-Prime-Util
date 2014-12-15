@@ -807,8 +807,8 @@ sub bernreal {
 
 sub harmfrac {
   my($n) = @_;
-  return map { _to_bigint($_) } (0,1) if defined $n && $n <= 0;
   _validate_num($n) || _validate_positive_integer($n);
+  return map { _to_bigint($_) } (0,1) if $n <= 0;
 
   if ($_HAVE_GMP && defined &Math::Prime::Util::GMP::harmfrac) {
     return map { _to_bigint($_) } Math::Prime::Util::GMP::harmfrac($n);
@@ -819,7 +819,10 @@ sub harmfrac {
 }
 sub harmreal {
   my($n, $precision) = @_;
+  _validate_num($n) || _validate_positive_integer($n);
   do { require Math::BigFloat; Math::BigFloat->import(); } unless defined $Math::BigFloat::VERSION;
+  return Math::BigFloat->bzero if $n <= 0;
+
   # If low enough precision, use native floating point.  Fast.
   if (defined $precision && $precision <= 13) {
     return Math::BigFloat->new(
@@ -828,38 +831,14 @@ sub harmreal {
       ,$precision
     );
   }
-  # Use asymptotic formula for larger $n if possible.  Saves lots of time if
-  # the default Calc backend is being used.
-  {
-    my $sprec = $precision;
-    $sprec = Math::BigFloat->precision unless defined $sprec;
-    $sprec = 40 unless defined $sprec;
-    if ( ($sprec <= 23 && $n >    54) ||
-         ($sprec <= 30 && $n >   348) ||
-         ($sprec <= 40 && $n >  2002) ||
-         ($sprec <= 50 && $n > 12644) ) {
-      $n = Math::BigFloat->new($n, $sprec+15);
-      my($n2, $one, $h) = ($n*$n, Math::BigFloat->bone, Math::BigFloat->bzero);
-      my $nt = $n2;
-      my $eps = Math::BigFloat->new(10)->bpow(-$sprec-4);
-      foreach my $d (-12, 120, -252, 240, -132, 32760, -12, 8160, -14364, 6600, -276, 65520, -12) { # OEIS A006593
-        my $term = $one/($d * $nt);
-        last if $term->bacmp($eps) < 0;
-        $h += $term;
-        $nt *= $n2;
-      }
-      $h->badd(scalar $one->copy->bdiv(2*$n));
-      $h->badd('0.57721566490153286060651209008240243104215933593992359880576723488486772677766467');
-      $h->badd($n->copy->blog);
-      $h->round($sprec);
-      return $h;
-    }
+
+  if ($n < 80 && $_HAVE_GMP && defined &Math::Prime::Util::GMP::harmfrac) {
+    my($num,$den) = map { _to_bigint($_) } Math::Prime::Util::GMP::harmfrac($n);
+    scalar Math::BigFloat->new($num)->bdiv($den, $precision);
   }
-  # Get the exact bigint fraction and convert to bigfloat.
-  my($num,$den) = harmfrac($n);
-  return Math::BigFloat->bzero if $num->is_zero;
-  # With the default Calc backend, this is horribly slow.
-  scalar Math::BigFloat->new($num)->bdiv($den, $precision);
+
+  require Math::Prime::Util::PP;
+  Math::Prime::Util::PP::harmreal($n, $precision);
 }
 
 #############################################################################
