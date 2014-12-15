@@ -819,9 +819,46 @@ sub harmfrac {
 }
 sub harmreal {
   my($n, $precision) = @_;
-  my($num,$den) = harmfrac($n);
   do { require Math::BigFloat; Math::BigFloat->import(); } unless defined $Math::BigFloat::VERSION;
+  # If low enough precision, use native floating point.  Fast.
+  if (defined $precision && $precision <= 13) {
+    return Math::BigFloat->new(
+      ($n < 80) ? do { my $h = 0; $h += 1/$_ for 1..$n; $h; }
+                : log($n) + 0.57721566490153286060651209 + 1/(2*$n) - 1/(12*$n*$n) + 1/(120*$n*$n*$n*$n)
+      ,$precision
+    );
+  }
+  # Use asymptotic formula for larger $n if possible.  Saves lots of time if
+  # the default Calc backend is being used.
+  {
+    my $sprec = $precision;
+    $sprec = Math::BigFloat->precision unless defined $sprec;
+    $sprec = 40 unless defined $sprec;
+    if ( ($sprec <= 23 && $n >    54) ||
+         ($sprec <= 30 && $n >   348) ||
+         ($sprec <= 40 && $n >  2002) ||
+         ($sprec <= 50 && $n > 12644) ) {
+      $n = Math::BigFloat->new($n, $sprec+15);
+      my($n2, $one, $h) = ($n*$n, Math::BigFloat->bone, Math::BigFloat->bzero);
+      my $nt = $n2;
+      my $eps = Math::BigFloat->new(10)->bpow(-$sprec-4);
+      foreach my $d (-12, 120, -252, 240, -132, 32760, -12, 8160, -14364, 6600, -276, 65520, -12) { # OEIS A006593
+        my $term = $one/($d * $nt);
+        last if $term->bacmp($eps) < 0;
+        $h += $term;
+        $nt *= $n2;
+      }
+      $h->badd(scalar $one->copy->bdiv(2*$n));
+      $h->badd('0.57721566490153286060651209008240243104215933593992359880576723488486772677766467');
+      $h->badd($n->copy->blog);
+      $h->round($sprec);
+      return $h;
+    }
+  }
+  # Get the exact bigint fraction and convert to bigfloat.
+  my($num,$den) = harmfrac($n);
   return Math::BigFloat->bzero if $num->is_zero;
+  # With the default Calc backend, this is horribly slow.
   scalar Math::BigFloat->new($num)->bdiv($den, $precision);
 }
 
@@ -2557,12 +2594,15 @@ C<1 + 1/2 + 1/3 + ... + 1/n>.
 
 Binary splitting (Fredrik Johansson's elegant formulation) is used.
 
-=head2 bernreal
+=head2 harmreal
 
 Returns the Harmonic number C<H_n> for an integer argument C<n>, as
 a L<Math::BigFloat> object using the default precision.  An optional
 second argument may be given specifying the precision to be used.
 
+For large C<n> values, using a lower precision may result in faster
+computation as an asymptotic formula may be used.  For precisions of
+13 or less, native floating point is used for even more speed.
 
 =head2 znorder
 
