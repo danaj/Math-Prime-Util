@@ -718,64 +718,57 @@ static const unsigned short primes_small[] =
 /* The nth prime will be less or equal to this number */
 UV nth_prime_upper(UV n)
 {
-  long double fn, flogn, flog2n, upper;
+  /* Using binary search on prime_count_upper is better than using the
+   * Dusart 2010 bound directly, although slower. */
+  UV lo, hi;
+  double fn, flogn, flog2n;
 
   if (n < NPRIMES_SMALL)
     return primes_small[n];
-
-  fn     = (long double) n;
-  flogn  = logl(n);
-  flog2n = logl(flogn);    /* Note distinction between log_2(n) and log^2(n) */
-
-  if      (n >= 688383)    /* Dusart 2010 page 2 */
-    upper = fn * (flogn + flog2n - 1.0 + ((flog2n-2.00)/flogn));
-  else if (n >= 178974)    /* Dusart 2010 page 7 */
-    upper = fn * (flogn + flog2n - 1.0 + ((flog2n-1.95)/flogn));
-  else if (n >=  39017)    /* Dusart 1999 page 14 */
-    upper = fn * (flogn + flog2n - 0.9484);
-  else if (n >=     6)     /* Modified from Robin 1983 for 50-39016 _only_ */
-    upper = fn * ( flogn  +  0.5982 * flog2n ) - 5;
-  else
-    upper = fn * ( flogn + flog2n );
-
-  /* For all three analytical functions, it is possible that for a given valid
-   * input, we will not be able to return an output that fits in the UV type.
-   * For example, if they ask for the 203280222nd prime, we should return
-   * 4294967311.  But in 32-bit, that overflows.  What we do is calculate our
-   * double precision value.  If that would overflow, then we look at the input
-   * and if it is <= the index of the last representable prime, then we return
-   * the last representable prime.  Otherwise, we croak an overflow message.
-   * This should maintain the invariant:
-   *    nth_prime_lower(n)  <=  nth_prime(n)  <=  nth_prime_upper(n)
-   */
-  /* Watch out for  overflow */
-  if (upper >= (long double)UV_MAX) {
-    if (n <= MPU_MAX_PRIME_IDX) return MPU_MAX_PRIME;
+  else if (n > MPU_MAX_PRIME_IDX)
     croak("nth_prime_upper(%"UVuf") overflow", n);
-  }
 
-  return (UV) ceill(upper);
+  fn     = (double) n;
+  flogn  = log(n);
+  flog2n = log(flogn);
+
+  lo = fn * (flogn + flog2n - 1.0 + ((flog2n-2.10)/flogn));
+  hi = fn * (flogn + flog2n);
+  if (hi < lo) hi = MPU_MAX_PRIME;
+  while (lo < hi) {
+    UV mid = lo + (hi-lo)/2;
+    if (prime_count_lower(mid) < n) lo = mid+1;
+    else                            hi = mid;
+  }
+  return lo;
 }
 
 /* The nth prime will be greater than or equal to this number */
 UV nth_prime_lower(UV n)
 {
-  long double fn, flogn, flog2n, lower;
+  /* Using binary search on prime_count_upper is about an order of magnitude
+   * better than the using the Dusart 2010 nth prime bound. */
+  UV lo, hi;
+  double fn, flogn, flog2n;
 
   if (n < NPRIMES_SMALL)
     return primes_small[n];
 
-  fn     = (long double) n;
-  flogn  = logl(n);
-  flog2n = logl(flogn);    /* Note distinction between log_2(n) and log^2(n) */
+  fn     = (double) n;
+  flogn  = log(n);
+  flog2n = log(flogn);
 
-  /* Dusart 2010 page 2, for all n >= 3 */
-  lower = fn * (flogn + flog2n - 1.0 + ((flog2n-2.10)/flogn));
-  /* Tighten small values */
-  if      (n <  2679) lower = 1.003 * lower + 23;
-  else if (n < 14353) lower = 1.001 * lower + 21;
-
-  return (UV) floorl(lower);
+  lo = fn * (flogn + flog2n - 1.0 + ((flog2n-2.10)/flogn));
+  hi = (n < 5000)
+     ?  lo + 300
+     :  fn * (flogn + flog2n - 1.0 + ((flog2n-1.95)/flogn));
+  if (hi < lo) hi = MPU_MAX_PRIME;
+  while (lo < hi) {
+    UV mid = lo + (hi-lo)/2;
+    if (prime_count_upper(mid) < n) lo = mid+1;
+    else                            hi = mid;
+  }
+  return lo;
 }
 
 UV nth_prime_approx(UV n)

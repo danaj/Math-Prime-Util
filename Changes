@@ -7,6 +7,12 @@ Revision history for Perl module Math::Prime::Util
     - harmfrac(n)               (num,den) of Harmonic number
     - harmreal(n)               Harmonic number as BigFloat
 
+    [Misc]
+
+    - Change nth_prime_upper and nth_prime_lower to use inverse prime count
+      bounds.  This tightens the bound (2-10x smaller percentage error) but
+      makes it run slower (e.g. 5.7uS vs. 0.3uS).  It also means we just need
+      to maintain the prime count bounds rather than both.
 
 0.49  2014-11-30
 

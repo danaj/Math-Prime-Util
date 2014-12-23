@@ -1494,15 +1494,14 @@ L<Math::Prime::Util::GMP> may include this functionality which would help for
 
   my $lower_limit = nth_prime_lower($n);
   my $upper_limit = nth_prime_upper($n);
-  #   $lower_limit  <=  nth_prime(n)  <=  $upper_limit
+  # For all $n:   $lower_limit  <=  nth_prime($n)  <=  $upper_limit
 
-Returns an analytical upper or lower bound on the Nth prime.  These are very
-fast as they do not need to sieve or search through primes or tables.  An
-exact answer is returned for tiny values of C<n>.  The lower limit uses the
-Dusart 2010 bound for all C<n>, while the upper bound uses one of the two
-Dusart 2010 bounds for C<n E<gt>= 178974>, a Dusart 1999 bound for
-C<n E<gt>= 39017>, and a simple bound of C<n * (logn + 0.6 * loglogn)>
-for small C<n>.
+Returns an analytical upper or lower bound on the Nth prime.  No sieving is
+done, so these are fast even for large inputs.
+
+For tiny values of C<n>. exact answers are returned.  For inputs under the
+maximum native prime, an inverse of the opposite prime count bound is used.
+For larger values Dusart (2010) bounds are used.
 
 
 =head2 nth_prime_approx
