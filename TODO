@@ -98,3 +98,5 @@
 - Proth test using LLR.  Change mersenne test file to test both.
 
 - harmreal and harmfrac for general $k
+
+- nth_prime(203280222) = 4294967311.  32-bit perl is giving 4294906633.
