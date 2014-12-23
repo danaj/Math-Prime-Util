@@ -100,3 +100,9 @@
 - harmreal and harmfrac for general $k
 
 - nth_prime(203280222) = 4294967311.  32-bit perl is giving 4294906633.
+
+- finish vecextract.  y can be:
+  * integer (done)
+  * vector
+  * string: ("a..b", "-1..-3", "^2", "a..", "b..", "..")
+  Also tests, documentation, PP.
