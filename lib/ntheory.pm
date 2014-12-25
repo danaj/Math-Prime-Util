@@ -160,6 +160,8 @@ See L<Math::Prime::Util> for complete documentation.
   lucas_sequence(n, P, Q, k)          (U_k,V_k,Q_k) for Lucas(P,Q) mod n
   bernfrac(n)                         Bernoulli number as (num,den)
   bernreal(n)                         Bernoulli number as BigFloat
+  harmfrac(n)                         Harmonic number as (num,den)
+  harmreal(n)                         Harmonic number as BigFloat
   stirling(n,m,[type])                Stirling numbers of 1st or 2nd type
 
 =head2 NON-INTEGER MATH

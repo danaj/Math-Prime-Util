@@ -46,7 +46,7 @@ our @EXPORT_OK =
       gcd lcm factor factor_exp divisors valuation invmod hammingweight
       vecsum vecmin vecmax vecprod vecreduce
       moebius mertens euler_phi jordan_totient exp_mangoldt liouville
-      partitions bernfrac bernreal
+      partitions bernfrac bernreal harmfrac harmreal
       chebyshev_theta chebyshev_psi
       divisor_sum carmichael_lambda kronecker
       binomial factorial stirling znorder znprimroot znlog legendre_phi
@@ -805,6 +805,42 @@ sub bernreal {
   scalar Math::BigFloat->new($num)->bdiv($den, $precision);
 }
 
+sub harmfrac {
+  my($n) = @_;
+  _validate_num($n) || _validate_positive_integer($n);
+  return map { _to_bigint($_) } (0,1) if $n <= 0;
+
+  if ($_HAVE_GMP && defined &Math::Prime::Util::GMP::harmfrac) {
+    return map { _to_bigint($_) } Math::Prime::Util::GMP::harmfrac($n);
+  }
+
+  require Math::Prime::Util::PP;
+  Math::Prime::Util::PP::harmfrac($n);
+}
+sub harmreal {
+  my($n, $precision) = @_;
+  _validate_num($n) || _validate_positive_integer($n);
+  do { require Math::BigFloat; Math::BigFloat->import(); } unless defined $Math::BigFloat::VERSION;
+  return Math::BigFloat->bzero if $n <= 0;
+
+  # If low enough precision, use native floating point.  Fast.
+  if (defined $precision && $precision <= 13) {
+    return Math::BigFloat->new(
+      ($n < 80) ? do { my $h = 0; $h += 1/$_ for 1..$n; $h; }
+                : log($n) + 0.57721566490153286060651209 + 1/(2*$n) - 1/(12*$n*$n) + 1/(120*$n*$n*$n*$n)
+      ,$precision
+    );
+  }
+
+  if ($n < 80 && $_HAVE_GMP && defined &Math::Prime::Util::GMP::harmfrac) {
+    my($num,$den) = map { _to_bigint($_) } Math::Prime::Util::GMP::harmfrac($n);
+    scalar Math::BigFloat->new($num)->bdiv($den, $precision);
+  }
+
+  require Math::Prime::Util::PP;
+  Math::Prime::Util::PP::harmreal($n, $precision);
+}
+
 #############################################################################
 
 use Math::Prime::Util::MemFree;
@@ -1463,7 +1499,7 @@ L<Math::Prime::Util::GMP> may include this functionality which would help for
 Returns an analytical upper or lower bound on the Nth prime.  These are very
 fast as they do not need to sieve or search through primes or tables.  An
 exact answer is returned for tiny values of C<n>.  The limits are either
-the Axler 2013 bounds or Dusart 2010 bounds for large C<n>, with adjustments
+the Axler 2014 bounds or Dusart 2010 bounds for large C<n>, with adjustments
 to tighten for small values (under approximately 1 million).
 
 
@@ -2526,6 +2562,24 @@ permutations of C<n> symbols with exactly C<k> cycles.  Stirling numbers
 of the second kind are the number of ways to partition a set of C<n>
 elements into C<k> non-empty subsets.
 
+=head2 harmfrac
+
+Returns the Harmonic number C<H_n> for an integer argument C<n>, as a
+rational number represented by two L<Math::BigInt> objects.  The harmonic
+numbers are the sum of reciprocals of the first C<n> natural numbers:
+C<1 + 1/2 + 1/3 + ... + 1/n>.
+
+Binary splitting (Fredrik Johansson's elegant formulation) is used.
+
+=head2 harmreal
+
+Returns the Harmonic number C<H_n> for an integer argument C<n>, as
+a L<Math::BigFloat> object using the default precision.  An optional
+second argument may be given specifying the precision to be used.
+
+For large C<n> values, using a lower precision may result in faster
+computation as an asymptotic formula may be used.  For precisions of
+13 or less, native floating point is used for even more speed.
 
 =head2 znorder
 

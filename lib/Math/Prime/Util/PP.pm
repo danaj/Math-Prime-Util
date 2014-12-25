@@ -65,6 +65,7 @@ sub prime_precalc {
 }
 sub prime_memfree {
   $_precalc_size = 0;
+  Math::MPFR::Rmpfr_free_cache() if defined $Math::MPFR::VERSION;
 }
 sub _get_prime_cache_size { $_precalc_size }
 sub _prime_memfreeall { prime_memfree; }
@@ -94,8 +95,9 @@ sub _upgrade_to_float {
 # perspective.
 sub _find_big_acc {
   my($x) = @_;
+  my $b;
 
-  $b = $x->accuracy();
+  $b = $x->accuracy() if ref($x) =~ /^Math::Big/;
   return $b if defined $b;
 
   my ($i,$f) = (Math::BigInt->accuracy(), Math::BigFloat->accuracy());
@@ -1909,6 +1911,78 @@ sub stirling {
     }
   }
   $s;
+}
+
+sub _harmonic_split { # From Fredrik Johansson
+  my($a,$b) = @_;
+  return (BONE, $a) if $b - $a == BONE;
+  my $m = $a->copy->badd($b)->brsft(BONE);
+  my ($p,$q) = _harmonic_split($a, $m);
+  my ($r,$s) = _harmonic_split($m, $b);
+  ($p*$s+$q*$r, $q*$s);
+}
+
+sub harmfrac {
+  my($n) = @_;
+  return (BZERO,BONE) if $n <= 0;
+  $n = Math::BigInt->new("$n") unless ref($n) eq 'Math::BigInt';
+  my($p,$q) = _harmonic_split($n-$n+1, $n+1);
+  my $gcd = Math::BigInt::bgcd($p,$q);
+  ( scalar $p->bdiv($gcd), scalar $q->bdiv($gcd) );
+}
+
+sub harmreal {
+  my($n, $precision) = @_;
+
+  do { require Math::BigFloat; Math::BigFloat->import(); } unless defined $Math::BigFloat::VERSION;
+  return Math::BigFloat->bzero if $n <= 0;
+
+  if (_MPFR_available()) {
+    $precision = _find_big_acc($n) unless defined $precision;
+    my $rnd = 0;  # MPFR_RNDN;
+    my $bit_precision = int("$precision" * 3.322) + 7;
+    my($n_mpfr, $euler, $psi) = map { Math::MPFR->new() } 1..3;
+    Math::MPFR::Rmpfr_set_str($n_mpfr, "$n", 10, $rnd);
+    Math::MPFR::Rmpfr_set_prec($euler, $bit_precision);
+    Math::MPFR::Rmpfr_set_prec($psi, $bit_precision);
+    Math::MPFR::Rmpfr_const_euler($euler, $rnd);
+    Math::MPFR::Rmpfr_digamma($psi, $n_mpfr+1, $rnd);
+    Math::MPFR::Rmpfr_add($psi, $psi, $euler, $rnd);
+    my $strval = Math::MPFR::Rmpfr_get_str($psi, 10, 0, $rnd);
+    return Math::BigFloat->new($strval,$precision);
+  }
+
+  # Use asymptotic formula for larger $n if possible.  Saves lots of time if
+  # the default Calc backend is being used.
+  {
+    my $sprec = $precision;
+    $sprec = Math::BigFloat->precision unless defined $sprec;
+    $sprec = 40 unless defined $sprec;
+    if ( ($sprec <= 23 && $n >    54) ||
+         ($sprec <= 30 && $n >   348) ||
+         ($sprec <= 40 && $n >  2002) ||
+         ($sprec <= 50 && $n > 12644) ) {
+      $n = Math::BigFloat->new($n, $sprec+5);
+      my($n2, $one, $h) = ($n*$n, Math::BigFloat->bone, Math::BigFloat->bzero);
+      my $nt = $n2;
+      my $eps = Math::BigFloat->new(10)->bpow(-$sprec-4);
+      foreach my $d (-12, 120, -252, 240, -132, 32760, -12, 8160, -14364, 6600, -276, 65520, -12) { # OEIS A006593
+        my $term = $one/($d * $nt);
+        last if $term->bacmp($eps) < 0;
+        $h += $term;
+        $nt *= $n2;
+      }
+      $h->badd(scalar $one->copy->bdiv(2*$n));
+      $h->badd('0.57721566490153286060651209008240243104215933593992359880576723488486772677766467');
+      $h->badd($n->copy->blog);
+      $h->round($sprec);
+      return $h;
+    }
+  }
+
+  my($num,$den) = Math::Prime::Util::harmfrac($n);
+  # Note, with Calc backend this can be very, very slow
+  scalar Math::BigFloat->new($num)->bdiv($den, $precision);
 }
 
 sub is_pseudoprime {
@@ -3967,7 +4041,6 @@ sub ExponentialIntegral {
     Math::MPFR::Rmpfr_set_prec($eix, $bit_precision);
     Math::MPFR::Rmpfr_eint($eix, $rx, $rnd);
     my $strval = Math::MPFR::Rmpfr_get_str($eix, 10, 0, $rnd);
-    Math::MPFR::Rmpfr_free_cache();
     return ($wantbf)  ?  Math::BigFloat->new($strval,$wantbf)  :  0.0 + $strval;
   }
 
@@ -4069,7 +4142,6 @@ sub LogarithmicIntegral {
     Math::MPFR::Rmpfr_set_prec($lix, $bit_precision);
     Math::MPFR::Rmpfr_eint($lix, $rx, $rnd);
     my $strval = Math::MPFR::Rmpfr_get_str($lix, 10, 0, $rnd);
-    Math::MPFR::Rmpfr_free_cache();
     return ($wantbf)  ?  Math::BigFloat->new($strval,$wantbf)  :  0.0 + $strval;
   }
 
@@ -4079,6 +4151,7 @@ sub LogarithmicIntegral {
   }
 
   $x = Math::BigFloat->new("$x") if defined $bignum::VERSION && ref($x) ne 'Math::BigFloat';
+  $x = _upgrade_to_float($x) if ref($x) && ref($x) ne 'Math::BigFloat' && $x > 1e16;
 
   # Do divergent series here for big inputs.  Common for big pc approximations.
   # Why is this here?
@@ -4100,7 +4173,7 @@ sub LogarithmicIntegral {
   my $logx = $xdigits ? $x->copy->blog(undef,$xdigits) : log($x);
 
   if ($x > 1e16) {
-    my $invx = 1.0 / $logx;
+    my $invx = ref($logx) ? Math::BigFloat->bone / $logx : 1.0/$logx;
     # n = 0  =>  0!/(logx)^0 = 1/1 = 1
     # n = 1  =>  1!/(logx)^1 = 1/logx
     my $term = $invx;
@@ -4448,7 +4521,6 @@ sub Pi {
     Math::MPFR::Rmpfr_set_prec($pi, $bit_precision);
     Math::MPFR::Rmpfr_const_pi($pi, $rnd);
     my $strval = Math::MPFR::Rmpfr_get_str($pi, 10, $digits, $rnd);
-    Math::MPFR::Rmpfr_free_cache();
     return _upgrade_to_float($strval);
   }
 

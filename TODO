@@ -96,3 +96,5 @@
       }
 
 - Proth test using LLR.  Change mersenne test file to test both.
+
+- harmreal and harmfrac for general $k
