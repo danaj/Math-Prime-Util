@@ -668,6 +668,25 @@ gcd(...)
     return; /* skip implicit PUTBACK */
 
 void
+vecextract(IN SV* x, IN UV mask)
+  PREINIT:
+    AV* av;
+    UV i = 0;
+  PPCODE:
+    if ((!SvROK(x)) || (SvTYPE(SvRV(x)) != SVt_PVAV))
+      croak("vecextract first argument must be an array reference");
+    av = (AV*) SvRV(x);
+    while (mask) {
+      if (mask & 1) {
+        SV** v = av_fetch(av, i, 0);
+        if (v)
+          XPUSHs(*v);
+      }
+      i++;
+      mask >>= 1;
+    }
+
+void
 chinese(...)
   PROTOTYPE: @
   PREINIT:

@@ -393,6 +393,8 @@ sub _sieve_erat_string {
 
 sub _sieve_segment {
   my($beg,$end) = @_;
+  ($beg, $end) = map { _bigint_to_int($_) } ($beg, $end)
+    if ref($end) && $end <= BMAX;
   croak "Internal error: segment beg is even" if ($beg % 2) == 0;
   croak "Internal error: segment end is even" if ($end % 2) == 0;
   croak "Internal error: segment end < beg" if $end < $beg;
@@ -412,7 +414,7 @@ sub _sieve_segment {
   # If the end value is below 7^2, then the pre-sieve is all we needed.
   return \$sieve if $end < 49;
 
-  my $limit = int(sqrt($end)+0.0000001);
+  my $limit = ref($end) ? $end->copy->bsqrt() : int(sqrt($end)+0.0000001);
   # For large value of end, it's a huge win to just walk primes.
 
   my($p, $s, $primesieveref) = (7-2, 3, _sieve_erat($limit));

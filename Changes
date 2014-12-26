@@ -9,8 +9,9 @@ Revision history for Perl module Math::Prime::Util
 
     [Misc]
 
-    - Use Axler (2014) bounds for nth_prime_{lower,upper}.
-
+    - Changes to nth_prime_{lower,upper}.  They use the Axler (2013) bounds,
+      and the XS code will also use inverse prime count bounds for small
+      values.  This gives 2-10x tighter bounds.
 
 0.49  2014-11-30
 

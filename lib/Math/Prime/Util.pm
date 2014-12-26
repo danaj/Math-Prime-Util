@@ -44,7 +44,7 @@ our @EXPORT_OK =
       random_shawe_taylor_prime random_shawe_taylor_prime_with_cert
       primorial pn_primorial consecutive_integer_lcm gcdext chinese
       gcd lcm factor factor_exp divisors valuation invmod hammingweight
-      vecsum vecmin vecmax vecprod vecreduce
+      vecsum vecmin vecmax vecprod vecreduce vecextract
       moebius mertens euler_phi jordan_totient exp_mangoldt liouville
       partitions bernfrac bernreal harmfrac harmreal
       chebyshev_theta chebyshev_psi
@@ -856,7 +856,7 @@ __END__
 
 =encoding utf8
 
-=for stopwords forprimes forcomposites foroddcomposites fordivisors forpart forcomb forperm Möbius Deléglise Bézout totient moebius mertens liouville znorder irand primesieve uniqued k-tuples von SoE pari yafu fonction qui compte le nombre nombres voor PhD superset sqrt(N) gcd(A^M k-th (10001st primegen libtommath kronecker znprimroot znlog gcd lcm invmod untruncated vecsum vecprod vecmin vecmax vecreduce gcdext chinese LambertW bernfrac bernreal stirling hammingweight lucasu lucasv OpenPFGW gmpy2
+=for stopwords forprimes forcomposites foroddcomposites fordivisors forpart forcomb forperm Möbius Deléglise Bézout totient moebius mertens liouville znorder irand primesieve uniqued k-tuples von SoE pari yafu fonction qui compte le nombre nombres voor PhD superset sqrt(N) gcd(A^M k-th (10001st primegen libtommath kronecker znprimroot znlog gcd lcm invmod untruncated vecsum vecprod vecmin vecmax vecreduce gcdext chinese LambertW bernfrac bernreal harmfrac harmreal stirling hammingweight lucasu lucasv OpenPFGW gmpy2 Über Primzahl-Zählfunktion n-te und verallgemeinerte
 
 =for test_synopsis use v5.14;  my($k,$x);
 
@@ -1494,13 +1494,14 @@ L<Math::Prime::Util::GMP> may include this functionality which would help for
 
   my $lower_limit = nth_prime_lower($n);
   my $upper_limit = nth_prime_upper($n);
-  #   $lower_limit  <=  nth_prime(n)  <=  $upper_limit
+  # For all $n:   $lower_limit  <=  nth_prime($n)  <=  $upper_limit
 
-Returns an analytical upper or lower bound on the Nth prime.  These are very
-fast as they do not need to sieve or search through primes or tables.  An
-exact answer is returned for tiny values of C<n>.  The limits are either
-the Axler 2014 bounds or Dusart 2010 bounds for large C<n>, with adjustments
-to tighten for small values (under approximately 1 million).
+Returns an analytical upper or lower bound on the Nth prime.  No sieving is
+done, so these are fast even for large inputs.
+
+For tiny values of C<n>. exact answers are returned.  For small inputs, an
+inverse of the opposite prime count bound is used.  For larger values, the
+Dusart (2010) and Axler (2013) bounds are used.
 
 
 =head2 nth_prime_approx
@@ -4158,6 +4159,10 @@ thank Kim Walisch for the many discussions about prime counting.
 =item *
 
 Christian Axler, "New bounds for the prime counting function π(x)", September 2014.  For large values, improved limits versus Dusart 2010.  L<http://arxiv.org/abs/1409.1780>
+
+=item *
+
+Christian Axler, "Über die Primzahl-Zählfunktion, die n-te Primzahl und verallgemeinerte Ramanujan-Primzahlen", January 2013.  Prime count and nth-prime bounds in more detail.  Thesis in German, but first part is easily read.  L<http://docserv.uni-duesseldorf.de/servlets/DerivateServlet/Derivate-28284/pdfa-1b.pdf>
 
 =item *
 
