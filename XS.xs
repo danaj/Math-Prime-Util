@@ -16,6 +16,7 @@
 #include "cache.h"
 #include "sieve.h"
 #define FUNC_gcd_ui 1
+#define FUNC_isqrt 1
 #include "util.h"
 #include "primality.h"
 #include "factor.h"
@@ -1326,13 +1327,14 @@ carmichael_lambda(IN SV* svn)
     chebyshev_theta = 3
     chebyshev_psi = 4
     factorial = 5
-    exp_mangoldt = 6
-    znprimroot = 7
-    hammingweight = 8
+    sqrtint = 6
+    exp_mangoldt = 7
+    znprimroot = 8
+    hammingweight = 9
   PREINIT:
     int status;
   PPCODE:
-    status = _validate_int(aTHX_ svn, (ix >= 6) ? 1 : 0);
+    status = _validate_int(aTHX_ svn, (ix >= 7) ? 1 : 0);
     if (status != 0) {
       UV r, n = my_svuv(svn);
       switch (ix) {
@@ -1347,12 +1349,13 @@ carmichael_lambda(IN SV* svn)
         case 5:  r = factorial(n);
                  if (r != 0) XSRETURN_UV(r);
                  status = 0; break;
-        case 6:  XSRETURN_UV( (status == -1) ? 1 : exp_mangoldt(n) ); break;
-        case 7:  if (status == -1) n = -(IV)n;
+        case 6:  XSRETURN_UV(isqrt(n)); break;
+        case 7:  XSRETURN_UV( (status == -1) ? 1 : exp_mangoldt(n) ); break;
+        case 8:  if (status == -1) n = -(IV)n;
                  r = znprimroot(n);
                  if (r == 0 && n != 1)  XSRETURN_UNDEF;  /* No root */
                  XSRETURN_UV(r);  break;
-        case 8:
+        case 9:
         default: if (status == -1) n = -(IV)n;
                  XSRETURN_UV(mpu_popcount(n));  break;
       }
@@ -1364,9 +1367,10 @@ carmichael_lambda(IN SV* svn)
       case 3:  _vcallsub_with_pp("chebyshev_theta"); break;
       case 4:  _vcallsub_with_pp("chebyshev_psi"); break;
       case 5:  _vcallsub_with_pp("factorial"); break;
-      case 6:  _vcallsub_with_gmp("exp_mangoldt"); break;
-      case 7:  _vcallsub_with_gmp("znprimroot"); break;
-      case 8:
+      case 6:  _vcallsub_with_pp("sqrtint"); break;
+      case 7:  _vcallsub_with_gmp("exp_mangoldt"); break;
+      case 8:  _vcallsub_with_gmp("znprimroot"); break;
+      case 9:
       default: { char* ptr;  STRLEN len;  ptr = SvPV_nomg(svn, len);
                  XSRETURN_UV(mpu_popcount_string(ptr, len)); }
                break;

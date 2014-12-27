@@ -1825,6 +1825,12 @@ sub hammingweight {
   return 0 + (Math::BigInt->new("$n")->as_bin() =~ tr/1//);
 }
 
+sub sqrtint {
+  my($n) = @_;
+  my $sqrt = Math::BigInt->new("$n")->bsqrt;
+  return Math::Prime::Util::_reftyped($_[0], $sqrt);
+}
+
 sub _bernden {
   my $n = shift;
   return BTWO if $n == 1;
