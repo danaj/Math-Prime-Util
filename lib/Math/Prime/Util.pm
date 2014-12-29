@@ -28,7 +28,7 @@ our @EXPORT_OK =
       is_power
       miller_rabin_random
       lucas_sequence lucasu lucasv
-      primes twin_primes
+      primes twin_primes ramanujan_primes
       forprimes forcomposites foroddcomposites fordivisors
       forpart forcomb forperm
       prime_iterator prime_iterator_object
@@ -333,6 +333,24 @@ sub twin_primes {
   }
 
   return segment_twin_primes($low, $high);
+}
+
+sub ramanujan_primes {
+  my($low,$high) = @_;
+  if (scalar @_ > 1) {
+    _validate_num($low) || _validate_positive_integer($low);
+  } else {
+    ($low,$high) = (2, $low);
+  }
+  _validate_num($high) || _validate_positive_integer($high);
+
+  return [] if ($low > $high) || ($high < 2);
+
+  if ($high > $_XS_MAXVAL) {
+    require Math::Prime::Util::PP;
+    return Math::Prime::Util::PP::_ramanujan_primes($low,$high);
+  }
+  return _ramanujan_primes($low, $high);
 }
 
 #############################################################################
@@ -1459,6 +1477,20 @@ quickly and has a very small error for large values.  The method used is
 conjecture B of Hardy and Littlewood 1922, as stated in
 Sebah and Gourdon 2002.  For inputs under 10M, a correction factor is
 additionally applied to reduce the mean squared error.
+
+=head2 ramanujan_primes
+
+Returns the Ramanujan primes R_n between the upper and lower limits
+(inclusive), with a lower limit of C<2> if none is given.  This is
+L<OEIS A104272|http://oeis.org/A104272>.  These are the Rn such that if
+C<x &gt; Rn> then L</prime_count>(n) - L</prime_count>(n/2) &gt;= C<n>.
+
+This has a similar API to the L</primes> and L</twin_primes> functions, and
+like them, returns an array reference.
+
+The implementation generates the first C<n> values, then filters to the
+range given.  It uses a monolithic sieve, hence values larger than C<10^11>
+cannot be reasonably generated without huge amounts of memory.
 
 
 =head2 nth_prime

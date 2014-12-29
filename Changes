@@ -6,6 +6,9 @@ Revision history for Perl module Math::Prime::Util
 
     - harmfrac(n)               (num,den) of Harmonic number
     - harmreal(n)               Harmonic number as BigFloat
+    - sqrtint(n)                Integer square root of n
+    - vecextract([arr], mask)   Return elements from arr selected by mask
+    - ramanujan_primes(lo,hi)   Ramanujan primes R_n in [lo,hi]
 
     [Misc]
 

@@ -1231,7 +1231,8 @@ sub prime_count_approx {
   $x = _upgrade_to_float($x) if ref($_[0]) eq 'Math::BigInt';
   #    Method             10^10 %error  10^19 %error
   #    -----------------  ------------  ------------
-  #    n/(log(n)-1)        .22%          .06%
+  #    n/(log(n)-1)        .22%          .058%
+  #    n/(ln(n)-1-1/ln(n)) .032%         .0041%
   #    average bounds      .0005%        .0000002%
   #    asymp               .0006%        .00000004%
   #    li(n)               .0007%        .00000004%

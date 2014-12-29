@@ -14,6 +14,7 @@
 
 #include "ptypes.h"
 #include "cache.h"
+#define FUNC_is_prime_in_sieve 1
 #include "sieve.h"
 #define FUNC_gcd_ui 1
 #define FUNC_isqrt 1
@@ -395,6 +396,7 @@ sieve_primes(IN UV low, IN UV high)
     erat_primes = 2
     segment_primes = 3
     segment_twin_primes = 4
+    _ramanujan_primes = 5
   PREINIT:
     AV* av;
   PPCODE:
@@ -406,8 +408,8 @@ sieve_primes(IN UV low, IN UV high)
       SP = NULL; /* never use SP again, poison */
     }
     if ((low <= 2) && (high >= 2) && ix != 4) { av_push(av, newSVuv( 2 )); }
-    if ((low <= 3) && (high >= 3)) { av_push(av, newSVuv( 3 )); }
-    if ((low <= 5) && (high >= 5)) { av_push(av, newSVuv( 5 )); }
+    if ((low <= 3) && (high >= 3) && ix != 5) { av_push(av, newSVuv( 3 )); }
+    if ((low <= 5) && (high >= 5) && ix != 5) { av_push(av, newSVuv( 5 )); }
     if (low < 7)  low = 7;
     if (low <= high) {
       if (ix == 4) high += 2;
@@ -440,6 +442,15 @@ sieve_primes(IN UV low, IN UV high)
           END_DO_FOR_EACH_SIEVE_PRIME
         }
         end_segment_primes(ctx);
+      } else if (ix == 5) {                   /* Ramanujan primes */
+        /* Axler 2013, 4.13: Rn > nthprime(2n)  =>  n >= Pi(high)/2  */
+        UV nn = prime_count_upper(high) >> 1;
+        UV* L = ramanujan_primes(nn);
+        UV s = 1;
+        while (s < nn && L[s] < low) s++;
+        for (; s < nn && L[s] <= high; s++)
+          av_push(av,newSVuv(L[s]));
+        Safefree(L);
       }
     }
     return; /* skip implicit PUTBACK */
