@@ -105,6 +105,9 @@
   * integer (done)
   * vector
   * string: ("a..b", "-1..-3", "^2", "a..", "b..", "..")
-  Also tests, documentation, PP.
+  Also tests, documentation, PP, PPFE.
 
-- documentation and tests for sqrtint
+- prime count bounds:
+  * use Axler th 1.2 rather than 1.4 when better.
+  * http://arxiv.org/pdf/1410.7015v1.pdf shows Shoenfeld bounds for x <= 1.4e25
+

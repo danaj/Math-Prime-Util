@@ -64,6 +64,7 @@ See L<Math::Prime::Util> for complete documentation.
 
   primes([start,] end)                array ref of primes
   twin_primes([start,] end)           array ref of twin primes
+  ramanujan_primes([start,] end)      array ref of Ramanujan primes
   next_prime(n)                       next prime > n
   prev_prime(n)                       previous prime < n
   prime_count(n)                      count of primes <= n
@@ -125,9 +126,11 @@ See L<Math::Prime::Util> for complete documentation.
   vecmin(@list)                       minimum of list of integers
   vecmax(@list)                       maximum of list of integers
   vecreduce { ... } @list             reduce / left fold applied to list
+  vecextract(\@list, mask)            select from list based on mask
   is_power(n)                         return k if n = p^k for integer p, max k
   is_power(n,k)                       return 1 if n = p^k for integer p and k
   is_power(n,k,\$root)                as above but set root to p.
+  sqrtint(n)                          integer square root
   gcd(@list)                          greatest common divisor
   lcm(@list)                          least common multiple
   gcdext(x,y)                         return (u,v,d) where u*x+v*y=d

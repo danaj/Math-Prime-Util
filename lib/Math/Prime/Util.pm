@@ -2036,7 +2036,7 @@ This block verifies if:
 
   say "$n is definitely prime" if is_aks_prime($n);
 
-Takes a positive number as input, and returns 1 if the input passes the
+Takes a non-negative number as input, and returns 1 if the input passes the
 Agrawal-Kayal-Saxena (AKS) primality test.  This is a deterministic
 unconditional primality test which runs in polynomial time for general input.
 
@@ -2060,7 +2060,7 @@ implementation is likely to be faster once the input is larger than C<2^32>.
 
   say "2^607-1 (M607) is a Mersenne prime" if is_mersenne_prime(607);
 
-Takes a positive number C<p> as input and returns 1 if C<2^p-1> is prime.
+Takes a non-negative number C<p> as input and returns 1 if C<2^p-1> is prime.
 Since an enormous effort has gone into testing these, a list of known
 Mersenne primes is used to accelerate this.  Beyond the highest sequential
 Mersenne prime (currently 32,582,657) this performs pretesting followed by
@@ -2082,7 +2082,7 @@ C<prime95> are greatly preferred.
   say "$n is a perfect cube" if is_power($n, 3);
   say "$n is a ", is_power($n), "-th power";
 
-Given a single positive integer input C<n>, returns k if C<n = p^k> for
+Given a single non-negative integer input C<n>, returns k if C<n = p^k> for
 some integer C<p E<gt> 1, k E<gt> 1>, and 0 otherwise.  The k returned is
 the largest possible.  This can be used in a boolean statement to
 determine if C<n> is a perfect power.
@@ -2100,6 +2100,14 @@ a k-th power, then this will be set to the k-th root of C<n>.  For example:
   # prints:  222657534574035968 = 2948^5
 
 This corresponds to Pari/GP's C<ispower> function with integer arguments.
+
+
+=head2 sqrtint
+
+Given a non-negative integer input C<n>, returns the integer square root.
+For native integers, this is equal to C<int(sqrt(n))>.
+
+This corresponds to Pari/GP's C<sqrtint> function.
 
 
 =head2 lucasu

@@ -8,7 +8,7 @@ use Math::Prime::Util
       chebyshev_theta chebyshev_psi carmichael_lambda znorder liouville
       znprimroot znlog kronecker legendre_phi gcd lcm is_power valuation
       invmod vecsum vecprod binomial gcdext chinese vecmin vecmax factorial
-      hammingweight vecreduce
+      hammingweight vecreduce sqrtint
      /;
 
 my $extra = defined $ENV{EXTENDED_TESTING} && $ENV{EXTENDED_TESTING};
@@ -593,6 +593,7 @@ plan tests => 0 + 1
                 + scalar(@valuations)
                 + scalar(@popcounts)
                 + 3 + scalar(@invmods)
+                + 4  # sqrtint
                 + scalar(@vecsums)
                 + 1 + scalar(@vecprods)
                 + scalar(@vecmins)
@@ -857,6 +858,11 @@ foreach my $r (@invmods) {
   my($a, $n, $exp) = @$r;
   is( invmod($a,$n), $exp, "invmod($a,$n) = ".((defined $exp)?$exp:"<undef>") );
 }
+###### sqrtint
+is_deeply( [map { sqrtint($_) } 0..100], [map { int(sqrt($_)) } 0..100], "sqrtint 0 .. 100" );
+is( sqrtint(1524155677489), 1234567, "sqrtint(1234567^2) = 1234567" );
+is( sqrtint(1524158146623), 1234567, "sqrtint(1234568^2-1) = 1234567" );
+is( sqrtint(1524155677488), 1234566, "sqrtint(1234567^2-1) = 1234566" );
 ###### vecsum
 foreach my $r (@vecsums) {
   my($exp, @vals) = @$r;
