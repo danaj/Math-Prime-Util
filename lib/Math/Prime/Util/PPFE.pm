@@ -434,6 +434,11 @@ sub invmod {
   _validate_integer($n);
   return Math::Prime::Util::PP::invmod($a,$n);
 }
+sub sqrtint {
+  my($n) = @_;
+  _validate_integer($n);
+  return Math::Prime::Util::PP::sqrtint($n);
+}
 
 sub legendre_phi {
   my($x, $a) = @_;
