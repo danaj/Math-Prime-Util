@@ -25,7 +25,7 @@ our @EXPORT_OK =
       is_perrin_pseudoprime
       is_frobenius_underwood_pseudoprime is_aks_prime is_bpsw_prime
       is_mersenne_prime
-      is_power
+      is_power sqrtint
       miller_rabin_random
       lucas_sequence lucasu lucasv
       primes twin_primes ramanujan_primes
@@ -43,7 +43,7 @@ our @EXPORT_OK =
       random_maurer_prime random_maurer_prime_with_cert
       random_shawe_taylor_prime random_shawe_taylor_prime_with_cert
       primorial pn_primorial consecutive_integer_lcm gcdext chinese
-      gcd lcm factor factor_exp divisors valuation invmod hammingweight sqrtint
+      gcd lcm factor factor_exp divisors valuation invmod hammingweight
       vecsum vecmin vecmax vecprod vecreduce vecextract
       moebius mertens euler_phi jordan_totient exp_mangoldt liouville
       partitions bernfrac bernreal harmfrac harmreal
@@ -874,7 +874,7 @@ __END__
 
 =encoding utf8
 
-=for stopwords forprimes forcomposites foroddcomposites fordivisors forpart forcomb forperm Möbius Deléglise Bézout totient moebius mertens liouville znorder irand primesieve uniqued k-tuples von SoE pari yafu fonction qui compte le nombre nombres voor PhD superset sqrt(N) gcd(A^M k-th (10001st primegen libtommath kronecker znprimroot znlog gcd lcm invmod untruncated vecsum vecprod vecmin vecmax vecreduce gcdext chinese LambertW bernfrac bernreal harmfrac harmreal stirling hammingweight lucasu lucasv OpenPFGW gmpy2 Über Primzahl-Zählfunktion n-te und verallgemeinerte
+=for stopwords forprimes forcomposites foroddcomposites fordivisors forpart forcomb forperm Möbius Deléglise Bézout totient moebius mertens liouville znorder irand primesieve uniqued k-tuples von SoE pari yafu fonction qui compte le nombre nombres voor PhD superset sqrt(N) gcd(A^M k-th (10001st primegen libtommath kronecker znprimroot znlog gcd lcm invmod untruncated vecsum vecprod vecmin vecmax vecreduce gcdext chinese LambertW bernfrac bernreal harmfrac harmreal stirling hammingweight lucasu lucasv OpenPFGW gmpy2 Über Primzahl-Zählfunktion n-te und verallgemeinerte sqrtint
 
 =for test_synopsis use v5.14;  my($k,$x);
 
@@ -1483,7 +1483,7 @@ additionally applied to reduce the mean squared error.
 Returns the Ramanujan primes R_n between the upper and lower limits
 (inclusive), with a lower limit of C<2> if none is given.  This is
 L<OEIS A104272|http://oeis.org/A104272>.  These are the Rn such that if
-C<x &gt; Rn> then L</prime_count>(n) - L</prime_count>(n/2) &gt;= C<n>.
+C<x E<gt> Rn> then L</prime_count>(n) - L</prime_count>(n/2) E<gt>= C<n>.
 
 This has a similar API to the L</primes> and L</twin_primes> functions, and
 like them, returns an array reference.
