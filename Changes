@@ -16,6 +16,9 @@ Revision history for Perl module Math::Prime::Util
       and the XS code will also use inverse prime count bounds for small
       values.  This gives 2-10x tighter bounds.
 
+    - Tighten prime count bounds using Axler, Kotnik, Büthe.  Thanks to
+      Charles R Greathouse IV for pointing me to these.
+
 0.49  2014-11-30
 
     - Make versions the same in all packages.

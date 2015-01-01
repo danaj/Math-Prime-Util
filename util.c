@@ -623,28 +623,22 @@ UV prime_count_lower(UV n)
   fl1 = logl(n);
   fl2 = fl1 * fl1;
 
-  if (n > 1332479531) {
-    long double fl4 = fl2*fl2;
-    /* Axler, Sep 2014, theorem 1.4 */
-    lower = fl1 - 1.0L - 1.0L/fl1 - 2.65L/fl2 - 13.35L/(fl2*fl1) - 70.3L/fl4 - 455.6275L/(fl4*fl1) - 3404.4225L/(fl4*fl2);
-    return (UV) ceill(fn / lower);
+  if (n < UVCONST(1332479531)) {   /* Dusart 2010, tweaked */
+    a = (n <    88783) ? 1.89L
+      : (n <   176000) ? 1.99L
+      : (n <   315000) ? 2.11L
+      : (n <  1100000) ? 2.19L
+      : (n <  4500000) ? 2.31L
+      : (n <233000000) ? 2.35L : 2.32L;
+    lower = fn/fl1 * (1.0L + 1.0L/fl1 + a/fl2);
+  } else if (BITS_PER_WORD == 32 || n < UVCONST(5589603006000)) {
+                                   /* Axler 2014 1.4 */
+    long double fl3 = fl2*fl1, fl4 = fl2*fl2, fl5 = fl4*fl1, fl6 = fl4*fl2;
+    lower = fn / (fl1 - 1.0L - 1.0L/fl1 - 2.65L/fl2 - 13.35L/fl3 - 70.3L/fl4 - 455.6275L/fl5 - 3404.4225L/fl6);
+  } else {                         /* Büthe 2014 7.4 */
+    lower = _XS_LogarithmicIntegral(fn) - fl1*sqrtl(fn)/25.132741228718345907701147L;
   }
-
-  if      (n <   176000)  a = 1.80;
-  else if (n <   315000)  a = 2.10;
-  else if (n <  1100000)  a = 2.20;
-  else if (n <  4500000)  a = 2.31;
-  else if (n <233000000)  a = 2.36;
-#if BITS_PER_WORD == 32
-  else a = 2.32;
-#else
-  else if (n < UVCONST( 5433800000)) a = 2.32;
-  else if (n < UVCONST(60000000000)) a = 2.15;
-  else a = 2.00;
-#endif
-
-  lower = fn/fl1 * (1.0 + 1.0/fl1 + a/fl2);
-  return (UV) floorl(lower);
+  return (UV) ceill(lower);
 }
 
 typedef struct {
@@ -654,10 +648,8 @@ typedef struct {
 
 static const thresh_t _upper_thresh[] = {
   {     59000, 2.48 },
-  {    350000, 2.52 },
   {    355991, 2.54 },
-  {    356000, 2.51 },
-  {   3550000, 2.50 },
+  {   3550000, 2.51 },
   {   3560000, 2.49 },
   {   5000000, 2.48 },
   {   8000000, 2.47 },
@@ -690,22 +682,26 @@ UV prime_count_upper(UV n)
   fl1 = logl(n);
   fl2 = fl1 * fl1;
 
-  if (fn > 10666844954.0) {
-    long double fl4 = fl2*fl2;
-    /* Axler, Sep 2014, theorem 1.3 */
-    upper = fl1 - 1.0L - 1.0L/fl1 - 3.35L/fl2 - 12.65L/(fl2*fl1) - 71.7L/fl4 - 466.1275L/(fl4*fl1) - 3489.8225L/(fl4*fl2);
-    return (UV) floorl(fn / upper);
+  if (BITS_PER_WORD == 32 || fn <= 821800000.0) {
+    for (i = 0; i < (int)NUPPER_THRESH; i++)
+      if (n < _upper_thresh[i].thresh)
+        break;
+    if (i < (int)NUPPER_THRESH) a = _upper_thresh[i].aval;
+    else                        a = 2.334;   /* Dusart 2010, page 2 */
+    upper = fn/fl1 * (1.0L + 1.0L/fl1 + a/fl2);
+  } else if (fn < 1e14) {          /* Skewes number lower limit */
+    a = (fn < 1100000000) ? 0.031
+      : (fn < 4500000000) ? 0.02 : 0.0;
+    upper = _XS_LogarithmicIntegral(fn) - a * fl1*sqrtl(fn)/25.132741228718345907701147L;
+#if 0
+  } else if (fn < 5796000000000.0) { /* Axler 2014, theorem 1.3 */
+    long double fl3 = fl2*fl1, fl4 = fl2*fl2, fl5 = fl4*fl1, fl6 = fl4*fl2;
+    upper = fn / (fl1 - 1.0L - 1.0L/fl1 - 3.35L/fl2 - 12.65L/fl3 - 71.7L/fl4 - 466.1275L/fl5 - 3489.8225L/fl6);
+#endif
+  } else {                         /* Büthe 2014 7.4 */
+    upper = _XS_LogarithmicIntegral(fn) + fl1*sqrtl(fn)/25.132741228718345907701147L;
   }
-
-  for (i = 0; i < (int)NUPPER_THRESH; i++)
-    if (n < _upper_thresh[i].thresh)
-      break;
-
-  if (i < (int)NUPPER_THRESH) a = _upper_thresh[i].aval;
-  else                        a = 2.334;   /* Dusart 2010, page 2 */
-
-  upper = fn/fl1 * (1.0 + 1.0/fl1 + a/fl2);
-  return (UV) ceill(upper);
+  return (UV) floorl(upper);
 }
 
 static const unsigned short primes_small[] =

@@ -1305,36 +1305,32 @@ sub prime_count_lower {
   $x = _upgrade_to_float($x)
     if ref($x) eq 'Math::BigInt' || ref($_[0]) eq 'Math::BigInt';
 
-  my $flogx = log($x);
+  my($result,$a);
+  my $fl1 = log($x);
+  my $fl2 = $fl1*$fl1;
+  my $one = (ref($x) eq 'Math::BigFloat') ? $x->copy->bone : $x-$x+1.0;
 
-  # Chebyshev:            1*x/logx       x >= 17
-  # Rosser & Schoenfeld:  x/(logx-1/2)   x >= 67
-  # Dusart 1999:          x/logx*(1+1/logx+1.8/logxlogx)  x >= 32299
-  # Dusart 2010:          x/logx*(1+1/logx+2.0/logxlogx)  x >= 88783
-  # The Dusart (1999 or 2010) bounds are far, far better than the others.
+  # Chebyshev            1*x/logx       x >= 17
+  # Rosser & Schoenfeld  x/(logx-1/2)   x >= 67
+  # Dusart 1999          x/logx*(1+1/logx+1.8/logxlogx)  x >= 32299
+  # Dusart 2010          x/logx*(1+1/logx+2.0/logxlogx)  x >= 88783
+  # Axler 2014 (1.2)     ""+...                          x >= 1332450001
+  # Axler 2014 (1.2)     x/(logx-1-1/logx-...)           x >= 1332479531
+  # Büthe 2014 Th 2      li(x)-logx*sqrtx/8Pi    x > 2657, x <= 1.4*10^25
 
-  my $result;
-  if ($x > 1000_000_000_000 && Math::Prime::Util::prime_get_config()->{'assume_rh'}) {
-    # Schoenfeld bound
+  if ($x >= 5589603006000 &&              # Schoenfeld / Büthe 2014 Th 7.4
+      ($x < 1.4e25 || Math::Prime::Util::prime_get_config()->{'assume_rh'}) ) {
     my $lix = LogarithmicIntegral($x);
     my $sqx = sqrt($x);
     if (ref($x) eq 'Math::BigFloat') {
       my $xdigits = _find_big_acc($x);
-      $result = $lix - (($sqx*$flogx) / (Math::BigFloat->bpi($xdigits)*8));
+      $result = $lix - ($fl1*$sqx / (Math::BigFloat->bpi($xdigits)*8));
     } else {
-      $result = $lix - (($sqx*$flogx) / PI_TIMES_8);
+      $result = $lix - ($fl1*$sqx / PI_TIMES_8);
     }
-  } elsif ($x < 599) {
-    $result = $x / ($flogx - 0.7);   # For smaller numbers this works out well.
-  } elsif ($x > 1332479531) {
-      my $fl1 = $flogx;
-      my $fl2 = $fl1 * $fl1;
-      my $fl4 = $fl2 * $fl2;
-      # Axler 2014, thorem 1.3
-      $result = $x / ( $fl1 - 1.0 - 1.0/$fl1 - 2.65/$fl2 - 13.35/($fl2*$fl1) - 70.3/$fl4 - 455.6275/($fl4*$fl1) - 3404.4225/($fl4*$fl2) );
-  } else {
-    my $a;
-    # Hand tuned for small numbers (< 60_000M)
+  } elsif ($x < 599) {                    # Decent for small numbers
+    $result = $x / ($fl1 - 0.7);
+  } elsif ($x < 1332479531) {             # Dusart 2010 tweaked
     if    ($x <       2700) { $a = 0.30; }
     elsif ($x <       5500) { $a = 0.90; }
     elsif ($x <      19400) { $a = 1.30; }
@@ -1344,11 +1340,12 @@ sub prime_count_lower {
     elsif ($x <    1100000) { $a = 2.20; }
     elsif ($x <    4500000) { $a = 2.31; }
     elsif ($x <  233000000) { $a = 2.36; }
-    elsif ($x < 5433800000) { $a = 2.32; }
-    elsif ($x <60000000000) { $a = 2.15; }
-    else                    { $a = 2.00; } # Dusart 2010, page 2
-    my $one = (ref($x) eq 'Math::BigFloat') ? $x->copy->bone : $x-$x+1.0;
-    $result = ($x/$flogx) * ($one + $one/$flogx + $a/($flogx*$flogx));
+    else                    { $a = 2.32; }
+    $result = ($x/$fl1) * ($one + $one/$fl1 + $a/$fl2);
+  } else {                                # Axler 2014 1.4
+    my($fl3,$fl4) = ($fl2*$fl1,$fl2*$fl2);
+    my($fl5,$fl6) = ($fl4*$fl1,$fl4*$fl2);
+    $result = $x / ($fl1 - $one - $one/$fl1 - 2.65/$fl2 - 13.35/$fl3 - 70.3/$fl4 - 455.6275/$fl5 - 3404.4225/$fl6);
   }
 
   return Math::BigInt->new($result->bfloor->bstr()) if ref($result) eq 'Math::BigFloat';
@@ -1370,37 +1367,18 @@ sub prime_count_upper {
   # Dusart 1999:          x/logx*(1+1/logx+2.51/logxlogx)   x >= 355991
   # Dusart 2010:          x/logx*(1+1/logx+2.334/logxlogx)  x >= 2_953_652_287
   # Axler 2014:           x/(logx-1-1/logx-3.35/logxlogx...) x >= e^3.804
+  # Büthe 2014 7.4        Schoenfeld bounds hold to x <= 1.4e25
+  # Skewes                li(x)                x < 1e14
 
-  # As with the lower bounds, Dusart and Axler bounds are best by far.
+  my($result,$a);
+  my $fl1 = log($x);
+  my $fl2 = $fl1 * $fl1;
+  my $one = (ref($x) eq 'Math::BigFloat') ? $x->copy->bone : $x-$x+1.0;
 
-  # Another possibility here for numbers under 3000M is to use Li(x)
-  # minus a correction.
-
-  my $flogx = log($x);
-
-  my $result;
-  if ($x > 10000_000_000_000 && Math::Prime::Util::prime_get_config()->{'assume_rh'}) {
-    # Schoenfeld bound
-    my $lix = LogarithmicIntegral($x);
-    my $sqx = sqrt($x);
-    if (ref($x) eq 'Math::BigFloat') {
-      my $xdigits = _find_big_acc($x);
-      $result = $lix + (($sqx*$flogx) / (Math::BigFloat->bpi($xdigits)*8));
-    } else {
-      $result = $lix + (($sqx*$flogx) / PI_TIMES_8);
-    }
-  } elsif ($x <  1621) { $result = ($x / ($flogx - 1.048)) + 1.0; }
-    elsif ($x <  5000) { $result = ($x / ($flogx - 1.071)) + 1.0; }
-    elsif ($x < 15900) { $result = ($x / ($flogx - 1.098)) + 1.0; }
-    elsif ($x > 10666844954) {
-      my $fl1 = $flogx;
-      my $fl2 = $fl1 * $fl1;
-      my $fl4 = $fl2 * $fl2;
-      # Axler 2014, thorem 1.3
-      $result = $x / ( $fl1 - 1.0 - 1.0/$fl1 - 3.35/$fl2 - 12.65/($fl2*$fl1) - 71.7/$fl4 - 466.1275/($fl4*$fl1) - 3489.8225/($fl4*$fl2) );
-    } else {
-    my $a;
-    # Hand tuned for small numbers (< 60_000M)
+  if ($x < 15900) {              # Tweaked Rosser-type
+    $a = ($x < 1621) ? 1.048 : ($x < 5000) ? 1.071 : 1.098;
+    $result = ($x / ($fl1 - $a)) + 1.0;
+  } elsif ($x < 821800000) {     # Tweaked Dusart 2010
     if    ($x <      24000) { $a = 2.30; }
     elsif ($x <      59000) { $a = 2.48; }
     elsif ($x <     350000) { $a = 2.52; }
@@ -1426,12 +1404,24 @@ sub prime_count_upper {
     elsif ($x <  682000000) { $a = 2.367; }
     elsif ($x < 2953652287) { $a = 2.362; }
     else                    { $a = 2.334; } # Dusart 2010, page 2
-    #elsif ($x <60000000000) { $a = 2.362; }
-    #else                    { $a = 2.51;  } # Dusart 1999, page 14
-
-    # Old versions of Math::BigFloat will do the Wrong Thing with this.
-    my $one = (ref($x) eq 'Math::BigFloat') ? $x->copy->bone : $x-$x+1.0;
-    $result = ($x/$flogx) * ($one + $one/$flogx + $a/($flogx*$flogx)) + $one;
+    $result = ($x/$fl1) * ($one + $one/$fl1 + $a/$fl2) + $one;
+  } elsif ($x < 1e14) {                     # Skewes number lower limit
+    $a = ($x < 1.1e9) ? 0.031 : ($x < 4.5e9) ? 0.02 : 0.0;
+    $result = LogarithmicIntegral($x) - $a * $fl1*sqrt($x)/PI_TIMES_8;
+  } elsif ($x < 1.4e25 || Math::Prime::Util::prime_get_config()->{'assume_rh'}) {
+                                            # Schoenfeld / Büthe 2014 Th 7.4
+    my $lix = LogarithmicIntegral($x);
+    my $sqx = sqrt($x);
+    if (ref($x) eq 'Math::BigFloat') {
+      my $xdigits = _find_big_acc($x);
+      $result = $lix + ($fl1*$sqx / (Math::BigFloat->bpi($xdigits)*8));
+    } else {
+      $result = $lix + ($fl1*$sqx / PI_TIMES_8);
+    }
+  } else {                                  # Axler 2014 1.3
+    my($fl3,$fl4) = ($fl2*$fl1,$fl2*$fl2);
+    my($fl5,$fl6) = ($fl4*$fl1,$fl4*$fl2);
+    $result = $x / ($fl1 - $one - $one/$fl1 - 3.35/$fl2 - 12.65/$fl3 - 71.7/$fl4 - 466.1275/$fl5 - 3489.8225/$fl6);
   }
 
   return Math::BigInt->new($result->bfloor->bstr()) if ref($result) eq 'Math::BigFloat';

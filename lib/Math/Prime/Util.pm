@@ -1413,11 +1413,12 @@ A common place these would be used is sizing an array to hold the first C<$n>
 primes.  It may be desirable to use a bit more memory than is necessary, to
 avoid calling C<prime_count>.
 
-These routines use verified tight limits below a range at least C<2^35>, and
-use either the Dusart (2010) bounds or the Axler (2014) bounds
-above that range.  These bounds do not assume the Riemann Hypothesis.  If the
-configuration option C<assume_rh> has been set (it is off by default), then
-the Schoenfeld (1976) bounds are used for large values.
+These routines use verified tight limits below a range at least C<2^35>.
+For larger inputs various methods are used including Kotnick (2008),
+Büthe (2014), and Axler (2014).
+These bounds do not assume the Riemann Hypothesis.
+If the configuration option C<assume_rh> has been set (it is off by default),
+then the Schoenfeld (1976) bounds can be used for large values.
 
 
 =head2 prime_count_approx

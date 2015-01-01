@@ -50,10 +50,10 @@ sub mpu_public_regex {
       is_frobenius_pseudoprime
       is_perrin_pseudoprime
       is_aks_prime is_bpsw_prime is_mersenne_prime
-      is_power
+      is_power sqrtint
       miller_rabin_random
       lucas_sequence lucasu lucasv
-      primes twin_primes
+      primes twin_primes ramanujan_primes
       forprimes forcomposites foroddcomposites fordivisors
       forpart forcomb forperm
       prime_iterator prime_iterator_object
