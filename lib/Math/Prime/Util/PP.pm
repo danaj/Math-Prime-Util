@@ -2983,7 +2983,7 @@ sub is_mersenne_prime {
 
   # Use the known Mersenne primes
   return 1 if exists $_mersenne_primes{$p};
-  return 0 if $p < 32593019; # GIMPS has checked all below
+  return 0 if $p < 33088277; # GIMPS has checked all below
   # Past this we do a generic Mersenne prime test
 
   return 1 if $p == 2;
