@@ -24,8 +24,6 @@ extern UV* _divisor_list(UV n, UV *num_divisors);
 extern UV dlp_trial(UV a, UV g, UV p, UV maxrounds);
 extern UV dlp_prho(UV a, UV g, UV p, UV n, UV maxrounds);
 extern UV dlp_bsgs(UV a, UV g, UV p, UV n, UV maxent);
-extern UV znlog_solve(UV a, UV g, UV p);
-extern UV znlog_ph(UV a, UV g, UV p);
 extern UV znlog(UV a, UV g, UV p);
 
 #endif
