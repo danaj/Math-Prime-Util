@@ -1274,7 +1274,7 @@ UV znlog(UV a, UV g, UV p) {
   if (aorder != 0 && gorder % aorder != 0) return 0;
 
   /* TODO: Come up with a better solution for a=0 */
-  if (a == 0 || p < 2000) {
+  if (a == 0 || p < 10000) {
     if (verbose > 1) printf("  dlp trial znlog(%lu,%lu,%lu)\n",a,g,p);
     k = dlp_trial(a, g, p, p);
     return k;
