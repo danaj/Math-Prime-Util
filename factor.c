@@ -959,6 +959,7 @@ UV dlp_trial(UV a, UV g, UV p, UV maxrounds) {
     if (t == a)
       return k;
     t = mulmod(t, g, p);
+    if (t == g) break;   /* Stop at cycle */
   }
   return 0;
 }
@@ -1180,12 +1181,10 @@ static UV znlog_solve(UV a, UV g, UV p, UV n) {
 
   if (verbose > 1 && n != p-1) printf("  g=%lu p=%lu, order %lu\n", g, p, n);
 
-  sqrtn = (n == 0) ? 0 : isqrt(n);
-
-  if (n == 0) {
+  if (n == 0 || n <= DLP_TRIAL_NUM) {
     k = dlp_trial(a, g, p, DLP_TRIAL_NUM);
     if (verbose) printf("  dlp trial 10k %s\n", (k!=0 || p <= DLP_TRIAL_NUM) ? "success" : "failure");
-    if (k != 0 || p <= DLP_TRIAL_NUM) return k;
+    if (k != 0 || (n > 0 && n <= DLP_TRIAL_NUM)) return k;
   }
 
   { /* Existence checks */
@@ -1195,6 +1194,8 @@ static UV znlog_solve(UV a, UV g, UV p, UV n) {
     if (aorder == 0 && gorder != 0) return 0;
     if (aorder != 0 && gorder % aorder != 0) return 0;
   }
+
+  sqrtn = (n == 0) ? 0 : isqrt(n);
   if (n == 0) n = p-1;
 
   /* Rho has low overhead and works well for small values */
@@ -1274,7 +1275,7 @@ UV znlog(UV a, UV g, UV p) {
   if (aorder != 0 && gorder % aorder != 0) return 0;
 
   /* TODO: Come up with a better solution for a=0 */
-  if (a == 0 || p < 10000) {
+  if (a == 0 || p < DLP_TRIAL_NUM || (gorder > 0 && gorder < DLP_TRIAL_NUM)) {
     if (verbose > 1) printf("  dlp trial znlog(%lu,%lu,%lu)\n",a,g,p);
     k = dlp_trial(a, g, p, p);
     return k;
