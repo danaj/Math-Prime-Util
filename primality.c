@@ -965,89 +965,67 @@ int lucas_lehmer(UV p)
 
 /******************************************************************************/
 
+/* Hashing similar to Forišek and Jančina 2015 */
+static const uint16_t mr_bases_hash32[256] = {
+157,1150,304,8758,362,15524,1743,212,1056,1607,140,3063,160,913,5842,2013,598,1929,696,1474,3006,524,155,705,694,1238,1851,1053,585,626,603,222,1109,1105,604,646,606,1249,1553,5609,515,548,1371,152,2824,532,3556,831,88,185,1355,501,1556,317,582,4739,4710,145,1045,2976,2674,318,1293,10934,1434,1178,3159,26,3526,1859,6467,602,699,5113,3152,2002,2361,101,464,68,813,446,1368,4637,368,1068,307,2820,6189,10457,569,1690,551,237,226,3235,405,3179,1101,610,56,14647,1687,247,8109,5172,1725,1248,536,2869,1047,899,12285,1026,250,1867,1432,336,5175,1632,5169,39,362,290,1372,11988,1329,2168,34,8781,495,399,34,29,4333,1669,166,6405,7357,694,579,746,1278,6347,7751,179,1085,11734,1615,3575,4253,7894,3097,591,1354,1676,151,702,7,5607,2565,440,566,112,3622,1241,1193,2324,1530,1423,548,3341,2012,6305,2410,39,106,3046,1507,1325,1807,2323,5645,1524,1301,1522,238,1226,2476,2126,1677,3288,1981,18481,287,1011,2877,563,7654,1231,776,3907,117,174,1124,199,16838,164,41,313,1692,1574,1021,2804,1093,1263,956,8508,1221,3743,1318,1304,1344,7628,10739,228,30,520,103,1621,6278,847,4537,272,2213,1989,1826,915,318,401,924,227,911,15505,1670,212,1391,700,3254,4931,3637,2822,1726,137,1843,1300
+};
 
-/* Select M-R bases from http://miller-rabin.appspot.com/, 26 July 2013 */
-#if BITS_PER_WORD == 32
-static const UV mr_bases_small_2[2] = {31, 73};
-static const UV mr_bases_small_3[3] = {2, 7, 61};
-#else
-static const UV mr_bases_large_1[1] = { UVCONST(  9345883071009581737 ) };
-static const UV mr_bases_large_2[2] = { UVCONST(         336781006125 ),
-                                        UVCONST(     9639812373923155 ) };
-#if 0
-static const UV mr_bases_large_3[3] = { UVCONST(  4230279247111683200 ),
-                                        UVCONST( 14694767155120705706 ),
-                                        UVCONST( 16641139526367750375 ) };
-static const UV mr_bases_large_7[7] = { 2, 325, 9375, 28178, 450775, 9780504, 1795265022 };
-#endif
-#endif
 
 int is_prob_prime(UV n)
 {
   int ret;
 
-#if !USE_MONT_PRIMALITY
-  /* On some platforms, especially where UV is a long long, trial division
-   * for small inputs can be much faster.  The exact crossover will differ. */
-  if (n < 20000000) {
-    unsigned int m = n;
-    if (m < 11) {
-      if (m == 2 || m == 3 || m == 5 || m == 7)     return 2;
-      else                                          return 0;
-    }
-    if (!(m%2) || !(m%3) || !(m%5) || !(m%7))       return 0;
-    if (m >= 121) {
-      unsigned int f = 11;
-      unsigned int limit = isqrt(n);
-      while (f <= limit) {
-        if ((m%f) == 0)  return 0;  f += 2;
-        if ((m%f) == 0)  return 0;  f += 4;
-        if ((m%f) == 0)  return 0;  f += 2;
-        if ((m%f) == 0)  return 0;  f += 4;
-        if ((m%f) == 0)  return 0;  f += 6;
-        if ((m%f) == 0)  return 0;  f += 2;
-        if ((m%f) == 0)  return 0;  f += 6;
-        if ((m%f) == 0)  return 0;  f += 4;
-      }
-    }
-    return 2;
-  }
-  if (!(n%2) || !(n%3) || !(n%5) || !(n%7))       return 0;
-  if (!(n%11) || !(n%13) || !(n%17) || !(n%19) ||
-      !(n%23) || !(n%29) || !(n%31) || !(n%37) ||
-      !(n%41) || !(n%43) || !(n%47) || !(n%53))   return 0;
-#else
   if (n < 11) {
     if (n == 2 || n == 3 || n == 5 || n == 7)     return 2;
     else                                          return 0;
   }
-  if (!(n%2) || !(n%3) || !(n%5) || !(n%7))       return 0;
-  if (n <  121) /* 11*11 */                       return 2;
-  if (!(n%11) || !(n%13) || !(n%17) || !(n%19) ||
-      !(n%23) || !(n%29) || !(n%31) || !(n%37) ||
-      !(n%41) || !(n%43) || !(n%47) || !(n%53))   return 0;
-  if (n < 3481) /* 59*59 */                       return 2;
-#endif
 
-#if BITS_PER_WORD == 32
-  /* We could use one base when n < 49191, two when n < 360018361. */
-  if (n < UVCONST(9080191))
-    ret = _XS_miller_rabin(n, mr_bases_small_2, 2);
-  else
-    ret = _XS_miller_rabin(n, mr_bases_small_3, 3);
+#if BITS_PER_WORD == 64
+  if (n <= UVCONST(4294967295)) {
 #else
-  /* AESLSP test costs about 1.5 Selfridges, vs. ~2.2 for strong Lucas.
-   * So it works out to be faster to do AES-BPSW vs. 3 M-R tests. */
-  if (n < UVCONST(341531))
-    ret = _XS_miller_rabin(n, mr_bases_large_1, 1);
-  else if (n < UVCONST(1050535501))
-    ret = _XS_miller_rabin(n, mr_bases_large_2, 2);
-  else
-    ret = _XS_BPSW(n);
-  /*
-    ret = efficient_mr64(mr_bases_large_7, 7, n);
-    ret = _XS_miller_rabin(n, mr_bases_large_7, 7);
-  */
+  {
 #endif
+    uint32_t x = n;
+    UV base;
+    if (!(x%2) || !(x%3) || !(x%5) || !(x%7))       return 0;
+    if (x <  121) /* 11*11 */                       return 2;
+    if (!(x%11) || !(x%13) || !(x%17) || !(x%19) ||
+        !(x%23) || !(x%29) || !(x%31) || !(x%37) ||
+        !(x%41) || !(x%43) || !(x%47) || !(x%53))   return 0;
+    if (x < 3481) /* 59*59 */                       return 2;
+    /* Trial division crossover point depends on platform */
+    if (!USE_MONT_PRIMALITY && n < 500000) {
+      uint32_t f = 59;
+      uint32_t limit = isqrt(n);
+      while (f <= limit) {
+        if ((x%f) == 0)  return 0;  f += 2;
+        if ((x%f) == 0)  return 0;  f += 6;
+        if ((x%f) == 0)  return 0;  f += 4;
+        if ((x%f) == 0)  return 0;  f += 2;
+        if ((x%f) == 0)  return 0;  f += 4;
+        if ((x%f) == 0)  return 0;  f += 2;
+        if ((x%f) == 0)  return 0;  f += 4;
+        if ((x%f) == 0)  return 0;  f += 6;
+      }
+      return 2;
+    }
+    /* Use Mueller-like 32-bit hash to find single M-R base to use. */
+    x = (((x >> 16) ^ x) * 0x45d9f3b) & 0xFFFFFFFFUL;
+    x = ((x >> 16) ^ x) & 255;
+    base = mr_bases_hash32[x];
+    ret = _XS_miller_rabin(n, &base, 1);
+#if BITS_PER_WORD == 64
+  } else {  /* 64-bit input, we must be 64-bit word as well */
+    if (!(n%2) || !(n%3) || !(n%5) || !(n%7))       return 0;
+    if (n <  121) /* 11*11 */                       return 2;
+    if (!(n%11) || !(n%13) || !(n%17) || !(n%19) ||
+        !(n%23) || !(n%29) || !(n%31) || !(n%37) ||
+        !(n%41) || !(n%43) || !(n%47) || !(n%53))   return 0;
+    if (n < 3481) /* 59*59 */                       return 2;
+
+    /* AESLSP test costs about 1.5 Selfridges, vs. ~2.2 for strong Lucas. */
+    ret = _XS_BPSW(n);
+#endif
+  }
   return 2*ret;
 }
