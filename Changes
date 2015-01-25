@@ -17,6 +17,10 @@ Revision history for Perl module Math::Prime::Util
       2-base (2^49) and 3-base (2^64) hashed solutions for MPU.  Primality
       testing is 20-40% faster for this size.
 
+    - Small speedups for znlog.
+
+    [Misc]
+
     - Changes to nth_prime_{lower,upper}.  They use the Axler (2013) bounds,
       and the XS code will also use inverse prime count bounds for small
       values.  This gives 2-10x tighter bounds.

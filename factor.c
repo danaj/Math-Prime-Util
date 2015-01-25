@@ -959,6 +959,7 @@ UV dlp_trial(UV a, UV g, UV p, UV maxrounds) {
     if (t == a)
       return k;
     t = mulmod(t, g, p);
+    if (t == g) break;   /* Stop at cycle */
   }
   return 0;
 }
@@ -1167,8 +1168,8 @@ UV dlp_bsgs(UV a, UV g, UV p, UV n, UV maxent) {
 /* Find smallest k where a = g^k mod p */
 #define DLP_TRIAL_NUM  10000
 #define DLP_RHO_NUM    40000
-UV znlog_solve(UV a, UV g, UV p) {
-  UV i, k, n, sqrtn;
+static UV znlog_solve(UV a, UV g, UV p, UV n) {
+  UV i, k, sqrtn;
   const int verbose = _XS_get_verbose();
   const UV bsgs_maxent[] = {8000,80000,800000,10000000};
 
@@ -1178,19 +1179,24 @@ UV znlog_solve(UV a, UV g, UV p) {
   if (a == 1 || g == 0 || p < 2)
     return 0;
 
-  n = znorder(g, p);
   if (verbose > 1 && n != p-1) printf("  g=%lu p=%lu, order %lu\n", g, p, n);
-  if (n == 0) {
-    sqrtn = 0;
-    n = p;
+
+  if (n == 0 || n <= DLP_TRIAL_NUM) {
     k = dlp_trial(a, g, p, DLP_TRIAL_NUM);
-    if (verbose) printf("  dlp trial 1k %s\n", (k!=0 || p<= DLP_TRIAL_NUM) ? "success" : "failure");
-    if (k != 0 || p <= DLP_TRIAL_NUM) return k;
-  } else {
-    /* Simple existence check (not very thorough) */
-    if (powmod(a, n, p) != 1) return 0;
-    sqrtn = isqrt(n);
+    if (verbose) printf("  dlp trial 10k %s\n", (k!=0 || p <= DLP_TRIAL_NUM) ? "success" : "failure");
+    if (k != 0 || (n > 0 && n <= DLP_TRIAL_NUM)) return k;
   }
+
+  { /* Existence checks */
+    UV aorder, gorder = n;
+    if (gorder != 0 && powmod(a, gorder, p) != 1) return 0;
+    aorder = znorder(a,p);
+    if (aorder == 0 && gorder != 0) return 0;
+    if (aorder != 0 && gorder % aorder != 0) return 0;
+  }
+
+  sqrtn = (n == 0) ? 0 : isqrt(n);
+  if (n == 0) n = p-1;
 
   /* Rho has low overhead and works well for small values */
   if (sqrtn > 0 && n <= UVCONST(1000000)) {
@@ -1226,23 +1232,23 @@ UV znlog_solve(UV a, UV g, UV p) {
 }
 
 /* Silver-Pohlig-Hellman */
-UV znlog_ph(UV a, UV g, UV p) {
+static UV znlog_ph(UV a, UV g, UV p, UV p1) {
   UV fac[MPU_MAX_FACTORS+1];
   UV exp[MPU_MAX_FACTORS+1];
   int i, nfactors;
-  UV x, j, p1 = znorder(g,p);
+  UV x, j;
 
   if (p1 == 0) return 0;   /* TODO: Should we plow on with p1=p-1? */
   nfactors = factor_exp(p1, fac, exp);
   if (nfactors == 1)
-    return znlog_solve(a, g, p);
+    return znlog_solve(a, g, p, p1);
   for (i = 0; i < nfactors; i++) {
     UV pi, delta, gamma;
     pi = fac[i];   for (j = 1; j < exp[i]; j++)  pi *= fac[i];
     delta = powmod(a,p1/pi,p);
     gamma = powmod(g,p1/pi,p);
     /* printf(" solving znlog(%lu,%lu,%lu)\n", delta, gamma, p); */
-    fac[i] = znlog_solve( delta, gamma, p );
+    fac[i] = znlog_solve( delta, gamma, p, znorder(gamma,p) );
     exp[i] = pi;
   }
   x = chinese(fac, exp, nfactors, &i);
@@ -1253,7 +1259,7 @@ UV znlog_ph(UV a, UV g, UV p) {
 
 /* Find smallest k where a = g^k mod p */
 UV znlog(UV a, UV g, UV p) {
-  UV k;
+  UV k, gorder, aorder;
   const int verbose = _XS_get_verbose();
 
   if (a >= p) a %= p;
@@ -1262,15 +1268,28 @@ UV znlog(UV a, UV g, UV p) {
   if (a == 1 || g == 0 || p < 2)
     return 0;
 
-  /* TODO: come up with a better solution for this */
-  if (a == 0) return dlp_trial(a, g, p, p);
+  gorder = znorder(g,p);
+  if (gorder != 0 && powmod(a, gorder, p) != 1) return 0;
+  aorder = znorder(a,p);
+  if (aorder == 0 && gorder != 0) return 0;
+  if (aorder != 0 && gorder % aorder != 0) return 0;
 
-  k = znlog_ph(a, g, p);
-  if (verbose) printf("  dlp PH %s\n", k!=0 ? "success" : "failure");
-  if (k != 0) return k;
+  /* TODO: Come up with a better solution for a=0 */
+  if (a == 0 || p < DLP_TRIAL_NUM || (gorder > 0 && gorder < DLP_TRIAL_NUM)) {
+    if (verbose > 1) printf("  dlp trial znlog(%lu,%lu,%lu)\n",a,g,p);
+    k = dlp_trial(a, g, p, p);
+    return k;
+  }
 
-  return znlog_solve(a, g, p);
+  if (!is_prob_prime(gorder)) {
+    k = znlog_ph(a, g, p, gorder);
+    if (verbose) printf("  dlp PH %s\n", k!=0 ? "success" : "failure");
+    if (k != 0) return k;
+  }
+
+  return znlog_solve(a, g, p, gorder);
 }
+
 
 /* Compile with:
  *  gcc -O3 -fomit-frame-pointer -march=native -Wall -DFACTOR_STANDALONE -DSTANDALONE factor.c util.c sieve.c cache.c primality.c lmo.c -lm
