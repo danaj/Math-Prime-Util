@@ -19,6 +19,8 @@ Revision history for Perl module Math::Prime::Util
 
     - Small speedups for znlog.
 
+    - PP nth_prime on 32-bit fixed for values over 2^32.
+
     [Misc]
 
     - Changes to nth_prime_{lower,upper}.  They use the Axler (2013) bounds,

@@ -424,7 +424,8 @@ sub _sieve_segment {
     my $p2 = $p*$p;
     if ($p2 < $beg) {
       my $f = 1+int(($beg-1)/$p);
-      $p2 = $p * ($f + !($f & 1));
+      $f++ unless $f % 2;
+      $p2 = $p * $f;
     }
     # With large bases and small segments, it's common to find we don't hit
     # the segment at all.  Skip all the setup if we find this now.
