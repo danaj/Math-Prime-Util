@@ -874,7 +874,7 @@ __END__
 
 =encoding utf8
 
-=for stopwords forprimes forcomposites foroddcomposites fordivisors forpart forcomb forperm Möbius Deléglise Bézout totient moebius mertens liouville znorder irand primesieve uniqued k-tuples von SoE pari yafu fonction qui compte le nombre nombres voor PhD superset sqrt(N) gcd(A^M k-th (10001st primegen libtommath kronecker znprimroot znlog gcd lcm invmod untruncated vecsum vecprod vecmin vecmax vecreduce gcdext chinese LambertW bernfrac bernreal harmfrac harmreal stirling hammingweight lucasu lucasv OpenPFGW gmpy2 Über Primzahl-Zählfunktion n-te und verallgemeinerte sqrtint
+=for stopwords forprimes forcomposites foroddcomposites fordivisors forpart forcomb forperm Möbius Deléglise Bézout totient moebius mertens liouville znorder irand primesieve uniqued k-tuples von SoE pari yafu fonction qui compte le nombre nombres voor PhD superset sqrt(N) gcd(A^M k-th (10001st primegen libtommath kronecker znprimroot znlog gcd lcm invmod untruncated vecsum vecprod vecmin vecmax vecreduce vecextract gcdext chinese LambertW bernfrac bernreal harmfrac harmreal stirling hammingweight lucasu lucasv OpenPFGW gmpy2 Über Primzahl-Zählfunktion n-te und verallgemeinerte sqrtint
 
 =for test_synopsis use v5.14;  my($k,$x);
 
@@ -2258,6 +2258,22 @@ While operations like L<vecmin>, L<vecmax>, L<vecsum>, L<vecprod>, etc. can
 be fairly easily done with this function, it will not be as efficient.  There
 are a wide variety of other functions that can be easily made with reduce,
 making it a useful tool.
+
+=head2 vecextract
+
+  say "Power set:";  say join(" ",vecextract(\@v,$_)) for 0..2**scalar(@v)-1
+
+Extracts elements from an array reference based on a bit mask, with the
+result returned as an array.  Each bit set in the mask results in the
+ corresponding element from the array reference to be returned.  Bits are
+read from the right, so a mask of C<1> returns the first element, while C<5>
+will return the first and third.
+
+I<Note:> this function will change in the future to take more argument
+types for the second argument.  Currently it only takes a native integer
+used as a bitmask, but future versions should allow bigint masks, array
+reference element lists, and text ranges.
+
 
 =head2 invmod
 
