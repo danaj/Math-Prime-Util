@@ -1724,6 +1724,24 @@ sub vecmax {
   $max;
 }
 
+sub vecextract {
+  my($aref, $mask) = @_;
+
+  return @$aref[@$mask] if ref($mask) eq 'ARRAY';
+
+  # This is concise but quite slow.
+  # map { $aref->[$_] }  grep { $mask & (1 << $_) }  0 .. $#$aref;
+
+  my($i, @v) = (0);
+  while ($mask) {
+    push @v, $aref->[$i] if $mask & 1;
+    warn "pushing element $i\n" if $mask & 1;
+    $mask >>= 1;
+    $i++;
+  }
+  @v;
+}
+
 sub invmod {
   my($a,$n) = @_;
   return if $n == 0 || $a == 0;

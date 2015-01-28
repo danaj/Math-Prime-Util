@@ -680,7 +680,7 @@ gcd(...)
     return; /* skip implicit PUTBACK */
 
 void
-vecextract(IN SV* x, IN UV mask)
+vecextract(IN SV* x, IN SV* svm)
   PREINIT:
     AV* av;
     UV i = 0;
@@ -688,14 +688,29 @@ vecextract(IN SV* x, IN UV mask)
     if ((!SvROK(x)) || (SvTYPE(SvRV(x)) != SVt_PVAV))
       croak("vecextract first argument must be an array reference");
     av = (AV*) SvRV(x);
-    while (mask) {
-      if (mask & 1) {
-        SV** v = av_fetch(av, i, 0);
-        if (v)
-          XPUSHs(*v);
+    if (SvROK(svm) && SvTYPE(SvRV(svm)) == SVt_PVAV) {
+      AV* avm = (AV*) SvRV(svm);
+      UV mlen = av_len(avm);
+      for (i = 0; i <= mlen; i++) {
+        SV** iv = av_fetch(avm, i, 0);
+        if (iv && SvTYPE(*iv) == SVt_IV) {
+          SV **v = av_fetch(av, SvIV(*iv), 0);
+          if (v) XPUSHs(*v);
+        }
       }
-      i++;
-      mask >>= 1;
+    } else if (_validate_int(svm, 0)) {
+      UV mask = my_svuv(svm);
+      while (mask) {
+        if (mask & 1) {
+          SV** v = av_fetch(av, i, 0);
+          if (v) XPUSHs(*v);
+        }
+        i++;
+        mask >>= 1;
+      }
+    } else {
+      _vcallsubn(aTHX_ GIMME_V, VCALL_PP, "vecextract", items);
+      return;
     }
 
 void

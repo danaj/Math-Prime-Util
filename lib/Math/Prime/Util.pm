@@ -2261,18 +2261,25 @@ making it a useful tool.
 
 =head2 vecextract
 
-  say "Power set:";  say join(" ",vecextract(\@v,$_)) for 0..2**scalar(@v)-1
+  say "Power set: ", join(" ",vecextract(\@v,$_)) for 0..2**scalar(@v)-1;
+  @word = vecextract(["a".."z"], [15, 17, 8, 12, 4]);
 
-Extracts elements from an array reference based on a bit mask, with the
-result returned as an array.  Each bit set in the mask results in the
- corresponding element from the array reference to be returned.  Bits are
+Extracts elements from an array reference based on a mask, with the
+result returned as an array.  The mask is either an unsigned integer
+which is treated as a bit mask, or an array reference containing integer
+indices.
+
+If the second argument is an integer, each bit set in the mask results in the
+corresponding element from the array reference to be returned.  Bits are
 read from the right, so a mask of C<1> returns the first element, while C<5>
-will return the first and third.
+will return the first and third.  The mask may be a bigint.
 
-I<Note:> this function will change in the future to take more argument
-types for the second argument.  Currently it only takes a native integer
-used as a bitmask, but future versions should allow bigint masks, array
-reference element lists, and text ranges.
+If the second argument is an array reference, then its elements will be used
+as indices into the first array.  Duplicate values are allowed and the
+ordering is preserved.  Hence these are equivalent:
+
+    vecextract($aref, $iref);
+    @$aref[@$iref];
 
 
 =head2 invmod

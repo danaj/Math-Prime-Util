@@ -583,17 +583,7 @@ sub vecextract {
   my($aref, $mask) = @_;
   croak "vecextract first argument must be an array reference"
     unless ref($aref) eq 'ARRAY';
-
-  # This is concise but quite slow.
-  # map { $aref->[$_] }  grep { $mask & (1 << $_) }  0 .. $#$aref;
-
-  my($i, @v) = (0);
-  while ($mask) {
-    push @v, $aref->[$i] if $mask & 1;
-    $mask >>= 1;
-    $i++;
-  }
-  @v;
+  return Math::Prime::Util::PP::vecextract(@_);
 }
 
 1;
