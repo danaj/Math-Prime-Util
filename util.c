@@ -34,6 +34,7 @@
   extern long double fabsl(long double);
   extern long double floorl(long double);
   extern long double ceill(long double);
+  extern long double sqrtl(long double);
 #endif
 #else
   #define powl(x, y)  (long double) pow( (double) (x), (double) (y) )
@@ -42,6 +43,7 @@
   #define fabsl(x)    (long double) fabs( (double) (x) )
   #define floorl(x)   (long double) floor( (double) (x) )
   #define ceill(x)    (long double) ceil( (double) (x) )
+  #define sqrtl(x)    (long double) sqrt( (double) (x) )
 #endif
 
 #ifdef LDBL_INFINITY
