@@ -698,7 +698,7 @@ vecextract(IN SV* x, IN SV* svm)
           if (v) XPUSHs(*v);
         }
       }
-    } else if (_validate_int(svm, 0)) {
+    } else if (_validate_int(aTHX_ svm, 0)) {
       UV mask = my_svuv(svm);
       while (mask) {
         if (mask & 1) {
