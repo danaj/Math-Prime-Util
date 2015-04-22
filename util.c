@@ -1063,11 +1063,11 @@ UV nth_twin_prime_approx(UV n)
 
 
 /* Return array of first n ramanujan primes.  Use Noe's algorithm */
-UV* ramanujan_primes(UV n) {
+UV* n_ramanujan_primes(UV n) {
   UV max, k, s, *L;
   unsigned char* sieve;
   /* Axler 2013, proposition 4.34:  Rn <= nthprime(tn), t > 48/19 */
-  max = nth_prime_upper(48*n/19);
+  max = nth_prime_upper(48*n/19 + 1);
   if (_XS_get_verbose() >= 2) printf("sieving to %"UVuf" for first %"UVuf" Ramanujan primes\n", max, n);
   s = 0;
   sieve = sieve_erat30(max);
@@ -1083,6 +1083,14 @@ UV* ramanujan_primes(UV n) {
   return L;
 }
 
+UV nth_ramanujan_prime(UV n) {
+  UV rn, *L;
+  if (n < 1) return 0;
+  L = n_ramanujan_primes(n);
+  rn = L[n-1];
+  Safefree(L);
+  return rn;
+}
 
 
 /* Return a char array with lo-hi+1 elements. mu[k-lo] = µ(k) for k = lo .. hi.

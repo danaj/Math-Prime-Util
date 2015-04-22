@@ -100,3 +100,5 @@
 - harmreal and harmfrac for general $k
 
 - tests for vecextract and vecreduce.
+
+- nth_ramanujan_prime PP, bounds check, tests

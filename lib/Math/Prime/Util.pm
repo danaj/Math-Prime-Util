@@ -38,6 +38,7 @@ our @EXPORT_OK =
       nth_prime nth_prime_lower nth_prime_upper nth_prime_approx
       twin_prime_count twin_prime_count_approx
       nth_twin_prime nth_twin_prime_approx
+      nth_ramanujan_prime
       random_prime random_ndigit_prime random_nbit_prime random_strong_prime
       random_proven_prime random_proven_prime_with_cert
       random_maurer_prime random_maurer_prime_with_cert
@@ -1558,6 +1559,14 @@ is not very fast for large values.
 Returns an approximation to the Nth twin prime.  A curve fit is used for
 small inputs (under 1200), while for larger inputs a binary search is done
 on the approximate twin prime count.
+
+=head2 nth_ramanujan_prime
+
+Returns the Nth Ramanujan prime.  This generates the first C<n> Ramanujan
+primes and does not cache any data.  For reasonable size values of C<n>,
+e.g. under C<10^7> or so, this is relatively efficient for single calls.  If
+multiple calls are being made, it may be much more efficient to get the list
+once.
 
 
 =head2 is_pseudoprime

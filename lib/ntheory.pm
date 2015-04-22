@@ -81,6 +81,7 @@ See L<Math::Prime::Util> for complete documentation.
   twin_prime_count_approx(n)          fast approx count of twin primes
   nth_twin_prime(n)                   the nth twin prime (n=1 returns 3)
   nth_twin_prime_approx(n)            fast approximate nth twin prime
+  nth_ramanujan_prime(n)              the nth Ramanujan prime (Rn)
   legendre_phi(n,a)                   # below n not div by first a primes
   prime_precalc(n)                    precalculate primes to n
 
