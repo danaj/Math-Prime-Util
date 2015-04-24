@@ -1069,11 +1069,10 @@ UV* n_ramanujan_primes(UV n) {
   /* Axler 2013, proposition 4.34:  Rn <= nthprime(tn), t > 48/19 */
   max = nth_prime_upper(48*n/19 + 1);
   if (_XS_get_verbose() >= 2) printf("sieving to %"UVuf" for first %"UVuf" Ramanujan primes\n", max, n);
-  s = 0;
   sieve = sieve_erat30(max);
   Newz(0, L, n, UV);
   L[0] = 2;
-  for (k = 7; k <= max; k += 2) {
+  for (s = 0, k = 7; k <= max; k += 2) {
     if (is_prime_in_sieve(sieve, k)) s++;
     if (s < n) L[s] = k+1;
     if ((k & 3) == 1 && is_prime_in_sieve(sieve, (k+1)>>1)) s--;
@@ -1086,10 +1085,31 @@ UV* n_ramanujan_primes(UV n) {
 UV nth_ramanujan_prime(UV n) {
   UV rn, *L;
   if (n < 1) return 0;
+  /* Generate all Ramanujan primes up to Rn, return the last one.  Slow. */
   L = n_ramanujan_primes(n);
   rn = L[n-1];
   Safefree(L);
   return rn;
+}
+
+int is_ramanujan_prime(UV n) {
+  UV rnmax, *L, lo, hi;
+  if (!_XS_is_prime(n))  return 0;
+  if (n == 2 || n == 11) return 1;
+  if (n < 17)            return 0;
+  /* Generate Ramanujan primes and see if we're in the list.  Slow. */
+  rnmax = prime_count_upper(n) >> 1;
+  L = n_ramanujan_primes(rnmax);
+  lo = 2;
+  hi = rnmax-1;
+  while (lo < hi) {
+    UV mid = lo + (hi-lo)/2;
+    if (L[mid] < n) lo = mid+1;
+    else            hi = mid;
+  }
+  hi = L[lo];
+  Safefree(L);
+  return (n == hi);
 }
 
 

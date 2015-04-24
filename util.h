@@ -26,6 +26,7 @@ extern UV  nth_twin_prime(UV n);
 extern UV  nth_twin_prime_approx(UV n);
 extern UV  nth_ramanujan_prime(UV n);
 extern UV* n_ramanujan_primes(UV n);
+extern int is_ramanujan_prime(UV n);
 
 extern int powerof(UV n);
 extern int is_power(UV n, UV a);

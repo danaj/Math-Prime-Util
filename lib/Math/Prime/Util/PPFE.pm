@@ -142,6 +142,11 @@ sub nth_twin_prime_approx {
   _validate_positive_integer($n);
   return Math::Prime::Util::PP::nth_twin_prime_approx($n);
 }
+sub nth_ramanujan_prime {
+  my($n) = @_;
+  _validate_positive_integer($n);
+  return Math::Prime::Util::PP::nth_ramanujan_prime($n);
+}
 
 
 *is_prime          = \&Math::Prime::Util::PP::is_prime;
@@ -213,6 +218,12 @@ sub is_aks_prime {
   return 0 if defined $n && int($n) < 0;
   _validate_positive_integer($n);
   return Math::Prime::Util::PP::is_aks_prime($n);
+}
+sub is_ramanujan_prime {
+  my($n) = @_;
+  return 0 if defined $n && int($n) < 0;
+  _validate_positive_integer($n);
+  return Math::Prime::Util::PP::is_ramanujan_prime($n);
 }
 sub is_mersenne_prime {
   my($p) = @_;

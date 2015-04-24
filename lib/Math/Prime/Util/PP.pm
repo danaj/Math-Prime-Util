@@ -506,23 +506,45 @@ sub primes {
   $sref;
 }
 
+sub _n_ramanujan_primes {
+  my($n) = @_;
+  return [] if $n <= 0;
+  my $max = nth_prime_upper(int(48/19*$n)+1);
+  my @L = (2, (0) x $n-1);
+  my $s = 1;
+  for (my $k = 7; $k <= $max; $k += 2) {
+    $s++ if is_prime($k);
+    $L[$s] = $k+1 if $s < $n;
+    $s-- if ($k&3) == 1 && is_prime(($k+1)>>1);
+    $L[$s] = $k+2 if $s < $n;
+  }
+  \@L;
+}
+
 sub _ramanujan_primes {
   my($low,$high) = @_;
   ($low,$high) = (2, $low) unless defined $high;
   return [] if ($low > $high) || ($high < 2);
   my $nn = prime_count_upper($high) >> 1;
-  my $max = nth_prime_upper(int(48/19*$nn));
-  my @L = (2, (0) x $nn-1);
-  my $s = 1;
-  for (my $k = 7; $k <= $max; $k += 2) {
-    $s++ if is_prime($k);
-    $L[$s] = $k+1 if $s < $nn;
-    $s-- if ($k&3) == 1 && is_prime(($k+1)>>1);
-    $L[$s] = $k+2 if $s < $nn;
-  }
-  shift @L while $L[0] < $low;
-  pop @L while @L && $L[-1] > $high;
-  \@L;
+  my $L = _n_ramanujan_primes($nn);
+  shift @$L while @$L && $L->[0] < $low;
+  pop @$L while @$L && $L->[-1] > $high;
+  $L;
+}
+
+sub is_ramanujan_prime {
+  my($n) = @_;
+  return 1 if $n == 2;
+  return 0 if $n < 11;
+  my $L = _ramanujan_primes($n,$n);
+  return (scalar(@$L) > 0) ? 1 : 0;
+}
+
+sub nth_ramanujan_prime {
+  my($n) = @_;
+  return 0 if $n <= 0;
+  my $L = _n_ramanujan_primes($n);
+  return $L->[$n-1];
 }
 
 sub next_prime {

@@ -24,6 +24,7 @@ our @EXPORT_OK =
       is_frobenius_pseudoprime
       is_perrin_pseudoprime
       is_frobenius_underwood_pseudoprime is_aks_prime is_bpsw_prime
+      is_ramanujan_prime
       is_mersenne_prime
       is_power sqrtint
       miller_rabin_random
@@ -2084,6 +2085,18 @@ specialized programs such as C<prime95>.  Additionally, since we use the
 table for "small" numbers, testing via this function call will only occur
 for numbers with over 9.8 million digits.  At this size, tools such as
 C<prime95> are greatly preferred.
+
+
+=head2 is_ramanujan_prime
+
+Takes a positive number C<n> as input and returns back either 0 or 1,
+indicating whether C<n> is a Ramanujan prime.  Numbers that can be produced
+by the functions L</ramanujan_primes> and L</nth_ramanujan_prime> will
+return 1, while all other numbers will return 0.
+
+There is no simple function for this predicate, so Ramanujan primes through
+at least C<n> are generated, then a search is performed for C<n>.  This is
+not efficient for multiple calls.
 
 
 =head2 is_power

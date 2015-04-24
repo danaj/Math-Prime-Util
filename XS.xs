@@ -797,15 +797,16 @@ is_prime(IN SV* svn, ...)
     is_frobenius_underwood_pseudoprime = 9
     is_perrin_pseudoprime = 10
     is_almost_extra_strong_lucas_pseudoprime = 11
-    is_mersenne_prime = 12
-    is_power = 13
+    is_ramanujan_prime = 12
+    is_mersenne_prime = 13
+    is_power = 14
   PREINIT:
     int status;
   PPCODE:
     status = _validate_int(aTHX_ svn, 1);
     if (status != 0) {
       int ret = 0;
-      if (status == 1 && ix != 13) {
+      if (status == 1 && ix != 14) {
         UV n = my_svuv(svn);
         UV a = (items == 1) ? 0 : my_svuv(ST(1));
         switch (ix) {
@@ -828,12 +829,13 @@ is_prime(IN SV* svn, ...)
           case 10: ret = is_perrin_pseudoprime(n); break;
           case 11: ret = _XS_is_almost_extra_strong_lucas_pseudoprime
                          (n, (items == 1) ? 1 : a); break;
-          case 12:
+          case 12: ret = is_ramanujan_prime(n); break;
+          case 13:
           default: ret = is_mersenne_prime(n);
                    if (ret == -1) status = 0;
                    break;
         }
-      } else if (ix == 13) {
+      } else if (ix == 14) {
         UV n = (status == 1) ? my_svuv(svn) : (UV) -my_sviv(svn);
         UV a = (items == 1) ? 0 : my_svuv(ST(1));
         if (status == -1 && n > (UV)IV_MAX) { status = 0; }
@@ -866,8 +868,9 @@ is_prime(IN SV* svn, ...)
       case 9: _vcallsub_with_gmp("is_frobenius_underwood_pseudoprime"); break;
       case 10:_vcallsub_with_gmp("is_perrin_pseudoprime"); break;
       case 11:_vcallsub_with_gmp("is_almost_extra_strong_lucas_pseudoprime"); break;
-      case 12:_vcallsub_with_gmp("is_mersenne_prime"); break;
-      case 13:
+      case 12:_vcallsub_with_gmp("is_ramanujan_prime"); break;
+      case 13:_vcallsub_with_gmp("is_mersenne_prime"); break;
+      case 14:
       default:if (items != 3 && status != -1) {
                 STRLEN len;
                 char* ptr = SvPV_nomg(svn, len);
@@ -902,9 +905,9 @@ next_prime(IN SV* svn)
       UV n = my_svuv(svn);
       if ( (n >= MPU_MAX_PRIME     && ix == 0) ||
            (n >= MPU_MAX_PRIME_IDX && (ix==2 || ix==3 || ix==4 || ix==5)) ||
-           (n >= MPU_MAX_TWIN_PRIME_IDX && (ix==6 || ix==7)) ) {
+           (n >= MPU_MAX_TWIN_PRIME_IDX && (ix==6 || ix==7)) ||
+           (n >= MPU_MAX_RMJN_PRIME_IDX && (ix==8)) ) {
         /* Out of range.  Fall through to Perl. */
-        /* TODO: nth Rn */
       } else {
         UV ret;
         switch (ix) {
