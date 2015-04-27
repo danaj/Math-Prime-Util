@@ -8,7 +8,7 @@ use Math::Prime::Util
       chebyshev_theta chebyshev_psi carmichael_lambda znorder liouville
       znprimroot znlog kronecker legendre_phi gcd lcm is_power valuation
       invmod vecsum vecprod binomial gcdext chinese vecmin vecmax factorial
-      hammingweight vecreduce sqrtint
+      hammingweight vecreduce vecextract sqrtint
      /;
 
 my $extra = defined $ENV{EXTENDED_TESTING} && $ENV{EXTENDED_TESTING};
@@ -599,6 +599,7 @@ plan tests => 0 + 1
                 + scalar(@vecmins)
                 + scalar(@vecmaxs)
                 + 4  # vecreduce
+                + 2  # vecextract
                 + 2 + scalar(@binomials)
                 + 6 + scalar(keys %powers) + scalar(@negpowers)
                 + scalar(keys %primroots) + 1
@@ -906,6 +907,11 @@ foreach my $r (@vecmaxs) {
   is(vecreduce(sub{ $fail = 1; 0; },(15)), 15+$fail, "vecreduce with (a) is a and does not call the sub");
   is(vecreduce(sub{ $a ^ $b },(4,2)), 6, "vecreduce [xor] (4,2) => 6");
   is(vecreduce(sub{ $a * $b**2 },(1, 17, 18, 19)), 17**2 * 18**2 * 19**2, "vecreduce product of squares");
+}
+###### vecextract
+{
+  is_deeply([vecextract(['a'..'z'],12345758)], [qw/b c d e h i n o s t u v x/], "vecextract bits");
+  is(join("", vecextract(['a'..'z'],[22,14,17,10,18])), "works", "vecextract list");
 }
 ###### binomial
 foreach my $r (@binomials) {

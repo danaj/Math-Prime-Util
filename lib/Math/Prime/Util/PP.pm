@@ -1751,17 +1751,16 @@ sub vecextract {
 
   return @$aref[@$mask] if ref($mask) eq 'ARRAY';
 
-  # This is concise but quite slow.
+  # This is concise but very slow.
   # map { $aref->[$_] }  grep { $mask & (1 << $_) }  0 .. $#$aref;
 
   my($i, @v) = (0);
   while ($mask) {
-    push @v, $aref->[$i] if $mask & 1;
-    warn "pushing element $i\n" if $mask & 1;
+    push @v, $i if $mask & 1;
     $mask >>= 1;
     $i++;
   }
-  @v;
+  @$aref[@v];
 }
 
 sub invmod {

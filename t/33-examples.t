@@ -14,7 +14,7 @@ BEGIN {
   }
 }
 
-plan tests => 97;
+plan tests => 99;
 
 {
   my @nums;
@@ -330,6 +330,17 @@ is( nth_prime(10001), 104743, "nth_prime(10001)");
 {
   my $checksum = vecreduce { $a ^ $b } @{twin_primes(1000000)};
   is($checksum, 630871, "xor of twin primes <= 1M");
+}
+
+##############################################################################
+
+{
+  my @v = (qw/a b c d e/);
+  my $ps = join " ", map { join("",vecextract(\@v,$_)) } 0..2**scalar(@v)-1;
+  is($ps, " a b ab c ac bc abc d ad bd abd cd acd bcd abcd e ae be abe ce ace bce abce de ade bde abde cde acde bcde abcde", "power set of 5 elements");
+
+  my $word = join "", vecextract(["a".."z"], [15, 17, 8, 12, 4]);
+  is($word, "prime", "use vecextract with array");
 }
 
 ##############################################################################
