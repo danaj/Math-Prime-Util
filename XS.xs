@@ -443,13 +443,14 @@ sieve_primes(IN UV low, IN UV high)
         }
         end_segment_primes(ctx);
       } else if (ix == 5) {                   /* Ramanujan primes */
-        /* Axler 2013, 4.13: Rn > nthprime(2n)  =>  n >= Pi(high)/2  */
-        UV s = 1, nn = prime_count_upper(high) >> 1;
-        UV* L = n_ramanujan_primes(nn);
-        while (s < nn && L[s] <  low )
-          s++;
-        while (s < nn && L[s] <= high)
-          { av_push(av,newSVuv(L[s])); s++; }
+        UV s;
+        UV nlo = ramanujan_prime_count_lower(low);
+        UV nhi = ramanujan_prime_count_upper(high);
+        UV* L = n_range_ramanujan_primes(nlo, nhi);
+        for (s = 0; s <= nhi-nlo && L[s] <= high; s++) {
+          if (L[s] >= low)
+            av_push(av,newSVuv(L[s]));
+        }
         Safefree(L);
       }
     }

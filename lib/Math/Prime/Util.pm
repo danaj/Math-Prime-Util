@@ -1491,9 +1491,8 @@ C<x E<gt> Rn> then L</prime_count>(n) - L</prime_count>(n/2) E<gt>= C<n>.
 This has a similar API to the L</primes> and L</twin_primes> functions, and
 like them, returns an array reference.
 
-The implementation generates the first C<n> values, then filters to the
-range given.  It uses a monolithic sieve, hence values larger than C<10^11>
-cannot be reasonably generated without huge amounts of memory.
+Generating Ramanujan primes takes some effort, including overhead to cover
+a range.  This will be substantially slower than generating standard primes.
 
 
 =head2 nth_prime
@@ -1563,11 +1562,10 @@ on the approximate twin prime count.
 
 =head2 nth_ramanujan_prime
 
-Returns the Nth Ramanujan prime.  This generates the first C<n> Ramanujan
-primes and does not cache any data.  For reasonable size values of C<n>,
-e.g. under C<10^7> or so, this is relatively efficient for single calls.  If
-multiple calls are being made, it may be much more efficient to get the list
-once.
+Returns the Nth Ramanujan prime.  For reasonable size values of C<n>, e.g.
+under C<10^7> or so, this is relatively efficient for single calls.  If
+multiple calls are being made, it will be much more efficient to get the
+list once.
 
 
 =head2 is_pseudoprime

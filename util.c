@@ -1061,17 +1061,50 @@ UV nth_twin_prime_approx(UV n)
   return lo;
 }
 
+static UV nth_ramanujan_prime_upper(UV n) {
+  UV max;
+ /* Sondow,Nicholson,Noe 2011, derived from theorem 4 */
+  if (n >= 1030686) {
+    max = (UV) ((35195929.0L/51613267.0L) * nth_prime_upper(3*n));
+  } else if (n >= 104261) {
+    max = (UV) ((3052187.0L/4451743.0L) * nth_prime_upper(3*n));
+  } else if (n >= 12239) {
+    max = (UV) ((302563.0L/436967.0L) * nth_prime_upper(3*n));
+  } else if (n >= 1060) {
+    max = (UV) ((20693.0L/29251.0L) * nth_prime_upper(3*n));
+  } else { /* Axler 2013, proposition 4.34:  Rn <= nthprime(tn), t > 48/19 */
+    max = nth_prime_upper(48*n/19 + 1);
+  }
+  return max;
+}
+static UV nth_ramanujan_prime_lower(UV n) {
+  return nth_prime_lower(2*n);
+}
+
+UV ramanujan_prime_count_lower(UV n) {
+  /* Binary search on nth_ramanujan_prime_upper */
+  UV lo = prime_count_lower(n)/3;
+  UV hi = prime_count_upper(n) >> 1;
+  while (lo < hi) {
+    UV mid = lo + (hi-lo)/2;
+    if (nth_ramanujan_prime_upper(mid) < n) lo = mid+1;
+    else                                    hi = mid;
+  }
+  return lo-1;
+}
+UV ramanujan_prime_count_upper(UV n) {
+  return prime_count_upper(n) >> 1;
+}
 
 /* Return array of first n ramanujan primes.  Use Noe's algorithm */
 UV* n_ramanujan_primes(UV n) {
   UV max, k, s, *L;
   unsigned char* sieve;
-  /* Axler 2013, proposition 4.34:  Rn <= nthprime(tn), t > 48/19 */
-  max = nth_prime_upper(48*n/19 + 1);
+  max = nth_ramanujan_prime_upper(n); /* Rn <= max, so we can sieve to there */
   if (_XS_get_verbose() >= 2) printf("sieving to %"UVuf" for first %"UVuf" Ramanujan primes\n", max, n);
-  sieve = sieve_erat30(max);
   Newz(0, L, n, UV);
   L[0] = 2;
+  sieve = sieve_erat30(max);
   for (s = 0, k = 7; k <= max; k += 2) {
     if (is_prime_in_sieve(sieve, k)) s++;
     if (s < n) L[s] = k+1;
@@ -1082,13 +1115,65 @@ UV* n_ramanujan_primes(UV n) {
   return L;
 }
 
+UV* n_range_ramanujan_primes(UV nlo, UV nhi) {
+  UV mink, maxk, k, s, *L;
+  UV seg1beg, seg1end, seg2beg, seg2end;
+  unsigned char *seg1, *seg2;
+  int verbose = _XS_get_verbose();
+
+  if (nlo == 0) nlo = 1;
+  if (nhi == 0) nhi = 1;
+
+  /* If we're starting from 1, just do single monolithic sieve */
+  if (nlo == 1)  return n_ramanujan_primes(nhi);
+
+  Newz(0, L, nhi-nlo+1, UV);
+  if (nlo <= 1 && nhi >= 1) L[1-nlo] =  2;
+  if (nlo <= 2 && nhi >= 2) L[2-nlo] = 11;
+  if (nhi < 3) return L;
+
+  mink = nth_ramanujan_prime_lower(nlo);
+  maxk = nth_ramanujan_prime_upper(nhi);
+  if (mink < 15) mink = 15;
+  if (mink % 2 == 0) mink--;
+  s = 1 + _XS_LMO_pi(mink-2) - _XS_LMO_pi((mink-1)>>1);
+  if (verbose >= 2) printf("Generate Rn[%"UVuf"] to Rn[%"UVuf"]: search %"UVuf" to %"UVuf"\n", nlo, nhi, mink, maxk);
+
+  seg1beg = 30 * (mink/30);
+  seg1end = 30 * ((maxk+29)/30);
+  New(0, seg1, (seg1end - seg1beg)/30 + 1, unsigned char);
+  if (verbose >= 2) printf("sieving %"UVuf" to %"UVuf"\n", seg1beg, seg1end);
+  (void) sieve_segment(seg1, seg1beg/30, seg1end/30);
+
+  seg2beg = 30 * (((mink+1)>>1)/30);
+  seg2end = 30 * ((((maxk+1)>>1)+29)/30);
+  New(0, seg2, (seg2end - seg2beg)/30 + 1, unsigned char);
+  if (verbose >= 2) printf("sieving %"UVuf" to %"UVuf"\n", seg2beg, seg2end);
+  (void) sieve_segment(seg2, seg2beg/30, seg2end/30);
+
+  if (verbose >= 2) printf("Noe's algorithm %"UVuf" to %"UVuf"\n", mink, maxk);
+  for (k = mink; k <= maxk; k += 2) {
+    if (is_prime_in_sieve(seg1, k-seg1beg)) s++;
+    if (s >= nlo && s <= nhi) L[s-nlo] = k+1;
+    if ((k & 3) == 1 && is_prime_in_sieve(seg2, ((k+1)>>1)-seg2beg)) s--;
+    if (s >= nlo && s <= nhi) L[s-nlo] = k+2;
+  }
+  Safefree(seg1);
+  Safefree(seg2);
+  if (verbose >= 2) printf("Generated %lu Ramanujan primes from %"UVuf" to %"UVuf"\n", nhi-nlo+1, L[0], L[nhi-nlo]);
+  return L;
+}
+
 UV nth_ramanujan_prime(UV n) {
-  UV rn, *L;
-  if (n < 1) return 0;
-  /* Generate all Ramanujan primes up to Rn, return the last one.  Slow. */
-  L = n_ramanujan_primes(n);
-  rn = L[n-1];
-  Safefree(L);
+  UV rn;
+  if      (n == 0)  rn =  0;
+  else if (n == 1)  rn =  2;
+  else if (n == 2)  rn = 11;
+  else {
+    UV *L = n_range_ramanujan_primes(n, n);
+    rn = L[0];
+    Safefree(L);
+  }
   return rn;
 }
 
@@ -1098,7 +1183,8 @@ int is_ramanujan_prime(UV n) {
   if (n == 2 || n == 11) return 1;
   if (n < 17)            return 0;
   /* Generate Ramanujan primes and see if we're in the list.  Slow. */
-  rnmax = prime_count_upper(n) >> 1;
+  /* TODO: use n_range_ramanujan_primes */
+  rnmax = ramanujan_prime_count_upper(n);
   L = n_ramanujan_primes(rnmax);
   lo = 2;
   hi = rnmax-1;
