@@ -1062,20 +1062,18 @@ UV nth_twin_prime_approx(UV n)
 }
 
 static UV nth_ramanujan_prime_upper(UV n) {
-  UV max;
- /* Sondow,Nicholson,Noe 2011, derived from theorem 4 */
-  if (n >= 1030686) {
-    max = (UV) ((35195929.0L/51613267.0L) * nth_prime_upper(3*n));
-  } else if (n >= 104261) {
-    max = (UV) ((3052187.0L/4451743.0L) * nth_prime_upper(3*n));
-  } else if (n >= 12239) {
-    max = (UV) ((302563.0L/436967.0L) * nth_prime_upper(3*n));
-  } else if (n >= 1060) {
-    max = (UV) ((20693.0L/29251.0L) * nth_prime_upper(3*n));
-  } else { /* Axler 2013, proposition 4.34:  Rn <= nthprime(tn), t > 48/19 */
-    max = nth_prime_upper(48*n/19 + 1);
+  if (n >= 330) {
+   /* Sondow,Nicholson,Noe 2011, derived from theorem 4 */
+    long double mult;
+    if      (n >= 1030686) { mult = 35195929.0L / 51613267.0L; }
+    else if (n >=  104261) { mult =  3052187.0L /  4451743.0L; }
+    else if (n >=   12239) { mult =   302563.0L /   436967.0L; }
+    else if (n >=    1060) { mult =    20693.0L /    29251.0L; }
+    else                   { mult =     5639.0L /     7829.0L; }
+    return (UV) ( mult * nth_prime_upper(3*n) );
   }
-  return max;
+  /* Axler 2013, proposition 4.34:  Rn <= nthprime(tn), t > 48/19 */
+  return nth_prime_upper(48*n/19 + 1);
 }
 static UV nth_ramanujan_prime_lower(UV n) {
   return nth_prime_lower(2*n);
@@ -1083,6 +1081,7 @@ static UV nth_ramanujan_prime_lower(UV n) {
 
 UV ramanujan_prime_count_lower(UV n) {
   /* Binary search on nth_ramanujan_prime_upper */
+  /* We know we're between p_2n and p_3n, probably close to the former. */
   UV lo = prime_count_lower(n)/3;
   UV hi = prime_count_upper(n) >> 1;
   while (lo < hi) {
@@ -1178,24 +1177,24 @@ UV nth_ramanujan_prime(UV n) {
 }
 
 int is_ramanujan_prime(UV n) {
-  UV rnmax, *L, lo, hi;
+  UV rlo, rhi, *L, lo, hi, rn;
   if (!_XS_is_prime(n))  return 0;
   if (n == 2 || n == 11) return 1;
   if (n < 17)            return 0;
   /* Generate Ramanujan primes and see if we're in the list.  Slow. */
-  /* TODO: use n_range_ramanujan_primes */
-  rnmax = ramanujan_prime_count_upper(n);
-  L = n_ramanujan_primes(rnmax);
-  lo = 2;
-  hi = rnmax-1;
+  rlo = ramanujan_prime_count_lower(n);
+  rhi = ramanujan_prime_count_upper(n);
+  L = n_range_ramanujan_primes(rlo, rhi);
+  lo = 0;
+  hi = rhi-rlo;
   while (lo < hi) {
     UV mid = lo + (hi-lo)/2;
     if (L[mid] < n) lo = mid+1;
     else            hi = mid;
   }
-  hi = L[lo];
+  rn = L[lo];
   Safefree(L);
-  return (n == hi);
+  return (rn == n);
 }
 
 
