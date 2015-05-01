@@ -1065,11 +1065,13 @@ static UV nth_ramanujan_prime_upper(UV n) {
   if (n >= 330) {
    /* Sondow,Nicholson,Noe 2011, derived from theorem 4 */
     long double mult;
-    if      (n >= 1030686) { mult = 35195929.0L / 51613267.0L; }
-    else if (n >=  104261) { mult =  3052187.0L /  4451743.0L; }
-    else if (n >=   12239) { mult =   302563.0L /   436967.0L; }
-    else if (n >=    1060) { mult =    20693.0L /    29251.0L; }
-    else                   { mult =     5639.0L /     7829.0L; }
+    if      (n >= 99922246) { mult = 4374711863.0L / 6456069721.0L; }
+    else if (n >=  9781003) { mult =  380450867.0L /  560016817.0L; }
+    else if (n >=   882097) { mult =   29824211.0L /   43734791.0L; }
+    else if (n >=    96163) { mult =    2798083.0L /    4080449.0L; }
+    else if (n >=    12239) { mult =     302563.0L /     436967.0L; }
+    else if (n >=      997) { mult =      19379.0L /      27361.0L; }
+    else                    { mult =       5639.0L /       7829.0L; }
     return (UV) ( mult * nth_prime_upper(3*n) );
   }
   /* Axler 2013, proposition 4.34:  Rn <= nthprime(tn), t > 48/19 */

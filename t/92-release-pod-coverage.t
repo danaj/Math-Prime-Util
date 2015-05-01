@@ -46,10 +46,11 @@ sub mpu_public_regex {
       is_strong_lucas_pseudoprime
       is_extra_strong_lucas_pseudoprime
       is_almost_extra_strong_lucas_pseudoprime
-      is_frobenius_underwood_pseudoprime
       is_frobenius_pseudoprime
       is_perrin_pseudoprime
-      is_aks_prime is_bpsw_prime is_mersenne_prime
+      is_frobenius_underwood_pseudoprime is_aks_prime is_bpsw_prime
+      is_ramanujan_prime
+      is_mersenne_prime
       is_power sqrtint
       miller_rabin_random
       lucas_sequence lucasu lucasv
@@ -63,6 +64,7 @@ sub mpu_public_regex {
       nth_prime nth_prime_lower nth_prime_upper nth_prime_approx
       twin_prime_count twin_prime_count_approx
       nth_twin_prime nth_twin_prime_approx
+      nth_ramanujan_prime
       random_prime random_ndigit_prime random_nbit_prime random_strong_prime
       random_proven_prime random_proven_prime_with_cert
       random_maurer_prime random_maurer_prime_with_cert
