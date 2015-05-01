@@ -14,7 +14,6 @@
 
 #include "ptypes.h"
 #include "cache.h"
-#define FUNC_is_prime_in_sieve 1
 #include "sieve.h"
 #define FUNC_gcd_ui 1
 #define FUNC_isqrt 1
