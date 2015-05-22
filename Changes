@@ -1,5 +1,16 @@
 Revision history for Perl module Math::Prime::Util
 
+0.51 2015-?
+
+    [FUNCTIONALITY AND PERFORMANCE]
+
+    - Slightly faster PP sieving using better code from Perlmonks.
+
+    [Misc]
+
+    - Work with old MPFR (some test failures in older Win32 systems).
+
+
 0.50 2015-05-03
 
     [ADDED]

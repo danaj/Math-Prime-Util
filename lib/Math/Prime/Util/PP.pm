@@ -53,6 +53,7 @@ BEGIN {
       $_have_MPFR = 1 if (!defined $ENV{MPU_NO_MPFR} || $ENV{MPU_NO_MPFR} != 1)
                       && eval { require Math::MPFR; $Math::MPFR::VERSION>=2.03; };
     }
+    return 0 if defined $_[0] && $_have_MPFR && $Math::MPFR::VERSION < $_[0];
     return $_have_MPFR;
   }
 }
@@ -180,14 +181,10 @@ sub _validate_integer {
 }
 
 
-my @_primes_small = (0,2,3,5);
+my @_primes_small = (0,2);
 {
   my($n, $s, $sieveref) = (7-2, 3, _sieve_erat_string(5003));
-  while ( (my $nexts = 1 + index($$sieveref, "0", $s)) > 0 ) {
-    $n += 2 * ($nexts - $s);
-    $s = $nexts;
-    push @_primes_small, $n;
-  }
+  push @_primes_small, 2*pos($$sieveref)-1 while $$sieveref =~ m/0/g;
 }
 my @_prime_next_small = (
    2,2,3,5,5,7,7,11,11,11,11,13,13,17,17,17,17,19,19,23,23,23,23,
@@ -494,15 +491,16 @@ sub primes {
   $high-- if ($high % 2) == 0;
   return $sref if $low > $high;
 
-  my($n, $s, $sieveref) = ($low-2);
-  if ($low == 7) { ($s, $sieveref) = ( 3, _sieve_erat($high)         ); }
-  else           { ($s, $sieveref) = ( 0, _sieve_segment($low,$high) ); }
-
-  while ( (my $nexts = 1 + index($$sieveref, "0", $s)) > 0 ) {
-    $n += 2 * ($nexts - $s);
-    $s = $nexts;
-    push @$sref, $n;
+  my($n,$sieveref);
+  if ($low == 7) {
+    $n = 0;
+    $sieveref = _sieve_erat($high);
+    substr($$sieveref,0,3,'111');
+  } else {
+    $n = $low-1;
+    $sieveref = _sieve_segment($low,$high);
   }
+  push @$sref, $n+2*pos($$sieveref)-1 while $$sieveref =~ m/0/g;
   $sref;
 }
 
@@ -1995,7 +1993,7 @@ sub harmreal {
   do { require Math::BigFloat; Math::BigFloat->import(); } unless defined $Math::BigFloat::VERSION;
   return Math::BigFloat->bzero if $n <= 0;
 
-  if (_MPFR_available()) {
+  if (_MPFR_available(3.0)) {
     $precision = _find_big_acc($n) unless defined $precision;
     my $rnd = 0;  # MPFR_RNDN;
     my $bit_precision = int("$precision" * 3.322) + 7;
