@@ -98,3 +98,7 @@
 - Proth test using LLR.  Change mersenne test file to test both.
 
 - harmreal and harmfrac for general $k
+
+- XS lucas sequence works for even n.  PP and GMP do not.
+  mpu 'for (4269800..4269900) { my $n=$_<<1; $e = (0,-1,1,1,-1)[$n%5]; say $n unless !$e || (lucas_sequence($n, 1, -1, $n+$e))[0] }'
+  should print 8539786.  See OEIS A141137.

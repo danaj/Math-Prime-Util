@@ -323,6 +323,78 @@ int _XS_BPSW(UV const n)
 #endif
 }
 
+/* Alternate modular lucas sequence code.
+ * A bit slower than the normal one, but works with negative input */
+static void alt_lucas_seq(UV* Uret, UV* Vret, UV* Qkret, UV n, UV Pmod, UV Qmod, UV k)
+{
+  UV Uh, Vl, Vh, Ql, Qh;
+  int j, s, m;
+
+  Uh = 1;  Vl = 2;  Vh = Pmod;  Ql = 1;  Qh = 1;
+  s = 0; m = 0;
+  { UV v = k; while (!(v & 1)) { v >>= 1; s++; } }
+  { UV v = k; while (v >>= 1) m++; }
+
+  if (Pmod == 1 && Qmod == (n-1)) {
+    int Sl = Ql, Sh = Qh;
+    for (j = m; j > s; j--) {
+      Sl *= Sh;
+      Ql = (Sl==1) ? 1 : n-1;
+      if ( (k >> j) & UVCONST(1) ) {
+        Sh = -Sl;
+        Uh = mulmod(Uh, Vh, n);
+        Vl = submod(mulmod(Vh, Vl, n), Ql, n);
+        Vh = submod(sqrmod(Vh, n), (Sh==1) ? 2 : n-2, n);
+      } else {
+        Sh = Sl;
+        Uh = submod(mulmod(Uh, Vl, n), Ql, n);
+        Vh = submod(mulmod(Vh, Vl, n), Ql, n);
+        Vl = submod(sqrmod(Vl, n), (Sl==1) ? 2 : n-2, n);
+      }
+    }
+    Sl *= Sh;
+    Ql = (Sl==1) ? 1 : n-1;
+    Uh = submod(mulmod(Uh, Vl, n), Ql, n);
+    Vl = submod(mulmod(Vh, Vl, n), Ql, n);
+    for (j = 0; j < s; j++) {
+      Uh = mulmod(Uh, Vl, n);
+      Vl = submod(sqrmod(Vl, n), (j>0) ? 2 : n-2, n);
+    }
+    *Uret = Uh;
+    *Vret = Vl;
+    *Qkret = (s>0)?1:n-1;
+    return;
+  }
+
+  for (j = m; j > s; j--) {
+    Ql = mulmod(Ql, Qh, n);
+    if ( (k >> j) & UVCONST(1) ) {
+      Qh = mulmod(Ql, Qmod, n);
+      Uh = mulmod(Uh, Vh, n);
+      Vl = submod(mulmod(Vh, Vl, n), mulmod(Pmod, Ql, n), n);
+      Vh = submod(sqrmod(Vh, n), mulmod(2, Qh, n), n);
+    } else {
+      Qh = Ql;
+      Uh = submod(mulmod(Uh, Vl, n), Ql, n);
+      Vh = submod(mulmod(Vh, Vl, n), mulmod(Pmod, Ql, n), n);
+      Vl = submod(sqrmod(Vl, n), mulmod(2, Ql, n), n);
+    }
+  }
+  Ql = mulmod(Ql, Qh, n);
+  Qh = mulmod(Ql, Qmod, n);
+  Uh = submod(mulmod(Uh, Vl, n), Ql, n);
+  Vl = submod(mulmod(Vh, Vl, n), mulmod(Pmod, Ql, n), n);
+  Ql = mulmod(Ql, Qh, n);
+  for (j = 0; j < s; j++) {
+    Uh = mulmod(Uh, Vl, n);
+    Vl = submod(sqrmod(Vl, n), mulmod(2, Ql, n), n);
+    Ql = sqrmod(Ql, n);
+  }
+  *Uret = Uh;
+  *Vret = Vl;
+  *Qkret = Ql;
+}
+
 /* Generic Lucas sequence for any appropriate P and Q */
 void lucas_seq(UV* Uret, UV* Vret, UV* Qkret, UV n, IV P, IV Q, UV k)
 {
@@ -344,6 +416,10 @@ void lucas_seq(UV* Uret, UV* Vret, UV* Qkret, UV n, IV P, IV Q, UV k)
     *Uret = mulmod(k, powmod(b, k-1, n), n);
     *Vret = mulmod(2, powmod(b, k, n), n);
     *Qkret = powmod(Qmod, k, n);
+    return;
+  }
+  if ((n % 2) == 0) {
+    alt_lucas_seq(Uret, Vret, Qkret, n, Pmod, Qmod, k);
     return;
   }
   U = 1;
