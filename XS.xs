@@ -424,7 +424,7 @@ sieve_primes(IN UV low, IN UV high)
         }
       } else if (ix == 2) {                   /* Erat with private memory */
         unsigned char* sieve = sieve_erat30(high);
-        START_DO_FOR_EACH_SIEVE_PRIME( sieve, low, high ) {
+        START_DO_FOR_EACH_SIEVE_PRIME( sieve, 0, low, high ) {
            av_push(av,newSVuv(p));
         } END_DO_FOR_EACH_SIEVE_PRIME
         Safefree(sieve);
@@ -433,8 +433,7 @@ sieve_primes(IN UV low, IN UV high)
         UV seg_base, seg_low, seg_high, lastp = 0;
         void* ctx = start_segment_primes(low, high, &segment);
         while (next_segment_primes(ctx, &seg_base, &seg_low, &seg_high)) {
-          START_DO_FOR_EACH_SIEVE_PRIME( segment, seg_low - seg_base, seg_high - seg_base )
-            p += seg_base;
+          START_DO_FOR_EACH_SIEVE_PRIME( segment, seg_base, seg_low, seg_high )
             if (ix == 3)            av_push(av,newSVuv( p ));
             else if (lastp+2 == p)  av_push(av,newSVuv( lastp ));
             lastp = p;
@@ -1513,14 +1512,13 @@ forprimes (SV* block, IN SV* svbeg, IN SV* svend = 0)
         void* ctx = start_segment_primes(beg, end, &segment);
         while (next_segment_primes(ctx, &seg_base, &seg_low, &seg_high)) {
           int crossuv = (seg_high > IV_MAX) && !SvIsUV(svarg);
-          START_DO_FOR_EACH_SIEVE_PRIME( segment, seg_low - seg_base, seg_high - seg_base ) {
-            p += seg_base;
+          START_DO_FOR_EACH_SIEVE_PRIME( segment, seg_base, seg_low, seg_high )
             /* sv_setuv(svarg, p); */
             if      (SvTYPE(svarg) != SVt_IV) { sv_setuv(svarg, p);            }
             else if (crossuv && p > IV_MAX)   { sv_setuv(svarg, p); crossuv=0; }
             else                              { SvUV_set(svarg, p);            }
             MULTICALL;
-          } END_DO_FOR_EACH_SIEVE_PRIME
+          END_DO_FOR_EACH_SIEVE_PRIME
         }
         end_segment_primes(ctx);
       }
@@ -1532,11 +1530,11 @@ forprimes (SV* block, IN SV* svbeg, IN SV* svend = 0)
     if (beg <= end) {               /* NO-MULTICALL segment sieve */
       void* ctx = start_segment_primes(beg, end, &segment);
       while (next_segment_primes(ctx, &seg_base, &seg_low, &seg_high)) {
-        START_DO_FOR_EACH_SIEVE_PRIME( segment, seg_low - seg_base, seg_high - seg_base ) {
-          sv_setuv(svarg, seg_base + p);
+        START_DO_FOR_EACH_SIEVE_PRIME( segment, seg_base, seg_low, seg_high )
+          sv_setuv(svarg, p);
           PUSHMARK(SP);
           call_sv((SV*)cv, G_VOID|G_DISCARD);
-        } END_DO_FOR_EACH_SIEVE_PRIME
+        END_DO_FOR_EACH_SIEVE_PRIME
       }
       end_segment_primes(ctx);
     }
@@ -1608,14 +1606,14 @@ forcomposites (SV* block, IN SV* svbeg, IN SV* svend = 0)
         nextprime = (end >= MPU_MAX_PRIME) ? MPU_MAX_PRIME : next_prime(end);
         ctx = start_segment_primes(beg, nextprime, &segment);
         while (next_segment_primes(ctx, &seg_base, &seg_low, &seg_high)) {
-          START_DO_FOR_EACH_SIEVE_PRIME( segment, seg_low - seg_base, seg_high - seg_base ) {
+          START_DO_FOR_EACH_SIEVE_PRIME( segment, seg_base, seg_low, seg_high )
             cbeg = prevprime+1;  if (cbeg < beg) cbeg = beg;
-            prevprime = seg_base + p;
+            prevprime = p;
             cend = prevprime-1;  if (cend > end) cend = end;
             for (c = cbeg; c <= cend; c++) {
               if (!ix || c & 1) { sv_setuv(svarg, c);  MULTICALL; }
             }
-          } END_DO_FOR_EACH_SIEVE_PRIME
+          END_DO_FOR_EACH_SIEVE_PRIME
         }
         end_segment_primes(ctx);
         if (end > nextprime)   /* Complete the case where end > max_prime */

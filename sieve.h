@@ -83,11 +83,12 @@ static UV prev_prime_in_sieve(const unsigned char* sieve, UV p) {
 #endif
 
 /* Useful macros for the wheel-30 sieve array */
-#define START_DO_FOR_EACH_SIEVE_PRIME(sieve, a, b) \
+#define START_DO_FOR_EACH_SIEVE_PRIME(sieve, base, a, b) \
   { \
     const unsigned char* sieve_ = sieve; \
-    UV p = a; \
-    UV l_ = b; \
+    UV base_ = base; \
+    UV p = a-base_; \
+    UV l_ = b-base_; \
     UV d_ = p/30; \
     UV lastd_ = l_/30; \
     UV mask_ = masktab30[ p-d_*30 + distancewheel30[ p-d_*30 ] ]; \
@@ -97,6 +98,7 @@ static UV prev_prime_in_sieve(const unsigned char* sieve, UV p) {
     } \
     p = d_*30 + imask30[mask_]; \
     while ( p <= l_ ) { \
+      p += base_;
 
 #define END_DO_FOR_EACH_SIEVE_PRIME \
       do { \

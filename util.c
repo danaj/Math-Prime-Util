@@ -330,7 +330,7 @@ static UV count_segment_maxcount(const unsigned char* sieve, UV base, UV nbytes,
     return count;
 
   /* The result is somewhere in the next byte */
-  START_DO_FOR_EACH_SIEVE_PRIME(sieve, byte*30+1, nbytes*30-1)
+  START_DO_FOR_EACH_SIEVE_PRIME(sieve, 0, byte*30+1, nbytes*30-1)
     if (++count == maxcount)  { *pos = p; return count; }
   END_DO_FOR_EACH_SIEVE_PRIME;
 
@@ -361,7 +361,7 @@ static UV count_segment_ranged(const unsigned char* sieve, UV nbytes, UV lowp, U
 
 #if 0
   /* Dead simple way */
-  START_DO_FOR_EACH_SIEVE_PRIME(sieve, lowp, highp)
+  START_DO_FOR_EACH_SIEVE_PRIME(sieve, 0, lowp, highp)
     count++;
   END_DO_FOR_EACH_SIEVE_PRIME;
   return count;
@@ -372,7 +372,7 @@ static UV count_segment_ranged(const unsigned char* sieve, UV nbytes, UV lowp, U
   /* Count first fragment */
   if (lo_m > 1) {
     UV upper = (highp <= (lo_d*30+29)) ? highp : (lo_d*30+29);
-    START_DO_FOR_EACH_SIEVE_PRIME(sieve, lowp, upper)
+    START_DO_FOR_EACH_SIEVE_PRIME(sieve, 0, lowp, upper)
       count++;
     END_DO_FOR_EACH_SIEVE_PRIME;
     lowp = upper+2;
@@ -394,7 +394,7 @@ static UV count_segment_ranged(const unsigned char* sieve, UV nbytes, UV lowp, U
     return count;
 
   /* Count last fragment */
-  START_DO_FOR_EACH_SIEVE_PRIME(sieve, lowp, highp)
+  START_DO_FOR_EACH_SIEVE_PRIME(sieve, 0, lowp, highp)
     count++;
   END_DO_FOR_EACH_SIEVE_PRIME;
 
@@ -1315,8 +1315,7 @@ UV* _totient_range(UV lo, UV hi) {
 
   ctx = start_segment_primes(7, hi/2, &segment);
   while (next_segment_primes(ctx, &seg_base, &seg_low, &seg_high)) {
-    START_DO_FOR_EACH_SIEVE_PRIME( segment, seg_low - seg_base, seg_high - seg_base ) {
-      p += seg_base;
+    START_DO_FOR_EACH_SIEVE_PRIME( segment, seg_base, seg_low, seg_high ) {
       for (i = P2GTLO(2*p,p,lo); i <= hi; i += p)
         totients[i-lo] -= totients[i-lo]/p;
     } END_DO_FOR_EACH_SIEVE_PRIME
@@ -1885,8 +1884,7 @@ long double chebyshev_function(UV n, int which)
     }
     ctx = start_segment_primes(7, n, &segment);
     while (next_segment_primes(ctx, &seg_base, &seg_low, &seg_high)) {
-      START_DO_FOR_EACH_SIEVE_PRIME( segment, seg_low - seg_base, seg_high - seg_base ) {
-        p += seg_base;
+      START_DO_FOR_EACH_SIEVE_PRIME( segment, seg_base, seg_low, seg_high ) {
         logp = logl(p);
         if (p <= sqrtn) logp *= floorl(logn/logp+1e-15);
         KAHAN_SUM(sum, logp);
@@ -2402,8 +2400,7 @@ int is_catalan_pseudoprime(UV n) {
     }
     ctx = start_segment_primes(7, n, &segment);
     while (next_segment_primes(ctx, &seg_base, &seg_low, &seg_high)) {
-      START_DO_FOR_EACH_SIEVE_PRIME( segment, seg_low - seg_base, seg_high - seg_base ) {
-        p += seg_base;
+      START_DO_FOR_EACH_SIEVE_PRIME( segment, seg_base, seg_low, seg_high ) {
         m = mulmod(m, (p <= a) ? powmod(p, _catalan_v(a,p), n) : p, n);
       } END_DO_FOR_EACH_SIEVE_PRIME
     }

@@ -335,7 +335,7 @@ int sieve_segment(unsigned char* mem, UV startd, UV endd)
     get_prime_cache(slimit, &sieve);
   }
 
-  START_DO_FOR_EACH_SIEVE_PRIME(sieve, start_base_prime, slimit)
+  START_DO_FOR_EACH_SIEVE_PRIME(sieve, 0, start_base_prime, slimit)
   {
     /* p increments from 17 to at most sqrt(endp).  Note on overflow:
      * 32-bit: limit=     65535, max p =      65521, p*p = ~0-1965854
@@ -399,7 +399,7 @@ int sieve_segment(unsigned char* mem, UV startd, UV endd)
   release_prime_cache(sieve);
 
   if (limit > slimit) { /* We've sieved out most composites, but not all. */
-    START_DO_FOR_EACH_SIEVE_PRIME(mem, 0, endp-startp) {
+    START_DO_FOR_EACH_SIEVE_PRIME(mem, 0, 0, endp-startp) {
       if (!_XS_BPSW(startp + p))    /* If the candidate is not prime, */
         mem[d_] |= mask_;           /* mark the sieve location.       */
     } END_DO_FOR_EACH_SIEVE_PRIME;
