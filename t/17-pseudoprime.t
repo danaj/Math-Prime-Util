@@ -12,11 +12,13 @@ use Math::Prime::Util qw/is_prime
                          is_almost_extra_strong_lucas_pseudoprime
                          is_frobenius_underwood_pseudoprime
                          is_perrin_pseudoprime
+                         is_catalan_pseudoprime
                          is_frobenius_pseudoprime
                          lucas_sequence kronecker/;
 
 my $use64 = Math::Prime::Util::prime_get_config->{'maxbits'} > 32;
 my $usexs = Math::Prime::Util::prime_get_config->{'xs'};
+my $usegmp =Math::Prime::Util::prime_get_config->{'gmp'};
 my $extra = 0+(defined $ENV{EXTENDED_TESTING} && $ENV{EXTENDED_TESTING});
 
 # small primes
@@ -76,6 +78,7 @@ my %pseudoprimes = (
  aeslucas1  => [ qw/989 3239 5777 10469 10877 27971 29681 30739 31631 39059 72389 73919 75077 100127 113573 125249 137549 137801 153931 154697 155819/ ],
  aeslucas2  => [ qw/3239 4531 5777 10877 12209 21899 31631 31831 32129 34481 36079 37949 47849 50959 51641 62479 73919 75077 97109 100127 108679 113573 116899 154697 161027/ ],
  perrin     => [ qw/271441 904631 16532714 24658561 27422714 27664033 46672291 102690901 130944133 196075949 214038533 517697641 545670533 801123451/ ],
+ catalan    => [ qw/5907 1194649 12327121/ ],
  fibonacci  => [ qw/323 377 1891 3827 4181 5777 6601 6721 8149 10877 11663 13201 13981 15251 17119 17711 18407 19043 23407 25877 27323/ ],
  pell       => [ qw/169 385 741 961 1121 2001 3827 4879 5719 6215 6265 6441 6479 6601 7055 7801 8119 9799 10945 11395 13067 13079 13601 15841 18241 19097 20833 20951 24727 27839 27971 29183 29953/ ],
  frobenius  => [ qw/4181 5777 6721 10877 13201 15251 34561 51841 64079 64681 67861 68251 75077 90061 96049 97921 100127/ ],
@@ -90,6 +93,10 @@ if ($use64) {
   push @{$pseudoprimes{eslucas}}, 4294967311,4294967357,10099386070337;
   push @{$pseudoprimes{aeslucas1}}, 4294967311,4294967357,10071551814917;
   push @{$pseudoprimes{aeslucas2}}, 34372519409;
+}
+if (!$usexs && !$usegmp) {
+  # Don't make Math::BigInt do large binomials
+  $pseudoprimes{catalan} = [5907];
 }
 
 my $num_pseudoprimes = 0;
@@ -156,6 +163,8 @@ while (my($base, $ppref) = each (%pseudoprimes)) {
       ok(is_lucas_pseudoprime($p), "$p is a Lucas-Selfridge pseudoprime");
     } elsif ($base eq 'perrin') {
       ok(is_perrin_pseudoprime($p), "$p is a Perrin pseudoprime");
+    } elsif ($base eq 'catalan') {
+      ok(is_catalan_pseudoprime($p), "$p is a Catalan pseudoprime");
     } elsif ($base eq 'fibonacci') {
       my $t = (($p%5)==2||($p%5)==3) ? $p+1 : $p-1;
       my $is_fib = !(lucas_sequence($p, 1, -1, $t))[0];

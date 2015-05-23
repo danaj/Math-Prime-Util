@@ -200,6 +200,12 @@ sub is_perrin_pseudoprime {
   _validate_positive_integer($n);
   return Math::Prime::Util::PP::is_perrin_pseudoprime($n);
 }
+sub is_catalan_pseudoprime {
+  my($n) = @_;
+  return 0 if defined $n && int($n) < 0;
+  _validate_positive_integer($n);
+  return Math::Prime::Util::PP::is_catalan_pseudoprime($n);
+}
 sub is_frobenius_pseudoprime {
   my($n, $P, $Q) = @_;
   return 0 if defined $n && int($n) < 0;

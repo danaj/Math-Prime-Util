@@ -771,6 +771,7 @@ static void mat_powmod_3x3(UV* m, UV k, UV n) {
 int is_perrin_pseudoprime(UV n)
 {
   UV m[9] = {0,1,0, 0,0,1, 1,1,0};
+  if (n < 4) return (n >= 2);
   mat_powmod_3x3(m, n, n);
   /* P(n) = sum of diagonal  =  3*top-left + 2*top-right */
   return (addmod( addmod(m[0], m[4], n), m[8], n) == 0);
@@ -809,7 +810,7 @@ int is_frobenius_pseudoprime(UV n, IV P, IV Q)
   Pu = P >= 0 ? P : -P;
   Qu = Q >= 0 ? Q : -Q;
 
-  if (n <= Du || n <= Qu || n <= Pu) return is_prob_prime(n);
+  if (n <= Du || n <= Qu || n <= Pu) return !!is_prob_prime(n);
   if (gcd_ui(n, Pu*Qu*Du) != 1) return 0;
   if (k == 0) {
     k = kronecker_su(D, n);

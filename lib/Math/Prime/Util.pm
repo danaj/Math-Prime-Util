@@ -22,7 +22,7 @@ our @EXPORT_OK =
       is_extra_strong_lucas_pseudoprime
       is_almost_extra_strong_lucas_pseudoprime
       is_frobenius_pseudoprime
-      is_perrin_pseudoprime
+      is_perrin_pseudoprime is_catalan_pseudoprime
       is_frobenius_underwood_pseudoprime is_aks_prime is_bpsw_prime
       is_ramanujan_prime
       is_mersenne_prime
@@ -1668,8 +1668,22 @@ While pseudoprimes are relatively rare (the first two are 271441 and 904631),
 infinitely many exist.
 The pseudoprime sequence is L<OEIS A013998|http://oeis.org/A013998>.
 
-The implementation uses modular 3x3 matrix exponentiation, which is efficient
-but still quite slow compared to the other probable prime tests.
+The implementation uses modular 3x3 matrix exponentiation, which is
+efficient but slow compared to the other probable prime tests.
+
+=head2 is_catalan_pseudoprime
+
+Takes a positive number C<n> as input and returns 1 if
+C<-1^((n-1/2)) C_((n-1/2)> is congruent to 2 mod C<n>, where C<C_n> is the
+nth Catalan number.
+The nth Catalan number is equal to C<binomial(2n,n)/(n+1)>.
+All odd primes satisfy this condition, and only three known composites.
+
+The pseudoprime sequence is L<OEIS A163209|http://oeis.org/A163209>.
+
+The implementation is extremely slow.  There is no known efficient method
+to perform the Catalan primality test, so it is a curiousity rather than
+a practical test.
 
 =head2 is_frobenius_pseudoprime
 

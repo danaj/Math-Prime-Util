@@ -2,6 +2,10 @@ Revision history for Perl module Math::Prime::Util
 
 0.51 2015-?
 
+    [ADDED]
+
+    - is_catalan_pseudoprime    Catalan primality test
+
     [FUNCTIONALITY AND PERFORMANCE]
 
     - Slightly faster PP sieving using better code from Perlmonks.

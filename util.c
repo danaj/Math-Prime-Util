@@ -2368,3 +2368,46 @@ int strnum_minmax(int min, char* a, STRLEN alen, char* b, STRLEN blen)
       return  min  ?  (a[i] > b[i])  :  (b[i] > a[i]);
   return 0; /* equal */
 }
+
+/* Oddball primality test.
+ * In this file rather than primality.c because it uses factoring (!).
+ * Algorithm from Charles R Greathouse IV, 2015 */
+static UV _catalan_v(UV n, UV p) {
+  UV s = 0;
+  n <<= 1;
+  while (n /= p)  s += n % 2;
+  return s;
+}
+int is_catalan_pseudoprime(UV n) {
+  UV i, m = 1, a = n >> 1;
+
+  if (n < 2 || ((n % 2) == 0 && n != 2)) return 0;
+  if (is_prob_prime(n)) return 1;
+
+  {
+    UV factors[MPU_MAX_FACTORS+1];
+    int nfactors = factor_exp(n, factors, 0);
+    for (i = 0; i < nfactors; i++) {
+      if (_catalan_v(a, factors[i]))
+        return 0;
+    }
+  }
+  {
+    UV seg_base, seg_low, seg_high;
+    unsigned char* segment;
+    void* ctx;
+    for (i = 0; i <= 2; i++) {
+      UV p = 2 + i + (i>1);
+      m = mulmod(m, (p <= a) ? powmod(p, _catalan_v(a,p), n) : p, n);
+    }
+    ctx = start_segment_primes(7, n, &segment);
+    while (next_segment_primes(ctx, &seg_base, &seg_low, &seg_high)) {
+      START_DO_FOR_EACH_SIEVE_PRIME( segment, seg_low - seg_base, seg_high - seg_base ) {
+        p += seg_base;
+        m = mulmod(m, (p <= a) ? powmod(p, _catalan_v(a,p), n) : p, n);
+      } END_DO_FOR_EACH_SIEVE_PRIME
+    }
+    end_segment_primes(ctx);
+  }
+  return (a & 1) ? (m==(n-1)) : (m==1);
+}

@@ -796,17 +796,18 @@ is_prime(IN SV* svn, ...)
     is_frobenius_pseudoprime = 8
     is_frobenius_underwood_pseudoprime = 9
     is_perrin_pseudoprime = 10
-    is_almost_extra_strong_lucas_pseudoprime = 11
-    is_ramanujan_prime = 12
-    is_mersenne_prime = 13
-    is_power = 14
+    is_catalan_pseudoprime = 11
+    is_almost_extra_strong_lucas_pseudoprime = 12
+    is_ramanujan_prime = 13
+    is_mersenne_prime = 14
+    is_power = 15
   PREINIT:
     int status;
   PPCODE:
     status = _validate_int(aTHX_ svn, 1);
     if (status != 0) {
       int ret = 0;
-      if (status == 1 && ix != 14) {
+      if (status == 1 && ix != 15) {
         UV n = my_svuv(svn);
         UV a = (items == 1) ? 0 : my_svuv(ST(1));
         switch (ix) {
@@ -827,15 +828,16 @@ is_prime(IN SV* svn, ...)
                    } break;
           case 9:  ret = _XS_is_frobenius_underwood_pseudoprime(n); break;
           case 10: ret = is_perrin_pseudoprime(n); break;
-          case 11: ret = _XS_is_almost_extra_strong_lucas_pseudoprime
+          case 11: ret = is_catalan_pseudoprime(n); break;
+          case 12: ret = _XS_is_almost_extra_strong_lucas_pseudoprime
                          (n, (items == 1) ? 1 : a); break;
-          case 12: ret = is_ramanujan_prime(n); break;
-          case 13:
+          case 13: ret = is_ramanujan_prime(n); break;
+          case 14:
           default: ret = is_mersenne_prime(n);
                    if (ret == -1) status = 0;
                    break;
         }
-      } else if (ix == 14) {
+      } else if (ix == 15) {
         UV n = (status == 1) ? my_svuv(svn) : (UV) -my_sviv(svn);
         UV a = (items == 1) ? 0 : my_svuv(ST(1));
         if (status == -1 && n > (UV)IV_MAX) { status = 0; }
@@ -867,10 +869,11 @@ is_prime(IN SV* svn, ...)
       case 8: _vcallsub_with_gmp("is_frobenius_pseudoprime"); break;
       case 9: _vcallsub_with_gmp("is_frobenius_underwood_pseudoprime"); break;
       case 10:_vcallsub_with_gmp("is_perrin_pseudoprime"); break;
-      case 11:_vcallsub_with_gmp("is_almost_extra_strong_lucas_pseudoprime"); break;
-      case 12:_vcallsub_with_gmp("is_ramanujan_prime"); break;
-      case 13:_vcallsub_with_gmp("is_mersenne_prime"); break;
-      case 14:
+      case 11:_vcallsub_with_gmp("is_catalan_pseudoprime"); break;
+      case 12:_vcallsub_with_gmp("is_almost_extra_strong_lucas_pseudoprime"); break;
+      case 13:_vcallsub_with_gmp("is_ramanujan_prime"); break;
+      case 14:_vcallsub_with_gmp("is_mersenne_prime"); break;
+      case 15:
       default:if (items != 3 && status != -1) {
                 STRLEN len;
                 char* ptr = SvPV_nomg(svn, len);

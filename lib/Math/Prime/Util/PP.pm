@@ -2961,11 +2961,19 @@ sub _mat_powmod_3x3 {
 
 sub is_perrin_pseudoprime {
   my($n) = @_;
+  return 0+($n >= 2) if $n < 4;
   $n = Math::BigInt->new("$n") unless ref($n) eq 'Math::BigInt' || $n < (MPU_HALFWORD >> 1);
   my @m = (0,1,0,  0,0,1,  1,1,0);
   _mat_powmod_3x3(\@m, $n, $n);
   my $trace = ($m[0] + $m[4] + $m[8]) % $n;
   return ($trace == 0) ? 1 : 0;
+}
+
+sub is_catalan_pseudoprime {
+  my($n) = @_;
+  return 0+($n >= 2) if $n < 4;
+  my $m = ($n-1)>>1;
+  return (binomial($m<<1,$m) % $n) == (($m&1) ? $n-1 : 1) ? 1 : 0;
 }
 
 sub is_frobenius_pseudoprime {
@@ -2993,7 +3001,7 @@ sub is_frobenius_pseudoprime {
     $Du = ($D >= 0) ? $D : -$D;
     croak "Frobenius invalid P,Q: ($P,$Q)" if _is_perfect_square($Du);
   }
-  return is_prime($n) if $n <= $Du || $n <= abs($Q) || $n <= abs($P);
+  return (is_prime($n) ? 1 : 0) if $n <= $Du || $n <= abs($Q) || $n <= abs($P);
   return 0 if Math::Prime::Util::gcd(abs($P*$Q*$D), $n) > 1;
 
   if ($k == 0) {
