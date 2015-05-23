@@ -1682,7 +1682,7 @@ All odd primes satisfy this condition, and only three known composites.
 The pseudoprime sequence is L<OEIS A163209|http://oeis.org/A163209>.
 
 The implementation is extremely slow.  There is no known efficient method
-to perform the Catalan primality test, so it is a curiousity rather than
+to perform the Catalan primality test, so it is a curiosity rather than
 a practical test.
 
 =head2 is_frobenius_pseudoprime
