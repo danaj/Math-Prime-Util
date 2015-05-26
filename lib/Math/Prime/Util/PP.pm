@@ -2602,7 +2602,38 @@ sub lucas_sequence {
   my $kstr = substr($k->as_bin, 2);
   my $bpos = 0;
 
-  if ($Q->is_one) {
+  if (($n % 2)==0) {
+    $P->bmod($n);
+    $Q->bmod($n);
+    my($Uh,$Vl, $Vh, $Ql, $Qh) = (BONE->copy, BTWO->copy, $P->copy, BONE->copy, BONE->copy);
+    my ($b,$s) = (length($kstr)-1, 0);
+    if ($kstr =~ /(0+)$/) { $s = length($1); }
+    for my $bpos (0 .. $b-$s-1) {
+      $Ql->bmul($Qh)->bmod($n);
+      if (substr($kstr,$bpos,1)) {
+        $Qh = $Ql * $Q;
+        $Uh->bmul($Vh)->bmod($n);
+        $Vl->bmul($Vh)->bsub($P * $Ql)->bmod($n);
+        $Vh->bmul($Vh)->bsub(BTWO * $Qh)->bmod($n);
+      } else {
+        $Qh = $Ql->copy;
+        $Uh->bmul($Vl)->bsub($Ql)->bmod($n);
+        $Vh->bmul($Vl)->bsub($P * $Ql)->bmod($n);
+        $Vl->bmul($Vl)->bsub(BTWO * $Ql)->bmod($n);
+      }
+    }
+    $Ql->bmul($Qh);
+    $Qh = $Ql * $Q;
+    $Uh->bmul($Vl)->bsub($Ql)->bmod($n);
+    $Vl->bmul($Vh)->bsub($P * $Ql)->bmod($n);
+    $Ql->bmul($Qh)->bmod($n);
+    for (1 .. $s) {
+      $Uh->bmul($Vl)->bmod($n);
+      $Vl->bmul($Vl)->bsub(BTWO * $Ql)->bmod($n);
+      $Ql->bmul($Ql)->bmod($n);
+    }
+    ($U, $V, $Qk) = ($Uh, $Vl, $Ql);
+  } elsif ($Q->is_one) {
     my $Dinverse = $D->copy->bmodinv($n);
     if ($P > BTWO && !$Dinverse->is_nan) {
       # Calculate V_k with U=V_{k+1}
@@ -2764,7 +2795,7 @@ sub _lucasuv {
     $Vl->bmul($Vl)->bsub(BTWO * $Ql);
     $Ql->bmul($Ql);
   }
-  return map { ($_ > ''.~0) ? Math::BigInt->new(''.$_) : $_ } ($Uh, $Vl);
+  return map { ($_ > ''.~0) ? Math::BigInt->new(''.$_) : $_ } ($Uh, $Vl, $Ql);
 }
 sub lucasu { (_lucasuv(@_))[0] }
 sub lucasv { (_lucasuv(@_))[1] }

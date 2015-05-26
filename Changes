@@ -10,7 +10,7 @@ Revision history for Perl module Math::Prime::Util
 
     - Slightly faster PP sieving using better code from Perlmonks.
 
-    - XS Lucas sequence works with even valued n.
+    - Lucas sequence works with even valued n.
 
     [Misc]
 
