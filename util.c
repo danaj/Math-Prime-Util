@@ -2385,6 +2385,13 @@ int is_catalan_pseudoprime(UV n) {
   {
     UV factors[MPU_MAX_FACTORS+1];
     int nfactors = factor_exp(n, factors, 0);
+    /* Aebi and Cairns 2008, page 9 */
+#if BITS_PER_WORD == 32
+    if (nfactors == 2)
+#else
+    if (nfactors == 2 && (n < UVCONST(10000000000)))
+#endif
+      return 0;
     for (i = 0; i < nfactors; i++) {
       if (_catalan_v(a, factors[i]))
         return 0;
