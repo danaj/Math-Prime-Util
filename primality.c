@@ -844,10 +844,32 @@ static void mat_powmod_3x3(UV* m, UV k, UV n) {
   for (i = 0; i < 9; i++)  m[i] = res[i];
 }
 
+static const uint32_t _perrin2[1] = {105U};
+static const uint32_t _perrin3[1] = {7668U};
+static const uint32_t _perrin5[1] = {16711325U};
+static const uint32_t _perrin7[2] = {4286447485U,65405U};
+static const uint32_t _perrin11[4] = {4294440957U,2147483391U,2650733567U,16777214U};
+static const uint32_t _perrin13[6] = {4294959101U,3221192703U,4294966271U,4160745471U,3221225343U,8241131U};
+static const uint32_t _perrin17[9] = {4294786045U,4294965247U,4294967295U,4294967294U,2013265911U,4294967230U,4294950655U,4026507262U,4158651391U};
+static const uint32_t _perrin19[6] = {4294443005U,3758096383U,4294934527U,4261412863U,4294965247U,1048574U};
+static const uint32_t _perrin23[1] = {4194301U};
+static const uint32_t _perrin43[8] = {4294967293U,4286576639U,4294950911U,4278190079U,4160749551U,4294967295U,4160749567U,127U};
+static const uint32_t _perrin59[2] = {4294967293U,67108863U};
 int is_perrin_pseudoprime(UV n)
 {
   UV m[9] = {0,1,0, 0,0,1, 1,1,0};
   if (n < 4) return (n >= 2);
+  if ((n %  2)==0) { int i = n%  7; if ((_perrin2 [0]   >>(i%32))&1) return 0; }
+  if ((n %  3)==0) { int i = n% 13; if ((_perrin3 [0]   >>(i%32))&1) return 0; }
+  if ((n %  5)==0) { int i = n% 24; if ((_perrin5 [0]   >>(i%32))&1) return 0; }
+  if ((n %  7)==0) { int i = n% 48; if ((_perrin7 [i/32]>>(i%32))&1) return 0; }
+  if ((n % 11)==0) { int i = n%120; if ((_perrin11[i/32]>>(i%32))&1) return 0; }
+  if ((n % 13)==0) { int i = n%183; if ((_perrin13[i/32]>>(i%32))&1) return 0; }
+  if ((n % 17)==0) { int i = n%288; if ((_perrin17[i/32]>>(i%32))&1) return 0; }
+  if ((n % 19)==0) { int i = n%180; if ((_perrin19[i/32]>>(i%32))&1) return 0; }
+  if ((n % 23)==0) { int i = n% 22; if ((_perrin23[0]   >>(i%32))&1) return 0; }
+  if ((n % 43)==0) { int i = n%231; if ((_perrin43[i/32]>>(i%32))&1) return 0; }
+  if ((n % 59)==0) { int i = n% 58; if ((_perrin59[i/32]>>(i%32))&1) return 0; }
   mat_powmod_3x3(m, n, n);
   /* P(n) = sum of diagonal  =  3*top-left + 2*top-right */
   return (addmod( addmod(m[0], m[4], n), m[8], n) == 0);
