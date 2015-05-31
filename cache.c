@@ -242,6 +242,10 @@ void prime_precalc(UV n)
 void prime_memfree(void)
 {
   unsigned char* old_segment = 0;
+
+  /* Skip a MemFree object dying in global destructor. */
+  if (mutex_init == 0 && PL_dirty == 1) return;
+
   MPUassert(mutex_init == 1, "cache mutexes have not been initialized");
 
   MUTEX_LOCK(&segment_mutex);
@@ -265,10 +269,10 @@ void _prime_memfreeall(void)
 {
   /* No locks.  We're shutting everything down. */
   if (mutex_init) {
+    mutex_init = 0;
     MUTEX_DESTROY(&segment_mutex);
     MUTEX_DESTROY(&primary_cache_mutex);
     COND_DESTROY(&primary_cache_turn);
-    mutex_init = 0;
   }
   if (prime_cache_sieve != 0)
     Safefree(prime_cache_sieve);

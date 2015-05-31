@@ -20,6 +20,8 @@ Revision history for Perl module Math::Prime::Util
 
     - Work with old MPFR (some test failures in older Win32 systems).
 
+    - Don't assert in global destructor if MemFree object is cleaned up.
+
 
 0.50 2015-05-03
 
