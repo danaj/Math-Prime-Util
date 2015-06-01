@@ -243,10 +243,9 @@ void prime_memfree(void)
 {
   unsigned char* old_segment = 0;
 
-  /* Skip a MemFree object dying in global destructor. */
-  if (mutex_init == 0 && PL_dirty == 1) return;
-
-  MPUassert(mutex_init == 1, "cache mutexes have not been initialized");
+  /* This can happen in global destructor, and PL_dirty has porting issues */
+  /* MPUassert(mutex_init == 1, "cache mutexes have not been initialized"); */
+  if (mutex_init == 0) return;
 
   MUTEX_LOCK(&segment_mutex);
   /* Don't free if another thread is using it */
