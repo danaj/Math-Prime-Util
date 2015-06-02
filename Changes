@@ -12,9 +12,8 @@ Revision history for Perl module Math::Prime::Util
 
     - Lucas sequence works with even valued n.
 
-    - Used idea from Colin Wright to speed up is_perrin_pseudoprime 3-4x.
-      For multiples of small primes we can a small modular sequence to see
-      if we know we'll be composite.
+    - Used idea from Colin Wright to speed up is_perrin_pseudoprime 5x.
+      We can check smaller congruent sequences for composites as a prefilter.
 
     [Misc]
 
