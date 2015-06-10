@@ -99,3 +99,8 @@
   Note: what does this mean?  Both LLR and Proth are in GMP now.
 
 - harmreal and harmfrac for general $k
+
+- For PP, do something like the fibprime examples.  At load time, look for
+  the best library (GMPz, GMP, Pari, BigInt) and set $BICLASS.  Then we
+  should use that class for everything.  Go ahead and return that type.
+  Make a config variable to allow get/set.
