@@ -1516,14 +1516,15 @@ sub sum_primes {
   else               { ($low,$high) = (2, $low);         }
   _validate_positive_integer($high);
   my $sum = 0;
-  $sum = BZERO->copy if ( (MPU_32BIT && $high > 323380) ||
-                          (MPU_64BIT && $high > 13000000000) );
-  # TODO: I suspect calling primes() on segments would be faster in most cases.
+  $sum = BZERO->copy if ( (MPU_32BIT && $high >        323_380) ||
+                          (MPU_64BIT && $high > 29_505_444_490) );
   if ($high >= $low) {
-    my $p = next_prime($low-1);
-    while ($p <= $high) {
-      $sum += "$p";
-      $p = next_prime($p);
+    my $p1 = $low;
+    while ($p1 <= $high) {
+      my $p2 = $p1 + 10_000_000;
+      $p2 = $high if $p2 > $high;
+      $sum += vecsum( @{primes($p1,$p2)} );
+      $p1 = $p2+1;
     }
   }
   $sum;
@@ -1532,15 +1533,18 @@ sub print_primes {
   my($low,$high,$fd) = @_;
   if (defined $high) { _validate_positive_integer($low); }
   else               { ($low,$high) = (2, $low);         }
+  _validate_positive_integer($high);
+
   $fd = fileno(STDOUT) unless defined $fd;
   open(my $fh, ">>&=", $fd);  # TODO .... or die
-  _validate_positive_integer($high);
-  # TODO: I suspect calling primes() on segments would be faster in most cases.
+
   if ($high >= $low) {
-    my $p = next_prime($low-1);
-    while ($p <= $high) {
-      print $fh "$p\n";
-      $p = next_prime($p);
+    my $p1 = $low;
+    while ($p1 <= $high) {
+      my $p2 = $p1 + 10_000_000;
+      $p2 = $high if $p2 > $high;
+      print $fh join("\n", @{primes($p1,$p2)}), "\n";
+      $p1 = $p2+1;
     }
   }
   close($fh);
