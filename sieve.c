@@ -31,6 +31,8 @@ static int do_partial_sieve(UV startp, UV endp) {
  * appropriately filled with this data, then 7, 11, and 13 do not have
  * to be sieved.  It wraps, so multiple memcpy's can be used.  Do be
  * aware that if you start at 0, you'll have to correct the first byte.
+ *
+ * mpu '$g=7*11*13; @b=(0)x$g; for $d (0..$g-1) { $i=0; for $m (1,7,11,13,17,19,23,29) { $n=30*$d+$m; if (gcd($n,$g) != 1) { $b[$d] |= (1<<$i); } $i++; } } for (0..$#b) { printf "0x%02x,",$b[$_]; print "\n" unless ($_+1)%13; } print "\n"'
  */
 #define PRESIEVE_SIZE (7*11*13)
 static const unsigned char presieve13[PRESIEVE_SIZE] =

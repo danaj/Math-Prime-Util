@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 #include <float.h>
 #include <math.h>
 
@@ -1210,7 +1211,7 @@ int sum_primes(UV low, UV high, UV *return_sum) {
 
   if (low <= high) {
     unsigned char* segment;
-    UV seg_base, seg_low, seg_high, lastp = 0;
+    UV seg_base, seg_low, seg_high;
     void* ctx = start_segment_primes(low, high, &segment);
     while (no_overflow && next_segment_primes(ctx, &seg_base, &seg_low, &seg_high)) {
       START_DO_FOR_EACH_SIEVE_PRIME( segment, seg_base, seg_low, seg_high )
@@ -1234,6 +1235,11 @@ static int my_sprint(char* ptr, UV val) {
   while (--s > ptr) { char c = *s; *s = *ptr; *ptr++ = c; }
   return nchars;
 }
+static char* write_buf(int fd, char* buf, char* bend) {
+  int res = (int) write(fd, buf, bend-buf);
+  if (res == -1) croak("print_primes write error");
+  return buf;
+}
 void print_primes(UV low, UV high, int fd) {
   char buf[8000+25];
   char* bend = buf;
@@ -1244,17 +1250,17 @@ void print_primes(UV low, UV high, int fd) {
 
   if (low <= high) {
     unsigned char* segment;
-    UV seg_base, seg_low, seg_high, lastp = 0;
+    UV seg_base, seg_low, seg_high;
     void* ctx = start_segment_primes(low, high, &segment);
     while (next_segment_primes(ctx, &seg_base, &seg_low, &seg_high)) {
       START_DO_FOR_EACH_SIEVE_PRIME( segment, seg_base, seg_low, seg_high )
         bend += my_sprint(bend,p);
-        if (bend-buf > 8000) { write(fd, buf, bend-buf); bend = buf; }
+        if (bend-buf > 8000) { bend = write_buf(fd, buf, bend); }
       END_DO_FOR_EACH_SIEVE_PRIME
     }
     end_segment_primes(ctx);
   }
-  if (bend > buf) {  write(fd, buf, bend-buf); bend = buf;  }
+  if (bend > buf) { bend = write_buf(fd, buf, bend); }
 }
 
 
@@ -2435,14 +2441,14 @@ static UV _catalan_v(UV n, UV p) {
   return s;
 }
 int is_catalan_pseudoprime(UV n) {
-  UV i, m = 1, a = n >> 1;
+  UV m = 1, a = n >> 1;
 
   if (n < 2 || ((n % 2) == 0 && n != 2)) return 0;
   if (is_prob_prime(n)) return 1;
 
   {
     UV factors[MPU_MAX_FACTORS+1];
-    int nfactors = factor_exp(n, factors, 0);
+    int i, nfactors = factor_exp(n, factors, 0);
     /* Aebi and Cairns 2008, page 9 */
 #if BITS_PER_WORD == 32
     if (nfactors == 2)
@@ -2456,7 +2462,7 @@ int is_catalan_pseudoprime(UV n) {
     }
   }
   {
-    UV seg_base, seg_low, seg_high;
+    UV i, seg_base, seg_low, seg_high;
     unsigned char* segment;
     void* ctx;
     for (i = 0; i <= 2; i++) {
