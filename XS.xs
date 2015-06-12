@@ -5,6 +5,7 @@
 #include "perl.h"
 #include "XSUB.h"
 #include "multicall.h"  /* only works in 5.6 and newer */
+#include <stdio.h>      /* For fileno and stdout */
 
 #define NEED_newCONSTSUB
 #define NEED_newRV_noinc
@@ -331,6 +332,8 @@ prime_count(IN SV* svlo, ...)
   ALIAS:
     _XS_segment_pi = 1
     twin_prime_count = 2
+    sum_primes = 3
+    print_primes = 4
   PREINIT:
     int lostatus, histatus;
     UV lo, hi;
@@ -349,6 +352,12 @@ prime_count(IN SV* svlo, ...)
       if (lo <= hi) {
         if (ix == 2) {
           count = twin_prime_count(lo, hi);
+        } else if (ix == 3) {
+          lostatus = sum_primes(lo, hi, &count);
+        } else if (ix == 4) {
+          int fd = (items < 2) ? fileno(stdout) : my_sviv(ST(2));
+          print_primes(lo, hi, fd);
+          XSRETURN_EMPTY;
         } else if (ix == 1 || (hi / (hi-lo+1)) > 100) {
           count = _XS_prime_count(lo, hi);
         } else {
@@ -357,13 +366,15 @@ prime_count(IN SV* svlo, ...)
             count -= _XS_LMO_pi(lo-1);
         }
       }
-      XSRETURN_UV(count);
+      if (lostatus == 1) XSRETURN_UV(count);
     }
     switch (ix) {
       case 0:
       case 1: _vcallsubn(aTHX_ GIMME_V, VCALL_ROOT, "_generic_prime_count", items); break;
-      case 2:
-      default:_vcallsub_with_pp("twin_prime_count");  break;
+      case 2:_vcallsub_with_pp("twin_prime_count");  break;
+      case 3:_vcallsub_with_pp("sum_primes");  break;
+      case 4:
+      default:_vcallsub_with_pp("print_primes");  break;
     }
     return; /* skip implicit PUTBACK */
 

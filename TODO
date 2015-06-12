@@ -104,3 +104,6 @@
   the best library (GMPz, GMP, Pari, BigInt) and set $BICLASS.  Then we
   should use that class for everything.  Go ahead and return that type.
   Make a config variable to allow get/set.
+
+- docs for sum_primes and print_primes
+  check that PPFE isn't double validating

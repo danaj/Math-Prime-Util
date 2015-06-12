@@ -30,6 +30,8 @@ extern UV* n_range_ramanujan_primes(UV nlo, UV nhi);
 extern int is_ramanujan_prime(UV n);
 extern UV ramanujan_prime_count_lower(UV n);
 extern UV ramanujan_prime_count_upper(UV n);
+extern int sum_primes(UV low, UV high, UV *sum);
+extern void print_primes(UV low, UV high, int fd);
 
 extern int powerof(UV n);
 extern int is_power(UV n, UV a);

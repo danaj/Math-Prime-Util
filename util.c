@@ -1199,6 +1199,64 @@ int is_ramanujan_prime(UV n) {
   return (rn == n);
 }
 
+int sum_primes(UV low, UV high, UV *return_sum) {
+  UV sum = 0;
+  int no_overflow = 1;
+
+  if ((low <= 2) && (high >= 2)) sum += 2;
+  if ((low <= 3) && (high >= 3)) sum += 3;
+  if ((low <= 5) && (high >= 5)) sum += 5;
+  if (low < 7) low = 7;
+
+  if (low <= high) {
+    unsigned char* segment;
+    UV seg_base, seg_low, seg_high, lastp = 0;
+    void* ctx = start_segment_primes(low, high, &segment);
+    while (no_overflow && next_segment_primes(ctx, &seg_base, &seg_low, &seg_high)) {
+      START_DO_FOR_EACH_SIEVE_PRIME( segment, seg_base, seg_low, seg_high )
+        if (sum+p < sum) no_overflow = 0;
+        sum += p;
+      END_DO_FOR_EACH_SIEVE_PRIME
+    }
+    end_segment_primes(ctx);
+  }
+  if (return_sum != 0)  *return_sum = sum;
+  return no_overflow;
+}
+static int my_sprint(char* ptr, UV val) {
+  int nchars;
+  UV t;
+  char *s = ptr;
+  do {
+    t = val / 10; *s++ = (char) ('0' + val - 10 * t);
+  } while ((val = t));
+  nchars = s - ptr + 1;  *s = '\n';
+  while (--s > ptr) { char c = *s; *s = *ptr; *ptr++ = c; }
+  return nchars;
+}
+void print_primes(UV low, UV high, int fd) {
+  char buf[8000+25];
+  char* bend = buf;
+  if ((low <= 2) && (high >= 2)) bend += my_sprint(bend,2);
+  if ((low <= 3) && (high >= 3)) bend += my_sprint(bend,3);
+  if ((low <= 5) && (high >= 5)) bend += my_sprint(bend,5);
+  if (low < 7) low = 7;
+
+  if (low <= high) {
+    unsigned char* segment;
+    UV seg_base, seg_low, seg_high, lastp = 0;
+    void* ctx = start_segment_primes(low, high, &segment);
+    while (next_segment_primes(ctx, &seg_base, &seg_low, &seg_high)) {
+      START_DO_FOR_EACH_SIEVE_PRIME( segment, seg_base, seg_low, seg_high )
+        bend += my_sprint(bend,p);
+        if (bend-buf > 8000) { write(fd, buf, bend-buf); bend = buf; }
+      END_DO_FOR_EACH_SIEVE_PRIME
+    }
+    end_segment_primes(ctx);
+  }
+  if (bend > buf) {  write(fd, buf, bend-buf); bend = buf;  }
+}
+
 
 /* Return a char array with lo-hi+1 elements. mu[k-lo] = µ(k) for k = lo .. hi.
  * It is the callers responsibility to call Safefree on the result. */

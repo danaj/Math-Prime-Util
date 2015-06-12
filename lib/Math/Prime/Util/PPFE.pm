@@ -127,6 +127,28 @@ sub twin_prime_count {
   }
   return Math::Prime::Util::PP::twin_prime_count($low,$high);
 }
+sub sum_primes {
+  my($low,$high) = @_;
+  if (scalar @_ > 1) {
+    _validate_positive_integer($low);
+    _validate_positive_integer($high);
+  } else {
+    ($low,$high) = (2, $low);
+    _validate_positive_integer($high);
+  }
+  return Math::Prime::Util::PP::sum_primes($low,$high);
+}
+sub print_primes {
+  my($low,$high,$fd) = @_;
+  if (scalar @_ > 1) {
+    _validate_positive_integer($low);
+    _validate_positive_integer($high);
+  } else {
+    ($low,$high) = (2, $low);
+    _validate_positive_integer($high);
+  }
+  return Math::Prime::Util::PP::print_primes($low,$high,$fd);
+}
 sub twin_prime_count_approx {
   my($n) = @_;
   _validate_positive_integer($n);
