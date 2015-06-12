@@ -5,6 +5,8 @@ Revision history for Perl module Math::Prime::Util
     [ADDED]
 
     - is_catalan_pseudoprime    Catalan primality test
+    - sum_primes(lo,hi)         Summation of primes in range
+    - print_primes(lo,hi[,fd])  Print primes in range to stdout or fd
 
     [FUNCTIONALITY AND PERFORMANCE]
 

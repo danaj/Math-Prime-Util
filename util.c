@@ -1202,7 +1202,7 @@ int is_ramanujan_prime(UV n) {
 
 int sum_primes(UV low, UV high, UV *return_sum) {
   UV sum = 0;
-  int no_overflow = 1;
+  int overflow = 0;
 
   if ((low <= 2) && (high >= 2)) sum += 2;
   if ((low <= 3) && (high >= 3)) sum += 3;
@@ -1213,16 +1213,16 @@ int sum_primes(UV low, UV high, UV *return_sum) {
     unsigned char* segment;
     UV seg_base, seg_low, seg_high;
     void* ctx = start_segment_primes(low, high, &segment);
-    while (no_overflow && next_segment_primes(ctx, &seg_base, &seg_low, &seg_high)) {
+    while (!overflow && next_segment_primes(ctx, &seg_base, &seg_low, &seg_high)) {
       START_DO_FOR_EACH_SIEVE_PRIME( segment, seg_base, seg_low, seg_high )
-        if (sum+p < sum) no_overflow = 0;
+        if (sum+p < sum) overflow = 1;
         sum += p;
       END_DO_FOR_EACH_SIEVE_PRIME
     }
     end_segment_primes(ctx);
   }
-  if (return_sum != 0)  *return_sum = sum;
-  return no_overflow;
+  if (!overflow && return_sum != 0)  *return_sum = sum;
+  return !overflow;
 }
 static int my_sprint(char* ptr, UV val) {
   int nchars;
