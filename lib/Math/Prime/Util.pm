@@ -1525,7 +1525,8 @@ produce identical output to:
 
 The point of this function is just efficiency.  It is over 10x faster
 than using C<say>, C<print>, or C<printf>, though much more limited
-in functionality.
+in functionality.  A later version may allow a file handle as the third
+argument.
 
 
 =head2 nth_prime

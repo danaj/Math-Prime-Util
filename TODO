@@ -105,4 +105,6 @@
   should use that class for everything.  Go ahead and return that type.
   Make a config variable to allow get/set.
 
-- tests for print_primes.  Debate FD vs. FH.
+- Support FH for print_primes.  PerlIO_write is giving me fits.
+
+- Test for print_primes.  Not as easy with filenos.
