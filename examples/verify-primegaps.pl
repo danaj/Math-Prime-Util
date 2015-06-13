@@ -59,9 +59,9 @@ while (<>) {
   my $dstr2 = length($end) . "D";
   my $log2n = int(length($n) * 3.322);  # approx
 
-  printf "G=%7d %10.3fs Checking P1 ($dstr)...\r", $gap, tv_interval($start);
+  printf "G=%7d %10.2fs Checking P1 ($dstr)...\r", $gap, tv_interval($start);
   die "beg of '$expr' is not prime" unless test($n);
-  printf "G=%7d %10.3fs Checking P2 ($dstr2)...  \r", $gap, tv_interval($start);
+  printf "G=%7d %10.2fs Checking P2 ($dstr2)...  \r", $gap, tv_interval($start);
   die "end of '$expr' is not prime" unless test($end);
   my $next;
 
@@ -69,18 +69,18 @@ while (<>) {
   # gaps we can just call next_prime which will check all the interior
   # points.  The only downside is that we're losing some manual control.
   if (0 && $gap < 15000 && $log2n < 800) {
-    printf "G=%7d %10.3fs Checking P1 ($dstr) interval...   \r", $gap, tv_interval($start);
+    printf "G=%7d %10.2fs Checking P1 ($dstr) interval...   \r", $gap, tv_interval($start);
     $next = next_prime($n);
   } else {
     my $depth = int( 0.7 * $log2n * $log2n * log($log2n) );
     $depth = 2**32-100 if $depth > 2**32-100;
-    printf "G=%7d %10.3fs Sieving to $depth ...%s \r", $gap, tv_interval($start), " " x 30;
+    printf "G=%7d %10.2fs Sieving to $depth ...%s \r", $gap, tv_interval($start), " " x 30;
     my @list = Math::Prime::Util::GMP::sieve_primes($n+1,$end-1,$depth);
     my $gapstart = [gettimeofday];
     my $ntests = scalar(@list);
     my $i = 0;
     my $nexti = 1;
-    printf "G=%7d %10.3fs Checking P1 ($dstr) + %d...     \r", $gap, tv_interval($start), $list[0]-$n;
+    printf "G=%7d %10.2fs Checking P1 ($dstr) + %d...     \r", $gap, tv_interval($start), $list[0]-$n;
     foreach my $p (@list) {
       my $pgap = $p - $n;
       die "Interior point $expr + $pgap is prime\n" if test($p);
@@ -89,8 +89,8 @@ while (<>) {
         my $startint = tv_interval($start);
         my $gaptime = tv_interval($gapstart);
         my $est = $startint + ($ntests-$i) * $gaptime/$i;
-        printf "G=%7d %10.3fs (est %.3fs) Checking P1 ($dstr) + $pgap...   \r",  $gap, $startint, $est;
-        my $display_intervals = int(0.2 / ($gaptime/$i));
+        printf "G=%7d %10.2fs (est %.2fs) Checking P1 ($dstr) + $pgap...   \r",  $gap, $startint, $est;
+        my $display_intervals = int(0.4 / ($gaptime/$i));
         #$display_intervals = 256 if $display_intervals > 256;
         $nexti = $i + $display_intervals;
       }
