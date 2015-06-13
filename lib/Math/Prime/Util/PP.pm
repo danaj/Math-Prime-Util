@@ -3053,7 +3053,7 @@ sub is_frobenius_pseudoprime {
   return 0+($n >= 2) if $n < 4;
 
   $n = Math::BigInt->new("$n") unless ref($n) eq 'Math::BigInt';
-  return 0 if $n->is_even || _is_perfect_square($n);
+  return 0 if $n->is_even;
 
   my($k, $Vcomp, $D, $Du) = (0, 4);
   if ($P == 0 && $Q == 0) {
@@ -3063,9 +3063,10 @@ sub is_frobenius_pseudoprime {
       $P = 5 if $P == 3;  # Skip 3
       $D = $P*$P-4*$Q;
       $Du = ($D >= 0) ? $D : -$D;
-      last if $P >= $n || $Du >= $n;
+      last if $P >= $n || $Du >= $n;   # TODO: remove?
       $k = kronecker($D, $n);
       return 0 if $k == 0;
+      return 0 if $P == 10001 && _is_perfect_square($n);
     }
   } else {
     $D = $P*$P-4*$Q;
@@ -3078,7 +3079,7 @@ sub is_frobenius_pseudoprime {
   if ($k == 0) {
     $k = kronecker($D, $n);
     return 0 if $k == 0;
-    my $Q2 = 2*abs($Q);
+    my $Q2 = (2*abs($Q)) % $n;
     $Vcomp = ($k == 1) ? 2 : ($Q >= 0) ? $Q2 : $n-$Q2;
   }
 

@@ -105,5 +105,4 @@
   should use that class for everything.  Go ahead and return that type.
   Make a config variable to allow get/set.
 
-- docs for sum_primes and print_primes, ntheory doc, tests
-  check that PPFE isn't double validating
+- tests for print_primes.  Debate FD vs. FH.

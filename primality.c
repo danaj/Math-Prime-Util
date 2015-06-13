@@ -921,7 +921,7 @@ int is_frobenius_pseudoprime(UV n, IV P, IV Q)
       if ((UV)P >= n || Du >= n) break;
       k = kronecker_su(D, n);
       if (k == 0) return 0;
-      if (Du == 10001 && is_perfect_square(n)) return 0;
+      if (P == 10001 && is_perfect_square(n)) return 0;
     }
     if (_XS_get_verbose()) printf("%"UVuf" Frobenius (%"IVdf",%"IVdf") : x^2 - %"IVdf"x + %"IVdf"\n", n, P, Q, P, Q);
     Vcomp = 4;

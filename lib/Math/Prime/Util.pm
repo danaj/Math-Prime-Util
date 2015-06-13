@@ -1495,6 +1495,38 @@ like them, returns an array reference.
 Generating Ramanujan primes takes some effort, including overhead to cover
 a range.  This will be substantially slower than generating standard primes.
 
+=head2 sum_primes
+
+Returns the summation of primes between the lower and upper limits
+(inclusive), with a lower limit of C<2> if none is given.  This is
+essentially similar to either of:
+
+    $sum = 0; forprimes { $sum += $_ } $low,$high;  $sum;
+    # or
+    vecsum( @{ primes($low,$high) } );
+
+but is somewhat more efficient (about 2-4x compared to forprimes, more
+for vecsum since no large list is created).
+
+=head2 print_primes
+
+  print_primes(1_000_000);             # print the first 1 million primes
+  print_primes(1000, 2000);            # print primes in range
+  print_primes(2,1000,fileno(STDERR))  # print to a different descriptor
+
+With a single argument this prints all primes from 2 to C<n> to standard
+out.  With two arguments it prints primes between C<low> and C<high> to
+standard output.  With three arguments it prints primes between C<low>
+and C<high> to the file descriptor given.  If the file descriptor cannot
+be written to, this will croak with "print_primes write error".  It will
+produce identical output to:
+
+    forprimes { say } $low,$high;
+
+The point of this function is just efficiency.  It is over 10x faster
+than using C<say>, C<print>, or C<printf>, though much more limited
+in functionality.
+
 
 =head2 nth_prime
 
