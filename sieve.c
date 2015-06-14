@@ -402,7 +402,7 @@ int sieve_segment(unsigned char* mem, UV startd, UV endd)
 
   if (limit > slimit) { /* We've sieved out most composites, but not all. */
     START_DO_FOR_EACH_SIEVE_PRIME(mem, 0, 0, endp-startp) {
-      if (!_XS_BPSW(startp + p))    /* If the candidate is not prime, */
+      if (!BPSW(startp + p))        /* If the candidate is not prime, */
         mem[d_] |= mask_;           /* mark the sieve location.       */
     } END_DO_FOR_EACH_SIEVE_PRIME;
   }
