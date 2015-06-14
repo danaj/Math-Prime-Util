@@ -4,9 +4,10 @@ Revision history for Perl module Math::Prime::Util
 
     [ADDED]
 
-    - is_catalan_pseudoprime    Catalan primality test
-    - sum_primes(lo,hi)         Summation of primes in range
-    - print_primes(lo,hi[,fd])  Print primes in range to stdout or fd
+    - sum_primes(lo,hi)                   Summation of primes in range
+    - print_primes(lo,hi[,fd])            Print primes to stdout or fd
+    - is_catalan_pseudoprime(n)           Catalan primality test
+    - is_frobenius_khashin_pseudoprime(n) Khashin's 2013 Frobenius test
 
     [FUNCTIONALITY AND PERFORMANCE]
 
@@ -17,11 +18,15 @@ Revision history for Perl module Math::Prime::Util
     - Used idea from Colin Wright to speed up is_perrin_pseudoprime 5x.
       We can check smaller congruent sequences for composites as a prefilter.
 
+    - is_frobenius_pseudoprime no longer checks for perfect squares, and
+      doesn't bail to BPSW if P,Q,D exceed n.  This makes it produce some
+      pseudoprimes it did not before (but ought to have).
+
     [Misc]
 
     - Work with old MPFR (some test failures in older Win32 systems).
 
-    - Don't assert in global destructor if MemFree object is cleaned up.
+    - Don't assert in global destructor if a MemFree object is destroyed.
 
 
 0.50 2015-05-03

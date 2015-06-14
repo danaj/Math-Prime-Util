@@ -15,12 +15,16 @@ my @functions =  qw(
       is_strong_lucas_pseudoprime
       is_extra_strong_lucas_pseudoprime
       is_almost_extra_strong_lucas_pseudoprime
-      is_frobenius_underwood_pseudoprime
+      is_frobenius_pseudoprime
+      is_frobenius_underwood_pseudoprime is_frobenius_khashin_pseudoprime
+      is_perrin_pseudoprime is_catalan_pseudoprime
       is_aks_prime is_bpsw_prime
-      is_power
+      is_ramanujan_prime
+      is_mersenne_prime
+      is_power sqrtint
       miller_rabin_random
       lucas_sequence lucasu lucasv
-      primes twin_primes
+      primes twin_primes ramanujan_primes
       forprimes forcomposites foroddcomposites fordivisors
       forpart forcomb forperm
       prime_iterator prime_iterator_object

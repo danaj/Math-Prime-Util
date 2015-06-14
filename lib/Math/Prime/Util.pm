@@ -22,8 +22,9 @@ our @EXPORT_OK =
       is_extra_strong_lucas_pseudoprime
       is_almost_extra_strong_lucas_pseudoprime
       is_frobenius_pseudoprime
+      is_frobenius_underwood_pseudoprime is_frobenius_khashin_pseudoprime
       is_perrin_pseudoprime is_catalan_pseudoprime
-      is_frobenius_underwood_pseudoprime is_aks_prime is_bpsw_prime
+      is_aks_prime is_bpsw_prime
       is_ramanujan_prime
       is_mersenne_prime
       is_power sqrtint
@@ -1761,6 +1762,17 @@ There are no known pseudoprimes to this test and extensive computation has
 shown no counterexamples under C<2^50>.  This test also has no overlap
 with the BPSW test, making it a very effective method for adding additional
 certainty.
+
+=head2 is_frobenius_khashin_pseudoprime
+
+Takes a positive number as input, and returns 1 if the input passes the
+Frobenius test of Sergey Khashin.  This ensures C<n> is not a perfect square,
+selects the parameter C<c> as the smallest odd prime such that C<(c|n)=-1>,
+then verifies that C<(1+D)^n = (1-D) mod n> where C<D = sqrt(c) mod n>.
+
+There are no known pseudoprimes to this test and Khashin shows that under
+certain restrictions there are no counterexamples under C<2^60>.  Any that
+exist must have either one factor under 19 or have C<c E<gt> 128>.
 
 =head2 miller_rabin_random
 

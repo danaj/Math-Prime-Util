@@ -227,6 +227,12 @@ sub is_frobenius_underwood_pseudoprime {
   _validate_positive_integer($n);
   return Math::Prime::Util::PP::is_frobenius_underwood_pseudoprime($n);
 }
+sub is_frobenius_khashin_pseudoprime {
+  my($n) = @_;
+  return 0 if defined $n && int($n) < 0;
+  _validate_positive_integer($n);
+  return Math::Prime::Util::PP::is_frobenius_khashin_pseudoprime($n);
+}
 sub is_aks_prime {
   my($n) = @_;
   return 0 if defined $n && int($n) < 0;

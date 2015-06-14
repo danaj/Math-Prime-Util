@@ -56,9 +56,10 @@ See L<Math::Prime::Util> for complete documentation.
   is_almost_extra_strong_lucas_pseudoprime(n, [incr])   AES Lucas test
   is_extra_strong_lucas_pseudoprime(n)     extra strong Lucas test
   is_frobenius_pseudoprime(n, [a,b])       Frobenius quadratic test
+  is_frobenius_underwood_pseudoprime(n)    combined PSP and Lucas
+  is_frobenius_khashin_pseudoprime(n)      Khashin's 2013 Frobenius test
   is_perrin_pseudoprime(n)                 Perrin test
   is_catalan_pseudoprime(n)                Catalan test
-  is_frobenius_underwood_pseudoprime(n)    combined PSP and Lucas
   is_bpsw_prime(n)                         combined SPSP-2 and ES Lucas
   miller_rabin_random(n, ntests)           perform random-base MR tests
 

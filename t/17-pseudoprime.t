@@ -11,6 +11,7 @@ use Math::Prime::Util qw/is_prime
                          is_extra_strong_lucas_pseudoprime
                          is_almost_extra_strong_lucas_pseudoprime
                          is_frobenius_underwood_pseudoprime
+                         is_frobenius_khashin_pseudoprime
                          is_perrin_pseudoprime
                          is_catalan_pseudoprime
                          is_frobenius_pseudoprime
@@ -133,6 +134,8 @@ plan tests => 0 + 3
                 + scalar(keys %lucas_sequences)
                 + 1  # frob-underwood
                 + 2*$use64  # frob-underwood
+                + 1  # frob-khashin
+                + 2*$use64  # frob-khashin
                 + 1*$extra;
 
 ok(!eval { is_strong_pseudoprime(2047); }, "MR with no base fails");
@@ -263,7 +266,26 @@ while (my($params, $expect) = each (%lucas_sequences)) {
   }
   is($fufail, 0, "is_frobenius_underwood_pseudoprime matches is_prime");
   if ($use64) {
-    is( is_frobenius_underwood_pseudoprime("2727480595375747"), 1, "frobenius with 52-bit prime" );
-    is( is_frobenius_underwood_pseudoprime(10099386070337), 0, "frobenius with 44-bit lucas pseudoprime" );
+    is( is_frobenius_underwood_pseudoprime("2727480595375747"), 1, "Frobenius Underwood with 52-bit prime" );
+    is( is_frobenius_underwood_pseudoprime(10099386070337), 0, "Frobenius Underwood with 44-bit Lucas pseudoprime" );
+  }
+}
+
+{
+  my $fufail = 0;
+  my $ntests = ($usexs) ? 100 : 2;
+  foreach my $i (1 .. $ntests) {
+    my $n = 2*int(rand(1000000000)) + 1;
+    my $ispfu = !!is_frobenius_khashin_pseudoprime($n);
+    my $prime = !!is_prime($n);
+    if ($ispfu != $prime) {
+      $fufail = $n;
+      last;
+    }
+  }
+  is($fufail, 0, "is_frobenius_khashin_pseudoprime matches is_prime");
+  if ($use64) {
+    is( is_frobenius_khashin_pseudoprime("2727480595375747"), 1, "Frobenius Khashin with 52-bit prime" );
+    is( is_frobenius_khashin_pseudoprime(10099386070337), 0, "Frobenius Khashin with 44-bit Lucas pseudoprime" );
   }
 }

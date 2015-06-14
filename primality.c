@@ -192,7 +192,7 @@ static UV select_extra_strong_parameters(UV n, UV increment) {
 
 
 /* Fermat pseudoprime */
-int _XS_is_pseudoprime(UV const n, UV a)
+int is_pseudoprime(UV const n, UV a)
 {
   UV x;
 
@@ -211,7 +211,7 @@ int _XS_is_pseudoprime(UV const n, UV a)
  * Returns 1 if probably prime relative to the bases, 0 if composite.
  * Bases must be between 2 and n-2
  */
-int _XS_miller_rabin(UV const n, const UV *bases, int nbases)
+int miller_rabin(UV const n, const UV *bases, int nbases)
 {
 #if USE_MONT_PRIMALITY
   MPUassert(n > 3, "MR called with n <= 3");
@@ -248,14 +248,14 @@ int _XS_miller_rabin(UV const n, const UV *bases, int nbases)
 #endif
 }
 
-int _XS_BPSW(UV const n)
+int BPSW(UV const n)
 {
   if (n < 7) return (n == 2 || n == 3 || n == 5);
   if ((n % 2) == 0 || n == UV_MAX) return 0;
 
 #if !USE_MONT_PRIMALITY
-  return    _XS_miller_rabin(n, mr_bases_const2, 1)
-         && _XS_is_almost_extra_strong_lucas_pseudoprime(n,1);
+  return    miller_rabin(n, mr_bases_const2, 1)
+         && is_almost_extra_strong_lucas_pseudoprime(n,1);
 #else
   {
     const uint64_t npi = modular_inverse64(n);
@@ -572,7 +572,7 @@ int lucasv(IV* V, IV P, IV Q, UV k)
  * None of them have any false positives for the BPSW test.  Also see the
  * "almost extra strong" test.
  */
-int _XS_is_lucas_pseudoprime(UV n, int strength)
+int is_lucas_pseudoprime(UV n, int strength)
 {
   IV P, Q, D;
   UV U, V, Qk, d, s;
@@ -739,7 +739,7 @@ int _XS_is_lucas_pseudoprime(UV n, int strength)
  * With increment = 1, these results will be a subset of the extra-strong
  * Lucas pseudoprimes.  With increment = 2, we produce Pari's results.
  */
-int _XS_is_almost_extra_strong_lucas_pseudoprime(UV n, UV increment)
+int is_almost_extra_strong_lucas_pseudoprime(UV n, UV increment)
 {
   UV P, V, W, d, s, b;
 
@@ -913,16 +913,17 @@ int is_frobenius_pseudoprime(UV n, IV P, IV Q)
 
   if (P == 0 && Q == 0) {
     P = -1; Q = 2;
+    if (n == 7) P = 1;  /* So we don't test kronecker(-7,7) */
     while (k != -1) {
       P += 2;
       if (P == 3) P = 5;  /* P=3,Q=2 -> D=9-8=1 => k=1, so skip */
       D = P*P-4*Q;
       Du = D >= 0 ? D : -D;
-      if ((UV)P >= n || Du >= n) break;
       k = kronecker_su(D, n);
       if (k == 0) return 0;
       if (P == 10001 && is_perfect_square(n)) return 0;
     }
+    /* D=P^2-8 will not be a perfect square */
     if (_XS_get_verbose()) printf("%"UVuf" Frobenius (%"IVdf",%"IVdf") : x^2 - %"IVdf"x + %"IVdf"\n", n, P, Q, P, Q);
     Vcomp = 4;
   } else {
@@ -934,7 +935,7 @@ int is_frobenius_pseudoprime(UV n, IV P, IV Q)
   Pu = P >= 0 ? P : -P;
   Qu = Q >= 0 ? Q : -Q;
 
-  if (n <= Du || n <= Qu || n <= Pu) return !!is_prob_prime(n);
+  /* if (n <= Du || n <= Qu || n <= Pu) return !!is_prob_prime(n); */
   if (gcd_ui(n, Pu*Qu*Du) != 1) return 0;
   if (k == 0) {
     k = kronecker_su(D, n);
@@ -950,7 +951,48 @@ int is_frobenius_pseudoprime(UV n, IV P, IV Q)
 }
 
 /*
- * The Frobenius-Underwood test has no known counterexamples below 10^13, but
+ * Khashin, 2013, "Counterexamples for Frobenius primality test"
+ * http://arxiv.org/abs/1307.7920
+ * 1. Select c as first odd prime where (c,n)=-1.
+ * 2. Check (1 + sqrt(c))^n mod n  equiv  (1 - sqrt(c) mod n
+ */
+int is_frobenius_khashin_pseudoprime(UV n)
+{
+  int k;
+  UV ra, rb, a, b, d, c = 1;
+
+  if (n < 7) return (n == 2 || n == 3 || n == 5);
+  if ((n % 2) == 0 || n == UV_MAX) return 0;
+  if (is_perfect_square(n)) return 0;
+
+  /* c = first odd prime where (c|n)=-1 */
+  do {
+    c += 2;
+    k = kronecker_uu(c, n);
+  } while (k != -1);
+
+  /* TODO: This is a naive implementation. */
+  ra = rb = a = b = 1;
+  d = n-1;
+  while (d) {
+    if (d & 1) {
+      UV ta=ra, tb=rb;
+      ra = addmod( mulmod(ta,a,n), mulmod(mulmod(tb,b,n),c,n), n );
+      rb = addmod( mulmod(tb,a,n), mulmod(ta,b,n), n);
+    }
+    d >>= 1;
+    if (d) {
+      UV ta=a, tb=b;
+      a = addmod( sqrmod(ta,n), mulmod(sqrmod(tb,n),c,n), n );
+      b = mulmod(ta,tb,n);
+      b = addmod(b,b,n);
+    }
+  }
+  return (ra == 1 && rb == n-1);
+}
+
+/*
+ * The Frobenius-Underwood test has no known counterexamples below 2^50, but
  * has not been extensively tested above that.  This is the Minimal Lambda+2
  * test from section 9 of "Quadratic Composite Tests" by Paul Underwood.
  *
@@ -960,7 +1002,7 @@ int is_frobenius_pseudoprime(UV n, IV P, IV Q)
  * it is mainly useful for numbers larger than 2^64 as an additional
  * non-correlated test.
  */
-int _XS_is_frobenius_underwood_pseudoprime(UV n)
+int is_frobenius_underwood_pseudoprime(UV n)
 {
   int bit;
   UV x, result, a, b, np1, len, t1;
@@ -1138,7 +1180,7 @@ int is_prob_prime(UV n)
     x = (((x >> 16) ^ x) * 0x45d9f3b) & 0xFFFFFFFFUL;
     x = ((x >> 16) ^ x) & 255;
     base = mr_bases_hash32[x];
-    ret = _XS_miller_rabin(n, &base, 1);
+    ret = miller_rabin(n, &base, 1);
 #if BITS_PER_WORD == 64
   } else {  /* 64-bit input, we must be 64-bit word as well */
     if (!(n%2) || !(n%3) || !(n%5) || !(n%7))       return 0;
@@ -1149,7 +1191,7 @@ int is_prob_prime(UV n)
     if (n < 3481) /* 59*59 */                       return 2;
 
     /* AESLSP test costs about 1.5 Selfridges, vs. ~2.2 for strong Lucas. */
-    ret = _XS_BPSW(n);
+    ret = BPSW(n);
 #endif
   }
   return 2*ret;
