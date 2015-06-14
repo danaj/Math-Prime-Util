@@ -2955,6 +2955,37 @@ sub is_almost_extra_strong_lucas_pseudoprime {
   return 0;
 }
 
+sub is_frobenius_khashin_pseudoprime {
+  my($n) = @_;
+  return 0+($n >= 2) if $n < 4;
+  return 0 unless $n % 2;
+  return 0 if _is_perfect_square($n);
+
+  $n = Math::BigInt->new("$n") unless ref($n) eq 'Math::BigInt';
+
+  my $k;
+  my $c = 1;
+  do {
+    $c += 2;
+    $k = kronecker($c, $n);
+  } while $k == 1;
+  return 0 if $k == 0;
+
+  my($ra,$rb,$a,$b,$d) = (1,1,1,1,$n-1);
+  while ($d) {
+    if ($d & 1) {
+      ($ra, $rb) = ( (($ra*$a)%$n + ((($rb*$b)%$n)*$c)%$n) % $n,
+                     (($rb*$a)%$n + ($ra*$b)%$n) % $n );
+    }
+    $d >>= 1;
+    if ($d) {
+      ($a, $b) = ( (($a*$a)%$n + ((($b*$b)%$n)*$c)%$n) % $n,
+                   (($b*$a)%$n + ($a*$b)%$n) % $n );
+    }
+  }
+  return ($ra == 1 && $rb == $n-1) ? 1 : 0;
+}
+
 sub is_frobenius_underwood_pseudoprime {
   my($n) = @_;
   return 0+($n >= 2) if $n < 4;

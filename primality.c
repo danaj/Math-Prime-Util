@@ -969,7 +969,8 @@ int is_frobenius_khashin_pseudoprime(UV n)
   do {
     c += 2;
     k = kronecker_uu(c, n);
-  } while (k != -1);
+  } while (k == 1);
+  if (k == 0) return 0;
 
   /* TODO: This is a naive implementation. */
   ra = rb = a = b = 1;
