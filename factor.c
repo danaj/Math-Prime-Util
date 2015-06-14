@@ -506,6 +506,7 @@ int pbrent_factor(UV n, UV *factors, UV rounds, UV a)
   UV Xi = 2;
   UV Xm = 2;
   const UV inner = (n <= 4000000000UL) ? 32 : 160;
+  int fails = 6;
 
   MPUassert( (n >= 3) && ((n%2) != 0) , "bad n in pbrent_factor");
 
@@ -543,6 +544,13 @@ int pbrent_factor(UV n, UV *factors, UV rounds, UV a)
         f = gcd_ui( (Xi>Xm) ? Xi-Xm : Xm-Xi, n);
       } while (f == 1 && r-- != 0);
     }
+    if (f == 0 || f == n) {
+      if (fails-- <= 0) break;
+      Xm = addmod(Xm, 2, n);
+      Xi = Xm;
+      a++;
+      continue;
+    }
     return found_factor(n, f, factors);
   }
   factors[0] = n;
@@ -556,6 +564,7 @@ int prho_factor(UV n, UV *factors, UV rounds)
   const UV inner = 64;
   UV U = 7;
   UV V = 7;
+  int fails = 3;
 
   MPUassert( (n >= 3) && ((n%2) != 0) , "bad n in prho_factor");
 
@@ -591,6 +600,13 @@ int prho_factor(UV n, UV *factors, UV rounds)
         V = sqraddmod(V, a, n);
         f = gcd_ui( (U > V) ? U-V : V-U, n);
       } while (f == 1 && i-- != 0);
+    }
+    if (f == 0 || f == n) {
+      if (fails-- <= 0) break;
+      addmod(U,2,n);
+      V = U;
+      a++;
+      continue;
     }
     return found_factor(n, f, factors);
   }
