@@ -168,5 +168,8 @@ xt/test-nextprime-yafu.pl
 xt/test-ispower.pl
 xt/twin_prime_count.t
 xt/nth_twin_prime.t
+xt/lucasuv.pl
+xt/make-perrin-data.pl
+xt/test-pcbounds.pl
 .travis.yml
 inc/Devel/CheckLib.pm
