@@ -977,16 +977,17 @@ int is_frobenius_khashin_pseudoprime(UV n)
   d = n-1;
   while (d) {
     if (d & 1) {
+      /* This is faster than the 3-mulmod 5-addmod version */
       UV ta=ra, tb=rb;
       ra = addmod( mulmod(ta,a,n), mulmod(mulmod(tb,b,n),c,n), n );
       rb = addmod( mulmod(tb,a,n), mulmod(ta,b,n), n);
     }
     d >>= 1;
     if (d) {
-      UV ta=a, tb=b;
-      a = addmod( sqrmod(ta,n), mulmod(sqrmod(tb,n),c,n), n );
-      b = mulmod(ta,tb,n);
+      UV t = mulmod(sqrmod(b,n),c,n);
+      b = mulmod(b,a,n);
       b = addmod(b,b,n);
+      a = addmod(sqrmod(a,n),t,n);
     }
   }
   return (ra == 1 && rb == n-1);
