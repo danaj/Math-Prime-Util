@@ -88,28 +88,30 @@ static UV prev_prime_in_sieve(const unsigned char* sieve, UV p) {
     const unsigned char* sieve_ = sieve; \
     UV base_ = base; \
     UV p = a-base_; \
-    UV l_ = b-base_; \
+    UV l_ = b; \
     UV d_ = p/30; \
-    UV lastd_ = l_/30; \
+    UV lastd_ = (l_-base_)/30; \
     UV mask_ = masktab30[ p-d_*30 + distancewheel30[ p-d_*30 ] ]; \
     UV s_ = sieve_[d_]; \
     while (d_ <= lastd_ && (s_ & mask_)) { \
       mask_ <<= 1;  if (mask_ > 128) { s_ = sieve_[++d_]; mask_ = 1; } \
     } \
-    p = d_*30 + imask30[mask_]; \
+    base_ += d_*30; \
+    p = base_ + imask30[mask_]; \
     while ( p <= l_ ) { \
-      p += base_;
 
 #define END_DO_FOR_EACH_SIEVE_PRIME \
       do { \
         mask_ <<= 1; \
         if (mask_ > 128) { \
-          while (++d_ <= lastd_) { s_ = sieve_[d_]; if (s_ != 0xFF) break; } \
+          do { \
+            base_ += 30; d_++; \
+          } while (d_ <= lastd_ && (s_ = sieve_[d_]) == 0xFF); \
           if (d_ > lastd_) break; \
           mask_ = 1; \
         } \
       } while (s_ & mask_); \
-      p = d_*30 + imask30[mask_]; \
+      p = base_ + imask30[mask_]; \
     } \
   }
 
