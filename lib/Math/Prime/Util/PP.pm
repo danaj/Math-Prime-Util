@@ -53,7 +53,8 @@ BEGIN {
       $_have_MPFR = 1 if (!defined $ENV{MPU_NO_MPFR} || $ENV{MPU_NO_MPFR} != 1)
                       && eval { require Math::MPFR; $Math::MPFR::VERSION>=2.03; };
     }
-    return 0 if defined $_[0] && $_have_MPFR && $Math::MPFR::VERSION < $_[0];
+    return 0 if defined $_[0] && $_have_MPFR && Math::MPFR::MPFR_VERSION_MAJOR() < $_[0];
+    return 0 if defined $_[1] && $_have_MPFR && Math::MPFR::MPFR_VERSION_MAJOR() == $_[0] && Math::MPFR::MPFR_VERSION_MINOR() < $_[1];
     return $_have_MPFR;
   }
 }
@@ -2033,7 +2034,7 @@ sub harmreal {
   do { require Math::BigFloat; Math::BigFloat->import(); } unless defined $Math::BigFloat::VERSION;
   return Math::BigFloat->bzero if $n <= 0;
 
-  if (_MPFR_available(3.0)) {
+  if (_MPFR_available(3,0)) {
     $precision = _find_big_acc($n) unless defined $precision;
     my $rnd = 0;  # MPFR_RNDN;
     my $bit_precision = int("$precision" * 3.322) + 7;
