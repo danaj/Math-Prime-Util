@@ -2,6 +2,10 @@ Revision history for Perl module Math::Prime::Util
 
 0.52 2015-?
 
+    [FUNCTIONALITY AND PERFORMANCE]
+
+    - Double speed of sum_primes.
+
     [Misc]
 
     - Check for old MPFR now using C library version, not module version.
