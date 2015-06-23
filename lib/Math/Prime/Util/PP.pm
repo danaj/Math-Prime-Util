@@ -1525,6 +1525,7 @@ sub sum_primes {
       my $p2 = $p1 + 10_000_000;
       $p2 = $high if $p2 > $high;
       $sum += vecsum( @{primes($p1,$p2)} );
+      last if $p2 == $high;
       $p1 = $p2+1;
     }
   }
