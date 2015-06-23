@@ -958,7 +958,7 @@ UV twin_prime_count(UV beg, UV end)
     UV seg_base, seg_low, seg_high;
     void* ctx = start_segment_primes(beg, end, &segment);
     while (next_segment_primes(ctx, &seg_base, &seg_low, &seg_high)) {
-      UV bytes = (seg_high-seg_low+29)/30;
+      UV bytes = seg_high/30 - seg_low/30 + 1;
       unsigned char s;
       const unsigned char* sp = segment;
       const unsigned char* const spend = segment + bytes - 1;
@@ -1020,7 +1020,7 @@ UV nth_twin_prime(UV n)
     UV seg_base, seg_low, seg_high;
     void* ctx = start_segment_primes(beg, end, &segment);
     while (next_segment_primes(ctx, &seg_base, &seg_low, &seg_high)) {
-      UV p, bytes = (seg_high-seg_low+29)/30;
+      UV p, bytes = seg_high/30 - seg_low/30 + 1;
       UV s = ((UV)segment[0]) << 8;
       for (p = 0; p < bytes; p++) {
         s >>= 8;
@@ -1200,6 +1200,19 @@ int is_ramanujan_prime(UV n) {
   return (rn == n);
 }
 
+static const unsigned char byte_sum[256] =
+  {120,119,113,112,109,108,102,101,107,106,100,99,96,95,89,88,103,102,96,95,92,
+   91,85,84,90,89,83,82,79,78,72,71,101,100,94,93,90,89,83,82,88,87,81,80,77,
+   76,70,69,84,83,77,76,73,72,66,65,71,70,64,63,60,59,53,52,97,96,90,89,86,85,
+   79,78,84,83,77,76,73,72,66,65,80,79,73,72,69,68,62,61,67,66,60,59,56,55,49,
+   48,78,77,71,70,67,66,60,59,65,64,58,57,54,53,47,46,61,60,54,53,50,49,43,42,
+   48,47,41,40,37,36,30,29,91,90,84,83,80,79,73,72,78,77,71,70,67,66,60,59,74,
+   73,67,66,63,62,56,55,61,60,54,53,50,49,43,42,72,71,65,64,61,60,54,53,59,58,
+   52,51,48,47,41,40,55,54,48,47,44,43,37,36,42,41,35,34,31,30,24,23,68,67,61,
+   60,57,56,50,49,55,54,48,47,44,43,37,36,51,50,44,43,40,39,33,32,38,37,31,30,
+   27,26,20,19,49,48,42,41,38,37,31,30,36,35,29,28,25,24,18,17,32,31,25,24,21,
+   20,14,13,19,18,12,11,8,7,1,0};
+
 int sum_primes(UV low, UV high, UV *return_sum) {
   UV sum = 0;
   int overflow = 0;
@@ -1214,10 +1227,40 @@ int sum_primes(UV low, UV high, UV *return_sum) {
     UV seg_base, seg_low, seg_high;
     void* ctx = start_segment_primes(low, high, &segment);
     while (!overflow && next_segment_primes(ctx, &seg_base, &seg_low, &seg_high)) {
-      START_DO_FOR_EACH_SIEVE_PRIME( segment, seg_base, seg_low, seg_high )
-        if (sum+p < sum) overflow = 1;
-        sum += p;
-      END_DO_FOR_EACH_SIEVE_PRIME
+      UV bytes = seg_high/30 - seg_low/30 + 1;
+      unsigned char s;
+      unsigned char* sp = segment;
+      unsigned char* const spend = segment + bytes - 1;
+      UV i, p, pbase = 30*(seg_low/30);
+
+      /* Clear primes before and after our range */
+      p = pbase;
+      for (i = 0; i < 8 && p+wheel30[i] < low; i++)
+        if ( (*sp & (1<<i)) == 0 )
+          *sp |= (1 << i);
+
+      p = 30*(seg_high/30);
+      for (i = 0; i < 8;  i++)
+        if ( (*spend & (1<<i)) == 0 && p+wheel30[i] > high )
+          *spend |= (1 << i);
+
+      while (sp <= spend) {
+        s = *sp++;
+        if (sum < (UV_MAX >> 3) && pbase < (UV_MAX >> 5)) {
+          /* sum block of 8 all at once */
+          sum += pbase * byte_zeros[s] + byte_sum[s];
+        } else {
+          /* sum block of 8, checking for overflow at each step */
+          for (i = 0; i < byte_zeros[s]; i++) {
+            if (sum+pbase < sum) overflow = 1;
+            sum += pbase;
+          }
+          if (sum+byte_sum[s] < sum) overflow = 1;
+          sum += byte_sum[s];
+          if (overflow) break;
+        }
+        pbase += 30;
+      }
     }
     end_segment_primes(ctx);
   }
