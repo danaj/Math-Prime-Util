@@ -1,5 +1,11 @@
 Revision history for Perl module Math::Prime::Util
 
+0.52 2015-?
+
+    [Misc]
+
+    - Check for old MPFR now using C library version, not module version.
+
 0.51 2015-06-21
 
     [ADDED]
