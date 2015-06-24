@@ -1519,15 +1519,23 @@ sub sum_primes {
   my $sum = 0;
   $sum = BZERO->copy if ( (MPU_32BIT && $high >        323_380) ||
                           (MPU_64BIT && $high > 29_505_444_490) );
-  if ($high >= $low) {
-    my $p1 = $low;
-    while ($p1 <= $high) {
-      my $p2 = $p1 + 10_000_000;
-      $p2 = $high if $p2 > $high;
-      $sum += vecsum( @{primes($p1,$p2)} );
-      last if $p2 == $high;
-      $p1 = $p2+1;
-    }
+
+  # It's very possible we're here because they've counted too high.  Skip fwd.
+  if ($low <= 2 && $high >= 29505444491) {
+    $low = 29505444503;
+    $sum = Math::BigInt->new("18446744087046669523");
+  }
+
+  return $sum if $low > $high;
+
+  my $xssum = (MPU_64BIT && $high < 5e13 && Math::Prime::Util::prime_get_config()->{'xs'});
+  while ($low <= $high) {
+    my $next = $low + 10_000_000 - 1;
+    $next = $high if $next > $high;
+    $sum += ($xssum) ? Math::Prime::Util::sum_primes($low,$next)
+                     : vecsum( @{primes($low,$next)} );
+    last if $next == $high;
+    $low = $next;
   }
   $sum;
 }
