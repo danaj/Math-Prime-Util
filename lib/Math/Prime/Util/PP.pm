@@ -1706,6 +1706,15 @@ sub chinese {
   return 0 unless scalar @_;
   return $_[0]->[0] % $_[0]->[1] if scalar @_ == 1;
   my($lcm, $sum);
+
+  if (defined &Math::Prime::Util::GMP::chinese && Math::Prime::Util::prime_get_config()->{'gmp'}) {
+    $sum = Math::Prime::Util::GMP::chinese(@_);
+    if (defined $sum) {
+      $sum = Math::BigInt->new($sum);
+      $sum = _bigint_to_int($sum) if ref($sum) && $sum->bacmp(BMAX) <= 0;
+    }
+    return $sum;
+  }
   foreach my $aref (sort { $b->[1] <=> $a->[1] } @_) {
     my($ai, $ni) = @$aref;
     $ai = Math::BigInt->new("$ai") if !ref($ai) && (abs($ai) > (~0>>1) || OLD_PERL_VERSION);
