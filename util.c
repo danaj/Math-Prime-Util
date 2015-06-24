@@ -1222,6 +1222,15 @@ int sum_primes(UV low, UV high, UV *return_sum) {
   if ((low <= 5) && (high >= 5)) sum += 5;
   if (low < 7) low = 7;
 
+  /* If we know the range will overflow, return now */
+#if BITS_PER_WORD == 64
+  if (low == 7 && high >= 29505444491)  return 0;
+  if (low >= 1e10 && (high-low) >= 32e9) return 0;
+  if (low >= 1e13 && (high-low) >=  5e7) return 0;
+#else
+  if (low == 7 && high >= 323381)  return 0;
+#endif
+
   if (low <= high) {
     unsigned char* segment;
     UV seg_base, seg_low, seg_high;
