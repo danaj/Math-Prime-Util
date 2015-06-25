@@ -2427,8 +2427,8 @@ for large inputs.  For example, computing Mertens(100M) takes:
 
    time    approx mem
      0.4s      0.1MB   mertens(100_000_000)
-     5.6s    880MB     vecsum(moebius(1,100_000_000))
-    98s        0MB     $sum += moebius($_) for 1..100_000_000
+     3.0s    880MB     vecsum(moebius(1,100_000_000))
+    56s        0MB     $sum += moebius($_) for 1..100_000_000
 
 The summation of individual terms via factoring is quite expensive in time,
 though uses O(1) space.  Using the range version of moebius is much faster,
@@ -3489,11 +3489,14 @@ Project Euler, problem 7 (10001st prime):
 
 Project Euler, problem 10 (summation of primes):
 
+  use Math::Prime::Util qw/sum_primes/;
+  say sum_primes(2_000_000);
+  #  ... or do it a little more manually ...
   use Math::Prime::Util qw/forprimes/;
   my $sum = 0;
   forprimes { $sum += $_ } 2_000_000;
   say $sum;
-  # Or (fine for this size, not good for very large values)
+  #  ... or do it using a big list ...
   use Math::Prime::Util qw/vecsum primes/;
   say vecsum( @{primes(2_000_000)} );
 
@@ -3542,7 +3545,7 @@ Here is the right way to do PE problem 69 (under 0.03s):
   $n++ while pn_primorial($n+1) < 1000000;
   say pn_primorial($n);
 
-Project Euler, problem 187, stupid brute force solution, 2 to 3 minutes:
+Project Euler, problem 187, stupid brute force solution, 1 to 2 minutes:
 
   use Math::Prime::Util qw/forcomposites factor/;
   my $nsemis = 0;
