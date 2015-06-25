@@ -35,7 +35,7 @@ static const unsigned char distancewheel30[30] =
 static const unsigned char wheeladvance30[30] =
     {1,6,5,4,3,2,1,4,3,2,1,2,1,4,3,2,1,2,1,4,3,2,1,6,5,4,3,2,1,2};
 /* subtract this from n to get to the previous wheel location */
-static const unsigned char wheelretreat[30] =
+static const unsigned char wheelretreat30[30] =
     {1,2,1,2,3,4,5,6,1,2,3,4,1,2,1,2,3,4,1,2,1,2,3,4,1,2,3,4,5,6};
 /* Given a sieve byte, this indicates the first zero */
 static const unsigned char nextzero30[256] =

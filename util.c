@@ -277,7 +277,7 @@ UV prev_prime(UV n)
 
   m = n % 30;
   do { /* Move back one. */
-    n -= wheelretreat[m];
+    n -= wheelretreat30[m];
     m = prevwheel30[m];
   } while (!is_prob_prime(n));
   return n;
