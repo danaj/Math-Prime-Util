@@ -37,6 +37,16 @@ static const unsigned char wheeladvance30[30] =
 /* subtract this from n to get to the previous wheel location */
 static const unsigned char wheelretreat[30] =
     {1,2,1,2,3,4,5,6,1,2,3,4,1,2,1,2,3,4,1,2,1,2,3,4,1,2,3,4,5,6};
+/* Given a sieve byte, this indicates the first zero */
+static const unsigned char nextzero[256] = {
+0,1,0,2,0,1,0,3,0,1,0,2,0,1,0,4,0,1,0,2,0,1,0,3,0,1,0,2,0,1,0,5,0,1,0,2,0,1,
+0,3,0,1,0,2,0,1,0,4,0,1,0,2,0,1,0,3,0,1,0,2,0,1,0,6,0,1,0,2,0,1,0,3,0,1,0,2,
+0,1,0,4,0,1,0,2,0,1,0,3,0,1,0,2,0,1,0,5,0,1,0,2,0,1,0,3,0,1,0,2,0,1,0,4,0,1,
+0,2,0,1,0,3,0,1,0,2,0,1,0,7,0,1,0,2,0,1,0,3,0,1,0,2,0,1,0,4,0,1,0,2,0,1,0,3,
+0,1,0,2,0,1,0,5,0,1,0,2,0,1,0,3,0,1,0,2,0,1,0,4,0,1,0,2,0,1,0,3,0,1,0,2,0,1,
+0,6,0,1,0,2,0,1,0,3,0,1,0,2,0,1,0,4,0,1,0,2,0,1,0,3,0,1,0,2,0,1,0,5,0,1,0,2,
+0,1,0,3,0,1,0,2,0,1,0,4,0,1,0,2,0,1,0,3,0,1,0,2,0,1,0,8
+};
 
 
 #ifdef FUNC_is_prime_in_sieve
@@ -91,27 +101,28 @@ static UV prev_prime_in_sieve(const unsigned char* sieve, UV p) {
     UV l_ = b; \
     UV d_ = p/30; \
     UV lastd_ = (l_-base_)/30; \
-    UV mask_ = masktab30[ p-d_*30 + distancewheel30[ p-d_*30 ] ]; \
-    UV s_ = sieve_[d_]; \
-    while (d_ <= lastd_ && (s_ & mask_)) { \
-      mask_ <<= 1;  if (mask_ > 128) { s_ = sieve_[++d_]; mask_ = 1; } \
-    } \
+    UV bit_; \
+    unsigned char s_ = sieve_[d_]; \
+    /* mask out unused parts of s_ based on p-d_30 */ \
+    s_ |= masktab30[ p-d_*30 + distancewheel30[ p-d_*30 ] ] - 1; \
     base_ += d_*30; \
-    p = base_ + imask30[mask_]; \
-    while ( p <= l_ ) { \
+    while (1) { \
+      if (s_ == 0xFF) { \
+        do { \
+          base_ += 30;  d_++; \
+          if (d_ > lastd_) break; \
+          s_ = sieve_[d_]; \
+        } while (s_ == 0xFF); \
+        if (d_ > lastd_) break; \
+      } \
+      bit_ = nextzero[s_]; \
+      s_ |= 1 << bit_; \
+      p = base_ + wheel30[bit_]; \
+      if (p > l_ || p < base_) break; \
+      { \
 
 #define END_DO_FOR_EACH_SIEVE_PRIME \
-      do { \
-        mask_ <<= 1; \
-        if (mask_ > 128) { \
-          do { \
-            base_ += 30; d_++; \
-          } while (d_ <= lastd_ && (s_ = sieve_[d_]) == 0xFF); \
-          if (d_ > lastd_) break; \
-          mask_ = 1; \
-        } \
-      } while (s_ & mask_); \
-      p = base_ + imask30[mask_]; \
+      } \
     } \
   }
 
