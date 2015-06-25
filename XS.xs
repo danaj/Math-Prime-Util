@@ -1620,12 +1620,17 @@ forcomposites (SV* block, IN SV* svbeg, IN SV* svend = 0)
         nextprime = (end >= MPU_MAX_PRIME) ? MPU_MAX_PRIME : next_prime(end);
         ctx = start_segment_primes(beg, nextprime, &segment);
         while (next_segment_primes(ctx, &seg_base, &seg_low, &seg_high)) {
+          int crossuv = (seg_high > IV_MAX) && !SvIsUV(svarg);
           START_DO_FOR_EACH_SIEVE_PRIME( segment, seg_base, seg_low, seg_high )
             cbeg = prevprime+1;  if (cbeg < beg) cbeg = beg;
             prevprime = p;
             cend = prevprime-1;  if (cend > end) cend = end;
-            for (c = cbeg; c <= cend; c++) {
-              if (!ix || c & 1) { sv_setuv(svarg, c);  MULTICALL; }
+            /* If ix=1, skip evens by starting 1 farther and skipping by 2 */
+            for (c = cbeg + ix; c <= cend; c=c+1+ix) {
+              if      (SvTYPE(svarg) != SVt_IV) { sv_setuv(svarg,c); }
+              else if (crossuv && c > IV_MAX)   { sv_setuv(svarg,c); crossuv=0;}
+              else                              { SvUV_set(svarg,c); }
+              MULTICALL;
             }
           END_DO_FOR_EACH_SIEVE_PRIME
         }

@@ -9,6 +9,8 @@ Revision history for Perl module Math::Prime::Util
     - Rewrote some internal sieve-walking code, speeds up next_prime,
       forprimes, print_primes, and more.
 
+    - Small speedup for forcomposites / foroddcomposites.
+
     [Misc]
 
     - Check for old MPFR now using C library version, not module version.
