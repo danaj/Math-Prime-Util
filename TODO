@@ -108,5 +108,3 @@
 - Support FH for print_primes.  PerlIO_write is giving me fits.
 
 - Test for print_primes.  Not as easy with filenos.
-
-- Apply new sieve walking code to all uses.

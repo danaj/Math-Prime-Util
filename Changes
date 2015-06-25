@@ -6,6 +6,9 @@ Revision history for Perl module Math::Prime::Util
 
     - Double speed of sum_primes.
 
+    - Rewrote some internal sieve-walking code, speeds up next_prime,
+      forprimes, and some others.
+
     [Misc]
 
     - Check for old MPFR now using C library version, not module version.
