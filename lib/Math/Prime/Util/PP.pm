@@ -1535,7 +1535,7 @@ sub sum_primes {
     $sum += ($xssum) ? Math::Prime::Util::sum_primes($low,$next)
                      : vecsum( @{primes($low,$next)} );
     last if $next == $high;
-    $low = $next;
+    $low = $next+1;
   }
   $sum;
 }
@@ -1551,7 +1551,7 @@ sub print_primes {
   if ($high >= $low) {
     my $p1 = $low;
     while ($p1 <= $high) {
-      my $p2 = $p1 + 10_000_000;
+      my $p2 = $p1 + 10_000_000 - 1;
       $p2 = $high if $p2 > $high;
       print $fh join("\n", @{primes($p1,$p2)}), "\n";
       $p1 = $p2+1;
