@@ -52,7 +52,7 @@ WriteMakefile1(
                       'bignum'           => '0.22',   # 'use bigint' in tests
                     },
     PREREQ_PM    => {
-                      'Exporter'         => '5.562',
+                      'Exporter'         => '5.57',
                       'XSLoader'         => '0.01',
                       'Carp'             => ($] < 5.008) ? '1.17' : 0,
                       'Tie::Array'       => 0,
