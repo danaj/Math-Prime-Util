@@ -355,7 +355,7 @@ prime_count(IN SV* svlo, ...)
         } else if (ix == 3) {
           lostatus = sum_primes(lo, hi, &count);
         } else if (ix == 4) {
-          int fd = (items < 2) ? fileno(stdout) : my_sviv(ST(2));
+          int fd = (items < 3) ? fileno(stdout) : my_sviv(ST(2));
           print_primes(lo, hi, fd);
           XSRETURN_EMPTY;
         } else if (ix == 1 || (hi / (hi-lo+1)) > 100) {

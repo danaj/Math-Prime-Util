@@ -4,6 +4,8 @@ Revision history for Perl module Math::Prime::Util
 
     [FUNCTIONALITY AND PERFORMANCE]
 
+    - print_primes with 2 args was sending to wrong fileno.
+
     - Double speed of sum_primes.
 
     - Rewrote some internal sieve-walking code, speeds up next_prime,
