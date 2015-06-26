@@ -227,6 +227,10 @@ static int _vcallsubn(pTHX_ I32 flags, I32 stashflags, const char* name, int nar
                       ? HvNAME_get(SvSTASH(SvRV(input))) : 0; \
     if (iname == 0 || strEQ(iname, "Math::BigInt")) { \
       _vcallsub("_to_bigint"); /* Turn into bigint */ \
+    } else if (iname == 0 || strEQ(iname, "Math::GMPz")) { \
+      _vcallsub("_to_gmpz"); \
+    } else if (iname == 0 || strEQ(iname, "Math::GMP")) { \
+      _vcallsub("_to_gmp"); \
     } else { /* Return it as: ref(input)->new(result) */ \
       dSP;  ENTER;  PUSHMARK(SP); \
       XPUSHs(sv_2mortal(newSVpv(iname, 0)));  XPUSHs(resptr); \

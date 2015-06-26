@@ -210,6 +210,14 @@ sub _to_bigint {
     unless defined $Math::BigInt::VERSION;
   return (ref($_[0]) eq 'Math::BigInt') ? $_[0] : Math::BigInt->new("$_[0]");
 }
+sub _to_gmpz {
+  do { require Math::GMPz; } unless defined $Math::GMPz::VERSION;
+  return (ref($_[0]) eq 'Math::GMPz') ? $_[0] : Math::GMPz->new($_[0]);
+}
+sub _to_gmp {
+  do { require Math::GMP; } unless defined $Math::GMP::VERSION;
+  return (ref($_[0]) eq 'Math::GMP') ? $_[0] : Math::GMP->new($_[0]);
+}
 sub _reftyped {
   return unless defined $_[1];
   my $ref0 = ref($_[0]);
