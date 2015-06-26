@@ -1528,9 +1528,10 @@ sub sum_primes {
 
   return $sum if $low > $high;
 
-  my $xssum = (MPU_64BIT && $high < 5e13 && Math::Prime::Util::prime_get_config()->{'xs'});
+  my $xssum = (MPU_64BIT && $high < 6e14 && Math::Prime::Util::prime_get_config()->{'xs'});
+  my $step = ($xssum && $high > 5e13) ? 1_000_000 : 10_000_000;
   while ($low <= $high) {
-    my $next = $low + 10_000_000 - 1;
+    my $next = $low + $step - 1;
     $next = $high if $next > $high;
     $sum += ($xssum) ? Math::Prime::Util::sum_primes($low,$next)
                      : vecsum( @{primes($low,$next)} );
