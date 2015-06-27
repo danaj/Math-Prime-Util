@@ -1200,6 +1200,29 @@ int is_ramanujan_prime(UV n) {
   return (rn == n);
 }
 
+#if 0
+/* Combinatorial sum of primes < n.  Call with phisum(n, isqrt(n)).
+ * Needs optimization, either caching, Lehmer, or LMO.
+ * http://mathoverflow.net/questions/81443/fastest-algorithm-to-compute-the-sum-of-primes
+ * http://www.ams.org/journals/mcom/2009-78-268/S0025-5718-09-02249-2/S0025-5718-09-02249-2.pdf
+ * http://mathematica.stackexchange.com/questions/80291/efficient-way-to-sum-all-the-primes-below-n-million-in-mathematica
+ */
+static UV phisum(UV n, UV a) {
+  UV origa, pa, res;
+  if (n < 2)  return 0;
+  if (a == 0) return ((n+1)*n)/2 - 1;
+  if (a == 1 || n < 9)  return ((n+1)>>1)*((n+1)>>1)+1;
+  if (a == 2 || n < 16)  return ((n+1)>>1)*((n+1)>>1) - 3*((n/3+1)>>1)*((n/3+1)>>1) + 4;
+
+  pa = nth_prime(a);
+  origa = a;
+  while (n < pa*pa)
+    pa = nth_prime(--a);
+  res = phisum(n, a-1) - pa * (phisum(n/pa, a-1) - phisum(pa-1, a-1));
+  return res;
+}
+#endif
+
 static const unsigned char byte_sum[256] =
   {120,119,113,112,109,108,102,101,107,106,100,99,96,95,89,88,103,102,96,95,92,
    91,85,84,90,89,83,82,79,78,72,71,101,100,94,93,90,89,83,82,88,87,81,80,77,

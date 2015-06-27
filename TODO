@@ -108,3 +108,7 @@
 - Support FH for print_primes.  PerlIO_write is giving me fits.
 
 - Test for print_primes.  Not as easy with filenos.
+
+- We should have a way to exit a forprimes loop.  E.g. add a lastfor() call.
+  Nested calls are doable, but threading is a bear.  Perhaps do a first
+  version that is non-threadsafe.
