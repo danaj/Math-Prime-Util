@@ -1342,13 +1342,38 @@ sub prime_count_lower {
 
   if ($x >= 5589603006000 &&              # Schoenfeld / Büthe 2014 Th 7.4
       ($x < 1.4e25 || Math::Prime::Util::prime_get_config()->{'assume_rh'}) ) {
-    my $lix = LogarithmicIntegral($x);
-    my $sqx = sqrt($x);
-    if (ref($x) eq 'Math::BigFloat') {
-      my $xdigits = _find_big_acc($x);
-      $result = $lix - ($fl1*$sqx / (Math::BigFloat->bpi($xdigits)*8));
+    if (_MPFR_available()) {
+      my $wantbf = (defined $bignum::VERSION || ref($x) =~ /^Math::Big/);
+      my $xdigits = length($x);
+      $xdigits += length(int(log(0.0+"$x"))) + 1;
+      my $rnd = 0;  # MPFR_RNDN;
+      my $bit_precision = int($xdigits * 3.322) + 4;
+      my $rx = Math::MPFR->new();
+      Math::MPFR::Rmpfr_set_prec($rx, $bit_precision);
+      Math::MPFR::Rmpfr_set_str($rx, "$x", 10, $rnd);
+      my $lix = Math::MPFR->new();
+      Math::MPFR::Rmpfr_set_prec($lix, $bit_precision);
+      Math::MPFR::Rmpfr_set_str($lix, LogarithmicIntegral($x,1),10,$rnd);
+      my $sqx = Math::MPFR->new();
+      Math::MPFR::Rmpfr_set_prec($sqx, $bit_precision);
+      Math::MPFR::Rmpfr_sqrt($sqx, $rx, $bit_precision);
+      Math::MPFR::Rmpfr_log($rx, $rx, $rnd);
+      Math::MPFR::Rmpfr_mul($rx, $rx, $sqx, $rnd);
+      Math::MPFR::Rmpfr_const_pi($sqx, $rnd);
+      Math::MPFR::Rmpfr_mul_ui($sqx, $sqx, 8, $rnd);
+      Math::MPFR::Rmpfr_div($rx, $rx, $sqx, $rnd);
+      Math::MPFR::Rmpfr_sub($rx, $lix, $rx, $rnd);
+      my $strval = Math::MPFR::Rmpfr_integer_string($rx, 10, $rnd);
+      $result = ($wantbf) ? Math::BigInt->new($strval) : int($strval);
     } else {
-      $result = $lix - ($fl1*$sqx / PI_TIMES_8);
+      my $lix = LogarithmicIntegral($x);
+      my $sqx = sqrt($x);
+      if (ref($x) eq 'Math::BigFloat') {
+        my $xdigits = _find_big_acc($x);
+        $result = $lix - ($fl1*$sqx / (Math::BigFloat->bpi($xdigits)*8));
+      } else {
+        $result = $lix - ($fl1*$sqx / PI_TIMES_8);
+      }
     }
   } elsif ($x < 599) {                    # Decent for small numbers
     $result = $x / ($fl1 - 0.7);
@@ -1365,9 +1390,54 @@ sub prime_count_lower {
     else                    { $a = 2.32; }
     $result = ($x/$fl1) * ($one + $one/$fl1 + $a/$fl2);
   } else {                                # Axler 2014 1.4
-    my($fl3,$fl4) = ($fl2*$fl1,$fl2*$fl2);
-    my($fl5,$fl6) = ($fl4*$fl1,$fl4*$fl2);
-    $result = $x / ($fl1 - $one - $one/$fl1 - 2.65/$fl2 - 13.35/$fl3 - 70.3/$fl4 - 455.6275/$fl5 - 3404.4225/$fl6);
+    if (_MPFR_available()) {
+      my $wantbf = (defined $bignum::VERSION || ref($x) =~ /^Math::Big/);
+      my $xdigits = length($x);
+      $xdigits += length(int(log(0.0+"$x"))) + 1;
+      my $rnd = 0;  # MPFR_RNDN;
+      my $bit_precision = int($xdigits * 3.322) + 4;
+      my $rx = Math::MPFR->new();
+      Math::MPFR::Rmpfr_set_prec($rx, $bit_precision);
+      Math::MPFR::Rmpfr_set_str($rx, "$x", 10, $rnd);
+      my $term = Math::MPFR->new();
+      Math::MPFR::Rmpfr_set_prec($term, $bit_precision);
+      my $logx = Math::MPFR->new();
+      Math::MPFR::Rmpfr_set_prec($logx, $bit_precision);
+      my $loglogx = Math::MPFR->new();
+      Math::MPFR::Rmpfr_set_prec($loglogx, $bit_precision);
+      my $div = Math::MPFR->new();
+      Math::MPFR::Rmpfr_set_prec($div, $bit_precision);
+      Math::MPFR::Rmpfr_log($logx, $rx, $rnd);
+      Math::MPFR::Rmpfr_set_ui($loglogx, 1, $rnd);
+      Math::MPFR::Rmpfr_sub_ui($div, $logx, 1, $rnd);
+
+      Math::MPFR::Rmpfr_mul($loglogx, $loglogx, $logx, $rnd);
+      Math::MPFR::Rmpfr_d_div($term, 1.0, $loglogx, $rnd);
+      Math::MPFR::Rmpfr_sub($div, $div, $term, $rnd);
+      Math::MPFR::Rmpfr_mul($loglogx, $loglogx, $logx, $rnd);
+      Math::MPFR::Rmpfr_d_div($term, 2.65, $loglogx, $rnd);
+      Math::MPFR::Rmpfr_sub($div, $div, $term, $rnd);
+      Math::MPFR::Rmpfr_mul($loglogx, $loglogx, $logx, $rnd);
+      Math::MPFR::Rmpfr_d_div($term, 13.35, $loglogx, $rnd);
+      Math::MPFR::Rmpfr_sub($div, $div, $term, $rnd);
+      Math::MPFR::Rmpfr_mul($loglogx, $loglogx, $logx, $rnd);
+      Math::MPFR::Rmpfr_d_div($term, 70.3, $loglogx, $rnd);
+      Math::MPFR::Rmpfr_sub($div, $div, $term, $rnd);
+      Math::MPFR::Rmpfr_mul($loglogx, $loglogx, $logx, $rnd);
+      Math::MPFR::Rmpfr_d_div($term, 465.6275, $loglogx, $rnd);
+      Math::MPFR::Rmpfr_sub($div, $div, $term, $rnd);
+      Math::MPFR::Rmpfr_mul($loglogx, $loglogx, $logx, $rnd);
+      Math::MPFR::Rmpfr_d_div($term, 3404.4225, $loglogx, $rnd);
+      Math::MPFR::Rmpfr_sub($div, $div, $term, $rnd);
+
+      Math::MPFR::Rmpfr_div($rx, $rx, $div, $rnd);
+      my $strval = Math::MPFR::Rmpfr_integer_string($rx, 10, $rnd);
+      $result = ($wantbf) ? Math::BigInt->new($strval) : int($strval);
+    } else {
+      my($fl3,$fl4) = ($fl2*$fl1,$fl2*$fl2);
+      my($fl5,$fl6) = ($fl4*$fl1,$fl4*$fl2);
+      $result = $x / ($fl1 - $one - $one/$fl1 - 2.65/$fl2 - 13.35/$fl3 - 70.3/$fl4 - 455.6275/$fl5 - 3404.4225/$fl6);
+    }
   }
 
   return Math::BigInt->new($result->bfloor->bstr()) if ref($result) eq 'Math::BigFloat';
@@ -1432,18 +1502,88 @@ sub prime_count_upper {
     $result = LogarithmicIntegral($x) - $a * $fl1*sqrt($x)/PI_TIMES_8;
   } elsif ($x < 1.4e25 || Math::Prime::Util::prime_get_config()->{'assume_rh'}) {
                                             # Schoenfeld / Büthe 2014 Th 7.4
-    my $lix = LogarithmicIntegral($x);
-    my $sqx = sqrt($x);
-    if (ref($x) eq 'Math::BigFloat') {
-      my $xdigits = _find_big_acc($x);
-      $result = $lix + ($fl1*$sqx / (Math::BigFloat->bpi($xdigits)*8));
+    if (_MPFR_available()) {
+      my $wantbf = (defined $bignum::VERSION || ref($x) =~ /^Math::Big/);
+      my $xdigits = length($x);
+      $xdigits += length(int(log(0.0+"$x"))) + 1;
+      my $rnd = 0;  # MPFR_RNDN;
+      my $bit_precision = int($xdigits * 3.322) + 4;
+      my $rx = Math::MPFR->new();
+      Math::MPFR::Rmpfr_set_prec($rx, $bit_precision);
+      Math::MPFR::Rmpfr_set_str($rx, "$x", 10, $rnd);
+      my $lix = Math::MPFR->new();
+      Math::MPFR::Rmpfr_set_prec($lix, $bit_precision);
+      Math::MPFR::Rmpfr_set_str($lix, LogarithmicIntegral($x,1),10,$rnd);
+      my $sqx = Math::MPFR->new();
+      Math::MPFR::Rmpfr_set_prec($sqx, $bit_precision);
+      Math::MPFR::Rmpfr_sqrt($sqx, $rx, $bit_precision);
+      Math::MPFR::Rmpfr_log($rx, $rx, $rnd);
+      Math::MPFR::Rmpfr_mul($rx, $rx, $sqx, $rnd);
+      Math::MPFR::Rmpfr_const_pi($sqx, $rnd);
+      Math::MPFR::Rmpfr_mul_ui($sqx, $sqx, 8, $rnd);
+      Math::MPFR::Rmpfr_div($rx, $rx, $sqx, $rnd);
+      Math::MPFR::Rmpfr_add($rx, $lix, $rx, $rnd);
+      my $strval = Math::MPFR::Rmpfr_integer_string($rx, 10, $rnd);
+      $result = ($wantbf) ? Math::BigInt->new($strval) : int($strval);
     } else {
-      $result = $lix + ($fl1*$sqx / PI_TIMES_8);
+      my $lix = LogarithmicIntegral($x);
+      my $sqx = sqrt($x);
+      if (ref($x) eq 'Math::BigFloat') {
+        my $xdigits = _find_big_acc($x);
+        $result = $lix + ($fl1*$sqx / (Math::BigFloat->bpi($xdigits)*8));
+      } else {
+        $result = $lix + ($fl1*$sqx / PI_TIMES_8);
+      }
     }
   } else {                                  # Axler 2014 1.3
-    my($fl3,$fl4) = ($fl2*$fl1,$fl2*$fl2);
-    my($fl5,$fl6) = ($fl4*$fl1,$fl4*$fl2);
-    $result = $x / ($fl1 - $one - $one/$fl1 - 3.35/$fl2 - 12.65/$fl3 - 71.7/$fl4 - 466.1275/$fl5 - 3489.8225/$fl6);
+    if (_MPFR_available()) {
+      my $wantbf = (defined $bignum::VERSION || ref($x) =~ /^Math::Big/);
+      my $xdigits = length($x);
+      $xdigits += length(int(log(0.0+"$x"))) + 1;
+      my $rnd = 0;  # MPFR_RNDN;
+      my $bit_precision = int($xdigits * 3.322) + 4;
+      my $rx = Math::MPFR->new();
+      Math::MPFR::Rmpfr_set_prec($rx, $bit_precision);
+      Math::MPFR::Rmpfr_set_str($rx, "$x", 10, $rnd);
+      my $term = Math::MPFR->new();
+      Math::MPFR::Rmpfr_set_prec($term, $bit_precision);
+      my $logx = Math::MPFR->new();
+      Math::MPFR::Rmpfr_set_prec($logx, $bit_precision);
+      my $loglogx = Math::MPFR->new();
+      Math::MPFR::Rmpfr_set_prec($loglogx, $bit_precision);
+      my $div = Math::MPFR->new();
+      Math::MPFR::Rmpfr_set_prec($div, $bit_precision);
+      Math::MPFR::Rmpfr_log($logx, $rx, $rnd);
+      Math::MPFR::Rmpfr_set_ui($loglogx, 1, $rnd);
+      Math::MPFR::Rmpfr_sub_ui($div, $logx, 1, $rnd);
+
+      Math::MPFR::Rmpfr_mul($loglogx, $loglogx, $logx, $rnd);
+      Math::MPFR::Rmpfr_d_div($term, 1.0, $loglogx, $rnd);
+      Math::MPFR::Rmpfr_sub($div, $div, $term, $rnd);
+      Math::MPFR::Rmpfr_mul($loglogx, $loglogx, $logx, $rnd);
+      Math::MPFR::Rmpfr_d_div($term, 3.35, $loglogx, $rnd);
+      Math::MPFR::Rmpfr_sub($div, $div, $term, $rnd);
+      Math::MPFR::Rmpfr_mul($loglogx, $loglogx, $logx, $rnd);
+      Math::MPFR::Rmpfr_d_div($term, 12.65, $loglogx, $rnd);
+      Math::MPFR::Rmpfr_sub($div, $div, $term, $rnd);
+      Math::MPFR::Rmpfr_mul($loglogx, $loglogx, $logx, $rnd);
+      Math::MPFR::Rmpfr_d_div($term, 71.7, $loglogx, $rnd);
+      Math::MPFR::Rmpfr_sub($div, $div, $term, $rnd);
+      Math::MPFR::Rmpfr_mul($loglogx, $loglogx, $logx, $rnd);
+      Math::MPFR::Rmpfr_d_div($term, 466.1275, $loglogx, $rnd);
+      Math::MPFR::Rmpfr_sub($div, $div, $term, $rnd);
+      Math::MPFR::Rmpfr_mul($loglogx, $loglogx, $logx, $rnd);
+      Math::MPFR::Rmpfr_d_div($term, 3489.8225, $loglogx, $rnd);
+      Math::MPFR::Rmpfr_sub($div, $div, $term, $rnd);
+
+      Math::MPFR::Rmpfr_div($rx, $rx, $div, $rnd);
+      my $strval = Math::MPFR::Rmpfr_integer_string($rx, 10, $rnd);
+      $result = ($wantbf) ? Math::BigInt->new($strval) : int($strval);
+    } else {
+      my($fl3,$fl4) = ($fl2*$fl1,$fl2*$fl2);
+      my($fl5,$fl6) = ($fl4*$fl1,$fl4*$fl2);
+      $result = $x / ($fl1 - $one - $one/$fl1 - 3.35/$fl2 - 12.65/$fl3 - 71.7/$fl4 - 466.1275/$fl5 - 3489.8225/$fl6);
+    }
   }
 
   return Math::BigInt->new($result->bfloor->bstr()) if ref($result) eq 'Math::BigFloat';
@@ -4304,17 +4444,21 @@ sub ExponentialIntegral {
 }
 
 sub LogarithmicIntegral {
-  my($x) = @_;
+  my($x,$opt) = @_;
   return 0              if $x == 0;
   return - MPU_INFINITY if $x == 1;
   return MPU_INFINITY   if $x == MPU_INFINITY;
   croak "Invalid input to LogarithmicIntegral:  x must be > 0" if $x <= 0;
+  $opt = 0 unless defined $opt;
 
   # Remember MPFR eint doesn't handle negative inputs
   if ($x >= 1 && _MPFR_available()) {
     my $wantbf = 0;
     my $xdigits = 18;
-    if (defined $bignum::VERSION || ref($x) =~ /^Math::Big/) {
+    if ($opt) {
+      $wantbf = length($x);
+      $xdigits = $wantbf;
+    } elsif (defined $bignum::VERSION || ref($x) =~ /^Math::Big/) {
       $wantbf = _find_big_acc($x);
       $xdigits = $wantbf;
     }

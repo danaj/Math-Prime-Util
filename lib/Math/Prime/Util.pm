@@ -802,7 +802,7 @@ sub LogarithmicIntegral {
   }
 
   require Math::Prime::Util::PP;
-  return Math::Prime::Util::PP::LogarithmicIntegral($n);
+  return Math::Prime::Util::PP::LogarithmicIntegral(@_);
 }
 
 sub LambertW {

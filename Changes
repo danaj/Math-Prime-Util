@@ -17,6 +17,8 @@ Revision history for Perl module Math::Prime::Util
 
     - Check for old MPFR now using C library version, not module version.
 
+    - prime_count_{lower,upper} now uses MPFR to give full precision.
+
 0.51 2015-06-21
 
     [ADDED]
