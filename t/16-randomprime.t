@@ -159,7 +159,7 @@ foreach my $high (@random_to) {
 foreach my $digits ( @random_ndigit_tests ) {
   my $n = random_ndigit_prime($digits);
   ok ( length($n) == $digits && is_prime($n),
-       "$digits-digit random prime is in range and prime");
+       "$digits-digit random prime '$n' is in range and prime");
 }
 
 foreach my $bits ( @random_nbit_tests ) {
@@ -178,7 +178,7 @@ sub check_bits {
   my $max = ~0 >> ($maxbits - $bits);
   $max = Math::BigInt->new("$max") if ref($n) eq 'Math::BigInt';
   ok ( $n >= $min && $n <= $max && is_prime($n),
-       "$bits-bit random $what prime is in range and prime");
+       "$bits-bit random $what prime '$n' is in range and prime");
 }
 prime_set_config(nobigint=>0);
 
@@ -198,7 +198,7 @@ is( random_ndigit_prime(9), 980824987, "random 9-digit with custom irand" );
   is( ref($n), 'Math::BigInt', "random 80-bit prime returns a BigInt" );
   ok(    $n >= Math::BigInt->new(2)->bpow(79)
       && $n <= Math::BigInt->new(2)->bpow(80),
-      "random 80-bit prime is in range" );
+      "random 80-bit prime '$n' is in range" );
 }
 SKIP: {
   skip "Skipping 30-digit random prime with broken 64-bit Perl", 2 if $broken64;
@@ -206,5 +206,5 @@ SKIP: {
   is( ref($n), 'Math::BigInt', "random 30-digit prime returns a BigInt" );
   ok(    $n >= Math::BigInt->new(10)->bpow(29)
       && $n <= Math::BigInt->new(10)->bpow(30),
-      "random 30-digit prime is in range" );
+      "random 30-digit prime '$n' is in range" );
 }
