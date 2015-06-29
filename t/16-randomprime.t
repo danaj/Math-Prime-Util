@@ -190,8 +190,8 @@ prime_set_config(nobigint=>0);
   sub irand { $seed = ( 16807 * $seed ) % 2147483647; }
   prime_set_config( irand => \&irand );
 }
-is( random_nbit_prime(20), 771283, "random 20-bit prime with custom irand" );
-is( random_ndigit_prime(9), 980824987, "random 9-digit with custom irand" );
+is( random_nbit_prime(24), 11069753, "random 20-bit prime with custom irand" );
+is( random_ndigit_prime(9), 410985469, "random 9-digit with custom irand" );
 
 {
   my $n = random_nbit_prime(80);

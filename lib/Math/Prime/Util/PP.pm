@@ -4473,7 +4473,7 @@ sub LogarithmicIntegral {
     Math::MPFR::Rmpfr_set_prec($lix, $bit_precision);
     Math::MPFR::Rmpfr_eint($lix, $rx, $rnd);
     my $strval = Math::MPFR::Rmpfr_get_str($lix, 10, 0, $rnd);
-    return ($wantbf)  ?  Math::BigFloat->new($strval,$wantbf)  :  0.0 + $strval;
+    return ($wantbf)  ?  _upgrade_to_float($strval,$wantbf)  :  0.0 + $strval;
   }
 
   if ($x == 2) {
