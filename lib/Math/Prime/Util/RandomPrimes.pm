@@ -572,7 +572,7 @@ sub random_nbit_prime {
   _set_randf();
 
   # Very small size, use the nth-prime method
-  if ($bits <= 18 && MPU_USE_XS) {
+  if ($bits <= 20 && MPU_USE_XS) {
     if ($bits <= 4) {
       return (2,3)[$_RANDF_NBIT->(1)] if $bits == 2;
       return (5,7)[$_RANDF_NBIT->(1)] if $bits == 3;
