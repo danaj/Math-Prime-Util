@@ -324,7 +324,7 @@ int BPSW(UV const n)
 }
 
 /* Alternate modular lucas sequence code.
- * A bit slower than the normal one, but works with negative input */
+ * A bit slower than the normal one, but works with even valued n. */
 static void alt_lucas_seq(UV* Uret, UV* Vret, UV* Qkret, UV n, UV Pmod, UV Qmod, UV k)
 {
   UV Uh, Vl, Vh, Ql, Qh;
@@ -959,7 +959,7 @@ int is_frobenius_pseudoprime(UV n, IV P, IV Q)
 int is_frobenius_khashin_pseudoprime(UV n)
 {
   int k;
-  UV ra, rb, a, b, d, c = 1;
+  UV ra, rb, a, b, d = n-1, c = 1;
 
   if (n < 7) return (n == 2 || n == 3 || n == 5);
   if ((n % 2) == 0 || n == UV_MAX) return 0;
@@ -972,9 +972,30 @@ int is_frobenius_khashin_pseudoprime(UV n)
   } while (k == 1);
   if (k == 0) return 0;
 
-  /* TODO: This is a naive implementation. */
+#if USE_MONT_PRIMALITY
+  {
+    const uint64_t npi = modular_inverse64(n);
+    const uint64_t mont1 = compute_modn64(n);
+    const uint64_t montc = compute_a_times_2_64_mod_n(c, n, mont1);
+    ra = rb = a = b = mont1;
+    while (d) {
+      if (d & 1) {
+        UV ta=ra, tb=rb;
+        ra = addmod( mont_prod64(ta,a,n,npi), mont_prod64(mont_prod64(tb,b,n,npi),montc,n,npi), n );
+        rb = addmod( mont_prod64(tb,a,n,npi), mont_prod64(ta,b,n,npi), n);
+      }
+      d >>= 1;
+      if (d) {
+        UV t = mont_prod64(mont_prod64(b,b,n,npi),montc,n,npi);
+        b = mont_prod64(b,a,n,npi);
+        b = addmod(b,b,n);
+        a = addmod(mont_prod64(a,a,n,npi),t,n);
+      }
+    }
+    return (ra == mont1 && rb == n-mont1);
+  }
+#else
   ra = rb = a = b = 1;
-  d = n-1;
   while (d) {
     if (d & 1) {
       /* This is faster than the 3-mulmod 5-addmod version */
@@ -991,6 +1012,7 @@ int is_frobenius_khashin_pseudoprime(UV n)
     }
   }
   return (ra == 1 && rb == n-1);
+#endif
 }
 
 /*

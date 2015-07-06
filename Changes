@@ -13,11 +13,15 @@ Revision history for Perl module Math::Prime::Util
 
     - Small speedup for forcomposites / foroddcomposites.
 
+    - is_frobenius_khashin_pseudoprime now uses Montgomery math for speed.
+
     [Misc]
 
     - Check for old MPFR now using C library version, not module version.
 
     - prime_count_{lower,upper} now uses MPFR to give full precision.
+
+    - Montgomery math and uint128_t enabled on Darwin/clang.
 
 0.51 2015-06-21
 
