@@ -118,15 +118,18 @@ typedef __int8 int8_t;
 #endif
 
 /* Try to determine if we have 64-bit available via uint64_t */
-#define HAVE_STD_U64 0
 #if defined(UINT64_MAX) && defined(__UINT64_C)
   #if (UINT64_MAX >= __UINT64_C(18446744073709551615))
-    #undef HAVE_STD_U64
     #define HAVE_STD_U64 1
+  #else
+    #define HAVE_STD_U64 0
   #endif
+#elif defined(_UINT64_T) /* Darwin Clang */
+  #define HAVE_STD_U64 1
 #elif defined(_MSC_VER)   /* We set up the types earlier */
- #undef HAVE_STD_U64
- #define HAVE_STD_U64 1
+  #define HAVE_STD_U64 1
+#else
+  #define HAVE_STD_U64 0
 #endif
 
 #endif
@@ -161,13 +164,18 @@ typedef __int8 int8_t;
 
 #define MPUNOT_REACHED MPUASSUME(0)
 
-#if __GNUC__ == 4 && __GNUC_MINOR__ >= 4 && (defined(__x86_64__) || defined(__powerpc64__))
-#define HAVE_UINT128 1
-  #if __GNUC__ == 4 && __GNUC_MINOR__ >= 4 && __GNUC_MINOR__ < 6
+#if (defined(__SIZEOF_INT128__) || __GNUC__ >= 4) && (defined(__x86_64__) || defined(__powerpc64__))
+  #if __GNUC__ < 4 || (__GNUC__ == 4 && __GNUC_MINOR < 4)
+    #define HAVE_UINT128 0
+  #elif __GNUC__ == 4 && __GNUC_MINOR__ >= 4 && __GNUC_MINOR__ < 6
+    #define HAVE_UINT128 1
     typedef unsigned int uint128_t __attribute__ ((__mode__ (TI)));
   #else
+    #define HAVE_UINT128 1
     typedef unsigned __int128 uint128_t;
   #endif
+#else
+  #define HAVE_UINT128 0
 #endif
 
 #endif

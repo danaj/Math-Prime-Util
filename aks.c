@@ -184,7 +184,7 @@ static void poly_mod_sqr(UV* px, UV* res, UV r, UV mod)
       sum += (s_end*2 == d)  ?  c*c  :  2*c*px[d-s_end];
       rindex = (d < r) ? d : d-r;  /* d % r */
       res[rindex] = (res[rindex] + sum) % mod;
-#if defined(HAVE_UINT128)
+#if HAVE_UINT128
     } else {
       uint128_t max = ((uint128_t)1 << 127) - 1;
       uint128_t c128, sum128 = 0;

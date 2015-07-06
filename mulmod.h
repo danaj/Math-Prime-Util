@@ -61,7 +61,7 @@
   }
   #define addmod(a,b,n) _addmod(a,b,n)
 
-#elif BITS_PER_WORD == 64 && defined(HAVE_UINT128)
+#elif BITS_PER_WORD == 64 && HAVE_UINT128
 
   /* We're 64-bit, using a modern gcc, and the target has some 128-bit type.
    * The actual number of targets that have this implemented are limited. */
