@@ -15,6 +15,10 @@ Revision history for Perl module Math::Prime::Util
 
     - is_frobenius_khashin_pseudoprime now uses Montgomery math for speed.
 
+    - PrimeArray now treats skipping forward by relatively small amounts as
+      forward iteration.  This makes it much more efficient for many cases,
+      but does open up some pathological cases.
+
     [Misc]
 
     - Check for old MPFR now using C library version, not module version.
