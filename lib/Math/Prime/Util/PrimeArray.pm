@@ -10,9 +10,18 @@ BEGIN {
 # parent is cleaner, and in the Perl 5.10.1 / 5.12.0 core, but not earlier.
 # use parent qw( Exporter );
 use base qw( Exporter );
-our @EXPORT_OK = qw( );
+our @EXPORT_OK = qw(@primes @prime @pr @p);
 our %EXPORT_TAGS = (all => [ @EXPORT_OK ]);
 
+# It would be nice to do this dynamically.
+our(@primes, @prime, @pr, @p);
+sub import {
+  tie @primes, __PACKAGE__ if grep { $_ eq '@primes' } @_;
+  tie @prime , __PACKAGE__ if grep { $_ eq '@prime'  } @_;
+  tie @pr    , __PACKAGE__ if grep { $_ eq '@pr'     } @_;
+  tie @p     , __PACKAGE__ if grep { $_ eq '@p'      } @_;
+  goto &Exporter::import;
+}
 
 use Math::Prime::Util qw/nth_prime nth_prime_upper nth_prime_lower primes prime_precalc next_prime prev_prime/;
 use Tie::Array;
@@ -143,10 +152,12 @@ Version 0.51
 
 =head1 SYNOPSIS
 
+  # Use package and create a tied variable
   use Math::Prime::Util::PrimeArray;
-
-  # Create:
   tie my @primes, 'Math::Prime::Util::PrimeArray';
+
+  # or all in one (allowed: @primes, @prime, @pr, @p):
+  use Math::Prime::Util::PrimeArray '@primes';
 
   # Use in a loop by index:
   for my $n (0..9) {

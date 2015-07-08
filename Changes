@@ -19,6 +19,9 @@ Revision history for Perl module Math::Prime::Util
       forward iteration.  This makes it much more efficient for many cases,
       but does open up some pathological cases.
 
+    - PrimeArray now allows exporting @primes (and a few others), which
+      saves some typing.
+
     [Misc]
 
     - Check for old MPFR now using C library version, not module version.
