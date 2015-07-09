@@ -19,6 +19,9 @@ $ilimit = prime_count($nlimit)-1;
 $expect = 0; forprimes { $expect += $_ } $nlimit;
 
 cmpthese($count,{
+  'pa fetch'  => sub { $s=0; my $o = tie my @p, "Math::Prime::Util::PrimeArray";
+                       $s += $o->FETCH($_) for 0..$ilimit;
+                       die unless $s == $expect; },
   'pa index'  => sub { $s=0; tie my @primes, "Math::Prime::Util::PrimeArray";
                        $s += $primes[$_] for 0..$ilimit;
                        die unless $s == $expect; },

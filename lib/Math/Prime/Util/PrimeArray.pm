@@ -62,8 +62,7 @@ sub FETCHSIZE { 0x7FFF_FFFF }   # Even on 64-bit
 
 sub FETCH {
   my ($self, $index) = @_;
-  # We actually don't get negative indices -- they get turned into big numbers
-  croak "Negative index given to prime array" if $index < 0;
+  $index = 0xFFFFFFFF + $index + 1 if $index < 0;
   $index += $self->{SHIFTINDEX};  # take into account any shifts
   my $begidx = $self->{BEG_INDEX};
   my $endidx = $self->{END_INDEX};
@@ -229,6 +228,17 @@ using the C<shift> operation, consider the iterator.
 The size of the array will always be shown as 2147483647 (IV32 max), even in
 a 64-bit environment where primes through C<2^64> are available.
 
+Perl will mask all array arguments to 32-bit, making C<2^32-1> the maximum
+prime through the standard array interface.  It will silently wrap after
+that.  The only way around this is using the object interface:
+
+    use Math::Prime::Util::PrimeArray;
+    my $o = tie my @primes, 'Math::Prime::Util::PrimeArray';
+    say $o->FETCH(2**36);
+
+Here we store the object returned by tie, allowing us to call its FETCH
+method directly.  This is actually faster than using the array.
+
 Some people find the idea of shifting a prime array abhorrent, as after
 two shifts, "the second prime is 7?!".  If this bothers you, do not use
 C<shift> on the tied array.
@@ -240,10 +250,11 @@ C<shift> on the tied array.
   MPU forprimes:  forprimes { $sum += $_ } nth_prime(100_000);
   MPU iterator:   my $it = prime_iterator; $sum += $it->() for 1..100000;
   MPU array:      $sum = vecsum( @{primes(nth_prime(100_000))} );
-  MPUPA:          tie my @primes, ...; $sum += $primes[$_] for 0..99999;
+  MPUPA:          tie my @prime, ...; $sum += $prime[$_] for 0..99999;
+  MPUPA-FETCH:    my $o=tie my @pr, ...; $sum += $o->FETCH($_) for 0..99999;
   MNSP:           my $seq = Math::NumSeq::Primes->new;
                   $sum += ($seq->next)[1] for 1..100000;
-  MPTA:           tie my @primes, ...; $sum += $primes[$_] for 0..99999;
+  MPTA:           tie my @prime, ...; $sum += $prime[$_] for 0..99999;
   List::Gen       $sum = primes->take(100000)->sum
 
 Memory use is comparing the delta between just loading the module and running
@@ -255,8 +266,9 @@ Summing the first 0.1M primes via walking the array:
        .3ms    56k    Math::Prime::Util      sumprimes
        4ms     56k    Math::Prime::Util      forprimes
        4ms    4 MB    Math::Prime::Util      sum big array
-      78ms      0     Math::Prime::Util      prime_iterator
-     101ms    644k    Math::Prime::Util::PrimeArray
+      31ms      0     Math::Prime::Util      prime_iterator
+      68ms    644k    MPU::PrimeArray        using FETCH
+     101ms    644k    MPU::PrimeArray        array
       95ms   1476k    Math::NumSeq::Primes   sequence iterator
     4451ms   32 MB    List::Gen              sequence
     6954ms   61 MB    Math::Prime::TiedArray (extend 1k)
@@ -266,8 +278,9 @@ Summing the first 1M primes via walking the array:
       0.005s  268k    Math::Prime::Util      sumprimes
       0.05s   268k    Math::Prime::Util      forprimes
       0.05s  41 MB    Math::Prime::Util      sum big array
-      1.0s      0     Math::Prime::Util      prime_iterator
-      1.0s    644k    Math::Prime::Util::PrimeArray
+      0.3s      0     Math::Prime::Util      prime_iterator
+      0.7s    644k    MPU::PrimeArray        using FETCH
+      1.0s    644k    MPU::PrimeArray        array
       6.1s   2428k    Math::NumSeq::Primes   sequence iterator
     106.0s   93 MB    List::Gen              sequence
      98.1s  760 MB    Math::Prime::TiedArray (extend 1k)
@@ -277,8 +290,9 @@ Summing the first 10M primes via walking the array:
       0.07s   432k    Math::Prime::Util      sumprimes
       0.5s    432k    Math::Prime::Util      forprimes
       0.6s  394 MB    Math::Prime::Util      sum big array
-     11.2s      0     Math::Prime::Util      prime_iterator
-     10.2s    772k    Math::Prime::Util::PrimeArray
+      3.2s      0     Math::Prime::Util      prime_iterator
+      6.8s    772k    MPU::PrimeArray        using FETCH
+     10.2s    772k    MPU::PrimeArray        array
    1046  s  11.1MB    Math::NumSeq::Primes   sequence iterator
    6763  s  874 MB    List::Gen              sequence
           >5000 MB    Math::Primes::TiedArray (extend 1k)

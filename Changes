@@ -25,6 +25,9 @@ Revision history for Perl module Math::Prime::Util
     - PrimeArray now works for indices up to 2^32-1, after which it silently
       rolls over.  Previously it worked to 2^31-1 then croaked.
 
+    - PrimeIterator now uses small segments instead of always next_prime.
+      A little more memory, but 2-4x faster.
+
     [Misc]
 
     - Check for old MPFR now using C library version, not module version.

@@ -609,7 +609,20 @@ sub prime_iterator {
   #   return sub { $p = next_prime($p); return $p; };
   # but we can optimize a little
   if (ref($p) ne 'Math::BigInt' && $p <= $_XS_MAXVAL) {
-    return sub { $p = next_prime($p); return $p; };
+    # This is simple and low memory, but slower than segments:
+    #     return sub { $p = next_prime($p); return $p; };
+    my $pr = [];
+    return sub {
+      if (scalar(@$pr) == 0) {
+        # Once we're into bigints, just use next_prime
+        return $p=next_prime($p) if $p >= MPU_MAXPRIME;
+        # Get about 10k primes
+        my $segment = ($p <= 1e4) ? 10_000 : int(10000*log($p)+1);
+        $segment = ~0-$p if $p+$segment > ~0 && $p+1 < ~0;
+        $pr = primes($p+1, $p+$segment);
+      }
+      return $p = shift(@$pr);
+    };
   } elsif ($_HAVE_GMP) {
     return sub { $p = $p-$p+Math::Prime::Util::GMP::next_prime($p); return $p;};
   } else {
