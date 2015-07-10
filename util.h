@@ -70,6 +70,7 @@ extern UV carmichael_lambda(UV n);
 extern UV jordan_totient(UV k, UV n);
 extern UV znprimroot(UV n);
 extern UV znorder(UV a, UV n);
+extern int is_primitive_root(UV a, UV p);
 
 extern IV stirling2(UV n, UV m);
 extern IV stirling1(UV n, UV m);

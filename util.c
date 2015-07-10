@@ -1924,6 +1924,21 @@ UV znprimroot(UV n) {
   return 0;
 }
 
+int is_primitive_root(UV a, UV p) {
+  UV fac[MPU_MAX_FACTORS+1], s = p-1;
+  int i, nfacs;
+  /* TODO: if p is not prime, then s = totient(p) */
+  if (gcd_ui(a,p) != 1) return 0;
+  if ((s % 2) == 0 && powmod(a, s/2, p) == 1) return 0;
+  if ((s % 3) == 0 && powmod(a, s/3, p) == 1) return 0;
+  if ((s % 5) == 0 && powmod(a, s/5, p) == 1) return 0;
+  nfacs = factor_exp(s, fac, 0);
+  for (i = 0; i < nfacs; i++) {
+    if (fac[i] > 5 && powmod(a, s/fac[i], p) == 1) return 0;
+  }
+  return 1;
+}
+
 IV gcdext(IV a, IV b, IV* u, IV* v, IV* cs, IV* ct) {
   IV s = 0;  IV os = 1;
   IV t = 1;  IV ot = 0;

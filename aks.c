@@ -49,18 +49,6 @@
 #include "factor.h"
 
 #if IMPL_BORNEMANN
-static int is_primitive_root(UV n, UV r)
-{
-  UV fac[MPU_MAX_FACTORS+1];
-  int i, nfacs;
-  /* if ( (r&1) & powmod(n, (r-1)>>1, r) == 1 )  return 0; */
-  nfacs = factor_exp(r-1, fac, 0);
-  for (i = 0; i < nfacs; i++) {
-    UV m = powmod(n, (r-1)/fac[i], r);
-    if (m == 1) return 0;
-  }
-  return (gcd_ui(n,r) == 1);
-}
 /* We could use lgamma, but it isn't in MSVC and not in pre-C99.  The only
  * sure way to find if it is available is test compilation (ala autoconf).
  * Instead, we'll just use our own implementation.
