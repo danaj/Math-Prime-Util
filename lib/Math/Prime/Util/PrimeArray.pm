@@ -69,7 +69,7 @@ sub FETCH {
 
   if ( $index < $begidx || $index > $endidx ) {
 
-    if ($index > $endidx && $index < $endidx+ALLOW_SKIP) {   # Forward iteration
+    if ($index > $endidx && $index < $endidx + ALLOW_SKIP) { # Forward iteration
 
       $self->{ACCESS_TYPE}++;
       if ($self->{ACCESS_TYPE} > 2 || $index > $endidx+1) {
@@ -80,7 +80,7 @@ sub FETCH {
         push @{$self->{PRIMES}}, next_prime($self->{PRIMES}->[-1]);
       }
 
-    } elsif ($index < $begidx && $index > $begidx-ALLOW_SKIP) { # Back iteration
+    } elsif ($index < $begidx && $index > $begidx - ALLOW_SKIP) { # Bk iteration
 
       $self->{ACCESS_TYPE}--;
       if ($self->{ACCESS_TYPE} < -2 || $index < $begidx-1) {
