@@ -139,17 +139,20 @@ sub _validate_positive_integer {
     croak "Parameter '$n' must be a positive integer"
       if $n->sign() ne '+' || !$n->is_int();
     $_[0] = _bigint_to_int($_[0]) if $n <= BMAX;
+  } elsif (ref($n) eq 'Math::GMPz') {
+    croak "Parameter '$n' must be a positive integer" if Math::GMPz::Rmpz_sgn($n) < 0;
+    $_[0] = _bigint_to_int($_[0]) if $n <= INTMAX;
   } else {
     my $strn = "$n";
     croak "Parameter '$strn' must be a positive integer"
       if $strn eq '' || ($strn =~ tr/0123456789//c && $strn !~ /^\+?\d+$/);
-    if ($n <= (OLD_PERL_VERSION ? 562949953421312 : ~0)) {
+    if ($n <= INTMAX) {
       $_[0] = $strn if ref($n);
     } else {
       $_[0] = Math::BigInt->new($strn)
     }
   }
-  $_[0]->upgrade(undef) if ref($_[0]) && $_[0]->upgrade();
+  $_[0]->upgrade(undef) if ref($_[0]) eq 'Math::BigInt' && $_[0]->upgrade();
   croak "Parameter '$_[0]' must be >= $min" if defined $min && $_[0] < $min;
   croak "Parameter '$_[0]' must be <= $max" if defined $max && $_[0] > $max;
   1;
@@ -4296,9 +4299,9 @@ sub divisors {
   @factors = Math::Prime::Util::factor($n);
   return (1,$n) if scalar @factors == 1;
 
-  my $bigint = ref($n) eq 'Math::BigInt';
-  @factors = map { Math::BigInt->new("$_") } @factors  if $bigint;
-  @d = $bigint ? (BONE->copy()) : (1);
+  my $bigint = ref($n);
+  @factors = map { $bigint->new("$_") } @factors  if $bigint;
+  @d = $bigint ? ($bigint->new(1)) : (1);
 
   while (my $p = shift @factors) {
     my $e = 1;
@@ -4307,7 +4310,7 @@ sub divisors {
     push @d,  @t = map { $_ * $p } @t   for 2 .. $e; # repeat
   }
 
-  @d = map { $_->bacmp(BMAX) <= 0 ? _bigint_to_int($_) : $_ } @d   if $bigint;
+  @d = map { $_ <= INTMAX ? _bigint_to_int($_) : $_ } @d   if $bigint;
   @d = sort { $a <=> $b } @d;
   @d;
 }

@@ -41,20 +41,23 @@ sub inverse_euler_phi {
     return wantarray ? ($N+1, 2*$N+2) : 2 if $N >= 10;
   }
 
+  #if (!wantarray) { return a014197($N) }
+
   # Based on invphi.gp v1.3 by Max Alekseyev
   my @L;
-  foreach my $n (divisors($N)) {
+  fordivisors { $n=$_;
     $n = $do_bigint->new("$n") if $do_bigint;
     my $p = $n+1;
-    next unless is_prime($p);
-    if ( ($N % $p) != 0 ) {
-      push @L, [ [$n, $p] ];
-    } else {
-      my ($v, $t) = (2, int($N/$p));
-      while (!($t % $p)) { $v++; $t = int($t/$p); }
-      push @L, [ [$n,$p], map { [$n*$p**($_-1), $p**$_] } 2..$v ];
+    if (is_prime($p)) {
+      if ( ($N % $p) != 0 ) {
+        push @L, [ [$n, $p] ];
+      } else {
+        my $v = valuation($N, $p);
+        my $t = $N / $p**$v;
+        push @L, [ [$n,$p], map { [$n*$p**($_-1), $p**$_] } 2..$v+1 ];
+      }
     }
-  }
+  } $N;
 
   if (!wantarray) {   # Just count.  Much less memory.
     my %r = ( 1 => 1 );
@@ -63,9 +66,9 @@ sub inverse_euler_phi {
       my %t;
       foreach my $Lij (@$Li) {
         my($l0, $l1) = @$Lij;
-        foreach my $n (divisors($N / $l0)) {
-          $t{$n*$l0} += $r{$n} if defined $r{$n};
-        }
+        fordivisors {
+          $t{$_*$l0} += $r{$_} if defined $r{$_};
+        } $N / $l0;
       }
       while (my($i,$vec) = each(%t)) { $r{$i} += $t{$i}; }
     }
@@ -89,4 +92,25 @@ sub inverse_euler_phi {
   delete @r{ grep { $_ != $N } keys %r };  # Delete all intermediate results
   my @result = sort { $a <=> $b } @{$r{$N}};
   return @result;
+}
+
+# Simple recursive count translated from Pari.
+sub a014197 {
+  my($n,$m) = @_;
+  $m=1 unless defined $m;
+  return 1+($m<2) if $n == 1;
+  # TODO: divisor_sum with sub ought to be faster
+  #divisor_sum( $n, sub { my $d=shift;
+  #  return 0 if $d < $m || !is_prime($d+1);
+  #  my($p, $q) = ($d+1, $n/$d);
+  #  vecsum( map { a014197($q/($p**$_), $p) } 0 .. valuation($q,$p) );
+  #} );
+  my($sum,$p,$q) = (0);
+  fordivisors {
+    if ($_ >= $m && is_prime($_+1)) {
+      ($p,$q)=($_+1,$n/$_);
+      $sum += vecsum( map { a014197($q/($p**$_), $p) } 0 .. valuation($q,$p) );
+    }
+  } $n;
+  $sum;
 }

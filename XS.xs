@@ -1114,7 +1114,7 @@ divisor_sum(IN SV* svn, ...)
     nstatus = _validate_int(aTHX_ svn, 0);
     kstatus = (items == 1 || (SvIOK(svk) && SvIV(svk) >= 0))  ?  1  :  0;
     /* The above doesn't understand small bigints */
-    if (nstatus == 1 && kstatus == 0 && SvROK(svk) && (sv_isa(svk, "Math::BigInt") || sv_isa(svk, "Math::GMP")))
+    if (nstatus == 1 && kstatus == 0 && SvROK(svk) && (sv_isa(svk, "Math::BigInt") || sv_isa(svk, "Math::GMP") || sv_isa(svk, "Math::GMPz")))
       kstatus = _validate_int(aTHX_ svk, 0);
     if (nstatus == 1 && kstatus == 1) {
       UV n = my_svuv(svn);

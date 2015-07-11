@@ -28,6 +28,9 @@ Revision history for Perl module Math::Prime::Util
     - PrimeIterator now uses small segments instead of always next_prime.
       A little more memory, but 2-4x faster.
 
+    - factor, divisor, fordivisors and some others should better keep
+      bigint types (e.g. Math::GMPz input yields Math::GMPz output).
+
     [Misc]
 
     - Check for old MPFR now using C library version, not module version.

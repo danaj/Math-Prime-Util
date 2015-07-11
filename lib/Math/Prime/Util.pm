@@ -94,6 +94,7 @@ BEGIN {
   use constant MPU_MAXPRIME    => MPU_32BIT ? 4294967291 : 18446744073709551557;
   use constant MPU_MAXPRIMEIDX => MPU_32BIT ?  203280221 :   425656284035217743;
   use constant UVPACKLET       => MPU_32BIT ?        'L' : 'Q';
+  use constant INTMAX          => (!OLD_PERL_VERSION || MPU_32BIT) ? ~0 : 562949953421312;
 
   eval {
     return 0 if defined $ENV{MPU_NO_XS} && $ENV{MPU_NO_XS} == 1;
@@ -226,7 +227,7 @@ sub _reftyped {
   }
   if (OLD_PERL_VERSION) {
     # Perl 5.6 truncates arguments to doubles if you look at them funny
-    return "$_[1]" if "$_[1]" <= 562949953421312;
+    return "$_[1]" if "$_[1]" <= INTMAX;
   } elsif ($_[1] >= 0) {
     # TODO: This wasn't working right in 5.20.0-RC1, verify correct
     return $_[1] if $_[1] <= ~0;
@@ -250,20 +251,22 @@ sub _validate_positive_integer {
   if (ref($n) eq 'Math::BigInt') {
     croak "Parameter '$n' must be a positive integer"
       if $n->sign() ne '+' || !$n->is_int();
-    $_[0] = _bigint_to_int($_[0])
-      if $n <= (OLD_PERL_VERSION ? 562949953421312 : ''.~0);
+    $_[0] = _bigint_to_int($_[0]) if $n <= '' . INTMAX;
+  } elsif (ref($n) eq 'Math::GMPz') {
+    croak "Parameter '$n' must be a positive integer" if Math::GMPz::Rmpz_sgn($n) < 0;
+    $_[0] = _bigint_to_int($_[0]) if $n <= INTMAX;
   } else {
     my $strn = "$n";
     croak "Parameter '$strn' must be a positive integer"
       if $strn eq '' || ($strn =~ tr/0123456789//c && $strn !~ /^\+?\d+$/);
-    if ($n <= (OLD_PERL_VERSION ? 562949953421312 : ''.~0)) {
+    if ($n <= INTMAX) {
       $_[0] = $strn if ref($n);
     } else {
       #$_[0] = Math::BigInt->new($strn)
       $_[0] = _to_bigint($strn);
     }
   }
-  $_[0]->upgrade(undef) if ref($_[0]) && $_[0]->upgrade();
+  $_[0]->upgrade(undef) if ref($_[0]) eq 'Math::BigInt' && $_[0]->upgrade();
   croak "Parameter '$_[0]' must be >= $min" if defined $min && $_[0] < $min;
   croak "Parameter '$_[0]' must be <= $max" if defined $max && $_[0] > $max;
   1;
@@ -673,8 +676,11 @@ sub _generic_factor {
     my @factors;
     if ($n != 1) {
       @factors = Math::Prime::Util::GMP::factor($n);
-      if (ref($_[0]) eq 'Math::BigInt') {
-        @factors = map { ($_ > ~0) ? Math::BigInt->new(''.$_) : $_ } @factors;
+      #if (ref($_[0]) eq 'Math::BigInt') {
+      #  @factors = map { ($_ > ~0) ? Math::BigInt->new(''.$_) : $_ } @factors;
+      #}
+      if (ref($_[0])) {
+        @factors = map { ($_ > ~0) ? ref($_[0])->new(''.$_) : $_ } @factors;
       }
     }
     return @factors;
