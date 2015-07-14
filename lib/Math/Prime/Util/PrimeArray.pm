@@ -29,7 +29,7 @@ use Tie::Array;
 use Carp qw/carp croak confess/;
 
 use constant SEGMENT_SIZE  =>  50_000;
-use constant ALLOW_SKIP    =>  1_000;     # Sieve if skipping up to this
+use constant ALLOW_SKIP    =>  3_000;     # Sieve if skipping up to this
 
 sub TIEARRAY {
   my $class = shift;
@@ -312,13 +312,12 @@ as long as you don't need lots of primes.  It does not support random access.
 It has reasonable performance for the first few hundred thousand, but each
 successive value takes much longer to generate, and once past 1 million it
 isn't very practical.  Internally it is sieving all primes up to C<n> every
-time it makes a new segment.
+time it makes a new segment which is why it slows down so much.
 
 L<List::Gen> includes a built-in prime sequence.  It uses an inefficient
-Perl sieve with some performance defects for numbers below 10M, trial
-division past that.  It uses too much time and memory to be practical for
-anything but very small inputs.  It also gives incorrect results for large
-inputs.
+Perl sieve for numbers below 10M, trial division past that.  It uses too
+much time and memory to be practical for anything but very small inputs.
+It also gives incorrect results for large inputs (RT 105758).
 
 L<Math::Primes::TiedArray> is remarkably impractical for anything other
 than tiny numbers.
