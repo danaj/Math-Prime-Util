@@ -1,7 +1,7 @@
 requires 'ExtUtils::MakeMaker';
 
 
-requires 'Exporter', '5.562';
+requires 'Exporter', '5.57';
 requires 'XSLoader', '0.01';
 requires 'Carp';
 requires 'Tie::Array';
