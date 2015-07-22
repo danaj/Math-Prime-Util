@@ -240,7 +240,7 @@ UV next_prime(UV n)
   const unsigned char* sieve;
 
   if (n < 30*NPRIME_SIEVE30) {
-    next = next_prime_in_sieve(prime_sieve30, n,30*NPRIME_SIEVE30);
+    next = next_prime_in_sieve(prime_sieve30, n, 30*NPRIME_SIEVE30);
     if (next != 0) return next;
   }
 
@@ -2568,4 +2568,30 @@ int is_catalan_pseudoprime(UV n) {
     end_segment_primes(ctx);
   }
   return (a & 1) ? (m==(n-1)) : (m==1);
+}
+
+/* If we have fast CTZ, use this GCD.  Copyright (C) 2014 Abhinav Baid */
+UV n_gcdz(UV x, UV y) {
+  UV s0, s1, f;
+
+  if (x == 0) return y;
+  if (y == 0) return x;
+
+  s0 = ctz(x);
+  s1 = ctz(y);
+  f = (s0 <= s1) ? s0 : s1;
+  x >>= s0;
+  y >>= s1;
+  while (x != y) {
+    if (x < y) {
+      y -= x;
+      s1 = ctz(y);
+      y >>= s1;
+    } else {
+      x -= y;
+      s0 = ctz(x);
+      x >>= s0;
+    }
+  }
+  return x << f;
 }
