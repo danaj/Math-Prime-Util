@@ -69,6 +69,7 @@ static UV next_prime_in_sieve(const unsigned char* sieve, UV p, UV lastp) {
   if (p < 7)
     return (p < 2) ? 2 : (p < 3) ? 3 : (p < 5) ? 5 : 7;
   p++;
+  if (p >= lastp) return 0;
   d = p/30;
   m = p - d*30;
   s = sieve[d] | clearprev30[m];
