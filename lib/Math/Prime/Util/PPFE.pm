@@ -250,6 +250,11 @@ sub is_mersenne_prime {
   _validate_positive_integer($p);
   return Math::Prime::Util::PP::is_mersenne_prime($p);
 }
+sub is_square_free {
+  my($n) = @_;
+  _validate_positive_integer($n);
+  return Math::Prime::Util::PP::is_square_free($n);
+}
 
 
 sub lucas_sequence {

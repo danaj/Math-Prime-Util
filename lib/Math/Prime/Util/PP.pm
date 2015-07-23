@@ -746,6 +746,9 @@ sub moebius {
   }
   return ((scalar @factors) % 2) ? -1 : 1;
 }
+sub is_square_free {
+  return (moebius($_[0]) != 0) ? 1 : 0;
+}
 
 sub moebius_range {
   my($lo, $hi) = @_;

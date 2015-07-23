@@ -28,6 +28,7 @@ our @EXPORT_OK =
       is_ramanujan_prime
       is_mersenne_prime
       is_power sqrtint
+      is_square_free
       miller_rabin_random
       lucas_sequence lucasu lucasv
       primes twin_primes ramanujan_primes
@@ -2418,6 +2419,12 @@ Given an integer C<n>, returns the binary Hamming weight of C<abs(n)>.  This
 is also called the population count, and is the number of 1s in the binary
 representation.  This corresponds to Pari's C<hammingweight> function for
 C<t_INT> arguments.
+
+=head2 is_square_free
+
+  say "$n has no repeating factors" if is_square_free($n);
+
+Returns 1 if the input C<n> has no repeated factor.
 
 =head2 moebius
 

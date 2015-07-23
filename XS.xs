@@ -814,15 +814,16 @@ is_prime(IN SV* svn, ...)
     is_catalan_pseudoprime = 12
     is_almost_extra_strong_lucas_pseudoprime = 13
     is_ramanujan_prime = 14
-    is_mersenne_prime = 15
-    is_power = 16
+    is_square_free = 15
+    is_mersenne_prime = 16
+    is_power = 17
   PREINIT:
     int status;
   PPCODE:
     status = _validate_int(aTHX_ svn, 1);
     if (status != 0) {
       int ret = 0;
-      if (status == 1 && ix != 16) {
+      if (status == 1 && ix != 17) {
         UV n = my_svuv(svn);
         UV a = (items == 1) ? 0 : my_svuv(ST(1));
         switch (ix) {
@@ -848,12 +849,13 @@ is_prime(IN SV* svn, ...)
           case 13: ret = is_almost_extra_strong_lucas_pseudoprime
                          (n, (items == 1) ? 1 : a); break;
           case 14: ret = is_ramanujan_prime(n); break;
-          case 15:
+          case 15: ret = is_square_free(n); break;
+          case 16:
           default: ret = is_mersenne_prime(n);
                    if (ret == -1) status = 0;
                    break;
         }
-      } else if (ix == 16) {
+      } else if (ix == 17) {
         UV n = (status == 1) ? my_svuv(svn) : (UV) -my_sviv(svn);
         UV a = (items == 1) ? 0 : my_svuv(ST(1));
         if (status == -1 && n > (UV)IV_MAX) { status = 0; }
@@ -889,8 +891,9 @@ is_prime(IN SV* svn, ...)
       case 12:_vcallsub_with_gmp("is_catalan_pseudoprime"); break;
       case 13:_vcallsub_with_gmp("is_almost_extra_strong_lucas_pseudoprime"); break;
       case 14:_vcallsub_with_gmp("is_ramanujan_prime"); break;
-      case 15:_vcallsub_with_gmp("is_mersenne_prime"); break;
-      case 16:
+      case 15:_vcallsub_with_gmp("is_square_free"); break;
+      case 16:_vcallsub_with_gmp("is_mersenne_prime"); break;
+      case 17:
       default:if (items != 3 && status != -1) {
                 STRLEN len;
                 char* ptr = SvPV_nomg(svn, len);

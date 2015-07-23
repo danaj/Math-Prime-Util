@@ -8,7 +8,7 @@ use Math::Prime::Util
       chebyshev_theta chebyshev_psi carmichael_lambda znorder liouville
       znprimroot znlog kronecker legendre_phi gcd lcm is_power valuation
       invmod vecsum vecprod binomial gcdext chinese vecmin vecmax factorial
-      hammingweight vecreduce vecextract sqrtint
+      hammingweight vecreduce vecextract sqrtint is_square_free
      /;
 
 my $extra = defined $ENV{EXTENDED_TESTING} && $ENV{EXTENDED_TESTING};
@@ -79,6 +79,35 @@ if ($extra && $use64) {
 #  2*10**10 => -48723,  # Too slow with current method
   );
 }
+my %isf = (
+  0 => 0,
+  1 => 1,
+  2 => 1,
+  3 => 1,
+  4 => 0,
+  5 => 1,
+  6 => 1,
+  7 => 1,
+  8 => 0,
+  9 => 0,
+  10 => 1,
+  11 => 1,
+  12 => 0,
+  13 => 1,
+  14 => 1,
+  15 => 1,
+  16 => 0,
+  758096738 => 0,
+  434420340 => 0,
+  870589313 => 0,
+  752518565 => 1,
+  695486396 => 0,
+  723570005 => 1,
+  602721315 => 0,
+  418431087 => 0,
+  506916483 => 1,
+  617459403 => 1,
+);
 
 my %totients = (
      123456 => 41088,
@@ -579,6 +608,7 @@ plan tests => 0 + 1
                 + 1 # Small Moebius
                 + 3*scalar(keys %mertens)
                 + 1*scalar(keys %big_mertens)
+                + 1*scalar(keys %isf)
                 + 2 # Small Phi
                 + 9 + scalar(keys %totients)
                 + 1 # Small Carmichael Lambda
@@ -634,6 +664,10 @@ while (my($n, $mertens) = each (%mertens)) {
 while (my($n, $mertens) = each (%big_mertens)) {
   is( mertens($n), $mertens, "mertens($n)" );
 }
+while (my($n, $isf) = each (%isf)) {
+  is( is_square_free($n), $isf, "is_square_free($n)" );
+}
+
 
 {
   my @phi = map { euler_phi($_) } (0 .. $#A000010);

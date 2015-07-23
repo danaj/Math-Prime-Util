@@ -2,6 +2,10 @@ Revision history for Perl module Math::Prime::Util
 
 0.52 2015-?
 
+    [ADDED]
+
+    - is_square_free(n)                   Check for repeated factors
+
     [FUNCTIONALITY AND PERFORMANCE]
 
     - print_primes with 2 args was sending to wrong fileno.
