@@ -2572,7 +2572,7 @@ int is_catalan_pseudoprime(UV n) {
 }
 
 /* If we have fast CTZ, use this GCD.  See Brent Alg V and FLINT Abhinav Baid */
-UV n_gcdz(UV x, UV y) {
+UV gcdz(UV x, UV y) {
   UV f, x2, y2;
 
   if (x == 0) return y;

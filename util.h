@@ -80,7 +80,7 @@ extern int strnum_minmax(int min, char* a, STRLEN alen, char* b, STRLEN blen);
 
 extern int is_catalan_pseudoprime(UV n);
 
-extern UV n_gcdz(UV x, UV y);
+extern UV gcdz(UV x, UV y);
 
 #if defined(FUNC_isqrt) || defined(FUNC_is_perfect_square)
 static UV isqrt(UV n) {
@@ -122,7 +122,7 @@ static UV icbrt(UV n) {
 #if defined(FUNC_gcd_ui) || defined(FUNC_lcm_ui)
 /* If we have a very fast ctz, then use the fast FLINT version of gcd */
 #if defined(__GNUC__) && (__GNUC__ >= 4 || (__GNUC__ == 3 && __GNUC_MINOR__ >= 4))
-#define gcd_ui(x,y) n_gcdz(x,y)
+#define gcd_ui(x,y) gcdz(x,y)
 #else
 static UV gcd_ui(UV x, UV y) {
   UV t;
