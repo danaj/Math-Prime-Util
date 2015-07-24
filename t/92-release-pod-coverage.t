@@ -36,8 +36,8 @@ foreach my $m (@modules) {
 }
 
 sub mpu_public_regex {
-  my @funcs =
-  qw/ prime_get_config prime_set_config
+  my @funcs = qw(
+      prime_get_config prime_set_config
       prime_precalc prime_memfree
       is_prime is_prob_prime is_provable_prime is_provable_prime_with_cert
       prime_certificate verify_prime
@@ -53,6 +53,7 @@ sub mpu_public_regex {
       is_ramanujan_prime
       is_mersenne_prime
       is_power sqrtint
+      is_square_free
       miller_rabin_random
       lucas_sequence lucasu lucasv
       primes twin_primes ramanujan_primes
@@ -80,7 +81,7 @@ sub mpu_public_regex {
       divisor_sum carmichael_lambda kronecker
       binomial factorial stirling znorder znprimroot znlog legendre_phi
       ExponentialIntegral LogarithmicIntegral RiemannZeta RiemannR LambertW Pi
-  /;
+  );
   my $pattern = '^(' . join('|', @funcs) . ')$';
   return qr/$pattern/;
 }

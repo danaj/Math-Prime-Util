@@ -22,6 +22,7 @@ my @functions =  qw(
       is_ramanujan_prime
       is_mersenne_prime
       is_power sqrtint
+      is_square_free
       miller_rabin_random
       lucas_sequence lucasu lucasv
       primes twin_primes ramanujan_primes
@@ -42,12 +43,12 @@ my @functions =  qw(
       random_shawe_taylor_prime random_shawe_taylor_prime_with_cert
       primorial pn_primorial consecutive_integer_lcm gcdext chinese
       gcd lcm factor factor_exp divisors valuation invmod hammingweight
-      vecsum vecmin vecmax vecprod vecreduce
+      vecsum vecmin vecmax vecprod vecreduce vecextract
       moebius mertens euler_phi jordan_totient exp_mangoldt liouville
       partitions bernfrac bernreal harmfrac harmreal
       chebyshev_theta chebyshev_psi
       divisor_sum carmichael_lambda kronecker
       binomial factorial stirling znorder znprimroot znlog legendre_phi
       ExponentialIntegral LogarithmicIntegral RiemannZeta RiemannR LambertW Pi
-                   );
+);
 can_ok( 'Math::Prime::Util', @functions);
