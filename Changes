@@ -17,6 +17,8 @@ Revision history for Perl module Math::Prime::Util
 
     - Small speedup for forcomposites / foroddcomposites.
 
+    - Small speedup for is_prime with composite 32+ bit inputs.
+
     - is_frobenius_khashin_pseudoprime now uses Montgomery math for speed.
 
     - PrimeArray now treats skipping forward by relatively small amounts as
@@ -34,6 +36,8 @@ Revision history for Perl module Math::Prime::Util
 
     - factor, divisor, fordivisors and some others should better keep
       bigint types (e.g. Math::GMPz input yields Math::GMPz output).
+
+    - Faster GCD on some platforms.
 
     [Misc]
 

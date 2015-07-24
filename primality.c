@@ -1206,15 +1206,17 @@ int is_prob_prime(UV n)
     base = mr_bases_hash32[x];
     ret = miller_rabin(n, &base, 1);
 #if BITS_PER_WORD == 64
-  } else {  /* 64-bit input, we must be 64-bit word as well */
+  } else {  /* input is >= 2^32, UV is 64-bit*/
     if (!(n%2) || !(n%3) || !(n%5) || !(n%7))       return 0;
-    if (n <  121) /* 11*11 */                       return 2;
     if (!(n%11) || !(n%13) || !(n%17) || !(n%19) ||
         !(n%23) || !(n%29) || !(n%31) || !(n%37) ||
         !(n%41) || !(n%43) || !(n%47) || !(n%53))   return 0;
-    if (n < 3481) /* 59*59 */                       return 2;
-
-    /* AESLSP test costs about 1.5 Selfridges, vs. ~2.2 for strong Lucas. */
+    if (!(n%59) || !(n%61) || !(n%67) || !(n%71))   return 0;
+    if (!(n%73) || !(n%79) || !(n%83) || !(n%89))   return 0;
+    /*
+     * AESLSP test costs about 1.5 Selfridges, vs. ~2.2 for strong Lucas.
+     * This makes the full BPSW test cost about 2.5x M-R tests for a prime.
+     */
     ret = BPSW(n);
 #endif
   }
