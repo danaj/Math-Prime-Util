@@ -4,7 +4,7 @@ use warnings;
 
 BEGIN {
   $ntheory::AUTHORITY = 'cpan:DANAJ';
-  $ntheory::VERSION = '0.51';
+  $ntheory::VERSION = '0.52';
 }
 
 BEGIN {
@@ -152,6 +152,7 @@ See L<Math::Prime::Util> for complete documentation.
   invmod(a,n)                         inverse of a modulo n
   moebius(n)                          Moebius function of n
   moebius(beg, end)                   array of Moebius in range
+  is_square_free(n)                   return true if no repeated factors
   mertens(n)                          sum of Moebius for 1 to n
   euler_phi(n)                        Euler totient of n
   euler_phi(beg, end)                 Euler totient for a range
