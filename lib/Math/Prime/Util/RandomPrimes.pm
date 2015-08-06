@@ -915,14 +915,14 @@ sub _ST_Random_prime {  # From FIPS 186-4
     my $seed = $input_seed;
     my $prime_gen_counter = 0;
     my $kmask    = 0xFFFFFFFF >> (32-$k);    # Does the mod operation
-    my $kstencil = (1 << ($k-1)) + ($k > 2); # Sets high and low bits
+    my $kstencil = (1 << ($k-1)) | 1;        # Sets high and low bits
     while (1) {
       my $seedp1 = _seed_plus_one($seed);
       my $cvec = Digest::SHA::sha256($seed) ^ Digest::SHA::sha256($seedp1);
       # my $c = Math::BigInt->from_hex('0x' . unpack("H*", $cvec));
       # $c = $k2 + ($c % $k2);
       # $c = (2 * ($c >> 1)) + 1;
-      my($c) = unpack("L*", substr($cvec,-4,4));
+      my($c) = unpack("N*", substr($cvec,-4,4));
       $c = ($c & $kmask) | $kstencil;
       $prime_gen_counter++;
       $seed = _seed_plus_one($seedp1);
@@ -987,6 +987,11 @@ sub _ST_Random_prime {  # From FIPS 186-4
                  "Type Pocklington\nN $c\nQ $c0\nA $a\n" .
                  $cert;
         return (1, $c, $seed, $prime_gen_counter, $cert);
+      }
+    } else {
+      # Update seed "as if" we performed the Pocklington check from FIPS 186-4
+      for my $i (0 .. $iterations) {
+        $seed = _seed_plus_one($seed);
       }
     }
     return (0,0,0,0) if $prime_gen_counter > 10000 + 16*$k + $old_counter;
