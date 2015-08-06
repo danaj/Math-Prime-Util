@@ -39,6 +39,9 @@ Revision history for Perl module Math::Prime::Util
 
     - Faster GCD on some platforms.
 
+    - Peter Dettman supplied a patch for Shawe-Taylor prime generation to
+      make it deterministically match reference implementations.  Thanks!
+
     [Misc]
 
     - Check for old MPFR now using C library version, not module version.
