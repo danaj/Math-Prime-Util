@@ -2596,3 +2596,14 @@ UV gcdz(UV x, UV y) {
   }
   return x << f;
 }
+
+/* The intermediate values are so large that we can only stay in 64-bit
+ * up to 53 or so using the divisor_sum calculations.  So just use a table.
+ * Save space by just storing the 32-bit values. */
+static const int32_t tau_table[] = {
+  0,1,-24,252,-1472,4830,-6048,-16744,84480,-113643,-115920,534612,-370944,-577738,401856,1217160,987136,-6905934,2727432,10661420,-7109760,-4219488,-12830688,18643272,21288960,-25499225,13865712,-73279080,24647168,128406630,-29211840,-52843168,-196706304,134722224,165742416,-80873520,167282496,-182213314,-255874080,-145589976,408038400,308120442,101267712,-17125708,-786948864,-548895690,-447438528
+};
+#define NTAU (sizeof(tau_table)/sizeof(tau_table[0]))
+IV ramanujan_tau(UV n) {
+  return (n < NTAU)  ?  tau_table[n]  :  0;
+}

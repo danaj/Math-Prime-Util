@@ -493,6 +493,11 @@ sub chebyshev_psi {
   _validate_positive_integer($n);
   return Math::Prime::Util::PP::chebyshev_psi($n);
 }
+sub ramanujan_tau {
+  my($n) = @_;
+  _validate_positive_integer($n);
+  return Math::Prime::Util::PP::ramanujan_tau($n);
+}
 
 sub is_power {
   my($n, $a, $refp) = @_;

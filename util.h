@@ -76,6 +76,8 @@ extern int is_primitive_root(UV a, UV p);
 extern IV stirling2(UV n, UV m);
 extern IV stirling1(UV n, UV m);
 
+extern IV ramanujan_tau(UV n);
+
 extern int strnum_minmax(int min, char* a, STRLEN alen, char* b, STRLEN blen);
 
 extern int is_catalan_pseudoprime(UV n);
