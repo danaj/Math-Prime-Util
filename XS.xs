@@ -1387,6 +1387,7 @@ carmichael_lambda(IN SV* svn)
     exp_mangoldt = 7
     znprimroot = 8
     hammingweight = 9
+    ramanujan_tau = 10
   PREINIT:
     int status;
   PPCODE:
@@ -1411,13 +1412,18 @@ carmichael_lambda(IN SV* svn)
                  r = znprimroot(n);
                  if (r == 0 && n != 1)  XSRETURN_UNDEF;  /* No root */
                  XSRETURN_UV(r);  break;
-        case 9:
-        default: if (status == -1) n = -(IV)n;
+        case 9:  if (status == -1) n = -(IV)n;
                  XSRETURN_UV(mpu_popcount(n));  break;
+        case 10:
+        default: { IV tau = (status == 1) ? ramanujan_tau(n) : 0;
+                   if (tau != 0 || status == -1 || n == 0)
+                     XSRETURN_IV(tau);
+                 } /* Fall through if n > 0 and we got 0 back */
+                 break;
       }
     }
     switch (ix) {
-      case 0:  _vcallsub_with_gmp("carmichael_lambda");  break;
+      case 0:  _vcallsub_with_gmp("carmichael_lambda"); break;
       case 1:  _vcallsub_with_pp("mertens"); break;
       case 2:  _vcallsub_with_gmp("liouville"); break;
       case 3:  _vcallsub_with_pp("chebyshev_theta"); break;
@@ -1426,10 +1432,10 @@ carmichael_lambda(IN SV* svn)
       case 6:  _vcallsub_with_pp("sqrtint"); break;
       case 7:  _vcallsub_with_gmp("exp_mangoldt"); break;
       case 8:  _vcallsub_with_gmp("znprimroot"); break;
-      case 9:
-      default: { char* ptr;  STRLEN len;  ptr = SvPV_nomg(svn, len);
-                 XSRETURN_UV(mpu_popcount_string(ptr, len)); }
-               break;
+      case 9:  { char* ptr;  STRLEN len;  ptr = SvPV_nomg(svn, len);
+                 XSRETURN_UV(mpu_popcount_string(ptr, len)); } break;
+      case 10:
+      default:_vcallsub_with_pp("ramanujan_tau"); break;
     }
     return; /* skip implicit PUTBACK */
 

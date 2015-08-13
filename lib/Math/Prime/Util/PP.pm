@@ -52,9 +52,14 @@ BEGIN {
       $_have_MPFR = 0;
       $_have_MPFR = 1 if (!defined $ENV{MPU_NO_MPFR} || $ENV{MPU_NO_MPFR} != 1)
                       && eval { require Math::MPFR; $Math::MPFR::VERSION>=2.03; };
+      # Minimum MPFR library version is 3.0 (2010).
+      $_have_MPFR = 0 if $_have_MPFR && Math::MPFR::MPFR_VERSION_MAJOR() < 3;
     }
-    return 0 if defined $_[0] && $_have_MPFR && Math::MPFR::MPFR_VERSION_MAJOR() < $_[0];
-    return 0 if defined $_[1] && $_have_MPFR && Math::MPFR::MPFR_VERSION_MAJOR() == $_[0] && Math::MPFR::MPFR_VERSION_MINOR() < $_[1];
+    if ($_have_MPFR && scalar(@_) == 2) {
+      my($major,$minor) = @_;
+      return 0 if Math::MPFR::MPFR_VERSION_MAJOR() < $major;
+      return 0 if Math::MPFR::MPFR_VERSION_MAJOR() == $major && Math::MPFR::MPFR_VERSION_MINOR() < $minor;
+    }
     return $_have_MPFR;
   }
 }
@@ -881,6 +886,10 @@ sub divisor_sum {
   croak "Second argument must be a code ref or number"
     unless !defined $k || _validate_num($k) || _validate_positive_integer($k);
   $k = 1 if !defined $k;
+
+  if (defined &Math::Prime::Util::GMP::sigma && Math::Prime::Util::prime_get_config()->{'gmp'}) {
+    return Math::Prime::Util::_reftyped($_[0], Math::Prime::Util::GMP::sigma($n, $k));
+  }
 
   my $will_overflow = ($k == 0) ? (length($n) >= $_ds_overflow[0])
                     : ($k <= 5) ? ($n >= $_ds_overflow[$k])
@@ -4347,6 +4356,46 @@ sub chebyshev_psi {
 
   $sum;
 }
+
+sub _taup {
+  my($p, $e, $n) = @_;
+  my($bp) = Math::BigInt->new("".$p);
+  if ($e == 1) {
+    return (0,1,-24,252,-1472,4830,-6048,-16744,84480)[$p] if $p <= 8;
+    my $ds5  = $bp->copy->bpow( 5)->binc();  # divisor_sum(p,5)
+    my $ds11 = $bp->copy->bpow(11)->binc();  # divisor_sum(p,11)
+    my $s    = Math::BigInt->new("".vecsum(map { vecprod(BTWO,Math::Prime::Util::divisor_sum($_,5), Math::Prime::Util::divisor_sum($p-$_,5)) } 1..($p-1)>>1));
+    $n = ( 65*$ds11 + 691*$ds5 - (691*252)*$s ) / 756;
+  } else {
+    my $t = Math::BigInt->new(""._taup($p,1));
+    $n = $t->copy->bpow($e);
+    if ($e == 2) {
+      $n -= $bp->copy->bpow(11);
+    } elsif ($e == 3) {
+      $n -= BTWO * $t * $bp->copy->bpow(11);
+    } else {
+      $n += vecsum( map { vecprod( ($_&1) ? -BONE : BONE,
+                                   $bp->copy->bpow(11*$_),
+                                   binomial($e-$_, $e-2*$_),
+                                   $t ** ($e-2*$_) ) } 1 .. ($e>>1) );
+    }
+  }
+  $n = _bigint_to_int($n) if ref($n) && $n->bacmp(BMAX) <= 0;
+  $n;
+}
+
+sub ramanujan_tau {
+  my $n = shift;
+  return 0 if $n <= 0;
+
+  if (defined &Math::Prime::Util::GMP::ramanujan_tau && Math::Prime::Util::prime_get_config()->{'gmp'}) {
+    return Math::Prime::Util::_reftyped($_[0], Math::Prime::Util::GMP::ramanujan_tau($n));
+  }
+
+  my @f = Math::Prime::Util::factor_exp($n);
+  vecprod( map { _taup( @{$f[$_]} ) } 0 .. $#f );
+}
+
 
 sub ExponentialIntegral {
   my($x) = @_;

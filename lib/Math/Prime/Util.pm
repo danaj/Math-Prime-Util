@@ -53,7 +53,7 @@ our @EXPORT_OK =
       moebius mertens euler_phi jordan_totient exp_mangoldt liouville
       partitions bernfrac bernreal harmfrac harmreal
       chebyshev_theta chebyshev_psi
-      divisor_sum carmichael_lambda kronecker
+      divisor_sum carmichael_lambda kronecker ramanujan_tau
       binomial factorial stirling znorder znprimroot znlog legendre_phi
       ExponentialIntegral LogarithmicIntegral RiemannZeta RiemannR LambertW Pi
   );
@@ -2586,6 +2586,13 @@ though we have a function L</jordan_totient> which is more efficient.
 For numeric second arguments (sigma computations), the result will be a bigint
 if necessary.  For the code reference case, the user must take care to return
 bigints if overflow will be a concern.
+
+
+=head2 ramanujan_tau
+
+Takes a positive integer as input and returns the value of Ramanujan's tau
+function.  The result is a signed integer.
+This corresponds to Mathematica's C<RamanujanTau> function.
 
 
 =head2 primorial

@@ -1,5 +1,18 @@
 Revision history for Perl module Math::Prime::Util
 
+0.53 2015-?
+
+    [ADDED]
+
+    - ramanujan_tau(n)                    Ramanujan's Tau function
+
+    [FUNCTIONALITY AND PERFORMANCE]
+
+    - Don't use Math::MPFR unless underlying MPFR library is at least 3.x.
+
+    - Use new Math::Prime::Util::GMP::sigma function for divisor_sum.
+
+
 0.52 2015-08-09
 
     [ADDED]

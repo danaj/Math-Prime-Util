@@ -361,11 +361,12 @@ UV* _divisor_list(UV n, UV *num_divisors)
  *    1 + p^k + p^k^2 + ... p^k^e
  * Return 0 if the result overflowed.
  */
-static const UV sigma_overflow[5] =
+static const UV sigma_overflow[11] =
 #if BITS_PER_WORD == 64
-         {UVCONST(3000000000000000000),UVCONST(3000000000),2487240,64260,7026};
+         {UVCONST(3000000000000000000),UVCONST(3000000000),2487240,64260,7026,
+         1622, 566, 256, 139, 85, 57};
 #else
-         {UVCONST(          845404560),             52560,    1548,  252,  84};
+         {UVCONST(845404560), 52560, 1548, 252, 84, 41, 24, 16, 12, 10, 8};
 #endif
 UV divisor_sum(UV n, UV k)
 {
@@ -373,7 +374,7 @@ UV divisor_sum(UV n, UV k)
   int nfac, i, j;
   UV product = 1;
 
-  if (k > 5 || (k > 0 && n >= sigma_overflow[k-1])) return 0;
+  if (k > 11 || (k > 0 && n >= sigma_overflow[k-1])) return 0;
   if (n <= 1)                               /* n=0  divisors are [0,1] */
     return (n == 1) ? 1 : (k == 0) ? 2 : 1; /* n=1  divisors are [1]   */
   nfac = factor(n,factors);

@@ -8,7 +8,7 @@ use Math::Prime::Util
       chebyshev_theta chebyshev_psi carmichael_lambda znorder liouville
       znprimroot znlog kronecker legendre_phi gcd lcm is_power valuation
       invmod vecsum vecprod binomial gcdext chinese vecmin vecmax factorial
-      hammingweight vecreduce vecextract sqrtint is_square_free
+      hammingweight vecreduce vecextract sqrtint is_square_free ramanujan_tau
      /;
 
 my $extra = defined $ENV{EXTENDED_TESTING} && $ENV{EXTENDED_TESTING};
@@ -202,6 +202,19 @@ if (!$usexs && !$extra) {
   delete $chebyshev1{$_} for grep { $_ > 50000 } keys %chebyshev1;
   delete $chebyshev2{$_} for grep { $_ > 50000 } keys %chebyshev2;
 }
+
+my %rtau = (
+       0 => 0,
+       1 => 1,
+       2 => -24,
+       3 => 252,
+       4 => -1472,
+       5 => 4830,
+      53 => -1596055698,
+     106 => 38305336752,
+     243 => 13400796651732,
+   16089 => "12655813883111729342208",
+);
 
 my @A002322 = (0,1,1,2,2,4,2,6,2,6,4,10,2,12,6,4,4,16,6,18,4,6,10,22,2,20,12,18,6,28,4,30,8,10,16,12,6,36,18,12,4,40,6,42,10,12,22,46,4,42,20,16,12,52,18,20,6,18,28,58,4,60,30,6,16,12,10,66,16,22,12,70,6,72,36,20,18,30,12,78,4,54,40,82,6,16,42,28,10,88,12,12,22,30,46,36,8,96,42,30,20,100,16,102,12,12,52,106,18,108,20,36,12,112,18,44,28,12,58,48,4,110,60,40,30,100,6,126,32,42,12,130,10,18,66,36,16,136,22,138,12,46,70,60,12,28,72,42,36,148,20,150,18,48,30,60,12,156,78,52,8,66,54,162,40,20,82,166,6,156,16,18,42,172,28,60,20,58,88,178,12,180,12,60,22,36,30,80,46,18,36,190,16,192,96,12,42,196,30,198,20);
 
@@ -641,6 +654,7 @@ plan tests => 0 + 1
                 + scalar(keys %mangoldt)
                 + scalar(keys %chebyshev1)
                 + scalar(keys %chebyshev2)
+                + scalar(keys %rtau)
                 + scalar(@liouville_pos) + scalar(@liouville_neg);
 
 ok(!eval { moebius(0); }, "moebius(0)");
@@ -779,6 +793,11 @@ while (my($n, $c1) = each (%chebyshev1)) {
 ###### second Chebyshev function
 while (my($n, $c2) = each (%chebyshev2)) {
   cmp_closeto( chebyshev_psi($n), $c2, 1e-9*abs($n), "chebyshev_psi($n)" );
+}
+
+###### Ramanujan Tau
+while (my($n, $tau) = each (%rtau)) {
+  is( ramanujan_tau($n), $tau, "Ramanujan Tau($n) = $tau" );
 }
 
 ###### Carmichael Lambda
