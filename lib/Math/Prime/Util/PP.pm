@@ -4374,7 +4374,7 @@ sub _taup {
     } elsif ($e == 3) {
       $n -= BTWO * $t * $bp->copy->bpow(11);
     } else {
-      $n += vecsum( map { vecprod( ($_&1) ? -BONE : BONE,
+      $n += vecsum( map { vecprod( ($_&1) ? - BONE : BONE,
                                    $bp->copy->bpow(11*$_),
                                    binomial($e-$_, $e-2*$_),
                                    $t ** ($e-2*$_) ) } 1 .. ($e>>1) );
