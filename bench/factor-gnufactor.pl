@@ -12,6 +12,7 @@ my $maxdigits = 100;
 $| = 1;  # fast pipes
 srand(87431);
 my $num = 1000;
+my $semiprimes = 0;
 
 # Note: If you have factor from coreutils 8.20 or later (e.g. you're running
 # Fedora), then GNU factor will be very fast and support at least 128-bit
@@ -137,7 +138,28 @@ sub gendigits {
     $base = Math::BigInt->new(10)->bpow($digits-1);
     $max = Math::BigInt->new(10)->bpow($digits) - 1;
   }
-  my @nums = map { $base + $rgen->($max-$base) } (1 .. $howmany);
+  my @nums;
+  if ($semiprimes) {
+    # This is a lousy way to do it.  We should generate a half-size prime, then
+    # generate a prime whose product with the first falls in range.  Or even
+    # just two half-size until the product is in range.
+    for (1.. $howmany) {
+      my $c;
+      while (1) {
+        $c = $base + $rgen->($max-$base);
+        my @f = factor($c);
+        next if scalar(@f) != 2;
+        last if $digits < 8;
+        last if $digits < 12 && $f[0] > 1000;
+        last if $digits < 16 && $f[0] > 100000;
+        last if                 $f[0] > 10000000;
+      }
+      push @nums, $c;
+    }
+  } else {
+    @nums = map { $base + $rgen->($max-$base) } (1 .. $howmany);
+  }
+  #for (@nums) { print "$_ [",join(" ",factor($_)),"]   " }
   return @nums;
 }
 
