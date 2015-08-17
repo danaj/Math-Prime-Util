@@ -512,9 +512,10 @@ int pbrent_factor(UV n, UV *factors, UV rounds, UV a)
   MPUassert( (n >= 3) && ((n%2) != 0) , "bad n in pbrent_factor");
 
   r = 1;
+  f = 1;
   while (rounds > 0) {
     UV rleft = (r > rounds) ? rounds : r;
-    UV saveXi;
+    UV saveXi = Xi;
     /* Do rleft rounds, inner at a time */
     while (rleft > 0) {
       UV dorounds = (rleft > inner) ? inner : rleft;

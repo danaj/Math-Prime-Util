@@ -872,6 +872,7 @@ my @_ds_overflow =  # We'll use BigInt math if the input is larger than this.
    : ( 50,           845404560,      52560,    1548,   252,   84);
 sub divisor_sum {
   my($n, $k) = @_;
+  return ((defined $k && $k==0) ? 2 : 1) if $n == 0;
   return 1 if $n == 1;
 
   if (defined $k && ref($k) eq 'CODE') {

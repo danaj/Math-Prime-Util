@@ -164,6 +164,7 @@ See L<Math::Prime::Util> for complete documentation.
   znprimroot(n)                       smallest primitive root
   chebyshev_theta(n)                  first Chebyshev function
   chebyshev_psi(n)                    second Chebyshev function
+  ramanujan_tau(n)                    Ramanujan's Tau function
   consecutive_integer_lcm(n)          lcm(1 .. n)
   lucasu(P, Q, k)                     U_k for Lucas(P,Q)
   lucasv(P, Q, k)                     V_k for Lucas(P,Q)
