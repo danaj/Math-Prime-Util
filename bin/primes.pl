@@ -436,13 +436,15 @@ sub gen_and_filter {
   }
 
   if (exists $opts{'twin'} && !defined $gen) {
-    $p = primes($start, $end);
-    push @$p, is_prime($p->[-1]+2) ? $p->[-1]+2 : 0;
     my @twin;
-    my $prime = shift @$p;
-    foreach my $next (@$p) {
-      push @twin, $prime if $prime+2 == $next;
-      $prime = $next;
+    $p = primes($start, $end);
+    if (scalar(@$p) > 0) {
+      push @$p, is_prime($p->[-1]+2) ? $p->[-1]+2 : 0;
+      my $prime = shift @$p;
+      foreach my $next (@$p) {
+        push @twin, $prime if $prime+2 == $next;
+        $prime = $next;
+      }
     }
     $p = \@twin;
     $gen = 'twin';

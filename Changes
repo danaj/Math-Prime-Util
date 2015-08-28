@@ -12,6 +12,8 @@ Revision history for Perl module Math::Prime::Util
 
     - Use new Math::Prime::Util::GMP::sigma function for divisor_sum.
 
+    - Use new Math::Prime::Util::GMP::sieve_twin_primes(a,b).
+
 
 0.52 2015-08-09
 
