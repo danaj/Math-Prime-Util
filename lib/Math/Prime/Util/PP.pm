@@ -1977,6 +1977,24 @@ sub vecextract {
   @$aref[@v];
 }
 
+sub sumdigits {
+  my($n,$base) = @_;
+  my $sum = 0;
+  $n =~ tr/0123456789//cd;
+  if (!defined $base || $base == 10) {
+    $sum += $_ for (split(//,$n));
+  } else {
+    croak "sumdigits: invalid base $base" if $base < 2;
+    $n = Math::BigInt->new("$n");
+    while ($n > 0) {
+      my $t = $n / $base;
+      $sum += $n - $t * $base;
+      $n = $t;
+    }
+  }
+  $sum;
+}
+
 sub invmod {
   my($a,$n) = @_;
   return if $n == 0 || $a == 0;

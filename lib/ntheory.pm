@@ -133,6 +133,7 @@ See L<Math::Prime::Util> for complete documentation.
   vecmax(@list)                       maximum of list of integers
   vecreduce { ... } @list             reduce / left fold applied to list
   vecextract(\@list, mask)            select from list based on mask
+  sumdigits(n)                        sum of digits, with optional base
   is_power(n)                         return k if n = p^k for integer p, max k
   is_power(n,k)                       return 1 if n = p^k for integer p and k
   is_power(n,k,\$root)                as above but set root to p.

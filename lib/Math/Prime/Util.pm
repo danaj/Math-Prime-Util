@@ -49,7 +49,7 @@ our @EXPORT_OK =
       random_shawe_taylor_prime random_shawe_taylor_prime_with_cert
       primorial pn_primorial consecutive_integer_lcm gcdext chinese
       gcd lcm factor factor_exp divisors valuation invmod hammingweight
-      vecsum vecmin vecmax vecprod vecreduce vecextract
+      vecsum vecmin vecmax vecprod vecreduce vecextract sumdigits
       moebius mertens euler_phi jordan_totient exp_mangoldt liouville
       partitions bernfrac bernreal harmfrac harmreal
       chebyshev_theta chebyshev_psi
@@ -911,7 +911,7 @@ __END__
 
 =encoding utf8
 
-=for stopwords forprimes forcomposites foroddcomposites fordivisors forpart forcomb forperm Möbius Deléglise Bézout totient moebius mertens liouville znorder irand primesieve uniqued k-tuples von SoE pari yafu fonction qui compte le nombre nombres voor PhD superset sqrt(N) gcd(A^M k-th (10001st primegen libtommath kronecker znprimroot znlog gcd lcm invmod untruncated vecsum vecprod vecmin vecmax vecreduce vecextract gcdext chinese LambertW bernfrac bernreal harmfrac harmreal stirling hammingweight lucasu lucasv OpenPFGW gmpy2 Über Primzahl-Zählfunktion n-te und verallgemeinerte sqrtint
+=for stopwords forprimes forcomposites foroddcomposites fordivisors forpart forcomb forperm Möbius Deléglise Bézout totient moebius mertens liouville znorder irand primesieve uniqued k-tuples von SoE pari yafu fonction qui compte le nombre nombres voor PhD superset sqrt(N) gcd(A^M k-th (10001st primegen libtommath kronecker znprimroot znlog gcd lcm invmod untruncated vecsum vecprod vecmin vecmax vecreduce vecextract sumdigits gcdext chinese LambertW bernfrac bernreal harmfrac harmreal stirling hammingweight lucasu lucasv OpenPFGW gmpy2 Über Primzahl-Zählfunktion n-te und verallgemeinerte sqrtint
 
 =for test_synopsis use v5.14;  my($k,$x);
 
@@ -2394,6 +2394,17 @@ ordering is preserved.  Hence these are equivalent:
     vecextract($aref, $iref);
     @$aref[@$iref];
 
+=head2 sumdigits
+
+Given an input C<n>, return the sum of the digits of C<n>.  Any non-digit
+characters of C<n> are ignored (including negative signs and decimal points).
+This is similar to the command C<vecsum(split(//,$n))> but faster and
+allows non-positive-integer inputs.
+
+An optional second argument indicates the base.  This defaults to 10, and
+must be at least 2.
+
+This corresponds to Pari's C<sumdigits> function from version 2.8 and later.
 
 =head2 invmod
 
@@ -2403,7 +2414,7 @@ Given two integers C<a> and C<n>, return the inverse of C<a> modulo C<n>.
 If not defined, undef is returned.  If defined, then the return value
 multiplied by C<a> equals C<1> modulo C<n>.
 
-This results correspond to the Pari result of C<lift(Mod(1/a,n))>.  The
+The results correspond to the Pari result of C<lift(Mod(1/a,n))>.  The
 semantics with respect to negative arguments match Pari.  Notably, a
 negative C<n> is negated, which is different from Math::BigInt, but in both
 cases the return value is still congruent to C<1> modulo C<n> as expected.

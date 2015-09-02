@@ -56,6 +56,15 @@
  #define my_sviv(sv) SvIV(sv)
 #endif
 
+#if PERL_REVISION >=5 && PERL_VERSION >= 9 && PERL_SUBVERSION >= 4
+  #define SVf_MAGTEST  SVf_ROK
+#else
+  #define SVf_MAGTEST  SVf_AMAGIC
+#endif
+
+#define SVNUMTEST(n) \
+  ((SvFLAGS(n) & (SVf_IOK | SVf_MAGTEST | SVs_GMG )) == SVf_IOK)
+
 /* multicall compatibility stuff */
 #if (PERL_REVISION <= 5 && PERL_VERSION < 7) || !defined(dMULTICALL)
 # define USE_MULTICALL 0   /* Too much trouble to work around it */
@@ -117,13 +126,7 @@ static int _validate_int(pTHX_ SV* n, int negok)
   int ret, isbignum = 0, isneg = 0;
 
   /* TODO: magic, grok_number, etc. */
-  if ((SvFLAGS(n) & (SVf_IOK |
-#if PERL_REVISION >=5 && PERL_VERSION >= 9 && PERL_SUBVERSION >= 4
-                     SVf_ROK |
-#else
-                     SVf_AMAGIC |
-#endif
-                     SVs_GMG )) == SVf_IOK) { /* If defined as number, use it */
+  if (SVNUMTEST(n)) { /* If defined as number, use it */
     if (SvIsUV(n) || SvIVX(n) >= 0)  return 1; /* The normal case */
     if (negok)  return -1;
     else croak("Parameter '%" SVf "' must be a positive integer", n);
@@ -1438,6 +1441,36 @@ carmichael_lambda(IN SV* svn)
       default:_vcallsub_with_pp("ramanujan_tau"); break;
     }
     return; /* skip implicit PUTBACK */
+
+UV
+sumdigits(SV* svn, UV base = 10)
+  PREINIT:
+    int nstatus;
+    UV sum;
+  PPCODE:
+    sum = 0;
+    if (base == 10) {  /* Handles bigints as well as regular ints */
+      STRLEN i, len;
+      const char* ptr = SvPV_nomg(svn, len);
+      for (i = 0; i < len; i++) {
+        if (isDIGIT(ptr[i])) {
+          sum += ptr[i] - '0';
+        }
+      }
+    } else {
+      if (base < 2) { croak("sumdigits: invalid base %lu",base); }
+      if (SVNUMTEST(svn) && (SvIsUV(svn) || SvIVX(svn) >= 0)) {
+        UV n, t = my_svuv(svn);
+        while ((n=t)) {
+          t = n / base;
+          sum += n - base*t;
+        }
+      } else {
+        _vcallsub_with_pp("sumdigits");
+        return;
+      }
+    }
+    XSRETURN_UV(sum);
 
 bool
 _validate_num(SV* svn, ...)

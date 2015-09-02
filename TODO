@@ -112,3 +112,5 @@
 - We should have a way to exit a forprimes loop.  E.g. add a lastfor() call.
   Nested calls are doable, but threading is a bear.  Perhaps do a first
   version that is non-threadsafe.
+
+- sumdigit tests.

@@ -627,6 +627,10 @@ sub vecextract {
   return Math::Prime::Util::PP::vecextract(@_);
 }
 
+sub sumdigits {
+  return Math::Prime::Util::PP::sumdigits(@_);
+}
+
 1;
 
 __END__

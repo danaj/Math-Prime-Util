@@ -5,6 +5,7 @@ Revision history for Perl module Math::Prime::Util
     [ADDED]
 
     - ramanujan_tau(n)                    Ramanujan's Tau function
+    - sumdigits(n[,base])                 sum digits of n
 
     [FUNCTIONALITY AND PERFORMANCE]
 
