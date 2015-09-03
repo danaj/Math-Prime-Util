@@ -9,6 +9,7 @@ use Math::Prime::Util
       znprimroot znlog kronecker legendre_phi gcd lcm is_power valuation
       invmod vecsum vecprod binomial gcdext chinese vecmin vecmax factorial
       hammingweight vecreduce vecextract sqrtint is_square_free ramanujan_tau
+      sumdigits
      /;
 
 my $extra = defined $ENV{EXTENDED_TESTING} && $ENV{EXTENDED_TESTING};
@@ -643,6 +644,7 @@ plan tests => 0 + 1
                 + scalar(@vecmaxs)
                 + 4  # vecreduce
                 + 2  # vecextract
+                + 4 + 2*$extra # sumdigits
                 + 2 + scalar(@binomials)
                 + 6 + scalar(keys %powers) + scalar(@negpowers)
                 + scalar(keys %primroots) + 1
@@ -977,6 +979,19 @@ is_deeply( [map { binomial(10, $_) } -15 .. 15],
 is_deeply( [map { binomial(-10, $_) } -15 .. 15],
            [qw/-2002 715 -220 55 -10 1 0 0 0 0 0 0 0 0 0 1 -10 55 -220 715 -2002 5005 -11440 24310 -48620 92378 -167960 293930 -497420 817190 -1307504/],
            "binomial(-10,n) for n in -15 .. 15" );
+###### sumdigits
+is(sumdigits("-45.36"), 4+5+3+6, "sumdigits(-45.36)");
+{
+  my @sumd   = map { sumdigits($_) } 0 .. 1000;
+  my @splitd = map { vecsum(split(//,$_)) } 0 .. 1000;
+  is_deeply( \@sumd, \@splitd, "sumdigits 0 to 1000");
+}
+is(sumdigits(3290484,16), 24, "sumdigits hex");
+is(sumdigits("293852387239761276234029385230912847923872323"), 201, "sumdigits bigint");
+if ($extra) {
+  is(sumdigits(factorial(1000)), 10539, "sumdigits 1000!");
+  is(sumdigits(factorial(10000)), 149346, "sumdigits 10000!");
+}
 
 sub cmp_closeto {
   my $got = shift;
