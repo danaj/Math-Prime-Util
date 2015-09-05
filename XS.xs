@@ -672,10 +672,10 @@ gcd(...)
       int minmax = (ix == 2);
       STRLEN alen, blen;
       char *aptr, *bptr;
-      aptr = SvPV_nomg(ST(0), alen);
+      aptr = SvPV(ST(0), alen);
       (void) strnum_minmax(minmax, 0, 0, aptr, alen);
       for (i = 1; i < items; i++) {
-        bptr = SvPV_nomg(ST(i), blen);
+        bptr = SvPV(ST(i), blen);
         if (strnum_minmax(minmax, aptr, alen, bptr, blen)) {
           aptr = bptr;
           alen = blen;
@@ -899,7 +899,7 @@ is_prime(IN SV* svn, ...)
       case 17:
       default:if (items != 3 && status != -1) {
                 STRLEN len;
-                char* ptr = SvPV_nomg(svn, len);
+                char* ptr = SvPV(svn, len);
                 if (len > 0 && ptr[0] != '-') {
                   /* items != 3 and not negative */
                   _vcallsub_with_gmp("is_power");
@@ -1435,7 +1435,7 @@ carmichael_lambda(IN SV* svn)
       case 6:  _vcallsub_with_pp("sqrtint"); break;
       case 7:  _vcallsub_with_gmp("exp_mangoldt"); break;
       case 8:  _vcallsub_with_gmp("znprimroot"); break;
-      case 9:  { char* ptr;  STRLEN len;  ptr = SvPV_nomg(svn, len);
+      case 9:  { char* ptr;  STRLEN len;  ptr = SvPV(svn, len);
                  XSRETURN_UV(mpu_popcount_string(ptr, len)); } break;
       case 10:
       default:_vcallsub_with_pp("ramanujan_tau"); break;
@@ -1450,7 +1450,7 @@ sumdigits(SV* svn, UV base = 10)
     sum = 0;
     if (base == 10) {  /* Handles bigints as well as regular ints */
       STRLEN i, len;
-      const char* ptr = SvPV_nomg(svn, len);
+      const char* ptr = SvPV(svn, len);
       for (i = 0; i < len; i++) {
         if (isDIGIT(ptr[i])) {
           sum += ptr[i] - '0';
