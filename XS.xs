@@ -1442,10 +1442,9 @@ carmichael_lambda(IN SV* svn)
     }
     return; /* skip implicit PUTBACK */
 
-UV
+void
 sumdigits(SV* svn, UV base = 10)
   PREINIT:
-    int nstatus;
     UV sum;
   PPCODE:
     sum = 0;
