@@ -293,7 +293,7 @@ sub primes {
       $sref = Math::Prime::Util::GMP::primes($low,$high);
       if ($high > ~0) {
         # Convert the returned strings into BigInts
-        @$sref = map { Math::BigInt->new("$_") } @$sref;
+        @$sref = map { _reftyped($_[0],$_) } @$sref;
       } else {
         @$sref = map { int($_) } @$sref;
       }
