@@ -1922,10 +1922,10 @@ sub vecsum {
     return Math::Prime::Util::_reftyped($_[0], Math::Prime::Util::GMP::vecsum(@_));
   }
   my $sum = 0;
-  my $neglim = -(~0 >> 1) - 1;
+  my $neglim = -(INTMAX >> 1) - 1;
   foreach my $v (@_) {
     $sum += $v;
-    if ($sum > (~0-250) || $sum < $neglim) {
+    if ($sum > (INTMAX-250) || $sum < $neglim) {
       $sum = BZERO->copy;
       $sum->badd("$_") for @_;
       return $sum;
