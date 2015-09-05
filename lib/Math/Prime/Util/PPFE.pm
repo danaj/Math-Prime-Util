@@ -611,13 +611,18 @@ sub forperm (&$;$) {    ## no critic qw(ProhibitSubroutinePrototypes)
 
 sub vecreduce (&@) {    ## no critic qw(ProhibitSubroutinePrototypes)
   my($sub, @v) = @_;
-  my $count = shift @v;
+
+  # Mastering Perl page 162, works with old Perl
+  my $caller = caller();
+  no strict 'refs'; ## no critic(strict)
+  local(*{$caller.'::a'}) = \my $a;
+  local(*{$caller.'::b'}) = \my $b;
+  $a = shift @v;
   for my $v (@v) {
-    no strict 'refs'; ## no critic(strict)
-    local( ${caller() . '::a'}, ${caller() . '::b'} ) = ($count, $v);
-    $count = $sub->();
+    $b = $v;
+    $a = $sub->();
   }
-  $count;
+  $a;
 }
 
 sub vecextract {

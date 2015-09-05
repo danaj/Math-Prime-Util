@@ -3166,13 +3166,13 @@ sub is_frobenius_khashin_pseudoprime {
   return 0 if $k == 0;
 
   my($ra,$rb,$a,$b,$d) = (1,1,1,1,$n-1);
-  while ($d) {
-    if ($d & 1) {
+  while (!$d->is_zero) {
+    if ($d->is_odd()) {
       ($ra, $rb) = ( (($ra*$a)%$n + ((($rb*$b)%$n)*$c)%$n) % $n,
                      (($rb*$a)%$n + ($ra*$b)%$n) % $n );
     }
     $d >>= 1;
-    if ($d) {
+    if (!$d->is_zero) {
       ($a, $b) = ( (($a*$a)%$n + ((($b*$b)%$n)*$c)%$n) % $n,
                    (($b*$a)%$n + ($a*$b)%$n) % $n );
     }

@@ -95,9 +95,11 @@ if ($use64) {
   push @{$pseudoprimes{aeslucas1}}, 4294967311,4294967357,10071551814917;
   push @{$pseudoprimes{aeslucas2}}, 34372519409;
 }
-if (!$usexs && !$usegmp) {
-  # Don't make Math::BigInt do large binomials
-  $pseudoprimes{catalan} = [5907];
+if (!$usexs) {
+  if (!$usegmp || !defined &Math::Prime::Util::GMP::binomial) {
+    # Don't make Math::BigInt do large binomials
+    $pseudoprimes{catalan} = [5907];
+  }
 }
 
 my $num_pseudoprimes = 0;
