@@ -2608,7 +2608,12 @@ bigints if overflow will be a concern.
 
 Takes a positive integer as input and returns the value of Ramanujan's tau
 function.  The result is a signed integer.
-This corresponds to Mathematica's C<RamanujanTau> function.
+This corresponds to Pari v2.8's C<tauramanujan> function and
+Mathematica's C<RamanujanTau> function.
+
+This currently uses a simple method based on divisor sums, which does
+not have a good computational growth rate.  Pari's implementation uses
+Hurwitz class numbers and is more efficient for large inputs.
 
 
 =head2 primorial

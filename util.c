@@ -1581,7 +1581,7 @@ int is_power(UV n, UV a)
       { UV cb = icbrt(n);
         return (cb*cb*cb != n)       ? 0 : (a == 3) ? 1 : is_power(cb, a/3); }
     if ((a % 5) == 0)
-      { UV r5 = (UV)(pow(n,0.2) + 1e-6);
+      { UV r5 = rootof(n, 5);
         return (r5*r5*r5*r5*r5 != n) ? 0 : (a == 5) ? 1 : is_power(r5, a/5); }
   }
   ret = powerof(n);
@@ -1861,7 +1861,7 @@ UV exp_mangoldt(UV n) {
   else {
     int k = powerof(n);
     if (k >= 2) {
-      n = (k==2) ? isqrt(n) : (UV)(pow(n,1.0/k)+0.0000001);
+      n = rootof(n, k);
       if (is_prob_prime(n)) return n;
     }
     return 1;
