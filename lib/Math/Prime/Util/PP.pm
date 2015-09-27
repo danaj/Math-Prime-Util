@@ -513,6 +513,80 @@ sub primes {
   $sref;
 }
 
+sub sieve_prime_cluster {
+  my($lo,$hi,@cl) = @_;
+  my $_verbose = Math::Prime::Util::prime_get_config()->{'verbose'};
+  _validate_positive_integer($lo);
+  _validate_positive_integer($hi);
+  return @{primes($lo,$hi)} if scalar(@cl) == 0;
+  unshift @cl, 0;
+  for my $i (1 .. $#cl) {
+    _validate_positive_integer($cl[$i]);
+    croak "sieve_prime_cluster: values must be even" if $cl[$i] & 1;
+    croak "sieve_prime_cluster: values must be increasing" if $cl[$i] <= $cl[$i-1];
+  }
+  my($p,@p) = (17);
+  $p = 13 if ($hi-$lo) < 50_000_000;
+  $p = 11 if ($hi-$lo) <  1_000_000;
+  $p =  5 if ($hi-$lo) <     20_000;
+  my $pr = primorial($p);
+
+  # Add any cases under our sieving point.
+  if ($lo <= $p) {
+    $p = $hi if $p > $hi;
+    for my $n ($lo .. $p) {
+      next unless ($n % 2) && ($n % 3);
+      my $ac = 1;
+      for my $c (@cl) {
+        if (!is_prime($n+$c)) { $ac = 0; last; }
+      }
+      push @p, $n if $ac;
+    }
+    $lo = next_prime($p);
+  }
+  return @p if $lo > $hi;
+
+  # Compute acceptable residues.
+  my $startpr = _bigint_to_int($lo % $pr);
+  my @acc;
+  for my $i ($startpr .. $startpr + $pr - 1) {
+    next unless ($i % 2) && ($i % 3) && ($i % 5);
+    my $ac = 1;
+    for my $c (@cl) {
+      my $v = ($i + $c) % $pr;
+      if (Math::Prime::Util::gcd($v,$pr) != 1) { $ac = 0; last; }
+    }
+    push @acc, $i-$startpr if $ac;
+  }
+  print "cluster sieve using ",scalar(@acc)," residues mod $pr\n" if $_verbose;
+  return @p if scalar(@acc) == 0;
+
+  # Walk the range in primorial chunks, doing primality tests.
+  my $nprim = 0;
+  while ($lo <= $hi) {
+    if (($lo+$acc[-1]) > $hi) {
+      my $max = _bigint_to_int($hi-$lo);
+      @acc = grep { $_ <= $max } @acc;
+    }
+
+    # We ought to sieve further here.
+
+    # Do final primality tests.
+    for my $r (@acc) {
+      my $ac = 1;
+      for my $c (@cl) {
+        $nprim++;
+        if (!Math::Prime::Util::is_prime($lo+($r+$c))) { $ac = 0; last; }
+      }
+      push @p, $lo+$r if $ac;
+    }
+    $lo += $pr;
+  }
+  print "cluster sieve ran $nprim primality tests\n" if $_verbose;
+  @p;
+}
+
+
 sub _n_ramanujan_primes {
   my($n) = @_;
   return [] if $n <= 0;

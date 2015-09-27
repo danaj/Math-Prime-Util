@@ -135,6 +135,10 @@ sub print_primes {
   my($low,$high,$fd) = @_;
   return Math::Prime::Util::PP::print_primes($low,$high,$fd);
 }
+sub sieve_prime_cluster {
+  my($low,$high,@cl) = @_;
+  return Math::Prime::Util::PP::sieve_prime_cluster($low,$high,@cl);
+}
 sub twin_prime_count_approx {
   my($n) = @_;
   _validate_positive_integer($n);

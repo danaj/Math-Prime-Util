@@ -37,6 +37,8 @@ primality.h
 primality.c
 sieve.h
 sieve.c
+sieve_cluster.h
+sieve_cluster.c
 util.h
 util.c
 bench/bench-factor.pl

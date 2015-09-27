@@ -41,6 +41,7 @@ WriteMakefile1(
                     'lehmer.o '   .
                     'lmo.o '      .
                     'sieve.o '    .
+                    'sieve_cluster.o ' .
                     'util.o '     .
                     'XS.o',
     LIBS         => ['-lm'],

@@ -16,6 +16,7 @@
 #include "ptypes.h"
 #include "cache.h"
 #include "sieve.h"
+#include "sieve_cluster.h"
 #define FUNC_gcd_ui 1
 #define FUNC_isqrt 1
 #include "util.h"
@@ -471,6 +472,39 @@ sieve_primes(IN UV low, IN UV high)
       }
     }
     return; /* skip implicit PUTBACK */
+
+void
+sieve_prime_cluster(IN SV* svlo, IN SV* svhi, ...)
+  PREINIT:
+    uint32_t nc, cl[100];
+    UV i, cv, nprimes, *list;
+    int lostatus, histatus;
+  PPCODE:
+    nc = items-1;
+    if (items > 100) croak("sieve_prime_cluster: too many entries");
+    cl[0] = 0;
+    for (i = 1; i < nc; i++) {
+      if (!_validate_int(aTHX_ ST(1+i), 0)) croak("sieve_prime_cluster: cluster values must be standard integers");
+      cv = my_svuv(ST(1+i));
+      if (cv & 1) croak("sieve_prime_cluster: values must be even");
+      if (cv > 2147483647UL) croak("sieve_prime_cluster: values must be 31-bit");
+      if (cv <= cl[i-1]) croak("sieve_prime_cluster: values must be increasing");
+      cl[i] = cv;
+    }
+    lostatus = _validate_int(aTHX_ svlo, 1);
+    histatus = _validate_int(aTHX_ svhi, 1);
+    if (lostatus == 1 && histatus == 1) {
+      UV low = my_svuv(svlo);
+      UV high = my_svuv(svhi);
+      list = sieve_cluster_simple(low, high, nc, cl, &nprimes);
+      EXTEND(SP, nprimes);
+      for (i = 0; i < nprimes; i++)
+        PUSHs(sv_2mortal(newSVuv( list[i] )));
+      Safefree(list);
+    } else {
+      _vcallsubn(aTHX_ GIMME_V, VCALL_GMP|VCALL_PP, "sieve_prime_cluster", items);
+      return;
+    }
 
 void
 trial_factor(IN UV n, ...)

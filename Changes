@@ -6,6 +6,7 @@ Revision history for Perl module Math::Prime::Util
 
     - ramanujan_tau(n)                    Ramanujan's Tau function
     - sumdigits(n[,base])                 sum digits of n
+    - sieve_prime_cluster(low,high[,...]) find prime clusters
 
     [FUNCTIONALITY AND PERFORMANCE]
 

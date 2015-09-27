@@ -119,7 +119,7 @@ static UV prev_prime_in_sieve(const unsigned char* sieve, UV p) {
       bit_ = nextzero30[s_]; \
       s_ |= 1 << bit_; \
       p = base_ + wheel30[bit_]; \
-      if (p > l_ || p < base_) break; \
+      if (p > l_ || p < base_) break; /* handle overflow */ \
       { \
 
 #define END_DO_FOR_EACH_SIEVE_PRIME \

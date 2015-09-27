@@ -9,6 +9,7 @@ XS.[co]
 cache.o
 factor.o
 sieve.o
+sieve_cluster.o
 util.o
 lehmer.o
 lmo.o
