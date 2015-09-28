@@ -478,7 +478,7 @@ sieve_prime_cluster(IN SV* svlo, IN SV* svhi, ...)
   PREINIT:
     uint32_t nc, cl[100];
     UV i, cv, nprimes, *list;
-    int lostatus, histatus;
+    int lostatus, histatus, done;
   PPCODE:
     nc = items-1;
     if (items > 100) croak("sieve_prime_cluster: too many entries");
@@ -493,15 +493,20 @@ sieve_prime_cluster(IN SV* svlo, IN SV* svhi, ...)
     }
     lostatus = _validate_int(aTHX_ svlo, 1);
     histatus = _validate_int(aTHX_ svhi, 1);
+    done = 0;
     if (lostatus == 1 && histatus == 1) {
       UV low = my_svuv(svlo);
       UV high = my_svuv(svhi);
       list = sieve_cluster(low, high, nc, cl, &nprimes);
-      EXTEND(SP, nprimes);
-      for (i = 0; i < nprimes; i++)
-        PUSHs(sv_2mortal(newSVuv( list[i] )));
-      Safefree(list);
-    } else {
+      if (list != 0) {
+        done = 1;
+        EXTEND(SP, nprimes);
+        for (i = 0; i < nprimes; i++)
+          PUSHs(sv_2mortal(newSVuv( list[i] )));
+        Safefree(list);
+      }
+    }
+    if (!done) {
       _vcallsubn(aTHX_ GIMME_V, VCALL_GMP|VCALL_PP, "sieve_prime_cluster", items);
       return;
     }
