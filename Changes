@@ -1,12 +1,18 @@
 Revision history for Perl module Math::Prime::Util
 
+0.54 2015-?
+
+    [ADDED]
+
+    - sieve_prime_cluster(low,high[,...]) find prime clusters
+
+
 0.53 2015-09-05
 
     [ADDED]
 
     - ramanujan_tau(n)                    Ramanujan's Tau function
     - sumdigits(n[,base])                 sum digits of n
-    - sieve_prime_cluster(low,high[,...]) find prime clusters
 
     [FUNCTIONALITY AND PERFORMANCE]
 

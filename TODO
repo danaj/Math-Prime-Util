@@ -113,6 +113,4 @@
   Nested calls are doable, but threading is a bear.  Perhaps do a first
   version that is non-threadsafe.
 
-- Our sieve_prime_cluster is just the simple version.  Copy the complicated
-  code over from MPU::GMP.  Tune the crossover.
 - Tests for sieve_prime_cluster.

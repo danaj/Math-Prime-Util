@@ -496,7 +496,7 @@ sieve_prime_cluster(IN SV* svlo, IN SV* svhi, ...)
     if (lostatus == 1 && histatus == 1) {
       UV low = my_svuv(svlo);
       UV high = my_svuv(svhi);
-      list = sieve_cluster_simple(low, high, nc, cl, &nprimes);
+      list = sieve_cluster(low, high, nc, cl, &nprimes);
       EXTEND(SP, nprimes);
       for (i = 0; i < nprimes; i++)
         PUSHs(sv_2mortal(newSVuv( list[i] )));
