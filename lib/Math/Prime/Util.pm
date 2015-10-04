@@ -1534,11 +1534,13 @@ a range.  This will be substantially slower than generating standard primes.
   my @s = sieve_prime_cluster(1, 1e9, 2,6,8,12,18,20);
 
 Efficiently finds prime clusters between the first two arguments C<low>
-and C<high>.  The remainining arguments describe the cluster.  A cluster
-is a strictly increasing sequence of primes, not necessarily the minimal
-distance.  The cluster values must be even, less than 31 bits, and
-strictly increasing.  The returned values are the start of the cluster
-(C<p+0>).
+and C<high>.  The remaining arguments describe the cluster.
+The cluster values must be even, less than 31 bits, and strictly increasing.
+Given a cluster set C<C>, the returned values are all primes in the
+range where C<p+c> is prime for each C<c> in the cluster set C<C>.
+For returned values under C<2^64>, all cluster values are
+definitely prime.  Above this range, all cluster values are BPSW
+probable primes (no counterexamples known).
 
 This function returns an array rather than an array reference.
 Typically the number of returned values is much lower than for

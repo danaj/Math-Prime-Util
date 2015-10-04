@@ -68,6 +68,7 @@ examples/twin_primes.pl
 examples/abundant.pl
 examples/find_mr_bases.pl
 examples/inverse_totient.pl
+examples/ktuplets.pl
 examples/numseqs.pl
 examples/fibprime-serial.pl
 examples/fibprime-threads.pl

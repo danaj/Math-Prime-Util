@@ -67,6 +67,7 @@ See L<Math::Prime::Util> for complete documentation.
 
   primes([start,] end)                array ref of primes
   twin_primes([start,] end)           array ref of twin primes
+  sieve_prime_cluster(start, end, @C) list of prime k-tuples
   ramanujan_primes([start,] end)      array ref of Ramanujan primes
   next_prime(n)                       next prime > n
   prev_prime(n)                       previous prime < n

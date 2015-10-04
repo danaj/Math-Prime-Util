@@ -56,7 +56,7 @@ sub mpu_public_regex {
       is_square_free
       miller_rabin_random
       lucas_sequence lucasu lucasv
-      primes twin_primes ramanujan_primes
+      primes twin_primes ramanujan_primes sieve_prime_cluster
       forprimes forcomposites foroddcomposites fordivisors
       forpart forcomb forperm
       prime_iterator prime_iterator_object

@@ -34,6 +34,24 @@ typedef struct {
             t_ = n1;  n1 = n2;  n2 = t_; \
             t_ = m1;  m1 = m2;  m2 = t_; }
 
+static int is_admissible(uint32_t nc, uint32_t* cl) {
+  uint32_t i, j, c;
+  char rset[sprimes[NSMALLPRIMES-1]];
+
+  if (nc > NSMALLPRIMES) return 1;    /* TODO */
+  for (i = 0; i < nc; i++) {
+    uint32_t p = sprimes[i];
+    memset(rset, 0, p);
+    for (c = 0; c < nc; c++)
+      rset[cl[c] % p] = 1;
+    for (j = 0; j < p; j++)
+      if (rset[j] == 0)
+        break;
+    if (j == p) /* All values were 1 */
+      return 0;
+  }
+  return 1;
+}
 
 /* Given p prime, is this a cluster? */
 static int is_cluster(UV p, uint32_t nc, uint32_t* cl) {
@@ -54,6 +72,11 @@ UV* sieve_cluster_simple(UV beg, UV end, uint32_t nc, uint32_t* cl, UV* numret)
   if (beg <= 3 && end >= 3 && is_cluster(3, nc, cl)) PUSH_VLIST(retlist, 3);
   if (beg <= 5 && end >= 5 && is_cluster(5, nc, cl)) PUSH_VLIST(retlist, 5);
   if (beg < 7)  beg = 7;
+
+  /* If not admissible, then don't keep looking. */
+  if (!is_admissible(nc, cl) && end > sprimes[nc])
+    end = sprimes[nc];
+
   if (beg <= end) {
     uint32_t c;
     unsigned char* segment;
