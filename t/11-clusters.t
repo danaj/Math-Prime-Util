@@ -6,6 +6,8 @@ use Test::More;
 use Math::Prime::Util qw/sieve_prime_cluster is_prime primes twin_primes/;
 use Math::BigInt try => "GMP,Pari";
 my $extra = defined $ENV{EXTENDED_TESTING} && $ENV{EXTENDED_TESTING};
+my $usegmp = Math::Prime::Util::prime_get_config->{'gmp'};
+my $usexs = Math::Prime::Util::prime_get_config->{'xs'};
 
 my @tests = (
   [ "A001359", [0, 2], [0,200], [3, 5, 11, 17, 29, 41, 59, 71, 101, 107, 137, 149, 179, 191, 197] ],
@@ -67,6 +69,9 @@ my($sbeg,$send) = (0, 100000);
 my $mbeg = Math::BigInt->new(10)**21;
 my $mend = $mbeg + 10000 + int(rand(100000));
 
+if (!$usegmp) {
+  $mend = $mbeg + 5000;
+}
 $send += 1000000 if $extra;
 $mend += 100000 if $extra;
 
@@ -94,7 +99,8 @@ for my $pat (@patterns) {
 
 for my $test (@high_check) {
   my($n,$name,$cl) = @$test;
-  my @res = sieve_prime_cluster($n-1e6, $n+1e6, @$cl);
+  my $window = ($usexs && $usegmp) ? 1e6 : 1e4;
+  my @res = sieve_prime_cluster($n-$window, $n+$window, @$cl);
   is_deeply(\@res, [$n], "Window around $name high cluster finds the cluster");
 }
 

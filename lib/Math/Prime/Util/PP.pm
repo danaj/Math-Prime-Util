@@ -529,13 +529,12 @@ sub sieve_prime_cluster {
   $p = 13 if ($hi-$lo) < 50_000_000;
   $p = 11 if ($hi-$lo) <  1_000_000;
   $p =  5 if ($hi-$lo) <     20_000;
-  my $pr = primorial($p);
 
   # Add any cases under our sieving point.
   if ($lo <= $p) {
     $p = $hi if $p > $hi;
     for my $n ($lo .. $p) {
-      next unless ($n % 2) && ($n % 3);
+      next unless $n < 4 || (($n % 2) && ($n % 3));
       my $ac = 1;
       for my $c (@cl) {
         if (!is_prime($n+$c)) { $ac = 0; last; }
@@ -547,6 +546,7 @@ sub sieve_prime_cluster {
   return @p if $lo > $hi;
 
   # Compute acceptable residues.
+  my $pr = primorial($p);
   my $startpr = _bigint_to_int($lo % $pr);
   my @acc;
   for my $i ($startpr .. $startpr + $pr - 1) {
