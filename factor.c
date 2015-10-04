@@ -212,10 +212,10 @@ int factor(UV n, UV *factors)
 
   /* Sort the non-small factors */
   for (i = nsmallfactors+1; i < nfactors; i++) {
-    UV f = factors[i];
-    for (j = i; j > 0 && factors[j-1] > f; j--)
+    UV fi = factors[i];
+    for (j = i; j > 0 && factors[j-1] > fi; j--)
       factors[j] = factors[j-1];
-    factors[j] = f;
+    factors[j] = fi;
   }
   }
   return nfactors;

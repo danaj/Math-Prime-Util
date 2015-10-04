@@ -114,5 +114,3 @@
   version that is non-threadsafe.
 
 - Tests for sieve_prime_cluster.
-- cluster sieve: res2 vs. cres
-- cluster sieve: do uint32_t vs. UV change in GMP

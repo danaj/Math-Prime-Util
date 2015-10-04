@@ -431,11 +431,11 @@ static UV _sieve_phi(UV segment_x, const sword_t* sieve, const uint32* sieve_wor
  * clever, and does the job. */
 
 #define sieve_zero(sieve, si, wordcount) \
-  { uint32  index = si/SWORD_BITS; \
-    sword_t mask  = SWORD_MASKBIT(si); \
-    if (sieve[index] & mask) { \
-      sieve[index] &= ~mask; \
-      wordcount[index]--; \
+  { uint32  index_ = si/SWORD_BITS; \
+    sword_t mask_  = SWORD_MASKBIT(si); \
+    if (sieve[index_] & mask_) { \
+      sieve[index_] &= ~mask_; \
+      wordcount[index_]--; \
     }  }
 
 #define sieve_case_zero(casenum, skip, si, p, size, mult, sieve, wordcount) \

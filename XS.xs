@@ -707,7 +707,7 @@ gcd(...)
       XSRETURN_UV(ret);
     /* For min/max, use string compare if not an object */
     if ((ix == 2 || ix == 3) && !sv_isobject(ST(0))) {
-      int i, retindex = 0;
+      int retindex = 0;
       int minmax = (ix == 2);
       STRLEN alen, blen;
       char *aptr, *bptr;
