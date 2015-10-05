@@ -1374,7 +1374,7 @@ signed char* _moebius_range(UV lo, UV hi)
   } END_DO_FOR_EACH_PRIME
 
   logp = log2floor(lo);
-  nextlog = 2UL << logp;
+  nextlog = UVCONST(2) << logp;
   for (i = lo; i <= hi; i++) {
     unsigned char a = mu[i-lo];
     if (i >= nextlog) {  logp++;  nextlog *= 2;  } /* logp is log(p)/log(2) */

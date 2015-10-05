@@ -102,8 +102,8 @@ typedef   signed long IV;
 
 static UV isqrt(UV n) {
   UV root;
-  if (sizeof(UV) == 8 && n >= 18446744065119617025UL)  return 4294967295UL;
-  if (sizeof(UV) == 4 && n >= 4294836225UL)            return 65535UL;
+  if (sizeof(UV)==8 && n >= UVCONST(18446744065119617025))  return 4294967295UL;
+  if (sizeof(UV)==4 && n >= 4294836225UL)            return 65535UL;
   root = (UV) sqrt((double)n);
   while (root*root > n)  root--;
   while ((root+1)*(root+1) <= n)  root++;
@@ -113,7 +113,7 @@ static UV icbrt(UV n) {
   UV b, root = 0;
   int s;
   if (sizeof(UV) == 8) {
-    s = 63;  if (n >= 18446724184312856125UL)  return 2642245UL;
+    s = 63;  if (n >= UVCONST(18446724184312856125))  return 2642245UL;
   } else {
     s = 30;  if (n >= 4291015625UL)            return 1625UL;
   }
