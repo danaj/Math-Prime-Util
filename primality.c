@@ -743,10 +743,14 @@ int is_almost_extra_strong_lucas_pseudoprime(UV n, UV increment)
 {
   UV P, V, W, d, s, b;
 
-  if (n < 7) return (n == 2 || n == 3 || n == 5);
+  if (n < 13) return (n == 2 || n == 3 || n == 5 || n == 7 || n == 11);
   if ((n % 2) == 0 || n == UV_MAX) return 0;
   if (increment < 1 || increment > 256)
     croak("Invalid lucas parameter increment: %"UVuf"\n", increment);
+
+  /* Ensure small primes work with large increments. */
+  if ( (increment >= 16 && n <= 331) || (increment > 148 && n <= 631) )
+    return !!is_prob_prime(n);
 
   P = select_extra_strong_parameters(n, increment);
   if (P == 0) return 0;
@@ -914,15 +918,15 @@ int is_frobenius_pseudoprime(UV n, IV P, IV Q)
   if (P == 0 && Q == 0) {
     P = -1; Q = 2;
     if (n == 7) P = 1;  /* So we don't test kronecker(-7,7) */
-    while (k != -1) {
+    do {
       P += 2;
       if (P == 3) P = 5;  /* P=3,Q=2 -> D=9-8=1 => k=1, so skip */
       D = P*P-4*Q;
       Du = D >= 0 ? D : -D;
       k = kronecker_su(D, n);
-      if (k == 0) return 0;
       if (P == 10001 && is_perfect_square(n)) return 0;
-    }
+    } while (k == 1);
+    if (k == 0) return 0;
     /* D=P^2-8 will not be a perfect square */
     if (_XS_get_verbose()) printf("%"UVuf" Frobenius (%"IVdf",%"IVdf") : x^2 - %"IVdf"x + %"IVdf"\n", n, P, Q, P, Q);
     Vcomp = 4;
@@ -932,16 +936,23 @@ int is_frobenius_pseudoprime(UV n, IV P, IV Q)
     if (D != 5 && is_perfect_square(Du))
       croak("Frobenius invalid P,Q: (%"IVdf",%"IVdf")", P, Q);
   }
-  Pu = P >= 0 ? P : -P;
-  Qu = Q >= 0 ? Q : -Q;
+  Pu = (P >= 0 ? P : -P) % n;
+  Qu = (Q >= 0 ? Q : -Q) % n;
 
-  /* if (n <= Du || n <= Qu || n <= Pu) return !!is_prob_prime(n); */
-  if (gcd_ui(n, Pu*Qu*Du) != 1) return 0;
+  Qk = gcd_ui(n, Pu*Qu*Du);
+  if (Qk != 1) {
+    if (Qk == n) return !!is_prob_prime(n);
+    return 0;
+  }
   if (k == 0) {
     k = kronecker_su(D, n);
     if (k == 0) return 0;
-    Qu = addmod(Qu,Qu,n);
-    Vcomp = (k == 1)  ?  2  :  Q >= 0 ? Qu : n-Qu;
+    if (k == 1) {
+      Vcomp = 2;
+    } else {
+      Qu = addmod(Qu,Qu,n);
+      Vcomp = (Q >= 0)  ?  Qu  :  n-Qu;
+    }
   }
 
   lucas_seq(&U, &V, &Qk, n, P, Q, n-k);

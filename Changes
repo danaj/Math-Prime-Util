@@ -6,6 +6,11 @@ Revision history for Perl module Math::Prime::Util
 
     - sieve_prime_cluster(low,high[,...]) find prime clusters
 
+    [Misc]
+
+    - Small primes used to return false with is_frobenius_pseudoprime given
+      extra arguments, and with a large increment for aes lucas.  Both are
+      unusual cases never used by the main system.  Fixed.
 
 0.53 2015-09-05
 
