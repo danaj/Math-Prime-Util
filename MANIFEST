@@ -68,7 +68,8 @@ examples/twin_primes.pl
 examples/abundant.pl
 examples/find_mr_bases.pl
 examples/inverse_totient.pl
-examples/ktuplets.pl
+examples/ktuplet.pl
+examples/ktuplet-threads.pl
 examples/numseqs.pl
 examples/fibprime-serial.pl
 examples/fibprime-threads.pl
@@ -107,6 +108,7 @@ t/11-primes.t
 t/11-ramanujanprimes.t
 t/11-twinprimes.t
 t/11-sumprimes.t
+t/11-clusters.t
 t/12-nextprime.t
 t/13-primecount.t
 t/14-nthprime.t

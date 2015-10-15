@@ -8,9 +8,9 @@ Revision history for Perl module Math::Prime::Util
 
     [Misc]
 
-    - Small primes used to return false with is_frobenius_pseudoprime given
-      extra arguments, and with a large increment for aes lucas.  Both are
-      unusual cases never used by the main system.  Fixed.
+    - Certain small primes used to return false with Frobenius and AES Lucas
+      tests when given extra arguments.  Both are unusual cases never used
+      by the main system.  Fixed.
 
 0.53 2015-09-05
 
