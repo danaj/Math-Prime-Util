@@ -518,7 +518,14 @@ sub sieve_prime_cluster {
   my $_verbose = Math::Prime::Util::prime_get_config()->{'verbose'};
   _validate_positive_integer($lo);
   _validate_positive_integer($hi);
+
+  if (defined &Math::Prime::Util::GMP::sieve_prime_cluster && Math::Prime::Util::prime_get_config()->{'gmp'}) {
+    return map { ($_ > ''.~0) ? Math::BigInt->new(''.$_) : $_ }
+           Math::Prime::Util::GMP::sieve_prime_cluster($lo,$hi,@cl);
+  }
+
   return @{primes($lo,$hi)} if scalar(@cl) == 0;
+
   unshift @cl, 0;
   for my $i (1 .. $#cl) {
     _validate_positive_integer($cl[$i]);
