@@ -528,7 +528,7 @@ sub sieve_prime_cluster {
   my($p,@p) = (17);
   $p = 13 if ($hi-$lo) < 50_000_000;
   $p = 11 if ($hi-$lo) <  1_000_000;
-  $p =  5 if ($hi-$lo) <     20_000;
+  $p =  5 if ($hi-$lo) <     20_000 && $lo < INTMAX;
 
   # Add any cases under our sieving point.
   if ($lo <= $p) {
@@ -574,11 +574,12 @@ sub sieve_prime_cluster {
     # Do final primality tests.
     for my $r (@acc) {
       my $ac = 1;
+      my $lor = $lo+$r;
       for my $c (@cl) {
         $nprim++;
-        if (!Math::Prime::Util::is_prime($lo+($r+$c))) { $ac = 0; last; }
+        if (!Math::Prime::Util::is_prime($lor+$c)) { $ac = 0; last; }
       }
-      push @p, $lo+$r if $ac;
+      push @p, $lor if $ac;
     }
     $lo += $pr;
   }
