@@ -537,10 +537,14 @@ sub sieve_prime_cluster {
   _validate_positive_integer($lo);
   _validate_positive_integer($hi);
 
-  if (defined &Math::Prime::Util::GMP::sieve_prime_cluster && Math::Prime::Util::prime_get_config()->{'gmp'}) {
-    return map { ($_ > ''.~0) ? Math::BigInt->new(''.$_) : $_ }
-           Math::Prime::Util::GMP::sieve_prime_cluster($lo,$hi,@cl);
-  }
+  # Perl 5.8.9 and earlier will autovivify the function at pre-BEGIN time
+  # just because this code exists.  This behavior is nuts.  The only way
+  # I can see to work around this is to obscure the function call (eval or
+  # function reference).
+  #if (defined &Math::Prime::Util::GMP::sieve_prime_cluster && Math::Prime::Util::prime_get_config()->{'gmp'}) {
+  #  return map { ($_ > ''.~0) ? Math::BigInt->new(''.$_) : $_ }
+  #         Math::Prime::Util::GMP::sieve_prime_cluster($lo,$hi,@cl);
+  #}
 
   return @{primes($lo,$hi)} if scalar(@cl) == 0;
 
@@ -553,7 +557,7 @@ sub sieve_prime_cluster {
   my($p,$sievelim,@p) = (17, 2000);
   $p = 13 if ($hi-$lo) < 50_000_000;
   $p = 11 if ($hi-$lo) <  1_000_000;
-  $p =  5 if ($hi-$lo) <     20_000 && $lo < INTMAX;
+  $p =  7 if ($hi-$lo) <     20_000 && $lo < INTMAX;
 
   # Add any cases under our sieving point.
   if ($lo <= $sievelim) {
