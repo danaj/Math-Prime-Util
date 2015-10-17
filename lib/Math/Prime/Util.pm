@@ -347,8 +347,8 @@ sub twin_primes {
     if ($_HAVE_GMP && defined &Math::Prime::Util::GMP::sieve_twin_primes && $low > 2**31) {
       @tp = map { _reftyped($_[0],$_) } Math::Prime::Util::GMP::sieve_twin_primes($low, $high);
     } else {
-      my $lp = -1;
-      forprimes { push @tp, $lp if $lp+2 == $_; $lp = $_; } $low,$high+2;
+      require Math::Prime::Util::PP;
+      @tp = map { _reftyped($_[0],$_) }  Math::Prime::Util::PP::sieve_prime_cluster($low,$high, 2);
     }
     return \@tp;
   }

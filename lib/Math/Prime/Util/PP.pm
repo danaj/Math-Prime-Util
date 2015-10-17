@@ -532,62 +532,82 @@ sub sieve_prime_cluster {
     croak "sieve_prime_cluster: values must be even" if $cl[$i] & 1;
     croak "sieve_prime_cluster: values must be increasing" if $cl[$i] <= $cl[$i-1];
   }
-  my($p,@p) = (17);
+  my($p,$sievelim,@p) = (17, 2000);
   $p = 13 if ($hi-$lo) < 50_000_000;
   $p = 11 if ($hi-$lo) <  1_000_000;
   $p =  5 if ($hi-$lo) <     20_000 && $lo < INTMAX;
 
   # Add any cases under our sieving point.
-  if ($lo <= $p) {
-    $p = $hi if $p > $hi;
-    for my $n ($lo .. $p) {
-      next unless $n < 4 || (($n % 2) && ($n % 3));
+  if ($lo <= $sievelim) {
+    $sievelim = $hi if $sievelim > $hi;
+    for my $n (@{primes($lo,$sievelim)}) {
       my $ac = 1;
-      for my $c (@cl) {
-        if (!is_prime($n+$c)) { $ac = 0; last; }
+      for my $ci (1 .. $#cl) {
+        if (!is_prime($n+$cl[$ci])) { $ac = 0; last; }
       }
       push @p, $n if $ac;
     }
-    $lo = next_prime($p);
+    $lo = next_prime($sievelim);
   }
   return @p if $lo > $hi;
 
   # Compute acceptable residues.
   my $pr = primorial($p);
   my $startpr = _bigint_to_int($lo % $pr);
-  my @acc;
-  for my $i ($startpr .. $startpr + $pr - 1) {
-    next unless ($i % 2) && ($i % 3) && ($i % 5);
-    my $ac = 1;
-    for my $c (@cl) {
-      my $v = ($i + $c) % $pr;
-      if (Math::Prime::Util::gcd($v,$pr) != 1) { $ac = 0; last; }
+
+  my @acc = grep { ($_ & 1) && $_%3 }  ($startpr .. $startpr + $pr - 1);
+  for my $c (@cl) {
+    if ($p >= 7) {
+      @acc = grep { (($_+$c)%3) && (($_+$c)%5) && (($_+$c)%7) } @acc;
+    } else {
+      @acc = grep { (($_+$c)%3)  && (($_+$c)%5) } @acc;
     }
-    push @acc, $i-$startpr if $ac;
   }
+  for my $c (@cl) {
+    @acc = grep { Math::Prime::Util::gcd($_+$c,$pr) == 1 } @acc;
+  }
+  @acc = map { $_-$startpr } @acc;
+
   print "cluster sieve using ",scalar(@acc)," residues mod $pr\n" if $_verbose;
   return @p if scalar(@acc) == 0;
+
+  # Prepare table for more sieving.
+  my @mprimes = @{primes( $p+1, $sievelim)};
+  my @vprem;
+  for my $p (@mprimes) {
+    for my $c (@cl) {
+      $vprem[$p]->[ ($p-($c%$p)) % $p ] = 1;
+    }
+  }
 
   # Walk the range in primorial chunks, doing primality tests.
   my $nprim = 0;
   while ($lo <= $hi) {
+
+    my @racc = @acc;
+
+    # Make sure we don't do anything past the limit
     if (($lo+$acc[-1]) > $hi) {
       my $max = _bigint_to_int($hi-$lo);
-      @acc = grep { $_ <= $max } @acc;
+      @racc = grep { $_ <= $max } @racc;
     }
 
-    # We ought to sieve further here.
+    # Sieve more values using native math
+    foreach my $p (@mprimes) {
+      my $rem = _bigint_to_int( $lo % $p );
+      @racc = grep { !$vprem[$p]->[ ($rem+$_) % $p ] } @racc;
+      last unless scalar(@racc);
+    }
 
     # Do final primality tests.
-    for my $r (@acc) {
-      my $ac = 1;
-      my $lor = $lo+$r;
-      for my $c (@cl) {
-        $nprim++;
-        if (!Math::Prime::Util::is_prime($lor+$c)) { $ac = 0; last; }
-      }
-      push @p, $lor if $ac;
+    for my $c (@cl) {
+      last unless scalar(@racc);
+      my $loc = $lo + $c;
+      $nprim += scalar(@racc);
+      @racc = grep { Math::Prime::Util::is_prime($loc+$_) } @racc;
     }
+
+    push @p, map { $lo + $_ } @racc;
     $lo += $pr;
   }
   print "cluster sieve ran $nprim primality tests\n" if $_verbose;
@@ -1694,14 +1714,11 @@ sub twin_prime_count {
   else               { ($low,$high) = (2, $low);         }
   _validate_positive_integer($high);
   my $sum = 0;
-  # TODO: I suspect calling primes() on segments would be faster in most cases.
-  if ($high >= $low) {
-    my $p = next_prime($low-1);
-    my $p2 = next_prime($p);
-    while ($p <= $high) {
-      $sum++ if ($p2-$p) == 2;
-      ($p, $p2) = ($p2, next_prime($p2));
-    }
+  while ($low <= $high) {
+    my $seghigh = ($high-$high) + $low + 1e7 - 1;
+    $seghigh = $high if $seghigh > $high;
+    $sum += scalar(@{Math::Prime::Util::twin_primes($low,$seghigh)});
+    $low = $seghigh + 1;
   }
   $sum;
 }
@@ -1712,24 +1729,30 @@ sub twin_prime_count_approx {
   $n = _upgrade_to_float($n) if ref($n);
   my $logn = log($n);
   my $li2 = ExponentialIntegral($logn) + 2.8853900817779268147198494 - ($n/$logn);
-  if    ($n <     4000) { $li2 *= 1.0005 * log(log(log($n*4000))); }
-  elsif ($n <     8000) { $li2 *= 0.9734 * log(log(log($n*4000))); }
-  elsif ($n <    32000) { $li2 *= 0.8967 * log(log(log($n*4000))); }
-  elsif ($n <   200000) { $li2 *= 0.8937 * log(log(log($n*4000))); }
-  elsif ($n <  1000000) { $li2 *= 0.8793 * log(log(log($n*4000))); }
-  elsif ($n <  4000000) { $li2 *= 0.8766 * log(log(log($n*4000))); }
-  elsif ($n < 10000000) { $li2 *= 0.8664 * log(log(log($n*4000))); }
+  my $log4 = log(log(log($n*4000)));
+  if    ($n <     4000) { $li2 *= 1.0005 * $log4; }
+  elsif ($n <     8000) { $li2 *= 0.9734 * $log4; }
+  elsif ($n <    32000) { $li2 *= 0.8967 * $log4; }
+  elsif ($n <   200000) { $li2 *= 0.8937 * $log4; }
+  elsif ($n <  1000000) { $li2 *= 0.8793 * $log4; }
+  elsif ($n <  4000000) { $li2 *= 0.8766 * $log4; }
+  elsif ($n < 10000000) { $li2 *= 0.8664 * $log4; }
   return int(1.32032363169373914785562422 * $li2 + 0.5);
 }
 
 sub nth_twin_prime {
   my($n) = @_;
-  my($nth, $p, $p2) = (0, 0, 3);
-  while ($n > 0) {
-    if (($p2-$p) == 2) { $nth = $p; $n--; }
-    ($p, $p2) = ($p2, next_prime($p2));
+  return 0 if $n < 0;
+  return (0,3,5,11,17,29,41)[$n] if $n <= 6;
+
+  my $p = nth_twin_prime_approx($n);
+  my $tp = Math::Prime::Util::twin_primes($p);
+  while ($n > scalar(@$tp)) {
+    $n -= scalar(@$tp);
+    $tp = Math::Prime::Util::twin_primes($p+1,$p+1e5);
+    $p += 1e5;
   }
-  $nth;
+  return $tp->[$n-1];
 }
 
 sub nth_twin_prime_approx {
