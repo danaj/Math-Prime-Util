@@ -398,7 +398,7 @@ sub _sieve_erat_string {
 
 
 sub _sieve_segment {
-  my($beg,$end) = @_;
+  my($beg,$end,$limit) = @_;
   ($beg, $end) = map { _bigint_to_int($_) } ($beg, $end)
     if ref($end) && $end <= BMAX;
   croak "Internal error: segment beg is even" if ($beg % 2) == 0;
@@ -420,7 +420,8 @@ sub _sieve_segment {
   # If the end value is below 7^2, then the pre-sieve is all we needed.
   return \$sieve if $end < 49;
 
-  my $limit = ref($end) ? $end->copy->bsqrt() : int(sqrt($end)+0.0000001);
+  my $sqlimit = ref($end) ? $end->copy->bsqrt() : int(sqrt($end)+0.0000001);
+  $limit = $sqlimit if !defined $limit || $sqlimit < $limit;
   # For large value of end, it's a huge win to just walk primes.
 
   my($p, $s, $primesieveref) = (7-2, 3, _sieve_erat($limit));
@@ -457,15 +458,32 @@ sub trial_primes {
   }
   _validate_positive_integer($low);
   _validate_positive_integer($high);
-
   return if $low > $high;
-
   my @primes;
-  $low-- if $low >= 2;
-  my $curprime = next_prime($low);
-  while ($curprime <= $high) {
-    push @primes, $curprime;
-    $curprime = next_prime($curprime);
+
+  # For a tiny range, just use next_prime calls
+  if (($high-$low) < 1000) {
+    $low-- if $low >= 2;
+    my $curprime = next_prime($low);
+    while ($curprime <= $high) {
+      push @primes, $curprime;
+      $curprime = next_prime($curprime);
+    }
+    return \@primes;
+  }
+
+  # Sieve to 10k then BPSW test
+  push @primes, 2  if ($low <= 2) && ($high >= 2);
+  push @primes, 3  if ($low <= 3) && ($high >= 3);
+  push @primes, 5  if ($low <= 5) && ($high >= 5);
+  $low = 7 if $low < 7;
+  $low++ if ($low % 2) == 0;
+  $high-- if ($high % 2) == 0;
+  my $sieveref = _sieve_segment($low, $high, 10000);
+  my $n = $low-2;
+  while ($$sieveref =~ m/0/g) {
+    my $p = $n+2*pos($$sieveref);
+    push @primes, $p if _miller_rabin_2($p) && is_extra_strong_lucas_pseudoprime($p);
   }
   return \@primes;
 }

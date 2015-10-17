@@ -7,7 +7,7 @@ Revision history for Perl module Math::Prime::Util
     [FUNCTIONALITY AND PERFORMANCE]
 
     - Speed up PP versions of sieve_prime_cluster, twin_primes,
-      twin_prime_count, nth_twin_prime.
+      twin_prime_count, nth_twin_prime, primes.
 
 0.54 2015-10-14
 
