@@ -1,6 +1,6 @@
 Revision history for Perl module Math::Prime::Util
 
-0.55 2015-?
+0.55 2015-10-19
 
     - Fixed test that was using a 64-bit number on 32-bit machines.
 
