@@ -1,13 +1,13 @@
 Revision history for Perl module Math::Prime::Util
 
-0.55 2015-?
+0.55 2015-10-19
 
     - Fixed test that was using a 64-bit number on 32-bit machines.
 
     [FUNCTIONALITY AND PERFORMANCE]
 
     - Speed up PP versions of sieve_prime_cluster, twin_primes,
-      twin_prime_count, nth_twin_prime.
+      twin_prime_count, nth_twin_prime, primes.
 
 0.54 2015-10-14
 

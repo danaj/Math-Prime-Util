@@ -5,7 +5,7 @@ use Carp qw/carp croak confess/;
 
 BEGIN {
   $Math::Prime::Util::PP::AUTHORITY = 'cpan:DANAJ';
-  $Math::Prime::Util::PP::VERSION = '0.54';
+  $Math::Prime::Util::PP::VERSION = '0.55';
 }
 
 BEGIN {
@@ -398,7 +398,7 @@ sub _sieve_erat_string {
 
 
 sub _sieve_segment {
-  my($beg,$end) = @_;
+  my($beg,$end,$limit) = @_;
   ($beg, $end) = map { _bigint_to_int($_) } ($beg, $end)
     if ref($end) && $end <= BMAX;
   croak "Internal error: segment beg is even" if ($beg % 2) == 0;
@@ -420,7 +420,8 @@ sub _sieve_segment {
   # If the end value is below 7^2, then the pre-sieve is all we needed.
   return \$sieve if $end < 49;
 
-  my $limit = ref($end) ? $end->copy->bsqrt() : int(sqrt($end)+0.0000001);
+  my $sqlimit = ref($end) ? $end->copy->bsqrt() : int(sqrt($end)+0.0000001);
+  $limit = $sqlimit if !defined $limit || $sqlimit < $limit;
   # For large value of end, it's a huge win to just walk primes.
 
   my($p, $s, $primesieveref) = (7-2, 3, _sieve_erat($limit));
@@ -457,15 +458,32 @@ sub trial_primes {
   }
   _validate_positive_integer($low);
   _validate_positive_integer($high);
-
   return if $low > $high;
-
   my @primes;
-  $low-- if $low >= 2;
-  my $curprime = next_prime($low);
-  while ($curprime <= $high) {
-    push @primes, $curprime;
-    $curprime = next_prime($curprime);
+
+  # For a tiny range, just use next_prime calls
+  if (($high-$low) < 1000) {
+    $low-- if $low >= 2;
+    my $curprime = next_prime($low);
+    while ($curprime <= $high) {
+      push @primes, $curprime;
+      $curprime = next_prime($curprime);
+    }
+    return \@primes;
+  }
+
+  # Sieve to 10k then BPSW test
+  push @primes, 2  if ($low <= 2) && ($high >= 2);
+  push @primes, 3  if ($low <= 3) && ($high >= 3);
+  push @primes, 5  if ($low <= 5) && ($high >= 5);
+  $low = 7 if $low < 7;
+  $low++ if ($low % 2) == 0;
+  $high-- if ($high % 2) == 0;
+  my $sieveref = _sieve_segment($low, $high, 10000);
+  my $n = $low-2;
+  while ($$sieveref =~ m/0/g) {
+    my $p = $n+2*pos($$sieveref);
+    push @primes, $p if _miller_rabin_2($p) && is_extra_strong_lucas_pseudoprime($p);
   }
   return \@primes;
 }
@@ -519,10 +537,14 @@ sub sieve_prime_cluster {
   _validate_positive_integer($lo);
   _validate_positive_integer($hi);
 
-  if (defined &Math::Prime::Util::GMP::sieve_prime_cluster && Math::Prime::Util::prime_get_config()->{'gmp'}) {
-    return map { ($_ > ''.~0) ? Math::BigInt->new(''.$_) : $_ }
-           Math::Prime::Util::GMP::sieve_prime_cluster($lo,$hi,@cl);
-  }
+  # Perl 5.8.9 and earlier will autovivify the function at pre-BEGIN time
+  # just because this code exists.  This behavior is nuts.  The only way
+  # I can see to work around this is to obscure the function call (eval or
+  # function reference).
+  #if (defined &Math::Prime::Util::GMP::sieve_prime_cluster && Math::Prime::Util::prime_get_config()->{'gmp'}) {
+  #  return map { ($_ > ''.~0) ? Math::BigInt->new(''.$_) : $_ }
+  #         Math::Prime::Util::GMP::sieve_prime_cluster($lo,$hi,@cl);
+  #}
 
   return @{primes($lo,$hi)} if scalar(@cl) == 0;
 
@@ -535,7 +557,7 @@ sub sieve_prime_cluster {
   my($p,$sievelim,@p) = (17, 2000);
   $p = 13 if ($hi-$lo) < 50_000_000;
   $p = 11 if ($hi-$lo) <  1_000_000;
-  $p =  5 if ($hi-$lo) <     20_000 && $lo < INTMAX;
+  $p =  7 if ($hi-$lo) <     20_000 && $lo < INTMAX;
 
   # Add any cases under our sieving point.
   if ($lo <= $sievelim) {
@@ -5193,7 +5215,7 @@ Math::Prime::Util::PP - Pure Perl version of Math::Prime::Util
 
 =head1 VERSION
 
-Version 0.54
+Version 0.55
 
 
 =head1 SYNOPSIS

@@ -97,7 +97,11 @@ sub gen_primes {
 }
 sub gen_segment_primes {
   my($low, $high) = @_;
-  return Math::Prime::Util::segment_primes($low,$high);     # Private function
+  if (Math::Prime::Util::prime_get_config->{'xs'}) {
+    return Math::Prime::Util::segment_primes($low,$high);     # Private function
+  } else {
+    return primes($low,$high);
+  }
 }
 sub gen_forprimes {
   my($b, $e) = @_;

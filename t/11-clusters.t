@@ -72,9 +72,17 @@ $small = [ primes($sbeg,$send), twin_primes($sbeg,$send) ];
 
 my $mbeg = Math::BigInt->new(10)**21;
 my $mend = $mbeg + 10000 + int(rand(100000));
-$mend = $mbeg + 10000 if !$usegmp;  # Restrict size
 $mend += 100000 if $extra;
-$large = [ primes($mbeg,$mend), twin_primes($mbeg,$mend) ];
+if ($usegmp) {
+  $large = [ primes($mbeg,$mend), twin_primes($mbeg,$mend) ];
+} else {
+  # Without GMP and using the Calc backend, this is just painful slow
+  $mend = $mbeg + 10000;
+  $large = [
+    [map { $mbeg+$_ } (qw/117 193 213 217 289 327 367 373 399 409 411 427 433 447 471 553 609 723 733 951 1063 1081 1213 1237 1311 1383 1411 1417 1459 1521 1573 1581 1687 1731 1749 1867 1897 2001 2011 2041 2049 2203 2209 2257 2259 2307 2317 2343 2349 2583 2611 2673 2701 2713 2719 2761 2803 2823 2961 3007 3021 3271 3289 3327 3331 3369 3399 3423 3483 3657 3759 3777 3861 3897 3973 3999 4011 4017 4039 4063 4081 4119 4123 4197 4231 4297 4353 4359 4381 4437 4521 4581 4591 4671 4743 4749 4791 4813 4851 4891 4897 4977 5203 5277 5317 5371 5427 5437 5499 5577 5683 5719 5751 5763 5913 5959 6003 6009 6103 6247 6297 6309 6493 6531 6727 6747 6759 6781 6783 6853 6871 6883 6993 7039 7059 7069 7147 7231 7269 7413 7467 7471 7509 7527 7639 7681 7689 7711 7741 7761 7887 8011 8071 8143 8173 8187 8221 8223 8283 8299 8343 8407 8467 8497 8587 8623 8761 8799 8973 9069 9111 9121 9159 9183 9187 9211 9217 9271 9333 9349 9369 9477 9501 9723 9847 9861 9961 9999/)],
+    [map { $mbeg+$_ } (qw/409 2257 6781 8221/)],
+  ];
+}
 
 for my $pat (@patterns) {
   my @pat = @$pat;
@@ -98,7 +106,7 @@ for my $pat (@patterns) {
 for my $test (@high_check) {
   use bigint;  # For 32-bit testers
   my($n,$name,$cl) = @$test;
-  my $window = ($usexs && $usegmp) ? 1e6 : 1e4;
+  my $window = ($usexs && $usegmp) ? 1e6 : 1e3;
   my @res = sieve_prime_cluster($n-$window, $n+$window, @$cl);
   is_deeply(\@res, [$n], "Window around $name high cluster finds the cluster");
 }
