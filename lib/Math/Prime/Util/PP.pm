@@ -1972,7 +1972,7 @@ sub chinese {
   if (defined &Math::Prime::Util::GMP::chinese && Math::Prime::Util::prime_get_config()->{'gmp'}) {
     $sum = Math::Prime::Util::GMP::chinese(@_);
     if (defined $sum) {
-      $sum = Math::BigInt->new($sum);
+      $sum = Math::BigInt->new("$sum");
       $sum = _bigint_to_int($sum) if ref($sum) && $sum->bacmp(BMAX) <= 0;
     }
     return $sum;
