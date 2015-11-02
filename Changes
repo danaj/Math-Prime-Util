@@ -1,5 +1,12 @@
 Revision history for Perl module Math::Prime::Util
 
+0.56 2015-?
+
+    [ADDED]
+
+    - is_carmichael(n)                    Returns 1 if n is a Carmichael number
+
+
 0.55 2015-10-19
 
     - Fixed test that was using a 64-bit number on 32-bit machines.
@@ -8,6 +15,7 @@ Revision history for Perl module Math::Prime::Util
 
     - Speed up PP versions of sieve_prime_cluster, twin_primes,
       twin_prime_count, nth_twin_prime, primes.
+
 
 0.54 2015-10-14
 
@@ -20,6 +28,7 @@ Revision history for Perl module Math::Prime::Util
     - Certain small primes used to return false with Frobenius and AES Lucas
       tests when given extra arguments.  Both are unusual cases never used
       by the main system.  Fixed.
+
 
 0.53 2015-09-05
 
@@ -87,6 +96,7 @@ Revision history for Perl module Math::Prime::Util
 
     - Montgomery math and uint128_t enabled on Darwin/clang.
 
+
 0.51 2015-06-21
 
     [ADDED]
@@ -147,6 +157,7 @@ Revision history for Perl module Math::Prime::Util
 
     - Tighten prime count bounds using Axler, Kotnik, Büthe.  Thanks to
       Charles R Greathouse IV for pointing me to these.
+
 
 0.49  2014-11-30
 

@@ -1838,6 +1838,29 @@ UV carmichael_lambda(UV n) {
   return lambda;
 }
 
+int is_carmichael(UV n) {
+  UV fac[MPU_MAX_FACTORS+1];
+  UV exp[MPU_MAX_FACTORS+1];
+  int i, nfactors;
+
+  if (n < 561) return 0;
+  if (!(n&1))  return 0;
+
+  /* Simple pre-test for square free */
+  if ( n >= 121 && (!(n% 4) || !(n% 9) || !(n%25) || !(n%49) || !(n%121)) )
+    return 0;
+
+  nfactors = factor_exp(n, fac, exp);
+  if (nfactors < 3)
+    return 0;
+  for (i = 0; i < nfactors; i++) {
+    if (exp[i] > 1  ||  ((n-1) % (fac[i]-1)) != 0)
+      return 0;
+  }
+  return 1;
+}
+
+
 int moebius(UV n) {
   UV factors[MPU_MAX_FACTORS+1];
   UV i, nfactors;

@@ -28,7 +28,7 @@ our @EXPORT_OK =
       is_ramanujan_prime
       is_mersenne_prime
       is_power sqrtint
-      is_square_free
+      is_square_free  is_carmichael
       miller_rabin_random
       lucas_sequence lucasu lucasv
       primes twin_primes ramanujan_primes sieve_prime_cluster
