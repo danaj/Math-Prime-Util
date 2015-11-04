@@ -8,13 +8,14 @@ use Math::Prime::Util
       chebyshev_theta chebyshev_psi carmichael_lambda znorder liouville
       znprimroot znlog kronecker legendre_phi gcd lcm is_power valuation
       invmod vecsum vecprod binomial gcdext chinese vecmin vecmax factorial
-      hammingweight vecreduce vecextract sqrtint is_square_free ramanujan_tau
-      sumdigits
+      hammingweight vecreduce vecextract sqrtint is_square_free is_carmichael
+      ramanujan_tau sumdigits
      /;
 
 my $extra = defined $ENV{EXTENDED_TESTING} && $ENV{EXTENDED_TESTING};
 my $use64 = Math::Prime::Util::prime_get_config->{'maxbits'} > 32;
 my $usexs = Math::Prime::Util::prime_get_config->{'xs'};
+my $usegmp= Math::Prime::Util::prime_get_config->{'gmp'};
 $use64 = 0 if $use64 && 18446744073709550592 == ~0;
 
 my @moeb_vals = (qw/ 1 -1 -1 0 -1 1 -1 0 0 1 -1 0 -1 1 1 0 -1 0 -1 0 /);
@@ -623,6 +624,7 @@ plan tests => 0 + 1
                 + 3*scalar(keys %mertens)
                 + 1*scalar(keys %big_mertens)
                 + 1*scalar(keys %isf)
+                + 2 # is_carmichael
                 + 2 # Small Phi
                 + 9 + scalar(keys %totients)
                 + 1 # Small Carmichael Lambda
@@ -682,6 +684,15 @@ while (my($n, $mertens) = each (%big_mertens)) {
 }
 while (my($n, $isf) = each (%isf)) {
   is( is_square_free($n), $isf, "is_square_free($n)" );
+}
+{
+  is_deeply( [grep { is_carmichael($_) } 1 .. 20000],
+             [561,1105,1729,2465,2821,6601,8911,10585,15841],
+             "Carmichael numbers to 20000" );
+  SKIP: {
+    skip "Skipping large Carmichael", 1 unless $usegmp;
+    ok( is_carmichael("341627175004511735787409078802107169251"), "Large Carmichael" );
+  }
 }
 
 

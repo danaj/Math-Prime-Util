@@ -1843,11 +1843,11 @@ int is_carmichael(UV n) {
   UV exp[MPU_MAX_FACTORS+1];
   int i, nfactors;
 
-  if (n < 561) return 0;
-  if (!(n&1))  return 0;
+  /* Small or even is not a Carmichael number */
+  if (n < 561 || !(n&1)) return 0;
 
   /* Simple pre-test for square free */
-  if ( n >= 121 && (!(n% 4) || !(n% 9) || !(n%25) || !(n%49) || !(n%121)) )
+  if (!(n% 4) || !(n% 9) || !(n%25) || !(n%49) || !(n%121) || !(n%169))
     return 0;
 
   nfactors = factor_exp(n, fac, exp);

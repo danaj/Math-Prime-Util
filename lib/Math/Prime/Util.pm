@@ -2469,6 +2469,17 @@ C<t_INT> arguments.
 
 Returns 1 if the input C<n> has no repeated factor.
 
+=head2 is_carmichael
+
+  for (1..1e6) { say if is_carmichael($_) } # Carmichaels under 1,000,000
+
+Returns 1 if the input C<n> is a Carmichael number.  These are composites that
+satisfy C<b^(n-1) ≡ 1 mod n> for all C<1 E<lt> b E<lt> n> relatively prime to C<n>.
+Alternately Korselt's theorem says these are composites such that C<n> is
+square-free and C<p-1> divides C<n-1> for all prime divisors C<p> of C<n>.
+
+This is the L<OEIS series A002997|http://oeis.org/A002997>.
+
 =head2 moebius
 
   say "$n is square free" if moebius($n) != 0;
@@ -3535,7 +3546,10 @@ Print some primes above 64-bit range:
 
 Generate Carmichael numbers (L<OEIS A002997|http://oeis.org/A002997>):
 
-    perl -MMath::Prime::Util=:all -E 'foroddcomposites { say if $_ % carmichael_lambda($_) == 1 } 1e6;'
+    perl -Mntheory=:all -E 'foroddcomposites { say if is_carmichael($_) } 1e6;'
+
+    # Less efficient, similar to Mathematica or MAGMA:
+    perl -Mntheory=:all -E 'foroddcomposites { say if $_ % carmichael_lambda($_) == 1 } 1e6;'
 
 Examining the η3(x) function of Planat and Solé (2011):
 

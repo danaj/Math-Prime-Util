@@ -259,6 +259,11 @@ sub is_square_free {
   _validate_positive_integer($n);
   return Math::Prime::Util::PP::is_square_free($n);
 }
+sub is_carmichael {
+  my($n) = @_;
+  #_validate_positive_integer($n);
+  return Math::Prime::Util::PP::is_carmichael($n);
+}
 
 
 sub lucas_sequence {

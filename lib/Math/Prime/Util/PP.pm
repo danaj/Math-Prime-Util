@@ -989,6 +989,23 @@ sub carmichael_lambda {
   return $lcm;
 }
 
+sub is_carmichael {
+  my($n) = @_;
+  _validate_positive_integer($n);
+
+  # This works fine, but very slow
+  # return !is_prime($n) && ($n % carmichael_lambda($n)) == 1;
+
+  return 0 if $n < 561 || ($n % 2) == 0;
+  return 0 if (!($n % 4) || !($n % 9) || !($n % 25) || !($n%49) || !($n%121));
+
+  my @pe = Math::Prime::Util::factor_exp($n);
+  return 0 if scalar(@pe) < 3;
+  for my $pe (@pe) {
+    return 0 if $pe->[1] > 1 || (($n-1) % ($pe->[0]-1)) != 0;
+  }
+  1;
+}
 
 my @_ds_overflow =  # We'll use BigInt math if the input is larger than this.
   (~0 > 4294967295)
