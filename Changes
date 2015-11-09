@@ -6,6 +6,10 @@ Revision history for Perl module Math::Prime::Util
 
     - is_carmichael(n)                    Returns 1 if n is a Carmichael number
 
+    [FUNCTIONALITY AND PERFORMANCE]
+
+    - Faster, nonrecursive divisors_from_factors routine.
+
 
 0.55 2015-10-19
 

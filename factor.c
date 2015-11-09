@@ -300,26 +300,17 @@ int trial_factor(UV n, UV *factors, UV maxtrial)
 }
 
 
-static int _divisors_from_factors(UV v, UV npe, UV* fp, UV* fe, UV* res) {
-  UV p, e, i;
-  if (npe == 0) return 0;
-  p = *fp++;
-  e = *fe++;
-  if (npe == 1) {
-    for (i = 0; i <= e; i++) {
-      *res++ = v;
-      v *= p;
+static void _divisors_from_factors(UV nfactors, UV* fp, UV* fe, UV* res) {
+  UV s, count = 1;
+
+  res[0] = 1;
+  for (s = 0; s < nfactors; s++) {
+    UV i, j, scount = count, p = fp[s], e = fe[s], mult = 1;
+    for (j = 0; j < e; j++) {
+      mult *= p;
+      for (i = 0; i < scount; i++)
+        res[count++] = res[i] * mult;
     }
-    return e+1;
-  } else {
-    int nret = 0;;
-    for (i = 0; i <= e; i++) {
-      int nres = _divisors_from_factors(v, npe-1, fp, fe, res);
-      v *= p;
-      res += nres;
-      nret += nres;
-    }
-    return nret;
   }
 }
 
@@ -346,7 +337,7 @@ UV* _divisor_list(UV n, UV *num_divisors)
   for (i = 1; i < nfactors; i++)
     ndivisors *= (exponents[i] + 1);
   New(0, divs, ndivisors, UV);
-  (void) _divisors_from_factors(1, nfactors, factors, exponents, divs);
+  _divisors_from_factors(nfactors, factors, exponents, divs);
   /* Sort divisors (numeric ascending) */
   qsort(divs, ndivisors, sizeof(UV), numcmp);
   /* Return number of divisors and list */
