@@ -1965,8 +1965,8 @@ sub lcm {
 }
 sub gcdext {
   my($x,$y) = @_;
-  if ($x == 0) { return (0, ($y<0) ? -1 : 1, abs($y)); }
-  if ($y == 0) { return (($x<0) ? -1 : 1, 0, abs($x)); }
+  if ($x == 0) { return (0, (-1,0,1)[($y>=0)+($y>0)], abs($y)); }
+  if ($y == 0) { return ((-1,0,1)[($x>=0)+($x>0)], 0, abs($x)); }
 
   if (defined &Math::Prime::Util::GMP::gcdext && Math::Prime::Util::prime_get_config()->{'gmp'}) {
     my($a,$b,$g) = Math::Prime::Util::GMP::gcdext($x,$y);
