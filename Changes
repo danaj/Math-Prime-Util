@@ -10,6 +10,8 @@ Revision history for Perl module Math::Prime::Util
 
     - Faster, nonrecursive divisors_from_factors routine.
 
+    - gcdext(0,0) returns (0,0,0) to match GMP and Pari/GP.
+
 
 0.55 2015-10-19
 

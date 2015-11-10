@@ -1967,6 +1967,7 @@ IV gcdext(IV a, IV b, IV* u, IV* v, IV* cs, IV* ct) {
   IV s = 0;  IV os = 1;
   IV t = 1;  IV ot = 0;
   IV r = b;  IV or = a;
+  if (a == 0 && b == 0) { os = 0; t = 0; }
   while (r != 0) {
     IV quot = or / r;
     { IV tmp = r; r = or - quot * r;  or = tmp; }
