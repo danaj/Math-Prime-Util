@@ -1495,10 +1495,25 @@ sub prime_count_lower {
   # Dusart 2010          x/logx*(1+1/logx+2.0/logxlogx)  x >= 88783
   # Axler 2014 (1.2)     ""+...                          x >= 1332450001
   # Axler 2014 (1.2)     x/(logx-1-1/logx-...)           x >= 1332479531
+  # Büthe 2015 (1.9)     li(x)-(sqrtx/logx)*(...)        x <= 10^19
   # Büthe 2014 Th 2      li(x)-logx*sqrtx/8Pi    x > 2657, x <= 1.4*10^25
 
-  if ($x >= 5589603006000 &&              # Schoenfeld / Büthe 2014 Th 7.4
-      ($x < 1.4e25 || Math::Prime::Util::prime_get_config()->{'assume_rh'}) ) {
+  if ($x < 599) {                         # Decent for small numbers
+    $result = $x / ($fl1 - 0.7);
+  } elsif ($x < 52600000) {               # Dusart 2010 tweaked
+    if    ($x <       2700) { $a = 0.30; }
+    elsif ($x <       5500) { $a = 0.90; }
+    elsif ($x <      19400) { $a = 1.30; }
+    elsif ($x <      32299) { $a = 1.60; }
+    elsif ($x <      88783) { $a = 1.83; }
+    elsif ($x <     176000) { $a = 1.99; }
+    elsif ($x <     315000) { $a = 2.11; }
+    elsif ($x <    1100000) { $a = 2.19; }
+    elsif ($x <    4500000) { $a = 2.31; }
+    else                    { $a = 2.35; }
+    $result = ($x/$fl1) * ($one + $one/$fl1 + $a/$fl2);
+  } elsif ($x < 1.4e25 || Math::Prime::Util::prime_get_config()->{'assume_rh'}){
+                                          # Büthe 2014/2015
     if (_MPFR_available()) {
       my $wantbf = (defined $bignum::VERSION || ref($x) =~ /^Math::Big/);
       my $xdigits = length($x);
@@ -1515,37 +1530,44 @@ sub prime_count_lower {
       Math::MPFR::Rmpfr_set_prec($sqx, $bit_precision);
       Math::MPFR::Rmpfr_sqrt($sqx, $rx, $bit_precision);
       Math::MPFR::Rmpfr_log($rx, $rx, $rnd);
-      Math::MPFR::Rmpfr_mul($rx, $rx, $sqx, $rnd);
-      Math::MPFR::Rmpfr_const_pi($sqx, $rnd);
-      Math::MPFR::Rmpfr_mul_ui($sqx, $sqx, 8, $rnd);
-      Math::MPFR::Rmpfr_div($rx, $rx, $sqx, $rnd);
+      # rx = log(x) lix = li(x) sqx = sqrt(x)
+      if ($x < 1e19) {                    # Büthe 2015 1.9
+        #Math::MPFR::Rmpfr_div($sqx, $sqx, $rx, $rnd);
+        #$rx = 1.94 + 3.88/$rx + 27.57/($rx*$rx);
+      my $tmp = Math::MPFR->new();
+      Math::MPFR::Rmpfr_set_prec($tmp, $bit_precision);
+      my $acc = Math::MPFR->new();
+      Math::MPFR::Rmpfr_set_prec($acc, $bit_precision);
+      Math::MPFR::Rmpfr_set_d($acc, 1.94, $rnd);
+      Math::MPFR::Rmpfr_d_div($tmp, 3.88, $rx, $rnd);
+      Math::MPFR::Rmpfr_add($acc, $acc, $tmp, $rnd);
+      Math::MPFR::Rmpfr_d_div($tmp, 27.57, $rx*$rx, $rnd);
+      Math::MPFR::Rmpfr_add($acc, $acc, $tmp, $rnd);
+      Math::MPFR::Rmpfr_mul($rx, $acc, $sqx/$rx, $rnd);
+        #Math::MPFR::Rmpfr_mul($rx, $rx, $sqx, $rnd);
+      } else {                            # Büthe 2014 7.4
+        Math::MPFR::Rmpfr_mul($rx, $rx, $sqx, $rnd);
+        Math::MPFR::Rmpfr_const_pi($sqx, $rnd);
+        Math::MPFR::Rmpfr_mul_ui($sqx, $sqx, 8, $rnd);
+        Math::MPFR::Rmpfr_div($rx, $rx, $sqx, $rnd);
+      }
       Math::MPFR::Rmpfr_sub($rx, $lix, $rx, $rnd);
       my $strval = Math::MPFR::Rmpfr_integer_string($rx, 10, $rnd);
       $result = ($wantbf) ? Math::BigInt->new($strval) : int($strval);
     } else {
       my $lix = LogarithmicIntegral($x);
       my $sqx = sqrt($x);
-      if (ref($x) eq 'Math::BigFloat') {
-        my $xdigits = _find_big_acc($x);
-        $result = $lix - ($fl1*$sqx / (Math::BigFloat->bpi($xdigits)*8));
+      if ($x < 1e19) {
+        $result = $lix - ($sqx/$fl1) * (1.94 + 3.88/$fl1 + 27.57/$fl2);
       } else {
-        $result = $lix - ($fl1*$sqx / PI_TIMES_8);
+        if (ref($x) eq 'Math::BigFloat') {
+          my $xdigits = _find_big_acc($x);
+          $result = $lix - ($fl1*$sqx / (Math::BigFloat->bpi($xdigits)*8));
+        } else {
+          $result = $lix - ($fl1*$sqx / PI_TIMES_8);
+        }
       }
     }
-  } elsif ($x < 599) {                    # Decent for small numbers
-    $result = $x / ($fl1 - 0.7);
-  } elsif ($x < 1332479531) {             # Dusart 2010 tweaked
-    if    ($x <       2700) { $a = 0.30; }
-    elsif ($x <       5500) { $a = 0.90; }
-    elsif ($x <      19400) { $a = 1.30; }
-    elsif ($x <      32299) { $a = 1.60; }
-    elsif ($x <     176000) { $a = 1.80; }
-    elsif ($x <     315000) { $a = 2.10; }
-    elsif ($x <    1100000) { $a = 2.20; }
-    elsif ($x <    4500000) { $a = 2.31; }
-    elsif ($x <  233000000) { $a = 2.36; }
-    else                    { $a = 2.32; }
-    $result = ($x/$fl1) * ($one + $one/$fl1 + $a/$fl2);
   } else {                                # Axler 2014 1.4
     if (_MPFR_available()) {
       my $wantbf = (defined $bignum::VERSION || ref($x) =~ /^Math::Big/);
@@ -1654,8 +1676,8 @@ sub prime_count_upper {
     elsif ($x < 2953652287) { $a = 2.362; }
     else                    { $a = 2.334; } # Dusart 2010, page 2
     $result = ($x/$fl1) * ($one + $one/$fl1 + $a/$fl2) + $one;
-  } elsif ($x < 1e14) {                     # Skewes number lower limit
-    $a = ($x < 1.1e9) ? 0.031 : ($x < 4.5e9) ? 0.02 : 0.0;
+  } elsif ($x < 1e19) {                     # Skewes number lower limit
+    $a = ($x < 110e7) ? 0.032 : ($x < 1001e7) ? 0.027 : ($x < 10126e7) ? 0.021 : 0.0;
     $result = LogarithmicIntegral($x) - $a * $fl1*sqrt($x)/PI_TIMES_8;
   } elsif ($x < 1.4e25 || Math::Prime::Util::prime_get_config()->{'assume_rh'}) {
                                             # Schoenfeld / Büthe 2014 Th 7.4

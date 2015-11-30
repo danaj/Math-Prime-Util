@@ -76,7 +76,7 @@ plan tests =>  0
              + 1   # primecount large base small range
              + scalar(keys %pseudoprimes)
              + 6   # PC lower, upper, approx
-             + 6*2*$extra # more PC tests
+             + 6*3*$extra # more PC tests
              + 2*scalar(keys %factors)
              + scalar(keys %allfactors)
              + 14+3*$extra  # moebius, euler_phi, jordan totient, divsum, etc.
@@ -235,10 +235,12 @@ while (my($psrp, $baseref) = each (%pseudoprimes)) {
 
 ###############################################################################
 
-check_pcbounds(31415926535897932384, 716115441142294636, '8e-5', '2e-8');
+check_pcbounds(31415926535897932384, 716115441142294636, '2e-8', '2e-8');
 if ($extra) {
-  check_pcbounds(314159265358979323846, 6803848951392700268, '7e-5', '5e-9');
-  check_pcbounds(31415926535897932384626433, 544551456607147153724423, '4e-5', '3e-11');
+  check_pcbounds(314159265358979323846, 6803848951392700268, '5e-9', '5e-9');
+  check_pcbounds(31415926535897932384626433, 544551456607147153724423, '3e-6', '3e-11');
+  # pi(10^23) = 1925320391606803968923
+  check_pcbounds(10**23, 1925320391607837268776, '5e-10', '5e-10');
 }
 
 ###############################################################################

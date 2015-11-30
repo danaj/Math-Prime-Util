@@ -442,10 +442,10 @@ while (my($range, $expect) = each (%pi_intervals)) {
 is( prime_count_lower(450), 87, "prime_count_lower(450)" );
 is( prime_count_upper(450), 87, "prime_count_upper(450)" );
 # Make sure these are about right
-cmp_closeto( prime_count_lower(1234567), 95327, 10, "prime_count_lower(1234567) in range" );
-cmp_closeto( prime_count_upper(1234567), 95413, 10, "prime_count_upper(1234567) in range" );
-cmp_closeto( prime_count_lower(412345678), 21956686, 1000, "prime_count_lower(412345678) in range" );
-cmp_closeto( prime_count_upper(412345678), 21959328, 1000, "prime_count_upper(412345678) in range" );
+cmp_closeto( prime_count_lower(1234567), 95360, 60, "prime_count_lower(1234567) in range" );
+cmp_closeto( prime_count_upper(1234567), 95360, 60, "prime_count_upper(1234567) in range" );
+cmp_closeto( prime_count_lower(412345678), 21958997, 1500, "prime_count_lower(412345678) in range" );
+cmp_closeto( prime_count_upper(412345678), 21958997, 1500, "prime_count_upper(412345678) in range" );
 
 ###############################################################################
 

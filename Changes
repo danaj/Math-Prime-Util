@@ -12,6 +12,8 @@ Revision history for Perl module Math::Prime::Util
 
     - gcdext(0,0) returns (0,0,0) to match GMP and Pari/GP.
 
+    - Use better prime count lower/upper bounds from Büthe 2015.
+
 
 0.55 2015-10-19
 

@@ -627,19 +627,16 @@ UV prime_count_lower(UV n)
   fl1 = logl(n);
   fl2 = fl1 * fl1;
 
-  if (n < UVCONST(1332479531)) {   /* Dusart 2010, tweaked */
-    a = (n <    88783) ? 1.89L
+  if (n < UVCONST(52600000)) {   /* Dusart 2010, tweaked */
+    a = (n <    88783) ? 1.89L /* n >= 33000 */
       : (n <   176000) ? 1.99L
       : (n <   315000) ? 2.11L
       : (n <  1100000) ? 2.19L
-      : (n <  4500000) ? 2.31L
-      : (n <233000000) ? 2.35L : 2.32L;
+      : (n <  4500000) ? 2.31L : 2.35;
     lower = fn/fl1 * (1.0L + 1.0L/fl1 + a/fl2);
-  } else if (BITS_PER_WORD == 32 || n < UVCONST(5589603006000)) {
-                                   /* Axler 2014 1.4 */
-    long double fl3 = fl2*fl1, fl4 = fl2*fl2, fl5 = fl4*fl1, fl6 = fl4*fl2;
-    lower = fn / (fl1 - 1.0L - 1.0L/fl1 - 2.65L/fl2 - 13.35L/fl3 - 70.3L/fl4 - 455.6275L/fl5 - 3404.4225L/fl6);
-  } else {                         /* Büthe 2014 7.4 */
+  } else if (fn < 1e19) {          /* Büthe 2015 1.9 */
+    lower = _XS_LogarithmicIntegral(fn) - (sqrtl(fn)/fl1) * (1.94L + 3.88L/fl1 + 27.57L/fl2);
+  } else {                         /* Büthe 2014 v3 7.2 */
     lower = _XS_LogarithmicIntegral(fn) - fl1*sqrtl(fn)/25.132741228718345907701147L;
   }
   return (UV) ceill(lower);
@@ -686,23 +683,19 @@ UV prime_count_upper(UV n)
   fl1 = logl(n);
   fl2 = fl1 * fl1;
 
-  if (BITS_PER_WORD == 32 || fn <= 821800000.0) {
+  if (BITS_PER_WORD == 32 || fn <= 821800000.0) {  /* Dusart 2010, page 2 */
     for (i = 0; i < (int)NUPPER_THRESH; i++)
       if (n < _upper_thresh[i].thresh)
         break;
-    if (i < (int)NUPPER_THRESH) a = _upper_thresh[i].aval;
-    else                        a = 2.334;   /* Dusart 2010, page 2 */
+    a = (i < (int)NUPPER_THRESH)  ?  _upper_thresh[i].aval  :  2.334L;
     upper = fn/fl1 * (1.0L + 1.0L/fl1 + a/fl2);
-  } else if (fn < 1e14) {          /* Skewes number lower limit */
-    a = (fn < 1100000000) ? 0.031
-      : (fn < 4500000000) ? 0.02 : 0.0;
+  } else if (fn < 1e19) {        /* Büthe 2015 1.10 Skewes number lower limit */
+    a = (fn <   1100000000) ? 0.032    /* Empirical */
+      : (fn <  10010000000) ? 0.027    /* Empirical */
+      : (fn < 101260000000) ? 0.021    /* Empirical */
+                            : 0.0;
     upper = _XS_LogarithmicIntegral(fn) - a * fl1*sqrtl(fn)/25.132741228718345907701147L;
-#if 0
-  } else if (fn < 5796000000000.0) { /* Axler 2014, theorem 1.3 */
-    long double fl3 = fl2*fl1, fl4 = fl2*fl2, fl5 = fl4*fl1, fl6 = fl4*fl2;
-    upper = fn / (fl1 - 1.0L - 1.0L/fl1 - 3.35L/fl2 - 12.65L/fl3 - 71.7L/fl4 - 466.1275L/fl5 - 3489.8225L/fl6);
-#endif
-  } else {                         /* Büthe 2014 7.4 */
+  } else {                       /* Büthe 2014 7.4 */
     upper = _XS_LogarithmicIntegral(fn) + fl1*sqrtl(fn)/25.132741228718345907701147L;
   }
   return (UV) floorl(upper);
