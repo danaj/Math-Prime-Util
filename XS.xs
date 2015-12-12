@@ -1851,7 +1851,7 @@ forpart (SV* block, IN SV* svn, IN SV* svh = 0)
     if (n >= nmin && nmin <= nmax && amin <= amax && nmax > 0 && amax > 0)
     { /* RuleAsc algorithm from Kelleher and O'Sullivan 2009/2014) */
       UV *a, k, x, y, r;
-      New(0, a, n+2, UV);  /* plus 2 because of n=0 */
+      New(0, a, n+1, UV);
       k = 1;
       a[0] = amin-1; //0;
       a[1] = n-amin+1; //n;
@@ -1861,10 +1861,9 @@ forpart (SV* block, IN SV* svn, IN SV* svh = 0)
         k--;
         r = (ix == 0) ? x : 1;
         while (r <= y) {
-          a[k] = x;
+          a[k++] = x;
           x = r;
           y -= x;
-          k++;
         }
         a[k] = x + y;
 
