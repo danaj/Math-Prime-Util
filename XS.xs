@@ -1796,6 +1796,8 @@ fordivisors (SV* block, IN SV* svn)
 
 void
 forpart (SV* block, IN SV* svn, IN SV* svh = 0)
+  ALIAS:
+    forcomp = 1
   PROTOTYPE: &$;$
   PREINIT:
     UV i, n, amin, amax, nmin, nmax;
@@ -1820,7 +1822,7 @@ forpart (SV* block, IN SV* svn, IN SV* svh = 0)
       SvREADONLY_on(svals[i]);
     }
 
-    amin = 0;  amax = n;  nmin = 0;  nmax = n;
+    amin = 1;  amax = n;  nmin = 1;  nmax = n;
     if (svh != 0) {
       HV* rhash;
       SV** svp;
@@ -1834,62 +1836,71 @@ forpart (SV* block, IN SV* svn, IN SV* svh = 0)
       if ((svp = hv_fetchs(rhash, "nmin", 0)) != NULL) nmin = my_svuv(*svp);
       if ((svp = hv_fetchs(rhash, "nmax", 0)) != NULL) nmax = my_svuv(*svp);
 
+      if (amin < 1) amin = 1;
       if (amax > n) amax = n;
+      if (nmin < 1) nmin = 1;
       if (nmax > n) nmax = n;
     }
 
-    if (n==0 || (nmin <= nmax && amin <= amax && nmax > 0 && amax > 0))
-    { /* ZS1 algorithm from Zoghbi and Stojmenovic 1998) */
-      UV *x, m, h;
-      New(0, x, n+2, UV);  /* plus 2 because of n=0 */
-      for (i = 0; i <= n; i++)  x[i] = 1;
-      x[1] = n;
-      m = (n > 0) ? 1 : 0;   /* n=0 => one call with empty list */
-      h = 1;
-
-      if (nmin > 1) {
-        UV max = n - nmin + 1;
-        UV t = n - max;
-        x[h=1] = max;
-        while (t >= max) {  x[++h] = max;  t -= max;  }
-        m = h + (t > 0);
-        if (t > 1)  x[++h] = t;
+    if (n==0 && nmin <= 1) {
+      { dSP; ENTER; PUSHMARK(SP);
+        /* Nothing */
+        PUTBACK; call_sv((SV*)cv, G_VOID|G_DISCARD); LEAVE;
       }
+    }
+    if (n >= nmin && nmin <= nmax && amin <= amax && nmax > 0 && amax > 0)
+    { /* RuleAsc algorithm from Kelleher and O'Sullivan 2009/2014) */
+      UV *a, k, x, y, r;
+      New(0, a, n+2, UV);  /* plus 2 because of n=0 */
+      k = 1;
+      a[0] = amin-1; //0;
+      a[1] = n-amin+1; //n;
+      while (k != 0) {
+        x = a[k-1]+1;
+        y = a[k]-1;
+        k--;
+        r = (ix == 0) ? x : 1;
+        while (r <= y) {
+          a[k] = x;
+          x = r;
+          y -= x;
+          k++;
+        }
+        a[k] = x + y;
 
-      if (x[1] > amax) { /* x[1] is always decreasing, so handle it here */
-        UV t = n - amax;
-        x[h=1] = amax;
-        while (t >= amax) {  x[++h] = amax;  t -= amax;  }
-        m = h + (t > 0);
-        if (t > 1)  x[++h] = t;
-      }
+        /* ------ length restrictions ------ */
+        while (k+1 > nmax) {   /* Skip range if over max size */
+          a[k-1] += a[k];
+          k--;
+        }
+        /* Look into: quick skip over nmin range */
+        if (k+1 < nmin) {      /* Skip if not over min size */
+          if (a[0] >= n-nmin+1 && a[k] > 1) break; /* early exit check */
+          continue;
+        }
 
-      /* More restriction optimizations would be useful. */
-      while (1) {
-        if (m >= nmin && m <= nmax && x[m] >= amin)
+        /* ------ value restrictions ------ */
+        if (amin > 1 || amax < n) {
+          /* Lexical order allows us to start at amin, and exit early */
+          if (a[0] > amax) break;
+
+          if (ix == 0) {  /* value restrictions for partitions */
+            if (a[k] > amax) continue;
+          } else {  /* restrictions for compositions */
+            /* TODO: maybe skip forward? */
+            for (i = 0; i <= k; i++)
+              if (a[i] < amin || a[i] > amax)
+                break;
+            if (i <= k) continue;
+          }
+        }
+
         { dSP; ENTER; PUSHMARK(SP);
-          EXTEND(SP, m); for (i=1; i <= m; i++) { PUSHs(svals[x[i]]); }
+          EXTEND(SP, k); for (i = 0; i <= k; i++) { PUSHs(svals[a[i]]); }
           PUTBACK; call_sv((SV*)cv, G_VOID|G_DISCARD); LEAVE;
         }
-        if (x[1] <= 1 || x[1] < amin) break;
-        /* Skip forward if restricted and we can move on. */
-        if (x[2] < amin || (m > nmax && (n-x[1]+x[2]-1)/x[2] >= nmax)) {
-          for (m = 1; n >= (x[1] + m); m++)
-            x[m+1] = 1;
-          h = 1;
-        }
-        if (x[h] == 2) {
-          m++;  x[h--] = 1;
-        } else {
-          UV r = x[h]-1;
-          UV t = m-h+1;
-          x[h] = r;
-          while (t >= r) {  x[++h] = r;  t -= r;  }
-          m = h + (t > 0);
-          if (t > 1)  x[++h] = t;
-        }
       }
-      Safefree(x);
+      Safefree(a);
     }
     for (i = 0; i <= n; i++)
       SvREFCNT_dec(svals[i]);

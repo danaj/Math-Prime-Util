@@ -33,7 +33,7 @@ our @EXPORT_OK =
       lucas_sequence lucasu lucasv
       primes twin_primes ramanujan_primes sieve_prime_cluster
       forprimes forcomposites foroddcomposites fordivisors
-      forpart forcomb forperm
+      forpart forcomp forcomb forperm
       prime_iterator prime_iterator_object
       next_prime  prev_prime
       prime_count
@@ -911,7 +911,7 @@ __END__
 
 =encoding utf8
 
-=for stopwords forprimes forcomposites foroddcomposites fordivisors forpart forcomb forperm Möbius Deléglise Bézout totient moebius mertens liouville znorder irand primesieve uniqued k-tuples von SoE pari yafu fonction qui compte le nombre nombres voor PhD superset sqrt(N) gcd(A^M k-th (10001st primegen libtommath kronecker znprimroot znlog gcd lcm invmod untruncated vecsum vecprod vecmin vecmax vecreduce vecextract sumdigits gcdext chinese LambertW bernfrac bernreal harmfrac harmreal stirling hammingweight lucasu lucasv OpenPFGW gmpy2 Über Primzahl-Zählfunktion n-te und verallgemeinerte sqrtint
+=for stopwords forprimes forcomposites foroddcomposites fordivisors forpart forcomp forcomb forperm Möbius Deléglise Bézout totient moebius mertens liouville znorder irand primesieve uniqued k-tuples von SoE pari yafu fonction qui compte le nombre nombres voor PhD superset sqrt(N) gcd(A^M k-th (10001st primegen libtommath kronecker znprimroot znlog gcd lcm invmod untruncated vecsum vecprod vecmin vecmax vecreduce vecextract sumdigits gcdext chinese LambertW bernfrac bernreal harmfrac harmreal stirling hammingweight lucasu lucasv OpenPFGW gmpy2 Über Primzahl-Zählfunktion n-te und verallgemeinerte sqrtint
 
 =for test_synopsis use v5.14;  my($k,$x);
 
@@ -1305,8 +1305,7 @@ C<$_> set to each divisor in sorted order.  Also see L</divisor_sum>.
 Given a non-negative number C<n>, the block is called with C<@_> set to
 the array of additive integer partitions.  The operation is very similar
 to the C<forpart> function in Pari/GP 2.6.x, though the ordering is
-different.  The algorithm is ZS1 from Zoghbi and Stojmenović (1998), hence
-the ordering is identical to that of L<Integer::Partition>.
+different.  The ordering is lexicographic.
 Use L</partitions> to get just the count of unrestricted partitions.
 
 
@@ -1322,6 +1321,15 @@ Each value must be a non-negative integer.  The allowable keys are:
 Like forcomb and forperm, the partition return values are read-only.  Any
 attempt to modify them will result in undefined behavior.
 
+
+=head2 forcomp
+
+Similar to L</forpart>, but iterates over integer compositions rather than
+partitions.  This can be thought of as all ordering of partitions, or
+alternately partitions may be viewed as an ordered subset of compositions.
+The ordering is lexicographic.  All options from L</forpart> may be used.
+
+The number of unrestricted compositions of C<n> is C<2^(n-1)>.
 
 =head2 forcomb
 

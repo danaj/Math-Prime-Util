@@ -5152,7 +5152,7 @@ sub Pi {
   return Math::BigFloat::bpi($digits+10)->round($digits);
 }
 
-sub forpart {
+sub forpart2 {
   my($sub, $n, $rhash) = @_;
   _validate_positive_integer($n);
   my($mina, $maxa, $minn, $maxn) = (0,$n,0,$n);
@@ -5187,6 +5187,74 @@ sub forpart {
       if ($t == 0) { $m = $h }
       else         { $m = $h+1; if ($t > 1) { $h++; $x[$h] = $t; } }
     }
+  }
+}
+sub forpart {
+  my($sub, $n, $rhash) = @_;
+  _forcompositions(1, $sub, $n, $rhash);
+}
+sub forcomp {
+  my($sub, $n, $rhash) = @_;
+  _forcompositions(0, $sub, $n, $rhash);
+}
+sub _forcompositions {
+  my($ispart, $sub, $n, $rhash) = @_;
+  _validate_positive_integer($n);
+  my($mina, $maxa, $minn, $maxn) = (1,$n,1,$n);
+  if (defined $rhash) {
+    croak "forpart second argument must be a hash reference"
+      unless ref($rhash) eq 'HASH';
+    $minn = $maxn = $rhash->{n} if defined $rhash->{n};
+    $mina = $rhash->{amin} if defined $rhash->{amin};
+    $maxa = $rhash->{amax} if defined $rhash->{amax};
+    $minn = $rhash->{nmin} if defined $rhash->{nmin};
+    $maxn = $rhash->{nmax} if defined $rhash->{nmax};
+   _validate_positive_integer($mina);
+   _validate_positive_integer($maxa);
+   _validate_positive_integer($minn);
+   _validate_positive_integer($maxn);
+   $mina = 1 if $mina < 1;
+   $maxa = $n if $maxa > $n;
+   $minn = 1 if $minn < 1;
+   $maxn = $n if $maxn > $n;
+  }
+  
+  $sub->() if $n == 0 && $minn <= 1;
+  return if $n < $minn || $minn > $maxn || $mina > $maxa || $maxn <= 0 || $maxa <= 0;
+
+  my ($x, $y, $r, $k);
+  my @a = (0) x ($n);
+  $k = 1;
+  $a[0] = $mina - 1;
+  $a[1] = $n - $mina + 1;
+  while ($k != 0) {
+    $x = $a[$k-1]+1;
+    $y = $a[$k]-1;
+    $k--;
+    $r = $ispart ? $x : 1;
+    while ($r <= $y) {
+      $a[$k] = $x;
+      $x = $r;
+      $y -= $x;
+      $k++;
+    }
+    $a[$k] = $x + $y;
+    # Restrict size
+    while ($k+1 > $maxn) {
+      $a[$k-1] += $a[$k];
+      $k--;
+    }
+    next if $k+1 < $minn;
+    # Restrict values
+    if ($mina > 1 || $maxa < $n) {
+      last if $a[0] > $maxa;
+      if ($ispart) {
+        next if $a[$k] > $maxa;
+      } else {
+        next if scalar(grep { $_ < $mina || $_ > $maxa } @a[0..$k]) > 0;
+      }
+    }
+    $sub->(@a[0 .. $k]);
   }
 }
 sub forcomb {

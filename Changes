@@ -5,6 +5,7 @@ Revision history for Perl module Math::Prime::Util
     [ADDED]
 
     - is_carmichael(n)                    Returns 1 if n is a Carmichael number
+    - forcomp { ... } n[,{...}]           loop over compositions
 
     [FUNCTIONALITY AND PERFORMANCE]
 
@@ -13,6 +14,8 @@ Revision history for Perl module Math::Prime::Util
     - gcdext(0,0) returns (0,0,0) to match GMP and Pari/GP.
 
     - Use better prime count lower/upper bounds from Büthe 2015.
+
+    - forpart and forcomp both use lexicographic order (was anti-lexico).
 
 
 0.55 2015-10-19
