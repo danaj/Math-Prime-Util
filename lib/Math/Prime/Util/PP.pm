@@ -5152,43 +5152,6 @@ sub Pi {
   return Math::BigFloat::bpi($digits+10)->round($digits);
 }
 
-sub forpart2 {
-  my($sub, $n, $rhash) = @_;
-  _validate_positive_integer($n);
-  my($mina, $maxa, $minn, $maxn) = (0,$n,0,$n);
-  if (defined $rhash) {
-    croak "forpart second argument must be a hash reference"
-      unless ref($rhash) eq 'HASH';
-    $minn = $maxn = $rhash->{n} if defined $rhash->{n};
-    $mina = $rhash->{amin} if defined $rhash->{amin};
-    $maxa = $rhash->{amax} if defined $rhash->{amax};
-    $minn = $rhash->{nmin} if defined $rhash->{nmin};
-    $maxn = $rhash->{nmax} if defined $rhash->{nmax};
-   _validate_positive_integer($mina);
-   _validate_positive_integer($maxa);
-   _validate_positive_integer($minn);
-   _validate_positive_integer($maxn);
-  }
-  my @x = (1) x ($n+1);
-  my $m = ($n > 0) ? 1 : 0;
-  my $h = 1;
-  $x[1] = $n;
-  while (1) {
-    $sub->(@x[1 .. $m])
-      if $m >= $minn && $m <= $maxn && $x[$m] >= $mina && $x[1] <= $maxa;
-    last if $x[1] <= 1;
-    if ($x[$h] == 2) {
-      $m++; $x[$h] = 1; $h--; }
-    else {
-      my $r = $x[$h] - 1;
-      my $t = $m - $h + 1;
-      $x[$h] = $r;
-      while ($t >= $r) { $h++; $x[$h] = $r; $t -= $r; }
-      if ($t == 0) { $m = $h }
-      else         { $m = $h+1; if ($t > 1) { $h++; $x[$h] = $t; } }
-    }
-  }
-}
 sub forpart {
   my($sub, $n, $rhash) = @_;
   _forcompositions(1, $sub, $n, $rhash);

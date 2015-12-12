@@ -108,6 +108,7 @@ See L<Math::Prime::Util> for complete documentation.
   foroddcomposites {...} [start,] end loop over odd composites in range
   fordivisors { ... } n               loop over the divisors of n
   forpart { ... } n [,{...}]          loop over integer partitions
+  forcomp { ... } n [,{...}]          loop over integer compositions
   forcomb { ... } n, k                loop over combinations
   forperm { ... } n                   loop over permutations
   prime_iterator                      returns a simple prime iterator
@@ -138,6 +139,8 @@ See L<Math::Prime::Util> for complete documentation.
   is_power(n)                         return k if n = p^k for integer p, max k
   is_power(n,k)                       return 1 if n = p^k for integer p and k
   is_power(n,k,\$root)                as above but set root to p.
+  is_square_free(n)                   return true if no repeated factors
+  is_carmichael(n)                    is n a Carmichael number
   sqrtint(n)                          integer square root
   gcd(@list)                          greatest common divisor
   lcm(@list)                          least common multiple
@@ -154,7 +157,6 @@ See L<Math::Prime::Util> for complete documentation.
   invmod(a,n)                         inverse of a modulo n
   moebius(n)                          Moebius function of n
   moebius(beg, end)                   array of Moebius in range
-  is_square_free(n)                   return true if no repeated factors
   mertens(n)                          sum of Moebius for 1 to n
   euler_phi(n)                        Euler totient of n
   euler_phi(beg, end)                 Euler totient for a range

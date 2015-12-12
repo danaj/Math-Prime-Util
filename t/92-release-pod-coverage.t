@@ -54,11 +54,12 @@ sub mpu_public_regex {
       is_mersenne_prime
       is_power sqrtint
       is_square_free
+      is_carmichael
       miller_rabin_random
       lucas_sequence lucasu lucasv
       primes twin_primes ramanujan_primes sieve_prime_cluster
       forprimes forcomposites foroddcomposites fordivisors
-      forpart forcomb forperm
+      forpart forcomp forcomb forperm
       prime_iterator prime_iterator_object
       next_prime  prev_prime
       prime_count
