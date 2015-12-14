@@ -5,7 +5,7 @@ use Carp qw/croak confess carp/;
 
 BEGIN {
   $Math::Prime::Util::AUTHORITY = 'cpan:DANAJ';
-  $Math::Prime::Util::VERSION = '0.55';
+  $Math::Prime::Util::VERSION = '0.56';
 }
 
 # parent is cleaner, and in the Perl 5.10.1 / 5.12.0 core, but not earlier.
@@ -708,6 +708,19 @@ sub _generic_factor_exp {
 
 #############################################################################
 
+sub is_gaussian_prime {
+  my($a,$b) = @_;
+  if ($a == 0) {
+    return (($b % 4) == 3) ? is_prime($b) : 0;
+  }
+  if ($b == 0) {
+    return (($a % 4) == 3) ? is_prime($a) : 0;
+  }
+  return is_prime($a*$a + $b*$b);
+}
+
+#############################################################################
+
 # Return just the cert portion.
 sub prime_certificate {
   my($n) = @_;
@@ -923,7 +936,7 @@ Math::Prime::Util - Utilities related to prime numbers, including fast sieves an
 
 =head1 VERSION
 
-Version 0.55
+Version 0.56
 
 
 =head1 SYNOPSIS
