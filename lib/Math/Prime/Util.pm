@@ -33,7 +33,7 @@ our @EXPORT_OK =
       lucas_sequence lucasu lucasv
       primes twin_primes ramanujan_primes sieve_prime_cluster
       forprimes forcomposites foroddcomposites fordivisors
-      forpart forcomp forcomb forperm
+      forpart forcomp forcomb forperm formultiperm
       prime_iterator prime_iterator_object
       next_prime  prev_prime
       prime_count
@@ -606,6 +606,18 @@ sub _generic_fordivisors {
   }
 }
 
+sub formultiperm (&$) {    ## no critic qw(ProhibitSubroutinePrototypes)
+  my($sub, $iref) = @_;
+
+  my($sum, %h, @n) = (0);
+  $h{$_}++ for @$iref;
+  @n = map { [$_, $h{$_}] } sort(keys(%h));
+  $sum += $_->[1] for @n;
+
+  require Math::Prime::Util::PP;
+  Math::Prime::Util::PP::_multiset_permutations( $sub, [], \@n, $sum );
+}
+
 #############################################################################
 # Iterators
 
@@ -924,7 +936,7 @@ __END__
 
 =encoding utf8
 
-=for stopwords forprimes forcomposites foroddcomposites fordivisors forpart forcomp forcomb forperm Möbius Deléglise Bézout totient moebius mertens liouville znorder irand primesieve uniqued k-tuples von SoE pari yafu fonction qui compte le nombre nombres voor PhD superset sqrt(N) gcd(A^M k-th (10001st primegen libtommath kronecker znprimroot znlog gcd lcm invmod untruncated vecsum vecprod vecmin vecmax vecreduce vecextract sumdigits gcdext chinese LambertW bernfrac bernreal harmfrac harmreal stirling hammingweight lucasu lucasv OpenPFGW gmpy2 Über Primzahl-Zählfunktion n-te und verallgemeinerte sqrtint
+=for stopwords forprimes forcomposites foroddcomposites fordivisors forpart forcomp forcomb forperm formultiperm Möbius Deléglise Bézout totient moebius mertens liouville znorder irand primesieve uniqued k-tuples von SoE pari yafu fonction qui compte le nombre nombres voor PhD superset sqrt(N) gcd(A^M k-th (10001st primegen libtommath kronecker znprimroot znlog gcd lcm invmod untruncated vecsum vecprod vecmin vecmax vecreduce vecextract sumdigits gcdext chinese LambertW bernfrac bernreal harmfrac harmreal stirling hammingweight lucasu lucasv OpenPFGW gmpy2 Über Primzahl-Zählfunktion n-te und verallgemeinerte sqrtint
 
 =for test_synopsis use v5.14;  my($k,$x);
 
@@ -1383,6 +1395,26 @@ and hence give the size.
 
 Like forpart and forcomb, the index return values are read-only.  Any
 attempt to modify them will result in undefined behavior.
+
+
+=head2 formultiperm
+
+  # Show all anagrams of 'serpent':
+  formultiperm { say join("",@_) } [split(//,"serpent")];
+
+Similar to L</forperm> but takes an array reference as an argument.  This
+is treated as a multiset, and the block will be called with each multiset
+permutation.  While the standard permutation iterator takes a scalar and
+returns index permutations, this takes the set itself.
+
+If all values are unique, then the results will be the same as a standard
+permutation.  Otherwise, the results will be similar to a standard
+permutation removing duplicate entries.  While generating all
+permutations and filtering out duplicates works, it is very slow for large
+sets.  This iterator will be much more efficient.
+
+There is no ordering requirement for the input array reference.  The results
+will be in lexicographic order.
 
 
 =head2 prime_iterator

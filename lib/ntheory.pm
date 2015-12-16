@@ -111,6 +111,7 @@ See L<Math::Prime::Util> for complete documentation.
   forcomp { ... } n [,{...}]          loop over integer compositions
   forcomb { ... } n, k                loop over combinations
   forperm { ... } n                   loop over permutations
+  formultiperm { ... } \@n            loop over multiset permutations
   prime_iterator                      returns a simple prime iterator
   prime_iterator_object               returns a prime iterator object
 

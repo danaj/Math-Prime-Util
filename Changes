@@ -1,5 +1,12 @@
 Revision history for Perl module Math::Prime::Util
 
+0.57 ?
+
+    [ADDED]
+
+    - formultiperm { ... } \@n            loop over multiset permutations
+
+
 0.56 2015-12-13
 
     [ADDED]

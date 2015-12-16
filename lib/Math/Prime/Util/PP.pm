@@ -5266,6 +5266,39 @@ sub forperm {
   }
 }
 
+sub _multiset_permutations {
+  my($sub, $prefix, $ar, $sum) = @_;
+
+  return if $sum == 0;
+
+  # Remove any values with 0 occurances
+  my @n = grep { $_->[1] > 0 } @$ar;
+
+  if ($sum == 1) {                       # A single value
+    $sub->(@$prefix, $n[0]->[0]);
+  } elsif ($sum == 2) {                  # Optimize the leaf case
+    my($n0,$n1) = map { $_->[0] } @n;
+    if (@n == 1) {
+      $sub->(@$prefix, $n0, $n0);
+    } else {
+      $sub->(@$prefix, $n0, $n1);
+      $sub->(@$prefix, $n1, $n0);
+    }
+  } elsif ($sum == scalar(@n)) {         # All entries have 1 occurance
+    my @i = map { $_->[0] } @n;
+    Math::Prime::Util::forperm { $sub->(@$prefix, @i[@_]) } scalar(@i);
+  } else {                               # Recurse over each leading value
+    for my $v (@n) {
+      $v->[1]--;
+      push @$prefix, $v->[0];
+      no warnings 'recursion';
+      _multiset_permutations($sub, $prefix, \@n, $sum-1);
+      pop @$prefix;
+      $v->[1]++;
+    }
+  }
+}
+
 1;
 
 __END__
