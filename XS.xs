@@ -1513,6 +1513,37 @@ sumdigits(SV* svn, UV base = 10)
     }
     XSRETURN_UV(sum);
 
+void
+binary(SV* svn)
+  PREINIT:
+    int status;
+    U32 gimme_v;
+  PPCODE:
+    status = _validate_int(aTHX_ svn, 1);
+    gimme_v = GIMME_V;
+    if (status != 0) {
+      UV n = status * my_svuv(svn);  /* n = abs(arg) */
+      int bits[BITS_PER_WORD], d = 0, i;
+      while (n) {
+        bits[d++] = n & 1;
+        n >>= 1;
+      }
+      if (gimme_v == G_ARRAY) {
+        EXTEND(SP, d);
+        for (i = 0; i < d; i++)
+          PUSH_NPARITY( bits[d-i-1] );
+      } else {
+        char s[BITS_PER_WORD+1];
+        for (i = 0; i < d; i++)
+          s[i] = '0' + bits[d-i-1];
+        s[d] = '\0';
+        XPUSHs(sv_2mortal(newSVpvn(s, d)));
+      }
+    } else {
+      _vcallsubn(aTHX_ gimme_v, VCALL_GMP|VCALL_PP, "binary", items);
+      return;
+    }
+
 bool
 _validate_num(SV* svn, ...)
   PREINIT:

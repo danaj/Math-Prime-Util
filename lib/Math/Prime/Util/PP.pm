@@ -2273,6 +2273,14 @@ sub hammingweight {
   return 0 + (Math::BigInt->new("$n")->as_bin() =~ tr/1//);
 }
 
+sub binary {
+  my $n = shift;
+  my $str = substr(Math::BigInt->new("$n")->babs->as_bin,2);
+  return if $n eq '0' || $n eq 'N';
+  return $str unless wantarray;
+  split(//,$str);
+}
+
 sub sqrtint {
   my($n) = @_;
   my $sqrt = Math::BigInt->new("$n")->bsqrt;

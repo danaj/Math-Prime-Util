@@ -48,7 +48,7 @@ our @EXPORT_OK =
       random_maurer_prime random_maurer_prime_with_cert
       random_shawe_taylor_prime random_shawe_taylor_prime_with_cert
       primorial pn_primorial consecutive_integer_lcm gcdext chinese
-      gcd lcm factor factor_exp divisors valuation invmod hammingweight
+      gcd lcm factor factor_exp divisors valuation invmod hammingweight binary
       vecsum vecmin vecmax vecprod vecreduce vecextract sumdigits
       moebius mertens euler_phi jordan_totient exp_mangoldt liouville
       partitions bernfrac bernreal harmfrac harmreal
@@ -2515,6 +2515,21 @@ Given an integer C<n>, returns the binary Hamming weight of C<abs(n)>.  This
 is also called the population count, and is the number of 1s in the binary
 representation.  This corresponds to Pari's C<hammingweight> function for
 C<t_INT> arguments.
+
+=head2 binary
+
+Given an integer C<n>, return the binary digits of C<|n|>.  There
+is no prefix added to the result (e.g. Math::BigInt adds C<0b>).  In
+scalar context this returns a string of 0 and 1 digits, while in array
+context it returns an array of read-only 0 and 1 numbers.
+C<binary(0)> returns an empty string or array.
+
+In scalar context this is equivalent to C<sprintf("%b",$n)> for
+native inputs, but this function transparently works for bigints.
+
+This corresponds to Pari's C<binary> function, which always returns a
+vector.  It corresponds to Mathematica's C<IntegerDigits[n,2]> and
+C<IntegerString[n,2]> functions.
 
 =head2 is_square_free
 

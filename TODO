@@ -114,3 +114,5 @@
   version that is non-threadsafe.
 
 - Tests for formultiperm.
+
+- Tests for binary.
