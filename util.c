@@ -1853,6 +1853,46 @@ int is_carmichael(UV n) {
   return 1;
 }
 
+#if 0
+/* Returns number of bases that pass */
+int is_quasi_carmichael(UV n) {
+  UV b, lim, fac[MPU_MAX_FACTORS+1], exp[MPU_MAX_FACTORS+1];
+  int i, nfactors, nbases, c;
+
+  if (n < 35) return 0;
+
+  /* Simple pre-test for square free */
+  if (!(n% 4) || !(n% 9) || !(n%25) || !(n%49) || !(n%121) || !(n%169))
+    return 0;
+
+  nfactors = factor_exp(n, fac, exp);
+  /* Composite */
+  if (nfactors < 2)
+    return 0;
+  /* Square free */
+  for (i = 0; i < nfactors; i++)
+    if (exp[i] > 1)
+      return 0;
+  nbases = 0;
+  /* b < |n-p^2|/p.  We use the largest factor. */
+  lim = fac[nfactors-1];
+  lim = ( ((lim*lim <= n) ? (n-lim*lim) : (lim*lim-n)) + lim-1 ) / lim;
+  for (b = 1; b < fac[0]; b++) {
+    for (i = 0; i < nfactors; i++)
+      if ((n-b) % (fac[i]-b) != 0)
+        break;
+    if (i == nfactors) nbases++;
+  }
+  for (b = 1; b < lim; b++) {
+    for (i = 0; i < nfactors; i++)
+      if ((n+b) % (fac[i]+b) != 0)
+        break;
+    if (i == nfactors) nbases++;
+  }
+  return nbases;
+}
+#endif
+
 
 int moebius(UV n) {
   UV factors[MPU_MAX_FACTORS+1];
@@ -2537,6 +2577,64 @@ int strnum_minmax(int min, char* a, STRLEN alen, char* b, STRLEN blen)
     if (a[i] != b[i])
       return  min  ?  (a[i] > b[i])  :  (b[i] > a[i]);
   return 0; /* equal */
+}
+
+int from_digit_string(UV* rn, const char* s, int base)
+{
+  UV max, n = 0;
+  int i, len, res = 0;
+
+  /* Skip leading -/+ and zeros */
+  if (s[0] == '-' || s[0] == '+') s++;
+  while (s[0] == '0') s++;
+
+  len = strlen(s);
+  max = (UV_MAX-base+1)/base;
+
+  for (i = 0, len = strlen(s); i < len; i++) {
+    const char c = s[i];
+    UV d = !isalnum(c) ? 255 : (c <= '9') ? c-'0' : (c <= 'Z') ? c-'A'+10 : c-'a'+10;
+    if (d >= base) croak("Invalid digit for base %d", base);
+    if (n > max) return 0;   /* Overflow */
+    n = n * base + d;
+  }
+  *rn = n;
+  return 1;
+}
+
+int to_digit_array(int* bits, UV n, int base, int length)
+{
+  int d;
+
+  if (base < 2 || length > 128) return -1;
+
+  if (base == 2) {
+    for (d = 0; n; n >>= 1)
+      bits[d++] = n & 1;
+  } else {
+    for (d = 0; n; n /= base)
+      bits[d++] = n % base;
+  }
+  if (length < 0) length = d;
+  while (d < length)
+    bits[d++] = 0;
+  return length;
+}
+
+int to_digit_string(char* s, UV n, int base, int length)
+{
+  int digits[128];
+  int i, len = to_digit_array(digits, n, base, length);
+
+  if (len < 0) return -1;
+  if (base > 36) croak("invalid base for string: %d", base);
+
+  for (i = 0; i < len; i++) {
+    int dig = digits[len-i-1];
+    s[i] = (dig < 10) ? '0'+dig : 'a'+dig-10;
+  }
+  s[len] = '\0';
+  return len;
 }
 
 /* Oddball primality test.

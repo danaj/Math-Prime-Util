@@ -73,6 +73,7 @@ extern UV znorder(UV a, UV n);
 extern int is_primitive_root(UV a, UV p);
 #define is_square_free(n)  (moebius(n) != 0)
 extern int is_carmichael(UV n);
+extern int is_quasi_carmichael(UV n);
 
 extern IV stirling2(UV n, UV m);
 extern IV stirling1(UV n, UV m);
@@ -80,6 +81,10 @@ extern IV stirling1(UV n, UV m);
 extern IV ramanujan_tau(UV n);
 
 extern int strnum_minmax(int min, char* a, STRLEN alen, char* b, STRLEN blen);
+
+extern int from_digit_string(UV* n, const char* s, int base);
+extern int to_digit_array(int* bits, UV n, int base, int length);
+extern int to_digit_string(char *s, UV n, int base, int length);
 
 extern int is_catalan_pseudoprime(UV n);
 

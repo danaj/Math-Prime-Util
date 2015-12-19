@@ -136,6 +136,10 @@ See L<Math::Prime::Util> for complete documentation.
   vecmax(@list)                       maximum of list of integers
   vecreduce { ... } @list             reduce / left fold applied to list
   vecextract(\@list, mask)            select from list based on mask
+  todigits(n[,base[,len]])            convert n to digit array in base
+  todigitstring(n[,base[,len]])       convert n to string in base
+  fromdigits(\@d,[,base])             convert base digit vector to number
+  fromdigits(str,[,base])             convert base digit string to number
   sumdigits(n)                        sum of digits, with optional base
   is_power(n)                         return k if n = p^k for integer p, max k
   is_power(n,k)                       return 1 if n = p^k for integer p and k

@@ -242,6 +242,27 @@ static int _vcallsubn(pTHX_ I32 flags, I32 stashflags, const char* name, int nar
     } \
   }
 
+static int from_digit_arrayref(pTHX_ UV* rn, AV* av, int base)
+{
+  int i, len;
+  UV n = 0;
+
+  if (SvTYPE((SV*)av) != SVt_PVAV)
+    croak("fromdigits first argument must be a string or array reference");
+  len = av_len(av);
+  if (len > BITS_PER_WORD) return 0;
+  for (i = 0; i <= len; i++) {
+    SV** psvd = av_fetch(av, i, 0);
+    if (_validate_int(aTHX_ *psvd, 1) != 1) return 0;
+    UV d = my_svuv(*psvd);
+    if (n > (UV_MAX-d)/base) return 0;  /* overflow */
+    n = n * base + d;
+  }
+  *rn = n;
+  return 1;
+}
+
+
 MODULE = Math::Prime::Util	PACKAGE = Math::Prime::Util
 
 PROTOTYPES: ENABLE
@@ -1544,6 +1565,51 @@ binary(SV* svn)
       return;
     }
 
+void todigits(SV* svn, int base=10, int length=-1)
+  ALIAS:
+    todigitstring = 1
+    fromdigits = 2
+  PREINIT:
+    int status;
+    UV n;
+  PPCODE:
+    if (base < 2) croak("invalid base: %d", base);
+    if (ix == 0 || ix == 1) {
+      status = _validate_int(aTHX_ svn, 1);
+      n = (status == 0) ? 0 : status * my_svuv(svn);
+    }
+    if (ix == 0 && status != 0 && length < 128) {
+      int digits[128];
+      int i, len = to_digit_array(digits, n, base, length);
+      if (len >= 0) {
+        EXTEND(SP, len);
+        for (i = 0; i < len; i++)
+          PUSH_NPARITY( digits[len-i-1] );
+        XSRETURN(len);
+      }
+    }
+    if (ix == 1 && status != 0 && length < 128) {
+      char s[128+1];
+      int len = to_digit_string(s, n, base, length);
+      if (len >= 0) {
+        XPUSHs(sv_2mortal(newSVpv(s, len)));
+        XSRETURN(1);
+      }
+    }
+    if (ix == 2 && !SvROK(svn) && from_digit_string(&n, SvPV_nolen(svn), base)) {
+      XSRETURN_UV(n);
+    }
+    if (ix == 2 && SvROK(svn) && from_digit_arrayref(aTHX_ &n, (AV*) SvRV(svn), base)) {
+      XSRETURN_UV(n);
+    }
+    switch (ix) {
+      case 0:  _vcallsubn(aTHX_ GIMME_V, VCALL_GMP|VCALL_PP, "todigits", items); break;
+      case 1:  _vcallsub_with_gmp("todigitstring"); break;
+      case 2:
+      default: _vcallsub_with_gmp("fromdigits"); break;
+    }
+    return;
+
 bool
 _validate_num(SV* svn, ...)
   PREINIT:
@@ -1884,8 +1950,8 @@ forpart (SV* block, IN SV* svn, IN SV* svh = 0)
       UV *a, k, x, y, r;
       New(0, a, n+1, UV);
       k = 1;
-      a[0] = amin-1; //0;
-      a[1] = n-amin+1; //n;
+      a[0] = amin-1;
+      a[1] = n-amin+1;
       while (k != 0) {
         x = a[k-1]+1;
         y = a[k]-1;

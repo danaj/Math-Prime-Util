@@ -48,8 +48,9 @@ our @EXPORT_OK =
       random_maurer_prime random_maurer_prime_with_cert
       random_shawe_taylor_prime random_shawe_taylor_prime_with_cert
       primorial pn_primorial consecutive_integer_lcm gcdext chinese
-      gcd lcm factor factor_exp divisors valuation invmod hammingweight binary
-      vecsum vecmin vecmax vecprod vecreduce vecextract sumdigits
+      gcd lcm factor factor_exp divisors valuation invmod hammingweight
+      todigits fromdigits todigitstring sumdigits
+      vecsum vecmin vecmax vecprod vecreduce vecextract
       moebius mertens euler_phi jordan_totient exp_mangoldt liouville
       partitions bernfrac bernreal harmfrac harmreal
       chebyshev_theta chebyshev_psi
@@ -2473,6 +2474,53 @@ ordering is preserved.  Hence these are equivalent:
 
     vecextract($aref, $iref);
     @$aref[@$iref];
+
+=head2 todigits
+
+  say "product of digits of n: ", vecprod(todigits($n));
+
+Given an integer C<n>, return an array of digits of C<|n|>.  An optional
+second integer argument specifies a base (default 10).  For example,
+given a base of 2, this returns an array of binary digits of C<n>.
+An optional third argument specifies a length for the returned array.
+The result will be either have upper digits truncated or have leading
+zeros added.  This is most often used with base 2, 8, or 16.
+
+The values returned may be read-only.  todigits(0) returns an empty array.
+The base must be at least 2, and is limited to an int.  Length must be
+at least zero and is limited to an int.
+
+This corresponds to Pari's C<digits> and C<binary> functions, and
+Mathematica's C<IntegerDigits> function.
+
+=head2 todigitstring
+
+  say "decimal 456 in hex is ", todigitstring(456, 16);
+  say "last 4 bits of $n are: ", todigitstring($n, 2, 4);
+
+Similar to L</todigits> but returns a string.  For bases E<lt>= 10,
+this is equivalent to joining the array returned by L</todigits>.  For
+bases between 11 and 36, lower case characters C<a> to C<z> are used
+to represent larger values.  This makes C<todigitstring($n,16)>
+return a usable hex string.
+
+This corresponds to Mathematica's C<IntegerString> function.
+
+=head2 fromdigits
+
+  say "hex 1c8 in decimal is ", fromdigits("1c8", 16);
+  say "Base 3 array to number is: ", fromdigits([0,1,2,2,2,1,0],3);
+
+This takes either a string or array reference, and an optional base
+(default 10).  With a string, each character will be intepreted as a
+digit in the given base, with both upper and lower case denoting
+values 11 through 36.  With an array reference, the values indicate
+the entries in that location, and values larger than the base are
+allowed (results are carried).  The result is a number (either a
+native integer or a bigint).
+
+This corresponds to Pari's C<fromdigits> function and
+Mathematica's C<FromDigits> function.
 
 =head2 sumdigits
 

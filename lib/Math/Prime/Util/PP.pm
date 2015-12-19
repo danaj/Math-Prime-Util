@@ -2281,6 +2281,74 @@ sub binary {
   split(//,$str);
 }
 
+sub _splitdigits {
+  my($n, $base, $len) = @_;    # n is num or bigint, base is in range
+  my @d;
+  if ($base == 10) {
+    @d = split(//,"$n");
+  } elsif ($base == 2) {
+    @d = split(//,substr(Math::BigInt->new("$n")->as_bin,2));
+  } elsif ($base == 16) {
+    @d = split(//,substr(Math::BigInt->new("$n")->as_hex,2));
+  } else {
+    while ($n > 0) {
+      my $rem = $n % $base;
+      push @d, $rem;
+      $n = int( ($n-$rem)/$base );
+    }
+  }
+  if ($len >= 0 && $len != scalar(@d)) {
+    while (@d < $len) { unshift @d, 0; }
+    while (@d > $len) { shift @d; }
+  }
+  @d;
+}
+
+sub todigits {
+  my($n,$base,$len) = @_;
+  $base = 10 unless defined $base;
+  $len = -1 unless defined $len;
+  die "Invalid base: $base" if $base < 2;
+  return if $n == 0;
+  $n = -$n if $n < 0;
+  _validate_num($n) || _validate_positive_integer($n);
+  _splitdigits($n, $base, $len);
+}
+
+my @_digitmap = (0..9, 'a'..'z');
+my %_mapdigit = map { $_digitmap[$_] => $_ } 0 .. $#_digitmap;
+sub todigitstring {
+  my($n,$base,$len) = @_;
+  $base = 10 unless defined $base;
+  $len = -1 unless defined $len;
+  my @d = todigits($n, $base, $len);
+  return join("", todigits($n, $base, $len)) if $base <= 10;
+  die "Invalid base for string: $base" if $base > 36;
+  join("", map { $_digitmap[$_] } todigits($n, $base, $len));
+}
+
+sub fromdigits {
+  my($r, $base) = @_;
+  $base = 10 unless defined $base;
+  my $n = BZERO->copy;
+  $base = BZERO + $base;
+  if (ref($r)) {
+    croak "fromdigits first argument must be a string or array reference"
+      unless ref($r) eq 'ARRAY';
+    for my $d (@$r) {
+      $n = $n * $base + $d;
+    }
+  } else {
+    $r =~ s/^0*//;
+    for my $d (map { $_mapdigit{$_} } split(//,$r)) {
+      croak "Invalid digit for base $base" unless defined $d && $d < $base;
+      $n = $n * $base + $d;
+    }
+  }
+  $n = _bigint_to_int($n) if $n->bacmp(BMAX) <= 0;
+  $n;
+}
+
 sub sqrtint {
   my($n) = @_;
   my $sqrt = Math::BigInt->new("$n")->bsqrt;

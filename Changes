@@ -5,7 +5,10 @@ Revision history for Perl module Math::Prime::Util
     [ADDED]
 
     - formultiperm { ... } \@n            loop over multiset permutations
-    - binary(n)                           returns binary digits of n
+    - todigits(n[,base[,len]])            convert n to digit array
+    - todigitstring(n[,base[,len]])       convert n to string
+    - fromdigits(\@d[,base])              convert digit array ref to number
+    - fromdigits(str[,base])              convert string to number
 
 
 0.56 2015-12-13
