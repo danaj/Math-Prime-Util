@@ -125,6 +125,7 @@ t/23-random-certs.t
 t/24-partitions.t
 t/25-lucas_sequences.t
 t/26-combinatorial.t
+t/26-digits.t
 t/27-bernfrac.t
 t/28-pi.t
 t/29-mersenne.t

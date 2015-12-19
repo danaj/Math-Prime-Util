@@ -106,7 +106,7 @@
 
 #define MY_CXT_KEY "Math::Prime::Util::API_guts"
 typedef struct {
-  SV* const_int[4];   /* -1, 0, 1, 2 */
+  SV* const_int[11];   /* -1, 0, 1, ..., 9 */
   HV* MPUroot;
   HV* MPUGMP;
   HV* MPUPP;
@@ -215,12 +215,12 @@ static int _vcallsubn(pTHX_ I32 flags, I32 stashflags, const char* name, int nar
 #define RETURN_NPARITY(ret) \
   do { int r_ = ret; \
        dMY_CXT; \
-       if (r_ >= -1 && r_ <= 2) { ST(0) = MY_CXT.const_int[r_+1]; XSRETURN(1); } \
+       if (r_ >= -1 && r_ <= 9) { ST(0) = MY_CXT.const_int[r_+1]; XSRETURN(1); } \
        else                     { XSRETURN_IV(r_);                      } \
   } while (0)
 #define PUSH_NPARITY(ret) \
   do { int r_ = ret; \
-       if (r_ >= -1 && r_ <= 2) { PUSHs( MY_CXT.const_int[r_+1] );       } \
+       if (r_ >= -1 && r_ <= 9) { PUSHs( MY_CXT.const_int[r_+1] );       } \
        else                     { PUSHs(sv_2mortal(newSViv(r_))); } \
   } while (0)
 
@@ -275,7 +275,7 @@ BOOT:
     { int i;
       MY_CXT_INIT;
       MY_CXT.MPUroot = stash;
-      for (i = 0; i <= 3; i++) {
+      for (i = 0; i <= 10; i++) {
         MY_CXT.const_int[i] = newSViv(i-1);
         SvREADONLY_on(MY_CXT.const_int[i]);
       }
@@ -293,7 +293,7 @@ PREINIT:
 PPCODE:
   {
     MY_CXT_CLONE; /* possible declaration */
-    for (i = 0; i <= 3; i++) {
+    for (i = 0; i <= 10; i++) {
       MY_CXT.const_int[i] = newSViv(i-1);
       SvREADONLY_on(MY_CXT.const_int[i]);
     }
@@ -311,7 +311,7 @@ PREINIT:
   dMY_CXT;
   int i;
 PPCODE:
-  for (i = 0; i <= 3; i++) {
+  for (i = 0; i <= 10; i++) {
     SV * const sv = MY_CXT.const_int[i];
     MY_CXT.const_int[i] = NULL;
     SvREFCNT_dec_NN(sv);
@@ -1570,7 +1570,7 @@ void todigits(SV* svn, int base=10, int length=-1)
     todigitstring = 1
     fromdigits = 2
   PREINIT:
-    int status;
+    int i, status;
     UV n;
   PPCODE:
     if (base < 2) croak("invalid base: %d", base);
@@ -1578,9 +1578,10 @@ void todigits(SV* svn, int base=10, int length=-1)
       status = _validate_int(aTHX_ svn, 1);
       n = (status == 0) ? 0 : status * my_svuv(svn);
     }
+    /* todigits with native input */
     if (ix == 0 && status != 0 && length < 128) {
       int digits[128];
-      int i, len = to_digit_array(digits, n, base, length);
+      int len = to_digit_array(digits, n, base, length);
       if (len >= 0) {
         EXTEND(SP, len);
         for (i = 0; i < len; i++)
@@ -1588,6 +1589,7 @@ void todigits(SV* svn, int base=10, int length=-1)
         XSRETURN(len);
       }
     }
+    /* todigitstring with native input */
     if (ix == 1 && status != 0 && length < 128) {
       char s[128+1];
       int len = to_digit_string(s, n, base, length);
@@ -1596,6 +1598,21 @@ void todigits(SV* svn, int base=10, int length=-1)
         XSRETURN(1);
       }
     }
+    /* todigits or todigitstring base 10 (large size) */
+    if ((ix == 0 || ix == 1) && base == 10 && length < 0) {
+      STRLEN len;
+      char *s = SvPV(svn, len);
+      if (ix == 1) {
+        XPUSHs(sv_2mortal(newSVpv(s, len)));
+        XSRETURN(1);
+      }
+      if (len == 1 && s[0] == '0') XSRETURN(0);
+      EXTEND(SP, len);
+      for (i = 0; i < len; i++)
+        PUSH_NPARITY(s[i]-'0');
+      XSRETURN(len);
+    }
+    /* fromdigits */
     if (ix == 2 && !SvROK(svn) && from_digit_string(&n, SvPV_nolen(svn), base)) {
       XSRETURN_UV(n);
     }
