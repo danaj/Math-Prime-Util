@@ -524,11 +524,17 @@ sub valuation {
   _validate_positive_integer($k);
   return Math::Prime::Util::PP::valuation($n, $k);
 }
-sub binary {
-  my($n) = @_;
-  my $vn = "$n";  $vn =~ s/^-//;
-  _validate_positive_integer($vn);
-  return Math::Prime::Util::PP::binary($n);
+sub todigits {
+  my($n,$base,$len) = @_;
+  return Math::Prime::Util::PP::todigits($n,$base,$len);
+}
+sub todigitstring {
+  my($n,$base,$len) = @_;
+  return Math::Prime::Util::PP::todigitstring($n,$base,$len);
+}
+sub fromdigits {
+  my($n,$base) = @_;
+  return Math::Prime::Util::PP::fromdigits($n,$base);
 }
 sub hammingweight {
   my($n) = @_;

@@ -2281,6 +2281,8 @@ sub binary {
   split(//,$str);
 }
 
+my @_digitmap = (0..9, 'a'..'z');
+my %_mapdigit = map { $_digitmap[$_] => $_ } 0 .. $#_digitmap;
 sub _splitdigits {
   my($n, $base, $len) = @_;    # n is num or bigint, base is in range
   my @d;
@@ -2289,11 +2291,11 @@ sub _splitdigits {
   } elsif ($base == 2) {
     @d = split(//,substr(Math::BigInt->new("$n")->as_bin,2));
   } elsif ($base == 16) {
-    @d = split(//,substr(Math::BigInt->new("$n")->as_hex,2));
+    @d = map { $_mapdigit{$_} } split(//,substr(Math::BigInt->new("$n")->as_hex,2));
   } else {
     while ($n > 0) {
       my $rem = $n % $base;
-      push @d, $rem;
+      unshift @d, $rem;
       $n = int( ($n-$rem)/$base );
     }
   }
@@ -2315,8 +2317,6 @@ sub todigits {
   _splitdigits($n, $base, $len);
 }
 
-my @_digitmap = (0..9, 'a'..'z');
-my %_mapdigit = map { $_digitmap[$_] => $_ } 0 .. $#_digitmap;
 sub todigitstring {
   my($n,$base,$len) = @_;
   $base = 10 unless defined $base;

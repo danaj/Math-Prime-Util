@@ -114,7 +114,6 @@
   version that is non-threadsafe.
 
 - Tests for formultiperm.
-- Tests for todigits, todigitstring, fromdigits
 
 - we have invmod: add mulmod, divmod, expmod, sqrtmod
 
