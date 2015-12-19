@@ -6,9 +6,15 @@ perl:
 #  - "5.14"
 #  - "5.12"
 
+addons:
+  apt:
+    packages:
+      - libgmp-dev
+      - libmpfr-dev
+
 before_install:
-    - sudo apt-get install libgmp-dev
-    - sudo apt-get install libmpfr-dev
+#    - sudo apt-get install libgmp-dev
+#    - sudo apt-get install libmpfr-dev
     - cpanm Test::Pod # optional dependency
     - cpanm Math::Prime::Util::GMP
     - cpanm Math::MPFR
