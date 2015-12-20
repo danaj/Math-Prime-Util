@@ -1783,6 +1783,20 @@ sub twin_prime_count {
   }
   $sum;
 }
+sub ramanujan_prime_count {
+  my($low,$high) = @_;
+  if (defined $high) { _validate_positive_integer($low); }
+  else               { ($low,$high) = (2, $low);         }
+  _validate_positive_integer($high);
+  my $sum = 0;
+  while ($low <= $high) {
+    my $seghigh = ($high-$high) + $low + 1e9 - 1;
+    $seghigh = $high if $seghigh > $high;
+    $sum += scalar(@{Math::Prime::Util::ramanujan_primes($low,$seghigh)});
+    $low = $seghigh + 1;
+  }
+  $sum;
+}
 
 sub twin_prime_count_approx {
   my($n) = @_;

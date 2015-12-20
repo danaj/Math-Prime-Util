@@ -1077,10 +1077,12 @@ static UV nth_ramanujan_prime_lower(UV n) {
 }
 
 UV ramanujan_prime_count_lower(UV n) {
+  UV lo, hi;
+  if (n < 29) return (n < 2) ? 0 : (n < 11) ? 1 : (n < 17) ? 2 : 3;
   /* Binary search on nth_ramanujan_prime_upper */
   /* We know we're between p_2n and p_3n, probably close to the former. */
-  UV lo = prime_count_lower(n)/3;
-  UV hi = prime_count_upper(n) >> 1;
+  lo = prime_count_lower(n)/3;
+  hi = prime_count_upper(n) >> 1;
   while (lo < hi) {
     UV mid = lo + (hi-lo)/2;
     if (nth_ramanujan_prime_upper(mid) < n) lo = mid+1;
@@ -1089,6 +1091,7 @@ UV ramanujan_prime_count_lower(UV n) {
   return lo-1;
 }
 UV ramanujan_prime_count_upper(UV n) {
+  if (n < 29) return (n < 2) ? 0 : (n < 11) ? 1 : (n < 17) ? 2 : 3;
   return prime_count_upper(n) >> 1;
 }
 
@@ -1156,7 +1159,7 @@ UV* n_range_ramanujan_primes(UV nlo, UV nhi) {
   }
   Safefree(seg1);
   Safefree(seg2);
-  if (verbose >= 2) printf("Generated %lu Ramanujan primes from %"UVuf" to %"UVuf"\n", nhi-nlo+1, L[0], L[nhi-nlo]);
+  if (verbose >= 2) printf("Generated %"UVuf" Ramanujan primes from %"UVuf" to %"UVuf"\n", nhi-nlo+1, L[0], L[nhi-nlo]);
   return L;
 }
 
@@ -1192,6 +1195,27 @@ int is_ramanujan_prime(UV n) {
   rn = L[lo];
   Safefree(L);
   return (rn == n);
+}
+
+/* Returns array of Ram primes between low and high, results from first->last */
+UV* ramanujan_primes(UV* first, UV* last, UV low, UV high)
+{
+  UV i, beg, end, nlo, nhi, *L;
+
+  if (high < 2 || high < low) return 0;
+  if (low < 2) low = 2;
+
+  nlo = ramanujan_prime_count_lower(low);
+  nhi = ramanujan_prime_count_upper(high);
+  L = n_range_ramanujan_primes(nlo, nhi);
+
+  for (beg = 0; beg <= nhi-nlo; beg++)
+    if (L[beg] >= low) break;
+  for (end = nhi-nlo; end >= beg; end--)
+    if (L[end] <= high) break;
+  *first = beg;
+  *last = end;
+  return L;
 }
 
 #if 0

@@ -9,6 +9,7 @@ Revision history for Perl module Math::Prime::Util
     - todigitstring(n[,base[,len]])       convert n to string
     - fromdigits(\@d[,base])              convert digit array ref to number
     - fromdigits(str[,base])              convert string to number
+    - ramanujan_prime_count               counts Ramanujan primes in range
 
 
 0.56 2015-12-13

@@ -41,7 +41,7 @@ our @EXPORT_OK =
       nth_prime nth_prime_lower nth_prime_upper nth_prime_approx
       twin_prime_count twin_prime_count_approx
       nth_twin_prime nth_twin_prime_approx
-      nth_ramanujan_prime
+      ramanujan_prime_count nth_ramanujan_prime
       sum_primes print_primes
       random_prime random_ndigit_prime random_nbit_prime random_strong_prime
       random_proven_prime random_proven_prime_with_cert
@@ -1582,6 +1582,15 @@ like them, returns an array reference.
 
 Generating Ramanujan primes takes some effort, including overhead to cover
 a range.  This will be substantially slower than generating standard primes.
+
+=head2 ramanujan_prime_count
+
+Similar to prime count, but returns the count of Ramanujan primes.  Takes
+either a single number indicating a count from 2 to the argument, or
+two numbers indicating a range.
+
+There is no formula for this, so internally this generates the Ramanujan
+primes in the range, then returns the count.
 
 =head2 sieve_prime_cluster
 

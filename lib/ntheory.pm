@@ -67,8 +67,8 @@ See L<Math::Prime::Util> for complete documentation.
 
   primes([start,] end)                array ref of primes
   twin_primes([start,] end)           array ref of twin primes
-  sieve_prime_cluster(start, end, @C) list of prime k-tuples
   ramanujan_primes([start,] end)      array ref of Ramanujan primes
+  sieve_prime_cluster(start, end, @C) list of prime k-tuples
   next_prime(n)                       next prime > n
   prev_prime(n)                       previous prime < n
   prime_count(n)                      count of primes <= n
@@ -85,6 +85,8 @@ See L<Math::Prime::Util> for complete documentation.
   twin_prime_count_approx(n)          fast approx count of twin primes
   nth_twin_prime(n)                   the nth twin prime (n=1 returns 3)
   nth_twin_prime_approx(n)            fast approximate nth twin prime
+  ramanujan_prime_count(n)            count of Ramanujan primes <= n
+  ramanujan_prime_count(start, end)   count of Ramanujan primes in range
   nth_ramanujan_prime(n)              the nth Ramanujan prime (Rn)
   legendre_phi(n,a)                   # below n not div by first a primes
   prime_precalc(n)                    precalculate primes to n

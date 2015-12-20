@@ -361,8 +361,9 @@ prime_count(IN SV* svlo, ...)
   ALIAS:
     _XS_segment_pi = 1
     twin_prime_count = 2
-    sum_primes = 3
-    print_primes = 4
+    ramanujan_prime_count = 3
+    sum_primes = 4
+    print_primes = 5
   PREINIT:
     int lostatus, histatus;
     UV lo, hi;
@@ -382,8 +383,13 @@ prime_count(IN SV* svlo, ...)
         if (ix == 2) {
           count = twin_prime_count(lo, hi);
         } else if (ix == 3) {
-          lostatus = sum_primes(lo, hi, &count);
+          UV beg, end, *L;
+          L = ramanujan_primes(&beg, &end, lo, hi);
+          count = (L && end >= beg) ? end-beg+1 : 0;
+          Safefree(L);
         } else if (ix == 4) {
+          lostatus = sum_primes(lo, hi, &count);
+        } else if (ix == 5) {
           int fd = (items < 3) ? fileno(stdout) : my_sviv(ST(2));
           print_primes(lo, hi, fd);
           XSRETURN_EMPTY;
@@ -401,8 +407,9 @@ prime_count(IN SV* svlo, ...)
       case 0:
       case 1: _vcallsubn(aTHX_ GIMME_V, VCALL_ROOT, "_generic_prime_count", items); break;
       case 2:_vcallsub_with_pp("twin_prime_count");  break;
-      case 3:_vcallsub_with_pp("sum_primes");  break;
-      case 4:
+      case 3:_vcallsub_with_pp("ramanujan_prime_count");  break;
+      case 4:_vcallsub_with_pp("sum_primes");  break;
+      case 5:
       default:_vcallsub_with_pp("print_primes");  break;
     }
     return; /* skip implicit PUTBACK */
@@ -481,14 +488,11 @@ sieve_primes(IN UV low, IN UV high)
         }
         end_segment_primes(ctx);
       } else if (ix == 5) {                   /* Ramanujan primes */
-        UV s;
-        UV nlo = ramanujan_prime_count_lower(low);
-        UV nhi = ramanujan_prime_count_upper(high);
-        UV* L = n_range_ramanujan_primes(nlo, nhi);
-        for (s = 0; s <= nhi-nlo && L[s] <= high; s++) {
-          if (L[s] >= low)
-            av_push(av,newSVuv(L[s]));
-        }
+        UV i, beg, end, *L;
+        L = ramanujan_primes(&beg, &end, low, high);
+        if (L && end >= beg)
+          for (i = beg; i <= end; i++)
+            av_push(av,newSVuv(L[i]));
         Safefree(L);
       }
     }

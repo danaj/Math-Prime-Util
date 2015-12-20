@@ -5,7 +5,8 @@ use warnings;
 use Test::More;
 use Math::Prime::Util qw/prime_count twin_prime_count
                          prime_count_lower prime_count_upper
-                         prime_count_approx twin_prime_count_approx/;
+                         prime_count_approx twin_prime_count_approx
+                         ramanujan_prime_count/;
 
 my $isxs  = Math::Prime::Util::prime_get_config->{'xs'};
 my $use64 = Math::Prime::Util::prime_get_config->{'maxbits'} > 32;
@@ -93,6 +94,14 @@ my %tpcs = (
   5000000000000000 => 5357875276068,
 );
 
+my %rpcs = (
+              5000 =>           302,
+             50000 =>          2371,
+            500000 =>         19492,
+           5000000 =>        165440,
+            135791 =>          5888,
+);
+
 plan tests => 0 + 1
                 + 3*scalar(keys %pivals32)
                 + scalar(keys %pivals_small)
@@ -100,7 +109,9 @@ plan tests => 0 + 1
                 + scalar(keys %intervals)
                 + 1
                 + 5 + 2*$extra # prime count specific methods
-                + 3 + (($isxs && $use64) ? 1+2*scalar(keys %tpcs) : 0);# twin pc
+                + 3 + (($isxs && $use64) ? 1+2*scalar(keys %tpcs) : 0) # twin pc
+                + 2 + (($isxs && $use64) ? 2+1*scalar(keys %rpcs) : 0) # ram pc
+                + 0;
 
 ok( eval { prime_count(13); 1; }, "prime_count in void context");
 
@@ -198,5 +209,19 @@ if ($isxs && $use64) {
     my $errorp = 100 * abs($tpc - twin_prime_count_approx($n)) / $tpc;
     my $estr = sprintf "%8.6f%%", $errorp;
     cmp_ok( $errorp, '<=', 2, "twin_prime_count_approx($n) is $estr");
+  }
+}
+
+####### Ramanujan prime counts
+is(ramanujan_prime_count(13,31), 2, "Ramanujan prime count 13 to 31");
+is(ramanujan_prime_count(1357), 94, "Ramanujan prime count 1357");
+if ($isxs && $use64) {
+  is(ramanujan_prime_count(10**8,10**8+34587), 927, "Ramanujan prime count 10^8 to +34587");
+  is(ramanujan_prime_count(654321), 24973, "Ramanujan prime count 654321");
+  while (my($n, $rpc) = each (%rpcs)) {
+    is(ramanujan_prime_count($n), $rpc, "Ramanujan prime count $n");
+    #my $errorp = 100 * abs($tpc - ramanujan_prime_count_approx($n)) / $tpc;
+    #my $estr = sprintf "%8.6f%%", $errorp;
+    #cmp_ok( $errorp, '<=', 2, "ramanujan_prime_count_approx($n) is $estr");
   }
 }
