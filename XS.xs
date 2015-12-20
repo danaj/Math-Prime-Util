@@ -383,10 +383,7 @@ prime_count(IN SV* svlo, ...)
         if (ix == 2) {
           count = twin_prime_count(lo, hi);
         } else if (ix == 3) {
-          UV beg, end, *L;
-          L = ramanujan_primes(&beg, &end, lo, hi);
-          count = (L && end >= beg) ? end-beg+1 : 0;
-          Safefree(L);
+          count = ramanujan_prime_count(lo, hi);
         } else if (ix == 4) {
           lostatus = sum_primes(lo, hi, &count);
         } else if (ix == 5) {
