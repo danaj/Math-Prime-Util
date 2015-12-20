@@ -1057,6 +1057,7 @@ UV nth_twin_prime_approx(UV n)
 }
 
 static UV nth_ramanujan_prime_upper(UV n) {
+  if (n <= 2) return (n==0) ? 0 : (n==1) ? 2 : 11;
   if (n >= 330) {
    /* Sondow,Nicholson,Noe 2011, derived from theorem 4 */
     long double mult;
@@ -1073,6 +1074,7 @@ static UV nth_ramanujan_prime_upper(UV n) {
   return nth_prime_upper(48*n/19 + 1);
 }
 static UV nth_ramanujan_prime_lower(UV n) {
+  if (n <= 2) return (n==0) ? 0 : (n==1) ? 2 : 11;
   return nth_prime_lower(2*n);
 }
 
