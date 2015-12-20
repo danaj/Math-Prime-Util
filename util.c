@@ -1065,7 +1065,7 @@ static UV nth_ramanujan_prime_upper(UV n) {
     else if (n >=   882097) { mult =   29824211.0L /   43734791.0L; }
     else if (n >=    96163) { mult =    2798083.0L /    4080449.0L; }
     else if (n >=    12239) { mult =     302563.0L /     436967.0L; }
-    else if (n >=      997) { mult =      19379.0L /      27361.0L; }
+    else if (n >=      998) { mult =      19379.0L /      27361.0L; }
     else                    { mult =       5639.0L /       7829.0L; }
     return (UV) ( mult * nth_prime_upper(3*n) );
   }

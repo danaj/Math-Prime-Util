@@ -11,6 +11,9 @@ Revision history for Perl module Math::Prime::Util
     - fromdigits(str[,base])              convert string to number
     - ramanujan_prime_count               counts Ramanujan primes in range
 
+    [FUNCTIONALITY AND PERFORMANCE]
+
+    - nth_ramanujan_prime(997) was wrong.  Fixed.
 
 0.56 2015-12-13
 

@@ -26,7 +26,7 @@ my %small_range = (
   "10000 to 10100" => [10061,10067,10079,10091,10093],
 );
 
-plan tests => 1 + scalar(keys %small_range) + 2 + 1;
+plan tests => 1 + scalar(keys %small_range) + 2 + 1 + 1;
 
 is_deeply( ramanujan_primes($a104272[-1]), \@a104272, "ramanujan_primes($a104272[-1])" );
 
@@ -55,3 +55,5 @@ my @smalla = grep { $_ < ($usexs ? 1000 : 500) } @a104272;
   }
   is_deeply( \@rp, \@smalla, "is_ramanujan_prime( 0 .. ".scalar(@smalla).")");
 }
+
+is(nth_ramanujan_prime(997), 19379, "997th Ramanujan prime is 19379");
