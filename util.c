@@ -1075,8 +1075,30 @@ static UV nth_ramanujan_prime_upper(UV n) {
 }
 static UV nth_ramanujan_prime_lower(UV n) {
   if (n <= 2) return (n==0) ? 0 : (n==1) ? 2 : 11;
+  if (n < UVCONST(2691176863)) {
+    long double mult;
+    if      (n <      8797) mult = 276.0L;
+    else if (n <     13314) mult = 275.0L;
+    else if (n <     20457) mult = 274.0L;
+    else if (n <     34432) mult = 273.0L;
+    else if (n <     69194) mult = 272.0L;
+    else if (n <    149399) mult = 271.0L;
+    else if (n <    337116) mult = 270.0L;
+    else if (n <    804041) mult = 269.0L;
+    else if (n <   2448102) mult = 268.0L;
+    else if (n <   8581572) mult = 267.0L;
+    else if (n <  39295429) mult = 266.0L;
+    else if (n < 255707435) mult = 265.0L;
+    else                    mult = 264.0L;
+    return (UV) ( (mult/256.0L) * nth_prime_lower(2*n));
+  }
   return nth_prime_lower(2*n);
 }
+
+/* An advantage of making these binary searches on the inverse is that we
+ * don't have to tune them separately, and nothing changes if the prime
+ * count bounds are modified.  We do need to keep up to date with any
+ * changes to nth_prime_{lower,upper} however. */
 
 UV ramanujan_prime_count_lower(UV n) {
   UV lo, hi;
@@ -1093,8 +1115,19 @@ UV ramanujan_prime_count_lower(UV n) {
   return lo-1;
 }
 UV ramanujan_prime_count_upper(UV n) {
+  /* return prime_count_upper(n) >> 1; */       /* Simple bound */
+  UV lo, hi;
   if (n < 29) return (n < 2) ? 0 : (n < 11) ? 1 : (n < 17) ? 2 : 3;
-  return prime_count_upper(n) >> 1;
+  /* Binary search on nth_ramanujan_prime_upper */
+  /* We know we're between p_2n and p_3n, probably close to the former. */
+  lo = prime_count_lower(n)/3;
+  hi = prime_count_upper(n) >> 1;
+  while (lo < hi) {
+    UV mid = lo + (hi-lo)/2;
+    if (nth_ramanujan_prime_lower(mid) < n) lo = mid+1;
+    else                                    hi = mid;
+  }
+  return lo-1;
 }
 
 /* Return array of first n ramanujan primes.  Use Noe's algorithm */
