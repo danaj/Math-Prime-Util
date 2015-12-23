@@ -113,8 +113,7 @@
   Nested calls are doable, but threading is a bear.  Perhaps do a first
   version that is non-threadsafe.
 
-- Tests for formultiperm.
-
 - we have invmod: add mulmod, divmod, expmod, sqrtmod
 
-- vecany, vecall, vecnone (very useful, but do they belong?)
+- Tests for formultiperm.
+- Tests for vec...

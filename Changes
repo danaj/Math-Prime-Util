@@ -10,6 +10,11 @@ Revision history for Perl module Math::Prime::Util
     - fromdigits(\@d[,base])              convert digit array ref to number
     - fromdigits(str[,base])              convert string to number
     - ramanujan_prime_count               counts Ramanujan primes in range
+    - vecany { expr } @n                  true if any expr is true
+    - vecall { expr } @n                  true if all expr are true
+    - vecnone { expr } @n                 true if no expr are true
+    - vecnotall { expr } @n               true if not all expr are true
+    - vecfirst { expr } @n                returns first element with expr true
 
     [FUNCTIONALITY AND PERFORMANCE]
 

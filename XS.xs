@@ -2135,3 +2135,66 @@ CODE:
     ST(0) = ret;
     XSRETURN(1);
 }
+
+void
+vecnone(SV* block, ...)
+ALIAS:
+    vecall    = 1
+    vecany    = 2
+    vecnotall = 3
+    vecfirst  = 4
+PROTOTYPE: &@
+PPCODE:
+{   /* This is very similar to List::Util.  Try to maintain compat. */
+    int ret_true = !(ix & 2); /* return true at end of loop for none/all; false for any/notall */
+    int invert   =  (ix & 1); /* invert block test for all/notall */
+    int index;
+    GV *gv;
+    HV *stash;
+    SV **args = &PL_stack_base[ax];
+    CV *cv    = sv_2cv(block, &stash, &gv, 0);
+
+    if (cv == Nullcv) croak("Not a subroutine reference");
+
+    SAVESPTR(GvSV(PL_defgv));
+#ifdef dMULTICALL
+    if (!CvISXSUB(cv)) {
+      dMULTICALL;
+      I32 gimme = G_SCALAR;
+
+      PUSH_MULTICALL(cv);
+      for (index = 1; index < items; index++) {
+        GvSV(PL_defgv) = args[index];
+        MULTICALL;
+        if (SvTRUEx(*PL_stack_sp) ^ invert)
+          break;
+      }
+      FIX_MULTICALL_REFCOUNT;
+      POP_MULTICALL;
+    }
+    else
+#endif
+    {
+      for (index = 1; index < items; index++) {
+        dSP;
+        GvSV(PL_defgv) = args[index];
+        PUSHMARK(SP);
+        call_sv((SV*)cv, G_SCALAR);
+        if (SvTRUEx(*PL_stack_sp) ^ invert)
+          break;
+      }
+    }
+
+    if (ix == 4) {
+      if (index == items)
+        XSRETURN_UNDEF;
+      ST(0) = ST(index);
+      XSRETURN(1);
+    }
+
+    if (index != items)           /* We exited the loop early */
+      ret_true = !ret_true;
+
+    if (ret_true)  XSRETURN_YES;
+    else           XSRETURN_NO;
+}

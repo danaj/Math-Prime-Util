@@ -51,6 +51,7 @@ our @EXPORT_OK =
       gcd lcm factor factor_exp divisors valuation invmod hammingweight
       todigits fromdigits todigitstring sumdigits
       vecsum vecmin vecmax vecprod vecreduce vecextract
+      vecany vecall vecnotall vecnone vecfirst
       moebius mertens euler_phi jordan_totient exp_mangoldt liouville
       partitions bernfrac bernreal harmfrac harmreal
       chebyshev_theta chebyshev_psi
@@ -2461,6 +2462,37 @@ While operations like L<vecmin>, L<vecmax>, L<vecsum>, L<vecprod>, etc. can
 be fairly easily done with this function, it will not be as efficient.  There
 are a wide variety of other functions that can be easily made with reduce,
 making it a useful tool.
+
+=head2 vecany
+
+=head2 vecall
+
+=head2 vecnone
+
+=head2 vecnotall
+
+=head2 vecfirst
+
+  say "all values are Carmichael" if vecall { is_carmichael($_) } @n;
+
+Short circuit evaluations of a block over a list.  Takes a block and a list
+as arguments.  The block is called with C<$_> set to each list element, and
+evaluation on list elements is done until either all list values have been
+evaluated or the result condition can be determined.  For instance, in the
+example of C<vecall> above, evaluation stops as soon as any value returns
+false.
+
+The interface is exactly the same as the C<any>, C<all>, C<none>, C<notall>,
+and C<first> functions in L<List::Util>.  This was done to increase
+portability and minimize confusion.  Unlike the max, min, sum, and
+reduce functions, there is no added value to using these versus the ones
+from L<List::Util>.  They are here for convenience.
+
+These operations can fairly easily be mapped to a scalar grep, e.g.
+
+  say "all values are Carmichael" if scalar(grep { !is_carmichael }) == 0;
+
+but this does not short-circuit and is less obvious.
 
 =head2 vecextract
 

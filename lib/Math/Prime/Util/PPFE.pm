@@ -646,6 +646,44 @@ sub vecreduce (&@) {    ## no critic qw(ProhibitSubroutinePrototypes)
   $a;
 }
 
+sub vecany (&@) {       ## no critic qw(ProhibitSubroutinePrototypes)
+  my $sub = shift;
+  { my $pp; local *_ = \$pp;
+    for my $v (@_) { $pp = $v; return 1 if $sub->(); }
+  }
+  undef;
+}
+sub vecall (&@) {       ## no critic qw(ProhibitSubroutinePrototypes)
+  my $sub = shift;
+  { my $pp; local *_ = \$pp;
+    for my $v (@_) { $pp = $v; return undef if !$sub->(); }
+  }
+  1;
+}
+sub vecnone (&@) {      ## no critic qw(ProhibitSubroutinePrototypes)
+  my $sub = shift;
+  { my $pp; local *_ = \$pp;
+    for my $v (@_) { $pp = $v; return undef if $sub->(); }
+  }
+  1;
+}
+sub vecnotall (&@) {    ## no critic qw(ProhibitSubroutinePrototypes)
+  my $sub = shift;
+  { my $pp; local *_ = \$pp;
+    for my $v (@_) { $pp = $v; return 1 if !$sub->(); }
+  }
+  undef;
+}
+
+sub vecfirst (&@) {     ## no critic qw(ProhibitSubroutinePrototypes)
+  my $sub = shift;
+  #for (@_) { return $_ if &{$sub}(); }  return undef;
+  { my $pp; local *_ = \$pp;
+    for my $v (@_) { $pp = $v; return $v if $sub->(); }
+  }
+  undef;
+}
+
 sub vecextract {
   my($aref, $mask) = @_;
   croak "vecextract first argument must be an array reference"
