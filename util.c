@@ -1057,6 +1057,23 @@ UV nth_twin_prime_approx(UV n)
 }
 
 static UV nth_ramanujan_prime_upper(UV n) {
+#if 1
+  /* Based in part on Sondow, Nicholson, Noe 2011, theorem 4 */
+  UV mult;
+  if (n <= 2) return (n==0) ? 0 : (n==1) ? 2 : 11;
+  if      (n <         20) mult = 480;
+  else if (n <         98) mult = 418;
+  else if (n <       1580) mult = 380;
+  else if (n <      12600) mult = 360;
+  else if (n <     272000) mult = 354;
+  else if (n <    1100000) mult = 350;
+  else if (n <    6530000) mult = 349;
+  else if (n <   80500000) mult = 348;
+  else if (n < UVCONST(2880000000)) mult = 347;
+  else                     mult = 346;
+
+  return ((mult * nth_prime_upper(3*n)) >> 9);
+#else
   if (n <= 2) return (n==0) ? 0 : (n==1) ? 2 : 11;
   if (n >= 330) {
    /* Sondow,Nicholson,Noe 2011, derived from theorem 4 */
@@ -1072,6 +1089,7 @@ static UV nth_ramanujan_prime_upper(UV n) {
   }
   /* Axler 2013, proposition 4.34:  Rn <= nthprime(tn), t > 48/19 */
   return nth_prime_upper(48*n/19 + 1);
+#endif
 }
 static UV nth_ramanujan_prime_lower(UV n) {
   if (n <= 2) return (n==0) ? 0 : (n==1) ? 2 : 11;

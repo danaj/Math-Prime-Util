@@ -15,7 +15,7 @@ Revision history for Perl module Math::Prime::Util
 
     - nth_ramanujan_prime(997) was wrong.  Fixed.
 
-    - Tighten Ramanujan prime bounds.  10x speedup for large nth Rp.
+    - Tighten Ramanujan prime bounds.  20x speedup for large nth Rp.
 
 0.56 2015-12-13
 
