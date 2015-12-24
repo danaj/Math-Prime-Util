@@ -1535,37 +1535,6 @@ sumdigits(SV* svn, UV base = 10)
     }
     XSRETURN_UV(sum);
 
-void
-binary(SV* svn)
-  PREINIT:
-    int status;
-    U32 gimme_v;
-  PPCODE:
-    status = _validate_int(aTHX_ svn, 1);
-    gimme_v = GIMME_V;
-    if (status != 0) {
-      UV n = status * my_svuv(svn);  /* n = abs(arg) */
-      int bits[BITS_PER_WORD], d = 0, i;
-      while (n) {
-        bits[d++] = n & 1;
-        n >>= 1;
-      }
-      if (gimme_v == G_ARRAY) {
-        EXTEND(SP, d);
-        for (i = 0; i < d; i++)
-          PUSH_NPARITY( bits[d-i-1] );
-      } else {
-        char s[BITS_PER_WORD+1];
-        for (i = 0; i < d; i++)
-          s[i] = '0' + bits[d-i-1];
-        s[d] = '\0';
-        XPUSHs(sv_2mortal(newSVpvn(s, d)));
-      }
-    } else {
-      _vcallsubn(aTHX_ gimme_v, VCALL_GMP|VCALL_PP, "binary", items);
-      return;
-    }
-
 void todigits(SV* svn, int base=10, int length=-1)
   ALIAS:
     todigitstring = 1
@@ -1584,6 +1553,7 @@ void todigits(SV* svn, int base=10, int length=-1)
       int digits[128];
       int len = to_digit_array(digits, n, base, length);
       if (len >= 0) {
+        dMY_CXT;
         EXTEND(SP, len);
         for (i = 0; i < len; i++)
           PUSH_NPARITY( digits[len-i-1] );
@@ -1608,9 +1578,12 @@ void todigits(SV* svn, int base=10, int length=-1)
         XSRETURN(1);
       }
       if (len == 1 && s[0] == '0') XSRETURN(0);
-      EXTEND(SP, len);
-      for (i = 0; i < len; i++)
-        PUSH_NPARITY(s[i]-'0');
+      {
+        dMY_CXT;
+        EXTEND(SP, len);
+        for (i = 0; i < len; i++)
+          PUSH_NPARITY(s[i]-'0');
+      }
       XSRETURN(len);
     }
     /* fromdigits */
