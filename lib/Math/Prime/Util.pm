@@ -722,7 +722,7 @@ sub _generic_factor_exp {
 
 #############################################################################
 
-sub is_gaussian_prime {
+sub _is_gaussian_prime {
   my($a,$b) = @_;
   if ($a == 0) {
     return (($b % 4) == 3) ? is_prime($b) : 0;
@@ -938,7 +938,7 @@ __END__
 
 =encoding utf8
 
-=for stopwords forprimes forcomposites foroddcomposites fordivisors forpart forcomp forcomb forperm formultiperm Möbius Deléglise Bézout totient moebius mertens liouville znorder irand primesieve uniqued k-tuples von SoE pari yafu fonction qui compte le nombre nombres voor PhD superset sqrt(N) gcd(A^M k-th (10001st primegen libtommath kronecker znprimroot znlog gcd lcm invmod untruncated vecsum vecprod vecmin vecmax vecreduce vecextract sumdigits gcdext chinese LambertW bernfrac bernreal harmfrac harmreal stirling hammingweight lucasu lucasv OpenPFGW gmpy2 Über Primzahl-Zählfunktion n-te und verallgemeinerte sqrtint
+=for stopwords forprimes forcomposites foroddcomposites fordivisors forpart forcomp forcomb forperm formultiperm Möbius Deléglise Bézout totient moebius mertens liouville znorder irand primesieve uniqued k-tuples von SoE pari yafu fonction qui compte le nombre nombres voor PhD superset sqrt(N) gcd(A^M k-th (10001st primegen libtommath kronecker znprimroot znlog gcd lcm invmod untruncated vecsum vecprod vecmin vecmax vecreduce vecextract vecall vecany vecnone vecnotall vecfirst sumdigits gcdext chinese LambertW bernfrac bernreal harmfrac harmreal stirling hammingweight lucasu lucasv OpenPFGW gmpy2 Über Primzahl-Zählfunktion n-te und verallgemeinerte sqrtint multiset todigits todigitstring fromdigits
 
 =for test_synopsis use v5.14;  my($k,$x);
 
@@ -2485,15 +2485,12 @@ false.
 
 The interface is exactly the same as the C<any>, C<all>, C<none>, C<notall>,
 and C<first> functions in L<List::Util>.  This was done to increase
-portability and minimize confusion.  Unlike the max, min, sum, and
-reduce functions, there is no added value to using these versus the ones
-from L<List::Util>.  They are here for convenience.
+portability and minimize confusion.  Unlike other vector functions like
+C<vecmax>, C<vecmax>, C<vecsum>, etc. there is no added value to using
+these versus the ones from L<List::Util>.  They are here for convenience.
 
-These operations can fairly easily be mapped to a scalar grep, e.g.
-
-  say "all values are Carmichael" if scalar(grep { !is_carmichael }) == 0;
-
-but this does not short-circuit and is less obvious.
+These operations can fairly easily be mapped to C<scalar(grep {...} @n)>,
+but that does not short-circuit and is less obvious.
 
 =head2 vecextract
 
@@ -2528,7 +2525,7 @@ An optional third argument specifies a length for the returned array.
 The result will be either have upper digits truncated or have leading
 zeros added.  This is most often used with base 2, 8, or 16.
 
-The values returned may be read-only.  todigits(0) returns an empty array.
+The values returned may be read-only.  C<todigits(0)> returns an empty array.
 The base must be at least 2, and is limited to an int.  Length must be
 at least zero and is limited to an int.
 
@@ -2554,7 +2551,7 @@ This corresponds to Mathematica's C<IntegerString> function.
   say "Base 3 array to number is: ", fromdigits([0,1,2,2,2,1,0],3);
 
 This takes either a string or array reference, and an optional base
-(default 10).  With a string, each character will be intepreted as a
+(default 10).  With a string, each character will be interpreted as a
 digit in the given base, with both upper and lower case denoting
 values 11 through 36.  With an array reference, the values indicate
 the entries in that location, and values larger than the base are

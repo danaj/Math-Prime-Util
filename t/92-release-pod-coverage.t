@@ -59,7 +59,7 @@ sub mpu_public_regex {
       lucas_sequence lucasu lucasv
       primes twin_primes ramanujan_primes sieve_prime_cluster
       forprimes forcomposites foroddcomposites fordivisors
-      forpart forcomp forcomb forperm
+      forpart forcomp forcomb forperm formultiperm
       prime_iterator prime_iterator_object
       next_prime  prev_prime
       prime_count
@@ -67,7 +67,7 @@ sub mpu_public_regex {
       nth_prime nth_prime_lower nth_prime_upper nth_prime_approx
       twin_prime_count twin_prime_count_approx
       nth_twin_prime nth_twin_prime_approx
-      nth_ramanujan_prime
+      ramanujan_prime_count nth_ramanujan_prime
       sum_primes print_primes
       random_prime random_ndigit_prime random_nbit_prime random_strong_prime
       random_proven_prime random_proven_prime_with_cert
@@ -75,7 +75,9 @@ sub mpu_public_regex {
       random_shawe_taylor_prime random_shawe_taylor_prime_with_cert
       primorial pn_primorial consecutive_integer_lcm gcdext chinese
       gcd lcm factor factor_exp divisors valuation invmod hammingweight
-      vecsum vecmin vecmax vecprod vecreduce vecextract sumdigits
+      todigits fromdigits todigitstring sumdigits
+      vecsum vecmin vecmax vecprod vecreduce vecextract
+      vecany vecall vecnotall vecnone vecfirst
       moebius mertens euler_phi jordan_totient exp_mangoldt liouville
       partitions bernfrac bernreal harmfrac harmreal
       chebyshev_theta chebyshev_psi

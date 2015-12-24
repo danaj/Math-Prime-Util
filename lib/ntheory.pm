@@ -130,14 +130,22 @@ See L<Math::Prime::Util> for complete documentation.
   random_shawe_taylor_prime(n)        random n-bit prime with S-T alg.
   random_shawe_taylor_prime_with_cert(n) as above including certificate
 
-=head2 MATH
+=head2 LISTS
 
   vecsum(@list)                       integer sum of list
   vecprod(@list)                      integer product of list
   vecmin(@list)                       minimum of list of integers
   vecmax(@list)                       maximum of list of integers
-  vecreduce { ... } @list             reduce / left fold applied to list
   vecextract(\@list, mask)            select from list based on mask
+  vecreduce { ... } @list             reduce / left fold applied to list
+  vecall { ... } @list                return true if all are true
+  vecany { ... } @list                return true if any are true
+  vecnone { ... } @list               return true if none are true
+  vecnotall { ... } @list             return true if not all are true
+  vecfirst { ... } @list              return first value that evals true
+
+=head2 MATH
+
   todigits(n[,base[,len]])            convert n to digit array in base
   todigitstring(n[,base[,len]])       convert n to string in base
   fromdigits(\@d,[,base])             convert base digit vector to number

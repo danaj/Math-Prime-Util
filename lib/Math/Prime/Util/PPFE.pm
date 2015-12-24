@@ -656,14 +656,14 @@ sub vecany (&@) {       ## no critic qw(ProhibitSubroutinePrototypes)
 sub vecall (&@) {       ## no critic qw(ProhibitSubroutinePrototypes)
   my $sub = shift;
   { my $pp; local *_ = \$pp;
-    for my $v (@_) { $pp = $v; return undef if !$sub->(); }
+    for my $v (@_) { $pp = $v; return if !$sub->(); }
   }
   1;
 }
 sub vecnone (&@) {      ## no critic qw(ProhibitSubroutinePrototypes)
   my $sub = shift;
   { my $pp; local *_ = \$pp;
-    for my $v (@_) { $pp = $v; return undef if $sub->(); }
+    for my $v (@_) { $pp = $v; return if $sub->(); }
   }
   1;
 }

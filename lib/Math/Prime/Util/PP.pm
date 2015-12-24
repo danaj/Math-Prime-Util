@@ -2287,14 +2287,6 @@ sub hammingweight {
   return 0 + (Math::BigInt->new("$n")->as_bin() =~ tr/1//);
 }
 
-sub binary {
-  my $n = shift;
-  my $str = substr(Math::BigInt->new("$n")->babs->as_bin,2);
-  return if $n eq '0' || $n eq 'N';
-  return $str unless wantarray;
-  split(//,$str);
-}
-
 my @_digitmap = (0..9, 'a'..'z');
 my %_mapdigit = map { $_digitmap[$_] => $_ } 0 .. $#_digitmap;
 sub _splitdigits {
