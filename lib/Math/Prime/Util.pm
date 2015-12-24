@@ -1590,8 +1590,9 @@ Similar to prime count, but returns the count of Ramanujan primes.  Takes
 either a single number indicating a count from 2 to the argument, or
 two numbers indicating a range.
 
-There is no formula for this, so internally this generates the Ramanujan
-primes in the range, then returns the count.
+While not nearly as efficient as L<prime_count>, this does use a number of
+speedups that result it in being much more efficient than generating all
+the Ramanujan primes.
 
 =head2 sieve_prime_cluster
 

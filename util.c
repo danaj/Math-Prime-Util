@@ -1283,20 +1283,37 @@ UV* ramanujan_primes(UV* first, UV* last, UV low, UV high)
 static const UV ramanujan_counts_pow2[RAMPC2+1] = { 0, 1, 1, 1, 2, 4, 7, 13, 23, 42, 75, 137, 255, 463, 872, 1612, 3030, 5706, 10749, 20387, 38635, 73584, 140336, 268216, 513705, 985818, 1894120, 3645744, 7027290, 13561906, 26207278, 50697533, 98182656, 190335585, 369323301, 717267167, UVCONST(1394192236), UVCONST(2712103833), UVCONST(5279763823), UVCONST(10285641777), UVCONST(20051180846), UVCONST(39113482639) };
 UV ramanujan_prime_count(UV lo, UV hi)
 {
-   UV count = 0, beg, end, *L;
+  UV count = 0, beg, end, log2, *L;
 
-   if (hi < 2) return 0;
-   if (lo <= 2) {
-     UV log2 = log2floor(hi);
-     if (log2 > RAMPC2) log2 = RAMPC2;
-     count = ramanujan_counts_pow2[log2];
-     lo = (UVCONST(1) << log2) + 1;
-   }
+  if (hi < 2 || hi < lo) return 0;
 
-   L = ramanujan_primes(&beg, &end, lo, hi);
-   count += (L && end >= beg) ? end-beg+1 : 0;
-   Safefree(L);
-   return count;
+  if (lo <= 2) {
+    log2 = log2floor(hi);
+    /* We have some perfect powers of 2 in our table */
+    if ((hi & (hi-1)) == 0 && log2 <= RAMPC2)
+      return ramanujan_counts_pow2[log2];
+
+    if (hi > 32768) {
+      /* We can calculate Rp(n) fairly efficiently and with relatively low
+       * memory if there are tight bounds available.  This lets us quickly
+       * skip forward without having to calculate them all. */
+      UV rpcl = ramanujan_prime_count_lower(hi);
+      UV nthl = nth_ramanujan_prime(rpcl);
+      count = rpcl;
+      lo = nthl+1;
+    } else {
+      /* Bump up the lower limit based on our table */
+      if (log2 > RAMPC2) log2 = RAMPC2;
+      count = ramanujan_counts_pow2[log2];
+      lo = (UVCONST(1) << log2) + 1;
+    }
+  }
+
+  /* Generate all Rp from lo to hi */
+  L = ramanujan_primes(&beg, &end, lo, hi);
+  count += (L && end >= beg) ? end-beg+1 : 0;
+  Safefree(L);
+  return count;
 }
 
 #if 0
