@@ -1056,69 +1056,70 @@ UV nth_twin_prime_approx(UV n)
   return lo;
 }
 
-static UV nth_ramanujan_prime_upper(UV n) {
-#if 1
-  /* Based in part on Sondow, Nicholson, Noe 2011, theorem 4 */
-  UV mult;
-  if (n <= 2) return (n==0) ? 0 : (n==1) ? 2 : 11;
-  if      (n <         20) mult = 480;
-  else if (n <         98) mult = 418;
-  else if (n <       1580) mult = 380;
-  else if (n <      12600) mult = 360;
-  else if (n <     272000) mult = 354;
-  else if (n <    1100000) mult = 350;
-  else if (n <    6530000) mult = 349;
-  else if (n <   80500000) mult = 348;
-  else if (n < UVCONST(2880000000)) mult = 347;
-  else                     mult = 346;
 
-  return ((mult * nth_prime_upper(3*n)) >> 9);
-#else
-  if (n <= 2) return (n==0) ? 0 : (n==1) ? 2 : 11;
-  if (n >= 330) {
-   /* Sondow,Nicholson,Noe 2011, derived from theorem 4 */
-    long double mult;
-    if      (n >= 99922246) { mult = 4374711863.0L / 6456069721.0L; }
-    else if (n >=  9781003) { mult =  380450867.0L /  560016817.0L; }
-    else if (n >=   882097) { mult =   29824211.0L /   43734791.0L; }
-    else if (n >=    96163) { mult =    2798083.0L /    4080449.0L; }
-    else if (n >=    12239) { mult =     302563.0L /     436967.0L; }
-    else if (n >=      998) { mult =      19379.0L /      27361.0L; }
-    else                    { mult =       5639.0L /       7829.0L; }
-    return (UV) ( mult * nth_prime_upper(3*n) );
-  }
-  /* Axler 2013, proposition 4.34:  Rn <= nthprime(tn), t > 48/19 */
-  return nth_prime_upper(48*n/19 + 1);
-#endif
-}
-static UV nth_ramanujan_prime_lower(UV n) {
-  if (n <= 2) return (n==0) ? 0 : (n==1) ? 2 : 11;
+static UV ram_upper_idx[] = {
+    5215, 5223, 5261, 5271, 5553, 7431, 7451, 8582, 12589, 12620, 12762,
+    18154, 18294, 18410, 25799, 28713, 40061, 45338, 63039, 65724,
+    88726, 107849, 151742, 216978, 270700, 347223, 508096,
+    768276, 1090285, 1568165, 2375799, 4162908, 6522443, 11406250,
+    20637716, 39711166, 80161468, 174200145, 404761877, 1024431762,
+    UVCONST(2868095461),
 #if BITS_PER_WORD == 64
-  if (n < UVCONST(56422464172)) {
+  UVCONST( 9136430799),  UVCONST(33244053524)
 #else
-  if (n < UVCONST( 4294967295)) {
+  UVCONST( 4294967295)
 #endif
-    UV res, mult;
-    if      (n <      8797) mult = 276;
-    else if (n <     13314) mult = 275;
-    else if (n <     20457) mult = 274;
-    else if (n <     34432) mult = 273;
-    else if (n <     69194) mult = 272;
-    else if (n <    149399) mult = 271;
-    else if (n <    337116) mult = 270;
-    else if (n <    804041) mult = 269;
-    else if (n <   2448102) mult = 268;
-    else if (n <   8581572) mult = 267;
-    else if (n <  39295429) mult = 266;
-    else if (n < 255707435) mult = 265;
-    else if (n < UVCONST(2691176863)) mult = 264;
-    else                    mult = 263;
+};
+#define NRAM_UPPER_MULT 1425
+#define NRAM_UPPER (sizeof(ram_upper_idx)/sizeof(ram_upper_idx[0]))
 
-    res = nth_prime_lower(2*n);
-    if (res > (UV_MAX/mult)) return (UV) (((long double) mult / 256.0L) * res);
-    else                     return (res * mult) >> 8;
+UV nth_ramanujan_prime_upper(UV n) {
+  UV i, mult, res;
+  if (n <= 2) return (n==0) ? 0 : (n==1) ? 2 : 11;
+  /* Based in part on Sondow, Nicholson, Noe 2011, theorem 4 */
+  if      (n < 20) mult = 1787;
+  else if (n < 98) mult = 1670;
+  else if (n < 1580) mult = 1520;
+  else if (n < 5214) mult = 1440;
+  else {
+    for (i = 0; i < NRAM_UPPER; i++)
+      if (ram_upper_idx[i] > n)
+        break;
+    mult = NRAM_UPPER_MULT-i;
   }
-  return nth_prime_lower(2*n);
+  res = nth_prime_upper(3*n);
+  if (res > (UV_MAX/mult)) res = (UV) (((long double) mult / 2048.0L) * res);
+  else                     res = (res * mult) >> 11;
+  return res;
+}
+
+static UV ram_lower_idx[] = {
+      8797, 9556, 13314, 13641, 20457, 23745, 34432, 50564, 69194, 97434,
+    149399, 224590, 337116, 514260, 804041, 1367781, 2448102, 4513600, 8581572,
+  17555268, 39295429, 96043141, 255707435, 771748027, UVCONST(2691176863),
+#if BITS_PER_WORD == 64
+  UVCONST(11116948392), UVCONST(56422464172) /* 56422810226 */
+#else
+  UVCONST( 4294967295)
+#endif
+};
+#define NRAM_LOWER_MULT 552
+#define NRAM_LOWER (sizeof(ram_lower_idx)/sizeof(ram_lower_idx[0]))
+
+UV nth_ramanujan_prime_lower(UV n) {
+  UV res, mult, i;
+  if (n <= 2) return (n==0) ? 0 : (n==1) ? 2 : 11;
+
+  if (n < ram_lower_idx[NRAM_LOWER-1]) {
+    for (i = 0; i < NRAM_LOWER; i++)
+      if (ram_lower_idx[i] > n)
+        break;
+    mult = (NRAM_LOWER_MULT-i);
+  }
+  res = nth_prime_lower(2*n);
+  if (res > (UV_MAX/mult)) res = (UV) (((long double) mult / 512.0L) * res);
+  else                     res = (res * mult) >> 9;
+  return res;
 }
 
 /* An advantage of making these binary searches on the inverse is that we
@@ -1285,8 +1286,8 @@ static UV ramanujan_prime_count_approx(UV n)
   return (3*ramanujan_prime_count_lower(n) + 1*ramanujan_prime_count_upper(n) ) >> 2;
 }
 
-#define RAMPC2 41
-static const UV ramanujan_counts_pow2[RAMPC2+1] = { 0, 1, 1, 1, 2, 4, 7, 13, 23, 42, 75, 137, 255, 463, 872, 1612, 3030, 5706, 10749, 20387, 38635, 73584, 140336, 268216, 513705, 985818, 1894120, 3645744, 7027290, 13561906, 26207278, 50697533, 98182656, 190335585, 369323301, 717267167, UVCONST(1394192236), UVCONST(2712103833), UVCONST(5279763823), UVCONST(10285641777), UVCONST(20051180846), UVCONST(39113482639) };
+#define RAMPC2 42
+static const UV ramanujan_counts_pow2[RAMPC2+1] = { 0, 1, 1, 1, 2, 4, 7, 13, 23, 42, 75, 137, 255, 463, 872, 1612, 3030, 5706, 10749, 20387, 38635, 73584, 140336, 268216, 513705, 985818, 1894120, 3645744, 7027290, 13561906, 26207278, 50697533, 98182656, 190335585, 369323301, 717267167, UVCONST(1394192236), UVCONST(2712103833), UVCONST(5279763823), UVCONST(10285641777), UVCONST(20051180846), UVCONST(39113482639), UVCONST(76344462797) };
 UV ramanujan_prime_count(UV lo, UV hi)
 {
   UV count = 0, beg, end, inc, log2, *L;
