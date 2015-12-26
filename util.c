@@ -1107,7 +1107,7 @@ static UV ram_lower_idx[] = {
 #define NRAM_LOWER (sizeof(ram_lower_idx)/sizeof(ram_lower_idx[0]))
 
 UV nth_ramanujan_prime_lower(UV n) {
-  UV res, mult, i;
+  UV res, i, mult = 512;
   if (n <= 2) return (n==0) ? 0 : (n==1) ? 2 : 11;
 
   if (n < ram_lower_idx[NRAM_LOWER-1]) {
@@ -1306,8 +1306,11 @@ UV ramanujan_prime_count(UV lo, UV hi)
        * memory if there are tight bounds available.  This lets us quickly
        * skip forward without having to calculate them all.  We'll use an
        * approximation to get close, and be prepared to go backwards. */
-      UV rpcl = ramanujan_prime_count_approx(hi);
-      UV nthl = nth_ramanujan_prime(rpcl);
+      UV rpcl, nthl;
+      int verbose = _XS_get_verbose();
+      rpcl = ramanujan_prime_count_approx(hi);
+      if (verbose >= 2) printf("Calculating the %"UVuf"-th Ramanujan prime as a lower limit\n", rpcl);
+      nthl = nth_ramanujan_prime(rpcl);
       count = rpcl;
       if (nthl <= hi) {
         lo = nthl+1;
@@ -1316,6 +1319,7 @@ UV ramanujan_prime_count(UV lo, UV hi)
         hi = nthl;
         addcount = 0;
       }
+      if (verbose >= 2) printf("counting %s from %"UVuf"\n", addcount ? "forwards" : "backwards", count );
     } else {
       /* Bump up the lower limit based on our table */
       if (log2 > RAMPC2) log2 = RAMPC2;
