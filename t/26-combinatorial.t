@@ -3,7 +3,7 @@ use strict;
 use warnings;
 
 use Test::More;
-use Math::Prime::Util qw/binomial factorial forcomb forperm/;
+use Math::Prime::Util qw/binomial factorial forcomb forperm formultiperm/;
 my $extra = defined $ENV{EXTENDED_TESTING} && $ENV{EXTENDED_TESTING};
 
 use Math::BigInt try => "GMP,Pari";
@@ -21,6 +21,7 @@ my %perms = (
 plan tests => 1                        # Factorial
             + 6 + 4                    # Combinations
             + scalar(keys(%perms)) + 1 # Permutations
+            + 4                        # Multiset Permutations
             ;
 
 sub fact { my $n = Math::BigInt->new("$_[0]"); $n->bfac; }
@@ -66,3 +67,17 @@ while (my($n, $expect) = each (%perms)) {
 
 { my $s = 0; forperm { $s++ } 7;
   is($s, factorial(7), "forperm 7 yields factorial(7) permutations"); }
+
+###### formultiperm
+
+{ my @p; formultiperm { push @p, [@_] } [];
+  is_deeply(\@p, [], "formultiperm []"); }
+
+{ my @p; formultiperm { push @p, [@_] } [1,2,2];
+  is_deeply(\@p, [ [1,2,2], [2,1,2], [2,2,1] ], "formultiperm 1,2,2"); }
+
+{ my @p; formultiperm { push @p, [@_] } [qw/a a b b/];
+  is_deeply(\@p, [map{[split(//,$_)]} qw/aabb abab abba baab baba bbaa/], "formultiperm a,a,b,b"); }
+
+{ my @p; formultiperm { push @p, join("",@_) } [qw/a a b b/];
+  is_deeply(\@p, [qw/aabb abab abba baab baba bbaa/], "formultiperm aabb"); }

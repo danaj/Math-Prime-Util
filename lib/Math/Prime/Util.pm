@@ -610,6 +610,7 @@ sub _generic_fordivisors {
 
 sub formultiperm (&$) {    ## no critic qw(ProhibitSubroutinePrototypes)
   my($sub, $iref) = @_;
+  croak("formultiperm first argument must be an array reference") unless ref($iref) eq 'ARRAY';
 
   my($sum, %h, @n) = (0);
   $h{$_}++ for @$iref;
