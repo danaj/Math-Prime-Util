@@ -887,6 +887,10 @@ UV nth_prime(UV n)
   return ( (segbase*30) + p );
 }
 
+/******************************************************************************/
+/*                                TWIN PRIMES                                 */
+/******************************************************************************/
+
 #if BITS_PER_WORD < 64
 static const UV twin_steps[] =
   {58980,48427,45485,43861,42348,41457,40908,39984,39640,39222,
@@ -1056,16 +1060,28 @@ UV nth_twin_prime_approx(UV n)
   return lo;
 }
 
+/******************************************************************************/
+/*                             RAMANUJAN PRIMES                               */
+/******************************************************************************/
 
-static UV ram_upper_idx[] = {
-    5215, 5223, 5261, 5271, 5553, 7431, 7451, 8582, 12589, 12620, 12762,
-    18154, 18294, 18410, 25799, 28713, 40061, 45338, 63039, 65724,
-    88726, 107849, 151742, 216978, 270700, 347223, 508096,
-    768276, 1090285, 1568165, 2375799, 4162908, 6522443, 11406250,
-    20637716, 39711166, 80161468, 174200145, 404761877, 1024431762,
-    UVCONST(2868095461),
-#if BITS_PER_WORD == 64
-  UVCONST( 9136430799),  UVCONST(33244053524)
+/* For Ramanujan prime estimates:
+ *  - counts are done via inverse nth, so only one thing to tune.
+ *  - For nth tables, upper values ok if too high, lower values ok if too low.
+ *  - both upper and lower empirically tested to 125,000 million.
+ */
+
+/* These are playing loose with Sondow/Nicholson/Noe 2011 theorem 4.
+ * The last value should be rigorously checked using actual R_n values. */
+static const UV ram_upper_idx[] = {
+  5215, 5223, 5261, 5271, 5553, 7431, 7451, 8582, 12589, 12620, 12762,
+  18154, 18294, 18410, 25799, 28713, 40061, 45338, 63039, 65724,
+  88726, 107849, 151742, 216978, 270700, 347223, 508096,
+  768276, 1090285, 1568165, 2375799, 4162908, 6522443, 11406250,
+  20637716, 39711166, 80161468, 174200145, 404761877, 1024431762,
+  UVCONST(2868095461),
+#if BITS_PER_WORD == 64  /* 1383,1382,1381, 1380,1379 */
+  UVCONST(   9136430799), UVCONST(  33244053524), UVCONST( 143852101796),
+  UVCONST( 760145301247), UVCONST(5136852322733)
 #else
   UVCONST( 4294967295)
 #endif
@@ -1076,7 +1092,10 @@ static UV ram_upper_idx[] = {
 UV nth_ramanujan_prime_upper(UV n) {
   UV i, mult, res;
   if (n <= 2) return (n==0) ? 0 : (n==1) ? 2 : 11;
-  /* Based in part on Sondow, Nicholson, Noe 2011, theorem 4 */
+  /* While p_3n is a complete upper bound, Rp_n tends to p_2n, and
+   * SNN(2011) theorem 4 shows how we can find (m,c) values where m < 1,
+   * Rn < m*p_3n for all n > c.  Here we use various quantized m values
+   * and the table gives us c values where it applies. */
   if      (n < 20) mult = 1787;
   else if (n < 98) mult = 1670;
   else if (n < 1580) mult = 1520;
@@ -1093,32 +1112,42 @@ UV nth_ramanujan_prime_upper(UV n) {
   return res;
 }
 
-static UV ram_lower_idx[] = {
-      8797, 9556, 13314, 13641, 20457, 23745, 34432, 50564, 69194, 97434,
-    149399, 224590, 337116, 514260, 804041, 1367781, 2448102, 4513600, 8581572,
-  17555268, 39295429, 96043141, 255707435, 771748027, UVCONST(2691176863),
-#if BITS_PER_WORD == 64
-  UVCONST(11116948392), UVCONST(56422464172) /* 56422810226 */
+static const UV ram_lower_idx[] = {
+  5935, 6013, 6107, 8726, 8797, 9396, 9556, 9611, 13314, 13405, 13641,
+  18655, 20457, 22665, 23745, 31015, 34432, 43298, 50564, 54168, 69194,
+  75658, 97434, 110360, 149399, 164361, 224590, 265154, 337116, 386011,
+  514260, 606067, 804041, 981748, 1367781, 1874883, 2448102, 3248825,
+  4513600, 6240819, 8581572, 12175878, 17555268, 25999335, 39295429,
+  60160729, 96043141, 153729257, 255707435, 438238581, 771748027,
+  UVCONST(1413859126), UVCONST(2691176863),
+#if BITS_PER_WORD == 64 /* 1055,1054,1053, 1052,1051,1050, 1049,1048 */
+  UVCONST(   5351635422), UVCONST(  11116948392), UVCONST(  24348237409),
+  UVCONST(  56422464192), UVCONST( 139376328492), UVCONST( 369783640662),
+  UVCONST(1061320360069), UVCONST(3332007446416),
+  /* These are low-biased estimates */
+  UVCONST(3332007446416) *   3, UVCONST(3332007446416) *   9,
+  UVCONST(3332007446416) *  27, UVCONST(3332007446416) *  81
 #else
-  UVCONST( 4294967295)
+  UVCONST(   4294967295)
 #endif
 };
-#define NRAM_LOWER_MULT 552
+#define NRAM_LOWER_MULT 1108
 #define NRAM_LOWER (sizeof(ram_lower_idx)/sizeof(ram_lower_idx[0]))
 
 UV nth_ramanujan_prime_lower(UV n) {
-  UV res, i, mult = 512;
+  UV res, i, mult;
   if (n <= 2) return (n==0) ? 0 : (n==1) ? 2 : 11;
+
+  res = nth_prime_lower(2*n);
 
   if (n < ram_lower_idx[NRAM_LOWER-1]) {
     for (i = 0; i < NRAM_LOWER; i++)
       if (ram_lower_idx[i] > n)
         break;
     mult = (NRAM_LOWER_MULT-i);
+    if (res > (UV_MAX/mult)) res = (UV) (((long double) mult / 1024.0L) * res);
+    else                     res = (res * mult) >> 10;
   }
-  res = nth_prime_lower(2*n);
-  if (res > (UV_MAX/mult)) res = (UV) (((long double) mult / 512.0L) * res);
-  else                     res = (res * mult) >> 9;
   return res;
 }
 
@@ -1157,7 +1186,7 @@ UV ramanujan_prime_count_upper(UV n) {
   return lo-1;
 }
 
-/* Return array of first n ramanujan primes.  Use Noe's algorithm */
+/* Return array of first n ramanujan primes.  Use Noe's algorithm. */
 UV* n_ramanujan_primes(UV n) {
   UV max, k, s, *L;
   unsigned char* sieve;
@@ -1226,43 +1255,18 @@ UV* n_range_ramanujan_primes(UV nlo, UV nhi) {
 }
 
 UV nth_ramanujan_prime(UV n) {
-  UV rn;
-  if      (n == 0)  rn =  0;
-  else if (n == 1)  rn =  2;
-  else if (n == 2)  rn = 11;
-  else {
-    UV *L = n_range_ramanujan_primes(n, n);
-    rn = L[0];
-    Safefree(L);
-  }
-  return rn;
-}
-
-int is_ramanujan_prime(UV n) {
-  UV rlo, rhi, *L, lo, hi, rn;
-  if (!_XS_is_prime(n))  return 0;
-  if (n == 2 || n == 11) return 1;
-  if (n < 17)            return 0;
-  /* Generate Ramanujan primes and see if we're in the list.  Slow. */
-  rlo = ramanujan_prime_count_lower(n);
-  rhi = ramanujan_prime_count_upper(n);
-  L = n_range_ramanujan_primes(rlo, rhi);
-  lo = 0;
-  hi = rhi-rlo;
-  while (lo < hi) {
-    UV mid = lo + (hi-lo)/2;
-    if (L[mid] < n) lo = mid+1;
-    else            hi = mid;
-  }
-  rn = L[lo];
+  UV rn, *L;
+  if (n <= 2) return (n == 0) ? 0 : (n == 1) ? 2 : 11;
+  L = n_range_ramanujan_primes(n, n);
+  rn = L[0];
   Safefree(L);
-  return (rn == n);
+  return rn;
 }
 
 /* Returns array of Ram primes between low and high, results from first->last */
 UV* ramanujan_primes(UV* first, UV* last, UV low, UV high)
 {
-  UV i, beg, end, nlo, nhi, *L;
+  UV i, beg, end, range, nlo, nhi, *L;
 
   if (high < 2 || high < low) return 0;
   if (low < 2) low = 2;
@@ -1271,23 +1275,52 @@ UV* ramanujan_primes(UV* first, UV* last, UV low, UV high)
   nhi = ramanujan_prime_count_upper(high);
   L = n_range_ramanujan_primes(nlo, nhi);
 
-  for (beg = 0; beg <= nhi-nlo; beg++)
-    if (L[beg] >= low) break;
-  for (end = nhi-nlo; end >= beg; end--)
-    if (L[end] <= high) break;
+  /* Skip out of range values at the start and end */
+  range = nhi-nlo; beg = 0; end = range;
+
+  while (beg+10000 <= range && L[beg+10000] <  low) beg += 10000;
+  while (beg+100   <= range && L[beg+100  ] <  low) beg += 100;
+  while (beg       <= range && L[beg      ] <  low) beg++;
+
+  while (beg+10000 <= end   && L[end-10000] > high) end -= 10000;
+  while (beg+100   <= end   && L[end-100  ] > high) end -= 100;
+  while (beg       <= end   && L[end      ] > high) end--;
+
   *first = beg;
   *last = end;
   return L;
 }
 
-static UV ramanujan_prime_count_approx(UV n)
-{
-  /* We should be able to do better, but this isn't too bad. */
-  return (3*ramanujan_prime_count_lower(n) + 1*ramanujan_prime_count_upper(n) ) >> 2;
+int is_ramanujan_prime(UV n) {
+  UV beg, end, *L;
+
+  if (!_XS_is_prime(n))  return 0;
+  if (n < 17)            return (n == 2 || n == 11);
+
+  /* Generate Ramanujan primes and see if we're in the list.  Slow. */
+  L = ramanujan_primes(&beg, &end, n, n);
+  Safefree(L);
+  return (beg <= end);
 }
 
-#define RAMPC2 42
-static const UV ramanujan_counts_pow2[RAMPC2+1] = { 0, 1, 1, 1, 2, 4, 7, 13, 23, 42, 75, 137, 255, 463, 872, 1612, 3030, 5706, 10749, 20387, 38635, 73584, 140336, 268216, 513705, 985818, 1894120, 3645744, 7027290, 13561906, 26207278, 50697533, 98182656, 190335585, 369323301, 717267167, UVCONST(1394192236), UVCONST(2712103833), UVCONST(5279763823), UVCONST(10285641777), UVCONST(20051180846), UVCONST(39113482639), UVCONST(76344462797) };
+UV ramanujan_prime_count_approx(UV n)
+{
+  /* TODO: overflow */
+  /* We should be able to do better, but this isn't too bad. */
+  /* (11*lower + 5*upper) / 16 is a bit closer */
+  return (3*ramanujan_prime_count_lower(n) + 1*ramanujan_prime_count_upper(n)) >> 2;
+}
+
+#define RAMPC2 45
+static const UV ramanujan_counts_pow2[RAMPC2+1] = {
+   0, 1, 1, 1, 2, 4, 7, 13, 23, 42, 75, 137, 255, 463, 872, 1612,
+   3031, 5706, 10749, 20387, 38635, 73584, 140336, 268216, 513705,
+   985818, 1894120, 3645744, 7027290, 13561906, 26207278, 50697533,
+   98182656, 190335585, 369323301, 717267167,
+   UVCONST(   1394192236), UVCONST(   2712103833), UVCONST(   5279763823),
+   UVCONST(  10285641777), UVCONST(  20051180846), UVCONST(  39113482639),
+   UVCONST(  76344462797), UVCONST( 149100679004), UVCONST( 291354668495),
+   UVCONST( 569630404447) };
 UV ramanujan_prime_count(UV lo, UV hi)
 {
   UV count = 0, beg, end, inc, log2, *L;
@@ -1309,12 +1342,12 @@ UV ramanujan_prime_count(UV lo, UV hi)
       UV rpcl, nthl;
       int verbose = _XS_get_verbose();
       rpcl = ramanujan_prime_count_approx(hi);
-      if (verbose >= 2) printf("Calculating the %"UVuf"-th Ramanujan prime as a lower limit\n", rpcl);
+      if (verbose >= 2) printf("Calculating the %"UVuf"-th Ramanujan prime as an approximation\n", rpcl);
       nthl = nth_ramanujan_prime(rpcl);
       count = rpcl;
-      if (nthl <= hi) {
+      if (nthl <= hi) {       /* Count forwards */
         lo = nthl+1;
-      } else {
+      } else {                /* Count backwards */
         lo = hi+1;
         hi = nthl;
         addcount = 0;
@@ -1335,6 +1368,11 @@ UV ramanujan_prime_count(UV lo, UV hi)
   Safefree(L);
   return count;
 }
+
+/******************************************************************************/
+/*                            SUMS AND PRINTING                               */
+/******************************************************************************/
+
 
 #if 0
 /* Combinatorial sum of primes < n.  Call with phisum(n, isqrt(n)).
