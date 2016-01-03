@@ -596,7 +596,7 @@ int prho_factor(UV n, UV *factors, UV rounds)
     }
     if (f == 0 || f == n) {
       if (fails-- <= 0) break;
-      addmod(U,2,n);
+      U = addmod(U,2,n);
       V = U;
       a++;
       continue;

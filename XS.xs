@@ -245,7 +245,7 @@ static int _vcallsubn(pTHX_ I32 flags, I32 stashflags, const char* name, int nar
 static int from_digit_arrayref(pTHX_ UV* rn, AV* av, int base)
 {
   int i, len;
-  UV n = 0;
+  UV d, n = 0;
 
   if (SvTYPE((SV*)av) != SVt_PVAV)
     croak("fromdigits first argument must be a string or array reference");
@@ -254,7 +254,7 @@ static int from_digit_arrayref(pTHX_ UV* rn, AV* av, int base)
   for (i = 0; i <= len; i++) {
     SV** psvd = av_fetch(av, i, 0);
     if (_validate_int(aTHX_ *psvd, 1) != 1) return 0;
-    UV d = my_svuv(*psvd);
+    d = my_svuv(*psvd);
     if (n > (UV_MAX-d)/base) return 0;  /* overflow */
     n = n * base + d;
   }
@@ -522,7 +522,7 @@ sieve_prime_cluster(IN SV* svlo, IN SV* svhi, ...)
       list = sieve_cluster(low, high, nc, cl, &nprimes);
       if (list != 0) {
         done = 1;
-        EXTEND(SP, nprimes);
+        EXTEND(SP, (IV)nprimes);
         for (i = 0; i < nprimes; i++)
           PUSHs(sv_2mortal(newSVuv( list[i] )));
         Safefree(list);
@@ -1157,7 +1157,7 @@ factor(IN SV* svn)
           default: {
                      UV ndivisors;
                      UV* divs = _divisor_list(n, &ndivisors);
-                     EXTEND(SP, ndivisors);
+                     EXTEND(SP, (IV)ndivisors);
                      for (i = 0; (UV)i < ndivisors; i++)
                        PUSHs(sv_2mortal(newSVuv( divs[i] )));
                      Safefree(divs);
@@ -1416,7 +1416,7 @@ euler_phi(IN SV* svlo, ...)
       UV hi = my_svuv(ST(1));
       if (lo <= hi) {
         UV i;
-        EXTEND(SP, hi-lo+1);
+        EXTEND(SP, (IV)(hi-lo+1));
         if (ix == 0) {
           UV  arraylo = (lo < 100)  ?  0  :  lo;
           UV* totients = _totient_range(arraylo, hi);
@@ -1544,6 +1544,7 @@ void todigits(SV* svn, int base=10, int length=-1)
     UV n;
   PPCODE:
     if (base < 2) croak("invalid base: %d", base);
+    status = 0;
     if (ix == 0 || ix == 1) {
       status = _validate_int(aTHX_ svn, 1);
       n = (status == 0) ? 0 : status * my_svuv(svn);
@@ -1551,7 +1552,7 @@ void todigits(SV* svn, int base=10, int length=-1)
     /* todigits with native input */
     if (ix == 0 && status != 0 && length < 128) {
       int digits[128];
-      int len = to_digit_array(digits, n, base, length);
+      IV len = to_digit_array(digits, n, base, length);
       if (len >= 0) {
         dMY_CXT;
         EXTEND(SP, len);
@@ -1563,7 +1564,7 @@ void todigits(SV* svn, int base=10, int length=-1)
     /* todigitstring with native input */
     if (ix == 1 && status != 0 && length < 128) {
       char s[128+1];
-      int len = to_digit_string(s, n, base, length);
+      IV len = to_digit_string(s, n, base, length);
       if (len >= 0) {
         XPUSHs(sv_2mortal(newSVpv(s, len)));
         XSRETURN(1);
@@ -1580,8 +1581,8 @@ void todigits(SV* svn, int base=10, int length=-1)
       if (len == 1 && s[0] == '0') XSRETURN(0);
       {
         dMY_CXT;
-        EXTEND(SP, len);
-        for (i = 0; i < len; i++)
+        EXTEND(SP, (IV)len);
+        for (i = 0; i < (int)len; i++)
           PUSH_NPARITY(s[i]-'0');
       }
       XSRETURN(len);
@@ -1983,7 +1984,7 @@ forpart (SV* block, IN SV* svn, IN SV* svh = 0)
         }
 
         { dSP; ENTER; PUSHMARK(SP);
-          EXTEND(SP, k); for (i = 0; i <= k; i++) { PUSHs(svals[a[i]]); }
+          EXTEND(SP, (IV)k); for (i = 0; i <= k; i++) { PUSHs(svals[a[i]]); }
           PUTBACK; call_sv((SV*)cv, G_VOID|G_DISCARD); LEAVE;
         }
       }
@@ -2035,7 +2036,7 @@ forcomb (SV* block, IN SV* svn, IN SV* svk = 0)
 
     while (1) {
       { dSP; ENTER; PUSHMARK(SP);                /* Send the values */
-        EXTEND(SP, k);
+        EXTEND(SP, ((IV)k));
         for (i = 0; i < k; i++) { PUSHs(svals[ cm[k-i-1]-1 ]); }
         PUTBACK; call_sv((SV*)cv, G_VOID|G_DISCARD); LEAVE;
       }
