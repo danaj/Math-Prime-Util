@@ -690,10 +690,10 @@ UV prime_count_upper(UV n)
     a = (i < (int)NUPPER_THRESH)  ?  _upper_thresh[i].aval  :  2.334L;
     upper = fn/fl1 * (1.0L + 1.0L/fl1 + a/fl2);
   } else if (fn < 1e19) {        /* Büthe 2015 1.10 Skewes number lower limit */
-    a = (fn <   1100000000) ? 0.032    /* Empirical */
-      : (fn <  10010000000) ? 0.027    /* Empirical */
-      : (fn < 101260000000) ? 0.021    /* Empirical */
-                            : 0.0;
+    a = (fn <   1100000000.0) ? 0.032    /* Empirical */
+      : (fn <  10010000000.0) ? 0.027    /* Empirical */
+      : (fn < 101260000000.0) ? 0.021    /* Empirical */
+                              : 0.0;
     upper = _XS_LogarithmicIntegral(fn) - a * fl1*sqrtl(fn)/25.132741228718345907701147L;
   } else {                       /* Büthe 2014 7.4 */
     upper = _XS_LogarithmicIntegral(fn) + fl1*sqrtl(fn)/25.132741228718345907701147L;
@@ -1312,6 +1312,7 @@ UV ramanujan_prime_count_approx(UV n)
   return (3*ramanujan_prime_count_lower(n) + 1*ramanujan_prime_count_upper(n)) >> 2;
 }
 
+#if BITS_PER_WORD == 64
 #define RAMPC2 47
 static const UV ramanujan_counts_pow2[RAMPC2+1] = {
    0, 1, 1, 1, 2, 4, 7, 13, 23, 42, 75, 137, 255, 463, 872, 1612,
@@ -1322,6 +1323,13 @@ static const UV ramanujan_counts_pow2[RAMPC2+1] = {
    UVCONST(  10285641777), UVCONST(  20051180846), UVCONST(  39113482639),
    UVCONST(  76344462797), UVCONST( 149100679004), UVCONST( 291354668495),
    UVCONST( 569630404447), UVCONST(1114251967767), UVCONST(2180634225768) };
+#else
+#define RAMPC2 31  /* input limited */
+static const UV ramanujan_counts_pow2[RAMPC2+1] = {
+   0, 1, 1, 1, 2, 4, 7, 13, 23, 42, 75, 137, 255, 463, 872, 1612,
+   3031, 5706, 10749, 20387, 38635, 73584, 140336, 268216, 513705,
+   985818, 1894120, 3645744, 7027290, 13561906, 26207278, 50697533 };
+#endif
 UV ramanujan_prime_count(UV lo, UV hi)
 {
   UV count = 0, beg, end, inc, log2, *L;
