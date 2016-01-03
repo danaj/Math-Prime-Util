@@ -1067,7 +1067,8 @@ UV nth_twin_prime_approx(UV n)
 /* For Ramanujan prime estimates:
  *  - counts are done via inverse nth, so only one thing to tune.
  *  - For nth tables, upper values ok if too high, lower values ok if too low.
- *  - both upper and lower empirically tested to 125,000 million.
+ *  - both upper & lower empirically tested to 175e9 (175 thousand million),
+ *    with a return value of over 10^13.
  */
 
 /* These are playing loose with Sondow/Nicholson/Noe 2011 theorem 4.
