@@ -4,7 +4,7 @@ use warnings;
 
 BEGIN {
   $Math::Prime::Util::ZetaBigFloat::AUTHORITY = 'cpan:DANAJ';
-  $Math::Prime::Util::ZetaBigFloat::VERSION = '0.56';
+  $Math::Prime::Util::ZetaBigFloat::VERSION = '0.57';
 }
 
 BEGIN {
@@ -508,7 +508,7 @@ Math::Prime::Util::ZetaBigFloat - Perl Big Float versions of Riemann Zeta and R 
 
 =head1 VERSION
 
-Version 0.56
+Version 0.57
 
 
 =head1 SYNOPSIS
