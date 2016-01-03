@@ -4,7 +4,7 @@ use warnings;
 
 use Test::More;
 use Math::Prime::Util
-   qw/todigits fromdigits todigitstring sumdigits vecsum/;
+   qw/todigits fromdigits todigitstring sumdigits vecsum factorial/;
 
 my $extra = defined $ENV{EXTENDED_TESTING} && $ENV{EXTENDED_TESTING};
 #my $use64 = Math::Prime::Util::prime_get_config->{'maxbits'} > 32;
