@@ -1311,7 +1311,7 @@ UV ramanujan_prime_count_approx(UV n)
   return (3*ramanujan_prime_count_lower(n) + 1*ramanujan_prime_count_upper(n)) >> 2;
 }
 
-#define RAMPC2 45
+#define RAMPC2 47
 static const UV ramanujan_counts_pow2[RAMPC2+1] = {
    0, 1, 1, 1, 2, 4, 7, 13, 23, 42, 75, 137, 255, 463, 872, 1612,
    3031, 5706, 10749, 20387, 38635, 73584, 140336, 268216, 513705,
@@ -1320,7 +1320,7 @@ static const UV ramanujan_counts_pow2[RAMPC2+1] = {
    UVCONST(   1394192236), UVCONST(   2712103833), UVCONST(   5279763823),
    UVCONST(  10285641777), UVCONST(  20051180846), UVCONST(  39113482639),
    UVCONST(  76344462797), UVCONST( 149100679004), UVCONST( 291354668495),
-   UVCONST( 569630404447) };
+   UVCONST( 569630404447), UVCONST(1114251967767), UVCONST(2180634225768) };
 UV ramanujan_prime_count(UV lo, UV hi)
 {
   UV count = 0, beg, end, inc, log2, *L;
