@@ -6,6 +6,9 @@ Revision history for Perl module Math::Prime::Util
 
     - Fixed incorrect table entry for 2^16th Ramanujan prime count.
 
+    - vecsum will handle 128-bit sums internally (performance increase).
+
+
 0.57 2016-01-03
 
     [ADDED]
@@ -27,6 +30,7 @@ Revision history for Perl module Math::Prime::Util
     - nth_ramanujan_prime(997) was wrong.  Fixed.
 
     - Tighten Ramanujan prime bounds.  Big speedups for large nth Rp.
+
 
 0.56 2015-12-13
 

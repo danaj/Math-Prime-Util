@@ -680,11 +680,16 @@ gcd(...)
         lo += n;
       }
       if (status != 0 && hi == -1 && lo > IV_MAX)  XSRETURN_IV((IV)lo);
-      /* If status != 0 then the 128-bit result is:
-       *   result = ( hi << 64) + lo     if hi > 0
-       *   result = (-hi << 64) - lo     if hi < 0
-       * We have to somehow return this as a bigint, which we can't do here.
-       * Sad, because this will now be wasted work and slow. */
+      if (status != 0 && hi != 0) {
+        /* If status != 0 then the 128-bit result is:
+         *   result = (hi << 64) + lo    (hi is signed, lo is unsigned)
+         * Call a Perl routine that will take these and make a bigint for us. */
+        XPUSHs(sv_2mortal(newSViv( hi )));
+        XPUSHs(sv_2mortal(newSVuv( 64 )));
+        XPUSHs(sv_2mortal(newSVuv( lo )));
+        _vcallsub_with_pp("_shift_and_sum");
+        XSRETURN(1);
+      }
       if (hi != 0) status = 0;  /* Overflow */
       ret = lo;
     } else if (ix == 5) {
