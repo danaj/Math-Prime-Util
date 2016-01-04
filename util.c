@@ -1267,7 +1267,7 @@ UV nth_ramanujan_prime(UV n) {
 /* Returns array of Ram primes between low and high, results from first->last */
 UV* ramanujan_primes(UV* first, UV* last, UV low, UV high)
 {
-  UV i, beg, end, range, nlo, nhi, *L;
+  UV beg, end, range, nlo, nhi, *L;
 
   if (high < 2 || high < low) return 0;
   if (low < 2) low = 2;
@@ -2771,7 +2771,7 @@ int strnum_minmax(int min, char* a, STRLEN alen, char* b, STRLEN blen)
 int from_digit_string(UV* rn, const char* s, int base)
 {
   UV max, n = 0;
-  int i, len, res = 0;
+  int i, len;
 
   /* Skip leading -/+ and zeros */
   if (s[0] == '-' || s[0] == '+') s++;
@@ -2782,7 +2782,7 @@ int from_digit_string(UV* rn, const char* s, int base)
 
   for (i = 0, len = strlen(s); i < len; i++) {
     const char c = s[i];
-    UV d = !isalnum(c) ? 255 : (c <= '9') ? c-'0' : (c <= 'Z') ? c-'A'+10 : c-'a'+10;
+    int d = !isalnum(c) ? 255 : (c <= '9') ? c-'0' : (c <= 'Z') ? c-'A'+10 : c-'a'+10;
     if (d >= base) croak("Invalid digit for base %d", base);
     if (n > max) return 0;   /* Overflow */
     n = n * base + d;
