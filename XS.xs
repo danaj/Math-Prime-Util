@@ -26,6 +26,7 @@
 #include "lmo.h"
 #include "aks.h"
 #include "constants.h"
+#include "mulmod.h"
 
 #if BITS_PER_WORD == 64
   #if defined(_MSC_VER)
@@ -230,11 +231,11 @@ static int _vcallsubn(pTHX_ I32 flags, I32 stashflags, const char* name, int nar
     const char *iname = sv_isobject(input) \
                       ? HvNAME_get(SvSTASH(SvRV(input))) : 0; \
     if (iname == 0 || strEQ(iname, "Math::BigInt")) { \
-      _vcallsub("_to_bigint"); /* Turn into bigint */ \
+      (void)_vcallsubn(aTHX_ G_SCALAR, VCALL_ROOT, "_to_bigint", 1); \
     } else if (iname == 0 || strEQ(iname, "Math::GMPz")) { \
-      _vcallsub("_to_gmpz"); \
+      (void)_vcallsubn(aTHX_ G_SCALAR, VCALL_ROOT, "_to_gmpz", 1); \
     } else if (iname == 0 || strEQ(iname, "Math::GMP")) { \
-      _vcallsub("_to_gmp"); \
+      (void)_vcallsubn(aTHX_ G_SCALAR, VCALL_ROOT, "_to_gmp", 1); \
     } else { /* Return it as: ref(input)->new(result) */ \
       dSP;  ENTER;  PUSHMARK(SP); \
       XPUSHs(sv_2mortal(newSVpv(iname, 0)));  XPUSHs(resptr); \
@@ -1257,20 +1258,55 @@ znorder(IN SV* sva, IN SV* svn)
 
 void
 znlog(IN SV* sva, IN SV* svg, IN SV* svp)
+  ALIAS:
+    addmod = 1
+    mulmod = 2
+    divmod = 3
+    powmod = 4
   PREINIT:
     int astatus, gstatus, pstatus;
+    UV ret;
   PPCODE:
     astatus = _validate_int(aTHX_ sva, 0);
-    gstatus = _validate_int(aTHX_ svg, 0);
+    gstatus = _validate_int(aTHX_ svg, (ix == 0) ? 0 : 1);
     pstatus = _validate_int(aTHX_ svp, 0);
-    if (astatus == 1 && gstatus == 1 && pstatus == 1) {
-      UV a = my_svuv(sva), g = my_svuv(svg), p = my_svuv(svp);
-      UV ret = znlog(a, g, p);
-      /* TODO: perhaps return p to mean no solution? */
-      if (ret == 0 && a > 1) XSRETURN_UNDEF;
+    if (astatus == 1 && pstatus == 1 && gstatus != 0) {
+      UV a = my_svuv(sva), g, p = my_svuv(svp);
+      if (p <= 1) XSRETURN_UV(0);
+      if (gstatus == -1) {
+        IV b = my_sviv(svg);
+        switch (ix) {
+          case 1: ret = submod(a % p, -b % p, p); break;
+          case 2: g = mulmod(a, -b, p); ret = g ? p-g : 0; break;
+          case 3: g = divmod(a, -b, p); ret = g ? p-g : 0; break;
+          case 4: ret = powmod(modinverse(a,p), -b, p); break;
+          default: break;
+        }
+      } else {
+        g = my_svuv(svg);
+        switch (ix) {
+          case 0: ret = znlog(a, g, p);
+                  /* TODO: perhaps return p to mean no solution? */
+                  if (ret == 0 && a > 1) XSRETURN_UNDEF;
+                  break;
+          case 1: ret = addmod(a % p, g % p, p); break;
+          case 2: ret = mulmod(a, g, p); break;
+          case 3: ret = divmod(a, g, p); break;
+          case 4:
+          default:ret = powmod(a, g, p); break;
+        }
+      }
       XSRETURN_UV(ret);
     }
-    _vcallsub_with_gmp("znlog");
+    switch (ix) {
+      case 0: _vcallsub_with_gmp("znlog"); break;
+      case 1: _vcallsub_with_gmp("addmod"); break;
+      case 2: _vcallsub_with_gmp("mulmod"); break;
+      case 3: _vcallsub_with_gmp("divmod"); break;
+      case 4:
+      default:_vcallsub_with_gmp("powmod"); break;
+    }
+    OBJECTIFY_RESULT(svp, ST(items-1));
     return; /* skip implicit PUTBACK */
 
 void

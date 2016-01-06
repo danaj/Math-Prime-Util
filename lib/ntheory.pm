@@ -170,6 +170,10 @@ See L<Math::Prime::Util> for complete documentation.
   binary(n)                           binary string or array of digits
   hammingweight(n)                    population count (# of binary 1s)
   kronecker(a,b)                      Kronecker (Jacobi) symbol
+  addmod(a,b,n)                       a + b mod n
+  mulmod(a,b,n)                       a * b mod n
+  divmod(a,b,n)                       a / b mod n
+  powmod(a,b,n)                       a ^ b mod n
   invmod(a,n)                         inverse of a modulo n
   moebius(n)                          Moebius function of n
   moebius(beg, end)                   array of Moebius in range

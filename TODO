@@ -85,16 +85,6 @@
 - xt/pari-compare:  add chinese, factorial, vecmin, vecmax,
                         bernfrac, bernreal, LambertW.
 
-- In vecsum, we could create the string and call vecsum with 1 argument.  The
-  trick is telling vecsum we only want one thing.  Idea:
-
-      if (status != 0) {
-        dSP; ENTER; PUSHMARK(SP);
-        XPUSHs(sv_2mortal(newSVpvn("123456789012345678901234567890", 30)));
-        PUTBACK; _vcallsubn(aTHX_ G_SCALAR, VCALL_ROOT, "_to_bigint", 1); LEAVE;
-        return;
-      }
-
 - Proth test using LLR.  Change mersenne test file to test both.
   Note: what does this mean?  Both LLR and Proth are in GMP now.
 
@@ -113,4 +103,6 @@
   Nested calls are doable, but threading is a bear.  Perhaps do a first
   version that is non-threadsafe.
 
-- we have invmod: add mulmod, divmod, expmod, sqrtmod
+- sqrtmod
+
+- tests and doc for addmod, mulmod, divmod, powmod

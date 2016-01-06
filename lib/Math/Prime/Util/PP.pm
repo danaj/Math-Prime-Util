@@ -2205,6 +2205,36 @@ sub invmod {
   $t;
 }
 
+sub addmod {
+  my($a, $b, $n) = @_;
+  return 0 if $n <= 1;
+  my $ret = Math::BigInt->new("$a")->badd("$b")->bmod("$n");
+  $ret = _bigint_to_int($ret) if $ret->bacmp(BMAX) <= 0;
+  $ret;
+}
+
+sub mulmod {
+  my($a, $b, $n) = @_;
+  return 0 if $n <= 1;
+  my $ret = Math::BigInt->new("$a")->bmod("$n")->bmul("$b")->bmod("$n");
+  $ret = _bigint_to_int($ret) if $ret->bacmp(BMAX) <= 0;
+  $ret;
+}
+sub divmod {
+  my($a, $b, $n) = @_;
+  return 0 if $n <= 1;
+  my $ret = Math::BigInt->new("$b")->bmodinv("$n")->bmul("$a")->bmod("$n");
+  $ret = _bigint_to_int($ret) if $ret->bacmp(BMAX) <= 0;
+  $ret;
+}
+sub powmod {
+  my($a, $b, $n) = @_;
+  return 0 if $n <= 1;
+  my $ret = Math::BigInt->new("$a")->bmod("$n")->bmodpow("$b","$n");
+  $ret = _bigint_to_int($ret) if $ret->bacmp(BMAX) <= 0;
+  $ret;
+}
+
 # no validation, x is allowed to be negative, y must be >= 0
 sub _gcd_ui {
   my($x, $y) = @_;
