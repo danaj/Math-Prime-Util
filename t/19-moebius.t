@@ -7,7 +7,7 @@ use Math::Prime::Util
    qw/moebius mertens euler_phi jordan_totient divisor_sum exp_mangoldt
       chebyshev_theta chebyshev_psi carmichael_lambda znorder liouville
       znprimroot znlog kronecker legendre_phi gcd lcm is_power valuation
-      invmod binomial gcdext chinese vecmin vecmax factorial
+      binomial gcdext chinese vecmin vecmax factorial
       hammingweight sqrtint is_square_free is_carmichael
       ramanujan_tau
      /;
@@ -495,23 +495,6 @@ if ($use64) {
 }
 my @negpowers = (0,0,0,3,0,5,3,7,0,9,5);
 
-my @invmods = (
- [ 0, 0, undef],
- [ 1, 0, undef],
- [ 0, 1, undef],
- [ 1, 1, 0],
- [ 45, 59, 21],
- [  42,  2017, 1969],
- [  42, -2017, 1969],
- [ -42,  2017, 48],
- [ -42, -2017, 48],
- [ 14, 28474, undef],
-);
-if ($use64) {
- push @invmods, [ 13, 9223372036854775808, 5675921253449092805 ];
- push @invmods, [ 14, 18446744073709551615, 17129119497016012214 ];
-}
-
 my @binomials = (
  [ 0,0, 1 ],
  [ 0,1, 0 ],
@@ -574,7 +557,6 @@ plan tests => 0 + 1
                 + scalar(@legendre_sums)
                 + scalar(@valuations)
                 + scalar(@popcounts)
-                + 3 + scalar(@invmods)
                 + 4  # sqrtint
                 + 2 + scalar(@binomials)
                 + 6 + scalar(keys %powers) + scalar(@negpowers)
@@ -844,15 +826,6 @@ foreach my $r (@valuations) {
 foreach my $r (@popcounts) {
   my($n, $exp) = @$r;
   is( hammingweight($n), $exp, "hammingweight($n) = $exp" );
-}
-###### invmod
-ok(!eval { invmod(undef,11); }, "invmod(undef,11)");
-ok(!eval { invmod(11,undef); }, "invmod(11,undef)");
-ok(!eval { invmod('nan',11); }, "invmod('nan',11)");
-
-foreach my $r (@invmods) {
-  my($a, $n, $exp) = @$r;
-  is( invmod($a,$n), $exp, "invmod($a,$n) = ".((defined $exp)?$exp:"<undef>") );
 }
 ###### sqrtint
 is_deeply( [map { sqrtint($_) } 0..100], [map { int(sqrt($_)) } 0..100], "sqrtint 0 .. 100" );

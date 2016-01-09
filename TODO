@@ -104,5 +104,3 @@
   version that is non-threadsafe.
 
 - sqrtmod
-
-- tests and doc for addmod, mulmod, divmod, powmod

@@ -126,6 +126,7 @@ t/24-partitions.t
 t/25-lucas_sequences.t
 t/26-combinatorial.t
 t/26-digits.t
+t/26-mod.t
 t/26-vec.t
 t/27-bernfrac.t
 t/28-pi.t

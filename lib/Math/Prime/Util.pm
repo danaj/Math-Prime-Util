@@ -940,7 +940,7 @@ __END__
 
 =encoding utf8
 
-=for stopwords forprimes forcomposites foroddcomposites fordivisors forpart forcomp forcomb forperm formultiperm Möbius Deléglise Bézout totient moebius mertens liouville znorder irand primesieve uniqued k-tuples von SoE pari yafu fonction qui compte le nombre nombres voor PhD superset sqrt(N) gcd(A^M k-th (10001st primegen libtommath kronecker znprimroot znlog gcd lcm invmod untruncated vecsum vecprod vecmin vecmax vecreduce vecextract vecall vecany vecnone vecnotall vecfirst sumdigits gcdext chinese LambertW bernfrac bernreal harmfrac harmreal stirling hammingweight lucasu lucasv OpenPFGW gmpy2 Über Primzahl-Zählfunktion n-te und verallgemeinerte sqrtint multiset todigits todigitstring fromdigits
+=for stopwords forprimes forcomposites foroddcomposites fordivisors forpart forcomp forcomb forperm formultiperm Möbius Deléglise Bézout totient moebius mertens liouville znorder irand primesieve uniqued k-tuples von SoE pari yafu fonction qui compte le nombre nombres voor PhD superset sqrt(N) gcd(A^M k-th (10001st primegen libtommath kronecker znprimroot znlog gcd lcm invmod addmod mulmod powmod divmod untruncated vecsum vecprod vecmin vecmax vecreduce vecextract vecall vecany vecnone vecnotall vecfirst sumdigits gcdext chinese LambertW bernfrac bernreal harmfrac harmreal stirling hammingweight lucasu lucasv OpenPFGW gmpy2 Über Primzahl-Zählfunktion n-te und verallgemeinerte sqrtint multiset todigits todigitstring fromdigits
 
 =for test_synopsis use v5.14;  my($k,$x);
 
@@ -2575,6 +2575,7 @@ must be at least 2.
 
 This corresponds to Pari's C<sumdigits> function from version 2.8 and later.
 
+
 =head2 invmod
 
   say "The inverse of 42 mod 2017 = ", invmod(42,2017);
@@ -2587,6 +2588,34 @@ The results correspond to the Pari result of C<lift(Mod(1/a,n))>.  The
 semantics with respect to negative arguments match Pari.  Notably, a
 negative C<n> is negated, which is different from Math::BigInt, but in both
 cases the return value is still congruent to C<1> modulo C<n> as expected.
+
+=head2 addmod
+
+Given three integers C<a>, C<b>, and C<n> where C<a> and C<n> are unsigned,
+return C<(a+b) mod n>.  This is particularly useful when dealing with
+numbers that are larger than a half-word but still native size.  No
+bigint package is needed and this can be 10-200x faster than using one.
+
+=head2 mulmod
+
+Given three integers C<a>, C<b>, and C<n> where C<a> and C<n> are unsigned,
+return C<(a+b) mod n>.  This is particularly useful when C<n> fits in a
+native integer.  No bigint package is needed and this can be 10-200x
+faster than using one.
+
+=head2 powmod
+
+Given three integers C<a>, C<b>, and C<n> where C<a> and C<n> are unsigned,
+return C<(a ** b) mod n>.  Typically binary exponentiation is used, so
+the process is very efficient.  With native size inputs, no bigint
+library is needed.
+
+=head2 divmod
+
+Given three integers C<a>, C<b>, and C<n> where C<a> and C<n> are unsigned,
+return C<(a/b) mod n>.  This is done as C<(a * (1/b mod n)) mod n>.  If
+no inverse of C<b> mod C<n> exists then undef if returned.
+
 
 =head2 valuation
 

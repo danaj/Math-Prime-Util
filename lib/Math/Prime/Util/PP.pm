@@ -1990,6 +1990,7 @@ sub gcd {
   return $gcd;
 }
 sub lcm {
+  return 0 unless @_;
   my $lcm = Math::BigInt::blcm( map {
     my $v = ($_ < 2147483647 || ref($_) eq 'Math::BigInt') ? $_ : "$_";
     return 0 if $v == 0;
@@ -2224,6 +2225,7 @@ sub divmod {
   my($a, $b, $n) = @_;
   return 0 if $n <= 1;
   my $ret = Math::BigInt->new("$b")->bmodinv("$n")->bmul("$a")->bmod("$n");
+  return undef if $ret->is_nan();
   $ret = _bigint_to_int($ret) if $ret->bacmp(BMAX) <= 0;
   $ret;
 }
@@ -2231,6 +2233,7 @@ sub powmod {
   my($a, $b, $n) = @_;
   return 0 if $n <= 1;
   my $ret = Math::BigInt->new("$a")->bmod("$n")->bmodpow("$b","$n");
+  return undef if $ret->is_nan();
   $ret = _bigint_to_int($ret) if $ret->bacmp(BMAX) <= 0;
   $ret;
 }

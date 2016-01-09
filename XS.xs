@@ -500,7 +500,7 @@ void
 sieve_prime_cluster(IN SV* svlo, IN SV* svhi, ...)
   PREINIT:
     uint32_t nc, cl[100];
-    UV i, cv, nprimes, *list;
+    UV i, cval, nprimes, *list;
     int lostatus, histatus, done;
   PPCODE:
     nc = items-1;
@@ -508,11 +508,11 @@ sieve_prime_cluster(IN SV* svlo, IN SV* svhi, ...)
     cl[0] = 0;
     for (i = 1; i < nc; i++) {
       if (!_validate_int(aTHX_ ST(1+i), 0)) croak("sieve_prime_cluster: cluster values must be standard integers");
-      cv = my_svuv(ST(1+i));
-      if (cv & 1) croak("sieve_prime_cluster: values must be even");
-      if (cv > 2147483647UL) croak("sieve_prime_cluster: values must be 31-bit");
-      if (cv <= cl[i-1]) croak("sieve_prime_cluster: values must be increasing");
-      cl[i] = cv;
+      cval = my_svuv(ST(1+i));
+      if (cval & 1) croak("sieve_prime_cluster: values must be even");
+      if (cval > 2147483647UL) croak("sieve_prime_cluster: values must be 31-bit");
+      if (cval <= cl[i-1]) croak("sieve_prime_cluster: values must be increasing");
+      cl[i] = cval;
     }
     lostatus = _validate_int(aTHX_ svlo, 1);
     histatus = _validate_int(aTHX_ svhi, 1);
@@ -1273,13 +1273,16 @@ znlog(IN SV* sva, IN SV* svg, IN SV* svp)
     if (astatus == 1 && pstatus == 1 && gstatus != 0) {
       UV a = my_svuv(sva), g, p = my_svuv(svp);
       if (p <= 1) XSRETURN_UV(0);
+      ret = 0;
       if (gstatus == -1) {
         IV b = my_sviv(svg);
         switch (ix) {
           case 1: ret = submod(a % p, -b % p, p); break;
-          case 2: g = mulmod(a, -b, p); ret = g ? p-g : 0; break;
-          case 3: g = divmod(a, -b, p); ret = g ? p-g : 0; break;
-          case 4: ret = powmod(modinverse(a,p), -b, p); break;
+          case 2: g = mulmod(a % p, -b % p, p); ret = g ? p-g : 0; break;
+          case 3: g = divmod(a % p, -b % p, p); ret = g ? p-g : 0; break;
+          case 4: ret = modinverse(a,p);
+                  if (ret == 0 && a > 0 && p > 1) XSRETURN_UNDEF;
+                  ret = powmod(ret, -b, p); break;
           default: break;
         }
       } else {
@@ -1290,12 +1293,13 @@ znlog(IN SV* sva, IN SV* svg, IN SV* svp)
                   if (ret == 0 && a > 1) XSRETURN_UNDEF;
                   break;
           case 1: ret = addmod(a % p, g % p, p); break;
-          case 2: ret = mulmod(a, g, p); break;
-          case 3: ret = divmod(a, g, p); break;
+          case 2: ret = mulmod(a % p, g % p, p); break;
+          case 3: ret = divmod(a % p, g % p, p); break;
           case 4:
           default:ret = powmod(a, g, p); break;
         }
       }
+      if (ret == 0 && ((ix == 0 && a > 1) || (ix == 3))) XSRETURN_UNDEF;
       XSRETURN_UV(ret);
     }
     switch (ix) {
