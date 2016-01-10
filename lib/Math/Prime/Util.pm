@@ -50,7 +50,7 @@ our @EXPORT_OK =
       primorial pn_primorial consecutive_integer_lcm gcdext chinese
       gcd lcm factor factor_exp divisors valuation hammingweight
       todigits fromdigits todigitstring sumdigits
-      invmod addmod mulmod divmod powmod
+      invmod sqrtmod addmod mulmod divmod powmod
       vecsum vecmin vecmax vecprod vecreduce vecextract
       vecany vecall vecnotall vecnone vecfirst
       moebius mertens euler_phi jordan_totient exp_mangoldt liouville
@@ -2599,7 +2599,7 @@ bigint package is needed and this can be 10-200x faster than using one.
 =head2 mulmod
 
 Given three integers C<a>, C<b>, and C<n> where C<a> and C<n> are unsigned,
-return C<(a+b) mod n>.  This is particularly useful when C<n> fits in a
+return C<(a*b) mod n>.  This is particularly useful when C<n> fits in a
 native integer.  No bigint package is needed and this can be 10-200x
 faster than using one.
 

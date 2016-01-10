@@ -1318,6 +1318,7 @@ kronecker(IN SV* sva, IN SV* svb)
   ALIAS:
     valuation = 1
     invmod = 2
+    sqrtmod = 3
   PREINIT:
     int astatus, bstatus, abpositive, abnegative;
   PPCODE:
@@ -1342,7 +1343,7 @@ kronecker(IN SV* sva, IN SV* svb)
         UV k = (bstatus == -1) ? (UV)(-(my_sviv(svb))) : my_svuv(svb);
         /* valuation of 0-2 is very common, so return a constant if possible */
         RETURN_NPARITY( valuation(n, k) );
-      } else {
+      } else if (ix == 2) {
         UV a, n, ret = 0;
         n = (bstatus != -1) ? my_svuv(svb) : (UV)(-(my_sviv(svb)));
         if (n > 0) {
@@ -1355,13 +1356,21 @@ kronecker(IN SV* sva, IN SV* svb)
         }
         if (ret == 0) XSRETURN_UNDEF;
         XSRETURN_UV(ret);
+      } else {
+        UV a, n, s, ret = 0;
+        n = (bstatus != -1) ? my_svuv(svb) : (UV)(-(my_sviv(svb)));
+        a = (astatus != -1) ? my_svuv(sva) : n-((UV)(-(my_sviv(sva))) % n);
+        if (!sqrtmod(&s, a, n))
+          XSRETURN_UNDEF;
+        XSRETURN_UV(s);
       }
     }
     switch (ix) {
       case 0:  _vcallsub_with_gmp("kronecker");  break;
       case 1:  _vcallsub_with_gmp("valuation"); break;
-      case 2:
-      default: _vcallsub_with_gmp("invmod"); break;
+      case 2:  _vcallsub_with_gmp("invmod"); break;
+      case 3:
+      default: _vcallsub_with_gmp("sqrtmod"); break;
     }
     return; /* skip implicit PUTBACK */
 

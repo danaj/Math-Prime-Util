@@ -8,6 +8,7 @@ Revision history for Perl module Math::Prime::Util
     - mulmod(a, b, n)                     a * b mod n
     - divmod(a, b, n)                     a / b mod n
     - powmod(a, b, n)                     a ^ b mod n
+    - sqrtmod(a, p)                       modular square root
 
     [FUNCTIONALITY AND PERFORMANCE]
 

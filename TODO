@@ -103,4 +103,6 @@
   Nested calls are doable, but threading is a bear.  Perhaps do a first
   version that is non-threadsafe.
 
-- sqrtmod
+- tests and doc and PP for sqrtmod
+
+- sqrtmod with composite modulus

@@ -2225,6 +2225,76 @@ UV divmod(UV a, UV b, UV n) {   /* a / b  mod n */
   return mulmod(a, binv, n);
 }
 
+static int verify_sqrtmod(UV s, UV *rs, UV a, UV p) {
+  if (p-s < s)  s = p-s;
+  if (mulmod(s, s, p) != a) return 0;
+  *rs = s;
+  return 1;
+}
+int sqrtmod(UV *s, UV a, UV p) {
+  a %= p;
+  if (p <= 2) return (p == 0) ? 0 : verify_sqrtmod(a, s,a,p);
+  if (a <= 1) return verify_sqrtmod(a, s,a,p);
+
+  if ((p % 4) == 3) {
+    return verify_sqrtmod(powmod(a, (p+1)>>2, p), s,a,p);
+  }
+  if ((p % 8) == 5) {
+    UV q = powmod(a, (p-1) >> 2, p);
+    if (q == 1) {
+      return verify_sqrtmod(powmod(a, (p+3)>>3, p), s,a,p);
+    } else {
+      UV v = powmod(mulmod(4,a,p),(p-5)>>3,p);
+      return verify_sqrtmod(mulmod(addmod(a,a,p),v,p), s,a,p);
+    }
+  }
+
+  /* Verify Euler condition for odd p */
+  if ((p & 1) && powmod(a,(p-1)>>1,p) != 1) return 0;
+
+  {
+    UV x, q, e, t, z, r, m, b;
+    q = p-1;
+    e = valuation(q, 2);
+    q >>= e;
+    t = 2;
+    while (kronecker_uu(t, p) != -1) {
+      t++;
+      if (t == 133) {
+        if ((p % 2) == 0) return 0;
+        if ((p % t) == 0) return 0;
+        if (powmod(t, (p-1)>>1, p) != 1) return 0;
+        if (powmod(2, p-1, p) != 1) return 0;
+      } else if (t == 286) {
+        if (powmod(t, (p-1)>>1, p) != 1) return 0;
+      } else if (t >= 20000) {
+        return 0;
+      }
+    }
+    z = powmod(t, q, p);
+    r = e;
+    b = powmod(a, q, p);
+    q = (q+1) >> 1;
+    x = powmod(a, q, p);
+    while (b != 1) {
+      t = b;
+      m = 0;
+      do {
+        t = powmod(t, 2, p);
+        m++;
+      } while (m < r && t != 1);
+      if (m >= r) break;
+      t = powmod(z, UVCONST(1) << (r-m-1), p);
+      x = mulmod(x, t, p);
+      z = mulmod(t, t, p);
+      b = mulmod(b, z, p);
+      r = m;
+    }
+    return verify_sqrtmod(x, s,a,p);
+  }
+  return 0;
+}
+
 /* status: 1 ok, -1 no inverse, 0 overflow */
 UV chinese(UV* a, UV* n, UV num, int* status) {
   UV p, gcd, i, j, lcm, sum;
