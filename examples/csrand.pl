@@ -53,6 +53,7 @@ if ($type eq 'BM') {
   my $thresh = ($p-1) >> 1;
   while ($nbits-- > 0) {
     $xn = $g->copy->bmodpow($xn,$p);
+    # could use $xn = powmod($g, $xn, $p);
     print 0 + ($xn < $thresh);
   }
   print "\n";
@@ -78,6 +79,7 @@ if ($type eq 'BM') {
   my $two = Math::BigInt->new(2);
   while ($nbits-- > 0) {
     $xn->bmodpow($two,$M);
+    # Could use: $xn = mulmod($xn, $xn, $M);
     print $xn->is_odd ? 1 : 0;
   }
   print "\n";
@@ -106,6 +108,9 @@ if ($type eq 'BM') {
     my $yistr = $xn->copy->bmodpow($e, $n)->as_bin;
     # x_i = r most significant bits of y_i
     $xn = $xn->from_bin(substr($yistr, 0, 2+$r));
+    # could do this:
+    #    my $yistr = todigitstring(powmod($xn,$e,$n),2);
+    #    $xn = fromdigits(substr($yistr, 0, $r),2);
     # z_i = k least significant bits of y_i
     # output is the sequence of z_i
     my $outbits = ($nbits >= $k) ? $k : $nbits;

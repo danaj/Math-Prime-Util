@@ -3,7 +3,7 @@ use strict;
 use warnings;
 
 use Test::More;
-use Math::Prime::Util qw/invmod addmod mulmod divmod powmod/;
+use Math::Prime::Util qw/invmod sqrtmod addmod mulmod divmod powmod/;
 use Math::BigInt try=>"GMP,Pari";
 
 my $extra = defined $ENV{EXTENDED_TESTING} && $ENV{EXTENDED_TESTING};
@@ -26,9 +26,20 @@ if ($use64) {
  push @invmods, [ 13, 9223372036854775808, 5675921253449092805 ];
  push @invmods, [ 14, 18446744073709551615, 17129119497016012214 ];
 }
+my @sqrtmods = (
+ [ 0, 0, undef],
+ [ 1, 0, undef],
+ [ 0, 1, 0],
+ [ 1, 1, 0],
+ [ 58, 101, 19],
+ [ 111, 113, 26],
+ [ "9223372036854775808", "5675921253449092823", "22172359690642254" ],
+ [ "18446744073709551625", "340282366920938463463374607431768211507", "57825146747270203522128844001742059051" ],
+);
 
 plan tests => 0
             + 3 + scalar(@invmods)
+            + scalar(@sqrtmods)
             + 4*2
             + 1                      # addmod
             + 1                      # submod
@@ -45,6 +56,12 @@ ok(!eval { invmod('nan',11); }, "invmod('nan',11)");
 foreach my $r (@invmods) {
   my($a, $n, $exp) = @$r;
   is( invmod($a,$n), $exp, "invmod($a,$n) = ".((defined $exp)?$exp:"<undef>") );
+}
+
+###### sqrtmod
+foreach my $r (@sqrtmods) {
+  my($a, $n, $exp) = @$r;
+  is( sqrtmod($a,$n), $exp, "sqrtmod($a,$n) = ".((defined $exp)?$exp:"<undef>") );
 }
 
 

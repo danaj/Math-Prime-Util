@@ -2232,9 +2232,9 @@ static int verify_sqrtmod(UV s, UV *rs, UV a, UV p) {
   return 1;
 }
 int sqrtmod(UV *s, UV a, UV p) {
+  if (p == 0) return 0;
   a %= p;
-  if (p <= 2) return (p == 0) ? 0 : verify_sqrtmod(a, s,a,p);
-  if (a <= 1) return verify_sqrtmod(a, s,a,p);
+  if (p <= 2 || a <= 1) return verify_sqrtmod(a, s,a,p);
 
   if ((p % 4) == 3) {
     return verify_sqrtmod(powmod(a, (p+1)>>2, p), s,a,p);

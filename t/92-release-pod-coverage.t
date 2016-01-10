@@ -74,7 +74,8 @@ sub mpu_public_regex {
       random_maurer_prime random_maurer_prime_with_cert
       random_shawe_taylor_prime random_shawe_taylor_prime_with_cert
       primorial pn_primorial consecutive_integer_lcm gcdext chinese
-      gcd lcm factor factor_exp divisors valuation invmod hammingweight
+      gcd lcm factor factor_exp divisors valuation hammingweight
+      invmod sqrtmod addmod mulmod divmod powmod
       todigits fromdigits todigitstring sumdigits
       vecsum vecmin vecmax vecprod vecreduce vecextract
       vecany vecall vecnotall vecnone vecfirst

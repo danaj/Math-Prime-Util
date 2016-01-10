@@ -940,7 +940,7 @@ __END__
 
 =encoding utf8
 
-=for stopwords forprimes forcomposites foroddcomposites fordivisors forpart forcomp forcomb forperm formultiperm Möbius Deléglise Bézout totient moebius mertens liouville znorder irand primesieve uniqued k-tuples von SoE pari yafu fonction qui compte le nombre nombres voor PhD superset sqrt(N) gcd(A^M k-th (10001st primegen libtommath kronecker znprimroot znlog gcd lcm invmod addmod mulmod powmod divmod untruncated vecsum vecprod vecmin vecmax vecreduce vecextract vecall vecany vecnone vecnotall vecfirst sumdigits gcdext chinese LambertW bernfrac bernreal harmfrac harmreal stirling hammingweight lucasu lucasv OpenPFGW gmpy2 Über Primzahl-Zählfunktion n-te und verallgemeinerte sqrtint multiset todigits todigitstring fromdigits
+=for stopwords forprimes forcomposites foroddcomposites fordivisors forpart forcomp forcomb forperm formultiperm Möbius Deléglise Bézout totient moebius mertens liouville znorder irand primesieve uniqued k-tuples von SoE pari yafu fonction qui compte le nombre nombres voor PhD superset sqrt(N) gcd(A^M k-th (10001st primegen libtommath kronecker znprimroot znlog gcd lcm invmod sqrtmod addmod mulmod powmod divmod untruncated vecsum vecprod vecmin vecmax vecreduce vecextract vecall vecany vecnone vecnotall vecfirst sumdigits gcdext chinese LambertW bernfrac bernreal harmfrac harmreal stirling hammingweight lucasu lucasv OpenPFGW gmpy2 Über Primzahl-Zählfunktion n-te und verallgemeinerte sqrtint multiset todigits todigitstring fromdigits
 
 =for test_synopsis use v5.14;  my($k,$x);
 
@@ -2588,6 +2588,21 @@ The results correspond to the Pari result of C<lift(Mod(1/a,n))>.  The
 semantics with respect to negative arguments match Pari.  Notably, a
 negative C<n> is negated, which is different from Math::BigInt, but in both
 cases the return value is still congruent to C<1> modulo C<n> as expected.
+
+=head2 sqrtmod
+
+Given two integers C<a> and C<p>, return the square root of C<a> mod C<p>.
+If no square root exists, undef is returned.  If defined, the return value
+C<r> will always satisfy C<mulmod(r,r,p) = a>.
+
+The function is intended to take a prime modulus.  It will not hang or
+crash with composite modulus, but it may return undef even though a
+modular root exists.
+
+Only one root is returned, even though there are at least two.  In the
+case of C<p> a prime and a return value C<r>, then the two roots are
+C<+/- r mod n>.  The least positive C<r> will be returned.
+In the case of composites, many roots may exist, but only one is returned.
 
 =head2 addmod
 

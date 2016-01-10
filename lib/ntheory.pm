@@ -175,6 +175,7 @@ See L<Math::Prime::Util> for complete documentation.
   divmod(a,b,n)                       a / b mod n
   powmod(a,b,n)                       a ^ b mod n
   invmod(a,n)                         inverse of a modulo n
+  sqrtmod(a,p)                        square root modulo a prime
   moebius(n)                          Moebius function of n
   moebius(beg, end)                   array of Moebius in range
   mertens(n)                          sum of Moebius for 1 to n

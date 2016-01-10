@@ -2206,6 +2206,68 @@ sub invmod {
   $t;
 }
 
+sub _verify_sqrtmod {
+  my($r,$a,$n) = @_;
+  if (ref($r)) {
+    return if $r->copy->bmul($r)->bmod($n)->bcmp($a);
+    $r = _bigint_to_int($r) if $r->bacmp(BMAX) <= 0;
+  } else {
+    return unless (($r*$r) % $n) == $a;
+  }
+  $r = $n-$r if $n-$r < $r;
+  $r;
+}
+
+sub sqrtmod {
+  my($a,$n) = @_;
+  return if $n == 0;
+  $a %= $n;
+  if ($n <= 2 || $a <= 1) {
+    return ((($a*$a) % $n) == $a) ? $a : undef;
+  }
+
+  if ($n < 10000000) {
+    # Horrible trial search
+    $a = _bigint_to_int($a);
+    $n = _bigint_to_int($n);
+    my $lim = ($n+1) >> 1;
+    for my $r (2 .. $lim) {
+      return $r if (($r*$r) % $n) == $a;
+    }
+    undef;
+  }
+
+  $a = Math::BigInt->new("$a") unless ref($a) eq 'Math::BigInt';
+  $n = Math::BigInt->new("$n") unless ref($n) eq 'Math::BigInt';
+  my $r;
+
+  if (($n % 4) == 3) {
+    $r = $a->copy->bmodpow(($n+1)>>2, $n);
+    return _verify_sqrtmod($r, $a, $n);
+  }
+  if (($n % 8) == 5) {
+    my $q = $a->copy->bmodpow(($n-1)>>2, $n);
+    if ($q->is_one) {
+      $r = $a->copy->bmodpow(($n+3)>>3, $n);
+    } else {
+      my $v = $a->copy->bmul(4)->bmodpow(($n-5)>>3, $n);
+      $r = $a->copy->bmul(2)->bmul($v)->bmod($n);
+    }
+    return _verify_sqrtmod($r, $a, $n);
+  }
+
+  return if $n->is_odd && !$a->copy->bmodpow(($n-1)>>1,$n)->is_one();
+
+  # Horrible trial search.  Need to use Tonelli-Shanks here.
+  $r = Math::BigInt->new(2);
+  my $lim = int( ($n+1) / 2 );
+  while ($r < $lim) {
+    return $r if $r->copy->bmul($r)->bmod($n) == $a;
+    $r++;
+  }
+  undef;
+}
+
 sub addmod {
   my($a, $b, $n) = @_;
   return 0 if $n <= 1;
@@ -2225,16 +2287,22 @@ sub divmod {
   my($a, $b, $n) = @_;
   return 0 if $n <= 1;
   my $ret = Math::BigInt->new("$b")->bmodinv("$n")->bmul("$a")->bmod("$n");
-  return undef if $ret->is_nan();
-  $ret = _bigint_to_int($ret) if $ret->bacmp(BMAX) <= 0;
+  if ($ret->is_nan) {
+    $ret = undef;
+  } else {
+    $ret = _bigint_to_int($ret) if $ret->bacmp(BMAX) <= 0;
+  }
   $ret;
 }
 sub powmod {
   my($a, $b, $n) = @_;
   return 0 if $n <= 1;
   my $ret = Math::BigInt->new("$a")->bmod("$n")->bmodpow("$b","$n");
-  return undef if $ret->is_nan();
-  $ret = _bigint_to_int($ret) if $ret->bacmp(BMAX) <= 0;
+  if ($ret->is_nan) {
+    $ret = undef;
+  } else {
+    $ret = _bigint_to_int($ret) if $ret->bacmp(BMAX) <= 0;
+  }
   $ret;
 }
 

@@ -476,6 +476,12 @@ sub invmod {
   _validate_integer($n);
   return Math::Prime::Util::PP::invmod($a,$n);
 }
+sub sqrtmod {
+  my ($a, $n) = @_;
+  _validate_integer($a);
+  _validate_integer($n);
+  return Math::Prime::Util::PP::sqrtmod($a,$n);
+}
 sub addmod {
   my ($a, $b, $n) = @_;
   _validate_integer($a); _validate_integer($b>=0?$b:-$b); _validate_integer($n);
