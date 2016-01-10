@@ -2221,8 +2221,8 @@ sub _verify_sqrtmod {
 sub sqrtmod {
   my($a,$n) = @_;
   return if $n == 0;
-  $a %= $n;
   if ($n <= 2 || $a <= 1) {
+    $a %= $n;
     return ((($a*$a) % $n) == $a) ? $a : undef;
   }
 
@@ -2230,6 +2230,7 @@ sub sqrtmod {
     # Horrible trial search
     $a = _bigint_to_int($a);
     $n = _bigint_to_int($n);
+    $a %= $n;
     my $lim = ($n+1) >> 1;
     for my $r (2 .. $lim) {
       return $r if (($r*$r) % $n) == $a;
@@ -2239,6 +2240,7 @@ sub sqrtmod {
 
   $a = Math::BigInt->new("$a") unless ref($a) eq 'Math::BigInt';
   $n = Math::BigInt->new("$n") unless ref($n) eq 'Math::BigInt';
+  $a->bmod($n);
   my $r;
 
   if (($n % 4) == 3) {
