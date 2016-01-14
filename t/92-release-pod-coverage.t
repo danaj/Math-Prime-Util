@@ -41,7 +41,7 @@ sub mpu_public_regex {
       prime_precalc prime_memfree
       is_prime is_prob_prime is_provable_prime is_provable_prime_with_cert
       prime_certificate verify_prime
-      is_pseudoprime is_strong_pseudoprime
+      is_pseudoprime is_euler_pseudoprime is_strong_pseudoprime
       is_lucas_pseudoprime
       is_strong_lucas_pseudoprime
       is_extra_strong_lucas_pseudoprime
