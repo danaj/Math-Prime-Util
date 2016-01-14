@@ -263,6 +263,11 @@ static int from_digit_arrayref(pTHX_ UV* rn, AV* av, int base)
   return 1;
 }
 
+static UV negmod(IV a, UV n) {
+  UV negamod = ((UV)(-a)) % n;
+  return (negamod == 0) ? 0 : n-negamod;
+}
+
 
 MODULE = Math::Prime::Util	PACKAGE = Math::Prime::Util
 
@@ -590,6 +595,7 @@ void
 is_strong_pseudoprime(IN SV* svn, ...)
   ALIAS:
     is_pseudoprime = 1
+    is_euler_pseudoprime = 2
   PREINIT:
     int c, status = 1;
   PPCODE:
@@ -607,6 +613,9 @@ is_strong_pseudoprime(IN SV* svn, ...)
       } else if (ix == 1) {                      /* Fermat test */
         for (c = 1; c < items && ret == 1; c++)
           ret = is_pseudoprime(n, my_svuv(ST(c)));
+      } else if (ix == 2) {                      /* Euler test */
+        for (c = 1; c < items && ret == 1; c++)
+          ret = is_euler_pseudoprime(n, my_svuv(ST(c)));
       } else if ((n % 2) == 0) {                 /* evens composite */
          ret = 0;
       } else {
@@ -621,8 +630,9 @@ is_strong_pseudoprime(IN SV* svn, ...)
     }
     switch (ix) {
       case 0: _vcallsub_with_gmp("is_strong_pseudoprime"); break;
-      case 1:
-      default:_vcallsub_with_gmp("is_pseudoprime");  break;
+      case 1: _vcallsub_with_gmp("is_pseudoprime"); break;
+      case 2:
+      default:_vcallsub_with_gmp("is_euler_pseudoprime");  break;
     }
     return; /* skip implicit PUTBACK */
 
@@ -1264,42 +1274,46 @@ znlog(IN SV* sva, IN SV* svg, IN SV* svp)
     divmod = 3
     powmod = 4
   PREINIT:
-    int astatus, gstatus, pstatus;
+    int astatus, gstatus, pstatus, retundef;
     UV ret;
   PPCODE:
-    astatus = _validate_int(aTHX_ sva, 0);
+    astatus = _validate_int(aTHX_ sva, (ix == 0) ? 0 : 1);
     gstatus = _validate_int(aTHX_ svg, (ix == 0) ? 0 : 1);
     pstatus = _validate_int(aTHX_ svp, 0);
-    if (astatus == 1 && pstatus == 1 && gstatus != 0) {
-      UV a = my_svuv(sva), g, p = my_svuv(svp);
+    if (astatus != 0 && gstatus != 0 && pstatus == 1) {
+      UV a, g, p = my_svuv(svp);
       if (p <= 1) XSRETURN_UV(0);
       ret = 0;
-      if (gstatus == -1) {
-        IV b = my_sviv(svg);
-        switch (ix) {
-          case 1: ret = submod(a % p, -b % p, p); break;
-          case 2: g = mulmod(a % p, -b % p, p); ret = g ? p-g : 0; break;
-          case 3: g = divmod(a % p, -b % p, p); ret = g ? p-g : 0; break;
-          case 4: ret = modinverse(a,p);
-                  if (ret == 0 && a > 0 && p > 1) XSRETURN_UNDEF;
-                  ret = powmod(ret, -b, p); break;
-          default: break;
-        }
-      } else {
-        g = my_svuv(svg);
-        switch (ix) {
-          case 0: ret = znlog(a, g, p);
-                  /* TODO: perhaps return p to mean no solution? */
-                  if (ret == 0 && a > 1) XSRETURN_UNDEF;
-                  break;
-          case 1: ret = addmod(a % p, g % p, p); break;
-          case 2: ret = mulmod(a % p, g % p, p); break;
-          case 3: ret = divmod(a % p, g % p, p); break;
-          case 4:
-          default:ret = powmod(a, g, p); break;
-        }
+      retundef = 0;
+      a = (astatus == 1) ? my_svuv(sva) : negmod(my_sviv(sva), p);
+      g = (gstatus == 1) ? my_svuv(svg) : negmod(my_sviv(svg), p);
+      if (a >= p) a %= p;
+      if (g >= p && ix != 4) g %= p;
+      switch (ix) {
+        case 0: ret = znlog(a, g, p);
+                if (ret == 0 && a > 1) retundef = 1;
+                break;
+        case 1: ret = addmod(a, g, p); break;
+        case 2: ret = mulmod(a, g, p); break;
+        case 3: g = modinverse(g, p);
+                if (g == 0) retundef = 1;
+                else        ret = mulmod(a, g, p);
+                break;
+        case 4:
+        default:if (a == 0) {
+                  ret = (g == 0);
+                  retundef = (gstatus == -1);
+                } else {
+                  if (gstatus == -1) {
+                    a = modinverse(a, p);
+                    if (a == 0) retundef = 1;
+                    else        g = -my_sviv(svg);
+                  }
+                  ret = powmod(a, g, p);
+                }
+                break;
       }
-      if (ret == 0 && ((ix == 0 && a > 1) || (ix == 3))) XSRETURN_UNDEF;
+      if (retundef) XSRETURN_UNDEF;
       XSRETURN_UV(ret);
     }
     switch (ix) {
@@ -1347,8 +1361,7 @@ kronecker(IN SV* sva, IN SV* svb)
         UV a, n, ret = 0;
         n = (bstatus != -1) ? my_svuv(svb) : (UV)(-(my_sviv(svb)));
         if (n > 0) {
-          a = (astatus != -1) ? my_svuv(sva)
-                              : n * ((UV)(-my_sviv(sva))/n + 1) + my_sviv(sva);
+          a = (astatus == 1) ? my_svuv(sva) : negmod(my_sviv(sva), n);
           if (a > 0) {
             if (n == 1) XSRETURN_UV(0);
             ret = modinverse(a, n);
@@ -1359,7 +1372,7 @@ kronecker(IN SV* sva, IN SV* svb)
       } else {
         UV a, n, s, ret = 0;
         n = (bstatus != -1) ? my_svuv(svb) : (UV)(-(my_sviv(svb)));
-        a = (astatus != -1) ? my_svuv(sva) : n-((UV)(-(my_sviv(sva))) % n);
+        a = (astatus != -1) ? my_svuv(sva) : negmod(my_sviv(sva), n);
         if (!sqrtmod(&s, a, n))
           XSRETURN_UNDEF;
         XSRETURN_UV(s);

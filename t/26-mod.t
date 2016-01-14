@@ -44,7 +44,7 @@ plan tests => 0
             + 1                      # addmod
             + 1                      # submod
             + 2                      # mulmod
-            + 2                      # divmod
+            + 2 + 1                  # divmod
             + 2                      # powmod
             + 0;
 
@@ -119,6 +119,8 @@ for (0 .. $num) {
 is_deeply( \@res, \@exp, "mulmod with negative second input on ".($num+1)." random inputs" );
 
 ###### divmod
+is(divmod(0,14,53), 0, "divmod(0,14,53) = mulmod(0,invmod(14,53),53) = mulmod(0,19,53) = 0");
+
 @exp = (); @res = ();
 for (0 .. $num) {
   push @exp, Math::BigInt->new($i2[$_])->bmodinv($i3[$_])->bmul($i1[$_])->bmod($i3[$_]);

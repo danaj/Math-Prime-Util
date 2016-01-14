@@ -2905,6 +2905,13 @@ static UV _catalan_v(UV n, UV p) {
   while (n /= p)  s += n % 2;
   return s;
 }
+static int _catalan_vtest(UV n, UV p) {
+  n <<= 1;
+  while (n /= p)
+    if (n % 2)
+      return 1;
+  return 0;
+}
 int is_catalan_pseudoprime(UV n) {
   UV m = 1, a = n >> 1;
 
@@ -2922,7 +2929,7 @@ int is_catalan_pseudoprime(UV n) {
 #endif
       return 0;
     for (i = 0; i < nfactors; i++) {
-      if (_catalan_v(a, factors[i]))
+      if (_catalan_vtest(a, factors[i]))
         return 0;
     }
   }

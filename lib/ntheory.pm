@@ -49,8 +49,9 @@ See L<Math::Prime::Util> for complete documentation.
 
 =head2 PROBABLE PRIME TESTS
 
-  is_pseudoprime(n,bases)                  Fermat probable prime tests
-  is_strong_pseudoprime(n,bases)           Miller-Rabin tests to bases
+  is_pseudoprime(n,bases)                  Fermat probable prime test
+  is_euler_pseudoprime(n,bases)            Euler test to bases
+  is_strong_pseudoprime(n,bases)           Miller-Rabin test to bases
   is_lucas_pseudoprime(n)                  Lucas test
   is_strong_lucas_pseudoprime(n)           strong Lucas test
   is_almost_extra_strong_lucas_pseudoprime(n, [incr])   AES Lucas test

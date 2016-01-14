@@ -2653,6 +2653,29 @@ sub is_pseudoprime {
   1;
 }
 
+sub is_euler_pseudoprime {
+  my($n, @bases) = @_;
+  return 0 if int($n) < 0;
+  _validate_positive_integer($n);
+  croak("No bases given to is_euler_pseudoprime") unless scalar(@bases) > 0;
+  return 0+($n >= 2) if $n < 4;
+
+  foreach my $base (@bases) {
+    croak "Base $base is invalid" if $base < 2;
+    $base = $base % $n if $base >= $n;
+    if ($base > 1 && $base != $n-1) {
+      my $j = kronecker($base, $n);
+      return 0 if $j == 0;
+      $j = ($j > 0) ? 1 : $n-1;
+      my $x = (ref($n) eq 'Math::BigInt')
+        ? $n->copy->bzero->badd($base)->bmodpow(($n-1)/2,$n)
+        : _powmod($base, ($n-1)>>1, $n);
+      return 0 unless $x == $j;
+    }
+  }
+  1;
+}
+
 sub _miller_rabin_2 {
   my($n, $nm1, $s, $d) = @_;
 

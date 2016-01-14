@@ -12,7 +12,6 @@
 
 /* Primality related functions, including Montgomery math */
 
-static const UV mr_bases_const2[1] = {2};
 
 /******************************************************************************
   Code inside USE_MONT_PRIMALITY is Montgomery math and efficient M-R from
@@ -150,6 +149,8 @@ static int monty_mr64(const uint64_t n, const UV* bases, int cnt)
   }
   return 1;
 }
+#else
+static const UV mr_bases_const2[1] = {2};
 #endif
 /******************************************************************************/
 
@@ -178,6 +179,7 @@ static UV select_extra_strong_parameters(UV n, UV increment) {
   UV P = 3;
   while (1) {
     UV D = P*P - 4;
+    /* TODO: We should not do this test. */
     if (gcd_ui(D, n) > 1 && gcd_ui(D, n) != n) return 0;
     if (jacobi_iu(D, n) == -1)
       break;
@@ -190,12 +192,9 @@ static UV select_extra_strong_parameters(UV n, UV increment) {
   return P;
 }
 
-
 /* Fermat pseudoprime */
 int is_pseudoprime(UV const n, UV a)
 {
-  UV x;
-
   if (n < 5) return (n == 2 || n == 3);
   if (a < 2) croak("Base %"UVuf" is invalid", a);
   if (a >= n) {
@@ -203,8 +202,25 @@ int is_pseudoprime(UV const n, UV a)
     if ( a <= 1 || a == n-1 )
       return 1;
   }
-  x = powmod(a, n-1, n);    /* x = a^(n-1) mod n */
-  return (x == 1);
+  return powmod(a, n-1, n) == 1;  /* a^(n-1) = 1 mod n */
+}
+
+/* Euler (aka Euler-Jacobi) pseudoprime */
+int is_euler_pseudoprime(UV const n, UV a)
+{
+  int jacobi;
+  if (n < 5) return (n == 2 || n == 3);
+  if (!(n&1)) return 0;
+  if (a < 2) croak("Base %"UVuf" is invalid", a);
+  if (a >= n) {
+    a %= n;
+    if ( a <= 1 || a == n-1 )
+      return 1;
+  }
+  /* a^{(n-1)/2} = (a|p) mod n */
+  jacobi = kronecker_uu(a,n);
+  if (jacobi == 0) return 0;
+  return powmod(a, (n-1)>>1, n) == ((jacobi > 0) ? 1 : n-1);
 }
 
 /* Miller-Rabin probabilistic primality test
@@ -599,6 +615,7 @@ int is_lucas_pseudoprime(UV n, int strength)
     if (P == 0) return 0;
     Q = 1;
     D = P*P - 4;
+    if (gcd_ui(D, n) > 1 && gcd_ui(D, n) != n) return 0;
   }
   MPUassert( D == (P*P - 4*Q) , "is_lucas_pseudoprime: incorrect DPQ");
 
@@ -1140,7 +1157,7 @@ int is_frobenius_underwood_pseudoprime(UV n)
  * instead we'll use a table. */
 #define NUM_KNOWN_MERSENNE_PRIMES 48
 static const uint32_t _mersenne_primes[NUM_KNOWN_MERSENNE_PRIMES] = {2,3,5,7,13,17,19,31,61,89,107,127,521,607,1279,2203,2281,3217,4253,4423,9689,9941,11213,19937,21701,23209,44497,86243,110503,132049,216091,756839,859433,1257787,1398269,2976221,3021377,6972593,13466917,20996011,24036583,25964951,30402457,32582657,37156667,42643801,43112609,57885161};
-#define LAST_CHECKED_MERSENNE 34007399
+#define LAST_CHECKED_MERSENNE 34939757
 int is_mersenne_prime(UV p)
 {
   int i;
@@ -1163,7 +1180,6 @@ int lucas_lehmer(UV p)
   }
   return (V == 0);
 }
-
 
 /******************************************************************************/
 

@@ -16,7 +16,7 @@ our @EXPORT_OK =
       prime_precalc prime_memfree
       is_prime is_prob_prime is_provable_prime is_provable_prime_with_cert
       prime_certificate verify_prime
-      is_pseudoprime is_strong_pseudoprime
+      is_pseudoprime is_euler_pseudoprime is_strong_pseudoprime
       is_lucas_pseudoprime
       is_strong_lucas_pseudoprime
       is_extra_strong_lucas_pseudoprime
@@ -1740,6 +1740,26 @@ Removing primes, given base 2 this produces the sequence L<OEIS A001567|http://o
 For practical use, L</is_strong_pseudoprime> is a much stronger test with
 similar or better performance.
 
+=head2 is_euler_pseudoprime
+
+Takes a positive number C<n> and one or more non-zero positive bases as input.
+Returns C<1> if the input is an Euler probable prime to each base, C<0> if not.
+This is the Euler test, sometimes called the Euler-Jacobi test.
+Removing primes, given base 2 this produces the sequence L<OEIS A047713|http://oeis.org/A047713>.
+
+If 0 is returned, then the number really is a composite.  If 1 is returned,
+then it is either a prime or an Euler pseudoprime to all the given bases.
+Given enough distinct bases, the chances become very high that the
+number is actually prime.
+
+This test forms the basis of the Solovay-Strassen test, which is a precursor
+to the Miller-Rabin test (which uses the strong pseudoprime test).  An
+important downside to the standard pseudoprime test (e.g. Fermat's test) is
+that the Carmichael numbers are composites which pass for all bases.  An
+advantage of the Euler and strong pseudoprime tests is that there is no
+analogy to this.  For the Euler test, at I<most> 1/2 of witnesses pass for
+a composite, while at most 1/4 pass for the strong pseudoprime test.
+
 =head2 is_strong_pseudoprime
 
   my $maybe_prime = is_strong_pseudoprime($n, 2);
@@ -2606,28 +2626,28 @@ In the case of composites, many roots may exist, but only one is returned.
 
 =head2 addmod
 
-Given three integers C<a>, C<b>, and C<n> where C<a> and C<n> are unsigned,
+Given three integers C<a>, C<b>, and C<n> where C<n> is positive,
 return C<(a+b) mod n>.  This is particularly useful when dealing with
 numbers that are larger than a half-word but still native size.  No
 bigint package is needed and this can be 10-200x faster than using one.
 
 =head2 mulmod
 
-Given three integers C<a>, C<b>, and C<n> where C<a> and C<n> are unsigned,
+Given three integers C<a>, C<b>, and C<n> where C<n> is positive,
 return C<(a*b) mod n>.  This is particularly useful when C<n> fits in a
 native integer.  No bigint package is needed and this can be 10-200x
 faster than using one.
 
 =head2 powmod
 
-Given three integers C<a>, C<b>, and C<n> where C<a> and C<n> are unsigned,
+Given three integers C<a>, C<b>, and C<n> where C<n> is positive,
 return C<(a ** b) mod n>.  Typically binary exponentiation is used, so
 the process is very efficient.  With native size inputs, no bigint
 library is needed.
 
 =head2 divmod
 
-Given three integers C<a>, C<b>, and C<n> where C<a> and C<n> are unsigned,
+Given three integers C<a>, C<b>, and C<n> where C<n> is positive,
 return C<(a/b) mod n>.  This is done as C<(a * (1/b mod n)) mod n>.  If
 no inverse of C<b> mod C<n> exists then undef if returned.
 

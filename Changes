@@ -9,6 +9,7 @@ Revision history for Perl module Math::Prime::Util
     - divmod(a, b, n)                     a / b mod n
     - powmod(a, b, n)                     a ^ b mod n
     - sqrtmod(a, p)                       modular square root
+    - is_euler_pseudoprime(n,a[...])      Euler test to given bases
 
     [FUNCTIONALITY AND PERFORMANCE]
 
