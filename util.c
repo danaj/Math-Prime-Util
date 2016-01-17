@@ -2233,7 +2233,7 @@ static int verify_sqrtmod(UV s, UV *rs, UV a, UV p) {
 }
 int sqrtmod(UV *s, UV a, UV p) {
   if (p == 0) return 0;
-  a %= p;
+  if (a >= p) a %= p;
   if (p <= 2 || a <= 1) return verify_sqrtmod(a, s,a,p);
 
   if ((p % 4) == 3) {
@@ -2293,6 +2293,96 @@ int sqrtmod(UV *s, UV a, UV p) {
     return verify_sqrtmod(x, s,a,p);
   }
   return 0;
+}
+
+int sqrtmod_composite(UV *s, UV a, UV n) {
+  UV fac[MPU_MAX_FACTORS+1];
+  UV exp[MPU_MAX_FACTORS+1];
+  UV sqr[MPU_MAX_FACTORS+1];
+  UV p;
+  int i, j, k, nfactors;
+
+  if (n == 0) return 0;
+  if (a >= n) a %= n;
+  if (n <= 2 || a <= 1) return verify_sqrtmod(a, s,a,n);
+  /* if (kronecker_uu(a, n) == -1) return 0; */
+
+  nfactors = factor_exp(n, fac, exp);
+  for (i = 0; i < nfactors; i++) {
+
+    /* Powers of 2 */
+    if (fac[i] == 2) {
+      if (exp[i] == 2 && ((a % 4) != 1)) return 0;
+      if (exp[i] >  2 && ((a % 8) != 1)) return 0;
+
+      if (exp[i] == 1) {
+        sqr[i] = 1;
+      } else if (exp[i] == 2) {
+        sqr[i] = 1;  /* and 3 */
+      } else {
+        UV this_roots[256], next_roots[256];
+        UV nthis = 0, nnext = 0;
+        this_roots[nthis++] = 1;
+        this_roots[nthis++] = 3;
+        for (j = 2; j < exp[i]; j++) {
+          p = UVCONST(1) << (j+1);
+          nnext = 0;
+          for (k = 0; k < nthis && nnext < 254; k++) {
+            UV r = this_roots[k];
+            if (sqrmod(r,p) == (a % p))
+              next_roots[nnext++] = r;
+            if (sqrmod(p-r,p) == (a % p))
+              next_roots[nnext++] = p-r;
+          }
+          if (nnext == 0) return 0;
+          /* copy next exponent's found roots to this one */
+          nthis = nnext;
+          for (k = 0; k < nnext; k++)
+            this_roots[k] = next_roots[k];
+        }
+        sqr[i] = this_roots[0];
+      }
+      continue;
+    }
+
+    /* p is an odd prime */
+    p = fac[i];
+    if (!sqrtmod(&(sqr[i]), a, p))
+      return 0;
+
+    /* Lift solution of x^2 = a mod p  to  x^2 = a mod p^e */
+    for (j = 1; j < exp[i]; j++) {
+      UV xk2, yk, expect, sol;
+      xk2 = addmod(sqr[i],sqr[i],p);
+      yk = modinverse(xk2, p);
+      expect = mulmod(xk2,yk,p);
+      p *= fac[i];
+      sol = submod(sqr[i], mulmod(submod(sqrmod(sqr[i],p), a % p, p), yk, p), p);
+      if (expect != 1 || sqrmod(sol,p) != (a % p)) {
+        /* printf("a %lu failure to lift to %lu^%d\n", a, fac[i], j+1); */
+        return 0;
+      }
+      sqr[i] = sol;
+    }
+  }
+
+#if 0
+  /* This is a crude way we could try to return the smallest result.  At this
+   * point there is a solution, so we're not wasting too much time. */
+  for (i = 1; i < 1000000 && i < (n>>1); i++) {
+    if (sqrmod(i,n) == a)
+      return verify_sqrtmod(i, s,a,n);
+  }
+#endif
+
+  /* raise fac[i] */
+  for (i = 0; i < nfactors; i++) {
+    for (p = fac[i], j = 1; j < exp[i]; j++)
+      fac[i] *= p;
+  }
+
+  p = chinese(sqr, fac, nfactors, &i);
+  return (i == 1) ? verify_sqrtmod(p, s, a, n) : 0;
 }
 
 /* status: 1 ok, -1 no inverse, 0 overflow */

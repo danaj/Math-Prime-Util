@@ -2613,16 +2613,12 @@ cases the return value is still congruent to C<1> modulo C<n> as expected.
 
 Given two integers C<a> and C<p>, return the square root of C<a> mod C<p>.
 If no square root exists, undef is returned.  If defined, the return value
-C<r> will always satisfy C<mulmod(r,r,p) = a>.
+C<r> will always satisfy C<r^2 = a mod p>.
 
-The function is intended to take a prime modulus.  It will not hang or
-crash with composite modulus, but it may return undef even though a
-modular root exists.
-
-Only one root is returned, even though there are at least two.  In the
-case of C<p> a prime and a return value C<r>, then the two roots are
-C<+/- r mod n>.  The least positive C<r> will be returned.
-In the case of composites, many roots may exist, but only one is returned.
+If the modulus is prime, the function will always return C<r>, the smaller
+of the two square roots (the other being C<-r mod p>.  If the modulus is
+composite, one of possibly many square roots will be returned, and it will
+not necessarily be the smallest.
 
 =head2 addmod
 

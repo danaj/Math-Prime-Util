@@ -67,6 +67,7 @@ extern IV gcdext(IV a, IV b, IV* u, IV* v, IV* s, IV* t); /* Ext Euclidean */
 extern UV modinverse(UV a, UV p);              /* Returns 1/a mod p */
 extern UV divmod(UV a, UV b, UV n);            /* Returns a/b mod n */
 extern int sqrtmod(UV* s, UV a, UV p);         /* sqrt(a) mod p */
+extern int sqrtmod_composite(UV* s, UV a,UV n);/* sqrt(a) mod n */
 extern UV chinese(UV* a, UV* n, UV num, int *status); /* Chinese Remainder */
 
 extern UV totient(UV n);

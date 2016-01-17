@@ -1372,9 +1372,12 @@ kronecker(IN SV* sva, IN SV* svb)
       } else {
         UV a, n, s, ret = 0;
         n = (bstatus != -1) ? my_svuv(svb) : (UV)(-(my_sviv(svb)));
-        a = (astatus != -1) ? my_svuv(sva) : negmod(my_sviv(sva), n);
-        if (!sqrtmod(&s, a, n))
-          XSRETURN_UNDEF;
+        a = (n == 0) ? 0 : (astatus != -1) ? my_svuv(sva) % n : negmod(my_sviv(sva), n);
+        if (is_prob_prime(n)) {
+          if (!sqrtmod(&s, a, n)) XSRETURN_UNDEF;
+        } else {
+          if (!sqrtmod_composite(&s, a, n)) XSRETURN_UNDEF;
+        }
         XSRETURN_UV(s);
       }
     }

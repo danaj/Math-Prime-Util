@@ -2231,6 +2231,7 @@ sub sqrtmod {
     $a = _bigint_to_int($a);
     $n = _bigint_to_int($n);
     $a %= $n;
+    return 1 if $a == 1;
     my $lim = ($n+1) >> 1;
     for my $r (2 .. $lim) {
       return $r if (($r*$r) % $n) == $a;
