@@ -89,7 +89,7 @@ is_deeply(\@exp, [map { powmod($_ & 3, ($_>>2)-3, 1) } 0..27], "powmod(..,1)");
 ###### addmod
 @exp = (); @res = ();
 for (0 .. $num) {
-  push @exp, Math::BigInt->new($i1[$_])->badd($i2[$_])->bmod($i3[$_]);
+  push @exp, Math::BigInt->new("$i1[$_]")->badd("$i2[$_]")->bmod("$i3[$_]");
   push @res, addmod($i1[$_], $i2[$_], $i3[$_]);
 }
 is_deeply( \@res, \@exp, "addmod on ".($num+1)." random inputs" );
@@ -97,7 +97,7 @@ is_deeply( \@res, \@exp, "addmod on ".($num+1)." random inputs" );
 ###### submod
 @exp = (); @res = ();
 for (0 .. $num) {
-  push @exp, Math::BigInt->new($i1[$_])->bsub($i2t[$_])->bmod($i3[$_]);
+  push @exp, Math::BigInt->new("$i1[$_]")->bsub("$i2t[$_]")->bmod("$i3[$_]");
   push @res, addmod($i1[$_], -$i2t[$_], $i3[$_]);
 }
 is_deeply( \@res, \@exp, "addmod with negative second input on ".($num+1)." random inputs" );
@@ -105,7 +105,7 @@ is_deeply( \@res, \@exp, "addmod with negative second input on ".($num+1)." rand
 ###### mulmod
 @exp = (); @res = ();
 for (0 .. $num) {
-  push @exp, Math::BigInt->new($i1[$_])->bmul($i2[$_])->bmod($i3[$_]);
+  push @exp, Math::BigInt->new("$i1[$_]")->bmul("$i2[$_]")->bmod("$i3[$_]");
   push @res, mulmod($i1[$_], $i2[$_], $i3[$_]);
 }
 is_deeply( \@res, \@exp, "mulmod on ".($num+1)." random inputs" );
@@ -113,7 +113,7 @@ is_deeply( \@res, \@exp, "mulmod on ".($num+1)." random inputs" );
 ###### mulmod (neg)
 @exp = (); @res = ();
 for (0 .. $num) {
-  push @exp, Math::BigInt->new($i1[$_])->bmul(-$i2t[$_])->bmod($i3[$_]);
+  push @exp, Math::BigInt->new("$i1[$_]")->bmul("-$i2t[$_]")->bmod("$i3[$_]");
   push @res, mulmod($i1[$_], -$i2t[$_], $i3[$_]);
 }
 is_deeply( \@res, \@exp, "mulmod with negative second input on ".($num+1)." random inputs" );
@@ -123,7 +123,7 @@ is(divmod(0,14,53), 0, "divmod(0,14,53) = mulmod(0,invmod(14,53),53) = mulmod(0,
 
 @exp = (); @res = ();
 for (0 .. $num) {
-  push @exp, Math::BigInt->new($i2[$_])->bmodinv($i3[$_])->bmul($i1[$_])->bmod($i3[$_]);
+  push @exp, Math::BigInt->new("$i2[$_]")->bmodinv("$i3[$_]")->bmul("$i1[$_]")->bmod("$i3[$_]");
   push @res, divmod($i1[$_], $i2[$_], $i3[$_]);
 }
 @exp = map { $_->is_nan() ? undef : $_ } @exp;
@@ -131,17 +131,27 @@ is_deeply( \@res, \@exp, "divmod on ".($num+1)." random inputs" );
 
 ###### divmod (neg)
 @exp = (); @res = ();
+# Old Math::BigInt will die with FP exception.  Work around.
+#for (0 .. $num) {
+#  push @exp, Math::BigInt->new("-$i2t[$_]")->bmodinv("$i3[$_]")->bmul("$i1[$_]")->bmod("$i3[$_]");
+#  push @res, divmod($i1[$_], -$i2t[$_], $i3[$_]);
+#}
+#@exp = map { $_->is_nan() ? undef : $_ } @exp;
 for (0 .. $num) {
-  push @exp, Math::BigInt->new(-$i2t[$_])->bmodinv($i3[$_])->bmul($i1[$_])->bmod($i3[$_]);
-  push @res, divmod($i1[$_], -$i2t[$_], $i3[$_]);
+  my $r = divmod($i1[$_], -$i2t[$_], $i3[$_]);
+  push @res, $r;
+  if (defined $r) {
+    push @exp, Math::BigInt->new("-$i2t[$_]")->bmodinv("$i3[$_]")->bmul("$i1[$_]")->bmod("$i3[$_]");
+  } else {
+    push @exp, undef;
+  }
 }
-@exp = map { $_->is_nan() ? undef : $_ } @exp;
 is_deeply( \@res, \@exp, "divmod with negative second input on ".($num+1)." random inputs" );
 
 ###### powmod
 @exp = (); @res = ();
 for (0 .. $num) {
-  push @exp, Math::BigInt->new($i1[$_])->bmodpow($i2[$_],$i3[$_]);
+  push @exp, Math::BigInt->new("$i1[$_]")->bmodpow("$i2[$_]","$i3[$_]");
   push @res, powmod($i1[$_], $i2[$_], $i3[$_]);
 }
 is_deeply( \@res, \@exp, "powmod on ".($num+1)." random inputs" );
@@ -149,7 +159,7 @@ is_deeply( \@res, \@exp, "powmod on ".($num+1)." random inputs" );
 ###### powmod (neg)
 @exp = (); @res = ();
 for (0 .. $num) {
-  push @exp, Math::BigInt->new($i1[$_])->bmodpow(-$i2t[$_],$i3[$_]);
+  push @exp, Math::BigInt->new("$i1[$_]")->bmodpow("-$i2t[$_]","$i3[$_]");
   push @res, powmod($i1[$_], -$i2t[$_], $i3[$_]);
 }
 @exp = map { $_->is_nan() ? undef : $_ } @exp;
