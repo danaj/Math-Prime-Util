@@ -407,7 +407,7 @@ is( prev_prime(19662), 19661, "prev prime of 19662 is 19661" );
 is( prev_prime(19660), 19609, "prev prime of 19660 is 19609" );
 is( prev_prime(19610), 19609, "prev prime of 19610 is 19609" );
 
-is( prev_prime(2), 0, "Previous prime of 2 returns 0" );
+is( prev_prime(2), undef, "Previous prime of 2 returns undef" );
 if ($use64) {
   is( next_prime(18446744073709551611), "18446744073709551629", "Next prime of ~0-4 returns bigint next prime" );
 } else {
@@ -451,7 +451,7 @@ cmp_closeto( prime_count_upper(412345678), 21958997, 1500, "prime_count_upper(41
 
 while (my($n, $pin) = each (%pivals_small)) {
   my $next = $pin+1;
-  cmp_ok( nth_prime($pin), '<=', $n, "nth_prime($pin) <= $n");
+  cmp_ok( $pin ? nth_prime($pin) : 0, '<=', $n, "nth_prime($pin) <= $n");
   cmp_ok( nth_prime($next), '>=', $n, "nth_prime($next) >= $n");
 }
 

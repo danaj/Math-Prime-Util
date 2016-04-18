@@ -39,7 +39,7 @@ my @small_primes = qw/
 
 {
   # insert primes before and after
-  unshift @small_primes, 0;
+  unshift @small_primes, undef;
   push @small_primes, 3581;
   # Now test next_prime and prev_prime for all numbers 0 to 3572
   my $prev_index = 0;
@@ -78,7 +78,7 @@ is( prev_prime(19610), 19609, "prev prime of 19610 is 19609" );
 
 is( next_prime(10019), 10037, "next prime of 10019 is 10037" );
 
-is( prev_prime(2), 0, "Previous prime of 2 returns 0" );
+is( prev_prime(2), undef, "Previous prime of 2 returns undef" );
 if ($use64) {
   # With 5.8.8 and earlier, this can cause problems due to Perl getting lost
   # when the return value is turned into a Math::BigInt.  Fixed in 5.8.9.

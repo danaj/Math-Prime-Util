@@ -80,7 +80,7 @@ extern UV znorder(UV a, UV n);
 extern int is_primitive_root(UV a, UV p);
 #define is_square_free(n)  (moebius(n) != 0)
 extern int is_carmichael(UV n);
-extern int is_quasi_carmichael(UV n);
+extern UV  is_quasi_carmichael(UV n);  /* Returns number of bases */
 
 extern IV stirling2(UV n, UV m);
 extern IV stirling1(UV n, UV m);

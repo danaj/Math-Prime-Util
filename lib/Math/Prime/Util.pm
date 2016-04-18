@@ -484,6 +484,7 @@ sub miller_rabin_random {
 sub primorial {
   my($n) = @_;
   _validate_num($n) || _validate_positive_integer($n);
+  return (1,1,2,6,6,30,30,210,210,210)[$n] if $n < 10;
 
   if ($_HAVE_GMP && defined &Math::Prime::Util::GMP::primorial) {
     return _reftyped($_[0], Math::Prime::Util::GMP::primorial($n));
@@ -495,6 +496,7 @@ sub primorial {
 sub pn_primorial {
   my($n) = @_;
   _validate_num($n) || _validate_positive_integer($n);
+  return (1,2,6,30,210,2310,30030,510510,9699690,223092870)[$n] if $n < 10;
 
   if ($_HAVE_GMP && defined &Math::Prime::Util::GMP::pn_primorial) {
     return _reftyped($_[0], Math::Prime::Util::GMP::pn_primorial($n));
@@ -993,7 +995,7 @@ Version 0.57
   # step to the next prime (returns 0 if not using bigints and we'd overflow)
   $n = next_prime($n);
 
-  # step back (returns 0 if given input less than 2)
+  # step back (returns undef if given input 2 or less)
   $n = prev_prime($n);
 
 
@@ -1274,8 +1276,16 @@ larger than C<18,446,744,073,709,551,557> in 64-bit).
   $n = prev_prime($n);
 
 Returns the prime preceding the input number (i.e. the largest prime that is
-strictly less than the input).  0 is returned if the input is C<2> or lower.
+strictly less than the input).  C<undef> is returned if the input is C<2>
+or lower.
 
+The behavior in various programs of the I<previous prime> function is varied.
+Pari/GP and L<Math::Pari> returns the input if it is prime, as does
+L<Math::Prime::FastSieve/nearest_le>.  When given an input such that the
+return value will be the first prime less than C<2>,
+L<Math::Prime::FastSieve>, L<Math::Pari>, Pari/GP, and older versions of
+MPU will return C<0>.  L<Math::Primality> and the current MPU will return
+C<undef>.  WolframAlpha returns C<-2>.  Maple gives a range error.
 
 =head2 forprimes
 
@@ -1664,6 +1674,9 @@ argument.
 Returns the prime that lies in index C<n> in the array of prime numbers.  Put
 another way, this returns the smallest C<p> such that C<Pi(p) E<gt>= n>.
 
+Like most programs with similar functionality, this is one-based.
+C<nth_prime(0)> returns C<undef>, C<nth_prime(1)> returns C<2>.
+
 For relatively small inputs (below 1 million or so), this does a sieve over
 a range containing the nth prime, then counts up to the number.  This is fairly
 efficient in time and memory.  For larger values, create a low-biased estimate
@@ -1725,7 +1738,7 @@ on the approximate twin prime count.
 =head2 nth_ramanujan_prime
 
 Returns the Nth Ramanujan prime.  For reasonable size values of C<n>, e.g.
-under C<10^7> or so, this is relatively efficient for single calls.  If
+under C<10^8> or so, this is relatively efficient for single calls.  If
 multiple calls are being made, it will be much more efficient to get the
 list once.
 
@@ -2694,6 +2707,13 @@ Returns 1 if the input C<n> is a Carmichael number.  These are composites that
 satisfy C<b^(n-1) ≡ 1 mod n> for all C<1 E<lt> b E<lt> n> relatively prime to C<n>.
 Alternately Korselt's theorem says these are composites such that C<n> is
 square-free and C<p-1> divides C<n-1> for all prime divisors C<p> of C<n>.
+
+For inputs larger than 50 digits after removing very small factors, this
+uses a probabilistic test since factoring the number could take unreasonably
+long.  The first 150 primes are used for testing.  Any that divide C<n> are
+checked for square-free-ness and the Korselt condition, while those that do
+not divide C<n> are used as the pseudoprime base.  The chances of a
+non-Carmichael passing this test are less than C<2^-150>.
 
 This is the L<OEIS series A002997|http://oeis.org/A002997>.
 

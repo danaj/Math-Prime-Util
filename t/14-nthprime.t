@@ -61,7 +61,7 @@ my %nthprimes_small = map { $_ => $nthprimes32{$_} }
                       grep { ($_ <= 10_000_000) || $extra }
                       keys %nthprimes32;
 
-my @small_primes = (0, @{primes($nth_small_prime)});
+my @small_primes = (undef, @{primes($nth_small_prime)});
 
 my %ntpcs = (
              5 =>                   29,
@@ -89,7 +89,7 @@ plan tests => 0 + 2*scalar(keys %pivals32)
 
 while (my($n, $pin) = each (%pivals32)) {
   my $next = $pin+1;
-  cmp_ok( nth_prime($pin), '<=', $n, "nth_prime($pin) <= $n");
+  cmp_ok( $pin ? nth_prime($pin) : 0, '<=', $n, "nth_prime($pin) <= $n");
   cmp_ok( nth_prime($next), '>=', $n, "nth_prime($next) >= $n");
 }
 
@@ -137,7 +137,7 @@ if ($extra && $use64 && $usexs) {
 
 ####################################3
 
-is( nth_twin_prime(0), 0, "nth_twin_prime(0) = 0" );
+is( nth_twin_prime(0), undef, "nth_twin_prime(0) = undef" );
 is( nth_twin_prime(17), 239, "239 = 17th twin prime" );
 is( nth_twin_prime(1234), 101207, "101207 = 1234'th twin prime" );
 

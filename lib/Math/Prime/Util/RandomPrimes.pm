@@ -511,6 +511,7 @@ sub _random_xscount_prime {
 
 sub random_prime {
   my($low,$high) = @_;
+  return if $high < 2 || $low > $high;
 
   # Tighten the range to the nearest prime.
   $low = ($low <= 2)  ?  2  :  next_prime($low-1);

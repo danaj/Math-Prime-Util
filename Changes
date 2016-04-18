@@ -2,6 +2,14 @@ Revision history for Perl module Math::Prime::Util
 
 0.58 2016-?
 
+    [API Changes]
+
+    - prev_prime($n) where $n <= 2 now returns undef instead of 0.  This
+      may enable catching range errors, and is technically more correct.
+    - nth_prime(0) now returns undef instead of 0.  This should help catch
+      cases where the base wasn't understood.  The change is similar for
+      all the nth_* functions (e.g. nth_twin_prime).
+
     [ADDED]
 
     - addmod(a, b, n)                     a + b mod n
@@ -13,9 +21,16 @@ Revision history for Perl module Math::Prime::Util
 
     [FUNCTIONALITY AND PERFORMANCE]
 
-    - Fixed incorrect table entry for 2^16th Ramanujan prime count.
+    - Fixed incorrect table entries for 2^16th Ramanujan prime count and
+      nth_ramanujan_prime(23744).
 
     - vecsum will handle 128-bit sums internally (performance increase).
+
+    - foroddcomposites with certain arguments would start with 10 instead of 9.
+
+    - Speedup is_carmichael.
+
+    - znlog is now an interleaved BSGS racing Rho.  It is about 2x faster.
 
 
 0.57 2016-01-03

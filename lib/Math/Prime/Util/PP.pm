@@ -673,7 +673,7 @@ sub is_ramanujan_prime {
 
 sub nth_ramanujan_prime {
   my($n) = @_;
-  return 0 if $n <= 0;
+  return undef if $n <= 0;
   my $L = _n_ramanujan_primes($n);
   return $L->[$n-1];
 }
@@ -702,7 +702,7 @@ sub next_prime {
 sub prev_prime {
   my($n) = @_;
   _validate_positive_integer($n);
-  return (0,0,0,2,3,3,5,5,7,7,7,7)[$n] if $n <= 11;
+  return (undef,undef,undef,2,3,3,5,5,7,7,7,7)[$n] if $n <= 11;
   if ($n > 4294967295 && Math::Prime::Util::prime_get_config()->{'gmp'}) {
     return Math::Prime::Util::_reftyped($_[0], Math::Prime::Util::GMP::prev_prime($n));
   }
@@ -999,6 +999,42 @@ sub is_carmichael {
   return 0 if $n < 561 || ($n % 2) == 0;
   return 0 if (!($n % 4) || !($n % 9) || !($n % 25) || !($n%49) || !($n%121));
 
+  my $fn = $n;
+  if ($n > 100_000_000) {   # After 100M, this saves time on average
+    # Pre-tests which are faster than factoring.
+    return 0 if Math::Prime::Util::powmod(2, $n-1, $n) != 1;
+    return 0 if Math::Prime::Util::is_prime($n);
+    for my $a (3,5,7,11,13,17,19,23,29,31,37) {
+      my $gcd = Math::Prime::Util::gcd($a, $fn);
+      if ($gcd == 1) {
+        return 0 if Math::Prime::Util::powmod($a, $n-1, $n) != 1;
+      } else {
+        return 0 if $gcd != $a;              # Not square free
+        return 0 if (($n-1) % ($a-1)) != 0;  # factor doesn't divide
+        $fn /= $a;
+      }
+    }
+  }
+  #return 1;
+  # Based on pre-tests, it's reasonably likely $n is a Carmichael number.
+
+  # Use probabilistic test if too large to reasonably factor.
+  if (length($fn) > 50) {
+    for my $t (13 .. 150) {
+      my $a = $_primes_small[$t];
+      my $gcd = Math::Prime::Util::gcd($a, $fn);
+      if ($gcd == 1) {
+        return 0 if Math::Prime::Util::powmod($a, $n-1, $n) != 1;
+      } else {
+        return 0 if $gcd != $a;              # Not square free
+        return 0 if (($n-1) % ($a-1)) != 0;  # factor doesn't divide
+        $fn /= $a;
+      }
+    }
+    return 1;
+  }
+
+  # Verify with factoring.
   my @pe = Math::Prime::Util::factor_exp($n);
   return 0 if scalar(@pe) < 3;
   for my $pe (@pe) {
@@ -1276,6 +1312,7 @@ sub nth_prime {
   my($n) = @_;
   _validate_positive_integer($n);
 
+  return undef if $n <= 0;
   return $_primes_small[$n] if $n <= $#_primes_small;
 
   if ($n > MPU_MAXPRIMEIDX && ref($n) ne 'Math::BigFloat') {
@@ -1325,6 +1362,7 @@ sub nth_prime_upper {
   my($n) = @_;
   _validate_positive_integer($n);
 
+  return undef if $n <= 0;
   return $_primes_small[$n] if $n <= $#_primes_small;
 
   $n = _upgrade_to_float($n) if $n > MPU_MAXPRIMEIDX || $n > 2**45;
@@ -1355,6 +1393,7 @@ sub nth_prime_lower {
   my($n) = @_;
   _validate_num($n) || _validate_positive_integer($n);
 
+  return undef if $n <= 0;
   return $_primes_small[$n] if $n <= $#_primes_small;
 
   $n = _upgrade_to_float($n) if $n > MPU_MAXPRIMEIDX || $n > 2**45;
@@ -1376,6 +1415,7 @@ sub nth_prime_approx {
   my($n) = @_;
   _validate_num($n) || _validate_positive_integer($n);
 
+  return undef if $n <= 0;
   return $_primes_small[$n] if $n <= $#_primes_small;
 
   $n = _upgrade_to_float($n)
@@ -1818,7 +1858,7 @@ sub twin_prime_count_approx {
 sub nth_twin_prime {
   my($n) = @_;
   return 0 if $n < 0;
-  return (0,3,5,11,17,29,41)[$n] if $n <= 6;
+  return (undef,3,5,11,17,29,41)[$n] if $n <= 6;
 
   my $p = nth_twin_prime_approx($n);
   my $tp = Math::Prime::Util::twin_primes($p);

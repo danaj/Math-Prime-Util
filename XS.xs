@@ -896,15 +896,16 @@ is_prime(IN SV* svn, ...)
     is_ramanujan_prime = 14
     is_square_free = 15
     is_carmichael = 16
-    is_mersenne_prime = 17
-    is_power = 18
+    is_quasi_carmichael = 17
+    is_mersenne_prime = 18
+    is_power = 19
   PREINIT:
     int status;
   PPCODE:
     status = _validate_int(aTHX_ svn, 1);
     if (status != 0) {
       int ret = 0;
-      if (status == 1 && ix != 18) {
+      if (status == 1 && ix != 19) {
         UV n = my_svuv(svn);
         UV a = (items == 1) ? 0 : my_svuv(ST(1));
         switch (ix) {
@@ -932,12 +933,13 @@ is_prime(IN SV* svn, ...)
           case 14: ret = is_ramanujan_prime(n); break;
           case 15: ret = is_square_free(n); break;
           case 16: ret = is_carmichael(n); break;
-          case 17:
+          case 17: ret = is_quasi_carmichael(n); break;
+          case 18:
           default: ret = is_mersenne_prime(n);
                    if (ret == -1) status = 0;
                    break;
         }
-      } else if (ix == 18) {
+      } else if (ix == 19) {
         UV n = (status == 1) ? my_svuv(svn) : (UV) -my_sviv(svn);
         UV a = (items == 1) ? 0 : my_svuv(ST(1));
         if (status == -1 && n > (UV)IV_MAX) { status = 0; }
@@ -975,8 +977,9 @@ is_prime(IN SV* svn, ...)
       case 14:_vcallsub_with_gmp("is_ramanujan_prime"); break;
       case 15:_vcallsub_with_gmp("is_square_free"); break;
       case 16:_vcallsub_with_gmp("is_carmichael"); break;
-      case 17:_vcallsub_with_gmp("is_mersenne_prime"); break;
-      case 18:
+      case 17:_vcallsub_with_gmp("is_quasi_carmichael"); break;
+      case 18:_vcallsub_with_gmp("is_mersenne_prime"); break;
+      case 19:
       default:if (items != 3 && status != -1) {
                 STRLEN len;
                 char* ptr = SvPV(svn, len);
@@ -1016,6 +1019,10 @@ next_prime(IN SV* svn)
         /* Out of range.  Fall through to Perl. */
       } else {
         UV ret;
+        /* Prev prime of 2 or less should return undef */
+        if (ix == 1 && n < 3) XSRETURN_UNDEF;
+        /* nth_prime(0) and similar should return undef */
+        if (n == 0 && (ix >= 2 && ix <= 8)) XSRETURN_UNDEF;
         switch (ix) {
           case 0: ret = next_prime(n);  break;
           case 1: ret = (n < 3) ? 0 : prev_prime(n);  break;
@@ -1292,6 +1299,7 @@ znlog(IN SV* sva, IN SV* svg, IN SV* svp)
       switch (ix) {
         case 0: ret = znlog(a, g, p);
                 if (ret == 0 && a > 1) retundef = 1;
+                if (ret == 0 && (a == 0 || g == 0)) retundef = 1;
                 break;
         case 1: ret = addmod(a, g, p); break;
         case 2: ret = mulmod(a, g, p); break;
@@ -1370,7 +1378,7 @@ kronecker(IN SV* sva, IN SV* svb)
         if (ret == 0) XSRETURN_UNDEF;
         XSRETURN_UV(ret);
       } else {
-        UV a, n, s, ret = 0;
+        UV a, n, s;
         n = (bstatus != -1) ? my_svuv(svb) : (UV)(-(my_sviv(svb)));
         a = (n == 0) ? 0 : (astatus != -1) ? my_svuv(sva) % n : negmod(my_sviv(sva), n);
         if (is_prob_prime(n)) {
@@ -1822,7 +1830,7 @@ forcomposites (SV* block, IN SV* svbeg, IN SV* svend = 0)
     }
 
     if (items < 3) {
-      beg = ix ? 9 : 4;
+      beg = ix ? 8 : 4;
       end = my_svuv(svbeg);
     } else {
       beg = my_svuv(svbeg);
@@ -1855,7 +1863,7 @@ forcomposites (SV* block, IN SV* svbeg, IN SV* svend = 0)
         }
       } else {
         if (ix) {
-          if (beg < 9)  beg = 9;
+          if (beg < 8)  beg = 8;
         } else if (beg <= 4) { /* sieve starts at 7, so handle this here */
           sv_setuv(svarg, 4);  MULTICALL;
           beg = 6;

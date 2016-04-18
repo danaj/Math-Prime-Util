@@ -1115,7 +1115,7 @@ UV nth_ramanujan_prime_upper(UV n) {
 
 static const UV ram_lower_idx[] = {
   5935, 6013, 6107, 8726, 8797, 9396, 9556, 9611, 13314, 13405, 13641,
-  18655, 20457, 22665, 23745, 31015, 34432, 43298, 50564, 54168, 69194,
+  18655, 20457, 22665, 23744, 31015, 34432, 43298, 50564, 54168, 69194,
   75658, 97434, 110360, 149399, 164361, 224590, 265154, 337116, 386011,
   514260, 606067, 804041, 981748, 1367781, 1874883, 2448102, 3248825,
   4513600, 6240819, 8581572, 12175878, 17555268, 25999335, 39295429,
@@ -1419,6 +1419,13 @@ static const unsigned char byte_sum[256] =
    27,26,20,19,49,48,42,41,38,37,31,30,36,35,29,28,25,24,18,17,32,31,25,24,21,
    20,14,13,19,18,12,11,8,7,1,0};
 
+#if BITS_PER_WORD == 64
+#define N_SUM_TABLE 20
+static const UV sum_pow2_table[N_SUM_TABLE] =
+  {39472122,148231324,559305605,2106222351,7995067942,30299372141,115430379568,440354051430,1683364991290,6448757014608,24754017328490,95132828618112,366232755206338,1411967951135692,5450257923501125,21065843859337046,81507897728041027,315718920061826578,1224166825601048215,4750936697162786391};
+#endif
+
+
 int sum_primes(UV low, UV high, UV *return_sum) {
   UV sum = 0;
   int overflow = 0;
@@ -1435,6 +1442,21 @@ int sum_primes(UV low, UV high, UV *return_sum) {
   if (low >= 1e13 && (high-low) >=  5e7) return 0;
 #else
   if (low == 7 && high >= 323381)  return 0;
+#endif
+
+#if BITS_PER_WORD == 64
+  /* Messy table speedup.  Should be cleaner and accomodate other low values. */
+  if (low == 7 && high >= (1UL << 15)) {
+    UV b;
+    sum += 14584631;
+    low = 1 << 14;
+    for (b = 15; b < 15+N_SUM_TABLE; b++) {
+      if (high < (UVCONST(1) << b))
+        break;
+      sum += sum_pow2_table[b-15];
+      low = UVCONST(1) << b;
+    }
+  }
 #endif
 
   if (low <= high) {
@@ -2032,6 +2054,9 @@ int is_carmichael(UV n) {
   if (!(n% 4) || !(n% 9) || !(n%25) || !(n%49) || !(n%121) || !(n%169))
     return 0;
 
+  /* Fast check without having to factor */
+  if (n > 5000000 && powmod(2,n-1,n) != 1) return 0;
+
   nfactors = factor_exp(n, fac, exp);
   if (nfactors < 3)
     return 0;
@@ -2042,11 +2067,10 @@ int is_carmichael(UV n) {
   return 1;
 }
 
-#if 0
 /* Returns number of bases that pass */
-int is_quasi_carmichael(UV n) {
-  UV b, lim, fac[MPU_MAX_FACTORS+1], exp[MPU_MAX_FACTORS+1];
-  int i, nfactors, nbases, c;
+UV is_quasi_carmichael(UV n) {
+  UV nbases, b, lim, fac[MPU_MAX_FACTORS+1], exp[MPU_MAX_FACTORS+1];
+  int i, nfactors;
 
   if (n < 35) return 0;
 
@@ -2055,10 +2079,10 @@ int is_quasi_carmichael(UV n) {
     return 0;
 
   nfactors = factor_exp(n, fac, exp);
-  /* Composite */
+  /* Must be composite */
   if (nfactors < 2)
     return 0;
-  /* Square free */
+  /* Must be square free */
   for (i = 0; i < nfactors; i++)
     if (exp[i] > 1)
       return 0;
@@ -2066,21 +2090,45 @@ int is_quasi_carmichael(UV n) {
   /* b < |n-p^2|/p.  We use the largest factor. */
   lim = fac[nfactors-1];
   lim = ( ((lim*lim <= n) ? (n-lim*lim) : (lim*lim-n)) + lim-1 ) / lim;
-  for (b = 1; b < fac[0]; b++) {
+  /* We could exit after finding one, but we'll return the number of bases */
+  /* Try to use 32-bit if possible to double performance */
+  if (n+lim <= 4294967295U) {
+    uint32_t nb, sb = b, slim = lim, sfac[MPU_MAX_FACTORS+1];
     for (i = 0; i < nfactors; i++)
-      if ((n-b) % (fac[i]-b) != 0)
-        break;
-    if (i == nfactors) nbases++;
-  }
-  for (b = 1; b < lim; b++) {
-    for (i = 0; i < nfactors; i++)
-      if ((n+b) % (fac[i]+b) != 0)
-        break;
-    if (i == nfactors) nbases++;
+      sfac[i] = fac[i];
+    for (sb = 1; sb < sfac[0]; sb++) {
+      nb = n-sb;
+      for (i = 0; i < nfactors; i++)
+        if (nb % (sfac[i]-sb) != 0)
+          break;
+      if (i == nfactors) nbases++;
+    }
+    for (sb = 1; sb < slim; sb++) {
+      nb = n+sb;
+      for (i = 0; i < nfactors; i++)
+        if (nb % (sfac[i]+sb) != 0)
+          break;
+      if (i == nfactors) nbases++;
+    }
+  } else {
+    UV nb;
+    for (b = 1; b < fac[0]; b++) {
+      nb = n-b;
+      for (i = 0; i < nfactors; i++)
+        if (nb % (fac[i]-b) != 0)
+          break;
+      if (i == nfactors) nbases++;
+    }
+    for (b = 1; b < lim; b++) {
+      nb = n+b;
+      for (i = 0; i < nfactors; i++)
+        if (nb % (fac[i]+b) != 0)
+          break;
+      if (i == nfactors) nbases++;
+    }
   }
   return nbases;
 }
-#endif
 
 
 int moebius(UV n) {
@@ -2299,8 +2347,8 @@ int sqrtmod_composite(UV *s, UV a, UV n) {
   UV fac[MPU_MAX_FACTORS+1];
   UV exp[MPU_MAX_FACTORS+1];
   UV sqr[MPU_MAX_FACTORS+1];
-  UV p;
-  int i, j, k, nfactors;
+  UV p, j, k;
+  int i, nfactors;
 
   if (n == 0) return 0;
   if (a >= n) a %= n;

@@ -21,9 +21,11 @@ extern int squfof_factor(UV n, UV *factors, UV rounds);
 
 extern UV* _divisor_list(UV n, UV *num_divisors);
 
+/*
 extern UV dlp_trial(UV a, UV g, UV p, UV maxrounds);
 extern UV dlp_prho(UV a, UV g, UV p, UV n, UV maxrounds);
 extern UV dlp_bsgs(UV a, UV g, UV p, UV n, UV maxent);
+*/
 extern UV znlog(UV a, UV g, UV p);
 
 #endif

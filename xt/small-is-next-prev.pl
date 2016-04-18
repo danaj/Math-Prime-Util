@@ -17,7 +17,7 @@ my $nprimes = shift || 50_000_000;
   my $n = 0;
   forprimes {
     die "next $n not $_" unless next_prime($n) == $_;
-    die "prev $n" unless prev_prime($_) == $n;
+    die "prev $n" unless $n == 0 || prev_prime($_) == $n;
     $n = $_;
     if ($n > $nextprint) { print "$n..";  $nextprint += 5000000; }
   } $nprimes;
