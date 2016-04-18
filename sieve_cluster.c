@@ -116,11 +116,11 @@ UV* sieve_cluster(UV low, UV high, uint32_t nc, uint32_t* cl, UV* numret)
   UV *residues, *cres;
   uint32_t pp_0, pp_1, pp_2, *resmod_0, *resmod_1, *resmod_2;
   uint32_t rem_0, rem_1, rem_2, remadd_0, remadd_1, remadd_2;
-  uint32_t pi, startpi = 1, maxpi = 168;
+  uint32_t pi, startpi = 1, maxpi = 150;
   uint32_t lastspr = sprimes[maxpi-1];
   uint32_t c, smallnc;
   UV nprps = 0;
-  char crem_0[43*47], crem_1[53*59], crem_2[61*67], *VPrem;
+  char crem_0[43*47], crem_1[53*59], crem_2[61*67], **VPrem;
   int const _verbose = _XS_get_verbose();
 
   if ((UV_MAX - cl[nc-1]) < high)  return 0;  /* Overflow */
@@ -246,14 +246,17 @@ UV* sieve_cluster(UV low, UV high, uint32_t nc, uint32_t* cl, UV* numret)
   }
 
   /* Precalculate acceptable residues for more primes */
-  MPUassert( lastspr <= 1024, "cluster sieve internal" );
-  New(0, VPrem, maxpi * 1024, char);
-  memset(VPrem, 1, maxpi * 1024);
-  for (pi = startpi+6; pi < maxpi; pi++)
-    VPrem[pi*1024] = 0;
+  New(0, VPrem, maxpi, char*);
+  memset(VPrem, 0, maxpi);
+  for (pi = startpi+6; pi < maxpi; pi++) {
+    uint32_t p = sprimes[pi];
+    New(0, VPrem[pi], p, char);
+    memset(VPrem[pi], 1, p);
+  }
   for (pi = startpi+6, smallnc = 0; pi < maxpi; pi++) {
     uint32_t p = sprimes[pi];
-    char* prem = VPrem + pi*1024;
+    char* prem = VPrem[pi];
+    prem[0] = 0;
     while (smallnc < nc && cl[smallnc] < p)   smallnc++;
     for (c = 1; c < smallnc; c++) prem[p-cl[c]] = 0;
     for (     ; c <      nc; c++) prem[p-(cl[c]%p)] = 0;
@@ -293,8 +296,9 @@ UV* sieve_cluster(UV low, UV high, uint32_t nc, uint32_t* cl, UV* numret)
     for (pi = startpi+6; pi < maxpi && ncres > 0; pi++) {
       uint32_t p = sprimes[pi];
       uint32_t rem = low % p;
-      char* prem = VPrem + pi*1024;
+      char* prem = VPrem[pi];
       /* Check divisibility of each remaining residue with this p */
+      /* If we extended prem we could remove the add in the loop below */
       if (startpi <= 9) {   /* Residues are 32-bit */
         for (r = 0, nr = 0; r < ncres; r++) {
           if (prem[ (rem+(uint32_t)cres[r]) % p ])
@@ -327,6 +331,8 @@ UV* sieve_cluster(UV low, UV high, uint32_t nc, uint32_t* cl, UV* numret)
   }
 
   if (_verbose) printf("cluster sieve ran %lu primality tests\n", nprps);
+  for (pi = startpi+6; pi < maxpi; pi++)
+    Safefree(VPrem[pi]);
   Safefree(VPrem);
   Safefree(resmod_0);
   Safefree(resmod_1);
