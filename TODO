@@ -105,4 +105,9 @@
 
 - sum primes should be done using a modified fast prime count function.
   The current code sieves, and is very fast for small inputs, but has
-  much worse growth for large inputs.
+  much worse growth for large inputs.  The table method is probably fine
+  for native size results.
+
+- is_primitive_root GMP
+
+- is_quasi_carmichael, PP, GMP, doc, tests

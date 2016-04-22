@@ -9,6 +9,7 @@ use Math::Prime::Util
       znprimroot znlog kronecker legendre_phi gcd lcm is_power valuation
       binomial gcdext chinese vecmin vecmax factorial
       hammingweight sqrtint is_square_free is_carmichael
+      is_primitive_root
       ramanujan_tau
      /;
 
@@ -561,6 +562,7 @@ plan tests => 0 + 1
                 + 2 + scalar(@binomials)
                 + 6 + scalar(keys %powers) + scalar(@negpowers)
                 + scalar(keys %primroots) + 1
+                + scalar(keys %primroots) + 2  # is_primitive_root
                 + scalar(keys %jordan_totients)
                 + 2  # Dedekind psi calculated two ways
                 + 2  # Calculate J5 two different ways
@@ -770,9 +772,19 @@ while (my($n, $root) = each (%primroots)) {
   is( znprimroot($n), $root, "znprimroot($n) == " . ((defined $root) ? $root : "<undef>") );
 }
 is( znprimroot("-100000898"), 31, "znprimroot(\"-100000898\") == 31" );
-
 # I don't think we should rely on this parsing correctly.
 #is( znprimroot("+100000898"), 31, "znprimroot(\"+100000898\") == 31" );
+
+###### is_primitive_root
+while (my($n, $root) = each (%primroots)) {
+  if (defined $root) {
+    is( is_primitive_root($root,$n), 1, "$root is a primitive root mod $n" );
+  } else {
+    is( is_primitive_root(2,$n), 0, "2 is not a primitive root mod $n" );
+  }
+}
+is(is_primitive_root(19,191), 1, "19 is a primitive root mod 191");
+is(is_primitive_root(13,191), 0, "13 is not a primitive root mod 191");
 
 ###### znlog
 foreach my $arg (@znlogs) {

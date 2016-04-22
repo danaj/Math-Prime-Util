@@ -18,6 +18,7 @@ Revision history for Perl module Math::Prime::Util
     - powmod(a, b, n)                     a ^ b mod n
     - sqrtmod(a, p)                       modular square root
     - is_euler_pseudoprime(n,a[...])      Euler test to given bases
+    - is_primitive_root(r, n)             is r a primitive root mod n
 
     [FUNCTIONALITY AND PERFORMANCE]
 
@@ -31,6 +32,13 @@ Revision history for Perl module Math::Prime::Util
     - Speedup is_carmichael.
 
     - znlog is now an interleaved BSGS racing Rho.  It is about 2x faster.
+
+    - lucasu and lucasv should return bigint types.
+
+    - Change AKS to Bernstein 2003 theorem 4.1.
+      5-20x faster than Bornemann, 20000+x faster than V6.
+
+    - sum_primes now uses tables for native sizes.
 
 
 0.57 2016-01-03

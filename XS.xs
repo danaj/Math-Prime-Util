@@ -862,6 +862,7 @@ lucas_sequence(...)
         if (ok) XSRETURN_IV(ret);
       }
       _vcallsub_with_gmp( (ix==1) ? "lucasu" : "lucasv" );
+      OBJECTIFY_RESULT(ST(2), ST(0));
       return;
     }
     if (items != 4) croak("lucas_sequence: n, P, Q, k");
@@ -897,15 +898,17 @@ is_prime(IN SV* svn, ...)
     is_square_free = 15
     is_carmichael = 16
     is_quasi_carmichael = 17
-    is_mersenne_prime = 18
-    is_power = 19
+    is_primitive_root = 18
+    is_mersenne_prime = 19
+    is_power = 20
   PREINIT:
-    int status;
+    int status, astatus;
   PPCODE:
     status = _validate_int(aTHX_ svn, 1);
-    if (status != 0) {
+    astatus = (items == 1) ? 1 : _validate_int(aTHX_ ST(1), 1);
+    if (status != 0 && astatus != 0) {
       int ret = 0;
-      if (status == 1 && ix != 19) {
+      if (status == 1 && astatus == 1 && ix != 20) {
         UV n = my_svuv(svn);
         UV a = (items == 1) ? 0 : my_svuv(ST(1));
         switch (ix) {
@@ -934,12 +937,14 @@ is_prime(IN SV* svn, ...)
           case 15: ret = is_square_free(n); break;
           case 16: ret = is_carmichael(n); break;
           case 17: ret = is_quasi_carmichael(n); break;
-          case 18:
+          case 18: ret = is_primitive_root(n,a,0); break;
+          case 19:
           default: ret = is_mersenne_prime(n);
                    if (ret == -1) status = 0;
                    break;
         }
-      } else if (ix == 19) {
+        if (status != 0 && astatus == 1) RETURN_NPARITY(ret);
+      } else if (ix == 20) {
         UV n = (status == 1) ? my_svuv(svn) : (UV) -my_sviv(svn);
         UV a = (items == 1) ? 0 : my_svuv(ST(1));
         if (status == -1 && n > (UV)IV_MAX) { status = 0; }
@@ -956,8 +961,8 @@ is_prime(IN SV* svn, ...)
             else             sv_setiv(SvRV(ST(2)), -root);
           }
         }
+        if (status != 0 && astatus != 0) RETURN_NPARITY(ret);
       }
-      if (status != 0) RETURN_NPARITY(ret);
     }
     switch (ix) {
       case 0: _vcallsub_with_gmp("is_prime");       break;
@@ -978,8 +983,9 @@ is_prime(IN SV* svn, ...)
       case 15:_vcallsub_with_gmp("is_square_free"); break;
       case 16:_vcallsub_with_gmp("is_carmichael"); break;
       case 17:_vcallsub_with_gmp("is_quasi_carmichael"); break;
-      case 18:_vcallsub_with_gmp("is_mersenne_prime"); break;
-      case 19:
+      case 18:_vcallsub_with_gmp("is_primitive_root"); break;
+      case 19:_vcallsub_with_gmp("is_mersenne_prime"); break;
+      case 20:
       default:if (items != 3 && status != -1) {
                 STRLEN len;
                 char* ptr = SvPV(svn, len);

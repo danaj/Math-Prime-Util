@@ -28,7 +28,7 @@ our @EXPORT_OK =
       is_ramanujan_prime
       is_mersenne_prime
       is_power sqrtint
-      is_square_free  is_carmichael
+      is_square_free is_primitive_root is_carmichael is_quasi_carmichael
       miller_rabin_random
       lucas_sequence lucasu lucasv
       primes twin_primes ramanujan_primes sieve_prime_cluster
@@ -3085,6 +3085,12 @@ L<OEIS A033948|http://oeis.org/A033948> is a sequence of integers where
 the primitive root exists, while L<OEIS A046145|http://oeis.org/A046145>
 is a list of the smallest primitive roots, which is what this function
 produces.
+
+=head2 is_primitive_root
+
+Given two non-negative numbers C<a> and C<n>, returns C<1> if C<a> is a
+primitive root modulo C<n>, and C<0> if not.  If C<a> is a primitive root,
+then C<euler_phi(n)> is the smallest C<e> for which C<a^e = 1 mod n>.
 
 =head2 znlog
 
