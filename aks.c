@@ -36,8 +36,9 @@
 
 #define SQRTN_SHORTCUT 1
 
-/* Use improvements from Bornemann's 2002 implementation */
-#define IMPL_BORNEMANN 1
+#define IMPL_V6        0    /* From the primality_v6 paper */
+#define IMPL_BORNEMANN 0    /* From Bornemann's 2002 implementation */
+#define IMPL_BERN41    1    /* From Bernstein's early 2003 paper */
 
 #include "ptypes.h"
 #include "aks.h"
@@ -48,7 +49,7 @@
 #include "mulmod.h"
 #include "factor.h"
 
-#if IMPL_BORNEMANN
+#if IMPL_BORNEMANN || IMPL_BERN41
 /* We could use lgamma, but it isn't in MSVC and not in pre-C99.  The only
  * sure way to find if it is available is test compilation (ala autoconf).
  * Instead, we'll just use our own implementation.
@@ -71,6 +72,31 @@ static double log_gamma(double x)
 }
 #undef lgamma
 #define lgamma(x) log_gamma(x)
+#endif
+
+#if IMPL_BERN41
+static double log_binomial(UV n, UV k)
+{
+  return log_gamma(n+1) - log_gamma(k+1) - log_gamma(n-k+1);
+}
+static double log_bern41_binomial(UV r, UV d, UV i, UV j, UV s)
+{
+  return   log_binomial( 2*s,   i)
+         + log_binomial( d,     i)
+         + log_binomial( 2*s-i, j)
+         + log_binomial( r-2-d, j);
+}
+static int bern41_acceptable(UV n, UV r, UV s)
+{
+  double scmp = ceil(sqrt( (r-1)/3.0 )) * log(n);
+  UV d = (UV) (0.5 * (r-1));
+  UV i = (UV) (0.475 * (r-1));
+  UV j = i;
+  if (d > r-2)     d = r-2;
+  if (i > d)       i = d;
+  if (j > (r-2-d)) j = r-2-d;
+  return (log_bern41_binomial(r,d,i,j,s) >= scmp);
+}
 #endif
 
 #if 0
@@ -267,7 +293,7 @@ static int test_anr(UV a, UV n, UV r)
  */
 int is_aks_prime(UV n)
 {
-  UV r, s, a;
+  UV r, s, a, starta = 1;
   int verbose;
 
   if (n < 2)
@@ -282,7 +308,7 @@ int is_aks_prime(UV n)
   /* if (!is_prob_prime(n)) return 0; */
 
   verbose = _XS_get_verbose();
-#if IMPL_BORNEMANN == 0
+#if IMPL_V6
   {
     UV sqrtn = isqrt(n);
     double log2n = log(n) / log(2);   /* C99 has a log2() function */
@@ -306,7 +332,8 @@ int is_aks_prime(UV n)
 
     s = (UV) floor(sqrt(r-1) * log2n);
   }
-#else
+#endif
+#if IMPL_BORNEMANN
   {
     UV fac[MPU_MAX_FACTORS+1];
     UV slim;
@@ -315,7 +342,7 @@ int is_aks_prime(UV n)
     double const t1 = (1.0/((t+1)*log(t+1)-t*log(t)));
     double const dlogn = log(n);
     r = next_prime( (UV) (t1*t1 * dlogn*dlogn) );
-    while (!is_primitive_root(n,r))
+    while (!is_primitive_root(n,r,1))
       r = next_prime(r);
 
     slim = (UV) (2*t*(r-1));
@@ -343,13 +370,54 @@ int is_aks_prime(UV n)
       return 1;
   }
 #endif
+#if IMPL_BERN41
+  {
+    UV slim, fac[MPU_MAX_FACTORS+1];
+    double const log2n = log(n) / log(2);
+    /* Tuning: Initial 'r' selection */
+    double const r0 = .003 * log2n * log2n;
+    /* Tuning: Try a larger 'r' if 's' looks very large */
+    UV const rmult = 30;
+
+    r = next_prime(r0 < 2 ? 2 : (UV)r0);  /* r must be at least 3 */
+    while ( !is_primitive_root(n,r,1) || !bern41_acceptable(n,r,rmult*(r-1)) )
+      r = next_prime(r);
+
+    { /* Binary search for first s in [1,slim] where conditions met */
+      UV bi = 1;
+      UV bj = rmult * (r-1);
+      while (bi < bj) {
+        s = bi + (bj-bi)/2;
+        if (!bern41_acceptable(n, r, s))  bi = s+1;
+        else                              bj = s;
+      }
+      s = bj;
+      if (!bern41_acceptable(n, r, s)) croak("AKS: bad s selected");
+      /* S goes from 2 to s+1 */
+      starta = 2;
+      s = s+1;
+    }
+    /* Check divisibility to s * (s-1) to cover both gcd conditions */
+    slim = s * (s-1);
+    if (verbose > 1) printf("# aks trial to %lu\n", slim);
+    if (trial_factor(n, fac, slim) > 1)
+      return 0;
+    if (slim >= HALF_WORD || (slim*slim) >= n)
+      return 1;
+    /* Check b^(n-1) = 1 mod n for b in [2..s] */
+    for (a = 2; a <= s; a++) {
+      if (powmod(a, n-1, n) != 1)
+        return 0;
+    }
+  }
+#endif
 
   if (verbose) { printf("# aks r = %lu  s = %lu\n", (unsigned long) r, (unsigned long) s); }
 
   /* Almost every composite will get recognized by the first test.
    * However, we need to run 's' tests to have the result proven for all n
    * based on the theorems we have available at this time. */
-  for (a = 1; a <= s; a++) {
+  for (a = starta; a <= s; a++) {
     if (! test_anr(a, n, r) )
       return 0;
     if (verbose>1) { printf("."); fflush(stdout); }

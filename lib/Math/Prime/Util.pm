@@ -2276,13 +2276,14 @@ literally B<millions> of times slower than other algorithms.  From R.P.
 Brent, 2010:  "AKS is not a practical algorithm.  ECPP is much faster."
 We have ECPP, and indeed it is much faster.
 
-This implementation includes the v6 improvements from Lenstra as well as
-further improvements from Bernstein and Voloch.  It runs substantially
-faster than the original or v6 versions.  The GMP implementation uses
-a binary segmentation method for modular polynomial multiplication
-(see Bernstein's 2007 Quartic paper), which reduces to a single scalar
-multiplication, at which GMP excels.  Because of this, the GMP
-implementation is likely to be faster once the input is larger than C<2^32>.
+This implementation uses theorem 4.1 from Bernstein (2003).  It runs
+substantially faster than the original, v6 revised paper with Lenstra
+improvements, or the late 2002 improvements of Voloch and Bornemann.
+The GMP implementation uses a binary segmentation method for modular
+polynomial multiplication (see Bernstein's 2007 Quartic paper), which
+reduces to a single scalar multiplication, at which GMP excels.
+Because of this, the GMP implementation is likely to be faster once
+the input is larger than C<2^33>.
 
 
 =head2 is_mersenne_prime
