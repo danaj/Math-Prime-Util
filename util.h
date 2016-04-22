@@ -77,7 +77,7 @@ extern UV carmichael_lambda(UV n);
 extern UV jordan_totient(UV k, UV n);
 extern UV znprimroot(UV n);
 extern UV znorder(UV a, UV n);
-extern int is_primitive_root(UV a, UV p);
+extern int is_primitive_root(UV a, UV n, int nprime);
 #define is_square_free(n)  (moebius(n) != 0)
 extern int is_carmichael(UV n);
 extern UV  is_quasi_carmichael(UV n);  /* Returns number of bases */

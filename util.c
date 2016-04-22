@@ -1389,20 +1389,59 @@ UV ramanujan_prime_count(UV lo, UV hi)
  * http://mathoverflow.net/questions/81443/fastest-algorithm-to-compute-the-sum-of-primes
  * http://www.ams.org/journals/mcom/2009-78-268/S0025-5718-09-02249-2/S0025-5718-09-02249-2.pdf
  * http://mathematica.stackexchange.com/questions/80291/efficient-way-to-sum-all-the-primes-below-n-million-in-mathematica
+ * Deleglise 2012, page 27, simple Meissel:
+ *   y = x^1/3
+ *   a = Pi(y)
+ *   Pi_f(x) = phisum(x,a) + Pi_f(y) - 1 - P_2(x,a)
+ *   P_2(x,a) = sum prime p : y < p <= sqrt(x) of f(p) * Pi_f(x/p) -
+ *              sum prime p : y < p <= sqrt(x) of f(p) * Pi_f(p-1)
  */
+static UV pscache[1024*64] = {0};
+
 static UV phisum(UV n, UV a) {
   UV origa, pa, res;
   if (n < 2)  return 0;
   if (a == 0) return ((n+1)*n)/2 - 1;
   if (a == 1 || n < 9)  return ((n+1)>>1)*((n+1)>>1)+1;
   if (a == 2 || n < 16)  return ((n+1)>>1)*((n+1)>>1) - 3*((n/3+1)>>1)*((n/3+1)>>1) + 4;
+  if (n < 1024 && a < 64 && pscache[n*64+a] > 0) return pscache[n*64+a];
 
   pa = nth_prime(a);
   origa = a;
   while (n < pa*pa)
     pa = nth_prime(--a);
   res = phisum(n, a-1) - pa * (phisum(n/pa, a-1) - phisum(pa-1, a-1));
+  if (n < 1024 && origa < 64) pscache[n*64+origa] = res;
   return res;
+}
+
+/* Very non-optimal */
+static UV P2sum(UV x) {
+  UV cbrtx = icbrt(x);
+  UV sqrtx = isqrt(x);
+  UV lim = x / (cbrtx+1);
+  UV i, sum, last;
+  UV *pif;
+
+  New(0, pif, lim+1, UV);
+  last = sum = 0;
+  START_DO_FOR_EACH_PRIME(2, lim) {
+    for (i = last; i < p; i++)
+      pif[i] = sum;
+    sum += p;
+    last = p;
+  } END_DO_FOR_EACH_PRIME
+  for (i = last; i <= lim; i++)
+    pif[i] = sum;
+  printf("pif table done\n");  fflush(stdout);
+  if (x > 10000) { printf("%lu %lu %lu\n", pif[1032],pif[1033],pif[1034]); }
+
+  sum = 0;
+  START_DO_FOR_EACH_PRIME(cbrtx+1, sqrtx) {
+    sum += p * (pif[x/p] - pif[p-1]);
+  } END_DO_FOR_EACH_PRIME
+  Safefree(pif);
+  return sum;
 }
 #endif
 
@@ -1420,16 +1459,45 @@ static const unsigned char byte_sum[256] =
    20,14,13,19,18,12,11,8,7,1,0};
 
 #if BITS_PER_WORD == 64
-#define N_SUM_TABLE 20
-static const UV sum_pow2_table[N_SUM_TABLE] =
-  {39472122,148231324,559305605,2106222351,7995067942,30299372141,115430379568,440354051430,1683364991290,6448757014608,24754017328490,95132828618112,366232755206338,1411967951135692,5450257923501125,21065843859337046,81507897728041027,315718920061826578,1224166825601048215,4750936697162786391};
+/* We have a much more limited range, so use a fixed interval.  We should be
+ * able to get any 64-bit sum in under a half-second. */
+static const UV sum_table_2e8[] =
+  {1075207199997324,3071230303170813,4990865886639877,6872723092050268,8729485610396243,10566436676784677,12388862798895708,14198556341669206,15997206121881531,17783028661796383,19566685687136351,21339485298848693,23108856419719148,
+   24861364231151903,26619321031799321,28368484289421890,30110050320271201,31856321671656548,33592089385327108,35316546074029522,37040262208390735,38774260466286299,40490125006181147,42207686658844380,43915802985817228,45635106002281013,
+   47337822860157465,49047713696453759,50750666660265584,52449748364487290,54152689180758005,55832433395290183,57540651847418233,59224867245128289,60907462954737468,62597192477315868,64283665223856098,65961576139329367,67641982565760928,
+   69339211720915217,71006044680007261,72690896543747616,74358564592509127,76016548794894677,77694517638354266,79351385193517953,81053240048141953,82698120948724835,84380724263091726,86028655116421543,87679091888973563,89348007111430334,
+   90995902774878695,92678527127292212,94313220293410120,95988730932107432,97603162494502485,99310622699836698,100935243057337310,102572075478649557,104236362884241550,105885045921116836,107546170993472638,109163445284201278,
+   110835950755374921,112461991135144669,114116351921245042,115740770232532531,117408250788520189,119007914428335965,120652479429703269,122317415246500401,123951466213858688,125596789655927842,127204379051939418,128867944265073217,
+   130480037123800711,132121840147764197,133752985360747726,135365954823762234,137014594650995101,138614165689305879,140269121741383097,141915099618762647,143529289083557618,145146413750649432,146751434858695468,148397902396643807,
+   149990139346918801,151661665434334577,153236861034424304,154885985064643097,156500983286383741,158120868946747299,159735201435796748,161399264792716319,162999489977602579,164566400448130092,166219688860475191,167836981098849796,
+   169447127305804401,171078187147848898,172678849082290997,174284436375728242,175918609754056455,177525046501311788,179125593738290153,180765176633753371,182338473848291683,183966529541155489,185585792988238475,187131988176321434,
+   188797837140841381,190397649440649965,191981841583560122,193609739194967419,195166830650558070,196865965063113041,198400070713177440,200057161591648721,201621899486413406,203238279253414934,204790684829891896,206407676204061001,
+   208061050481364659,209641606658938873,211192088300183855,212855420483750498,214394145510853736,216036806225784861,217628995137940563,219277567478725189,220833877268454872,222430818525363309,224007307616922530,225640739533952807,
+   227213096159236934,228853318075566255,230401824696558125,231961445347821085,233593317860593895,235124654760954338,236777716068869769,238431514923528303,239965003913481640,241515977959535845,243129874530821395};
+#define N_SUM_TABLE  (sizeof(sum_table_2e8)/sizeof(sum_table_2e8[0]))
 #endif
-
 
 int sum_primes(UV low, UV high, UV *return_sum) {
   UV sum = 0;
   int overflow = 0;
 
+#if 0 /* Legendre */
+  *return_sum = phisum(high, _XS_prime_count(2,isqrt(high)));
+  return 1;
+#endif
+#if 0 /* Meissel */
+  if (low <= 2 && high > 100000) {
+    UV x = high;
+    UV y = icbrt(x);
+    UV a = _XS_prime_count(2,y);
+    UV ps = phisum(x,a);
+    UV p2 = P2sum(high);
+    UV pif;
+    sum_primes(2,y,&pif);
+    *return_sum = ps + pif - 1 - p2;
+    return 1;
+  }
+#endif
   if ((low <= 2) && (high >= 2)) sum += 2;
   if ((low <= 3) && (high >= 3)) sum += 3;
   if ((low <= 5) && (high >= 5)) sum += 5;
@@ -1444,17 +1512,12 @@ int sum_primes(UV low, UV high, UV *return_sum) {
   if (low == 7 && high >= 323381)  return 0;
 #endif
 
-#if BITS_PER_WORD == 64
-  /* Messy table speedup.  Should be cleaner and accomodate other low values. */
-  if (low == 7 && high >= (1UL << 15)) {
-    UV b;
-    sum += 14584631;
-    low = 1 << 14;
-    for (b = 15; b < 15+N_SUM_TABLE; b++) {
-      if (high < (UVCONST(1) << b))
-        break;
-      sum += sum_pow2_table[b-15];
-      low = UVCONST(1) << b;
+#if 1 && BITS_PER_WORD == 64    /* Tables */
+  if (low == 7 && high >= 2e8) {
+    UV step;
+    for (step = 1; high >= (step * 2e8) && step < N_SUM_TABLE; step++) {
+      sum += sum_table_2e8[step-1];
+      low = step * 2e8;
     }
   }
 #endif
@@ -2218,17 +2281,17 @@ UV znprimroot(UV n) {
   return 0;
 }
 
-int is_primitive_root(UV a, UV p) {
-  UV fac[MPU_MAX_FACTORS+1], s = p-1;
+int is_primitive_root(UV a, UV n, int nprime) {
+  UV s, fac[MPU_MAX_FACTORS+1];
   int i, nfacs;
-  /* TODO: if p is not prime, then s = totient(p) */
-  if (gcd_ui(a,p) != 1) return 0;
-  if ((s % 2) == 0 && powmod(a, s/2, p) == 1) return 0;
-  if ((s % 3) == 0 && powmod(a, s/3, p) == 1) return 0;
-  if ((s % 5) == 0 && powmod(a, s/5, p) == 1) return 0;
+  s = nprime ? n-1 : totient(n);
+  if (gcd_ui(a,n) != 1) return 0;
+  if ((s % 2) == 0 && powmod(a, s/2, n) == 1) return 0;
+  if ((s % 3) == 0 && powmod(a, s/3, n) == 1) return 0;
+  if ((s % 5) == 0 && powmod(a, s/5, n) == 1) return 0;
   nfacs = factor_exp(s, fac, 0);
   for (i = 0; i < nfacs; i++) {
-    if (fac[i] > 5 && powmod(a, s/fac[i], p) == 1) return 0;
+    if (fac[i] > 5 && powmod(a, s/fac[i], n) == 1) return 0;
   }
   return 1;
 }
