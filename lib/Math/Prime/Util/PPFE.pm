@@ -268,6 +268,18 @@ sub is_carmichael {
   #_validate_positive_integer($n);
   return Math::Prime::Util::PP::is_carmichael($n);
 }
+sub is_quasi_carmichael {
+  my($n) = @_;
+  #_validate_positive_integer($n);
+  return Math::Prime::Util::PP::is_quasi_carmichael($n);
+}
+sub is_primitive_root {
+  my($a,$n) = @_;
+  $n = -$n if defined $n && $n < 0;
+  _validate_positive_integer($a);
+  _validate_positive_integer($n);
+  return Math::Prime::Util::PP::is_primitive_root($a,$n);
+}
 
 
 sub lucas_sequence {

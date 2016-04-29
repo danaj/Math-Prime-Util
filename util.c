@@ -2130,9 +2130,20 @@ int is_carmichael(UV n) {
   return 1;
 }
 
+static int is_quasi_base(int nfactors, UV *fac, UV p, UV b) {
+  int i;
+  for (i = 0; i < nfactors; i++) {
+    UV d = fac[i] - b;
+    if (d == 0 || (p % d) != 0)
+      return 0;
+  }
+  return 1;
+}
+
 /* Returns number of bases that pass */
 UV is_quasi_carmichael(UV n) {
-  UV nbases, b, lim, fac[MPU_MAX_FACTORS+1], exp[MPU_MAX_FACTORS+1];
+  UV nbases, fac[MPU_MAX_FACTORS+1], exp[MPU_MAX_FACTORS+1];
+  UV spf, lpf, ndivisors, *divs;
   int i, nfactors;
 
   if (n < 35) return 0;
@@ -2149,47 +2160,32 @@ UV is_quasi_carmichael(UV n) {
   for (i = 0; i < nfactors; i++)
     if (exp[i] > 1)
       return 0;
+
   nbases = 0;
-  /* b < |n-p^2|/p.  We use the largest factor. */
-  lim = fac[nfactors-1];
-  lim = ( ((lim*lim <= n) ? (n-lim*lim) : (lim*lim-n)) + lim-1 ) / lim;
-  /* We could exit after finding one, but we'll return the number of bases */
-  /* Try to use 32-bit if possible to double performance */
-  if (n+lim <= 4294967295U) {
-    uint32_t nb, sb = b, slim = lim, sfac[MPU_MAX_FACTORS+1];
-    for (i = 0; i < nfactors; i++)
-      sfac[i] = fac[i];
-    for (sb = 1; sb < sfac[0]; sb++) {
-      nb = n-sb;
-      for (i = 0; i < nfactors; i++)
-        if (nb % (sfac[i]-sb) != 0)
-          break;
-      if (i == nfactors) nbases++;
-    }
-    for (sb = 1; sb < slim; sb++) {
-      nb = n+sb;
-      for (i = 0; i < nfactors; i++)
-        if (nb % (sfac[i]+sb) != 0)
-          break;
-      if (i == nfactors) nbases++;
+  spf = fac[0];
+  lpf = fac[nfactors-1];
+
+  /* Algorithm from Hiroaki Yamanouchi, 2015 */
+  if (nfactors == 2) {
+    divs = _divisor_list(n / spf - 1, &ndivisors);
+    for (i = 0; i < (int)ndivisors; i++) {
+      UV d = divs[i];
+      UV k = spf - d;
+      if (d >= spf) break;
+      if (is_quasi_base(nfactors, fac, n-k, k))
+        nbases++;
     }
   } else {
-    UV nb;
-    for (b = 1; b < fac[0]; b++) {
-      nb = n-b;
-      for (i = 0; i < nfactors; i++)
-        if (nb % (fac[i]-b) != 0)
-          break;
-      if (i == nfactors) nbases++;
-    }
-    for (b = 1; b < lim; b++) {
-      nb = n+b;
-      for (i = 0; i < nfactors; i++)
-        if (nb % (fac[i]+b) != 0)
-          break;
-      if (i == nfactors) nbases++;
+    divs = _divisor_list(lpf * (n / lpf - 1), &ndivisors);
+    for (i = 0; i < (int)ndivisors; i++) {
+      UV d = divs[i];
+      UV k = lpf - d;
+      if (lpf > d && k >= spf) continue;
+      if (k != 0 && is_quasi_base(nfactors, fac, n-k, k))
+        nbases++;
     }
   }
+  Safefree(divs);
   return nbases;
 }
 
@@ -2284,8 +2280,8 @@ UV znprimroot(UV n) {
 int is_primitive_root(UV a, UV n, int nprime) {
   UV s, fac[MPU_MAX_FACTORS+1];
   int i, nfacs;
-  s = nprime ? n-1 : totient(n);
   if (gcd_ui(a,n) != 1) return 0;
+  s = nprime ? n-1 : totient(n);
   if ((s % 2) == 0 && powmod(a, s/2, n) == 1) return 0;
   if ((s % 3) == 0 && powmod(a, s/3, n) == 1) return 0;
   if ((s % 5) == 0 && powmod(a, s/5, n) == 1) return 0;

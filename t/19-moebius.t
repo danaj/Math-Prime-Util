@@ -8,7 +8,8 @@ use Math::Prime::Util
       chebyshev_theta chebyshev_psi carmichael_lambda znorder liouville
       znprimroot znlog kronecker legendre_phi gcd lcm is_power valuation
       binomial gcdext chinese vecmin vecmax factorial
-      hammingweight sqrtint is_square_free is_carmichael
+      hammingweight sqrtint is_square_free
+      is_carmichael is_quasi_carmichael
       is_primitive_root
       ramanujan_tau
      /;
@@ -545,6 +546,7 @@ plan tests => 0 + 1
                 + 1*scalar(keys %big_mertens)
                 + 1*scalar(keys %isf)
                 + 2 # is_carmichael
+                + 4 # is_quasi_carmichael
                 + 2 # Small Phi
                 + 9 + scalar(keys %totients)
                 + 1 # Small Carmichael Lambda
@@ -607,7 +609,16 @@ while (my($n, $isf) = each (%isf)) {
     ok( is_carmichael("341627175004511735787409078802107169251"), "Large Carmichael" );
   }
 }
-
+{
+  is_deeply( [grep { is_quasi_carmichael($_) } 1 .. 400],
+             [35,77,143,165,187,209,221,231,247,273,299,323,357,391,399],
+             "Quasi-Carmichael numbers to 400" );
+  is( scalar(grep { is_quasi_carmichael($_) } 1 .. 5000),
+             95,
+             "95 Quasi-Carmichael numbers under 5000" );
+  is(is_quasi_carmichael(5092583), 1, "5092583 is a Quasi-Carmichael number with 1 base");
+  is(is_quasi_carmichael(777923), 7, "777923 is a Quasi-Carmichael number with 7 bases");
+}
 
 {
   my @phi = map { euler_phi($_) } (0 .. $#A000010);

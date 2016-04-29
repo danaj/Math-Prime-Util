@@ -108,6 +108,4 @@
   much worse growth for large inputs.  The table method is probably fine
   for native size results.
 
-- is_primitive_root GMP
-
-- is_quasi_carmichael, PP, GMP, doc, tests
+- GMP for is_primitive_root

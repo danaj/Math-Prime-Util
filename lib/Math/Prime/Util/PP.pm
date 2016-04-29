@@ -1043,6 +1043,57 @@ sub is_carmichael {
   1;
 }
 
+sub is_quasi_carmichael {
+  my($n) = @_;
+  _validate_positive_integer($n);
+
+  return 0 if $n < 35;
+  return 0 if (!($n % 4) || !($n % 9) || !($n % 25) || !($n%49) || !($n%121));
+
+  my @pe = Math::Prime::Util::factor_exp($n);
+  # Not quasi-Carmichael if prime
+  return 0 if scalar(@pe) < 2;
+  # Not quasi-Carmichael if not square free
+  for my $pe (@pe) {
+    return 0 if $pe->[1] > 1;
+  }
+  my @f = map { $_->[0] } @pe;
+  my $nbases = 0;
+  if ($n < 2000) {
+    # In theory for performance, but mainly keeping to show direct method.
+    my $lim = $f[-1];
+    $lim = (($n-$lim*$lim) + $lim - 1) / $lim;
+    for my $b (1 .. $f[0]-1) {
+      my $nb = $n - $b;
+      $nbases++ if Math::Prime::Util::vecall(sub { $nb % ($_-$b) == 0 }, @f);
+    }
+    if (scalar(@f) > 2) {
+      for my $b (1 .. $lim-1) {
+        my $nb = $n + $b;
+        $nbases++ if Math::Prime::Util::vecall(sub { $nb % ($_+$b) == 0 }, @f);
+      }
+    }
+  } else {
+    my($spf,$lpf) = ($f[0], $f[-1]);
+    if (scalar(@f) == 2) {
+      foreach my $d (Math::Prime::Util::divisors($n/$spf - 1)) {
+        my $k = $spf - $d;
+        my $p = $n - $k;
+        last if $d >= $spf;
+        $nbases++ if Math::Prime::Util::vecall(sub { my $j = $_-$k;  $j && ($p % $j) == 0 }, @f);
+      }
+    } else {
+      foreach my $d (Math::Prime::Util::divisors($lpf * ($n/$lpf - 1))) {
+        my $k = $lpf - $d;
+        my $p = $n - $k;
+        next if $k == 0 || $k >= $spf;
+        $nbases++ if Math::Prime::Util::vecall(sub { my $j = $_-$k;  $j && ($p % $j) == 0 }, @f);
+      }
+    }
+  }
+  $nbases;
+}
+
 my @_ds_overflow =  # We'll use BigInt math if the input is larger than this.
   (~0 > 4294967295)
    ? (124, 3000000000000000000, 3000000000, 2487240, 64260, 7026)
@@ -3019,6 +3070,11 @@ sub _is_perfect_square {
 sub is_primitive_root {
   my($a, $n) = @_;
   $n = -$n if $n < 0;   # ignore sign
+
+  #if (defined &Math::Prime::Util::GMP::is_primitive_root && Math::Prime::Util::prime_get_config()->{'gmp'}) {
+  #  return Math::Prime::Util::_reftyped($_[0], Math::Prime::Util::GMP::is_primitive_root($a,$n));
+  #}
+
   my $s = Math::Prime::Util::euler_phi($n);
   return 0 if Math::Prime::Util::gcd($a, $n) != 1;
   return 0 if ($s % 2) == 0 && Math::Prime::Util::powmod($a, $s/2, $n) == 1;

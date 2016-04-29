@@ -2718,6 +2718,16 @@ non-Carmichael passing this test are less than C<2^-150>.
 
 This is the L<OEIS series A002997|http://oeis.org/A002997>.
 
+=head2 is_quasi_carmichael
+
+Returns 0 if the input C<n> is not a quasi-Carmichael number, and the number
+of bases otherwise.  These are squarefree composites that satisfy
+C<p+b> divides C<n+b> for all prime factors C<p> or C<n> and for one or
+more non-zero integer C<b>.
+
+This is the L<OEIS series A257750|http://oeis.org/A257750>.
+
+
 =head2 moebius
 
   say "$n is square free" if moebius($n) != 0;

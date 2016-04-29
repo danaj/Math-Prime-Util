@@ -19,6 +19,7 @@ Revision history for Perl module Math::Prime::Util
     - sqrtmod(a, p)                       modular square root
     - is_euler_pseudoprime(n,a[...])      Euler test to given bases
     - is_primitive_root(r, n)             is r a primitive root mod n
+    - is_quasi_carmichael(n)              is n a Quasi-Carmichael number
 
     [FUNCTIONALITY AND PERFORMANCE]
 

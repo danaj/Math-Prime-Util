@@ -157,6 +157,7 @@ See L<Math::Prime::Util> for complete documentation.
   is_power(n,k,\$root)                as above but set root to p.
   is_square_free(n)                   return true if no repeated factors
   is_carmichael(n)                    is n a Carmichael number
+  is_quasi_carmichael(n)              is n a quasi-Carmichael number
   is_primitive_root(r,n)              is r a primitive root mod n
   sqrtint(n)                          integer square root
   gcd(@list)                          greatest common divisor
