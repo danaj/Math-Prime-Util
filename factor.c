@@ -977,6 +977,14 @@ static UV dlp_trial(UV a, UV g, UV p, UV maxrounds) {
 /* DLP - Pollard Rho */
 /******************************************************************************/
 
+/* Compare with Pomerance paper (dartmouth dtalk4):
+ * Type I/II/III = our case 1, 0, 2.
+ * x_i = u, a_i = v, b_i = w
+ *
+ * Also see Bai/Brent 2008 for many ideas to speed this up.
+ * https://maths-people.anu.edu.au/~brent/pd/rpb231.pdf
+ * E.g. Teske adding-walk, Brent's cycle algo, Teske modified cycle
+ */
 #define pollard_rho_cycle(u,v,w,p,n,a,g) \
     switch (u % 3) { \
       case 0: u = mulmod(u,u,p);  v = mulmod(v,2,n);  w = mulmod(w,2,n); break;\
