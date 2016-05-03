@@ -3185,3 +3185,34 @@ static const int32_t tau_table[] = {
 IV ramanujan_tau(UV n) {
   return (n < NTAU)  ?  tau_table[n]  :  0;
 }
+
+/* Returns 12 * H(n).  Algorithm from Pari/GP */
+IV hclassno(UV n) {
+  UV i, nmod4 = n % 4, b = n & 1, b2 = (n+1) >> 2, h = 0, square = 0;
+
+  if (n == 0) return -1;
+  if (nmod4 == 1 || nmod4 == 2) return 0;
+
+  if (b == 0) {
+    for (i = 1; i*i < b2; i++)
+      if (b2 % i == 0)
+        h++;
+    if (i*i == b2)
+      square = 1;
+    b = 2;
+    b2 = (n+4) >> 2;
+  }
+
+  while (b2 * 3 < n) {
+    if (b2 % b == 0)
+      h++;
+    for (i = b+1; i*i < b2; i++)
+      if (b2 % i == 0)
+        h += 2;
+    if (i*i == b2)
+      h++;
+    b += 2;
+    b2 = (b*b + n) >> 2;
+  }
+  return ((b2*3 == n) ? 2*(3*h+1) : square ? 3*(2*h+1) : 6*h) << 1;
+}

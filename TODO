@@ -108,4 +108,4 @@
   much worse growth for large inputs.  The table method is probably fine
   for native size results.
 
-- GMP for is_primitive_root
+- hclassno doc, tests, PPFE, PP

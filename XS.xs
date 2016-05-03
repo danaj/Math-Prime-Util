@@ -1538,7 +1538,8 @@ carmichael_lambda(IN SV* svn)
     exp_mangoldt = 7
     znprimroot = 8
     hammingweight = 9
-    ramanujan_tau = 10
+    hclassno = 10
+    ramanujan_tau = 11
   PREINIT:
     int status;
   PPCODE:
@@ -1565,7 +1566,8 @@ carmichael_lambda(IN SV* svn)
                  XSRETURN_UV(r);  break;
         case 9:  if (status == -1) n = -(IV)n;
                  XSRETURN_UV(mpu_popcount(n));  break;
-        case 10:
+        case 10: XSRETURN_IV( (status == -1) ? 0 : hclassno(n) ); break;
+        case 11:
         default: { IV tau = (status == 1) ? ramanujan_tau(n) : 0;
                    if (tau != 0 || status == -1 || n == 0)
                      XSRETURN_IV(tau);
@@ -1585,7 +1587,8 @@ carmichael_lambda(IN SV* svn)
       case 8:  _vcallsub_with_gmp("znprimroot"); break;
       case 9:  { char* ptr;  STRLEN len;  ptr = SvPV(svn, len);
                  XSRETURN_UV(mpu_popcount_string(ptr, len)); } break;
-      case 10:
+      case 10:  _vcallsub_with_pp("hclassno"); break;
+      case 11:
       default:_vcallsub_with_pp("ramanujan_tau"); break;
     }
     return; /* skip implicit PUTBACK */

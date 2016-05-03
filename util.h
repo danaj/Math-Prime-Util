@@ -85,6 +85,7 @@ extern UV  is_quasi_carmichael(UV n);  /* Returns number of bases */
 extern IV stirling2(UV n, UV m);
 extern IV stirling1(UV n, UV m);
 
+extern IV hclassno(UV n);
 extern IV ramanujan_tau(UV n);
 
 extern int strnum_minmax(int min, char* a, STRLEN alen, char* b, STRLEN blen);

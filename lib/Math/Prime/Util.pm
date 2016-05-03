@@ -56,7 +56,7 @@ our @EXPORT_OK =
       moebius mertens euler_phi jordan_totient exp_mangoldt liouville
       partitions bernfrac bernreal harmfrac harmreal
       chebyshev_theta chebyshev_psi
-      divisor_sum carmichael_lambda kronecker ramanujan_tau
+      divisor_sum carmichael_lambda kronecker hclassno ramanujan_tau
       binomial factorial stirling znorder znprimroot znlog legendre_phi
       ExponentialIntegral LogarithmicIntegral RiemannZeta RiemannR LambertW Pi
   );
