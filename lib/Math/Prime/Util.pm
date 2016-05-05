@@ -942,7 +942,7 @@ __END__
 
 =encoding utf8
 
-=for stopwords forprimes forcomposites foroddcomposites fordivisors forpart forcomp forcomb forperm formultiperm Möbius Deléglise Bézout totient moebius mertens liouville znorder irand primesieve uniqued k-tuples von SoE pari yafu fonction qui compte le nombre nombres voor PhD superset sqrt(N) gcd(A^M k-th (10001st primegen libtommath kronecker znprimroot znlog gcd lcm invmod sqrtmod addmod mulmod powmod divmod untruncated vecsum vecprod vecmin vecmax vecreduce vecextract vecall vecany vecnone vecnotall vecfirst sumdigits gcdext chinese LambertW bernfrac bernreal harmfrac harmreal stirling hammingweight lucasu lucasv OpenPFGW gmpy2 Über Primzahl-Zählfunktion n-te und verallgemeinerte sqrtint multiset todigits todigitstring fromdigits
+=for stopwords forprimes forcomposites foroddcomposites fordivisors forpart forcomp forcomb forperm formultiperm Möbius Deléglise Bézout totient moebius mertens liouville znorder irand primesieve uniqued k-tuples von SoE pari yafu fonction qui compte le nombre nombres voor PhD superset sqrt(N) gcd(A^M k-th (10001st primegen libtommath kronecker znprimroot znlog gcd lcm invmod sqrtmod addmod mulmod powmod divmod untruncated vecsum vecprod vecmin vecmax vecreduce vecextract vecall vecany vecnone vecnotall vecfirst sumdigits gcdext chinese LambertW bernfrac bernreal harmfrac harmreal stirling hammingweight lucasu lucasv OpenPFGW gmpy2 Über Primzahl-Zählfunktion n-te und verallgemeinerte sqrtint multiset todigits todigitstring fromdigits hclassno
 
 =for test_synopsis use v5.14;  my($k,$x);
 
@@ -2721,7 +2721,7 @@ This is the L<OEIS series A002997|http://oeis.org/A002997>.
 =head2 is_quasi_carmichael
 
 Returns 0 if the input C<n> is not a quasi-Carmichael number, and the number
-of bases otherwise.  These are squarefree composites that satisfy
+of bases otherwise.  These are square-free composites that satisfy
 C<p+b> divides C<n+b> for all prime factors C<p> or C<n> and for one or
 more non-zero integer C<b>.
 
@@ -2736,7 +2736,7 @@ This is the L<OEIS series A257750|http://oeis.org/A257750>.
 
 Returns μ(n), the Möbius function (also known as the Moebius, Mobius, or
 MoebiusMu function) for an integer input.  This function is 1 if
-C<n = 1>, 0 if C<n> is not square free (i.e. C<n> has a repeated factor),
+C<n = 1>, 0 if C<n> is not square-free (i.e. C<n> has a repeated factor),
 and C<-1^t> if C<n> is a product of C<t> distinct primes.  This is an
 important function in prime number theory.  Like SAGE, we define
 C<moebius(0) = 0> for convenience.
@@ -3020,6 +3020,13 @@ the C<n E<lt> 0, k E<lt>= n> extension and instead returns C<0> for this
 case.  GMP's API does not allow negative C<k> but otherwise matches.
 L<Math::BigInt> does not implement any extensions and the results for
 C<n E<lt> 0, k > 0> are undefined.
+
+
+=head2 hclassno
+
+Returns 12 times the Hurwitz-Kronecker class number of the input integer C<n>.
+This will always be an integer due to the pre-multiplication by 12.
+The result is C<0> for any input less than zero or congruent to 1 or 2 mod 4.
 
 
 =head2 bernfrac

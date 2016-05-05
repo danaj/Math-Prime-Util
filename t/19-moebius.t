@@ -11,7 +11,7 @@ use Math::Prime::Util
       hammingweight sqrtint is_square_free
       is_carmichael is_quasi_carmichael
       is_primitive_root
-      ramanujan_tau
+      hclassno ramanujan_tau
      /;
 
 my $extra = defined $ENV{EXTENDED_TESTING} && $ENV{EXTENDED_TESTING};
@@ -206,6 +206,34 @@ if (!$usexs && !$extra) {
   delete $chebyshev1{$_} for grep { $_ > 50000 } keys %chebyshev1;
   delete $chebyshev2{$_} for grep { $_ > 50000 } keys %chebyshev2;
 }
+
+my %hclassno = (
+      -3 => 0,
+       0 => -1,
+       1 => 0,
+       2 => 0,
+       3 => 4,
+       4 => 6,
+       7 => 12,
+       8 => 12,
+      11 => 12,
+      12 => 16,
+      20 => 24,
+      23 => 36,
+      39 => 48,
+      47 => 60,
+      71 => 84,
+     163 => 12,
+     427 => 24,
+     907 => 36,
+    1555 => 48,
+    6307 => 96,
+   20563 => 156,
+   30067 => 168,
+   31243 => 192,
+   34483 => 180,
+    4031 => 1008,
+);
 
 my %rtau = (
        0 => 0,
@@ -573,6 +601,7 @@ plan tests => 0 + 1
                 + scalar(keys %mangoldt)
                 + scalar(keys %chebyshev1)
                 + scalar(keys %chebyshev2)
+                + scalar(keys %hclassno)
                 + scalar(keys %rtau)
                 + scalar(@liouville_pos) + scalar(@liouville_neg);
 
@@ -650,7 +679,7 @@ is_deeply( [euler_phi(1513,1537)],
 
 ###### Jordan Totient
 while (my($k, $tref) = each (%jordan_totients)) {
-  my @tlist = map { jordan_totient($k, $_) } 1 .. scalar @$tref;
+  my @tlist = map { jordan_totient(0+$k, $_) } 1 .. scalar @$tref;
   is_deeply( \@tlist, $tref, "Jordan's Totient J_$k" );
 }
 
@@ -720,21 +749,26 @@ while (my($k, $sigmaref) = each (%sigmak)) {
 
 ###### Exponential of von Mangoldt
 while (my($n, $em) = each (%mangoldt)) {
-  is( exp_mangoldt($n), $em, "exp_mangoldt($n) == $em" );
+  is( exp_mangoldt(0+$n), $em, "exp_mangoldt($n) == $em" );
 }
 
 ###### first Chebyshev function
 while (my($n, $c1) = each (%chebyshev1)) {
-  cmp_closeto( chebyshev_theta($n), $c1, 1e-9*abs($n), "chebyshev_theta($n)" );
+  cmp_closeto( chebyshev_theta(0+$n), $c1, 1e-9*abs($n), "chebyshev_theta($n)" );
 }
 ###### second Chebyshev function
 while (my($n, $c2) = each (%chebyshev2)) {
-  cmp_closeto( chebyshev_psi($n), $c2, 1e-9*abs($n), "chebyshev_psi($n)" );
+  cmp_closeto( chebyshev_psi(0+$n), $c2, 1e-9*abs($n), "chebyshev_psi($n)" );
+}
+
+###### Hurwitz Class Number
+while (my($n, $h) = each (%hclassno)) {
+  is( hclassno(0 + $n), $h, "H($n) = $h" );
 }
 
 ###### Ramanujan Tau
 while (my($n, $tau) = each (%rtau)) {
-  is( ramanujan_tau($n), $tau, "Ramanujan Tau($n) = $tau" );
+  is( ramanujan_tau(0 + $n), $tau, "Ramanujan Tau($n) = $tau" );
 }
 
 ###### Carmichael Lambda
@@ -780,7 +814,7 @@ foreach my $moarg (@mult_orders) {
 }
 ###### znprimroot
 while (my($n, $root) = each (%primroots)) {
-  is( znprimroot($n), $root, "znprimroot($n) == " . ((defined $root) ? $root : "<undef>") );
+  is( znprimroot(0+$n), $root, "znprimroot($n) == " . ((defined $root) ? $root : "<undef>") );
 }
 is( znprimroot("-100000898"), 31, "znprimroot(\"-100000898\") == 31" );
 # I don't think we should rely on this parsing correctly.
@@ -789,9 +823,9 @@ is( znprimroot("-100000898"), 31, "znprimroot(\"-100000898\") == 31" );
 ###### is_primitive_root
 while (my($n, $root) = each (%primroots)) {
   if (defined $root) {
-    is( is_primitive_root($root,$n), 1, "$root is a primitive root mod $n" );
+    is( is_primitive_root(0+$root,0+$n), 1, "$root is a primitive root mod $n" );
   } else {
-    is( is_primitive_root(2,$n), 0, "2 is not a primitive root mod $n" );
+    is( is_primitive_root(2,0+$n), 0, "2 is not a primitive root mod $n" );
   }
 }
 is(is_primitive_root(19,191), 1, "19 is a primitive root mod 191");

@@ -673,7 +673,7 @@ sub is_ramanujan_prime {
 
 sub nth_ramanujan_prime {
   my($n) = @_;
-  return undef if $n <= 0;
+  return undef if $n <= 0;  ## no critic qw(ProhibitExplicitReturnUndef)
   my $L = _n_ramanujan_primes($n);
   return $L->[$n-1];
 }
@@ -1363,7 +1363,7 @@ sub nth_prime {
   my($n) = @_;
   _validate_positive_integer($n);
 
-  return undef if $n <= 0;
+  return undef if $n <= 0;  ## no critic qw(ProhibitExplicitReturnUndef)
   return $_primes_small[$n] if $n <= $#_primes_small;
 
   if ($n > MPU_MAXPRIMEIDX && ref($n) ne 'Math::BigFloat') {
@@ -1413,7 +1413,7 @@ sub nth_prime_upper {
   my($n) = @_;
   _validate_positive_integer($n);
 
-  return undef if $n <= 0;
+  return undef if $n <= 0;  ## no critic qw(ProhibitExplicitReturnUndef)
   return $_primes_small[$n] if $n <= $#_primes_small;
 
   $n = _upgrade_to_float($n) if $n > MPU_MAXPRIMEIDX || $n > 2**45;
@@ -1444,7 +1444,7 @@ sub nth_prime_lower {
   my($n) = @_;
   _validate_num($n) || _validate_positive_integer($n);
 
-  return undef if $n <= 0;
+  return undef if $n <= 0;  ## no critic qw(ProhibitExplicitReturnUndef)
   return $_primes_small[$n] if $n <= $#_primes_small;
 
   $n = _upgrade_to_float($n) if $n > MPU_MAXPRIMEIDX || $n > 2**45;
@@ -1466,7 +1466,7 @@ sub nth_prime_approx {
   my($n) = @_;
   _validate_num($n) || _validate_positive_integer($n);
 
-  return undef if $n <= 0;
+  return undef if $n <= 0;  ## no critic qw(ProhibitExplicitReturnUndef)
   return $_primes_small[$n] if $n <= $#_primes_small;
 
   $n = _upgrade_to_float($n)
@@ -1908,7 +1908,7 @@ sub twin_prime_count_approx {
 
 sub nth_twin_prime {
   my($n) = @_;
-  return 0 if $n < 0;
+  return undef if $n < 0;  ## no critic qw(ProhibitExplicitReturnUndef)
   return (undef,3,5,11,17,29,41)[$n] if $n <= 6;
 
   my $p = nth_twin_prime_approx($n);
@@ -4869,6 +4869,41 @@ sub chebyshev_psi {
   $sum;
 }
 
+sub hclassno {
+  my $n = shift;
+
+  return -1 if $n == 0;
+  return 0 if $n < 0 || ($n % 4) == 1 || ($n % 4) == 2;
+  return 2 * (2,3,6,6,6,8,12,9,6,12,18,12,8,12,18,18,12,15,24,12,6,24,30,20,12,12,24,24,18,24)[($n>>1)-1] if $n <= 60;
+
+  my ($h, $square, $b, $b2) = (0, 0, $n & 1, ($n+1) >> 2);
+
+  if ($b == 0) {
+    my $lim = int(sqrt($b2));
+    if (_is_perfect_square($b2)) {
+      $square = 1;
+      $lim--;
+    }
+    #$h += scalar(grep { $_ <= $lim } divisors($b2));
+    for my $i (1 .. $lim) { $h++ unless $b2 % $i; }
+    ($b,$b2) = (2, ($n+4) >> 2);
+  }
+  while ($b2 * 3 < $n) {
+    $h++ unless $b2 % $b;
+    my $lim = int(sqrt($b2));
+    if (_is_perfect_square($b2)) {
+      $h++;
+      $lim--;
+    }
+    #$h += 2 * scalar(grep { $_ > $b && $_ <= $lim } divisors($b2));
+    for my $i ($b+1 .. $lim) { $h += 2 unless $b2 % $i; }
+    $b += 2;
+    $b2 = ($n+$b*$b) >> 2;
+  }
+  return (($b2*3 == $n) ? 2*(3*$h+1) : $square ? 3*(2*$h+1) : 6*$h) << 1;
+}
+
+# Sigma method for prime powers
 sub _taup {
   my($p, $e, $n) = @_;
   my($bp) = Math::BigInt->new("".$p);
@@ -4896,16 +4931,48 @@ sub _taup {
   $n;
 }
 
+# Cohen's method using Hurwitz class numbers
+# The two hclassno calls could be collapsed with some work
+sub _tauprime {
+  return -24 if $_[0] == 2;
+  my $p = Math::BigInt->new("$_[0]");
+  my($sum,$p9,$pp7) = (Math::BigInt->new(0), 9*$p, 7*$p*$p);
+  for my $t (1 .. Math::Prime::Util::sqrtint($p)) {
+    my $t2 = Math::BigInt->new("$t") ** 2;
+    my $v = $p - $t2;
+    $sum += $t2**3 * (4*$t2*$t2 - $p9*$t2 + $pp7) * (Math::Prime::Util::hclassno(4*$v) + 2 * Math::Prime::Util::hclassno($v));
+  }
+  28*$p**6 - 28*$p**5 - 90*$p**4 - 35*$p**3 - 1 - 32 * ($sum/3);
+}
+
+# Recursive method for handling prime powers
+sub _taupower {
+  my($p, $e) = @_;
+  return 1 if $e <= 0;
+  return _tauprime($p) if $e == 1;
+  $p = Math::BigInt->new("$p");
+  my($tp, $p11) = ( _tauprime($p), $p**11 );
+  return $tp ** 2 - $p11 if $e == 2;
+  return $tp ** 3 - 2 * $tp * $p11 if $e == 3;
+  return $tp ** 4 - 3 * $tp**2 * $p11 + $p11**2 if $e == 4;
+  # Recurse -3
+  ($tp**3 - 2*$tp*$p11) * _taupower($p,$e-3) + ($p11*$p11 - $tp*$tp*$p11) * _taupower($p,$e-4);
+}
+
 sub ramanujan_tau {
   my $n = shift;
   return 0 if $n <= 0;
 
-  if (defined &Math::Prime::Util::GMP::ramanujan_tau && Math::Prime::Util::prime_get_config()->{'gmp'}) {
-    return Math::Prime::Util::_reftyped($_[0], Math::Prime::Util::GMP::ramanujan_tau($n));
+  # Use GMP if we have no XS or if size is small
+  if ($n < 300000 || !Math::Prime::Util::prime_get_config()->{'xs'}) {
+    if (defined &Math::Prime::Util::GMP::ramanujan_tau && Math::Prime::Util::prime_get_config()->{'gmp'}) {
+      return Math::Prime::Util::_reftyped($_[0], Math::Prime::Util::GMP::ramanujan_tau($n));
+    }
   }
 
-  my @f = Math::Prime::Util::factor_exp($n);
-  vecprod( map { _taup( @{$f[$_]} ) } 0 .. $#f );
+  # _taup is faster for small numbers, but gets very slow.  It's not a huge
+  # deal, and the GMP code will probably get run for small inputs anyway.
+  vecprod(map { _taupower($_->[0],$_->[1]) } Math::Prime::Util::factor_exp($n));
 }
 
 

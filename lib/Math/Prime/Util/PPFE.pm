@@ -69,6 +69,12 @@ sub exp_mangoldt {
   _validate_positive_integer($n);
   return Math::Prime::Util::PP::exp_mangoldt($n);
 }
+sub hclassno {
+  my($n) = @_;
+  return 0 if defined $n && int($n) < 0;
+  _validate_positive_integer($n);
+  return Math::Prime::Util::PP::hclassno($n);
+}
 
 
 sub next_prime {

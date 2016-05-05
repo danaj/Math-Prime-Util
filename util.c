@@ -3186,33 +3186,50 @@ IV ramanujan_tau(UV n) {
   return (n < NTAU)  ?  tau_table[n]  :  0;
 }
 
-/* Returns 12 * H(n).  Algorithm from Pari/GP */
+static UV _count_class_div(UV s, UV b2) {
+  UV h = 0, i, ndivisors, *divs, lim;
+
+  lim = isqrt(b2);
+  if (lim*lim == b2) lim--;
+
+  if ((lim-s) < 70) {  /* Iterate looking for divisors */
+    for (i = s; i <= lim; i++)
+      if (b2 % i == 0)
+        h++;
+  } else {             /* Walk through all the divisors */
+    divs = _divisor_list(b2, &ndivisors);
+    for (i = 0; i < ndivisors && divs[i] <= lim; i++)
+      if (divs[i] >= s)
+        h++;
+    Safefree(divs);
+  }
+  return h;
+}
+
+/* Returns 12 * H(n).  See Cohen 5.3.5 or Pari/GP.
+ * Pari/GP uses a different method for n > 500000, which is quite a bit
+ * faster, but assumes the GRH. */
 IV hclassno(UV n) {
-  UV i, nmod4 = n % 4, b = n & 1, b2 = (n+1) >> 2, h = 0, square = 0;
+  UV nmod4 = n % 4, b2, b, h;
+  int square;
 
   if (n == 0) return -1;
   if (nmod4 == 1 || nmod4 == 2) return 0;
+  if (n == 3) return 4;
 
-  if (b == 0) {
-    for (i = 1; i*i < b2; i++)
-      if (b2 % i == 0)
-        h++;
-    if (i*i == b2)
-      square = 1;
-    b = 2;
-    b2 = (n+4) >> 2;
-  }
+  b = n & 1;
+  b2 = (n+1) >> 2;
+  square = is_perfect_square(b2);
 
-  while (b2 * 3 < n) {
-    if (b2 % b == 0)
-      h++;
-    for (i = b+1; i*i < b2; i++)
-      if (b2 % i == 0)
-        h += 2;
-    if (i*i == b2)
-      h++;
-    b += 2;
-    b2 = (b*b + n) >> 2;
+  h = divisor_sum(b2,0) >> 1;
+  if (b == 1)
+    h = 1 + square + ((h - 1) << 1);
+  b += 2;
+
+  for (;  b2 = (n + b*b) >> 2, 3*b2 < n;  b += 2) {
+    h += (b2 % b == 0)
+      +  is_perfect_square(b2)
+      +  (_count_class_div(b+1, b2) << 1);
   }
-  return ((b2*3 == n) ? 2*(3*h+1) : square ? 3*(2*h+1) : 6*h) << 1;
+  return 12*h + ((b2*3 == n) ? 4 : square && !(n&1) ? 6 : 0);
 }

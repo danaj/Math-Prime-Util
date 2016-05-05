@@ -53,8 +53,7 @@ sub mpu_public_regex {
       is_ramanujan_prime
       is_mersenne_prime
       is_power sqrtint
-      is_square_free
-      is_carmichael
+      is_square_free is_primitive_root is_carmichael is_quasi_carmichael
       miller_rabin_random
       lucas_sequence lucasu lucasv
       primes twin_primes ramanujan_primes sieve_prime_cluster
@@ -82,7 +81,7 @@ sub mpu_public_regex {
       moebius mertens euler_phi jordan_totient exp_mangoldt liouville
       partitions bernfrac bernreal harmfrac harmreal
       chebyshev_theta chebyshev_psi
-      divisor_sum carmichael_lambda kronecker ramanujan_tau
+      divisor_sum carmichael_lambda kronecker hclassno ramanujan_tau
       binomial factorial stirling znorder znprimroot znlog legendre_phi
       ExponentialIntegral LogarithmicIntegral RiemannZeta RiemannR LambertW Pi
   );

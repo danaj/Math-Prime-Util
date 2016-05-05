@@ -20,26 +20,31 @@ Revision history for Perl module Math::Prime::Util
     - is_euler_pseudoprime(n,a[...])      Euler test to given bases
     - is_primitive_root(r, n)             is r a primitive root mod n
     - is_quasi_carmichael(n)              is n a Quasi-Carmichael number
+    - hclassno(n)                         Hurwitz class number H(n) * 12
 
     [FUNCTIONALITY AND PERFORMANCE]
 
     - Fixed incorrect table entries for 2^16th Ramanujan prime count and
       nth_ramanujan_prime(23744).
 
-    - vecsum will handle 128-bit sums internally (performance increase).
-
     - foroddcomposites with certain arguments would start with 10 instead of 9.
+
+    - lucasu and lucasv should return bigint types.
+
+    - vecsum will handle 128-bit sums internally (performance increase).
 
     - Speedup is_carmichael.
 
     - znlog is now an interleaved BSGS racing Rho.  It is about 2x faster.
 
-    - lucasu and lucasv should return bigint types.
-
     - Change AKS to Bernstein 2003 theorem 4.1.
       5-20x faster than Bornemann, 20000+x faster than V6.
 
-    - sum_primes now uses tables for native sizes.
+    - sum_primes now uses tables for native sizes (performance increase).
+
+    - ramanujan_tau uses Cohen's hclassno method instead of the sigma
+      calculation.  This is 3-4x faster than the GMP code for inputs > 300k,
+      and much faster than the older PP code.
 
 
 0.57 2016-01-03
