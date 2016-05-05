@@ -1209,7 +1209,7 @@ static UV dlp_bsgs(UV a, UV g, UV p, UV n, UV maxent, int race_rho) {
   gs_i = 0;
   bs_i = 0;
 
-  bsgs_hash_put(&PAGES, S, i);   /* First baby step */
+  bsgs_hash_put(&PAGES, S, 0);   /* First baby step */
   S = mulmod(S, g, p);
   /* Interleaved Baby Step Giant Step */
   for (i = 1; i <= m; i++) {
