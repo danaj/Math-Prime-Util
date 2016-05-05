@@ -169,6 +169,6 @@ is_deeply( \@res, \@exp, "powmod with negative exponent on ".($num+1)." random i
 
 sub nrand {
   my $r = int(rand(4294967296));
-  $r = ($r << 32) + int(rand(4294967296)) if ~0 > 4294967296;
+  $r = ($r << 32) + int(rand(4294967296)) if $use64;
   $r;
 }
