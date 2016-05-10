@@ -2625,9 +2625,9 @@ cases the return value is still congruent to C<1> modulo C<n> as expected.
 
 =head2 sqrtmod
 
-Given two integers C<a> and C<p>, return the square root of C<a> mod C<p>.
+Given two integers C<a> and C<n>, return the square root of C<a> mod C<n>.
 If no square root exists, undef is returned.  If defined, the return value
-C<r> will always satisfy C<r^2 = a mod p>.
+C<r> will always satisfy C<r^2 = a mod n>.
 
 If the modulus is prime, the function will always return C<r>, the smaller
 of the two square roots (the other being C<-r mod p>.  If the modulus is

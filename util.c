@@ -1382,9 +1382,15 @@ UV ramanujan_prime_count(UV lo, UV hi)
 /*                            SUMS AND PRINTING                               */
 /******************************************************************************/
 
-
-#if 0
-/* Combinatorial sum of primes < n.  Call with phisum(n, isqrt(n)).
+/* The fastest way to compute the sum of primes is using a combinatorial
+ * algorithm such as Deleglise 2012.  Since this code is purely native,
+ * it will overflow a 64-bit result quite quickly.  Hence a relatively small
+ * table plus sum over sieved primes works quite well.
+ *
+ * The following info is useful if we ever return 128-bit results or for a
+ * GMP implementation.
+ *
+ * Combinatorial sum of primes < n.  Call with phisum(n, isqrt(n)).
  * Needs optimization, either caching, Lehmer, or LMO.
  * http://mathoverflow.net/questions/81443/fastest-algorithm-to-compute-the-sum-of-primes
  * http://www.ams.org/journals/mcom/2009-78-268/S0025-5718-09-02249-2/S0025-5718-09-02249-2.pdf
@@ -1396,54 +1402,6 @@ UV ramanujan_prime_count(UV lo, UV hi)
  *   P_2(x,a) = sum prime p : y < p <= sqrt(x) of f(p) * Pi_f(x/p) -
  *              sum prime p : y < p <= sqrt(x) of f(p) * Pi_f(p-1)
  */
-static UV pscache[1024*64] = {0};
-
-static UV phisum(UV n, UV a) {
-  UV origa, pa, res;
-  if (n < 2)  return 0;
-  if (a == 0) return ((n+1)*n)/2 - 1;
-  if (a == 1 || n < 9)  return ((n+1)>>1)*((n+1)>>1)+1;
-  if (a == 2 || n < 16)  return ((n+1)>>1)*((n+1)>>1) - 3*((n/3+1)>>1)*((n/3+1)>>1) + 4;
-  if (n < 1024 && a < 64 && pscache[n*64+a] > 0) return pscache[n*64+a];
-
-  pa = nth_prime(a);
-  origa = a;
-  while (n < pa*pa)
-    pa = nth_prime(--a);
-  res = phisum(n, a-1) - pa * (phisum(n/pa, a-1) - phisum(pa-1, a-1));
-  if (n < 1024 && origa < 64) pscache[n*64+origa] = res;
-  return res;
-}
-
-/* Very non-optimal */
-static UV P2sum(UV x) {
-  UV cbrtx = icbrt(x);
-  UV sqrtx = isqrt(x);
-  UV lim = x / (cbrtx+1);
-  UV i, sum, last;
-  UV *pif;
-
-  New(0, pif, lim+1, UV);
-  last = sum = 0;
-  START_DO_FOR_EACH_PRIME(2, lim) {
-    for (i = last; i < p; i++)
-      pif[i] = sum;
-    sum += p;
-    last = p;
-  } END_DO_FOR_EACH_PRIME
-  for (i = last; i <= lim; i++)
-    pif[i] = sum;
-  printf("pif table done\n");  fflush(stdout);
-  if (x > 10000) { printf("%lu %lu %lu\n", pif[1032],pif[1033],pif[1034]); }
-
-  sum = 0;
-  START_DO_FOR_EACH_PRIME(cbrtx+1, sqrtx) {
-    sum += p * (pif[x/p] - pif[p-1]);
-  } END_DO_FOR_EACH_PRIME
-  Safefree(pif);
-  return sum;
-}
-#endif
 
 static const unsigned char byte_sum[256] =
   {120,119,113,112,109,108,102,101,107,106,100,99,96,95,89,88,103,102,96,95,92,
@@ -1481,23 +1439,6 @@ int sum_primes(UV low, UV high, UV *return_sum) {
   UV sum = 0;
   int overflow = 0;
 
-#if 0 /* Legendre */
-  *return_sum = phisum(high, _XS_prime_count(2,isqrt(high)));
-  return 1;
-#endif
-#if 0 /* Meissel */
-  if (low <= 2 && high > 100000) {
-    UV x = high;
-    UV y = icbrt(x);
-    UV a = _XS_prime_count(2,y);
-    UV ps = phisum(x,a);
-    UV p2 = P2sum(high);
-    UV pif;
-    sum_primes(2,y,&pif);
-    *return_sum = ps + pif - 1 - p2;
-    return 1;
-  }
-#endif
   if ((low <= 2) && (high >= 2)) sum += 2;
   if ((low <= 3) && (high >= 3)) sum += 3;
   if ((low <= 5) && (high >= 5)) sum += 5;
@@ -2346,14 +2287,26 @@ int sqrtmod(UV *s, UV a, UV p) {
   if ((p % 4) == 3) {
     return verify_sqrtmod(powmod(a, (p+1)>>2, p), s,a,p);
   }
-  if ((p % 8) == 5) {
-    UV q = powmod(a, (p-1) >> 2, p);
-    if (q == 1) {
-      return verify_sqrtmod(powmod(a, (p+3)>>3, p), s,a,p);
-    } else {
-      UV v = powmod(mulmod(4,a,p),(p-5)>>3,p);
-      return verify_sqrtmod(mulmod(addmod(a,a,p),v,p), s,a,p);
+  if ((p % 8) == 5) { /* Atkin's algorithm.  Faster than Legendre. */
+    UV a2, alpha, beta, b;
+    a2 = addmod(a,a,p);
+    alpha = powmod(a2,(p-5)>>3,p);
+    beta  = mulmod(a2,sqrmod(alpha,p),p);
+    b     = mulmod(alpha, mulmod(a, (beta ? beta-1 : p-1), p), p);
+    return verify_sqrtmod(b, s,a,p);
+  }
+  if ((p % 16) == 9) { /* Müller's algorithm extending Atkin */
+    UV a2, alpha, beta, b, d = 1;
+    a2 = addmod(a,a,p);
+    alpha = powmod(a2, (p-9)>>4, p);
+    beta  = mulmod(a2, sqrmod(alpha,p), p);
+    if (sqrmod(beta,p) != p-1) {
+      do { d += 2; } while (kronecker_uu(d,p) != -1 && d < p);
+      alpha = mulmod(alpha, powmod(d,(p-9)>>3,p), p);
+      beta  = mulmod(a2, mulmod(sqrmod(d,p),sqrmod(alpha,p),p), p);
     }
+    b = mulmod(alpha, mulmod(a, mulmod(d,(beta ? beta-1 : p-1),p),p),p);
+    return verify_sqrtmod(b, s,a,p);
   }
 
   /* Verify Euler condition for odd p */
@@ -2364,17 +2317,13 @@ int sqrtmod(UV *s, UV a, UV p) {
     q = p-1;
     e = valuation(q, 2);
     q >>= e;
-    t = 2;
+    t = 3;
     while (kronecker_uu(t, p) != -1) {
-      t++;
-      if (t == 133) {
-        if ((p % 2) == 0) return 0;
-        if ((p % t) == 0) return 0;
-        if (powmod(t, (p-1)>>1, p) != 1) return 0;
-        if (powmod(2, p-1, p) != 1) return 0;
-      } else if (t == 286) {
-        if (powmod(t, (p-1)>>1, p) != 1) return 0;
-      } else if (t >= 20000) {
+      t += 2;
+      if (t == 201) {           /* exit if p looks like a composite */
+        if ((p % 2) == 0 || powmod(2, p-1, p) != 1 || powmod(3, p-1, p) != 1)
+          return 0;
+      } else if (t >= 20000) {  /* should never happen */
         return 0;
       }
     }
@@ -2406,24 +2355,48 @@ int sqrtmod_composite(UV *s, UV a, UV n) {
   UV fac[MPU_MAX_FACTORS+1];
   UV exp[MPU_MAX_FACTORS+1];
   UV sqr[MPU_MAX_FACTORS+1];
-  UV p, j, k;
+  UV p, j, k, gcdan;
   int i, nfactors;
 
   if (n == 0) return 0;
   if (a >= n) a %= n;
   if (n <= 2 || a <= 1) return verify_sqrtmod(a, s,a,n);
-  /* if (kronecker_uu(a, n) == -1) return 0; */
 
+  /* Simple existence check.  It's still possible no solution exists.*/
+  if (kronecker_uu(a, ((n%4) == 2) ? n/2 : n) == -1) return 0;
+
+  /* if 8|n 'a' must = 1 mod 8, else if 4|n 'a' must = 1 mod 4 */
+  if ((n % 4) == 0) {
+    if ((n % 8) == 0) {
+      if ((a % 8) != 1) return 0;
+    } else {
+      if ((a % 4) != 1) return 0;
+    }
+  }
+
+  /* More detailed existence check before factoring.  Still possible. */
+  gcdan = gcd_ui(a, n);
+  if (gcdan == 1) {
+    if ((n % 3) == 0 && kronecker_uu(a, 3) != 1) return 0;
+    if ((n % 5) == 0 && kronecker_uu(a, 5) != 1) return 0;
+    if ((n % 7) == 0 && kronecker_uu(a, 7) != 1) return 0;
+  }
+
+  /* Factor n */
   nfactors = factor_exp(n, fac, exp);
+
+  /* If gcd(a,n)==1, this answers comclusively if a solution exists. */
+  if (gcdan == 1) {
+    for (i = 0; i < nfactors; i++)
+      if (fac[i] > 7 && kronecker_uu(a, fac[i]) != 1) return 0;
+  }
+
   for (i = 0; i < nfactors; i++) {
 
     /* Powers of 2 */
     if (fac[i] == 2) {
-      if (exp[i] == 2 && ((a % 4) != 1)) return 0;
-      if (exp[i] >  2 && ((a % 8) != 1)) return 0;
-
       if (exp[i] == 1) {
-        sqr[i] = 1;
+        sqr[i] = a & 1;
       } else if (exp[i] == 2) {
         sqr[i] = 1;  /* and 3 */
       } else {
@@ -2472,15 +2445,6 @@ int sqrtmod_composite(UV *s, UV a, UV n) {
       sqr[i] = sol;
     }
   }
-
-#if 0
-  /* This is a crude way we could try to return the smallest result.  At this
-   * point there is a solution, so we're not wasting too much time. */
-  for (i = 1; i < 1000000 && i < (n>>1); i++) {
-    if (sqrmod(i,n) == a)
-      return verify_sqrtmod(i, s,a,n);
-  }
-#endif
 
   /* raise fac[i] */
   for (i = 0; i < nfactors; i++) {
