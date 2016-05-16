@@ -91,6 +91,8 @@ extern IV ramanujan_tau(UV n);
 extern int strnum_minmax(int min, char* a, STRLEN alen, char* b, STRLEN blen);
 
 extern int from_digit_string(UV* n, const char* s, int base);
+extern int from_digit_to_UV(UV* rn, UV* r, int len, int base);
+extern int from_digit_to_str(char** rstr, UV* r, int len, int base);
 extern int to_digit_array(int* bits, UV n, int base, int length);
 extern int to_digit_string(char *s, UV n, int base, int length);
 

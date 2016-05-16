@@ -2191,25 +2191,30 @@ UV znorder(UV a, UV n) {
 UV znprimroot(UV n) {
   UV fac[MPU_MAX_FACTORS+1];
   UV exp[MPU_MAX_FACTORS+1];
-  UV a, phi;
+  UV a, phi, on, r;
   int i, nfactors;
+
   if (n <= 4) return (n == 0) ? 0 : n-1;
   if (n % 4 == 0)  return 0;
-  if (is_prob_prime(n)) {
-    phi = n-1;
-  } else {  /* prim root exists if n is 2, 4, p^a, or 2(p^a) for odd prime p */
-    if (n & 0x3) nfactors = factor_exp( (n&1) ? n : n>>1, fac, exp);
-    else         nfactors = 0;
-    if (nfactors != 1) return 0;
-    phi = fac[0]-1;  /* n = p^a for odd prime p.  Calculate totient. */
-    for (i = 1; i < (int)exp[0]; i++)
-      phi *= fac[0];
-  }
+
+  on = (n&1) ? n : (n>>1);
+  a = powerof(on);
+  r = rootof(on, a);
+  if (!is_prob_prime(r)) return 0;        /* c^a or 2c^a */
+  phi = (r-1) * (on/r);                   /* p^a or 2p^a */
+
   nfactors = factor_exp(phi, fac, exp);
   for (i = 0; i < nfactors; i++)
     exp[i] = phi / fac[i];  /* exp[i] = phi(n) / i-th-factor-of-phi(n) */
   for (a = 2; a < n; a++) {
-    if (kronecker_uu(a, n) == 0)  continue;
+    /* Skip first few perfect powers */
+    if (a == 4 || a == 8 || a == 9) continue;
+    /* Skip values we know can't be right: (a|n) = 0 (or 1 for odd primes) */
+    if (phi == n-1) {
+      if (kronecker_uu(a, n) != -1)  continue;
+    } else {
+      if (kronecker_uu(a, n) == 0)  continue;
+    }
     for (i = 0; i < nfactors; i++)
       if (powmod(a, exp[i], n) == 1)
         break;
@@ -3019,6 +3024,46 @@ int from_digit_string(UV* rn, const char* s, int base)
     n = n * base + d;
   }
   *rn = n;
+  return 1;
+}
+
+int from_digit_to_UV(UV* rn, UV* r, int len, int base)
+{
+  UV d, n = 0;
+  int i;
+  if (len < 0 || len > BITS_PER_WORD)
+    return 0;
+  for (i = 0; i < len; i++) {
+    d = r[i];
+    if (n > (UV_MAX-d)/base) break;  /* overflow */
+    n = n * base + d;
+  }
+  *rn = n;
+  return (i >= len);
+}
+
+
+int from_digit_to_str(char** rstr, UV* r, int len, int base)
+{
+  char *so, *s;
+  int i;
+
+  if (len < 0 || !(base == 2 || base == 10 || base == 16)) return 0;
+
+  if (r[0] >= (UV) base) return 0;  /* TODO: We don't apply extended carry */
+
+  New(0, so, len + 3, char);
+  s = so;
+  if (base == 2 || base == 16) {
+    *s++ = '0';
+    *s++ = (base == 2) ? 'b' : 'x';
+  }
+  for (i = 0; i < len; i++) {
+    UV d = r[i];
+    s[i] = (d < 10) ? '0'+d : 'a'+d-10;
+  }
+  s[len+1] = '\0';
+  *rstr = so;
   return 1;
 }
 
