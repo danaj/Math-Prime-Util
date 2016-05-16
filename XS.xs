@@ -228,7 +228,7 @@ static int _vcallsubn(pTHX_ I32 flags, I32 stashflags, const char* name, int nar
 #define OBJECTIFY_RESULT(input, output) \
   if (!sv_isobject(output)) { \
     SV* resptr = output; \
-    const char *iname = sv_isobject(input) \
+    const char *iname = (input && sv_isobject(input)) \
                       ? HvNAME_get(SvSTASH(SvRV(input))) : 0; \
     if (iname == 0 || strEQ(iname, "Math::BigInt")) { \
       (void)_vcallsubn(aTHX_ G_SCALAR, VCALL_ROOT, "_to_bigint", 1); \
@@ -243,24 +243,43 @@ static int _vcallsubn(pTHX_ I32 flags, I32 stashflags, const char* name, int nar
     } \
   }
 
-static int from_digit_arrayref(pTHX_ UV* rn, AV* av, int base)
-{
-  int i, len;
-  UV d, n = 0;
+static SV* sv_to_bigint(pTHX_ SV* r) {
+  dSP;  ENTER;  PUSHMARK(SP);
+  XPUSHs(r);
+  PUTBACK;
+  call_pv("Math::Prime::Util::_to_bigint", G_SCALAR);
+  SPAGAIN;
+  r = POPs;
+  PUTBACK; LEAVE;
+  return r;
+}
 
+static int arrayref_to_int_array(pTHX_ UV** ret, AV* av, int base)
+{
+  int len, i;
+  UV *r, carry = 0;
   if (SvTYPE((SV*)av) != SVt_PVAV)
     croak("fromdigits first argument must be a string or array reference");
-  len = av_len(av);
-  if (len > BITS_PER_WORD) return 0;
-  for (i = 0; i <= len; i++) {
+  len = 1 + av_len(av);
+  New(0, r, len, UV);
+  for (i = len-1; i >= 0; i--) {
     SV** psvd = av_fetch(av, i, 0);
-    if (_validate_int(aTHX_ *psvd, 1) != 1) return 0;
-    d = my_svuv(*psvd);
-    if (n > (UV_MAX-d)/base) return 0;  /* overflow */
-    n = n * base + d;
+    if (_validate_int(aTHX_ *psvd, 1) != 1) break;
+    r[i] = my_svuv(*psvd) + carry;
+    if (r[i] >= (UV)base && i > 0) {
+      carry = r[i] / base;
+      r[i] -= carry * base;
+    } else {
+      carry = 0;
+    }
   }
-  *rn = n;
-  return 1;
+  if (i >= 0) {
+    Safefree(r);
+    return -1;
+  }
+  /* printf("array is ["); for(i=0;i<len;i++)printf("%lu,",r[i]); printf("]\n"); */
+  *ret = r;
+  return len;
 }
 
 static UV negmod(IV a, UV n) {
@@ -1594,31 +1613,39 @@ carmichael_lambda(IN SV* svn)
     return; /* skip implicit PUTBACK */
 
 void
-sumdigits(SV* svn, UV base = 10)
+sumdigits(SV* svn, UV ibase = 255)
   PREINIT:
-    UV sum;
+    UV base, sum;
+    STRLEN i, len;
+    const char* s;
   PPCODE:
+    base = (ibase == 255) ? 10 : ibase;
+    if (base < 2 || base > 36) croak("sumdigits: invalid base %lu", base);
     sum = 0;
-    if (base == 10) {  /* Handles bigints as well as regular ints */
-      STRLEN i, len;
-      const char* ptr = SvPV(svn, len);
-      for (i = 0; i < len; i++) {
-        if (isDIGIT(ptr[i])) {
-          sum += ptr[i] - '0';
-        }
+    /* faster for integer input in base 10 */
+    if (base == 10 && SVNUMTEST(svn) && (SvIsUV(svn) || SvIVX(svn) >= 0)) {
+      UV n, t = my_svuv(svn);
+      while ((n=t)) {
+        t = n / base;
+        sum += n - base*t;
       }
-    } else {
-      if (base < 2) { croak("sumdigits: invalid base %lu",base); }
-      if (SVNUMTEST(svn) && (SvIsUV(svn) || SvIVX(svn) >= 0)) {
-        UV n, t = my_svuv(svn);
-        while ((n=t)) {
-          t = n / base;
-          sum += n - base*t;
-        }
-      } else {
-        _vcallsub_with_pp("sumdigits");
-        return;
-      }
+      XSRETURN_UV(sum);
+    }
+    s = SvPV(svn, len);
+    /* If no base givem and input is 0x... or 0b..., select base. */
+    if (ibase == 255 && len > 2 && s[0] == '0' && (s[1] == 'x' || s[1] == 'b')){
+      base = (s[1] == 'x') ? 16 : 2;
+      s += 2;
+      len -= 2;
+    }
+    for (i = 0; i < len; i++) {
+      UV d = 0;
+      const char c = s[i];
+      if      (c >= '0' && c <= '9') { d = c - '0';      }
+      else if (c >= 'a' && c <= 'z') { d = c - 'a' + 10; }
+      else if (c >= 'A' && c <= 'Z') { d = c - 'A' + 10; }
+      if (d < base)
+        sum += d;
     }
     XSRETURN_UV(sum);
 
@@ -1629,6 +1656,7 @@ void todigits(SV* svn, int base=10, int length=-1)
   PREINIT:
     int i, status;
     UV n;
+    char *str;
   PPCODE:
     if (base < 2) croak("invalid base: %d", base);
     status = 0;
@@ -1660,26 +1688,39 @@ void todigits(SV* svn, int base=10, int length=-1)
     /* todigits or todigitstring base 10 (large size) */
     if ((ix == 0 || ix == 1) && base == 10 && length < 0) {
       STRLEN len;
-      char *s = SvPV(svn, len);
+      str = SvPV(svn, len);
       if (ix == 1) {
-        XPUSHs(sv_2mortal(newSVpv(s, len)));
+        XPUSHs(sv_2mortal(newSVpv(str, len)));
         XSRETURN(1);
       }
-      if (len == 1 && s[0] == '0') XSRETURN(0);
+      if (len == 1 && str[0] == '0') XSRETURN(0);
       {
         dMY_CXT;
         EXTEND(SP, (IV)len);
         for (i = 0; i < (int)len; i++)
-          PUSH_NPARITY(s[i]-'0');
+          PUSH_NPARITY(str[i]-'0');
       }
       XSRETURN(len);
     }
-    /* fromdigits */
-    if (ix == 2 && !SvROK(svn) && from_digit_string(&n, SvPV_nolen(svn), base)) {
-      XSRETURN_UV(n);
-    }
-    if (ix == 2 && SvROK(svn) && from_digit_arrayref(aTHX_ &n, (AV*) SvRV(svn), base)) {
-      XSRETURN_UV(n);
+    if (ix == 2) { /* fromdigits */
+      if (!SvROK(svn)) {  /* string */
+        if (from_digit_string(&n, SvPV_nolen(svn), base)) {
+          XSRETURN_UV(n);
+        }
+      } else {            /* array ref of digits */
+        UV* r = 0;
+        int len = arrayref_to_int_array(aTHX_ &r, (AV*) SvRV(svn), base);
+        if (from_digit_to_UV(&n, r, len, base)) {
+          Safefree(r);
+          XSRETURN_UV(n);
+        } else if (from_digit_to_str(&str, r, len, base)){
+          Safefree(r);
+          XPUSHs( sv_to_bigint(aTHX_ sv_2mortal(newSVpv(str,0))) );
+          Safefree(str);
+          XSRETURN(1);
+        }
+        Safefree(r);
+      }
     }
     switch (ix) {
       case 0:  _vcallsubn(aTHX_ GIMME_V, VCALL_GMP|VCALL_PP, "todigits", items); break;

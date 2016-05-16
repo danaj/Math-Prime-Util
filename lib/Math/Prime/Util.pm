@@ -2599,15 +2599,28 @@ Mathematica's C<FromDigits> function.
 
 =head2 sumdigits
 
+  # Sum digits of primes to 1 million.
+  my $s=0; forprimes { $s += sumdigits($_); } 1e6; say $s;
+
 Given an input C<n>, return the sum of the digits of C<n>.  Any non-digit
 characters of C<n> are ignored (including negative signs and decimal points).
-This is similar to the command C<vecsum(split(//,$n))> but faster and
-allows non-positive-integer inputs.
+This is similar to the command C<vecsum(split(//,$n))> but faster,
+allows non-positive-integer inputs, and can sum in other bases.
 
-An optional second argument indicates the base.  This defaults to 10, and
-must be at least 2.
+An optional second argument indicates the base of the input number.
+This defaults to 10, and must be between 2 and 36.  Any character that is
+outside the range C<0> to C<base-1> will be ignored.
 
-This corresponds to Pari's C<sumdigits> function from version 2.8 and later.
+If no base is given and the input number C<n> begins with C<0x> or C<0b>
+then it will be interpreted as a string in base 16 or 2 respectively.
+
+Regardless of the base, the output sum is a decimal number.
+
+This is similar but not identical to Pari's C<sumdigits> function from
+version 2.8 and later.  The Pari/GP function always takes the input as
+a decimal number, uses the optional base as a base to first convert to,
+then sums the digits.  This can be done with either
+C<vecsum(todigits($n, $base))> or C<sumdigits(todigitstring($n,$base))>.
 
 
 =head2 invmod

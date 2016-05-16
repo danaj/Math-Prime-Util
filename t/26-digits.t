@@ -12,9 +12,9 @@ my $extra = defined $ENV{EXTENDED_TESTING} && $ENV{EXTENDED_TESTING};
 #my $usegmp= Math::Prime::Util::prime_get_config->{'gmp'};
 #$use64 = 0 if $use64 && 18446744073709550592 == ~0;
 
-plan tests => 0 + 6 + 2 + 1    # fromdigits
-                + 6 + 4 + 1    # todigits
-                + 4 + 2*$extra # sumdigits
+plan tests => 0 + 6 + 3 + 2 + 1  # fromdigits
+                + 6 + 4 + 1      # todigits
+                + 4 + 2*$extra   # sumdigits
                 + 12;
 
 ###### fromdigits
@@ -24,6 +24,11 @@ is(fromdigits([0,1,1,0,1]), 1101, "fromdigits decimal");
 is(fromdigits([0,1,1,0,1],3), 37, "fromdigits base 3");
 is(fromdigits([0,1,1,0,1],16), 4353, "fromdigits base 16");
 is(fromdigits([0,1,1,0,2216],16), 6568, "fromdigits base 16 with overflow");
+
+# Pari/GP seems to have a carry issue with base 2
+is(fromdigits([7,999,44],5), 7*5**2 + 999*5 + 44*1, "fromdigits base 5 with carry");
+is(fromdigits([7,999,44],3), 7*3**2 + 999*3 + 44*1, "fromdigits base 3 with carry");
+is(fromdigits([7,999,44],2), 7*2**2 + 999*2 + 44*1, "fromdigits base 2 with carry");
 
 is(fromdigits("1f",16), 31, "fromdigits hex string");
 is(fromdigits("24"), 24, "fromdigits decimal");
@@ -52,7 +57,7 @@ is(sumdigits("-45.36"), 4+5+3+6, "sumdigits(-45.36)");
   my @splitd = map { vecsum(split(//,$_)) } 0 .. 1000;
   is_deeply( \@sumd, \@splitd, "sumdigits 0 to 1000");
 }
-is(sumdigits(3290484,16), 24, "sumdigits hex");
+is(sumdigits("0x3290f8E"), 51, "sumdigits hex");
 is(sumdigits("293852387239761276234029385230912847923872323"), 201, "sumdigits bigint");
 if ($extra) {
   is(sumdigits(factorial(1000)), 10539, "sumdigits 1000!");

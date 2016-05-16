@@ -6,9 +6,15 @@ Revision history for Perl module Math::Prime::Util
 
     - prev_prime($n) where $n <= 2 now returns undef instead of 0.  This
       may enable catching range errors, and is technically more correct.
+
     - nth_prime(0) now returns undef instead of 0.  This should help catch
       cases where the base wasn't understood.  The change is similar for
       all the nth_* functions (e.g. nth_twin_prime).
+
+    - sumdigits(n,base) will interpret n as a number in the given base,
+      rather than the Pari/GP method of converting decimal n to that base
+      then summing.  This allows sumdigits to easily sum hex strings.
+      The old behavior is easily done with vecsum(todigits(n, base)).
 
     [ADDED]
 
@@ -35,7 +41,9 @@ Revision history for Perl module Math::Prime::Util
 
     - Speedup is_carmichael.
 
-    - znlog is now an interleaved BSGS racing Rho.  It is about 2x faster.
+    - Speedup znprimroot, 10% for small inputs, 10x for large composites.
+
+    - Speedup znlog ~2x.  It is now Rho racing an interleaved BSGS.
 
     - Change AKS to Bernstein 2003 theorem 4.1.
       5-20x faster than Bornemann, 20000+x faster than V6.
@@ -45,6 +53,9 @@ Revision history for Perl module Math::Prime::Util
     - ramanujan_tau uses Cohen's hclassno method instead of the sigma
       calculation.  This is 3-4x faster than the GMP code for inputs > 300k,
       and much faster than the older PP code.
+
+    - fromdigits much faster for large base-10 arrays.  Timing is better than
+      split plus join when output is a bigint.
 
 
 0.57 2016-01-03
