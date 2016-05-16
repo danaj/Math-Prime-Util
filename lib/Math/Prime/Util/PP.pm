@@ -1726,6 +1726,7 @@ sub prime_count_upper {
 
   # Chebyshev:            1.25506*x/logx       x >= 17
   # Rosser & Schoenfeld:  x/(logx-3/2)         x >= 67
+  # Panaitopol 1999:      x/(logx-1.112)       x >= 4
   # Dusart 1999:          x/logx*(1+1/logx+2.51/logxlogx)   x >= 355991
   # Dusart 2010:          x/logx*(1+1/logx+2.334/logxlogx)  x >= 2_953_652_287
   # Axler 2014:           x/(logx-1-1/logx-3.35/logxlogx...) x >= e^3.804
@@ -3071,12 +3072,14 @@ sub is_primitive_root {
   my($a, $n) = @_;
   $n = -$n if $n < 0;   # ignore sign
 
-  #if (defined &Math::Prime::Util::GMP::is_primitive_root && Math::Prime::Util::prime_get_config()->{'gmp'}) {
-  #  return Math::Prime::Util::_reftyped($_[0], Math::Prime::Util::GMP::is_primitive_root($a,$n));
-  #}
+ if (   Math::Prime::Util::prime_get_config()->{'gmp'}
+     && defined &Math::Prime::Util::GMP::znorder
+     && defined &Math::Prime::Util::GMP::totient) {
+   return Math::Prime::Util::GMP::znorder($a,$n) eq Math::Prime::Util::GMP::totient($n);
+ }
 
-  my $s = Math::Prime::Util::euler_phi($n);
   return 0 if Math::Prime::Util::gcd($a, $n) != 1;
+  my $s = Math::Prime::Util::euler_phi($n);
   return 0 if ($s % 2) == 0 && Math::Prime::Util::powmod($a, $s/2, $n) == 1;
   return 0 if ($s % 3) == 0 && Math::Prime::Util::powmod($a, $s/3, $n) == 1;
   return 0 if ($s % 5) == 0 && Math::Prime::Util::powmod($a, $s/5, $n) == 1;
