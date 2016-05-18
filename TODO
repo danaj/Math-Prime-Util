@@ -108,6 +108,6 @@
   much worse growth for large inputs.  The table method is probably fine
   for native size results.
 
-- PP sumdigits new API
-
 - fromdigits([7,2,2],2) = 30 in Pari/GP, 34 for us.  (Pari bug?)
+
+- partial_sieve function, like sieve_primes but returns differences.

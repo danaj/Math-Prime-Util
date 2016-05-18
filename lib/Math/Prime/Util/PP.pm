@@ -2260,16 +2260,17 @@ sub vecextract {
 sub sumdigits {
   my($n,$base) = @_;
   my $sum = 0;
-  $n =~ tr/0123456789//cd;
+  $base =  2 if !defined $base && $n =~ s/^0b//;
+  $base = 16 if !defined $base && $n =~ s/^0x//;
   if (!defined $base || $base == 10) {
+    $n =~ tr/0123456789//cd;
     $sum += $_ for (split(//,$n));
   } else {
     croak "sumdigits: invalid base $base" if $base < 2;
-    $n = Math::BigInt->new("$n");
-    while ($n > 0) {
-      my $t = $n / $base;
-      $sum += $n - $t * $base;
-      $n = $t;
+    my $cmap = substr("0123456789abcdefghijklmnopqrstuvwxyz",0,$base);
+    for my $c (split(//,lc($n))) {
+      my $p = index($cmap,$c);
+      $sum += $p if $p > 0;
     }
   }
   $sum;
@@ -3075,7 +3076,10 @@ sub is_primitive_root {
  if (   Math::Prime::Util::prime_get_config()->{'gmp'}
      && defined &Math::Prime::Util::GMP::znorder
      && defined &Math::Prime::Util::GMP::totient) {
-   return Math::Prime::Util::GMP::znorder($a,$n) eq Math::Prime::Util::GMP::totient($n);
+   my $order = Math::Prime::Util::GMP::znorder($a,$n);
+   return 0 unless defined $order;
+   my $totient = Math::Prime::Util::GMP::totient($n);
+   return ($order eq $totient) ? 1 : 0;
  }
 
   return 0 if Math::Prime::Util::gcd($a, $n) != 1;

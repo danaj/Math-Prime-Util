@@ -1632,7 +1632,7 @@ sumdigits(SV* svn, UV ibase = 255)
       XSRETURN_UV(sum);
     }
     s = SvPV(svn, len);
-    /* If no base givem and input is 0x... or 0b..., select base. */
+    /* If no base given and input is 0x... or 0b..., select base. */
     if (ibase == 255 && len > 2 && s[0] == '0' && (s[1] == 'x' || s[1] == 'b')){
       base = (s[1] == 'x') ? 16 : 2;
       s += 2;
