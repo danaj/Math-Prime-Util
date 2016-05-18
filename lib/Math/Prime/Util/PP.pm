@@ -531,6 +531,41 @@ sub primes {
   $sref;
 }
 
+sub sieve_range {
+  my($n, $width, $depth) = @_;
+  _validate_positive_integer($n);
+  _validate_positive_integer($width);
+  _validate_positive_integer($depth);
+  my @candidates;
+
+  return (0 .. $width-1) if $depth < 2;
+  return (grep { ($n+$_) & 1 } 0 .. $width-1) if $depth == 2;
+  return (grep { (($n+$_) & 1) && (($n+$_) % 3) != 0 } 0 .. $width-1) if $depth == 3;
+
+  my $start = $n;
+  if ($n < 3) {
+    push @candidates, (2-$n) if $n <= 2;
+    $start = 3;
+    $width -= ($start - $n);
+  } elsif (!($n&1)) {
+    $start++;
+    $width--;
+  }
+
+  if (!($width&1)) {
+    $width--;
+  }
+
+  return if $width < 1;
+
+  my $sieveref = _sieve_segment($start, $start+$width-1, $depth);
+  my $offset = $start - $n - 2;
+  while ($$sieveref =~ m/0/g) {
+    push @candidates, $offset + (pos($$sieveref) << 1);
+  }
+  return @candidates;
+}
+
 sub sieve_prime_cluster {
   my($lo,$hi,@cl) = @_;
   my $_verbose = Math::Prime::Util::prime_get_config()->{'verbose'};

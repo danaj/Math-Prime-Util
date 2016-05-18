@@ -31,7 +31,7 @@ our @EXPORT_OK =
       is_square_free is_primitive_root is_carmichael is_quasi_carmichael
       miller_rabin_random
       lucas_sequence lucasu lucasv
-      primes twin_primes ramanujan_primes sieve_prime_cluster
+      primes twin_primes ramanujan_primes sieve_prime_cluster sieve_range
       forprimes forcomposites foroddcomposites fordivisors
       forpart forcomp forcomb forperm formultiperm
       prime_iterator prime_iterator_object

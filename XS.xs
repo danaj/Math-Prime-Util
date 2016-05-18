@@ -521,6 +521,24 @@ sieve_primes(IN UV low, IN UV high)
     return; /* skip implicit PUTBACK */
 
 void
+sieve_range(IN SV* svn, IN UV width, IN UV depth)
+  PREINIT:
+    int status;
+  PPCODE:
+    status = _validate_int(aTHX_ svn, 0);
+    /* TODO: n + width > maxint.  */
+    if (status == 1) { /* TODO: actually sieve */
+      UV factors[MPU_MAX_FACTORS+1], i, n = my_svuv(svn);
+      for (i = (n<2)?2-n:0; i < width; i++) {
+        if (trial_factor(n+i, factors, depth) < 2)
+          XPUSHs(sv_2mortal(newSVuv( i )));
+      }
+    } else {
+      _vcallsubn(aTHX_ GIMME_V, VCALL_GMP|VCALL_PP, "sieve_range", items);
+      return;
+    }
+
+void
 sieve_prime_cluster(IN SV* svlo, IN SV* svhi, ...)
   PREINIT:
     uint32_t nc, cl[100];
