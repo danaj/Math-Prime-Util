@@ -27,6 +27,7 @@ Revision history for Perl module Math::Prime::Util
     - is_primitive_root(r, n)             is r a primitive root mod n
     - is_quasi_carmichael(n)              is n a Quasi-Carmichael number
     - hclassno(n)                         Hurwitz class number H(n) * 12
+    - sieve_range(n, width, depth)        sieve to given depth, return offsets
 
     [FUNCTIONALITY AND PERFORMANCE]
 

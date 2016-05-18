@@ -539,23 +539,27 @@ sub sieve_range {
   my @candidates;
 
   return (0 .. $width-1) if $depth < 2;
-  return (grep { ($n+$_) & 1 } 0 .. $width-1) if $depth == 2;
-  return (grep { (($n+$_) & 1) && (($n+$_) % 3) != 0 } 0 .. $width-1) if $depth == 3;
 
   my $start = $n;
-  if ($n < 3) {
+  if ($n < 5) {
     push @candidates, (2-$n) if $n <= 2;
-    $start = 3;
+    push @candidates, (3-$n) if $n <= 3;
+    $start = 5;
     $width -= ($start - $n);
   } elsif (!($n&1)) {
     $start++;
     $width--;
   }
 
-  if (!($width&1)) {
-    $width--;
+  if ($depth < 5) {
+    push @candidates, map { $_ - $n }
+                      grep { ($_ & 1) && ($depth < 3 || ($_ % 3)) }
+                      map { $start+$_ }
+                      0 .. $width-1;
+    return @candidates;
   }
 
+  $width-- if !($width&1);
   return if $width < 1;
 
   my $sieveref = _sieve_segment($start, $start+$width-1, $depth);

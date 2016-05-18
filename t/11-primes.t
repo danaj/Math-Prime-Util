@@ -3,7 +3,7 @@ use strict;
 use warnings;
 
 use Test::More;
-use Math::Prime::Util qw/primes prime_count/;
+use Math::Prime::Util qw/primes prime_count sieve_range/;
 
 my $use64 = Math::Prime::Util::prime_get_config->{'maxbits'} > 32;
 $use64 = 0 if 18446744073709550592 == ~0;
@@ -19,7 +19,7 @@ my %primesubs = (
 # Don't test the private XS methods if we're not using XS.
 delete @primesubs{qw/trial erat segment sieve/} unless $usexs;
 
-plan tests => 12+3 + 12 + 1 + 19 + ($use64 ? 1 : 0) + 1 + 13*scalar(keys(%primesubs));
+plan tests => 12+3 + 12 + 1 + 19 + ($use64 ? 1 : 0) + 1 + 13*scalar(keys(%primesubs)) + 10;
 
 ok(!eval { primes(undef); },   "primes(undef)");
 ok(!eval { primes("a"); },     "primes(a)");
@@ -140,3 +140,14 @@ while (my($method, $sub) = each (%primesubs)) {
   is_deeply( $sub->(3089, 3163), [3089,3109,3119,3121,3137,3163], "$method(3089, 3163)" );
   is_deeply( $sub->(3090, 3162), [3109,3119,3121,3137], "$method(3090, 3162)" );
 }
+
+is_deeply( [sieve_range(0, 1000, 40)], primes(1000), "sieve_range 0 width 1000 depth 40 returns primes" );
+is_deeply( [sieve_range(1, 4, 2)], [1,2], "sieve_range 1 width 4 depth 2 returns 1,2" );
+is_deeply( [sieve_range(1, 5, 2)], [1,2,4], "sieve_range 1 width 5 depth 2 returns 1,2,4" );
+is_deeply( [sieve_range(1, 6, 3)], [1,2,4], "sieve_range 1 width 6 depth 3 returns 1,2,4" );
+is_deeply( [sieve_range(109485, 100,  3)], [2,4,8,10,14,16,20,22,26,28,32,34,38,40,44,46,50,52,56,58,62,64,68,70,74,76,80,82,86,88,92,94,98], "sieve_range(109485,100,3)" );
+is_deeply( [sieve_range(109485, 100,  5)], [2,4,8,14,16,22,26,28,32,34,38,44,46,52,56,58,62,64,68,74,76,82,86,88,92,94,98], "sieve_range(109485,100,5)" );
+is_deeply( [sieve_range(109485, 100,  7)], [4,8,14,22,26,28,32,34,38,46,52,56,62,64,68,74,76,82,88,92,94,98], "sieve_range(109485,100,7)" );
+is_deeply( [sieve_range(109485, 100, 11)], [4,8,14,22,26,28,32,34,38,46,52,56,62,68,74,76,82,88,92,94,98], "sieve_range(109485,100,11)" );
+is_deeply( [sieve_range(109485, 100, 13)], [4,8,22,26,28,32,34,38,46,52,56,62,68,74,76,82,88,94,98], "sieve_range(109485,100,13)" );
+is_deeply( [sieve_range(109485, 100, 17)], [4,8,22,26,28,32,34,38,52,56,62,68,74,76,82,88,94,98], "sieve_range(109485,100,17)" );

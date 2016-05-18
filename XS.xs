@@ -526,14 +526,23 @@ sieve_range(IN SV* svn, IN UV width, IN UV depth)
     int status;
   PPCODE:
     status = _validate_int(aTHX_ svn, 0);
-    /* TODO: n + width > maxint.  */
-    if (status == 1) { /* TODO: actually sieve */
+    if (status == 1) {
+      /* TODO: actually sieve */
       UV factors[MPU_MAX_FACTORS+1], i, n = my_svuv(svn);
-      for (i = (n<2)?2-n:0; i < width; i++) {
-        if (trial_factor(n+i, factors, depth) < 2)
-          XPUSHs(sv_2mortal(newSVuv( i )));
+      if ( (n + width) < n) {  /* Overflow */
+        status = 0;
+      } else if (depth <= 100) { /* trial division for each value */
+        for (i = (n<2)?2-n:0; i < width; i++)
+          if (trial_factor(n+i, factors, depth) < 2)
+            XPUSHs(sv_2mortal(newSVuv( i )));
+      } else {                   /* small trial + factor for each value */
+        for (i = (n<2)?2-n:0; i < width; i++)
+          if (trial_factor(n+i, factors, 100) < 2)
+            if (factor(n+i,factors) < 2 || factors[0] > depth)
+              XPUSHs(sv_2mortal(newSVuv( i )));
       }
-    } else {
+    }
+    if (status != 1) {
       _vcallsubn(aTHX_ GIMME_V, VCALL_GMP|VCALL_PP, "sieve_range", items);
       return;
     }

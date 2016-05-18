@@ -70,6 +70,7 @@ See L<Math::Prime::Util> for complete documentation.
   twin_primes([start,] end)           array ref of twin primes
   ramanujan_primes([start,] end)      array ref of Ramanujan primes
   sieve_prime_cluster(start, end, @C) list of prime k-tuples
+  sieve_range(n, width, depth)        sieve out small factors to depth
   next_prime(n)                       next prime > n
   prev_prime(n)                       previous prime < n
   prime_count(n)                      count of primes <= n
