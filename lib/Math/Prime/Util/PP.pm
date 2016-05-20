@@ -536,31 +536,27 @@ sub sieve_range {
   _validate_positive_integer($n);
   _validate_positive_integer($width);
   _validate_positive_integer($depth);
+
   my @candidates;
-
-  return (0 .. $width-1) if $depth < 2;
-
   my $start = $n;
+
   if ($n < 5) {
-    push @candidates, (2-$n) if $n <= 2;
-    push @candidates, (3-$n) if $n <= 3;
+    push @candidates, (2-$n) if $n <= 2 && $n+$width-1 >= 2;
+    push @candidates, (3-$n) if $n <= 3 && $n+$width-1 >= 3;
+    push @candidates, (4-$n) if $n <= 4 && $n+$width-1 >= 4 && $depth < 2;
     $start = 5;
     $width -= ($start - $n);
-  } elsif (!($n&1)) {
-    $start++;
-    $width--;
   }
 
-  if ($depth < 5) {
-    push @candidates, map { $_ - $n }
+  return @candidates, map {$start+$_-$n } 0 .. $width-1 if $depth < 2;
+  return @candidates, map { $_ - $n }
                       grep { ($_ & 1) && ($depth < 3 || ($_ % 3)) }
                       map { $start+$_ }
-                      0 .. $width-1;
-    return @candidates;
-  }
+                      0 .. $width-1                     if $depth < 5;
 
+  if (!($start & 1)) { $start++; $width--; }
   $width-- if !($width&1);
-  return if $width < 1;
+  return @candidates if $width < 1;
 
   my $sieveref = _sieve_segment($start, $start+$width-1, $depth);
   my $offset = $start - $n - 2;

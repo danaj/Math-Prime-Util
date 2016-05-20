@@ -529,6 +529,7 @@ sieve_range(IN SV* svn, IN UV width, IN UV depth)
     if (status == 1) {
       /* TODO: actually sieve */
       UV factors[MPU_MAX_FACTORS+1], i, n = my_svuv(svn);
+      if (depth == 0) depth = 1; /* Trial factor takes 0 to means sqrt(n) */
       if ( (n + width) < n) {  /* Overflow */
         status = 0;
       } else if (depth <= 100) { /* trial division for each value */
