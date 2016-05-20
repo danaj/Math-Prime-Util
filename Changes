@@ -16,6 +16,9 @@ Revision history for Perl module Math::Prime::Util
       then summing.  This allows sumdigits to easily sum hex strings.
       The old behavior is easily done with vecsum(todigits(n, base)).
 
+    - binary() was not intended to be released (todigits and todigitstring
+      are supersets), but the documentation got left in.  Remove docs.
+
     [ADDED]
 
     - addmod(a, b, n)                     a + b mod n

@@ -171,7 +171,6 @@ See L<Math::Prime::Util> for complete documentation.
   binomial(n,k)                       binomial coefficient
   partitions(n)                       number of integer partitions
   valuation(n,k)                      number of times n is divisible by k
-  binary(n)                           binary string or array of digits
   hammingweight(n)                    population count (# of binary 1s)
   kronecker(a,b)                      Kronecker (Jacobi) symbol
   addmod(a,b,n)                       a + b mod n
