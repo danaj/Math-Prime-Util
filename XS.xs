@@ -995,8 +995,8 @@ is_prime(IN SV* svn, ...)
         UV n = my_svuv(svn);
         UV a = (items == 1) ? 0 : my_svuv(ST(1));
         if (status == -1) {
-          if (UV_MAX-n == (UV)IV_MAX) status = 0;
-          else                        n = (UV) -my_sviv(svn);
+          if (n == UV_MAX || (UV_MAX-n) == (UV)IV_MAX)  status = 0;
+          else                                          n = (UV) -my_sviv(svn);
         }
         if (status == 1 || (status == -1 && (a == 0 || a & 1))) {
           ret = is_power(n, a);
