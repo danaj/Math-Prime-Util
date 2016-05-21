@@ -56,7 +56,7 @@ sub mpu_public_regex {
       is_square_free is_primitive_root is_carmichael is_quasi_carmichael
       miller_rabin_random
       lucas_sequence lucasu lucasv
-      primes twin_primes ramanujan_primes sieve_prime_cluster
+      primes twin_primes ramanujan_primes sieve_prime_cluster sieve_range
       forprimes forcomposites foroddcomposites fordivisors
       forpart forcomp forcomb forperm formultiperm
       prime_iterator prime_iterator_object
@@ -74,8 +74,8 @@ sub mpu_public_regex {
       random_shawe_taylor_prime random_shawe_taylor_prime_with_cert
       primorial pn_primorial consecutive_integer_lcm gcdext chinese
       gcd lcm factor factor_exp divisors valuation hammingweight
-      invmod sqrtmod addmod mulmod divmod powmod
       todigits fromdigits todigitstring sumdigits
+      invmod sqrtmod addmod mulmod divmod powmod
       vecsum vecmin vecmax vecprod vecreduce vecextract
       vecany vecall vecnotall vecnone vecfirst
       moebius mertens euler_phi jordan_totient exp_mangoldt liouville

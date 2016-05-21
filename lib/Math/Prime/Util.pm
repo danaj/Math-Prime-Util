@@ -5,7 +5,7 @@ use Carp qw/croak confess carp/;
 
 BEGIN {
   $Math::Prime::Util::AUTHORITY = 'cpan:DANAJ';
-  $Math::Prime::Util::VERSION = '0.57';
+  $Math::Prime::Util::VERSION = '0.58';
 }
 
 # parent is cleaner, and in the Perl 5.10.1 / 5.12.0 core, but not earlier.
@@ -954,7 +954,7 @@ Math::Prime::Util - Utilities related to prime numbers, including fast sieves an
 
 =head1 VERSION
 
-Version 0.57
+Version 0.58
 
 
 =head1 SYNOPSIS
@@ -4002,6 +4002,10 @@ The L<Bell numbers|https://en.wikipedia.org/wiki/Bell_number> B_n:
 
   sub B { my $n = shift; vecsum(map { stirling($n,$_,2) } 0..$n) }
   say "$_  ",B($_) for 1..50;
+
+Convert from binary to hex (3000x faster than Math::BaseConvert):
+
+  my $hex_string = todigitstring(fromdigits($bin_string,2),16);
 
 
 =head1 PRIMALITY TESTING NOTES
