@@ -992,9 +992,12 @@ is_prime(IN SV* svn, ...)
         }
         if (status != 0 && astatus == 1) RETURN_NPARITY(ret);
       } else if (ix == 20) {
-        UV n = (status == 1) ? my_svuv(svn) : (UV) -my_sviv(svn);
+        UV n = my_svuv(svn);
         UV a = (items == 1) ? 0 : my_svuv(ST(1));
-        if (status == -1 && n > (UV)IV_MAX) { status = 0; }
+        if (status == -1) {
+          if (UV_MAX-n == (UV)IV_MAX) status = 0;
+          else                        n = (UV) -my_sviv(svn);
+        }
         if (status == 1 || (status == -1 && (a == 0 || a & 1))) {
           ret = is_power(n, a);
           if (status == -1 && a == 0) {
