@@ -21,8 +21,6 @@
 # preferable to printing a 0 result in a list which may be thousands of
 # lines long, and hence missed.  If the gaps have been properly supplied,
 # this should never come up.
-#
-# TODO: For large inputs, try calling PFGW.
 
 use warnings;
 use strict;
@@ -31,6 +29,12 @@ use Math::Prime::Util qw/:all/;
 use Math::Prime::Util::GMP;     # Ensure we're using this
 use Time::HiRes qw(gettimeofday tv_interval);
 $|=1;
+
+# TODO: Use a command line argument
+my $use_pfgw = 0;
+#my $pfgw_exec = "/users/jacobsen/src/pfgw-3.7.10/pfgw64";
+my $pfgw_exec = "pfgw64";
+my $pfgw_thresh = 2400;  # PFGW faster only for this many digits
 
 my $fstart = [gettimeofday];
 my $procn = 0;
@@ -72,18 +76,17 @@ while (<>) {
     printf "G=%7d %10.2fs Checking P1 ($dstr) interval...   \r", $gap, tv_interval($start);
     $next = next_prime($n);
   } else {
-    my $depth = int( 0.7 * $log2n * $log2n * log($log2n) );
-    $depth = 2**32-100 if $depth > 2**32-100;
+    my $depth = int( 1.2 * $log2n * $log2n * log($log2n) );
     printf "G=%7d %10.2fs Sieving to $depth ...%s \r", $gap, tv_interval($start), " " x 30;
-    my @list = Math::Prime::Util::GMP::sieve_primes($n+1,$end-1,$depth);
+    my @list = sieve_range($n+1, $gap-1, $depth);
     my $gapstart = [gettimeofday];
     my $ntests = scalar(@list);
     my $i = 0;
     my $nexti = 1;
     printf "G=%7d %10.2fs Checking P1 ($dstr) + %d...     \r", $gap, tv_interval($start), $list[0]-$n;
-    foreach my $p (@list) {
-      my $pgap = $p - $n;
-      die "Interior point $expr + $pgap is prime\n" if test($p);
+    foreach my $rgap (@list) {
+      my $pgap = $rgap + 1;  # We sieved from $n+1
+      die "Interior point $expr + $pgap is prime\n" if testint($n+$pgap);
       $i++;
       if ($i >= $nexti) {
         my $startint = tv_interval($start);
@@ -118,5 +121,13 @@ sub numerate {
 
 sub test {
   my $n = shift;
+  return is_bpsw_prime($n) && is_frobenius_underwood_pseudoprime($n);
+}
+
+sub testint {
+  my $n = shift;
+  if ($use_pfgw && length($n) >= $pfgw_thresh) {
+    return 0 if system("$pfgw_exec -k -Cquiet -f0 -u0 -q\"$n\" >/dev/null 2>1");
+  }
   return is_bpsw_prime($n) && is_frobenius_underwood_pseudoprime($n);
 }

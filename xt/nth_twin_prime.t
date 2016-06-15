@@ -10,7 +10,7 @@ use Math::Prime::Util qw/twin_prime_count nth_twin_prime/;
 #   for (i=1,35,print(2^i," ", a(i)))
 # 10^n from tables
 my %nthvals = (
-         0 =>           0,
+#         0 =>           undef,
          1 =>           3,
          2 =>           5,
          3 =>          11,

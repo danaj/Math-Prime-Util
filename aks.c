@@ -6,9 +6,15 @@
 
 /* The AKS primality algorithm for native integers.
  *
- * There are two versions here.  The v6 algorithm from the latest AKS paper,
- * as well as one with improvements from Bernstein and Voloch and better r/s
- * selection derived from Folkmar Bornemann's 2002 Pari implementation.
+ * There are three versions here:
+ *   V6         The v6 algorithm from the latest AKS paper.
+ *   BORNEMANN  Improvements from Bernstein, Voloch, and a clever r/s
+ *              selection from Folkmar Bornemann.  Similar to Bornemann's
+ *              2003 Pari/GP implementation
+ *   BERN41     My implementation of theorem 4.1 from Bernstein's 2003 paper.
+ *
+ * Each one is orders of magnitude faster than the previous, and by default
+ * we use Bernstein 4.1 as it is by far the fastest.
  *
  * Note that AKS is very, very slow compared to other methods.  It is, however,
  * polynomial in log(N), and log-log performance graphs show nice straight
@@ -31,7 +37,7 @@
  *
  * This is all much easier in GMP.
  *
- * Copyright 2012-2014, Dana Jacobsen.
+ * Copyright 2012-2016, Dana Jacobsen.
  */
 
 #define SQRTN_SHORTCUT 1
