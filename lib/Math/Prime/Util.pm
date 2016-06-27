@@ -885,8 +885,14 @@ sub bernfrac {
 }
 sub bernreal {
   my($n, $precision) = @_;
-  my($num,$den) = bernfrac($n);
   do { require Math::BigFloat; Math::BigFloat->import(); } unless defined $Math::BigFloat::VERSION;
+
+  if ($_HAVE_GMP && defined &Math::Prime::Util::GMP::bernreal) {
+    return Math::BigFloat->new(Math::Prime::Util::GMP::bernreal($n)) if !defined $precision;
+    return Math::BigFloat->new(Math::Prime::Util::GMP::bernreal($n,$precision),$precision);
+  }
+
+  my($num,$den) = bernfrac($n);
   return Math::BigFloat->bzero if $num->is_zero;
   scalar Math::BigFloat->new($num)->bdiv($den, $precision);
 }
@@ -909,6 +915,11 @@ sub harmreal {
   do { require Math::BigFloat; Math::BigFloat->import(); } unless defined $Math::BigFloat::VERSION;
   return Math::BigFloat->bzero if $n <= 0;
 
+  if ($_HAVE_GMP && defined &Math::Prime::Util::GMP::harmreal) {
+    return Math::BigFloat->new(Math::Prime::Util::GMP::harmreal($n)) if !defined $precision;
+    return Math::BigFloat->new(Math::Prime::Util::GMP::harmreal($n,$precision),$precision);
+  }
+
   # If low enough precision, use native floating point.  Fast.
   if (defined $precision && $precision <= 13) {
     return Math::BigFloat->new(
@@ -918,9 +929,9 @@ sub harmreal {
     );
   }
 
-  if ($n < 80 && $_HAVE_GMP && defined &Math::Prime::Util::GMP::harmfrac) {
+  if ($_HAVE_GMP && defined &Math::Prime::Util::GMP::harmfrac) {
     my($num,$den) = map { _to_bigint($_) } Math::Prime::Util::GMP::harmfrac($n);
-    scalar Math::BigFloat->new($num)->bdiv($den, $precision);
+    return scalar Math::BigFloat->new($num)->bdiv($den, $precision);
   }
 
   require Math::Prime::Util::PP;
@@ -2563,8 +2574,8 @@ read from the right, so a mask of C<1> returns the first element, while C<5>
 will return the first and third.  The mask may be a bigint.
 
 If the second argument is an array reference, then its elements will be used
-as indices into the first array.  Duplicate values are allowed and the
-ordering is preserved.  Hence these are equivalent:
+as zero-based indices into the first array.  Duplicate values are allowed and
+the ordering is preserved.  Hence these are equivalent:
 
     vecextract($aref, $iref);
     @$aref[@$iref];
