@@ -1685,10 +1685,9 @@ IV mertens(UV n) {
    * In serial it is quite a bit faster than segmented summation of mu
    * ranges, though the latter seems to be a favored method for GPUs.
    */
-  UV u, i, m, nmk, maxmu;
-  uint32_t j;
+  UV u, i, j, m, nmk, maxmu;
   signed char* mu;
-  short* M;   /* Good through at least n=2^56, might not for 2^64. */
+  short* M;   /* 16 bits is enough range for all 32-bit M => 64-bit n */
   IV sum;
 
   if (n <= 1)  return n;
@@ -1712,7 +1711,7 @@ IV mertens(UV n) {
       for (nmk = 1; nmk <= last_nmk; nmk++, nmkm += m) {
         this_k = next_k;
         next_k = n/nmkm;
-        if (this_k != next_k)  inner_sum += M[nmk] * (this_k - next_k);
+        inner_sum += M[nmk] * (this_k - next_k);
       }
       sum += (mu[m] > 0) ? -inner_sum : inner_sum;
     }
