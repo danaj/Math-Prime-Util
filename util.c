@@ -1686,8 +1686,9 @@ IV mertens(UV n) {
    * ranges, though the latter seems to be a favored method for GPUs.
    */
   UV u, i, m, nmk, maxmu;
+  uint32_t j;
   signed char* mu;
-  IV* M;
+  short* M;   /* Good through at least n=2^56, might not for 2^64. */
   IV sum;
 
   if (n <= 1)  return n;
@@ -1695,10 +1696,10 @@ IV mertens(UV n) {
   maxmu = (n/(u+1));              /* maxmu lets us handle u < sqrt(n) */
   if (maxmu < u) maxmu = u;
   mu = _moebius_range(0, maxmu);
-  New(0, M, maxmu+1, IV);
+  New(0, M, maxmu+1, short);
   M[0] = 0;
-  for (i = 1; i <= maxmu; i++)
-    M[i] = M[i-1] + mu[i];
+  for (j = 1; j <= maxmu; j++)
+    M[j] = M[j-1] + mu[j];
   sum = M[u];
   for (m = 1; m <= u; m++) {
     if (mu[m] != 0) {
@@ -1711,9 +1712,9 @@ IV mertens(UV n) {
       for (nmk = 1; nmk <= last_nmk; nmk++, nmkm += m) {
         this_k = next_k;
         next_k = n/nmkm;
-        inner_sum += M[nmk] * (this_k - next_k);
+        if (this_k != next_k)  inner_sum += M[nmk] * (this_k - next_k);
       }
-      sum -= mu[m] * inner_sum;
+      sum += (mu[m] > 0) ? -inner_sum : inner_sum;
     }
   }
   Safefree(M);

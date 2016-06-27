@@ -831,9 +831,9 @@ vecextract(IN SV* x, IN SV* svm)
     av = (AV*) SvRV(x);
     if (SvROK(svm) && SvTYPE(SvRV(svm)) == SVt_PVAV) {
       AV* avm = (AV*) SvRV(svm);
-      UV mlen = av_len(avm);
-      for (i = 0; i <= mlen; i++) {
-        SV** iv = av_fetch(avm, i, 0);
+      int j, mlen = av_len(avm);
+      for (j = 0; j <= mlen; j++) {
+        SV** iv = av_fetch(avm, j, 0);
         if (iv && SvTYPE(*iv) == SVt_IV) {
           SV **v = av_fetch(av, SvIV(*iv), 0);
           if (v) XPUSHs(*v);
