@@ -17,7 +17,7 @@ BEGIN {
 
 # Math::Pari + threads = crossing the streams.  Instant segfault.
 use Math::BigInt lib=>"Calc";
-use Test::More 'tests' => 6;
+use Test::More 'tests' => 7;
 use Math::Prime::Util ":all";
 
 my $extra = defined $ENV{EXTENDED_TESTING} && $ENV{EXTENDED_TESTING};
@@ -74,11 +74,13 @@ SKIP: {
     sub { my $sum = 0;  for (@randn) {$sum += prime_count($_); prime_memfree; } return $sum;},
     $numthreads, "sum prime_count with overlapping memfree calls");
 }
+}
 
 thread_test(
   sub { my $sum = 0; for my $d (@randn) { for my $f (factor($d)) { $sum += $f; } } return $sum; },
   $numthreads, "factor");
 
+if (0) {
 thread_test(
   sub { my $sum = 0;  $sum += nth_prime($_) for (@randn); return $sum;},
   $numthreads, "nth_prime");
