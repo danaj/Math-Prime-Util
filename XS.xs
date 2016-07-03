@@ -1123,8 +1123,13 @@ next_prime(IN SV* svn)
 
 void Pi(IN UV digits = 0)
   PREINIT:
+#ifdef USE_QUADMATH
+    NV pival = 3.141592653589793238462643383279502884197169Q;
+    UV mantsize = FLT128_MANT_DIG / 3.322 - 1;
+#else
     NV pival = 3.141592653589793238462643383279502884197169L;
     UV mantsize = DBL_MANT_DIG / 3.322;   /* Let long doubles go to BF */
+#endif
   PPCODE:
     if (digits == 0) {
       XSRETURN_NV( pival );
@@ -1132,7 +1137,9 @@ void Pi(IN UV digits = 0)
       char t[40+2];
       NV pi;
       (void)sprintf(t, "%.*"NVff, (int)(digits-1), pival);
-#if defined(USE_LONG_DOUBLE) && defined(HAS_LONG_DOUBLE)
+#ifdef USE_QUADMATH
+      pi = strtoflt128(t, NULL);
+#elif defined(USE_LONG_DOUBLE) && defined(HAS_LONG_DOUBLE)
       pi = strtold(t, NULL);
 #else
       pi = strtod(t, NULL);

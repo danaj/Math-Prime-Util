@@ -3,7 +3,7 @@ use strict;
 use warnings;
 
 use Test::More;
-use Math::Prime::Util qw/bernfrac bernreal harmfrac harmreal stirling sumdigits/;
+use Math::Prime::Util qw/bernfrac bernreal harmfrac harmreal stirling sumdigits todigits vecsum/;
 my $extra = defined $ENV{EXTENDED_TESTING} && $ENV{EXTENDED_TESTING};
 
 my @A000367 = (qw/1 1 -1 1 -1 5 -691 7 -3617 43867 -174611 854513 -236364091 8553103 -23749461029 8615841276005 -7709321041217 2577687858367 -26315271553053477373 2929993913841559 -261082718496449122051 1520097643918070802691 -27833269579301024235023 596451111593912163277961 -5609403368997817686249127547 495057205241079648212477525 -801165718135489957347924991853 29149963634884862421418123812691 -2479392929313226753685415739663229 84483613348880041862046775994036021 -1215233140483755572040304994079820246041491/);
@@ -150,6 +150,6 @@ if ($extra) {
 }
 
 if ($extra) {
-  is(sumdigits( (bernfrac(502))[0], 157), 27893, "sumdigits(bernfrac(502) numerator) base 157");
+  is(vecsum(todigits((bernfrac(502))[0],157)), 27893, "sumdigits(bernfrac(502) numerator) base 157");
   is(sumdigits(stirling(234,95)), 1485, "sumdigits(stirling(234,95))");
 }

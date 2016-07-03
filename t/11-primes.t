@@ -34,10 +34,10 @@ ok(!eval { primes(undef,undef); },  "primes(undef,undef)");
 ok(!eval { primes('x','x'); }, "primes(x,x)");
 ok(!eval { primes(-10,-4); },  "primes(-10,-4)");
 
-# AIX 128-bit doubles have 30 digits of precision!
-ok(!eval { primes(50000000000000000000000000000000); },  "primes(inf)");
-ok(!eval { primes(2,50000000000000000000000000000000); },  "primes(2,inf)");
-ok(!eval { primes(50000000000000000000000000000000,50000000000000000000000000000001); },  "primes(inf,inf)");
+# AIX 128-bit doubles have 30 digits of precision, quadmath has even more.
+ok(!eval { primes(50000000000000000000000000000000000); },  "primes(inf)");
+ok(!eval { primes(2,50000000000000000000000000000000000); },  "primes(2,inf)");
+ok(!eval { primes(50000000000000000000000000000000000,50000000000000000000000000000000001); },  "primes(inf,inf)");
 
 my @small_primes = qw/
 2 3 5 7 11 13 17 19 23 29 31 37 41 43 47 53 59 61 67 71

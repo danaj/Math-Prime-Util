@@ -17,7 +17,7 @@ BEGIN {
 
 # Math::Pari + threads = crossing the streams.  Instant segfault.
 use Math::BigInt lib=>"Calc";
-use Test::More 'tests' => 10;
+use Test::More 'tests' => 6;
 use Math::Prime::Util ":all";
 
 my $extra = defined $ENV{EXTENDED_TESTING} && $ENV{EXTENDED_TESTING};
@@ -66,6 +66,7 @@ thread_test(
   sub { my $sum = 0;  $sum += prime_count($_) for (@randn); return $sum;},
   $numthreads, "sum prime_count");
 
+if (0) {
 SKIP: {
   skip "Win32 needs precalc, skipping alloc/free stress test", 1 if $is_win32;
 
@@ -81,6 +82,7 @@ thread_test(
 thread_test(
   sub { my $sum = 0;  $sum += nth_prime($_) for (@randn); return $sum;},
   $numthreads, "nth_prime");
+}
 
 thread_test(
   sub { my $sum = 0;  $sum += next_prime($_) for (@randn); return $sum;},
@@ -98,6 +100,7 @@ thread_test(
   sub { my $sum = 0;  foreach my $n (@randn) { $sum += $_ for moebius($n,$n+50); } return $sum;},
   $numthreads, "moebius");
 
+if (0) {
 # Custom rand, so we get the same result each time.
 {
   my $seed = 1;
@@ -109,6 +112,7 @@ thread_test(
 thread_test(
   sub { my $sum = 0;  for (@randn) { mysrand($_); $sum += random_ndigit_prime(6); } return $sum;},
   $numthreads, "random 6-digit prime");
+}
 
 thread_test(
   sub { my $sum = 0;  $sum += int(RiemannR($_)) for (@randn); return $sum;},

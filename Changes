@@ -4,6 +4,11 @@ Revision history for Perl module Math::Prime::Util
 
     [FUNCTIONALITY AND PERFORMANCE]
 
+    - Fixes for quadmath:
+      + Fix "infinity" in t/11-primes.t.
+      + Fix native Pi to use quads.
+      + Trim some threading tests.
+
     - mertens() uses a little less memory.
 
 
