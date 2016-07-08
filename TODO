@@ -58,7 +58,7 @@
 - Perhaps have main segment know the filled in range.  That would allow
   a sieved next_prime, and might speed up some counts and the like.
 
-- Consider exporting is_bpsw_prime and inverse Li
+- Consider exporting inverse Li (_XS_Inverse_Li in util.c).
 
 - Benchmark simple SoEs, SoA.  Include Sisyphus SoE hidden in Math::GMPz.
 
@@ -109,3 +109,9 @@
   for native size results.
 
 - fromdigits([7,2,2],2) = 30 in Pari/GP, 34 for us.  (Pari bug?)
+
+- bernreal and bernfrac using MPFR
+
+- is_prime_power
+
+- export is_euler_plumb_pseudoprime, docs, test

@@ -9,7 +9,17 @@ Revision history for Perl module Math::Prime::Util
       + Fix native Pi to use quads.
       + Trim some threading tests.
 
+    - Remove 3 threading tests that were causing issues with Perl -DDEBUGGING.
+
     - mertens() uses a little less memory.
+
+    - is_pseudoprime() and is_euler_pseudoprime() use Montgomery math so are
+      much faster.  They seem to be ~5% faster than Miller-Rabin now.
+
+    - is_perrin_pseudoprime uses Montgomery math.  3x faster on inputs > 2^31.
+      Single core: 2639k/s under 2^31, 642k/s over.
+
+    - Add restricted Perrin pseudoprimes using an optional argument.
 
 
 

@@ -634,9 +634,9 @@ UV prime_count_lower(UV n)
       : (n <  1100000) ? 2.19L
       : (n <  4500000) ? 2.31L : 2.35;
     lower = fn/fl1 * (1.0L + 1.0L/fl1 + a/fl2);
-  } else if (fn < 1e19) {          /* Büthe 2015 1.9 */
+  } else if (fn < 1e19) {          /* Büthe 2015 1.9      1511.02032v1.pdf */
     lower = _XS_LogarithmicIntegral(fn) - (sqrtl(fn)/fl1) * (1.94L + 3.88L/fl1 + 27.57L/fl2);
-  } else {                         /* Büthe 2014 v3 7.2 */
+  } else {                         /* Büthe 2014 v3 7.2   1410.7015v3.pdf */
     lower = _XS_LogarithmicIntegral(fn) - fl1*sqrtl(fn)/25.132741228718345907701147L;
   }
   return (UV) ceill(lower);

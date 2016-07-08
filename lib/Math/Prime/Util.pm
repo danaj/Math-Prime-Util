@@ -1783,6 +1783,10 @@ Removing primes, given base 2 this produces the sequence L<OEIS A001567|http://o
 For practical use, L</is_strong_pseudoprime> is a much stronger test with
 similar or better performance.
 
+Note that there is a set of composites (the Carmichael numbers) that will
+pass this test for all bases.  This downside is not shared by the Euler
+and strong probable prime tests (aka Solovay-Strassen and Miller-Rabin tests).
+
 =head2 is_euler_pseudoprime
 
 Takes a positive number C<n> and one or more non-zero positive bases as input.
@@ -1796,12 +1800,10 @@ Given enough distinct bases, the chances become very high that the
 number is actually prime.
 
 This test forms the basis of the Solovay-Strassen test, which is a precursor
-to the Miller-Rabin test (which uses the strong pseudoprime test).  An
-important downside to the standard pseudoprime test (e.g. Fermat's test) is
-that the Carmichael numbers are composites which pass for all bases.  An
-advantage of the Euler and strong pseudoprime tests is that there is no
-analogy to this.  For the Euler test, at I<most> 1/2 of witnesses pass for
-a composite, while at most 1/4 pass for the strong pseudoprime test.
+to the Miller-Rabin test (which uses the strong probable prime test).  There
+are no analogies to the Carmichael numbers for this test.
+For the Euler test, at I<most> 1/2 of witnesses pass for a composite, while
+at most 1/4 pass for the strong pseudoprime test.
 
 =head2 is_strong_pseudoprime
 
@@ -1893,8 +1895,15 @@ While pseudoprimes are relatively rare (the first two are 271441 and 904631),
 infinitely many exist.
 The pseudoprime sequence is L<OEIS A013998|http://oeis.org/A013998>.
 
-The implementation uses modular 3x3 matrix exponentiation, which is
-efficient but slow compared to the other probable prime tests.
+The implementation uses pre-filters, modular 3x3 matrix exponentiation, and
+Montgomery math, which is very efficient compared to other implementations,
+but slow compared to the other probable prime tests.
+
+An optional second argument indicates whether to additionally test C<P(-n)>,
+which are known as the restricted Perrin test.  The pseudoprimes are a subset
+of the unrestricted set.
+The restricted pseudoprime sequence is L<OEIS A018187|http://oeis.org/A018187>.
+
 
 =head2 is_catalan_pseudoprime
 

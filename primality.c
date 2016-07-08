@@ -202,25 +202,84 @@ int is_pseudoprime(UV const n, UV a)
     if ( a <= 1 || a == n-1 )
       return 1;
   }
+#if USE_MONT_PRIMALITY
+  if (n & 1) {   /* The Montgomery code only works for odd n */
+    const uint64_t npi = modular_inverse64(n);
+    const uint64_t mont1 = compute_modn64(n);
+    const uint64_t monta = compute_a_times_2_64_mod_n(a, n, mont1);
+    return mont_powmod64(monta, n-1, mont1, n, npi) == mont1;
+  }
+#endif
   return powmod(a, n-1, n) == 1;  /* a^(n-1) = 1 mod n */
 }
 
-/* Euler (aka Euler-Jacobi) pseudoprime */
+/* Euler (aka Euler-Jacobi) pseudoprime:  a^((n-1)/2) = (a|n) mod n */
 int is_euler_pseudoprime(UV const n, UV a)
 {
-  int jacobi;
   if (n < 5) return (n == 2 || n == 3);
   if (!(n&1)) return 0;
   if (a < 2) croak("Base %"UVuf" is invalid", a);
-  if (a >= n) {
-    a %= n;
-    if ( a <= 1 || a == n-1 )
-      return 1;
+  if (a > 2) {
+    if (a >= n) {
+      a %= n;
+      if ( a <= 1 || a == n-1 )
+        return 1;
+    }
+    if ((n % a) == 0) return 0;
   }
-  /* a^{(n-1)/2} = (a|p) mod n */
-  jacobi = kronecker_uu(a,n);
-  if (jacobi == 0) return 0;
-  return powmod(a, (n-1)>>1, n) == ((jacobi > 0) ? 1 : n-1);
+  {
+#if USE_MONT_PRIMALITY
+    const uint64_t npi = modular_inverse64(n);
+    const uint64_t mont1 = compute_modn64(n);
+    const uint64_t monta = compute_a_times_2_64_mod_n(a, n, mont1);
+    const uint64_t montn1 = n - mont1;
+    UV ap = mont_powmod64(monta, (n-1)>>1, mont1, n, npi);
+    if (ap != mont1 && ap != montn1) return 0;
+    if (a == 2) {
+      uint32_t nmod8 = n & 0x7;
+      return (nmod8 == 1 || nmod8 == 7)  ?  (ap == mont1)  :  (ap == montn1);
+    } else {
+      return (kronecker_uu(a,n) >= 0)    ?  (ap == mont1)  :  (ap == montn1);
+    }
+#else
+    UV ap = powmod(a, (n-1)>>1, n);
+    if (ap != 1 && ap != n-1) return 0;
+    if (a == 2) {
+      uint32_t nmod8 = n & 0x7;
+      return (nmod8 == 1 || nmod8 == 7)  ?  (ap == 1)  :  (ap == n-1);
+    } else {
+      return (kronecker_uu(a,n) >= 0)    ?  (ap == 1)  :  (ap == n-1);
+    }
+#endif
+  }
+}
+
+/* Colin Plumb's extended Euler Criterion test.
+ * A tiny bit (~1 percent) faster than base 2 Fermat or M-R.
+ * More stringent than base 2 Fermat, but a subset of base 2 M-R.
+ */
+int is_euler_plumb_pseudoprime(UV const n)
+{
+  UV ap;
+  uint32_t nmod8 = n & 0x7;
+  if (n < 5) return (n == 2 || n == 3);
+  if (!(n&1)) return 0;
+#if USE_MONT_PRIMALITY
+  {
+    const uint64_t npi = modular_inverse64(n);
+    const uint64_t mont1 = compute_modn64(n);
+    const uint64_t mont2 = compute_2_65_mod_n(n, mont1);
+    const uint64_t montn1 = n - mont1;
+    ap = mont_powmod64(mont2, (n-1) >> (1 + (nmod8 == 1)), mont1, n, npi);
+    if (ap ==  mont1)  return (nmod8 == 1 || nmod8 == 7);
+    if (ap == montn1)  return (nmod8 == 1 || nmod8 == 3 || nmod8 == 5);
+  }
+#else
+  ap = powmod(2, (n-1) >> (1 + (nmod8 == 1)), n);
+  if (ap ==   1)  return (nmod8 == 1 || nmod8 == 7);
+  if (ap == n-1)  return (nmod8 == 1 || nmod8 == 3 || nmod8 == 5);
+#endif
+  return 0;
 }
 
 /* Miller-Rabin probabilistic primality test
@@ -833,36 +892,97 @@ int is_almost_extra_strong_lucas_pseudoprime(UV n, UV increment)
 #endif
 }
 
-static void mat_mulmod_3x3(UV* a, UV* b, UV n) {
-  int i, row, col;
+static void mat_mulmod_3x3_small(UV* a, UV* b, UV n) {
+  UV t[9];
+  t[0] = ( a[0]*b[0]  +  a[1]*b[3]  +  a[2]*b[6] ) % n;
+  t[1] = ( a[0]*b[1]  +  a[1]*b[4]  +  a[2]*b[7] ) % n;
+  t[2] = ( a[0]*b[2]  +  a[1]*b[5]  +  a[2]*b[8] ) % n;
+  t[3] = ( a[3]*b[0]  +  a[4]*b[3]  +  a[5]*b[6] ) % n;
+  t[4] = ( a[3]*b[1]  +  a[4]*b[4]  +  a[5]*b[7] ) % n;
+  t[5] = ( a[3]*b[2]  +  a[4]*b[5]  +  a[5]*b[8] ) % n;
+  t[6] = ( a[6]*b[0]  +  a[7]*b[3]  +  a[8]*b[6] ) % n;
+  t[7] = ( a[6]*b[1]  +  a[7]*b[4]  +  a[8]*b[7] ) % n;
+  t[8] = ( a[6]*b[2]  +  a[7]*b[5]  +  a[8]*b[8] ) % n;
+  memcpy(a, t, 9 * sizeof(UV));
+}
+
+static void mat_mulmod_3x3_64(UV* a, UV* b, UV n) {
+  int row;
   UV i1, i2, i3, t[9];
   for (row = 0; row < 3; row++) {
-    for (col = 0; col < 3; col++) {
-      if (n < HALF_WORD/2) {
-        i1 = a[3*row+0] * b[0+col];
-        i2 = a[3*row+1] * b[3+col];
-        i3 = a[3*row+2] * b[6+col];
-        t[3*row+col] = (i1 + i2 + i3) % n;
-      } else {
-        i1 = mulmod(a[3*row+0], b[0+col], n);
-        i2 = mulmod(a[3*row+1], b[3+col], n);
-        i3 = mulmod(a[3*row+2], b[6+col], n);
-        t[3*row+col] = addmod( addmod(i1, i2, n), i3, n );
-      }
+    i1 = mulmod(a[3*row+0], b[0], n);
+    i2 = mulmod(a[3*row+1], b[3], n);
+    i3 = mulmod(a[3*row+2], b[6], n);
+    t[3*row+0] = addmod( addmod(i1, i2, n), i3, n );
+    i1 = mulmod(a[3*row+0], b[1], n);
+    i2 = mulmod(a[3*row+1], b[4], n);
+    i3 = mulmod(a[3*row+2], b[7], n);
+    t[3*row+1] = addmod( addmod(i1, i2, n), i3, n );
+    i1 = mulmod(a[3*row+0], b[2], n);
+    i2 = mulmod(a[3*row+1], b[5], n);
+    i3 = mulmod(a[3*row+2], b[8], n);
+    t[3*row+2] = addmod( addmod(i1, i2, n), i3, n );
+  }
+  memcpy(a, t, 9 * sizeof(UV));
+}
+#if USE_MONT_PRIMALITY
+static void mat_mulmod_3x3_mont64(UV* a, UV* b, UV n, UV npi) {
+  int row;
+  UV i1, i2, i3, t[9];
+  for (row = 0; row < 3; row++) {
+    i1 = mont_prod64(a[3*row+0], b[0], n, npi);
+    i2 = mont_prod64(a[3*row+1], b[3], n, npi);
+    i3 = mont_prod64(a[3*row+2], b[6], n, npi);
+    t[3*row+0] = addmod( addmod(i1, i2, n), i3, n );
+    i1 = mont_prod64(a[3*row+0], b[1], n, npi);
+    i2 = mont_prod64(a[3*row+1], b[4], n, npi);
+    i3 = mont_prod64(a[3*row+2], b[7], n, npi);
+    t[3*row+1] = addmod( addmod(i1, i2, n), i3, n );
+    i1 = mont_prod64(a[3*row+0], b[2], n, npi);
+    i2 = mont_prod64(a[3*row+1], b[5], n, npi);
+    i3 = mont_prod64(a[3*row+2], b[8], n, npi);
+    t[3*row+2] = addmod( addmod(i1, i2, n), i3, n );
+  }
+  memcpy(a, t, 9 * sizeof(UV));
+}
+#endif
+
+static int mat_powmod_3x3(UV* m, UV k, UV n) {
+  UV res[9] = {1,0,0, 0,1,0, 0,0,1};
+  int mont = 0;
+
+  if (n < HALF_WORD/2) {
+    while (k) {
+      if (k & 1)  mat_mulmod_3x3_small(res, m, n);
+      k >>= 1;
+      if (k)      mat_mulmod_3x3_small(m, m, n);
+    }
+#if USE_MONT_PRIMALITY
+  } else if (n&1) {
+    int i;
+    const uint64_t npi = modular_inverse64(n);
+    const uint64_t mont1 = compute_modn64(n);
+    res[0] = res[4] = res[8] = mont1;
+    for (i = 0; i < 9; i++) {
+      if      (m[i] == 1) m[i] = mont1;
+      else if (m[i] == n-1) m[i] = n-mont1;
+    }
+    while (k) {
+      if (k & 1)  mat_mulmod_3x3_mont64(res, m, n, npi);
+      k >>= 1;
+      if (k)      mat_mulmod_3x3_mont64(m, m, n, npi);
+    }
+    mont = 1;
+#endif
+  } else {
+    while (k) {
+      if (k & 1)  mat_mulmod_3x3_64(res, m, n);
+      k >>= 1;
+      if (k)      mat_mulmod_3x3_64(m, m, n);
     }
   }
-  for (i = 0; i < 9; i++) a[i] = t[i];
-}
-static void mat_powmod_3x3(UV* m, UV k, UV n) {
-  UV res[9] = {1,0,0, 0,1,0, 0,0,1};
-  int i;
-
-  while (k) {
-    if (k & 1)  mat_mulmod_3x3(res, m, n);
-    k >>= 1;
-    if (k)      mat_mulmod_3x3(m, m, n);
-  }
-  for (i = 0; i < 9; i++)  m[i] = res[i];
+  memcpy(m, res, 9 * sizeof(UV));
+  return mont;
 }
 
 typedef struct {
@@ -871,7 +991,7 @@ typedef struct {
   unsigned short offset;
 } _perrin;
 #define NPERRINDIV 29
-/* 1380 mask bytes.  We could get another 20% speed for 7k more. */
+/* 1380 mask bytes.  7k more => 20% faster, 140k more => 30% faster. */
 static const uint32_t _perrinmask[] = {22,523,514,65890,8519810,130,4259842,0,526338,2147483904U,1644233728,1,8194,1073774592,1024,134221824,128,512,181250,2048,0,1,134217736,1049600,524545,2147500288U,0,524290,536870912,32768,33554432,2048,0,2,2,256,65536,64,536875010,32768,256,64,0,32,1073741824,0,1048576,1048832,371200000,0,0,536887552,32,2147487744U,2097152,32768,1024,0,1024,536870912,128,512,0,0,512,0,2147483650U,45312,128,0,8388640,0,8388608,8388608,0,2048,4096,92800000,262144,0,65536,4,0,4,4,4194304,8388608,1075838976,536870956,0,134217728,8192,0,8192,8192,0,2,0,268435458,134223392,1073741824,268435968,2097152,67108864,0,8192,1073741840,0,0,128,0,0,512,1450000,8,131136,536870928,0,4,2097152,4096,64,0,32768,0,0,131072,371200000,2048,33570816,4096,32,1024,536870912,1048576,16384,0,8388608,0,0,0,2,512,0,128,0,134217728,2,32,0,0,0,0,8192,0,1073742080,536870912,0,4096,16777216,526336,32,0,65536,33554448,708,67108864,2048,0,0,536870912,0,536870912,33554432,33554432,2147483648U,512,64,0,1074003968,512,0,524288,0,0,0,67108864,524288,1048576,0,131076,0,33554432,131072,0,2,8390656,16384,16777216,134217744,0,131104,0,2,128,0,131072,8388608,0,0,2,128,0,0,2,2097152,2155872256U,2147500032U,0,131072,4194304,67108864,0,512,0,0,32784,0,1048576,0,16,134217728,0,64,0,1,8,2147483648U,2048,8388608,0,0,4096,536871168,128,0,0,0,134217728,0,0,0,0,0,0,134217728,0,0,2,0,2,536872960,0,0,32768,0,0,0,0,8388608,0,524290,0,0,32,0,0,0,0,8192,8388608,512,0,134217728,0,0,0,0,0,0,2,0,0,0,2,0,0,0,512,0,0,0,0,0,0,0,0,2,0,0,0,0,0,2,0,0,0,0,0,2,0,64,0,4096,0,0,2,32,1024,0,2,0,67108864,0,0,1074790400,0,0,0,2,0,0,0,0,0};
 static _perrin _perrindata[NPERRINDIV] = {
   {2, 7, 0},
@@ -904,12 +1024,23 @@ static _perrin _perrindata[NPERRINDIV] = {
   {271, 270, 330},
   {347, 173, 339}
 };
-int is_perrin_pseudoprime(UV n)
+int is_perrin_pseudoprime(UV n, int restricted)
 {
   int i;
   UV m[9] = {0,1,0, 0,0,1, 1,1,0};
   if (n < 4) return (n >= 2);
-  for (i = 0; i < NPERRINDIV; i++) {
+  /* Hard code the initial tests.  60% of composites caught by 4 tests. */
+  if (!(n&1) && !((   22 >> (n% 7)) & 1)) return 0;
+  if (!(n%3) && !((  523 >> (n%13)) & 1)) return 0;
+  if (!(n%5) && !((65890 >> (n%24)) & 1)) return 0;
+  if (!(n%4) && !((  514 >> (n%14)) & 1)) return 0;
+  if (restricted) {
+    if (!(n&1) && !((     35 >> (n% 7)) & 1)) return 0;
+    if (!(n%3) && !((   4166 >> (n%13)) & 1)) return 0;
+    if (!(n%5) && !((3408898 >> (n%24)) & 1)) return 0;
+    if (!(n%4) && !((    130 >> (n%14)) & 1)) return 0;
+  }
+  for (i = 4; i < NPERRINDIV; i++) {
     if ((n % _perrindata[i].div) == 0) {
       const uint32_t *mask = _perrinmask + _perrindata[i].offset;
       unsigned short mod = n % _perrindata[i].period;
@@ -917,10 +1048,20 @@ int is_perrin_pseudoprime(UV n)
         return 0;
     }
   }
-  mat_powmod_3x3(m, n, n);
+  /* Depending on filters, 10-20% of composites left (unrestricted). */
+  /* TODO: Mask more restricted data */
+  (void) mat_powmod_3x3(m, n, n);
   /* P(n) = sum of diagonal  =  3*top-left + 2*top-right */
-  return (addmod( addmod(m[0], m[4], n), m[8], n) == 0);
+  if (addmod( addmod(m[0], m[4], n), m[8], n) != 0) return 0;
+  if (restricted) {
+    UV b[9] = {0,1,0, 0,0,1, 1,0,n-1};
+    int mont = mat_powmod_3x3(b, n, n);
+    UV expect = n - (mont ? compute_modn64(n) : 1);
+    if (addmod( addmod(b[0], b[4], n), b[8], n) != expect) return 0;
+  }
+  return 1;
 }
+
 
 int is_frobenius_pseudoprime(UV n, IV P, IV Q)
 {
@@ -996,6 +1137,7 @@ int is_frobenius_khashin_pseudoprime(UV n)
   /* c = first odd prime where (c|n)=-1 */
   do {
     c += 2;
+    if (c==9 || (c>=15 && (!(c%3) || !(c%5) || !(c%7) || !(c%11)))) continue;
     k = kronecker_uu(c, n);
   } while (k == 1);
   if (k == 0) return 0;

@@ -6,7 +6,7 @@ use Math::GMPz;
 
 # https://oeis.org/A104217/b104217.txt
 my %mods;
-open(my $pfile, '<', '/home/dana/Downloads/b104217.txt') or die "Cannot open b104217.txt\n";
+open(my $pfile, '<', 'b104217.txt') or die "Cannot open b104217.txt\n";
 while (<$pfile>) {
   next unless /^(\d+)\s+(\d+)/;
   $mods{$1} = $2;
@@ -18,23 +18,32 @@ my @maskdata;
 my @struct;
 my $offset = 0;
 for my $mod (sort {$a<=>$b} keys %mods) {
-  next unless $mod >= 2;
-  next unless is_prime($mod) || (is_power($mod,2) && is_prime(sqrtint($mod)));
+  last if $offset > 65535;
   my $period = $mods{$mod};
-  my $pwords = int(($period+31)/32);
-  next if $period > 65535 || $offset > 65535;
-  #last if $mod > 59;
-  next unless $mod * $pwords < 3000;
+  next if $mod < 2 || $period > 65535;
+  next unless is_prime($mod) || (is_power($mod,2) && is_prime(sqrtint($mod)));
 
-  my @P = map { Math::GMPz->new($_) } (3,0,2);
-  my @nums = (0) x $pwords;
+  # Find the zeros
+  my @P = (3,0,2);
+  my @zeros;
   for (0 .. $period-1) {
-    my $v = $P[0] % $mod;
-    if ($v == 0) {
-      $nums[int($_/32)] |= 1 << ($_ % 32);
-    }
-    @P=($P[1],$P[2],$P[0]+$P[1]);
+    push @zeros, $_ if ($P[0] % $mod) == 0;
+    @P = ($P[1], $P[2], ($P[0]+$P[1]) % $mod);
   }
+  my $nzeros = scalar(@zeros);
+
+  my $pwords = int(($period+31)/32);
+  next unless $pwords < 5000;
+  my @nums = (0) x $pwords;
+  for (@zeros) {
+    $nums[int($_/32)] |= 1 << ($_ % 32);
+  }
+
+  my $bytesperzero = $pwords*4 / $nzeros;
+  my $expect = (1/$mod) * $nzeros;
+  next unless $expect > 0.003;
+  next unless $bytesperzero < 100;
+  #print "mod $mod  nzeros $nzeros  bpz $bytesperzero  exp $expect\n";
 
   push @struct, "  {$mod, $period, $offset}";
   push @maskdata, @nums;

@@ -165,7 +165,7 @@ typedef __int8 int8_t;
 #define MPUNOT_REACHED MPUASSUME(0)
 
 #if (defined(__SIZEOF_INT128__) || __GNUC__ >= 4) && (defined(__x86_64__) || defined(__powerpc64__))
-  #if __GNUC__ < 4 || (__GNUC__ == 4 && __GNUC_MINOR < 4)
+  #if __GNUC__ < 4 || (__GNUC__ == 4 && __GNUC_MINOR__ < 4)
     #define HAVE_UINT128 0
   #elif __GNUC__ == 4 && __GNUC_MINOR__ >= 4 && __GNUC_MINOR__ < 6
     #define HAVE_UINT128 1
