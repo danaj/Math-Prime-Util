@@ -41,6 +41,7 @@ extern void print_primes(UV low, UV high, int fd);
 extern int powerof(UV n);
 extern int is_power(UV n, UV a);
 extern UV rootof(UV n, UV k);
+extern int primepower(UV n, UV* prime);
 extern UV valuation(UV n, UV k);
 extern UV mpu_popcount(UV n);
 extern UV mpu_popcount_string(const char* ptr, int len);
@@ -115,7 +116,7 @@ static UV isqrt(UV n) {
 }
 #endif
 
-#ifdef FUNC_icbrt
+#if defined(FUNC_icbrt) || defined(FUNC_is_perfect_cube)
 static UV icbrt(UV n) {
   UV b, root = 0;
 #if BITS_PER_WORD == 32
@@ -172,6 +173,49 @@ static int is_perfect_square(UV n)
   /* m = n % 25; if ((m*0x1929fc1b) & (m*0x4c9ea3b2) & 0x51001005) return 0; */
   m = isqrt(n);
   return m*m == n;
+}
+#endif
+
+#ifdef FUNC_is_perfect_cube
+static int is_perfect_cube(UV n)
+{
+  UV m;
+  if ((n & 3) == 2) return 0;
+  /* m = n & 511; if ((m*5016427) & (m*95638165) & 438)  return 0; */
+  m = n % 117; if ((m*833230740) & (m*120676722) & 813764715)  return 0;
+  m = n % 133; if ((m*76846229) & (m*305817297) & 306336544)  return 0;
+  m = icbrt(n);
+  return m*m*m == n;
+}
+#endif
+
+#ifdef FUNC_is_perfect_fifth
+static int is_perfect_fifth(UV n)
+{
+  UV m;
+  if ((n & 3) == 2) return 0;
+  m = n %  88; if ((m*85413603) & (m*76260301) & 26476550)  return 0;
+  m = n %  31; if ((m*80682551) & (m*73523539) & 45414528)  return 0;
+  m = n %  41; if ((m*92806493) & (m*130690042) & 35668129)  return 0;
+  /* m = n %  25; if ((m*109794298) & (m*105535723) & 16097553)  return 0; */
+  m = rootof(n, 5);
+  return m*m*m*m*m == n;
+}
+#endif
+
+#ifdef FUNC_is_perfect_seventh
+static int is_perfect_seventh(UV n)
+{
+  UV m;
+  /* if ((n & 3) == 2) return 0; */
+  m = n & 511; if ((m*97259473) & (m*51311663) & 894)  return 0;
+  m = n %  49; if ((m*109645301) & (m*76482737) & 593520192)  return 0;
+  m = n %  71; if ((m*71818386) & (m*38821587) & 35299393)  return 0;
+  /* m = n %  43; if ((m*101368253) & (m*814158665) & 142131408)  return 0; */
+  /* m = n %  29; if ((m*81935611) & (m*84736134) & 37831965)  return 0; */
+  /* m = n % 116; if ((m*348163737) & (m*1539055705) & 2735997248)  return 0; */
+  m = rootof(n, 7);
+  return m*m*m*m*m*m*m == n;
 }
 #endif
 
