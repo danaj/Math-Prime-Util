@@ -11,6 +11,7 @@
 
 extern int is_pseudoprime(UV const n, UV a);
 extern int is_euler_pseudoprime(UV const n, UV a);
+extern int is_euler_plumb_pseudoprime(UV const n);
 extern int miller_rabin(UV const n, const UV *bases, int nbases);
 extern void lucas_seq(UV* U, UV* V, UV* Qk,  UV n, IV P, IV Q, UV k);
 extern int is_lucas_pseudoprime(UV n, int strength);

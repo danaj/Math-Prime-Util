@@ -947,9 +947,8 @@ static void mat_mulmod_3x3_mont64(UV* a, UV* b, UV n, UV npi) {
 }
 #endif
 
-static int mat_powmod_3x3(UV* m, UV k, UV n) {
+static void mat_powmod_3x3(UV* m, UV k, UV n) {
   UV res[9] = {1,0,0, 0,1,0, 0,0,1};
-  int mont = 0;
 
   if (n < HALF_WORD/2) {
     while (k) {
@@ -964,7 +963,7 @@ static int mat_powmod_3x3(UV* m, UV k, UV n) {
     const uint64_t mont1 = compute_modn64(n);
     res[0] = res[4] = res[8] = mont1;
     for (i = 0; i < 9; i++) {
-      if      (m[i] == 1) m[i] = mont1;
+      if      (m[i] ==   1) m[i] = mont1;
       else if (m[i] == n-1) m[i] = n-mont1;
     }
     while (k) {
@@ -972,7 +971,9 @@ static int mat_powmod_3x3(UV* m, UV k, UV n) {
       k >>= 1;
       if (k)      mat_mulmod_3x3_mont64(m, m, n, npi);
     }
-    mont = 1;
+    /* REDC to transform back into normal form */
+    for (i = 0; i < 9; i++)
+      res[i] = mont_prod64(res[i], 1, n, npi);
 #endif
   } else {
     while (k) {
@@ -982,7 +983,6 @@ static int mat_powmod_3x3(UV* m, UV k, UV n) {
     }
   }
   memcpy(m, res, 9 * sizeof(UV));
-  return mont;
 }
 
 typedef struct {
@@ -1050,18 +1050,33 @@ int is_perrin_pseudoprime(UV n, int restricted)
   }
   /* Depending on filters, 10-20% of composites left (unrestricted). */
   /* TODO: Mask more restricted data */
-  (void) mat_powmod_3x3(m, n, n);
+#if 0
+  { /* Calculate signature for acceptable inputs */
+    UV b[9] = {0,1,0, 0,0,1, 1,0,n-1};
+    UV S[6];
+    mat_powmod_3x3(m, n, n);
+    S[3] = addmod( mulmod(3,m[6],n), mulmod(2,m[8],n), n );
+    S[4] = addmod( mulmod(3,m[0],n), mulmod(2,m[2],n), n );
+    S[5] = addmod( mulmod(3,m[3],n), mulmod(2,m[5],n), n );
+    if (S[4] != 0) return 0;
+    mat_powmod_3x3(b, n, n);
+    S[0] = submod( mulmod(3,b[7],n), b[8], n );
+    S[1] = submod( mulmod(3,b[4],n), b[5], n );
+    S[2] = submod( mulmod(3,b[1],n), b[2], n );
+    if (S[1] != n-1) return 0;
+    printf("Sig %lu: %lu  %lu  %lu  %lu  %lu  %lu\n", n, S[0],S[1],S[2],S[3],S[4],S[5]);
+  }
+#endif
+  mat_powmod_3x3(m, n, n);
   /* P(n) = sum of diagonal  =  3*top-left + 2*top-right */
   if (addmod( addmod(m[0], m[4], n), m[8], n) != 0) return 0;
   if (restricted) {
     UV b[9] = {0,1,0, 0,0,1, 1,0,n-1};
-    int mont = mat_powmod_3x3(b, n, n);
-    UV expect = n - (mont ? compute_modn64(n) : 1);
-    if (addmod( addmod(b[0], b[4], n), b[8], n) != expect) return 0;
+    mat_powmod_3x3(b, n, n);
+    if (addmod( addmod(b[0], b[4], n), b[8], n) != n-1) return 0;
   }
   return 1;
 }
-
 
 int is_frobenius_pseudoprime(UV n, IV P, IV Q)
 {
