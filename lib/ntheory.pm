@@ -153,9 +153,11 @@ See L<Math::Prime::Util> for complete documentation.
   fromdigits(\@d,[,base])             convert base digit vector to number
   fromdigits(str,[,base])             convert base digit string to number
   sumdigits(n)                        sum of digits, with optional base
-  is_power(n)                         return k if n = p^k for integer p, max k
-  is_power(n,k)                       return 1 if n = p^k for integer p and k
-  is_power(n,k,\$root)                as above but set root to p.
+  is_power(n)                         return k if n = c^k for integer c
+  is_power(n,k)                       return 1 if n = c^k for integer c, k
+  is_power(n,k,\$root)                as above but also set $root to c.
+  is_prime_power(n)                   return k if n = p^k for prime p
+  is_prime_power(n,\$p)               as above but also set $p to p
   is_square_free(n)                   return true if no repeated factors
   is_carmichael(n)                    is n a Carmichael number
   is_quasi_carmichael(n)              is n a quasi-Carmichael number

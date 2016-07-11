@@ -948,15 +948,16 @@ is_prime(IN SV* svn, ...)
     is_primitive_root = 18
     is_mersenne_prime = 19
     is_power = 20
+    is_prime_power = 21
   PREINIT:
     int status, astatus;
   PPCODE:
     status = _validate_int(aTHX_ svn, 1);
-    astatus = (items == 1) ? 1 : _validate_int(aTHX_ ST(1), 1);
+    astatus = (items == 1 || ix==21) ? 1 : _validate_int(aTHX_ ST(1), 1);
     if (status != 0 && astatus != 0) {
       int ret = 0;
-      if (status == 1 && astatus == 1 && ix != 20) {
-        UV n = my_svuv(svn);
+      UV n = my_svuv(svn);
+      if (status == 1 && astatus == 1 && ix != 20 && ix != 21) {
         UV a = (items == 1) ? 0 : my_svuv(ST(1));
         switch (ix) {
           case 0:
@@ -992,7 +993,6 @@ is_prime(IN SV* svn, ...)
         }
         if (status != 0 && astatus == 1) RETURN_NPARITY(ret);
       } else if (ix == 20) {
-        UV n = my_svuv(svn);
         UV a = (items == 1) ? 0 : my_svuv(ST(1));
         if (status == -1) {
           if (n == UV_MAX || (UV_MAX-n) == (UV)IV_MAX)  status = 0;
@@ -1012,6 +1012,16 @@ is_prime(IN SV* svn, ...)
           }
         }
         if (status != 0 && astatus != 0) RETURN_NPARITY(ret);
+      } else if (ix == 21) {
+        if (status == 1) {
+          UV root;
+          ret = primepower(n, &root);
+          if (ret && items > 1) {
+            if (!SvROK(ST(1))) croak("is_prime_power second argument not a scalar reference");
+            sv_setuv(SvRV(ST(1)), root);
+          }
+        }
+        if (status != 0) RETURN_NPARITY(ret);
       }
     }
     switch (ix) {
@@ -1035,8 +1045,7 @@ is_prime(IN SV* svn, ...)
       case 17:_vcallsub_with_gmp("is_quasi_carmichael"); break;
       case 18:_vcallsub_with_gmp("is_primitive_root"); break;
       case 19:_vcallsub_with_gmp("is_mersenne_prime"); break;
-      case 20:
-      default:if (items != 3 && status != -1) {
+      case 20:if (items != 3 && status != -1) {
                 STRLEN len;
                 char* ptr = SvPV(svn, len);
                 if (len > 0 && ptr[0] != '-') {
@@ -1047,6 +1056,8 @@ is_prime(IN SV* svn, ...)
               }
               _vcallsub_with_pp("is_power");
               break;
+      case 21:
+      default:_vcallsub_with_gmp("is_prime_power"); break;
     }
     return; /* skip implicit PUTBACK */
 

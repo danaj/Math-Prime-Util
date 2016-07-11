@@ -2501,6 +2501,18 @@ sub is_power {
   0;
 }
 
+sub is_prime_power {
+  my ($n, $refp) = @_;
+  croak("is_prime_power second argument not a scalar reference") if defined($refp) && !ref($refp);
+  return 0 if $n <= 1;
+  if (is_prime($n)) { $$refp = $n if defined $refp; return 1; }
+  my $r;
+  my $k = is_power($n,0,\$r);
+  return 0 unless $k && is_prime($r);
+  $$refp = $r if defined $refp;
+  $k;
+}
+
 sub valuation {
   my($n, $k) = @_;
   return 0 if $n < 2 || $k < 2;

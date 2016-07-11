@@ -27,7 +27,7 @@ our @EXPORT_OK =
       is_aks_prime is_bpsw_prime
       is_ramanujan_prime
       is_mersenne_prime
-      is_power sqrtint
+      is_power is_prime_power sqrtint
       is_square_free is_primitive_root is_carmichael is_quasi_carmichael
       miller_rabin_random
       lucas_sequence lucasu lucasv
@@ -2381,6 +2381,17 @@ a k-th power, then this will be set to the k-th root of C<n>.  For example:
   # prints:  222657534574035968 = 2948^5
 
 This corresponds to Pari/GP's C<ispower> function with integer arguments.
+
+
+=head2 is_prime_power
+
+Given an integer input C<n>, returns C<k> if C<n = p^k> for some prime p,
+and zero otherwise.
+
+If a second argument is present, it must be a scalar reference.  If the
+return value is non-zero, then it will be set to C<p>.
+
+This corresponds to Pari/GP's C<isprimepower> function.
 
 
 =head2 sqrtint

@@ -112,6 +112,4 @@
 
 - bernreal and bernfrac using MPFR
 
-- is_prime_power
-
 - export is_euler_plumb_pseudoprime, docs, test

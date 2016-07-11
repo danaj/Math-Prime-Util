@@ -82,6 +82,9 @@
 #define FUNC_ctz 1
 #define FUNC_log2floor 1
 #define FUNC_is_perfect_square
+#define FUNC_is_perfect_cube
+#define FUNC_is_perfect_fifth
+#define FUNC_is_perfect_seventh
 #define FUNC_next_prime_in_sieve 1
 #define FUNC_prev_prime_in_sieve 1
 #define FUNC_is_prime_in_sieve 1
@@ -1685,7 +1688,7 @@ IV mertens(UV n) {
    * In serial it is quite a bit faster than segmented summation of mu
    * ranges, though the latter seems to be a favored method for GPUs.
    */
-  UV u, i, j, m, nmk, maxmu;
+  UV u, j, m, nmk, maxmu;
   signed char* mu;
   short* M;   /* 16 bits is enough range for all 32-bit M => 64-bit n */
   IV sum;
@@ -1729,21 +1732,19 @@ IV mertens(UV n) {
  * This currently uses a hybrid of 1 and 2.
  */
 int powerof(UV n) {
-  int ib;
-  const int iblast = (n > UVCONST(4294967295)) ? 6 : 4;
+  UV t;
   if ((n <= 3) || (n == UV_MAX)) return 1;
   if ((n & (n-1)) == 0)          return ctz(n);  /* powers of 2    */
   if (is_perfect_square(n))      return 2 * powerof(isqrt(n));
-  { UV cb = icbrt(n);  if (cb*cb*cb==n) return 3 * powerof(cb); }
-  for (ib = 3; ib <= iblast; ib++) { /* prime exponents from 5 to 7-or-13 */
-    UV k, pk, root, b = primes_small[ib];
-    root = (UV) ( pow(n, 1.0 / b ) + 1e-6 );
-    pk = root * root * root * root * root;
-    for (k = 5; k < b; k++)
-      pk *= root;
-    if (n == pk) return b * powerof(root);
-  }
-  if (n > 177146) {
+  if (is_perfect_cube(n))        return 3 * powerof(icbrt(n));
+
+  /* Simple rejection filter for non-powers of 5-37.  Rejects 47.85%. */
+  t = n & 511; if ((t*77855451) & (t*4598053) & 862)  return 1;
+
+  if (is_perfect_fifth(n))       return 5 * powerof(rootof(n,5));
+  if (is_perfect_seventh(n))     return 7 * powerof(rootof(n,7));
+
+  if (n > 177146 && n <= UVCONST(1977326743)) {
     switch (n) { /* Check for powers of 11, 13, 17, 19 within 32 bits */
       case 177147: case 48828125: case 362797056: case 1977326743: return 11;
       case 1594323: case 1220703125: return 13;
@@ -1751,8 +1752,28 @@ int powerof(UV n) {
       case 1162261467: return 19;
       default:  break;
     }
+  }
 #if BITS_PER_WORD == 64
-    if (n > UVCONST(4294967295)) {
+  if (n >= UVCONST(8589934592)) {
+    UV root, pk;
+
+    /* The Bloom filters reject about 90% of inputs each, about 99% for two.
+     * Bach/Sorenson type sieves do about as well, but are much slower due
+     * to using a powmod. */
+    if ( (t = n %121, !((t*19706187) & (t*61524433) & 876897796)) &&
+         (t = n % 89, !((t*28913398) & (t*69888189) & 2705511937)) ) {
+      /* (t = n % 67, !((t*117621317) & (t*48719734) & 537242019)) ) { */
+      root = (UV) ( pow(n, 1.0 / 11 ) + 1e-6 );
+      t = root*root;  pk = t*t;  pk = pk*pk;  pk = pk*t*root;   /* root^11 */
+      if (n == pk) return 11 * powerof(root);
+    }
+    if ( (t = n %131, !((t*1545928325) & (t*1355660813) & 2771533888)) &&
+         (t = n % 79, !((t*48902028) & (t*48589927) & 404082779)) ) {
+      /* (t = n % 53, !((t*79918293) & (t*236846524) & 694943819)) ) { */
+      root = (UV) ( pow(n, 1.0 / 13 ) + 1e-6 );
+      t = root*root;  pk = t*t;  pk = pk*pk;  pk = pk*t*t*root; /* root^13 */
+      if (n == pk) return 13 * powerof(root);
+    }
     switch (n) {
       case UVCONST(762939453125):
       case UVCONST(16926659444736):
@@ -1773,9 +1794,8 @@ int powerof(UV n) {
       case UVCONST(450283905890997363):   return 37;
       default:  break;
     }
-    }
-#endif
   }
+#endif
   return 1;
 }
 int is_power(UV n, UV a)
@@ -1786,11 +1806,9 @@ int is_power(UV n, UV a)
     if ((a % 2) == 0)
       return !is_perfect_square(n) ? 0 : (a == 2) ? 1 : is_power(isqrt(n),a>>1);
     if ((a % 3) == 0)
-      { UV cb = icbrt(n);
-        return (cb*cb*cb != n)       ? 0 : (a == 3) ? 1 : is_power(cb, a/3); }
+      return !is_perfect_cube(n) ? 0 : (a == 3) ? 1 : is_power(icbrt(n),a/3);
     if ((a % 5) == 0)
-      { UV r5 = rootof(n, 5);
-        return (r5*r5*r5*r5*r5 != n) ? 0 : (a == 5) ? 1 : is_power(r5, a/5); }
+      return !is_perfect_fifth(n) ? 0 : (a == 5) ? 1 :is_power(rootof(n,5),a/5);
   }
   ret = powerof(n);
   if (a != 0) return !(ret % a);  /* Is the max power divisible by a? */
@@ -1805,6 +1823,49 @@ UV rootof(UV n, UV k)
     case 3:  return icbrt(n);
     default: return (UV) (pow((double)n, 1.0/(double)k)+1e-6);
   }
+}
+
+int primepower(UV n, UV* prime)
+{
+  int power = 0;
+  if (n < 2) return 0;
+  /* Check for small divisors */
+  if (!(n&1)) {
+    if (n & (n-1)) return 0;
+    *prime = 2;
+    return ctz(n);
+  }
+  if ((n%3) == 0) {
+    do { n /= 3; power++; } while (n > 1 && (n%3) == 0);
+    if (n != 1) return 0;
+    *prime = 3;
+    return power;
+  }
+  if ((n%5) == 0) {
+    do { n /= 5; power++; } while (n > 1 && (n%5) == 0);
+    if (n != 1) return 0;
+    *prime = 5;
+    return power;
+  }
+  if ((n%7) == 0) {
+    do { n /= 7; power++; } while (n > 1 && (n%7) == 0);
+    if (n != 1) return 0;
+    *prime = 7;
+    return power;
+  }
+  if (is_prob_prime(n))
+    { *prime = n; return 1; }
+  /* Composite.  Test for perfect power with prime root. */
+  power = powerof(n);
+  if (power == 1) power = 0;
+  if (power) {
+    UV root = rootof(n, (UV)power);
+    if (is_prob_prime(root))
+      *prime = root;
+    else
+      power = 0;
+  }
+  return power;
 }
 
 UV valuation(UV n, UV k)

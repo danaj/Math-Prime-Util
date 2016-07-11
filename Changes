@@ -2,6 +2,10 @@ Revision history for Perl module Math::Prime::Util
 
 0.59 2016-?
 
+    [ADDED]
+
+    - is_prime_power         Returns k if n=p^k for p a prime.
+
     [FUNCTIONALITY AND PERFORMANCE]
 
     - Fixes for quadmath:
@@ -20,6 +24,9 @@ Revision history for Perl module Math::Prime::Util
       Single core: 2639k/s under 2^31, 642k/s over.
 
     - Add restricted Perrin pseudoprimes using an optional argument.
+
+    - Add bloom filters to reject non-perfect cubes, fifths, and sevenths.
+      is_power about 2-3x faster for native inputs.
 
 
 

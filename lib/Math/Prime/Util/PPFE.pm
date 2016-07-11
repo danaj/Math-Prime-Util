@@ -568,6 +568,13 @@ sub is_power {
   $vn = '-'.$vn if $n < 0;
   return Math::Prime::Util::PP::is_power($vn, $a, $refp);
 }
+sub is_prime_power {
+  my($n, $refp) = @_;
+  my $vn = "$n";  $vn =~ s/^-//;
+  _validate_positive_integer($vn);
+  $vn = '-'.$vn if $n < 0;
+  return Math::Prime::Util::PP::is_prime_power($vn, $refp);
+}
 sub valuation {
   my($n, $k) = @_;
   $n = -$n if defined $n && $n < 0;
