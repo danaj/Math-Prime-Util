@@ -21,7 +21,8 @@ for my $mod (sort {$a<=>$b} keys %mods) {
   last if $offset > 65535;
   my $period = $mods{$mod};
   next if $mod < 2 || $period > 65535;
-  next unless is_prime($mod) || (is_power($mod,2) && is_prime(sqrtint($mod)));
+  #next unless is_prime($mod) || (is_power($mod,2) && is_prime(sqrtint($mod)));
+  next unless is_prime($mod) || is_prime_power($mod) == 2;
 
   # Find the zeros
   my @P = (3,0,2);
