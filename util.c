@@ -88,6 +88,7 @@
 #define FUNC_next_prime_in_sieve 1
 #define FUNC_prev_prime_in_sieve 1
 #define FUNC_is_prime_in_sieve 1
+#define FUNC_ipow 1
 #include "util.h"
 #include "sieve.h"
 #include "primality.h"
@@ -1764,15 +1765,13 @@ int powerof(UV n) {
          (t = n % 89, !((t*28913398) & (t*69888189) & 2705511937)) ) {
       /* (t = n % 67, !((t*117621317) & (t*48719734) & 537242019)) ) { */
       root = (UV) ( pow(n, 1.0 / 11 ) + 1e-6 );
-      t = root*root;  pk = t*t;  pk = pk*pk;  pk = pk*t*root;   /* root^11 */
-      if (n == pk) return 11 * powerof(root);
+      if (n == ipow(root,11)) return 11 * powerof(root);
     }
     if ( (t = n %131, !((t*1545928325) & (t*1355660813) & 2771533888)) &&
          (t = n % 79, !((t*48902028) & (t*48589927) & 404082779)) ) {
       /* (t = n % 53, !((t*79918293) & (t*236846524) & 694943819)) ) { */
       root = (UV) ( pow(n, 1.0 / 13 ) + 1e-6 );
-      t = root*root;  pk = t*t;  pk = pk*pk;  pk = pk*t*t*root; /* root^13 */
-      if (n == pk) return 13 * powerof(root);
+      if (n == ipow(root,13)) return 13 * powerof(root);
     }
     switch (n) {
       case UVCONST(762939453125):
@@ -1879,6 +1878,21 @@ UV valuation(UV n, UV k)
     v++;
   }
   return v;
+}
+
+UV logint(UV n, UV b)
+{
+  /* UV e;  for (e=0; n; n /= b) e++;  return e-1; */
+  UV v, e = 0;
+  if (b == 2)
+    return log2floor(n);
+  if (n > UV_MAX/b) {
+    n /= b;
+    e = 1;
+  }
+  for (v = b; v <= n; v *= b)
+    e++;
+  return e;
 }
 
 UV mpu_popcount(UV n) {  return popcnt(n);  }
@@ -2071,8 +2085,7 @@ UV jordan_totient(UV k, UV n) {
   nfac = factor(n,factors);
   for (i = 0; i < nfac; i++) {
     UV p = factors[i];
-    UV pk = p;
-    for (j = 1; j < k; j++)  pk *= p;
+    UV pk = ipow(p,k);
     totient *= (pk-1);
     while (i+1 < nfac && p == factors[i+1]) {
       i++;
@@ -2227,7 +2240,7 @@ UV znorder(UV a, UV n) {
   UV fac[MPU_MAX_FACTORS+1];
   UV exp[MPU_MAX_FACTORS+1];
   int i, nfactors;
-  UV j, k, phi;
+  UV k, phi;
 
   if (n <= 1) return n;   /* znorder(x,0) = 0, znorder(x,1) = 1          */
   if (a <= 1) return a;   /* znorder(0,x) = 0, znorder(1,x) = 1  (x > 1) */
@@ -2239,7 +2252,7 @@ UV znorder(UV a, UV n) {
   k = phi;
   for (i = 0; i < nfactors; i++) {
     UV b, a1, ek, pi = fac[i], ei = exp[i];
-    b = pi; for (j = 1; j < ei; j++)  b *= pi;
+    b = ipow(pi,ei);
     k /= b;
     a1 = powmod(a, k, n);
     for (ek = 0; a1 != 1 && ek++ <= ei; a1 = powmod(a1, pi, n))
@@ -2513,10 +2526,8 @@ int sqrtmod_composite(UV *s, UV a, UV n) {
   }
 
   /* raise fac[i] */
-  for (i = 0; i < nfactors; i++) {
-    for (p = fac[i], j = 1; j < exp[i]; j++)
-      fac[i] *= p;
-  }
+  for (i = 0; i < nfactors; i++)
+    fac[i] = ipow(fac[i], exp[i]);
 
   p = chinese(sqr, fac, nfactors, &i);
   return (i == 1) ? verify_sqrtmod(p, s, a, n) : 0;

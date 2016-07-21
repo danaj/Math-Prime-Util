@@ -43,6 +43,7 @@ extern int is_power(UV n, UV a);
 extern UV rootof(UV n, UV k);
 extern int primepower(UV n, UV* prime);
 extern UV valuation(UV n, UV k);
+extern UV logint(UV n, UV b);
 extern UV mpu_popcount(UV n);
 extern UV mpu_popcount_string(const char* ptr, int len);
 
@@ -135,6 +136,18 @@ static UV icbrt(UV n) {
     }
   }
   return root;
+}
+#endif
+
+#if defined(FUNC_ipow)
+static UV ipow(UV n, UV k) {
+  UV p = 1;
+  while (k) {
+    if (k & 1) p *= n;
+    k >>= 1;
+    if (k)     n *= n;
+  }
+  return p;
 }
 #endif
 
