@@ -1997,7 +1997,7 @@ sub sum_primes {
     my $next = $low + $step - 1;
     $next = $high if $next > $high;
     $sum += ($xssum) ? Math::Prime::Util::sum_primes($low,$next)
-                     : vecsum( @{primes($low,$next)} );
+                     : Math::Prime::Util::vecsum( @{Math::Prime::Util::primes($low,$next)} );
     last if $next == $high;
     $low = $next+1;
   }

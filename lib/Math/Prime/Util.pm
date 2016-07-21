@@ -1676,6 +1676,10 @@ essentially similar to either of:
 but is somewhat more efficient (about 2-4x compared to forprimes, more
 for vecsum since no large list is created).
 
+A future version may implement a fast prime sum algorithm.  Currently
+the implementation is an efficient naive method.  It is very fast up to
+about C<2*10^10>, but rapidly slows down after that.
+
 =head2 print_primes
 
   print_primes(1_000_000);             # print the first 1 million primes

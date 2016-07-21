@@ -113,3 +113,5 @@
 - bernreal and bernfrac using MPFR
 
 - export is_euler_plumb_pseudoprime, docs, test
+
+- consider ramanujan_sum.

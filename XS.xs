@@ -1297,7 +1297,8 @@ znorder(IN SV* sva, IN SV* svn)
   ALIAS:
     binomial = 1
     jordan_totient = 2
-    legendre_phi = 3
+    ramanujan_sum = 3
+    legendre_phi = 4
   PREINIT:
     int astatus, nstatus;
   PPCODE:
@@ -1330,7 +1331,17 @@ znorder(IN SV* sva, IN SV* svn)
                  if (ret == 0 && n > 1)
                    goto overflow;
                  break;
-        case 3:
+        case 3:  if (a < 1 || n < 1) XSRETURN_IV(0);
+                 { IV sum = 0;
+                   UV i, ndivisors, *divs, an = gcd_ui(a,n);
+                   if (an > (UV)IV_MAX) goto overflow;
+                   divs = _divisor_list(an, &ndivisors);
+                   for (i = 0; i < ndivisors; i++)
+                     sum += ((IV)divs[i]) * moebius(a/divs[i]);
+                   Safefree(divs);
+                   XSRETURN_IV(sum);
+                 } break;
+        case 4:
         default: ret = legendre_phi(a, n);
                  break;
       }
@@ -1342,7 +1353,8 @@ znorder(IN SV* sva, IN SV* svn)
       case 0:  _vcallsub_with_pp("znorder");  break;
       case 1:  _vcallsub_with_pp("binomial");  break;
       case 2:  _vcallsub_with_pp("jordan_totient");  break;
-      case 3:
+      case 3:  _vcallsub_with_pp("ramanujan_sum");  break;
+      case 4:
       default: _vcallsub_with_pp("legendre_phi"); break;
     }
     return; /* skip implicit PUTBACK */
