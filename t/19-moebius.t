@@ -8,7 +8,7 @@ use Math::Prime::Util
       chebyshev_theta chebyshev_psi carmichael_lambda znorder liouville
       znprimroot znlog kronecker legendre_phi gcd lcm is_power valuation
       binomial gcdext chinese vecmin vecmax factorial
-      hammingweight sqrtint is_square_free
+      hammingweight sqrtint logint is_square_free
       is_carmichael is_quasi_carmichael
       is_primitive_root
       hclassno ramanujan_tau
@@ -589,6 +589,7 @@ plan tests => 0 + 1
                 + scalar(@valuations)
                 + scalar(@popcounts)
                 + 4  # sqrtint
+                + 5  # logint
                 + 2 + scalar(@binomials)
                 + 6 + scalar(keys %powers) + scalar(@negpowers)
                 + scalar(keys %primroots) + 1
@@ -889,6 +890,15 @@ is_deeply( [map { sqrtint($_) } 0..100], [map { int(sqrt($_)) } 0..100], "sqrtin
 is( sqrtint(1524155677489), 1234567, "sqrtint(1234567^2) = 1234567" );
 is( sqrtint(1524158146623), 1234567, "sqrtint(1234568^2-1) = 1234567" );
 is( sqrtint(1524155677488), 1234566, "sqrtint(1234567^2-1) = 1234566" );
+###### logint
+is_deeply( [map { logint($_,2) } 1..200], [map { int(log($_)/log(2)+1e-10) } 1..200], "logint base 2: 0 .. 200" );
+is_deeply( [map { logint($_,3) } 1..200], [map { int(log($_)/log(3)+1e-10) } 1..200], "logint base 3: 0 .. 200" );
+is_deeply( [map { logint($_,5) } 1..200], [map { int(log($_)/log(5)+1e-10) } 1..200], "logint base 3: 0 .. 200" );
+{
+  my $be;
+  is( logint(19284098234,16,\$be), 8, "logint(19284098234,16) = 8" );
+  is( $be, 16**8, "power is 16^8" );
+}
 ###### binomial
 foreach my $r (@binomials) {
   my($n, $k, $exp) = @$r;

@@ -1992,7 +1992,8 @@ sub sum_primes {
   return $sum if $low > $high;
 
   my $xssum = (MPU_64BIT && $high < 6e14 && Math::Prime::Util::prime_get_config()->{'xs'});
-  my $step = ($xssum && $high > 5e13) ? 1_000_000 : 10_000_000;
+  my $step = ($xssum && $high > 5e13) ? 1_000_000 : 11_000_000;
+  Math::Prime::Util::prime_precalc(sqrtint($high));
   while ($low <= $high) {
     my $next = $low + $step - 1;
     $next = $high if $next > $high;
@@ -2505,10 +2506,10 @@ sub is_prime_power {
   my ($n, $refp) = @_;
   croak("is_prime_power second argument not a scalar reference") if defined($refp) && !ref($refp);
   return 0 if $n <= 1;
-  if (is_prime($n)) { $$refp = $n if defined $refp; return 1; }
+  if (Math::Prime::Util::is_prime($n)) { $$refp = $n if defined $refp; return 1; }
   my $r;
-  my $k = is_power($n,0,\$r);
-  return 0 unless $k && is_prime($r);
+  my $k = Math::Prime::Util::is_power($n,0,\$r);
+  return 0 unless $k && Math::Prime::Util::is_prime($r);
   $$refp = $r if defined $refp;
   $k;
 }
@@ -2610,6 +2611,28 @@ sub sqrtint {
   my($n) = @_;
   my $sqrt = Math::BigInt->new("$n")->bsqrt;
   return Math::Prime::Util::_reftyped($_[0], $sqrt);
+}
+
+sub logint {
+  my ($n, $b, $refp) = @_;
+  croak("logint third argument not a scalar reference") if defined($refp) && !ref($refp);
+  croak "logint: n must be > 0" unless $n > 0;
+  croak "logint: missing base" unless defined $b;
+  if ($b == 10) {
+    my $e = length($n)-1;
+    $$refp = Math::BigInt->new("1" . "0"x$e) if defined $refp;
+    return $e;
+  }
+  if ($b == 2) {
+    my $e = length(Math::BigInt->new("$n")->as_bin)-2-1;
+    $$refp = Math::BigInt->from_bin("1" . "0"x$e) if defined $refp;
+    return $e;
+  }
+  croak "logint: base must be > 1" unless $b > 1;
+
+  my $e = Math::BigInt->new("$n")->blog("$b");
+  $$refp = Math::BigInt->new("$b")->bpow($e) if defined $refp;
+  $e;
 }
 
 sub _bernden {

@@ -25,7 +25,6 @@ is(fromdigits([0,1,1,0,1],3), 37, "fromdigits base 3");
 is(fromdigits([0,1,1,0,1],16), 4353, "fromdigits base 16");
 is(fromdigits([0,1,1,0,2216],16), 6568, "fromdigits base 16 with overflow");
 
-# Pari/GP seems to have a carry issue with base 2
 is(fromdigits([7,999,44],5), 7*5**2 + 999*5 + 44*1, "fromdigits base 5 with carry");
 is(fromdigits([7,999,44],3), 7*3**2 + 999*3 + 44*1, "fromdigits base 3 with carry");
 is(fromdigits([7,999,44],2), 7*2**2 + 999*2 + 44*1, "fromdigits base 2 with carry");

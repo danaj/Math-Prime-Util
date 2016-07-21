@@ -108,10 +108,15 @@
   much worse growth for large inputs.  The table method is probably fine
   for native size results.
 
-- fromdigits([7,2,2],2) = 30 in Pari/GP, 34 for us.  (Pari bug?)
+  Related, we could do the sum in two UVs then use the same return method
+  we do for vecsum.
 
 - bernreal and bernfrac using MPFR
 
+- verify vecsum overflow works correctly for 32-bit UV.
+
 - export is_euler_plumb_pseudoprime, docs, test
+
+- add logint
 
 - consider ramanujan_sum.

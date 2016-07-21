@@ -5,6 +5,7 @@ Revision history for Perl module Math::Prime::Util
     [ADDED]
 
     - is_prime_power         Returns k if n=p^k for p a prime.
+    - logint(n,b)            Integer logarithm.  Largest e s.t. b^e <= n.
 
     [FUNCTIONALITY AND PERFORMANCE]
 
@@ -27,6 +28,8 @@ Revision history for Perl module Math::Prime::Util
 
     - Add bloom filters to reject non-perfect cubes, fifths, and sevenths.
       is_power about 2-3x faster for native inputs.
+
+    - forcomposites / foroddcomposites about 1.2x faster past 64-bit.
 
 
 

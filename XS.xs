@@ -19,6 +19,7 @@
 #include "sieve_cluster.h"
 #define FUNC_gcd_ui 1
 #define FUNC_isqrt 1
+#define FUNC_ipow 1
 #include "util.h"
 #include "primality.h"
 #include "factor.h"
@@ -941,23 +942,25 @@ is_prime(IN SV* svn, ...)
     is_perrin_pseudoprime = 11
     is_catalan_pseudoprime = 12
     is_almost_extra_strong_lucas_pseudoprime = 13
-    is_ramanujan_prime = 14
-    is_square_free = 15
-    is_carmichael = 16
-    is_quasi_carmichael = 17
-    is_primitive_root = 18
-    is_mersenne_prime = 19
-    is_power = 20
-    is_prime_power = 21
+    is_euler_plumb_pseudoprime = 14
+    is_ramanujan_prime = 15
+    is_square_free = 16
+    is_carmichael = 17
+    is_quasi_carmichael = 18
+    is_primitive_root = 19
+    is_mersenne_prime = 20
+    is_power = 21
+    is_prime_power = 22
+    logint = 23
   PREINIT:
     int status, astatus;
   PPCODE:
     status = _validate_int(aTHX_ svn, 1);
-    astatus = (items == 1 || ix==21) ? 1 : _validate_int(aTHX_ ST(1), 1);
+    astatus = (items == 1 || ix==22) ? 1 : _validate_int(aTHX_ ST(1), 1);
     if (status != 0 && astatus != 0) {
       int ret = 0;
       UV n = my_svuv(svn);
-      if (status == 1 && astatus == 1 && ix != 20 && ix != 21) {
+      if (status == 1 && astatus == 1 && ix < 21) {
         UV a = (items == 1) ? 0 : my_svuv(ST(1));
         switch (ix) {
           case 0:
@@ -979,20 +982,22 @@ is_prime(IN SV* svn, ...)
           case 10: ret = is_frobenius_khashin_pseudoprime(n); break;
           case 11: ret = is_perrin_pseudoprime(n,a > 0); break;
           case 12: ret = is_catalan_pseudoprime(n); break;
+          //case 12: ret = is_a225876_pseudoprime(n); break;
           case 13: ret = is_almost_extra_strong_lucas_pseudoprime
                          (n, (items == 1) ? 1 : a); break;
-          case 14: ret = is_ramanujan_prime(n); break;
-          case 15: ret = is_square_free(n); break;
-          case 16: ret = is_carmichael(n); break;
-          case 17: ret = is_quasi_carmichael(n); break;
-          case 18: ret = is_primitive_root(n,a,0); break;
-          case 19:
+          case 14: ret = is_euler_plumb_pseudoprime(n); break;
+          case 15: ret = is_ramanujan_prime(n); break;
+          case 16: ret = is_square_free(n); break;
+          case 17: ret = is_carmichael(n); break;
+          case 18: ret = is_quasi_carmichael(n); break;
+          case 19: ret = is_primitive_root(n,a,0); break;
+          case 20:
           default: ret = is_mersenne_prime(n);
                    if (ret == -1) status = 0;
                    break;
         }
         if (status != 0 && astatus == 1) RETURN_NPARITY(ret);
-      } else if (ix == 20) {
+      } else if (ix == 21) {
         UV a = (items == 1) ? 0 : my_svuv(ST(1));
         if (status == -1) {
           if (n == UV_MAX || (UV_MAX-n) == (UV)IV_MAX)  status = 0;
@@ -1012,7 +1017,7 @@ is_prime(IN SV* svn, ...)
           }
         }
         if (status != 0 && astatus != 0) RETURN_NPARITY(ret);
-      } else if (ix == 21) {
+      } else if (ix == 22) {
         if (status == 1) {
           UV root;
           ret = primepower(n, &root);
@@ -1022,6 +1027,17 @@ is_prime(IN SV* svn, ...)
           }
         }
         if (status != 0) RETURN_NPARITY(ret);
+      } else if (ix == 23) {
+        UV e, a = (items == 1) ? 0 : my_svuv(ST(1));
+        if (status != 1 || n <= 0)   croak("logint: n must be > 0");
+        if (items == 1)              croak("logint: missing base");
+        if (astatus != 1 || a <= 1)  croak("logint: base must be > 1");
+        e = logint(n, a);
+        if (items == 3) {
+          if (!SvROK(ST(2))) croak("logint third argument not a scalar reference");
+          sv_setuv(SvRV(ST(2)), ipow(a,e));
+        }
+        XSRETURN_UV(e);
       }
     }
     switch (ix) {
@@ -1039,13 +1055,14 @@ is_prime(IN SV* svn, ...)
       case 11:_vcallsub_with_gmp("is_perrin_pseudoprime"); break;
       case 12:_vcallsub_with_gmp("is_catalan_pseudoprime"); break;
       case 13:_vcallsub_with_gmp("is_almost_extra_strong_lucas_pseudoprime"); break;
-      case 14:_vcallsub_with_gmp("is_ramanujan_prime"); break;
-      case 15:_vcallsub_with_gmp("is_square_free"); break;
-      case 16:_vcallsub_with_gmp("is_carmichael"); break;
-      case 17:_vcallsub_with_gmp("is_quasi_carmichael"); break;
-      case 18:_vcallsub_with_gmp("is_primitive_root"); break;
-      case 19:_vcallsub_with_gmp("is_mersenne_prime"); break;
-      case 20:if (items != 3 && status != -1) {
+      case 14:_vcallsub_with_gmp("is_euler_plumb_pseudoprime"); break;
+      case 15:_vcallsub_with_gmp("is_ramanujan_prime"); break;
+      case 16:_vcallsub_with_gmp("is_square_free"); break;
+      case 17:_vcallsub_with_gmp("is_carmichael"); break;
+      case 18:_vcallsub_with_gmp("is_quasi_carmichael"); break;
+      case 19:_vcallsub_with_gmp("is_primitive_root"); break;
+      case 20:_vcallsub_with_gmp("is_mersenne_prime"); break;
+      case 21:if (items != 3 && status != -1) {
                 STRLEN len;
                 char* ptr = SvPV(svn, len);
                 if (len > 0 && ptr[0] != '-') {
@@ -1056,8 +1073,9 @@ is_prime(IN SV* svn, ...)
               }
               _vcallsub_with_pp("is_power");
               break;
-      case 21:
-      default:_vcallsub_with_gmp("is_prime_power"); break;
+      case 22:_vcallsub_with_gmp("is_prime_power"); break;
+      case 23:
+      default:_vcallsub_with_gmp("logint"); break;
     }
     return; /* skip implicit PUTBACK */
 

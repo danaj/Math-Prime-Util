@@ -536,6 +536,12 @@ sub sqrtint {
   _validate_integer($n);
   return Math::Prime::Util::PP::sqrtint($n);
 }
+sub logint {
+  my($n, $b, $refp) = @_;
+  _validate_positive_integer($n);
+  _validate_positive_integer($b);
+  return Math::Prime::Util::PP::logint($n, $b, $refp);
+}
 
 sub legendre_phi {
   my($x, $a) = @_;
