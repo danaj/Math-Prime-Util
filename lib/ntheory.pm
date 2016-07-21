@@ -163,6 +163,8 @@ See L<Math::Prime::Util> for complete documentation.
   is_quasi_carmichael(n)              is n a quasi-Carmichael number
   is_primitive_root(r,n)              is r a primitive root mod n
   sqrtint(n)                          integer square root
+  logint(n,b)                         integer logarithm
+  logint(n,b,\$be)                    as above but also set $be to b^e.
   gcd(@list)                          greatest common divisor
   lcm(@list)                          least common multiple
   gcdext(x,y)                         return (u,v,d) where u*x+v*y=d

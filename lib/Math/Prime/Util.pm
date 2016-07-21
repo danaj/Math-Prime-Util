@@ -27,7 +27,7 @@ our @EXPORT_OK =
       is_aks_prime is_bpsw_prime
       is_ramanujan_prime
       is_mersenne_prime
-      is_power is_prime_power sqrtint
+      is_power is_prime_power sqrtint logint
       is_square_free is_primitive_root is_carmichael is_quasi_carmichael
       miller_rabin_random
       lucas_sequence lucasu lucasv
@@ -568,11 +568,12 @@ sub _generic_forcomposites {
   {
     my $pp;
     local *_ = \$pp;
-    for ( ; $beg <= $end ; $beg++ ) {
-      if (!is_prime($beg)) {
+    for (my $p = next_prime($beg-1);  $beg <= $end;  $p = next_prime($p)) {
+      for ( ; $beg < $p && $beg <= $end ; $beg++ ) {
         $pp = $beg;
         $sub->();
       }
+      $beg++;
     }
   }
 }
@@ -588,11 +589,12 @@ sub _generic_foroddcomposites {
   {
     my $pp;
     local *_ = \$pp;
-    for ( ; $beg <= $end ; $beg += 2 ) {
-      if (!is_prime($beg)) {
+    for (my $p = next_prime($beg-1);  $beg <= $end;  $p = next_prime($p)) {
+      for ( ; $beg < $p && $beg <= $end ; $beg += 2 ) {
         $pp = $beg;
         $sub->();
       }
+      $beg += 2;
     }
   }
 }
@@ -953,7 +955,7 @@ __END__
 
 =encoding utf8
 
-=for stopwords forprimes forcomposites foroddcomposites fordivisors forpart forcomp forcomb forperm formultiperm Möbius Deléglise Bézout totient moebius mertens liouville znorder irand primesieve uniqued k-tuples von SoE pari yafu fonction qui compte le nombre nombres voor PhD superset sqrt(N) gcd(A^M k-th (10001st primegen libtommath kronecker znprimroot znlog gcd lcm invmod sqrtmod addmod mulmod powmod divmod untruncated vecsum vecprod vecmin vecmax vecreduce vecextract vecall vecany vecnone vecnotall vecfirst sumdigits gcdext chinese LambertW bernfrac bernreal harmfrac harmreal stirling hammingweight lucasu lucasv OpenPFGW gmpy2 Über Primzahl-Zählfunktion n-te und verallgemeinerte sqrtint multiset todigits todigitstring fromdigits hclassno
+=for stopwords forprimes forcomposites foroddcomposites fordivisors forpart forcomp forcomb forperm formultiperm Möbius Deléglise Bézout totient moebius mertens liouville znorder irand primesieve uniqued k-tuples von SoE pari yafu fonction qui compte le nombre nombres voor PhD superset sqrt(N) gcd(A^M k-th (10001st primegen libtommath kronecker znprimroot znlog gcd lcm invmod sqrtmod addmod mulmod powmod divmod untruncated vecsum vecprod vecmin vecmax vecreduce vecextract vecall vecany vecnone vecnotall vecfirst sumdigits gcdext chinese LambertW bernfrac bernreal harmfrac harmreal stirling hammingweight lucasu lucasv OpenPFGW gmpy2 Über Primzahl-Zählfunktion n-te und verallgemeinerte sqrtint logint multiset todigits todigitstring fromdigits hclassno
 
 =for test_synopsis use v5.14;  my($k,$x);
 
@@ -1888,6 +1890,7 @@ pseudoprimes than the extra-strong Lucas test.  However this is still only
 66% of the number produced by the strong Lucas-Selfridge test.  No BPSW
 counterexamples have been found with any of the Lucas tests described.
 
+
 =head2 is_perrin_pseudoprime
 
 Takes a positive number C<n> as input and returns 1 if C<n> divides C<P(n)>
@@ -1899,13 +1902,14 @@ While pseudoprimes are relatively rare (the first two are 271441 and 904631),
 infinitely many exist.
 The pseudoprime sequence is L<OEIS A013998|http://oeis.org/A013998>.
 
-The implementation uses pre-filters, modular 3x3 matrix exponentiation, and
-Montgomery math, which is very efficient compared to other implementations,
-but slow compared to the other probable prime tests.
+The implementation uses pre-filters, modular 3x3 matrix exponentiation,
+and Montgomery math, which is very efficient compared to other known
+implementations.
+However it is slow compared to the standard probable prime tests.
 
-An optional second argument indicates whether to additionally test C<P(-n)>,
-which are known as the restricted Perrin test.  The pseudoprimes are a subset
-of the unrestricted set.
+An optional second argument indicates whether to additionally test C<P(-n)>.
+Composites which pass this test are known as restricted Perrin pseudoprimes
+and are a subset of the unrestricted set.
 The restricted pseudoprime sequence is L<OEIS A018187|http://oeis.org/A018187>.
 
 
@@ -1922,6 +1926,7 @@ The pseudoprime sequence is L<OEIS A163209|http://oeis.org/A163209>.
 The implementation is extremely slow.  There is no known efficient method
 to perform the Catalan primality test, so it is a curiosity rather than
 a practical test.
+
 
 =head2 is_frobenius_pseudoprime
 
@@ -1959,7 +1964,7 @@ efficient Frobenius test of Paul Underwood.  This selects a parameter C<a>
 as the least non-negative integer such that C<(a^2-4|n)=-1>, then verifies that
 C<(x+2)^(n+1) = 2a + 5 mod (x^2-ax+1,n)>.  This combines a Fermat and Lucas
 test with a cost of only slightly more than 2 strong pseudoprime tests.  This
-makes it similar to, but faster than, a Frobenius test.
+makes it similar to, but faster than, a regular Frobenius test.
 
 There are no known pseudoprimes to this test and extensive computation has
 shown no counterexamples under C<2^50>.  This test also has no overlap
@@ -2404,6 +2409,22 @@ Given a non-negative integer input C<n>, returns the integer square root.
 For native integers, this is equal to C<int(sqrt(n))>.
 
 This corresponds to Pari/GP's C<sqrtint> function.
+
+
+=head2 logint
+
+  say "decimal digits: ", 1+logint($n, 10);
+  say "digits in base 12: ", 1+logint($n, 12);
+  my $be; my $e = logint(1000,2, \$be);
+  say "smallest power of 2 less than 1000:  2^$e = $be";
+
+Given a non-zero positive integer C<n> and an integer base C<b> greater
+than 1, returns the largest integer C<e> such that C<b^e E<lt>= n>.
+
+If a third argument is present, it must be a scalar reference.
+It will be set to C<b^e>.
+
+This corresponds to Pari/GP's C<logint> function.
 
 
 =head2 lucasu
