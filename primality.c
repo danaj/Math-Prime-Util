@@ -1030,15 +1030,12 @@ int is_perrin_pseudoprime(UV n, int restricted)
   UV m[9] = {0,1,0, 0,0,1, 1,1,0};
   if (n < 4) return (n >= 2);
   /* Hard code the initial tests.  60% of composites caught by 4 tests. */
-  if (!(n&1) && !((   22 >> (n% 7)) & 1)) return 0;
-  if (!(n%3) && !((  523 >> (n%13)) & 1)) return 0;
-  if (!(n%5) && !((65890 >> (n%24)) & 1)) return 0;
-  if (!(n%4) && !((  514 >> (n%14)) & 1)) return 0;
-  if (restricted) {
-    if (!(n&1) && !((     35 >> (n% 7)) & 1)) return 0;
-    if (!(n%3) && !((   4166 >> (n%13)) & 1)) return 0;
-    if (!(n%5) && !((3408898 >> (n%24)) & 1)) return 0;
-    if (!(n%4) && !((    130 >> (n%14)) & 1)) return 0;
+  {
+    uint32_t n32 = n % 10920;
+    if (!(n32&1) && !((   22 >> (n32% 7)) & 1)) return 0;
+    if (!(n32%3) && !((  523 >> (n32%13)) & 1)) return 0;
+    if (!(n32%5) && !((65890 >> (n32%24)) & 1)) return 0;
+    if (!(n32%4) && !((  514 >> (n32%14)) & 1)) return 0;
   }
   for (i = 4; i < NPERRINDIV; i++) {
     if ((n % _perrindata[i].div) == 0) {
@@ -1049,11 +1046,9 @@ int is_perrin_pseudoprime(UV n, int restricted)
     }
   }
   /* Depending on filters, 10-20% of composites left (unrestricted). */
-  /* TODO: Mask more restricted data */
 #if 0
-  { /* Calculate signature for acceptable inputs */
-    UV b[9] = {0,1,0, 0,0,1, 1,0,n-1};
-    UV S[6];
+  { /* Calculate signature for acceptable inputs. */
+    UV jacobi, S[6], b[9] = {0,1,0, 0,0,1, 1,0,n-1};
     mat_powmod_3x3(m, n, n);
     S[3] = addmod( mulmod(3,m[6],n), mulmod(2,m[8],n), n );
     S[4] = addmod( mulmod(3,m[0],n), mulmod(2,m[2],n), n );
@@ -1064,7 +1059,31 @@ int is_perrin_pseudoprime(UV n, int restricted)
     S[1] = submod( mulmod(3,b[4],n), b[5], n );
     S[2] = submod( mulmod(3,b[1],n), b[2], n );
     if (S[1] != n-1) return 0;
-    printf("Sig %lu: %lu  %lu  %lu  %lu  %lu  %lu\n", n, S[0],S[1],S[2],S[3],S[4],S[5]);
+    /* Determine which type.  See Adams/Shanks 1982, page 257 and 261. */
+    jacobi = kronecker_su(-23,n);
+    if (jacobi == -1) {  /* Q type */
+      UV B = S[2];
+      UV A = submod(addmod(1,mulmod(B,3,n),n),sqrmod(B,n),n);
+      UV C = submod(mulmod(sqrmod(B,n),3,n),2,n);
+      if (S[0] == A && S[2] == B && S[3] == B && S[5] == C && B != 3 && submod(mulmod(sqrmod(B,n),B,n),B,n) == 1) {
+        printf("Sig %lu Type Q  %lu -1 %lu %lu 0  %lu\n", n, S[0],S[2],S[3],S[5]);
+      } else {
+        printf("Sig %lu ??????  %lu -1 %lu  %lu 0 %lu\n", n, S[0],S[2],S[3],S[5]);
+      }
+    } else {             /* S or I type */
+      if (S[0] == 1 && S[2] == 3 && S[3] == 3 && S[5] == 2) {
+        printf("Sig %lu Type S  1 -1 3  3 0 2\n", n);
+      } else {
+        UV D = S[3];
+        UV p3d = submod(n-3,D,n);
+        if (S[0] == 0 && S[5] == n-1 && D != p3d && S[2] == p3d && addmod(addmod(sqrmod(D,n),mulmod(D,3,n),n),8,n) == 0 && jacobi == 1) {
+          /* TODO: F~(2,+/-1,3) equation 29 */
+          printf("Sig %lu Type I  0 -1 %lu  %lu 0 -1\n", n, S[2],S[3]);
+        } else {
+          printf("Sig %lu ??????  %lu -1 %lu  %lu 0 %lu\n", n, S[0],S[2],S[3],S[5]);
+        }
+      }
+    }
   }
 #endif
   mat_powmod_3x3(m, n, n);
