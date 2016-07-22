@@ -981,9 +981,18 @@ sub mertens {
   return $sum;
 }
 
+sub ramanujan_sum {
+  my($k,$n) = @_;
+  return 0 if $k < 1 || $n <  1;
+  my $g = $k / Math::Prime::Util::gcd($k,$n);
+  my $m = Math::Prime::Util::moebius($g);
+  return $m if $m == 0 || $k == $g;
+  $m * (Math::Prime::Util::euler_phi($k) / Math::Prime::Util::euler_phi($g));
+}
+
 sub liouville {
   my($n) = @_;
-  my $l = (-1) ** scalar factor($n);
+  my $l = (-1) ** scalar Math::Prime::Util::factor($n);
   return $l;
 }
 
@@ -991,20 +1000,9 @@ sub liouville {
 # Return p if n = p^m [p prime, m >= 1], 1 otherwise.
 sub exp_mangoldt {
   my($n) = @_;
-  return 1 if defined $n && $n <= 1;  # n <= 1
-  return 2 if ($n & ($n-1)) == 0;     # n power of 2
-  return 1 unless $n & 1;             # even n can't be p^m
-  return $n if Math::Prime::Util::is_prob_prime($n); # prime n returns n
-
-  my $k = Math::Prime::Util::is_power($n);
-  if ($k >= 2) {
-    my $root = Math::BigInt->new("$n")->broot($k);
-    if (Math::Prime::Util::is_prob_prime($root)) {
-      $root = _bigint_to_int($root) if $root->bacmp(BMAX) <= 0;
-      return $root;
-    }
-  }
-  1;
+  my $p;
+  return 1 unless Math::Prime::Util::is_prime_power($n,\$p);
+  $p;
 }
 
 sub carmichael_lambda {
@@ -5011,13 +5009,25 @@ sub _taup {
 # Cohen's method using Hurwitz class numbers
 # The two hclassno calls could be collapsed with some work
 sub _tauprime {
-  return -24 if $_[0] == 2;
-  my $p = Math::BigInt->new("$_[0]");
-  my($sum,$p9,$pp7) = (Math::BigInt->new(0), 9*$p, 7*$p*$p);
-  for my $t (1 .. Math::Prime::Util::sqrtint($p)) {
-    my $t2 = Math::BigInt->new("$t") ** 2;
-    my $v = $p - $t2;
-    $sum += $t2**3 * (4*$t2*$t2 - $p9*$t2 + $pp7) * (Math::Prime::Util::hclassno(4*$v) + 2 * Math::Prime::Util::hclassno($v));
+  my $p = shift;
+  return -24 if $p == 2;
+  my $sum = Math::BigInt->new(0);
+  if ($p < (MPU_32BIT ?  300  :  1600)) {
+    my($p9,$pp7) = (9*$p, 7*$p*$p);
+    for my $t (1 .. Math::Prime::Util::sqrtint($p)) {
+      my $t2 = $t * $t;
+      my $v = $p - $t2;
+      $sum += $t2**3 * (4*$t2*$t2 - $p9*$t2 + $pp7) * (Math::Prime::Util::hclassno(4*$v) + 2 * Math::Prime::Util::hclassno($v));
+    }
+    $p = Math::BigInt->new("$p");
+  } else {
+    $p = Math::BigInt->new("$p");
+    my($p9,$pp7) = (9*$p, 7*$p*$p);
+    for my $t (1 .. Math::Prime::Util::sqrtint($p)) {
+      my $t2 = Math::BigInt->new("$t") ** 2;
+      my $v = $p - $t2;
+      $sum += $t2**3 * (4*$t2*$t2 - $p9*$t2 + $pp7) * (Math::Prime::Util::hclassno(4*$v) + 2 * Math::Prime::Util::hclassno($v));
+    }
   }
   28*$p**6 - 28*$p**5 - 90*$p**4 - 35*$p**3 - 1 - 32 * ($sum/3);
 }
@@ -5041,7 +5051,7 @@ sub ramanujan_tau {
   return 0 if $n <= 0;
 
   # Use GMP if we have no XS or if size is small
-  if ($n < 300000 || !Math::Prime::Util::prime_get_config()->{'xs'}) {
+  if ($n < 100000 || !Math::Prime::Util::prime_get_config()->{'xs'}) {
     if (defined &Math::Prime::Util::GMP::ramanujan_tau && Math::Prime::Util::prime_get_config()->{'gmp'}) {
       return Math::Prime::Util::_reftyped($_[0], Math::Prime::Util::GMP::ramanujan_tau($n));
     }

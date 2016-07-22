@@ -1066,7 +1066,7 @@ int is_perrin_pseudoprime(UV n, int restricted)
       UV A = submod(addmod(1,mulmod(B,3,n),n),sqrmod(B,n),n);
       UV C = submod(mulmod(sqrmod(B,n),3,n),2,n);
       if (S[0] == A && S[2] == B && S[3] == B && S[5] == C && B != 3 && submod(mulmod(sqrmod(B,n),B,n),B,n) == 1) {
-        printf("Sig %lu Type Q  %lu -1 %lu %lu 0  %lu\n", n, S[0],S[2],S[3],S[5]);
+        printf("Sig %lu Type Q  %lu -1 %lu  %lu 0 %lu\n", n, S[0],S[2],S[3],S[5]);
       } else {
         printf("Sig %lu ??????  %lu -1 %lu  %lu 0 %lu\n", n, S[0],S[2],S[3],S[5]);
       }
