@@ -190,6 +190,7 @@ See L<Math::Prime::Util> for complete documentation.
   euler_phi(beg, end)                 Euler totient for a range
   jordan_totient(n,k)                 Jordan's totient
   carmichael_lambda(n)                Carmichael's Lambda function
+  ramanujan_sum(k,n)                  Ramanujan's sum
   exp_mangoldt                        exponential of Mangoldt function
   liouville(n)                        Liouville function
   znorder(a,n)                        multiplicative order of a mod n

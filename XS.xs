@@ -1350,15 +1350,13 @@ znorder(IN SV* sva, IN SV* svn)
                    goto overflow;
                  break;
         case 3:  if (a < 1 || n < 1) XSRETURN_IV(0);
-                 { IV sum = 0;
-                   UV i, ndivisors, *divs, an = gcd_ui(a,n);
-                   if (an > (UV)IV_MAX) goto overflow;
-                   divs = _divisor_list(an, &ndivisors);
-                   for (i = 0; i < ndivisors; i++)
-                     sum += ((IV)divs[i]) * moebius(a/divs[i]);
-                   Safefree(divs);
-                   XSRETURN_IV(sum);
-                 } break;
+                 {
+                   UV g = a / gcd_ui(a,n);
+                   int m = moebius(g);
+                   if (m == 0 || a == g) RETURN_NPARITY(m);
+                   XSRETURN_IV( m * (totient(a) / totient(g)) );
+                 }
+                 break;
         case 4:
         default: ret = legendre_phi(a, n);
                  break;

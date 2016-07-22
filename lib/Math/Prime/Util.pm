@@ -56,7 +56,8 @@ our @EXPORT_OK =
       moebius mertens euler_phi jordan_totient exp_mangoldt liouville
       partitions bernfrac bernreal harmfrac harmreal
       chebyshev_theta chebyshev_psi
-      divisor_sum carmichael_lambda kronecker hclassno ramanujan_tau
+      divisor_sum carmichael_lambda kronecker hclassno
+      ramanujan_tau ramanujan_sum
       binomial factorial stirling znorder znprimroot znlog legendre_phi
       ExponentialIntegral LogarithmicIntegral RiemannZeta RiemannR LambertW Pi
   );
@@ -2887,6 +2888,12 @@ This counts the number of k-tuples less than or equal to n that form a coprime
 tuple with n.  As with C<euler_phi>, 0 is returned for all C<n E<lt> 1>.
 This function can be used to generate some other useful functions, such as
 the Dedekind psi function, where C<psi(n) = J(2,n) / J(1,n)>.
+
+
+=head2 ramanujan_sum
+
+Returns Ramanujan's sum of the two positive variables C<k> and C<n>.
+This is the sum of the n-th powers of the primitive k-th roots of unity.
 
 
 =head2 exp_mangoldt

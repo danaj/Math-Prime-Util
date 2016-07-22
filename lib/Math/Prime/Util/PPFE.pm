@@ -48,6 +48,12 @@ sub jordan_totient {
   _validate_positive_integer($n);
   return Math::Prime::Util::PP::jordan_totient($k, $n);
 }
+sub ramanujan_sum {
+  my($k,$n) = @_;
+  _validate_positive_integer($k);
+  _validate_positive_integer($n);
+  return Math::Prime::Util::PP::ramanujan_sum($k, $n);
+}
 sub carmichael_lambda {
   my($n) = @_;
   _validate_positive_integer($n);
