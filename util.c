@@ -1756,22 +1756,20 @@ int powerof(UV n) {
   }
 #if BITS_PER_WORD == 64
   if (n >= UVCONST(8589934592)) {
-    UV root, pk;
-
     /* The Bloom filters reject about 90% of inputs each, about 99% for two.
      * Bach/Sorenson type sieves do about as well, but are much slower due
      * to using a powmod. */
     if ( (t = n %121, !((t*19706187) & (t*61524433) & 876897796)) &&
          (t = n % 89, !((t*28913398) & (t*69888189) & 2705511937)) ) {
       /* (t = n % 67, !((t*117621317) & (t*48719734) & 537242019)) ) { */
-      root = (UV) ( pow(n, 1.0 / 11 ) + 1e-6 );
-      if (n == ipow(root,11)) return 11 * powerof(root);
+      UV root = rootof(n,11);
+      if (n == ipow(root,11)) return 11;
     }
     if ( (t = n %131, !((t*1545928325) & (t*1355660813) & 2771533888)) &&
          (t = n % 79, !((t*48902028) & (t*48589927) & 404082779)) ) {
       /* (t = n % 53, !((t*79918293) & (t*236846524) & 694943819)) ) { */
-      root = (UV) ( pow(n, 1.0 / 13 ) + 1e-6 );
-      if (n == ipow(root,13)) return 13 * powerof(root);
+      UV root = rootof(n,13);
+      if (n == ipow(root,13)) return 13;
     }
     switch (n) {
       case UVCONST(762939453125):
@@ -1813,15 +1811,34 @@ int is_power(UV n, UV a)
   if (a != 0) return !(ret % a);  /* Is the max power divisible by a? */
   return (ret == 1) ? 0 : ret;
 }
-UV rootof(UV n, UV k)
-{
-  switch (k) {
-    case 0:  return 0;
-    case 1:  return n;
-    case 2:  return isqrt(n);
-    case 3:  return icbrt(n);
-    default: return (UV) (pow((double)n, 1.0/(double)k)+1e-6);
+
+#if BITS_PER_WORD == 64
+#define ROOT_MAX_3 41
+static const uint32_t root_max[ROOT_MAX_3] = {0,0,0,2642245,65535,7131,1625,565,255,138,84,56,40,30,23,19,15,13,11,10,9,8,7,6,6,5,5,5,4,4,4,4,3,3,3,3,3,3,3,3,3};
+#else
+#define ROOT_MAX_3 21
+static const uint32_t root_max[ROOT_MAX_3] = {0,0,0,1625,255,84,40,23,15,11,9,7,6,5,4,4,3,3,3,3,3};
+#endif
+
+UV rootof(UV n, UV k) {
+  UV lo, hi, max;
+  if (k == 0) return 0;
+  if (k == 1) return n;
+  if (k == 2) return isqrt(n);
+  if (k == 3) return icbrt(n);
+
+  /* Bracket between powers of 2, but never exceed max power so ipow works */
+  max = 1 + ((k >= ROOT_MAX_3) ? 2 : root_max[k]);
+  lo = UVCONST(1) << (log2floor(n)/k);
+  hi = ((lo*2) < max) ? lo*2 : max;
+
+  /* Binary search */
+  while (lo < hi) {
+    UV mid = lo + (hi-lo)/2;
+    if (ipow(mid,k) <= n) lo = mid+1;
+    else                  hi = mid;
   }
+  return lo-1;
 }
 
 int primepower(UV n, UV* prime)
@@ -2074,7 +2091,7 @@ static const UV jordan_overflow[5] =
 UV jordan_totient(UV k, UV n) {
   UV factors[MPU_MAX_FACTORS+1];
   int nfac, i;
-  UV j, totient;
+  UV totient;
   if (k == 0 || n <= 1) return (n == 1);
   if (k > 6 || (k > 1 && n >= jordan_overflow[k-2])) return 0;
 
@@ -2221,18 +2238,9 @@ int moebius(UV n) {
 }
 
 UV exp_mangoldt(UV n) {
-  if      (n <= 1)           return 1;
-  else if ((n & (n-1)) == 0) return 2;     /* Power of 2 */
-  else if ((n & 1) == 0)     return 1;     /* Even number (not 2) */
-  else if (is_prob_prime(n)) return n;
-  else {
-    int k = powerof(n);
-    if (k >= 2) {
-      n = rootof(n, k);
-      if (is_prob_prime(n)) return n;
-    }
-    return 1;
-  }
+  UV p;
+  if (!primepower(n,&p)) return 1;     /* Not a prime power */
+  return p;
 }
 
 
