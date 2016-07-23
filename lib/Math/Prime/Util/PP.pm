@@ -2228,7 +2228,7 @@ sub _from_128 {
   my($hi, $lo) = @_;
   return 0 unless defined $hi && defined $lo;
   #print "hi $hi lo $lo\n";
-  (Math::BigInt->new("$hi") << 64) + $lo;
+  (Math::BigInt->new("$hi") << MPU_MAXBITS) + $lo;
 }
 
 sub vecsum {
