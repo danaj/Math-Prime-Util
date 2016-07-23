@@ -3142,7 +3142,7 @@ int from_digit_to_str(char** rstr, UV* r, int len, int base)
     UV d = r[i];
     s[i] = (d < 10) ? '0'+d : 'a'+d-10;
   }
-  s[len+1] = '\0';
+  s[len] = '\0';
   *rstr = so;
   return 1;
 }

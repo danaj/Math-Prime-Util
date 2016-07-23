@@ -15,6 +15,8 @@ Revision history for Perl module Math::Prime::Util
       + Fix native Pi to use quads.
       + Trim some threading tests.
 
+    - Fix fromdigits memory error with large string.
+
     - Remove 3 threading tests that were causing issues with Perl -DDEBUGGING.
 
     - mertens() uses a little less memory.
