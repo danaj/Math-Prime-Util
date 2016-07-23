@@ -2224,11 +2224,11 @@ sub chinese {
   $sum;
 }
 
-sub _shift_and_sum {
-  my($hi, $shift, $lo) = @_;
-  return 0 unless defined $hi && defined $shift && defined $lo;
-  #print "hi $hi shift $shift lo $lo\n";
-  (Math::BigInt->new("$hi") << $shift) + $lo;
+sub _from_128 {
+  my($hi, $lo) = @_;
+  return 0 unless defined $hi && defined $lo;
+  #print "hi $hi lo $lo\n";
+  (Math::BigInt->new("$hi") << 64) + $lo;
 }
 
 sub vecsum {

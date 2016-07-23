@@ -744,9 +744,8 @@ gcd(...)
          *   result = (hi << 64) + lo    (hi is signed, lo is unsigned)
          * Call a Perl routine that will take these and make a bigint for us. */
         XPUSHs(sv_2mortal(newSViv( hi )));
-        XPUSHs(sv_2mortal(newSVuv( 64 )));
         XPUSHs(sv_2mortal(newSVuv( lo )));
-        _vcallsub_with_pp("_shift_and_sum");
+        _vcallsub_with_pp("_from_128");
         XSRETURN(1);
       }
       if (hi != 0) status = 0;  /* Overflow */
