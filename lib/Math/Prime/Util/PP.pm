@@ -1928,7 +1928,9 @@ sub twin_prime_count_approx {
   return twin_prime_count(3,$n) if $n < 2000;
   $n = _upgrade_to_float($n) if ref($n);
   my $logn = log($n);
-  my $li2 = ExponentialIntegral($logn) + 2.8853900817779268147198494 - ($n/$logn);
+  # The loss of full Ei precision is a few orders of magnitude less than the
+  # accuracy of the estimate, so save huge time and don't bother.
+  my $li2 = ExponentialIntegral("$logn") + 2.8853900817779268147198494 - ($n/$logn);
   my $log4 = log(log(log($n*4000)));
   if    ($n <     4000) { $li2 *= 1.0005 * $log4; }
   elsif ($n <     8000) { $li2 *= 0.9734 * $log4; }
@@ -1945,7 +1947,7 @@ sub nth_twin_prime {
   return undef if $n < 0;  ## no critic qw(ProhibitExplicitReturnUndef)
   return (undef,3,5,11,17,29,41)[$n] if $n <= 6;
 
-  my $p = nth_twin_prime_approx($n);
+  my $p = nth_twin_prime_approx($n+200);
   my $tp = Math::Prime::Util::twin_primes($p);
   while ($n > scalar(@$tp)) {
     $n -= scalar(@$tp);
