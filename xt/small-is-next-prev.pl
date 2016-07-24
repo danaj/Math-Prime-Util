@@ -39,7 +39,7 @@ print "\n";
   my $n = 0;
   forprimes {
     die "next $n not $_" unless next_prime($n) == $_;
-    die "prev $n" unless prev_prime($_) == $n;
+    die "prev $n" unless $n==0 || prev_prime($_) == $n;
     $n = $_;
     if ($n > $nextprint) { print "$n..";  $nextprint += 5000000; }
   } $nprimes;
@@ -75,7 +75,7 @@ prime_memfree();
     my $next = next_prime($n);
     my $prev = prev_prime($p);
     die "MPU next($n) is not $p\n" unless $next == $p;
-    die "MPU prev($p) is not $n\n" unless $prev == $n;
+    die "MPU prev($p) is not $n\n" unless $n==0 || $prev == $n;
     $n = $next;
   }
   my $seconds = tv_interval($start_time);
@@ -91,7 +91,7 @@ prime_memfree();
     my $next = next_prime($n);
     my $prev = prev_prime($p);
     die "MPU next($n) is not $p\n" unless $next == $p;
-    die "MPU prev($p) is not $n\n" unless $prev == $n;
+    die "MPU prev($p) is not $n\n" unless $n==0 || $prev == $n;
     $n = $next;
   }
   my $seconds = tv_interval($start_time);
@@ -110,7 +110,7 @@ if (eval { require Math::Prime::FastSieve; Math::Prime::FastSieve->import(); Inl
     my $next = $sieve->nearest_ge($n+1);
     my $prev = $sieve->nearest_le($p-1);
     die "MPFS next($n) is not $p\n" unless $next == $p;
-    die "MPFS prev($p) is not $n\n" unless $prev == $n;
+    die "MPFS prev($p) is not $n\n" unless $n==0 || $prev == $n;
     $n = $next;
   }
   my $seconds = tv_interval($start_time);
@@ -131,7 +131,7 @@ if (eval { require Math::Pari; 1; }) {
     my $next = Math::Pari::nextprime($n+1);
     my $prev = Math::Pari::precprime($p-1);
     die "Pari next($n) is not $p\n" unless $next == $p;
-    die "Pari prec($p) is not $n\n" unless $prev == $n;
+    die "Pari prec($p) is not $n\n" unless $n==0 || $prev == $n;
     $n = $next;
   }
   my $seconds = tv_interval($start_time);
@@ -170,7 +170,7 @@ if (eval { require Math::Primality; 1; }) {
     my $next = Math::Primality::next_prime($n);
     my $prev = ($p == 2) ? 0 : Math::Primality::prev_prime($p);
     die "MP next($n) is not $p\n" unless $next == $p;
-    die "MP prev($p) is not $n\n" unless $prev == $n;
+    die "MP prev($p) is not $n\n" unless $n==0 || $prev == $n;
     $n = $next;
   }
   my $seconds = tv_interval($start_time);
