@@ -51,6 +51,7 @@ See L<Math::Prime::Util> for complete documentation.
 
   is_pseudoprime(n,bases)                  Fermat probable prime test
   is_euler_pseudoprime(n,bases)            Euler test to bases
+  is_euler_plumb_pseudoprime(n)            Euler Criterion test
   is_strong_pseudoprime(n,bases)           Miller-Rabin test to bases
   is_lucas_pseudoprime(n)                  Lucas test
   is_strong_lucas_pseudoprime(n)           strong Lucas test

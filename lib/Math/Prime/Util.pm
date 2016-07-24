@@ -17,6 +17,7 @@ our @EXPORT_OK =
       is_prime is_prob_prime is_provable_prime is_provable_prime_with_cert
       prime_certificate verify_prime
       is_pseudoprime is_euler_pseudoprime is_strong_pseudoprime
+      is_euler_plumb_pseudoprime
       is_lucas_pseudoprime
       is_strong_lucas_pseudoprime
       is_extra_strong_lucas_pseudoprime
@@ -1792,7 +1793,8 @@ similar or better performance.
 
 Note that there is a set of composites (the Carmichael numbers) that will
 pass this test for all bases.  This downside is not shared by the Euler
-and strong probable prime tests (aka Solovay-Strassen and Miller-Rabin tests).
+and strong probable prime tests (also called the Solovay-Strassen
+and Miller-Rabin tests).
 
 =head2 is_euler_pseudoprime
 
@@ -1890,6 +1892,17 @@ Because the C<U = 0> condition is ignored, this produces about 5% more
 pseudoprimes than the extra-strong Lucas test.  However this is still only
 66% of the number produced by the strong Lucas-Selfridge test.  No BPSW
 counterexamples have been found with any of the Lucas tests described.
+
+
+=head2 is_euler_plumb_pseudoprime
+
+Takes a positive number C<n> as input and returns 1 if C<n> passes
+Colin Plumb's Euler Criterion primality test.  Pseudoprimes to this test
+are a subset of the base 2 Fermat and Euler tests, but a superset
+of the base 2 strong pseudoprime (Miller-Rabin) test.
+
+The main reason for this test is that is a bit more efficient
+than other probable prime tests.
 
 
 =head2 is_perrin_pseudoprime
@@ -2893,7 +2906,7 @@ the Dedekind psi function, where C<psi(n) = J(2,n) / J(1,n)>.
 =head2 ramanujan_sum
 
 Returns Ramanujan's sum of the two positive variables C<k> and C<n>.
-This is the sum of the n-th powers of the primitive k-th roots of unity.
+This is the sum of the nth powers of the primitive k-th roots of unity.
 
 
 =head2 exp_mangoldt

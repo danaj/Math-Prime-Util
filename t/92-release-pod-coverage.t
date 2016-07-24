@@ -42,6 +42,7 @@ sub mpu_public_regex {
       is_prime is_prob_prime is_provable_prime is_provable_prime_with_cert
       prime_certificate verify_prime
       is_pseudoprime is_euler_pseudoprime is_strong_pseudoprime
+      is_euler_plumb_pseudoprime
       is_lucas_pseudoprime
       is_strong_lucas_pseudoprime
       is_extra_strong_lucas_pseudoprime
@@ -52,7 +53,7 @@ sub mpu_public_regex {
       is_aks_prime is_bpsw_prime
       is_ramanujan_prime
       is_mersenne_prime
-      is_power sqrtint
+      is_power is_prime_power sqrtint logint
       is_square_free is_primitive_root is_carmichael is_quasi_carmichael
       miller_rabin_random
       lucas_sequence lucasu lucasv
@@ -81,7 +82,8 @@ sub mpu_public_regex {
       moebius mertens euler_phi jordan_totient exp_mangoldt liouville
       partitions bernfrac bernreal harmfrac harmreal
       chebyshev_theta chebyshev_psi
-      divisor_sum carmichael_lambda kronecker hclassno ramanujan_tau
+      divisor_sum carmichael_lambda kronecker hclassno
+      ramanujan_tau ramanujan_sum
       binomial factorial stirling znorder znprimroot znlog legendre_phi
       ExponentialIntegral LogarithmicIntegral RiemannZeta RiemannR LambertW Pi
   );
