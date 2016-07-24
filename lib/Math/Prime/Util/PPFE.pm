@@ -200,6 +200,12 @@ sub is_strong_pseudoprime {
   croak "No bases given to is_strong_pseudoprime" unless @bases;
   return Math::Prime::Util::PP::is_strong_pseudoprime($n, @bases);
 }
+sub is_euler_plumb_pseudoprime {
+  my($n) = @_;
+  return 0 if defined $n && int($n) < 0;
+  _validate_positive_integer($n);
+  return Math::Prime::Util::PP::is_euler_plumb_pseudoprime($n);
+}
 sub is_lucas_pseudoprime {
   my($n) = @_;
   return 0 if defined $n && int($n) < 0;

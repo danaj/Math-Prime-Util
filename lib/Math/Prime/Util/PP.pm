@@ -2840,6 +2840,20 @@ sub is_euler_pseudoprime {
   1;
 }
 
+sub is_euler_plumb_pseudoprime {
+  my($n) = @_;
+  return 0 if int($n) < 0;
+  _validate_positive_integer($n);
+  return 0+($n >= 2) if $n < 4;
+  return 0 if ($n % 2) == 0;
+  my $nmod8 = $n % 8;
+  my $exp = 1 + ($nmod8 == 1);
+  my $ap = Math::Prime::Util::powmod(2, ($n-1) >> $exp, $n);
+  if ($ap ==    1) { return ($nmod8 == 1 || $nmod8 == 7); }
+  if ($ap == $n-1) { return ($nmod8 == 1 || $nmod8 == 3 || $nmod8 == 5); }
+  0;
+}
+
 sub _miller_rabin_2 {
   my($n, $nm1, $s, $d) = @_;
 

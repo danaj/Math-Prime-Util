@@ -112,5 +112,3 @@
   we do for vecsum.
 
 - bernreal and bernfrac using MPFR
-
-- export is_euler_plumb_pseudoprime, docs, test
