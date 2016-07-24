@@ -113,6 +113,4 @@
 
 - bernreal and bernfrac using MPFR
 
-- verify vecsum overflow works correctly for 32-bit UV.
-
 - export is_euler_plumb_pseudoprime, docs, test
