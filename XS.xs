@@ -981,7 +981,6 @@ is_prime(IN SV* svn, ...)
           case 10: ret = is_frobenius_khashin_pseudoprime(n); break;
           case 11: ret = is_perrin_pseudoprime(n,a > 0); break;
           case 12: ret = is_catalan_pseudoprime(n); break;
-          //case 12: ret = is_a225876_pseudoprime(n); break;
           case 13: ret = is_almost_extra_strong_lucas_pseudoprime
                          (n, (items == 1) ? 1 : a); break;
           case 14: ret = is_euler_plumb_pseudoprime(n); break;
