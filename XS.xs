@@ -1040,19 +1040,15 @@ is_prime(IN SV* svn, ...)
       } else if (ix == 24) {
         UV r, a = (items == 1) ? 0 : my_svuv(ST(1));
         if (items == 1)              croak("rootint: missing exponent");
-        if (astatus != 1 || a == 0)  XSRETURN_UNDEF;
-        if (status == -1) {
-          if (n == UV_MAX || (UV_MAX-n) == (UV)IV_MAX)  status = 0;
-          else                                          n = (UV) -my_sviv(svn);
-        }
-        if (status != 0) {
+        if (astatus != 1 || a == 0)  croak("rootint: k must be > 0");
+        if (status == -1)            croak("rootint: n must be >= 0");
+        if (status == 1) {
           r = rootof(n, a);
           if (items == 3) {
             if (!SvROK(ST(2))) croak("rootint: third argument not a scalar reference");
             sv_setuv(SvRV(ST(2)), ipow(r,a));
           }
-          if (status == 1) XSRETURN_UV(r);
-          else             XSRETURN_IV(-(IV)r);
+          XSRETURN_UV(r);
         }
       }
     }

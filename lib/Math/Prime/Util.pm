@@ -2427,9 +2427,9 @@ This corresponds to Pari/GP's C<sqrtint> function.
 
 =head2 rootint
 
-Given an integer C<n> and exponent C<k>, return the integer k-th root of
-C<n>.  This is the largest integer C<r> such that C<|r^k| E<lt>= |n|>, and
-will have the same sign as n.  Returns C<undef> if C<k E<lt>= 0>.
+Given an non-negative integer C<n> and positive exponent C<k>, return the
+integer k-th root of C<n>.  This is the largest integer C<r> such that
+C<r^k E<lt>= n>.
 
 If a third argument is present, it must be a scalar reference.
 It will be set to C<r^k>.

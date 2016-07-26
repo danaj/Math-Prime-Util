@@ -549,10 +549,10 @@ sub sqrtint {
   return Math::Prime::Util::PP::sqrtint($n);
 }
 sub rootint {
-  my($n, $b, $refp) = @_;
+  my($n, $k, $refp) = @_;
   _validate_positive_integer($n);
-  _validate_positive_integer($b);
-  return Math::Prime::Util::PP::rootint($n, $b, $refp);
+  _validate_positive_integer($k);
+  return Math::Prime::Util::PP::rootint($n, $k, $refp);
 }
 sub logint {
   my($n, $b, $refp) = @_;

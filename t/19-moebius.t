@@ -612,7 +612,7 @@ plan tests => 0 + 1
                 + scalar(@valuations)
                 + scalar(@popcounts)
                 + 4  # sqrtint
-                + 8  # rootint
+                + 6  # rootint
                 + 5  # logint
                 + 2 + scalar(@binomials)
                 + 6 + scalar(keys %powers) + scalar(@negpowers)
@@ -931,10 +931,9 @@ is( sqrtint(1524155677489), 1234567, "sqrtint(1234567^2) = 1234567" );
 is( sqrtint(1524158146623), 1234567, "sqrtint(1234568^2-1) = 1234567" );
 is( sqrtint(1524155677488), 1234566, "sqrtint(1234567^2-1) = 1234566" );
 ###### rootint
-is(rootint(928342398,0), undef, "rootint(928342398,0) returns undef");
-is(rootint(928342398,-10), undef, "rootint(928342398,-10) returns undef");
+# TODO: croak if n < 0 or k < 1
+is(rootint(928342398,1), 928342398, "rootint(928342398,1) returns 928342398");
 is(rootint(88875,3), 44, "rootint(88875,3) returns 44");
-is(rootint(-88875,3), -44, "rootint(-88875,3) returns -44");
 is(rootint("266667176579895999",3), 643659, "integer third root of 266667176579895999 is 643659");
 {
   my(@got, @expected);

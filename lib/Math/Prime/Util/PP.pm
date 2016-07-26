@@ -2615,8 +2615,8 @@ sub sqrtint {
 
 sub rootint {
   my ($n, $k, $refp) = @_;
-  return undef if $k <= 0;  ## no critic qw(ProhibitExplicitReturnUndef)
-  my $root = Math::BigInt->new("$n")->broot("$k");
+  croak "rootint: k must be > 0" unless $k > 0;
+  my $root = Math::BigInt->new("$n")->babs->broot("$k");
   if (defined $refp) {
     croak("logint third argument not a scalar reference") unless ref($refp);
     $$refp = $root->copy->bpow($k);
