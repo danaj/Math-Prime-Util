@@ -1027,8 +1027,10 @@ static _perrin _perrindata[NPERRINDIV] = {
 int is_perrin_pseudoprime(UV n, int restricted)
 {
   int i;
-  UV m[9] = {0,1,0, 0,0,1, 1,1,0};
-  if (n < 4) return (n >= 2);
+  UV jacobi, S[6], m[9] = {0,1,0, 0,0,1, 1,1,0}, b[9] = {0,1,0, 0,0,1, 1,0,n-1};
+
+  if (n < 3) return (n >= 2);
+  if (!(n&1) && restricted > 2) return 0;  /* Odds only for restrict > 2 */
   /* Hard code the initial tests.  60% of composites caught by 4 tests. */
   {
     uint32_t n32 = n % 10920;
@@ -1045,56 +1047,66 @@ int is_perrin_pseudoprime(UV n, int restricted)
         return 0;
     }
   }
-  /* Depending on filters, 10-20% of composites left (unrestricted). */
-#if 0
-  { /* Calculate signature for acceptable inputs. */
-    UV jacobi, S[6], b[9] = {0,1,0, 0,0,1, 1,0,n-1};
-    mat_powmod_3x3(m, n, n);
-    S[3] = addmod( mulmod(3,m[6],n), mulmod(2,m[8],n), n );
-    S[4] = addmod( mulmod(3,m[0],n), mulmod(2,m[2],n), n );
-    S[5] = addmod( mulmod(3,m[3],n), mulmod(2,m[5],n), n );
-    if (S[4] != 0) return 0;
-    mat_powmod_3x3(b, n, n);
-    S[0] = submod( mulmod(3,b[7],n), b[8], n );
-    S[1] = submod( mulmod(3,b[4],n), b[5], n );
-    S[2] = submod( mulmod(3,b[1],n), b[2], n );
-    if (S[1] != n-1) return 0;
-    /* Determine which type.  See Adams/Shanks 1982, page 257 and 261. */
-    jacobi = kronecker_su(-23,n);
-    if (jacobi == -1) {  /* Q type */
-      UV B = S[2];
-      UV A = submod(addmod(1,mulmod(B,3,n),n),sqrmod(B,n),n);
-      UV C = submod(mulmod(sqrmod(B,n),3,n),2,n);
-      if (S[0] == A && S[2] == B && S[3] == B && S[5] == C && B != 3 && submod(mulmod(sqrmod(B,n),B,n),B,n) == 1) {
-        printf("Sig %lu Type Q  %lu -1 %lu  %lu 0 %lu\n", n, S[0],S[2],S[3],S[5]);
-      } else {
-        printf("Sig %lu ??????  %lu -1 %lu  %lu 0 %lu\n", n, S[0],S[2],S[3],S[5]);
-      }
-    } else {             /* S or I type */
-      if (S[0] == 1 && S[2] == 3 && S[3] == 3 && S[5] == 2) {
-        printf("Sig %lu Type S  1 -1 3  3 0 2\n", n);
-      } else {
-        UV D = S[3];
-        UV p3d = submod(n-3,D,n);
-        if (S[0] == 0 && S[5] == n-1 && D != p3d && S[2] == p3d && addmod(addmod(sqrmod(D,n),mulmod(D,3,n),n),8,n) == 0 && jacobi == 1) {
-          /* TODO: F~(2,+/-1,3) equation 29 */
-          printf("Sig %lu Type I  0 -1 %lu  %lu 0 -1\n", n, S[2],S[3]);
-        } else {
-          printf("Sig %lu ??????  %lu -1 %lu  %lu 0 %lu\n", n, S[0],S[2],S[3],S[5]);
-        }
-      }
-    }
-  }
-#endif
+  /* Depending on which filters are used, 10-20% of composites are left. */
   mat_powmod_3x3(m, n, n);
-  /* P(n) = sum of diagonal  =  3*top-left + 2*top-right */
-  if (addmod( addmod(m[0], m[4], n), m[8], n) != 0) return 0;
-  if (restricted) {
-    UV b[9] = {0,1,0, 0,0,1, 1,0,n-1};
-    mat_powmod_3x3(b, n, n);
-    if (addmod( addmod(b[0], b[4], n), b[8], n) != n-1) return 0;
+
+  /* Unrestricted test checks P(n) mod n == 0 */
+  if (!restricted) /* P(n) = sum of diagonal  =  3*top-left + 2*top-right */
+    return (addmod( addmod(m[0], m[4], n), m[8], n) == 0);
+
+  S[3] = addmod( mulmod(3,m[6],n), mulmod(2,m[8],n), n );
+  S[4] = addmod( mulmod(3,m[0],n), mulmod(2,m[2],n), n );
+  S[5] = addmod( mulmod(3,m[3],n), mulmod(2,m[5],n), n );
+  if (S[4] != 0) return 0;
+
+  mat_powmod_3x3(b, n, n);
+  S[0] = submod( mulmod(3,b[7],n), b[8], n );
+  S[1] = submod( mulmod(3,b[4],n), b[5], n );
+  S[2] = submod( mulmod(3,b[1],n), b[2], n );
+  if (S[1] != n-1) return 0;
+
+  /* Minimal restricted test additionally checks P(-n) mod n == 0 */
+  if (restricted == 1)
+    return 1;
+
+  /* Full restricted test looks for an acceptable signature.  See:
+   *   Adams/Shanks 1982 pages 257-261 (skip quad form, no (-23|p)=0, no evens)
+   *   Arno 1991 pages 371-372
+   *   Grantham 2001 pages 5-6
+   */
+
+  jacobi = kronecker_su(-23,n);
+
+  if (jacobi == -1) { /* Q-type */
+
+    UV B = S[2], B2 = sqrmod(B,n);
+    UV A = submod(addmod(1,mulmod(B,3,n),n),B2,n);
+    UV C = submod(mulmod(B2,3,n),2,n);
+    if (S[0] == A  &&  S[2] == B  &&  S[3] == B  &&  S[5] == C  &&
+        B != 3  &&  submod(mulmod(B2,B,n),B,n) == 1) {
+      if (_XS_get_verbose()>1) printf("%"UVuf" Q-Type  %"UVuf" -1 %"UVuf"  %"UVuf" 0 %"UVuf"\n", n, A, B, B, C);
+      return 1;
+    }
+
+  } else {            /* S-Type or I-Type */
+
+    if (jacobi == 0 && n != 23 && restricted > 2) {
+      if (_XS_get_verbose()>1) printf("%"UVuf" Jacobi %d\n",n,jacobi);
+      return 0;  /* Adams/Shanks allows (-23|n) = 0 for S-Type */
+    }
+
+    if (S[0] == 1  &&  S[2] == 3  &&  S[3] == 3  &&  S[5] == 2) {
+      if (_XS_get_verbose()>1) printf("%"UVuf" S-Type  1 -1 3  3 0 2\n",n);
+      return 1;
+    } else if (S[0] == 0  &&  S[5] == n-1  &&  S[2] != S[3]  &&
+               addmod(S[2],S[3],n) == n-3  && sqrmod(submod(S[2],S[3],n),n) == n-(23%n)) {
+      if (_XS_get_verbose()>1) printf("%"UVuf" I-Type  0 -1 %"UVuf"  %"UVuf" 0 -1\n",n, S[2], S[3]);
+      return 1;
+    }
+
   }
-  return 1;
+  if (_XS_get_verbose()>1) printf("%"UVuf" ? %2d ?  %"UVuf" -1 %"UVuf"  %"UVuf" 0 %"UVuf"\n", n, jacobi, S[0],S[2],S[3],S[5]);
+  return 0;
 }
 
 int is_frobenius_pseudoprime(UV n, IV P, IV Q)
