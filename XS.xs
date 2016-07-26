@@ -951,6 +951,7 @@ is_prime(IN SV* svn, ...)
     is_power = 21
     is_prime_power = 22
     logint = 23
+    rootint = 24
   PREINIT:
     int status, astatus;
   PPCODE:
@@ -979,7 +980,7 @@ is_prime(IN SV* svn, ...)
                    } break;
           case 9:  ret = is_frobenius_underwood_pseudoprime(n); break;
           case 10: ret = is_frobenius_khashin_pseudoprime(n); break;
-          case 11: ret = is_perrin_pseudoprime(n,a > 0); break;
+          case 11: ret = is_perrin_pseudoprime(n,a); break;
           case 12: ret = is_catalan_pseudoprime(n); break;
           case 13: ret = is_almost_extra_strong_lucas_pseudoprime
                          (n, (items == 1) ? 1 : a); break;
@@ -1009,7 +1010,7 @@ is_prime(IN SV* svn, ...)
           }
           if (ret && items == 3) {
             UV root = rootof(n, a ? a : (UV)ret);
-            if (!SvROK(ST(2))) croak("is_power third argument not a scalar reference");
+            if (!SvROK(ST(2))) croak("is_power: third argument not a scalar reference");
             if (status == 1) sv_setuv(SvRV(ST(2)),  root);
             else             sv_setiv(SvRV(ST(2)), -root);
           }
@@ -1020,7 +1021,7 @@ is_prime(IN SV* svn, ...)
           UV root;
           ret = primepower(n, &root);
           if (ret && items > 1) {
-            if (!SvROK(ST(1))) croak("is_prime_power second argument not a scalar reference");
+            if (!SvROK(ST(1))) croak("is_prime_power: second argument not a scalar reference");
             sv_setuv(SvRV(ST(1)), root);
           }
         }
@@ -1032,10 +1033,27 @@ is_prime(IN SV* svn, ...)
         if (astatus != 1 || a <= 1)  croak("logint: base must be > 1");
         e = logint(n, a);
         if (items == 3) {
-          if (!SvROK(ST(2))) croak("logint third argument not a scalar reference");
+          if (!SvROK(ST(2))) croak("logint: third argument not a scalar reference");
           sv_setuv(SvRV(ST(2)), ipow(a,e));
         }
         XSRETURN_UV(e);
+      } else if (ix == 24) {
+        UV r, a = (items == 1) ? 0 : my_svuv(ST(1));
+        if (items == 1)              croak("rootint: missing exponent");
+        if (astatus != 1 || a == 0)  XSRETURN_UNDEF;
+        if (status == -1) {
+          if (n == UV_MAX || (UV_MAX-n) == (UV)IV_MAX)  status = 0;
+          else                                          n = (UV) -my_sviv(svn);
+        }
+        if (status != 0) {
+          r = rootof(n, a);
+          if (items == 3) {
+            if (!SvROK(ST(2))) croak("rootint: third argument not a scalar reference");
+            sv_setuv(SvRV(ST(2)), ipow(r,a));
+          }
+          if (status == 1) XSRETURN_UV(r);
+          else             XSRETURN_IV(-(IV)r);
+        }
       }
     }
     switch (ix) {
@@ -1072,8 +1090,9 @@ is_prime(IN SV* svn, ...)
               _vcallsub_with_pp("is_power");
               break;
       case 22:_vcallsub_with_gmp("is_prime_power"); break;
-      case 23:
-      default:_vcallsub_with_gmp("logint"); break;
+      case 23:_vcallsub_with_gmp("logint"); break;
+      case 24:
+      default:(void)_vcallsubn(aTHX_ G_SCALAR, (items != 3) ? (VCALL_GMP|VCALL_PP) : (VCALL_PP), "rootint", items); break;
     }
     return; /* skip implicit PUTBACK */
 

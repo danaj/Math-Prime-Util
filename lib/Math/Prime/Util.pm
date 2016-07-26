@@ -28,7 +28,7 @@ our @EXPORT_OK =
       is_aks_prime is_bpsw_prime
       is_ramanujan_prime
       is_mersenne_prime
-      is_power is_prime_power sqrtint logint
+      is_power is_prime_power sqrtint rootint logint
       is_square_free is_primitive_root is_carmichael is_quasi_carmichael
       miller_rabin_random
       lucas_sequence lucasu lucasv
@@ -2423,6 +2423,18 @@ Given a non-negative integer input C<n>, returns the integer square root.
 For native integers, this is equal to C<int(sqrt(n))>.
 
 This corresponds to Pari/GP's C<sqrtint> function.
+
+
+=head2 rootint
+
+Given an integer C<n> and exponent C<k>, return the integer k-th root of
+C<n>.  This is the largest integer C<r> such that C<|r^k| E<lt>= |n|>, and
+will have the same sign as n.  Returns C<undef> if C<k E<lt>= 0>.
+
+If a third argument is present, it must be a scalar reference.
+It will be set to C<r^k>.
+
+This corresponds to Pari/GP's C<sqrtnint> function.
 
 
 =head2 logint

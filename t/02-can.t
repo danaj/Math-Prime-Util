@@ -21,13 +21,14 @@ my @functions =  qw(
       is_aks_prime is_bpsw_prime
       is_ramanujan_prime
       is_mersenne_prime
-      is_power sqrtint
-      is_square_free
+      is_power is_prime_power sqrtint rootint logint
+      is_square_free is_carmichael
       miller_rabin_random
       lucas_sequence lucasu lucasv
-      primes twin_primes ramanujan_primes
+      primes twin_primes sieve_prime_cluster
+      ramanujan_primes ramanujan_prime_count
       forprimes forcomposites foroddcomposites fordivisors
-      forpart forcomb forperm
+      forpart forcomb forperm forpart formultiperm
       prime_iterator prime_iterator_object
       next_prime  prev_prime
       prime_count
@@ -43,11 +44,13 @@ my @functions =  qw(
       random_shawe_taylor_prime random_shawe_taylor_prime_with_cert
       primorial pn_primorial consecutive_integer_lcm gcdext chinese
       gcd lcm factor factor_exp divisors valuation invmod hammingweight
-      vecsum vecmin vecmax vecprod vecreduce vecextract sumdigits
+      vecsum vecmin vecmax vecprod vecreduce vecextract
+      vecany vecall vecnone vecnotall vecfirst
+      sumdigits todigits todigitstring fromdigits
       moebius mertens euler_phi jordan_totient exp_mangoldt liouville
       partitions bernfrac bernreal harmfrac harmreal
       chebyshev_theta chebyshev_psi
-      divisor_sum carmichael_lambda kronecker ramanujan_tau
+      divisor_sum carmichael_lambda kronecker ramanujan_tau ramanujan_sum
       binomial factorial stirling znorder znprimroot znlog legendre_phi
       ExponentialIntegral LogarithmicIntegral RiemannZeta RiemannR LambertW Pi
 );

@@ -6,6 +6,7 @@ Revision history for Perl module Math::Prime::Util
 
     - is_prime_power         Returns k if n=p^k for p a prime.
     - logint(n,b)            Integer logarithm.  Largest e s.t. b^e <= n.
+    - rootint(n,k)           Integer k-th root.
     - ramanujan_sum(k,n)     Ramanujan's sum
 
     [FUNCTIONALITY AND PERFORMANCE]
@@ -36,7 +37,7 @@ Revision history for Perl module Math::Prime::Util
 
     - exp_mangoldt rewritten to use is_prime_power.
 
-    - internal integer root rewritten.
+    - Integer root code rewritten and now exported.
 
 
 

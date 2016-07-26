@@ -2610,7 +2610,18 @@ sub fromdigits {
 sub sqrtint {
   my($n) = @_;
   my $sqrt = Math::BigInt->new("$n")->bsqrt;
-  return Math::Prime::Util::_reftyped($_[0], $sqrt);
+  return Math::Prime::Util::_reftyped($_[0], "$sqrt");
+}
+
+sub rootint {
+  my ($n, $k, $refp) = @_;
+  return undef if $k <= 0;  ## no critic qw(ProhibitExplicitReturnUndef)
+  my $root = Math::BigInt->new("$n")->broot("$k");
+  if (defined $refp) {
+    croak("logint third argument not a scalar reference") unless ref($refp);
+    $$refp = $root->copy->bpow($k);
+  }
+  return Math::Prime::Util::_reftyped($_[0], "$root");
 }
 
 sub logint {
@@ -2632,7 +2643,7 @@ sub logint {
 
   my $e = Math::BigInt->new("$n")->blog("$b");
   $$refp = Math::BigInt->new("$b")->bpow($e) if defined $refp;
-  $e;
+  return Math::Prime::Util::_reftyped($_[0], "$e");
 }
 
 sub _bernden {
