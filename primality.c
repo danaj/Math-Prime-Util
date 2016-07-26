@@ -1026,8 +1026,8 @@ static _perrin _perrindata[NPERRINDIV] = {
 };
 int is_perrin_pseudoprime(UV n, int restricted)
 {
-  int i;
-  UV jacobi, S[6], m[9] = {0,1,0, 0,0,1, 1,1,0}, b[9] = {0,1,0, 0,0,1, 1,0,n-1};
+  int jacobi, i;
+  UV S[6], m[9] = {0,1,0, 0,0,1, 1,1,0}, b[9] = {0,1,0, 0,0,1, 1,0,n-1};
 
   if (n < 3) return (n >= 2);
   if (!(n&1) && restricted > 2) return 0;  /* Odds only for restrict > 2 */
