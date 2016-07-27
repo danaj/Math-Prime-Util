@@ -68,6 +68,7 @@ our %EXPORT_TAGS = (all => [ @EXPORT_OK ]);
 push @EXPORT_OK, (qw/trial_factor fermat_factor holf_factor squfof_factor prho_factor pbrent_factor pminus1_factor pplus1_factor ecm_factor/);
 
 my %_Config;
+my %_GMPfunc;  # List of available MPU::GMP functions
 
 # Similar to how boolean handles its option
 sub import {
@@ -132,6 +133,9 @@ BEGIN {
     $_Config{'gmp'} = 1 if eval { require Math::Prime::Util::GMP;
                                   Math::Prime::Util::GMP->import();
                                   1; };
+    for my $e (keys %Math::Prime::Util::GMP::) {
+      $Math::Prime::Util::_GMPfunc{"$e"} = 1 if defined &{$e};
+    }
   }
 }
 
@@ -181,8 +185,10 @@ sub prime_set_config {
       $_Config{'xs'} = ($value) ? 1 : 0;
       $_XS_MAXVAL = $_Config{'xs'}  ?  MPU_MAXPARAM  :  -1;
     } elsif ($param eq 'gmp') {
-      $_Config{'gmp'} = ($value) ? 1 : 0;
-      $_HAVE_GMP = $_Config{'gmp'};
+      $_HAVE_GMP = ($value) ? 1 : 0;
+      $_Config{'gmp'} = $_HAVE_GMP;
+      $Math::Prime::Util::_GMPfunc{$_} = $_HAVE_GMP
+        for keys %Math::Prime::Util::_GMPfunc;
       _XS_set_callgmp($_HAVE_GMP) if $_Config{'xs'};
     } elsif ($param eq 'nobigint') {
       $_Config{'nobigint'} = ($value) ? 1 : 0;
@@ -2433,6 +2439,10 @@ C<r^k E<lt>= n>.
 
 If a third argument is present, it must be a scalar reference.
 It will be set to C<r^k>.
+
+Technically if C<n> is negative and C<k> is odd, the root exists and is
+equal to C<sign(n) * |rootint(abs(n),k)>.  It was decided to follow the
+behavior of Pari/GP and Math::BigInt and disallow negative C<n>.
 
 This corresponds to Pari/GP's C<sqrtnint> function.
 

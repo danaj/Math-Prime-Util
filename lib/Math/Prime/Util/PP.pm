@@ -572,14 +572,10 @@ sub sieve_prime_cluster {
   _validate_positive_integer($lo);
   _validate_positive_integer($hi);
 
-  # Perl 5.8.9 and earlier will autovivify the function at pre-BEGIN time
-  # just because this code exists.  This behavior is nuts.  The only way
-  # I can see to work around this is to obscure the function call (eval or
-  # function reference).
-  #if (defined &Math::Prime::Util::GMP::sieve_prime_cluster && Math::Prime::Util::prime_get_config()->{'gmp'}) {
-  #  return map { ($_ > ''.~0) ? Math::BigInt->new(''.$_) : $_ }
-  #         Math::Prime::Util::GMP::sieve_prime_cluster($lo,$hi,@cl);
-  #}
+  if ($Math::Prime::Util::_GMPfunc{"sieve_prime_cluster"}) {
+    return map { ($_ > ''.~0) ? Math::BigInt->new(''.$_) : $_ }
+           Math::Prime::Util::GMP::sieve_prime_cluster($lo,$hi,@cl);
+  }
 
   return @{primes($lo,$hi)} if scalar(@cl) == 0;
 
@@ -810,7 +806,7 @@ sub jordan_totient {
   return euler_phi($n)      if $k == 1;
   return ($n == 1) ? 1 : 0  if $n <= 1;
 
-  if (defined &Math::Prime::Util::GMP::jordan_totient && Math::Prime::Util::prime_get_config()->{'gmp'}) {
+  if ($Math::Prime::Util::_GMPfunc{"jordan_totient"}) {
     return Math::Prime::Util::_reftyped($_[0], Math::Prime::Util::GMP::jordan_totient($k, $n));
   }
 
@@ -832,7 +828,7 @@ sub euler_phi {
   return euler_phi_range(@_) if scalar @_ > 1;
   my($n) = @_;
 
-  if (defined &Math::Prime::Util::GMP::totient && Math::Prime::Util::prime_get_config()->{'gmp'}) {
+  if ($Math::Prime::Util::_GMPfunc{"totient"}) {
     return Math::Prime::Util::_reftyped($_[0], Math::Prime::Util::GMP::totient($n));
   }
 
@@ -1149,7 +1145,7 @@ sub divisor_sum {
     unless !defined $k || _validate_num($k) || _validate_positive_integer($k);
   $k = 1 if !defined $k;
 
-  if (defined &Math::Prime::Util::GMP::sigma && Math::Prime::Util::prime_get_config()->{'gmp'}) {
+  if ($Math::Prime::Util::_GMPfunc{"sigma"}) {
     return Math::Prime::Util::_reftyped($_[0], Math::Prime::Util::GMP::sigma($n, $k));
   }
 
@@ -2133,7 +2129,7 @@ sub gcdext {
   if ($x == 0) { return (0, (-1,0,1)[($y>=0)+($y>0)], abs($y)); }
   if ($y == 0) { return ((-1,0,1)[($x>=0)+($x>0)], 0, abs($x)); }
 
-  if (defined &Math::Prime::Util::GMP::gcdext && Math::Prime::Util::prime_get_config()->{'gmp'}) {
+  if ($Math::Prime::Util::_GMPfunc{"gcdext"}) {
     my($a,$b,$g) = Math::Prime::Util::GMP::gcdext($x,$y);
     $a = Math::Prime::Util::_reftyped($_[0], $a);
     $b = Math::Prime::Util::_reftyped($_[0], $b);
@@ -2173,7 +2169,7 @@ sub chinese {
   return $_[0]->[0] % $_[0]->[1] if scalar @_ == 1;
   my($lcm, $sum);
 
-  if (defined &Math::Prime::Util::GMP::chinese && Math::Prime::Util::prime_get_config()->{'gmp'}) {
+  if ($Math::Prime::Util::_GMPfunc{"chinese"}) {
     $sum = Math::Prime::Util::GMP::chinese(@_);
     if (defined $sum) {
       $sum = Math::BigInt->new("$sum");
@@ -2234,7 +2230,7 @@ sub _from_128 {
 sub vecsum {
   return Math::Prime::Util::_reftyped($_[0], @_ ? $_[0] : 0)  if @_ <= 1;
 
-  if (defined &Math::Prime::Util::GMP::vecsum && Math::Prime::Util::prime_get_config()->{'gmp'}) {
+  if ($Math::Prime::Util::_GMPfunc{"vecsum"}) {
     return Math::Prime::Util::_reftyped($_[0], Math::Prime::Util::GMP::vecsum(@_));
   }
   my $sum = 0;
@@ -2252,7 +2248,7 @@ sub vecsum {
 
 sub vecprod {
   return 1 unless @_;
-  if (defined &Math::Prime::Util::GMP::vecprod && Math::Prime::Util::prime_get_config()->{'gmp'}) {
+  if ($Math::Prime::Util::_GMPfunc{"vecprod"}) {
     return Math::Prime::Util::_reftyped($_[0], Math::Prime::Util::GMP::vecprod(@_));
   }
   # Product tree:
@@ -2453,6 +2449,23 @@ sub is_power {
   my ($n, $a, $refp) = @_;
   croak("is_power third argument not a scalar reference") if defined($refp) && !ref($refp);
   return 0 if abs($n) <= 3;
+
+  if ($Math::Prime::Util::_GMPfunc{"is_power"}) {
+    $a = 0 unless defined $a;
+    my $k = Math::Prime::Util::GMP::is_power($n,$a);
+    return 0 unless $k > 0;
+    if (defined $refp) {
+      $a = $k unless $a;
+      if ($n >= 0) {
+        $$refp = Math::Prime::Util::rootint($n, $a);
+      } else {
+        $n =~ s/^-//;
+        $$refp = - Math::Prime::Util::rootint($n, $a);
+      }
+    }
+    return $k;
+  }
+
   if (defined $a && $a != 0) {
     return 1 if $a == 1;                  # Everything is a 1st power
     return 0 if $n < 0 && $a % 2 == 0;    # Negative n never an even power
@@ -2506,6 +2519,7 @@ sub is_prime_power {
   my ($n, $refp) = @_;
   croak("is_prime_power second argument not a scalar reference") if defined($refp) && !ref($refp);
   return 0 if $n <= 1;
+
   if (Math::Prime::Util::is_prime($n)) { $$refp = $n if defined $refp; return 1; }
   my $r;
   my $k = Math::Prime::Util::is_power($n,0,\$r);
@@ -2616,6 +2630,7 @@ sub sqrtint {
 sub rootint {
   my ($n, $k, $refp) = @_;
   croak "rootint: k must be > 0" unless $k > 0;
+  # Math::BigInt returns NaN for any root of a negative n.
   my $root = Math::BigInt->new("$n")->babs->broot("$k");
   if (defined $refp) {
     croak("logint third argument not a scalar reference") unless ref($refp);
@@ -2712,7 +2727,7 @@ sub stirling {
   if ($m == 1) {
     return ($type == 2)  ?  1  :  factorial($n-1) * (($n&1) ? 1 : -1);
   }
-  if (defined &Math::Prime::Util::GMP::stirling && Math::Prime::Util::prime_get_config()->{'gmp'}) {
+  if ($Math::Prime::Util::_GMPfunc{"stirling"}) {
     return Math::Prime::Util::_reftyped($_[0], Math::Prime::Util::GMP::stirling($n,$m,$type));
   }
   my $s = BZERO->copy;
@@ -3067,7 +3082,7 @@ sub binomial {
   my($n, $k) = @_;
 
   # 1. Try GMP
-  if (defined &Math::Prime::Util::GMP::binomial && Math::Prime::Util::prime_get_config()->{'gmp'}) {
+  if ($Math::Prime::Util::_GMPfunc{"binomial"}) {
     return Math::Prime::Util::_reftyped($_[0], Math::Prime::Util::GMP::binomial($n,$k));
   }
 
@@ -3167,15 +3182,17 @@ sub _is_perfect_square {
 sub is_primitive_root {
   my($a, $n) = @_;
   $n = -$n if $n < 0;   # ignore sign
+  return $n if $n <= 1;
 
- if (   Math::Prime::Util::prime_get_config()->{'gmp'}
-     && defined &Math::Prime::Util::GMP::znorder
-     && defined &Math::Prime::Util::GMP::totient) {
-   my $order = Math::Prime::Util::GMP::znorder($a,$n);
-   return 0 unless defined $order;
-   my $totient = Math::Prime::Util::GMP::totient($n);
-   return ($order eq $totient) ? 1 : 0;
- }
+  return Math::Prime::Util::GMP::is_primitive_root($a,$n)
+    if $Math::Prime::Util::_GMPfunc{"is_primitive_root"};
+
+  if ($Math::Prime::Util::_GMPfunc{"znorder"} && $Math::Prime::Util::_GMPfunc{"totient"}) {
+    my $order = Math::Prime::Util::GMP::znorder($a,$n);
+    return 0 unless defined $order;
+    my $totient = Math::Prime::Util::GMP::totient($n);
+    return ($order eq $totient) ? 1 : 0;
+  }
 
   return 0 if Math::Prime::Util::gcd($a, $n) != 1;
   my $s = Math::Prime::Util::euler_phi($n);
@@ -3196,7 +3213,7 @@ sub znorder {
   return if $a <= 0;
   return 1 if $a == 1;
 
-  if (defined &Math::Prime::Util::GMP::znorder && Math::Prime::Util::prime_get_config()->{'gmp'}) {
+  if ($Math::Prime::Util::_GMPfunc{"znorder"}) {
     return Math::Prime::Util::_reftyped($_[0], Math::Prime::Util::GMP::znorder($a,$n));
   }
 
@@ -3211,7 +3228,7 @@ sub znorder {
   # This is easy and usually fast, but can bog down with too many divisors.
   if ($lambda <= 2**64) {
     foreach my $k (Math::Prime::Util::divisors($lambda)) {
-      return $k if $a->copy->bmodpow("$k", $n)->is_one;
+      return $k if Math::Prime::Util::powmod($a,$k,$n) == 1;
     }
     return;
   }
@@ -3222,10 +3239,10 @@ sub znorder {
   foreach my $f (Math::Prime::Util::factor_exp($lambda)) {
     my($pi, $ei, $enum) = (Math::BigInt->new("$f->[0]"), $f->[1], 0);
     my $phidiv = $lambda / ($pi**$ei);
-    my $b = $a->copy->bmodpow($phidiv, $n);
+    my $b = Math::Prime::Util::powmod($a,$phidiv,$n);
     while ($b != 1) {
       return if $enum++ >= $ei;
-      $b = $b->copy->bmodpow($pi, $n);
+      $b = Math::Prime::Util::powmod($b,$pi,$n);
       $k *= $pi;
     }
   }
@@ -3237,6 +3254,15 @@ sub _dlp_trial {
   my ($a,$g,$p,$limit) = @_;
   $limit = $p if !defined $limit || $limit > $p;
   my $t = $g->copy;
+
+  if ($limit < 1_000_000_000) {
+    for my $k (1 .. $limit) {
+      return $k if $t == $a;
+      $t = Math::Prime::Util::mulmod($t, $g, $p);
+    }
+    return 0;
+  }
+
   for (my $k = BONE->copy; $k < $limit; $k->binc) {
     if ($t == $a) {
       $k = _bigint_to_int($k) if $k->bacmp(BMAX) <= 0;
@@ -3248,9 +3274,9 @@ sub _dlp_trial {
 }
 sub _dlp_bsgs {
   my ($a,$g,$p,$n,$_verbose) = @_;
-  my $invg = $g->copy->bmodinv($p);
-  return if $invg eq 'NaN';
-  my $maxm = $n->copy->bsqrt->binc;
+  my $invg = invmod($g, $p);
+  return unless defined $invg;
+  my $maxm = Math::Prime::Util::sqrtint($n)+1;
   my $b = ($p + $maxm - 1) / $maxm;
   # Limit for time and space.
   $b = ($b > 4_000_000) ? 4_000_000 : int("$b");
@@ -3258,7 +3284,7 @@ sub _dlp_bsgs {
 
   my %hash;
   my $am = BONE->copy;
-  my $gm = $invg->copy->bmodpow($maxm,$p);
+  my $gm = Math::Prime::Util::powmod($invg, $maxm, $p);
   my $key = $a->copy;
   my $r;
 
@@ -3268,11 +3294,11 @@ sub _dlp_bsgs {
       $r = $hash{"$am"};
       if (defined $r) {
         print "  bsgs found in stage 1 after $m tries\n" if $_verbose;
-        $r = (Math::BigInt->new($m) + Math::BigInt->new($r) * $maxm) % $p;
+        $r = Math::Prime::Util::addmod($m, Math::Prime::Util::mulmod($r,$maxm,$p), $p);
         return $r;
       }
       $hash{"$am"} = $m;
-      $am->bmul($g)->bmod($p);
+      $am = Math::Prime::Util::mulmod($am,$g,$p);
       if ($am == $a) {
         print "  bsgs found during bs\n" if $_verbose;
         return $m+1;
@@ -3283,11 +3309,11 @@ sub _dlp_bsgs {
     $r = $hash{"$key"};
     if (defined $r) {
       print "  bsgs found in stage 2 after $m tries\n" if $_verbose;
-      $r = (Math::BigInt->new($r) + Math::BigInt->new($m) * $maxm) % $p;
+      $r = Math::Prime::Util::addmod($r, Math::Prime::Util::mulmod($m,$maxm,$p), $p);
       return $r;
     }
     $hash{"$key"} = $m if $m <= $maxm;
-    $key->bmul($gm)->bmod($p);
+    $key = Math::Prime::Util::mulmod($key,$gm,$p);
   }
   0;
 }
@@ -3301,7 +3327,7 @@ sub znlog {
   my $_verbose = Math::Prime::Util::prime_get_config()->{'verbose'};
 
   # For large p, znorder can be very slow.  Do trial test first.
-  my $x = _dlp_trial($a, $g, $p, 100);
+  my $x = _dlp_trial($a, $g, $p, 200);
   if ($x == 0) {
     my $n = znorder($g, $p);
     if (defined $n && $n > 1000) {
@@ -3338,13 +3364,12 @@ sub znprimroot {
             Math::Prime::Util::factor_exp($phi);
   #print "phi: $phi  factors: ", join(",",factor($phi)), "\n";
   #print "  exponents: ", join(",", @exp), "\n";
-  my $bign = (ref($n) eq 'Math::BigInt') ? $n : Math::BigInt->new("$n");
   while (1) {
     my $fail = 0;
-    do { $a++ } while kronecker($a,$n) == 0;
+    do { $a++ } while Math::Prime::Util::kronecker($a,$n) == 0;
     return if $a >= $n;
     foreach my $f (@exp) {
-      if ( Math::BigInt->new($a)->bmodpow($f, $bign)->is_one ) {
+      if (Math::Prime::Util::powmod($a,$f,$n) == 1) {
         $fail = 1;
         last;
       }
@@ -3404,7 +3429,7 @@ sub lucas_sequence {
   croak "lucas_sequence: P out of range" if abs($P) >= $n;
   croak "lucas_sequence: Q out of range" if abs($Q) >= $n;
 
-  if (defined &Math::Prime::Util::GMP::lucas_sequence && Math::Prime::Util::prime_get_config()->{'gmp'}) {
+  if ($Math::Prime::Util::_GMPfunc{"lucas_sequence"}) {
     return map { ($_ > ''.~0) ? Math::BigInt->new(''.$_) : $_ }
            Math::Prime::Util::GMP::lucas_sequence($n, $P, $Q, $k);
   }
@@ -3931,7 +3956,7 @@ sub is_mersenne_prime {
 
   # Definitely faster than using Math::BigInt
   return (0 == (Math::Prime::Util::GMP::lucas_sequence($mp, 4, 1, $mp+1))[0])
-  if defined &Math::Prime::Util::GMP::lucas_sequence && Math::Prime::Util::prime_get_config()->{'gmp'};
+  if $Math::Prime::Util::_GMPfunc{"lucas_sequence"};
 
   my $V = Math::BigInt->new(4);
   for my $k (3 .. $p) {
@@ -4728,7 +4753,7 @@ sub ecm_factor {
   my @factors = _basic_factor($n);
   return @factors if $n < 4;
 
-  if (defined &Math::Prime::Util::GMP::ecm_factor && Math::Prime::Util::prime_get_config()->{'gmp'}) {
+  if ($Math::Prime::Util::_GMPfunc{"ecm_factor"}) {
     $B1 = 0 if !defined $B1;
     $ncurves = 0 if !defined $ncurves;
     my @ef = Math::Prime::Util::GMP::ecm_factor($n, $B1, $ncurves);
@@ -5079,7 +5104,7 @@ sub ramanujan_tau {
 
   # Use GMP if we have no XS or if size is small
   if ($n < 100000 || !Math::Prime::Util::prime_get_config()->{'xs'}) {
-    if (defined &Math::Prime::Util::GMP::ramanujan_tau && Math::Prime::Util::prime_get_config()->{'gmp'}) {
+    if ($Math::Prime::Util::_GMPfunc{"ramanujan_tau"}) {
       return Math::Prime::Util::_reftyped($_[0], Math::Prime::Util::GMP::ramanujan_tau($n));
     }
   }
@@ -5586,7 +5611,7 @@ sub Pi {
   my $_verbose = Math::Prime::Util::prime_get_config()->{'verbose'};
 
   # Uses AGM to get performance almost as good as MPFR
-  if (defined &Math::Prime::Util::GMP::Pi && Math::Prime::Util::prime_get_config()->{'gmp'}) {
+  if ($Math::Prime::Util::_GMPfunc{"Pi"}) {
     print "  using MPUGMP for Pi($digits)\n" if $_verbose;
     return _upgrade_to_float( Math::Prime::Util::GMP::Pi($digits) );
   }
