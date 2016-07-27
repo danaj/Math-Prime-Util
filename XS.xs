@@ -1085,10 +1085,10 @@ is_prime(IN SV* svn, ...)
               }
               _vcallsub_with_pp("is_power");
               break;
-      case 22:_vcallsub_with_gmp("is_prime_power"); break;
+      case 22:(void)_vcallsubn(aTHX_ G_SCALAR, (items == 1) ? (VCALL_GMP|VCALL_PP) : (VCALL_PP), "is_prime_power", items); break;
       case 23:_vcallsub_with_gmp("logint"); break;
       case 24:
-      default:(void)_vcallsubn(aTHX_ G_SCALAR, (items != 3) ? (VCALL_GMP|VCALL_PP) : (VCALL_PP), "rootint", items); break;
+      default:(void)_vcallsubn(aTHX_ G_SCALAR, (items == 2) ? (VCALL_GMP|VCALL_PP) : (VCALL_PP), "rootint", items); break;
     }
     return; /* skip implicit PUTBACK */
 
