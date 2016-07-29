@@ -892,107 +892,15 @@ int is_almost_extra_strong_lucas_pseudoprime(UV n, UV increment)
 #endif
 }
 
-static void mat_mulmod_3x3_small(UV* a, UV* b, UV n) {
-  UV t[9];
-  t[0] = ( a[0]*b[0]  +  a[1]*b[3]  +  a[2]*b[6] ) % n;
-  t[1] = ( a[0]*b[1]  +  a[1]*b[4]  +  a[2]*b[7] ) % n;
-  t[2] = ( a[0]*b[2]  +  a[1]*b[5]  +  a[2]*b[8] ) % n;
-  t[3] = ( a[3]*b[0]  +  a[4]*b[3]  +  a[5]*b[6] ) % n;
-  t[4] = ( a[3]*b[1]  +  a[4]*b[4]  +  a[5]*b[7] ) % n;
-  t[5] = ( a[3]*b[2]  +  a[4]*b[5]  +  a[5]*b[8] ) % n;
-  t[6] = ( a[6]*b[0]  +  a[7]*b[3]  +  a[8]*b[6] ) % n;
-  t[7] = ( a[6]*b[1]  +  a[7]*b[4]  +  a[8]*b[7] ) % n;
-  t[8] = ( a[6]*b[2]  +  a[7]*b[5]  +  a[8]*b[8] ) % n;
-  memcpy(a, t, 9 * sizeof(UV));
-}
-
-static void mat_mulmod_3x3_64(UV* a, UV* b, UV n) {
-  int row;
-  UV i1, i2, i3, t[9];
-  for (row = 0; row < 3; row++) {
-    i1 = mulmod(a[3*row+0], b[0], n);
-    i2 = mulmod(a[3*row+1], b[3], n);
-    i3 = mulmod(a[3*row+2], b[6], n);
-    t[3*row+0] = addmod( addmod(i1, i2, n), i3, n );
-    i1 = mulmod(a[3*row+0], b[1], n);
-    i2 = mulmod(a[3*row+1], b[4], n);
-    i3 = mulmod(a[3*row+2], b[7], n);
-    t[3*row+1] = addmod( addmod(i1, i2, n), i3, n );
-    i1 = mulmod(a[3*row+0], b[2], n);
-    i2 = mulmod(a[3*row+1], b[5], n);
-    i3 = mulmod(a[3*row+2], b[8], n);
-    t[3*row+2] = addmod( addmod(i1, i2, n), i3, n );
-  }
-  memcpy(a, t, 9 * sizeof(UV));
-}
-#if USE_MONT_PRIMALITY
-static void mat_mulmod_3x3_mont64(UV* a, UV* b, UV n, UV npi) {
-  int row;
-  UV i1, i2, i3, t[9];
-  for (row = 0; row < 3; row++) {
-    i1 = mont_prod64(a[3*row+0], b[0], n, npi);
-    i2 = mont_prod64(a[3*row+1], b[3], n, npi);
-    i3 = mont_prod64(a[3*row+2], b[6], n, npi);
-    t[3*row+0] = addmod( addmod(i1, i2, n), i3, n );
-    i1 = mont_prod64(a[3*row+0], b[1], n, npi);
-    i2 = mont_prod64(a[3*row+1], b[4], n, npi);
-    i3 = mont_prod64(a[3*row+2], b[7], n, npi);
-    t[3*row+1] = addmod( addmod(i1, i2, n), i3, n );
-    i1 = mont_prod64(a[3*row+0], b[2], n, npi);
-    i2 = mont_prod64(a[3*row+1], b[5], n, npi);
-    i3 = mont_prod64(a[3*row+2], b[8], n, npi);
-    t[3*row+2] = addmod( addmod(i1, i2, n), i3, n );
-  }
-  memcpy(a, t, 9 * sizeof(UV));
-}
-#endif
-
-static void mat_powmod_3x3(UV* m, UV k, UV n) {
-  UV res[9] = {1,0,0, 0,1,0, 0,0,1};
-
-  if (n < HALF_WORD/2) {
-    while (k) {
-      if (k & 1)  mat_mulmod_3x3_small(res, m, n);
-      k >>= 1;
-      if (k)      mat_mulmod_3x3_small(m, m, n);
-    }
-#if USE_MONT_PRIMALITY
-  } else if (n&1) {
-    int i;
-    const uint64_t npi = modular_inverse64(n);
-    const uint64_t mont1 = compute_modn64(n);
-    res[0] = res[4] = res[8] = mont1;
-    for (i = 0; i < 9; i++) {
-      if      (m[i] ==   1) m[i] = mont1;
-      else if (m[i] == n-1) m[i] = n-mont1;
-    }
-    while (k) {
-      if (k & 1)  mat_mulmod_3x3_mont64(res, m, n, npi);
-      k >>= 1;
-      if (k)      mat_mulmod_3x3_mont64(m, m, n, npi);
-    }
-    /* REDC to transform back into normal form */
-    for (i = 0; i < 9; i++)
-      res[i] = mont_prod64(res[i], 1, n, npi);
-#endif
-  } else {
-    while (k) {
-      if (k & 1)  mat_mulmod_3x3_64(res, m, n);
-      k >>= 1;
-      if (k)      mat_mulmod_3x3_64(m, m, n);
-    }
-  }
-  memcpy(m, res, 9 * sizeof(UV));
-}
 
 typedef struct {
   unsigned short div;
   unsigned short period;
   unsigned short offset;
 } _perrin;
-#define NPERRINDIV 29
-/* 1380 mask bytes.  7k more => 20% faster, 140k more => 30% faster. */
-static const uint32_t _perrinmask[] = {22,523,514,65890,8519810,130,4259842,0,526338,2147483904U,1644233728,1,8194,1073774592,1024,134221824,128,512,181250,2048,0,1,134217736,1049600,524545,2147500288U,0,524290,536870912,32768,33554432,2048,0,2,2,256,65536,64,536875010,32768,256,64,0,32,1073741824,0,1048576,1048832,371200000,0,0,536887552,32,2147487744U,2097152,32768,1024,0,1024,536870912,128,512,0,0,512,0,2147483650U,45312,128,0,8388640,0,8388608,8388608,0,2048,4096,92800000,262144,0,65536,4,0,4,4,4194304,8388608,1075838976,536870956,0,134217728,8192,0,8192,8192,0,2,0,268435458,134223392,1073741824,268435968,2097152,67108864,0,8192,1073741840,0,0,128,0,0,512,1450000,8,131136,536870928,0,4,2097152,4096,64,0,32768,0,0,131072,371200000,2048,33570816,4096,32,1024,536870912,1048576,16384,0,8388608,0,0,0,2,512,0,128,0,134217728,2,32,0,0,0,0,8192,0,1073742080,536870912,0,4096,16777216,526336,32,0,65536,33554448,708,67108864,2048,0,0,536870912,0,536870912,33554432,33554432,2147483648U,512,64,0,1074003968,512,0,524288,0,0,0,67108864,524288,1048576,0,131076,0,33554432,131072,0,2,8390656,16384,16777216,134217744,0,131104,0,2,128,0,131072,8388608,0,0,2,128,0,0,2,2097152,2155872256U,2147500032U,0,131072,4194304,67108864,0,512,0,0,32784,0,1048576,0,16,134217728,0,64,0,1,8,2147483648U,2048,8388608,0,0,4096,536871168,128,0,0,0,134217728,0,0,0,0,0,0,134217728,0,0,2,0,2,536872960,0,0,32768,0,0,0,0,8388608,0,524290,0,0,32,0,0,0,0,8192,8388608,512,0,134217728,0,0,0,0,0,0,2,0,0,0,2,0,0,0,512,0,0,0,0,0,0,0,0,2,0,0,0,0,0,2,0,0,0,0,0,2,0,64,0,4096,0,0,2,32,1024,0,2,0,67108864,0,0,1074790400,0,0,0,2,0,0,0,0,0};
+#define NPERRINDIV 19
+/* 1112 mask bytes */
+static const uint32_t _perrinmask[] = {22,523,514,65890,8519810,130,4259842,0,526338,2147483904U,1644233728,1,8194,1073774592,1024,134221824,128,512,181250,2048,0,1,134217736,1049600,524545,2147500288U,0,524290,536870912,32768,33554432,2048,0,2,2,256,65536,64,536875010,32768,256,64,0,32,1073741824,0,1048576,1048832,371200000,0,0,536887552,32,2147487744U,2097152,32768,1024,0,1024,536870912,128,512,0,0,512,0,2147483650U,45312,128,0,8388640,0,8388608,8388608,0,2048,4096,92800000,262144,0,65536,4,0,4,4,4194304,8388608,1075838976,536870956,0,134217728,8192,0,8192,8192,0,2,0,268435458,134223392,1073741824,268435968,2097152,67108864,0,8192,1073741840,0,0,128,0,0,512,1450000,8,131136,536870928,0,4,2097152,4096,64,0,32768,0,0,131072,371200000,2048,33570816,4096,32,1024,536870912,1048576,16384,0,8388608,0,0,0,2,512,0,128,0,134217728,2,32,0,0,0,0,8192,0,1073742080,536870912,0,4096,16777216,526336,32,0,65536,33554448,708,67108864,2048,0,0,536870912,0,536870912,33554432,33554432,2147483648U,512,64,0,1074003968,512,0,524288,0,0,0,67108864,524288,1048576,0,131076,0,33554432,131072,0,2,8390656,16384,16777216,134217744,0,131104,0,2,32768,0,0,0,1450000,32768,0,0,0,0,0,16,0,1024,16400,1048576,32,1024,0,260,536870912,269484032,0,16384,0,524290,0,0,512,65536,0,0,0,134217732,0,67108880,536887296,0,0,32,0,65568,0,524288,2147483648U,0,4096,4096,134217984,268500992,0,33554432,131072,0,0,0,16777216,0,0,0,0,0,524288,0,0,67108864,0,0,2,0,2,32,1024,0};
 static _perrin _perrindata[NPERRINDIV] = {
   {2, 7, 0},
   {3, 13, 1},
@@ -1011,26 +919,85 @@ static _perrin _perrindata[NPERRINDIV] = {
   {37, 1368, 98},
   {41, 1723, 141},
   {43, 231, 195},
-  {49, 336, 203},
-  {53, 1404, 214},
-  {59, 58, 258},
-  {61, 930, 260},
-  {101, 100, 290},
-  {137, 391, 294},
-  {167, 166, 307},
-  {173, 172, 313},
-  {211, 210, 319},
-  {223, 111, 326},
-  {271, 270, 330},
-  {347, 173, 339}
+  {47, 2257, 203},
+  {223, 111, 274}
 };
+
+/* Based on doubling rule from Adams and Shanks 1982 */
+static void calc_perrin_sig(UV* S, UV n) {
+#if USE_MONT_PRIMALITY
+  UV npi, mont1;
+#endif
+  UV m = n, S2[5 + 5];
+  int i, b;
+
+  /* Signature for n = 1 */
+  S[0] = 1; S[1] = n-1; S[2] = 3;   S[3] = 3; S[4] = 0; S[5] = 2;
+  if (n <= 1) return;
+
+#if USE_MONT_PRIMALITY
+  if ( (n&1) ) {
+    npi = modular_inverse64(n);
+    mont1 = compute_modn64(n);
+    S[0] = mont1;  S[1] = n-mont1;  S[5] = addmod(mont1,mont1,n);
+    S[2] = addmod(S[5],mont1,n);  S[3] = S[2];
+  }
+#endif
+
+  /* Bits in n */
+  { UV v = n; b = 1; while (v >>= 1) b++; }
+
+  while (b-- > 1) {
+    /* Double */
+#if USE_MONT_PRIMALITY
+    if (n&1) {
+      S2[0] = submod(submod(mont_square64(S[0],n,npi), S[5],n), S[5],n);
+      S2[2] = submod(submod(mont_square64(S[1],n,npi), S[4],n), S[4],n);
+      S2[4] = submod(submod(mont_square64(S[2],n,npi), S[3],n), S[3],n);
+      S2[5] = submod(submod(mont_square64(S[3],n,npi), S[2],n), S[2],n);
+      S2[7] = submod(submod(mont_square64(S[4],n,npi), S[1],n), S[1],n);
+      S2[9] = submod(submod(mont_square64(S[5],n,npi), S[0],n), S[0],n);
+    } else
+#endif
+    {
+      S2[0] = submod(submod(sqrmod(S[0],n), S[5],n), S[5],n);
+      S2[2] = submod(submod(sqrmod(S[1],n), S[4],n), S[4],n);
+      S2[4] = submod(submod(sqrmod(S[2],n), S[3],n), S[3],n);
+      S2[5] = submod(submod(sqrmod(S[3],n), S[2],n), S[2],n);
+      S2[7] = submod(submod(sqrmod(S[4],n), S[1],n), S[1],n);
+      S2[9] = submod(submod(sqrmod(S[5],n), S[0],n), S[0],n);
+    }
+    /* Fill in */
+    S2[1] = submod( S2[4], S2[2], n );
+    S2[6] = submod( S2[9], S2[7], n );
+    S2[3] = addmod( S2[1], S2[0], n );
+    S2[8] = addmod( S2[6], S2[5], n );
+    /* Move to S */
+    if ( (n >> (b-1)) & 1U ) {
+      S[0] = S2[0];  S[1] = S2[1];  S[2] = S2[2];
+      S[3] = S2[7];  S[4] = S2[8];  S[5] = S2[9];
+    } else {
+      S[0] = S2[1];  S[1] = S2[2];  S[2] = S2[3];
+      S[3] = S2[6];  S[4] = S2[7];  S[5] = S2[8];
+    }
+    m >>= 1;
+  }
+#if USE_MONT_PRIMALITY
+  if (n&1) { /* REDC to transform back into normal form */
+    for (i = 0; i < 6; i++)
+      S[i] = mont_prod64(S[i], 1, n, npi);
+  }
+#endif
+}
+
 int is_perrin_pseudoprime(UV n, int restricted)
 {
   int jacobi, i;
-  UV S[6], m[9] = {0,1,0, 0,0,1, 1,1,0}, b[9] = {0,1,0, 0,0,1, 1,0,n-1};
+  UV S[6];
 
   if (n < 3) return (n >= 2);
   if (!(n&1) && restricted > 2) return 0;  /* Odds only for restrict > 2 */
+
   /* Hard code the initial tests.  60% of composites caught by 4 tests. */
   {
     uint32_t n32 = n % 10920;
@@ -1048,31 +1015,25 @@ int is_perrin_pseudoprime(UV n, int restricted)
     }
   }
   /* Depending on which filters are used, 10-20% of composites are left. */
-  mat_powmod_3x3(m, n, n);
 
-  /* Unrestricted test checks P(n) mod n == 0 */
-  if (!restricted) /* P(n) = sum of diagonal  =  3*top-left + 2*top-right */
-    return (addmod( addmod(m[0], m[4], n), m[8], n) == 0);
+  calc_perrin_sig(S, n);
 
-  S[3] = addmod( mulmod(3,m[6],n), mulmod(2,m[8],n), n );
-  S[4] = addmod( mulmod(3,m[0],n), mulmod(2,m[2],n), n );
-  S[5] = addmod( mulmod(3,m[3],n), mulmod(2,m[5],n), n );
-  if (S[4] != 0) return 0;
+  if (S[4] != 0)        return 0;        /* P(n) = 0 mod n */
+  if (restricted == 0)  return 1;
 
-  mat_powmod_3x3(b, n, n);
-  S[0] = submod( mulmod(3,b[7],n), b[8], n );
-  S[1] = submod( mulmod(3,b[4],n), b[5], n );
-  S[2] = submod( mulmod(3,b[1],n), b[2], n );
-  if (S[1] != n-1) return 0;
+  if (S[1] != n-1)      return 0;        /* P(-n) = -1 mod n */
+  if (restricted == 1)  return 1;
 
-  /* Minimal restricted test additionally checks P(-n) mod n == 0 */
-  if (restricted == 1)
-    return 1;
-
-  /* Full restricted test looks for an acceptable signature.  See:
-   *   Adams/Shanks 1982 pages 257-261 (skip quad form, no (-23|p)=0, no evens)
-   *   Arno 1991 pages 371-372
-   *   Grantham 2001 pages 5-6
+  /* Full restricted test looks for an acceptable signature.
+   *
+   * restrict = 2 is Adams/Shanks without quadratic form test
+   *
+   * restrict = 3 is Arno or Grantham: No qform, also reject mults of 2 and 23
+   *
+   * See:
+   *     Adams/Shanks 1982 pages 257-261
+   *     Arno 1991 pages 371-372
+   *     Grantham 2000 pages 5-6
    */
 
   jacobi = kronecker_su(-23,n);

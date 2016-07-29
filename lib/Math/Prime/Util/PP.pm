@@ -5714,7 +5714,7 @@ sub _forcompositions {
    $minn = 1 if $minn < 1;
    $maxn = $n if $maxn > $n;
   }
-  
+
   $sub->() if $n == 0 && $minn <= 1;
   return if $n < $minn || $minn > $maxn || $mina > $maxa || $maxn <= 0 || $maxa <= 0;
 
