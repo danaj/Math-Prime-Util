@@ -788,12 +788,12 @@ static _perrin _perrindata[NPERRINDIV] = {
   {223, 111, 274}
 };
 
-/* Based on doubling rule from Adams and Shanks 1982 */
+/* Calculate signature using the doubling rule from Adams and Shanks 1982 */
 static void calc_perrin_sig(UV* S, UV n) {
 #if USE_MONT_PRIMALITY
   uint64_t npi = 0, mont1;
 #endif
-  UV m = n, S2[5 + 5];
+  UV m = n, T[6], T01, T34, T45;
   int i, b;
 
   /* Signature for n = 1 */
@@ -816,34 +816,32 @@ static void calc_perrin_sig(UV* S, UV n) {
     /* Double */
 #if USE_MONT_PRIMALITY
     if (n&1) {
-      S2[0] = submod(submod(mont_sqrmod(S[0],n), S[5],n), S[5],n);
-      S2[2] = submod(submod(mont_sqrmod(S[1],n), S[4],n), S[4],n);
-      S2[4] = submod(submod(mont_sqrmod(S[2],n), S[3],n), S[3],n);
-      S2[5] = submod(submod(mont_sqrmod(S[3],n), S[2],n), S[2],n);
-      S2[7] = submod(submod(mont_sqrmod(S[4],n), S[1],n), S[1],n);
-      S2[9] = submod(submod(mont_sqrmod(S[5],n), S[0],n), S[0],n);
+      T[0] = submod(submod(mont_sqrmod(S[0],n), S[5],n), S[5],n);
+      T[1] = submod(submod(mont_sqrmod(S[1],n), S[4],n), S[4],n);
+      T[2] = submod(submod(mont_sqrmod(S[2],n), S[3],n), S[3],n);
+      T[3] = submod(submod(mont_sqrmod(S[3],n), S[2],n), S[2],n);
+      T[4] = submod(submod(mont_sqrmod(S[4],n), S[1],n), S[1],n);
+      T[5] = submod(submod(mont_sqrmod(S[5],n), S[0],n), S[0],n);
     } else
 #endif
     {
-      S2[0] = submod(submod(sqrmod(S[0],n), S[5],n), S[5],n);
-      S2[2] = submod(submod(sqrmod(S[1],n), S[4],n), S[4],n);
-      S2[4] = submod(submod(sqrmod(S[2],n), S[3],n), S[3],n);
-      S2[5] = submod(submod(sqrmod(S[3],n), S[2],n), S[2],n);
-      S2[7] = submod(submod(sqrmod(S[4],n), S[1],n), S[1],n);
-      S2[9] = submod(submod(sqrmod(S[5],n), S[0],n), S[0],n);
+      T[0] = submod(submod(sqrmod(S[0],n), S[5],n), S[5],n);
+      T[1] = submod(submod(sqrmod(S[1],n), S[4],n), S[4],n);
+      T[2] = submod(submod(sqrmod(S[2],n), S[3],n), S[3],n);
+      T[3] = submod(submod(sqrmod(S[3],n), S[2],n), S[2],n);
+      T[4] = submod(submod(sqrmod(S[4],n), S[1],n), S[1],n);
+      T[5] = submod(submod(sqrmod(S[5],n), S[0],n), S[0],n);
     }
-    /* Fill in */
-    S2[1] = submod( S2[4], S2[2], n );
-    S2[6] = submod( S2[9], S2[7], n );
-    S2[3] = addmod( S2[1], S2[0], n );
-    S2[8] = addmod( S2[6], S2[5], n );
-    /* Move to S */
+    /* Move to S, filling in */
+    T01 = submod(T[2], T[1], n);
+    T34 = submod(T[5], T[4], n);
+    T45 = addmod(T34, T[3], n);
     if ( (n >> (b-1)) & 1U ) {
-      S[0] = S2[0];  S[1] = S2[1];  S[2] = S2[2];
-      S[3] = S2[7];  S[4] = S2[8];  S[5] = S2[9];
-    } else {
-      S[0] = S2[1];  S[1] = S2[2];  S[2] = S2[3];
-      S[3] = S2[6];  S[4] = S2[7];  S[5] = S2[8];
+      S[0] = T[0];   S[1] = T01;    S[2] = T[1];
+      S[3] = T[4];   S[4] = T45;    S[5] = T[5];
+   } else {
+      S[0] = T01;    S[1] = T[1];   S[2] = addmod(T01,T[0],n);
+      S[3] = T34;    S[4] = T[4];   S[5] = T45;
     }
     m >>= 1;
   }

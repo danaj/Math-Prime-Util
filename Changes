@@ -27,9 +27,8 @@ Revision history for Perl module Math::Prime::Util
     - is_pseudoprime() and is_euler_pseudoprime() use Montgomery math so are
       much faster.  They seem to be ~5% faster than Miller-Rabin now.
 
-    - Very large speedups for is_perrin_pseudoprime.  Uses Montgomery math
-      and switched to Adams/Shanks doubling from matrix exponentiation.
-      About 5x faster for inputs < 2^31, 30x faster over.
+    - is_perrin_pseudoprime over 10x faster.
+      Uses Adams/Shanks doubling and Montgomery math.
       Single core, odd composites: ~8M range/s.
 
     - is_perrin_pseudoprime uses Montgomery math.  3x faster on inputs > 2^31.
