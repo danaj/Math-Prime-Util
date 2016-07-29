@@ -20,6 +20,8 @@ Revision history for Perl module Math::Prime::Util
 
     - Remove 3 threading tests that were causing issues with Perl -DDEBUGGING.
 
+    - foroddcomposites with some odd start values could index incorrectly.
+
     - mertens() uses a little less memory.
 
     - is_pseudoprime() and is_euler_pseudoprime() use Montgomery math so are

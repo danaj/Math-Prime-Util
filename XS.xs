@@ -2016,7 +2016,9 @@ forcomposites (SV* block, IN SV* svbeg, IN SV* svend = 0)
         while (next_segment_primes(ctx, &seg_base, &seg_low, &seg_high)) {
           int crossuv = (seg_high > IV_MAX) && !SvIsUV(svarg);
           START_DO_FOR_EACH_SIEVE_PRIME( segment, seg_base, seg_low, seg_high )
-            cbeg = prevprime+1;  if (cbeg < beg) cbeg = beg;
+            cbeg = prevprime+1;
+            if (cbeg < beg)
+              cbeg = beg - (ix == 1 && (beg % 2));
             prevprime = p;
             cend = prevprime-1;  if (cend > end) cend = end;
             /* If ix=1, skip evens by starting 1 farther and skipping by 2 */
