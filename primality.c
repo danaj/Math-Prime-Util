@@ -13,12 +13,26 @@
 /* Primality related functions */
 
 #if USE_MONT_PRIMALITY
+
+/* It's a pain having both standard and Montgomery versions, but the
+ * performance difference is very large. */
+
 #include "montmath.h"
+
+#define mont_inverse(n)           modular_inverse64(n)
+#define mont_get1(n)              compute_modn64(n)
+/* Must have npi = mont_inverse(n), mont1 = mont_get1(n) */
+#define mont_get2(n)              addmod(mont1,mont1,n)
+#define mont_geta(a,n)            mulmod(a,mont1,n)
+#define mont_mulmod(a,b,n)        mont_prod64(a,b,n,npi)
+#define mont_sqrmod(a,n)          mont_prod64(a,a,n,npi)
+#define mont_powmod(a,k,n)        mont_powmod64(a,k,mont1,n,npi)
+#define mont_recover(a,n)         mont_mulmod(a,1,n)
+
 #else
 static const UV mr_bases_const2[1] = {2};
 #endif
 /******************************************************************************/
-
 
 
 
@@ -69,10 +83,9 @@ int is_pseudoprime(UV const n, UV a)
   }
 #if USE_MONT_PRIMALITY
   if (n & 1) {   /* The Montgomery code only works for odd n */
-    const uint64_t npi = modular_inverse64(n);
-    const uint64_t mont1 = compute_modn64(n);
-    const uint64_t monta = compute_a_times_2_64_mod_n(a, n, mont1);
-    return mont_powmod64(monta, n-1, mont1, n, npi) == mont1;
+    const uint64_t npi = mont_inverse(n),  mont1 = mont_get1(n);
+    const uint64_t monta = mont_geta(a, n);
+    return mont_powmod(monta, n-1, n) == mont1;
   }
 #endif
   return powmod(a, n-1, n) == 1;  /* a^(n-1) = 1 mod n */
@@ -94,17 +107,15 @@ int is_euler_pseudoprime(UV const n, UV a)
   }
   {
 #if USE_MONT_PRIMALITY
-    const uint64_t npi = modular_inverse64(n);
-    const uint64_t mont1 = compute_modn64(n);
-    const uint64_t monta = compute_a_times_2_64_mod_n(a, n, mont1);
-    const uint64_t montn1 = n - mont1;
-    UV ap = mont_powmod64(monta, (n-1)>>1, mont1, n, npi);
-    if (ap != mont1 && ap != montn1) return 0;
+    const uint64_t npi = mont_inverse(n),  mont1 = mont_get1(n);
+    const uint64_t monta  = mont_geta(a, n);
+    UV ap = mont_powmod(monta, (n-1)>>1, n);
+    if (ap != mont1 && ap != n-mont1) return 0;
     if (a == 2) {
       uint32_t nmod8 = n & 0x7;
-      return (nmod8 == 1 || nmod8 == 7)  ?  (ap == mont1)  :  (ap == montn1);
+      return (nmod8 == 1 || nmod8 == 7)  ?  (ap == mont1)  :  (ap == n-mont1);
     } else {
-      return (kronecker_uu(a,n) >= 0)    ?  (ap == mont1)  :  (ap == montn1);
+      return (kronecker_uu(a,n) >= 0)    ?  (ap == mont1)  :  (ap == n-mont1);
     }
 #else
     UV ap = powmod(a, (n-1)>>1, n);
@@ -131,13 +142,11 @@ int is_euler_plumb_pseudoprime(UV const n)
   if (!(n&1)) return 0;
 #if USE_MONT_PRIMALITY
   {
-    const uint64_t npi = modular_inverse64(n);
-    const uint64_t mont1 = compute_modn64(n);
-    const uint64_t mont2 = compute_2_65_mod_n(n, mont1);
-    const uint64_t montn1 = n - mont1;
-    ap = mont_powmod64(mont2, (n-1) >> (1 + (nmod8 == 1)), mont1, n, npi);
-    if (ap ==  mont1)  return (nmod8 == 1 || nmod8 == 7);
-    if (ap == montn1)  return (nmod8 == 1 || nmod8 == 3 || nmod8 == 5);
+    const uint64_t npi = mont_inverse(n),  mont1 = mont_get1(n);
+    const uint64_t mont2  = mont_get2(n);
+    ap = mont_powmod(mont2, (n-1) >> (1 + (nmod8 == 1)), n);
+    if (ap ==   mont1)  return (nmod8 == 1 || nmod8 == 7);
+    if (ap == n-mont1)  return (nmod8 == 1 || nmod8 == 3 || nmod8 == 5);
   }
 #else
   ap = powmod(2, (n-1) >> (1 + (nmod8 == 1)), n);
@@ -198,30 +207,23 @@ int BPSW(UV const n)
          && is_almost_extra_strong_lucas_pseudoprime(n,1);
 #else
   {
-    const uint64_t npi = modular_inverse64(n);
-    const uint64_t montr = compute_modn64(n);
-    const uint64_t mont2 = compute_2_65_mod_n(n, montr);
-    uint64_t u = n-1;
-    const uint64_t nr = n-montr;
+    const uint64_t npi = mont_inverse(n),  mont1 = mont_get1(n);
+    const uint64_t mont2 = mont_get2(n);
+    uint64_t md, u = n-1;
     int i, t = 0;
     UV P, V, d, s;
 
     /* M-R with base 2 */
     while (!(u&1)) {  t++;  u >>= 1;  }
-    {
-      uint64_t A = mont2;
-      if (A) {
-        uint64_t d = mont_powmod64(A, u, montr, n, npi);
-        if (d != montr && d != nr) {
-          for (i=1; i<t; i++) {
-            d = mont_square64(d, n, npi);
-            if (d == montr) return 0;
-            if (d == nr) break;
-          }
-          if (i == t)
-            return 0;
-        }
+    md = mont_powmod(mont2, u, n);
+    if (md != mont1 && md != n-mont1) {
+      for (i=1; i<t; i++) {
+        md = mont_sqrmod(md, n);
+        if (md == mont1) return 0;
+        if (md == n-mont1) break;
       }
+      if (i == t)
+        return 0;
     }
     /* AES Lucas test */
     P = select_extra_strong_parameters(n, 1);
@@ -232,19 +234,19 @@ int BPSW(UV const n)
     while ( (d & 1) == 0 ) {  s++;  d >>= 1; }
 
     {
-      const uint64_t montP = compute_a_times_2_64_mod_n(P, n, montr);
+      const uint64_t montP = mont_geta(P, n);
       UV W, b;
-      W = submod(  mont_prod64( montP, montP, n, npi),  mont2, n);
+      W = submod(  mont_mulmod( montP, montP, n),  mont2, n);
       V = montP;
       { UV v = d; b = 1; while (v >>= 1) b++; }
       while (b-- > 1) {
-        UV T = submod(  mont_prod64(V, W, n, npi),  montP, n);
+        UV T = submod(  mont_mulmod(V, W, n),  montP, n);
         if ( (d >> (b-1)) & UVCONST(1) ) {
           V = T;
-          W = submod(  mont_prod64(W, W, n, npi),  mont2, n);
+          W = submod(  mont_mulmod(W, W, n),  mont2, n);
         } else {
           W = T;
-          V = submod(  mont_prod64(V, V, n, npi),  mont2, n);
+          V = submod(  mont_mulmod(V, V, n),  mont2, n);
         }
       }
     }
@@ -254,7 +256,7 @@ int BPSW(UV const n)
     while (s-- > 1) {
       if (V == 0)
         return 1;
-      V = submod(  mont_prod64(V, V, n, npi),  mont2, n);
+      V = submod(  mont_mulmod(V, V, n),  mont2, n);
       if (V == mont2)
         return 0;
     }
@@ -550,14 +552,13 @@ int is_lucas_pseudoprime(UV n, int strength)
 
 #if USE_MONT_PRIMALITY
   {
-    const uint64_t npi = modular_inverse64(n);
-    const uint64_t mont1 = compute_modn64(n);
-    const uint64_t mont2 = compute_2_65_mod_n(n, mont1);
+    const uint64_t npi = mont_inverse(n),  mont1 = mont_get1(n);
+    const uint64_t mont2 = mont_get2(n);
     const uint64_t montP = (P == 1) ? mont1
-                         : (P >= 0) ? compute_a_times_2_64_mod_n(P, n, mont1)
-                         : n - compute_a_times_2_64_mod_n(-P, n, mont1);
-    const uint64_t montD = (D >= 0) ? compute_a_times_2_64_mod_n(D, n, mont1)
-                         : n - compute_a_times_2_64_mod_n(-D, n, mont1);
+                         : (P >= 0) ? mont_geta(P, n)
+                         : n - mont_geta(-P, n);
+    const uint64_t montD = (D >= 0) ? mont_geta(D, n)
+                         : n - mont_geta(-D, n);
     UV b;
     { UV v = d; b = 0; while (v >>= 1) b++; }
 
@@ -568,18 +569,18 @@ int is_lucas_pseudoprime(UV n, int strength)
     if (Q == 1 || Q == -1) {   /* Faster code for |Q|=1, also opt for P=1 */
       int sign = Q;
       while (b--) {
-        U = mont_prod64(U, V, n, npi);
-        if (sign == 1) V = submod( mont_square64(V,n,npi), mont2, n);
-        else           V = addmod( mont_square64(V,n,npi), mont2, n);
+        U = mont_mulmod(U, V, n);
+        if (sign == 1) V = submod( mont_sqrmod(V,n), mont2, n);
+        else           V = addmod( mont_sqrmod(V,n), mont2, n);
         sign = 1;
         if ( (d >> b) & UVCONST(1) ) {
-          UV t2 = mont_prod64(U, montD, n, npi);
+          UV t2 = mont_mulmod(U, montD, n);
           if (P == 1) {
             U = addmod(U, V, n);
             V = addmod(V, t2, n);
           } else {
-            U = addmod( mont_prod64(U, montP, n, npi), V, n);
-            V = addmod( mont_prod64(V, montP, n, npi), t2, n);
+            U = addmod( mont_mulmod(U, montP, n), V, n);
+            V = addmod( mont_mulmod(V, montP, n), t2, n);
           }
           if (U & 1) { U = (n>>1) + (U>>1) + 1; } else { U >>= 1; }
           if (V & 1) { V = (n>>1) + (V>>1) + 1; } else { V >>= 1; }
@@ -588,20 +589,20 @@ int is_lucas_pseudoprime(UV n, int strength)
       }
       Qk = (sign == 1) ? mont1 : n-mont1;
     } else {
-      const uint64_t montQ = (Q >= 0) ? compute_a_times_2_64_mod_n(Q, n, mont1)
-                           : n - compute_a_times_2_64_mod_n(-Q, n, mont1);
+      const uint64_t montQ = (Q >= 0) ? mont_geta(Q, n)
+                           : n - mont_geta(-Q, n);
       Qk = montQ;
       while (b--) {
-        U = mont_prod64(U, V, n, npi);
-        V = submod( mont_square64(V,n,npi), addmod(Qk,Qk,n), n);
-        Qk = mont_square64(Qk,n,npi);
+        U = mont_mulmod(U, V, n);
+        V = submod( mont_sqrmod(V,n), addmod(Qk,Qk,n), n);
+        Qk = mont_sqrmod(Qk,n);
         if ( (d >> b) & UVCONST(1) ) {
-          UV t2 = mont_prod64(U, montD, n, npi);
-          U = addmod( mont_prod64(U, montP, n, npi), V, n);
+          UV t2 = mont_mulmod(U, montD, n);
+          U = addmod( mont_mulmod(U, montP, n), V, n);
           if (U & 1) { U = (n>>1) + (U>>1) + 1; } else { U >>= 1; }
-          V = addmod( mont_prod64(V, montP, n, npi), t2, n);
+          V = addmod( mont_mulmod(V, montP, n), t2, n);
           if (V & 1) { V = (n>>1) + (V>>1) + 1; } else { V >>= 1; }
-          Qk = mont_prod64(Qk, montQ, n, npi);
+          Qk = mont_mulmod(Qk, montQ, n);
         }
       }
     }
@@ -615,8 +616,8 @@ int is_lucas_pseudoprime(UV n, int strength)
         if (V == 0)
           return 1;
         if (s) {
-          V = submod( mont_square64(V,n,npi), addmod(Qk,Qk,n), n);
-          Qk = mont_square64(Qk,n,npi);
+          V = submod( mont_sqrmod(V,n), addmod(Qk,Qk,n), n);
+          Qk = mont_sqrmod(Qk,n);
         }
       }
     } else {
@@ -627,7 +628,7 @@ int is_lucas_pseudoprime(UV n, int strength)
         if (V == 0)
           return 1;
         if (s)
-          V = submod( mont_square64(V,n,npi), mont2, n);
+          V = submod( mont_sqrmod(V,n), mont2, n);
       }
     }
     return 0;
@@ -703,20 +704,19 @@ int is_almost_extra_strong_lucas_pseudoprime(UV n, UV increment)
 
 #if USE_MONT_PRIMALITY
   {
-    const uint64_t npi = modular_inverse64(n);
-    const uint64_t montr = compute_modn64(n);
-    const uint64_t mont2 = compute_2_65_mod_n(n, montr);
-    const uint64_t montP = compute_a_times_2_64_mod_n(P, n, montr);
-    W = submod(  mont_prod64( montP, montP, n, npi),  mont2, n);
+    const uint64_t npi = mont_inverse(n),  mont1 = mont_get1(n);
+    const uint64_t mont2 = mont_get2(n);
+    const uint64_t montP = mont_geta(P, n);
+    W = submod(  mont_mulmod( montP, montP, n),  mont2, n);
     V = montP;
     while (b--) {
-      UV T = submod(  mont_prod64(V, W, n, npi),  montP, n);
+      UV T = submod(  mont_mulmod(V, W, n),  montP, n);
       if ( (d >> b) & UVCONST(1) ) {
         V = T;
-        W = submod(  mont_prod64(W, W, n, npi),  mont2, n);
+        W = submod(  mont_mulmod(W, W, n),  mont2, n);
       } else {
         W = T;
-        V = submod(  mont_prod64(V, V, n, npi),  mont2, n);
+        V = submod(  mont_mulmod(V, V, n),  mont2, n);
       }
     }
 
@@ -727,7 +727,7 @@ int is_almost_extra_strong_lucas_pseudoprime(UV n, UV increment)
       if (V == 0)
         return 1;
       if (s)
-        V = submod(  mont_prod64(V, V, n, npi),  mont2, n);
+        V = submod(  mont_mulmod(V, V, n),  mont2, n);
     }
     return 0;
   }
@@ -791,7 +791,7 @@ static _perrin _perrindata[NPERRINDIV] = {
 /* Based on doubling rule from Adams and Shanks 1982 */
 static void calc_perrin_sig(UV* S, UV n) {
 #if USE_MONT_PRIMALITY
-  UV npi, mont1;
+  uint64_t npi = 0, mont1;
 #endif
   UV m = n, S2[5 + 5];
   int i, b;
@@ -802,8 +802,8 @@ static void calc_perrin_sig(UV* S, UV n) {
 
 #if USE_MONT_PRIMALITY
   if ( (n&1) ) {
-    npi = modular_inverse64(n);
-    mont1 = compute_modn64(n);
+    npi = mont_inverse(n);
+    mont1 = mont_get1(n);
     S[0] = mont1;  S[1] = n-mont1;  S[5] = addmod(mont1,mont1,n);
     S[2] = addmod(S[5],mont1,n);  S[3] = S[2];
   }
@@ -816,12 +816,12 @@ static void calc_perrin_sig(UV* S, UV n) {
     /* Double */
 #if USE_MONT_PRIMALITY
     if (n&1) {
-      S2[0] = submod(submod(mont_square64(S[0],n,npi), S[5],n), S[5],n);
-      S2[2] = submod(submod(mont_square64(S[1],n,npi), S[4],n), S[4],n);
-      S2[4] = submod(submod(mont_square64(S[2],n,npi), S[3],n), S[3],n);
-      S2[5] = submod(submod(mont_square64(S[3],n,npi), S[2],n), S[2],n);
-      S2[7] = submod(submod(mont_square64(S[4],n,npi), S[1],n), S[1],n);
-      S2[9] = submod(submod(mont_square64(S[5],n,npi), S[0],n), S[0],n);
+      S2[0] = submod(submod(mont_sqrmod(S[0],n), S[5],n), S[5],n);
+      S2[2] = submod(submod(mont_sqrmod(S[1],n), S[4],n), S[4],n);
+      S2[4] = submod(submod(mont_sqrmod(S[2],n), S[3],n), S[3],n);
+      S2[5] = submod(submod(mont_sqrmod(S[3],n), S[2],n), S[2],n);
+      S2[7] = submod(submod(mont_sqrmod(S[4],n), S[1],n), S[1],n);
+      S2[9] = submod(submod(mont_sqrmod(S[5],n), S[0],n), S[0],n);
     } else
 #endif
     {
@@ -848,9 +848,9 @@ static void calc_perrin_sig(UV* S, UV n) {
     m >>= 1;
   }
 #if USE_MONT_PRIMALITY
-  if (n&1) { /* REDC to transform back into normal form */
+  if (n&1) { /* Recover result from Montgomery form */
     for (i = 0; i < 6; i++)
-      S[i] = mont_prod64(S[i], 1, n, npi);
+      S[i] = mont_recover(S[i],n);
   }
 #endif
 }
@@ -1017,22 +1017,22 @@ int is_frobenius_khashin_pseudoprime(UV n)
 
 #if USE_MONT_PRIMALITY
   {
-    const uint64_t npi = modular_inverse64(n);
-    const uint64_t mont1 = compute_modn64(n);
-    const uint64_t montc = compute_a_times_2_64_mod_n(c, n, mont1);
+    const uint64_t npi = mont_inverse(n);
+    const uint64_t mont1 = mont_get1(n);
+    const uint64_t montc = mont_geta(c, n);
     ra = rb = a = b = mont1;
     while (d) {
       if (d & 1) {
         UV ta=ra, tb=rb;
-        ra = addmod( mont_prod64(ta,a,n,npi), mont_prod64(mont_prod64(tb,b,n,npi),montc,n,npi), n );
-        rb = addmod( mont_prod64(tb,a,n,npi), mont_prod64(ta,b,n,npi), n);
+        ra = addmod( mont_mulmod(ta,a,n), mont_mulmod(mont_mulmod(tb,b,n),montc,n), n );
+        rb = addmod( mont_mulmod(tb,a,n), mont_mulmod(ta,b,n), n);
       }
       d >>= 1;
       if (d) {
-        UV t = mont_prod64(mont_prod64(b,b,n,npi),montc,n,npi);
-        b = mont_prod64(b,a,n,npi);
+        UV t = mont_mulmod(mont_mulmod(b,b,n),montc,n);
+        b = mont_mulmod(b,a,n);
         b = addmod(b,b,n);
-        a = addmod(mont_prod64(a,a,n,npi),t,n);
+        a = addmod(mont_mulmod(a,a,n),t,n);
       }
     }
     return (ra == mont1 && rb == n-mont1);
@@ -1090,12 +1090,11 @@ int is_frobenius_underwood_pseudoprime(UV n)
 
 #if USE_MONT_PRIMALITY
   {
-    const uint64_t npi = modular_inverse64(n);
-    const uint64_t mont1 = compute_modn64(n);
-    const uint64_t mont2 = compute_2_65_mod_n(n, mont1);
-    const uint64_t mont5 = compute_a_times_2_64_mod_n(5, n, mont1);
+    const uint64_t npi = mont_inverse(n),  mont1 = mont_get1(n);
+    const uint64_t mont2 = mont_get2(n);
+    const uint64_t mont5 = mont_geta(5, n);
 
-    x = compute_a_times_2_64_mod_n(x, n, mont1);
+    x = mont_geta(x, n);
     a = mont1;
     b = mont2;
 
@@ -1103,8 +1102,8 @@ int is_frobenius_underwood_pseudoprime(UV n)
       result = mont5;
       for (bit = len-2; bit >= 0; bit--) {
         t1 = addmod(b, b, n);
-        b = mont_prod64(submod(b, a, n), addmod(b, a, n), n, npi);
-        a = mont_prod64(a, t1, n, npi);
+        b = mont_mulmod(submod(b, a, n), addmod(b, a, n), n);
+        a = mont_mulmod(a, t1, n);
         if ( (np1 >> bit) & UVCONST(1) ) {
           t1 = b;
           b = submod( addmod(b, b, n), a, n);
@@ -1115,13 +1114,13 @@ int is_frobenius_underwood_pseudoprime(UV n)
       UV multiplier = addmod(x, mont2, n);
       result = addmod( addmod(x, x, n), mont5, n);
       for (bit = len-2; bit >= 0; bit--) {
-        t1 = addmod( mont_prod64(a, x, n, npi), addmod(b, b, n), n);
-        b = mont_prod64(submod(b, a, n), addmod(b, a, n), n, npi);
-        a = mont_prod64(a, t1, n, npi);
+        t1 = addmod( mont_mulmod(a, x, n), addmod(b, b, n), n);
+        b = mont_mulmod(submod(b, a, n), addmod(b, a, n), n);
+        a = mont_mulmod(a, t1, n);
         if ( (np1 >> bit) & UVCONST(1) ) {
           t1 = b;
           b = submod( addmod(b, b, n), a, n);
-          a = addmod( mont_prod64(a, multiplier, n, npi), t1, n);
+          a = addmod( mont_mulmod(a, multiplier, n), t1, n);
         }
       }
     }
