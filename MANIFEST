@@ -32,6 +32,7 @@ lehmer.h
 lehmer.c
 lmo.h
 lmo.c
+monthmath.h
 ppport.h
 primality.h
 primality.c
