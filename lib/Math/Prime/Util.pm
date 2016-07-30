@@ -1915,21 +1915,28 @@ than other probable prime tests.
 
 Takes a positive number C<n> as input and returns 1 if C<n> divides C<P(n)>
 where C<P(n)> is the Perrin number of C<n>.  The Perrin sequence is defined by
-
-   C<P(0) = 3, P(1) = 0, P(2) = 2;  P(n) = P(n-2) + P(n-3)>
+C<P(n) = P(n-2) + P(n-3)> with C<P(0) = 3, P(1) = 0, P(2) = 2>.
 
 While pseudoprimes are relatively rare (the first two are 271441 and 904631),
-infinitely many exist.
+infinitely many exist.  They have significant overlap with the base-2
+pseudoprimes and strong pseudoprimes, making the test inferior to the
+Lucas or Frobenius tests for combined testing.
 The pseudoprime sequence is L<OEIS A013998|http://oeis.org/A013998>.
 
-The implementation uses pre-filters, modular 3x3 matrix exponentiation,
-and Montgomery math, which is very efficient compared to other known
-implementations.
-However it is slow compared to the standard probable prime tests.
+The implementation uses modular pre-filters, Montgomery math, and the
+Adams/Shanks doubling method.  This is significantly more efficient than
+other known implementations.
 
-An optional second argument indicates whether to additionally test C<P(-n)>.
-Composites which pass this test are known as restricted Perrin pseudoprimes
-and are a subset of the unrestricted set.
+An optional second argument C<r> indicates whether to run additional tests.
+With C<r=1>, C<P(-n) = -1 mod n> is also verified, creating the
+"minimal restricted" test.
+With C<r=2>, the full signature is tested using the Adams and Shanks (1982)
+rules (without the quadratic form test).
+With C<r=3>, the Grantham (2001) test is done, which does the full
+signature test and additionally does not allow pseudoprimes to be
+divisible by 2 or 23.
+Composites which pass the minimal restricted test are known as
+restricted Perrin pseudoprimes and are a subset of the unrestricted set.
 The restricted pseudoprime sequence is L<OEIS A018187|http://oeis.org/A018187>.
 
 

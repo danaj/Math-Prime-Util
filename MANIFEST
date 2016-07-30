@@ -19,6 +19,7 @@ README
 TODO
 XS.xs
 ptypes.h
+montmath.h
 multicall.h
 mulmod.h
 aks.h
@@ -32,7 +33,6 @@ lehmer.h
 lehmer.c
 lmo.h
 lmo.c
-monthmath.h
 ppport.h
 primality.h
 primality.c
