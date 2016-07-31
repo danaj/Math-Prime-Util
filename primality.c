@@ -793,7 +793,7 @@ static void calc_perrin_sig(UV* S, UV n) {
 #if USE_MONT_PRIMALITY
   uint64_t npi = 0, mont1;
 #endif
-  UV m = n, T[6], T01, T34, T45;
+  UV T[6], T01, T34, T45;
   int i, b;
 
   /* Signature for n = 1 */
@@ -843,7 +843,6 @@ static void calc_perrin_sig(UV* S, UV n) {
       S[0] = T01;    S[1] = T[1];   S[2] = addmod(T01,T[0],n);
       S[3] = T34;    S[4] = T[4];   S[5] = T45;
     }
-    m >>= 1;
   }
 #if USE_MONT_PRIMALITY
   if (n&1) { /* Recover result from Montgomery form */

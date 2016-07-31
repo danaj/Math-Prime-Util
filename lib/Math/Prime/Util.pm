@@ -1928,16 +1928,13 @@ Adams/Shanks doubling method.  This is significantly more efficient than
 other known implementations.
 
 An optional second argument C<r> indicates whether to run additional tests.
-With C<r=1>, C<P(-n) = -1 mod n> is also verified, creating the
-"minimal restricted" test.
-With C<r=2>, the full signature is tested using the Adams and Shanks (1982)
+With C<r=1>, C<P(-n) = -1 mod n> is also verified,
+creating the "minimal restricted" test.
+With C<r=2>, the full signature is also tested using the Adams and Shanks (1982)
 rules (without the quadratic form test).
-With C<r=3>, the Grantham (2001) test is done, which does the full
-signature test and additionally does not allow pseudoprimes to be
-divisible by 2 or 23.
-Composites which pass the minimal restricted test are known as
-restricted Perrin pseudoprimes and are a subset of the unrestricted set.
-The restricted pseudoprime sequence is L<OEIS A018187|http://oeis.org/A018187>.
+With C<r=3>, the full signature is testing using the Grantham (2000) test, which
+additionally does not allow pseudoprimes to be divisible by 2 or 23.
+The minimal restricted pseudoprime sequence is L<OEIS A018187|http://oeis.org/A018187>.
 
 
 =head2 is_catalan_pseudoprime
