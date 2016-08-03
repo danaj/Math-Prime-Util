@@ -2399,6 +2399,7 @@ sub sqrtmod {
 sub addmod {
   my($a, $b, $n) = @_;
   return 0 if $n <= 1;
+  return _addmod($a,$b,$n) if $n < INTMAX && $a>0 && $a<INTMAX && $b>0 && $b<INTMAX;
   my $ret = Math::BigInt->new("$a")->badd("$b")->bmod("$n");
   $ret = _bigint_to_int($ret) if $ret->bacmp(BMAX) <= 0;
   $ret;
@@ -2407,6 +2408,7 @@ sub addmod {
 sub mulmod {
   my($a, $b, $n) = @_;
   return 0 if $n <= 1;
+  return _mulmod($a,$b,$n) if $n < INTMAX && $a>0 && $a<INTMAX && $b>0 && $b<INTMAX;
   my $ret = Math::BigInt->new("$a")->bmod("$n")->bmul("$b")->bmod("$n");
   $ret = _bigint_to_int($ret) if $ret->bacmp(BMAX) <= 0;
   $ret;
@@ -2456,12 +2458,11 @@ sub is_power {
     return 0 unless $k > 0;
     if (defined $refp) {
       $a = $k unless $a;
-      if ($n >= 0) {
-        $$refp = Math::Prime::Util::rootint($n, $a);
-      } else {
-        $n =~ s/^-//;
-        $$refp = - Math::Prime::Util::rootint($n, $a);
-      }
+      my $isneg = ($n < 0);
+      $n =~ s/^-// if $isneg;
+      $$refp = Math::Prime::Util::rootint($n, $a);
+      $$refp = Math::Prime::Util::_reftyped($_[0], $$refp) if $$refp > INTMAX;
+      $$refp = -$$refp if $isneg;
     }
     return $k;
   }
@@ -3849,40 +3850,52 @@ sub is_frobenius_underwood_pseudoprime {
   return ($s == 0 && $t == $temp1) ? 1 : 0;
 }
 
-sub _mat_mulmod_3x3 {
-  my($aref, $bref, $n) = @_;
-  my @t;
-  for my $row (0..2) {
-    for my $col (0..2) {
-      my $i1 = $aref->[3*$row+0] * $bref->[0+$col];
-      my $i2 = $aref->[3*$row+1] * $bref->[3+$col];
-      my $i3 = $aref->[3*$row+2] * $bref->[6+$col];
-      push @t, ($i1 + $i2 + $i3) % $n;
+sub _perrin_signature {
+  my($n) = @_;
+  my @S = (1,$n-1,3, 3,0,2);
+  return @S if $n <= 1;
+
+  my @nbin = todigits($n,2);
+  shift @nbin;
+
+  while (@nbin) {
+    my @T = map { addmod(addmod(mulmod($S[$_],$S[$_],$n), $n-$S[5-$_],$n), $n-$S[5-$_],$n); } 0..5;
+    my $T01 = addmod($T[2], $n-$T[1], $n);
+    my $T34 = addmod($T[5], $n-$T[4], $n);
+    my $T45 = addmod($T34, $T[3], $n);
+    if (shift @nbin) {
+      @S = ($T[0], $T01, $T[1], $T[4], $T45, $T[5]);
+    } else {
+      @S = ($T01, $T[1], addmod($T01,$T[0],$n), $T34, $T[4], $T45);
     }
   }
-  @$aref = @t;
-}
-sub _mat_powmod_3x3 {
-  my($mref, $k, $n) = @_;
-  my $res = [1,0,0,  0,1,0,  0,0,1];
-  while ($k) {
-    # The next line prevents Perl 5.6.2 from segfaulting
-    $k = _bigint_to_int($k) if ref($k) && $k <= BMAX;
-    _mat_mulmod_3x3($res, $mref, $n)  if $k & 1;
-    $k >>= 1;
-    _mat_mulmod_3x3($mref, $mref, $n) if $k;
-  }
-  @$mref = @$res;
+  @S;
 }
 
 sub is_perrin_pseudoprime {
-  my($n) = @_;
+  my($n, $restrict) = @_;
+  $restrict = 0 unless defined $restrict;
   return 0+($n >= 2) if $n < 4;
-  $n = Math::BigInt->new("$n") unless ref($n) eq 'Math::BigInt' || $n < (MPU_HALFWORD >> 1);
-  my @m = (0,1,0,  0,0,1,  1,1,0);
-  _mat_powmod_3x3(\@m, $n, $n);
-  my $trace = ($m[0] + $m[4] + $m[8]) % $n;
-  return ($trace == 0) ? 1 : 0;
+  return 0 if $restrict > 2 && ($n % 2) == 0;
+
+  my @S = _perrin_signature($n);
+  return 0 unless $S[4] == 0;
+  return 1 if $restrict == 0;
+  return 0 unless $S[1] == $n-1;
+  return 1 if $restrict == 1;
+  my $j = kronecker(-23,$n);
+  if ($j == -1) {
+    my $B = $S[2];
+    my $B2 = mulmod($B,$B,$n);
+    my $A = addmod(addmod(1,mulmod(3,$B,$n),$n),$n-$B2,$n);
+    my $C = addmod(mulmod(3,$B2,$n),$n-2,$n);
+    return 1 if $S[0] == $A && $S[2] == $B && $S[3] == $B && $S[5] == $C && $B != 3 && addmod(mulmod($B2,$B,$n),$n-$B,$n) == 1;
+  } else {
+    return 0 if $j == 0 && $n != 23 && $restrict > 2;
+    return 1 if $S[0] == 1 && $S[2] == 3 && $S[3] == 3 && $S[5] == 2;
+    return 1 if $S[0] == 0 && $S[5] == $n-1 && $S[2] != $S[3] && addmod($S[2],$S[3],$n) == $n-3 && mulmod(addmod($S[2],$n-$S[3],$n),addmod($S[2],$n-$S[3],$n),$n) == $n-(23%$n);
+  }
+  0;
 }
 
 sub is_catalan_pseudoprime {

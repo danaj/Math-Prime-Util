@@ -233,10 +233,12 @@ sub is_almost_extra_strong_lucas_pseudoprime {
   return Math::Prime::Util::PP::is_almost_extra_strong_lucas_pseudoprime($n, $increment);
 }
 sub is_perrin_pseudoprime {
-  my($n) = @_;
+  my($n,$restrict) = @_;
   return 0 if defined $n && int($n) < 0;
+  $restrict = 0 unless defined $restrict;
   _validate_positive_integer($n);
-  return Math::Prime::Util::PP::is_perrin_pseudoprime($n);
+  _validate_positive_integer($restrict);
+  return Math::Prime::Util::PP::is_perrin_pseudoprime($n, $restrict);
 }
 sub is_catalan_pseudoprime {
   my($n) = @_;
