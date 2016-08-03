@@ -3,6 +3,23 @@
 
 #include "ptypes.h"
 
+/******************************************************************************/
+/*                   This is the interface we'll use                          */
+/******************************************************************************/
+#define mont_inverse(n)           modular_inverse64(n)
+#define mont_get1(n)              compute_modn64(n)
+/* Must have npi = mont_inverse(n), mont1 = mont_get1(n) */
+#define mont_get2(n)              addmod(mont1,mont1,n)
+#define mont_geta(a,n)            mulmod(a,mont1,n)
+#define mont_mulmod(a,b,n)        mont_prod64(a,b,n,npi)
+#define mont_sqrmod(a,n)          mont_prod64(a,a,n,npi)
+#define mont_powmod(a,k,n)        mont_powmod64(a,k,mont1,n,npi)
+#define mont_recover(a,n)         mont_mulmod(a,1,n)
+/******************************************************************************/
+/******************************************************************************/
+
+
+
 /******************************************************************************
   Montgomery math and efficient M-R from
   Wojciech Izykowski.  See:  https://github.com/wizykowski/miller-rabin
@@ -43,7 +60,7 @@ static INLINE uint64_t mont_prod64(uint64_t a, uint64_t b, uint64_t n, uint64_t 
   uint64_t t_hi, t_lo, m, mn_hi, mn_lo, u;
   /* t_hi * 2^64 + t_lo = a*b */
   asm("mulq %3" : "=a"(t_lo), "=d"(t_hi) : "a"(a), "rm"(b));
-  if (MPU_UNLIKELY(t_lo == 0)) return t_hi;
+  if (MPU_UNLIKELY(t_lo == 0)) return t_hi;  /* Allows carry=1 below */
   m = t_lo * npi;
   /* mn_hi * 2^64 + mn_lo = m*n */
   asm("mulq %3" : "=a"(mn_lo), "=d"(mn_hi) : "a"(m), "rm"(n));
@@ -65,7 +82,7 @@ static INLINE UV mont_powmod64(uint64_t a, uint64_t k, uint64_t one, uint64_t n,
  * Divisionless Operations", Computer Journal (1994) 37 (3): 219-222, Proc 5 */
 static INLINE uint64_t modular_inverse64(const uint64_t a)
 {
-  uint64_t S = 1, J = 0;
+  uint64_t J, S = 1;
   int idx;
   /* Basic algorithm:
    *    for (i = 0; i < 64; i++) {
@@ -97,19 +114,6 @@ static INLINE uint64_t compute_modn64(const uint64_t n)
     return -n;
 }
 #define compute_a_times_2_64_mod_n(a, n, r)   mulmod(a, r, n)
-static INLINE uint64_t compute_2_65_mod_n(const uint64_t n, const uint64_t modn)
-{
-  if (n <= (1ULL << 63)) {
-    uint64_t res = modn << 1;
-    return res < n ? res : res - n;
-  } else {
-    /* n can fit 2 or 3 times in 2^65 */
-    if (n > UVCONST(12297829382473034410))
-      return -n-n;    /* 2^65 mod n = 2^65 - 2*n */
-    else
-      return -n-n-n;  /* 2^65 mod n = 2^65 - 3*n */
-  }
-}
 /* static INLINE int efficient_mr64(const uint64_t bases[], const int cnt, const uint64_t n) */
 static int monty_mr64(const uint64_t n, const UV* bases, int cnt)
 {

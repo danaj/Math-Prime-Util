@@ -13,22 +13,9 @@
 /* Primality related functions */
 
 #if USE_MONT_PRIMALITY
-
 /* It's a pain having both standard and Montgomery versions, but the
  * performance difference is very large. */
-
 #include "montmath.h"
-
-#define mont_inverse(n)           modular_inverse64(n)
-#define mont_get1(n)              compute_modn64(n)
-/* Must have npi = mont_inverse(n), mont1 = mont_get1(n) */
-#define mont_get2(n)              addmod(mont1,mont1,n)
-#define mont_geta(a,n)            mulmod(a,mont1,n)
-#define mont_mulmod(a,b,n)        mont_prod64(a,b,n,npi)
-#define mont_sqrmod(a,n)          mont_prod64(a,a,n,npi)
-#define mont_powmod(a,k,n)        mont_powmod64(a,k,mont1,n,npi)
-#define mont_recover(a,n)         mont_mulmod(a,1,n)
-
 #else
 static const UV mr_bases_const2[1] = {2};
 #endif
