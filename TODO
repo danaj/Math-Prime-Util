@@ -112,3 +112,6 @@
   we do for vecsum.
 
 - bernreal and bernfrac using MPFR
+
+- divsum and divsummult as block functions.
+  The latter does sum = vecprod(1 + f(p_i) + f(p_i^2) + ... f(p_i^e) for all p.
