@@ -108,10 +108,6 @@ if (!$usexs) {
   }
 }
 
-my $num_pseudoprimes = 0;
-foreach my $ppref (values %pseudoprimes) {
-  $num_pseudoprimes += scalar @$ppref;
-}
 my @small_lucas_trials = (2, 9, 16, 100, 102, 2047, 2048, 5781, 9000, 14381);
 
 my %lucas_sequences = (
@@ -133,7 +129,7 @@ my %lucas_sequences = (
 
 plan tests => 0 + 3
                 + 4
-                + $num_pseudoprimes
+                + scalar(keys %pseudoprimes)
                 + scalar @phis
                 + 1  # mr base 2    2-4k
                 + 9  # mr with large bases
@@ -144,7 +140,9 @@ plan tests => 0 + 3
                 + 2*$use64  # frob-underwood
                 + 1  # frob-khashin
                 + 2*$use64  # frob-khashin
-                + 1*$extra;
+                + 1*$extra
+                + 6  # Perrin restrictions
+                + 0;
 
 ok(!eval { is_strong_pseudoprime(2047); }, "MR with no base fails");
 ok(!eval { is_strong_pseudoprime(2047,0); }, "MR base 0 fails");
@@ -155,47 +153,63 @@ is( is_strong_pseudoprime(1, 2), 0, "MR with 0 shortcut composite");
 is( is_strong_pseudoprime(2, 2), 1, "MR with 2 shortcut prime");
 is( is_strong_pseudoprime(3, 2), 1, "MR with 3 shortcut prime");
 
-
-# Check that each strong pseudoprime base b makes it through MR with that base
-while (my($base, $ppref) = each (%pseudoprimes)) {
-  foreach my $p (@$ppref) {
-    # Must move to dispatch table.
-    if      ($base =~ /^psp(\d+)/) {
-      my $base = $1;
-      ok(is_pseudoprime($p, $base), "$p is a pseudoprime to base $base");
-    } elsif ($base =~ /^epsp(\d+)/) {
-      my $base = $1;
-      ok(is_euler_pseudoprime($p, $base), "$p is an Euler pseudoprime to base $base");
-    } elsif ($base =~ /^aeslucas(\d+)/) {
-      my $inc = $1;
-      ok(is_almost_extra_strong_lucas_pseudoprime($p,$inc), "$p is an almost extra strong Lucas pseudoprime (increment $inc)");
-    } elsif ($base eq 'eslucas') {
-      ok(is_extra_strong_lucas_pseudoprime($p), "$p is an extra strong Lucas pseudoprime");
-    } elsif ($base eq 'slucas') {
-      ok(is_strong_lucas_pseudoprime($p), "$p is a strong Lucas-Selfridge pseudoprime");
-    } elsif ($base eq 'lucas') {
-      ok(is_lucas_pseudoprime($p), "$p is a Lucas-Selfridge pseudoprime");
-    } elsif ($base eq 'plumb') {
-      ok(is_euler_plumb_pseudoprime($p), "$p is a Euler-Plumb pseudoprime");
-    } elsif ($base eq 'perrin') {
-      ok(is_perrin_pseudoprime($p), "$p is a Perrin pseudoprime");
-    } elsif ($base eq 'catalan') {
-      ok(is_catalan_pseudoprime($p), "$p is a Catalan pseudoprime");
-    } elsif ($base eq 'fibonacci') {
-      my $t = (($p%5)==2||($p%5)==3) ? $p+1 : $p-1;
-      my $is_fib = !(lucas_sequence($p, 1, -1, $t))[0];
-      ok($is_fib, "$p is a Fibonacci pseudoprime");
-    } elsif ($base eq 'pell') {
-      my $is_pell = !(((lucas_sequence($p,2,-1,$p))[0] - kronecker(2,$p)) % $p);
-      ok($is_pell, "$p is a Pell pseudoprime");
-    } elsif ($base eq 'frobenius') {
-      ok(is_frobenius_pseudoprime($p,1,-1), "$p is a Frobenius (1,-1) pseudoprime");
-    } elsif ($base eq 'frob35') {
-      ok(is_frobenius_pseudoprime($p,3,-5), "$p is a Frobenius (3,-5) pseudoprime");
-    } else {
-      ok(is_strong_pseudoprime($p, $base), "Pseudoprime (base $base) $p passes MR");
-    }
+# Check that for each test, small pseudoprimes pass the given test.
+for my $base (sort keys %pseudoprimes) {
+  my @c = @{$pseudoprimes{$base}};
+  my @fails;
+  my $text;
+  if      ($base =~ /^psp(\d+)/) {
+    my $pbase = $1;
+    @fails = grep { !is_pseudoprime($_,$pbase) } @c;
+    $text = "pseudoprimes base $pbase (i.e. Fermat)";
+  } elsif ($base =~ /^epsp(\d+)/) {
+    my $pbase = $1;
+    @fails = grep { !is_euler_pseudoprime($_,$pbase) } @c;
+    $text = "Euler pseudoprimes base $pbase";
+  } elsif ($base =~ /^aeslucas(\d+)/) {
+    my $inc = $1;
+    @fails = grep { !is_almost_extra_strong_lucas_pseudoprime($_,$inc) } @c;
+    $text = "almost extra strong Lucas pseudoprimes (inc $inc)";
+  } elsif ($base eq 'eslucas') {
+    @fails = grep { !is_extra_strong_lucas_pseudoprime($_) } @c;
+    $text = "extra strong Lucas pseudoprimes";
+  } elsif ($base eq 'slucas') {
+    @fails = grep { !is_strong_lucas_pseudoprime($_) } @c;
+    $text = "strong Lucas pseudoprimes";
+  } elsif ($base eq 'lucas') {
+    @fails = grep { !is_lucas_pseudoprime($_) } @c;
+    $text = "Lucas pseudoprimes";
+  } elsif ($base eq 'plumb') {
+    @fails = grep { !is_euler_plumb_pseudoprime($_) } @c;
+    $text = "Euler-Plumb pseudoprimes";
+  } elsif ($base eq 'perrin') {
+    @fails = grep { !is_perrin_pseudoprime($_) } @c;
+    $text = "Unrestricted Perrin pseudoprimes";
+  } elsif ($base eq 'catalan') {
+    @fails = grep { !is_catalan_pseudoprime($_) } @c;
+    $text = "Catalan pseudoprimes";
+  } elsif ($base eq 'frobenius') {
+    @fails = grep { !is_frobenius_pseudoprime($_,1,-1) } @c;
+    $text = "Frobenius(1,-1) pseudoprimes";
+  } elsif ($base eq 'frob35') {
+    @fails = grep { !is_frobenius_pseudoprime($_,3,-5) } @c;
+    $text = "Frobenius(3,-5) pseudoprimes";
+  } elsif ($base eq 'fibonacci') {
+    @fails = grep {
+      my $t = (($_%5)==2||($_%5)==3) ? $_+1 : $_-1;
+      my $is_fib = !(lucas_sequence($_, 1, -1, $t))[0];
+      !$is_fib;
+    } @c;
+    $text = "Fibonacci pseudoprimes";
+  } elsif ($base eq 'pell') {
+    @fails = grep { (((lucas_sequence($_,2,-1,$_))[0] - kronecker(2,$_)) % $_) } @c;
+    $text = "Pell pseudoprimes";
+  } else {
+    @fails = grep { !is_strong_pseudoprime($_,$base) } @c;
+    $text = "strong pseudoprimes base $base (i.e. Miller-Rabin)";
   }
+
+  is_deeply(\@fails, [], "Small $text");
 }
 
 # Check that phi_n makes passes MR with all prime bases < pn
@@ -302,3 +316,11 @@ while (my($params, $expect) = each (%lucas_sequences)) {
     is( is_frobenius_khashin_pseudoprime(10099386070337), 0, "Frobenius Khashin with 44-bit Lucas pseudoprime" );
   }
 }
+
+# Perrin restrictions
+is( is_perrin_pseudoprime("40814059160177",0), 1, "40814059160177 is an unrestricted Perrin pseudoprime");
+is( is_perrin_pseudoprime("40814059160177",1), 0, "40814059160177 is not a minimal restricted Perrin pseudoprime");
+is( is_perrin_pseudoprime("36407440637569",1), 1, "36407440637569 is minimal restricted Perrin pseudoprime");
+is( is_perrin_pseudoprime("36407440637569",2), 0, "36407440637569 is not an Adams/Shanks Perrin pseudoprime");
+is( is_perrin_pseudoprime("364573433665",2), 1, "364573433665 is an Adams/Shanks Perrin pseudoprime");
+is( is_perrin_pseudoprime("364573433665",3), 0, "364573433665 is not a Grantham restricted Perrin pseudoprime");
