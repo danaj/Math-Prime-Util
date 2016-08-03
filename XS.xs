@@ -1064,7 +1064,12 @@ is_prime(IN SV* svn, ...)
       case 8: _vcallsub_with_gmp("is_frobenius_pseudoprime"); break;
       case 9: _vcallsub_with_gmp("is_frobenius_underwood_pseudoprime"); break;
       case 10:_vcallsub_with_gmp("is_frobenius_khashin_pseudoprime"); break;
-      case 11:_vcallsub_with_gmp("is_perrin_pseudoprime"); break;
+      case 11: /* TODO: Remove at some point, or check MPUGMP version */
+              if ((items == 1) || (astatus == 0 && my_svuv(ST(1)) == 0))
+                _vcallsub_with_gmp("is_perrin_pseudoprime");
+              else
+                _vcallsub_with_pp("is_perrin_pseudoprime");
+              break;
       case 12:_vcallsub_with_gmp("is_catalan_pseudoprime"); break;
       case 13:_vcallsub_with_gmp("is_almost_extra_strong_lucas_pseudoprime"); break;
       case 14:_vcallsub_with_gmp("is_euler_plumb_pseudoprime"); break;
