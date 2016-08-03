@@ -3186,28 +3186,45 @@ int to_digit_string(char* s, UV n, int base, int length)
 /* Oddball primality test.
  * In this file rather than primality.c because it uses factoring (!).
  * Algorithm from Charles R Greathouse IV, 2015 */
-static UV _catalan_v(UV n, UV p) {
-  UV s = 0;
-  n <<= 1;
+static INLINE uint32_t _catalan_v32(uint32_t n, uint32_t p) {
+  uint32_t s = 0;
   while (n /= p)  s += n % 2;
   return s;
 }
+static INLINE uint32_t _catalan_v(UV n, UV p) {
+  uint32_t s = 0;
+  while (n /= p)  s += n % 2;
+  return s;
+}
+static UV _catalan_mult(UV m, UV p, UV n, UV a) {
+  if (p > a) {
+    m = mulmod(m, p, n);
+  } else {
+    UV pow = (n < 4294967296U) ? _catalan_v32(a<<1,p) : _catalan_v(a<<1,p);
+    m = (pow == 0) ? m
+      : (pow == 1) ? mulmod(m,p,n)
+                   : mulmod(m,powmod(p,pow,n),n);
+  }
+  return m;
+}
 static int _catalan_vtest(UV n, UV p) {
-  n <<= 1;
   while (n /= p)
     if (n % 2)
       return 1;
   return 0;
 }
 int is_catalan_pseudoprime(UV n) {
-  UV m = 1, a = n >> 1;
+  UV m, a;
+  int i;
 
   if (n < 2 || ((n % 2) == 0 && n != 2)) return 0;
   if (is_prob_prime(n)) return 1;
 
+  m = 1;
+  a = n >> 1;
   {
     UV factors[MPU_MAX_FACTORS+1];
-    int i, nfactors = factor_exp(n, factors, 0);
+    int nfactors = factor_exp(n, factors, 0);
     /* Aebi and Cairns 2008, page 9 */
 #if BITS_PER_WORD == 32
     if (nfactors == 2)
@@ -3216,22 +3233,21 @@ int is_catalan_pseudoprime(UV n) {
 #endif
       return 0;
     for (i = 0; i < nfactors; i++) {
-      if (_catalan_vtest(a, factors[i]))
+      if (_catalan_vtest(a << 1, factors[i]))
         return 0;
     }
   }
   {
-    UV i, seg_base, seg_low, seg_high;
+    UV seg_base, seg_low, seg_high;
     unsigned char* segment;
     void* ctx;
-    for (i = 0; i <= 2; i++) {
-      UV p = 2 + i + (i>1);
-      m = mulmod(m, (p <= a) ? powmod(p, _catalan_v(a,p), n) : p, n);
-    }
+    m = _catalan_mult(m, 2, n, a);
+    m = _catalan_mult(m, 3, n, a);
+    m = _catalan_mult(m, 5, n, a);
     ctx = start_segment_primes(7, n, &segment);
     while (next_segment_primes(ctx, &seg_base, &seg_low, &seg_high)) {
       START_DO_FOR_EACH_SIEVE_PRIME( segment, seg_base, seg_low, seg_high ) {
-        m = mulmod(m, (p <= a) ? powmod(p, _catalan_v(a,p), n) : p, n);
+        m = _catalan_mult(m, p, n, a);
       } END_DO_FOR_EACH_SIEVE_PRIME
     }
     end_segment_primes(ctx);
