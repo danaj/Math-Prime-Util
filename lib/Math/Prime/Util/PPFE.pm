@@ -300,6 +300,7 @@ sub is_quasi_carmichael {
 sub is_primitive_root {
   my($a,$n) = @_;
   $n = -$n if defined $n && $n < 0;
+  $a %= $n if defined $a && $a < 0;
   _validate_positive_integer($a);
   _validate_positive_integer($n);
   return Math::Prime::Util::PP::is_primitive_root($a,$n);
@@ -386,7 +387,7 @@ sub znlog {
 
 sub znprimroot {
   my($n) = @_;
-  $n = -$n if defined $n && $n =~ /^-\d+/;   # TODO: fix this for string bigints
+  $n =~ s/^-(\d+)/$1/ if defined $n;
   _validate_positive_integer($n);
   return Math::Prime::Util::PP::znprimroot($n);
 }

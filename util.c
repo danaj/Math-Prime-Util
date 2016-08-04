@@ -2309,6 +2309,7 @@ int is_primitive_root(UV a, UV n, int nprime) {
   UV s, fac[MPU_MAX_FACTORS+1];
   int i, nfacs;
   if (n <= 1) return n;
+  a %= n;
   if (gcd_ui(a,n) != 1) return 0;
   s = nprime ? n-1 : totient(n);
   if ((s % 2) == 0 && powmod(a, s/2, n) == 1) return 0;

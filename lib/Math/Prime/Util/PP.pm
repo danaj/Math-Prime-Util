@@ -806,9 +806,8 @@ sub jordan_totient {
   return euler_phi($n)      if $k == 1;
   return ($n == 1) ? 1 : 0  if $n <= 1;
 
-  if ($Math::Prime::Util::_GMPfunc{"jordan_totient"}) {
-    return Math::Prime::Util::_reftyped($_[0], Math::Prime::Util::GMP::jordan_totient($k, $n));
-  }
+  return Math::Prime::Util::_reftyped($_[0], Math::Prime::Util::GMP::jordan_totient($k, $n))
+    if $Math::Prime::Util::_GMPfunc{"jordan_totient"};
 
 
   my @pe = Math::Prime::Util::factor_exp($n);
@@ -828,9 +827,8 @@ sub euler_phi {
   return euler_phi_range(@_) if scalar @_ > 1;
   my($n) = @_;
 
-  if ($Math::Prime::Util::_GMPfunc{"totient"}) {
-    return Math::Prime::Util::_reftyped($_[0], Math::Prime::Util::GMP::totient($n));
-  }
+  return Math::Prime::Util::_reftyped($_[0],Math::Prime::Util::GMP::totient($n))
+    if $Math::Prime::Util::_GMPfunc{"totient"};
 
   _validate_positive_integer($n);
   return 0 if $n < 0;
@@ -2399,7 +2397,7 @@ sub sqrtmod {
 sub addmod {
   my($a, $b, $n) = @_;
   return 0 if $n <= 1;
-  return _addmod($a,$b,$n) if $n < INTMAX && $a>0 && $a<INTMAX && $b>0 && $b<INTMAX;
+  return _addmod($a,$b,$n) if $n < INTMAX && $a>=0 && $a<INTMAX && $b>=0 && $b<INTMAX;
   my $ret = Math::BigInt->new("$a")->badd("$b")->bmod("$n");
   $ret = _bigint_to_int($ret) if $ret->bacmp(BMAX) <= 0;
   $ret;
@@ -3182,8 +3180,9 @@ sub _is_perfect_square {
 
 sub is_primitive_root {
   my($a, $n) = @_;
-  $n = -$n if $n < 0;   # ignore sign
-  return $n if $n <= 1;
+  $n = -$n if $n < 0;  # Ignore sign of n
+  return ($n==1) ? 1 : 0 if $n <= 1;
+  $a %= $n if $a < 0 || $a >= $n;
 
   return Math::Prime::Util::GMP::is_primitive_root($a,$n)
     if $Math::Prime::Util::_GMPfunc{"is_primitive_root"};
