@@ -130,11 +130,13 @@ BEGIN {
   $_Config{'gmp'} = 0;
   # See if they have the GMP module and haven't requested it not to be used.
   if (!defined $ENV{MPU_NO_GMP} || $ENV{MPU_NO_GMP} != 1) {
-    $_Config{'gmp'} = 1 if eval { require Math::Prime::Util::GMP;
-                                  Math::Prime::Util::GMP->import();
-                                  1; };
-    for my $e (keys %Math::Prime::Util::GMP::) {
-      $Math::Prime::Util::_GMPfunc{"$e"} = 1 if defined &{$e};
+    if (eval { require Math::Prime::Util::GMP;
+               Math::Prime::Util::GMP->import();
+               1; }) {
+      $_Config{'gmp'} = int(100*$Math::Prime::Util::GMP::VERSION);
+    }
+    for my $e (@Math::Prime::Util::GMP::EXPORT_OK) {
+      $Math::Prime::Util::_GMPfunc{"$e"} = $_Config{'gmp'};
     }
   }
 }
@@ -185,7 +187,7 @@ sub prime_set_config {
       $_Config{'xs'} = ($value) ? 1 : 0;
       $_XS_MAXVAL = $_Config{'xs'}  ?  MPU_MAXPARAM  :  -1;
     } elsif ($param eq 'gmp') {
-      $_HAVE_GMP = ($value) ? 1 : 0;
+      $_HAVE_GMP = ($value) ? int(100*$Math::Prime::Util::GMP::VERSION) : 0;
       $_Config{'gmp'} = $_HAVE_GMP;
       $Math::Prime::Util::_GMPfunc{$_} = $_HAVE_GMP
         for keys %Math::Prime::Util::_GMPfunc;

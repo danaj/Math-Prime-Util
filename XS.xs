@@ -182,13 +182,13 @@ static int _validate_int(pTHX_ SV* n, int negok)
 #define VCALL_PP 0x1
 #define VCALL_GMP 0x2
 /* Call a Perl sub to handle work for us. */
-static int _vcallsubn(pTHX_ I32 flags, I32 stashflags, const char* name, int nargs)
+static int _vcallsubn(pTHX_ I32 flags, I32 stashflags, const char* name, int nargs, int version)
 {
     GV* gv = NULL;
     dMY_CXT;
     Size_t namelen = strlen(name);
     /* If given a GMP function, and GMP enabled, and function exists, use it. */
-    int use_gmp = stashflags & VCALL_GMP && _XS_get_callgmp();
+    int use_gmp = stashflags & VCALL_GMP && _XS_get_callgmp() && _XS_get_callgmp() >= version;
     assert(!(stashflags & ~(VCALL_PP|VCALL_GMP)));
     if (use_gmp && hv_exists(MY_CXT.MPUGMP,name,namelen)) {
       GV ** gvp = (GV**)hv_fetch(MY_CXT.MPUGMP,name,namelen,0);
@@ -206,9 +206,9 @@ static int _vcallsubn(pTHX_ I32 flags, I32 stashflags, const char* name, int nar
     /* no PUTBACK bc we didn't move global SP */
     return call_sv((SV*)gv, flags);
 }
-#define _vcallsub(func) (void)_vcallsubn(aTHX_ G_SCALAR, VCALL_ROOT, func, items)
-#define _vcallsub_with_gmp(func) (void)_vcallsubn(aTHX_ G_SCALAR, VCALL_GMP|VCALL_PP, func, items)
-#define _vcallsub_with_pp(func) (void)_vcallsubn(aTHX_ G_SCALAR, VCALL_PP, func, items)
+#define _vcallsub(func) (void)_vcallsubn(aTHX_ G_SCALAR, VCALL_ROOT, func, items,0)
+#define _vcallsub_with_gmp(ver,func) (void)_vcallsubn(aTHX_ G_SCALAR, VCALL_GMP|VCALL_PP, func, items,(int)(100*(ver)))
+#define _vcallsub_with_pp(func) (void)_vcallsubn(aTHX_ G_SCALAR, VCALL_PP, func, items,0)
 
 /* In my testing, this constant return works fine with threads, but to be
  * correct (see perlxs) one has to make a context, store separate copies in
@@ -232,11 +232,11 @@ static int _vcallsubn(pTHX_ I32 flags, I32 stashflags, const char* name, int nar
     const char *iname = (input && sv_isobject(input)) \
                       ? HvNAME_get(SvSTASH(SvRV(input))) : 0; \
     if (iname == 0 || strEQ(iname, "Math::BigInt")) { \
-      (void)_vcallsubn(aTHX_ G_SCALAR, VCALL_ROOT, "_to_bigint", 1); \
+      (void)_vcallsubn(aTHX_ G_SCALAR, VCALL_ROOT, "_to_bigint", 1, 0); \
     } else if (iname == 0 || strEQ(iname, "Math::GMPz")) { \
-      (void)_vcallsubn(aTHX_ G_SCALAR, VCALL_ROOT, "_to_gmpz", 1); \
+      (void)_vcallsubn(aTHX_ G_SCALAR, VCALL_ROOT, "_to_gmpz", 1, 0); \
     } else if (iname == 0 || strEQ(iname, "Math::GMP")) { \
-      (void)_vcallsubn(aTHX_ G_SCALAR, VCALL_ROOT, "_to_gmp", 1); \
+      (void)_vcallsubn(aTHX_ G_SCALAR, VCALL_ROOT, "_to_gmp", 1, 0); \
     } else { /* Return it as: ref(input)->new(result) */ \
       dSP;  ENTER;  PUSHMARK(SP); \
       XPUSHs(sv_2mortal(newSVpv(iname, 0)));  XPUSHs(resptr); \
@@ -428,7 +428,7 @@ prime_count(IN SV* svlo, ...)
     }
     switch (ix) {
       case 0:
-      case 1: _vcallsubn(aTHX_ GIMME_V, VCALL_ROOT, "_generic_prime_count", items); break;
+      case 1: _vcallsubn(aTHX_ GIMME_V, VCALL_ROOT, "_generic_prime_count", items, 0); break;
       case 2:_vcallsub_with_pp("twin_prime_count");  break;
       case 3:_vcallsub_with_pp("ramanujan_prime_count");  break;
       case 4:_vcallsub_with_pp("sum_primes");  break;
@@ -545,7 +545,7 @@ sieve_range(IN SV* svn, IN UV width, IN UV depth)
       }
     }
     if (status != 1) {
-      _vcallsubn(aTHX_ GIMME_V, VCALL_GMP|VCALL_PP, "sieve_range", items);
+      _vcallsubn(aTHX_ GIMME_V, VCALL_GMP|VCALL_PP, "sieve_range", items, 36);
       return;
     }
 
@@ -583,7 +583,7 @@ sieve_prime_cluster(IN SV* svlo, IN SV* svhi, ...)
       }
     }
     if (!done) {
-      _vcallsubn(aTHX_ GIMME_V, VCALL_GMP|VCALL_PP, "sieve_prime_cluster", items);
+      _vcallsubn(aTHX_ GIMME_V, VCALL_GMP|VCALL_PP, "sieve_prime_cluster", items, 34);
       return;
     }
 
@@ -606,7 +606,7 @@ trial_factor(IN UV n, ...)
   PPCODE:
     if (n == 0)  XSRETURN_UV(0);
     if (ix == 8) {  /* We don't have an ecm_factor, call PP. */
-      _vcallsubn(aTHX_ GIMME_V, VCALL_PP, "ecm_factor", 1);
+      _vcallsubn(aTHX_ GIMME_V, VCALL_PP, "ecm_factor", 1, 0);
       return;
     }
     /* Must read arguments before pushing anything */
@@ -677,10 +677,10 @@ is_strong_pseudoprime(IN SV* svn, ...)
       RETURN_NPARITY(ret);
     }
     switch (ix) {
-      case 0: _vcallsub_with_gmp("is_strong_pseudoprime"); break;
-      case 1: _vcallsub_with_gmp("is_pseudoprime"); break;
+      case 0: _vcallsub_with_gmp(0.00,"is_strong_pseudoprime"); break;
+      case 1: _vcallsub_with_gmp(0.20,"is_pseudoprime"); break;
       case 2:
-      default:_vcallsub_with_gmp("is_euler_pseudoprime");  break;
+      default:_vcallsub_with_gmp(0.00,"is_euler_pseudoprime");  break;
     }
     return; /* skip implicit PUTBACK */
 
@@ -810,10 +810,10 @@ gcd(...)
       XSRETURN(1);
     }
     switch (ix) {
-      case 0: _vcallsub_with_gmp("gcd");   break;
-      case 1: _vcallsub_with_gmp("lcm");   break;
-      case 2: _vcallsub_with_gmp("vecmin"); break;
-      case 3: _vcallsub_with_gmp("vecmax"); break;
+      case 0: _vcallsub_with_gmp(0.17,"gcd");   break;
+      case 1: _vcallsub_with_gmp(0.17,"lcm");   break;
+      case 2: _vcallsub_with_gmp(0.00,"vecmin"); break;
+      case 3: _vcallsub_with_gmp(0.00,"vecmax"); break;
       case 4: _vcallsub_with_pp("vecsum");  break;
       case 5:
       default:_vcallsub_with_pp("vecprod");  break;
@@ -850,7 +850,7 @@ vecextract(IN SV* x, IN SV* svm)
         mask >>= 1;
       }
     } else {
-      _vcallsubn(aTHX_ GIMME_V, VCALL_PP, "vecextract", items);
+      _vcallsubn(aTHX_ GIMME_V, VCALL_PP, "vecextract", items, 0);
       return;
     }
 
@@ -908,7 +908,7 @@ lucas_sequence(...)
         int ok = (ix == 1) ? lucasu(&ret, P, Q, k) : lucasv(&ret, P, Q, k);
         if (ok) XSRETURN_IV(ret);
       }
-      _vcallsub_with_gmp( (ix==1) ? "lucasu" : "lucasv" );
+      _vcallsub_with_gmp(0.29,(ix==1) ? "lucasu" : "lucasv");
       OBJECTIFY_RESULT(ST(2), ST(0));
       return;
     }
@@ -921,7 +921,7 @@ lucas_sequence(...)
       PUSHs(sv_2mortal(newSVuv( V )));
       PUSHs(sv_2mortal(newSVuv( Qk )));
     } else {
-      _vcallsubn(aTHX_ GIMME_V, VCALL_PP, "lucas_sequence", items);
+      _vcallsubn(aTHX_ GIMME_V, VCALL_PP, "lucas_sequence", items, 0);
       return;
     }
 
@@ -1053,47 +1053,39 @@ is_prime(IN SV* svn, ...)
       }
     }
     switch (ix) {
-      case 0: _vcallsub_with_gmp("is_prime");       break;
-      case 1: _vcallsub_with_gmp("is_prob_prime");  break;
-      case 2: _vcallsub_with_gmp("is_provable_prime");  break;
-      case 3: _vcallsub_with_gmp("is_bpsw_prime");  break;
-      case 4: _vcallsub_with_gmp("is_aks_prime"); break;
-      case 5: _vcallsub_with_gmp("is_lucas_pseudoprime"); break;
-      case 6: _vcallsub_with_gmp("is_strong_lucas_pseudoprime"); break;
-      case 7: _vcallsub_with_gmp("is_extra_strong_lucas_pseudoprime"); break;
-      case 8: _vcallsub_with_gmp("is_frobenius_pseudoprime"); break;
-      case 9: _vcallsub_with_gmp("is_frobenius_underwood_pseudoprime"); break;
-      case 10:_vcallsub_with_gmp("is_frobenius_khashin_pseudoprime"); break;
-      case 11: /* TODO: Remove at some point, or check MPUGMP version */
-              if ((items == 1) || (astatus == 0 && my_svuv(ST(1)) == 0))
-                _vcallsub_with_gmp("is_perrin_pseudoprime");
-              else
-                _vcallsub_with_pp("is_perrin_pseudoprime");
-              break;
-      case 12:_vcallsub_with_gmp("is_catalan_pseudoprime"); break;
-      case 13:_vcallsub_with_gmp("is_almost_extra_strong_lucas_pseudoprime"); break;
-      case 14:_vcallsub_with_gmp("is_euler_plumb_pseudoprime"); break;
-      case 15:_vcallsub_with_gmp("is_ramanujan_prime"); break;
-      case 16:_vcallsub_with_gmp("is_square_free"); break;
-      case 17:_vcallsub_with_gmp("is_carmichael"); break;
-      case 18:_vcallsub_with_gmp("is_quasi_carmichael"); break;
-      case 19:_vcallsub_with_gmp("is_primitive_root"); break;
-      case 20:_vcallsub_with_gmp("is_mersenne_prime"); break;
-      case 21:if (items != 3 && status != -1) {
-                STRLEN len;
-                char* ptr = SvPV(svn, len);
-                if (len > 0 && ptr[0] != '-') {
-                  /* items != 3 and not negative */
-                  _vcallsub_with_gmp("is_power");
-                  return;
-                }
+      case 0: _vcallsub_with_gmp(0.01,"is_prime");       break;
+      case 1: _vcallsub_with_gmp(0.01,"is_prob_prime");  break;
+      case 2: _vcallsub_with_gmp(0.04,"is_provable_prime");  break;
+      case 3: _vcallsub_with_gmp(0.17,"is_bpsw_prime");  break;
+      case 4: _vcallsub_with_gmp(0.16,"is_aks_prime"); break;
+      case 5: _vcallsub_with_gmp(0.01,"is_lucas_pseudoprime"); break;
+      case 6: _vcallsub_with_gmp(0.01,"is_strong_lucas_pseudoprime"); break;
+      case 7: _vcallsub_with_gmp(0.01,"is_extra_strong_lucas_pseudoprime"); break;
+      case 8: _vcallsub_with_gmp(0.24,"is_frobenius_pseudoprime"); break;
+      case 9: _vcallsub_with_gmp(0.13,"is_frobenius_underwood_pseudoprime"); break;
+      case 10:_vcallsub_with_gmp(0.30,"is_frobenius_khashin_pseudoprime"); break;
+      case 11:_vcallsub_with_gmp(
+                (items==1 || (astatus==0 && my_svuv(ST(1)) == 0)) ? 0.20 : 0.40,
+                "is_perrin_pseudoprime"); break;
+      case 12:_vcallsub_with_gmp(0.00,"is_catalan_pseudoprime"); break;
+      case 13:_vcallsub_with_gmp(0.13,"is_almost_extra_strong_lucas_pseudoprime"); break;
+      case 14:_vcallsub_with_gmp(0.39,"is_euler_plumb_pseudoprime"); break;
+      case 15:_vcallsub_with_gmp(0.00,"is_ramanujan_prime"); break;
+      case 16:_vcallsub_with_gmp(0.00,"is_square_free"); break;
+      case 17:_vcallsub_with_gmp(0.00,"is_carmichael"); break;
+      case 18:_vcallsub_with_gmp(0.00,"is_quasi_carmichael"); break;
+      case 19:_vcallsub_with_gmp(0.36,"is_primitive_root"); break;
+      case 20:_vcallsub_with_gmp(0.28,"is_mersenne_prime"); break;
+      case 21:if (items != 3) {
+                _vcallsub_with_gmp((status == -1) ? 0.28 : 0.19, "is_power");
+              } else {
+                _vcallsub_with_pp("is_power");
               }
-              _vcallsub_with_pp("is_power");
               break;
-      case 22:(void)_vcallsubn(aTHX_ G_SCALAR, (items == 1) ? (VCALL_GMP|VCALL_PP) : (VCALL_PP), "is_prime_power", items); break;
-      case 23:_vcallsub_with_gmp("logint"); break;
+      case 22:(void)_vcallsubn(aTHX_ G_SCALAR, (items == 1) ? (VCALL_GMP|VCALL_PP) : (VCALL_PP), "is_prime_power", items, 40); break;
+      case 23:_vcallsub_with_gmp(0.00,"logint"); break;
       case 24:
-      default:(void)_vcallsubn(aTHX_ G_SCALAR, (items == 2) ? (VCALL_GMP|VCALL_PP) : (VCALL_PP), "rootint", items); break;
+      default:(void)_vcallsubn(aTHX_ G_SCALAR, (items == 2) ? (VCALL_GMP|VCALL_PP) : (VCALL_PP), "rootint", items, 40); break;
     }
     return; /* skip implicit PUTBACK */
 
@@ -1146,7 +1138,7 @@ next_prime(IN SV* svn)
       }
     }
     if ((ix == 0 || ix == 1) && _XS_get_callgmp() && PERL_REVISION >= 5 && PERL_VERSION > 8) {
-      _vcallsub_with_gmp( ix ? "prev_prime" : "next_prime");
+      _vcallsub_with_gmp(0.01, ix ? "prev_prime" : "next_prime");
       OBJECTIFY_RESULT(svn, ST(0));
       return;
     }
@@ -1300,9 +1292,9 @@ factor(IN SV* svn)
       }
     } else {
       switch (ix) {
-        case 0:  _vcallsubn(aTHX_ gimme_v, VCALL_ROOT, "_generic_factor", 1);     break;
-        case 1:  _vcallsubn(aTHX_ gimme_v, VCALL_ROOT, "_generic_factor_exp", 1); break;
-        default: _vcallsubn(aTHX_ gimme_v, VCALL_GMP|VCALL_PP, "divisors", 1);   break;
+        case 0:  _vcallsubn(aTHX_ gimme_v, VCALL_ROOT, "_generic_factor", 1, 0);     break;
+        case 1:  _vcallsubn(aTHX_ gimme_v, VCALL_ROOT, "_generic_factor_exp", 1, 0); break;
+        default: _vcallsubn(aTHX_ gimme_v, VCALL_GMP|VCALL_PP, "divisors", 1, 0);   break;
       }
       return; /* skip implicit PUTBACK */
     }
@@ -1325,7 +1317,7 @@ divisor_sum(IN SV* svn, ...)
       UV sigma = divisor_sum(n, k);
       if (sigma != 0)  XSRETURN_UV(sigma);   /* sigma 0 means overflow */
     }
-    _vcallsub_with_gmp("divisor_sum");
+    _vcallsub_with_gmp(0.00,"divisor_sum");
     return; /* skip implicit PUTBACK */
 
 void
@@ -1445,12 +1437,12 @@ znlog(IN SV* sva, IN SV* svg, IN SV* svp)
       XSRETURN_UV(ret);
     }
     switch (ix) {
-      case 0: _vcallsub_with_gmp("znlog"); break;
-      case 1: _vcallsub_with_gmp("addmod"); break;
-      case 2: _vcallsub_with_gmp("mulmod"); break;
-      case 3: _vcallsub_with_gmp("divmod"); break;
+      case 0: _vcallsub_with_gmp(0.00,"znlog"); break;
+      case 1: _vcallsub_with_gmp(0.36,"addmod"); break;
+      case 2: _vcallsub_with_gmp(0.36,"mulmod"); break;
+      case 3: _vcallsub_with_gmp(0.36,"divmod"); break;
       case 4:
-      default:_vcallsub_with_gmp("powmod"); break;
+      default:_vcallsub_with_gmp(0.36,"powmod"); break;
     }
     OBJECTIFY_RESULT(svp, ST(items-1));
     return; /* skip implicit PUTBACK */
@@ -1510,11 +1502,11 @@ kronecker(IN SV* sva, IN SV* svb)
       }
     }
     switch (ix) {
-      case 0:  _vcallsub_with_gmp("kronecker");  break;
-      case 1:  _vcallsub_with_gmp("valuation"); break;
-      case 2:  _vcallsub_with_gmp("invmod"); break;
+      case 0:  _vcallsub_with_gmp(0.17,"kronecker");  break;
+      case 1:  _vcallsub_with_gmp(0.20,"valuation"); break;
+      case 2:  _vcallsub_with_gmp(0.20,"invmod"); break;
       case 3:
-      default: _vcallsub_with_gmp("sqrtmod"); break;
+      default: _vcallsub_with_gmp(0.36,"sqrtmod"); break;
     }
     return; /* skip implicit PUTBACK */
 
@@ -1539,7 +1531,7 @@ gcdext(IN SV* sva, IN SV* svb)
       XPUSHs(sv_2mortal(newSViv( v )));
       XPUSHs(sv_2mortal(newSViv( d )));
     } else {
-      _vcallsubn(aTHX_ GIMME_V, VCALL_PP, "gcdext", items);
+      _vcallsubn(aTHX_ GIMME_V, VCALL_PP, "gcdext", items, 0);
       return; /* skip implicit PUTBACK */
     }
 
@@ -1633,9 +1625,9 @@ euler_phi(IN SV* svlo, ...)
       /* Whatever we didn't handle above */
       U32 gimme_v = GIMME_V;
       switch (ix) {
-        case 0:  _vcallsubn(aTHX_ gimme_v, VCALL_PP, "euler_phi", items);break;
+        case 0:  _vcallsubn(aTHX_ gimme_v, VCALL_PP, "euler_phi", items, 0.22);break;
         case 1:
-        default: _vcallsubn(aTHX_ gimme_v, VCALL_GMP|VCALL_PP, "moebius", items);  break;
+        default: _vcallsubn(aTHX_ gimme_v, VCALL_GMP|VCALL_PP, "moebius", items, 22);  break;
       }
       return;
     }
@@ -1690,15 +1682,15 @@ carmichael_lambda(IN SV* svn)
       }
     }
     switch (ix) {
-      case 0:  _vcallsub_with_gmp("carmichael_lambda"); break;
+      case 0:  _vcallsub_with_gmp(0.22,"carmichael_lambda"); break;
       case 1:  _vcallsub_with_pp("mertens"); break;
-      case 2:  _vcallsub_with_gmp("liouville"); break;
+      case 2:  _vcallsub_with_gmp(0.22,"liouville"); break;
       case 3:  _vcallsub_with_pp("chebyshev_theta"); break;
       case 4:  _vcallsub_with_pp("chebyshev_psi"); break;
       case 5:  _vcallsub_with_pp("factorial"); break;
       case 6:  _vcallsub_with_pp("sqrtint"); break;
-      case 7:  _vcallsub_with_gmp("exp_mangoldt"); break;
-      case 8:  _vcallsub_with_gmp("znprimroot"); break;
+      case 7:  _vcallsub_with_gmp(0.19,"exp_mangoldt"); break;
+      case 8:  _vcallsub_with_gmp(0.22,"znprimroot"); break;
       case 9:  { char* ptr;  STRLEN len;  ptr = SvPV(svn, len);
                  XSRETURN_UV(mpu_popcount_string(ptr, len)); } break;
       case 10:  _vcallsub_with_pp("hclassno"); break;
@@ -1818,10 +1810,10 @@ void todigits(SV* svn, int base=10, int length=-1)
       }
     }
     switch (ix) {
-      case 0:  _vcallsubn(aTHX_ GIMME_V, VCALL_GMP|VCALL_PP, "todigits", items); break;
-      case 1:  _vcallsub_with_gmp("todigitstring"); break;
+      case 0:  _vcallsubn(aTHX_ GIMME_V, VCALL_GMP|VCALL_PP, "todigits", items, 0); break;
+      case 1:  _vcallsub_with_gmp(0.00,"todigitstring"); break;
       case 2:
-      default: _vcallsub_with_gmp("fromdigits"); break;
+      default: _vcallsub_with_gmp(0.00,"fromdigits"); break;
     }
     return;
 
@@ -1880,7 +1872,7 @@ forprimes (SV* block, IN SV* svbeg, IN SV* svend = 0)
       croak("Not a subroutine reference");
 
     if (!_validate_int(aTHX_ svbeg, 0) || (items >= 3 && !_validate_int(aTHX_ svend,0))) {
-      _vcallsubn(aTHX_ G_VOID|G_DISCARD, VCALL_ROOT, "_generic_forprimes", items);
+      _vcallsubn(aTHX_ G_VOID|G_DISCARD, VCALL_ROOT, "_generic_forprimes", items, 0);
       return;
     }
 
@@ -1970,7 +1962,7 @@ forcomposites (SV* block, IN SV* svbeg, IN SV* svend = 0)
       croak("Not a subroutine reference");
 
     if (!_validate_int(aTHX_ svbeg, 0) || (items >= 3 && !_validate_int(aTHX_ svend,0))) {
-      _vcallsubn(aTHX_ G_VOID|G_DISCARD, VCALL_ROOT, (ix == 0) ? "_generic_forcomposites" : "_generic_foroddcomposites", items);
+      _vcallsubn(aTHX_ G_VOID|G_DISCARD, VCALL_ROOT, (ix == 0) ? "_generic_forcomposites" : "_generic_foroddcomposites", items, 0);
       return;
     }
 
@@ -2074,7 +2066,7 @@ fordivisors (SV* block, IN SV* svn)
       croak("Not a subroutine reference");
 
     if (!_validate_int(aTHX_ svn, 0)) {
-      _vcallsubn(aTHX_ G_VOID|G_DISCARD, VCALL_ROOT, "_generic_fordivisors", 2);
+      _vcallsubn(aTHX_ G_VOID|G_DISCARD, VCALL_ROOT, "_generic_fordivisors", 2, 0);
       return;
     }
 

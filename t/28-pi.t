@@ -17,7 +17,7 @@ if ($extra) {
   $ninitial = 1000;
 }
 
-plan tests => 3 + $roundt*11 + 1;
+plan tests => 3 + ($roundt ? 11 : 0) + 1;
 
 is(Pi(0), 0+$Pi, "Pi(0) gives floating point pi");
 is(Pi(1), 3, "Pi(1) = 3");

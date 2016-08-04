@@ -22,7 +22,11 @@ Revision history for Perl module Math::Prime::Util
 
     - foroddcomposites with some odd start values could index incorrectly.
 
+    - is_primitive_root(1,0) returns 0 instead of fp exception.
+
     - mertens() uses a little less memory.
+
+    - 2x speedup for znlog with bigint values.
 
     - is_pseudoprime() and is_euler_pseudoprime() use Montgomery math so are
       much faster.  They seem to be ~5% faster than Miller-Rabin now.
@@ -44,12 +48,17 @@ Revision history for Perl module Math::Prime::Util
 
     - Integer root code rewritten and now exported.
 
-    - is_primitive_root(1,0) returns 0 instead of fp exception.
+    - We've been hacking around the problem of older Perls autovivifying
+      functions at compile time.  This makes functions that don't exist
+      return true when asked if they're defined, which causes us distress.
 
-    - Redo the way GMP functions are found to avoid function auto-vivication
-      issues.  We store the available functions before loading the PP code.
+      Store the available GMP functions before loading the PP code.
 
-    - 2x speedup for znlog with bigint values.
+      XS code knows MPU::GMP version and calls as appropriate.  This works
+      around the auto-vivication, and lets us choose to call the GMP
+      function based on version instead of just existence.
+      E.g. GMP's is_power was added in 0.19, but didn't support negative
+      powers until 0.28.
 
 
 0.58 2016-05-21
