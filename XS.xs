@@ -116,6 +116,20 @@ typedef struct {
 
 START_MY_CXT
 
+static int _is_sv_bigint(pTHX_ SV* n)
+{
+  if (sv_isobject(n)) {
+    const char *hvname = HvNAME_get(SvSTASH(SvRV(n)));
+    if (hvname != 0) {
+      if (strEQ(hvname, "Math::BigInt") || strEQ(hvname, "Math::BigFloat") ||
+          strEQ(hvname, "Math::GMPz")   || strEQ(hvname, "Math::GMP") ||
+          strEQ(hvname, "Math::Pari") )
+        return 1;
+    }
+  }
+  return 0;
+}
+
 /* Is this a pedantically valid integer?
  * Croaks if undefined or invalid.
  * Returns 0 if it is an object or a string too large for a UV.
@@ -135,15 +149,8 @@ static int _validate_int(pTHX_ SV* n, int negok)
     else croak("Parameter '%" SVf "' must be a positive integer", n);
   }
   if (sv_isobject(n)) {
-    const char *hvname = HvNAME_get(SvSTASH(SvRV(n)));
-    if (hvname == 0)
-      return 0;
-    if (strEQ(hvname, "Math::BigInt") || strEQ(hvname, "Math::BigFloat") ||
-        strEQ(hvname, "Math::GMPz")   || strEQ(hvname, "Math::GMP") ||
-        strEQ(hvname, "Math::Pari") )
-      isbignum = 1;
-    else
-      return 0;
+    isbignum = _is_sv_bigint(aTHX_ n);
+    if (!isbignum) return 0;
   }
   /* Without being very careful, don't process magic variables here */
   if (SvGAMAGIC(n) && !isbignum) return 0;
@@ -466,6 +473,7 @@ sieve_primes(IN UV low, IN UV high)
     segment_primes = 3
     segment_twin_primes = 4
     _ramanujan_primes = 5
+    n_ramanujan_primes = 6
   PREINIT:
     AV* av;
   PPCODE:
@@ -516,6 +524,13 @@ sieve_primes(IN UV low, IN UV high)
         if (L && end >= beg)
           for (i = beg; i <= end; i++)
             av_push(av,newSVuv(L[i]));
+        Safefree(L);
+      } else if (ix == 6) {                   /* Ramanujan primes */
+        UV i, *L;
+        L = n_range_ramanujan_primes(low, high);
+        if (L && high >= low)
+          for (i = low; i <= high; i++)
+            av_push(av,newSVuv(L[i-low]));
         Safefree(L);
       }
     }
@@ -1794,7 +1809,7 @@ void todigits(SV* svn, int base=10, int length=-1)
         if (from_digit_string(&n, SvPV_nolen(svn), base)) {
           XSRETURN_UV(n);
         }
-      } else {            /* array ref of digits */
+      } else if (!_is_sv_bigint(aTHX_ svn)) {     /* array ref of digits */
         UV* r = 0;
         int len = arrayref_to_int_array(aTHX_ &r, (AV*) SvRV(svn), base);
         if (from_digit_to_UV(&n, r, len, base)) {

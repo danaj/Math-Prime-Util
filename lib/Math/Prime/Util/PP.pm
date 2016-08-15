@@ -1977,6 +1977,26 @@ sub sum_primes {
   $sum = BZERO->copy if ( (MPU_32BIT && $high >        323_380) ||
                           (MPU_64BIT && $high > 29_505_444_490) );
 
+  if (0 && $low <= 2) {
+    my $n = $high;
+    my $r = sqrtint($n);
+    my @V = map { int($n/$_) } 1 .. $r+1;
+    my $l = $V[-1];
+    push @V, map{ $l-$_ } 1 .. $l;
+    my %S = map { $_ => ($_*($_+1)>>1) - 1 } @V;
+    for my $p (2 .. $r) {
+      if ($S{$p} > $S{$p-1}) {
+        my $sp = $S{$p-1};
+        my $p2 = $p*$p;
+        for my $v (@V) {
+          last if $v < $p2;
+          $S{$v} -= $p * ($S{int($v/$p)} - $sp);
+        }
+      }
+    }
+    return $S{$n};
+  }
+
   # It's very possible we're here because they've counted too high.  Skip fwd.
   if ($low <= 2 && $high >= 29505444491) {
     $low = 29505444503;
@@ -2601,9 +2621,10 @@ sub todigitstring {
 sub fromdigits {
   my($r, $base) = @_;
   $base = 10 unless defined $base;
+  return $r if $base == 10 && ref($r) =~ /^Math::/;
   my $n = BZERO->copy;
   $base = BZERO + $base;
-  if (ref($r)) {
+  if (ref($r) && ref($r) !~ /^Math::/) {
     croak "fromdigits first argument must be a string or array reference"
       unless ref($r) eq 'ARRAY';
     for my $d (@$r) {
@@ -2611,9 +2632,17 @@ sub fromdigits {
     }
   } else {
     $r =~ s/^0*//;
-    for my $d (map { $_mapdigit{$_} } split(//,$r)) {
-      croak "Invalid digit for base $base" unless defined $d && $d < $base;
-      $n = $n * $base + $d;
+    #for my $d (map { $_mapdigit{$_} } split(//,$r)) {
+    #  croak "Invalid digit for base $base" unless defined $d && $d < $base;
+    #  $n = $n * $base + $d;
+    #}
+    for my $c (split(//, lc($r))) {
+      $n->bmul($base);
+      if ($c ne '0') {
+        my $d = index("0123456789abcdefghijklmnopqrstuvwxyz", $c);
+        croak "Invalid digit for base $base" unless $d >= 0;
+        $n->badd($d);
+      }
     }
   }
   $n = _bigint_to_int($n) if $n->bacmp(BMAX) <= 0;

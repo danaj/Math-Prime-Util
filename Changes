@@ -1,5 +1,12 @@
 Revision history for Perl module Math::Prime::Util
 
+0.60 2016-?
+
+    [FUNCTIONALITY AND PERFORMANCE]
+
+    - fromdigits works with bigint first arg, no need to stringify.
+      Slightly faster for bigints, but slower than desired.
+
 0.59 2016-08-03
 
     [ADDED]
