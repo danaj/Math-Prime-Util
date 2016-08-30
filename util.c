@@ -2044,7 +2044,8 @@ IV stirling1(UV n, UV m) {
   if (n == 0 || m == 0 || m > n) return 0;
   if (m == 1) {
     UV f = factorial(n-1);
-    return (n&1) ? f : (f<(UV)IV_MAX) ? -((IV)f) : 0;
+    if (f>(UV)IV_MAX) return 0;
+    return (n&1) ? ((IV)f) : -((IV)f);
   }
 
   for (k = 1; k <= (IV)(n-m); k++) {
