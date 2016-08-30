@@ -2273,7 +2273,7 @@ sub vecprod {
   my $prod = _product(0, $#_, [map { Math::BigInt->new("$_") } @_]);
   # Linear:
   # my $prod = BONE->copy;  $prod *= "$_" for @_;
-  $prod = _bigint_to_int($prod) if $prod->bacmp(BMAX) <= 0 && $prod->bcmp(- BMAX) > 0;
+  $prod = _bigint_to_int($prod) if $prod->bacmp(BMAX) <= 0 && $prod->bcmp(-(BMAX>>1)) > 0;
   $prod;
 }
 
@@ -2584,10 +2584,10 @@ sub _splitdigits {
   } elsif ($base == 16) {
     @d = map { $_mapdigit{$_} } split(//,substr(Math::BigInt->new("$n")->as_hex,2));
   } else {
-    while ($n > 0) {
+    while ($n >= 1) {
       my $rem = $n % $base;
       unshift @d, $rem;
-      $n = int( ($n-$rem)/$base );
+      $n = ($n-$rem)/$base;    # Always an exact division
     }
   }
   if ($len >= 0 && $len != scalar(@d)) {
@@ -2612,10 +2612,14 @@ sub todigitstring {
   my($n,$base,$len) = @_;
   $base = 10 unless defined $base;
   $len = -1 unless defined $len;
-  my @d = todigits($n, $base, $len);
-  return join("", todigits($n, $base, $len)) if $base <= 10;
+  $n =~ s/^-//;
+  return substr(Math::BigInt->new("$n")->as_bin,2) if $base ==  2 && $len < 0;
+  return substr(Math::BigInt->new("$n")->as_oct,1) if $base ==  8 && $len < 0;
+  return substr(Math::BigInt->new("$n")->as_hex,2) if $base == 16 && $len < 0;
+  my @d = ($n == 0) ? () : _splitdigits($n, $base, $len);
+  return join("", @d) if $base <= 10;
   die "Invalid base for string: $base" if $base > 36;
-  join("", map { $_digitmap[$_] } todigits($n, $base, $len));
+  join("", map { $_digitmap[$_] } @d);
 }
 
 sub fromdigits {
@@ -2630,6 +2634,12 @@ sub fromdigits {
     for my $d (@$r) {
       $n = $n * $base + $d;
     }
+  } elsif ($base == 2) {
+    $n->from_bin($r);
+  } elsif ($base == 8) {
+    $n->from_oct($r);
+  } elsif ($base == 16) {
+    $n->from_hex($r);
   } else {
     $r =~ s/^0*//;
     #for my $d (map { $_mapdigit{$_} } split(//,$r)) {
@@ -2751,29 +2761,33 @@ sub stirling {
   return 1 if $m == $n;
   return 0 if $n == 0 || $m == 0 || $m > $n;
   $type = 1 unless defined $type;
-  croak "stirling type must be 1 or 2" unless $type == 1 || $type == 2;
+  croak "stirling type must be 1, 2, or 3" unless $type == 1 || $type == 2 || $type == 3;
   if ($m == 1) {
-    return ($type == 2)  ?  1  :  factorial($n-1) * (($n&1) ? 1 : -1);
+    return 1 if $type == 2;
+    return factorial($n) if $type == 3;
+    return factorial($n-1) if $n&1;
+    return vecprod(-1, factorial($n-1));
   }
   if ($Math::Prime::Util::_GMPfunc{"stirling"}) {
     return Math::Prime::Util::_reftyped($_[0], Math::Prime::Util::GMP::stirling($n,$m,$type));
   }
   my $s = BZERO->copy;
-  if ($type == 2) {
+  if ($type == 3) {
+    $s = Math::Prime::Util::vecprod( Math::Prime::Util::binomial($n,$m), Math::Prime::Util::binomial($n-1,$m-1), Math::Prime::Util::factorial($n-$m) );
+  } elsif ($type == 2) {
     for my $j (1 .. $m) {
-      # Another *stupid* workaround for RT 71548.
       my $t = (Math::BigInt->new($j) ** $n) * Math::BigInt->new("".binomial($m,$j));
       $s = (($m-$j) & 1)  ?  $s - $t  :  $s + $t;
     }
     $s /= factorial($m);
   } else {
     for my $k (1 .. $n-$m) {
-      my $t = BONE->copy;
-      $t *= -1 if $k & 1;
-      $t *= Math::BigInt->new("".binomial($k + $n - 1, $k + $n - $m));
-      $t *= Math::BigInt->new("".binomial(2 * $n - $m, $n - $k - $m));
-      $t *= Math::BigInt->new("".stirling($k - $m + $n, $k, 2));
-      $s += $t;
+      my $t = Math::Prime::Util::vecprod(
+        Math::Prime::Util::binomial($k + $n - 1, $k + $n - $m),
+        Math::Prime::Util::binomial(2 * $n - $m, $n - $k - $m),
+        Math::Prime::Util::stirling($k - $m + $n, $k, 2),
+      );
+      $s = ($k & 1)  ?  $s - $t  :  $s + $t;
     }
   }
   $s;

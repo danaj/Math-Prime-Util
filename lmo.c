@@ -54,7 +54,7 @@
  */
 
 /* Below this size, just sieve (with table speedup). */
-#define SIEVE_LIMIT  60000000
+#define SIEVE_LIMIT  66000000
 /* Adjust to get best performance.  Alpha from TOS paper. */
 #define M_FACTOR(n)     (UV) ((double)n * (log(n)/log(5.2)) * (log(log(n))-1.4))
 /* Size of segment used for previous primes, must be >= 21 */
