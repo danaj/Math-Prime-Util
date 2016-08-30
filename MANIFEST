@@ -150,6 +150,7 @@ t/93-release-spelling.t
 t/94-weaken.t
 t/97-synopsis.t
 xt/chinese.pl
+xt/create-pc-tables.pl
 xt/moebius-mertens.pl
 xt/totient-range.pl
 xt/primality-small.pl
