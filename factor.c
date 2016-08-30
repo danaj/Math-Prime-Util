@@ -9,6 +9,9 @@
 #include "mulmod.h"
 #include "cache.h"
 #include "primality.h"
+#if USE_MONT_PRIMALITY
+#include "montmath.h"
+#endif
 #define FUNC_isqrt  1
 #define FUNC_icbrt  1
 #define FUNC_gcd_ui 1
@@ -114,23 +117,17 @@ int factor(UV n, UV *factors)
   }
 #endif
 
-  /* Perfect squares and cubes.  Factor root only once. */
+  /* Perfect powers.  Factor root only once. */
   {
-    int i, j, k = is_power(n,2) ? 2 : (n >= f*f*f && is_power(n,3)) ? 3 : 1;
+    int i, j, k = powerof(n);
     if (k > 1) {
-      UV p = (k == 2) ? isqrt(n) : icbrt(n);
-      if (is_prob_prime(p)) {
+      UV p = rootof(n, k);
+      int nsmallfactors = nfactors;
+      nfactors = factor(p, factors+nsmallfactors);
+      for (i = nfactors; i >= 0; i--)
         for (j = 0; j < k; j++)
-          factors[nfactors++] = p;
-        return nfactors;
-      } else {
-        int nsmallfactors = nfactors;
-        nfactors = factor(p, factors+nsmallfactors);
-        for (i = nfactors; i >= 0; i--)
-          for (j = 0; j < k; j++)
-            factors[nsmallfactors+k*i+j] = factors[nsmallfactors+i];
-        return nsmallfactors + k*nfactors;
-      }
+          factors[nsmallfactors+k*i+j] = factors[nsmallfactors+i];
+      return nsmallfactors + k*nfactors;
     }
   }
 
@@ -145,12 +142,17 @@ int factor(UV n, UV *factors)
     while ( (n >= f*f) && (!is_prob_prime(n)) ) {
       int split_success = 0;
       /* Adjust the number of rounds based on the number size and speed */
-      UV const br_rounds = ((n>>29)<100000) ? (MULMODS_ARE_FAST ? 6000 :  500)
-                                            : (MULMODS_ARE_FAST ? 2000 : 2000);
+#if USE_MONT_PRIMALITY
+      UV const br_rounds = ((n>>29)<100000) ?  8000 : 80000;
+#elif MULMODS_ARE_FAST
+      UV const br_rounds = ((n>>29)<100000) ?   500 :  2000;
+#else
+      UV const br_rounds = (n < (UV_MAX>>2))?     0 : 10000;
+#endif
       UV const sq_rounds = 200000; /* 20k 91%, 40k 98%, 80k 99.9%, 120k 99.99%*/
 
       /* 99.7% of 32-bit, 94% of 64-bit random inputs factored here */
-      if (!split_success) {
+      if (!split_success && br_rounds > 0) {
         split_success = pbrent_factor(n, tofac_stack+ntofac, br_rounds, 3)-1;
         if (verbose) { if (split_success) printf("pbrent 1:  %"UVuf" %"UVuf"\n", tofac_stack[ntofac], tofac_stack[ntofac+1]); else printf("pbrent 0\n"); }
       }
@@ -491,6 +493,67 @@ int holf_factor(UV n, UV *factors, UV rounds)
 }
 
 
+#if USE_MONT_PRIMALITY
+#include "montmath.h"
+/* Pollard / Brent.  Brent's modifications to Pollard's Rho.  Maybe faster. */
+int pbrent_factor(UV n, UV *factors, UV rounds, UV a)
+{
+  UV f, m, r, Xi, Xm;
+  const UV inner = (n <= 4000000000UL) ? 32 : 160;
+  int fails = 6;
+  const uint64_t npi = mont_inverse(n),  mont1 = mont_get1(n);
+  Xi = Xm = mont_get2(n);
+  a = mont_geta(a,n);
+  MPUassert( (n >= 3) && ((n%2) != 0) , "bad n in pbrent_factor");
+
+  r = 1;
+  f = 1;
+  while (rounds > 0) {
+    UV rleft = (r > rounds) ? rounds : r;
+    UV saveXi = Xi;
+    /* Do rleft rounds, inner at a time */
+    while (rleft > 0) {
+      UV dorounds = (rleft > inner) ? inner : rleft;
+      saveXi = Xi;
+      rleft -= dorounds;
+      rounds -= dorounds;
+      Xi = mont_sqrmod(Xi,n);  Xi = addmod(Xi,a,n);
+      m = (Xi>Xm) ? Xi-Xm : Xm-Xi;
+      while (--dorounds > 0) {         /* Now do inner-1=63 more iterations */
+        Xi = mont_sqrmod(Xi,n);  Xi = addmod(Xi,a,n);
+        f = (Xi>Xm) ? Xi-Xm : Xm-Xi;
+        m = mont_mulmod(m, f, n);
+      }
+      f = gcd_ui(m, n);
+      if (f != 1)
+        break;
+    }
+    /* If f == 1, then we didn't find a factor.  Move on. */
+    if (f == 1) {
+      r *= 2;
+      Xm = Xi;
+      continue;
+    }
+    if (f == n) {  /* back up, with safety */
+      Xi = saveXi;
+      do {
+        Xi = mont_sqrmod(Xi,n);  Xi = addmod(Xi,a,n);
+        f = gcd_ui( (Xi>Xm) ? Xi-Xm : Xm-Xi, n);
+      } while (f == 1 && r-- != 0);
+    }
+    if (f == 0 || f == n) {
+      if (fails-- <= 0) break;
+      Xm = addmod(Xm, 2, n);
+      Xi = Xm;
+      a++;
+      continue;
+    }
+    return found_factor(n, f, factors);
+  }
+  factors[0] = n;
+  return 1;
+}
+#else
 /* Pollard / Brent.  Brent's modifications to Pollard's Rho.  Maybe faster. */
 int pbrent_factor(UV n, UV *factors, UV rounds, UV a)
 {
@@ -549,6 +612,7 @@ int pbrent_factor(UV n, UV *factors, UV rounds, UV a)
   factors[0] = n;
   return 1;
 }
+#endif
 
 /* Pollard's Rho. */
 int prho_factor(UV n, UV *factors, UV rounds)
@@ -962,14 +1026,27 @@ int squfof_factor(UV n, UV *factors, UV rounds)
 }
 
 static UV dlp_trial(UV a, UV g, UV p, UV maxrounds) {
-  UV k, t = g;
+  UV k, t;
+#if USE_MONT_PRIMALITY
+  const uint64_t npi = mont_inverse(p),  mont1 = mont_get1(p);
+  g = mont_geta(g, p);
+  a = mont_geta(a, p);
   if (maxrounds > p) maxrounds = p;
-  for (k = 1; k < maxrounds; k++) {
+  for (t = g, k = 1; k < maxrounds; k++) {
+    if (t == a)
+      return k;
+    t = mont_mulmod(t, g, p);
+    if (t == g) break;   /* Stop at cycle */
+  }
+#else
+  if (maxrounds > p) maxrounds = p;
+  for (t = g, k = 1; k < maxrounds; k++) {
     if (t == a)
       return k;
     t = mulmod(t, g, p);
     if (t == g) break;   /* Stop at cycle */
   }
+#endif
   return 0;
 }
 
