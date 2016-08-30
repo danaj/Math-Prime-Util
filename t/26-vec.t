@@ -7,7 +7,7 @@ use Math::Prime::Util qw/vecreduce
                          vecextract
                          vecmin vecmax
                          vecsum vecprod factorial
-                         vecany vecall vecnotall vecnone vecfirst/;
+                         vecany vecall vecnotall vecnone vecfirst vecfirstidx/;
 
 my $extra = defined $ENV{EXTENDED_TESTING} && $ENV{EXTENDED_TESTING};
 my $use64 = Math::Prime::Util::prime_get_config->{'maxbits'} > 32;
@@ -87,6 +87,7 @@ plan tests => 0
             + 2    # vecextract
             + 3*4  # vec{any,all,notall,none}
             + 5    # vecfirst
+            + 5    # vecfirstidx
             + 0;
 
 ###### vecmin
@@ -159,10 +160,20 @@ ok( !(vecnone { $_ == 1 } 1, 2, 3), 'none false' );
 ok(  (vecnone { 1 }), 'none empty list' );
 
 ###### vecfirst
-my $v;
-$v = vecfirst { 8 == ($_ - 1) } 9,4,5,6; is($v, 9, "first success");
-$v = vecfirst { 0 } 1,2,3,4; is($v, undef, "first failure");
-$v = vecfirst { 0 }; is($v, undef, "first empty list");
-$v = vecfirst { $_->[1] le "e" and "e" le $_->[2] } [qw(a b c)], [qw(d e f)], [qw(g h i)];
-is_deeply($v, [qw(d e f)], 'first with reference args');
-$v = vecfirst {while(1) {return ($_>6)} } 2,4,6,12; is($v,12,"first returns in loop");
+{
+  my $v;
+  $v = vecfirst { 8 == ($_ - 1) } 9,4,5,6; is($v, 9, "first success");
+  $v = vecfirst { 0 } 1,2,3,4; is($v, undef, "first failure");
+  $v = vecfirst { 0 }; is($v, undef, "first empty list");
+  $v = vecfirst { $_->[1] le "e" and "e" le $_->[2] } [qw(a b c)], [qw(d e f)], [qw(g h i)];
+  is_deeply($v, [qw(d e f)], 'first with reference args');
+  $v = vecfirst {while(1) {return ($_>6)} } 2,4,6,12; is($v,12,"first returns in loop");
+}
+{
+  my $v;
+  $v = vecfirstidx { 8 == ($_ - 1) } 9,4,5,6; is($v, 0, "first idx success");
+  $v = vecfirstidx { 0 } 1,2,3,4; is($v, -1, "first idx failure");
+  $v = vecfirstidx { 0 }; is($v, -1, "first idx empty list");
+  $v = vecfirstidx { $_->[1] le "e" and "e" le $_->[2] } [qw(a b c)], [qw(d e f)], [qw(g h i)];  is($v, 1, "first idx with reference args");
+  $v = vecfirstidx {while(1) {return ($_>6)} } 2,4,6,12; is($v,3,"first idx returns in loop");
+}

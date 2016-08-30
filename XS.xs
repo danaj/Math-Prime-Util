@@ -1553,17 +1553,15 @@ gcdext(IN SV* sva, IN SV* svb)
 void
 stirling(IN UV n, IN UV m, IN UV type = 1)
   PPCODE:
-    if (type != 1 && type != 2)
-      croak("stirling type must be 1 or 2");
+    if (type != 1 && type != 2 && type != 3)
+      croak("stirling type must be 1, 2, or 3");
     if (n == m)
       XSRETURN_UV(1);
     else if (n == 0 || m == 0 || m > n)
       XSRETURN_UV(0);
-    else if (m == 1 && type == 2)
-      XSRETURN_UV(1);
-    else if (m == 1 && type == 1) {
-      UV f = factorial(n-1);
-      if (f != 0 && f <= (UV)IV_MAX) XSRETURN_IV( f * ((n&1) ? 1 : -1) );
+    else if (type == 3) {
+      UV s = stirling3(n, m);
+      if (s != 0) XSRETURN_UV(s);
     } else if (type == 2) {
       IV s = stirling2(n, m);
       if (s != 0) XSRETURN_IV(s);
@@ -1571,7 +1569,8 @@ stirling(IN UV n, IN UV m, IN UV type = 1)
       IV s = stirling1(n, m);
       if (s != 0) XSRETURN_IV(s);
     }
-    _vcallsub_with_pp("stirling");
+    _vcallsub_with_gmp(0.26,"stirling");
+    OBJECTIFY_RESULT(ST(0), ST(0));
     return;
 
 NV
@@ -2349,6 +2348,7 @@ ALIAS:
     vecany    = 2
     vecnotall = 3
     vecfirst  = 4
+    vecfirstidx = 6
 PROTOTYPE: &@
 PPCODE:
 {   /* This is very similar to List::Util.  Try to maintain compat. */
@@ -2396,6 +2396,11 @@ PPCODE:
         XSRETURN_UNDEF;
       ST(0) = ST(index);
       XSRETURN(1);
+    }
+    if (ix == 6) {
+      if (index == items)
+        XSRETURN_IV(-1);
+      XSRETURN_UV(index-1);
     }
 
     if (index != items)           /* We exited the loop early */

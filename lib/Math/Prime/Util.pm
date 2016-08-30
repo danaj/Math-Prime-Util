@@ -53,7 +53,7 @@ our @EXPORT_OK =
       todigits fromdigits todigitstring sumdigits
       invmod sqrtmod addmod mulmod divmod powmod
       vecsum vecmin vecmax vecprod vecreduce vecextract
-      vecany vecall vecnotall vecnone vecfirst
+      vecany vecall vecnotall vecnone vecfirst vecfirstidx
       moebius mertens euler_phi jordan_totient exp_mangoldt liouville
       partitions bernfrac bernreal harmfrac harmreal
       chebyshev_theta chebyshev_psi
@@ -965,7 +965,7 @@ __END__
 
 =encoding utf8
 
-=for stopwords forprimes forcomposites foroddcomposites fordivisors forpart forcomp forcomb forperm formultiperm Möbius Deléglise Bézout totient moebius mertens liouville znorder irand primesieve uniqued k-tuples von SoE pari yafu fonction qui compte le nombre nombres voor PhD superset sqrt(N) gcd(A^M k-th (10001st primegen libtommath kronecker znprimroot znlog gcd lcm invmod sqrtmod addmod mulmod powmod divmod untruncated vecsum vecprod vecmin vecmax vecreduce vecextract vecall vecany vecnone vecnotall vecfirst sumdigits gcdext chinese LambertW bernfrac bernreal harmfrac harmreal stirling hammingweight lucasu lucasv OpenPFGW gmpy2 Über Primzahl-Zählfunktion n-te und verallgemeinerte sqrtint logint multiset todigits todigitstring fromdigits hclassno rootint
+=for stopwords forprimes forcomposites foroddcomposites fordivisors forpart forcomp forcomb forperm formultiperm Möbius Deléglise Bézout totient moebius mertens liouville znorder irand primesieve uniqued k-tuples von SoE pari yafu fonction qui compte le nombre nombres voor PhD superset sqrt(N) gcd(A^M k-th (10001st primegen libtommath kronecker znprimroot znlog gcd lcm invmod sqrtmod addmod mulmod powmod divmod untruncated vecsum vecprod vecmin vecmax vecreduce vecextract vecall vecany vecnone vecnotall vecfirst vecfirstidx sumdigits gcdext chinese LambertW bernfrac bernreal harmfrac harmreal stirling hammingweight lucasu lucasv OpenPFGW gmpy2 Über Primzahl-Zählfunktion n-te und verallgemeinerte sqrtint logint multiset todigits todigitstring fromdigits hclassno rootint
 
 =for test_synopsis use v5.14;  my($k,$x);
 
@@ -2645,6 +2645,16 @@ these versus the ones from L<List::Util>.  They are here for convenience.
 These operations can fairly easily be mapped to C<scalar(grep {...} @n)>,
 but that does not short-circuit and is less obvious.
 
+=head2 vecfirstidx
+
+  say "first Carmichael is index ", vecfirstidx { is_carmichael($_) } @n;
+
+Returns the index of the first element in a list that evaluates to true.
+Just like vecfirst, but returns the index instead of the value.  Returns
+-1 if the item could not be found.
+
+This interface matches C<firstidx> and C<first_index> from L<List::MoreUtils>.
+
 =head2 vecextract
 
   say "Power set: ", join(" ",vecextract(\@v,$_)) for 0..2**scalar(@v)-1;
@@ -3172,16 +3182,21 @@ second argument may be given specifying the precision to be used.
 
   say "s(14,2) = ", stirling(14, 2);
   say "S(14,2) = ", stirling(14, 2, 2);
+  say "L(14,2) = ", stirling(14, 2, 3);
 
-Returns the Stirling numbers of either the first kind (default) or
-second kind (with a third argument of 2).  It takes two non-negative integer
-arguments C<n> and C<k>.  This corresponds to Pari's C<stirling(n,k,{type})>
+Returns the Stirling numbers of either the first kind (default), the
+second kind, or the third kind (the unsigned Lah numbers), with the kind
+selected as an optional third argument.
+It takes two non-negative integer arguments C<n> and C<k> plus the
+optional C<type>.
+This corresponds to Pari's C<stirling(n,k,{type})>
 function and Mathematica's C<StirlingS1> / C<StirlingS2> functions.
 
 Stirling numbers of the first kind are C<-1^(n-k)> times the number of
 permutations of C<n> symbols with exactly C<k> cycles.  Stirling numbers
 of the second kind are the number of ways to partition a set of C<n>
-elements into C<k> non-empty subsets.
+elements into C<k> non-empty subsets.  The Lah numbers are the number of
+ways to split a set of C<n> elements into C<k> non-empty lists.
 
 =head2 harmfrac
 

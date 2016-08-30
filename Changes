@@ -2,10 +2,29 @@ Revision history for Perl module Math::Prime::Util
 
 0.60 2016-?
 
+    [ADDED]
+
+    - vecfirstidx { expr } @n             returns first index with expr true
+
     [FUNCTIONALITY AND PERFORMANCE]
+
+    - Expanded and modified prime count sparse tables. Prime counts from 30k
+      to 90M are 1.2x to 2.5x faster.  It has no appreciable effect on the
+      speed of prime counts larger than this size.
 
     - fromdigits works with bigint first arg, no need to stringify.
       Slightly faster for bigints, but slower than desired.
+
+    - Various speedups and changes for fromdigits, todigits, todigitstring.
+
+    - vecprod in PP for negative high-bit would return double not bigint.
+
+    - Lah numbers added as Stirling numbers of the third kind.  They've been
+      in the GMP code for almost 2 years now.  Also for big results, directly
+      call the GMP code and objectify the result.
+
+    - Small performance change to AKS (r,s) selection tuning.
+
 
 0.59 2016-08-03
 

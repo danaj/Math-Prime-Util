@@ -773,6 +773,14 @@ sub vecfirst (&@) {     ## no critic qw(ProhibitSubroutinePrototypes)
   undef;
 }
 
+sub vecfirstidx (&@) {     ## no critic qw(ProhibitSubroutinePrototypes)
+  my $sub = shift;
+  { my $pp; local *_ = \$pp; my $i = 0;
+    for my $v (@_) { $pp = $v; return $i if $sub->(); $i++; }
+  }
+  -1;
+}
+
 sub vecextract {
   my($aref, $mask) = @_;
   croak "vecextract first argument must be an array reference"
