@@ -443,63 +443,7 @@ static UV count_segment_ranged(const unsigned char* sieve, UV nbytes, UV lowp, U
  *
  */
 
-#define USE_PC_TABLES 1
-#if USE_PC_TABLES
-/* These tables let us have fast answers up to 3000M for the cost of ~1.4k of
- * static data/code.  We can get a 4 to 100x speedup here.  We don't want to
- * push this idea too far because Lehmer's method should be faster. */
-/* mpu '$step=30_000; $pc=prime_count(5); print "$pc\n", join(",", map { $spc=$pc; $pc=prime_count($_*$step); $pc-$spc; } 1..200), "\n"' */
-static const unsigned short step_counts_30k[] =  /* starts at 7 */
-  {3242,2812,2656,2588,2547,2494,2465,2414,2421,2355,2407,2353,2310,2323,2316,
-   2299,2286,2281,2247,2279,2243,2223,2251,2214,2209,2230,2215,2207,2205,2179,
-   2200,2144,2159,2193,2164,2136,2180,2152,2162,2174,2113,2131,2150,2101,2111,
-   2146,2115,2123,2119,2108,2124,2097,2075,2089,2094,2119,2084,2065,2069,2101,
-   2094,2083,2089,2076,2088,2027,2109,2073,2061,2033,2079,2078,2036,2025,2058,
-   2083,2037,2005,2048,2048,2024,2045,2027,2025,2039,2049,2022,2034,2046,2032,
-   2019,2000,2014,2069,2042,1980,2021,2014,1995,2017,1992,1985,2045,2007,1990,
-   2008,2052,2033,1988,1984,2010,1943,2024,2005,2027,1937,1955,1956,1993,1976,
-   2048,1940,2002,2007,1994,1954,1972,2002,1973,1993,1984,1969,1940,1960,2026,
-   1966,1981,1912,1994,1971,1977,1952,1932,1977,1932,1954,1938,2018,1987,1967,
-   1937,1938,1963,1973,1947,1947,1963,1959,1941,1923,1943,1957,1974,1964,1958,
-   1984,1933,1935,1935,1949,1928,1943,1917,1956,1970,1932,1937,1929,1932,1947,
-   1927,1944,1915,1913,1918,1925,1931,1919,1900,1952,1934,1922,1891,1926,1925,
-   1903,1970,1962,1905,1905};
-#define NSTEP_COUNTS_30K  (sizeof(step_counts_30k)/sizeof(step_counts_30k[0]))
-
-/* mpu '$step=300_000; $pc=prime_count(20*$step); print "$pc\n", join(",", map { $spc=$pc; $pc=prime_count($_*$step); $pc-$spc; } 21..212), "\n"' */
-static const unsigned short step_counts_300k[] =  /* starts at 6M */
-  {19224,19086,19124,19036,18942,18893,18870,18853,18837,18775,18688,18674,
-   18594,18525,18639,18545,18553,18424,18508,18421,18375,18366,18391,18209,
-   18239,18298,18209,18294,18125,18138,18147,18115,18126,18021,18085,18068,
-   18094,17963,18041,18003,17900,17881,17917,17888,17880,17852,17892,17779,
-   17823,17764,17806,17762,17780,17716,17633,17758,17746,17678,17687,17613,
-   17709,17628,17634,17556,17528,17598,17604,17532,17606,17548,17493,17576,
-   17456,17468,17555,17452,17407,17472,17415,17500,17508,17418,17463,17240,
-   17345,17351,17380,17394,17379,17330,17322,17335,17354,17113,17210,17231,
-   17238,17305,17268,17219,17281,17235,17119,17292,17161,17212,17166,17277,
-   17137,17260,17228,17197,17154,17097,17195,17136,17067,17058,17041,17045,
-   17187,17034,17029,17037,17090,16985,17054,17017,17106,17001,17095,17125,
-   17027,16948,16969,17031,16916,17031,16905,16937,16881,16952,16919,16938,
-   17028,16963,16902,16922,16944,16901,16847,16969,16900,16876,16841,16874,
-   16894,16861,16761,16886,16778,16820,16727,16921,16817,16845,16847,16824,
-   16844,16809,16859,16783,16713,16752,16762,16857,16760,16626,16784,16784,
-   16718,16745,16871,16635,16714,16630,16779,16709,16660,16730,16715,16724};
-#define NSTEP_COUNTS_300K (sizeof(step_counts_300k)/sizeof(step_counts_300k[0]))
-
-static const unsigned int step_counts_30m[] =  /* starts at 60M */
-  {1654839,1624694,1602748,1585989,1571241,1559918,1549840,1540941,1533150,
-   1525813,1519922,1513269,1508559,1503386,1497828,1494129,1489905,1486417,
-   1482526,1478941,1475577,1472301,1469133,1466295,1464711,1461223,1458478,
-   1455327,1454218,1451883,1449393,1447612,1445029,1443285,1442268,1438511,
-   1437688,1435603,1433623,1432638,1431158,1429158,1427934,1426191,1424449,
-   1423146,1421898,1421628,1419519,1417646,1416274,1414828,1414474,1412536,
-   1412147,1410149,1409474,1408847,1406619,1405863,1404699,1403820,1402802,
-   1402215,1401459,1399972,1398687,1397968,1397392,1396025,1395311,1394081,
-   1393614,1393702,1391745,1390950,1389856,1389245,1388381,1387557,1387087,
-   1386285,1386089,1385355,1383659,1383030,1382174,1382128,1380556,1379940,
-   1379988,1379181,1378300,1378033,1376974,1376282,1375646,1374445,1373813};
-#define NSTEP_COUNTS_30M  (sizeof(step_counts_30m)/sizeof(step_counts_30m[0]))
-#endif
+#include "prime_count_tables.h"
 
 UV _XS_prime_count(UV low, UV high)
 {
@@ -520,34 +464,13 @@ UV _XS_prime_count(UV low, UV high)
     return count;
   }
 
-#if USE_PC_TABLES
-  if (low == 7 && high >= 30000) {
-    UV i, maxi;
-    if (high < (30000*(NSTEP_COUNTS_30K+1))) {
-      low = 0;
-      maxi = high/30000;
-      for (i = 0;  i < maxi && i < NSTEP_COUNTS_30K;  i++) {
-        count += step_counts_30k[i];
-        low += 30000;
-      }
-    } else if (high < (6000000 + 300000*(NSTEP_COUNTS_300K+1))) {
-      count = 412849;
-      low = 6000000;
-      maxi = (high-6000000)/300000;
-      for (i = 0;  i < maxi && i < NSTEP_COUNTS_300K;  i++) {
-        count += step_counts_300k[i];
-        low += 300000;
-      }
-    } else {
-      count = 3562115;
-      low = 60000000;
-      maxi = (high-60000000)/30000000;
-      for (i = 0;  i < maxi && i < NSTEP_COUNTS_30M;  i++) {
-        count += step_counts_30m[i];
-        low += 30000000;
-      }
-    }
-  }
+  /* If we have sparse prime count tables, use them here.  These will adjust
+   * 'low' and 'count' appropriately for a value slightly less than ours.
+   * This should leave just a small amount of sieving left.  They stop at
+   * some point, e.g. 3000M, so we'll get the answer to that point then have
+   * to sieve all the rest.  We should be using LMO or Lehmer much earlier. */
+#ifdef APPLY_TABLES
+  APPLY_TABLES
 #endif
 
   low_d = low/30;
@@ -1077,6 +1000,7 @@ UV nth_twin_prime_approx(UV n)
 
 /* These are playing loose with Sondow/Nicholson/Noe 2011 theorem 4.
  * The last value should be rigorously checked using actual R_n values. */
+#if 1
 static const UV ram_upper_idx[] = {
   5215, 5223, 5261, 5271, 5553, 7431, 7451, 8582, 12589, 12620, 12762,
   18154, 18294, 18410, 25799, 28713, 40061, 45338, 63039, 65724,
@@ -1116,6 +1040,52 @@ UV nth_ramanujan_prime_upper(UV n) {
   else                     res = (res * mult) >> 11;
   return res;
 }
+#else
+static const UV ram_upper_idx[] = {
+  3245, 3971, 3980, 5215, 5220, 5223, 5225, 5261, 5265, 5271, 5277, 5553, 5555,
+  7430, 7447, 7451, 7457, 8582, 8605, 12589, 12602, 12620, 12729, 12762, 18129,
+  18154, 18180, 18294, 18396, 18410, 21961, 25799, 27247, 28713, 39635, 40061,
+  40367, 45338, 51279, 63039, 65536, 65724, 84640, 88726, 104288, 107849,
+  145506, 151742, 186441, 216978, 223902, 270700, 332195, 347223, 440804,
+  508096, 565039, 768276, 828377, 1090285, 1277320, 1568165, 1896508, 2375799,
+  3300765, 4162908, 5124977, 6522443, 9298256, 11406250, 15528199, 20637716,
+  28239295, 39711166, 55623925, 80161468, 117683515, 174200145, 261514813,
+  404761877, 633278258, 1024431762, 1683645810, UVCONST(2868095461),
+#if BITS_PER_WORD == 64 /* 27xx: 67,66,65, 64,63,62, 61,60,59, 58 */
+  UVCONST(   5046044184), UVCONST(   9136430799), UVCONST(  17105209669),
+  UVCONST(  33244053524), UVCONST(  67708204893), UVCONST( 143852101796),
+  UVCONST( 321608703183), UVCONST( 760145301247), UVCONST(1910188609050),
+  UVCONST(5136852322734)
+#else
+  UVCONST(4294967295)
+#endif
+};
+#define NRAM_UPPER_MULT 2852
+#define NRAM_UPPER (sizeof(ram_upper_idx)/sizeof(ram_upper_idx[0]))
+
+UV nth_ramanujan_prime_upper(UV n) {
+  UV i, mult, res;
+  if (n <= 2) return (n==0) ? 0 : (n==1) ? 2 : 11;
+  /* While p_3n is a complete upper bound, Rp_n tends to p_2n, and
+   * SNN(2011) theorem 4 shows how we can find (m,c) values where m < 1,
+   * Rn < m*p_3n for all n > c.  Here we use various quantized m values
+   * and the table gives us c values where it applies. */
+  if      (n < 20) mult = 3580;
+  else if (n < 98) mult = 3099;
+  else if (n < 1580) mult = 2880;
+  else if (n < 5214) mult = 2849;
+  else {
+    for (i = 0; i < NRAM_UPPER; i++)
+      if (ram_upper_idx[i] > n)
+        break;
+    mult = NRAM_UPPER_MULT-i;
+  }
+  res = nth_prime_upper(3*n);
+  if (res > (UV_MAX/mult)) res = (UV) (((long double) mult / 4096.0L) * res);
+  else                     res = (res * mult) >> 12;
+  return res;
+}
+#endif
 
 static const UV ram_lower_idx[] = {
   5935, 6013, 6107, 8726, 8797, 9396, 9556, 9611, 13314, 13405, 13641,
@@ -2029,6 +1999,23 @@ UV binomial(UV n, UV k) {    /* Thanks to MJD and RosettaCode for ideas */
   return r;
 }
 
+UV stirling3(UV n, UV m) {   /* Lah numbers */
+  UV f1, f2;
+
+  if (m == n) return 1;
+  if (n == 0 || m == 0 || m > n) return 0;
+  if (m == 1) return factorial(n);
+
+  f1 = binomial(n, m);
+  if (f1 == 0)  return 0;
+  f2 = binomial(n-1, m-1);
+  if (f2 == 0 || f1 >= UV_MAX/f2)  return 0;
+  f1 *= f2;
+  f2 = factorial(n-m);
+  if (f2 == 0 || f1 >= UV_MAX/f2)  return 0;
+  return f1 * f2;
+}
+
 IV stirling2(UV n, UV m) {
   UV f;
   IV j, k, t, s = 0;
@@ -2036,6 +2023,7 @@ IV stirling2(UV n, UV m) {
   if (m == n) return 1;
   if (n == 0 || m == 0 || m > n) return 0;
   if (m == 1) return 1;
+
   if ((f = factorial(m)) == 0) return 0;
   for (j = 1; j <= (IV)m; j++) {
     t = binomial(m, j);
@@ -2051,6 +2039,14 @@ IV stirling2(UV n, UV m) {
 
 IV stirling1(UV n, UV m) {
   IV k, t, b1, b2, s2, s = 0;
+
+  if (m == n) return 1;
+  if (n == 0 || m == 0 || m > n) return 0;
+  if (m == 1) {
+    UV f = factorial(n-1);
+    return (n&1) ? f : (f<(UV)IV_MAX) ? -((IV)f) : 0;
+  }
+
   for (k = 1; k <= (IV)(n-m); k++) {
     b1 = binomial(k + n - 1, k + n - m);
     b2 = binomial(2 * n - m, n - k - m);
@@ -2309,7 +2305,7 @@ int is_primitive_root(UV a, UV n, int nprime) {
   UV s, fac[MPU_MAX_FACTORS+1];
   int i, nfacs;
   if (n <= 1) return n;
-  a %= n;
+  if (a >= n) a %= n;
   if (gcd_ui(a,n) != 1) return 0;
   s = nprime ? n-1 : totient(n);
   if ((s % 2) == 0 && powmod(a, s/2, n) == 1) return 0;

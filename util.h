@@ -84,6 +84,7 @@ extern int is_primitive_root(UV a, UV n, int nprime);
 extern int is_carmichael(UV n);
 extern UV  is_quasi_carmichael(UV n);  /* Returns number of bases */
 
+extern UV stirling3(UV n, UV m);
 extern IV stirling2(UV n, UV m);
 extern IV stirling1(UV n, UV m);
 
