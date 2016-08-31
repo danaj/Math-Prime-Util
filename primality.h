@@ -3,12 +3,6 @@
 
 #include "ptypes.h"
 
-#if BITS_PER_WORD == 64 && HAVE_STD_U64 && defined(__GNUC__) && defined(__x86_64__)
-#define USE_MONT_PRIMALITY 1
-#else
-#define USE_MONT_PRIMALITY 0
-#endif
-
 extern int is_pseudoprime(UV const n, UV a);
 extern int is_euler_pseudoprime(UV const n, UV a);
 extern int is_euler_plumb_pseudoprime(UV const n);

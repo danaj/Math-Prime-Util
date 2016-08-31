@@ -15,7 +15,6 @@ typedef __int64 int64_t;
 typedef __int32 int32_t;
 typedef __int16 int16_t;
 typedef __int8 int8_t;
-#define inline __inline
 
 #ifdef _M_X64
 #  define __x86_64__
@@ -176,6 +175,14 @@ typedef __int8 int8_t;
   #endif
 #else
   #define HAVE_UINT128 0
+#endif
+
+#if defined(__GNUC__)
+  #define INLINE inline
+#elif defined(_MSC_VER)
+  #define INLINE __inline
+#else
+  #define INLINE
 #endif
 
 #endif

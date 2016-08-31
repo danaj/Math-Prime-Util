@@ -3,14 +3,6 @@
 
 #include "ptypes.h"
 
-#if defined(__GNUC__)
-  #define INLINE inline
-#elif defined(_MSC_VER)
-  #define INLINE __inline
-#else
-  #define INLINE
-#endif
-
 /* if n is smaller than this, you can multiply without overflow */
 #define HALF_WORD (UVCONST(1) << (BITS_PER_WORD/2))
 /* This will be true if we think mulmods are fast */

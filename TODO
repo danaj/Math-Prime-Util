@@ -30,8 +30,6 @@
 
 - Rewrite 23-primality-proofs.t for new format (keep some of the old tests?).
 
-- Use Montgomery routines in more places: Factoring.
-
 - Factoring in PP code is really wasteful -- we're calling _isprime7 before
   we've done enough trial division, and later we're calling it on known
   composites.  Note how the XS code splits the factor code into the public
@@ -117,3 +115,5 @@
   The latter does sum = vecprod(1 + f(p_i) + f(p_i^2) + ... f(p_i^e) for all p.
 
 - surround_primes
+
+- More Montgomery: znlog, sqrtmod, catalan

@@ -9,14 +9,11 @@
 #define FUNC_gcd_ui 1
 #define FUNC_is_perfect_square
 #include "util.h"
+#include "montmath.h"  /* Fast Montgomery math */
 
 /* Primality related functions */
 
-#if USE_MONT_PRIMALITY
-/* It's a pain having both standard and Montgomery versions, but the
- * performance difference is very large. */
-#include "montmath.h"
-#else
+#if !USE_MONTMATH
 static const UV mr_bases_const2[1] = {2};
 #endif
 /******************************************************************************/
@@ -68,7 +65,7 @@ int is_pseudoprime(UV const n, UV a)
     if ( a <= 1 || a == n-1 )
       return 1;
   }
-#if USE_MONT_PRIMALITY
+#if USE_MONTMATH
   if (n & 1) {   /* The Montgomery code only works for odd n */
     const uint64_t npi = mont_inverse(n),  mont1 = mont_get1(n);
     const uint64_t monta = mont_geta(a, n);
@@ -93,7 +90,7 @@ int is_euler_pseudoprime(UV const n, UV a)
     if ((n % a) == 0) return 0;
   }
   {
-#if USE_MONT_PRIMALITY
+#if USE_MONTMATH
     const uint64_t npi = mont_inverse(n),  mont1 = mont_get1(n);
     const uint64_t monta  = mont_geta(a, n);
     UV ap = mont_powmod(monta, (n-1)>>1, n);
@@ -127,7 +124,7 @@ int is_euler_plumb_pseudoprime(UV const n)
   uint32_t nmod8 = n & 0x7;
   if (n < 5) return (n == 2 || n == 3);
   if (!(n&1)) return 0;
-#if USE_MONT_PRIMALITY
+#if USE_MONTMATH
   {
     const uint64_t npi = mont_inverse(n),  mont1 = mont_get1(n);
     const uint64_t mont2  = mont_get2(n);
@@ -149,7 +146,7 @@ int is_euler_plumb_pseudoprime(UV const n)
  */
 int miller_rabin(UV const n, const UV *bases, int nbases)
 {
-#if USE_MONT_PRIMALITY
+#if USE_MONTMATH
   MPUassert(n > 3, "MR called with n <= 3");
   if ((n & 1) == 0) return 0;
   return monty_mr64((uint64_t)n, bases, nbases);
@@ -189,7 +186,7 @@ int BPSW(UV const n)
   if (n < 7) return (n == 2 || n == 3 || n == 5);
   if ((n % 2) == 0 || n == UV_MAX) return 0;
 
-#if !USE_MONT_PRIMALITY
+#if !USE_MONTMATH
   return    miller_rabin(n, mr_bases_const2, 1)
          && is_almost_extra_strong_lucas_pseudoprime(n,1);
 #else
@@ -537,7 +534,7 @@ int is_lucas_pseudoprime(UV n, int strength)
   if (strength > 0)
     while ( (d & 1) == 0 ) {  s++;  d >>= 1; }
 
-#if USE_MONT_PRIMALITY
+#if USE_MONTMATH
   {
     const uint64_t npi = mont_inverse(n),  mont1 = mont_get1(n);
     const uint64_t mont2 = mont_get2(n);
@@ -689,7 +686,7 @@ int is_almost_extra_strong_lucas_pseudoprime(UV n, UV increment)
   while ( (d & 1) == 0 ) {  s++;  d >>= 1; }
   { UV v = d; b = 0; while (v >>= 1) b++; }
 
-#if USE_MONT_PRIMALITY
+#if USE_MONTMATH
   {
     const uint64_t npi = mont_inverse(n),  mont1 = mont_get1(n);
     const uint64_t mont2 = mont_get2(n);
@@ -777,7 +774,7 @@ static _perrin _perrindata[NPERRINDIV] = {
 
 /* Calculate signature using the doubling rule from Adams and Shanks 1982 */
 static void calc_perrin_sig(UV* S, UV n) {
-#if USE_MONT_PRIMALITY
+#if USE_MONTMATH
   uint64_t npi = 0, mont1;
 #endif
   UV T[6], T01, T34, T45;
@@ -787,7 +784,7 @@ static void calc_perrin_sig(UV* S, UV n) {
   S[0] = 1; S[1] = n-1; S[2] = 3;   S[3] = 3; S[4] = 0; S[5] = 2;
   if (n <= 1) return;
 
-#if USE_MONT_PRIMALITY
+#if USE_MONTMATH
   if ( (n&1) ) {
     npi = mont_inverse(n);
     mont1 = mont_get1(n);
@@ -801,7 +798,7 @@ static void calc_perrin_sig(UV* S, UV n) {
 
   while (b-- > 1) {
     /* Double */
-#if USE_MONT_PRIMALITY
+#if USE_MONTMATH
     if (n&1) {
       T[0] = submod(submod(mont_sqrmod(S[0],n), S[5],n), S[5],n);
       T[1] = submod(submod(mont_sqrmod(S[1],n), S[4],n), S[4],n);
@@ -831,7 +828,7 @@ static void calc_perrin_sig(UV* S, UV n) {
       S[3] = T34;    S[4] = T[4];   S[5] = T45;
     }
   }
-#if USE_MONT_PRIMALITY
+#if USE_MONTMATH
   if (n&1) { /* Recover result from Montgomery form */
     for (i = 0; i < 6; i++)
       S[i] = mont_recover(S[i],n);
@@ -999,7 +996,7 @@ int is_frobenius_khashin_pseudoprime(UV n)
   } while (k == 1);
   if (k == 0) return 0;
 
-#if USE_MONT_PRIMALITY
+#if USE_MONTMATH
   {
     const uint64_t npi = mont_inverse(n);
     const uint64_t mont1 = mont_get1(n);
@@ -1072,7 +1069,7 @@ int is_frobenius_underwood_pseudoprime(UV n)
   np1 = n+1;
   { UV v = np1; len = 1;  while (v >>= 1) len++; }
 
-#if USE_MONT_PRIMALITY
+#if USE_MONTMATH
   {
     const uint64_t npi = mont_inverse(n),  mont1 = mont_get1(n);
     const uint64_t mont2 = mont_get2(n);
@@ -1210,7 +1207,7 @@ int is_prob_prime(UV n)
         !(x%41) || !(x%43) || !(x%47) || !(x%53))   return 0;
     if (x < 3481) /* 59*59 */                       return 2;
     /* Trial division crossover point depends on platform */
-    if (!USE_MONT_PRIMALITY && n < 500000) {
+    if (!USE_MONTMATH && n < 500000) {
       uint32_t f = 59;
       uint32_t limit = isqrt(n);
       while (f <= limit) {

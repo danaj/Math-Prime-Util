@@ -10,11 +10,12 @@
 #define FUNC_isqrt 1
 #include "util.h"
 #include "primality.h"
+#include "montmath.h"
 
 /* Is it better to do a partial sieve + primality tests vs. full sieve? */
 static int do_partial_sieve(UV startp, UV endp) {
   UV range = endp - startp;
-  if (USE_MONT_PRIMALITY) range /= 8;  /* Fast primality tests */
+  if (USE_MONTMATH) range /= 8;  /* Fast primality tests */
 #if BITS_PER_WORD == 64
   if ( (startp > UVCONST(     100000000000000) && range <     20000) ||
        (startp > UVCONST(    1000000000000000) && range <    100000) ||

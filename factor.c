@@ -9,9 +9,7 @@
 #include "mulmod.h"
 #include "cache.h"
 #include "primality.h"
-#if USE_MONT_PRIMALITY
 #include "montmath.h"
-#endif
 #define FUNC_isqrt  1
 #define FUNC_icbrt  1
 #define FUNC_gcd_ui 1
@@ -142,7 +140,7 @@ int factor(UV n, UV *factors)
     while ( (n >= f*f) && (!is_prob_prime(n)) ) {
       int split_success = 0;
       /* Adjust the number of rounds based on the number size and speed */
-#if USE_MONT_PRIMALITY
+#if USE_MONTMATH
       UV const br_rounds = ((n>>29)<100000) ?  8000 : 80000;
 #elif MULMODS_ARE_FAST
       UV const br_rounds = ((n>>29)<100000) ?   500 :  2000;
@@ -493,8 +491,7 @@ int holf_factor(UV n, UV *factors, UV rounds)
 }
 
 
-#if USE_MONT_PRIMALITY
-#include "montmath.h"
+#if USE_MONTMATH
 /* Pollard / Brent.  Brent's modifications to Pollard's Rho.  Maybe faster. */
 int pbrent_factor(UV n, UV *factors, UV rounds, UV a)
 {
@@ -1027,26 +1024,29 @@ int squfof_factor(UV n, UV *factors, UV rounds)
 
 static UV dlp_trial(UV a, UV g, UV p, UV maxrounds) {
   UV k, t;
-#if USE_MONT_PRIMALITY
-  const uint64_t npi = mont_inverse(p),  mont1 = mont_get1(p);
-  g = mont_geta(g, p);
-  a = mont_geta(a, p);
   if (maxrounds > p) maxrounds = p;
-  for (t = g, k = 1; k < maxrounds; k++) {
-    if (t == a)
-      return k;
-    t = mont_mulmod(t, g, p);
-    if (t == g) break;   /* Stop at cycle */
-  }
-#else
-  if (maxrounds > p) maxrounds = p;
-  for (t = g, k = 1; k < maxrounds; k++) {
-    if (t == a)
-      return k;
-    t = mulmod(t, g, p);
-    if (t == g) break;   /* Stop at cycle */
-  }
+
+#if USE_MONTMATH
+  if (p&1) {
+    const uint64_t npi = mont_inverse(p),  mont1 = mont_get1(p);
+    g = mont_geta(g, p);
+    a = mont_geta(a, p);
+    for (t = g, k = 1; k < maxrounds; k++) {
+      if (t == a)
+        return k;
+      t = mont_mulmod(t, g, p);
+      if (t == g) break;   /* Stop at cycle */
+    }
+  } else
 #endif
+  {
+    for (t = g, k = 1; k < maxrounds; k++) {
+      if (t == a)
+        return k;
+      t = mulmod(t, g, p);
+      if (t == g) break;   /* Stop at cycle */
+    }
+  }
   return 0;
 }
 

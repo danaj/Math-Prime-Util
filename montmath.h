@@ -3,6 +3,13 @@
 
 #include "ptypes.h"
 
+#if BITS_PER_WORD == 64 && HAVE_STD_U64 && defined(__GNUC__) && defined(__x86_64__)
+#define USE_MONTMATH 1
+#else
+#define USE_MONTMATH 0
+#endif
+
+#if USE_MONTMATH
 /******************************************************************************/
 /*                   This is the interface we'll use                          */
 /******************************************************************************/
@@ -142,5 +149,6 @@ static int monty_mr64(const uint64_t n, const UV* bases, int cnt)
   }
   return 1;
 }
+#endif
 
 #endif
