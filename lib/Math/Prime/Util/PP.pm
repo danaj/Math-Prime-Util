@@ -2626,22 +2626,23 @@ sub fromdigits {
   my($r, $base) = @_;
   $base = 10 unless defined $base;
   return $r if $base == 10 && ref($r) =~ /^Math::/;
-  my $n = BZERO->copy;
-  $base = BZERO + $base;
+  my $n;
   if (ref($r) && ref($r) !~ /^Math::/) {
     croak "fromdigits first argument must be a string or array reference"
       unless ref($r) eq 'ARRAY';
+    ($n,$base) = (BZERO->copy, BZERO + $base);
     for my $d (@$r) {
       $n = $n * $base + $d;
     }
   } elsif ($base == 2) {
-    $n->from_bin($r);
+    $n = Math::BigInt->from_bin("0b$r");
   } elsif ($base == 8) {
-    $n->from_oct($r);
+    $n = Math::BigInt->from_oct("0$r");
   } elsif ($base == 16) {
-    $n->from_hex($r);
+    $n = Math::BigInt->from_hex("0x$r");
   } else {
     $r =~ s/^0*//;
+    ($n,$base) = (BZERO->copy, BZERO + $base);
     #for my $d (map { $_mapdigit{$_} } split(//,$r)) {
     #  croak "Invalid digit for base $base" unless defined $d && $d < $base;
     #  $n = $n * $base + $d;
