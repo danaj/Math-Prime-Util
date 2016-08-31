@@ -30,7 +30,12 @@ my $rand_ndigit_gen = sub {
     $base = Math::BigInt->new(10)->bpow($digits-1);
     $max = Math::BigInt->new(10)->bpow($digits) - 1;
   }
-  my @nums = map { $base + $randf->($max-$base) } (1 .. $howmany);
+  #my @nums = map { $base + $randf->($max-$base) } (1 .. $howmany);
+  my @nums;
+  while (@nums < $howmany) {
+    my $n = $base + $randf->($max-$base);
+    push @nums, $n if $n % 2 && $n % 3 && $n % 5 && $n % 7;
+  }
   return (wantarray) ? @nums : $nums[0];
 };
 
