@@ -473,7 +473,7 @@ sieve_primes(IN UV low, IN UV high)
     segment_primes = 3
     segment_twin_primes = 4
     _ramanujan_primes = 5
-    n_ramanujan_primes = 6
+    _n_ramanujan_primes = 6
   PREINIT:
     AV* av;
   PPCODE:

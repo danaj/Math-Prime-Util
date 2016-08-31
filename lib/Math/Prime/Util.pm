@@ -344,6 +344,9 @@ sub primes {
   return $sref;
 }
 
+# Shortcut for primes returning an array instead of array reference.
+# sub aprimes { @{primes(@_)}; }
+
 sub twin_primes {
   my($low,$high) = @_;
   if (scalar @_ > 1) {

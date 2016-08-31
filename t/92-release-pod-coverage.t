@@ -78,7 +78,7 @@ sub mpu_public_regex {
       todigits fromdigits todigitstring sumdigits
       invmod sqrtmod addmod mulmod divmod powmod
       vecsum vecmin vecmax vecprod vecreduce vecextract
-      vecany vecall vecnotall vecnone vecfirst
+      vecany vecall vecnotall vecnone vecfirst vecfirstidx
       moebius mertens euler_phi jordan_totient exp_mangoldt liouville
       partitions bernfrac bernreal harmfrac harmreal
       chebyshev_theta chebyshev_psi
