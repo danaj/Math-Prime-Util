@@ -117,3 +117,5 @@
 - surround_primes
 
 - More Montgomery: znlog, sqrtmod, catalan
+
+- check for GMP RiemannR in PP prime_count_approx code

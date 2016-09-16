@@ -891,7 +891,7 @@ sub bernfrac {
   return map { _to_bigint($_) } (0,1) if defined $n && $n < 0;
   _validate_num($n) || _validate_positive_integer($n);
 
-  if ($_HAVE_GMP && defined &Math::Prime::Util::GMP::bernfrac) {
+  if ($Math::Prime::Util::_GMPfunc{"bernfrac"}) {
     return map { _to_bigint($_) } Math::Prime::Util::GMP::bernfrac($n);
   }
 
@@ -902,7 +902,7 @@ sub bernreal {
   my($n, $precision) = @_;
   do { require Math::BigFloat; Math::BigFloat->import(); } unless defined $Math::BigFloat::VERSION;
 
-  if ($_HAVE_GMP && defined &Math::Prime::Util::GMP::bernreal) {
+  if ($Math::Prime::Util::_GMPfunc{"bernreal"}) {
     return Math::BigFloat->new(Math::Prime::Util::GMP::bernreal($n)) if !defined $precision;
     return Math::BigFloat->new(Math::Prime::Util::GMP::bernreal($n,$precision),$precision);
   }
@@ -917,7 +917,7 @@ sub harmfrac {
   _validate_num($n) || _validate_positive_integer($n);
   return map { _to_bigint($_) } (0,1) if $n <= 0;
 
-  if ($_HAVE_GMP && defined &Math::Prime::Util::GMP::harmfrac) {
+  if ($Math::Prime::Util::_GMPfunc{"harmfrac"}) {
     return map { _to_bigint($_) } Math::Prime::Util::GMP::harmfrac($n);
   }
 
@@ -930,7 +930,7 @@ sub harmreal {
   do { require Math::BigFloat; Math::BigFloat->import(); } unless defined $Math::BigFloat::VERSION;
   return Math::BigFloat->bzero if $n <= 0;
 
-  if ($_HAVE_GMP && defined &Math::Prime::Util::GMP::harmreal) {
+  if ($Math::Prime::Util::_GMPfunc{"harmreal"}) {
     return Math::BigFloat->new(Math::Prime::Util::GMP::harmreal($n)) if !defined $precision;
     return Math::BigFloat->new(Math::Prime::Util::GMP::harmreal($n,$precision),$precision);
   }
@@ -944,7 +944,7 @@ sub harmreal {
     );
   }
 
-  if ($_HAVE_GMP && defined &Math::Prime::Util::GMP::harmfrac) {
+  if ($Math::Prime::Util::_GMPfunc{"harmfrac"}) {
     my($num,$den) = map { _to_bigint($_) } Math::Prime::Util::GMP::harmfrac($n);
     return scalar Math::BigFloat->new($num)->bdiv($den, $precision);
   }
@@ -3003,10 +3003,18 @@ its divisors, including 1 and itself.  An optional second argument C<k>
 may be given, which will result in the sum of the C<k-th> powers of the
 divisors to be returned.
 
-This is known as the sigma function (see Hardy and Wright section 16.7,
-or OEIS A000203).  The API is identical to Pari/GP's C<sigma> function.
+This is known as the sigma function (see Hardy and Wright section 16.7).
+The API is identical to Pari/GP's C<sigma> function, and not dissimilar to
+Mathematica's C<DivisorSigma[k,n]> function.
 This function is useful for calculating things like aliquot sums, abundant
 numbers, perfect numbers, etc.
+
+With various C<k> values, the results are the OEIS sequences
+L<OEIS series A000005|http://oeis.org/A000005> (C<k=0>, number of divisors),
+L<OEIS series A000203|http://oeis.org/A000203> (C<k=1>, sum of divisors),
+L<OEIS series A001157|http://oeis.org/A001157> (C<k=2>, sum of squares of divisors),
+L<OEIS series A001158|http://oeis.org/A001158> (C<k=4>, sum of cubes of divisors),
+etc.
 
 The second argument may also be a code reference, which is called for each
 divisor and the results are summed.  This allows computation of other
@@ -3170,10 +3178,12 @@ rational number represented by two L<Math::BigInt> objects.  B_1 = 1/2.
 This corresponds to Pari's C<bernfrac(n)> and Mathematica's C<BernoulliB>
 functions.
 
-This currently uses the simple Brent-Harvey recurrence, so will not be
-nearly as fast as Pari or Mathematica which use high-precision values of
-Pi and Zeta.  With L<Math::Prime::Util::GMP> installed it is, however,
-faster than L<Math::Pari> which uses an older algorithm.
+Having L<Math::Prime::Util::GMP> installed will make a big difference in
+speed, and version 0.41 and newer of that package use fast Zeta and Pi
+computations to run much faster.  Older versions of that package, and the
+Perl/Bignum version used without that package, use the simple Brent-Harvey
+algorithm.  This is faster than L<Math::Pari> which uses an older algorithm,
+but quite a bit slower than modern Pari, Mathematica, or our GMP backend.
 
 =head2 bernreal
 
@@ -3258,8 +3268,8 @@ undef if no solution is found.  This is the discrete logarithm problem.
 
 The implementation for native integers first applies Silver-Pohlig-Hellman
 on the group order to possibly reduce the problem to a set of smaller
-problems.  The solutions are then performed using a relatively fast Shanks
-BSGS, as well as trial and Pollard's DLP Rho.
+problems.  The solutions are then performed using a mixture of trial,
+Shanks' BSGS, and Pollard's DLP Rho.
 
 The PP implementation is less sophisticated, with only a memory-heavy BSGS
 being used.
@@ -3688,9 +3698,13 @@ the prime factors, returned as a uniqued sorted list.  The result is
 identical to that of Pari's C<divisors> and Mathematica's C<Divisors[n]>
 functions.
 
-In scalar context this returns the sigma0 function,
-the sigma function (see Hardy and Wright section 16.7, or OEIS A000203).
-This is the same result as evaluating the array in scalar context.
+In scalar context this returns the sigma0 function
+(see Hardy and Wright section 16.7).
+This is L<OEIS A000005|http://oeis.org/A000005>.
+The results is identical to evaluating the array in scalar context, but
+more efficient.
+This corresponds to Pari's C<numdiv> and Mathematica's
+C<DivisorSigma[0,n]> functions.
 
 Also see the L</for_divisors> functions for looping over the divisors.
 
@@ -3864,19 +3878,19 @@ digits.  The XS code uses a rational Chebyshev approximation between 0.5 and 5,
 and a series for other values.  The PP code uses an identical series for all
 values.
 
-For BigInt / BigFloat objects, we first check to see if the Math::MPFR module
-is installed.  If so, then it is used, as it will return results much faster
-and can be more accurate.  Accuracy when using MPFR will be equal to the
-C<accuracy()> value of the input (or the default BigFloat accuracy, which
-is 40 by default).
+For integer arguments, the L<Math::Prime::Util::GMP> module (v0.41 or newer)
+will quickly produce high resolution results.  Alternately for any arguments,
+L<Math::MPFR> can be used to quickly produce high resolution results.
 
-If Math::MPFR is not installed, then results are calculated using either
-Borwein (1991) algorithm 2, or the basic series.  Full input accuracy is
-attempted, but Math::BigFloat
+For BigInt / BigFloat objects, accuracy will be equal to the C<accuracy()>
+value of the input (or the default BigFloat accuracy, which is 40 by default).
+
+If neither the GMP backend or Math::MPFR are available, then results are
+calculated using either Borwein (1991) algorithm 2, or the basic series.
+Full input accuracy is attempted, but Math::BigFloat
 L<RT 43692|https://rt.cpan.org/Ticket/Display.html?id=43692>
 produces incorrect high-accuracy computations without the fix.
-It is also very slow.  I highly
-recommend installing Math::MPFR for BigFloat computations.
+It is also very slow.
 
 
 =head2 RiemannR
@@ -3893,11 +3907,11 @@ were Math::BigFloat objects.
 For non-BigInt/BigFloat objects, the result should be accurate to at least 14
 digits.
 
-For BigInt / BigFloat objects, we first check to see if the Math::MPFR module
-is installed.  If so, then it is used, as it will return results much faster
-and can be more accurate.  Accuracy when using MPFR will be equal to the
-C<accuracy()> value of the input (or the default BigFloat accuracy, which
-is 40 by default).  Accuracy without MPFR should be 35 digits.
+For BigInt / BigFloat objects, accuracy depends on the back end modules.
+With L<Math::MPFR> or our GMP backend on integer arguments, accuracy will
+be equal to the C<accuracy()> value of the input (or the default BigFloat
+accuracy, which is 40 by default).  If neither of those modules are available,
+then accuracy should be 35 digits.
 
 
 =head2 LambertW
@@ -4301,7 +4315,7 @@ for security.  MPU can return a primality certificate.
 What Crypt::Primes has that MPU does not is the ability to return a generator.
 
 L<Math::Factor::XS> calculates prime factors and factors, which correspond to
-the L</factor> and L</divisors> functions of MPU.  These functions do
+the L</factor> and L</divisors> functions of MPU.  Its functions do
 not support bigints.  Both are implemented with trial division, meaning they
 are very fast for really small values, but become very slow as the input
 gets larger (factoring 19 digit semiprimes is over 1000 times slower).  The
@@ -4348,7 +4362,7 @@ better support for the other.  The main differences are extra functionality
 (MPU has more functions) and performance.  With native integer inputs, MPU
 is generally much faster, especially with L</prime_count>.  For bigints,
 MPU is slower unless the L<Math::Prime::Util::GMP> module is installed, in
-which case MPU is ~2x faster.  L<Math::Primality> also installs
+which case MPU is 2-4x faster.  L<Math::Primality> also installs
 a C<primes.pl> program, but it has much less functionality than the one
 included with MPU.
 
@@ -4393,7 +4407,7 @@ Some of the highlights:
 
 The default L<Math::Pari> is built with Pari 2.1.7.  This uses 10 M-R
 tests with randomly chosen bases (fixed seed, but doesn't reset each
-invocation like GMP's C<is_probab_prime>).  This has a greater chance
+invocation like GMP's C<is_probab_prime>).  This has a much greater chance
 of false positives compared to the BPSW test -- some composites such as
 C<9>, C<88831>, C<38503>, etc.
 (L<OEIS A141768|http://oeis.org/A141768>)
@@ -4465,9 +4479,8 @@ L</divisor_sum>.
 
 Similar to MPU's L</euler_phi> and L</moebius>.  MPU is 2-20x faster for
 native integers.  MPU also supported range inputs, which can be much
-more efficient.  Without L<Math::Prime::Util::GMP> installed, MPU is
-very slow with bigints.  With it installed, it is about 2x slower than
-Math::Pari.
+more efficient.  With bigint arguments, MPU is slightly faster than
+Math::Pari if the GMP backend is available, but very slow without.
 
 =item C<gcd>, C<lcm>, C<kronecker>, C<znorder>, C<znprimroot>, C<znlog>
 
@@ -4479,7 +4492,7 @@ an incorrect answer, sometimes it hangs).  MPU's L</znprimroot> will always
 return the smallest root if it exists, and C<undef> otherwise.
 Similarly, MPU's L</znlog> will return the smallest C<x> and work with
 non-primitive-root C<g>, which is similar to Pari/GP 2.6, but not the
-older versions in L<Math::Pari>.  The performance of L</znlog> is fairly
+older versions in L<Math::Pari>.  The performance of L</znlog> is quite
 good compared to older Pari/GP, but much worse than 2.6's new methods.
 
 =item C<sigma>

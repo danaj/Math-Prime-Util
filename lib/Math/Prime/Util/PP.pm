@@ -119,6 +119,23 @@ sub _find_big_acc {
   return 18;
 }
 
+sub _bfdigits {
+  my($wantbf, $xdigits) = (0, 17);
+  if (defined $bignum::VERSION || ref($_[0]) =~ /^Math::Big/) {
+    do { require Math::BigFloat; Math::BigFloat->import(); }
+      if !defined $Math::BigFloat::VERSION;
+    if (ref($_[0]) eq 'Math::BigInt') {
+      my $xacc = ($_[0])->accuracy();
+      $_[0] = Math::BigFloat->new($_[0]);
+      ($_[0])->accuracy($xacc) if $xacc;
+    }
+    $_[0] = Math::BigFloat->new("$_[0]") if ref($_[0]) ne 'Math::BigFloat';
+    $wantbf = _find_big_acc($_[0]);
+    $xdigits = $wantbf;
+  }
+  ($wantbf, $xdigits);
+}
+
 
 sub _validate_num {
   my($n, $min, $max) = @_;
@@ -1565,6 +1582,7 @@ sub prime_count_approx {
   # Sadly my Perl RiemannR function is really slow for big values.  If MPFR
   # is available, then use it -- it rocks.  Otherwise, switch to LiCorr for
   # very big values.  This is hacky and shouldn't be necessary.
+  # TODO: check for new GMP function
   my $result;
   if ( $x < 1e36 || _MPFR_available() ) {
     if (ref($x) eq 'Math::BigFloat') {
@@ -2724,6 +2742,7 @@ sub _bernden {
   };
   sub _bernoulli_bh {
     my($n) = @_;
+    my $oacc = Math::BigInt->accuracy();  Math::BigInt->accuracy(undef);
     $n >>= 1;
     my $Tn = $_T[$n];
 
@@ -2738,10 +2757,11 @@ sub _bernden {
       }
     }
 
-    my $E = ($n & 1) ? BTWO : - BTWO;
+    my $E = ($n & 1) ? 2 : -2;
     my $num = $Tn  *  $n  *  $E;
     my $U = BONE << (2*$n);
     $num /= Math::BigInt::bgcd($num, $U * ($U - BONE));
+    Math::BigInt->accuracy($oacc);
     # Denominator = U*(U-1) / gcd but faster to just get it from function
     ($num, _bernden(2*$n));
   }
@@ -2753,7 +2773,10 @@ sub bernfrac {
   return (BONE,BTWO) if $n == 1;    # We're choosing 1/2 instead of -1/2
   return (BZERO,BONE) if $n < 0 || $n & 1;
 
-  # With MPFR, using _bernnum_zeta is ok, but horrible without it.
+  # We should have used one of the GMP functions.  At this point we could
+  # replicate that with Math::MPFR, but the chance that they have the latter
+  # but not the former is very small.
+
   _bernoulli_bh($n);
 }
 
@@ -2797,6 +2820,7 @@ sub stirling {
 sub _harmonic_split { # From Fredrik Johansson
   my($a,$b) = @_;
   return (BONE, $a) if $b - $a == BONE;
+  return ($a+$a+BONE, $a*$a+$a) if $b - $a == BTWO;   # Cut down recursion
   my $m = $a->copy->badd($b)->brsft(BONE);
   my ($p,$q) = _harmonic_split($a, $m);
   my ($r,$s) = _harmonic_split($m, $b);
@@ -4997,12 +5021,18 @@ sub ecm_factor {
 sub divisors {
   my($n) = @_;
   _validate_positive_integer($n);
+  my(@factors, @d, @t);
 
   # In scalar context, returns sigma_0(n).  Very fast.
   return Math::Prime::Util::divisor_sum($n,0) unless wantarray;
   return ($n == 0) ? (0,1) : (1)  if $n <= 1;
 
-  my(@factors, @d, @t);
+  if ($Math::Prime::Util::_GMPfunc{"divisors"}) {
+    eval ' @d = Math::Prime::Util::GMP::divisors($n); ';
+    @d = map { $_ <= ~0 ? $_ : ref($n)->new($_) } @d   if ref($n);
+    return @d;
+  }
+
   @factors = Math::Prime::Util::factor($n);
   return (1,$n) if scalar @factors == 1;
 
@@ -5179,15 +5209,7 @@ sub ExponentialIntegral {
 
   # Gotcha -- MPFR decided to make negative inputs return NaN.  Grrr.
   if ($x > 0 && _MPFR_available()) {
-    my $wantbf = 0;
-    my $xdigits = 17;
-    if (defined $bignum::VERSION || ref($x) =~ /^Math::Big/) {
-      do { require Math::BigFloat; Math::BigFloat->import(); }
-        if !defined $Math::BigFloat::VERSION;
-      $x = Math::BigFloat->new("$x") if ref($x) ne 'Math::BigFloat';
-      $wantbf = _find_big_acc($x);
-      $xdigits = $wantbf;
-    }
+    my($wantbf,$xdigits) = _bfdigits($x);
     my $rnd = 0;  # MPFR_RNDN;
     my $bit_precision = int($xdigits * 3.322) + 4;
     my $rx = Math::MPFR->new();
@@ -5422,39 +5444,44 @@ my @_Riemann_Zeta_Table = (
 sub RiemannZeta {
   my($x) = @_;
 
-  # Use MPFR if possible.
+  my $ix = ($x == int($x))  ?  "" . Math::BigInt->new($x)  :  0;
+
+  # Try MPFR
   if (_MPFR_available()) {
-    my $wantbf = 0;
-    my $xdigits = 17;
-    if (defined $bignum::VERSION || ref($x) =~ /^Math::Big/) {
-      do { require Math::BigFloat; Math::BigFloat->import(); }
-        if !defined $Math::BigFloat::VERSION;
-      if (ref($x) eq 'Math::BigInt') {
-        my $xacc = $x->accuracy();
-        $x = Math::BigFloat->new($x);
-        $x->accuracy($xacc) if $xacc;
-      }
-      $x = Math::BigFloat->new("$x") if ref($x) ne 'Math::BigFloat';
-      $wantbf = _find_big_acc($x);
-      $xdigits = $wantbf;
-    }
+    my($wantbf,$xdigits) = _bfdigits($x);
     my $rnd = 0;  # MPFR_RNDN;
     my $bit_precision = int($xdigits * 3.322) + 8;
-    my $rx = Math::MPFR->new();
-    Math::MPFR::Rmpfr_set_prec($rx, $bit_precision);
-    Math::MPFR::Rmpfr_set_str($rx, "$x", 10, $rnd);
-    my $zetax = Math::MPFR->new();
     # Add more bits to account for the leading zeros.
-    my $extra_bits = int(abs($x));
+    my $extra_bits = int((int(abs($x)/3)-1) * 3.322 + 0.5);
+
+    my $zetax = Math::MPFR->new();
     Math::MPFR::Rmpfr_set_prec($zetax, $bit_precision + $extra_bits);
-    Math::MPFR::Rmpfr_zeta($zetax, $rx, $rnd);
+
+    if ($ix) {
+      Math::MPFR::Rmpfr_zeta_ui($zetax, $ix, $rnd);
+    } else {
+      my $rx = Math::MPFR->new();
+      Math::MPFR::Rmpfr_set_prec($rx, $bit_precision);
+      Math::MPFR::Rmpfr_set_str($rx, "$x", 10, $rnd);
+      Math::MPFR::Rmpfr_zeta($zetax, $rx, $rnd);
+    }
     Math::MPFR::Rmpfr_sub_ui($zetax, $zetax, 1, $rnd);
     my $strval = Math::MPFR::Rmpfr_get_str($zetax, 10, $xdigits, $rnd);
     return ($wantbf)  ?  Math::BigFloat->new($strval,$wantbf)  :  0.0 + $strval;
   }
 
+  # Try our GMP code if possible.
+  if ($Math::Prime::Util::_GMPfunc{"intzetareal"} && $ix) {
+    my($wantbf,$xdigits) = _bfdigits($x);
+    my $zero_dig = int($ix / 3) - 1;
+    my $strval = Math::Prime::Util::GMP::intzetareal($ix, $xdigits + 1 + $zero_dig);
+    $strval =~ s/^(1\.0*)/./;
+    $strval .= "e-".(length($1)-2) if length($1) > 2;
+    return ($wantbf)  ?  Math::BigFloat->new($strval,$wantbf)  : 0.0 + $strval;
+  }
+
+  # If we need a bigfloat result, then call our PP routine.
   if (defined $bignum::VERSION || ref($x) =~ /^Math::Big/) {
-    # No MPFR, BigFloat
     require Math::Prime::Util::ZetaBigFloat;
     return Math::Prime::Util::ZetaBigFloat::RiemannZeta($x);
   }
@@ -5513,20 +5540,7 @@ sub RiemannR {
 
   # Use MPFR if possible.
   if (_MPFR_available()) {
-    my $wantbf = 0;
-    my $xdigits = 17;
-    if (defined $bignum::VERSION || ref($x) =~ /^Math::Big/) {
-      do { require Math::BigFloat; Math::BigFloat->import(); }
-        if !defined $Math::BigFloat::VERSION;
-      if (ref($x) eq 'Math::BigInt') {
-        my $xacc = $x->accuracy();
-        $x = Math::BigFloat->new($x);
-        $x->accuracy($xacc) if $xacc;
-      }
-      $x = Math::BigFloat->new("$x") if ref($x) ne 'Math::BigFloat';
-      $wantbf = _find_big_acc($x);
-      $xdigits = $wantbf;
-    }
+    my($wantbf,$xdigits) = _bfdigits($x);
     my $rnd = 0;  # MPFR_RNDN;
     my $bit_precision = int($xdigits * 3.322) + 8;  # Add some extra
 
@@ -5552,7 +5566,7 @@ sub RiemannR {
     Math::MPFR::Rmpfr_set_prec($rstop, $bit_precision);
     Math::MPFR::Rmpfr_set_str($rstop, "1e-$xdigits", 10, $rnd);
 
-    for my $k (1 .. 10000) {
+    for my $k (1 .. 100000) {
       Math::MPFR::Rmpfr_mul($rpart_term, $rpart_term, $rlogx, $rnd);
       Math::MPFR::Rmpfr_div_ui($rpart_term, $rpart_term, $k, $rnd);
 
@@ -5568,6 +5582,44 @@ sub RiemannR {
     my $strval = Math::MPFR::Rmpfr_get_str($rsum, 10, $xdigits, $rnd);
     return ($wantbf)  ?  Math::BigFloat->new($strval,$wantbf)  :  0.0 + $strval;
   }
+
+  if ($Math::Prime::Util::_GMPfunc{"intriemannrreal"} && $x == int($x)) {
+    my($wantbf,$xdigits) = _bfdigits($x);
+    my $ix = $x->copy->as_int->bstr();
+    my $strval = Math::Prime::Util::GMP::intriemannrreal($ix, $xdigits);
+    return ($wantbf)  ?  Math::BigFloat->new($strval,$wantbf)  :  0.0 + $strval;
+  }
+
+# TODO: look into this as a generic solution
+if (0 && $Math::Prime::Util::_GMPfunc{"intzetareal"}) {
+  my($wantbf,$xdigits) = _bfdigits($x);
+  $x = _upgrade_to_float($x);
+
+  my $extra_acc = 4;
+  $xdigits += $extra_acc;
+  $x->accuracy($xdigits);
+
+  my $logx = log($x);
+  my $part_term = $x->copy->bone;
+  my $sum = $x->copy->bone;
+  my $tol = $x->copy->bone->brsft($xdigits-1, 10);
+  my $bigk = $x->copy->bone;
+  my $term;
+  for my $k (1 .. 10000) {
+    $part_term *= $logx / $bigk;
+    my $zarg = $bigk->copy->binc;
+    my $zeta = (RiemannZeta($zarg) * $bigk) + $bigk;
+    #my $strval = Math::Prime::Util::GMP::intzetareal($k+1, $xdigits + int(($k+1) / 3));
+    #my $zeta = Math::BigFloat->new($strval)->bdec->bmul($bigk)->badd($bigk);
+    $term = $part_term / $zeta;
+    $sum += $term;
+    last if $term < ($tol * $sum);
+    $bigk->binc;
+  }
+  $sum->bround($xdigits-$extra_acc);
+  my $strval = "$sum";
+  return ($wantbf)  ?  Math::BigFloat->new($strval,$wantbf)  :  0.0 + $strval;
+}
 
   if (defined $bignum::VERSION || ref($x) =~ /^Math::Big/) {
     require Math::Prime::Util::ZetaBigFloat;
