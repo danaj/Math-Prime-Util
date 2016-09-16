@@ -12,6 +12,8 @@ BEGIN {
     unless defined $Math::BigInt::VERSION;
   use Math::BigFloat;
 }
+#my $_oldacc = Math::BigFloat->accuracy();
+#Math::BigFloat->accuracy(undef);
 
 
 # Riemann Zeta($k) for integer $k.
@@ -353,7 +355,7 @@ sub RiemannZeta {
     Math::BigFloat->accuracy($xdigits);
     $subx->accuracy($xdigits);  $superx->accuracy($xdigits);
     my $Pix = Math::Prime::Util::Pi($xdigits)->bpow($subx)->bpow($superx);
-    my $Bn = Math::Prime::Util::bernreal($x);  $Bn = -$Bn if $Bn < 0;
+    my $Bn = Math::Prime::Util::bernreal($x,$xdigits);  $Bn = -$Bn if $Bn < 0;
     my $twox1 = $two->copy->bpow($x-1);
     #my $num = $Pix  *  $Bn  *  $twox1;
     #my $res = $num->bdiv($den)->bdec->bround($xdigits - $extra_acc);
@@ -425,7 +427,7 @@ sub RiemannR {
   }
   $x = Math::BigFloat->new("$x") if ref($x) ne 'Math::BigFloat';
   my $xdigits = $x->accuracy || Math::BigFloat->accuracy() || Math::BigFloat->div_scale();
-  my $extra_acc = 1;
+  my $extra_acc = 2;
   $xdigits += $extra_acc;
   my $orig_acc = Math::BigFloat->accuracy();
   Math::BigFloat->accuracy($xdigits);
@@ -488,6 +490,9 @@ sub RiemannR {
   Math::BigFloat->accuracy($orig_acc);
   return $sum;
 }
+
+#Math::BigFloat->accuracy($_oldacc);
+#undef $_oldacc;
 
 1;
 
