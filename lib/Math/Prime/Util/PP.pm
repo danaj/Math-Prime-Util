@@ -1579,12 +1579,13 @@ sub prime_count_approx {
   # my $result = int(LogarithmicIntegral($x) - LogarithmicIntegral(sqrt($x))/2);
   # my $result = RiemannR($x) + 0.5;
 
-  # Sadly my Perl RiemannR function is really slow for big values.  If MPFR
-  # is available, then use it -- it rocks.  Otherwise, switch to LiCorr for
-  # very big values.  This is hacky and shouldn't be necessary.
-  # TODO: check for new GMP function
+  # Sadly my Perl RiemannR function is really slow for big values.
+  # However I have written versions in GMP (mpf) and MPFR.  If those are
+  # available then we will use them.
+  # Otherwise, switch to LiCorr for very big values.  This is hacky and
+  # shouldn't be necessary.
   my $result;
-  if ( $x < 1e36 || _MPFR_available() ) {
+  if ( $x < 1e36 || _MPFR_available() || $Math::Prime::Util::_GMPfunc{"intriemannrreal"} ) {
     if (ref($x) eq 'Math::BigFloat') {
       # Make sure we get enough accuracy, and also not too much more than needed
       $x->accuracy(length($x->copy->as_int->bstr())+2);
@@ -3945,6 +3946,8 @@ sub is_perrin_pseudoprime {
   return 0+($n >= 2) if $n < 4;
   return 0 if $restrict > 2 && ($n % 2) == 0;
 
+  $n = Math::BigInt->new("$n") unless ref($n) eq 'Math::BigInt';
+
   my @S = _perrin_signature($n);
   return 0 unless $S[4] == 0;
   return 1 if $restrict == 0;
@@ -5028,7 +5031,8 @@ sub divisors {
   return ($n == 0) ? (0,1) : (1)  if $n <= 1;
 
   if ($Math::Prime::Util::_GMPfunc{"divisors"}) {
-    eval ' @d = Math::Prime::Util::GMP::divisors($n); ';
+    # This trips an erroneous compile time error without the eval.
+    eval ' @d = Math::Prime::Util::GMP::divisors($n); ';  ## no critic qw(ProhibitStringyEval)
     @d = map { $_ <= ~0 ? $_ : ref($n)->new($_) } @d   if ref($n);
     return @d;
   }
@@ -5585,7 +5589,7 @@ sub RiemannR {
 
   if ($Math::Prime::Util::_GMPfunc{"intriemannrreal"} && $x == int($x)) {
     my($wantbf,$xdigits) = _bfdigits($x);
-    my $ix = $x->copy->as_int->bstr();
+    my $ix = (ref($x) =~ /^Math::Big/) ? $x->copy->as_int->bstr() : int($x);
     my $strval = Math::Prime::Util::GMP::intriemannrreal($ix, $xdigits);
     return ($wantbf)  ?  Math::BigFloat->new($strval,$wantbf)  :  0.0 + $strval;
   }
