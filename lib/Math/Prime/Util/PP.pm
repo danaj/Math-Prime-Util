@@ -1585,7 +1585,7 @@ sub prime_count_approx {
   # Otherwise, switch to LiCorr for very big values.  This is hacky and
   # shouldn't be necessary.
   my $result;
-  if ( $x < 1e36 || _MPFR_available() || $Math::Prime::Util::_GMPfunc{"intriemannrreal"} ) {
+  if ( $x < 1e36 || _MPFR_available() || $Math::Prime::Util::_GMPfunc{"riemannr"} ) {
     if (ref($x) eq 'Math::BigFloat') {
       # Make sure we get enough accuracy, and also not too much more than needed
       $x->accuracy(length($x->copy->as_int->bstr())+2);
@@ -5475,10 +5475,12 @@ sub RiemannZeta {
   }
 
   # Try our GMP code if possible.
-  if ($Math::Prime::Util::_GMPfunc{"intzetareal"} && $ix) {
+  if ($Math::Prime::Util::_GMPfunc{"zeta"}) {
     my($wantbf,$xdigits) = _bfdigits($x);
-    my $zero_dig = int($ix / 3) - 1;
-    my $strval = Math::Prime::Util::GMP::intzetareal($ix, $xdigits + 1 + $zero_dig);
+    # If we knew the *exact* number of zero digits, we could let GMP zeta
+    # handle the correct rounding.  But we don't, so we have to go over.
+    my $zero_dig = "".int($x / 3) - 1;
+    my $strval = Math::Prime::Util::GMP::zeta($x, $xdigits + 8 + $zero_dig);
     $strval =~ s/^(1\.0*)/./;
     $strval .= "e-".(length($1)-2) if length($1) > 2;
     return ($wantbf)  ?  Math::BigFloat->new($strval,$wantbf)  : 0.0 + $strval;
@@ -5587,15 +5589,14 @@ sub RiemannR {
     return ($wantbf)  ?  Math::BigFloat->new($strval,$wantbf)  :  0.0 + $strval;
   }
 
-  if ($Math::Prime::Util::_GMPfunc{"intriemannrreal"} && $x == int($x)) {
+  if ($Math::Prime::Util::_GMPfunc{"riemannr"}) {
     my($wantbf,$xdigits) = _bfdigits($x);
-    my $ix = (ref($x) =~ /^Math::Big/) ? $x->copy->as_int->bstr() : int($x);
-    my $strval = Math::Prime::Util::GMP::intriemannrreal($ix, $xdigits);
+    my $strval = Math::Prime::Util::GMP::riemannr($x, $xdigits);
     return ($wantbf)  ?  Math::BigFloat->new($strval,$wantbf)  :  0.0 + $strval;
   }
 
 # TODO: look into this as a generic solution
-if (0 && $Math::Prime::Util::_GMPfunc{"intzetareal"}) {
+if (0 && $Math::Prime::Util::_GMPfunc{"zeta"}) {
   my($wantbf,$xdigits) = _bfdigits($x);
   $x = _upgrade_to_float($x);
 
@@ -5613,7 +5614,7 @@ if (0 && $Math::Prime::Util::_GMPfunc{"intzetareal"}) {
     $part_term *= $logx / $bigk;
     my $zarg = $bigk->copy->binc;
     my $zeta = (RiemannZeta($zarg) * $bigk) + $bigk;
-    #my $strval = Math::Prime::Util::GMP::intzetareal($k+1, $xdigits + int(($k+1) / 3));
+    #my $strval = Math::Prime::Util::GMP::zeta($k+1, $xdigits + int(($k+1) / 3));
     #my $zeta = Math::BigFloat->new($strval)->bdec->bmul($bigk)->badd($bigk);
     $term = $part_term / $zeta;
     $sum += $term;

@@ -28,6 +28,9 @@ Revision history for Perl module Math::Prime::Util
     - On x86_64, use Montgomery math for Pollard/Brent Rho.  This speeds up
       factoring significantly for large native inputs (e.g. 10-20 digits).
 
+    - Use new GMP zeta and riemannr functions if possible, making some of
+      our operations much faster without Math::MPFR.
+
 
 0.59 2016-08-03
 
