@@ -2681,8 +2681,8 @@ long double _XS_ExponentialIntegral(long double x) {
     long double sumn = C6p[0]-x*(C6p[1]-x*(C6p[2]-x*(C6p[3]-x*(C6p[4]-x*(C6p[5]-x*C6p[6])))));
     long double sumd = C6q[0]-x*(C6q[1]-x*(C6q[2]-x*(C6q[3]-x*(C6q[4]-x*(C6q[5]-x*C6q[6])))));
     val = logl(-x) - sumn/sumd;
-  } else if (x < -logl(LDBL_EPSILON)) {
-    /* Convergent series */
+  } else if (x < (-2 * logl(LDBL_EPSILON))) {
+    /* Convergent series.  Accurate but slow especially with large x. */
     long double fact_n = x;
     for (n = 2; n <= 200; n++) {
       long double invn = 1.0L / n;
@@ -2690,12 +2690,32 @@ long double _XS_ExponentialIntegral(long double x) {
       term = fact_n * invn;
       KAHAN_SUM(sum, term);
       /* printf("C  after adding %.20Lf, val = %.20Lf\n", term, sum); */
-      if ( term < LDBL_EPSILON*sum) break;
+      if (term < LDBL_EPSILON*sum) break;
     }
     KAHAN_SUM(sum, euler_mascheroni);
     KAHAN_SUM(sum, logl(x));
     KAHAN_SUM(sum, x);
     val = sum;
+  } else if (x >= 24) {
+    /* Cody / Thacher rational Chebyshev */
+    static const long double P2[10] = {
+        1.75338801265465972390E02L,-2.23127670777632409550E02L,
+        -1.81949664929868906455E01L,-2.79798528624305389340E01L,
+        -7.63147701620253630855E00L,-1.52856623636929636839E01L,
+        -7.06810977895029358836E00L,-5.00006640413131002475E00L,
+        -3.00000000320981265753E00L, 1.00000000000000485503E00L };
+    static const long double Q2[9] = {
+        3.97845977167414720840E04L, 3.97277109100414518365E00L,
+        1.37790390235747998793E02L, 1.17179220502086455287E02L,
+        7.04831847180424675988E01L,-1.20187763547154743238E01L,
+        -7.99243595776339741065E00L,-2.99999894040324959612E00L,
+        1.99999999999048104167E00L };
+    long double invx = 1.0L / x;
+    long double frac = 0.0;
+    for (n = 0; n <= 8; n++)
+      frac = Q2[n] / (P2[n] + x + frac);
+    frac += P2[9];
+    val = expl(x) * (invx + invx*invx*frac);
   } else {
     /* Asymptotic divergent series */
     long double invx = 1.0L / x;
@@ -2713,8 +2733,8 @@ long double _XS_ExponentialIntegral(long double x) {
         break;
       }
     }
-    term = expl(x) * invx;
-    val = term * sum + term;
+    KAHAN_SUM(sum, 1.0L);
+    val = expl(x) * sum * invx;
   }
 
   return val;
