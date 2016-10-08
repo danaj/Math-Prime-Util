@@ -533,13 +533,14 @@ UV twin_prime_count_approx(UV n)
     long double logn = logl(ln);
     long double li2 = _XS_ExponentialIntegral(logn) + two_over_log_two-ln/logn;
     /* try to minimize MSE */
-    if      (n <    4000) li2 *= 1.2035 * logl(logl(logl(ln)));
-    else if (n <    8000) li2 *= 0.9439 * logl(logl(logl(ln*1000)));
-    else if (n <   32000) li2 *= 0.8967 * logl(logl(logl(ln*4000)));
-    else if (n <  200000) li2 *= 0.8937 * logl(logl(logl(ln*4000)));
-    else if (n < 1000000) li2 *= 0.8640 * logl(logl(logl(ln*16000)));
-    else if (n < 4000000) li2 *= 0.8627 * logl(logl(logl(ln*16000)));
-    else if (n <10000000) li2 *= 0.8536 * logl(logl(logl(ln*16000)));
+    if      (n <    4000) li2 *= 1.2035 * logl(logl(logn));
+    else if (n <    8000) li2 *= 0.9439 * logl(logl(6.907755L+logn));
+    else if (n <   32000) li2 *= 0.8967 * logl(logl(8.294050L+logn));
+    else if (n <  200000) li2 *= 0.8938 * logl(logl(8.294050L+logn));
+    else if (n < 1000000) li2 *= 0.8640 * logl(logl(9.680344L+logn));
+    else if (n < 4000000) li2 *= 0.8627 * logl(logl(9.680344L+logn));
+    else if (n <10000000) li2 *= 0.8536 * logl(logl(9.680344L+logn));
+    else if (n <20000000) li2 *= 0.4877 * logl(5.0L+logl(logn));
     return (UV) (two_C2 * li2 + 0.5L);
   }
 }
@@ -976,8 +977,12 @@ UV nth_twin_prime_approx(UV n)
    * Good results require that the TPC estimate is both fast and accurate.
    * These bounds are good for the actual nth_twin_prime values.
    */
-  lo = (UV) (1.2 * fnlog2n);
-  hi = (UV) ( (n >= 1200) ? (1.7 * fnlog2n) : (2.3 * fnlog2n + 5) );
+  lo = (UV) (0.9 * fnlog2n);
+  hi = (UV) ( (n >= 1e16) ? (1.04 * fnlog2n) :
+              (n >= 1e13) ? (1.10 * fnlog2n) :
+              (n >= 1e7 ) ? (1.31 * fnlog2n) :
+              (n >= 1200) ? (1.70 * fnlog2n) :
+              (2.3 * fnlog2n + 5) );
   if (hi <= lo) hi = UV_MAX;
   while (lo < hi) {
     UV mid = lo + (hi-lo)/2;
