@@ -1947,15 +1947,17 @@ sub twin_prime_count_approx {
   my $logn = log($n);
   # The loss of full Ei precision is a few orders of magnitude less than the
   # accuracy of the estimate, so save huge time and don't bother.
-  my $li2 = ExponentialIntegral("$logn") + 2.8853900817779268147198494 - ($n/$logn);
-  my $log4 = log(log(log($n*4000)));
-  if    ($n <     4000) { $li2 *= 1.0005 * $log4; }
-  elsif ($n <     8000) { $li2 *= 0.9734 * $log4; }
+  my $li2 = Math::Prime::Util::ExponentialIntegral("$logn") + 2.8853900817779268147198494 - ($n/$logn);
+  # Empirical correction factor
+  my $log4 = log(log(8.294049640 + $logn));
+  if    ($n <     4000) { $li2 *= 0.8608 * $log4; }
+  elsif ($n <     8000) { $li2 *= 0.9168 * $log4; }
   elsif ($n <    32000) { $li2 *= 0.8967 * $log4; }
-  elsif ($n <   200000) { $li2 *= 0.8937 * $log4; }
-  elsif ($n <  1000000) { $li2 *= 0.8793 * $log4; }
-  elsif ($n <  4000000) { $li2 *= 0.8766 * $log4; }
-  elsif ($n < 10000000) { $li2 *= 0.8664 * $log4; }
+  elsif ($n <   200000) { $li2 *= 0.8938 * $log4; }
+  elsif ($n <  1000000) { $li2 *= 0.8794 * $log4; }
+  elsif ($n <  4000000) { $li2 *= 0.8765 * $log4; }
+  elsif ($n < 10000000) { $li2 *= 0.8665 * $log4; }
+  elsif ($n < 20000000) { $li2 *= 0.4877 * log(5+log($logn)); }
   return int(1.32032363169373914785562422 * $li2 + 0.5);
 }
 
