@@ -520,6 +520,10 @@ sub primes {
   return [grep { $_ >= $low && $_ <= $high } @_primes_small]
     if $high <= $_primes_small[-1];
 
+  if ($Math::Prime::Util::_GMPfunc{"sieve_primes"}) {
+    return [ Math::Prime::Util::GMP::sieve_primes($low, $high, 0) ];
+  }
+
   # At some point even the pretty-fast pure perl sieve is going to be a
   # dog, and we should move to trials.  This is typical with a small range
   # on a large base.  More thought on the switchover should be done.
