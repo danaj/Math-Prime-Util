@@ -2053,9 +2053,13 @@ sub print_primes {
   if ($high >= $low) {
     my $p1 = $low;
     while ($p1 <= $high) {
-      my $p2 = $p1 + 10_000_000 - 1;
+      my $p2 = $p1 + 15_000_000 - 1;
       $p2 = $high if $p2 > $high;
-      print $fh join("\n", @{primes($p1,$p2)}), "\n";
+      if ($Math::Prime::Util::_GMPfunc{"sieve_primes"}) {
+        print $fh "$_\n" for Math::Prime::Util::GMP::sieve_primes($p1,$p2,0);
+      } else {
+        print $fh "$_\n" for @{primes($p1,$p2)};
+      }
       $p1 = $p2+1;
     }
   }
