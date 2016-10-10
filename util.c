@@ -953,7 +953,7 @@ UV nth_twin_prime(UV n)
   {
     UV seg_base, seg_low, seg_high;
     void* ctx = start_segment_primes(beg, end, &segment);
-    while (next_segment_primes(ctx, &seg_base, &seg_low, &seg_high)) {
+    while (n && next_segment_primes(ctx, &seg_base, &seg_low, &seg_high)) {
       UV p, bytes = seg_high/30 - seg_low/30 + 1;
       UV s = ((UV)segment[0]) << 8;
       for (p = 0; p < bytes; p++) {
@@ -964,7 +964,6 @@ UV nth_twin_prime(UV n)
         if (!(s & 0x0030) && !--n) { nth=seg_base+p*30+17; break; }
         if (!(s & 0x0180) && !--n) { nth=seg_base+p*30+29; break; }
       }
-      if (n == 0) break;
     }
     end_segment_primes(ctx);
   }
