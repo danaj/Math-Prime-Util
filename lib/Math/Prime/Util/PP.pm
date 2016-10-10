@@ -1948,16 +1948,28 @@ sub twin_prime_count_approx {
   # The loss of full Ei precision is a few orders of magnitude less than the
   # accuracy of the estimate, so save huge time and don't bother.
   my $li2 = Math::Prime::Util::ExponentialIntegral("$logn") + 2.8853900817779268147198494 - ($n/$logn);
+
   # Empirical correction factor
-  my $log4 = log(log(8.294049640 + $logn));
-  if    ($n <     4000) { $li2 *= 0.8608 * $log4; }
-  elsif ($n <     8000) { $li2 *= 0.9168 * $log4; }
-  elsif ($n <    32000) { $li2 *= 0.8967 * $log4; }
-  elsif ($n <   200000) { $li2 *= 0.8938 * $log4; }
-  elsif ($n <  1000000) { $li2 *= 0.8794 * $log4; }
-  elsif ($n <  4000000) { $li2 *= 0.8765 * $log4; }
-  elsif ($n < 10000000) { $li2 *= 0.8665 * $log4; }
-  elsif ($n < 20000000) { $li2 *= 0.4877 * log(5+log($logn)); }
+  my $fm;
+  if    ($n <     4000) { $fm = 0.2952; }
+  elsif ($n <     8000) { $fm = 0.3151; }
+  elsif ($n <    16000) { $fm = 0.3090; }
+  elsif ($n <    32000) { $fm = 0.3096; }
+  elsif ($n <    64000) { $fm = 0.3100; }
+  elsif ($n <   128000) { $fm = 0.3089; }
+  elsif ($n <   256000) { $fm = 0.3099; }
+  elsif ($n <   600000) { my($x0, $x1, $y0, $y1) = (1e6, 6e5, .3091, .3059);
+                          $fm = $y0 + ($n - $x0) * ($y1-$y0) / ($x1 - $x0); }
+  elsif ($n <  1000000) { my($x0, $x1, $y0, $y1) = (6e5, 1e6, .3062, .3042);
+                          $fm = $y0 + ($n - $x0) * ($y1-$y0) / ($x1 - $x0); }
+  elsif ($n <  4000000) { my($x0, $x1, $y0, $y1) = (1e6, 4e6, .3067, .3041);
+                          $fm = $y0 + ($n - $x0) * ($y1-$y0) / ($x1 - $x0); }
+  elsif ($n < 16000000) { my($x0, $x1, $y0, $y1) = (4e6, 16e6, .3033, .2983);
+                          $fm = $y0 + ($n - $x0) * ($y1-$y0) / ($x1 - $x0); }
+  elsif ($n < 32000000) { my($x0, $x1, $y0, $y1) = (16e6, 32e6, .2980, .2965);
+                          $fm = $y0 + ($n - $x0) * ($y1-$y0) / ($x1 - $x0); }
+  $li2 *= $fm * log(12+$logn)  if defined $fm;
+
   return int(1.32032363169373914785562422 * $li2 + 0.5);
 }
 
@@ -1966,7 +1978,7 @@ sub nth_twin_prime {
   return undef if $n < 0;  ## no critic qw(ProhibitExplicitReturnUndef)
   return (undef,3,5,11,17,29,41)[$n] if $n <= 6;
 
-  my $p = nth_twin_prime_approx($n+200);
+  my $p = Math::Prime::Util::nth_twin_prime_approx($n+200);
   my $tp = Math::Prime::Util::twin_primes($p);
   while ($n > scalar(@$tp)) {
     $n -= scalar(@$tp);
@@ -1979,17 +1991,23 @@ sub nth_twin_prime {
 sub nth_twin_prime_approx {
   my($n) = @_;
   return nth_twin_prime($n) if $n < 6;
-  $n = _upgrade_to_float($n) if ref($n);
-  my $nlogn2 = $n * log($n) * log($n);
-  return int(5.023 * $nlogn2/log(log(1600*$n*$n))) if $n > 59 && $n < 1200;
+  $n = _upgrade_to_float($n) if ref($n) || $n > 2e16;
+  my $logn = log($n);
+  my $nlogn2 = $n * $logn * $logn;
 
-  my $lo = int(1.0 * $nlogn2);
-  my $hi = int(3.0 * $nlogn2 + 3);
-  while ($lo < $hi) {
-    my $mid = $lo + (($hi-$lo) >> 1);
-    if (twin_prime_count_approx($mid) < $n) { $lo = $mid+1; }
-    else                                    { $hi = $mid;   }
+  return int(5.158 * $nlogn2/log(9+log($n*$n))) if $n > 59 && $n <= 1092;
+
+  my $lo = int(0.7 * $nlogn2);
+  my $hi = int( ($n > 1e16) ? 1.1 * $nlogn2
+              : ($n >  480) ? 1.7 * $nlogn2
+                            : 2.3 * $nlogn2 + 3 );
+  while ($lo < $hi && ($hi-$lo)/$lo >= 1e-15) {
+    my $mid = $lo + int(($hi-$lo) >> 1);
+    my $tpca = Math::Prime::Util::twin_prime_count_approx($mid);
+    if ($tpca < $n) { $lo = $mid+1; }
+    else            { $hi = $mid;   }
   }
+  $lo = $lo + int(($hi-$lo) >> 1) if $lo < $hi;
   return $lo;
 }
 

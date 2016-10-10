@@ -31,6 +31,22 @@ Revision history for Perl module Math::Prime::Util
     - Use new GMP zeta and riemannr functions if possible, making some of
       our operations much faster without Math::MPFR.
 
+    - print_primes with large args will try GMP sieve for big speedup.  E.g.
+        use bigint;  print_primes(2e19,2e19+1e7);
+      goes from 37 minutes to 7 seconds.  This also removes a mistaken blank
+      line at the end for certain ranges.
+
+    - PP primes tries to use GMP.  Only for calls from other PP code.
+
+    - Slightly more accuracy in native ExponentialIntegral.
+
+    - Slightly more accuracy in twin_prime_count_approx.
+
+    - nth_twin_prime_approx was incorrect over 1e10 and over 2e16 would
+      infinite loop due to Perl double conversion.
+
+    - nth_twin_prime_approx a little faster and more accurate.
+
 
 0.59 2016-08-03
 

@@ -533,14 +533,22 @@ UV twin_prime_count_approx(UV n)
     long double logn = logl(ln);
     long double li2 = _XS_ExponentialIntegral(logn) + two_over_log_two-ln/logn;
     /* try to minimize MSE */
-    if      (n <    4000) li2 *= 1.2035 * logl(logl(logn));
-    else if (n <    8000) li2 *= 0.9439 * logl(logl(6.907755L+logn));
-    else if (n <   32000) li2 *= 0.8967 * logl(logl(8.294050L+logn));
-    else if (n <  200000) li2 *= 0.8938 * logl(logl(8.294050L+logn));
-    else if (n < 1000000) li2 *= 0.8640 * logl(logl(9.680344L+logn));
-    else if (n < 4000000) li2 *= 0.8627 * logl(logl(9.680344L+logn));
-    else if (n <10000000) li2 *= 0.8536 * logl(logl(9.680344L+logn));
-    else if (n <20000000) li2 *= 0.4877 * logl(5.0L+logl(logn));
+    if (n < 32000000) {
+      long double fm;
+      if      (n <    4000) fm = 0.2952;
+      else if (n <    8000) fm = 0.3152;
+      else if (n <   16000) fm = 0.3090;
+      else if (n <   32000) fm = 0.3096;
+      else if (n <   64000) fm = 0.3100;
+      else if (n <  128000) fm = 0.3089;
+      else if (n <  256000) fm = 0.3099;
+      else if (n <  600000) fm = .3091 + (n-256000) * (.3056-.3091) / (600000-256000);
+      else if (n < 1000000) fm = .3062 + (n-600000) * (.3042-.3062) / (1000000-600000);
+      else if (n < 4000000) fm = .3067 + (n-1000000) * (.3041-.3067) / (4000000-1000000);
+      else if (n <16000000) fm = .3033 + (n-4000000) * (.2983-.3033) / (16000000-4000000);
+      else                  fm = .2980 + (n-16000000) * (.2965-.2980) / (32000000-16000000);
+      li2 *= fm * logl(12+logn);
+    }
     return (UV) (two_C2 * li2 + 0.5L);
   }
 }
