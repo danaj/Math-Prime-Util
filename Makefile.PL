@@ -81,22 +81,22 @@ WriteMakefile1(
                },
                provides => {
                  'ntheory' => {
-                    version => '0.59', file => 'lib/ntheory.pm',
+                    version => '0.60', file => 'lib/ntheory.pm',
                  },
                  'Math::Prime::Util' => {
-                    version => '0.59', file => 'lib/Math/Prime/Util.pm',
+                    version => '0.60', file => 'lib/Math/Prime/Util.pm',
                  },
                  'Math::Prime::Util::MemFree' => {
-                    version => '0.59', file => 'lib/Math/Prime/Util/MemFree.pm',
+                    version => '0.60', file => 'lib/Math/Prime/Util/MemFree.pm',
                  },
                  'Math::Prime::Util::PP' => {
-                    version => '0.59', file => 'lib/Math/Prime/Util/PP.pm',
+                    version => '0.60', file => 'lib/Math/Prime/Util/PP.pm',
                  },
                  'Math::Prime::Util::PrimeArray' => {
-                    version => '0.59', file => 'lib/Math/Prime/Util/PrimeArray.pm',
+                    version => '0.60', file => 'lib/Math/Prime/Util/PrimeArray.pm',
                  },
                  'Math::Prime::Util::PrimeIterator' => {
-                    version => '0.59', file => 'lib/Math/Prime/Util/PrimeIterator.pm',
+                    version => '0.60', file => 'lib/Math/Prime/Util/PrimeIterator.pm',
                  },
                  # Skip: PPFE, PrimalityProving, RandomPrimes, ZetaBigFloat,
                  #       ECAffinePoint, ECProjectivePoint
