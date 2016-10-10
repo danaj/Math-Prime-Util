@@ -520,7 +520,7 @@ sub primes {
   return [grep { $_ >= $low && $_ <= $high } @_primes_small]
     if $high <= $_primes_small[-1];
 
-  if ($Math::Prime::Util::_GMPfunc{"sieve_primes"}) {
+  if ($Math::Prime::Util::_GMPfunc{"sieve_primes"} && $Math::Prime::Util::GMP::VERSION >= 0.34) {
     return [ Math::Prime::Util::GMP::sieve_primes($low, $high, 0) ];
   }
 
@@ -2517,7 +2517,7 @@ sub is_power {
   croak("is_power third argument not a scalar reference") if defined($refp) && !ref($refp);
   return 0 if abs($n) <= 3;
 
-  if ($Math::Prime::Util::_GMPfunc{"is_power"}) {
+  if ($Math::Prime::Util::_GMPfunc{"is_power"} && $Math::Prime::Util::GMP::VERSION >= 0.28) {
     $a = 0 unless defined $a;
     my $k = Math::Prime::Util::GMP::is_power($n,$a);
     return 0 unless $k > 0;
@@ -3955,7 +3955,7 @@ sub _perrin_signature {
   shift @nbin;
 
   while (@nbin) {
-    my @T = map { addmod(addmod(mulmod($S[$_],$S[$_],$n), $n-$S[5-$_],$n), $n-$S[5-$_],$n); } 0..5;
+    my @T = map { addmod(addmod(Math::Prime::Util::mulmod($S[$_],$S[$_],$n), $n-$S[5-$_],$n), $n-$S[5-$_],$n); } 0..5;
     my $T01 = addmod($T[2], $n-$T[1], $n);
     my $T34 = addmod($T[5], $n-$T[4], $n);
     my $T45 = addmod($T34, $T[3], $n);

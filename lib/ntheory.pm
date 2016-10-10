@@ -146,6 +146,7 @@ See L<Math::Prime::Util> for complete documentation.
   vecnone { ... } @list               return true if none are true
   vecnotall { ... } @list             return true if not all are true
   vecfirst { ... } @list              return first value that evals true
+  vecfirstidx { ... } @list           return first index that evals true
 
 =head2 MATH
 
