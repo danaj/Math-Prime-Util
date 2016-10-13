@@ -2755,23 +2755,23 @@ sub _bernoulli_seidel {
   return (0,1) if $n > 1 && $n % 2;
 
   my $oacc = Math::BigInt->accuracy();  Math::BigInt->accuracy(undef);
-  my @D = (BZERO, BONE, (BZERO x ($n-2)));
+  my @D = ((BZERO)->copy, (BONE)->copy, map { (BZERO)->copy } 1..$n/2);
   my ($h, $w) = (1, 1);
 
   foreach my $i (0 .. $n - 1) {
     if ($w ^= 1) {
-      $D[$_] += $D[$_-1] for 1 .. $h-1;
+      $D[$_]->badd($D[$_-1]) for 1 .. $h-1;
     } else {
       $w = $h++;
-      $D[$w] += $D[$w + 1] while --$w;
+      $D[$w]->badd($D[$w+1]) while --$w;
     }
   }
   my $num = $D[$h-1];
-  $num->bneg() if ($n % 4) == 0;
   my $den = BONE->copy->blsft($n+1)->bsub(BTWO);
   my $gcd = Math::BigInt::bgcd($num, $den);
   $num /= $gcd;
   $den /= $gcd;
+  $num->bneg() if ($n % 4) == 0;
   Math::BigInt->accuracy($oacc);
   ($num,$den);
 }
