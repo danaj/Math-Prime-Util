@@ -2747,53 +2747,33 @@ sub logint {
   return Math::Prime::Util::_reftyped($_[0], "$e");
 }
 
-sub _bernden {
-  my $n = shift;
-  return BTWO if $n == 1;
-  return BONE if $n & 1 || $n <= 1;
-  my $p = BONE;
-  Math::Prime::Util::fordivisors(sub { $p *= $_+1 if is_prime($_+1) }, $n);
-  #$p = _bigint_to_int($p) if $p->bacmp(''.~0) <= 0;
-  $p;
-}
-{ # Brent-Harvey (Luschny)
-  # See:  http://oeis.org/wiki/User:Peter_Luschny/ComputationAndAsymptoticsOfBernoulliNumbers#Brent-Harvey
-  my @_T = (BZERO, BONE);
-  my $fillsub = sub {
-    my($T, $n) = @_;
-    return if defined $T->[$n];
-    $T->[$_] = ($_-1) * $T->[$_-1]  for 2 .. $n;
-    for my $k (2 .. $n) {
-      for my $j ($k .. $n) {
-        $T->[$j] = ($j-$k) * $T->[$j-1] + ($j-$k+2) * $T->[$j];
-      }
-    }
-  };
-  sub _bernoulli_bh {
-    my($n) = @_;
-    my $oacc = Math::BigInt->accuracy();  Math::BigInt->accuracy(undef);
-    $n >>= 1;
-    my $Tn = $_T[$n];
+# Seidel (Luschny), core using Trizen's simplications from Math::BigNum.
+# http://oeis.org/wiki/User:Peter_Luschny/ComputationAndAsymptoticsOfBernoulliNumbers#Bernoulli_numbers__after_Seidel
+sub _bernoulli_seidel {
+  my($n) = @_;
+  return (1,1) if $n == 0;
+  return (0,1) if $n > 1 && $n % 2;
 
-    if (!defined $Tn) {
-      if ($n <= 100) {
-        $fillsub->(\@_T, $n < 70 ? $n+30 : $n+10);
-        $Tn = $_T[$n];
-      } else {
-        my @T = (BZERO, BONE);
-        $fillsub->(\@T, $n);
-        $Tn = $T[$n];
-      }
-    }
+  my $oacc = Math::BigInt->accuracy();  Math::BigInt->accuracy(undef);
+  my @D = (BZERO, BONE, (BZERO x ($n-2)));
+  my ($h, $w) = (1, 1);
 
-    my $E = ($n & 1) ? 2 : -2;
-    my $num = $Tn  *  $n  *  $E;
-    my $U = BONE << (2*$n);
-    $num /= Math::BigInt::bgcd($num, $U * ($U - BONE));
-    Math::BigInt->accuracy($oacc);
-    # Denominator = U*(U-1) / gcd but faster to just get it from function
-    ($num, _bernden(2*$n));
+  foreach my $i (0 .. $n - 1) {
+    if ($w ^= 1) {
+      $D[$_] += $D[$_-1] for 1 .. $h-1;
+    } else {
+      $w = $h++;
+      $D[$w] += $D[$w + 1] while --$w;
+    }
   }
+  my $num = $D[$h-1];
+  $num->bneg() if ($n % 4) == 0;
+  my $den = BONE->copy->blsft($n+1)->bsub(BTWO);
+  my $gcd = Math::BigInt::bgcd($num, $den);
+  $num /= $gcd;
+  $den /= $gcd;
+  Math::BigInt->accuracy($oacc);
+  ($num,$den);
 }
 
 sub bernfrac {
@@ -2806,7 +2786,7 @@ sub bernfrac {
   # replicate that with Math::MPFR, but the chance that they have the latter
   # but not the former is very small.
 
-  _bernoulli_bh($n);
+  _bernoulli_seidel($n);
 }
 
 sub stirling {
