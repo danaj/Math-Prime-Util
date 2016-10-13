@@ -615,7 +615,7 @@ plan tests => 0 + 1
                 + 6  # rootint
                 + 5  # logint
                 + 2 + scalar(@binomials)
-                + 6 + scalar(keys %powers) + scalar(@negpowers)
+                + 7 + scalar(keys %powers) + scalar(@negpowers)
                 + scalar(keys %primroots) + 1
                 + scalar(keys %primroots) + 2  # is_primitive_root
                 + scalar(keys %jordan_totients)
@@ -903,6 +903,7 @@ while (my($e, $vals) = each (%powers)) {
 foreach my $e (0 .. $#negpowers) {
   is( is_power(-7 ** $e), $negpowers[$e], "is_power(-7^$e ) = $negpowers[$e]" );
 }
+is( is_power(-1,5), 1, "-1 is a 5th power" );
 {
   my($ispow, $root);
   $ispow = is_power(24, 2, \$root);

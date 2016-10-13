@@ -1,5 +1,12 @@
 Revision history for Perl module Math::Prime::Util
 
+0.61 2016-?
+
+    [FUNCTIONALITY AND PERFORMANCE]
+
+    - is_power(-1,k) now returns true for odd k.
+
+
 0.60 2016-10-09
 
     [ADDED]

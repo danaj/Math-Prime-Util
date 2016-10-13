@@ -2515,7 +2515,7 @@ sub _gcd_ui {
 sub is_power {
   my ($n, $a, $refp) = @_;
   croak("is_power third argument not a scalar reference") if defined($refp) && !ref($refp);
-  return 0 if abs($n) <= 3;
+  return 0 if abs($n) <= 3 && !$a;
 
   if ($Math::Prime::Util::_GMPfunc{"is_power"} && $Math::Prime::Util::GMP::VERSION >= 0.28) {
     $a = 0 unless defined $a;
