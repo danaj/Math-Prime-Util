@@ -2755,10 +2755,10 @@ sub _bernoulli_seidel {
   return (0,1) if $n > 1 && $n % 2;
 
   my $oacc = Math::BigInt->accuracy();  Math::BigInt->accuracy(undef);
-  my @D = ((BZERO)->copy, (BONE)->copy, map { (BZERO)->copy } 1..$n/2);
+  my @D = (BZERO->copy, BONE->copy, map { BZERO->copy } 1 .. $n>>1-1);
   my ($h, $w) = (1, 1);
 
-  foreach my $i (0 .. $n - 1) {
+  foreach my $i (0 .. $n-1) {
     if ($w ^= 1) {
       $D[$_]->badd($D[$_-1]) for 1 .. $h-1;
     } else {
