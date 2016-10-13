@@ -5674,24 +5674,38 @@ sub LambertW {
   $k = _upgrade_to_float($k) if ref($k) eq 'Math::BigInt';
   my $kacc = ref($k) ? _find_big_acc($k) : 0;
   my $x;
+
+  # Simple approximation.  See Hoorfar / Hassani.
   if ($k > 1) {
-    my $lk = log($k);
-    my $llk = log($lk);
-    $x = $lk - $llk - log(1-$llk/$lk)/2;   # Estimate
+    my $l1 = log($k);
+    my $l2 = log($l1);
+    if ($k < 8) {
+      $x = $l1 - $l2 - .5533 * log(1-$l2/$l1);
+    } elsif ($k < 40) {
+      $x = $l1 - $l2 + $l2/$l1 + $l2*($l2-2)/(2*$l1*$l1);
+    } else {
+      $x = $l1 - $l2 + $l2/$l1;
+    }
   } else {
-    $x = 0.567 * $k;
+    $x = $k * (($k >= 0) ? 0.64 : 1.47);
   }
-  my $lastx = $x;
-  for (1..100) {                           # TODO: adaptive
+
+  # Now iterate to get the answer
+  $x->accuracy($kacc+10) if $kacc;
+  my($lastx, $tol) = ($x, ($kacc) ? 10**(-$kacc) : 1e-16);
+  for (1 .. 200) {
    # Newton
    # $x = $x*($lk - log($x) + 1) / ($x+1);
+
    # Halley, converges much faster
-   my $ex = exp($x);
-   $x = $x - ( ($x*$ex-$k) / ($x*$ex+$ex-(($x+2)*($x*$ex-$k)/(2*$x+2))) );
-   $x->accuracy($kacc) if $kacc;
-   last if $x == $lastx;
+   my $e = exp($x);
+   my $f = $x * $e - $k;
+   $x -= $f / ($x*$e+$e - ($x+2)*$f/(2*$x+2));
+
+   last if $x == 0 || abs($x-$lastx)/abs($x) < $tol;
    $lastx = $x;
   }
+  $x->accuracy($kacc) if $kacc;
   $x;
 }
 
