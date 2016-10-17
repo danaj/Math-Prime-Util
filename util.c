@@ -3094,6 +3094,8 @@ long double lambertw(long double x) {
   w = _lambertw_approx(x);
   /* If input is too small, return .99999.... */
   if (w <= -1.0L) return -1.0L + 8*LDBL_EPSILON;
+  /* For very small inputs, don't iterate, return approx directly. */
+  if (x < -0.36783) return w;
 
 #if 0  /* Halley */
   lastw = w;
@@ -3107,7 +3109,7 @@ long double lambertw(long double x) {
     lastw = w;
   }
 #else  /* Fritsch, see Veberic 2009.  1-2 iterations are enough. */
-  for (i = 0; i < 5 && w != 0.0L; i++) {
+  for (i = 0; i < 6 && w != 0.0L; i++) {
     long double w1 = 1 + w;
     long double zn = logl(x/w) - w;
     long double qn = 2 * w1 * (w1+(2.0L/3.0L)*zn);
