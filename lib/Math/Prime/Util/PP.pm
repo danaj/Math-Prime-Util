@@ -5669,44 +5669,63 @@ if (0 && $Math::Prime::Util::_GMPfunc{"zeta"}) {
 }
 
 sub LambertW {
-  my $k = shift;
-  croak "Invalid input to LambertW:  k must be >= -1/e" if $k < -0.36787944118;
-  $k = _upgrade_to_float($k) if ref($k) eq 'Math::BigInt';
-  my $kacc = ref($k) ? _find_big_acc($k) : 0;
-  my $x;
+  my $x = shift;
+  croak "Invalid input to LambertW:  x must be >= -1/e" if $x < -0.36787944118;
+  $x = _upgrade_to_float($x) if ref($x) eq 'Math::BigInt';
+  my $xacc = ref($x) ? _find_big_acc($x) : 0;
+  my $w;
 
-  # Simple approximation.  See Hoorfar / Hassani.
-  if ($k > 1) {
-    my $l1 = log($k);
+  # Approximation
+  if ($x < -0.06) {
+    my $ti = $x * 2 * exp($x-$x+1) + 2;
+    return -1 if $ti <= 0;
+    my $t  = sqrt($ti);
+    $w = (-1 + 1/6*$t + (257/720)*$t*$t + (13/720)*$t*$t*$t) / (1 + (5/6)*$t + (103/720)*$t*$t);
+  } elsif ($x < 1.363) {
+    my $l1 = log($x + 1);
+    $w = $l1 * (1 - log(1+$l1) / (2+$l1));
+  } elsif ($x < 3.7) {
+    my $l1 = log($x);
     my $l2 = log($l1);
-    if ($k < 8) {
-      $x = $l1 - $l2 - .5533 * log(1-$l2/$l1);
-    } elsif ($k < 40) {
-      $x = $l1 - $l2 + $l2/$l1 + $l2*($l2-2)/(2*$l1*$l1);
-    } else {
-      $x = $l1 - $l2 + $l2/$l1;
-    }
+    $w = $l1 - $l2 - log(1 - $l2/$l1)/2.0;
   } else {
-    $x = $k * (($k >= 0) ? 0.64 : 1.47);
+    my $l1 = log($x);
+    my $l2 = log($l1);
+    my $d1 = 2 * $l1 * $l1;
+    my $d2 = 3 * $l1 * $d1;
+    my $d3 = 2 * $l1 * $d2;
+    my $d4 = 5 * $l1 * $d3;
+    $w = $l1 - $l2 + $l2/$l1 + $l2*($l2-2)/$d1
+       + $l2*(6+$l2*(-9+2*$l2))/$d2
+       + $l2*(-12+$l2*(36+$l2*(-22+3*$l2)))/$d3
+       + $l2*(60+$l2*(-300+$l2*(350+$l2*(-125+12*$l2))))/$d4;
   }
 
   # Now iterate to get the answer
-  $x->accuracy($kacc+10) if $kacc;
-  my($lastx, $tol) = ($x, ($kacc) ? 10**(-$kacc) : 1e-16);
+  #
+  # Newton:
+  #   $w = $w*(log($x) - log($w) + 1) / ($w+1);
+  # Halley:
+  #   my $e = exp($w);
+  #   my $f = $w * $e - $x;
+  #   $w -= $f / ($w*$e+$e - ($w+2)*$f/(2*$w+2));
+
+  # Fritsch converges quadratically, so tolerance could be 4x smaller.  Use 2x.
+  my $tol = ($xacc) ? 10**(-int(1+$xacc/2)) : 1e-16;
+  $w->accuracy($xacc+10) if $xacc;
   for (1 .. 200) {
-   # Newton
-   # $x = $x*($lk - log($x) + 1) / ($x+1);
-
-   # Halley, converges much faster
-   my $e = exp($x);
-   my $f = $x * $e - $k;
-   $x -= $f / ($x*$e+$e - ($x+2)*$f/(2*$x+2));
-
-   last if $x == 0 || abs($x-$lastx)/abs($x) < $tol;
-   $lastx = $x;
+    last if $w == 0;
+    my $w1 = $w + 1;
+    my $zn = log($x/$w) - $w;
+    my $qn = $w1 * 2 * ($w1+(2*$zn/3));
+    my $en = ($zn/$w1) * ($qn-$zn)/($qn-$zn*2);
+    my $wen = $w * $en;
+    $w += $wen;
+    last if abs($wen) < $tol;
   }
-  $x->accuracy($kacc) if $kacc;
-  $x;
+  $w->accuracy($xacc) if $xacc;
+
+  $w;
 }
 
 my $_Pi = "3.14159265358979323846264338328";

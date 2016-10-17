@@ -9,7 +9,8 @@ Revision history for Perl module Math::Prime::Util
     - PP Bernoulli algorithm changed to Seidel from Brent-Harvey.  2x speedup.
       Math::BigNum is 10x faster, and our GMP code is 2000x faster.
 
-    - Improvements to PP LambertW.  Should need fewer iterations.
+    - LambertW changes in C and PP.  Much better initial approximation, and
+      switch iteration from Halley to Fritsch.  2 to 10x faster.
 
 
 0.60 2016-10-09

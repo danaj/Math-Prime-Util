@@ -3052,32 +3052,74 @@ long double _XS_RiemannR(long double x) {
   return sum;
 }
 
-long double lambertw(long double k) {
-  long double x, lastx;
+static long double _lambertw_approx(long double x) {
+  /* See Veberic 2009 for other approximations */
+  if (x < -0.060) {  /* Pade(3,2) */
+    long double ti = 5.4365636569180904707205749L * x + 2.0L;
+    long double t  = (ti <= 0.0L) ? 0.0L : sqrtl(ti);
+    long double t2 = t*t;
+    long double t3 = t*t2;
+    return (-1.0L + (1.0L/6.0L)*t + (257.0L/720.0L)*t2 + (13.0L/720.0L)*t3) / (1.0L + (5.0L/6.0L)*t + (103.0L/720.0L)*t2);
+  } else if (x < 1.363) {  /* Winitzki 2003 section 3.5 */;
+    long double l1 = logl(1.0L+x);
+    return l1 * (1.0L - logl(1.0L+l1) / (2.0L+l1));
+  } else if (x < 3.7) {    /* Modification of Vargas 2013 */
+    long double l1 = logl(x);
+    long double l2 = logl(l1);
+    return l1 - l2 - logl(1.0L - l2/l1)/2.0L;
+  } else {                 /* Corless et al. 1993, page 22 */
+    long double l1 = logl(x);
+    long double l2 = logl(l1);
+    long double d1 = 2.0L*l1*l1;
+    long double d2 = 3.0L*l1*d1;
+    long double d3 = 2.0L*l1*d2;
+    long double d4 = 5.0L*l1*d3;
+    long double w = l1 - l2 + l2/l1 + l2*(l2-2.0L)/d1;
+    w += l2*(6.0L+l2*(-9.0L+2.0L*l2))/d2;
+    w += l2*(-12.0L+l2*(36.0L+l2*(-22.0L+3.0L*l2)))/d3;
+    w += l2*(60.0L+l2*(-300.0L+l2*(350.0L+l2*(-125.0L+12.0L*l2))))/d4;
+    return w;
+  }
+}
+
+long double lambertw(long double x) {
+  long double w, lastw;
   int i;
 
-  if (k < -0.36787944118L)
-    croak("Invalid input to LambertW:  k must be >= -1/e");
-  /* Make first estimate */
-  if (k > 1) {
-    long double lk = logl(k);
-    long double llk = logl(lk);
-    x = lk - llk - logl(1 - llk/lk)/2;
-  } else {
-    x = 0.567 * k;
+  if (x < -0.36787944117145L)
+    croak("Invalid input to LambertW:  x must be >= -1/e");
+  if (x == 0.0L) return 0.0L;
+
+  /* Estimate initial value */
+  w = _lambertw_approx(x);
+  /* If input is too small, return .99999.... */
+  if (w <= -1.0L) return -1.0L + 8*LDBL_EPSILON;
+
+#if 0  /* Halley */
+  lastw = w;
+  for (i = 0; i < 100; i++) {
+    long double ew = expl(w);
+    long double wew = w * ew;
+    long double wewx = wew - x;
+    long double w1 = w + 1;
+    w = w - wewx / (ew * w1 - (w+2) * wewx/(2*w1));
+    if (w != 0.0L && fabsl((w-lastw)/w) <= 8*LDBL_EPSILON) break;
+    lastw = w;
   }
-  lastx = x;
-  for (i = 0; i < 100; i++) {   /* Use Halley's method */
-    long double ex = expl(x);
-    long double xex = x * ex;
-    long double xexk = xex - k;
-    long double x1 = x + 1;
-    x = x - xexk / (ex * x1 - (x+2) * xexk/(2*x1));
-    /* x = x - ( (x*ex-k) / (x*ex+ex-((x+2)*(x*ex-k)/(2*x+2))) ); */
-    if (fabsl(lastx-x) < fabsl(LDBL_EPSILON)) break;
-    lastx = x;
+#else  /* Fritsch, see Veberic 2009.  1-2 iterations are enough. */
+  for (i = 0; i < 5 && w != 0.0L; i++) {
+    long double w1 = 1 + w;
+    long double zn = logl(x/w) - w;
+    long double qn = 2 * w1 * (w1+(2.0L/3.0L)*zn);
+    long double en = (zn/w1) * (qn-zn)/(qn-2.0L*zn);
+    /* w *= 1.0L + en;  if (fabsl(en) <= 16*LDBL_EPSILON) break; */
+    long double wen = w * en;
+    w += wen;
+    if (fabsl(wen) <= 64*LDBL_EPSILON) break;
   }
-  return x;
+#endif
+
+  return w;
 }
 
 /* 1. Perform signed integer validation on b/blen.
