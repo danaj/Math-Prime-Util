@@ -743,13 +743,9 @@ sub _generic_factor_exp {
 
 sub _is_gaussian_prime {
   my($a,$b) = @_;
-  if ($a == 0) {
-    return (($b % 4) == 3) ? is_prime($b) : 0;
-  }
-  if ($b == 0) {
-    return (($a % 4) == 3) ? is_prime($a) : 0;
-  }
-  return is_prime($a*$a + $b*$b);
+  return ((($b % 4) == 3) ? is_prime($b) : 0) if $a == 0;
+  return ((($a % 4) == 3) ? is_prime($a) : 0) if $b == 0;
+  is_prime( vecsum( vecprod($a,$a), vecprod($b,$b) ) );
 }
 
 #############################################################################
@@ -890,6 +886,7 @@ sub bernfrac {
   my($n) = @_;
   return map { _to_bigint($_) } (0,1) if defined $n && $n < 0;
   _validate_num($n) || _validate_positive_integer($n);
+  return map { _to_bigint($_) } (0,1) if $n > 1 && ($n & 1);
 
   if ($Math::Prime::Util::_GMPfunc{"bernfrac"}) {
     return map { _to_bigint($_) } Math::Prime::Util::GMP::bernfrac($n);
@@ -3919,7 +3916,20 @@ then accuracy should be 35 digits.
 Returns the principal branch of the Lambert W function of a real value.
 Given a value C<k> this solves for C<W> in the equation C<k = We^W>.  The
 input must not be less than C<-1/e>.  This corresponds to Pari's C<lambertw>
-function and Mathematica's C<LambertW> function.
+function and Mathematica's C<ProductLog> / C<LambertW> function.
+
+This function handles all real value inputs with non-complex return values.
+This is a superset of Pari's C<lambertw> which is similar but only for
+positive arguments.  Mathematica's function is much more detailed, with
+both branches, complex arguments, and complex results.
+
+Calculation will be done with C long doubles if the input is a standard
+scalar, but if bignum is in use or if the input is a BigFloat type, then
+extended precision results will be used.
+
+Speed of the native code is about half of the fastest native code
+(Veberic's C++), and about 30x faster than Pari/GP.  However the bignum
+calculation is I<much> slower.
 
 =head2 Pi
 
