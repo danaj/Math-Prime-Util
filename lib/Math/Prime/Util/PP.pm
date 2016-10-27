@@ -5489,8 +5489,12 @@ sub RiemannZeta {
     # handle the correct rounding.  But we don't, so we have to go over.
     my $zero_dig = "".int($x / 3) - 1;
     my $strval = Math::Prime::Util::GMP::zeta($x, $xdigits + 8 + $zero_dig);
-    $strval =~ s/^(1\.0*)/./;
-    $strval .= "e-".(length($1)-2) if length($1) > 2;
+    if ($strval =~ s/^(1\.0*)/./) {
+      $strval .= "e-".(length($1)-2) if length($1) > 2;
+    } else {
+      $strval =~ s/^(\d+)/$1-1/e;
+    }
+
     return ($wantbf)  ?  Math::BigFloat->new($strval,$wantbf)  : 0.0 + $strval;
   }
 

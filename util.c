@@ -3274,7 +3274,7 @@ static UV _catalan_mult(UV m, UV p, UV n, UV a) {
   if (p > a) {
     m = mulmod(m, p, n);
   } else {
-    UV pow = (n < 4294967296U) ? _catalan_v32(a<<1,p) : _catalan_v(a<<1,p);
+    UV pow = (n <= 4294967295UL) ? _catalan_v32(a<<1,p) : _catalan_v(a<<1,p);
     m = (pow == 0) ? m
       : (pow == 1) ? mulmod(m,p,n)
                    : mulmod(m,powmod(p,pow,n),n);
