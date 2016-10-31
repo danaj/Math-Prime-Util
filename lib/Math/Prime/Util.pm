@@ -873,13 +873,15 @@ sub LogarithmicIntegral {
 }
 
 sub LambertW {
-  my($k) = @_;
+  my($x) = @_;
 
-  return _XS_LambertW($k)
-  if !defined $bignum::VERSION && ref($k) ne 'Math::BigFloat' && $_Config{'xs'};
+  return _XS_LambertW($x)
+  if !defined $bignum::VERSION && ref($x) ne 'Math::BigFloat' && $_Config{'xs'};
+
+  # TODO: Call GMP function here directly
 
   require Math::Prime::Util::PP;
-  return Math::Prime::Util::PP::LambertW($k);
+  return Math::Prime::Util::PP::LambertW($x);
 }
 
 sub bernfrac {

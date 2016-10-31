@@ -5679,6 +5679,13 @@ sub LambertW {
   my $xacc = ref($x) ? _find_big_acc($x) : 0;
   my $w;
 
+  if ($Math::Prime::Util::_GMPfunc{"lambertw"}) {
+    my $w = (!$xacc)
+          ? 0.0 + Math::Prime::Util::GMP::lambertw($x)
+          : $x->copy->bzero->badd(Math::Prime::Util::GMP::lambertw($x, $xacc));
+    return $w;
+  }
+
   # Approximation
   if ($x < -0.06) {
     my $ti = $x * 2 * exp($x-$x+1) + 2;
