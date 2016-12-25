@@ -2327,9 +2327,10 @@ int is_primitive_root(UV a, UV n, int nprime) {
   i = is_power(a,0);
   if (i > 1 && gcd_ui(i, s) != 1) return 0;
 
-#if !USE_MONTMATH
   /* Quick check for small factors before full factor */
   if ((s % 2) == 0 && powmod(a, s/2, n) == 1) return 0;
+
+#if !USE_MONTMATH
   if ((s % 3) == 0 && powmod(a, s/3, n) == 1) return 0;
   if ((s % 5) == 0 && powmod(a, s/5, n) == 1) return 0;
   /* Complete factor and check each one not found above. */
@@ -2341,7 +2342,6 @@ int is_primitive_root(UV a, UV n, int nprime) {
   {
     const uint64_t npi = mont_inverse(n),  mont1 = mont_get1(n);
     a = mont_geta(a, n);
-    if ((s % 2) == 0 && mont_powmod(a, s/2, n) == mont1) return 0;
     if ((s % 3) == 0 && mont_powmod(a, s/3, n) == mont1) return 0;
     if ((s % 5) == 0 && mont_powmod(a, s/5, n) == mont1) return 0;
     nfacs = factor_exp(s, fac, 0);
