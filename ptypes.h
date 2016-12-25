@@ -164,7 +164,10 @@ typedef __int8 int8_t;
 #define MPUNOT_REACHED MPUASSUME(0)
 
 #if (defined(__SIZEOF_INT128__) || __GNUC__ >= 4) && (defined(__x86_64__) || defined(__powerpc64__))
-  #if __GNUC__ < 4 || (__GNUC__ == 4 && __GNUC_MINOR__ < 4)
+  #if __clang__ && (__clang_major__ > 4 || (__clang_major__ == 4 && __clang_minor__ >= 2))
+    #define HAVE_UINT128 1
+    typedef unsigned __int128 uint128_t;
+  #elif __GNUC__ < 4 || (__GNUC__ == 4 && __GNUC_MINOR__ < 4)
     #define HAVE_UINT128 0
   #elif __GNUC__ == 4 && __GNUC_MINOR__ >= 4 && __GNUC_MINOR__ < 6
     #define HAVE_UINT128 1
@@ -177,7 +180,7 @@ typedef __int8 int8_t;
   #define HAVE_UINT128 0
 #endif
 
-#if defined(__GNUC__)
+#if defined(__GNUC__) || defined(__clang__)
   #define INLINE inline
 #elif defined(_MSC_VER)
   #define INLINE __inline
