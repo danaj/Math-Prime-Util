@@ -97,6 +97,7 @@
 #include "factor.h"
 #include "mulmod.h"
 #include "constants.h"
+#include "montmath.h"
 
 static int _verbose = 0;
 void _XS_set_verbose(int v) { _verbose = v; }
@@ -1564,7 +1565,7 @@ signed char* _moebius_range(UV lo, UV hi)
     for (i = PGTLO(p, lo); i <= hi; i += p)
       mu[i-lo] += logp;
     for (i = PGTLO(p2, lo); i <= hi; i += p2)
-      mu[i-lo] |= 0x80;
+      mu[i-lo] = 0x80;
   } END_DO_FOR_EACH_PRIME
 
   logp = log2floor(lo);
@@ -2321,13 +2322,34 @@ int is_primitive_root(UV a, UV n, int nprime) {
   if (a >= n) a %= n;
   if (gcd_ui(a,n) != 1) return 0;
   s = nprime ? n-1 : totient(n);
+
+  /* a^x can be a primitive root only if gcd(x,s) = 1 */
+  i = is_power(a,0);
+  if (i > 1 && gcd_ui(i, s) != 1) return 0;
+
+#if !USE_MONTMATH
+  /* Quick check for small factors before full factor */
   if ((s % 2) == 0 && powmod(a, s/2, n) == 1) return 0;
   if ((s % 3) == 0 && powmod(a, s/3, n) == 1) return 0;
   if ((s % 5) == 0 && powmod(a, s/5, n) == 1) return 0;
+  /* Complete factor and check each one not found above. */
   nfacs = factor_exp(s, fac, 0);
   for (i = 0; i < nfacs; i++) {
     if (fac[i] > 5 && powmod(a, s/fac[i], n) == 1) return 0;
   }
+#else
+  {
+    const uint64_t npi = mont_inverse(n),  mont1 = mont_get1(n);
+    a = mont_geta(a, n);
+    if ((s % 2) == 0 && mont_powmod(a, s/2, n) == mont1) return 0;
+    if ((s % 3) == 0 && mont_powmod(a, s/3, n) == mont1) return 0;
+    if ((s % 5) == 0 && mont_powmod(a, s/5, n) == mont1) return 0;
+    nfacs = factor_exp(s, fac, 0);
+    for (i = 0; i < nfacs; i++) {
+      if (fac[i] > 5 && mont_powmod(a, s/fac[i], n) == mont1) return 0;
+    }
+  }
+#endif
   return 1;
 }
 
@@ -2377,13 +2399,10 @@ static int verify_sqrtmod(UV s, UV *rs, UV a, UV p) {
   *rs = s;
   return 1;
 }
-int sqrtmod(UV *s, UV a, UV p) {
-  if (p == 0) return 0;
-  if (a >= p) a %= p;
-  if (p <= 2 || a <= 1) return verify_sqrtmod(a, s,a,p);
-
+#if !USE_MONTMATH
+UV _sqrtmod_prime(UV a, UV p) {
   if ((p % 4) == 3) {
-    return verify_sqrtmod(powmod(a, (p+1)>>2, p), s,a,p);
+    return powmod(a, (p+1)>>2, p);
   }
   if ((p % 8) == 5) { /* Atkin's algorithm.  Faster than Legendre. */
     UV a2, alpha, beta, b;
@@ -2391,7 +2410,7 @@ int sqrtmod(UV *s, UV a, UV p) {
     alpha = powmod(a2,(p-5)>>3,p);
     beta  = mulmod(a2,sqrmod(alpha,p),p);
     b     = mulmod(alpha, mulmod(a, (beta ? beta-1 : p-1), p), p);
-    return verify_sqrtmod(b, s,a,p);
+    return b;
   }
   if ((p % 16) == 9) { /* Müller's algorithm extending Atkin */
     UV a2, alpha, beta, b, d = 1;
@@ -2404,7 +2423,7 @@ int sqrtmod(UV *s, UV a, UV p) {
       beta  = mulmod(a2, mulmod(sqrmod(d,p),sqrmod(alpha,p),p), p);
     }
     b = mulmod(alpha, mulmod(a, mulmod(d,(beta ? beta-1 : p-1),p),p),p);
-    return verify_sqrtmod(b, s,a,p);
+    return b;
   }
 
   /* Verify Euler condition for odd p */
@@ -2426,17 +2445,14 @@ int sqrtmod(UV *s, UV a, UV p) {
       }
     }
     z = powmod(t, q, p);
-    r = e;
     b = powmod(a, q, p);
+    r = e;
     q = (q+1) >> 1;
     x = powmod(a, q, p);
     while (b != 1) {
       t = b;
-      m = 0;
-      do {
-        t = powmod(t, 2, p);
-        m++;
-      } while (m < r && t != 1);
+      for (m = 0; m < r && t != 1; m++)
+        t = sqrmod(t, p);
       if (m >= r) break;
       t = powmod(z, UVCONST(1) << (r-m-1), p);
       x = mulmod(x, t, p);
@@ -2444,9 +2460,94 @@ int sqrtmod(UV *s, UV a, UV p) {
       b = mulmod(b, z, p);
       r = m;
     }
-    return verify_sqrtmod(x, s,a,p);
+    return x;
   }
   return 0;
+}
+#else
+UV _sqrtmod_prime(UV a, UV p) {
+  const uint64_t npi = mont_inverse(p),  mont1 = mont_get1(p);
+  a = mont_geta(a,p);
+
+  if ((p % 4) == 3) {
+    UV b = mont_powmod(a, (p+1)>>2, p);
+    return mont_recover(b, p);
+  }
+
+  if ((p % 8) == 5) { /* Atkin's algorithm.  Faster than Legendre. */
+    UV a2, alpha, beta, b;
+    a2 = addmod(a,a,p);
+    alpha = mont_powmod(a2,(p-5)>>3,p);
+    beta  = mont_mulmod(a2,mont_sqrmod(alpha,p),p);
+    beta  = submod(beta, mont1, p);
+    b     = mont_mulmod(alpha, mont_mulmod(a, beta, p), p);
+    return mont_recover(b, p);
+  }
+  if ((p % 16) == 9) { /* Müller's algorithm extending Atkin */
+    UV a2, alpha, beta, b, d = 1;
+    a2 = addmod(a,a,p);
+    alpha = mont_powmod(a2, (p-9)>>4, p);
+    beta  = mont_mulmod(a2, mont_sqrmod(alpha,p), p);
+    if (mont_sqrmod(beta,p) != submod(0,mont1,p)) {
+      do { d += 2; } while (kronecker_uu(d,p) != -1 && d < p);
+      d = mont_geta(d,p);
+      alpha = mont_mulmod(alpha, mont_powmod(d,(p-9)>>3,p), p);
+      beta  = mont_mulmod(a2, mont_mulmod(mont_sqrmod(d,p),mont_sqrmod(alpha,p),p), p);
+      beta  = mont_mulmod(submod(beta,mont1,p), d, p);
+    } else {
+      beta  = submod(beta, mont1, p);
+    }
+    b = mont_mulmod(alpha, mont_mulmod(a, beta, p), p);
+    return mont_recover(b, p);
+  }
+
+  /* Verify Euler condition for odd p */
+  if ((p & 1) && mont_powmod(a,(p-1)>>1,p) != mont1) return 0;
+
+  {
+    UV x, q, e, t, z, r, m, b;
+    q = p-1;
+    e = valuation(q, 2);
+    q >>= e;
+    t = 3;
+    while (kronecker_uu(t, p) != -1) {
+      t += 2;
+      if (t == 201) {           /* exit if p looks like a composite */
+        if ((p % 2) == 0 || powmod(2, p-1, p) != 1 || powmod(3, p-1, p) != 1)
+          return 0;
+      } else if (t >= 20000) {  /* should never happen */
+        return 0;
+      }
+    }
+    t = mont_geta(t, p);
+    z = mont_powmod(t, q, p);
+    b = mont_powmod(a, q, p);
+    r = e;
+    q = (q+1) >> 1;
+    x = mont_powmod(a, q, p);
+    while (b != mont1) {
+      t = b;
+      for (m = 0; m < r && t != mont1; m++)
+        t = mont_sqrmod(t, p);
+      if (m >= r) break;
+      t = mont_powmod(z, UVCONST(1) << (r-m-1), p);
+      x = mont_mulmod(x, t, p);
+      z = mont_mulmod(t, t, p);
+      b = mont_mulmod(b, z, p);
+      r = m;
+    }
+    return mont_recover(x, p);
+  }
+  return 0;
+}
+#endif
+
+int sqrtmod(UV *s, UV a, UV p) {
+  if (p == 0) return 0;
+  if (a >= p) a %= p;
+  if (p <= 2 || a <= 1) return verify_sqrtmod(a, s,a,p);
+
+  return verify_sqrtmod(_sqrtmod_prime(a,p), s,a,p);
 }
 
 int sqrtmod_composite(UV *s, UV a, UV n) {

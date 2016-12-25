@@ -675,6 +675,15 @@ int pminus1_factor(UV n, UV *factors, UV B1, UV B2)
   UV savea = 2, saveq = 2;
   UV j = 1;
   UV sqrtB1 = isqrt(B1);
+#if USE_MONTMATH
+  const uint64_t npi = mont_inverse(n),  mont1 = mont_get1(n);
+  UV ma = mont_geta(a,n);
+  #define PMINUS1_APPLY_POWER  ma = mont_powmod(ma, k, n)
+  #define PMINUS1_RECOVER_A    a = mont_recover(ma,n)
+#else
+  #define PMINUS1_APPLY_POWER  a = powmod(a, k, n)
+  #define PMINUS1_RECOVER_A
+#endif
   MPUassert( (n >= 3) && ((n%2) != 0) , "bad n in pminus1_factor");
 
   if (B1 <= primes_small[NPRIMES_SMALL-2]) {
@@ -685,13 +694,15 @@ int pminus1_factor(UV n, UV *factors, UV B1, UV B2)
         k = q*q;  kmin = B1/q;
         while (k <= kmin)  k *= q;
       }
-      a = powmod(a, k, n);
+      PMINUS1_APPLY_POWER;
       if ( (j++ % 32) == 0) {
+        PMINUS1_RECOVER_A;
         if (a == 0 || gcd_ui(a-1, n) != 1)
           break;
         savea = a;  saveq = q;
       }
     }
+    PMINUS1_RECOVER_A;
   } else {
     START_DO_FOR_EACH_PRIME(2, B1) {
       q = k = p;
@@ -699,13 +710,15 @@ int pminus1_factor(UV n, UV *factors, UV B1, UV B2)
         k = q*q;  kmin = B1/q;
         while (k <= kmin)  k *= q;
       }
-      a = powmod(a, k, n);
+      PMINUS1_APPLY_POWER;
       if ( (j++ % 32) == 0) {
+        PMINUS1_RECOVER_A;
         if (a == 0 || gcd_ui(a-1, n) != 1)
           break;
         savea = a;  saveq = q;
       }
     } END_DO_FOR_EACH_PRIME
+    PMINUS1_RECOVER_A;
   }
   if (a == 0) { factors[0] = n; return 1; }
   f = gcd_ui(a-1, n);

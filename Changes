@@ -16,6 +16,13 @@ Revision history for Perl module Math::Prime::Util
 
     - Try to use GMP LambertW for bignums if it is available.
 
+    - Use Montgomery math in more places:
+       = sqrtmod.  1.2-1.7x faster.
+       = is_primitive_root.  Up to 2x faster for some inputs.
+       = p-1 factoring stage 1.
+
+    - Tune AKS r/s selection above 32-bit.
+
 
 0.60 2016-10-09
 
