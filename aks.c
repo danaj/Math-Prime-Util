@@ -381,8 +381,8 @@ int is_aks_prime(UV n)
     UV slim, fac[MPU_MAX_FACTORS+1];
     double const log2n = log(n) / log(2);
     /* Tuning: Initial 'r' selection.  Search limit for 's'. */
-    double const r0 = ((log2n > 32) ? 0.002 : 0.003) * log2n * log2n;
-    UV const rmult  =  (log2n > 32) ? 20    : 30;
+    double const r0 = ((log2n > 32) ? 0.010 : 0.003) * log2n * log2n;
+    UV const rmult  =  (log2n > 32) ? 6    : 30;
 
     r = next_prime(r0 < 2 ? 2 : (UV)r0);  /* r must be at least 3 */
     while ( !is_primitive_root(n,r,1) || !bern41_acceptable(n,r,rmult*(r-1)) )
