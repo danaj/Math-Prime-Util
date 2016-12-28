@@ -86,8 +86,7 @@ sub _set_randf {
   return if defined $_RANDF;
 
   if (!defined $_IRANDF) {   # Default irand: BRS nonblocking
-    require Bytes::Random::Secure;
-    $_BRS = Bytes::Random::Secure->new(NonBlocking=>1) unless defined $_BRS;
+    $_BRS ||= _BRS();
     $_RANDF_NBIT = sub {
       my($bits) = int("$_[0]");
       return 0 if $bits <= 0;
@@ -868,10 +867,7 @@ sub random_shawe_taylor_prime_with_cert {
   my $seed;
   my $irandf = prime_get_config->{'irand'};
   if (!defined $irandf) {
-    if (!defined $_BRS) {
-      require Bytes::Random::Secure;
-      $_BRS = Bytes::Random::Secure->new(NonBlocking=>1);
-    }
+    $_BRS ||= _BRS();
     $seed = $_BRS->bytes(512/8);
   } else {
     $seed = pack("L*", map { $irandf->() } 0 .. (512>>5));
@@ -1086,6 +1082,21 @@ sub miller_rabin_random {
     $k -= $nbases;
   }
   1;
+}
+
+my @BRS_CLASSES = qw(
+	Bytes::Random::Secure
+	Bytes::Random::Secure::Tiny
+);
+
+sub _BRS {
+    local $@;
+
+    for my $class ( @BRS_CLASSES ) {
+        if ( eval "require $class" ) {
+            return $_BRS = $class->new( NonBlocking => 1 );
+        }
+    }
 }
 
 1;
