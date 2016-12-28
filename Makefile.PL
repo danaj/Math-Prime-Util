@@ -1,9 +1,13 @@
 use ExtUtils::MakeMaker;
 use lib 'inc'; # load our bundled version of Devel::CheckLib
-use Devel::CheckLib;
+
+my $compiler_available;
+BEGIN {
+    $compiler_available = eval { require Devel::CheckLib; 1 };
+}
 
 my %require_mpugmp;
-my $have_gmp = check_lib(lib => 'gmp', header => 'gmp.h');
+my $have_gmp = $compiler_available && check_lib(lib => 'gmp', header => 'gmp.h');
 if ($have_gmp) {
   warn "\n   It looks like you have the GMP C library.\n";
   warn "   Adding Math::Prime::Util::GMP to dep list.\n\n";
@@ -63,7 +67,7 @@ WriteMakefile1(
                       # 1.99 fixes the FastCalc SvUV bug, we work around it.
                       'Math::BigInt'     => '1.88',
                       'Math::BigFloat'   => '1.59',
-                      'Bytes::Random::Secure' => '0.23',
+                      'Bytes::Random::Secure::Tiny' => 0,
                       # Add in MPU::GMP if we can
                       %require_mpugmp,
                     },
@@ -143,6 +147,12 @@ sub WriteMakefile1 {   # Cribbed from eumm-upgrade by Alexandr Ciornii
   delete $params{AUTHOR} if $] < 5.005;
   delete $params{ABSTRACT_FROM} if $] < 5.005;
   delete $params{BINARY_LOCATION} if $] < 5.005;
+
+  if (!$compiler_available) {
+	$params{'OBJECT'} = q<>;
+	delete $params{'PREREQ_PM'}{'XSLoader'};
+	$params{'C'} = [];
+  }
 
   WriteMakefile(%params);
 }
