@@ -117,3 +117,7 @@
 - surround_primes
 
 - More Montgomery: znlog, catalan
+
+- numtoperm and permtonum.
+  Perhaps Bonet: https://github.com/soniakeys/perm/blob/master/lex.go
+  Also consider randperm(n)

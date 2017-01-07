@@ -29,7 +29,7 @@ my @test_data = (
   [  668, "Mersenne",    "mersenne",   10**100],
   [ 5479, "Lucas",       "lucas",      0],
   [ 5478, "Fibonacci",   "fibonacci",  0],
-  [63980, "Pillai",      "pillai",     0],
+  [63980, "Pillai",      "pillai",     100_000],
   [28388, "Good",        "good",       20000],
   [31157, "Lucky",       "lucky",      0],
   [ 5234, "Primorial+1", "pnp1",       2500],

@@ -4,6 +4,7 @@ use warnings;
 use Getopt::Long;
 use Math::BigInt try => 'GMP';
 use Math::Prime::Util qw/primes  prime_count  next_prime  prev_prime
+                         twin_primes
                          is_prime  is_provable_prime  is_mersenne_prime
                          lucasu lucasv
                          nth_prime  prime_count  primorial  pn_primorial/;
@@ -59,10 +60,10 @@ $| = 1;
 # time difference grows rapidly.
 #
 #          primes.pl    Math::NumSeq::SophieGermainPrimes
-#     1M     0.11s        0.18s
-#    10M     0.38        3.89s
-#   100M     2.98s     793s
-#  1000M    27.7s       ? estimated >3 days
+#     1M     0.06s        0.13s
+#    10M     0.21        2.91
+#   100M     1.52      396
+#  1000M    13.7       > a day
 #
 # If given a non-zero start value it spreads even more, as for most sequences
 # primes.pl doesn't have to generate preceeding values, while NumSeq has to
@@ -436,17 +437,7 @@ sub gen_and_filter {
   }
 
   if (exists $opts{'twin'} && !defined $gen) {
-    my @twin;
-    $p = primes($start, $end);
-    if (scalar(@$p) > 0) {
-      push @$p, is_prime($p->[-1]+2) ? $p->[-1]+2 : 0;
-      my $prime = shift @$p;
-      foreach my $next (@$p) {
-        push @twin, $prime if $prime+2 == $next;
-        $prime = $next;
-      }
-    }
-    $p = \@twin;
+    $p = twin_primes($start, $end);
     $gen = 'twin';
   }
 

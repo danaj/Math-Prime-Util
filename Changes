@@ -23,6 +23,8 @@ Revision history for Perl module Math::Prime::Util
 
     - Tune AKS r/s selection above 32-bit.
 
+    - primes.pl uses twin_primes function for ~3x speedup.
+
 
 0.60 2016-10-09
 
