@@ -27,6 +27,8 @@ Revision history for Perl module Math::Prime::Util
 
     - native chinese can handle some cases that used to overflow.
 
+    - Switch to Bytes::Random::Secure::Tiny -- fewer dependencies.
+
 
 0.60 2016-10-09
 

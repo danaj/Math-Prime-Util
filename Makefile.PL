@@ -63,7 +63,7 @@ WriteMakefile1(
                       # 1.99 fixes the FastCalc SvUV bug, we work around it.
                       'Math::BigInt'     => '1.88',
                       'Math::BigFloat'   => '1.59',
-                      'Bytes::Random::Secure' => '0.23',
+                      'Bytes::Random::Secure::Tiny' => '1.002',
                       # Add in MPU::GMP if we can
                       %require_mpugmp,
                     },

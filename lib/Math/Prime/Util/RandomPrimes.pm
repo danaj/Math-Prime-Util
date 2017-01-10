@@ -86,8 +86,8 @@ sub _set_randf {
   return if defined $_RANDF;
 
   if (!defined $_IRANDF) {   # Default irand: BRS nonblocking
-    require Bytes::Random::Secure;
-    $_BRS = Bytes::Random::Secure->new(NonBlocking=>1) unless defined $_BRS;
+    require Bytes::Random::Secure::Tiny;
+    $_BRS = Bytes::Random::Secure::Tiny->new(NonBlocking=>1) unless defined $_BRS;
     $_RANDF_NBIT = sub {
       my($bits) = int("$_[0]");
       return 0 if $bits <= 0;
@@ -869,8 +869,8 @@ sub random_shawe_taylor_prime_with_cert {
   my $irandf = prime_get_config->{'irand'};
   if (!defined $irandf) {
     if (!defined $_BRS) {
-      require Bytes::Random::Secure;
-      $_BRS = Bytes::Random::Secure->new(NonBlocking=>1);
+      require Bytes::Random::Secure::Tiny;
+      $_BRS = Bytes::Random::Secure::Tiny->new(NonBlocking=>1);
     }
     $seed = $_BRS->bytes(512/8);
   } else {

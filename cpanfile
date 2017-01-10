@@ -11,9 +11,9 @@ requires 'Config';
 requires 'Math::BigInt', '1.88';
 requires 'Math::BigFloat', '1.59';
 
-requires 'Bytes::Random::Secure', '0.23';
+requires 'Bytes::Random::Secure::Tiny', '1.002';
 
-recommends 'Math::Prime::Util::GMP', '0.26';
+recommends 'Math::Prime::Util::GMP', '0.41';
 recommends 'Math::BigInt::GMP';
 recommends 'Math::MPFR', '2.03';
 
