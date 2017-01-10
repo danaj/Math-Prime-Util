@@ -2653,6 +2653,35 @@ int sqrtmod_composite(UV *s, UV a, UV n) {
   return (i == 1) ? verify_sqrtmod(p, s, a, n) : 0;
 }
 
+/* works only for co-prime inputs and also slower than the algorithm below,
+ * but handles the case where IV_MAX < lcm <= UV_MAX.
+ */
+static UV _simple_chinese(UV* a, UV* n, UV num, int* status) {
+  UV i, lcm = 1, res = 0;
+  *status = 0;
+  if (num == 0) return 0;
+
+  for (i = 0; i < num; i++) {
+    UV ni = n[i];
+    UV gcd = gcd_ui(lcm, ni);
+    if (gcd != 1) return 0;           /* not coprime */
+    ni /= gcd;
+    if (ni > (UV_MAX/lcm)) return 0;  /* lcm overflow */
+    lcm *= ni;
+  }
+  for (i = 0; i < num; i++) {
+    UV p, inverse, term;
+    p = lcm / n[i];
+    inverse = modinverse(p, n[i]);
+    if (inverse == 0) return 0;       /* n's coprime so should never happen */
+    term = mulmod(p, mulmod(a[i], inverse, lcm), lcm);
+    res = addmod(res, term, lcm);
+  }
+  *status = 1;
+  return res;
+}
+
+
 /* status: 1 ok, -1 no inverse, 0 overflow */
 UV chinese(UV* a, UV* n, UV num, int* status) {
   UV p, gcd, i, j, lcm, sum;
@@ -2664,7 +2693,7 @@ UV chinese(UV* a, UV* n, UV num, int* status) {
     for (j = i; j > 0 && n[j-1] < n[j]; j--)
       { p=n[j-1]; n[j-1]=n[j]; n[j]=p;   p=a[j-1]; a[j-1]=a[j]; a[j]=p; }
 
-  if (n[0] > IV_MAX) { *status = 0; return 0; }
+  if (n[0] > IV_MAX) return _simple_chinese(a,n,num,status);
   lcm = n[0]; sum = a[0] % n[0];
   for (i = 1; i < num; i++) {
     IV u, v, t, s;
@@ -2673,7 +2702,7 @@ UV chinese(UV* a, UV* n, UV num, int* status) {
     if (gcd != 1 && ((sum % gcd) != (a[i] % gcd))) { *status = -1; return 0; }
     if (s < 0) s = -s;
     if (t < 0) t = -t;
-    if (s > (IV)(IV_MAX/lcm)) { *status = 0; return 0; }
+    if (s > (IV)(IV_MAX/lcm)) return _simple_chinese(a,n,num,status);
     lcm *= s;
     if (u < 0) u += lcm;
     if (v < 0) v += lcm;

@@ -25,6 +25,8 @@ Revision history for Perl module Math::Prime::Util
 
     - primes.pl uses twin_primes function for ~3x speedup.
 
+    - native chinese can handle some cases that used to overflow.
+
 
 0.60 2016-10-09
 
