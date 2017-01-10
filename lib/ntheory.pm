@@ -164,6 +164,7 @@ See L<Math::Prime::Util> for complete documentation.
   is_carmichael(n)                    is n a Carmichael number
   is_quasi_carmichael(n)              is n a quasi-Carmichael number
   is_primitive_root(r,n)              is r a primitive root mod n
+  is_pillai(n)                        v where  v! % n == n-1  and  n % v != 1
   sqrtint(n)                          integer square root
   rootint(n,k)                        integer k-th root
   rootint(n,k,\$rk)                   as above but also set $rk to r^k

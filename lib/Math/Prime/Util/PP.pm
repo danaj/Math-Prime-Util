@@ -1142,6 +1142,20 @@ sub is_quasi_carmichael {
   $nbases;
 }
 
+sub is_pillai {
+  my($p) = @_;
+  _validate_positive_integer($p);
+  return 0 if $p <= 2;
+
+  my $pm1 = $p-1;
+  my $nfac = 5040 % $p;
+  for (my $n = 8; $n < $p; $n++) {
+    $nfac = Math::Prime::Util::mulmod($nfac, $n, $p);
+    return $n if $nfac == $pm1 && ($p % $n) != 1;
+  }
+  0;
+}
+
 my @_ds_overflow =  # We'll use BigInt math if the input is larger than this.
   (~0 > 4294967295)
    ? (124, 3000000000000000000, 3000000000, 2487240, 64260, 7026)

@@ -965,8 +965,9 @@ is_prime(IN SV* svn, ...)
     is_mersenne_prime = 20
     is_power = 21
     is_prime_power = 22
-    logint = 23
-    rootint = 24
+    is_pillai = 23
+    logint = 24
+    rootint = 25
   PREINIT:
     int status, astatus;
   PPCODE:
@@ -1043,6 +1044,9 @@ is_prime(IN SV* svn, ...)
         }
         if (status != 0) RETURN_NPARITY(ret);
       } else if (ix == 23) {
+        if (status != 0)
+          RETURN_NPARITY( (status == 1) ? pillai_v(n) : 0);
+      } else if (ix == 24) {
         UV e, a = (items == 1) ? 0 : my_svuv(ST(1));
         if (status != 1 || n <= 0)   croak("logint: n must be > 0");
         if (items == 1)              croak("logint: missing base");
@@ -1053,7 +1057,7 @@ is_prime(IN SV* svn, ...)
           sv_setuv(SvRV(ST(2)), ipow(a,e));
         }
         XSRETURN_UV(e);
-      } else if (ix == 24) {
+      } else if (ix == 25) {
         UV r, a = (items == 1) ? 0 : my_svuv(ST(1));
         if (items == 1)              croak("rootint: missing exponent");
         if (astatus != 1 || a == 0)  croak("rootint: k must be > 0");
@@ -1099,8 +1103,9 @@ is_prime(IN SV* svn, ...)
               }
               break;
       case 22:(void)_vcallsubn(aTHX_ G_SCALAR, (items == 1) ? (VCALL_GMP|VCALL_PP) : (VCALL_PP), "is_prime_power", items, 40); break;
-      case 23:_vcallsub_with_gmp(0.00,"logint"); break;
-      case 24:
+      case 23:_vcallsub_with_gmp(0.00,"is_pillai"); break;
+      case 24:_vcallsub_with_gmp(0.00,"logint"); break;
+      case 25:
       default:(void)_vcallsubn(aTHX_ G_SCALAR, (items == 2) ? (VCALL_GMP|VCALL_PP) : (VCALL_PP), "rootint", items, 40); break;
     }
     return; /* skip implicit PUTBACK */

@@ -10,6 +10,7 @@ use Math::Prime::Util
       binomial gcdext chinese vecmin vecmax factorial
       hammingweight sqrtint rootint logint is_square_free
       is_carmichael is_quasi_carmichael
+      is_pillai
       is_primitive_root
       ramanujan_sum hclassno ramanujan_tau
      /;
@@ -598,6 +599,7 @@ plan tests => 0 + 1
                 + 1*scalar(keys %isf)
                 + 2 # is_carmichael
                 + 4 # is_quasi_carmichael
+                + 1 # is_pillai
                 + 2 # Small Phi
                 + 9 + scalar(keys %totients)
                 + 1 # Small Carmichael Lambda
@@ -673,6 +675,9 @@ while (my($n, $isf) = each (%isf)) {
              "95 Quasi-Carmichael numbers under 5000" );
   is(is_quasi_carmichael(5092583), 1, "5092583 is a Quasi-Carmichael number with 1 base");
   is(is_quasi_carmichael(777923), 7, "777923 is a Quasi-Carmichael number with 7 bases");
+}
+{
+  is(is_pillai(100049), 25845, "100049 is a Pillai prime");
 }
 
 {

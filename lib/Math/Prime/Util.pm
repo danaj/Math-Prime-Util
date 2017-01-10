@@ -28,7 +28,7 @@ our @EXPORT_OK =
       is_aks_prime is_bpsw_prime
       is_ramanujan_prime
       is_mersenne_prime
-      is_power is_prime_power sqrtint rootint logint
+      is_power is_prime_power sqrtint rootint logint is_pillai
       is_square_free is_primitive_root is_carmichael is_quasi_carmichael
       miller_rabin_random
       lucas_sequence lucasu lucasv
@@ -2853,6 +2853,13 @@ C<p+b> divides C<n+b> for all prime factors C<p> or C<n> and for one or
 more non-zero integer C<b>.
 
 This is the L<OEIS series A257750|http://oeis.org/A257750>.
+
+=head2 is_pillai
+
+Given a positive integer C<n>, if there exists a C<v> where C<v! % n == n-1>
+and C<n % v != 1>, then C<v> is returned.  Otherwise 0.
+
+For n prime, this is the L<OEIS series A063980|http://oeis.org/A063980>.
 
 
 =head2 moebius

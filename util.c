@@ -2231,6 +2231,16 @@ UV is_quasi_carmichael(UV n) {
   return nbases;
 }
 
+UV pillai_v(UV n) {
+  UV v, fac = 1;
+  for (v = 2; v < n; v++) {
+    fac = mulmod(fac, v, n);
+    if (fac == n-1 && (n % v) != 1)
+      return v;
+  }
+  return 0;
+}
+
 
 int moebius(UV n) {
   UV factors[MPU_MAX_FACTORS+1];

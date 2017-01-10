@@ -1068,7 +1068,7 @@ sub miller_rabin_random {
   # Testing this many bases is silly, but let's pretend they have some
   # good reason.  A composite n > 9 must have at least n/4 witnesses,
   # hence we need to check only floor(3/4)+1 at most.  We could improve
-  # this is $_Config{'assume_rh'} is true, to 1 .. 2(logn)^2.
+  # this if $_Config{'assume_rh'} is true, to 1 .. 2(logn)^2.
   if ($k >= int(3*$n/4)) {
     return is_strong_pseudoprime($n, 2 .. int(3*$n/4)+1+2 );
   }

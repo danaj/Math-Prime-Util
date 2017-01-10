@@ -83,6 +83,7 @@ extern int is_primitive_root(UV a, UV n, int nprime);
 #define is_square_free(n)  (moebius(n) != 0)
 extern int is_carmichael(UV n);
 extern UV  is_quasi_carmichael(UV n);  /* Returns number of bases */
+extern UV  pillai_v(UV n);             /* v: v! % n == n-1 && n % v != 1 */
 
 extern UV stirling3(UV n, UV m);
 extern IV stirling2(UV n, UV m);

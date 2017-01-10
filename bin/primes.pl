@@ -4,9 +4,9 @@ use warnings;
 use Getopt::Long;
 use Math::BigInt try => 'GMP';
 use Math::Prime::Util qw/primes  prime_count  next_prime  prev_prime
-                         twin_primes
+                         twin_primes  mulmod  is_pillai
                          is_prime  is_provable_prime  is_mersenne_prime
-                         lucasu lucasv
+                         lucasu  lucasv
                          nth_prime  prime_count  primorial  pn_primorial/;
 $| = 1;
 
@@ -332,29 +332,7 @@ sub ndig_palindromes {
          1, 3, 7, 9;
 }
 
-# See: http://en.wikipedia.org/wiki/Pillai_prime
-sub is_pillai {
-  my $p = shift;
-  return 0 if $p <= 2;
-  my $half_word = (~0 == 4294967295) ? 65535 : 4294967295;
-  if ($p <= $half_word) {
-    my $nfac = 1;
-    for (my $n = 2; $n < $p; $n++) {
-      $nfac = ($nfac * $n) % $p;
-      return 1 if $nfac == $p-1 && ($p % $n) != 1;
-    }
-  } else {
-    # Must use bigints.  Very slow.
-    my $n_factorial_mod_p = Math::BigInt->bone();
-    for (my $n = Math::BigInt->new(2); $n < $p; $n++) {
-      $n_factorial_mod_p->bmul($n)->bmod($p);
-      return 1 if $n_factorial_mod_p == ($p-1) && ($p % $n) != 1;
-    }
-  }
-  0;
-}
-
-# Not nearly as slow as Pillai, but not fast.
+# Not fast.
 sub is_good_prime {
   my $p = shift;
   return 0 if $p <= 2; # 2 isn't a good prime
@@ -495,6 +473,7 @@ sub gen_and_filter {
     @$p = grep { is_circular_prime($_) } @$p;
   }
   if (exists $opts{'pillai'}) {
+  # See: http://en.wikipedia.org/wiki/Pillai_prime
     @$p = grep { is_pillai($_); } @$p;
   }
   if (exists $opts{'good'}) {

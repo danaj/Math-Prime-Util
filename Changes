@@ -2,6 +2,10 @@ Revision history for Perl module Math::Prime::Util
 
 0.61 2016-?
 
+    [ADDED]
+
+    - is_pillai(p)           Returns 0 or v wherev v! % n == n-1 and n % v != 1
+
     [FUNCTIONALITY AND PERFORMANCE]
 
     - is_power(-1,k) now returns true for odd k.
