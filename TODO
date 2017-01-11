@@ -118,6 +118,8 @@
 
 - More Montgomery: znlog, catalan
 
+- verify chinese to GMP is ok
+
 - numtoperm and permtonum.
   Perhaps Bonet: https://github.com/soniakeys/perm/blob/master/lex.go
   Also consider randperm(n)

@@ -901,7 +901,7 @@ chinese(...)
     Safefree(an);
     if (status == -1) XSRETURN_UNDEF;
     if (status)       XSRETURN_UV(ret);
-    _vcallsub_with_pp("chinese");
+    _vcallsub_with_gmp(0.32,"chinese");
     return; /* skip implicit PUTBACK */
 
 void
