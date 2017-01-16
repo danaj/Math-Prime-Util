@@ -2062,9 +2062,9 @@ IV stirling1(UV n, UV m) {
   }
 
   for (k = 1; k <= (IV)(n-m); k++) {
-    b1 = binomial(k + n - 1, k + n - m);
-    b2 = binomial(2 * n - m, n - k - m);
-    s2 = stirling2(k - m + n, k);
+    b1 = binomial(k + n - 1, n - m + k);
+    b2 = binomial(2 * n - m, n - m - k);
+    s2 = stirling2(n - m + k, k);
     if (b1 == 0 || b2 == 0 || s2 == 0 || b1 > IV_MAX/b2) return 0;
     t = b1 * b2;
     if (s2 > IV_MAX/t) return 0;
