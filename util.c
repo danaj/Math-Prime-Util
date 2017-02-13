@@ -2691,17 +2691,22 @@ static UV _simple_chinese(UV* a, UV* n, UV num, int* status) {
   return res;
 }
 
-
 /* status: 1 ok, -1 no inverse, 0 overflow */
 UV chinese(UV* a, UV* n, UV num, int* status) {
-  UV p, gcd, i, j, lcm, sum;
+  static unsigned short sgaps[] = {7983,3548,1577,701,301,132,57,23,10,4,1,0};
+  UV p, gcd, i, j, lcm, sum, gi, gap;
   *status = 1;
   if (num == 0) return 0;
 
   /* Sort modulii, largest first */
-  for (i = 1; i < num; i++)
-    for (j = i; j > 0 && n[j-1] < n[j]; j--)
-      { p=n[j-1]; n[j-1]=n[j]; n[j]=p;   p=a[j-1]; a[j-1]=a[j]; a[j]=p; }
+  for (gi = 0, gap = sgaps[gi]; gap >= 1; gap = sgaps[++gi]) {
+    for (i = gap; i < num; i++) {
+      UV tn = n[i], ta = a[i];
+      for (j = i; j >= gap && n[j-gap] < tn; j -= gap)
+        {  n[j] = n[j-gap];  a[j] = a[j-gap];  }
+      n[j] = tn;  a[j] = ta;
+    }
+  }
 
   if (n[0] > IV_MAX) return _simple_chinese(a,n,num,status);
   lcm = n[0]; sum = a[0] % n[0];
@@ -3511,6 +3516,7 @@ static UV _count_class_div(UV s, UV b2) {
 
   lim = isqrt(b2);
   if (lim*lim == b2) lim--;
+  if (s > lim) return 0;
 
   if ((lim-s) < 70) {  /* Iterate looking for divisors */
     for (i = s; i <= lim; i++)
