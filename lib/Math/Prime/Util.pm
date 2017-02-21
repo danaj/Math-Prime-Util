@@ -39,7 +39,7 @@ our @EXPORT_OK =
       next_prime  prev_prime
       prime_count
       prime_count_lower prime_count_upper prime_count_approx
-      nth_prime nth_prime_lower nth_prime_upper nth_prime_approx
+      nth_prime nth_prime_lower nth_prime_upper nth_prime_approx inverse_li
       twin_prime_count twin_prime_count_approx
       nth_twin_prime nth_twin_prime_approx
       ramanujan_prime_count nth_ramanujan_prime
@@ -1951,9 +1951,12 @@ All odd primes satisfy this condition, and only three known composites.
 
 The pseudoprime sequence is L<OEIS A163209|http://oeis.org/A163209>.
 
-The implementation is extremely slow.  There is no known efficient method
-to perform the Catalan primality test, so it is a curiosity rather than
-a practical test.
+There is no known efficient method to perform the Catalan primality test,
+so it is a curiosity rather than a practical test.  The implementation uses
+a method from Charles Greathouse IV (2015) and results from
+Aebi and Cairns (2008) to produce results many orders of magnitude faster
+than other known implementations, but it is still vastly slower than
+other compositeness tests.
 
 
 =head2 is_frobenius_pseudoprime
@@ -3289,6 +3292,16 @@ Given a non-negative integer C<n> and a non-negative prime number C<a>,
 returns the Legendre phi function (also called Legendre's sum).  This is
 the count of positive integers E<lt>= C<n> which are not divisible by any
 of the first C<a> primes.
+
+
+=head2 inverse_li
+
+  $approx_prime_count = inverse_li(1000000000);
+
+Given a non-negative integer C<n>, returns the least integer value C<k>
+such that C<Li(k)> &gt;= n>.  Since the logarithmic integral C<Li(n)> is
+a good approximation to the number of primes less than C<n>, this function
+is a good simple approximation to the nth prime.
 
 
 =head1 RANDOM PRIMES

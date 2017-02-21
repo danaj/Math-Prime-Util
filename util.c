@@ -772,13 +772,13 @@ UV nth_prime(UV n)
     /* A binary search on RiemannR is nice, but ends up either often being
      * being higher (requiring going backwards) or biased and then far too
      * low.  Using the inverse Li is easier and more consistent. */
-    UV lower_limit = _XS_Inverse_Li(n);
+    UV lower_limit = inverse_li(n);
     /* For even better performance, add in half the usual correction, which
      * will get us even closer, so even less sieving required.  However, it
      * is now possible to get a result higher than the value, so we'll need
      * to handle that case.  It still ends up being a better deal than R,
      * given that we don't have a fast backward sieve. */
-    lower_limit += _XS_Inverse_Li(isqrt(n))/4;
+    lower_limit += inverse_li(isqrt(n))/4;
     segment_size = lower_limit / 30;
     lower_limit = 30 * segment_size - 1;
     count = _XS_LMO_pi(lower_limit);
@@ -2955,12 +2955,13 @@ long double _XS_LogarithmicIntegral(long double x) {
 }
 
 /* Thanks to Kim Walisch for this idea */
-UV _XS_Inverse_Li(UV x) {
+UV inverse_li(UV x) {
   double nlogn = (double)x * log((double)x);
   UV lo = (UV) (nlogn);
   UV hi = (UV) (nlogn * 2 + 2);
 
   if (x == 0)  return 0;
+  if (x < 40) lo >>= 1;
   if (hi <= lo) hi = UV_MAX;
   while (lo < hi) {
     UV mid = lo + (hi-lo)/2;

@@ -92,6 +92,7 @@ See L<Math::Prime::Util> for complete documentation.
   ramanujan_prime_count(start, end)   count of Ramanujan primes in range
   nth_ramanujan_prime(n)              the nth Ramanujan prime (Rn)
   legendre_phi(n,a)                   # below n not div by first a primes
+  inverse_li(n)                       integer inverse logarithmic integral
   prime_precalc(n)                    precalculate primes to n
   sum_primes([start,] end)            return summation of primes in range
   print_primes(start,end[,fd])        print primes to stdout or fd

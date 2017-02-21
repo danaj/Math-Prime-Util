@@ -56,8 +56,6 @@
 - Perhaps have main segment know the filled in range.  That would allow
   a sieved next_prime, and might speed up some counts and the like.
 
-- Consider exporting inverse Li (_XS_Inverse_Li in util.c).
-
 - Benchmark simple SoEs, SoA.  Include Sisyphus SoE hidden in Math::GMPz.
 
 - Try using malloc/free for win32 cache memory.  #define NO_XSLOCKS

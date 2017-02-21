@@ -33,7 +33,7 @@ my @functions =  qw(
       next_prime  prev_prime
       prime_count
       prime_count_lower prime_count_upper prime_count_approx
-      nth_prime nth_prime_lower nth_prime_upper nth_prime_approx
+      nth_prime nth_prime_lower nth_prime_upper nth_prime_approx inverse_li
       twin_prime_count twin_prime_count_approx
       nth_twin_prime nth_twin_prime_approx
       nth_ramanujan_prime
