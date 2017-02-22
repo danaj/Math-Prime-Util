@@ -301,6 +301,11 @@ sub is_quasi_carmichael {
   #_validate_positive_integer($n);
   return Math::Prime::Util::PP::is_quasi_carmichael($n);
 }
+sub is_semiprime {
+  my($n) = @_;
+  _validate_positive_integer($n);
+  return Math::Prime::Util::PP::is_semiprime($n);
+}
 sub is_pillai {
   my($n) = @_;
   #_validate_positive_integer($n);

@@ -81,6 +81,7 @@ extern UV znprimroot(UV n);
 extern UV znorder(UV a, UV n);
 extern int is_primitive_root(UV a, UV n, int nprime);
 #define is_square_free(n)  (moebius(n) != 0)
+extern int is_semiprime(UV n);
 extern int is_carmichael(UV n);
 extern UV  is_quasi_carmichael(UV n);  /* Returns number of bases */
 extern UV  pillai_v(UV n);             /* v: v! % n == n-1 && n % v != 1 */

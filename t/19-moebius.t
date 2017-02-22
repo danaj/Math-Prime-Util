@@ -8,7 +8,7 @@ use Math::Prime::Util
       chebyshev_theta chebyshev_psi carmichael_lambda znorder liouville
       znprimroot znlog kronecker legendre_phi gcd lcm is_power valuation
       binomial gcdext chinese vecmin vecmax factorial
-      hammingweight sqrtint rootint logint is_square_free
+      hammingweight sqrtint rootint logint is_square_free is_semiprime
       is_carmichael is_quasi_carmichael
       is_pillai
       is_primitive_root
@@ -600,6 +600,7 @@ plan tests => 0 + 1
                 + 3*scalar(keys %mertens)
                 + 1*scalar(keys %big_mertens)
                 + 1*scalar(keys %isf)
+                + 3 # is_semiprime
                 + 2 # is_carmichael
                 + 4 # is_quasi_carmichael
                 + 1 # is_pillai
@@ -659,6 +660,13 @@ while (my($n, $mertens) = each (%big_mertens)) {
 }
 while (my($n, $isf) = each (%isf)) {
   is( is_square_free($n), $isf, "is_square_free($n)" );
+}
+{
+  is_deeply( [grep { is_semiprime($_) } 10000..10100],
+             [qw/10001 10003 10006 10015 10018 10019 10021 10022 10027 10029 10031 10033 10041 10042 10046 10049 10055 10057 10063 10073 10077 10078 10081 10083 10085 10097/],
+             "Identify semiprimes from 10000 to 10100" );
+  is(is_semiprime("669386384129397581"), 1, "is_semiprime(669386384129397581)");
+  is(is_semiprime("42535430147496493121551759"), 0, "is_semiprime(42535430147496493121551759)");
 }
 {
   is_deeply( [grep { is_carmichael($_) } 1 .. 20000],

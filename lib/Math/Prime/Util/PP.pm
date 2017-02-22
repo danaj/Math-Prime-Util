@@ -926,8 +926,17 @@ sub moebius {
   return ((scalar @factors) % 2) ? -1 : 1;
 }
 sub is_square_free {
-  return (moebius($_[0]) != 0) ? 1 : 0;
+  return (Math::Prime::Util::moebius($_[0]) != 0) ? 1 : 0;
 }
+sub is_semiprime {
+  my($n) = @_;
+  return ($n == 4) if $n < 6;
+  return (Math::Prime::Util::is_prob_prime($n>>1) ? 1 : 0) if ($n % 2) == 0;
+  return (Math::Prime::Util::is_prob_prime($n/3)  ? 1 : 0) if ($n % 3) == 0;
+  return (Math::Prime::Util::is_prob_prime($n/5)  ? 1 : 0) if ($n % 5) == 0;
+  return (scalar(Math::Prime::Util::factor($n)) == 2) ? 1 : 0;
+}
+
 
 sub moebius_range {
   my($lo, $hi) = @_;

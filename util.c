@@ -2231,6 +2231,40 @@ UV is_quasi_carmichael(UV n) {
   return nbases;
 }
 
+int is_semiprime(UV n) {
+  UV sp, p, n3, factors[2];
+
+  if (n < 6) return (n == 4);
+  if (!(n&1)) return !!is_prob_prime(n>>1);
+  if (!(n%3)) return !!is_prob_prime(n/3);
+  if (!(n%5)) return !!is_prob_prime(n/5);
+  /* 27% of random inputs left */
+  n3 = icbrt(n);
+  for (sp = 4; sp < 60; sp++) {
+    p = primes_small[sp];
+    if (p > n3)
+      break;
+    if ((n % p) == 0)
+      return !!is_prob_prime(n/p);
+  }
+  /* 9.8% of random inputs left */
+  if (is_prob_prime(n)) return 0;
+  if (p > n3) return 1;
+  /* 4-8% of random inputs left */
+  /* n is a composite and larger than p^3 */
+  if (   pbrent_factor(n, factors, 70000, 1) == 2
+         /* The only things we normally see by now are 16+ digit semiprimes */
+      || pminus1_factor(n, factors, 4000, 4000) == 2
+         /* 0.09% of random 64-bit inputs left */
+      || pbrent_factor(n, factors, 180000, 7) == 2 )
+    return (is_prob_prime(factors[0]) && is_prob_prime(factors[1]));
+  /* 0.002% of random 64-bit inputs left */
+  {
+    UV nfacs, facs[MPU_MAX_FACTORS+1];
+    return (factor(n,facs) == 2);
+  }
+}
+
 UV pillai_v(UV n) {
   UV v, fac = 1;
   for (v = 2; v < n; v++) {

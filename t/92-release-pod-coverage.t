@@ -53,7 +53,7 @@ sub mpu_public_regex {
       is_aks_prime is_bpsw_prime
       is_ramanujan_prime
       is_mersenne_prime
-      is_power is_prime_power sqrtint rootint logint
+      is_power is_prime_power sqrtint rootint logint is_pillai is_semiprime
       is_square_free is_primitive_root is_carmichael is_quasi_carmichael
       miller_rabin_random
       lucas_sequence lucasu lucasv
@@ -64,7 +64,7 @@ sub mpu_public_regex {
       next_prime  prev_prime
       prime_count
       prime_count_lower prime_count_upper prime_count_approx
-      nth_prime nth_prime_lower nth_prime_upper nth_prime_approx
+      nth_prime nth_prime_lower nth_prime_upper nth_prime_approx inverse_li
       twin_prime_count twin_prime_count_approx
       nth_twin_prime nth_twin_prime_approx
       ramanujan_prime_count nth_ramanujan_prime

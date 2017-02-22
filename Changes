@@ -4,6 +4,7 @@ Revision history for Perl module Math::Prime::Util
 
     [ADDED]
 
+    - is_semiprime(n)        Returns 1 if n has exactly 2 prime factors
     - is_pillai(p)           Returns 0 or v wherev v! % n == n-1 and n % v != 1
     - inverse_li(n)          Integer inverse of Logarithmic Integral
 

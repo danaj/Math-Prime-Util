@@ -28,7 +28,7 @@ our @EXPORT_OK =
       is_aks_prime is_bpsw_prime
       is_ramanujan_prime
       is_mersenne_prime
-      is_power is_prime_power sqrtint rootint logint is_pillai
+      is_power is_prime_power sqrtint rootint logint is_pillai is_semiprime
       is_square_free is_primitive_root is_carmichael is_quasi_carmichael
       miller_rabin_random
       lucas_sequence lucasu lucasv
@@ -967,7 +967,7 @@ __END__
 
 =encoding utf8
 
-=for stopwords forprimes forcomposites foroddcomposites fordivisors forpart forcomp forcomb forperm formultiperm Möbius Deléglise Bézout totient moebius mertens liouville znorder irand primesieve uniqued k-tuples von SoE pari yafu fonction qui compte le nombre nombres voor PhD superset sqrt(N) gcd(A^M k-th (10001st primegen libtommath kronecker znprimroot znlog gcd lcm invmod sqrtmod addmod mulmod powmod divmod untruncated vecsum vecprod vecmin vecmax vecreduce vecextract vecall vecany vecnone vecnotall vecfirst vecfirstidx sumdigits gcdext chinese LambertW bernfrac bernreal harmfrac harmreal stirling hammingweight lucasu lucasv OpenPFGW gmpy2 Über Primzahl-Zählfunktion n-te und verallgemeinerte sqrtint logint multiset todigits todigitstring fromdigits hclassno rootint
+=for stopwords forprimes forcomposites foroddcomposites fordivisors forpart forcomp forcomb forperm formultiperm Möbius Deléglise Bézout totient moebius mertens liouville znorder irand primesieve uniqued k-tuples von SoE pari yafu fonction qui compte le nombre nombres voor PhD superset sqrt(N) gcd(A^M k-th (10001st primegen libtommath kronecker znprimroot znlog gcd lcm invmod sqrtmod addmod mulmod powmod divmod untruncated vecsum vecprod vecmin vecmax vecreduce vecextract vecall vecany vecnone vecnotall vecfirst vecfirstidx sumdigits gcdext chinese LambertW bernfrac bernreal harmfrac harmreal stirling hammingweight lucasu lucasv OpenPFGW gmpy2 Über Primzahl-Zählfunktion n-te und verallgemeinerte sqrtint logint multiset todigits todigitstring fromdigits hclassno rootint compositeness
 
 =for test_synopsis use v5.14;  my($k,$x);
 
@@ -2857,6 +2857,14 @@ more non-zero integer C<b>.
 
 This is the L<OEIS series A257750|http://oeis.org/A257750>.
 
+=head2 is_semiprime
+
+Given a positive integer C<n>, returns 1 if C<n> is a semiprime, 0 otherwise.
+A semiprime is the product of exactly two primes.
+
+The boolean result is the same as C<scalar(factor(n)) == 2>, but this
+function performs shortcuts that can greatly speed up the operation.
+
 =head2 is_pillai
 
 Given a positive integer C<n>, if there exists a C<v> where C<v! % n == n-1>
@@ -3299,7 +3307,7 @@ of the first C<a> primes.
   $approx_prime_count = inverse_li(1000000000);
 
 Given a non-negative integer C<n>, returns the least integer value C<k>
-such that C<Li(k)> &gt;= n>.  Since the logarithmic integral C<Li(n)> is
+such that C<Li(k)> E<gt>= n>.  Since the logarithmic integral C<Li(n)> is
 a good approximation to the number of primes less than C<n>, this function
 is a good simple approximation to the nth prime.
 
