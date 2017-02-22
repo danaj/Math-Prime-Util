@@ -1524,12 +1524,33 @@ sub nth_prime_lower {
   return int($lower + 0.999999999);
 }
 
+sub inverse_li {
+  my($n) = @_;
+  _validate_num($n) || _validate_positive_integer($n);
+
+  return 0 if $n == 0;
+  my $nlogn = $n * log($n);
+  my $lo = int($nlogn);
+  my $hi = int($nlogn * 2 + 2);
+  $lo >>= 1 if $n < 40;
+
+  while ($lo < $hi) {
+    my $mid = $lo + (($hi-$lo) >> 1);
+    if (Math::Prime::Util::LogarithmicIntegral($mid) < $n) { $lo = $mid+1; }
+    else                                                   { $hi = $mid;   }
+  }
+  return $lo;
+}
+
 sub nth_prime_approx {
   my($n) = @_;
   _validate_num($n) || _validate_positive_integer($n);
 
   return undef if $n <= 0;  ## no critic qw(ProhibitExplicitReturnUndef)
   return $_primes_small[$n] if $n <= $#_primes_small;
+
+  # Once past 10^12 or so, inverse_li gives better results.
+  return Math::Prime::Util::inverse_li($n) if $n > 1e12;
 
   $n = _upgrade_to_float($n)
     if ref($n) eq 'Math::BigInt' || $n >= MPU_MAXPRIMEIDX;
@@ -1559,14 +1580,17 @@ sub nth_prime_approx {
   $order = $order*$order*$order * $n;
 
   if    ($n <        259) { $approx += 10.4 * $order; }
-  elsif ($n <        775) { $approx +=  7.52* $order; }
-  elsif ($n <       1271) { $approx +=  5.6 * $order; }
-  elsif ($n <       2000) { $approx +=  5.2 * $order; }
-  elsif ($n <       4000) { $approx +=  4.3 * $order; }
-  elsif ($n <      12000) { $approx +=  3.0 * $order; }
-  elsif ($n <     150000) { $approx +=  2.1 * $order; }
-  elsif ($n <  200000000) { $approx +=  0.0 * $order; }
-  else                    { $approx += -0.025 * $order; }
+  elsif ($n <        775) { $approx +=  6.3 * $order; }
+  elsif ($n <       1271) { $approx +=  5.3 * $order; }
+  elsif ($n <       2000) { $approx +=  4.7 * $order; }
+  elsif ($n <       4000) { $approx +=  3.9 * $order; }
+  elsif ($n <      12000) { $approx +=  2.8 * $order; }
+  elsif ($n <     150000) { $approx +=  1.2 * $order; }
+  elsif ($n <   20000000) { $approx +=  0.11 * $order; }
+  elsif ($n <  100000000) { $approx +=  0.008 * $order; }
+  elsif ($n <  500000000) { $approx += -0.038 * $order; }
+  elsif ($n < 2000000000) { $approx += -0.054 * $order; }
+  else                    { $approx += -0.058 * $order; }
   # If we want the asymptotic approximation to be >= actual, use -0.010.
 
   return int($approx + 0.5);

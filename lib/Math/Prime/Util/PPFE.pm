@@ -108,6 +108,10 @@ sub nth_prime_upper {
   _validate_positive_integer($n);
   return Math::Prime::Util::PP::nth_prime_upper($n);
 }
+sub inverse_li {
+  my($n) = @_;
+  return Math::Prime::Util::PP::inverse_li($n);
+}
 sub nth_prime_approx {
   my($n) = @_;
   _validate_positive_integer($n);

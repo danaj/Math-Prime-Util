@@ -5,6 +5,7 @@ Revision history for Perl module Math::Prime::Util
     [ADDED]
 
     - is_pillai(p)           Returns 0 or v wherev v! % n == n-1 and n % v != 1
+    - inverse_li(n)          Integer inverse of Logarithmic Integral
 
     [FUNCTIONALITY AND PERFORMANCE]
 
@@ -29,11 +30,14 @@ Revision history for Perl module Math::Prime::Util
 
     - primes.pl uses twin_primes function for ~3x speedup.
 
-    - native chinese can handle some cases that used to overflow.
+    - native chinese can handle some cases that used to overflow.  Use Shell
+      sort on moduli to prevent pathological-but-reasonable test case.
 
     - chinese directly to GMP
 
     - Switch to Bytes::Random::Secure::Tiny -- fewer dependencies.
+
+    - PP nth_prime_approx has better MSE and uses inverse_li above 10^12.
 
 
 0.60 2016-10-09

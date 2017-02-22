@@ -5,7 +5,8 @@ use warnings;
 use Test::More;
 use Math::Prime::Util qw/primes nth_prime nth_twin_prime
                          nth_prime_lower nth_prime_upper
-                         nth_prime_approx nth_twin_prime_approx/;
+                         nth_prime_approx nth_twin_prime_approx
+                         inverse_li/;
 
 my $use64 = Math::Prime::Util::prime_get_config->{'maxbits'} > 32;
 my $usexs = Math::Prime::Util::prime_get_config->{'xs'};
@@ -83,6 +84,7 @@ plan tests => 0 + 2*scalar(keys %pivals32)
                 + $use64 * 3 * scalar(keys %nthprimes64)
                 + 3   # nth_prime_lower with max index
                 + 3   # nth_twin_prime
+                + 3   # inverse_li
                 + scalar(keys %ntpcs)   # nth_twin_prime_approx
                 + (($extra && $use64 && $usexs) ? 1 : 0);
 
@@ -147,3 +149,13 @@ while (my($n, $nthtpc) = each (%ntpcs)) {
   my $estr = sprintf "%8.6f%%", $errorp;
   cmp_ok( $errorp, '<=', 2, "nth_twin_prime_approx($n) is $estr (got $approx, expected ~$nthtpc)");
 }
+
+####################################3
+
+is_deeply(
+  [ map { inverse_li($_) } 0 .. 50 ],
+  [qw/0 2 3 5 6 8 10 12 15 18 21 24 27 30 34 37 41 45 49 53 57 61 65 69 73 78 82 86 91 95 100 105 109 114 119 123 128 133 138 143 148 153 158 163 168 173 179 184 189 194 199/],
+  "inverse_li: Li^-1(0..50)"
+);
+is(inverse_li(1000000000), 22801627415, "inverse_li(1e9)");
+is(inverse_li(1000000000000), 29996219470245, "inverse_li(1e12)");

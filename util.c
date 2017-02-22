@@ -772,13 +772,13 @@ UV nth_prime(UV n)
     /* A binary search on RiemannR is nice, but ends up either often being
      * being higher (requiring going backwards) or biased and then far too
      * low.  Using the inverse Li is easier and more consistent. */
-    UV lower_limit = _XS_Inverse_Li(n);
+    UV lower_limit = inverse_li(n);
     /* For even better performance, add in half the usual correction, which
      * will get us even closer, so even less sieving required.  However, it
      * is now possible to get a result higher than the value, so we'll need
      * to handle that case.  It still ends up being a better deal than R,
      * given that we don't have a fast backward sieve. */
-    lower_limit += _XS_Inverse_Li(isqrt(n))/4;
+    lower_limit += inverse_li(isqrt(n))/4;
     segment_size = lower_limit / 30;
     lower_limit = 30 * segment_size - 1;
     count = _XS_LMO_pi(lower_limit);
@@ -2691,17 +2691,22 @@ static UV _simple_chinese(UV* a, UV* n, UV num, int* status) {
   return res;
 }
 
-
 /* status: 1 ok, -1 no inverse, 0 overflow */
 UV chinese(UV* a, UV* n, UV num, int* status) {
-  UV p, gcd, i, j, lcm, sum;
+  static unsigned short sgaps[] = {7983,3548,1577,701,301,132,57,23,10,4,1,0};
+  UV p, gcd, i, j, lcm, sum, gi, gap;
   *status = 1;
   if (num == 0) return 0;
 
   /* Sort modulii, largest first */
-  for (i = 1; i < num; i++)
-    for (j = i; j > 0 && n[j-1] < n[j]; j--)
-      { p=n[j-1]; n[j-1]=n[j]; n[j]=p;   p=a[j-1]; a[j-1]=a[j]; a[j]=p; }
+  for (gi = 0, gap = sgaps[gi]; gap >= 1; gap = sgaps[++gi]) {
+    for (i = gap; i < num; i++) {
+      UV tn = n[i], ta = a[i];
+      for (j = i; j >= gap && n[j-gap] < tn; j -= gap)
+        {  n[j] = n[j-gap];  a[j] = a[j-gap];  }
+      n[j] = tn;  a[j] = ta;
+    }
+  }
 
   if (n[0] > IV_MAX) return _simple_chinese(a,n,num,status);
   lcm = n[0]; sum = a[0] % n[0];
@@ -2950,12 +2955,13 @@ long double _XS_LogarithmicIntegral(long double x) {
 }
 
 /* Thanks to Kim Walisch for this idea */
-UV _XS_Inverse_Li(UV x) {
+UV inverse_li(UV x) {
   double nlogn = (double)x * log((double)x);
   UV lo = (UV) (nlogn);
   UV hi = (UV) (nlogn * 2 + 2);
 
   if (x == 0)  return 0;
+  if (x < 40) lo >>= 1;
   if (hi <= lo) hi = UV_MAX;
   while (lo < hi) {
     UV mid = lo + (hi-lo)/2;
@@ -3511,6 +3517,7 @@ static UV _count_class_div(UV s, UV b2) {
 
   lim = isqrt(b2);
   if (lim*lim == b2) lim--;
+  if (s > lim) return 0;
 
   if ((lim-s) < 70) {  /* Iterate looking for divisors */
     for (i = s; i <= lim; i++)
