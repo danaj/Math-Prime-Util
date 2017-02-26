@@ -40,6 +40,10 @@ Revision history for Perl module Math::Prime::Util
 
     - PP nth_prime_approx has better MSE and uses inverse_li above 10^12.
 
+    - random_prime, random_nbit_prime, random_ndigit_prime will try GMP
+      functions if available and if irand config isn't set.  These run
+      quite a bit faster than our PP code.
+
 
 0.60 2016-10-09
 

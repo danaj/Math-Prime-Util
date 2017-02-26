@@ -403,6 +403,10 @@ sub random_prime {
     ($low,$high) = (2, $low);
     _validate_num($high) || _validate_positive_integer($high);
   }
+  if ($Math::Prime::Util::_GMPfunc{"random_prime"} && !defined $_Config{'irand'}) {
+    require Math::Prime::Util::RandomPrimesGMP;
+    return Math::Prime::Util::RandomPrimesGMP::random_prime($low,$high);
+  }
   require Math::Prime::Util::RandomPrimes;
   return Math::Prime::Util::RandomPrimes::random_prime($low,$high);
 }
@@ -410,6 +414,10 @@ sub random_prime {
 sub random_ndigit_prime {
   my($digits) = @_;
   _validate_num($digits, 1) || _validate_positive_integer($digits, 1);
+  if ($Math::Prime::Util::_GMPfunc{"random_ndigit_prime"} && !defined $_Config{'irand'}) {
+    require Math::Prime::Util::RandomPrimesGMP;
+    return Math::Prime::Util::RandomPrimesGMP::random_ndigit_prime($digits);
+  }
   require Math::Prime::Util::RandomPrimes;
   return Math::Prime::Util::RandomPrimes::random_ndigit_prime($digits);
 }
@@ -417,6 +425,10 @@ sub random_ndigit_prime {
 sub random_nbit_prime {
   my($bits) = @_;
   _validate_num($bits, 2) || _validate_positive_integer($bits, 2);
+  if ($Math::Prime::Util::_GMPfunc{"random_nbit_prime"} && !defined $_Config{'irand'}) {
+    require Math::Prime::Util::RandomPrimesGMP;
+    return Math::Prime::Util::RandomPrimesGMP::random_nbit_prime($bits);
+  }
   require Math::Prime::Util::RandomPrimes;
   return Math::Prime::Util::RandomPrimes::random_nbit_prime($bits);
 }
@@ -460,6 +472,10 @@ sub random_strong_prime {
 sub random_proven_prime {
   my($bits) = @_;
   _validate_num($bits, 2) || _validate_positive_integer($bits, 2);
+  if ($Math::Prime::Util::_GMPfunc{"random_nbit_prime"} && !defined $_Config{'irand'}) {
+    require Math::Prime::Util::RandomPrimesGMP;
+    return Math::Prime::Util::RandomPrimesGMP::random_proven_prime($bits);
+  }
   require Math::Prime::Util::RandomPrimes;
   return Math::Prime::Util::RandomPrimes::random_proven_prime($bits);
 }
@@ -467,6 +483,10 @@ sub random_proven_prime {
 sub random_proven_prime_with_cert {
   my($bits) = @_;
   _validate_num($bits, 2) || _validate_positive_integer($bits, 2);
+  if ($Math::Prime::Util::_GMPfunc{"random_nbit_prime"} && !defined $_Config{'irand'}) {
+    require Math::Prime::Util::RandomPrimesGMP;
+    return Math::Prime::Util::RandomPrimesGMP::random_proven_prime_with_cert($bits);
+  }
   require Math::Prime::Util::RandomPrimes;
   return Math::Prime::Util::RandomPrimes::random_proven_prime_with_cert($bits);
 }
@@ -480,10 +500,10 @@ sub miller_rabin_random {
   return (is_prob_prime($n) ? 1 : 0) if $n < 100;
   return 0 unless $n & 1;
 
-  return Math::Prime::Util::GMP::miller_rabin_random($n, $k)
-    if $_HAVE_GMP
-    && defined &Math::Prime::Util::GMP::miller_rabin_random;
-
+  if ($Math::Prime::Util::_GMPfunc{"miller_rabin_random"}) {
+    require Math::Prime::Util::RandomPrimesGMP;
+    return Math::Prime::Util::RandomPrimesGMP::miller_rabin_random($n, $k, $seed);
+  }
   require Math::Prime::Util::RandomPrimes;
   return Math::Prime::Util::RandomPrimes::miller_rabin_random($n, $k, $seed);
 }

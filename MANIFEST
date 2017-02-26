@@ -12,6 +12,7 @@ lib/Math/Prime/Util/ECAffinePoint.pm
 lib/Math/Prime/Util/ECProjectivePoint.pm
 lib/Math/Prime/Util/PrimalityProving.pm
 lib/Math/Prime/Util/RandomPrimes.pm
+lib/Math/Prime/Util/RandomPrimesGMP.pm
 LICENSE
 Makefile.PL
 MANIFEST
