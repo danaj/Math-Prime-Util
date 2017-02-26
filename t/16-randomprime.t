@@ -124,7 +124,7 @@ while (my($range, $expect) = each (%range_edge)) {
   my $got = random_prime($low,$high);
   ok( is_prime($got), "Prime in range $low-$high is indeed prime" );
   cmp_ok( $got, '>=', $expect->[0], "random_prime($low,$high) >= $expect->[0]");
-  cmp_ok( $got, '<=', $expect->[1], "random_prime($low,$high) >= $expect->[1]");
+  cmp_ok( $got, '<=', $expect->[1], "random_prime($low,$high) <= $expect->[1]");
 }
 
 while (my($range, $expect) = each (%ranges)) {

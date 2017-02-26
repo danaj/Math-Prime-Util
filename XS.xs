@@ -1097,7 +1097,7 @@ is_prime(IN SV* svn, ...)
       case 17:_vcallsub_with_gmp(0.00,"is_carmichael"); break;
       case 18:_vcallsub_with_gmp(0.00,"is_quasi_carmichael"); break;
       case 19:_vcallsub_with_gmp(0.36,"is_primitive_root"); break;
-      case 20:_vcallsub_with_gmp(0.00,"is_semiprime"); break;
+      case 20:_vcallsub_with_gmp(0.42,"is_semiprime"); break;
       case 21:_vcallsub_with_gmp(0.28,"is_mersenne_prime"); break;
       case 22:if (items != 3) {
                 _vcallsub_with_gmp(0.28, "is_power");
