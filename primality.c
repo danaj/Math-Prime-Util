@@ -776,9 +776,10 @@ static _perrin _perrindata[NPERRINDIV] = {
 static void calc_perrin_sig(UV* S, UV n) {
 #if USE_MONTMATH
   uint64_t npi = 0, mont1;
+  int i;
 #endif
   UV T[6], T01, T34, T45;
-  int i, b;
+  int b;
 
   /* Signature for n = 1 */
   S[0] = 1; S[1] = n-1; S[2] = 3;   S[3] = 3; S[4] = 0; S[5] = 2;

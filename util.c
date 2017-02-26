@@ -2260,7 +2260,7 @@ int is_semiprime(UV n) {
     return (is_prob_prime(factors[0]) && is_prob_prime(factors[1]));
   /* 0.002% of random 64-bit inputs left */
   {
-    UV nfacs, facs[MPU_MAX_FACTORS+1];
+    UV facs[MPU_MAX_FACTORS+1];
     return (factor(n,facs) == 2);
   }
 }
@@ -2728,7 +2728,7 @@ static UV _simple_chinese(UV* a, UV* n, UV num, int* status) {
 /* status: 1 ok, -1 no inverse, 0 overflow */
 UV chinese(UV* a, UV* n, UV num, int* status) {
   static unsigned short sgaps[] = {7983,3548,1577,701,301,132,57,23,10,4,1,0};
-  UV p, gcd, i, j, lcm, sum, gi, gap;
+  UV gcd, i, j, lcm, sum, gi, gap;
   *status = 1;
   if (num == 0) return 0;
 
@@ -3263,7 +3263,7 @@ static long double _lambertw_approx(long double x) {
 }
 
 long double lambertw(long double x) {
-  long double w, lastw;
+  long double w;
   int i;
 
   if (x < -0.36787944117145L)
