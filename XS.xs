@@ -977,7 +977,7 @@ is_prime(IN SV* svn, ...)
     if (status != 0 && astatus != 0) {
       int ret = 0;
       UV n = my_svuv(svn);
-      if (status == 1 && astatus == 1 && ix < 21) {
+      if (status == 1 && astatus == 1 && ix < 22) {
         UV a = (items == 1) ? 0 : my_svuv(ST(1));
         switch (ix) {
           case 0:
