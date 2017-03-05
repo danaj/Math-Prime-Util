@@ -43,11 +43,31 @@ sub random_ndigit_prime {
   );
 }
 
+sub random_strong_prime {
+  my($bits) = @_;
+  Math::Prime::Util::_reftyped($_[0],
+    Math::Prime::Util::GMP::random_strong_prime($bits)
+  );
+}
+
+sub random_maurer_prime {
+  my($bits) = @_;
+  Math::Prime::Util::_reftyped($_[0],
+    Math::Prime::Util::GMP::random_maurer_prime($bits)
+  );
+}
+
 sub random_proven_prime {
-  my $k = shift;
-  my $n = random_nbit_prime($k);
-  croak "${k}-bit prime could not be proven" unless is_provable_prime($n);
-  $n;
+  my($k) = @_;
+  if ($Math::Prime::Util::GMP::VERSION >= 0.43) {
+    Math::Prime::Util::_reftyped($_[0],
+      Math::Prime::Util::GMP::random_maurer_prime($k)
+    );
+  } else {
+    my $n = random_nbit_prime($k);
+    croak "${k}-bit prime could not be proven" unless is_provable_prime($n);
+    $n;
+  }
 }
 
 sub random_proven_prime_with_cert {
@@ -109,6 +129,15 @@ Generate a random prime with C<n> digits.  C<n> must be at least 1.
 =head2 random_nbit_prime
 
 Generate a random prime with C<n> bits.  C<n> must be at least 2.
+
+=head2 random_strong_prime
+
+Generate a random strong prime with C<n> bits.  C<n> must be at least 128.
+
+=head2 random_maurer_prime
+
+Generate a random proven prime with C<n> bits using Maurer's algorithm.
+C<n> must be at least 2.
 
 =head2 random_proven_prime
 

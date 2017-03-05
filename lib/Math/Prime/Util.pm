@@ -436,6 +436,10 @@ sub random_nbit_prime {
 sub random_maurer_prime {
   my($bits) = @_;
   _validate_num($bits, 2) || _validate_positive_integer($bits, 2);
+  if ($_Config{'gmp'} >= 43 && !defined $_Config{'irand'}) {
+    require Math::Prime::Util::RandomPrimesGMP;
+    return Math::Prime::Util::RandomPrimesGMP::random_maurer_prime($bits);
+  }
   require Math::Prime::Util::RandomPrimes;
   return Math::Prime::Util::RandomPrimes::random_maurer_prime($bits);
 }
@@ -465,6 +469,10 @@ sub random_shawe_taylor_prime_with_cert {
 sub random_strong_prime {
   my($bits) = @_;
   _validate_num($bits, 128) || _validate_positive_integer($bits, 128);
+  if ($_Config{'gmp'} >= 43 && !defined $_Config{'irand'}) {
+    require Math::Prime::Util::RandomPrimesGMP;
+    return Math::Prime::Util::RandomPrimesGMP::random_strong_prime($bits);
+  }
   require Math::Prime::Util::RandomPrimes;
   return Math::Prime::Util::RandomPrimes::random_strong_prime($bits);
 }
