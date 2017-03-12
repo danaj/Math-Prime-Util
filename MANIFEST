@@ -131,6 +131,7 @@ t/26-combinatorial.t
 t/26-digits.t
 t/26-ispower.t
 t/26-mod.t
+t/26-pillai.t
 t/26-vec.t
 t/27-bernfrac.t
 t/28-pi.t
