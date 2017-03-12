@@ -1560,8 +1560,8 @@ sub nth_prime_approx {
   return undef if $n <= 0;  ## no critic qw(ProhibitExplicitReturnUndef)
   return $_primes_small[$n] if $n <= $#_primes_small;
 
-  # Once past 10^12 or so, inverse_li gives better results.
-  return Math::Prime::Util::inverse_li($n) if $n > 1e12;
+  # Once past 10^12 or so, inverse_li gives better results, but also very slow.
+  # return Math::Prime::Util::inverse_li($n) if $n > 1e12;
 
   $n = _upgrade_to_float($n)
     if ref($n) eq 'Math::BigInt' || $n >= MPU_MAXPRIMEIDX;
@@ -5400,6 +5400,7 @@ sub LogarithmicIntegral {
     return $li2const;
   }
 
+  $x = _bigint_to_int($x) if ref($x) && !defined $bignum::VERSION && $x <= 1e16;
   $x = Math::BigFloat->new("$x") if defined $bignum::VERSION && ref($x) ne 'Math::BigFloat';
   $x = _upgrade_to_float($x) if ref($x) && ref($x) ne 'Math::BigFloat' && $x > 1e16;
 
