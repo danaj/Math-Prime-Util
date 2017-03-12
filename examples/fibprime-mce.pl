@@ -31,6 +31,7 @@ $| = 1;
 # n32 ( F50833) in  4776s on 3930k 4.2GHz, SERIAL
 # n32 ( F50833) in   754s on 3930k 4.2GHz, 12 CPU
 # n32 ( F50833) in   472s on EC2 c3.8xlarge, 32 CPU
+# n32 ( F50833) in   323s on EC2 c4.8xlarge, 36 CPU
 #
 # n36 (F148091) in 26245s on 3930k 4.2GHz, 12 CPU
 # n36 (F148091) in 14380s on EC2 c3.8xlarge, 32 CPU
