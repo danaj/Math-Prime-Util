@@ -4,7 +4,7 @@ use warnings;
 use Getopt::Long;
 use Math::BigInt try => 'GMP';
 use Math::Prime::Util qw/primes  prime_count  next_prime  prev_prime
-                         twin_primes  mulmod  is_pillai
+                         twin_primes  sieve_prime_cluster  mulmod  is_pillai
                          is_prime  is_provable_prime  is_mersenne_prime
                          lucasu  lucasv
                          nth_prime  prime_count  primorial  pn_primorial/;
@@ -282,39 +282,36 @@ sub panaitopol_primes {
          $nbeg .. $nend;
 }
 
+
 sub lucky_primes {
   my ($start, $end) = @_;
-  # First do a (very basic) lucky number sieve to generate A000959.
-  # Evens removed for k=1:
-  #    my @lucky = map { $_*2+1 } (0 .. int(($end-1)/2));
-  # Remove the 3rd elements for k=2:
-  #     my @lucky = grep { my $m = $_ % 6; $m == 1 || $m == 3 } (0 .. $end);
-  # Remove the 4th elements for k=3:
-  #     my @lucky = grep { my $m = $_ % 21; $m != 18 && $m != 19 }
-  #                 grep { my $m = $_ % 6; $m == 1 || $m == 3 }
-  #                 map { $_*2+1 } (0 .. int(($end-1)/2));
-  # This is the same k=3 sieve, but uses much less memory:
+
+  # First do a lucky number sieve to generate A000959.
+
+  my @_lf63;   # Lucky:  1,3,7,9,13,15,...  63=7*9.
+  $_lf63[$_] = 1 for (qw/2 5 8 11 14 17 18 19 20 23 26 27 28 29 32 35 38 39 40 41 44 47 50 53 56 57 58 59 60 61 62/);
+
   my @lucky;
   my $n = 1;
   while ($n <= $end) {
-    my $m21 = $n % 21;
-    push @lucky, $n unless $m21 == 18 || $m21 == 19;
-    push @lucky, $n+2 unless $m21 == 16 || $m21 == 17;
+    my $m63 = $n % 63;
+    push @lucky, $n unless $_lf63[$m63];
+    push @lucky, $n+2 unless $_lf63[$m63+2];
     $n += 6;
   }
   delete $lucky[-1] if $lucky[-1] > $end;
 
-  for (my $k = 3; $k < scalar @lucky; $k++) {
-    my $skip = $lucky[$k];
-    my $index = $skip-1;
-    last if $index > $#lucky;
-    do {
+  for (my $k = 4; $k < scalar @lucky && $lucky[$k]-1 <= $#lucky; $k++) {
+    my $skip = $lucky[$k]-1;
+    my $index = $skip;
+    while ($index <= $#lucky) {
       splice(@lucky, $index, 1);
-      $index += $skip-1;
-    } while ($index <= $#lucky);
+      $index += $skip;
+    }
   }
-  # Then restrict to primes to get A031157.
   shift @lucky while $lucky[0] < $start;
+
+  # Then restrict to primes to get A031157.
   grep { is_prime($_) } @lucky;
 }
 
@@ -414,9 +411,23 @@ sub gen_and_filter {
     }
   }
 
-  if (exists $opts{'twin'} && !defined $gen) {
-    $p = twin_primes($start, $end);
-    $gen = 'twin';
+  # Combine the cluster types and use an efficient cluster sieve if possible
+  if (!defined $gen) {
+    my @cluster;
+    if (defined $opts{'twin'})       { $cluster[2] = 1; }
+    if (defined $opts{'cousin'})     { $cluster[4] = 1; }
+    if (defined $opts{'sexy'})       { $cluster[6] = 1; }
+    if (defined $opts{'triplet'})    { $cluster[6] = 1; }
+    if (defined $opts{'quadruplet'}) { $cluster[$_] = 1 for (2,6,8); }
+    @cluster = grep { defined $cluster[$_] } 0 .. $#cluster;
+    if (scalar @cluster) {
+      if (scalar(@cluster) == 1 && $cluster[0] == 2) {
+        $p = twin_primes($start, $end);
+      } else {
+        $p = [sieve_prime_cluster($start, $end, @cluster)];
+      }
+      $gen = 'cluster';
+    }
   }
 
   if (!defined $gen) {
@@ -429,24 +440,28 @@ sub gen_and_filter {
     @$p = grep { $_ <= $min_pass || exists $mod_pass{$_ % 210} } @$p;
   }
 
-  if (exists $opts{'twin'} && $gen ne 'twin') {
-    @$p = grep { is_prime( $_+2 ); } @$p;
-  }
-
-  if (exists $opts{'triplet'}) {
-    @$p = grep { is_prime($_+6) && (is_prime($_+2) || is_prime($_+4)); } @$p;
-  }
-
-  if (exists $opts{'quadruplet'}) {
-    @$p = grep { is_prime($_+2) && is_prime($_+6) && is_prime($_+8); } @$p;
-  }
-
-  if (exists $opts{'cousin'}) {
-    @$p = grep { is_prime($_+4); } @$p;
-  }
-
-  if (exists $opts{'sexy'}) {
-    @$p = grep { is_prime($_+6); } @$p;
+  # If we didn't generate the list with a cluster sieve, grep them out
+  if ($gen ne 'cluster') {
+    if (exists $opts{'twin'}) {
+      @$p = grep { is_prime( $_+2 ); } @$p;
+    }
+    if (exists $opts{'quadruplet'}) {
+      @$p = grep { is_prime($_+2) && is_prime($_+6) && is_prime($_+8); } @$p;
+    }
+    if (exists $opts{'triplet'}) {
+      @$p = grep { is_prime($_+6) && (is_prime($_+2) || is_prime($_+4)); } @$p;
+    }
+    if (exists $opts{'cousin'}) {
+      @$p = grep { is_prime($_+4); } @$p;
+    }
+    if (exists $opts{'sexy'}) {
+      @$p = grep { is_prime($_+6); } @$p;
+    }
+  } else {
+    # Cluster sieve for triplet gives us just p+6.
+    if (exists $opts{'triplet'} && !exists $opts{'twin'} && !exists $opts{'cousin'} && !exists $opts{'quadruplet'}) {
+      @$p = grep { is_prime($_+2) || is_prime($_+4); } @$p;
+    }
   }
 
   if (exists $opts{'safe'}) {
