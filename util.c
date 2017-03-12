@@ -564,13 +564,28 @@ UV prime_count_lower(UV n)
   fl1 = logl(n);
   fl2 = fl1 * fl1;
 
-  if (n < UVCONST(52600000)) {   /* Dusart 2010, tweaked */
+  if (n < UVCONST(52600000)) {
+#if 1
+    /* Dusart 2010, tweaked */
     a = (n <    88783) ? 1.89L /* n >= 33000 */
       : (n <   176000) ? 1.99L
       : (n <   315000) ? 2.11L
       : (n <  1100000) ? 2.19L
-      : (n <  4500000) ? 2.31L : 2.35;
+      : (n <  4500000) ? 2.31L : 2.35L;
     lower = fn/fl1 * (1.0L + 1.0L/fl1 + a/fl2);
+#else
+    /* Axler 2017, tweaked */
+    a = (n <    70870) ? -1.2 :
+        (n <   119620) ? -0.1 :
+        (n <   312230) ?  1.0 :
+        (n <   467530) ?  2.5 :
+        (n <  1090940) ?  3.0 :
+        (n <  1842470) ?  4.0 :
+        (n <  4413170) ?  5.0 :
+        (n <  6691000) ?  5.4 :
+        (n < 10384261) ?  5.8 : 6.0;
+    lower = fn/fl1 * (1.0L + 1.0L/fl1 + 2.0L/fl2 + a/(fl2*fl1));
+#endif
   } else if (fn < 1e19) {          /* Büthe 2015 1.9      1511.02032v1.pdf */
     lower = _XS_LogarithmicIntegral(fn) - (sqrtl(fn)/fl1) * (1.94L + 3.88L/fl1 + 27.57L/fl2);
   } else {                         /* Büthe 2014 v3 7.2   1410.7015v3.pdf */
