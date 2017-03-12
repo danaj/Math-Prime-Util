@@ -2521,6 +2521,9 @@ sub mulmod {
   my($a, $b, $n) = @_;
   return 0 if $n <= 1;
   return _mulmod($a,$b,$n) if $n < INTMAX && $a>0 && $a<INTMAX && $b>0 && $b<INTMAX;
+  if ($Math::Prime::Util::_GMPfunc{"mulmod"}) {
+    return Math::Prime::Util::_reftyped($_[0], Math::Prime::Util::GMP::mulmod($a,$b,$n));
+  }
   my $ret = Math::BigInt->new("$a")->bmod("$n")->bmul("$b")->bmod("$n");
   $ret = _bigint_to_int($ret) if $ret->bacmp(BMAX) <= 0;
   $ret;
@@ -2539,6 +2542,9 @@ sub divmod {
 sub powmod {
   my($a, $b, $n) = @_;
   return 0 if $n <= 1;
+  if ($Math::Prime::Util::_GMPfunc{"powmod"}) {
+    return Math::Prime::Util::_reftyped($_[0], Math::Prime::Util::GMP::powmod($a,$b,$n));
+  }
   my $ret = Math::BigInt->new("$a")->bmod("$n")->bmodpow("$b","$n");
   if ($ret->is_nan) {
     $ret = undef;
