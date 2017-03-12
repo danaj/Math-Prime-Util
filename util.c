@@ -3265,7 +3265,7 @@ static long double _lambertw_approx(long double x) {
     long double t2 = t*t;
     long double t3 = t*t2;
     return (-1.0L + (1.0L/6.0L)*t + (257.0L/720.0L)*t2 + (13.0L/720.0L)*t3) / (1.0L + (5.0L/6.0L)*t + (103.0L/720.0L)*t2);
-  } else if (x < 1.363) {  /* Winitzki 2003 section 3.5 */;
+  } else if (x < 1.363) {  /* Winitzki 2003 section 3.5 */
     long double l1 = logl(1.0L+x);
     return l1 * (1.0L - logl(1.0L+l1) / (2.0L+l1));
   } else if (x < 3.7) {    /* Modification of Vargas 2013 */

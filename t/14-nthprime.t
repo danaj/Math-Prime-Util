@@ -158,4 +158,5 @@ is_deeply(
   "inverse_li: Li^-1(0..50)"
 );
 is(inverse_li(1000000000), 22801627415, "inverse_li(1e9)");
-is(inverse_li(1000000000000), 29996219470245, "inverse_li(1e12)");
+# Allow +/- 2 for floating point differences in LogarithmicIntegral
+like(inverse_li(1100000000000), qr/^3310443690704[01234]$/, "inverse_li(11e11)");

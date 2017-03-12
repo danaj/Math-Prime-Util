@@ -92,7 +92,16 @@ sub random_proven_prime {
 }
 
 sub random_proven_prime_with_cert {
-  random_maurer_prime_with_cert(@_);
+  my $k = shift;
+  my($n, $isp, $cert);
+  if ($Math::Prime::Util::GMP::VERSION >= 0.43) {
+    ($n,$cert) = random_maurer_prime_with_cert($k);
+  } else {
+    $n = random_nbit_prime($k);
+    ($isp, $cert) = is_provable_prime_with_cert($n);
+    croak "${k}-bit prime could not be proven" if $isp != 2;
+  }
+  return ($n, $cert);
 }
 
 sub miller_rabin_random {

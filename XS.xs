@@ -1121,28 +1121,28 @@ next_prime(IN SV* svn)
     nth_prime_upper = 3
     nth_prime_lower = 4
     nth_prime_approx = 5
-    nth_twin_prime = 6
-    nth_twin_prime_approx = 7
-    nth_ramanujan_prime = 8
-    prime_count_upper = 9
-    prime_count_lower = 10
-    prime_count_approx = 11
-    twin_prime_count_approx = 12
-    inverse_li = 13
+    inverse_li = 6
+    nth_twin_prime = 7
+    nth_twin_prime_approx = 8
+    nth_ramanujan_prime = 9
+    prime_count_upper = 10
+    prime_count_lower = 11
+    prime_count_approx = 12
+    twin_prime_count_approx = 13
   PPCODE:
     if (_validate_int(aTHX_ svn, 0)) {
       UV n = my_svuv(svn);
       if ( (n >= MPU_MAX_PRIME     && ix == 0) ||
-           (n >= MPU_MAX_PRIME_IDX && (ix==2 || ix==3 || ix==4 || ix==5)) ||
-           (n >= MPU_MAX_TWIN_PRIME_IDX && (ix==6 || ix==7)) ||
-           (n >= MPU_MAX_RMJN_PRIME_IDX && (ix==8)) ) {
+           (n >= MPU_MAX_PRIME_IDX && (ix==2 || ix==3 || ix==4 || ix==5 || ix == 6)) ||
+           (n >= MPU_MAX_TWIN_PRIME_IDX && (ix==7 || ix==8)) ||
+           (n >= MPU_MAX_RMJN_PRIME_IDX && (ix==9)) ) {
         /* Out of range.  Fall through to Perl. */
       } else {
         UV ret;
         /* Prev prime of 2 or less should return undef */
         if (ix == 1 && n < 3) XSRETURN_UNDEF;
         /* nth_prime(0) and similar should return undef */
-        if (n == 0 && (ix >= 2 && ix <= 8)) XSRETURN_UNDEF;
+        if (n == 0 && (ix >= 2 && ix <= 9 && ix != 6)) XSRETURN_UNDEF;
         switch (ix) {
           case 0: ret = next_prime(n);  break;
           case 1: ret = (n < 3) ? 0 : prev_prime(n);  break;
@@ -1150,15 +1150,15 @@ next_prime(IN SV* svn)
           case 3: ret = nth_prime_upper(n); break;
           case 4: ret = nth_prime_lower(n); break;
           case 5: ret = nth_prime_approx(n); break;
-          case 6: ret = nth_twin_prime(n); break;
-          case 7: ret = nth_twin_prime_approx(n); break;
-          case 8: ret = nth_ramanujan_prime(n); break;
-          case 9: ret = prime_count_upper(n); break;
-          case 10:ret = prime_count_lower(n); break;
-          case 11:ret = prime_count_approx(n); break;
-          case 12:ret = twin_prime_count_approx(n); break;
+          case 6: ret = inverse_li(n); break;
+          case 7: ret = nth_twin_prime(n); break;
+          case 8: ret = nth_twin_prime_approx(n); break;
+          case 9: ret = nth_ramanujan_prime(n); break;
+          case 10: ret = prime_count_upper(n); break;
+          case 11:ret = prime_count_lower(n); break;
+          case 12:ret = prime_count_approx(n); break;
           case 13:
-          default:ret = inverse_li(n); break;
+          default:ret = twin_prime_count_approx(n); break;
         }
         XSRETURN_UV(ret);
       }
@@ -1175,15 +1175,15 @@ next_prime(IN SV* svn)
       case 3:  _vcallsub_with_pp("nth_prime_upper");    break;
       case 4:  _vcallsub_with_pp("nth_prime_lower");    break;
       case 5:  _vcallsub_with_pp("nth_prime_approx");   break;
-      case 6:  _vcallsub_with_pp("nth_twin_prime");     break;
-      case 7:  _vcallsub_with_pp("nth_twin_prime_approx"); break;
-      case 8:  _vcallsub_with_pp("nth_ramanujan_prime"); break;
-      case 9:  _vcallsub_with_pp("prime_count_upper");  break;
-      case 10: _vcallsub_with_pp("prime_count_lower");  break;
-      case 11: _vcallsub_with_pp("prime_count_approx"); break;
-      case 12: _vcallsub_with_pp("twin_prime_count_approx"); break;
+      case 6:  _vcallsub_with_pp("inverse_li");   break;
+      case 7:  _vcallsub_with_pp("nth_twin_prime");     break;
+      case 8:  _vcallsub_with_pp("nth_twin_prime_approx"); break;
+      case 9:  _vcallsub_with_pp("nth_ramanujan_prime"); break;
+      case 10: _vcallsub_with_pp("prime_count_upper");  break;
+      case 11: _vcallsub_with_pp("prime_count_lower");  break;
+      case 12: _vcallsub_with_pp("prime_count_approx"); break;
       case 13:
-      default: _vcallsub_with_pp("inverse_li"); break;
+      default: _vcallsub_with_pp("twin_prime_count_approx"); break;
     }
     return; /* skip implicit PUTBACK */
 

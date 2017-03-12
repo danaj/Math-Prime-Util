@@ -930,6 +930,7 @@ sub is_square_free {
 }
 sub is_semiprime {
   my($n) = @_;
+  _validate_positive_integer($n);
   return ($n == 4) if $n < 6;
   return (Math::Prime::Util::is_prob_prime($n>>1) ? 1 : 0) if ($n % 2) == 0;
   return (Math::Prime::Util::is_prob_prime($n/3)  ? 1 : 0) if ($n % 3) == 0;
@@ -1538,13 +1539,14 @@ sub inverse_li {
   _validate_num($n) || _validate_positive_integer($n);
 
   return 0 if $n == 0;
+  $n = _upgrade_to_float($n) if $n > MPU_MAXPRIMEIDX || $n > 2**45;
   my $nlogn = $n * log($n);
   my $lo = int($nlogn);
   my $hi = int($nlogn * 2 + 2);
   $lo >>= 1 if $n < 40;
 
   while ($lo < $hi) {
-    my $mid = $lo + (($hi-$lo) >> 1);
+    my $mid = $lo + int(($hi-$lo) >> 1);
     if (Math::Prime::Util::LogarithmicIntegral($mid) < $n) { $lo = $mid+1; }
     else                                                   { $hi = $mid;   }
   }
@@ -2543,7 +2545,8 @@ sub powmod {
   my($a, $b, $n) = @_;
   return 0 if $n <= 1;
   if ($Math::Prime::Util::_GMPfunc{"powmod"}) {
-    return Math::Prime::Util::_reftyped($_[0], Math::Prime::Util::GMP::powmod($a,$b,$n));
+    my $r = Math::Prime::Util::GMP::powmod($a,$b,$n);
+    return (defined $r) ? Math::Prime::Util::_reftyped($_[0], $r) : undef;
   }
   my $ret = Math::BigInt->new("$a")->bmod("$n")->bmodpow("$b","$n");
   if ($ret->is_nan) {
