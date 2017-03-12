@@ -15,16 +15,19 @@ test_proofs( 50, 150, 71, 'mpu');  print "\n";
 test_proofs(150, 250, 71, 'mpu');  print "\n";
 test_proofs(250, 350, 71, 'mpu');  print "\n";
 test_proofs(350, 450, 71, 'mpu');  print "\n";
+#test_proofs(450, 550, 71, 'mpu');  print "\n";
 
 # size: random primes with bit sizes randomly between 4 and this number
 # num:  this many tests performed.  71 makes a nice 80-column display
 # method: how to generate random primes:
-#     Ideally we would use some independent code.  Time for one thousand
-#     random primes from rand(4-300) or rand(4-600) bits:
+#     Ideally we would use some independent code.
+#     Time for one thousand random primes of this many bits:
 #            300bits  600bits  which
-#               2sec     6sec  mpu (with mpu::gmp installed)
-#              31sec   124sec  pari
-#              97sec   254sec  cpmaurer
+#               1sec     4sec  mpu random_nbit_prime
+#               1sec     5sec  mpu random_shawe_taylor_prime
+#               1sec     7sec  mpu random_maurer_prime
+#              67sec   240sec  pari
+#             150sec   488sec  cpmaurer
 #     We don't seem to have any practical choice other than MPU's
 #     random_nbit_prime as the other random prime code is just so slow.
 sub test_proofs {
@@ -52,11 +55,15 @@ sub test_proofs {
     if      ($prime_method eq 'cpmaurer') {
       $n = Crypt::Primes::maurer(Size=>$bits);
     } elsif ($prime_method eq 'pari') {
-      # This is ~4x faster, has awful distribution.  Still much slower than MPU.
-      # $n = Math::Pari::nextprime( ...makerandom... );
+      # Note: Pari 2.7 added randomprime which would work spectacularly.
+      # But Math::Pari is the ancient version 2.1.5.
+      #
+      # We could use nextprime for ~4x speedup:
+      #    $n = Math::Pari::nextprime( ...makerandom... );
       do { $n = Crypt::Random::makerandom(Size=>$bits,Strength=>0); }
          while !Math::Pari::isprime($n);
     } else {
+      # Much faster than the others.
       $n = random_nbit_prime($bits);
     }
     push @ns, Math::BigInt->new("$n");

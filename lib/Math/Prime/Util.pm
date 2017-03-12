@@ -447,6 +447,10 @@ sub random_maurer_prime {
 sub random_maurer_prime_with_cert {
   my($bits) = @_;
   _validate_num($bits, 2) || _validate_positive_integer($bits, 2);
+  if ($_Config{'gmp'} >= 43 && !defined $_Config{'irand'}) {
+    require Math::Prime::Util::RandomPrimesGMP;
+    return Math::Prime::Util::RandomPrimesGMP::random_maurer_prime_with_cert($bits);
+  }
   require Math::Prime::Util::RandomPrimes;
   return Math::Prime::Util::RandomPrimes::random_maurer_prime_with_cert($bits);
 }
@@ -454,6 +458,10 @@ sub random_maurer_prime_with_cert {
 sub random_shawe_taylor_prime {
   my($bits) = @_;
   _validate_num($bits, 2) || _validate_positive_integer($bits, 2);
+  if ($_Config{'gmp'} >= 43 && !defined $_Config{'irand'}) {
+    require Math::Prime::Util::RandomPrimesGMP;
+    return Math::Prime::Util::RandomPrimesGMP::random_shawe_taylor_prime($bits);
+  }
   require Math::Prime::Util::RandomPrimes;
   my ($n, $cert) = Math::Prime::Util::RandomPrimes::random_shawe_taylor_prime_with_cert($bits);
   return $n;
@@ -462,6 +470,10 @@ sub random_shawe_taylor_prime {
 sub random_shawe_taylor_prime_with_cert {
   my($bits) = @_;
   _validate_num($bits, 2) || _validate_positive_integer($bits, 2);
+  if ($_Config{'gmp'} >= 43 && !defined $_Config{'irand'}) {
+    require Math::Prime::Util::RandomPrimesGMP;
+    return Math::Prime::Util::RandomPrimesGMP::random_shawe_taylor_prime_with_cert($bits);
+  }
   require Math::Prime::Util::RandomPrimes;
   return Math::Prime::Util::RandomPrimes::random_shawe_taylor_prime_with_cert($bits);
 }
@@ -3389,6 +3401,10 @@ a non-blocking seed.  This will create good quality random numbers, so there
 should be little reason to change unless one is generating long-term keys,
 where using the blocking random source may be preferred.
 
+Note: Setting the C<irand> function will disable the much faster GMP
+random prime functions, as they do not have callback ability but instead
+use a well-seeded CSPRNG.
+
 Examples of various ways to set your own irand function:
 
   # System rand.  You probably don't want to do this.
@@ -3446,8 +3462,7 @@ For better performance with large bit sizes, install L<Math::Prime::Util::GMP>.
   my $bigprime = random_nbit_prime(512);
 
 Selects a random n-bit prime, where the input is an integer number of bits.
-A prime with the nth bit set will be uniformly selected, with randomness
-supplied via calls to the C<irand> function as described above.
+A prime with the nth bit set will be uniformly selected.
 
 For bit sizes of 64 and lower, L</random_prime> is used, which gives completely
 uniform results in this range.  For sizes larger than 64, Algorithm 1 of
@@ -3459,8 +3474,8 @@ bit sizes L</random_prime> selects a random upper partition then loops
 on the values within the partition, which very slightly skews the results
 towards smaller numbers).
 
-The C<irand> function is used for randomness, so all the discussion in
-L</random_prime> about that applies here.
+If set, the C<irand> function is used for randomness, so all the discussion
+in L</random_prime> about that applies here.
 The result will be a BigInt if the number of bits is greater than the native
 bit size.  For better performance with large bit sizes, install
 L<Math::Prime::Util::GMP>.
@@ -3526,9 +3541,10 @@ any other software that understands MPU primality certificates.
 Construct an n-bit provable prime, using the FastPrime algorithm of
 Ueli Maurer (1995).  This is the same algorithm used by L<Crypt::Primes>.
 Similar to L</random_nbit_prime>, the result will be a BigInt if the
-number of bits is greater than the native bit size.  For better performance
-with large bit sizes, install L<Math::Prime::Util::GMP>.  Also see
-L</random_shawe_taylor_prime>.
+number of bits is greater than the native bit size.
+
+The performance with L<Math::Prime::Util::GMP> installed is hundreds
+of times faster, so it is highly recommended.
 
 The differences between this function and that in L<Crypt::Primes> are
 described in the L</"SEE ALSO"> section.
@@ -3538,14 +3554,10 @@ partial result, and constructs a primality certificate for the final
 result, which is verified.  These provide additional checks that the resulting
 value has been properly constructed.
 
-An alternative to this function is to run L</is_provable_prime> on the
-result of L</random_nbit_prime>, which will provide more diversity and
-will be faster up to 512 or so bits.  Maurer's method should be much
-faster for large bit sizes (larger than 2048).  If you don't need absolutely
-proven results, then using L</random_nbit_prime> followed by additional
-tests (L</is_strong_pseudoprime> and/or L</is_frobenius_underwood_pseudoprime>)
-should be much faster.
-
+If you don't need absolutely proven results, then it is somewhat faster
+to use L</random_nbit_prime> either by itself or with some additional tests,
+e.g.  L</miller_rabin_random> and/or L</is_frobenius_underwood_pseudoprime>.
+One could also run L<is_provable_prime> on the result, but this will be slow.
 
 =head2 random_maurer_prime_with_cert
 
@@ -4368,16 +4380,16 @@ somewhat similar way to L<Math::Prime::FastSieve>.  It is the slowest of all
 the XS sieves, and has the most memory use.  It is faster than pure Perl code.
 
 L<Crypt::Primes> supports C<random_maurer_prime> functionality.  MPU has
-more options for random primes (n-digit, n-bit, ranged, and strong) in
+more options for random primes (n-digit, n-bit, ranged, strong, and S-T) in
 addition to Maurer's algorithm.  MPU does not have the critical bug
 L<RT81858|https://rt.cpan.org/Ticket/Display.html?id=81858>.  MPU has
 a more uniform distribution as well as return a larger subset of primes
 (L<RT81871|https://rt.cpan.org/Ticket/Display.html?id=81871>).
 MPU does not depend on L<Math::Pari> though can run slow for bigints unless
 the L<Math::BigInt::GMP> or L<Math::BigInt::Pari> modules are installed.
-Having L<Math::Prime::Util::GMP> installed also helps performance for MPU.
+Having L<Math::Prime::Util::GMP> installed makes the speed vastly faster.
 Crypt::Primes is hardcoded to use L<Crypt::Random>, while MPU uses
-L<Bytes::Random::Secure>, and also allows plugging in a random function.
+L<Bytes::Random::Secure::Tiny>, and also allows plugging in a random function.
 This is more flexible, faster, has fewer dependencies, and uses a CSPRNG
 for security.  MPU can return a primality certificate.
 What Crypt::Primes has that MPU does not is the ability to return a generator.
@@ -4804,24 +4816,22 @@ with very large numbers, I recommend L<Primo|http://www.ellipsa.eu/>.
 
 =head2 RANDOM PRIME GENERATION
 
-Seconds per prime for random prime generation on a circa-2009 workstation,
-with L<Math::BigInt::GMP>, L<Math::Prime::Util::GMP>, and
-L<Math::Random::ISAAC::XS> installed.
+Seconds per prime for random prime generation on a early 2015 Macbook Pro
+(2.7GHz i5) with L<Math::BigInt::GMP> and L<Math::Prime::Util::GMP> installed.
 
-  bits    random   +testing  rand_prov   Maurer   Shw-Tylr  CPMaurer
-  -----  --------  --------  ---------  --------  --------  --------
-     64    0.0001  +0.000008   0.0002     0.0001    0.010     0.022
-    128    0.0020  +0.00023    0.011      0.063     0.028     0.057
-    256    0.0034  +0.0004     0.058      0.13      0.042     0.16
-    512    0.0097  +0.0012     0.28       0.28      0.085     0.41
-   1024    0.060   +0.0060     0.65       0.65      0.24      2.19
-   2048    0.57    +0.039      4.8        4.8       1.0      10.99
-   4096    6.24    +0.25      31.9       31.9       8.2      79.71
-   8192   58.6     +1.61     234.0      234.0     112.9     947.3
+  bits    random   +testing   Maurer   Shw-Tylr  CPMaurer
+  -----  --------  --------  --------  --------  --------
+     64    0.00002 +0.000009   0.00004   0.00004    0.019
+    128    0.00008 +0.00014    0.00018   0.00012    0.051
+    256    0.0004  +0.0003     0.00085   0.00058    0.13
+    512    0.0023  +0.0007     0.0048    0.0030     0.40
+   1024    0.019   +0.0033     0.034     0.025      1.78
+   2048    0.26    +0.014      0.41      0.25       8.02
+   4096    2.82    +0.11       4.4       3.0      66.7
+   8192   23.7     +0.65      50.8      38.7     929.4
 
   random    = random_nbit_prime  (results pass BPSW)
   random+   = additional time for 3 M-R and a Frobenius test
-  rand_prov = random_proven_prime
   maurer    = random_maurer_prime
   Shw-Tylr  = random_shawe_taylor_prime
   CPMaurer  = Crypt::Primes::maurer
@@ -4835,11 +4845,9 @@ these bit sizes, the chances a composite number passes BPSW, three more
 M-R tests, and a Frobenius test is I<extraordinarily> small.
 
 L</random_proven_prime> provides a randomly selected prime with an optional
-certificate, without specifying the particular method.  Below 512 bits,
-using L</is_provable_prime>(L</random_nbit_prime>) is typically faster
-than Maurer's algorithm, but becomes quite slow as the bit size increases.
-This leaves the decision of the exact method of proving the result to the
-implementation.
+certificate, without specifying the particular method.  With GMP installed
+this always uses Maurer's algorithm as it is the best compromise between
+speed and diversity.
 
 L</random_maurer_prime> constructs a provable prime.  A primality test is
 run on each intermediate, and it also constructs a complete primality
@@ -4849,19 +4857,21 @@ are selected for output.  This is a result of the FastPrime algorithm and
 is usually unimportant.
 
 L</random_shawe_taylor_prime> similarly constructs a provable prime.  It
-uses a simpler construction method.  The implementation uses a single large
-random seed followed by SHA-256 as specified by FIPS 186-4.  As seen, it
-is a bit faster than the Maurer implementation.
+uses a simpler construction method.  It is slightly faster than Maurer's
+algorithm but provides less diversity (even fewer primes in the range are
+selected, though for typical cryptographic sizes this is not important).
+The Perl implementation uses a single large random seed followed by
+SHA-256 as specified by FIPS 186-4.  The GMP implementation uses the same
+FIPS 186-4 algorithm but uses its own CSPRNG which may not be SHA-256.
 
-L<Crypt::Primes/maurer> times are included for comparison.  It is pretty
-fast for small sizes but gets slow as the size increases.  It does not
+L<Crypt::Primes/maurer> times are included for comparison.  It is reasonably
+fast for small sizes but gets slow as the size increases.  It is 10 to 500
+times slower than this module's GMP methods.  It does not
 perform any primality checks on the intermediate results or the final
-result (I highly recommended you run a primality test on the output).
+result (I highly recommended running a primality test on the output).
 Additionally important for servers, L<Crypt::Primes/maurer> uses excessive
 system entropy and can grind to a halt if C</dev/random> is exhausted
-(it can take B<days> to return).  The times above are on a machine running
-L<HAVEGED|http://www.issihosts.com/haveged/>
-so never waits for entropy.  Without this, the times would be much higher.
+(it can take B<days> to return).
 
 
 =head1 AUTHORS

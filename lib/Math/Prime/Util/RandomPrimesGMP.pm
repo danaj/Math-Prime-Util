@@ -57,6 +57,27 @@ sub random_maurer_prime {
   );
 }
 
+sub random_shawe_taylor_prime {
+  my($bits) = @_;
+  Math::Prime::Util::_reftyped($_[0],
+    Math::Prime::Util::GMP::random_shawe_taylor_prime($bits)
+  );
+}
+
+sub random_maurer_prime_with_cert {
+  my($bits) = @_;
+  my($n,$cert) = Math::Prime::Util::GMP::random_maurer_prime_with_cert($bits);
+  $n = Math::Prime::Util::_reftyped($_[0], $n);
+  ($n,$cert);
+}
+
+sub random_shawe_taylor_prime_with_cert {
+  my($bits) = @_;
+  my($n,$cert) = Math::Prime::Util::GMP::random_shawe_taylor_prime_with_cert($bits);
+  $n = Math::Prime::Util::_reftyped($_[0], $n);
+  ($n,$cert);
+}
+
 sub random_proven_prime {
   my($k) = @_;
   if ($Math::Prime::Util::GMP::VERSION >= 0.43) {
@@ -71,11 +92,7 @@ sub random_proven_prime {
 }
 
 sub random_proven_prime_with_cert {
-  my $k = shift;
-  my $n = random_nbit_prime($k);
-  my ($isp, $cert) = is_provable_prime_with_cert($n);
-  croak "${k}-bit prime could not be proven" if $isp != 2;
-  return ($n, $cert);
+  random_maurer_prime_with_cert(@_);
 }
 
 sub miller_rabin_random {
@@ -138,6 +155,20 @@ Generate a random strong prime with C<n> bits.  C<n> must be at least 128.
 
 Generate a random proven prime with C<n> bits using Maurer's algorithm.
 C<n> must be at least 2.
+
+=head2 random_shawe_taylor_prime
+
+Generate a random proven prime with C<n> bits using Shawe-Taylor's algorithm
+from FIPS 186-4.
+C<n> must be at least 2.
+
+=head2 random_maurer_prime_with_cert
+
+As L</random_maurer_prime> but also returns a certificate string.
+
+=head2 random_shawe_taylor_prime_with_cert
+
+As L</random_shawe_taylor_prime> but also returns a certificate string.
 
 =head2 random_proven_prime
 
