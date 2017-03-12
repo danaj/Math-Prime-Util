@@ -4,7 +4,7 @@ use warnings;
 
 BEGIN {
   $ntheory::AUTHORITY = 'cpan:DANAJ';
-  $ntheory::VERSION = '0.59';
+  $ntheory::VERSION = '0.61';
 }
 
 BEGIN {
