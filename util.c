@@ -1835,6 +1835,7 @@ int primepower(UV n, UV* prime)
     return ctz(n);
   }
   if ((n%3) == 0) {
+    /* if (UVCONST(12157665459056928801) % n) return 0; */
     do { n /= 3; power++; } while (n > 1 && (n%3) == 0);
     if (n != 1) return 0;
     *prime = 3;
@@ -2155,9 +2156,18 @@ int is_carmichael(UV n) {
   /* Small or even is not a Carmichael number */
   if (n < 561 || !(n&1)) return 0;
 
-  /* Simple pre-test for square free */
-  if (!(n% 4) || !(n% 9) || !(n%25) || !(n%49) || !(n%121) || !(n%169))
+  /* Simple pre-test for square free (odds only) */
+  if (!(n% 9) || !(n%25) || !(n%49) || !(n%121) || !(n%169))
     return 0;
+
+  /* Check Korselt's criterion for small divisors */
+  if (!(n% 5) && ((n-1) %  4 != 0)) return 0;
+  if (!(n% 7) && ((n-1) %  6 != 0)) return 0;
+  if (!(n%11) && ((n-1) % 10 != 0)) return 0;
+  if (!(n%13) && ((n-1) % 12 != 0)) return 0;
+  if (!(n%17) && ((n-1) % 16 != 0)) return 0;
+  if (!(n%19) && ((n-1) % 18 != 0)) return 0;
+  if (!(n%23) && ((n-1) % 22 != 0)) return 0;
 
   /* Fast check without having to factor */
   if (n > 5000000 && powmod(2,n-1,n) != 1) return 0;

@@ -44,6 +44,8 @@ Revision history for Perl module Math::Prime::Util
       functions if available and if irand config isn't set.  These run
       quite a bit faster than our PP code.
 
+    - is_carmichael small speedup.
+
 
 0.60 2016-10-09
 
