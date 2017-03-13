@@ -978,6 +978,11 @@ int is_frobenius_pseudoprime(UV n, IV P, IV Q)
  * http://arxiv.org/abs/1307.7920
  * 1. Select c as first odd prime where (c,n)=-1.
  * 2. Check (1 + sqrt(c))^n mod n  equiv  (1 - sqrt(c) mod n
+ *
+ * His Sep 2016 talk starts with c = -1,2 using checks:
+ *    (2+sqrt(c)^n = 2-sqrt(c)  mod n   for c = -1,2
+ *    (1+sqrt(c)^n = 1-sqrt(c)  mod n   for c = odd prime
+ * There doesn't seem to be a big advantage for this change.
  */
 int is_frobenius_khashin_pseudoprime(UV n)
 {

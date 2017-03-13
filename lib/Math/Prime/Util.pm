@@ -2023,10 +2023,10 @@ similar to, but somewhat weaker than, the BPSW test used by this module
 (which uses the strong and extra-strong versions of the probable prime and
 Lucas tests respectively).
 
-The performance cost is slightly more than 3 strong pseudoprime tests.  Also
-see L</is_frobenius_underwood_pseudoprime> which is an extremely efficient
-construction of a Frobenius test using good parameter selection, allowing it
-to run 1.5 to 2 times faster than the general Frobenius test.
+Also see the more efficient L</is_frobenius_khashin_pseudoprime> and
+L</is_frobenius_underwood_pseudoprime> which have no known counterexamples
+and run quite a bit faster.
+
 
 =head2 is_frobenius_underwood_pseudoprime
 
@@ -2041,6 +2041,7 @@ There are no known pseudoprimes to this test and extensive computation has
 shown no counterexamples under C<2^50>.  This test also has no overlap
 with the BPSW test, making it a very effective method for adding additional
 certainty.
+Performance at 1e12 is about 60% slower than BPSW.
 
 =head2 is_frobenius_khashin_pseudoprime
 
@@ -2052,6 +2053,7 @@ then verifies that C<(1+D)^n = (1-D) mod n> where C<D = sqrt(c) mod n>.
 There are no known pseudoprimes to this test and Khashin shows that under
 certain restrictions there are no counterexamples under C<2^60>.  Any that
 exist must have either one factor under 19 or have C<c E<gt> 128>.
+Performance at 1e12 is about 40% slower than BPSW.
 
 =head2 miller_rabin_random
 
