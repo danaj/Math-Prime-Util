@@ -35,6 +35,7 @@ $| = 1;
 #
 # n36 (F148091) in 26245s on 3930k 4.2GHz, 12 CPU
 # n36 (F148091) in 14380s on EC2 c3.8xlarge, 32 CPU
+# n36 (F148091) in 12009s on EC2 c4.8xlarge, 36 CPU
 #
 
 my $time_start = [gettimeofday];
