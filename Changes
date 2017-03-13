@@ -44,7 +44,7 @@ Revision history for Perl module Math::Prime::Util
       if a custom irand has not been configured.
       They are much faster than the PP versions at smaller bit sizes.
 
-    - is_carmichael small speedup.
+    - is_carmichael and is_pillai small speedups.
 
 
 0.60 2016-10-09
