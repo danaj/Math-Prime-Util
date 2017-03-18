@@ -1437,6 +1437,12 @@ static const UV sum_table_2e8[] =
 #define N_SUM_TABLE  (sizeof(sum_table_2e8)/sizeof(sum_table_2e8[0]))
 #endif
 
+/* Add n to the double-word hi,lo */
+#define ADD_128(hi, lo, n)  \
+  do {  UV _n = n; \
+        if (_n > (UV_MAX-lo)) { hi++; if (hi == 0) overflow = 1; } \
+        lo += _n;   } while (0)
+
 int sum_primes(UV low, UV high, UV *return_sum) {
   UV sum = 0;
   int overflow = 0;
@@ -3461,6 +3467,57 @@ int to_digit_string(char* s, UV n, int base, int length)
   }
   s[len] = '\0';
   return len;
+}
+
+int to_string_128(char str[40], IV hi, UV lo)
+{
+  int i, slen, isneg = 0;
+  uint32_t a[4];
+  UV d, r;
+
+  if (hi < 0) {
+    isneg = 1;
+    hi = -(hi+1);
+    lo = UV_MAX - lo + 1;
+  }
+#if BITS_PER_WORD == 64 && HAVE_UINT128
+  uint128_t dd, sum = (((uint128_t) hi) << 64) + lo;
+  do {
+    dd = sum / 10;
+    str[slen++] = '0' + (sum - dd*10);
+    sum = dd;
+  } while (sum);
+#else
+  a[0] = hi >> (BITS_PER_WORD/2);
+  a[1] = hi & (UV_MAX >> (BITS_PER_WORD/2));
+  a[2] = lo >> (BITS_PER_WORD/2);
+  a[3] = lo & (UV_MAX >> (BITS_PER_WORD/2));
+  slen = 0;
+  do {
+    r = a[0];
+    d = r/10;  r = ((r-d*10) << (BITS_PER_WORD/2)) + a[1];  a[0] = d;
+    d = r/10;  r = ((r-d*10) << (BITS_PER_WORD/2)) + a[2];  a[1] = d;
+    d = r/10;  r = ((r-d*10) << (BITS_PER_WORD/2)) + a[3];  a[2] = d;
+    d = r/10;  r = r-d*10;  a[3] = d;
+    str[slen++] = '0'+(r%10);
+  } while (a[0] || a[1] || a[2] || a[3]);
+#endif
+  /* Reverse the order */
+  for (i=0; i < slen/2; i++) {
+    char t=str[i];
+    str[i]=str[slen-i-1];
+    str[slen-i-1] = t;
+  }
+  /* Prepend a negative sign if needed */
+  if (isneg) {
+    for (i = slen; i > 0; i--)
+      str[i] = str[i-1];
+    str[0] = '-';
+    slen++;
+  }
+  /* Add terminator */
+  str[slen] = '\0';
+  return slen;
 }
 
 /* Oddball primality test.

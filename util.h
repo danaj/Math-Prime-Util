@@ -100,6 +100,7 @@ extern int from_digit_to_UV(UV* rn, UV* r, int len, int base);
 extern int from_digit_to_str(char** rstr, UV* r, int len, int base);
 extern int to_digit_array(int* bits, UV n, int base, int length);
 extern int to_digit_string(char *s, UV n, int base, int length);
+extern int to_string_128(char s[40], IV hi, UV lo);
 
 extern int is_catalan_pseudoprime(UV n);
 
