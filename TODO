@@ -104,8 +104,8 @@
   much worse growth for large inputs.  The table method is probably fine
   for native size results.
 
-  Related, we could do the sum in two UVs then use the same return method
-  we do for vecsum.
+- We can do sum primes with two UVs and use RETURN_128.  Without more tables
+  this isn't a huge help, and we really just need a proper fast sum primes.
 
 - bernreal and bernfrac using MPFR
 

@@ -1,5 +1,13 @@
 Revision history for Perl module Math::Prime::Util
 
+0.62 2017-?
+
+    [FUNCTIONALITY AND PERFORMANCE]
+
+    - vecsum is faster when returning a bigint from native inputs (we
+      construct the 128-bit string in C, then call _to_bigint).
+
+
 0.61 2017-03-12
 
     [ADDED]

@@ -251,6 +251,14 @@ static int _vcallsubn(pTHX_ I32 flags, I32 stashflags, const char* name, int nar
     } \
   }
 
+#define RETURN_128(hi,lo) \
+  do { char str[40]; \
+       int slen = to_string_128(str, hi, lo); \
+       ST(items-1) = sv_2mortal(newSVpv(str, slen)); \
+       (void)_vcallsubn(aTHX_ G_SCALAR, VCALL_ROOT, "_to_bigint", 1, 0); \
+       if (items > 1) ST(0) = ST(items-1); \
+       XSRETURN(1); } while(0)
+
 static SV* sv_to_bigint(pTHX_ SV* r) {
   dSP;  ENTER;  PUSHMARK(SP);
   XPUSHs(r);
@@ -418,7 +426,15 @@ prime_count(IN SV* svlo, ...)
         } else if (ix == 3) {
           count = ramanujan_prime_count(lo, hi);
         } else if (ix == 4) {
+#if 1
           lostatus = sum_primes(lo, hi, &count);
+#else
+          /* double word sum primes, not currently used */
+          IV hicount;
+          lostatus = sum_primes(lo, hi, &hicount, &count);
+          if (lostatus == 1 && hicount > 0)
+            RETURN_128(hicount, count);
+#endif
         } else if (ix == 5) {
           int fd = (items < 3) ? fileno(stdout) : my_sviv(ST(2));
           print_primes(lo, hi, fd);
@@ -756,12 +772,8 @@ gcd(...)
       if (status != 0 && hi == -1 && lo > IV_MAX)  XSRETURN_IV((IV)lo);
       if (status != 0 && hi != 0) {
         /* If status != 0 then the 128-bit result is:
-         *   result = (hi << 64) + lo    (hi is signed, lo is unsigned)
-         * Call a Perl routine that will take these and make a bigint for us. */
-        XPUSHs(sv_2mortal(newSViv( hi )));
-        XPUSHs(sv_2mortal(newSVuv( lo )));
-        _vcallsub_with_pp("_from_128");
-        XSRETURN(1);
+         *   result = (hi << 64) + lo    (hi is signed, lo is unsigned) */
+        RETURN_128(hi,lo);
       }
       if (hi != 0) status = 0;  /* Overflow */
       ret = lo;
