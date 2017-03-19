@@ -3502,7 +3502,7 @@ int to_digit_string(char* s, UV n, int base, int length)
 
 int to_string_128(char str[40], IV hi, UV lo)
 {
-  int i, slen, isneg = 0;
+  int i, slen = 0, isneg = 0;
   uint32_t a[4];
   UV d, r;
 
@@ -3512,12 +3512,14 @@ int to_string_128(char str[40], IV hi, UV lo)
     lo = UV_MAX - lo + 1;
   }
 #if BITS_PER_WORD == 64 && HAVE_UINT128
-  uint128_t dd, sum = (((uint128_t) hi) << 64) + lo;
-  do {
-    dd = sum / 10;
-    str[slen++] = '0' + (sum - dd*10);
-    sum = dd;
-  } while (sum);
+  {
+    uint128_t dd, sum = (((uint128_t) hi) << 64) + lo;
+    do {
+      dd = sum / 10;
+      str[slen++] = '0' + (sum - dd*10);
+      sum = dd;
+    } while (sum);
+  }
 #else
   a[0] = hi >> (BITS_PER_WORD/2);
   a[1] = hi & (UV_MAX >> (BITS_PER_WORD/2));

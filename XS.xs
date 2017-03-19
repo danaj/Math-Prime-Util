@@ -251,14 +251,6 @@ static int _vcallsubn(pTHX_ I32 flags, I32 stashflags, const char* name, int nar
     } \
   }
 
-#define RETURN_128(hi,lo) \
-  do { char str[40]; \
-       int slen = to_string_128(str, hi, lo); \
-       ST(items-1) = sv_2mortal(newSVpv(str, slen)); \
-       (void)_vcallsubn(aTHX_ G_SCALAR, VCALL_ROOT, "_to_bigint", 1, 0); \
-       if (items > 1) ST(0) = ST(items-1); \
-       XSRETURN(1); } while(0)
-
 static SV* sv_to_bigint(pTHX_ SV* r) {
   dSP;  ENTER;  PUSHMARK(SP);
   XPUSHs(r);
@@ -269,6 +261,12 @@ static SV* sv_to_bigint(pTHX_ SV* r) {
   PUTBACK; LEAVE;
   return r;
 }
+
+#define RETURN_128(hi,lo) \
+  do { char str[40]; \
+       int slen = to_string_128(str, hi, lo); \
+       XPUSHs( sv_to_bigint( aTHX_ sv_2mortal(newSVpv(str,slen)) ) ); \
+       XSRETURN(1); } while(0)
 
 static int arrayref_to_int_array(pTHX_ UV** ret, AV* av, int base)
 {
@@ -438,7 +436,7 @@ prime_count(IN SV* svlo, ...)
             }
             if (lostatus == 1) {
               if (hicount > 0) RETURN_128(hicount, count);
-              XSRETURN_UV(count);
+              else             XSRETURN_UV(count);
             }
           }
 #endif
@@ -777,13 +775,10 @@ gcd(...)
         }
         lo += n;
       }
-      if (status != 0 && hi == -1 && lo > IV_MAX)  XSRETURN_IV((IV)lo);
       if (status != 0 && hi != 0) {
-        /* If status != 0 then the 128-bit result is:
-         *   result = (hi << 64) + lo    (hi is signed, lo is unsigned) */
-        RETURN_128(hi,lo);
+        if (hi == -1 && lo > IV_MAX) XSRETURN_IV((IV)lo);
+        else                         RETURN_128(hi, lo);
       }
-      if (hi != 0) status = 0;  /* Overflow */
       ret = lo;
     } else if (ix == 5) {
       int sign = 1;
