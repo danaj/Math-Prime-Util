@@ -12,6 +12,9 @@ Revision history for Perl module Math::Prime::Util
       larger inputs, e.g. 10^12 in 10 seconds.  Kim Walisch's primesum is
       much more sophisticated and over 100x faster.
 
+    - is_pillai about 10x faster for composites.
+
+
 0.61 2017-03-12
 
     [ADDED]

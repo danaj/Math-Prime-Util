@@ -99,13 +99,7 @@
   Nested calls are doable, but threading is a bear.  Perhaps do a first
   version that is non-threadsafe.
 
-- sum primes should be done using a modified fast prime count function.
-  The current code sieves, and is very fast for small inputs, but has
-  much worse growth for large inputs.  The table method is probably fine
-  for native size results.
-
-- We can do sum primes with two UVs and use RETURN_128.  Without more tables
-  this isn't a huge help, and we really just need a proper fast sum primes.
+- sum primes better than current method.  Especially using less memory.
 
 - bernreal and bernfrac using MPFR
 
@@ -121,3 +115,5 @@
 - numtoperm and permtonum.
   Perhaps Bonet: https://github.com/soniakeys/perm/blob/master/lex.go
   Also consider randperm(n)
+
+- is_primitive_root doesn't error with only one input

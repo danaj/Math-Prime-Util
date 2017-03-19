@@ -2330,7 +2330,7 @@ int is_semiprime(UV n) {
 UV pillai_v(UV n) {
   UV v, fac = 5040 % n;
   if (n == 0) return 0;
-  for (v = 8; v < n-1; v++) {
+  for (v = 8; v < n-1 && fac != 0; v++) {
     fac = (n < HALF_WORD) ? (fac*v) % n : mulmod(fac,v,n);
     if (fac == n-1 && (n % v) != 1)
       return v;
