@@ -1421,6 +1421,7 @@ Each value must be a non-negative integer.  The allowable keys are:
   amax    all elements must be at most this value
   nmin    the array must have at least this many values
   nmax    the array must have at most this many values
+  prime   all elements must be prime (non-zero) or non-prime (zero)
 
 Like forcomb and forperm, the partition return values are read-only.  Any
 attempt to modify them will result in undefined behavior.

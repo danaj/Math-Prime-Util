@@ -14,6 +14,8 @@ Revision history for Perl module Math::Prime::Util
 
     - is_pillai about 10x faster for composites.
 
+    - Add prime option to forpart restrictions for all prime / non-prime.
+
 
 0.61 2017-03-12
 

@@ -5918,23 +5918,32 @@ sub forcomp {
 sub _forcompositions {
   my($ispart, $sub, $n, $rhash) = @_;
   _validate_positive_integer($n);
-  my($mina, $maxa, $minn, $maxn) = (1,$n,1,$n);
+  my($mina, $maxa, $minn, $maxn, $primeq) = (1,$n,1,$n,-1);
   if (defined $rhash) {
     croak "forpart second argument must be a hash reference"
       unless ref($rhash) eq 'HASH';
+    if (defined $rhash->{amin}) {
+      $mina = $rhash->{amin};
+      _validate_positive_integer($mina);
+    }
+    if (defined $rhash->{amax}) {
+      $maxa = $rhash->{amax};
+      _validate_positive_integer($maxa);
+    }
     $minn = $maxn = $rhash->{n} if defined $rhash->{n};
-    $mina = $rhash->{amin} if defined $rhash->{amin};
-    $maxa = $rhash->{amax} if defined $rhash->{amax};
     $minn = $rhash->{nmin} if defined $rhash->{nmin};
     $maxn = $rhash->{nmax} if defined $rhash->{nmax};
-   _validate_positive_integer($mina);
-   _validate_positive_integer($maxa);
-   _validate_positive_integer($minn);
-   _validate_positive_integer($maxn);
+    _validate_positive_integer($minn);
+    _validate_positive_integer($maxn);
+    if (defined $rhash->{prime}) {
+      $primeq = $rhash->{prime};
+      _validate_positive_integer($primeq);
+    }
    $mina = 1 if $mina < 1;
    $maxa = $n if $maxa > $n;
    $minn = 1 if $minn < 1;
    $maxn = $n if $maxn > $n;
+   $primeq = 2 if $primeq != -1 && $primeq != 0;
   }
 
   $sub->() if $n == 0 && $minn <= 1;
@@ -5969,9 +5978,11 @@ sub _forcompositions {
       if ($ispart) {
         next if $a[$k] > $maxa;
       } else {
-        next if scalar(grep { $_ < $mina || $_ > $maxa } @a[0..$k]) > 0;
+        next if Math::Prime::Util::vecany(sub{ $_ < $mina || $_ > $maxa }, @a[0..$k]);
       }
     }
+    next if $primeq == 0 && Math::Prime::Util::vecany(sub{ is_prime($_) }, @a[0..$k]);
+    next if $primeq == 2 && Math::Prime::Util::vecany(sub{ !is_prime($_) }, @a[0..$k]);
     $sub->(@a[0 .. $k]);
   }
 }

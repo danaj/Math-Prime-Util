@@ -76,7 +76,7 @@ if (!$extra) {
   foreach my $n (@ns) { delete $bparts{$n} }
 }
 
-plan tests => scalar(@parts) + scalar(keys(%bparts)) + 16 + 6;
+plan tests => scalar(@parts) + scalar(keys(%bparts)) + 20 + 6;
 
 
 foreach my $n (0..$#parts) {
@@ -153,7 +153,26 @@ while (my($n, $epart) = each (%bparts)) {
 }
 
 { my @p=(); forpart { push @p, [@_] } 21, {amax=>0};
-  is_deeply( [@p], [], "forpart 21 restricted amax 0" ); }
+  is_deeply( [@p], [], "forpart 21 restricted amax 0" );
+}
+
+{ my $c = 0;
+  forpart { $c++ } 2*89+1,{n=>3,amin=>3,prime=>1};
+  is($c, 86, "A007963(89) = number of odd-prime 3-tuples summing to 2*89+1 = 86");
+}
+{ my $c = 0;
+  forpart { $c++ } 23,{n=>4,amin=>2};
+  is($c, 54, "23 partitioned into 4 with mininum 2 => 54");
+}
+{ my $c = 0;
+  forpart { $c++ } 23,{n=>4,amin=>2,prime=>1};
+  is($c, 5, "23 partitioned into 4 with mininum 2 and prime => 5");
+}
+{ my $c = 0;
+  forpart { $c++ } 23,{n=>4,amin=>2,prime=>0};
+  is($c, 1, "23 partitioned into 4 with mininum 2 and composite => 1");
+}
+
 
 ################### forcomp
 

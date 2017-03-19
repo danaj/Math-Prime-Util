@@ -2148,6 +2148,7 @@ forpart (SV* block, IN SV* svn, IN SV* svh = 0)
   PROTOTYPE: &$;$
   PREINIT:
     UV i, n, amin, amax, nmin, nmax;
+    int primeq;
     GV *gv;
     HV *stash;
     CV *cv;
@@ -2169,7 +2170,7 @@ forpart (SV* block, IN SV* svn, IN SV* svh = 0)
       SvREADONLY_on(svals[i]);
     }
 
-    amin = 1;  amax = n;  nmin = 1;  nmax = n;
+    amin = 1;  amax = n;  nmin = 1;  nmax = n;  primeq = -1;
     if (svh != 0) {
       HV* rhash;
       SV** svp;
@@ -2182,11 +2183,13 @@ forpart (SV* block, IN SV* svn, IN SV* svh = 0)
       if ((svp = hv_fetchs(rhash, "amax", 0)) != NULL) amax = my_svuv(*svp);
       if ((svp = hv_fetchs(rhash, "nmin", 0)) != NULL) nmin = my_svuv(*svp);
       if ((svp = hv_fetchs(rhash, "nmax", 0)) != NULL) nmax = my_svuv(*svp);
+      if ((svp = hv_fetchs(rhash, "prime",0)) != NULL) primeq=my_svuv(*svp);
 
       if (amin < 1) amin = 1;
       if (amax > n) amax = n;
       if (nmin < 1) nmin = 1;
       if (nmax > n) nmax = n;
+      if (primeq != 0 && primeq != -1) primeq = 2;  /* -1, 0, or 2 */
     }
 
     if (n==0 && nmin <= 1) {
@@ -2239,6 +2242,10 @@ forpart (SV* block, IN SV* svn, IN SV* svh = 0)
                 break;
             if (i <= k) continue;
           }
+        }
+        if (primeq != -1) {
+          for (i = 0; i <= k; i++) if (_XS_is_prime(a[i]) != primeq) break;
+          if (i <= k) continue;
         }
 
         { dSP; ENTER; PUSHMARK(SP);
