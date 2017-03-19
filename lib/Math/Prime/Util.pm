@@ -1168,7 +1168,7 @@ for primes, nth primes, and twin primes, random prime generation,
 and much more.
 
 This module is the fastest on CPAN for almost all operations it supports.
- Only L<Math::Pari> is faster for a few operations.  This includes
+This includes
 L<Math::Prime::XS>, L<Math::Prime::FastSieve>, L<Math::Factor::XS>,
 L<Math::Prime::TiedArray>, L<Math::Big::Factors>, L<Math::Factoring>,
 and L<Math::Primality> (when the GMP module is available).
@@ -1187,8 +1187,8 @@ still sharing a prime cache.  It is not itself multi-threaded.  See the
 L<Limitations|/"LIMITATIONS"> section if you are using Win32 and threads in
 your program.  Also note that L<Math::Pari> is not thread-safe (and will
 crash as soon as it is loaded in threads), so if you use
-L<Math::BigInt::Pari> rather than L<Math::BigInt::GMP> or the default backend,
-things will go pear-shaped.
+L<Math::BigInt::Pari> rather than L<Math::BigInt::GMP> or the
+default backend, things will go pear-shaped.
 
 Two scripts are also included and installed by default:
 
@@ -1727,12 +1727,15 @@ essentially similar to either of:
     # or
     vecsum( @{ primes($low,$high) } );
 
-but is somewhat more efficient (about 2-4x compared to forprimes, more
-for vecsum since no large list is created).
+but is much more efficient.
 
-A future version may implement a fast prime sum algorithm.  Currently
-the implementation is an efficient naive method.  It is very fast up to
-about C<2*10^10>, but rapidly slows down after that.
+The current implementation is a small-table-enhanced sieve count for
+sums that fit in a UV, an efficient sieve count for small ranges, and
+a Legendre sum method for larger values.
+
+While this is fairly efficient, the state of the art is Kim Walisch's
+<primesum|https://github.com/kimwalisch/primesum>.
+It is recommended for very large values.
 
 =head2 print_primes
 

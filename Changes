@@ -7,6 +7,10 @@ Revision history for Perl module Math::Prime::Util
     - vecsum is faster when returning a bigint from native inputs (we
       construct the 128-bit string in C, then call _to_bigint).
 
+    - Add a simple Legendre prime sum using uint128_t, which means only for
+      modern 64-bit compilers.  It allows reasonably fast prime sums for
+      larger inputs, e.g. 10^12 in 10 seconds.  Kim Walisch's primesum is
+      much more sophisticated and over 100x faster.
 
 0.61 2017-03-12
 

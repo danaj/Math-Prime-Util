@@ -1443,6 +1443,37 @@ static const UV sum_table_2e8[] =
         if (_n > (UV_MAX-lo)) { hi++; if (hi == 0) overflow = 1; } \
         lo += _n;   } while (0)
 
+/* Legendre method for prime sum */
+int sum_primes128(UV n, UV *hi_sum, UV *lo_sum) {
+#if BITS_PER_WORD == 64 && HAVE_UINT128
+  uint128_t *V, *S;
+  UV j, k, r = isqrt(n);
+
+  New(0, V, 2*r+1, uint128_t);
+  New(0, S, 2*r+1, uint128_t);
+  for (k = 0; k <= 2*r; k++) {
+    V[k] = (k <= r)  ?  k  :  n/(2*r-k+1);
+    S[k] = (V[k]*(V[k]+1))/2 - 1;
+  }
+  START_DO_FOR_EACH_PRIME(2, r) {
+    uint128_t a, b, sp = S[p-1], p2 = ((uint128_t)p) * p;
+    for (j = k-1; j > 1 && V[j] >= p2; j--) {
+      a = V[j], b = a/p;
+      if (a > r) a = 2*r - n/a + 1;
+      if (b > r) b = 2*r - n/b + 1;
+      S[a] -= p * (S[b] - sp);   /* sp = sum of primes less than p */
+    }
+  } END_DO_FOR_EACH_PRIME;
+  *hi_sum = (UV) ((S[2*r] >> 64) & UV_MAX);
+  *lo_sum = (UV) ((S[2*r]      ) & UV_MAX);
+  Safefree(V);
+  Safefree(S);
+  return 1;
+#else
+  return 0;
+#endif
+}
+
 int sum_primes(UV low, UV high, UV *return_sum) {
   UV sum = 0;
   int overflow = 0;

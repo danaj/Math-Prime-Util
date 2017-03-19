@@ -426,15 +426,23 @@ prime_count(IN SV* svlo, ...)
         } else if (ix == 3) {
           count = ramanujan_prime_count(lo, hi);
         } else if (ix == 4) {
-#if 1
-          lostatus = sum_primes(lo, hi, &count);
-#else
-          /* double word sum primes, not currently used */
-          IV hicount;
-          lostatus = sum_primes(lo, hi, &hicount, &count);
-          if (lostatus == 1 && hicount > 0)
-            RETURN_128(hicount, count);
+#if BITS_PER_WORD == 64 && HAVE_UINT128
+          if (hi >= 29505444491UL && hi-lo > hi/50) {
+            UV hicount, lo_hic, lo_loc;
+            lostatus = sum_primes128(hi, &hicount, &count);
+            if (lostatus == 1 && lo > 2) {
+              lostatus = sum_primes128(lo-1, &lo_hic, &lo_loc);
+              hicount -= lo_hic;
+              if (count < lo_loc) hicount--;
+              count -= lo_loc;
+            }
+            if (lostatus == 1) {
+              if (hicount > 0) RETURN_128(hicount, count);
+              XSRETURN_UV(count);
+            }
+          }
 #endif
+          lostatus = sum_primes(lo, hi, &count);
         } else if (ix == 5) {
           int fd = (items < 3) ? fileno(stdout) : my_sviv(ST(2));
           print_primes(lo, hi, fd);
