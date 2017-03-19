@@ -3503,8 +3503,6 @@ int to_digit_string(char* s, UV n, int base, int length)
 int to_string_128(char str[40], IV hi, UV lo)
 {
   int i, slen = 0, isneg = 0;
-  uint32_t a[4];
-  UV d, r;
 
   if (hi < 0) {
     isneg = 1;
@@ -3521,19 +3519,22 @@ int to_string_128(char str[40], IV hi, UV lo)
     } while (sum);
   }
 #else
-  a[0] = hi >> (BITS_PER_WORD/2);
-  a[1] = hi & (UV_MAX >> (BITS_PER_WORD/2));
-  a[2] = lo >> (BITS_PER_WORD/2);
-  a[3] = lo & (UV_MAX >> (BITS_PER_WORD/2));
-  slen = 0;
-  do {
-    r = a[0];
-    d = r/10;  r = ((r-d*10) << (BITS_PER_WORD/2)) + a[1];  a[0] = d;
-    d = r/10;  r = ((r-d*10) << (BITS_PER_WORD/2)) + a[2];  a[1] = d;
-    d = r/10;  r = ((r-d*10) << (BITS_PER_WORD/2)) + a[3];  a[2] = d;
-    d = r/10;  r = r-d*10;  a[3] = d;
-    str[slen++] = '0'+(r%10);
-  } while (a[0] || a[1] || a[2] || a[3]);
+  {
+    UV d, r;
+    uint32_t a[4];
+    a[0] = hi >> (BITS_PER_WORD/2);
+    a[1] = hi & (UV_MAX >> (BITS_PER_WORD/2));
+    a[2] = lo >> (BITS_PER_WORD/2);
+    a[3] = lo & (UV_MAX >> (BITS_PER_WORD/2));
+    do {
+      r = a[0];
+      d = r/10;  r = ((r-d*10) << (BITS_PER_WORD/2)) + a[1];  a[0] = d;
+      d = r/10;  r = ((r-d*10) << (BITS_PER_WORD/2)) + a[2];  a[1] = d;
+      d = r/10;  r = ((r-d*10) << (BITS_PER_WORD/2)) + a[3];  a[2] = d;
+      d = r/10;  r = r-d*10;  a[3] = d;
+      str[slen++] = '0'+(r%10);
+    } while (a[0] || a[1] || a[2] || a[3]);
+  }
 #endif
   /* Reverse the order */
   for (i=0; i < slen/2; i++) {
