@@ -117,3 +117,6 @@
   Also consider randperm(n)
 
 - is_primitive_root doesn't error with only one input
+
+- polymul, polyadd, polydiv, polyneg, polyeval, polyorder, polygcd, polylcm, polyroots, ...
+  A lot of our ops do these mod n, we could make ..mod versions of each.

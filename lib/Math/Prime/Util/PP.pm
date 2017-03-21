@@ -2060,6 +2060,31 @@ sub nth_twin_prime_approx {
   return $lo;
 }
 
+sub _sum_primes_n {
+  my $n = shift;
+  return (0,0,2,5,5)[$n] if $n < 5;
+  my $r = Math::Prime::Util::sqrtint($n);
+  my $r2 = $r + int($n/($r+1));
+  my(@V,@S);
+  for my $k (0 .. $r2) {
+    my $v = ($k <= $r) ? $k : int($n/($r2-$k+1));
+    $V[$k] = $v;
+    $S[$k] = (($v*($v+1)) >> 1) - 1;
+  }
+  Math::Prime::Util::forprimes( sub { my $p = $_;
+    my $sp = $S[$p-1];
+    my $p2 = $p*$p;
+    for my $v (reverse @V) {
+      last if $v < $p2;
+      my($a,$b) = ($v,int($v/$p));
+      $a = $r2 - int($n/$a) + 1 if $a > $r;
+      $b = $r2 - int($n/$b) + 1 if $b > $r;
+      $S[$a] -= $p * ($S[$b] - $sp);
+    }
+  }, 2,$r);
+  $S[$r2];
+}
+
 sub sum_primes {
   my($low,$high) = @_;
   if (defined $high) { _validate_positive_integer($low); }
@@ -2069,26 +2094,6 @@ sub sum_primes {
   $sum = BZERO->copy if ( (MPU_32BIT && $high >        323_380) ||
                           (MPU_64BIT && $high > 29_505_444_490) );
 
-  if (0 && $low <= 2) {
-    my $n = $high;
-    my $r = sqrtint($n);
-    my @V = map { int($n/$_) } 1 .. $r+1;
-    my $l = $V[-1];
-    push @V, map{ $l-$_ } 1 .. $l;
-    my %S = map { $_ => ($_*($_+1)>>1) - 1 } @V;
-    for my $p (2 .. $r) {
-      if ($S{$p} > $S{$p-1}) {
-        my $sp = $S{$p-1};
-        my $p2 = $p*$p;
-        for my $v (@V) {
-          last if $v < $p2;
-          $S{$v} -= $p * ($S{int($v/$p)} - $sp);
-        }
-      }
-    }
-    return $S{$n};
-  }
-
   # It's very possible we're here because they've counted too high.  Skip fwd.
   if ($low <= 2 && $high >= 29505444491) {
     $low = 29505444503;
@@ -2096,6 +2101,14 @@ sub sum_primes {
   }
 
   return $sum if $low > $high;
+
+  # We have to make some decision about whether to use our PP prime sum or loop
+  # doing the XS sieve.  TODO: Be smarter here?
+  if (!Math::Prime::Util::prime_get_config()->{'xs'}) {
+    $sum = _sum_primes_n($high);
+    $sum -= _sum_primes_n($low-1) if $low > 2;
+    return $sum;
+  }
 
   my $xssum = (MPU_64BIT && $high < 6e14 && Math::Prime::Util::prime_get_config()->{'xs'});
   my $step = ($xssum && $high > 5e13) ? 1_000_000 : 11_000_000;
