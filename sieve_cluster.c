@@ -113,21 +113,22 @@ UV* sieve_cluster(UV low, UV high, uint32_t nc, uint32_t* cl, UV* numret)
   vlist retlist;
   UV i, ppr, nres, allocres;
   uint32_t const targres = 100000;
-  UV *residues, *cres;
+  UV *residues, *cres, num_mr = 0, num_lucas = 0;
   uint32_t pp_0, pp_1, pp_2, *resmod_0, *resmod_1, *resmod_2;
   uint32_t rem_0, rem_1, rem_2, remadd_0, remadd_1, remadd_2;
   uint32_t pi, startpi = 1, maxpi = 150;
   uint32_t lastspr = sprimes[maxpi-1];
   uint32_t c, smallnc;
-  UV nprps = 0;
   char crem_0[43*47], crem_1[53*59], crem_2[61*67], **VPrem;
   int const _verbose = _XS_get_verbose();
 
   if ((UV_MAX - cl[nc-1]) < high)  return 0;  /* Overflow */
 
-  if (nc <= 3 || (high-low) < 10000) {
+  if (    ((high-low) < 10000)
+       || (nc == 3 && ((high >> 32) >> 15) == 0) /* sieving large vals is slow */
+       || (nc == 2 && ((high >> 32) >> 26) == 0)
+       || (nc < 2) )
     return sieve_cluster_simple(low, high, nc, cl, numret);
-  }
 
   if (!(low&1))    low++;
   if (!(high&1))   high--;
@@ -318,19 +319,22 @@ UV* sieve_cluster(UV low, UV high, uint32_t nc, uint32_t* cl, UV* numret)
     for (r = 0; r < ncres; r++) {
       UV p = low + cres[r];
       if (p > high) break;
-      /* PRP test */
-      for (c = 0; c < nc; c++) {
-        nprps++;
-        if (!is_prob_prime(p+cl[c])) break;
-      }
-      if (c == nc)
-        PUSH_VLIST(retlist, p);
+      /* PRP test.  Split to save time. */
+      for (c = 0; c < nc; c++)
+        if (num_mr++,!is_euler_plumb_pseudoprime(p+cl[c]))
+          break;
+      if (c < nc) continue;
+      for (c = 0; c < nc; c++)
+        if (num_lucas++,!is_almost_extra_strong_lucas_pseudoprime(p+cl[c], 1))
+          break;
+      if (c < nc) continue;
+      PUSH_VLIST(retlist, p);
     }
     low += ppr;
     if (low < ppr) low = UV_MAX;
   }
 
-  if (_verbose) printf("cluster sieve ran %lu primality tests\n", nprps);
+  if (_verbose) printf("cluster sieve ran %lu MR and %lu Lucas tests\n", num_mr, num_lucas);
   for (pi = startpi+6; pi < maxpi; pi++)
     Safefree(VPrem[pi]);
   Safefree(VPrem);

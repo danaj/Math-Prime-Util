@@ -16,6 +16,8 @@ Revision history for Perl module Math::Prime::Util
 
     - Add prime option to forpart restrictions for all prime / non-prime.
 
+    - small speed ups for cluster sieve.
+
 
 0.61 2017-03-12
 
