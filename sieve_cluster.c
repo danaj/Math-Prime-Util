@@ -125,8 +125,8 @@ UV* sieve_cluster(UV low, UV high, uint32_t nc, uint32_t* cl, UV* numret)
   if ((UV_MAX - cl[nc-1]) < high)  return 0;  /* Overflow */
 
   if (    ((high-low) < 10000)
-       || (nc == 3 && ((high >> 32) >> 15) == 0) /* sieving large vals is slow */
-       || (nc == 2 && ((high >> 32) >> 26) == 0)
+       || (nc == 3 && ((high>>32) >> 15) == 0) /* sieving large vals is slow */
+       || (nc == 2 && ((high>>32) >> 26) == 0)
        || (nc < 2) )
     return sieve_cluster_simple(low, high, nc, cl, numret);
 
