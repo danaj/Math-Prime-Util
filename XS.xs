@@ -976,7 +976,7 @@ is_prime(IN SV* svn, ...)
     is_square_free = 16
     is_carmichael = 17
     is_quasi_carmichael = 18
-    is_primitive_root = 19
+    is_primitive_root_old = 19
     is_semiprime = 20
     is_mersenne_prime = 21
     is_power = 22
@@ -1495,6 +1495,7 @@ kronecker(IN SV* sva, IN SV* svb)
     valuation = 1
     invmod = 2
     sqrtmod = 3
+    is_primitive_root = 4
   PREINIT:
     int astatus, bstatus, abpositive, abnegative;
   PPCODE:
@@ -1531,7 +1532,7 @@ kronecker(IN SV* sva, IN SV* svb)
         }
         if (ret == 0) XSRETURN_UNDEF;
         XSRETURN_UV(ret);
-      } else {
+      } else if (ix == 3) {
         UV a, n, s;
         n = (bstatus != -1) ? my_svuv(svb) : (UV)(-(my_sviv(svb)));
         a = (n == 0) ? 0 : (astatus != -1) ? my_svuv(sva) % n : negmod(my_sviv(sva), n);
@@ -1541,14 +1542,20 @@ kronecker(IN SV* sva, IN SV* svb)
           if (!sqrtmod_composite(&s, a, n)) XSRETURN_UNDEF;
         }
         XSRETURN_UV(s);
+      } else {
+        UV a, n;
+        n = (bstatus != -1) ? my_svuv(svb) : (UV)(-(my_sviv(svb)));
+        a = (n == 0) ? 0 : (astatus != -1) ? my_svuv(sva) % n : negmod(my_sviv(sva), n);
+        RETURN_NPARITY( is_primitive_root(a,n,0) );
       }
     }
     switch (ix) {
       case 0:  _vcallsub_with_gmp(0.17,"kronecker");  break;
       case 1:  _vcallsub_with_gmp(0.20,"valuation"); break;
       case 2:  _vcallsub_with_gmp(0.20,"invmod"); break;
-      case 3:
-      default: _vcallsub_with_gmp(0.36,"sqrtmod"); break;
+      case 3:  _vcallsub_with_gmp(0.36,"sqrtmod"); break;
+      case 4:
+      default: _vcallsub_with_gmp(0.36,"is_primitive_root"); break;
     }
     return; /* skip implicit PUTBACK */
 
