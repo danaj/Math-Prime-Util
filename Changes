@@ -18,6 +18,8 @@ Revision history for Perl module Math::Prime::Util
 
     - small speed ups for cluster sieve.
 
+    - is_primitive_root needs two args, as documented.
+
 
 0.61 2017-03-12
 
