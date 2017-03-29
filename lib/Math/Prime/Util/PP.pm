@@ -1830,6 +1830,7 @@ sub prime_count_upper {
   # Dusart 2010:          x/logx*(1+1/logx+2.334/logxlogx)  x >= 2_953_652_287
   # Axler 2014:           x/(logx-1-1/logx-3.35/logxlogx...) x >= e^3.804
   # Büthe 2014 7.4        Schoenfeld bounds hold to x <= 1.4e25
+  # Axler 2017 Prop 2.2   Schoenfeld bounds hold to x <= 5.5e25
   # Skewes                li(x)                x < 1e14
 
   my($result,$a);
@@ -1870,7 +1871,7 @@ sub prime_count_upper {
   } elsif ($x < 1e19) {                     # Skewes number lower limit
     $a = ($x < 110e7) ? 0.032 : ($x < 1001e7) ? 0.027 : ($x < 10126e7) ? 0.021 : 0.0;
     $result = LogarithmicIntegral($x) - $a * $fl1*sqrt($x)/PI_TIMES_8;
-  } elsif ($x < 1.4e25 || Math::Prime::Util::prime_get_config()->{'assume_rh'}) {
+  } elsif ($x < 5.5e25 || Math::Prime::Util::prime_get_config()->{'assume_rh'}) {
                                             # Schoenfeld / Büthe 2014 Th 7.4
     if (_MPFR_available()) {
       my $wantbf = (defined $bignum::VERSION || ref($x) =~ /^Math::Big/);
