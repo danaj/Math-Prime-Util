@@ -1028,47 +1028,6 @@ UV nth_twin_prime_approx(UV n)
 
 /* These are playing loose with Sondow/Nicholson/Noe 2011 theorem 4.
  * The last value should be rigorously checked using actual R_n values. */
-#if 1
-static const UV ram_upper_idx[] = {
-  5215, 5223, 5261, 5271, 5553, 7431, 7451, 8582, 12589, 12620, 12762,
-  18154, 18294, 18410, 25799, 28713, 40061, 45338, 63039, 65724,
-  88726, 107849, 151742, 216978, 270700, 347223, 508096,
-  768276, 1090285, 1568165, 2375799, 4162908, 6522443, 11406250,
-  20637716, 39711166, 80161468, 174200145, 404761877, 1024431762,
-  UVCONST(2868095461),
-#if BITS_PER_WORD == 64  /* 1383,1382,1381, 1380,1379 */
-  UVCONST(   9136430799), UVCONST(  33244053524), UVCONST( 143852101796),
-  UVCONST( 760145301247), UVCONST(5136852322733)
-#else
-  UVCONST( 4294967295)
-#endif
-};
-#define NRAM_UPPER_MULT 1425
-#define NRAM_UPPER (sizeof(ram_upper_idx)/sizeof(ram_upper_idx[0]))
-
-UV nth_ramanujan_prime_upper(UV n) {
-  UV i, mult, res;
-  if (n <= 2) return (n==0) ? 0 : (n==1) ? 2 : 11;
-  /* While p_3n is a complete upper bound, Rp_n tends to p_2n, and
-   * SNN(2011) theorem 4 shows how we can find (m,c) values where m < 1,
-   * Rn < m*p_3n for all n > c.  Here we use various quantized m values
-   * and the table gives us c values where it applies. */
-  if      (n < 20) mult = 1787;
-  else if (n < 98) mult = 1670;
-  else if (n < 1580) mult = 1520;
-  else if (n < 5214) mult = 1440;
-  else {
-    for (i = 0; i < NRAM_UPPER; i++)
-      if (ram_upper_idx[i] > n)
-        break;
-    mult = NRAM_UPPER_MULT-i;
-  }
-  res = nth_prime_upper(3*n);
-  if (res > (UV_MAX/mult)) res = (UV) (((long double) mult / 2048.0L) * res);
-  else                     res = (res * mult) >> 11;
-  return res;
-}
-#else
 static const UV ram_upper_idx[] = {
   3245, 3971, 3980, 5215, 5220, 5223, 5225, 5261, 5265, 5271, 5277, 5553, 5555,
   7430, 7447, 7451, 7457, 8582, 8605, 12589, 12602, 12620, 12729, 12762, 18129,
@@ -1099,9 +1058,9 @@ UV nth_ramanujan_prime_upper(UV n) {
    * Rn < m*p_3n for all n > c.  Here we use various quantized m values
    * and the table gives us c values where it applies. */
   if      (n < 20) mult = 3580;
-  else if (n < 98) mult = 3099;
-  else if (n < 1580) mult = 2880;
-  else if (n < 5214) mult = 2849;
+  else if (n < 98) mult = 3340;
+  else if (n < 1580) mult = 3040;
+  else if (n < 5214) mult = 2880;
   else {
     for (i = 0; i < NRAM_UPPER; i++)
       if (ram_upper_idx[i] > n)
@@ -1113,7 +1072,6 @@ UV nth_ramanujan_prime_upper(UV n) {
   else                     res = (res * mult) >> 12;
   return res;
 }
-#endif
 
 static const UV ram_lower_idx[] = {
   5935, 6013, 6107, 8726, 8797, 9396, 9556, 9611, 13314, 13405, 13641,
