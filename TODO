@@ -118,3 +118,13 @@
 
 - polymul, polyadd, polydiv, polyneg, polyeval, polyorder, polygcd, polylcm, polyroots, ...
   A lot of our ops do these mod n, we could make ..mod versions of each.
+
+- Berkane/Dusart 2016, Axler 2016, Axler 2017 could tune prime count bounds.
+
+- Split ramanujan upper limit multipliers into two tables, one low res for
+  n < 1e9, another high res for after.
+
+- on startup and config of gmp/irand, check gmp version and seeded, and do a sequence of:
+   *random_prime = (usegmp) ? &Math::Prime::Util::GMP::random_prime : &::_random_prime;
+  need to update some of the GMP functions to deal with single vs. double args.
+  we'll want to have a way to on first call to non-gmp, do a seed if needed and reconfig.

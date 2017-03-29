@@ -1168,8 +1168,6 @@ UV* n_ramanujan_primes(UV n) {
 
 UV* n_range_ramanujan_primes(UV nlo, UV nhi) {
   UV mink, maxk, k, s, *L;
-  UV seg1beg, seg1end, seg2beg, seg2end;
-  unsigned char *seg1, *seg2;
   int verbose = _XS_get_verbose();
 
   if (nlo == 0) nlo = 1;
@@ -1188,30 +1186,33 @@ UV* n_range_ramanujan_primes(UV nlo, UV nhi) {
 
   if (mink < 15) mink = 15;
   if (mink % 2 == 0) mink--;
-  if (verbose >= 2) printf("Generate Rn[%"UVuf"] to Rn[%"UVuf"]: search %"UVuf" to %"UVuf"\n", nlo, nhi, mink, maxk);
+  if (verbose >= 2) printf("Rn[%"UVuf"] to Rn[%"UVuf"]     Noe's: %"UVuf" to %"UVuf"\n", nlo, nhi, mink, maxk);
 
-  seg1beg = 30 * (mink/30);
-  seg1end = 30 * ((maxk+29)/30);
-  New(0, seg1, (seg1end - seg1beg)/30 + 1, unsigned char);
-  if (verbose >= 2) printf("sieving %"UVuf" to %"UVuf"\n", seg1beg, seg1end);
-  (void) sieve_segment(seg1, seg1beg/30, seg1end/30);
-
-  seg2beg = 30 * (((mink+1)>>1)/30);
-  seg2end = 30 * ((((maxk+1)>>1)+29)/30);
-  New(0, seg2, (seg2end - seg2beg)/30 + 1, unsigned char);
-  if (verbose >= 2) printf("sieving %"UVuf" to %"UVuf"\n", seg2beg, seg2end);
-  (void) sieve_segment(seg2, seg2beg/30, seg2end/30);
-
-  if (verbose >= 2) printf("Noe's algorithm %"UVuf" to %"UVuf"\n", mink, maxk);
   s = 1 + _XS_LMO_pi(mink-2) - _XS_LMO_pi((mink-1)>>1);
-  for (k = mink; k <= maxk; k += 2) {
-    if (is_prime_in_sieve(seg1, k-seg1beg)) s++;
-    if (s >= nlo && s <= nhi) L[s-nlo] = k+1;
-    if ((k & 3) == 1 && is_prime_in_sieve(seg2, ((k+1)>>1)-seg2beg)) s--;
-    if (s >= nlo && s <= nhi) L[s-nlo] = k+2;
+  {
+    unsigned char *segment, *seg2 = 0;
+    void* ctx = start_segment_primes(mink, maxk, &segment);
+    UV seg_base, seg_low, seg_high, new_size, seg2beg, seg2end, seg2size = 0;
+    while (next_segment_primes(ctx, &seg_base, &seg_low, &seg_high)) {
+      seg2beg = 30 * (((seg_low+1)>>1)/30);
+      seg2end = 30 * ((((seg_high+1)>>1)+29)/30);
+      new_size = (seg2end - seg2beg)/30 + 1;
+      if (new_size > seg2size) {
+        if (seg2size > 0) Safefree(seg2);
+        New(0, seg2, new_size, unsigned char);
+        seg2size = new_size;
+      }
+      (void) sieve_segment(seg2, seg2beg/30, seg2end/30);
+      for (k = seg_low; k <= seg_high; k += 2) {
+        if (is_prime_in_sieve(segment, k-seg_base)) s++;
+        if (s >= nlo && s <= nhi) L[s-nlo] = k+1;
+        if ((k & 3) == 1 && is_prime_in_sieve(seg2, ((k+1)>>1)-seg2beg)) s--;
+        if (s >= nlo && s <= nhi) L[s-nlo] = k+2;
+      }
+    }
+    end_segment_primes(ctx);
+    Safefree(seg2);
   }
-  Safefree(seg1);
-  Safefree(seg2);
   if (verbose >= 2) printf("Generated %"UVuf" Ramanujan primes from %"UVuf" to %"UVuf"\n", nhi-nlo+1, L[0], L[nhi-nlo]);
   return L;
 }
@@ -1268,8 +1269,8 @@ int is_ramanujan_prime(UV n) {
 UV ramanujan_prime_count_approx(UV n)
 {
   /* TODO: overflow */
-  /* (11*lower + 5*upper) / 16 is a bit closer */
-  return (3*ramanujan_prime_count_lower(n) + 1*ramanujan_prime_count_upper(n)) >> 2;
+  /* We should be able to do better, but this isn't too bad. */
+  return (ramanujan_prime_count_lower(n) + ramanujan_prime_count_upper(n)) >> 1;
 }
 
 #if BITS_PER_WORD == 64

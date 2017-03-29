@@ -20,6 +20,9 @@ Revision history for Perl module Math::Prime::Util
 
     - is_primitive_root needs two args, as documented.
 
+    - Faster Ramanujan prime count and nth prime.
+      Uses very reasonable amounts of memory for very large values.
+
 
 0.61 2017-03-12
 
