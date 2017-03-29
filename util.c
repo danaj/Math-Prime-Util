@@ -1185,9 +1185,9 @@ UV* n_range_ramanujan_primes(UV nlo, UV nhi) {
 
   mink = nth_ramanujan_prime_lower(nlo);
   maxk = nth_ramanujan_prime_upper(nhi);
+
   if (mink < 15) mink = 15;
   if (mink % 2 == 0) mink--;
-  s = 1 + _XS_LMO_pi(mink-2) - _XS_LMO_pi((mink-1)>>1);
   if (verbose >= 2) printf("Generate Rn[%"UVuf"] to Rn[%"UVuf"]: search %"UVuf" to %"UVuf"\n", nlo, nhi, mink, maxk);
 
   seg1beg = 30 * (mink/30);
@@ -1203,6 +1203,7 @@ UV* n_range_ramanujan_primes(UV nlo, UV nhi) {
   (void) sieve_segment(seg2, seg2beg/30, seg2end/30);
 
   if (verbose >= 2) printf("Noe's algorithm %"UVuf" to %"UVuf"\n", mink, maxk);
+  s = 1 + _XS_LMO_pi(mink-2) - _XS_LMO_pi((mink-1)>>1);
   for (k = mink; k <= maxk; k += 2) {
     if (is_prime_in_sieve(seg1, k-seg1beg)) s++;
     if (s >= nlo && s <= nhi) L[s-nlo] = k+1;
@@ -1267,22 +1268,22 @@ int is_ramanujan_prime(UV n) {
 UV ramanujan_prime_count_approx(UV n)
 {
   /* TODO: overflow */
-  /* We should be able to do better, but this isn't too bad. */
   /* (11*lower + 5*upper) / 16 is a bit closer */
   return (3*ramanujan_prime_count_lower(n) + 1*ramanujan_prime_count_upper(n)) >> 2;
 }
 
 #if BITS_PER_WORD == 64
-#define RAMPC2 47
+#define RAMPC2 50
 static const UV ramanujan_counts_pow2[RAMPC2+1] = {
    0, 1, 1, 1, 2, 4, 7, 13, 23, 42, 75, 137, 255, 463, 872, 1612,
    3030, 5706, 10749, 20387, 38635, 73584, 140336, 268216, 513705,
    985818, 1894120, 3645744, 7027290, 13561906, 26207278, 50697533,
    98182656, 190335585, 369323301, 717267167,
-   UVCONST(   1394192236), UVCONST(   2712103833), UVCONST(   5279763823),
-   UVCONST(  10285641777), UVCONST(  20051180846), UVCONST(  39113482639),
-   UVCONST(  76344462797), UVCONST( 149100679004), UVCONST( 291354668495),
-   UVCONST( 569630404447), UVCONST(1114251967767), UVCONST(2180634225768) };
+   UVCONST(    1394192236), UVCONST(    2712103833), UVCONST(    5279763823),
+   UVCONST(   10285641777), UVCONST(   20051180846), UVCONST(   39113482639),
+   UVCONST(   76344462797), UVCONST(  149100679004), UVCONST(  291354668495),
+   UVCONST(  569630404447), UVCONST( 1114251967767), UVCONST( 2180634225768),
+   UVCONST( 4269555883751), UVCONST( 8363243713305), UVCONST(16388947026629) };
 #else
 #define RAMPC2 31  /* input limited */
 static const UV ramanujan_counts_pow2[RAMPC2+1] = {
@@ -1290,45 +1291,52 @@ static const UV ramanujan_counts_pow2[RAMPC2+1] = {
    3030, 5706, 10749, 20387, 38635, 73584, 140336, 268216, 513705,
    985818, 1894120, 3645744, 7027290, 13561906, 26207278, 50697533 };
 #endif
+
+static UV _ramanujan_prime_count(UV n) {
+  UV i, v, rn, *L, window, swin, ewin, wlen, log2 = log2floor(n), winmult = 1;
+
+  /* We have some perfect powers of 2 in our table */
+if (n < 4)
+  if ((n & (n-1)) == 0 && log2 <= RAMPC2)
+    return ramanujan_counts_pow2[log2];
+
+  v = _XS_LMO_pi(n) - _XS_LMO_pi(n >> 1);
+
+  /* For large enough n make a slightly bigger window */
+  if (n > 1000000000U) winmult = 16;
+
+  while (1) {
+    window = 20 * winmult;
+    swin = (v < window) ? 1 : v-window;
+    ewin = v+window;
+    wlen = ewin-swin+1;
+    L = n_range_ramanujan_primes(swin, ewin);
+    if (L[0] < n && L[wlen-1] > n) {
+      /* Naive linear search from the start. */
+      for (i = 1; i < wlen; i++)
+        if (L[i] > n && L[i-1] <= n)
+          break;
+      if (i < wlen) break;
+    }
+    winmult *= 2;
+    if (_XS_get_verbose()) printf("  nth_ramanujan_prime increasing window\n");
+  }
+  rn = swin + i - 1;
+  Safefree(L);
+  return rn;
+}
+
 UV ramanujan_prime_count(UV lo, UV hi)
 {
-  UV count = 0, beg, end, inc, log2, *L;
+  UV count = 0, beg, end, inc, *L;
   int addcount = 1;
 
   if (hi < 2 || hi < lo) return 0;
 
   if (lo <= 2) {
-    log2 = log2floor(hi);
-    /* We have some perfect powers of 2 in our table */
-    if ((hi & (hi-1)) == 0 && log2 <= RAMPC2)
-      return ramanujan_counts_pow2[log2];
-
-    if (hi > 22000) {   /* Faster for small values to go direct */
-      /* We can calculate Rp(n) fairly efficiently and with relatively low
-       * memory if there are tight bounds available.  This lets us quickly
-       * skip forward without having to calculate them all.  We'll use an
-       * approximation to get close, and be prepared to go backwards. */
-      UV rpcl, nthl;
-      int verbose = _XS_get_verbose();
-      rpcl = ramanujan_prime_count_approx(hi);
-      if (verbose >= 2) printf("Calculating the %"UVuf"-th Ramanujan prime as an approximation\n", rpcl);
-      nthl = nth_ramanujan_prime(rpcl);
-      count = rpcl;
-      if (nthl <= hi) {       /* Count forwards */
-        lo = nthl+1;
-      } else {                /* Count backwards */
-        lo = hi+1;
-        hi = nthl;
-        addcount = 0;
-      }
-      if (verbose >= 2) printf("counting %s from %"UVuf"\n", addcount ? "forwards" : "backwards", count );
-    } else {
-      /* Bump up the lower limit based on our table */
-      if (log2 > RAMPC2) log2 = RAMPC2;
-      count = ramanujan_counts_pow2[log2];
-      lo = (UVCONST(1) << log2) + 1;
-    }
+    return _ramanujan_prime_count(hi);
   }
+  /* TODO: if lo > 2, decide when to use count(hi) - count(lo) */
 
   /* Generate all Rp from lo to hi */
   L = ramanujan_primes(&beg, &end, lo, hi);
