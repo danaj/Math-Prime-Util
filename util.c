@@ -1268,9 +1268,8 @@ int is_ramanujan_prime(UV n) {
 
 UV ramanujan_prime_count_approx(UV n)
 {
-  /* TODO: overflow */
-  /* We should be able to do better, but this isn't too bad. */
-  return (ramanujan_prime_count_lower(n) + ramanujan_prime_count_upper(n)) >> 1;
+  UV lower = ramanujan_prime_count_lower(n),  upper = ramanujan_prime_count_upper(n);
+  return lower + 0.55 * ((upper-lower) >> 1);
 }
 
 #if BITS_PER_WORD == 64
@@ -1296,8 +1295,9 @@ static const UV ramanujan_counts_pow2[RAMPC2+1] = {
 static UV _ramanujan_prime_count(UV n) {
   UV i, v, rn, *L, window, swin, ewin, wlen, log2 = log2floor(n), winmult = 1;
 
+  if (n <= 10) return (n < 2) ? 0 : 1;
+
   /* We have some perfect powers of 2 in our table */
-if (n < 4)
   if ((n & (n-1)) == 0 && log2 <= RAMPC2)
     return ramanujan_counts_pow2[log2];
 
@@ -1308,7 +1308,7 @@ if (n < 4)
 
   while (1) {
     window = 20 * winmult;
-    swin = (v < window) ? 1 : v-window;
+    swin = (v <= window) ? 1 : v-window;
     ewin = v+window;
     wlen = ewin-swin+1;
     L = n_range_ramanujan_primes(swin, ewin);
@@ -1329,21 +1329,23 @@ if (n < 4)
 
 UV ramanujan_prime_count(UV lo, UV hi)
 {
-  UV count = 0, beg, end, inc, *L;
-  int addcount = 1;
+  UV count;
 
   if (hi < 2 || hi < lo) return 0;
 
-  if (lo <= 2) {
-    return _ramanujan_prime_count(hi);
+#if 1
+  count = _ramanujan_prime_count(hi);
+  if (lo > 2)
+    count -= _ramanujan_prime_count(lo-1);
+#else
+  {
+    UV beg, end, *L;
+    /* Generate all Rp from lo to hi */
+    L = ramanujan_primes(&beg, &end, lo, hi);
+    count = (L && end >= beg) ? end-beg+1 : 0;
+    Safefree(L);
   }
-  /* TODO: if lo > 2, decide when to use count(hi) - count(lo) */
-
-  /* Generate all Rp from lo to hi */
-  L = ramanujan_primes(&beg, &end, lo, hi);
-  inc = (L && end >= beg) ? end-beg+1 : 0;
-  count = addcount ? count+inc : count-inc;
-  Safefree(L);
+#endif
   return count;
 }
 
