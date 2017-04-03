@@ -7,15 +7,7 @@
 #include "sieve.h"
 #include "constants.h"   /* _MPU_FILL_EXTRA_N and _MPU_INITIAL_CACHE_SIZE */
 
-#ifdef STANDALONE
-  #undef USE_ITHREADS
-  #define MUTEX_INIT(x)
-  #define MUTEX_LOCK(x)
-  #define MUTEX_UNLOCK(x)
-  #define MUTEX_DESTROY(x)
-  #define COND_INIT(x)
-  #define COND_DESTROY(x)
-#endif
+#include "threadlock.h"
 
 /*
  * These functions are used internally by the .c and .xs files.
@@ -30,61 +22,8 @@
  */
 
 static int mutex_init = 0;
-#ifndef USE_ITHREADS
-
- #define WRITE_LOCK_START
- #define WRITE_LOCK_END
- #define READ_LOCK_START
- #define READ_LOCK_END
-
-#else
-
- static perl_mutex segment_mutex;
- static perl_mutex primary_cache_mutex;
- static perl_cond  primary_cache_turn;
- static int        primary_cache_reading;
- static int        primary_cache_writing;
- static int        primary_cache_writers;
-
- #define WRITE_LOCK_START \
-   do { \
-     MUTEX_LOCK(&primary_cache_mutex); \
-     primary_cache_writers++; \
-     while (primary_cache_reading || primary_cache_writing) \
-       COND_WAIT(&primary_cache_turn, &primary_cache_mutex); \
-     primary_cache_writing++; \
-     MUTEX_UNLOCK(&primary_cache_mutex); \
-   } while (0)
-
- #define WRITE_LOCK_END \
-   do { \
-     MUTEX_LOCK(&primary_cache_mutex); \
-     primary_cache_writing--; \
-     primary_cache_writers--; \
-     COND_BROADCAST(&primary_cache_turn); \
-     MUTEX_UNLOCK(&primary_cache_mutex); \
-   } while (0)
-
- #define READ_LOCK_START \
-   do { \
-     MUTEX_LOCK(&primary_cache_mutex); \
-     if (primary_cache_writers) \
-       COND_WAIT(&primary_cache_turn, &primary_cache_mutex); \
-     while (primary_cache_writing) \
-       COND_WAIT(&primary_cache_turn, &primary_cache_mutex); \
-     primary_cache_reading++; \
-     MUTEX_UNLOCK(&primary_cache_mutex); \
-   } while (0)
-
- #define READ_LOCK_END \
-   do { \
-     MUTEX_LOCK(&primary_cache_mutex); \
-     primary_cache_reading--; \
-     COND_BROADCAST(&primary_cache_turn); \
-     MUTEX_UNLOCK(&primary_cache_mutex); \
-   } while (0)
-
-#endif
+MUTEX_DECL(segment);
+READ_WRITE_LOCK_DECL(primary_cache);
 
 static unsigned char* prime_cache_sieve = 0;
 static UV             prime_cache_size = 0;
@@ -127,9 +66,9 @@ UV get_prime_cache(UV n, const unsigned char** sieve)
 #ifdef USE_ITHREADS
   if (sieve == 0) {
     if (prime_cache_size < n) {
-      WRITE_LOCK_START;
+      WRITE_LOCK_START(primary_cache);
         _erase_and_fill_prime_cache(n);
-      WRITE_LOCK_END;
+      WRITE_LOCK_END(primary_cache);
     }
     return prime_cache_size;
   }
@@ -138,17 +77,17 @@ UV get_prime_cache(UV n, const unsigned char** sieve)
    * reader after doing the expansion.  But I think this solution is less
    * error prone (though could lead to starvation in pathological cases).
    */
-  READ_LOCK_START;
+  READ_LOCK_START(primary_cache);
   while (prime_cache_size < n) {
     /* The cache isn't big enough.  Expand it. */
-    READ_LOCK_END;
+    READ_LOCK_END(primary_cache);
     /* thread reminder: the world can change right here */
-    WRITE_LOCK_START;
+    WRITE_LOCK_START(primary_cache);
       if (prime_cache_size < n)
         _erase_and_fill_prime_cache(n);
-    WRITE_LOCK_END;
+    WRITE_LOCK_END(primary_cache);
     /* thread reminder: the world can change right here */
-    READ_LOCK_START;
+    READ_LOCK_START(primary_cache);
   }
   MPUassert(prime_cache_size >= n, "prime cache is too small!");
 
@@ -167,7 +106,7 @@ UV get_prime_cache(UV n, const unsigned char** sieve)
 #ifdef USE_ITHREADS
 void release_prime_cache(const unsigned char* mem) {
   (void)mem; /* We don't currently care about the pointer */
-  READ_LOCK_END;
+  READ_LOCK_END(primary_cache);
 }
 #endif
 
@@ -257,10 +196,10 @@ void prime_memfree(void)
   MUTEX_UNLOCK(&segment_mutex);
   if (old_segment) Safefree(old_segment);
 
-  WRITE_LOCK_START;
+  WRITE_LOCK_START(primary_cache);
     /* Put primary cache back to initial state */
     _erase_and_fill_prime_cache(_MPU_INITIAL_CACHE_SIZE);
-  WRITE_LOCK_END;
+  WRITE_LOCK_END(primary_cache);
 }
 
 
