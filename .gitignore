@@ -16,6 +16,7 @@ lehmer.o
 lmo.o
 primality.o
 aks.o
+random_prime.o
 XS.obj
 cache.obj
 factor.obj
@@ -25,6 +26,9 @@ lehmer.obj
 lmo.obj
 primality.obj
 aks.obj
+isaac.obj
+sieve_cluster.obj
+random_prime.obj
 *.pdb
 blib*
 b[0-9][0-9][0-9][0-9][0-9][0-9].txt

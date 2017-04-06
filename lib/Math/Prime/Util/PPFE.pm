@@ -45,6 +45,9 @@ use Carp qw/carp croak confess/;
 *is_quasi_carmichael = \&Math::Prime::Util::PP::is_quasi_carmichael;
 *is_pillai = \&Math::Prime::Util::PP::is_pillai;
 
+*random_ndigit_prime = \&Math::Prime::Util::PP::random_ndigit_prime;
+*random_nbit_prime = \&Math::Prime::Util::PP::random_nbit_prime;
+
 sub moebius {
   if (scalar @_ <= 1) {
     my($n) = @_;

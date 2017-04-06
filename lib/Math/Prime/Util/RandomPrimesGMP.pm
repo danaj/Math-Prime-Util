@@ -30,18 +30,6 @@ sub random_prime {
     Math::Prime::Util::GMP::random_prime($low,$high)
   );
 }
-sub random_nbit_prime {
-  my($bits) = @_;
-  Math::Prime::Util::_reftyped($_[0],
-    Math::Prime::Util::GMP::random_nbit_prime($bits)
-  );
-}
-sub random_ndigit_prime {
-  my($digits) = @_;
-  Math::Prime::Util::_reftyped($_[0],
-    Math::Prime::Util::GMP::random_ndigit_prime($digits)
-  );
-}
 
 sub random_strong_prime {
   my($bits) = @_;

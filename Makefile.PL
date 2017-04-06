@@ -40,6 +40,7 @@ WriteMakefile1(
                     'aks.o '      .
                     'lehmer.o '   .
                     'lmo.o '      .
+                    'random_prime.o ' .
                     'sieve.o '    .
                     'sieve_cluster.o ' .
                     'util.o '     .

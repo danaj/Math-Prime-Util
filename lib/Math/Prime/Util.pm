@@ -432,28 +432,6 @@ sub random_prime {
   return Math::Prime::Util::RandomPrimes::random_prime($low,$high);
 }
 
-sub random_ndigit_prime {
-  my($digits) = @_;
-  _validate_num($digits, 1) || _validate_positive_integer($digits, 1);
-  if ($_Config{'gmp'} >= 42) {
-    require Math::Prime::Util::RandomPrimesGMP;
-    return Math::Prime::Util::RandomPrimesGMP::random_ndigit_prime($digits);
-  }
-  require Math::Prime::Util::RandomPrimes;
-  return Math::Prime::Util::RandomPrimes::random_ndigit_prime($digits);
-}
-
-sub random_nbit_prime {
-  my($bits) = @_;
-  _validate_num($bits, 2) || _validate_positive_integer($bits, 2);
-  if ($_Config{'gmp'} >= 42) {
-    require Math::Prime::Util::RandomPrimesGMP;
-    return Math::Prime::Util::RandomPrimesGMP::random_nbit_prime($bits);
-  }
-  require Math::Prime::Util::RandomPrimes;
-  return Math::Prime::Util::RandomPrimes::random_nbit_prime($bits);
-}
-
 sub random_maurer_prime {
   my($bits) = @_;
   _validate_num($bits, 2) || _validate_positive_integer($bits, 2);

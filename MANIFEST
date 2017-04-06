@@ -42,6 +42,8 @@ ppport.h
 primality.h
 primality.c
 prime_count_tables.h
+random_prime.h
+random_prime.c
 sieve.h
 sieve.c
 sieve_cluster.h

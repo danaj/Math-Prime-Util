@@ -29,6 +29,7 @@
 #include "constants.h"
 #include "mulmod.h"
 #include "isaac.h"
+#include "random_prime.h"
 
 #if BITS_PER_WORD == 64
   #if defined(_MSC_VER)
@@ -1286,13 +1287,29 @@ next_prime(IN SV* svn)
     return; /* skip implicit PUTBACK */
 
 void urandomb(IN UV bits)
+  ALIAS:
+    random_ndigit_prime = 1
+    random_nbit_prime = 2
   PPCODE:
     if (bits <= BITS_PER_WORD) {
-      ST(0) = sv_2mortal(newSVuv(irandb(bits)));
-    } else {
-      _vcallsub_with_gmp(0.43,"urandomb");
-      OBJECTIFY_RESULT(ST(0), ST(0));
+      UV res;
+      if ((ix == 2 && bits < 2) || (ix == 1 && bits < 1))
+        croak("Parameter '%d' must be >= %d", (int)bits, (int)ix);
+      switch (ix) {
+        case 0:  res = irandb(bits); break;
+        case 1:  res = random_ndigit_prime(bits); break;
+        case 2:
+        default: res = random_nbit_prime(bits); break;
+      }
+      if (res || ix == 0) XSRETURN_UV(res);
     }
+    switch (ix) {
+      case 0:  _vcallsub_with_gmp(0.43,"urandomb"); break;
+      case 1:  _vcallsub_with_gmp(0.42,"random_ndigit_prime"); break;
+      case 2:
+      default: _vcallsub_with_gmp(0.42,"random_nbit_prime"); break;
+    }
+    OBJECTIFY_RESULT(ST(0), ST(0));
     XSRETURN(1);
 
 void Pi(IN UV digits = 0)

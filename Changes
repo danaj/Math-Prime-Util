@@ -43,6 +43,8 @@ Revision history for Perl module Math::Prime::Util
 
     - We do random seeding ourselves now, so remove dependency.
 
+    - random_nbit_prime and random_ndigit_prime moved to XS, 3-10x faster.
+
 
 0.61 2017-03-12
 
