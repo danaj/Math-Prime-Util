@@ -85,7 +85,7 @@
 
 #if (PERL_REVISION <= 5 && PERL_VERSION < 8)
 #  include <time.h>
-#  define Perl_seed() ((U32)time(NULL))
+#  define Perl_seed(pTHX) ((U32)time(NULL))
 #endif
 
 #ifndef CvISXSUB
@@ -382,7 +382,7 @@ UV srand(IN UV seedval = 0)
     unsigned char data[8];
   CODE:
     if (items == 0)
-      seedval = Perl_seed();  /* Get a 32-bit seed using Perl's hacky function */
+      seedval = Perl_seed(aTHX);  /* Get a 32-bit seed using Perl's hacky function */
     /* Go to some effort for consistency */
     memset(data,0,8);
 #if BITS_PER_WORD > 32
