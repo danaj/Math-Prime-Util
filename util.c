@@ -1161,6 +1161,7 @@ static const UV large_ram_lower_idx[] = {
 };
 #define LARGE_NRAM_LOWER_MULT 4225
 #define LARGE_NRAM_LOWER (sizeof(large_ram_lower_idx)/sizeof(large_ram_lower_idx[0]))
+#endif
 
 UV nth_ramanujan_prime_lower(UV n) {
   UV res, i, mult;
@@ -1189,7 +1190,6 @@ UV nth_ramanujan_prime_lower(UV n) {
   }
   return res;
 }
-#endif
 
 /* An advantage of making these binary searches on the inverse is that we
  * don't have to tune them separately, and nothing changes if the prime
