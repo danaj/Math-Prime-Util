@@ -197,7 +197,7 @@ NV drand64(void)
 #if BITS_PER_WORD == 64
   return irand64() * _tonv_64;
 #else
-  return irand32() * _tonv_32 + irand32() * _tonv_64;
+  return irand32() * _tonv_64 + irand32() * _tonv_32;
 #endif
 }
 

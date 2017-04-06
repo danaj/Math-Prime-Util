@@ -15,7 +15,7 @@ my $samples = $extra ? 100000 :  10000;
 
 plan tests => 1
             + 2
-            + ($use64 ? 2 : 0)
+            + 2
             + 2
             + 5  # drand range
             + 2
