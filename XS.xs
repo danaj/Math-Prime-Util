@@ -28,6 +28,7 @@
 #include "aks.h"
 #include "constants.h"
 #include "mulmod.h"
+#include "isaac.h"
 
 #if BITS_PER_WORD == 64
   #if defined(_MSC_VER)
@@ -361,24 +362,83 @@ PPCODE:
   _prime_memfreeall();
   return; /* skip implicit PUTBACK, returning @_ to caller, more efficient*/
 
-void
-prime_memfree()
+
+void seed_csprng(IN SV* seed)
+  PREINIT:
+    unsigned char* data;
+    STRLEN size;
+  PPCODE:
+    data = (unsigned char*) SvPV(seed, size);
+    isaac_seed(size, data);
+
+UV srand(IN UV seedval = 0)
+  PREINIT:
+    unsigned char data[8];
+  CODE:
+    if (items == 0)
+      seedval = seed();  /* Get a 32-bit seed using Perl's hacky function */
+    /* Go to some effort for consistency */
+    memset(data,0,8);
+#if BITS_PER_WORD > 32
+    *((uint32_t*)(data+0)) = (seedval >> 32) & 0xFFFFFFFFU;
+#endif
+    *((uint32_t*)(data+4)) = (seedval >>  0) & 0xFFFFFFFFU;
+    isaac_seed(8, data);
+    RETVAL = seedval;
+  OUTPUT:
+    RETVAL
+
+UV irand()
+  ALIAS:
+    irand64 = 1
+  CODE:
+#if BITS_PER_WORD >= 64
+    RETVAL = (ix == 0)  ?  irand32()  :  irand64();
+#else
+    RETVAL = irand32();
+#endif
+  OUTPUT:
+    RETVAL
+
+NV drand(NV m = 0.0)
+  ALIAS:
+    rand = 1
+  CODE:
+    RETVAL = drand64();
+    if (m != 0) RETVAL *= m;
+  OUTPUT:
+    RETVAL
+
+SV* random_bytes(IN UV n)
+  PREINIT:
+    char* sptr;
+  CODE:
+    RETVAL = newSV(n == 0 ? 1 : n);
+    SvPOK_only(RETVAL);
+    SvCUR_set(RETVAL, n);
+    sptr = SvPVX(RETVAL);
+    isaac_rand_bytes(n, (unsigned char*)sptr);
+    sptr[n] = '\0';
+  OUTPUT:
+    RETVAL
+
+UV _is_csprng_well_seeded()
   ALIAS:
     _XS_get_verbose = 1
     _XS_get_callgmp = 2
     _get_prime_cache_size = 3
-  PREINIT:
-    UV ret;
-  PPCODE:
+  CODE:
     switch (ix) {
-      case 0:  prime_memfree(); goto return_nothing;
-      case 1:  ret = _XS_get_verbose(); break;
-      case 2:  ret = _XS_get_callgmp(); break;
+      case 0:  RETVAL = isaac_well_seeded(); break;
+      case 1:  RETVAL = _XS_get_verbose(); break;
+      case 2:  RETVAL = _XS_get_callgmp(); break;
       case 3:
-      default: ret = get_prime_cache(0,0); break;
+      default: RETVAL = get_prime_cache(0,0); break;
     }
-    XSRETURN_UV(ret);
-    return_nothing:
+  OUTPUT:
+    RETVAL
+
+void prime_memfree()
 
 void
 prime_precalc(IN UV n)
@@ -401,8 +461,9 @@ prime_count(IN SV* svlo, ...)
     _XS_segment_pi = 1
     twin_prime_count = 2
     ramanujan_prime_count = 3
-    sum_primes = 4
-    print_primes = 5
+    ramanujan_prime_count_approx = 4
+    sum_primes = 5
+    print_primes = 6
   PREINIT:
     int lostatus, histatus;
     UV lo, hi;
@@ -424,6 +485,9 @@ prime_count(IN SV* svlo, ...)
         } else if (ix == 3) {
           count = ramanujan_prime_count(lo, hi);
         } else if (ix == 4) {
+          count = ramanujan_prime_count_approx(hi);
+          if (lo > 2)  count -= ramanujan_prime_count_approx(lo-1);
+        } else if (ix == 5) {
 #if BITS_PER_WORD == 64 && HAVE_UINT128
           if (hi >= 29505444491UL && hi-lo > hi/50) {
             UV hicount, lo_hic, lo_loc;
@@ -441,7 +505,7 @@ prime_count(IN SV* svlo, ...)
           }
 #endif
           lostatus = sum_primes(lo, hi, &count);
-        } else if (ix == 5) {
+        } else if (ix == 6) {
           int fd = (items < 3) ? fileno(stdout) : my_sviv(ST(2));
           print_primes(lo, hi, fd);
           XSRETURN_EMPTY;
@@ -460,8 +524,9 @@ prime_count(IN SV* svlo, ...)
       case 1: _vcallsubn(aTHX_ GIMME_V, VCALL_ROOT, "_generic_prime_count", items, 0); break;
       case 2:_vcallsub_with_pp("twin_prime_count");  break;
       case 3:_vcallsub_with_pp("ramanujan_prime_count");  break;
-      case 4:_vcallsub_with_pp("sum_primes");  break;
-      case 5:
+      case 4:_vcallsub_with_pp("ramanujan_prime_count_approx");  break;
+      case 5:_vcallsub_with_pp("sum_primes");  break;
+      case 6:
       default:_vcallsub_with_pp("print_primes");  break;
     }
     return; /* skip implicit PUTBACK */
@@ -1140,10 +1205,16 @@ next_prime(IN SV* svn)
     nth_twin_prime = 7
     nth_twin_prime_approx = 8
     nth_ramanujan_prime = 9
-    prime_count_upper = 10
-    prime_count_lower = 11
-    prime_count_approx = 12
-    twin_prime_count_approx = 13
+    nth_ramanujan_prime_upper = 10
+    nth_ramanujan_prime_lower = 11
+    nth_ramanujan_prime_approx = 12
+    prime_count_upper = 13
+    prime_count_lower = 14
+    prime_count_approx = 15
+    ramanujan_prime_count_upper = 16
+    ramanujan_prime_count_lower = 17
+    twin_prime_count_approx = 18
+    urandomm = 19
   PPCODE:
     if (_validate_int(aTHX_ svn, 0)) {
       UV n = my_svuv(svn);
@@ -1169,11 +1240,17 @@ next_prime(IN SV* svn)
           case 7: ret = nth_twin_prime(n); break;
           case 8: ret = nth_twin_prime_approx(n); break;
           case 9: ret = nth_ramanujan_prime(n); break;
-          case 10: ret = prime_count_upper(n); break;
-          case 11:ret = prime_count_lower(n); break;
-          case 12:ret = prime_count_approx(n); break;
-          case 13:
-          default:ret = twin_prime_count_approx(n); break;
+          case 10:ret = nth_ramanujan_prime_upper(n); break;
+          case 11:ret = nth_ramanujan_prime_lower(n); break;
+          case 12:ret = nth_ramanujan_prime_approx(n); break;
+          case 13:ret = prime_count_upper(n); break;
+          case 14:ret = prime_count_lower(n); break;
+          case 15:ret = prime_count_approx(n); break;
+          case 16:ret = ramanujan_prime_count_upper(n); break;
+          case 17:ret = ramanujan_prime_count_lower(n); break;
+          case 18:ret = twin_prime_count_approx(n); break;
+          case 19:
+          default:ret = isaac_rand64(n); break;
         }
         XSRETURN_UV(ret);
       }
@@ -1194,13 +1271,29 @@ next_prime(IN SV* svn)
       case 7:  _vcallsub_with_pp("nth_twin_prime");     break;
       case 8:  _vcallsub_with_pp("nth_twin_prime_approx"); break;
       case 9:  _vcallsub_with_pp("nth_ramanujan_prime"); break;
-      case 10: _vcallsub_with_pp("prime_count_upper");  break;
-      case 11: _vcallsub_with_pp("prime_count_lower");  break;
-      case 12: _vcallsub_with_pp("prime_count_approx"); break;
-      case 13:
-      default: _vcallsub_with_pp("twin_prime_count_approx"); break;
+      case 10: _vcallsub_with_pp("nth_ramanujan_prime_upper"); break;
+      case 11: _vcallsub_with_pp("nth_ramanujan_prime_lower"); break;
+      case 12: _vcallsub_with_pp("nth_ramanujan_prime_approx"); break;
+      case 13: _vcallsub_with_pp("prime_count_upper");  break;
+      case 14: _vcallsub_with_pp("prime_count_lower");  break;
+      case 15: _vcallsub_with_pp("prime_count_approx"); break;
+      case 16: _vcallsub_with_pp("ramanujan_prime_count_upper");  break;
+      case 17: _vcallsub_with_pp("ramanujan_prime_count_lower");  break;
+      case 18: _vcallsub_with_pp("twin_prime_count_approx"); break;
+      case 19:
+      default: _vcallsub_with_pp("urandomm"); break;
     }
     return; /* skip implicit PUTBACK */
+
+void urandomb(IN UV bits)
+  PPCODE:
+    if (bits <= BITS_PER_WORD) {
+      ST(0) = sv_2mortal(newSVuv(irandb(bits)));
+    } else {
+      _vcallsub_with_gmp(0.43,"urandomb");
+      OBJECTIFY_RESULT(ST(0), ST(0));
+    }
+    XSRETURN(1);
 
 void Pi(IN UV digits = 0)
   PREINIT:

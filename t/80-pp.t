@@ -353,7 +353,7 @@ require_ok 'Math::Prime::Util::PrimalityProving';
     *LambertW            = \&Math::Prime::Util::PP::LambertW;
 
 # Turn off use of BRS - ECM tries to use this.
-prime_set_config( irand => sub { int(rand(4294967296.0)) } );
+# prime_set_config( irand => sub { int(rand(4294967296.0)) } );
 
 ###############################################################################
 

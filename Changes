@@ -2,6 +2,24 @@ Revision history for Perl module Math::Prime::Util
 
 0.62 2017-?
 
+    [API Changes]
+
+    - config option for irand is removed, as we now use our own CSPRNG.
+      It can be seeded with seed_csprng(nbytes,data) or
+      srand() / srand(UV).  The latter is not exported.
+
+    [ADDED]
+
+    - irand()                  Returns uniform random 32-bit integer
+    - irand64()                Returns uniform random 64-bit integer
+    - drand([fmax])            Returns uniform random NV (floating point)
+    - urandomb(n)              Returns uniform random integer less than 2^n
+    - urandomm(n)              Returns uniform random integer in [0, n-1]
+    - random_bytes(nbytes)     Return a string of CSPRNG bytes
+    - seed_csprng(data)        Seed the internal CSPRNG
+
+    - :rand                    Exports srand, rand, irand, irand64
+
     [FUNCTIONALITY AND PERFORMANCE]
 
     - vecsum is faster when returning a bigint from native inputs (we
@@ -22,6 +40,8 @@ Revision history for Perl module Math::Prime::Util
 
     - Faster Ramanujan prime count and nth prime.
       Uses *much* less memory for very large values.
+
+    - We do random seeding ourselves now, so remove dependency.
 
 
 0.61 2017-03-12

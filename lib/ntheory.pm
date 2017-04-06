@@ -35,6 +35,10 @@ See L<Math::Prime::Util> for complete documentation.
 
 =head1 QUICK REFERENCE
 
+Tags:
+  :all         to import almost all functions
+  :rand        to import rand, srand, irand, irand64
+
 =head2 PRIMALITY
 
   is_prob_prime(n)                    primality test (BPSW)
@@ -120,6 +124,18 @@ See L<Math::Prime::Util> for complete documentation.
   formultiperm { ... } \@n            loop over multiset permutations
   prime_iterator                      returns a simple prime iterator
   prime_iterator_object               returns a prime iterator object
+
+=head2 RANDOM NUMBERS
+
+  irand                               random 32-bit integer
+  irand64                             random 64-bit integer
+  drand([limit])                      random NV in [0,1) or [0,limit)
+  random_bytes(n)                     string with n random bytes
+  urandomb(n)                         random integer less than 2^n
+  urandomm(n)                         random integer less than n
+  seed_csprng(data)                   seed the CSPRNG with binary data
+  srand([seed])                       simple seed (exported with :rand)
+  rand([limit])                       alias for drand (exported with :rand)
 
 =head2 RANDOM PRIMES
 
@@ -234,7 +250,7 @@ See L<Math::Prime::Util> for complete documentation.
 
 =head1 COPYRIGHT
 
-Copyright 2011-2016 by Dana Jacobsen E<lt>dana@acm.orgE<gt>
+Copyright 2011-2017 by Dana Jacobsen E<lt>dana@acm.orgE<gt>
 
 This program is free software; you can redistribute it and/or modify it under the same terms as Perl itself.
 

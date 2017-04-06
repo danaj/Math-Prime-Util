@@ -35,6 +35,7 @@ extern UV  ramanujan_prime_count_approx(UV n);
 extern UV  nth_ramanujan_prime(UV n);
 extern UV  nth_ramanujan_prime_upper(UV n);
 extern UV  nth_ramanujan_prime_lower(UV n);
+extern UV  nth_ramanujan_prime_approx(UV n);
 extern int sum_primes(UV low, UV high, UV *sum);
 extern int sum_primes128(UV n, UV *hisum, UV *losum);
 extern void print_primes(UV low, UV high, int fd);

@@ -102,20 +102,6 @@ thread_test(
   sub { my $sum = 0;  foreach my $n (@randn) { $sum += $_ for moebius($n,$n+50); } return $sum;},
   $numthreads, "moebius");
 
-if (0) {
-# Custom rand, so we get the same result each time.
-{
-  my $seed = 1;
-  sub mysrand { $seed = $_[0]; }
-  sub irand { $seed = (1103515245*$seed + 12345) % 4294967296; }
-  prime_set_config( irand => \&irand );
-}
-
-thread_test(
-  sub { my $sum = 0;  for (@randn) { mysrand($_); $sum += random_ndigit_prime(6); } return $sum;},
-  $numthreads, "random 6-digit prime");
-}
-
 thread_test(
   sub { my $sum = 0;  $sum += int(RiemannR($_)) for (@randn); return $sum;},
   $numthreads, "RiemannR");

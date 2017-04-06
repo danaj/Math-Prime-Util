@@ -11,6 +11,7 @@ factor.o
 sieve.o
 sieve_cluster.o
 util.o
+isaac.o
 lehmer.o
 lmo.o
 primality.o

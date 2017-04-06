@@ -43,6 +43,7 @@ WriteMakefile1(
                     'sieve.o '    .
                     'sieve_cluster.o ' .
                     'util.o '     .
+                    'isaac.o '   .
                     'XS.o',
     LIBS         => ['-lm'],
 
@@ -63,7 +64,6 @@ WriteMakefile1(
                       # 1.99 fixes the FastCalc SvUV bug, we work around it.
                       'Math::BigInt'     => '1.88',
                       'Math::BigFloat'   => '1.59',
-                      'Bytes::Random::Secure::Tiny' => '1.002',
                       # Add in MPU::GMP if we can
                       %require_mpugmp,
                     },
@@ -99,7 +99,7 @@ WriteMakefile1(
                     version => '0.61', file => 'lib/Math/Prime/Util/PrimeIterator.pm',
                  },
                  # Skip: PPFE, PrimalityProving, RandomPrimes, ZetaBigFloat,
-                 #       ECAffinePoint, ECProjectivePoint
+                 #       ECAffinePoint, ECProjectivePoint, RNGSeed, RNG
                },
                prereqs => {
                  runtime => {

@@ -13,6 +13,8 @@ lib/Math/Prime/Util/ECProjectivePoint.pm
 lib/Math/Prime/Util/PrimalityProving.pm
 lib/Math/Prime/Util/RandomPrimes.pm
 lib/Math/Prime/Util/RandomPrimesGMP.pm
+lib/Math/Prime/Util/RNG.pm
+lib/Math/Prime/Util/RNGSeed.pm
 LICENSE
 Makefile.PL
 MANIFEST
@@ -30,6 +32,8 @@ cache.c
 constants.h
 factor.h
 factor.c
+isaac.h
+isaac.c
 lehmer.h
 lehmer.c
 lmo.h
@@ -55,6 +59,9 @@ bench/bench-nthprime.pl
 bench/bench-pcapprox.pl
 bench/bench-primearray.pl
 bench/bench-primecount.pl
+bench/bench-irand.pl
+bench/bench-drand.pl
+bench/bench-random-bytes.pl
 bench/bench-random-prime.pl
 bench/bench-random-prime-bigint.pl
 bench/bench-pp-count.pl
@@ -141,6 +148,8 @@ t/30-relations.t
 t/31-threading.t
 t/32-iterators.t
 t/33-examples.t
+t/34-random.t
+t/35-rand-tag.t
 t/50-factoring.t
 t/51-primearray.t
 t/70-rt-bignum.t

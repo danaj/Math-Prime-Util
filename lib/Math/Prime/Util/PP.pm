@@ -4988,10 +4988,9 @@ sub ecm_factor {
     $q = $k;
   }
   my @b2primes = ($B2 > $B1) ? @{primes($B1+1, $B2)} : ();
-  my $irandf = Math::Prime::Util::RandomPrimes::get_randf();
 
   foreach my $curve (1 .. $ncurves) {
-    my $sigma = $irandf->($n-1-6) + 6;
+    my $sigma = Math::Prime::Util::urandomm($n-6) + 6;
     my ($u, $v) = ( ($sigma*$sigma - 5) % $n, (4 * $sigma) % $n );
     my ($x, $z) = ( ($u*$u*$u) % $n,  ($v*$v*$v) % $n );
     my $cb = (4 * $x * $v) % $n;
@@ -6078,6 +6077,44 @@ sub _multiset_permutations {
     }
   }
 }
+
+###############################################################################
+#       Random numbers
+###############################################################################
+
+# PPFE:  irand irand64 drand random_bytes seed_csprng _is_csprng_well_seeded
+sub urandomb {
+  my($n) = @_;
+  return 0 if $n <= 0;
+  return ( Math::Prime::Util::irand() >> (32-$n) ) if $n <= 32;
+  return ( Math::Prime::Util::irand64() >> (64-$n) ) if MPU_MAXBITS >= 64 && $n <= 64;
+  my $bytes = Math::Prime::Util::random_bytes(($n+7)>>3);
+  my $binary = substr(unpack("B*",$bytes),0,$n);
+  return Math::BigInt->new("0b$binary");
+}
+sub urandomm {
+  my($n) = @_;
+  _validate_positive_integer($n);
+  return 0 if $n <= 1;
+  my $r;
+  if ($n <= 4294967295) {
+    my $rmax = int(4294967295 / $n) * $n;
+    do { $r = Math::Prime::Util::irand() } while $r >= $rmax;
+  } elsif (!ref($n)) {
+    my $rmax = int(~0 / $n) * $n;
+    do { $r = Math::Prime::Util::irand64() } while $r >= $rmax;
+  } else {
+    # TODO: verify and try to optimize this
+    my $bits = length($n->as_bin) - 2;
+    my $bytes = 1 + (($bits+7)>>3);
+    my $rmax = Math::BigInt->bone->blsft($bytes*8)->bdec;
+    my $overflow = $rmax - ($rmax % $n);
+    do { $r = Math::Prime::Util::urandomb($bytes*8); } while $r >= $overflow;
+  }
+  return $r % $n;
+}
+
+
 
 1;
 

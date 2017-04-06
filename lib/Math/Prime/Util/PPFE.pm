@@ -1,6 +1,7 @@
 package Math::Prime::Util::PPFE;
 use strict;
 use warnings;
+use Math::Prime::Util::RNG;
 use Math::Prime::Util::PP;
 
 # The PP front end, only loaded if XS is not used.
@@ -15,6 +16,34 @@ use Carp qw/carp croak confess/;
 *prime_memfree  = \&Math::Prime::Util::PP::prime_memfree;
 *prime_precalc  = \&Math::Prime::Util::PP::prime_precalc;
 
+*_is_csprng_well_seeded = \&Math::Prime::Util::RNG::_is_csprng_well_seeded;
+*seed_csprng = \&Math::Prime::Util::RNG::seed_csprng;
+*srand = \&Math::Prime::Util::RNG::srand;
+*random_bytes = \&Math::Prime::Util::RNG::random_bytes;
+*irand = \&Math::Prime::Util::RNG::irand;
+*irand64 = \&Math::Prime::Util::RNG::irand64;
+*drand = \&Math::Prime::Util::RNG::drand;
+*rand = \&Math::Prime::Util::RNG::drand;
+*urandomb = \&Math::Prime::Util::PP::urandomb;
+*urandomm = \&Math::Prime::Util::PP::urandomm;
+
+# TODO: Go through these and decide if they should be doing anything extra here,
+#       such as input validation.
+# TODO: If not, why not the other functions?
+*sumdigits = \&Math::Prime::Util::PP::sumdigits;
+*todigits = \&Math::Prime::Util::PP::todigits;
+*todigitstring = \&Math::Prime::Util::PP::todigitstring;
+*fromdigits = \&Math::Prime::Util::PP::fromdigits;
+*inverse_li = \&Math::Prime::Util::PP::inverse_li;
+*sieve_prime_cluster = \&Math::Prime::Util::PP::sieve_prime_cluster;
+*twin_prime_count = \&Math::Prime::Util::PP::twin_prime_count;
+*ramanujan_prime_count = \&Math::Prime::Util::PP::ramanujan_prime_count;
+*sum_primes = \&Math::Prime::Util::PP::sum_primes;
+*print_primes = \&Math::Prime::Util::PP::print_primes;
+*sieve_range = \&Math::Prime::Util::PP::sieve_range;
+*is_carmichael = \&Math::Prime::Util::PP::is_carmichael;
+*is_quasi_carmichael = \&Math::Prime::Util::PP::is_quasi_carmichael;
+*is_pillai = \&Math::Prime::Util::PP::is_pillai;
 
 sub moebius {
   if (scalar @_ <= 1) {
@@ -108,10 +137,6 @@ sub nth_prime_upper {
   _validate_positive_integer($n);
   return Math::Prime::Util::PP::nth_prime_upper($n);
 }
-sub inverse_li {
-  my($n) = @_;
-  return Math::Prime::Util::PP::inverse_li($n);
-}
 sub nth_prime_approx {
   my($n) = @_;
   _validate_positive_integer($n);
@@ -131,30 +156,6 @@ sub prime_count_approx {
   my($n) = @_;
   _validate_positive_integer($n);
   return Math::Prime::Util::PP::prime_count_approx($n);
-}
-sub twin_prime_count {
-  my($low,$high) = @_;
-  return Math::Prime::Util::PP::twin_prime_count($low,$high);
-}
-sub ramanujan_prime_count {
-  my($low,$high) = @_;
-  return Math::Prime::Util::PP::ramanujan_prime_count($low,$high);
-}
-sub sum_primes {
-  my($low,$high) = @_;
-  return Math::Prime::Util::PP::sum_primes($low,$high);
-}
-sub print_primes {
-  my($low,$high,$fd) = @_;
-  return Math::Prime::Util::PP::print_primes($low,$high,$fd);
-}
-sub sieve_range {
-  my($n,$width,$depth) = @_;
-  return Math::Prime::Util::PP::sieve_range($n,$width,$depth);
-}
-sub sieve_prime_cluster {
-  my($low,$high,@cl) = @_;
-  return Math::Prime::Util::PP::sieve_prime_cluster($low,$high,@cl);
 }
 sub twin_prime_count_approx {
   my($n) = @_;
@@ -291,25 +292,10 @@ sub is_square_free {
   _validate_positive_integer($n);
   return Math::Prime::Util::PP::is_square_free($n);
 }
-sub is_carmichael {
-  my($n) = @_;
-  #_validate_positive_integer($n);
-  return Math::Prime::Util::PP::is_carmichael($n);
-}
-sub is_quasi_carmichael {
-  my($n) = @_;
-  #_validate_positive_integer($n);
-  return Math::Prime::Util::PP::is_quasi_carmichael($n);
-}
 sub is_semiprime {
   my($n) = @_;
   _validate_positive_integer($n);
   return Math::Prime::Util::PP::is_semiprime($n);
-}
-sub is_pillai {
-  my($n) = @_;
-  #_validate_positive_integer($n);
-  return Math::Prime::Util::PP::is_pillai($n);
 }
 sub is_primitive_root {
   my($a,$n) = @_;
@@ -625,18 +611,6 @@ sub valuation {
   _validate_positive_integer($k);
   return Math::Prime::Util::PP::valuation($n, $k);
 }
-sub todigits {
-  my($n,$base,$len) = @_;
-  return Math::Prime::Util::PP::todigits($n,$base,$len);
-}
-sub todigitstring {
-  my($n,$base,$len) = @_;
-  return Math::Prime::Util::PP::todigitstring($n,$base,$len);
-}
-sub fromdigits {
-  my($n,$base) = @_;
-  return Math::Prime::Util::PP::fromdigits($n,$base);
-}
 sub hammingweight {
   my($n) = @_;
   $n = -$n if defined $n && $n < 0;
@@ -801,10 +775,6 @@ sub vecextract {
   croak "vecextract first argument must be an array reference"
     unless ref($aref) eq 'ARRAY';
   return Math::Prime::Util::PP::vecextract(@_);
-}
-
-sub sumdigits {
-  return Math::Prime::Util::PP::sumdigits(@_);
 }
 
 1;

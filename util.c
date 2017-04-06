@@ -1028,7 +1028,7 @@ UV nth_twin_prime_approx(UV n)
 
 /* These are playing loose with Sondow/Nicholson/Noe 2011 theorem 4.
  * The last value should be rigorously checked using actual R_n values. */
-static const UV ram_upper_idx[] = {
+static const uint32_t small_ram_upper_idx[] = {
   3245, 3971, 3980, 5215, 5220, 5223, 5225, 5261, 5265, 5271, 5277, 5553, 5555,
   7430, 7447, 7451, 7457, 8582, 8605, 12589, 12602, 12620, 12729, 12762, 18129,
   18154, 18180, 18294, 18396, 18410, 21961, 25799, 27247, 28713, 39635, 40061,
@@ -1038,62 +1038,129 @@ static const UV ram_upper_idx[] = {
   3300765, 4162908, 5124977, 6522443, 9298256, 11406250, 15528199, 20637716,
   28239295, 39711166, 55623925, 80161468, 117683515, 174200145, 261514813,
   404761877, 633278258, 1024431762, 1683645810, UVCONST(2868095461),
-#if BITS_PER_WORD == 64 /* 27xx: 67,66,65, 64,63,62, 61,60,59, 58 */
-  UVCONST(   5046044184), UVCONST(   9136430799), UVCONST(  17105209669),
-  UVCONST(  33244053524), UVCONST(  67708204893), UVCONST( 143852101796),
-  UVCONST( 321608703183), UVCONST( 760145301247), UVCONST(1910188609050),
-  UVCONST(5136852322734)
-#else
   UVCONST(4294967295)
-#endif
 };
-#define NRAM_UPPER_MULT 2852
-#define NRAM_UPPER (sizeof(ram_upper_idx)/sizeof(ram_upper_idx[0]))
+#define SMALL_NRAM_UPPER_MULT 2852
+#define SMALL_NRAM_UPPER (sizeof(small_ram_upper_idx)/sizeof(small_ram_upper_idx[0]))
+
+#if BITS_PER_WORD == 64
+static const UV large_ram_upper_idx[] = {
+  UVCONST(     2209850625), UVCONST(     2505047527), UVCONST(     2868095461),
+  UVCONST(     3300302120), UVCONST(     3790618144), UVCONST(     4350498841),
+  UVCONST(     5046044184), UVCONST(     5822787413), UVCONST(     6745591770),
+  UVCONST(     7843974826), UVCONST(     9136430799), UVCONST(    10622435139),
+  /* 11060, 11059, 11058,   11057, 11056, 11055,   11054, 11053, 11052 */
+  UVCONST(    12458964476), UVCONST(    14547850676), UVCONST(    17105209669),
+  UVCONST(    20137461647), UVCONST(    23754200841), UVCONST(    28113266506),
+  UVCONST(    33244053524), UVCONST(    39635847319), UVCONST(    47216781912),
+  /* 11053, 11052, 11051,   11050, 11049, 11048,   11047, 11046, 11045 */
+  UVCONST(    56400647995), UVCONST(    67708204893), UVCONST(    81253508908),
+  UVCONST(    98059403896), UVCONST(   118606509360), UVCONST(   143852101796),
+  UVCONST(   175186371899), UVCONST(   213694229671), UVCONST(   261738209720),
+  /* 11044, 11043, 11042,   11041, 11040, 11039,   11038, 11037, 11036 */
+  UVCONST(   321608703183), UVCONST(   396839992097), UVCONST(   490698410355),
+  UVCONST(   609608518202), UVCONST(   760145301247), UVCONST(   951394830802),
+  UVCONST(  1195260877070), UVCONST(  1507711305081), UVCONST(  1910188609050),
+  /* 11035, 11034, 11033,   11032, 11031, 11030,   11029, 11028, 11027 */
+  UVCONST(  2429318332761), UVCONST(  3104355953395), UVCONST(  3983636468774),
+  UVCONST(  5136852322734), UVCONST(  6654037637976), UVCONST(  8663089898701),
+  UVCONST( 11333068937712), UVCONST( 14903446657241), UVCONST( 19702880416316),
+  /* 11026, 11025, 11024,   11023, 11022, 11021,   11020, 11019, 11018 */
+  UVCONST( 26192198741217),
+  UVCONST( 35007464587700),  /* TODO */
+  UVCONST( 47072080175048),  /* TODO */
+  UVCONST( 63662456832000),  /* TODO */
+  UVCONST( 86632300544000),  /* TODO */
+  UVCONST(118640390543125),  /* TODO */
+  UVCONST(164282499072000),  /* TODO */
+  UVCONST(231928233984000),  /* TODO */
+  1.5*UVCONST(231928233984000),  /* TODO */
+  1.5*1.5*UVCONST(231928233984000),  /* TODO */
+  1.6*1.5*1.5*UVCONST(231928233984000),  /* TODO */
+  1.6*1.6*1.5*1.5*UVCONST(231928233984000),  /* TODO */
+};
+#define LARGE_NRAM_UPPER_MULT 11075
+#define LARGE_NRAM_UPPER (sizeof(large_ram_upper_idx)/sizeof(large_ram_upper_idx[0]))
+#endif
 
 UV nth_ramanujan_prime_upper(UV n) {
   UV i, mult, res;
+
   if (n <= 2) return (n==0) ? 0 : (n==1) ? 2 : 11;
-  /* While p_3n is a complete upper bound, Rp_n tends to p_2n, and
-   * SNN(2011) theorem 4 shows how we can find (m,c) values where m < 1,
-   * Rn < m*p_3n for all n > c.  Here we use various quantized m values
-   * and the table gives us c values where it applies. */
-  if      (n < 20) mult = 3580;
-  else if (n < 98) mult = 3340;
-  else if (n < 1580) mult = 3040;
-  else if (n < 5214) mult = 2880;
-  else {
-    for (i = 0; i < NRAM_UPPER; i++)
-      if (ram_upper_idx[i] > n)
-        break;
-    mult = NRAM_UPPER_MULT-i;
-  }
   res = nth_prime_upper(3*n);
-  if (res > (UV_MAX/mult)) res = (UV) (((long double) mult / 4096.0L) * res);
-  else                     res = (res * mult) >> 12;
+
+  if (n < UVCONST(2209850625) || BITS_PER_WORD < 64) {
+    /* While p_3n is a complete upper bound, Rp_n tends to p_2n, and
+     * SNN(2011) theorem 4 shows how we can find (m,c) values where m < 1,
+     * Rn < m*p_3n for all n > c.  Here we use various quantized m values
+     * and the table gives us c values where it applies. */
+    if      (n < 20) mult = 3580;
+    else if (n < 98) mult = 3340;
+    else if (n < 1580) mult = 3040;
+    else if (n < 5214) mult = 2880; /* TODO */
+    else {
+      for (i = 0; i < SMALL_NRAM_UPPER; i++)
+        if (small_ram_upper_idx[i] > n)
+          break;
+      mult = SMALL_NRAM_UPPER_MULT-i;
+    }
+    if (res > (UV_MAX/mult)) res = (UV) (((long double) mult / 4096.0L) * res);
+    else                     res = (res * mult) >> 12;
+#if BITS_PER_WORD == 64
+  } else {
+    for (i = 0; i < LARGE_NRAM_UPPER; i++)
+      if (large_ram_upper_idx[i] > n)
+        break;
+    mult = (LARGE_NRAM_UPPER_MULT-i);
+    if (res > (UV_MAX/mult)) res = (UV) (((long double) mult / 16384.0L) * res);
+    else                     res = (res * mult) >> 14;
+#endif
+  }
   return res;
 }
-
-static const UV ram_lower_idx[] = {
-  5935, 6013, 6107, 8726, 8797, 9396, 9556, 9611, 13314, 13405, 13641,
-  18655, 20457, 22665, 23744, 31015, 34432, 43298, 50564, 54168, 69194,
-  75658, 97434, 110360, 149399, 164361, 224590, 265154, 337116, 386011,
-  514260, 606067, 804041, 981748, 1367781, 1874883, 2448102, 3248825,
-  4513600, 6240819, 8581572, 12175878, 17555268, 25999335, 39295429,
-  60160729, 96043141, 153729257, 255707435, 438238581, 771748027,
-  UVCONST(1413859126), UVCONST(2691176863),
-#if BITS_PER_WORD == 64 /* 1055,1054,1053, 1052,1051,1050, 1049,1048 */
-  UVCONST(   5351635422), UVCONST(  11116948392), UVCONST(  24348237409),
-  UVCONST(  56422464192), UVCONST( 139376328492), UVCONST( 369783640662),
-  UVCONST(1061320360069), UVCONST(3332007446416),
-  /* These are low-biased estimates */
-  UVCONST(3332007446416) *   3, UVCONST(3332007446416) *   9,
-  UVCONST(3332007446416) *  27, UVCONST(3332007446416) *  81
-#else
-  UVCONST(   4294967295)
-#endif
+static const uint32_t small_ram_lower_idx[] = {
+  2786, 2801, 4275, 5935, 6107, 8797, 9556, 13314, 13641, 20457, 23745,
+  34432, 50564, 69194, 97434, 149399, 224590, 337116, 514260, 804041,
+  1367781, 2448102, 4513600, 8581572, 17555268, 39295429, 96043141,
+  255707435, 771748027, UVCONST(2691176863), UVCONST(4294967295)
 };
-#define NRAM_LOWER_MULT 1108
-#define NRAM_LOWER (sizeof(ram_lower_idx)/sizeof(ram_lower_idx[0]))
+#define SMALL_NRAM_LOWER_MULT 557
+#define SMALL_NRAM_LOWER (sizeof(small_ram_lower_idx)/sizeof(small_ram_lower_idx[0]))
+
+#if BITS_PER_WORD == 64
+static const UV large_ram_lower_idx[] = {
+  UVCONST(    2287326511), UVCONST(    2691176863), UVCONST(    3186734059),
+  UVCONST(    3773549435), UVCONST(    4490874244), UVCONST(    5351635422),
+  UVCONST(    6379440261), UVCONST(    7669615016), UVCONST(    9222420352),
+  UVCONST(   11116948392), UVCONST(   13468245052), UVCONST(   16342357141),
+  /* 4213, 4212, 4211,   4210, 4209, 4208,   4207, 4206, 4205 */
+  UVCONST(   19922979418), UVCONST(   24348237409), UVCONST(   29901283153),
+  UVCONST(   36755324577), UVCONST(   45489957420), UVCONST(   56422464192),
+  UVCONST(   70346667919), UVCONST(   87960867006), UVCONST(  110516423444),
+  /* 4204, 4203, 4202,   4201, 4200, 4199,   4198, 4197, 4196 */
+  UVCONST(  139376328492), UVCONST(  176769212370), UVCONST(  224987344210),
+  UVCONST(  287637947625), UVCONST(  369783640662), UVCONST(  477404340380),
+  UVCONST(  619830096553), UVCONST(  808881647349), UVCONST( 1061320360069),
+  /* 4195, 4194, 4193,   4192, 4191, 4190,   4189, 4188, 4187 */
+  UVCONST(  1400537557830), UVCONST(  1858188046854), UVCONST(  2480691884624),
+  UVCONST(  3332007446416), UVCONST(  4503079799802), UVCONST(  6126600987695),
+  UVCONST(  8391511555810), UVCONST( 11573178646156), UVCONST( 16075623921843),
+  /* 4186, 4185, 4184,   4183, 4182, 4181,   4180, 4179, 4178 */
+  UVCONST( 22497437657452), UVCONST( 31726512746004), UVCONST( 45096957879914),
+  UVCONST( 64630030336001), /* TODO */
+  UVCONST( 93415538688001), /* TODO */
+  UVCONST(135828340736001), /* TODO */
+  UVCONST(199715979264001), /* TODO */
+  1.40*UVCONST(199715979264001), /* TODO */
+  1.96*UVCONST(199715979264001), /* TODO */
+  2.74*UVCONST(199715979264001), /* TODO */
+  3.84*UVCONST(199715979264001), /* TODO */
+  5.37*UVCONST(199715979264001), /* TODO */
+  7.53*UVCONST(199715979264001), /* TODO */
+  10.5*UVCONST(199715979264001), /* TODO */
+};
+#define LARGE_NRAM_LOWER_MULT 4225
+#define LARGE_NRAM_LOWER (sizeof(large_ram_lower_idx)/sizeof(large_ram_lower_idx[0]))
 
 UV nth_ramanujan_prime_lower(UV n) {
   UV res, i, mult;
@@ -1101,16 +1168,28 @@ UV nth_ramanujan_prime_lower(UV n) {
 
   res = nth_prime_lower(2*n);
 
-  if (n < ram_lower_idx[NRAM_LOWER-1]) {
-    for (i = 0; i < NRAM_LOWER; i++)
-      if (ram_lower_idx[i] > n)
+  if (n < UVCONST(2287326511) || BITS_PER_WORD < 64) {
+    for (i = 0; i < SMALL_NRAM_LOWER; i++)
+      if (small_ram_lower_idx[i] > n)
         break;
-    mult = (NRAM_LOWER_MULT-i);
-    if (res > (UV_MAX/mult)) res = (UV) (((long double) mult / 1024.0L) * res);
-    else                     res = (res * mult) >> 10;
+    mult = (SMALL_NRAM_LOWER_MULT-i);
+    if (res > (UV_MAX/mult)) res = (UV) (((long double) mult / 512.0L) * res);
+    else                     res = (res * mult) >> 9;
+#if BITS_PER_WORD == 64
+  } else {
+    if (n < large_ram_lower_idx[LARGE_NRAM_LOWER-1]) {
+      for (i = 0; i < LARGE_NRAM_LOWER; i++)
+        if (large_ram_lower_idx[i] > n)
+          break;
+      mult = (LARGE_NRAM_LOWER_MULT-i);
+      if (res > (UV_MAX/mult)) res = (UV) (((long double) mult / 4096.0L) * res);
+      else                     res = (res * mult) >> 12;
+    }
+#endif
   }
   return res;
 }
+#endif
 
 /* An advantage of making these binary searches on the inverse is that we
  * don't have to tune them separately, and nothing changes if the prime
@@ -1268,12 +1347,27 @@ int is_ramanujan_prime(UV n) {
 
 UV ramanujan_prime_count_approx(UV n)
 {
-  UV lower = ramanujan_prime_count_lower(n),  upper = ramanujan_prime_count_upper(n);
-  return lower + 0.55 * ((upper-lower) >> 1);
+  /* Binary search on nth_ramanujan_prime_approx */
+  UV lo, hi;
+  if (n < 29) return (n < 2) ? 0 : (n < 11) ? 1 : (n < 17) ? 2 : 3;
+  lo = ramanujan_prime_count_lower(n);
+  hi = ramanujan_prime_count_upper(n);
+  while (lo < hi) {
+    UV mid = lo + (hi-lo)/2;
+    if (nth_ramanujan_prime_approx(mid) < n) lo = mid+1;
+    else                                     hi = mid;
+  }
+  return lo-1;
+}
+
+UV nth_ramanujan_prime_approx(UV n)
+{
+  UV lo = nth_ramanujan_prime_lower(n),  hi = nth_ramanujan_prime_upper(n);
+  return lo + 1.52 * ((hi-lo) >> 1);
 }
 
 #if BITS_PER_WORD == 64
-#define RAMPC2 50
+#define RAMPC2 53
 static const UV ramanujan_counts_pow2[RAMPC2+1] = {
    0, 1, 1, 1, 2, 4, 7, 13, 23, 42, 75, 137, 255, 463, 872, 1612,
    3030, 5706, 10749, 20387, 38635, 73584, 140336, 268216, 513705,
@@ -1283,7 +1377,8 @@ static const UV ramanujan_counts_pow2[RAMPC2+1] = {
    UVCONST(   10285641777), UVCONST(   20051180846), UVCONST(   39113482639),
    UVCONST(   76344462797), UVCONST(  149100679004), UVCONST(  291354668495),
    UVCONST(  569630404447), UVCONST( 1114251967767), UVCONST( 2180634225768),
-   UVCONST( 4269555883751), UVCONST( 8363243713305), UVCONST(16388947026629) };
+   UVCONST( 4269555883751), UVCONST( 8363243713305), UVCONST(16388947026629),
+   UVCONST(32129520311897), UVCONST(63012603695171),UVCONST(123627200537929) };
 #else
 #define RAMPC2 31  /* input limited */
 static const UV ramanujan_counts_pow2[RAMPC2+1] = {

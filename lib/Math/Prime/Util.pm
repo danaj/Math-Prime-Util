@@ -42,7 +42,7 @@ our @EXPORT_OK =
       nth_prime nth_prime_lower nth_prime_upper nth_prime_approx inverse_li
       twin_prime_count twin_prime_count_approx
       nth_twin_prime nth_twin_prime_approx
-      ramanujan_prime_count nth_ramanujan_prime
+      ramanujan_prime_count nth_ramanujan_prime ramanujan_prime_count_approx
       sum_primes print_primes
       random_prime random_ndigit_prime random_nbit_prime random_strong_prime
       random_proven_prime random_proven_prime_with_cert
@@ -61,11 +61,14 @@ our @EXPORT_OK =
       ramanujan_tau ramanujan_sum
       binomial factorial stirling znorder znprimroot znlog legendre_phi
       ExponentialIntegral LogarithmicIntegral RiemannZeta RiemannR LambertW Pi
+      irand irand64 drand random_bytes urandomb urandomm seed_csprng
   );
-our %EXPORT_TAGS = (all => [ @EXPORT_OK ]);
+our %EXPORT_TAGS = (all  => [ @EXPORT_OK ],
+                    rand => [qw/srand rand irand irand64/],
+                   );
 
 # These are only exported if specifically asked for
-push @EXPORT_OK, (qw/trial_factor fermat_factor holf_factor squfof_factor prho_factor pbrent_factor pminus1_factor pplus1_factor ecm_factor/);
+push @EXPORT_OK, (qw/trial_factor fermat_factor holf_factor squfof_factor prho_factor pbrent_factor pminus1_factor pplus1_factor ecm_factor rand srand/);
 
 my %_Config;
 my %_GMPfunc;  # List of available MPU::GMP functions
@@ -88,6 +91,20 @@ sub _import_nobigint {
   $_Config{'nobigint'} = 1;
   1;
 }
+
+sub _init_random {
+  my $nbytes = 64;
+  use Math::Prime::Util::RNGSeed;
+  my $seed = Math::Prime::Util::RNGSeed::get_seed($nbytes);
+  if (defined $seed) {
+    seed_csprng($seed);
+    return 1;
+  }
+  # Fallback if there is no random device found
+  Math::Prime::Util::srand();
+  0;
+}
+
 
 BEGIN {
 
@@ -126,6 +143,8 @@ BEGIN {
     *factor_exp    = \&Math::Prime::Util::_generic_factor_exp;
   };
 
+  _init_random();
+
   $_Config{'nobigint'} = 0;
   $_Config{'gmp'} = 0;
   # See if they have the GMP module and haven't requested it not to be used.
@@ -137,6 +156,12 @@ BEGIN {
     }
     for my $e (@Math::Prime::Util::GMP::EXPORT_OK) {
       $Math::Prime::Util::_GMPfunc{"$e"} = $_Config{'gmp'};
+    }
+    # If we have GMP, it is not seeded properly but we are, seed with our data.
+    if (   $_Config{'gmp'} >= 42
+        && !Math::Prime::Util::GMP::is_csprng_well_seeded()
+        && Math::Prime::Util::_is_csprng_well_seeded()) {
+      Math::Prime::Util::GMP::seed_csprng(256, random_bytes(256));
     }
   }
 }
@@ -150,7 +175,6 @@ $_Config{'maxprime'}    = MPU_MAXPRIME;
 $_Config{'maxprimeidx'} = MPU_MAXPRIMEIDX;
 $_Config{'assume_rh'}   = 0;
 $_Config{'verbose'}     = 0;
-$_Config{'irand'}       = undef;
 $_Config{'use_primeinc'} = 0;
 
 # used for code like:
@@ -196,9 +220,6 @@ sub prime_set_config {
       $_Config{'nobigint'} = ($value) ? 1 : 0;
     } elsif ($param eq 'use_primeinc') {
       $_Config{'use_primeinc'} = ($value) ? 1 : 0;
-    } elsif ($param eq 'irand') {
-      croak "irand must supply a sub" unless (!defined $value) || (ref($value) eq 'CODE');
-      $_Config{'irand'} = $value;
     } elsif ($param =~ /^(assume[_ ]?)?[ge]?rh$/ || $param =~ /riemann\s*h/) {
       $_Config{'assume_rh'} = ($value) ? 1 : 0;
     } elsif ($param eq 'verbose') {
@@ -403,7 +424,7 @@ sub random_prime {
     ($low,$high) = (2, $low);
     _validate_num($high) || _validate_positive_integer($high);
   }
-  if ($_Config{'gmp'} >= 42 && !defined $_Config{'irand'}) {
+  if ($_Config{'gmp'} >= 42) {
     require Math::Prime::Util::RandomPrimesGMP;
     return Math::Prime::Util::RandomPrimesGMP::random_prime($low,$high);
   }
@@ -414,7 +435,7 @@ sub random_prime {
 sub random_ndigit_prime {
   my($digits) = @_;
   _validate_num($digits, 1) || _validate_positive_integer($digits, 1);
-  if ($_Config{'gmp'} >= 42 && !defined $_Config{'irand'}) {
+  if ($_Config{'gmp'} >= 42) {
     require Math::Prime::Util::RandomPrimesGMP;
     return Math::Prime::Util::RandomPrimesGMP::random_ndigit_prime($digits);
   }
@@ -425,7 +446,7 @@ sub random_ndigit_prime {
 sub random_nbit_prime {
   my($bits) = @_;
   _validate_num($bits, 2) || _validate_positive_integer($bits, 2);
-  if ($_Config{'gmp'} >= 42 && !defined $_Config{'irand'}) {
+  if ($_Config{'gmp'} >= 42) {
     require Math::Prime::Util::RandomPrimesGMP;
     return Math::Prime::Util::RandomPrimesGMP::random_nbit_prime($bits);
   }
@@ -436,7 +457,7 @@ sub random_nbit_prime {
 sub random_maurer_prime {
   my($bits) = @_;
   _validate_num($bits, 2) || _validate_positive_integer($bits, 2);
-  if ($_Config{'gmp'} >= 43 && !defined $_Config{'irand'}) {
+  if ($_Config{'gmp'} >= 43) {
     require Math::Prime::Util::RandomPrimesGMP;
     return Math::Prime::Util::RandomPrimesGMP::random_maurer_prime($bits);
   }
@@ -447,7 +468,7 @@ sub random_maurer_prime {
 sub random_maurer_prime_with_cert {
   my($bits) = @_;
   _validate_num($bits, 2) || _validate_positive_integer($bits, 2);
-  if ($_Config{'gmp'} >= 43 && !defined $_Config{'irand'}) {
+  if ($_Config{'gmp'} >= 43) {
     require Math::Prime::Util::RandomPrimesGMP;
     return Math::Prime::Util::RandomPrimesGMP::random_maurer_prime_with_cert($bits);
   }
@@ -458,7 +479,7 @@ sub random_maurer_prime_with_cert {
 sub random_shawe_taylor_prime {
   my($bits) = @_;
   _validate_num($bits, 2) || _validate_positive_integer($bits, 2);
-  if ($_Config{'gmp'} >= 43 && !defined $_Config{'irand'}) {
+  if ($_Config{'gmp'} >= 43) {
     require Math::Prime::Util::RandomPrimesGMP;
     return Math::Prime::Util::RandomPrimesGMP::random_shawe_taylor_prime($bits);
   }
@@ -470,7 +491,7 @@ sub random_shawe_taylor_prime {
 sub random_shawe_taylor_prime_with_cert {
   my($bits) = @_;
   _validate_num($bits, 2) || _validate_positive_integer($bits, 2);
-  if ($_Config{'gmp'} >= 43 && !defined $_Config{'irand'}) {
+  if ($_Config{'gmp'} >= 43) {
     require Math::Prime::Util::RandomPrimesGMP;
     return Math::Prime::Util::RandomPrimesGMP::random_shawe_taylor_prime_with_cert($bits);
   }
@@ -481,7 +502,7 @@ sub random_shawe_taylor_prime_with_cert {
 sub random_strong_prime {
   my($bits) = @_;
   _validate_num($bits, 128) || _validate_positive_integer($bits, 128);
-  if ($_Config{'gmp'} >= 43 && !defined $_Config{'irand'}) {
+  if ($_Config{'gmp'} >= 43) {
     require Math::Prime::Util::RandomPrimesGMP;
     return Math::Prime::Util::RandomPrimesGMP::random_strong_prime($bits);
   }
@@ -492,7 +513,7 @@ sub random_strong_prime {
 sub random_proven_prime {
   my($bits) = @_;
   _validate_num($bits, 2) || _validate_positive_integer($bits, 2);
-  if ($_Config{'gmp'} >= 42 && !defined $_Config{'irand'}) {
+  if ($_Config{'gmp'} >= 42) {
     require Math::Prime::Util::RandomPrimesGMP;
     return Math::Prime::Util::RandomPrimesGMP::random_proven_prime($bits);
   }
@@ -503,7 +524,7 @@ sub random_proven_prime {
 sub random_proven_prime_with_cert {
   my($bits) = @_;
   _validate_num($bits, 2) || _validate_positive_integer($bits, 2);
-  if ($_Config{'gmp'} >= 42 && !defined $_Config{'irand'}) {
+  if ($_Config{'gmp'} >= 42) {
     require Math::Prime::Util::RandomPrimesGMP;
     return Math::Prime::Util::RandomPrimesGMP::random_proven_prime_with_cert($bits);
   }
@@ -1024,9 +1045,11 @@ Version 0.61
 
 =head1 SYNOPSIS
 
-  # Normally you would just import the functions you are using.
   # Nothing is exported by default.  List the functions, or use :all.
-  use Math::Prime::Util ':all';
+  use Math::Prime::Util ':all';  # import all functions
+
+  # The ':rand' tag replaces srand and rand (not done by default)
+  use Math::Prime::Util ':rand';  # import srand, rand, irand, irand64
 
 
   # Get a big array reference of many primes
@@ -3358,6 +3381,141 @@ a good approximation to the number of primes less than C<n>, this function
 is a good simple approximation to the nth prime.
 
 
+=head1 RANDOM NUMBERS
+
+=head2 OVERVIEW
+
+Prior to version 5.20, Perl's C<rand> function used the system rand function.
+This meant it varied by system, and was almost always a poor choice.  For
+5.20, Perl standardized on C<drand48> and includes the source so there are no
+system dependencies.  While this was an improvement, C<drand48> is not a good
+PRNG.  It really only has 32 bits of random values, and fails many statistical
+tests.  See L<http://www.pcg-random.org/statistical-tests.html> for more
+information.
+
+There are much better choices for standard random number generators, such as the
+Mersenne Twister, PCG, or Xoroshiro128+.  Someday perhaps Perl will get one of
+these to replace drand48.  In the mean time, L<Math::Random::MTwist> provides
+numerous features and excellent performance, or this module.
+
+Since we often deal with random primes for cryptographic purposes, we have
+additional requirements.  For this reason, this module uses ISAAC, a CSPRNG,
+for its random stream.  Performance is excellent -- the same as the fastest
+modules using non-PRNGs, and significantly faster than many.  ISAAC is quite
+fast which helps (at the C level, L</random_bytes> produces over 1 GB/s),
+but mostly this involves paying close attention to the XS
+call interface as it dominates the time (which is how it keeps up with
+technically faster PRNGs like MT).
+
+Seeding is performed at startup using the Win32 Crypto API (on Windows),
+C</dev/urandom>, C</dev/random>, or L<Crypt::PRNG>, whichever is found first.
+
+A single thread-safe stream is used.  A later implementation may switch to
+per-thread contexts, which would be slightly faster and arguably give better
+security.
+
+If control of multiple independent streams are needed then using a more
+specific module is recommended.  I believe L<Crypt::PRNG> (part of L<CryptX>)
+and L<Bytes::Random::Secure> are good alternatives.
+
+Using the C<:rand> export option will define C<rand> and C<srand> as similar
+but improved versions of the system functions of the same name, as well as
+L</irand> and L</irand64>.
+
+
+=head2 irand
+
+  $n32 = irand;     # random 32-bit integer
+
+Returns a random 32-bit integer using the CSPRNG.
+
+=head2 irand64
+
+  $n64 = irand64;   # random 64-bit integer
+
+Returns a random 64-bit integer using the CSPRNG (on 64-bit Perl).
+
+=head2 drand
+
+  $f = drand;       # random floating point value in [0,1)
+  $r = drand(25.33);   # random floating point value in [0,25.33)
+
+Returns a random NV (Perl's native floating point) using the CSPRNG.  The
+API is similar to Perl's C<rand> but giving better results.
+
+The number of bits returned is equal to the number of significand bits of
+the NV type used in the Perl build, with a max of 64.  By default Perl uses
+doubles and the returned values have 53 bits.  If Perl is built with
+long double support and long doubles have a larger mantissa on the platform,
+then more bits are used.
+
+This gives I<substantially> better quality random numbers than the default Perl
+C<rand> function.  Among other things, on modern Perl's, C<rand> uses drand48,
+which has 32 bits of not-too-broken randomness and 16 more bits of known
+patterns (e.g. the 48th bit alternates, the 47th has a period of 4, etc.).
+Output from C<rand> fails at least 5 tests from the TestU01 SmallCrush suite,
+while our function easily passes.
+
+With the ":rand" tag, this function is additionally exported as C<rand>.
+
+=head2 random_bytes
+
+  $str = random_bytes(32);     # 32 random bytes
+
+Given an unsigned number C<n> of bytes, returns a string filled with random
+data from the CSPRNG.  Performance for getting 256 byte strings:
+
+    Module/Method                  Rate   Type
+    -------------             ---------   ----------------------
+    Data::Entropy::Algorithms    1998/s   CSPRNG - AES Counter
+    Crypt::Random                6521/s   CSPRNG - /dev/urandom
+    Bytes::Random::Secure        8699/s   CSPRNG - ISAAC (no XS)
+    Bytes::Random                8732/s   drand48
+    rand+pack                   20842/s   drand48
+    Bytes::Random::Secure       22943/s   CSPRNG - ISAAC
+    Crypt::PRNG                294096/s   CSPRNG - Fortuna
+    Bytes::Random::XS          378481/s   drand48
+    Math::Random::MTwist      1839521/s   Mersenne Twister
+    Math::Prime::Util         1949339/s   CSPRNG - ISAAC
+
+=head2 urandomb
+
+  $n32 = urandomb(32);    # Classic irand32, returns a UV
+  $n   = urandomb(1024);  # Random integer less than 2^1024
+
+Given a number of bits C<b>, returns a random unsigned integer less than C<2^b>.
+The result will be uniformly distributed between C<0> and C<2^b-1> inclusive.
+
+=head2 urandomm
+
+  $n = urandomm(100);    # random integer in [0,99]
+  $n = urandomm(1024);   # random integer in [0,1023]
+
+Given a positive integer C<n>, returns a random unsigned integer less than C<n>.
+The results will be uniformly distributed between C<0> and C<n-1> inclusive.
+
+=head2 seed_csprng
+
+Takes a binary string C<data> as input and seeds the internal CSPRNG.  This is
+not normally needed as system entropy is used as a seed on startup.  For best
+security this should be 16-256 bytes of good entropy.  No more than 1024 bytes
+will be used.
+
+=head2 srand
+
+Takes a single UV argument and seeds the CSPRNG with it, as well as returning it.
+If no argument is given, a new UV seed is constructed.  Note that this creates a
+very weak seed from a cryptographic standpoint, so it is useful for testing or
+simulations but L<seed_csprng> is recommended, or keep using the system entropy
+default seed.
+
+The API is nearly identical to the system function C<srand>.  It uses a UV which
+can be 64-bit rather than always 32-bit.  The behaviour for C<undef>, empty string,
+empty list, etc. is slightly different (we treat these as 0).
+
+This function is not exported with the ":all" tag, but is with ":rand".
+
+
 =head1 RANDOM PRIMES
 
 =head2 random_prime
@@ -3382,68 +3540,19 @@ and 997 all have the same probability of being returned.
 
 The configuration option C<use_primeinc> can be set to override this and
 use the PRIMEINC algorithm for non-trivial sizes.  This applies to all
-random prime functions.  Never use this for crypto or if uniformly random
+random prime functions.  Never use this option for crypto or if uniformly random
 primes are desired, but if you really don't care and just want any old
 prime in the range, setting this may make this run 2-4x faster.
 
 For small numbers, a random index selection is done, which gives ideal
 uniformity and is very efficient with small inputs.  For ranges larger than
 this ~16-bit threshold but within the native bit size, a Monte Carlo method
-is used (multiple calls to C<irand> will be made if necessary).  This also
+is used.  This also
 gives ideal uniformity and can be very fast for reasonably sized ranges.
 For even larger numbers, we partition the range, choose a random partition,
 then select a random prime from the partition.  This gives some loss of
 uniformity but results in many fewer bits of randomness being consumed as
 well as being much faster.
-
-If an C<irand> function has been set via L</prime_set_config>, it will be
-used to construct any ranged random numbers needed.  The function should
-return a uniformly random 32-bit integer, which is how the irand functions
-exported by L<Math::Random::Secure>, L<Math::Random::MT>,
-L<Math::Random::ISAAC>, and most other modules behave.
-
-If no C<irand> function was set, then L<Bytes::Random::Secure> is used with
-a non-blocking seed.  This will create good quality random numbers, so there
-should be little reason to change unless one is generating long-term keys,
-where using the blocking random source may be preferred.
-
-Note: Setting the C<irand> function will disable the much faster GMP
-random prime functions, as they do not have callback ability but instead
-use a well-seeded CSPRNG.
-
-Examples of various ways to set your own irand function:
-
-  # System rand.  You probably don't want to do this.
-  prime_set_config(irand => sub { int(rand(4294967296)) });
-
-  # Math::Random::MTwist.  Fastest RNG by quite a bit.
-  use Math::Random::MTwist;
-  prime_set_config(irand => \&Math::Random::MTwist::_irand32);
-
-  # Math::Random::Secure.  Uses ISAAC and strong seed methods.
-  use Math::Random::Secure;
-  prime_set_config(irand => \&Math::Random::Secure::irand);
-
-  # Bytes::Random::Secure (OO interface with full control of options):
-  use Bytes::Random::Secure ();
-  BEGIN {
-    my $rng = Bytes::Random::Secure->new( Bits => 512 );
-    sub irand { return $rng->irand; }
-  }
-  prime_set_config(irand => \&irand);
-
-  # Crypt::Random.  Uses Pari and /dev/random.  *VERY* slow.
-  use Crypt::Random qw/makerandom/;
-  prime_set_config(irand => sub { makerandom(Size=>32, Uniform=>1); });
-
-  # Net::Random.  You probably don't want to use this, but if you do:
-  use Net::Random;
-  { my $rng = Net::Random->new(src=>"fourmilab.ch",max=>0xFFFFFFFF);
-    sub nr_irand { return $rng->get(1); } }
-  prime_set_config(irand => \&nr_irand);
-
-  # Go back to MPU's default configuration
-  prime_set_config(irand => undef);
 
 
 =head2 random_ndigit_prime
@@ -3452,8 +3561,7 @@ Examples of various ways to set your own irand function:
 
 Selects a random n-digit prime, where the input is an integer number of
 digits.  One of the primes within that range (e.g. 1000 - 9999 for
-4-digits) will be uniformly selected using the C<irand> function as
-described above.
+4-digits) will be uniformly selected.
 
 If the number of digits is greater than or equal to the maximum native type,
 then the result will be returned as a BigInt.  However, if the C<nobigint>
@@ -3480,8 +3588,6 @@ bit sizes L</random_prime> selects a random upper partition then loops
 on the values within the partition, which very slightly skews the results
 towards smaller numbers).
 
-If set, the C<irand> function is used for randomness, so all the discussion
-in L</random_prime> about that applies here.
 The result will be a BigInt if the number of bits is greater than the native
 bit size.  For better performance with large bit sizes, install
 L<Math::Prime::Util::GMP>.
@@ -3696,10 +3802,6 @@ Allows setting of some parameters.  Currently the only parameters are:
                as primality testing.  A later version may also have a
                way to indicate whether no RH, RH, GRH, or ERH is to
                be assumed.
-
-  irand        Takes a code ref to an irand function returning a
-               uniform number between 0 and 2**32-1.  This will be
-               used for all random number generation in the module.
 
   use_primeinc When generating random primes, allow the PRIMEINC algorithm
                to be used.  This can be 2-4x faster than the default
@@ -4394,10 +4496,10 @@ a more uniform distribution as well as return a larger subset of primes
 MPU does not depend on L<Math::Pari> though can run slow for bigints unless
 the L<Math::BigInt::GMP> or L<Math::BigInt::Pari> modules are installed.
 Having L<Math::Prime::Util::GMP> installed makes the speed vastly faster.
-Crypt::Primes is hardcoded to use L<Crypt::Random>, while MPU uses
-L<Bytes::Random::Secure::Tiny>, and also allows plugging in a random function.
-This is more flexible, faster, has fewer dependencies, and uses a CSPRNG
-for security.  MPU can return a primality certificate.
+Crypt::Primes is hardcoded to use L<Crypt::Random> which uses /dev/random
+(blocking source), while MPU uses its own ISAAC implementation seeded from
+/dev/urandom or Win32.
+MPU can return a primality certificate.
 What Crypt::Primes has that MPU does not is the ability to return a generator.
 
 L<Math::Factor::XS> calculates prime factors and factors, which correspond to
@@ -4517,8 +4619,8 @@ counterexamples than the traditional strong test.
 L<Math::Prime::Util> uses the
 full extra-strong BPSW test, which has an even lower chance of
 counterexample.
-With L<Math::Prime::Util::GMP>, C<is_prime> adds 1 to 5 extra M-R tests
-using random bases, which further reduces the probability of a composite
+With L<Math::Prime::Util::GMP>, C<is_prime> adds an extra M-R test
+using a random base, which further reduces the probability of a composite
 being allowed to pass.
 
 =item C<primepi>

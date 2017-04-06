@@ -3,7 +3,7 @@ use strict;
 use warnings;
 #use Math::Primality;
 use Math::Prime::XS;
-use Math::Prime::Util;
+use Math::Prime::Util qw/urandomm/;;
 #use Math::Pari;
 #use Math::Prime::FastSieve;
 use Benchmark qw/:all/;
@@ -14,7 +14,6 @@ my $numbers = 1000;
 my $is64bit = (~0 > 4294967295);
 my $maxdigits = ($is64bit) ? 20 : 10;  # Noting the range is limited for max.
 use Math::Prime::Util::RandomPrimes;
-my $randf = Math::Prime::Util::RandomPrimes::get_randf();
 
 my $rand_ndigit_gen = sub {
   my $digits = shift;
@@ -30,10 +29,10 @@ my $rand_ndigit_gen = sub {
     $base = Math::BigInt->new(10)->bpow($digits-1);
     $max = Math::BigInt->new(10)->bpow($digits) - 1;
   }
-  #my @nums = map { $base + $randf->($max-$base) } (1 .. $howmany);
+  #my @nums = map { $base + urandomm($max-$base) } (1 .. $howmany);
   my @nums;
   while (@nums < $howmany) {
-    my $n = $base + $randf->($max-$base);
+    my $n = $base + urandomm($max-$base);
     push @nums, $n if $n % 2 && $n % 3 && $n % 5 && $n % 7;
   }
   return (wantarray) ? @nums : $nums[0];
