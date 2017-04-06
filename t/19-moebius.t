@@ -666,7 +666,10 @@ while (my($n, $isf) = each (%isf)) {
              [qw/10001 10003 10006 10015 10018 10019 10021 10022 10027 10029 10031 10033 10041 10042 10046 10049 10055 10057 10063 10073 10077 10078 10081 10083 10085 10097/],
              "Identify semiprimes from 10000 to 10100" );
   is(is_semiprime("669386384129397581"), 1, "is_semiprime(669386384129397581)");
-  is(is_semiprime("42535430147496493121551759"), 0, "is_semiprime(42535430147496493121551759)");
+  SKIP: {
+    skip "Skipping difficult is_semiprime", 1 unless $usegmp;
+    is(is_semiprime("42535430147496493121551759"), 0, "is_semiprime(42535430147496493121551759)");
+  }
 }
 {
   is_deeply( [grep { is_carmichael($_) } 1 .. 20000],
