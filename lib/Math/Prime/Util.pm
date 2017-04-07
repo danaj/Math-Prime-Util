@@ -477,28 +477,6 @@ sub random_shawe_taylor_prime_with_cert {
   return Math::Prime::Util::RandomPrimes::random_shawe_taylor_prime_with_cert($bits);
 }
 
-sub random_strong_prime {
-  my($bits) = @_;
-  _validate_num($bits, 128) || _validate_positive_integer($bits, 128);
-  if ($_Config{'gmp'} >= 43) {
-    require Math::Prime::Util::RandomPrimesGMP;
-    return Math::Prime::Util::RandomPrimesGMP::random_strong_prime($bits);
-  }
-  require Math::Prime::Util::RandomPrimes;
-  return Math::Prime::Util::RandomPrimes::random_strong_prime($bits);
-}
-
-sub random_proven_prime {
-  my($bits) = @_;
-  _validate_num($bits, 2) || _validate_positive_integer($bits, 2);
-  if ($_Config{'gmp'} >= 42) {
-    require Math::Prime::Util::RandomPrimesGMP;
-    return Math::Prime::Util::RandomPrimesGMP::random_proven_prime($bits);
-  }
-  require Math::Prime::Util::RandomPrimes;
-  return Math::Prime::Util::RandomPrimes::random_proven_prime($bits);
-}
-
 sub random_proven_prime_with_cert {
   my($bits) = @_;
   _validate_num($bits, 2) || _validate_positive_integer($bits, 2);
@@ -3378,23 +3356,30 @@ numerous features and excellent performance, or this module.
 
 Since we often deal with random primes for cryptographic purposes, we have
 additional requirements.  For this reason, this module uses ISAAC, a CSPRNG,
-for its random stream.  Performance is excellent -- the same as the fastest
-modules using non-PRNGs, and significantly faster than many.  ISAAC is quite
-fast which helps (at the C level, L</random_bytes> produces over 1 GB/s),
-but mostly this involves paying close attention to the XS
-call interface as it dominates the time (which is how it keeps up with
-technically faster PRNGs like MT).
-
+for its random stream.  A later version may investigate Chacha20.
 Seeding is performed at startup using the Win32 Crypto API (on Windows),
 C</dev/urandom>, C</dev/random>, or L<Crypt::PRNG>, whichever is found first.
 
+One might think that performance would suffer from using a CSPRNG, but this
+does not seem to be the case.  The speed of irand, irand64, and drand are
+within 10% of the fastest existing modules using fast non-CSPRNG methods,
+and significantly faster than most.  ISAAC is quite fast which helps
+L</random_bytes> can produce over 1 GB/s), but the majority of the issue is
+the Perl/XS call interface overhead.  Using the same algorithm, this module
+is about 3x faster than L<Math::Random::ISAAC::XS>.
+Optimizing the API is crucial, but it
+still performs enough operations to make calls like irand64 only show a 5%
+difference in speed between ISAAC and Xoroshiro128+.  If the latter is used
+in random_bytes with large inputs then we do see a 4x performance difference.
+In theory Xoroshiro128+ or PCG can be 10x faster than ISAAC, though they
+are not CSPRNGs, have much smaller states, and often rely on CPU instruction
+level optimization for the highest performance.
+
 A single thread-safe stream is used.  A later implementation may switch to
 per-thread contexts, which would be slightly faster and arguably give better
-security.
-
-If control of multiple independent streams are needed then using a more
-specific module is recommended.  I believe L<Crypt::PRNG> (part of L<CryptX>)
-and L<Bytes::Random::Secure> are good alternatives.
+security.  If control of multiple independent streams are needed then using
+a more specific module is recommended.  I believe L<Crypt::PRNG>
+(part of L<CryptX>) and L<Bytes::Random::Secure> are good alternatives.
 
 Using the C<:rand> export option will define C<rand> and C<srand> as similar
 but improved versions of the system functions of the same name, as well as

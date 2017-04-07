@@ -31,13 +31,6 @@ sub random_prime {
   );
 }
 
-sub random_strong_prime {
-  my($bits) = @_;
-  Math::Prime::Util::_reftyped($_[0],
-    Math::Prime::Util::GMP::random_strong_prime($bits)
-  );
-}
-
 sub random_maurer_prime {
   my($bits) = @_;
   Math::Prime::Util::_reftyped($_[0],
@@ -64,19 +57,6 @@ sub random_shawe_taylor_prime_with_cert {
   my($n,$cert) = Math::Prime::Util::GMP::random_shawe_taylor_prime_with_cert($bits);
   $n = Math::Prime::Util::_reftyped($_[0], $n);
   ($n,$cert);
-}
-
-sub random_proven_prime {
-  my($k) = @_;
-  if ($Math::Prime::Util::GMP::VERSION >= 0.43) {
-    Math::Prime::Util::_reftyped($_[0],
-      Math::Prime::Util::GMP::random_maurer_prime($k)
-    );
-  } else {
-    my $n = random_nbit_prime($k);
-    croak "${k}-bit prime could not be proven" unless is_provable_prime($n);
-    $n;
-  }
 }
 
 sub random_proven_prime_with_cert {

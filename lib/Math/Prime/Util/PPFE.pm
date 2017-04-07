@@ -47,6 +47,8 @@ use Carp qw/carp croak confess/;
 
 *random_ndigit_prime = \&Math::Prime::Util::PP::random_ndigit_prime;
 *random_nbit_prime = \&Math::Prime::Util::PP::random_nbit_prime;
+*random_proven_prime = \&Math::Prime::Util::PP::random_proven_prime;
+*random_strong_prime = \&Math::Prime::Util::PP::random_strong_prime;
 
 sub moebius {
   if (scalar @_ <= 1) {

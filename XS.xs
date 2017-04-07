@@ -1295,15 +1295,27 @@ void urandomb(IN UV bits)
   ALIAS:
     random_ndigit_prime = 1
     random_nbit_prime = 2
+    random_proven_prime = 3
+    random_strong_prime = 4
+  PREINIT:
+    UV res, minarg;
   PPCODE:
+    switch (ix) {
+      case 1:  minarg =   1; break;
+      case 2:
+      case 3:  minarg =   2; break;
+      case 4:  minarg = 128; break;
+      default: minarg =   0; break;
+    }
+    if (minarg > 0 && bits < minarg)
+      croak("Parameter '%d' must be >= %d", (int)bits, (int)minarg);
     if (bits <= BITS_PER_WORD) {
-      UV res;
-      if ((ix == 2 && bits < 2) || (ix == 1 && bits < 1))
-        croak("Parameter '%d' must be >= %d", (int)bits, (int)ix);
       switch (ix) {
         case 0:  res = irandb(bits); break;
         case 1:  res = random_ndigit_prime(bits); break;
         case 2:
+        case 3:
+        case 4:
         default: res = random_nbit_prime(bits); break;
       }
       if (res || ix == 0) XSRETURN_UV(res);
@@ -1311,8 +1323,10 @@ void urandomb(IN UV bits)
     switch (ix) {
       case 0:  _vcallsub_with_gmp(0.43,"urandomb"); break;
       case 1:  _vcallsub_with_gmp(0.42,"random_ndigit_prime"); break;
-      case 2:
-      default: _vcallsub_with_gmp(0.42,"random_nbit_prime"); break;
+      case 2:  _vcallsub_with_gmp(0.42,"random_nbit_prime"); break;
+      case 3:  _vcallsub_with_gmp(0.43,"random_maurer_prime"); break;
+      case 4:
+      default: _vcallsub_with_gmp(0.43,"random_strong_prime"); break;
     }
     OBJECTIFY_RESULT(ST(0), ST(0));
     XSRETURN(1);

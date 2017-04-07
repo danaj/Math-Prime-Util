@@ -6132,6 +6132,30 @@ sub random_nbit_prime {
   require Math::Prime::Util::RandomPrimes;
   return Math::Prime::Util::RandomPrimes::random_nbit_prime($bits);
 }
+sub random_strong_prime {
+  my($bits) = @_;
+  _validate_positive_integer($bits, 128);
+  if ($Math::Prime::Util::_GMPfunc{"random_strong_prime"}) {
+    return Math::Prime::Util::_reftyped($_[0], Math::Prime::Util::GMP::random_strong_prime($bits));
+  }
+  require Math::Prime::Util::RandomPrimes;
+  return Math::Prime::Util::RandomPrimes::random_strong_prime($bits);
+}
+sub random_proven_prime {
+  my($bits) = @_;
+  _validate_positive_integer($bits, 2);
+  if ($Math::Prime::Util::_GMPfunc{"random_maurer_prime"}) {
+    return Math::Prime::Util::_reftyped($_[0], Math::Prime::Util::GMP::random_maurer_prime($bits));
+  }
+  if ($Math::Prime::Util::_GMPfunc{"random_nbit_prime"} && $Math::Prime::Util::_GMPfunc{"is_provable_prime"}) {
+    my $n = Math::Prime::Util::GMP::random_nbit_prime($bits);
+    croak "${bits}-bit prime could not be proven"
+      unless Math::Prime::Util::GMP::is_provable_prime($n);
+    return Math::Prime::Util::_reftyped($_[0], $n);
+  }
+  require Math::Prime::Util::RandomPrimes;
+  return Math::Prime::Util::RandomPrimes::random_proven_prime($bits);
+}
 
 
 1;
