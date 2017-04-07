@@ -35,7 +35,6 @@ sub _isaac {
         $r->[$i]  = $bb = ($mm->[($y >> 10) & 0xFF] + $x)        & 0xFFFFFFFF;
     }
     $randcnt = 0;  # We've got 256 new 32-bit values to use
-    #print "   isaac $r->[0] $r->[1]\n";
     return ($randcnt, $r, $aa, $bb, $cc, $mm);
 }
 
@@ -68,10 +67,6 @@ sub _randinit {
         $j ^= $k << 8;                      $d += $j;       $k += $c;
         $k ^= 0x007fffff & ($c >> 9);       $e += $k;       $c += $d;
         @$mm[$i..$i+7] = ($c,$d,$e,$f,$g,$h,$j,$k);
-        #$mm->[$i  ] = $c;   $mm->[$i+1] = $d;
-        #$mm->[$i+2] = $e;   $mm->[$i+3] = $f;
-        #$mm->[$i+4] = $g;   $mm->[$i+5] = $h;
-        #$mm->[$i+6] = $j;   $mm->[$i+7] = $k;
     }
     for (my $i = 0; $i < 256; $i += 8) {
         $c += $mm->[$i  ];  $d += $mm->[$i+1];
@@ -87,16 +82,8 @@ sub _randinit {
         $j ^= $k << 8;                      $d += $j;       $k += $c;
         $k ^= 0x007fffff & ($c >> 9);       $e += $k;       $c += $d;
         @$mm[$i..$i+7] = ($c,$d,$e,$f,$g,$h,$j,$k);
-        #$mm->[$i  ] = $c;   $mm->[$i+1] = $d;
-        #$mm->[$i+2] = $e;   $mm->[$i+3] = $f;
-        #$mm->[$i+4] = $g;   $mm->[$i+5] = $h;
-        #$mm->[$i+6] = $j;   $mm->[$i+7] = $k;
     }
-    #printf "mm[0..1] %u %u\n", $mm->[0] & 0xFFFFFFFF, $mm->[1] & 0xFFFFFFFF;
-    #printf  "r[0..1] %u %u\n", $r->[0] & 0xFFFFFFFF, $r->[1] & 0xFFFFFFFF;
     my @ctx = _isaac($randcnt, $r, $aa, $bb, $cc, $mm);
-    #printf "mm[0..1] %u %u\n", $mm->[0] & 0xFFFFFFFF, $mm->[1] & 0xFFFFFFFF;
-    #printf  "r[0..1] %u %u\n", $r->[0] & 0xFFFFFFFF, $r->[1] & 0xFFFFFFFF;
     $ctx[0] = 256;  # Force running isaac again first use
     return @ctx;
 }
@@ -111,9 +98,7 @@ sub _isaac_seed {
     $seed .= $seed while length($seed) < 1024;
     @r = unpack("L256",$seed);
   }
-  #print "randrsl @r[0..3] .. \n";
   @_CTX = _randinit(0, \@r, 0, 0, 0, \@mm);
-  #print "randrsl @r[0..3] .. \n";
   1;
 }
 

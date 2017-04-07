@@ -146,6 +146,7 @@ x Add a test like uniform from Math::Random::Secure
 - file RT with Math::Random::Secure about 32-bit doubles
 - Make sure the PP ISAAC matches the XS one, on 32-bit and big endian
 - urandomm: call GMP from Perl or objectify in XS
+- doc in RNG.pm
 
 - A mechanism for reseeding with good entropy would be nice.
 
