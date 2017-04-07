@@ -520,9 +520,8 @@ sub primes {
   return [grep { $_ >= $low && $_ <= $high } @_primes_small]
     if $high <= $_primes_small[-1];
 
-  if ($Math::Prime::Util::_GMPfunc{"sieve_primes"} && $Math::Prime::Util::GMP::VERSION >= 0.34) {
-    return [ Math::Prime::Util::GMP::sieve_primes($low, $high, 0) ];
-  }
+  return [ Math::Prime::Util::GMP::sieve_primes($low, $high, 0) ]
+    if $Math::Prime::Util::_GMPfunc{"sieve_primes"} && $Math::Prime::Util::GMP::VERSION >= 0.34;
 
   # At some point even the pretty-fast pure perl sieve is going to be a
   # dog, and we should move to trials.  This is typical with a small range
@@ -1188,9 +1187,8 @@ sub divisor_sum {
     unless !defined $k || _validate_num($k) || _validate_positive_integer($k);
   $k = 1 if !defined $k;
 
-  if ($Math::Prime::Util::_GMPfunc{"sigma"}) {
-    return Math::Prime::Util::_reftyped($_[0], Math::Prime::Util::GMP::sigma($n, $k));
-  }
+  return Math::Prime::Util::_reftyped($_[0], Math::Prime::Util::GMP::sigma($n, $k))
+    if $Math::Prime::Util::_GMPfunc{"sigma"};
 
   my $will_overflow = ($k == 0) ? (length($n) >= $_ds_overflow[0])
                     : ($k <= 5) ? ($n >= $_ds_overflow[$k])
@@ -2358,9 +2356,8 @@ sub _from_128 {
 sub vecsum {
   return Math::Prime::Util::_reftyped($_[0], @_ ? $_[0] : 0)  if @_ <= 1;
 
-  if ($Math::Prime::Util::_GMPfunc{"vecsum"}) {
-    return Math::Prime::Util::_reftyped($_[0], Math::Prime::Util::GMP::vecsum(@_));
-  }
+  return Math::Prime::Util::_reftyped($_[0], Math::Prime::Util::GMP::vecsum(@_))
+    if $Math::Prime::Util::_GMPfunc{"vecsum"};
   my $sum = 0;
   my $neglim = -(INTMAX >> 1) - 1;
   foreach my $v (@_) {
@@ -2376,9 +2373,8 @@ sub vecsum {
 
 sub vecprod {
   return 1 unless @_;
-  if ($Math::Prime::Util::_GMPfunc{"vecprod"}) {
-    return Math::Prime::Util::_reftyped($_[0], Math::Prime::Util::GMP::vecprod(@_));
-  }
+  return Math::Prime::Util::_reftyped($_[0], Math::Prime::Util::GMP::vecprod(@_))
+    if $Math::Prime::Util::_GMPfunc{"vecprod"};
   # Product tree:
   my $prod = _product(0, $#_, [map { Math::BigInt->new("$_") } @_]);
   # Linear:
@@ -2537,9 +2533,8 @@ sub mulmod {
   my($a, $b, $n) = @_;
   return 0 if $n <= 1;
   return _mulmod($a,$b,$n) if $n < INTMAX && $a>0 && $a<INTMAX && $b>0 && $b<INTMAX;
-  if ($Math::Prime::Util::_GMPfunc{"mulmod"}) {
-    return Math::Prime::Util::_reftyped($_[0], Math::Prime::Util::GMP::mulmod($a,$b,$n));
-  }
+  return Math::Prime::Util::_reftyped($_[0], Math::Prime::Util::GMP::mulmod($a,$b,$n))
+    if $Math::Prime::Util::_GMPfunc{"mulmod"};
   my $ret = Math::BigInt->new("$a")->bmod("$n")->bmul("$b")->bmod("$n");
   $ret = _bigint_to_int($ret) if $ret->bacmp(BMAX) <= 0;
   $ret;
@@ -2871,9 +2866,8 @@ sub stirling {
     return factorial($n-1) if $n&1;
     return vecprod(-1, factorial($n-1));
   }
-  if ($Math::Prime::Util::_GMPfunc{"stirling"}) {
-    return Math::Prime::Util::_reftyped($_[0], Math::Prime::Util::GMP::stirling($n,$m,$type));
-  }
+  return Math::Prime::Util::_reftyped($_[0], Math::Prime::Util::GMP::stirling($n,$m,$type))
+    if $Math::Prime::Util::_GMPfunc{"stirling"};
   my $s = BZERO->copy;
   if ($type == 3) {
     $s = Math::Prime::Util::vecprod( Math::Prime::Util::binomial($n,$m), Math::Prime::Util::binomial($n-1,$m-1), Math::Prime::Util::factorial($n-$m) );
@@ -3228,9 +3222,8 @@ sub binomial {
   my($n, $k) = @_;
 
   # 1. Try GMP
-  if ($Math::Prime::Util::_GMPfunc{"binomial"}) {
-    return Math::Prime::Util::_reftyped($_[0], Math::Prime::Util::GMP::binomial($n,$k));
-  }
+  return Math::Prime::Util::_reftyped($_[0], Math::Prime::Util::GMP::binomial($n,$k))
+    if $Math::Prime::Util::_GMPfunc{"binomial"};
 
   # 2. Exit early for known 0 cases, and adjust k to be positive.
   if ($n >= 0) {  return 0 if $k < 0 || $k > $n;  }
@@ -3360,10 +3353,8 @@ sub znorder {
   return if $a <= 0;
   return 1 if $a == 1;
 
-  if ($Math::Prime::Util::_GMPfunc{"znorder"}) {
-    return Math::Prime::Util::_reftyped($_[0], Math::Prime::Util::GMP::znorder($a,$n));
-  }
-
+  return Math::Prime::Util::_reftyped($_[0], Math::Prime::Util::GMP::znorder($a,$n))
+    if $Math::Prime::Util::_GMPfunc{"znorder"};
 
   # Sadly, Calc/FastCalc are horrendously slow for this function.
   return if Math::Prime::Util::gcd($a, $n) > 1;
@@ -4117,7 +4108,7 @@ sub is_mersenne_prime {
 
   # Definitely faster than using Math::BigInt
   return (0 == (Math::Prime::Util::GMP::lucas_sequence($mp, 4, 1, $mp+1))[0])
-  if $Math::Prime::Util::_GMPfunc{"lucas_sequence"};
+    if $Math::Prime::Util::_GMPfunc{"lucas_sequence"};
 
   my $V = Math::BigInt->new(4);
   for my $k (3 .. $p) {
@@ -6095,6 +6086,8 @@ sub urandomb {
 sub urandomm {
   my($n) = @_;
   _validate_positive_integer($n);
+  return Math::Prime::Util::_reftyped($_[0], Math::Prime::Util::GMP::urandomm($n))
+    if $Math::Prime::Util::_GMPfunc{"urandomm"};
   return 0 if $n <= 1;
   my $r;
   if ($n <= 4294967295) {
@@ -6117,36 +6110,32 @@ sub urandomm {
 sub random_ndigit_prime {
   my($digits) = @_;
   _validate_positive_integer($digits, 1);
-  if ($Math::Prime::Util::_GMPfunc{"random_ndigit_prime"}) {
-    return Math::Prime::Util::_reftyped($_[0], Math::Prime::Util::GMP::random_ndigit_prime($digits));
-  }
+  return Math::Prime::Util::_reftyped($_[0], Math::Prime::Util::GMP::random_ndigit_prime($digits))
+    if $Math::Prime::Util::_GMPfunc{"random_ndigit_prime"};
   require Math::Prime::Util::RandomPrimes;
   return Math::Prime::Util::RandomPrimes::random_ndigit_prime($digits);
 }
 sub random_nbit_prime {
   my($bits) = @_;
   _validate_positive_integer($bits, 2);
-  if ($Math::Prime::Util::_GMPfunc{"random_nbit_prime"}) {
-    return Math::Prime::Util::_reftyped($_[0], Math::Prime::Util::GMP::random_nbit_prime($bits));
-  }
+  return Math::Prime::Util::_reftyped($_[0], Math::Prime::Util::GMP::random_nbit_prime($bits))
+    if $Math::Prime::Util::_GMPfunc{"random_nbit_prime"};
   require Math::Prime::Util::RandomPrimes;
   return Math::Prime::Util::RandomPrimes::random_nbit_prime($bits);
 }
 sub random_strong_prime {
   my($bits) = @_;
   _validate_positive_integer($bits, 128);
-  if ($Math::Prime::Util::_GMPfunc{"random_strong_prime"}) {
-    return Math::Prime::Util::_reftyped($_[0], Math::Prime::Util::GMP::random_strong_prime($bits));
-  }
+  return Math::Prime::Util::_reftyped($_[0], Math::Prime::Util::GMP::random_strong_prime($bits))
+    if $Math::Prime::Util::_GMPfunc{"random_strong_prime"};
   require Math::Prime::Util::RandomPrimes;
   return Math::Prime::Util::RandomPrimes::random_strong_prime($bits);
 }
 sub random_proven_prime {
   my($bits) = @_;
   _validate_positive_integer($bits, 2);
-  if ($Math::Prime::Util::_GMPfunc{"random_maurer_prime"}) {
-    return Math::Prime::Util::_reftyped($_[0], Math::Prime::Util::GMP::random_maurer_prime($bits));
-  }
+  return Math::Prime::Util::_reftyped($_[0], Math::Prime::Util::GMP::random_maurer_prime($bits))
+    if $Math::Prime::Util::_GMPfunc{"random_maurer_prime"};
   if ($Math::Prime::Util::_GMPfunc{"random_nbit_prime"} && $Math::Prime::Util::_GMPfunc{"is_provable_prime"}) {
     my $n = Math::Prime::Util::GMP::random_nbit_prime($bits);
     croak "${bits}-bit prime could not be proven"

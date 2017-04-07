@@ -138,15 +138,16 @@ x Tests for random_bytes(UV) urandomb(UV) urandomm(SV) srand seed_csprng
 x proper version of RNG.pm
 x change seed interface, remove bytes.
 x Add a test like uniform from Math::Random::Secure
+x urandomm: call GMP from Perl or objectify in XS
 
 - measure performance, add comments to docs
 - random primes in XS
 - re-validation of PP RandomPrimes with new rand functions
 - remove RandomPrimesGMP
 - file RT with Math::Random::Secure about 32-bit doubles
-- Make sure the PP ISAAC matches the XS one, on 32-bit and big endian
-- urandomm: call GMP from Perl or objectify in XS
+- Make sure the PP ISAAC matches the XS one, on 32-bit (check) and big endian
 - doc in RNG.pm
+- move util funcs out of isaac.c in prep for chacha20.c
 
 - A mechanism for reseeding with good entropy would be nice.
 
