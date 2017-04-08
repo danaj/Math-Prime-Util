@@ -6182,8 +6182,10 @@ sub miller_rabin_random {
 
   return 1 if $k <= 0;
 
-  return Math::Prime::Util::_reftyped($_[0], Math::Prime::Util::GMP::miller_rabin_random(@_))
-    if $Math::Prime::Util::_GMPfunc{"miller_rabin_random"};
+  if ($Math::Prime::Util::_GMPfunc{"miller_rabin_random"}) {
+    return Math::Prime::Util::GMP::miller_rabin_random($n, $k, $seed) if defined $seed;
+    return Math::Prime::Util::GMP::miller_rabin_random($n, $k);
+  }
 
   # Math::Prime::Util::prime_get_config()->{'assume_rh'})  ==>  2*log(n)^2
   if ($k >= int(3*$n/4) ) {

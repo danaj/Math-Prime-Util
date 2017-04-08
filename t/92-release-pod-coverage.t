@@ -30,7 +30,7 @@ foreach my $m (@modules) {
   };
   $param->{trustme} = [mpu_public_regex(), mpu_factor_regex()]
     if $m eq 'Math::Prime::Util::PP';
-  $param->{trustme} = [mpu_public_regex(), mpu_factor_regex()]
+  $param->{trustme} = [mpu_public_regex(), mpu_factor_regex(), qw/rand srand/]
     if $m eq 'ntheory';
   pod_coverage_ok( $m, $param );
 }
@@ -86,6 +86,7 @@ sub mpu_public_regex {
       ramanujan_tau ramanujan_sum
       binomial factorial stirling znorder znprimroot znlog legendre_phi
       ExponentialIntegral LogarithmicIntegral RiemannZeta RiemannR LambertW Pi
+      irand irand64 drand random_bytes urandomb urandomm seed_csprng
   );
   my $pattern = '^(' . join('|', @funcs) . ')$';
   return qr/$pattern/;

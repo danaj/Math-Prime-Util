@@ -10,7 +10,8 @@ my @functions =  qw(
       prime_precalc prime_memfree
       is_prime is_prob_prime is_provable_prime is_provable_prime_with_cert
       prime_certificate verify_prime
-      is_pseudoprime is_strong_pseudoprime
+      is_pseudoprime is_euler_pseudoprime is_strong_pseudoprime
+      is_euler_plumb_pseudoprime
       is_lucas_pseudoprime
       is_strong_lucas_pseudoprime
       is_extra_strong_lucas_pseudoprime
@@ -25,10 +26,9 @@ my @functions =  qw(
       is_square_free is_primitive_root is_carmichael is_quasi_carmichael
       miller_rabin_random
       lucas_sequence lucasu lucasv
-      primes twin_primes sieve_prime_cluster
-      ramanujan_primes ramanujan_prime_count
+      primes twin_primes ramanujan_primes sieve_prime_cluster sieve_range
       forprimes forcomposites foroddcomposites fordivisors
-      forpart forcomb forperm forpart formultiperm
+      forpart forcomp forcomb forperm formultiperm
       prime_iterator prime_iterator_object
       next_prime  prev_prime
       prime_count
@@ -36,22 +36,25 @@ my @functions =  qw(
       nth_prime nth_prime_lower nth_prime_upper nth_prime_approx inverse_li
       twin_prime_count twin_prime_count_approx
       nth_twin_prime nth_twin_prime_approx
-      nth_ramanujan_prime
+      ramanujan_prime_count nth_ramanujan_prime
       sum_primes print_primes
       random_prime random_ndigit_prime random_nbit_prime random_strong_prime
       random_proven_prime random_proven_prime_with_cert
       random_maurer_prime random_maurer_prime_with_cert
       random_shawe_taylor_prime random_shawe_taylor_prime_with_cert
       primorial pn_primorial consecutive_integer_lcm gcdext chinese
-      gcd lcm factor factor_exp divisors valuation invmod hammingweight
+      gcd lcm factor factor_exp divisors valuation hammingweight
+      todigits fromdigits todigitstring sumdigits
+      invmod sqrtmod addmod mulmod divmod powmod
       vecsum vecmin vecmax vecprod vecreduce vecextract
-      vecany vecall vecnone vecnotall vecfirst
-      sumdigits todigits todigitstring fromdigits
+      vecany vecall vecnotall vecnone vecfirst vecfirstidx
       moebius mertens euler_phi jordan_totient exp_mangoldt liouville
       partitions bernfrac bernreal harmfrac harmreal
       chebyshev_theta chebyshev_psi
-      divisor_sum carmichael_lambda kronecker ramanujan_tau ramanujan_sum
+      divisor_sum carmichael_lambda kronecker hclassno
+      ramanujan_tau ramanujan_sum
       binomial factorial stirling znorder znprimroot znlog legendre_phi
       ExponentialIntegral LogarithmicIntegral RiemannZeta RiemannR LambertW Pi
+      irand irand64 drand random_bytes urandomb urandomm seed_csprng
 );
 can_ok( 'Math::Prime::Util', @functions);

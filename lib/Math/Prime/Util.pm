@@ -42,7 +42,7 @@ our @EXPORT_OK =
       nth_prime nth_prime_lower nth_prime_upper nth_prime_approx inverse_li
       twin_prime_count twin_prime_count_approx
       nth_twin_prime nth_twin_prime_approx
-      ramanujan_prime_count nth_ramanujan_prime ramanujan_prime_count_approx
+      ramanujan_prime_count nth_ramanujan_prime
       sum_primes print_primes
       random_prime random_ndigit_prime random_nbit_prime random_strong_prime
       random_proven_prime random_proven_prime_with_cert
@@ -934,7 +934,7 @@ __END__
 
 =encoding utf8
 
-=for stopwords forprimes forcomposites foroddcomposites fordivisors forpart forcomp forcomb forperm formultiperm Möbius Deléglise Bézout totient moebius mertens liouville znorder irand primesieve uniqued k-tuples von SoE pari yafu fonction qui compte le nombre nombres voor PhD superset sqrt(N) gcd(A^M k-th (10001st primegen libtommath kronecker znprimroot znlog gcd lcm invmod sqrtmod addmod mulmod powmod divmod untruncated vecsum vecprod vecmin vecmax vecreduce vecextract vecall vecany vecnone vecnotall vecfirst vecfirstidx sumdigits gcdext chinese LambertW bernfrac bernreal harmfrac harmreal stirling hammingweight lucasu lucasv OpenPFGW gmpy2 Über Primzahl-Zählfunktion n-te und verallgemeinerte sqrtint logint multiset todigits todigitstring fromdigits hclassno rootint compositeness GHz
+=for stopwords Möbius Deléglise Bézout uniqued k-tuples von SoE primesieve primegen libtommath pari yafu fonction qui compte le nombre nombres voor PhD superset sqrt(N) gcd(A^M k-th (10001st untruncated OpenPFGW gmpy2 Über Primzahl-Zählfunktion n-te und verallgemeinerte multiset compositeness GHz significand TestU01
 
 =for test_synopsis use v5.14;  my($k,$x);
 
@@ -1664,7 +1664,7 @@ sums that fit in a UV, an efficient sieve count for small ranges, and
 a Legendre sum method for larger values.
 
 While this is fairly efficient, the state of the art is Kim Walisch's
-<primesum|https://github.com/kimwalisch/primesum>.
+L<primesum|https://github.com/kimwalisch/primesum>.
 It is recommended for very large values.
 
 =head2 print_primes
@@ -3427,6 +3427,10 @@ can be 64-bit rather than always 32-bit.  The behaviour for C<undef>, empty stri
 empty list, etc. is slightly different (we treat these as 0).
 
 This function is not exported with the ":all" tag, but is with ":rand".
+
+=head2 rand
+
+An alias for L</drand>, not exported unless the ":rand" tag is used.
 
 
 =head1 RANDOM PRIMES

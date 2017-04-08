@@ -180,6 +180,41 @@ Version 0.61
 
 An alternative pure Perl implementation of a CSPRNG.
 
+=head1 FUNCTIONS
+
+=head2 seed_csprng
+
+Takes a binary string as input and seeds the internal CSPRNG.
+
+=head2 srand
+
+A method for sieving the CSPRNG with a small value.  This will not be secure
+but can be useful for simulations and emulating the system C<srand>.
+
+With no argument, chooses a random number, seeds and returns the number.
+With a single integer argument, seeds and returns the number.
+
+=head2 irand
+
+Returns a random 32-bit integer.
+
+=head2 irand64
+
+Returns a random 64-bit integer.
+
+=head2 drand
+
+Returns a random NV in the range [0,1).
+An optional argument C<m> will be used as a multiplier,
+so the result will be between 0 and C<m>-C<epsilon> inclusive.
+
+=head2 random_bytes
+
+Takes an unsigned number C<n> as input and returns that many random bytes
+as a single binary string.
+
+=head2
+
 =head1 AUTHORS
 
 Dana Jacobsen E<lt>dana@acm.orgE<gt>

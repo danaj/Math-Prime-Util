@@ -105,7 +105,7 @@ WriteMakefile1(
                prereqs => {
                  runtime => {
                    recommends => {
-                     'Math::Prime::Util::GMP' => 0.43,
+                     'Math::Prime::Util::GMP' => 0.44,
                      'Math::BigInt::GMP'      => 0,
                      'Math::MPFR'             => 2.03,
                      'Digest::SHA'            => 5.87,

@@ -1070,24 +1070,23 @@ is_prime(IN SV* svn, ...)
     is_square_free = 16
     is_carmichael = 17
     is_quasi_carmichael = 18
-    is_primitive_root_old = 19
-    is_semiprime = 20
-    is_mersenne_prime = 21
-    is_power = 22
-    is_prime_power = 23
-    miller_rabin_random = 24
-    logint = 25
-    rootint = 26
+    is_semiprime = 19
+    is_mersenne_prime = 20
+    is_power = 21
+    is_prime_power = 22
+    miller_rabin_random = 23
+    logint = 24
+    rootint = 25
   PREINIT:
     int status, astatus;
   PPCODE:
     status = _validate_int(aTHX_ svn, 1);
-    astatus = (items == 1 || ix==23) ? 1 : _validate_int(aTHX_ ST(1), 1);
+    astatus = (items == 1 || ix==22) ? 1 : _validate_int(aTHX_ ST(1), 1);
     if (status != 0 && astatus != 0) {
       int ret = 0;
       UV n = my_svuv(svn);
-      UV a = (items == 1 || ix == 23) ? 0 : my_svuv(ST(1));
-      if (status == 1 && astatus == 1 && ix < 22) {
+      UV a = (items == 1 || ix == 22) ? 0 : my_svuv(ST(1));
+      if (status == 1 && astatus == 1 && ix < 21) {
         switch (ix) {
           case 0:
           case 1:
@@ -1115,15 +1114,14 @@ is_prime(IN SV* svn, ...)
           case 16: ret = is_square_free(n); break;
           case 17: ret = is_carmichael(n); break;
           case 18: ret = is_quasi_carmichael(n); break;
-          case 19: ret = is_primitive_root(n,a,0); break;
-          case 20: ret = is_semiprime(n); break;
-          case 21:
+          case 19: ret = is_semiprime(n); break;
+          case 20:
           default: ret = is_mersenne_prime(n);
                    if (ret == -1) status = 0;
                    break;
         }
         if (status != 0 && astatus == 1) RETURN_NPARITY(ret);
-      } else if (ix == 22) {
+      } else if (ix == 21) {
         if (status == -1) {
           IV sn = my_sviv(svn);
           if (sn <= -IV_MAX) status = 0;
@@ -1143,7 +1141,7 @@ is_prime(IN SV* svn, ...)
           }
         }
         if (status != 0 && astatus != 0) RETURN_NPARITY(ret);
-      } else if (ix == 23) {
+      } else if (ix == 22) {
         if (status == 1) {
           UV root;
           ret = primepower(n, &root);
@@ -1153,14 +1151,14 @@ is_prime(IN SV* svn, ...)
           }
         }
         if (status != 0) RETURN_NPARITY(ret);
-      } else if (ix == 24) {
+      } else if (ix == 23) {
         if (status != 1) status = _validate_int(aTHX_ svn, 0);
         if (astatus != 1) astatus = _validate_int(aTHX_ ST(1), 0);
         /* Fall through if they supplied a seed */
         if (items <= 2 && astatus == 1) {
           RETURN_NPARITY( is_mr_random(n, a) );
         }
-      } else if (ix == 25) {
+      } else if (ix == 24) {
         UV e;
         if (status != 1 || n <= 0)   croak("logint: n must be > 0");
         if (items == 1)              croak("logint: missing base");
@@ -1171,7 +1169,7 @@ is_prime(IN SV* svn, ...)
           sv_setuv(SvRV(ST(2)), ipow(a,e));
         }
         XSRETURN_UV(e);
-      } else if (ix == 26) {
+      } else if (ix == 25) {
         UV r;
         if (items == 1)              croak("rootint: missing exponent");
         if (astatus != 1 || a == 0)  croak("rootint: k must be > 0");
@@ -1208,19 +1206,18 @@ is_prime(IN SV* svn, ...)
       case 16:_vcallsub_with_gmp(0.00,"is_square_free"); break;
       case 17:_vcallsub_with_gmp(0.00,"is_carmichael"); break;
       case 18:_vcallsub_with_gmp(0.00,"is_quasi_carmichael"); break;
-      case 19:_vcallsub_with_gmp(0.36,"is_primitive_root"); break;
-      case 20:_vcallsub_with_gmp(0.42,"is_semiprime"); break;
-      case 21:_vcallsub_with_gmp(0.28,"is_mersenne_prime"); break;
-      case 22:if (items != 3) {
+      case 19:_vcallsub_with_gmp(0.42,"is_semiprime"); break;
+      case 20:_vcallsub_with_gmp(0.28,"is_mersenne_prime"); break;
+      case 21:if (items != 3) {
                 _vcallsub_with_gmp(0.28, "is_power");
               } else {
                 _vcallsub_with_pp("is_power");
               }
               break;
-      case 23:(void)_vcallsubn(aTHX_ G_SCALAR, (items == 1) ? (VCALL_GMP|VCALL_PP) : (VCALL_PP), "is_prime_power", items, 40); break;
-      case 24:_vcallsub_with_gmp(0.44,"miller_rabin_random"); break;
-      case 25:_vcallsub_with_gmp(0.00,"logint"); break;
-      case 26:
+      case 22:(void)_vcallsubn(aTHX_ G_SCALAR, (items == 1) ? (VCALL_GMP|VCALL_PP) : (VCALL_PP), "is_prime_power", items, 40); break;
+      case 23:_vcallsub_with_gmp(0.44,"miller_rabin_random"); break;
+      case 24:_vcallsub_with_gmp(0.00,"logint"); break;
+      case 25:
       default:(void)_vcallsubn(aTHX_ G_SCALAR, (items == 2) ? (VCALL_GMP|VCALL_PP) : (VCALL_PP), "rootint", items, 40); break;
     }
     return; /* skip implicit PUTBACK */

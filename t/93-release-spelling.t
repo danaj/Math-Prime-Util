@@ -25,7 +25,18 @@ add_stopwords(qw/bigint bigints
                  benchmarking hardcoded online
                  unoptimized unusably
                  coprime summatory
-                 RiemannR
+                 RiemannR LambertW
+                 srand irand irand64 drand urandomb urandomm
+                 forprimes forcomposites foroddcomposites fordivisors
+                 forpart forcomp forcomb forperm formultiperm
+                 totient moebius mertens liouville kronecker znorder znprimroot znlog
+                 gcd lcm gcdext chinese invmod sqrtmod addmod mulmod powmod divmod
+                 bernfrac bernreal harmfrac harmreal stirling hclassno
+                 vecsum vecprod vecmin vecmax vecreduce vecextract
+                 vecall vecany vecnone vecnotall vecfirst vecfirstidx
+                 sqrtint logint rootint
+                 todigits todigitstring fromdigits sumdigits hammingweight
+                 lucasu lucasv
                  pp/);
 
 all_pod_files_spelling_ok();
