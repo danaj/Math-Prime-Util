@@ -26,6 +26,7 @@ my @random_to = (2, 3, 4, 5, 6, 7, 8, 9, 100, 1000, 1000000, 4294967295);
 my @random_nbit_tests = ( 2 .. 6, 10, 15 .. 17, 28, 32 );
 push @random_nbit_tests, (34) if $use64;
 @random_nbit_tests = (2 .. $maxbits) if $extra;
+push @random_nbit_tests, (75);
 
 my @random_ndigit_tests = (1 .. ($use64 ? 20 : 10));
 
@@ -71,7 +72,7 @@ my %range_edge_empty = (
   "3842610774 to 3842611108" => [],
 );
 
-plan tests => 13+1+1+3+3
+plan tests => 13+1+1+1+1
               + (1 * scalar (keys %range_edge_empty))
               + (3 * scalar (keys %range_edge))
               + (2 * scalar (keys %ranges))
@@ -106,13 +107,13 @@ ok(!eval { random_ndigit_prime(0); }, "random_ndigit_prime(0)");
 ok(!eval { random_nbit_prime(0); }, "random_nbit_prime(0)");
 #ok(!eval { random_nbit_prime(-5); }, "random_nbit_prime(-5)");
 
-ok(!eval { random_maurer_prime(undef); }, "random_maurer_prime(undef)");
+#ok(!eval { random_maurer_prime(undef); }, "random_maurer_prime(undef)");
 ok(!eval { random_maurer_prime(0); }, "random_maurer_prime(0)");
-ok(!eval { random_maurer_prime(-5); }, "random_maurer_prime(-5)");
+#ok(!eval { random_maurer_prime(-5); }, "random_maurer_prime(-5)");
 
-ok(!eval { random_shawe_taylor_prime(undef); }, "random_shawe_taylor_prime(undef)");
+#ok(!eval { random_shawe_taylor_prime(undef); }, "random_shawe_taylor_prime(undef)");
 ok(!eval { random_shawe_taylor_prime(0); }, "random_shawe_taylor_prime(0)");
-ok(!eval { random_shawe_taylor_prime(-5); }, "random_shawe_taylor_prime(-5)");
+#ok(!eval { random_shawe_taylor_prime(-5); }, "random_shawe_taylor_prime(-5)");
 
 while (my($range, $expect) = each (%range_edge_empty)) {
   my($low,$high) = $range =~ /(\d+) to (\d+)/;
@@ -174,9 +175,15 @@ foreach my $bits ( @random_nbit_tests ) {
 
 sub check_bits {
   my($n, $bits, $what) = @_;
-  my $min = 1 << ($bits-1);
-  my $max = ~0 >> ($maxbits - $bits);
-  $max = Math::BigInt->new("$max") if ref($n) eq 'Math::BigInt';
+  my($min,$max);
+  if ($bits <= $maxbits) {
+    $min = 1 << ($bits-1);
+    $max = ~0 >> ($maxbits - $bits);
+    $max = Math::BigInt->new("$max") if ref($n) eq 'Math::BigInt';
+  } else {
+    $min = Math::BigInt->new(2)->bpow($bits-1);
+    $max = Math::BigInt->new(2)->bpow($bits)->bdec;
+  }
   ok ( $n >= $min && $n <= $max && is_prime($n),
        "$bits-bit random $what prime '$n' is in range and prime");
 }

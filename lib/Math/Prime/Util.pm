@@ -415,64 +415,28 @@ sub ramanujan_primes {
 # Random primes.  These are front end functions that do input validation,
 # load the RandomPrimes module, and call its function.
 
-sub random_prime {
-  my($low,$high) = @_;
-  if (scalar @_ > 1) {
-    _validate_num($low) || _validate_positive_integer($low);
-    _validate_num($high) || _validate_positive_integer($high);
-  } else {
-    ($low,$high) = (2, $low);
-    _validate_num($high) || _validate_positive_integer($high);
-  }
-  if ($_Config{'gmp'} >= 42) {
-    require Math::Prime::Util::RandomPrimesGMP;
-    return Math::Prime::Util::RandomPrimesGMP::random_prime($low,$high);
-  }
-  require Math::Prime::Util::RandomPrimes;
-  return Math::Prime::Util::RandomPrimes::random_prime($low,$high);
-}
-
-sub random_maurer_prime {
-  my($bits) = @_;
-  _validate_num($bits, 2) || _validate_positive_integer($bits, 2);
-  if ($_Config{'gmp'} >= 43) {
-    require Math::Prime::Util::RandomPrimesGMP;
-    return Math::Prime::Util::RandomPrimesGMP::random_maurer_prime($bits);
-  }
-  require Math::Prime::Util::RandomPrimes;
-  return Math::Prime::Util::RandomPrimes::random_maurer_prime($bits);
-}
-
 sub random_maurer_prime_with_cert {
   my($bits) = @_;
   _validate_num($bits, 2) || _validate_positive_integer($bits, 2);
-  if ($_Config{'gmp'} >= 43) {
-    require Math::Prime::Util::RandomPrimesGMP;
-    return Math::Prime::Util::RandomPrimesGMP::random_maurer_prime_with_cert($bits);
+
+  if ($Math::Prime::Util::_GMPfunc{"random_maurer_prime_with_cert"}) {
+    my($n,$cert) = Math::Prime::Util::GMP::random_maurer_prime_with_cert($bits);
+    return (Math::Prime::Util::_reftyped($_[0],$n), $cert);
   }
+
   require Math::Prime::Util::RandomPrimes;
   return Math::Prime::Util::RandomPrimes::random_maurer_prime_with_cert($bits);
-}
-
-sub random_shawe_taylor_prime {
-  my($bits) = @_;
-  _validate_num($bits, 2) || _validate_positive_integer($bits, 2);
-  if ($_Config{'gmp'} >= 43) {
-    require Math::Prime::Util::RandomPrimesGMP;
-    return Math::Prime::Util::RandomPrimesGMP::random_shawe_taylor_prime($bits);
-  }
-  require Math::Prime::Util::RandomPrimes;
-  my ($n, $cert) = Math::Prime::Util::RandomPrimes::random_shawe_taylor_prime_with_cert($bits);
-  return $n;
 }
 
 sub random_shawe_taylor_prime_with_cert {
   my($bits) = @_;
   _validate_num($bits, 2) || _validate_positive_integer($bits, 2);
-  if ($_Config{'gmp'} >= 43) {
-    require Math::Prime::Util::RandomPrimesGMP;
-    return Math::Prime::Util::RandomPrimesGMP::random_shawe_taylor_prime_with_cert($bits);
+
+  if ($Math::Prime::Util::_GMPfunc{"random_shawe_taylor_prime_with_cert"}) {
+    my($n,$cert) =Math::Prime::Util::GMP::random_shawe_taylor_prime_with_cert($bits);
+    return (Math::Prime::Util::_reftyped($_[0],$n), $cert);
   }
+
   require Math::Prime::Util::RandomPrimes;
   return Math::Prime::Util::RandomPrimes::random_shawe_taylor_prime_with_cert($bits);
 }
@@ -480,29 +444,15 @@ sub random_shawe_taylor_prime_with_cert {
 sub random_proven_prime_with_cert {
   my($bits) = @_;
   _validate_num($bits, 2) || _validate_positive_integer($bits, 2);
-  if ($_Config{'gmp'} >= 42) {
-    require Math::Prime::Util::RandomPrimesGMP;
-    return Math::Prime::Util::RandomPrimesGMP::random_proven_prime_with_cert($bits);
+
+  # Go to Maurer with GMP
+  if ($Math::Prime::Util::_GMPfunc{"random_maurer_prime_with_cert"}) {
+    my($n,$cert) = Math::Prime::Util::GMP::random_maurer_prime_with_cert($bits);
+    return (Math::Prime::Util::_reftyped($_[0],$n), $cert);
   }
+
   require Math::Prime::Util::RandomPrimes;
   return Math::Prime::Util::RandomPrimes::random_proven_prime_with_cert($bits);
-}
-
-sub miller_rabin_random {
-  my($n, $k, $seed) = @_;
-  _validate_num($n) || _validate_positive_integer($n);
-  _validate_num($k) || _validate_positive_integer($k);
-
-  return 1 if $k <= 0;
-  return (is_prob_prime($n) ? 1 : 0) if $n < 100;
-  return 0 unless $n & 1;
-
-  if ($_Config{'gmp'} >= 42) {
-    require Math::Prime::Util::RandomPrimesGMP;
-    return Math::Prime::Util::RandomPrimesGMP::miller_rabin_random($n, $k, $seed);
-  }
-  require Math::Prime::Util::RandomPrimes;
-  return Math::Prime::Util::RandomPrimes::miller_rabin_random($n, $k, $seed);
 }
 
 

@@ -537,6 +537,29 @@ prime_count(IN SV* svlo, ...)
     }
     return; /* skip implicit PUTBACK */
 
+void random_prime(IN SV* svlo, IN SV* svhi = 0)
+  PREINIT:
+    int lostatus, histatus;
+    UV lo, hi, ret;
+  PPCODE:
+    lostatus = _validate_int(aTHX_ svlo, 0);
+    histatus = (items == 1 || _validate_int(aTHX_ svhi, 0));
+    if (lostatus == 1 && histatus == 1) {
+      if (items == 1) {
+        lo = 2;
+        hi = my_svuv(svlo);
+      } else {
+        lo = my_svuv(svlo);
+        hi = my_svuv(svhi);
+      }
+      ret = random_prime(lo,hi);
+      if (ret) XSRETURN_UV(ret);
+      else     XSRETURN_UNDEF;
+    }
+    _vcallsub_with_gmp(0.44,"random_prime");
+    OBJECTIFY_RESULT(ST(0), ST(0));
+    XSRETURN(1);
+
 UV
 _XS_LMO_pi(IN UV n)
   ALIAS:
@@ -1052,7 +1075,7 @@ is_prime(IN SV* svn, ...)
     is_mersenne_prime = 21
     is_power = 22
     is_prime_power = 23
-    is_pillai = 24
+    miller_rabin_random = 24
     logint = 25
     rootint = 26
   PREINIT:
@@ -1063,8 +1086,8 @@ is_prime(IN SV* svn, ...)
     if (status != 0 && astatus != 0) {
       int ret = 0;
       UV n = my_svuv(svn);
+      UV a = (items == 1 || ix == 23) ? 0 : my_svuv(ST(1));
       if (status == 1 && astatus == 1 && ix < 22) {
-        UV a = (items == 1) ? 0 : my_svuv(ST(1));
         switch (ix) {
           case 0:
           case 1:
@@ -1101,7 +1124,6 @@ is_prime(IN SV* svn, ...)
         }
         if (status != 0 && astatus == 1) RETURN_NPARITY(ret);
       } else if (ix == 22) {
-        UV a = (items == 1) ? 0 : my_svuv(ST(1));
         if (status == -1) {
           IV sn = my_sviv(svn);
           if (sn <= -IV_MAX) status = 0;
@@ -1132,10 +1154,14 @@ is_prime(IN SV* svn, ...)
         }
         if (status != 0) RETURN_NPARITY(ret);
       } else if (ix == 24) {
-        if (status != 0)
-          RETURN_NPARITY( (status == 1) ? pillai_v(n) : 0);
+        if (status != 1) status = _validate_int(aTHX_ svn, 0);
+        if (astatus != 1) astatus = _validate_int(aTHX_ ST(1), 0);
+        /* Fall through if they supplied a seed */
+        if (items <= 2 && astatus == 1) {
+          RETURN_NPARITY( is_mr_random(n, a) );
+        }
       } else if (ix == 25) {
-        UV e, a = (items == 1) ? 0 : my_svuv(ST(1));
+        UV e;
         if (status != 1 || n <= 0)   croak("logint: n must be > 0");
         if (items == 1)              croak("logint: missing base");
         if (astatus != 1 || a <= 1)  croak("logint: base must be > 1");
@@ -1146,7 +1172,7 @@ is_prime(IN SV* svn, ...)
         }
         XSRETURN_UV(e);
       } else if (ix == 26) {
-        UV r, a = (items == 1) ? 0 : my_svuv(ST(1));
+        UV r;
         if (items == 1)              croak("rootint: missing exponent");
         if (astatus != 1 || a == 0)  croak("rootint: k must be > 0");
         if (status == -1)            croak("rootint: n must be >= 0");
@@ -1192,7 +1218,7 @@ is_prime(IN SV* svn, ...)
               }
               break;
       case 23:(void)_vcallsubn(aTHX_ G_SCALAR, (items == 1) ? (VCALL_GMP|VCALL_PP) : (VCALL_PP), "is_prime_power", items, 40); break;
-      case 24:_vcallsub_with_gmp(0.00,"is_pillai"); break;
+      case 24:_vcallsub_with_gmp(0.44,"miller_rabin_random"); break;
       case 25:_vcallsub_with_gmp(0.00,"logint"); break;
       case 26:
       default:(void)_vcallsubn(aTHX_ G_SCALAR, (items == 2) ? (VCALL_GMP|VCALL_PP) : (VCALL_PP), "rootint", items, 40); break;
@@ -1295,16 +1321,20 @@ void urandomb(IN UV bits)
   ALIAS:
     random_ndigit_prime = 1
     random_nbit_prime = 2
-    random_proven_prime = 3
-    random_strong_prime = 4
+    random_shawe_taylor_prime = 3
+    random_maurer_prime = 4
+    random_proven_prime = 5
+    random_strong_prime = 6
   PREINIT:
     UV res, minarg;
   PPCODE:
     switch (ix) {
       case 1:  minarg =   1; break;
       case 2:
-      case 3:  minarg =   2; break;
-      case 4:  minarg = 128; break;
+      case 3:
+      case 4:
+      case 5:  minarg =   2; break;
+      case 6:  minarg = 128; break;
       default: minarg =   0; break;
     }
     if (minarg > 0 && bits < minarg)
@@ -1316,6 +1346,8 @@ void urandomb(IN UV bits)
         case 2:
         case 3:
         case 4:
+        case 5:
+        case 6:
         default: res = random_nbit_prime(bits); break;
       }
       if (res || ix == 0) XSRETURN_UV(res);
@@ -1324,8 +1356,10 @@ void urandomb(IN UV bits)
       case 0:  _vcallsub_with_gmp(0.43,"urandomb"); break;
       case 1:  _vcallsub_with_gmp(0.42,"random_ndigit_prime"); break;
       case 2:  _vcallsub_with_gmp(0.42,"random_nbit_prime"); break;
-      case 3:  _vcallsub_with_gmp(0.43,"random_maurer_prime"); break;
+      case 3:  _vcallsub_with_gmp(0.43,"random_shawe_taylor_prime"); break;
       case 4:
+      case 5:  _vcallsub_with_gmp(0.43,"random_maurer_prime"); break;
+      case 6:
       default: _vcallsub_with_gmp(0.43,"random_strong_prime"); break;
     }
     OBJECTIFY_RESULT(ST(0), ST(0));
@@ -1822,7 +1856,8 @@ carmichael_lambda(IN SV* svn)
     znprimroot = 8
     hammingweight = 9
     hclassno = 10
-    ramanujan_tau = 11
+    is_pillai = 11
+    ramanujan_tau = 12
   PREINIT:
     int status;
   PPCODE:
@@ -1850,7 +1885,8 @@ carmichael_lambda(IN SV* svn)
         case 9:  if (status == -1) n = -(IV)n;
                  XSRETURN_UV(mpu_popcount(n));  break;
         case 10: XSRETURN_IV( (status == -1) ? 0 : hclassno(n) ); break;
-        case 11:
+        case 11: RETURN_NPARITY( (status == -1) ? 0 : pillai_v(n) ); break;
+        case 12:
         default: { IV tau = (status == 1) ? ramanujan_tau(n) : 0;
                    if (tau != 0 || status == -1 || n == 0)
                      XSRETURN_IV(tau);
@@ -1870,9 +1906,10 @@ carmichael_lambda(IN SV* svn)
       case 8:  _vcallsub_with_gmp(0.22,"znprimroot"); break;
       case 9:  { char* ptr;  STRLEN len;  ptr = SvPV(svn, len);
                  XSRETURN_UV(mpu_popcount_string(ptr, len)); } break;
-      case 10:  _vcallsub_with_pp("hclassno"); break;
-      case 11:
-      default:_vcallsub_with_pp("ramanujan_tau"); break;
+      case 10: _vcallsub_with_pp("hclassno"); break;
+      case 11: _vcallsub_with_gmp(0.00,"is_pillai"); break;
+      case 12:
+      default: _vcallsub_with_pp("ramanujan_tau"); break;
     }
     return; /* skip implicit PUTBACK */
 

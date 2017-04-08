@@ -925,30 +925,6 @@ sub random_proven_prime_with_cert {
   return random_maurer_prime_with_cert($k);
 }
 
-sub miller_rabin_random {
-  my($n, $k, $seed) = @_;
-
-  # Testing this many bases is silly, but let's pretend they have some
-  # good reason.  A composite n > 9 must have at least n/4 witnesses,
-  # hence we need to check only floor(3/4)+1 at most.  We could improve
-  # this if $_Config{'assume_rh'} is true, to 1 .. 2(logn)^2.
-  if ($k >= int(3*$n/4)) {
-    return is_strong_pseudoprime($n, 2 .. int(3*$n/4)+1+2 );
-  }
-
-  my $brange = $n-2;
-  # Do one first before doing batches
-  return 0 unless is_strong_pseudoprime($n, urandomm($brange)+2 );
-  $k--;
-  while ($k > 0) {
-    my $nbases = ($k >= 20) ? 20 : $k;
-    my @bases = map { urandomm($brange)+2 } 1..$nbases;
-    return 0 unless is_strong_pseudoprime($n, @bases);
-    $k -= $nbases;
-  }
-  1;
-}
-
 1;
 
 __END__
@@ -1029,14 +1005,6 @@ be at least 2.
 Generate or construct a random provable prime of C<n> bits.  C<n> must
 be at least 2.  Returns a list of two items: the prime and the certificate.
 
-
-=head1 RANDOM PRIMALITY FUNCTIONS
-
-=head2 miller_rabin_random
-
-Given a number C<n> and a number of tests to perform C<k>, this does C<k>
-Miller-Rabin tests on C<n> using randomly selected bases.  The return value
-is 1 if all bases are a witness to to C<n>, or 0 if any of them fail.
 
 =head1 SEE ALSO
 

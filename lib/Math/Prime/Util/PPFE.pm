@@ -45,10 +45,14 @@ use Carp qw/carp croak confess/;
 *is_quasi_carmichael = \&Math::Prime::Util::PP::is_quasi_carmichael;
 *is_pillai = \&Math::Prime::Util::PP::is_pillai;
 
+*random_prime = \&Math::Prime::Util::PP::random_prime;
 *random_ndigit_prime = \&Math::Prime::Util::PP::random_ndigit_prime;
 *random_nbit_prime = \&Math::Prime::Util::PP::random_nbit_prime;
-*random_proven_prime = \&Math::Prime::Util::PP::random_proven_prime;
+*random_proven_prime = \&Math::Prime::Util::PP::random_maurer_prime; # redir
 *random_strong_prime = \&Math::Prime::Util::PP::random_strong_prime;
+*random_maurer_prime = \&Math::Prime::Util::PP::random_maurer_prime;
+*random_shawe_taylor_prime =\&Math::Prime::Util::PP::random_shawe_taylor_prime;
+*miller_rabin_random = \&Math::Prime::Util::PP::miller_rabin_random;
 
 sub moebius {
   if (scalar @_ <= 1) {

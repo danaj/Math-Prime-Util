@@ -6107,6 +6107,19 @@ sub urandomm {
   return $r % $n;
 }
 
+sub random_prime {
+  my($low, $high) = @_;
+  if (scalar(@_) == 1) { ($low,$high) = (2,$low);          }
+  else                 { _validate_positive_integer($low); }
+  _validate_positive_integer($high);
+
+  return Math::Prime::Util::_reftyped($_[0], Math::Prime::Util::GMP::random_prime($low, $high))
+    if $Math::Prime::Util::_GMPfunc{"random_prime"};
+
+  require Math::Prime::Util::RandomPrimes;
+  return Math::Prime::Util::RandomPrimes::random_prime($low,$high);
+}
+
 sub random_ndigit_prime {
   my($digits) = @_;
   _validate_positive_integer($digits, 1);
@@ -6131,21 +6144,64 @@ sub random_strong_prime {
   require Math::Prime::Util::RandomPrimes;
   return Math::Prime::Util::RandomPrimes::random_strong_prime($bits);
 }
-sub random_proven_prime {
+
+sub random_maurer_prime {
   my($bits) = @_;
   _validate_positive_integer($bits, 2);
+
   return Math::Prime::Util::_reftyped($_[0], Math::Prime::Util::GMP::random_maurer_prime($bits))
     if $Math::Prime::Util::_GMPfunc{"random_maurer_prime"};
-  if ($Math::Prime::Util::_GMPfunc{"random_nbit_prime"} && $Math::Prime::Util::_GMPfunc{"is_provable_prime"}) {
-    my $n = Math::Prime::Util::GMP::random_nbit_prime($bits);
-    croak "${bits}-bit prime could not be proven"
-      unless Math::Prime::Util::GMP::is_provable_prime($n);
-    return Math::Prime::Util::_reftyped($_[0], $n);
-  }
+
   require Math::Prime::Util::RandomPrimes;
-  return Math::Prime::Util::RandomPrimes::random_proven_prime($bits);
+  my ($n, $cert) = Math::Prime::Util::RandomPrimes::random_maurer_prime_with_cert($bits);
+  croak "maurer prime $n failed certificate verification!"
+        unless Math::Prime::Util::verify_prime($cert);
+
+  return $n;
 }
 
+sub random_shawe_taylor_prime {
+  my($bits) = @_;
+  _validate_positive_integer($bits, 2);
+
+  return Math::Prime::Util::_reftyped($_[0], Math::Prime::Util::GMP::random_shawe_taylor_prime($bits))
+    if $Math::Prime::Util::_GMPfunc{"random_shawe_taylor_prime"};
+
+  require Math::Prime::Util::RandomPrimes;
+  my ($n, $cert) = Math::Prime::Util::RandomPrimes::random_shawe_taylor_prime_with_cert($bits);
+  croak "shawe-taylor prime $n failed certificate verification!"
+        unless Math::Prime::Util::verify_prime($cert);
+
+  return $n;
+}
+
+sub miller_rabin_random {
+  my($n, $k, $seed) = @_;
+  _validate_positive_integer($n);
+  if (scalar(@_) == 1 ) { $k = 1; } else { _validate_positive_integer($k); }
+
+  return 1 if $k <= 0;
+
+  return Math::Prime::Util::_reftyped($_[0], Math::Prime::Util::GMP::miller_rabin_random(@_))
+    if $Math::Prime::Util::_GMPfunc{"miller_rabin_random"};
+
+  # Math::Prime::Util::prime_get_config()->{'assume_rh'})  ==>  2*log(n)^2
+  if ($k >= int(3*$n/4) ) {
+    for (2 .. int(3*$n/4)+2) {
+      return 0 unless Math::Prime::Util::is_strong_pseudoprime($n, $_);
+    }
+    return 1;
+  }
+  my $brange = $n-2;
+  return 0 unless Math::Prime::Util::is_strong_pseudoprime($n, Math::Prime::Util::urandomm($brange)+2 );
+  $k--;
+  while ($k > 0) {
+    my $nbases = ($k >= 20) ? 20 : $k;
+    return 0 unless is_strong_pseudoprime($n, map { urandomm($brange)+2 } 1 .. $nbases);
+    $k -= $nbases;
+  }
+  1;
+}
 
 1;
 
