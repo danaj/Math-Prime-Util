@@ -104,33 +104,32 @@ sub _make_big_gcds {
 # If Math::Prime::Util::GMP is installed, these functions will be many times
 # faster than other methods (e.g. Math::Pari monte-carlo or Crypt::Primes).
 #
-# Timings on x86_64, with Math::BigInt::GMP and Math::Random::ISAAC::XS.
+# Timings on Macbook.
+# The "with GMP" numbers use Math::Prime::Util::GMP 0.44.
+# The "no GMP" numbers are with no Math::BigInt backend, so very slow in comparison.
+# If another backend was used (GMP, Pari, LTM) it would be more comparable.
 #
 #                   random_nbit_prime         random_maurer_prime
 #    n-bits       no GMP   w/ MPU::GMP        no GMP   w/ MPU::GMP
 #    ----------  --------  -----------       --------  -----------
-#       24-bit       22uS      same             same       same
-#       64-bit       94uS      same             same       same
-#      128-bit     0.017s      0.0020s         0.098s      0.056s
-#      256-bit     0.033s      0.0033s         0.25s       0.15s
-#      512-bit     0.066s      0.0093s         0.65s       0.30s
-#     1024-bit     0.16s       0.060s          1.3s        0.94s
-#     2048-bit     0.83s       0.5s            3.2s        3.1s
-#     4096-bit     6.6s        4.0s           23s         12.0s
-#
-# Writing these entirely in GMP has a problem, which is that we want to use
-# a user-supplied rand function, which means a lot of callbacks.  One
-# possibility is to, if they do not supply a rand function, use the GMP MT
-# function with an appropriate seed.
+#       24-bit        1uS      same             same       same
+#       64-bit        5uS      same             same       same
+#      128-bit     0.12s          70uS         0.29s         166uS
+#      256-bit     0.66s         379uS         1.82s         800uS
+#      512-bit     7.8s        0.0022s        16.2s        0.0044s
+#     1024-bit    ----         0.019s        ----          0.037s
+#     2048-bit    ----         0.23s         ----          0.35s
+#     4096-bit    ----         2.4s          ----          5.2s
 #
 # Random timings for 10M calls on i4770K:
 #    0.39   Math::Random::MTwist 0.13
+#    0.41   ntheory                                      <==== us
 #    0.89   system rand
 #    1.76   Math::Random::MT::Auto
-#    5.35   Bytes::Random::Secure OO       w/ISAAC::XS     <==== our
+#    5.35   Bytes::Random::Secure OO       w/ISAAC::XS
 #    7.43   Math::Random::Secure           w/ISAAC::XS
 #   12.40   Math::Random::Secure
-#   12.78   Bytes::Random::Secure OO                       <==== default
+#   12.78   Bytes::Random::Secure OO
 #   13.86   Bytes::Random::Secure function w/ISAAC::XS
 #   21.95   Bytes::Random::Secure function
 #  822.1    Crypt::Random

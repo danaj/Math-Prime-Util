@@ -142,12 +142,21 @@ x urandomm: call GMP from Perl or objectify in XS
 x random primes in XS
 x remove RandomPrimesGMP
 x doc in RNG.pm
+x re-validation of PP RandomPrimes with new rand functions
+x Make sure the PP ISAAC matches the XS one (32-bit, big-endian)
+x measure performance, add comments to docs
 
-- measure performance, add comments to docs
-- re-validation of PP RandomPrimes with new rand functions
 - file RT with Math::Random::Secure about 32-bit doubles
-- Make sure the PP ISAAC matches the XS one, on 32-bit (check) and big endian
+- get info on different drands.  TestU01, 45-bit look, cycles, etc.
+
 - move util funcs out of isaac.c in prep for chacha20.c
+- make util functions choose isaac or chacha
+- add chacha20
+- compare
+- write Perl verson of chacha20
+- use it, ideally keeping both around in a sane way.
+- compare Perl and C
+- publish to ianix
 
 - A mechanism for reseeding with good entropy would be nice.
 
