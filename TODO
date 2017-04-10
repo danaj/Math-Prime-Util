@@ -160,7 +160,9 @@ x A mechanism for reseeding with good entropy would be nice.
 - write new version of chacha core
 - use endian macros in chacha.c for irand etc.  We can trim a lot.
 - more performance.  Include random primes speed diffs for ISAAC vs chacha
+  For C:  5-20% slower.  For Perl:  0-100% slower.
 - redo random tests that rely on state
+- QR test 2.2.1 fail?
 
 
 - Decide whether to fully add these functions:

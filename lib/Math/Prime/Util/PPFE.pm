@@ -34,9 +34,9 @@ if (0) {
 }
 
 sub drand {
-  my $m = shift;
   my $d = (irand64() / (~0 + 1.0));
-  return $m ? $d*$m : $d;
+  $d *= $_[0] if $_[0];
+  $d;
 }
 *rand = \&drand;
 *urandomb = \&Math::Prime::Util::PP::urandomb;

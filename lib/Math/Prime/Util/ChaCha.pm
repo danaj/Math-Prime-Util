@@ -30,7 +30,7 @@ sub _test_qr {
   return unless ROUNDS == 20;
   my($a,$b,$c,$d) = _quarterround(0x11111111,0x01020304,0x9b8d6f43,0x01234567);
   #printf "  %08x  %08x  %08x  %08x\n", $a,$b,$c,$d;
-  croak "QR test 2.1.1 fail" unless $a == 0xea2a92f4 && $b == 0xcb1cf8ce && $c == 0x4581472e && $d == 0x5881c4bb;
+  die "QR test 2.1.1 fail 1" unless $a == 0xea2a92f4 && $b == 0xcb1cf8ce && $c == 0x4581472e && $d == 0x5881c4bb;
 
   my @x = map { hex } (qw/879531e0  c5ecf37d  516461b1  c9a62f8a
                           44c20ef3  3390af7f  d9fc690b  2a5f714c
@@ -41,7 +41,7 @@ sub _test_qr {
   @x[ 2, 7, 8,13] = _quarterround(@x[ 2, 7, 8,13]);
   #printf "  %08x  %08x  %08x  %08x\n  %08x  %08x  %08x  %08x\n  %08x  %08x  %08x  %08x\n  %08x  %08x  %08x  %08x\n", @x;
   for (0..15) {
-    croak "QR test 2.2.1 fail" unless $x[$_] == $e[$_];
+    die "QR test 2.2.1 fail 2 at $_" unless $x[$_] == $e[$_];
   }
 }
 _test_qr;
@@ -121,12 +121,12 @@ sub _test_core {
     #my $counter = 1;
     #my @state = (@c, @key, $counter, @nonce);
   my $instr = join("",map { sprintf("%08x",$_) } @state);
-  croak "Block function fail test 2.3.2" unless $instr eq '617078653320646e79622d326b20657403020100070605040b0a09080f0e0d0c13121110171615141b1a19181f1e1d1c00000001090000004a00000000000000';
+  die "Block function fail test 2.3.2 input" unless $instr eq '617078653320646e79622d326b20657403020100070605040b0a09080f0e0d0c13121110171615141b1a19181f1e1d1c00000001090000004a00000000000000';
   @state = _core(@state);
   my $outstr = join("",map { sprintf("%08x",$_) } @state);
   #printf "  %08x  %08x  %08x  %08x\n  %08x  %08x  %08x  %08x\n  %08x  %08x  %08x  %08x\n  %08x  %08x  %08x  %08x\n", @state;
   #print "outstr: $outstr\n";
-  croak "Block function fail test 2.3.2" unless $outstr eq 'e4e7f11015593bd11fdd0f50c47120a3c7f4d1c70368c0339aaa22044e6cd4c3466482d209aa9f0705d7c214a2028bd9d19c12b5b94e16dee883d0cb4e3c50a2';
+  die "Block function fail test 2.3.2 output" unless $outstr eq 'e4e7f11015593bd11fdd0f50c47120a3c7f4d1c70368c0339aaa22044e6cd4c3466482d209aa9f0705d7c214a2028bd9d19c12b5b94e16dee883d0cb4e3c50a2';
 }
 _test_core();
 
@@ -151,15 +151,15 @@ sub _test_keystream {
   my $init_state = '617078653320646e79622d326b20657403020100070605040b0a09080f0e0d0c13121110171615141b1a19181f1e1d1c00000001000000004a00000000000000';
   my @state = map { hex } unpack "(a8)*", $init_state;
   my $instr = join("",map { sprintf("%08x",$_) } @state);
-  croak "Block function fail test 2.4.2" unless $instr eq '617078653320646e79622d326b20657403020100070605040b0a09080f0e0d0c13121110171615141b1a19181f1e1d1c00000001000000004a00000000000000';
+  croak "Block function fail test 2.4.2 input" unless $instr eq '617078653320646e79622d326b20657403020100070605040b0a09080f0e0d0c13121110171615141b1a19181f1e1d1c00000001000000004a00000000000000';
   my $keystream = _keystream(114, \@state);
   # Verify new state
   my $outstr = join("",map { sprintf("%08x",$_) } @state);
   #print "outstr: $outstr\n";
-  croak "Block function fail test 2.4.2" unless $outstr eq '617078653320646e79622d326b20657403020100070605040b0a09080f0e0d0c13121110171615141b1a19181f1e1d1c00000003000000004a00000000000000';
+  croak "Block function fail test 2.4.2 output" unless $outstr eq '617078653320646e79622d326b20657403020100070605040b0a09080f0e0d0c13121110171615141b1a19181f1e1d1c00000003000000004a00000000000000';
   # Rather tediaus way of doing it, but very explicit
   my $ksstr = join("",map { sprintf("%02x",$_) } map { ord } split(//,$keystream));
-  croak "Block function fail test 2.4.2" unless substr($ksstr,0,2*114) eq '224f51f3401bd9e12fde276fb8631ded8c131f823d2c06e27e4fcaec9ef3cf788a3b0aa372600a92b57974cded2b9334794cba40c63e34cdea212c4cf07d41b769a6749f3f630f4122cafe28ec4dc47e26d4346d70b98c73f3e9c53ac40c5945398b6eda1a832c89c167eacd901d7e2bf363';
+  croak "Block function fail test 2.4.2 keystream" unless substr($ksstr,0,2*114) eq '224f51f3401bd9e12fde276fb8631ded8c131f823d2c06e27e4fcaec9ef3cf788a3b0aa372600a92b57974cded2b9334794cba40c63e34cdea212c4cf07d41b769a6749f3f630f4122cafe28ec4dc47e26d4346d70b98c73f3e9c53ac40c5945398b6eda1a832c89c167eacd901d7e2bf363';
 }
 _test_keystream();
 
@@ -226,7 +226,8 @@ sub random_bytes {
     $_have = length($_stream);
   }
   $_have -= $bytes;
-  return substr($_stream, $_sptr += $bytes, $bytes);
+  $_sptr += $bytes;
+  return substr($_stream, $_sptr-$bytes, $bytes);
 }
 
 1;
