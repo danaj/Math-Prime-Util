@@ -16,7 +16,8 @@ Revision history for Perl module Math::Prime::Util
     - urandomb(n)              Returns uniform random integer less than 2^n
     - urandomm(n)              Returns uniform random integer in [0, n-1]
     - random_bytes(nbytes)     Return a string of CSPRNG bytes
-    - seed_csprng(data)        Seed the internal CSPRNG
+    - csrand(data)             Seed the CSPRNG
+    - srand([UV])              Insecure seed for the CSPRNG (not exported)
 
     - :rand                    Exports srand, rand, irand, irand64
 
@@ -43,7 +44,7 @@ Revision history for Perl module Math::Prime::Util
 
     - We do random seeding ourselves now, so remove dependency.
 
-    - random_nbit_prime and random_ndigit_prime moved to XS, 3-10x faster.
+    - random primes moved to XS / GMP, 3-10x faster.
 
 
 0.61 2017-03-12

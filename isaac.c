@@ -7,14 +7,8 @@
 #include <stddef.h>
 #include <string.h>
 #include "ptypes.h"
-#include "threadlock.h"
 #include "isaac.h"
 
-static int mutex_init = 0;
-static int good_seed = 0;
-MUTEX_DECL(state);
-
-/*****************************************************************************/
 
 static uint32_t randrsl[256];
 static uint32_t randcnt;
@@ -94,44 +88,20 @@ static void randinit(void) {
 
 /*****************************************************************************/
 
-static void memtile(unsigned char* src, UV from, UV to) {
-  while (from < to) {
-    UV bytes = (2*from > to) ? to-from : from;
-    memcpy(src+from, src, bytes);
-    from += bytes;
-  }
-}
-
 void isaac_seed(uint32_t bytes, const unsigned char* data)
 {
-  if (!mutex_init) {
-    MUTEX_INIT(&state_mutex);
-    mutex_init = 1;
-  }
-  MUTEX_LOCK(&state_mutex);
   memset(mm, 0, 4*256);
   memset(randrsl, 0, 4*256);
   if (bytes > 0 && data != 0) {
     unsigned char* rdata = (unsigned char*) randrsl;
     if (bytes > 1024) bytes = 1024;
     memcpy(rdata, data, bytes);
-    /* Tile short seeds as recommended by Bob Jenkins. */
-    memtile(rdata, bytes, 1024);
   }
   randinit();
-  good_seed = (bytes >= 16);
-  MUTEX_UNLOCK(&state_mutex);
 }
-int isaac_well_seeded(void) { return good_seed; }
-
-/*****************************************************************************/
-
-/* Unfortunately the mutexes are very expensive, even with only one thread */
 
 void isaac_rand_bytes(uint32_t bytes, unsigned char* data)
 {
-  if (!mutex_init) croak("ISAAC used before init");
-  MUTEX_LOCK(&state_mutex);
   if ( 4*(256-randcnt) >= bytes) {
     /* We have enough data, just copy it and leave */
     memcpy(data, (unsigned char*) (randrsl+randcnt), bytes);
@@ -150,104 +120,20 @@ void isaac_rand_bytes(uint32_t bytes, unsigned char* data)
       bytes -= n_copy_bytes;
     }
   }
-  MUTEX_UNLOCK(&state_mutex);
 }
 
-uint32_t irand32(void)
+uint32_t isaac_irand32(void)
 {
-#ifdef USE_ITHREADS
-  uint32_t d;
-  isaac_rand_bytes(4, (unsigned char*)&d);
-  return d;
-#else
-  if (randcnt > 255)
-    isaac();
+  uint32_t a;
+  if (randcnt > 255) isaac();
   return randrsl[randcnt++];
-#endif
 }
-UV irand64(void)
+UV isaac_irand64(void)
 {
-#if BITS_PER_WORD == 64
-  UV d;
-  isaac_rand_bytes(8, (unsigned char*)&d);
-  return d;
-#else
-  croak("irand64 too many bits for UV");
-#endif
-}
-
-static NV _tonv_32 = -1.0;
-static NV _tonv_64 = -1.0;
-NV drand64(void)
-{
-  if (_tonv_32 < 0 && mutex_init) {
-    MUTEX_LOCK(&state_mutex);
-    if (_tonv_32 < 0) {
-      int i;
-      NV t64, t32;
-      for (t32 = 1.0, i = 0; i < 32; i++)
-        t32 /= 2.0;
-      for (t64 = t32, i = 0; i < 32; i++)
-        t64 /= 2.0;
-      _tonv_64 = t64;
-      _tonv_32 = t32;
-    }
-    MUTEX_UNLOCK(&state_mutex);
-  }
-#if BITS_PER_WORD == 64
-  return irand64() * _tonv_64;
-#else
-  return irand32() * _tonv_64 + irand32() * _tonv_32;
-#endif
-}
-
-/*****************************************************************************/
-
-/* Return rand 32-bit integer between 0 to n-1 inclusive */
-uint32_t isaac_rand(uint32_t n)
-{
-  uint32_t r, rmax;
-  if (n <= 1) return 0;
-  if ((n & (n-1)) == 0) return (irand32() % n);
-  rmax = (4294967295U / n) * n;
-  do {
-    r = irand32();
-  } while (r >= rmax);
-  return r % n;
-}
-
-UV isaac_rand64(UV n)
-{
-  if (n <= 1) return 0;
-  if (n <= 4294967295U) {
-    uint32_t r, rmax;
-    if ((n & (n-1)) == 0) return (irand32() % n);
-    rmax = (4294967295U / n) * n;
-    do {
-      r = irand32();
-    } while (r >= rmax);
-    return r % n;
-  } else {
-    UV r, rmax;
-    if ((n & (n-1)) == 0) return (irand64() % n);
-    rmax = (UV_MAX / n) * n;
-    do {
-      r = irand64();
-    } while (r >= rmax);
-    return r % n;
-  }
-}
-
-UV irandb(int nbits)
-{
-  if (nbits == 0) {
-    return 0;
-  } else if (nbits <= 32) {
-    return irand32() >> (32-nbits);
-#if BITS_PER_WORD == 64
-  } else if (nbits <= 64) {
-    return irand64() >> (64-nbits);
-#endif
-  }
-  croak("irand64 too many bits for UV");
+  uint32_t a, b;
+  if (randcnt > 255) isaac();
+  a = randrsl[randcnt++];
+  if (randcnt > 255) isaac();
+  b = randrsl[randcnt++];
+  return (((UV)b) << 32) | a;
 }

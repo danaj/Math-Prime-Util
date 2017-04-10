@@ -145,20 +145,23 @@ x doc in RNG.pm
 x re-validation of PP RandomPrimes with new rand functions
 x Make sure the PP ISAAC matches the XS one (32-bit, big-endian)
 x measure performance, add comments to docs
+x add chacha20
+x move util funcs out of isaac.c in prep for chacha20.c
+x write Perl verson of chacha20
+x A mechanism for reseeding with good entropy would be nice.
 
 - file RT with Math::Random::Secure about 32-bit doubles
-- get info on different drands.  TestU01, 45-bit look, cycles, etc.
+  looks like a lot of modules do this.  Ouch.
+- get info on different drands.  TestU01, 45-bit look, cycles, x-y plots, etc.
 
-- move util funcs out of isaac.c in prep for chacha20.c
-- make util functions choose isaac or chacha
-- add chacha20
-- compare
-- write Perl verson of chacha20
-- use it, ideally keeping both around in a sane way.
-- compare Perl and C
-- publish to ianix
+- doc new csrand function and behavior
+- compare chacha20 Perl and C
+- publish info about Perl chacha20 (ianix, blog?).
+- write new version of chacha core
+- use endian macros in chacha.c for irand etc.  We can trim a lot.
+- more performance.  Include random primes speed diffs for ISAAC vs chacha
+- redo random tests that rely on state
 
-- A mechanism for reseeding with good entropy would be nice.
 
 - Decide whether to fully add these functions:
   nth_ramanujan_prime_upper

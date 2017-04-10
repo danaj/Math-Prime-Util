@@ -28,8 +28,13 @@
 #include "aks.h"
 #include "constants.h"
 #include "mulmod.h"
-#include "isaac.h"
+#include "csprng.h"
 #include "random_prime.h"
+
+#undef BENCH_CSPRNG
+#ifdef BENCH_CSPRNG
+ #include <sys/time.h>
+#endif
 
 #if BITS_PER_WORD == 64
   #if defined(_MSC_VER)
@@ -369,27 +374,39 @@ PPCODE:
   return; /* skip implicit PUTBACK, returning @_ to caller, more efficient*/
 
 
-void seed_csprng(IN SV* seed)
+void _csrand(IN SV* seed)
   PREINIT:
     unsigned char* data;
     STRLEN size;
   PPCODE:
     data = (unsigned char*) SvPV(seed, size);
-    isaac_seed(size, data);
+    csprng_seed(size, data);
+#ifdef BENCH_CSPRNG
+    {
+      struct timeval t0, t1;
+      unsigned char buf[32768];
+      int i, loop = 100000;
+      double usec, usec_per_byte;
+      gettimeofday(&t0, 0);
+      for (i = 0; i < loop; i++)
+        csprng_rand_bytes(32768, buf);
+      gettimeofday(&t1, 0);
+      usec = (t1.tv_sec-t0.tv_sec) * 1000000.0 + (t1.tv_usec - t0.tv_usec);
+      usec_per_byte = usec / (32768*100000.0);
+      printf("CSPRNG runs at %.3lf ns/word\n", 4 * usec_per_byte * 1000.0);
+    }
+#endif
 
-UV srand(IN UV seedval = 0)
+UV _srand(IN UV seedval = 0)
   PREINIT:
     unsigned char data[8];
+    UV i, s;
   CODE:
-    if (items == 0)
-      seedval = Perl_seed(aTHX);  /* Get a 32-bit seed using Perl's hacky function */
-    /* Go to some effort for consistency */
-    memset(data,0,8);
-#if BITS_PER_WORD > 32
-    *((uint32_t*)(data+0)) = (seedval >> 32) & 0xFFFFFFFFU;
-#endif
-    *((uint32_t*)(data+4)) = (seedval >>  0) & 0xFFFFFFFFU;
-    isaac_seed(8, data);
+    if (items == 0) {
+      /* Use Perl's function to get a pretty random 32-bit value */
+      seedval = Perl_seed(aTHX);
+    }
+    csprng_srand(seedval);
     RETVAL = seedval;
   OUTPUT:
     RETVAL
@@ -398,10 +415,13 @@ UV irand()
   ALIAS:
     irand64 = 1
   CODE:
+    if (ix == 0)
+      RETVAL = irand32();
+    else
 #if BITS_PER_WORD >= 64
-    RETVAL = (ix == 0)  ?  irand32()  :  irand64();
-#else
-    RETVAL = irand32();
+      RETVAL = irand64();
+#else /* TODO: should irand64 on 32-bit perl (1) croak, (2) return 32-bits */
+      RETVAL = irand32();
 #endif
   OUTPUT:
     RETVAL
@@ -423,7 +443,7 @@ SV* random_bytes(IN UV n)
     SvPOK_only(RETVAL);
     SvCUR_set(RETVAL, n);
     sptr = SvPVX(RETVAL);
-    isaac_rand_bytes(n, (unsigned char*)sptr);
+    csprng_rand_bytes(n, (unsigned char*)sptr);
     sptr[n] = '\0';
   OUTPUT:
     RETVAL
@@ -435,7 +455,7 @@ UV _is_csprng_well_seeded()
     _get_prime_cache_size = 3
   CODE:
     switch (ix) {
-      case 0:  RETVAL = isaac_well_seeded(); break;
+      case 0:  RETVAL = is_csprng_well_seeded(); break;
       case 1:  RETVAL = _XS_get_verbose(); break;
       case 2:  RETVAL = _XS_get_callgmp(); break;
       case 3:
@@ -1279,7 +1299,7 @@ next_prime(IN SV* svn)
           case 17:ret = ramanujan_prime_count_lower(n); break;
           case 18:ret = twin_prime_count_approx(n); break;
           case 19:
-          default:ret = isaac_rand64(n); break;
+          default:ret = urandomm64(n); break;
         }
         XSRETURN_UV(ret);
       }
@@ -1338,7 +1358,7 @@ void urandomb(IN UV bits)
       croak("Parameter '%d' must be >= %d", (int)bits, (int)minarg);
     if (bits <= BITS_PER_WORD) {
       switch (ix) {
-        case 0:  res = irandb(bits); break;
+        case 0:  res = urandomb(bits); break;
         case 1:  res = random_ndigit_prime(bits); break;
         case 2:
         case 3:

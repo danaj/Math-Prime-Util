@@ -86,7 +86,7 @@ sub mpu_public_regex {
       ramanujan_tau ramanujan_sum
       binomial factorial stirling znorder znprimroot znlog legendre_phi
       ExponentialIntegral LogarithmicIntegral RiemannZeta RiemannR LambertW Pi
-      irand irand64 drand random_bytes urandomb urandomm seed_csprng
+      irand irand64 drand random_bytes urandomb urandomm csrand
   );
   my $pattern = '^(' . join('|', @funcs) . ')$';
   return qr/$pattern/;

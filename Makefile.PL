@@ -44,7 +44,9 @@ WriteMakefile1(
                     'sieve.o '    .
                     'sieve_cluster.o ' .
                     'util.o '     .
-                    'isaac.o '   .
+                    'csprng.o '   .
+                    'isaac.o '    .
+                    'chacha.o '   .
                     'XS.o',
     LIBS         => ['-lm'],
 

@@ -2,6 +2,13 @@
 use strict;
 use warnings;
 
+BEGIN {
+  unless ($ENV{RELEASE_TESTING}) {
+    require Test::More;
+    Test::More::plan(skip_all => 'these tests are in development');
+  }
+}
+
 use Test::More;
 use Math::Prime::Util qw/:rand/;
 

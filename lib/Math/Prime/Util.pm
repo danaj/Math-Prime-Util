@@ -2,6 +2,7 @@ package Math::Prime::Util;
 use strict;
 use warnings;
 use Carp qw/croak confess carp/;
+use Math::Prime::Util::RNGSeed;
 
 BEGIN {
   $Math::Prime::Util::AUTHORITY = 'cpan:DANAJ';
@@ -61,7 +62,7 @@ our @EXPORT_OK =
       ramanujan_tau ramanujan_sum
       binomial factorial stirling znorder znprimroot znlog legendre_phi
       ExponentialIntegral LogarithmicIntegral RiemannZeta RiemannR LambertW Pi
-      irand irand64 drand random_bytes urandomb urandomm seed_csprng
+      irand irand64 drand random_bytes urandomb urandomm csrand
   );
 our %EXPORT_TAGS = (all  => [ @EXPORT_OK ],
                     rand => [qw/srand rand irand irand64/],
@@ -92,18 +93,29 @@ sub _import_nobigint {
   1;
 }
 
-sub _init_random {
-  my $nbytes = 64;
-  use Math::Prime::Util::RNGSeed;
-  my $seed = Math::Prime::Util::RNGSeed::get_seed($nbytes);
-  if (defined $seed) {
-    seed_csprng($seed);
-    return 1;
+#############################################################################
+
+sub srand {
+  my($seed) = @_;
+  if (!defined $seed) {
+    my $bytes = (~0 == 4294967295) ? 4 : 8;
+    $seed = Math::Prime::Util::RNGSeed::get_seed( $bytes );
+    $seed = unpack(($bytes==4) ? "L" : "Q", $seed) if defined $seed;
   }
-  # Fallback if there is no random device found
-  Math::Prime::Util::srand();
-  0;
+  if (defined $seed) { Math::Prime::Util::_srand($seed);    }
+  else               { $seed = Math::Prime::Util::_srand(); }
+  $seed;
 }
+
+sub csrand {
+  my($seed) = @_;
+  $seed = Math::Prime::Util::RNGSeed::get_seed( 64 ) unless defined $seed;
+  if (defined $seed) { Math::Prime::Util::_csrand($seed); }
+  else               { Math::Prime::Util::_srand();       }
+  1; # Don't return the seed
+}
+
+#############################################################################
 
 
 BEGIN {
@@ -143,7 +155,7 @@ BEGIN {
     *factor_exp    = \&Math::Prime::Util::_generic_factor_exp;
   };
 
-  _init_random();
+  Math::Prime::Util::csrand();
 
   $_Config{'nobigint'} = 0;
   $_Config{'gmp'} = 0;
@@ -306,7 +318,6 @@ sub _validate_positive_integer {
   croak "Parameter '$_[0]' must be <= $max" if defined $max && $_[0] > $max;
   1;
 }
-
 
 #############################################################################
 
@@ -3407,19 +3418,21 @@ The result will be uniformly distributed between C<0> and C<2^b-1> inclusive.
 Given a positive integer C<n>, returns a random unsigned integer less than C<n>.
 The results will be uniformly distributed between C<0> and C<n-1> inclusive.
 
-=head2 seed_csprng
+=head2 csrand
 
 Takes a binary string C<data> as input and seeds the internal CSPRNG.  This is
 not normally needed as system entropy is used as a seed on startup.  For best
 security this should be 16-256 bytes of good entropy.  No more than 1024 bytes
 will be used.
 
+With no argument, reseeds using system entropy, which is preferred.
+
 =head2 srand
 
 Takes a single UV argument and seeds the CSPRNG with it, as well as returning it.
 If no argument is given, a new UV seed is constructed.  Note that this creates a
 very weak seed from a cryptographic standpoint, so it is useful for testing or
-simulations but L<seed_csprng> is recommended, or keep using the system entropy
+simulations but L</csrand> is recommended, or keep using the system entropy
 default seed.
 
 The API is nearly identical to the system function C<srand>.  It uses a UV which

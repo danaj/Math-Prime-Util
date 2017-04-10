@@ -12,7 +12,8 @@ lib/Math/Prime/Util/ECAffinePoint.pm
 lib/Math/Prime/Util/ECProjectivePoint.pm
 lib/Math/Prime/Util/PrimalityProving.pm
 lib/Math/Prime/Util/RandomPrimes.pm
-lib/Math/Prime/Util/RNG.pm
+lib/Math/Prime/Util/ISAAC.pm
+lib/Math/Prime/Util/ChaCha.pm
 lib/Math/Prime/Util/RNGSeed.pm
 LICENSE
 Makefile.PL
@@ -31,8 +32,6 @@ cache.c
 constants.h
 factor.h
 factor.c
-isaac.h
-isaac.c
 lehmer.h
 lehmer.c
 lmo.h
@@ -50,6 +49,13 @@ sieve_cluster.c
 threadlock.h
 util.h
 util.c
+csprng.h
+csprng.c
+isaac.h
+isaac.c
+chacha_private.h
+chacha.h
+chacha.c
 bench/bench-factor.pl
 bench/bench-factor-extra.pl
 bench/bench-factor-semiprime.pl

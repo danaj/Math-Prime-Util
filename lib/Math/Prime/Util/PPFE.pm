@@ -1,7 +1,6 @@
 package Math::Prime::Util::PPFE;
 use strict;
 use warnings;
-use Math::Prime::Util::RNG;
 use Math::Prime::Util::PP;
 
 # The PP front end, only loaded if XS is not used.
@@ -16,14 +15,30 @@ use Carp qw/carp croak confess/;
 *prime_memfree  = \&Math::Prime::Util::PP::prime_memfree;
 *prime_precalc  = \&Math::Prime::Util::PP::prime_precalc;
 
-*_is_csprng_well_seeded = \&Math::Prime::Util::RNG::_is_csprng_well_seeded;
-*seed_csprng = \&Math::Prime::Util::RNG::seed_csprng;
-*srand = \&Math::Prime::Util::RNG::srand;
-*random_bytes = \&Math::Prime::Util::RNG::random_bytes;
-*irand = \&Math::Prime::Util::RNG::irand;
-*irand64 = \&Math::Prime::Util::RNG::irand64;
-*drand = \&Math::Prime::Util::RNG::drand;
-*rand = \&Math::Prime::Util::RNG::drand;
+if (0) {
+  require Math::Prime::Util::ISAAC;
+  *_is_csprng_well_seeded = \&Math::Prime::Util::ISAAC::_is_csprng_well_seeded;
+  *_csrand = \&Math::Prime::Util::ISAAC::seed_csprng;
+  *_srand = \&Math::Prime::Util::ISAAC::srand;
+  *random_bytes = \&Math::Prime::Util::ISAAC::random_bytes;
+  *irand = \&Math::Prime::Util::ISAAC::irand;
+  *irand64 = \&Math::Prime::Util::ISAAC::irand64;
+} else {
+  require Math::Prime::Util::ChaCha;
+  *_is_csprng_well_seeded = \&Math::Prime::Util::ChaCha::_is_csprng_well_seeded;
+  *_csrand = \&Math::Prime::Util::ChaCha::seed_csprng;
+  *_srand = \&Math::Prime::Util::ChaCha::srand;
+  *random_bytes = \&Math::Prime::Util::ChaCha::random_bytes;
+  *irand = \&Math::Prime::Util::ChaCha::irand;
+  *irand64 = \&Math::Prime::Util::ChaCha::irand64;
+}
+
+sub drand {
+  my $m = shift;
+  my $d = (irand64() / (~0 + 1.0));
+  return $m ? $d*$m : $d;
+}
+*rand = \&drand;
 *urandomb = \&Math::Prime::Util::PP::urandomb;
 *urandomm = \&Math::Prime::Util::PP::urandomm;
 

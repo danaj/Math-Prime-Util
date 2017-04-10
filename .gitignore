@@ -12,6 +12,8 @@ sieve.o
 sieve_cluster.o
 util.o
 isaac.o
+chacha.o
+csprng.o
 lehmer.o
 lmo.o
 primality.o
@@ -27,6 +29,8 @@ lmo.obj
 primality.obj
 aks.obj
 isaac.obj
+chacha.obj
+csprng.obj
 sieve_cluster.obj
 random_prime.obj
 *.pdb

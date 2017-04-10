@@ -1,33 +1,32 @@
-package Math::Prime::Util::RNG;
+package Math::Prime::Util::ISAAC;
 use strict;
 use warnings;
 use Carp qw/carp croak confess/;
 
 BEGIN {
-  $Math::Prime::Util::RNG::AUTHORITY = 'cpan:DANAJ';
-  $Math::Prime::Util::RNG::VERSION = '0.61';
+  $Math::Prime::Util::ISAAC::AUTHORITY = 'cpan:DANAJ';
+  $Math::Prime::Util::ISAAC::VERSION = '0.61';
 }
 
-######################################################################################
-# ISAAC
-######################################################################################
+###############################################################################
+#   ISAAC, adapted from Bytes::Random::Secure::Tiny and Math::Random::ISAAC
+###############################################################################
 
-my $_goodseed = 0;
-my @_CTX = (0,[],0,0,0,[]); # (randcnt, randrsl[256], aa, bb, cc, mm[256])
+# TODO: integer, mask, etc.
 
 sub _isaac {
-    use integer;
     my($randcnt, $r, $aa, $bb, $cc, $mm) = @_;
+    use integer;
     $cc = ($cc+1) & 0xFFFFFFFF;
     $bb = ($bb+$cc) & 0xFFFFFFFF;
-    my ($x, $y); # temporary storage
+    my ($x, $y, $i4);
     for my $i (0 .. 255) {
-        my $x = $mm->[$i];
-        my $i4 = $i % 4;
+        $x = $mm->[$i];
+        $i4 = $i % 4;
         if    ($i4 == 0) { $aa = $aa ^ ($aa << 13); }
-        elsif ($i4 == 1) { $aa = $aa ^ ($aa >>  6); }
+        elsif ($i4 == 1) { $aa = $aa ^ (($aa >>  6) & 0x03ffffff); }
         elsif ($i4 == 2) { $aa = $aa ^ ($aa <<  2); }
-        elsif ($i4 == 3) { $aa = $aa ^ ($aa >> 16); }
+        elsif ($i4 == 3) { $aa = $aa ^ (($aa >> 16) & 0x0000ffff); }
         $aa &= 0xFFFFFFFF;
 
         $aa             = ($mm->[($i+128)   & 0xFF] + $aa)       & 0xFFFFFFFF;;
@@ -88,6 +87,11 @@ sub _randinit {
     return @ctx;
 }
 
+###############################################################################
+
+my $_goodseed = 0;
+my @_CTX = (0,[],0,0,0,[]); # (randcnt, randrsl[256], aa, bb, cc, mm[256])
+
 sub _isaac_seed {
   my($seed) = @_;
   $_goodseed = length($seed) >= 16;
@@ -143,22 +147,22 @@ sub random_bytes {
 }
 
 # TODO: Ensure this is right with 32-bit and big endian
-sub irand64 { irand() | (irand() << 32); };
-# TODO: 32-bit and check correctness
-sub drand {
-  my $m = shift;
-  my $d = (irand64() / (~0 + 1.0));
-  $d *= $m if $m;
-  $d;
+#sub irand64 { irand() | (irand() << 32); };
+sub irand64 {
+  if ($_CTX[0] < 254) {
+    my $a = $_CTX[1]->[$_CTX[0]++];
+    my $b = $_CTX[1]->[$_CTX[0]++];
+    return ($a << 32) | $b;
+  }
+  irand() | (irand() << 32);
 }
-#sub drand { irand() / 4294967296.0 }
 
 1;
 
 __END__
 
 
-# ABSTRACT:  Pure Perl CSPRNG
+# ABSTRACT:  Pure Perl ISAAC CSPRNG
 
 =pod
 
@@ -166,7 +170,7 @@ __END__
 
 =head1 NAME
 
-Math::Prime::Util::RNG - Pure Perl CSPRNG
+Math::Prime::Util::ISAAC - Pure Perl ISAAC CSPRNG
 
 
 =head1 VERSION
@@ -178,7 +182,8 @@ Version 0.61
 
 =head1 DESCRIPTION
 
-An alternative pure Perl implementation of a CSPRNG.
+An alternative pure Perl implementation of a CSPRNG.  This is ISAAC, with the
+implementation
 
 =head1 FUNCTIONS
 
@@ -219,6 +224,16 @@ as a single binary string.
 
 Dana Jacobsen E<lt>dana@acm.orgE<gt>
 
+=head1 ACKNOWLEDGEMENTS
+
+Bob Jenkins wrote ISAAC in 1996, which is a seriously fast CSPRNG.
+
+John Allen did the port to Perl in 2000.
+
+Jonathan Yu released L<Math::Random::ISAAC> in 2009 and has maintained it since.
+
+David Oswald trimmed the code substationally for L<Bytes::Random::Secure::Tiny>.
+I built on top of that.
 
 =head1 COPYRIGHT
 
