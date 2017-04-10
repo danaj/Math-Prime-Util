@@ -214,11 +214,15 @@ static const int wheel2xmap[30] =     /* (2*p)%30 => 2,14,22,26,4,8,16,28 */
 
 static const UV max_sieve_prime = (BITS_PER_WORD==64) ? 4294967291U : 65521U;
 
-
-static void memtile(unsigned char* src, UV from, UV to) {
+/* Tile <from> bytes from source to <to> bytes in dest */
+static void memtile(unsigned char* dst, const unsigned char* src, size_t from, size_t to) {
+  if (to < from)
+    from = to;
+  if (dst != src)
+    memcpy(dst, src, from);
   while (from < to) {
-    UV bytes = (2*from > to) ? to-from : from;
-    memcpy(src+from, src, bytes);
+    size_t bytes = (2*from > to) ? to-from : from;
+    memcpy(dst+from, dst, bytes);
     from += bytes;
   }
 }
@@ -239,7 +243,7 @@ static UV sieve_prefill(unsigned char* mem, UV startd, UV endd)
   }
   if (nbytes > 0) {
     memcpy(mem, presieve13, (nbytes < PRESIEVE_SIZE) ? nbytes : PRESIEVE_SIZE);
-    memtile(mem, PRESIEVE_SIZE, nbytes);
+    memtile(mem, mem, PRESIEVE_SIZE, nbytes);
     if (startd == 0) mem[0] = 0x01; /* Correct first byte */
   }
   /* Leaving option open to tile 17 out and sieve, then return 19 */
