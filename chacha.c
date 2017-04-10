@@ -1,6 +1,23 @@
 /*
  * The ChaCha(20) CSPRNG interface.
- * Using OpenBSD version of merged core, and ideas from their arc4random.
+ * New simple core, 10 Apr 2017, Dana Jacobsen
+ */
+
+/* Some benchmarks, repeatedly calling random_bytes(32768).  Time is
+ * shown as nanoseconds per 32-bit word.
+ *
+ * 4639    ns/word  ChaCha20 in Perl
+ *  879    ns/word  ISAAC in Perl
+ *
+ *   16.89 ns/word  ChaCha20 (simple from insane coding)
+ *   11.20 ns/word  ChaCha20 (openbsd)
+ *   10.31 ns/word  ChaCha20 (dj)
+ *    3.26 ns/word  ISAAC
+ *    2.23 ns/word  ChaCha20 (AVX2 Neves)
+ *    1.95 ns/word  PCG64
+ *    1.84 ns/word  ChaCha20 (AVX2 chacha-opt)
+ *    1.48 ns/word  Xoroshiro128+
+ *    1.16 ns/word  SplitMix64
  */
 
 #include <stdio.h>
@@ -11,9 +28,7 @@
 
 #define CHACHA_ROUNDS 20
 #define RUN_INTERNAL_TESTS 0
-#define RESEED_ON_REFILL 1
-
-#if 0  /* My code */
+#define RESEED_ON_REFILL 0
 
 #define STATESZ  16        /* words: 4 constant, 8 key, 2 counter, 2 nonce */
 #define KEYSZ    40        /* bytes of user supplied key+nonce */
@@ -35,6 +50,14 @@ typedef struct {
    ((uint32_t)((p)[1]) <<  8) | \
    ((uint32_t)((p)[2]) << 16) | \
    ((uint32_t)((p)[3]) << 24))
+#endif
+#ifndef U32TO8_LE
+#define U32TO8_LE(p, v) \
+  do { uint32_t _v = v; \
+       (p)[0] = (((_v)      ) & 0xFFU); \
+       (p)[1] = (((_v) >>  8) & 0xFFU); \
+       (p)[2] = (((_v) >> 16) & 0xFFU); \
+       (p)[3] = (((_v) >> 24) & 0xFFU); } while (0)
 #endif
 
 static void init_context(chacha_context_t *ctx, const unsigned char *seed, int init_buffer)
@@ -65,7 +88,7 @@ static void init_context(chacha_context_t *ctx, const unsigned char *seed, int i
 }
 
 static INLINE uint32_t rotl32(uint32_t x, const unsigned int n) {
-  return (x << n) | (x >> (32u - n));
+  return (x << n) | (x >> (-n & 31));
 }
 #define QUARTERROUND(a,b,c,d) \
   a += b;  d = rotl32(d ^ a, 16); \
@@ -94,12 +117,16 @@ static void chacha_core(unsigned char* buf, const chacha_context_t *ctx) {
   for (i = 0; i < 16; i++)
     x[i] += s[i];
 
-  /* TODO: endian */
+#if __LITTLE_ENDIAN__ || (defined(BYTEORDER) && (BYTEORDER == 0x1234 || BYTEORDER == 0x12345678))
+  memcpy(buf, x, 16*sizeof(uint32_t));
+#else
   for (i = 0; i < 16; i++)
-    memcpy(buf+(4*i), x+i, sizeof(uint32_t));
+    U32TO8_LE( buf+4*i, x[i] );
+#endif
 }
 
 static INLINE void increment_chacha_counter(chacha_context_t *ctx) {
+  /* Arguably we should continue this into their nonce */
   if (++ctx->state[12] == 0)
     ctx->state[13]++;
 }
@@ -256,7 +283,8 @@ void chacha_rand_bytes(uint32_t bytes, unsigned char* data)
 {
   while (bytes > 0) {
     uint32_t copybytes;
-    if (_cs.have == 0)  _refill_buffer(&_cs);
+    if (_cs.have == 0)
+      _refill_buffer(&_cs);
     copybytes = (bytes > _cs.have)  ?  _cs.have  :  bytes;
     memcpy(data, _cs.buf + BUFSZ - _cs.have, copybytes);
     data += copybytes;
@@ -287,177 +315,3 @@ UV chacha_irand64(void)
   b = U8TO32_LE(ptr);
   return (((UV)b) << 32) | a;
 }
-
-/*****************************************************************************/
-/*****************************************************************************/
-#else  /* OpenBSD style */
-/*****************************************************************************/
-/*****************************************************************************/
-
-#define KEYSTREAM_ONLY
-#include "chacha_private.h"
-
-#define KEYSZ    32
-#define IVSZ      8
-#define BLOCKSZ  64
-#define RSBUFSZ  (16*BLOCKSZ)
-#define minimum(a,b)  ((a) < (b) ? (a) : (b))
-
-typedef unsigned char u8;
-typedef unsigned int u32;
-
-static struct _rs {
-    size_t        rs_have;            /* valid bytes at end of rs_buf */
-    size_t        rs_count;           /* bytes till reseed */
-} *rs;
-static struct _rsx {
-    chacha_ctx    rs_chacha;          /* chacha context for random keystream */
-    u8            rs_buf[RSBUFSZ];    /* keystream blocks */
-} *rsx;
-static struct {
-    struct _rs  rs;
-    struct _rsx rsx;
-} static_ctx;
-
-/*****************************************************************************/
-
-static inline void _rs_init(const u8 *buf, size_t n)
-{
-  if (n < KEYSZ + IVSZ)
-    croak("ChaCha bad key size: %lu", (unsigned long)n);
-
-  if (rs == NULL) {
-    rs  = &(static_ctx.rs);
-    rsx = &(static_ctx.rsx);
-    rs->rs_have  = 0;
-    rs->rs_count = 0;
-  }
-
-  chacha_keysetup(&rsx->rs_chacha, buf, KEYSZ*8, 0);
-  chacha_ivsetup(&rsx->rs_chacha, buf + KEYSZ);
-}
-
-/* We don't do periodic reseeds with more entropy */
-static inline void _rs_stir(void) { }
-static inline void _rs_stir_if_needed(size_t len) { }
-
-static inline void _rs_rekey(const u8 *dat, size_t datlen)
-{
-#ifndef KEYSTREAM_ONLY
-  memset(rsx->rs_buf, 0, RSBUFSZ);
-#endif
-  /* fill rs_buf with the keystream */
-  chacha_encrypt_bytes(&rsx->rs_chacha, rsx->rs_buf, rsx->rs_buf, RSBUFSZ);
-  /* mix in optional user provided data */
-  if (dat) {
-    size_t i, m = minimum(datlen, KEYSZ + IVSZ);
-    for (i = 0; i < m; i++)
-        rsx->rs_buf[i] ^= dat[i];
-  }
-#if RUN_INTERNAL_TESTS
-  rs->rs_have = RSBUFSZ;
-#else
-  /* immediately reinit for backtracking resistance */
-  _rs_init(rsx->rs_buf, KEYSZ + IVSZ);
-  memset(rsx->rs_buf, 0, KEYSZ + IVSZ);
-  rs->rs_have = RSBUFSZ - KEYSZ - IVSZ;
-#endif
-}
-
-int chacha_selftest(void) { return 1; }
-
-void chacha_seed(uint32_t bytes, const unsigned char* data)
-{
-  _rs_init(data, bytes);
-}
-
-void chacha_rand_bytes(uint32_t bytes, unsigned char* data)
-{
-  u8 *keystream;
-  uint32_t m;
-
-#if RUN_INTERNAL_TESTS
-  {
-    uint32_t i;
-    unsigned char key[40] = {0};
-    //char expout[] = "76b8e0ada0f13d90405d6ae55386bd28bdd219b8a08ded1aa836efcc8b770dc7da41597c5157488d7724e03fb8d84a376a43b8f41518a11cc387b669b2ee6586";
-    char expout[] = "f798a189f195e66982105ffb640bb7757f579da31602fc93ec01ac56f85ac3c134a4547b733b46413042c9440049176905d3be59ea1c53f15916155c2be8241a38008b9a26bc35941e2444177c8ade6689de95264986d95889fb60e84629c9bd9a5acb1cc118be563eb9b3a4a472f82e09a7e778492b562ef7130e88dfe031c79db9d4f7c7a899151b9a475032b63fc385245fe054e3dd5a97a5f576fe064025d3ce042c566ab2c507b138db853e3d6959660996546cc9c4a6eafdc777c040d70eaf46f76dad3979e5c5360c3317166a1c894c94a371876a94df7628fe4eaaf2ccb27d5aaae0ad7ad0f9d4b6ad3b54098746d4524d38407a6deb3ab78fab78c9";
-    for (i = 0; i < 32; i++) key[ 0+i] = i;
-    for (i = 0; i <  8; i++) key[32+i] = i;
-
-    unsigned char kbuf[512];
-    unsigned char* kptr = kbuf;
-    char got[1024+1];
-    uint32_t gen, len = strlen(expout) / 2;
-
-    if (len > 512) croak("Test vector too large");
-    _rs_init(key, KEYSZ + IVSZ);
-
-    //  gen = chacha_keystream(kbuf, len, &ctx);
-    gen = len;
-    while (gen > 0) {
-      if (rs->rs_have > 0) {
-        m = minimum(gen, rs->rs_have);
-        keystream = rsx->rs_buf + RSBUFSZ - rs->rs_have;
-        memcpy(kptr, keystream, m);
-        memset(keystream, 0, m);
-        kptr += m;
-        gen -= m;
-        rs->rs_have -= m;
-      }
-      if (rs->rs_have == 0)
-        _rs_rekey(NULL, 0);
-    }
-
-    for (i = 0; i < len; i++)
-      sprintf(got+2*i,"%02x", kbuf[i]);
-    got[2*len] = '\0';
-    if (memcmp(got, expout, 2*len))
-      croak("fail keystream test vector %u:\n  exp %s\n  got %s\n",0,expout,got);
-    printf("Test vector length %d passed\n",(int)len);
-  }
-#endif
-
-  _rs_stir_if_needed(bytes);
-  while (bytes > 0) {
-    if (rs->rs_have > 0) {
-      m = minimum(bytes, rs->rs_have);
-      keystream = rsx->rs_buf + RSBUFSZ - rs->rs_have;
-      memcpy(data, keystream, m);
-      memset(keystream, 0, m);
-      data += m;
-      bytes -= m;
-      rs->rs_have -= m;
-    }
-    if (rs->rs_have == 0)
-      _rs_rekey(NULL, 0);
-  }
-}
-
-uint32_t chacha_irand32(void)
-{
-  u8 *keystream;
-  uint32_t a;
-  _rs_stir_if_needed(4);
-  if (rs->rs_have < 4)
-    _rs_rekey(NULL, 0);
-  keystream = rsx->rs_buf + RSBUFSZ - rs->rs_have;
-  memcpy(&a, keystream, 4);
-  memset(keystream, 0, 4);
-  rs->rs_have -= 4;
-  return a;
-}
-UV chacha_irand64(void)
-{
-  u8 *keystream;
-  UV a;
-  _rs_stir_if_needed(8);
-  if (rs->rs_have < 8)
-    _rs_rekey(NULL, 0);
-  keystream = rsx->rs_buf + RSBUFSZ - rs->rs_have;
-  memcpy(&a, keystream, 8);
-  memset(keystream, 0, 8);
-  rs->rs_have -= 8;
-  return a;
-}
-#endif

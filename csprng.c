@@ -7,18 +7,17 @@
  * 2051    ns/word  ChaCha8 in Perl
  *  879    ns/word  ISAAC in Perl
  *
- *   11.20 ns/word  ChaCha20
- *   10.42 ns/word  ChaCha20 (dj)
- *    7.58 ns/word  ChaCha12
+ *   11.20 ns/word  ChaCha20 (openbsd)
+ *   10.31 ns/word  ChaCha20 (dj)
  *    6.85 ns/word  ChaCha12 (dj)
  *    5.99 ns/word  Tyche
- *    5.76 ns/word  ChaCha8
  *    5.11 ns/word  ChaCha8 (dj)
  *    4.37 ns/word  MT19937 (Cokus)
  *    4.14 ns/word  Tyche-i
  *    3.26 ns/word  ISAAC
  *    3.18 ns/word  PCG32 basic
  *    1.95 ns/word  PCG64 opt
+ *    1.84 ns/word  ChaCha20 (AVX2 chacha-opt)
  *    1.48 ns/word  Xoroshiro128+
  *    1.16 ns/word  SplitMix64
  *

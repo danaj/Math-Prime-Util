@@ -53,7 +53,6 @@ csprng.h
 csprng.c
 isaac.h
 isaac.c
-chacha_private.h
 chacha.h
 chacha.c
 bench/bench-factor.pl
