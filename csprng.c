@@ -8,9 +8,12 @@
  *  879    ns/word  ISAAC in Perl
  *
  *   11.20 ns/word  ChaCha20
+ *   10.42 ns/word  ChaCha20 (dj)
  *    7.58 ns/word  ChaCha12
+ *    6.85 ns/word  ChaCha12 (dj)
  *    5.99 ns/word  Tyche
  *    5.76 ns/word  ChaCha8
+ *    5.11 ns/word  ChaCha8 (dj)
  *    4.37 ns/word  MT19937 (Cokus)
  *    4.14 ns/word  Tyche-i
  *    3.26 ns/word  ISAAC
@@ -48,6 +51,7 @@ MUTEX_DECL(state);
 #define CRBYTES   isaac_rand_bytes
 #define CIRAND32  isaac_irand32
 #define CIRAND64  isaac_irand64
+#define CSELFTEST isaac_selftest
 
 #elif USE_CHACHA20
 
@@ -57,6 +61,7 @@ MUTEX_DECL(state);
 #define CRBYTES   chacha_rand_bytes
 #define CIRAND32  chacha_irand32
 #define CIRAND64  chacha_irand64
+#define CSELFTEST chacha_selftest
 
 #endif
 
@@ -158,6 +163,9 @@ void csprng_seed(uint32_t bytes, const unsigned char* data)
   if (!mutex_init) {
     MUTEX_INIT(&state_mutex);
     mutex_init = 1;
+    MUTEX_LOCK(&state_mutex);
+    CSELFTEST();
+    MUTEX_UNLOCK(&state_mutex);
   }
   MUTEX_LOCK(&state_mutex);
   CSEED(SEED_BYTES, seed);

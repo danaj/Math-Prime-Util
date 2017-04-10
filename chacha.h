@@ -9,4 +9,6 @@ extern void chacha_rand_bytes(uint32_t bytes, unsigned char* data);
 extern uint32_t chacha_irand32(void);
 extern UV       chacha_irand64(void);
 
+extern int chacha_selftest(void);
+
 #endif

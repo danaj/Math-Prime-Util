@@ -86,6 +86,10 @@ static void randinit(void) {
    randcnt=256;        /* first use will run isaac() again */
 }
 
+int isaac_selftest(void) {
+  return 1;
+}
+
 /*****************************************************************************/
 
 void isaac_seed(uint32_t bytes, const unsigned char* data)
