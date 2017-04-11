@@ -121,13 +121,7 @@ sub _core {
 sub _test_core {
   return unless ROUNDS == 20;
   my $init_state = '617078653320646e79622d326b20657403020100070605040b0a09080f0e0d0c13121110171615141b1a19181f1e1d1c00000001090000004a00000000000000';
-  my @state = map { hex } unpack "(a8)*", $init_state;
-    #my @c = (0x61707865, 0x3320646e, 0x79622d32, 0x6b206574);
-    #my $key = join("", map { chr } 0 .. 31);
-    #my @key = unpack("V8",$key);
-    #my @nonce = unpack("V3",pack("N3",0x09,0x04a,0x00));
-    #my $counter = 1;
-    #my @state = (@c, @key, $counter, @nonce);
+  my @state = map { hex("0x$_") } unpack "(a8)*", $init_state;
   my $instr = join("",map { sprintf("%08x",$_) } @state);
   die "Block function fail test 2.3.2 input" unless $instr eq '617078653320646e79622d326b20657403020100070605040b0a09080f0e0d0c13121110171615141b1a19181f1e1d1c00000001090000004a00000000000000';
   @state = _core(@state);
@@ -157,7 +151,7 @@ sub _keystream {
 sub _test_keystream {
   return unless ROUNDS == 20;
   my $init_state = '617078653320646e79622d326b20657403020100070605040b0a09080f0e0d0c13121110171615141b1a19181f1e1d1c00000001000000004a00000000000000';
-  my @state = map { hex } unpack "(a8)*", $init_state;
+  my @state = map { hex("0x$_") } unpack "(a8)*", $init_state;
   my $instr = join("",map { sprintf("%08x",$_) } @state);
   croak "Block function fail test 2.4.2 input" unless $instr eq '617078653320646e79622d326b20657403020100070605040b0a09080f0e0d0c13121110171615141b1a19181f1e1d1c00000001000000004a00000000000000';
   my $keystream = _keystream(114, \@state);

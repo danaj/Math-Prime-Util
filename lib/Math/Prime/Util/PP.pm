@@ -2103,7 +2103,7 @@ sub sum_primes {
 
   # We have to make some decision about whether to use our PP prime sum or loop
   # doing the XS sieve.  TODO: Be smarter here?
-  if (!Math::Prime::Util::prime_get_config()->{'xs'}) {
+  if (!Math::Prime::Util::prime_get_config()->{'xs'} && !ref($sum) && !MPU_32BIT) {
     $sum = _sum_primes_n($high);
     $sum -= _sum_primes_n($low-1) if $low > 2;
     return $sum;
