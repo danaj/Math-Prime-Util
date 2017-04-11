@@ -240,10 +240,9 @@ sub random_bytes {
   $bytes = (defined $bytes) ? int abs $bytes : 0;
 
   if ($_have < $bytes) {
-    return _keystream($bytes, $_state) if $_have == 0;
-    my($s,$h)=($_sptr,$_have);
-    ($_sptr,$_have)=($s+$h,0);
-    return substr($_stream,$s,$h) . _keystream($bytes-$h, $_state);
+    $_stream = substr($_stream,$_sptr,$_have) . _keystream($bytes-$_have, $_state);
+    $_sptr = 0;
+    $_have = length($_stream);
   }
   $_have -= $bytes;
   $_sptr += $bytes;
