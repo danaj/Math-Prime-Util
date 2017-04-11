@@ -3316,25 +3316,22 @@ these to replace drand48.  In the mean time, L<Math::Random::MTwist> provides
 numerous features and excellent performance, or this module.
 
 Since we often deal with random primes for cryptographic purposes, we have
-additional requirements.  For this reason, this module uses ISAAC, a CSPRNG,
-for its random stream.  A later version may investigate Chacha20.
+additional requirements.  This module uses a CSPRNG for its random stream.
+In particular, ChaCha20, which is the same algorithm used by BSD's
+C<arc4random> and C</dev/urandom> on BSD and Linux 4.8+.
 Seeding is performed at startup using the Win32 Crypto API (on Windows),
 C</dev/urandom>, C</dev/random>, or L<Crypt::PRNG>, whichever is found first.
 
-One might think that performance would suffer from using a CSPRNG, but this
-does not seem to be the case.  The speed of irand, irand64, and drand are
-within 10% of the fastest existing modules using fast non-CSPRNG methods,
-and significantly faster than most.  ISAAC is quite fast which helps
-L</random_bytes> can produce over 1 GB/s), but the majority of the issue is
-the Perl/XS call interface overhead.  Using the same algorithm, this module
-is about 3x faster than L<Math::Random::ISAAC::XS>.
-Optimizing the API is crucial, but it
-still performs enough operations to make calls like irand64 only show a 5%
-difference in speed between ISAAC and Xoroshiro128+.  If the latter is used
-in random_bytes with large inputs then we do see a 4x performance difference.
-In theory Xoroshiro128+ or PCG can be 10x faster than ISAAC, though they
-are not CSPRNGs, have much smaller states, and often rely on CPU instruction
-level optimization for the highest performance.
+One might think that performance would suffer from using a CSPRNG, but
+benchmarking shows it is less than one might expect.
+does not seem to be the case.  The speed of irand, irand64, and drand
+are within 20% of the fastest existing modules using non-CSPRNG methods,
+and 2 to 20 times faster than most.  While a faster underlying RNG is
+useful, the Perl call interface overhead is a majority of the time for
+these calls.  Carefully tuning that interface is critical.
+
+For performance on large amounts of data, see the tables
+in L</random_bytes>.
 
 A single thread-safe stream is used.  A later implementation may switch to
 per-thread contexts, which would be slightly faster and arguably give better
@@ -3387,57 +3384,66 @@ With the ":rand" tag, this function is additionally exported as C<rand>.
   $str = random_bytes(32);     # 32 random bytes
 
 Given an unsigned number C<n> of bytes, returns a string filled with random
-data from the CSPRNG.  Performance for getting 256 byte strings:
+data from the CSPRNG.  Performance for large quantities:
 
     Module/Method                  Rate   Type
     -------------             ---------   ----------------------
-    Data::Entropy::Algorithms    1998/s   CSPRNG - AES Counter
-    Crypt::Random                6521/s   CSPRNG - /dev/urandom
-    Bytes::Random::Secure        8699/s   CSPRNG - ISAAC (no XS)
-    Bytes::Random                8732/s   drand48
-    rand+pack                   20842/s   drand48
-    Bytes::Random::Secure       22943/s   CSPRNG - ISAAC
-    Crypt::PRNG                294096/s   CSPRNG - Fortuna
-    Bytes::Random::XS          378481/s   drand48
-    Math::Random::MTwist      1839521/s   Mersenne Twister
-    Math::Prime::Util         1949339/s   CSPRNG - ISAAC
+
+    Math::Prime::Util::GMP    1067 MB/s   CSPRNG - ISAAC
+    ntheory                    384 MB/s   CSPRNG - ChaCha20
+    Crypt::PRNG                140 MB/s   CSPRNG - Fortuna
+    Math::Random::ISAAC::XS     15 MB/s   CSPRNG - ISAAC
+    Crypt::Random               12 MB/s   CSPRNG - /dev/urandom
+    Bytes::Random::Secure        6 MB/s   CSPRNG - ISAAC
+    ntheory pure perl            5 MB/s   CSPRNG - ISAAC (no XS)
+    Math::Random::ISAAC::PP      2 MB/s   CSPRNG - ISAAC (no XS)
+    ntheory pure perl            0.8 MB/s CSPRNG - ChaCha20 (no XS)
+    Data::Entropy::Algorithms    0.5 MB/s CSPRNG - AES-CTR
+
+    Math::Random::MTwist       927 MB/s   PRNG - Mersenne Twister
+    Bytes::Random::XS          109 MB/s   PRNG - drand48
+    pack CORE::rand             25 MB/s   PRNG - drand48 (no XS)
+    Bytes::Random                3 MB/s   PRNG - drand48 (no XS)
 
 =head2 urandomb
 
   $n32 = urandomb(32);    # Classic irand32, returns a UV
   $n   = urandomb(1024);  # Random integer less than 2^1024
 
-Given a number of bits C<b>, returns a random unsigned integer less than C<2^b>.
-The result will be uniformly distributed between C<0> and C<2^b-1> inclusive.
+Given a number of bits C<b>, returns a random unsigned integer
+less than C<2^b>.  The result will be uniformly distributed
+between C<0> and C<2^b-1> inclusive.
 
 =head2 urandomm
 
   $n = urandomm(100);    # random integer in [0,99]
   $n = urandomm(1024);   # random integer in [0,1023]
 
-Given a positive integer C<n>, returns a random unsigned integer less than C<n>.
-The results will be uniformly distributed between C<0> and C<n-1> inclusive.
+Given a positive integer C<n>, returns a random unsigned integer
+less than C<n>.  The results will be uniformly distributed between
+C<0> and C<n-1> inclusive.  Care is taken to prevent modulo bias.
 
 =head2 csrand
 
-Takes a binary string C<data> as input and seeds the internal CSPRNG.  This is
-not normally needed as system entropy is used as a seed on startup.  For best
-security this should be 16-256 bytes of good entropy.  No more than 1024 bytes
-will be used.
+Takes a binary string C<data> as input and seeds the internal CSPRNG.
+This is not normally needed as system entropy is used as a seed on
+startup.  For best security this should be 16-128 bytes of good
+entropy.  No more than 1024 bytes will be used.
 
 With no argument, reseeds using system entropy, which is preferred.
 
 =head2 srand
 
-Takes a single UV argument and seeds the CSPRNG with it, as well as returning it.
-If no argument is given, a new UV seed is constructed.  Note that this creates a
-very weak seed from a cryptographic standpoint, so it is useful for testing or
-simulations but L</csrand> is recommended, or keep using the system entropy
-default seed.
+Takes a single UV argument and seeds the CSPRNG with it, as well as
+returning it.  If no argument is given, a new UV seed is constructed.
+Note that this creates a very weak seed from a cryptographic
+standpoint, so it is useful for testing or simulations but
+L</csrand> is recommended, or keep using the system entropy default seed.
 
-The API is nearly identical to the system function C<srand>.  It uses a UV which
-can be 64-bit rather than always 32-bit.  The behaviour for C<undef>, empty string,
-empty list, etc. is slightly different (we treat these as 0).
+The API is nearly identical to the system function C<srand>.  It
+uses a UV which can be 64-bit rather than always 32-bit.  The
+behaviour for C<undef>, empty string, empty list, etc. is slightly
+different (we treat these as 0).
 
 This function is not exported with the ":all" tag, but is with ":rand".
 
@@ -4427,7 +4433,7 @@ MPU does not depend on L<Math::Pari> though can run slow for bigints unless
 the L<Math::BigInt::GMP> or L<Math::BigInt::Pari> modules are installed.
 Having L<Math::Prime::Util::GMP> installed makes the speed vastly faster.
 Crypt::Primes is hardcoded to use L<Crypt::Random> which uses /dev/random
-(blocking source), while MPU uses its own ISAAC implementation seeded from
+(blocking source), while MPU uses its own ChaCha20 implementation seeded from
 /dev/urandom or Win32.
 MPU can return a primality certificate.
 What Crypt::Primes has that MPU does not is the ability to return a generator.

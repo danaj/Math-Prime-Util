@@ -27,7 +27,7 @@
 #include "chacha.h"
 
 #define CHACHA_ROUNDS 20
-#define RUN_INTERNAL_TESTS 0
+#define RUN_INTERNAL_TESTS 1
 #define RESEED_ON_REFILL 0
 
 #define STATESZ  16        /* words: 4 constant, 8 key, 2 counter, 2 nonce */
