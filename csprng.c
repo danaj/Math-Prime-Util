@@ -174,12 +174,12 @@ void csprng_seed(uint32_t bytes, const unsigned char* data)
 
 extern void csprng_srand(UV insecure_seed)
 {
-  unsigned char seed[8];
+  unsigned char seed[8] = {0};
   U32TO8_LE(seed, insecure_seed);
 #if BITS_PER_WORD == 64
   U32TO8_LE(seed + 4, (insecure_seed >> 32));
 #endif
-  csprng_seed((BITS_PER_WORD == 64) ? 8 : 4, seed);
+  csprng_seed(8, seed);
 }
 
 void csprng_rand_bytes(uint32_t bytes, unsigned char* data)
