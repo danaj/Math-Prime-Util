@@ -56,10 +56,10 @@ _test_qr;
 #     c=constant k=key b=blockcount n=nonce
 
 sub _core {
-  my(@x) = @_;
+  my($j) = @_;
   use integer;
-  die "Invalid ChaCha state" unless scalar(@x) == 16;
-  my @j = @x;
+  #die "Invalid ChaCha state" unless scalar(@$j) == 16;
+  my @x = @$j;
   for (1 .. ROUNDS/2) {
 
     # Unrolling is ugly but makes a big performance diff.
@@ -115,8 +115,7 @@ sub _core {
     $x[ 9]=($x[ 9]+$x[14])&0xFFFFFFFF; $x[ 4]^=$x[ 9]; $x[ 4]=(($x[ 4]<< 7)&0xFFFFFFFF)|(($x[ 4]>>25)& 0x7F);
 
   }
-  # We should pack this now instead of returning the ints
-  map { ($x[$_] + $j[$_]) & 0xFFFFFFFF } 0 .. 15;
+  pack("L16", map { $x[$_] + $j->[$_] } 0..15);
 }
 sub _test_core {
   return unless ROUNDS == 20;
@@ -124,10 +123,9 @@ sub _test_core {
   my @state = map { hex("0x$_") } unpack "(a8)*", $init_state;
   my $instr = join("",map { sprintf("%08x",$_) } @state);
   die "Block function fail test 2.3.2 input" unless $instr eq '617078653320646e79622d326b20657403020100070605040b0a09080f0e0d0c13121110171615141b1a19181f1e1d1c00000001090000004a00000000000000';
-  @state = _core(@state);
-  my $outstr = join("",map { sprintf("%08x",$_) } @state);
+  my @out = unpack("L16", _core(\@state));
+  my $outstr = join("",map { sprintf("%08x",$_) } @out);
   #printf "  %08x  %08x  %08x  %08x\n  %08x  %08x  %08x  %08x\n  %08x  %08x  %08x  %08x\n  %08x  %08x  %08x  %08x\n", @state;
-  #print "outstr: $outstr\n";
   die "Block function fail test 2.3.2 output" unless $outstr eq 'e4e7f11015593bd11fdd0f50c47120a3c7f4d1c70368c0339aaa22044e6cd4c3466482d209aa9f0705d7c214a2028bd9d19c12b5b94e16dee883d0cb4e3c50a2';
 }
 _test_core();
@@ -137,12 +135,9 @@ sub _keystream {
   croak "Keystream invalid state" unless scalar(@$rstate) == 16;
   my $stream = '';
   while ($nbytes > 0) {
-    my @block = _core(@$rstate);
-    $stream .= pack("L16",@block);
-    #print "block $rstate->[12]: ",join(" ",map { sprintf("%08x",$_) } @block),"\n";
+    $stream .= _core($rstate);
     $nbytes -= 64;
-    $rstate->[12]++;
-    if ($rstate->[12] > 4294967295) {
+    if (++$rstate->[12] > 4294967295) {
       $rstate->[12] = 0;  $rstate->[13]++;
     }
   }
@@ -157,7 +152,6 @@ sub _test_keystream {
   my $keystream = _keystream(114, \@state);
   # Verify new state
   my $outstr = join("",map { sprintf("%08x",$_) } @state);
-  #print "outstr: $outstr\n";
   croak "Block function fail test 2.4.2 output" unless $outstr eq '617078653320646e79622d326b20657403020100070605040b0a09080f0e0d0c13121110171615141b1a19181f1e1d1c00000003000000004a00000000000000';
   # Rather tediaus way of doing it, but very explicit
   my $ksstr = join("",map { sprintf("%02x",$_) } map { ord } split(//,$keystream));
@@ -223,10 +217,10 @@ sub random_bytes {
   $bytes = (defined $bytes) ? int abs $bytes : 0;
 
   if ($_have < $bytes) {
-    my $keystream = _keystream($bytes, $_state);
-    $_stream = substr($_stream,$_sptr,$_have) . $keystream;
-    $_sptr = 0;
-    $_have = length($_stream);
+    return _keystream($bytes, $_state) if $_have == 0;
+    my($s,$h)=($_sptr,$_have);
+    ($_sptr,$_have)=($s+$h,0);
+    return substr($_stream,$s,$h) . _keystream($bytes-$h, $_state);
   }
   $_have -= $bytes;
   $_sptr += $bytes;

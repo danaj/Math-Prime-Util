@@ -33,8 +33,11 @@ if (0) {
   *irand64 = \&Math::Prime::Util::ChaCha::irand64;
 }
 
+# Make sure we properly fill in doubles even on 32-bit machines
 sub drand {
-  my $d = (irand64() / (~0 + 1.0));
+  my $d = (~0 > 4294967295)
+        ? (irand64() / (~0 + 1.0))
+        : ((irand() >> 6) * 134217728.0 + (irand() >> 5)) / 9007199254740992.0;
   $d *= $_[0] if $_[0];
   $d;
 }

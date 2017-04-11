@@ -152,11 +152,14 @@ x A mechanism for reseeding with good entropy would be nice.
 x doc new csrand function and behavior
 x write new version of chacha core
 x redo docs with ISAAC -> ChaCha20
+x Fix 32-bit pure perl
+x PP drand on 32-bit Perl needs to use 53+ bits
 
 - file RT with Math::Random::Secure about 32-bit doubles
   looks like a lot of modules do this.  Ouch.
 - get info on different drands.  TestU01, 45-bit look, cycles, x-y plots, etc.
 
+- consistent seeding for PP and C
 - redo all benchmarks and text
   pure Perl:  5.2x / 2.5x irand64 ChaCha20 / ChaCha8
   pure Perl:  5.6x / 2.9x irand32 ChaCha20 / ChaCha8
@@ -167,7 +170,6 @@ x redo docs with ISAAC -> ChaCha20
 - more performance.  Include random primes speed diffs for ISAAC vs chacha
   For C:  5-20% slower.  For Perl:  0-100% slower.  Remeasure.
 - redo random tests that rely on state
-- Fix 32-bit pure perl
 
 
 - Decide whether to fully add these functions:

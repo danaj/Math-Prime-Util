@@ -3,9 +3,9 @@
  *
  * We can use ISAAC, ChaCha20, or something else.
  *
- * 4639    ns/word  ChaCha20 in Perl
- * 2051    ns/word  ChaCha8 in Perl
- *  879    ns/word  ISAAC in Perl
+ * 4798    ns/word  ChaCha20 in Perl
+ * 2106    ns/word  ChaCha8 in Perl
+ *  850    ns/word  ISAAC in Perl
  *
  *   11.20 ns/word  ChaCha20 (openbsd)
  *   10.31 ns/word  ChaCha20 (dj)
