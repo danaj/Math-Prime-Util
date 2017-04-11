@@ -12,8 +12,6 @@ BEGIN {
 #   ISAAC, adapted from Bytes::Random::Secure::Tiny and Math::Random::ISAAC
 ###############################################################################
 
-# TODO: integer, mask, etc.
-
 sub _isaac {
     my($randcnt, $r, $aa, $bb, $cc, $mm) = @_;
     use integer;
@@ -32,6 +30,9 @@ sub _isaac {
         $aa             = ($mm->[($i+128)   & 0xFF] + $aa)       & 0xFFFFFFFF;;
         $mm->[$i] =  $y = ($mm->[($x >> 2)  & 0xFF] + $aa + $bb) & 0xFFFFFFFF;
         $r->[$i]  = $bb = ($mm->[($y >> 10) & 0xFF] + $x)        & 0xFFFFFFFF;
+    }
+    if (2147483647+1 < 0) {  # Bulk convert them to unsigned ints
+      @$r = unpack("L*",pack("L*",@$r));
     }
     $randcnt = 0;  # We've got 256 new 32-bit values to use
     return ($randcnt, $r, $aa, $bb, $cc, $mm);
@@ -149,6 +150,7 @@ sub random_bytes {
 # TODO: Ensure this is right with 32-bit and big endian
 #sub irand64 { irand() | (irand() << 32); };
 sub irand64 {
+  return irand() if ~0 == 4294967295;
   if ($_CTX[0] < 254) {
     my $a = $_CTX[1]->[$_CTX[0]++];
     my $b = $_CTX[1]->[$_CTX[0]++];

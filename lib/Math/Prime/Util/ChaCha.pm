@@ -17,32 +17,33 @@ BEGIN {
   use constant ROUNDS => 20;
 }
 
+# Note: 32-bit will break "normal" code.
+# We 'use integer' to fix one problem, then do extra masking and
+# a final signed->unsigned conversion to fix the extra problems our
+# fix gave us.  We really want 'use uinteger'.
+
 sub _quarterround {
   my($a,$b,$c,$d) = @_;
-  $a=($a+$b)&0xFFFFFFFF;  $d^=$a;  $d=(($d << 16) | ($d >>(32-16)))&0xFFFFFFFF;
-  $c=($c+$d)&0xFFFFFFFF;  $b^=$c;  $b=(($b << 12) | ($b >>(32-12)))&0xFFFFFFFF;
-  $a=($a+$b)&0xFFFFFFFF;  $d^=$a;  $d=(($d <<  8) | ($d >>(32- 8)))&0xFFFFFFFF;
-  $c=($c+$d)&0xFFFFFFFF;  $b^=$c;  $b=(($b <<  7) | ($b >>(32- 7)))&0xFFFFFFFF;
-  ($a,$b,$c,$d);
+  use integer;
+  $a=($a+$b)&0xFFFFFFFF; $d^=$a; $d=(($d<<16)&0xFFFFFFFF)|(($d>>16)& 0xFFFF);
+  $c=($c+$d)&0xFFFFFFFF; $b^=$c; $b=(($b<<12)&0xFFFFFFFF)|(($b>>20)& 0xFFF);
+  $a=($a+$b)&0xFFFFFFFF; $d^=$a; $d=(($d<< 8)&0xFFFFFFFF)|(($d>>24)& 0xFF);
+  $c=($c+$d)&0xFFFFFFFF; $b^=$c; $b=(($b<< 7)&0xFFFFFFFF)|(($b>>25)& 0x7F);
+  unpack("L*",pack("L*",$a,$b,$c,$d));
 }
 
 sub _test_qr {
   return unless ROUNDS == 20;
-  my($a,$b,$c,$d) = _quarterround(0x11111111,0x01020304,0x9b8d6f43,0x01234567);
+  my($a,$b,$c,$d);
+
+  ($a,$b,$c,$d) = _quarterround(0x11111111,0x01020304,0x9b8d6f43,0x01234567);
+  #($a,$b,$c,$d) = unpack("L*",pack("L*",$a,$b,$c,$d));
   #printf "  %08x  %08x  %08x  %08x\n", $a,$b,$c,$d;
   die "QR test 2.1.1 fail 1" unless $a == 0xea2a92f4 && $b == 0xcb1cf8ce && $c == 0x4581472e && $d == 0x5881c4bb;
 
-  my @x = map { hex } (qw/879531e0  c5ecf37d  516461b1  c9a62f8a
-                          44c20ef3  3390af7f  d9fc690b  2a5f714c
-                          53372767  b00a5631  974c541a  359e9963
-                          5c971061  3d631689  2098d9d6  91dbd320/);
-  my @e = @x;
-  @e[ 2, 7, 8,13] = (0xbdb886dc, 0xcfacafd2, 0xe46bea80, 0xccc07c79);
-  @x[ 2, 7, 8,13] = _quarterround(@x[ 2, 7, 8,13]);
-  #printf "  %08x  %08x  %08x  %08x\n  %08x  %08x  %08x  %08x\n  %08x  %08x  %08x  %08x\n  %08x  %08x  %08x  %08x\n", @x;
-  for (0..15) {
-    die "QR test 2.2.1 fail 2 at $_" unless $x[$_] == $e[$_];
-  }
+  ($a,$b,$c,$d) = _quarterround(0x516461b1,0x2a5f714c, 0x53372767, 0x3d631689);
+  #printf "  %08x  %08x  %08x  %08x\n", $a,$b,$c,$d;
+  die "QR test 2.2.1 fail 2" unless $a == 0xbdb886dc && $b == 0xcfacafd2 && $c == 0xe46bea80 && $d == 0xccc07c79;
 }
 _test_qr;
 
@@ -56,58 +57,65 @@ _test_qr;
 
 sub _core {
   my(@x) = @_;
+  use integer;
   die "Invalid ChaCha state" unless scalar(@x) == 16;
   my @j = @x;
   for (1 .. ROUNDS/2) {
 
+    # Unrolling is ugly but makes a big performance diff.
+    # Generated with unroll-chacha.pl
+
     #@x[ 0, 4, 8,12] = _quarterround(@x[ 0, 4, 8,12]);
-    $x[ 0]=($x[ 0]+$x[ 4])&0xFFFFFFFF;  $x[12]^=$x[ 0];  $x[12]=(($x[12] << 16) | ($x[12] >> 16))&0xFFFFFFFF;
-    $x[ 8]=($x[ 8]+$x[12])&0xFFFFFFFF;  $x[ 4]^=$x[ 8];  $x[ 4]=(($x[ 4] << 12) | ($x[ 4] >> 20))&0xFFFFFFFF;
-    $x[ 0]=($x[ 0]+$x[ 4])&0xFFFFFFFF;  $x[12]^=$x[ 0];  $x[12]=(($x[12] <<  8) | ($x[12] >> 24))&0xFFFFFFFF;
-    $x[ 8]=($x[ 8]+$x[12])&0xFFFFFFFF;  $x[ 4]^=$x[ 8];  $x[ 4]=(($x[ 4] <<  7) | ($x[ 4] >> 25))&0xFFFFFFFF;
-
     #@x[ 1, 5, 9,13] = _quarterround(@x[ 1, 5, 9,13]);
-    $x[ 1]=($x[ 1]+$x[ 5])&0xFFFFFFFF;  $x[13]^=$x[ 1];  $x[13]=(($x[13] << 16) | ($x[13] >> 16))&0xFFFFFFFF;
-    $x[ 9]=($x[ 9]+$x[13])&0xFFFFFFFF;  $x[ 5]^=$x[ 9];  $x[ 5]=(($x[ 5] << 12) | ($x[ 5] >> 20))&0xFFFFFFFF;
-    $x[ 1]=($x[ 1]+$x[ 5])&0xFFFFFFFF;  $x[13]^=$x[ 1];  $x[13]=(($x[13] <<  8) | ($x[13] >> 24))&0xFFFFFFFF;
-    $x[ 9]=($x[ 9]+$x[13])&0xFFFFFFFF;  $x[ 5]^=$x[ 9];  $x[ 5]=(($x[ 5] <<  7) | ($x[ 5] >> 25))&0xFFFFFFFF;
-
     #@x[ 2, 6,10,14] = _quarterround(@x[ 2, 6,10,14]);
-    $x[ 2]=($x[ 2]+$x[ 6])&0xFFFFFFFF;  $x[14]^=$x[ 2];  $x[14]=(($x[14] << 16) | ($x[14] >> 16))&0xFFFFFFFF;
-    $x[10]=($x[10]+$x[14])&0xFFFFFFFF;  $x[ 6]^=$x[10];  $x[ 6]=(($x[ 6] << 12) | ($x[ 6] >> 20))&0xFFFFFFFF;
-    $x[ 2]=($x[ 2]+$x[ 6])&0xFFFFFFFF;  $x[14]^=$x[ 2];  $x[14]=(($x[14] <<  8) | ($x[14] >> 24))&0xFFFFFFFF;
-    $x[10]=($x[10]+$x[14])&0xFFFFFFFF;  $x[ 6]^=$x[10];  $x[ 6]=(($x[ 6] <<  7) | ($x[ 6] >> 25))&0xFFFFFFFF;
-
     #@x[ 3, 7,11,15] = _quarterround(@x[ 3, 7,11,15]);
-    $x[ 3]=($x[ 3]+$x[ 7])&0xFFFFFFFF;  $x[15]^=$x[ 3];  $x[15]=(($x[15] << 16) | ($x[15] >> 16))&0xFFFFFFFF;
-    $x[11]=($x[11]+$x[15])&0xFFFFFFFF;  $x[ 7]^=$x[11];  $x[ 7]=(($x[ 7] << 12) | ($x[ 7] >> 20))&0xFFFFFFFF;
-    $x[ 3]=($x[ 3]+$x[ 7])&0xFFFFFFFF;  $x[15]^=$x[ 3];  $x[15]=(($x[15] <<  8) | ($x[15] >> 24))&0xFFFFFFFF;
-    $x[11]=($x[11]+$x[15])&0xFFFFFFFF;  $x[ 7]^=$x[11];  $x[ 7]=(($x[ 7] <<  7) | ($x[ 7] >> 25))&0xFFFFFFFF;
-
     #@x[ 0, 5,10,15] = _quarterround(@x[ 0, 5,10,15]);
-    $x[ 0]=($x[ 0]+$x[ 5])&0xFFFFFFFF;  $x[15]^=$x[ 0];  $x[15]=(($x[15] << 16) | ($x[15] >> 16))&0xFFFFFFFF;
-    $x[10]=($x[10]+$x[15])&0xFFFFFFFF;  $x[ 5]^=$x[10];  $x[ 5]=(($x[ 5] << 12) | ($x[ 5] >> 20))&0xFFFFFFFF;
-    $x[ 0]=($x[ 0]+$x[ 5])&0xFFFFFFFF;  $x[15]^=$x[ 0];  $x[15]=(($x[15] <<  8) | ($x[15] >> 24))&0xFFFFFFFF;
-    $x[10]=($x[10]+$x[15])&0xFFFFFFFF;  $x[ 5]^=$x[10];  $x[ 5]=(($x[ 5] <<  7) | ($x[ 5] >> 25))&0xFFFFFFFF;
-
     #@x[ 1, 6,11,12] = _quarterround(@x[ 1, 6,11,12]);
-    $x[ 1]=($x[ 1]+$x[ 6])&0xFFFFFFFF;  $x[12]^=$x[ 1];  $x[12]=(($x[12] << 16) | ($x[12] >> 16))&0xFFFFFFFF;
-    $x[11]=($x[11]+$x[12])&0xFFFFFFFF;  $x[ 6]^=$x[11];  $x[ 6]=(($x[ 6] << 12) | ($x[ 6] >> 20))&0xFFFFFFFF;
-    $x[ 1]=($x[ 1]+$x[ 6])&0xFFFFFFFF;  $x[12]^=$x[ 1];  $x[12]=(($x[12] <<  8) | ($x[12] >> 24))&0xFFFFFFFF;
-    $x[11]=($x[11]+$x[12])&0xFFFFFFFF;  $x[ 6]^=$x[11];  $x[ 6]=(($x[ 6] <<  7) | ($x[ 6] >> 25))&0xFFFFFFFF;
-
     #@x[ 2, 7, 8,13] = _quarterround(@x[ 2, 7, 8,13]);
-    $x[ 2]=($x[ 2]+$x[ 7])&0xFFFFFFFF;  $x[13]^=$x[ 2];  $x[13]=(($x[13] << 16) | ($x[13] >> 16))&0xFFFFFFFF;
-    $x[ 8]=($x[ 8]+$x[13])&0xFFFFFFFF;  $x[ 7]^=$x[ 8];  $x[ 7]=(($x[ 7] << 12) | ($x[ 7] >> 20))&0xFFFFFFFF;
-    $x[ 2]=($x[ 2]+$x[ 7])&0xFFFFFFFF;  $x[13]^=$x[ 2];  $x[13]=(($x[13] <<  8) | ($x[13] >> 24))&0xFFFFFFFF;
-    $x[ 8]=($x[ 8]+$x[13])&0xFFFFFFFF;  $x[ 7]^=$x[ 8];  $x[ 7]=(($x[ 7] <<  7) | ($x[ 7] >> 25))&0xFFFFFFFF;
-
     #@x[ 3, 4, 9,14] = _quarterround(@x[ 3, 4, 9,14]);
-    $x[ 3]=($x[ 3]+$x[ 4])&0xFFFFFFFF;  $x[14]^=$x[ 3];  $x[14]=(($x[14] << 16) | ($x[14] >> 16))&0xFFFFFFFF;
-    $x[ 9]=($x[ 9]+$x[14])&0xFFFFFFFF;  $x[ 4]^=$x[ 9];  $x[ 4]=(($x[ 4] << 12) | ($x[ 4] >> 20))&0xFFFFFFFF;
-    $x[ 3]=($x[ 3]+$x[ 4])&0xFFFFFFFF;  $x[14]^=$x[ 3];  $x[14]=(($x[14] <<  8) | ($x[14] >> 24))&0xFFFFFFFF;
-    $x[ 9]=($x[ 9]+$x[14])&0xFFFFFFFF;  $x[ 4]^=$x[ 9];  $x[ 4]=(($x[ 4] <<  7) | ($x[ 4] >> 25))&0xFFFFFFFF;
+
+    $x[ 0]=($x[ 0]+$x[ 4])&0xFFFFFFFF; $x[12]^=$x[ 0]; $x[12]=(($x[12]<<16)&0xFFFFFFFF)|(($x[12]>>16)& 0xFFFF);
+    $x[ 8]=($x[ 8]+$x[12])&0xFFFFFFFF; $x[ 4]^=$x[ 8]; $x[ 4]=(($x[ 4]<<12)&0xFFFFFFFF)|(($x[ 4]>>20)& 0xFFF);
+    $x[ 0]=($x[ 0]+$x[ 4])&0xFFFFFFFF; $x[12]^=$x[ 0]; $x[12]=(($x[12]<< 8)&0xFFFFFFFF)|(($x[12]>>24)& 0xFF);
+    $x[ 8]=($x[ 8]+$x[12])&0xFFFFFFFF; $x[ 4]^=$x[ 8]; $x[ 4]=(($x[ 4]<< 7)&0xFFFFFFFF)|(($x[ 4]>>25)& 0x7F);
+
+    $x[ 1]=($x[ 1]+$x[ 5])&0xFFFFFFFF; $x[13]^=$x[ 1]; $x[13]=(($x[13]<<16)&0xFFFFFFFF)|(($x[13]>>16)& 0xFFFF);
+    $x[ 9]=($x[ 9]+$x[13])&0xFFFFFFFF; $x[ 5]^=$x[ 9]; $x[ 5]=(($x[ 5]<<12)&0xFFFFFFFF)|(($x[ 5]>>20)& 0xFFF);
+    $x[ 1]=($x[ 1]+$x[ 5])&0xFFFFFFFF; $x[13]^=$x[ 1]; $x[13]=(($x[13]<< 8)&0xFFFFFFFF)|(($x[13]>>24)& 0xFF);
+    $x[ 9]=($x[ 9]+$x[13])&0xFFFFFFFF; $x[ 5]^=$x[ 9]; $x[ 5]=(($x[ 5]<< 7)&0xFFFFFFFF)|(($x[ 5]>>25)& 0x7F);
+
+    $x[ 2]=($x[ 2]+$x[ 6])&0xFFFFFFFF; $x[14]^=$x[ 2]; $x[14]=(($x[14]<<16)&0xFFFFFFFF)|(($x[14]>>16)& 0xFFFF);
+    $x[10]=($x[10]+$x[14])&0xFFFFFFFF; $x[ 6]^=$x[10]; $x[ 6]=(($x[ 6]<<12)&0xFFFFFFFF)|(($x[ 6]>>20)& 0xFFF);
+    $x[ 2]=($x[ 2]+$x[ 6])&0xFFFFFFFF; $x[14]^=$x[ 2]; $x[14]=(($x[14]<< 8)&0xFFFFFFFF)|(($x[14]>>24)& 0xFF);
+    $x[10]=($x[10]+$x[14])&0xFFFFFFFF; $x[ 6]^=$x[10]; $x[ 6]=(($x[ 6]<< 7)&0xFFFFFFFF)|(($x[ 6]>>25)& 0x7F);
+
+    $x[ 3]=($x[ 3]+$x[ 7])&0xFFFFFFFF; $x[15]^=$x[ 3]; $x[15]=(($x[15]<<16)&0xFFFFFFFF)|(($x[15]>>16)& 0xFFFF);
+    $x[11]=($x[11]+$x[15])&0xFFFFFFFF; $x[ 7]^=$x[11]; $x[ 7]=(($x[ 7]<<12)&0xFFFFFFFF)|(($x[ 7]>>20)& 0xFFF);
+    $x[ 3]=($x[ 3]+$x[ 7])&0xFFFFFFFF; $x[15]^=$x[ 3]; $x[15]=(($x[15]<< 8)&0xFFFFFFFF)|(($x[15]>>24)& 0xFF);
+    $x[11]=($x[11]+$x[15])&0xFFFFFFFF; $x[ 7]^=$x[11]; $x[ 7]=(($x[ 7]<< 7)&0xFFFFFFFF)|(($x[ 7]>>25)& 0x7F);
+
+    $x[ 0]=($x[ 0]+$x[ 5])&0xFFFFFFFF; $x[15]^=$x[ 0]; $x[15]=(($x[15]<<16)&0xFFFFFFFF)|(($x[15]>>16)& 0xFFFF);
+    $x[10]=($x[10]+$x[15])&0xFFFFFFFF; $x[ 5]^=$x[10]; $x[ 5]=(($x[ 5]<<12)&0xFFFFFFFF)|(($x[ 5]>>20)& 0xFFF);
+    $x[ 0]=($x[ 0]+$x[ 5])&0xFFFFFFFF; $x[15]^=$x[ 0]; $x[15]=(($x[15]<< 8)&0xFFFFFFFF)|(($x[15]>>24)& 0xFF);
+    $x[10]=($x[10]+$x[15])&0xFFFFFFFF; $x[ 5]^=$x[10]; $x[ 5]=(($x[ 5]<< 7)&0xFFFFFFFF)|(($x[ 5]>>25)& 0x7F);
+
+    $x[ 1]=($x[ 1]+$x[ 6])&0xFFFFFFFF; $x[12]^=$x[ 1]; $x[12]=(($x[12]<<16)&0xFFFFFFFF)|(($x[12]>>16)& 0xFFFF);
+    $x[11]=($x[11]+$x[12])&0xFFFFFFFF; $x[ 6]^=$x[11]; $x[ 6]=(($x[ 6]<<12)&0xFFFFFFFF)|(($x[ 6]>>20)& 0xFFF);
+    $x[ 1]=($x[ 1]+$x[ 6])&0xFFFFFFFF; $x[12]^=$x[ 1]; $x[12]=(($x[12]<< 8)&0xFFFFFFFF)|(($x[12]>>24)& 0xFF);
+    $x[11]=($x[11]+$x[12])&0xFFFFFFFF; $x[ 6]^=$x[11]; $x[ 6]=(($x[ 6]<< 7)&0xFFFFFFFF)|(($x[ 6]>>25)& 0x7F);
+
+    $x[ 2]=($x[ 2]+$x[ 7])&0xFFFFFFFF; $x[13]^=$x[ 2]; $x[13]=(($x[13]<<16)&0xFFFFFFFF)|(($x[13]>>16)& 0xFFFF);
+    $x[ 8]=($x[ 8]+$x[13])&0xFFFFFFFF; $x[ 7]^=$x[ 8]; $x[ 7]=(($x[ 7]<<12)&0xFFFFFFFF)|(($x[ 7]>>20)& 0xFFF);
+    $x[ 2]=($x[ 2]+$x[ 7])&0xFFFFFFFF; $x[13]^=$x[ 2]; $x[13]=(($x[13]<< 8)&0xFFFFFFFF)|(($x[13]>>24)& 0xFF);
+    $x[ 8]=($x[ 8]+$x[13])&0xFFFFFFFF; $x[ 7]^=$x[ 8]; $x[ 7]=(($x[ 7]<< 7)&0xFFFFFFFF)|(($x[ 7]>>25)& 0x7F);
+
+    $x[ 3]=($x[ 3]+$x[ 4])&0xFFFFFFFF; $x[14]^=$x[ 3]; $x[14]=(($x[14]<<16)&0xFFFFFFFF)|(($x[14]>>16)& 0xFFFF);
+    $x[ 9]=($x[ 9]+$x[14])&0xFFFFFFFF; $x[ 4]^=$x[ 9]; $x[ 4]=(($x[ 4]<<12)&0xFFFFFFFF)|(($x[ 4]>>20)& 0xFFF);
+    $x[ 3]=($x[ 3]+$x[ 4])&0xFFFFFFFF; $x[14]^=$x[ 3]; $x[14]=(($x[14]<< 8)&0xFFFFFFFF)|(($x[14]>>24)& 0xFF);
+    $x[ 9]=($x[ 9]+$x[14])&0xFFFFFFFF; $x[ 4]^=$x[ 9]; $x[ 4]=(($x[ 4]<< 7)&0xFFFFFFFF)|(($x[ 4]>>25)& 0x7F);
+
   }
+  # We should pack this now instead of returning the ints
   map { ($x[$_] + $j[$_]) & 0xFFFFFFFF } 0 .. 15;
 }
 sub _test_core {
@@ -205,6 +213,7 @@ sub irand {
   return unpack("L",substr($_stream, $_sptr-4, 4));
 }
 sub irand64 {
+  return irand() if ~0 == 4294967295;
   if ($_have < 8) {
     my $keystream = _keystream(64, $_state);
     $_stream = substr($_stream,$_sptr,$_have) . $keystream;

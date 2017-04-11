@@ -305,6 +305,9 @@ uint32_t chacha_irand32(void)
 }
 UV chacha_irand64(void)
 {
+#if BITS_PER_WORD < 64
+  return chacha_irand32();
+#else
   uint32_t a,b;
   unsigned char* ptr;
   if (_cs.have < 8)
@@ -314,4 +317,5 @@ UV chacha_irand64(void)
   a = U8TO32_LE(ptr);
   b = U8TO32_LE(ptr);
   return (((UV)b) << 32) | a;
+#endif
 }
