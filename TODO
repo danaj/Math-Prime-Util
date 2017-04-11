@@ -154,22 +154,24 @@ x write new version of chacha core
 x redo docs with ISAAC -> ChaCha20
 x Fix 32-bit pure perl
 x PP drand on 32-bit Perl needs to use 53+ bits
+x use endian macros in chacha.c for irand etc.  We can trim a lot.
+x consistent seeding for PP and C
+x compare chacha20 Perl and C
 
 - file RT with Math::Random::Secure about 32-bit doubles
   looks like a lot of modules do this.  Ouch.
 - get info on different drands.  TestU01, 45-bit look, cycles, x-y plots, etc.
 
-- consistent seeding for PP and C
 - redo all benchmarks and text
   pure Perl:  5.2x / 2.5x irand64 ChaCha20 / ChaCha8
   pure Perl:  5.6x / 2.9x irand32 ChaCha20 / ChaCha8
   pure Perl:  5.3x / 2.3x random_bytes ChaCha20 / ChaCha8
-- compare chacha20 Perl and C
 - publish info about Perl chacha20 (ianix, blog?).
-- use endian macros in chacha.c for irand etc.  We can trim a lot.
 - more performance.  Include random primes speed diffs for ISAAC vs chacha
   For C:  5-20% slower.  For Perl:  0-100% slower.  Remeasure.
 - redo random tests that rely on state
+- ISAAC consistent seeding
+- ensure double stream is identical on 32-bit and 64-bit
 
 
 - Decide whether to fully add these functions:

@@ -315,7 +315,7 @@ UV chacha_irand64(void)
   ptr = _cs.buf + BUFSZ - _cs.have;
   _cs.have -= 8;
   a = U8TO32_LE(ptr);
-  b = U8TO32_LE(ptr);
+  b = U8TO32_LE(ptr+4);
   return (((UV)b) << 32) | a;
 #endif
 }

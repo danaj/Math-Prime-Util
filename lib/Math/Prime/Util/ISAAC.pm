@@ -184,8 +184,7 @@ Version 0.61
 
 =head1 DESCRIPTION
 
-An alternative pure Perl implementation of a CSPRNG.  This is ISAAC, with the
-implementation
+A pure Perl implementation of ISAAC with a CSPRNG interface.
 
 =head1 FUNCTIONS
 
@@ -208,12 +207,6 @@ Returns a random 32-bit integer.
 =head2 irand64
 
 Returns a random 64-bit integer.
-
-=head2 drand
-
-Returns a random NV in the range [0,1).
-An optional argument C<m> will be used as a multiplier,
-so the result will be between 0 and C<m>-C<epsilon> inclusive.
 
 =head2 random_bytes
 

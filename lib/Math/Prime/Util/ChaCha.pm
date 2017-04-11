@@ -162,8 +162,26 @@ _test_keystream();
 # End ChaCha core
 ###############################################################################
 
+# Simple PRNG used to fill small seeds
+sub _prng_next {
+  my($s) = @_;
+  my $oldstate = $s->[0];
+  $s->[0] = ($s->[0] * 747796405 + $s->[1]) & 0xFFFFFFFF;
+  my $word = ((($oldstate >> (($oldstate >> 28) + 4)) ^ $oldstate) * 277803737) & 0xFFFFFFFF;
+  ($word >> 22) ^ $word;
+}
+sub _prng_new {
+  my($a,$b,$c,$d) = @_;
+  my @s = (0, (($b << 1) | 1) & 0xFFFFFFFF);
+  _prng_next(\@s);
+  $s[0] = ($s[0] + $a) & 0xFFFFFFFF;
+  _prng_next(\@s);
+  \@s;
+}
+###############################################################################
+
 my $_goodseed;
-my $_state;     # This should be far better hidden from other modules
+my $_state;     # Not accessible outside this file by standard means
 my $_stream;
 my $_have;
 my $_sptr;
@@ -173,20 +191,25 @@ sub _is_csprng_well_seeded { $_goodseed }
 sub seed_csprng {
   my($seed) = @_;
   $_goodseed = length($seed) >= 16;
-  my(@seed) = unpack("L10",$seed);
-  # Ensure there are exactly 10 defined seed values
-  $#seed = 9;
-  for (0..9) { $seed[$_] = 0 unless defined $seed[$_]; }
+  my @seed = unpack("L*",substr($seed,0,40));
+  # If not enough data, fill rest using simple RNG
+  if ($#seed < 9) {
+    my $rng = _prng_new(map { $_ <= $#seed ? $seed[$_] : 0 } 0..3);
+    push @seed, _prng_next($rng) while $#seed < 9;
+  }
+  croak "Seed count failure" unless $#seed == 9;
   $_state = [0x61707865, 0x3320646e, 0x79622d32, 0x6b206574, @seed[0..7], 0, 0, @seed[8..9]];
   $_stream = '';
   $_have = 0;
   $_sptr = 0;
 }
-# TODO replace this
 sub srand {
   my $seed = shift;
   $seed = CORE::rand unless defined $seed;
-  seed_csprng(pack("L2", ($seed >> 32) & 0xFFFFFFFF, $seed & 0xFFFFFFFF));
+  my $str = (~0 == 4294967295)
+          ? pack("L",$seed)
+          : pack("L2", $seed, $seed >> 32);
+  seed_csprng($str);
   $seed;
 }
 sub irand {
@@ -228,3 +251,78 @@ sub random_bytes {
 }
 
 1;
+
+__END__
+
+
+# ABSTRACT:  Pure Perl ChaCha20 CSPRNG
+
+=pod
+
+=encoding utf8
+
+=head1 NAME
+
+Math::Prime::Util::ChaCha - Pure Perl ChaCha20 CSPRNG
+
+
+=head1 VERSION
+
+Version 0.61
+
+
+=head1 SYNOPSIS
+
+=head1 DESCRIPTION
+
+A pure Perl implementation of ChaCha20 with a CSPRNG interface.
+
+=head1 FUNCTIONS
+
+=head2 seed_csprng
+
+Takes a binary string as input and seeds the internal CSPRNG.
+
+=head2 srand
+
+A method for sieving the CSPRNG with a small value.  This will not be secure
+but can be useful for simulations and emulating the system C<srand>.
+
+With no argument, chooses a random number, seeds and returns the number.
+With a single integer argument, seeds and returns the number.
+
+=head2 irand
+
+Returns a random 32-bit integer.
+
+=head2 irand64
+
+Returns a random 64-bit integer.
+
+=head2 random_bytes
+
+Takes an unsigned number C<n> as input and returns that many random bytes
+as a single binary string.
+
+=head2
+
+=head1 AUTHORS
+
+Dana Jacobsen E<lt>dana@acm.orgE<gt>
+
+=head1 ACKNOWLEDGEMENTS
+
+Daniel J. Bernstein wrote the ChaCha family of stream ciphers in 2008 as
+an update to the popular Salsa20 cipher from 2005.
+
+RFC7539: "ChaCha20 and Poly1305 for IETF Protocols" was used to create both
+the C and Perl implementations.  Test vectors from that document are used
+here as well.
+
+=head1 COPYRIGHT
+
+Copyright 2017 by Dana Jacobsen E<lt>dana@acm.orgE<gt>
+
+This program is free software; you can redistribute it and/or modify it under the same terms as Perl itself.
+
+=cut
