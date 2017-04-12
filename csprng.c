@@ -254,14 +254,22 @@ int is_csprng_well_seeded(void) { return good_seed; }
  * Geoff Kuenning does in MTwist, though he has the host calculate the
  * constants to ensure a dodgy compiler won't munge them.
  */
-static const NV _tonv_32 = 2.3283064365386962890625000000000000000E-10L;
-static const NV _tonv_64 = 5.4210108624275221700372640043497085571E-20L;
+static const NV _tonv_32  = 2.3283064365386962890625000000000000000E-10L;
+static const NV _tonv_64  = 5.4210108624275221700372640043497085571E-20L;
+static const NV _tonv_96  = 1.2621774483536188886587657044524579675E-29L;
+static const NV _tonv_128 = 2.9387358770557187699218413430556141945E-39L;
 NV drand64(void)
 {
   NV r;
   MUTEX_LOCK(&state_mutex);
   if (sizeof(NV) == 4)
     r = CIRAND32() * _tonv_32;
+#if defined(USE_QUADMATH)
+  else if (sizeof(NV) == 16 && BITS_PER_WORD == 64)
+    r = CIRAND64() * _tonv_64 + CIRAND64() * _tonv_128;
+  else if (sizeof(NV) == 16 && BITS_PER_WORD == 32)
+    r = CIRAND32() * _tonv_32 + CIRAND32() * _tonv_64 + CIRAND32() * _tonv_96 + CIRAND32() * _tonv_128;
+#endif
   else if (BITS_PER_WORD == 64)
     r = CIRAND64() * _tonv_64;
   else

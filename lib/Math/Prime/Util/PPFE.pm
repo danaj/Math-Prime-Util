@@ -33,15 +33,37 @@ if (0) {
   *irand64 = \&Math::Prime::Util::ChaCha::irand64;
 }
 
-# Make sure we properly fill in doubles even on 32-bit machines
-sub drand {
-  my $d = (~0 > 4294967295)
-        ? (irand64() / (~0 + 1.0))
-        : ((irand() >> 5) * 67108864.0 + (irand() >> 6)) / 9007199254740992.0;
-  $d *= $_[0] if $_[0];
-  $d;
+# Fill all the mantissa bits for our NV, regardless of 32-bit or 64-bit Perl.
+{
+  use Config;
+  my $nvbits = (defined $Config{nvmantbits}) ? $Config{nvmantbits} : 53;
+  my $uvbits = (~0 > 4294967295) ? 64 : 32;
+  my $rsub;
+  my $_tonv_32  = 1.0;        $_tonv_32 /= 2.0 for 1..32;
+  my $_tonv_64  = $_tonv_32;  $_tonv_64 /= 2.0 for 1..32;
+  my $_tonv_96  = $_tonv_64;  $_tonv_96 /= 2.0 for 1..32;
+  my $_tonv_128 = $_tonv_96;  $_tonv_128/= 2.0 for 1..32;
+  if ($uvbits == 64) {
+    if ($nvbits <= 32) {
+      *drand = sub { irand32() * $_tonv_32; }
+    } elsif ($nvbits <= 64) {
+      *drand = sub { irand64() * $_tonv_64; }
+    } else {
+      *drand = sub { irand64() * $_tonv_64 + irand64() * $_tonv_128; }
+    }
+  } else {
+    if ($nvbits <= 32) {
+      *drand = sub { irand() * $_tonv_32; }
+    } elsif ($nvbits <= 64) {
+      *drand = sub { ((irand() >> 5) * 67108864.0 + (irand() >> 6)) / 9007199254740992.0; }
+    } else {
+      *drand = sub { irand() * $_tonv_32 + irand() * $_tonv_64 + irand() * $_tonv_96 + irand() * $_tonv_128; }
+    }
+  }
+  *rand = \&drand;
 }
-*rand = \&drand;
+
+
 *urandomb = \&Math::Prime::Util::PP::urandomb;
 *urandomm = \&Math::Prime::Util::PP::urandomm;
 

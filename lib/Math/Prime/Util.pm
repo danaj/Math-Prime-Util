@@ -3365,10 +3365,10 @@ Returns a random NV (Perl's native floating point) using the CSPRNG.  The
 API is similar to Perl's C<rand> but giving better results.
 
 The number of bits returned is equal to the number of significand bits of
-the NV type used in the Perl build, with a max of 64.  By default Perl uses
-doubles and the returned values have 53 bits.  If Perl is built with
-long double support and long doubles have a larger mantissa on the platform,
-then more bits are used.
+the NV type used in the Perl build. By default Perl uses doubles and the
+returned values have 53 bits (even on 32-bit Perl).  If Perl is built with
+long double or quadmath support, each value may have 64 or even 113 bits.
+The L<Config> variable C<nvmantbits> will indicate how many are filled.
 
 This gives I<substantially> better quality random numbers than the default Perl
 C<rand> function.  Among other things, on modern Perl's, C<rand> uses drand48,

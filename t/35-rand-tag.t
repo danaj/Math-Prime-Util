@@ -19,6 +19,13 @@ my $maxbits = $use64 ? 64 : 32;
 plan tests => 3 + 2;
 
 ########
+#
+# Notes:
+#   32-bit Perls won't have irand64 properly available.  We should test that it
+#   exists and returns rands, but it will only get a single word.
+#
+#   On quadmath platforms drand will use 128-bits instead of 64.  Simiarly
+#   for NV=float platforms we'd see different patterns after the first.
 
 my $r;
 
