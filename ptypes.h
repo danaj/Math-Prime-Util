@@ -46,7 +46,7 @@ typedef __int8 int8_t;
 #include <stdint.h>
 #endif
 
-#ifdef STANDALONE
+#ifndef PERL_VERSION
   #include <limits.h>
   #include <stdio.h>
   #include <stdlib.h>
@@ -116,7 +116,7 @@ typedef __int8 int8_t;
   #define UVCONST(x)     U32_CONST(x)
 #endif
 
-#endif
+#endif   /* End of Perl specific section */
 
 /* Try to determine if we have 64-bit available via uint64_t */
 #if defined(UINT64_MAX) || defined(_UINT64_T) || defined(__UINT64_TYPE__)
