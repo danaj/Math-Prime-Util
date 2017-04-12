@@ -46,7 +46,7 @@ typedef __int8 int8_t;
 #include <stdint.h>
 #endif
 
-#ifndef PERL_VERSION
+#ifdef STANDALONE
   #include <limits.h>
   #include <stdio.h>
   #include <stdlib.h>
