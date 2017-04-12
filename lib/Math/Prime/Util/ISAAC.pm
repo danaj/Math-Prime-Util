@@ -143,6 +143,19 @@ sub irand {
   @_CTX = _isaac(@_CTX) if $_CTX[0] > 255;
   return $_CTX[1]->[$_CTX[0]++];
 }
+
+sub irand64 {
+  return irand() if ~0 == 4294967295;
+  my($a,$b);
+  if ($_CTX[0] < 254) {
+    $a = $_CTX[1]->[$_CTX[0]++];
+    $b = $_CTX[1]->[$_CTX[0]++];
+  } else {
+    ($a,$b) = (irand(), irand());
+  }
+  ($a << 32) | $b;
+}
+
 sub random_bytes {
   my($bytes) = @_;
   $bytes = (defined $bytes) ? int abs $bytes : 0;
@@ -162,18 +175,6 @@ sub random_bytes {
     $str .= substr($rem, 0, $bytes);
   }
   return $str;
-}
-
-sub irand64 {
-  return irand() if ~0 == 4294967295;
-  my($a,$b);
-  if ($_CTX[0] < 254) {
-    $a = $_CTX[1]->[$_CTX[0]++];
-    $b = $_CTX[1]->[$_CTX[0]++];
-  } else {
-    ($a,$b) = (irand(), irand());
-  }
-  ($a << 32) | $b;
 }
 
 1;

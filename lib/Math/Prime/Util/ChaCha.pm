@@ -15,6 +15,7 @@ BEGIN {
 
 BEGIN {
   use constant ROUNDS => 20;
+  use constant BUFSZ  => 1024;
 }
 
 # Note: 32-bit will break "normal" code.
@@ -184,74 +185,52 @@ sub _prng_new {
 }
 ###############################################################################
 
-my $_goodseed;
-my $_state;     # Not accessible outside this file by standard means
-my $_stream;
-my $_have;
-my $_sptr;
+# These variables are not accessible outside this file by standard means.
+{
+  my $_goodseed;     # Did we get a long seed
+  my $_state;        # the cipher state.  40 bytes user data, 64 total.
+  my $_str;          # buffered to-be-sent output.
 
-sub _is_csprng_well_seeded { $_goodseed }
+  sub _is_csprng_well_seeded { $_goodseed }
 
-sub seed_csprng {
-  my($seed) = @_;
-  $_goodseed = length($seed) >= 16;
-  my @seed = unpack("L*",substr($seed,0,40));
-  # If not enough data, fill rest using simple RNG
-  if ($#seed < 9) {
-    my $rng = _prng_new(map { $_ <= $#seed ? $seed[$_] : 0 } 0..3);
-    push @seed, _prng_next($rng) while $#seed < 9;
+  sub seed_csprng {
+    my($seed) = @_;
+    $_goodseed = length($seed) >= 16;
+    my @seed = unpack("L*",substr($seed,0,40));
+    # If not enough data, fill rest using simple RNG
+    if ($#seed < 9) {
+      my $rng = _prng_new(map { $_ <= $#seed ? $seed[$_] : 0 } 0..3);
+      push @seed, _prng_next($rng) while $#seed < 9;
+    }
+    croak "Seed count failure" unless $#seed == 9;
+    $_state = [0x61707865, 0x3320646e, 0x79622d32, 0x6b206574,
+               @seed[0..7],
+               0, 0, @seed[8..9]];
+    $_str = '';
   }
-  croak "Seed count failure" unless $#seed == 9;
-  $_state = [0x61707865, 0x3320646e, 0x79622d32, 0x6b206574, @seed[0..7], 0, 0, @seed[8..9]];
-  $_stream = '';
-  $_have = 0;
-  $_sptr = 0;
-}
-sub srand {
-  my $seed = shift;
-  $seed = CORE::rand unless defined $seed;
-  my $str = (~0 == 4294967295)
-          ? pack("L",$seed)
-          : pack("L2", $seed, $seed >> 32);
-  seed_csprng($str);
-  $seed;
-}
-sub irand {
-  if ($_have < 4) {
-    my $keystream = _keystream(64, $_state);
-    $_stream = substr($_stream,$_sptr,$_have) . $keystream;
-    $_sptr = 0;
-    $_have = length($_stream);
+  sub srand {
+    my $seed = shift;
+    $seed = CORE::rand unless defined $seed;
+    my $str = (~0 == 4294967295) ? pack("L",$seed) : pack("L2",$seed,$seed>>32);
+    seed_csprng($str);
+    $seed;
   }
-  $_have -= 4;
-  $_sptr += 4;
-  return unpack("L",substr($_stream, $_sptr-4, 4));
-}
-sub irand64 {
-  return irand() if ~0 == 4294967295;
-  my($a,$b);
-  if ($_have >= 8) {
-    $a = unpack("L",substr($_stream, $_sptr+0, 4));
-    $b = unpack("L",substr($_stream, $_sptr+4, 4));
-    $_sptr += 8;
-    $_have -= 8;
-  } else {
-    ($a,$b) = (irand(),irand());
+  sub irand {
+    $_str .= _keystream(BUFSZ,$_state) if length($_str) < 4;
+    return unpack("L",substr($_str, 0, 4, ''));
   }
-  return ($a << 32) | $b;
-}
-sub random_bytes {
-  my($bytes) = @_;
-  $bytes = (defined $bytes) ? int abs $bytes : 0;
-
-  if ($_have < $bytes) {
-    $_stream = substr($_stream,$_sptr,$_have) . _keystream($bytes-$_have, $_state);
-    $_sptr = 0;
-    $_have = length($_stream);
+  sub irand64 {
+    return irand() if ~0 == 4294967295;
+    $_str .= _keystream(BUFSZ,$_state) if length($_str) < 8;
+    ($a,$b) = unpack("L2",substr($_str, 0, 8, ''));
+    return ($a << 32) | $b;
   }
-  $_have -= $bytes;
-  $_sptr += $bytes;
-  return substr($_stream, $_sptr-$bytes, $bytes);
+  sub random_bytes {
+    my($bytes) = @_;
+    $bytes = (defined $bytes) ? int abs $bytes : 0;
+    $_str .= _keystream($bytes-length($_str),$_state) if length($_str) < $bytes;
+    return substr($_str, 0, $bytes, '');
+  }
 }
 
 1;
