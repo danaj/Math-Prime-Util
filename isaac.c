@@ -132,16 +132,16 @@ uint32_t isaac_irand32(void)
   if (randcnt > 255) isaac();
   return randrsl[randcnt++];
 }
+#if BITS_PER_WORD == 64
 UV isaac_irand64(void)
 {
   uint32_t a, b;
   if (randcnt > 255) isaac();
   a = randrsl[randcnt++];
-#if BITS_PER_WORD < 64
-  return a;
-#else
   if (randcnt > 255) isaac();
   b = randrsl[randcnt++];
-  return (((UV)b) << 32) | a;
-#endif
+  return (((UV)a) << 32) | b;
 }
+#else
+UV isaac_irand64(void) { return isaac_irand32(); }
+#endif

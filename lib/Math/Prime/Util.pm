@@ -4881,12 +4881,11 @@ Seconds per prime for random prime generation on a early 2015 Macbook Pro
   CPMaurer  = Crypt::Primes::maurer
 
 L</random_nbit_prime> is reasonably fast, and for most purposes should
-suffice.  If good uniformity isn't important, the C<use_primeinc> config
-option can be set and double the speed.  For cryptographic purposes, one
-may want additional tests or a proven prime.  Additional tests are quite
-cheap, as shown by the time for three extra M-R and a Frobenius test.  At
-these bit sizes, the chances a composite number passes BPSW, three more
-M-R tests, and a Frobenius test is I<extraordinarily> small.
+suffice.  For cryptographic purposes, one may want additional tests or
+a proven prime.  Additional tests are quite cheap, as shown by the time
+for three extra M-R and a Frobenius test.  At these bit sizes, the
+chances a composite number passes BPSW, three more M-R tests, and a
+Frobenius test is I<extraordinarily> small.
 
 L</random_proven_prime> provides a randomly selected prime with an optional
 certificate, without specifying the particular method.  With GMP installed

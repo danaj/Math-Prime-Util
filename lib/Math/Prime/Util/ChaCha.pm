@@ -176,6 +176,10 @@ sub _prng_new {
   _prng_next(\@s);
   $s[0] = ($s[0] + $a) & 0xFFFFFFFF;
   _prng_next(\@s);
+  $s[0] = ($s[0] ^ $c) & 0xFFFFFFFF;
+  _prng_next(\@s);
+  $s[0] = ($s[0] ^ $d) & 0xFFFFFFFF;
+  _prng_next(\@s);
   \@s;
 }
 ###############################################################################
@@ -225,15 +229,16 @@ sub irand {
 }
 sub irand64 {
   return irand() if ~0 == 4294967295;
-  if ($_have < 8) {
-    my $keystream = _keystream(64, $_state);
-    $_stream = substr($_stream,$_sptr,$_have) . $keystream;
-    $_sptr = 0;
-    $_have = length($_stream);
+  my($a,$b);
+  if ($_have >= 8) {
+    $a = unpack("L",substr($_stream, $_sptr+0, 4));
+    $b = unpack("L",substr($_stream, $_sptr+4, 4));
+    $_sptr += 8;
+    $_have -= 8;
+  } else {
+    ($a,$b) = (irand(),irand());
   }
-  $_have -= 8;
-  $_sptr += 8;
-  return unpack("Q", substr($_stream, $_sptr-8, 8));
+  return ($a << 32) | $b;
 }
 sub random_bytes {
   my($bytes) = @_;

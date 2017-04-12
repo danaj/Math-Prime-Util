@@ -90,33 +90,53 @@ sub _randinit {
 
 ###############################################################################
 
+# Simple PRNG used to fill small seeds
+sub _prng_next {
+  my($s) = @_;
+  my $oldstate = $s->[0];
+  $s->[0] = ($s->[0] * 747796405 + $s->[1]) & 0xFFFFFFFF;
+  my $word = ((($oldstate >> (($oldstate >> 28) + 4)) ^ $oldstate) * 277803737) & 0xFFFFFFFF;
+  ($word >> 22) ^ $word;
+}
+sub _prng_new {
+  my($a,$b,$c,$d) = @_;
+  my @s = (0, (($b << 1) | 1) & 0xFFFFFFFF);
+  _prng_next(\@s);
+  $s[0] = ($s[0] + $a) & 0xFFFFFFFF;
+  _prng_next(\@s);
+  $s[0] = ($s[0] ^ $c) & 0xFFFFFFFF;
+  _prng_next(\@s);
+  $s[0] = ($s[0] ^ $d) & 0xFFFFFFFF;
+  _prng_next(\@s);
+  \@s;
+}
+
 my $_goodseed = 0;
 my @_CTX = (0,[],0,0,0,[]); # (randcnt, randrsl[256], aa, bb, cc, mm[256])
-
-sub _isaac_seed {
-  my($seed) = @_;
-  $_goodseed = length($seed) >= 16;
-  my @mm = (0) x 256;
-  my @r = (0) x 256;
-  # Replicate seed and put in randrsl
-  if (length($seed) > 0) {
-    $seed .= $seed while length($seed) < 1024;
-    @r = unpack("L256",$seed);
-  }
-  @_CTX = _randinit(0, \@r, 0, 0, 0, \@mm);
-  1;
-}
 
 sub _is_csprng_well_seeded { $_goodseed }
 
 sub seed_csprng {
   my($seed) = @_;
-  _isaac_seed($seed);
+  $_goodseed = length($seed) >= 16;
+  my @mm = (0) x 256;
+  my @r = unpack("L*",substr($seed,0,1024));
+  # If not enough data, fill rest using simple RNG
+  if ($#r < 255) {
+    my $rng = _prng_new(map { $_ <= $#r ? $r[$_] : 0 } 0..3);
+    push @r, _prng_next($rng) while $#r < 255;
+  }
+  @_CTX = _randinit(0, \@r, 0, 0, 0, \@mm);
+  1;
 }
+
 sub srand {
   my $seed = shift;
   $seed = CORE::rand unless defined $seed;
-  _isaac_seed(pack("L2", ($seed >> 32) & 0xFFFFFFFF, $seed & 0xFFFFFFFF));
+  my $str = (~0 == 4294967295)
+          ? pack("L",$seed)
+          : pack("L2", $seed, $seed >> 32);
+  seed_csprng($str);
   $seed;
 }
 sub irand {
@@ -127,17 +147,14 @@ sub random_bytes {
   my($bytes) = @_;
   $bytes = (defined $bytes) ? int abs $bytes : 0;
   my $str = '';
-  #while ($bytes >= 4) {
-  #  $str .= pack("L", irand());
-  #  $bytes -= 4;
-  #}
+
   while ($bytes >= 4) {
     @_CTX = _isaac(@_CTX) if $_CTX[0] > 255;
     my ($rcnt, $r) = @_CTX;
-    my $remwords = 256 - $rcnt;
-    my $copywords = ($remwords > $bytes*4) ? $bytes*4 : $remwords;
-    $str .= pack("L*", map { $r->[$rcnt++] } 1 .. $copywords);
-    $_CTX[0] = $rcnt;
+    my($copywords, $havewords) = ($bytes >> 2, 256 - $rcnt);
+    $copywords = $havewords if $havewords < $copywords;
+    $str .= pack("L*", @$r[$rcnt .. $rcnt+$copywords-1]);
+    $_CTX[0] = $rcnt + $copywords;
     $bytes -= 4*$copywords;
   }
   if ($bytes > 0) {
@@ -147,16 +164,16 @@ sub random_bytes {
   return $str;
 }
 
-# TODO: Ensure this is right with 32-bit and big endian
-#sub irand64 { irand() | (irand() << 32); };
 sub irand64 {
   return irand() if ~0 == 4294967295;
+  my($a,$b);
   if ($_CTX[0] < 254) {
-    my $a = $_CTX[1]->[$_CTX[0]++];
-    my $b = $_CTX[1]->[$_CTX[0]++];
-    return ($a << 32) | $b;
+    $a = $_CTX[1]->[$_CTX[0]++];
+    $b = $_CTX[1]->[$_CTX[0]++];
+  } else {
+    ($a,$b) = (irand(), irand());
   }
-  irand() | (irand() << 32);
+  ($a << 32) | $b;
 }
 
 1;

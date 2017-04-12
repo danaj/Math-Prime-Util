@@ -88,6 +88,7 @@ MUTEX_DECL(state);
  * portable and reproducible, we'll use PCG (RXS M XS 32).
  */
 #if 0
+/* PCG XSH RR 64/32.  32-bit output, 64-bit state and types. */
 uint32_t prng_next(char* rng) {
   uint32_t xorshifted, rot;
   uint64_t *state = (uint64_t*) rng;
@@ -110,6 +111,7 @@ char* prng_new(uint32_t a, uint32_t b, uint32_t c, uint32_t d) {
   return (char*) state;
 }
 #else
+/* PCG RXS M XS 32.  32-bit output, 32-bit state and types. */
 uint32_t prng_next(char* ctx) {
   uint32_t *rng = (uint32_t*) ctx;
   uint32_t word, oldstate = rng[0];
@@ -125,7 +127,10 @@ char* prng_new(uint32_t a, uint32_t b, uint32_t c, uint32_t d) {
   (void) prng_next((char*)state);
   state[0] += a;
   (void) prng_next((char*)state);
-  /* TODO: We really should do *something* with c and d */
+  state[0] ^= c;
+  (void) prng_next((char*)state);
+  state[0] ^= d;
+  (void) prng_next((char*)state);
   return (char*) state;
 }
 #endif
@@ -216,9 +221,41 @@ UV irand64(void)
 
 int is_csprng_well_seeded(void) { return good_seed; }
 
-/* Many ways to do this.  2 or 3 good-but-different ways, many bad. */
-static NV _tonv_32 = 2.3283064365386962890625000000000000000E-10L;
-static NV _tonv_64 = 5.4210108624275221700372640043497085571E-20L;
+/* There are many ways to get floats from integers.  A few good, many bad.
+ *
+ * Vigna recommends (x64 >> 11) * (1.0 / (1ULL<<53)).
+ * http://xoroshiro.di.unimi.it
+ * Also see alternatives discussed:
+ * http://www.math.sci.hiroshima-u.ac.jp/~m-mat/MT/VERSIONS/C-LANG/speed-up-real.html
+ *
+ * Melissa O'Neill notes the problem is harder than it looks, doesn't address.
+ * http://www.pcg-random.org/pdf/toms-oneill-pcg-family-v1.02.pdf
+ *
+ * randomstate for numpy uses separate code for each generator.
+ * With the exception of dSFMT, they each one one of:
+ *     (x64 >> 11) * (1 / 9007199254740992.0)
+ *     ((x32 >> 5) * 67108864.0 + (y32 >> 6)) / 9007199254740992.0
+ * where the first one is identical to Vigna.
+ *
+ * David Jones recommends the minor 32-bit variant:
+ *     ((x32 >> 6) * 134217728.0 + (y32 >> 5)) / 9007199254740992.0
+ * http://www0.cs.ucl.ac.uk/staff/d.jones/GoodPracticeRNG.pdf
+ *
+ * Taylor Campbell discusses this in:
+ * http://mumble.net/~campbell/tmp/random_real.c
+ * He points out that there are two common non-broken choices,
+ * div by 2^-53  or   div by 2^-64, and each are slightly flawed in
+ * different ways.  He shows a theoretically better method.
+ */
+
+/*
+ * We choose the x64 / 2^-64 method here.  This way is simple and yields
+ * 64-bit results if NV's are long doubles.  It is similar to what
+ * Geoff Kuenning does in MTwist, though he has the host calculate the
+ * constants to ensure a dodgy compiler won't munge them.
+ */
+static const NV _tonv_32 = 2.3283064365386962890625000000000000000E-10L;
+static const NV _tonv_64 = 5.4210108624275221700372640043497085571E-20L;
 NV drand64(void)
 {
   NV r;
@@ -228,7 +265,7 @@ NV drand64(void)
   else if (BITS_PER_WORD == 64)
     r = CIRAND64() * _tonv_64;
   else
-    r = CIRAND32() * _tonv_64 + CIRAND32() * _tonv_32;
+    r = ((CIRAND32() >> 5) * 67108864.0 + (CIRAND32() >> 6)) / 9007199254740992.0;
   MUTEX_UNLOCK(&state_mutex);
   return r;
 }

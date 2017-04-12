@@ -303,19 +303,13 @@ uint32_t chacha_irand32(void)
   a = U8TO32_LE(ptr);
   return a;
 }
+#if BITS_PER_WORD == 64
 UV chacha_irand64(void)
 {
-#if BITS_PER_WORD < 64
-  return chacha_irand32();
-#else
-  uint32_t a,b;
-  unsigned char* ptr;
-  if (_cs.have < 8)
-    _refill_buffer(&_cs);
-  ptr = _cs.buf + BUFSZ - _cs.have;
-  _cs.have -= 8;
-  a = U8TO32_LE(ptr);
-  b = U8TO32_LE(ptr+4);
-  return (((UV)b) << 32) | a;
-#endif
+  uint32_t a = chacha_irand32();
+  uint32_t b = chacha_irand32();
+  return (((UV)a) << 32) | b;
 }
+#else
+UV chacha_irand64(void) { return chacha_irand32(); }
+#endif
