@@ -6,8 +6,8 @@
 /* Some benchmarks, repeatedly calling random_bytes(32768).  Time is
  * shown as nanoseconds per 32-bit word.
  *
- * 4639    ns/word  ChaCha20 in Perl
- *  879    ns/word  ISAAC in Perl
+ * 4770    ns/word  ChaCha20 in Perl
+ *  760    ns/word  ISAAC in Perl
  *
  *   16.89 ns/word  ChaCha20 (simple from insane coding)
  *   11.20 ns/word  ChaCha20 (openbsd)

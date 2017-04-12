@@ -3,9 +3,9 @@
  *
  * We can use ISAAC, ChaCha20, or something else.
  *
- * 4798    ns/word  ChaCha20 in Perl
- * 2106    ns/word  ChaCha8 in Perl
- *  850    ns/word  ISAAC in Perl
+ * 4770    ns/word  ChaCha20 in Perl
+ * 2050    ns/word  ChaCha8 in Perl
+ *  760    ns/word  ISAAC in Perl
  *
  *   11.20 ns/word  ChaCha20 (openbsd)
  *   10.31 ns/word  ChaCha20 (dj)
@@ -15,8 +15,8 @@
  *    4.37 ns/word  MT19937 (Cokus)
  *    4.14 ns/word  Tyche-i
  *    3.26 ns/word  ISAAC
- *    3.18 ns/word  PCG32 basic
- *    1.95 ns/word  PCG64 opt
+ *    3.18 ns/word  PCG64 (64-bit state, 64-bit types)
+ *    1.95 ns/word  PCG64 (64-bit state, 128-bit types)
  *    1.84 ns/word  ChaCha20 (AVX2 chacha-opt)
  *    1.48 ns/word  Xoroshiro128+
  *    1.16 ns/word  SplitMix64
@@ -258,22 +258,28 @@ static const NV _tonv_32  = 2.3283064365386962890625000000000000000E-10L;
 static const NV _tonv_64  = 5.4210108624275221700372640043497085571E-20L;
 static const NV _tonv_96  = 1.2621774483536188886587657044524579675E-29L;
 static const NV _tonv_128 = 2.9387358770557187699218413430556141945E-39L;
+#ifndef NVMANTBITS
+#define NVMANTBITS ((sizeof(NV) <= 4) ? 24 : (sizeof(NV) <= 8) ? 52 : 112)
+#endif
 NV drand64(void)
 {
   NV r;
   MUTEX_LOCK(&state_mutex);
-  if (sizeof(NV) == 4)
-    r = CIRAND32() * _tonv_32;
-#if defined(USE_QUADMATH)
-  else if (sizeof(NV) == 16 && BITS_PER_WORD == 64)
-    r = CIRAND64() * _tonv_64 + CIRAND64() * _tonv_128;
-  else if (sizeof(NV) == 16 && BITS_PER_WORD == 32)
-    r = CIRAND32() * _tonv_32 + CIRAND32() * _tonv_64 + CIRAND32() * _tonv_96 + CIRAND32() * _tonv_128;
-#endif
-  else if (BITS_PER_WORD == 64)
+#if NVMANTBITS <= 32
+  r = CIRAND32() * _tonv_32;
+#elif NVMANTBITS <= 64
+  #if BITS_PER_WORD > 32
     r = CIRAND64() * _tonv_64;
-  else
+  #else
     r = ((CIRAND32() >> 5) * 67108864.0 + (CIRAND32() >> 6)) / 9007199254740992.0;
+  #endif
+#else
+  #if BITS_PER_WORD > 32
+    r = CIRAND64() * _tonv_64 + CIRAND64() * _tonv_128;
+  #else
+    r = CIRAND32() * _tonv_32 + CIRAND32() * _tonv_64 + CIRAND32() * _tonv_96 + CIRAND32() * _tonv_128;
+  #endif
+#endif
   MUTEX_UNLOCK(&state_mutex);
   return r;
 }
