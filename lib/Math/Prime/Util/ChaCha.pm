@@ -38,7 +38,6 @@ sub _test_qr {
   my($a,$b,$c,$d);
 
   ($a,$b,$c,$d) = _quarterround(0x11111111,0x01020304,0x9b8d6f43,0x01234567);
-  #($a,$b,$c,$d) = unpack("L*",pack("L*",$a,$b,$c,$d));
   #printf "  %08x  %08x  %08x  %08x\n", $a,$b,$c,$d;
   die "QR test 2.1.1 fail 1" unless $a == 0xea2a92f4 && $b == 0xcb1cf8ce && $c == 0x4581472e && $d == 0x5881c4bb;
 
@@ -116,7 +115,7 @@ sub _core {
     $x[ 9]=($x[ 9]+$x[14])&0xFFFFFFFF; $x[ 4]^=$x[ 9]; $x[ 4]=(($x[ 4]<< 7)&0xFFFFFFFF)|(($x[ 4]>>25)& 0x7F);
 
   }
-  pack("L16", map { $x[$_] + $j->[$_] } 0..15);
+  pack("V16", map { $x[$_] + $j->[$_] } 0..15);
 }
 sub _test_core {
   return unless ROUNDS == 20;
@@ -124,7 +123,7 @@ sub _test_core {
   my @state = map { hex("0x$_") } unpack "(a8)*", $init_state;
   my $instr = join("",map { sprintf("%08x",$_) } @state);
   die "Block function fail test 2.3.2 input" unless $instr eq '617078653320646e79622d326b20657403020100070605040b0a09080f0e0d0c13121110171615141b1a19181f1e1d1c00000001090000004a00000000000000';
-  my @out = unpack("L16", _core(\@state));
+  my @out = unpack("V16", _core(\@state));
   my $outstr = join("",map { sprintf("%08x",$_) } @out);
   #printf "  %08x  %08x  %08x  %08x\n  %08x  %08x  %08x  %08x\n  %08x  %08x  %08x  %08x\n  %08x  %08x  %08x  %08x\n", @state;
   die "Block function fail test 2.3.2 output" unless $outstr eq 'e4e7f11015593bd11fdd0f50c47120a3c7f4d1c70368c0339aaa22044e6cd4c3466482d209aa9f0705d7c214a2028bd9d19c12b5b94e16dee883d0cb4e3c50a2';
@@ -149,14 +148,13 @@ sub _test_keystream {
   my $init_state = '617078653320646e79622d326b20657403020100070605040b0a09080f0e0d0c13121110171615141b1a19181f1e1d1c00000001000000004a00000000000000';
   my @state = map { hex("0x$_") } unpack "(a8)*", $init_state;
   my $instr = join("",map { sprintf("%08x",$_) } @state);
-  croak "Block function fail test 2.4.2 input" unless $instr eq '617078653320646e79622d326b20657403020100070605040b0a09080f0e0d0c13121110171615141b1a19181f1e1d1c00000001000000004a00000000000000';
+  die "Block function fail test 2.4.2 input" unless $instr eq '617078653320646e79622d326b20657403020100070605040b0a09080f0e0d0c13121110171615141b1a19181f1e1d1c00000001000000004a00000000000000';
   my $keystream = _keystream(114, \@state);
   # Verify new state
   my $outstr = join("",map { sprintf("%08x",$_) } @state);
-  croak "Block function fail test 2.4.2 output" unless $outstr eq '617078653320646e79622d326b20657403020100070605040b0a09080f0e0d0c13121110171615141b1a19181f1e1d1c00000003000000004a00000000000000';
-  # Rather tediaus way of doing it, but very explicit
-  my $ksstr = join("",map { sprintf("%02x",$_) } map { ord } split(//,$keystream));
-  croak "Block function fail test 2.4.2 keystream" unless substr($ksstr,0,2*114) eq '224f51f3401bd9e12fde276fb8631ded8c131f823d2c06e27e4fcaec9ef3cf788a3b0aa372600a92b57974cded2b9334794cba40c63e34cdea212c4cf07d41b769a6749f3f630f4122cafe28ec4dc47e26d4346d70b98c73f3e9c53ac40c5945398b6eda1a832c89c167eacd901d7e2bf363';
+  die "Block function fail test 2.4.2 output" unless $outstr eq '617078653320646e79622d326b20657403020100070605040b0a09080f0e0d0c13121110171615141b1a19181f1e1d1c00000003000000004a00000000000000';
+  my $ksstr = unpack("H*",$keystream);
+  die "Block function fail test 2.4.2 keystream" unless substr($ksstr,0,2*114) eq '224f51f3401bd9e12fde276fb8631ded8c131f823d2c06e27e4fcaec9ef3cf788a3b0aa372600a92b57974cded2b9334794cba40c63e34cdea212c4cf07d41b769a6749f3f630f4122cafe28ec4dc47e26d4346d70b98c73f3e9c53ac40c5945398b6eda1a832c89c167eacd901d7e2bf363';
 }
 _test_keystream();
 
@@ -196,7 +194,7 @@ sub _prng_new {
   sub seed_csprng {
     my($seed) = @_;
     $_goodseed = length($seed) >= 16;
-    my @seed = unpack("L*",substr($seed,0,40));
+    my @seed = unpack("V*",substr($seed,0,40));
     # If not enough data, fill rest using simple RNG
     if ($#seed < 9) {
       my $rng = _prng_new(map { $_ <= $#seed ? $seed[$_] : 0 } 0..3);
@@ -211,18 +209,18 @@ sub _prng_new {
   sub srand {
     my $seed = shift;
     $seed = CORE::rand unless defined $seed;
-    my $str = (~0 == 4294967295) ? pack("L",$seed) : pack("L2",$seed,$seed>>32);
+    my $str = (~0 == 4294967295) ? pack("V",$seed) : pack("V2",$seed,$seed>>32);
     seed_csprng($str);
     $seed;
   }
   sub irand {
     $_str .= _keystream(BUFSZ,$_state) if length($_str) < 4;
-    return unpack("L",substr($_str, 0, 4, ''));
+    return unpack("V",substr($_str, 0, 4, ''));
   }
   sub irand64 {
     return irand() if ~0 == 4294967295;
     $_str .= _keystream(BUFSZ,$_state) if length($_str) < 8;
-    ($a,$b) = unpack("L2",substr($_str, 0, 8, ''));
+    ($a,$b) = unpack("V2",substr($_str, 0, 8, ''));
     return ($a << 32) | $b;
   }
   sub random_bytes {
