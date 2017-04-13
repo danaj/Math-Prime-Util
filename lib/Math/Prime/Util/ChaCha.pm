@@ -16,36 +16,8 @@ BEGIN {
 BEGIN {
   use constant ROUNDS => 20;
   use constant BUFSZ  => 1024;
+  use constant BITS   => (~0 == 4294967295) ? 32 : 64;
 }
-
-# Note: 32-bit will break "normal" code.
-# We 'use integer' to fix one problem, then do extra masking and
-# a final signed->unsigned conversion to fix the extra problems our
-# fix gave us.  We really want 'use uinteger'.
-
-sub _quarterround {
-  my($a,$b,$c,$d) = @_;
-  use integer;
-  $a=($a+$b)&0xFFFFFFFF; $d^=$a; $d=(($d<<16)&0xFFFFFFFF)|(($d>>16)& 0xFFFF);
-  $c=($c+$d)&0xFFFFFFFF; $b^=$c; $b=(($b<<12)&0xFFFFFFFF)|(($b>>20)& 0xFFF);
-  $a=($a+$b)&0xFFFFFFFF; $d^=$a; $d=(($d<< 8)&0xFFFFFFFF)|(($d>>24)& 0xFF);
-  $c=($c+$d)&0xFFFFFFFF; $b^=$c; $b=(($b<< 7)&0xFFFFFFFF)|(($b>>25)& 0x7F);
-  unpack("L*",pack("L*",$a,$b,$c,$d));
-}
-
-sub _test_qr {
-  return unless ROUNDS == 20;
-  my($a,$b,$c,$d);
-
-  ($a,$b,$c,$d) = _quarterround(0x11111111,0x01020304,0x9b8d6f43,0x01234567);
-  #printf "  %08x  %08x  %08x  %08x\n", $a,$b,$c,$d;
-  die "QR test 2.1.1 fail 1" unless $a == 0xea2a92f4 && $b == 0xcb1cf8ce && $c == 0x4581472e && $d == 0x5881c4bb;
-
-  ($a,$b,$c,$d) = _quarterround(0x516461b1,0x2a5f714c, 0x53372767, 0x3d631689);
-  #printf "  %08x  %08x  %08x  %08x\n", $a,$b,$c,$d;
-  die "QR test 2.2.1 fail 2" unless $a == 0xbdb886dc && $b == 0xcfacafd2 && $c == 0xe46bea80 && $d == 0xccc07c79;
-}
-_test_qr;
 
 #  State is:
 #       cccccccc  cccccccc  cccccccc  cccccccc
@@ -55,67 +27,97 @@ _test_qr;
 #
 #     c=constant k=key b=blockcount n=nonce
 
+# We have to take care with 32-bit Perl so it sticks with integers.
+# Unfortunately the pragma "use integer" means signed integer so
+# it ruins right shifts.  We also must ensure we save as unsigned.
+
 sub _core {
-  my($j) = @_;
-  use integer;
-  #die "Invalid ChaCha state" unless scalar(@$j) == 16;
-  my @x = @$j;
-  for (1 .. ROUNDS/2) {
+  my($j, $blocks) = @_;
+  my $ks = '';
+  $blocks = 1 unless defined $blocks;
 
-    # Unrolling is ugly but makes a big performance diff.
-    # Generated with unroll-chacha.pl
-
-    #@x[ 0, 4, 8,12] = _quarterround(@x[ 0, 4, 8,12]);
-    #@x[ 1, 5, 9,13] = _quarterround(@x[ 1, 5, 9,13]);
-    #@x[ 2, 6,10,14] = _quarterround(@x[ 2, 6,10,14]);
-    #@x[ 3, 7,11,15] = _quarterround(@x[ 3, 7,11,15]);
-    #@x[ 0, 5,10,15] = _quarterround(@x[ 0, 5,10,15]);
-    #@x[ 1, 6,11,12] = _quarterround(@x[ 1, 6,11,12]);
-    #@x[ 2, 7, 8,13] = _quarterround(@x[ 2, 7, 8,13]);
-    #@x[ 3, 4, 9,14] = _quarterround(@x[ 3, 4, 9,14]);
-
-    $x[ 0]=($x[ 0]+$x[ 4])&0xFFFFFFFF; $x[12]^=$x[ 0]; $x[12]=(($x[12]<<16)&0xFFFFFFFF)|(($x[12]>>16)& 0xFFFF);
-    $x[ 8]=($x[ 8]+$x[12])&0xFFFFFFFF; $x[ 4]^=$x[ 8]; $x[ 4]=(($x[ 4]<<12)&0xFFFFFFFF)|(($x[ 4]>>20)& 0xFFF);
-    $x[ 0]=($x[ 0]+$x[ 4])&0xFFFFFFFF; $x[12]^=$x[ 0]; $x[12]=(($x[12]<< 8)&0xFFFFFFFF)|(($x[12]>>24)& 0xFF);
-    $x[ 8]=($x[ 8]+$x[12])&0xFFFFFFFF; $x[ 4]^=$x[ 8]; $x[ 4]=(($x[ 4]<< 7)&0xFFFFFFFF)|(($x[ 4]>>25)& 0x7F);
-
-    $x[ 1]=($x[ 1]+$x[ 5])&0xFFFFFFFF; $x[13]^=$x[ 1]; $x[13]=(($x[13]<<16)&0xFFFFFFFF)|(($x[13]>>16)& 0xFFFF);
-    $x[ 9]=($x[ 9]+$x[13])&0xFFFFFFFF; $x[ 5]^=$x[ 9]; $x[ 5]=(($x[ 5]<<12)&0xFFFFFFFF)|(($x[ 5]>>20)& 0xFFF);
-    $x[ 1]=($x[ 1]+$x[ 5])&0xFFFFFFFF; $x[13]^=$x[ 1]; $x[13]=(($x[13]<< 8)&0xFFFFFFFF)|(($x[13]>>24)& 0xFF);
-    $x[ 9]=($x[ 9]+$x[13])&0xFFFFFFFF; $x[ 5]^=$x[ 9]; $x[ 5]=(($x[ 5]<< 7)&0xFFFFFFFF)|(($x[ 5]>>25)& 0x7F);
-
-    $x[ 2]=($x[ 2]+$x[ 6])&0xFFFFFFFF; $x[14]^=$x[ 2]; $x[14]=(($x[14]<<16)&0xFFFFFFFF)|(($x[14]>>16)& 0xFFFF);
-    $x[10]=($x[10]+$x[14])&0xFFFFFFFF; $x[ 6]^=$x[10]; $x[ 6]=(($x[ 6]<<12)&0xFFFFFFFF)|(($x[ 6]>>20)& 0xFFF);
-    $x[ 2]=($x[ 2]+$x[ 6])&0xFFFFFFFF; $x[14]^=$x[ 2]; $x[14]=(($x[14]<< 8)&0xFFFFFFFF)|(($x[14]>>24)& 0xFF);
-    $x[10]=($x[10]+$x[14])&0xFFFFFFFF; $x[ 6]^=$x[10]; $x[ 6]=(($x[ 6]<< 7)&0xFFFFFFFF)|(($x[ 6]>>25)& 0x7F);
-
-    $x[ 3]=($x[ 3]+$x[ 7])&0xFFFFFFFF; $x[15]^=$x[ 3]; $x[15]=(($x[15]<<16)&0xFFFFFFFF)|(($x[15]>>16)& 0xFFFF);
-    $x[11]=($x[11]+$x[15])&0xFFFFFFFF; $x[ 7]^=$x[11]; $x[ 7]=(($x[ 7]<<12)&0xFFFFFFFF)|(($x[ 7]>>20)& 0xFFF);
-    $x[ 3]=($x[ 3]+$x[ 7])&0xFFFFFFFF; $x[15]^=$x[ 3]; $x[15]=(($x[15]<< 8)&0xFFFFFFFF)|(($x[15]>>24)& 0xFF);
-    $x[11]=($x[11]+$x[15])&0xFFFFFFFF; $x[ 7]^=$x[11]; $x[ 7]=(($x[ 7]<< 7)&0xFFFFFFFF)|(($x[ 7]>>25)& 0x7F);
-
-    $x[ 0]=($x[ 0]+$x[ 5])&0xFFFFFFFF; $x[15]^=$x[ 0]; $x[15]=(($x[15]<<16)&0xFFFFFFFF)|(($x[15]>>16)& 0xFFFF);
-    $x[10]=($x[10]+$x[15])&0xFFFFFFFF; $x[ 5]^=$x[10]; $x[ 5]=(($x[ 5]<<12)&0xFFFFFFFF)|(($x[ 5]>>20)& 0xFFF);
-    $x[ 0]=($x[ 0]+$x[ 5])&0xFFFFFFFF; $x[15]^=$x[ 0]; $x[15]=(($x[15]<< 8)&0xFFFFFFFF)|(($x[15]>>24)& 0xFF);
-    $x[10]=($x[10]+$x[15])&0xFFFFFFFF; $x[ 5]^=$x[10]; $x[ 5]=(($x[ 5]<< 7)&0xFFFFFFFF)|(($x[ 5]>>25)& 0x7F);
-
-    $x[ 1]=($x[ 1]+$x[ 6])&0xFFFFFFFF; $x[12]^=$x[ 1]; $x[12]=(($x[12]<<16)&0xFFFFFFFF)|(($x[12]>>16)& 0xFFFF);
-    $x[11]=($x[11]+$x[12])&0xFFFFFFFF; $x[ 6]^=$x[11]; $x[ 6]=(($x[ 6]<<12)&0xFFFFFFFF)|(($x[ 6]>>20)& 0xFFF);
-    $x[ 1]=($x[ 1]+$x[ 6])&0xFFFFFFFF; $x[12]^=$x[ 1]; $x[12]=(($x[12]<< 8)&0xFFFFFFFF)|(($x[12]>>24)& 0xFF);
-    $x[11]=($x[11]+$x[12])&0xFFFFFFFF; $x[ 6]^=$x[11]; $x[ 6]=(($x[ 6]<< 7)&0xFFFFFFFF)|(($x[ 6]>>25)& 0x7F);
-
-    $x[ 2]=($x[ 2]+$x[ 7])&0xFFFFFFFF; $x[13]^=$x[ 2]; $x[13]=(($x[13]<<16)&0xFFFFFFFF)|(($x[13]>>16)& 0xFFFF);
-    $x[ 8]=($x[ 8]+$x[13])&0xFFFFFFFF; $x[ 7]^=$x[ 8]; $x[ 7]=(($x[ 7]<<12)&0xFFFFFFFF)|(($x[ 7]>>20)& 0xFFF);
-    $x[ 2]=($x[ 2]+$x[ 7])&0xFFFFFFFF; $x[13]^=$x[ 2]; $x[13]=(($x[13]<< 8)&0xFFFFFFFF)|(($x[13]>>24)& 0xFF);
-    $x[ 8]=($x[ 8]+$x[13])&0xFFFFFFFF; $x[ 7]^=$x[ 8]; $x[ 7]=(($x[ 7]<< 7)&0xFFFFFFFF)|(($x[ 7]>>25)& 0x7F);
-
-    $x[ 3]=($x[ 3]+$x[ 4])&0xFFFFFFFF; $x[14]^=$x[ 3]; $x[14]=(($x[14]<<16)&0xFFFFFFFF)|(($x[14]>>16)& 0xFFFF);
-    $x[ 9]=($x[ 9]+$x[14])&0xFFFFFFFF; $x[ 4]^=$x[ 9]; $x[ 4]=(($x[ 4]<<12)&0xFFFFFFFF)|(($x[ 4]>>20)& 0xFFF);
-    $x[ 3]=($x[ 3]+$x[ 4])&0xFFFFFFFF; $x[14]^=$x[ 3]; $x[14]=(($x[14]<< 8)&0xFFFFFFFF)|(($x[14]>>24)& 0xFF);
-    $x[ 9]=($x[ 9]+$x[14])&0xFFFFFFFF; $x[ 4]^=$x[ 9]; $x[ 4]=(($x[ 4]<< 7)&0xFFFFFFFF)|(($x[ 4]>>25)& 0x7F);
-
+  while ($blocks-- > 0) {
+    my($x0,$x1,$x2,$x3,$x4,$x5,$x6,$x7,$x8,$x9,$x10,$x11,$x12,$x13,$x14,$x15) = @$j;
+    for (1 .. ROUNDS/2) {
+      if (BITS == 64) {
+        use integer;
+        $x0 =($x0 +$x4 )&0xFFFFFFFF; $x12^=$x0 ; $x12=(($x12<<16)|($x12>>16))&0xFFFFFFFF;
+        $x8 =($x8 +$x12)&0xFFFFFFFF; $x4 ^=$x8 ; $x4 =(($x4 <<12)|($x4 >>20))&0xFFFFFFFF;
+        $x0 =($x0 +$x4 )&0xFFFFFFFF; $x12^=$x0 ; $x12=(($x12<< 8)|($x12>>24))&0xFFFFFFFF;
+        $x8 =($x8 +$x12)&0xFFFFFFFF; $x4 ^=$x8 ; $x4 =(($x4 << 7)|($x4 >>25))&0xFFFFFFFF;
+        $x1 =($x1 +$x5 )&0xFFFFFFFF; $x13^=$x1 ; $x13=(($x13<<16)|($x13>>16))&0xFFFFFFFF;
+        $x9 =($x9 +$x13)&0xFFFFFFFF; $x5 ^=$x9 ; $x5 =(($x5 <<12)|($x5 >>20))&0xFFFFFFFF;
+        $x1 =($x1 +$x5 )&0xFFFFFFFF; $x13^=$x1 ; $x13=(($x13<< 8)|($x13>>24))&0xFFFFFFFF;
+        $x9 =($x9 +$x13)&0xFFFFFFFF; $x5 ^=$x9 ; $x5 =(($x5 << 7)|($x5 >>25))&0xFFFFFFFF;
+        $x2 =($x2 +$x6 )&0xFFFFFFFF; $x14^=$x2 ; $x14=(($x14<<16)|($x14>>16))&0xFFFFFFFF;
+        $x10=($x10+$x14)&0xFFFFFFFF; $x6 ^=$x10; $x6 =(($x6 <<12)|($x6 >>20))&0xFFFFFFFF;
+        $x2 =($x2 +$x6 )&0xFFFFFFFF; $x14^=$x2 ; $x14=(($x14<< 8)|($x14>>24))&0xFFFFFFFF;
+        $x10=($x10+$x14)&0xFFFFFFFF; $x6 ^=$x10; $x6 =(($x6 << 7)|($x6 >>25))&0xFFFFFFFF;
+        $x3 =($x3 +$x7 )&0xFFFFFFFF; $x15^=$x3 ; $x15=(($x15<<16)|($x15>>16))&0xFFFFFFFF;
+        $x11=($x11+$x15)&0xFFFFFFFF; $x7 ^=$x11; $x7 =(($x7 <<12)|($x7 >>20))&0xFFFFFFFF;
+        $x3 =($x3 +$x7 )&0xFFFFFFFF; $x15^=$x3 ; $x15=(($x15<< 8)|($x15>>24))&0xFFFFFFFF;
+        $x11=($x11+$x15)&0xFFFFFFFF; $x7 ^=$x11; $x7 =(($x7 << 7)|($x7 >>25))&0xFFFFFFFF;
+        $x0 =($x0 +$x5 )&0xFFFFFFFF; $x15^=$x0 ; $x15=(($x15<<16)|($x15>>16))&0xFFFFFFFF;
+        $x10=($x10+$x15)&0xFFFFFFFF; $x5 ^=$x10; $x5 =(($x5 <<12)|($x5 >>20))&0xFFFFFFFF;
+        $x0 =($x0 +$x5 )&0xFFFFFFFF; $x15^=$x0 ; $x15=(($x15<< 8)|($x15>>24))&0xFFFFFFFF;
+        $x10=($x10+$x15)&0xFFFFFFFF; $x5 ^=$x10; $x5 =(($x5 << 7)|($x5 >>25))&0xFFFFFFFF;
+        $x1 =($x1 +$x6 )&0xFFFFFFFF; $x12^=$x1 ; $x12=(($x12<<16)|($x12>>16))&0xFFFFFFFF;
+        $x11=($x11+$x12)&0xFFFFFFFF; $x6 ^=$x11; $x6 =(($x6 <<12)|($x6 >>20))&0xFFFFFFFF;
+        $x1 =($x1 +$x6 )&0xFFFFFFFF; $x12^=$x1 ; $x12=(($x12<< 8)|($x12>>24))&0xFFFFFFFF;
+        $x11=($x11+$x12)&0xFFFFFFFF; $x6 ^=$x11; $x6 =(($x6 << 7)|($x6 >>25))&0xFFFFFFFF;
+        $x2 =($x2 +$x7 )&0xFFFFFFFF; $x13^=$x2 ; $x13=(($x13<<16)|($x13>>16))&0xFFFFFFFF;
+        $x8 =($x8 +$x13)&0xFFFFFFFF; $x7 ^=$x8 ; $x7 =(($x7 <<12)|($x7 >>20))&0xFFFFFFFF;
+        $x2 =($x2 +$x7 )&0xFFFFFFFF; $x13^=$x2 ; $x13=(($x13<< 8)|($x13>>24))&0xFFFFFFFF;
+        $x8 =($x8 +$x13)&0xFFFFFFFF; $x7 ^=$x8 ; $x7 =(($x7 << 7)|($x7 >>25))&0xFFFFFFFF;
+        $x3 =($x3 +$x4 )&0xFFFFFFFF; $x14^=$x3 ; $x14=(($x14<<16)|($x14>>16))&0xFFFFFFFF;
+        $x9 =($x9 +$x14)&0xFFFFFFFF; $x4 ^=$x9 ; $x4 =(($x4 <<12)|($x4 >>20))&0xFFFFFFFF;
+        $x3 =($x3 +$x4 )&0xFFFFFFFF; $x14^=$x3 ; $x14=(($x14<< 8)|($x14>>24))&0xFFFFFFFF;
+        $x9 =($x9 +$x14)&0xFFFFFFFF; $x4 ^=$x9 ; $x4 =(($x4 << 7)|($x4 >>25))&0xFFFFFFFF;
+      } else { # 32-bit
+        {use integer;$x0 +=$x4 ;} $x12^=$x0 ; $x12=($x12<<16)|($x12>>16);
+        {use integer;$x8 +=$x12;} $x4 ^=$x8 ; $x4 =($x4 <<12)|($x4 >>20);
+        {use integer;$x0 +=$x4 ;} $x12^=$x0 ; $x12=($x12<< 8)|($x12>>24);
+        {use integer;$x8 +=$x12;} $x4 ^=$x8 ; $x4 =($x4 << 7)|($x4 >>25);
+        {use integer;$x1 +=$x5 ;} $x13^=$x1 ; $x13=($x13<<16)|($x13>>16);
+        {use integer;$x9 +=$x13;} $x5 ^=$x9 ; $x5 =($x5 <<12)|($x5 >>20);
+        {use integer;$x1 +=$x5 ;} $x13^=$x1 ; $x13=($x13<< 8)|($x13>>24);
+        {use integer;$x9 +=$x13;} $x5 ^=$x9 ; $x5 =($x5 << 7)|($x5 >>25);
+        {use integer;$x2 +=$x6 ;} $x14^=$x2 ; $x14=($x14<<16)|($x14>>16);
+        {use integer;$x10+=$x14;} $x6 ^=$x10; $x6 =($x6 <<12)|($x6 >>20);
+        {use integer;$x2 +=$x6 ;} $x14^=$x2 ; $x14=($x14<< 8)|($x14>>24);
+        {use integer;$x10+=$x14;} $x6 ^=$x10; $x6 =($x6 << 7)|($x6 >>25);
+        {use integer;$x3 +=$x7 ;} $x15^=$x3 ; $x15=($x15<<16)|($x15>>16);
+        {use integer;$x11+=$x15;} $x7 ^=$x11; $x7 =($x7 <<12)|($x7 >>20);
+        {use integer;$x3 +=$x7 ;} $x15^=$x3 ; $x15=($x15<< 8)|($x15>>24);
+        {use integer;$x11+=$x15;} $x7 ^=$x11; $x7 =($x7 << 7)|($x7 >>25);
+        {use integer;$x0 +=$x5 ;} $x15^=$x0 ; $x15=($x15<<16)|($x15>>16);
+        {use integer;$x10+=$x15;} $x5 ^=$x10; $x5 =($x5 <<12)|($x5 >>20);
+        {use integer;$x0 +=$x5 ;} $x15^=$x0 ; $x15=($x15<< 8)|($x15>>24);
+        {use integer;$x10+=$x15;} $x5 ^=$x10; $x5 =($x5 << 7)|($x5 >>25);
+        {use integer;$x1 +=$x6 ;} $x12^=$x1 ; $x12=($x12<<16)|($x12>>16);
+        {use integer;$x11+=$x12;} $x6 ^=$x11; $x6 =($x6 <<12)|($x6 >>20);
+        {use integer;$x1 +=$x6 ;} $x12^=$x1 ; $x12=($x12<< 8)|($x12>>24);
+        {use integer;$x11+=$x12;} $x6 ^=$x11; $x6 =($x6 << 7)|($x6 >>25);
+        {use integer;$x2 +=$x7 ;} $x13^=$x2 ; $x13=($x13<<16)|($x13>>16);
+        {use integer;$x8 +=$x13;} $x7 ^=$x8 ; $x7 =($x7 <<12)|($x7 >>20);
+        {use integer;$x2 +=$x7 ;} $x13^=$x2 ; $x13=($x13<< 8)|($x13>>24);
+        {use integer;$x8 +=$x13;} $x7 ^=$x8 ; $x7 =($x7 << 7)|($x7 >>25);
+        {use integer;$x3 +=$x4 ;} $x14^=$x3 ; $x14=($x14<<16)|($x14>>16);
+        {use integer;$x9 +=$x14;} $x4 ^=$x9 ; $x4 =($x4 <<12)|($x4 >>20);
+        {use integer;$x3 +=$x4 ;} $x14^=$x3 ; $x14=($x14<< 8)|($x14>>24);
+        {use integer;$x9 +=$x14;} $x4 ^=$x9 ; $x4 =($x4 << 7)|($x4 >>25);
+      }
+    }
+    $ks .= pack("V16",$x0 +$j->[ 0],$x1 +$j->[ 1],$x2 +$j->[ 2],$x3 +$j->[ 3],
+                      $x4 +$j->[ 4],$x5 +$j->[ 5],$x6 +$j->[ 6],$x7 +$j->[ 7],
+                      $x8 +$j->[ 8],$x9 +$j->[ 9],$x10+$j->[10],$x11+$j->[11],
+                      $x12+$j->[12],$x13+$j->[13],$x14+$j->[14],$x15+$j->[15]);
+    if (++$j->[12] > 4294967295) {
+      $j->[12] = 0;
+      $j->[13]++;
+    }
   }
-  pack("V16", map { $x[$_] + $j->[$_] } 0..15);
+  $ks;
 }
 sub _test_core {
   return unless ROUNDS == 20;
@@ -130,18 +132,11 @@ sub _test_core {
 }
 _test_core();
 
+# Returns integral number of 64-byte blocks.
 sub _keystream {
   my($nbytes, $rstate) = @_;
   croak "Keystream invalid state" unless scalar(@$rstate) == 16;
-  my $stream = '';
-  while ($nbytes > 0) {
-    $stream .= _core($rstate);
-    $nbytes -= 64;
-    if (++$rstate->[12] > 4294967295) {
-      $rstate->[12] = 0;  $rstate->[13]++;
-    }
-  }
-  return $stream;
+  _core($rstate, ($nbytes+63) >> 6);
 }
 sub _test_keystream {
   return unless ROUNDS == 20;
@@ -299,6 +294,11 @@ an update to the popular Salsa20 cipher from 2005.
 RFC7539: "ChaCha20 and Poly1305 for IETF Protocols" was used to create both
 the C and Perl implementations.  Test vectors from that document are used
 here as well.
+
+For final optimizations I got ideas from Christopher Madsen's
+L<Crypt::Salsa20> for how to best work around some of Perl's agressive
+dynamic typing.
+Our core is still about 20% slower than Salsa20.
 
 =head1 COPYRIGHT
 

@@ -159,21 +159,19 @@ x consistent seeding for PP and C
 x compare chacha20 Perl and C
 x ISAAC consistent seeding
 x redo random tests that rely on state
+x ensure double stream is identical on 32-bit and 64-bit
+x random prime ChaCha vs. ISAAC    C:  5-20% slower.  Perl:  10-60% slower.
 
 - Make a feature table for rand modules.  bits-per-double, secure, speed,
   seeding, interval, etc.  Lots of modules only fill doubles with 32 bits.
 - get info on different drands.  TestU01, 45-bit look, cycles, x-y plots, etc.
-
 - redo all benchmarks and text
-  pure Perl:  5.2x / 2.5x irand64 ChaCha20 / ChaCha8
-  pure Perl:  5.6x / 2.9x irand32 ChaCha20 / ChaCha8
-  pure Perl:  5.3x / 2.3x random_bytes ChaCha20 / ChaCha8
+  pure Perl:  4.2x / 1.9x irand64 ChaCha20 / ChaCha8
+  pure Perl:  4.7x / 2.2x irand32 ChaCha20 / ChaCha8
+  pure Perl:  4.8x / 2.1x random_bytes ChaCha20 / ChaCha8
 - publish info about Perl chacha20 (ianix, blog?).
-- more performance.  Include random primes speed diffs for ISAAC vs chacha
-  For C:  5-20% slower.  For Perl:  0-100% slower.  Remeasure.
-- ensure double stream is identical on 32-bit and 64-bit
 - Check lower-bit properties of drand and 1.0-drand.
-
+- Test new PP ChaCha20 core on 32-bit and BE.
 
 - Decide whether to fully add these functions:
   nth_ramanujan_prime_upper
@@ -186,3 +184,5 @@ x redo random tests that rely on state
 - fixup "todo" ramanujan prime limits before release
 
 - Remove primeinc config option.
+
+- entropy_bytes call to get good entropy.  Ideally all in XS.

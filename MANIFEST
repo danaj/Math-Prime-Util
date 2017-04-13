@@ -178,6 +178,7 @@ xt/primality-proofs.pl
 xt/small-is-next-prev.pl
 xt/factor-holf.pl
 xt/legendre_phi.t
+xt/make-chacha20-inner.pl
 xt/make-script-test-data.pl
 xt/measure_zeta_accuracy.pl
 xt/pari-totient-moebius.pl
