@@ -36,7 +36,9 @@ if (0) {
 # Fill all the mantissa bits for our NV, regardless of 32-bit or 64-bit Perl.
 {
   use Config;
-  my $nvbits = (defined $Config{nvmantbits}) ? $Config{nvmantbits} : 53;
+  my $nvbits = (defined $Config{nvmantbits})  ? $Config{nvmantbits}
+             : (defined $Config{usequadmath}) ? 112
+             : 53;
   my $uvbits = (~0 > 4294967295) ? 64 : 32;
   my $rsub;
   my $_tonv_32  = 1.0;        $_tonv_32 /= 2.0 for 1..32;
@@ -45,19 +47,19 @@ if (0) {
   my $_tonv_128 = $_tonv_96;  $_tonv_128/= 2.0 for 1..32;
   if ($uvbits == 64) {
     if ($nvbits <= 32) {
-      *drand = sub { my $d = irand32() * $_tonv_32;  $d *= $_[0] if $_[0];  $d; }
+      *drand = sub { my $d = irand32() * $_tonv_32;  $d *= $_[0] if $_[0];  $d; };
     } elsif ($nvbits <= 64) {
-      *drand = sub { my $d = irand64() * $_tonv_64;  $d *= $_[0] if $_[0];  $d; }
+      *drand = sub { my $d = irand64() * $_tonv_64;  $d *= $_[0] if $_[0];  $d; };
     } else {
-      *drand = sub { my $d = irand64() * $_tonv_64 + irand64() * $_tonv_128;  $d *= $_[0] if $_[0];  $d; }
+      *drand = sub { my $d = irand64() * $_tonv_64 + irand64() * $_tonv_128;  $d *= $_[0] if $_[0];  $d; };
     }
   } else {
     if ($nvbits <= 32) {
-      *drand = sub { my $d = irand() * $_tonv_32;  $d *= $_[0] if $_[0];  $d; }
+      *drand = sub { my $d = irand() * $_tonv_32;  $d *= $_[0] if $_[0];  $d; };
     } elsif ($nvbits <= 64) {
-      *drand = sub { my $d = ((irand() >> 5) * 67108864.0 + (irand() >> 6)) / 9007199254740992.0;  $d *= $_[0] if $_[0];  $d; }
+      *drand = sub { my $d = ((irand() >> 5) * 67108864.0 + (irand() >> 6)) / 9007199254740992.0;  $d *= $_[0] if $_[0];  $d; };
     } else {
-      *drand = sub { my $d = irand() * $_tonv_32 + irand() * $_tonv_64 + irand() * $_tonv_96 + irand() * $_tonv_128;  $d *= $_[0] if $_[0];  $d; }
+      *drand = sub { my $d = irand() * $_tonv_32 + irand() * $_tonv_64 + irand() * $_tonv_96 + irand() * $_tonv_128;  $d *= $_[0] if $_[0];  $d; };
     }
   }
   *rand = \&drand;

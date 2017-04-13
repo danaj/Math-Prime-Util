@@ -249,36 +249,32 @@ int is_csprng_well_seeded(void) { return good_seed; }
  */
 
 /*
- * We choose the x64 / 2^-64 method here.  This way is simple and yields
- * 64-bit results if NV's are long doubles.  It is similar to what
- * Geoff Kuenning does in MTwist, though he has the host calculate the
- * constants to ensure a dodgy compiler won't munge them.
+ * We prefer the x64 / 2^-64 method.  It seems to produce the best results
+ * and is easiest for ensuring we fill up all the bits.
+ * It is similar to what Geoff Kuenning does in MTwist, though he computes
+ * the constants at runtime to ensure a dodgy compiler won't munge them.
  */
 static const NV _tonv_32  = 2.3283064365386962890625000000000000000E-10L;
 static const NV _tonv_64  = 5.4210108624275221700372640043497085571E-20L;
 static const NV _tonv_96  = 1.2621774483536188886587657044524579675E-29L;
 static const NV _tonv_128 = 2.9387358770557187699218413430556141945E-39L;
-#ifndef NVMANTBITS
-#define NVMANTBITS ((sizeof(NV) <= 4) ? 24 : (sizeof(NV) <= 8) ? 52 : 112)
-#endif
+
+#define DRAND_32_32  (CIRAND32() * _tonv_32)
+#define DRAND_64_32  (((CIRAND32()>>5) * 67108864.0 + (CIRAND32()>>6)) / 9007199254740992.0)
+#define DRAND_64_64  (CIRAND64() * _tonv_64)
+#define DRAND_128_32 (CIRAND32() * _tonv_32 + CIRAND32() * _tonv_64 + CIRAND32() * _tonv_96 + CIRAND32() * _tonv_128)
+#define DRAND_128_64 (CIRAND64() * _tonv_64 + CIRAND64() * _tonv_128)
+
 NV drand64(void)
 {
   NV r;
   MUTEX_LOCK(&state_mutex);
 #if NVMANTBITS <= 32
-  r = CIRAND32() * _tonv_32;
+  r = DRAND_32_32;
 #elif NVMANTBITS <= 64
-  #if BITS_PER_WORD > 32
-    r = CIRAND64() * _tonv_64;
-  #else
-    r = ((CIRAND32() >> 5) * 67108864.0 + (CIRAND32() >> 6)) / 9007199254740992.0;
-  #endif
+  r = (BITS_PER_WORD <= 32)  ?  DRAND_64_32  :  DRAND_64_64;
 #else
-  #if BITS_PER_WORD > 32
-    r = CIRAND64() * _tonv_64 + CIRAND64() * _tonv_128;
-  #else
-    r = CIRAND32() * _tonv_32 + CIRAND32() * _tonv_64 + CIRAND32() * _tonv_96 + CIRAND32() * _tonv_128;
-  #endif
+  r = (BITS_PER_WORD <= 32)  ?  DRAND_128_32 :  DRAND_128_64;
 #endif
   MUTEX_UNLOCK(&state_mutex);
   return r;

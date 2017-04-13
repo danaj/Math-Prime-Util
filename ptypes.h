@@ -53,13 +53,17 @@ typedef __int8 int8_t;
   #include <ctype.h>
   typedef unsigned long UV;
   typedef   signed long IV;
-  typedef size_t        STRLEN;
+  typedef        double NV;
+  typedef        size_t STRLEN;
   #define UV_MAX ULONG_MAX
   #define IV_MAX LONG_MAX
   #define UVCONST(x) ((unsigned long)x##UL)
   #define U32_CONST(x) ((unsigned int)x##U)
   #define UVuf "lu"
   #define IVdf "ld"
+  #define NVff "f"
+  /* Technically this is sizeof(NV) but that's not valid for macros */
+  #define NVSIZE 8
   #define croak(fmt,...)            { printf(fmt,##__VA_ARGS__); exit(3); }
   #define New(id, mem, size, type)  mem = (type*) malloc((size)*sizeof(type))
   #define Newz(id, mem, size, type) mem = (type*) calloc(size, sizeof(type))
@@ -172,6 +176,19 @@ typedef __int8 int8_t;
   #endif
 #else
   #define HAVE_UINT128 0
+#endif
+
+/* Perl 5.23.0 added the very helpful definition.  Without it, guess. */
+#ifndef NVMANTBITS
+  #if NVSIZE <= 8
+    #define NVMANTBITS ((NVSIZE <= 4) ? 24 : 53)
+  #elif defined(USE_QUADMATH)
+    #define NVMANTBITS 112
+  #elif defined(__LDBL_MANT_DIG__)
+    #define NVMANTBITS __LDBL_MANT_DIG__
+  #else
+    #define NVMANTBITS 64
+  #endif
 #endif
 
 #if defined(__GNUC__) || defined(__clang__)

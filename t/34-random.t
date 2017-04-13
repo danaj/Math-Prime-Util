@@ -107,14 +107,13 @@ check_float_range('drand(0)',0,1,[map{ drand(0) } 1..$num]);
 
 ########
 
+my $core_rand = "not drand48";
 if ($use64) {
   my @r = map { CORE::rand() } 0..8;
   if (try_lcg(25214903917,11,2**48,@r)) {
-    diag "CORE::rand is cruddy drand48 as expected";
+    $core_rand = "drand48 (yech)";
   } elsif (try_16bit(@r)) {
-    diag "CORE::rand looks like 16-bit.  Ugh.";
-  } else {
-    diag "CORE::rand is not drand48";
+    $core_rand = "16-bit (ack)";
   }
 }
 
@@ -147,13 +146,13 @@ sub try_16bit {
 
 ########
 
-# Quick check to identify the RNG being used.  Should be ChaCha/20.
+# Quick check to identify the RNG being used.  Should be ChaCha20.
 srand(42);
 my $rb42 = irand();
 my $csprng = 'something I do not know';
-if    ($rb42 == 3381344544) { $csprng = 'ChaCha/20'; }
-elsif ($rb42 ==  200263518) { $csprng = 'ChaCha/12'; }
-elsif ($rb42 == 2095124725) { $csprng = 'ChaCha/8'; }
+if    ($rb42 == 3381344544) { $csprng = 'ChaCha20'; }
+elsif ($rb42 ==  200263518) { $csprng = 'ChaCha12'; }
+elsif ($rb42 == 2095124725) { $csprng = 'ChaCha8'; }
 elsif ($rb42 == 4120509558) { $csprng = 'ISAAC'; }
 elsif ($rb42 == 3197710526) { $csprng = 'drand48'; }
 elsif ($rb42 == 2209484588) { $csprng = 'Math::Random::Xorshift'; }
@@ -162,11 +161,11 @@ elsif ($rb42 == 2746317213) { $csprng = 'Math::Random::MT::Auto (32)'; }
 elsif ($rb42 == 6909045637428952499) { $csprng = 'Math::Random::MTwist (64)'; }
 elsif (sprintf("%.1lf",$rb42) eq '6909045637428952064.0') { $csprng = 'Math::Random::MTwist (32)'; }
 elsif ($rb42 == 9507361240820437267) { $csprng = 'Math::Random::MT::Auto (64)'; }
-diag "Our PRNG looks like $csprng";
+diag "CORE::rand: $core_rand. Our PRNG: $csprng";
 
 SKIP: {
-  srand(15);
-  if ($csprng eq 'ChaCha/20') {
+  if ($csprng eq 'ChaCha20') {
+    srand(15);
     is(unpack("H8",random_bytes(4)), "5c1b3351", "random_bytes after srand");
     csrand("BLAKEGrostlJHKeccakSkein--RijndaelSerpentTwofishRC6MARS");
     is(unpack("H14",random_bytes(7)), "b302e671601bce", "random_bytes after manual seed");
@@ -174,6 +173,7 @@ SKIP: {
     my $d = drand();  my $dexp = 0.0459118340827543;
     ok($d > $dexp-1e-6 && $d < $dexp+1e-6,"drand after seed $d ~ $dexp");
   } elsif ($csprng eq 'ISAAC') {
+    srand(15);
     is(unpack("H8",random_bytes(4)), "d491517d", "random_bytes after srand");
     csrand("BLAKEGrostlJHKeccakSkein--RijndaelSerpentTwofishRC6MARS");
     is(unpack("H14",random_bytes(7)), "a407f567e66f91", "random_bytes after manual seed");
@@ -184,6 +184,8 @@ SKIP: {
     skip "Unknown random number generator!  Skipping deterministic tests.",4;
   }
 }
+
+srand;
 
 #######
 
