@@ -155,6 +155,7 @@ t/31-threading.t
 t/32-iterators.t
 t/33-examples.t
 t/34-random.t
+t/35-cipher.t
 t/35-rand-tag.t
 t/50-factoring.t
 t/51-primearray.t

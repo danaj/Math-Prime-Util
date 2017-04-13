@@ -18,7 +18,7 @@ plan tests => 1
             + 2
             + 2
             + 5  # drand range
-            + 0  # TODO 2 tests for srand / csrand here
+            + 4  # identify rng and test srand/csrand
             + 4
             + 1
             + 3
@@ -147,11 +147,43 @@ sub try_16bit {
 
 ########
 
-# TODO: deterministic rand
-srand(15);
-# is(unpack("H8",random_bytes(4)), "8a488975", "random_bytes after srand");
-csrand("BLAKEGrostlJHKeccakSkein--RijndaelSerpentTwofishRC6MARS");
-# is(unpack("H14",random_bytes(7)), "35e8f156bcab4c", "random_bytes after manual seed");
+# Quick check to identify the RNG being used.  Should be ChaCha/20.
+srand(42);
+my $rb42 = irand();
+my $csprng = 'something I do not know';
+if    ($rb42 == 3381344544) { $csprng = 'ChaCha/20'; }
+elsif ($rb42 ==  200263518) { $csprng = 'ChaCha/12'; }
+elsif ($rb42 == 2095124725) { $csprng = 'ChaCha/8'; }
+elsif ($rb42 == 4120509558) { $csprng = 'ISAAC'; }
+elsif ($rb42 == 3197710526) { $csprng = 'drand48'; }
+elsif ($rb42 == 2209484588) { $csprng = 'Math::Random::Xorshift'; }
+elsif ($rb42 == 1608637542) { $csprng = 'Math::Random::MT'; }
+elsif ($rb42 == 2746317213) { $csprng = 'Math::Random::MT::Auto (32)'; }
+elsif ($rb42 == 6909045637428952499) { $csprng = 'Math::Random::MTwist (64)'; }
+elsif (sprintf("%.1lf",$rb42) eq '6909045637428952064.0') { $csprng = 'Math::Random::MTwist (32)'; }
+elsif ($rb42 == 9507361240820437267) { $csprng = 'Math::Random::MT::Auto (64)'; }
+diag "Our PRNG looks like $csprng";
+
+SKIP: {
+  srand(15);
+  if ($csprng eq 'ChaCha/20') {
+    is(unpack("H8",random_bytes(4)), "5c1b3351", "random_bytes after srand");
+    csrand("BLAKEGrostlJHKeccakSkein--RijndaelSerpentTwofishRC6MARS");
+    is(unpack("H14",random_bytes(7)), "b302e671601bce", "random_bytes after manual seed");
+    is(irand(), 88564645, "irand after seed");
+    my $d = drand();  my $dexp = 0.0459118340827543;
+    ok($d > $dexp-1e-6 && $d < $dexp+1e-6,"drand after seed $d ~ $dexp");
+  } elsif ($csprng eq 'ISAAC') {
+    is(unpack("H8",random_bytes(4)), "d491517d", "random_bytes after srand");
+    csrand("BLAKEGrostlJHKeccakSkein--RijndaelSerpentTwofishRC6MARS");
+    is(unpack("H14",random_bytes(7)), "a407f567e66f91", "random_bytes after manual seed");
+    is(irand(), 2841272539, "irand after seed");
+    my $d = drand();  my $dexp = 0.251443811409988;
+    ok($d > $dexp-1e-6 && $d < $dexp+1e-6,"drand after seed $d ~ $dexp");
+  } else {
+    skip "Unknown random number generator!  Skipping deterministic tests.",4;
+  }
+}
 
 #######
 
@@ -176,11 +208,11 @@ is(urandomm(1),0,"urandomm(1) returns 0");
 
 {
   my @failm;
-  for my $m (10..50) {
+  for my $m (1..50) {
     my $r = urandomm($m);
     push @failm, $m unless !ref($r) && $r < $m;
   }
-  is_deeply(\@failm, [], "urandomm returns native int within range for 10..50");
+  is_deeply(\@failm, [], "urandomm returns native int within range for 1..50");
 }
 
 {
