@@ -40,7 +40,7 @@ if (0) {
 #  "Crypt::Random"   => sub { Crypt::Random::makerandom_octet(Length=>8,Strength=>0); },
  });
 }
-if (1) {
+if (0) {
  print "#  256 random bytes\n";
  cmpthese($trial,{
   "MPU"      => sub { Math::Prime::Util::random_bytes(256); },
@@ -76,9 +76,10 @@ if (0) {
 #  "Crypt::Random"   => sub { Crypt::Random::makerandom_octet(Length=>16384,Strength=>0); },
  });
 }
-if (0) {
+if (1) {
  print "#  64k random bytes\n";
  cmpthese($trial,{
+  "entropy"  => sub { Math::Prime::Util::entropy_bytes(64*1024); },
   "MPU"      => sub { Math::Prime::Util::random_bytes(64*1024); },
   "MPU X"    => sub { Math::Prime::Util::GMP::random_bytes(64*1024); },
   "BRXS"     => sub { Bytes::Random::XS::random_bytes(64*1024); },

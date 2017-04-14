@@ -65,7 +65,7 @@ our @EXPORT_OK =
       ramanujan_tau ramanujan_sum
       binomial factorial stirling znorder znprimroot znlog legendre_phi
       ExponentialIntegral LogarithmicIntegral RiemannZeta RiemannR LambertW Pi
-      irand irand64 drand random_bytes urandomb urandomm csrand
+      irand irand64 drand urandomb urandomm csrand random_bytes entropy_bytes
   );
 our %EXPORT_TAGS = (all  => [ @EXPORT_OK ],
                     rand => [qw/srand rand irand irand64/],
@@ -98,23 +98,34 @@ sub _import_nobigint {
 
 #############################################################################
 
+sub entropy_bytes {
+  my($bytes) = @_;
+  croak "Must get an integer bytes between 1 and 4294967295"
+  if !defined($bytes) || $bytes < 1 || $bytes > 4294967295 || $bytes != int($bytes);
+  my $data = Math::Prime::Util::Entropy::entropy_bytes($bytes);
+  if (!defined $data) {
+    # We can't find any entropy source!  Highly unusual.
+    Math::Prime::Util::_srand();
+    $data = random_bytes($bytes);
+  }
+  croak "entropy_bytes internal got wrong amount!" unless length($data) == $bytes;
+  $data;
+}
+
 sub srand {
   my($seed) = @_;
   if (!defined $seed) {
-    my $bytes = (~0 == 4294967295) ? 4 : 8;
-    $seed = Math::Prime::Util::Entropy::entropy_bytes( $bytes );
-    $seed = unpack(($bytes==4) ? "L" : "Q", $seed) if defined $seed;
+    my $nbytes = (~0 == 4294967295) ? 4 : 8;
+    $seed = entropy_bytes( $nbytes );
+    $seed = unpack(($nbytes==4) ? "L" : "Q", $seed);
   }
-  if (defined $seed) { Math::Prime::Util::_srand($seed);    }
-  else               { $seed = Math::Prime::Util::_srand(); }
-  $seed;
+  Math::Prime::Util::_srand($seed);
 }
 
 sub csrand {
   my($seed) = @_;
-  $seed = Math::Prime::Util::Entropy::entropy_bytes( 64 ) unless defined $seed;
-  if (defined $seed) { Math::Prime::Util::_csrand($seed); }
-  else               { Math::Prime::Util::_srand();       }
+  $seed = entropy_bytes( 64 ) unless defined $seed;
+  Math::Prime::Util::_csrand($seed);
   1; # Don't return the seed
 }
 
@@ -3418,9 +3429,10 @@ data from the CSPRNG.  Performance for large quantities:
     -------------             ---------   ----------------------
 
     Math::Prime::Util::GMP    1067 MB/s   CSPRNG - ISAAC
-    ntheory                    384 MB/s   CSPRNG - ChaCha20
+    ntheory random_bytes       384 MB/s   CSPRNG - ChaCha20
     Crypt::PRNG                140 MB/s   CSPRNG - Fortuna
     Math::Random::ISAAC::XS     15 MB/s   CSPRNG - ISAAC
+    ntheory entropy_bytes       13 MB/s   CSPRNG - /dev/urandom
     Crypt::Random               12 MB/s   CSPRNG - /dev/urandom
     Bytes::Random::Secure        6 MB/s   CSPRNG - ISAAC
     ntheory pure perl ISAAC      5 MB/s   CSPRNG - ISAAC (no XS)
@@ -3432,6 +3444,14 @@ data from the CSPRNG.  Performance for large quantities:
     Bytes::Random::XS          109 MB/s   PRNG - drand48
     pack CORE::rand             25 MB/s   PRNG - drand48 (no XS)
     Bytes::Random                2.6 MB/s PRNG - drand48 (no XS)
+
+=head2 entropy_bytes
+
+Similar to random_bytes, but directly using the entropy source.
+This is not normally recommended as it can consume shared system
+resources and is typically slow -- on the computer that produced
+the L</random_bytes> chart above, using C<dd> generated the same
+13 MB/s performance as our L</entropy_bytes> function.
 
 =head2 urandomb
 

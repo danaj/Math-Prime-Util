@@ -3,7 +3,8 @@ use strict;
 use warnings;
 
 use Test::More;
-use Math::Prime::Util qw/irand irand64 drand random_bytes urandomb urandomm
+use Math::Prime::Util qw/irand irand64 drand urandomb urandomm
+                         random_bytes entropy_bytes
                          srand csrand
                          mulmod addmod vecmin vecmax vecall/;
 
@@ -19,9 +20,10 @@ plan tests => 1
             + 2
             + 5  # drand range
             + 4  # identify rng and test srand/csrand
-            + 4
-            + 1
-            + 3
+            + 4  # 0 / undef arguments to urandom*
+            + 1  # urandomb
+            + 3  # urandomm
+            + 4  # entropy_bytes
             + 0;
 
 ########
@@ -227,3 +229,16 @@ is(urandomm(1),0,"urandomm(1) returns 0");
   is(scalar(@k), 10, "urandomm(10) generated 10 distinct values");
   ok( vecmin(@k) == 0 && vecmax(@k) == 9, "urandomm(10) values between 0 and 9 (@k)" );
 }
+
+#######
+
+# If the functions work, these tests fail with chance less than 2^-128.
+my $ebytes = 17;
+my $eb1 = entropy_bytes($ebytes);
+my $eb2 = entropy_bytes($ebytes);
+is(length($eb1), $ebytes, "entropy_bytes gave us the right number of bytes");
+$eb1 = unpack("H*",$eb1);
+$eb2 = unpack("H*",$eb2);
+isnt($eb1, '00' x $ebytes, "entropy_bytes didn't return all zeros once");
+isnt($eb2, '00' x $ebytes, "entropy_bytes didn't return all zeros twice");
+isnt($eb1, $eb2, "entropy_bytes returned two different binary strings");
