@@ -9,13 +9,26 @@ use Math::Prime::Util::PP;
 package Math::Prime::Util;
 use Carp qw/carp croak confess/;
 
+BEGIN {
+  use constant CSPRNG_CHACHA => 1;
+  use constant CSPRNG_ISAAC  => 0;
+}
+
 *_validate_num = \&Math::Prime::Util::PP::_validate_num;
 *_validate_integer = \&Math::Prime::Util::PP::_validate_integer;
 *_prime_memfreeall = \&Math::Prime::Util::PP::_prime_memfreeall;
 *prime_memfree  = \&Math::Prime::Util::PP::prime_memfree;
 *prime_precalc  = \&Math::Prime::Util::PP::prime_precalc;
 
-if (0) {
+if (CSPRNG_CHACHA) {
+  require Math::Prime::Util::ChaCha;
+  *_is_csprng_well_seeded = \&Math::Prime::Util::ChaCha::_is_csprng_well_seeded;
+  *_csrand = \&Math::Prime::Util::ChaCha::seed_csprng;
+  *_srand = \&Math::Prime::Util::ChaCha::srand;
+  *random_bytes = \&Math::Prime::Util::ChaCha::random_bytes;
+  *irand = \&Math::Prime::Util::ChaCha::irand;
+  *irand64 = \&Math::Prime::Util::ChaCha::irand64;
+} elsif (CSPRNG_ISAAC) {
   require Math::Prime::Util::ISAAC;
   *_is_csprng_well_seeded = \&Math::Prime::Util::ISAAC::_is_csprng_well_seeded;
   *_csrand = \&Math::Prime::Util::ISAAC::seed_csprng;
@@ -24,13 +37,7 @@ if (0) {
   *irand = \&Math::Prime::Util::ISAAC::irand;
   *irand64 = \&Math::Prime::Util::ISAAC::irand64;
 } else {
-  require Math::Prime::Util::ChaCha;
-  *_is_csprng_well_seeded = \&Math::Prime::Util::ChaCha::_is_csprng_well_seeded;
-  *_csrand = \&Math::Prime::Util::ChaCha::seed_csprng;
-  *_srand = \&Math::Prime::Util::ChaCha::srand;
-  *random_bytes = \&Math::Prime::Util::ChaCha::random_bytes;
-  *irand = \&Math::Prime::Util::ChaCha::irand;
-  *irand64 = \&Math::Prime::Util::ChaCha::irand64;
+  die "Bad CSPRNG choice";
 }
 
 # Fill all the mantissa bits for our NV, regardless of 32-bit or 64-bit Perl.

@@ -10,6 +10,7 @@
  *
  *   11.20 ns/word  ChaCha20 (openbsd)
  *   10.31 ns/word  ChaCha20 (dj)
+ *    8.66 ns/word  ChaCha20 (sse2 Peters)
  *    6.85 ns/word  ChaCha12 (dj)
  *    5.99 ns/word  Tyche
  *    5.11 ns/word  ChaCha8 (dj)

@@ -2,18 +2,20 @@ use strict;
 use warnings;
 
 use Benchmark qw/cmpthese/;
-use Math::Random::ISAAC;
-use Math::Random::MT;
-use Math::Random::MT::Auto;
-use Math::Random::Xorshift;
-use Math::Random::MTwist;
-use Math::Random::Secure;
-use ntheory;
-use Crypt::PRNG;
+use Math::Random::ISAAC;           #           32-bit 2^32-1
+use Math::Random::MT;              #           32-bit 2^32
+use Math::Random::MT::Auto;        #           52-bit (x>>12)*2^-52+2^-53
+use Math::Random::Xorshift;        #           32-bit 2^32-1
+use Math::Random::MTwist;          #  :rand    52-bit x*2^-53
+use Math::Random::Secure;          #           32-bit 2^32
+use ntheory;                       #  :rand    NV bit x*2^-64
+use Math::Prime::Util::GMP;        #           53+bit x*2^-64
+use Crypt::PRNG;                   #           53?    (a*2^32+b)/2^53
+                                   #  core     48-bit strong periods
 # Could also use Data::Entropy::Algorithms but:
 #   1) its dependencies have been broken for a while
 #   2) it's really slow
-# It is a nice idea, using AES counters.  Doubles are filled with 48 bits.
+# It is a nice idea, using AES counters.  Doubles are filled with only 48 bits.
 
 my $trials = shift || -1;
 
@@ -29,11 +31,12 @@ my $xor = Math::Random::Xorshift->new($time);
 
 #                             Performance / Quality:
 #   CORE::rand    29000k/s    ++++ / ---  drand48 has lots of issues
-#   Xorshift      16000k/s    +++  / ---  old alg, only 32 bits
+#   Xorshift      16000k/s    +++  / ---  old alg, 32 bits, closed interval
 #   MTwist        14000k/s    +++  /  ++  
-#   ntheory       13000k/s    +++  / +++  ISAAC CSPRNG
+#   MPU::GMP      14000k/s    +++  / +++  ISAAC CSPRNG
+#   ntheory       12000k/s    +++  / +++  ChaCha20 CSPRNG
 #   MT::Auto       4800k/s    +    /  ++  MTwist is faster
-#   ISAAC          2400k/s    -    / ---  only 32 bits filled, wrong interval
+#   ISAAC          2400k/s    -    /  --  only 32 bits filled, closed interval
 #   MT             2200k/s    -    /  ++  MTwist is faster
 #   Crypt::PRNG     705k/s    --   / +++  
 #   Secure          426k/s    ---  / ---  only 32 bits filled
@@ -46,15 +49,20 @@ cmpthese($trials, {
   'M::R::Xorshift->rand' => sub { $xor->rand for 1..1000 },
   'M::R::Xorshift::rand' => sub { Math::Random::Xorshift::rand for 1..1000 },
 
-  # These only give 32 bits of output in their doubles!
+  # doubles with only 32-bits of random data
   'M::R::ISAAC->rand' => sub { $isaac->rand for 1..1000 },
   'M::R::Secure::rand' => sub { Math::Random::Secure::rand for 1..1000 },
-
   'M::R::MT->rand' => sub { $mt->rand for 1..1000 },
+
+  # 52-bit, 53-bit doubles
   'M::R::MT::A::rand' => sub { Math::Random::MT::Auto::rand for 1..1000 },
   'M::R::MTwist::rand' => sub { Math::Random::MTwist::_rand for 1..1000 },
-  'ntheory::drand' => sub { ntheory::drand for 1..1000 },
   'Crypt::PRNG::rand' => sub { Crypt::PRNG::rand for 1..1000 },
+  # 53-bit or 64-bit NVs
+  'MPU::GMP' => sub { Math::Prime::Util::GMP::drand for 1..1000 },
+
+  # Fill all NV significand bits (24,53,64,113)
+  'ntheory::drand' => sub { ntheory::drand for 1..1000 },
 });
 
 # TestU01 SmallCrush on floating point output

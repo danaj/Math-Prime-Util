@@ -3395,15 +3395,15 @@ data from the CSPRNG.  Performance for large quantities:
     Math::Random::ISAAC::XS     15 MB/s   CSPRNG - ISAAC
     Crypt::Random               12 MB/s   CSPRNG - /dev/urandom
     Bytes::Random::Secure        6 MB/s   CSPRNG - ISAAC
-    ntheory pure perl            5 MB/s   CSPRNG - ISAAC (no XS)
-    Math::Random::ISAAC::PP      2 MB/s   CSPRNG - ISAAC (no XS)
-    ntheory pure perl            0.8 MB/s CSPRNG - ChaCha20 (no XS)
+    ntheory pure perl ISAAC      5 MB/s   CSPRNG - ISAAC (no XS)
+    Math::Random::ISAAC::PP      2.5 MB/s CSPRNG - ISAAC (no XS)
+    ntheory pure perl ChaCha     1.0 MB/s CSPRNG - ChaCha20 (no XS)
     Data::Entropy::Algorithms    0.5 MB/s CSPRNG - AES-CTR
 
     Math::Random::MTwist       927 MB/s   PRNG - Mersenne Twister
     Bytes::Random::XS          109 MB/s   PRNG - drand48
     pack CORE::rand             25 MB/s   PRNG - drand48 (no XS)
-    Bytes::Random                3 MB/s   PRNG - drand48 (no XS)
+    Bytes::Random                2.6 MB/s PRNG - drand48 (no XS)
 
 =head2 urandomb
 
