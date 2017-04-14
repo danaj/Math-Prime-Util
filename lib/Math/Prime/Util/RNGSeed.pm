@@ -5,7 +5,7 @@ use Carp qw/carp croak confess/;
 
 BEGIN {
   $Math::Prime::Util::RNGSeed::AUTHORITY = 'cpan:DANAJ';
-  $Math::Prime::Util::RNGSeed::VERSION = '0.61';
+  $Math::Prime::Util::RNGSeed::VERSION = '0.62';
 }
 
 sub _read_file {
@@ -131,7 +131,7 @@ Math::Prime::Util::RNGSeed - Get a good random seed
 
 =head1 VERSION
 
-Version 0.61
+Version 0.62
 
 
 =head1 SYNOPSIS
