@@ -40,6 +40,10 @@ ppport.h
 primality.h
 primality.c
 prime_count_tables.h
+prime_nth_count.h
+prime_nth_count.c
+ramanujan_primes.h
+ramanujan_primes.c
 random_prime.h
 random_prime.c
 sieve.h

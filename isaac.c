@@ -128,7 +128,6 @@ void isaac_rand_bytes(uint32_t bytes, unsigned char* data)
 
 uint32_t isaac_irand32(void)
 {
-  uint32_t a;
   if (randcnt > 255) isaac();
   return randrsl[randcnt++];
 }

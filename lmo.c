@@ -66,6 +66,7 @@
 #define FUNC_icbrt 1
 #include "lmo.h"
 #include "util.h"
+#include "prime_nth_count.h"
 #include "cache.h"
 #include "sieve.h"
 

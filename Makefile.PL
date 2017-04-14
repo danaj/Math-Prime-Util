@@ -43,6 +43,8 @@ WriteMakefile1(
                     'random_prime.o ' .
                     'sieve.o '    .
                     'sieve_cluster.o ' .
+                    'ramanujan_primes.o ' .
+                    'prime_nth_count.o ' .
                     'util.o '     .
                     'csprng.o '   .
                     'isaac.o '    .

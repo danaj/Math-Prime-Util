@@ -137,6 +137,7 @@ Tags:
   irand64                             random 64-bit integer
   drand([limit])                      random NV in [0,1) or [0,limit)
   random_bytes(n)                     string with n random bytes
+  entropy_bytes(n)                    string with n entropy-source bytes
   urandomb(n)                         random integer less than 2^n
   urandomm(n)                         random integer less than n
   csrand(data)                        seed the CSPRNG with binary data

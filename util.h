@@ -12,32 +12,6 @@ extern int _XS_is_prime(UV x);
 extern UV  next_prime(UV x);
 extern UV  prev_prime(UV x);
 
-extern UV  _XS_prime_count(UV low, UV high);
-extern UV  nth_prime(UV x);
-extern UV  nth_prime_upper(UV x);
-extern UV  nth_prime_lower(UV x);
-extern UV  nth_prime_approx(UV x);
-extern UV  prime_count_upper(UV x);
-extern UV  prime_count_lower(UV x);
-extern UV  prime_count_approx(UV x);
-extern UV  twin_prime_count(UV low, UV high);
-extern UV  twin_prime_count_approx(UV n);
-extern UV  nth_twin_prime(UV n);
-extern UV  nth_twin_prime_approx(UV n);
-extern UV* n_ramanujan_primes(UV n);
-extern UV* n_range_ramanujan_primes(UV nlo, UV nhi);
-extern UV* ramanujan_primes(UV* first, UV* last, UV low, UV high);
-extern int is_ramanujan_prime(UV n);
-extern UV  ramanujan_prime_count(UV lo, UV hi);
-extern UV  ramanujan_prime_count_upper(UV n);
-extern UV  ramanujan_prime_count_lower(UV n);
-extern UV  ramanujan_prime_count_approx(UV n);
-extern UV  nth_ramanujan_prime(UV n);
-extern UV  nth_ramanujan_prime_upper(UV n);
-extern UV  nth_ramanujan_prime_lower(UV n);
-extern UV  nth_ramanujan_prime_approx(UV n);
-extern int sum_primes(UV low, UV high, UV *sum);
-extern int sum_primes128(UV n, UV *hisum, UV *losum);
 extern void print_primes(UV low, UV high, int fd);
 
 extern int powerof(UV n);
@@ -46,7 +20,6 @@ extern UV rootof(UV n, UV k);
 extern int primepower(UV n, UV* prime);
 extern UV valuation(UV n, UV k);
 extern UV logint(UV n, UV b);
-extern UV mpu_popcount(UV n);
 extern UV mpu_popcount_string(const char* ptr, int len);
 
 extern signed char* _moebius_range(UV low, UV high);
@@ -322,5 +295,31 @@ static int is_perfect_seventh(UV n)
  #define clz(n)  ( (n) ? BITS_PER_WORD-1-log2floor(n) : BITS_PER_WORD )
 #endif
 #endif  /* End of log2floor, clz, and ctz */
+
+#ifdef FUNC_popcnt
+/* GCC 3.4 - 4.1 has broken 64-bit popcount.
+ * GCC 4.2+ can generate awful code when it doesn't have asm (GCC bug 36041).
+ * When the asm is present (e.g. compile with -march=native on a platform that
+ * has them, like Nahelem+), then it is almost as fast as the direct asm. */
+#if BITS_PER_WORD == 64
+ #if defined(__POPCNT__) && defined(__GNUC__) && (__GNUC__> 4 || (__GNUC__== 4 && __GNUC_MINOR__> 1))
+   #define popcnt(b)  __builtin_popcountll(b)
+ #else
+   static UV popcnt(UV b) {
+     b -= (b >> 1) & 0x5555555555555555;
+     b = (b & 0x3333333333333333) + ((b >> 2) & 0x3333333333333333);
+     b = (b + (b >> 4)) & 0x0f0f0f0f0f0f0f0f;
+     return (b * 0x0101010101010101) >> 56;
+   }
+ #endif
+#else
+ static UV popcnt(UV b) {
+   b -= (b >> 1) & 0x55555555;
+   b = (b & 0x33333333) + ((b >> 2) & 0x33333333);
+   b = (b + (b >> 4)) & 0x0f0f0f0f;
+   return (b * 0x01010101) >> 24;
+ }
+#endif
+#endif
 
 #endif

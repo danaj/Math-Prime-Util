@@ -4,8 +4,10 @@ Revision history for Perl module Math::Prime::Util
 
     [API Changes]
 
-    - config option for irand is removed, as we now use our own CSPRNG.
+    - The 'irand' config option is removed, as we now use our own CSPRNG.
       It can be seeded with csrand() or srand().  The latter is not exported.
+
+    - The 'primeinc' config option is deprecated and will go away soon.
 
     [ADDED]
 
@@ -17,6 +19,7 @@ Revision history for Perl module Math::Prime::Util
     - random_bytes(nbytes)     Return a string of CSPRNG bytes
     - csrand(data)             Seed the CSPRNG
     - srand([UV])              Insecure seed for the CSPRNG (not exported)
+    - entropy_bytes(nbytes)    Returns data from our entropy source
 
     - :rand                    Exports srand, rand, irand, irand64
 

@@ -9,6 +9,7 @@
 #define FUNC_gcd_ui 1
 #define FUNC_is_perfect_square
 #include "util.h"
+#define FUNC_monty_mr64
 #include "montmath.h"  /* Fast Montgomery math */
 
 /* Primality related functions */

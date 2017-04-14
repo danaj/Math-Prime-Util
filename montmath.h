@@ -121,6 +121,7 @@ static INLINE uint64_t compute_modn64(const uint64_t n)
   } else
     return -n;
 }
+#ifdef FUNC_monty_mr64
 #define compute_a_times_2_64_mod_n(a, n, r)   mulmod(a, r, n)
 /* static INLINE int efficient_mr64(const uint64_t bases[], const int cnt, const uint64_t n) */
 static int monty_mr64(const uint64_t n, const UV* bases, int cnt)
@@ -151,5 +152,6 @@ static int monty_mr64(const uint64_t n, const UV* bases, int cnt)
   return 1;
 }
 #endif
+#endif /* use_montmath */
 
 #endif

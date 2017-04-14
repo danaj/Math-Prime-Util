@@ -19,6 +19,8 @@ lmo.o
 primality.o
 aks.o
 random_prime.o
+prime_nth_count.o
+ramanujan_primes.o
 XS.obj
 cache.obj
 factor.obj

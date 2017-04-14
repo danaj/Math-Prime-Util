@@ -20,6 +20,7 @@
 #define FUNC_gcd_ui 1
 #define FUNC_isqrt 1
 #define FUNC_ipow 1
+#define FUNC_popcnt 1
 #include "util.h"
 #include "primality.h"
 #include "factor.h"
@@ -30,6 +31,8 @@
 #include "mulmod.h"
 #include "csprng.h"
 #include "random_prime.h"
+#include "ramanujan_primes.h"
+#include "prime_nth_count.h"
 
 #undef BENCH_CSPRNG
 #ifdef BENCH_CSPRNG
@@ -398,9 +401,6 @@ void _csrand(IN SV* seed)
 #endif
 
 UV _srand(IN UV seedval = 0)
-  PREINIT:
-    unsigned char data[8];
-    UV i, s;
   CODE:
     if (items == 0) {
       /* Use Perl's function to get a pretty random 32-bit value */
@@ -430,6 +430,7 @@ NV drand(NV m = 0.0)
   ALIAS:
     rand = 1
   CODE:
+    PERL_UNUSED_VAR(ix);
     RETVAL = drand64();
     if (m != 0) RETVAL *= m;
   OUTPUT:
@@ -1900,7 +1901,7 @@ carmichael_lambda(IN SV* svn)
                  if (r == 0 && n != 1)  XSRETURN_UNDEF;  /* No root */
                  XSRETURN_UV(r);  break;
         case 9:  if (status == -1) n = -(IV)n;
-                 XSRETURN_UV(mpu_popcount(n));  break;
+                 XSRETURN_UV(popcnt(n));  break;
         case 10: XSRETURN_IV( (status == -1) ? 0 : hclassno(n) ); break;
         case 11: RETURN_NPARITY( (status == -1) ? 0 : pillai_v(n) ); break;
         case 12:
