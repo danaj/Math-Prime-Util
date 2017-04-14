@@ -304,7 +304,7 @@ the C and Perl implementations.  Test vectors from that document are used
 here as well.
 
 For final optimizations I got ideas from Christopher Madsen's
-L<Crypt::Salsa20> for how to best work around some of Perl's agressive
+L<Crypt::Salsa20> for how to best work around some of Perl's aggressive
 dynamic typing.
 Our core is still about 20% slower than Salsa20.
 

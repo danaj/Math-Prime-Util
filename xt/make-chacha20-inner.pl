@@ -10,10 +10,10 @@ sub outqr {
   ($a,$b,$c,$d) = map { length($_) == 1 ? "$_ " : $_ } ($a,$b,$c,$d);
 
   my $qr32 = <<'EOT';
-  {use integer;$a+=$b;} $d^=$a; $d=($d<<16)|($d>>16);
-  {use integer;$c+=$d;} $b^=$c; $b=($b<<12)|($b>>20);
-  {use integer;$a+=$b;} $d^=$a; $d=($d<< 8)|($d>>24);
-  {use integer;$c+=$d;} $b^=$c; $b=($b<< 7)|($b>>25);
+  $a+=$b; $d^=$a; $d=($d<<16)|(($d>>16)& 0xFFFF);
+  $c+=$d; $b^=$c; $b=($b<<12)|(($b>>20)& 0xFFF);
+  $a+=$b; $d^=$a; $d=($d<< 8)|(($d>>24)& 0xFF);
+  $c+=$d; $b^=$c; $b=($b<< 7)|(($b>>25)& 0x7F);
 EOT
   my $qr64 = <<'EOT';
   $a=($a+$b)&0xFFFFFFFF; $d^=$a; $d=(($d<<16)|($d>>16))&0xFFFFFFFF;
@@ -34,8 +34,8 @@ EOT
   say $qr;
 }
 
+say "      use integer;";
 say "      if (BITS == 64) {";
-say "        use integer;";
   outqr(64,0,4,8,12);
   outqr(64,1,5,9,13);
   outqr(64,2,6,10,14);

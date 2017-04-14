@@ -220,6 +220,21 @@ sub twin_prime_count_approx {
   _validate_positive_integer($n);
   return Math::Prime::Util::PP::twin_prime_count_approx($n);
 }
+sub ramanujan_prime_count_lower {
+  my($n) = @_;
+  _validate_positive_integer($n);
+  return Math::Prime::Util::PP::ramanujan_prime_count_lower($n);
+}
+sub ramanujan_prime_count_upper {
+  my($n) = @_;
+  _validate_positive_integer($n);
+  return Math::Prime::Util::PP::ramanujan_prime_count_upper($n);
+}
+sub ramanujan_prime_count_approx {
+  my($n) = @_;
+  _validate_positive_integer($n);
+  return Math::Prime::Util::PP::ramanujan_prime_count_approx($n);
+}
 sub nth_twin_prime {
   my($n) = @_;
   _validate_positive_integer($n);
@@ -234,6 +249,21 @@ sub nth_ramanujan_prime {
   my($n) = @_;
   _validate_positive_integer($n);
   return Math::Prime::Util::PP::nth_ramanujan_prime($n);
+}
+sub nth_ramanujan_prime_lower {
+  my($n) = @_;
+  _validate_positive_integer($n);
+  return Math::Prime::Util::PP::nth_ramanujan_prime_lower($n);
+}
+sub nth_ramanujan_prime_upper {
+  my($n) = @_;
+  _validate_positive_integer($n);
+  return Math::Prime::Util::PP::nth_ramanujan_prime_upper($n);
+}
+sub nth_ramanujan_prime_approx {
+  my($n) = @_;
+  _validate_positive_integer($n);
+  return Math::Prime::Util::PP::nth_ramanujan_prime_approx($n);
 }
 
 

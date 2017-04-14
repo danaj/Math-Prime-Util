@@ -67,7 +67,10 @@ sub mpu_public_regex {
       nth_prime nth_prime_lower nth_prime_upper nth_prime_approx inverse_li
       twin_prime_count twin_prime_count_approx
       nth_twin_prime nth_twin_prime_approx
-      ramanujan_prime_count nth_ramanujan_prime
+      ramanujan_prime_count ramanujan_prime_count_approx
+      ramanujan_prime_count_lower ramanujan_prime_count_upper
+      nth_ramanujan_prime nth_ramanujan_prime_approx
+      nth_ramanujan_prime_lower nth_ramanujan_prime_upper
       sum_primes print_primes
       random_prime random_ndigit_prime random_nbit_prime random_strong_prime
       random_proven_prime random_proven_prime_with_cert

@@ -94,7 +94,13 @@ Tags:
   nth_twin_prime_approx(n)            fast approximate nth twin prime
   ramanujan_prime_count(n)            count of Ramanujan primes <= n
   ramanujan_prime_count(start, end)   count of Ramanujan primes in range
+  ramanujan_prime_count_lower(n)      fast lower bound for Ramanujan count
+  ramanujan_prime_count_upper(n)      fast upper bound for Ramanujan count
+  ramanujan_prime_count_approx(n)     fast approximate Ramanujan count
   nth_ramanujan_prime(n)              the nth Ramanujan prime (Rn)
+  nth_ramanujan_prime_lower(n)        fast lower bound for Rn
+  nth_ramanujan_prime_upper(n)        fast upper bound for Rn
+  nth_ramanujan_prime_approx(n)       fast approximate Rn
   legendre_phi(n,a)                   # below n not div by first a primes
   inverse_li(n)                       integer inverse logarithmic integral
   prime_precalc(n)                    precalculate primes to n

@@ -43,7 +43,10 @@ our @EXPORT_OK =
       nth_prime nth_prime_lower nth_prime_upper nth_prime_approx inverse_li
       twin_prime_count twin_prime_count_approx
       nth_twin_prime nth_twin_prime_approx
-      ramanujan_prime_count nth_ramanujan_prime
+      ramanujan_prime_count ramanujan_prime_count_approx
+      ramanujan_prime_count_lower ramanujan_prime_count_upper
+      nth_ramanujan_prime nth_ramanujan_prime_approx
+      nth_ramanujan_prime_lower nth_ramanujan_prime_upper
       sum_primes print_primes
       random_prime random_ndigit_prime random_nbit_prime random_strong_prime
       random_proven_prime random_proven_prime_with_cert
@@ -1612,6 +1615,18 @@ While not nearly as efficient as L<prime_count>, this does use a number of
 speedups that result it in being much more efficient than generating all
 the Ramanujan primes.
 
+=head2 ramanujan_prime_count_approx
+
+A fast approximation of the count of Ramanujan primes under C<n>.
+
+=head2 ramanujan_prime_count_lower
+
+A fast lower limit on the count of Ramanujan primes under C<n>.
+
+=head2 ramanujan_prime_count_upper
+
+A fast upper limit on the count of Ramanujan primes under C<n>.
+
 
 =head2 sieve_range
 
@@ -1773,6 +1788,19 @@ Returns the Nth Ramanujan prime.  For reasonable size values of C<n>, e.g.
 under C<10^8> or so, this is relatively efficient for single calls.  If
 multiple calls are being made, it will be much more efficient to get the
 list once.
+
+=head2 nth_ramanujan_prime_approx
+
+A fast approximation of the Nth Ramanujan prime.
+
+=head2 nth_ramanujan_prime_lower
+
+A fast lower limit on the Nth Ramanujan prime.
+
+=head2 nth_ramanujan_prime_upper
+
+A fast upper limit on the Nth Ramanujan prime.
+
 
 
 =head2 is_pseudoprime

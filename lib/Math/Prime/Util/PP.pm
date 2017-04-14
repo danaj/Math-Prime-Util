@@ -206,6 +206,16 @@ sub _validate_integer {
   1;
 }
 
+sub _binary_search {
+  my($n, $lo, $hi, $sub, $exitsub) = @_;
+  while ($lo < $hi) {
+    my $mid = $lo + int(($hi-$lo) >> 1);
+    return $mid if defined $exitsub && $exitsub->($n,$lo,$hi);
+    if ($sub->($mid) < $n) { $lo = $mid+1; }
+    else                   { $hi = $mid;   }
+  }
+  return $lo-1;
+}
 
 my @_primes_small = (0,2);
 {
@@ -1542,13 +1552,7 @@ sub inverse_li {
   my $lo = int($nlogn);
   my $hi = int($nlogn * 2 + 2);
   $lo >>= 1 if $n < 40;
-
-  while ($lo < $hi) {
-    my $mid = $lo + int(($hi-$lo) >> 1);
-    if (Math::Prime::Util::LogarithmicIntegral($mid) < $n) { $lo = $mid+1; }
-    else                                                   { $hi = $mid;   }
-  }
-  return $lo;
+  1+_binary_search($n, $lo, $hi, sub{Math::Prime::Util::LogarithmicIntegral(@_)});
 }
 
 sub nth_prime_approx {
@@ -2038,8 +2042,9 @@ sub nth_twin_prime {
 
 sub nth_twin_prime_approx {
   my($n) = @_;
+  _validate_positive_integer($n);
   return nth_twin_prime($n) if $n < 6;
-  $n = _upgrade_to_float($n) if ref($n) || $n > 2e16;
+  $n = _upgrade_to_float($n) if ref($n) || $n > 127e14;   # TODO lower for 32-bit
   my $logn = log($n);
   my $nlogn2 = $n * $logn * $logn;
 
@@ -2049,14 +2054,62 @@ sub nth_twin_prime_approx {
   my $hi = int( ($n > 1e16) ? 1.1 * $nlogn2
               : ($n >  480) ? 1.7 * $nlogn2
                             : 2.3 * $nlogn2 + 3 );
-  while ($lo < $hi && ($hi-$lo)/$lo >= 1e-15) {
-    my $mid = $lo + int(($hi-$lo) >> 1);
-    my $tpca = Math::Prime::Util::twin_prime_count_approx($mid);
-    if ($tpca < $n) { $lo = $mid+1; }
-    else            { $hi = $mid;   }
-  }
-  $lo = $lo + int(($hi-$lo) >> 1) if $lo < $hi;
-  return $lo;
+
+  _binary_search($n, $lo, $hi,
+                 sub{Math::Prime::Util::twin_prime_count_approx(@_)},
+                 sub{ ($_[2]-$_[1])/$_[1] < 1e-15 } );
+}
+
+sub nth_ramanujan_prime_upper {
+  my $n = shift;
+  return (0,2,11)[$n] if $n <= 2;
+  $n = Math::BigInt->new("$n") if $n > (~0/3);
+  my $nth = nth_prime_upper(3*$n);
+  return $nth if $n < 10000;
+  return int((177 * $nth) >> 8) if $n < 1000000;
+  return int((175 * $nth) >> 8) if $n < 1e10;
+  return int((173 * $nth) / 256);
+}
+sub nth_ramanujan_prime_lower {
+  my $n = shift;
+  return (0,2,11)[$n] if $n <= 2;
+  $n = Math::BigInt->new("$n") if $n > (~0/2);
+  my $nth = nth_prime_lower(2*$n);
+  return int((275 * $nth) >> 8) if $n < 10000;
+  return int((262 * $nth) >> 8) if $n < 1e10;
+  $nth;
+}
+sub nth_ramanujan_prime_approx {
+  my $n = shift;
+  return (0,2,11)[$n] if $n <= 2;
+  my($lo,$hi) = (nth_ramanujan_prime_lower($n),nth_ramanujan_prime_upper($n));
+  $lo + (($hi-$lo)>>1);
+}
+sub ramanujan_prime_count_upper {
+  my $n = shift;
+  return (($n < 2) ? 0 : 1) if $n < 11;
+  my $lo = int(prime_count_lower($n) / 3);
+  my $hi = prime_count_upper($n) >> 1;
+  1+_binary_search($n, $lo, $hi,
+                   sub{Math::Prime::Util::nth_ramanujan_prime_lower(@_)});
+}
+sub ramanujan_prime_count_lower {
+  my $n = shift;
+  return (($n < 2) ? 0 : 1) if $n < 11;
+  my $lo = int(prime_count_lower($n) / 3);
+  my $hi = prime_count_upper($n) >> 1;
+  _binary_search($n, $lo, $hi,
+                 sub{Math::Prime::Util::nth_ramanujan_prime_upper(@_)});
+}
+sub ramanujan_prime_count_approx {
+  my $n = shift;
+  return (($n < 2) ? 0 : 1) if $n < 11;
+  #$n = _upgrade_to_float($n) if ref($n) || $n > 2e16;
+  my $lo = ramanujan_prime_count_lower($n);
+  my $hi = ramanujan_prime_count_upper($n);
+  _binary_search($n, $lo, $hi,
+                 sub{Math::Prime::Util::nth_ramanujan_prime_approx(@_)},
+                 sub{ ($_[2]-$_[1])/$_[1] < 1e-15 } );
 }
 
 sub _sum_primes_n {
@@ -2295,7 +2348,7 @@ sub chinese {
   return $_[0]->[0] % $_[0]->[1] if scalar @_ == 1;
   my($lcm, $sum);
 
-  if ($Math::Prime::Util::_GMPfunc{"chinese"}) {
+  if ($Math::Prime::Util::_GMPfunc{"chinese"} && $Math::Prime::Util::GMP::VERSION >= 0.42) {
     $sum = Math::Prime::Util::GMP::chinese(@_);
     if (defined $sum) {
       $sum = Math::BigInt->new("$sum");
@@ -2582,7 +2635,9 @@ sub is_power {
   croak("is_power third argument not a scalar reference") if defined($refp) && !ref($refp);
   return 0 if abs($n) <= 3 && !$a;
 
-  if ($Math::Prime::Util::_GMPfunc{"is_power"} && $Math::Prime::Util::GMP::VERSION >= 0.28) {
+  if ($Math::Prime::Util::_GMPfunc{"is_power"} &&
+      ($Math::Prime::Util::GMP::VERSION >= 0.42 ||
+       ($Math::Prime::Util::GMP::VERSION >= 0.28 && $n > 0))) {
     $a = 0 unless defined $a;
     my $k = Math::Prime::Util::GMP::is_power($n,$a);
     return 0 unless $k > 0;
@@ -6073,7 +6128,7 @@ sub _multiset_permutations {
 #       Random numbers
 ###############################################################################
 
-# PPFE:  irand irand64 drand random_bytes seed_csprng _is_csprng_well_seeded
+# PPFE:  irand irand64 drand random_bytes csrand srand _is_csprng_well_seeded
 sub urandomb {
   my($n) = @_;
   return 0 if $n <= 0;

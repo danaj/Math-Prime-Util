@@ -18,6 +18,7 @@ plan skip_all => "Test::Spellunker required for testing POD spelling" if $@;
 
 add_stopwords(qw/bigint bigints
                  bignum bignums
+                 quadmath
                  pseudoprime pseudoprimes
                  primorial primorials
                  semiprime semiprimes
@@ -26,7 +27,7 @@ add_stopwords(qw/bigint bigints
                  unoptimized unusably
                  coprime summatory
                  RiemannR LambertW
-                 srand irand irand64 drand urandomb urandomm
+                 csrand srand irand irand64 drand urandomb urandomm
                  forprimes forcomposites foroddcomposites fordivisors
                  forpart forcomp forcomb forperm formultiperm
                  totient moebius mertens liouville kronecker znorder znprimroot znlog

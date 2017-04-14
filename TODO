@@ -122,15 +122,6 @@
 - Berkane/Dusart 2016, Axler 2016, Axler 2017 could tune prime count bounds.
 
 - Check lower-bit properties of drand and 1.0-drand.
-- Test new PP ChaCha20 core on 32-bit and BE.
-- Decide whether to fully add these functions:
-  nth_ramanujan_prime_upper
-  nth_ramanujan_prime_lower
-  nth_ramanujan_prime_approx
-  ramanujan_prime_count_upper
-  ramanujan_prime_count_lower
-  ramanujan_prime_count_approx
-- fixup "todo" ramanujan prime limits before release
 
 ---- \/ ------  Next release
 
@@ -143,3 +134,4 @@
 - Make a feature table for rand modules.  bits-per-double, secure, speed,
   seeding, interval, etc.  Lots of modules only fill doubles with 32 bits.
 - get info on different drands.  TestU01, 45-bit look, cycles, x-y plots, etc.
+- further processing on Ramanujan prime limits up to 4e14

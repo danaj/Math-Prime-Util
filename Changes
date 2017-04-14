@@ -20,6 +20,13 @@ Revision history for Perl module Math::Prime::Util
 
     - :rand                    Exports srand, rand, irand, irand64
 
+    - nth_ramanujan_prime_upper(n)       Upper limit of nth Ramanujan prime
+    - nth_ramanujan_prime_lower(n)       Lower limit of nth Ramanujan prime
+    - nth_ramanujan_prime_approx(n)      Approximate nth Ramanujan prime
+    - ramanujan_prime_count_upper(n)     Upper limit of Ramanujan prime count
+    - ramanujan_prime_count_lower(n)     Lower limit of Ramanujan prime count
+    - ramanujan_prime_count_approx(n)    Approximate Ramanujan prime count
+
     [FUNCTIONALITY AND PERFORMANCE]
 
     - vecsum is faster when returning a bigint from native inputs (we

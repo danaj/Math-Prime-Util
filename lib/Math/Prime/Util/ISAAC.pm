@@ -255,8 +255,8 @@ John Allen did the port to Perl in 2000.
 
 Jonathan Yu released L<Math::Random::ISAAC> in 2009 and has maintained it since.
 
-David Oswald trimmed the code substationally for L<Bytes::Random::Secure::Tiny>.
-I built on top of that.
+David Oswald trimmed the code substantially for L<Bytes::Random::Secure::Tiny>.
+Our code is based on that code.
 
 =head1 COPYRIGHT
 
