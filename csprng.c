@@ -156,7 +156,7 @@ void csprng_seed(uint32_t bytes, const unsigned char* data)
     c = U8TO32_LE(seed +  8);
     d = U8TO32_LE(seed + 12);
     rng = prng_new(a,b,c,d);
-    for (i = bytes; i < SEED_BYTES; i += 4)
+    for (i = 4*((bytes+3)/4); i < SEED_BYTES; i += 4)
       U32TO8_LE(seed + i, prng_next(rng));
     Safefree(rng);
 #if 0
@@ -181,12 +181,21 @@ void csprng_seed(uint32_t bytes, const unsigned char* data)
 
 extern void csprng_srand(UV insecure_seed)
 {
-  unsigned char seed[8] = {0};
+#if BITS_PER_WORD == 32
+  unsigned char seed[4] = {0};
   U32TO8_LE(seed, insecure_seed);
-#if BITS_PER_WORD == 64
-  U32TO8_LE(seed + 4, (insecure_seed >> 32));
+  csprng_seed(4, seed);
+#else
+  unsigned char seed[8] = {0};
+  if (insecure_seed <= UVCONST(4294967295)) {
+    U32TO8_LE(seed, insecure_seed);
+    csprng_seed(4, seed);
+  } else {
+    U32TO8_LE(seed, insecure_seed);
+    U32TO8_LE(seed + 4, (insecure_seed >> 32));
+    csprng_seed(8, seed);
+  }
 #endif
-  csprng_seed(8, seed);
 }
 
 void csprng_rand_bytes(uint32_t bytes, unsigned char* data)

@@ -93,16 +93,27 @@ sub _randinit {
 # Simple PRNG used to fill small seeds
 sub _prng_next {
   my($s) = @_;
+  my $word;
   my $oldstate = $s->[0];
-  $s->[0] = ($s->[0] * 747796405 + $s->[1]) & 0xFFFFFFFF;
-  my $word = ((($oldstate >> (($oldstate >> 28) + 4)) ^ $oldstate) * 277803737) & 0xFFFFFFFF;
+  if (~0 > 0xFFFFFFFF) {
+    $s->[0] = ($s->[0] * 747796405 + $s->[1]) & 0xFFFFFFFF;
+    $word = ((($oldstate >> (($oldstate >> 28) + 4)) ^ $oldstate) * 277803737) & 0xFFFFFFFF;
+  } else {
+    { use integer; $s->[0] = unpack("L",pack("L", $s->[0] * 747796405 + $s->[1] )); }
+    $word = (($oldstate >> (($oldstate >> 28) + 4)) ^ $oldstate) & 0xFFFFFFFF;
+    { use integer; $word = unpack("L",pack("L", $word * 277803737)); }
+  }
   ($word >> 22) ^ $word;
 }
 sub _prng_new {
   my($a,$b,$c,$d) = @_;
-  my @s = (0, (($b << 1) | 1) & 0xFFFFFFFF);
+  my @s = (0, (($b & 0x7FFFFFFF) << 1) | 1);
   _prng_next(\@s);
-  $s[0] = ($s[0] + $a) & 0xFFFFFFFF;
+  if (~0 > 0xFFFFFFFF) {
+    $s[0] = ($s[0] + $a) & 0xFFFFFFFF;
+  } else {
+    use integer; $s[0] = unpack("L",pack("L",$s[0] + $a));
+  }
   _prng_next(\@s);
   $s[0] = ($s[0] ^ $c) & 0xFFFFFFFF;
   _prng_next(\@s);
@@ -120,6 +131,7 @@ sub csrand {
   my($seed) = @_;
   $_goodseed = length($seed) >= 16;
   my @mm = (0) x 256;
+  while (length($seed) % 4) { $seed .= pack("C",0); }  # zero pad end word
   my @r = unpack("L*",substr($seed,0,1024));
   # If not enough data, fill rest using simple RNG
   if ($#r < 255) {
@@ -133,10 +145,8 @@ sub csrand {
 sub srand {
   my $seed = shift;
   $seed = CORE::rand unless defined $seed;
-  my $str = (~0 == 4294967295)
-          ? pack("L",$seed)
-          : pack("L2", $seed, $seed >> 32);
-  csrand($str);
+  if ($seed <= 4294967295) { csrand(pack("V",$seed)); }
+  else                     { csrand(pack("V2",$seed,$seed>>32)); }
   $seed;
 }
 sub irand {

@@ -9,7 +9,7 @@ my $use64 = (~0 > 4294967295);
 my $extra = defined $ENV{EXTENDED_TESTING} && $ENV{EXTENDED_TESTING};
 my $maxbits = $use64 ? 64 : 32;
 
-plan tests => 1+4+1+1;
+plan tests => 1+4+1;
 
 ########
 #
@@ -22,8 +22,8 @@ plan tests => 1+4+1+1;
 
 is( srand(7652245), 7652245, "srand returns result" );
 my %alg = (
-  ChaCha20 => [3004121508, 1648872885, 0.295097488345488454],
-  ISAAC    => [1201784256, 2493844312, 0.4502675995501714],
+  ChaCha20 => [1951677399, 598936225, 0.716442236122296401],
+  ISAAC    => [2993131935, 393080975, 0.00891862162060655416],
 );
 my @got = ( irand, irand, rand );
 my @exp;
@@ -34,18 +34,21 @@ for my $alg (keys %alg) {
   $which = $alg;
   last;
 }
-ok( scalar(@exp) == scalar(@got), "PRNG Algorithm is recognized" );
-is( $got[0], $exp[0], "$which irand" );
-is( $got[1], $exp[1], "$which irand" );
-ok( $got[2] > $exp[2]-1e-6 && $got[2] < $exp[2]+1e-6, "$which drand" );
-
-srand(7652245);
-my($r, $want) = (irand, $got[0]);
-is( $r, $want, "Replicates after srand" );
 
 SKIP: {
+  skip "Unknown PRNG algorithm",4 if !defined $which;
+  is( $got[0], $exp[0], "$which irand" );
+  is( $got[1], $exp[1], "$which irand" );
+  ok( $got[2] > $exp[2]-1e-6 && $got[2] < $exp[2]+1e-6, "$which drand" );
+  srand(7652245);
+  my($r, $want) = (irand, $got[0]);
+  is( $r, $want, "Replicates after srand" );
+}
+
+SKIP: {
+  skip "Unknown PRNG algorithm",1 if !defined $which;
   skip "Skipping irand64 on 32-bit Perl", 1 if !$use64;
-  $r = irand64;
-  $want = ($which eq 'ChaCha20') ? 7081855117603603021 : 10710979763289504966;
+  my $r = irand64;
+  my $want = ($which eq 'ChaCha20') ? 2572411501841793573 : 1688269932343098788;
   is($r, $want, "$which irand64");
 }

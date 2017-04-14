@@ -39,8 +39,8 @@ sub _core {
   while ($blocks-- > 0) {
     my($x0,$x1,$x2,$x3,$x4,$x5,$x6,$x7,$x8,$x9,$x10,$x11,$x12,$x13,$x14,$x15) = @$j;
     for (1 .. ROUNDS/2) {
+      use integer;
       if (BITS == 64) {
-        use integer;
         $x0 =($x0 +$x4 )&0xFFFFFFFF; $x12^=$x0 ; $x12=(($x12<<16)|($x12>>16))&0xFFFFFFFF;
         $x8 =($x8 +$x12)&0xFFFFFFFF; $x4 ^=$x8 ; $x4 =(($x4 <<12)|($x4 >>20))&0xFFFFFFFF;
         $x0 =($x0 +$x4 )&0xFFFFFFFF; $x12^=$x0 ; $x12=(($x12<< 8)|($x12>>24))&0xFFFFFFFF;
@@ -74,38 +74,38 @@ sub _core {
         $x3 =($x3 +$x4 )&0xFFFFFFFF; $x14^=$x3 ; $x14=(($x14<< 8)|($x14>>24))&0xFFFFFFFF;
         $x9 =($x9 +$x14)&0xFFFFFFFF; $x4 ^=$x9 ; $x4 =(($x4 << 7)|($x4 >>25))&0xFFFFFFFF;
       } else { # 32-bit
-        {use integer;$x0 +=$x4 ;} $x12^=$x0 ; $x12=($x12<<16)|($x12>>16);
-        {use integer;$x8 +=$x12;} $x4 ^=$x8 ; $x4 =($x4 <<12)|($x4 >>20);
-        {use integer;$x0 +=$x4 ;} $x12^=$x0 ; $x12=($x12<< 8)|($x12>>24);
-        {use integer;$x8 +=$x12;} $x4 ^=$x8 ; $x4 =($x4 << 7)|($x4 >>25);
-        {use integer;$x1 +=$x5 ;} $x13^=$x1 ; $x13=($x13<<16)|($x13>>16);
-        {use integer;$x9 +=$x13;} $x5 ^=$x9 ; $x5 =($x5 <<12)|($x5 >>20);
-        {use integer;$x1 +=$x5 ;} $x13^=$x1 ; $x13=($x13<< 8)|($x13>>24);
-        {use integer;$x9 +=$x13;} $x5 ^=$x9 ; $x5 =($x5 << 7)|($x5 >>25);
-        {use integer;$x2 +=$x6 ;} $x14^=$x2 ; $x14=($x14<<16)|($x14>>16);
-        {use integer;$x10+=$x14;} $x6 ^=$x10; $x6 =($x6 <<12)|($x6 >>20);
-        {use integer;$x2 +=$x6 ;} $x14^=$x2 ; $x14=($x14<< 8)|($x14>>24);
-        {use integer;$x10+=$x14;} $x6 ^=$x10; $x6 =($x6 << 7)|($x6 >>25);
-        {use integer;$x3 +=$x7 ;} $x15^=$x3 ; $x15=($x15<<16)|($x15>>16);
-        {use integer;$x11+=$x15;} $x7 ^=$x11; $x7 =($x7 <<12)|($x7 >>20);
-        {use integer;$x3 +=$x7 ;} $x15^=$x3 ; $x15=($x15<< 8)|($x15>>24);
-        {use integer;$x11+=$x15;} $x7 ^=$x11; $x7 =($x7 << 7)|($x7 >>25);
-        {use integer;$x0 +=$x5 ;} $x15^=$x0 ; $x15=($x15<<16)|($x15>>16);
-        {use integer;$x10+=$x15;} $x5 ^=$x10; $x5 =($x5 <<12)|($x5 >>20);
-        {use integer;$x0 +=$x5 ;} $x15^=$x0 ; $x15=($x15<< 8)|($x15>>24);
-        {use integer;$x10+=$x15;} $x5 ^=$x10; $x5 =($x5 << 7)|($x5 >>25);
-        {use integer;$x1 +=$x6 ;} $x12^=$x1 ; $x12=($x12<<16)|($x12>>16);
-        {use integer;$x11+=$x12;} $x6 ^=$x11; $x6 =($x6 <<12)|($x6 >>20);
-        {use integer;$x1 +=$x6 ;} $x12^=$x1 ; $x12=($x12<< 8)|($x12>>24);
-        {use integer;$x11+=$x12;} $x6 ^=$x11; $x6 =($x6 << 7)|($x6 >>25);
-        {use integer;$x2 +=$x7 ;} $x13^=$x2 ; $x13=($x13<<16)|($x13>>16);
-        {use integer;$x8 +=$x13;} $x7 ^=$x8 ; $x7 =($x7 <<12)|($x7 >>20);
-        {use integer;$x2 +=$x7 ;} $x13^=$x2 ; $x13=($x13<< 8)|($x13>>24);
-        {use integer;$x8 +=$x13;} $x7 ^=$x8 ; $x7 =($x7 << 7)|($x7 >>25);
-        {use integer;$x3 +=$x4 ;} $x14^=$x3 ; $x14=($x14<<16)|($x14>>16);
-        {use integer;$x9 +=$x14;} $x4 ^=$x9 ; $x4 =($x4 <<12)|($x4 >>20);
-        {use integer;$x3 +=$x4 ;} $x14^=$x3 ; $x14=($x14<< 8)|($x14>>24);
-        {use integer;$x9 +=$x14;} $x4 ^=$x9 ; $x4 =($x4 << 7)|($x4 >>25);
+        $x0 +=$x4 ; $x12^=$x0 ; $x12=($x12<<16)|(($x12>>16)& 0xFFFF);
+        $x8 +=$x12; $x4 ^=$x8 ; $x4 =($x4 <<12)|(($x4 >>20)& 0xFFF);
+        $x0 +=$x4 ; $x12^=$x0 ; $x12=($x12<< 8)|(($x12>>24)& 0xFF);
+        $x8 +=$x12; $x4 ^=$x8 ; $x4 =($x4 << 7)|(($x4 >>25)& 0x7F);
+        $x1 +=$x5 ; $x13^=$x1 ; $x13=($x13<<16)|(($x13>>16)& 0xFFFF);
+        $x9 +=$x13; $x5 ^=$x9 ; $x5 =($x5 <<12)|(($x5 >>20)& 0xFFF);
+        $x1 +=$x5 ; $x13^=$x1 ; $x13=($x13<< 8)|(($x13>>24)& 0xFF);
+        $x9 +=$x13; $x5 ^=$x9 ; $x5 =($x5 << 7)|(($x5 >>25)& 0x7F);
+        $x2 +=$x6 ; $x14^=$x2 ; $x14=($x14<<16)|(($x14>>16)& 0xFFFF);
+        $x10+=$x14; $x6 ^=$x10; $x6 =($x6 <<12)|(($x6 >>20)& 0xFFF);
+        $x2 +=$x6 ; $x14^=$x2 ; $x14=($x14<< 8)|(($x14>>24)& 0xFF);
+        $x10+=$x14; $x6 ^=$x10; $x6 =($x6 << 7)|(($x6 >>25)& 0x7F);
+        $x3 +=$x7 ; $x15^=$x3 ; $x15=($x15<<16)|(($x15>>16)& 0xFFFF);
+        $x11+=$x15; $x7 ^=$x11; $x7 =($x7 <<12)|(($x7 >>20)& 0xFFF);
+        $x3 +=$x7 ; $x15^=$x3 ; $x15=($x15<< 8)|(($x15>>24)& 0xFF);
+        $x11+=$x15; $x7 ^=$x11; $x7 =($x7 << 7)|(($x7 >>25)& 0x7F);
+        $x0 +=$x5 ; $x15^=$x0 ; $x15=($x15<<16)|(($x15>>16)& 0xFFFF);
+        $x10+=$x15; $x5 ^=$x10; $x5 =($x5 <<12)|(($x5 >>20)& 0xFFF);
+        $x0 +=$x5 ; $x15^=$x0 ; $x15=($x15<< 8)|(($x15>>24)& 0xFF);
+        $x10+=$x15; $x5 ^=$x10; $x5 =($x5 << 7)|(($x5 >>25)& 0x7F);
+        $x1 +=$x6 ; $x12^=$x1 ; $x12=($x12<<16)|(($x12>>16)& 0xFFFF);
+        $x11+=$x12; $x6 ^=$x11; $x6 =($x6 <<12)|(($x6 >>20)& 0xFFF);
+        $x1 +=$x6 ; $x12^=$x1 ; $x12=($x12<< 8)|(($x12>>24)& 0xFF);
+        $x11+=$x12; $x6 ^=$x11; $x6 =($x6 << 7)|(($x6 >>25)& 0x7F);
+        $x2 +=$x7 ; $x13^=$x2 ; $x13=($x13<<16)|(($x13>>16)& 0xFFFF);
+        $x8 +=$x13; $x7 ^=$x8 ; $x7 =($x7 <<12)|(($x7 >>20)& 0xFFF);
+        $x2 +=$x7 ; $x13^=$x2 ; $x13=($x13<< 8)|(($x13>>24)& 0xFF);
+        $x8 +=$x13; $x7 ^=$x8 ; $x7 =($x7 << 7)|(($x7 >>25)& 0x7F);
+        $x3 +=$x4 ; $x14^=$x3 ; $x14=($x14<<16)|(($x14>>16)& 0xFFFF);
+        $x9 +=$x14; $x4 ^=$x9 ; $x4 =($x4 <<12)|(($x4 >>20)& 0xFFF);
+        $x3 +=$x4 ; $x14^=$x3 ; $x14=($x14<< 8)|(($x14>>24)& 0xFF);
+        $x9 +=$x14; $x4 ^=$x9 ; $x4 =($x4 << 7)|(($x4 >>25)& 0x7F);
       }
     }
     $ks .= pack("V16",$x0 +$j->[ 0],$x1 +$j->[ 1],$x2 +$j->[ 2],$x3 +$j->[ 3],
@@ -159,9 +159,16 @@ _test_keystream();
 # Simple PRNG used to fill small seeds
 sub _prng_next {
   my($s) = @_;
+  my $word;
   my $oldstate = $s->[0];
-  $s->[0] = ($s->[0] * 747796405 + $s->[1]) & 0xFFFFFFFF;
-  my $word = ((($oldstate >> (($oldstate >> 28) + 4)) ^ $oldstate) * 277803737) & 0xFFFFFFFF;
+  if (BITS == 64) {
+    $s->[0] = ($s->[0] * 747796405 + $s->[1]) & 0xFFFFFFFF;
+    $word = ((($oldstate >> (($oldstate >> 28) + 4)) ^ $oldstate) * 277803737) & 0xFFFFFFFF;
+  } else {
+    { use integer; $s->[0] = unpack("L",pack("L", $s->[0] * 747796405 + $s->[1] )); }
+    $word = (($oldstate >> (($oldstate >> 28) + 4)) ^ $oldstate) & 0xFFFFFFFF;
+    { use integer; $word = unpack("L",pack("L", $word * 277803737)); }
+  }
   ($word >> 22) ^ $word;
 }
 sub _prng_new {
@@ -189,6 +196,7 @@ sub _prng_new {
   sub csrand {
     my($seed) = @_;
     $_goodseed = length($seed) >= 16;
+    while (length($seed) % 4) { $seed .= pack("C",0); }  # zero pad end word
     my @seed = unpack("V*",substr($seed,0,40));
     # If not enough data, fill rest using simple RNG
     if ($#seed < 9) {
@@ -204,8 +212,8 @@ sub _prng_new {
   sub srand {
     my $seed = shift;
     $seed = CORE::rand unless defined $seed;
-    my $str = (~0 == 4294967295) ? pack("V",$seed) : pack("V2",$seed,$seed>>32);
-    csrand($str);
+    if ($seed <= 4294967295) { csrand(pack("V",$seed)); }
+    else                     { csrand(pack("V2",$seed,$seed>>32)); }
     $seed;
   }
   sub irand {

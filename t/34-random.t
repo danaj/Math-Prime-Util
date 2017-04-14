@@ -150,10 +150,10 @@ sub try_16bit {
 srand(42);
 my $rb42 = irand();
 my $csprng = 'something I do not know';
-if    ($rb42 == 3381344544) { $csprng = 'ChaCha20'; }
-elsif ($rb42 ==  200263518) { $csprng = 'ChaCha12'; }
-elsif ($rb42 == 2095124725) { $csprng = 'ChaCha8'; }
-elsif ($rb42 == 4120509558) { $csprng = 'ISAAC'; }
+if    ($rb42 ==  445265827) { $csprng = 'ChaCha20'; }
+elsif ($rb42 == 3626765506) { $csprng = 'ChaCha12'; }
+elsif ($rb42 ==  266717191) { $csprng = 'ChaCha8'; }
+elsif ($rb42 == 4274346485) { $csprng = 'ISAAC'; }
 elsif ($rb42 == 3197710526) { $csprng = 'drand48'; }
 elsif ($rb42 == 2209484588) { $csprng = 'Math::Random::Xorshift'; }
 elsif ($rb42 == 1608637542) { $csprng = 'Math::Random::MT'; }
@@ -166,7 +166,7 @@ diag "CORE::rand: $core_rand. Our PRNG: $csprng";
 SKIP: {
   if ($csprng eq 'ChaCha20') {
     srand(15);
-    is(unpack("H8",random_bytes(4)), "5c1b3351", "random_bytes after srand");
+    is(unpack("H8",random_bytes(4)), "546d6108", "random_bytes after srand");
     csrand("BLAKEGrostlJHKeccakSkein--RijndaelSerpentTwofishRC6MARS");
     is(unpack("H14",random_bytes(7)), "b302e671601bce", "random_bytes after manual seed");
     is(irand(), 88564645, "irand after seed");
@@ -174,11 +174,11 @@ SKIP: {
     ok($d > $dexp-1e-6 && $d < $dexp+1e-6,"drand after seed $d ~ $dexp");
   } elsif ($csprng eq 'ISAAC') {
     srand(15);
-    is(unpack("H8",random_bytes(4)), "d491517d", "random_bytes after srand");
+    is(unpack("H8",random_bytes(4)), "36cd2d21", "random_bytes after srand");
     csrand("BLAKEGrostlJHKeccakSkein--RijndaelSerpentTwofishRC6MARS");
-    is(unpack("H14",random_bytes(7)), "a407f567e66f91", "random_bytes after manual seed");
-    is(irand(), 2841272539, "irand after seed");
-    my $d = drand();  my $dexp = 0.251443811409988;
+    is(unpack("H14",random_bytes(7)), "a0644ad1e00324", "random_bytes after manual seed");
+    is(irand(), 2526495644, "irand after seed");
+    my $d = drand();  my $dexp = 0.490707771279301221;
     ok($d > $dexp-1e-6 && $d < $dexp+1e-6,"drand after seed $d ~ $dexp");
   } else {
     skip "Unknown random number generator!  Skipping deterministic tests.",4;
