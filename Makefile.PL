@@ -101,6 +101,9 @@ WriteMakefile1(
                  'Math::Prime::Util::PrimeIterator' => {
                     version => '0.62', file => 'lib/Math/Prime/Util/PrimeIterator.pm',
                  },
+                 'Math::Prime::Util::Entropy' => {
+                    version => '0.62', file => 'lib/Math/Prime/Util/Entropy.pm',
+                 },
                  'Math::Prime::Util::ISAAC' => {
                     version => '0.62', file => 'lib/Math/Prime/Util/ISAAC.pm',
                  },
@@ -108,7 +111,7 @@ WriteMakefile1(
                     version => '0.62', file => 'lib/Math/Prime/Util/ChaCha.pm',
                  },
                  # Skip: PPFE, PrimalityProving, RandomPrimes, ZetaBigFloat,
-                 #       ECAffinePoint, ECProjectivePoint, RNGSeed
+                 #       ECAffinePoint, ECProjectivePoint
                },
                prereqs => {
                  runtime => {

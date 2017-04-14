@@ -2,7 +2,7 @@ package Math::Prime::Util;
 use strict;
 use warnings;
 use Carp qw/croak confess carp/;
-use Math::Prime::Util::RNGSeed;
+use Math::Prime::Util::Entropy;
 
 BEGIN {
   $Math::Prime::Util::AUTHORITY = 'cpan:DANAJ';
@@ -102,7 +102,7 @@ sub srand {
   my($seed) = @_;
   if (!defined $seed) {
     my $bytes = (~0 == 4294967295) ? 4 : 8;
-    $seed = Math::Prime::Util::RNGSeed::get_seed( $bytes );
+    $seed = Math::Prime::Util::Entropy::entropy_bytes( $bytes );
     $seed = unpack(($bytes==4) ? "L" : "Q", $seed) if defined $seed;
   }
   if (defined $seed) { Math::Prime::Util::_srand($seed);    }
@@ -112,7 +112,7 @@ sub srand {
 
 sub csrand {
   my($seed) = @_;
-  $seed = Math::Prime::Util::RNGSeed::get_seed( 64 ) unless defined $seed;
+  $seed = Math::Prime::Util::Entropy::entropy_bytes( 64 ) unless defined $seed;
   if (defined $seed) { Math::Prime::Util::_csrand($seed); }
   else               { Math::Prime::Util::_srand();       }
   1; # Don't return the seed

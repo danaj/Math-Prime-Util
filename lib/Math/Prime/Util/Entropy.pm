@@ -1,11 +1,11 @@
-package Math::Prime::Util::RNGSeed;
+package Math::Prime::Util::Entropy;
 use strict;
 use warnings;
 use Carp qw/carp croak confess/;
 
 BEGIN {
-  $Math::Prime::Util::RNGSeed::AUTHORITY = 'cpan:DANAJ';
-  $Math::Prime::Util::RNGSeed::VERSION = '0.62';
+  $Math::Prime::Util::Entropy::AUTHORITY = 'cpan:DANAJ';
+  $Math::Prime::Util::Entropy::VERSION = '0.62';
 }
 
 sub _read_file {
@@ -94,11 +94,20 @@ sub _try_crypt_prng {
   return ('Crypt::PRNG', sub { Crypt::PRNG::random_bytes(shift) }, 0, 1);
 }
 
+sub _try_crypt_random_seed {
+  return unless eval { require Crypt::Random::Seed; 1; };
+  return ('Crypt::Random::Seed', sub { my $source = Crypt::Random::Seed->new(NonBlocking=>1); return unless $source; $source->random_bytes(shift) }, 0, 1);
+}
+
 my $_method;
 
-sub get_seed {
+sub entropy_bytes {
   my $nbytes = shift;
-  my @methodlist = ( \&_try_win32, \&_try_urandom, \&_try_crypt_prng );
+  my @methodlist = ( \&_try_win32,                 # All we have for Windows
+                     \&_try_urandom,               # Best if available
+                     \&_try_crypt_random_seed,     # More sources, fallbacks
+                     \&_try_crypt_prng,            # Good CSPRNG, worse seeding
+                   );
 
   if (!defined $_method) {
     foreach my $m (@methodlist) {
@@ -126,7 +135,7 @@ __END__
 
 =head1 NAME
 
-Math::Prime::Util::RNGSeed - Get a good random seed
+Math::Prime::Util::Entropy - Get a good random seed
 
 
 =head1 VERSION
@@ -141,12 +150,18 @@ Version 0.62
 Provides a single method to get a good seed if possible.  This is a streamlined
 version of L<Crypt::Random::Seed>, with ideas from L<Bytes::Random::Secure::Tiny>.
 
-=head2 get_seed
+=head2 entropy_bytes
 
 Takes a number of bytes C<n> and returns either undef (no good seed available) or
 a binary string with good entropy.
 
-We try, in order, the Win32 Crypto API, /dev/urandom, /dev/random, and Crypt::PRNG.
+We try in order:
+
+   - the Win32 Crypto API
+   - /dev/urandom
+   - /dev/random
+   - L<Crypt::Random::Seed>
+   - L<Crypt::PRNG>
 
 =head1 SEE ALSO
 
