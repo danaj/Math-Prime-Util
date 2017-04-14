@@ -11,8 +11,8 @@ use Bytes::Random;              # Just a loop around CORE::rand!
 use Bytes::Random::Secure;
 use Math::Random::MTwist;
 use Crypt::PRNG;
-#use Crypt::Random;
-#use Data::Entropy::Algorithms;
+use Crypt::Random;
+use Data::Entropy::Algorithms;
 use Benchmark qw/:all/;
 
 Math::Prime::Util::ISAAC::srand;
@@ -40,20 +40,24 @@ if (0) {
 #  "Crypt::Random"   => sub { Crypt::Random::makerandom_octet(Length=>8,Strength=>0); },
  });
 }
-if (0) {
+if (1) {
  print "#  256 random bytes\n";
  cmpthese($trial,{
   "MPU"      => sub { Math::Prime::Util::random_bytes(256); },
-  "MPU X"    => sub { Math::Prime::Util::xrandom_bytes(256); },
-  "MPU::GMP" => sub { Math::Prime::Util::GMP::random_bytes(256); },
+  "MPU X"    => sub { Math::Prime::Util::GMP::random_bytes(256); },
   "BRXS"     => sub { Bytes::Random::XS::random_bytes(256); },
-  #"BR"       => sub { Bytes::Random::random_bytes(256); },
-  #"BRS"      => sub { Bytes::Random::Secure::random_bytes(256); },
-  #"MRMT"     => sub { Math::Random::MTwist::_randstr(256); },
-#  "DEA"      => sub { Data::Entropy::Algorithms::rand_bits(8*256); },
-  #"CryptX"   => sub { Crypt::PRNG::random_bytes(256); },
-  #"rand"     => sub { pack('C*', map { int(rand 256) } 1..256); },
-#  "Crypt::Random"   => sub { Crypt::Random::makerandom_octet(Length=>256,Strength=>0); },
+  "PP MPU ISAAC" => sub { Math::Prime::Util::ISAAC::random_bytes(256); },
+  "PP MPU ChaCha" => sub { Math::Prime::Util::ChaCha::random_bytes(256); },
+  "PP MR ISAAC" => sub { pack("L*",map{$mripp->irand}1..64); },
+  "XS MR ISAAC" => sub { pack("L*",map{$mrixs->irand}1..64); },
+  "XS MR ISAAC2" => sub { my$s='';$s.=pack("L",$mrixs->irand)for 1..64;$s; },
+  "CryptX"   => sub { Crypt::PRNG::random_bytes(256); },
+  "BRS"      => sub { Bytes::Random::Secure::random_bytes(256); },
+  "MRMTwist" => sub { Math::Random::MTwist::_randstr(256); },
+  "rand"     => sub { pack('L*', map { int(rand 4294967296) } 1..64); },
+  "DEA"      => sub { Data::Entropy::Algorithms::rand_bits(8*256); },
+  "Crypt::Random"   => sub { Crypt::Random::makerandom_octet(Length=>256,Strength=>0); },
+  "BR"       => sub { Bytes::Random::random_bytes(256); },
  });
 }
 if (0) {
@@ -72,7 +76,7 @@ if (0) {
 #  "Crypt::Random"   => sub { Crypt::Random::makerandom_octet(Length=>16384,Strength=>0); },
  });
 }
-if (1) {
+if (0) {
  print "#  64k random bytes\n";
  cmpthese($trial,{
   "MPU"      => sub { Math::Prime::Util::random_bytes(64*1024); },

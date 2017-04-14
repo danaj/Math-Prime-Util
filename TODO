@@ -121,58 +121,8 @@
 
 - Berkane/Dusart 2016, Axler 2016, Axler 2017 could tune prime count bounds.
 
-x export irand() irand64() drand() random_bytes(UV) urandomb(UV) urandomm(SV)
-x Docs for irand() irand64() drand() random_bytes(UV) urandomb(UV) urandomm(SV)
-x Tests for irand() irand64() drand()
-x ntheory irand() irand64() drand() random_bytes(UV) urandomb(UV) urandomm(SV)
-x Seeding for rand funcs
-x PPFE for irand() irand64() drand() random_bytes(UV) urandomb(UV) urandomm(SV)
-x PP for irand() irand64() drand() random_bytes(UV) urandomb(UV) urandomm(SV)
-x seed for PP
-x remove irand function from config
-x RandomPrimes irand updates
-x :seed ntheory
-x :seed tests
-x update MANIFEST
-x Tests for random_bytes(UV) urandomb(UV) urandomm(SV) srand seed_csprng
-x proper version of RNG.pm
-x change seed interface, remove bytes.
-x Add a test like uniform from Math::Random::Secure
-x urandomm: call GMP from Perl or objectify in XS
-x random primes in XS
-x remove RandomPrimesGMP
-x doc in RNG.pm
-x re-validation of PP RandomPrimes with new rand functions
-x Make sure the PP ISAAC matches the XS one (32-bit, big-endian)
-x measure performance, add comments to docs
-x add chacha20
-x move util funcs out of isaac.c in prep for chacha20.c
-x write Perl verson of chacha20
-x A mechanism for reseeding with good entropy would be nice.
-x doc new csrand function and behavior
-x write new version of chacha core
-x redo docs with ISAAC -> ChaCha20
-x Fix 32-bit pure perl
-x PP drand on 32-bit Perl needs to use 53+ bits
-x use endian macros in chacha.c for irand etc.  We can trim a lot.
-x consistent seeding for PP and C
-x compare chacha20 Perl and C
-x ISAAC consistent seeding
-x redo random tests that rely on state
-x ensure double stream is identical on 32-bit and 64-bit
-x random prime ChaCha vs. ISAAC    C:  5-20% slower.  Perl:  10-60% slower.
-
-- Make a feature table for rand modules.  bits-per-double, secure, speed,
-  seeding, interval, etc.  Lots of modules only fill doubles with 32 bits.
-- get info on different drands.  TestU01, 45-bit look, cycles, x-y plots, etc.
-- redo all benchmarks and text
-  pure Perl:  4.2x / 1.9x irand64 ChaCha20 / ChaCha8
-  pure Perl:  4.7x / 2.2x irand32 ChaCha20 / ChaCha8
-  pure Perl:  4.8x / 2.1x random_bytes ChaCha20 / ChaCha8
-- publish info about Perl chacha20 (ianix, blog?).
 - Check lower-bit properties of drand and 1.0-drand.
 - Test new PP ChaCha20 core on 32-bit and BE.
-
 - Decide whether to fully add these functions:
   nth_ramanujan_prime_upper
   nth_ramanujan_prime_lower
@@ -180,9 +130,16 @@ x random prime ChaCha vs. ISAAC    C:  5-20% slower.  Perl:  10-60% slower.
   ramanujan_prime_count_upper
   ramanujan_prime_count_lower
   ramanujan_prime_count_approx
-
 - fixup "todo" ramanujan prime limits before release
 
-- Remove primeinc config option.
+---- \/ ------  Next release
 
+- publish info about Perl chacha20 (ianix, blog?).
+- Remove primeinc config option.
 - entropy_bytes call to get good entropy.  Ideally all in XS.
+- have the RNG return a context and store it in our package context space.
+  Should help threaded performance by removing lock.
+  Careful to not leak state.
+- Make a feature table for rand modules.  bits-per-double, secure, speed,
+  seeding, interval, etc.  Lots of modules only fill doubles with 32 bits.
+- get info on different drands.  TestU01, 45-bit look, cycles, x-y plots, etc.

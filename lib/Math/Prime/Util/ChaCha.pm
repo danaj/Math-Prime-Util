@@ -186,7 +186,7 @@ sub _prng_new {
 
   sub _is_csprng_well_seeded { $_goodseed }
 
-  sub seed_csprng {
+  sub csrand {
     my($seed) = @_;
     $_goodseed = length($seed) >= 16;
     my @seed = unpack("V*",substr($seed,0,40));
@@ -205,7 +205,7 @@ sub _prng_new {
     my $seed = shift;
     $seed = CORE::rand unless defined $seed;
     my $str = (~0 == 4294967295) ? pack("V",$seed) : pack("V2",$seed,$seed>>32);
-    seed_csprng($str);
+    csrand($str);
     $seed;
   }
   sub irand {
@@ -255,7 +255,7 @@ A pure Perl implementation of ChaCha20 with a CSPRNG interface.
 
 =head1 FUNCTIONS
 
-=head2 seed_csprng
+=head2 csrand
 
 Takes a binary string as input and seeds the internal CSPRNG.
 

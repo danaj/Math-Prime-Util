@@ -23,7 +23,7 @@ BEGIN {
 if (CSPRNG_CHACHA) {
   require Math::Prime::Util::ChaCha;
   *_is_csprng_well_seeded = \&Math::Prime::Util::ChaCha::_is_csprng_well_seeded;
-  *_csrand = \&Math::Prime::Util::ChaCha::seed_csprng;
+  *_csrand = \&Math::Prime::Util::ChaCha::csrand;
   *_srand = \&Math::Prime::Util::ChaCha::srand;
   *random_bytes = \&Math::Prime::Util::ChaCha::random_bytes;
   *irand = \&Math::Prime::Util::ChaCha::irand;
@@ -31,7 +31,7 @@ if (CSPRNG_CHACHA) {
 } elsif (CSPRNG_ISAAC) {
   require Math::Prime::Util::ISAAC;
   *_is_csprng_well_seeded = \&Math::Prime::Util::ISAAC::_is_csprng_well_seeded;
-  *_csrand = \&Math::Prime::Util::ISAAC::seed_csprng;
+  *_csrand = \&Math::Prime::Util::ISAAC::csrand;
   *_srand = \&Math::Prime::Util::ISAAC::srand;
   *random_bytes = \&Math::Prime::Util::ISAAC::random_bytes;
   *irand = \&Math::Prime::Util::ISAAC::irand;

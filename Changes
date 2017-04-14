@@ -5,8 +5,7 @@ Revision history for Perl module Math::Prime::Util
     [API Changes]
 
     - config option for irand is removed, as we now use our own CSPRNG.
-      It can be seeded with seed_csprng(nbytes,data) or
-      srand() / srand(UV).  The latter is not exported.
+      It can be seeded with csrand() or srand().  The latter is not exported.
 
     [ADDED]
 
@@ -44,7 +43,7 @@ Revision history for Perl module Math::Prime::Util
 
     - We do random seeding ourselves now, so remove dependency.
 
-    - random primes moved to XS / GMP, 3-10x faster.
+    - Random primes functions moved to XS / GMP, 3-10x faster.
 
 
 0.61 2017-03-12

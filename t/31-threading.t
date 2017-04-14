@@ -18,7 +18,7 @@ BEGIN {
 # Math::Pari + threads = crossing the streams.  Instant segfault.
 use Math::BigInt lib=>"Calc";
 use Test::More 'tests' => 7;
-use Math::Prime::Util ":all";
+use Math::Prime::Util qw/:all srand/;
 
 my $extra = defined $ENV{EXTENDED_TESTING} && $ENV{EXTENDED_TESTING};
 my $is_win32 = ($Config{osname} eq 'MSWin32')  ?  1  :  0;
@@ -105,6 +105,13 @@ thread_test(
 thread_test(
   sub { my $sum = 0;  $sum += int(RiemannR($_)) for (@randn); return $sum;},
   $numthreads, "RiemannR");
+
+# We can't do this unless the RNG has per-thread context
+if (0) {
+thread_test(
+  sub { srand(10); my $sum = 0;  $sum += irand for 1..1141; return $sum;},
+  $numthreads, "irand");
+}
 
 sub thread_test {
   my $tsub = shift;

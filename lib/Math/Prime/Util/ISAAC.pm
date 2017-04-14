@@ -116,7 +116,7 @@ my @_CTX = (0,[],0,0,0,[]); # (randcnt, randrsl[256], aa, bb, cc, mm[256])
 
 sub _is_csprng_well_seeded { $_goodseed }
 
-sub seed_csprng {
+sub csrand {
   my($seed) = @_;
   $_goodseed = length($seed) >= 16;
   my @mm = (0) x 256;
@@ -136,7 +136,7 @@ sub srand {
   my $str = (~0 == 4294967295)
           ? pack("L",$seed)
           : pack("L2", $seed, $seed >> 32);
-  seed_csprng($str);
+  csrand($str);
   $seed;
 }
 sub irand {
@@ -206,7 +206,7 @@ A pure Perl implementation of ISAAC with a CSPRNG interface.
 
 =head1 FUNCTIONS
 
-=head2 seed_csprng
+=head2 csrand
 
 Takes a binary string as input and seeds the internal CSPRNG.
 

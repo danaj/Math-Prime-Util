@@ -133,7 +133,7 @@ Tags:
   random_bytes(n)                     string with n random bytes
   urandomb(n)                         random integer less than 2^n
   urandomm(n)                         random integer less than n
-  seed_csprng(data)                   seed the CSPRNG with binary data
+  csrand(data)                        seed the CSPRNG with binary data
   srand([seed])                       simple seed (exported with :rand)
   rand([limit])                       alias for drand (exported with :rand)
 
