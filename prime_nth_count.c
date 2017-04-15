@@ -13,9 +13,8 @@
 #include "prime_nth_count.h"
 
 #include <math.h>
-#if _MSC_VER || (defined(__STDC_VERSION__) && __STDC_VERSION >= 199901L)
-  /* math.h should give us floorl, ceill, sqrtl, logl.
-   * NetBSD is a special snowflake and may need help here.
+#if _MSC_VER || defined(__IBMC__) || defined(__IBMCPP__) || (defined(__STDC_VERSION__) && __STDC_VERSION >= 199901L)
+  /* math.h should give us these as functions or macros.
    *
    *  extern long double floorl(long double);
    *  extern long double ceill(long double);
