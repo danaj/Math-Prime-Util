@@ -14,7 +14,7 @@ lib/Math/Prime/Util/PrimalityProving.pm
 lib/Math/Prime/Util/RandomPrimes.pm
 lib/Math/Prime/Util/ISAAC.pm
 lib/Math/Prime/Util/ChaCha.pm
-lib/Math/Prime/Util/RNGSeed.pm
+lib/Math/Prime/Util/Entropy.pm
 LICENSE
 Makefile.PL
 MANIFEST
