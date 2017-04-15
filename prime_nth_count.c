@@ -12,6 +12,23 @@
 #include "constants.h"
 #include "prime_nth_count.h"
 
+#include <math.h>
+#if _MSC_VER || (defined(__STDC_VERSION__) && __STDC_VERSION >= 199901L)
+  /* math.h should give us floorl, ceill, sqrtl, logl.
+   * NetBSD is a special snowflake and may need help here.
+   *
+   *  extern long double floorl(long double);
+   *  extern long double ceill(long double);
+   *  extern long double sqrtl(long double);
+   *  extern long double logl(long double);
+   */
+#else
+  #define floorl(x)   (long double) floor( (double) (x) )
+  #define ceill(x)    (long double) ceil( (double) (x) )
+  #define sqrtl(x)    (long double) sqrt( (double) (x) )
+  #define logl(x)     (long double) log( (double) (x) )
+#endif
+
 #if defined(__GNUC__)
  #define word_unaligned(m,wordsize)  ((uintptr_t)m & (wordsize-1))
 #else  /* uintptr_t is part of C99 */
