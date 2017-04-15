@@ -68,18 +68,18 @@ static void init_context(chacha_context_t *ctx, const unsigned char *seed, int i
   x[ 1] = 0x3320646e;
   x[ 2] = 0x79622d32;
   x[ 3] = 0x6b206574;
-  x[ 4] = U8TO32_LE(seed+ 0);
-  x[ 5] = U8TO32_LE(seed+ 4);
-  x[ 6] = U8TO32_LE(seed+ 8);
-  x[ 7] = U8TO32_LE(seed+12);
-  x[ 8] = U8TO32_LE(seed+16);
-  x[ 9] = U8TO32_LE(seed+20);
-  x[10] = U8TO32_LE(seed+24);
-  x[11] = U8TO32_LE(seed+28);
+  x[ 4] = U8TO32_LE((seed +  0));
+  x[ 5] = U8TO32_LE((seed +  4));
+  x[ 6] = U8TO32_LE((seed +  8));
+  x[ 7] = U8TO32_LE((seed + 12));
+  x[ 8] = U8TO32_LE((seed + 16));
+  x[ 9] = U8TO32_LE((seed + 20));
+  x[10] = U8TO32_LE((seed + 24));
+  x[11] = U8TO32_LE((seed + 28));
   x[12] = 0;
   x[13] = 0;
-  x[14] = U8TO32_LE(seed+32);
-  x[15] = U8TO32_LE(seed+36);
+  x[14] = U8TO32_LE((seed + 32));
+  x[15] = U8TO32_LE((seed + 36));
 
   if (init_buffer) {
     memset(ctx->buf, 0, BUFSZ);

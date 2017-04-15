@@ -151,10 +151,10 @@ void csprng_seed(uint32_t bytes, const unsigned char* data)
     uint32_t a, b, c, d, i;
     memcpy(seed, data, bytes);
     memset(seed+bytes, 0, sizeof(seed)-bytes);
-    a = U8TO32_LE(seed +  0);
-    b = U8TO32_LE(seed +  4);
-    c = U8TO32_LE(seed +  8);
-    d = U8TO32_LE(seed + 12);
+    a = U8TO32_LE((seed +  0));
+    b = U8TO32_LE((seed +  4));
+    c = U8TO32_LE((seed +  8));
+    d = U8TO32_LE((seed + 12));
     rng = prng_new(a,b,c,d);
     for (i = 4*((bytes+3)/4); i < SEED_BYTES; i += 4)
       U32TO8_LE(seed + i, prng_next(rng));
