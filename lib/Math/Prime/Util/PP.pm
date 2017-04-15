@@ -1552,7 +1552,7 @@ sub inverse_li {
   my $lo = int($nlogn);
   my $hi = int($nlogn * 2 + 2);
   $lo >>= 1 if $n < 40;
-  1+_binary_search($n, $lo, $hi, sub{Math::Prime::Util::LogarithmicIntegral(@_)});
+  1+_binary_search($n, $lo, $hi, sub{Math::Prime::Util::LogarithmicIntegral(shift)});
 }
 
 sub nth_prime_approx {
@@ -2056,7 +2056,7 @@ sub nth_twin_prime_approx {
                             : 2.3 * $nlogn2 + 3 );
 
   _binary_search($n, $lo, $hi,
-                 sub{Math::Prime::Util::twin_prime_count_approx(@_)},
+                 sub{Math::Prime::Util::twin_prime_count_approx(shift)},
                  sub{ ($_[2]-$_[1])/$_[1] < 1e-15 } );
 }
 
@@ -2066,17 +2066,22 @@ sub nth_ramanujan_prime_upper {
   $n = Math::BigInt->new("$n") if $n > (~0/3);
   my $nth = nth_prime_upper(3*$n);
   return $nth if $n < 10000;
-  return int((177 * $nth) >> 8) if $n < 1000000;
-  return int((175 * $nth) >> 8) if $n < 1e10;
-  return int((173 * $nth) / 256);
+  $nth = Math::BigInt->new("$nth") if $nth > (~0/177);
+  if ($n < 1000000) { $nth = (177 * $nth) >> 8; }
+  elsif ($n < 1e10) { $nth = (175 * $nth) >> 8; }
+  else              { $nth = (133 * $nth) >> 8; }
+  $nth = _bigint_to_int($nth) if ref($nth) && $nth->bacmp(BMAX) <= 0;
+  $nth;
 }
 sub nth_ramanujan_prime_lower {
   my $n = shift;
   return (0,2,11)[$n] if $n <= 2;
   $n = Math::BigInt->new("$n") if $n > (~0/2);
   my $nth = nth_prime_lower(2*$n);
-  return int((275 * $nth) >> 8) if $n < 10000;
-  return int((262 * $nth) >> 8) if $n < 1e10;
+  $nth = Math::BigInt->new("$nth") if $nth > (~0/275);
+  if ($n < 10000)   { $nth = (275 * $nth) >> 8; }
+  elsif ($n < 1e10) { $nth = (262 * $nth) >> 8; }
+  $nth = _bigint_to_int($nth) if ref($nth) && $nth->bacmp(BMAX) <= 0;
   $nth;
 }
 sub nth_ramanujan_prime_approx {
@@ -2091,7 +2096,7 @@ sub ramanujan_prime_count_upper {
   my $lo = int(prime_count_lower($n) / 3);
   my $hi = prime_count_upper($n) >> 1;
   1+_binary_search($n, $lo, $hi,
-                   sub{Math::Prime::Util::nth_ramanujan_prime_lower(@_)});
+                   sub{Math::Prime::Util::nth_ramanujan_prime_lower(shift)});
 }
 sub ramanujan_prime_count_lower {
   my $n = shift;
@@ -2099,7 +2104,7 @@ sub ramanujan_prime_count_lower {
   my $lo = int(prime_count_lower($n) / 3);
   my $hi = prime_count_upper($n) >> 1;
   _binary_search($n, $lo, $hi,
-                 sub{Math::Prime::Util::nth_ramanujan_prime_upper(@_)});
+                 sub{Math::Prime::Util::nth_ramanujan_prime_upper(shift)});
 }
 sub ramanujan_prime_count_approx {
   my $n = shift;
@@ -2108,7 +2113,7 @@ sub ramanujan_prime_count_approx {
   my $lo = ramanujan_prime_count_lower($n);
   my $hi = ramanujan_prime_count_upper($n);
   _binary_search($n, $lo, $hi,
-                 sub{Math::Prime::Util::nth_ramanujan_prime_approx(@_)},
+                 sub{Math::Prime::Util::nth_ramanujan_prime_approx(shift)},
                  sub{ ($_[2]-$_[1])/$_[1] < 1e-15 } );
 }
 
