@@ -121,13 +121,11 @@
 
 - Berkane/Dusart 2016, Axler 2016, Axler 2017 could tune prime count bounds.
 
-- Check lower-bit properties of drand and 1.0-drand.
-
 ---- \/ ------  Next release
 
 - publish info about Perl chacha20 (ianix, blog?).
 - Remove primeinc config option.
-- entropy_bytes call to get good entropy.  Ideally all in XS.
+- put entropy_bytes call in XS.
 - have the RNG return a context and store it in our package context space.
   Should help threaded performance by removing lock.
   Careful to not leak state.

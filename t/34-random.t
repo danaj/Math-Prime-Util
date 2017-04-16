@@ -110,7 +110,7 @@ check_float_range('drand(0)',0,1,[map{ drand(0) } 1..$num]);
 ########
 
 my $core_rand = "not drand48";
-if ($use64) {
+if (1) {
   my @r = map { CORE::rand() } 0..8;
   if (try_lcg(25214903917,11,2**48,@r)) {
     $core_rand = "drand48 (yech)";
