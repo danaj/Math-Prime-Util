@@ -249,6 +249,7 @@ static int _test_keystream(void) {
     if (len > 512) croak("Test vector too large");
     init_context(&ctx, key, 1);
     gen = chacha_keystream(kbuf, len, &ctx);
+    if (gen < len) croak("short keystream");
     /* Check state block counter */
     for (i = 0; i < len; i++)
       sprintf(got+2*i,"%02x", kbuf[i]);

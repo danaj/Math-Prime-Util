@@ -1939,7 +1939,7 @@ sumdigits(SV* svn, UV ibase = 255)
     const char* s;
   PPCODE:
     base = (ibase == 255) ? 10 : ibase;
-    if (base < 2 || base > 36) croak("sumdigits: invalid base %lu", base);
+    if (base < 2 || base > 36) croak("sumdigits: invalid base %"UVuf, base);
     sum = 0;
     /* faster for integer input in base 10 */
     if (base == 10 && SVNUMTEST(svn) && (SvIsUV(svn) || SvIVX(svn) >= 0)) {

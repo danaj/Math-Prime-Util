@@ -176,7 +176,7 @@ UV* sieve_cluster(UV low, UV high, uint32_t nc, uint32_t* cl, UV* numret)
       uint32_t j, p = sprimes[pi];
       UV r, newppr = ppr * p;
       if (nres == 0 || nres > targres/(p/2) || newppr > maxppr) break;
-      if (_verbose > 1) printf("cluster sieve found %lu residues mod %lu\n", nres, ppr);
+      if (_verbose > 1) printf("cluster sieve found %"UVuf" residues mod %"UVuf"\n", nres, ppr);
       remr = low % newppr;
       nres2 = 0;
       for (i = 0; i < p; i++) {
@@ -196,7 +196,7 @@ UV* sieve_cluster(UV low, UV high, uint32_t nc, uint32_t* cl, UV* numret)
     startpi = pi;
     Safefree(res2);
   }
-  if (_verbose) printf("cluster sieve using %lu residues mod %lu\n", nres, ppr);
+  if (_verbose) printf("cluster sieve using %"UVuf" residues mod %"UVuf"\n", nres, ppr);
 
   /* Return if not admissible, maybe with a single small value */
   if (nres == 0) {
@@ -334,7 +334,7 @@ UV* sieve_cluster(UV low, UV high, uint32_t nc, uint32_t* cl, UV* numret)
     if (low < ppr) low = UV_MAX;
   }
 
-  if (_verbose) printf("cluster sieve ran %lu MR and %lu Lucas tests\n", num_mr, num_lucas);
+  if (_verbose) printf("cluster sieve ran %"UVuf" MR and %"UVuf" Lucas tests\n", num_mr, num_lucas);
   for (pi = startpi+6; pi < maxpi; pi++)
     Safefree(VPrem[pi]);
   Safefree(VPrem);
