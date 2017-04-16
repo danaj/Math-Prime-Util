@@ -1385,27 +1385,32 @@ void urandomb(IN UV bits)
 
 void Pi(IN UV digits = 0)
   PREINIT:
+    static const char *pistr = "3.141592653589793238462643383279502882";
+    NV pi;
 #ifdef USE_QUADMATH
-    NV pival = 3.141592653589793238462643383279502884197169Q;
-    UV mantsize = FLT128_MANT_DIG / 3.322 - 1;
+#define STRTONV(t)  strtoflt128(t,NULL)
+    const UV mantsize = FLT128_DIG;
+    const NV pival = 3.141592653589793238462643383279502884197169Q;
+#elif defined(USE_LONG_DOUBLE) && defined(HAS_LONG_DOUBLE)
+#define STRTONV(t)  strtold(t,NULL)
+    const UV mantsize = LDBL_DIG;
+    const NV pival = 3.141592653589793238462643383279502884197169L;
 #else
-    NV pival = 3.141592653589793238462643383279502884197169L;
-    UV mantsize = DBL_MANT_DIG / 3.322;   /* Let long doubles go to BF */
+#define STRTONV(t)  strtod(t,NULL)
+    const UV mantsize = DBL_DIG;
+    const NV pival = 3.141592653589793238462643383279502884197169;
 #endif
   PPCODE:
-    if (digits == 0) {
-      XSRETURN_NV( pival );
-    } else if (digits <= mantsize && digits <= 40) {
-      char t[40+2];
-      NV pi;
-      (void)sprintf(t, "%.*"NVff, (int)(digits-1), pival);
-#ifdef USE_QUADMATH
-      pi = strtoflt128(t, NULL);
-#elif defined(USE_LONG_DOUBLE) && defined(HAS_LONG_DOUBLE)
-      pi = strtold(t, NULL);
-#else
-      pi = strtod(t, NULL);
-#endif
+    if (digits <= 1) {
+      XSRETURN_NV( digits ? 3.0 : pival );
+    } else if (digits <= mantsize && digits <= 36) {
+      char t[36+2] = {0};
+      memcpy(t, pistr, digits+1);
+      if (pistr[digits+1] >= '5') {  /* round, at most one digit carry */
+         if (t[digits] < '9') { t[digits]++; }
+         else                 { t[digits-1]++; t[digits] = '0'; }
+      }
+      pi = STRTONV(t);
       XSRETURN_NV( pi );
     } else {
       _vcallsub_with_pp("Pi");
