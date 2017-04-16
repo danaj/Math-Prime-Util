@@ -754,9 +754,16 @@ sub next_prime {
     return Math::Prime::Util::_reftyped($_[0], Math::Prime::Util::GMP::next_prime($n));
   }
 
-  do {
-    $n += $_wheeladvance30[$n%30];
-  } while !($n%7) || !_is_prime7($n);
+  if (ref($n) eq 'Math::BigInt') {
+    do {
+      $n += $_wheeladvance30[$n%30];
+    } while !Math::BigInt::bgcd($n, B_PRIM767)->is_one ||
+            !_miller_rabin_2($n) || !is_extra_strong_lucas_pseudoprime($n);
+  } else {
+    do {
+      $n += $_wheeladvance30[$n%30];
+    } while !($n%7) || !_is_prime7($n);
+  }
   $n;
 }
 
@@ -768,9 +775,16 @@ sub prev_prime {
     return Math::Prime::Util::_reftyped($_[0], Math::Prime::Util::GMP::prev_prime($n));
   }
 
-  do {
-    $n -= $_wheelretreat30[$n%30];
-  } while !($n%7) || !_is_prime7($n);
+  if (ref($n) eq 'Math::BigInt') {
+    do {
+      $n -= $_wheelretreat30[$n%30];
+    } while !Math::BigInt::bgcd($n, B_PRIM767)->is_one ||
+            !_miller_rabin_2($n) || !is_extra_strong_lucas_pseudoprime($n);
+  } else {
+    do {
+      $n -= $_wheelretreat30[$n%30];
+    } while !($n%7) || !_is_prime7($n);
+  }
   $n;
 }
 
