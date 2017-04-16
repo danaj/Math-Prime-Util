@@ -58,6 +58,6 @@ my @functions =  qw(
       ramanujan_tau ramanujan_sum
       binomial factorial stirling znorder znprimroot znlog legendre_phi
       ExponentialIntegral LogarithmicIntegral RiemannZeta RiemannR LambertW Pi
-      irand irand64 drand random_bytes urandomb urandomm csrand
+      irand irand64 drand urandomb urandomm csrand random_bytes entropy_bytes
 );
 can_ok( 'Math::Prime::Util', @functions);
