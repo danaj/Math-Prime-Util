@@ -1095,9 +1095,8 @@ is_prime(IN SV* svn, ...)
     is_mersenne_prime = 20
     is_power = 21
     is_prime_power = 22
-    miller_rabin_random = 23
-    logint = 24
-    rootint = 25
+    logint = 23
+    rootint = 24
   PREINIT:
     int status, astatus;
   PPCODE:
@@ -1173,13 +1172,6 @@ is_prime(IN SV* svn, ...)
         }
         if (status != 0) RETURN_NPARITY(ret);
       } else if (ix == 23) {
-        if (status != 1) status = _validate_int(aTHX_ svn, 0);
-        if (astatus != 1) astatus = _validate_int(aTHX_ ST(1), 0);
-        /* Fall through if they supplied a seed */
-        if (items <= 2 && astatus == 1) {
-          RETURN_NPARITY( is_mr_random(n, a) );
-        }
-      } else if (ix == 24) {
         UV e;
         if (status != 1 || n <= 0)   croak("logint: n must be > 0");
         if (items == 1)              croak("logint: missing base");
@@ -1190,7 +1182,7 @@ is_prime(IN SV* svn, ...)
           sv_setuv(SvRV(ST(2)), ipow(a,e));
         }
         XSRETURN_UV(e);
-      } else if (ix == 25) {
+      } else if (ix == 24) {
         UV r;
         if (items == 1)              croak("rootint: missing exponent");
         if (astatus != 1 || a == 0)  croak("rootint: k must be > 0");
@@ -1236,12 +1228,25 @@ is_prime(IN SV* svn, ...)
               }
               break;
       case 22:(void)_vcallsubn(aTHX_ G_SCALAR, (items == 1) ? (VCALL_GMP|VCALL_PP) : (VCALL_PP), "is_prime_power", items, 40); break;
-      case 23:_vcallsub_with_gmp(0.44,"miller_rabin_random"); break;
-      case 24:_vcallsub_with_gmp(0.00,"logint"); break;
-      case 25:
+      case 23:_vcallsub_with_gmp(0.00,"logint"); break;
+      case 24:
       default:(void)_vcallsubn(aTHX_ G_SCALAR, (items == 2) ? (VCALL_GMP|VCALL_PP) : (VCALL_PP), "rootint", items, 40); break;
     }
     return; /* skip implicit PUTBACK */
+
+void
+miller_rabin_random(IN SV* svn, IN IV bases = 1, IN char* seed = 0)
+  PREINIT:
+    int status;
+  PPCODE:
+    status = _validate_int(aTHX_ svn, 0);
+    if (bases < 0) croak("miller_rabin_random: number of bases must be positive");
+    if (status != 0 && seed == 0) {
+      UV n = my_svuv(svn);
+      RETURN_NPARITY( is_mr_random(n, bases) );
+    }
+    _vcallsub_with_gmp(0.44,"miller_rabin_random");
+    return;
 
 void
 next_prime(IN SV* svn)

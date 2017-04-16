@@ -1,5 +1,13 @@
 Revision history for Perl module Math::Prime::Util
 
+0.63 2017-04-16
+
+    [FUNCTIONALITY AND PERFORMANCE]
+
+    - Moved miller_rabin_random to separate interface.
+      Make catching of negative bases more explicit.
+
+
 0.62 2017-04-16
 
     [API Changes]
