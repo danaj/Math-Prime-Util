@@ -1385,8 +1385,6 @@ void urandomb(IN UV bits)
 
 void Pi(IN UV digits = 0)
   PREINIT:
-    static const char *pistr = "3.141592653589793238462643383279502882";
-    NV pi;
 #ifdef USE_QUADMATH
 #define STRTONV(t)  strtoflt128(t,NULL)
     const UV mantsize = FLT128_DIG;
@@ -1401,16 +1399,12 @@ void Pi(IN UV digits = 0)
     const NV pival = 3.141592653589793238462643383279502884197169;
 #endif
   PPCODE:
-    if (digits <= 1) {
-      XSRETURN_NV( digits ? 3.0 : pival );
-    } else if (digits <= mantsize && digits <= 36) {
-      char t[36+2] = {0};
-      memcpy(t, pistr, digits+1);
-      if (pistr[digits+1] >= '5') {  /* round, at most one digit carry */
-         if (t[digits] < '9') { t[digits]++; }
-         else                 { t[digits-1]++; t[digits] = '0'; }
-      }
-      pi = STRTONV(t);
+    if (digits == 0) {
+      XSRETURN_NV( pival );
+    } else if (digits <= mantsize) {
+      char* out = pidigits(digits);
+      NV pi = STRTONV(out);
+      Safefree(out);
       XSRETURN_NV( pi );
     } else {
       _vcallsub_with_pp("Pi");
@@ -1419,54 +1413,13 @@ void Pi(IN UV digits = 0)
 
 void
 _pidigits(IN int digits)
+  PREINIT:
+    char* out;
   PPCODE:
-    if (digits == 1) {
-      XSRETURN_UV(3);
-    } else {
-      char *out;
-      IV  *a;
-      IV b, c, d, e, f, g, i,  d4, d3, d2, d1;
-
-      digits++;   /* For rounding */
-      b = d = e = g = i = 0;  f = 10000;
-      c = 14*(digits/4 + 2);
-      New(0, a, c, IV);
-      New(0, out, digits+5+1, char);
-      *out++ = '3';  /* We'll turn "31415..." into "3.1415..." */
-      for (b = 0; b < c; b++)  a[b] = 20000000;
-
-      while ((b = c -= 14) > 0 && i < digits) {
-        d = e = d % f;
-        while (--b > 0) {
-          d = d * b + a[b];
-          g = (b << 1) - 1;
-          a[b] = (d % g) * f;
-          d /= g;
-        }
-        /* sprintf(out+i, "%04d", e+d/f);   i += 4; */
-        d4 = e+d/f;
-        if (d4 > 9999) {
-          d4 -= 10000;
-          out[i-1]++;
-          for (b=i-1; out[b] == '0'+1; b--) { out[b]='0'; out[b-1]++; }
-        }
-        d3 = d4/10;  d2 = d3/10;  d1 = d2/10;
-        out[i++] = '0' + d1;
-        out[i++] = '0' + d2-d1*10;
-        out[i++] = '0' + d3-d2*10;
-        out[i++] = '0' + d4-d3*10;
-      }
-      Safefree(a);
-      if (out[digits-1] >= '5') out[digits-2]++;  /* Round */
-      for (i = digits-2; out[i] == '9'+1; i--)    /* Keep rounding */
-        { out[i] = '0';  out[i-1]++; }
-      digits--;  /* Undo the extra digit we used for rounding */
-      out[digits] = '\0';
-      *out-- = '.';
-      XPUSHs(sv_2mortal(newSVpvn(out, digits+1)));
-      Safefree(out);
-    }
-
+    if (digits <= 0) XSRETURN_EMPTY;
+    out = pidigits(digits);
+    XPUSHs(sv_2mortal(newSVpvn(out, digits+1)));
+    Safefree(out);
 
 void
 factor(IN SV* svn)

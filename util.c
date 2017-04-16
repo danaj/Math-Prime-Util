@@ -2033,6 +2033,55 @@ long double lambertw(long double x) {
   return w;
 }
 
+char* pidigits(int digits)
+{
+  char* out;
+  IV *a, b, c, d, e, f, g, i,  d4, d3, d2, d1;
+  if (digits <= 0) return 0;
+  if (digits <= DBL_DIG && digits <= 18) {
+    Newz(0, out, 19, char);
+    (void)sprintf(out, "%.*lf", (digits-1), 3.141592653589793238);
+    return out;
+  }
+  digits++;   /* For rounding */
+  b = d = e = g = i = 0;  f = 10000;
+  c = 14*(digits/4 + 2);
+  New(0, a, c, IV);
+  New(0, out, digits+5+1, char);
+  *out++ = '3';  /* We'll turn "31415..." into "3.1415..." */
+  for (b = 0; b < c; b++)  a[b] = 20000000;
+
+  while ((b = c -= 14) > 0 && i < digits) {
+    d = e = d % f;
+    while (--b > 0) {
+      d = d * b + a[b];
+      g = (b << 1) - 1;
+      a[b] = (d % g) * f;
+      d /= g;
+    }
+    /* sprintf(out+i, "%04d", e+d/f);   i += 4; */
+    d4 = e+d/f;
+    if (d4 > 9999) {
+      d4 -= 10000;
+      out[i-1]++;
+      for (b=i-1; out[b] == '0'+1; b--) { out[b]='0'; out[b-1]++; }
+    }
+    d3 = d4/10;  d2 = d3/10;  d1 = d2/10;
+    out[i++] = '0' + d1;
+    out[i++] = '0' + d2-d1*10;
+    out[i++] = '0' + d3-d2*10;
+    out[i++] = '0' + d4-d3*10;
+  }
+  Safefree(a);
+  if (out[digits-1] >= '5') out[digits-2]++;  /* Round */
+  for (i = digits-2; out[i] == '9'+1; i--)    /* Keep rounding */
+    { out[i] = '0';  out[i-1]++; }
+  digits--;  /* Undo the extra digit we used for rounding */
+  out[digits] = '\0';
+  *out-- = '.';
+  return out;
+}
+
 /* 1. Perform signed integer validation on b/blen.
  * 2. Compare to a/alen using min or max based on first arg.
  * 3. Return 0 to select a, 1 to select b.

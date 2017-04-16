@@ -68,6 +68,8 @@ extern IV stirling1(UV n, UV m);
 extern IV hclassno(UV n);
 extern IV ramanujan_tau(UV n);
 
+extern char* pidigits(int digits);
+
 extern int strnum_minmax(int min, char* a, STRLEN alen, char* b, STRLEN blen);
 
 extern int from_digit_string(UV* n, const char* s, int base);
