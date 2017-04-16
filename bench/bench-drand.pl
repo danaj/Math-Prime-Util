@@ -30,18 +30,19 @@ my $mt = Math::Random::MT->new($time);
 my $xor = Math::Random::Xorshift->new($time);
 
 #                             Performance / Quality:
-#   CORE::rand    29000k/s    ++++ / ---  drand48 has lots of issues
-#   Xorshift      16000k/s    +++  / ---  old alg, 32 bits, closed interval
+#   CORE::rand    29000k/s    ++++ / ---  drand48 has many bad points
+#   Xorshift      16000k/s    +++  / ---  32-bit, old alg, closed interval
 #   MTwist        14000k/s    +++  /  ++  
 #   MPU::GMP      14000k/s    +++  / +++  ISAAC CSPRNG
 #   ntheory       12000k/s    +++  / +++  ChaCha20 CSPRNG
 #   MT::Auto       4800k/s    +    /  ++  MTwist is faster
-#   ISAAC          2400k/s    -    /  --  only 32 bits filled, closed interval
-#   MT             2200k/s    -    /  ++  MTwist is faster
+#   ISAAC          2400k/s    -    /  --  32-bit, bad seeding, closed interval
+#   MT             2200k/s    -    /  ++  32-bit, MTwist is faster
 #   Crypt::PRNG     705k/s    --   / +++  
-#   Secure          426k/s    ---  / ---  only 32 bits filled
+#   Secure          426k/s    ---  / ---  32-bit
 #
 #  Also see  http://www.pcg-random.org/statistical-tests.html
+#            https://blogs.unity3d.com/2015/01/07/a-primer-on-repeatable-random-numbers/
 
 cmpthese($trials, {
   # These are known to fail TestU01 SmallCrush

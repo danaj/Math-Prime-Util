@@ -3407,11 +3407,12 @@ The number of bits returned is equal to the number of significand bits of
 the NV type used in the Perl build. By default Perl uses doubles and the
 returned values have 53 bits (even on 32-bit Perl).  If Perl is built with
 long double or quadmath support, each value may have 64 or even 113 bits.
-The L<Config> variable C<nvmantbits> will indicate how many are filled.
+On newer Perls, one can check the L<Config> variable C<nvmantbits> to see
+how many are filled.
 
 This gives I<substantially> better quality random numbers than the default Perl
 C<rand> function.  Among other things, on modern Perl's, C<rand> uses drand48,
-which has 32 bits of not-too-broken randomness and 16 more bits of known
+which has 32 bits of not-very-good randomness and 16 more bits of obvious
 patterns (e.g. the 48th bit alternates, the 47th has a period of 4, etc.).
 Output from C<rand> fails at least 5 tests from the TestU01 SmallCrush suite,
 while our function easily passes.
