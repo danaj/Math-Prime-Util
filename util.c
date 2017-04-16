@@ -1719,19 +1719,19 @@ long double _XS_LogarithmicIntegral(long double x) {
 
 /* Thanks to Kim Walisch for this idea */
 UV inverse_li(UV x) {
-  double nlogn = (double)x * log((double)x);
-  UV lo = (UV) (nlogn);
-  UV hi = (UV) (nlogn * 2 + 2);
-
-  if (x == 0)  return 0;
-  if (x < 40) lo >>= 1;
-  if (hi <= lo) hi = UV_MAX;
-  while (lo < hi) {
-    UV mid = lo + (hi-lo)/2;
-    if (_XS_LogarithmicIntegral(mid) < x) lo = mid+1;
-    else                                  hi = mid;
+  int i;
+  long double t;
+  if (x <= 2) return x + (x > 0);
+#if 0    /* Newton's method */
+  for (i = 0, t = x*logl(x); i < 11; i++)
+    t = t - (_XS_LogarithmicIntegral(t)-x)*logl(t);
+#else    /* Halley's method */
+  for (i = 0, t = x*logl(x); i < 3; i++) {
+    long double dn = _XS_LogarithmicIntegral(t)-x;
+    t = t - dn*logl(t) / (1.0L + dn/(2*t));
   }
-  return lo;
+#endif
+  return (UV)ceill(t);
 }
 
 

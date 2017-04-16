@@ -1576,13 +1576,22 @@ sub inverse_li {
   my($n) = @_;
   _validate_num($n) || _validate_positive_integer($n);
 
-  return 0 if $n == 0;
+  return (0,2,3,5,6,8)[$n] if $n <= 5;
   $n = _upgrade_to_float($n) if $n > MPU_MAXPRIMEIDX || $n > 2**45;
-  my $nlogn = $n * log($n);
-  my $lo = int($nlogn);
-  my $hi = int($nlogn * 2 + 2);
-  $lo >>= 1 if $n < 40;
-  1+_binary_search($n, $lo, $hi, sub{Math::Prime::Util::LogarithmicIntegral(shift)});
+  my $t = $n * log($n);
+  for my $iter (1 .. 10000) {
+    my $dn = Math::Prime::Util::LogarithmicIntegral($t) - $n;
+    my $za = $dn * log($t) / (1.0 + $dn/(2*$t));
+    $t -= $za;
+    last if abs($za) < 0.5;
+  }
+  if (ref($t)) {
+    $t = $t->bceil->as_int();
+    $t = _bigint_to_int($t) if $t->bacmp(BMAX) <= 0;
+  } else {
+    $t = int($t+0.999999);
+  }
+  $t;
 }
 
 sub nth_prime_approx {

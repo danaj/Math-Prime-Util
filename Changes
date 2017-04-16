@@ -1,5 +1,12 @@
 Revision history for Perl module Math::Prime::Util
 
+0.64 2017-?
+
+    [FUNCTIONALITY AND PERFORMANCE]
+
+    - inverse_li switched to Halley instead of binary search.  Faster.
+
+
 0.63 2017-04-16
 
     [FUNCTIONALITY AND PERFORMANCE]
