@@ -102,7 +102,7 @@ if ($use64) {
   push @{$pseudoprimes{aeslucas2}}, 34372519409;
 }
 if (!$usexs) {
-  if (!$usegmp || !defined &Math::Prime::Util::GMP::binomial) {
+  if (!$usegmp || !defined &Math::Prime::Util::GMP::binomial || $Math::Prime::Util::GMP::VERSION < 0.27) {
     # Don't make Math::BigInt do large binomials
     $pseudoprimes{catalan} = [5907];
   }
