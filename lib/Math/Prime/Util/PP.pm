@@ -944,6 +944,22 @@ sub is_semiprime {
   return (Math::Prime::Util::is_prob_prime($n>>1) ? 1 : 0) if ($n % 2) == 0;
   return (Math::Prime::Util::is_prob_prime($n/3)  ? 1 : 0) if ($n % 3) == 0;
   return (Math::Prime::Util::is_prob_prime($n/5)  ? 1 : 0) if ($n % 5) == 0;
+  {
+    my @f = trial_factor($n, 4999);
+    return 0 if @f > 2;
+    return (_is_prime7($f[1]) ? 1 : 0) if @f == 2;
+  }
+  return 0 if _is_prime7($n);
+  {
+    my @f = pminus1_factor ($n, 250_000);
+    return 0 if @f > 2;
+    return (_is_prime7($f[1]) ? 1 : 0) if @f == 2;
+  }
+  {
+    my @f = pbrent_factor ($n, 128*1024, 3, 1);
+    return 0 if @f > 2;
+    return (_is_prime7($f[1]) ? 1 : 0) if @f == 2;
+  }
   return (scalar(Math::Prime::Util::factor($n)) == 2) ? 1 : 0;
 }
 
@@ -4458,7 +4474,7 @@ my @_fsublist = (
   [ "p-1 20M",    sub { pminus1_factor(shift,20_000_000); } ],
   [ "ECM 100k",   sub { ecm_factor    (shift,   100_000, 800_000, 10) } ],
   [ "HOLF 512k",  sub { holf_factor   (shift, 512*1024, $_holf_r); $_holf_r += 512*1024; } ],
-  [ "pbrent 2M",  sub { pbrent_factor (shift, 2048*1024, 13) } ],
+  [ "pbrent 2M",  sub { pbrent_factor (shift, 2048*1024, 13, 1) } ],
   [ "HOLF 2M",    sub { holf_factor   (shift, 2048*1024, $_holf_r); $_holf_r += 2048*1024; } ],
   [ "ECM 1M",     sub { ecm_factor    (shift, 1_000_000, 1_000_000, 10) } ],
   [ "p-1 100M",   sub { pminus1_factor(shift, 100_000_000, 500_000_000); } ],

@@ -42,14 +42,16 @@ Revision history for Perl module Math::Prime::Util
 
     - is_pillai about 10x faster for composites.
 
-    - Add prime option to forpart restrictions for all prime / non-prime.
+    - Much faster Ramanujan prime count and nth prime.  These also now use
+      vastly less memory even with large inputs.
 
     - small speed ups for cluster sieve.
 
-    - is_primitive_root needs two args, as documented.
+    - faster PP is_semiprime.
 
-    - Much faster Ramanujan prime count and nth prime.  These also now use
-      vastly less memory even with large inputs.
+    - Add prime option to forpart restrictions for all prime / non-prime.
+
+    - is_primitive_root needs two args, as documented.
 
     - We do random seeding ourselves now, so remove dependency.
 
