@@ -1245,7 +1245,7 @@ miller_rabin_random(IN SV* svn, IN IV bases = 1, IN char* seed = 0)
       UV n = my_svuv(svn);
       RETURN_NPARITY( is_mr_random(n, bases) );
     }
-    _vcallsub_with_gmp(0.44,"miller_rabin_random");
+    _vcallsub_with_gmp(0.46,"miller_rabin_random");
     return;
 
 void
