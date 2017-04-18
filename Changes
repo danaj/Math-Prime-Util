@@ -10,6 +10,8 @@ Revision history for Perl module Math::Prime::Util
 
     - Add Math::BigInt::Lite to list of known bigint objects.
 
+    - Slightly faster XS nth_prime_approx.
+
 
 0.64 2017-04-17
 

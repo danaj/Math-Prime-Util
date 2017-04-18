@@ -538,24 +538,7 @@ UV nth_prime_lower(UV n)
 
 UV nth_prime_approx(UV n)
 {
-  long double fn, flogn;
-  UV lo, hi;
-
-  if (n < NPRIMES_SMALL)
-    return primes_small[n];
-
-  /* Binary search for inverse Riemann R */
-  fn    = (long double) n;
-  flogn = logl(n);
-  lo    = (UV) (fn * flogn);
-  hi    = (UV) (fn * flogn * 2 + 2);
-  if (hi <= lo) hi = UV_MAX;
-  while (lo < hi) {
-    UV mid = lo + (hi-lo)/2;
-    if (_XS_RiemannR(mid) < fn) lo = mid+1;
-    else                        hi = mid;
-  }
-  return lo;
+  return (n < NPRIMES_SMALL)  ?  primes_small[n]  :  inverse_R(n);
 }
 
 

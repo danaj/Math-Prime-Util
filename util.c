@@ -1720,6 +1720,24 @@ UV inverse_li(UV x) {
   return r;
 }
 
+UV inverse_R(UV x) {
+  int i;
+  long double t, dn, lx = (long double)x;
+  UV r;
+  if (x <= 2) return x + (x > 0);
+
+  /* First estimate */
+  t = lx * logl(x);
+  /* Improve: approx inverse li with one round of Halley */
+  dn = _XS_LogarithmicIntegral(t) - lx;
+  t = t - dn * logl(t) / (1.0L + dn/(2*t));
+  /* Converge: two rounds of Halley on Riemann R */
+  for (i = 0; i < 2; i++) {
+    dn = _XS_RiemannR(t) - lx;
+    t = t - dn * logl(t) / (1.0L + dn/(2*t));
+  }
+  return (UV)ceill(t);
+}
 
 
 /*
@@ -1908,7 +1926,7 @@ long double ld_riemann_zeta(long double x) {
 }
 
 long double _XS_RiemannR(long double x) {
-  long double part_term, term, flogx, ki;
+  long double part_term, term, flogx, ki, old_sum;
   unsigned int k;
   KAHAN_INIT(sum);
 
@@ -1916,32 +1934,33 @@ long double _XS_RiemannR(long double x) {
 
   if (x > 1e19) {
     const signed char* amob = _moebius_range(0, 100);
-    KAHAN_SUM(sum, _XS_ExponentialIntegral(logl(x)));
+    KAHAN_SUM(sum, _XS_LogarithmicIntegral(x));
     for (k = 2; k <= 100; k++) {
       if (amob[k] == 0) continue;
       ki = 1.0L / (long double) k;
       part_term = powl(x,ki);
       if (part_term > LDBL_MAX) return INFINITY;
-      term = amob[k] * ki * _XS_ExponentialIntegral(logl(part_term));
+      term = amob[k] * ki * _XS_LogarithmicIntegral(part_term);
+      old_sum = sum;
       KAHAN_SUM(sum, term);
-      if (fabsl(term) < fabsl(LDBL_EPSILON*sum)) break;
+      if (fabsl(sum - old_sum) <= LDBL_EPSILON) break;
     }
     Safefree(amob);
     return sum;
   }
 
   KAHAN_SUM(sum, 1.0);
-
   flogx = logl(x);
   part_term = 1;
 
   for (k = 1; k <= 10000; k++) {
+    ki = (k-1 < NPRECALC_ZETA) ? riemann_zeta_table[k-1] : ld_riemann_zeta(k+1);
     part_term *= flogx / k;
-    if (k-1 < NPRECALC_ZETA)  term = part_term / (k+k*riemann_zeta_table[k-1]);
-    else                      term = part_term / (k+k*ld_riemann_zeta(k+1));
+    term = part_term / (k + k * ki);
+    old_sum = sum;
     KAHAN_SUM(sum, term);
-    /* printf("R %5d after adding %.18Lg, sum = %.19Lg\n", k, term, sum); */
-    if (fabsl(term) < fabsl(LDBL_EPSILON*sum)) break;
+    /* printf("R %5d after adding %.18Lg, sum = %.19Lg (%Lg)\n", k, term, sum, fabsl(sum-old_sum)); */
+    if (fabsl(sum - old_sum) <= LDBL_EPSILON) break;
   }
 
   return sum;

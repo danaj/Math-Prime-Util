@@ -33,6 +33,7 @@ extern long double ld_riemann_zeta(long double x);
 extern long double _XS_RiemannR(long double x);
 extern long double lambertw(long double k);
 extern UV inverse_li(UV x);
+extern UV inverse_R(UV x);
 
 extern int kronecker_uu(UV a, UV b);
 extern int kronecker_su(IV a, UV b);
