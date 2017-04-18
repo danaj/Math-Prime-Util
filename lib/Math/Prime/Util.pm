@@ -3432,9 +3432,11 @@ data from the CSPRNG.  Performance for large quantities:
     Math::Prime::Util::GMP    1067 MB/s   CSPRNG - ISAAC
     ntheory random_bytes       384 MB/s   CSPRNG - ChaCha20
     Crypt::PRNG                140 MB/s   CSPRNG - Fortuna
+    Crypt::OpenSSL::Random      32 MB/s   CSPRNG - SHA1 counter
     Math::Random::ISAAC::XS     15 MB/s   CSPRNG - ISAAC
     ntheory entropy_bytes       13 MB/s   CSPRNG - /dev/urandom
     Crypt::Random               12 MB/s   CSPRNG - /dev/urandom
+    Crypt::Urandom              12 MB/s   CSPRNG - /dev/urandom
     Bytes::Random::Secure        6 MB/s   CSPRNG - ISAAC
     ntheory pure perl ISAAC      5 MB/s   CSPRNG - ISAAC (no XS)
     Math::Random::ISAAC::PP      2.5 MB/s CSPRNG - ISAAC (no XS)

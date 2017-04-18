@@ -138,7 +138,7 @@ static int _is_sv_bigint(pTHX_ SV* n)
     if (hvname != 0) {
       if (strEQ(hvname, "Math::BigInt") || strEQ(hvname, "Math::BigFloat") ||
           strEQ(hvname, "Math::GMPz")   || strEQ(hvname, "Math::GMP") ||
-          strEQ(hvname, "Math::Pari") )
+          strEQ(hvname, "Math::Pari")   || strEQ(hvname, "Math::BigInt::Lite"))
         return 1;
     }
   }

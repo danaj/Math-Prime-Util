@@ -8,6 +8,9 @@ Revision history for Perl module Math::Prime::Util
       inverse_li honors the documentation promise within FP representation.
       Thanks to Kim Walisch for motivation and discussion.
 
+    - Add Math::BigInt::Lite to list of known bigint objects.
+
+
 0.64 2017-04-17
 
     [FUNCTIONALITY AND PERFORMANCE]
