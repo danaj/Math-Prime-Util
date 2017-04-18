@@ -1667,71 +1667,57 @@ long double _XS_LogarithmicIntegral(long double x) {
   if (x < 0) croak("Invalid input to LogarithmicIntegral:  x must be >= 0");
   if (x >= LDBL_MAX) return INFINITY;
 
-#if 0
-  /* Kulsha's method.  Also not faster than our eint, though close */
+  /* Calculate directly using Ramanujan's series. */
   if (x > 1) {
-    static long double a2[] = {1.000000000000000000L,1.333333333333333333L,1.533333333333333333L,1.676190476190476190L,1.787301587301587301L,1.878210678210678210L,1.955133755133755133L,2.021800421800421800L,2.080623951212186506L,2.133255530159554927L,2.180874577778602546L,2.224352838648167763L,2.264352838648167763L,2.301389875685204800L,2.335872634305894455L,2.368130698822023487L,2.398433729125053790L,2.427005157696482361L,2.454032184723509388L,2.479673210364535029L,2.504063454266974053L,2.527319268220462425L,2.549541490442684647L,2.570818086187365498L,2.591226249452671620L,2.610834092589926522L,2.629702017118228409L,2.647883835300046591L,2.665427694949169398L,2.682376847491542279L,2.698770290114493099L,2.714643305987508972L,2.730027921372124357L,2.744953294506452715L,2.759446048129641121L,2.773530555171894642L,2.787229185308880943L,2.800562518642214276L,2.813549531629227263L,2.826207759477328529L,2.838553438489674208L,2.850601631260758545L,2.862366337143111486L,2.873860590016674704L,2.885096545072854479L,2.896085556061865468L,2.906838244233908479L,2.917364560023382163L,2.927673838373897627L,2.937774848474907728L};
-    UV n;
-    long double fl1 = logl(x);
-    long double e = -fl1/2;
-    long double s = 0;
-    long double t = 1;
-    for (n = 1; n <= 100; n++) {
-      t *= e/(long double)n;
-      s += t*a2[(n-1)>>1];
-      /* if (fabsl(t) < LDBL_EPSILON*fabsl(s)) break; */
-    }
-    return euler_mascheroni + logl(fl1) - 2*sqrtl(x)*s;
-  }
-#endif
+    const long double logx = logl(x);
+    long double sum = 0, inner_sum = 0, factorial = 1, power2 = 1;
+    long double q, p = -1, lix = 0, prev_lix = -1, old_sum;
+    int k = 0, n = 0;
 
-#if 0
-  /* We could calculate this here directly using Ramaujan's series.
-   * I did not find this any faster or more accuracte than using Ei. */
-  if (x > 1) {
-    long double flogx, numer, denom, factn, inner_sum, power2, term;
-    unsigned int n, k;
-    KAHAN_INIT(sum);
-
-    flogx = logl(x);
-    numer = flogx;
-    inner_sum = 1.0L;
-    factn = 1.0L;
-    power2 = 2.0L;
-    KAHAN_SUM(sum, flogx);
-    for (n = 2, k = 1; n < 10000; n++) {
-      factn *= n;
-      numer *= -flogx;
-      denom = factn * power2;
+    for (n = 1, k = 0; n < 200; n++) {
+      factorial *= n;
+      p *= -logx;
+      q = factorial * power2;
       power2 *= 2;
-      for (; k <= (n-1) >> 1; k++)
+      for (; k <= (n - 1) / 2; k++)
         inner_sum += 1.0L / (2 * k + 1);
-      term = (numer / denom) * inner_sum;
-      KAHAN_SUM(sum, term);
-      if (fabsl(term) < LDBL_EPSILON*fabsl(sum)) break;
+      old_sum = sum;
+      sum += (p / q) * inner_sum;
+      if (fabsl(sum - old_sum) <= LDBL_EPSILON) break;
     }
-    return euler_mascheroni + logl(flogx) + sqrtl(x) * sum;
+    return euler_mascheroni + logl(logx) + sqrtl(x) * sum;
   }
-#endif
 
   return _XS_ExponentialIntegral(logl(x));
 }
 
-/* Thanks to Kim Walisch for this idea */
 UV inverse_li(UV x) {
   int i;
-  long double t;
+  long double t, lx = (long double)x;
+  UV r;
   if (x <= 2) return x + (x > 0);
 #if 0    /* Newton's method */
-  for (i = 0, t = x*logl(x); i < 11; i++)
-    t = t - (_XS_LogarithmicIntegral(t)-x)*logl(t);
+  for (i = 0, t = lx*logl(x); i < 11; i++)
+    t = t - (_XS_LogarithmicIntegral(t)-lx)*logl(t);
 #else    /* Halley's method */
-  for (i = 0, t = x*logl(x); i < 3; i++) {
-    long double dn = _XS_LogarithmicIntegral(t)-x;
+  for (i = 0, t = lx*logl(x); i < 3; i++) {
+    long double dn = _XS_LogarithmicIntegral(t)-lx;
     t = t - dn*logl(t) / (1.0L + dn/(2*t));
   }
 #endif
-  return (UV)ceill(t);
+  r = (UV)ceill(t);
+
+  /* Meet our more stringent goal. */
+  if (_XS_LogarithmicIntegral(r-1) >= lx) {
+    while (_XS_LogarithmicIntegral(r-16) >= lx) r -= 16;
+    while (_XS_LogarithmicIntegral(r- 4) >= lx) r -=  4;
+    while (_XS_LogarithmicIntegral(r- 1) >= lx) r -=  1;
+  } else {
+    while (_XS_LogarithmicIntegral(r+15) < lx) r += 16;
+    while (_XS_LogarithmicIntegral(r+ 3) < lx) r +=  4;
+    while (_XS_LogarithmicIntegral(r   ) < lx) r +=  1;
+  }
+  return r;
 }
 
 

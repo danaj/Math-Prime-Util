@@ -1,5 +1,13 @@
 Revision history for Perl module Math::Prime::Util
 
+0.65 2017-?
+
+    [FUNCTIONALITY AND PERFORMANCE]
+
+    - C versions of LogarithmicIntegral and inverse_li rewritten.
+      inverse_li honors the documentation promise within FP representation.
+      Thanks to Kim Walisch for motivation and discussion.
+
 0.64 2017-04-17
 
     [FUNCTIONALITY AND PERFORMANCE]
