@@ -2,9 +2,8 @@
 use strict;
 use warnings;
 $| = 1;  # fast pipes
-srand(377);
 
-use Math::Prime::Util qw/factor/;
+use Math::Prime::Util qw/factor urandomm srand/;
 use Math::Factor::XS qw/prime_factors/;
 use Math::Pari qw/factorint/;
 use Benchmark qw/:all/;
@@ -12,22 +11,7 @@ use Data::Dumper;
 use Config;
 my $digits = shift || 15;
 my $count = shift || -3;
-
-my $rgen = sub {
-  my $range = shift;
-  return 0 if $range <= 0;
-  my $rbits = 0; { my $t = $range; while ($t) { $rbits++; $t >>= 1; } }
-  while (1) {
-    my $rbitsleft = $rbits;
-    my $U = 0;
-    while ($rbitsleft > 0) {
-      my $usebits = ($rbitsleft > $Config{randbits}) ? $Config{randbits} : $rbitsleft;
-      $U = ($U << $usebits) + int(rand(1 << $usebits));
-      $rbitsleft -= $usebits;
-    }
-    return $U if $U <= $range;
-  }
-};
+srand(377);
 
 my @min_factors_by_digit = (2,2,3,3,5,11,17,47,97);
 my $smallest_factor_allowed = $min_factors_by_digit[$digits];
@@ -51,7 +35,7 @@ foreach my $i ( 1 .. $numprimes ) {
   my @factors;
   my $n;
   while (1) {
-    $n = $base + $rgen->($add);
+    $n = $base + urandomm($add);
     next if $n > (~0 - 4);
     $n += (1,0,5,4,3,2,1,0,3,2,1,0,1,0,3,2,1,0,1,0,3,2,1,0,5,4,3,2,1,0)[$n%30];
     @factors = factor($n);

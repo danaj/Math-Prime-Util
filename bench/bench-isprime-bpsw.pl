@@ -3,7 +3,7 @@ use strict;
 use warnings;
 $| = 1;  # fast pipes
 
-use Math::Prime::Util;
+use Math::Prime::Util qw/urandomm urandomb srand/;
 use Math::Primality;
 
 my $count = shift || -1;
@@ -13,25 +13,9 @@ use bigint try=>'GMP';
 srand(500);
 use Config;
 
-my $rgen = sub {
-  my $range = shift;
-  return 0 if $range <= 0;
-  my $rbits = 0; { my $t = $range; while ($t) { $rbits++; $t >>= 1; } }
-  while (1) {
-    my $rbitsleft = $rbits;
-    my $U = $range - $range;  # 0 or bigint 0
-    while ($rbitsleft > 0) {
-      my $usebits = ($rbitsleft > $Config{randbits}) ? $Config{randbits} : $rbitsleft;
-      $U = ($U << $usebits) + int(rand(1 << $usebits));
-      $rbitsleft -= $usebits;
-    }
-    return $U if $U <= $range;
-  }
-};
-
 my @rns;
 while (@rns < 50) {
-  my $n = $rgen->( Math::BigInt->new(2)->bpow(81) );
+  my $n = urandomb(81);
   $n++ if ($n % 2) == 0;
   next unless ($n % 2) != 0;
   push @rns, $n;

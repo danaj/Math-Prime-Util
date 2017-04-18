@@ -1,7 +1,7 @@
 #!/usr/bin/env perl
 use strict;
 use warnings;
-use Math::Prime::Util qw/factor/;
+use Math::Prime::Util qw/factor urandomm/;
 use File::Temp qw/tempfile/;
 use Math::BigInt try => 'GMP,Pari';
 use Config;
@@ -12,22 +12,6 @@ $| = 1;  # fast pipes
 my $num = 10000;
 my $yafu_fname = "yafu_batchfile_$$.txt";
 $SIG{'INT'} = \&gotsig;
-
-my $rgen = sub {
-  my $range = shift;
-  return 0 if $range <= 0;
-  my $rbits = 0; { my $t = $range; while ($t) { $rbits++; $t >>= 1; } }
-  while (1) {
-    my $rbitsleft = $rbits;
-    my $U = $range - $range;  # 0 or bigint 0
-    while ($rbitsleft > 0) {
-      my $usebits = ($rbitsleft > $Config{randbits}) ? $Config{randbits} : $rbitsleft;
-      $U = ($U << $usebits) + int(rand(1 << $usebits));
-      $rbitsleft -= $usebits;
-    }
-    return $U if $U <= $range;
-  }
-};
 
 { # Test from 2 to 10000
   print "    2 -  1000"; test_array(    2 ..  1000);
@@ -78,7 +62,7 @@ sub gendigits {
     $base = Math::BigInt->new(10)->bpow($digits-1);
     $max = Math::BigInt->new(10)->bpow($digits) - 1;
   }
-  my @nums = map { $base + $rgen->($max-$base) } (1 .. $howmany);
+  my @nums = map { $base + urandomm($max-$base) } (1 .. $howmany);
   return @nums;
 }
 

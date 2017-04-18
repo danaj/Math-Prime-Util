@@ -1,7 +1,7 @@
 #!/usr/bin/env perl
 use strict;
 use warnings;
-use Math::Prime::Util qw/next_prime/;
+use Math::Prime::Util qw/next_prime urandomm/;
 use File::Temp qw/tempfile/;
 use autodie;
 my $maxdigits = (~0 <= 4294967295) ? 10 : 20;
@@ -37,7 +37,7 @@ sub gendigits {
   my $base = ($digits == 1) ? 0 : int(10 ** ($digits-1));
   my $max = int(10 ** $digits);
   $max = ~0 if $max > ~0;
-  my @nums = map { $base+int(rand($max-$base)) } (1 .. $howmany);
+  my @nums = map { $base + urandomm($max-$base) } (1 .. $howmany);
   return @nums;
 }
 

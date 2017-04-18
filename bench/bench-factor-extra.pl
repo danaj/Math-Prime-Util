@@ -1,29 +1,13 @@
 #!/usr/bin/env perl
 use strict;
 use warnings;
-use Math::Prime::Util qw/-nobigint/;
+use Math::Prime::Util qw/-nobigint urandomm srand/;
 use Benchmark qw/:all/;
 use List::Util qw/min max/;
 use Config;
 my $count = shift || -2;
 my $is64bit = (~0 > 4294967295);
 my $maxdigits = ($is64bit) ? 20 : 10;  # Noting the range is limited for max.
-
-my $rgen = sub {
-  my $range = shift;
-  return 0 if $range <= 0;
-  my $rbits = 0; { my $t = $range; while ($t) { $rbits++; $t >>= 1; } }
-  while (1) {
-    my $rbitsleft = $rbits;
-    my $U = 0;
-    while ($rbitsleft > 0) {
-      my $usebits = ($rbitsleft > $Config{randbits}) ? $Config{randbits} : $rbitsleft;
-      $U = ($U << $usebits) + int(rand(1 << $usebits));
-      $rbitsleft -= $usebits;
-    }
-    return $U if $U <= $range;
-  }
-};
 
 srand(29);
 my $rounds = 400;
@@ -95,7 +79,7 @@ sub genrand {
   my $base = ($digits == 1) ? 0 : int(10 ** ($digits-1));
   my $max = int(10 ** $digits);
   $max = ~0 if $max > ~0;
-  my @nums = map { $base + $rgen->($max-$base) } (1 .. $num);
+  my @nums = map { $base + urandomm($max-$base) } (1 .. $num);
   return @nums;
 }
 
@@ -113,7 +97,7 @@ sub gensemi {
     my @factors;
     my $n;
     while (1) {
-      $n = $base + $rgen->($max-$base);
+      $n = $base + urandomm($max-$base);
       $n += (1,0,5,4,3,2,1,0,3,2,1,0,1,0,3,2,1,0,1,0,3,2,1,0,5,4,3,2,1,0)[$n%30];
       @factors = Math::Prime::Util::factor($n);
       next if scalar @factors != 2;

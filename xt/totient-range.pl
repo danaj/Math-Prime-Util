@@ -3,7 +3,7 @@ use strict;
 use warnings;
 $| = 1;  # fast pipes
 
-use Math::Prime::Util qw/euler_phi vecsum/;
+use Math::Prime::Util qw/euler_phi vecsum urandomm/;
 
 my $limit = shift || 1_000_000;
 
@@ -15,8 +15,8 @@ print "...done\n";
 
 print "Running non-stop random tests.  Break when desired.\n";
 while (1) {
-  my $beg = 0 + int(rand($limit));
-  my $end = 0 + int(rand($limit));
+  my $beg = urandomm($limit);
+  my $end = urandomm($limit);
   ($beg,$end) = ($end,$beg) if $beg > $end;
 
   # Does range return the same values?

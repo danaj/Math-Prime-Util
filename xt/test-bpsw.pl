@@ -3,7 +3,7 @@ use strict;
 use warnings;
 $| = 1;  # fast pipes
 
-use Math::Prime::Util;
+use Math::Prime::Util qw/urandomm/;
 use Math::Primality;
 use Config;
 
@@ -11,24 +11,6 @@ my $nlinear = 10000;
 my $nrandom = shift || 20000;
 my $randmax = ~0;
 
-# I was using Math::BigInt::Random::OO, but on my machine:
-#     my $gen = Math::BigInt::Random::OO -> new(length => 23);
-# generates only even numbers.
-my $rgen = sub {
-  my $range = shift;
-  return 0 if $range <= 0;
-  my $rbits = 0; { my $t = $range; while ($t) { $rbits++; $t >>= 1; } }
-  while (1) {
-    my $rbitsleft = $rbits;
-    my $U = $range - $range;  # 0 or bigint 0
-    while ($rbitsleft > 0) {
-      my $usebits = ($rbitsleft > $Config{randbits}) ? $Config{randbits} : $rbitsleft;
-      $U = ($U << $usebits) + int(rand(1 << $usebits));
-      $rbitsleft -= $usebits;
-    }
-    return $U if $U <= $range;
-  }
-};
 my $rand_ndigit_gen = sub {
   my $digits = shift;
   die "Digits must be > 0" unless $digits > 0;
@@ -43,7 +25,7 @@ my $rand_ndigit_gen = sub {
     $base = Math::BigInt->new(10)->bpow($digits-1);
     $max = Math::BigInt->new(10)->bpow($digits) - 1;
   }
-  my @nums = map { $base + $rgen->($max-$base) } (1 .. $howmany);
+  my @nums = map { $base + urandomm($max-$base) } (1 .. $howmany);
   return (wantarray) ? @nums : $nums[0];
 };
 
@@ -68,7 +50,7 @@ print "Testing random numbers from $nlinear to ", $randmax, "\n";
 
 foreach my $r (1 .. $nrandom) {
   my $n = $nlinear + 1 + int(rand($randmax - $nlinear));
-  my $rand_base = 2 + $rgen->($n-4);
+  my $rand_base = 2 + urandomm($n-4);
   die "MR(2) failure for $n" unless Math::Prime::Util::is_strong_pseudoprime($n,2) == Math::Primality::is_strong_pseudoprime($n,2);
   die "MR($rand_base) failure for $n" unless Math::Prime::Util::is_strong_pseudoprime($n,$rand_base) == Math::Primality::is_strong_pseudoprime($n,$rand_base);
   die "SLPSP failure for $n" unless Math::Prime::Util::is_strong_lucas_pseudoprime($n) == Math::Primality::is_strong_lucas_pseudoprime($n);
@@ -88,8 +70,8 @@ my $end_base = $big_base + $range;
 print "Testing random numbers from $big_base to $end_base\n";
 
 foreach my $r (1 .. int($nrandom/100)) {
-  my $n = $big_base + $rgen->($range);
-  my $rand_base = 2 + $rgen->($n-4);
+  my $n = $big_base + urandomm($range);
+  my $rand_base = 2 + urandomm($n-4);
   die "MR(2) failure for $n" unless Math::Prime::Util::is_strong_pseudoprime($n,2) == Math::Primality::is_strong_pseudoprime("$n","2");
   die "MR($rand_base) failure for $n" unless Math::Prime::Util::is_strong_pseudoprime($n,$rand_base) == Math::Primality::is_strong_pseudoprime($n,$rand_base);
   die "SLPSP failure for $n" unless Math::Prime::Util::is_strong_lucas_pseudoprime($n) == Math::Primality::is_strong_lucas_pseudoprime("$n");

@@ -1,7 +1,7 @@
 #!/usr/bin/env perl
 use strict;
 use warnings;
-use Math::Prime::Util qw/factor/;
+use Math::Prime::Util qw/factor srand urandomm/;
 use File::Temp qw/tempfile/;
 use Math::BigInt try => 'GMP,Pari';
 use Config;
@@ -39,22 +39,6 @@ my $use_mpu_factor_script = 0;
 if ($do_pari) {
   $do_pari = 0 unless eval { require Math::Pari; Math::Pari->import(); 1; };
 }
-
-my $rgen = sub {
-  my $range = shift;
-  return 0 if $range <= 0;
-  my $rbits = 0; { my $t = $range; while ($t) { $rbits++; $t >>= 1; } }
-  while (1) {
-    my $rbitsleft = $rbits;
-    my $U = $range - $range;  # 0 or bigint 0
-    while ($rbitsleft > 0) {
-      my $usebits = ($rbitsleft > $Config{randbits}) ? $Config{randbits} : $rbitsleft;
-      $U = ($U << $usebits) + int(rand(1 << $usebits));
-      $rbitsleft -= $usebits;
-    }
-    return $U if $U <= $range;
-  }
-};
 
 { # Test from 2 to 10000
   print "    2 -  1000"; test_array(    2 ..  1000);
@@ -146,7 +130,7 @@ sub gendigits {
     for (1.. $howmany) {
       my $c;
       while (1) {
-        $c = $base + $rgen->($max-$base);
+        $c = $base + urandomm($max-$base);
         my @f = factor($c);
         next if scalar(@f) != 2;
         last if $digits < 8;
@@ -157,7 +141,7 @@ sub gendigits {
       push @nums, $c;
     }
   } else {
-    @nums = map { $base + $rgen->($max-$base) } (1 .. $howmany);
+    @nums = map { $base + urandomm($max-$base) } (1 .. $howmany);
   }
   #for (@nums) { print "$_ [",join(" ",factor($_)),"]   " }
   return @nums;
