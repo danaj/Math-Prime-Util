@@ -133,3 +133,4 @@
   seeding, interval, etc.  Lots of modules only fill doubles with 32 bits.
 - get info on different drands.  TestU01, 45-bit look, cycles, x-y plots, etc.
 - further processing on Ramanujan prime limits up to 4e14
+- consider random_nbit_semiprime(n, f = 0.5) f between 0 and 0.5

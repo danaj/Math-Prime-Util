@@ -1579,11 +1579,16 @@ sub inverse_li {
   return (0,2,3,5,6,8)[$n] if $n <= 5;
   $n = _upgrade_to_float($n) if $n > MPU_MAXPRIMEIDX || $n > 2**45;
   my $t = $n * log($n);
+
+  # Iterator Halley's method until error term grows
+  my $old_term = MPU_INFINITY;
   for my $iter (1 .. 10000) {
     my $dn = Math::Prime::Util::LogarithmicIntegral($t) - $n;
-    my $za = $dn * log($t) / (1.0 + $dn/(2*$t));
-    $t -= $za;
-    last if abs($za) < 0.5;
+    my $term = $dn * log($t) / (1.0 + $dn/(2*$t));
+    last if abs($term) >= abs($old_term);
+    $old_term = $term;
+    $t -= $term;
+    last if abs($term) < 1e-6;
   }
   if (ref($t)) {
     $t = $t->bceil->as_int();
@@ -1601,8 +1606,8 @@ sub nth_prime_approx {
   return undef if $n <= 0;  ## no critic qw(ProhibitExplicitReturnUndef)
   return $_primes_small[$n] if $n <= $#_primes_small;
 
-  # Once past 10^12 or so, inverse_li gives better results, but also very slow.
-  # return Math::Prime::Util::inverse_li($n) if $n > 1e12;
+  # Once past 10^12 or so, inverse_li gives better results.
+  return Math::Prime::Util::inverse_li($n) if $n > 1e12;
 
   $n = _upgrade_to_float($n)
     if ref($n) eq 'Math::BigInt' || $n >= MPU_MAXPRIMEIDX;

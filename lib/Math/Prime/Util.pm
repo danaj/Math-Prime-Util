@@ -1777,9 +1777,8 @@ Dusart (2010) and Axler (2013) bounds are used.
 
 Returns an approximation to the C<nth_prime> function, without having to
 generate any primes.  For values where the nth prime is smaller than
-C<2^64>, an inverse Riemann R function is used.  For larger values, uses the
-Cipolla 1902 approximation with up to 2nd order terms, plus a third order
-correction.
+C<2^64>, the inverse Riemann R function is used.  For larger values,
+the inverse logarithmic integral is used.
 
 
 =head2 nth_twin_prime

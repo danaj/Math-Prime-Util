@@ -12,6 +12,9 @@ Revision history for Perl module Math::Prime::Util
 
     - Slightly faster XS nth_prime_approx.
 
+    - PP nth_prime_approx uses inverse_li past 1e12, which should run
+      at a reasonable speed now.
+
 
 0.64 2017-04-17
 
