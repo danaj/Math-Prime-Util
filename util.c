@@ -6,10 +6,8 @@
 
 /* Use long double to get a little more precision when we're calculating the
  * math functions -- especially those calculated with a series.  Long double
- * is defined in C89 (ISO C), so it should be supported by any reasonable
- * compiler we're using (seriously is your C compiler 20+ years out of date?).
- * Noting that 'long double' on many platforms is no different than 'double'
- * so it may buy us nothing.  But it's worth trying.
+ * is defined in C89 (ISO C).  Note that 'long double' on many platforms is
+ * identical to 'double so it may buy us nothing.  But it's worth trying.
  *
  * While the type was in C89, math functions using it are in C99.  Some
  * systems didn't really get it right (e.g. NetBSD which left out some
@@ -1692,30 +1690,30 @@ long double _XS_LogarithmicIntegral(long double x) {
 }
 
 UV inverse_li(UV x) {
-  int i;
-  long double t, lx = (long double)x;
   UV r;
+  int i;
+  long double t, lx = (long double)x, term, old_term = LDBL_MAX;
   if (x <= 2) return x + (x > 0);
-#if 0    /* Newton's method */
-  for (i = 0, t = lx*logl(x); i < 11; i++)
-    t = t - (_XS_LogarithmicIntegral(t)-lx)*logl(t);
-#else    /* Halley's method */
-  for (i = 0, t = lx*logl(x); i < 3; i++) {
+  /* Iterate Halley's method until error grows. */
+  for (i = 0, t = lx*logl(x); i < 4; i++) {
     long double dn = _XS_LogarithmicIntegral(t)-lx;
-    t = t - dn*logl(t) / (1.0L + dn/(2*t));
+    term = dn*logl(t) / (1.0L + dn/(2*t));
+    if (fabsl(term) >= fabsl(old_term)) { t -= term/4; break; }
+    old_term = term;
+    t -= term;
   }
-#endif
   r = (UV)ceill(t);
 
-  /* Meet our more stringent goal. */
+  /* Meet our more stringent goal of an exact answer. */
+  i = (x > 4e16) ? 2048 : 128;
   if (_XS_LogarithmicIntegral(r-1) >= lx) {
-    while (_XS_LogarithmicIntegral(r-16) >= lx) r -= 16;
-    while (_XS_LogarithmicIntegral(r- 4) >= lx) r -=  4;
-    while (_XS_LogarithmicIntegral(r- 1) >= lx) r -=  1;
+    while (_XS_LogarithmicIntegral(r-i) >= lx) r -= i;
+    for (i = i/2; i > 0; i /= 2)
+      if (_XS_LogarithmicIntegral(r-i) >= lx) r -= i;
   } else {
-    while (_XS_LogarithmicIntegral(r+15) < lx) r += 16;
-    while (_XS_LogarithmicIntegral(r+ 3) < lx) r +=  4;
-    while (_XS_LogarithmicIntegral(r   ) < lx) r +=  1;
+    while (_XS_LogarithmicIntegral(r+i-1) < lx) r += i;
+    for (i = i/2; i > 0; i /= 2)
+      if (_XS_LogarithmicIntegral(r+i-1) < lx) r += i;
   }
   return r;
 }
