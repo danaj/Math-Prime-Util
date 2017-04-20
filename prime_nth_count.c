@@ -259,7 +259,7 @@ static UV count_segment_ranged(const unsigned char* sieve, UV nbytes, UV lowp, U
 
 #include "prime_count_tables.h"
 
-UV _XS_prime_count(UV low, UV high)
+UV segment_prime_count(UV low, UV high)
 {
   const unsigned char* cache_sieve;
   unsigned char* segment;
@@ -327,9 +327,26 @@ UV _XS_prime_count(UV low, UV high)
   return count;
 }
 
+UV prime_count(UV lo, UV hi)
+{
+  UV count;
+
+  if (lo > hi)
+    return 0;
+
+  if (hi < 66000000 || (hi / (hi-lo+1)) > 10000)
+    return segment_prime_count(lo, hi);
+
+  count = _XS_LMO_pi(hi);
+  if (lo > 2)
+    count -= _XS_LMO_pi(lo-1);
+
+  return count;
+}
+
 UV prime_count_approx(UV n)
 {
-  if (n < 3000000) return _XS_prime_count(2, n);
+  if (n < 3000000) return segment_prime_count(2, n);
   return (UV) (RiemannR( (long double) n ) + 0.5 );
 }
 
@@ -371,7 +388,7 @@ UV prime_count_lower(UV n)
 {
   long double fn, fl1, fl2, lower, a;
 
-  if (n < 33000) return _XS_prime_count(2, n);
+  if (n < 33000) return segment_prime_count(2, n);
 
   fn  = (long double) n;
   fl1 = logl(n);
@@ -442,7 +459,7 @@ UV prime_count_upper(UV n)
   int i;
   long double fn, fl1, fl2, upper, a;
 
-  if (n < 33000) return _XS_prime_count(2, n);
+  if (n < 33000) return segment_prime_count(2, n);
 
   fn  = (long double) n;
   fl1 = logl(n);

@@ -3,7 +3,8 @@
 
 #include "ptypes.h"
 
-extern UV  _XS_prime_count(UV low, UV high);
+extern UV  prime_count(UV low, UV high);
+extern UV  segment_prime_count(UV low, UV high);
 extern UV  nth_prime(UV x);
 extern UV  nth_prime_upper(UV x);
 extern UV  nth_prime_lower(UV x);

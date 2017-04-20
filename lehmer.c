@@ -137,7 +137,7 @@ static UV icbrt(UV n) {
   #include <omp.h>
 #endif
 
-#define _XS_prime_count(a, b)     primesieve::parallel_count_primes(a, b)
+#define segment_prime_count(a, b)     primesieve::parallel_count_primes(a, b)
 
 /* Generate an array of n small primes, where the kth prime is element p[k].
  * Remember to free when done. */
@@ -215,7 +215,7 @@ static UV bs_prime_count(uint32_t n, uint32_t const* const primes, uint32_t last
   UV i, j;
   if (n <= 2)  return (n == 2);
   /* If n is out of range, we could:
-   *  1. return _XS_prime_count(2, n);
+   *  1. return segment_prime_count(2, n);
    *  2. if (n == primes[lastidx]) return lastidx else croak("bspc range");
    *  3. if (n >= primes[lastidx]) return lastidx;
    */
@@ -236,7 +236,7 @@ static UV bs_prime_count(uint32_t n, uint32_t const* const primes, uint32_t last
     if (primes[mid] <= n)  i = mid+1;
     else                   j = mid;
   }
-  /* if (i-1 != _XS_prime_count(2, n)) croak("wrong count for %lu: %lu vs. %lu\n", n, i-1, _XS_prime_count(2, n)); */
+  /* if (i-1 != segment_prime_count(2, n)) croak("wrong count for %lu: %lu vs. %lu\n", n, i-1, segment_prime_count(2, n)); */
   return i-1;
 }
 
@@ -633,7 +633,7 @@ static UV Pk_2_p(UV n, UV a, UV b, const uint32_t* primes, uint32_t lastidx)
   for (i = b; i > a; i--) {
     UV w = n / primes[i];
     lastwpc = (w <= lastpc) ? bs_prime_count(w, primes, lastidx)
-                            : lastwpc + _XS_prime_count(lastw+1, w);
+                            : lastwpc + segment_prime_count(lastw+1, w);
     lastw = w;
     P2 += lastwpc;
   }
@@ -656,7 +656,7 @@ UV _XS_legendre_pi(UV n)
 {
   UV a, phina;
   if (n < SIEVE_LIMIT)
-    return _XS_prime_count(2, n);
+    return segment_prime_count(2, n);
 
   a = _XS_legendre_pi(isqrt(n));
   /* phina = phi(n, a); */
@@ -678,7 +678,7 @@ UV _XS_meissel_pi(UV n)
 {
   UV a, b, sum;
   if (n < SIEVE_LIMIT)
-    return _XS_prime_count(2, n);
+    return segment_prime_count(2, n);
 
   a = _XS_meissel_pi(icbrt(n));       /* a = Pi(floor(n^1/3)) [max    192725] */
   b = _XS_meissel_pi(isqrt(n));       /* b = Pi(floor(n^1/2)) [max 203280221] */
@@ -696,14 +696,14 @@ UV _XS_lehmer_pi(UV n)
   DECLARE_TIMING_VARIABLES;
 
   if (n < SIEVE_LIMIT)
-    return _XS_prime_count(2, n);
+    return segment_prime_count(2, n);
 
   /* Protect against overflow.  2^32-1 and 2^64-1 are both divisible by 3. */
   if (n == UV_MAX) {
     if ( (n%3) == 0 || (n%5) == 0 || (n%7) == 0 || (n%31) == 0 )
       n--;
     else
-      return _XS_prime_count(2,n);
+      return segment_prime_count(2,n);
   }
 
   if (verbose > 0) printf("lehmer %lu stage 1: calculate a,b,c \n", n);
@@ -746,7 +746,7 @@ UV _XS_lehmer_pi(UV n)
   for (i = b; i >= a+1; i--) {
     UV w = n / primes[i];
     lastwpc = (w <= lastpc) ? bs_prime_count(w, primes, lastprime)
-                            : lastwpc + _XS_prime_count(lastw+1, w);
+                            : lastwpc + segment_prime_count(lastw+1, w);
     lastw = w;
     sum = sum - lastwpc;
     if (i <= c) {
@@ -778,7 +778,7 @@ UV _XS_LMOS_pi(UV n)
   DECLARE_TIMING_VARIABLES;
 
   if (n < SIEVE_LIMIT)
-    return _XS_prime_count(2, n);
+    return segment_prime_count(2, n);
 
   n13 = icbrt(n);                    /* n13 =  floor(n^1/3)  [max    2642245] */
   a = _XS_lehmer_pi(n13);            /* a = Pi(floor(n^1/3)) [max     192725] */
@@ -869,7 +869,7 @@ int main(int argc, char *argv[])
   else if (!strcasecmp(method, "meissel"))  { pi = _XS_meissel_pi(n);     }
   else if (!strcasecmp(method, "legendre")) { pi = _XS_legendre_pi(n);    }
   else if (!strcasecmp(method, "lmo"))      { pi = _XS_LMOS_pi(n);  }
-  else if (!strcasecmp(method, "sieve"))    { pi = _XS_prime_count(2, n); }
+  else if (!strcasecmp(method, "sieve"))    { pi = segment_prime_count(2, n); }
   else {
     printf("method must be one of: lehmer, meissel, legendre, lmo, or sieve\n");
     return(2);

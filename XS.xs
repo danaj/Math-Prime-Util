@@ -537,7 +537,7 @@ prime_count(IN SV* svlo, ...)
           print_primes(lo, hi, fd);
           XSRETURN_EMPTY;
         } else if (ix == 1 || (hi / (hi-lo+1)) > 100) {
-          count = _XS_prime_count(lo, hi);
+          count = segment_prime_count(lo, hi);
         } else {
           count = _XS_LMO_pi(hi);
           if (lo > 2)

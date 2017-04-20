@@ -326,7 +326,7 @@ static IV _phi(UV x, UV a, int sign, const uint32_t* const primes, const uint32_
   else {
     /* sum = _phi(x, a-1, sign, primes, lastidx, cache) +              */
     /*       _phi(x/primes[a], a-1, -sign, primes, lastidx, cache);    */
-    UV a2, iters = (a*a > x)  ?  _XS_prime_count(2,isqrt(x))  :  a;
+    UV a2, iters = (a*a > x)  ?  segment_prime_count(2,isqrt(x))  :  a;
     UV c = (iters > PHIC) ? PHIC : iters;
     IV phixc = PHICACHE_EXISTS(x,c) ? cache[a*PHICACHEX+x] : tablephi(x,c);
     sum = sign * (iters - a + phixc);
@@ -577,7 +577,7 @@ UV _XS_LMO_pi(UV n)
   const uint32 c = PHIC;  /* We can use our fast function for this */
 
   /* For "small" n, use our table+segment sieve. */
-  if (n < SIEVE_LIMIT || n < 10000)  return _XS_prime_count(2, n);
+  if (n < SIEVE_LIMIT || n < 10000)  return segment_prime_count(2, n);
   /* n should now be reasonably sized (not tiny). */
 
   N2 = isqrt(n);             /* floor(N^1/2) */
