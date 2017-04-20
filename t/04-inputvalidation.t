@@ -48,11 +48,11 @@ eval { next_prime(undef); };
 like($@, qr/^Parameter must be defined/, "next_prime(undef)");
 
 eval { next_prime(""); };
-like($@, qr/^Parameter ('' )?must be a positive integer/, "next_prime('')");
+like($@, qr/ ('' )?must be a positive integer/, "next_prime('')");
 
 foreach my $v (@incorrect) {
   eval { next_prime($v); };
-  like($@, qr/^Parameter '\Q$v\E' must be a positive integer/, "next_prime($v)");
+  like($@, qr/ '\Q$v\E' must be a positive integer/, "next_prime($v)");
 }
 
 while (my($v, $expect) = each (%correct)) {

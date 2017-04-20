@@ -67,7 +67,7 @@ BEGIN {
 my $_precalc_size = 0;
 sub prime_precalc {
   my($n) = @_;
-  croak "Input must be a positive integer" unless _is_positive_int($n);
+  croak "Parameter '$n' must be a positive integer" unless _is_positive_int($n);
   $_precalc_size = $n if $n > $_precalc_size;
 }
 sub prime_memfree {
