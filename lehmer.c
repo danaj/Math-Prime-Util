@@ -619,7 +619,7 @@ static UV phi(UV x, UV a)
 }
 
 
-extern UV _XS_meissel_pi(UV n);
+extern UV meissel_prime_count(UV n);
 /* b = prime_count(isqrt(n)) */
 static UV Pk_2_p(UV n, UV a, UV b, const uint32_t* primes, uint32_t lastidx)
 {
@@ -652,13 +652,13 @@ static UV Pk_2(UV n, UV a, UV b)
 
 /* Legendre's method.  Interesting and a good test for phi(x,a), but Lehmer's
  * method is much faster (Legendre: a = pi(n^.5), Lehmer: a = pi(n^.25)) */
-UV _XS_legendre_pi(UV n)
+UV legendre_prime_count(UV n)
 {
   UV a, phina;
   if (n < SIEVE_LIMIT)
     return segment_prime_count(2, n);
 
-  a = _XS_legendre_pi(isqrt(n));
+  a = legendre_prime_count(isqrt(n));
   /* phina = phi(n, a); */
   { /* The small phi routine is faster for large a */
     cache_t pcache;
@@ -674,14 +674,14 @@ UV _XS_legendre_pi(UV n)
 
 
 /* Meissel's method. */
-UV _XS_meissel_pi(UV n)
+UV meissel_prime_count(UV n)
 {
   UV a, b, sum;
   if (n < SIEVE_LIMIT)
     return segment_prime_count(2, n);
 
-  a = _XS_meissel_pi(icbrt(n));       /* a = Pi(floor(n^1/3)) [max    192725] */
-  b = _XS_meissel_pi(isqrt(n));       /* b = Pi(floor(n^1/2)) [max 203280221] */
+  a = meissel_prime_count(icbrt(n));       /* a = Pi(floor(n^1/3)) [max    192725] */
+  b = meissel_prime_count(isqrt(n));       /* b = Pi(floor(n^1/2)) [max 203280221] */
 
   sum = phi(n, a) + a - 1 - Pk_2(n, a, b);
   return sum;
@@ -689,7 +689,7 @@ UV _XS_meissel_pi(UV n)
 
 /* Lehmer's method.  This is basically Riesel's Lehmer function (page 22),
  * with some additional code to help optimize it.  */
-UV _XS_lehmer_pi(UV n)
+UV lehmer_prime_count(UV n)
 {
   UV z, a, b, c, sum, i, j, lastprime, lastpc, lastw, lastwpc;
   const uint32_t* primes = 0; /* small prime cache, first b=pi(z)=pi(sqrt(n)) */
@@ -709,9 +709,9 @@ UV _XS_lehmer_pi(UV n)
   if (verbose > 0) printf("lehmer %lu stage 1: calculate a,b,c \n", n);
   TIMING_START;
   z = isqrt(n);
-  a = _XS_lehmer_pi(isqrt(z));        /* a = Pi(floor(n^1/4)) [max      6542] */
-  b = _XS_lehmer_pi(z);               /* b = Pi(floor(n^1/2)) [max 203280221] */
-  c = _XS_lehmer_pi(icbrt(n));        /* c = Pi(floor(n^1/3)) [max    192725] */
+  a = lehmer_prime_count(isqrt(z));        /* a = Pi(floor(n^1/4)) [max      6542] */
+  b = lehmer_prime_count(z);               /* b = Pi(floor(n^1/2)) [max 203280221] */
+  c = lehmer_prime_count(icbrt(n));        /* c = Pi(floor(n^1/3)) [max    192725] */
   TIMING_END_PRINT("stage 1")
 
   if (verbose > 0) printf("lehmer %lu stage 2: phi(x,a) (z=%lu a=%lu b=%lu c=%lu)\n", n, z, a, b, c);
@@ -768,7 +768,7 @@ UV _XS_lehmer_pi(UV n)
  * About the same speed as Lehmer, a bit less memory.
  * A better implementation can be 10-50x faster and much less memory.
  */
-UV _XS_LMOS_pi(UV n)
+UV LMOS_prime_count(UV n)
 {
   UV n13, a, b, sum, i, j, k, lastprime, P2, S1, S2;
   const uint32_t* primes = 0;  /* small prime cache */
@@ -781,8 +781,8 @@ UV _XS_LMOS_pi(UV n)
     return segment_prime_count(2, n);
 
   n13 = icbrt(n);                    /* n13 =  floor(n^1/3)  [max    2642245] */
-  a = _XS_lehmer_pi(n13);            /* a = Pi(floor(n^1/3)) [max     192725] */
-  b = _XS_lehmer_pi(isqrt(n));       /* b = Pi(floor(n^1/2)) [max  203280221] */
+  a = lehmer_prime_count(n13);       /* a = Pi(floor(n^1/3)) [max     192725] */
+  b = lehmerprime_count(isqrt(n));   /* b = Pi(floor(n^1/2)) [max  203280221] */
 
   lastprime = b*SIEVE_MULT+1;
   if (lastprime > 203280221) lastprime = 203280221;
@@ -865,10 +865,10 @@ int main(int argc, char *argv[])
 
   gettimeofday(&t0, 0);
 
-  if      (!strcasecmp(method, "lehmer"))   { pi = _XS_lehmer_pi(n);      }
-  else if (!strcasecmp(method, "meissel"))  { pi = _XS_meissel_pi(n);     }
-  else if (!strcasecmp(method, "legendre")) { pi = _XS_legendre_pi(n);    }
-  else if (!strcasecmp(method, "lmo"))      { pi = _XS_LMOS_pi(n);  }
+  if      (!strcasecmp(method, "lehmer"))   { pi = lehmer_prime_count(n);      }
+  else if (!strcasecmp(method, "meissel"))  { pi = meissel_prime_count(n);     }
+  else if (!strcasecmp(method, "legendre")) { pi = legendre_prime_count(n);    }
+  else if (!strcasecmp(method, "lmo"))      { pi = LMOS_prime_count(n);  }
   else if (!strcasecmp(method, "sieve"))    { pi = segment_prime_count(2, n); }
   else {
     printf("method must be one of: lehmer, meissel, legendre, lmo, or sieve\n");
@@ -884,9 +884,9 @@ int main(int argc, char *argv[])
 #else
 
 #include "lehmer.h"
-UV _XS_LMOS_pi(UV n)      { if (n!=0) croak("Not compiled with Lehmer support"); return 0;}
-UV _XS_lehmer_pi(UV n)    { if (n!=0) croak("Not compiled with Lehmer support"); return 0;}
-UV _XS_meissel_pi(UV n)   { if (n!=0) croak("Not compiled with Lehmer support"); return 0;}
-UV _XS_legendre_pi(UV n)  { if (n!=0) croak("Not compiled with Lehmer support"); return 0;}
+UV LMOS_prime_count(UV n)      { if (n!=0) croak("Not compiled with Lehmer support"); return 0;}
+UV lehmer_prime_count(UV n)    { if (n!=0) croak("Not compiled with Lehmer support"); return 0;}
+UV meissel_prime_count(UV n)   { if (n!=0) croak("Not compiled with Lehmer support"); return 0;}
+UV legendre_prime_count(UV n)  { if (n!=0) croak("Not compiled with Lehmer support"); return 0;}
 
 #endif

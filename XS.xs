@@ -539,9 +539,9 @@ prime_count(IN SV* svlo, ...)
         } else if (ix == 1 || (hi / (hi-lo+1)) > 100) {
           count = segment_prime_count(lo, hi);
         } else {
-          count = _XS_LMO_pi(hi);
+          count = LMO_prime_count(hi);
           if (lo > 2)
-            count -= _XS_LMO_pi(lo-1);
+            count -= LMO_prime_count(lo-1);
         }
       }
       if (lostatus == 1) XSRETURN_UV(count);
@@ -592,11 +592,11 @@ _XS_LMO_pi(IN UV n)
     UV ret;
   CODE:
     switch (ix) {
-      case 0: ret = _XS_LMO_pi(n); break;
-      case 1: ret = _XS_legendre_pi(n); break;
-      case 2: ret = _XS_meissel_pi(n); break;
-      case 3: ret = _XS_lehmer_pi(n); break;
-      default:ret = _XS_LMOS_pi(n); break;
+      case 0: ret = LMO_prime_count(n); break;
+      case 1: ret = legendre_prime_count(n); break;
+      case 2: ret = meissel_prime_count(n); break;
+      case 3: ret = lehmer_prime_count(n); break;
+      default:ret = LMOS_prime_count(n); break;
     }
     RETVAL = ret;
   OUTPUT:

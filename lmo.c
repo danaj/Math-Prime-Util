@@ -348,12 +348,12 @@ UV legendre_phi(UV x, UV a)
   /* If a > prime_count(2^32), then we need not be concerned with composite
    * x values with all factors > 2^32, as x is limited to 64-bit. */
   if (a > 203280221) {  /* prime_count(2**32) */
-    UV pc = _XS_LMO_pi(x);
+    UV pc = LMO_prime_count(x);
     return (a > pc)  ?  1  :  pc - a + 1;
   }
   /* If a is large enough, check the ratios */
   if (a > 1000000 && x < a*21) {  /* x always less than 2^32 */
-    if ( _XS_LMO_pi(x) < a)  return 1;
+    if ( LMO_prime_count(x) < a)  return 1;
   }
 
   /* TODO:  R. Andrew Ohana's 2011 SAGE code is faster as the a value
@@ -555,7 +555,7 @@ static void init_segment(sieve_t* s, UV segment_start, uint32 size, uint32 start
 }
 
 /* However we want to handle reduced prime counts */
-#define simple_pi(n)  _XS_LMO_pi(n)
+#define simple_pi(n)  LMO_prime_count(n)
 /* Macros to hide all the variables being passed */
 #define prev_sieve_prime(n) \
   prev_sieve_prime(n, &prev_sieve[0], &ps_start, ps_max, primes)
@@ -563,7 +563,7 @@ static void init_segment(sieve_t* s, UV segment_start, uint32 size, uint32 start
   ss.phi_total + _sieve_phi((x) - ss.start, ss.sieve, ss.word_count_sum)
 
 
-UV _XS_LMO_pi(UV n)
+UV LMO_prime_count(UV n)
 {
   UV        N2, N3, K2, K3, M, sum1, sum2, phi_value;
   UV        sieve_start, sieve_end, least_divisor, step7_max, last_phi_sieve;

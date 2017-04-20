@@ -3,9 +3,9 @@
 
 #include "ptypes.h"
 
-extern UV _XS_legendre_pi(UV n);
-extern UV _XS_meissel_pi(UV n);
-extern UV _XS_lehmer_pi(UV n);
-extern UV _XS_LMOS_pi(UV n);
+extern UV legendre_prime_count(UV n);
+extern UV meissel_prime_count(UV n);
+extern UV lehmer_prime_count(UV n);
+extern UV LMOS_prime_count(UV n);
 
 #endif

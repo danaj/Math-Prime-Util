@@ -337,9 +337,9 @@ UV prime_count(UV lo, UV hi)
   if (hi < 66000000 || (hi / (hi-lo+1)) > 10000)
     return segment_prime_count(lo, hi);
 
-  count = _XS_LMO_pi(hi);
+  count = LMO_prime_count(hi);
   if (lo > 2)
-    count -= _XS_LMO_pi(lo-1);
+    count -= LMO_prime_count(lo-1);
 
   return count;
 }
@@ -600,7 +600,7 @@ UV nth_prime(UV n)
     lower_limit += inverse_li(isqrt(n))/4;
     segment_size = lower_limit / 30;
     lower_limit = 30 * segment_size - 1;
-    count = _XS_LMO_pi(lower_limit);
+    count = prime_count(2,lower_limit);
 
     /* printf("We've estimated %lu too %s.\n", (count>n)?count-n:n-count, (count>n)?"FAR":"little"); */
     /* printf("Our limit %lu %s a prime\n", lower_limit, _XS_is_prime(lower_limit) ? "is" : "is not"); */

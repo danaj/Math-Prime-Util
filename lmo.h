@@ -3,7 +3,7 @@
 
 #include "ptypes.h"
 
-extern UV _XS_LMO_pi(UV n);
+extern UV LMO_prime_count(UV n);
 
 extern UV legendre_phi(UV n, UV a);
 

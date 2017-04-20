@@ -8,7 +8,6 @@
 #define FUNC_is_prime_in_sieve 1
 #include "prime_nth_count.h"
 #include "sieve.h"
-#include "lmo.h"
 #include "ramanujan_primes.h"
 
 /******************************************************************************/
@@ -261,7 +260,7 @@ UV* n_range_ramanujan_primes(UV nlo, UV nhi) {
   if (mink % 2 == 0) mink--;
   if (verbose >= 2) printf("Rn[%"UVuf"] to Rn[%"UVuf"]     Noe's: %"UVuf" to %"UVuf"\n", nlo, nhi, mink, maxk);
 
-  s = 1 + _XS_LMO_pi(mink-2) - _XS_LMO_pi((mink-1)>>1);
+  s = 1 + prime_count(2,mink-2) - prime_count(2,(mink-1)>>1);
   {
     unsigned char *segment, *seg2 = 0;
     void* ctx = start_segment_primes(mink, maxk, &segment);
@@ -391,7 +390,7 @@ static UV _ramanujan_prime_count(UV n) {
   if ((n & (n-1)) == 0 && log2 <= RAMPC2)
     return ramanujan_counts_pow2[log2];
 
-  v = _XS_LMO_pi(n) - _XS_LMO_pi(n >> 1);
+  v = prime_count(2,n) - prime_count(2,n >> 1);
 
   /* For large enough n make a slightly bigger window */
   if (n > 1000000000U) winmult = 16;
