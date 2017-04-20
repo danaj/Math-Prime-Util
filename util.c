@@ -1554,7 +1554,7 @@ long double chebyshev_function(UV n, int which)
 static long double const euler_mascheroni = 0.57721566490153286060651209008240243104215933593992L;
 static long double const li2 = 1.045163780117492784844588889194613136522615578151L;
 
-long double _XS_ExponentialIntegral(long double x) {
+long double Ei(long double x) {
   long double val, term;
   unsigned int n;
   KAHAN_INIT(sum);
@@ -1658,7 +1658,7 @@ long double _XS_ExponentialIntegral(long double x) {
   return val;
 }
 
-long double _XS_LogarithmicIntegral(long double x) {
+long double Li(long double x) {
   if (x == 0) return 0;
   if (x == 1) return -INFINITY;
   if (x == 2) return li2;
@@ -1686,7 +1686,7 @@ long double _XS_LogarithmicIntegral(long double x) {
     return euler_mascheroni + logl(logx) + sqrtl(x) * sum;
   }
 
-  return _XS_ExponentialIntegral(logl(x));
+  return Ei(logl(x));
 }
 
 UV inverse_li(UV x) {
@@ -1696,7 +1696,7 @@ UV inverse_li(UV x) {
   if (x <= 2) return x + (x > 0);
   /* Iterate Halley's method until error grows. */
   for (i = 0, t = lx*logl(x); i < 4; i++) {
-    long double dn = _XS_LogarithmicIntegral(t)-lx;
+    long double dn = Li(t) - lx;
     term = dn*logl(t) / (1.0L + dn/(2*t));
     if (fabsl(term) >= fabsl(old_term)) { t -= term/4; break; }
     old_term = term;
@@ -1706,14 +1706,14 @@ UV inverse_li(UV x) {
 
   /* Meet our more stringent goal of an exact answer. */
   i = (x > 4e16) ? 2048 : 128;
-  if (_XS_LogarithmicIntegral(r-1) >= lx) {
-    while (_XS_LogarithmicIntegral(r-i) >= lx) r -= i;
+  if (Li(r-1) >= lx) {
+    while (Li(r-i) >= lx) r -= i;
     for (i = i/2; i > 0; i /= 2)
-      if (_XS_LogarithmicIntegral(r-i) >= lx) r -= i;
+      if (Li(r-i) >= lx) r -= i;
   } else {
-    while (_XS_LogarithmicIntegral(r+i-1) < lx) r += i;
+    while (Li(r+i-1) < lx) r += i;
     for (i = i/2; i > 0; i /= 2)
-      if (_XS_LogarithmicIntegral(r+i-1) < lx) r += i;
+      if (Li(r+i-1) < lx) r += i;
   }
   return r;
 }
@@ -1727,11 +1727,11 @@ UV inverse_R(UV x) {
   /* First estimate */
   t = lx * logl(x);
   /* Improve: approx inverse li with one round of Halley */
-  dn = _XS_LogarithmicIntegral(t) - lx;
+  dn = Li(t) - lx;
   t = t - dn * logl(t) / (1.0L + dn/(2*t));
   /* Converge: two rounds of Halley on Riemann R */
   for (i = 0; i < 2; i++) {
-    dn = _XS_RiemannR(t) - lx;
+    dn = RiemannR(t) - lx;
     t = t - dn * logl(t) / (1.0L + dn/(2*t));
   }
   return (UV)ceill(t);
@@ -1923,7 +1923,7 @@ long double ld_riemann_zeta(long double x) {
   }
 }
 
-long double _XS_RiemannR(long double x) {
+long double RiemannR(long double x) {
   long double part_term, term, flogx, ki, old_sum;
   unsigned int k;
   KAHAN_INIT(sum);
@@ -1932,13 +1932,13 @@ long double _XS_RiemannR(long double x) {
 
   if (x > 1e19) {
     const signed char* amob = _moebius_range(0, 100);
-    KAHAN_SUM(sum, _XS_LogarithmicIntegral(x));
+    KAHAN_SUM(sum, Li(x));
     for (k = 2; k <= 100; k++) {
       if (amob[k] == 0) continue;
       ki = 1.0L / (long double) k;
       part_term = powl(x,ki);
       if (part_term > LDBL_MAX) return INFINITY;
-      term = amob[k] * ki * _XS_LogarithmicIntegral(part_term);
+      term = amob[k] * ki * Li(part_term);
       old_sum = sum;
       KAHAN_SUM(sum, term);
       if (fabsl(sum - old_sum) <= LDBL_EPSILON) break;

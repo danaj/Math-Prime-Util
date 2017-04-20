@@ -330,7 +330,7 @@ UV _XS_prime_count(UV low, UV high)
 UV prime_count_approx(UV n)
 {
   if (n < 3000000) return _XS_prime_count(2, n);
-  return (UV) (_XS_RiemannR( (long double) n ) + 0.5 );
+  return (UV) (RiemannR( (long double) n ) + 0.5 );
 }
 
 /* See http://numbers.computation.free.fr/Constants/Primes/twin.pdf, page 5 */
@@ -345,7 +345,7 @@ UV twin_prime_count_approx(UV n)
     const long double two_over_log_two = 2.8853900817779268147198494L;
     long double ln = (long double) n;
     long double logn = logl(ln);
-    long double li2 = _XS_ExponentialIntegral(logn) + two_over_log_two-ln/logn;
+    long double li2 = Ei(logn) + two_over_log_two-ln/logn;
     /* try to minimize MSE */
     if (n < 32000000) {
       long double fm;
@@ -400,9 +400,9 @@ UV prime_count_lower(UV n)
     lower = fn/fl1 * (1.0L + 1.0L/fl1 + 2.0L/fl2 + a/(fl2*fl1));
 #endif
   } else if (fn < 1e19) {          /* Büthe 2015 1.9      1511.02032v1.pdf */
-    lower = _XS_LogarithmicIntegral(fn) - (sqrtl(fn)/fl1) * (1.94L + 3.88L/fl1 + 27.57L/fl2);
+    lower = Li(fn) - (sqrtl(fn)/fl1) * (1.94L + 3.88L/fl1 + 27.57L/fl2);
   } else {                         /* Büthe 2014 v3 7.2   1410.7015v3.pdf */
-    lower = _XS_LogarithmicIntegral(fn) - fl1*sqrtl(fn)/25.132741228718345907701147L;
+    lower = Li(fn) - fl1*sqrtl(fn)/25.132741228718345907701147L;
   }
   return (UV) ceill(lower);
 }
@@ -459,9 +459,9 @@ UV prime_count_upper(UV n)
       : (fn <  10010000000.0) ? 0.027    /* Empirical */
       : (fn < 101260000000.0) ? 0.021    /* Empirical */
                               : 0.0;
-    upper = _XS_LogarithmicIntegral(fn) - a * fl1*sqrtl(fn)/25.132741228718345907701147L;
+    upper = Li(fn) - a * fl1*sqrtl(fn)/25.132741228718345907701147L;
   } else {                       /* Büthe 2014 7.4 */
-    upper = _XS_LogarithmicIntegral(fn) + fl1*sqrtl(fn)/25.132741228718345907701147L;
+    upper = Li(fn) + fl1*sqrtl(fn)/25.132741228718345907701147L;
   }
   return (UV) floorl(upper);
 }

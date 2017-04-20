@@ -27,10 +27,10 @@ extern UV*    _totient_range(UV low, UV high);
 extern IV     mertens(UV n);
 extern long double chebyshev_function(UV n, int which); /* 0 = theta, 1 = psi */
 
-extern long double _XS_ExponentialIntegral(long double x);
-extern long double _XS_LogarithmicIntegral(long double x);
+extern long double Ei(long double x);
+extern long double Li(long double x);
 extern long double ld_riemann_zeta(long double x);
-extern long double _XS_RiemannR(long double x);
+extern long double RiemannR(long double x);
 extern long double lambertw(long double k);
 extern UV inverse_li(UV x);
 extern UV inverse_R(UV x);

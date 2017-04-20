@@ -1763,10 +1763,10 @@ _XS_ExponentialIntegral(IN SV* x)
   CODE:
     nv = SvNV(x);
     switch (ix) {
-      case 0: ret = (NV) _XS_ExponentialIntegral(nv); break;
-      case 1: ret = (NV) _XS_LogarithmicIntegral(nv); break;
+      case 0: ret = (NV) Ei(nv); break;
+      case 1: ret = (NV) Li(nv); break;
       case 2: ret = (NV) ld_riemann_zeta(nv); break;
-      case 3: ret = (NV) _XS_RiemannR(nv); break;
+      case 3: ret = (NV) RiemannR(nv); break;
       case 4:
       default:ret = (NV) lambertw(nv); break;
     }
