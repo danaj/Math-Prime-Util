@@ -485,12 +485,11 @@ prime_precalc(IN UV n)
 void
 prime_count(IN SV* svlo, ...)
   ALIAS:
-    _XS_segment_pi = 1
-    twin_prime_count = 2
-    ramanujan_prime_count = 3
-    ramanujan_prime_count_approx = 4
-    sum_primes = 5
-    print_primes = 6
+    twin_prime_count = 1
+    ramanujan_prime_count = 2
+    ramanujan_prime_count_approx = 3
+    sum_primes = 4
+    print_primes = 5
   PREINIT:
     int lostatus, histatus;
     UV lo, hi;
@@ -507,14 +506,13 @@ prime_count(IN SV* svlo, ...)
         hi = my_svuv(ST(1));
       }
       if (lo <= hi) {
-        if (ix == 2) {
-          count = twin_prime_count(lo, hi);
-        } else if (ix == 3) {
-          count = ramanujan_prime_count(lo, hi);
-        } else if (ix == 4) {
-          count = ramanujan_prime_count_approx(hi);
-          if (lo > 2)  count -= ramanujan_prime_count_approx(lo-1);
-        } else if (ix == 5) {
+        if      (ix == 0) { count = prime_count(lo, hi); }
+        else if (ix == 1) { count = twin_prime_count(lo, hi); }
+        else if (ix == 2) { count = ramanujan_prime_count(lo, hi); }
+        else if (ix == 3) { count = ramanujan_prime_count_approx(hi);
+                            if (lo > 2)
+                              count -= ramanujan_prime_count_approx(lo-1); }
+        else if (ix == 4) {
 #if BITS_PER_WORD == 64 && HAVE_UINT128
           if (hi >= 29505444491UL && hi-lo > hi/50) {
             UV hicount, lo_hic, lo_loc;
@@ -525,35 +523,26 @@ prime_count(IN SV* svlo, ...)
               if (count < lo_loc) hicount--;
               count -= lo_loc;
             }
-            if (lostatus == 1) {
-              if (hicount > 0) RETURN_128(hicount, count);
-              else             XSRETURN_UV(count);
-            }
+            if (lostatus == 1 && hicount > 0)
+              RETURN_128(hicount, count);
           }
 #endif
           lostatus = sum_primes(lo, hi, &count);
-        } else if (ix == 6) {
+        } else if (ix == 5) {
           int fd = (items < 3) ? fileno(stdout) : my_sviv(ST(2));
           print_primes(lo, hi, fd);
           XSRETURN_EMPTY;
-        } else if (ix == 1 || (hi / (hi-lo+1)) > 100) {
-          count = segment_prime_count(lo, hi);
-        } else {
-          count = LMO_prime_count(hi);
-          if (lo > 2)
-            count -= LMO_prime_count(lo-1);
         }
       }
       if (lostatus == 1) XSRETURN_UV(count);
     }
     switch (ix) {
-      case 0:
-      case 1: _vcallsubn(aTHX_ GIMME_V, VCALL_ROOT, "_generic_prime_count", items, 0); break;
-      case 2:_vcallsub_with_pp("twin_prime_count");  break;
-      case 3:_vcallsub_with_pp("ramanujan_prime_count");  break;
-      case 4:_vcallsub_with_pp("ramanujan_prime_count_approx");  break;
-      case 5:_vcallsub_with_pp("sum_primes");  break;
-      case 6:
+      case 0: _vcallsubn(aTHX_ GIMME_V, VCALL_ROOT, "_generic_prime_count", items, 0); break;
+      case 1: _vcallsub_with_pp("twin_prime_count");  break;
+      case 2: _vcallsub_with_pp("ramanujan_prime_count");  break;
+      case 3: _vcallsub_with_pp("ramanujan_prime_count_approx");  break;
+      case 4: _vcallsub_with_pp("sum_primes");  break;
+      case 5:
       default:_vcallsub_with_pp("print_primes");  break;
     }
     return; /* skip implicit PUTBACK */
@@ -582,12 +571,13 @@ void random_prime(IN SV* svlo, IN SV* svhi = 0)
     XSRETURN(1);
 
 UV
-_XS_LMO_pi(IN UV n)
+_LMO_pi(IN UV n)
   ALIAS:
-    _XS_legendre_pi = 1
-    _XS_meissel_pi = 2
-    _XS_lehmer_pi = 3
-    _XS_LMOS_pi = 4
+    _legendre_pi = 1
+    _meissel_pi = 2
+    _lehmer_pi = 3
+    _LMOS_pi = 4
+    _segment_pi = 5
   PREINIT:
     UV ret;
   CODE:
@@ -596,7 +586,8 @@ _XS_LMO_pi(IN UV n)
       case 1: ret = legendre_prime_count(n); break;
       case 2: ret = meissel_prime_count(n); break;
       case 3: ret = lehmer_prime_count(n); break;
-      default:ret = LMOS_prime_count(n); break;
+      case 4: ret = LMOS_prime_count(n); break;
+      default:ret = segment_prime_count(2,n); break;
     }
     RETVAL = ret;
   OUTPUT:

@@ -183,12 +183,12 @@ sub parse_range {
 SKIP: {
   skip "Not XS -- skipping direct primecount tests", 2 unless $isxs;
   # This has to be above SIEVE_LIMIT in lehmer.c and lmo.c or nothing happens.
-  #is(Math::Prime::Util::_XS_lehmer_pi  (66123456),3903023,"XS Lehmer count");
-  #is(Math::Prime::Util::_XS_meissel_pi (66123456),3903023,"XS Meissel count");
-  #is(Math::Prime::Util::_XS_legendre_pi(66123456),3903023,"XS Legendre count");
-  #is(Math::Prime::Util::_XS_LMOS_pi    (66123456),3903023,"XS LMOS count");
-  is(Math::Prime::Util::_XS_LMO_pi     (66123456), 3903023,"XS LMO count");
-  is(Math::Prime::Util::_XS_segment_pi (66123456), 3903023,"XS segment count");
+  #is(Math::Prime::Util::_lehmer_pi  (66123456),3903023,"XS Lehmer count");
+  #is(Math::Prime::Util::_meissel_pi (66123456),3903023,"XS Meissel count");
+  #is(Math::Prime::Util::_legendre_pi(66123456),3903023,"XS Legendre count");
+  #is(Math::Prime::Util::_LMOS_pi    (66123456),3903023,"XS LMOS count");
+  is(Math::Prime::Util::_LMO_pi     (66123456), 3903023,"XS LMO count");
+  is(Math::Prime::Util::_segment_pi (66123456), 3903023,"XS segment count");
 }
 
 require_ok 'Math::Prime::Util::PP';
