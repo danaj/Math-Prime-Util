@@ -1692,13 +1692,13 @@ long double Li(long double x) {
 UV inverse_li(UV x) {
   UV r;
   int i;
-  long double t, lx = (long double)x, term, old_term = LDBL_MAX;
+  long double t, lx = (long double)x, term, old_term;
   if (x <= 2) return x + (x > 0);
   /* Iterate Halley's method until error grows. */
   for (i = 0, t = lx*logl(x); i < 4; i++) {
     long double dn = Li(t) - lx;
     term = dn*logl(t) / (1.0L + dn/(2*t));
-    if (fabsl(term) >= fabsl(old_term)) { t -= term/4; break; }
+    if (i > 0 && fabsl(term) >= fabsl(old_term)) { t -= term/4; break; }
     old_term = term;
     t -= term;
   }
@@ -1720,19 +1720,22 @@ UV inverse_li(UV x) {
 
 UV inverse_R(UV x) {
   int i;
-  long double t, dn, lx = (long double)x;
+  long double t, dn, lx = (long double) x, term, old_term;
   UV r;
   if (x <= 2) return x + (x > 0);
 
-  /* First estimate */
+  /* Rough estimate */
   t = lx * logl(x);
   /* Improve: approx inverse li with one round of Halley */
   dn = Li(t) - lx;
   t = t - dn * logl(t) / (1.0L + dn/(2*t));
-  /* Converge: two rounds of Halley on Riemann R */
-  for (i = 0; i < 2; i++) {
+  /* Iterate 1-4 rounds of Halley */
+  for (i = 0; i < 4; i++) {
     dn = RiemannR(t) - lx;
-    t = t - dn * logl(t) / (1.0L + dn/(2*t));
+    term = dn * logl(t) / (1.0L + dn/(2*t));
+    if (i > 0 && fabsl(term) >= fabsl(old_term)) { t -= term/4; break; }
+    old_term = term;
+    t -= term;
   }
   return (UV)ceill(t);
 }

@@ -1598,6 +1598,32 @@ sub inverse_li {
   }
   $t;
 }
+sub inverse_R {
+  my($n) = @_;
+  _validate_num($n) || _validate_positive_integer($n);
+
+  return (0,2,3,5,6,8)[$n] if $n <= 5;
+  $n = _upgrade_to_float($n) if $n > MPU_MAXPRIMEIDX || $n > 2**45;
+  my $t = $n * log($n);
+
+  # Iterator Halley's method until error term grows
+  my $old_term = MPU_INFINITY;
+  for my $iter (1 .. 10000) {
+    my $dn = Math::Prime::Util::RiemannR($t) - $n;
+    my $term = $dn * log($t) / (1.0 + $dn/(2*$t));
+    last if abs($term) >= abs($old_term);
+    $old_term = $term;
+    $t -= $term;
+    last if abs($term) < 1e-6;
+  }
+  if (ref($t)) {
+    $t = $t->bceil->as_int();
+    $t = _bigint_to_int($t) if $t->bacmp(BMAX) <= 0;
+  } else {
+    $t = int($t+0.999999);
+  }
+  $t;
+}
 
 sub nth_prime_approx {
   my($n) = @_;
