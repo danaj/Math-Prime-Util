@@ -157,6 +157,6 @@ is_deeply(
   [qw/0 2 3 5 6 8 10 12 15 18 21 24 27 30 34 37 41 45 49 53 57 61 65 69 73 78 82 86 91 95 100 105 109 114 119 123 128 133 138 143 148 153 158 163 168 173 179 184 189 194 199/],
   "inverse_li: Li^-1(0..50)"
 );
-is(inverse_li(1000000000), 22801627415, "inverse_li(1e9)");
 # Allow +/- 2 for floating point differences in LogarithmicIntegral
+like(inverse_li(1000000000), qr/^2280162741[34567]$/, "inverse_li(1e9)");
 like(inverse_li(1100000000000), qr/^3310443690704[01234]$/, "inverse_li(11e11)");

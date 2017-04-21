@@ -1193,6 +1193,7 @@ sub is_quasi_carmichael {
 
 sub is_pillai {
   my($p) = @_;
+  return 0 if defined($p) && int($p) < 0;
   _validate_positive_integer($p);
   return 0 if $p <= 2;
 
