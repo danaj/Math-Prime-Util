@@ -57,7 +57,7 @@ static int is_admissible(uint32_t nc, uint32_t* cl) {
 static int is_cluster(UV p, uint32_t nc, uint32_t* cl) {
   uint32_t c;
   for (c = 1; c < nc; c++)
-    if (!_XS_is_prime(p+cl[c]))
+    if (!is_prob_prime(p+cl[c]))
       break;
   return (c == nc);
 }

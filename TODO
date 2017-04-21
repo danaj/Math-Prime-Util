@@ -134,5 +134,4 @@
 - get info on different drands.  TestU01, 45-bit look, cycles, x-y plots, etc.
 - further processing on Ramanujan prime limits up to 4e14
 - consider random_nbit_semiprime(n, f = 0.5) f between 0 and 0.5
-- revise internal interfaces to is_prime / _XS_is_prime
 - adjust segment vs. LMO tradeoff in prime_count();

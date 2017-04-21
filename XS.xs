@@ -760,7 +760,7 @@ trial_factor(IN UV n, ...)
     while ( (n% 3) == 0 ) {  n /=  3;  XPUSHs(sv_2mortal(newSVuv( 3 ))); }
     while ( (n% 5) == 0 ) {  n /=  5;  XPUSHs(sv_2mortal(newSVuv( 5 ))); }
     if (n == 1) {  /* done */ }
-    else if (_XS_is_prime(n)) { XPUSHs(sv_2mortal(newSVuv( n ))); }
+    else if (is_prime(n)) { XPUSHs(sv_2mortal(newSVuv( n ))); }
     else {
       UV factors[MPU_MAX_FACTORS+1];
       int i, nfactors = 0;
@@ -1101,7 +1101,7 @@ is_prime(IN SV* svn, ...)
         switch (ix) {
           case 0:
           case 1:
-          case 2:  ret = _XS_is_prime(n); break;
+          case 2:  ret = is_prime(n); break;
           case 3:  ret = BPSW(n); break;
           case 4:  ret = is_aks_prime(n); break;
           case 5:  ret = is_lucas_pseudoprime(n, 0); break;
@@ -2389,7 +2389,7 @@ forpart (SV* block, IN SV* svn, IN SV* svh = 0)
           }
         }
         if (primeq != -1) {
-          for (i = 0; i <= k; i++) if (_XS_is_prime(a[i]) != primeq) break;
+          for (i = 0; i <= k; i++) if (is_prime(a[i]) != primeq) break;
           if (i <= k) continue;
         }
 

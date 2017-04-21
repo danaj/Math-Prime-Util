@@ -126,7 +126,7 @@ static const unsigned char prime_sieve30[] =
 #define NPRIME_SIEVE30 (sizeof(prime_sieve30)/sizeof(prime_sieve30[0]))
 
 /* Return of 2 if n is prime, 0 if not.  Do it fast. */
-int _XS_is_prime(UV n)
+int is_prime(UV n)
 {
   if (n <= 10)
     return (n == 2 || n == 3 || n == 5 || n == 7) ? 2 : 0;

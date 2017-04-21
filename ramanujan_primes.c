@@ -329,8 +329,8 @@ UV* ramanujan_primes(UV* first, UV* last, UV low, UV high)
 int is_ramanujan_prime(UV n) {
   UV beg, end, *L;
 
-  if (!_XS_is_prime(n))  return 0;
-  if (n < 17)            return (n == 2 || n == 11);
+  if (!is_prime(n))  return 0;
+  if (n < 17)        return (n == 2 || n == 11);
 
   /* Generate Ramanujan primes and see if we're in the list.  Slow. */
   L = ramanujan_primes(&beg, &end, n, n);

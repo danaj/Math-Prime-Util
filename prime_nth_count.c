@@ -603,10 +603,10 @@ UV nth_prime(UV n)
     count = prime_count(2,lower_limit);
 
     /* printf("We've estimated %lu too %s.\n", (count>n)?count-n:n-count, (count>n)?"FAR":"little"); */
-    /* printf("Our limit %lu %s a prime\n", lower_limit, _XS_is_prime(lower_limit) ? "is" : "is not"); */
+    /* printf("Our limit %lu %s a prime\n", lower_limit, is_prime(lower_limit) ? "is" : "is not"); */
 
     if (count >= n) { /* Too far.  Walk backwards */
-      if (_XS_is_prime(lower_limit)) count--;
+      if (is_prime(lower_limit)) count--;
       for (p = 0; p <= (count-n); p++)
         lower_limit = prev_prime(lower_limit);
       return lower_limit;
@@ -700,11 +700,11 @@ UV twin_prime_count(UV beg, UV end)
     end = (end-1) | 1;
     /* Cheesy way of counting the partial-byte edges */
     while ((beg % 30) != 1) {
-      if (_XS_is_prime(beg) && _XS_is_prime(beg+2) && beg <= end) sum++;
+      if (is_prime(beg) && is_prime(beg+2) && beg <= end) sum++;
       beg += 2;
     }
     while ((end % 30) != 29) {
-      if (_XS_is_prime(end) && _XS_is_prime(end+2) && beg <= end) sum++;
+      if (is_prime(end) && is_prime(end+2) && beg <= end) sum++;
       end -= 2;  if (beg > end) break;
     }
   }
@@ -725,7 +725,7 @@ UV twin_prime_count(UV beg, UV end)
       s = *sp;
       if (!(s & 0x0C)) sum++;
       if (!(s & 0x30)) sum++;
-      if (!(s & 0x80) && _XS_is_prime(seg_high+2)) sum++;
+      if (!(s & 0x80) && is_prime(seg_high+2)) sum++;
     }
     end_segment_primes(ctx);
   }
@@ -779,7 +779,7 @@ UV nth_twin_prime(UV n)
       for (p = 0; p < bytes; p++) {
         s >>= 8;
         if (p+1 < bytes)                    s |= (((UV)segment[p+1]) << 8);
-        else if (!_XS_is_prime(seg_high+2)) s |= 0xFF00;
+        else if (!is_prime(seg_high+2)) s |= 0xFF00;
         if (!(s & 0x000C) && !--n) { nth=seg_base+p*30+11; break; }
         if (!(s & 0x0030) && !--n) { nth=seg_base+p*30+17; break; }
         if (!(s & 0x0180) && !--n) { nth=seg_base+p*30+29; break; }

@@ -8,7 +8,7 @@ extern void _XS_set_verbose(int v);
 extern int  _XS_get_callgmp(void);
 extern void _XS_set_callgmp(int v);
 
-extern int _XS_is_prime(UV x);
+extern int is_prime(UV x);
 extern UV  next_prime(UV x);
 extern UV  prev_prime(UV x);
 
