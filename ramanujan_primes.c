@@ -64,7 +64,7 @@ static const UV large_ram_upper_idx[] = {
   UVCONST( 26192198741217), UVCONST( 35007464587700), UVCONST( 47072080175048),
   UVCONST( 63662369320719), UVCONST( 86631548367209), UVCONST(118640390543125),
   UVCONST(163548371026622),
-  UVCONST(226945400832000),  /* estimates past this point */
+  UVCONST(226944876544000),  /* estimates here and further */
   UVCONST(317156491264000),
   UVCONST(446676598784000),
   1.5*UVCONST(446676598784000),
@@ -141,16 +141,16 @@ static const UV large_ram_lower_idx[] = {
   UVCONST( 22497437657452), UVCONST( 31726512746004), UVCONST( 45096957879914),
   UVCONST( 64630470145902),
   UVCONST( 93416220154664),
-  UVCONST(136212119552001), /* estimates past this point */
-  UVCONST(200433729536001),
-  UVCONST(297694920704001),
-  UVCONST(442381631488001),
-  1.45*UVCONST(442381631488001),
-  2.10*UVCONST(442381631488001),
-  3.04*UVCONST(442381631488001),
-  4.40*UVCONST(442381631488001),
-  6.40*UVCONST(442381631488001),
-  9.29*UVCONST(442381631488001),
+  UVCONST(136212405571722),
+  UVCONST(200433884291811),
+  UVCONST(297694920704001), /* estimates here and further */
+  UVCONST(444529115136001),
+  1.45*UVCONST(444529115136001),
+  2.10*UVCONST(444529115136001),
+  3.04*UVCONST(444529115136001),
+  4.40*UVCONST(444529115136001),
+  6.40*UVCONST(444529115136001),
+  9.29*UVCONST(444529115136001),
 };
 #define LARGE_NRAM_LOWER_MULT 4225
 #define LARGE_NRAM_LOWER (sizeof(large_ram_lower_idx)/sizeof(large_ram_lower_idx[0]))
@@ -301,7 +301,7 @@ UV nth_ramanujan_prime(UV n) {
 /* Returns array of Ram primes between low and high, results from first->last */
 UV* ramanujan_primes(UV* first, UV* last, UV low, UV high)
 {
-  UV beg, end, range, nlo, nhi, *L;
+  UV nlo, nhi, *L, lo, hi, mid;
 
   if (high < 2 || high < low) return 0;
   if (low < 2) low = 2;
@@ -310,19 +310,20 @@ UV* ramanujan_primes(UV* first, UV* last, UV low, UV high)
   nhi = ramanujan_prime_count_upper(high);
   L = n_range_ramanujan_primes(nlo, nhi);
 
-  /* Skip out of range values at the start and end */
-  range = nhi-nlo; beg = 0; end = range;
-
-  while (beg+10000 <= range && L[beg+10000] <  low) beg += 10000;
-  while (beg+100   <= range && L[beg+100  ] <  low) beg += 100;
-  while (beg       <= range && L[beg      ] <  low) beg++;
-
-  while (beg+10000 <= end   && L[end-10000] > high) end -= 10000;
-  while (beg+100   <= end   && L[end-100  ] > high) end -= 100;
-  while (beg       <= end   && L[end      ] > high) end--;
-
-  *first = beg;
-  *last = end;
+  /* Search for first entry in range */
+  for (lo = 0, hi = nhi-nlo+1;  lo < hi;  ) {
+    mid = lo + (hi-lo)/2;
+    if (L[mid]  <  low)  lo = mid+1;
+    else                 hi = mid;
+  }
+  *first = lo;
+  /* Search for last entry in range */
+  for (hi = nhi-nlo+1;  lo < hi;  ) {
+    mid = lo + (hi-lo)/2;
+    if (L[mid] <= high)  lo = mid+1;
+    else                 hi = mid;
+  }
+  *last = lo-1;
   return L;
 }
 

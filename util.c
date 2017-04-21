@@ -1668,8 +1668,8 @@ long double Li(long double x) {
   /* Calculate directly using Ramanujan's series. */
   if (x > 1) {
     const long double logx = logl(x);
-    long double sum = 0, inner_sum = 0, factorial = 1, power2 = 1;
-    long double q, p = -1, lix = 0, prev_lix = -1, old_sum;
+    long double sum = 0, inner_sum = 0, old_sum, factorial = 1, power2 = 1;
+    long double q, p = -1;
     int k = 0, n = 0;
 
     for (n = 1, k = 0; n < 200; n++) {
@@ -1692,7 +1692,7 @@ long double Li(long double x) {
 UV inverse_li(UV x) {
   UV r;
   int i;
-  long double t, lx = (long double)x, term, old_term;
+  long double t, lx = (long double)x, term, old_term = 0;
   if (x <= 2) return x + (x > 0);
   /* Iterate Halley's method until error grows. */
   for (i = 0, t = lx*logl(x); i < 4; i++) {
@@ -1720,8 +1720,7 @@ UV inverse_li(UV x) {
 
 UV inverse_R(UV x) {
   int i;
-  long double t, dn, lx = (long double) x, term, old_term;
-  UV r;
+  long double t, dn, lx = (long double) x, term, old_term = 0;
   if (x <= 2) return x + (x > 0);
 
   /* Rough estimate */
