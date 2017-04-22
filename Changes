@@ -15,6 +15,12 @@ Revision history for Perl module Math::Prime::Util
     - PP nth_prime_approx uses inverse_li past 1e12, which should run
       at a reasonable speed now.
 
+    - Adjusted crossover points for segment vs. LMO interval prime_count.
+
+    - is_prime, next_prime, prev_prime do a lock-free check for a find-inc-ache
+      optimization.  This is a big help on on some platforms with many threads.
+
+
 
 0.64 2017-04-17
 

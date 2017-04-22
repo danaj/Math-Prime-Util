@@ -136,7 +136,6 @@ int is_prime(UV n)
     UV m = n - d*30;
     unsigned char mtab = masktab30[m];  /* Bitmask in mod30 wheel */
     const unsigned char* sieve;
-    int isprime;
 
     /* Return 0 if a multiple of 2, 3, or 5 */
     if (mtab == 0)
@@ -149,12 +148,14 @@ int is_prime(UV n)
     if (!(n%7) || !(n%11) || !(n%13)) return 0;
 
     /* Check primary cache */
-    isprime = -1;
-    if (n <= get_prime_cache(0, &sieve))
-      isprime = 2*((sieve[d] & mtab) == 0);
-    release_prime_cache(sieve);
-    if (isprime >= 0)
-      return isprime;
+    if (n <= get_prime_cache(0,0)) {
+      int isprime = -1;
+      if (n <= get_prime_cache(0, &sieve))
+        isprime = 2*((sieve[d] & mtab) == 0);
+      release_prime_cache(sieve);
+      if (isprime >= 0)
+        return isprime;
+    }
   }
   return is_prob_prime(n);
 }
@@ -162,8 +163,7 @@ int is_prime(UV n)
 
 UV next_prime(UV n)
 {
-  UV m, sieve_size, next;
-  const unsigned char* sieve;
+  UV m, next;
 
   if (n < 30*NPRIME_SIEVE30) {
     next = next_prime_in_sieve(prime_sieve30, n, 30*NPRIME_SIEVE30);
@@ -172,10 +172,13 @@ UV next_prime(UV n)
 
   if (n >= MPU_MAX_PRIME) return 0; /* Overflow */
 
-  sieve_size = get_prime_cache(0, &sieve);
-  next = (n < sieve_size)  ?  next_prime_in_sieve(sieve, n, sieve_size)  :  0;
-  release_prime_cache(sieve);
-  if (next != 0) return next;
+  if (n < get_prime_cache(0,0)) {
+    const unsigned char* sieve;
+    UV sieve_size = get_prime_cache(0, &sieve);
+    next = (n < sieve_size)  ?  next_prime_in_sieve(sieve, n, sieve_size)  :  0;
+    release_prime_cache(sieve);
+    if (next != 0) return next;
+  }
 
   m = n % 30;
   do { /* Move forward one. */
@@ -188,18 +191,18 @@ UV next_prime(UV n)
 
 UV prev_prime(UV n)
 {
-  const unsigned char* sieve;
   UV m, prev;
 
   if (n < 30*NPRIME_SIEVE30)
     return prev_prime_in_sieve(prime_sieve30, n);
 
-  if (n < get_prime_cache(0, &sieve)) {
-    prev = prev_prime_in_sieve(sieve, n);
+  if (n < get_prime_cache(0,0)) {
+    const unsigned char* sieve;
+    UV sieve_size = get_prime_cache(0, &sieve);
+    prev = (n < sieve_size)  ?  prev_prime_in_sieve(sieve, n)  :  0;
     release_prime_cache(sieve);
-    return prev;
+    if (prev != 0) return prev;
   }
-  release_prime_cache(sieve);
 
   m = n % 30;
   do { /* Move back one. */
