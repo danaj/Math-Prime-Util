@@ -329,17 +329,20 @@ UV segment_prime_count(UV low, UV high)
 
 UV prime_count(UV lo, UV hi)
 {
-  UV count;
+  UV count, range_threshold;
 
-  if (lo > hi)
+  if (lo > hi || hi < 2)
     return 0;
 
-  if (hi < 66000000 || (hi / (hi-lo+1)) > 10000)
+  /* We use table acceleration so this is preferable for small inputs */
+  if (hi < 66000000)  return segment_prime_count(lo, hi);
+
+  /* Rough empirical threshold for when segment faster than LMO */
+  range_threshold = hi / (isqrt(hi)/200);
+  if ( (hi-lo+1) < range_threshold )
     return segment_prime_count(lo, hi);
 
-  count = LMO_prime_count(hi);
-  if (lo > 2)
-    count -= LMO_prime_count(lo-1);
+  return LMO_prime_count(hi) - ((lo < 2) ? 0 : LMO_prime_count(lo-1));
 
   return count;
 }
