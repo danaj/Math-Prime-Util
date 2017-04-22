@@ -2349,7 +2349,8 @@ sub _powmod {
   $t;
 }
 
-# Make sure to work around RT71548 here, and correct lcm semantics.
+# Make sure to work around RT71548, Math::BigInt::Lite,
+# and use correct lcm semantics.
 sub gcd {
   # First see if all inputs are non-bigints  5-10x faster if so.
   if (0 == scalar(grep { ref($_) } @_)) {
@@ -2362,7 +2363,7 @@ sub gcd {
     return $x;
   }
   my $gcd = Math::BigInt::bgcd( map {
-    my $v = ($_ < 2147483647 || ref($_) eq 'Math::BigInt') ? $_ : "$_";
+    my $v = (($_ < 2147483647 && !ref($_)) || ref($_) eq 'Math::BigInt') ? $_ : "$_";
     $v;
   } @_ );
   $gcd = _bigint_to_int($gcd) if $gcd->bacmp(BMAX) <= 0;
@@ -2371,7 +2372,7 @@ sub gcd {
 sub lcm {
   return 0 unless @_;
   my $lcm = Math::BigInt::blcm( map {
-    my $v = ($_ < 2147483647 || ref($_) eq 'Math::BigInt') ? $_ : "$_";
+    my $v = (($_ < 2147483647 && !ref($_)) || ref($_) eq 'Math::BigInt') ? $_ : "$_";
     return 0 if $v == 0;
     $v = -$v if $v < 0;
     $v;
