@@ -77,6 +77,7 @@ WriteMakefile1(
                   version => '2',
                   url     => 'http://search.cpan.org/perldoc?CPAN::Meta::Spec',
                },
+               dynamic_config => 1,  # Check for GMP on install
                resources    => {
                   license    => [ 'http://dev.perl.org/licenses/' ],
                   homepage   => 'https://github.com/danaj/Math-Prime-Util',
@@ -118,7 +119,7 @@ WriteMakefile1(
                prereqs => {
                  runtime => {
                    recommends => {
-                     'Math::Prime::Util::GMP' => 0.45,
+                     'Math::Prime::Util::GMP' => 0.46,
                      'Math::BigInt::GMP'      => 0,
                      'Math::MPFR'             => 2.03,
                      'Digest::SHA'            => 5.87,
