@@ -10,13 +10,16 @@ use Math::Prime::Util;
 my $count = shift || -1;
 
 my @numlist;
-my @testnums = (0..1000, 5_000_000 .. 5_001_000, 30037, 20359*41117, 92987*65171, 27361*31249, 70790191, 3211717*9673231);
+#my @testnums = (0..1000, 5_000_000 .. 5_001_000, 30037, 20359*41117, 92987*65171, 27361*31249, 70790191, 3211717*9673231);
+my @testnums = (0..1000, 5_000_000 .. 5_001_000, 50_000_000 .. 50_050_000);
 
 my $ip_subs = {
   #"Abigail" => sub { my$r;$r=abigail($_)     for @numlist; $r;},
+  "Monks1"  => sub { my$r;$r=monks1($_)      for @numlist; $r;},
   "Rosetta" => sub { my$r;$r=rosetta($_)     for @numlist; $r;},
   "Rosetta2"=> sub { my$r;$r=rosetta2($_)    for @numlist; $r;},
   "DJ"      => sub { my$r;$r=dj($_)          for @numlist; $r;},
+  "DJ1"     => sub { my$r;$r=dj1($_)         for @numlist; $r;},
   "DJ2"     => sub { my$r;$r=dj2($_)         for @numlist; $r;},
   "DJ3"     => sub { my$r;$r=dj3($_)         for @numlist; $r;},
   "DJ4"     => sub { my$r;$r=dj4($_)         for @numlist; $r;},
@@ -49,11 +52,13 @@ while (my($name, $sub) = each (%$ip_subs)) {
 }
 for my $n (0 .. 50000) {
   die "dj($n) != mpu($n)" unless dj($n) == mpu_isprime($n);
+  die "dj1($n) != mpu($n)" unless dj1($n) == mpu_isprime($n);
   die "dj2($n) != mpu($n)" unless dj2($n) == mpu_isprime($n);
   die "dj3($n) != mpu($n)" unless dj3($n) == mpu_isprime($n);
   die "dj4($n) != mpu($n)" unless dj4($n) == mpu_isprime($n);
   die "rosetta($n) != mpu($n)" unless rosetta($n) == mpu_isprime($n)/2;
   die "rosetta2($n) != mpu($n)" unless rosetta2($n) == mpu_isprime($n)/2;
+  die "monks1($n) != mpu($n)" unless monks1($n) == mpu_isprime($n)/2;
 }
 print "Done with verification, starting benchmark\n";
 
@@ -81,6 +86,28 @@ sub rosetta2 {
         return 1;
     }
 }
+sub monks1 {
+  my $i = shift;
+  use POSIX;
+  my ($j,$h,$sentinel) = (0,0,0,0);
+  return ($i == 2) if $i <= 2;
+  # if $i is an even number, it can't be a prime
+  if($i%2==0){}
+  else {
+    $h=POSIX::floor(sqrt($i));
+    $sentinel=0;
+    # since $i can't be even -> only divide by odd numbers
+    for($j=3; $j<=$h; $j+=2){
+      if($i%$j==0){
+        $sentinel++;
+        # $i is not a prime, we can get out of the loop
+        $j=$h;
+      }
+    }
+    return 1 if $sentinel == 0;
+  }
+  0;
+}
 
 # Terrifically clever, but useless for large numbers
 sub abigail {
@@ -88,6 +115,17 @@ sub abigail {
 }
 
 sub dj {
+  my $n = shift;
+  return 2 if $n == 2;
+  return 0 if $n <= 1 || $n % 2 == 0;
+  my $limit = int(sqrt($n));
+  for (my $i = 3; $i <= $limit; $i += 2) {
+    return 0 if $n % $i == 0;
+  }
+  2;
+}
+
+sub dj1 {
   my($n) = @_;
   return 0 if $n < 2;        # 0 and 1 are composite
   return 2 if ($n == 2) || ($n == 3) || ($n == 5);  # 2, 3, 5 are prime

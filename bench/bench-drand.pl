@@ -29,7 +29,10 @@ my $isaac = Math::Random::ISAAC->new($time);
 my $mt = Math::Random::MT->new($time);
 my $xor = Math::Random::Xorshift->new($time);
 
-#                             Performance / Quality:
+use Math::Random::ISAAC::XS;  my $mrixs = Math::Random::ISAAC::XS->new($time);
+use Math::Random::ISAAC::PP;  my $mripp = Math::Random::ISAAC::PP->new($time);
+
+#                      Performance / Quality:
 #   CORE::rand    29000k/s    ++++ / ---  drand48 has many bad points
 #   Xorshift      16000k/s    +++  / ---  32-bit, old alg, closed interval
 #   MTwist        14000k/s    +++  /  ++  
@@ -40,6 +43,7 @@ my $xor = Math::Random::Xorshift->new($time);
 #   MT             2200k/s    -    /  ++  32-bit, MTwist is faster
 #   Crypt::PRNG     705k/s    --   / +++  
 #   Secure          426k/s    ---  / ---  32-bit
+#   ntheory PP      110k/s    ---- / +++  ChaCha20, very very slow
 #
 #  Also see  http://www.pcg-random.org/statistical-tests.html
 #            https://blogs.unity3d.com/2015/01/07/a-primer-on-repeatable-random-numbers/
@@ -51,6 +55,8 @@ cmpthese($trials, {
   'M::R::Xorshift::rand' => sub { Math::Random::Xorshift::rand for 1..1000 },
 
   # doubles with only 32-bits of random data
+  'M::R::ISAAC::XS' => sub { $mrixs->rand for 1..1000 },
+  'M::R::ISAAC::PP' => sub { $mripp->rand for 1..1000 },
   'M::R::ISAAC->rand' => sub { $isaac->rand for 1..1000 },
   'M::R::Secure::rand' => sub { Math::Random::Secure::rand for 1..1000 },
   'M::R::MT->rand' => sub { $mt->rand for 1..1000 },

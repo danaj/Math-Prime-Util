@@ -11,8 +11,10 @@ use Bytes::Random;              # Just a loop around CORE::rand!
 use Bytes::Random::Secure;
 use Math::Random::MTwist;
 use Crypt::PRNG;
-use Crypt::Random;
-use Data::Entropy::Algorithms;
+#use Crypt::Random;
+#use Data::Entropy::Algorithms;
+use Crypt::OpenSSL::Random;   # note rand_bytes == rand_pseudo_bytes
+use Rand::Urandom;
 use Benchmark qw/:all/;
 
 Math::Prime::Util::ISAAC::srand;
@@ -95,5 +97,7 @@ if (1) {
   #"DEA"      => sub { Data::Entropy::Algorithms::rand_bits(8*65536); },
   #"Crypt::Random"   => sub { Crypt::Random::makerandom_octet(Length=>65536,Strength=>0); },
   "BR"       => sub { Bytes::Random::random_bytes(64*1024); },
+  "OpenSSL"  => sub { Crypt::OpenSSL::Random::random_bytes(64*1024); },
+  "Urandom" => sub { Rand::Urandom::rand_bytes(64*1024); },
  });
 }
