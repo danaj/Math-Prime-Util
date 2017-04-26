@@ -24,14 +24,14 @@
 /* These are playing loose with Sondow/Nicholson/Noe 2011 theorem 4.
  * The last value should be rigorously checked using actual R_n values. */
 static const uint32_t small_ram_upper_idx[] = {
-  3245, 3971, 3980, 5215, 5220, 5223, 5225, 5261, 5265, 5271, 5277, 5553, 5555,
-  7430, 7447, 7451, 7457, 8582, 8605, 12589, 12602, 12620, 12729, 12762, 18129,
-  18154, 18180, 18294, 18396, 18410, 21961, 25799, 27247, 28713, 39635, 40061,
-  40367, 45338, 51279, 63039, 65536, 65724, 84640, 88726, 104288, 107849,
-  145506, 151742, 186441, 216978, 223902, 270700, 332195, 347223, 440804,
-  508096, 565039, 768276, 828377, 1090285, 1277320, 1568165, 1896508, 2375799,
-  3300765, 4162908, 5124977, 6522443, 9298256, 11406250, 15528199, 20637716,
-  28239295, 39711166, 55623925, 80161468, 117683515, 174200145, 261514813,
+  3971,3980,5219,5222,5225,5261,5264,5270,5276,5278,5324,5326,5554,7430,
+  7448,7451,8580,8584,8607,12589,12603,12620,12729,18119,18134,18174,18289,
+  18300,18401,18419,25799,27247,27267,28663,39635,40061,40366,45338,51320,
+  64439,65566,65829,84761,89055,104959,107852,146968,151755,186499,217258,
+  223956,270700,332195,347223,440804,508096,565039,768276,828377,1090285,
+  1277320,1568165,1896508,2375799,3300765,4162908,5124977,6522443,9298256,
+  11406250, 15528199, 20637716, 28239295, 39711166,
+  55623925, 80161468, 117683515, 174200145, 261514813,
   404761877, 633278258, 1024431762, 1683645810, UVCONST(2868095461),
   UVCONST(4294967295)
 };
@@ -41,10 +41,11 @@ static const uint32_t small_ram_upper_idx[] = {
 #if BITS_PER_WORD == 64
 static const UV large_ram_upper_idx[] = {
   UVCONST(     2209850625), UVCONST(     2505047527), UVCONST(     2868095461),
+  /* 11071, 11070, 11069,   11068, 11067, 11066,   11065, 11064, 11063 */
   UVCONST(     3300302120), UVCONST(     3790618144), UVCONST(     4350498841),
   UVCONST(     5046044184), UVCONST(     5822787413), UVCONST(     6745591770),
   UVCONST(     7843974826), UVCONST(     9136430799), UVCONST(    10622435139),
-  /* 11060, 11059, 11058,   11057, 11056, 11055,   11054, 11053, 11052 */
+  /* 11062, 11061, 11060,   11059, 11058, 11057,   11056, 11055, 11054 */
   UVCONST(    12458964476), UVCONST(    14547850676), UVCONST(    17105209669),
   UVCONST(    20137461647), UVCONST(    23754200841), UVCONST(    28113266506),
   UVCONST(    33244053524), UVCONST(    39635847319), UVCONST(    47216781912),
@@ -64,12 +65,15 @@ static const UV large_ram_upper_idx[] = {
   UVCONST( 26192198741217), UVCONST( 35007464587700), UVCONST( 47072080175048),
   UVCONST( 63662369320719), UVCONST( 86631548367209), UVCONST(118640390543125),
   UVCONST(163548371026622),
-  UVCONST(226944876544000),  /* estimates here and further */
-  UVCONST(317156491264000),
-  UVCONST(446676598784000),
-  1.5*UVCONST(446676598784000),
-  1.5*1.5*UVCONST(446676598784000),
-  1.6*1.5*1.5*UVCONST(446676598784000),
+  UVCONST(226944845224518),  /* estimates here and further */
+  UVCONST(317123985408000),
+  /* 11017, 11016, 11015,   11014, 11013, 11012,   11011, 11010, 11009 */
+  UVCONST(446408163328000),
+  UVCONST(634268168576000),
+  1.50*UVCONST(634268168576000),
+  2.25*UVCONST(634268168576000),
+  3.38*UVCONST(634268168576000),
+  5.06*UVCONST(634268168576000),
 };
 #define LARGE_NRAM_UPPER_MULT 11075
 #define LARGE_NRAM_UPPER (sizeof(large_ram_upper_idx)/sizeof(large_ram_upper_idx[0]))
@@ -89,7 +93,7 @@ UV nth_ramanujan_prime_upper(UV n) {
     if      (n < 20) mult = 3580;
     else if (n < 98) mult = 3340;
     else if (n < 1580) mult = 3040;
-    else if (n < 5214) mult = 2880; /* TODO */
+    else if (n < 3242) mult = 2885;
     else {
       for (i = 0; i < SMALL_NRAM_UPPER; i++)
         if (small_ram_upper_idx[i] > n)
@@ -139,18 +143,18 @@ static const UV large_ram_lower_idx[] = {
   UVCONST(  8391511555810), UVCONST( 11573178646156), UVCONST( 16075623921843),
   /* 4186, 4185, 4184,   4183, 4182, 4181,   4180, 4179, 4178 */
   UVCONST( 22497437657452), UVCONST( 31726512746004), UVCONST( 45096957879914),
-  UVCONST( 64630470145902),
-  UVCONST( 93416220154664),
-  UVCONST(136212405571722),
+  UVCONST( 64630470145902), UVCONST( 93416220154664), UVCONST(136212405571722),
   UVCONST(200433884291811),
-  UVCONST(297694920704001), /* estimates here and further */
-  UVCONST(444529115136001),
-  1.45*UVCONST(444529115136001),
-  2.10*UVCONST(444529115136001),
-  3.04*UVCONST(444529115136001),
-  4.40*UVCONST(444529115136001),
-  6.40*UVCONST(444529115136001),
-  9.29*UVCONST(444529115136001),
+  UVCONST(297734766592001), /* estimates here and further */
+  UVCONST(446408163328001),
+  /* 4177, 4176, 4175,   4174, 4173, 4172,   4171, 4170, 4169 */
+  UVCONST(662438953472000),
+  1.48*UVCONST(662438953472000),
+  2.19*UVCONST(662438953472000),
+  3.24*UVCONST(662438953472000),
+  4.79*UVCONST(662438953472000),
+  7.10*UVCONST(662438953472000),
+ 10.50*UVCONST(662438953472000),
 };
 #define LARGE_NRAM_LOWER_MULT 4225
 #define LARGE_NRAM_LOWER (sizeof(large_ram_lower_idx)/sizeof(large_ram_lower_idx[0]))
@@ -224,7 +228,7 @@ UV* n_ramanujan_primes(UV n) {
   UV max, k, s, *L;
   unsigned char* sieve;
   max = nth_ramanujan_prime_upper(n); /* Rn <= max, so we can sieve to there */
-  if (_XS_get_verbose() >= 2) printf("sieving to %"UVuf" for first %"UVuf" Ramanujan primes\n", max, n);
+  if (_XS_get_verbose() >= 2) { printf("sieving to %"UVuf" for first %"UVuf" Ramanujan primes\n", max, n); fflush(stdout); }
   Newz(0, L, n, UV);
   L[0] = 2;
   sieve = sieve_erat30(max);
@@ -258,7 +262,7 @@ UV* n_range_ramanujan_primes(UV nlo, UV nhi) {
 
   if (mink < 15) mink = 15;
   if (mink % 2 == 0) mink--;
-  if (verbose >= 2) printf("Rn[%"UVuf"] to Rn[%"UVuf"]     Noe's: %"UVuf" to %"UVuf"\n", nlo, nhi, mink, maxk);
+  if (verbose >= 2) { printf("Rn[%"UVuf"] to Rn[%"UVuf"]     Noe's: %"UVuf" to %"UVuf"\n", nlo, nhi, mink, maxk); fflush(stdout); }
 
   s = 1 + prime_count(2,mink-2) - prime_count(2,(mink-1)>>1);
   {
@@ -285,7 +289,7 @@ UV* n_range_ramanujan_primes(UV nlo, UV nhi) {
     end_segment_primes(ctx);
     Safefree(seg2);
   }
-  if (verbose >= 2) printf("Generated %"UVuf" Ramanujan primes from %"UVuf" to %"UVuf"\n", nhi-nlo+1, L[0], L[nhi-nlo]);
+  if (verbose >= 2) { printf("Generated %"UVuf" Ramanujan primes from %"UVuf" to %"UVuf"\n", nhi-nlo+1, L[0], L[nhi-nlo]); fflush(stdout); }
   return L;
 }
 
@@ -357,7 +361,9 @@ UV ramanujan_prime_count_approx(UV n)
 UV nth_ramanujan_prime_approx(UV n)
 {
   UV lo = nth_ramanujan_prime_lower(n),  hi = nth_ramanujan_prime_upper(n);
-  return lo + 1.52 * ((hi-lo) >> 1);
+  /* Our upper bounds come out much closer, so weight toward them. */
+  double weight = (n <= UVCONST(4294967295))  ?  1.62  :  1.51;
+  return lo + weight * ((hi-lo) >> 1);
 }
 
 #if BITS_PER_WORD == 64
@@ -391,6 +397,7 @@ static UV _ramanujan_prime_count(UV n) {
   if ((n & (n-1)) == 0 && log2 <= RAMPC2)
     return ramanujan_counts_pow2[log2];
 
+  if (_XS_get_verbose()) { printf("ramanujan_prime_count calculating Pi(%lu)\n",n); fflush(stdout); }
   v = prime_count(2,n) - prime_count(2,n >> 1);
 
   /* For large enough n make a slightly bigger window */
@@ -410,7 +417,7 @@ static UV _ramanujan_prime_count(UV n) {
       if (i < wlen) break;
     }
     winmult *= 2;
-    if (_XS_get_verbose()) printf("  nth_ramanujan_prime increasing window\n");
+    if (_XS_get_verbose()) { printf("  ramanujan_prime_count increasing window\n"); fflush(stdout); }
   }
   rn = swin + i - 1;
   Safefree(L);

@@ -2209,7 +2209,7 @@ sub _sum_primes_n {
       $b = $r2 - int($n/$b) + 1 if $b > $r;
       $S[$a] -= $p * ($S[$b] - $sp);
     }
-  }, 2,$r);
+  }, 2, $r);
   $S[$r2];
 }
 
@@ -2233,6 +2233,8 @@ sub sum_primes {
   # We have to make some decision about whether to use our PP prime sum or loop
   # doing the XS sieve.  TODO: Be smarter here?
   if (!Math::Prime::Util::prime_get_config()->{'xs'} && !ref($sum) && !MPU_32BIT && ($high-$low) > 1000000) {
+    # Unfortunately with bigints this is horrifically slow, but we have to do it.
+    $high = BZERO->copy + $high  if $high >= (1 << (MPU_MAXBITS/2))-1;
     $sum = _sum_primes_n($high);
     $sum -= _sum_primes_n($low-1) if $low > 2;
     return $sum;

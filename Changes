@@ -4,11 +4,16 @@ Revision history for Perl module Math::Prime::Util
 
     [FUNCTIONALITY AND PERFORMANCE]
 
+    - Add Math::BigInt::Lite to list of known bigint objects.
+
+    - sum_primes fix for certain ranges with results near 2^64.
+
+    - is_prime, next_prime, prev_prime do a lock-free check for a find-in-cache
+      optimization.  This is a big help on on some platforms with many threads.
+
     - C versions of LogarithmicIntegral and inverse_li rewritten.
       inverse_li honors the documentation promise within FP representation.
       Thanks to Kim Walisch for motivation and discussion.
-
-    - Add Math::BigInt::Lite to list of known bigint objects.
 
     - Slightly faster XS nth_prime_approx.
 
@@ -17,9 +22,7 @@ Revision history for Perl module Math::Prime::Util
 
     - Adjusted crossover points for segment vs. LMO interval prime_count.
 
-    - is_prime, next_prime, prev_prime do a lock-free check for a find-inc-ache
-      optimization.  This is a big help on on some platforms with many threads.
-
+    - Slightly tighter prime_count_lower, nth_prime_upper, and Ramanujan bounds.
 
 
 0.64 2017-04-17

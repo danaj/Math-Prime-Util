@@ -119,8 +119,6 @@
 - polymul, polyadd, polydiv, polyneg, polyeval, polyorder, polygcd, polylcm, polyroots, ...
   A lot of our ops do these mod n, we could make ..mod versions of each.
 
-- Berkane/Dusart 2016, Axler 2016, Axler 2017 could tune prime count bounds.
-
 ---- \/ ------  Next release
 
 - Remove primeinc config option.
