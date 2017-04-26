@@ -87,8 +87,9 @@ sub _make_big_gcds {
 #    2) The easy method of next_prime(random number), known as PRIMEINC, is
 #       fast but gives a terrible distribution.  It has a positive bias and
 #       most importantly the probability for a prime is proportional to its
-#       gap, which makes a terrible distribution (some numbers in the range
-#       will be thousands of times more likely than others).
+#       gap, meaning some numbers in the range will be thousands of times
+#       more likely than others).  On the contrary however, nobody has a way
+#       to exploit this, and it's not-uncommon to see used.
 #
 # We use:
 #   TRIVIAL range within native integer size (2^32 or 2^64)
@@ -173,17 +174,6 @@ my $_random_prime = sub {
     # Math::BigInt::GMP's RT 71548 will wreak havoc if we don't do this.
     $low = Math::BigInt->new("$low") if ref($high) eq 'Math::BigInt';
     confess "Invalid _random_prime parameters: $low, $high" if ($low % 2) == 0 || ($high % 2) == 0;
-
-    # If they want to use the crappy PRIMEINC algorithm, do it.
-    if (prime_get_config->{'use_primeinc'}) {
-      $prime = $low + urandomm($high-$low+1);  # Random number from low-high
-      $prime = next_prime($prime-1);           # Increment until prime
-      if ($prime > $high) {                    # Rollover
-        $prime = next_prime($low-1);
-        return if $prime > $high;
-      }
-      return $prime;
-    }
 
     # We're going to look at the odd numbers only.
     my $oddrange = (($high - $low) >> 1) + 1;
@@ -459,22 +449,6 @@ sub random_nbit_prime {
 
   croak "Mid-size random primes not supported on broken old Perl"
     if OLD_PERL_VERSION && MPU_64BIT && $bits > 49 && $bits <= 64;
-
-  # If they want to use the crappy PRIMEINC algorithm, do it.
-  if (prime_get_config->{'use_primeinc'}) {
-    my($prime, $low, $high);
-    $low  = ($bits >  MPU_MAXBITS) ? Math::BigInt->bone->blsft($bits-1)
-                                   : (1 << ($bits-1));
-    $high = ($bits >  MPU_MAXBITS) ? Math::BigInt->bone->blsft($bits)->bdec()
-          : ($bits == MPU_MAXBITS) ? ~0
-                                   : (1 << $bits) - 1;
-    $prime = next_prime($low + urandomb($bits-1) - 1);
-    if ($prime > $high) {                    # Rollover
-      $prime = next_prime($low-1);
-      return if $prime > $high;
-    }
-    return $prime;
-  }
 
   # Fouque and Tibouchi (2011) Algorithm 1 (basic)
   # Modified to make sure the nth bit is always set.

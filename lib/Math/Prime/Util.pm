@@ -201,7 +201,6 @@ $_Config{'maxprime'}    = MPU_MAXPRIME;
 $_Config{'maxprimeidx'} = MPU_MAXPRIMEIDX;
 $_Config{'assume_rh'}   = 0;
 $_Config{'verbose'}     = 0;
-$_Config{'use_primeinc'} = 0;
 
 # used for code like:
 #    return _XS_foo($n)  if $n <= $_XS_MAXVAL
@@ -244,8 +243,10 @@ sub prime_set_config {
       _XS_set_callgmp($_HAVE_GMP) if $_Config{'xs'};
     } elsif ($param eq 'nobigint') {
       $_Config{'nobigint'} = ($value) ? 1 : 0;
+    } elsif ($param eq 'irand') {
+      carp "ntheory irand option is deprecated";
     } elsif ($param eq 'use_primeinc') {
-      $_Config{'use_primeinc'} = ($value) ? 1 : 0;
+      carp "ntheory use_primeinc option is deprecated";
     } elsif ($param =~ /^(assume[_ ]?)?[ge]?rh$/ || $param =~ /riemann\s*h/) {
       $_Config{'assume_rh'} = ($value) ? 1 : 0;
     } elsif ($param eq 'verbose') {
@@ -3524,12 +3525,6 @@ functions return a uniformly selected prime from the set of primes within
 the range.  Hence given C<random_prime(1000)>, the numbers 2, 3, 487, 631,
 and 997 all have the same probability of being returned.
 
-The configuration option C<use_primeinc> can be set to override this and
-use the PRIMEINC algorithm for non-trivial sizes.  This applies to all
-random prime functions.  Never use this option for crypto or if uniformly random
-primes are desired, but if you really don't care and just want any old
-prime in the range, setting this may make this run 2-4x faster.
-
 For small numbers, a random index selection is done, which gives ideal
 uniformity and is very efficient with small inputs.  For ranges larger than
 this ~16-bit threshold but within the native bit size, a Monte Carlo method
@@ -3755,7 +3750,6 @@ the configuration, so changing it has no effect.  The settings include:
   maxprime        the largest representable prime, without bigint
   maxprimeidx     the index of maxprime, without bigint
   assume_rh       whether to assume the Riemann hypothesis (default 0)
-  use_primeinc    allow the PRIMEINC random prime algorithm
 
 =head2 prime_set_config
 
@@ -3788,10 +3782,6 @@ Allows setting of some parameters.  Currently the only parameters are:
                as primality testing.  A later version may also have a
                way to indicate whether no RH, RH, GRH, or ERH is to
                be assumed.
-
-  use_primeinc When generating random primes, allow the PRIMEINC algorithm
-               to be used.  This can be 2-4x faster than the default
-               methods, but gives bad uniformity.
 
 
 =head1 FACTORING FUNCTIONS

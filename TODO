@@ -121,7 +121,6 @@
 
 ---- \/ ------  Next release
 
-- Remove primeinc config option.
 - put entropy_bytes call in XS.
 - have the RNG return a context and store it in our package context space.
   Should help threaded performance by removing lock.

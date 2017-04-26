@@ -2,6 +2,10 @@ Revision history for Perl module Math::Prime::Util
 
 0.65 2017-?
 
+    [API Changes]
+
+    - Config options irand and primeinc are deprecated.  They will carp if set.
+
     [FUNCTIONALITY AND PERFORMANCE]
 
     - Add Math::BigInt::Lite to list of known bigint objects.
