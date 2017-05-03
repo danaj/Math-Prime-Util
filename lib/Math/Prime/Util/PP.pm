@@ -1599,7 +1599,7 @@ sub inverse_li {
   }
   $t;
 }
-sub inverse_R {
+sub _inverse_R {
   my($n) = @_;
   _validate_num($n) || _validate_positive_integer($n);
 
