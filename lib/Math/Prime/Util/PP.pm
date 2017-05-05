@@ -6339,6 +6339,49 @@ sub miller_rabin_random {
   1;
 }
 
+sub random_semiprime {
+  my($b,$type) = @_;
+  return 0 if defined $b && int($b) < 0;
+  _validate_positive_integer($b);
+  $type = 0 unless defined $type;
+  _validate_positive_integer($type,0,1);
+
+  return undef if $b < 3;
+  my $n;
+  my $min = ($b <= MPU_MAXBITS)  ?  (1 << ($b-1))  :  BTWO->copy->bpow($b-1);
+  my $max = $min + ($min - 1);
+
+  if ($type == 0) {
+    my $L = $b >> 1;
+    my $N = $b - $L;
+    return undef if $L < 2;
+    my $one = ($b <= MPU_MAXBITS) ? 1 : BONE;
+    do {
+      $n = $one * random_nbit_prime($L) * random_nbit_prime($N);
+    } while $n < $min || $n > $max;
+  } elsif ($b <= 64) {
+    do {
+      $n = $min + urandomb($b-1);
+    } while !Math::Prime::Util::is_semiprime($n);
+  } else {
+    # Idea from Charles Greathouse IV, 2010.  The distribution is right
+    # at the high level (small primes weighted more and not far off what
+    # we get with the uniform selection), but there is a noticeable skew
+    # toward primes with a large gap after them.  For instance 3 ends up
+    # being weighted as much as 2, and 7 more than 5.
+    my $M = 0.26149721284764278375542683860869585905;
+    my $weight = $M + log($b * log(2)/2);
+    my $r = Math::Prime::Util::drand($weight) - $M;
+    $r = _upgrade_to_float($r);
+    my $a = $r->bexp->bexp->bround->as_int;
+    my $p = $a < 2 ? 2 : Math::Prime::Util::prev_prime($a+1);
+    my $q = random_prime( int(($min+$p-1)/$p), int($max/$p) );
+    $n = $p * $q;
+  }
+  $n = _bigint_to_int($n) if ref($n) && $n->bacmp(BMAX) <= 0;
+  $n;
+}
+
 1;
 
 __END__

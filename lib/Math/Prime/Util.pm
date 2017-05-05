@@ -52,6 +52,7 @@ our @EXPORT_OK =
       random_proven_prime random_proven_prime_with_cert
       random_maurer_prime random_maurer_prime_with_cert
       random_shawe_taylor_prime random_shawe_taylor_prime_with_cert
+      random_semiprime
       primorial pn_primorial consecutive_integer_lcm gcdext chinese
       gcd lcm factor factor_exp divisors valuation hammingweight
       todigits fromdigits todigitstring sumdigits
@@ -3698,6 +3699,29 @@ L</is_provable_prime_with_cert>, and can be parsed by L</verify_prime> or
 any other software that understands MPU primality certificates.
 The proof construction consists of a single chain of C<Pocklington> types.
 
+
+=head2 random_semiprime
+
+Takes a positive integer number of bits C<bits> and an optional
+integer type C<type>, and returns a random semiprime of exactly
+C<bits> bits.
+The result has exactly two prime factors (hence semiprime).
+If the number of bits is so small that no semiprimes of that
+size exist, C<undef> is returned.
+
+If the optional argument C<type> is not present or is zero, the
+result will be an even bit split, not uncommon for cryptographic
+use.  For example, a 64-bit semiprime of this type is the product
+of two 32-bit primes.
+
+With C<type> set to 1, the result is a uniform selection from the
+complete set of all C<bits>-bit numbers with exactly two factors.
+Hence the semiprimes of form C<2*p> will be the most common,
+followed by C<3*p>, etc.
+
+Some effort is taken to select uniformly from the universe of
+C<bits>-bit semiprimes.  This takes slightly longer than some
+methods that do not select uniformly.
 
 
 =head1 UTILITY FUNCTIONS

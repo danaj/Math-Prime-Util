@@ -89,3 +89,34 @@ int is_mr_random(UV n, UV k) {
   }
   return 1;
 }
+
+UV random_semiprime(UV b, int type) {
+  UV min, max, n;
+
+  if (b < 3 || b > BITS_PER_WORD)
+    return 0;
+
+  min = UVCONST(1) << (b-1);
+  max = min + (min-1);
+
+  /* There are faster ways to generate if we could be lax on distribution. */
+
+  if (type == 0) { /* Even split */
+    UV L = b/2, N = b - L;
+    if (L < 2) return 0;
+    do {
+      n = random_nbit_prime(L) * random_nbit_prime(N);
+    } while (n < min || n > max);
+  } else { /* Generic semiprime */
+    static const unsigned char small_semi[] = {4,6,9,10,14,15,21,22,25,26,33,34,35,38,39,46,49,51,55,57,58,62,65,69,74,77,82,85,86,87,91,93,94,95,106,111,115,118,119,121,122,123};
+    switch (b) {
+      case 3:  n = small_semi[  0 + urandomm32( 2) ]; break;
+      case 4:  n = small_semi[  2 + urandomm32( 4) ]; break;
+      case 5:  n = small_semi[  6 + urandomm32( 4) ]; break;
+      case 6:  n = small_semi[ 10 + urandomm32(12) ]; break;
+      case 7:  n = small_semi[ 22 + urandomm32(20) ]; break;
+      default: do { n = min + urandomb(b-1); } while (!is_semiprime(n)); break;
+    }
+  }
+  return n;
+}

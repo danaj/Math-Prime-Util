@@ -9,6 +9,7 @@ use Test::More;
 use Math::Prime::Util qw/random_prime random_ndigit_prime random_nbit_prime
                          random_maurer_prime random_shawe_taylor_prime
                          random_proven_prime
+                         random_semiprime factor
                          is_prime prime_set_config/;
 
 my $use64 = Math::Prime::Util::prime_get_config->{'maxbits'} > 32;
@@ -80,6 +81,7 @@ plan tests => 13+1+1+1+1
               + (1 * scalar @random_ndigit_tests)
               + (4 * scalar @random_nbit_tests)
               + 4
+              + 7 # random_semiprime
               + 0;
 
 my $infinity = 20**20**20;
@@ -203,4 +205,21 @@ SKIP: {
   ok(    $n >= Math::BigInt->new(10)->bpow(29)
       && $n <= Math::BigInt->new(10)->bpow(30),
       "random 30-digit prime '$n' is in range" );
+}
+
+{
+  my $n;
+  is(random_semiprime(3),undef,"random_semiprime(3) returns undef");
+  is(random_semiprime(2,1),undef,"random_semiprime(2,1) returns undef");
+  is(random_semiprime(4),9,"random_semiprime(4) = 9");
+  $n = random_semiprime(3,1);
+  ok($n ==4 || $n == 6, "random_semiprime(3,1) is 4 or 6");
+  $n = random_semiprime(26);
+  ok($n >= 33554432 && $n < 67108864 && scalar(factor($n)) == 2, "random_semiprime(26) is a 26-bit semiprime");
+  my $min = Math::BigInt->new(2)->bpow(81-1);
+  my $max = Math::BigInt->new(2)->bpow(81)->bdec;
+  $n = random_semiprime(81);
+  ok($n >= $min && $n <= $max, "random_semiprime(81) is 81 bits");
+  $n = random_semiprime(81,1);
+  ok($n >= $min && $n <= $max, "random_semiprime(81,1) is 81 bits");
 }

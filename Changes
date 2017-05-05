@@ -1,5 +1,12 @@
 Revision history for Perl module Math::Prime::Util
 
+0.66 2017-?
+
+    [ADDED]
+
+    - random_semiprime                geenrate random n-bit semiprime
+
+
 0.65 2017-05-03
 
     [API Changes]

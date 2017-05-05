@@ -1379,6 +1379,21 @@ void urandomb(IN UV bits)
     OBJECTIFY_RESULT(ST(0), ST(0));
     XSRETURN(1);
 
+void random_semiprime(IN UV bits, IN int type = 0)
+  PREINIT:
+    UV res, minarg;
+  PPCODE:
+    if (!(type == 0 || type == 1))
+      croak("Type must be 0 or 1");
+    if (bits <= BITS_PER_WORD) {
+      res = random_semiprime(bits, type);
+      if (res == 0) XSRETURN_UNDEF;
+      XSRETURN_UV(res);
+    }
+    _vcallsub_with_gmp(0.00,"random_semiprime");
+    OBJECTIFY_RESULT(ST(0), ST(0));
+    XSRETURN(1);
+
 void Pi(IN UV digits = 0)
   PREINIT:
 #ifdef USE_QUADMATH

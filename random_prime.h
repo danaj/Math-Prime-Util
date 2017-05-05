@@ -9,4 +9,6 @@ extern UV random_prime(UV lo, UV hi);
 
 extern int is_mr_random(UV n, UV k);
 
+extern UV random_semiprime(UV b, int type);
+
 #endif

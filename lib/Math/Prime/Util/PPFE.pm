@@ -102,6 +102,7 @@ if (CSPRNG_CHACHA) {
 *random_maurer_prime = \&Math::Prime::Util::PP::random_maurer_prime;
 *random_shawe_taylor_prime =\&Math::Prime::Util::PP::random_shawe_taylor_prime;
 *miller_rabin_random = \&Math::Prime::Util::PP::miller_rabin_random;
+*random_semiprime = \&Math::Prime::Util::PP::random_semiprime;
 
 sub moebius {
   if (scalar @_ <= 1) {
