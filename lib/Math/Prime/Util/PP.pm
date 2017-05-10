@@ -6371,11 +6371,12 @@ sub random_semiprime {
     # being weighted as much as 2, and 7 more than 5.
     my $M = 0.26149721284764278375542683860869585905;
     my $weight = $M + log($b * log(2)/2);
-    my $r = Math::Prime::Util::drand($weight) - $M;
-    $r = _upgrade_to_float($r);
-    my $a = $r->bexp->bexp->bround->as_int;
-    my $p = $a < 2 ? 2 : Math::Prime::Util::prev_prime($a+1);
-    my $q = random_prime( int(($min+$p-1)/$p), int($max/$p) );
+    my $r  = Math::Prime::Util::drand($weight) - $M;
+    my $re = exp($r);
+    my $a  = ($b < MPU_MAXBITS) ? int(exp($re))
+                                : _upgrade_to_float($re)->bexp->bround->as_int;
+    my $p  = $a < 2 ? 2 : Math::Prime::Util::prev_prime($a+1);
+    my $q  = random_prime( int(($min+$p-1)/$p), int($max/$p) );
     $n = $p * $q;
   }
   $n = _bigint_to_int($n) if ref($n) && $n->bacmp(BMAX) <= 0;
