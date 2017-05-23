@@ -6364,20 +6364,73 @@ sub random_semiprime {
       $n = $min + urandomb($b-1);
     } while !Math::Prime::Util::is_semiprime($n);
   } else {
-    # Idea from Charles Greathouse IV, 2010.  The distribution is right
-    # at the high level (small primes weighted more and not far off what
-    # we get with the uniform selection), but there is a noticeable skew
-    # toward primes with a large gap after them.  For instance 3 ends up
-    # being weighted as much as 2, and 7 more than 5.
-    my $M = 0.26149721284764278375542683860869585905;
-    my $weight = $M + log($b * log(2)/2);
-    my $r  = Math::Prime::Util::drand($weight) - $M;
-    my $re = exp($r);
-    my $a  = ($b < MPU_MAXBITS) ? int(exp($re))
-                                : _upgrade_to_float($re)->bexp->bround->as_int;
-    my $p  = $a < 2 ? 2 : Math::Prime::Util::prev_prime($a+1);
+    # Try to get probabilities right for small divisors
+    my %M = (
+      2 => 1.91218397452243,
+      3 => 1.33954826555021,
+      5 => 0.854756717114822,
+      7 => 0.635492301836862,
+      11 => 0.426616792046787,
+      13 => 0.368193843118344,
+      17 => 0.290512701603111,
+      19 => 0.263359264658156,
+      23 => 0.222406328935102,
+      29 => 0.181229250520242,
+      31 => 0.170874199059434,
+      37 => 0.146112155735473,
+      41 => 0.133427839963585,
+      43 => 0.127929010905662,
+      47 => 0.118254609086782,
+      53 => 0.106316418106489,
+      59 => 0.0966989675438643,
+      61 => 0.0938833658008547,
+      67 => 0.0864151823151671,
+      71 => 0.0820822953188297,
+      73 => 0.0800964416340746,
+      79 => 0.0747060914833344,
+      83 => 0.0714973706654851,
+      89 => 0.0672115468436284,
+      97 => 0.0622818892486191,
+      101 => 0.0600855891549939,
+      103 => 0.0590613570015407,
+      107 => 0.0570921135626976,
+      109 => 0.0561691667641485,
+      113 => 0.0544330141081874,
+      127 => 0.0490620204315701,
+    );
+    my ($p,$r);
+    $r = Math::Prime::Util::drand();
+    for my $prime (2..127) {
+      next unless defined $M{$prime};
+      my $PR = $M{$prime} / $b  +  0.19556 / $prime;
+      if ($r <= $PR) {
+        $p = $prime;
+        last;
+      }
+      $r -= $PR;
+    }
+    if (!defined $p) {
+      # Idea from Charles Greathouse IV, 2010.  The distribution is right
+      # at the high level (small primes weighted more and not far off what
+      # we get with the uniform selection), but there is a noticeable skew
+      # toward primes with a large gap after them.  For instance 3 ends up
+      # being weighted as much as 2, and 7 more than 5.
+      #
+      # Since we handled small divisors earlier, this is less bothersome.
+      my $M = 0.26149721284764278375542683860869585905;
+      my $weight = $M + log($b * log(2)/2);
+      my $minr = log(log(131));
+      do {
+        $r  = Math::Prime::Util::drand($weight) - $M;
+      } while $r < $minr;
+      # Using Math::BigFloat::bexp is ungodly slow, so avoid at all costs.
+      my $re = exp($r);
+      my $a = ($re < log(~0)) ? int(exp($re)+0.5)
+                              : _upgrade_to_float($re)->bexp->bround->as_int;
+      $p  = $a < 2 ? 2 : Math::Prime::Util::prev_prime($a+1);
+    }
     my $q  = random_prime( int(($min+$p-1)/$p), int($max/$p) );
-    $n = $p * $q;
+    $n = Math::Prime::Util::vecprod($p,$q);
   }
   $n = _bigint_to_int($n) if ref($n) && $n->bacmp(BMAX) <= 0;
   $n;
