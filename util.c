@@ -889,7 +889,14 @@ int is_carmichael(UV n) {
   if (!(n%23) && ((n-1) % 22 != 0)) return 0;
 
   /* Fast check without having to factor */
-  if (n > 5000000 && powmod(2,n-1,n) != 1) return 0;
+  if (n > 5000000) {
+    if (!(n%29) && ((n-1) % 28 != 0)) return 0;
+    if (!(n%31) && ((n-1) % 30 != 0)) return 0;
+    if (!(n%37) && ((n-1) % 36 != 0)) return 0;
+    if (!(n%41) && ((n-1) % 40 != 0)) return 0;
+    if (!(n%43) && ((n-1) % 42 != 0)) return 0;
+    if (!is_pseudoprime(n,2)) return 0;
+  }
 
   nfactors = factor_exp(n, fac, exp);
   if (nfactors < 3)
