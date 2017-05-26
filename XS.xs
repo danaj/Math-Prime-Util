@@ -1334,21 +1334,25 @@ next_prime(IN SV* svn)
 void urandomb(IN UV bits)
   ALIAS:
     random_ndigit_prime = 1
-    random_nbit_prime = 2
-    random_shawe_taylor_prime = 3
-    random_maurer_prime = 4
-    random_proven_prime = 5
-    random_strong_prime = 6
+    random_semiprime = 2
+    random_unrestricted_semiprime = 3
+    random_nbit_prime = 4
+    random_shawe_taylor_prime = 5
+    random_maurer_prime = 6
+    random_proven_prime = 7
+    random_strong_prime = 8
   PREINIT:
     UV res, minarg;
   PPCODE:
     switch (ix) {
       case 1:  minarg =   1; break;
-      case 2:
-      case 3:
+      case 2:  minarg =   4; break;
+      case 3:  minarg =   3; break;
       case 4:
-      case 5:  minarg =   2; break;
-      case 6:  minarg = 128; break;
+      case 5:
+      case 6:
+      case 7:  minarg =   2; break;
+      case 8:  minarg = 128; break;
       default: minarg =   0; break;
     }
     if (minarg > 0 && bits < minarg)
@@ -1357,11 +1361,13 @@ void urandomb(IN UV bits)
       switch (ix) {
         case 0:  res = urandomb(bits); break;
         case 1:  res = random_ndigit_prime(bits); break;
-        case 2:
-        case 3:
+        case 2:  res = random_semiprime(bits); break;
+        case 3:  res = random_unrestricted_semiprime(bits); break;
         case 4:
         case 5:
         case 6:
+        case 7:
+        case 8:
         default: res = random_nbit_prime(bits); break;
       }
       if (res || ix == 0) XSRETURN_UV(res);
@@ -1369,28 +1375,15 @@ void urandomb(IN UV bits)
     switch (ix) {
       case 0:  _vcallsub_with_gmp(0.43,"urandomb"); break;
       case 1:  _vcallsub_with_gmp(0.42,"random_ndigit_prime"); break;
-      case 2:  _vcallsub_with_gmp(0.42,"random_nbit_prime"); break;
-      case 3:  _vcallsub_with_gmp(0.43,"random_shawe_taylor_prime"); break;
-      case 4:
-      case 5:  _vcallsub_with_gmp(0.43,"random_maurer_prime"); break;
+      case 2:  _vcallsub_with_gmp(0.00,"random_semiprime"); break;
+      case 3:  _vcallsub_with_gmp(0.00,"random_unrestricted_semiprime"); break;
+      case 4:  _vcallsub_with_gmp(0.42,"random_nbit_prime"); break;
+      case 5:  _vcallsub_with_gmp(0.43,"random_shawe_taylor_prime"); break;
       case 6:
+      case 7:  _vcallsub_with_gmp(0.43,"random_maurer_prime"); break;
+      case 8:
       default: _vcallsub_with_gmp(0.43,"random_strong_prime"); break;
     }
-    OBJECTIFY_RESULT(ST(0), ST(0));
-    XSRETURN(1);
-
-void random_semiprime(IN UV bits, IN int type = 0)
-  PREINIT:
-    UV res, minarg;
-  PPCODE:
-    if (!(type == 0 || type == 1))
-      croak("Type must be 0 or 1");
-    if (bits <= BITS_PER_WORD) {
-      res = random_semiprime(bits, type);
-      if (res == 0) XSRETURN_UNDEF;
-      XSRETURN_UV(res);
-    }
-    _vcallsub_with_gmp(0.00,"random_semiprime");
     OBJECTIFY_RESULT(ST(0), ST(0));
     XSRETURN(1);
 

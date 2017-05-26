@@ -6340,26 +6340,33 @@ sub miller_rabin_random {
 }
 
 sub random_semiprime {
-  my($b,$type) = @_;
+  my($b) = @_;
   return 0 if defined $b && int($b) < 0;
-  _validate_positive_integer($b);
-  $type = 0 unless defined $type;
-  _validate_positive_integer($type,0,1);
+  _validate_positive_integer($b,4);
 
-  return undef if $b < 3;
+  my $n;
+  my $min = ($b <= MPU_MAXBITS)  ?  (1 << ($b-1))  :  BTWO->copy->bpow($b-1);
+  my $max = $min + ($min - 1);
+  my $L = $b >> 1;
+  my $N = $b - $L;
+  my $one = ($b <= MPU_MAXBITS) ? 1 : BONE;
+  do {
+    $n = $one * random_nbit_prime($L) * random_nbit_prime($N);
+  } while $n < $min || $n > $max;
+  $n = _bigint_to_int($n) if ref($n) && $n->bacmp(BMAX) <= 0;
+  $n;
+}
+
+sub random_unrestricted_semiprime {
+  my($b) = @_;
+  return 0 if defined $b && int($b) < 0;
+  _validate_positive_integer($b,3);
+
   my $n;
   my $min = ($b <= MPU_MAXBITS)  ?  (1 << ($b-1))  :  BTWO->copy->bpow($b-1);
   my $max = $min + ($min - 1);
 
-  if ($type == 0) {
-    my $L = $b >> 1;
-    my $N = $b - $L;
-    return undef if $L < 2;
-    my $one = ($b <= MPU_MAXBITS) ? 1 : BONE;
-    do {
-      $n = $one * random_nbit_prime($L) * random_nbit_prime($N);
-    } while $n < $min || $n > $max;
-  } elsif ($b <= 64) {
+  if ($b <= 64) {
     do {
       $n = $min + urandomb($b-1);
     } while !Math::Prime::Util::is_semiprime($n);

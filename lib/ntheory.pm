@@ -156,7 +156,8 @@ Tags:
   random_maurer_prime_with_cert(n)    as above and include certificate
   random_shawe_taylor_prime(n)        random n-bit prime with S-T alg.
   random_shawe_taylor_prime_with_cert(n) as above including certificate
-  random_semiprime(n[,type])          random n-bit semiprime
+  random_unrestricted_semiprime(n)    random n-bit semiprime
+  random_semiprime(n)                 as above with equal size factors
 
 =head2 LISTS
 

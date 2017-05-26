@@ -9,8 +9,8 @@ use Test::More;
 use Math::Prime::Util qw/random_prime random_ndigit_prime random_nbit_prime
                          random_maurer_prime random_shawe_taylor_prime
                          random_proven_prime
-                         random_semiprime factor
-                         is_prime prime_set_config/;
+                         random_semiprime random_unrestricted_semiprime
+                         factor is_prime prime_set_config/;
 
 my $use64 = Math::Prime::Util::prime_get_config->{'maxbits'} > 32;
 my $broken64 = (18446744073709550592 == ~0);
@@ -209,17 +209,17 @@ SKIP: {
 
 {
   my $n;
-  is(random_semiprime(3),undef,"random_semiprime(3) returns undef");
-  is(random_semiprime(2,1),undef,"random_semiprime(2,1) returns undef");
+  ok(!eval { random_semiprime(3); }, "random_semiprime(3)");
+  ok(!eval { random_unrestricted_semiprime(2); }, "random_unrestricted_semiprime(2)");
   is(random_semiprime(4),9,"random_semiprime(4) = 9");
-  $n = random_semiprime(3,1);
-  ok($n ==4 || $n == 6, "random_semiprime(3,1) is 4 or 6");
+  $n = random_unrestricted_semiprime(3);
+  ok($n ==4 || $n == 6, "random_unrestricted_semiprime(3) is 4 or 6");
   $n = random_semiprime(26);
   ok($n >= 33554432 && $n < 67108864 && scalar(factor($n)) == 2, "random_semiprime(26) is a 26-bit semiprime");
   my $min = Math::BigInt->new(2)->bpow(81-1);
   my $max = Math::BigInt->new(2)->bpow(81)->bdec;
   $n = random_semiprime(81);
   ok($n >= $min && $n <= $max, "random_semiprime(81) is 81 bits");
-  $n = random_semiprime(81,1);
-  ok($n >= $min && $n <= $max, "random_semiprime(81,1) is 81 bits");
+  $n = random_unrestricted_semiprime(81);
+  ok($n >= $min && $n <= $max, "random_unrestricted_semiprime(81) is 81 bits");
 }

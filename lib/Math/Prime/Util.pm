@@ -52,7 +52,7 @@ our @EXPORT_OK =
       random_proven_prime random_proven_prime_with_cert
       random_maurer_prime random_maurer_prime_with_cert
       random_shawe_taylor_prime random_shawe_taylor_prime_with_cert
-      random_semiprime
+      random_semiprime random_unrestricted_semiprime
       primorial pn_primorial consecutive_integer_lcm gcdext chinese
       gcd lcm factor factor_exp divisors valuation hammingweight
       todigits fromdigits todigitstring sumdigits
@@ -3702,22 +3702,29 @@ The proof construction consists of a single chain of C<Pocklington> types.
 
 =head2 random_semiprime
 
-Takes a positive integer number of bits C<bits> and an optional
-integer type C<type>, and returns a random semiprime of exactly
-C<bits> bits.
+Takes a positive integer number of bits C<bits>, returns a
+random semiprime of exactly C<bits> bits.
 The result has exactly two prime factors (hence semiprime).
-If the number of bits is so small that no semiprimes of that
-size exist, C<undef> is returned.
 
-If the optional argument C<type> is not present or is zero, the
-result will be an even bit split, not uncommon for cryptographic
-use.  For example, a 64-bit semiprime of this type is the product
-of two 32-bit primes.
+The factors will be approximately equal size, which is typical
+for cryptographic use.  For example, a 64-bit semiprime of this
+type is the product of two 32-bit primes.
+C<bits> must be C<4> or greater.
 
-With C<type> set to 1, the result is a uniform selection from the
-complete set of all C<bits>-bit numbers with exactly two factors.
-Hence the semiprimes of form C<2*p> will be the most common,
-followed by C<3*p>, etc.
+Some effort is taken to select uniformly from the universe of
+C<bits>-bit semiprimes.  This takes slightly longer than some
+methods that do not select uniformly.
+
+=head2 random_unrestricted_semiprime
+
+Takes a positive integer number of bits C<bits>, returns a
+random semiprime of exactly C<bits> bits.
+The result has exactly two prime factors (hence semiprime).
+
+The factors are uniformly selected from the universe of all
+C<bits>-bit semiprimes.  This means semiprimes with one factor
+equal to C<2> will be most common, C<3> next most common, etc.
+C<bits> must be C<3> or greater.
 
 Some effort is taken to select uniformly from the universe of
 C<bits>-bit semiprimes.  This takes slightly longer than some
