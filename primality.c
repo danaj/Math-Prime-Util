@@ -58,13 +58,13 @@ static UV select_extra_strong_parameters(UV n, UV increment) {
 /* Fermat pseudoprime */
 int is_pseudoprime(UV const n, UV a)
 {
-  if (n < 5) return (n == 2 || n == 3);
-
+  if (n < 4) return (n == 2 || n == 3);
+  if (!(n&1) && !(a&1)) return 0;
   if (a < 2) croak("Base %"UVuf" is invalid", a);
   if (a >= n) {
     a %= n;
-    if ( a <= 1 || a == n-1 )
-      return 1;
+    if (a <= 1)    return (a == 1);
+    if (a == n-1)  return !(a & 1);
   }
 
 #if USE_MONTMATH
@@ -86,8 +86,8 @@ int is_euler_pseudoprime(UV const n, UV a)
   if (a > 2) {
     if (a >= n) {
       a %= n;
-      if ( a <= 1 || a == n-1 )
-        return 1;
+      if (a <= 1)    return (a == 1);
+      if (a == n-1)  return !(a & 1);
     }
     if ((n % a) == 0) return 0;
   }
@@ -163,9 +163,11 @@ int miller_rabin(UV const n, const UV *bases, int nbases)
   for (b = 0; b < nbases; b++) {
     UV x, a = bases[b];
     if (a < 2)  croak("Base %"UVuf" is invalid", a);
-    if (a >= n) a %= n;
-    if ( (a <= 1) || (a == n-1) )
-      continue;
+    if (a >= n) {
+      a %= n;
+      if (a == 0) return 0;
+    }
+    if (a == 1 || a == n-1) continue;
     /* n is a strong pseudoprime to base a if either:
      *    a^d = 1 mod n
      *    a^(d2^r) = -1 mod n for some r: 0 <= r <= s-1
@@ -1060,20 +1062,26 @@ int is_frobenius_khashin_pseudoprime(UV n)
  */
 int is_frobenius_underwood_pseudoprime(UV n)
 {
-  int bit;
+  int j, bit;
   UV x, result, a, b, np1, len, t1;
   IV t;
 
   if (n < 7) return (n == 2 || n == 3 || n == 5);
   if ((n % 2) == 0 || n == UV_MAX) return 0;
-  if (is_perfect_square(n)) return 0;
 
-  x = 0;
-  t = -1;
-  while ( jacobi_iu( t, n ) != -1 ) {
-    x++;
+  for (x = 0; x < 1000000; x++) {
+    if (x==2 || x==4 || x==7 || x==8 || x==10 || x==14 || x==16 || x==18)
+      continue;
     t = (IV)(x*x) - 4;
+    j = jacobi_iu(t, n);
+    if (j == -1) break;
+    if (j == 0 || (x == 20 && is_perfect_square(n)))
+      return 0;
   }
+  if (x >= 1000000) croak("FU test failure, unable to find suitable a");
+  t1 = gcd_ui(n, (x+4)*(2*x+5));
+  if (t1 != 1 && t1 != n)
+    return 0;
   np1 = n+1;
   { UV v = np1; len = 1;  while (v >>= 1) len++; }
 

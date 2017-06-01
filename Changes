@@ -13,6 +13,12 @@ Revision history for Perl module Math::Prime::Util
 
     - Slightly tighter Ramanujan prime bounds for large inputs.
 
+    - is_pseudoprime and is_euler_pseudoprime changed to better handle the
+      unusual case of base >= n.
+
+    - is_frobenius_underwood_pseudoprime checks for jacobi == 0.  Faster.
+
+
 0.65 2017-05-03
 
     [API Changes]
