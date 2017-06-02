@@ -844,7 +844,7 @@ if ($use64) {
   is( twin_prime_count(4321), 114, "twin_prime_count(4321)" );
   cmp_closeto( twin_prime_count_approx(Math::BigInt->new("4123456784123")), "6950213327", 14937 * 2, "twin_prime_count_approx(4123456784123)" );
   if ($extra) {
-    cmp_closeto( twin_prime_count_approx(Math::BigInt->new("412345678412345678412345678")), "149939117920176008847283", 1e10, "twin_prime_count_approx(412345678412345678412345678)" );
+    cmp_closeto( twin_prime_count_approx(Math::BigInt->new("412345678412345678412345678")), "149939117920176008847283", 1e11, "twin_prime_count_approx(412345678412345678412345678)" );
   }
   is( nth_twin_prime(249), 13217, "nth_twin_prime(249)" );
 
