@@ -18,6 +18,8 @@ Revision history for Perl module Math::Prime::Util
 
     - is_frobenius_underwood_pseudoprime checks for jacobi == 0.  Faster.
 
+    - Updated Montgomery inverse from Robert Gerbicz.
+
 
 0.65 2017-05-03
 
