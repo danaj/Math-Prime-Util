@@ -120,7 +120,7 @@ UV random_semiprime(UV b) { /* Even split of bits */
 
 UV random_unrestricted_semiprime(UV b) { /* generic semiprime */
   static const unsigned char small_semi[] = {4,6,9,10,14,15,21,22,25,26,33,34,35,38,39,46,49,51,55,57,58,62,65,69,74,77,82,85,86,87,91,93,94,95,106,111,115,118,119,121,122,123};
-  UV min, max, n;
+  UV min, n;
 
   if (b < 3 || b > BITS_PER_WORD)
     return 0;
@@ -135,7 +135,6 @@ UV random_unrestricted_semiprime(UV b) { /* generic semiprime */
   }
   /* There are faster ways to generate if we could be lax on distribution. */
   min = UVCONST(1) << (b-1);
-  max = min + (min-1);
   do {
     n = min + urandomb(b-1);
   } while (!is_semiprime(n));
