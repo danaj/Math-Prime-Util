@@ -21,6 +21,9 @@ Revision history for Perl module Math::Prime::Util
     - Tighter nth prime bounds for large inputs from Axler 2017-06.
       Redo Ramanujan bounds since they're based on nth prime bounds.
 
+    - Rewrite sieve marking based on Kim Walisch's simple mod-30 sieve.
+      Simpler, a bit smaller, and 10-15% faster for segmented sieve.
+
 
 0.65 2017-05-03
 

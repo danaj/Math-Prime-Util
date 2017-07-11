@@ -115,103 +115,6 @@ static const unsigned char presieve13[PRESIEVE_SIZE] =
   0x18,0x89,0x08,0x25,0x44,0x22,0x30,0x14,0xc3,0x88,0x86,0x40,0x1a,
   0x28,0x30,0x85,0x09,0x54,0x60,0x43,0x24,0x92,0x81,0x08,0x04,0x70};
 
-static const unsigned char stepdata[8][8][8] = {
-  { {96,65,34,67,36,69,102,47},
-    {64,47,75,106,46,105,77,44},
-    {32,86,33,87,115,45,114,84},
-    {72,46,85,42,73,127,44,123},
-    {96,35,100,79,33,66,37,78},
-    {64,108,34,109,67,47,65,46},
-    {32,76,117,33,118,74,35,87},
-    {32,127,86,45,84,43,82,121},
-  },
-  { {65,34,67,36,69,102,47,96},
-    {105,77,44,64,47,75,106,46},
-    {33,87,115,45,114,84,32,86},
-    {73,127,44,123,72,46,85,42},
-    {33,66,37,78,96,35,100,79},
-    {65,46,64,108,34,109,67,47},
-    {33,118,74,35,87,32,76,117},
-    {121,32,127,86,45,84,43,82},
-  },
-  { {34,67,36,69,102,47,96,65},
-    {106,46,105,77,44,64,47,75},
-    {114,84,32,86,33,87,115,45},
-    {42,73,127,44,123,72,46,85},
-    {66,37,78,96,35,100,79,33},
-    {34,109,67,47,65,46,64,108},
-    {74,35,87,32,76,117,33,118},
-    {82,121,32,127,86,45,84,43},
-  },
-  { {67,36,69,102,47,96,65,34},
-    {75,106,46,105,77,44,64,47},
-    {115,45,114,84,32,86,33,87},
-    {123,72,46,85,42,73,127,44},
-    {35,100,79,33,66,37,78,96},
-    {67,47,65,46,64,108,34,109},
-    {35,87,32,76,117,33,118,74},
-    {43,82,121,32,127,86,45,84},
-  },
-  { {36,69,102,47,96,65,34,67},
-    {44,64,47,75,106,46,105,77},
-    {84,32,86,33,87,115,45,114},
-    {44,123,72,46,85,42,73,127},
-    {100,79,33,66,37,78,96,35},
-    {108,34,109,67,47,65,46,64},
-    {76,117,33,118,74,35,87,32},
-    {84,43,82,121,32,127,86,45},
-  },
-  { {69,102,47,96,65,34,67,36},
-    {77,44,64,47,75,106,46,105},
-    {45,114,84,32,86,33,87,115},
-    {85,42,73,127,44,123,72,46},
-    {37,78,96,35,100,79,33,66},
-    {109,67,47,65,46,64,108,34},
-    {117,33,118,74,35,87,32,76},
-    {45,84,43,82,121,32,127,86},
-  },
-  { {102,47,96,65,34,67,36,69},
-    {46,105,77,44,64,47,75,106},
-    {86,33,87,115,45,114,84,32},
-    {46,85,42,73,127,44,123,72},
-    {78,96,35,100,79,33,66,37},
-    {46,64,108,34,109,67,47,65},
-    {118,74,35,87,32,76,117,33},
-    {86,45,84,43,82,121,32,127},
-  },
-  { {47,96,65,34,67,36,69,102},
-    {47,75,106,46,105,77,44,64},
-    {87,115,45,114,84,32,86,33},
-    {127,44,123,72,46,85,42,73},
-    {79,33,66,37,78,96,35,100},
-    {47,65,46,64,108,34,109,67},
-    {87,32,76,117,33,118,74,35},
-    {127,86,45,84,43,82,121,32},
-  },
-};
-
-static const int wheelmap[30] =
-  {0,0,0,0,0,0,0,1,0,0,0,2,0,3,0,0,0,4,0,5,0,0,0,6,0,0,0,0,0,7};
-static const int wheel2xmap[30] =     /* (2*p)%30 => 2,14,22,26,4,8,16,28 */
-  {0,0,0,0,4,0,0,0,5,0,0,0,0,0,1,0,6,0,0,0,0,0,2,0,0,0,3,0,7,0};
-/*     2   4       8          14  16          22      26  28     (2*p)%30 */
-
-#define FIND_COMPOSITE_POSITIONS(d, m, p) \
-  do { \
-    int v; \
-    UV dinc = (2*p) / 30; \
-    UV minc = (2*p) - dinc*30; \
-    const unsigned char* steps = stepdata [wheelmap[m]] [wheel2xmap[minc]]; \
-    v = steps[0]; wdinc[0] = dinc*(v>>5)+((v>>3)&0x3); wmask[0] = 1<<(v&0x7); \
-    v = steps[1]; wdinc[1] = dinc*(v>>5)+((v>>3)&0x3); wmask[1] = 1<<(v&0x7); \
-    v = steps[2]; wdinc[2] = dinc*(v>>5)+((v>>3)&0x3); wmask[2] = 1<<(v&0x7); \
-    v = steps[3]; wdinc[3] = dinc*(v>>5)+((v>>3)&0x3); wmask[3] = 1<<(v&0x7); \
-    v = steps[4]; wdinc[4] = dinc*(v>>5)+((v>>3)&0x3); wmask[4] = 1<<(v&0x7); \
-    v = steps[5]; wdinc[5] = dinc*(v>>5)+((v>>3)&0x3); wmask[5] = 1<<(v&0x7); \
-    v = steps[6]; wdinc[6] = dinc*(v>>5)+((v>>3)&0x3); wmask[6] = 1<<(v&0x7); \
-    v = steps[7]; wdinc[7] = dinc*(v>>5)+((v>>3)&0x3); wmask[7] = 1<<(v&0x7); \
-  } while (0)
-
 static const UV max_sieve_prime = (BITS_PER_WORD==64) ? 4294967291U : 65521U;
 
 /* Tile <from> bytes from source to <to> bytes in dest */
@@ -250,10 +153,71 @@ static UV sieve_prefill(unsigned char* mem, UV startd, UV endd)
   return vnext_prime;
 }
 
-/* Wheel 30 sieve.  Ideas from Terje Mathisen and Quesada / Van Pelt. */
+/* Marking primes is done the same way we used to do with tables, but
+ * now uses heavily unrolled code based on Kim Walisch's mod-30 sieve.
+ */
+#define set_bit(s,n)  *(s) |= (1 << n);
+static const unsigned char masknum30[30] =
+    {0,0,0,0,0,0,0,1,0,0,0,2,0,3,0,0,0,4,0,5,0,0,0,6,0,0,0,0,0,7};
+static const unsigned char qinit30[30] =
+    {0,0,1,1,1,1,1,1,2,2,2,2,3,3,4,4,4,4,5,5,6,6,6,6,7,7,7,7,7,7};
+
+#define CROSS_INDEX(v, b0,b1,b2,b3,b4,b5,b6,b7,  i0,i1,i2,i3,i4,i5,i6,i7, it) \
+  while (1) { \
+    case (v+0): if (s >= send) break;  set_bit(s,b0);  s += r*6+i0; \
+    case (v+1): if (s >= send) break;  set_bit(s,b1);  s += r*4+i1; \
+    case (v+2): if (s >= send) break;  set_bit(s,b2);  s += r*2+i2; \
+    case (v+3): if (s >= send) break;  set_bit(s,b3);  s += r*4+i3; \
+    case (v+4): if (s >= send) break;  set_bit(s,b4);  s += r*2+i4; \
+    case (v+5): if (s >= send) break;  set_bit(s,b5);  s += r*4+i5; \
+    case (v+6): if (s >= send) break;  set_bit(s,b6);  s += r*6+i6; \
+    case (v+7): if (s >= send) break;  set_bit(s,b7);  s += r*2+i7; \
+    while (s + r*28 + it-1 < send) { \
+      set_bit(s + r *  0 +  0, b0); \
+      set_bit(s + r *  6 + i0, b1); \
+      set_bit(s + r * 10 + i0+i1, b2); \
+      set_bit(s + r * 12 + i0+i1+i2, b3); \
+      set_bit(s + r * 16 + i0+i1+i2+i3, b4); \
+      set_bit(s + r * 18 + i0+i1+i2+i3+i4, b5); \
+      set_bit(s + r * 22 + i0+i1+i2+i3+i4+i5, b6); \
+      set_bit(s + r * 28 + i0+i1+i2+i3+i4+i5+i6, b7); \
+      s += r*30 + it; \
+    } \
+  }
+static void mark_primes(unsigned char* s, const unsigned char* send, UV startp, UV endp, UV prime)
+{
+  UV p2, q, r;
+  int index;
+
+  q = prime;
+  p2 = prime * prime;
+  if (p2 < startp) {
+    q = 1+(startp-1)/prime;
+    q += distancewheel30[q % 30];
+    p2 = prime * q;
+  }
+  if (p2 > endp || p2 < startp) return;
+
+  s += (p2-startp) / 30;
+  r = prime / 30;
+  index = qinit30[q % 30]  +  8*masknum30[prime % 30];
+
+  switch (index) {
+    CROSS_INDEX( 0, 0,1,2,3,4,5,6,7, 0,0,0,0,0,0,0,1,  1); break;
+    CROSS_INDEX( 8, 1,5,4,0,7,3,2,6, 1,1,1,0,1,1,1,1,  7); break;
+    CROSS_INDEX(16, 2,4,0,6,1,7,3,5, 2,2,0,2,0,2,2,1, 11); break;
+    CROSS_INDEX(24, 3,0,6,5,2,1,7,4, 3,1,1,2,1,1,3,1, 13); break;
+    CROSS_INDEX(32, 4,7,1,2,5,6,0,3, 3,3,1,2,1,3,3,1, 17); break;
+    CROSS_INDEX(40, 5,3,7,1,6,0,4,2, 4,2,2,2,2,2,4,1, 19); break;
+    CROSS_INDEX(48, 6,2,3,7,0,4,5,1, 5,3,1,4,1,3,5,1, 23); break;
+    CROSS_INDEX(56, 7,6,5,4,3,2,1,0, 6,4,2,4,2,4,6,1, 29); break;
+  }
+}
+
+/* Monolithic mod-30 wheel sieve */
 unsigned char* sieve_erat30(UV end)
 {
-  unsigned char* mem;
+  unsigned char *mem;
   UV max_buf, limit, prime;
 
   max_buf = (end/30) + ((end%30) != 0);
@@ -266,49 +230,12 @@ unsigned char* sieve_erat30(UV end)
 
   limit = isqrt(end);  /* prime*prime can overflow */
   for (  ; prime <= limit; prime = next_prime_in_sieve(mem,prime,end)) {
-    UV p2 = prime*prime;
-    UV d = p2 / 30;
-    UV m = p2 - d*30;
-    UV wdinc[8];
-    unsigned char wmask[8];
-
-    /* Find the positions of the next composites we will mark */
-    FIND_COMPOSITE_POSITIONS(d, m, prime);
-#if 0
-    assert(d == ((prime*prime)/30));
-    assert(d < max_buf);
-    assert(prime = (wdinc[0]+wdinc[1]+wdinc[2]+wdinc[3]+wdinc[4]+wdinc[5]+wdinc[6]+wdinc[7]));
-#endif
-    /* Regular code to mark composites:
-    *  i = 0;
-    *  do {mem[d] |= wmask[i]; d += wdinc[i]; i = (i+1)&7;} while (d < max_buf);
-    * Unrolled version: */
-    while ( (d+prime) < max_buf ) {
-      mem[d] |= wmask[0];  d += wdinc[0];
-      mem[d] |= wmask[1];  d += wdinc[1];
-      mem[d] |= wmask[2];  d += wdinc[2];
-      mem[d] |= wmask[3];  d += wdinc[3];
-      mem[d] |= wmask[4];  d += wdinc[4];
-      mem[d] |= wmask[5];  d += wdinc[5];
-      mem[d] |= wmask[6];  d += wdinc[6];
-      mem[d] |= wmask[7];  d += wdinc[7];
-    }
-    while (1) {
-      mem[d] |= wmask[0];  d += wdinc[0];  if (d >= max_buf) break;
-      mem[d] |= wmask[1];  d += wdinc[1];  if (d >= max_buf) break;
-      mem[d] |= wmask[2];  d += wdinc[2];  if (d >= max_buf) break;
-      mem[d] |= wmask[3];  d += wdinc[3];  if (d >= max_buf) break;
-      mem[d] |= wmask[4];  d += wdinc[4];  if (d >= max_buf) break;
-      mem[d] |= wmask[5];  d += wdinc[5];  if (d >= max_buf) break;
-      mem[d] |= wmask[6];  d += wdinc[6];  if (d >= max_buf) break;
-      mem[d] |= wmask[7];  d += wdinc[7];  if (d >= max_buf) break;
-    }
+    mark_primes(mem, mem+max_buf, 0, end, prime);
   }
   return mem;
 }
 
-
-
+/* Segmented mod-30 wheel sieve */
 int sieve_segment(unsigned char* mem, UV startd, UV endd)
 {
   const unsigned char* sieve;
@@ -342,65 +269,8 @@ int sieve_segment(unsigned char* mem, UV startd, UV endd)
     get_prime_cache(slimit, &sieve);
   }
 
-  START_DO_FOR_EACH_SIEVE_PRIME(sieve, 0, start_base_prime, slimit)
-  {
-    /* p increments from 17 to at most sqrt(endp).  Note on overflow:
-     * 32-bit: limit=     65535, max p =      65521, p*p = ~0-1965854
-     * 64-bit: limit=4294967295, max p = 4294967291, p*p = ~0-42949672934
-     * No overflow here, but possible after the incrementing below. */
-    UV p2 = p*p;
-    if (p2 < startp) {
-      UV f = 1+(startp-1)/p;
-      p2 = p * (f + distancewheel30[f%30]);
-    }
-    /* It is possible we've overflowed p2, so check for that */
-    if ( (p2 <= endp) && (p2 >= startp) ) {
-      /* Sieve from startd to endd starting at p2, stepping p */
-#if 0
-      /* Basic sieve */
-      do {
-        mem[(p2 - startp)/30] |= masktab30[p2%30];
-        do { p2 += 2*p; } while (masktab30[p2%30] == 0);
-      } while ( (p2 <= endp) && (p2 >= startp) );
-#else
-      UV d = p2 / 30;
-      UV m = p2 - d*30;
-
-      if ((p2 + 2*p) > endp) {
-        /* There is only one composite to be marked in this segment */
-        mem[d-startd] |= masktab30[m];
-      } else {
-        UV wdinc[8];
-        unsigned char wmask[8];
-        UV offset_endd = endd - startd;
-        UV unrolls = (endd-d+1) / p;
-        /* Find the positions of the next composites we will mark */
-        FIND_COMPOSITE_POSITIONS(d, m, p);
-        d -= startd;
-        /* Unrolled inner loop for marking composites */
-        while ( unrolls-- > 0) {
-          mem[d] |= wmask[0];  d += wdinc[0];
-          mem[d] |= wmask[1];  d += wdinc[1];
-          mem[d] |= wmask[2];  d += wdinc[2];
-          mem[d] |= wmask[3];  d += wdinc[3];
-          mem[d] |= wmask[4];  d += wdinc[4];
-          mem[d] |= wmask[5];  d += wdinc[5];
-          mem[d] |= wmask[6];  d += wdinc[6];
-          mem[d] |= wmask[7];  d += wdinc[7];
-        }
-        while (d <= offset_endd) {
-          mem[d] |= wmask[0];  d += wdinc[0];  if (d > offset_endd) break;
-          mem[d] |= wmask[1];  d += wdinc[1];  if (d > offset_endd) break;
-          mem[d] |= wmask[2];  d += wdinc[2];  if (d > offset_endd) break;
-          mem[d] |= wmask[3];  d += wdinc[3];  if (d > offset_endd) break;
-          mem[d] |= wmask[4];  d += wdinc[4];  if (d > offset_endd) break;
-          mem[d] |= wmask[5];  d += wdinc[5];  if (d > offset_endd) break;
-          mem[d] |= wmask[6];  d += wdinc[6];  if (d > offset_endd) break;
-          mem[d] |= wmask[7];  d += wdinc[7];
-        }
-      }
-#endif
-    }
+  START_DO_FOR_EACH_SIEVE_PRIME(sieve, 0, start_base_prime, slimit) {
+    mark_primes(mem, mem+endd-startd+1, startp, endp, p);
   }
   END_DO_FOR_EACH_SIEVE_PRIME;
   release_prime_cache(sieve);
