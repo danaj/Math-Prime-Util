@@ -1533,15 +1533,17 @@ sub nth_prime_upper {
   my $flog2n = log($flogn);  # Note distinction between log_2(n) and log^2(n)
 
   my $upper;
-  if      ($n >= 8009824) {  # Axler 2013 page viii Korollar G
+  if      ($n >= 46254381) {  # Axler 2017 Corollary 1.2
+    $upper = $n * ( $flogn  +  $flog2n-1.0  +  (($flog2n-2.00)/$flogn)  -  (($flog2n*$flog2n - 6*$flog2n + 10.667)/(2*$flogn*$flogn)) );
+  } elsif ($n >=  8009824) {  # Axler 2013 page viii Korollar G
     $upper = $n * ( $flogn  +  $flog2n-1.0  +  (($flog2n-2.00)/$flogn)  -  (($flog2n*$flog2n - 6*$flog2n + 10.273)/(2*$flogn*$flogn)) );
-  } elsif ($n >= 688383) {   # Dusart 2010 page 2
+  } elsif ($n >=  688383) {   # Dusart 2010 page 2
     $upper = $n * ( $flogn  +  $flog2n - 1.0 + (($flog2n-2.00)/$flogn) );
-  } elsif ($n >= 178974) {   # Dusart 2010 page 7
+  } elsif ($n >=  178974) {   # Dusart 2010 page 7
     $upper = $n * ( $flogn  +  $flog2n - 1.0 + (($flog2n-1.95)/$flogn) );
-  } elsif ($n >=  39017) {   # Dusart 1999 page 14
+  } elsif ($n >=   39017) {   # Dusart 1999 page 14
     $upper = $n * ( $flogn  +  $flog2n - 0.9484 );
-  } elsif ($n >=      6) {   # Modified Robin 1983, for 6-39016 only
+  } elsif ($n >=       6) {   # Modified Robin 1983, for 6-39016 only
     $upper = $n * ( $flogn  +  0.6000 * $flog2n );
   } else {
     $upper = $n * ( $flogn  +  $flog2n );
@@ -1568,7 +1570,9 @@ sub nth_prime_lower {
   # Dusart 2010 page 2, for all n >= 3
   #my $lower = $n * ($flogn + $flog2n - 1.0 + (($flog2n-2.10)/$flogn));
   # Axler 2013 page viii Korollar I, for all n >= 2
-  my $lower = $n * ($flogn + $flog2n-1.0 + (($flog2n-2.00)/$flogn) - (($flog2n*$flog2n - 6*$flog2n + 11.847)/(2*$flogn*$flogn)) );
+  #my $lower = $n * ($flogn + $flog2n-1.0 + (($flog2n-2.00)/$flogn) - (($flog2n*$flog2n - 6*$flog2n + 11.847)/(2*$flogn*$flogn)) );
+  # Axler 2017 Corollary 1.4
+  my $lower = $n * ($flogn + $flog2n-1.0 + (($flog2n-2.00)/$flogn) - (($flog2n*$flog2n - 6*$flog2n + 11.508)/(2*$flogn*$flogn)) );
 
   return int($lower + 0.999999999);
 }

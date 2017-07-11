@@ -11,14 +11,15 @@ Revision history for Perl module Math::Prime::Util
 
     - Speedup for is_carmichael.
 
-    - Slightly tighter Ramanujan prime bounds for large inputs.
-
     - is_pseudoprime and is_euler_pseudoprime changed to better handle the
       unusual case of base >= n.
 
     - is_frobenius_underwood_pseudoprime checks for jacobi == 0.  Faster.
 
     - Updated Montgomery inverse from Robert Gerbicz.
+
+    - Tighter nth prime bounds for large inputs from Axler 2017-06.
+      Redo Ramanujan bounds since they're based on nth prime bounds.
 
 
 0.65 2017-05-03
@@ -224,10 +225,11 @@ Revision history for Perl module Math::Prime::Util
 
     [ADDED]
 
-    - is_prime_power         Returns k if n=p^k for p a prime.
-    - logint(n,b)            Integer logarithm.  Largest e s.t. b^e <= n.
-    - rootint(n,k)           Integer k-th root.
-    - ramanujan_sum(k,n)     Ramanujan's sum
+    - is_euler_plumb_pseudoprime  Plumb's Euler Criterion test.
+    - is_prime_power              Returns k if n=p^k for p a prime.
+    - logint(n,b)                 Integer logarithm.  Largest e s.t. b^e <= n.
+    - rootint(n,k)                Integer k-th root.
+    - ramanujan_sum(k,n)          Ramanujan's sum
 
     [FUNCTIONALITY AND PERFORMANCE]
 

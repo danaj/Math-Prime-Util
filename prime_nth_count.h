@@ -19,4 +19,7 @@ extern UV  nth_twin_prime_approx(UV n);
 extern int sum_primes(UV low, UV high, UV *sum);
 extern int sum_primes128(UV n, UV *hisum, UV *losum);
 
+/* Used for a possible Ramanujan prime upper bound */
+extern double ramanujan_sa_gn(UV un);
+
 #endif

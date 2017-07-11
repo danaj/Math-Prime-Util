@@ -502,8 +502,13 @@ UV nth_prime_upper(UV n)
 
   /* Dusart 2010 page 2 */
   upper = fn * (flogn + flog2n - 1.0 + ((flog2n-2.00)/flogn));
-  /* Axler 2013 page viii Korollar G */
-  if (n >= 8009824) upper -= fn * ((flog2n*flog2n-6*flog2n+10.273)/(2*flogn*flogn));
+  if        (n >= 46254381) {
+     /* Axler 2017 http//arxiv.org/pdf/1706.03651.pdf Corollary 1.2 */
+    upper -= fn * ((flog2n*flog2n-6*flog2n+10.667)/(2*flogn*flogn));
+  } else if (n >=  8009824) {
+    /* Axler 2013 page viii Korollar G */
+    upper -= fn * ((flog2n*flog2n-6*flog2n+10.273)/(2*flogn*flogn));
+  }
 
   if (upper >= (long double)UV_MAX) {
     if (n <= MPU_MAX_PRIME_IDX) return MPU_MAX_PRIME;
@@ -541,8 +546,11 @@ UV nth_prime_lower(UV n)
     return lo;
   }
 
-  /* Axler 2013 page vii Korollar I, for all n >= 2 */
-  lower = fn * (flogn + flog2n-1.0 + ((flog2n-2.00)/flogn) - ((flog2n*flog2n-6*flog2n+11.847)/(2*flogn*flogn)));
+  { /* Axler 2017 http//arxiv.org/pdf/1706.03651.pdf Corollary 1.4 */
+    double b1 = (n < 56000000)  ?  11.200  :  11.508;
+    lower = fn * (flogn + flog2n-1.0 + ((flog2n-2.00)/flogn) - ((flog2n*flog2n-6*flog2n+b1)/(2*flogn*flogn)));
+  }
+
   return (UV) ceill(lower);
 }
 
@@ -874,6 +882,9 @@ static const UV sum_table_2e8[] =
   do {  UV _n = n; \
         if (_n > (UV_MAX-lo)) { hi++; if (hi == 0) overflow = 1; } \
         lo += _n;   } while (0)
+#define SET_128(hi, lo, n) \
+  do { hi = (UV) (((n) >> 64) & UV_MAX); \
+       lo = (UV) (((n)      ) & UV_MAX); } while (0)
 
 /* Legendre method for prime sum */
 int sum_primes128(UV n, UV *hi_sum, UV *lo_sum) {
@@ -898,8 +909,7 @@ int sum_primes128(UV n, UV *hi_sum, UV *lo_sum) {
       S[a] -= p * (S[b] - sp);   /* sp = sum of primes less than p */
     }
   } END_DO_FOR_EACH_PRIME;
-  *hi_sum = (UV) ((S[r2] >> 64) & UV_MAX);
-  *lo_sum = (UV) ((S[r2]      ) & UV_MAX);
+  SET_128(*hi_sum, *lo_sum, S[r2]);
   Safefree(V);
   Safefree(S);
   return 1;
@@ -980,4 +990,13 @@ int sum_primes(UV low, UV high, UV *return_sum) {
   }
   if (!overflow && return_sum != 0)  *return_sum = sum;
   return !overflow;
+}
+
+double ramanujan_sa_gn(UV un)
+{
+  long double n = (long double) un;
+  long double logn = logl(n);
+  long double log2 = logl(2);
+
+  return (double)( (logn + logl(logn) - log2 - 0.5) / (log2 + 0.5) );
 }
