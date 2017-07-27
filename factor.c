@@ -3,18 +3,18 @@
 #include <string.h>
 #include <math.h>
 
-#include "ptypes.h"
-#include "factor.h"
-#include "sieve.h"
-#include "mulmod.h"
-#include "cache.h"
-#include "primality.h"
-#include "montmath.h"
 #define FUNC_isqrt  1
 #define FUNC_gcd_ui 1
 #define FUNC_is_perfect_square 1
 #define FUNC_clz 1
+#include "ptypes.h"
+#include "factor.h"
+#include "sieve.h"
 #include "util.h"
+#include "mulmod.h"
+#include "cache.h"
+#include "primality.h"
+#include "montmath.h"
 
 /*
  * You need to remember to use UV for unsigned and IV for signed types that

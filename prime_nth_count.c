@@ -2,15 +2,15 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "ptypes.h"
 #define FUNC_popcnt 1
 #define FUNC_isqrt 1
-#include "util.h"
+#include "ptypes.h"
 #include "sieve.h"
 #include "cache.h"
 #include "lmo.h"
 #include "constants.h"
 #include "prime_nth_count.h"
+#include "util.h"
 
 #include <math.h>
 #if _MSC_VER || defined(__IBMC__) || defined(__IBMCPP__) || (defined(__STDC_VERSION__) && __STDC_VERSION >= 199901L)

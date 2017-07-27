@@ -13,14 +13,14 @@
 #define NEED_HvNAME_get
 #include "ppport.h"
 
-#include "ptypes.h"
-#include "cache.h"
-#include "sieve.h"
-#include "sieve_cluster.h"
 #define FUNC_gcd_ui 1
 #define FUNC_isqrt 1
 #define FUNC_ipow 1
 #define FUNC_popcnt 1
+#include "ptypes.h"
+#include "cache.h"
+#include "sieve.h"
+#include "sieve_cluster.h"
 #include "util.h"
 #include "primality.h"
 #include "factor.h"
