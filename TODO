@@ -126,3 +126,11 @@
   Careful to not leak state.
 
 - 5.8.5 gcdext complains about 3 vs. '3'.  Another Math::BigInt::Lite issue.
+
+- use word-based for-sieve for non-segment.
+
+- remove start/end partial word tests from inner loop in for-sieve.
+
+- sieve.h and util.h should get along better.
+
+- compare wheel_t with primes separated and possibly cached.

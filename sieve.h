@@ -2,6 +2,8 @@
 #define MPU_SIEVE_H
 
 #include "ptypes.h"
+#define FUNC_ctz 1
+#include "util.h"
 
 extern unsigned char* sieve_erat30(UV end);
 extern int sieve_segment(unsigned char* mem, UV startd, UV endd);
@@ -96,6 +98,7 @@ static UV prev_prime_in_sieve(const unsigned char* sieve, UV p) {
 }
 #endif
 
+#if 0
 /* Useful macros for the wheel-30 sieve array */
 #define START_DO_FOR_EACH_SIEVE_PRIME(sieve, base, a, b) \
   { \
@@ -120,12 +123,43 @@ static UV prev_prime_in_sieve(const unsigned char* sieve, UV p) {
       s_ |= 1 << bit_; \
       p = base_ + wheel30[bit_]; \
       if (p > l_ || p < base_) break; /* handle overflow */ \
-      { \
+      {
 
 #define END_DO_FOR_EACH_SIEVE_PRIME \
       } \
     } \
   }
+#else
+/* Extract word at a time, good suggestion from Kim Walisch */
+static const unsigned char wheel240[] = {1,7,11,13,17,19,23,29,31,37,41,43,47,49,53,59,61,67,71,73,77,79,83,89,91,97,101,103,107,109,113,119,121,127,131,133,137,139,143,149,151,157,161,163,167,169,173,179,181,187,191,193,197,199,203,209,211,217,221,223,227,229,233,239};
+#define START_DO_FOR_EACH_SIEVE_PRIME(sieve, base, a, b) \
+  { \
+    const UV* sieve_ = (const UV*)sieve;        /* word ptr to sieve */ \
+    const UV nperw_ = 30*sizeof(UV); /* nums per word */     \
+    UV base_ = base;                 /* start of sieve n */  \
+    UV b_ = a;                       /* begin value n */     \
+    UV f_ = b;                       /* final value n */     \
+    UV begw_ = (b_-base_)/nperw_;    /* first word */        \
+    UV endw_ = (f_-base_)/nperw_;    /* first word */        \
+    UV sw_, tz_, p; \
+    base_ += begw_*nperw_; \
+    while (begw_ <= endw_) { \
+      sw_ = ~ LEUV(sieve_[begw_]); \
+      while (sw_ != 0) { \
+        tz_ = ctz(sw_); \
+        sw_ &= ~(UVCONST(1) << tz_); \
+        p = base_ + wheel240[tz_]; \
+        if (p > f_) break; \
+        if (p >= b_) {
+
+#define END_DO_FOR_EACH_SIEVE_PRIME \
+        } \
+      } \
+      begw_++; \
+      base_ += nperw_; \
+    } \
+  }
+#endif
 
 #define START_DO_FOR_EACH_PRIME(a, b) \
   { \

@@ -3,26 +3,27 @@
 #include <string.h>
 #include <math.h>
 
+#define FUNC_isqrt 1
 #define FUNC_next_prime_in_sieve
 #include "sieve.h"
 #include "ptypes.h"
 #include "cache.h"
-#define FUNC_isqrt 1
 #include "util.h"
 #include "primality.h"
 #include "montmath.h"
+#include "prime_nth_count.h"
 
 /* Is it better to do a partial sieve + primality tests vs. full sieve? */
 static int do_partial_sieve(UV startp, UV endp) {
   UV range = endp - startp;
   if (USE_MONTMATH) range /= 8;  /* Fast primality tests */
 #if BITS_PER_WORD == 64
-  if ( (startp > UVCONST(     100000000000000) && range <     20000) ||
-       (startp > UVCONST(    1000000000000000) && range <    100000) ||
-       (startp > UVCONST(   10000000000000000) && range <    200000) ||
-       (startp > UVCONST(  100000000000000000) && range <   2000000) ||
+  if ( (startp > UVCONST(     100000000000000) && range <     40000) ||
+       (startp > UVCONST(    1000000000000000) && range <    150000) ||
+       (startp > UVCONST(   10000000000000000) && range <    600000) ||
+       (startp > UVCONST(  100000000000000000) && range <   2500000) ||
        (startp > UVCONST( 1000000000000000000) && range <  10000000) ||
-       (startp > UVCONST(10000000000000000000) && range <  20000000) )
+       (startp > UVCONST(10000000000000000000) && range <  40000000) )
     return 1;
 #endif
   return 0;
@@ -162,16 +163,22 @@ static const unsigned char masknum30[30] =
 static const unsigned char qinit30[30] =
     {0,0,1,1,1,1,1,1,2,2,2,2,3,3,4,4,4,4,5,5,6,6,6,6,7,7,7,7,7,7};
 
+typedef struct {
+  uint32_t prime;
+  uint32_t offset;
+  uint8_t index;
+} wheel_t;
+
 #define CROSS_INDEX(v, b0,b1,b2,b3,b4,b5,b6,b7,  i0,i1,i2,i3,i4,i5,i6,i7, it) \
   while (1) { \
-    case (v+0): if (s >= send) break;  set_bit(s,b0);  s += r*6+i0; \
-    case (v+1): if (s >= send) break;  set_bit(s,b1);  s += r*4+i1; \
-    case (v+2): if (s >= send) break;  set_bit(s,b2);  s += r*2+i2; \
-    case (v+3): if (s >= send) break;  set_bit(s,b3);  s += r*4+i3; \
-    case (v+4): if (s >= send) break;  set_bit(s,b4);  s += r*2+i4; \
-    case (v+5): if (s >= send) break;  set_bit(s,b5);  s += r*4+i5; \
-    case (v+6): if (s >= send) break;  set_bit(s,b6);  s += r*6+i6; \
-    case (v+7): if (s >= send) break;  set_bit(s,b7);  s += r*2+i7; \
+    case (v+0): if(s>=send){w->index=v+0;break;} set_bit(s,b0); s += r*6+i0; \
+    case (v+1): if(s>=send){w->index=v+1;break;} set_bit(s,b1); s += r*4+i1; \
+    case (v+2): if(s>=send){w->index=v+2;break;} set_bit(s,b2); s += r*2+i2; \
+    case (v+3): if(s>=send){w->index=v+3;break;} set_bit(s,b3); s += r*4+i3; \
+    case (v+4): if(s>=send){w->index=v+4;break;} set_bit(s,b4); s += r*2+i4; \
+    case (v+5): if(s>=send){w->index=v+5;break;} set_bit(s,b5); s += r*4+i5; \
+    case (v+6): if(s>=send){w->index=v+6;break;} set_bit(s,b6); s += r*6+i6; \
+    case (v+7): if(s>=send){w->index=v+7;break;} set_bit(s,b7); s += r*2+i7; \
     while (s + r*28 + it-1 < send) { \
       set_bit(s + r *  0 +  0, b0); \
       set_bit(s + r *  6 + i0, b1); \
@@ -184,33 +191,50 @@ static const unsigned char qinit30[30] =
       s += r*30 + it; \
     } \
   }
-static void mark_primes(unsigned char* s, const unsigned char* send, UV startp, UV endp, UV prime)
+static wheel_t create_wheel(UV startp, uint32_t prime)
 {
-  UV p2, q, r;
-  int index;
+  wheel_t w;
+  UV q = prime;
+  UV p2 = q*q;
 
-  q = prime;
-  p2 = prime * prime;
+  if (startp == 0) {
+    wheel_t ws = { prime, p2/30, qinit30[q % 30]  +  8*masknum30[prime % 30] };
+    return ws;
+  }
+
   if (p2 < startp) {
     q = 1+(startp-1)/prime;
     q += distancewheel30[q % 30];
     p2 = prime * q;
+    /* The offset if p2 overflows is still ok, or set to max_sieve_prime+1. */
+    /* if (p2 < startp) p2 = max_sieve_prime+1; */
   }
-  if (p2 > endp || p2 < startp) return;
 
-  s += (p2-startp) / 30;
-  r = prime / 30;
-  index = qinit30[q % 30]  +  8*masknum30[prime % 30];
+  w.offset = (p2-startp) / 30;
+  w.index = qinit30[q % 30]  +  8*masknum30[prime % 30];
+  w.prime = prime;
+  return w;
+}
 
-  switch (index) {
-    CROSS_INDEX( 0, 0,1,2,3,4,5,6,7, 0,0,0,0,0,0,0,1,  1); break;
-    CROSS_INDEX( 8, 1,5,4,0,7,3,2,6, 1,1,1,0,1,1,1,1,  7); break;
-    CROSS_INDEX(16, 2,4,0,6,1,7,3,5, 2,2,0,2,0,2,2,1, 11); break;
-    CROSS_INDEX(24, 3,0,6,5,2,1,7,4, 3,1,1,2,1,1,3,1, 13); break;
-    CROSS_INDEX(32, 4,7,1,2,5,6,0,3, 3,3,1,2,1,3,3,1, 17); break;
-    CROSS_INDEX(40, 5,3,7,1,6,0,4,2, 4,2,2,2,2,2,4,1, 19); break;
-    CROSS_INDEX(48, 6,2,3,7,0,4,5,1, 5,3,1,4,1,3,5,1, 23); break;
-    CROSS_INDEX(56, 7,6,5,4,3,2,1,0, 6,4,2,4,2,4,6,1, 29); break;
+static void mark_primes(unsigned char* s, uint32_t bytes, wheel_t* w)
+{
+  if (w->offset >= bytes) {
+    w->offset -= bytes;
+  } else {
+    const unsigned char* send = s + bytes;
+    uint32_t r = w->prime / 30;
+    s += w->offset;
+    switch (w->index) {
+      CROSS_INDEX( 0, 0,1,2,3,4,5,6,7, 0,0,0,0,0,0,0,1,  1); break;
+      CROSS_INDEX( 8, 1,5,4,0,7,3,2,6, 1,1,1,0,1,1,1,1,  7); break;
+      CROSS_INDEX(16, 2,4,0,6,1,7,3,5, 2,2,0,2,0,2,2,1, 11); break;
+      CROSS_INDEX(24, 3,0,6,5,2,1,7,4, 3,1,1,2,1,1,3,1, 13); break;
+      CROSS_INDEX(32, 4,7,1,2,5,6,0,3, 3,3,1,2,1,3,3,1, 17); break;
+      CROSS_INDEX(40, 5,3,7,1,6,0,4,2, 4,2,2,2,2,2,4,1, 19); break;
+      CROSS_INDEX(48, 6,2,3,7,0,4,5,1, 5,3,1,4,1,3,5,1, 23); break;
+      CROSS_INDEX(56, 7,6,5,4,3,2,1,0, 6,4,2,4,2,4,6,1, 29); break;
+    }
+    w->offset = s - send;
   }
 }
 
@@ -230,7 +254,8 @@ unsigned char* sieve_erat30(UV end)
 
   limit = isqrt(end);  /* prime*prime can overflow */
   for (  ; prime <= limit; prime = next_prime_in_sieve(mem,prime,end)) {
-    mark_primes(mem, mem+max_buf, 0, end, prime);
+    wheel_t w = create_wheel(0, prime);
+    mark_primes(mem, max_buf, &w);
   }
   return mem;
 }
@@ -242,7 +267,6 @@ int sieve_segment(unsigned char* mem, UV startd, UV endd)
   UV limit, slimit, start_base_prime, sieve_size;
   UV startp = 30*startd;
   UV endp = (endd >= (UV_MAX/30))  ?  UV_MAX-2  :  30*endd+29;
-
   MPUassert( (mem != 0) && (endd >= startd) && (endp >= startp),
              "sieve_segment bad arguments");
 
@@ -257,8 +281,7 @@ int sieve_segment(unsigned char* mem, UV startd, UV endd)
   /* Fill buffer with marked 7, 11, and 13 */
   start_base_prime = sieve_prefill(mem, startd, endd);
 
-  limit = isqrt(endp);  /* floor(sqrt(n)), will include p if p*p=endp */
-  /* Don't use a sieve prime such that p*p > UV_MAX */
+  limit = isqrt(endp);
   if (limit > max_sieve_prime)  limit = max_sieve_prime;
   slimit = limit;
   if (do_partial_sieve(startp, endp))
@@ -270,17 +293,52 @@ int sieve_segment(unsigned char* mem, UV startd, UV endd)
   }
 
   START_DO_FOR_EACH_SIEVE_PRIME(sieve, 0, start_base_prime, slimit) {
-    mark_primes(mem, mem+endd-startd+1, startp, endp, p);
-  }
-  END_DO_FOR_EACH_SIEVE_PRIME;
+    wheel_t w = create_wheel(startp, p);
+    mark_primes(mem, endd-startd+1, &w);
+  } END_DO_FOR_EACH_SIEVE_PRIME;
   release_prime_cache(sieve);
 
   if (limit > slimit) { /* We've sieved out most composites, but not all. */
     START_DO_FOR_EACH_SIEVE_PRIME(mem, 0, 0, endp-startp) {
-      if (!BPSW(startp + p))        /* If the candidate is not prime, */
-        mem[d_] |= 1 << bit_;       /* mark the sieve location.       */
+      if (!BPSW(startp + p))           /* If the candidate is not prime, */
+        mem[p/30] |= masktab30[p%30];  /* mark the sieve location.       */
     } END_DO_FOR_EACH_SIEVE_PRIME;
   }
+  return 1;
+}
+
+int sieve_segment_wheel(unsigned char* mem, UV startd, UV endd, wheel_t *warray, uint32_t wsize)
+{
+  uint32_t i = 0, limit, start_base_prime;
+  uint32_t segsize = endd - startd + 1;
+  UV startp = 30*startd;
+  UV endp = (endd >= (UV_MAX/30))  ?  UV_MAX-2  :  30*endd+29;
+  MPUassert( (mem != 0) && (endd >= startd) && (endp >= startp),
+             "sieve_segment bad arguments");
+
+  /* possibly use primary cache directly */
+
+  /* Fill buffer with marked 7, 11, and 13 */
+  start_base_prime = sieve_prefill(mem, startd, endd);
+  while (i < wsize && warray[i].prime < start_base_prime)
+    i++;
+
+  limit = isqrt(endp);
+  if (limit > max_sieve_prime)  limit = max_sieve_prime;
+
+  while (i < wsize && warray[i].prime <= limit) {
+    if (warray[i].index >= 64)
+      warray[i] = create_wheel(startp, warray[i].prime);
+    mark_primes(mem, segsize, &(warray[i++]));
+  }
+
+  if (limit > warray[wsize-1].prime && warray[wsize-1].prime < max_sieve_prime) {
+    START_DO_FOR_EACH_SIEVE_PRIME(mem, 0, 0, endp-startp) {
+      if (!BPSW(startp + p))           /* If the candidate is not prime, */
+        mem[p/30] |= masktab30[p%30];  /* mark the sieve location.       */
+    } END_DO_FOR_EACH_SIEVE_PRIME;
+  }
+
   return 1;
 }
 
@@ -295,6 +353,8 @@ typedef struct {
   UV segment_size;
   unsigned char* segment;
   unsigned char* base;
+  wheel_t *warray;
+  uint32_t wsize;
 } segment_context_t;
 
 /*
@@ -317,7 +377,7 @@ typedef struct {
 void* start_segment_primes(UV low, UV high, unsigned char** segmentmem)
 {
   segment_context_t* ctx;
-  UV slimit;
+  UV nsegments, range;
 
   MPUassert( high >= low, "start_segment_primes bad arguments");
   New(0, ctx, 1, segment_context_t);
@@ -326,29 +386,61 @@ void* start_segment_primes(UV low, UV high, unsigned char** segmentmem)
   ctx->lod = low / 30;
   ctx->hid = high / 30;
   ctx->endp = (ctx->hid >= (UV_MAX/30))  ?  UV_MAX-2  :  30*ctx->hid+29;
+  range = ctx->hid - ctx->lod + 1;   /* range in bytes */
 
 #if BITS_PER_WORD == 64
-  if (high > 1e11 && high-low > 1e6) {
-    UV range = (high-low+29)/30;
-    /* Select what we think would be a good segment size */
-    UV size = isqrt(isqrt(high)) * ((high < 1e15) ? 500 : 250);
+  if (high > 1e10 && range > 32*1024-16) {
+    /* Use larger segments */
+    UV size = isqrt(32*isqrt(high)) * (logint(high,2)-2);
+    if (size < 128*1024) size = 128*1024;
     /* Evenly split the range into segments */
     UV div = (range+size-1)/size;
     size = (div <= 1)  ?  range  :  (range+div-1)/div;
-    if (_XS_get_verbose() >= 2)
-      printf("segment sieve: byte range %lu split into %lu segments of size %lu\n", (unsigned long)range, (unsigned long)div, (unsigned long)size);
     ctx->segment_size = size;
     New(0, ctx->segment, size, unsigned char);
   } else
 #endif
   ctx->segment = get_prime_segment( &(ctx->segment_size) );
   *segmentmem = ctx->segment;
+  nsegments = (((high-low+29)/30)+ctx->segment_size-1) / ctx->segment_size;
+
+  if (_XS_get_verbose() >= 2)
+    printf("segment sieve: byte range %lu split into %lu segments of size %lu\n", (unsigned long)range, (unsigned long)nsegments, (unsigned long)ctx->segment_size);
 
   ctx->base = 0;
-  /* Expand primary cache so we won't regen each call */
-  slimit = isqrt(ctx->endp)+1;
-  if (do_partial_sieve(low, high))  slimit >>= 8;
-  get_prime_cache( slimit, 0);
+  ctx->warray = 0;
+  ctx->wsize = 0;
+#if 1
+  { /* Generate wheel data for this segment sieve */
+    const UV maxsieve = UVCONST(400000000);
+    UV limit, nprimes, startp;
+    wheel_t *warray;
+    wheel_t w = {0,0,128};
+    uint32_t wsize = 0;
+    /* Number of primes for a full sieve */
+    limit = isqrt(ctx->endp);
+    /* For small ranges a partial sieve is much faster */
+    if (do_partial_sieve(low, high))
+      limit >>= ((low < (UV)1e16) ? 8 : 10);
+    if (limit <= maxsieve) {
+      /* Bump to one more than needed. */
+      limit = next_prime(limit);
+      /* We'll make space for this many */
+      nprimes = prime_count_upper(limit);
+      startp = 30 * ctx->lod;
+      if (_XS_get_verbose() >= 4)
+        printf("segment sieve %lu - %lu, primes to %lu (max %lu)\n", (unsigned long)low, (unsigned long)high, (unsigned long)limit, (unsigned long)nprimes);
+      New(0, warray, nprimes, wheel_t);
+      START_DO_FOR_EACH_PRIME(0,limit) {
+        if (wsize >= nprimes) croak("segment bad upper count");
+        w.prime = p;
+        warray[wsize++] = w;
+      } END_DO_FOR_EACH_PRIME;
+      ctx->warray = warray;
+      ctx->wsize = wsize;
+    }
+  }
+#endif
 
   return (void*) ctx;
 }
@@ -371,7 +463,10 @@ int next_segment_primes(void* vctx, UV* base, UV* low, UV* high)
   MPUassert( seghigh_d >= ctx->lod, "next_segment_primes: highd < lowd");
   MPUassert( range_d <= ctx->segment_size, "next_segment_primes: range > segment size");
 
-  sieve_segment(ctx->segment, ctx->lod, seghigh_d);
+  if (ctx->warray != 0)
+    sieve_segment_wheel(ctx->segment, ctx->lod, seghigh_d, ctx->warray, ctx->wsize);
+  else
+    sieve_segment(ctx->segment, ctx->lod, seghigh_d);
 
   ctx->lod += range_d;
   ctx->low = *high + 2;
@@ -390,6 +485,10 @@ void end_segment_primes(void* vctx)
   if (ctx->base != 0) {
     Safefree(ctx->base);
     ctx->base = 0;
+  }
+  if (ctx->warray != 0) {
+    Safefree(ctx->warray);
+    ctx->warray = 0;
   }
   Safefree(ctx);
 }

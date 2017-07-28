@@ -199,4 +199,39 @@ typedef __int8 int8_t;
   #define INLINE
 #endif
 
+#if __BIG_ENDIAN__ || (defined(BYTEORDER) && (BYTEORDER == 0x4321 || BYTEORDER == 0x87654321))
+#  if ((__GNUC__ == 4 && __GNUC_MINOR__ >= 4) || __GNUC__ >= 5 || (__clang__ &&  __clang_major__ >= 4)
+#    if BITS_PER_WORD == 64
+#      define LEUV(x) __builtin_bswap64(x)
+#    else
+#      define LEUV(x) __builtin_bswap32(x)
+#    endif
+#  else
+#    if BITS_PER_WORD == 64
+       /* compare to 5 step interleave */
+       static UV LEUV(UV x) {
+         UV v = ((x & UVCONST(0xFF00000000000000)) >> 56) |
+                ((x & UVCONST(0x00FF000000000000)) >> 40) |
+                ((x & UVCONST(0x0000FF0000000000)) >> 24) |
+                ((x & UVCONST(0x000000FF00000000)) >>  8) |
+                ((x & UVCONST(0x00000000FF000000)) <<  8) |
+                ((x & UVCONST(0x0000000000FF0000)) << 24) |
+                ((x & UVCONST(0x000000000000FF00)) << 40) |
+                ((x & UVCONST(0x00000000000000FF)) << 56);
+         return v;
+       }
+#    else
+       static UV LEUV(UV x) {
+         UV v = ((x & 0xFF000000) >> 24) |
+                ((x & 0x00FF0000) >>  8) |
+                ((x & 0x0000FF00) <<  8) |
+                ((x & 0x000000FF) << 24);
+         return v;
+       }
+#    endif
+#  endif
+#else /* LE */
+#  define LEUV(x) (x)
+#endif
+
 #endif

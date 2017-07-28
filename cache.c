@@ -113,11 +113,11 @@ void release_prime_cache(const unsigned char* mem) {
 
 
 /* The segment everyone is trying to share */
-#define PRIMARY_SEGMENT_CHUNK_SIZE    UVCONST(256*1024-16)
+#define PRIMARY_SEGMENT_CHUNK_SIZE    UVCONST(32*1024-16)
 static unsigned char* prime_segment = 0;
 static int prime_segment_is_available = 1;
 /* If that's in use, malloc a new one of this size */
-#define SECONDARY_SEGMENT_CHUNK_SIZE  UVCONST(128*1024-16)
+#define SECONDARY_SEGMENT_CHUNK_SIZE  UVCONST(32*1024-16)
 
 unsigned char* get_prime_segment(UV *size) {
   unsigned char* mem;
