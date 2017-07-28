@@ -3228,10 +3228,14 @@ sub is_strong_pseudoprime {
     return 1 unless @bases;
   }
 
-  # Die on invalid bases
-  foreach my $base (@bases) { croak "Base $base is invalid" if $base < 2 }
-  # Make sure we handle big bases ok.
-  @bases = grep { $_ > 1 }  map { ($_ >= $n) ? $_ % $n : $_ }  @bases;
+  my @newbases;
+  for my $base (@bases) {
+    croak "Base $base is invalid" if $base < 2;
+    $base %= $n if $base >= $n;
+    return 0 if $base == 0 || ($base == $n-1 && ($base % 2) == 1);
+    push @newbases, $base;
+  }
+  @bases = @newbases;
 
   if ( ref($n) eq 'Math::BigInt' ) {
 
