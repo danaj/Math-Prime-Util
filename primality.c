@@ -165,7 +165,7 @@ int miller_rabin(UV const n, const UV *bases, int nbases)
     if (a < 2)  croak("Base %"UVuf" is invalid", a);
     if (a >= n) {
       a %= n;
-      if (a == 0) return 0;
+      if (a == 0 || (a == n-1 && a&1)) return 0;
     }
     if (a == 1 || a == n-1) continue;
     /* n is a strong pseudoprime to base a if either:

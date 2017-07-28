@@ -44,6 +44,12 @@ typedef struct {
 /* Chacha routines: init, quarter round, core, keystream                     */
 /*****************************************************************************/
 
+/* On UltraSparc, Perl's versions of these macros will crash. */
+#if !defined(__x86_64__)
+#undef U8TO32_LE
+#undef U32TO8_LE
+#endif
+
 #ifndef U8TO32_LE
 #define U8TO32_LE(p) \
   (((uint32_t)((p)[0])      ) | \

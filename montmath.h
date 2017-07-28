@@ -121,10 +121,14 @@ static int monty_mr64(const uint64_t n, const UV* bases, int cnt)
   t = 0;
   while (!(u&1)) {  t++;  u >>= 1;  }
   for (j = 0; j < cnt; j++) {
-    const uint64_t a = bases[j];
-    uint64_t       A = compute_a_times_2_64_mod_n(a, n, r);
-    uint64_t       d;
+    uint64_t d, a = bases[j];
+    uint64_t A = compute_a_times_2_64_mod_n(a, n, r);
     if (a < 2)  croak("Base %"UVuf" is invalid", (UV)a);
+    if (a >= n) {
+      a %= n;
+      if (a == 0 || (a == n-1 && a&1)) return 0;
+    }
+    if (a == 1 || a == n-1) continue;
     if (!A) continue;  /* PRIME in subtest */
     d = mont_powmod64(A, u, r, n, npi);  /* compute a^u mod n */
     if (d == r || d == nr) continue;  /* PRIME in subtest */
