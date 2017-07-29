@@ -397,7 +397,10 @@ UV prime_count_lower(UV n)
   fl1 = logl(n);
   fl2 = fl1 * fl1;
 
-  if (n < UVCONST(4000000000)) {
+  if (n <= 300000) { /* Quite accurate and avoids calling Li for speed. */
+    a = (n < 70200) ? 947 : (n < 176000) ? 904 : 829;
+    lower = fn / (fl1 - 1 - 1/fl1 - 2.85/fl2 - 13.15/(fl1*fl2) + a/(fl2*fl2));
+  } else if (n < UVCONST(4000000000)) {
     /* Loose enough that FP differences in Li(n) should be ok. */
     a = (n <     88783) ?   4.0L
       : (n <    300000) ?  -3.0L
@@ -476,6 +479,13 @@ UV prime_count_upper(UV n)
   return (UV) floorl(upper);
 }
 
+static void simple_nth_limits(UV *lo, UV *hi, long double n, long double logn, long double loglogn) {
+  const long double a = (n < 228) ? .6483 : (n < 948) ? .8032 : (n < 2195) ? .8800 : (n < 39017) ? .9019 : .9484;
+  *lo = n * (logn + loglogn - 1.0 + ((loglogn-2.10)/logn));
+  *hi = n * (logn + loglogn - a);
+  if (*hi < *lo) *hi = MPU_MAX_PRIME;
+}
+
 /* The nth prime will be less or equal to this number */
 UV nth_prime_upper(UV n)
 {
@@ -489,9 +499,8 @@ UV nth_prime_upper(UV n)
   flog2n = logl(flogn);    /* Note distinction between log_2(n) and log^2(n) */
 
   if (n < 688383) {
-    UV lo = fn * (flogn + flog2n - 1.0 + ((flog2n-2.10)/flogn));
-    UV hi = fn * (flogn + flog2n - ((n <= 39017) ? 0 : 0.9484) );
-    if (hi < lo) hi = MPU_MAX_PRIME;
+    UV lo,hi;
+    simple_nth_limits(&lo, &hi, fn, flogn, flog2n);
     while (lo < hi) {
       UV mid = lo + (hi-lo)/2;
       if (prime_count_lower(mid) < n) lo = mid+1;
@@ -532,12 +541,8 @@ UV nth_prime_lower(UV n)
 
   /* For small values, do a binary search on the inverse prime count */
   if (n < 2000000) {
-    /* Use Dusart 2010 page 2 bounds for the endpoints */
-    UV lo = fn * (flogn + flog2n - 1.0 + ((flog2n-2.10)/flogn));
-    UV hi = (n < 5000)
-          ?  lo + 300
-          :  fn * (flogn + flog2n - 1.0 + ((flog2n-1.95)/flogn));
-    if (hi < lo) hi = MPU_MAX_PRIME;
+    UV lo,hi;
+    simple_nth_limits(&lo, &hi, fn, flogn, flog2n);
     while (lo < hi) {
       UV mid = lo + (hi-lo)/2;
       if (prime_count_upper(mid) < n) lo = mid+1;
