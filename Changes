@@ -10,9 +10,7 @@ Revision history for Perl module Math::Prime::Util
     [FUNCTIONALITY AND PERFORMANCE]
 
     - Rewrite sieve marking based on Kim Walisch's new simple mod-30 sieve.
-      Similar in many ways to my old code, but this is simpler and is
-      quite a bit faster in some circumstances.  We are now faster than
-      primegen (Sieve of Atkin) at all sizes.
+      Similar in many ways to my old code, but this is simpler and faster.
 
     - is_pseudoprime, is_euler_pseudoprime, is_strong_pseudoprime changed to
       better handle the unusual case of base >= n.
@@ -25,6 +23,8 @@ Revision history for Perl module Math::Prime::Util
 
     - Tighter nth prime bounds for large inputs from Axler 2017-06.
       Redo Ramanujan bounds since they're based on nth prime bounds.
+
+    - chinese objectifies result (i.e. big results are bigints).
 
 
 0.65 2017-05-03

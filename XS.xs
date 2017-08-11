@@ -995,16 +995,14 @@ chinese(...)
   PROTOTYPE: @
   PREINIT:
     int i, status;
-    UV* an;
-    UV ret;
+    UV ret, *an;
+    SV **psva, **psvn;
   PPCODE:
     status = 1;
     New(0, an, 2*items, UV);
     ret = 0;
     for (i = 0; i < items; i++) {
       AV* av;
-      SV** psva;
-      SV** psvn;
       if (!SvROK(ST(i)) || SvTYPE(SvRV(ST(i))) != SVt_PVAV || av_len((AV*)SvRV(ST(i))) != 1)
         croak("chinese arguments are two-element array references");
       av = (AV*) SvRV(ST(i));
@@ -1022,7 +1020,9 @@ chinese(...)
     Safefree(an);
     if (status == -1) XSRETURN_UNDEF;
     if (status)       XSRETURN_UV(ret);
+    psvn = av_fetch((AV*) SvRV(ST(0)), 1, 0);
     _vcallsub_with_gmp(0.32,"chinese");
+    OBJECTIFY_RESULT( (psvn ? *psvn : 0), ST(0));
     return; /* skip implicit PUTBACK */
 
 void
