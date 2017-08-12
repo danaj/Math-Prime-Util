@@ -26,6 +26,11 @@ Revision history for Perl module Math::Prime::Util
 
     - chinese objectifies result (i.e. big results are bigints).
 
+    - Internal support for Baillie-Wagstaff (pg 1402) extra Lucas tests.
+
+    - More standardized Lucas parameter selection.  Like other tests and the
+      1980 paper, checks jacobi(D) in the loop, not gcd(D).
+
 
 0.65 2017-05-03
 

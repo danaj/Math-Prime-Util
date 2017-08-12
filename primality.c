@@ -39,13 +39,13 @@ static int jacobi_iu(IV in, UV m) {
 }
 
 static UV select_extra_strong_parameters(UV n, UV increment) {
-  UV P = 3;
+  int j;
+  UV D, P = 3;
   while (1) {
-    UV D = P*P - 4;
-    /* TODO: We should not do this test. */
-    if (gcd_ui(D, n) > 1 && gcd_ui(D, n) != n) return 0;
-    if (jacobi_iu(D, n) == -1)
-      break;
+    D = P*P - 4;
+    j = jacobi_iu(D, n);
+    if (j == 0) return 0;
+    if (j == -1) break;
     if (P == (3+20*increment) && is_perfect_square(n)) return 0;
     P += increment;
     if (P > 65535)
@@ -497,7 +497,8 @@ int lucasv(IV* V, IV P, IV Q, UV k)
 /* Lucas tests:
  *  0: Standard
  *  1: Strong
- *  2: Extra Strong (Mo/Jones/Grantham)
+ *  2: Stronger (Strong + page 1401 extra tests)
+ *  3: Extra Strong (Mo/Jones/Grantham)
  *
  * None of them have any false positives for the BPSW test.  Also see the
  * "almost extra strong" test.
@@ -510,28 +511,39 @@ int is_lucas_pseudoprime(UV n, int strength)
   if (n < 7) return (n == 2 || n == 3 || n == 5);
   if ((n % 2) == 0 || n == UV_MAX) return 0;
 
-  if (strength < 2) {
+  if (strength < 3) {
     UV Du = 5;
     IV sign = 1;
+    int j;
     while (1) {
       D = Du * sign;
-      if (gcd_ui(Du, n) > 1 && gcd_ui(Du, n) != n) return 0;
-      if (jacobi_iu(D, n) == -1)
-        break;
+      j = jacobi_iu(D, n);
+      if (j != 1 && Du != n) break;
       if (Du == 21 && is_perfect_square(n)) return 0;
       Du += 2;
       sign = -sign;
     }
+    if (j != -1) return 0;
     P = 1;
     Q = (1 - D) / 4;
+    if (strength == 2 && Q == -1) P=Q=D=5;  /* Method A* */
+    /* Check gcd(n,2QD). gcd(n,2D) already done. */
+    Qk = (Q >= 0)  ?  Q % n  :  n-(((UV)(-Q)) % n);
+    if (gcd_ui(Qk,n) != 1) return 0;
   } else {
     P = select_extra_strong_parameters(n, 1);
     if (P == 0) return 0;
     Q = 1;
     D = P*P - 4;
-    if (gcd_ui(D, n) > 1 && gcd_ui(D, n) != n) return 0;
   }
   MPUassert( D == (P*P - 4*Q) , "is_lucas_pseudoprime: incorrect DPQ");
+
+#if 0   /* Condition 2, V_n+1 = 2Q mod n */
+{ UV us, vs, qs; lucas_seq(&us, &vs, &qs, n, P, Q, n+1); return (vs == addmod(Q,Q,n)); }
+#endif
+#if 0   /* Condition 3, n is a epsp(Q) */
+return is_euler_pseudoprime(n,Qk);
+#endif
 
   d = n+1;
   s = 0;
@@ -545,6 +557,9 @@ int is_lucas_pseudoprime(UV n, int strength)
     const uint64_t montP = (P == 1) ? mont1
                          : (P >= 0) ? mont_geta(P, n)
                          : n - mont_geta(-P, n);
+    const uint64_t montQ = (Q == 1) ? mont1
+                         : (Q >= 0) ? mont_geta(Q, n)
+                         : n - mont_geta(-Q, n);
     const uint64_t montD = (D >= 0) ? mont_geta(D, n)
                          : n - mont_geta(-D, n);
     UV b;
@@ -577,8 +592,6 @@ int is_lucas_pseudoprime(UV n, int strength)
       }
       Qk = (sign == 1) ? mont1 : n-mont1;
     } else {
-      const uint64_t montQ = (Q >= 0) ? mont_geta(Q, n)
-                           : n - mont_geta(-Q, n);
       Qk = montQ;
       while (b--) {
         U = mont_mulmod(U, V, n);
@@ -594,6 +607,7 @@ int is_lucas_pseudoprime(UV n, int strength)
         }
       }
     }
+
     if (strength == 0) {
       if (U == 0)
         return 1;
@@ -608,6 +622,24 @@ int is_lucas_pseudoprime(UV n, int strength)
           Qk = mont_sqrmod(Qk,n);
         }
       }
+    } else if (strength == 2) {
+      UV Ql, Qj = 0;
+      int qjacobi, is_slpsp = 0;
+      if (U == 0)
+        is_slpsp = 1;
+      while (s--) {
+        if (V == 0)
+          is_slpsp = 1;
+        Ql = Qk;
+        V = submod( mont_sqrmod(V,n), addmod(Qk,Qk,n), n);
+        Qk = mont_sqrmod(Qk,n);
+      }
+      if (!is_slpsp)                  return 0; /* slpsp */
+      if (V != addmod(montQ,montQ,n)) return 0; /* V_{n+1} != 2Q mod n */
+      qjacobi = jacobi_iu(Q,n);
+      Qj = (qjacobi == 0) ? 0 : (qjacobi == 1) ? montQ : n-montQ;
+      if (Ql != Qj)                   return 0; /* n is epsp base Q */
+      return 1;
     } else {
       if ( U == 0 && (V == mont2 || V == (n-mont2)) )
         return 1;
@@ -639,6 +671,25 @@ int is_lucas_pseudoprime(UV n, int strength)
         Qk = sqrmod(Qk, n);
       }
     }
+  } else if (strength == 2) {
+    UV Ql, Qj = 0;
+    UV Qu = (Q >= 0)  ?  Q % n  :  n-(((UV)(-Q)) % n);
+    int qjacobi, is_slpsp = 0;
+    if (U == 0)
+      is_slpsp = 1;
+    while (s--) {
+      if (V == 0)
+        is_slpsp = 1;
+      Ql = Qk;
+      V = mulsubmod(V, V, addmod(Qk,Qk,n), n);
+      Qk = sqrmod(Qk, n);
+    }
+    if (!is_slpsp)                  return 0; /* slpsp */
+    if (V != addmod(Qu,Qu,n))       return 0; /* V_{n+1} != 2Q mod n */
+    qjacobi = jacobi_iu(Q,n);
+    Qj = (qjacobi == 0) ? 0 : (qjacobi == 1) ? Qu : n-Qu;
+    if (Ql != Qj)                   return 0; /* n is epsp base Q */
+    return 1;
   } else {
     if ( U == 0 && (V == 2 || V == (n-2)) )
       return 1;

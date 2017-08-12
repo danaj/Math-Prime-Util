@@ -1106,7 +1106,7 @@ is_prime(IN SV* svn, ...)
           case 4:  ret = is_aks_prime(n); break;
           case 5:  ret = is_lucas_pseudoprime(n, 0); break;
           case 6:  ret = is_lucas_pseudoprime(n, 1); break;
-          case 7:  ret = is_lucas_pseudoprime(n, 2); break;
+          case 7:  ret = is_lucas_pseudoprime(n, 3); break;
           case 8:  {
                      /* IV P = 1, Q = -1; */ /* Fibonacci polynomial */
                      IV P = 0, Q = 0;        /* Q=2,P=least odd s.t. (D|n)=-1 */
