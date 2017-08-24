@@ -2,6 +2,7 @@ package Math::Prime::Util::PPFE;
 use strict;
 use warnings;
 use Math::Prime::Util::PP;
+use Math::Prime::Util::Entropy;
 
 # The PP front end, only loaded if XS is not used.
 # It is intended to load directly into the MPU namespace.
@@ -38,6 +39,36 @@ if (CSPRNG_CHACHA) {
   *irand64 = \&Math::Prime::Util::ISAAC::irand64;
 } else {
   die "Bad CSPRNG choice";
+}
+sub srand {
+  my($seed) = @_;
+  croak "secure option set, manual seeding disabled" if $Math::Prime::Util::_Config{'secure'};
+  if (!defined $seed) {
+    my $nbytes = (~0 == 4294967295) ? 4 : 8;
+    $seed = entropy_bytes( $nbytes );
+    $seed = unpack(($nbytes==4) ? "L" : "Q", $seed);
+  }
+  Math::Prime::Util::_srand($seed);
+}
+sub csrand {
+  my($seed) = @_;
+  croak "secure option set, manual seeding disabled" if $Math::Prime::Util::_Config{'secure'} && defined $seed;
+  $seed = entropy_bytes( 64 ) unless defined $seed;
+  Math::Prime::Util::_csrand($seed);
+  1; # Don't return the seed
+}
+sub entropy_bytes {
+  my($bytes) = @_;
+  croak "entropy_bytes: input must be integer bytes between 1 and 4294967295"
+    if !defined($bytes) || $bytes < 1 || $bytes > 4294967295 || $bytes != int($bytes);
+  my $data = Math::Prime::Util::Entropy::entropy_bytes($bytes);
+  if (!defined $data) {
+    # We can't find any entropy source!  Highly unusual.
+    Math::Prime::Util::_srand();
+    $data = random_bytes($bytes);
+  }
+  croak "entropy_bytes internal got wrong amount!" unless length($data) == $bytes;
+  $data;
 }
 
 # Fill all the mantissa bits for our NV, regardless of 32-bit or 64-bit Perl.

@@ -2,7 +2,6 @@ package Math::Prime::Util;
 use strict;
 use warnings;
 use Carp qw/croak confess carp/;
-use Math::Prime::Util::Entropy;
 
 BEGIN {
   $Math::Prime::Util::AUTHORITY = 'cpan:DANAJ';
@@ -86,48 +85,13 @@ sub import {
       ${"${pkg}::a"} = ${"${pkg}::a"};
       ${"${pkg}::b"} = ${"${pkg}::b"};
     }
-    my @options = grep $_ ne '-nobigint', @_;
-    $_[0]->_import_nobigint if @options != @_;
-    @_ = @options;
+    foreach my $opt (qw/nobigint secure/) {
+      my @options = grep $_ ne "-$opt", @_;
+      $_Config{$opt} = 1 if @options != @_;
+      @_ = @options;
+    }
+    _XS_set_secure() if $_Config{'xs'} && $_Config{'secure'};
     goto &Exporter::import;
-}
-
-sub _import_nobigint {
-  $_Config{'nobigint'} = 1;
-  1;
-}
-
-#############################################################################
-
-sub entropy_bytes {
-  my($bytes) = @_;
-  croak "Must get an integer bytes between 1 and 4294967295"
-  if !defined($bytes) || $bytes < 1 || $bytes > 4294967295 || $bytes != int($bytes);
-  my $data = Math::Prime::Util::Entropy::entropy_bytes($bytes);
-  if (!defined $data) {
-    # We can't find any entropy source!  Highly unusual.
-    Math::Prime::Util::_srand();
-    $data = random_bytes($bytes);
-  }
-  croak "entropy_bytes internal got wrong amount!" unless length($data) == $bytes;
-  $data;
-}
-
-sub srand {
-  my($seed) = @_;
-  if (!defined $seed) {
-    my $nbytes = (~0 == 4294967295) ? 4 : 8;
-    $seed = entropy_bytes( $nbytes );
-    $seed = unpack(($nbytes==4) ? "L" : "Q", $seed);
-  }
-  Math::Prime::Util::_srand($seed);
-}
-
-sub csrand {
-  my($seed) = @_;
-  $seed = entropy_bytes( 64 ) unless defined $seed;
-  Math::Prime::Util::_csrand($seed);
-  1; # Don't return the seed
 }
 
 #############################################################################
@@ -172,6 +136,7 @@ BEGIN {
 
   Math::Prime::Util::csrand();
 
+  $_Config{'secure'} = 0;
   $_Config{'nobigint'} = 0;
   $_Config{'gmp'} = 0;
   # See if they have the GMP module and haven't requested it not to be used.
@@ -3458,6 +3423,8 @@ resources and is typically slow -- on the computer that produced
 the L</random_bytes> chart above, using C<dd> generated the same
 13 MB/s performance as our L</entropy_bytes> function.
 
+The actual performance will be highly system dependent.
+
 =head2 urandomb
 
   $n32 = urandomb(32);    # Classic irand32, returns a UV
@@ -3485,6 +3452,10 @@ entropy.  No more than 1024 bytes will be used.
 
 With no argument, reseeds using system entropy, which is preferred.
 
+If the C<secure> configuration has been set, then this will croak if
+given an argument.  This allows for control of reseeding with entropy
+the module gets itself, but not user supplied.
+
 =head2 srand
 
 Takes a single UV argument and seeds the CSPRNG with it, as well as
@@ -3499,6 +3470,9 @@ behaviour for C<undef>, empty string, empty list, etc. is slightly
 different (we treat these as 0).
 
 This function is not exported with the ":all" tag, but is with ":rand".
+
+If the C<secure> configuration has been set, this function will croak.
+Manual seeding using C<srand> is not compatible with cryptographic security.
 
 =head2 rand
 

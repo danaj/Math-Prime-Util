@@ -117,8 +117,6 @@
 - polymul, polyadd, polydiv, polyneg, polyeval, polyorder, polygcd, polylcm, polyroots, ...
   A lot of our ops do these mod n, we could make ..mod versions of each.
 
-- put entropy_bytes call in XS.
-
 - have the RNG return a context and store it in our package context space.
   Should help threaded performance by removing lock.
   Careful to not leak state.
@@ -132,3 +130,7 @@
 - sieve.h and util.h should get along better.
 
 - compare wheel_t with primes separated and possibly cached.
+
+- Ensure 'secure' is secure.
+
+- csrand contexts so fallback get entroy bytes can work properly.

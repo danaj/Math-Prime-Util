@@ -31,6 +31,10 @@ Revision history for Perl module Math::Prime::Util
     - More standardized Lucas parameter selection.  Like other tests and the
       1980 paper, checks jacobi(D) in the loop, not gcd(D).
 
+    - entropy_bytes, srand, and csrand moved to XS.
+
+    - Add -secure import to disallow all manual seeding.
+
 
 0.65 2017-05-03
 

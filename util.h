@@ -7,6 +7,9 @@ extern int  _XS_get_verbose(void);
 extern void _XS_set_verbose(int v);
 extern int  _XS_get_callgmp(void);
 extern void _XS_set_callgmp(int v);
+/* Disable all manual seeding */
+extern int  _XS_get_secure(void);
+extern void _XS_set_secure(void);
 
 extern int is_prime(UV x);
 extern UV  next_prime(UV x);

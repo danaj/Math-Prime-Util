@@ -46,6 +46,7 @@ WriteMakefile1(
                     'ramanujan_primes.o ' .
                     'prime_nth_count.o ' .
                     'util.o '     .
+                    'entropy.o '  .
                     'csprng.o '   .
                     'isaac.o '    .
                     'chacha.o '   .

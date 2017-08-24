@@ -30,6 +30,8 @@ aks.c
 cache.h
 cache.c
 constants.h
+entropy.h
+entropy.c
 factor.h
 factor.c
 lehmer.h

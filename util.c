@@ -94,6 +94,10 @@ static int _call_gmp = 0;
 void _XS_set_callgmp(int v) { _call_gmp = v; }
 int  _XS_get_callgmp(void) { return _call_gmp; }
 
+static int _secure = 0;
+void _XS_set_secure(void) { _secure = 1; }
+int  _XS_get_secure(void) { return _secure; }
+
 /* We'll use this little static sieve to quickly answer small values of
  *   is_prime, next_prime, prev_prime, prime_count
  * for non-threaded Perl it's basically the same as getting the primary

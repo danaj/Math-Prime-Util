@@ -29,6 +29,7 @@
 #include "aks.h"
 #include "constants.h"
 #include "mulmod.h"
+#include "entropy.h"
 #include "csprng.h"
 #include "random_prime.h"
 #include "ramanujan_primes.h"
@@ -377,34 +378,31 @@ PPCODE:
   return; /* skip implicit PUTBACK, returning @_ to caller, more efficient*/
 
 
-void _csrand(IN SV* seed)
+void csrand(IN SV* seed = 0)
   PREINIT:
     unsigned char* data;
     STRLEN size;
   PPCODE:
-    data = (unsigned char*) SvPV(seed, size);
-    csprng_seed(size, data);
-#ifdef BENCH_CSPRNG
-    {
-      struct timeval t0, t1;
-      unsigned char buf[32768];
-      int i, loop = 100000;
-      double usec, usec_per_byte;
-      gettimeofday(&t0, 0);
-      for (i = 0; i < loop; i++)
-        csprng_rand_bytes(32768, buf);
-      gettimeofday(&t1, 0);
-      usec = (t1.tv_sec-t0.tv_sec) * 1000000.0 + (t1.tv_usec - t0.tv_usec);
-      usec_per_byte = usec / (32768*100000.0);
-      printf("CSPRNG runs at %.3lf ns/word\n", 4 * usec_per_byte * 1000.0);
-    }
-#endif
-
-UV _srand(IN UV seedval = 0)
-  CODE:
     if (items == 0) {
-      /* Use Perl's function to get a pretty random 32-bit value */
-      seedval = Perl_seed(aTHX);
+      New(0, data, 64, unsigned char);
+      get_entropy_bytes(64, data);
+      csprng_seed(64, data);
+      Safefree(data);
+    } else if (_XS_get_secure()) {
+      croak("secure option set, manual seeding disabled");
+    } else {
+      data = (unsigned char*) SvPV(seed, size);
+      csprng_seed(size, data);
+    }
+
+UV srand(IN UV seedval = 0)
+  CODE:
+   if (_XS_get_secure())
+     croak("secure option set, manual seeding disabled");
+   if (items == 0) {
+      unsigned char buf[8];
+      get_entropy_bytes(sizeof(UV), buf);
+      memcpy( &seedval, buf, sizeof(UV));
     }
     csprng_srand(seedval);
     RETVAL = seedval;
@@ -449,17 +447,34 @@ SV* random_bytes(IN UV n)
   OUTPUT:
     RETVAL
 
+SV* entropy_bytes(IN UV n)
+  PREINIT:
+    char* sptr;
+  CODE:
+    RETVAL = newSV(n == 0 ? 1 : n);
+    SvPOK_only(RETVAL);
+    SvCUR_set(RETVAL, n);
+    sptr = SvPVX(RETVAL);
+    get_entropy_bytes(n, (unsigned char*)sptr);
+    sptr[n] = '\0';
+  OUTPUT:
+    RETVAL
+
 UV _is_csprng_well_seeded()
   ALIAS:
     _XS_get_verbose = 1
     _XS_get_callgmp = 2
-    _get_prime_cache_size = 3
+    _XS_get_secure = 3
+    _XS_set_secure = 4
+    _get_prime_cache_size = 5
   CODE:
     switch (ix) {
       case 0:  RETVAL = is_csprng_well_seeded(); break;
       case 1:  RETVAL = _XS_get_verbose(); break;
       case 2:  RETVAL = _XS_get_callgmp(); break;
-      case 3:
+      case 3:  RETVAL = _XS_get_secure(); break;
+      case 4:  _XS_set_secure(); RETVAL = 1; break;
+      case 5:
       default: RETVAL = get_prime_cache(0,0); break;
     }
   OUTPUT:
