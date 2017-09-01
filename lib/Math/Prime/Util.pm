@@ -34,7 +34,7 @@ our @EXPORT_OK =
       lucas_sequence lucasu lucasv
       primes twin_primes ramanujan_primes sieve_prime_cluster sieve_range
       forprimes forcomposites foroddcomposites fordivisors
-      forpart forcomp forcomb forperm formultiperm
+      forpart forcomp forcomb forperm forderange formultiperm
       prime_iterator prime_iterator_object
       next_prime  prev_prime
       prime_count
@@ -1396,6 +1396,12 @@ and hence give the size.
 
 Like forpart and forcomb, the index return values are read-only.  Any
 attempt to modify them will result in undefined behavior.
+
+
+=head2 forderange
+
+Similar to forperm, but iterates over derangements.  This is the set of
+permutations skipping any which maps an element to its original position.
 
 
 =head2 formultiperm
@@ -4312,6 +4318,12 @@ The L<Bell numbers|https://en.wikipedia.org/wiki/Bell_number> B_n:
 Convert from binary to hex (3000x faster than Math::BaseConvert):
 
   my $hex_string = todigitstring(fromdigits($bin_string,2),16);
+
+Calculate and print derangements using permutations:
+
+  my @data = qw/a b c d/;
+  forperm { say "@data[@_]" unless vecany { $_[$_]==$_ } 0..$#_ } @data;
+  # Using forderange is more efficient
 
 
 =head1 PRIMALITY TESTING NOTES

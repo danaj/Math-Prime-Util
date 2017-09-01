@@ -828,6 +828,9 @@ sub forcomb (&$;$) {    ## no critic qw(ProhibitSubroutinePrototypes)
 sub forperm (&$;$) {    ## no critic qw(ProhibitSubroutinePrototypes)
   Math::Prime::Util::PP::forperm(@_);
 }
+sub forderange (&$;$) {    ## no critic qw(ProhibitSubroutinePrototypes)
+  Math::Prime::Util::PP::forderange(@_);
+}
 
 sub vecreduce (&@) {    ## no critic qw(ProhibitSubroutinePrototypes)
   my($sub, @v) = @_;

@@ -128,6 +128,7 @@ Tags:
   forcomb { ... } n, k                loop over combinations
   forperm { ... } n                   loop over permutations
   formultiperm { ... } \@n            loop over multiset permutations
+  forderange { ... } n                loop over derangements
   prime_iterator                      returns a simple prime iterator
   prime_iterator_object               returns a prime iterator object
 

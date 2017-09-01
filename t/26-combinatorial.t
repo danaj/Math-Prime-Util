@@ -3,7 +3,7 @@ use strict;
 use warnings;
 
 use Test::More;
-use Math::Prime::Util qw/binomial factorial forcomb forperm formultiperm/;
+use Math::Prime::Util qw/binomial factorial forcomb forperm forderange formultiperm/;
 my $extra = defined $ENV{EXTENDED_TESTING} && $ENV{EXTENDED_TESTING};
 
 use Math::BigInt try => "GMP,Pari";
@@ -22,6 +22,7 @@ plan tests => 1                        # Factorial
             + 6 + 4                    # Combinations
             + scalar(keys(%perms)) + 1 # Permutations
             + 4                        # Multiset Permutations
+            + 5                        # Derangements
             ;
 
 sub fact { my $n = Math::BigInt->new("$_[0]"); $n->bfac; }
@@ -81,3 +82,15 @@ while (my($n, $expect) = each (%perms)) {
 
 { my @p; formultiperm { push @p, join("",@_) } [qw/a a b b/];
   is_deeply(\@p, [qw/aabb abab abba baab baba bbaa/], "formultiperm aabb"); }
+
+###### forderange
+
+{ my @p; forderange { push @p, [@_] } 0;
+  is_deeply(\@p, [[]], "forderange 0"); }
+{ my @p; forderange { push @p, [@_] } 1;
+  is_deeply(\@p, [], "forderange 1"); }
+{ my @p; forderange { push @p, [@_] } 2;
+  is_deeply(\@p, [[1,0]], "forderange 2"); }
+{ my @p; forderange { push @p, [@_] } 3;
+  is_deeply(\@p, [[1,2,0],[2,0,1]], "forderange 3"); }
+{ my $n=0; forderange { $n++ } 7; is($n, 1854, "forderange 7 count"); }

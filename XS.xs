@@ -2431,6 +2431,7 @@ void
 forcomb (SV* block, IN SV* svn, IN SV* svk = 0)
   ALIAS:
     forperm = 1
+    forderange = 2
   PROTOTYPE: &$;$
   PREINIT:
     UV i, n, k, j, m;
@@ -2468,7 +2469,12 @@ forcomb (SV* block, IN SV* svn, IN SV* svk = 0)
     }
 
     while (1) {
-      { dSP; ENTER; PUSHMARK(SP);                /* Send the values */
+      if (ix == 2)
+        for (i = 0; i < k; i++)
+          if (cm[k-i-1]-1 == i)
+            break;
+      if (ix < 2 || i == k) {
+        dSP; ENTER; PUSHMARK(SP);
         EXTEND(SP, ((IV)k));
         for (i = 0; i < k; i++) { PUSHs(svals[ cm[k-i-1]-1 ]); }
         PUTBACK; call_sv((SV*)cv, G_VOID|G_DISCARD); LEAVE;

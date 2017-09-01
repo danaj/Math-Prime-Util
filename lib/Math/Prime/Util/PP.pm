@@ -6153,17 +6153,14 @@ sub forcomb {
     while (++$i < $k) { $c[$i] = $c[$i-1] + 1; }
   }
 }
-sub forperm {
-  my($sub, $n, $k) = @_;
-  _validate_positive_integer($n);
-  croak "Too many arguments for forperm" if defined $k;
-  $k = $n;
-  return $sub->() if $n == 0;
-  return $sub->(0) if $n == 1;
+sub _forperm {
+  my($sub, $n, $all_perm) = @_;
+  my $k = $n;
   my @c = reverse 0 .. $k-1;
   my $inc = 0;
   while (1) {
-    $sub->(reverse @c);
+    my $send = $all_perm ? 1 : !scalar(grep { $c[$_] == $k-$_-1 } 0..$#c);
+    $sub->(reverse @c) if $send;
     if (++$inc & 1) {
       @c[0,1] = @c[1,0];
       next;
@@ -6176,6 +6173,22 @@ sub forperm {
     @c[$j,$m] = @c[$m,$j];
     @c[0..$j-1] = reverse @c[0..$j-1];
   }
+}
+sub forperm {
+  my($sub, $n, $k) = @_;
+  _validate_positive_integer($n);
+  croak "Too many arguments for forperm" if defined $k;
+  return $sub->() if $n == 0;
+  return $sub->(0) if $n == 1;
+  _forperm($sub, $n, 1);
+}
+sub forderange {
+  my($sub, $n, $k) = @_;
+  _validate_positive_integer($n);
+  croak "Too many arguments for forderange" if defined $k;
+  return $sub->() if $n == 0;
+  return if $n == 1;
+  _forperm($sub, $n, 0);
 }
 
 sub _multiset_permutations {
