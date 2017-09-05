@@ -6158,8 +6158,17 @@ sub _forperm {
   my $k = $n;
   my @c = reverse 0 .. $k-1;
   my $inc = 0;
+  my $send = 1;
   while (1) {
-    my $send = $all_perm ? 1 : !scalar(grep { $c[$_] == $k-$_-1 } 0..$#c);
+    if (!$all_perm) {   # Derangements via simple filtering.
+      $send = 1;
+      for my $p (0 .. $#c) {
+        if ($c[$p] == $k-$p-1) {
+          $send = 0;
+          last;
+        }
+      }
+    }
     $sub->(reverse @c) if $send;
     if (++$inc & 1) {
       @c[0,1] = @c[1,0];
