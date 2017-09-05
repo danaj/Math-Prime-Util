@@ -4323,7 +4323,20 @@ Calculate and print derangements using permutations:
 
   my @data = qw/a b c d/;
   forperm { say "@data[@_]" unless vecany { $_[$_]==$_ } 0..$#_ } @data;
-  # Using forderange is more efficient
+  # Using forderange directly is faster
+
+Compute the subfactorial of n (L<OEIS A000166|http://oeis.org/A000166>):
+
+  sub subfactorial { my $n = shift;
+    vecsum(map{ vecprod((-1)**($n-$_),binomial($n,$_),factorial($_)) }0..$n);
+  }
+
+Compute subfactorial (number of derangements) using simple recursion:
+
+  sub subfactorial { my $n = shift;
+    use bigint;
+    ($n < 1)  ?  1  :  $n * subfactorial($n-1) + (-1)**$n;
+  }
 
 
 =head1 PRIMALITY TESTING NOTES
