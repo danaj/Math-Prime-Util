@@ -92,11 +92,6 @@
 #  define FIX_MULTICALL_REFCOUNT
 #endif
 
-#if (PERL_REVISION <= 5 && PERL_VERSION < 8)
-#  include <time.h>
-#  define Perl_seed(pTHX) ((U32)time(NULL))
-#endif
-
 #ifndef CvISXSUB
 #  define CvISXSUB(cv) CvXSUB(cv)
 #endif
@@ -397,13 +392,10 @@ void csrand(IN SV* seed = 0)
 
 UV srand(IN UV seedval = 0)
   CODE:
-   if (_XS_get_secure())
-     croak("secure option set, manual seeding disabled");
-   if (items == 0) {
-      unsigned char buf[8];
-      get_entropy_bytes(sizeof(UV), buf);
-      memcpy( &seedval, buf, sizeof(UV));
-    }
+    if (_XS_get_secure())
+      croak("secure option set, manual seeding disabled");
+    if (items == 0)
+      get_entropy_bytes(sizeof(UV), (unsigned char*) &seedval);
     csprng_srand(seedval);
     RETVAL = seedval;
   OUTPUT:

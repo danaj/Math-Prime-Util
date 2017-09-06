@@ -1,6 +1,38 @@
 #include <stdio.h>
 #include "entropy.h"
 
+/* A fallback timer entropy method that will probably never be used. */
+#if defined(_WIN32_WCE)
+static UV timer_entropy(UV bytes, unsigned char* buf) { return 0; }
+#else
+#include <time.h>
+static uint32_t mix32(uint32_t r0) {   /* Similar to PCG 32 */
+  uint32_t word = ((r0 >> ((r0 >> 28u) + 4u)) ^ r0) * 277803737u;
+  return (word >> 22u) ^ word;
+}
+static uint32_t timer_mix8(uint32_t acc) {
+  clock_t t1;
+  uint32_t bit, a;
+  for (bit = a = 0; bit < 8; bit++) {
+    t1 = clock(); while (t1 == clock()) a ^= 1;
+    acc = (acc << 1) | a;
+  }
+  return mix32(acc);
+}
+static UV timer_entropy(UV bytes, unsigned char* buf) {
+  UV byte;
+  uint32_t acc = 0;
+
+  for (byte = 0; byte < 4; byte++)
+    acc = timer_mix8(acc);
+  for (byte = 0; byte < bytes; byte++) {
+    acc = timer_mix8( timer_mix8( acc ) );
+    buf[byte] = (acc >> 24) & 0xFF;
+  }
+  return bytes;
+}
+#endif
+
 UV get_entropy_bytes(UV bytes, unsigned char* buf)
 {
   UV len = 0;
@@ -47,20 +79,9 @@ UV get_entropy_bytes(UV bytes, unsigned char* buf)
 
 #endif
 
-  if (len == bytes)  return len;
+  /* Do a fallback method if something didn't work right. */
+  if (len != bytes)
+    len = timer_entropy(bytes, buf);
 
-  /* Something didn't work.  Do a fallback method. */
-
-  /* TODO: Something better here.
-   *   1. Get a decent seed, maybe some Perl_seed values
-   *   2. Get a private CSPRNG context, seed with above
-   *   3. Full buf from csprng
-   *   4. destroy csprng context
-   */
-  while (len < bytes) {
-    uint32_t i, s = Perl_seed();   /* TODO Perl 5.6 */
-    for (i = 0; i < 4 && len < bytes; i++)
-      buf[len++] = (s >> (8*i)) & 0xFF;
-  }
   return len;
 }
