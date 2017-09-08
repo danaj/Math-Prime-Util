@@ -48,12 +48,16 @@ sub srand {
     $seed = entropy_bytes( $nbytes );
     $seed = unpack(($nbytes==4) ? "L" : "Q", $seed);
   }
+  Math::Prime::Util::GMP::seed_csprng(8,pack("LL",$seed))
+    if $Math::Prime::Util::_GMPfunc{"seed_csprng"};
   Math::Prime::Util::_srand($seed);
 }
 sub csrand {
   my($seed) = @_;
   croak "secure option set, manual seeding disabled" if $Math::Prime::Util::_Config{'secure'} && defined $seed;
   $seed = entropy_bytes( 64 ) unless defined $seed;
+  Math::Prime::Util::GMP::seed_csprng(length($seed),$seed)
+    if $Math::Prime::Util::_GMPfunc{"seed_csprng"};
   Math::Prime::Util::_csrand($seed);
   1; # Don't return the seed
 }
@@ -85,7 +89,7 @@ sub entropy_bytes {
   my $_tonv_128 = $_tonv_96;  $_tonv_128/= 2.0 for 1..32;
   if ($uvbits == 64) {
     if ($nvbits <= 32) {
-      *drand = sub { my $d = irand32() * $_tonv_32;  $d *= $_[0] if $_[0];  $d; };
+      *drand = sub { my $d = irand() * $_tonv_32;  $d *= $_[0] if $_[0];  $d; };
     } elsif ($nvbits <= 64) {
       *drand = sub { my $d = irand64() * $_tonv_64;  $d *= $_[0] if $_[0];  $d; };
     } else {
