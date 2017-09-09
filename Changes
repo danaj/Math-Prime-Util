@@ -7,6 +7,9 @@ Revision history for Perl module Math::Prime::Util
     - random_semiprime                random n-bit semiprime (even split)
     - random_unrestricted_semiprime   random n-bit semiprime
     - forderange { ... } n            derangements iterator
+    - numtoperm(n,k)                  returns kth permutation of n elems
+    - permtonum([...])                returns rank of permutation array ref
+    - randperm(n[,k])                 random permutation of n elements
 
     [FUNCTIONALITY AND PERFORMANCE]
 

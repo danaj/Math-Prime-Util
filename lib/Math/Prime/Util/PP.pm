@@ -6233,6 +6233,81 @@ sub _multiset_permutations {
   }
 }
 
+sub numtoperm {
+  my($n,$k) = @_;
+  _validate_positive_integer($n);
+  _validate_positive_integer($k);
+  return () if $n == 0;
+  return (0) if $n == 1;
+  my $f = factorial($n-1);
+  $k %= vecprod($f,$n) if int($k/$f) >= $n;
+  my @S = map { $_ } 0 .. $n-1;
+  my @V;
+  while ($n-- > 0) {
+    my $i = int($k/$f);
+    push @V, splice(@S,$i,1);
+    last if $n == 0;
+    $k -= $i*$f;
+    $f /= $n;
+  }
+  @V;
+}
+
+sub permtonum {
+  my $A = shift;
+  croak "permtonum argument must be an array reference"
+    unless ref($A) eq 'ARRAY';
+  my $n = scalar(@$A);
+  return 0 if $n == 0;
+  {
+    my %S;
+    for my $v (@$A) {
+      croak "permtonum invalid permutation array"
+        if !defined $v || $v < 0 || $v >= $n || $S{$v}++;
+    }
+  }
+  my $f = factorial($n-1);
+  my $rank = 0;
+  for my $i (0 .. $n-2) {
+    my $k = 0;
+    for my $j ($i+1 .. $n-1) {
+      $k++ if $A->[$j] < $A->[$i];
+    }
+    $rank = Math::Prime::Util::vecsum($rank, Math::Prime::Util::vecprod($k,$f));
+    $f /= $n-$i-1;
+  }
+  $rank;
+}
+
+sub randperm {
+  my($n,$k) = @_;
+  _validate_positive_integer($n);
+  if (defined $k) {
+    _validate_positive_integer($k);
+  }
+  $k = $n if !defined($k) || $k > $n;
+  return () if $k == 0;
+
+  my @S;
+  if ("$k"/"$n" <= 0.30) {
+    my %seen;
+    my $v;
+    for my $i (1 .. $k) {
+      do { $v = Math::Prime::Util::urandomm($n); } while $seen{$v}++;
+      push @S,$v;
+    }
+  } else {
+    @S = map { $_ } 0..$n-1;
+    for my $i (0 .. $n-2) {
+      last if $i >= $k;
+      my $j = Math::Prime::Util::urandomm($n-$i);
+      @S[$i,$i+$j] = @S[$i+$j,$i];
+    }
+    $#S = $k-1;
+  }
+  return @S;
+}
+
 ###############################################################################
 #       Random numbers
 ###############################################################################

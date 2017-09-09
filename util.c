@@ -85,6 +85,7 @@
 #include "mulmod.h"
 #include "constants.h"
 #include "montmath.h"
+#include "csprng.h"
 
 static int _verbose = 0;
 void _XS_set_verbose(int v) { _verbose = v; }
@@ -2444,4 +2445,85 @@ IV hclassno(UV n) {
       +  (_count_class_div(b+1, b2) << 1);
   }
   return 12*h + ((b2*3 == n) ? 4 : square && !(n&1) ? 6 : 0);
+}
+
+/* These rank/unrank are O(n^2) algorithms using O(n) in-place space.
+ * Bonet 2008 gives O(n log n) algorithms using a bit more space.
+ *
+ * Our randperm is 4x or more faster than NumPy's random.permutation,
+ * and much faster than that when selecting a small subset.
+ */
+
+int num_to_perm(UV k, int n, int *vec) {
+  int i, j, p, t;
+  UV f = factorial(n-1);
+
+  if (n >= 32 || f == 0)
+    return 0;
+  if (k/f >= n)
+    k %= f*n;
+
+  for (i = 0; i < n; i++)
+    vec[i] = i;
+
+  for (i = 0; i < n-1; i++) {
+    p = k/f;
+    k -= p*f;
+    f /= n-i-1;
+    if (p > 0) {
+      for (j = i+p, t = vec[j]; j > i; j--)
+        vec[j] = vec[j-1];
+      vec[i] = t;
+    }
+  }
+  return 1;
+}
+
+int perm_to_num(int n, int *vec, UV *rank) {
+  int i, j, k;
+  UV f, add, num = 0;
+  f = factorial(n-1);
+  if (f == 0) return 0;
+  for (i = 0; i < n-1; i++) {
+    for (j = i+1, k = 0; j < n; j++)
+      if (vec[j] < vec[i])
+        k++;
+    if (k > (UV_MAX-num)/f) return 0;  /* overflow */
+    num += k*f;
+    f /= n-i-1;
+  }
+  *rank = num;
+  return 1;
+}
+
+void randperm(UV n, UV k, UV *S) {
+  UV i, j;
+
+  if (k > n)  k = n;
+
+  if        (k == 0) {
+  } else if (k == 1) {
+    S[0] = urandomm64(n);
+  } else if (n < ((BITS_PER_WORD==32) ? 13 : 21)) {
+    int V[32];
+    num_to_perm(urandomm64(factorial(n)), n, V);
+    for (i = 0; i < k; i++)
+      S[i] = V[i];
+  } else if (k < n/5 && k < 1000) {   /* TODO: Improve this cutoff */
+    for (i = 0; i < k; i++) {
+      do {
+        S[i] = urandomm64(n);
+        for (j = 0; j < i; j++)
+          if (S[j] == S[i])
+            break;
+      } while (j < i);
+    }
+  } else {
+    for (i = 0; i < n; i++)
+      S[i] = i;
+    for (i = 0; i < k && i <= n-2; i++) {
+      j = urandomm64(n-i);
+      { UV t = S[i]; S[i] = S[i+j]; S[i+j] = t; }
+    }
+  }
 }

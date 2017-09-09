@@ -35,6 +35,7 @@ our @EXPORT_OK =
       primes twin_primes ramanujan_primes sieve_prime_cluster sieve_range
       forprimes forcomposites foroddcomposites fordivisors
       forpart forcomp forcomb forperm forderange formultiperm
+      numtoperm permtonum randperm
       prime_iterator prime_iterator_object
       next_prime  prev_prime
       prime_count
@@ -2942,7 +2943,7 @@ return C<euler_phi(-n)> for C<n E<lt> 0>.  Mathematica returns 0 for C<n = 0>,
 Pari pre-2.6.2 raises and exception, and Pari 2.6.2 and newer returns 2.
 
 If called with two arguments, they define a range C<low> to C<high>, and the
-function returns an array with the totient of every n from low to high
+function returns a list with the totient of every n from low to high
 inclusive.
 
 
@@ -3308,6 +3309,48 @@ Given a non-negative integer C<n>, returns the least integer value C<k>
 such that C<Li(k)> E<gt>= n>.  Since the logarithmic integral C<Li(n)> is
 a good approximation to the number of primes less than C<n>, this function
 is a good simple approximation to the nth prime.
+
+
+=head2 numtoperm
+
+  @p = numtoperm(10,654321);  # @p=(1,8,2,7,6,5,3,4,9,0)
+
+Given two non-negative integers C<n> and C<k>, return the C<k>th
+lexicographic permutation of C<n> elements.
+
+This will match the C<k>th iteration (zero based) of L</forperm>.
+C<k> can be assumed to be mod C<n!>.
+
+This corresponds to Pari's C<numtoperm(n,k)> function, though it uses
+an implementation specific ordering rather than lexicographic.
+
+=head2 permtonum
+
+  $k = permtonum([1,8,2,7,6,5,3,4,9,0]);  # $k = 654321
+
+Given an array reference containing integers from C<0> to C<n>,
+returns the lexicographic permutation rank of the set.  This is
+the inverse of the L</numtoperm> function.  All integers up to
+C<n> must be present.
+
+This will match the C<k>th iteration (zero based) of L</forperm>.
+The result will be between C<0> and C<n!-1>.
+
+This corresponds to Pari's C<permtonum(n)> function, though it uses
+an implementation specific ordering rather than lexicographic.
+
+=head2 randperm
+
+  @p = randperm(100);   # returns shuffled 0..99
+  @p = randperm(100,4)  # returns 4 elements from shuffled 0..99
+
+With a single argument C<n>, this returns a random permutation of the
+values from C<0> to C<n-1>.
+
+When given a second argument C<k>, the returned list will have only C<k>
+elements.  This is more efficient than truncating the full shuffled list.
+
+The randomness comes from our CSPRNG.
 
 
 =head1 RANDOM NUMBERS

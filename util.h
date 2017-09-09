@@ -85,6 +85,10 @@ extern int to_string_128(char s[40], IV hi, UV lo);
 
 extern int is_catalan_pseudoprime(UV n);
 
+extern int num_to_perm(UV rank, int n, int *vec);
+extern int perm_to_num(int n, int *vec, UV *rank);
+extern void randperm(UV n, UV k, UV *S);
+
 extern UV gcdz(UV x, UV y);
 
 #if defined(FUNC_isqrt) || defined(FUNC_is_perfect_square)

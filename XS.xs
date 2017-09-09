@@ -1901,6 +1901,67 @@ carmichael_lambda(IN SV* svn)
     return; /* skip implicit PUTBACK */
 
 void
+numtoperm(IN UV n, IN UV k)
+  PREINIT:
+    int i, S[32];
+  PPCODE:
+    if (n == 0)
+      XSRETURN_EMPTY;
+    if (n < 32 && num_to_perm(k, n, S)) {
+      dMY_CXT;
+      EXTEND(SP, n);
+      for (i = 0; i < n; i++)
+        PUSH_NPARITY( S[i] );
+    } else {
+      _vcallsubn(aTHX_ GIMME_V, VCALL_PP, "numtoperm", items, 0);
+      return;
+    }
+
+void
+permtonum(IN SV* svp)
+  PREINIT:
+    AV *av;
+    UV val, num;
+    int plen, i, j, k;
+  PPCODE:
+    if ((!SvROK(svp)) || (SvTYPE(SvRV(svp)) != SVt_PVAV))
+      croak("permtonum argument must be an array reference");
+    av = (AV*) SvRV(svp);
+    plen = av_len(av);
+    if (plen < 32) {
+      int V[32], A[32] = {0};
+      for (i = 0; i <= plen; i++) {
+        SV **iv = av_fetch(av, i, 0);
+        if (iv == 0 || _validate_int(aTHX_ *iv, 1) != 1) break;
+        val = my_svuv(*iv);
+        if (val > plen || A[val] != 0) break;
+        A[val] = i+1;
+        V[i] = val;
+      }
+      if (i > plen && perm_to_num(plen+1, V, &num))
+        XSRETURN_UV(num);
+    }
+    _vcallsub_with_pp("permtonum");
+    return;
+
+void
+randperm(UV n, UV k = 0)
+  PREINIT:
+    UV i, j, *S;
+  PPCODE:
+    dMY_CXT;
+    if (items == 1)
+      k = n;
+    if (k == 0)
+      XSRETURN_EMPTY;
+    New(0, S, n, UV);  /* TODO: k? */
+    randperm(n, k, S);
+    EXTEND(SP, k);
+    for (i = 0; i < k; i++)
+      PUSHs(sv_2mortal(newSViv( S[i] )));
+    Safefree(S);
+
+void
 sumdigits(SV* svn, UV ibase = 255)
   PREINIT:
     UV base, sum;

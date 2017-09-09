@@ -140,6 +140,10 @@ sub entropy_bytes {
 *random_semiprime = \&Math::Prime::Util::PP::random_semiprime;
 *random_unrestricted_semiprime = \&Math::Prime::Util::PP::random_unrestricted_semiprime;
 
+*numtoperm = \&Math::Prime::Util::PP::numtoperm;
+*permtonum = \&Math::Prime::Util::PP::permtonum;
+*randperm = \&Math::Prime::Util::PP::randperm;
+
 sub moebius {
   if (scalar @_ <= 1) {
     my($n) = @_;

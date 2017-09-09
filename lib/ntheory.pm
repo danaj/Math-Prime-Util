@@ -241,6 +241,9 @@ Tags:
   harmfrac(n)                         Harmonic number as (num,den)
   harmreal(n)                         Harmonic number as BigFloat
   stirling(n,m,[type])                Stirling numbers of 1st or 2nd type
+  numtoperm(n,k)                      kth lexico permutation of n elems
+  permtonum([a,b,...])                permutation number of given perm
+  randperm(n,[k])                     random permutation of n elems
 
 =head2 NON-INTEGER MATH
 

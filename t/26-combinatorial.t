@@ -3,7 +3,7 @@ use strict;
 use warnings;
 
 use Test::More;
-use Math::Prime::Util qw/binomial factorial forcomb forperm forderange formultiperm/;
+use Math::Prime::Util qw/binomial factorial forcomb forperm forderange formultiperm numtoperm permtonum randperm/;
 my $extra = defined $ENV{EXTENDED_TESTING} && $ENV{EXTENDED_TESTING};
 
 use Math::BigInt try => "GMP,Pari";
@@ -23,6 +23,8 @@ plan tests => 1                        # Factorial
             + scalar(keys(%perms)) + 1 # Permutations
             + 4                        # Multiset Permutations
             + 5                        # Derangements
+            + 5 + 5 + 1                # numtoperm, permtonum
+            + 3                        # randperm
             ;
 
 sub fact { my $n = Math::BigInt->new("$_[0]"); $n->bfac; }
@@ -94,3 +96,25 @@ while (my($n, $expect) = each (%perms)) {
 { my @p; forderange { push @p, [@_] } 3;
   is_deeply(\@p, [[1,2,0],[2,0,1]], "forderange 3"); }
 { my $n=0; forderange { $n++ } 7; is($n, 1854, "forderange 7 count"); }
+
+###### numtoperm / permtonum
+
+is_deeply([numtoperm(0,0)],[],"numtoperm(0,0)");
+is_deeply([numtoperm(1,0)],[0],"numtoperm(1,0)");
+is_deeply([numtoperm(1,1)],[0],"numtoperm(1,1)");
+is_deeply([numtoperm(5,15)],[0,3,2,4,1],"numtoperm(5,15)");
+is_deeply([numtoperm(24,987654321)],[0,1,2,3,4,5,6,7,8,9,10,13,11,21,14,20,17,15,12,22,18,19,23,16],"numtoperm(24,987654321)");
+
+is(permtonum([]),0,"permtonum([])");
+is(permtonum([0]),0,"permtonum([0])");
+is(permtonum([6,3,4,2,5,0,1]),4768,"permtonum([6,3,4,2,5,0,1])");
+is(permtonum([reverse(0..14),15..19]),"1790774578500738480","permtonum( 20 )");
+is(permtonum([reverse(0..12),reverse(13..25)]),"193228515634198442606207999","permtonum( 26 )");
+
+is(permtonum([numtoperm(14,8467582)]),8467582,"permtonum(numtoperm)");
+
+# TODO: better randperm tests
+
+is(@{[randperm(0)]},0,"randperm(0)");
+is(@{[randperm(1)]},1,"randperm(1)");
+is(@{[randperm(100,4)]},4,"randperm(100,4)");

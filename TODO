@@ -110,10 +110,6 @@
 
 - More Montgomery: znlog, catalan
 
-- numtoperm and permtonum.
-  Perhaps Bonet: https://github.com/soniakeys/perm/blob/master/lex.go
-  Also consider randperm(n)
-
 - polymul, polyadd, polydiv, polyneg, polyeval, polyorder, polygcd, polylcm, polyroots, ...
   A lot of our ops do these mod n, we could make ..mod versions of each.
 
@@ -132,3 +128,5 @@
 - compare wheel_t with primes separated and possibly cached.
 
 - Ensure 'secure' is secure.
+
+- Should randperm take an array reference to do a shuffle?
