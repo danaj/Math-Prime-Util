@@ -314,8 +314,8 @@ UV urandomm64(UV n)
 {
   UV r, rmin;
 
-  if (n <= 1)
-    return 0;
+  if (n <= 4294967295UL)
+    return urandomm32(n);
 
   rmin = -n % n;
   MUTEX_LOCK(&state_mutex);
