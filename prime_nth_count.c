@@ -895,7 +895,7 @@ static const UV sum_table_2e8[] =
 int sum_primes128(UV n, UV *hi_sum, UV *lo_sum) {
 #if BITS_PER_WORD == 64 && HAVE_UINT128
   uint128_t *V, *S;
-  UV j, k, r = isqrt(n), r2 = r + n/(r+1);;
+  UV j, k, r = isqrt(n), r2 = r + n/(r+1);
 
   New(0, V, r2+1, uint128_t);
   New(0, S, r2+1, uint128_t);

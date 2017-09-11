@@ -1901,21 +1901,25 @@ carmichael_lambda(IN SV* svn)
     return; /* skip implicit PUTBACK */
 
 void
-numtoperm(IN UV n, IN UV k)
+numtoperm(IN UV n, IN SV* svk)
   PREINIT:
+    UV k;
     int i, S[32];
   PPCODE:
     if (n == 0)
       XSRETURN_EMPTY;
-    if (n < 32 && num_to_perm(k, n, S)) {
-      dMY_CXT;
-      EXTEND(SP, n);
-      for (i = 0; i < n; i++)
-        PUSH_NPARITY( S[i] );
-    } else {
-      _vcallsubn(aTHX_ GIMME_V, VCALL_PP, "numtoperm", items, 0);
-      return;
+    if (n < 32 && _validate_int(aTHX_ svk, 1) == 1) {
+      k = my_svuv(svk);
+      if (num_to_perm(k, n, S)) {
+        dMY_CXT;
+        EXTEND(SP, n);
+        for (i = 0; i < n; i++)
+          PUSH_NPARITY( S[i] );
+        XSRETURN(n);
+      }
     }
+    _vcallsubn(aTHX_ GIMME_V, VCALL_PP, "numtoperm", items, 0);
+    return;
 
 void
 permtonum(IN SV* svp)
