@@ -133,7 +133,10 @@ UV random_unrestricted_semiprime(UV b) { /* generic semiprime */
     case 7:  return small_semi[ 22 + urandomm32(20) ];
     default: break;
   }
-  /* There are faster ways to generate if we could be lax on distribution. */
+  /* There are faster ways to generate if we could be lax on distribution.
+   * Picking a random prime followed by a second that makes a semiprime in
+   * the range seems obvious and is fast, but the distribution is wrong.
+   * With that method, some semiprimes are much more likely than others. */
   min = UVCONST(1) << (b-1);
   do {
     n = min + urandomb(b-1);
