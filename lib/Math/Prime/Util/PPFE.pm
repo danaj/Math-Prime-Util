@@ -859,47 +859,35 @@ sub vecreduce (&@) {    ## no critic qw(ProhibitSubroutinePrototypes)
 
 sub vecany (&@) {       ## no critic qw(ProhibitSubroutinePrototypes)
   my $sub = shift;
-  { my $pp; local *_ = \$pp;
-    for my $v (@_) { $pp = $v; return 1 if $sub->(); }
-  }
-  undef;
+  $sub->() and return 1 foreach @_;
+  0;
 }
 sub vecall (&@) {       ## no critic qw(ProhibitSubroutinePrototypes)
   my $sub = shift;
-  { my $pp; local *_ = \$pp;
-    for my $v (@_) { $pp = $v; return if !$sub->(); }
-  }
+  $sub->() or return 0 foreach @_;
   1;
 }
 sub vecnone (&@) {      ## no critic qw(ProhibitSubroutinePrototypes)
   my $sub = shift;
-  { my $pp; local *_ = \$pp;
-    for my $v (@_) { $pp = $v; return if $sub->(); }
-  }
+  $sub->() and return 0 foreach @_;
   1;
 }
 sub vecnotall (&@) {    ## no critic qw(ProhibitSubroutinePrototypes)
   my $sub = shift;
-  { my $pp; local *_ = \$pp;
-    for my $v (@_) { $pp = $v; return 1 if !$sub->(); }
-  }
+  $sub->() or return 1 foreach @_;
   undef;
 }
 
 sub vecfirst (&@) {     ## no critic qw(ProhibitSubroutinePrototypes)
   my $sub = shift;
-  #for (@_) { return $_ if &{$sub}(); }  return undef;
-  { my $pp; local *_ = \$pp;
-    for my $v (@_) { $pp = $v; return $v if $sub->(); }
-  }
+  $sub->() and return $_ foreach @_;
   undef;
 }
 
 sub vecfirstidx (&@) {     ## no critic qw(ProhibitSubroutinePrototypes)
   my $sub = shift;
-  { my $pp; local *_ = \$pp; my $i = 0;
-    for my $v (@_) { $pp = $v; return $i if $sub->(); $i++; }
-  }
+  my $i = 0;
+  ++$i and $sub->() and return $i-1 foreach @_;
   -1;
 }
 
