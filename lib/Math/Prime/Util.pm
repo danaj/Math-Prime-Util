@@ -927,7 +927,7 @@ __END__
 
 =encoding utf8
 
-=for stopwords Möbius Deléglise Bézout uniqued k-tuples von SoE primesieve primegen libtommath pari yafu fonction qui compte le nombre nombres voor PhD superset sqrt(N) gcd(A^M k-th (10001st untruncated OpenPFGW gmpy2 Über Primzahl-Zählfunktion n-te und verallgemeinerte multiset compositeness GHz significand TestU01
+=for stopwords Möbius Deléglise Bézout uniqued k-tuples von SoE primesieve primegen libtommath pari yafu fonction qui compte le nombre nombres voor PhD superset sqrt(N) gcd(A^M k-th (10001st untruncated OpenPFGW gmpy2 Über Primzahl-Zählfunktion n-te und verallgemeinerte multiset compositeness GHz significand TestU01 subfactorial
 
 =for test_synopsis use v5.14;  my($k,$x);
 
@@ -3315,10 +3315,10 @@ is a good simple approximation to the nth prime.
 
   @p = numtoperm(10,654321);  # @p=(1,8,2,7,6,5,3,4,9,0)
 
-Given two non-negative integers C<n> and C<k>, return the C<k>th
-lexicographic permutation of C<n> elements.
+Given two non-negative integers C<n> and C<k>, return the
+rank C<k> lexicographic permutation of C<n> elements.
 
-This will match the C<k>th iteration (zero based) of L</forperm>.
+This will match iteration number C<k> (zero based) of L</forperm>.
 C<k> can be assumed to be mod C<n!>.
 
 This corresponds to Pari's C<numtoperm(n,k)> function, though it uses
@@ -3333,7 +3333,7 @@ returns the lexicographic permutation rank of the set.  This is
 the inverse of the L</numtoperm> function.  All integers up to
 C<n> must be present.
 
-This will match the C<k>th iteration (zero based) of L</forperm>.
+This will match iteration number C<k> (zero based) of L</forperm>.
 The result will be between C<0> and C<n!-1>.
 
 This corresponds to Pari's C<permtonum(n)> function, though it uses

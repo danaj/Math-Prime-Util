@@ -29,7 +29,8 @@ add_stopwords(qw/bigint bigints
                  RiemannR LambertW
                  csrand srand irand irand64 drand urandomb urandomm
                  forprimes forcomposites foroddcomposites fordivisors
-                 forpart forcomp forcomb forperm formultiperm
+                 forpart forcomp forcomb forperm forderange formultiperm
+                 numtoperm permtonum randperm
                  totient moebius mertens liouville kronecker znorder znprimroot znlog
                  gcd lcm gcdext chinese invmod sqrtmod addmod mulmod powmod divmod
                  bernfrac bernreal harmfrac harmreal stirling hclassno
