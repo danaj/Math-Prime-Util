@@ -21,6 +21,7 @@ aks.o
 random_prime.o
 prime_nth_count.o
 ramanujan_primes.o
+entropy.o
 XS.obj
 cache.obj
 factor.obj
@@ -35,6 +36,7 @@ chacha.obj
 csprng.obj
 sieve_cluster.obj
 random_prime.obj
+entropy.obj
 *.pdb
 blib*
 b[0-9][0-9][0-9][0-9][0-9][0-9].txt
