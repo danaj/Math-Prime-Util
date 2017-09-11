@@ -6308,6 +6308,16 @@ sub randperm {
   return @S;
 }
 
+sub shuffle {
+  my @S=@_;
+  # Note: almost all the time is spent in urandomm.
+  for (my $i = $#S; $i >= 1; $i--) {
+    my $j = Math::Prime::Util::urandomm($i+1);
+    @S[$i,$j] = @S[$j,$i];
+  }
+  @S;
+}
+
 ###############################################################################
 #       Random numbers
 ###############################################################################
@@ -6324,7 +6334,7 @@ sub urandomb {
 }
 sub urandomm {
   my($n) = @_;
-  _validate_positive_integer($n);
+  # _validate_positive_integer($n);
   return Math::Prime::Util::_reftyped($_[0], Math::Prime::Util::GMP::urandomm($n))
     if $Math::Prime::Util::_GMPfunc{"urandomm"};
   return 0 if $n <= 1;

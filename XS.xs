@@ -1945,21 +1945,31 @@ permtonum(IN SV* svp)
     return;
 
 void
-randperm(UV n, UV k = 0)
+randperm(IN UV n, IN UV k = 0)
   PREINIT:
     UV i, j, *S;
   PPCODE:
-    dMY_CXT;
-    if (items == 1)
-      k = n;
-    if (k == 0)
-      XSRETURN_EMPTY;
+    if (items == 1) k = n;
+    if (k > n) k = n;
+    if (k == 0) XSRETURN_EMPTY;
     New(0, S, n, UV);  /* TODO: k? */
     randperm(n, k, S);
     EXTEND(SP, k);
     for (i = 0; i < k; i++)
       PUSHs(sv_2mortal(newSViv( S[i] )));
     Safefree(S);
+
+void shuffle(...)
+  PREINIT:
+    int i;
+  PPCODE:
+    if (items == 0)
+      XSRETURN_EMPTY;
+    for (i = 0; i < items-1; i++) {
+      UV j = urandomm32(items-i);
+      { SV* t = ST(i); ST(i) = ST(i+j); ST(i+j) = t; }
+    }
+    XSRETURN(items);
 
 void
 sumdigits(SV* svn, UV ibase = 255)

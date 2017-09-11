@@ -128,5 +128,3 @@
 - compare wheel_t with primes separated and possibly cached.
 
 - Ensure 'secure' is secure.
-
-- Should randperm take an array reference to do a shuffle?

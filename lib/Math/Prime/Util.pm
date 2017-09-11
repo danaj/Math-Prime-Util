@@ -35,7 +35,7 @@ our @EXPORT_OK =
       primes twin_primes ramanujan_primes sieve_prime_cluster sieve_range
       forprimes forcomposites foroddcomposites fordivisors
       forpart forcomp forcomb forperm forderange formultiperm
-      numtoperm permtonum randperm
+      numtoperm permtonum randperm shuffle
       prime_iterator prime_iterator_object
       next_prime  prev_prime
       prime_count
@@ -3343,6 +3343,7 @@ an implementation specific ordering rather than lexicographic.
 
   @p = randperm(100);   # returns shuffled 0..99
   @p = randperm(100,4)  # returns 4 elements from shuffled 0..99
+  @s = @data[randperm($#data+1))];  # shuffle an array
 
 With a single argument C<n>, this returns a random permutation of the
 values from C<0> to C<n-1>.
@@ -3351,6 +3352,16 @@ When given a second argument C<k>, the returned list will have only C<k>
 elements.  This is more efficient than truncating the full shuffled list.
 
 The randomness comes from our CSPRNG.
+
+=head2 shuffle
+
+  @shuffled = shuffle(@data);
+
+Takes a list as input, and returns a random permutation of the list.
+Like randperm, the randomness comes from our CSPRNG.
+
+This function is similar to the C<shuffle> function in L<List::Util>.
+The main difference is the random source.
 
 
 =head1 RANDOM NUMBERS

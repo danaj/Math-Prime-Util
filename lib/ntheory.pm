@@ -244,6 +244,7 @@ Tags:
   numtoperm(n,k)                      kth lexico permutation of n elems
   permtonum([a,b,...])                permutation number of given perm
   randperm(n,[k])                     random permutation of n elems
+  shuffle(...)                        random permutation of an array
 
 =head2 NON-INTEGER MATH
 

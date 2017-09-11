@@ -143,6 +143,7 @@ sub entropy_bytes {
 *numtoperm = \&Math::Prime::Util::PP::numtoperm;
 *permtonum = \&Math::Prime::Util::PP::permtonum;
 *randperm = \&Math::Prime::Util::PP::randperm;
+*shuffle = \&Math::Prime::Util::PP::shuffle;
 
 sub moebius {
   if (scalar @_ <= 1) {

@@ -3,7 +3,9 @@ use strict;
 use warnings;
 
 use Test::More;
-use Math::Prime::Util qw/binomial factorial forcomb forperm forderange formultiperm numtoperm permtonum randperm/;
+use Math::Prime::Util qw/binomial factorial
+                         forcomb forperm forderange formultiperm
+                         numtoperm permtonum randperm shuffle/;
 my $extra = defined $ENV{EXTENDED_TESTING} && $ENV{EXTENDED_TESTING};
 
 use Math::BigInt try => "GMP,Pari";
@@ -24,7 +26,8 @@ plan tests => 1                        # Factorial
             + 4                        # Multiset Permutations
             + 5                        # Derangements
             + 5 + 5 + 1                # numtoperm, permtonum
-            + 3                        # randperm
+            + 5                        # randperm
+            + 5                        # shuffle
             ;
 
 sub fact { my $n = Math::BigInt->new("$_[0]"); $n->bfac; }
@@ -113,8 +116,27 @@ is(permtonum([reverse(0..12),reverse(13..25)]),"193228515634198442606207999","pe
 
 is(permtonum([numtoperm(14,8467582)]),8467582,"permtonum(numtoperm)");
 
+###### randperm
 # TODO: better randperm tests
 
 is(@{[randperm(0)]},0,"randperm(0)");
 is(@{[randperm(1)]},1,"randperm(1)");
 is(@{[randperm(100,4)]},4,"randperm(100,4)");
+{ my @p = 1..100;
+  my @s = @p[randperm(0+@p)];
+  isnt("@s", "@p", "randperm shuffle has shuffled input");
+  my @ss = sort { $a<=>$b } @s;
+  is("@ss", "@p", "randperm shuffle contains original data");
+}
+
+###### shuffle
+
+is_deeply([shuffle()],[],"shuffle with no args");
+is_deeply([shuffle("a")],["a"],"shuffle with one arg");
+{ my @p = 1..100;
+  my @s = shuffle(@p);
+  is(0+@s,0+@p,"argument count is the same for 100 elem shuffle");
+  isnt("@s", "@p", "shuffle has shuffled input");
+  my @ss = sort { $a<=>$b } @s;
+  is("@ss", "@p", "shuffle contains original data");
+}

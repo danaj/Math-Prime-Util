@@ -10,6 +10,7 @@ Revision history for Perl module Math::Prime::Util
     - numtoperm(n,k)                  returns kth permutation of n elems
     - permtonum([...])                returns rank of permutation array ref
     - randperm(n[,k])                 random permutation of n elements
+    - shuffle(...)                    random permutation of an array
 
     [FUNCTIONALITY AND PERFORMANCE]
 
