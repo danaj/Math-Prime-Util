@@ -3709,7 +3709,7 @@ sub lucas_sequence {
   croak "lucas_sequence: P out of range" if abs($P) >= $n;
   croak "lucas_sequence: Q out of range" if abs($Q) >= $n;
 
-  if ($Math::Prime::Util::_GMPfunc{"lucas_sequence"}) {
+  if ($Math::Prime::Util::_GMPfunc{"lucas_sequence"} && $Math::Prime::Util::GMP::VERSION >= 0.30) {
     return map { ($_ > ''.~0) ? Math::BigInt->new(''.$_) : $_ }
            Math::Prime::Util::GMP::lucas_sequence($n, $P, $Q, $k);
   }

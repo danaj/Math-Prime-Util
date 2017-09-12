@@ -105,5 +105,5 @@ foreach my $seqs (@lucas_seqs) {
   my $n = 8539786;
   my $e = (0,-1,1,1,-1)[$n%5];
   my($U,$V,$Q) = lucas_sequence($n, 1, -1, $n+$e);
-  is_deeply( [lucas_sequence($n, 1, -1, $n+$e)], [0,5466722,8539785], "First entry of OEIS A141137: Even Fibonacci pseudoprimes" );
+  is_deeply( [$U,$V,$Q], [0,5466722,8539785], "First entry of OEIS A141137: Even Fibonacci pseudoprimes" );
 }
