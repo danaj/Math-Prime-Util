@@ -1964,6 +1964,7 @@ randperm(IN UV n, IN UV k = 0)
     Safefree(S);
 
 void shuffle(...)
+  PROTOTYPE: @
   PREINIT:
     int i;
   PPCODE:

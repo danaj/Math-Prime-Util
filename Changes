@@ -1,5 +1,11 @@
 Revision history for Perl module Math::Prime::Util
 
+0.67 2017-?
+
+    [FUNCTIONALITY AND PERFORMANCE]
+
+    - shuffle prototype is @ instead of ;@, so matches List::Util.
+
 0.66 2017-09-12
 
     [ADDED]
