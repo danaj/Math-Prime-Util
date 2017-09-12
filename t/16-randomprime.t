@@ -220,6 +220,9 @@ SKIP: {
   my $max = Math::BigInt->new(2)->bpow(81)->bdec;
   $n = random_semiprime(81);
   ok($n >= $min && $n <= $max, "random_semiprime(81) is 81 bits");
-  $n = random_unrestricted_semiprime(81);
-  ok($n >= $min && $n <= $max, "random_unrestricted_semiprime(81) is 81 bits");
+  SKIP: {
+    skip "Skipping 81-bit semiprime with broken 64-bit Perl", 1 if $broken64;
+    $n = random_unrestricted_semiprime(81);
+    ok($n >= $min && $n <= $max, "random_unrestricted_semiprime(81) is 81 bits");
+  }
 }

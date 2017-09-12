@@ -6549,9 +6549,11 @@ sub random_unrestricted_semiprime {
       my $re = exp($r);
       my $a = ($re < log(~0)) ? int(exp($re)+0.5)
                               : _upgrade_to_float($re)->bexp->bround->as_int;
-      $p  = $a < 2 ? 2 : Math::Prime::Util::prev_prime($a+1);
+      $p = $a < 2 ? 2 : Math::Prime::Util::prev_prime($a+1);
     }
-    my $q  = random_prime( int(($min+$p-1)/$p), int($max/$p) );
+    my $ranmin = ref($min) ? $min->badd($p-1)->bdiv($p)->as_int : int(($min+$p-1)/$p);
+    my $ranmax = ref($max) ? $max->bdiv($p)->as_int : int($max/$p);
+    my $q = random_prime($ranmin, $ranmax);
     $n = Math::Prime::Util::vecprod($p,$q);
   }
   $n = _bigint_to_int($n) if ref($n) && $n->bacmp(BMAX) <= 0;
