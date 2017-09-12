@@ -390,11 +390,12 @@ void* start_segment_primes(UV low, UV high, unsigned char** segmentmem)
 
 #if BITS_PER_WORD == 64
   if (high > 1e10 && range > 32*1024-16) {
+    UV size, div;
     /* Use larger segments */
-    UV size = isqrt(32*isqrt(high)) * (logint(high,2)-2);
+    size = isqrt(32*isqrt(high)) * (logint(high,2)-2);
     if (size < 128*1024) size = 128*1024;
     /* Evenly split the range into segments */
-    UV div = (range+size-1)/size;
+    div = (range+size-1)/size;
     size = (div <= 1)  ?  range  :  (range+div-1)/div;
     ctx->segment_size = size;
     New(0, ctx->segment, size, unsigned char);
@@ -413,7 +414,7 @@ void* start_segment_primes(UV low, UV high, unsigned char** segmentmem)
 #if 1
   { /* Generate wheel data for this segment sieve */
     const UV maxsieve = UVCONST(400000000);
-    UV limit, nprimes, startp;
+    UV limit, nprimes;
     wheel_t *warray;
     wheel_t w = {0,0,128};
     uint32_t wsize = 0;
@@ -427,7 +428,6 @@ void* start_segment_primes(UV low, UV high, unsigned char** segmentmem)
       limit = next_prime(limit);
       /* We'll make space for this many */
       nprimes = prime_count_upper(limit);
-      startp = 30 * ctx->lod;
       if (_XS_get_verbose() >= 4)
         printf("segment sieve %lu - %lu, primes to %lu (max %lu)\n", (unsigned long)low, (unsigned long)high, (unsigned long)limit, (unsigned long)nprimes);
       New(0, warray, nprimes, wheel_t);

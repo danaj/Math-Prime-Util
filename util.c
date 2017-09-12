@@ -2460,7 +2460,7 @@ int num_to_perm(UV k, int n, int *vec) {
 
   if (n >= 32 || f == 0)
     return 0;
-  if (k/f >= n)
+  if (k/f >= (UV)n)
     k %= f*n;
 
   for (i = 0; i < n; i++)
@@ -2481,14 +2481,14 @@ int num_to_perm(UV k, int n, int *vec) {
 
 int perm_to_num(int n, int *vec, UV *rank) {
   int i, j, k;
-  UV f, add, num = 0;
+  UV f, num = 0;
   f = factorial(n-1);
   if (f == 0) return 0;
   for (i = 0; i < n-1; i++) {
     for (j = i+1, k = 0; j < n; j++)
       if (vec[j] < vec[i])
         k++;
-    if (k > (UV_MAX-num)/f) return 0;  /* overflow */
+    if ((UV)k > (UV_MAX-num)/f) return 0;  /* overflow */
     num += k*f;
     f /= n-i-1;
   }

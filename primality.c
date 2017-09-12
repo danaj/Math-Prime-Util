@@ -623,7 +623,7 @@ return is_euler_pseudoprime(n,Qk);
         }
       }
     } else if (strength == 2) {
-      UV Ql, Qj = 0;
+      UV Ql = 0, Qj = 0;
       int qjacobi, is_slpsp = 0;
       if (U == 0)
         is_slpsp = 1;

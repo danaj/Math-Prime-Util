@@ -1912,8 +1912,8 @@ numtoperm(IN UV n, IN SV* svk)
       k = my_svuv(svk);
       if (num_to_perm(k, n, S)) {
         dMY_CXT;
-        EXTEND(SP, n);
-        for (i = 0; i < n; i++)
+        EXTEND(SP, (IV)n);
+        for (i = 0; i < (int)n; i++)
           PUSH_NPARITY( S[i] );
         XSRETURN(n);
       }
@@ -1926,7 +1926,7 @@ permtonum(IN SV* svp)
   PREINIT:
     AV *av;
     UV val, num;
-    int plen, i, j, k;
+    int plen, i;
   PPCODE:
     if ((!SvROK(svp)) || (SvTYPE(SvRV(svp)) != SVt_PVAV))
       croak("permtonum argument must be an array reference");
@@ -1938,7 +1938,7 @@ permtonum(IN SV* svp)
         SV **iv = av_fetch(av, i, 0);
         if (iv == 0 || _validate_int(aTHX_ *iv, 1) != 1) break;
         val = my_svuv(*iv);
-        if (val > plen || A[val] != 0) break;
+        if (val > (UV)plen || A[val] != 0) break;
         A[val] = i+1;
         V[i] = val;
       }
@@ -1951,14 +1951,14 @@ permtonum(IN SV* svp)
 void
 randperm(IN UV n, IN UV k = 0)
   PREINIT:
-    UV i, j, *S;
+    UV i, *S;
   PPCODE:
     if (items == 1) k = n;
     if (k > n) k = n;
     if (k == 0) XSRETURN_EMPTY;
     New(0, S, n, UV);  /* TODO: k? */
     randperm(n, k, S);
-    EXTEND(SP, k);
+    EXTEND(SP, (IV)k);
     for (i = 0; i < k; i++)
       PUSHs(sv_2mortal(newSViv( S[i] )));
     Safefree(S);
