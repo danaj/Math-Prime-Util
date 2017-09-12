@@ -227,6 +227,7 @@ static int _vcallsubn(pTHX_ I32 flags, I32 stashflags, const char* name, int nar
 #define _vcallsub(func) (void)_vcallsubn(aTHX_ G_SCALAR, VCALL_ROOT, func, items,0)
 #define _vcallsub_with_gmp(ver,func) (void)_vcallsubn(aTHX_ G_SCALAR, VCALL_GMP|VCALL_PP, func, items,(int)(100*(ver)))
 #define _vcallsub_with_pp(func) (void)_vcallsubn(aTHX_ G_SCALAR, VCALL_PP, func, items,0)
+#define _vcallsub_with_gmpobj(ver,func) (void)_vcallsubn(aTHX_ G_SCALAR, (PERL_REVISION >= 5 && PERL_VERSION > 8) ? VCALL_GMP|VCALL_PP : VCALL_PP, func, items,(int)(100*(ver)))
 
 /* In my testing, this constant return works fine with threads, but to be
  * correct (see perlxs) one has to make a context, store separate copies in
@@ -245,7 +246,7 @@ static int _vcallsubn(pTHX_ I32 flags, I32 stashflags, const char* name, int nar
   } while (0)
 
 #define OBJECTIFY_RESULT(input, output) \
-  if (!sv_isobject(output)) { \
+  if (!sv_isobject(output) && PERL_REVISION >= 5 && PERL_VERSION > 8) { \
     SV* resptr = output; \
     const char *iname = (input && sv_isobject(input)) \
                       ? HvNAME_get(SvSTASH(SvRV(input))) : 0; \
@@ -573,7 +574,7 @@ void random_prime(IN SV* svlo, IN SV* svhi = 0)
       if (ret) XSRETURN_UV(ret);
       else     XSRETURN_UNDEF;
     }
-    _vcallsub_with_gmp(0.44,"random_prime");
+    _vcallsub_with_gmpobj(0.44,"random_prime");
     OBJECTIFY_RESULT(ST(0), ST(0));
     XSRETURN(1);
 
@@ -1028,7 +1029,7 @@ chinese(...)
     if (status == -1) XSRETURN_UNDEF;
     if (status)       XSRETURN_UV(ret);
     psvn = av_fetch((AV*) SvRV(ST(0)), 1, 0);
-    _vcallsub_with_gmp(0.32,"chinese");
+    _vcallsub_with_gmpobj(0.32,"chinese");
     OBJECTIFY_RESULT( (psvn ? *psvn : 0), ST(0));
     return; /* skip implicit PUTBACK */
 
@@ -1051,7 +1052,7 @@ lucas_sequence(...)
         int ok = (ix == 1) ? lucasu(&ret, P, Q, k) : lucasv(&ret, P, Q, k);
         if (ok) XSRETURN_IV(ret);
       }
-      _vcallsub_with_gmp(0.29,(ix==1) ? "lucasu" : "lucasv");
+      _vcallsub_with_gmpobj(0.29,(ix==1) ? "lucasu" : "lucasv");
       OBJECTIFY_RESULT(ST(2), ST(0));
       return;
     }
@@ -1309,7 +1310,7 @@ next_prime(IN SV* svn)
       }
     }
     if ((ix == 0 || ix == 1) && _XS_get_callgmp() && PERL_REVISION >= 5 && PERL_VERSION > 8) {
-      _vcallsub_with_gmp(0.01, ix ? "prev_prime" : "next_prime");
+      _vcallsub_with_gmpobj(0.01, ix ? "prev_prime" : "next_prime");
       OBJECTIFY_RESULT(svn, ST(0));
       return;
     }
@@ -1380,16 +1381,16 @@ void urandomb(IN UV bits)
       if (res || ix == 0) XSRETURN_UV(res);
     }
     switch (ix) {
-      case 0:  _vcallsub_with_gmp(0.43,"urandomb"); break;
-      case 1:  _vcallsub_with_gmp(0.42,"random_ndigit_prime"); break;
-      case 2:  _vcallsub_with_gmp(0.00,"random_semiprime"); break;
-      case 3:  _vcallsub_with_gmp(0.00,"random_unrestricted_semiprime"); break;
-      case 4:  _vcallsub_with_gmp(0.42,"random_nbit_prime"); break;
-      case 5:  _vcallsub_with_gmp(0.43,"random_shawe_taylor_prime"); break;
+      case 0:  _vcallsub_with_gmpobj(0.43,"urandomb"); break;
+      case 1:  _vcallsub_with_gmpobj(0.42,"random_ndigit_prime"); break;
+      case 2:  _vcallsub_with_gmpobj(0.00,"random_semiprime"); break;
+      case 3:  _vcallsub_with_gmpobj(0.00,"random_unrestricted_semiprime"); break;
+      case 4:  _vcallsub_with_gmpobj(0.42,"random_nbit_prime"); break;
+      case 5:  _vcallsub_with_gmpobj(0.43,"random_shawe_taylor_prime"); break;
       case 6:
-      case 7:  _vcallsub_with_gmp(0.43,"random_maurer_prime"); break;
+      case 7:  _vcallsub_with_gmpobj(0.43,"random_maurer_prime"); break;
       case 8:
-      default: _vcallsub_with_gmp(0.43,"random_strong_prime"); break;
+      default: _vcallsub_with_gmpobj(0.43,"random_strong_prime"); break;
     }
     OBJECTIFY_RESULT(ST(0), ST(0));
     XSRETURN(1);
@@ -1629,12 +1630,12 @@ znlog(IN SV* sva, IN SV* svg, IN SV* svp)
       XSRETURN_UV(ret);
     }
     switch (ix) {
-      case 0: _vcallsub_with_gmp(0.00,"znlog"); break;
-      case 1: _vcallsub_with_gmp(0.36,"addmod"); break;
-      case 2: _vcallsub_with_gmp(0.36,"mulmod"); break;
-      case 3: _vcallsub_with_gmp(0.36,"divmod"); break;
+      case 0: _vcallsub_with_gmpobj(0.00,"znlog"); break;
+      case 1: _vcallsub_with_gmpobj(0.36,"addmod"); break;
+      case 2: _vcallsub_with_gmpobj(0.36,"mulmod"); break;
+      case 3: _vcallsub_with_gmpobj(0.36,"divmod"); break;
       case 4:
-      default:_vcallsub_with_gmp(0.36,"powmod"); break;
+      default:_vcallsub_with_gmpobj(0.36,"powmod"); break;
     }
     OBJECTIFY_RESULT(svp, ST(items-1));
     return; /* skip implicit PUTBACK */
@@ -1753,7 +1754,7 @@ stirling(IN UV n, IN UV m, IN UV type = 1)
       IV s = stirling1(n, m);
       if (s != 0) XSRETURN_IV(s);
     }
-    _vcallsub_with_gmp(0.26,"stirling");
+    _vcallsub_with_gmpobj(0.26,"stirling");
     OBJECTIFY_RESULT(ST(0), ST(0));
     return;
 

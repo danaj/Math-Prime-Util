@@ -6,6 +6,10 @@ Revision history for Perl module Math::Prime::Util
 
     - shuffle prototype is @ instead of ;@, so matches List::Util.
 
+    - On Perl 5.8 and earlier we will call PP instead of trying
+      direct-to-GMP.  Works around a bug in XS trying to turn the
+      result into an object where 5.8.7 and earlier gets lost.
+
 0.66 2017-09-12
 
     [ADDED]

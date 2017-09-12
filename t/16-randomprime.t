@@ -178,6 +178,7 @@ foreach my $bits ( @random_nbit_tests ) {
 sub check_bits {
   my($n, $bits, $what) = @_;
   my($min,$max);
+  use Math::BigInt;
   if ($bits <= $maxbits) {
     $min = 1 << ($bits-1);
     $max = ~0 >> ($maxbits - $bits);
