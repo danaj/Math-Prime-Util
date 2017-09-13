@@ -10,6 +10,7 @@ Revision history for Perl module Math::Prime::Util
       direct-to-GMP.  Works around a bug in XS trying to turn the
       result into an object where 5.8.7 and earlier gets lost.
 
+
 0.66 2017-09-12
 
     [ADDED]
