@@ -113,10 +113,6 @@
 - polymul, polyadd, polydiv, polyneg, polyeval, polyorder, polygcd, polylcm, polyroots, ...
   A lot of our ops do these mod n, we could make ..mod versions of each.
 
-- have the RNG return a context and store it in our package context space.
-  Should help threaded performance by removing lock.
-  Careful to not leak state.
-
 - use word-based for-sieve for non-segment.
 
 - remove start/end partial word tests from inner loop in for-sieve.
@@ -126,3 +122,13 @@
 - compare wheel_t with primes separated and possibly cached.
 
 - Ensure 'secure' is secure.
+
+- Performance:
+  = urandomm with bigints
+     0.5s  Math::Prime::Util::GMP::urandomm(Math::Prime::Util::GMP::factorial(144)) for 1..1e5;
+     2.7s  use Math::GMP qw/:constant/; urandomm(factorial(144)) for 1..1e5;
+    10.4s  urandomm(factorial(144)) for 1..1e5;
+
+- Ensure we properly seed on each thread.
+
+- Move ISAAC to per-thread context model.

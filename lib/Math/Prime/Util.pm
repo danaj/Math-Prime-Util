@@ -3399,9 +3399,10 @@ these calls.  Carefully tuning that interface is critical.
 For performance on large amounts of data, see the tables
 in L</random_bytes>.
 
-A single thread-safe stream is used.  A later implementation may switch to
-per-thread contexts, which would be slightly faster and arguably give better
-security.  If control of multiple independent streams are needed then using
+Each thread uses its own context, meaning seeding in one thread has no
+impact on other threads.  In addition to improved security, this is
+better for performance than a single context with locks.
+If explicit control of multiple independent streams are needed then using
 a more specific module is recommended.  I believe L<Crypt::PRNG>
 (part of L<CryptX>) and L<Bytes::Random::Secure> are good alternatives.
 

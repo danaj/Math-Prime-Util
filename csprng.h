@@ -5,27 +5,29 @@
 
 /*****************************************************************************/
 
+extern uint32_t csprng_context_size(void);
+
 /* Seed and init if needed */
-extern void csprng_seed(uint32_t bytes, const unsigned char* data);
+extern void csprng_seed(void *ctx, uint32_t bytes, const unsigned char* data);
 
 /* Simple seed */
-extern void csprng_srand(UV insecure_seed);
+extern void csprng_srand(void *ctx, UV insecure_seed);
 
 /* Fill buffer with this many bytes of random data */
-extern void csprng_rand_bytes(uint32_t bytes, unsigned char* data);
+extern void csprng_rand_bytes(void *ctx, uint32_t bytes, unsigned char* data);
 
-extern uint32_t irand32(void);
-extern UV       irand64(void);
+extern uint32_t irand32(void *ctx);
+extern UV       irand64(void *ctx);
 
 /*****************************************************************************/
 
-extern int is_csprng_well_seeded(void);
+extern int is_csprng_well_seeded(void *ctx);
 
-extern NV drand64(void);
+extern NV drand64(void *ctx);
 
-extern uint32_t urandomm32(uint32_t n);   /* integer less than n */
-extern UV       urandomm64(UV n);
-extern UV       urandomb(int nbits);      /* integer with n bits */
+extern uint32_t urandomm32(void* ctx, uint32_t n);   /* integer less than n */
+extern UV       urandomm64(void* ctx, UV n);
+extern UV       urandomb(void* ctx, int nbits);      /* integer with n bits */
 
 /*****************************************************************************/
 

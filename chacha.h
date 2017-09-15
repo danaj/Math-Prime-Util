@@ -12,12 +12,13 @@
 typedef struct {
   uint32_t      state[STATESZ];
   unsigned char buf[BUFSZ];
-  uint32_t      have;
+  uint16_t      have;
+  char          goodseed;
 } chacha_context_t;
 
 /*  API  */
 
-extern void chacha_seed(chacha_context_t *cs, uint32_t bytes, const unsigned char* data);
+extern void chacha_seed(chacha_context_t *cs, uint32_t bytes, const unsigned char* data, char good);
 extern void chacha_rand_bytes(chacha_context_t *cs, uint32_t bytes, unsigned char* data);
 
 extern uint32_t chacha_irand32(chacha_context_t *cs);

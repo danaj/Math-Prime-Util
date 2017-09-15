@@ -35,11 +35,6 @@
 #include "ramanujan_primes.h"
 #include "prime_nth_count.h"
 
-#undef BENCH_CSPRNG
-#ifdef BENCH_CSPRNG
- #include <sys/time.h>
-#endif
-
 #if BITS_PER_WORD == 64
   #if defined(_MSC_VER)
     #include <stdlib.h>
@@ -120,10 +115,11 @@
 #define MY_CXT_KEY "Math::Prime::Util::API_guts"
 #define CINTS 200
 typedef struct {
-  SV* const_int[CINTS+1];   /* -1, 0, 1, ..., 199 */
   HV* MPUroot;
   HV* MPUGMP;
   HV* MPUPP;
+  SV* const_int[CINTS+1];   /* -1, 0, 1, ..., 199 */
+  void* randcxt;            /* per-thread csprng context */
 } my_cxt_t;
 
 START_MY_CXT
@@ -321,19 +317,20 @@ PROTOTYPES: ENABLE
 
 BOOT:
 {
+    int i;
     SV * sv = newSViv(BITS_PER_WORD);
     HV * stash = gv_stashpv("Math::Prime::Util", TRUE);
     newCONSTSUB(stash, "_XS_prime_maxbits", sv);
-    { int i;
-      MY_CXT_INIT;
-      MY_CXT.MPUroot = stash;
-      for (i = 0; i <= CINTS; i++) {
-        MY_CXT.const_int[i] = newSViv(i-1);
-        SvREADONLY_on(MY_CXT.const_int[i]);
-      }
-      MY_CXT.MPUGMP = gv_stashpv("Math::Prime::Util::GMP", TRUE);
-      MY_CXT.MPUPP = gv_stashpv("Math::Prime::Util::PP", TRUE);
+
+    MY_CXT_INIT;
+    MY_CXT.MPUroot = stash;
+    MY_CXT.MPUGMP = gv_stashpv("Math::Prime::Util::GMP", TRUE);
+    MY_CXT.MPUPP = gv_stashpv("Math::Prime::Util::PP", TRUE);
+    for (i = 0; i <= CINTS; i++) {
+      MY_CXT.const_int[i] = newSViv(i-1);
+      SvREADONLY_on(MY_CXT.const_int[i]);
     }
+    New(0, MY_CXT.randcxt, csprng_context_size(), char);
 }
 
 #if defined(USE_ITHREADS) && defined(MY_CXT_KEY)
@@ -345,13 +342,14 @@ PREINIT:
 PPCODE:
   {
     MY_CXT_CLONE; /* possible declaration */
+    MY_CXT.MPUroot = gv_stashpv("Math::Prime::Util", TRUE);
+    MY_CXT.MPUGMP = gv_stashpv("Math::Prime::Util::GMP", TRUE);
+    MY_CXT.MPUPP = gv_stashpv("Math::Prime::Util::PP", TRUE);
     for (i = 0; i <= CINTS; i++) {
       MY_CXT.const_int[i] = newSViv(i-1);
       SvREADONLY_on(MY_CXT.const_int[i]);
     }
-    MY_CXT.MPUroot = gv_stashpv("Math::Prime::Util", TRUE);
-    MY_CXT.MPUGMP = gv_stashpv("Math::Prime::Util::GMP", TRUE);
-    MY_CXT.MPUPP = gv_stashpv("Math::Prime::Util::PP", TRUE);
+    New(0, MY_CXT.randcxt, csprng_context_size(), char);
   }
   return; /* skip implicit PUTBACK, returning @_ to caller, more efficient*/
 
@@ -363,14 +361,15 @@ PREINIT:
   dMY_CXT;
   int i;
 PPCODE:
+  MY_CXT.MPUroot = NULL;
+  MY_CXT.MPUGMP = NULL;
+  MY_CXT.MPUPP = NULL;
   for (i = 0; i <= CINTS; i++) {
     SV * const sv = MY_CXT.const_int[i];
     MY_CXT.const_int[i] = NULL;
     SvREFCNT_dec_NN(sv);
   } /* stashes are owned by stash tree, no refcount on them in MY_CXT */
-  MY_CXT.MPUroot = NULL;
-  MY_CXT.MPUGMP = NULL;
-  MY_CXT.MPUPP = NULL;
+  Safefree(MY_CXT.randcxt); MY_CXT.randcxt = 0;
   _prime_memfreeall();
   return; /* skip implicit PUTBACK, returning @_ to caller, more efficient*/
 
@@ -379,26 +378,29 @@ void csrand(IN SV* seed = 0)
   PREINIT:
     unsigned char* data;
     STRLEN size;
+    dMY_CXT;
   PPCODE:
     if (items == 0) {
       New(0, data, 64, unsigned char);
       get_entropy_bytes(64, data);
-      csprng_seed(64, data);
+      csprng_seed(MY_CXT.randcxt, 64, data);
       Safefree(data);
     } else if (_XS_get_secure()) {
       croak("secure option set, manual seeding disabled");
     } else {
       data = (unsigned char*) SvPV(seed, size);
-      csprng_seed(size, data);
+      csprng_seed(MY_CXT.randcxt, size, data);
     }
 
 UV srand(IN UV seedval = 0)
+  PREINIT:
+    dMY_CXT;
   CODE:
     if (_XS_get_secure())
       croak("secure option set, manual seeding disabled");
     if (items == 0)
       get_entropy_bytes(sizeof(UV), (unsigned char*) &seedval);
-    csprng_srand(seedval);
+    csprng_srand(MY_CXT.randcxt, seedval);
     RETVAL = seedval;
   OUTPUT:
     RETVAL
@@ -406,14 +408,16 @@ UV srand(IN UV seedval = 0)
 UV irand()
   ALIAS:
     irand64 = 1
+  PREINIT:
+    dMY_CXT;
   CODE:
     if (ix == 0)
-      RETVAL = irand32();
+      RETVAL = irand32(MY_CXT.randcxt);
     else
 #if BITS_PER_WORD >= 64
-      RETVAL = irand64();
+      RETVAL = irand64(MY_CXT.randcxt);
 #else /* TODO: should irand64 on 32-bit perl (1) croak, (2) return 32-bits */
-      RETVAL = irand32();
+      RETVAL = irand32(MY_CXT.randcxt);
 #endif
   OUTPUT:
     RETVAL
@@ -421,9 +425,11 @@ UV irand()
 NV drand(NV m = 0.0)
   ALIAS:
     rand = 1
+  PREINIT:
+    dMY_CXT;
   CODE:
     PERL_UNUSED_VAR(ix);
-    RETVAL = drand64();
+    RETVAL = drand64(MY_CXT.randcxt);
     if (m != 0) RETVAL *= m;
   OUTPUT:
     RETVAL
@@ -431,12 +437,13 @@ NV drand(NV m = 0.0)
 SV* random_bytes(IN UV n)
   PREINIT:
     char* sptr;
+    dMY_CXT;
   CODE:
     RETVAL = newSV(n == 0 ? 1 : n);
     SvPOK_only(RETVAL);
     SvCUR_set(RETVAL, n);
     sptr = SvPVX(RETVAL);
-    csprng_rand_bytes(n, (unsigned char*)sptr);
+    csprng_rand_bytes(MY_CXT.randcxt, n, (unsigned char*)sptr);
     sptr[n] = '\0';
   OUTPUT:
     RETVAL
@@ -463,7 +470,7 @@ UV _is_csprng_well_seeded()
     _get_prime_cache_size = 5
   CODE:
     switch (ix) {
-      case 0:  RETVAL = is_csprng_well_seeded(); break;
+      case 0:  { dMY_CXT; RETVAL = is_csprng_well_seeded(MY_CXT.randcxt); } break;
       case 1:  RETVAL = _XS_get_verbose(); break;
       case 2:  RETVAL = _XS_get_callgmp(); break;
       case 3:  RETVAL = _XS_get_secure(); break;
@@ -560,6 +567,7 @@ void random_prime(IN SV* svlo, IN SV* svhi = 0)
   PREINIT:
     int lostatus, histatus;
     UV lo, hi, ret;
+    dMY_CXT;
   PPCODE:
     lostatus = _validate_int(aTHX_ svlo, 0);
     histatus = (items == 1 || _validate_int(aTHX_ svhi, 0));
@@ -571,7 +579,7 @@ void random_prime(IN SV* svlo, IN SV* svhi = 0)
         lo = my_svuv(svlo);
         hi = my_svuv(svhi);
       }
-      ret = random_prime(lo,hi);
+      ret = random_prime(MY_CXT.randcxt,lo,hi);
       if (ret) XSRETURN_UV(ret);
       else     XSRETURN_UNDEF;
     }
@@ -1238,12 +1246,13 @@ void
 miller_rabin_random(IN SV* svn, IN IV bases = 1, IN char* seed = 0)
   PREINIT:
     int status;
+    dMY_CXT;
   PPCODE:
     status = _validate_int(aTHX_ svn, 0);
     if (bases < 0) croak("miller_rabin_random: number of bases must be positive");
     if (status != 0 && seed == 0) {
       UV n = my_svuv(svn);
-      RETURN_NPARITY( is_mr_random(n, bases) );
+      RETURN_NPARITY( is_mr_random(MY_CXT.randcxt, n, bases) );
     }
     _vcallsub_with_gmp(0.46,"miller_rabin_random");
     return;
@@ -1305,7 +1314,7 @@ next_prime(IN SV* svn)
           case 17:ret = ramanujan_prime_count_lower(n); break;
           case 18:ret = twin_prime_count_approx(n); break;
           case 19:
-          default:ret = urandomm64(n); break;
+          default:{ dMY_CXT; ret = urandomm64(MY_CXT.randcxt,n); } break;
         }
         XSRETURN_UV(ret);
       }
@@ -1354,6 +1363,8 @@ void urandomb(IN UV bits)
     random_strong_prime = 8
   PREINIT:
     UV res, minarg;
+    dMY_CXT;
+    void* cs;
   PPCODE:
     switch (ix) {
       case 1:  minarg =   1; break;
@@ -1368,18 +1379,19 @@ void urandomb(IN UV bits)
     }
     if (minarg > 0 && bits < minarg)
       croak("Parameter '%d' must be >= %d", (int)bits, (int)minarg);
+    cs = MY_CXT.randcxt;
     if (bits <= BITS_PER_WORD) {
       switch (ix) {
-        case 0:  res = urandomb(bits); break;
-        case 1:  res = random_ndigit_prime(bits); break;
-        case 2:  res = random_semiprime(bits); break;
-        case 3:  res = random_unrestricted_semiprime(bits); break;
+        case 0:  res = urandomb(cs,bits); break;
+        case 1:  res = random_ndigit_prime(cs,bits); break;
+        case 2:  res = random_semiprime(cs,bits); break;
+        case 3:  res = random_unrestricted_semiprime(cs,bits); break;
         case 4:
         case 5:
         case 6:
         case 7:
         case 8:
-        default: res = random_nbit_prime(bits); break;
+        default: res = random_nbit_prime(cs,bits); break;
       }
       if (res || ix == 0) XSRETURN_UV(res);
     }
@@ -1956,29 +1968,28 @@ void
 randperm(IN UV n, IN UV k = 0)
   PREINIT:
     UV i, *S;
+    dMY_CXT;
   PPCODE:
     if (items == 1) k = n;
     if (k > n) k = n;
     if (k == 0) XSRETURN_EMPTY;
     New(0, S, n, UV);  /* TODO: k? */
-    randperm(n, k, S);
-    {
-      dMY_CXT;
-      EXTEND(SP, k);
-      for (i = 0; i < k; i++)
-        PUSH_NPARITY( S[i] );
-    }
+    randperm(MY_CXT.randcxt, n, k, S);
+    EXTEND(SP, k);
+    for (i = 0; i < k; i++)
+      PUSH_NPARITY( S[i] );
     Safefree(S);
 
 void shuffle(...)
   PROTOTYPE: @
   PREINIT:
     int i;
+    dMY_CXT;
   PPCODE:
     if (items == 0)
       XSRETURN_EMPTY;
     for (i = 0; i < items-1; i++) {
-      UV j = urandomm32(items-i);
+      UV j = urandomm32(MY_CXT.randcxt, items-i);
       { SV* t = ST(i); ST(i) = ST(i+j); ST(i+j) = t; }
     }
     XSRETURN(items);

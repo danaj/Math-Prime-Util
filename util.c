@@ -2496,23 +2496,23 @@ int perm_to_num(int n, int *vec, UV *rank) {
   return 1;
 }
 
-void randperm(UV n, UV k, UV *S) {
+void randperm(void* ctx, UV n, UV k, UV *S) {
   UV i, j;
 
   if (k > n)  k = n;
 
   if        (k == 0) {
   } else if (k == 1) {
-    S[0] = urandomm64(n);
+    S[0] = urandomm64(ctx,n);
   } else if (n < ((BITS_PER_WORD==32) ? 13 : 21)) {
     int V[32];
-    num_to_perm(urandomm64(factorial(n)), n, V);
+    num_to_perm(urandomm64(ctx,factorial(n)), n, V);
     for (i = 0; i < k; i++)
       S[i] = V[i];
   } else if (k < n/5 && k < 1000) {   /* TODO: Improve this cutoff */
     for (i = 0; i < k; i++) {
       do {
-        S[i] = urandomm64(n);
+        S[i] = urandomm64(ctx,n);
         for (j = 0; j < i; j++)
           if (S[j] == S[i])
             break;
@@ -2522,7 +2522,7 @@ void randperm(UV n, UV k, UV *S) {
     for (i = 0; i < n; i++)
       S[i] = i;
     for (i = 0; i < k && i <= n-2; i++) {
-      j = urandomm64(n-i);
+      j = urandomm64(ctx,n-i);
       { UV t = S[i]; S[i] = S[i+j]; S[i+j] = t; }
     }
   }

@@ -30,15 +30,10 @@
 #include <stddef.h>
 #include <string.h>
 #include "ptypes.h"
-#include "threadlock.h"
 #include "csprng.h"
 
 #define USE_ISAAC      0
 #define USE_CHACHA20   1
-
-static int mutex_init = 0;
-static int good_seed = 0;
-MUTEX_DECL(state);
 
 #if (USE_ISAAC + USE_CHACHA20) != 1
 #error Exactly one CSPRNG should been selected
@@ -57,13 +52,12 @@ MUTEX_DECL(state);
 #elif USE_CHACHA20
 
 #include "chacha.h"
-static  chacha_context_t  _cs;
 #define SEED_BYTES (32+8)
-#define CSEED(bytes,data)     chacha_seed(&_cs,bytes,data)
-#define CRBYTES(bytes,data)   chacha_rand_bytes(&_cs,bytes,data)
-#define CIRAND32()  chacha_irand32(&_cs)
-#define CIRAND64()  chacha_irand64(&_cs)
-#define CSELFTEST chacha_selftest
+#define CSEED(ctx,bytes,data,good)  chacha_seed(ctx,bytes,data,good)
+#define CRBYTES(ctx,bytes,data)     chacha_rand_bytes(ctx,bytes,data)
+#define CIRAND32(ctx)               chacha_irand32(ctx)
+#define CIRAND64(ctx)               chacha_irand64(ctx)
+#define CSELFTEST()                 chacha_selftest()
 
 #endif
 
@@ -140,7 +134,13 @@ char* prng_new(uint32_t a, uint32_t b, uint32_t c, uint32_t d) {
 
 /*****************************************************************************/
 
-void csprng_seed(uint32_t bytes, const unsigned char* data)
+uint32_t csprng_context_size(void)
+{
+  return sizeof(chacha_context_t);
+}
+static char _has_selftest_run = 0;
+
+void csprng_seed(void *ctx, uint32_t bytes, const unsigned char* data)
 {
   unsigned char seed[SEED_BYTES + 4];
 
@@ -167,71 +167,58 @@ void csprng_seed(uint32_t bytes, const unsigned char* data)
 #endif
   }
 
-  if (!mutex_init) {
-    MUTEX_INIT(&state_mutex);
-    mutex_init = 1;
-    MUTEX_LOCK(&state_mutex);
+  if (!_has_selftest_run) {
+    _has_selftest_run = 1;
     CSELFTEST();
-    MUTEX_UNLOCK(&state_mutex);
   }
-  MUTEX_LOCK(&state_mutex);
-  CSEED(SEED_BYTES, seed);
-  good_seed = (bytes >= 16);
-  MUTEX_UNLOCK(&state_mutex);
+  CSEED(ctx, SEED_BYTES, seed, (bytes >= 16));
 }
 
-extern void csprng_srand(UV insecure_seed)
+extern void csprng_srand(void* ctx, UV insecure_seed)
 {
 #if BITS_PER_WORD == 32
   unsigned char seed[4] = {0};
   U32TO8_LE(seed, insecure_seed);
-  csprng_seed(4, seed);
+  csprng_seed(ctx, 4, seed);
 #else
   unsigned char seed[8] = {0};
   if (insecure_seed <= UVCONST(4294967295)) {
     U32TO8_LE(seed, insecure_seed);
-    csprng_seed(4, seed);
+    csprng_seed(ctx, 4, seed);
   } else {
     U32TO8_LE(seed, insecure_seed);
     U32TO8_LE(seed + 4, (insecure_seed >> 32));
-    csprng_seed(8, seed);
+    csprng_seed(ctx, 8, seed);
   }
 #endif
 }
 
-void csprng_rand_bytes(uint32_t bytes, unsigned char* data)
+void csprng_rand_bytes(void* ctx, uint32_t bytes, unsigned char* data)
 {
-  if (!mutex_init) croak("CSPRNG used before init");
-  MUTEX_LOCK(&state_mutex);
-  CRBYTES(bytes, data);
-  MUTEX_UNLOCK(&state_mutex);
+  CRBYTES(ctx, bytes, data);
 }
 
-uint32_t irand32(void)
+uint32_t irand32(void* ctx)
 {
-  uint32_t a;
-  MUTEX_LOCK(&state_mutex);
-  a = CIRAND32();
-  MUTEX_UNLOCK(&state_mutex);
-  return a;
+  return CIRAND32(ctx);
 }
-UV irand64(void)
+UV irand64(void* ctx)
 {
 #if BITS_PER_WORD < 64
   croak("irand64 too many bits for UV");
 #else
-  UV a;
-  MUTEX_LOCK(&state_mutex);
-  a = CIRAND64();
-  MUTEX_UNLOCK(&state_mutex);
-  return a;
+  return CIRAND64(ctx);
 #endif
 }
 
 
 /*****************************************************************************/
 
-int is_csprng_well_seeded(void) { return good_seed; }
+int is_csprng_well_seeded(void *ctx)
+{
+  chacha_context_t *cs = ctx;
+  return cs->goodseed;
+}
 
 /* There are many ways to get floats from integers.  A few good, many bad.
  *
@@ -271,16 +258,15 @@ int is_csprng_well_seeded(void) { return good_seed; }
 #define TO_NV_96    1.2621774483536188886587657044524579675E-29L
 #define TO_NV_128   2.9387358770557187699218413430556141945E-39L
 
-#define DRAND_32_32  (CIRAND32() * TO_NV_32)
-#define DRAND_64_32  (((CIRAND32()>>5) * 67108864.0 + (CIRAND32()>>6)) / 9007199254740992.0)
-#define DRAND_64_64  (CIRAND64() * TO_NV_64)
-#define DRAND_128_32 (CIRAND32() * TO_NV_32 + CIRAND32() * TO_NV_64 + CIRAND32() * TO_NV_96 + CIRAND32() * TO_NV_128)
-#define DRAND_128_64 (CIRAND64() * TO_NV_64 + CIRAND64() * TO_NV_128)
+#define DRAND_32_32  (CIRAND32(ctx) * TO_NV_32)
+#define DRAND_64_32  (((CIRAND32(ctx)>>5) * 67108864.0 + (CIRAND32(ctx)>>6)) / 9007199254740992.0)
+#define DRAND_64_64  (CIRAND64(ctx) * TO_NV_64)
+#define DRAND_128_32 (CIRAND32(ctx) * TO_NV_32 + CIRAND32(ctx) * TO_NV_64 + CIRAND32(ctx) * TO_NV_96 + CIRAND32(ctx) * TO_NV_128)
+#define DRAND_128_64 (CIRAND64(ctx) * TO_NV_64 + CIRAND64(ctx) * TO_NV_128)
 
-NV drand64(void)
+NV drand64(void* ctx)
 {
   NV r;
-  MUTEX_LOCK(&state_mutex);
 #if NVMANTBITS <= 32
   r = DRAND_32_32;
 #elif NVMANTBITS <= 64
@@ -288,12 +274,11 @@ NV drand64(void)
 #else
   r = (BITS_PER_WORD <= 32)  ?  DRAND_128_32 :  DRAND_128_64;
 #endif
-  MUTEX_UNLOCK(&state_mutex);
   return r;
 }
 
 /* Return rand 32-bit integer between 0 to n-1 inclusive */
-uint32_t urandomm32(uint32_t n)
+uint32_t urandomm32(void *ctx, uint32_t n)
 {
   uint32_t r, rmin;
 
@@ -301,43 +286,39 @@ uint32_t urandomm32(uint32_t n)
     return 0;
 
   rmin = -n % n;
-  MUTEX_LOCK(&state_mutex);
   while (1) {
-    r = CIRAND32();
+    r = CIRAND32(ctx);
     if (r >= rmin)
       break;
   }
-  MUTEX_UNLOCK(&state_mutex);
   return r % n;
 }
 
-UV urandomm64(UV n)
+UV urandomm64(void* ctx, UV n)
 {
   UV r, rmin;
 
   if (n <= 4294967295UL)
-    return urandomm32(n);
+    return urandomm32(ctx,n);
 
   rmin = -n % n;
-  MUTEX_LOCK(&state_mutex);
   while (1) {
-    r = CIRAND64();
+    r = CIRAND64(ctx);
     if (r >= rmin)
       break;
   }
-  MUTEX_UNLOCK(&state_mutex);
   return r % n;
 }
 
-UV urandomb(int nbits)
+UV urandomb(void* ctx, int nbits)
 {
   if (nbits == 0) {
     return 0;
   } else if (nbits <= 32) {
-    return irand32() >> (32-nbits);
+    return irand32(ctx) >> (32-nbits);
 #if BITS_PER_WORD == 64
   } else if (nbits <= 64) {
-    return irand64() >> (64-nbits);
+    return irand64(ctx) >> (64-nbits);
 #endif
   }
   croak("irand64 too many bits for UV");

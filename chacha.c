@@ -269,10 +269,11 @@ int chacha_selftest(void) { return 1; }
 /*   API                                                                     */
 /*****************************************************************************/
 
-void chacha_seed(chacha_context_t *cs, uint32_t bytes, const unsigned char* data)
+void chacha_seed(chacha_context_t *cs, uint32_t bytes, const unsigned char* data, char good)
 {
   if (bytes < 40) croak("Not enough seed bytes given to ChaCha\n");
   init_context(cs, data, 1);
+  cs->goodseed = good;
 }
 void chacha_rand_bytes(chacha_context_t *cs, uint32_t bytes, unsigned char* data)
 {

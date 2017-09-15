@@ -87,7 +87,7 @@ extern int is_catalan_pseudoprime(UV n);
 
 extern int num_to_perm(UV rank, int n, int *vec);
 extern int perm_to_num(int n, int *vec, UV *rank);
-extern void randperm(UV n, UV k, UV *S);
+extern void randperm(void* ctx, UV n, UV k, UV *S);
 
 extern UV gcdz(UV x, UV y);
 
