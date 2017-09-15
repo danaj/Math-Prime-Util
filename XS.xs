@@ -118,8 +118,9 @@
 #endif
 
 #define MY_CXT_KEY "Math::Prime::Util::API_guts"
+#define CINTS 200
 typedef struct {
-  SV* const_int[11];   /* -1, 0, 1, ..., 9 */
+  SV* const_int[CINTS+1];   /* -1, 0, 1, ..., 199 */
   HV* MPUroot;
   HV* MPUGMP;
   HV* MPUPP;
@@ -236,13 +237,13 @@ static int _vcallsubn(pTHX_ I32 flags, I32 stashflags, const char* name, int nar
 #define RETURN_NPARITY(ret) \
   do { int r_ = ret; \
        dMY_CXT; \
-       if (r_ >= -1 && r_ <= 9) { ST(0) = MY_CXT.const_int[r_+1]; XSRETURN(1); } \
-       else                     { XSRETURN_IV(r_);                      } \
+       if (r_ >= -1 && r_<CINTS) { ST(0) = MY_CXT.const_int[r_+1]; XSRETURN(1); } \
+       else                      { XSRETURN_IV(r_);                      } \
   } while (0)
 #define PUSH_NPARITY(ret) \
   do { int r_ = ret; \
-       if (r_ >= -1 && r_ <= 9) { PUSHs( MY_CXT.const_int[r_+1] );       } \
-       else                     { PUSHs(sv_2mortal(newSViv(r_))); } \
+       if (r_ >= -1 && r_<CINTS) { PUSHs( MY_CXT.const_int[r_+1] );       } \
+       else                      { PUSHs(sv_2mortal(newSViv(r_))); } \
   } while (0)
 
 #define OBJECTIFY_RESULT(input, output) \
@@ -326,7 +327,7 @@ BOOT:
     { int i;
       MY_CXT_INIT;
       MY_CXT.MPUroot = stash;
-      for (i = 0; i <= 10; i++) {
+      for (i = 0; i <= CINTS; i++) {
         MY_CXT.const_int[i] = newSViv(i-1);
         SvREADONLY_on(MY_CXT.const_int[i]);
       }
@@ -344,7 +345,7 @@ PREINIT:
 PPCODE:
   {
     MY_CXT_CLONE; /* possible declaration */
-    for (i = 0; i <= 10; i++) {
+    for (i = 0; i <= CINTS; i++) {
       MY_CXT.const_int[i] = newSViv(i-1);
       SvREADONLY_on(MY_CXT.const_int[i]);
     }
@@ -362,7 +363,7 @@ PREINIT:
   dMY_CXT;
   int i;
 PPCODE:
-  for (i = 0; i <= 10; i++) {
+  for (i = 0; i <= CINTS; i++) {
     SV * const sv = MY_CXT.const_int[i];
     MY_CXT.const_int[i] = NULL;
     SvREFCNT_dec_NN(sv);
@@ -1335,7 +1336,9 @@ next_prime(IN SV* svn)
       case 17: _vcallsub_with_pp("ramanujan_prime_count_lower");  break;
       case 18: _vcallsub_with_pp("twin_prime_count_approx"); break;
       case 19:
-      default: _vcallsub_with_pp("urandomm"); break;
+      default: _vcallsub_with_gmpobj(0.44,"urandomm");
+               OBJECTIFY_RESULT(svn, ST(0));
+               break;
     }
     return; /* skip implicit PUTBACK */
 
@@ -1959,9 +1962,12 @@ randperm(IN UV n, IN UV k = 0)
     if (k == 0) XSRETURN_EMPTY;
     New(0, S, n, UV);  /* TODO: k? */
     randperm(n, k, S);
-    EXTEND(SP, (IV)k);
-    for (i = 0; i < k; i++)
-      PUSHs(sv_2mortal(newSViv( S[i] )));
+    {
+      dMY_CXT;
+      EXTEND(SP, k);
+      for (i = 0; i < k; i++)
+        PUSH_NPARITY( S[i] );
+    }
     Safefree(S);
 
 void shuffle(...)
