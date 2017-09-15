@@ -30,16 +30,6 @@
 #define RUN_INTERNAL_TESTS 1
 #define RESEED_ON_REFILL 0
 
-#define STATESZ  16        /* words: 4 constant, 8 key, 2 counter, 2 nonce */
-#define KEYSZ    40        /* bytes of user supplied key+nonce */
-#define CORESZ   64        /* bytes output by core */
-#define BUFSZ    16*CORESZ /* bytes we get at a time (1024) */
-typedef struct {
-  uint32_t      state[STATESZ];
-  unsigned char buf[BUFSZ];
-  uint32_t      have;
-} chacha_context_t;
-
 /*****************************************************************************/
 /* Chacha routines: init, quarter round, core, keystream                     */
 /*****************************************************************************/
@@ -279,44 +269,42 @@ int chacha_selftest(void) { return 1; }
 /*   API                                                                     */
 /*****************************************************************************/
 
-static  chacha_context_t  _cs;
-
-void chacha_seed(uint32_t bytes, const unsigned char* data)
+void chacha_seed(chacha_context_t *cs, uint32_t bytes, const unsigned char* data)
 {
   if (bytes < 40) croak("Not enough seed bytes given to ChaCha\n");
-  init_context(&_cs, data, 1);
+  init_context(cs, data, 1);
 }
-void chacha_rand_bytes(uint32_t bytes, unsigned char* data)
+void chacha_rand_bytes(chacha_context_t *cs, uint32_t bytes, unsigned char* data)
 {
   while (bytes > 0) {
     uint32_t copybytes;
-    if (_cs.have == 0)
-      _refill_buffer(&_cs);
-    copybytes = (bytes > _cs.have)  ?  _cs.have  :  bytes;
-    memcpy(data, _cs.buf + BUFSZ - _cs.have, copybytes);
+    if (cs->have == 0)
+      _refill_buffer(cs);
+    copybytes = (bytes > cs->have)  ?  cs->have  :  bytes;
+    memcpy(data, cs->buf + BUFSZ - cs->have, copybytes);
     data += copybytes;
-    _cs.have -= copybytes;
+    cs->have -= copybytes;
     bytes -= copybytes;
   }
 }
-uint32_t chacha_irand32(void)
+uint32_t chacha_irand32(chacha_context_t *cs)
 {
   uint32_t a;
   unsigned char* ptr;
-  if (_cs.have < 4)
-    _refill_buffer(&_cs);
-  ptr = _cs.buf + BUFSZ - _cs.have;
-  _cs.have -= 4;
+  if (cs->have < 4)
+    _refill_buffer(cs);
+  ptr = cs->buf + BUFSZ - cs->have;
+  cs->have -= 4;
   a = U8TO32_LE(ptr);
   return a;
 }
 #if BITS_PER_WORD == 64
-UV chacha_irand64(void)
+UV chacha_irand64(chacha_context_t *cs)
 {
-  uint32_t a = chacha_irand32();
-  uint32_t b = chacha_irand32();
+  uint32_t a = chacha_irand32(cs);
+  uint32_t b = chacha_irand32(cs);
   return (((UV)a) << 32) | b;
 }
 #else
-UV chacha_irand64(void) { return chacha_irand32(); }
+UV chacha_irand64(void) { return chacha_irand32(cs); }
 #endif

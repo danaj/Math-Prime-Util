@@ -57,11 +57,12 @@ MUTEX_DECL(state);
 #elif USE_CHACHA20
 
 #include "chacha.h"
+static  chacha_context_t  _cs;
 #define SEED_BYTES (32+8)
-#define CSEED     chacha_seed
-#define CRBYTES   chacha_rand_bytes
-#define CIRAND32  chacha_irand32
-#define CIRAND64  chacha_irand64
+#define CSEED(bytes,data)     chacha_seed(&_cs,bytes,data)
+#define CRBYTES(bytes,data)   chacha_rand_bytes(&_cs,bytes,data)
+#define CIRAND32()  chacha_irand32(&_cs)
+#define CIRAND64()  chacha_irand64(&_cs)
 #define CSELFTEST chacha_selftest
 
 #endif

@@ -3,11 +3,25 @@
 
 #include "ptypes.h"
 
-extern void chacha_seed(uint32_t bytes, const unsigned char* data);
-extern void chacha_rand_bytes(uint32_t bytes, unsigned char* data);
+/*  State info  */
 
-extern uint32_t chacha_irand32(void);
-extern UV       chacha_irand64(void);
+#define STATESZ  16        /* words: 4 constant, 8 key, 2 counter, 2 nonce */
+#define KEYSZ    40        /* bytes of user supplied key+nonce */
+#define CORESZ   64        /* bytes output by core */
+#define BUFSZ    16*CORESZ /* bytes we get at a time (1024) */
+typedef struct {
+  uint32_t      state[STATESZ];
+  unsigned char buf[BUFSZ];
+  uint32_t      have;
+} chacha_context_t;
+
+/*  API  */
+
+extern void chacha_seed(chacha_context_t *cs, uint32_t bytes, const unsigned char* data);
+extern void chacha_rand_bytes(chacha_context_t *cs, uint32_t bytes, unsigned char* data);
+
+extern uint32_t chacha_irand32(chacha_context_t *cs);
+extern UV       chacha_irand64(chacha_context_t *cs);
 
 extern int chacha_selftest(void);
 
