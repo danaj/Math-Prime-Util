@@ -130,6 +130,9 @@ BEGIN {
     # Load PP front end code
     require Math::Prime::Util::PPFE;
 
+    # Init rand
+    Math::Prime::Util::csrand();
+
     *prime_count   = \&Math::Prime::Util::_generic_prime_count;
     *factor        = \&Math::Prime::Util::_generic_factor;
     *factor_exp    = \&Math::Prime::Util::_generic_factor_exp;
