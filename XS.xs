@@ -310,6 +310,14 @@ static UV negmod(IV a, UV n) {
   return (negamod == 0) ? 0 : n-negamod;
 }
 
+static void csprng_init_seed(void* ctx) {
+  unsigned char* data;
+  New(0, data, 64, unsigned char);
+  get_entropy_bytes(64, data);
+  csprng_seed(ctx, 64, data);
+  Safefree(data);
+}
+
 
 MODULE = Math::Prime::Util	PACKAGE = Math::Prime::Util
 
@@ -331,6 +339,7 @@ BOOT:
       SvREADONLY_on(MY_CXT.const_int[i]);
     }
     New(0, MY_CXT.randcxt, csprng_context_size(), char);
+    csprng_init_seed(MY_CXT.randcxt);
 }
 
 #if defined(USE_ITHREADS) && defined(MY_CXT_KEY)
@@ -345,11 +354,15 @@ PPCODE:
     MY_CXT.MPUroot = gv_stashpv("Math::Prime::Util", TRUE);
     MY_CXT.MPUGMP = gv_stashpv("Math::Prime::Util::GMP", TRUE);
     MY_CXT.MPUPP = gv_stashpv("Math::Prime::Util::PP", TRUE);
+    /* Share consts between threads
     for (i = 0; i <= CINTS; i++) {
       MY_CXT.const_int[i] = newSViv(i-1);
       SvREADONLY_on(MY_CXT.const_int[i]);
-    }
+    } */
+    /* Make a new CSPRNG context for this thread */
     New(0, MY_CXT.randcxt, csprng_context_size(), char);
+    csprng_init_seed(MY_CXT.randcxt);
+    /* NOTE:  There is no thread destroy, so these never get freed... */
   }
   return; /* skip implicit PUTBACK, returning @_ to caller, more efficient*/
 
@@ -381,10 +394,7 @@ void csrand(IN SV* seed = 0)
     dMY_CXT;
   PPCODE:
     if (items == 0) {
-      New(0, data, 64, unsigned char);
-      get_entropy_bytes(64, data);
-      csprng_seed(MY_CXT.randcxt, 64, data);
-      Safefree(data);
+      csprng_init_seed(MY_CXT.randcxt);
     } else if (_XS_get_secure()) {
       croak("secure option set, manual seeding disabled");
     } else {

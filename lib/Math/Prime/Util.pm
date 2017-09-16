@@ -135,8 +135,6 @@ BEGIN {
     *factor_exp    = \&Math::Prime::Util::_generic_factor_exp;
   };
 
-  Math::Prime::Util::csrand();
-
   $_Config{'secure'} = 0;
   $_Config{'nobigint'} = 0;
   $_Config{'gmp'} = 0;

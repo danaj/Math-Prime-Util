@@ -129,6 +129,6 @@
      2.7s  use Math::GMP qw/:constant/; urandomm(factorial(144)) for 1..1e5;
     10.4s  urandomm(factorial(144)) for 1..1e5;
 
-- Ensure we properly seed on each thread.
-
 - Move ISAAC to per-thread context model.
+
+- Destroy csprng context on thread destruction.
