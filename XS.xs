@@ -346,8 +346,6 @@ BOOT:
 
 void
 CLONE(...)
-PREINIT:
-  int i;
 PPCODE:
   {
     MY_CXT_CLONE; /* possible declaration */
@@ -1985,7 +1983,7 @@ randperm(IN UV n, IN UV k = 0)
     if (k == 0) XSRETURN_EMPTY;
     New(0, S, n, UV);  /* TODO: k? */
     randperm(MY_CXT.randcxt, n, k, S);
-    EXTEND(SP, k);
+    EXTEND(SP, (IV)k);
     for (i = 0; i < k; i++)
       PUSH_NPARITY( S[i] );
     Safefree(S);
