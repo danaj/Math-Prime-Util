@@ -3389,6 +3389,14 @@ C<arc4random> and C</dev/urandom> on BSD and Linux 4.8+.
 Seeding is performed at startup using the Win32 Crypto API (on Windows),
 C</dev/urandom>, C</dev/random>, or L<Crypt::PRNG>, whichever is found first.
 
+We use the original ChaCha definition rather than RFC7539.  This means a
+64-bit counter, resulting in a period of 2^72 bytes or 2^68 calls to
+L<drand> or <irand64>.  This compares favorably to the 2^48 period of Perl's
+C<drand48>.  It has a 512-bit state which is significantly larger than the
+48-bit C<drand48> state.  When seeding, 320 bits (40 bytes) are used.
+Among other things, this means all 52! permutations of a shuffled card deck
+are possible, which is not true of L<List::Util/shuffle>.
+
 One might think that performance would suffer from using a CSPRNG, but
 benchmarking shows it is less than one might expect.
 does not seem to be the case.  The speed of irand, irand64, and drand
