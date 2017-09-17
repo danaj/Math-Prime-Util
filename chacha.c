@@ -307,5 +307,5 @@ UV chacha_irand64(chacha_context_t *cs)
   return (((UV)a) << 32) | b;
 }
 #else
-UV chacha_irand64(void) { return chacha_irand32(cs); }
+UV chacha_irand64(chacha_context_t *cs) { return chacha_irand32(cs); }
 #endif
