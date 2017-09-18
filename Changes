@@ -19,7 +19,7 @@ Revision history for Perl module Math::Prime::Util
 
     - With the above two optimizations, randperm(144) is 2.5x faster.
 
-    - irand test has been added to the threading tests, showing our random
+    - threading test has threaded srand/irand test added back in, showing
       context is per-thread.  Each thread gets its own sequence and calls
       to srand/csrand and using randomness doesn't impact other threads.
 

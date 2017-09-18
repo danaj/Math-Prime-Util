@@ -42,7 +42,7 @@ if (CSPRNG_CHACHA) {
 }
 sub srand {
   my($seed) = @_;
-  croak "secure option set, manual seeding disabled" if $Math::Prime::Util::_Config{'secure'};
+  croak "secure option set, manual seeding disabled" if prime_get_config()->{'secure'};
   if (!defined $seed) {
     my $nbytes = (~0 == 4294967295) ? 4 : 8;
     $seed = entropy_bytes( $nbytes );
@@ -54,7 +54,7 @@ sub srand {
 }
 sub csrand {
   my($seed) = @_;
-  croak "secure option set, manual seeding disabled" if $Math::Prime::Util::_Config{'secure'} && defined $seed;
+  croak "secure option set, manual seeding disabled" if defined $seed && prime_get_config()->{'secure'};
   $seed = entropy_bytes( 64 ) unless defined $seed;
   Math::Prime::Util::GMP::seed_csprng(length($seed),$seed)
     if $Math::Prime::Util::_GMPfunc{"seed_csprng"};

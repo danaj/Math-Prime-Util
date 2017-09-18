@@ -211,6 +211,12 @@ sub prime_set_config {
       _XS_set_callgmp($_HAVE_GMP) if $_Config{'xs'};
     } elsif ($param eq 'nobigint') {
       $_Config{'nobigint'} = ($value) ? 1 : 0;
+    } elsif ($param eq 'secure') {
+      croak "Cannot disable secure once set" if !$value && $_Config{'secure'};
+      if ($value) {
+        $_Config{'secure'} = 1;
+        _XS_set_secure() if $_Config{'xs'};
+      }
     } elsif ($param eq 'irand') {
       carp "ntheory irand option is deprecated";
     } elsif ($param eq 'use_primeinc') {
@@ -3826,6 +3832,7 @@ the configuration, so changing it has no effect.  The settings include:
   maxprime        the largest representable prime, without bigint
   maxprimeidx     the index of maxprime, without bigint
   assume_rh       whether to assume the Riemann hypothesis (default 0)
+  secure          disable ability to manually seed the CSPRNG
 
 =head2 prime_set_config
 
@@ -3858,6 +3865,14 @@ Allows setting of some parameters.  Currently the only parameters are:
                as primality testing.  A later version may also have a
                way to indicate whether no RH, RH, GRH, or ERH is to
                be assumed.
+
+  secure       The CSPRNG may no longer be manually seeded.  Once set,
+               this option cannot be disabled.  L</srand> will croak
+               if called, and L</csrand> will croak if called with any
+               arguments.  L</csrand> with no arguments is still allowed,
+               as that will use system entropy without giving anything
+               to the caller.  The point of this option is to ensure that
+               any called functions do not try to control the RNG.
 
 
 =head1 FACTORING FUNCTIONS

@@ -123,11 +123,10 @@
 
 - Ensure 'secure' is secure.
 
-- Performance:
-  = urandomm with bigints
-     0.5s  Math::Prime::Util::GMP::urandomm(Math::Prime::Util::GMP::factorial(144)) for 1..1e5;
-     2.7s  use Math::GMP qw/:constant/; urandomm(factorial(144)) for 1..1e5;
-    10.4s  urandomm(factorial(144)) for 1..1e5;
+- urandomm with bigints could be faster.
+  14.7s  my $f=factorial(144); urandomm($f) for 1..5e5;
+  10.7s  use Math::GMP qw/:constant/; my $f=factorial(144); urandomm($f) for 1..5e5;
+   1.8s  my $f=Math::Prime::Util::GMP::factorial(144); Math::Prime::Util::GMP::urandomm($f) for 1..5e5;
 
 - Move ISAAC to per-thread context model.
 
