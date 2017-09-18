@@ -2784,6 +2784,12 @@ sub is_power {
   0;
 }
 
+sub is_square {
+  my($n) = @_;
+  return 0 if $n < 0;
+  is_power($n,2);
+}
+
 sub is_prime_power {
   my ($n, $refp) = @_;
   croak("is_prime_power second argument not a scalar reference") if defined($refp) && !ref($refp);

@@ -3,7 +3,7 @@ use strict;
 use warnings;
 
 use Test::More;
-use Math::Prime::Util qw/is_power is_prime_power vecsum/;
+use Math::Prime::Util qw/is_power is_prime_power is_square vecsum/;
 #use Math::BigInt try=>"GMP,Pari";
 
 my $extra = defined $ENV{EXTENDED_TESTING} && $ENV{EXTENDED_TESTING};
@@ -52,7 +52,8 @@ plan tests => 0
             + 2 + 2*$extra
             + scalar(keys(%bpow))
             + scalar(keys(%bppow))
-            + 4;
+            + 4
+            + 3  # is_square
             + 0;
 
 is_deeply( [map { is_power($_) } 0 .. $#pow1],        \@pow1,  "is_power 0 .. $#pow1" );
@@ -85,3 +86,11 @@ while (my($n, $expect) = each (%bppow)) {
   is( is_power(-8, 4), 0, "-8 is not a fourth power" );
   is( is_power(-16,4), 0, "-16 is not a fourth power" );
 }
+
+is_deeply(
+  [map { is_square($_) } (-4 .. 16)],
+  [0,0,0,0,1,1,0,0,1,0,0,0,0,1,0,0,0,0,0,0,1],
+  "is_square for -4 .. 16"
+);
+is(is_square(603729), 1, "603729 is a square");
+is(is_square("765413284212226299051111674934086564882382225721"), 1, "is_square(<square of 80-bit prime>) = 1");

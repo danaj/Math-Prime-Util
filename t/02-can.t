@@ -22,8 +22,9 @@ my @functions =  qw(
       is_aks_prime is_bpsw_prime
       is_ramanujan_prime
       is_mersenne_prime
-      is_power is_prime_power sqrtint rootint logint is_pillai is_semiprime
+      is_power is_prime_power is_pillai is_semiprime is_square
       is_square_free is_primitive_root is_carmichael is_quasi_carmichael
+      sqrtint rootint logint
       miller_rabin_random
       lucas_sequence lucasu lucasv
       primes twin_primes ramanujan_primes sieve_prime_cluster sieve_range

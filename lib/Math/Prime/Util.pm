@@ -28,8 +28,9 @@ our @EXPORT_OK =
       is_aks_prime is_bpsw_prime
       is_ramanujan_prime
       is_mersenne_prime
-      is_power is_prime_power sqrtint rootint logint is_pillai is_semiprime
+      is_power is_prime_power is_pillai is_semiprime is_square
       is_square_free is_primitive_root is_carmichael is_quasi_carmichael
+      sqrtint rootint logint
       miller_rabin_random
       lucas_sequence lucasu lucasv
       primes twin_primes ramanujan_primes sieve_prime_cluster sieve_range
@@ -2409,8 +2410,8 @@ not efficient for multiple calls.
   say "$n is a perfect cube" if is_power($n, 3);
   say "$n is a ", is_power($n), "-th power";
 
-Given a single non-negative integer input C<n>, returns k if C<n = p^k> for
-some integer C<p E<gt> 1, k E<gt> 1>, and 0 otherwise.  The k returned is
+Given a single non-negative integer input C<n>, returns k if C<n = r^k> for
+some integer C<r E<gt> 1, k E<gt> 1>, and 0 otherwise.  The k returned is
 the largest possible.  This can be used in a boolean statement to
 determine if C<n> is a perfect power.
 
@@ -2438,6 +2439,14 @@ If a second argument is present, it must be a scalar reference.  If the
 return value is non-zero, then it will be set to C<p>.
 
 This corresponds to Pari/GP's C<isprimepower> function.
+
+
+=head2 is_square
+
+Given a positive integer C<n>, returns 1 if C<n> is a perfect square,
+0 otherwise.  This is identical to C<is_power(n,2)>.
+
+This corresponds to Pari/GP's C<issquare> function.
 
 
 =head2 sqrtint
