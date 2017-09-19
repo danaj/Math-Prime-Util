@@ -36,6 +36,7 @@ our @EXPORT_OK =
       primes twin_primes ramanujan_primes sieve_prime_cluster sieve_range
       forprimes forcomposites foroddcomposites fordivisors
       forpart forcomp forcomb forperm forderange formultiperm
+      lastfor
       numtoperm permtonum randperm shuffle
       prime_iterator prime_iterator_object
       next_prime  prev_prime
@@ -529,14 +530,18 @@ sub _generic_forprimes {
   _validate_positive_integer($beg);
   _validate_positive_integer($end);
   $beg = 2 if $beg < 2;
+  my $oldexitloop = Math::Prime::Util::_get_forexit();
+  Math::Prime::Util::_set_forexit(0);
   {
     my $pp;
     local *_ = \$pp;
     for (my $p = next_prime($beg-1);  $p <= $end;  $p = next_prime($p)) {
       $pp = $p;
       $sub->();
+      last if Math::Prime::Util::_get_forexit();
     }
   }
+  Math::Prime::Util::_set_forexit($oldexitloop);
 }
 
 sub _generic_forcomposites {
@@ -546,6 +551,8 @@ sub _generic_forcomposites {
   _validate_positive_integer($end);
   $beg = 4 if $beg < 4;
   $end = Math::BigInt->new(''.~0) if ref($end) ne 'Math::BigInt' && $end == ~0;
+  my $oldexitloop = Math::Prime::Util::_get_forexit();
+  Math::Prime::Util::_set_forexit(0);
   {
     my $pp;
     local *_ = \$pp;
@@ -553,10 +560,13 @@ sub _generic_forcomposites {
       for ( ; $beg < $p && $beg <= $end ; $beg++ ) {
         $pp = $beg;
         $sub->();
+        last if Math::Prime::Util::_get_forexit();
       }
       $beg++;
+      last if Math::Prime::Util::_get_forexit();
     }
   }
+  Math::Prime::Util::_set_forexit($oldexitloop);
 }
 
 sub _generic_foroddcomposites {
@@ -567,6 +577,8 @@ sub _generic_foroddcomposites {
   $beg = 9 if $beg < 9;
   $beg++ unless $beg & 1;
   $end = Math::BigInt->new(''.~0) if ref($end) ne 'Math::BigInt' && $end == ~0;
+  my $oldexitloop = Math::Prime::Util::_get_forexit();
+  Math::Prime::Util::_set_forexit(0);
   {
     my $pp;
     local *_ = \$pp;
@@ -574,24 +586,31 @@ sub _generic_foroddcomposites {
       for ( ; $beg < $p && $beg <= $end ; $beg += 2 ) {
         $pp = $beg;
         $sub->();
+        last if Math::Prime::Util::_get_forexit();
       }
       $beg += 2;
+      last if Math::Prime::Util::_get_forexit();
     }
   }
+  Math::Prime::Util::_set_forexit($oldexitloop);
 }
 
 sub _generic_fordivisors {
   my($sub, $n) = @_;
   _validate_positive_integer($n);
   my @divisors = divisors($n);
+  my $oldexitloop = Math::Prime::Util::_get_forexit();
+  Math::Prime::Util::_set_forexit(0);
   {
     my $pp;
     local *_ = \$pp;
     foreach my $d (@divisors) {
       $pp = $d;
       $sub->();
+      last if Math::Prime::Util::_get_forexit();
     }
   }
+  Math::Prime::Util::_set_forexit($oldexitloop);
 }
 
 sub formultiperm (&$) {    ## no critic qw(ProhibitSubroutinePrototypes)
@@ -1431,6 +1450,16 @@ sets.  This iterator will be much more efficient.
 
 There is no ordering requirement for the input array reference.  The results
 will be in lexicographic order.
+
+
+=head2 lastfor
+
+  forprimes { lastfor,return if $_ > 1000; $sum += $_; } 1e9;
+
+Calling lastfor requests that the current for... loop stop after this
+call.  Ideally this would act exactly like a C<last> inside a loop,
+but technical reasons mean it does not exit the block early, hence
+one typically adds a C<return> if needed.
 
 
 =head2 prime_iterator

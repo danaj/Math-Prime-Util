@@ -120,6 +120,8 @@ typedef struct {
   HV* MPUPP;
   SV* const_int[CINTS+1];   /* -1, 0, 1, ..., 199 */
   void* randcxt;            /* per-thread csprng context */
+  uint16_t forcount;
+  char     forexit;
 } my_cxt_t;
 
 START_MY_CXT
@@ -340,6 +342,8 @@ BOOT:
     }
     New(0, MY_CXT.randcxt, csprng_context_size(), char);
     csprng_init_seed(MY_CXT.randcxt);
+    MY_CXT.forcount = 0;
+    MY_CXT.forexit = 0;
 }
 
 #if defined(USE_ITHREADS) && defined(MY_CXT_KEY)
@@ -361,6 +365,8 @@ PPCODE:
     New(0, MY_CXT.randcxt, csprng_context_size(), char);
     csprng_init_seed(MY_CXT.randcxt);
     /* NOTE:  There is no thread destroy, so these never get freed... */
+    MY_CXT.forcount = 0;
+    MY_CXT.forexit = 0;
   }
   return; /* skip implicit PUTBACK, returning @_ to caller, more efficient*/
 
@@ -475,7 +481,8 @@ UV _is_csprng_well_seeded()
     _XS_get_callgmp = 2
     _XS_get_secure = 3
     _XS_set_secure = 4
-    _get_prime_cache_size = 5
+    _get_forexit = 5
+    _get_prime_cache_size = 6
   CODE:
     switch (ix) {
       case 0:  { dMY_CXT; RETVAL = is_csprng_well_seeded(MY_CXT.randcxt); } break;
@@ -483,7 +490,8 @@ UV _is_csprng_well_seeded()
       case 2:  RETVAL = _XS_get_callgmp(); break;
       case 3:  RETVAL = _XS_get_secure(); break;
       case 4:  _XS_set_secure(); RETVAL = 1; break;
-      case 5:
+      case 5:  { dMY_CXT; RETVAL = MY_CXT.forexit; } break;
+      case 6:
       default: RETVAL = get_prime_cache(0,0); break;
     }
   OUTPUT:
@@ -496,13 +504,16 @@ prime_precalc(IN UV n)
   ALIAS:
     _XS_set_verbose = 1
     _XS_set_callgmp = 2
+    _set_forexit = 3
   PPCODE:
     PUTBACK; /* SP is never used again, the 3 next func calls are tailcall
     friendly since this XSUB has nothing to do after the 3 calls return */
     switch (ix) {
       case 0:  prime_precalc(n);    break;
       case 1:  _XS_set_verbose(n);  break;
-      default: _XS_set_callgmp(n);  break;
+      case 2:  _XS_set_callgmp(n);  break;
+      case 3:
+      default: { dMY_CXT; MY_CXT.forexit = (n ? 1 : 0); } break;
     }
     return; /* skip implicit PUTBACK */
 
@@ -2163,6 +2174,42 @@ _validate_num(SV* svn, ...)
     RETVAL
 
 void
+lastfor()
+  PREINIT:
+    dMY_CXT;
+  PPCODE:
+    /* printf("last for with count = %u\n", MY_CXT.forcount); */
+    if (MY_CXT.forcount == 0) croak("lastfor called outside a loop");
+    MY_CXT.forexit = 1;
+    /* In some ideal world this would also act like a last */
+    return;
+
+#define dFORCOUNT \
+    uint16_t oldforloop; \
+    char     oldforexit; \
+    char    *forexit; \
+    dMY_CXT;
+
+#define START_FORCOUNT \
+    do { \
+      oldforloop = ++MY_CXT.forcount; \
+      oldforexit = MY_CXT.forexit; \
+      forexit = &MY_CXT.forexit; \
+      *forexit = 0; \
+    } while(0)
+
+#define CHECK_FORCOUNT \
+    if (*forexit) break;
+
+#define END_FORCOUNT \
+    do { \
+      /* Put back outer loop's exit request, if any. */ \
+      *forexit = oldforexit; \
+      /* Ensure loops are nested and not woven. */ \
+      if (MY_CXT.forcount-- != oldforloop) croak("for loop mismatch"); \
+    } while (0)
+
+void
 forprimes (SV* block, IN SV* svbeg, IN SV* svend = 0)
   PROTOTYPE: &$;$
   PREINIT:
@@ -2172,6 +2219,7 @@ forprimes (SV* block, IN SV* svbeg, IN SV* svend = 0)
     CV *cv;
     unsigned char* segment;
     UV beg, end, seg_base, seg_low, seg_high;
+    dFORCOUNT;
   PPCODE:
     cv = sv_2cv(block, &stash, &gv, 0);
     if (cv == Nullcv)
@@ -2190,6 +2238,7 @@ forprimes (SV* block, IN SV* svbeg, IN SV* svend = 0)
       end = my_svuv(svend);
     }
 
+    START_FORCOUNT;
     SAVESPTR(GvSV(PL_defgv));
     svarg = newSVuv(beg);
     GvSV(PL_defgv) = svarg;
@@ -2200,6 +2249,7 @@ forprimes (SV* block, IN SV* svbeg, IN SV* svend = 0)
         sv_setuv(svarg, beg);
         PUSHMARK(SP);
         call_sv((SV*)cv, G_VOID|G_DISCARD);
+        CHECK_FORCOUNT;
       }
       beg += 1 + (beg > 2);
     }
@@ -2216,6 +2266,7 @@ forprimes (SV* block, IN SV* svbeg, IN SV* svend = 0)
 #endif
           ((end-beg) < 500) ) {     /* MULTICALL next prime */
         for (beg = next_prime(beg-1); beg <= end && beg != 0; beg = next_prime(beg)) {
+          CHECK_FORCOUNT;
           sv_setuv(svarg, beg);
           MULTICALL;
         }
@@ -2224,12 +2275,14 @@ forprimes (SV* block, IN SV* svbeg, IN SV* svend = 0)
         while (next_segment_primes(ctx, &seg_base, &seg_low, &seg_high)) {
           int crossuv = (seg_high > IV_MAX) && !SvIsUV(svarg);
           START_DO_FOR_EACH_SIEVE_PRIME( segment, seg_base, seg_low, seg_high )
+            CHECK_FORCOUNT;
             /* sv_setuv(svarg, p); */
             if      (SvTYPE(svarg) != SVt_IV) { sv_setuv(svarg, p);            }
             else if (crossuv && p > IV_MAX)   { sv_setuv(svarg, p); crossuv=0; }
             else                              { SvUV_set(svarg, p);            }
             MULTICALL;
           END_DO_FOR_EACH_SIEVE_PRIME
+          CHECK_FORCOUNT;
         }
         end_segment_primes(ctx);
       }
@@ -2242,14 +2295,17 @@ forprimes (SV* block, IN SV* svbeg, IN SV* svend = 0)
       void* ctx = start_segment_primes(beg, end, &segment);
       while (next_segment_primes(ctx, &seg_base, &seg_low, &seg_high)) {
         START_DO_FOR_EACH_SIEVE_PRIME( segment, seg_base, seg_low, seg_high )
+          CHECK_FORCOUNT;
           sv_setuv(svarg, p);
           PUSHMARK(SP);
           call_sv((SV*)cv, G_VOID|G_DISCARD);
         END_DO_FOR_EACH_SIEVE_PRIME
+        CHECK_FORCOUNT;
       }
       end_segment_primes(ctx);
     }
     SvREFCNT_dec(svarg);
+    END_FORCOUNT;
 
 void
 forcomposites (SV* block, IN SV* svbeg, IN SV* svend = 0)
@@ -2262,6 +2318,7 @@ forcomposites (SV* block, IN SV* svbeg, IN SV* svend = 0)
     HV *stash;
     SV* svarg;  /* We use svarg to prevent clobbering $_ outside the block */
     CV *cv;
+    dFORCOUNT;
   PPCODE:
     cv = sv_2cv(block, &stash, &gv, 0);
     if (cv == Nullcv)
@@ -2280,6 +2337,7 @@ forcomposites (SV* block, IN SV* svbeg, IN SV* svend = 0)
       end = my_svuv(svend);
     }
 
+    START_FORCOUNT;
     SAVESPTR(GvSV(PL_defgv));
     svarg = newSVuv(0);
     GvSV(PL_defgv) = svarg;
@@ -2303,6 +2361,7 @@ forcomposites (SV* block, IN SV* svbeg, IN SV* svend = 0)
         while (beg++ < end) {
           if (beg == nextprime)     nextprime = next_prime(beg);
           else if (!ix || beg & 1)  { sv_setuv(svarg, beg); MULTICALL; }
+          CHECK_FORCOUNT;
         }
       } else {
         if (ix) {
@@ -2319,6 +2378,7 @@ forcomposites (SV* block, IN SV* svbeg, IN SV* svend = 0)
         while (next_segment_primes(ctx, &seg_base, &seg_low, &seg_high)) {
           int crossuv = (seg_high > IV_MAX) && !SvIsUV(svarg);
           START_DO_FOR_EACH_SIEVE_PRIME( segment, seg_base, seg_low, seg_high )
+            CHECK_FORCOUNT;
             cbeg = prevprime+1;
             if (cbeg < beg)
               cbeg = beg - (ix == 1 && (beg % 2));
@@ -2336,8 +2396,11 @@ forcomposites (SV* block, IN SV* svbeg, IN SV* svend = 0)
         end_segment_primes(ctx);
         if (end > nextprime)   /* Complete the case where end > max_prime */
           while (nextprime++ < end)
-            if (!ix || nextprime & 1)
-              { sv_setuv(svarg, nextprime);  MULTICALL; }
+            if (!ix || nextprime & 1) {
+              CHECK_FORCOUNT;
+              sv_setuv(svarg, nextprime);
+              MULTICALL;
+            }
       }
       FIX_MULTICALL_REFCOUNT;
       POP_MULTICALL;
@@ -2351,10 +2414,12 @@ forcomposites (SV* block, IN SV* svbeg, IN SV* svend = 0)
           sv_setuv(svarg, beg);
           PUSHMARK(SP);
           call_sv((SV*)cv, G_VOID|G_DISCARD);
+          CHECK_FORCOUNT;
         }
       }
     }
     SvREFCNT_dec(svarg);
+    END_FORCOUNT;
 
 void
 fordivisors (SV* block, IN SV* svn)
@@ -2366,6 +2431,7 @@ fordivisors (SV* block, IN SV* svn)
     HV *stash;
     SV* svarg;  /* We use svarg to prevent clobbering $_ outside the block */
     CV *cv;
+    dFORCOUNT;
   PPCODE:
     cv = sv_2cv(block, &stash, &gv, 0);
     if (cv == Nullcv)
@@ -2379,6 +2445,7 @@ fordivisors (SV* block, IN SV* svn)
     n = my_svuv(svn);
     divs = _divisor_list(n, &ndivisors);
 
+    START_FORCOUNT;
     SAVESPTR(GvSV(PL_defgv));
     svarg = newSVuv(0);
     GvSV(PL_defgv) = svarg;
@@ -2390,6 +2457,7 @@ fordivisors (SV* block, IN SV* svn)
       for (i = 0; i < ndivisors; i++) {
         sv_setuv(svarg, divs[i]);
         MULTICALL;
+        CHECK_FORCOUNT;
       }
       FIX_MULTICALL_REFCOUNT;
       POP_MULTICALL;
@@ -2401,10 +2469,12 @@ fordivisors (SV* block, IN SV* svn)
         sv_setuv(svarg, divs[i]);
         PUSHMARK(SP);
         call_sv((SV*)cv, G_VOID|G_DISCARD);
+        CHECK_FORCOUNT;
       }
     }
     SvREFCNT_dec(svarg);
     Safefree(divs);
+    END_FORCOUNT;
 
 void
 forpart (SV* block, IN SV* svn, IN SV* svh = 0)
@@ -2418,6 +2488,7 @@ forpart (SV* block, IN SV* svn, IN SV* svh = 0)
     HV *stash;
     CV *cv;
     SV** svals;
+    dFORCOUNT;
   PPCODE:
     cv = sv_2cv(block, &stash, &gv, 0);
     if (cv == Nullcv)
@@ -2470,6 +2541,7 @@ forpart (SV* block, IN SV* svn, IN SV* svh = 0)
       k = 1;
       a[0] = amin-1;
       a[1] = n-amin+1;
+      START_FORCOUNT;
       while (k != 0) {
         x = a[k-1]+1;
         y = a[k]-1;
@@ -2517,8 +2589,10 @@ forpart (SV* block, IN SV* svn, IN SV* svh = 0)
           EXTEND(SP, (IV)k); for (i = 0; i <= k; i++) { PUSHs(svals[a[i]]); }
           PUTBACK; call_sv((SV*)cv, G_VOID|G_DISCARD); LEAVE;
         }
+        CHECK_FORCOUNT;
       }
       Safefree(a);
+      END_FORCOUNT;
     }
     for (i = 0; i <= n; i++)
       SvREFCNT_dec(svals[i]);
@@ -2537,6 +2611,7 @@ forcomb (SV* block, IN SV* svn, IN SV* svk = 0)
     CV *cv;
     SV** svals;
     UV*  cm;
+    dFORCOUNT;
   PPCODE:
     cv = sv_2cv(block, &stash, &gv, 0);
     if (cv == Nullcv)
@@ -2565,6 +2640,7 @@ forcomb (SV* block, IN SV* svn, IN SV* svk = 0)
       SvREADONLY_on(svals[i]);
     }
 
+    START_FORCOUNT;
     while (1) {
       if (ix == 2)
         for (i = 0; i < k; i++)
@@ -2575,6 +2651,7 @@ forcomb (SV* block, IN SV* svn, IN SV* svk = 0)
         EXTEND(SP, ((IV)k));
         for (i = 0; i < k; i++) { PUSHs(svals[ cm[k-i-1]-1 ]); }
         PUTBACK; call_sv((SV*)cv, G_VOID|G_DISCARD); LEAVE;
+        CHECK_FORCOUNT;
       }
       if (ix == 0) {
         if (cm[0]++ < n)  continue;                /* Increment last value */
@@ -2596,6 +2673,7 @@ forcomb (SV* block, IN SV* svn, IN SV* svk = 0)
     for (i = 0; i < n; i++)
       SvREFCNT_dec(svals[i]);
     Safefree(svals);
+    END_FORCOUNT;
 
 void
 vecreduce(SV* block, ...)

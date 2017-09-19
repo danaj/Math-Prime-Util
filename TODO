@@ -95,10 +95,6 @@
 
 - Test for print_primes.  Not as easy with filenos.
 
-- We should have a way to exit a forprimes loop.  E.g. add a lastfor() call.
-  Nested calls are doable, but threading is a bear.  Perhaps do a first
-  version that is non-threadsafe.
-
 - sum primes better than current method.  Especially using less memory.
 
 - bernreal and bernfrac using MPFR
@@ -135,3 +131,5 @@
 - Predicates from Pari/GP?  istotient, ispowerful, ispolygonal, isfundamental
 
 - Pari/GP:  permorder, permsign
+
+- lastfor tests, PPFE, PP
