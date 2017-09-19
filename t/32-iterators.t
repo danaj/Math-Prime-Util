@@ -4,7 +4,10 @@ use warnings;
 
 use Test::More;
 use Math::Prime::Util qw/primes prev_prime next_prime
-                         forprimes forcomposites fordivisors
+                         forprimes forcomposites foroddcomposites fordivisors
+                         forpart forcomp forcomb forperm forderange
+                         lastfor
+                         is_power vecsum
                          prime_iterator prime_iterator_object/;
 use Math::BigInt try => "GMP,Pari";
 use Math::BigFloat;
@@ -24,6 +27,7 @@ plan tests => 8        # forprimes errors
             + 3        # oo iterator errors
             + 7        # oo iterator simple
             + 25       # oo iterator methods
+            + 9        # lastfor
             + 0;
 
 ok(!eval { forprimes { 1 } undef; },   "forprimes undef");
@@ -244,4 +248,64 @@ ok(!eval { prime_iterator_object(4.5); }, "iterator 4.5");
   # We will get an estimate that is much, much closer than Math::NumSeq
   ok( ($est > ($act-500)) && ($est < ($act+500)),
       "iterator object value_to_i_estimage is in range");
+}
+
+{ my @zn;
+  forprimes {
+    my $p=$_;
+    forprimes {
+      lastfor, push @zn,$_ if $_ % $p == 1;
+    } 1000;
+  } 100;
+  is_deeply( \@zn,
+             [3,7,11,29,23,53,103,191,47,59,311,149,83,173,283,107,709,367,269,569,293,317,167,179,389],
+             "lastfor works in forprimes" );
+}
+{ my @zn;
+  forprimes {
+    my $p=$_;
+    forcomposites {
+      lastfor, push @zn,$_ if $_ % $p == 1;
+    } 1000;
+  } 100;
+  is_deeply( \@zn,
+             [9,4,6,8,12,14,18,20,24,30,32,38,42,44,48,54,60,62,68,72,74,80,84,90,98],
+             "lastfor works in forcomposites" );
+}
+{ my @zn;
+  forprimes {
+    my $p=$_;
+    foroddcomposites {
+      lastfor, push @zn,$_ if $_ % $p == 1;
+    } 1000;
+  } 100;
+  is_deeply( \@zn,
+             [9,25,21,15,45,27,35,39,93,117,63,75,165,87,95,213,119,123,135,143,147,159,333,357,195],
+             "lastfor works in foroddcomposites" );
+}
+{ my @powers;
+  for my $n (1..20) {
+    fordivisors { lastfor,push @powers,$_ if is_power($_) } $n;
+  }
+  is_deeply( \@powers, [4,4,9,4,4,9,4], "lastfor works in fordivisors" );
+}
+{ my $firstpart;
+  forpart { lastfor,return if @_ < 4; $firstpart++; } 7;
+  is($firstpart, 6, "lastfor works in forpart");
+}
+{ my $firstcomp;
+  forcomp { lastfor,return if @_ < 4; $firstcomp++; } 7;
+  is($firstcomp, 15, "lastfor works in forcomp");
+}
+{ my $smallcomb;
+  forcomb { lastfor,return if vecsum(@_) > 11; $smallcomb++; } 7,4;
+  is($smallcomb, 9, "lastfor works in forcomb");
+}
+{ my $t;
+  forperm { lastfor,return if $_[3]==5; $t++; } 7;
+  is($t, 12, "lastfor works in forperm");
+}
+{ my $t;
+  forderange { lastfor,return if $_[3]==5; $t++; } 7;
+  is($t, 5, "lastfor works in forderange");
 }

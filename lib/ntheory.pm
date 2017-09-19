@@ -131,6 +131,7 @@ Tags:
   forderange { ... } n                loop over derangements
   prime_iterator                      returns a simple prime iterator
   prime_iterator_object               returns a prime iterator object
+  lastfor                             stop iteration of for.... loop
 
 =head2 RANDOM NUMBERS
 
@@ -182,6 +183,7 @@ Tags:
   fromdigits(\@d,[,base])             convert base digit vector to number
   fromdigits(str,[,base])             convert base digit string to number
   sumdigits(n)                        sum of digits, with optional base
+  is_square(n)                        return 1 if n is a perfect square
   is_power(n)                         return k if n = c^k for integer c
   is_power(n,k)                       return 1 if n = c^k for integer c, k
   is_power(n,k,\$root)                as above but also set $root to c.

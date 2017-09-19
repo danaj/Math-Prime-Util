@@ -132,4 +132,4 @@
 
 - Pari/GP:  permorder, permsign
 
-- lastfor tests, PPFE, PP
+- lastfor formultiperm: XS, PPFE, PP, tests

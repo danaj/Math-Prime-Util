@@ -6102,6 +6102,8 @@ sub _forcompositions {
   $sub->() if $n == 0 && $minn <= 1;
   return if $n < $minn || $minn > $maxn || $mina > $maxa || $maxn <= 0 || $maxa <= 0;
 
+  my $oldexitloop = Math::Prime::Util::_get_forexit();
+  Math::Prime::Util::_set_forexit(0);
   my ($x, $y, $r, $k);
   my @a = (0) x ($n);
   $k = 1;
@@ -6136,8 +6138,10 @@ sub _forcompositions {
     }
     next if $primeq == 0 && Math::Prime::Util::vecany(sub{ is_prime($_) }, @a[0..$k]);
     next if $primeq == 2 && Math::Prime::Util::vecany(sub{ !is_prime($_) }, @a[0..$k]);
+    last if Math::Prime::Util::_get_forexit();
     $sub->(@a[0 .. $k]);
   }
+  Math::Prime::Util::_set_forexit($oldexitloop);
 }
 sub forcomb {
   my($sub, $n, $k) = @_;
@@ -6149,9 +6153,12 @@ sub forcomb {
   }
   return $sub->() if $k == 0;
   return if $k > $n || $n == 0;
+  my $oldexitloop = Math::Prime::Util::_get_forexit();
+  Math::Prime::Util::_set_forexit(0);
   my @c = 0 .. $k-1;
   while (1) {
     $sub->(@c);
+    last if Math::Prime::Util::_get_forexit();
     next if $c[-1]++ < $n-1;
     my $i = $k-2;
     $i-- while $i >= 0 && $c[$i] >= $n-($k-$i);
@@ -6159,6 +6166,7 @@ sub forcomb {
     $c[$i]++;
     while (++$i < $k) { $c[$i] = $c[$i-1] + 1; }
   }
+  Math::Prime::Util::_set_forexit($oldexitloop);
 }
 sub _forperm {
   my($sub, $n, $all_perm) = @_;
@@ -6166,6 +6174,8 @@ sub _forperm {
   my @c = reverse 0 .. $k-1;
   my $inc = 0;
   my $send = 1;
+  my $oldexitloop = Math::Prime::Util::_get_forexit();
+  Math::Prime::Util::_set_forexit(0);
   while (1) {
     if (!$all_perm) {   # Derangements via simple filtering.
       $send = 1;
@@ -6176,7 +6186,10 @@ sub _forperm {
         }
       }
     }
-    $sub->(reverse @c) if $send;
+    if ($send) {
+      $sub->(reverse @c);
+      last if Math::Prime::Util::_get_forexit();
+    }
     if (++$inc & 1) {
       @c[0,1] = @c[1,0];
       next;
@@ -6189,6 +6202,7 @@ sub _forperm {
     @c[$j,$m] = @c[$m,$j];
     @c[0..$j-1] = reverse @c[0..$j-1];
   }
+  Math::Prime::Util::_set_forexit($oldexitloop);
 }
 sub forperm {
   my($sub, $n, $k) = @_;

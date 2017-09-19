@@ -761,20 +761,28 @@ sub Pi {
 
 #############################################################################
 
+my $_exitloop = 0;
+sub lastfor { $_exitloop = 1; }
+sub _get_forexit { $_exitloop; }
+sub _set_forexit { $_exitloop = $_[0] ? 1 : 0; }
+
 sub forprimes (&$;$) {    ## no critic qw(ProhibitSubroutinePrototypes)
   my($sub, $beg, $end) = @_;
   if (!defined $end) { $end = $beg; $beg = 2; }
   _validate_num($beg) || _validate_positive_integer($beg);
   _validate_num($end) || _validate_positive_integer($end);
   $beg = 2 if $beg < 2;
+  my $oldexitloop = $_exitloop;  $_exitloop = 0;
   {
     my $pp;
     local *_ = \$pp;
     for (my $p = next_prime($beg-1);  $p <= $end;  $p = next_prime($p)) {
       $pp = $p;
       $sub->();
+      last if $_exitloop;
     }
   }
+  $_exitloop = $oldexitloop;
 }
 
 sub forcomposites(&$;$) { ## no critic qw(ProhibitSubroutinePrototypes)
@@ -784,6 +792,7 @@ sub forcomposites(&$;$) { ## no critic qw(ProhibitSubroutinePrototypes)
   _validate_num($end) || _validate_positive_integer($end);
   $beg = 4 if $beg < 4;
   $end = Math::BigInt->new(''.~0) if ref($end) ne 'Math::BigInt' && $end == ~0;
+  my $oldexitloop = $_exitloop;  $_exitloop = 0;
   {
     my $pp;
     local *_ = \$pp;
@@ -791,9 +800,11 @@ sub forcomposites(&$;$) { ## no critic qw(ProhibitSubroutinePrototypes)
       if (!is_prime($beg)) {
         $pp = $beg;
         $sub->();
+      last if $_exitloop;
       }
     }
   }
+  $_exitloop = $oldexitloop;
 }
 
 sub foroddcomposites(&$;$) { ## no critic qw(ProhibitSubroutinePrototypes)
@@ -804,6 +815,7 @@ sub foroddcomposites(&$;$) { ## no critic qw(ProhibitSubroutinePrototypes)
   $beg = 9 if $beg < 9;
   $beg++ unless $beg & 1;
   $end = Math::BigInt->new(''.~0) if ref($end) ne 'Math::BigInt' && $end == ~0;
+  my $oldexitloop = $_exitloop;  $_exitloop = 0;
   {
     my $pp;
     local *_ = \$pp;
@@ -811,23 +823,28 @@ sub foroddcomposites(&$;$) { ## no critic qw(ProhibitSubroutinePrototypes)
       if (!is_prime($beg)) {
         $pp = $beg;
         $sub->();
+        last if $_exitloop;
       }
     }
   }
+  $_exitloop = $oldexitloop;
 }
 
 sub fordivisors (&$) {    ## no critic qw(ProhibitSubroutinePrototypes)
   my($sub, $n) = @_;
   _validate_num($n) || _validate_positive_integer($n);
   my @divisors = divisors($n);
+  my $oldexitloop = $_exitloop;  $_exitloop = 0;
   {
     my $pp;
     local *_ = \$pp;
     foreach my $d (@divisors) {
       $pp = $d;
       $sub->();
+      last if $_exitloop;
     }
   }
+  $_exitloop = $oldexitloop;
 }
 
 sub forpart (&$;$) {    ## no critic qw(ProhibitSubroutinePrototypes)
