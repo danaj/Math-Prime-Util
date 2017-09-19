@@ -729,7 +729,6 @@ sub is_power {
 sub is_square {
   my($n) = @_;
   return 0 if defined $n && int($n) < 0;
-  _validate_positive_integer($n);
   return Math::Prime::Util::PP::is_power($n,2);
 }
 sub is_prime_power {

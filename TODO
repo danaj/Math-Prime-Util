@@ -131,3 +131,7 @@
 - Move ISAAC to per-thread context model.
 
 - Destroy csprng context on thread destruction.
+
+- Predicates from Pari/GP?  istotient, ispowerful, ispolygonal, isfundamental
+
+- Pari/GP:  permorder, permsign
