@@ -6241,7 +6241,7 @@ sub _multiset_permutations {
     }
   } elsif ($sum == scalar(@n)) {         # All entries have 1 occurance
     my @i = map { $_->[0] } @n;
-    Math::Prime::Util::forperm { $sub->(@$prefix, @i[@_]) } scalar(@i);
+    Math::Prime::Util::forperm(sub { $sub->(@$prefix, @i[@_]) }, 1+$#i);
   } else {                               # Recurse over each leading value
     for my $v (@n) {
       $v->[1]--;
