@@ -5,7 +5,7 @@ use warnings;
 use Test::More;
 use Math::Prime::Util qw/primes prev_prime next_prime
                          forprimes forcomposites foroddcomposites fordivisors
-                         forpart forcomp forcomb forperm forderange
+                         forpart forcomp forcomb forperm forderange formultiperm
                          lastfor
                          is_power vecsum
                          prime_iterator prime_iterator_object/;
@@ -27,7 +27,7 @@ plan tests => 8        # forprimes errors
             + 3        # oo iterator errors
             + 7        # oo iterator simple
             + 25       # oo iterator methods
-            + 9        # lastfor
+            + 10       # lastfor
             + 0;
 
 ok(!eval { forprimes { 1 } undef; },   "forprimes undef");
@@ -308,4 +308,9 @@ ok(!eval { prime_iterator_object(4.5); }, "iterator 4.5");
 { my $t;
   forderange { lastfor,return if $_[3]==5; $t++; } 7;
   is($t, 5, "lastfor works in forderange");
+}
+# TODO: formultiperm with repeated chars could be wrong
+{ my $t;
+  formultiperm { lastfor if "miles" eq join("",@_); $t++; } [split(//,"smile")];
+  is($t, 81, "lastfor works in formultiperm");
 }

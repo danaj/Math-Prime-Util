@@ -304,7 +304,7 @@ fast but uses a B<lot> of memory, forcing the user to start programming
 segments.  Using the iterator avoids all the memory use, but isn't as fast
 (this may improve in a later release, as this is a new feature).  The
 C<forprimes> construct is both fast and low memory, but it isn't quite as
-flexible as the iterator (most notably there is no way to exit early, and it
+flexible as the iterator (e.g. it
 doesn't lend itself to wrapping inside a filter).
 
 L<Math::NumSeq::Primes> offers an iterator alternative, and works quite well

@@ -3388,7 +3388,8 @@ an implementation specific ordering rather than lexicographic.
 
   @p = randperm(100);   # returns shuffled 0..99
   @p = randperm(100,4)  # returns 4 elements from shuffled 0..99
-  @s = @data[randperm(1+$#data)];  # shuffle an array
+  @s = @data[randperm(1+$#data)];    # shuffle an array
+  @p = @data[randperm(1+$#data,2)];  # pick 2 from an array
 
 With a single argument C<n>, this returns a random permutation of the
 values from C<0> to C<n-1>.

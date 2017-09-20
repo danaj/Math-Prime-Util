@@ -133,3 +133,5 @@
 - Pari/GP:  permorder, permsign
 
 - lastfor formultiperm: XS, PPFE, PP, tests
+
+- submit bug report for Perl error in 30b8ab3
