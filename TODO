@@ -117,8 +117,6 @@
 
 - compare wheel_t with primes separated and possibly cached.
 
-- Ensure 'secure' is secure.
-
 - urandomm with bigints could be faster.
   14.7s  my $f=factorial(144); urandomm($f) for 1..5e5;
   10.7s  use Math::GMP qw/:constant/; my $f=factorial(144); urandomm($f) for 1..5e5;
@@ -132,6 +130,6 @@
 
 - Pari/GP:  permorder, permsign
 
-- lastfor formultiperm: XS, PPFE, PP, tests
+- formultiperm doesn't completely cover lastfor
 
 - submit bug report for Perl error in 30b8ab3

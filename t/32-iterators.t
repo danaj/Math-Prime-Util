@@ -27,7 +27,7 @@ plan tests => 8        # forprimes errors
             + 3        # oo iterator errors
             + 7        # oo iterator simple
             + 25       # oo iterator methods
-            + 10       # lastfor
+            + 11       # lastfor
             + 0;
 
 ok(!eval { forprimes { 1 } undef; },   "forprimes undef");
@@ -313,4 +313,16 @@ ok(!eval { prime_iterator_object(4.5); }, "iterator 4.5");
 { my $t;
   formultiperm { lastfor if "miles" eq join("",@_); $t++; } [split(//,"smile")];
   is($t, 81, "lastfor works in formultiperm");
+}
+{ my @ps;
+  forprimes {
+    lastfor if $_ >= 7;
+    # Note we keep going, unlike "last".
+    push @ps, $_;
+    forcomposites {
+      push @ps,$_;
+    } $_;
+    # Our lastfor indicator is separate from the inside loop.
+  } 20;
+  is_deeply( \@ps, [2,3,5,4,7,4,6], "nested lastfor semantics" );
 }

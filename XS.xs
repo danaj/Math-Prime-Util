@@ -2005,13 +2005,14 @@ randperm(IN UV n, IN UV k = 0)
 void shuffle(...)
   PROTOTYPE: @
   PREINIT:
-    int i;
+    int i, j;
+    void* randcxt;
     dMY_CXT;
   PPCODE:
     if (items == 0)
       XSRETURN_EMPTY;
-    for (i = 0; i < items-1; i++) {
-      UV j = urandomm32(MY_CXT.randcxt, items-i);
+    for (i = 0, randcxt = MY_CXT.randcxt; i < items-1; i++) {
+      j = urandomm32(randcxt, items-i);
       { SV* t = ST(i); ST(i) = ST(i+j); ST(i+j) = t; }
     }
     XSRETURN(items);
