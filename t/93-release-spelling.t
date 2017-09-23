@@ -30,6 +30,7 @@ add_stopwords(qw/bigint bigints
                  csrand srand irand irand64 drand urandomb urandomm
                  forprimes forcomposites foroddcomposites fordivisors
                  forpart forcomp forcomb forperm forderange formultiperm
+                 lastfor
                  numtoperm permtonum randperm
                  totient moebius mertens liouville kronecker znorder znprimroot znlog
                  gcd lcm gcdext chinese invmod sqrtmod addmod mulmod powmod divmod

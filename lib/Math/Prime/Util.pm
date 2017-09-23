@@ -3231,6 +3231,10 @@ Returns 12 times the Hurwitz-Kronecker class number of the input integer C<n>.
 This will always be an integer due to the pre-multiplication by 12.
 The result is C<0> for any input less than zero or congruent to 1 or 2 mod 4.
 
+This is related to Pari's C<qfbhclassno(n)> where C<hclassno(n)> for positive
+C<n> equals C<12 * qfbhclassno(n)> in Pari/GP.
+This is L<OEIS A259825|http://oeis.org/A259825>.
+
 
 =head2 bernfrac
 
@@ -3239,18 +3243,22 @@ rational number represented by two L<Math::BigInt> objects.  B_1 = 1/2.
 This corresponds to Pari's C<bernfrac(n)> and Mathematica's C<BernoulliB>
 functions.
 
-Having L<Math::Prime::Util::GMP> installed will make a big difference in
-speed, and version 0.41 and newer of that package use fast Zeta and Pi
-computations to run much faster.  Older versions of that package, and the
-Perl/Bignum version used without that package, use the simple Brent-Harvey
-algorithm.  This is faster than L<Math::Pari> which uses an older algorithm,
+Having a modern version of L<Math::Prime::Util::GMP> installed will make
+a big difference in speed.  That module uses a fast Pi/Zeta method.
+Our pure Perl backend uses the Seidel method as shown by Peter Luschny.
+This is faster than L<Math::Pari> which uses an older algorithm,
 but quite a bit slower than modern Pari, Mathematica, or our GMP backend.
+
+This corresponds to Pari's C<bernfrac> function
+and Mathematica's C<BernoulliB> function.
 
 =head2 bernreal
 
 Returns the Bernoulli number C<B_n> for an integer argument C<n>, as
 a L<Math::BigFloat> object using the default precision.  An optional
 second argument may be given specifying the precision to be used.
+
+This corresponds to Pari's C<bernreal> function.
 
 =head2 stirling
 
@@ -3281,6 +3289,8 @@ C<1 + 1/2 + 1/3 + ... + 1/n>.
 
 Binary splitting (Fredrik Johansson's elegant formulation) is used.
 
+This corresponds to Mathematica's C<HarmonicNumber> function.
+
 =head2 harmreal
 
 Returns the Harmonic number C<H_n> for an integer argument C<n>, as
@@ -3299,6 +3309,7 @@ Given two positive integers C<a> and C<n>, returns the multiplicative order
 of C<a> modulo C<n>.  This is the smallest positive integer C<k> such that
 C<a^k ≡ 1 mod n>.  Returns 1 if C<a = 1>.  Returns undef if C<a = 0> or if
 C<a> and C<n> are not coprime, since no value will result in 1 mod n.
+
 This corresponds to Pari's C<znorder(Mod(a,n))> function and Mathematica's
 C<MultiplicativeOrder[a,n]> function.
 
@@ -3366,8 +3377,8 @@ rank C<k> lexicographic permutation of C<n> elements.
 This will match iteration number C<k> (zero based) of L</forperm>.
 C<k> can be assumed to be mod C<n!>.
 
-This corresponds to Pari's C<numtoperm(n,k)> function, though it uses
-an implementation specific ordering rather than lexicographic.
+This corresponds to Pari's C<numtoperm(n,k)> function, though Pari
+uses an implementation specific ordering rather than lexicographic.
 
 =head2 permtonum
 
@@ -3381,8 +3392,8 @@ C<n> must be present.
 This will match iteration number C<k> (zero based) of L</forperm>.
 The result will be between C<0> and C<n!-1>.
 
-This corresponds to Pari's C<permtonum(n)> function, though it uses
-an implementation specific ordering rather than lexicographic.
+This corresponds to Pari's C<permtonum(n)> function, though Pari
+uses an implementation specific ordering rather than lexicographic.
 
 =head2 randperm
 
@@ -3406,8 +3417,15 @@ The randomness comes from our CSPRNG.
 Takes a list as input, and returns a random permutation of the list.
 Like randperm, the randomness comes from our CSPRNG.
 
-This function is similar to the C<shuffle> function in L<List::Util>.
-The main difference is the random source.
+This function is functionally identical to the C<shuffle> function
+in L<List::Util>.  The only difference is the random source (Chacha20
+with better randomness, a larger period, and a larger state).  This
+does make it slower.
+
+If the entire shuffled array is desired, this is faster than slicing
+with L</randperm> as shown in its example above.  If, however, a "pick"
+operation is desired, e.g. pick 2 random elements from a large array,
+then the slice technique can be hundreds of times faster.
 
 
 =head1 RANDOM NUMBERS
