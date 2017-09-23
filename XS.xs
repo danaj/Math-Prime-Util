@@ -332,18 +332,20 @@ BOOT:
     HV * stash = gv_stashpv("Math::Prime::Util", TRUE);
     newCONSTSUB(stash, "_XS_prime_maxbits", sv);
 
-    MY_CXT_INIT;
-    MY_CXT.MPUroot = stash;
-    MY_CXT.MPUGMP = gv_stashpv("Math::Prime::Util::GMP", TRUE);
-    MY_CXT.MPUPP = gv_stashpv("Math::Prime::Util::PP", TRUE);
-    for (i = 0; i <= CINTS; i++) {
-      MY_CXT.const_int[i] = newSViv(i-1);
-      SvREADONLY_on(MY_CXT.const_int[i]);
-    }
-    New(0, MY_CXT.randcxt, csprng_context_size(), char);
-    csprng_init_seed(MY_CXT.randcxt);
-    MY_CXT.forcount = 0;
-    MY_CXT.forexit = 0;
+    {
+      MY_CXT_INIT;
+      MY_CXT.MPUroot = stash;
+      MY_CXT.MPUGMP = gv_stashpv("Math::Prime::Util::GMP", TRUE);
+      MY_CXT.MPUPP = gv_stashpv("Math::Prime::Util::PP", TRUE);
+      for (i = 0; i <= CINTS; i++) {
+        MY_CXT.const_int[i] = newSViv(i-1);
+        SvREADONLY_on(MY_CXT.const_int[i]);
+      }
+      New(0, MY_CXT.randcxt, csprng_context_size(), char);
+      csprng_init_seed(MY_CXT.randcxt);
+      MY_CXT.forcount = 0;
+      MY_CXT.forexit = 0;
+   }
 }
 
 #if defined(USE_ITHREADS) && defined(MY_CXT_KEY)
@@ -1278,9 +1280,9 @@ is_polygonal(IN SV* svn, IN UV k, IN SV* svroot = 0)
         result = (n == 0) || root;
       }
       if (!overflow) {
-        if (items == 3 && result) {
-          if (!SvROK(ST(2))) croak("is_polygonal: third argument not a scalar reference");
-           sv_setuv(SvRV(ST(2)), root);
+        if (result && svroot != 0) {
+          if (!SvROK(svroot)) croak("is_polygonal: third argument not a scalar reference");
+           sv_setuv(SvRV(svroot), root);
         }
         RETURN_NPARITY(result);
       }
@@ -2210,12 +2212,6 @@ lastfor()
     /* In some ideal world this would also act like a last */
     return;
 
-#define dFORCOUNT \
-    uint16_t oldforloop; \
-    char     oldforexit; \
-    char    *forexit; \
-    dMY_CXT;
-
 #define START_FORCOUNT \
     do { \
       oldforloop = ++MY_CXT.forcount; \
@@ -2245,7 +2241,10 @@ forprimes (SV* block, IN SV* svbeg, IN SV* svend = 0)
     CV *cv;
     unsigned char* segment;
     UV beg, end, seg_base, seg_low, seg_high;
-    dFORCOUNT;
+    uint16_t oldforloop;
+    char     oldforexit;
+    char    *forexit;
+    dMY_CXT;
   PPCODE:
     cv = sv_2cv(block, &stash, &gv, 0);
     if (cv == Nullcv)
@@ -2344,7 +2343,10 @@ forcomposites (SV* block, IN SV* svbeg, IN SV* svend = 0)
     HV *stash;
     SV* svarg;  /* We use svarg to prevent clobbering $_ outside the block */
     CV *cv;
-    dFORCOUNT;
+    uint16_t oldforloop;
+    char     oldforexit;
+    char    *forexit;
+    dMY_CXT;
   PPCODE:
     cv = sv_2cv(block, &stash, &gv, 0);
     if (cv == Nullcv)
@@ -2457,7 +2459,10 @@ fordivisors (SV* block, IN SV* svn)
     HV *stash;
     SV* svarg;  /* We use svarg to prevent clobbering $_ outside the block */
     CV *cv;
-    dFORCOUNT;
+    uint16_t oldforloop;
+    char     oldforexit;
+    char    *forexit;
+    dMY_CXT;
   PPCODE:
     cv = sv_2cv(block, &stash, &gv, 0);
     if (cv == Nullcv)
@@ -2514,7 +2519,10 @@ forpart (SV* block, IN SV* svn, IN SV* svh = 0)
     HV *stash;
     CV *cv;
     SV** svals;
-    dFORCOUNT;
+    uint16_t oldforloop;
+    char     oldforexit;
+    char    *forexit;
+    dMY_CXT;
   PPCODE:
     cv = sv_2cv(block, &stash, &gv, 0);
     if (cv == Nullcv)
@@ -2637,7 +2645,10 @@ forcomb (SV* block, IN SV* svn, IN SV* svk = 0)
     CV *cv;
     SV** svals;
     UV*  cm;
-    dFORCOUNT;
+    uint16_t oldforloop;
+    char     oldforexit;
+    char    *forexit;
+    dMY_CXT;
   PPCODE:
     cv = sv_2cv(block, &stash, &gv, 0);
     if (cv == Nullcv)
