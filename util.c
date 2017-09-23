@@ -2447,6 +2447,30 @@ IV hclassno(UV n) {
   return 12*h + ((b2*3 == n) ? 4 : square && !(n&1) ? 6 : 0);
 }
 
+UV polygonal_root(UV n, UV k, int* overflow) {
+  UV D, R;
+  MPUassert(k >= 3, "is_polygonal root < 3");
+  *overflow = 0;
+  if (n <= 1) return n;
+  if (k == 4) return is_perfect_square(n) ? isqrt(n) : 0;
+  if (k == 3) {
+    if (n >= UV_MAX/8) *overflow = 1;
+    D = n << 3;
+    R = 1;
+  } else {
+    if (k > UV_MAX/k || n > UV_MAX/(8*k-16)) *overflow = 1;
+    D = (8*k-16) * n;
+    R = (k-4) * (k-4);
+  }
+  if (D+R <= D) *overflow = 1;
+  D += R;
+  if (*overflow || !is_perfect_square(D)) return 0;
+  D = isqrt(D) + (k-4);
+  R = 2*k - 4;
+  if ((D % R) != 0) return 0;
+  return D/R;
+}
+
 /* These rank/unrank are O(n^2) algorithms using O(n) in-place space.
  * Bonet 2008 gives O(n log n) algorithms using a bit more space.
  *

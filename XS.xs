@@ -1251,18 +1251,43 @@ is_prime(IN SV* svn, ...)
       case 19:_vcallsub_with_gmp(0.42,"is_semiprime"); break;
       case 20:_vcallsub_with_gmp(0.47,"is_square"); break;
       case 21:_vcallsub_with_gmp(0.28,"is_mersenne_prime"); break;
-      case 22:if (items != 3) {
-                _vcallsub_with_gmp(0.28, "is_power");
-              } else {
-                _vcallsub_with_pp("is_power");
-              }
-              break;
+      case 22:if (items != 3) { _vcallsub_with_gmp(0.28, "is_power"); }
+              else            { _vcallsub_with_pp("is_power"); } break;
       case 23:(void)_vcallsubn(aTHX_ G_SCALAR, (items == 1) ? (VCALL_GMP|VCALL_PP) : (VCALL_PP), "is_prime_power", items, 40); break;
       case 24:_vcallsub_with_gmp(0.00,"logint"); break;
       case 25:
       default:(void)_vcallsubn(aTHX_ G_SCALAR, (items == 2) ? (VCALL_GMP|VCALL_PP) : (VCALL_PP), "rootint", items, 40); break;
     }
     return; /* skip implicit PUTBACK */
+
+void
+is_polygonal(IN SV* svn, IN UV k, IN SV* svroot = 0)
+  PREINIT:
+    int status, result, overflow;
+    UV n, root;
+  PPCODE:
+    if (k < 3) croak("is_polygonal: k must be >= 3");
+    status = _validate_int(aTHX_ svn, 1);
+    if (status != 0) {
+      overflow = 0;
+      if (status == -1) {
+        result = 0;
+      } else {
+        n = my_svuv(svn);
+        root = polygonal_root(n, k, &overflow);
+        result = (n == 0) || root;
+      }
+      if (!overflow) {
+        if (items == 3 && result) {
+          if (!SvROK(ST(2))) croak("is_polygonal: third argument not a scalar reference");
+           sv_setuv(SvRV(ST(2)), root);
+        }
+        RETURN_NPARITY(result);
+      }
+    }
+    if (items != 3) { _vcallsub_with_gmp(0.00, "is_polygonal"); }
+    else            { _vcallsub_with_pp("is_polygonal"); }
+    return;
 
 void
 miller_rabin_random(IN SV* svn, IN IV bases = 1, IN char* seed = 0)

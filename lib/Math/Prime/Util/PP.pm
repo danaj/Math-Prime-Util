@@ -2788,7 +2788,9 @@ sub is_power {
 sub is_square {
   my($n) = @_;
   return 0 if $n < 0;
-  is_power($n,2);
+  #is_power($n,2);
+  _validate_integer($n);
+  _is_perfect_square($n);
 }
 
 sub is_prime_power {
@@ -2802,6 +2804,38 @@ sub is_prime_power {
   return 0 unless $k && Math::Prime::Util::is_prime($r);
   $$refp = $r if defined $refp;
   $k;
+}
+
+sub is_polygonal {
+  my ($n, $k, $refp) = @_;
+  croak("is_polygonal third argument not a scalar reference") if defined($refp) && !ref($refp);
+  croak("is_polygonal: k must be >= 3") if $k < 3;
+  return 0 if $n <= 0;
+  if ($n == 1) { $$refp = 1 if defined $refp; return 1; }
+  my($D,$R);
+  if ($k == 4) {
+    return 0 unless _is_perfect_square($n);
+    $$refp = sqrtint($n) if defined $refp;
+    return 1;
+  }
+  if ($n <= MPU_HALFWORD && $k <= MPU_HALFWORD) {
+    $D = ($k==3) ? 1+($n<<3) : (8*$k-16)*$n + ($k-4)*($k-4);
+    return 0 unless _is_perfect_square($D);
+    $D = $k-4 + Math::Prime::Util::sqrtint($D);
+    $R = 2*$k-4;
+  } else {
+    if ($k == 3) {
+      $D = vecsum(1, vecprod($n, 8));
+    } else {
+      $D = vecsum(vecprod($n, vecprod(8, $k) - 16),  vecprod($k-4,$k-4));;
+    }
+    return 0 unless _is_perfect_square($D);
+    $D = vecsum( sqrtint($D), $k-4 );
+    $R = vecprod(2, $k) - 4;
+  }
+  return 0 if ($D % $R) != 0;
+  $$refp = $D / $R if defined $refp;
+  1;
 }
 
 sub valuation {

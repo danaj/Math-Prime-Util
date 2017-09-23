@@ -28,7 +28,7 @@ our @EXPORT_OK =
       is_aks_prime is_bpsw_prime
       is_ramanujan_prime
       is_mersenne_prime
-      is_power is_prime_power is_pillai is_semiprime is_square
+      is_power is_prime_power is_pillai is_semiprime is_square is_polygonal
       is_square_free is_primitive_root is_carmichael is_quasi_carmichael
       sqrtint rootint logint
       miller_rabin_random
@@ -2916,6 +2916,16 @@ and C<n % v != 1>, then C<v> is returned.  Otherwise 0.
 
 For n prime, this is the L<OEIS series A063980|http://oeis.org/A063980>.
 
+=head is_polygonal
+
+Given integers C<x> and C<s>, return 1 if x is an s-gonal number, 0 otherwise.
+C<s> must be greater than 2.
+
+If a third argument is present, it must be a scalar reference.  It will be
+set to n if x is the nth s-gonal number.  If the function returns 0, then
+it will be unchanged.
+
+This corresponds to Pari's C<ispolygonal> function.
 
 =head2 moebius
 

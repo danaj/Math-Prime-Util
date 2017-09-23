@@ -738,6 +738,14 @@ sub is_prime_power {
   $vn = '-'.$vn if $n < 0;
   return Math::Prime::Util::PP::is_prime_power($vn, $refp);
 }
+sub is_polygonal {
+  my($x, $s, $refp) = @_;
+  my $vx = "$x";  $vx =~ s/^-//;
+  _validate_positive_integer($vx);
+  _validate_positive_integer($s);
+  $vx = '-'.$vx if $x < 0;
+  return Math::Prime::Util::PP::is_polygonal($vx, $s, $refp);
+}
 sub valuation {
   my($n, $k) = @_;
   $n = -$n if defined $n && $n < 0;

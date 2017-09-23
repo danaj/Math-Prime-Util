@@ -126,9 +126,7 @@
 
 - Destroy csprng context on thread destruction.
 
-- Predicates from Pari/GP?  istotient, ispowerful, ispolygonal, isfundamental
-
-- Pari/GP:  permorder, permsign
+- Pari/GP:  permorder, permsign.    istotient, ispowerful, isfundamental.
 
 - formultiperm doesn't completely cover lastfor
 

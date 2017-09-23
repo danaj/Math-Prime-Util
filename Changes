@@ -3,8 +3,9 @@ Revision history for Perl module Math::Prime::Util
 0.67 2017-?
     [ADDED]
 
-    - is_square(n)                    returns 1 if n is a perfect square
     - lastfor                         stops forprimes (etc.) iterations
+    - is_square(n)                    returns 1 if n is a perfect square
+    - is_polygonal(n,k)               returns 1 if n is a k-gonal number
 
     [FUNCTIONALITY AND PERFORMANCE]
 
