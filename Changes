@@ -1,6 +1,7 @@
 Revision history for Perl module Math::Prime::Util
 
 0.67 2017-?
+
     [ADDED]
 
     - lastfor                         stops forprimes (etc.) iterations

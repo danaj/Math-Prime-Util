@@ -4,7 +4,7 @@ use warnings;
 
 BEGIN {
   $Math::Prime::Util::PrimeArray::AUTHORITY = 'cpan:DANAJ';
-  $Math::Prime::Util::PrimeArray::VERSION = '0.66';
+  $Math::Prime::Util::PrimeArray::VERSION = '0.67';
 }
 
 # parent is cleaner, and in the Perl 5.10.1 / 5.12.0 core, but not earlier.
@@ -147,7 +147,7 @@ Math::Prime::Util::PrimeArray - A tied array for primes
 
 =head1 VERSION
 
-Version 0.66
+Version 0.67
 
 
 =head1 SYNOPSIS
@@ -304,8 +304,8 @@ fast but uses a B<lot> of memory, forcing the user to start programming
 segments.  Using the iterator avoids all the memory use, but isn't as fast
 (this may improve in a later release, as this is a new feature).  The
 C<forprimes> construct is both fast and low memory, but it isn't quite as
-flexible as the iterator (e.g. it
-doesn't lend itself to wrapping inside a filter).
+flexible as the iterator
+(e.g. it doesn't lend itself to wrapping inside a filter).
 
 L<Math::NumSeq::Primes> offers an iterator alternative, and works quite well
 as long as you don't need lots of primes.  It does not support random access.
