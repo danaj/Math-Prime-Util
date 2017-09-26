@@ -59,6 +59,7 @@ extern UV jordan_totient(UV k, UV n);
 extern UV znprimroot(UV n);
 extern UV znorder(UV a, UV n);
 extern int is_primitive_root(UV a, UV n, int nprime);
+extern UV  factorialmod(UV n, UV m);
 #define is_square_free(n)  (moebius(n) != 0)
 extern int is_semiprime(UV n);
 extern int is_carmichael(UV n);
@@ -312,7 +313,7 @@ static int is_perfect_seventh(UV n)
 /* GCC 3.4 - 4.1 has broken 64-bit popcount.
  * GCC 4.2+ can generate awful code when it doesn't have asm (GCC bug 36041).
  * When the asm is present (e.g. compile with -march=native on a platform that
- * has them, like Nahelem+), then it is almost as fast as the direct asm. */
+ * has them, like Nahelem+), then it is almost as fast as manually written asm. */
 #if BITS_PER_WORD == 64
  #if defined(__POPCNT__) && defined(__GNUC__) && (__GNUC__> 4 || (__GNUC__== 4 && __GNUC_MINOR__> 1))
    #define popcnt(b)  __builtin_popcountll(b)

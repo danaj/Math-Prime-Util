@@ -1,5 +1,12 @@
 Revision history for Perl module Math::Prime::Util
 
+0.68 2017-?
+
+    [ADDED]
+
+    - factorialmod(n,m)               n! mod m calculated efficiently
+
+
 0.67 2017-09-23
 
     [ADDED]

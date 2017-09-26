@@ -66,7 +66,8 @@ our @EXPORT_OK =
       chebyshev_theta chebyshev_psi
       divisor_sum carmichael_lambda kronecker hclassno
       ramanujan_tau ramanujan_sum
-      binomial factorial stirling znorder znprimroot znlog legendre_phi
+      binomial stirling znorder znprimroot znlog legendre_phi
+      factorial factorialmod
       ExponentialIntegral LogarithmicIntegral RiemannZeta RiemannR LambertW Pi
       irand irand64 drand urandomb urandomm csrand random_bytes entropy_bytes
   );
@@ -3219,6 +3220,17 @@ defined as the product of the integers 1 to C<n> with the special case
 of C<factorial(0) = 1>.  This corresponds to Pari's C<factorial(n)>
 and Mathematica's C<Factorial[n]> functions.
 
+=head2 factorialmod
+
+Given two positive integer arguments C<n> and C<m>, returns C<n! mod m>.
+This is much faster than computing the large C<factorial(n)> followed
+by a mod operation.
+
+While very efficient, this is not state of the art.  Currently,
+Fredrik Johansson's fast multipoint polynomial evaluation method as
+used in FLINT is the fastest known method.  This becomes noticible for
+C<n> E<gt> C<10^8> or so, and the O(n^.5) vs. O(n) complexity makes
+it quite extreme as the input gets larger.
 
 =head2 binomial
 

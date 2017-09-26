@@ -209,6 +209,7 @@ Tags:
   primorial(n)                        product of primes below n
   pn_primorial(n)                     product of first n primes
   factorial(n)                        product of first n integers: n!
+  factorialmod(n,m)                   factorial mod m
   binomial(n,k)                       binomial coefficient
   partitions(n)                       number of integer partitions
   valuation(n,k)                      number of times n is divisible by k

@@ -1583,7 +1583,8 @@ znorder(IN SV* sva, IN SV* svn)
     binomial = 1
     jordan_totient = 2
     ramanujan_sum = 3
-    legendre_phi = 4
+    factorialmod = 4
+    legendre_phi = 5
   PREINIT:
     int astatus, nstatus;
   PPCODE:
@@ -1624,7 +1625,9 @@ znorder(IN SV* sva, IN SV* svn)
                    XSRETURN_IV( m * (totient(a) / totient(g)) );
                  }
                  break;
-        case 4:
+        case 4:  ret = factorialmod(a, n);
+                 break;
+        case 5:
         default: ret = legendre_phi(a, n);
                  break;
       }
@@ -1637,7 +1640,8 @@ znorder(IN SV* sva, IN SV* svn)
       case 1:  _vcallsub_with_pp("binomial");  break;
       case 2:  _vcallsub_with_pp("jordan_totient");  break;
       case 3:  _vcallsub_with_pp("ramanujan_sum");  break;
-      case 4:
+      case 4:  _vcallsub_with_pp("factorialmod");  break;
+      case 5:
       default: _vcallsub_with_pp("legendre_phi"); break;
     }
     return; /* skip implicit PUTBACK */

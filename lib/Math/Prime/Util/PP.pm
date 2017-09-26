@@ -3481,6 +3481,31 @@ sub factorial {
   $r;
 }
 
+sub factorialmod {
+  my($n,$m) = @_;
+
+  return Math::Prime::Util::GMP::factorialmod($n,$m)
+    if $Math::Prime::Util::_GMPfunc{"factorialmod"};
+
+  if ($n > 10) {
+    my($s,$t,$e) = (1);
+    Math::Prime::Util::forprimes( sub {
+      ($t,$e) = ($n,0);
+      while ($t > 0) {
+        $t = int($t/$_);
+        $e += $t;
+      }
+      $s = Math::Prime::Util::mulmod($s, Math::Prime::Util::powmod($_,$e,$m), $m);
+    }, 2, $n >> 1);
+    Math::Prime::Util::forprimes( sub {
+      $s = Math::Prime::Util::mulmod($s, $_, $m);
+    }, ($n >> 1)+1, $n);
+    return $s;
+  }
+
+  return factorial($n) % $m;
+}
+
 sub _is_perfect_square {
   my($n) = @_;
 

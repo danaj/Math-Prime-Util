@@ -625,7 +625,7 @@ UV logint(UV n, UV b)
 UV mpu_popcount_string(const char* ptr, int len)
 {
   int i, *s, *sptr;
-  UV count = 0;
+  uint32_t count = 0;
 
   while (len > 0 && (*ptr == '0' || *ptr == '+' || *ptr == '-'))
     {  ptr++;  len--;  }
@@ -636,6 +636,7 @@ UV mpu_popcount_string(const char* ptr, int len)
 
   while (len > 0) {
     if (s[len-1] & 1)  count++;
+    //printf("%lud  ",count); for(i=0;i<len;i++)printf("%d",s[i]);printf("\n");
     /* divide by 2 */
     sptr = s;
     if (s[0] == 1) {
@@ -1177,6 +1178,45 @@ UV divmod(UV a, UV b, UV n) {   /* a / b  mod n */
   UV binv = modinverse(b, n);
   if (binv == 0)  return 0;
   return mulmod(a, binv, n);
+}
+
+UV factorialmod(UV n, UV m) {  /*  n! mod m */
+  UV i, d = n, res = 1;
+
+  if (n >= m) return 0;
+
+  if (n <= 10) { /* Keep things simple for small n */
+    for (i = 2; i <= n && res != 0; i++)
+      res = (res * i) % m;
+    return res;
+  }
+
+  if (n > m/2 && is_prime(m))    /* Check if we can go backwards */
+    d = m-n-1;
+  if (d < 2)
+    return (d == 0) ? m-1 : 1;   /* Wilson's Theorem: n = m-1 and n = m-2 */
+
+#if USE_MONTMATH
+  if (m & 1) {
+    const uint64_t npi = mont_inverse(m),  mont1 = mont_get1(m);
+    uint64_t monti = mont1;
+    res = mont1;
+    for (i = 2; i <= d && res != 0; i++) {
+      monti = addmod(monti,mont1,m);
+      res = mont_mulmod(res,monti,m);
+    }
+    res = mont_recover(res, m);
+  } else
+#endif
+    for (i = 2; i <= d && res != 0; i++)
+      res = mulmod(res,i,m);
+
+  if (d != n && res != 0) {      /* Handle backwards case */
+    if (!(d&1)) res = submod(m,res,m);
+    res = modinverse(res,m);
+  }
+
+  return res;
 }
 
 static int verify_sqrtmod(UV s, UV *rs, UV a, UV p) {

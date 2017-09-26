@@ -486,6 +486,13 @@ sub factorial {
   return Math::Prime::Util::PP::factorial($n);
 }
 
+sub factorialmod {
+  my($n, $m) = @_;
+  _validate_integer($n);
+  _validate_integer($m);
+  return Math::Prime::Util::PP::factorialmod($n, $m);
+}
+
 sub binomial {
   my($n, $k) = @_;
   _validate_integer($n);
