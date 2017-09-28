@@ -2560,20 +2560,30 @@ int perm_to_num(int n, int *vec, UV *rank) {
   return 1;
 }
 
+static int numcmp(const void *a, const void *b)
+  { const UV *x = a, *y = b; return (*x > *y) ? 1 : (*x < *y) ? -1 : 0; }
+
+/*
+ * For k<n, an O(k) time and space method is shown on page 39 of
+ *    https://www.math.upenn.edu/~wilf/website/CombinatorialAlgorithms.pdf
+ * Note it requires an O(k) complete shuffle as the results are sorted.
+ */
 void randperm(void* ctx, UV n, UV k, UV *S) {
   UV i, j;
 
   if (k > n)  k = n;
 
-  if        (k == 0) {
-  } else if (k == 1) {
+  if        (k == 0) {                  /* 0 of n */
+  } else if (k == 1) {                  /* 1 of n.  Pick one at random */
     S[0] = urandomm64(ctx,n);
-  } else if (n < ((BITS_PER_WORD==32) ? 13 : 21)) {
-    int V[32];
-    num_to_perm(urandomm64(ctx,factorial(n)), n, V);
-    for (i = 0; i < k; i++)
-      S[i] = V[i];
-  } else if (k < n/5 && k < 1000) {   /* TODO: Improve this cutoff */
+  } else if (k == 2 && n == 2) {        /* 2 of 2.  Flip a coin */
+    S[0] = urandomb(ctx,1);
+    S[1] = 1-S[0];
+  } else if (k == 2) {                  /* 2 of n.  Pick 2 skipping dup */
+    S[0] = urandomm64(ctx,n);
+    S[1] = urandomm64(ctx,n-1);
+    if (S[1] >= S[0]) S[1]++;
+  } else if (k < n/100 && k < 30) {     /* k of n.  Pick k with loop */
     for (i = 0; i < k; i++) {
       do {
         S[i] = urandomm64(ctx,n);
@@ -2582,7 +2592,45 @@ void randperm(void* ctx, UV n, UV k, UV *S) {
             break;
       } while (j < i);
     }
-  } else {
+  } else if (k < n/100 && n > 1000000) {/* k of n.  Pick k with dedup retry */
+    for (j = 0; j < k; ) {
+      for (i = j; i < k; i++) /* Fill S[j .. k-1] then sort S */
+        S[i] = urandomm64(ctx,n);
+      qsort(S, k, sizeof(UV), numcmp);
+      for (j = 0, i = 1; i < k; i++)  /* Find and remove dups.  O(n). */
+        if (S[j] != S[i])
+          S[++j] = S[i];
+      j++;
+    }
+    /* S is sorted unique k-selection of 0 to n-1.  Shuffle. */
+    for (i = 0; i < k; i++) {
+      j = urandomm64(ctx,k-i);
+      { UV t = S[i]; S[i] = S[i+j]; S[i+j] = t; }
+    }
+  } else if (k < n/4) {                 /* k of n.  Pick k with mask */
+    uint32_t *mask, smask[8] = {0};
+    if (n <= 32*8) mask = smask;
+    else           Newz(0, mask, n/32 + ((n%32)?1:0), uint32_t);
+    for (i = 0; i < k; i++) {
+      do {
+        j = urandomm64(ctx,n);
+      } while ( mask[j>>5] & (1U << (j&0x1F)) );
+      S[i] = j;
+      mask[j>>5] |= (1U << (j&0x1F));
+    }
+    if (mask != smask) Safefree(mask);
+  } else if (k < n) {                   /* k of n.  FYK shuffle n, pick k */
+    UV *T;
+    New(0, T, n, UV);
+    for (i = 0; i < n; i++)
+      T[i] = i;
+    for (i = 0; i < k && i <= n-2; i++) {
+      j = urandomm64(ctx,n-i);
+      S[i] = T[i+j];
+      T[i+j] = T[i];
+    }
+    Safefree(T);
+  } else {                              /* n of n.  FYK shuffle. */
     for (i = 0; i < n; i++)
       S[i] = i;
     for (i = 0; i < k && i <= n-2; i++) {

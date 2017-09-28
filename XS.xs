@@ -2026,11 +2026,13 @@ randperm(IN UV n, IN UV k = 0)
     if (items == 1) k = n;
     if (k > n) k = n;
     if (k == 0) XSRETURN_EMPTY;
-    New(0, S, n, UV);  /* TODO: k? */
+    New(0, S, k, UV);
     randperm(MY_CXT.randcxt, n, k, S);
     EXTEND(SP, (IV)k);
-    for (i = 0; i < k; i++)
-      PUSH_NPARITY( S[i] );
+    for (i = 0; i < k; i++) {
+      if (n < 2*CINTS)  PUSH_NPARITY(S[i]);
+      else              PUSHs(sv_2mortal(newSVuv(S[i])));
+    }
     Safefree(S);
 
 void shuffle(...)

@@ -6,6 +6,12 @@ Revision history for Perl module Math::Prime::Util
 
     - factorialmod(n,m)               n! mod m calculated efficiently
 
+    [FUNCTIONALITY AND PERFORMANCE]
+
+    - randperm a little faster for k < n cases, and can handle big n
+      values without running out of memory as long as k << n.
+      E.g. 5000 random native ints without dups:  @r = randperm(~0,5000);
+
 
 0.67 2017-09-23
 
