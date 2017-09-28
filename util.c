@@ -2513,9 +2513,6 @@ UV polygonal_root(UV n, UV k, int* overflow) {
 
 /* These rank/unrank are O(n^2) algorithms using O(n) in-place space.
  * Bonet 2008 gives O(n log n) algorithms using a bit more space.
- *
- * Our randperm is 4x or more faster than NumPy's random.permutation,
- * and much faster than that when selecting a small subset.
  */
 
 int num_to_perm(UV k, int n, int *vec) {
@@ -2567,6 +2564,11 @@ static int numcmp(const void *a, const void *b)
  * For k<n, an O(k) time and space method is shown on page 39 of
  *    https://www.math.upenn.edu/~wilf/website/CombinatorialAlgorithms.pdf
  * Note it requires an O(k) complete shuffle as the results are sorted.
+ *
+ * It seems to be 4-100x faster than NumPy's random.{permutation,choice}
+ * for n under 100k or so.  It's even faster with larger n.  For example
+ *   from numpy.random import choice;  choice(100000000, 4, replace=False)
+ * uses 774MB and takes 55 seconds.  We take less than 1 microsecond.
  */
 void randperm(void* ctx, UV n, UV k, UV *S) {
   UV i, j;
