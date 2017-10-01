@@ -12,6 +12,8 @@ Revision history for Perl module Math::Prime::Util
       values without running out of memory as long as k << n.
       E.g. 5000 random native ints without dups:  @r = randperm(~0,5000);
 
+    - forpart with primes pulls min/max values in for a small speedup.
+
 
 0.67 2017-09-23
 

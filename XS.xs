@@ -2568,6 +2568,13 @@ forpart (SV* block, IN SV* svn, IN SV* svh = 0)
       if (primeq != 0 && primeq != -1) primeq = 2;  /* -1, 0, or 2 */
     }
 
+    if (primeq == 2) {
+      UV prev =                 prev_prime(amax+1);
+      UV next = amin <= 2 ? 2 : next_prime(amin-1);
+      if (amin < next)  amin = next;
+      if (amax > prev)  amax = prev;
+    }
+
     if (n==0 && nmin <= 1) {
       { dSP; ENTER; PUSHMARK(SP);
         /* Nothing */
