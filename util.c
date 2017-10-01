@@ -1196,6 +1196,19 @@ UV factorialmod(UV n, UV m) {  /*  n! mod m */
   if (d < 2)
     return (d == 0) ? m-1 : 1;   /* Wilson's Theorem: n = m-1 and n = m-2 */
 
+  if (d > 10000) {
+    START_DO_FOR_EACH_PRIME(2, d) {
+      UV k = p;
+      if (p <= (d>>1)) {
+        UV t = d;
+        UV e = 0;
+        while (t > 0) {  t /= p;  e += t;  }
+        k = powmod(p, e, m);
+      }
+      res = mulmod(res, k, m);
+      if (res == 0) break;
+    } END_DO_FOR_EACH_PRIME;
+  } else
 #if USE_MONTMATH
   if (m & 1) {
     const uint64_t npi = mont_inverse(m),  mont1 = mont_get1(m);
