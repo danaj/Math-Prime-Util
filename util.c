@@ -1196,6 +1196,12 @@ UV factorialmod(UV n, UV m) {  /*  n! mod m */
   if (d < 2)
     return (d == 0) ? m-1 : 1;   /* Wilson's Theorem: n = m-1 and n = m-2 */
 
+  if (d == n && d > 5000000) {   /* Check for composite m that leads to 0 */
+    UV facs[MPU_MAX_FACTORS];
+    int nfacs = factor(m, facs);
+    if (n >= facs[nfacs-1]) return 0;
+  }
+
   if (d > 10000) {
     START_DO_FOR_EACH_PRIME(2, d) {
       UV k = p;
