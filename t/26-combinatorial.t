@@ -3,7 +3,7 @@ use strict;
 use warnings;
 
 use Test::More;
-use Math::Prime::Util qw/binomial factorial
+use Math::Prime::Util qw/binomial factorial factorialmod
                          forcomb forperm forderange formultiperm
                          numtoperm permtonum randperm shuffle/;
 my $extra = defined $ENV{EXTENDED_TESTING} && $ENV{EXTENDED_TESTING};
@@ -21,6 +21,7 @@ my %perms = (
 # TODO: Add a bunch of combs here:  "5,3" => [[..],[..],[..]],
 
 plan tests => 1                        # Factorial
+            + 1                        # Factorialmod
             + 6 + 4                    # Combinations
             + scalar(keys(%perms)) + 1 # Permutations
             + 4                        # Multiset Permutations
@@ -35,6 +36,12 @@ sub fact { my $n = Math::BigInt->new("$_[0]"); $n->bfac; }
   my @result = map { factorial($_) } 0 .. 100;
   my @expect = map { fact($_) } 0 .. 100;
   is_deeply( \@result, \@expect, "Factorials 0 to 100" );
+}
+
+{
+  my @result = map { my $m=$_; map { factorialmod($_,$m) } 0..$m-1; } 1 .. 50;
+  my @expect = map { my $m=$_; map { factorial($_) % $m; } 0..$m-1; } 1 .. 50;
+  is_deeply( \@result, \@expect, "factorialmod n! mod m for m 1 to 50, n 0 to m" );
 }
 
 

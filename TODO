@@ -131,5 +131,3 @@
 - formultiperm doesn't completely cover lastfor
 
 - submit bug report for Perl error in 30b8ab3
-
-- tests for factorialmod

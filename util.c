@@ -1183,7 +1183,7 @@ UV divmod(UV a, UV b, UV n) {   /* a / b  mod n */
 UV factorialmod(UV n, UV m) {  /*  n! mod m */
   UV i, d = n, res = 1;
 
-  if (n >= m) return 0;
+  if (n >= m || m == 1) return 0;
 
   if (n <= 10) { /* Keep things simple for small n */
     for (i = 2; i <= n && res != 0; i++)
