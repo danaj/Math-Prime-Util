@@ -2666,7 +2666,7 @@ forcomb (SV* block, IN SV* svn, IN SV* svk = 0)
     cv = sv_2cv(block, &stash, &gv, 0);
     if (cv == Nullcv)
       croak("Not a subroutine reference");
-    if (ix == 1 && svk != 0)
+    if (ix != 0 && svk != 0)
       croak("Too many arguments for forperm");
 
     if (!_validate_int(aTHX_ svn, 0) || (svk != 0 && !_validate_int(aTHX_ svk, 0))) {
@@ -2683,6 +2683,14 @@ forcomb (SV* block, IN SV* svn, IN SV* svk = 0)
     cm[0] = UV_MAX;
     for (i = 0; i < k; i++)
       cm[i] = k-i;
+    if (ix == 2 && k >= 2) {   /* Make derangements start deranged */
+      for (i = 0; i < k; i++)
+        cm[k-i-1] = (i&1) ? i : i+2;
+      if (k & 1) {
+        cm[0] = k-2;
+        cm[1] = k;
+      }
+    }
 
     New(0, svals, n, SV*);
     for (i = 0; i < n; i++) {
@@ -2692,11 +2700,7 @@ forcomb (SV* block, IN SV* svn, IN SV* svk = 0)
 
     START_FORCOUNT;
     while (1) {
-      if (ix == 2)
-        for (i = 0; i < k; i++)
-          if (cm[k-i-1]-1 == i)
-            break;
-      if (ix < 2 || i == k) {
+      if (ix < 2 || k != 1) {
         dSP; ENTER; PUSHMARK(SP);
         EXTEND(SP, ((IV)k));
         for (i = 0; i < k; i++) { PUSHs(svals[ cm[k-i-1]-1 ]); }
@@ -2709,14 +2713,26 @@ forcomb (SV* block, IN SV* svn, IN SV* svk = 0)
         if (i >= k)  break;                        /* Done! */
         cm[i]++;                                   /* Increment this one */
         while (i-- > 0)  cm[i] = cm[i+1] + 1;      /* Set the rest */
-      } else {
+      } else if (ix == 1) {
         for (j = 1; j < k && cm[j] > cm[j-1]; j++) ;    /* Find last decrease */
         if (j >= k) break;                              /* Done! */
-        for (m = 0; cm[j] > cm[m]; m++)                 /* Find next greater */
-          ;
+        for (m = 0; cm[j] > cm[m]; m++) ;               /* Find next greater */
         { UV t = cm[j];  cm[j] = cm[m];  cm[m] = t; }   /* Swap */
         for (i = j-1, m = 0;  m < i;  i--, m++)         /* Reverse the end */
           { UV t = cm[i];  cm[i] = cm[m];  cm[m] = t; }
+      } else {
+        REDERANGE:
+        for (j = 1; j < k && cm[j] > cm[j-1]; j++) ;    /* Find last decrease */
+        if (j >= k) break;                              /* Done! */
+        for (m = 0; cm[j] > cm[m]; m++) ;               /* Find next greater */
+        { UV t = cm[j];  cm[j] = cm[m];  cm[m] = t; }   /* Swap */
+        if (cm[j] == k-j) goto REDERANGE;               /* Skip? */
+        for (i = j-1, m = 0;  m < i;  i--, m++)         /* Reverse the end */
+          { UV t = cm[i];  cm[i] = cm[m];  cm[m] = t; }
+        for (i = 0; i < k; i++)                         /* Check deranged */
+          if (cm[k-i-1]-1 == i)
+            break;
+        if (i != k) goto REDERANGE;
       }
     }
     Safefree(cm);

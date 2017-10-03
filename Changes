@@ -14,6 +14,8 @@ Revision history for Perl module Math::Prime::Util
 
     - forpart with primes pulls min/max values in for a small speedup.
 
+    - forderange 10-20% faster.
+
 
 0.67 2017-09-23
 
