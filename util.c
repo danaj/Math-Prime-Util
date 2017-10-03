@@ -1180,6 +1180,12 @@ UV divmod(UV a, UV b, UV n) {   /* a / b  mod n */
   return mulmod(a, binv, n);
 }
 
+static UV _powfactor(UV p, UV d, UV m) {
+  UV e = 0;
+  do { d /= p; e += d; } while (d > 0);
+  return powmod(p, e, m);
+}
+
 UV factorialmod(UV n, UV m) {  /*  n! mod m */
   UV i, d = n, res = 1;
 
@@ -1203,17 +1209,27 @@ UV factorialmod(UV n, UV m) {  /*  n! mod m */
   }
 
   if (d > 10000) {
+#if 0    /* Monolithic prime walk */
     START_DO_FOR_EACH_PRIME(2, d) {
-      UV k = p;
-      if (p <= (d>>1)) {
-        UV t = d;
-        UV e = 0;
-        while (t > 0) {  t /= p;  e += t;  }
-        k = powmod(p, e, m);
-      }
+      UV k = (p > (d>>1))  ?  p  :  _powfactor(p, d, m);
       res = mulmod(res, k, m);
       if (res == 0) break;
     } END_DO_FOR_EACH_PRIME;
+#else    /* Segmented prime walk */
+    unsigned char* segment;
+    UV seg_base, seg_low, seg_high;
+    void* ctx = start_segment_primes(7, d, &segment);
+    for (i = 1; i <= 3; i++)    /* Handle 2,3,5 assume d>10*/
+      res = mulmod(res, _powfactor(2*i - (i>1), d, m), m);
+    while (res != 0 && next_segment_primes(ctx, &seg_base, &seg_low, &seg_high)) {
+      START_DO_FOR_EACH_SIEVE_PRIME( segment, seg_base, seg_low, seg_high )
+        UV k = (p > (d>>1))  ?  p  :  _powfactor(p, d, m);
+        res = mulmod(res, k, m);
+        if (res == 0) break;
+      END_DO_FOR_EACH_SIEVE_PRIME
+    }
+    end_segment_primes(ctx);
+#endif
   } else
 #if USE_MONTMATH
   if (m & 1) {
