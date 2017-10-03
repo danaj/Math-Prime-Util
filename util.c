@@ -2551,19 +2551,19 @@ UV polygonal_root(UV n, UV k, int* overflow) {
  */
 
 int num_to_perm(UV k, int n, int *vec) {
-  int i, j, p, t;
+  int i, j, t, si = 0;
   UV f = factorial(n-1);
 
-  if (n >= 32 || f == 0)
-    return 0;
+  while (f == 0) /* We can handle n! overflow if we have a valid k */
+    f = factorial(n - 1 - ++si);
+
   if (k/f >= (UV)n)
     k %= f*n;
 
   for (i = 0; i < n; i++)
     vec[i] = i;
-
-  for (i = 0; i < n-1; i++) {
-    p = k/f;
+  for (i = si; i < n-1; i++) {
+    UV p = k/f;
     k -= p*f;
     f /= n-i-1;
     if (p > 0) {
