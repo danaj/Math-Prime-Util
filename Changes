@@ -19,6 +19,8 @@ Revision history for Perl module Math::Prime::Util
     - Unknown bigint classes no longer return two values after objectify.
       Thanks to Daniel Șuteu for finding this.
 
+    - hammingweight for bigints 3-8x faster.
+
 
 0.67 2017-09-23
 

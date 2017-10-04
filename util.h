@@ -23,7 +23,7 @@ extern UV rootof(UV n, UV k);
 extern int primepower(UV n, UV* prime);
 extern UV valuation(UV n, UV k);
 extern UV logint(UV n, UV b);
-extern UV mpu_popcount_string(const char* ptr, int len);
+extern UV mpu_popcount_string(const char* ptr, uint32_t len);
 
 extern signed char* _moebius_range(UV low, UV high);
 extern UV*    _totient_range(UV low, UV high);

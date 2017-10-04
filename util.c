@@ -622,32 +622,38 @@ UV logint(UV n, UV b)
   return e;
 }
 
-UV mpu_popcount_string(const char* ptr, int len)
+UV mpu_popcount_string(const char* ptr, uint32_t len)
 {
-  int i, *s, *sptr;
-  uint32_t count = 0;
+  uint32_t count = 0, i, j, d, power, slen, *s, *sptr;
 
   while (len > 0 && (*ptr == '0' || *ptr == '+' || *ptr == '-'))
     {  ptr++;  len--;  }
 
-  New(0, s, len, int);
-  for (i = 0; i < len; i++)
-    s[i] = ptr[i] - '0';
-
-  while (len > 0) {
-    if (s[len-1] & 1)  count++;
-    //printf("%lud  ",count); for(i=0;i<len;i++)printf("%d",s[i]);printf("\n");
-    /* divide by 2 */
+  /* Create s as array of base 10^8 numbers */
+  slen = (len + 7) / 8;
+  Newz(0, s, slen, uint32_t);
+  for (i = 0; i < slen; i++) {  /* Chunks of 8 digits */
+    for (j = 0, d = 0, power = 1;  j < 8 && len > 0;  j++, power *= 10)
+      d += power * (ptr[--len] - '0');
+    s[slen - 1 - i] = d;
+  }
+  /* Repeatedly count and divide by 2 across s */
+  while (slen > 1) {
+    if (s[slen-1] & 1)  count++;
     sptr = s;
     if (s[0] == 1) {
-      if (--len == 0) break;
-      *++sptr += 10;
+      if (--slen == 0) break;
+      *++sptr += 100000000;
     }
-    for (i = 0; i < len; i++) {
-      if ( (i+1) < len  &&  sptr[i] & 1 ) sptr[i+1] += 10;
-      s[i] = sptr[i] / 2;
+    for (i = 0; i < slen; i++) {
+      if ( (i+1) < slen  &&  sptr[i] & 1 ) sptr[i+1] += 100000000;
+      s[i] = sptr[i] >> 1;
     }
   }
+  /* For final base 10^8 number just do naive popcnt */
+  for (d = s[0]; d > 0; d >>= 1)
+    if (d & 1)
+      count++;
   Safefree(s);
   return count;
 }
