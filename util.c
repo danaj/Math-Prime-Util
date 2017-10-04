@@ -2600,7 +2600,7 @@ static int numcmp(const void *a, const void *b)
  *    https://www.math.upenn.edu/~wilf/website/CombinatorialAlgorithms.pdf
  * Note it requires an O(k) complete shuffle as the results are sorted.
  *
- * It seems to be 4-100x faster than NumPy's random.{permutation,choice}
+ * This seems to be 4-100x faster than NumPy's random.{permutation,choice}
  * for n under 100k or so.  It's even faster with larger n.  For example
  *   from numpy.random import choice;  choice(100000000, 4, replace=False)
  * uses 774MB and takes 55 seconds.  We take less than 1 microsecond.

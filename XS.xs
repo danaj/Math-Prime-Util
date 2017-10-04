@@ -256,7 +256,7 @@ static int _vcallsubn(pTHX_ I32 flags, I32 stashflags, const char* name, int nar
     } else if (iname == 0 || strEQ(iname, "Math::GMP")) { \
       (void)_vcallsubn(aTHX_ G_SCALAR, VCALL_ROOT, "_to_gmp", 1, 0); \
     } else { /* Return it as: ref(input)->new(result) */ \
-      dSP;  ENTER;  PUSHMARK(SP); \
+      dSP;  POPs;  ENTER;  PUSHMARK(SP); \
       XPUSHs(sv_2mortal(newSVpv(iname, 0)));  XPUSHs(resptr); \
       PUTBACK;  call_method("new", G_SCALAR);  LEAVE; \
     } \

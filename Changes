@@ -16,6 +16,9 @@ Revision history for Perl module Math::Prime::Util
 
     - forderange 10-20% faster.
 
+    - Unknown bigint classes no longer return two values after objectify.
+      Thanks to Daniel Șuteu for finding this.
+
 
 0.67 2017-09-23
 
