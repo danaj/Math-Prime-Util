@@ -21,6 +21,11 @@ Revision history for Perl module Math::Prime::Util
 
     - hammingweight for bigints 3-8x faster.
 
+    - Add Math::GMPq and Math::AnyNum as possible bigint classes.  Inputs
+      of these types will be relied on to stringify correctly, and if this
+      results in an integer string, to intify correctly.  This should give
+      a large speedup for these types.
+
 
 0.67 2017-09-23
 

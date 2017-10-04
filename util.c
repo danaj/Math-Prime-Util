@@ -624,7 +624,7 @@ UV logint(UV n, UV b)
 
 UV mpu_popcount_string(const char* ptr, uint32_t len)
 {
-  uint32_t count = 0, i, j, d, power, slen, *s, *sptr;
+  uint32_t count = 0, i, j, d, v, power, slen, *s, *sptr;
 
   while (len > 0 && (*ptr == '0' || *ptr == '+' || *ptr == '-'))
     {  ptr++;  len--;  }
@@ -633,8 +633,11 @@ UV mpu_popcount_string(const char* ptr, uint32_t len)
   slen = (len + 7) / 8;
   Newz(0, s, slen, uint32_t);
   for (i = 0; i < slen; i++) {  /* Chunks of 8 digits */
-    for (j = 0, d = 0, power = 1;  j < 8 && len > 0;  j++, power *= 10)
-      d += power * (ptr[--len] - '0');
+    for (j = 0, d = 0, power = 1;  j < 8 && len > 0;  j++, power *= 10) {
+      v = ptr[--len] - '0';
+      if (v > 9) croak("Parameter '%s' must be a positive integer",ptr);
+      d += power * v;
+    }
     s[slen - 1 - i] = d;
   }
   /* Repeatedly count and divide by 2 across s */
