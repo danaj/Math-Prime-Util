@@ -2450,6 +2450,16 @@ UV gcdz(UV x, UV y) {
   UV f, x2, y2;
 
   if (x == 0) return y;
+
+  if (y & 1) {  /* Optimize y odd */
+    x >>= ctz(x);
+    while (x != y) {
+      if (x < y) { y -= x; y >>= ctz(y); }
+      else       { x -= y; x >>= ctz(x); }
+    }
+    return x;
+  }
+
   if (y == 0) return x;
 
   /* Alternately:  f = ctz(x|y); x >>= ctz(x); y >>= ctz(y); */

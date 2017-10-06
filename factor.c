@@ -139,12 +139,13 @@ int factor(UV n, UV *factors)
     while ( (n >= f*f) && (!is_prob_prime(n)) ) {
       int split_success = 0;
       /* Adjust the number of rounds based on the number size and speed */
+      UV const nbits = BITS_PER_WORD - clz(n);
 #if USE_MONTMATH
-      UV const br_rounds = ((n>>29)<100000) ?  8000 : 80000;
+      UV const br_rounds = 8000 + (8000 * ((nbits < 46) ? 0 : (nbits-45)));
 #elif MULMODS_ARE_FAST
-      UV const br_rounds = ((n>>29)<100000) ?   500 :  2000;
+      UV const br_rounds =  500 + ( 100 * ((nbits < 46) ? 0 : (nbits-45)));
 #else
-      UV const br_rounds = (n < (UV_MAX>>2))?     0 : 10000;
+      UV const br_rounds = (nbits < 63) ? 0 : 10000;
 #endif
       UV const sq_rounds = 200000; /* 20k 91%, 40k 98%, 80k 99.9%, 120k 99.99%*/
 
@@ -159,7 +160,7 @@ int factor(UV n, UV *factors)
         if (verbose) printf("small p-1 %d\n", split_success);
       }
       /* SQUFOF with these parameters gets 99.9% of everything left */
-      if (!split_success && n < (UV_MAX>>2)) {
+      if (!split_success && nbits < 64) {
         split_success = squfof_factor(n,tofac_stack+ntofac, sq_rounds)-1;
         if (verbose) printf("squfof %d\n", split_success);
       }
@@ -495,7 +496,7 @@ int holf_factor(UV n, UV *factors, UV rounds)
 int pbrent_factor(UV n, UV *factors, UV rounds, UV a)
 {
   UV f, m, r, Xi, Xm;
-  const UV inner = (n <= 4000000000UL) ? 32 : 160;
+  const UV inner = (n <= 4000000000UL) ? 32 : ((n >> 31) >> 29) ? 256 : 160;
   int fails = 6;
   const uint64_t npi = mont_inverse(n),  mont1 = mont_get1(n);
   Xi = Xm = mont_get2(n);
@@ -515,7 +516,7 @@ int pbrent_factor(UV n, UV *factors, UV rounds, UV a)
       rounds -= dorounds;
       Xi = mont_sqrmod(Xi,n);  Xi = addmod(Xi,a,n);
       m = (Xi>Xm) ? Xi-Xm : Xm-Xi;
-      while (--dorounds > 0) {         /* Now do inner-1=63 more iterations */
+      while (--dorounds > 0) {         /* Now do inner-1 more iterations */
         Xi = mont_sqrmod(Xi,n);  Xi = addmod(Xi,a,n);
         f = (Xi>Xm) ? Xi-Xm : Xm-Xi;
         m = mont_mulmod(m, f, n);
@@ -534,14 +535,14 @@ int pbrent_factor(UV n, UV *factors, UV rounds, UV a)
       Xi = saveXi;
       do {
         Xi = mont_sqrmod(Xi,n);  Xi = addmod(Xi,a,n);
-        f = gcd_ui( (Xi>Xm) ? Xi-Xm : Xm-Xi, n);
+        f = gcd_ui((Xi>Xm) ? Xi-Xm : Xm-Xi, n);
       } while (f == 1 && r-- != 0);
     }
     if (f == 0 || f == n) {
       if (fails-- <= 0) break;
       Xm = addmod(Xm, 2, n);
       Xi = Xm;
-      a++;
+      a = addmod(a, mont_geta(11,n), n);
       continue;
     }
     return found_factor(n, f, factors);

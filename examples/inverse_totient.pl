@@ -61,7 +61,6 @@ sub inverse_euler_phi {
 
   if (!wantarray) {   # Just count.  Much less memory.
     my %r = ( 1 => 1 );
-    my($l0, $l1);
     foreach my $Li (@L) {
       my %t;
       foreach my $Lij (@$Li) {
