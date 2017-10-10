@@ -41,15 +41,15 @@
 
   /* addmod from Kruppa 2010 page 67 */
   static INLINE UV _addmod(UV a, UV b, UV n) {
-    UV r = a+b;
     UV t = a-n;
+    a += b;
     asm ("add %2, %1\n\t"    /* t := t + b */
-         "cmovc %1, %0\n\t"  /* if (carry) r := t */
-         :"+r" (r), "+&r" (t)
-         :"rm" (b)
+         "cmovc %1, %0\n\t"  /* if (carry) a := t */
+         :"+r" (a), "+&r" (t)
+         :"r" (b)
          :"cc"
         );
-    return r;
+    return a;
   }
   #define addmod(a,b,n) _addmod(a,b,n)
 
