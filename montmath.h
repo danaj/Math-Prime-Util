@@ -57,7 +57,7 @@ static INLINE uint64_t _mulredc(uint64_t a, uint64_t b, uint64_t n, uint64_t npi
         "addq %%rdx, %%rax \n\t"
         : "+&a"(a)
         : "r"(b), "r"(npi), "r"(n)
-        : "rax", "rdx", "r10", "r11", "r12", "cc");
+        : "rdx", "r10", "r11", "r12", "cc");
   } else {
     asm("mulq %2 \n\t"
         "movq %%rax, %%r10 \n\t"
