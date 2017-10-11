@@ -18,6 +18,7 @@ extern int prho_factor(UV n, UV *factors, UV maxrounds);
 extern int pminus1_factor(UV n, UV *factors, UV B1, UV B2);
 extern int pplus1_factor(UV n, UV *factors, UV B);
 extern int squfof_factor(UV n, UV *factors, UV rounds);
+extern int lehman_factor(UV n, UV *factors, int dotrial);
 
 extern UV* _divisor_list(UV n, UV *num_divisors);
 

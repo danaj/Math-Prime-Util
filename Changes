@@ -26,7 +26,8 @@ Revision history for Perl module Math::Prime::Util
       results in an integer string, to intify correctly.  This should give
       a large speedup for these types.
 
-    - Speedup for factoring by running more Pollard-Rho-Brent.
+    - Speedup for factoring by running more Pollard-Rho-Brent, revising
+      SQUFOF, updating recipe, adding yafu's Lehman.
 
     - Updated x86_64 asm addmod.
 

@@ -141,26 +141,31 @@ int factor(UV n, UV *factors)
       /* Adjust the number of rounds based on the number size and speed */
       UV const nbits = BITS_PER_WORD - clz(n);
 #if USE_MONTMATH
-      UV const br_rounds = 8000 + (8000 * ((nbits < 46) ? 0 : (nbits-45)));
+      UV const br_rounds = 8000 + (9000 * ((nbits <= 45) ? 0 : (nbits-45)));
 #elif MULMODS_ARE_FAST
-      UV const br_rounds =  500 + ( 100 * ((nbits < 46) ? 0 : (nbits-45)));
+      UV const br_rounds =  500 + ( 200 * ((nbits <= 45) ? 0 : (nbits-45)));
 #else
       UV const br_rounds = (nbits < 63) ? 0 : 10000;
 #endif
       UV const sq_rounds = 200000; /* 20k 91%, 40k 98%, 80k 99.9%, 120k 99.99%*/
 
+      if (!split_success && nbits <= 38) {
+        split_success = lehman_factor(n, tofac_stack+ntofac, 0)-1;
+        if (verbose) printf("lehman %d\n", split_success);
+      }
       /* 99.7% of 32-bit, 94% of 64-bit random inputs factored here */
       if (!split_success && br_rounds > 0) {
         split_success = pbrent_factor(n, tofac_stack+ntofac, br_rounds, 3)-1;
         if (verbose) { if (split_success) printf("pbrent 1:  %"UVuf" %"UVuf"\n", tofac_stack[ntofac], tofac_stack[ntofac+1]); else printf("pbrent 0\n"); }
       }
-      /* Give larger inputs a run with p-1 before SQUFOF */
-      if (!split_success && n > (UV_MAX >> 15) && MULMODS_ARE_FAST) {
-        split_success = pminus1_factor(n, tofac_stack+ntofac, 1000, 15000)-1;
-        if (verbose) printf("small p-1 %d\n", split_success);
+#if USE_MONTMATH
+      if (!split_success) {
+        split_success = pbrent_factor(n, tofac_stack+ntofac, 2*br_rounds, 5)-1;
+        if (verbose) printf("second pbrent %d\n", split_success);
       }
+#endif
       /* SQUFOF with these parameters gets 99.9% of everything left */
-      if (!split_success && nbits < 64) {
+      if (!split_success && nbits <= 62) {
         split_success = squfof_factor(n,tofac_stack+ntofac, sq_rounds)-1;
         if (verbose) printf("squfof %d\n", split_success);
       }
@@ -496,7 +501,7 @@ int holf_factor(UV n, UV *factors, UV rounds)
 int pbrent_factor(UV n, UV *factors, UV rounds, UV a)
 {
   UV f, m, r, Xi, Xm;
-  const UV inner = (n <= 4000000000UL) ? 32 : ((n >> 31) >> 29) ? 256 : 160;
+  const UV inner = (n <= 4000000000UL) ? 32 : ((n >> 31) >> 12) ? 256 : 160;
   int fails = 6;
   const uint64_t npi = mont_inverse(n),  mont1 = mont_get1(n);
   Xi = Xm = mont_get2(n);
@@ -850,23 +855,32 @@ int pplus1_factor(UV n, UV *factors, UV B1)
 
 
 /* SQUFOF, based on Ben Buhrow's racing version. */
-
+#if 1
+  /* limit to 62-bit inputs, use 32-bit types, faster */
+  #define SQUFOF_TYPE uint32_t
+  #define SQUFOF_MAX  (UV_MAX >> 2)
+#else
+  /* All 64-bit inputs possible, though we severely limit multipliers */
+  #define SQUFOF_TYPE UV
+  #define SQUFOF_MAX  UV_MAX
+#endif
 typedef struct
 {
   int valid;
-  UV P;
-  UV bn;
-  UV Qn;
-  UV Q0;
-  UV b0;
-  UV it;
-  UV imax;
+  SQUFOF_TYPE P;
+  SQUFOF_TYPE bn;
+  SQUFOF_TYPE Qn;
+  SQUFOF_TYPE Q0;
+  SQUFOF_TYPE b0;
+  SQUFOF_TYPE it;
+  SQUFOF_TYPE imax;
+  SQUFOF_TYPE mult;
 } mult_t;
 
 /* N < 2^63 (or 2^31).  Returns 0 or a factor */
 static UV squfof_unit(UV n, mult_t* mult_save)
 {
-  UV imax,i,Q0,b0,Qn,bn,P,bbn,Ro,S,So,t1,t2;
+  SQUFOF_TYPE imax,i,Q0,Qn,bn,b0,P,bbn,Ro,S,So,t1,t2;
 
   P = mult_save->P;
   bn = mult_save->bn;
@@ -906,19 +920,22 @@ static UV squfof_unit(UV n, mult_t* mult_save)
       SQUARE_SEARCH_ITERATION;
 
       /* Even iteration.  Check for square: Qn = S*S */
-      if (is_perfect_square(Qn))
-        break;
+      t2 = Qn & 127;
+      if (!((t2*0x8bc40d7d) & (t2*0xa1e2f5d1) & 0x14020a)) {
+        t1 = (uint32_t) sqrt(Qn);
+        if (Qn == t1*t1)
+          break;
+      }
 
       /* Odd iteration. */
       SQUARE_SEARCH_ITERATION;
     }
     S = isqrt(Qn);
-    /* printf("found square %"UVuf" after %"UVuf" iterations with mult %d\n", Qn, i, mult_save->mult); */
+    mult_save->it = i;
 
     /* Reduce to G0 */
     Ro = P + S*((b0 - P)/S);
-    t1 = Ro;
-    So = (n - t1*t1)/S;
+    So = (n - (UV)Ro*(UV)Ro)/(UV)S;
     bbn = (b0+Ro)/So;
 
     /* Search for symmetry point */
@@ -966,7 +983,6 @@ static const UV squfof_multipliers[] =
 
 int squfof_factor(UV n, UV *factors, UV rounds)
 {
-  const UV big2 = UV_MAX;
   mult_t mult_save[NSQUFOF_MULT];
   int still_racing;
   UV i, nn64, mult, f64;
@@ -976,12 +992,14 @@ int squfof_factor(UV n, UV *factors, UV rounds)
   MPUassert( (n >= 3) && ((n%2) != 0) , "bad n in squfof_factor");
 
   /* Too big */
-  if (n > big2) {
+  if (n > SQUFOF_MAX) {
     factors[0] = n;  return 1;
   }
 
-  for (i = 0; i < NSQUFOF_MULT; i++)
+  for (i = 0; i < NSQUFOF_MULT; i++) {
     mult_save[i].valid = -1;
+    mult_save[i].it = 0;
+  }
 
   /* Process the multipliers a little at a time: 0.33*(n*mult)^1/4: 20-20k */
   do {
@@ -991,7 +1009,7 @@ int squfof_factor(UV n, UV *factors, UV rounds)
       mult = squfof_multipliers[i];
       nn64 = n * mult;
       if (mult_save[i].valid == -1) {
-        if ((big2 / mult) < n) {
+        if ((SQUFOF_MAX / mult) < n) {
           mult_save[i].valid = 0; /* This multiplier would overflow 64-bit */
           continue;
         }
@@ -1002,22 +1020,25 @@ int squfof_factor(UV n, UV *factors, UV rounds)
         if (mult_save[i].imax > rounds) mult_save[i].imax = rounds;
         mult_save[i].Q0 = 1;
         mult_save[i].P  = mult_save[i].b0;
-        mult_save[i].Qn = nn64 - (mult_save[i].b0 * mult_save[i].b0);
-        if (mult_save[i].Qn == 0) {
-          factors[0] = mult_save[i].b0;
-          factors[1] = n / mult_save[i].b0;
-          MPUassert( factors[0] * factors[1] == n , "incorrect factoring");
-          return 2;
-        }
-        mult_save[i].bn = (mult_save[i].b0 + mult_save[i].P) / mult_save[i].Qn;
+        mult_save[i].Qn = (SQUFOF_TYPE)(nn64 - ((UV)mult_save[i].b0 * (UV)mult_save[i].b0));
+        if (mult_save[i].Qn == 0)
+          return found_factor(n, mult_save[i].b0, factors);
+        mult_save[i].bn = ((UV)mult_save[i].b0 + (UV)mult_save[i].P) / (UV)mult_save[i].Qn;
         mult_save[i].it = 0;
+        mult_save[i].mult = mult;
       }
       f64 = squfof_unit(nn64, &mult_save[i]);
       if (f64 > 1) {
         if (f64 != mult) {
           f64 /= gcd_ui(f64, mult);
-          if (f64 != 1)
+          if (f64 != 1) {
+            /*
+              unsigned long totiter = 0;
+              {int K; for (K = 0; K < NSQUFOF_MULT; K++) totiter += mult_save[K].it; }
+              printf("f2 %lu mult %lu it %lu (%lu)\n",n,mult,totiter,(UV)mult_save[i].it);
+            */
             return found_factor(n, f64, factors);
+          }
         }
         /* Found trivial factor.  Quit working with this multiplier. */
         mult_save[i].valid = 0;
@@ -1031,6 +1052,86 @@ int squfof_factor(UV n, UV *factors, UV rounds)
   } while (still_racing && rounds_done < rounds);
 
   /* No factors found */
+  factors[0] = n;
+  return 1;
+}
+
+#define SQR_TAB_SIZE 512
+static int sqr_tab_init = 0;
+static double sqr_tab[SQR_TAB_SIZE];
+static void make_sqr_tab(void) {
+   int i;
+   for (i = 0; i < SQR_TAB_SIZE; i++)
+     sqr_tab[i] = sqrt((double)i);
+   sqr_tab_init = 1;
+}
+
+/* Lehman from Ben Buhrow and Warren D. Smith. */
+int lehman_factor(UV n, UV *factors, int do_trial) {
+  const double Tune = ((n >> 31) >> 5) ? 3.5 : 5.0;
+  double x, sqrtn;
+  UV a,c,kN,kN4,B2;
+  uint32_t b,p,k,r,B,U,Bred,inc,ip;
+
+  if (!(n&1)) return found_factor(n, 2, factors);
+
+  B = Tune * (1+rootof(n,3));
+
+  if (do_trial) {
+    uint32_t FirstCut = 0.1 * B;
+    if (FirstCut < 84) FirstCut = 84;
+    if (FirstCut > 65535) FirstCut = 65535;
+    for (ip = 2;  ip < NPRIMES_SMALL; ip++) {
+      p = primes_small[ip];
+      if (p >= FirstCut)
+        break;
+      if (n % p == 0)
+        return found_factor(n, p, factors);
+    }
+  }
+
+  if (n >= UVCONST(8796393022207)) { factors[0] = n; return 1; }
+  Bred = B / (Tune * Tune * Tune);
+  B2 = B*B;
+  kN = 0;
+
+  if (!sqr_tab_init) make_sqr_tab();
+  sqrtn = sqrt(n);
+
+  for (k = 1; k <= Bred; k++) {
+    if (k&1) { inc = 4; r = (k+n) % 4; }
+    else     { inc = 2; r = 1; }
+    kN += n;
+    if (kN >= UVCONST(1152921504606846976)) { factors[0] = n; return 1; }
+    kN4 = kN*4;
+
+    x = (k < SQR_TAB_SIZE) ? sqrtn * sqr_tab[k] : sqrt((double)kN);
+    a = x;
+    if ((UV)a * (UV)a == kN)
+      return found_factor(n, gcd_ui(a,n), factors);
+    x *= 2;
+    a = x + 0.9999999665;  /* Magic constant */
+    b = a % inc;
+    b = a + (inc+r-b) % inc;
+    c = (UV)b*(UV)b - kN4;
+    U = x + B2/(2*x);
+    for (a = b;  a <= U;  c += inc*(a+a+inc), a += inc) {
+      /* Check for perfect square */
+      b = c & 127;
+      if (!((b*0x8bc40d7d) & (b*0xa1e2f5d1) & 0x14020a)) {
+        b = (uint32_t) sqrt(c);
+        if (c == b*b) {
+          B2 = gcd_ui(a+b, n);
+          return found_factor(n, B2, factors);
+        }
+      }
+    }
+  }
+  if (do_trial) {
+    if (B > 65535) B = 65535;
+    /* trial divide from primes[ip] to B.  Bail to trial_factor. */
+    return trial_factor(n, factors, B);
+  }
   factors[0] = n;
   return 1;
 }
