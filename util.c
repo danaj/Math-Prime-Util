@@ -1217,7 +1217,22 @@ UV factorialmod(UV n, UV m) {  /*  n! mod m */
     if (n >= facs[nfacs-1]) return 0;
   }
 
-  if (d > 10000) {
+#if USE_MONTMATH
+  if (m & 1 && d < 40000) {
+    const uint64_t npi = mont_inverse(m),  mont1 = mont_get1(m);
+    uint64_t monti = mont1;
+    res = mont1;
+    for (i = 2; i <= d && res != 0; i++) {
+      monti = addmod(monti,mont1,m);
+      res = mont_mulmod(res,monti,m);
+    }
+    res = mont_recover(res, m);
+  } else
+#endif
+  if (d < 10000) {
+    for (i = 2; i <= d && res != 0; i++)
+      res = mulmod(res,i,m);
+  } else {
 #if 0    /* Monolithic prime walk */
     START_DO_FOR_EACH_PRIME(2, d) {
       UV k = (p > (d>>1))  ?  p  :  _powfactor(p, d, m);
@@ -1239,21 +1254,7 @@ UV factorialmod(UV n, UV m) {  /*  n! mod m */
     }
     end_segment_primes(ctx);
 #endif
-  } else
-#if USE_MONTMATH
-  if (m & 1) {
-    const uint64_t npi = mont_inverse(m),  mont1 = mont_get1(m);
-    uint64_t monti = mont1;
-    res = mont1;
-    for (i = 2; i <= d && res != 0; i++) {
-      monti = addmod(monti,mont1,m);
-      res = mont_mulmod(res,monti,m);
-    }
-    res = mont_recover(res, m);
-  } else
-#endif
-    for (i = 2; i <= d && res != 0; i++)
-      res = mulmod(res,i,m);
+  }
 
   if (d != n && res != 0) {      /* Handle backwards case */
     if (!(d&1)) res = submod(m,res,m);
