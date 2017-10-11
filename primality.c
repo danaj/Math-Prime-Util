@@ -9,7 +9,6 @@
 #define FUNC_gcd_ui 1
 #define FUNC_is_perfect_square
 #include "util.h"
-#define FUNC_monty_mr64
 #include "montmath.h"  /* Fast Montgomery math */
 
 /* Primality related functions */
@@ -151,7 +150,33 @@ int miller_rabin(UV const n, const UV *bases, int nbases)
 #if USE_MONTMATH
   MPUassert(n > 3, "MR called with n <= 3");
   if ((n & 1) == 0) return 0;
-  return monty_mr64((uint64_t)n, bases, nbases);
+  {
+    const uint64_t npi = mont_inverse(n),  mont1 = mont_get1(n);
+    uint64_t a, ma, md, u = n-1;
+    int i, j, t = 0;
+
+    while (!(u&1)) {  t++;  u >>= 1;  }
+    for (j = 0; j < nbases; j++) {
+      a = bases[j];
+      if (a < 2)  croak("Base %"UVuf" is invalid", (UV)a);
+      if (a >= n) {
+        a %= n;
+        if (a == 0 || (a == n-1 && a&1)) return 0;
+      }
+      ma = mont_geta(a,n);
+      if (a == 1 || a == n-1 || !ma) continue;
+      md = mont_powmod(ma, u, n);
+      if (md != mont1 && md != n-mont1) {
+        for (i=1; i<t; i++) {
+          md = mont_sqrmod(md, n);
+          if (md == mont1) return 0;
+          if (md == n-mont1) break;
+        }
+        if (i == t)
+          return 0;
+      }
+    }
+  }
 #else
   UV d = n-1;
   int b, r, s = 0;
@@ -181,8 +206,8 @@ int miller_rabin(UV const n, const UV *bases, int nbases)
     }
     if (r >= s)  return 0;
   }
-  return 1;
 #endif
+  return 1;
 }
 
 int BPSW(UV const n)
