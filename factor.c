@@ -54,7 +54,7 @@ static const unsigned short primes_small[] =
 /* Puts factors in factors[] and returns the number found. */
 int factor(UV n, UV *factors)
 {
-  int nfactors = 0;           /* Number of factored in factors result */
+  int nsmallfactors, nfactors = 0;   /* Number of factored in factors result */
   unsigned int f = 7;
 
   if (n > 1) {
@@ -64,7 +64,8 @@ int factor(UV n, UV *factors)
   }
 
   if (f*f <= n) {
-    UV sp = 4, lastsp = 83;
+    UV const lastsp = 83;
+    UV sp = 4;
     /* Trial division from 7 to 421.  Use 32-bit if possible. */
     if (n <= 4294967295U) {
       unsigned int un = n;
@@ -114,12 +115,13 @@ int factor(UV n, UV *factors)
   }
 #endif
 
+  nsmallfactors = nfactors;
+
   /* Perfect powers.  Factor root only once. */
   {
     int i, j, k = powerof(n);
     if (k > 1) {
       UV p = rootof(n, k);
-      int nsmallfactors = nfactors;
       nfactors = factor(p, factors+nsmallfactors);
       for (i = nfactors; i >= 0; i--)
         for (j = 0; j < k; j++)
@@ -131,7 +133,6 @@ int factor(UV n, UV *factors)
   {
   UV tofac_stack[MPU_MAX_FACTORS+1];
   int i, j, ntofac = 0;
-  int nsmallfactors = nfactors;
   int const verbose = _XS_get_verbose();
 
   /* loop over each remaining factor, until ntofac == 0 */
@@ -149,14 +150,19 @@ int factor(UV n, UV *factors)
 #endif
       UV const sq_rounds = 200000; /* 20k 91%, 40k 98%, 80k 99.9%, 120k 99.99%*/
 
-      if (!split_success && nbits <= 38) {
+      /* For small enough inputs, it is a little faster to use HOLF or Lehman. */
+      if (!split_success && nbits <= 32) { /* This should always succeed */
+        split_success = holf_factor(n, tofac_stack+ntofac, 1000000)-1;
+        if (verbose) printf("holf %d\n", split_success);
+      }
+      if (!split_success && nbits <= 38) { /* This will succeed about 50% of the time */
         split_success = lehman_factor(n, tofac_stack+ntofac, 0)-1;
         if (verbose) printf("lehman %d\n", split_success);
       }
       /* 99.7% of 32-bit, 94% of 64-bit random inputs factored here */
       if (!split_success && br_rounds > 0) {
         split_success = pbrent_factor(n, tofac_stack+ntofac, br_rounds, 3)-1;
-        if (verbose) { if (split_success) printf("pbrent 1:  %"UVuf" %"UVuf"\n", tofac_stack[ntofac], tofac_stack[ntofac+1]); else printf("pbrent 0\n"); }
+        if (verbose) printf("pbrent %d\n", split_success);
       }
 #if USE_MONTMATH
       if (!split_success) {
@@ -459,12 +465,18 @@ int holf_factor(UV n, UV *factors, UV rounds)
 
   MPUassert( (n >= 3) && ((n%2) != 0) , "bad n in holf_factor");
 
+  /* We skip the perfect-square test for s in the loop, so we
+   * will never succeed if n is a perfect square.  Test that now. */
+  if (is_perfect_square(n))
+    return found_factor(n, isqrt(n), factors);
+
   if (n <= (UV_MAX >> 6)) {    /* Try with premultiplier first */
     UV npre = n * ( (n <= (UV_MAX >> 13)) ? 720 :
                     (n <= (UV_MAX >> 11)) ? 480 :
                     (n <= (UV_MAX >> 10)) ? 360 :
                     (n <= (UV_MAX >>  8)) ?  60 : 30 );
     UV ni = npre;
+#if 0                              /* Straightforward */
     while (rounds--) {
       s = isqrt(ni) + 1;
       m = (s*s) - ni;
@@ -476,6 +488,23 @@ int holf_factor(UV n, UV *factors, UV rounds)
       if (ni >= (ni+npre)) break;
       ni += npre;
     }
+#else                              /* More optimized */
+    while (rounds--) {
+      s = 1 + (UV)sqrt((double)ni);
+      m = (s*s) - ni;
+      f = m & 127;
+      if (!((f*0x8bc40d7d) & (f*0xa1e2f5d1) & 0x14020a)) {
+        f = (UV)sqrt((double)m);
+        if (m == f*f) {
+          f = gcd_ui(n, s - f);
+          if (f > 1 && f < n)
+            return found_factor(n, f, factors);
+        }
+      }
+      if (ni >= (ni+npre)) break;
+      ni += npre;
+    }
+#endif
   }
 
   for (i = 1; i <= rounds; i++) {
@@ -1060,13 +1089,14 @@ int squfof_factor(UV n, UV *factors, UV rounds)
 static int sqr_tab_init = 0;
 static double sqr_tab[SQR_TAB_SIZE];
 static void make_sqr_tab(void) {
-   int i;
-   for (i = 0; i < SQR_TAB_SIZE; i++)
-     sqr_tab[i] = sqrt((double)i);
-   sqr_tab_init = 1;
+  int i;
+  for (i = 0; i < SQR_TAB_SIZE; i++)
+    sqr_tab[i] = sqrt((double)i);
+  sqr_tab_init = 1;
 }
 
-/* Lehman from Ben Buhrow and Warren D. Smith. */
+/* Lehman written and tuned by Warren D. Smith.
+ * Revised by Ben Buhrow and Dana Jacobsen. */
 int lehman_factor(UV n, UV *factors, int do_trial) {
   const double Tune = ((n >> 31) >> 5) ? 3.5 : 5.0;
   double x, sqrtn;
@@ -1129,7 +1159,11 @@ int lehman_factor(UV n, UV *factors, int do_trial) {
   }
   if (do_trial) {
     if (B > 65535) B = 65535;
-    /* trial divide from primes[ip] to B.  Bail to trial_factor. */
+    /* trial divide from primes[ip] to B.  We could:
+     *   1) use table of 6542 shorts for the primes.
+     *   2) use a wheel
+     *   3) bail to trial_factor which duplicates some work
+     */
     return trial_factor(n, factors, B);
   }
   factors[0] = n;
