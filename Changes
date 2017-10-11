@@ -28,6 +28,10 @@ Revision history for Perl module Math::Prime::Util
 
     - Speedup for factoring by running more Pollard-Rho-Brent.
 
+    - Updated x86_64 asm addmod.
+
+    - All new Montgomery math.  Uses mulredc asm from Ben Buhrow.
+      Faster and smaller.
 
 0.67 2017-09-23
 
