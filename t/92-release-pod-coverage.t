@@ -91,7 +91,8 @@ sub mpu_public_regex {
       chebyshev_theta chebyshev_psi
       divisor_sum carmichael_lambda kronecker hclassno
       ramanujan_tau ramanujan_sum
-      binomial factorial stirling znorder znprimroot znlog legendre_phi
+      binomial stirling znorder znprimroot znlog legendre_phi
+      factorial factorialmod
       ExponentialIntegral LogarithmicIntegral RiemannZeta RiemannR LambertW Pi
       irand irand64 drand urandomb urandomm csrand random_bytes entropy_bytes
   );
@@ -100,7 +101,7 @@ sub mpu_public_regex {
 }
 
 sub mpu_factor_regex {
-  my @funcs = (qw/trial_factor fermat_factor holf_factor squfof_factor prho_factor pbrent_factor pminus1_factor pplus1_factor ecm_factor/);
+  my @funcs = (qw/trial_factor fermat_factor holf_factor lehman_factor squfof_factor prho_factor pbrent_factor pminus1_factor pplus1_factor ecm_factor/);
   my $pattern = '^(' . join('|', @funcs) . ')$';
   return qr/$pattern/;
 }

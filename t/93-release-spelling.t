@@ -38,6 +38,7 @@ add_stopwords(qw/bigint bigints
                  vecsum vecprod vecmin vecmax vecreduce vecextract
                  vecall vecany vecnone vecnotall vecfirst vecfirstidx
                  sqrtint logint rootint
+                 factorialmod
                  todigits todigitstring fromdigits sumdigits hammingweight
                  lucasu lucasv
                  pp/);

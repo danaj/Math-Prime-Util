@@ -76,7 +76,7 @@ our %EXPORT_TAGS = (all  => [ @EXPORT_OK ],
                    );
 
 # These are only exported if specifically asked for
-push @EXPORT_OK, (qw/trial_factor fermat_factor holf_factor squfof_factor prho_factor pbrent_factor pminus1_factor pplus1_factor ecm_factor rand srand/);
+push @EXPORT_OK, (qw/trial_factor fermat_factor holf_factor lehman_factor squfof_factor prho_factor pbrent_factor pminus1_factor pplus1_factor ecm_factor rand srand/);
 
 my %_Config;
 my %_GMPfunc;  # List of available MPU::GMP functions
@@ -955,7 +955,7 @@ __END__
 
 =encoding utf8
 
-=for stopwords Möbius Deléglise Bézout uniqued k-tuples von SoE primesieve primegen libtommath pari yafu fonction qui compte le nombre nombres voor PhD superset sqrt(N) gcd(A^M k-th (10001st untruncated OpenPFGW gmpy2 Über Primzahl-Zählfunktion n-te und verallgemeinerte multiset compositeness GHz significand TestU01 subfactorial
+=for stopwords Möbius Deléglise Bézout uniqued k-tuples von SoE primesieve primegen libtommath pari yafu fonction qui compte le nombre nombres voor PhD superset sqrt(N) gcd(A^M k-th (10001st untruncated OpenPFGW gmpy2 Über Primzahl-Zählfunktion n-te und verallgemeinerte multiset compositeness GHz significand TestU01 subfactorial s-gonal
 
 =for test_synopsis use v5.14;  my($k,$x);
 
@@ -2917,7 +2917,7 @@ and C<n % v != 1>, then C<v> is returned.  Otherwise 0.
 
 For n prime, this is the L<OEIS series A063980|http://oeis.org/A063980>.
 
-=head is_polygonal
+=head2 is_polygonal
 
 Given integers C<x> and C<s>, return 1 if x is an s-gonal number, 0 otherwise.
 C<s> must be greater than 2.
@@ -3227,9 +3227,9 @@ This is much faster than computing the large C<factorial(n)> followed
 by a mod operation.
 
 While very efficient, this is not state of the art.  Currently,
-Fredrik Johansson's fast multipoint polynomial evaluation method as
-used in FLINT is the fastest known method.  This becomes noticible for
-C<n> E<gt> C<10^8> or so, and the O(n^.5) vs. O(n) complexity makes
+Fredrik Johansson's fast multi-point polynomial evaluation method as
+used in FLINT is the fastest known method.  This becomes noticeable for
+C<n> E<gt> C<10^8> or so, and the O(n^.5) versus O(n) complexity makes
 it quite extreme as the input gets larger.
 
 =head2 binomial
@@ -4061,6 +4061,18 @@ the input, is returned.  This uses Hart's One Line Factorization with no
 premultiplier.  It is an interesting alternative to Fermat's algorithm,
 and there are some inputs it can rapidly factor.  Overall it has the
 same advantages and disadvantages as Fermat's method.
+
+=head2 lehman_factor
+
+  my @factors = lehman_factor($n);
+
+Produces factors, not necessarily prime, of the positive number input.  An
+optional argument, defaulting to 0 (false), indicates whether to run trial
+division.  Without trial division, is possible the function will be unable
+to find a factor, in which case a single element, the input, is returned.
+
+This is Warren D. Smith's Lehman core with minor modifications.  It is
+limited to 42-bit inputs: C<n E<lt> 8796393022208>.
 
 =head2 squfof_factor
 

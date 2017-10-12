@@ -35,6 +35,26 @@
 #include "ramanujan_primes.h"
 #include "prime_nth_count.h"
 
+#ifdef FACTORING_HARNESSES
+#include <sys/time.h>
+static double my_difftime (struct timeval * start, struct timeval * end) {
+  double secs, usecs;
+  if (start->tv_sec == end->tv_sec) {
+    secs = 0;
+    usecs = end->tv_usec - start->tv_usec;
+  } else {
+    usecs = 1000000 - start->tv_usec;
+    secs = end->tv_sec - (start->tv_sec + 1);
+    usecs += end->tv_usec;
+    if (usecs >= 1000000) {
+      usecs -= 1000000;
+      secs += 1;
+    }
+  }
+  return secs + usecs / 1000000.;
+}
+#endif
+
 #if BITS_PER_WORD == 64
   #if defined(_MSC_VER)
     #include <stdlib.h>
@@ -775,16 +795,17 @@ trial_factor(IN UV n, ...)
     fermat_factor = 1
     holf_factor = 2
     squfof_factor = 3
-    prho_factor = 4
-    pplus1_factor = 5
-    pbrent_factor = 6
-    pminus1_factor = 7
-    ecm_factor = 8
+    lehman_factor = 4
+    prho_factor = 5
+    pplus1_factor = 6
+    pbrent_factor = 7
+    pminus1_factor = 8
+    ecm_factor = 9
   PREINIT:
     UV arg1, arg2;
     static const UV default_arg1[] =
-       {0,     64000000, 8000000, 4000000, 4000000, 200, 4000000, 1000000};
-     /* Trial, Fermat,   Holf,    SQUFOF,  PRHO,    P+1, Brent,    P-1 */
+       {0,     64000000, 8000000, 4000000, 0,   4000000, 200, 4000000, 1000000};
+     /* Trial, Fermat,   Holf,    SQUFOF,  Lmn, PRHO,    P+1, Brent,    P-1 */
   PPCODE:
     if (n == 0)  XSRETURN_UV(0);
     if (ix == 8) {  /* We don't have an ecm_factor, call PP. */
@@ -808,11 +829,12 @@ trial_factor(IN UV n, ...)
         case 1:  nfactors = fermat_factor (n, factors, arg1);  break;
         case 2:  nfactors = holf_factor   (n, factors, arg1);  break;
         case 3:  nfactors = squfof_factor (n, factors, arg1);  break;
-        case 4:  nfactors = prho_factor   (n, factors, arg1);  break;
-        case 5:  nfactors = pplus1_factor (n, factors, arg1);  break;
-        case 6:  if (items < 3) arg2 = 1;
+        case 4:  nfactors = lehman_factor (n, factors, arg1);  break;
+        case 5:  nfactors = prho_factor   (n, factors, arg1);  break;
+        case 6:  nfactors = pplus1_factor (n, factors, arg1);  break;
+        case 7:  if (items < 3) arg2 = 1;
                  nfactors = pbrent_factor (n, factors, arg1, arg2);  break;
-        case 7:
+        case 8:
         default: if (items < 3) arg2 = 10*arg1;
                  nfactors = pminus1_factor(n, factors, arg1, arg2);  break;
       }
@@ -2859,3 +2881,73 @@ PPCODE:
     if (ret_true)  XSRETURN_YES;
     else           XSRETURN_NO;
 }
+
+#ifdef FACTORING_HARNESSES
+void
+factor_test_harness1(...)
+  PROTOTYPE: @
+  PPCODE:
+    /* Pass in a big array of numbers, we factor them in a timed loop */
+    {
+      UV res, factors[MPU_MAX_FACTORS+1], exponents[MPU_MAX_FACTORS+1], *comp;
+      struct timeval gstart, gstop;
+      double t_time;
+      int i, j, k, correct, nf, num = items;
+
+      New(0, comp, items+1, UV);
+      for (i = 0; i < items; i++)
+        comp[i] = my_svuv(ST(i));
+      gettimeofday(&gstart, NULL);
+      for (j = 0; j < 1; j++) {
+        correct = 0;
+        for (i = 0; i < num; i++) {
+          nf = factor(comp[i], factors);
+          //nf = squfof_factor(comp[i], factors, 140000);
+          //nf = pbrent_factor(comp[i], factors, 500000, 3);
+          //nf = holf_factor(comp[i], factors, 1000000);
+          //nf = lehman_factor(comp[i], factors, 1);
+          //nf = lehman_factor(comp[i], factors, 0);  if (nf < 2) nf=pbrent_factor(comp[i], factors, 500000, 3);
+          //nf = factor63(comp[i], factors);
+          //nf = pminus1_factor(comp[i], factors, 1000,10000);
+          //nf = prho_factor(comp[i], factors, 10000);
+          if (nf >= 2) {
+            for (res = factors[0]; k = 1; k < nf; k++)
+              res *= factors[k];
+            if (res == comp[i])
+              correct++;
+          }
+        }
+      }
+      gettimeofday(&gstop, NULL);
+      t_time = my_difftime(&gstart, &gstop);
+      Safefree(comp);
+      printf("factoring got %d of %d correct in %2.2f sec\n", correct, num, t_time);
+      printf("percent correct = %.3f\n", 100.0*(double)correct / (double)num);
+      printf("average time per input = %1.4f ms\n", 1000 * t_time / (double)num);
+      XSRETURN_UV(correct);
+    }
+
+void
+factor_test_harness2(IN int count, IN int bits = 63)
+  PREINIT:
+    dMY_CXT;
+  PPCODE:
+    /* We'll factor <count> <bits>-bit numbers */
+    {
+      UV factors[MPU_MAX_FACTORS+1], exponents[MPU_MAX_FACTORS+1];
+      FILE *fid = 0;  // fopen("results.txt", "w");
+      uint64_t n, state = 28953;
+      int i, nfactors, totfactors = 0;
+      /* Use Knuth MMIX -- simple and no worse than Chacha20 for this */
+      for (i = 0; i < count; i++) {
+        state = 6364136223846793005ULL * state + 1442695040888963407ULL;
+        n = state >> (64-bits);
+        nfactors = factor_exp(n, factors, exponents);
+        if (fid) fprintf(fid, "%llu has %d factors\n", n, nfactors);
+        totfactors += nfactors;
+      }
+      if (fid) fclose(fid);
+      XSRETURN_IV(totfactors);
+    }
+
+#endif

@@ -126,10 +126,27 @@
 
 - Destroy csprng context on thread destruction.
 
-- Pari/GP:  permorder, permsign.    istotient, ispowerful, isfundamental.
-
-- formultiperm doesn't completely cover lastfor
+- Pari/GP:  permorder, permsign.    ispowerful, isfundamental.
 
 - submit bug report for Perl error in 30b8ab3
 
-- Add Math::GMPq and Math::AnyNum as bigint classes?
+- formultiperm doesn't completely cover lastfor
+  mpu 'formultiperm { lastfor; say join("",@_) } [split(//,"s")];'
+  lastfor called outside a loop at -e line 1.
+  mpu 'formultiperm { lastfor; say join("",@_) } [split(//,"se")];'
+  lastfor called outside a loop at -e line 1.
+  mpu 'formultiperm { lastfor; say join("",@_) } [split(//,"serpe")];'
+  eeprs
+  peers
+  lastfor called outside a loop at -e line 1.
+
+- mpu 'use Math::Prime::Util::PP; Math::Prime::Util::PP::forperm(sub{lastfor;say "@_";},3)'
+  lastfor called outside a loop at -e line 1.
+
+- We need a new "start_a_loop" function that returns current lastfor, then an
+  "exit_a_loop" one that undoes it.  Basically exporting the XS start/end.
+
+- istotient from Pari/GP.  We could be more ambitious and consider returning
+  the count and/or full list of totients.
+
+- make a uint128_t version of montmath.  Needs to handle 64-bit.
