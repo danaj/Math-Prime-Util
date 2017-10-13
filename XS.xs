@@ -505,7 +505,8 @@ UV _is_csprng_well_seeded()
     _XS_get_secure = 3
     _XS_set_secure = 4
     _get_forexit = 5
-    _get_prime_cache_size = 6
+    _start_for_loop = 6
+    _get_prime_cache_size = 7
   CODE:
     switch (ix) {
       case 0:  { dMY_CXT; RETVAL = is_csprng_well_seeded(MY_CXT.randcxt); } break;
@@ -514,7 +515,8 @@ UV _is_csprng_well_seeded()
       case 3:  RETVAL = _XS_get_secure(); break;
       case 4:  _XS_set_secure(); RETVAL = 1; break;
       case 5:  { dMY_CXT; RETVAL = MY_CXT.forexit; } break;
-      case 6:
+      case 6:  { dMY_CXT; MY_CXT.forcount++; RETVAL = MY_CXT.forexit; MY_CXT.forexit = 0; } break;
+      case 7:
       default: RETVAL = get_prime_cache(0,0); break;
     }
   OUTPUT:
@@ -527,7 +529,7 @@ prime_precalc(IN UV n)
   ALIAS:
     _XS_set_verbose = 1
     _XS_set_callgmp = 2
-    _set_forexit = 3
+    _end_for_loop = 3
   PPCODE:
     PUTBACK; /* SP is never used again, the 3 next func calls are tailcall
     friendly since this XSUB has nothing to do after the 3 calls return */
@@ -536,7 +538,7 @@ prime_precalc(IN UV n)
       case 1:  _XS_set_verbose(n);  break;
       case 2:  _XS_set_callgmp(n);  break;
       case 3:
-      default: { dMY_CXT; MY_CXT.forexit = (n ? 1 : 0); } break;
+      default: { dMY_CXT; MY_CXT.forcount--; MY_CXT.forexit = n; } break;
     }
     return; /* skip implicit PUTBACK */
 

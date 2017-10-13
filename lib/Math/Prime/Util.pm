@@ -531,8 +531,7 @@ sub _generic_forprimes {
   _validate_positive_integer($beg);
   _validate_positive_integer($end);
   $beg = 2 if $beg < 2;
-  my $oldexitloop = Math::Prime::Util::_get_forexit();
-  Math::Prime::Util::_set_forexit(0);
+  my $oldforexit = Math::Prime::Util::_start_for_loop();
   {
     my $pp;
     local *_ = \$pp;
@@ -542,7 +541,7 @@ sub _generic_forprimes {
       last if Math::Prime::Util::_get_forexit();
     }
   }
-  Math::Prime::Util::_set_forexit($oldexitloop);
+  Math::Prime::Util::_end_for_loop($oldforexit);
 }
 
 sub _generic_forcomposites {
@@ -552,8 +551,7 @@ sub _generic_forcomposites {
   _validate_positive_integer($end);
   $beg = 4 if $beg < 4;
   $end = Math::BigInt->new(''.~0) if ref($end) ne 'Math::BigInt' && $end == ~0;
-  my $oldexitloop = Math::Prime::Util::_get_forexit();
-  Math::Prime::Util::_set_forexit(0);
+  my $oldforexit = Math::Prime::Util::_start_for_loop();
   {
     my $pp;
     local *_ = \$pp;
@@ -567,7 +565,7 @@ sub _generic_forcomposites {
       last if Math::Prime::Util::_get_forexit();
     }
   }
-  Math::Prime::Util::_set_forexit($oldexitloop);
+  Math::Prime::Util::_end_for_loop($oldforexit);
 }
 
 sub _generic_foroddcomposites {
@@ -578,8 +576,7 @@ sub _generic_foroddcomposites {
   $beg = 9 if $beg < 9;
   $beg++ unless $beg & 1;
   $end = Math::BigInt->new(''.~0) if ref($end) ne 'Math::BigInt' && $end == ~0;
-  my $oldexitloop = Math::Prime::Util::_get_forexit();
-  Math::Prime::Util::_set_forexit(0);
+  my $oldforexit = Math::Prime::Util::_start_for_loop();
   {
     my $pp;
     local *_ = \$pp;
@@ -593,15 +590,14 @@ sub _generic_foroddcomposites {
       last if Math::Prime::Util::_get_forexit();
     }
   }
-  Math::Prime::Util::_set_forexit($oldexitloop);
+  Math::Prime::Util::_end_for_loop($oldforexit);
 }
 
 sub _generic_fordivisors {
   my($sub, $n) = @_;
   _validate_positive_integer($n);
   my @divisors = divisors($n);
-  my $oldexitloop = Math::Prime::Util::_get_forexit();
-  Math::Prime::Util::_set_forexit(0);
+  my $oldforexit = Math::Prime::Util::_start_for_loop();
   {
     my $pp;
     local *_ = \$pp;
@@ -611,7 +607,7 @@ sub _generic_fordivisors {
       last if Math::Prime::Util::_get_forexit();
     }
   }
-  Math::Prime::Util::_set_forexit($oldexitloop);
+  Math::Prime::Util::_end_for_loop($oldforexit);
 }
 
 sub formultiperm (&$) {    ## no critic qw(ProhibitSubroutinePrototypes)

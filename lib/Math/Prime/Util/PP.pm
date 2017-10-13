@@ -6161,8 +6161,7 @@ sub _forcompositions {
   $sub->() if $n == 0 && $minn <= 1;
   return if $n < $minn || $minn > $maxn || $mina > $maxa || $maxn <= 0 || $maxa <= 0;
 
-  my $oldexitloop = Math::Prime::Util::_get_forexit();
-  Math::Prime::Util::_set_forexit(0);
+  my $oldforexit = Math::Prime::Util::_start_for_loop();
   my ($x, $y, $r, $k);
   my @a = (0) x ($n);
   $k = 1;
@@ -6200,7 +6199,7 @@ sub _forcompositions {
     last if Math::Prime::Util::_get_forexit();
     $sub->(@a[0 .. $k]);
   }
-  Math::Prime::Util::_set_forexit($oldexitloop);
+  Math::Prime::Util::_end_for_loop($oldforexit);
 }
 sub forcomb {
   my($sub, $n, $k) = @_;
@@ -6212,8 +6211,7 @@ sub forcomb {
   }
   return $sub->() if $k == 0;
   return if $k > $n || $n == 0;
-  my $oldexitloop = Math::Prime::Util::_get_forexit();
-  Math::Prime::Util::_set_forexit(0);
+  my $oldforexit = Math::Prime::Util::_start_for_loop();
   my @c = 0 .. $k-1;
   while (1) {
     $sub->(@c);
@@ -6225,7 +6223,7 @@ sub forcomb {
     $c[$i]++;
     while (++$i < $k) { $c[$i] = $c[$i-1] + 1; }
   }
-  Math::Prime::Util::_set_forexit($oldexitloop);
+  Math::Prime::Util::_end_for_loop($oldforexit);
 }
 sub _forperm {
   my($sub, $n, $all_perm) = @_;
@@ -6233,8 +6231,7 @@ sub _forperm {
   my @c = reverse 0 .. $k-1;
   my $inc = 0;
   my $send = 1;
-  my $oldexitloop = Math::Prime::Util::_get_forexit();
-  Math::Prime::Util::_set_forexit(0);
+  my $oldforexit = Math::Prime::Util::_start_for_loop();
   while (1) {
     if (!$all_perm) {   # Derangements via simple filtering.
       $send = 1;
@@ -6261,7 +6258,7 @@ sub _forperm {
     @c[$j,$m] = @c[$m,$j];
     @c[0..$j-1] = reverse @c[0..$j-1];
   }
-  Math::Prime::Util::_set_forexit($oldexitloop);
+  Math::Prime::Util::_end_for_loop($oldforexit);
 }
 sub forperm {
   my($sub, $n, $k) = @_;
