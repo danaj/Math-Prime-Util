@@ -26,15 +26,18 @@ Revision history for Perl module Math::Prime::Util
       results in an integer string, to intify correctly.  This should give
       a large speedup for these types.
 
-    - Add Lehman factoring core.  API may change (not exported by default).
+    - Factoring native integers is 1.2x - 2x faster.  This is due to a
+      number of changes.
 
-    - Speedup for factoring by running more Pollard-Rho-Brent, revising
-      SQUFOF, updating HOLF, updating recipe, adding yafu's Lehman.
-
-    - Updated x86_64 asm addmod.
+    - Add Lehman factoring core.  Since this is not exported or used by
+      default, the API for factor_lehman may change.
 
     - All new Montgomery math.  Uses mulredc asm from Ben Buhrow.
-      Faster and smaller.
+      Faster and smaller.  Most primality and factoring code 10% faster.
+
+    - Speedup for factoring by running more Pollard-Rho-Brent, revising
+      SQUFOF, updating HOLF, updating recipe.
+
 
 0.67 2017-09-23
 

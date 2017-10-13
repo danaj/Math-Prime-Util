@@ -150,14 +150,12 @@ int factor(UV n, UV *factors)
 #endif
       UV const sq_rounds = 200000; /* 20k 91%, 40k 98%, 80k 99.9%, 120k 99.99%*/
 
-      /* For small enough inputs, it is a little faster to use HOLF or Lehman. */
-      if (!split_success && nbits <= 32) { /* This should always succeed */
+      /* For small semiprimes the fastest solution is HOLF under 32, then
+       * Lehman (no trial) under 38.  However on random inputs, HOLF is
+       * best only under 28-30 bits, and adding Lehman is always slower. */
+      if (!split_success && nbits <= 28) { /* This should always succeed */
         split_success = holf_factor(n, tofac_stack+ntofac, 1000000)-1;
         if (verbose) printf("holf %d\n", split_success);
-      }
-      if (!split_success && nbits <= 38) { /* This will succeed about 50% of the time */
-        split_success = lehman_factor(n, tofac_stack+ntofac, 0)-1;
-        if (verbose) printf("lehman %d\n", split_success);
       }
       /* 99.7% of 32-bit, 94% of 64-bit random inputs factored here */
       if (!split_success && br_rounds > 0) {

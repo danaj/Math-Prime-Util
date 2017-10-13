@@ -2911,7 +2911,7 @@ factor_test_harness1(...)
           //nf = pminus1_factor(comp[i], factors, 1000,10000);
           //nf = prho_factor(comp[i], factors, 10000);
           if (nf >= 2) {
-            for (res = factors[0]; k = 1; k < nf; k++)
+            for (res = factors[0], k = 1; k < nf; k++)
               res *= factors[k];
             if (res == comp[i])
               correct++;
