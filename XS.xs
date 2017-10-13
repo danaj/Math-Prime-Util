@@ -2894,8 +2894,9 @@ factor_test_harness1(...)
       double t_time;
       int i, j, k, correct, nf, num = items;
 
-      New(0, comp, items+1, UV);
-      for (i = 0; i < items; i++)
+      //num = (items > 100000) ? 100000 : items;
+      New(0, comp, num, UV);
+      for (i = 0; i < num; i++)
         comp[i] = my_svuv(ST(i));
       gettimeofday(&gstart, NULL);
       for (j = 0; j < 1; j++) {
@@ -2903,7 +2904,7 @@ factor_test_harness1(...)
         for (i = 0; i < num; i++) {
           nf = factor(comp[i], factors);
           //nf = squfof_factor(comp[i], factors, 140000);
-          //nf = pbrent_factor(comp[i], factors, 500000, 3);
+          //nf = pbrent_factor(comp[i], factors, 500000, 1);
           //nf = holf_factor(comp[i], factors, 1000000);
           //nf = lehman_factor(comp[i], factors, 1);
           //nf = lehman_factor(comp[i], factors, 0);  if (nf < 2) nf=pbrent_factor(comp[i], factors, 500000, 3);

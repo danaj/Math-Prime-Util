@@ -159,12 +159,12 @@ int factor(UV n, UV *factors)
       }
       /* 99.7% of 32-bit, 94% of 64-bit random inputs factored here */
       if (!split_success && br_rounds > 0) {
-        split_success = pbrent_factor(n, tofac_stack+ntofac, br_rounds, 3)-1;
+        split_success = pbrent_factor(n, tofac_stack+ntofac, br_rounds, 1)-1;
         if (verbose) printf("pbrent %d\n", split_success);
       }
 #if USE_MONTMATH
       if (!split_success) {
-        split_success = pbrent_factor(n, tofac_stack+ntofac, 2*br_rounds, 5)-1;
+        split_success = pbrent_factor(n, tofac_stack+ntofac, 2*br_rounds, 3)-1;
         if (verbose) printf("second pbrent %d\n", split_success);
       }
 #endif
@@ -182,7 +182,7 @@ int factor(UV n, UV *factors)
           split_success = prho_factor(n, tofac_stack+ntofac, 120000)-1;
           if (verbose) printf("long prho %d\n", split_success);
           if (!split_success) {
-            split_success = pbrent_factor(n, tofac_stack+ntofac, 500000, 7)-1;
+            split_success = pbrent_factor(n, tofac_stack+ntofac, 500000, 5)-1;
             if (verbose) printf("long pbrent %d\n", split_success);
           }
         }
@@ -524,34 +524,54 @@ int holf_factor(UV n, UV *factors, UV rounds)
 
 
 #if USE_MONTMATH
+#define ABSDIFF(x,y)  (x>y) ? x-y : y-x
 /* Pollard / Brent.  Brent's modifications to Pollard's Rho.  Maybe faster. */
 int pbrent_factor(UV n, UV *factors, UV rounds, UV a)
 {
-  UV f, m, r, Xi, Xm;
-  const UV inner = (n <= 4000000000UL) ? 32 : ((n >> 31) >> 12) ? 256 : 160;
-  int fails = 6;
+  UV const nbits = BITS_PER_WORD - clz(n);
+  const UV inner = (nbits <= 31) ? 32 : (nbits <= 35) ? 64 : (nbits <= 40) ? 160 : (nbits <= 52) ? 256 : 320;
+  UV f, m, r, rleft, Xi, Xm, Xs;
+  int irounds, fails = 6;
   const uint64_t npi = mont_inverse(n),  mont1 = mont_get1(n);
-  Xi = Xm = mont_get2(n);
-  a = mont_geta(a,n);
-  MPUassert( (n >= 3) && ((n%2) != 0) , "bad n in pbrent_factor");
 
-  r = 1;
-  f = 1;
+  MPUassert( (n >= 3) && ((n%2) != 0) , "bad n in pbrent_factor");
+  r = f = 1;
+  Xi = Xm = mont1;
+  a = mont_geta(a,n);
+
   while (rounds > 0) {
-    UV rleft = (r > rounds) ? rounds : r;
-    UV saveXi = Xi;
+    rleft = (r > rounds) ? rounds : r;
+    Xm = Xi;
     /* Do rleft rounds, inner at a time */
     while (rleft > 0) {
-      UV dorounds = (rleft > inner) ? inner : rleft;
-      saveXi = Xi;
-      rleft -= dorounds;
-      rounds -= dorounds;
-      Xi = mont_sqrmod(Xi,n);  Xi = addmod(Xi,a,n);
-      m = (Xi>Xm) ? Xi-Xm : Xm-Xi;
-      while (--dorounds > 0) {         /* Now do inner-1 more iterations */
-        Xi = mont_sqrmod(Xi,n);  Xi = addmod(Xi,a,n);
-        f = (Xi>Xm) ? Xi-Xm : Xm-Xi;
-        m = mont_mulmod(m, f, n);
+      irounds = (rleft > (UV)inner) ? inner : rleft;
+      rleft -= irounds;
+      rounds -= irounds;
+      Xs = Xi;
+      if (n < (1ULL << 63)) {
+        Xi = mont_mulmod63(Xi,Xi+a,n);
+        m = ABSDIFF(Xi,Xm);
+        while (--irounds > 0) {
+          Xi = mont_mulmod63(Xi,Xi+a,n);
+          f = ABSDIFF(Xi,Xm);
+          m = mont_mulmod63(m, f, n);
+        }
+      } else if (a == mont1) {
+        Xi = mont_mulmod64(Xi,Xi+a,n);
+        m = ABSDIFF(Xi,Xm);
+        while (--irounds > 0) {
+          Xi = mont_mulmod64(Xi,Xi+a,n);
+          f = ABSDIFF(Xi,Xm);
+          m = mont_mulmod64(m, f, n);
+        }
+      } else {
+        Xi = addmod(mont_mulmod64(Xi,Xi,n), a, n);
+        m = ABSDIFF(Xi,Xm);
+        while (--irounds > 0) {
+          Xi = addmod(mont_mulmod64(Xi,Xi,n), a, n);
+          f = ABSDIFF(Xi,Xm);
+          m = mont_mulmod64(m, f, n);
+        }
       }
       f = gcd_ui(m, n);
       if (f != 1)
@@ -560,20 +580,22 @@ int pbrent_factor(UV n, UV *factors, UV rounds, UV a)
     /* If f == 1, then we didn't find a factor.  Move on. */
     if (f == 1) {
       r *= 2;
-      Xm = Xi;
       continue;
     }
     if (f == n) {  /* back up, with safety */
-      Xi = saveXi;
+      Xi = Xs;
       do {
-        Xi = mont_sqrmod(Xi,n);  Xi = addmod(Xi,a,n);
-        f = gcd_ui((Xi>Xm) ? Xi-Xm : Xm-Xi, n);
+        if (n < (1ULL << 63) || a == mont1)
+          Xi = mont_mulmod(Xi,Xi+a,n);
+        else
+          Xi = addmod(mont_mulmod(Xi,Xi,n),a,n);
+        m = ABSDIFF(Xi,Xm);
+        f = gcd_ui(m, n);
       } while (f == 1 && r-- != 0);
     }
     if (f == 0 || f == n) {
       if (fails-- <= 0) break;
-      Xm = addmod(Xm, 2, n);
-      Xi = Xm;
+      Xi = Xm = mont1;
       a = addmod(a, mont_geta(11,n), n);
       continue;
     }
