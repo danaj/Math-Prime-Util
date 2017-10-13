@@ -21,6 +21,10 @@
 #define mont_powmod(a,k,n)        _powredc(a,k,mont1,n,npi)
 #define mont_recover(a,n)         mont_mulmod(a,1,n)
 
+/* Save one branch if desired by calling directly */
+#define mont_mulmod63(a,b,n)        _mulredc63(a,b,n,npi)
+#define mont_mulmod64(a,b,n)        _mulredc64(a,b,n,npi)
+
 /* See https://arxiv.org/pdf/1303.0328.pdf for lots of details on this.
  * The 128-entry table solution is about 20% faster */
 static INLINE uint64_t mont_inverse(const uint64_t n) {
@@ -32,9 +36,25 @@ static INLINE uint64_t mont_inverse(const uint64_t n) {
   return (uint64_t)0 - ret;
 }
 
-static INLINE uint64_t _mulredc(uint64_t a, uint64_t b, uint64_t n, uint64_t npi) {
-  /* asm from Ben Buhrow */
-  if (n & 0x8000000000000000ULL) {
+/* MULREDC asm from Ben Buhrow */
+static INLINE uint64_t _mulredc63(uint64_t a, uint64_t b, uint64_t n, uint64_t npi) {
+    asm("mulq %2 \n\t"
+        "movq %%rax, %%r10 \n\t"
+        "movq %%rdx, %%r11 \n\t"
+        "mulq %3 \n\t"
+        "mulq %4 \n\t"
+        "addq %%r10, %%rax \n\t"
+        "adcq %%r11, %%rdx \n\t"
+        "xorq %%rax, %%rax \n\t"
+        "subq %4, %%rdx \n\t"
+        "cmovc %4, %%rax \n\t"
+        "addq %%rdx, %%rax \n\t"
+        : "=a"(a)
+        : "0"(a), "r"(b), "r"(npi), "r"(n)
+        : "rdx", "r10", "r11", "cc");
+  return a;
+}
+static INLINE uint64_t _mulredc64(uint64_t a, uint64_t b, uint64_t n, uint64_t npi) {
     asm("mulq %1 \n\t"
         "movq %%rax, %%r10 \n\t"
         "movq %%rdx, %%r11 \n\t"
@@ -51,24 +71,9 @@ static INLINE uint64_t _mulredc(uint64_t a, uint64_t b, uint64_t n, uint64_t npi
         : "+&a"(a)
         : "r"(b), "r"(npi), "r"(n)
         : "rdx", "r10", "r11", "r12", "cc");
-  } else {
-    asm("mulq %2 \n\t"
-        "movq %%rax, %%r10 \n\t"
-        "movq %%rdx, %%r11 \n\t"
-        "mulq %3 \n\t"
-        "mulq %4 \n\t"
-        "addq %%r10, %%rax \n\t"
-        "adcq %%r11, %%rdx \n\t"
-        "xorq %%rax, %%rax \n\t"
-        "subq %4, %%rdx \n\t"
-        "cmovc %4, %%rax \n\t"
-        "addq %%rdx, %%rax \n\t"
-        : "=a"(a)
-        : "0"(a), "r"(b), "r"(npi), "r"(n)
-        : "rdx", "r10", "r11", "cc");
-  }
   return a;
 }
+#define _mulredc(a,b,n,npi) ((n & 0x8000000000000000ULL) ? _mulredc64(a,b,n,npi) : _mulredc63(a,b,n,npi))
 
 static INLINE UV _powredc(uint64_t a, uint64_t k, uint64_t one, uint64_t n, uint64_t npi) {
   uint64_t t = one;
