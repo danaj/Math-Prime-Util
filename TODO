@@ -130,15 +130,7 @@
 
 - submit bug report for Perl error in 30b8ab3
 
-- formultiperm doesn't completely cover lastfor
-  mpu 'formultiperm { lastfor; say join("",@_) } [split(//,"s")];'
-  lastfor called outside a loop at -e line 1.
-  mpu 'formultiperm { lastfor; say join("",@_) } [split(//,"se")];'
-  lastfor called outside a loop at -e line 1.
-  mpu 'formultiperm { lastfor; say join("",@_) } [split(//,"serpe")];'
-  eeprs
-  peers
-  lastfor called outside a loop at -e line 1.
+- formultiperm optimization added if we can get around lastfor issue.
 
 - istotient from Pari/GP.  We could be more ambitious and consider returning
   the count and/or full list of totients.

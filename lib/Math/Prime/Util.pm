@@ -620,7 +620,9 @@ sub formultiperm (&$) {    ## no critic qw(ProhibitSubroutinePrototypes)
   $sum += $_->[1] for @n;
 
   require Math::Prime::Util::PP;
+  my $oldforexit = Math::Prime::Util::_start_for_loop();
   Math::Prime::Util::PP::_multiset_permutations( $sub, [], \@n, $sum );
+  Math::Prime::Util::_end_for_loop($oldforexit);
 }
 
 #############################################################################

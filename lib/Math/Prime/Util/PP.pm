@@ -6293,9 +6293,11 @@ sub _multiset_permutations {
       $sub->(@$prefix, $n0, $n0);
     } else {
       $sub->(@$prefix, $n0, $n1);
-      $sub->(@$prefix, $n1, $n0);
+      $sub->(@$prefix, $n1, $n0) unless Math::Prime::Util::_get_forexit();
     }
-  } elsif ($sum == scalar(@n)) {         # All entries have 1 occurance
+  } elsif (0 && $sum == scalar(@n)) {         # All entries have 1 occurance
+    # TODO:  Figure out a way to use this safely.  We need to capture any
+    #        lastfor that was seen in the forperm.
     my @i = map { $_->[0] } @n;
     Math::Prime::Util::forperm(sub { $sub->(@$prefix, @i[@_]) }, 1+$#i);
   } else {                               # Recurse over each leading value
@@ -6306,6 +6308,7 @@ sub _multiset_permutations {
       _multiset_permutations($sub, $prefix, \@n, $sum-1);
       pop @$prefix;
       $v->[1]++;
+      last if Math::Prime::Util::_get_forexit();
     }
   }
 }
