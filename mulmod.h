@@ -26,7 +26,7 @@
     asm ("mulq %3\n\t"              /* mul a*b -> rdx:rax */
          "divq %4\n\t"              /* (a*b)/c -> quot in rax remainder in rdx */
          :"=a"(dummy), "=&d"(d)     /* output */
-         :"a"(a), "rm"(b), "rm"(n)  /* input */
+         :"a"(a), "r"(b), "r"(n)    /* input */
          :"cc"                      /* mulq and divq can set conditions */
         );
     return d;
