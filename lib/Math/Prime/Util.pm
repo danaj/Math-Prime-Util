@@ -4500,6 +4500,10 @@ Recognizing tetrahedral numbers (L<OEIS A000292|http://oeis.org/A000292>):
     vecprod($k,$k+1,$k+2) == $n6;
   }
 
+Recognizing powerful numbers (e.g. C<ispowerful> from Pari/GP):
+
+  sub ispowerful { 0 + vecall { $_->[1] > 1 } factor_exp(shift); }
+
 Convert from binary to hex (3000x faster than Math::BaseConvert):
 
   my $hex_string = todigitstring(fromdigits($bin_string,2),16);
