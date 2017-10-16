@@ -126,7 +126,7 @@
 
 - Destroy csprng context on thread destruction.
 
-- Pari/GP:  permorder, permsign.    ispowerful, isfundamental.
+- Pari/GP:  permorder, permsign.    ispowerful
 
 - submit bug report for Perl error in 30b8ab3
 

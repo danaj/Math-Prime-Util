@@ -1016,6 +1016,26 @@ int is_semiprime(UV n) {
   }
 }
 
+int is_fundamental(UV n, int neg) {
+  UV r = n & 15;
+  if (r) {
+    if (!neg) {
+      switch (r & 3) {
+        case 0:  return (r ==  4) ? 0 : is_square_free(n >> 2);
+        case 1:  return is_square_free(n);
+        default: break;
+      }
+    } else {
+      switch (r & 3) {
+        case 0:  return (r == 12) ? 0 : is_square_free(n >> 2);
+        case 3:  return is_square_free(n);
+        default: break;
+      }
+    }
+  }
+  return 0;
+}
+
 UV pillai_v(UV n) {
   UV v, fac = 5040 % n;
   if (n == 0) return 0;

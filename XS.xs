@@ -1152,6 +1152,7 @@ is_prime(IN SV* svn, ...)
     is_prime_power = 23
     logint = 24
     rootint = 25
+    is_fundamental = 26
   PREINIT:
     int status, astatus;
   PPCODE:
@@ -1251,6 +1252,14 @@ is_prime(IN SV* svn, ...)
           }
           XSRETURN_UV(r);
         }
+      } else if (ix == 26) {
+        if (status == -1) {
+          IV sn = my_sviv(svn);
+          if (sn <= -IV_MAX) status = 0;
+          else               n = -sn;
+        }
+        if (status != 0)
+          RETURN_NPARITY( is_fundamental(n, status == -1) );
       }
     }
     switch (ix) {
@@ -1282,8 +1291,9 @@ is_prime(IN SV* svn, ...)
               else            { _vcallsub_with_pp("is_power"); } break;
       case 23:(void)_vcallsubn(aTHX_ G_SCALAR, (items == 1) ? (VCALL_GMP|VCALL_PP) : (VCALL_PP), "is_prime_power", items, 40); break;
       case 24:_vcallsub_with_gmp(0.00,"logint"); break;
-      case 25:
-      default:(void)_vcallsubn(aTHX_ G_SCALAR, (items == 2) ? (VCALL_GMP|VCALL_PP) : (VCALL_PP), "rootint", items, 40); break;
+      case 25:(void)_vcallsubn(aTHX_ G_SCALAR, (items == 2) ? (VCALL_GMP|VCALL_PP) : (VCALL_PP), "rootint", items, 40); break;
+      case 26:
+      default:_vcallsub_with_gmp(0.00,"is_fundamental"); break;
     }
     return; /* skip implicit PUTBACK */
 

@@ -5,6 +5,7 @@ Revision history for Perl module Math::Prime::Util
     [ADDED]
 
     - factorialmod(n,m)               n! mod m calculated efficiently
+    - is_fundamental(d)               true if d a fundamental discriminant
 
     [FUNCTIONALITY AND PERFORMANCE]
 

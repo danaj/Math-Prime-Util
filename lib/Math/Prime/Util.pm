@@ -25,11 +25,10 @@ our @EXPORT_OK =
       is_frobenius_pseudoprime
       is_frobenius_underwood_pseudoprime is_frobenius_khashin_pseudoprime
       is_perrin_pseudoprime is_catalan_pseudoprime
-      is_aks_prime is_bpsw_prime
-      is_ramanujan_prime
-      is_mersenne_prime
+      is_aks_prime is_bpsw_prime is_ramanujan_prime is_mersenne_prime
       is_power is_prime_power is_pillai is_semiprime is_square is_polygonal
       is_square_free is_primitive_root is_carmichael is_quasi_carmichael
+      is_fundamental
       sqrtint rootint logint
       miller_rabin_random
       lucas_sequence lucasu lucasv
@@ -2908,6 +2907,16 @@ A semiprime is the product of exactly two primes.
 The boolean result is the same as C<scalar(factor(n)) == 2>, but this
 function performs shortcuts that can greatly speed up the operation.
 
+=head2 is_fundamental
+
+Given an integer C<d>, returns 1 if C<d> is a fundamental discriminant,
+0 otherwise.  We consider 1 to be a fundamental discriminant.
+
+This is the L<OEIS series A003658|http://oeis.org/A003658> (positive) and
+L<OEIS series A003657|http://oeis.org/A003657> (negative).
+
+This corresponds to Pari's C<isfundamental> function.
+
 =head2 is_pillai
 
 Given a positive integer C<n>, if there exists a C<v> where C<v! % n == n-1>
@@ -4482,6 +4491,14 @@ The L<Bell numbers|https://en.wikipedia.org/wiki/Bell_number> B_n:
 
   sub B { my $n = shift; vecsum(map { stirling($n,$_,2) } 0..$n) }
   say "$_  ",B($_) for 1..50;
+
+Recognizing tetrahedral numbers (L<OEIS A000292|http://oeis.org/A000292>):
+
+  sub is_tetrahedral {
+    my $n6 = vecprod(6,shift);
+    my $k  = rootint($n6,3);
+    vecprod($k,$k+1,$k+2) == $n6;
+  }
 
 Convert from binary to hex (3000x faster than Math::BaseConvert):
 

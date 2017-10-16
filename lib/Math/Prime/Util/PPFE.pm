@@ -128,6 +128,7 @@ sub entropy_bytes {
 *is_carmichael = \&Math::Prime::Util::PP::is_carmichael;
 *is_quasi_carmichael = \&Math::Prime::Util::PP::is_quasi_carmichael;
 *is_pillai = \&Math::Prime::Util::PP::is_pillai;
+*is_fundamental = \&Math::Prime::Util::PP::is_fundamental;
 
 *random_prime = \&Math::Prime::Util::PP::random_prime;
 *random_ndigit_prime = \&Math::Prime::Util::PP::random_ndigit_prime;

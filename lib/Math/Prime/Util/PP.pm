@@ -1206,6 +1206,25 @@ sub is_pillai {
   0;
 }
 
+sub is_fundamental {
+  my($n) = @_;
+  _validate_integer($n);
+  my $neg = ($n < 0);
+  $n = -$n if $neg;
+  my $r = $n & 15;
+  if ($r) {
+    my $r4 = $r & 3;
+    if (!$neg) {
+      return (($r ==  4) ? 0 : is_square_free($n >> 2)) if $r4 == 0;
+      return is_square_free($n) if $r4 == 1;
+    } else {
+      return (($r == 12) ? 0 : is_square_free($n >> 2)) if $r4 == 0;
+      return is_square_free($n) if $r4 == 3;
+    }
+  }
+  0;
+}
+
 my @_ds_overflow =  # We'll use BigInt math if the input is larger than this.
   (~0 > 4294967295)
    ? (124, 3000000000000000000, 3000000000, 2487240, 64260, 7026)
