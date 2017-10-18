@@ -5,6 +5,9 @@
   * use:  -O2 -g -Wall -Wextra -Wdeclaration-after-statement -fsigned-char
   * Test on 32-bit Perl.  Test on Win32.
 
+- For new functions:
+  XS, .h, .c, PP, PPFE, export, t exports, lib/ntheory.pm, doc, test
+
 
 - Move .c / .h files into separate directory.
   version does it in a painful way.  Something simpler to be had?
@@ -126,11 +129,9 @@
 
 - Destroy csprng context on thread destruction.
 
-- Pari/GP:  permorder, permsign.
-
 - submit bug report for Perl error in 30b8ab3
 
-- formultiperm optimization added if we can get around lastfor issue.
+- add back formultiperm optimization if we can get around lastfor issue.
 
 - istotient from Pari/GP.  We could be more ambitious and consider returning
   the count and/or full list of totients.

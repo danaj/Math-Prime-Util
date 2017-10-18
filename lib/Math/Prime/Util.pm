@@ -1403,6 +1403,12 @@ the combinations.
 Like forpart and forperm, the index return values are read-only.  Any
 attempt to modify them will result in undefined behavior.
 
+If the second argument C<k> is not supplied, then all k-subsets are returned
+starting with the smallest set C<k=0> and continuing to C<k=n>.  Each
+k-subset is in lexicographical order.  This is the power set of C<n>.
+
+This corresponds to the Pari/GP 2.10 C<forsubset> function.
+
 
 =head2 forperm
 

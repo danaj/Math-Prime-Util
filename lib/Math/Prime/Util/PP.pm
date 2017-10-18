@@ -6223,24 +6223,35 @@ sub _forcompositions {
 sub forcomb {
   my($sub, $n, $k) = @_;
   _validate_positive_integer($n);
+
+  my($begk, $endk);
   if (defined $k) {
     _validate_positive_integer($k);
+    return if $k > $n;
+    $begk = $endk = $k;
   } else {
-    $k = $n;
+    $begk = 0;
+    $endk = $n;
   }
-  return $sub->() if $k == 0;
-  return if $k > $n || $n == 0;
+
   my $oldforexit = Math::Prime::Util::_start_for_loop();
-  my @c = 0 .. $k-1;
-  while (1) {
-    $sub->(@c);
+  for my $k ($begk .. $endk) {
+    if ($k == 0) {
+      $sub->();
+    } else {
+      my @c = 0 .. $k-1;
+      while (1) {
+        $sub->(@c);
+        last if Math::Prime::Util::_get_forexit();
+        next if $c[-1]++ < $n-1;
+        my $i = $k-2;
+        $i-- while $i >= 0 && $c[$i] >= $n-($k-$i);
+        last if $i < 0;
+        $c[$i]++;
+        while (++$i < $k) { $c[$i] = $c[$i-1] + 1; }
+      }
+    }
     last if Math::Prime::Util::_get_forexit();
-    next if $c[-1]++ < $n-1;
-    my $i = $k-2;
-    $i-- while $i >= 0 && $c[$i] >= $n-($k-$i);
-    last if $i < 0;
-    $c[$i]++;
-    while (++$i < $k) { $c[$i] = $c[$i-1] + 1; }
   }
   Math::Prime::Util::_end_for_loop($oldforexit);
 }
