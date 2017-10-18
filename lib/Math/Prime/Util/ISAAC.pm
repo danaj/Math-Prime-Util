@@ -5,7 +5,7 @@ use Carp qw/carp croak confess/;
 
 BEGIN {
   $Math::Prime::Util::ISAAC::AUTHORITY = 'cpan:DANAJ';
-  $Math::Prime::Util::ISAAC::VERSION = '0.67';
+  $Math::Prime::Util::ISAAC::VERSION = '0.68';
 }
 
 ###############################################################################
@@ -205,7 +205,7 @@ Math::Prime::Util::ISAAC - Pure Perl ISAAC CSPRNG
 
 =head1 VERSION
 
-Version 0.67
+Version 0.68
 
 
 =head1 SYNOPSIS
