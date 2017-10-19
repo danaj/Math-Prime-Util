@@ -1146,16 +1146,8 @@ int is_primitive_root(UV a, UV n, int nprime) {
   /* Quick check for small factors before full factor */
   if ((s % 2) == 0 && powmod(a, s/2, n) == 1) return 0;
 
-#if !USE_MONTMATH
-  if ((s % 3) == 0 && powmod(a, s/3, n) == 1) return 0;
-  if ((s % 5) == 0 && powmod(a, s/5, n) == 1) return 0;
-  /* Complete factor and check each one not found above. */
-  nfacs = factor_exp(s, fac, 0);
-  for (i = 0; i < nfacs; i++) {
-    if (fac[i] > 5 && powmod(a, s/fac[i], n) == 1) return 0;
-  }
-#else
-  {
+#if USE_MONTMATH
+  if (n & 1) {
     const uint64_t npi = mont_inverse(n),  mont1 = mont_get1(n);
     a = mont_geta(a, n);
     if ((s % 3) == 0 && mont_powmod(a, s/3, n) == mont1) return 0;
@@ -1164,8 +1156,17 @@ int is_primitive_root(UV a, UV n, int nprime) {
     for (i = 0; i < nfacs; i++) {
       if (fac[i] > 5 && mont_powmod(a, s/fac[i], n) == mont1) return 0;
     }
-  }
+  } else
 #endif
+  {
+    if ((s % 3) == 0 && powmod(a, s/3, n) == 1) return 0;
+    if ((s % 5) == 0 && powmod(a, s/5, n) == 1) return 0;
+    /* Complete factor and check each one not found above. */
+    nfacs = factor_exp(s, fac, 0);
+    for (i = 0; i < nfacs; i++) {
+      if (fac[i] > 5 && powmod(a, s/fac[i], n) == 1) return 0;
+    }
+  }
   return 1;
 }
 

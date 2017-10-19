@@ -1,5 +1,12 @@
 Revision history for Perl module Math::Prime::Util
 
+0.69 2017-?
+
+    [FUNCTIONALITY AND PERFORMANCE]
+
+    - is_primitive_root could be wrong with even n on some platforms.
+
+
 0.68 2017-10-19
 
     [API Changes]

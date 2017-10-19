@@ -623,7 +623,7 @@ plan tests => 0 + 1
                 + 2 + scalar(@binomials)
                 + 7 + scalar(keys %powers) + scalar(@negpowers)
                 + scalar(keys %primroots) + 1
-                + scalar(keys %primroots) + 2  # is_primitive_root
+                + scalar(keys %primroots) + 3  # is_primitive_root
                 + scalar(keys %jordan_totients)
                 + 2  # Dedekind psi calculated two ways
                 + 2  # Calculate J5 two different ways
@@ -892,6 +892,7 @@ while (my($n, $root) = each (%primroots)) {
 }
 is(is_primitive_root(19,191), 1, "19 is a primitive root mod 191");
 is(is_primitive_root(13,191), 0, "13 is not a primitive root mod 191");
+is(is_primitive_root(35,982), 0, "35 is not a primitive root mod 982");
 
 ###### znlog
 foreach my $arg (@znlogs) {
