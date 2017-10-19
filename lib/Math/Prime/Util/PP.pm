@@ -2820,8 +2820,11 @@ sub is_prime_power {
   if (Math::Prime::Util::is_prime($n)) { $$refp = $n if defined $refp; return 1; }
   my $r;
   my $k = Math::Prime::Util::is_power($n,0,\$r);
-  return 0 unless $k && Math::Prime::Util::is_prime($r);
-  $$refp = $r if defined $refp;
+  if ($k) {
+    $r = _bigint_to_int($r) if ref($r) && $r->bacmp(BMAX) <= 0;
+    return 0 unless Math::Prime::Util::is_prime($r);
+    $$refp = $r if defined $refp;
+  }
   $k;
 }
 
