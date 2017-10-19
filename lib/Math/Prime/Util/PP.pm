@@ -3074,7 +3074,10 @@ sub stirling {
     $s = Math::Prime::Util::vecprod( Math::Prime::Util::binomial($n,$m), Math::Prime::Util::binomial($n-1,$m-1), Math::Prime::Util::factorial($n-$m) );
   } elsif ($type == 2) {
     for my $j (1 .. $m) {
-      my $t = (Math::BigInt->new($j) ** $n) * Math::BigInt->new("".binomial($m,$j));
+      my $t = Math::Prime::Util::vecprod(
+                Math::BigInt->new($j) ** $n,
+                Math::Prime::Util::binomial($m,$j)
+              );
       $s = (($m-$j) & 1)  ?  $s - $t  :  $s + $t;
     }
     $s /= factorial($m);
