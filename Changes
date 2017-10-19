@@ -1,6 +1,6 @@
 Revision history for Perl module Math::Prime::Util
 
-0.68 2017-?
+0.68 2017-10-19
 
     [API Changes]
 
@@ -18,7 +18,7 @@ Revision history for Perl module Math::Prime::Util
     - Unknown bigint classes no longer return two values after objectify.
       Thanks to Daniel Șuteu for finding this.
 
-    - Using lastfor inside a formultiperm should work correctly.
+    - Using lastfor inside a formultiperm works correctly now.
 
     - randperm a little faster for k < n cases, and can handle big n
       values without running out of memory as long as k << n.
