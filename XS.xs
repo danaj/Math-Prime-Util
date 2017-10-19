@@ -810,7 +810,7 @@ trial_factor(IN UV n, ...)
      /* Trial, Fermat,   Holf,    SQUFOF,  Lmn, PRHO,    P+1, Brent,    P-1 */
   PPCODE:
     if (n == 0)  XSRETURN_UV(0);
-    if (ix == 8) {  /* We don't have an ecm_factor, call PP. */
+    if (ix == 9) {  /* We don't have an ecm_factor, call PP. */
       _vcallsubn(aTHX_ GIMME_V, VCALL_PP, "ecm_factor", 1, 0);
       return;
     }
@@ -2939,6 +2939,7 @@ factor_test_harness1(...)
             if (res == comp[i])
               correct++;
           }
+          //printf("%lu:",comp[i]);for(k=0;k<nf;k++)printf(" %lu",factors[k]);printf("\n");
         }
       }
       gettimeofday(&gstop, NULL);
