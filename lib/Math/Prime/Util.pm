@@ -28,7 +28,7 @@ our @EXPORT_OK =
       is_aks_prime is_bpsw_prime is_ramanujan_prime is_mersenne_prime
       is_power is_prime_power is_pillai is_semiprime is_square is_polygonal
       is_square_free is_primitive_root is_carmichael is_quasi_carmichael
-      is_fundamental
+      is_fundamental is_totient
       sqrtint rootint logint
       miller_rabin_random
       lucas_sequence lucasu lucasv
@@ -2922,6 +2922,16 @@ This is the L<OEIS series A003658|http://oeis.org/A003658> (positive) and
 L<OEIS series A003657|http://oeis.org/A003657> (negative).
 
 This corresponds to Pari's C<isfundamental> function.
+
+=head2 is_totient
+
+Given an integer C<n>, returns 1 if there exists an integer C<x> where
+C<euler_phi(x) == n>.
+
+This corresponds to Pari's C<istotient> function, though without the
+optional second argument to return an C<x>.  L<Math::NumSeq::Totient>
+also has a similar function.
+
 
 =head2 is_pillai
 

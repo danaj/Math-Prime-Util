@@ -2,6 +2,10 @@ Revision history for Perl module Math::Prime::Util
 
 0.69 2017-?
 
+    [ADDED]
+
+    - is_totient(n)                   true if euler_phi(x) == n for some x
+
     [FUNCTIONALITY AND PERFORMANCE]
 
     - is_primitive_root could be wrong with even n on some platforms.

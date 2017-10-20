@@ -1299,7 +1299,7 @@ int is_prob_prime(UV n)
         !(x%41) || !(x%43) || !(x%47) || !(x%53))   return 0;
     if (x < 3481) /* 59*59 */                       return 2;
     /* Trial division crossover point depends on platform */
-    if (!USE_MONTMATH && n < 500000) {
+    if (!USE_MONTMATH && n < 200000) {
       uint32_t f = 59;
       uint32_t limit = isqrt(n);
       while (f <= limit) {

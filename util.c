@@ -1036,6 +1036,34 @@ int is_fundamental(UV n, int neg) {
   return 0;
 }
 
+static int _totpred(UV n, UV maxd) {
+  UV i, ndivisors, *divs;
+  int res;
+
+  if (n & 1) return 0;
+  n >>= 1;
+  if (n == 1) return 1;
+  if (n < maxd && is_prime(2*n+1)) return 1;
+
+  divs = _divisor_list(n, &ndivisors);
+  for (i = 0, res = 0; i < ndivisors && divs[i] < maxd && res == 0; i++) {
+    UV r, d = divs[i], p = 2*d+1;
+    if (!is_prime(p)) continue;
+    r = n/d;
+    while (1) {
+      if (r == p || _totpred(r, d)) { res = 1; break; }
+      if (r % p) break;
+      r /= p;
+    }
+  }
+  Safefree(divs);
+  return res;
+}
+
+int is_totient(UV n) {
+  return (n == 0 || (n & 1))  ?  (n==1)  :  _totpred(n,n);
+}
+
 UV pillai_v(UV n) {
   UV v, fac = 5040 % n;
   if (n == 0) return 0;

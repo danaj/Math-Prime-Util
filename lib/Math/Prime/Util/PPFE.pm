@@ -428,6 +428,11 @@ sub is_semiprime {
   _validate_positive_integer($n);
   return Math::Prime::Util::PP::is_semiprime($n);
 }
+sub is_totient {
+  my($n) = @_;
+  _validate_positive_integer($n);
+  return Math::Prime::Util::PP::is_totient($n);
+}
 sub is_primitive_root {
   my($a,$n) = @_;
   return 0 if $n == 0;

@@ -198,6 +198,7 @@ Tags:
   is_polygonal(n,k)                   is n a k-polygonal number
   is_polygonal(n,k,\$root)            as above but also set $root
   is_fundamental(d)                   is d a fundamental discriminant
+  is_totient(n)                       is n = euler_phi(x) for some x
   sqrtint(n)                          integer square root
   rootint(n,k)                        integer k-th root
   rootint(n,k,\$rk)                   as above but also set $rk to r^k

@@ -62,6 +62,7 @@ extern int is_primitive_root(UV a, UV n, int nprime);
 extern UV  factorialmod(UV n, UV m);
 #define is_square_free(n)  (moebius(n) != 0)
 extern int is_fundamental(UV n, int neg);
+extern int is_totient(UV n);
 extern int is_semiprime(UV n);
 extern int is_carmichael(UV n);
 extern UV  is_quasi_carmichael(UV n);  /* Returns number of bases */

@@ -133,7 +133,10 @@
 
 - add back formultiperm optimization if we can get around lastfor issue.
 
-- istotient from Pari/GP.  We could be more ambitious and consider returning
-  the count and/or full list of totients.
-
 - make a uint128_t version of montmath.  Needs to handle 64-bit.
+
+- XS.xs:  split the is_prime etc. into two.
+  1) single arg, neg input = 0.  Almost everything in case statement.
+  2) multi-arg.  others.
+
+- istotient PP, test
