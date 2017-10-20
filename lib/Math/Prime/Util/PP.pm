@@ -977,6 +977,32 @@ sub is_semiprime {
   return (scalar(Math::Prime::Util::factor($n)) == 2) ? 1 : 0;
 }
 
+sub _totpred {
+  my($n, $maxd) = @_;
+  return 0 if $n & 1;
+  $n >>= 1;
+  return 1 if $n == 1 || ($n < $maxd && Math::Prime::Util::is_prime(2*$n+1));
+  for my $d (Math::Prime::Util::divisors($n)) {
+    last if $d >= $maxd;
+    my $p = ($d < (~0 >> 1))  ?  ($d<<1)+1  :  Math::Prime::Util::vecprod(2,$d)+1;
+    next unless Math::Prime::Util::is_prime($p);
+    my $r = int($n / $d);
+    while (1) {
+      return 1 if $r == $p || _totpred($r, $d);
+      last if $r % $p;
+      $r = int($r / $p);
+    }
+  }
+  0;
+}
+sub is_totient {
+  my($n) = @_;
+  _validate_positive_integer($n);
+  return 1 if $n == 1;
+  return 0 if $n <= 0 || ($n & 1);
+  return _totpred($n,$n);
+}
+
 
 sub moebius_range {
   my($lo, $hi) = @_;

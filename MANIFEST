@@ -151,6 +151,7 @@ t/26-combinatorial.t
 t/26-digits.t
 t/26-fundamental.t
 t/26-ispower.t
+t/26-istotient.t
 t/26-mod.t
 t/26-pillai.t
 t/26-polygonal.t

@@ -129,6 +129,8 @@ sub entropy_bytes {
 *is_quasi_carmichael = \&Math::Prime::Util::PP::is_quasi_carmichael;
 *is_pillai = \&Math::Prime::Util::PP::is_pillai;
 *is_fundamental = \&Math::Prime::Util::PP::is_fundamental;
+*is_semiprime = \&Math::Prime::Util::PP::is_semiprime;
+*is_totient = \&Math::Prime::Util::PP::is_totient;
 
 *random_prime = \&Math::Prime::Util::PP::random_prime;
 *random_ndigit_prime = \&Math::Prime::Util::PP::random_ndigit_prime;
@@ -422,16 +424,6 @@ sub is_square_free {
   my($n) = @_;
   _validate_positive_integer($n);
   return Math::Prime::Util::PP::is_square_free($n);
-}
-sub is_semiprime {
-  my($n) = @_;
-  _validate_positive_integer($n);
-  return Math::Prime::Util::PP::is_semiprime($n);
-}
-sub is_totient {
-  my($n) = @_;
-  _validate_positive_integer($n);
-  return Math::Prime::Util::PP::is_totient($n);
 }
 sub is_primitive_root {
   my($a,$n) = @_;
