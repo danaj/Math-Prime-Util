@@ -15,7 +15,9 @@ if (!$usexs) {
 }
 
 plan tests => 0
-            + 1
+            + 2
             ;
+
+is(is_pillai(100049), 25845, "100049 is a Pillai prime");
 
 is_deeply( [grep { is_pillai($_) } 0 .. $pillai[-1]], \@pillai, "is_pillai from -10 to 1000" );

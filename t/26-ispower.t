@@ -42,10 +42,21 @@ my %bppow = (
   "15181127029874798299" => [19,15],
 );
 
+my %powers = (
+  0 => [-2, -1, 0, 1, 2, 3, 5, 6, 7, 10, 11, 12, 13, 14, 15, 17, 18, 19],
+  2 => [4, 9, 25, 36, 49],
+  3 => [8, 27, 125, 343, 17576],
+  4 => [16, 38416],
+  9 => [19683, 1000000000],
+);
 if ($use64) {
- #push @invmods, [ 13, 9223372036854775808, 5675921253449092805 ];
- #push @invmods, [ 14, 18446744073709551615, 17129119497016012214 ];
+  push @{$powers{0}}, 9908918038843197151;
+  push @{$powers{2}}, 18446743927680663841;
+  push @{$powers{3}}, 2250923753991375;
+  push @{$powers{4}}, 1150530828529256001;
+  push @{$powers{9}}, 118587876497;
 }
+my @negpowers = (0,0,0,3,0,5,3,7,0,9,5);
 
 plan tests => 0
             + 2
@@ -53,6 +64,7 @@ plan tests => 0
             + scalar(keys(%bpow))
             + scalar(keys(%bppow))
             + 4
+            + 7 + scalar(keys %powers) + scalar(@negpowers)
             + 3  # is_square
             + 0;
 
@@ -87,6 +99,32 @@ while (my($n, $expect) = each (%bppow)) {
   is( is_power(-16,4), 0, "-16 is not a fourth power" );
 }
 
+###### is_power
+while (my($e, $vals) = each (%powers)) {
+  my @fail;
+  foreach my $val (@$vals) {
+    push @fail, $val unless is_power($val) == $e;
+  }
+  ok( @fail == 0, "is_power returns $e for " . join(",",@fail) );
+}
+foreach my $e (0 .. $#negpowers) {
+  is( is_power(-7 ** $e), $negpowers[$e], "is_power(-7^$e ) = $negpowers[$e]" );
+}
+is( is_power(-1,5), 1, "-1 is a 5th power" );
+{
+  my($ispow, $root);
+  $ispow = is_power(24, 2, \$root);
+  is( $ispow, 0, "24 isn't a perfect square...");
+  is( $root, undef, "...and the root wasn't set");
+  $ispow = is_power( "1000093002883029791", 3, \$root);
+  is( $ispow, 1, "1000031^3 is a perfect cube...");
+  is( $root, 1000031, "...and the root was set");
+  $ispow = is_power( 36**5 , 0, \$root);
+  is( $ispow, 10, "36^5 is a 10th power...");
+  is( $root, 6, "...and the root is 6");
+}
+
+###### is_square
 is_deeply(
   [map { is_square($_) } (-4 .. 16)],
   [0,0,0,0,1,1,0,0,1,0,0,0,0,1,0,0,0,0,0,0,1],

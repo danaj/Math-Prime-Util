@@ -18,10 +18,35 @@ my %perms = (
  4 => [[0,1,2,3],[0,1,3,2],[0,2,1,3],[0,2,3,1],[0,3,1,2],[0,3,2,1],[1,0,2,3],[1,0,3,2],[1,2,0,3],[1,2,3,0],[1,3,0,2],[1,3,2,0],[2,0,1,3],[2,0,3,1],[2,1,0,3],[2,1,3,0],[2,3,0,1],[2,3,1,0],[3,0,1,2],[3,0,2,1],[3,1,0,2],[3,1,2,0],[3,2,0,1],[3,2,1,0]],
 );
 
+my @binomials = (
+ [ 0,0, 1 ],
+ [ 0,1, 0 ],
+ [ 1,0, 1 ],
+ [ 1,1, 1 ],
+ [ 1,2, 0 ],
+ [ 13,13, 1 ],
+ [ 13,14, 0 ],
+ [ 35,16, 4059928950 ],             # We can do this natively even in 32-bit
+ [ 40,19, "131282408400" ],         # We can do this in 64-bit
+ [ 67,31, "11923179284862717872" ], # ...and this
+ [ 228,12, "30689926618143230620" ],# But the result of this is too big.
+ [ 177,78, "3314450882216440395106465322941753788648564665022000" ],
+ [ -10,5, -2002 ],
+ [ -11,22, 64512240 ],
+ [ -12,23, -286097760 ],
+ [ -23,-26, -2300 ],     # Kronenburg extension
+ [ -12,-23, -705432 ],   # same
+ [  12,-23, 0 ],
+ [  12,-12, 0 ],
+ [ -12,0, 1 ],
+ [  0,-1, 0 ],
+);
+
 # TODO: Add a bunch of combs here:  "5,3" => [[..],[..],[..]],
 
 plan tests => 1                        # Factorial
             + 1                        # Factorialmod
+            + 2 + scalar(@binomials)   # Binomial
             + 7 + 4                    # Combinations
             + scalar(keys(%perms)) + 1 # Permutations
             + 4                        # Multiset Permutations
@@ -31,6 +56,7 @@ plan tests => 1                        # Factorial
             + 5                        # shuffle
             ;
 
+###### factorial
 sub fact { my $n = Math::BigInt->new("$_[0]"); $n->bfac; }
 {
   my @result = map { factorial($_) } 0 .. 100;
@@ -38,13 +64,26 @@ sub fact { my $n = Math::BigInt->new("$_[0]"); $n->bfac; }
   is_deeply( \@result, \@expect, "Factorials 0 to 100" );
 }
 
+###### factorialmod
 {
   my @result = map { my $m=$_; map { factorialmod($_,$m) } 0..$m-1; } 1 .. 50;
   my @expect = map { my $m=$_; map { factorial($_) % $m; } 0..$m-1; } 1 .. 50;
   is_deeply( \@result, \@expect, "factorialmod n! mod m for m 1 to 50, n 0 to m" );
 }
 
+###### binomial
+foreach my $r (@binomials) {
+  my($n, $k, $exp) = @$r;
+  is( binomial($n,$k), $exp, "binomial($n,$k)) = $exp" );
+}
+is_deeply( [map { binomial(10, $_) } -15 .. 15],
+           [qw/0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 10 45 120 210 252 210 120 45 10 1 0 0 0 0 0/],
+           "binomial(10,n) for n in -15 .. 15" );
+is_deeply( [map { binomial(-10, $_) } -15 .. 15],
+           [qw/-2002 715 -220 55 -10 1 0 0 0 0 0 0 0 0 0 1 -10 55 -220 715 -2002 5005 -11440 24310 -48620 92378 -167960 293930 -497420 817190 -1307504/],
+           "binomial(-10,n) for n in -15 .. 15" );
 
+###### forcomb
 { my @p = (); forcomb { push @p, [@_] } 0;
   is_deeply( [@p], [[]], "forcomb 0" ); }
 { my @p = (); forcomb { push @p, [@_] } 1;
@@ -75,6 +114,7 @@ sub fact { my $n = Math::BigInt->new("$_[0]"); $n->bfac; }
   is($s, $b, "forcomb 20,15 yields binomial(20,15) combinations"); }
 
 
+###### forperm
 while (my($n, $expect) = each (%perms)) {
   my @p = (); forperm { push @p, [@_] } $n;
   is_deeply( \@p, $expect, "forperm $n" );
@@ -84,7 +124,6 @@ while (my($n, $expect) = each (%perms)) {
   is($s, factorial(7), "forperm 7 yields factorial(7) permutations"); }
 
 ###### formultiperm
-
 { my @p; formultiperm { push @p, [@_] } [];
   is_deeply(\@p, [], "formultiperm []"); }
 
@@ -98,7 +137,6 @@ while (my($n, $expect) = each (%perms)) {
   is_deeply(\@p, [qw/aabb abab abba baab baba bbaa/], "formultiperm aabb"); }
 
 ###### forderange
-
 { my @p; forderange { push @p, [@_] } 0;
   is_deeply(\@p, [[]], "forderange 0"); }
 { my @p; forderange { push @p, [@_] } 1;

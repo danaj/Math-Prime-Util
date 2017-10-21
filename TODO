@@ -135,4 +135,4 @@
 
 - make a uint128_t version of montmath.  Needs to handle 64-bit.
 
-- split out t/19-moebius
+- add some bignum tests to hammingweight, valuation, etc.
