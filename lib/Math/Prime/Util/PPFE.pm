@@ -148,31 +148,9 @@ sub entropy_bytes {
 *randperm = \&Math::Prime::Util::PP::randperm;
 *shuffle = \&Math::Prime::Util::PP::shuffle;
 
-sub moebius {
-  if (scalar @_ <= 1) {
-    my($n) = @_;
-    return 0 if defined $n && $n < 0;
-    _validate_num($n) || _validate_positive_integer($n);
-    return Math::Prime::Util::PP::moebius($n);
-  }
-  my($lo, $hi) = @_;
-  _validate_num($lo) || _validate_positive_integer($lo);
-  _validate_num($hi) || _validate_positive_integer($hi);
-  return Math::Prime::Util::PP::moebius_range($lo, $hi);
-}
+*moebius = \&Math::Prime::Util::PP::moebius;
+*euler_phi = \&Math::Prime::Util::PP::euler_phi;
 
-sub euler_phi {
-  if (scalar @_ <= 1) {
-    my($n) = @_;
-    return 0 if defined $n && $n < 0;
-    _validate_num($n) || _validate_positive_integer($n);
-    return Math::Prime::Util::PP::euler_phi($n);
-  }
-  my($lo, $hi) = @_;
-  _validate_num($lo) || _validate_positive_integer($lo);
-  _validate_num($hi) || _validate_positive_integer($hi);
-  return Math::Prime::Util::PP::euler_phi_range($lo, $hi);
-}
 sub jordan_totient {
   my($k, $n) = @_;
   _validate_positive_integer($k);

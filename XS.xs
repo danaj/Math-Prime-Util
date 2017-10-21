@@ -1929,19 +1929,19 @@ _XS_ExponentialIntegral(IN SV* x)
     RETVAL
 
 void
-euler_phi(IN SV* svlo, ...)
+euler_phi(IN SV* svlo, IN SV* svhi = 0)
   ALIAS:
     moebius = 1
   PREINIT:
     int lostatus, histatus;
   PPCODE:
     lostatus = _validate_int(aTHX_ svlo, 2);
-    histatus = (items == 1 || _validate_int(aTHX_ ST(1), 0));
-    if (items == 1 && lostatus != 0) {
+    histatus = (svhi == 0 || _validate_int(aTHX_ svhi, 1));
+    if (svhi == 0 && lostatus != 0) {
       /* input is a single value and in UV/IV range */
       if (ix == 0) {
-        UV n = (lostatus == -1) ? 0 : my_svuv(svlo);
-        XSRETURN_UV(totient(n));
+        UV ret = (lostatus == -1) ? 0 : totient(my_svuv(svlo));
+        XSRETURN_UV(ret);
       } else {
         UV n = (lostatus == -1) ? (UV)(-(my_sviv(svlo))) : my_svuv(svlo);
         RETURN_NPARITY(moebius(n));
@@ -1949,7 +1949,7 @@ euler_phi(IN SV* svlo, ...)
     } else if (items == 2 && lostatus == 1 && histatus == 1) {
       /* input is a range and both lo and hi are non-negative */
       UV lo = my_svuv(svlo);
-      UV hi = my_svuv(ST(1));
+      UV hi = my_svuv(svhi);
       if (lo <= hi) {
         UV i;
         EXTEND(SP, (IV)(hi-lo+1));
@@ -1970,10 +1970,12 @@ euler_phi(IN SV* svlo, ...)
     } else {
       /* Whatever we didn't handle above */
       U32 gimme_v = GIMME_V;
+      I32 flags = VCALL_PP;
+      if (ix == 1 && lostatus == 1 && histatus == 1)  flags |= VCALL_GMP;
       switch (ix) {
-        case 0:  _vcallsubn(aTHX_ gimme_v, VCALL_PP, "euler_phi", items, 22);break;
+        case 0:  _vcallsubn(aTHX_ gimme_v, flags, "euler_phi", items, 22);break;
         case 1:
-        default: _vcallsubn(aTHX_ gimme_v, VCALL_GMP|VCALL_PP, "moebius", items, 22);  break;
+        default: _vcallsubn(aTHX_ gimme_v, flags, "moebius", items, 22);  break;
       }
       return;
     }

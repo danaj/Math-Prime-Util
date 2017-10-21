@@ -870,12 +870,12 @@ sub jordan_totient {
 sub euler_phi {
   return euler_phi_range(@_) if scalar @_ > 1;
   my($n) = @_;
+  return 0 if defined $n && $n < 0;
 
   return Math::Prime::Util::_reftyped($_[0],Math::Prime::Util::GMP::totient($n))
     if $Math::Prime::Util::_GMPfunc{"totient"};
 
   _validate_positive_integer($n);
-  return 0 if $n < 0;
   return $n if $n <= 1;
 
   my $totient = $n - $n + 1;
@@ -915,31 +915,41 @@ sub euler_phi {
 }
 
 sub euler_phi_range {
-  my($n, $nend) = @_;
-  return () if $nend < $n;
-  return euler_phi($n) if $n == $nend;
+  my($lo, $hi) = @_;
+  _validate_integer($lo);
+  _validate_integer($hi);
+
   my @totients;
-  if ($nend > 2**30) {
-    while ($n < $nend) {
-      push @totients, euler_phi($n++);
+  while ($lo < 0 && $lo <= $hi) {
+    push @totients, 0;
+    $lo++;
+  }
+  return @totients if $hi < $lo;
+
+  if ($hi > 2**30 || $hi-$lo < 100) {
+    while ($lo <= $hi) {
+      push @totients, euler_phi($lo++);
     }
   } else {
-    @totients = (0 .. $nend);
-    foreach my $i (2 .. $nend) {
-      next unless $totients[$i] == $i;
-      $totients[$i] = $i-1;
-      foreach my $j (2 .. int($nend / $i)) {
-        $totients[$i*$j] -= $totients[$i*$j]/$i;
+    my @tot = (0 .. $hi);
+    foreach my $i (2 .. $hi) {
+      next unless $tot[$i] == $i;
+      $tot[$i] = $i-1;
+      foreach my $j (2 .. int($hi / $i)) {
+        $tot[$i*$j] -= $tot[$i*$j]/$i;
       }
     }
-    splice(@totients, 0, $n) if $n > 0;
+    splice(@tot, 0, $lo) if $lo > 0;
+    push @totients, @tot;
   }
-  return @totients;
+  @totients;
 }
 
 sub moebius {
   return moebius_range(@_) if scalar @_ > 1;
   my($n) = @_;
+  $n = -$n if defined $n && $n < 0;
+  _validate_num($n) || _validate_positive_integer($n);
   return ($n == 1) ? 1 : 0  if $n <= 1;
   return 0 if ($n >= 49) && (!($n % 4) || !($n % 9) || !($n % 25) || !($n%49) );
   my @factors = Math::Prime::Util::factor($n);
@@ -1006,8 +1016,17 @@ sub is_totient {
 
 sub moebius_range {
   my($lo, $hi) = @_;
+  _validate_integer($lo);
+  _validate_integer($hi);
   return () if $hi < $lo;
   return moebius($lo) if $lo == $hi;
+  if ($lo < 0) {
+    if ($hi < 0) {
+      return reverse(moebius_range(-$hi,-$lo));
+    } else {
+      return (reverse(moebius_range(1,-$lo)), moebius_range(0,$hi));
+    }
+  }
   if ($hi > 2**32) {
     my @mu;
     while ($lo <= $hi) {

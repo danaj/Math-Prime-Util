@@ -3016,10 +3016,12 @@ theoretically used to create a faster solution.
 Returns φ(n), the Euler totient function (also called Euler's phi or phi
 function) for an integer value.  This is an arithmetic function which counts
 the number of positive integers less than or equal to C<n> that are relatively
-prime to C<n>.  Given the definition used, C<euler_phi> will return 0 for all
+prime to C<n>.
+
+Given the definition used, C<euler_phi> will return 0 for all
 C<n E<lt> 1>.  This follows the logic used by SAGE.  Mathematica and Pari
 return C<euler_phi(-n)> for C<n E<lt> 0>.  Mathematica returns 0 for C<n = 0>,
-Pari pre-2.6.2 raises and exception, and Pari 2.6.2 and newer returns 2.
+Pari pre-2.6.2 raises an exception, and Pari 2.6.2 and newer returns 2.
 
 If called with two arguments, they define a range C<low> to C<high>, and the
 function returns a list with the totient of every n from low to high
