@@ -22,8 +22,11 @@ is_deeply( [grep { is_totient( 2**29 + $_ ) } 1 .. 80],
            "is_fundamental(2^29_1 .. 2^29+80)" );
 
 is( is_totient("9223372036854775828"), 1, "is_totient(2^63+20)" );
-is( is_totient("9223372036854775832"), 0, "is_totient(2^63+24)" );
-is( is_totient("9223372036854775836"), 1, "is_totient(2^63+28)" );
+SKIP: {
+  skip "Skipping is_totient for 2^63 + ...", 2 unless ~0 > 4294967295;
+  is( is_totient("9223372036854775832"), 0, "is_totient(2^63+24)" );
+  is( is_totient("9223372036854775836"), 1, "is_totient(2^63+28)" );
+}
 
 is( is_totient("9671406556917033397649448"), 1, "is_totient(2^83+40)" );
 SKIP: {
