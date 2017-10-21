@@ -10,6 +10,9 @@ Revision history for Perl module Math::Prime::Util
 
     - is_primitive_root could be wrong with even n on some platforms.
 
+    - split XS mapping of many primality tests.  Makes more sense and
+      improves performance for some calls.
+
 
 0.68 2017-10-19
 

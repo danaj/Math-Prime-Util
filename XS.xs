@@ -1124,8 +1124,7 @@ lucas_sequence(...)
       return;
     }
 
-void
-is_prime(IN SV* svn, ...)
+void is_prime(IN SV* svn)
   ALIAS:
     is_prob_prime = 1
     is_provable_prime = 2
@@ -1134,137 +1133,50 @@ is_prime(IN SV* svn, ...)
     is_lucas_pseudoprime = 5
     is_strong_lucas_pseudoprime = 6
     is_extra_strong_lucas_pseudoprime = 7
-    is_frobenius_pseudoprime = 8
-    is_frobenius_underwood_pseudoprime = 9
-    is_frobenius_khashin_pseudoprime = 10
-    is_perrin_pseudoprime = 11
-    is_catalan_pseudoprime = 12
-    is_almost_extra_strong_lucas_pseudoprime = 13
-    is_euler_plumb_pseudoprime = 14
-    is_ramanujan_prime = 15
-    is_square_free = 16
-    is_carmichael = 17
-    is_quasi_carmichael = 18
-    is_semiprime = 19
-    is_square = 20
-    is_mersenne_prime = 21
-    is_power = 22
-    is_prime_power = 23
-    logint = 24
-    rootint = 25
-    is_fundamental = 26
-    is_totient = 27
+    is_frobenius_underwood_pseudoprime = 8
+    is_frobenius_khashin_pseudoprime = 9
+    is_catalan_pseudoprime = 10
+    is_euler_plumb_pseudoprime = 11
+    is_ramanujan_prime = 12
+    is_square_free = 13
+    is_carmichael = 14
+    is_quasi_carmichael = 15
+    is_semiprime = 16
+    is_square = 17
+    is_mersenne_prime = 18
+    is_totient = 19
   PREINIT:
-    int status, astatus;
+    int status, ret;
   PPCODE:
+    ret = 0;
     status = _validate_int(aTHX_ svn, 1);
-    astatus = (items == 1 || ix==23) ? 1 : _validate_int(aTHX_ ST(1), 1);
-    if (status != 0 && astatus != 0) {
-      int ret = 0;
+    if (status == 1) {
       UV n = my_svuv(svn);
-      UV a = (items == 1 || ix == 23) ? 0 : my_svuv(ST(1));
-      if (status == 1 && astatus == 1 && ix < 22) {
-        switch (ix) {
-          case 0:
-          case 1:
-          case 2:  ret = is_prime(n); break;
-          case 3:  ret = BPSW(n); break;
-          case 4:  ret = is_aks_prime(n); break;
-          case 5:  ret = is_lucas_pseudoprime(n, 0); break;
-          case 6:  ret = is_lucas_pseudoprime(n, 1); break;
-          case 7:  ret = is_lucas_pseudoprime(n, 3); break;
-          case 8:  {
-                     /* IV P = 1, Q = -1; */ /* Fibonacci polynomial */
-                     IV P = 0, Q = 0;        /* Q=2,P=least odd s.t. (D|n)=-1 */
-                     if (items == 3) { P = my_sviv(ST(1)); Q = my_sviv(ST(2)); }
-                     else if (items != 1) croak("is_frobenius_pseudoprime takes P,Q");
-                     ret = is_frobenius_pseudoprime(n, P, Q);
-                   } break;
-          case 9:  ret = is_frobenius_underwood_pseudoprime(n); break;
-          case 10: ret = is_frobenius_khashin_pseudoprime(n); break;
-          case 11: ret = is_perrin_pseudoprime(n,a); break;
-          case 12: ret = is_catalan_pseudoprime(n); break;
-          case 13: ret = is_almost_extra_strong_lucas_pseudoprime
-                         (n, (items == 1) ? 1 : a); break;
-          case 14: ret = is_euler_plumb_pseudoprime(n); break;
-          case 15: ret = is_ramanujan_prime(n); break;
-          case 16: ret = is_square_free(n); break;
-          case 17: ret = is_carmichael(n); break;
-          case 18: ret = is_quasi_carmichael(n); break;
-          case 19: ret = is_semiprime(n); break;
-          case 20: ret = is_power(n,2); break;
-          case 21:
-          default: ret = is_mersenne_prime(n);
-                   if (ret == -1) status = 0;
-                   break;
-        }
-        if (status != 0 && astatus == 1) RETURN_NPARITY(ret);
-      } else if (ix == 22) {
-        if (status == -1) {
-          IV sn = my_sviv(svn);
-          if (sn <= -IV_MAX) status = 0;
-          else               n = -sn;
-        }
-        if (status == 1 || (status == -1 && (a == 0 || a & 1))) {
-          ret = is_power(n, a);
-          if (status == -1 && a == 0) {
-            ret >>= valuation(ret,2);
-            if (ret == 1) ret = 0;
-          }
-          if (ret && items == 3) {
-            UV root = rootof(n, a ? a : (UV)ret);
-            if (!SvROK(ST(2))) croak("is_power: third argument not a scalar reference");
-            if (status == 1) sv_setuv(SvRV(ST(2)),  root);
-            else             sv_setiv(SvRV(ST(2)), -root);
-          }
-        }
-        if (status != 0 && astatus != 0) RETURN_NPARITY(ret);
-      } else if (ix == 23) {
-        if (status == 1) {
-          UV root;
-          ret = primepower(n, &root);
-          if (ret && items > 1) {
-            if (!SvROK(ST(1))) croak("is_prime_power: second argument not a scalar reference");
-            sv_setuv(SvRV(ST(1)), root);
-          }
-        }
-        if (status != 0) RETURN_NPARITY(ret);
-      } else if (ix == 24) {
-        UV e;
-        if (status != 1 || n <= 0)   croak("logint: n must be > 0");
-        if (items == 1)              croak("logint: missing base");
-        if (astatus != 1 || a <= 1)  croak("logint: base must be > 1");
-        e = logint(n, a);
-        if (items == 3) {
-          if (!SvROK(ST(2))) croak("logint: third argument not a scalar reference");
-          sv_setuv(SvRV(ST(2)), ipow(a,e));
-        }
-        XSRETURN_UV(e);
-      } else if (ix == 25) {
-        UV r;
-        if (items == 1)              croak("rootint: missing exponent");
-        if (astatus != 1 || a == 0)  croak("rootint: k must be > 0");
-        if (status == -1)            croak("rootint: n must be >= 0");
-        if (status == 1) {
-          r = rootof(n, a);
-          if (items == 3) {
-            if (!SvROK(ST(2))) croak("rootint: third argument not a scalar reference");
-            sv_setuv(SvRV(ST(2)), ipow(r,a));
-          }
-          XSRETURN_UV(r);
-        }
-      } else if (ix == 26) {
-        if (status == -1) {
-          IV sn = my_sviv(svn);
-          if (sn <= -IV_MAX) status = 0;
-          else               n = -sn;
-        }
-        if (status != 0)
-          RETURN_NPARITY( is_fundamental(n, status == -1) );
-      } else if (ix == 27) {
-        RETURN_NPARITY( (status == -1) ? 0 : is_totient(n) );
+      switch (ix) {
+        case 0:
+        case 1:
+        case 2:  ret = is_prime(n); break;
+        case 3:  ret = BPSW(n); break;
+        case 4:  ret = is_aks_prime(n); break;
+        case 5:  ret = is_lucas_pseudoprime(n, 0); break;
+        case 6:  ret = is_lucas_pseudoprime(n, 1); break;
+        case 7:  ret = is_lucas_pseudoprime(n, 3); break;
+        case 8:  ret = is_frobenius_underwood_pseudoprime(n); break;
+        case 9:  ret = is_frobenius_khashin_pseudoprime(n); break;
+        case 10: ret = is_catalan_pseudoprime(n); break;
+        case 11: ret = is_euler_plumb_pseudoprime(n); break;
+        case 12: ret = is_ramanujan_prime(n); break;
+        case 13: ret = is_square_free(n); break;
+        case 14: ret = is_carmichael(n); break;
+        case 15: ret = is_quasi_carmichael(n); break;
+        case 16: ret = is_semiprime(n); break;
+        case 17: ret = is_power(n,2); break;
+        case 18: ret = is_mersenne_prime(n);  if (ret == -1) status = 0; break;
+        case 19:
+        default: ret = is_totient(n); break;
       }
     }
+    if (status != 0)  RETURN_NPARITY(ret);
     switch (ix) {
       case 0: _vcallsub_with_gmp(0.01,"is_prime");       break;
       case 1: _vcallsub_with_gmp(0.01,"is_prob_prime");  break;
@@ -1274,32 +1186,127 @@ is_prime(IN SV* svn, ...)
       case 5: _vcallsub_with_gmp(0.01,"is_lucas_pseudoprime"); break;
       case 6: _vcallsub_with_gmp(0.01,"is_strong_lucas_pseudoprime"); break;
       case 7: _vcallsub_with_gmp(0.01,"is_extra_strong_lucas_pseudoprime"); break;
-      case 8: _vcallsub_with_gmp(0.24,"is_frobenius_pseudoprime"); break;
-      case 9: _vcallsub_with_gmp(0.13,"is_frobenius_underwood_pseudoprime"); break;
-      case 10:_vcallsub_with_gmp(0.30,"is_frobenius_khashin_pseudoprime"); break;
-      case 11:_vcallsub_with_gmp(
-                (items==1 || (astatus==0 && my_svuv(ST(1)) == 0)) ? 0.20 : 0.40,
-                "is_perrin_pseudoprime"); break;
-      case 12:_vcallsub_with_gmp(0.00,"is_catalan_pseudoprime"); break;
-      case 13:_vcallsub_with_gmp(0.13,"is_almost_extra_strong_lucas_pseudoprime"); break;
-      case 14:_vcallsub_with_gmp(0.39,"is_euler_plumb_pseudoprime"); break;
-      case 15:_vcallsub_with_gmp(0.00,"is_ramanujan_prime"); break;
-      case 16:_vcallsub_with_gmp(0.00,"is_square_free"); break;
-      case 17:_vcallsub_with_gmp(0.00,"is_carmichael"); break;
-      case 18:_vcallsub_with_gmp(0.00,"is_quasi_carmichael"); break;
-      case 19:_vcallsub_with_gmp(0.42,"is_semiprime"); break;
-      case 20:_vcallsub_with_gmp(0.47,"is_square"); break;
-      case 21:_vcallsub_with_gmp(0.28,"is_mersenne_prime"); break;
-      case 22:if (items != 3) { _vcallsub_with_gmp(0.28, "is_power"); }
-              else            { _vcallsub_with_pp("is_power"); } break;
-      case 23:(void)_vcallsubn(aTHX_ G_SCALAR, (items == 1) ? (VCALL_GMP|VCALL_PP) : (VCALL_PP), "is_prime_power", items, 40); break;
-      case 24:_vcallsub_with_gmp(0.00,"logint"); break;
-      case 25:(void)_vcallsubn(aTHX_ G_SCALAR, (items == 2) ? (VCALL_GMP|VCALL_PP) : (VCALL_PP), "rootint", items, 40); break;
-      case 26:_vcallsub_with_gmp(0.00,"is_fundamental"); break;
-      case 27:
+      case 8: _vcallsub_with_gmp(0.13,"is_frobenius_underwood_pseudoprime"); break;
+      case 9: _vcallsub_with_gmp(0.30,"is_frobenius_khashin_pseudoprime"); break;
+      case 10:_vcallsub_with_gmp(0.00,"is_catalan_pseudoprime"); break;
+      case 11:_vcallsub_with_gmp(0.39,"is_euler_plumb_pseudoprime"); break;
+      case 12:_vcallsub_with_gmp(0.00,"is_ramanujan_prime"); break;
+      case 13:_vcallsub_with_gmp(0.00,"is_square_free"); break;
+      case 14:_vcallsub_with_gmp(0.00,"is_carmichael"); break;
+      case 15:_vcallsub_with_gmp(0.00,"is_quasi_carmichael"); break;
+      case 16:_vcallsub_with_gmp(0.42,"is_semiprime"); break;
+      case 17:_vcallsub_with_gmp(0.47,"is_square"); break;
+      case 18:_vcallsub_with_gmp(0.28,"is_mersenne_prime"); break;
+      case 19:
       default:_vcallsub_with_gmp(0.00,"is_totient"); break;
     }
     return; /* skip implicit PUTBACK */
+
+void is_fundamental(IN SV* svn)
+  PREINIT:
+    int status;
+  PPCODE:
+    status = _validate_int(aTHX_ svn, 1);
+    if (status == 1)
+      RETURN_NPARITY(is_fundamental(my_svuv(svn), 0));
+    if (status == -1) {
+      IV sn = my_sviv(svn);
+      if (sn > -IV_MAX)
+        RETURN_NPARITY(is_fundamental(-sn, 1));
+    }
+    _vcallsub_with_gmp(0.00,"is_fundamental");
+    return;
+
+
+void
+is_power(IN SV* svn, IN UV k = 0, IN SV* svroot = 0)
+  PREINIT:
+    int status;
+  PPCODE:
+    status = _validate_int(aTHX_ svn, 1);
+    if (status != 0) {
+      int ret = 0;
+      UV n = my_svuv(svn);
+      if (status == -1) {
+        IV sn = my_sviv(svn);
+        if (sn <= -IV_MAX) status = 0;
+        else               n = -sn;
+      }
+      if (status == 1 || (status == -1 && (k == 0 || k & 1))) {
+        ret = is_power(n, k);
+        if (status == -1 && k == 0) {
+          ret >>= valuation(ret,2);
+          if (ret == 1) ret = 0;
+        }
+        if (ret && svroot != 0) {
+          UV root = rootof(n, k ? k : (UV)ret);
+          if (!SvROK(svroot)) croak("is_power: third argument not a scalar reference");
+          if (status == 1) sv_setuv(SvRV(svroot),  root);
+          else             sv_setiv(SvRV(svroot), -root);
+        }
+      }
+      if (status != 0) RETURN_NPARITY(ret);
+    }
+    if (svroot == 0) { _vcallsub_with_gmp(0.28, "is_power"); }
+    else             { _vcallsub_with_pp("is_power"); }
+    return;
+
+void
+is_prime_power(IN SV* svn, IN SV* svroot = 0)
+  PREINIT:
+    int status, ret;
+    UV n, root;
+  PPCODE:
+    status = _validate_int(aTHX_ svn, 1);
+    if (status == -1)
+      RETURN_NPARITY(0);
+    if (status != 0) {
+      n = my_svuv(svn);
+      ret = primepower(n, &root);
+      if (ret && svroot != 0) {
+        if (!SvROK(svroot))croak("is_prime_power: second argument not a scalar reference");
+        sv_setuv(SvRV(svroot), root);
+      }
+      RETURN_NPARITY(ret);
+    }
+    (void)_vcallsubn(aTHX_ G_SCALAR, (svroot == 0) ? (VCALL_GMP|VCALL_PP) : (VCALL_PP), "is_prime_power", items, 40);
+    return;
+
+void
+is_perrin_pseudoprime(IN SV* svn, IN int k = 0)
+  ALIAS:
+    is_almost_extra_strong_lucas_pseudoprime = 1
+  PREINIT:
+    int status, ret;
+  PPCODE:
+    ret = 0;
+    status = _validate_int(aTHX_ svn, 1);
+    if (status == 1) {
+      UV n = my_svuv(svn);
+      if (ix == 0)  ret = is_perrin_pseudoprime(n, k);
+      else          ret = is_almost_extra_strong_lucas_pseudoprime(n, (k < 1) ? 1 : k);
+    }
+    if (status != 0) RETURN_NPARITY(ret);
+    if (ix == 0)
+      _vcallsub_with_gmp( (k == 0) ? 0.20 : 0.40, "is_perrin_pseudoprime");
+    else
+      _vcallsub_with_gmp(0.13,"is_almost_extra_strong_lucas_pseudoprime");
+    return;
+
+void
+is_frobenius_pseudoprime(IN SV* svn, IN IV P = 0, IN IV Q = 0)
+  PREINIT:
+    int status, ret;
+  PPCODE:
+    ret = 0;
+    status = _validate_int(aTHX_ svn, 1);
+    if (status == 1) {
+      UV n = my_svuv(svn);
+      ret = is_frobenius_pseudoprime(n, P, Q);
+    }
+    if (status != 0) RETURN_NPARITY(ret);
+    _vcallsub_with_gmp(0.24,"is_frobenius_pseudoprime");
+    return;
 
 void
 is_polygonal(IN SV* svn, IN UV k, IN SV* svroot = 0)
@@ -1328,6 +1335,39 @@ is_polygonal(IN SV* svn, IN UV k, IN SV* svroot = 0)
     }
     if (items != 3) { _vcallsub_with_gmp(0.00, "is_polygonal"); }
     else            { _vcallsub_with_pp("is_polygonal"); }
+    return;
+
+void
+logint(IN SV* svn, IN UV k, IN SV* svret = 0)
+  ALIAS:
+    rootint = 1
+  PREINIT:
+    int status;
+    UV n, root;
+  PPCODE:
+    status = _validate_int(aTHX_ svn, 1);
+    if (status != 0) {
+      n = my_svuv(svn);
+      if (svret != 0 && !SvROK(svret))
+         croak("%s: third argument not a scalar reference",(ix==0)?"logint":"rootint");
+      if (ix == 0) {
+        if (status != 1 || n <= 0)   croak("logint: n must be > 0");
+        if (k <= 1)                  croak("logint: base must be > 1");
+        root = logint(n, k);
+        if (svret) sv_setuv(SvRV(svret), ipow(k,root));
+      } else {
+        if (status == -1)            croak("rootint: n must be >= 0");
+        if (k <= 0)                  croak("rootint: k must be > 0");
+        root = rootof(n, k);
+        if (svret) sv_setuv(SvRV(svret), ipow(root,k));
+      }
+      XSRETURN_UV(root);
+    }
+    switch (ix) {
+      case 0: _vcallsub_with_pp("logint"); break;
+      case 1: (void)_vcallsubn(aTHX_ G_SCALAR, (svret == 0) ? (VCALL_GMP|VCALL_PP) : (VCALL_PP), "rootint", items, 40); break;
+      default: break;
+    }
     return;
 
 void
