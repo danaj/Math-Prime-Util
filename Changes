@@ -13,6 +13,8 @@ Revision history for Perl module Math::Prime::Util
     - split XS mapping of many primality tests.  Makes more sense and
       improves performance for some calls.
 
+    - euler_phi and moebius with negative range inputs weren't consistent.
+
 
 0.68 2017-10-19
 

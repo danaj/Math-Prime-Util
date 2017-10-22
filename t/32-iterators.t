@@ -309,7 +309,6 @@ ok(!eval { prime_iterator_object(4.5); }, "iterator 4.5");
   forderange { lastfor,return if $_[3]==5; $t++; } 7;
   is($t, 5, "lastfor works in forderange");
 }
-# TODO: formultiperm with repeated chars could be wrong
 { my $t;
   formultiperm { lastfor if "miles" eq join("",@_); $t++; } [split(//,"smile")];
   is($t, 81, "lastfor works in formultiperm");

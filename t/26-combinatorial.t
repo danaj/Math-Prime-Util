@@ -66,8 +66,8 @@ sub fact { my $n = Math::BigInt->new("$_[0]"); $n->bfac; }
 
 ###### factorialmod
 {
-  my @result = map { my $m=$_; map { factorialmod($_,$m) } 0..$m-1; } 1 .. 50;
-  my @expect = map { my $m=$_; map { factorial($_) % $m; } 0..$m-1; } 1 .. 50;
+  my @result = map { my $m=$_; map { factorialmod($_,$m) } 0..$m-1; } 1 .. 40;
+  my @expect = map { my $m=$_; map { factorial($_) % $m; } 0..$m-1; } 1 .. 40;
   is_deeply( \@result, \@expect, "factorialmod n! mod m for m 1 to 50, n 0 to m" );
 }
 

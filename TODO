@@ -136,3 +136,5 @@
 - make a uint128_t version of montmath.  Needs to handle 64-bit.
 
 - add some bignum tests to hammingweight, valuation, etc.
+
+- is_square_free should use |n|

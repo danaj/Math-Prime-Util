@@ -1139,29 +1139,24 @@ sub is_carmichael {
   # return !is_prime($n) && ($n % carmichael_lambda($n)) == 1;
 
   return 0 if $n < 561 || ($n % 2) == 0;
-  return 0 if (!($n % 4) || !($n % 9) || !($n % 25) || !($n%49) || !($n%121));
+  return 0 if (!($n % 9) || !($n % 25) || !($n%49) || !($n%121));
 
+  # Check Korselt's criterion for small divisors
   my $fn = $n;
-  if ($n > 100_000_000) {   # After 100M, this saves time on average
-    # Pre-tests which are faster than factoring.
-    return 0 if Math::Prime::Util::powmod(2, $n-1, $n) != 1;
-    return 0 if Math::Prime::Util::is_prime($n);
-    for my $a (3,5,7,11,13,17,19,23,29,31,37) {
-      my $gcd = Math::Prime::Util::gcd($a, $fn);
-      if ($gcd == 1) {
-        return 0 if Math::Prime::Util::powmod($a, $n-1, $n) != 1;
-      } else {
-        return 0 if $gcd != $a;              # Not square free
-        return 0 if (($n-1) % ($a-1)) != 0;  # factor doesn't divide
-        $fn /= $a;
-      }
+  for my $a (5,7,11,13,17,19,23,29,31,37,41,43) {
+    if (($fn % $a) == 0) {
+      return 0 if (($n-1) % ($a-1)) != 0;   # Korselt
+      $fn /= $a;
+      return 0 unless $fn % $a;             # not square free
     }
   }
-  #return 1;
-  # Based on pre-tests, it's reasonably likely $n is a Carmichael number.
+  return 0 if Math::Prime::Util::powmod(2, $n-1, $n) != 1;
+
+  # After pre-tests, it's reasonably likely $n is a Carmichael number or prime
 
   # Use probabilistic test if too large to reasonably factor.
   if (length($fn) > 50) {
+    return 0 if Math::Prime::Util::is_prime($n);
     for my $t (13 .. 150) {
       my $a = $_primes_small[$t];
       my $gcd = Math::Prime::Util::gcd($a, $fn);
