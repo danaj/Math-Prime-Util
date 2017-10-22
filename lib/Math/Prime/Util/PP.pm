@@ -664,7 +664,7 @@ sub sieve_prime_cluster {
   }
 
   # Walk the range in primorial chunks, doing primality tests.
-  my $nprim = 0;
+  my($nummr, $numlucas) = (0,0);
   while ($lo <= $hi) {
 
     my @racc = @acc;
@@ -683,17 +683,34 @@ sub sieve_prime_cluster {
     }
 
     # Do final primality tests.
-    for my $c (@cl) {
-      last unless scalar(@racc);
-      my $loc = $lo + $c;
-      $nprim += scalar(@racc);
-      @racc = grep { Math::Prime::Util::is_prime($loc+$_) } @racc;
+    if ($lo < 1e13) {
+      for my $r (@racc) {
+        my($good, $p) = (1, $lo + $r);
+        for my $c (@cl) {
+          $nummr++;
+          if (!Math::Prime::Util::is_prime($p+$c)) { $good = 0; last; }
+        }
+        push @p, $p if $good;
+      }
+    } else {
+      for my $r (@racc) {
+        my($good, $p) = (1, $lo + $r);
+        for my $c (@cl) {
+          $nummr++;
+          if (!Math::Prime::Util::is_strong_pseudoprime($p+$c,2)) { $good = 0; last; }
+        }
+        next unless $good;
+        for my $c (@cl) {
+          $numlucas++;
+          if (!Math::Prime::Util::is_extra_strong_lucas_pseudoprime($p+$c)) { $good = 0; last; }
+        }
+        push @p, $p if $good;
+      }
     }
 
-    push @p, map { $lo + $_ } @racc;
     $lo += $pr;
   }
-  print "cluster sieve ran $nprim primality tests\n" if $_verbose;
+  print "cluster sieve ran $nummr MR and $numlucas Lucas tests\n" if $_verbose;
   @p;
 }
 
