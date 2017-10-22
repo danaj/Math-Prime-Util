@@ -19,5 +19,5 @@ is_deeply( [grep { is_fundamental($_) } 0 .. 50],
            [1,5,8,12,13,17,21,24,28,29,33,37,40,41,44],
            "is_fundamental(0 .. 50)" );
 
-is( is_fundamental("147573952589676412929"), 1, "is_fundamental(2^67+1)" );
-is( is_fundamental("-147573952589676412920"), 1, "is_fundamental(-2^67+8)" );
+is( is_fundamental("147573952589676412937"), 1, "is_fundamental(2^67+9)" );
+is( is_fundamental("-147573952589676412884"), 1, "is_fundamental(-2^67+44)" );
