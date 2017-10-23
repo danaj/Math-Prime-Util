@@ -71,6 +71,8 @@ foreach my $r (@sqrtmods) {
 
 
 my $num = 99;
+$num = 29 if Math::BigInt->config()->{lib} !~ /(GMP|Pari)/;
+
 my @i1 = map { nrand() } 0 .. $num;
 my @i2 = map { nrand() } 0 .. $num;
 my @i2t= map { $i2[$_] >> 1 } 0 .. $num;

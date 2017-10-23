@@ -66,7 +66,7 @@ is( rootint("4309103192094230025610831456000977230474869812409475032689505864084
 ###### logint
 is_deeply( [map { logint($_,2) } 1..200], [map { int(log($_)/log(2)+1e-10) } 1..200], "logint base 2: 0 .. 200" );
 is_deeply( [map { logint($_,3) } 1..200], [map { int(log($_)/log(3)+1e-10) } 1..200], "logint base 3: 0 .. 200" );
-is_deeply( [map { logint($_,5) } 1..200], [map { int(log($_)/log(5)+1e-10) } 1..200], "logint base 3: 0 .. 200" );
+is_deeply( [map { logint($_,5) } 1..200], [map { int(log($_)/log(5)+1e-10) } 1..200], "logint base 5: 0 .. 200" );
 {
   my $be;
   is( logint(19284098234,16,\$be), 8, "logint(19284098234,16) = 8" );

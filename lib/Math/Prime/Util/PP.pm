@@ -2891,6 +2891,15 @@ sub is_polygonal {
   croak("is_polygonal: k must be >= 3") if $k < 3;
   return 0 if $n <= 0;
   if ($n == 1) { $$refp = 1 if defined $refp; return 1; }
+
+  if ($Math::Prime::Util::_GMPfunc{"polygonal_nth"}) {
+    my $nth = Math::Prime::Util::GMP::polygonal_nth($n, $k);
+    return 0 unless $nth;
+    $nth = Math::Prime::Util::_reftyped($_[0], $nth);
+    $$refp = $nth if defined $refp;
+    return 1;
+  }
+
   my($D,$R);
   if ($k == 4) {
     return 0 unless _is_perfect_square($n);

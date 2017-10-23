@@ -220,13 +220,13 @@ static int _validate_int(pTHX_ SV* n, int negok)
 #define VCALL_PP 0x1
 #define VCALL_GMP 0x2
 /* Call a Perl sub to handle work for us. */
-static int _vcallsubn(pTHX_ I32 flags, I32 stashflags, const char* name, int nargs, int version)
+static int _vcallsubn(pTHX_ I32 flags, I32 stashflags, const char* name, int nargs, int minversion)
 {
     GV* gv = NULL;
     dMY_CXT;
     Size_t namelen = strlen(name);
     /* If given a GMP function, and GMP enabled, and function exists, use it. */
-    int use_gmp = stashflags & VCALL_GMP && _XS_get_callgmp() && _XS_get_callgmp() >= version;
+    int use_gmp = stashflags & VCALL_GMP && _XS_get_callgmp() && _XS_get_callgmp() >= minversion;
     assert(!(stashflags & ~(VCALL_PP|VCALL_GMP)));
     if (use_gmp && hv_exists(MY_CXT.MPUGMP,name,namelen)) {
       GV ** gvp = (GV**)hv_fetch(MY_CXT.MPUGMP,name,namelen,0);
@@ -1192,13 +1192,13 @@ void is_prime(IN SV* svn)
       case 11:_vcallsub_with_gmp(0.39,"is_euler_plumb_pseudoprime"); break;
       case 12:_vcallsub_with_gmp(0.00,"is_ramanujan_prime"); break;
       case 13:_vcallsub_with_gmp(0.00,"is_square_free"); break;
-      case 14:_vcallsub_with_gmp(0.00,"is_carmichael"); break;
+      case 14:_vcallsub_with_gmp(0.47,"is_carmichael"); break;
       case 15:_vcallsub_with_gmp(0.00,"is_quasi_carmichael"); break;
       case 16:_vcallsub_with_gmp(0.42,"is_semiprime"); break;
       case 17:_vcallsub_with_gmp(0.47,"is_square"); break;
       case 18:_vcallsub_with_gmp(0.28,"is_mersenne_prime"); break;
       case 19:
-      default:_vcallsub_with_gmp(0.00,"is_totient"); break;
+      default:_vcallsub_with_gmp(0.47,"is_totient"); break;
     }
     return; /* skip implicit PUTBACK */
 
@@ -1333,7 +1333,7 @@ is_polygonal(IN SV* svn, IN UV k, IN SV* svroot = 0)
         RETURN_NPARITY(result);
       }
     }
-    if (items != 3) { _vcallsub_with_gmp(0.00, "is_polygonal"); }
+    if (items != 3) { _vcallsub_with_gmp(0.47, "is_polygonal"); }
     else            { _vcallsub_with_pp("is_polygonal"); }
     return;
 
@@ -1364,7 +1364,7 @@ logint(IN SV* svn, IN UV k, IN SV* svret = 0)
       XSRETURN_UV(root);
     }
     switch (ix) {
-      case 0: _vcallsub_with_pp("logint"); break;
+      case 0: (void)_vcallsubn(aTHX_ G_SCALAR, (svret == 0) ? (VCALL_GMP|VCALL_PP) : (VCALL_PP), "logint", items, 47); break;
       case 1: (void)_vcallsubn(aTHX_ G_SCALAR, (svret == 0) ? (VCALL_GMP|VCALL_PP) : (VCALL_PP), "rootint", items, 40); break;
       default: break;
     }
