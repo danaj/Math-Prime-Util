@@ -2095,8 +2095,9 @@ permtonum(IN SV* svp)
       if (i > plen && perm_to_num(plen+1, V, &num))
         XSRETURN_UV(num);
     }
-    _vcallsub_with_pp("permtonum");
-    return;
+    _vcallsub_with_gmpobj(0.47,"permtonum");
+    OBJECTIFY_RESULT(ST(0), ST(0));
+    XSRETURN(1);
 
 void
 randperm(IN UV n, IN UV k = 0)
