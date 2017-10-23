@@ -2068,7 +2068,7 @@ numtoperm(IN UV n, IN SV* svk)
         XSRETURN(n);
       }
     }
-    _vcallsubn(aTHX_ GIMME_V, VCALL_PP, "numtoperm", items, 0);
+    _vcallsubn(aTHX_ GIMME_V, VCALL_PP|VCALL_GMP, "numtoperm", items, 47);
     return;
 
 void
@@ -2243,7 +2243,7 @@ void todigits(SV* svn, int base=10, int length=-1)
       }
     }
     switch (ix) {
-      case 0:  _vcallsubn(aTHX_ GIMME_V, VCALL_GMP|VCALL_PP, "todigits", items, 0); break;
+      case 0:  _vcallsubn(aTHX_ GIMME_V, VCALL_GMP|VCALL_PP, "todigits", items, 41); break;
       case 1:  _vcallsub_with_gmp(0.00,"todigitstring"); break;
       case 2:
       default: _vcallsub_with_gmp(0.00,"fromdigits"); break;

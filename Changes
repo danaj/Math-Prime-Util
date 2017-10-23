@@ -20,6 +20,10 @@ Revision history for Perl module Math::Prime::Util
     - factorialmod given a large n and m where m was a composite with
       large square factors was incorrect.  Fixed.
 
+    - numtoperm will accept negative k values (k is always mod n!)
+
+    - support some new Math::Prime::Util::GMP functions from 0.47.
+
 
 0.68 2017-10-19
 
