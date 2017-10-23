@@ -3060,6 +3060,16 @@ sub rootint {
 sub logint {
   my ($n, $b, $refp) = @_;
   croak("logint third argument not a scalar reference") if defined($refp) && !ref($refp);
+
+  if ($Math::Prime::Util::_GMPfunc{"logint"}) {
+    my $e = Math::Prime::Util::logint($n, $b);
+    if (defined $refp) {
+      my $r = Math::Prime::Util::powmod($b, $e, $n);
+      $$refp = Math::Prime::Util::_reftyped($_[0], $r);
+    }
+    return Math::Prime::Util::_reftyped($_[0], $e);
+  }
+
   croak "logint: n must be > 0" unless $n > 0;
   croak "logint: missing base" unless defined $b;
   if ($b == 10) {
