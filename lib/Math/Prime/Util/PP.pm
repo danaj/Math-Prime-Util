@@ -6431,11 +6431,11 @@ sub _multiset_permutations {
 sub numtoperm {
   my($n,$k) = @_;
   _validate_positive_integer($n);
-  _validate_positive_integer($k);
+  _validate_integer($k);
   return () if $n == 0;
   return (0) if $n == 1;
   my $f = factorial($n-1);
-  $k %= vecprod($f,$n) if int($k/$f) >= $n;
+  $k %= vecprod($f,$n) if $k < 0 || int($k/$f) >= $n;
   my @S = map { $_ } 0 .. $n-1;
   my @V;
   while ($n-- > 0) {

@@ -3418,11 +3418,11 @@ is a good simple approximation to the nth prime.
 
   @p = numtoperm(10,654321);  # @p=(1,8,2,7,6,5,3,4,9,0)
 
-Given two non-negative integers C<n> and C<k>, return the
+Given a non-negative integer C<n> and integer C<k>, return the
 rank C<k> lexicographic permutation of C<n> elements.
+C<k> will be interpreted as mod C<n!>.
 
 This will match iteration number C<k> (zero based) of L</forperm>.
-C<k> can be assumed to be mod C<n!>.
 
 This corresponds to Pari's C<numtoperm(n,k)> function, though Pari
 uses an implementation specific ordering rather than lexicographic.
