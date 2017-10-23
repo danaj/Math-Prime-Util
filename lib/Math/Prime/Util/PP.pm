@@ -3062,9 +3062,10 @@ sub logint {
   croak("logint third argument not a scalar reference") if defined($refp) && !ref($refp);
 
   if ($Math::Prime::Util::_GMPfunc{"logint"}) {
-    my $e = Math::Prime::Util::logint($n, $b);
+    my $e = Math::Prime::Util::GMP::logint($n, $b);
     if (defined $refp) {
-      my $r = Math::Prime::Util::powmod($b, $e, $n);
+      my $r = Math::Prime::Util::GMP::powmod($b, $e, $n);
+      $r = $n if $r == 0;
       $$refp = Math::Prime::Util::_reftyped($_[0], $r);
     }
     return Math::Prime::Util::_reftyped($_[0], $e);
