@@ -3589,6 +3589,8 @@ sub factorialmod {
   return Math::Prime::Util::GMP::factorialmod($n,$m)
     if $Math::Prime::Util::_GMPfunc{"factorialmod"};
 
+  return 0 if $n >= $m || $m == 1;
+
   if ($n > 10) {
     my($s,$t,$e) = (1);
     Math::Prime::Util::forprimes( sub {

@@ -45,7 +45,7 @@ my @binomials = (
 # TODO: Add a bunch of combs here:  "5,3" => [[..],[..],[..]],
 
 plan tests => 1                        # Factorial
-            + 1                        # Factorialmod
+            + 1 + 1*$extra             # Factorialmod
             + 2 + scalar(@binomials)   # Binomial
             + 7 + 4                    # Combinations
             + scalar(keys(%perms)) + 1 # Permutations
@@ -69,6 +69,9 @@ sub fact { my $n = Math::BigInt->new("$_[0]"); $n->bfac; }
   my @result = map { my $m=$_; map { factorialmod($_,$m) } 0..$m-1; } 1 .. 40;
   my @expect = map { my $m=$_; map { factorial($_) % $m; } 0..$m-1; } 1 .. 40;
   is_deeply( \@result, \@expect, "factorialmod n! mod m for m 1 to 50, n 0 to m" );
+}
+if ($extra) {
+  is( factorialmod(5000001,"8000036000054000027"), "4179720539133404343", "factorialmod with large n and large composite non-square-free m" );
 }
 
 ###### binomial

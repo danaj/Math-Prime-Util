@@ -17,6 +17,9 @@ Revision history for Perl module Math::Prime::Util
 
     - split final test in PP cluster sieve.
 
+    - factorialmod given a large n and m where m was a composite with
+      large square factors was incorrect.  Fixed.
+
 
 0.68 2017-10-19
 

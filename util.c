@@ -1261,9 +1261,14 @@ UV factorialmod(UV n, UV m) {  /*  n! mod m */
     return (d == 0) ? m-1 : 1;   /* Wilson's Theorem: n = m-1 and n = m-2 */
 
   if (d == n && d > 5000000) {   /* Check for composite m that leads to 0 */
-    UV facs[MPU_MAX_FACTORS];
-    int nfacs = factor(m, facs);
-    if (n >= facs[nfacs-1]) return 0;
+    UV fac[MPU_MAX_FACTORS+1], exp[MPU_MAX_FACTORS+1];
+    int j, k, nfacs = factor_exp(m, fac, exp);
+    for (j = 0; j < nfacs; j++) {
+      UV t = fac[j];
+      for (k = 1; k < exp[j]; k++)
+        t *= fac[j];
+      if (n >= t) return 0;
+    }
   }
 
 #if USE_MONTMATH
