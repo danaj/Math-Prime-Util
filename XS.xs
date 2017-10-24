@@ -2041,8 +2041,13 @@ carmichael_lambda(IN SV* svn)
       case 6:  _vcallsub_with_pp("sqrtint"); break;
       case 7:  _vcallsub_with_gmp(0.19,"exp_mangoldt"); break;
       case 8:  _vcallsub_with_gmp(0.22,"znprimroot"); break;
-      case 9:  { char* ptr;  STRLEN len;  ptr = SvPV(svn, len);
-                 XSRETURN_UV(mpu_popcount_string(ptr, len)); } break;
+      case 9:  if (_XS_get_callgmp() >= 47) { /* Very fast */
+                 _vcallsub_with_gmp(0.47,"hammingweight");
+               } else {                       /* Better than PP */
+                 char* ptr;  STRLEN len;  ptr = SvPV(svn, len);
+                 XSRETURN_UV(mpu_popcount_string(ptr, len));
+               }
+               break;
       case 10: _vcallsub_with_pp("hclassno"); break;
       case 11: _vcallsub_with_gmp(0.00,"is_pillai"); break;
       case 12:
