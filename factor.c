@@ -536,7 +536,7 @@ int pbrent_factor(UV n, UV *factors, UV rounds, UV a)
 
   MPUassert( (n >= 3) && ((n%2) != 0) , "bad n in pbrent_factor");
   r = f = 1;
-  Xi = Xm = mont1;
+  Xi = Xm = Xs = mont1;
   a = mont_geta(a,n);
 
   while (rounds > 0) {
