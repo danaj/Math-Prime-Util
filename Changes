@@ -24,6 +24,8 @@ Revision history for Perl module Math::Prime::Util
 
     - support some new Math::Prime::Util::GMP functions from 0.47.
 
+    - C spigot Pi is 30-60% faster on x86_64 by using 32-bit types.
+
 
 0.68 2017-10-19
 

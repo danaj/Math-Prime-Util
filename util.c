@@ -2192,10 +2192,21 @@ long double lambertw(long double x) {
   return w;
 }
 
+#if HAVE_STD_U64
+  #define U64T uint64_t
+#else
+  #define U64T UV
+#endif
+
+/* Spigot from Arndt, Haenel, Winter, and Flammenkamp. */
+/* Modified for larger digits and rounding by Dana Jacobsen */
 char* pidigits(int digits)
 {
   char* out;
-  IV *a, b, c, d, e, f, g, i,  d4, d3, d2, d1;
+  uint32_t *a, b, c, d, e, g, i, d4, d3, d2, d1;
+  uint32_t const f = 10000;
+  U64T d64;  /* 64-bit intermediate for 2*2*10000*b > 2^32 (~30k digits) */
+
   if (digits <= 0) return 0;
   if (digits <= DBL_DIG && digits <= 18) {
     Newz(0, out, 19, char);
@@ -2203,23 +2214,33 @@ char* pidigits(int digits)
     return out;
   }
   digits++;   /* For rounding */
-  b = d = e = g = i = 0;  f = 10000;
   c = 14*(digits/4 + 2);
-  New(0, a, c, IV);
   New(0, out, digits+5+1, char);
   *out++ = '3';  /* We'll turn "31415..." into "3.1415..." */
-  for (b = 0; b < c; b++)  a[b] = 20000000;
+  New(0, a, c, uint32_t);
+  for (b = 0; b < c; b++)  a[b] = 2000;
 
+  d = i = 0;
   while ((b = c -= 14) > 0 && i < digits) {
     d = e = d % f;
+    if (b > 107000) {  /* Use 64-bit intermediate while necessary. */
+      for (d64 = d; --b > 107000; ) {
+        g = (b << 1) - 1;
+        d64 = d64 * b  +  f * (U64T)a[b];
+        a[b] = d64 % g;
+        d64 /= g;
+      }
+      d = d64;
+      b++;
+    }
     while (--b > 0) {
-      d = d * b + a[b];
       g = (b << 1) - 1;
-      a[b] = (d % g) * f;
+      d = d * b  +  f * a[b];
+      a[b] = d % g;
       d /= g;
     }
     /* sprintf(out+i, "%04d", e+d/f);   i += 4; */
-    d4 = e+d/f;
+    d4 = e + d/f;
     if (d4 > 9999) {
       d4 -= 10000;
       out[i-1]++;
