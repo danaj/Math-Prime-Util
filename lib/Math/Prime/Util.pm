@@ -1168,7 +1168,7 @@ If you are using bigints, here are some performance suggestions:
 =item *
 
 Install L<Math::Prime::Util::GMP>, as that will vastly increase the speed
-of many of the functions.  This does require the L<GMP|gttp://gmplib.org>
+of many of the functions.  This does require the L<GMP|http://gmplib.org>
 library be installed on your system, but this increasingly comes
 pre-installed or easily available using the OS vendor package installation tool.
 
