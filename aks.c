@@ -370,7 +370,7 @@ int is_aks_prime(UV n)
     /* slim = (s-1)*(s-1); */
     slim = (r > s) ? r : s;
     if (verbose > 1) printf("# aks trial to %lu\n", slim);
-    if (trial_factor(n, fac, slim) > 1)
+    if (trial_factor(n, fac, 2, slim) > 1)
       return 0;
     if (slim >= HALF_WORD || (slim*slim) >= n)
       return 1;
@@ -405,7 +405,7 @@ int is_aks_prime(UV n)
     /* Check divisibility to s * (s-1) to cover both gcd conditions */
     slim = s * (s-1);
     if (verbose > 1) printf("# aks trial to %lu\n", (unsigned long)slim);
-    if (trial_factor(n, fac, slim) > 1)
+    if (trial_factor(n, fac, 2, slim) > 1)
       return 0;
     if (slim >= HALF_WORD || (slim*slim) >= n)
       return 1;

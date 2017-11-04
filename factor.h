@@ -9,8 +9,7 @@ extern int factor(UV n, UV *factors);
 extern int factor_exp(UV n, UV *factors, UV* exponents);
 extern UV  divisor_sum(UV n, UV k);
 
-extern int trial_factor(UV n, UV *factors, UV maxtrial);
-
+extern int trial_factor(UV n, UV *factors, UV first, UV last);
 extern int fermat_factor(UV n, UV *factors, UV rounds);
 extern int holf_factor(UV n, UV *factors, UV rounds);
 extern int pbrent_factor(UV n, UV *factors, UV maxrounds, UV a);

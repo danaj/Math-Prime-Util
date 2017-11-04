@@ -49,13 +49,15 @@ static const unsigned short primes_small[] =
    1949,1951,1973,1979,1987,1993,1997,1999,2003,2011};
 #define NPRIMES_SMALL (sizeof(primes_small)/sizeof(primes_small[0]))
 
+static uint32_t holf32(uint32_t n, uint32_t rounds);
+
 
 /* The main factoring loop */
 /* Puts factors in factors[] and returns the number found. */
 int factor(UV n, UV *factors)
 {
   int nsmallfactors, nfactors = 0;   /* Number of factored in factors result */
-  unsigned int f = 7;
+  uint32_t g, f = 7;
 
   if (n > 1) {
     while ( (n & 1) == 0 ) { factors[nfactors++] = 2; n /= 2; }
@@ -108,9 +110,15 @@ int factor(UV n, UV *factors)
   }
 #if BITS_PER_WORD == 64   /* this is slower in 32-bit */
   /* For small values less than f^3, use simple factor to split semiprime */
-  if (n < 200000000 && n < f*f*f) {
-    if (is_prob_prime(n)) factors[nfactors++] = n;
-    else                  nfactors += holf_factor(n, factors+nfactors, 1000000);
+  if (n < 100000000 && n < f*f*f) {
+    if (is_prob_prime(n)) {
+      factors[nfactors++] = n;
+    } else { /* HOLF/HOLF32 always correctly splits under 1000M (at least) */
+      f = holf32(n,10000); /* 10k rounds is more than enough */
+      g = n/f;
+      if (f <= g) { factors[nfactors++] = f;  factors[nfactors++] = g; }
+      else        { factors[nfactors++] = g;  factors[nfactors++] = f; }
+    }
     return nfactors;
   }
 #endif
@@ -143,12 +151,14 @@ int factor(UV n, UV *factors)
       UV const nbits = BITS_PER_WORD - clz(n);
 #if USE_MONTMATH
       UV const br_rounds = 8000 + (9000 * ((nbits <= 45) ? 0 : (nbits-45)));
+      UV const sq_rounds = 200000;
 #elif MULMODS_ARE_FAST
       UV const br_rounds =  500 + ( 200 * ((nbits <= 45) ? 0 : (nbits-45)));
+      UV const sq_rounds = 100000;
 #else
-      UV const br_rounds = (nbits < 63) ? 0 : 10000;
+      UV const br_rounds = (nbits >= 63) ? 120000 : (nbits >= 58) ? 500 : 0;
+      UV const sq_rounds = 200000;
 #endif
-      UV const sq_rounds = 200000; /* 20k 91%, 40k 98%, 80k 99.9%, 120k 99.99%*/
 
       /* For small semiprimes the fastest solution is HOLF under 32, then
        * Lehman (no trial) under 38.  However on random inputs, HOLF is
@@ -157,7 +167,7 @@ int factor(UV n, UV *factors)
         split_success = holf_factor(n, tofac_stack+ntofac, 1000000)-1;
         if (verbose) printf("holf %d\n", split_success);
       }
-      /* 99.7% of 32-bit, 94% of 64-bit random inputs factored here */
+      /* Almost all inputs are factored here */
       if (!split_success && br_rounds > 0) {
         split_success = pbrent_factor(n, tofac_stack+ntofac, br_rounds, 1)-1;
         if (verbose) printf("pbrent %d\n", split_success);
@@ -168,6 +178,12 @@ int factor(UV n, UV *factors)
         if (verbose) printf("second pbrent %d\n", split_success);
       }
 #endif
+      /* Random 64-bit inputs at this point:
+       *   About 3.1% are small enough that we did with HOLF.
+       *   montmath:  96.89% pbrent,  0.01% pbrent2
+       *   fast:      73.43% pbrent, 21.97% squfof, 1.09% p-1, 0.49% prho, long
+       *   slow:      75.34% squfof, 19.47% pbrent, 0.20% p-1, 0.06% prho
+       */
       /* SQUFOF with these parameters gets 99.9% of everything left */
       if (!split_success && nbits <= 62) {
         split_success = squfof_factor(n,tofac_stack+ntofac, sq_rounds)-1;
@@ -195,7 +211,7 @@ int factor(UV n, UV *factors)
           croak("bad factor\n");
         n = tofac_stack[ntofac];  /* Set n to the other one */
       } else {
-        /* Factor via trial division.  Nothing should ever get here. */
+        /* Nothing should ever get here, but we're paranoid. */
         UV m = f % 30;
         UV limit = isqrt(n);
         if (verbose) printf("doing trial on %"UVuf"\n", n);
@@ -257,49 +273,49 @@ int factor_exp(UV n, UV *factors, UV* exponents)
 }
 
 
-int trial_factor(UV n, UV *factors, UV maxtrial)
+int trial_factor(UV n, UV *factors, UV f, UV last)
 {
-  int nfactors = 0;
+  int sp, nfactors = 0;
 
-  if (maxtrial == 0)  maxtrial = UV_MAX;
+  if (f < 2) f = 2;
+  if (last == 0 || last*last > n) last = UV_MAX;
 
-  /* Cover the cases 0/1/2/3 now */
-  if (n < 4 || maxtrial < 2) {
+  if (n < 4 || last < f) {
     factors[0] = n;
     return (n == 1) ? 0 : 1;
   }
-  /* Trial division for 2, 3, 5 immediately */
-  while ( (n & 1) == 0 ) { factors[nfactors++] = 2; n /= 2; }
-  if (3<=maxtrial) while ( (n % 3) == 0 ) { factors[nfactors++] = 3; n /= 3; }
-  if (5<=maxtrial) while ( (n % 5) == 0 ) { factors[nfactors++] = 5; n /= 5; }
 
-  if (7*7 <= n) {
-    UV f, sp = 3;
-    while (++sp < NPRIMES_SMALL) {
+  /* possibly do uint32_t specific code here */
+
+  if (f < primes_small[NPRIMES_SMALL-1]) {
+    while ( (n & 1) == 0 ) { factors[nfactors++] = 2; n >>= 1; }
+    if (3<=last) while ( (n % 3) == 0 ) { factors[nfactors++] = 3; n /= 3; }
+    if (5<=last) while ( (n % 5) == 0 ) { factors[nfactors++] = 5; n /= 5; }
+    for (sp = 4; sp < NPRIMES_SMALL; sp++) {
       f = primes_small[sp];
-      if (f*f > n || f > maxtrial) break;
+      if (f*f > n || f > last) break;
       while ( (n%f) == 0 ) {
         factors[nfactors++] = f;
         n /= f;
       }
     }
-    /* Trial division using a mod-30 wheel for larger values */
-    if (f*f <= n && f <= maxtrial) {
-      UV m, newlimit, limit = isqrt(n);
-      if (limit > maxtrial) limit = maxtrial;
-      m = f % 30;
-      while (f <= limit) {
-        if ( (n%f) == 0 ) {
-          do {
-            factors[nfactors++] = f;
-            n /= f;
-          } while ( (n%f) == 0 );
-          newlimit = isqrt(n);
-          if (newlimit < limit)  limit = newlimit;
-        }
-        f += wheeladvance30[m];
-        m = nextwheel30[m];
+  }
+  /* Trial division using a mod-30 wheel for larger values */
+  if (f*f <= n && f <= last) {
+    UV m, newlimit, limit = isqrt(n);
+    if (limit > last) limit = last;
+    m = f % 30;
+    while (f <= limit) {
+      if ( (n%f) == 0 ) {
+        do {
+          factors[nfactors++] = f;
+          n /= f;
+        } while ( (n%f) == 0 );
+        newlimit = isqrt(n);
+        if (newlimit < limit)  limit = newlimit;
       }
+      f += wheeladvance30[m];
+      m = nextwheel30[m];
     }
   }
   /* All done! */
@@ -431,8 +447,7 @@ static int found_factor(UV n, UV f, UV* factors)
 }
 
 /* Knuth volume 2, algorithm C.
- * Very fast for small numbers, grows rapidly.
- * SQUFOF is better for numbers nearing the 64-bit limit.
+ * Can't compete with HOLF, SQUFOF, pbrent, etc.
  */
 int fermat_factor(UV n, UV *factors, UV rounds)
 {
@@ -521,11 +536,37 @@ int holf_factor(UV n, UV *factors, UV rounds)
   factors[0] = n;
   return 1;
 }
+static uint32_t holf32(uint32_t n, uint32_t rounds) {
+  UV npre, ni;    /* These should be 64-bit */
+  uint32_t s, m, f;
+
+  if (!(n&1)) return 2;
+  if (n < 3) return n;
+  if (is_perfect_square(n)) return isqrt(n);
+
+  ni = npre = (UV) n * ((BITS_PER_WORD == 64) ? 5040 : 1);
+  while (rounds--) {
+    s = 1 + (uint32_t)sqrt((double)ni);
+    m = ((UV)s*(UV)s) - ni;
+    f = m & 127;
+    if (!((f*0x8bc40d7d) & (f*0xa1e2f5d1) & 0x14020a)) {
+      f = (uint32_t)sqrt((double)m);
+      if (m == f*f) {
+        f = gcd_ui(n, s - f);
+        if (f > 1 && f < n)
+          return f;
+      }
+    }
+    if (ni >= (ni+npre)) break; /* We've overflowed */
+    ni += npre;
+  }
+  return n;
+}
 
 
-#if USE_MONTMATH
 #define ABSDIFF(x,y)  (x>y) ? x-y : y-x
-/* Pollard / Brent.  Brent's modifications to Pollard's Rho.  Maybe faster. */
+#if USE_MONTMATH
+/* Pollard Rho with Brent's updates, using Montgomery reduction. */
 int pbrent_factor(UV n, UV *factors, UV rounds, UV a)
 {
   UV const nbits = BITS_PER_WORD - clz(n);
@@ -605,19 +646,16 @@ int pbrent_factor(UV n, UV *factors, UV rounds, UV a)
   return 1;
 }
 #else
-/* Pollard / Brent.  Brent's modifications to Pollard's Rho.  Maybe faster. */
+/* Pollard Rho with Brent's updates. */
 int pbrent_factor(UV n, UV *factors, UV rounds, UV a)
 {
-  UV f, m, r;
-  UV Xi = 2;
-  UV Xm = 2;
+  UV f, m, r, Xi, Xm;
   const UV inner = (n <= 4000000000UL) ? 32 : 160;
   int fails = 6;
 
   MPUassert( (n >= 3) && ((n%2) != 0) , "bad n in pbrent_factor");
 
-  r = 1;
-  f = 1;
+  r = f = Xi = Xm = 1;
   while (rounds > 0) {
     UV rleft = (r > rounds) ? rounds : r;
     UV saveXi = Xi;
@@ -628,10 +666,10 @@ int pbrent_factor(UV n, UV *factors, UV rounds, UV a)
       rleft -= dorounds;
       rounds -= dorounds;
       Xi = sqraddmod(Xi, a, n);        /* First iteration, no mulmod needed */
-      m = (Xi>Xm) ? Xi-Xm : Xm-Xi;
+      m = ABSDIFF(Xi,Xm);
       while (--dorounds > 0) {         /* Now do inner-1=63 more iterations */
         Xi = sqraddmod(Xi, a, n);
-        f = (Xi>Xm) ? Xi-Xm : Xm-Xi;
+        f = ABSDIFF(Xi,Xm);
         m = mulmod(m, f, n);
       }
       f = gcd_ui(m, n);
@@ -648,12 +686,12 @@ int pbrent_factor(UV n, UV *factors, UV rounds, UV a)
       Xi = saveXi;
       do {
         Xi = sqraddmod(Xi, a, n);
-        f = gcd_ui( (Xi>Xm) ? Xi-Xm : Xm-Xi, n);
+        f = gcd_ui( ABSDIFF(Xi,Xm), n);
       } while (f == 1 && r-- != 0);
     }
     if (f == 0 || f == n) {
       if (fails-- <= 0) break;
-      Xm = addmod(Xm, 2, n);
+      Xm = addmod(Xm, 11, n);
       Xi = Xm;
       a++;
       continue;
@@ -1033,9 +1071,8 @@ static const UV squfof_multipliers[] =
 int squfof_factor(UV n, UV *factors, UV rounds)
 {
   mult_t mult_save[NSQUFOF_MULT];
-  int still_racing;
-  UV i, nn64, mult, f64;
-  UV rounds_done = 0;
+  UV i, nn64, sqrtnn64, mult, f64,rounds_done = 0;
+  int mults_racing = NSQUFOF_MULT;
 
   /* Caller should have handled these trivial cases */
   MPUassert( (n >= 3) && ((n%2) != 0) , "bad n in squfof_factor");
@@ -1050,55 +1087,52 @@ int squfof_factor(UV n, UV *factors, UV rounds)
     mult_save[i].it = 0;
   }
 
-  /* Process the multipliers a little at a time: 0.33*(n*mult)^1/4: 20-20k */
-  do {
-    still_racing = 0;
-    for (i = 0; i < NSQUFOF_MULT; i++) {
+  /* Race each multiplier for a bit (20-20k rounds) */
+  while (mults_racing > 0 && rounds_done < rounds) {
+    for (i = 0; i < NSQUFOF_MULT && rounds_done < rounds; i++) {
       if (mult_save[i].valid == 0)  continue;
       mult = squfof_multipliers[i];
       nn64 = n * mult;
       if (mult_save[i].valid == -1) {
         if ((SQUFOF_MAX / mult) < n) {
           mult_save[i].valid = 0; /* This multiplier would overflow 64-bit */
+          mults_racing--;
           continue;
         }
+        sqrtnn64 = isqrt(nn64);
         mult_save[i].valid = 1;
-        mult_save[i].b0 = isqrt(nn64);
-        mult_save[i].imax = (UV) (sqrt(mult_save[i].b0) / 16);
+        mult_save[i].Q0    = 1;
+        mult_save[i].b0    = sqrtnn64;
+        mult_save[i].P     = sqrtnn64;
+        mult_save[i].Qn    = (SQUFOF_TYPE)(nn64 - sqrtnn64 * sqrtnn64);
+        if (mult_save[i].Qn == 0)
+          return found_factor(n, sqrtnn64, factors);
+        mult_save[i].bn    = (2 * sqrtnn64) / (UV)mult_save[i].Qn;
+        mult_save[i].it    = 0;
+        mult_save[i].mult  = mult;
+        mult_save[i].imax  = (UV) (sqrt(sqrtnn64) / 16);
         if (mult_save[i].imax < 20)     mult_save[i].imax = 20;
         if (mult_save[i].imax > rounds) mult_save[i].imax = rounds;
-        mult_save[i].Q0 = 1;
-        mult_save[i].P  = mult_save[i].b0;
-        mult_save[i].Qn = (SQUFOF_TYPE)(nn64 - ((UV)mult_save[i].b0 * (UV)mult_save[i].b0));
-        if (mult_save[i].Qn == 0)
-          return found_factor(n, mult_save[i].b0, factors);
-        mult_save[i].bn = ((UV)mult_save[i].b0 + (UV)mult_save[i].P) / (UV)mult_save[i].Qn;
-        mult_save[i].it = 0;
-        mult_save[i].mult = mult;
       }
+      if (mults_racing == 1)  /* Do all rounds if only one multiplier left */
+        mult_save[i].imax = (rounds - rounds_done);
       f64 = squfof_unit(nn64, &mult_save[i]);
       if (f64 > 1) {
-        if (f64 != mult) {
-          f64 /= gcd_ui(f64, mult);
-          if (f64 != 1) {
-            /*
-              unsigned long totiter = 0;
-              {int K; for (K = 0; K < NSQUFOF_MULT; K++) totiter += mult_save[K].it; }
-              printf("f2 %lu mult %lu it %lu (%lu)\n",n,mult,totiter,(UV)mult_save[i].it);
-            */
-            return found_factor(n, f64, factors);
-          }
+        UV f64red = f64 / gcd_ui(f64, mult);
+        if (f64red > 1) {
+          /* unsigned long totiter = 0;
+             {int K; for (K = 0; K < NSQUFOF_MULT; K++) totiter += mult_save[K].it; }
+             printf("  n %lu mult %lu it %lu (%lu)\n",n,mult,totiter,(UV)mult_save[i].it); */
+          return found_factor(n, f64red, factors);
         }
         /* Found trivial factor.  Quit working with this multiplier. */
         mult_save[i].valid = 0;
       }
-      if (mult_save[i].valid == 1)
-        still_racing = 1;
-      rounds_done += mult_save[i].imax;
-      if (rounds_done >= rounds)
-        break;
+      if (mult_save[i].valid == 0)
+        mults_racing--;
+      rounds_done += mult_save[i].imax;   /* Assume we did all rounds */
     }
-  } while (still_racing && rounds_done < rounds);
+  }
 
   /* No factors found */
   factors[0] = n;
@@ -1182,9 +1216,10 @@ int lehman_factor(UV n, UV *factors, int do_trial) {
     /* trial divide from primes[ip] to B.  We could:
      *   1) use table of 6542 shorts for the primes.
      *   2) use a wheel
-     *   3) bail to trial_factor which duplicates some work
+     *   3) let trial_factor handle it
      */
-    return trial_factor(n, factors, B);
+    if (ip >= NPRIMES_SMALL)  ip = NPRIMES_SMALL-1;
+    return trial_factor(n, factors, primes_small[ip], B);
   }
   factors[0] = n;
   return 1;

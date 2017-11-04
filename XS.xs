@@ -739,11 +739,11 @@ sieve_range(IN SV* svn, IN UV width, IN UV depth)
         status = 0;
       } else if (depth <= 100) { /* trial division for each value */
         for (i = (n<2)?2-n:0; i < width; i++)
-          if (trial_factor(n+i, factors, depth) < 2)
+          if (trial_factor(n+i, factors, 2, depth) < 2)
             XPUSHs(sv_2mortal(newSVuv( i )));
       } else {                   /* small trial + factor for each value */
         for (i = (n<2)?2-n:0; i < width; i++)
-          if (trial_factor(n+i, factors, 100) < 2)
+          if (trial_factor(n+i, factors, 2, 100) < 2)
             if (factor(n+i,factors) < 2 || factors[0] > depth)
               XPUSHs(sv_2mortal(newSVuv( i )));
       }
@@ -827,7 +827,7 @@ trial_factor(IN UV n, ...)
       UV factors[MPU_MAX_FACTORS+1];
       int i, nfactors = 0;
       switch (ix) {
-        case 0:  nfactors = trial_factor  (n, factors, arg1);  break;
+        case 0:  nfactors = trial_factor  (n, factors, 2, arg1);  break;
         case 1:  nfactors = fermat_factor (n, factors, arg1);  break;
         case 2:  nfactors = holf_factor   (n, factors, arg1);  break;
         case 3:  nfactors = squfof_factor (n, factors, arg1);  break;
@@ -3024,6 +3024,20 @@ factor_test_harness2(IN int count, IN int bits = 63)
       }
       if (fid) fclose(fid);
       XSRETURN_IV(totfactors);
+    }
+
+void
+factor_test_harness3(IN UV start, IN UV end)
+  PREINIT:
+    dMY_CXT;
+  PPCODE:
+    /* We'll factor <count> <bits>-bit numbers */
+    {
+      UV totf = 0, i, factors[MPU_MAX_FACTORS];
+      for (i = start; i < end; i++) {
+        totf += factor(i, factors);
+      }
+      XSRETURN_UV(totf);
     }
 
 #endif
