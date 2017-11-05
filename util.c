@@ -2221,7 +2221,7 @@ char* pidigits(int digits)
   for (b = 0; b < c; b++)  a[b] = 2000;
 
   d = i = 0;
-  while ((b = c -= 14) > 0 && i < digits) {
+  while ((b = c -= 14) > 0 && i < (uint32_t)digits) {
     d = e = d % f;
     if (b > 107000) {  /* Use 64-bit intermediate while necessary. */
       for (d64 = d; --b > 107000; ) {

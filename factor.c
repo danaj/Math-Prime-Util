@@ -15,6 +15,7 @@
 #include "cache.h"
 #include "primality.h"
 #include "montmath.h"
+static int holf32(uint32_t n, UV *factors, uint32_t rounds);
 
 /*
  * You need to remember to use UV for unsigned and IV for signed types that
@@ -48,8 +49,6 @@ static const unsigned short primes_small[] =
    1831,1847,1861,1867,1871,1873,1877,1879,1889,1901,1907,1913,1931,1933,
    1949,1951,1973,1979,1987,1993,1997,1999,2003,2011};
 #define NPRIMES_SMALL (sizeof(primes_small)/sizeof(primes_small[0]))
-
-static uint32_t holf32(uint32_t n, uint32_t rounds);
 
 
 /* The main factoring loop */
@@ -108,17 +107,11 @@ int factor(UV n, UV *factors)
     if (n != 1) factors[nfactors++] = n;
     return nfactors;
   }
-#if BITS_PER_WORD == 64   /* this is slower in 32-bit */
+#if BITS_PER_WORD == 64
   /* For small values less than f^3, use simple factor to split semiprime */
   if (n < 100000000 && n < f*f*f) {
-    if (is_prob_prime(n)) {
-      factors[nfactors++] = n;
-    } else { /* HOLF/HOLF32 always correctly splits under 1000M (at least) */
-      f = holf32(n,10000); /* 10k rounds is more than enough */
-      g = n/f;
-      if (f <= g) { factors[nfactors++] = f;  factors[nfactors++] = g; }
-      else        { factors[nfactors++] = g;  factors[nfactors++] = f; }
-    }
+    if (is_prob_prime(n)) factors[nfactors++] = n;
+    else                  nfactors += holf32(n, factors+nfactors, 10000);
     return nfactors;
   }
 #endif
@@ -160,13 +153,15 @@ int factor(UV n, UV *factors)
       UV const sq_rounds = 200000;
 #endif
 
+#if BITS_PER_WORD == 64
       /* For small semiprimes the fastest solution is HOLF under 32, then
        * Lehman (no trial) under 38.  However on random inputs, HOLF is
        * best only under 28-30 bits, and adding Lehman is always slower. */
-      if (!split_success && nbits <= 28) { /* This should always succeed */
-        split_success = holf_factor(n, tofac_stack+ntofac, 1000000)-1;
+      if (!split_success && nbits <= 30) { /* This should always succeed */
+        split_success = holf32(n, tofac_stack+ntofac, 1000000)-1;
         if (verbose) printf("holf %d\n", split_success);
       }
+#endif
       /* Almost all inputs are factored here */
       if (!split_success && br_rounds > 0) {
         split_success = pbrent_factor(n, tofac_stack+ntofac, br_rounds, 1)-1;
@@ -291,7 +286,7 @@ int trial_factor(UV n, UV *factors, UV f, UV last)
     while ( (n & 1) == 0 ) { factors[nfactors++] = 2; n >>= 1; }
     if (3<=last) while ( (n % 3) == 0 ) { factors[nfactors++] = 3; n /= 3; }
     if (5<=last) while ( (n % 5) == 0 ) { factors[nfactors++] = 5; n /= 5; }
-    for (sp = 4; sp < NPRIMES_SMALL; sp++) {
+    for (sp = 4; sp < (int)NPRIMES_SMALL; sp++) {
       f = primes_small[sp];
       if (f*f > n || f > last) break;
       while ( (n%f) == 0 ) {
@@ -536,13 +531,13 @@ int holf_factor(UV n, UV *factors, UV rounds)
   factors[0] = n;
   return 1;
 }
-static uint32_t holf32(uint32_t n, uint32_t rounds) {
+static int holf32(uint32_t n, UV *factors, uint32_t rounds) {
   UV npre, ni;    /* These should be 64-bit */
   uint32_t s, m, f;
 
-  if (!(n&1)) return 2;
-  if (n < 3) return n;
-  if (is_perfect_square(n)) return isqrt(n);
+  if (n < 3) { factors[0] = n; return 1; }
+  if (!(n&1)) { factors[0] = 2; factors[1] = n/2; return 2; }
+  if (is_perfect_square(n)) { factors[0] = factors[1] = isqrt(n); return 2; }
 
   ni = npre = (UV) n * ((BITS_PER_WORD == 64) ? 5040 : 1);
   while (rounds--) {
@@ -554,13 +549,14 @@ static uint32_t holf32(uint32_t n, uint32_t rounds) {
       if (m == f*f) {
         f = gcd_ui(n, s - f);
         if (f > 1 && f < n)
-          return f;
+          return found_factor(n, f, factors);
       }
     }
     if (ni >= (ni+npre)) break; /* We've overflowed */
     ni += npre;
   }
-  return n;
+  factors[0] = n;
+  return 1;
 }
 
 
@@ -1017,7 +1013,7 @@ static UV squfof_unit(UV n, mult_t* mult_save)
       /* Odd iteration. */
       SQUARE_SEARCH_ITERATION;
     }
-    S = isqrt(Qn);
+    S = t1; /* isqrt(Qn); */
     mult_save->it = i;
 
     /* Reduce to G0 */
