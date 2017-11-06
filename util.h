@@ -172,16 +172,15 @@ static UV lcm_ui(UV x, UV y) {
 /* See:  http://mersenneforum.org/showpost.php?p=110896 */
 static int is_perfect_square(UV n)
 {
-  UV m = n & 127;
+  /* Step 1, reduce to 18% of inputs */
+  uint32_t m = n & 127;
   if ((m*0x8bc40d7d) & (m*0xa1e2f5d1) & 0x14020a)  return 0;
-  /* On x86-64, sqrt is fast enough to stop testing here */
-#if !defined(__x86_64__)
-  /* This cuts out another 80%: */
-  m = n % 63; if ((m*0x3d491df7) & (m*0xc824a9f9) & 0x10f14008) return 0;
-  /* m = n % 25; if ((m*0x1929fc1b) & (m*0x4c9ea3b2) & 0x51001005) return 0; */
-#endif
+  /* Step 2, reduce to 7% of inputs (mod 99 reduces to 4% but slower) */
+  m = n %240; if ((m*0xfa445556) & (m*0x8021feb1) & 0x614aaa0f) return 0;
+  /* m = n % 99; if ((m*0x5411171d) & (m*0xe41dd1c7) & 0x80028a80) return 0; */
+  /* Step 3, do the square root instead of any more rejections */
   m = isqrt(n);
-  return m*m == n;
+  return (UV)m*(UV)m == n;
 }
 #endif
 
