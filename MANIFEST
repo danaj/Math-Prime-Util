@@ -12,7 +12,6 @@ lib/Math/Prime/Util/ECAffinePoint.pm
 lib/Math/Prime/Util/ECProjectivePoint.pm
 lib/Math/Prime/Util/PrimalityProving.pm
 lib/Math/Prime/Util/RandomPrimes.pm
-lib/Math/Prime/Util/ISAAC.pm
 lib/Math/Prime/Util/ChaCha.pm
 lib/Math/Prime/Util/Entropy.pm
 LICENSE
@@ -57,8 +56,6 @@ util.h
 util.c
 csprng.h
 csprng.c
-isaac.h
-isaac.c
 chacha.h
 chacha.c
 bench/bench-factor.pl

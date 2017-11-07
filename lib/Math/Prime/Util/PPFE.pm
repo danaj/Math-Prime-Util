@@ -10,36 +10,20 @@ use Math::Prime::Util::Entropy;
 package Math::Prime::Util;
 use Carp qw/carp croak confess/;
 
-BEGIN {
-  use constant CSPRNG_CHACHA => 1;
-  use constant CSPRNG_ISAAC  => 0;
-}
-
 *_validate_num = \&Math::Prime::Util::PP::_validate_num;
 *_validate_integer = \&Math::Prime::Util::PP::_validate_integer;
 *_prime_memfreeall = \&Math::Prime::Util::PP::_prime_memfreeall;
 *prime_memfree  = \&Math::Prime::Util::PP::prime_memfree;
 *prime_precalc  = \&Math::Prime::Util::PP::prime_precalc;
 
-if (CSPRNG_CHACHA) {
-  require Math::Prime::Util::ChaCha;
-  *_is_csprng_well_seeded = \&Math::Prime::Util::ChaCha::_is_csprng_well_seeded;
-  *_csrand = \&Math::Prime::Util::ChaCha::csrand;
-  *_srand = \&Math::Prime::Util::ChaCha::srand;
-  *random_bytes = \&Math::Prime::Util::ChaCha::random_bytes;
-  *irand = \&Math::Prime::Util::ChaCha::irand;
-  *irand64 = \&Math::Prime::Util::ChaCha::irand64;
-} elsif (CSPRNG_ISAAC) {
-  require Math::Prime::Util::ISAAC;
-  *_is_csprng_well_seeded = \&Math::Prime::Util::ISAAC::_is_csprng_well_seeded;
-  *_csrand = \&Math::Prime::Util::ISAAC::csrand;
-  *_srand = \&Math::Prime::Util::ISAAC::srand;
-  *random_bytes = \&Math::Prime::Util::ISAAC::random_bytes;
-  *irand = \&Math::Prime::Util::ISAAC::irand;
-  *irand64 = \&Math::Prime::Util::ISAAC::irand64;
-} else {
-  die "Bad CSPRNG choice";
-}
+use Math::Prime::Util::ChaCha;
+*_is_csprng_well_seeded = \&Math::Prime::Util::ChaCha::_is_csprng_well_seeded;
+*_csrand = \&Math::Prime::Util::ChaCha::csrand;
+*_srand = \&Math::Prime::Util::ChaCha::srand;
+*random_bytes = \&Math::Prime::Util::ChaCha::random_bytes;
+*irand = \&Math::Prime::Util::ChaCha::irand;
+*irand64 = \&Math::Prime::Util::ChaCha::irand64;
+
 sub srand {
   my($seed) = @_;
   croak "secure option set, manual seeding disabled" if prime_get_config()->{'secure'};

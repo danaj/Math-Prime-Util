@@ -32,25 +32,6 @@
 #include "ptypes.h"
 #include "csprng.h"
 
-#define USE_ISAAC      0
-#define USE_CHACHA20   1
-
-#if (USE_ISAAC + USE_CHACHA20) != 1
-#error Exactly one CSPRNG should been selected
-#endif
-
-#if USE_ISAAC
-
-#include "isaac.h"
-#define SEED_BYTES 1024
-#define CSEED     isaac_seed
-#define CRBYTES   isaac_rand_bytes
-#define CIRAND32  isaac_irand32
-#define CIRAND64  isaac_irand64
-#define CSELFTEST isaac_selftest
-
-#elif USE_CHACHA20
-
 #include "chacha.h"
 #define SEED_BYTES (32+8)
 #define CSEED(ctx,bytes,data,good)  chacha_seed(ctx,bytes,data,good)
@@ -58,8 +39,6 @@
 #define CIRAND32(ctx)               chacha_irand32(ctx)
 #define CIRAND64(ctx)               chacha_irand64(ctx)
 #define CSELFTEST()                 chacha_selftest()
-
-#endif
 
 /* Helper macros, similar to ChaCha, so we're consistent. */
 #ifndef U8TO32_LE

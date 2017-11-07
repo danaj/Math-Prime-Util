@@ -125,8 +125,6 @@
   10.7s  use Math::GMP qw/:constant/; my $f=factorial(144); urandomm($f) for 1..5e5;
    1.8s  my $f=Math::Prime::Util::GMP::factorial(144); Math::Prime::Util::GMP::urandomm($f) for 1..5e5;
 
-- Move ISAAC to per-thread context model.
-
 - Destroy csprng context on thread destruction.
 
 - submit bug report for Perl error in 30b8ab3

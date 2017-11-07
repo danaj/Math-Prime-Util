@@ -30,6 +30,8 @@ Revision history for Perl module Math::Prime::Util
 
     - reworked some factoring code.
 
+    - remove ISAAC (Perl and C) since we use ChaCha.
+
 
 0.68 2017-10-19
 

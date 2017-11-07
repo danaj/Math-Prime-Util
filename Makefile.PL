@@ -48,7 +48,6 @@ WriteMakefile1(
                     'util.o '     .
                     'entropy.o '  .
                     'csprng.o '   .
-                    'isaac.o '    .
                     'chacha.o '   .
                     'XS.o',
     LIBS         => ['-lm'],
@@ -107,9 +106,6 @@ WriteMakefile1(
                  },
                  'Math::Prime::Util::Entropy' => {
                     version => '0.68', file => 'lib/Math/Prime/Util/Entropy.pm',
-                 },
-                 'Math::Prime::Util::ISAAC' => {
-                    version => '0.68', file => 'lib/Math/Prime/Util/ISAAC.pm',
                  },
                  'Math::Prime::Util::ChaCha' => {
                     version => '0.68', file => 'lib/Math/Prime/Util/ChaCha.pm',
