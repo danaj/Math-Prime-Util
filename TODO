@@ -135,14 +135,12 @@
 
 - make a uint128_t version of montmath.  Needs to handle 64-bit.
 
-- add some bignum tests to hammingweight, valuation, etc.
+- sieve_range does trial division
 
-- is_square_free should use |n|
+- add some bignum tests to hammingweight, valuation, etc.
 
 - csrand and srand should be calling a util function to seed GMP csprng
 
 - prime_count_approx should give a proper integer result when given a
   bigint input.  Currently it calls RiemannR which since bignum isn't on,
   calls the XS RiemannR.  That starts truncating excessively past 10^23 ish.
-
-- sieve_range does trial division

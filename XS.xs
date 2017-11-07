@@ -1175,6 +1175,13 @@ void is_prime(IN SV* svn)
         case 19:
         default: ret = is_totient(n); break;
       }
+    } else if (status == -1) {
+      /* Result for negative inputs will be zero unless changed here */
+      if (ix == 13) {
+        IV sn = my_sviv(svn);
+        if (sn > -IV_MAX) ret = is_square_free(-sn);
+        else              status = 0;
+      }
     }
     if (status != 0)  RETURN_NPARITY(ret);
     switch (ix) {

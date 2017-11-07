@@ -8,6 +8,8 @@ Revision history for Perl module Math::Prime::Util
 
     [FUNCTIONALITY AND PERFORMANCE]
 
+    - is_square_free uses abs(n), like Pari and moebius.
+
     - is_primitive_root could be wrong with even n on some platforms.
 
     - split XS mapping of many primality tests.  Makes more sense and

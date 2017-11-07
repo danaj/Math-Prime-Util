@@ -400,7 +400,7 @@ sub is_mersenne_prime {
 }
 sub is_square_free {
   my($n) = @_;
-  _validate_positive_integer($n);
+  _validate_integer($n);
   return Math::Prime::Util::PP::is_square_free($n);
 }
 sub is_primitive_root {

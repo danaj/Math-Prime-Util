@@ -79,7 +79,7 @@ if (!$usexs) {
                  keys %big_mertens;
 }
 
-plan tests => 1 + 4 + 2 + 3 + scalar(keys %big_mertens);
+plan tests => 1 + 5 + 2 + 3 + scalar(keys %big_mertens);
 
 ok(!eval { moebius(0); }, "moebius(0)");
 
@@ -90,6 +90,9 @@ is_deeply( [moebius(1,20)],
            [1,-1,-1,0,-1,1,-1,0,0,1,-1,0,-1,1,1,0,-1,0,-1,0],
            "moebius 1 .. 20 (range)" );
 # moebius uses |n| so negative inputs reflect about zero.
+is_deeply( [map { moebius(-$_) } 1 .. 20],
+           [1,-1,-1,0,-1,1,-1,0,0,1,-1,0,-1,1,1,0,-1,0,-1,0],
+           "moebius -1 .. -20 (single)" );
 is_deeply( [moebius(-14,-9)],
            [1,-1,0,-1,1,0],
            "moebius -14 .. -9 (range)" );
