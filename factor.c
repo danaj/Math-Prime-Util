@@ -110,8 +110,8 @@ int factor(UV n, UV *factors)
 #if BITS_PER_WORD == 64
   /* For small values less than f^3, use simple factor to split semiprime */
   if (n < 100000000 && n < f*f*f) {
-    if (is_prob_prime(n)) factors[nfactors++] = n;
-    else                  nfactors += holf32(n, factors+nfactors, 10000);
+    if (MR32(n)) factors[nfactors++] = n;
+    else         nfactors += holf32(n, factors+nfactors, 10000);
     return nfactors;
   }
 #endif
@@ -138,7 +138,7 @@ int factor(UV n, UV *factors)
 
   /* loop over each remaining factor, until ntofac == 0 */
   do {
-    while ( (n >= f*f) && (!is_prob_prime(n)) ) {
+    while ( (n >= f*f) && (!is_def_prime(n)) ) {
       int split_success = 0;
       /* Adjust the number of rounds based on the number size and speed */
       UV const nbits = BITS_PER_WORD - clz(n);

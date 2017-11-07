@@ -20,6 +20,16 @@ extern int lucasu(IV* U, IV P, IV Q, UV k);
 extern int lucasv(IV* V, IV P, IV Q, UV k);
 
 extern int BPSW(UV const n);
+extern int MR32(uint32_t n);
+
+/* General purpose primality test.  Does small-prime divisibility. */
 extern int is_prob_prime(UV n);
+
+/* General purpose primality test without small divisibility tests. */
+#if BITS_PER_WORD == 32
+#define is_def_prime(n)  MR32(n)
+#else
+#define is_def_prime(n)  ((n <= 4294967295U) ? MR32(n) : BPSW(n))
+#endif
 
 #endif

@@ -999,16 +999,16 @@ int is_semiprime(UV n) {
       return !!is_prob_prime(n/p);
   }
   /* 9.8% of random inputs left */
-  if (is_prob_prime(n)) return 0;
+  if (is_def_prime(n)) return 0;
   if (p > n3) return 1;
   /* 4-8% of random inputs left */
   /* n is a composite and larger than p^3 */
-  if (   pbrent_factor(n, factors, 70000, 1) == 2
+  if (   pbrent_factor(n, factors, 90000, 1) == 2
          /* The only things we normally see by now are 16+ digit semiprimes */
       || pminus1_factor(n, factors, 4000, 4000) == 2
          /* 0.09% of random 64-bit inputs left */
       || pbrent_factor(n, factors, 180000, 7) == 2 )
-    return (is_prob_prime(factors[0]) && is_prob_prime(factors[1]));
+    return (is_def_prime(factors[0]) && is_def_prime(factors[1]));
   /* 0.002% of random 64-bit inputs left */
   {
     UV facs[MPU_MAX_FACTORS+1];

@@ -146,5 +146,3 @@
   calls the XS RiemannR.  That starts truncating excessively past 10^23 ish.
 
 - sieve_range does trial division
-
-- split single-base M-R out into function.  Use that in factor.c.
