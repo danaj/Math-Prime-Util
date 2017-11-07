@@ -2928,6 +2928,8 @@ sub is_polygonal {
 
 sub valuation {
   my($n, $k) = @_;
+  $n = -$n if defined $n && $n < 0;
+  _validate_num($n) || _validate_positive_integer($n);
   return 0 if $n < 2 || $k < 2;
   my $v = 0;
   if ($k == 2) { # Accelerate power of 2

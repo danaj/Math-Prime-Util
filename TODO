@@ -135,8 +135,6 @@
 
 - sieve_range does trial division
 
-- add some bignum tests to hammingweight, valuation, etc.
-
 - csrand and srand should be calling a util function to seed GMP csprng
 
 - prime_count_approx should give a proper integer result when given a

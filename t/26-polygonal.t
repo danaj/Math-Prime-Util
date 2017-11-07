@@ -36,6 +36,7 @@ my @expect = (
 
 plan tests => 0
             + 2*scalar(@expect)
+            + 2;
             ;
 
 for my $k (3 .. 25) {
@@ -57,3 +58,6 @@ for my $k (3 .. 25) {
   }
   is_deeply( \@r, [1,2,3,4,5,6,7,8,9,10], "is_polygonal correct $k-gonal n");
 }
+
+ok(!is_polygonal("724424175519274711242",3), "724424175519274711242 is not a triangular number");
+ok(is_polygonal("510622052816898545467859772308206986101878",3), "510622052816898545467859772308206986101878 is a triangular number");
