@@ -35,13 +35,13 @@ use Math::Random::ISAAC::PP;  my $mripp = Math::Random::ISAAC::PP->new($time);
 #                      Performance / Quality:
 #   CORE::rand    29000k/s    ++++ / ---  drand48 has many bad points
 #   Xorshift      16000k/s    +++  / ---  32-bit, old alg, closed interval
-#   MTwist        14000k/s    +++  /  ++  
+#   MTwist        14000k/s    +++  /  ++
 #   MPU::GMP      14000k/s    +++  / +++  ISAAC CSPRNG
 #   ntheory       12000k/s    +++  / +++  ChaCha20 CSPRNG
 #   MT::Auto       4800k/s    +    /  ++  MTwist is faster
 #   ISAAC          2400k/s    -    /  --  32-bit, bad seeding, closed interval
 #   MT             2200k/s    -    /  ++  32-bit, MTwist is faster
-#   Crypt::PRNG     705k/s    --   / +++  
+#   Crypt::PRNG     705k/s    --   / +++
 #   Secure          426k/s    ---  / ---  32-bit
 #   ntheory PP      110k/s    ---- / +++  ChaCha20, very very slow
 #

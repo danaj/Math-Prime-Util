@@ -121,8 +121,8 @@
 - compare wheel_t with primes separated and possibly cached.
 
 - urandomm with bigints could be faster.
-  14.7s  my $f=factorial(144); urandomm($f) for 1..5e5;
-  10.7s  use Math::GMP qw/:constant/; my $f=factorial(144); urandomm($f) for 1..5e5;
+   8.2s  my $f=factorial(144); urandomm($f) for 1..5e5;
+   5.3s  use Math::GMP qw/:constant/; my $f=factorial(144); urandomm($f) for 1..5e5;
    1.8s  my $f=Math::Prime::Util::GMP::factorial(144); Math::Prime::Util::GMP::urandomm($f) for 1..5e5;
 
 - Destroy csprng context on thread destruction.
