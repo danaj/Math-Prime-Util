@@ -1265,7 +1265,7 @@ UV factorialmod(UV n, UV m) {  /*  n! mod m */
     int j, k, nfacs = factor_exp(m, fac, exp);
     for (j = 0; j < nfacs; j++) {
       UV t = fac[j];
-      for (k = 1; k < exp[j]; k++)
+      for (k = 1; (UV)k < exp[j]; k++)
         t *= fac[j];
       if (n >= t) return 0;
     }

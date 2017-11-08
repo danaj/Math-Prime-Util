@@ -56,7 +56,7 @@ static const unsigned short primes_small[] =
 int factor(UV n, UV *factors)
 {
   int nsmallfactors, nfactors = 0;   /* Number of factored in factors result */
-  uint32_t g, f = 7;
+  uint32_t f = 7;
 
   if (n > 1) {
     while ( (n & 1) == 0 ) { factors[nfactors++] = 2; n /= 2; }
