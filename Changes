@@ -1,6 +1,6 @@
 Revision history for Perl module Math::Prime::Util
 
-0.69 2017-?
+0.69 2017-11-09
 
     [ADDED]
 
@@ -19,18 +19,20 @@ Revision history for Perl module Math::Prime::Util
 
     - numtoperm will accept negative k values (k is always mod n!)
 
-    - split XS mapping of many primality tests.  Makes more sense and
+    - Split XS mapping of many primality tests.  Makes more sense and
       improves performance for some calls.
 
-    - split final test in PP cluster sieve.
+    - Split final test in PP cluster sieve.
 
-    - support some new Math::Prime::Util::GMP functions from 0.47.
+    - Support some new Math::Prime::Util::GMP functions from 0.47.
 
     - C spigot Pi is 30-60% faster on x86_64 by using 32-bit types.
 
-    - reworked some factoring code.
+    - Reworked some factoring code.
 
-    - remove ISAAC (Perl and C) since we use ChaCha.
+    - Remove ISAAC (Perl and C) since we use ChaCha.
+
+    - Each thread allocs a new const array again instead of sharing.
 
 
 0.68 2017-10-19

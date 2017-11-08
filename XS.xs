@@ -133,12 +133,12 @@ static double my_difftime (struct timeval * start, struct timeval * end) {
 #endif
 
 #define MY_CXT_KEY "Math::Prime::Util::API_guts"
-#define CINTS 200
+#define CINTS 100
 typedef struct {
   HV* MPUroot;
   HV* MPUGMP;
   HV* MPUPP;
-  SV* const_int[CINTS+1];   /* -1, 0, 1, ..., 199 */
+  SV* const_int[CINTS+1];   /* -1, 0, 1, ..., 99 */
   void* randcxt;            /* per-thread csprng context */
   uint16_t forcount;
   char     forexit;
@@ -373,17 +373,19 @@ BOOT:
 
 void
 CLONE(...)
+PREINIT:
+  int i;
 PPCODE:
   {
     MY_CXT_CLONE; /* possible declaration */
     MY_CXT.MPUroot = gv_stashpv("Math::Prime::Util", TRUE);
     MY_CXT.MPUGMP = gv_stashpv("Math::Prime::Util::GMP", TRUE);
     MY_CXT.MPUPP = gv_stashpv("Math::Prime::Util::PP", TRUE);
-    /* Share consts between threads
+    /* These should be shared between threads, but that's dodgy. */
     for (i = 0; i <= CINTS; i++) {
       MY_CXT.const_int[i] = newSViv(i-1);
       SvREADONLY_on(MY_CXT.const_int[i]);
-    } */
+    }
     /* Make a new CSPRNG context for this thread */
     New(0, MY_CXT.randcxt, csprng_context_size(), char);
     csprng_init_seed(MY_CXT.randcxt);
