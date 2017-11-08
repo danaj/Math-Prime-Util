@@ -6,7 +6,7 @@ Devel::CheckLib;
 use 5.00405; #postfix foreach
 use strict;
 use vars qw($VERSION @ISA @EXPORT);
-$VERSION = '1.07';
+$VERSION = '1.11';
 use Config qw(%Config);
 use Text::ParseWords 'quotewords';
 
@@ -355,7 +355,7 @@ sub assert_lib {
         push @missing, $header if $rv != 0 || ! -x $exefile;
         _cleanup_exe($exefile);
         unlink $cfile;
-    } 
+    }
 
     # now do each library in turn with headers
     my($ch, $cfile) = File::Temp::tempfile(
@@ -409,6 +409,8 @@ sub assert_lib {
             );
         }
         warn "# @sys_cmd\n" if $args{debug};
+        local $ENV{LD_RUN_PATH} = join(":", grep $_, @libpaths, $ENV{LD_RUN_PATH}) unless $^O eq 'MSWin32';
+        local $ENV{PATH} = join(";", @libpaths).";".$ENV{PATH} if $^O eq 'MSWin32';
         my $rv = $args{debug} ? system(@sys_cmd) : _quiet_system(@sys_cmd);
         if ($rv != 0 || ! -x $exefile) {
             push @missing, $lib;
@@ -472,7 +474,7 @@ sub _findcc {
         push @Config_ldflags, $config_val if ( $config_val =~ /\S/ );
     }
     my @ccflags = grep { length } quotewords('\s+', 1, $Config_ccflags||'', $user_ccflags||'');
-    my @ldflags = grep { length } quotewords('\s+', 1, @Config_ldflags, $user_ldflags||'');
+    my @ldflags = grep { length && $_ !~ m/^-Wl/ } quotewords('\s+', 1, @Config_ldflags, $user_ldflags||'');
     my @paths = split(/$Config{path_sep}/, $ENV{PATH});
     my @cc = split(/\s+/, $Config{cc});
     if (check_compiler ($cc[0], $debug)) {
