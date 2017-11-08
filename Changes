@@ -12,17 +12,17 @@ Revision history for Perl module Math::Prime::Util
 
     - is_primitive_root could be wrong with even n on some platforms.
 
-    - split XS mapping of many primality tests.  Makes more sense and
-      improves performance for some calls.
-
     - euler_phi and moebius with negative range inputs weren't consistent.
-
-    - split final test in PP cluster sieve.
 
     - factorialmod given a large n and m where m was a composite with
       large square factors was incorrect.  Fixed.
 
     - numtoperm will accept negative k values (k is always mod n!)
+
+    - split XS mapping of many primality tests.  Makes more sense and
+      improves performance for some calls.
+
+    - split final test in PP cluster sieve.
 
     - support some new Math::Prime::Util::GMP functions from 0.47.
 
