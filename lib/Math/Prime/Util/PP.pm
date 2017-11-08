@@ -1006,7 +1006,7 @@ sub is_semiprime {
 
 sub _totpred {
   my($n, $maxd) = @_;
-  return 0 if $n & 1;
+  return 0 if (ref($n) ? $n->is_odd() : ($n & 1));
   $n >>= 1;
   return 1 if $n == 1 || ($n < $maxd && Math::Prime::Util::is_prime(2*$n+1));
   for my $d (Math::Prime::Util::divisors($n)) {
@@ -1026,7 +1026,7 @@ sub is_totient {
   my($n) = @_;
   _validate_positive_integer($n);
   return 1 if $n == 1;
-  return 0 if $n <= 0 || ($n & 1);
+  return 0 if $n <= 0;
   return _totpred($n,$n);
 }
 
