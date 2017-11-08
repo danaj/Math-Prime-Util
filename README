@@ -1,4 +1,4 @@
-Math::Prime::Util version 0.68
+Math::Prime::Util version 0.69
 
 A module for number theory in Perl.  This includes prime sieving, primality
 tests, primality proofs, integer factoring, counts / bounds / approximations
