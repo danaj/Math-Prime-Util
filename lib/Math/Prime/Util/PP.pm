@@ -3148,27 +3148,31 @@ sub stirling {
   }
   return Math::Prime::Util::_reftyped($_[0], Math::Prime::Util::GMP::stirling($n,$m,$type))
     if $Math::Prime::Util::_GMPfunc{"stirling"};
-  my $s = BZERO->copy;
+  # Go through vecsum with quoted negatives to make sure we don't overflow.
+  my $s;
   if ($type == 3) {
     $s = Math::Prime::Util::vecprod( Math::Prime::Util::binomial($n,$m), Math::Prime::Util::binomial($n-1,$m-1), Math::Prime::Util::factorial($n-$m) );
   } elsif ($type == 2) {
+    my @terms;
     for my $j (1 .. $m) {
       my $t = Math::Prime::Util::vecprod(
                 Math::BigInt->new($j) ** $n,
                 Math::Prime::Util::binomial($m,$j)
               );
-      $s = (($m-$j) & 1)  ?  $s - $t  :  $s + $t;
+      push @terms, (($m-$j) & 1)  ?  "-$t"  :  $t;
     }
-    $s /= factorial($m);
+    $s = Math::Prime::Util::vecsum(@terms) / factorial($m);
   } else {
+    my @terms;
     for my $k (1 .. $n-$m) {
       my $t = Math::Prime::Util::vecprod(
         Math::Prime::Util::binomial($k + $n - 1, $k + $n - $m),
         Math::Prime::Util::binomial(2 * $n - $m, $n - $k - $m),
         Math::Prime::Util::stirling($k - $m + $n, $k, 2),
       );
-      $s = ($k & 1)  ?  $s - $t  :  $s + $t;
+      push @terms, ($k & 1)  ?  "-$t"  :  $t;
     }
+    $s = Math::Prime::Util::vecsum(@terms);
   }
   $s;
 }
