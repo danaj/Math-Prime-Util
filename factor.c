@@ -1656,7 +1656,7 @@ UV znlog(UV a, UV g, UV p) {
 
 
 /* Compile with:
- *  gcc -O3 -fomit-frame-pointer -march=native -Wall -DFACTOR_STANDALONE -DSTANDALONE factor.c util.c sieve.c cache.c primality.c lmo.c -lm
+ *  gcc -O3 -fomit-frame-pointer -march=native -Wall -DSTANDALONE -DFACTOR_STANDALONE factor.c util.c primality.c cache.c sieve.c chacha.c csprng.c -lm
  */
 #ifdef FACTOR_STANDALONE
 #include <errno.h>
@@ -1666,7 +1666,26 @@ int main(int argc, char *argv[])
   UV factors[MPU_MAX_FACTORS+1];
   int nfactors, i, a;
 
-  if (argc <= 1) { printf("usage: %s  <n>\n", argv[0]); return(1); }
+  if (argc <= 1) {
+    char line[1024];
+    while (1) {
+      if (!fgets(line,sizeof(line),stdin)) break;
+      n = strtoull(line, 0, 10);
+      nfactors = factor(n, factors);
+      if (nfactors == 1) {
+        printf("%"UVuf": %"UVuf"\n",n,n);
+      } else if (nfactors == 2) {
+        printf("%"UVuf": %"UVuf" %"UVuf"\n",n,factors[0],factors[1]);
+      } else if (nfactors == 3) {
+        printf("%"UVuf": %"UVuf" %"UVuf" %"UVuf"\n",n,factors[0],factors[1],factors[2]);
+      } else {
+        printf("%"UVuf": %"UVuf" %"UVuf" %"UVuf" %"UVuf"",n,factors[0],factors[1],factors[2],factors[3]);
+        for (i = 4; i < nfactors; i++) printf(" %"UVuf"", factors[i]);
+        printf("\n");
+      }
+    }
+    exit(0);
+  }
 
   for (a = 1; a < argc; a++) {
     n = strtoul(argv[a], 0, 10);

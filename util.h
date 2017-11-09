@@ -97,6 +97,7 @@ extern void randperm(void* ctx, UV n, UV k, UV *S);
 extern UV gcdz(UV x, UV y);
 
 #if defined(FUNC_isqrt) || defined(FUNC_is_perfect_square)
+#include <math.h>
 static UV isqrt(UV n) {
   UV root;
 #if BITS_PER_WORD == 32

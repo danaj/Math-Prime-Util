@@ -1,5 +1,12 @@
 Revision history for Perl module Math::Prime::Util
 
+0.70 2017-?
+
+    [FUNCTIONALITY AND PERFORMANCE]
+
+    - Some utility functions used prime counts.  Unlink for more isolation.
+
+
 0.69 2017-11-08
 
     [ADDED]

@@ -80,7 +80,6 @@
 #include "primality.h"
 #include "cache.h"
 #include "lmo.h"
-#include "prime_nth_count.h"
 #include "factor.h"
 #include "mulmod.h"
 #include "constants.h"
@@ -129,6 +128,14 @@ static const unsigned char prime_sieve30[] =
    0x23,0xeb,0x3a,0xf9,0xef,0x16,0xd6,0x4e,0x7d,0x16,0xcf,0xb8,0x1c,0xcb,0xe6,
    0x3c,0xda,0xf5,0xcf};
 #define NPRIME_SIEVE30 (sizeof(prime_sieve30)/sizeof(prime_sieve30[0]))
+
+static const unsigned short primes_tiny[] =
+  {0,2,3,5,7,11,13,17,19,23,29,31,37,41,43,47,53,59,61,67,71,73,79,83,89,97,
+   101,103,107,109,113,127,131,137,139,149,151,157,163,167,173,179,181,191,
+   193,197,199,211,223,227,229,233,239,241,251,257,263,269,271,277,281,283,
+   293,307,311,313,317,331,337,347,349,353,359,367,373,379,383,389,397,401,
+   409,419,421,431,433,439,443,449,457,461,463,467,479,487,491,499,503};
+#define NPRIMES_TINY (sizeof(primes_tiny)/sizeof(primes_tiny[0]))
 
 /* Return of 2 if n is prime, 0 if not.  Do it fast. */
 int is_prime(UV n)
@@ -992,7 +999,7 @@ int is_semiprime(UV n) {
   /* 27% of random inputs left */
   n3 = icbrt(n);
   for (sp = 4; sp < 60; sp++) {
-    p = nth_prime(sp);
+    p = primes_tiny[sp];
     if (p > n3)
       break;
     if ((n % p) == 0)
@@ -1650,8 +1657,8 @@ long double chebyshev_function(UV n, int which)
   KAHAN_INIT(sum);
 
   if (n < 500) {
-    UV p, pi;
-    for (pi = 1;  (p = nth_prime(pi)) <= n; pi++) {
+    UV p, sp;
+    for (sp = 1;  (p = primes_tiny[sp]) <= n; sp++) {
       logp = logl(p);
       if (p <= sqrtn) logp *= floorl(logn/logp+1e-15);
       KAHAN_SUM(sum, logp);
