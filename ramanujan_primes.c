@@ -403,7 +403,7 @@ static UV _ramanujan_prime_count(UV n) {
   if ((n & (n-1)) == 0 && log2 <= RAMPC2)
     return ramanujan_counts_pow2[log2];
 
-  if (_XS_get_verbose()) { printf("ramanujan_prime_count calculating Pi(%lu)\n",n); fflush(stdout); }
+  if (_XS_get_verbose()) { printf("ramanujan_prime_count calculating Pi(%"UVuf")\n",n); fflush(stdout); }
   v = prime_count(2,n) - prime_count(2,n >> 1);
 
   /* For large enough n make a slightly bigger window */
