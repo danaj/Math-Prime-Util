@@ -4,6 +4,10 @@ use warnings;
 
 use Config;
 BEGIN {
+  unless ($ENV{RELEASE_TESTING} || $ENV{EXTENDED_TESTING}) {
+    print("1..0 # Skip only in release or extended testing\n");
+    exit(0);
+  }
   if (! $Config{useithreads} || $] < 5.008) {
     print("1..0 # Skip perl isn't compiled with threading support\n");
     exit(0);
