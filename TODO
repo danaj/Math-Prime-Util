@@ -137,6 +137,4 @@
 
 - csrand and srand should be calling a util function to seed GMP csprng
 
-- prime_count_approx should give a proper integer result when given a
-  bigint input.  Currently it calls RiemannR which since bignum isn't on,
-  calls the XS RiemannR.  That starts truncating excessively past 10^23 ish.
+- Look at using Ramanujan series for PP Li.

@@ -3,7 +3,7 @@ use strict;
 use warnings;
 
 use Test::More;
-use Math::Prime::Util qw/prime_count prime_count_lower prime_count_upper prime_count_approx/;
+use Math::Prime::Util qw/prime_count prime_count_lower prime_count_upper/;
 use Digest::SHA qw/sha256_hex/;
 
 my $use64 = ~0 > 4294967295;

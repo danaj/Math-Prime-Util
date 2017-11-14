@@ -1,7 +1,7 @@
 #!/usr/bin/env perl
 use strict;
 use warnings;
-use Math::Prime::Util qw/prime_count prime_count_approx prime_count_lower prime_count_upper LogarithmicIntegral RiemannR/;
+use Math::Prime::Util qw/prime_count prime_count_lower prime_count_upper LogarithmicIntegral RiemannR/;
 use Math::Prime::Util::PP;
 use Math::BigInt try=>"GMP,Pari";
 use Math::BigFloat;

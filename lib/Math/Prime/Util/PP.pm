@@ -1767,7 +1767,7 @@ sub prime_count_approx {
   _validate_num($x) || _validate_positive_integer($x);
 
   # Turn on high precision FP if they gave us a big number.
-  $x = _upgrade_to_float($x) if ref($_[0]) eq 'Math::BigInt';
+  $x = _upgrade_to_float($x) if ref($_[0]) eq 'Math::BigInt' && $x > 1e16;
   #    Method             10^10 %error  10^19 %error
   #    -----------------  ------------  ------------
   #    n/(log(n)-1)        .22%          .058%
@@ -1780,42 +1780,48 @@ sub prime_count_approx {
   #
   # Also consider: http://trac.sagemath.org/sage_trac/ticket/8135
 
+  # Asymp:
+  #   my $l1 = log($x);  my $l2 = $l1*$l1;  my $l4 = $l2*$l2;
+  #   my $result = int( $x/$l1 + $x/$l2 + 2*$x/($l2*$l1) + 6*$x/($l4) + 24*$x/($l4*$l1) + 120*$x/($l4*$l2) + 720*$x/($l4*$l2*$l1) + 5040*$x/($l4*$l4) + 40320*$x/($l4*$l4*$l1) + 0.5 );
   # my $result = int( (prime_count_upper($x) + prime_count_lower($x)) / 2);
   # my $result = int( LogarithmicIntegral($x) );
   # my $result = int(LogarithmicIntegral($x) - LogarithmicIntegral(sqrt($x))/2);
   # my $result = RiemannR($x) + 0.5;
 
-  # Sadly my Perl RiemannR function is really slow for big values.
-  # However I have written versions in GMP (mpf) and MPFR.  If those are
-  # available then we will use them.
-  # Otherwise, switch to LiCorr for very big values.  This is hacky and
-  # shouldn't be necessary.
-  my $result;
-  if ( $x < 1e36 || _MPFR_available() || $Math::Prime::Util::_GMPfunc{"riemannr"} ) {
-    if (ref($x) eq 'Math::BigFloat') {
-      # Make sure we get enough accuracy, and also not too much more than needed
-      $x->accuracy(length($x->copy->as_int->bstr())+2);
-    }
-    $result = RiemannR($x) + 0.5;
-  } else {
-    # Math::BigInt's default Calc backend takes *ages* to do a cube root, so
-    # limit ourselves to just the first two terms.
-    $result = int(
-        LogarithmicIntegral($x)
-      - LogarithmicIntegral(sqrt($x))/2
-    #  - LogarithmicIntegral($x**(1.0/3.0))/3
-    #  - LogarithmicIntegral($x**(1.0/5.0))/5
-    #  + LogarithmicIntegral($x**(1.0/6.0))/6
-    #  - LogarithmicIntegral($x**(1.0/7.0))/7
-    #  ...
-    );
-  }
-  # Asymp:
-  #   my $l1 = log($x);  my $l2 = $l1*$l1;  my $l4 = $l2*$l2;
-  #   $result = int( $x/$l1 + $x/$l2 + 2*$x/($l2*$l1) + 6*$x/($l4) + 24*$x/($l4*$l1) + 120*$x/($l4*$l2) + 720*$x/($l4*$l2*$l1) + 5040*$x/($l4*$l4) + 40320*$x/($l4*$l4*$l1) + 0.5 );
+  # Make sure we get enough accuracy, and also not too much more than needed
+  $x->accuracy(length($x->copy->as_int->bstr())+2) if ref($x) =~ /^Math::Big/;
 
-  return Math::BigInt->new($result->bfloor->bstr()) if ref($result) eq 'Math::BigFloat';
-  return int($result);
+  my $result;
+  if (_MPFR_available() || $Math::Prime::Util::_GMPfunc{"riemannr"} || !ref($x)) {
+    # Fast if we have MPFR or our GMP backend, and ok for native.
+    $result = Math::Prime::Util::PP::RiemannR($x);
+  } else {
+    $x = _upgrade_to_float($x) unless ref($x) eq 'Math::BigFloat';
+    $result = BZERO->copy;
+    $result->accuracy($x->accuracy) if ref($x) && $x->accuracy;
+    $result += Math::BigFloat->new(LogarithmicIntegral($x));
+    $result -= Math::BigFloat->new(LogarithmicIntegral(sqrt($x))/2);
+    my $intx = ref($x) ? $x->as_int : $x;
+    for my $k (3 .. 1000) {
+      my $m = moebius($k);
+      next unless $m != 0;
+      # With Math::BigFloat and the Calc backend, FP root is ungodly slow.
+      # Use integer root instead.  For more accuracy (not useful here):
+      # my $v = Math::BigFloat->new( "" . rootint($x->as_int,$k) );
+      # $v->accuracy(length($v)+5);
+      # $v = $v - Math::BigFloat->new(($v**$k - $x))->bdiv($k * $v**($k-1));
+      # my $term = LogarithmicIntegral($v)/$k;
+      my $term = LogarithmicIntegral(rootint($intx,$k)) / $k;
+      last if $term < .25;
+      if ($m == 1) { $result->badd(Math::BigFloat->new($term)) }
+      else         { $result->bsub(Math::BigFloat->new($term)) }
+    }
+  }
+
+  if (ref($result)) {
+    return (ref($result) eq 'Math::BigFloat') ? $result->bfround(0)->as_int() : $result;
+  }
+  int($result+0.5);
 }
 
 sub prime_count_lower {
@@ -5722,9 +5728,19 @@ sub LogarithmicIntegral {
     return $li2const;
   }
 
-  $x = _bigint_to_int($x) if ref($x) && !defined $bignum::VERSION && $x <= 1e16;
-  $x = Math::BigFloat->new("$x") if defined $bignum::VERSION && ref($x) ne 'Math::BigFloat';
-  $x = _upgrade_to_float($x) if ref($x) && ref($x) ne 'Math::BigFloat' && $x > 1e16;
+  if (defined $bignum::VERSION) {
+    # If bignum is on, always use Math::BigFloat.
+    $x = Math::BigFloat->new("$x") if ref($x) ne 'Math::BigFloat';
+  } elsif (ref($x)) {
+    # bignum is off, use native if small, BigFloat otherwise.
+    if ($x <= 1e16) {
+      $x = _bigint_to_int($x);
+    } else {
+      $x = _upgrade_to_float($x) if ref($x) ne 'Math::BigFloat';
+    }
+  }
+  # Make sure we preserve whatever accuracy setting the input was using.
+  $x->accuracy($_[0]->accuracy) if ref($x) && ref($_[0]) =~ /^Math::Big/ && $_[0]->accuracy;
 
   # Do divergent series here for big inputs.  Common for big pc approximations.
   # Why is this here?
@@ -5745,13 +5761,15 @@ sub LogarithmicIntegral {
   }
   my $logx = $xdigits ? $x->copy->blog(undef,$xdigits) : log($x);
 
+  # TODO: Look at Ramanujan series
+
   if ($x > 1e16) {
     my $invx = ref($logx) ? Math::BigFloat->bone / $logx : 1.0/$logx;
     # n = 0  =>  0!/(logx)^0 = 1/1 = 1
     # n = 1  =>  1!/(logx)^1 = 1/logx
     my $term = $invx;
     my $sum = 1.0 + $term;
-    for my $n (2 .. 200) {
+    for my $n (2 .. 1000) {
       my $last_term = $term;
       $term *= $n * $invx;
       last if $term < $tol;
@@ -5763,9 +5781,10 @@ sub LogarithmicIntegral {
       }
       $term->bround($xdigits) if $xdigits;
     }
-    my $val = $x * $invx * $sum;
-    $val->accuracy($finalacc) if $xdigits;
-    return $val;
+    $invx *= $sum;
+    $invx *= $x;
+    $invx->accuracy($finalacc) if ref($invx) && $xdigits;
+    return $invx;
   }
   # Convergent series.
   if ($x >= 1) {
@@ -5779,8 +5798,10 @@ sub LogarithmicIntegral {
       last if $term < $tol;
       $term->bround($xdigits) if $xdigits;
     }
-    my $eulerconst = (ref($x) eq 'Math::BigFloat') ? Math::BigFloat->new(CONST_EULER) : 0.0+CONST_EULER;
-    my $val = $eulerconst + log($logx) + $sum;
+
+    return 0.0+CONST_EULER + log($logx) + $sum unless ref($x) =~ /^Math::Big/;
+
+    my $val = Math::BigFloat->new(CONST_EULER)->badd("".log($logx))->badd("$sum");
     $val->accuracy($finalacc) if $xdigits;
     return $val;
   }

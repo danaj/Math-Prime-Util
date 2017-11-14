@@ -6,6 +6,12 @@ Revision history for Perl module Math::Prime::Util
 
     - Some utility functions used prime counts.  Unlink for more isolation.
 
+    - prime_count_approx uses full precision for bigint or string input.
+
+    [OTHER]
+
+    - Turned off threads testing unless release or extended testing is used.
+      A few smokers seem to have threads lib that die before we event start.
 
 0.69 2017-11-08
 
