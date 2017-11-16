@@ -1672,7 +1672,7 @@ sub inverse_li {
     last if abs($term) < 1e-6;
   }
   if (ref($t)) {
-    $t = $t->bceil->as_int();
+    $t = Math::BigInt->new($t->bceil->bstr);
     $t = _bigint_to_int($t) if $t->bacmp(BMAX) <= 0;
   } else {
     $t = int($t+0.999999);
@@ -1698,7 +1698,7 @@ sub _inverse_R {
     last if abs($term) < 1e-6;
   }
   if (ref($t)) {
-    $t = $t->bceil->as_int();
+    $t = Math::BigInt->new($t->bceil->bstr);
     $t = _bigint_to_int($t) if $t->bacmp(BMAX) <= 0;
   } else {
     $t = int($t+0.999999);
@@ -1801,7 +1801,7 @@ sub prime_count_approx {
     $result->accuracy($x->accuracy) if ref($x) && $x->accuracy;
     $result += Math::BigFloat->new(LogarithmicIntegral($x));
     $result -= Math::BigFloat->new(LogarithmicIntegral(sqrt($x))/2);
-    my $intx = ref($x) ? $x->as_int : $x;
+    my $intx = ref($x) ? Math::BigInt->new($x->bfround(0)) : $x;
     for my $k (3 .. 1000) {
       my $m = moebius($k);
       next unless $m != 0;
@@ -1819,7 +1819,9 @@ sub prime_count_approx {
   }
 
   if (ref($result)) {
-    return (ref($result) eq 'Math::BigFloat') ? $result->bfround(0)->as_int() : $result;
+    return $result unless ref($result) eq 'Math::BigFloat';
+    # Math::BigInt::FastCalc 0.19 implements as_int incorrectly.
+    return Math::BigInt->new($result->bfround(0)->bstr);
   }
   int($result+0.5);
 }
