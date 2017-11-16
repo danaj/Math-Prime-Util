@@ -328,7 +328,7 @@ if ($bigintlib eq 'Pari' && $] < "5.018") {
   is_deeply( [map { is_power(-7 ** $_) } 0 .. $#negpowers], \@negpowers, "-7 ^ i for 0 .. $#negpowers" );
   SKIP: {
     skip "Skipping some is_power tests on broken 64-bit Perl", 1 if $broken64;
-    is_deeply( [map { my $r; my $p=is_power(-7 ** $_, "0", \$r); $p ? (0+$r) ** $p : -7 ** $_; } 0 .. $#negpowers], [map { -7 ** $_ } 0 .. $#negpowers], "correct root from is_power for -7^i for 0 .. $#negpowers" );
+    is_deeply( [map { my $r; my $p=is_power(-7 ** $_, "0", \$r); $p ? (1*$r) ** $p : -7 ** $_; } 0 .. $#negpowers], [map { -7 ** $_ } 0 .. $#negpowers], "correct root from is_power for -7^i for 0 .. $#negpowers" );
   }
 }
 

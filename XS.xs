@@ -3037,8 +3037,6 @@ factor_test_harness2(IN int count, IN int bits = 63)
 
 void
 factor_test_harness3(IN UV start, IN UV end)
-  PREINIT:
-    dMY_CXT;
   PPCODE:
     /* We'll factor <count> <bits>-bit numbers */
     {

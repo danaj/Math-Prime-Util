@@ -1797,7 +1797,7 @@ sub prime_count_approx {
     $result = Math::Prime::Util::PP::RiemannR($x);
   } else {
     $x = _upgrade_to_float($x) unless ref($x) eq 'Math::BigFloat';
-    $result = BZERO->copy;
+    $result = Math::BigFloat->new(0);
     $result->accuracy($x->accuracy) if ref($x) && $x->accuracy;
     $result += Math::BigFloat->new(LogarithmicIntegral($x));
     $result -= Math::BigFloat->new(LogarithmicIntegral(sqrt($x))/2);
@@ -5761,7 +5761,36 @@ sub LogarithmicIntegral {
   }
   my $logx = $xdigits ? $x->copy->blog(undef,$xdigits) : log($x);
 
-  # TODO: Look at Ramanujan series
+  # TODO: See if we can tune this
+  if (0 && $x >= 1) {
+    _upgrade_to_float();
+    my $sum = Math::BigFloat->new(0);
+    my $inner_sum = Math::BigFloat->new(0);
+    my $p = Math::BigFloat->new(-1);
+    my $factorial = 1;
+    my $power2 = 1;
+    my $q;
+    my $k = 0;
+    my $neglogx = -$logx;
+    for my $n (1 .. 1000) {
+      $factorial = vecprod($factorial, $n);
+      $q = vecprod($factorial, $power2);
+      $power2 = vecprod(2, $power2);
+      while ($k <= ($n-1)>>1) {
+        $inner_sum += Math::BigFloat->new(1) / (2*$k+1);
+        $k++;
+      }
+      $p *= $neglogx;
+      my $term = ($p / $q) * $inner_sum;
+      $sum += $term;
+      last if abs($term) < $tol;
+    }
+    $sum *= sqrt($x);
+    return 0.0+CONST_EULER + log($logx) + $sum unless ref($x)=~/^Math::Big/;
+    my $val = Math::BigFloat->new(CONST_EULER)->badd("".log($logx))->badd("$sum");
+    $val->accuracy($finalacc) if $xdigits;
+    return $val;
+  }
 
   if ($x > 1e16) {
     my $invx = ref($logx) ? Math::BigFloat->bone / $logx : 1.0/$logx;
