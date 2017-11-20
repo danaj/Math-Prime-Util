@@ -220,6 +220,7 @@ xt/test-bpsw.pl
 xt/test-factor-mpxs.pl
 xt/test-nthapprox.pl
 xt/test-pcapprox.pl
+xt/test-primecount.pl
 xt/test-primes-script.pl
 xt/test-primes-script2.pl
 xt/test-factor-yafu.pl

@@ -138,3 +138,5 @@
 - csrand and srand should be calling a util function to seed GMP csprng
 
 - Look at using Ramanujan series for PP Li.
+
+- Use new GMP 0.49 functions where possible.

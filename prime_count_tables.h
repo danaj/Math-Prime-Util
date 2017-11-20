@@ -70,16 +70,17 @@ static const unsigned int step_counts_6[] =
   { \
     UV i, maxi; \
     low = NSTEP_START_##name; \
-    count = NSTEP_COUNT_##name; \
+    scount = NSTEP_COUNT_##name; \
     maxi = (high-low)/NSTEP_STEP_##name; \
     for (i = 0;  i < maxi && i < NSTEP_NUM_##name;  i++) { \
-      count += NSTEP_BASE_##name + step_counts_##name[i]; \
+      scount += NSTEP_BASE_##name + step_counts_##name[i]; \
       low += NSTEP_STEP_##name; \
     } \
   }
 
 #define APPLY_TABLES \
-  if (low == 7 && high >= 15000) { \
+  if (low == 7 && high >= 3000) { \
+    UV scount = 0; \
     if      (NSTEP_IF(0)) { NSTEP_SEARCH(0); } \
     else if (NSTEP_IF(1)) { NSTEP_SEARCH(1); } \
     else if (NSTEP_IF(2)) { NSTEP_SEARCH(2); } \
@@ -87,6 +88,7 @@ static const unsigned int step_counts_6[] =
     else if (NSTEP_IF(4)) { NSTEP_SEARCH(4); } \
     else if (NSTEP_IF(5)) { NSTEP_SEARCH(5); } \
     else                  { NSTEP_SEARCH(6); } \
+    count = count + scount - 3; /* step counts start at 2 */ \
   }
 
 #endif

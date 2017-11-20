@@ -2,6 +2,12 @@ Revision history for Perl module Math::Prime::Util
 
 0.70 2017-?
 
+    [FIXES]
+
+    - prime_count(a,b) incorrect for a={3..7} and b < 66000000.
+      First appeared in v0.65 (May 2017).
+      Reported by Trizen.  Fixed.
+
     [FUNCTIONALITY AND PERFORMANCE]
 
     - Some utility functions used prime counts.  Unlink for more isolation.
@@ -12,6 +18,7 @@ Revision history for Perl module Math::Prime::Util
 
     - Turned off threads testing unless release or extended testing is used.
       A few smokers seem to have threads lib that die before we event start.
+
 
 0.69 2017-11-08
 
