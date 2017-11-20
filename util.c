@@ -2091,7 +2091,7 @@ long double RiemannR(long double x) {
   unsigned int k;
   KAHAN_INIT(sum);
 
-  if (x <= 0) croak("Invalid input to ReimannR:  x must be > 0");
+  if (x <= 0) croak("Invalid input to RiemannR:  x must be > 0");
 
   if (x > 1e19) {
     const signed char* amob = _moebius_range(0, 100);
