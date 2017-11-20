@@ -32,8 +32,10 @@ The first number is the precalculated correct value.
 The second number is the answer RiemannZeta is giving.
 Differences are highlighted in red.
 
-Either Math::MPFR or the Math::BigInt patch from RT43692
-are needed to prevent differences for accuracy > 38 digits.
+To prevent differences for accuracy > 38 digits you need one of:
+ - a recent Math::Prime::Util::GMP backend (late 2016)
+ - a recent Math::BigInt                   (mid-2014)
+ - Math::MPFR
 EOT
 
 

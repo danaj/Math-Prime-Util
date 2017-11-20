@@ -14,6 +14,11 @@ Revision history for Perl module Math::Prime::Util
 
     - prime_count_approx uses full precision for bigint or string input.
 
+    - LogarithmicIntegral and ExponentialIntegral will try to use
+      our GMP backend if possible.
+
+    - Work around old Math::BigInt::FastCalc (as_int() doesn't work right).
+
     [OTHER]
 
     - Turned off threads testing unless release or extended testing is used.

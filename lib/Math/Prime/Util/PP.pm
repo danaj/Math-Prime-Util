@@ -5605,6 +5605,13 @@ sub ExponentialIntegral {
   return 0              if $x == - MPU_INFINITY;
   return MPU_INFINITY   if $x == MPU_INFINITY;
 
+  if ($Math::Prime::Util::_GMPfunc{"ei"}) {
+    $x = Math::BigFloat->new("$x") if defined $bignum::VERSION && ref($x) ne 'Math::BigFloat';
+    return 0.0 + Math::Prime::Util::GMP::ei($x,40) if !ref($x);
+    my $str = Math::Prime::Util::GMP::ei($x, _find_big_acc($x));
+    return $x->copy->bzero->badd($str);
+  }
+
   # Gotcha -- MPFR decided to make negative inputs return NaN.  Grrr.
   if ($x > 0 && _MPFR_available()) {
     my($wantbf,$xdigits) = _bfdigits($x);
@@ -5699,6 +5706,13 @@ sub LogarithmicIntegral {
   return MPU_INFINITY   if $x == MPU_INFINITY;
   croak "Invalid input to LogarithmicIntegral:  x must be > 0" if $x <= 0;
   $opt = 0 unless defined $opt;
+
+  if ($Math::Prime::Util::_GMPfunc{"li"}) {
+    $x = Math::BigFloat->new("$x") if defined $bignum::VERSION && ref($x) ne 'Math::BigFloat';
+    return 0.0 + Math::Prime::Util::GMP::li($x,40) if !ref($x);
+    my $str = Math::Prime::Util::GMP::li($x, _find_big_acc($x));
+    return $x->copy->bzero->badd($str);
+  }
 
   # Remember MPFR eint doesn't handle negative inputs
   if ($x >= 1 && _MPFR_available()) {
