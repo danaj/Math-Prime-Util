@@ -7,7 +7,7 @@ my $have_gmp = check_lib(lib => 'gmp', header => 'gmp.h');
 if ($have_gmp) {
   warn "\n   It looks like you have the GMP C library.\n";
   warn "   Adding Math::Prime::Util::GMP to dep list.\n\n";
-  $require_mpugmp{'Math::Prime::Util::GMP'} = '0.48';
+  $require_mpugmp{'Math::Prime::Util::GMP'} = '0.49';
 } else {
   warn "\n  It looks like you don't have the GMP library.  Sad face.\n";
 }
@@ -116,9 +116,8 @@ WriteMakefile1(
                prereqs => {
                  runtime => {
                    recommends => {
-                     'Math::Prime::Util::GMP' => 0.48,
+                     'Math::Prime::Util::GMP' => 0.49,
                      'Math::BigInt::GMP'      => 0,
-                     'Math::MPFR'             => 2.03,
                      'Digest::SHA'            => 5.87,
                    },
                  },

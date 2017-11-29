@@ -100,8 +100,6 @@
 
 - sum primes better than current method.  Especially using less memory.
 
-- bernreal and bernfrac using MPFR
-
 - divsum and divsummult as block functions.
   The latter does sum = vecprod(1 + f(p_i) + f(p_i^2) + ... f(p_i^e) for all p.
 
@@ -138,3 +136,17 @@
 - csrand and srand should be calling a util function to seed GMP csprng
 
 - Look at using Ramanujan series for PP Li.
+
+- Can bernreal use the GMP call?
+
+- Add documentation for MPU_NO... environment variables.
+
+- Have prime_memfree call  _GMP_memfree() if it exists.
+
+- _reftyped as XS call
+
+- update prime count lower/upper from https://arxiv.org/pdf/1703.08032.pdf
+
+- fix doc for sieve_range
+
+- Consider Lim-Lee random prime generation, optionally with proof.

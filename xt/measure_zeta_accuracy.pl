@@ -35,7 +35,6 @@ Differences are highlighted in red.
 To prevent differences for accuracy > 38 digits you need one of:
  - a recent Math::Prime::Util::GMP backend (late 2016)
  - a recent Math::BigInt                   (mid-2014)
- - Math::MPFR
 EOT
 
 

@@ -1167,10 +1167,11 @@ If you are using bigints, here are some performance suggestions:
 
 =item *
 
-Install L<Math::Prime::Util::GMP>, as that will vastly increase the speed
-of many of the functions.  This does require the L<GMP|http://gmplib.org>
-library be installed on your system, but this increasingly comes
-pre-installed or easily available using the OS vendor package installation tool.
+Install a recent version of L<Math::Prime::Util::GMP>, as that will vastly
+increase the speed of many of the functions.  This does require the
+L<GMP|http://gmplib.org> library be installed on your system, but this
+increasingly comes pre-installed or easily available using the OS vendor
+package installation tool.
 
 =item *
 
@@ -1179,12 +1180,6 @@ C<use bigint try =E<gt> 'GMP,Pari'> in your script, or on the command line
 C<-Mbigint=lib,GMP>.  Large modular exponentiation is much faster using the
 GMP or Pari backends, as are the math and approximation functions when
 called with very large inputs.
-
-=item *
-
-Install L<Math::MPFR> if you use the Ei, li, Zeta, or R functions.  If that
-module can be loaded, these functions will run much faster on bignum inputs,
-and are able to provide higher accuracy.
 
 =item *
 
@@ -1569,11 +1564,7 @@ then the Schoenfeld (1976) bounds can be used for very large values.
 Returns an approximation to the C<prime_count> function, without having to
 generate any primes.  For values under C<10^36> this uses the Riemann R
 function, which is quite accurate: an error of less than C<0.0005%> is typical
-for input values over C<2^32>, and decreases as the input gets larger.  If
-L<Math::MPFR> is installed, the Riemann R function is used for all values, and
-will be very fast.  If not, then values of C<10^36> and larger will use the
-approximation C<li(x) - li(sqrt(x))/2>.  While not as accurate as the Riemann
-R function, it still should have error less than C<0.00000000000000001%>.
+for input values over C<2^32>, and decreases as the input gets larger.
 
 A slightly faster but much less accurate answer can be obtained by averaging
 the upper and lower bounds.
@@ -4168,21 +4159,17 @@ from C<-infinity> to C<x>.
 If the bignum module has been loaded, all inputs will be treated as if they
 were Math::BigFloat objects.
 
-For non-BigInt/BigFloat objects, the result should be accurate to at least 14
+For non-BigInt/BigFloat inputs, the result should be accurate to at least 14
 digits.
 
-For BigInt / BigFloat objects, we first check to see if L<Math::MPFR> is
-available.  If so, then it is used since it is very fast and has high accuracy.
-Accuracy when using MPFR will be equal to the C<accuracy()> value of the
-input (or the default BigFloat accuracy, which is 40 by default).
-
-MPFR is used for positive inputs only.  If L<Math::MPFR> is not available
-or the input is negative, then other methods are used:
+For BigInt / BigFloat inputs, full accuracy and performance is obtained
+only if L<Math::Prime::Util::GMP> is installed.
+If this module is not available, then other methods are used and give
+at least 14 digits of accuracy:
 continued fractions (C<x E<lt> -1>),
 rational Chebyshev approximation (C< -1 E<lt> x E<lt> 0>),
 a convergent series (small positive C<x>),
 or an asymptotic divergent series (large positive C<x>).
-Accuracy should be at least 14 digits.
 
 
 =head2 LogarithmicIntegral
@@ -4207,15 +4194,8 @@ were Math::BigFloat objects.
 For non-BigInt/BigFloat objects, the result should be accurate to at least 14
 digits.
 
-For BigInt / BigFloat objects, we first check to see if L<Math::MPFR> is
-available.  If so, then it is used, as it will return results much faster
-and can be more accurate.  Accuracy when using MPFR will be equal to the
-C<accuracy()> value of the input (or the default BigFloat accuracy, which
-is 40 by default).
-
-MPFR is used for inputs greater than 1 only.  If L<Math::MPFR> is not
-installed or the input is less than 1, results will be calculated as
-C<Ei(ln x)>.
+For BigInt / BigFloat inputs, full accuracy and performance is obtained
+only if L<Math::Prime::Util::GMP> is installed.
 
 
 =head2 RiemannZeta
@@ -4236,19 +4216,13 @@ digits.  The XS code uses a rational Chebyshev approximation between 0.5 and 5,
 and a series for other values.  The PP code uses an identical series for all
 values.
 
-For integer arguments, the L<Math::Prime::Util::GMP> module (v0.41 or newer)
-will quickly produce high resolution results.  Alternately for any arguments,
-L<Math::MPFR> can be used to quickly produce high resolution results.
-
-For BigInt / BigFloat objects, accuracy will be equal to the C<accuracy()>
-value of the input (or the default BigFloat accuracy, which is 40 by default).
-
-If neither the GMP backend or Math::MPFR are available, then results are
-calculated using either Borwein (1991) algorithm 2, or the basic series.
-Full input accuracy is attempted, but Math::BigFloat
-L<RT 43692|https://rt.cpan.org/Ticket/Display.html?id=43692>
-produces incorrect high-accuracy computations without the fix.
-It is also very slow.
+For BigInt / BigFloat inputs, full accuracy and performance is obtained
+only if L<Math::Prime::Util::GMP> is installed.
+If this module is not available, then other methods are used and give
+at least 14 digits of accuracy:
+Either Borwein (1991) algorithm 2, or the basic series.
+Math::BigFloat L<RT 43692|https://rt.cpan.org/Ticket/Display.html?id=43692>
+can produce incorrect high-accuracy computations when GMP is not used.
 
 
 =head2 RiemannR
@@ -4265,11 +4239,9 @@ were Math::BigFloat objects.
 For non-BigInt/BigFloat objects, the result should be accurate to at least 14
 digits.
 
-For BigInt / BigFloat objects, accuracy depends on the back end modules.
-With L<Math::MPFR> or our GMP backend on integer arguments, accuracy will
-be equal to the C<accuracy()> value of the input (or the default BigFloat
-accuracy, which is 40 by default).  If neither of those modules are available,
-then accuracy should be 35 digits.
+For BigInt / BigFloat inputs, full accuracy and performance is obtained
+only if L<Math::Prime::Util::GMP> is installed.
+If this module are not available, accuracy should be 35 digits.
 
 
 =head2 LambertW
@@ -4290,7 +4262,7 @@ extended precision results will be used.
 
 Speed of the native code is about half of the fastest native code
 (Veberic's C++), and about 30x faster than Pari/GP.  However the bignum
-calculation is I<much> slower.
+calculation is slower than Pari/GP.
 
 =head2 Pi
 
@@ -4303,9 +4275,9 @@ digits (including the leading 3).  The return value will be an NV if the
 number of digits fits in an NV (typically 15 or less), or a L<Math::BigFloat>
 object otherwise.
 
-For sizes over 10k digits, having one of L<Math::MPFR>,
-L<Math::Prime::Util::GMP>, or L<Math::BigInt::GMP> installed will help
-performance.  For sizes over 50k one of the first two are highly recommended.
+For sizes over 10k digits, having either
+L<Math::Prime::Util::GMP> or L<Math::BigInt::GMP> installed will help
+performance.  For sizes over 50k the one is highly recommended.
 
 
 =head1 EXAMPLES
