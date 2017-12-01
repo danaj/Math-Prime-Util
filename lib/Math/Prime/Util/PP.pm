@@ -3056,7 +3056,7 @@ sub harmreal {
         $nt *= $n2;
       }
       $h->badd(scalar $one->copy->bdiv(2*$n));
-      $h->badd(Euler($sprec));
+      $h->badd(_Euler($sprec));
       $h->badd($n->copy->blog);
       $h->round($sprec);
       return $h;
@@ -5432,13 +5432,13 @@ sub ramanujan_tau {
   vecprod(map { _taupower($_->[0],$_->[1]) } Math::Prime::Util::factor_exp($n));
 }
 
-sub Euler {
+sub _Euler {
  my($dig) = @_;
  return Math::Prime::Util::GMP::Euler($dig)
    if $dig > 70 && $Math::Prime::Util::_GMPfunc{"Euler"};
  '0.57721566490153286060651209008240243104215933593992359880576723488486772677766467';
 }
-sub Li2 {
+sub _Li2 {
  my($dig) = @_;
  return Math::Prime::Util::GMP::li(2,$dig)
    if $dig > 70 && $Math::Prime::Util::_GMPfunc{"li"};
@@ -5500,7 +5500,7 @@ sub ExponentialIntegral {
   } elsif ($x < -log($tol)) {
     # Convergent series
     my $fact_n = 1;
-    $y = Euler(18)-$c; $t = $sum+$y; $c = ($t-$sum)-$y; $sum = $t;
+    $y = _Euler(18)-$c; $t = $sum+$y; $c = ($t-$sum)-$y; $sum = $t;
     $y = log($x)-$c; $t = $sum+$y; $c = ($t-$sum)-$y; $sum = $t;
     for my $n (1 .. 200) {
       $fact_n *= $x/$n;
@@ -5546,7 +5546,7 @@ sub LogarithmicIntegral {
   }
 
   if ($x == 2) {
-    my $li2const = (ref($x) eq 'Math::BigFloat') ? Math::BigFloat->new(Li2(_find_big_acc($x))) : 0.0+Li2(30);
+    my $li2const = (ref($x) eq 'Math::BigFloat') ? Math::BigFloat->new(_Li2(_find_big_acc($x))) : 0.0+_Li2(30);
     return $li2const;
   }
 
@@ -5608,8 +5608,8 @@ sub LogarithmicIntegral {
       last if abs($term) < $tol;
     }
     $sum *= sqrt($x);
-    return 0.0+Euler(18) + log($logx) + $sum unless ref($x)=~/^Math::Big/;
-    my $val = Math::BigFloat->new(Euler(40))->badd("".log($logx))->badd("$sum");
+    return 0.0+_Euler(18) + log($logx) + $sum unless ref($x)=~/^Math::Big/;
+    my $val = Math::BigFloat->new(_Euler(40))->badd("".log($logx))->badd("$sum");
     $val->accuracy($finalacc) if $xdigits;
     return $val;
   }
@@ -5650,9 +5650,9 @@ sub LogarithmicIntegral {
       $term->bround($xdigits) if $xdigits;
     }
 
-    return 0.0+Euler(18) + log($logx) + $sum unless ref($x) =~ /^Math::Big/;
+    return 0.0+_Euler(18) + log($logx) + $sum unless ref($x) =~ /^Math::Big/;
 
-    my $val = Math::BigFloat->new(Euler(40))->badd("".log($logx))->badd("$sum");
+    my $val = Math::BigFloat->new(_Euler(40))->badd("".log($logx))->badd("$sum");
     $val->accuracy($finalacc) if $xdigits;
     return $val;
   }
