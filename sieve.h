@@ -6,6 +6,7 @@
 #include "util.h"
 
 extern unsigned char* sieve_erat30(UV end);
+extern int sieve_segment_partial(unsigned char* mem, UV startd, UV endd, UV depth);
 extern int sieve_segment(unsigned char* mem, UV startd, UV endd);
 extern void* start_segment_primes(UV low, UV high, unsigned char** segmentmem);
 extern int next_segment_primes(void* vctx, UV* base, UV* low, UV* high);
