@@ -1656,12 +1656,6 @@ numbers beginning with C<n>.  An array of offsets from the start is returned.
 The returned list contains those offsets in the range C<n> to C<n+width-1>
 where C<n + offset> has no prime factors less than C<depth>.
 
-This function is very similar to the three argument form of L</sieve_primes>.
-The differences are using C<(n,width)> instead of C<(low,high)>, and most
-importantly returning small offsets from the start value rather than the
-values themselves.  This can substantially reduce overhead for
-multi-thousand digit numbers.
-
 
 =head2 sieve_prime_cluster
 

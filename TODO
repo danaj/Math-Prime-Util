@@ -137,8 +137,6 @@
 
 - Look at using Ramanujan series for PP Li.
 
-- Can bernreal use the GMP call?
-
 - Add documentation for MPU_NO... environment variables.
 
 - Have prime_memfree call  _GMP_memfree() if it exists.
@@ -146,7 +144,5 @@
 - _reftyped as XS call
 
 - update prime count lower/upper from https://arxiv.org/pdf/1703.08032.pdf
-
-- fix doc for sieve_range
 
 - Consider Lim-Lee random prime generation, optionally with proof.
