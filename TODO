@@ -137,8 +137,6 @@
 
 - Look at using Ramanujan series for PP Li.
 
-- Add documentation for MPU_NO... environment variables.
-
 - Have prime_memfree call  _GMP_memfree() if it exists.
 
 - _reftyped as XS call

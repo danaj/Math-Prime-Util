@@ -1155,6 +1155,31 @@ bigint and expression inputs.
 =back
 
 
+=head1 ENVIRONMENT VARIABLES
+
+There are two environment variables that affect operation.  These are
+typically used for validation of the different methods or to simulate
+systems that have different support.
+
+=head2 MPU_NO_XS
+
+If set to C<1> then everything is run in pure Perl.  No C functions
+are loaded or used, as XSLoader is not even called.  All top-level
+XS functions are replaced by a pure Perl layer (the PPFE.pm module
+that supplies a "Pure Perl Front End").
+
+If this variable is not set or set to anything other than C<1>, the
+module operates normally.
+
+=head2 MPU_NO_GMP
+
+If set to C<1> then the L<Math::Prime::Util::GMP> backend is not
+loaded, and operation will be exactly as if it was not installed.
+
+If this variable is not set or set to anything other than C<1>, the
+module operates normally.
+
+
 =head1 BIGNUM SUPPORT
 
 By default all functions support bignums.  For performance, you should

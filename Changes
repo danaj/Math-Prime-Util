@@ -27,6 +27,8 @@ Revision history for Perl module Math::Prime::Util
     - Removed all Math::MPFR code and references.  The latest GMP backend
       has everything we need.
 
+    - The MPU_NO_XS and MPU_NO_GMP environment variables are documented.
+
 
 0.69 2017-11-08
 
