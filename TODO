@@ -137,8 +137,6 @@
 
 - Look at using Ramanujan series for PP Li.
 
-- Have prime_memfree call  _GMP_memfree() if it exists.
-
 - _reftyped as XS call
 
 - update prime count lower/upper from https://arxiv.org/pdf/1703.08032.pdf

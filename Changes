@@ -19,6 +19,9 @@ Revision history for Perl module Math::Prime::Util
 
     - Work around old Math::BigInt::FastCalc (as_int() doesn't work right).
 
+    - prime_memfree also calls GMP's memfree function.  This will clear the
+      cached constants (e.g. Pi, Euler).
+
     [OTHER]
 
     - Turned off threads testing unless release or extended testing is used.

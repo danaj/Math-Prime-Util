@@ -51,6 +51,8 @@ sub prime_precalc {
 }
 sub prime_memfree {
   $_precalc_size = 0;
+  eval { Math::Prime::Util::GMP::_GMP_memfree(); }
+    if defined $Math::Prime::Util::GMP::VERSION && $Math::Prime::Util::GMP::VERSION >= 0.49;
 }
 sub _get_prime_cache_size { $_precalc_size }
 sub _prime_memfreeall { prime_memfree; }

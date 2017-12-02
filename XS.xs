@@ -249,6 +249,24 @@ static int _vcallsubn(pTHX_ I32 flags, I32 stashflags, const char* name, int nar
 #define _vcallsub_with_pp(func) (void)_vcallsubn(aTHX_ G_SCALAR, VCALL_PP, func, items,0)
 #define _vcallsub_with_gmpobj(ver,func) (void)_vcallsubn(aTHX_ G_SCALAR, (PERL_REVISION >= 5 && PERL_VERSION > 8) ? VCALL_GMP|VCALL_PP : VCALL_PP, func, items,(int)(100*(ver)))
 
+#if 0
+static int _vcallgmpsubn(pTHX_ I32 flags, const char* name, int nargs, int minversion)
+{ 
+  Size_t namelen = strlen(name);
+  int gmpver = _XS_get_callgmp();
+  dMY_CXT;
+  if (gmpver && gmpver >= minversion && hv_exists(MY_CXT.MPUGMP,name,namelen)) {
+    GV ** gvp = (GV**)hv_fetch(MY_CXT.MPUGMP,name,namelen,0);
+    if (gvp) {
+      GV* gv = *gvp;
+      PUSHMARK(PL_stack_sp-nargs);
+      return call_sv((SV*)gv, flags);
+    }
+  }
+  return 0;
+}
+#endif
+
 /* In my testing, this constant return works fine with threads, but to be
  * correct (see perlxs) one has to make a context, store separate copies in
  * each one, then retrieve them from a struct using a hash index.  This
@@ -525,6 +543,11 @@ UV _is_csprng_well_seeded()
     RETVAL
 
 void prime_memfree()
+  PPCODE:
+    prime_memfree();
+    /* (void) _vcallgmpsubn(aTHX_ G_VOID|G_DISCARD, "_GMP_memfree", 0, 49); */
+    _vcallsub_with_pp("prime_memfree");
+    return;
 
 void
 prime_precalc(IN UV n)
