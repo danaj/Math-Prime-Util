@@ -161,7 +161,10 @@ typedef __int8 int8_t;
 
 #define MPUNOT_REACHED MPUASSUME(0)
 
-#if (defined(__SIZEOF_INT128__) || __GNUC__ >= 4) && (defined(__x86_64__) || defined(__powerpc64__))
+#if defined(__SIZEOF_INT128__) && !defined(__CUDACC__)
+  #define HAVE_UINT128 1
+  typedef unsigned __int128 uint128_t;
+#elif (__GNUC__ >= 4) && (defined(__x86_64__) || defined(__powerpc64__))
   #if __clang__ && (__clang_major__ > 4 || (__clang_major__ == 4 && __clang_minor__ >= 2))
     #define HAVE_UINT128 1
     typedef unsigned __int128 uint128_t;
