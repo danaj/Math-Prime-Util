@@ -251,7 +251,7 @@ static int _vcallsubn(pTHX_ I32 flags, I32 stashflags, const char* name, int nar
 
 #if 0
 static int _vcallgmpsubn(pTHX_ I32 flags, const char* name, int nargs, int minversion)
-{ 
+{
   Size_t namelen = strlen(name);
   int gmpver = _XS_get_callgmp();
   dMY_CXT;

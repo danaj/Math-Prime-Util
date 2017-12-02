@@ -1187,6 +1187,9 @@ are loaded or used, as XSLoader is not even called.  All top-level
 XS functions are replaced by a pure Perl layer (the PPFE.pm module
 that supplies a "Pure Perl Front End").
 
+Caveat: This does not change whether the GMP backend is used.
+For as much pure Perl as possible, you will need to set both variables.
+
 If this variable is not set or set to anything other than C<1>, the
 module operates normally.
 

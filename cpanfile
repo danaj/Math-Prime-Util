@@ -13,7 +13,7 @@ requires 'Math::BigFloat', '1.59';
 
 requires 'Bytes::Random::Secure::Tiny', '1.002';
 
-recommends 'Math::Prime::Util::GMP', '0.49';
+recommends 'Math::Prime::Util::GMP', '0.50';
 recommends 'Math::BigInt::GMP';
 
 
