@@ -3,7 +3,7 @@
     return raw MPU::GMP results will return strings, which isn't right.
   * Valgrind, coverage
   * use:  -O2 -g -Wall -Wextra -Wdeclaration-after-statement -fsigned-char
-  * Test on 32-bit Perl.  Test on Win32.
+  * Test on 32-bit Perl, Cygwin, Win32.
   * Test on gcc70 (NetBSD), gcc119 (AIX/Power8), gcc22 (MIPS64), gcc115 (aarch)
   * prove -b -I../Math-Prime-Util-GMP/blib/lib -I../Math-Prime-Util-GMP/blib/arch
 
