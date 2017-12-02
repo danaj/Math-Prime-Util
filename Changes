@@ -8,6 +8,9 @@ Revision history for Perl module Math::Prime::Util
       First appeared in v0.65 (May 2017).
       Reported by Trizen.  Fixed.
 
+    - Also impacted were nth_ramanujan_prime and _lower/_upper for
+      small input values.
+
     [FUNCTIONALITY AND PERFORMANCE]
 
     - Some utility functions used prime counts.  Unlink for more isolation.
