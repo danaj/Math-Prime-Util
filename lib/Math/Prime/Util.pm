@@ -312,6 +312,25 @@ sub _validate_positive_integer {
 
 #############################################################################
 
+# These are called by the XS code to keep the GMP CSPRNG in sync with us.
+
+sub _srand_p {
+  my($seedval) = @_;
+  return unless $_Config{'gmp'} >= 42;
+  $seedval = unpack("L",entropy_bytes(4)) unless defined $seedval;
+  Math::Prime::Util::GMP::seed_csprng(4, pack("L",$seedval));
+  $seedval;
+}
+
+sub _csrand_p {
+  my($str) = @_;
+  return unless $_Config{'gmp'} >= 42;
+  $str = entropy_bytes(256) unless defined $str;
+  Math::Prime::Util::GMP::seed_csprng(length($str), $str);
+}
+
+#############################################################################
+
 sub primes {
   my($low,$high) = @_;
   if (scalar @_ > 1) {
@@ -952,7 +971,7 @@ __END__
 
 =encoding utf8
 
-=for stopwords Möbius Deléglise Bézout uniqued k-tuples von SoE primesieve primegen libtommath pari yafu fonction qui compte le nombre nombres voor PhD superset sqrt(N) gcd(A^M k-th (10001st untruncated OpenPFGW gmpy2 Über Primzahl-Zählfunktion n-te und verallgemeinerte multiset compositeness GHz significand TestU01 subfactorial s-gonal
+=for stopwords Möbius Deléglise Bézout uniqued k-tuples von SoE primesieve primegen libtommath pari yafu fonction qui compte le nombre nombres voor PhD superset sqrt(N) gcd(A^M k-th (10001st untruncated OpenPFGW gmpy2 Über Primzahl-Zählfunktion n-te und verallgemeinerte multiset compositeness GHz significand TestU01 subfactorial s-gonal XSLoader
 
 =for test_synopsis use v5.14;  my($k,$x);
 

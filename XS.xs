@@ -448,6 +448,8 @@ void csrand(IN SV* seed = 0)
       data = (unsigned char*) SvPV(seed, size);
       csprng_seed(MY_CXT.randcxt, size, data);
     }
+    if (_XS_get_callgmp() >= 42) _vcallsub("_csrand_p");
+    return;
 
 UV srand(IN UV seedval = 0)
   PREINIT:
@@ -458,6 +460,7 @@ UV srand(IN UV seedval = 0)
     if (items == 0)
       get_entropy_bytes(sizeof(UV), (unsigned char*) &seedval);
     csprng_srand(MY_CXT.randcxt, seedval);
+    if (_XS_get_callgmp() >= 42) _vcallsub("_srand_p");
     RETVAL = seedval;
   OUTPUT:
     RETVAL

@@ -133,7 +133,8 @@
 
 - sieve_range does trial division
 
-- csrand and srand should be calling a util function to seed GMP csprng
+- srand with no args should be calling GMP's srand with the selected seed
+  value.  This is all a hacky artifact of having the two codebases.
 
 - Look at using Ramanujan series for PP Li.
 

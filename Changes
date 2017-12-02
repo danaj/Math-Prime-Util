@@ -22,6 +22,9 @@ Revision history for Perl module Math::Prime::Util
     - prime_memfree also calls GMP's memfree function.  This will clear the
       cached constants (e.g. Pi, Euler).
 
+    - Calling srand or csrand will also result in the GMP backend CSPRNG
+      functions being called.  This gives more consistent behavior.
+
     [OTHER]
 
     - Turned off threads testing unless release or extended testing is used.
