@@ -1749,7 +1749,8 @@ a Legendre sum method for larger values.
 
 While this is fairly efficient, the state of the art is Kim Walisch's
 L<primesum|https://github.com/kimwalisch/primesum>.
-It is recommended for very large values.
+It is recommended for very large values, as it can be hundreds of times
+faster.
 
 =head2 print_primes
 
