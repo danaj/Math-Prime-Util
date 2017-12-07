@@ -5405,30 +5405,6 @@ sub ramanujan_tau {
     }
   }
 
-  if (0) {
-    my $n2 = Math::Prime::Util::vecprod($n,$n);
-    my $n5 = Math::Prime::Util::vecprod($n2,$n2,$n);
-    my $lim = 2*Math::Prime::Util::sqrtint($n);
-    my $sum = Math::Prime::Util::vecsum(
-                map { Math::Prime::Util::vecprod(
-                        int(Math::Prime::Util::GMP::powreal($_,10)),
-                        Math::Prime::Util::hclassno( ($n << 2) - $_*$_ )
-                      )
-                } 1 .. $lim
-              );
-    my $tau = Math::Prime::Util::vecsum(
-                 Math::Prime::Util::vecprod(42,$n5),
-                 Math::Prime::Util::vecprod(-42,$n2,$n2),
-                 Math::Prime::Util::vecprod(-48,$n2,$n),
-                 Math::Prime::Util::vecprod(-27,$n2),
-                 Math::Prime::Util::vecprod(-8,$n),
-                 -1
-              );
-    $tau = vecprod($tau, $n+1);
-    $tau -= $sum;
-    return $tau;
-  }
-
   # _taup is faster for small numbers, but gets very slow.  It's not a huge
   # deal, and the GMP code will probably get run for small inputs anyway.
   vecprod(map { _taupower($_->[0],$_->[1]) } Math::Prime::Util::factor_exp($n));
