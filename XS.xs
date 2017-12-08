@@ -1,4 +1,3 @@
-
 #define PERL_NO_GET_CONTEXT 1 /* Define at top for more efficiency. */
 
 #include "EXTERN.h"
@@ -421,6 +420,7 @@ PREINIT:
   dMY_CXT;
   int i;
 PPCODE:
+  _prime_memfreeall();
   MY_CXT.MPUroot = NULL;
   MY_CXT.MPUGMP = NULL;
   MY_CXT.MPUPP = NULL;
@@ -430,7 +430,6 @@ PPCODE:
     SvREFCNT_dec_NN(sv);
   } /* stashes are owned by stash tree, no refcount on them in MY_CXT */
   Safefree(MY_CXT.randcxt); MY_CXT.randcxt = 0;
-  _prime_memfreeall();
   return; /* skip implicit PUTBACK, returning @_ to caller, more efficient*/
 
 
@@ -546,10 +545,12 @@ UV _is_csprng_well_seeded()
     RETVAL
 
 void prime_memfree()
+  PREINIT:
+    dMY_CXT;
   PPCODE:
     prime_memfree();
     /* (void) _vcallgmpsubn(aTHX_ G_VOID|G_DISCARD, "_GMP_memfree", 0, 49); */
-    _vcallsub_with_pp("prime_memfree");
+    if (MY_CXT.MPUPP != NULL) _vcallsub_with_pp("prime_memfree");
     return;
 
 void
