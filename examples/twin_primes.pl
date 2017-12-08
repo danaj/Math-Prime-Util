@@ -10,29 +10,32 @@ my $count = shift || 20;
 
 # Find twin primes (numbers where p and p+2 are prime)
 
-# Time for the first 300k:
+# Time for the first 1M:
 #
 # Not iterators:
-#   0.19s  say join "\n", @{twin_primes(2,nth_twin_prime(3e5))}
-#   0.5s   $l=2; forprimes { say $l if $l+2==$_; $l=$_; } 2+nth_twin_prime(3e5)
-#   0.8s   bin/primes.pl --twin 2 64764839
+#   0.4s   say join "\n", @{twin_primes(2,nth_twin_prime(1e6))}
+#   1.3s   $l=2; forprimes { say $l if $l+2==$_; $l=$_; } 2+nth_twin_prime(1e6)
+#   0.4s   bin/primes.pl --twin 2 252427601
 #
 # Iterators with precalc:
-#   1.5s   get_twin_prime_iterator2
-#   2.3s   get_twin_prime_iterator1
-#   4.2s   get_twin_prime_iterator3
-#   4.5s   get_twin_prime_iterator4 (object iterator)
+#   4.5s   get_twin_prime_iterator2 (next_prime)
+#   5.4s   get_twin_prime_iterator1 (prime_iterator)
+#   9.4s   get_twin_prime_iterator3 (Iterator::Simple)
+#  13.8s   get_twin_prime_iterator4 (object iterator)
 #
 # Iterators without precalc:
-#   7.7s   get_twin_prime_iterator2
-#   8.5s   get_twin_prime_iterator1
-#  10.8s   get_twin_prime_iterator3
-#  16.7s   get_twin_prime_iterator4 (object iterator)
+#  11.6s   get_twin_prime_iterator2
+#   5.3s   get_twin_prime_iterator1
+#   9.3s   get_twin_prime_iterator3
+#  28.0s   get_twin_prime_iterator4 (object iterator)
 #
-# Alternatives:
-# 228.3s   Math::NumSeq::TwinPrimes (Perl 5.20.0, Math::NumSeq 71)
-#   5.9s - perl -MMath::PariInit=primes=65000000 -MMath::Pari=forprime,PARI -E
-#          '$l=2;forprime($x,2,64764841,sub{say $l if $l+2==$x;$l=int("$x");});'
+# Alternative iterator:
+# 3944.4s  Math::NumSeq::TwinPrimes (Perl 5.27.2, Math::NumSeq 72)
+#
+# Alternative non-iterators:
+#   14.5s  perl -MMath::PariInit=primes=255000000 -MMath::Pari=forprime,PARI -E
+#         '$l=2;forprime($x,2,252427603,sub{say $l if $l+2==$x;$l=int("$x");});'
+#    4.7s  perl -MMath::Prime::FastSieve -E 'my $s=Math::Prime::FastSieve::Sieve->new(255000000); for my $p (@{$s->primes(252427601)}) { say $p if $s->isprime($p+2); }'
 
 # This speeds things up, but isn't necessary.
 #  Easy but estimates very high:
