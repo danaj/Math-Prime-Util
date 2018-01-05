@@ -105,6 +105,13 @@
 - divsum and divsummult as block functions.
   The latter does sum = vecprod(1 + f(p_i) + f(p_i^2) + ... f(p_i^e) for all p.
 
+- Consider Lim-Lee random prime generation, optionally with proof.
+  https://pdfs.semanticscholar.org/fd1d/864a95d7231eaf133b00a1757ee5d0bf0e07.pdf
+  libgcrypt/cipher/primegen.c
+
+- More formal random prime generation for pedantic FIPS etc. users, with
+  guarantee of specific algorithm.
+
 - surround_primes
 
 - More Montgomery: znlog, catalan
@@ -129,6 +136,12 @@
 
 - submit bug report for Perl error in 30b8ab3
 
+- localized a/b in vecreduce, see:
+  https://metacpan.org/diff/file?target=REHSACK/List-MoreUtils-XS-0.428/&source=HERMES%2FList-MoreUtils-XS-0.427_001#XS.xs
+  perl #92264 (sort in 5.27.7)
+
+- consider #define PERL_REENTRANT
+
 - add back formultiperm optimization if we can get around lastfor issue.
 
 - make a uint128_t version of montmath.  Needs to handle 64-bit.
@@ -144,4 +157,4 @@
 
 - update prime count lower/upper from https://arxiv.org/pdf/1703.08032.pdf
 
-- Consider Lim-Lee random prime generation, optionally with proof.
+- urandomr

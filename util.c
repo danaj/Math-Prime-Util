@@ -1850,21 +1850,27 @@ long double Li(long double x) {
   return Ei(logl(x));
 }
 
-UV inverse_li(UV x) {
-  UV r;
+static long double ld_inverse_li(long double lx) {
   int i;
-  long double t, lx = (long double)x, term, old_term = 0;
-  if (x <= 2) return x + (x > 0);
+  long double t, term, old_term = 0;
   /* Iterate Halley's method until error grows. */
-  for (i = 0, t = lx*logl(x); i < 4; i++) {
+  t = (lx <= 2)  ?  2  :  lx * logl(lx);
+  for (i = 0; i < 4; i++) {
     long double dn = Li(t) - lx;
     term = dn*logl(t) / (1.0L + dn/(2*t));
     if (i > 0 && fabsl(term) >= fabsl(old_term)) { t -= term/4; break; }
     old_term = term;
     t -= term;
   }
-  r = (UV)ceill(t);
+  return t;
+}
 
+UV inverse_li(UV x) {
+  UV r, i;
+  long double lx = (long double) x;
+
+  if (x <= 2) return x + (x > 0);
+  r = (UV) ceill( ld_inverse_li(lx) );
   /* Meet our more stringent goal of an exact answer. */
   i = (x > 4e16) ? 2048 : 128;
   if (Li(r-1) >= lx) {
@@ -1879,25 +1885,47 @@ UV inverse_li(UV x) {
   return r;
 }
 
-UV inverse_R(UV x) {
+static long double ld_inverse_R(long double lx) {
   int i;
-  long double t, dn, lx = (long double) x, term, old_term = 0;
-  if (x <= 2) return x + (x > 0);
+  long double t, dn, term, old_term = 0;
 
   /* Rough estimate */
-  t = lx * logl(x);
-  /* Improve: approx inverse li with one round of Halley */
-  dn = Li(t) - lx;
-  t = t - dn * logl(t) / (1.0L + dn/(2*t));
-  /* Iterate 1-4 rounds of Halley */
-  for (i = 0; i < 4; i++) {
+  if (lx <= 3.5) {
+    t = lx + 2.24*(lx-1)/2;
+  } else {
+    t = lx * logl(lx);
+    if      (lx <   50) { t *= 1.2; }
+    else if (lx < 1000) { t *= 1.15; }
+    else {   /* use inverse Li (one iteration) for first inverse R approx */
+      dn = Li(t) - lx;
+      term = dn * logl(t) / (1.0L + dn/(2*t));
+      t -= term;
+    }
+  }
+  /* Iterate 1-n rounds of Halley, usually only 3 needed. */
+  for (i = 0; i < 100; i++) {
     dn = RiemannR(t) - lx;
+#if 1  /* Use f(t) = li(t) for derivatives */
     term = dn * logl(t) / (1.0L + dn/(2*t));
+#else  /* Use f(t) = li(t) - li(sqrt(t))/2 for derivatives */
+    long double logt = logl(t);
+    long double sqrtt = sqrtl(t);
+    long double FA = 2 * sqrtt * logt;
+    long double FB = 2 * sqrtt - 1;
+    long double ifz = FA / FB;
+    long double iffz = (logt - 2*FB) / (2 * sqrtt * FA * FA * FA * FA);
+    term = dn * ifz * (1.0L - dn * iffz);
+#endif
     if (i > 0 && fabsl(term) >= fabsl(old_term)) { t -= term/4; break; }
     old_term = term;
     t -= term;
   }
-  return (UV)ceill(t);
+  return t;
+}
+
+UV inverse_R(UV x) {
+  if (x < 2) return x + (x > 0);
+  return (UV) ceill( ld_inverse_R( (long double) x) );
 }
 
 
