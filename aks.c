@@ -60,15 +60,14 @@
  * sure way to find if it is available is test compilation (ala autoconf).
  * Instead, we'll just use our own implementation.
  * See http://mrob.com/pub/ries/lanczos-gamma.html for alternates. */
-static double lanczos_coef[8+1] =
-{ 0.99999999999980993, 676.5203681218851, -1259.1392167224028,
-  771.32342877765313, -176.61502916214059, 12.507343278686905,
-  -0.13857109526572012, 9.9843695780195716e-6, 1.5056327351493116e-7 };
-static double log_sqrt_two_pi =  0.91893853320467274178;
 static double log_gamma(double x)
 {
-  double base = x + 7 + 0.5;
-  double sum = 0;
+  static const double log_sqrt_two_pi =  0.91893853320467274178;
+  static const double lanczos_coef[8+1] =
+    { 0.99999999999980993, 676.5203681218851, -1259.1392167224028,
+      771.32342877765313, -176.61502916214059, 12.507343278686905,
+      -0.13857109526572012, 9.9843695780195716e-6, 1.5056327351493116e-7 };
+  double base = x + 7.5, sum = 0;
   int i;
   for (i = 8; i >= 1; i--)
     sum += lanczos_coef[i] / (x + (double)i);
@@ -76,6 +75,9 @@ static double log_gamma(double x)
   sum = log_sqrt_two_pi + log(sum/x) + ( (x+0.5)*log(base) - base );
   return sum;
 }
+
+/* Note: For lgammal we need logl in the above.
+ * Max error drops from 2.688466e-09 to 1.818989e-12. */
 #undef lgamma
 #define lgamma(x) log_gamma(x)
 #endif
