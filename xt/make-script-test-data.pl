@@ -21,7 +21,7 @@ my @test_data = (
   [ 1359, "Twin",        "twin",       0],
   [ 5385, "Safe",        "safe",       0],
   [ 5384, "SG",          "sophie",     0],
-  [68652, "Circular",    "circular",   0],
+  [68652, "Circular",    "circular",   1_000_000],
   [27862, "Panaitopol",  "panaitopol", 0],
   [ 2407, "Cuban y+1",   "cuban1",     0],
   [ 2648, "Cuban y+2",   "cuban2",     0],
