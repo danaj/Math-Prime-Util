@@ -1324,14 +1324,14 @@ int is_prob_prime(UV n)
       uint32_t f = 59;
       uint32_t limit = isqrt(n);
       while (f <= limit) {
-        if ((x%f) == 0)  return 0;  f += 2;
-        if ((x%f) == 0)  return 0;  f += 6;
-        if ((x%f) == 0)  return 0;  f += 4;
-        if ((x%f) == 0)  return 0;  f += 2;
-        if ((x%f) == 0)  return 0;  f += 4;
-        if ((x%f) == 0)  return 0;  f += 2;
-        if ((x%f) == 0)  return 0;  f += 4;
-        if ((x%f) == 0)  return 0;  f += 6;
+        { if ((x%f) == 0)  return 0; }  f += 2;
+        { if ((x%f) == 0)  return 0; }  f += 6;
+        { if ((x%f) == 0)  return 0; }  f += 4;
+        { if ((x%f) == 0)  return 0; }  f += 2;
+        { if ((x%f) == 0)  return 0; }  f += 4;
+        { if ((x%f) == 0)  return 0; }  f += 2;
+        { if ((x%f) == 0)  return 0; }  f += 4;
+        { if ((x%f) == 0)  return 0; }  f += 6;
       }
       return 2;
     }
