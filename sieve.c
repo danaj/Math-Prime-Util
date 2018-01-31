@@ -165,8 +165,8 @@ static const unsigned char qinit30[30] =
 
 typedef struct {
   uint32_t prime;
-  uint32_t offset;
-  uint8_t index;
+  UV       offset;
+  uint8_t  index;
 } wheel_t;
 
 #define CROSS_INDEX(v, b0,b1,b2,b3,b4,b5,b6,b7,  i0,i1,i2,i3,i4,i5,i6,i7, it) \
@@ -216,7 +216,7 @@ static wheel_t create_wheel(UV startp, uint32_t prime)
   return w;
 }
 
-static void mark_primes(unsigned char* s, uint32_t bytes, wheel_t* w)
+static void mark_primes(unsigned char* s, UV bytes, wheel_t* w)
 {
   if (w->offset >= bytes) {
     w->offset -= bytes;

@@ -1,5 +1,18 @@
 Revision history for Perl module Math::Prime::Util
 
+0.71 2018-?
+
+    [FIXES]
+
+    - Monolithic sieves beyond 30*2^32 (~ 1.2 * 10^11) overflowed.
+
+    [OTHER]
+
+    - Added ability to use -DBENCH_SEG for benchmarking sieves using
+      ntheory::_segment_pi without table optimizations.
+
+
+
 0.70 2017-12-02
 
     [FIXES]

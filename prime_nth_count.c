@@ -273,6 +273,7 @@ UV segment_prime_count(UV low, UV high)
 
   if (low > high)  return count;
 
+#if !defined(BENCH_SEGCOUNT)
   if (low == 7 && high <= 30*NPRIME_SIEVE30) {
     count += count_segment_ranged(prime_sieve30, NPRIME_SIEVE30, low, high);
     return count;
@@ -285,6 +286,7 @@ UV segment_prime_count(UV low, UV high)
    * to sieve all the rest.  We should be using LMO or Lehmer much earlier. */
 #ifdef APPLY_TABLES
   APPLY_TABLES
+#endif
 #endif
 
   low_d = low/30;
