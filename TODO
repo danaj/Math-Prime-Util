@@ -119,6 +119,8 @@
 - polymul, polyadd, polydiv, polyneg, polyeval, polyorder, polygcd, polylcm, polyroots, ...
   A lot of our ops do these mod n, we could make ..mod versions of each.
 
+- poly_is_reducible
+
 - use word-based for-sieve for non-segment.
 
 - remove start/end partial word tests from inner loop in for-sieve.
@@ -128,9 +130,14 @@
 - compare wheel_t with primes separated and possibly cached.
 
 - urandomm with bigints could be faster.
-   8.2s  my $f=factorial(144); urandomm($f) for 1..5e5;
+   7.7s  my $f=factorial(144); urandomm($f) for 1..5e5;
+   6.2s  my $f=factorial(144); urandomm("$f") for 1..5e5;
+   4.8s  my $f="".factorial(144); urandomm($f) for 1..5e5;
    5.3s  use Math::GMP qw/:constant/; my $f=factorial(144); urandomm($f) for 1..5e5;
-   1.8s  my $f=Math::Prime::Util::GMP::factorial(144); Math::Prime::Util::GMP::urandomm($f) for 1..5e5;
+   1.7s  my $f=Math::Prime::Util::GMP::factorial(144); Math::Prime::Util::GMP::urandomm($f) for 1..5e5;
+  In the first case, we're calling ""->bstr->_str once for validation in MPU
+  and and once for use in MPU::GMP.
+  The last case is all strings with no read/write bigint objects anywhere.
 
 - Destroy csprng context on thread destruction.
 
@@ -158,3 +165,9 @@
 - update prime count lower/upper from https://arxiv.org/pdf/1703.08032.pdf
 
 - urandomr
+
+- circular primes ... just use repdigits after 1M?  https://oeis.org/A068652
+
+- forfactored and forsquarefree.  Consider setting $_ and @_.
+  Would formoebius make more sense?
+  We have ranged_moebius which is efficient, but not segmented so must be careful.
