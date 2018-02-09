@@ -168,6 +168,8 @@
 
 - circular primes ... just use repdigits after 1M?  https://oeis.org/A068652
 
-- forfactored and forsquarefree.  Consider setting $_ and @_.
-  Would formoebius make more sense?
-  We have ranged_moebius which is efficient, but not segmented so must be careful.
+- finalize forfactors and forsquarefree.  Export, doc, test, PPFE, PP.
+
+- Make forfactored and forsquarefree efficient.
+
+- Figure out how to use multicall for forfactored and forsquarefree.

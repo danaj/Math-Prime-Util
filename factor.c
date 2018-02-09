@@ -1221,6 +1221,48 @@ int lehman_factor(UV n, UV *factors, int do_trial) {
   return 1;
 }
 
+factor_range_context_t factor_range_init(UV lo, UV hi, int square_free) {
+  factor_range_context_t ctx;
+  ctx.lo = lo;
+  ctx.hi = hi;
+  ctx.n = lo-1;
+  ctx.is_square_free = square_free ? 1 : 0;
+  ctx.farray = 0;
+  New(0, ctx.factors, square_free ? 15 : 63, UV);
+  return ctx;
+}
+
+int factor_range_next(factor_range_context_t *ctx) {
+  int nfactors;
+  UV j, n;
+  if (ctx->n == ctx->hi)
+    return -1;
+  n = ++(ctx->n);
+  {
+    UV *factors = ctx->factors;
+    if (ctx->is_square_free && n >= 49 && (!(n% 4) || !(n% 9) || !(n%25) || !(n%49)))
+      return 0;
+    nfactors = factor(n, factors);
+    if (ctx->is_square_free) {
+      for (j = 1; j < nfactors; j++) if (factors[j] == factors[j-1]) break;
+      if (j < nfactors) return 0;
+    }
+  }
+  return nfactors;
+}
+
+void factor_range_destroy(factor_range_context_t *ctx) {
+  if (ctx->farray)
+    Safefree(ctx->farray);
+  else
+    Safefree(ctx->factors);
+}
+
+
+/******************************************************************************/
+/* DLP */
+/******************************************************************************/
+
 static UV dlp_trial(UV a, UV g, UV p, UV maxrounds) {
   UV k, t;
   if (maxrounds > p) maxrounds = p;

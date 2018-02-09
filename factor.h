@@ -21,6 +21,20 @@ extern int lehman_factor(UV n, UV *factors, int dotrial);
 
 extern UV* _divisor_list(UV n, UV *num_divisors);
 
+/* Factoring all numbers in a range. */
+typedef struct {
+  UV lo;
+  UV hi;
+  UV n;
+  UV noffset;
+  UV *factors;
+  UV *farray;
+  char is_square_free;
+} factor_range_context_t;
+extern factor_range_context_t factor_range_init(UV lo, UV hi, int square_free);
+extern int factor_range_next(factor_range_context_t *ctx);
+extern void factor_range_destroy(factor_range_context_t *ctx);
+
 /*
 extern UV dlp_trial(UV a, UV g, UV p, UV maxrounds);
 extern UV dlp_prho(UV a, UV g, UV p, UV n, UV maxrounds);

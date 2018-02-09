@@ -2875,6 +2875,83 @@ forcomb (SV* block, IN SV* svn, IN SV* svk = 0)
     END_FORCOUNT;
 
 void
+forfactored (SV* block, IN SV* svbeg, IN SV* svend = 0)
+  ALIAS:
+    forsquarefree = 1
+  PROTOTYPE: &$;$
+  PREINIT:
+    UV beg, end, n, i, nfactors, *factors;
+    factor_range_context_t fctx;
+    GV *gv;
+    HV *stash;
+    SV* svarg;  /* We use svarg to prevent clobbering $_ outside the block */
+    CV *cv;
+    SV* svals[12];
+    uint16_t oldforloop;
+    char     oldforexit;
+    char    *forexit;
+    dMY_CXT;
+  PPCODE:
+    cv = sv_2cv(block, &stash, &gv, 0);
+    if (cv == Nullcv)
+      croak("Not a subroutine reference");
+
+    if (!_validate_int(aTHX_ svbeg, 0) || (items >= 3 && !_validate_int(aTHX_ svend,0))) {
+      _vcallsubn(aTHX_ G_VOID|G_DISCARD, VCALL_ROOT, "_generic_forsquarefree", items, 0);
+      return;
+    }
+
+    if (items < 3) {
+      beg = 1;
+      end = my_svuv(svbeg);
+    } else {
+      beg = my_svuv(svbeg);
+      end = my_svuv(svend);
+    }
+
+    svals[2] = newSVuv(2);  SvREADONLY_on(svals[2]);
+    svals[3] = newSVuv(3);  SvREADONLY_on(svals[3]);
+    svals[5] = newSVuv(5);  SvREADONLY_on(svals[5]);
+    svals[7] = newSVuv(7);  SvREADONLY_on(svals[7]);
+    svals[11]= newSVuv(11); SvREADONLY_on(svals[11]);
+
+    SAVESPTR(GvSV(PL_defgv));
+    svarg = newSVuv(0);
+    GvSV(PL_defgv) = svarg;
+    START_FORCOUNT;
+    if (beg <= 1) {
+      dSP; ENTER; SAVETMPS; PUSHMARK(SP);
+      sv_setuv(svarg, 1);
+      PUTBACK; call_sv((SV*)cv, G_VOID|G_DISCARD); FREETMPS; LEAVE;
+      beg = 2;
+    }
+    fctx = factor_range_init(beg, end, ix == 1);
+    for (n = beg; n <= end; n++) {
+      CHECK_FORCOUNT;
+      nfactors = factor_range_next(&fctx);
+      if (nfactors > 0) {
+        /* TODO: Figure out how to use multicall for this. */
+        dSP; ENTER; SAVETMPS; PUSHMARK(SP);
+        sv_setuv(svarg, n);
+        EXTEND(SP, (int)nfactors);
+        factors = fctx.factors;
+        for (i = 0; i < nfactors; i++) {
+          SV* f = (factors[i] <= 11) ? svals[factors[i]] : sv_2mortal(newSVuv(factors[i]));
+          PUSHs(f);
+        }
+        PUTBACK; call_sv((SV*)cv, G_VOID|G_DISCARD); FREETMPS; LEAVE;
+      }
+    }
+    SvREFCNT_dec(svarg);
+    SvREFCNT_dec(svals[2]);
+    SvREFCNT_dec(svals[3]);
+    SvREFCNT_dec(svals[5]);
+    SvREFCNT_dec(svals[7]);
+    SvREFCNT_dec(svals[11]);
+    END_FORCOUNT;
+
+
+void
 vecreduce(SV* block, ...)
 PROTOTYPE: &@
 CODE:
@@ -2999,7 +3076,7 @@ factor_test_harness1(...)
   PPCODE:
     /* Pass in a big array of numbers, we factor them in a timed loop */
     {
-      UV res, factors[MPU_MAX_FACTORS+1], exponents[MPU_MAX_FACTORS+1], *comp;
+      UV res, factors[MPU_MAX_FACTORS+1], *comp;
       struct timeval gstart, gstop;
       double t_time;
       int i, j, k, correct, nf, num = items;
@@ -3041,8 +3118,6 @@ factor_test_harness1(...)
 
 void
 factor_test_harness2(IN int count, IN int bits = 63)
-  PREINIT:
-    dMY_CXT;
   PPCODE:
     /* We'll factor <count> <bits>-bit numbers */
     {
