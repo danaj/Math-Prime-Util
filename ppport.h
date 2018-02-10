@@ -4589,6 +4589,7 @@ typedef OP* (CPERLscope(*Perl_check_t)) (pTHX_ OP*);
 #  undef isPRINT
 # endif
 
+#undef WIDEST_UTYPE
 #ifdef HAS_QUAD
 # ifdef U64TYPE
 #  define WIDEST_UTYPE U64TYPE
