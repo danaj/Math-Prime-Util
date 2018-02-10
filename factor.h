@@ -23,13 +23,15 @@ extern UV* _divisor_list(UV n, UV *num_divisors);
 
 /* Factoring all numbers in a range. */
 typedef struct {
-  UV lo;
-  UV hi;
-  UV n;
-  UV noffset;
-  UV *factors;
-  UV *farray;
+  UV   lo;
+  UV   hi;
+  UV   n;
   char is_square_free;
+  UV  *factors;
+  UV   _coffset;
+  UV   _noffset;
+  UV  *_farray;
+  UV  *_nfactors;
 } factor_range_context_t;
 extern factor_range_context_t factor_range_init(UV lo, UV hi, int square_free);
 extern int factor_range_next(factor_range_context_t *ctx);

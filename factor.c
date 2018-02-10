@@ -1221,30 +1221,100 @@ int lehman_factor(UV n, UV *factors, int do_trial) {
   return 1;
 }
 
+static void _vec_factor(UV lo, UV hi, UV *nfactors, UV *farray, UV noffset, int square_free)
+{
+  UV *N, j, n, sqrthi;
+  sqrthi = isqrt(hi);
+  n = hi-lo+1;
+  New(0, N, hi-lo+1, UV);
+  for (j = 0; j < n; j++) {
+    N[j] = 1;
+    nfactors[j] = 0;
+  }
+  START_DO_FOR_EACH_PRIME(2, sqrthi) {
+    UV q, t, A;
+    if (square_free == 0) {
+      q = p;
+      do {
+        t = lo / q, A = t * q;
+        if (A < lo) A += q;
+        for (j = A-lo; j < n; j += q) {
+          farray[ j*noffset + nfactors[j]++ ] = p;
+          N[j] *= p;
+        }
+        q *= p;
+      } while (q <= hi);
+    } else {
+      q = p*p, t = lo / q, A = t * q;
+      if (A < lo) A += q;
+      for (j = A-lo; j < n; j += q) {
+        N[j] = 0;
+        nfactors[j] = 0;
+      }
+      q = p, t = lo / q, A = t * q;
+      if (A < lo) A += q;
+      for (j = A-lo; j < n; j += q) {
+        if (N[j] > 0) {
+          farray[ j*noffset + nfactors[j]++ ] = p;
+          N[j] *= p;
+        }
+      }
+    }
+  } END_DO_FOR_EACH_PRIME
+  for (j = 0; j < n; j++) {
+    if (N[j] > 0 && N[j] != j+lo)
+      farray[ j*noffset + nfactors[j]++ ] = (j+lo) / N[j];
+  }
+  Safefree(N);
+}
+
+static const uint32_t _factor_range_chunk = 8192;
+
 factor_range_context_t factor_range_init(UV lo, UV hi, int square_free) {
   factor_range_context_t ctx;
   ctx.lo = lo;
   ctx.hi = hi;
   ctx.n = lo-1;
   ctx.is_square_free = square_free ? 1 : 0;
-  ctx.farray = 0;
-  New(0, ctx.factors, square_free ? 15 : 63, UV);
+  if (hi < 1e15 && (hi-lo+1) > 100) {
+    if (square_free) ctx._noffset = (hi <= 1e9) ? 10 : 15;
+    else             ctx._noffset = (hi <= 1e9) ? 30 : 63;
+    ctx._coffset = _factor_range_chunk;
+    New(0, ctx._nfactors, _factor_range_chunk, UV);
+    New(0, ctx._farray, _factor_range_chunk * ctx._noffset, UV);
+    get_prime_cache(isqrt(hi), 0);  /* make sure we have all the primes we need */
+  } else {
+    New(0, ctx.factors, square_free ? 15 : 63, UV);
+    ctx._nfactors = 0;
+    ctx._farray = ctx.factors;
+    ctx._noffset = 0;
+  }
   return ctx;
 }
 
 int factor_range_next(factor_range_context_t *ctx) {
   int nfactors;
   UV j, n;
-  if (ctx->n == ctx->hi)
+  if (ctx->n >= ctx->hi)
     return -1;
   n = ++(ctx->n);
-  {
-    UV *factors = ctx->factors;
+  if (ctx->_nfactors) {
+    if (ctx->_coffset >= _factor_range_chunk) {
+      UV clo = n;
+      UV chi = n + _factor_range_chunk - 1;
+      if (chi > ctx->hi) chi = ctx->hi;
+      _vec_factor(clo, chi, ctx->_nfactors, ctx->_farray, ctx->_noffset, ctx->is_square_free);
+      ctx->_coffset = 0;
+    }
+    nfactors = ctx->_nfactors[ctx->_coffset];
+    ctx->factors = ctx->_farray + ctx->_coffset * ctx->_noffset;
+    ctx->_coffset++;
+  } else {
     if (ctx->is_square_free && n >= 49 && (!(n% 4) || !(n% 9) || !(n%25) || !(n%49)))
       return 0;
-    nfactors = factor(n, factors);
+    nfactors = factor(n, ctx->factors);
     if (ctx->is_square_free) {
-      for (j = 1; j < nfactors; j++) if (factors[j] == factors[j-1]) break;
+      for (j = 1; j < nfactors; j++) if (ctx->factors[j] == ctx->factors[j-1]) break;
       if (j < nfactors) return 0;
     }
   }
@@ -1252,10 +1322,9 @@ int factor_range_next(factor_range_context_t *ctx) {
 }
 
 void factor_range_destroy(factor_range_context_t *ctx) {
-  if (ctx->farray)
-    Safefree(ctx->farray);
-  else
-    Safefree(ctx->factors);
+  if (ctx->_farray != 0) Safefree(ctx->_farray);
+  if (ctx->_nfactors != 0) Safefree(ctx->_nfactors);
+  ctx->_farray = ctx->_nfactors = ctx->factors = 0;
 }
 
 
