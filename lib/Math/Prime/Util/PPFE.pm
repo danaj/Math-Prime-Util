@@ -806,6 +806,13 @@ sub foroddcomposites(&$;$) { ## no critic qw(ProhibitSubroutinePrototypes)
   _end_for_loop($oldforexit);
 }
 
+sub forfactored(&$;$) { ## no critic qw(ProhibitSubroutinePrototypes)
+  Math::Prime::Util::_generic_forfac(0, @_);
+}
+sub forsquarefree(&$;$) { ## no critic qw(ProhibitSubroutinePrototypes)
+  Math::Prime::Util::_generic_forfac(1, @_);
+}
+
 sub fordivisors (&$) {    ## no critic qw(ProhibitSubroutinePrototypes)
   my($sub, $n) = @_;
   _validate_num($n) || _validate_positive_integer($n);

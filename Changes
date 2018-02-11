@@ -2,6 +2,11 @@ Revision history for Perl module Math::Prime::Util
 
 0.71 2018-?
 
+    [ADDED]
+
+    - forfactored { ... } a,b         loop n=a..b setting $_=n, @_=factor(n)
+    - forsquarefree { ... } a,b       as forfactored, but only square-free m
+
     [FIXES]
 
     - Monolithic sieves beyond 30*2^32 (~ 1.2 * 10^11) overflowed.

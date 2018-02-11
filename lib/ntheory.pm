@@ -122,6 +122,8 @@ Tags:
   forprimes { ... } [start,] end      loop over primes in range
   forcomposites { ... } [start,] end  loop over composites in range
   foroddcomposites {...} [start,] end loop over odd composites in range
+  forfactored {...} [start,] end      loop with factors
+  forsquarefree {...} [start,] end    loop with factors of square-free n
   fordivisors { ... } n               loop over the divisors of n
   forpart { ... } n [,{...}]          loop over integer partitions
   forcomp { ... } n [,{...}]          loop over integer compositions

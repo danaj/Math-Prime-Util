@@ -2897,7 +2897,7 @@ forfactored (SV* block, IN SV* svbeg, IN SV* svend = 0)
       croak("Not a subroutine reference");
 
     if (!_validate_int(aTHX_ svbeg, 0) || (items >= 3 && !_validate_int(aTHX_ svend,0))) {
-      _vcallsubn(aTHX_ G_VOID|G_DISCARD, VCALL_ROOT, "_generic_forsquarefree", items, 0);
+      _vcallsubn(aTHX_ G_VOID|G_DISCARD, VCALL_ROOT, (ix == 0) ? "_generic_forfactored" : "_generic_forsquarefree", items, 0);
       return;
     }
 
@@ -2925,7 +2925,7 @@ forfactored (SV* block, IN SV* svbeg, IN SV* svend = 0)
       PUTBACK; call_sv((SV*)cv, G_VOID|G_DISCARD); FREETMPS; LEAVE;
       beg = 2;
     }
-    fctx = factor_range_init(beg, end, ix == 1);
+    fctx = factor_range_init(beg, end, ix);
     for (n = beg; n <= end; n++) {
       CHECK_FORCOUNT;
       nfactors = factor_range_next(&fctx);
@@ -2949,7 +2949,6 @@ forfactored (SV* block, IN SV* svbeg, IN SV* svend = 0)
     SvREFCNT_dec(svals[7]);
     SvREFCNT_dec(svals[11]);
     END_FORCOUNT;
-
 
 void
 vecreduce(SV* block, ...)

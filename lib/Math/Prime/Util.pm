@@ -35,6 +35,7 @@ our @EXPORT_OK =
       primes twin_primes ramanujan_primes sieve_prime_cluster sieve_range
       forprimes forcomposites foroddcomposites fordivisors
       forpart forcomp forcomb forperm forderange formultiperm
+      forfactored forsquarefree
       lastfor
       numtoperm permtonum randperm shuffle
       prime_iterator prime_iterator_object
@@ -609,6 +610,38 @@ sub _generic_foroddcomposites {
     }
   }
   Math::Prime::Util::_end_for_loop($oldforexit);
+}
+
+sub _generic_forfac {
+  my($sf, $sub, $beg, $end) = @_;
+  _validate_positive_integer($beg);
+  if (defined $end) {
+    _validate_positive_integer($end);
+    $beg = 1 if $beg < 1;
+  } else {
+    ($beg,$end) = (1,$beg);
+  }
+  my $oldforexit = Math::Prime::Util::_start_for_loop();
+  {
+    my $pp;
+    local *_ = \$pp;
+    while ($beg <= $end) {
+      if (!$sf || is_square_free($beg)) {
+        $pp = $beg;
+        my @f = factor($beg);
+        $sub->(@f);
+        last if Math::Prime::Util::_get_forexit();
+      }
+      $beg++;
+    }
+  }
+  Math::Prime::Util::_end_for_loop($oldforexit);
+}
+sub _generic_forfactored {
+  _generic_forfac(0, @_);
+}
+sub _generic_forsquarefree {
+  _generic_forfac(1, @_);
 }
 
 sub _generic_fordivisors {
@@ -1379,6 +1412,27 @@ Similar to L</forcomposites>, but skipping all even numbers.
 The odd composites, L<OEIS A071904|http://oeis.org/A071904>, are the
 numbers greater than 1 which are not prime and not divisible by two:
 C<9, 15, 21, 25, 27, 33, 35, ...>.
+
+
+=head2 forfactored
+
+  forfactored { say "$_: @_"; } 100;
+
+Given a block and either an end number or start/end pair, calls the block for
+each number in the inclusive range.  C<$_> is set to the number while C<@_>
+holds the factors.  Especially for small inputs or large ranges, This can be
+faster than calling L</factor> on each sequential value.
+
+This corresponds to the Pari/GP 2.10 C<forfactored> function.
+
+
+=head2 forsquarefree
+
+Similar to L</forfactored>, but skipping numbers in the range that have a
+repeated factor.  Inside the block, the moebius function can be cheaply
+computed as C<((scalar(@_) & 1) ? -1 : 1)> or similar.
+
+This corresponds to the Pari/GP 2.10 C<forsquarefree> function.
 
 
 =head2 fordivisors
