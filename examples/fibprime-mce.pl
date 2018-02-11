@@ -32,10 +32,14 @@ $| = 1;
 # n32 ( F50833) in   754s on 3930k 4.2GHz, 12 CPU
 # n32 ( F50833) in   472s on EC2 c3.8xlarge, 32 CPU
 # n32 ( F50833) in   323s on EC2 c4.8xlarge, 36 CPU
+# n32 ( F50833) in   214s on EC2 r4.16xlarge, 64 CPU
+# n32 ( F50833) in   122s on EC2 c5.18xlarge, 72 CPU
 #
 # n36 (F148091) in 26245s on 3930k 4.2GHz, 12 CPU
 # n36 (F148091) in 14380s on EC2 c3.8xlarge, 32 CPU
 # n36 (F148091) in 12009s on EC2 c4.8xlarge, 36 CPU
+# n36 (F148091) in  6565s on EC2 r4.16xlarge, 64 CPU
+# n36 (F148091) in  4523s on EC2 c5.18xlarge, 72 CPU
 #
 
 my $time_start = [gettimeofday];
