@@ -169,5 +169,3 @@
 - circular primes ... just use repdigits after 1M?  https://oeis.org/A068652
 
 - Figure out how to use multicall for forfactored and forsquarefree.
-
-- tests for forfactored and forsquarefree.

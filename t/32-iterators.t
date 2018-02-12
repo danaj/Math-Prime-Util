@@ -6,8 +6,9 @@ use Test::More;
 use Math::Prime::Util qw/primes prev_prime next_prime
                          forprimes forcomposites foroddcomposites fordivisors
                          forpart forcomp forcomb forperm forderange formultiperm
+                         forfactored forsquarefree
                          lastfor
-                         is_power vecsum
+                         is_power vecsum sqrtint
                          prime_iterator prime_iterator_object/;
 use Math::BigInt try => "GMP,Pari";
 use Math::BigFloat;
@@ -28,6 +29,7 @@ plan tests => 8        # forprimes errors
             + 7        # oo iterator simple
             + 25       # oo iterator methods
             + 11       # lastfor
+            + 5        # forfactored and forsquarefree
             + 0;
 
 ok(!eval { forprimes { 1 } undef; },   "forprimes undef");
@@ -324,4 +326,19 @@ ok(!eval { prime_iterator_object(4.5); }, "iterator 4.5");
     # Our lastfor indicator is separate from the inside loop.
   } 20;
   is_deeply( \@ps, [2,3,5,4,7,4,6], "nested lastfor semantics" );
+}
+
+sub a053462 {
+  my($s,$n)=(0,10**$_[0]-1);
+  forsquarefree { $s += int($n / ($_*$_)) * ((scalar(@_) & 1)?-1:1); } sqrtint($n);
+  $s;
+}
+
+{
+  my $s;
+  $s=0; forfactored { $s += $_ } 1; is($s, 1, "forfactored {} 1");
+  $s=0; forfactored { $s += vecsum($_,@_) } 100; is($s, 7330, "forfactored {} 100");
+  $s=0; forsquarefree { $s += vecsum($_,@_) } 100; is($s, 4763, "forsquarefree {} 100");
+  $s=0; forfactored { $s += vecsum($_,@_) } 1e8,1e8+10; is($s, 1208835222, "forfactored {} 10^8,10^8+10");
+  is( a053462(6), 607926, "A053462 using forsquarefree");
 }
