@@ -2926,13 +2926,13 @@ forfactored (SV* block, IN SV* svbeg, IN SV* svend = 0)
       beg = 2;
     }
     fctx = factor_range_init(beg, end, ix);
-    for (n = beg; n <= end; n++) {
+    for (n = 0; n < end-beg+1; n++) {
       CHECK_FORCOUNT;
       nfactors = factor_range_next(&fctx);
       if (nfactors > 0) {
         /* TODO: Figure out how to use multicall for this. */
         dSP; ENTER; SAVETMPS; PUSHMARK(SP);
-        sv_setuv(svarg, n);
+        sv_setuv(svarg, fctx.n);
         EXTEND(SP, (int)nfactors);
         factors = fctx.factors;
         for (i = 0; i < nfactors; i++) {

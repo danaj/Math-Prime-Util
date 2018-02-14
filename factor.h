@@ -7,6 +7,7 @@
 
 extern int factor(UV n, UV *factors);
 extern int factor_exp(UV n, UV *factors, UV* exponents);
+extern int factor_one(UV n, UV *factors, int primality, int trial);
 extern UV  divisor_sum(UV n, UV k);
 
 extern int trial_factor(UV n, UV *factors, UV first, UV last);

@@ -4,6 +4,7 @@
 #include <math.h>
 
 #define FUNC_isqrt  1
+#define FUNC_icbrt  1
 #define FUNC_gcd_ui 1
 #define FUNC_is_perfect_square 1
 #define FUNC_clz 1
@@ -267,6 +268,22 @@ int factor_exp(UV n, UV *factors, UV* exponents)
   return j;
 }
 
+int factor_one(UV n, UV *factors, int primality, int trial)
+{
+  int nfactors;
+  if (primality && is_prime(n)) {
+    factors[0] = n;
+    return 1;
+  }
+  if (trial) {  /* TODO: more efficient */
+    nfactors = trial_factor(n, factors, trial, 2011);
+    if (nfactors) return nfactors;
+  }
+  /* TODO: Tune for non-x86_64 */
+  nfactors = (n < 1073741824UL) ? holf32(n, factors, 1000000)
+                                : pbrent_factor(n, factors, 200000, 1);
+  return nfactors;
+}
 
 int trial_factor(UV n, UV *factors, UV f, UV last)
 {
@@ -1221,9 +1238,12 @@ int lehman_factor(UV n, UV *factors, int do_trial) {
   return 1;
 }
 
+static const uint32_t _fr_chunk = 8192;
+static const uint32_t _fr_sieve_crossover = 10000000;  /* About 10^14 */
+
 static void _vec_factor(UV lo, UV hi, UV *nfactors, UV *farray, UV noffset, int square_free)
 {
-  UV *N, j, n, sqrthi;
+  UV *N, j, n, sqrthi, sievelim;
   sqrthi = isqrt(hi);
   n = hi-lo+1;
   New(0, N, hi-lo+1, UV);
@@ -1231,19 +1251,19 @@ static void _vec_factor(UV lo, UV hi, UV *nfactors, UV *farray, UV noffset, int 
     N[j] = 1;
     nfactors[j] = 0;
   }
-  START_DO_FOR_EACH_PRIME(2, sqrthi) {
+  sievelim = (sqrthi < _fr_sieve_crossover) ? sqrthi : icbrt(hi);
+  START_DO_FOR_EACH_PRIME(2, sievelim) {
     UV q, t, A;
     if (square_free == 0) {
-      q = p;
-      do {
+      UV kmin = hi / p;
+      for (q = p; q <= kmin; q *= p) {
         t = lo / q, A = t * q;
         if (A < lo) A += q;
         for (j = A-lo; j < n; j += q) {
           farray[ j*noffset + nfactors[j]++ ] = p;
           N[j] *= p;
         }
-        q *= p;
-      } while (q <= hi);
+      }
     } else {
       q = p*p, t = lo / q, A = t * q;
       if (A < lo) A += q;
@@ -1261,14 +1281,33 @@ static void _vec_factor(UV lo, UV hi, UV *nfactors, UV *farray, UV noffset, int 
       }
     }
   } END_DO_FOR_EACH_PRIME
-  for (j = 0; j < n; j++) {
-    if (N[j] > 0 && N[j] != j+lo)
-      farray[ j*noffset + nfactors[j]++ ] = (j+lo) / N[j];
+
+  if (sievelim == sqrthi) {
+    /* Handle the unsieved results, which are prime */
+    for (j = 0; j < n; j++) {
+      if (N[j] == 1)
+        farray[ j*noffset + nfactors[j]++ ] = j+lo;
+      else if (N[j] > 0 && N[j] != j+lo)
+        farray[ j*noffset + nfactors[j]++ ] = (j+lo) / N[j];
+    }
+  } else {
+    /* Handle the unsieved results, which are prime or semi-prime */
+    for (j = 0; j < n; j++) {
+      UV rem = j+lo;
+      if (N[j] > 0 && N[j] != rem) {
+        if (N[j] != 1)
+          rem /= N[j];
+        if (square_free && is_perfect_square(rem)) {
+          nfactors[j] = 0;
+        } else {
+          UV* f = farray + j*noffset + nfactors[j];
+          nfactors[j] += factor_one(rem, f, 1, 0);
+        }
+      }
+    }
   }
   Safefree(N);
 }
-
-static const uint32_t _factor_range_chunk = 8192;
 
 factor_range_context_t factor_range_init(UV lo, UV hi, int square_free) {
   factor_range_context_t ctx;
@@ -1276,14 +1315,18 @@ factor_range_context_t factor_range_init(UV lo, UV hi, int square_free) {
   ctx.hi = hi;
   ctx.n = lo-1;
   ctx.is_square_free = square_free ? 1 : 0;
-  if (hi < 1e15 && (hi-lo+1) > 100) {
-    if (square_free) ctx._noffset = (hi <= 1e9) ? 10 : 15;
-    else             ctx._noffset = (hi <= 1e9) ? 30 : 63;
-    ctx._coffset = _factor_range_chunk;
-    New(0, ctx._nfactors, _factor_range_chunk, UV);
-    New(0, ctx._farray, _factor_range_chunk * ctx._noffset, UV);
-    get_prime_cache(isqrt(hi), 0);  /* make sure we have all the primes we need */
-  } else {
+  if (hi-lo+1 > 100) {        /* Sieve in chunks */
+    if (square_free) ctx._noffset = (hi <= 42949672965UL) ? 10 : 15;
+    else             ctx._noffset = BITS_PER_WORD - clz(hi);
+    ctx._coffset = _fr_chunk;
+    New(0, ctx._nfactors, _fr_chunk, UV);
+    New(0, ctx._farray, _fr_chunk * ctx._noffset, UV);
+    { /* Prealloc all the sieving primes now. */
+      UV t = isqrt(hi);
+      if (t >= _fr_sieve_crossover) t = icbrt(hi);
+      get_prime_cache(t, 0);
+    }
+  } else {                    /* factor each number */
     New(0, ctx.factors, square_free ? 15 : 63, UV);
     ctx._nfactors = 0;
     ctx._farray = ctx.factors;
@@ -1293,15 +1336,15 @@ factor_range_context_t factor_range_init(UV lo, UV hi, int square_free) {
 }
 
 int factor_range_next(factor_range_context_t *ctx) {
-  int nfactors;
-  UV j, n;
+  int j, nfactors;
+  UV n;
   if (ctx->n >= ctx->hi)
     return -1;
   n = ++(ctx->n);
   if (ctx->_nfactors) {
-    if (ctx->_coffset >= _factor_range_chunk) {
+    if (ctx->_coffset >= _fr_chunk) {
       UV clo = n;
-      UV chi = n + _factor_range_chunk - 1;
+      UV chi = n + _fr_chunk - 1;
       if (chi > ctx->hi) chi = ctx->hi;
       _vec_factor(clo, chi, ctx->_nfactors, ctx->_farray, ctx->_noffset, ctx->is_square_free);
       ctx->_coffset = 0;
@@ -1314,7 +1357,9 @@ int factor_range_next(factor_range_context_t *ctx) {
       return 0;
     nfactors = factor(n, ctx->factors);
     if (ctx->is_square_free) {
-      for (j = 1; j < nfactors; j++) if (ctx->factors[j] == ctx->factors[j-1]) break;
+      for (j = 1; j < nfactors; j++)
+        if (ctx->factors[j] == ctx->factors[j-1])
+          break;
       if (j < nfactors) return 0;
     }
   }
