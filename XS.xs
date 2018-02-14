@@ -2914,7 +2914,7 @@ forfactored (SV* block, IN SV* svbeg, IN SV* svend = 0)
     for (maxfactors = 0, n = end >> 1;  n;  n >>= 1)
       maxfactors++;
     for (i = 0; i < maxfactors; i++) {
-      svals[i] = newSVuv(UV_MAX);  /* UV flag on, so no IV->UV crossover worry */
+      svals[i] = newSVuv(UV_MAX);
       SvREADONLY_on(svals[i]);
     }
 
@@ -2932,16 +2932,18 @@ forfactored (SV* block, IN SV* svbeg, IN SV* svend = 0)
     for (n = 0; n < end-beg+1; n++) {
       CHECK_FORCOUNT;
       nfactors = factor_range_next(&fctx);
-      if (nfactors > maxfactors) croak("forfactored internal error: too many factors %d > %d", nfactors, maxfactors);
       if (nfactors > 0) {
         /* TODO: Figure out how to use multicall for this. */
         dSP; ENTER; SAVETMPS; PUSHMARK(SP);
         sv_setuv(svarg, fctx.n);
-        EXTEND(SP, (int)nfactors);
         factors = fctx.factors;
+        EXTEND(SP, nfactors);
         for (i = 0; i < nfactors; i++) {
-          SvUV_set(svals[i], factors[i]);
-          PUSHs(svals[i]);
+          SV* sv = svals[i];
+          SvREADONLY_off(sv);
+          sv_setuv(sv, factors[i]);
+          SvREADONLY_on(sv);
+          PUSHs(sv);
         }
         PUTBACK; call_sv((SV*)cv, G_VOID|G_DISCARD); FREETMPS; LEAVE;
       }
