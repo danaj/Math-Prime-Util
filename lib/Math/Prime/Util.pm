@@ -1423,6 +1423,10 @@ each number in the inclusive range.  C<$_> is set to the number while C<@_>
 holds the factors.  Especially for small inputs or large ranges, This can be
 faster than calling L</factor> on each sequential value.
 
+Similar to the arrays returned by similar functions such as L</forpart>,
+the values in C<@_> are read-only.
+Any attempt to modify them will result in undefined behavior.
+
 This corresponds to the Pari/GP 2.10 C<forfactored> function.
 
 

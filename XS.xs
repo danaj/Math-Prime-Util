@@ -2880,13 +2880,14 @@ forfactored (SV* block, IN SV* svbeg, IN SV* svend = 0)
     forsquarefree = 1
   PROTOTYPE: &$;$
   PREINIT:
-    UV beg, end, n, i, nfactors, *factors;
+    UV beg, end, n, *factors;
+    int i, nfactors, maxfactors;
     factor_range_context_t fctx;
     GV *gv;
     HV *stash;
     SV* svarg;  /* We use svarg to prevent clobbering $_ outside the block */
     CV *cv;
-    SV* svals[12];
+    SV* svals[64];
     uint16_t oldforloop;
     char     oldforexit;
     char    *forexit;
@@ -2908,12 +2909,14 @@ forfactored (SV* block, IN SV* svbeg, IN SV* svend = 0)
       beg = my_svuv(svbeg);
       end = my_svuv(svend);
     }
+    if (beg > end) return;
 
-    svals[2] = newSVuv(2);  SvREADONLY_on(svals[2]);
-    svals[3] = newSVuv(3);  SvREADONLY_on(svals[3]);
-    svals[5] = newSVuv(5);  SvREADONLY_on(svals[5]);
-    svals[7] = newSVuv(7);  SvREADONLY_on(svals[7]);
-    svals[11]= newSVuv(11); SvREADONLY_on(svals[11]);
+    for (maxfactors = 0, n = end >> 1;  n;  n >>= 1)
+      maxfactors++;
+    for (i = 0; i < maxfactors; i++) {
+      svals[i] = newSVuv(UV_MAX);  /* UV flag on, so no IV->UV crossover worry */
+      SvREADONLY_on(svals[i]);
+    }
 
     SAVESPTR(GvSV(PL_defgv));
     svarg = newSVuv(0);
@@ -2929,6 +2932,7 @@ forfactored (SV* block, IN SV* svbeg, IN SV* svend = 0)
     for (n = 0; n < end-beg+1; n++) {
       CHECK_FORCOUNT;
       nfactors = factor_range_next(&fctx);
+      if (nfactors > maxfactors) croak("forfactored internal error: too many factors %d > %d", nfactors, maxfactors);
       if (nfactors > 0) {
         /* TODO: Figure out how to use multicall for this. */
         dSP; ENTER; SAVETMPS; PUSHMARK(SP);
@@ -2936,18 +2940,15 @@ forfactored (SV* block, IN SV* svbeg, IN SV* svend = 0)
         EXTEND(SP, (int)nfactors);
         factors = fctx.factors;
         for (i = 0; i < nfactors; i++) {
-          SV* f = (factors[i] <= 11) ? svals[factors[i]] : sv_2mortal(newSVuv(factors[i]));
-          PUSHs(f);
+          SvUV_set(svals[i], factors[i]);
+          PUSHs(svals[i]);
         }
         PUTBACK; call_sv((SV*)cv, G_VOID|G_DISCARD); FREETMPS; LEAVE;
       }
     }
     SvREFCNT_dec(svarg);
-    SvREFCNT_dec(svals[2]);
-    SvREFCNT_dec(svals[3]);
-    SvREFCNT_dec(svals[5]);
-    SvREFCNT_dec(svals[7]);
-    SvREFCNT_dec(svals[11]);
+    for (i = 0; i < maxfactors; i++)
+      SvREFCNT_dec(svals[i]);
     END_FORCOUNT;
 
 void
