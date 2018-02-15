@@ -2923,9 +2923,9 @@ forfactored (SV* block, IN SV* svbeg, IN SV* svend = 0)
     GvSV(PL_defgv) = svarg;
     START_FORCOUNT;
     if (beg <= 1) {
-      dSP; ENTER; SAVETMPS; PUSHMARK(SP);
+      dSP; ENTER; PUSHMARK(SP);
       sv_setuv(svarg, 1);
-      PUTBACK; call_sv((SV*)cv, G_VOID|G_DISCARD); FREETMPS; LEAVE;
+      PUTBACK; call_sv((SV*)cv, G_VOID|G_DISCARD); LEAVE;
       beg = 2;
     }
     fctx = factor_range_init(beg, end, ix);
@@ -2934,7 +2934,7 @@ forfactored (SV* block, IN SV* svbeg, IN SV* svend = 0)
       nfactors = factor_range_next(&fctx);
       if (nfactors > 0) {
         /* TODO: Figure out how to use multicall for this. */
-        dSP; ENTER; SAVETMPS; PUSHMARK(SP);
+        dSP; ENTER; PUSHMARK(SP);
         sv_setuv(svarg, fctx.n);
         factors = fctx.factors;
         EXTEND(SP, nfactors);
@@ -2945,7 +2945,7 @@ forfactored (SV* block, IN SV* svbeg, IN SV* svend = 0)
           SvREADONLY_on(sv);
           PUSHs(sv);
         }
-        PUTBACK; call_sv((SV*)cv, G_VOID|G_DISCARD); FREETMPS; LEAVE;
+        PUTBACK; call_sv((SV*)cv, G_VOID|G_DISCARD); LEAVE;
       }
     }
     SvREFCNT_dec(svarg);
