@@ -172,4 +172,4 @@
 
 - MR32 is allowing some composites?  2047 is passing.
 
-- Use factor_one in main factor loop
+- perhaps square-free flag for factor for early stop.  Use in moebius etc.

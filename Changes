@@ -14,7 +14,9 @@ Revision history for Perl module Math::Prime::Util
     [OTHER]
 
     - Added ability to use -DBENCH_SEG for benchmarking sieves using
-      ntheory::_segment_pi without table optimizations.
+      prime_count and ntheory::_segment_pi without table optimizations.
+
+    - Reorg of main factor loop.  Should be identical from external view.
 
 
 
