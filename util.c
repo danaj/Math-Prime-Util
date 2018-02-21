@@ -1007,20 +1007,10 @@ int is_semiprime(UV n) {
   }
   /* 9.8% of random inputs left */
   if (is_def_prime(n)) return 0;
-  if (p > n3) return 1;
+  if (p > n3) return 1; /* past this, n is a composite and larger than p^3 */
   /* 4-8% of random inputs left */
-  /* n is a composite and larger than p^3 */
-  if (   pbrent_factor(n, factors, 90000, 1) == 2
-         /* The only things we normally see by now are 16+ digit semiprimes */
-      || pminus1_factor(n, factors, 4000, 4000) == 2
-         /* 0.09% of random 64-bit inputs left */
-      || pbrent_factor(n, factors, 180000, 7) == 2 )
-    return (is_def_prime(factors[0]) && is_def_prime(factors[1]));
-  /* 0.002% of random 64-bit inputs left */
-  {
-    UV facs[MPU_MAX_FACTORS+1];
-    return (factor(n,facs) == 2);
-  }
+  if (factor_one(n, factors, 0, 0) != 2) return 0;
+  return (is_def_prime(factors[0]) && is_def_prime(factors[1]));
 }
 
 int is_fundamental(UV n, int neg) {
@@ -1085,10 +1075,14 @@ UV pillai_v(UV n) {
 
 int moebius(UV n) {
   UV factors[MPU_MAX_FACTORS+1];
-  UV i, nfactors;
+  int i, nfactors;
 
-  if (n <= 1) return (int)n;
-  if ( n >= 49 && (!(n% 4) || !(n% 9) || !(n%25) || !(n%49)) )
+  if (n <= 5) return (n == 1) ? 1 : (n % 4) ? -1 : 0;
+  if (n >=  49 && (!(n %   4) || !(n %   9) || !(n %  25) || !(n %  49)))
+    return 0;
+  if (n >= 361 && (!(n % 121) || !(n % 169) || !(n % 289) || !(n % 361)))
+    return 0;
+  if (n >= 961 && (!(n % 529) || !(n % 841) || !(n % 961)))
     return 0;
 
   nfactors = factor(n, factors);
@@ -2526,13 +2520,15 @@ int is_catalan_pseudoprime(UV n) {
   {
     UV factors[MPU_MAX_FACTORS+1];
     int nfactors = factor_exp(n, factors, 0);
-    /* Aebi and Cairns 2008, page 9 */
 #if BITS_PER_WORD == 32
-    if (nfactors == 2)
+    if (nfactors == 2) return 0;  /* Page 9, all 32-bit semiprimes */
 #else
-    if (nfactors == 2 && (n < UVCONST(10000000000)))
+    if (nfactors == 2) {   /* Conditions from Aebi and Cairns (2008) */
+      if (n < UVCONST(10000000000)) return 0;     /* Page 9 */
+      if (2*factors[0]+1 >= factors[1]) return 0; /* Corollary 2 and 3 */
+    }
 #endif
-      return 0;
+    /* Test every factor */
     for (i = 0; i < nfactors; i++) {
       if (_catalan_vtest(a << 1, factors[i]))
         return 0;

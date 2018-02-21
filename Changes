@@ -18,6 +18,8 @@ Revision history for Perl module Math::Prime::Util
 
     - Reorg of main factor loop.  Should be identical from external view.
 
+    - Internal change to is_semiprime and is_catalan_pseudoprime.
+
 
 
 0.70 2017-12-02
