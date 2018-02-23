@@ -1143,15 +1143,28 @@ UV znprimroot(UV n) {
   nfactors = factor_exp(phi, fac, 0);
   for (i = 0; i < nfactors; i++)
     phi_div_fac[i] = phi / fac[i];
-  for (a = 2; a < n; a++) {
-    /* Skip first few perfect powers */
-    if (a == 4 || a == 8 || a == 9) continue;
-    /* Skip values we know can't be right: (a|n) = 0 (or 1 for odd primes) */
-    if (phi == n-1) {
-      if (kronecker_uu(a, n) != -1)  continue;
-    } else {
-      if (gcd_ui(a,n) != 1) continue;
+
+#if USE_MONTMATH
+  if (n & 1) {
+    const uint64_t npi = mont_inverse(n),  mont1 = mont_get1(n);
+    for (a = 2; a < n; a++) {
+      if (a == 4 || a == 8 || a == 9) continue;  /* Skip some perfect powers */
+      /* Skip values we know can't be right: (a|n) = 0 (or 1 for odd primes) */
+      if (phi == n-1) { if (kronecker_uu(a, n) != -1) continue; }
+      else            { if (gcd_ui(a,n) != 1) continue; }
+      r = mont_geta(a, n);
+      for (i = 0; i < nfactors; i++)
+        if (mont_powmod(r, phi_div_fac[i], n) == mont1)
+          break;
+      if (i == nfactors) return a;
     }
+  } else
+#endif
+  for (a = 2; a < n; a++) {
+    if (a == 4 || a == 8 || a == 9) continue;  /* Skip some perfect powers */
+    /* Skip values we know can't be right: (a|n) = 0 (or 1 for odd primes) */
+    if (phi == n-1) { if (kronecker_uu(a, n) != -1) continue; }
+    else            { if (gcd_ui(a,n) != 1) continue; }
     for (i = 0; i < nfactors; i++)
       if (powmod(a, phi_div_fac[i], n) == 1)
         break;

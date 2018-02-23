@@ -16,6 +16,8 @@ Revision history for Perl module Math::Prime::Util
     - is_primitive_root much faster (doesn't need to calulate totient,
       and faster rejection when n has no primitive root).
 
+    - znprimroot uses Montgomery, 1.2x to 1.3x faster.
+
     [OTHER]
 
     - Added ability to use -DBENCH_SEG for benchmarking sieves using
