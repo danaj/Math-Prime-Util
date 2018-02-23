@@ -1127,7 +1127,7 @@ UV znorder(UV a, UV n) {
 
 UV znprimroot(UV n) {
   UV fac[MPU_MAX_FACTORS+1];
-  UV exp[MPU_MAX_FACTORS+1];
+  UV phi_div_fac[MPU_MAX_FACTORS+1];
   UV a, phi, on, r;
   int i, nfactors;
 
@@ -1140,9 +1140,9 @@ UV znprimroot(UV n) {
   if (!is_prob_prime(r)) return 0;        /* c^a or 2c^a */
   phi = (r-1) * (on/r);                   /* p^a or 2p^a */
 
-  nfactors = factor_exp(phi, fac, exp);
+  nfactors = factor_exp(phi, fac, 0);
   for (i = 0; i < nfactors; i++)
-    exp[i] = phi / fac[i];  /* exp[i] = phi(n) / i-th-factor-of-phi(n) */
+    phi_div_fac[i] = phi / fac[i];
   for (a = 2; a < n; a++) {
     /* Skip first few perfect powers */
     if (a == 4 || a == 8 || a == 9) continue;
@@ -1150,10 +1150,10 @@ UV znprimroot(UV n) {
     if (phi == n-1) {
       if (kronecker_uu(a, n) != -1)  continue;
     } else {
-      if (kronecker_uu(a, n) == 0)  continue;
+      if (gcd_ui(a,n) != 1) continue;
     }
     for (i = 0; i < nfactors; i++)
-      if (powmod(a, exp[i], n) == 1)
+      if (powmod(a, phi_div_fac[i], n) == 1)
         break;
     if (i == nfactors) return a;
   }
@@ -1163,38 +1163,57 @@ UV znprimroot(UV n) {
 int is_primitive_root(UV a, UV n, int nprime) {
   UV s, fac[MPU_MAX_FACTORS+1];
   int i, nfacs;
+
   if (n <= 1) return n;
   if (a >= n) a %= n;
+  if (n <= 4) return a == n-1;
+  if (n % 4 == 0)  return 0;
+
+  /* Very simple, but not fast:
+   *     s = nprime ? n-1 : totient(n);
+   *     return s == znorder(a, n);
+   */
+
   if (gcd_ui(a,n) != 1) return 0;
-  s = nprime ? n-1 : totient(n);
+  if (nprime) {
+    s = n-1;
+  } else {
+    UV on = (n&1) ? n : (n>>1);
+    UV k = powerof(on);
+    UV r = rootof(on, k);
+    if (!is_prob_prime(r)) return 0;        /* c^a or 2c^a */
+    s = (r-1) * (on/r);                     /* p^a or 2p^a */
+  }
+  if (s == n-1 && kronecker_uu(a,n) != -1) return 0;
 
   /* a^x can be a primitive root only if gcd(x,s) = 1 */
   i = is_power(a,0);
   if (i > 1 && gcd_ui(i, s) != 1) return 0;
 
-  /* Quick check for small factors before full factor */
-  if ((s % 2) == 0 && powmod(a, s/2, n) == 1) return 0;
-
 #if USE_MONTMATH
   if (n & 1) {
     const uint64_t npi = mont_inverse(n),  mont1 = mont_get1(n);
     a = mont_geta(a, n);
+    /* Quick check for small factors before full factor */
+    if ((s % 2) == 0 && mont_powmod(a, s/2, n) == mont1) return 0;
     if ((s % 3) == 0 && mont_powmod(a, s/3, n) == mont1) return 0;
     if ((s % 5) == 0 && mont_powmod(a, s/5, n) == mont1) return 0;
     nfacs = factor_exp(s, fac, 0);
-    for (i = 0; i < nfacs; i++) {
-      if (fac[i] > 5 && mont_powmod(a, s/fac[i], n) == mont1) return 0;
-    }
+    for (i = 0; i < nfacs; i++)
+      if (fac[i] > 5 && mont_powmod(a, s/fac[i], n) == mont1)
+        return 0;
   } else
 #endif
   {
+    /* Quick check for small factors before full factor */
+    if ((s % 2) == 0 && powmod(a, s/2, n) == 1) return 0;
     if ((s % 3) == 0 && powmod(a, s/3, n) == 1) return 0;
     if ((s % 5) == 0 && powmod(a, s/5, n) == 1) return 0;
     /* Complete factor and check each one not found above. */
     nfacs = factor_exp(s, fac, 0);
-    for (i = 0; i < nfacs; i++) {
-      if (fac[i] > 5 && powmod(a, s/fac[i], n) == 1) return 0;
-    }
+    for (i = 0; i < nfacs; i++)
+      if (fac[i] > 5 && powmod(a, s/fac[i], n) == 1)
+        return 0;
   }
   return 1;
 }
