@@ -1113,6 +1113,21 @@ UV znorder(UV a, UV n) {
   phi = carmichael_lambda(n);
   nfactors = factor_exp(phi, fac, exp);
   k = phi;
+#if USE_MONTMATH
+  if (n & 1) {
+    const uint64_t npi = mont_inverse(n),  mont1 = mont_get1(n);
+    UV ma = mont_geta(a, n);
+    for (i = 0; i < nfactors; i++) {
+      UV b, a1, ek, pi = fac[i], ei = exp[i];
+      b = ipow(pi,ei);
+      k /= b;
+      a1 = mont_powmod(ma, k, n);
+      for (ek = 0; a1 != mont1 && ek++ <= ei; a1 = mont_powmod(a1, pi, n))
+        k *= pi;
+      if (ek > ei) return 0;
+    }
+  } else
+#endif
   for (i = 0; i < nfactors; i++) {
     UV b, a1, ek, pi = fac[i], ei = exp[i];
     b = ipow(pi,ei);
