@@ -18,6 +18,8 @@ Revision history for Perl module Math::Prime::Util
 
     - znprimroot and znorder use Montgomery, 1.2x to 2x faster.
 
+    - slightly faster sieve_range for native size inputs (use factor_one).
+
     [OTHER]
 
     - Added ability to use -DBENCH_SEG for benchmarking sieves using

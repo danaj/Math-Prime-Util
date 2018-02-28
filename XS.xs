@@ -772,9 +772,8 @@ sieve_range(IN SV* svn, IN UV width, IN UV depth)
             XPUSHs(sv_2mortal(newSVuv( i )));
       } else {                   /* small trial + factor for each value */
         for (i = (n<2)?2-n:0; i < width; i++)
-          if (trial_factor(n+i, factors, 2, 100) < 2)
-            if (factor(n+i,factors) < 2 || factors[0] > depth)
-              XPUSHs(sv_2mortal(newSVuv( i )));
+          if (factor_one(n+i, factors, 1, 1) < 2 || factors[0] > depth)
+            XPUSHs(sv_2mortal(newSVuv( i )));
       }
     }
     if (status != 1) {

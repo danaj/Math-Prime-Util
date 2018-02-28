@@ -2564,6 +2564,11 @@ int is_catalan_pseudoprime(UV n) {
 
   m = 1;
   a = n >> 1;
+  /*
+   * Ideally we could use some of the requirements for a mod 4/8/64 here:
+   * http://www.combinatorics.net/conf/Z60/sp/sp/Shu-Chung%20Liu.pdf
+   * But, how do we make +/-2 = X mod n into a solution for x = X mod 8?
+   */
   {
     UV factors[MPU_MAX_FACTORS+1];
     int nfactors = factor_exp(n, factors, 0);
