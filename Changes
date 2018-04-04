@@ -20,6 +20,8 @@ Revision history for Perl module Math::Prime::Util
 
     - slightly faster sieve_range for native size inputs (use factor_one).
 
+    - bin/primes.pl faster for palindromic primes and works for 10^17
+
     [OTHER]
 
     - Added ability to use -DBENCH_SEG for benchmarking sieves using

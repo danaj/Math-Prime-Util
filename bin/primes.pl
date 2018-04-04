@@ -321,12 +321,24 @@ sub ndig_palindromes {
   return (2,3,5,7) if $digits == 1;
   return (11) if $digits == 2;
   return () if ($digits % 2) == 0;
-
   my $rhdig = int(($digits - 1) / 2);
-  return grep { is_prime($_) }
-         map { $_ . reverse substr($_,0,$rhdig) }
-         map { $_ * int(10**$rhdig) .. ($_+1) * int(10**$rhdig) - 1 }
-         1, 3, 7, 9;
+
+  # return grep { is_prime($_) }
+  #        map { $_ . reverse substr($_,0,$rhdig) }
+  #        map { $_ * int(10**$rhdig) .. ($_+1) * int(10**$rhdig) - 1 }
+  #        1, 3, 7, 9;
+
+  my @pp;
+  for my $pre (1,3,7,9) {
+    my $beg = $pre     * int(10**$rhdig);
+    my $end = ($pre+1) * int(10**$rhdig);
+    while ($beg < $end) {
+      my $c = $beg . reverse substr($beg,0,$rhdig);
+      push @pp,$c if is_prime($c);
+      $beg++;
+    }
+  }
+  return @pp;
 }
 
 # Not fast.
