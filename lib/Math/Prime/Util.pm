@@ -55,6 +55,7 @@ our @EXPORT_OK =
       random_maurer_prime random_maurer_prime_with_cert
       random_shawe_taylor_prime random_shawe_taylor_prime_with_cert
       random_semiprime random_unrestricted_semiprime
+      random_factored_integer
       primorial pn_primorial consecutive_integer_lcm gcdext chinese
       gcd lcm factor factor_exp divisors valuation hammingweight
       todigits fromdigits todigitstring sumdigits
@@ -3748,6 +3749,19 @@ Manual seeding using C<srand> is not compatible with cryptographic security.
 =head2 rand
 
 An alias for L</drand>, not exported unless the ":rand" tag is used.
+
+=head2 random_factored_integer
+
+  my($n, $factors) = random_factored_integer(1000000);
+
+Given a positive non-zero input C<n>, returns a uniform random integer
+in the range C<1> to C<n>, along with an array reference containing
+the factors.
+
+This uses Kalai's algorithm for generating random integers along with
+their factorization, and is much faster than the naive method of
+generating random integers followed by a factorization.
+A later implementation may use Bach's more efficient algorithm.
 
 
 =head1 RANDOM PRIMES

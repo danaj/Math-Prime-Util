@@ -126,6 +126,7 @@ sub entropy_bytes {
 *miller_rabin_random = \&Math::Prime::Util::PP::miller_rabin_random;
 *random_semiprime = \&Math::Prime::Util::PP::random_semiprime;
 *random_unrestricted_semiprime = \&Math::Prime::Util::PP::random_unrestricted_semiprime;
+*random_factored_integer = \&Math::Prime::Util::PP::random_factored_integer;
 
 *numtoperm = \&Math::Prime::Util::PP::numtoperm;
 *permtonum = \&Math::Prime::Util::PP::permtonum;

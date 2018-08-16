@@ -94,6 +94,8 @@ extern int num_to_perm(UV rank, int n, int *vec);
 extern int perm_to_num(int n, int *vec, UV *rank);
 extern void randperm(void* ctx, UV n, UV k, UV *S);
 
+extern UV random_factored_integer(void* ctx, UV n, int *nf, UV *factors);
+
 extern UV gcdz(UV x, UV y);
 
 #if defined(FUNC_isqrt) || defined(FUNC_is_perfect_square)

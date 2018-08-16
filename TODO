@@ -171,3 +171,14 @@
 - Figure out how to use multicall for forfactored and forsquarefree.
 
 - perhaps square-free flag for factor for early stop.  Use in moebius etc.
+
+- make a NVCONST, define log, sqrt, etc. for quadmath vs. long double
+
+- move most of our long double routines to NVCONST (see above).
+
+- Change from Kalai to Bach's algorithm for random factored integers
+  https://maths-people.anu.edu.au/~brent/pd/multiplication-HK.pdf
+
+- Adjust crossover in random_factored_integer PP code for Kalai vs. naive
+
+- tests for random_factored_integer

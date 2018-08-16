@@ -6,6 +6,7 @@ Revision history for Perl module Math::Prime::Util
 
     - forfactored { ... } a,b         loop n=a..b setting $_=n, @_=factor(n)
     - forsquarefree { ... } a,b       as forfactored, but only square-free m
+    - random_factored_integer(n)      random [1..n] w/ array ref of factors
 
     [FIXES]
 

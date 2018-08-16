@@ -147,6 +147,7 @@ Tags:
   csrand(data)                        seed the CSPRNG with binary data
   srand([seed])                       simple seed (exported with :rand)
   rand([limit])                       alias for drand (exported with :rand)
+  random_factored_integer(n)          random [1..n] and array ref of factors
 
 =head2 RANDOM PRIMES
 

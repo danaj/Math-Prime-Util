@@ -1573,6 +1573,24 @@ void urandomb(IN UV bits)
     OBJECTIFY_RESULT(ST(0), ST(0));
     XSRETURN(1);
 
+void random_factored_integer(IN SV* svn)
+  PPCODE:
+    if (_validate_int(aTHX_ svn, 0)) {
+      dMY_CXT;
+      int nf;
+      UV r, F[MPU_MAX_FACTORS+1], n = my_svuv(svn);
+      AV* av = newAV();
+      if (n < 1) croak("random_factored_integer: n must be >= 1");
+      r = random_factored_integer(MY_CXT.randcxt, n, &nf, F);
+      while (nf > 0)
+        av_push(av, newSVuv(F[--nf]));
+      XPUSHs(sv_2mortal(newSVuv( r )));
+      XPUSHs(sv_2mortal(newRV_noinc( (SV*) av )));
+    } else {
+      (void)_vcallsubn(aTHX_ G_ARRAY, VCALL_PP, "random_factored_integer",items,0);
+      return;
+    }
+
 void Pi(IN UV digits = 0)
   PREINIT:
 #ifdef USE_QUADMATH

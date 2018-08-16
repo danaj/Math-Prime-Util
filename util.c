@@ -2568,6 +2568,9 @@ int is_catalan_pseudoprime(UV n) {
    * Ideally we could use some of the requirements for a mod 4/8/64 here:
    * http://www.combinatorics.net/conf/Z60/sp/sp/Shu-Chung%20Liu.pdf
    * But, how do we make +/-2 = X mod n into a solution for x = X mod 8?
+   *
+   * We could also exploit the exhaustive testing that shows there only
+   * exist three below 1e10:  5907, 1194649, and 12327121.
    */
   {
     UV factors[MPU_MAX_FACTORS+1];
@@ -2853,4 +2856,31 @@ void randperm(void* ctx, UV n, UV k, UV *S) {
       { UV t = S[i]; S[i] = S[i+j]; S[i+j] = t; }
     }
   }
+}
+
+UV random_factored_integer(void* ctx, UV n, int *nf, UV *factors) {
+  UV r, s, nfac;
+  if (n < 1)
+    return 0;
+#if BITS_PER_WORD == 64 && (USE_MONTMATH || MULMODS_ARE_FAST)
+  if (1)   /* Our factoring is very fast, just use it */
+#elif BITS_PER_WORD == 64
+  if (n < UVCONST(1000000000000))
+#endif
+  {
+    r = 1 + urandomm64(ctx, n);
+    *nf = factor(r, factors);
+    return r;
+  }
+  do {  /* Kalai's algorithm */
+    for (s = n, r = 1, nfac = 0;  s > 1;  ) {
+      s = 1 + urandomm64(ctx, s);
+      if (!is_prime(s)) continue;
+      if (s > n / r) { r = 0; break; } /* overflow */
+      r *= s;
+      factors[nfac++] = s;
+    }
+  } while (r == 0 || r > n || (1 + urandomm64(ctx,n)) > r);
+  *nf = nfac;
+  return r;
 }

@@ -4244,7 +4244,7 @@ sub is_mersenne_prime {
   return 0 if $p > 3 && $p % 4 == 3 && $p < ((~0)>>1) && is_prob_prime($p*2+1);
   my $mp = BONE->copy->blsft($p)->bdec;
 
-  # Definitely faster than using Math::BigInt
+  # Definitely faster than using Math::BigInt that doesn't have GMP.
   return (0 == (Math::Prime::Util::GMP::lucas_sequence($mp, 4, 1, $mp+1))[0])
     if $Math::Prime::Util::_GMPfunc{"lucas_sequence"};
 
@@ -6530,6 +6530,24 @@ sub random_unrestricted_semiprime {
   $n = _bigint_to_int($n) if ref($n) && $n->bacmp(BMAX) <= 0;
   $n;
 }
+
+sub random_factored_integer {
+  my($n) = @_;
+  return (0,[]) if defined $n && int($n) < 0;
+  _validate_positive_integer($n,1);
+
+  while (1) {
+    my @S = ($n);
+    # make s_i chain
+    push @S, 1 + Math::Prime::Util::urandomm($S[-1])  while $S[-1] > 1;
+    # first is n, last is 1
+    @S = grep { is_prime($_) } @S[1 .. $#S-1];
+    my $r = Math::Prime::Util::vecprod(@S);
+    return ($r, [@S]) if $r <= $n && (1+urandomm($n)) <= $r;
+  }
+}
+
+
 
 1;
 
