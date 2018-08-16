@@ -19,6 +19,12 @@ extern int lucas_lehmer(UV p);
 extern int lucasu(IV* U, IV P, IV Q, UV k);
 extern int lucasv(IV* V, IV P, IV Q, UV k);
 
+#if defined(FUNC_is_strong_pseudoprime)
+static int is_strong_pseudoprime(UV n, UV base) {
+  return miller_rabin(n, &base, 1);
+}
+#endif
+
 extern int BPSW(UV const n);
 extern int MR32(uint32_t n);
 

@@ -170,6 +170,4 @@
 
 - Figure out how to use multicall for forfactored and forsquarefree.
 
-- MR32 is allowing some composites?  2047 is passing.
-
 - perhaps square-free flag for factor for early stop.  Use in moebius etc.
