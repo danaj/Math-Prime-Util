@@ -183,6 +183,7 @@ t/34-random.t
 t/35-cipher.t
 t/35-rand-tag.t
 t/50-factoring.t
+t/51-randfactor.t
 t/51-znlog.t
 t/52-primearray.t
 t/70-rt-bignum.t

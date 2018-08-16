@@ -180,5 +180,3 @@
   https://maths-people.anu.edu.au/~brent/pd/multiplication-HK.pdf
 
 - Adjust crossover in random_factored_integer PP code for Kalai vs. naive
-
-- tests for random_factored_integer
