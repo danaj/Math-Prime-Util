@@ -14,9 +14,6 @@
 
 /* Primality related functions */
 
-#if !USE_MONTMATH
-static const UV mr_bases_const2[1] = {2};
-#endif
 /******************************************************************************/
 
 
@@ -217,7 +214,7 @@ int BPSW(UV const n)
   if ((n % 2) == 0 || n == UV_MAX) return 0;
 
 #if !USE_MONTMATH
-  return    miller_rabin(n, mr_bases_const2, 1)
+  return    is_strong_pseudoprime(n, 2)
          && is_almost_extra_strong_lucas_pseudoprime(n,1);
 #else
   {
