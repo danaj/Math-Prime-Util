@@ -5,14 +5,15 @@ Revision history for Perl module Math::Prime::Util
     [ADDED]
 
     - forfactored { ... } a,b         loop n=a..b setting $_=n, @_=factor(n)
-    - forsquarefree { ... } a,b       as forfactored, but only square-free m
+    - forsquarefree { ... } a,b       as forfactored, but only square-free n
+    - forsemiprimes { ... } a,b       as forcomposites, but only semiprimes
     - random_factored_integer(n)      random [1..n] w/ array ref of factors
 
     [FIXES]
 
     - Monolithic sieves beyond 30*2^32 (~ 1.2 * 10^11) overflowed.
 
-    - is_semiprime was wrong for 5 small values since 0.69.  Fixed.
+    - is_semiprime was wrong for five small values since 0.69.  Fixed.
 
     [FUNCTIONALITY AND PERFORMANCE]
 
@@ -33,7 +34,6 @@ Revision history for Perl module Math::Prime::Util
     - Reorg of main factor loop.  Should be identical from external view.
 
     - Internal change to is_semiprime and is_catalan_pseudoprime.
-
 
 
 0.70 2017-12-02

@@ -33,7 +33,7 @@ our @EXPORT_OK =
       miller_rabin_random
       lucas_sequence lucasu lucasv
       primes twin_primes ramanujan_primes sieve_prime_cluster sieve_range
-      forprimes forcomposites foroddcomposites fordivisors
+      forprimes forcomposites foroddcomposites forsemiprimes fordivisors
       forpart forcomp forcomb forperm forderange formultiperm
       forfactored forsquarefree
       lastfor
@@ -564,53 +564,49 @@ sub _generic_forprimes {
   Math::Prime::Util::_end_for_loop($oldforexit);
 }
 
-sub _generic_forcomposites {
-  my($sub, $beg, $end) = @_;
-  if (!defined $end) { $end = $beg; $beg = 4; }
+sub _generic_forcomp_sub {
+  my($what, $sub, $beg, $end) = @_;
+  if (!defined $end) { $end = $beg; $beg = 0; }
   _validate_positive_integer($beg);
   _validate_positive_integer($end);
-  $beg = 4 if $beg < 4;
+  my $cinc = 1;
+  my $semiprimes = ($what eq 'semiprimes');
+  if ($what eq 'oddcomposites') {
+    $beg = 9 if $beg < 9;
+    $beg++ unless $beg & 1;
+    $cinc = 2;
+  } else {
+    $beg = 4 if $beg < 4;
+  }
   $end = Math::BigInt->new(''.~0) if ref($end) ne 'Math::BigInt' && $end == ~0;
   my $oldforexit = Math::Prime::Util::_start_for_loop();
   {
     my $pp;
     local *_ = \$pp;
     for (my $p = next_prime($beg-1);  $beg <= $end;  $p = next_prime($p)) {
-      for ( ; $beg < $p && $beg <= $end ; $beg++ ) {
+      for ( ; $beg < $p && $beg <= $end ; $beg += $cinc ) {
+        next if $semiprimes && !is_semiprime($beg);
         $pp = $beg;
         $sub->();
         last if Math::Prime::Util::_get_forexit();
       }
-      $beg++;
+      $beg += $cinc;
       last if Math::Prime::Util::_get_forexit();
     }
   }
   Math::Prime::Util::_end_for_loop($oldforexit);
 }
 
+sub _generic_forcomposites {
+  _generic_forcomp_sub('composites', @_);
+}
+
 sub _generic_foroddcomposites {
-  my($sub, $beg, $end) = @_;
-  if (!defined $end) { $end = $beg; $beg = 9; }
-  _validate_positive_integer($beg);
-  _validate_positive_integer($end);
-  $beg = 9 if $beg < 9;
-  $beg++ unless $beg & 1;
-  $end = Math::BigInt->new(''.~0) if ref($end) ne 'Math::BigInt' && $end == ~0;
-  my $oldforexit = Math::Prime::Util::_start_for_loop();
-  {
-    my $pp;
-    local *_ = \$pp;
-    for (my $p = next_prime($beg-1);  $beg <= $end;  $p = next_prime($p)) {
-      for ( ; $beg < $p && $beg <= $end ; $beg += 2 ) {
-        $pp = $beg;
-        $sub->();
-        last if Math::Prime::Util::_get_forexit();
-      }
-      $beg += 2;
-      last if Math::Prime::Util::_get_forexit();
-    }
-  }
-  Math::Prime::Util::_end_for_loop($oldforexit);
+  _generic_forcomp_sub('oddcomposites', @_);
+}
+
+sub _generic_forsemiprimes {
+  _generic_forcomp_sub('semiprimes', @_);
 }
 
 sub _generic_forfac {
@@ -1413,6 +1409,19 @@ Similar to L</forcomposites>, but skipping all even numbers.
 The odd composites, L<OEIS A071904|http://oeis.org/A071904>, are the
 numbers greater than 1 which are not prime and not divisible by two:
 C<9, 15, 21, 25, 27, 33, 35, ...>.
+
+
+=head2 forsemiprimes
+
+Similar to L</forcomposites>, but only giving composites with exactly
+two factors.
+The semiprimes, L<OEIS A001358|http://oeis.org/A001358>, are the
+products of two primes:
+C<4, 6, 9, 10, 14, 15, 21, 22, 25, ...>.
+
+This is essentially equivalent to:
+
+  forcomposites { if (is_semiprime($_)) { ... } }
 
 
 =head2 forfactored

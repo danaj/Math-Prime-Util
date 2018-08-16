@@ -2478,10 +2478,14 @@ forprimes (SV* block, IN SV* svbeg, IN SV* svend = 0)
     SvREFCNT_dec(svarg);
     END_FORCOUNT;
 
+#define FORCOMPTEST(ix,n) \
+  ( (ix==1) || (ix==0 && n&1) || (ix==2 && is_semiprime(n)) )
+
 void
-forcomposites (SV* block, IN SV* svbeg, IN SV* svend = 0)
+foroddcomposites (SV* block, IN SV* svbeg, IN SV* svend = 0)
   ALIAS:
-    foroddcomposites = 1
+    forcomposites = 1
+    forsemiprimes = 2
   PROTOTYPE: &$;$
   PREINIT:
     UV beg, end;
@@ -2499,12 +2503,15 @@ forcomposites (SV* block, IN SV* svbeg, IN SV* svend = 0)
       croak("Not a subroutine reference");
 
     if (!_validate_int(aTHX_ svbeg, 0) || (items >= 3 && !_validate_int(aTHX_ svend,0))) {
-      _vcallsubn(aTHX_ G_VOID|G_DISCARD, VCALL_ROOT, (ix == 0) ? "_generic_forcomposites" : "_generic_foroddcomposites", items, 0);
+      _vcallsubn(aTHX_ G_VOID|G_DISCARD, VCALL_ROOT,
+         (ix == 0) ? "_generic_foroddcomposites"
+       : (ix == 1) ? "_generic_forcomposites"
+       :             "_generic_forsemiprimes", items, 0);
       return;
     }
 
     if (items < 3) {
-      beg = ix ? 8 : 4;
+      beg = ix ? 4 : 8;
       end = my_svuv(svbeg);
     } else {
       beg = my_svuv(svbeg);
@@ -2518,7 +2525,7 @@ forcomposites (SV* block, IN SV* svbeg, IN SV* svend = 0)
 #if USE_MULTICALL
     if (!CvISXSUB(cv) && end >= beg) {
       unsigned char* segment;
-      UV seg_base, seg_low, seg_high, c, cbeg, cend, prevprime, nextprime;
+      UV seg_base, seg_low, seg_high, c, cbeg, cend, cinc, prevprime, nextprime;
       void* ctx;
       dMULTICALL;
       I32 gimme = G_VOID;
@@ -2533,12 +2540,12 @@ forcomposites (SV* block, IN SV* svbeg, IN SV* svend = 0)
         beg = (beg <= 4) ? 3 : beg-1;
         nextprime = next_prime(beg);
         while (beg++ < end) {
-          if (beg == nextprime)     nextprime = next_prime(beg);
-          else if (!ix || beg & 1)  { sv_setuv(svarg, beg); MULTICALL; }
+          if      (beg == nextprime)    nextprime = next_prime(beg);
+          else if (FORCOMPTEST(ix,beg)) { sv_setuv(svarg, beg); MULTICALL; }
           CHECK_FORCOUNT;
         }
       } else {
-        if (ix) {
+        if (!ix) {
           if (beg < 8)  beg = 8;
         } else if (beg <= 4) { /* sieve starts at 7, so handle this here */
           sv_setuv(svarg, 4);  MULTICALL;
@@ -2555,11 +2562,14 @@ forcomposites (SV* block, IN SV* svbeg, IN SV* svend = 0)
             CHECK_FORCOUNT;
             cbeg = prevprime+1;
             if (cbeg < beg)
-              cbeg = beg - (ix == 1 && (beg % 2));
+              cbeg = beg - (ix == 0 && (beg % 2));
             prevprime = p;
             cend = prevprime-1;  if (cend > end) cend = end;
-            /* If ix=1, skip evens by starting 1 farther and skipping by 2 */
-            for (c = cbeg + ix; c <= cend; c=c+1+ix) {
+            /* If ix=0, skip evens by starting 1 farther and skipping by 2 */
+            /* For ix==2 we could be clever and skip past %4 and %9 */
+            cinc = 1 + (ix==0);
+            for (c = cbeg + (ix==0); c <= cend; c += cinc) {
+              if (ix == 2 && !is_semiprime(c))  continue;
               if      (SvTYPE(svarg) != SVt_IV) { sv_setuv(svarg,c); }
               else if (crossuv && c > IV_MAX)   { sv_setuv(svarg,c); crossuv=0;}
               else                              { SvUV_set(svarg,c); }
@@ -2570,7 +2580,7 @@ forcomposites (SV* block, IN SV* svbeg, IN SV* svend = 0)
         end_segment_primes(ctx);
         if (end > nextprime)   /* Complete the case where end > max_prime */
           while (nextprime++ < end)
-            if (!ix || nextprime & 1) {
+            if (FORCOMPTEST(ix,nextprime)) {
               CHECK_FORCOUNT;
               sv_setuv(svarg, nextprime);
               MULTICALL;
@@ -2584,7 +2594,7 @@ forcomposites (SV* block, IN SV* svbeg, IN SV* svend = 0)
     if (beg <= end) {
       beg = (beg <= 4) ? 3 : beg-1;
       while (beg++ < end) {
-        if ((!ix || beg&1) && !is_prob_prime(beg)) {
+        if (FORCOMPTEST(ix,beg) && !is_prob_prime(beg)) {
           sv_setuv(svarg, beg);
           PUSHMARK(SP);
           call_sv((SV*)cv, G_VOID|G_DISCARD);
