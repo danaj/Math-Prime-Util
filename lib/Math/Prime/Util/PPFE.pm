@@ -763,48 +763,13 @@ sub forprimes (&$;$) {    ## no critic qw(ProhibitSubroutinePrototypes)
 }
 
 sub forcomposites(&$;$) { ## no critic qw(ProhibitSubroutinePrototypes)
-  my($sub, $beg, $end) = @_;
-  if (!defined $end) { $end = $beg; $beg = 4; }
-  _validate_num($beg) || _validate_positive_integer($beg);
-  _validate_num($end) || _validate_positive_integer($end);
-  $beg = 4 if $beg < 4;
-  $end = Math::BigInt->new(''.~0) if ref($end) ne 'Math::BigInt' && $end == ~0;
-  my $oldforexit = _start_for_loop();
-  {
-    my $pp;
-    local *_ = \$pp;
-    for ( ; $beg <= $end ; $beg++ ) {
-      if (!is_prime($beg)) {
-        $pp = $beg;
-        $sub->();
-      last if $_exitloop;
-      }
-    }
-  }
-  _end_for_loop($oldforexit);
+  Math::Prime::Util::_generic_forcomp_sub('composites', @_);
 }
-
 sub foroddcomposites(&$;$) { ## no critic qw(ProhibitSubroutinePrototypes)
-  my($sub, $beg, $end) = @_;
-  if (!defined $end) { $end = $beg; $beg = 9; }
-  _validate_num($beg) || _validate_positive_integer($beg);
-  _validate_num($end) || _validate_positive_integer($end);
-  $beg = 9 if $beg < 9;
-  $beg++ unless $beg & 1;
-  $end = Math::BigInt->new(''.~0) if ref($end) ne 'Math::BigInt' && $end == ~0;
-  my $oldforexit = _start_for_loop();
-  {
-    my $pp;
-    local *_ = \$pp;
-    for ( ; $beg <= $end ; $beg += 2 ) {
-      if (!is_prime($beg)) {
-        $pp = $beg;
-        $sub->();
-        last if $_exitloop;
-      }
-    }
-  }
-  _end_for_loop($oldforexit);
+  Math::Prime::Util::_generic_forcomp_sub('oddcomposites', @_);
+}
+sub forsemiprimes(&$;$) { ## no critic qw(ProhibitSubroutinePrototypes)
+  Math::Prime::Util::_generic_forcomp_sub('semiprimes', @_);
 }
 
 sub forfactored(&$;$) { ## no critic qw(ProhibitSubroutinePrototypes)
