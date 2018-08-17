@@ -27,8 +27,10 @@ my @functions =  qw(
       miller_rabin_random
       lucas_sequence lucasu lucasv
       primes twin_primes ramanujan_primes sieve_prime_cluster sieve_range
-      forprimes forcomposites foroddcomposites fordivisors
+      forprimes forcomposites foroddcomposites forsemiprimes fordivisors
       forpart forcomp forcomb forperm forderange formultiperm
+      forfactored forsquarefree
+      lastfor
       numtoperm permtonum randperm shuffle
       prime_iterator prime_iterator_object
       next_prime  prev_prime
@@ -46,6 +48,8 @@ my @functions =  qw(
       random_proven_prime random_proven_prime_with_cert
       random_maurer_prime random_maurer_prime_with_cert
       random_shawe_taylor_prime random_shawe_taylor_prime_with_cert
+      random_semiprime random_unrestricted_semiprime
+      random_factored_integer
       primorial pn_primorial consecutive_integer_lcm gcdext chinese
       gcd lcm factor factor_exp divisors valuation hammingweight
       todigits fromdigits todigitstring sumdigits
@@ -57,7 +61,8 @@ my @functions =  qw(
       chebyshev_theta chebyshev_psi
       divisor_sum carmichael_lambda kronecker hclassno
       ramanujan_tau ramanujan_sum
-      binomial factorial stirling znorder znprimroot znlog legendre_phi
+      binomial stirling znorder znprimroot znlog legendre_phi
+      factorial factorialmod
       ExponentialIntegral LogarithmicIntegral RiemannZeta RiemannR LambertW Pi
       irand irand64 drand urandomb urandomm csrand random_bytes entropy_bytes
 );

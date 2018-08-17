@@ -6,9 +6,9 @@ use Test::More;
 use Math::Prime::Util qw/primes prev_prime next_prime
                          forprimes forcomposites foroddcomposites fordivisors
                          forpart forcomp forcomb forperm forderange formultiperm
-                         forfactored forsquarefree
+                         forfactored forsquarefree forsemiprimes
                          lastfor
-                         is_power vecsum sqrtint
+                         is_power is_semiprime vecsum sqrtint
                          prime_iterator prime_iterator_object/;
 use Math::BigInt try => "GMP,Pari";
 use Math::BigFloat;
@@ -30,6 +30,7 @@ plan tests => 8        # forprimes errors
             + 25       # oo iterator methods
             + 11       # lastfor
             + 5        # forfactored and forsquarefree
+            + 1        # forsemiprimes
             + 0;
 
 ok(!eval { forprimes { 1 } undef; },   "forprimes undef");
@@ -341,4 +342,10 @@ sub a053462 {
   $s=0; forsquarefree { $s += vecsum($_,@_) } 100; is($s, 4763, "forsquarefree {} 100");
   $s=0; forfactored { $s += vecsum($_,@_) } 1e8,1e8+10; is($s, 1208835222, "forfactored {} 10^8,10^8+10");
   is( a053462(6), 607926, "A053462 using forsquarefree");
+}
+
+{
+  my @got;
+  forsemiprimes { push @got, $_; } 1000;
+  is_deeply(\@got, [grep { is_semiprime($_) } 0 .. 1000], "forsemiprimes 1000");
 }
