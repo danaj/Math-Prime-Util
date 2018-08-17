@@ -1299,6 +1299,7 @@ sub divisor_sum {
 
   my @factors = Math::Prime::Util::factor_exp($n);
   my $product = (!$will_overflow) ? 1 : BONE->copy;
+  my @fm;
   if ($k == 0) {
     foreach my $f (@factors) {
       $product *= ($f->[1] + 1);
@@ -1324,23 +1325,35 @@ sub divisor_sum {
       }
       $product *= $fmult;
     }
+  } elsif ($k == 1) {
+    foreach my $f (@factors) {
+      my ($p, $e) = @$f;
+      if ($e == 1) { push @fm, $p; continue; }
+      my $pk = Math::BigInt->new("$p");
+      my $fmult = $pk->copy->binc;
+      my $pke = $pk->copy;
+      for my $E (2 .. $e) {
+        $pke->bmul($pk);
+        $fmult->badd($pke);
+      }
+      push @fm, $fmult;
+    }
+    $product = Math::Prime::Util::vecprod(@fm);
   } else {
     my $bik = Math::BigInt->new("$k");
     foreach my $f (@factors) {
       my ($p, $e) = @$f;
       my $pk = Math::BigInt->new("$p")->bpow($bik);
-      if    ($e == 1) { $pk->binc(); $product->bmul($pk); }
-      elsif ($e == 2) { $pk->badd($pk*$pk)->binc(); $product->bmul($pk); }
-      else {
-        my $fmult = $pk->copy->binc;
-        my $pke = $pk->copy;
-        for my $E (2 .. $e) {
-          $pke->bmul($pk);
-          $fmult->badd($pke);
-        }
-        $product->bmul($fmult);
+      if ($e == 1) { push @fm, $pk; continue; }
+      my $fmult = $pk->copy->binc;
+      my $pke = $pk->copy;
+      for my $E (2 .. $e) {
+        $pke->bmul($pk);
+        $fmult->badd($pke);
       }
+      push @fm, $fmult;
     }
+    $product = Math::Prime::Util::vecprod(@fm);
   }
   $product;
 }
