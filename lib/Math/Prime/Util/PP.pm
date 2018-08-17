@@ -892,7 +892,8 @@ sub euler_phi {
   my @pe = Math::Prime::Util::factor_exp($n);
 
   if ($#pe == 0 && $pe[0]->[1] == 1) {
-    $totient *= $n-1;
+    if (ref($n) ne 'Math::BigInt') { $totient *= $n-1; }
+    else                           { $totient->bmul($n->bdec()); }
   } elsif (ref($n) ne 'Math::BigInt') {
     foreach my $f (@pe) {
       my ($p, $e) = @$f;
@@ -1300,7 +1301,7 @@ sub divisor_sum {
   # Also separate BigInt and do fiddly bits for better performance.
 
   my @factors = Math::Prime::Util::factor_exp($n);
-  my $product = (!$will_overflow) ? 1 : BONE->copy;
+  my $product = 1;
   my @fm;
   if ($k == 0) {
     foreach my $f (@factors) {
@@ -1330,8 +1331,8 @@ sub divisor_sum {
   } elsif ($k == 1) {
     foreach my $f (@factors) {
       my ($p, $e) = @$f;
-      if ($e == 1) { push @fm, $p; continue; }
       my $pk = Math::BigInt->new("$p");
+      if ($e == 1) { push @fm, $pk->binc; next; }
       my $fmult = $pk->copy->binc;
       my $pke = $pk->copy;
       for my $E (2 .. $e) {
@@ -1346,7 +1347,7 @@ sub divisor_sum {
     foreach my $f (@factors) {
       my ($p, $e) = @$f;
       my $pk = Math::BigInt->new("$p")->bpow($bik);
-      if ($e == 1) { push @fm, $pk; continue; }
+      if ($e == 1) { push @fm, $pk->binc; next; }
       my $fmult = $pk->copy->binc;
       my $pke = $pk->copy;
       for my $E (2 .. $e) {
