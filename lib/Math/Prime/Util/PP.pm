@@ -891,7 +891,9 @@ sub euler_phi {
 
   my @pe = Math::Prime::Util::factor_exp($n);
 
-  if (ref($n) ne 'Math::BigInt') {
+  if ($#pe == 0 && $pe[0]->[1] == 1) {
+    $totient *= $n-1;
+  } elsif (ref($n) ne 'Math::BigInt') {
     foreach my $f (@pe) {
       my ($p, $e) = @$f;
       $totient *= $p - 1;
