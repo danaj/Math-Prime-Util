@@ -1116,19 +1116,26 @@ sub exp_mangoldt {
 
 sub carmichael_lambda {
   my($n) = @_;
-  return euler_phi($n) if $n < 8;                # = phi(n) for n < 8
-  return euler_phi($n)/2 if ($n & ($n-1)) == 0;  # = phi(n)/2 for 2^k, k>2
+  return euler_phi($n) if $n < 8;          # = phi(n) for n < 8
+  return $n >> 2 if ($n & ($n-1)) == 0;    # = phi(n)/2 = n/4 for 2^k, k>2
 
   my @pe = Math::Prime::Util::factor_exp($n);
   $pe[0]->[1]-- if $pe[0]->[0] == 2 && $pe[0]->[1] > 2;
 
-  my $lcm = Math::BigInt::blcm(
-    map { $_->[0]->copy->bpow($_->[1]->copy->bdec)->bmul($_->[0]->copy->bdec) }
-    map { [ map { Math::BigInt->new("$_") } @$_ ] }
-    @pe
-  );
-  $lcm = _bigint_to_int($lcm) if $lcm->bacmp(BMAX) <= 0;
-  return $lcm;
+  my $lcm;
+  if (!ref($n)) {
+    $lcm = Math::Prime::Util::lcm(
+      map { ($_->[0] ** ($_->[1]-1)) * ($_->[0]-1) } @pe
+    );
+  } else {
+    $lcm = Math::BigInt::blcm(
+      map { $_->[0]->copy->bpow($_->[1]->copy->bdec)->bmul($_->[0]->copy->bdec) }
+      map { [ map { Math::BigInt->new("$_") } @$_ ] }
+      @pe
+    );
+    $lcm = _bigint_to_int($lcm) if $lcm->bacmp(BMAX) <= 0;
+  }
+  $lcm;
 }
 
 sub is_carmichael {
