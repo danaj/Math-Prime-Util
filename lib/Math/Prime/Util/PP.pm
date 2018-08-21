@@ -1311,9 +1311,7 @@ sub divisor_sum {
   my $product = 1;
   my @fm;
   if ($k == 0) {
-    foreach my $f (@factors) {
-      $product *= ($f->[1] + 1);
-    }
+    $product = Math::Prime::Util::vecprod(map { $_->[1]+1 } @factors);
   } elsif (!$will_overflow) {
     foreach my $f (@factors) {
       my ($p, $e) = @$f;
