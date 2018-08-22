@@ -1986,6 +1986,23 @@ sub twin_prime_count {
   }
   $sum;
 }
+sub _semiprime_count {
+  my $n = shift;
+  my($sum,$pc) = (0,0);
+  Math::Prime::Util::forprimes( sub {
+    $sum += Math::Prime::Util::prime_count(int($n/$_))-$pc++;
+  }, sqrtint($n));
+  $sum;
+}
+sub semiprime_count {
+  my($low,$high) = @_;
+  if (defined $high) { _validate_positive_integer($low); }
+  else               { ($low,$high) = (2, $low);         }
+  _validate_positive_integer($high);
+  # todo: threshold of fast count vs. walk
+  my $sum = _semiprime_count($high) - (($low < 4) ? 0 : semiprime_count($low-1));
+  $sum;
+}
 sub ramanujan_prime_count {
   my($low,$high) = @_;
   if (defined $high) { _validate_positive_integer($low); }

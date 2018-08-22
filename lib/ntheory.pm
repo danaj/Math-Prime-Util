@@ -92,6 +92,8 @@ Tags:
   twin_prime_count_approx(n)          fast approx count of twin primes
   nth_twin_prime(n)                   the nth twin prime (n=1 returns 3)
   nth_twin_prime_approx(n)            fast approximate nth twin prime
+  semiprime_count(n)                  count of semiprimes <= n
+  semiprime_count(start, end)         count of semiprimes in range
   ramanujan_prime_count(n)            count of Ramanujan primes <= n
   ramanujan_prime_count(start, end)   count of Ramanujan primes in range
   ramanujan_prime_count_lower(n)      fast lower bound for Ramanujan count

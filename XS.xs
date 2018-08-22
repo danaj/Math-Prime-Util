@@ -574,11 +574,12 @@ prime_precalc(IN UV n)
 void
 prime_count(IN SV* svlo, ...)
   ALIAS:
-    twin_prime_count = 1
-    ramanujan_prime_count = 2
-    ramanujan_prime_count_approx = 3
-    sum_primes = 4
-    print_primes = 5
+    semiprime_count = 1
+    twin_prime_count = 2
+    ramanujan_prime_count = 3
+    ramanujan_prime_count_approx = 4
+    sum_primes = 5
+    print_primes = 6
   PREINIT:
     int lostatus, histatus;
     UV lo, hi;
@@ -596,12 +597,13 @@ prime_count(IN SV* svlo, ...)
       }
       if (lo <= hi) {
         if      (ix == 0) { count = prime_count(lo, hi); }
-        else if (ix == 1) { count = twin_prime_count(lo, hi); }
-        else if (ix == 2) { count = ramanujan_prime_count(lo, hi); }
-        else if (ix == 3) { count = ramanujan_prime_count_approx(hi);
+        else if (ix == 1) { count = semiprime_count(lo, hi); }
+        else if (ix == 2) { count = twin_prime_count(lo, hi); }
+        else if (ix == 3) { count = ramanujan_prime_count(lo, hi); }
+        else if (ix == 4) { count = ramanujan_prime_count_approx(hi);
                             if (lo > 2)
                               count -= ramanujan_prime_count_approx(lo-1); }
-        else if (ix == 4) {
+        else if (ix == 5) {
 #if BITS_PER_WORD == 64 && HAVE_UINT128
           if (hi >= 29505444491UL && hi-lo > hi/50) {
             UV hicount, lo_hic, lo_loc;
@@ -617,7 +619,7 @@ prime_count(IN SV* svlo, ...)
           }
 #endif
           lostatus = sum_primes(lo, hi, &count);
-        } else if (ix == 5) {
+        } else if (ix == 6) {
           int fd = (items < 3) ? fileno(stdout) : my_sviv(ST(2));
           print_primes(lo, hi, fd);
           XSRETURN_EMPTY;
@@ -627,11 +629,12 @@ prime_count(IN SV* svlo, ...)
     }
     switch (ix) {
       case 0: _vcallsubn(aTHX_ GIMME_V, VCALL_ROOT, "_generic_prime_count", items, 0); break;
-      case 1: _vcallsub_with_pp("twin_prime_count");  break;
-      case 2: _vcallsub_with_pp("ramanujan_prime_count");  break;
-      case 3: _vcallsub_with_pp("ramanujan_prime_count_approx");  break;
-      case 4: _vcallsub_with_pp("sum_primes");  break;
-      case 5:
+      case 1: _vcallsub_with_pp("semiprime_count");  break;
+      case 2: _vcallsub_with_pp("twin_prime_count");  break;
+      case 3: _vcallsub_with_pp("ramanujan_prime_count");  break;
+      case 4: _vcallsub_with_pp("ramanujan_prime_count_approx");  break;
+      case 5: _vcallsub_with_pp("sum_primes");  break;
+      case 6:
       default:_vcallsub_with_pp("print_primes");  break;
     }
     return; /* skip implicit PUTBACK */

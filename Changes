@@ -8,6 +8,7 @@ Revision history for Perl module Math::Prime::Util
     - forsquarefree { ... } a,b       as forfactored, but only square-free n
     - forsemiprimes { ... } a,b       as forcomposites, but only semiprimes
     - random_factored_integer(n)      random [1..n] w/ array ref of factors
+    - semiprime_count([lo],hi)        counts semiprimes in range
 
     [FIXES]
 

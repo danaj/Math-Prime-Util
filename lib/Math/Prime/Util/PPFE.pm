@@ -105,6 +105,7 @@ sub entropy_bytes {
 *inverse_li = \&Math::Prime::Util::PP::inverse_li;
 *sieve_prime_cluster = \&Math::Prime::Util::PP::sieve_prime_cluster;
 *twin_prime_count = \&Math::Prime::Util::PP::twin_prime_count;
+*semiprime_count = \&Math::Prime::Util::PP::semiprime_count;
 *ramanujan_prime_count = \&Math::Prime::Util::PP::ramanujan_prime_count;
 *sum_primes = \&Math::Prime::Util::PP::sum_primes;
 *print_primes = \&Math::Prime::Util::PP::print_primes;

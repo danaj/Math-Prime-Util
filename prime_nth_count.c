@@ -841,6 +841,38 @@ UV nth_twin_prime_approx(UV n)
 }
 
 /******************************************************************************/
+/*                                SEMI PRIMES                                 */
+/******************************************************************************/
+
+static UV _semiprime_count(UV n)
+{
+  UV pc = 0, sum = 0;
+  START_DO_FOR_EACH_PRIME(2, isqrt(n)) {
+    sum += LMO_prime_count(n/p) - pc++;
+  } END_DO_FOR_EACH_PRIME;
+  return sum;
+}
+static UV _range_semiprime_count(UV lo, UV hi)
+{
+  UV sum = 0;
+  for (; lo < hi; lo++)     /* TODO: We should walk composites */
+    if (is_semiprime(lo))
+      sum++;
+  if (is_semiprime(hi))
+    sum++;
+  return sum;
+}
+
+UV semiprime_count(UV lo, UV hi)
+{
+  if (lo > hi || hi < 4)
+    return 0;
+  return   (hi >= 1000 && (hi-lo+1) < hi / (isqrt(hi)/12))
+         ? _range_semiprime_count(lo, hi)
+         : _semiprime_count(hi) - ((lo < 4) ? 0 : _semiprime_count(lo-1));
+}
+
+/******************************************************************************/
 /*                                   SUMS                                     */
 /******************************************************************************/
 
