@@ -996,7 +996,7 @@ sub _totpred {
   return 1 if $n == 1 || ($n < $maxd && Math::Prime::Util::is_prime(2*$n+1));
   for my $d (Math::Prime::Util::divisors($n)) {
     last if $d >= $maxd;
-    my $p = ($d < (~0 >> 1))  ?  ($d<<1)+1  :  Math::Prime::Util::vecprod(2,$d)+1;
+    my $p = ($d < (INTMAX >> 1))  ?  ($d<<1)+1  :  Math::Prime::Util::vecprod(2,$d)+1;
     next unless Math::Prime::Util::is_prime($p);
     my $r = int($n / $d);
     while (1) {
