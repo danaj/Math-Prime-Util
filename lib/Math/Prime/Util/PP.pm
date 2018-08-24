@@ -3476,6 +3476,7 @@ sub factorialmod {
 
 sub _is_perfect_square {
   my($n) = @_;
+  return (1,1,0,0,1)[$n] if $n <= 4;
 
   if (ref($n) eq 'Math::BigInt') {
     my $mc = _bigint_to_int($n & 31);
@@ -5939,7 +5940,7 @@ sub LambertW {
   $w;
 }
 
-my $_Pi = "3.14159265358979323846264338328";
+my $_Pi = "3.141592653589793238462643383279503";
 sub Pi {
   my $digits = shift;
   return 0.0+$_Pi unless $digits;
