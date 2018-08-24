@@ -184,5 +184,3 @@
 - Pari/GP 2.12 beta has rewritten (much faster) Bernoulli.  Check it out.
 
 - semiprime_count PP just walk if small range.
-
-- semiprime_count: test

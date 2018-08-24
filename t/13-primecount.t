@@ -3,7 +3,7 @@ use strict;
 use warnings;
 
 use Test::More;
-use Math::Prime::Util qw/prime_count twin_prime_count
+use Math::Prime::Util qw/prime_count semiprime_count twin_prime_count
                          prime_count_lower prime_count_upper
                          prime_count_approx twin_prime_count_approx
                          ramanujan_prime_count/;
@@ -97,6 +97,18 @@ my %tpcs = (
   5000000000000000 => 5357875276068,
 );
 
+my %spcs = (
+              2048 =>           589,
+              8192 =>          2186,
+              5000 =>          1365,
+             50000 =>         12110,
+            500000 =>        108326,
+           5000000 =>        979274,
+          50000000 =>       8940570,
+         500000000 =>      82302116,
+        5000000000 =>     763121842,
+);
+
 my %rpcs = (
               5000 =>           302,
              50000 =>          2371,
@@ -114,6 +126,7 @@ plan tests => 0 + 1
                 + 1
                 + 5 + 2*$extra # prime count specific methods
                 + 3 + (($isxs && $use64) ? 1+2*scalar(keys %tpcs) : 0) # twin pc
+                + 2 + (($isxs && $use64) ? 2+1*scalar(keys %spcs) : 0) # semi pc
                 + 2 + (($isxs && $use64) ? 2+1*scalar(keys %rpcs) : 0) # ram pc
                 + 0;
 
@@ -213,6 +226,19 @@ if ($isxs && $use64) {
     my $errorp = 100 * abs($tpc - twin_prime_count_approx($n)) / $tpc;
     my $estr = sprintf "%8.6f%%", $errorp;
     cmp_ok( $errorp, '<=', 2, "twin_prime_count_approx($n) is $estr");
+  }
+}
+
+####### Semiprime prime counts
+is(semiprime_count(13,31), 6, "semiprime count 13 to 31");
+is(semiprime_count(654321), 140067, "semiprime count 654321");
+# TODO: Add this when PP semiprime count walks.
+#is(semiprime_count(10**8,10**8+3587),602, "semiprime count 10^8 to +3587");
+if ($isxs && $use64) {
+  is(semiprime_count(10**8,10**8+34587),5802, "semiprime count 10^8 to +34587");
+  is(semiprime_count(10000123456), 1493794315, "semiprime count 10000123456");
+  while (my($n, $rpc) = each (%spcs)) {
+    is(semiprime_count($n), $rpc, "semiprime count $n");
   }
 }
 
