@@ -1724,6 +1724,17 @@ conjecture B of Hardy and Littlewood 1922, as stated in
 Sebah and Gourdon 2002.  For inputs under 10M, a correction factor is
 additionally applied to reduce the mean squared error.
 
+
+=head2 semiprime_count
+
+Similar to prime count, but returns the count of semiprimes (composites with
+exactly two factors).  Takes either a single number indicating a count
+from 2 to the argument, or two numbers indicating a range.
+
+A fast method that requires computation only to the square root of the
+range end is used, unless the range is so small that walking it is faster.
+
+
 =head2 ramanujan_primes
 
 Returns the Ramanujan primes R_n between the upper and lower limits

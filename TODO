@@ -185,4 +185,4 @@
 
 - semiprime_count PP just walk if small range.
 
-- semiprime_count: docs, test
+- semiprime_count: test
