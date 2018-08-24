@@ -146,6 +146,7 @@ sub _validate_positive_integer {
     $_[0] = _bigint_to_int($_[0]) if $n <= INTMAX;
   } else {
     my $strn = "$n";
+    if ($strn eq '-0') { $_[0] = 0; $strn = '0'; }
     croak "Parameter '$strn' must be a positive integer"
       if $strn eq '' || ($strn =~ tr/0123456789//c && $strn !~ /^\+?\d+$/);
     if ($n <= INTMAX) {
@@ -174,6 +175,7 @@ sub _validate_integer {
     $_[0] = _bigint_to_int($_[0]) if $n <= $poscmp && $n >= $negcmp;
   } else {
     my $strn = "$n";
+    if ($strn eq '-0') { $_[0] = 0; $strn = '0'; }
     croak "Parameter '$strn' must be an integer"
       if $strn eq '' || ($strn =~ tr/-0123456789//c && $strn !~ /^[-+]?\d+$/);
     if ($n <= $poscmp && $n >= $negcmp) {
