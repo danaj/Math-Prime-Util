@@ -117,7 +117,7 @@ if ($use64) {
     cmp_ok( nth_prime_upper($n), '>=', $nth, "nth_prime($n) <= upper estimate" );
     cmp_ok( nth_prime_lower($n), '<=', $nth, "nth_prime($n) >= lower estimate" );
 
-    my $approx = nth_prime_approx($n);
+    my $approx = "" . nth_prime_approx($n);   # ensure not a bigint
     my $percent_limit = 0.001;
     cmp_ok( abs($nth - $approx) / $nth, '<=', $percent_limit/100.0, "nth_prime_approx($n) = $approx within $percent_limit\% of $nth");
   }
