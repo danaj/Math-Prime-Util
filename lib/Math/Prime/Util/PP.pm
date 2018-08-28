@@ -4038,8 +4038,8 @@ sub is_extra_strong_lucas_pseudoprime {
 
   my($U, $V, $Qk) = lucas_sequence($n, $P, $Q, $k);
 
-  return 1 if $U == 0 && ($V == BTWO || $V == ($n - BTWO));
   $V = Math::BigInt->new("$V") unless ref($V) eq 'Math::BigInt';
+  return 1 if $U == 0 && ($V == BTWO || $V == ($n - BTWO));
   foreach my $r (0 .. $s-2) {
     return 1 if $V->is_zero;
     $V->bmul($V)->bsub(BTWO)->bmod($n);

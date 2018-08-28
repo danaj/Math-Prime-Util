@@ -116,6 +116,7 @@ sub entropy_bytes {
 *is_fundamental = \&Math::Prime::Util::PP::is_fundamental;
 *is_semiprime = \&Math::Prime::Util::PP::is_semiprime;
 *is_totient = \&Math::Prime::Util::PP::is_totient;
+*is_square = \&Math::Prime::Util::PP::is_square;
 
 *random_prime = \&Math::Prime::Util::PP::random_prime;
 *random_ndigit_prime = \&Math::Prime::Util::PP::random_ndigit_prime;
@@ -694,11 +695,6 @@ sub is_power {
   _validate_positive_integer($a) if defined $a;
   $vn = '-'.$vn if $n < 0;
   return Math::Prime::Util::PP::is_power($vn, $a, $refp);
-}
-sub is_square {
-  my($n) = @_;
-  return 0 if defined $n && int($n) < 0;
-  return Math::Prime::Util::PP::is_power($n,2);
 }
 sub is_prime_power {
   my($n, $refp) = @_;
