@@ -1,4 +1,4 @@
-Math::Prime::Util version 0.70
+Math::Prime::Util version 0.71
 
 A module for number theory in Perl.  This includes prime sieving, primality
 tests, primality proofs, integer factoring, counts / bounds / approximations
@@ -60,7 +60,7 @@ Bytes::Random::Secure::Tiny 1.002 or later.
 
 COPYRIGHT AND LICENCE
 
-Copyright (C) 2011-2017 by Dana Jacobsen <dana@acm.org>
+Copyright (C) 2011-2018 by Dana Jacobsen <dana@acm.org>
 
 This library is free software; you can redistribute it and/or modify
 it under the same terms as Perl itself.

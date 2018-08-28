@@ -4,7 +4,7 @@ use warnings;
 
 BEGIN {
   $ntheory::AUTHORITY = 'cpan:DANAJ';
-  $ntheory::VERSION = '0.70';
+  $ntheory::VERSION = '0.71';
 }
 
 BEGIN {
@@ -277,7 +277,7 @@ Tags:
 
 =head1 COPYRIGHT
 
-Copyright 2011-2017 by Dana Jacobsen E<lt>dana@acm.orgE<gt>
+Copyright 2011-2018 by Dana Jacobsen E<lt>dana@acm.orgE<gt>
 
 This program is free software; you can redistribute it and/or modify it under the same terms as Perl itself.
 

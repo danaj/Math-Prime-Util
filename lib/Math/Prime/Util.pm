@@ -5,7 +5,7 @@ use Carp qw/croak confess carp/;
 
 BEGIN {
   $Math::Prime::Util::AUTHORITY = 'cpan:DANAJ';
-  $Math::Prime::Util::VERSION = '0.70';
+  $Math::Prime::Util::VERSION = '0.71';
 }
 
 # parent is cleaner, and in the Perl 5.10.1 / 5.12.0 core, but not earlier.
@@ -1013,7 +1013,7 @@ Math::Prime::Util - Utilities related to prime numbers, including fast sieves an
 
 =head1 VERSION
 
-Version 0.70
+Version 0.71
 
 
 =head1 SYNOPSIS
@@ -5421,7 +5421,7 @@ Douglas A. Stoll and Patrick Demichel , "The impact of ζ(s) complex zeros on π
 
 =head1 COPYRIGHT
 
-Copyright 2011-2017 by Dana Jacobsen E<lt>dana@acm.orgE<gt>
+Copyright 2011-2018 by Dana Jacobsen E<lt>dana@acm.orgE<gt>
 
 This program is free software; you can redistribute it and/or modify it under the same terms as Perl itself.
 
