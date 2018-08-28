@@ -202,7 +202,11 @@ for my $base (sort keys %pseudoprimes) {
     } @c;
     $text = "Fibonacci pseudoprimes";
   } elsif ($base eq 'pell') {
-    @fails = grep { (((lucas_sequence($_,2,-1,$_))[0] - kronecker(2,$_)) % $_) } @c;
+    if ($] < 5.008) {  # Work around a fault in ancient Perl
+      @fails = grep { "" . (((lucas_sequence($_,2,-1,$_))[0] - kronecker(2,$_)) % $_) } @c;
+    } else {
+      @fails = grep { (((lucas_sequence($_,2,-1,$_))[0] - kronecker(2,$_)) % $_) } @c;
+    }
     $text = "Pell pseudoprimes";
   } else {
     @fails = grep { !is_strong_pseudoprime($_,$base) } @c;
