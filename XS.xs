@@ -2064,8 +2064,8 @@ carmichael_lambda(IN SV* svn)
                    int nfactors = factor(my_svuv(svn), factors);
                    RETURN_NPARITY( (nfactors & 1) ? -1 : 1 ); }
                  break;
-        case 3:  XSRETURN_NV(chebyshev_function(n, 0)); break;
-        case 4:  XSRETURN_NV(chebyshev_function(n, 1)); break;
+        case 3:  XSRETURN_NV(chebyshev_theta(n)); break;
+        case 4:  XSRETURN_NV(chebyshev_psi(n)); break;
         case 5:  r = factorial(n);
                  if (r != 0) XSRETURN_UV(r);
                  status = 0; break;

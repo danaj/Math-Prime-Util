@@ -28,7 +28,8 @@ extern UV mpu_popcount_string(const char* ptr, uint32_t len);
 extern signed char* _moebius_range(UV low, UV high);
 extern UV*    _totient_range(UV low, UV high);
 extern IV     mertens(UV n);
-extern long double chebyshev_function(UV n, int which); /* 0 = theta, 1 = psi */
+extern NV chebyshev_psi(UV n);
+extern NV chebyshev_theta(UV n);
 
 extern long double Ei(long double x);
 extern long double Li(long double x);

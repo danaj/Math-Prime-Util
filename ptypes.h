@@ -194,6 +194,18 @@ typedef __int8 int8_t;
   #endif
 #endif
 
+#if defined(USE_QUADMATH)
+  typedef __float128   LNV;
+  #define LNVCONST(x) ((__float128)x##Q)
+  #define loglnv(x)    logq(x)
+  #define LNV_IS_QUAD  0   /* TODO: Set to 1 */
+#else
+  typedef long double  LNV;
+  #define LNVCONST(x) ((long double)x##L)
+  #define loglnv(x)    logl(x)
+  #define LNV_IS_QUAD  0
+#endif
+
 #if defined(__GNUC__) || defined(__clang__)
   #define INLINE inline
 #elif defined(_MSC_VER)
