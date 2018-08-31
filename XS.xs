@@ -1973,8 +1973,8 @@ _XS_ExponentialIntegral(IN SV* x)
   CODE:
     nv = SvNV(x);
     switch (ix) {
-      case 0: ret = (NV) Ei(nv); break;
-      case 1: ret = (NV) Li(nv); break;
+      case 0: ret = Ei(nv); break;
+      case 1: ret = Li(nv); break;
       case 2: ret = (NV) ld_riemann_zeta(nv); break;
       case 3: ret = (NV) RiemannR(nv); break;
       case 4:

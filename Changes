@@ -7,6 +7,10 @@ Revision history for Perl module Math::Prime::Util
     - chebyshev_theta and chebyshev_psi redone and uses a table.
       Large inputs are significantly faster.
 
+    - Convert some FP functions to use quadmath if possible.  Without
+      quadmath there should be no change.  With quadmath functions like
+      LogarithmicIntegral will be slower but more accurate.
+
 0.71 2018-08-28
 
     [ADDED]

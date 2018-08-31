@@ -73,9 +73,9 @@
 #include "csprng.h"
 
 #define KAHAN_INIT(s) \
-  long double s ## _y, s ## _t; \
-  long double s ## _c = 0.0; \
-  long double s = 0.0;
+  LNV s ## _y, s ## _t; \
+  LNV s ## _c = 0.0; \
+  LNV s = 0.0;
 
 #define KAHAN_SUM(s, term) \
   do { \
@@ -1838,12 +1838,12 @@ NV chebyshev_theta(UV n)
   UV tp, startn, seg_base, seg_low, seg_high;
   unsigned char* segment;
   void* ctx;
-  LNV initial_sum, prod = 1.0;
+  LNV initial_sum, prod = LNV_ONE;
   KAHAN_INIT(sum);
 
   if (n < 500) {
     for (i = 1;  (tp = primes_tiny[i]) <= n; i++) {
-      KAHAN_SUM(sum, logl(tp));
+      KAHAN_SUM(sum, loglnv(tp));
     }
     return sum;
   }
@@ -1858,7 +1858,7 @@ NV chebyshev_theta(UV n)
   } else
 #endif
   {
-    KAHAN_SUM(sum, logl(2*3*5*7*11*13));
+    KAHAN_SUM(sum, loglnv(2*3*5*7*11*13));
     startn = 17;
     initial_sum = 0;
   }
@@ -1867,7 +1867,7 @@ NV chebyshev_theta(UV n)
 #if 0
   while (next_segment_primes(ctx, &seg_base, &seg_low, &seg_high)) {
     START_DO_FOR_EACH_SIEVE_PRIME( segment, seg_base, seg_low, seg_high ) {
-      KAHAN_SUM(sum, logl(p));
+      KAHAN_SUM(sum, loglnv(p));
     } END_DO_FOR_EACH_SIEVE_PRIME
   }
 #else
@@ -1875,13 +1875,13 @@ NV chebyshev_theta(UV n)
     START_DO_FOR_EACH_SIEVE_PRIME( segment, seg_base, seg_low, seg_high ) {
       prod *= (LNV) p;
       if (++i >= (LNV_IS_QUAD ? 64 : 8)) {
-        KAHAN_SUM(sum, logl(prod));
-        prod = 1.0;
+        KAHAN_SUM(sum, loglnv(prod));
+        prod = LNV_ONE;
         i = 0;
       }
     } END_DO_FOR_EACH_SIEVE_PRIME
   }
-  if (prod > 1.0) { KAHAN_SUM(sum, logl(prod));  prod = 1.0; }
+  if (prod > 1.0) { KAHAN_SUM(sum, loglnv(prod));  prod = LNV_ONE; }
 #endif
   end_segment_primes(ctx);
 
@@ -1911,11 +1911,11 @@ NV chebyshev_theta(UV n)
  * by many people).
  */
 
-static long double const euler_mascheroni = 0.57721566490153286060651209008240243104215933593992L;
-static long double const li2 = 1.045163780117492784844588889194613136522615578151L;
+static LNV const euler_mascheroni = LNVCONST(0.57721566490153286060651209008240243104215933593992);
+static LNV const li2 = LNVCONST(1.045163780117492784844588889194613136522615578151);
 
-long double Ei(long double x) {
-  long double val, term;
+NV Ei(NV x) {
+  LNV val, term;
   unsigned int n;
   KAHAN_INIT(sum);
 
@@ -1926,82 +1926,90 @@ long double Ei(long double x) {
 
   if (x < -1) {
     /* Continued fraction, good for x < -1 */
-    long double lc = 0;
-    long double ld = 1.0L / (1.0L - (long double)x);
-    val = ld * (-expl(x));
+    LNV lc = 0;
+    LNV ld = LNV_ONE / (LNV_ONE - (LNV)x);
+    val = ld * (-explnv(x));
     for (n = 1; n <= 100000; n++) {
-      long double old, t, n2;
-      t = (long double)(2*n + 1) - (long double) x;
+      LNV old, t, n2;
+      t = (LNV)(2*n + 1) - (LNV) x;
       n2 = n * n;
-      lc = 1.0L / (t - n2 * lc);
-      ld = 1.0L / (t - n2 * ld);
+      lc = LNV_ONE / (t - n2 * lc);
+      ld = LNV_ONE / (t - n2 * ld);
       old = val;
       val *= ld/lc;
-      if ( fabsl(val-old) <= LDBL_EPSILON*fabsl(val) )
+      if ( fabslnv(val-old) <= LNV_EPSILON*fabslnv(val) )
         break;
     }
   } else if (x < 0) {
     /* Rational Chebyshev approximation (Cody, Thacher), good for -1 < x < 0 */
-    static const long double C6p[7] = { -148151.02102575750838086L,
-                                    150260.59476436982420737L,
-                                     89904.972007457256553251L,
-                                     15924.175980637303639884L,
-                                      2150.0672908092918123209L,
-                                       116.69552669734461083368L,
-                                         5.0196785185439843791020L };
-    static const long double C6q[7] = {  256664.93484897117319268L,
-                                    184340.70063353677359298L,
-                                     52440.529172056355429883L,
-                                      8125.8035174768735759866L,
-                                       750.43163907103936624165L,
-                                        40.205465640027706061433L,
-                                         1.0000000000000000000000L };
-    long double sumn = C6p[0]-x*(C6p[1]-x*(C6p[2]-x*(C6p[3]-x*(C6p[4]-x*(C6p[5]-x*C6p[6])))));
-    long double sumd = C6q[0]-x*(C6q[1]-x*(C6q[2]-x*(C6q[3]-x*(C6q[4]-x*(C6q[5]-x*C6q[6])))));
-    val = logl(-x) - sumn/sumd;
-  } else if (x < (-2 * logl(LDBL_EPSILON))) {
+    static const LNV C6p[7] = { LNVCONST(-148151.02102575750838086),
+                                LNVCONST( 150260.59476436982420737),
+                                LNVCONST(  89904.972007457256553251),
+                                LNVCONST(  15924.175980637303639884),
+                                LNVCONST(   2150.0672908092918123209),
+                                LNVCONST(    116.69552669734461083368),
+                                LNVCONST(      5.0196785185439843791020) };
+    static const LNV C6q[7] = { LNVCONST( 256664.93484897117319268),
+                                LNVCONST( 184340.70063353677359298),
+                                LNVCONST(  52440.529172056355429883),
+                                LNVCONST(   8125.8035174768735759866),
+                                LNVCONST(    750.43163907103936624165),
+                                LNVCONST(     40.205465640027706061433),
+                                LNVCONST(      1.0000000000000000000000) };
+    LNV sumn = C6p[0]-x*(C6p[1]-x*(C6p[2]-x*(C6p[3]-x*(C6p[4]-x*(C6p[5]-x*C6p[6])))));
+    LNV sumd = C6q[0]-x*(C6q[1]-x*(C6q[2]-x*(C6q[3]-x*(C6q[4]-x*(C6q[5]-x*C6q[6])))));
+    val = loglnv(-x) - sumn/sumd;
+  } else if (x < (-2 * loglnv(LNV_EPSILON))) {
     /* Convergent series.  Accurate but slow especially with large x. */
-    long double fact_n = x;
+    LNV fact_n = x;
     for (n = 2; n <= 200; n++) {
-      long double invn = 1.0L / n;
-      fact_n *= (long double)x * invn;
+      LNV invn = LNV_ONE / n;
+      fact_n *= (LNV)x * invn;
       term = fact_n * invn;
       KAHAN_SUM(sum, term);
       /* printf("C  after adding %.20Lf, val = %.20Lf\n", term, sum); */
-      if (term < LDBL_EPSILON*sum) break;
+      if (term < LNV_EPSILON*sum) break;
     }
     KAHAN_SUM(sum, euler_mascheroni);
-    KAHAN_SUM(sum, logl(x));
+    KAHAN_SUM(sum, loglnv(x));
     KAHAN_SUM(sum, x);
     val = sum;
   } else if (x >= 24) {
     /* Cody / Thacher rational Chebyshev */
-    static const long double P2[10] = {
-        1.75338801265465972390E02L,-2.23127670777632409550E02L,
-        -1.81949664929868906455E01L,-2.79798528624305389340E01L,
-        -7.63147701620253630855E00L,-1.52856623636929636839E01L,
-        -7.06810977895029358836E00L,-5.00006640413131002475E00L,
-        -3.00000000320981265753E00L, 1.00000000000000485503E00L };
-    static const long double Q2[9] = {
-        3.97845977167414720840E04L, 3.97277109100414518365E00L,
-        1.37790390235747998793E02L, 1.17179220502086455287E02L,
-        7.04831847180424675988E01L,-1.20187763547154743238E01L,
-        -7.99243595776339741065E00L,-2.99999894040324959612E00L,
-        1.99999999999048104167E00L };
-    long double invx = 1.0L / x;
-    long double frac = 0.0;
+    static const LNV P2[10] = {
+        LNVCONST( 1.75338801265465972390E02),
+        LNVCONST(-2.23127670777632409550E02),
+        LNVCONST(-1.81949664929868906455E01),
+        LNVCONST(-2.79798528624305389340E01),
+        LNVCONST(-7.63147701620253630855E00),
+        LNVCONST(-1.52856623636929636839E01),
+        LNVCONST(-7.06810977895029358836E00),
+        LNVCONST(-5.00006640413131002475E00),
+        LNVCONST(-3.00000000320981265753E00),
+        LNVCONST( 1.00000000000000485503E00) };
+    static const LNV Q2[9] = {
+        LNVCONST( 3.97845977167414720840E04),
+        LNVCONST( 3.97277109100414518365E00),
+        LNVCONST( 1.37790390235747998793E02),
+        LNVCONST( 1.17179220502086455287E02),
+        LNVCONST( 7.04831847180424675988E01),
+        LNVCONST(-1.20187763547154743238E01),
+        LNVCONST(-7.99243595776339741065E00),
+        LNVCONST(-2.99999894040324959612E00),
+        LNVCONST( 1.99999999999048104167E00) };
+    LNV invx = LNV_ONE / x, frac = 0.0;
     for (n = 0; n <= 8; n++)
       frac = Q2[n] / (P2[n] + x + frac);
     frac += P2[9];
-    val = expl(x) * (invx + invx*invx*frac);
+    val = explnv(x) * (invx + invx*invx*frac);
   } else {
     /* Asymptotic divergent series */
-    long double invx = 1.0L / x;
+    LNV invx = LNV_ONE / x;
     term = 1.0;
     for (n = 1; n <= 200; n++) {
-      long double last_term = term;
-      term = term * ( (long double)n * invx );
-      if (term < LDBL_EPSILON*sum) break;
+      LNV last_term = term;
+      term = term * ( (LNV)n * invx );
+      if (term < LNV_EPSILON*sum) break;
       if (term < last_term) {
         KAHAN_SUM(sum, term);
         /* printf("A  after adding %.20llf, sum = %.20llf\n", term, sum); */
@@ -2011,25 +2019,25 @@ long double Ei(long double x) {
         break;
       }
     }
-    KAHAN_SUM(sum, 1.0L);
-    val = expl(x) * sum * invx;
+    KAHAN_SUM(sum, LNV_ONE);
+    val = explnv(x) * sum * invx;
   }
 
   return val;
 }
 
-long double Li(long double x) {
+NV Li(NV x) {
   if (x == 0) return 0;
   if (x == 1) return -INFINITY;
   if (x == 2) return li2;
   if (x < 0) croak("Invalid input to LogarithmicIntegral:  x must be >= 0");
-  if (x >= LDBL_MAX) return INFINITY;
+  if (x >= NV_MAX) return INFINITY;
 
   /* Calculate directly using Ramanujan's series. */
   if (x > 1) {
-    const long double logx = logl(x);
-    long double sum = 0, inner_sum = 0, old_sum, factorial = 1, power2 = 1;
-    long double q, p = -1;
+    const LNV logx = loglnv(x);
+    LNV sum = 0, inner_sum = 0, old_sum, factorial = 1, power2 = 1;
+    LNV q, p = -1;
     int k = 0, n = 0;
 
     for (n = 1, k = 0; n < 200; n++) {
@@ -2038,15 +2046,15 @@ long double Li(long double x) {
       q = factorial * power2;
       power2 *= 2;
       for (; k <= (n - 1) / 2; k++)
-        inner_sum += 1.0L / (2 * k + 1);
+        inner_sum += LNV_ONE / (2 * k + 1);
       old_sum = sum;
       sum += (p / q) * inner_sum;
-      if (fabsl(sum - old_sum) <= LDBL_EPSILON) break;
+      if (fabslnv(sum - old_sum) <= LNV_EPSILON) break;
     }
-    return euler_mascheroni + logl(logx) + sqrtl(x) * sum;
+    return euler_mascheroni + loglnv(logx) + sqrtlnv(x) * sum;
   }
 
-  return Ei(logl(x));
+  return Ei(loglnv(x));
 }
 
 static long double ld_inverse_li(long double lx) {

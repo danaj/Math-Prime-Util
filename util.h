@@ -31,8 +31,8 @@ extern IV     mertens(UV n);
 extern NV chebyshev_psi(UV n);
 extern NV chebyshev_theta(UV n);
 
-extern long double Ei(long double x);
-extern long double Li(long double x);
+extern NV Ei(NV x);
+extern NV Li(NV x);
 extern long double ld_riemann_zeta(long double x);
 extern long double RiemannR(long double x);
 extern long double lambertw(long double k);
