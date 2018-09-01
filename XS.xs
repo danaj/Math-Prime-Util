@@ -1978,7 +1978,7 @@ _XS_ExponentialIntegral(IN SV* x)
       case 2: ret = (NV) ld_riemann_zeta(nv); break;
       case 3: ret = (NV) RiemannR(nv); break;
       case 4:
-      default:ret = (NV) lambertw(nv); break;
+      default:ret = lambertw(nv); break;
     }
     RETVAL = ret;
   OUTPUT:

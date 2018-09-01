@@ -13,7 +13,7 @@ Revision history for Perl module Math::Prime::Util
 
     - Convert some FP functions to use quadmath if possible.  Without
       quadmath there should be no change.  With quadmath functions like
-      LogarithmicIntegral will be slower but more accurate.
+      LogarithmicIntegral and LambertW will be slower but more accurate.
 
 0.71 2018-08-28
 

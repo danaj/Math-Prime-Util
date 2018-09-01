@@ -2392,7 +2392,7 @@ static long double _lambertw_approx(long double x) {
   }
 }
 
-long double lambertw(long double x) {
+NV lambertw(NV x) {
   long double w;
   int i;
 
@@ -2421,13 +2421,23 @@ long double lambertw(long double x) {
 #else  /* Fritsch, see Veberic 2009.  1-2 iterations are enough. */
   for (i = 0; i < 6 && w != 0.0L; i++) {
     long double w1 = 1 + w;
-    long double zn = logl(x/w) - w;
+    long double zn = logl((long double)x/w) - w;
     long double qn = 2 * w1 * (w1+(2.0L/3.0L)*zn);
     long double en = (zn/w1) * (qn-zn)/(qn-2.0L*zn);
     /* w *= 1.0L + en;  if (fabsl(en) <= 16*LDBL_EPSILON) break; */
     long double wen = w * en;
     w += wen;
     if (fabsl(wen) <= 64*LDBL_EPSILON) break;
+  }
+#endif
+#if LNV_IS_QUAD /* For quadmath, one high precision correction */
+  if (w != LNV_ZERO) {
+    LNV lw = w;
+    LNV w1 = LNV_ONE + lw;
+    LNV zn = loglnv((LNV)x/lw) - lw;
+    LNV qn = LNVCONST(2.0) * w1 * (w1+(LNVCONST(2.0)/LNVCONST(3.0))*zn);
+    LNV en = (zn/w1) * (qn-zn)/(qn-LNVCONST(2.0)*zn);
+    return lw + lw * en;
   }
 #endif
 

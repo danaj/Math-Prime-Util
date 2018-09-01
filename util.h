@@ -35,7 +35,7 @@ extern NV Ei(NV x);
 extern NV Li(NV x);
 extern long double ld_riemann_zeta(long double x);
 extern long double RiemannR(long double x);
-extern long double lambertw(long double k);
+extern NV lambertw(NV k);
 extern UV inverse_li(UV x);
 extern UV inverse_R(UV x);
 
