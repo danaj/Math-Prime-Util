@@ -2,6 +2,10 @@ Revision history for Perl module Math::Prime::Util
 
 0.72 2018-?
 
+    [FIXES]
+
+    - Some platforms are extremely slow for is_pillai.  Speed up tests.
+
     [FUNCTIONALITY AND PERFORMANCE]
 
     - chebyshev_theta and chebyshev_psi redone and uses a table.
