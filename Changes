@@ -15,6 +15,8 @@ Revision history for Perl module Math::Prime::Util
       quadmath there should be no change.  With quadmath functions like
       LogarithmicIntegral and LambertW will be slower but more accurate.
 
+    - semiprime_count for non-trivial inputs uses a segmented sieve.
+
 0.71 2018-08-28
 
     [ADDED]

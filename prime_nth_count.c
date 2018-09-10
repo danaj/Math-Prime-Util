@@ -846,10 +846,27 @@ UV nth_twin_prime_approx(UV n)
 
 static UV _semiprime_count(UV n)
 {
-  UV pc = 0, sum = 0;
-  START_DO_FOR_EACH_PRIME(2, isqrt(n)) {
+  UV pc = 0, sum = 0, sqrtn = isqrt(n);
+#if 0    /* Use simple sieve to sqrt(n) */
+  START_DO_FOR_EACH_PRIME(2, sqrtn) {
     sum += LMO_prime_count(n/p) - pc++;
   } END_DO_FOR_EACH_PRIME;
+#else    /* Segmented sieve.  A little better memory use. */
+  if (sqrtn >= 2)  sum += LMO_prime_count(n/2) - pc++;
+  if (sqrtn >= 3)  sum += LMO_prime_count(n/3) - pc++;
+  if (sqrtn >= 5)  sum += LMO_prime_count(n/5) - pc++;
+  if (sqrtn >= 7) {
+    unsigned char* segment;
+    UV seg_base, seg_low, seg_high;
+    void* ctx = start_segment_primes(7, sqrtn, &segment);
+    while (next_segment_primes(ctx, &seg_base, &seg_low, &seg_high)) {
+      START_DO_FOR_EACH_SIEVE_PRIME( segment, seg_base, seg_low, seg_high )
+        sum += LMO_prime_count(n/p) - pc++;
+      END_DO_FOR_EACH_SIEVE_PRIME
+    }
+    end_segment_primes(ctx);
+  }
+#endif
   return sum;
 }
 static UV _range_semiprime_count(UV lo, UV hi)
