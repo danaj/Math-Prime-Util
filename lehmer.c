@@ -173,6 +173,7 @@ static uint32_t* generate_small_primes(UV n)
 #include "util.h"
 #include "cache.h"
 #include "sieve.h"
+#include "prime_nth_count.h"
 
 /* Generate an array of n small primes, where the kth prime is element p[k].
  * Remember to free when done. */
@@ -782,7 +783,7 @@ UV LMOS_prime_count(UV n)
 
   n13 = icbrt(n);                    /* n13 =  floor(n^1/3)  [max    2642245] */
   a = lehmer_prime_count(n13);       /* a = Pi(floor(n^1/3)) [max     192725] */
-  b = lehmerprime_count(isqrt(n));   /* b = Pi(floor(n^1/2)) [max  203280221] */
+  b = lehmer_prime_count(isqrt(n));  /* b = Pi(floor(n^1/2)) [max  203280221] */
 
   lastprime = b*SIEVE_MULT+1;
   if (lastprime > 203280221) lastprime = 203280221;
