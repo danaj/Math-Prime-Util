@@ -331,8 +331,6 @@ UV segment_prime_count(UV low, UV high)
 
 UV prime_count(UV lo, UV hi)
 {
-  UV count, range_threshold;
-
   if (lo > hi || hi < 2)
     return 0;
 
@@ -341,16 +339,14 @@ UV prime_count(UV lo, UV hi)
 #endif
 
   /* We use table acceleration so this is preferable for small inputs */
-  if (hi < 66000000)  return segment_prime_count(lo, hi);
+  if (hi < _MPU_LMO_CROSSOVER)  return segment_prime_count(lo, hi);
 
-  /* Rough empirical threshold for when segment faster than LMO */
-  range_threshold = hi / (isqrt(hi)/200);
-  if ( (hi-lo+1) < range_threshold )
-    return segment_prime_count(lo, hi);
-
+  { /* Rough empirical threshold for when segment faster than LMO */
+    UV range_threshold = hi / (isqrt(hi)/200);
+    if ( (hi-lo+1) < range_threshold )
+      return segment_prime_count(lo, hi);
+  }
   return LMO_prime_count(hi) - ((lo < 2) ? 0 : LMO_prime_count(lo-1));
-
-  return count;
 }
 
 UV prime_count_approx(UV n)
@@ -847,6 +843,13 @@ UV nth_twin_prime_approx(UV n)
 static UV _semiprime_count(UV n)
 {
   UV pc = 0, sum = 0, sqrtn = isqrt(n);
+
+  if (n > 1000000) { /* Upfront work to speed up the many small calls */
+    UV nprecalc = (UV) pow(n, .75);
+    if (nprecalc > _MPU_LMO_CROSSOVER)  nprecalc = _MPU_LMO_CROSSOVER;
+    prime_precalc(nprecalc);
+  }
+
 #if 0    /* Use simple sieve to sqrt(n) */
   START_DO_FOR_EACH_PRIME(2, sqrtn) {
     sum += LMO_prime_count(n/p) - pc++;

@@ -27,5 +27,7 @@
 #define _MPU_FILL_EXTRA_N (128*30)
 /* The initial cache size.  30k primes per 1k of cache. */
 #define _MPU_INITIAL_CACHE_SIZE ((4096-16)*30 - _MPU_FILL_EXTRA_N)
+/* Where to start using LMO instead of segment sieve */
+#define _MPU_LMO_CROSSOVER 66000000
 
 #endif
