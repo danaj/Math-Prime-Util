@@ -8,10 +8,13 @@
  *
  * There are three versions here:
  *   V6         The v6 algorithm from the latest AKS paper.
+ *              https://www.cse.iitk.ac.in/users/manindra/algebra/primality_v6.pdf
  *   BORNEMANN  Improvements from Bernstein, Voloch, and a clever r/s
  *              selection from Folkmar Bornemann.  Similar to Bornemann's
- *              2003 Pari/GP implementation
+ *              2003 Pari/GP implementation:
+ *              https://homepage.univie.ac.at/Dietrich.Burde/pari/aks.gp
  *   BERN41     My implementation of theorem 4.1 from Bernstein's 2003 paper.
+ *              https://cr.yp.to/papers/aks.pdf
  *
  * Each one is orders of magnitude faster than the previous, and by default
  * we use Bernstein 4.1 as it is by far the fastest.
