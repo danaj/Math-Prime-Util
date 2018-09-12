@@ -1580,13 +1580,14 @@ void random_factored_integer(IN SV* svn)
   PPCODE:
     if (_validate_int(aTHX_ svn, 0)) {
       dMY_CXT;
-      int nf;
+      int f, nf, flip;
       UV r, F[MPU_MAX_FACTORS+1], n = my_svuv(svn);
       AV* av = newAV();
       if (n < 1) croak("random_factored_integer: n must be >= 1");
       r = random_factored_integer(MY_CXT.randcxt, n, &nf, F);
-      while (nf > 0)
-        av_push(av, newSVuv(F[--nf]));
+      flip = (F[0] >= F[nf-1]);  /* Handle results in either sort order */
+      for (f = 0; f < nf; f++)
+        av_push(av, newSVuv(F[flip ? nf-1-f : f]));
       XPUSHs(sv_2mortal(newSVuv( r )));
       XPUSHs(sv_2mortal(newRV_noinc( (SV*) av )));
     } else {

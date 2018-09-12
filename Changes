@@ -6,6 +6,8 @@ Revision history for Perl module Math::Prime::Util
 
     - Some platforms are extremely slow for is_pillai.  Speed up tests.
 
+    - Ensure random_factored_integer factor list is sorted min->max.
+
     [FUNCTIONALITY AND PERFORMANCE]
 
     - chebyshev_theta and chebyshev_psi redone and uses a table.
