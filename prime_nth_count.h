@@ -19,6 +19,7 @@ extern UV  nth_twin_prime(UV n);
 extern UV  nth_twin_prime_approx(UV n);
 
 extern UV  semiprime_count(UV low, UV high);
+extern UV  nth_semiprime(UV n);
 
 extern int sum_primes(UV low, UV high, UV *sum);
 extern int sum_primes128(UV n, UV *hisum, UV *losum);

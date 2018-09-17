@@ -892,6 +892,51 @@ UV semiprime_count(UV lo, UV hi)
          : _semiprime_count(hi) - ((lo < 4) ? 0 : _semiprime_count(lo-1));
 }
 
+static const unsigned char _semiprimelist[] =
+  {0,4,6,9,10,14,15,21,22,25,26,33,34,35,38,39,46,49,51,55,57,58,62,65,69,74,
+   77,82,85,86,87,91,93,94,95,106,111,115,118,119,121,122,123,129,133,134,141,
+   142,143,145,146,155,158,159,161,166,169,177,178,183,185,187,194,201,202,
+   203,205,206,209,213,214,215,217,218,219,221,226,235,237,247,249,253,254};
+#define NSEMIPRIMELIST (sizeof(_semiprimelist)/sizeof(_semiprimelist[0]))
+static UV _next_semiprime(UV n) {
+  while (!is_semiprime(++n))
+    ;
+  return n;
+}
+static UV _prev_semiprime(UV n) {
+  while (!is_semiprime(--n))
+    ;
+  return n;
+}
+UV nth_semiprime(UV n)
+{
+  double logn, sptol;
+  UV guess, spcnt, gn;
+  IV adjust;
+
+  if (n < NSEMIPRIMELIST)
+    return _semiprimelist[n];
+
+  logn = log(n);
+  guess = .966 * n * logn / log(logn);    /* Initial guess */
+  sptol = 0.55 * log(logn) * logn * logn; /* When to start walking */
+
+  /* Make successive interpolations until small enough difference */
+  for (gn = 2; gn < 20; gn++) {
+    while (!is_semiprime(guess)) guess++;  /* Guess is a semiprime */
+    spcnt = _semiprime_count(guess);
+    adjust = n - spcnt;
+    if (labs(adjust) < sptol) break;
+    guess += adjust * 1.33 * log(labs(adjust))/log(log(labs(adjust)));
+  }
+  /* Iterate over semiprimes until we hit the exact spot */
+  for (; spcnt > n; spcnt--)
+    guess = _prev_semiprime(guess);
+  for (; spcnt < n; spcnt++)
+    guess = _next_semiprime(guess);
+  return guess;
+}
+
 /******************************************************************************/
 /*                                   SUMS                                     */
 /******************************************************************************/

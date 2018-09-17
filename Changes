@@ -2,6 +2,11 @@ Revision history for Perl module Math::Prime::Util
 
 0.72 2018-?
 
+    [ADDED]
+
+    - semiprime_count([lo],hi)        counts semiprimes in range
+    - nth_semiprime(n)                the nth semiprime
+
     [FIXES]
 
     - Some platforms are extremely slow for is_pillai.  Speed up tests.
