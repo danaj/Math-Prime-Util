@@ -12,6 +12,7 @@ extern void* start_segment_primes(UV low, UV high, unsigned char** segmentmem);
 extern int next_segment_primes(void* vctx, UV* base, UV* low, UV* high);
 extern void end_segment_primes(void* vctx);
 
+extern void* array_of_primes_in_range(UV* count, UV beg, UV end);
 
 static const UV wheel30[] = {1, 7, 11, 13, 17, 19, 23, 29};
 /* Used for moving between primes */

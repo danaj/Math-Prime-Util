@@ -523,3 +523,23 @@ void end_segment_primes(void* vctx)
   }
   Safefree(ctx);
 }
+
+void* array_of_primes_in_range(UV* count, UV beg, UV end)
+{
+  UV *P, i = 0;
+  UV cntest = prime_count_upper(end) - prime_count_lower(beg) + 1;
+  New(0, P, cntest, UV);
+  {
+    unsigned char* segment;
+    UV seg_base, seg_low, seg_high;
+    void* ctx = start_segment_primes(beg, end, &segment);
+    while (next_segment_primes(ctx, &seg_base, &seg_low, &seg_high)) {
+      START_DO_FOR_EACH_SIEVE_PRIME( segment, seg_base, seg_low, seg_high )
+        P[i++] = p;
+      END_DO_FOR_EACH_SIEVE_PRIME
+    }
+    end_segment_primes(ctx);
+  }
+  *count = i;
+  return P;
+}
