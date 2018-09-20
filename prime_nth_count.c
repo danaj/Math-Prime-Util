@@ -840,38 +840,67 @@ UV nth_twin_prime_approx(UV n)
 /*                                SEMI PRIMES                                 */
 /******************************************************************************/
 
+static UV _bs_count(UV n, UV const* const primes, UV lastidx)
+{
+  UV i = 0, j = lastidx;
+  MPUassert(n >= primes[0] && n < primes[lastidx], "prime count via binary search out of range");
+  while (i < j) {
+    UV mid = i + (j-i)/2;
+    if (primes[mid] <= n)  i = mid+1;
+    else                   j = mid;
+  }
+  return i-1;
+}
+
 static UV _semiprime_count(UV n)
 {
-  UV pc = 0, sum = 0, sqrtn = isqrt(n);
+  UV pc = 0, sum = 0, sqrtn = prev_prime(isqrt(n)+1);
+  UV xbeg = 0, xend = 0, xlim = 0, xoff, xsize, *xarr = 0;
+  UV const xmax = 200000000UL;
 
   if (n > 1000000) { /* Upfront work to speed up the many small calls */
     UV nprecalc = (UV) pow(n, .75);
     if (nprecalc > _MPU_LMO_CROSSOVER)  nprecalc = _MPU_LMO_CROSSOVER;
     prime_precalc(nprecalc);
+    /* Make small calls even faster using binary search on a list */
+    xlim = (UV) pow(n, 0.67);
   }
 
-#if 0    /* Use simple sieve to sqrt(n) */
-  START_DO_FOR_EACH_PRIME(2, sqrtn) {
-    sum += LMO_prime_count(n/p) - pc++;
-  } END_DO_FOR_EACH_PRIME;
-#else    /* Segmented sieve.  A little better memory use. */
   if (sqrtn >= 2)  sum += LMO_prime_count(n/2) - pc++;
   if (sqrtn >= 3)  sum += LMO_prime_count(n/3) - pc++;
   if (sqrtn >= 5)  sum += LMO_prime_count(n/5) - pc++;
   if (sqrtn >= 7) {
     unsigned char* segment;
-    UV seg_base, seg_low, seg_high;
+    UV seg_base, seg_low, seg_high, np, cnt;
     void* ctx = start_segment_primes(7, sqrtn, &segment);
     while (next_segment_primes(ctx, &seg_base, &seg_low, &seg_high)) {
       START_DO_FOR_EACH_SIEVE_PRIME( segment, seg_base, seg_low, seg_high )
-        sum += LMO_prime_count(n/p) - pc++;
+        np = n/p;
+        if (np < xlim) {
+          if (xarr == 0 || np < xbeg) {
+            if (xarr != 0) { Safefree(xarr); xarr = 0; }
+            xend = np;
+            xbeg = n/sqrtn;
+            if (xend - xbeg > xmax) xbeg = xend - xmax;
+            xbeg = prev_prime(xbeg);
+            xend = next_prime(xend);
+            xoff = LMO_prime_count(xbeg);
+            xarr = array_of_primes_in_range(&xsize, xbeg, xend);
+            xend = xarr[xsize-1];
+          }
+          cnt = xoff + _bs_count(np, xarr, xsize-1);
+        } else {
+          cnt = LMO_prime_count(np);
+        }
+        sum += cnt - pc++;
       END_DO_FOR_EACH_SIEVE_PRIME
     }
+    if (xarr != 0) { Safefree(xarr); xarr = 0; }
     end_segment_primes(ctx);
   }
-#endif
   return sum;
 }
+
 static UV _range_semiprime_count(UV lo, UV hi)
 {
   UV sum = 0;
