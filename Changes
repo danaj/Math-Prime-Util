@@ -4,7 +4,6 @@ Revision history for Perl module Math::Prime::Util
 
     [ADDED]
 
-    - semiprime_count([lo],hi)        counts semiprimes in range
     - nth_semiprime(n)                the nth semiprime
 
     [FIXES]

@@ -6,6 +6,7 @@ use Test::More;
 use Math::Prime::Util qw/primes nth_prime nth_twin_prime
                          nth_prime_lower nth_prime_upper
                          nth_prime_approx nth_twin_prime_approx
+                         nth_semiprime is_semiprime
                          inverse_li/;
 
 my $use64 = Math::Prime::Util::prime_get_config->{'maxbits'} > 32;
@@ -76,6 +77,17 @@ my %ntpcs = (
      500000000 =>         239211160649,
 );
 
+my %nthsemi = (
+          1234 =>          4497,
+         12345 =>         51019,
+        123456 =>        573355,
+       1234567 =>       6365389,
+);
+$nthsemi{12345678} =          69914722  if $usexs || $extra;
+$nthsemi{123456789} =        760797011  if $usexs && $extra;
+$nthsemi{"1234567890"}  =   8214915893  if $usexs && $extra && $use64;
+$nthsemi{"8589934592"}  =  60662588879  if $usexs && $extra && $use64;
+$nthsemi{"17179869184"} = 123806899739  if $usexs && $extra && $use64;
 
 plan tests => 0 + 2*scalar(keys %pivals32)
                 + 1
@@ -86,6 +98,7 @@ plan tests => 0 + 2*scalar(keys %pivals32)
                 + 3   # nth_twin_prime
                 + 3   # inverse_li
                 + scalar(keys %ntpcs)   # nth_twin_prime_approx
+                + 2 + scalar(keys %nthsemi)   # nth_semiprime
                 + (($extra && $use64 && $usexs) ? 1 : 0);
 
 
@@ -148,6 +161,20 @@ while (my($n, $nthtpc) = each (%ntpcs)) {
   my $errorp = 100 * abs($nthtpc - $approx) / $nthtpc;
   my $estr = sprintf "%8.6f%%", $errorp;
   cmp_ok( $errorp, '<=', 2, "nth_twin_prime_approx($n) is $estr (got $approx, expected ~$nthtpc)");
+}
+
+####################################3
+
+is( nth_semiprime(0), undef, "nth_semiprime(0) = undef" );
+{
+  my $range = $extra ? 10000 : 500;
+  my @semiprimes = grep { is_semiprime($_) } 0 .. $range;
+  my $nsmall = scalar(@semiprimes);
+  my @nth_semis = map { nth_semiprime($_) } 1 .. $nsmall;
+  is_deeply(\@nth_semis, \@semiprimes, "nth_semiprime(1 .. $nsmall)");
+}
+while (my($n, $nthsemi) = each (%nthsemi)) {
+  is( nth_semiprime($n), $nthsemi, "nth_semiprime($n) = $nthsemi" );
 }
 
 ####################################3
