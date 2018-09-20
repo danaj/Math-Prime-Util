@@ -2089,6 +2089,23 @@ sub nth_twin_prime_approx {
                  sub{ ($_[2]-$_[1])/$_[1] < 1e-15 } );
 }
 
+sub nth_semiprime {
+  my $n = shift;
+  return 0 if $n < 0;
+  return (0,4,6,9,10,14,15,21,22)[$n] if $n <= 8;
+  my $logn = log($n);
+  my $est = 0.966 * $n * $logn / log($logn);
+  my($lo,$hi) = (int(0.9*$est)-1, int(1.15*$est)+1);
+  while ($lo < $hi) {
+    my $mid = $lo + (($hi-$lo)>>1);
+    if (Math::Prime::Util::semiprime_count($mid) < $n)
+      { $lo = $mid+1; }
+    else
+      { $hi = $mid; }
+  }
+  $lo;
+}
+
 sub nth_ramanujan_prime_upper {
   my $n = shift;
   return (0,2,11)[$n] if $n <= 2;

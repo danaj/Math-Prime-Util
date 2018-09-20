@@ -185,4 +185,4 @@
 
 - semiprime_count PP just walk if small range.
 
-- nth_semiprime:  PP, PPFE, docs, test
+- nth_semiprime:  test

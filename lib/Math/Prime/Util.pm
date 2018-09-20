@@ -1919,6 +1919,11 @@ Returns an approximation to the Nth twin prime.  A curve fit is used for
 small inputs (under 1200), while for larger inputs a binary search is done
 on the approximate twin prime count.
 
+=head2 nth_semiprime
+
+Returns the Nth semiprime, similar to where a C<forsemiprimes> loop would
+end after C<N> iterations, but much more efficiently.
+
 =head2 nth_ramanujan_prime
 
 Returns the Nth Ramanujan prime.  For reasonable size values of C<n>, e.g.

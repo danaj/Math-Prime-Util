@@ -255,6 +255,11 @@ sub nth_twin_prime_approx {
   _validate_positive_integer($n);
   return Math::Prime::Util::PP::nth_twin_prime_approx($n);
 }
+sub nth_semiprime {
+  my($n) = @_;
+  _validate_positive_integer($n);
+  return Math::Prime::Util::PP::nth_semiprime($n);
+}
 sub nth_ramanujan_prime {
   my($n) = @_;
   _validate_positive_integer($n);
