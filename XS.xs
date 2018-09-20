@@ -1434,17 +1434,17 @@ next_prime(IN SV* svn)
     inverse_li = 6
     nth_twin_prime = 7
     nth_twin_prime_approx = 8
-    nth_ramanujan_prime = 9
-    nth_ramanujan_prime_upper = 10
-    nth_ramanujan_prime_lower = 11
-    nth_ramanujan_prime_approx = 12
-    prime_count_upper = 13
-    prime_count_lower = 14
-    prime_count_approx = 15
-    ramanujan_prime_count_upper = 16
-    ramanujan_prime_count_lower = 17
-    twin_prime_count_approx = 18
-    nth_semiprime = 19
+    nth_semiprime = 9
+    nth_ramanujan_prime = 10
+    nth_ramanujan_prime_upper = 11
+    nth_ramanujan_prime_lower = 12
+    nth_ramanujan_prime_approx = 13
+    prime_count_upper = 14
+    prime_count_lower = 15
+    prime_count_approx = 16
+    ramanujan_prime_count_upper = 17
+    ramanujan_prime_count_lower = 18
+    twin_prime_count_approx = 19
     urandomm = 20
   PPCODE:
     if (_validate_int(aTHX_ svn, 0)) {
@@ -1452,14 +1452,14 @@ next_prime(IN SV* svn)
       if ( (n >= MPU_MAX_PRIME     && ix == 0) ||
            (n >= MPU_MAX_PRIME_IDX && (ix==2 || ix==3 || ix==4 || ix==5 || ix == 6)) ||
            (n >= MPU_MAX_TWIN_PRIME_IDX && (ix==7 || ix==8)) ||
-           (n >= MPU_MAX_RMJN_PRIME_IDX && (ix==9)) ) {
+           (n >= MPU_MAX_RMJN_PRIME_IDX && (ix==10)) ) {
         /* Out of range.  Fall through to Perl. */
       } else {
         UV ret;
         /* Prev prime of 2 or less should return undef */
         if (ix == 1 && n < 3) XSRETURN_UNDEF;
         /* nth_prime(0) and similar should return undef */
-        if (n == 0 && (ix >= 2 && ix <= 9 && ix != 6)) XSRETURN_UNDEF;
+        if (n == 0 && (ix >= 2 && ix <= 10 && ix != 6)) XSRETURN_UNDEF;
         switch (ix) {
           case 0: ret = next_prime(n);  break;
           case 1: ret = (n < 3) ? 0 : prev_prime(n);  break;
@@ -1470,17 +1470,17 @@ next_prime(IN SV* svn)
           case 6: ret = inverse_li(n); break;
           case 7: ret = nth_twin_prime(n); break;
           case 8: ret = nth_twin_prime_approx(n); break;
-          case 9: ret = nth_ramanujan_prime(n); break;
-          case 10:ret = nth_ramanujan_prime_upper(n); break;
-          case 11:ret = nth_ramanujan_prime_lower(n); break;
-          case 12:ret = nth_ramanujan_prime_approx(n); break;
-          case 13:ret = prime_count_upper(n); break;
-          case 14:ret = prime_count_lower(n); break;
-          case 15:ret = prime_count_approx(n); break;
-          case 16:ret = ramanujan_prime_count_upper(n); break;
-          case 17:ret = ramanujan_prime_count_lower(n); break;
-          case 18:ret = twin_prime_count_approx(n); break;
-          case 19:ret = nth_semiprime(n); break;
+          case 9: ret = nth_semiprime(n); break;
+          case 10:ret = nth_ramanujan_prime(n); break;
+          case 11:ret = nth_ramanujan_prime_upper(n); break;
+          case 12:ret = nth_ramanujan_prime_lower(n); break;
+          case 13:ret = nth_ramanujan_prime_approx(n); break;
+          case 14:ret = prime_count_upper(n); break;
+          case 15:ret = prime_count_lower(n); break;
+          case 16:ret = prime_count_approx(n); break;
+          case 17:ret = ramanujan_prime_count_upper(n); break;
+          case 18:ret = ramanujan_prime_count_lower(n); break;
+          case 19:ret = twin_prime_count_approx(n); break;
           case 20:
           default:{ dMY_CXT; ret = urandomm64(MY_CXT.randcxt,n); } break;
         }
@@ -1502,17 +1502,17 @@ next_prime(IN SV* svn)
       case 6:  _vcallsub_with_pp("inverse_li");   break;
       case 7:  _vcallsub_with_pp("nth_twin_prime");     break;
       case 8:  _vcallsub_with_pp("nth_twin_prime_approx"); break;
-      case 9:  _vcallsub_with_pp("nth_ramanujan_prime"); break;
-      case 10: _vcallsub_with_pp("nth_ramanujan_prime_upper"); break;
-      case 11: _vcallsub_with_pp("nth_ramanujan_prime_lower"); break;
-      case 12: _vcallsub_with_pp("nth_ramanujan_prime_approx"); break;
-      case 13: _vcallsub_with_pp("prime_count_upper");  break;
-      case 14: _vcallsub_with_pp("prime_count_lower");  break;
-      case 15: _vcallsub_with_pp("prime_count_approx"); break;
-      case 16: _vcallsub_with_pp("ramanujan_prime_count_upper");  break;
-      case 17: _vcallsub_with_pp("ramanujan_prime_count_lower");  break;
-      case 18: _vcallsub_with_pp("twin_prime_count_approx"); break;
-      case 19: _vcallsub_with_pp("nth_semiprime"); break;
+      case 9:  _vcallsub_with_pp("nth_semiprime"); break;
+      case 10: _vcallsub_with_pp("nth_ramanujan_prime"); break;
+      case 11: _vcallsub_with_pp("nth_ramanujan_prime_upper"); break;
+      case 12: _vcallsub_with_pp("nth_ramanujan_prime_lower"); break;
+      case 13: _vcallsub_with_pp("nth_ramanujan_prime_approx"); break;
+      case 14: _vcallsub_with_pp("prime_count_upper");  break;
+      case 15: _vcallsub_with_pp("prime_count_lower");  break;
+      case 16: _vcallsub_with_pp("prime_count_approx"); break;
+      case 17: _vcallsub_with_pp("ramanujan_prime_count_upper");  break;
+      case 18: _vcallsub_with_pp("ramanujan_prime_count_lower");  break;
+      case 19: _vcallsub_with_pp("twin_prime_count_approx"); break;
       case 20:
       default: _vcallsub_with_gmpobj(0.44,"urandomm");
                OBJECTIFY_RESULT(svn, ST(0));

@@ -2091,8 +2091,8 @@ sub nth_twin_prime_approx {
 
 sub nth_semiprime {
   my $n = shift;
-  return 0 if $n < 0;
-  return (0,4,6,9,10,14,15,21,22)[$n] if $n <= 8;
+  return undef if $n < 0;  ## no critic qw(ProhibitExplicitReturnUndef)
+  return (undef,4,6,9,10,14,15,21,22)[$n] if $n <= 8;
   my $logn = log($n);
   my $est = 0.966 * $n * $logn / log($logn);
   my($lo,$hi) = (int(0.9*$est)-1, int(1.15*$est)+1);
