@@ -83,11 +83,11 @@ my %nthsemi = (
         123456 =>        573355,
        1234567 =>       6365389,
 );
-$nthsemi{12345678} =          69914722  if $usexs || $extra;
-$nthsemi{123456789} =        760797011  if $usexs && $extra;
-$nthsemi{"1234567890"}  =   8214915893  if $usexs && $extra && $use64;
-$nthsemi{"8589934592"}  =  60662588879  if $usexs && $extra && $use64;
-$nthsemi{"17179869184"} = 123806899739  if $usexs && $extra && $use64;
+$nthsemi{12345678}    =     69914722  if $usexs || $extra;
+$nthsemi{123456789}   =    760797011  if $usexs && $extra;
+$nthsemi{1234567890}  =   8214915893  if $usexs && $extra && $use64;
+$nthsemi{8589934592}  =  60662588879  if $usexs && $extra && $use64;
+$nthsemi{17179869184} = 123806899739  if $usexs && $extra && $use64;
 
 plan tests => 0 + 2*scalar(keys %pivals32)
                 + 1

@@ -1449,10 +1449,11 @@ next_prime(IN SV* svn)
   PPCODE:
     if (_validate_int(aTHX_ svn, 0)) {
       UV n = my_svuv(svn);
-      if ( (n >= MPU_MAX_PRIME     && ix == 0) ||
-           (n >= MPU_MAX_PRIME_IDX && (ix==2 || ix==3 || ix==4 || ix==5 || ix == 6)) ||
-           (n >= MPU_MAX_TWIN_PRIME_IDX && (ix==7 || ix==8)) ||
-           (n >= MPU_MAX_RMJN_PRIME_IDX && (ix==10)) ) {
+      if (   (n >= MPU_MAX_PRIME     && ix == 0)
+          || (n >= MPU_MAX_PRIME_IDX && (ix==2 || ix==3 || ix==4 || ix==5 || ix == 6))
+          || (n >= MPU_MAX_TWIN_PRIME_IDX && (ix==7 || ix==8))
+          || (n >= MPU_MAX_SEMI_PRIME_IDX && (ix==9))
+          || (n >= MPU_MAX_RMJN_PRIME_IDX && (ix==10)) ) {
         /* Out of range.  Fall through to Perl. */
       } else {
         UV ret;
