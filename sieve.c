@@ -436,7 +436,7 @@ void* start_segment_primes(UV low, UV high, unsigned char** segmentmem)
   *segmentmem = ctx->segment;
   nsegments = (((high-low+29)/30)+ctx->segment_size-1) / ctx->segment_size;
 
-  if (_XS_get_verbose() >= 2)
+  if (_XS_get_verbose() >= 3)
     printf("segment sieve: byte range %lu split into %lu segments of size %lu\n", (unsigned long)range, (unsigned long)nsegments, (unsigned long)ctx->segment_size);
 
   ctx->base = 0;
