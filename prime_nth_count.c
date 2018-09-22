@@ -562,7 +562,7 @@ UV nth_prime_lower(UV n)
     return lo;
   }
 
-  { /* Axler 2017 http//arxiv.org/pdf/1706.03651.pdf Corollary 1.4 */
+  { /* Axler 2017 http://arxiv.org/pdf/1706.03651.pdf Corollary 1.4 */
     double b1 = (n < 56000000)  ?  11.200  :  11.508;
     lower = fn * (flogn + flog2n-1.0 + ((flog2n-2.00)/flogn) - ((flog2n*flog2n-6*flog2n+b1)/(2*flogn*flogn)));
   }
@@ -901,7 +901,32 @@ static UV _semiprime_count(UV n)
   return sum;
 }
 
-static UV _range_semiprime_count(UV lo, UV hi)
+#define PGTLO(p,lo)  ((p) >= (lo)) ? (p) : ((p)*((lo)/(p)) + (((lo)%(p))?(p):0))
+static UV _range_semiprime_count_sieve(UV lo, UV hi)
+{
+  UV sum = 0;
+  unsigned char* nfacs;
+  UV i, sqrtn = isqrt(hi);
+
+  Newz(0, nfacs, hi-lo+1, unsigned char);
+  if (sqrtn*sqrtn != hi) sqrtn++;  /* ceil sqrtn */
+  START_DO_FOR_EACH_PRIME(2, sqrtn) {
+    UV p2 = p*p;
+    for (i = PGTLO(p, p2>lo ? p2 : lo); i <= hi; i += p)
+      nfacs[i-lo]++;
+    for (i = PGTLO(p2, lo); i <= hi; i += p2) {
+      nfacs[i-lo] |= 0x80;
+      if (p2 == i) nfacs[i-lo] = 1;   /* Count perfect squares */
+    }
+  } END_DO_FOR_EACH_PRIME
+  for (i = lo; i <= hi; i++)
+    if (nfacs[i-lo] == 1)
+      sum++;
+  Safefree(nfacs);
+  return sum;
+}
+
+static UV _range_semiprime_count_iterate(UV lo, UV hi)
 {
   UV sum = 0;
   for (; lo < hi; lo++)     /* TODO: We should walk composites */
@@ -916,9 +941,24 @@ UV semiprime_count(UV lo, UV hi)
 {
   if (lo > hi || hi < 4)
     return 0;
-  return   (hi >= 1000 && (hi-lo+1) < hi / (isqrt(hi)/12))
-         ? _range_semiprime_count(lo, hi)
-         : _semiprime_count(hi) - ((lo < 4) ? 0 : _semiprime_count(lo-1));
+
+  /* tiny sizes fastest with the sieving code */
+  if (hi <= 250) return _range_semiprime_count_sieve(lo,hi);
+  /* Large sizes best with the prime count method */
+  if (lo <= 4) return _semiprime_count(hi);
+
+  /* Now it gets interesting.  lo > 4, hi > 250. */
+
+  if ((hi-lo+1) < hi / (isqrt(hi)*200)) {
+    if (_XS_get_verbose() >= 2) { printf("semiprimes %"UVuf"-%"UVuf" via iteration\n", lo, hi); fflush(stdout); }
+    return _range_semiprime_count_iterate(lo,hi);
+  }
+  if ((hi-lo+1) < hi / (isqrt(hi)/4)) {
+    if (_XS_get_verbose() >= 2) { printf("semiprimes %"UVuf"-%"UVuf" via sieving\n", lo, hi); fflush(stdout); }
+    return _range_semiprime_count_sieve(lo,hi);
+  }
+  if (_XS_get_verbose() >= 2) { printf("semiprimes %"UVuf"-%"UVuf" via prime count\n", lo, hi); fflush(stdout); }
+  return _semiprime_count(hi) - _semiprime_count(lo-1);
 }
 
 static const unsigned char _semiprimelist[] =
@@ -937,6 +977,12 @@ static UV _prev_semiprime(UV n) {
     ;
   return n;
 }
+static UV _spest(UV n) {
+  float fac, logn = log(n), loglogn = log(logn);
+  /* See A131867.  n=2^49; s=5235851090467573; s*log(log(n))/n/log(n) */
+  fac = 0.968 - 0.0019278 * log(loglogn);;
+  return 0.5 + fac * n * logn / loglogn;
+}
 UV nth_semiprime(UV n)
 {
   double logn, sptol;
@@ -947,17 +993,20 @@ UV nth_semiprime(UV n)
     return _semiprimelist[n];
 
   logn = log(n);
-  guess = .966 * n * logn / log(logn);    /* Initial guess */
-  sptol = 0.55 * log(logn) * logn * logn; /* When to start walking */
+  guess = _spest(n);    /* Initial guess */
+  sptol = 1.0 * log(logn) * logn * logn; /* When to start walking */
 
   /* Make successive interpolations until small enough difference */
   for (gn = 2; gn < 20; gn++) {
     while (!is_semiprime(guess)) guess++;  /* Guess is a semiprime */
+    if (_XS_get_verbose() >= 2) { printf("  %"UVuf"-th semiprime is around %"UVuf"\n", n, guess); fflush(stdout); }
     spcnt = _semiprime_count(guess);
-    adjust = n - spcnt;
+    adjust = _spest(n) - _spest(spcnt);
+    adjust *= (1.0-0.05*(gn-2));   /* Dampen slightly */
     if (labs(adjust) < sptol) break;
-    guess += adjust * 1.33 * log(labs(adjust))/log(log(labs(adjust)));
+    guess += adjust;
   }
+  if (_XS_get_verbose() >= 2) { printf("  %"UVuf"-th semiprime near %"UVuf" (%"UVuf")\n", n, guess, spcnt); fflush(stdout); }
   /* Iterate over semiprimes until we hit the exact spot */
   for (; spcnt > n; spcnt--)
     guess = _prev_semiprime(guess);
