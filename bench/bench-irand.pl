@@ -9,6 +9,7 @@ use Math::Random::MT;
 use Math::Random::MT::Auto;
 use Math::Random::Xorshift;
 use Math::Random::MTwist;
+use Math::Random::PCG32;
 use Math::Prime::Util::GMP;
 use Math::Prime::Util;
 use Bytes::Random::Secure;
@@ -27,6 +28,7 @@ my $mt = Math::Random::MT->new($time);
 my $xor = Math::Random::Xorshift->new($time);
 my $brs = Bytes::Random::Secure->new(NonBlocking=>1);
 my $brst = Bytes::Random::Secure::Tiny->new(NonBlocking=>1);
+my $pcg = Math::Random::PCG32->new(42,54);
 
 cmpthese($trials, {
   'CORE::rand' => sub { int(CORE::rand(4294967295)) for 1..1000; },
@@ -40,6 +42,7 @@ cmpthese($trials, {
 
   'MRMTA::irand' => sub { (0xFFFFFFFF & Math::Random::MT::Auto::irand) for 1..1000; },
   'M::R::MTwist::irand32' => sub { Math::Random::MTwist::_irand32 for 1..1000; },
+  'M::R::PCG32::rand' => sub { $pcg->rand for 1..1000; },
   'MPUGMP::irand' => sub { Math::Prime::Util::GMP::irand for 1..1000; },
   'MPU::irand' => sub { Math::Prime::Util::irand for 1..1000; },
 }) if 1;
@@ -50,6 +53,7 @@ cmpthese($trials, {
   #'CORE::rand' => sub { int(CORE::rand(4294967295)) for 1..1000; },
   'MRMT::irand 32x2' => sub { (($mt->irand <<32)|$mt->irand) for 1..1000; },
   'M::R::ISAAC 32x2' => sub { (($isaac->irand <<32)|$isaac->irand) for 1..1000; },
+  'M::R::PCG32 32x2' => sub { (($pcg->rand <<32)|$pcg->rand) for 1..1000; },
   #'M::R::Xorshift#irand' => sub { $xor->irand for 1..1000; },
   'M::R::Xorshift 32x2' => sub { ((Math::Random::Xorshift::irand <<32)|Math::Random::Xorshift::irand) for 1..1000; },
 
