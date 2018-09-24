@@ -855,7 +855,7 @@ static UV _bs_count(UV n, UV const* const primes, UV lastidx)
 static UV _semiprime_count(UV n)
 {
   UV pc = 0, sum = 0, sqrtn = prev_prime(isqrt(n)+1);
-  UV xbeg = 0, xend = 0, xlim = 0, xoff, xsize, *xarr = 0;
+  UV xbeg = 0, xend = 0, xlim = 0, xoff = 0, xsize, *xarr = 0;
   UV const xmax = 200000000UL;
 
   if (n > 1000000) { /* Upfront work to speed up the many small calls */
@@ -980,7 +980,7 @@ static UV _prev_semiprime(UV n) {
 static UV _spest(UV n) {
   float fac, logn = log(n), loglogn = log(logn);
   /* See A131867.  n=2^49; s=5235851090467573; s*log(log(n))/n/log(n) */
-  fac = 0.968 - 0.0019278 * log(loglogn);;
+  fac = 0.968 - 0.0019278 * log(loglogn);
   return 0.5 + fac * n * logn / loglogn;
 }
 UV nth_semiprime(UV n)

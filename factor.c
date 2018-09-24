@@ -1175,7 +1175,7 @@ int lehman_factor(UV n, UV *factors, int do_trial) {
   const double Tune = ((n >> 31) >> 5) ? 3.5 : 5.0;
   double x, sqrtn;
   UV a,c,kN,kN4,B2;
-  uint32_t b,p,k,r,B,U,Bred,inc,ip;
+  uint32_t b,p,k,r,B,U,Bred,inc,ip=2;
 
   if (!(n&1)) return found_factor(n, 2, factors);
 
