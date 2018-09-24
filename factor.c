@@ -1819,7 +1819,7 @@ UV znlog(UV a, UV g, UV p) {
 
 
 /* Compile with:
- *  gcc -O3 -fomit-frame-pointer -march=native -Wall -DSTANDALONE -DFACTOR_STANDALONE factor.c util.c primality.c cache.c sieve.c chacha.c csprng.c -lm
+ *  gcc -O3 -fomit-frame-pointer -march=native -Wall -DSTANDALONE -DFACTOR_STANDALONE factor.c util.c primality.c cache.c sieve.c chacha.c csprng.c prime_nth_count.c lmo.c -lm
  */
 #ifdef FACTOR_STANDALONE
 #include <errno.h>
