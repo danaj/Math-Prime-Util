@@ -279,6 +279,8 @@ UV urandomm64(void* ctx, UV n)
 
   if (n <= 4294967295UL)
     return urandomm32(ctx,n);
+  if (n-1 == 4294967295UL)
+    return irand32(ctx);
 
   rmin = -n % n;
   while (1) {
