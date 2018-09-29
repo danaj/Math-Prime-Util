@@ -73,7 +73,7 @@ my %range_edge_empty = (
   "3842610774 to 3842611108" => [],
 );
 
-plan tests => 13+1+1+1+1
+plan tests => 15+1+1+1+1
               + (1 * scalar (keys %range_edge_empty))
               + (3 * scalar (keys %range_edge))
               + (2 * scalar (keys %ranges))
