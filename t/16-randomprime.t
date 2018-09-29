@@ -85,8 +85,11 @@ plan tests => 13+1+1+1+1
               + 0;
 
 my $infinity = 20**20**20;
+my $superbig = 1000000003;
 my $nrandom_range_samples = $extra ? 1000 : 50;
 
+ok(!eval { random_prime(1); }, "random_prime(1)"); # Just for coverage
+ok(!eval { random_prime(2,1); }, "random_prime(2,1)"); # Just for coverage
 ok(!eval { random_prime(undef); }, "random_prime(undef)");
 ok(!eval { random_prime(-3); }, "random_prime(-3)");
 ok(!eval { random_prime("a"); }, "random_prime(a)");
