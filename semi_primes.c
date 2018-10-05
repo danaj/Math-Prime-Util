@@ -95,28 +95,6 @@ static UV _semiprime_count(UV n)
       if (lo <= p2 && hi >= p2) nfacs[p2-lo] = 1; /* perfect square */ \
     } while (0);
 
-/* TODO: Remove this */
-static UV _range_semiprime_count_sieve(UV lo, UV hi, UV goal)
-{
-  UV sum = 0;
-  unsigned char* nfacs;
-  UV i, sqrtn = isqrt(hi);
-
-  Newz(0, nfacs, hi-lo+1, unsigned char);
-  if (sqrtn*sqrtn != hi) sqrtn++;  /* ceil sqrtn */
-  START_DO_FOR_EACH_PRIME(2, sqrtn) {
-    MARKSEMI(p,nfacs,lo,hi);
-  } END_DO_FOR_EACH_PRIME
-  for (i = lo; i <= hi; i++) {
-    if (nfacs[i-lo] == 1) {
-      sum++;
-      if (sum == goal) { sum = i; break; }
-    }
-  }
-  Safefree(nfacs);
-  return sum;
-}
-
 UV range_semiprime_sieve(UV** semis, UV lo, UV hi)
 {
   UV *S, i, count = 0;
@@ -144,7 +122,7 @@ UV range_semiprime_sieve(UV** semis, UV lo, UV hi)
     } END_DO_FOR_EACH_PRIME
     if (cutn < sqrtn) {
       unsigned char* segment;
-      UV seg_base, seg_low, seg_high, np, cnt;
+      UV seg_base, seg_low, seg_high;
       void* ctx = start_segment_primes(cutn, sqrtn, &segment);
       while (next_segment_primes(ctx, &seg_base, &seg_low, &seg_high)) {
         START_DO_FOR_EACH_SIEVE_PRIME( segment, seg_base, seg_low, seg_high )
@@ -280,13 +258,11 @@ static UV _prev_semiprime(UV n) {
 }
 UV nth_semiprime(UV n)
 {
-  double logn;
   UV guess, spcnt, sptol, gn, ming = 0, maxg = UV_MAX;
 
   if (n < NSEMIPRIMELIST)
     return _semiprimelist[n];
 
-  logn = log(n);
   guess = nth_semiprime_approx(n);    /* Initial guess */
   sptol = 16*icbrt(n);                /* Guess until within this many SPs */
   MPUverbose(2, "  using exact counts until within %"UVuf"\n",sptol);

@@ -4,7 +4,6 @@
 
 #define FUNC_popcnt 1
 #define FUNC_isqrt 1
-#define FUNC_icbrt 1
 #include "ptypes.h"
 #include "sieve.h"
 #include "cache.h"
