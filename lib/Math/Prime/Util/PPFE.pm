@@ -230,6 +230,11 @@ sub twin_prime_count_approx {
   _validate_positive_integer($n);
   return Math::Prime::Util::PP::twin_prime_count_approx($n);
 }
+sub semiprime_count_approx {
+  my($n) = @_;
+  _validate_positive_integer($n);
+  return Math::Prime::Util::PP::semiprime_count_approx($n);
+}
 sub ramanujan_prime_count_lower {
   my($n) = @_;
   _validate_positive_integer($n);
@@ -259,6 +264,11 @@ sub nth_semiprime {
   my($n) = @_;
   _validate_positive_integer($n);
   return Math::Prime::Util::PP::nth_semiprime($n);
+}
+sub nth_semiprime_approx {
+  my($n) = @_;
+  _validate_positive_integer($n);
+  return Math::Prime::Util::PP::nth_semiprime_approx($n);
 }
 sub nth_ramanujan_prime {
   my($n) = @_;

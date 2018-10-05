@@ -44,6 +44,7 @@ WriteMakefile1(
                     'sieve.o '    .
                     'sieve_cluster.o ' .
                     'ramanujan_primes.o ' .
+                    'semi_primes.o ' .
                     'prime_nth_count.o ' .
                     'util.o '     .
                     'entropy.o '  .

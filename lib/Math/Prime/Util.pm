@@ -40,11 +40,13 @@ our @EXPORT_OK =
       numtoperm permtonum randperm shuffle
       prime_iterator prime_iterator_object
       next_prime  prev_prime
-      prime_count semiprime_count nth_semiprime
+      prime_count
       prime_count_lower prime_count_upper prime_count_approx
       nth_prime nth_prime_lower nth_prime_upper nth_prime_approx inverse_li
       twin_prime_count twin_prime_count_approx
       nth_twin_prime nth_twin_prime_approx
+      semiprime_count semiprime_count_approx
+      nth_semiprime nth_semiprime_approx
       ramanujan_prime_count ramanujan_prime_count_approx
       ramanujan_prime_count_lower ramanujan_prime_count_upper
       nth_ramanujan_prime nth_ramanujan_prime_approx
@@ -1907,6 +1909,11 @@ generate any primes.  For values where the nth prime is smaller than
 C<2^64>, the inverse Riemann R function is used.  For larger values,
 the inverse logarithmic integral is used.
 
+The value returned will not necessarily be prime.  This applies to all
+the following nth prime approximations, where the returned value is
+close to the real value, but no effort is made to coerce the result
+to the nearest set element.
+
 
 =head2 nth_twin_prime
 
@@ -1923,6 +1930,12 @@ on the approximate twin prime count.
 
 Returns the Nth semiprime, similar to where a C<forsemiprimes> loop would
 end after C<N> iterations, but much more efficiently.
+
+=head2 nth_semiprime_approx
+
+Returns an approximation to the Nth semiprime.  Curve fitting is used to
+get a fairly close approximation that is orders of magnitude better than
+the simple C<n log n / log log n> approximation for large C<n>.
 
 =head2 nth_ramanujan_prime
 

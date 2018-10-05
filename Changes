@@ -5,6 +5,8 @@ Revision history for Perl module Math::Prime::Util
     [ADDED]
 
     - nth_semiprime(n)                the nth semiprime
+    - nth_semiprime_approx(n)         fast approximate nth semiprime
+    - semiprime_count_approx(n)       fast approximate semiprime count
 
     [FIXES]
 

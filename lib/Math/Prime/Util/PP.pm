@@ -2054,6 +2054,16 @@ sub twin_prime_count_approx {
   return int(1.32032363169373914785562422 * $li2 + 0.5);
 }
 
+sub semiprime_count_approx {
+  my($n) = @_;
+  return 0 if $n < 4;
+  my $l1 = log($n);
+  my $l2 = log($l1);
+  #my $est = $n * $l2 / $l1;
+  my $est = $n * ($l2 + 0.302) / $l1;
+  int(0.5+$est);
+}
+
 sub nth_twin_prime {
   my($n) = @_;
   return undef if $n < 0;  ## no critic qw(ProhibitExplicitReturnUndef)
@@ -2104,6 +2114,16 @@ sub nth_semiprime {
       { $hi = $mid; }
   }
   $lo;
+}
+
+sub nth_semiprime_approx {
+  my $n = shift;
+  return undef if $n < 0;  ## no critic qw(ProhibitExplicitReturnUndef)
+  return (undef,4,6,9,10,14,15,21,22)[$n] if $n <= 8;
+  my $l1 = log($n);
+  my $l2 = log($l1);
+  my $est = 0.966 * $n * $l1 / $l2;
+  int(0.5+$est);
 }
 
 sub nth_ramanujan_prime_upper {
