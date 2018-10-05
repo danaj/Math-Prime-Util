@@ -137,6 +137,8 @@ typedef __int8 int8_t;
 #define NBYTES(bits)  ( ((bits)+8-1) / 8 )
 
 #define MPUassert(c,text) if (!(c)) { croak("Math::Prime::Util internal error: " text); }
+#define MPUverbose(level,fmt,...) \
+  if (_XS_get_verbose() >= level) { printf(fmt,##__VA_ARGS__); fflush(stdout); }
 
 /* The ASSUME bits are from perl 5.19.6 perl.h */
 
