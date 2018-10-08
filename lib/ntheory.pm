@@ -73,6 +73,7 @@ Tags:
 
   primes([start,] end)                array ref of primes
   twin_primes([start,] end)           array ref of twin primes
+  semi_primes([start,] end)           array ref of semiprimes
   ramanujan_primes([start,] end)      array ref of Ramanujan primes
   sieve_prime_cluster(start, end, @C) list of prime k-tuples
   sieve_range(n, width, depth)        sieve out small factors to depth

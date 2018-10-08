@@ -32,7 +32,8 @@ our @EXPORT_OK =
       sqrtint rootint logint
       miller_rabin_random
       lucas_sequence lucasu lucasv
-      primes twin_primes ramanujan_primes sieve_prime_cluster sieve_range
+      primes twin_primes semi_primes ramanujan_primes
+      sieve_prime_cluster sieve_range
       forprimes forcomposites foroddcomposites forsemiprimes fordivisors
       forpart forcomp forcomb forperm forderange formultiperm
       forfactored forsquarefree
@@ -416,6 +417,23 @@ sub twin_primes {
   }
 
   return segment_twin_primes($low, $high);
+}
+
+sub semi_primes {
+  my($low,$high) = @_;
+  if (scalar @_ > 1) {
+    _validate_num($low) || _validate_positive_integer($low);
+  } else {
+    ($low,$high) = (4, $low);
+  }
+  _validate_num($high) || _validate_positive_integer($high);
+
+  return [] if ($low > $high) || ($high < 4);
+
+  my $sp = [];
+  # TODO: When possible, call XS range_semiprime_sieve
+  Math::Prime::Util::forsemiprimes(sub { push @$sp,$_; }, $low, $high);
+  $sp;
 }
 
 sub ramanujan_primes {
@@ -1726,6 +1744,17 @@ conjecture B of Hardy and Littlewood 1922, as stated in
 Sebah and Gourdon 2002.  For inputs under 10M, a correction factor is
 additionally applied to reduce the mean squared error.
 
+
+=head2 semi_primes
+
+Returns an array reference to semiprimes between the lower and upper
+limits (inclusive), with a lower limit of C<4> if none is given.
+This is L<OEIS A001358|http://oeis.org/A001358>.
+The semiprimes are composite integers which are products of
+exactly two primes.
+
+This works just like the L</primes> function.
+Like that function, an array reference is returned.
 
 =head2 semiprime_count
 

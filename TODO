@@ -185,4 +185,4 @@
 
 - semiprime_count PP just walk if small range.
 
-- semiprime_count_aprox, nth_semiprime_approx test
+- semi_primes(lo,hi) speedup

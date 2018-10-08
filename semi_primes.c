@@ -201,7 +201,7 @@ UV semiprime_count_approx(UV n) {
     /* init = n * loglogn / logn; */
     /* init = (n/logn) * (0.11147910114 + 0.00223801350*logn + 0.44233207922*loglogn + 1.65236647896*log(loglogn)); */
     init = n * (loglogn + 0.302) / logn;
-    if (n > (UV_MAX >> 1))
+    if (1.05*init >= (double)UV_MAX)
       return init;
 
     lo = 0.90 * init - 5,   hi = 1.05 * init;
@@ -227,7 +227,7 @@ UV nth_semiprime_approx(UV n) {
   logn = log(n);   log2n = log(logn);   log3n = log(log2n);   log4n=log(log3n);
   err_lo = 1.000 - 0.00048602173*logn + 0.16366374914*log2n - 0.46790000363*log3n + 0.00009132246*log4n;
   err_md = 0.968 - 0.00067152769*logn + 0.09040048484*log2n - 0.23430920475*log3n - 0.01430569674*log4n;
-  err_hi = 0.968 - 0.00033532385*logn + 0.05601280291*log2n - 0.14562133868*log3n - 0.02262039123*log4n;
+  err_hi = 0.968 - 0.00033012432*logn + 0.05536680366*log2n - 0.14394666127*log3n - 0.02266073311*log4n;
 
   if        (n <= (1UL<<26)) {
     err_factor = err_lo;
