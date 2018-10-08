@@ -120,7 +120,6 @@ UV* sieve_cluster(UV low, UV high, uint32_t nc, uint32_t* cl, UV* numret)
   uint32_t lastspr = sprimes[maxpi-1];
   uint32_t c, smallnc;
   char crem_0[43*47], crem_1[53*59], crem_2[61*67], **VPrem;
-  int const _verbose = _XS_get_verbose();
 
   if ((UV_MAX - cl[nc-1]) < high)  return 0;  /* Overflow */
 
@@ -176,7 +175,7 @@ UV* sieve_cluster(UV low, UV high, uint32_t nc, uint32_t* cl, UV* numret)
       uint32_t j, p = sprimes[pi];
       UV r, newppr = ppr * p;
       if (nres == 0 || nres > targres/(p/2) || newppr > maxppr) break;
-      if (_verbose > 1) printf("cluster sieve found %"UVuf" residues mod %"UVuf"\n", nres, ppr);
+      MPUverbose(2, "cluster sieve found %"UVuf" residues mod %"UVuf"\n", nres, ppr);
       remr = low % newppr;
       nres2 = 0;
       for (i = 0; i < p; i++) {
@@ -196,7 +195,7 @@ UV* sieve_cluster(UV low, UV high, uint32_t nc, uint32_t* cl, UV* numret)
     startpi = pi;
     Safefree(res2);
   }
-  if (_verbose) printf("cluster sieve using %"UVuf" residues mod %"UVuf"\n", nres, ppr);
+  MPUverbose(1, "cluster sieve using %"UVuf" residues mod %"UVuf"\n", nres, ppr);
 
   /* Return if not admissible, maybe with a single small value */
   if (nres == 0) {
@@ -313,7 +312,7 @@ UV* sieve_cluster(UV low, UV high, uint32_t nc, uint32_t* cl, UV* numret)
       }
       ncres = nr;
     }
-    if (_verbose > 2) printf("cluster sieve range has %u residues left\n", ncres);
+    MPUverbose(3, "cluster sieve range has %u residues left\n", ncres);
 
     /* Now check each of the remaining residues for inclusion */
     for (r = 0; r < ncres; r++) {
@@ -334,7 +333,7 @@ UV* sieve_cluster(UV low, UV high, uint32_t nc, uint32_t* cl, UV* numret)
     if (low < ppr) low = UV_MAX;
   }
 
-  if (_verbose) printf("cluster sieve ran %"UVuf" MR and %"UVuf" Lucas tests\n", num_mr, num_lucas);
+  MPUverbose(1, "cluster sieve ran %"UVuf" MR and %"UVuf" Lucas tests\n", num_mr, num_lucas);
   for (pi = startpi+6; pi < maxpi; pi++)
     Safefree(VPrem[pi]);
   Safefree(VPrem);

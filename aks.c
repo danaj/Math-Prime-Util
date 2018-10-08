@@ -305,7 +305,6 @@ static int test_anr(UV a, UV n, UV r)
 int is_aks_prime(UV n)
 {
   UV r, s, a, starta = 1;
-  int verbose;
 
   if (n < 2)
     return 0;
@@ -318,14 +317,13 @@ int is_aks_prime(UV n)
   if (n > 11 && ( !(n%2) || !(n%3) || !(n%5) || !(n%7) || !(n%11) )) return 0;
   /* if (!is_prob_prime(n)) return 0; */
 
-  verbose = _XS_get_verbose();
 #if IMPL_V6
   {
     UV sqrtn = isqrt(n);
     double log2n = log(n) / log(2);   /* C99 has a log2() function */
     UV limit = (UV) floor(log2n * log2n);
 
-    if (verbose) { printf("# aks limit is %lu\n", (unsigned long) limit); }
+    MPUverbose(1, "# aks limit is %lu\n", (unsigned long) limit);
 
     for (r = 2; r < n; r++) {
       if ((n % r) == 0)
@@ -374,7 +372,7 @@ int is_aks_prime(UV n)
     /* Bornemann checks factors up to (s-1)^2, we check to max(r,s) */
     /* slim = (s-1)*(s-1); */
     slim = (r > s) ? r : s;
-    if (verbose > 1) printf("# aks trial to %lu\n", slim);
+    MPUverbose(2, "# aks trial to %lu\n", slim);
     if (trial_factor(n, fac, 2, slim) > 1)
       return 0;
     if (slim >= HALF_WORD || (slim*slim) >= n)
@@ -409,7 +407,7 @@ int is_aks_prime(UV n)
     }
     /* Check divisibility to s * (s-1) to cover both gcd conditions */
     slim = s * (s-1);
-    if (verbose > 1) printf("# aks trial to %lu\n", (unsigned long)slim);
+    MPUverbose(2, "# aks trial to %lu\n", (unsigned long)slim);
     if (trial_factor(n, fac, 2, slim) > 1)
       return 0;
     if (slim >= HALF_WORD || (slim*slim) >= n)
@@ -422,7 +420,7 @@ int is_aks_prime(UV n)
   }
 #endif
 
-  if (verbose) { printf("# aks r = %lu  s = %lu\n", (unsigned long) r, (unsigned long) s); }
+  MPUverbose(1, "# aks r = %lu  s = %lu\n", (unsigned long) r, (unsigned long) s);
 
   /* Almost every composite will get recognized by the first test.
    * However, we need to run 's' tests to have the result proven for all n
@@ -430,8 +428,8 @@ int is_aks_prime(UV n)
   for (a = starta; a <= s; a++) {
     if (! test_anr(a, n, r) )
       return 0;
-    if (verbose>1) { printf("."); fflush(stdout); }
+    MPUverbose(2, ".");
   }
-  if (verbose>1) { printf("\n"); }
+  MPUverbose(2, "\n");
   return 1;
 }

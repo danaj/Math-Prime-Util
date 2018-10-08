@@ -234,7 +234,7 @@ UV* n_ramanujan_primes(UV n) {
   UV max, k, s, *L;
   unsigned char* sieve;
   max = nth_ramanujan_prime_upper(n); /* Rn <= max, so we can sieve to there */
-  if (_XS_get_verbose() >= 2) { printf("sieving to %"UVuf" for first %"UVuf" Ramanujan primes\n", max, n); fflush(stdout); }
+  MPUverbose(2, "sieving to %"UVuf" for first %"UVuf" Ramanujan primes\n", max, n);
   Newz(0, L, n, UV);
   L[0] = 2;
   sieve = sieve_erat30(max);
@@ -250,7 +250,6 @@ UV* n_ramanujan_primes(UV n) {
 
 UV* n_range_ramanujan_primes(UV nlo, UV nhi) {
   UV mink, maxk, k, s, *L;
-  int verbose = _XS_get_verbose();
 
   if (nlo == 0) nlo = 1;
   if (nhi == 0) nhi = 1;
@@ -268,7 +267,7 @@ UV* n_range_ramanujan_primes(UV nlo, UV nhi) {
 
   if (mink < 15) mink = 15;
   if (mink % 2 == 0) mink--;
-  if (verbose >= 2) { printf("Rn[%"UVuf"] to Rn[%"UVuf"]     Noe's: %"UVuf" to %"UVuf"\n", nlo, nhi, mink, maxk); fflush(stdout); }
+  MPUverbose(2, "Rn[%"UVuf"] to Rn[%"UVuf"]     Noe's: %"UVuf" to %"UVuf"\n", nlo, nhi, mink, maxk);
 
   s = 1 + prime_count(2,mink-2) - prime_count(2,(mink-1)>>1);
   {
@@ -295,7 +294,7 @@ UV* n_range_ramanujan_primes(UV nlo, UV nhi) {
     end_segment_primes(ctx);
     Safefree(seg2);
   }
-  if (verbose >= 2) { printf("Generated %"UVuf" Ramanujan primes from %"UVuf" to %"UVuf"\n", nhi-nlo+1, L[0], L[nhi-nlo]); fflush(stdout); }
+  MPUverbose(2, "Generated %"UVuf" Ramanujan primes from %"UVuf" to %"UVuf"\n", nhi-nlo+1, L[0], L[nhi-nlo]);
   return L;
 }
 
@@ -403,7 +402,7 @@ static UV _ramanujan_prime_count(UV n) {
   if ((n & (n-1)) == 0 && log2 <= RAMPC2)
     return ramanujan_counts_pow2[log2];
 
-  if (_XS_get_verbose()) { printf("ramanujan_prime_count calculating Pi(%"UVuf")\n",n); fflush(stdout); }
+  MPUverbose(1, "ramanujan_prime_count calculating Pi(%"UVuf")\n",n);
   v = prime_count(2,n) - prime_count(2,n >> 1);
 
   /* For large enough n make a slightly bigger window */
@@ -423,7 +422,7 @@ static UV _ramanujan_prime_count(UV n) {
       if (i < wlen) break;
     }
     winmult *= 2;
-    if (_XS_get_verbose()) { printf("  ramanujan_prime_count increasing window\n"); fflush(stdout); }
+    MPUverbose(1, "  ramanujan_prime_count increasing window\n");
   }
   rn = swin + i - 1;
   Safefree(L);
