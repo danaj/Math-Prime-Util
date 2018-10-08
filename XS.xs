@@ -694,8 +694,9 @@ sieve_primes(IN UV low, IN UV high)
     erat_primes = 2
     segment_primes = 3
     segment_twin_primes = 4
-    _ramanujan_primes = 5
-    _n_ramanujan_primes = 6
+    semi_prime_sieve = 5
+    _ramanujan_primes = 6
+    _n_ramanujan_primes = 7
   PREINIT:
     AV* av;
   PPCODE:
@@ -706,9 +707,19 @@ sieve_primes(IN UV low, IN UV high)
       PUTBACK;
       SP = NULL; /* never use SP again, poison */
     }
-    if ((low <= 2) && (high >= 2) && ix != 4) { av_push(av, newSVuv( 2 )); }
-    if ((low <= 3) && (high >= 3) && ix != 5) { av_push(av, newSVuv( 3 )); }
-    if ((low <= 5) && (high >= 5) && ix != 5) { av_push(av, newSVuv( 5 )); }
+    if        (ix == 4) { /* twin primes */
+      if ((low <= 3) && (high >= 3)) av_push(av, newSVuv( 3 ));
+      if ((low <= 5) && (high >= 5)) av_push(av, newSVuv( 5 ));
+    } else if (ix == 5) {  /* semiprimes */
+      if ((low <= 4) && (high >= 4)) av_push(av, newSVuv( 4 ));
+      if ((low <= 6) && (high >= 6)) av_push(av, newSVuv( 6 ));
+    } else if (ix == 6) { /* ramanujan primes */
+      if ((low <= 2) && (high >= 2)) av_push(av, newSVuv( 2 ));
+    } else {
+      if ((low <= 2) && (high >= 2)) av_push(av, newSVuv( 2 ));
+      if ((low <= 3) && (high >= 3)) av_push(av, newSVuv( 3 ));
+      if ((low <= 5) && (high >= 5)) av_push(av, newSVuv( 5 ));
+    }
     if (low < 7)  low = 7;
     if (low <= high) {
       if (ix == 4) high += 2;
@@ -740,14 +751,20 @@ sieve_primes(IN UV low, IN UV high)
           END_DO_FOR_EACH_SIEVE_PRIME
         }
         end_segment_primes(ctx);
-      } else if (ix == 5) {                   /* Ramanujan primes */
+      } else if (ix == 5) {                   /* Semiprimes */
+        UV i, count, *semi;
+        count = range_semiprime_sieve(&semi, low, high);
+        for (i = 0; i < count; i++)
+          av_push(av, newSVuv(semi[i]));
+        Safefree(semi);
+      } else if (ix == 6) {                   /* Ramanujan primes */
         UV i, beg, end, *L;
         L = ramanujan_primes(&beg, &end, low, high);
         if (L && end >= beg)
           for (i = beg; i <= end; i++)
             av_push(av,newSVuv(L[i]));
         Safefree(L);
-      } else if (ix == 6) {                   /* Ramanujan primes */
+      } else if (ix == 7) {                   /* Ramanujan primes */
         UV i, *L;
         L = n_range_ramanujan_primes(low, high);
         if (L && high >= low)

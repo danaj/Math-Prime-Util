@@ -430,8 +430,11 @@ sub semi_primes {
 
   return [] if ($low > $high) || ($high < 4);
 
+  return Math::Prime::Util::semi_prime_sieve($low,$high)
+    if $high <= $_XS_MAXVAL
+    && ($low <= 4 || ($high-$low+1) > ($high/(600*sqrt($high))));
+
   my $sp = [];
-  # TODO: When possible, call XS range_semiprime_sieve
   Math::Prime::Util::forsemiprimes(sub { push @$sp,$_; }, $low, $high);
   $sp;
 }
