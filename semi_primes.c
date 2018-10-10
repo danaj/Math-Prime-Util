@@ -28,7 +28,7 @@ static const unsigned char _semiprimelist[] =
 
 static UV _bs_count(UV n, UV const* const primes, UV lastidx)
 {
-  UV i = 0, j = lastidx;
+  UV i = 0, j = lastidx;   /* primes may not start at 0 */
   MPUassert(n >= primes[0] && n < primes[lastidx], "prime count via binary search out of range");
   while (i < j) {
     UV mid = i + (j-i)/2;
@@ -49,7 +49,7 @@ static UV _semiprime_count(UV n)
     if (nprecalc > _MPU_LMO_CROSSOVER)  nprecalc = _MPU_LMO_CROSSOVER;
     prime_precalc(nprecalc);
     /* Make small calls even faster using binary search on a list */
-    xlim = (UV) pow(n, 0.67);
+    xlim = (UV) pow(n, 0.70);
   }
 
   if (sqrtn >= 2)  sum += LMO_prime_count(n/2) - pc++;
@@ -215,7 +215,7 @@ UV semiprime_count_approx(UV n) {
 }
 
 UV nth_semiprime_approx(UV n) {
-  double logn,log2n,log3n,log4n, err_lo, err_md, err_hi, err_factor;
+  double logn,log2n,log3n,log4n, err_lo, err_md, err_hi, err_factor, est;
 
   if (n < NSEMIPRIMELIST)
     return _semiprimelist[n];
@@ -242,8 +242,9 @@ UV nth_semiprime_approx(UV n) {
   } else {
     err_factor = err_hi;
   }
-
-  return 0.5 + err_factor * n * logn / log2n;
+  est = 0.5 + err_factor * n * logn / log2n;
+  if (est >= UV_MAX) return 0;
+  return (UV)est;
 }
 
 static UV _next_semiprime(UV n) {

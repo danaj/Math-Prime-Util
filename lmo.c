@@ -579,6 +579,18 @@ UV LMO_prime_count(UV n)
   if (n < _MPU_LMO_CROSSOVER || n < 10000)  return segment_prime_count(2, n);
   /* n should now be reasonably sized (not tiny). */
 
+#ifdef USE_PRIMECOUNT_FOR_LARGE_LMO
+  if (n > 110000000000UL) {
+    FILE *f;
+    char cmd[100];
+    sprintf(cmd, "primecount %lu", n);
+    f = popen(cmd, "r");
+    fscanf(f, "%lu", &sum1);
+    pclose(f);
+    return sum1;
+  }
+#endif
+
   N2 = isqrt(n);             /* floor(N^1/2) */
   N3 = icbrt(n);             /* floor(N^1/3) */
   K2 = simple_pi(N2);        /* Pi(N2) */
