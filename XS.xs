@@ -2412,6 +2412,11 @@ lastfor()
       if (MY_CXT.forcount-- != oldforloop) croak("for loop mismatch"); \
     } while (0)
 
+#define DECL_FORCOUNT \
+    uint16_t oldforloop; \
+    char     oldforexit; \
+    char    *forexit
+
 void
 forprimes (SV* block, IN SV* svbeg, IN SV* svend = 0)
   PROTOTYPE: &$;$
@@ -2422,9 +2427,7 @@ forprimes (SV* block, IN SV* svbeg, IN SV* svend = 0)
     CV *cv;
     unsigned char* segment;
     UV beg, end, seg_base, seg_low, seg_high;
-    uint16_t oldforloop;
-    char     oldforexit;
-    char    *forexit;
+    DECL_FORCOUNT;
     dMY_CXT;
   PPCODE:
     cv = sv_2cv(block, &stash, &gv, 0);
@@ -2527,9 +2530,7 @@ foroddcomposites (SV* block, IN SV* svbeg, IN SV* svend = 0)
     HV *stash;
     SV* svarg;  /* We use svarg to prevent clobbering $_ outside the block */
     CV *cv;
-    uint16_t oldforloop;
-    char     oldforexit;
-    char    *forexit;
+    DECL_FORCOUNT;
     dMY_CXT;
   PPCODE:
     cv = sv_2cv(block, &stash, &gv, 0);
@@ -2645,9 +2646,7 @@ forsemiprimes (SV* block, IN SV* svbeg, IN SV* svend = 0)
     HV *stash;
     SV* svarg;  /* We use svarg to prevent clobbering $_ outside the block */
     CV *cv;
-    uint16_t oldforloop;
-    char     oldforexit;
-    char    *forexit;
+    DECL_FORCOUNT;
     dMY_CXT;
   PPCODE:
     cv = sv_2cv(block, &stash, &gv, 0);
@@ -2731,9 +2730,7 @@ fordivisors (SV* block, IN SV* svn)
     HV *stash;
     SV* svarg;  /* We use svarg to prevent clobbering $_ outside the block */
     CV *cv;
-    uint16_t oldforloop;
-    char     oldforexit;
-    char    *forexit;
+    DECL_FORCOUNT;
     dMY_CXT;
   PPCODE:
     cv = sv_2cv(block, &stash, &gv, 0);
@@ -2791,9 +2788,7 @@ forpart (SV* block, IN SV* svn, IN SV* svh = 0)
     HV *stash;
     CV *cv;
     SV** svals;
-    uint16_t oldforloop;
-    char     oldforexit;
-    char    *forexit;
+    DECL_FORCOUNT;
     dMY_CXT;
   PPCODE:
     cv = sv_2cv(block, &stash, &gv, 0);
@@ -2924,9 +2919,7 @@ forcomb (SV* block, IN SV* svn, IN SV* svk = 0)
     CV *cv;
     SV** svals;
     UV*  cm;
-    uint16_t oldforloop;
-    char     oldforexit;
-    char    *forexit;
+    DECL_FORCOUNT;
     dMY_CXT;
   PPCODE:
     cv = sv_2cv(block, &stash, &gv, 0);
@@ -3031,9 +3024,7 @@ forfactored (SV* block, IN SV* svbeg, IN SV* svend = 0)
     SV* svarg;  /* We use svarg to prevent clobbering $_ outside the block */
     CV *cv;
     SV* svals[64];
-    uint16_t oldforloop;
-    char     oldforexit;
-    char    *forexit;
+    DECL_FORCOUNT;
     dMY_CXT;
   PPCODE:
     cv = sv_2cv(block, &stash, &gv, 0);
