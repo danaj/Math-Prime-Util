@@ -87,17 +87,24 @@ static UV _semiprime_count(UV n)
   return sum;
 }
 
+/* TODO: This overflows, see p=3037000507,lo=10739422018595509581.
+ *       p2 = 9223372079518257049 => 9223372079518257049 + 9223372079518257049
+ *       Also with lo=18446744073709551215,hi=18446744073709551515.
+ */
 #define PGTLO(p,lo)  ((p) >= (lo)) ? (p) : ((p)*((lo)/(p)) + (((lo)%(p))?(p):0))
 #define MARKSEMI(p,arr,lo,hi) \
     do {  UV i, p2=(p)*(p); \
-      for (i = PGTLO(p, p2>lo ? p2 : lo); i <= hi; i += p)  arr[i-lo]++; \
-      for (i = PGTLO(p2, lo); i <= hi; i += p2) arr[i-lo] |= 0x80; \
-      if (lo <= p2 && hi >= p2) nfacs[p2-lo] = 1; /* perfect square */ \
+      for (i = PGTLO(p, p2>lo ? p2 : lo); i >= lo && i <= hi; i += p) arr[i-lo]++; \
+      for (i = PGTLO(p2, lo); i >= lo && i <= hi; i += p2) arr[i-lo] |= 0x80; \
+      if (p2 >= lo && p2 <= hi) arr[p2-lo] = 1; /* perfect square */ \
     } while (0);
 
 UV range_semiprime_sieve(UV** semis, UV lo, UV hi)
 {
   UV *S, i, count = 0;
+
+  if (lo < 4) lo = 4;
+  if (hi > MPU_MAX_SEMI_PRIME) hi = MPU_MAX_SEMI_PRIME;
 
   if (hi <= _semiprimelist[NSEMIPRIMELIST-1]) {
     if (semis == 0) {
@@ -115,7 +122,7 @@ UV range_semiprime_sieve(UV** semis, UV lo, UV hi)
     unsigned char* nfacs;
     UV cutn, sqrtn = isqrt(hi);
     Newz(0, nfacs, hi-lo+1, unsigned char);
-    if (sqrtn*sqrtn != hi) sqrtn++;  /* ceil sqrtn */
+    if (sqrtn*sqrtn < hi && sqrtn < (1UL<<(BITS_PER_WORD/2))-1) sqrtn++;
     cutn = (sqrtn > 30000) ? 30000 : sqrtn;
     START_DO_FOR_EACH_PRIME(2, cutn) {
       MARKSEMI(p,nfacs,lo,hi);
@@ -225,9 +232,9 @@ UV nth_semiprime_approx(UV n) {
    * lo: 256-2^27.  md: 2^26-2^48.  hi: 2^47-2^64
    */
   logn = log(n);   log2n = log(logn);   log3n = log(log2n);   log4n=log(log3n);
-  err_lo = 1.000 - 0.00048602173*logn + 0.16366374914*log2n - 0.46790000363*log3n + 0.00009132246*log4n;
-  err_md = 0.968 - 0.00067152769*logn + 0.09040048484*log2n - 0.23430920475*log3n - 0.01430569674*log4n;
-  err_hi = 0.968 - 0.00033012432*logn + 0.05536680366*log2n - 0.14394666127*log3n - 0.02266073311*log4n;
+  err_lo = 1.000 - 0.00042987274*logn + 0.15986706047*log2n - 0.45850248915*log3n + 0.00003463804*log4n;
+  err_md = 0.968 - 0.00067022785*logn + 0.09017497276*log2n - 0.23372161553*log3n - 0.01426276165*log4n;
+  err_hi = 0.968 - 0.00009814310*logn + 0.01802581152*log2n - 0.04743957673*log3n - 0.01329705384*log4n;
 
   if        (n <= (1UL<<26)) {
     err_factor = err_lo;

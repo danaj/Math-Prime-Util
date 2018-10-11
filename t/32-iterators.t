@@ -28,7 +28,7 @@ plan tests => 8        # forprimes errors
             + 3        # oo iterator errors
             + 7        # oo iterator simple
             + 25       # oo iterator methods
-            + 11       # lastfor
+            + 12       # lastfor
             + 5        # forfactored and forsquarefree
             + 1        # forsemiprimes
             + 0;
@@ -327,6 +327,11 @@ ok(!eval { prime_iterator_object(4.5); }, "iterator 4.5");
     # Our lastfor indicator is separate from the inside loop.
   } 20;
   is_deeply( \@ps, [2,3,5,4,7,4,6], "nested lastfor semantics" );
+}
+{
+  my $t;
+  forcomposites { $t=$_; lastfor if $_ > 2000; } 20000;
+  is($t, 2001, "lastfor in forcomposites stops appropriately");
 }
 
 sub a053462 {

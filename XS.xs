@@ -2545,7 +2545,7 @@ foroddcomposites (SV* block, IN SV* svbeg, IN SV* svend = 0)
     }
 
     if (items < 3) {
-      beg = ix ? 4 : 8;
+      beg = ix ? 4 : 9;
       end = my_svuv(svbeg);
     } else {
       beg = my_svuv(svbeg);
@@ -2593,7 +2593,6 @@ foroddcomposites (SV* block, IN SV* svbeg, IN SV* svend = 0)
         while (next_segment_primes(ctx, &seg_base, &seg_low, &seg_high)) {
           int crossuv = (seg_high > IV_MAX) && !SvIsUV(svarg);
           START_DO_FOR_EACH_SIEVE_PRIME( segment, seg_base, seg_low, seg_high )
-            CHECK_FORCOUNT;
             cbeg = prevprime+1;
             if (cbeg < beg)
               cbeg = beg - (ix == 0 && (beg % 2));
@@ -2602,6 +2601,7 @@ foroddcomposites (SV* block, IN SV* svbeg, IN SV* svend = 0)
             /* If ix=0, skip evens by starting 1 farther and skipping by 2 */
             cinc = 1 + (ix==0);
             for (c = cbeg + (ix==0); c <= cend; c += cinc) {
+              CHECK_FORCOUNT;
               if      (SvTYPE(svarg) != SVt_IV) { sv_setuv(svarg,c); }
               else if (crossuv && c > IV_MAX)   { sv_setuv(svarg,c); crossuv=0;}
               else                              { SvUV_set(svarg,c); }
@@ -2659,12 +2659,14 @@ forsemiprimes (SV* block, IN SV* svbeg, IN SV* svend = 0)
     }
 
     if (items < 3) {
-      beg = 3;
+      beg = 4;
       end = my_svuv(svbeg);
     } else {
       beg = my_svuv(svbeg);
       end = my_svuv(svend);
     }
+    if (beg < 4) beg = 4;
+    if (end > MPU_MAX_SEMI_PRIME) end = MPU_MAX_SEMI_PRIME;
 
     START_FORCOUNT;
     SAVESPTR(GvSV(PL_defgv));
@@ -2676,16 +2678,21 @@ forsemiprimes (SV* block, IN SV* svbeg, IN SV* svend = 0)
       dMULTICALL;
       I32 gimme = G_VOID;
       PUSH_MULTICALL(cv);
-      if (beg >= MPU_MAX_PRIME ||
+      if (beg >= MPU_MAX_SEMI_PRIME ||
 #if BITS_PER_WORD == 64
-          (beg >= UVCONST(    1000000000000000) && end-beg <    50000) ||
-          (beg >= UVCONST(     100000000000000) && end-beg <    22000) ||
-          (beg >= UVCONST(      10000000000000) && end-beg <     9000) ||
-          (beg >= UVCONST(       1000000000000) && end-beg <     4000) ||
+          (beg >= UVCONST(10000000000000000000) && end-beg <  1400000) ||
+          (beg >= UVCONST( 1000000000000000000) && end-beg <   950000) ||
+          (beg >= UVCONST(  100000000000000000) && end-beg <   440000) ||
+          (beg >= UVCONST(   10000000000000000) && end-beg <   240000) ||
+          (beg >= UVCONST(    1000000000000000) && end-beg <    65000) ||
+          (beg >= UVCONST(     100000000000000) && end-beg <    29000) ||
+          (beg >= UVCONST(      10000000000000) && end-beg <    11000) ||
+          (beg >= UVCONST(       1000000000000) && end-beg <     5000) ||
 #endif
-          end-beg < 1000 ) {
-        for (c = beg; c <= end; c++) {
-          if (is_semiprime(c)) { sv_setuv(svarg, c); MULTICALL; }
+          end-beg < 200 ) {
+        beg = (beg <= 4) ? 3 : beg-1;
+        while (beg++ < end) {
+          if (is_semiprime(beg)) { sv_setuv(svarg, beg); MULTICALL; }
           CHECK_FORCOUNT;
         }
       } else {
@@ -2697,8 +2704,10 @@ forsemiprimes (SV* block, IN SV* svbeg, IN SV* svend = 0)
           for (c = 0; c < count; c++) {
             sv_setuv(svarg, S[c]);
             MULTICALL;
+            CHECK_FORCOUNT;
           }
           beg = seg_end+1;
+          CHECK_FORCOUNT;
         }
       }
       FIX_MULTICALL_REFCOUNT;

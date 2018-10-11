@@ -15,6 +15,8 @@ Revision history for Perl module Math::Prime::Util
 
     - Ensure random_factored_integer factor list is sorted min->max.
 
+    - forcomposites didn't check lastfor on every callback.
+
     [FUNCTIONALITY AND PERFORMANCE]
 
     - chebyshev_theta and chebyshev_psi redone and uses a table.
