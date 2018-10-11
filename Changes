@@ -27,6 +27,8 @@ Revision history for Perl module Math::Prime::Util
     - semiprime_count for non-trivial inputs uses a segmented sieve and
       precalculates primes for larger values so can run 2-3x faster.
 
+    - forsemiprimes uses a sieve so large ranges are much faster.
+
 
 0.71 2018-08-28
 

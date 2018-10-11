@@ -2514,13 +2514,12 @@ forprimes (SV* block, IN SV* svbeg, IN SV* svend = 0)
     END_FORCOUNT;
 
 #define FORCOMPTEST(ix,n) \
-  ( (ix==1) || (ix==0 && n&1) || (ix==2 && is_semiprime(n)) )
+  ( (ix==1) || (ix==0 && n&1) )
 
 void
 foroddcomposites (SV* block, IN SV* svbeg, IN SV* svend = 0)
   ALIAS:
     forcomposites = 1
-    forsemiprimes = 2
   PROTOTYPE: &$;$
   PREINIT:
     UV beg, end;
@@ -2540,8 +2539,7 @@ foroddcomposites (SV* block, IN SV* svbeg, IN SV* svend = 0)
     if (!_validate_int(aTHX_ svbeg, 0) || (items >= 3 && !_validate_int(aTHX_ svend,0))) {
       _vcallsubn(aTHX_ G_VOID|G_DISCARD, VCALL_ROOT,
          (ix == 0) ? "_generic_foroddcomposites"
-       : (ix == 1) ? "_generic_forcomposites"
-       :             "_generic_forsemiprimes", items, 0);
+       :             "_generic_forcomposites", items, 0);
       return;
     }
 
@@ -2601,10 +2599,8 @@ foroddcomposites (SV* block, IN SV* svbeg, IN SV* svend = 0)
             prevprime = p;
             cend = prevprime-1;  if (cend > end) cend = end;
             /* If ix=0, skip evens by starting 1 farther and skipping by 2 */
-            /* For ix==2 we could be clever and skip past %4 and %9 */
             cinc = 1 + (ix==0);
             for (c = cbeg + (ix==0); c <= cend; c += cinc) {
-              if (ix == 2 && !is_semiprime(c))  continue;
               if      (SvTYPE(svarg) != SVt_IV) { sv_setuv(svarg,c); }
               else if (crossuv && c > IV_MAX)   { sv_setuv(svarg,c); crossuv=0;}
               else                              { SvUV_set(svarg,c); }
@@ -2630,6 +2626,91 @@ foroddcomposites (SV* block, IN SV* svbeg, IN SV* svend = 0)
       beg = (beg <= 4) ? 3 : beg-1;
       while (beg++ < end) {
         if (FORCOMPTEST(ix,beg) && !is_prob_prime(beg)) {
+          sv_setuv(svarg, beg);
+          PUSHMARK(SP);
+          call_sv((SV*)cv, G_VOID|G_DISCARD);
+          CHECK_FORCOUNT;
+        }
+      }
+    }
+    SvREFCNT_dec(svarg);
+    END_FORCOUNT;
+
+void
+forsemiprimes (SV* block, IN SV* svbeg, IN SV* svend = 0)
+  PROTOTYPE: &$;$
+  PREINIT:
+    UV beg, end;
+    GV *gv;
+    HV *stash;
+    SV* svarg;  /* We use svarg to prevent clobbering $_ outside the block */
+    CV *cv;
+    uint16_t oldforloop;
+    char     oldforexit;
+    char    *forexit;
+    dMY_CXT;
+  PPCODE:
+    cv = sv_2cv(block, &stash, &gv, 0);
+    if (cv == Nullcv)
+      croak("Not a subroutine reference");
+
+    if (!_validate_int(aTHX_ svbeg, 0) || (items >= 3 && !_validate_int(aTHX_ svend,0))) {
+      _vcallsubn(aTHX_ G_VOID|G_DISCARD, VCALL_ROOT, "_generic_forsemiprimes", items, 0);
+      return;
+    }
+
+    if (items < 3) {
+      beg = 3;
+      end = my_svuv(svbeg);
+    } else {
+      beg = my_svuv(svbeg);
+      end = my_svuv(svend);
+    }
+
+    START_FORCOUNT;
+    SAVESPTR(GvSV(PL_defgv));
+    svarg = newSVuv(0);
+    GvSV(PL_defgv) = svarg;
+#if USE_MULTICALL
+    if (!CvISXSUB(cv) && end >= beg) {
+      UV c, seg_beg, seg_end, *S, count;
+      dMULTICALL;
+      I32 gimme = G_VOID;
+      PUSH_MULTICALL(cv);
+      if (beg >= MPU_MAX_PRIME ||
+#if BITS_PER_WORD == 64
+          (beg >= UVCONST(    1000000000000000) && end-beg <    50000) ||
+          (beg >= UVCONST(     100000000000000) && end-beg <    22000) ||
+          (beg >= UVCONST(      10000000000000) && end-beg <     9000) ||
+          (beg >= UVCONST(       1000000000000) && end-beg <     4000) ||
+#endif
+          end-beg < 1000 ) {
+        for (c = beg; c <= end; c++) {
+          if (is_semiprime(c)) { sv_setuv(svarg, c); MULTICALL; }
+          CHECK_FORCOUNT;
+        }
+      } else {
+        while (beg < end) {
+          seg_beg = beg;
+          seg_end = end;
+          if ((seg_end - seg_beg) > 50000000) seg_end = seg_beg + 50000000 - 1;
+          count = range_semiprime_sieve(&S, seg_beg, seg_end);
+          for (c = 0; c < count; c++) {
+            sv_setuv(svarg, S[c]);
+            MULTICALL;
+          }
+          beg = seg_end+1;
+        }
+      }
+      FIX_MULTICALL_REFCOUNT;
+      POP_MULTICALL;
+    }
+    else
+#endif
+    if (beg <= end) {
+      beg = (beg <= 4) ? 3 : beg-1;
+      while (beg++ < end) {
+        if (is_semiprime(beg)) {
           sv_setuv(svarg, beg);
           PUSHMARK(SP);
           call_sv((SV*)cv, G_VOID|G_DISCARD);
