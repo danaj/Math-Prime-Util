@@ -2706,6 +2706,7 @@ forsemiprimes (SV* block, IN SV* svbeg, IN SV* svend = 0)
             MULTICALL;
             CHECK_FORCOUNT;
           }
+          Safefree(S);
           beg = seg_end+1;
           CHECK_FORCOUNT;
         }
