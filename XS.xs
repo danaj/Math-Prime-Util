@@ -2039,19 +2039,19 @@ euler_phi(IN SV* svlo, IN SV* svhi = 0)
       UV lo = my_svuv(svlo);
       UV hi = my_svuv(svhi);
       if (lo <= hi) {
-        UV i;
-        EXTEND(SP, (IV)(hi-lo+1));
+        UV i, count = hi - lo + 1;
+        EXTEND(SP, (IV)count);
         if (ix == 0) {
-          UV  arraylo = (lo < 100)  ?  0  :  lo;
-          UV* totients = _totient_range(arraylo, hi);
-          for (i = lo; i <= hi; i++)
-            PUSHs(sv_2mortal(newSVuv(totients[i-arraylo])));
+          UV arrlo = (lo < 100) ?  0 : lo;
+          UV *totients = _totient_range(arrlo, hi);
+          for (i = 0; i < count; i++)
+            PUSHs(sv_2mortal(newSVuv(totients[i+lo-arrlo])));
           Safefree(totients);
         } else {
           signed char* mu = _moebius_range(lo, hi);
           dMY_CXT;
-          for (i = lo; i <= hi; i++)
-            PUSH_NPARITY(mu[i-lo]);
+          for (i = 0; i < count; i++)
+            PUSH_NPARITY(mu[i]);
           Safefree(mu);
         }
       }
