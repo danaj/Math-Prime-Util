@@ -527,6 +527,9 @@ void* array_of_primes_in_range(UV* count, UV beg, UV end)
   UV *P, i = 0;
   UV cntest = prime_count_upper(end) - prime_count_lower(beg) + 1;
   New(0, P, cntest, UV);
+  if (beg <= 2 && end >= 2) P[i++] = 2;
+  if (beg <= 3 && end >= 3) P[i++] = 3;
+  if (beg <= 5 && end >= 5) P[i++] = 5;
   {
     unsigned char* segment;
     UV seg_base, seg_low, seg_high;
