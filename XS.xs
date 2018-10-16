@@ -2043,12 +2043,12 @@ euler_phi(IN SV* svlo, IN SV* svhi = 0)
         EXTEND(SP, (IV)count);
         if (ix == 0) {
           UV arrlo = (lo < 100) ?  0 : lo;
-          UV *totients = _totient_range(arrlo, hi);
+          UV *totients = range_totient(arrlo, hi);
           for (i = 0; i < count; i++)
             PUSHs(sv_2mortal(newSVuv(totients[i+lo-arrlo])));
           Safefree(totients);
         } else {
-          signed char* mu = _moebius_range(lo, hi);
+          signed char* mu = range_moebius(lo, hi);
           dMY_CXT;
           for (i = 0; i < count; i++)
             PUSH_NPARITY(mu[i]);

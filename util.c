@@ -267,26 +267,33 @@ void print_primes(UV low, UV high, int fd) {
   if (bend > buf) { bend = write_buf(fd, buf, bend); }
 }
 
+/******************************************************************************/
+/*                     TOTIENT, MOEBIUS, MERTENS                              */
+/******************************************************************************/
 
 /* Return a char array with lo-hi+1 elements. mu[k-lo] = µ(k) for k = lo .. hi.
  * It is the callers responsibility to call Safefree on the result. */
-#define PGTLO(p,lo)  ((p) >= lo) ? (p) : ((p)*(lo/(p)) + ((lo%(p))?(p):0))
-#define P2GTLO(pinit, p, lo) \
-   ((pinit) >= lo) ? (pinit) : ((p)*(lo/(p)) + ((lo%(p))?(p):0))
-signed char* _moebius_range(UV lo, UV hi)
+#define PGTLO(ip,p,lo)  ((ip)>=(lo)) ? (ip) : ((p)*((lo)/(p)) + (((lo)%(p))?(p):0))
+signed char* range_moebius(UV lo, UV hi)
 {
   signed char* mu;
-  UV i;
-  UV sqrtn = isqrt(hi);
+  UV i, sqrtn = isqrt(hi), count = hi-lo+1;
 
   /* Kuznetsov indicates that the Deléglise & Rivat (1996) method can be
    * modified to work on logs, which allows us to operate with no
    * intermediate memory at all.  Same time as the D&R method, less memory. */
   unsigned char logp;
-  UV nextlog;
+  UV nextlog, nextlogi;
 
-  Newz(0, mu, hi-lo+1, signed char);
-  if (sqrtn*sqrtn != hi) sqrtn++;  /* ceil sqrtn */
+  Newz(0, mu, count, signed char);
+  if (sqrtn*sqrtn != hi && sqrtn < (1UL<<(BITS_PER_WORD/2))-1) sqrtn++;
+
+  /* For small ranges, do it by hand */
+  if (hi < 100 || count <= 10 || (hi > (1UL<<25) && count < icbrt(hi)/4)) {
+    for (i = 0; i < count; i++)
+      mu[i] = moebius(lo+i);
+    return mu;
+  }
 
   logp = 1; nextlog = 3; /* 2+1 */
   START_DO_FOR_EACH_PRIME(2, sqrtn) {
@@ -295,41 +302,46 @@ signed char* _moebius_range(UV lo, UV hi)
       logp += 2;   /* logp is 1 | ceil(log(p)/log(2)) */
       nextlog = ((nextlog-1)*4)+1;
     }
-    for (i = PGTLO(p, lo); i <= hi; i += p)
+    for (i = PGTLO(p, p, lo); i >= lo && i <= hi; i += p)
       mu[i-lo] += logp;
-    for (i = PGTLO(p2, lo); i <= hi; i += p2)
+    for (i = PGTLO(p2, p2, lo); i >= lo && i <= hi; i += p2)
       mu[i-lo] = 0x80;
   } END_DO_FOR_EACH_PRIME
 
   logp = log2floor(lo);
-  nextlog = UVCONST(2) << logp;
-  for (i = lo; i <= hi; i++) {
-    unsigned char a = mu[i-lo];
-    if (i >= nextlog) {  logp++;  nextlog *= 2;  } /* logp is log(p)/log(2) */
+  nextlogi = (UVCONST(2) << logp) - lo;
+  for (i = 0; i < count; i++) {
+    unsigned char a = mu[i];
+    if (i >= nextlogi) nextlogi = (UVCONST(2) << ++logp) - lo;
     if (a & 0x80)       { a = 0; }
     else if (a >= logp) { a =  1 - 2*(a&1); }
     else                { a = -1 + 2*(a&1); }
-    mu[i-lo] = a;
+    mu[i] = a;
   }
   if (lo == 0)  mu[0] = 0;
 
   return mu;
 }
 
-UV* _totient_range(UV lo, UV hi) {
+UV* range_totient(UV lo, UV hi) {
   UV* totients;
-  UV i, seg_base, seg_low, seg_high;
+  UV i, seg_base, seg_low, seg_high, count = hi-lo+1;
   unsigned char* segment;
   void* ctx;
 
-  if (hi < lo) croak("_totient_range error hi %"UVuf" < lo %"UVuf"\n", hi, lo);
-  New(0, totients, hi-lo+1, UV);
+  if (hi < lo) croak("range_totient error hi %"UVuf" < lo %"UVuf"\n", hi, lo);
+  New(0, totients, count, UV);
 
   /* Do via factoring if very small or if we have a small range */
-  if (hi < 100 || (hi-lo) < 10 || hi/(hi-lo+1) > 1000) {
-    for (i = lo; i <= hi; i++)
-      totients[i-lo] = totient(i);
+  if (hi < 100 || count <= 10 || hi/count > 1000) {
+    for (i = 0; i < count; i++)
+      totients[i] = totient(lo+i);
     return totients;
+  }
+
+  if (hi == UV_MAX) {
+    totients[--count] = totient(UV_MAX);
+    hi--;
   }
 
   /* If doing a full sieve, do it monolithic.  Faster. */
@@ -342,7 +354,7 @@ UV* _totient_range(UV lo, UV hi) {
     UV j, index, nprimes = 0;
 
     New(0, prime, max_index, UV);  /* could use prime_count_upper(hi) */
-    memset(totients, 0, (hi-lo+1) * sizeof(UV));
+    memset(totients, 0, count * sizeof(UV));
     for (i = 2; i <= hi/2; i++) {
       index = 2*i;
       if ( !(i&1) ) {
@@ -373,27 +385,27 @@ UV* _totient_range(UV lo, UV hi) {
     return totients;
   }
 
-  for (i = lo; i <= hi; i++) {
-    UV v = i;
-    if (i % 2 == 0)  v -= v/2;
-    if (i % 3 == 0)  v -= v/3;
-    if (i % 5 == 0)  v -= v/5;
-    totients[i-lo] = v;
+  for (i = 0; i < count; i++) {
+    UV v = lo+i, nv = v;
+    if (v % 2 == 0)  nv -= nv/2;
+    if (v % 3 == 0)  nv -= nv/3;
+    if (v % 5 == 0)  nv -= nv/5;
+    totients[i] = nv;
   }
 
   ctx = start_segment_primes(7, hi/2, &segment);
   while (next_segment_primes(ctx, &seg_base, &seg_low, &seg_high)) {
     START_DO_FOR_EACH_SIEVE_PRIME( segment, seg_base, seg_low, seg_high ) {
-      for (i = P2GTLO(2*p,p,lo); i <= hi; i += p)
+      for (i = PGTLO(2*p,p,lo); i >= lo && i <= hi; i += p)
         totients[i-lo] -= totients[i-lo]/p;
     } END_DO_FOR_EACH_SIEVE_PRIME
   }
   end_segment_primes(ctx);
 
   /* Fill in all primes */
-  for (i = lo | 1; i <= hi; i += 2)
-    if (totients[i-lo] == i)
-      totients[i-lo]--;
+  for (i = (lo | 1) - lo; i < count; i += 2)
+    if (totients[i] == i+lo)
+      totients[i]--;
   if (lo <= 1) totients[1-lo] = 1;
 
   return totients;
@@ -414,8 +426,8 @@ IV mertens(UV n) {
   u = isqrt(n);
   maxmu = (n/(u+1));              /* maxmu lets us handle u < sqrt(n) */
   if (maxmu < u) maxmu = u;
-  mu = _moebius_range(0, maxmu);
-  New(0, M, maxmu+1, short);
+  mu = range_moebius(0, maxmu);
+  New(0, M, maxmu+1, short);      /* Works up to maxmu < 7613644886 */
   M[0] = 0;
   for (j = 1; j <= maxmu; j++)
     M[j] = M[j-1] + mu[j];
@@ -440,6 +452,10 @@ IV mertens(UV n) {
   Safefree(mu);
   return sum;
 }
+
+/******************************************************************************/
+/*                             POWERS and ROOTS                               */
+/******************************************************************************/
 
 /* There are at least 4 ways to do this, plus hybrids.
  * 1) use a table.  Great for 32-bit, too big for 64-bit.
@@ -2329,7 +2345,7 @@ long double RiemannR(long double x) {
   if (x <= 0) croak("Invalid input to RiemannR:  x must be > 0");
 
   if (x > 1e19) {
-    const signed char* amob = _moebius_range(0, 100);
+    const signed char* amob = range_moebius(0, 100);
     KAHAN_SUM(sum, Li(x));
     for (k = 2; k <= 100; k++) {
       if (amob[k] == 0) continue;

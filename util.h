@@ -25,8 +25,8 @@ extern UV valuation(UV n, UV k);
 extern UV logint(UV n, UV b);
 extern UV mpu_popcount_string(const char* ptr, uint32_t len);
 
-extern signed char* _moebius_range(UV low, UV high);
-extern UV*    _totient_range(UV low, UV high);
+extern signed char* range_moebius(UV low, UV high);
+extern UV*    range_totient(UV low, UV high);
 extern IV     mertens(UV n);
 extern NV chebyshev_psi(UV n);
 extern NV chebyshev_theta(UV n);

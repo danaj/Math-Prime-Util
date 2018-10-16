@@ -31,6 +31,8 @@ Revision history for Perl module Math::Prime::Util
 
     - forsemiprimes uses a sieve so large ranges are much faster.
 
+    - ranged moebius more efficient for small intervals.
+
 
 0.71 2018-08-28
 
