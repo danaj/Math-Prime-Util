@@ -1768,6 +1768,11 @@ from 2 to the argument, or two numbers indicating a range.
 A fast method that requires computation only to the square root of the
 range end is used, unless the range is so small that walking it is faster.
 
+=head2 semiprime_count_approx
+
+Returns an approximation to the semiprime count of C<n>.
+This returns quickly and is typically square root accurate.
+
 
 =head2 ramanujan_primes
 
