@@ -768,8 +768,8 @@ sieve_primes(IN UV low, IN UV high)
         UV i, *L;
         L = n_range_ramanujan_primes(low, high);
         if (L && high >= low)
-          for (i = low; i <= high; i++)
-            av_push(av,newSVuv(L[i-low]));
+          for (i = 0; i <= (high-low); i++)
+            av_push(av,newSVuv(L[i]));
         Safefree(L);
       }
     }
