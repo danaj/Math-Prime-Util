@@ -91,12 +91,11 @@ static UV _semiprime_count(UV n)
  *       p2 = 9223372079518257049 => 9223372079518257049 + 9223372079518257049
  *       Also with lo=18446744073709551215,hi=18446744073709551515.
  */
-#define PGTLO(p,lo)  ((p) >= (lo)) ? (p) : ((p)*((lo)/(p)) + (((lo)%(p))?(p):0))
+#define PGTLO(ip,p,lo)  ((ip)>=(lo)) ? (ip) : ((p)*((lo)/(p)) + (((lo)%(p))?(p):0))
 #define MARKSEMI(p,arr,lo,hi) \
     do {  UV i, p2=(p)*(p); \
-      for (i = PGTLO(p, p2>lo ? p2 : lo); i >= lo && i <= hi; i += p) arr[i-lo]++; \
-      for (i = PGTLO(p2, lo); i >= lo && i <= hi; i += p2) arr[i-lo] |= 0x80; \
-      if (p2 >= lo && p2 <= hi) arr[p2-lo] = 1; /* perfect square */ \
+      for (i = PGTLO(p2, p, lo); i >= lo && i <= hi; i += p) arr[i-lo]++; \
+      for (i = PGTLO(2*p2, p2, lo); i >= lo && i <= hi; i += p2) arr[i-lo]++; \
     } while (0);
 
 UV range_semiprime_sieve(UV** semis, UV lo, UV hi)
@@ -105,6 +104,20 @@ UV range_semiprime_sieve(UV** semis, UV lo, UV hi)
 
   if (lo < 4) lo = 4;
   if (hi > MPU_MAX_SEMI_PRIME) hi = MPU_MAX_SEMI_PRIME;
+
+#if 0
+  /* An interesting idea and surprisingly fast.  But numerous issues. */
+  if (semis == 0 && lo <= 4 && hi <= 2000000000UL) {
+    UV i, j, xsize, lim = hi/2 + 1000;
+    UV *pr = array_of_primes_in_range(&xsize, 0, lim);
+    /* TODO: we could fill S then sort after */
+    for (i = 0; pr[i] * pr[i] < hi; i++)
+      for (j = i; pr[i] * pr[j] < hi; j++)
+        count++;
+    Safefree(pr);
+    return count;
+  }
+#endif
 
   if (hi <= _semiprimelist[NSEMIPRIMELIST-1]) {
     if (semis == 0) {
