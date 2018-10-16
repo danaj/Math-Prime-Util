@@ -25,14 +25,14 @@
 #else
 
   #define MUTEX_DECL(x) \
-    static perl_mutex x ## _mutex;
+    static perl_mutex x ## _mutex
 
   #define READ_WRITE_LOCK_DECL(x) \
     static perl_mutex x ## _mutex;   \
     static perl_cond  x ## _turn;    \
     static int        x ## _reading; \
     static int        x ## _writing; \
-    static int        x ## _writers;
+    static int        x ## _writers
 
   #define WRITE_LOCK_START(x) \
    do { \
