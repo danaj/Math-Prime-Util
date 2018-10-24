@@ -17,6 +17,9 @@ Revision history for Perl module Math::Prime::Util
 
     - forcomposites didn't check lastfor on every callback.
 
+    - Sun's compilers, in a valid interpretation of the code, generated
+      divide by zero code for pillai testing.
+
     [FUNCTIONALITY AND PERFORMANCE]
 
     - chebyshev_theta and chebyshev_psi redone and uses a table.
