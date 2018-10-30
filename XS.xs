@@ -3071,8 +3071,7 @@ forsetproduct (SV* block, ...)
         MULTICALL;
         CHECK_FORCOUNT;
         for (i = narrays-1; i >= 0; i--) {
-          arcnt[i]++;
-          if (arcnt[i] >= arlen[i])  arcnt[i] = 0;
+          if (++arcnt[i] >= arlen[i])  arcnt[i] = 0;
           arout[i] = AvARRAY(arptr[i])[arcnt[i]];
           if (arcnt[i] > 0)  break;
         }
@@ -3088,8 +3087,7 @@ forsetproduct (SV* block, ...)
       PUTBACK; call_sv((SV*)cv, G_VOID|G_DISCARD); SPAGAIN;
       CHECK_FORCOUNT;
       for (i = narrays-1; i >= 0; i--) {
-        arcnt[i]++;
-        if (arcnt[i] >= arlen[i])  arcnt[i] = 0;
+        if (++arcnt[i] >= arlen[i])  arcnt[i] = 0;
         arout[i] = AvARRAY(arptr[i])[arcnt[i]];
         if (arcnt[i] > 0)  break;
       }

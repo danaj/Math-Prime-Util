@@ -840,10 +840,8 @@ sub forsetproduct (&@) {    ## no critic qw(ProhibitSubroutinePrototypes)
     $sub->(@outv);
     last if $_exitloop;
     for ($i = $#v; $i >= 0; $i--) {
-      $cnt[$i]++;
-      $cnt[$i] = 0 if $cnt[$i] > $#{$v[$i]};
-      $outv[$i] = $v[$i]->[$cnt[$i]];
-      last if $cnt[$i] > 0;
+      if ($cnt[$i] >= $#{$v[$i]}) { $cnt[$i] = 0; $outv[$i] = $v[$i]->[0]; }
+      else { $outv[$i] = $v[$i]->[++$cnt[$i]]; last; }
     }
   }
   _end_for_loop($oldforexit);
