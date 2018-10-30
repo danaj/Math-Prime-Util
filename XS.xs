@@ -3056,6 +3056,32 @@ forsetproduct (SV* block, ...)
     }
 
     START_FORCOUNT;
+#if USE_MULTICALL
+    if (!CvISXSUB(cv)) {
+      dMULTICALL;
+      I32 gimme = G_VOID;
+      AV *av = save_ary(PL_defgv);
+      AvREAL_off(av);
+      PUSH_MULTICALL(cv);
+      do {
+        av_extend(av, narrays-1);
+        av_fill(av, narrays-1);
+        for (i = narrays-1; i >= 0; i--)  /* Faster to fill backwards */
+          AvARRAY(av)[i] = arout[i];
+        MULTICALL;
+        CHECK_FORCOUNT;
+        for (i = narrays-1; i >= 0; i--) {
+          arcnt[i]++;
+          if (arcnt[i] >= arlen[i])  arcnt[i] = 0;
+          arout[i] = AvARRAY(arptr[i])[arcnt[i]];
+          if (arcnt[i] > 0)  break;
+        }
+      } while (i >= 0);
+      FIX_MULTICALL_REFCOUNT;
+      POP_MULTICALL;
+    }
+    else
+#endif
     do {
       PUSHMARK(SP); EXTEND(SP, narrays);
       for (i = 0; i < narrays; i++) { PUSHs(arout[i]); }
@@ -3127,11 +3153,40 @@ forfactored (SV* block, IN SV* svbeg, IN SV* svend = 0)
       beg = 2;
     }
     fctx = factor_range_init(beg, end, ix);
+#if USE_MULTICALL
+    if (!CvISXSUB(cv)) {
+      dMULTICALL;
+      I32 gimme = G_VOID;
+      AV *av = save_ary(PL_defgv);
+      AvREAL_off(av);
+      PUSH_MULTICALL(cv);
+      for (n = 0; n < end-beg+1; n++) {
+        CHECK_FORCOUNT;
+        nfactors = factor_range_next(&fctx);
+        if (nfactors > 0) {
+          sv_setuv(svarg, fctx.n);
+          factors = fctx.factors;
+          av_extend(av, nfactors-1);
+          av_fill(av, nfactors-1);
+          for (i = nfactors-1; i >= 0; i--) {
+            SV* sv = svals[i];
+            SvREADONLY_off(sv);
+            sv_setuv(sv, factors[i]);
+            SvREADONLY_on(sv);
+            AvARRAY(av)[i] = sv;
+          }
+          MULTICALL;
+        }
+      }
+      FIX_MULTICALL_REFCOUNT;
+      POP_MULTICALL;
+    }
+    else
+#endif
     for (n = 0; n < end-beg+1; n++) {
       CHECK_FORCOUNT;
       nfactors = factor_range_next(&fctx);
       if (nfactors > 0) {
-        /* TODO: Figure out how to use multicall for this. */
         PUSHMARK(SP); EXTEND(SP, nfactors);
         sv_setuv(svarg, fctx.n);
         factors = fctx.factors;

@@ -40,6 +40,8 @@ Revision history for Perl module Math::Prime::Util
     - Thanks to GRAY for his module Set::Product which has clean and
       clever XS code, which I used to improve my code.
 
+    - forfactored uses multicall.  Up to 2x faster.
+
 
 0.71 2018-08-28
 
