@@ -35,7 +35,7 @@ our @EXPORT_OK =
       primes twin_primes semi_primes ramanujan_primes
       sieve_prime_cluster sieve_range
       forprimes forcomposites foroddcomposites forsemiprimes fordivisors
-      forpart forcomp forcomb forperm forderange formultiperm
+      forpart forcomp forcomb forperm forderange formultiperm forsetproduct
       forfactored forsquarefree
       lastfor
       numtoperm permtonum randperm shuffle
@@ -1587,6 +1587,27 @@ sets.  This iterator will be much more efficient.
 
 There is no ordering requirement for the input array reference.  The results
 will be in lexicographic order.
+
+
+=head2 forsetproduct
+
+  forsetproduct { say "@_" } [1,2,3],[qw/a b c/],[qw/@ $ !/];
+
+Takes zero or more array references as arguments and iterates over the
+set product (i.e. Cartesian product or cross product) of the lists.
+The given subroutine is repeatedly called with C<@_> set to the
+current list.
+Since no de-duplication is done, this is not literally a C<set> product.
+
+While zero or one array references are valid, the result is not very
+interesting.  If any array reference is empty, the product is
+empty, so no subroutine calls are performed.
+
+The subroutine is given an array whose values are aliased to the
+inputs, and are I<not> set to read-only.  Hence modifying the array
+inside the subroutine will cause side-effects.
+
+As with other iterators, the C<lastfor> function will cause an early exit.
 
 
 =head2 lastfor
@@ -4956,8 +4977,14 @@ L<Algorithm::FastPermute> and L<Algorithm::Permute> are very similar
 but can be 2-10x faster than MPU (they use the same user-block
 structure but twiddle the user array each call).
 
+There are numerous modules to perform a set product (aka Cartesian
+product or cross product).  These include L<Set::Product>,
+L<Math::Cartesian::Product>, L<Set::Scalar>, and L<Set::CrossProduct>,
+as well as a few others.  Our functions closely match L<Set::Product>
+in both high performance and functionality.
+
 L<Math::Pari> supports a lot of features, with a great deal of overlap.  In
-general, MPU will be faster for native 64-bit integers, while it's differs
+general, MPU will be faster for native 64-bit integers, while it differs
 for bigints (Pari will always be faster if L<Math::Prime::Util::GMP> is not
 installed; with it, it varies by function).  Note that Pari extends many of
 these functions to other spaces (Gaussian integers, complex numbers, vectors,

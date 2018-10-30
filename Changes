@@ -8,6 +8,7 @@ Revision history for Perl module Math::Prime::Util
     - nth_semiprime_approx(n)         fast approximate nth semiprime
     - semiprime_count_approx(n)       fast approximate semiprime count
     - semi_primes                     as primes but for semiprimes
+    - forsetproduct {...} \@a,\@b,... Cartesian product of list refs
 
     [FIXES]
 
@@ -35,6 +36,9 @@ Revision history for Perl module Math::Prime::Util
     - forsemiprimes uses a sieve so large ranges are much faster.
 
     - ranged moebius more efficient for small intervals.
+
+    - Thanks to GRAY for his module Set::Product which has clean and
+      clever XS code, which I used to improve my code.
 
 
 0.71 2018-08-28

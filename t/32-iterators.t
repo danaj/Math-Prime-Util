@@ -7,6 +7,7 @@ use Math::Prime::Util qw/primes prev_prime next_prime
                          forprimes forcomposites foroddcomposites fordivisors
                          forpart forcomp forcomb forperm forderange formultiperm
                          forfactored forsquarefree forsemiprimes
+                         forsetproduct
                          lastfor
                          is_power is_semiprime vecsum sqrtint
                          prime_iterator prime_iterator_object/;
@@ -31,6 +32,7 @@ plan tests => 8        # forprimes errors
             + 12       # lastfor
             + 5        # forfactored and forsquarefree
             + 1        # forsemiprimes
+            + 9        # forsetproduct
             + 0;
 
 ok(!eval { forprimes { 1 } undef; },   "forprimes undef");
@@ -340,6 +342,8 @@ sub a053462 {
   $s;
 }
 
+################### forfactored
+
 {
   my $s;
   $s=0; forfactored { $s += $_ } 1; is($s, 1, "forfactored {} 1");
@@ -349,8 +353,42 @@ sub a053462 {
   is( a053462(6), 607926, "A053462 using forsquarefree");
 }
 
+################### forsemiprimes
+
 {
   my @got;
   forsemiprimes { push @got, $_; } 1000;
   is_deeply(\@got, [grep { is_semiprime($_) } 0 .. 1000], "forsemiprimes 1000");
+}
+
+################### forsetproduct
+
+{
+  ok(!eval { forsetproduct { } 1,2; }, "forsetproduct not array ref errors");
+
+  my(@set,@out);
+
+  @set=();  @out=();forsetproduct {push @out,"@_"}@set;
+  is_deeply(\@out, [], 'forsetproduct empty input -> empty output');
+
+  @set=([1..3]);  @out=();forsetproduct {push @out,"@_"}@set;
+  is_deeply(\@out, [1..3], 'forsetproduct single list -> single list');
+
+  @set=([1],[2],[3],[4],[5]);  @out=();forsetproduct {push @out,"@_"}@set;
+  is_deeply(\@out, ['1 2 3 4 5'], 'forsetproduct five 1-element lists -> single list');
+
+  @set=([1,2],[3,4,5],[]);  @out=();forsetproduct {push @out,"@_"}@set;
+  is_deeply(\@out, [], 'forsetproduct any empty list -> empty output');
+
+  @set=([],[1,2],[3,4,5]);  @out=();forsetproduct {push @out,"@_"}@set;
+  is_deeply(\@out, [], 'forsetproduct any empty list -> empty output');
+
+  @set=([1,2],[qw/a b c/]);  @out=();forsetproduct {push @out,"@_"}@set;
+  is_deeply(\@out, ['1 a','1 b','1 c','2 a','2 b','2 c'], 'forsetproduct simple test');
+
+  @set=([1,2],[qw/a b c/]);  @out=();forsetproduct {push @out,"@_"; $#_=0; }@set;
+  is_deeply(\@out, ['1 a','1 b','1 c','2 a','2 b','2 c'], 'forsetproduct modify size of @_ in block');
+
+  @set=([1,2],[qw/a b c/]);  @out=();forsetproduct {push @out,"@_"; @_=(1..10); }@set;
+  is_deeply(\@out, ['1 a','1 b','1 c','2 a','2 b','2 c'], 'forsetproduct replace @_ in sub');
 }

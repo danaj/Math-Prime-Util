@@ -3021,6 +3021,68 @@ forcomb (SV* block, IN SV* svn, IN SV* svk = 0)
     END_FORCOUNT;
 
 void
+forsetproduct (SV* block, ...)
+  PROTOTYPE: &@
+  PREINIT:
+    IV narrays, i, *arlen, *arcnt;
+    AV **arptr;
+    SV **arout;
+    GV *gv;
+    HV *stash;
+    CV *cv;
+    DECL_FORCOUNT;
+    dMY_CXT;
+  PPCODE:
+    cv = sv_2cv(block, &stash, &gv, 0);
+    if (cv == Nullcv) croak("Not a subroutine reference");
+
+    narrays = items-1;
+    if (narrays < 1) return;
+
+    for (i = 1; i <= narrays; i++) {
+      SvGETMAGIC(ST(i));
+      if ((!SvROK(ST(i))) || (SvTYPE(SvRV(ST(i))) != SVt_PVAV))
+        croak("forsetproduct arguments must be array references");
+      if (av_len((AV *)SvRV(ST(i))) < 0)
+        return;
+    }
+
+    Newz(0, arcnt, narrays, IV);
+    New(0, arlen, narrays, IV);
+    New(0, arptr, narrays, AV*);
+    New(0, arout, narrays, SV*);
+    for (i = 0; i < narrays; i++) {
+      arptr[i] = (AV*) SvRV(ST(i+1));
+      arlen[i] = 1 + av_len(arptr[i]);
+      arout[i] = AvARRAY(arptr[i])[0];
+    }
+
+    START_FORCOUNT;
+    do {
+      {
+        PUSHMARK(SP);
+        EXTEND(SP, narrays);
+        for (i = 0; i < narrays; i++)
+          PUSHs(arout[i]);
+        PUTBACK;
+        call_sv((SV*)cv, G_VOID|G_DISCARD);
+        SPAGAIN;
+        CHECK_FORCOUNT;
+      }
+      for (i = narrays-1; i >= 0; i--) {
+        arcnt[i]++;
+        if (arcnt[i] >= arlen[i])  arcnt[i] = 0;
+        arout[i] = AvARRAY(arptr[i])[arcnt[i]];
+        if (arcnt[i] > 0)  break;
+      }
+    } while (i >= 0);
+    Safefree(arout);
+    Safefree(arptr);
+    Safefree(arlen);
+    Safefree(arcnt);
+    END_FORCOUNT;
+
+void
 forfactored (SV* block, IN SV* svbeg, IN SV* svend = 0)
   ALIAS:
     forsquarefree = 1

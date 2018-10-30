@@ -63,7 +63,7 @@ sub mpu_public_regex {
       primes twin_primes semi_primes ramanujan_primes
       sieve_prime_cluster sieve_range
       forprimes forcomposites foroddcomposites forsemiprimes fordivisors
-      forpart forcomp forcomb forperm forderange formultiperm
+      forpart forcomp forcomb forperm forderange formultiperm forsetproduct
       forfactored forsquarefree
       lastfor
       numtoperm permtonum randperm shuffle

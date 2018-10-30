@@ -29,7 +29,7 @@ add_stopwords(qw/bigint bigints
                  RiemannR LambertW
                  csrand srand irand irand64 drand urandomb urandomm
                  forprimes forcomposites foroddcomposites fordivisors
-                 forpart forcomp forcomb forperm forderange formultiperm
+                 forpart forcomp forcomb forperm forderange formultiperm forsetproduct
                  forsemiprimes forfactored forsquarefree
                  lastfor
                  numtoperm permtonum randperm

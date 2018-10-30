@@ -138,6 +138,7 @@ Tags:
   forperm { ... } n                   loop over permutations
   formultiperm { ... } \@n            loop over multiset permutations
   forderange { ... } n                loop over derangements
+  forsetproduct { ... } \@a[,...]     loop over Cartesian product of lists
   prime_iterator                      returns a simple prime iterator
   prime_iterator_object               returns a prime iterator object
   lastfor                             stop iteration of for.... loop

@@ -28,7 +28,7 @@ my @functions =  qw(
       lucas_sequence lucasu lucasv
       primes twin_primes ramanujan_primes sieve_prime_cluster sieve_range
       forprimes forcomposites foroddcomposites forsemiprimes fordivisors
-      forpart forcomp forcomb forperm forderange formultiperm
+      forpart forcomp forcomb forperm forderange formultiperm forsetproduct
       forfactored forsquarefree
       lastfor
       numtoperm permtonum randperm shuffle
