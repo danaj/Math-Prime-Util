@@ -2847,9 +2847,9 @@ forpart (SV* block, IN SV* svn, IN SV* svh = 0)
     }
 
     if (n==0 && nmin <= 1) {
-      { dSP; ENTER; PUSHMARK(SP);
+      { PUSHMARK(SP);
         /* Nothing */
-        PUTBACK; call_sv((SV*)cv, G_VOID|G_DISCARD); LEAVE;
+        PUTBACK; call_sv((SV*)cv, G_VOID|G_DISCARD); SPAGAIN;
       }
     }
     if (n >= nmin && nmin <= nmax && amin <= amax && nmax > 0 && amax > 0)
@@ -2903,10 +2903,9 @@ forpart (SV* block, IN SV* svn, IN SV* svh = 0)
           if (i <= k) continue;
         }
 
-        { dSP; ENTER; PUSHMARK(SP);
-          EXTEND(SP, (IV)k); for (i = 0; i <= k; i++) { PUSHs(svals[a[i]]); }
-          PUTBACK; call_sv((SV*)cv, G_VOID|G_DISCARD); LEAVE;
-        }
+        PUSHMARK(SP); EXTEND(SP, (IV)k);
+        for (i = 0; i <= k; i++) { PUSHs(svals[a[i]]); }
+        PUTBACK; call_sv((SV*)cv, G_VOID|G_DISCARD); SPAGAIN;
         CHECK_FORCOUNT;
       }
       Safefree(a);
@@ -2977,10 +2976,9 @@ forcomb (SV* block, IN SV* svn, IN SV* svk = 0)
       }
       while (1) {
         if (ix < 2 || k != 1) {
-          dSP; ENTER; PUSHMARK(SP);
-          EXTEND(SP, ((IV)k));
+          PUSHMARK(SP); EXTEND(SP, ((IV)k));
           for (i = 0; i < k; i++) { PUSHs(svals[ cm[k-i-1]-1 ]); }
-          PUTBACK; call_sv((SV*)cv, G_VOID|G_DISCARD); LEAVE;
+          PUTBACK; call_sv((SV*)cv, G_VOID|G_DISCARD); SPAGAIN;
           CHECK_FORCOUNT;
         }
         if (ix == 0) {
@@ -3059,16 +3057,10 @@ forsetproduct (SV* block, ...)
 
     START_FORCOUNT;
     do {
-      {
-        PUSHMARK(SP);
-        EXTEND(SP, narrays);
-        for (i = 0; i < narrays; i++)
-          PUSHs(arout[i]);
-        PUTBACK;
-        call_sv((SV*)cv, G_VOID|G_DISCARD);
-        SPAGAIN;
-        CHECK_FORCOUNT;
-      }
+      PUSHMARK(SP); EXTEND(SP, narrays);
+      for (i = 0; i < narrays; i++) { PUSHs(arout[i]); }
+      PUTBACK; call_sv((SV*)cv, G_VOID|G_DISCARD); SPAGAIN;
+      CHECK_FORCOUNT;
       for (i = narrays-1; i >= 0; i--) {
         arcnt[i]++;
         if (arcnt[i] >= arlen[i])  arcnt[i] = 0;
@@ -3129,9 +3121,9 @@ forfactored (SV* block, IN SV* svbeg, IN SV* svend = 0)
     GvSV(PL_defgv) = svarg;
     START_FORCOUNT;
     if (beg <= 1) {
-      dSP; ENTER; PUSHMARK(SP);
+      PUSHMARK(SP);
       sv_setuv(svarg, 1);
-      PUTBACK; call_sv((SV*)cv, G_VOID|G_DISCARD); LEAVE;
+      PUTBACK; call_sv((SV*)cv, G_VOID|G_DISCARD); SPAGAIN;
       beg = 2;
     }
     fctx = factor_range_init(beg, end, ix);
@@ -3140,10 +3132,9 @@ forfactored (SV* block, IN SV* svbeg, IN SV* svend = 0)
       nfactors = factor_range_next(&fctx);
       if (nfactors > 0) {
         /* TODO: Figure out how to use multicall for this. */
-        dSP; ENTER; PUSHMARK(SP);
+        PUSHMARK(SP); EXTEND(SP, nfactors);
         sv_setuv(svarg, fctx.n);
         factors = fctx.factors;
-        EXTEND(SP, nfactors);
         for (i = 0; i < nfactors; i++) {
           SV* sv = svals[i];
           SvREADONLY_off(sv);
@@ -3151,7 +3142,7 @@ forfactored (SV* block, IN SV* svbeg, IN SV* svend = 0)
           SvREADONLY_on(sv);
           PUSHs(sv);
         }
-        PUTBACK; call_sv((SV*)cv, G_VOID|G_DISCARD); LEAVE;
+        PUTBACK; call_sv((SV*)cv, G_VOID|G_DISCARD); SPAGAIN;
       }
     }
     SvREFCNT_dec(svarg);
