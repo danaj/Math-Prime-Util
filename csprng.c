@@ -59,30 +59,27 @@
 
 /*****************************************************************************/
 
-/* We put a simple non-CS PRNG here to help fill small seeds.
- * I'd like to use PCG64 or Xoroshiro128+ here, but to be maximally
- * portable and reproducible, we'll use PCG (RXS M XS 32).
- */
+/* We put a simple 32-bit non-CS PRNG here to help fill small seeds. */
 #if 0
-/* PCG XSH RR 64/32.  32-bit output, 64-bit state and types. */
-uint32_t prng_next(char* rng) {
-  uint32_t xorshifted, rot;
-  uint64_t *state = (uint64_t*) rng;
-  uint64_t oldstate = state[0];
-  pcg_state = oldstate * 6364136223846793005ULL + state[1];
-  xorshifted = ((oldstate >> 18u) ^ oldstate) >> 27u;
-  rot = oldstate >> 59u;
-  return (xorshifted >> rot) | (xorshifted << ((-rot) & 31));
+/* XOSHIRO128**  32-bit output, 32-bit types, 128-bit state */
+static INLINE uint32_t rotl(const uint32_t x, int k) {
+  return (x << k) | (x >> (32 - k));
+}
+uint32_t prng_next(char* ctx) {
+  uint32_t *s = (uint32_t*) ctx;
+  const uint32_t result_starstar = rotl(s[0] * 5, 7) * 9;
+  const uint32_t t = s[1] << 9;
+  s[2] ^= s[0];  s[3] ^= s[1];  s[1] ^= s[2];  s[0] ^= s[3];
+  s[2] ^= t;
+  s[3] = rotl(s[3], 11);
+  return result_starstar;
 }
 char* prng_new(uint32_t a, uint32_t b, uint32_t c, uint32_t d) {
-  uint64_t *state, initstate, initseq;
-  New(0, state, 2, uint64_t);
-  initstate = (((uint64_t)a) << 32) | b;
-  initseq = (((uint64_t)c) << 32) | d;
-  state[0] = 0U;
-  state[1] = (initseq << 1u) | 1u;
+  uint32_t *state;
+  New(0, state, 4, uint32_t);
+  state[0] = 1;  state[1] = b;  state[2] = c;  state[3] = d;
   (void) prng_next((char*)state);
-  state[0] += initstate;
+  state[0] += a;
   (void) prng_next((char*)state);
   return (char*) state;
 }
