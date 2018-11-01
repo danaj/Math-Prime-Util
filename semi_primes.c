@@ -105,20 +105,6 @@ UV range_semiprime_sieve(UV** semis, UV lo, UV hi)
   if (lo < 4) lo = 4;
   if (hi > MPU_MAX_SEMI_PRIME) hi = MPU_MAX_SEMI_PRIME;
 
-#if 0
-  /* An interesting idea and surprisingly fast.  But numerous issues. */
-  if (semis == 0 && lo <= 4 && hi <= 2000000000UL) {
-    UV i, j, xsize, lim = hi/2 + 1000;
-    UV *pr = array_of_primes_in_range(&xsize, 0, lim);
-    /* TODO: we could fill S then sort after */
-    for (i = 0; pr[i] * pr[i] < hi; i++)
-      for (j = i; pr[i] * pr[j] < hi; j++)
-        count++;
-    Safefree(pr);
-    return count;
-  }
-#endif
-
   if (hi <= _semiprimelist[NSEMIPRIMELIST-1]) {
     if (semis == 0) {
       for (i = 1; i < NSEMIPRIMELIST && _semiprimelist[i] <= hi; i++)
@@ -183,6 +169,52 @@ static UV _range_semiprime_count_iterate(UV lo, UV hi)
   return sum;
 }
 
+#if 0
+static int _numcmp(const void *a, const void *b)
+  { const UV *x = a, *y = b; return (*x > *y) ? 1 : (*x < *y) ? -1 : 0; }
+
+static UV _range_semiprime_selection(UV** semis, UV lo, UV hi)
+{
+  UV *S = 0, *pr, cn = 0, count = 0;
+  UV i, xsize, lim = hi/2 + 1000, sqrtn = isqrt(hi);
+
+  if (lo < 4) lo = 4;
+  if (hi > MPU_MAX_SEMI_PRIME) hi = MPU_MAX_SEMI_PRIME;
+
+  if (semis != 0) {
+    cn = 50 + 1.01 * (semiprime_count_approx(hi) - semiprime_count_approx(lo));
+    New(0, S, cn, UV);
+  }
+
+  pr = array_of_primes_in_range(&xsize, 0, lim);
+
+  for (i = 0; pr[i] <= sqrtn; i++) {
+    UV const pi = pr[i], jlo = (lo+pi-1)/pi, jhi = hi/pi;
+    UV skip, j = i;
+    if (pr[j] < jlo)
+     for (skip = 2048; skip > 0; skip >>= 1)
+       while (j+skip-1 < xsize && pr[j+skip-1] < jlo)
+         j += skip;
+    if (semis == 0) {
+      while (pr[j++] <= jhi)
+        count++;
+    } else {
+      for (; pr[j] <= jhi; j++) {
+        if (count >= cn)
+          Renew(S, cn += 4000, UV);
+        S[count++] = pi * pr[j];
+      }
+    }
+  }
+  Safefree(pr);
+  if (semis != 0) {
+    qsort(S, count, sizeof(UV), _numcmp);
+    *semis = S;
+  }
+  return count;
+}
+#endif
+
 
 
 UV semiprime_count(UV lo, UV hi)
@@ -201,6 +233,7 @@ UV semiprime_count(UV lo, UV hi)
     MPUverbose(2, "semiprimes %"UVuf"-%"UVuf" via iteration\n", lo, hi);
     return _range_semiprime_count_iterate(lo,hi);
   }
+  /* TODO: Determine when _range_semiprime_selection(0,lo,hi) is better */
   if ((hi-lo+1) < hi / (isqrt(hi)/4)) {
     MPUverbose(2, "semiprimes %"UVuf"-%"UVuf" via sieving\n", lo, hi);
     return range_semiprime_sieve(0, lo, hi);
@@ -242,22 +275,25 @@ UV nth_semiprime_approx(UV n) {
 
   /* Piecewise with blending.  Hacky and maybe overkill, but it makes
    * a big performance difference, especially at the high end.
-   * lo: 256-2^27.  md: 2^26-2^48.  hi: 2^47-2^64
+   *     Interp Range    Crossover to next
+   * lo   2^8  - 2^28      2^26 - 2^27
+   * md   2^25 - 2^48      2^46 - 2^47
+   * hi   2^45 - 2^64
    */
   logn = log(n);   log2n = log(logn);   log3n = log(log2n);   log4n=log(log3n);
-  err_lo = 1.000 - 0.00042987274*logn + 0.15986706047*log2n - 0.45850248915*log3n + 0.00003463804*log4n;
-  err_md = 0.968 - 0.00067022785*logn + 0.09017497276*log2n - 0.23372161553*log3n - 0.01426276165*log4n;
-  err_hi = 0.968 - 0.00009814310*logn + 0.01802581152*log2n - 0.04743957673*log3n - 0.01329705384*log4n;
+  err_lo = 1.000 - 0.00018216088*logn + 0.18099609886*log2n - 0.51962474356*log3n - 0.01136143381*log4n;
+  err_md = 0.968 - 0.00072754071*logn + 0.09673438518*log2n - 0.25062686777*log3n - 0.01374596430*log4n;
+  err_hi = 0.968 - 0.00007946547*logn + 0.01505456623*log2n - 0.03975918039*log3n - 0.01259093260*log4n;
 
   if        (n <= (1UL<<26)) {
     err_factor = err_lo;
   } else if (n < (1UL<<27)) { /* Linear interpolate the two in the blend area */
     double x = (n - 67108864.0L) / 67108864.0L;
     err_factor = ((1.0L-x) * err_lo) + (x * err_md);
-  } else if (logn <= 32.57791748632) {
+  } else if (logn <= 31.88477030575) {
     err_factor = err_md;
-  } else if (logn < 33.27106466687) {
-    double x = (n - 140737488355328.0L) / 140737488355328.0L;
+  } else if (logn <  32.57791748632) {
+    double x = (n - 70368744177664.0L) / 70368744177664.0L;
     err_factor = ((1.0L-x) * err_md) + (x * err_hi);
   } else {
     err_factor = err_hi;
