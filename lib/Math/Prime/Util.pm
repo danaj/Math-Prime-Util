@@ -2235,9 +2235,8 @@ Frobenius test of Sergey Khashin.  This ensures C<n> is not a perfect square,
 selects the parameter C<c> as the smallest odd prime such that C<(c|n)=-1>,
 then verifies that C<(1+D)^n = (1-D) mod n> where C<D = sqrt(c) mod n>.
 
-There are no known pseudoprimes to this test and Khashin shows that under
-certain restrictions there are no counterexamples under C<2^60>.  Any that
-exist must have either one factor under 19 or have C<c E<gt> 128>.
+There are no known pseudoprimes to this test and Khashin (2018) shows
+there are no counterexamples under C<2^64>.
 Performance at 1e12 is about 40% slower than BPSW.
 
 =head2 miller_rabin_random

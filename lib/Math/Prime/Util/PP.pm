@@ -4125,15 +4125,19 @@ sub is_frobenius_khashin_pseudoprime {
 
   $n = Math::BigInt->new("$n") unless ref($n) eq 'Math::BigInt';
 
-  my $k;
-  my $c = 1;
-  do {
-    $c += 2;
-    $k = kronecker($c, $n);
-  } while $k == 1;
-  return 0 if $k == 0;
+  my($k,$c) = (2,1);
+  if    ($n % 4 == 3) { $c = $n-1; }
+  elsif ($n % 8 == 5) { $c = 2; }
+  else {
+    do {
+      $c += 2;
+      $k = kronecker($c, $n);
+    } while $k == 1;
+  }
+  return 0 if $k == 0 || ($k == 2 && !($n % 3));;
 
-  my($ra,$rb,$a,$b,$d) = (1,1,1,1,$n-1);
+  my $ea = ($k == 2) ? 2 : 1;
+  my($ra,$rb,$a,$b,$d) = ($ea,1,$ea,1,$n-1);
   while (!$d->is_zero) {
     if ($d->is_odd()) {
       ($ra, $rb) = ( (($ra*$a)%$n + ((($rb*$b)%$n)*$c)%$n) % $n,
@@ -4145,7 +4149,7 @@ sub is_frobenius_khashin_pseudoprime {
                    (($b*$a)%$n + ($a*$b)%$n) % $n );
     }
   }
-  return ($ra == 1 && $rb == $n-1) ? 1 : 0;
+  return ($ra == $ea && $rb == $n-1) ? 1 : 0;
 }
 
 sub is_frobenius_underwood_pseudoprime {

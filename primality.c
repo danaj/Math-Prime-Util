@@ -531,7 +531,7 @@ int is_lucas_pseudoprime(UV n, int strength)
   IV P, Q, D;
   UV U, V, Qk, d, s;
 
-  if (n < 7) return (n == 2 || n == 3 || n == 5);
+  if (n < 5) return (n == 2 || n == 3);
   if ((n % 2) == 0 || n == UV_MAX) return 0;
 
   if (strength < 3) {
@@ -970,28 +970,28 @@ int is_perrin_pseudoprime(UV n, int restricted)
     UV C = submod(mulmod(B2,3,n),2,n);
     if (S[0] == A  &&  S[2] == B  &&  S[3] == B  &&  S[5] == C  &&
         B != 3  &&  submod(mulmod(B2,B,n),B,n) == 1) {
-      if (_XS_get_verbose()>1) printf("%"UVuf" Q-Type  %"UVuf" -1 %"UVuf"  %"UVuf" 0 %"UVuf"\n", n, A, B, B, C);
+      MPUverbose(2, "%"UVuf" Q-Type  %"UVuf" -1 %"UVuf"  %"UVuf" 0 %"UVuf"\n", n, A, B, B, C);
       return 1;
     }
 
   } else {            /* S-Type or I-Type */
 
     if (jacobi == 0 && n != 23 && restricted > 2) {
-      if (_XS_get_verbose()>1) printf("%"UVuf" Jacobi %d\n",n,jacobi);
+      MPUverbose(2, "%"UVuf" Jacobi %d\n",n,jacobi);
       return 0;  /* Adams/Shanks allows (-23|n) = 0 for S-Type */
     }
 
     if (S[0] == 1  &&  S[2] == 3  &&  S[3] == 3  &&  S[5] == 2) {
-      if (_XS_get_verbose()>1) printf("%"UVuf" S-Type  1 -1 3  3 0 2\n",n);
+      MPUverbose(2, "%"UVuf" S-Type  1 -1 3  3 0 2\n",n);
       return 1;
     } else if (S[0] == 0  &&  S[5] == n-1  &&  S[2] != S[3]  &&
                addmod(S[2],S[3],n) == n-3  && sqrmod(submod(S[2],S[3],n),n) == n-(23%n)) {
-      if (_XS_get_verbose()>1) printf("%"UVuf" I-Type  0 -1 %"UVuf"  %"UVuf" 0 -1\n",n, S[2], S[3]);
+      MPUverbose(2, "%"UVuf" I-Type  0 -1 %"UVuf"  %"UVuf" 0 -1\n",n, S[2], S[3]);
       return 1;
     }
 
   }
-  if (_XS_get_verbose()>1) printf("%"UVuf" ? %2d ?  %"UVuf" -1 %"UVuf"  %"UVuf" 0 %"UVuf"\n", n, jacobi, S[0],S[2],S[3],S[5]);
+  MPUverbose(2, "%"UVuf" ? %2d ?  %"UVuf" -1 %"UVuf"  %"UVuf" 0 %"UVuf"\n", n, jacobi, S[0],S[2],S[3],S[5]);
   return 0;
 }
 
@@ -1018,7 +1018,7 @@ int is_frobenius_pseudoprime(UV n, IV P, IV Q)
     } while (k == 1);
     if (k == 0) return 0;
     /* D=P^2-8 will not be a perfect square */
-    if (_XS_get_verbose()) printf("%"UVuf" Frobenius (%"IVdf",%"IVdf") : x^2 - %"IVdf"x + %"IVdf"\n", n, P, Q, P, Q);
+    MPUverbose(1, "%"UVuf" Frobenius (%"IVdf",%"IVdf") : x^2 - %"IVdf"x + %"IVdf"\n", n, P, Q, P, Q);
     Vcomp = 4;
   } else {
     D = P*P-4*Q;
@@ -1046,46 +1046,52 @@ int is_frobenius_pseudoprime(UV n, IV P, IV Q)
   }
 
   lucas_seq(&U, &V, &Qk, n, P, Q, n-k);
-  /* if (_XS_get_verbose()) printf("%"UVuf" Frobenius U = %"UVuf" V = %"UVuf"\n", n, U, V); */
+  /* MPUverbose(1, "%"UVuf" Frobenius U = %"UVuf" V = %"UVuf"\n", n, U, V); */
   if (U == 0 && V == Vcomp) return 1;
   return 0;
 }
 
 /*
- * Khashin, 2013, "Counterexamples for Frobenius primality test"
- * http://arxiv.org/abs/1307.7920
- * 1. Select c as first odd prime where (c,n)=-1.
- * 2. Check (1 + sqrt(c))^n mod n  equiv  (1 - sqrt(c) mod n
+ * Khashin, July 2018, https://arxiv.org/pdf/1807.07249.pdf
+ * "Evaluation of the Effectiveness of the Frobenius Primality Test"
  *
- * His Sep 2016 talk starts with c = -1,2 using checks:
+ * See also the earlier https://arxiv.org/abs/1307.7920
+ * "Counterexamples for Frobenius primality test"
+ *
+ * 1. select c as first in [-1,2,3,4,5,6,...] where (c|n)=-1
+ * 2. Check this holds:
  *    (2+sqrt(c)^n = 2-sqrt(c)  mod n   for c = -1,2
- *    (1+sqrt(c)^n = 1-sqrt(c)  mod n   for c = odd prime
- * There doesn't seem to be a big advantage for this change.
+ *    (1+sqrt(c)^n = 1-sqrt(c)  mod n   for c = 3,4,5,6,...
+ *
+ * The paper claims there are no 64-bit counterexamples.
  */
 int is_frobenius_khashin_pseudoprime(UV n)
 {
-  int k;
-  UV ra, rb, a, b, d = n-1, c = 1;
+  int k = 2;
+  UV ea, ra, rb, a, b, d = n-1, c = 1;
 
   if (n < 7) return (n == 2 || n == 3 || n == 5);
   if ((n % 2) == 0 || n == UV_MAX) return 0;
   if (is_perfect_square(n)) return 0;
 
-  /* c = first odd prime where (c|n)=-1 */
-  do {
+  if      (n % 4 == 3) c = d;
+  else if (n % 8 == 5) c = 2;
+  else
+  do { /* c = first odd prime where (c|n)=-1 */
     c += 2;
     if (c==9 || (c>=15 && (!(c%3) || !(c%5) || !(c%7) || !(c%11) || !(c%13))))
       continue;
     k = kronecker_uu(c, n);
   } while (k == 1);
-  if (k == 0) return 0;
+  if (k == 0 || (k == 2 && n % 3 == 0)) return 0;
 
 #if USE_MONTMATH
   {
     const uint64_t npi = mont_inverse(n);
     const uint64_t mont1 = mont_get1(n);
     const uint64_t montc = mont_geta(c, n);
-    ra = rb = a = b = mont1;
+    ra = a = ea = (k == 2) ? mont_get2(n) : mont1;
+    rb = b = mont1;
     while (d) {
       if (d & 1) {
         UV ta=ra, tb=rb;
@@ -1100,10 +1106,11 @@ int is_frobenius_khashin_pseudoprime(UV n)
         a = addmod(mont_mulmod(a,a,n),t,n);
       }
     }
-    return (ra == mont1 && rb == n-mont1);
+    return (ra == ea && rb == n-mont1);
   }
 #else
-  ra = rb = a = b = 1;
+  ra = a = ea = (k == 2) ? 2 : 1;
+  rb = b = 1;
   while (d) {
     if (d & 1) {
       /* This is faster than the 3-mulmod 5-addmod version */
@@ -1119,7 +1126,7 @@ int is_frobenius_khashin_pseudoprime(UV n)
       a = addmod(sqrmod(a,n),t,n);
     }
   }
-  return (ra == 1 && rb == n-1);
+  return (ra == ea && rb == n-1);
 #endif
 }
 
@@ -1228,7 +1235,7 @@ int is_frobenius_underwood_pseudoprime(UV n)
     }
   }
 
-  if (_XS_get_verbose()>1) printf("%"UVuf" is %s with x = %"UVuf"\n", n, (a == 0 && b == result) ? "probably prime" : "composite", x);
+  MPUverbose(2, "%"UVuf" is %s with x = %"UVuf"\n", n, (a == 0 && b == result) ? "probably prime" : "composite", x);
   if (a == 0 && b == result)
     return 1;
   return 0;
@@ -1242,7 +1249,7 @@ int is_frobenius_underwood_pseudoprime(UV n)
  * instead we'll use a table. */
 #define NUM_KNOWN_MERSENNE_PRIMES 50
 static const uint32_t _mersenne_primes[NUM_KNOWN_MERSENNE_PRIMES] = {2,3,5,7,13,17,19,31,61,89,107,127,521,607,1279,2203,2281,3217,4253,4423,9689,9941,11213,19937,21701,23209,44497,86243,110503,132049,216091,756839,859433,1257787,1398269,2976221,3021377,6972593,13466917,20996011,24036583,25964951,30402457,32582657,37156667,42643801,43112609,57885161,74207281,77232917};
-#define LAST_CHECKED_MERSENNE 44574949
+#define LAST_CHECKED_MERSENNE 45313991
 int is_mersenne_prime(UV p)
 {
   int i;
