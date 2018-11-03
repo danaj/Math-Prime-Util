@@ -359,6 +359,54 @@ static void csprng_init_seed(void* ctx) {
   Safefree(data);
 }
 
+static void _comb_init(UV* cm, UV k, int derangement) {
+  UV i;
+  cm[0] = UV_MAX;
+  for (i = 0; i < k; i++)
+    cm[i] = k-i;
+  if (derangement && k >= 2) {   /* Make derangements start deranged */
+    for (i = 0; i < k; i++)
+      cm[k-i-1] = (i&1) ? i : i+2;
+    if (k & 1) {
+      cm[0] = k-2;
+      cm[1] = k;
+    }
+  }
+}
+
+static int _comb_iterate(UV* cm, UV k, UV n, int ix) {
+  UV i, j, m;
+  if (ix == 0) {
+    if (cm[0]++ < n)  return 0;                /* Increment last value */
+    for (i = 1; i < k && cm[i] >= n-i; i++) ;  /* Find next index to incr */
+    if (i >= k)  return 1;                     /* Done! */
+    cm[i]++;                                   /* Increment this one */
+    while (i-- > 0)  cm[i] = cm[i+1] + 1;      /* Set the rest */
+  } else if (ix == 1) {
+    for (j = 1; j < k && cm[j] > cm[j-1]; j++) ;  /* Find last decrease */
+    if (j >= k) return 1;                         /* Done! */
+    for (m = 0; cm[j] > cm[m]; m++) ;             /* Find next greater */
+    { UV t = cm[j];  cm[j] = cm[m];  cm[m] = t; } /* Swap */
+    for (i = j-1, m = 0;  m < i;  i--, m++)       /* Reverse the end */
+      { UV t = cm[i];  cm[i] = cm[m];  cm[m] = t; }
+  } else {
+    REDERANGE:
+    for (j = 1; j < k && cm[j] > cm[j-1]; j++) ;  /* Find last decrease */
+    if (j >= k) return 1;                         /* Done! */
+    for (m = 0; cm[j] > cm[m]; m++) ;             /* Find next greater */
+    { UV t = cm[j];  cm[j] = cm[m];  cm[m] = t; } /* Swap */
+    if (cm[j] == k-j) goto REDERANGE;             /* Skip? */
+    for (i = j-1, m = 0;  m < i;  i--, m++)       /* Reverse the end */
+      { UV t = cm[i];  cm[i] = cm[m];  cm[m] = t; }
+    for (i = 0; i < k; i++)                       /* Check deranged */
+      if (cm[k-i-1]-1 == i)
+        break;
+    if (i != k) goto REDERANGE;
+  }
+  return 0;
+}
+
+
 
 MODULE = Math::Prime::Util	PACKAGE = Math::Prime::Util
 
@@ -2922,7 +2970,7 @@ forcomb (SV* block, IN SV* svn, IN SV* svk = 0)
     forderange = 2
   PROTOTYPE: &$;$
   PREINIT:
-    UV i, n, k, j, m, begk, endk;
+    UV i, n, k, begk, endk;
     GV *gv;
     HV *stash;
     CV *cv;
@@ -2962,54 +3010,47 @@ forcomb (SV* block, IN SV* svn, IN SV* svk = 0)
     New(0, cm, endk+1, UV);
 
     START_FORCOUNT;
-    for (k = begk; k <= endk; k++) {
-      cm[0] = UV_MAX;
-      for (i = 0; i < k; i++)
-        cm[i] = k-i;
-      if (ix == 2 && k >= 2) {   /* Make derangements start deranged */
-        for (i = 0; i < k; i++)
-          cm[k-i-1] = (i&1) ? i : i+2;
-        if (k & 1) {
-          cm[0] = k-2;
-          cm[1] = k;
-        }
-      }
-      while (1) {
-        if (ix < 2 || k != 1) {
-          PUSHMARK(SP); EXTEND(SP, ((IV)k));
-          for (i = 0; i < k; i++) { PUSHs(svals[ cm[k-i-1]-1 ]); }
-          PUTBACK; call_sv((SV*)cv, G_VOID|G_DISCARD); SPAGAIN;
+#if USE_MULTICALL
+    if (!CvISXSUB(cv)) {
+      dMULTICALL;
+      I32 gimme = G_VOID;
+      AV *av = save_ary(PL_defgv);
+      AvREAL_off(av);
+      PUSH_MULTICALL(cv);
+      for (k = begk; k <= endk; k++) {
+        _comb_init(cm, k, ix == 2);
+        while (1) {
+          if (ix < 2 || k != 1) {
+            IV j;
+            av_extend(av, k-1);
+            av_fill(av, k-1);
+            for (j = k-1; j >= 0; j--)
+              AvARRAY(av)[j] = svals[ cm[k-j-1]-1 ];
+            MULTICALL;
+          }
           CHECK_FORCOUNT;
+          if (_comb_iterate(cm, k, n, ix)) break;
         }
-        if (ix == 0) {
-          if (cm[0]++ < n)  continue;                /* Increment last value */
-          for (i = 1; i < k && cm[i] >= n-i; i++) ;  /* Find next index to incr */
-          if (i >= k)  break;                        /* Done! */
-          cm[i]++;                                   /* Increment this one */
-          while (i-- > 0)  cm[i] = cm[i+1] + 1;      /* Set the rest */
-        } else if (ix == 1) {
-          for (j = 1; j < k && cm[j] > cm[j-1]; j++) ;  /* Find last decrease */
-          if (j >= k) break;                            /* Done! */
-          for (m = 0; cm[j] > cm[m]; m++) ;             /* Find next greater */
-          { UV t = cm[j];  cm[j] = cm[m];  cm[m] = t; } /* Swap */
-          for (i = j-1, m = 0;  m < i;  i--, m++)       /* Reverse the end */
-            { UV t = cm[i];  cm[i] = cm[m];  cm[m] = t; }
-        } else {
-          REDERANGE:
-          for (j = 1; j < k && cm[j] > cm[j-1]; j++) ;  /* Find last decrease */
-          if (j >= k) break;                            /* Done! */
-          for (m = 0; cm[j] > cm[m]; m++) ;             /* Find next greater */
-          { UV t = cm[j];  cm[j] = cm[m];  cm[m] = t; } /* Swap */
-          if (cm[j] == k-j) goto REDERANGE;             /* Skip? */
-          for (i = j-1, m = 0;  m < i;  i--, m++)       /* Reverse the end */
-            { UV t = cm[i];  cm[i] = cm[m];  cm[m] = t; }
-          for (i = 0; i < k; i++)                       /* Check deranged */
-            if (cm[k-i-1]-1 == i)
-              break;
-          if (i != k) goto REDERANGE;
-        }
+        CHECK_FORCOUNT;
       }
-      CHECK_FORCOUNT;
+      FIX_MULTICALL_REFCOUNT;
+      POP_MULTICALL;
+    } else
+#endif
+    {
+      for (k = begk; k <= endk; k++) {
+        _comb_init(cm, k, ix == 2);
+        while (1) {
+          if (ix < 2 || k != 1) {
+            PUSHMARK(SP); EXTEND(SP, ((IV)k));
+            for (i = 0; i < k; i++) { PUSHs(svals[ cm[k-i-1]-1 ]); }
+            PUTBACK; call_sv((SV*)cv, G_VOID|G_DISCARD); SPAGAIN;
+          }
+          CHECK_FORCOUNT;
+          if (_comb_iterate(cm, k, n, ix)) break;
+        }
+        CHECK_FORCOUNT;
+      }
     }
 
     Safefree(cm);

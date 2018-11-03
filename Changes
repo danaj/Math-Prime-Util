@@ -42,6 +42,8 @@ Revision history for Perl module Math::Prime::Util
 
     - forfactored uses multicall.  Up to 2x faster.
 
+    - forperm, forcomb, forderange uses multicall.  2-3x faster.
+
     - Frobenius-Khashin algorithm changed from 2013 version to 2016/2018.
 
 
