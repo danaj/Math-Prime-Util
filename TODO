@@ -187,4 +187,4 @@
 
 - consider adding multifactorial.  See MPU::GMP.
 
-- multicall in forpart, forperm, and their XS aliases.
+- multicall in forpart/forcomp.
