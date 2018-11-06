@@ -282,8 +282,8 @@ UV nth_semiprime_approx(UV n) {
    */
   logn = log(n);   log2n = log(logn);   log3n = log(log2n);   log4n=log(log3n);
   err_lo = 1.000 - 0.00018216088*logn + 0.18099609886*log2n - 0.51962474356*log3n - 0.01136143381*log4n;
-  err_md = 0.968 - 0.00072754071*logn + 0.09673438518*log2n - 0.25062686777*log3n - 0.01374596430*log4n;
-  err_hi = 0.968 - 0.00007946547*logn + 0.01505456623*log2n - 0.03975918039*log3n - 0.01259093260*log4n;
+  err_md = 0.968 - 0.00073297945*logn + 0.09731690314*log2n - 0.25212500749*log3n - 0.01366795346*log4n;
+  err_hi = 0.968 - 0.00008034109*logn + 0.01522628393*log2n - 0.04020257367*log3n - 0.01266447175*log4n;
 
   if        (n <= (1UL<<26)) {
     err_factor = err_lo;

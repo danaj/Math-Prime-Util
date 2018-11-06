@@ -4979,8 +4979,12 @@ structure but twiddle the user array each call).
 There are numerous modules to perform a set product (aka Cartesian
 product or cross product).  These include L<Set::Product>,
 L<Math::Cartesian::Product>, L<Set::Scalar>, and L<Set::CrossProduct>,
-as well as a few others.  Our functions closely match L<Set::Product>
-in both high performance and functionality.
+as well as a few others.
+The L<Set::CartesianProduct::Lazy> module provides random access,
+albeit rather slowly.
+Our L</forsetproduct> matches L<Set::Product> in both high performance
+and functionality (that module's single function L<Set::Product/product>
+is essentially identical to ours).
 
 L<Math::Pari> supports a lot of features, with a great deal of overlap.  In
 general, MPU will be faster for native 64-bit integers, while it differs
