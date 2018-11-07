@@ -4976,7 +4976,7 @@ L<Algorithm::FastPermute> and L<Algorithm::Permute> are very similar
 but can be 2-10x faster than MPU (they use the same user-block
 structure but twiddle the user array each call).
 
-There are numerous modules to perform a set product (aka Cartesian
+There are numerous modules to perform a set product (also called Cartesian
 product or cross product).  These include L<Set::Product>,
 L<Math::Cartesian::Product>, L<Set::Scalar>, and L<Set::CrossProduct>,
 as well as a few others.
