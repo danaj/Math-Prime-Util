@@ -2057,6 +2057,8 @@ sub twin_prime_count_approx {
 sub semiprime_count_approx {
   my($n) = @_;
   return 0 if $n < 4;
+  _validate_positive_integer($n);
+  $n = _upgrade_to_float($n) if ref($n);
   my $l1 = log($n);
   my $l2 = log($l1);
   #my $est = $n * $l2 / $l1;
@@ -2112,7 +2114,9 @@ sub nth_semiprime {
 sub nth_semiprime_approx {
   my $n = shift;
   return undef if $n < 0;  ## no critic qw(ProhibitExplicitReturnUndef)
+  _validate_positive_integer($n);
   return (undef,4,6,9,10,14,15,21,22)[$n] if $n <= 8;
+  $n = _upgrade_to_float($n) if ref($n);
   my $l1 = log($n);
   my $l2 = log($l1);
   my $est = 0.966 * $n * $l1 / $l2;
