@@ -7,6 +7,8 @@ Revision history for Perl module Math::Prime::Util
     - Try to work around 32-bit platforms in semiprime approximations.
       Cannot reproduce on any of my 32-bit test platforms.
 
+    - Fix RT 127605, memory use in for... iterators.
+
 
 0.72 2018-11-08
 

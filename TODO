@@ -188,3 +188,5 @@
 - consider adding multifactorial.  See MPU::GMP.
 
 - multicall in forpart/forcomp.
+
+- check memory use for non-multicall.  We need enter/leave which were removed.
