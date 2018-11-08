@@ -286,7 +286,7 @@ signed char* range_moebius(UV lo, UV hi)
   UV nextlog, nextlogi;
 
   Newz(0, mu, count, signed char);
-  if (sqrtn*sqrtn != hi && sqrtn < (1UL<<(BITS_PER_WORD/2))-1) sqrtn++;
+  if (sqrtn*sqrtn != hi && sqrtn < (UVCONST(1)<<(BITS_PER_WORD/2))-1) sqrtn++;
 
   /* For small ranges, do it by hand */
   if (hi < 100 || count <= 10 || (hi > (1UL<<25) && count < icbrt(hi)/4)) {

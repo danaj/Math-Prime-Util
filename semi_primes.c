@@ -121,7 +121,7 @@ UV range_semiprime_sieve(UV** semis, UV lo, UV hi)
     unsigned char* nfacs;
     UV cutn, sqrtn = isqrt(hi);
     Newz(0, nfacs, hi-lo+1, unsigned char);
-    if (sqrtn*sqrtn < hi && sqrtn < (1UL<<(BITS_PER_WORD/2))-1) sqrtn++;
+    if (sqrtn*sqrtn < hi && sqrtn < (UVCONST(1)<<(BITS_PER_WORD/2))-1) sqrtn++;
     cutn = (sqrtn > 30000) ? 30000 : sqrtn;
     START_DO_FOR_EACH_PRIME(2, cutn) {
       MARKSEMI(p,nfacs,lo,hi);
