@@ -1,5 +1,13 @@
 Revision history for Perl module Math::Prime::Util
 
+0.73 ?
+
+    [FIXES]
+
+    - Try to work around 32-bit platforms in semiprime approximations.
+      Cannot reproduce on any of my 32-bit test platforms.
+
+
 0.72 2018-11-08
 
     [ADDED]
