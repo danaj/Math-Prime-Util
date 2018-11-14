@@ -923,56 +923,48 @@ sub inverse_totient {
   return wantarray ? (1,2) : 2 if $n == 1;
   return wantarray ? () : 0 if $n < 1 || ($n & 1);
 
-  my $do_bigint = ref($n) || $n > 2**49;
-  $n = Math::BigInt->new("$n") if !ref($n) && $do_bigint;
+  $n = Math::Prime::Util::_to_bigint("$n") if !ref($n) && $n > 2**49;
+  my $do_bigint = ref($n);
 
   if (is_prime($n >> 1)) {   # Coleman Remark 3.3 (Thm 3.1) and Prop 6.2
     return wantarray ? () : 0             if !is_prime($n+1);
     return wantarray ? ($n+1, 2*$n+2) : 2 if $n >= 10;
   }
 
-  my @divs = Math::Prime::Util::divisors($n);
-
   if (!wantarray) {
     my %r = ( 1 => 1 );
-    for my $d (@divs) {
+    Math::Prime::Util::fordivisors(sub { my $d = $_;
       $d = $do_bigint->new("$d") if $do_bigint;
       my $p = $d+1;
       if (Math::Prime::Util::is_prime($p)) {
         my($dp,@sumi,@sumv) = ($d);
         for my $v (1 .. 1 + Math::Prime::Util::valuation($n, $p)) {
-          my $ndiv = $n / $dp;
-          for my $d2 (@divs) {
-            next if $ndiv % $d2;
-            last if $d2 > $ndiv;
+          Math::Prime::Util::fordivisors(sub { my $d2 = $_;
             if (defined $r{$d2}) { push @sumi, $d2*$dp; push @sumv, $r{$d2}; }
-          }
+          }, $n / $dp);
           $dp *= $p;
         }
         $r{ $sumi[$_] } += $sumv[$_]  for 0 .. $#sumi;
       }
-    }
+    }, $n);
     return (defined $r{$n}) ? $r{$n} : 0;
   } else {
     my %r = ( 1 => [1] );
-    for my $d (@divs) {
+    Math::Prime::Util::fordivisors(sub { my $d = $_;
       $d = $do_bigint->new("$d") if $do_bigint;
       my $p = $d+1;
       if (Math::Prime::Util::is_prime($p)) {
         my($dp,$pp,@T) = ($d,$p);
         for my $v (1 .. 1 + Math::Prime::Util::valuation($n, $p)) {
-          my $ndiv = $n / $dp;
-          for my $d2 (@divs) {
-            next if $ndiv % $d2;
-            last if $d2 > $ndiv;
+          Math::Prime::Util::fordivisors(sub { my $d2 = $_;
             push @T, [ $d2*$dp, [map { $_ * $pp } @{ $r{$d2} }] ] if defined $r{$d2};
-          }
+          }, $n / $dp);
           $dp *= $p;
           $pp *= $p;
         }
         push @{$r{$_->[0]}}, @{$_->[1]} for @T;
       }
-    }
+    }, $n);
     return () unless defined $r{$n};
     delete @r{ grep { $_ != $n } keys %r };  # Delete all intermediate results
     my @result = sort { $a <=> $b } @{$r{$n}};
