@@ -137,6 +137,7 @@ sub entropy_bytes {
 
 *moebius = \&Math::Prime::Util::PP::moebius;
 *euler_phi = \&Math::Prime::Util::PP::euler_phi;
+*inverse_totient = \&Math::Prime::Util::PP::inverse_totient;
 
 sub jordan_totient {
   my($k, $n) = @_;

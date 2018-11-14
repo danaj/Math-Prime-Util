@@ -239,6 +239,7 @@ Tags:
   mertens(n)                          sum of Moebius for 1 to n
   euler_phi(n)                        Euler totient of n
   euler_phi(beg, end)                 Euler totient for a range
+  inverse_totient(n)                  image of Euler totient
   jordan_totient(n,k)                 Jordan's totient
   carmichael_lambda(n)                Carmichael's Lambda function
   ramanujan_sum(k,n)                  Ramanujan's sum

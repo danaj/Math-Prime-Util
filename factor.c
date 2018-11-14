@@ -358,9 +358,6 @@ static void _divisors_from_factors(UV nfactors, UV* fp, UV* fe, UV* res) {
   }
 }
 
-static int numcmp(const void *a, const void *b)
-  { const UV *x = a, *y = b; return (*x > *y) ? 1 : (*x < *y) ? -1 : 0; }
-
 UV* _divisor_list(UV n, UV *num_divisors)
 {
   UV factors[MPU_MAX_FACTORS+1];
@@ -383,7 +380,7 @@ UV* _divisor_list(UV n, UV *num_divisors)
   New(0, divs, ndivisors, UV);
   _divisors_from_factors(nfactors, factors, exponents, divs);
   /* Sort divisors (numeric ascending) */
-  qsort(divs, ndivisors, sizeof(UV), numcmp);
+  qsort(divs, ndivisors, sizeof(UV), _numcmp);
   /* Return number of divisors and list */
   *num_divisors = ndivisors;
   return divs;

@@ -3,6 +3,8 @@
 
 #include "ptypes.h"
 
+extern int _numcmp(const void *a, const void *b); /* qsort numerical sorting */
+
 extern int  _XS_get_verbose(void);
 extern void _XS_set_verbose(int v);
 extern int  _XS_get_callgmp(void);
@@ -68,6 +70,9 @@ extern int is_semiprime(UV n);
 extern int is_carmichael(UV n);
 extern UV  is_quasi_carmichael(UV n);  /* Returns number of bases */
 extern UV  pillai_v(UV n);             /* v: v! % n == n-1 && n % v != 1 */
+
+extern UV inverse_totient_count(UV n);
+extern UV* inverse_totient_list(UV *ntotients, UV n);
 
 extern UV stirling3(UV n, UV m);
 extern IV stirling2(UV n, UV m);

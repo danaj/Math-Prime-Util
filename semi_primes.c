@@ -170,9 +170,6 @@ static UV _range_semiprime_count_iterate(UV lo, UV hi)
 }
 
 #if 0
-static int _numcmp(const void *a, const void *b)
-  { const UV *x = a, *y = b; return (*x > *y) ? 1 : (*x < *y) ? -1 : 0; }
-
 static UV _range_semiprime_selection(UV** semis, UV lo, UV hi)
 {
   UV *S = 0, *pr, cn = 0, count = 0;

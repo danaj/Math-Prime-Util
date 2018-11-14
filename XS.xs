@@ -1717,23 +1717,27 @@ factor(IN SV* svn)
   ALIAS:
     factor_exp = 1
     divisors = 2
+    inverse_totient = 3
   PREINIT:
     U32 gimme_v;
-    int status, i, nfactors;
+    int status, i, nfactors, it_overflow;
   PPCODE:
     gimme_v = GIMME_V;
     status = _validate_int(aTHX_ svn, 0);
-    if (status == 1) {
+    it_overflow = (status == 1 && ix==3 && gimme_v == G_ARRAY && my_svuv(svn) > UV_MAX/7.5 );
+    if (status == 1 && !it_overflow) {
       UV factors[MPU_MAX_FACTORS+1];
       UV exponents[MPU_MAX_FACTORS+1];
       UV n = my_svuv(svn);
       if (gimme_v == G_SCALAR) {
+        UV res;
         switch (ix) {
-          case 0:  nfactors = factor(n, factors);        break;
-          case 1:  nfactors = factor_exp(n, factors, 0); break;
-          default: nfactors = divisor_sum(n, 0);         break;
+          case 0:  res = factor(n, factors);        break;
+          case 1:  res = factor_exp(n, factors, 0); break;
+          case 2:  res = divisor_sum(n, 0);         break;
+          default: res = inverse_totient_count(n);  break;
         }
-        PUSHs(sv_2mortal(newSVuv( nfactors )));
+        PUSHs(sv_2mortal(newSVuv( res )));
       } else if (gimme_v == G_ARRAY) {
         switch (ix) {
           case 0:  nfactors = factor(n, factors);
@@ -1751,7 +1755,7 @@ factor(IN SV* svn)
                      PUSHs( sv_2mortal(newRV_noinc( (SV*) av )) );
                    }
                    break;
-          default: {
+          case 2: {
                      UV ndivisors;
                      UV* divs = _divisor_list(n, &ndivisors);
                      EXTEND(SP, (IV)ndivisors);
@@ -1760,13 +1764,23 @@ factor(IN SV* svn)
                      Safefree(divs);
                    }
                    break;
+          default: {
+                     UV ntotients;
+                     UV* tots = inverse_totient_list(&ntotients, n);
+                     EXTEND(SP, (IV)ntotients);
+                     for (i = 0; (UV)i < ntotients; i++)
+                       PUSHs(sv_2mortal(newSVuv( tots[i] )));
+                     Safefree(tots);
+                   }
+                   break;
         }
       }
     } else {
       switch (ix) {
         case 0:  _vcallsubn(aTHX_ gimme_v, VCALL_ROOT, "_generic_factor", 1, 0);     break;
         case 1:  _vcallsubn(aTHX_ gimme_v, VCALL_ROOT, "_generic_factor_exp", 1, 0); break;
-        default: _vcallsubn(aTHX_ gimme_v, VCALL_GMP|VCALL_PP, "divisors", 1, 0);   break;
+        case 2:  _vcallsubn(aTHX_ gimme_v, VCALL_GMP|VCALL_PP, "divisors", 1, 0);   break;
+        default: _vcallsubn(aTHX_ gimme_v, VCALL_GMP|VCALL_PP, "inverse_totient", 1, 0);   break;
       }
       return; /* skip implicit PUTBACK */
     }

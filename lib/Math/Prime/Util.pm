@@ -68,7 +68,7 @@ our @EXPORT_OK =
       moebius mertens euler_phi jordan_totient exp_mangoldt liouville
       partitions bernfrac bernreal harmfrac harmreal
       chebyshev_theta chebyshev_psi
-      divisor_sum carmichael_lambda kronecker hclassno
+      divisor_sum carmichael_lambda kronecker hclassno inverse_totient
       ramanujan_tau ramanujan_sum
       binomial stirling znorder znprimroot znlog legendre_phi
       factorial factorialmod
@@ -3119,6 +3119,9 @@ This corresponds to Pari's C<istotient> function, though without the
 optional second argument to return an C<x>.  L<Math::NumSeq::Totient>
 also has a similar function.
 
+Also see L</inverse_totient> which gives the count or list of values that
+produce a given totient.  This function is more efficient than getting the
+full count or list.
 
 =head2 is_pillai
 
@@ -3214,6 +3217,19 @@ If called with two arguments, they define a range C<low> to C<high>, and the
 function returns a list with the totient of every n from low to high
 inclusive.
 
+=head2 inverse_totient
+
+In array context, given a positive integer C<n>, returns the complete list
+of values C<x> where C<euler_phi(x) = n>.  This can be a memory intensive
+operation if there are many values.
+
+In scalar context, returns just the count of values.  This is faster
+and uses substantially less memory.  The list/scalar distinction is
+similar to L</factor> and L</divisors>.
+
+This roughly corresponds to the Maple function C<InverseTotient>, and the
+hidden Mathematica function C<EulerPhiInverse>.  The algorithm used is
+from Max Alekseyev (2016).
 
 =head2 jordan_totient
 

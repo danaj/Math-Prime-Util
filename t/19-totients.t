@@ -4,7 +4,7 @@ use warnings;
 
 use Test::More;
 use Math::Prime::Util qw/euler_phi jordan_totient carmichael_lambda
-                         divisor_sum moebius/;
+                         divisor_sum moebius inverse_totient/;
 
 #my $extra = defined $ENV{EXTENDED_TESTING} && $ENV{EXTENDED_TESTING};
 #my $usexs = Math::Prime::Util::prime_get_config->{'xs'};
@@ -25,6 +25,7 @@ my @A002322 = (0,1,1,2,2,4,2,6,2,6,4,10,2,12,6,4,4,16,6,18,4,6,10,22,2,20,12,18,
 
 plan tests => 2 + 10 + scalar(keys %totients)
                 + 1 # Small Carmichael Lambda
+                + 5 # inverse_totient
                 ;
 
 ###### euler_phi (totient)
@@ -62,4 +63,15 @@ is_deeply( [euler_phi(-5,5)], [0,0,0,0,0,0,1,1,2,2,4], "euler_phi -5 to 5" );
 {
   my @lambda = map { carmichael_lambda($_) } (0 .. $#A002322);
   is_deeply( \@lambda, \@A002322, "carmichael_lambda with range: 0, $#A000010" );
+}
+
+###### Inverse Totient
+{
+  my $tot = 0;
+  $tot += 0+inverse_totient($_) for 0..100;
+  is($tot, 198, "Totient count 0-100 = 198");
+  is(0+inverse_totient(1728), 62, "inverse_totient(1728) = 62");
+  is(0+inverse_totient(362880), 1138, "inverse_totient(9!) = 1138");
+  is_deeply( [inverse_totient(10000008)], [10555583,15000039,21111166,30000078], "inverse_totient(10000008)" );
+  ok( scalar(grep { $_ == 123456789} inverse_totient(82260072)) == 1, "inverse_totient(82260072) includes 123456789" );
 }

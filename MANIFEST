@@ -33,6 +33,7 @@ entropy.h
 entropy.c
 factor.h
 factor.c
+keyval.h
 lehmer.h
 lehmer.c
 lmo.h

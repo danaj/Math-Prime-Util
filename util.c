@@ -71,6 +71,7 @@
 #include "constants.h"
 #include "montmath.h"
 #include "csprng.h"
+#include "keyval.h"
 
 #define KAHAN_INIT(s) \
   LNV s ## _y, s ## _t; \
@@ -85,6 +86,10 @@
     s = s ## _t; \
   } while (0)
 
+int _numcmp(const void *a, const void *b) {
+  const UV *x = a, *y = b;
+  return (*x > *y) ? 1 : (*x < *y) ? -1 : 0;
+}
 
 static int _verbose = 0;
 void _XS_set_verbose(int v) { _verbose = v; }
@@ -1076,6 +1081,131 @@ static int _totpred(UV n, UV maxd) {
 int is_totient(UV n) {
   return (n == 0 || (n & 1))  ?  (n==1)  :  _totpred(n,n);
 }
+
+
+UV inverse_totient_count(UV n) {
+  set_t set, sumset;
+  keyval_t keyval;
+  UV res, i, ndivisors, *divs;
+
+  if (n == 1) return 2;
+  if (n < 1 || n & 1) return 0;
+  if (is_prime(n >> 1)) { /* Coleman Remark 3.3 (Thm 3.1) and Prop 6.2 */
+    if (!is_prime(n+1)) return 0;
+    if (n >= 10)        return 2;
+  }
+
+  divs = _divisor_list(n, &ndivisors);
+
+  init_set(&set, 2*ndivisors);
+  keyval.key = 1;  keyval.val = 1;
+  set_addsum(&set, keyval);
+
+  for (i = 0; i < ndivisors; i++) {
+    UV d = divs[i],  p = d+1;
+    if (is_prime(p)) {
+      UV j,  np = d,  v = valuation(n, p);
+      init_set(&sumset, ndivisors/2);
+      for (j = 0; j <= v; j++) {
+        UV k, ndiv = n/np;  /* Loop over divisors of n/np */
+        if (np == 1) {
+          keyval_t kv;  kv.key = 1; kv.val = 1;
+          set_addsum(&sumset, kv);
+        } else {
+          for (k = 0; k < ndivisors && divs[k] <= ndiv; k++) {
+            UV val, d2 = divs[k];
+            if ((ndiv % d2) != 0) continue;
+            val = set_getval(set, d2);
+            if (val > 0) {
+              keyval_t kv;  kv.key = d2*np; kv.val = val;
+              set_addsum(&sumset, kv);
+            }
+          }
+        }
+        /* if (j < v && np > UV_MAX/p) croak("overflow np  d %lu", d); */
+        np *= p;
+      }
+      set_merge(&set, sumset);
+      free_set(&sumset);
+    }
+  }
+  Safefree(divs);
+  res = set_getval(set, n);
+  free_set(&set);
+  return res;
+}
+
+UV* inverse_totient_list(UV *ntotients, UV n) {
+  set_list_t setlist, divlist;
+  UV i, ndivisors, *divs, *tlist;
+  UV *totlist = 0;
+
+  MPUassert(n <= UV_MAX/7.5, "inverse_totient_list n too large");
+
+  if (n == 1) {
+    New(0, totlist, 2, UV);
+    totlist[0] = 1;  totlist[1] = 2;
+    *ntotients = 2;
+    return totlist;
+  }
+  if (n < 1 || n & 1) {
+    *ntotients = 0;
+    return totlist;
+  }
+  if (is_prime(n >> 1)) { /* Coleman Remark 3.3 (Thm 3.1) and Prop 6.2 */
+    if (!is_prime(n+1)) {
+      *ntotients = 0;
+      return totlist;
+    }
+    if (n >= 10) {
+      New(0, totlist, 2, UV);
+      totlist[0] = n+1;  totlist[1] = 2*n+2;
+      *ntotients = 2;
+      return totlist;
+    }
+  }
+
+  divs = _divisor_list(n, &ndivisors);
+
+  init_setlist(&setlist, 2*ndivisors);
+  setlist_addval(&setlist, 1, 1);   /* Add 1 => [1] */
+
+  for (i = 0; i < ndivisors; i++) {
+    UV d = divs[i],  p = d+1;
+    if (is_prime(p)) {
+      UV j,  dp = d,  pp = p,  v = valuation(n, p);
+      init_setlist(&divlist, ndivisors/2);
+      for (j = 0; j <= v; j++) {
+        UV k, ndiv = n/dp;  /* Loop over divisors of n/dp */
+        if (dp == 1) {
+          setlist_addval(&divlist, 1, 2);   /* Add 1 => [2] */
+        } else {
+          for (k = 0; k < ndivisors && divs[k] <= ndiv; k++) {
+            UV nvals, *vals, d2 = divs[k];
+            if ((ndiv % d2) != 0) continue;
+            vals = setlist_getlist(&nvals, setlist, d2);
+            if (vals != 0)
+              setlist_addlist(&divlist, d2 * dp, nvals, vals, pp);
+          }
+        }
+        dp *= p;
+        pp *= p;
+      }
+      setlist_merge(&setlist, divlist);
+      free_setlist(&divlist);
+    }
+  }
+  Safefree(divs);
+  tlist = setlist_getlist(ntotients, setlist, n);
+  if (ntotients > 0 && tlist != 0) {
+    New(0, totlist, *ntotients, UV);
+    memcpy(totlist, tlist, *ntotients * sizeof(UV));
+    qsort(totlist, *ntotients, sizeof(UV), _numcmp);
+  }
+  free_setlist(&setlist);
+  return totlist;
+}
+
 
 UV pillai_v(UV n) {
   UV v, fac;
@@ -2965,9 +3095,6 @@ int perm_to_num(int n, int *vec, UV *rank) {
   return 1;
 }
 
-static int numcmp(const void *a, const void *b)
-  { const UV *x = a, *y = b; return (*x > *y) ? 1 : (*x < *y) ? -1 : 0; }
-
 /*
  * For k<n, an O(k) time and space method is shown on page 39 of
  *    https://www.math.upenn.edu/~wilf/website/CombinatorialAlgorithms.pdf
@@ -3006,7 +3133,7 @@ void randperm(void* ctx, UV n, UV k, UV *S) {
     for (j = 0; j < k; ) {
       for (i = j; i < k; i++) /* Fill S[j .. k-1] then sort S */
         S[i] = urandomm64(ctx,n);
-      qsort(S, k, sizeof(UV), numcmp);
+      qsort(S, k, sizeof(UV), _numcmp);
       for (j = 0, i = 1; i < k; i++)  /* Find and remove dups.  O(n). */
         if (S[j] != S[i])
           S[++j] = S[i];

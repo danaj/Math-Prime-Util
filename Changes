@@ -2,6 +2,10 @@ Revision history for Perl module Math::Prime::Util
 
 0.73 ?
 
+    [ADDED]
+
+    - inverse_totient(n)              the image of euler_phi(n)
+
     [FIXES]
 
     - Try to work around 32-bit platforms in semiprime approximations.

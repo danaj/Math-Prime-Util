@@ -96,7 +96,7 @@ sub mpu_public_regex {
       moebius mertens euler_phi jordan_totient exp_mangoldt liouville
       partitions bernfrac bernreal harmfrac harmreal
       chebyshev_theta chebyshev_psi
-      divisor_sum carmichael_lambda kronecker hclassno
+      divisor_sum carmichael_lambda kronecker hclassno inverse_totient
       ramanujan_tau ramanujan_sum
       binomial stirling znorder znprimroot znlog legendre_phi
       factorial factorialmod
