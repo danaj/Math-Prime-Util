@@ -55,7 +55,7 @@ static void free_set(set_t *S) {
 }
 
 static void _set_expand(set_t *S) {
-  UV i, max = S->maxsize, newmax = max*2, newsize = 0, newmask = newmax-1;
+  long i, max = S->maxsize, newmax = max*2, newsize = 0, newmask = newmax-1;
   keyval_t *nkv;
   Newz(0, nkv, newmax, keyval_t);
   for (i = 0; i < max; i++) {
@@ -76,7 +76,7 @@ static void _set_expand(set_t *S) {
 }
 
 static long set_search(set_t S, UV key) {
-  UV h = _hash(key) & S.mask;
+  long h = _hash(key) & S.mask;
   while (S.keyval[h].key > 0 && S.keyval[h].key != key)
     h = (h+1) & S.mask;   /* Linear probe */
   return (S.keyval[h].key == key) ? h : -1;
@@ -146,7 +146,7 @@ static void free_setlist(set_list_t *L) {
 }
 
 static void _setlist_expand(set_list_t *L) {
-  UV i, max = L->maxsize, newmax = max*2, newsize = 0, newmask = newmax-1;
+  long i, max = L->maxsize, newmax = max*2, newsize = 0, newmask = newmax-1;
   keylist_t *nlist;
   Newz(0, nlist, newmax, keylist_t);
   for (i = 0; i < max; i++) {
@@ -167,14 +167,15 @@ static void _setlist_expand(set_list_t *L) {
 }
 
 static long setlist_search(set_list_t L, UV key) {
-  UV h = _hash(key) & L.mask;
+  long h = _hash(key) & L.mask;
   while (L.keylist[h].key > 0 && L.keylist[h].key != key)
     h = (h+1) & L.mask;   /* Linear probe */
   return (L.keylist[h].key == key) ? h : -1;
 }
 
-static void setlist_addlist(set_list_t *L, UV key, UV nvals, UV* list, UV mult) {
-  UV j, *vptr, h = _hash(key) & L->mask;
+static void setlist_addlist(set_list_t *L, UV key, long nvals, UV* list, UV mult) {
+  UV *vptr;
+  long j, h = _hash(key) & L->mask;
   while (L->keylist[h].key > 0 && L->keylist[h].key != key)
     h = (h+1) & L->mask;
   if (L->keylist[h].key == key) {
@@ -218,12 +219,13 @@ static UV* setlist_getlist(UV *nvals, set_list_t L, UV key) {
 }
 
 static void setlist_merge(set_list_t *L, set_list_t T) {
-  long j, k;
+  long j;
   for (j = 0; j < T.maxsize; j++) {
     if (T.keylist[j].key > 0) {
+      UV key   = T.keylist[j].key;
       UV nvals = T.keylist[j].size;
       UV *vals = T.keylist[j].vals;
-      setlist_addlist(L, T.keylist[j].key, nvals, vals, 1);
+      setlist_addlist(L, key, nvals, vals, 1);
     }
   }
 }

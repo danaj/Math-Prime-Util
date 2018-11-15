@@ -1197,7 +1197,7 @@ UV* inverse_totient_list(UV *ntotients, UV n) {
   }
   Safefree(divs);
   tlist = setlist_getlist(ntotients, setlist, n);
-  if (ntotients > 0 && tlist != 0) {
+  if (tlist != 0 && *ntotients > 0) {
     New(0, totlist, *ntotients, UV);
     memcpy(totlist, tlist, *ntotients * sizeof(UV));
     qsort(totlist, *ntotients, sizeof(UV), _numcmp);
