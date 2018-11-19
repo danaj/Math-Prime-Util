@@ -179,7 +179,11 @@
 
 - Adjust crossover in random_factored_integer PP code for Kalai vs. naive
 
-- Pari/GP 2.12 beta has rewritten (much faster) Bernoulli.  Check it out.
+- Things from Pari/GP 2.12 beta:
+   - rewritten (much faster) Bernoulli.
+   - factorial
+   - divisors?
+   - DLP/PH
 
 - semiprime_count PP just walk if small range.
 
