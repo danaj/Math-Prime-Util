@@ -28,7 +28,7 @@ plan tests => 8        # forprimes errors
             + 3        # forprimes BigInt/BigFloat
             + 3        # oo iterator errors
             + 7        # oo iterator simple
-            + 25       # oo iterator methods
+            + 28       # oo iterator methods
             + 12       # lastfor
             + 5        # forfactored and forsquarefree
             + 1        # forsemiprimes
@@ -209,10 +209,15 @@ ok(!eval { prime_iterator_object(4.5); }, "iterator 4.5");
   is( $it->value(), 31, "iterator object moved forward 10 now returns 31");
   $it->prev;
   is( $it->value(), 29, "iterator object moved back now returns 29");
+  is( $it->peek(), 31, "iterator object peek shows 31");
   is( $it->iterate(), 29, "iterator object iterates to 29");
   is( $it->iterate(), 31, "iterator object iterates to 31");
   $it->rewind->next->next->next->prev;
   is( $it->value(), 5, "iterator object rewind and move returns 5");
+  $it->rewind(1);
+  is( $it->value(), 2, "iterator object rewind(1) goes to 2");
+  $it->rewind(0);
+  is( $it->value(), 2, "iterator object rewind(0) goes to 2");
   # Validate that it automatically handles bigint range traversal.
   SKIP: {
     skip "Skipping bigint traversals on a Perl that can't add correctly",5 if $broken64;
