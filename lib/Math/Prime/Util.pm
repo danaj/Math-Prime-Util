@@ -800,8 +800,9 @@ sub _generic_factor_exp {
 
 sub _is_gaussian_prime {
   my($a,$b) = @_;
-  return ((($b % 4) == 3) ? is_prime($b) : 0) if $a == 0;
-  return ((($a % 4) == 3) ? is_prime($a) : 0) if $b == 0;
+  my($A,$B) = ($a >= 0 ? $a : -$a, $b >= 0 ? $b : -$b);
+  return ((($B % 4) == 3) ? is_prime($B) : 0) if $a == 0;
+  return ((($A % 4) == 3) ? is_prime($A) : 0) if $b == 0;
   is_prime( vecsum( vecprod($a,$a), vecprod($b,$b) ) );
 }
 
@@ -3406,12 +3407,13 @@ This uses a combinatorial calculation, which means it will not be very
 fast compared to Pari, Mathematica, or FLINT which use the Rademacher
 formula using multi-precision floating point.  In 10 seconds:
 
-           70    Integer::Partition
-           90    MPU forpart { $n++ }
-       10_000    MPU pure Perl partitions
-      250_000    MPU GMP partitions
-   35_000_000    Pari's numbpart
-  500_000_000    Jonathan Bober's partitions_c.cc v0.6
+            70    Integer::Partition
+            90    MPU forpart { $n++ }
+        15_000    MPU pure Perl partitions
+       280_000    MPU GMP partitions
+    35_000_000    Pari 2.6 numbpart
+   500_000_000    Jonathan Bober's partitions_c.cc v0.6
+ 1_400_000_000    Pari 2.8 numbpart
 
 If you want the enumerated partitions, see L</forpart>.
 

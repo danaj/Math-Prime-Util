@@ -199,3 +199,7 @@
   we could use this for e.g. numseqs.pl powerflip to do powmod.
 
 - Add aliquot sum
+
+- split 80-PP into multiple tests: random, float, numeric, factor, prime, etc.
+
+- testing:  lehman_factor, print_primes, aks
