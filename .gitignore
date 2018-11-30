@@ -9,6 +9,8 @@ XS.c
 *.o
 *.obj
 *.pdb
+*.gcno
+*.gcda
 blib*
 b[0-9][0-9][0-9][0-9][0-9][0-9].txt
 script-test-data.bs
