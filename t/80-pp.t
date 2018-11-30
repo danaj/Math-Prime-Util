@@ -248,6 +248,7 @@ my %ipp = (
 plan tests => 2 +
               3 +
               3 + scalar(keys %small_single) + scalar(keys %small_range) +
+              4 +                 # sieve_range
               2*scalar(keys %primegaps) + 8 + 1 + 1 + 1 +
               scalar(keys %pivals_small) + scalar(keys %pi_intervals) +
               6 +                 # PC, pc approx
@@ -264,9 +265,14 @@ plan tests => 2 +
               ($use64 ? 3 : 2) +  # Lucas and BLS75 primality proofs
               6 +                 # M-R and Lucas on bigint
               2 +                 # PC and NP approx
-              65 +                # Misc util.pm functions
+              72 +                # Misc util.pm functions
               ($extra ? 1 : 0) +  # twin prime count approx
               scalar(keys %ipp) + # is_prob_prime
+              7 +                 # _is_gaussian_prime
+              2 +                 # is_semiprime
+              2 +                 # is_totient
+              1 +                 # ramanujan_sum
+              5 +                 # is_carmichael
               1;
 
 use Math::Prime::Util qw/primes
@@ -284,6 +290,7 @@ require_ok 'Math::Prime::Util::PrimalityProving';
     # This function skips some setup
     undef *primes;
     *primes             = \&Math::Prime::Util::PP::primes;
+    *sieve_range        = \&Math::Prime::Util::PP::sieve_range;
 
     *prime_count        = \&Math::Prime::Util::PP::prime_count;
     *prime_count_lower  = \&Math::Prime::Util::PP::prime_count_lower;
@@ -313,6 +320,13 @@ require_ok 'Math::Prime::Util::PrimalityProving';
     *is_frobenius_pseudoprime = \&Math::Prime::Util::PP::is_frobenius_pseudoprime;
     *is_aks_prime   = \&Math::Prime::Util::PP::is_aks_prime;
 
+    *is_ramanujan_prime = \&Math::Prime::Util::PP::is_ramanujan_prime;
+    *nth_ramanujan_prime = \&Math::Prime::Util::PP::nth_ramanujan_prime;
+    *inverse_totient = \&Math::Prime::Util::PP::inverse_totient;
+    *is_semiprime   = \&Math::Prime::Util::PP::is_semiprime;
+    *is_totient     = \&Math::Prime::Util::PP::is_totient;
+    *is_carmichael  = \&Math::Prime::Util::PP::is_carmichael;
+
     *factor         = \&Math::Prime::Util::PP::factor;
 
     *gcd            = \&Math::Prime::Util::PP::gcd;
@@ -325,6 +339,7 @@ require_ok 'Math::Prime::Util::PrimalityProving';
     *exp_mangoldt   = \&Math::Prime::Util::PP::exp_mangoldt;
     *chebyshev_theta= \&Math::Prime::Util::PP::chebyshev_theta;
     *chebyshev_psi  = \&Math::Prime::Util::PP::chebyshev_psi;
+    *ramanujan_sum  = \&Math::Prime::Util::PP::ramanujan_sum;
 
     *znprimroot     = \&Math::Prime::Util::PP::znprimroot;
     *znorder        = \&Math::Prime::Util::PP::znorder;
@@ -392,6 +407,11 @@ while (my($range, $expect) = each (%small_range)) {
   my($low,$high) = $range =~ /(\d+) to (\d+)/;
   is_deeply( primes($low, $high), $expect, "primes($low,$high) should return [@{$expect}]");
 }
+
+is_deeply( [sieve_range(4, 4, 1)], [map { $_-4 } 4,5,6,7], "sieve range depth 1" );
+is_deeply( [sieve_range(10, 20, 2)], [1,3,5,7,9,11,13,15,17,19], "sieve range depth 2" );
+is_deeply( [sieve_range(10, 20, 3)], [1,3,7,9,13,15,19], "sieve range depth 3" );
+is_deeply( [sieve_range(10, 20, 5)], [1,3,7,9,13,19], "sieve range depth 5" );
 
 ###############################################################################
 
@@ -799,6 +819,14 @@ if ($use64) {
     is( is_prob_prime($n), $isp, "is_prob_prime($n) should be $isp" );
   }
 
+  is(is_ramanujan_prime(41),1,"41 is a Ramanujan prime");
+  is(is_ramanujan_prime(43),0,"43 is not a Ramanujan prime");
+  is(nth_ramanujan_prime(28),311,"R_n(28) = 311");
+  is_deeply( Math::Prime::Util::PP::_ramanujan_primes(0,100), [2,11,17,29,41,47,59,67,71,97], "Ramanujan primes under 100");
+
+  is(inverse_totient(42), 4, "inverse totient 42 count");
+  is_deeply([inverse_totient(42)], [43,49,86,98], "inverse totient 42 list");
+
   is( primorial(24), 223092870, "primorial(24)" );
   is( primorial(118), "31610054640417607788145206291543662493274686990", "primorial(118)" );
   is( pn_primorial(7), 510510, "pn_primorial(7)" );
@@ -821,6 +849,10 @@ if ($use64) {
   { my $k = 0;
     Math::Prime::Util::_generic_fordivisors(sub {$k += $_+int(sqrt($_))},92834);
     is( $k, 168921, "generic fordivisors: d|92834: k+=d+int(sqrt(d))" );
+  }
+  { my @t;
+    Math::Prime::Util::_generic_forfac(0, sub {push @t,[@_]}, 15202630,15202641);
+    is_deeply( \@t, [[2,5,433,3511],[15202631],[2,2,2,3,23,27541],[15202633],[2,37,205441],[3,5,7,67,2161],[2,2,41,92699],[15202637],[2,3,3,11,76781],[15202639],[2,2,2,2,5,307,619],[3,17,19,29,541]], "generic forfactored" );
   }
 
   { my @p;
@@ -850,6 +882,110 @@ if ($use64) {
 
   prime_set_config(xs=>$xs, gmp=>$gmp, verbose=>$verbose);
 }
+
+# is_gaussian_prime
+{
+  ok( !Math::Prime::Util::_is_gaussian_prime(29,0), "29 is not a Gaussian Prime" );
+  ok(  Math::Prime::Util::_is_gaussian_prime(31,0), "31 is a Gaussian Prime" );
+
+  ok( !Math::Prime::Util::_is_gaussian_prime(0,-29), "0-29i is not a Gaussian Prime" );
+  ok(  Math::Prime::Util::_is_gaussian_prime(0,-31), "0-31i is a Gaussian Prime" );
+
+  ok(  Math::Prime::Util::_is_gaussian_prime(58924,132000511), "58924+132000511i is a Gaussian Prime" );
+  ok(  Math::Prime::Util::_is_gaussian_prime(519880,-2265929), "519880-2265929i is a Gaussian Prime" );
+  ok( !Math::Prime::Util::_is_gaussian_prime(20571,150592260), "20571+150592260i is not a Gaussian Prime" );
+}
+
+ok(  is_semiprime(1110000001), "1110000001 is a semiprime" );
+ok( !is_semiprime(1110000201), "1110000201 is not a semiprime" );
+
+ok(  is_totient(381554124), "381554124 is a totient" );
+ok( !is_totient(1073024875), "1073024875 is not a semiprime" );
+
+is( ramanujan_sum(12,36), 4, "ramanujan_sum(12,36) = 4" );
+
+ok( !is_carmichael(5049), "5049 is not a Carmichael number" );
+ok( !is_carmichael(2792834247), "2792834247 is not a Carmichael number" );
+ok( !is_carmichael(2399550475), "2399550475 is not a Carmichael number" );
+ok( !is_carmichael(219389), "219389 is not a Carmichael number" );
+ok(  is_carmichael(1125038377), "1125038377 is a Carmichael number" );
+
+# TODO:
+#  is_quasi_carmichael
+#  is_pillai
+#  is_fundamental
+#  divisor_sum
+#  inverse_li
+#  _inverse_R
+#  prime_count_lower
+#  prime_count_upper
+#  semiprime_count
+#  ramanujan_prime_count
+#  twin_prime_count_approx
+#  semiprime_count_approx
+#  nth_twin_prime_approx
+#  nth_semiprime_approx
+#  nth_ramanujan_prime_upper
+#  nth_ramanujan_prime_lower
+#  nth_ramanujan_prime_approx
+#  ramanujan_prime_count_upper
+#  ramanujan_prime_count_lower
+#  ramanujan_prime_count_approx
+#  sum_primes
+#  print_primes
+#  chinese
+#  vecextract
+#  sumdigits
+#  sqrtmod
+#  mulmod
+#  divmod
+#  powmod
+#  is_power
+#  is_square
+#  is_prime_power
+#  is_polygonal
+#  hammingweight
+#  todigitstring / _splitdigits
+#  sqrtint
+#  rootint
+#  logint
+#  harmfrac
+#  harmreal
+#  is_euler_pseudoprime
+#  is_euler_plumb_pseudoprime
+#  factorialmod
+#  is_primitive_root
+#  znorder bigint
+#  non-GMP lucas_sequence
+#  lucas_u
+#  lucas_v
+#  is_frobenius_khashin_pseudoprime
+#  is_perrin_pseudoprime (restrict == 1, restrict == 2)
+#  is_catalan_pseudoprime
+#  is_mersenne_prime
+#  is_aks_prime (_poly_mod_mul, etc)
+#  pminus1_factor stage 2
+#  ecm_factor no GMP
+#  divisors
+#  hclassno
+#  ramanujan_tau (_taup, _tauprime, _taupower)
+#  LogarithmicIntegral ...
+#  RiemannR no GMP
+#  LambertW no GMP
+#  forcompositions with hash
+#  numtoperm
+#  permtonum
+#  randperm
+#  shuffle
+#  urandomb
+#  urandomm
+#  random_ndigit_prime
+#  random_strong_prime
+#  random_maurer_prime
+#  random_shawe_taylor_prime
+#  miller_rabin_random
+#  random_factored_integer
+
 
 is( $_, 'this should not change', "Nobody clobbered \$_" );
 
