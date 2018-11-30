@@ -3203,3 +3203,69 @@ UV random_factored_integer(void* ctx, UV n, int *nf, UV *factors) {
   *nf = nfac;
   return r;
 }
+
+UV* lucky_sieve(UV *size, UV n) {
+  const char mask63[63+2] = {1,1,0,1,1,0,1,1,0,1,1,0,1,1,0,1,1,0,0,0,0,1,1,0,1,1,0,0,0,0,1,1,0,1,1,0,1,1,0,0,0,0,1,1,0,1,1,0,1,1,0,1,1,0,1,1,0,0,0,0,0,0,0,1,1};
+  UV i, m, l15, l21, lsize = 0, level, init_level, *lucky;
+
+  if (n == 0) { *size = 0; return 0; }
+
+  /* make initial list, with more culling if it seems worth doing */
+  if (n < 4000) {
+    const UV fsize = 96*(n+377)/378;  /* 378 = 2*3*7*9 */
+    New(0, lucky, 1 + fsize, UV);
+    /* Cut 2,3 using mod 6 wheel, 7,9 using a mod 63 mask */
+    for (i = 1, m = 1; i <= n; i += 6) {
+      if (mask63[m  ])  lucky[lsize++] = i;
+      if (mask63[m+2])  lucky[lsize++] = i+2;
+      if ((m += 6) >= 63) m -= 63;
+    }
+    init_level = 4;
+  } else {
+    char mask819[819+2];
+    const uint16_t v13[16] = {45,96,147,198,252,300,351,402,453,507,555,609,660,708,762,810};
+    const UV fsize = (n < 1000000) ? 16128*(n+73709)/73710
+                                   : 322560*(n+1547909)/1547910;
+    New(0, lucky, 1 + fsize, UV);
+    /* Create the mod 819 mask from the smaller one */
+    for (i = 0; i < 13; i++) memcpy(mask819+63*i,mask63,65);
+    for (i = 0; i < 16; i++) mask819[v13[i]] = mask819[v13[i]+1] = 0;
+    /* Use the mask and additionally two counters for another two levels */
+    for (i = 1, m = 1, l15 = 0, l21 = 0; i <= n; i += 6) {
+      if (mask819[m  ] && ++l15 != 15 && ++l21 != 21)  lucky[lsize++] = i;
+      if (mask819[m+2] && ++l15 != 15 && ++l21 != 21)  lucky[lsize++] = i+2;
+      if ((m += 6) >= 819) m -= 819;
+      if (l15 >= 15) l15 -= 15;
+      if (l21 >= 21) l21 -= 21;
+    }
+    init_level = 7;
+  }
+  if (lucky[lsize-1] > n) lsize--;   /* The +2 could have gone past N */
+
+  /* After the fill-in, we'll start deleting at 13 or 25 */
+  for (level = init_level; level < lsize && lucky[level]-1 < lsize; level++) {
+    UV skip = lucky[level]-1, nlsize = skip;
+    if (2*(skip+1) > lsize) break;  /* Only single skips left */
+    for (i = skip+1; i < lsize; i += skip+1) {
+      UV ncopy = (skip <= (lsize-i)) ? skip : (lsize-i);
+      memmove( lucky + nlsize, lucky + i, ncopy * sizeof(UV) );
+      nlsize += ncopy;
+    }
+    lsize = nlsize;
+  }
+  /* Now we just have single skips.  Process them all in one pass. */
+  if (level < lsize && lucky[level]-1 < lsize) {
+    UV skip = lucky[level], nlsize = skip-1;
+    while (skip < lsize) {
+      UV ncopy = lucky[level+1] - lucky[level];
+      if (ncopy > lsize-skip)  ncopy = lsize - skip;
+      memmove(lucky + nlsize, lucky + skip, ncopy * sizeof(UV));
+      nlsize += ncopy;
+      skip += ncopy + 1;
+      level++;
+    }
+    lsize = nlsize;
+  }
+  *size = lsize;
+  return lucky;
+}
