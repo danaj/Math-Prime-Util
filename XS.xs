@@ -824,6 +824,32 @@ sieve_primes(IN UV low, IN UV high)
     return; /* skip implicit PUTBACK */
 
 void
+lucky_numbers(IN UV high)
+  PREINIT:
+    AV* av;
+    UV i, num;
+  PPCODE:
+    av = newAV();
+    {
+      SV * retsv = sv_2mortal(newRV_noinc( (SV*) av ));
+      PUSHs(retsv);
+      PUTBACK;
+      SP = NULL; /* never use SP again, poison */
+    }
+    if (high < UVCONST(2000000000)) {
+      uint32_t* lucky = lucky_sieve32(&num, high);
+      for (i = 0; i < num; i++)
+        av_push(av,newSVuv(lucky[i]));
+      Safefree(lucky);
+    } else {
+      UV* lucky = lucky_sieve(&num, high);
+      for (i = 0; i < num; i++)
+        av_push(av,newSVuv(lucky[i]));
+      Safefree(lucky);
+    }
+    return; /* skip implicit PUTBACK */
+
+void
 sieve_range(IN SV* svn, IN UV width, IN UV depth)
   PREINIT:
     int status;

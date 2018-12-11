@@ -3204,16 +3204,24 @@ UV random_factored_integer(void* ctx, UV n, int *nf, UV *factors) {
   return r;
 }
 
-UV* lucky_sieve(UV *size, UV n) {
+/* Lucky Number sieve for 32-bit inputs.
+ * Pre-sieve for first 4-7 levels, then in-place deletion using memmove,
+ * plus an optimization for a single pass for all single skips.
+ * On x86 at least, faster than the other sieves.
+ * For large enough n, uses more memory and will be slower.
+ */
+uint32_t* lucky_sieve32(UV *size, UV n) {
   const char mask63[63+2] = {1,1,0,1,1,0,1,1,0,1,1,0,1,1,0,1,1,0,0,0,0,1,1,0,1,1,0,0,0,0,1,1,0,1,1,0,1,1,0,0,0,0,1,1,0,1,1,0,1,1,0,1,1,0,1,1,0,0,0,0,0,0,0,1,1};
-  UV i, m, l15, l21, lsize = 0, level, init_level, *lucky;
+  UV i, m, l15, l21, lsize = 0, level, init_level;
+  uint32_t *lucky;
 
   if (n == 0) { *size = 0; return 0; }
+  MPUassert(n < 0xFFFFFFFFUL, "lucky_sieve32 n too large");
 
   /* make initial list, with more culling if it seems worth doing */
-  if (n < 4000) {
+  if (n < 300000) {
     const UV fsize = 96*(n+377)/378;  /* 378 = 2*3*7*9 */
-    New(0, lucky, 1 + fsize, UV);
+    New(0, lucky, 1 + fsize, uint32_t);
     /* Cut 2,3 using mod 6 wheel, 7,9 using a mod 63 mask */
     for (i = 1, m = 1; i <= n; i += 6) {
       if (mask63[m  ])  lucky[lsize++] = i;
@@ -3226,7 +3234,7 @@ UV* lucky_sieve(UV *size, UV n) {
     const uint16_t v13[16] = {45,96,147,198,252,300,351,402,453,507,555,609,660,708,762,810};
     const UV fsize = (n < 1000000) ? 16128*(n+73709)/73710
                                    : 322560*(n+1547909)/1547910;
-    New(0, lucky, 1 + fsize, UV);
+    New(0, lucky, 1 + fsize, uint32_t);
     /* Create the mod 819 mask from the smaller one */
     for (i = 0; i < 13; i++) memcpy(mask819+63*i,mask63,65);
     for (i = 0; i < 16; i++) mask819[v13[i]] = mask819[v13[i]+1] = 0;
@@ -3248,7 +3256,7 @@ UV* lucky_sieve(UV *size, UV n) {
     if (2*(skip+1) > lsize) break;  /* Only single skips left */
     for (i = skip+1; i < lsize; i += skip+1) {
       UV ncopy = (skip <= (lsize-i)) ? skip : (lsize-i);
-      memmove( lucky + nlsize, lucky + i, ncopy * sizeof(UV) );
+      memmove( lucky + nlsize, lucky + i, ncopy * sizeof(uint32_t) );
       nlsize += ncopy;
     }
     lsize = nlsize;
@@ -3259,13 +3267,57 @@ UV* lucky_sieve(UV *size, UV n) {
     while (skip < lsize) {
       UV ncopy = lucky[level+1] - lucky[level];
       if (ncopy > lsize-skip)  ncopy = lsize - skip;
-      memmove(lucky + nlsize, lucky + skip, ncopy * sizeof(UV));
+      memmove(lucky + nlsize, lucky + skip, ncopy * sizeof(uint32_t));
       nlsize += ncopy;
       skip += ncopy + 1;
       level++;
     }
     lsize = nlsize;
   }
+  *size = lsize;
+  return lucky;
+}
+/* Lucky Number sieve for 64-bit inputs.
+ * Uses running counters to skip entries while we add them.
+ * Based substantially on Hugo van der Sanden's cgen_lucky.c.
+ */
+UV* lucky_sieve(UV *size, UV n) {
+  UV i, j, c3, lsize, lmax, lindex, *lucky, *count;
+
+  if (n == 0) { *size = 0; return 0; }
+
+  /* Init */
+  lmax = (n < 1000) ? 153 : 100 + n/log(n);
+  New(0, lucky, lmax, UV);
+  New(0, count, lmax, UV);
+  lucky[0] = 1;
+  lindex = 2;
+  lsize = 1;
+  c3 = 2;
+
+  for (i = 3; i <= n; i += 2) {
+    if (!--c3) { c3 = 3; continue; }  /* Shortcut count[1] */
+    for (j = 2; j < lindex; j++) {
+      if (--count[j] == 0) {
+        count[j] = lucky[j];
+        break;
+      }
+    }
+    if (j < lindex) continue;
+
+    if (lsize >= lmax) {  /* Given the estimate, we probably never do this. */
+      lmax = 1 + lsize * 1.2;
+      Renew(lucky, lmax, UV);
+      Renew(count, lmax, UV);
+    }
+    lucky[lsize] = count[lsize] = i;
+    lsize++;
+
+    if (lucky[lindex] == lsize) {
+      lindex++;  lsize--;  /* Discard immediately */
+    }
+  }
+  Safefree(count);
   *size = lsize;
   return lucky;
 }
