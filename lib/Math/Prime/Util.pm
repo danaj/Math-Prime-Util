@@ -34,6 +34,7 @@ our @EXPORT_OK =
       lucas_sequence lucasu lucasv
       primes twin_primes semi_primes ramanujan_primes
       sieve_prime_cluster sieve_range
+      lucky_numbers
       forprimes forcomposites foroddcomposites forsemiprimes fordivisors
       forpart forcomp forcomb forperm forderange formultiperm forsetproduct
       forfactored forsquarefree
@@ -3416,6 +3417,21 @@ formula using multi-precision floating point.  In 10 seconds:
  1_400_000_000    Pari 2.8 numbpart
 
 If you want the enumerated partitions, see L</forpart>.
+
+
+=head2 lucky_numbers
+
+Returns an array reference of values up to the input C<n> (inclusive)
+which remain after the lucky number sieve originally defined by
+Gardiner, Lazarus, Metropolis, and Ulam.
+This is L<OEIS series A000959|http://oeis.org/A000959>.
+
+A surprising number of asymptotic properties of the primes are shared
+with this sieve, though the resulting sets are quite different.
+
+There is no current algorithm for efficiently sieving a segment,
+and the time for the monolithic sieving process by currently known
+best methods is empirically C<O(n^1.8)>.
 
 
 =head2 carmichael_lambda

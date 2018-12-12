@@ -748,6 +748,12 @@ sub Pi {
   return Math::Prime::Util::PP::Pi($digits);
 }
 
+sub lucky_numbers {
+  my($n) = @_;
+  _validate_positive_integer($n);
+  return Math::Prime::Util::PP::lucky_numbers($n);
+}
+
 #############################################################################
 
 my $_exitloop = 0;

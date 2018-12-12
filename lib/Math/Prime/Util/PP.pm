@@ -806,6 +806,32 @@ sub partitions {
   return $part[$n];
 }
 
+sub lucky_numbers {
+  my $n = shift;
+  return [] if $n <= 0;
+
+  my @_lf63;   # Lucky:  1,3,7,9,13,15,...  63=7*9.
+  $_lf63[$_] = 1 for (qw/2 5 8 11 14 17 18 19 20 23 26 27 28 29 32 35 38 39 40 41 44 47 50 53 56 57 58 59 60 61 62/);
+
+  my @lucky;
+  # This wheel handles the evens and every 3rd by a mod 6 wheel,
+  # then uses the mask to skip every 7th and 9th remaining value.
+  for (my $k = 1;  $k <= $n;  $k += 6) {
+    my $m63 = $k % 63;
+    push @lucky, $k unless $_lf63[$m63];
+    push @lucky, $k+2 unless $_lf63[$m63+2];
+  }
+  delete $lucky[-1] if $lucky[-1] > $n;
+
+  # Do the standard lucky sieve.
+  for (my $k = 4; $k <= $#lucky && $lucky[$k]-1 <= $#lucky; $k++) {
+    for (my $skip = my $index = $lucky[$k]-1;  $index <= $#lucky;  $index += $skip) {
+      splice(@lucky, $index, 1);
+    }
+  }
+  \@lucky;
+}
+
 sub primorial {
   my $n = shift;
 

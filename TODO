@@ -206,4 +206,4 @@
 
 - lucky numbers / primes.  API?  Consider a for loop?
 
-- lucky:  PP, PPFE, doc, tests, lib/ntheory, use in examples
+- lucky:  use in examples

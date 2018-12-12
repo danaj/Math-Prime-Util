@@ -62,6 +62,7 @@ sub mpu_public_regex {
       lucas_sequence lucasu lucasv
       primes twin_primes semi_primes ramanujan_primes
       sieve_prime_cluster sieve_range
+      lucky_numbers
       forprimes forcomposites foroddcomposites forsemiprimes fordivisors
       forpart forcomp forcomb forperm forderange formultiperm forsetproduct
       forfactored forsquarefree

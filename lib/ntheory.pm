@@ -264,6 +264,7 @@ Tags:
   permtonum([a,b,...])                permutation number of given perm
   randperm(n,[k])                     random permutation of n elems
   shuffle(...)                        random permutation of an array
+  lucky_numbers(n)                    array ref of lucky sieve up to n
 
 =head2 NON-INTEGER MATH
 

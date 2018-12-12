@@ -26,7 +26,9 @@ my @functions =  qw(
       sqrtint rootint logint
       miller_rabin_random
       lucas_sequence lucasu lucasv
-      primes twin_primes ramanujan_primes sieve_prime_cluster sieve_range
+      primes twin_primes semi_primes ramanujan_primes
+      sieve_prime_cluster sieve_range
+      lucky_numbers
       forprimes forcomposites foroddcomposites forsemiprimes fordivisors
       forpart forcomp forcomb forperm forderange formultiperm forsetproduct
       forfactored forsquarefree
@@ -34,11 +36,13 @@ my @functions =  qw(
       numtoperm permtonum randperm shuffle
       prime_iterator prime_iterator_object
       next_prime  prev_prime
-      prime_count semiprime_count
+      prime_count
       prime_count_lower prime_count_upper prime_count_approx
       nth_prime nth_prime_lower nth_prime_upper nth_prime_approx inverse_li
       twin_prime_count twin_prime_count_approx
       nth_twin_prime nth_twin_prime_approx
+      semiprime_count semiprime_count_approx
+      nth_semiprime nth_semiprime_approx
       ramanujan_prime_count ramanujan_prime_count_approx
       ramanujan_prime_count_lower ramanujan_prime_count_upper
       nth_ramanujan_prime nth_ramanujan_prime_approx
