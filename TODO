@@ -203,7 +203,3 @@
 - split 80-PP into multiple tests: random, float, numeric, factor, prime, etc.
 
 - testing:  lehman_factor, print_primes, aks
-
-- lucky numbers / primes.  API?  Consider a for loop?
-
-- lucky:  use in examples

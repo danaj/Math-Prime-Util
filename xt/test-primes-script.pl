@@ -107,7 +107,7 @@ sub test_oeis {
   printf "%12s primes (OEIS A%06d): generating..", $name, $oeis_no;
 
   my $start = [gettimeofday];
-  my @scr = split /\s+/, qx+$FindBin::Bin/../bin/primes.pl $script_arg 1 $end+;
+  my @scr = split /\s+/, qx+perl -Iblib/lib -Iblib/arch $FindBin::Bin/../bin/primes.pl $script_arg 1 $end+;
   {
     no bigint;
     my $num_generated = scalar @scr || 0.1;

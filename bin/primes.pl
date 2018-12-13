@@ -5,6 +5,7 @@ use Getopt::Long;
 use Math::BigInt try => 'GMP';
 use Math::Prime::Util qw/primes  prime_count  next_prime  prev_prime
                          twin_primes  sieve_prime_cluster  mulmod  is_pillai
+                         lucky_numbers
                          is_prime  is_provable_prime  is_mersenne_prime
                          lucasu  lucasv
                          nth_prime  prime_count  primorial  pn_primorial/;
@@ -286,33 +287,11 @@ sub panaitopol_primes {
 sub lucky_primes {
   my ($start, $end) = @_;
 
-  # First do a lucky number sieve to generate A000959.
+  # Get all the lucky numbers up to $end (A000959).
+  my $lucky = lucky_numbers($end);
 
-  my @_lf63;   # Lucky:  1,3,7,9,13,15,...  63=7*9.
-  $_lf63[$_] = 1 for (qw/2 5 8 11 14 17 18 19 20 23 26 27 28 29 32 35 38 39 40 41 44 47 50 53 56 57 58 59 60 61 62/);
-
-  my @lucky;
-  my $n = 1;
-  while ($n <= $end) {
-    my $m63 = $n % 63;
-    push @lucky, $n unless $_lf63[$m63];
-    push @lucky, $n+2 unless $_lf63[$m63+2];
-    $n += 6;
-  }
-  delete $lucky[-1] if $lucky[-1] > $end;
-
-  for (my $k = 4; $k < scalar @lucky && $lucky[$k]-1 <= $#lucky; $k++) {
-    my $skip = $lucky[$k]-1;
-    my $index = $skip;
-    while ($index <= $#lucky) {
-      splice(@lucky, $index, 1);
-      $index += $skip;
-    }
-  }
-  shift @lucky while $lucky[0] < $start;
-
-  # Then restrict to primes to get A031157.
-  grep { is_prime($_) } @lucky;
+  # Then restrict to in range and primes to get A031157.
+  grep { is_prime($_) }  grep { $_ >= $start }  @$lucky;
 }
 
 # This is not a general palindromic digit function!
