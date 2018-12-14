@@ -104,6 +104,8 @@ extern UV random_factored_integer(void* ctx, UV n, int *nf, UV *factors);
 
 extern UV* lucky_sieve(UV *size, UV n);
 extern uint32_t* lucky_sieve32(UV *size, UV n);
+extern int is_lucky(UV n);
+extern UV nth_lucky(UV n);
 
 extern UV gcdz(UV x, UV y);
 

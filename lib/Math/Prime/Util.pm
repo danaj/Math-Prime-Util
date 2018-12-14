@@ -34,7 +34,7 @@ our @EXPORT_OK =
       lucas_sequence lucasu lucasv
       primes twin_primes semi_primes ramanujan_primes
       sieve_prime_cluster sieve_range
-      lucky_numbers
+      lucky_numbers is_lucky nth_lucky
       forprimes forcomposites foroddcomposites forsemiprimes fordivisors
       forpart forcomp forcomb forperm forderange formultiperm forsetproduct
       forfactored forsquarefree

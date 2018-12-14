@@ -1268,7 +1268,8 @@ void is_prime(IN SV* svn)
     is_semiprime = 16
     is_square = 17
     is_mersenne_prime = 18
-    is_totient = 19
+    is_lucky = 19
+    is_totient = 20
   PREINIT:
     int status, ret;
   PPCODE:
@@ -1296,7 +1297,8 @@ void is_prime(IN SV* svn)
         case 16: ret = is_semiprime(n); break;
         case 17: ret = is_power(n,2); break;
         case 18: ret = is_mersenne_prime(n);  if (ret == -1) status = 0; break;
-        case 19:
+        case 19: ret = is_lucky(n); break;
+        case 20:
         default: ret = is_totient(n); break;
       }
     } else if (status == -1) {
@@ -1328,7 +1330,8 @@ void is_prime(IN SV* svn)
       case 16:_vcallsub_with_gmp(0.42,"is_semiprime"); break;
       case 17:_vcallsub_with_gmp(0.47,"is_square"); break;
       case 18:_vcallsub_with_gmp(0.28,"is_mersenne_prime"); break;
-      case 19:
+      case 19:_vcallsub_with_gmp(0.48,"is_lucky"); break;
+      case 20:
       default:_vcallsub_with_gmp(0.47,"is_totient"); break;
     }
     return; /* skip implicit PUTBACK */
@@ -1533,14 +1536,15 @@ next_prime(IN SV* svn)
     nth_ramanujan_prime_upper = 12
     nth_ramanujan_prime_lower = 13
     nth_ramanujan_prime_approx = 14
-    prime_count_upper = 15
-    prime_count_lower = 16
-    prime_count_approx = 17
-    ramanujan_prime_count_upper = 18
-    ramanujan_prime_count_lower = 19
-    twin_prime_count_approx = 20
-    semiprime_count_approx = 21
-    urandomm = 22
+    nth_lucky = 15
+    prime_count_upper = 16
+    prime_count_lower = 17
+    prime_count_approx = 18
+    ramanujan_prime_count_upper = 19
+    ramanujan_prime_count_lower = 20
+    twin_prime_count_approx = 21
+    semiprime_count_approx = 22
+    urandomm = 23
   PPCODE:
     if (_validate_int(aTHX_ svn, 0)) {
       UV n = my_svuv(svn);
@@ -1575,14 +1579,15 @@ next_prime(IN SV* svn)
           case 12:ret = nth_ramanujan_prime_upper(n); break;
           case 13:ret = nth_ramanujan_prime_lower(n); break;
           case 14:ret = nth_ramanujan_prime_approx(n); break;
-          case 15:ret = prime_count_upper(n); break;
-          case 16:ret = prime_count_lower(n); break;
-          case 17:ret = prime_count_approx(n); break;
-          case 18:ret = ramanujan_prime_count_upper(n); break;
-          case 19:ret = ramanujan_prime_count_lower(n); break;
-          case 20:ret = twin_prime_count_approx(n); break;
-          case 21:ret = semiprime_count_approx(n); break;
-          case 22:
+          case 15:ret = nth_lucky(n); break;
+          case 16:ret = prime_count_upper(n); break;
+          case 17:ret = prime_count_lower(n); break;
+          case 18:ret = prime_count_approx(n); break;
+          case 19:ret = ramanujan_prime_count_upper(n); break;
+          case 20:ret = ramanujan_prime_count_lower(n); break;
+          case 21:ret = twin_prime_count_approx(n); break;
+          case 22:ret = semiprime_count_approx(n); break;
+          case 23:
           default:{ dMY_CXT; ret = urandomm64(MY_CXT.randcxt,n); } break;
         }
         XSRETURN_UV(ret);
@@ -1609,14 +1614,15 @@ next_prime(IN SV* svn)
       case 12: _vcallsub_with_pp("nth_ramanujan_prime_upper"); break;
       case 13: _vcallsub_with_pp("nth_ramanujan_prime_lower"); break;
       case 14: _vcallsub_with_pp("nth_ramanujan_prime_approx"); break;
-      case 15: _vcallsub_with_pp("prime_count_upper");  break;
-      case 16: _vcallsub_with_pp("prime_count_lower");  break;
-      case 17: _vcallsub_with_pp("prime_count_approx"); break;
-      case 18: _vcallsub_with_pp("ramanujan_prime_count_upper");  break;
-      case 19: _vcallsub_with_pp("ramanujan_prime_count_lower");  break;
-      case 20: _vcallsub_with_pp("twin_prime_count_approx"); break;
-      case 21: _vcallsub_with_pp("semiprime_count_approx"); break;
-      case 22:
+      case 15: _vcallsub_with_pp("nth_lucky");  break;
+      case 16: _vcallsub_with_pp("prime_count_upper");  break;
+      case 17: _vcallsub_with_pp("prime_count_lower");  break;
+      case 18: _vcallsub_with_pp("prime_count_approx"); break;
+      case 19: _vcallsub_with_pp("ramanujan_prime_count_upper");  break;
+      case 20: _vcallsub_with_pp("ramanujan_prime_count_lower");  break;
+      case 21: _vcallsub_with_pp("twin_prime_count_approx"); break;
+      case 22: _vcallsub_with_pp("semiprime_count_approx"); break;
+      case 23:
       default: _vcallsub_with_gmpobj(0.44,"urandomm");
                OBJECTIFY_RESULT(svn, ST(0));
                break;

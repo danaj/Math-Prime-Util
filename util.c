@@ -3204,14 +3204,18 @@ UV random_factored_integer(void* ctx, UV n, int *nf, UV *factors) {
   return r;
 }
 
+/******************************************************************************/
+/*                             LUCKY NUMBERS                                  */
+/******************************************************************************/
+
+static const char _lmask63[63+2] = {1,1,0,1,1,0,1,1,0,1,1,0,1,1,0,1,1,0,0,0,0,1,1,0,1,1,0,0,0,0,1,1,0,1,1,0,1,1,0,0,0,0,1,1,0,1,1,0,1,1,0,1,1,0,1,1,0,0,0,0,0,0,0,1,1};
+
 /* Lucky Number sieve for 32-bit inputs.
  * Pre-sieve for first 4-7 levels, then in-place deletion using memmove,
  * plus an optimization for a single pass for all single skips.
- * On x86 at least, faster than the other sieves.
- * For large enough n, uses more memory and will be slower.
+ * On x86 at least, faster than the other sieves, but uses more memory.
  */
 uint32_t* lucky_sieve32(UV *size, UV n) {
-  const char mask63[63+2] = {1,1,0,1,1,0,1,1,0,1,1,0,1,1,0,1,1,0,0,0,0,1,1,0,1,1,0,0,0,0,1,1,0,1,1,0,1,1,0,0,0,0,1,1,0,1,1,0,1,1,0,1,1,0,1,1,0,0,0,0,0,0,0,1,1};
   UV i, m, l15, l21, lsize = 0, level, init_level;
   uint32_t *lucky;
 
@@ -3224,8 +3228,8 @@ uint32_t* lucky_sieve32(UV *size, UV n) {
     New(0, lucky, 1 + fsize, uint32_t);
     /* Cut 2,3 using mod 6 wheel, 7,9 using a mod 63 mask */
     for (i = 1, m = 1; i <= n; i += 6) {
-      if (mask63[m  ])  lucky[lsize++] = i;
-      if (mask63[m+2])  lucky[lsize++] = i+2;
+      if (_lmask63[m  ])  lucky[lsize++] = i;
+      if (_lmask63[m+2])  lucky[lsize++] = i+2;
       if ((m += 6) >= 63) m -= 63;
     }
     init_level = 4;
@@ -3236,7 +3240,7 @@ uint32_t* lucky_sieve32(UV *size, UV n) {
                                    : 322560*(n+1547909)/1547910;
     New(0, lucky, 1 + fsize, uint32_t);
     /* Create the mod 819 mask from the smaller one */
-    for (i = 0; i < 13; i++) memcpy(mask819+63*i,mask63,65);
+    for (i = 0; i < 13; i++) memcpy(mask819+63*i,_lmask63,65);
     for (i = 0; i < 16; i++) mask819[v13[i]] = mask819[v13[i]+1] = 0;
     /* Use the mask and additionally two counters for another two levels */
     for (i = 1, m = 1, l15 = 0, l21 = 0; i <= n; i += 6) {
@@ -3291,6 +3295,8 @@ UV* lucky_sieve(UV *size, UV n) {
   New(0, lucky, lmax, UV);
   New(0, count, lmax, UV);
   lucky[0] = 1;
+  lucky[1] = 3;
+  lucky[2] = 7;
   lindex = 2;
   lsize = 1;
   c3 = 2;
@@ -3320,4 +3326,64 @@ UV* lucky_sieve(UV *size, UV n) {
   Safefree(count);
   *size = lsize;
   return lucky;
+}
+
+int is_lucky(UV n) {
+  UV lo,hi,mid,nth;
+
+  if ( !(n & 1) || (n%6) == 5 || !_lmask63[n % 63]) return 0;
+  if (n < 45) return 1;
+
+  /* TODO: 1. get a fast upper bound for hi: nth_lucky(hi) >= n
+   *       2. generate sieve-below-n once
+   *       3. func to produce nlucky for a given n (binary search the sieve)
+   *       4. apply the two-line Wilson sieve as needed below.
+   */
+
+#define ALC(n) (0.5 + 0.970 * n / log(n))
+  nth = nth_lucky( ALC(n) );
+  if (nth < n) {
+    hi = ALC(n);
+    do {
+      lo = hi;
+      hi = hi + 1 + (ALC(n) - ALC(nth));
+      nth = nth_lucky(hi);
+    } while (nth < n);
+  } else if (nth > n) {
+    lo = ALC(n);
+    do {
+      hi = lo;
+      lo = lo - 1 - (ALC(nth) - ALC(n));
+      nth = nth_lucky(lo);
+    } while (nth > n);
+  }
+  if (nth == n) return 1;
+  while (lo < hi) {
+    mid = lo + (hi-lo)/2;
+    nth = nth_lucky(mid);
+    if (nth == n) break;
+    if (nth <= n) lo = mid+1;
+    else          hi = mid;
+  }
+  return (nth == n);
+}
+
+UV nth_lucky(UV n) {
+  UV i, k, nlucky;
+
+  if (n <= 1) return n;
+
+  /* Apply the backward sieve, ala Wilson, for entry n */
+  if (n <= UVCONST(2000000000)) {
+    uint32_t *lucky32 = lucky_sieve32(&nlucky, n);
+    for (i = nlucky-1, k = n-1; i >= 1; i--)
+      k += k/(lucky32[i]-1);
+    Safefree(lucky32);
+  } else {
+    UV *lucky64 = lucky_sieve(&nlucky, n);
+    for (i = nlucky-1, k = n-1; i >= 1; i--)
+      k += k/(lucky64[i]-1);
+    Safefree(lucky64);
+  }
+  return (2 * k + 1);
 }
