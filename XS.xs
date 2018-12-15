@@ -1559,7 +1559,7 @@ next_prime(IN SV* svn)
         /* Prev prime of 2 or less should return undef */
         if (ix == 1 && n < 3) XSRETURN_UNDEF;
         /* nth_prime(0) and similar should return undef */
-        if (n == 0 && (ix >= 2 && ix <= 10 && ix != 6)) XSRETURN_UNDEF;
+        if (n == 0 && (ix >= 2 && ix <= 15 && ix != 6)) XSRETURN_UNDEF;
         switch (ix) {
           case 0: ret = next_prime(n);  break;
           case 1: ret = (n < 3) ? 0 : prev_prime(n);  break;
