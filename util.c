@@ -3209,6 +3209,7 @@ UV random_factored_integer(void* ctx, UV n, int *nf, UV *factors) {
 /******************************************************************************/
 
 static const char _lmask63[63+2] = {1,1,0,1,1,0,1,1,0,1,1,0,1,1,0,1,1,0,0,0,0,1,1,0,1,1,0,0,0,0,1,1,0,1,1,0,1,1,0,0,0,0,1,1,0,1,1,0,1,1,0,1,1,0,1,1,0,0,0,0,0,0,0,1,1};
+static const unsigned char _small_lucky[48] = {1,3,7,9,13,15,21,25,31,33,37,43,49,51,63,67,69,73,75,79,87,93,99,105,111,115,127,129,133,135,141,151,159,163,169,171,189,193,195,201,205,211,219,223,231,235,237,241};
 
 /* Lucky Number sieve for 32-bit inputs.
  * Pre-sieve for first 4-7 levels, then in-place deletion using memmove,
@@ -3328,50 +3329,10 @@ UV* lucky_sieve(UV *size, UV n) {
   return lucky;
 }
 
-int is_lucky(UV n) {
-  UV lo,hi,mid,nth;
-
-  if ( !(n & 1) || (n%6) == 5 || !_lmask63[n % 63]) return 0;
-  if (n < 45) return 1;
-
-  /* TODO: 1. get a fast upper bound for hi: nth_lucky(hi) >= n
-   *       2. generate sieve-below-n once
-   *       3. func to produce nlucky for a given n (binary search the sieve)
-   *       4. apply the two-line Wilson sieve as needed below.
-   */
-
-#define ALC(n) (0.5 + 0.970 * n / log(n))
-  nth = nth_lucky( ALC(n) );
-  if (nth < n) {
-    hi = ALC(n);
-    do {
-      lo = hi;
-      hi = hi + 1 + (ALC(n) - ALC(nth));
-      nth = nth_lucky(hi);
-    } while (nth < n);
-  } else if (nth > n) {
-    lo = ALC(n);
-    do {
-      hi = lo;
-      lo = lo - 1 - (ALC(nth) - ALC(n));
-      nth = nth_lucky(lo);
-    } while (nth > n);
-  }
-  if (nth == n) return 1;
-  while (lo < hi) {
-    mid = lo + (hi-lo)/2;
-    nth = nth_lucky(mid);
-    if (nth == n) break;
-    if (nth <= n) lo = mid+1;
-    else          hi = mid;
-  }
-  return (nth == n);
-}
-
 UV nth_lucky(UV n) {
   UV i, k, nlucky;
 
-  if (n <= 1) return n;
+  if (n <= 48)  return (n == 0) ? 0 : _small_lucky[n-1];
 
   /* Apply the backward sieve, ala Wilson, for entry n */
   if (n <= UVCONST(2000000000)) {
@@ -3386,4 +3347,39 @@ UV nth_lucky(UV n) {
     Safefree(lucky64);
   }
   return (2 * k + 1);
+}
+
+#define ALC(n) (0.5 + 0.970 * n / log(n))  /* Estimate count */
+
+int is_lucky(UV n) {
+  uint32_t *lucky32;
+  UV i, l, quo, pos, nlucky, lsize;
+
+  /* Simple pre-tests */
+  if ( !(n & 1) || (n%6) == 5 || !_lmask63[n % 63]) return 0;
+  if (n < 45) return 1;
+
+  /* Check valid position using the static list */
+  pos = (n+1) >> 1;  /* Initial position in odds */
+  for (i = 1; i < 48; i++) {
+    l = _small_lucky[i];
+    if (pos < l) return 1;
+    quo = pos / l;
+    if (pos == quo*l) return 0;
+    pos -= quo;
+  }
+
+  /* Generate more values and continue checking from where we left off. */
+  lucky32 = lucky_sieve32(&nlucky, lsize = 200 + ALC(n) * 1.025);
+  while (1) {
+    if (i >= nlucky) { Safefree(lucky32); lucky32 = lucky_sieve32(&nlucky, lsize *= 1.02); }
+    l = lucky32[i];
+    if (pos < l)  break;
+    quo = pos / l;
+    if (pos == quo*l) { Safefree(lucky32); return 0; }
+    pos -= quo;
+    i++;
+  }
+  Safefree(lucky32);
+  return 1;
 }
