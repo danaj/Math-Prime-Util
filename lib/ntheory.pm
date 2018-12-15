@@ -210,6 +210,7 @@ Tags:
   is_polygonal(n,k,\$root)            as above but also set $root
   is_fundamental(d)                   is d a fundamental discriminant
   is_totient(n)                       is n = euler_phi(x) for some x
+  is_lucky(n)                         is n a lucky number
   sqrtint(n)                          integer square root
   rootint(n,k)                        integer k-th root
   rootint(n,k,\$rk)                   as above but also set $rk to r^k
@@ -265,6 +266,7 @@ Tags:
   randperm(n,[k])                     random permutation of n elems
   shuffle(...)                        random permutation of an array
   lucky_numbers(n)                    array ref of lucky sieve up to n
+  nth_lucky(n)                        nth entry in lucky sieve
 
 =head2 NON-INTEGER MATH
 

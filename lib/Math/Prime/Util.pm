@@ -3433,6 +3433,21 @@ There is no current algorithm for efficiently sieving a segment,
 and the time for the monolithic sieving process by currently known
 best methods is empirically C<O(n^1.8)>.
 
+=head2 nth_lucky
+
+Returns the Nth lucky number, by sieving to C<n> then performing
+a reverse calculation to determine the value at the nth position.
+This is much more efficient than generating all the lucky numbers
+up to the nth position, but is vastly slower than L</nth_prime>.
+
+=head2 is_lucky
+
+Returns C<1> if the input C<n> is included in the set of lucky numbers
+and C<0> otherwise.  The process used is analogous to trial division
+using the lucky numbers less than C<n/log(n)>.  For inputs not
+immediately discarded, the performance is essentially the same as
+generating the nth lucky number nearest to the input.
+
 
 =head2 carmichael_lambda
 

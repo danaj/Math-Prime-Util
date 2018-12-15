@@ -204,4 +204,4 @@
 
 - testing:  lehman_factor, print_primes, aks
 
-- finish is_lucky, nth_lucky
+- is_lucky, nth_lucky: tests, PP, PPFE

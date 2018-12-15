@@ -1,5 +1,17 @@
 Revision history for Perl module Math::Prime::Util
 
+0.74 ?
+
+    [ADDED]
+
+    - lucky_numbers(n)                array ref of lucky numbers <= n
+    - nth_lucky(n)                    the nth lucky number
+    - is_lucky(n)                     predicate for lucky number sieve
+
+    [FIXES]
+
+    - nth_ramanujan_* returns undef with input of 0.
+
 0.73 2018-11-15
 
     [ADDED]
