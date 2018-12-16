@@ -3349,7 +3349,20 @@ UV nth_lucky(UV n) {
   return (2 * k + 1);
 }
 
-#define ALC(n) (0.5 + 0.970 * n / log(n))  /* Estimate count */
+#if 0 /* Simple versions */
+static UV lucky_count_approx(UV n) { return 0.5 + 0.970 * n / log(n); }
+static UV lucky_count_upper(UV n) { return 200 + lucky_count_approx(n) * 1.025; }
+#else /* Hacky but better */
+static UV lucky_count_approx(UV n) {
+  return   (n <        7)  ?  (n > 0) + (n > 2)
+         : (n <= 1000000)  ?  0.9957 * n/log(n)
+                           : (1.03670 - log(n)/299) * n/log(n);
+}
+static UV lucky_count_upper(UV n) {   /* Holds under 1e9 */
+  return (n <= 10000) ?  10 + lucky_count_approx(n) * 1.1
+                      : 140 + lucky_count_approx(n) * 1.004;
+}
+#endif
 
 int is_lucky(UV n) {
   uint32_t *lucky32;
@@ -3370,7 +3383,7 @@ int is_lucky(UV n) {
   }
 
   /* Generate more values and continue checking from where we left off. */
-  lucky32 = lucky_sieve32(&nlucky, lsize = 200 + ALC(n) * 1.025);
+  lucky32 = lucky_sieve32(&nlucky, lsize = lucky_count_upper(n));
   while (1) {
     if (i >= nlucky) { Safefree(lucky32); lucky32 = lucky_sieve32(&nlucky, lsize *= 1.02); }
     l = lucky32[i];
