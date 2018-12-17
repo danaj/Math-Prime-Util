@@ -806,12 +806,11 @@ sub partitions {
   return $part[$n];
 }
 
+my @_lf63 = (0,0,1,0,0,1,0,0,1,0,0,1,0,0,1,0,0,1,1,1,1,0,0,1,0,0,1,1,1,1,0,0,1,0,0,1,0,0,1,1,1,1,0,0,1,0,0,1,0,0,1,0,0,1,0,0,1,1,1,1,1,1,1,0,0);
+
 sub lucky_numbers {
   my $n = shift;
   return [] if $n <= 0;
-
-  my @_lf63;   # Lucky:  1,3,7,9,13,15,...  63=7*9.
-  $_lf63[$_] = 1 for (qw/2 5 8 11 14 17 18 19 20 23 26 27 28 29 32 35 38 39 40 41 44 47 50 53 56 57 58 59 60 61 62/);
 
   my @lucky;
   # This wheel handles the evens and every 3rd by a mod 6 wheel,
@@ -830,6 +829,37 @@ sub lucky_numbers {
     }
   }
   \@lucky;
+}
+sub nth_lucky {
+  my $n = shift;
+  return (undef,1,3,7,9)[$n] if $n <= 4;
+  my $k = $n-1;
+  my $l = lucky_numbers($n);
+  shift @$l;
+  $k += int($k / ($_-1)) for reverse @$l;
+  2*$k+1;
+}
+sub is_lucky {
+  my $n = shift;
+
+  # Pretests
+  return 0 if $n <= 0 || !($n % 2) || ($n % 6) == 5 || $_lf63[$n % 63];
+  return 1 if $n < 45;
+
+  # Really simple but slow:
+  # return lucky_numbers($n)->[-1] == $n;
+
+  my $upper = int(200 + 0.994 * $n / log($n));
+  my $lucky = lucky_numbers($upper);
+  my $pos = ($n+1) >> 1;
+  my $i = 1;
+  while (1) {
+    my $l = ($i <= $#$lucky) ? $lucky->[$i++] : nth_lucky($i++);
+    return 1 if $pos < $l;
+    my $quo = int($pos / $l);
+    return 0 if $pos == $quo * $l;
+    $pos -= $quo;
+  }
 }
 
 sub primorial {

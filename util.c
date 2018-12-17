@@ -3386,12 +3386,11 @@ int is_lucky(UV n) {
   lucky32 = lucky_sieve32(&nlucky, lsize = lucky_count_upper(n));
   while (1) {
     if (i >= nlucky) { Safefree(lucky32); lucky32 = lucky_sieve32(&nlucky, lsize *= 1.02); }
-    l = lucky32[i];
+    l = lucky32[i++];
     if (pos < l)  break;
     quo = pos / l;
     if (pos == quo*l) { Safefree(lucky32); return 0; }
     pos -= quo;
-    i++;
   }
   Safefree(lucky32);
   return 1;
