@@ -3382,7 +3382,21 @@ int is_lucky(UV n) {
     pos -= quo;
   }
 
-  /* Generate more values and continue checking from where we left off. */
+  /* Check more small values */
+  if (n >= 1000000U) {
+    lucky32 = lucky_sieve32(&nlucky, lsize = lucky_count_upper(n)/25);
+    while (i < nlucky) {
+      l = lucky32[i++];
+      if (pos < l) break;
+      quo = pos / l;
+      if (pos == quo*l) { Safefree(lucky32); return 0; }
+      pos -= quo;
+    }
+    Safefree(lucky32);
+    if (pos < l) return 1;
+  }
+
+  /* Generate all needed values and continue checking from where we left off. */
   lucky32 = lucky_sieve32(&nlucky, lsize = lucky_count_upper(n));
   while (1) {
     if (i >= nlucky) { Safefree(lucky32); lucky32 = lucky_sieve32(&nlucky, lsize *= 1.02); }
