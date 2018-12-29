@@ -2473,8 +2473,8 @@ sub mulint {
   my($a, $b) = @_;
   return 0 if $a == 0 || $b == 0;
   my $prod = $a*$b;
-  return $prod if ref($a) || ref($b) || $prod == int($prod);
-  # return $a*$b if $a > 0 && $b > 0 && int(INTMAX/$a) >= $b;
+  return $prod if ref($a) || ref($b);
+  return $prod if $a > 0 && $b > 0 && int(INTMAX/$a) >= $b;
   # return Math::Prime::Util::vecprod($a,$b);
   my $res = Math::BigInt->new("$a")->bmul("$b");
   $res = _bigint_to_int($res) if $res->bacmp(BMAX) <= 0 && $res->bcmp(-(BMAX>>1)) > 0;
@@ -2483,7 +2483,8 @@ sub mulint {
 sub addint {
   my($a, $b) = @_;
   my $sum = $a+$b;
-  return $sum if ref($a) || ref($b) || $sum == int($sum);
+  return $sum if ref($a) || ref($b);
+  return $sum if $a > 0 && $b > 0 && int(INTMAX-$a) >= $b;
   # return Math::Prime::Util::vecsum(@_);
   my $res = Math::BigInt->new("$a")->badd("$b");
   $res = _bigint_to_int($res) if $res->bacmp(BMAX) <= 0 && $res->bcmp(-(BMAX>>1)) > 0;
