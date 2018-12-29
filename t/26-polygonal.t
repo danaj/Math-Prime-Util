@@ -36,7 +36,8 @@ my @expect = (
 
 plan tests => 0
             + 2*scalar(@expect)
-            + 2;
+            + 2
+            + 5;
             ;
 
 for my $k (3 .. 25) {
@@ -61,3 +62,14 @@ for my $k (3 .. 25) {
 
 ok(!is_polygonal("724424175519274711242",3), "724424175519274711242 is not a triangular number");
 ok(is_polygonal("510622052816898545467859772308206986101878",3), "510622052816898545467859772308206986101878 is a triangular number");
+
+{
+  my($is,$r);
+  $is = is_polygonal(0, 4294967297, \$r);
+  ok( $is, "0 is a polygonal number" );
+  is( $r, 0, "is_polygonal with 0 sets r to 0" );
+  $is = is_polygonal(1, 4294967297, \$r);
+  ok( $is, "1 is a polygonal number" );
+  is( $r, 1, "is_polygonal with 1 sets r to 1" );
+  ok( !is_polygonal(-1, 3), "-1 is not a polygonal number" );
+}

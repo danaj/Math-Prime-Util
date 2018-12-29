@@ -3006,14 +3006,13 @@ sub is_polygonal {
   my ($n, $k, $refp) = @_;
   croak("is_polygonal third argument not a scalar reference") if defined($refp) && !ref($refp);
   croak("is_polygonal: k must be >= 3") if $k < 3;
-  return 0 if $n <= 0;
-  if ($n == 1) { $$refp = 1 if defined $refp; return 1; }
+  return 0 if $n < 0;
+  if ($n <= 1) { $$refp = $n if defined $refp; return 1; }
 
   if ($Math::Prime::Util::_GMPfunc{"polygonal_nth"}) {
     my $nth = Math::Prime::Util::GMP::polygonal_nth($n, $k);
     return 0 unless $nth;
-    $nth = Math::Prime::Util::_reftyped($_[0], $nth);
-    $$refp = $nth if defined $refp;
+    $$refp = Math::Prime::Util::_reftyped($_[0], $nth) if defined $refp;
     return 1;
   }
 
@@ -3030,13 +3029,13 @@ sub is_polygonal {
     $R = 2*$k-4;
   } else {
     if ($k == 3) {
-      $D = vecsum(1, vecprod($n, 8));
+      $D = addint(1, mulint($n, 8));
     } else {
-      $D = vecsum(vecprod($n, vecprod(8, $k) - 16),  vecprod($k-4,$k-4));;
+      $D = addint(mulint($n, mulint(8, $k) - 16), mulint($k-4,$k-4));
     }
     return 0 unless _is_perfect_square($D);
-    $D = vecsum( sqrtint($D), $k-4 );
-    $R = vecprod(2, $k) - 4;
+    $D = addint( sqrtint($D), $k-4 );
+    $R = mulint(2, $k) - 4;
   }
   return 0 if ($D % $R) != 0;
   $$refp = $D / $R if defined $refp;
