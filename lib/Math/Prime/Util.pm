@@ -30,6 +30,7 @@ our @EXPORT_OK =
       is_square_free is_primitive_root is_carmichael is_quasi_carmichael
       is_fundamental is_totient
       sqrtint rootint logint
+      powint mulint addint divint modint divrem tdivrem
       miller_rabin_random
       lucas_sequence lucasu lucasv
       primes twin_primes semi_primes ramanujan_primes
@@ -5513,6 +5514,10 @@ Pierre Dusart, "Estimates of Some Functions Over Primes without R.H.", preprint,
 =item *
 
 Pierre-Alain Fouque and Mehdi Tibouchi, "Close to Uniform Prime Number Generation With Fewer Random Bits", pre-print, 2011.  Describes random prime distributions, their algorithm for creating random primes using few random bits, and comparisons to other methods.  Definitely worth reading for the discussions of uniformity.  L<http://eprint.iacr.org/2011/481>
+
+=item *
+
+Daan Leijen, "Division and Modulus for Computer Scientists", 2001.  Paper discussing different div/mod methods.  L<https://www.microsoft.com/en-us/research/wp-content/uploads/2016/02/divmodnote-letter.pdf>
 
 =item *
 

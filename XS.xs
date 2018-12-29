@@ -1976,16 +1976,22 @@ kronecker(IN SV* sva, IN SV* svb)
     valuation = 1
     invmod = 2
     sqrtmod = 3
-    is_primitive_root = 4
+    powint = 4
+    mulint = 5
+    addint = 6
+    divint = 7
+    modint = 8
+    divrem = 9
+    tdivrem = 10
+    is_primitive_root = 11
   PREINIT:
     int astatus, bstatus, abpositive, abnegative;
   PPCODE:
     astatus = _validate_int(aTHX_ sva, 2);
     bstatus = _validate_int(aTHX_ svb, 2);
     if (astatus != 0 && bstatus != 0) {
+      abpositive = astatus == 1 && bstatus == 1; /* both arguments positive */
       if (ix == 0) {
-        /* Are both a and b positive? */
-        abpositive = astatus == 1 && bstatus == 1;
         /* Will both fit in IVs?  We should use a bitmask return. */
         abnegative = !abpositive
                      && (SvIOK(sva) && !SvIsUV(sva))
@@ -2023,6 +2029,42 @@ kronecker(IN SV* sva, IN SV* svb)
           if (!sqrtmod_composite(&s, a, n)) XSRETURN_UNDEF;
         }
         XSRETURN_UV(s);
+      } else if (ix >= 4 && ix <= 10) {
+        if (abpositive) {
+          UV ret = 0, a = my_svuv(sva), b = my_svuv(svb);
+          int overflow = 0;
+          switch (ix) {
+            case  4: if (a < 2)
+                       ret = (b == 0) ? 1 : a;
+                     else if (a == 2 && b < BITS_PER_WORD)
+                       ret = UVCONST(1) << b;
+                     else if (a >= 3 && b < BITS_PER_WORD && b <= logint(UV_MAX, a))
+                       ret = ipow(a,b);
+                     else
+                       overflow = 1;
+                     break;
+            case  5: ret = a * b;                  /* mulint */
+                     overflow = a > 0 && UV_MAX/a < b;
+                     break;
+            case  6: ret = a + b;                  /* addint */
+                     overflow = UV_MAX-a < b;
+                     break;
+            case  7: if (b == 0) croak("divint: divide by zero");
+                     ret = a / b; break;           /* divint */
+            case  8: if (b == 0) croak("modint: divide by zero");
+                     ret = a % b; break;           /* modint */
+            case  9: if (b == 0) croak("divrem: divide by zero");
+                     XPUSHs(sv_2mortal(newSVuv( a / b )));
+                     XPUSHs(sv_2mortal(newSVuv( a % b )));
+                     XSRETURN(2); break;           /* divrem */
+            case 10:
+            default: if (b == 0) croak("tdivrem: divide by zero");
+                     XPUSHs(sv_2mortal(newSVuv( a / b )));
+                     XPUSHs(sv_2mortal(newSVuv( a % b )));
+                     XSRETURN(2); break;           /* tdivrem */
+          }
+          if (!overflow) XSRETURN_UV(ret);
+        }
       } else {
         UV a, n;
         n = (bstatus != -1) ? my_svuv(svb) : (UV)(-(my_sviv(svb)));
@@ -2035,7 +2077,14 @@ kronecker(IN SV* sva, IN SV* svb)
       case 1:  _vcallsub_with_gmp(0.20,"valuation"); break;
       case 2:  _vcallsub_with_gmp(0.20,"invmod"); break;
       case 3:  _vcallsub_with_gmp(0.36,"sqrtmod"); break;
-      case 4:
+      case 4:  _vcallsub_with_gmp(0.52,"powint"); break;
+      case 5:  _vcallsub_with_gmp(0.52,"mulint"); break;
+      case 6:  _vcallsub_with_gmp(0.52,"addint"); break;
+      case 7:  _vcallsub_with_gmp(0.52,"divint"); break;
+      case 8:  _vcallsub_with_gmp(0.52,"modint"); break;
+      case 9:  _vcallsubn(aTHX_ GIMME_V, VCALL_PP|VCALL_GMP, "divrem", items, 52); break;
+      case 10: _vcallsubn(aTHX_ GIMME_V, VCALL_PP|VCALL_GMP, "tdivrem", items, 52); break;
+      case 11:
       default: _vcallsub_with_gmp(0.36,"is_primitive_root"); break;
     }
     return; /* skip implicit PUTBACK */

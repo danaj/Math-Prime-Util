@@ -211,6 +211,13 @@ Tags:
   is_fundamental(d)                   is d a fundamental discriminant
   is_totient(n)                       is n = euler_phi(x) for some x
   is_lucky(n)                         is n a lucky number
+  powint(a,b)                         signed integer a^b
+  mulint(a,b)                         signed integer a * b
+  addint(a,b)                         signed integer a + b
+  divint(a,b)                         signed integer a / b     (floor)
+  modint(a,b)                         signed integer a % b     (floor)
+  divrem(a,b)                         return (quot,rem) of a/b (Euclidian)
+  tdivrem(a,b)                        return (quot,rem) of a/b (truncated)
   sqrtint(n)                          integer square root
   rootint(n,k)                        integer k-th root
   rootint(n,k,\$rk)                   as above but also set $rk to r^k

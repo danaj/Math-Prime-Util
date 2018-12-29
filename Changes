@@ -7,6 +7,13 @@ Revision history for Perl module Math::Prime::Util
     - lucky_numbers(n)                array ref of lucky numbers <= n
     - nth_lucky(n)                    the nth lucky number
     - is_lucky(n)                     predicate for lucky number sieve
+    - powint(a, b)                    signed integer a^b
+    - mulint(a, b)                    signed integer a*b
+    - addint(a, b)                    signed integer a+b
+    - divint(a, b)                    signed integer a/b (floor)
+    - modint(a, b)                    signed integer a%b (floor)
+    - divrem(a, b)                    Euclidean quotient and remainder
+    - tdivrem(a, b)                   Truncated quotient and remainder
 
     [FIXES]
 

@@ -204,3 +204,9 @@
 - split 80-PP into multiple tests: random, float, numeric, factor, prime, etc.
 
 - testing:  lehman_factor, print_primes, aks
+
+- powint, divint, mulint, addint:
+  - docs
+  - optimize XS for (1) both neg, (2) either neg
+
+- random_safe_prime, p and (p-1)/2 are prime, see Wiener sieve

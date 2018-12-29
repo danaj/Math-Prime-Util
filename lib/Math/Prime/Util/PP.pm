@@ -2455,6 +2455,98 @@ sub _powmod {
   $t;
 }
 
+sub powint {
+  my($a, $b) = @_;
+  croak "powint: exponent must be >= 0" if $b < 0;
+  return ($b == 0) ? 1 : 0 if $a == 0;
+  return 1 if $a == 1;
+  return ($b % 2) ? -1 : 1 if $a == -1;
+  return 1 << $b if $a == 2 && $b < MPU_MAXBITS;
+
+  if (!ref($a) && !ref($b) && ($b >= MPU_MAXBITS || $b > Math::Prime::Util::logint(~0,abs($a)))) {
+    return Math::BigInt->new($a)->bpow($b);
+  }
+  return $a ** $b;
+}
+
+sub mulint {
+  my($a, $b) = @_;
+  return 0 if $a == 0 || $b == 0;
+  my $prod = $a*$b;
+  return $prod if ref($a) || ref($b) || $prod == int($prod);
+  # return $a*$b if $a > 0 && $b > 0 && int(INTMAX/$a) >= $b;
+  # return Math::Prime::Util::vecprod($a,$b);
+  my $res = Math::BigInt->new("$a")->bmul("$b");
+  $res = _bigint_to_int($res) if $res->bacmp(BMAX) <= 0 && $res->bcmp(-(BMAX>>1)) > 0;
+  $res;
+}
+sub addint {
+  my($a, $b) = @_;
+  my $sum = $a+$b;
+  return $sum if ref($a) || ref($b) || $sum == int($sum);
+  # return Math::Prime::Util::vecsum(@_);
+  my $res = Math::BigInt->new("$a")->badd("$b");
+  $res = _bigint_to_int($res) if $res->bacmp(BMAX) <= 0 && $res->bcmp(-(BMAX>>1)) > 0;
+  $res;
+}
+
+sub _tquotient {
+  my($a,$b) = @_;
+  return -int(-$a /  $b)  if $a < 0 && $b > 0;
+  return -int( $a / -$b)  if $b < 0 && $a > 0;
+  int($a / $b);
+}
+sub _fdivrem {
+  my($a,$b) = @_;
+  my $q = ($a >= 0 && $b >= 0) ? int($a/$b) : _tquotient($a,$b);
+  my $r = $a - $b * $q;
+  if (($r < 0 && $b > 0) || ($r > 0 && $b < 0)) {
+    $q--;
+    $r += $b;
+  }
+  ($q, $r);
+}
+sub tdivrem {
+  my($a,$b) = @_;
+  _validate_integer($a);
+  _validate_integer($b);
+  croak "tdivrem: divide by zero" if $b == 0;
+  my $q = ($a >= 0 && $b >= 0) ? int($a/$b) : _tquotient($a,$b);
+  ($q, $a - $b * $q);
+}
+sub divrem {
+  my($a,$b) = @_;
+  _validate_integer($a);
+  _validate_integer($b);
+  croak "divrem: divide by zero" if $b == 0;
+  my $q = ($a >= 0 && $b >= 0) ? int($a/$b) : _tquotient($a,$b);
+  my $r = $a - $b * $q;
+  if ($r <0) {
+    if ($b > 0) { $q--; $r += $b; }
+    else        { $q++; $r -= $b; }
+  }
+  ($q,$r);
+}
+
+sub divint {
+  my($a,$b) = @_;
+  _validate_integer($a);
+  _validate_integer($b);
+  croak "divint: divide by zero" if $b == 0;
+  return int($a / $b) if $a >= 0 && $b >= 0;
+  my($q,$r) = _fdivrem($a,$b);
+  $q;
+}
+sub modint {
+  my($a,$b) = @_;
+  _validate_integer($a);
+  _validate_integer($b);
+  croak "modint: divide by zero" if $b == 0;
+  return int($a % $b) if $a >= 0 && $b >= 0;
+  my($q,$r) = _fdivrem($a,$b);
+  $r;
+}
+
 # Make sure to work around RT71548, Math::BigInt::Lite,
 # and use correct lcm semantics.
 sub gcd {

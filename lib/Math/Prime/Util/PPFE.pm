@@ -140,6 +140,11 @@ sub entropy_bytes {
 *euler_phi = \&Math::Prime::Util::PP::euler_phi;
 *inverse_totient = \&Math::Prime::Util::PP::inverse_totient;
 
+*divint = \&Math::Prime::Util::PP::divint;
+*modint = \&Math::Prime::Util::PP::modint;
+*divrem = \&Math::Prime::Util::PP::divrem;
+*tdivrem = \&Math::Prime::Util::PP::tdivrem;
+
 sub jordan_totient {
   my($k, $n) = @_;
   _validate_positive_integer($k);
@@ -685,6 +690,24 @@ sub logint {
   _validate_positive_integer($n);
   _validate_positive_integer($b);
   return Math::Prime::Util::PP::logint($n, $b, $refp);
+}
+sub powint {
+  my($a, $b) = @_;
+  _validate_integer($a);
+  _validate_integer($b);
+  return Math::Prime::Util::PP::powint($a, $b);
+}
+sub mulint {
+  my($a, $b) = @_;
+  _validate_integer($a);
+  _validate_integer($b);
+  return Math::Prime::Util::PP::mulint($a, $b);
+}
+sub addint {
+  my($a, $b) = @_;
+  _validate_integer($a);
+  _validate_integer($b);
+  return Math::Prime::Util::PP::addint($a, $b);
 }
 
 sub legendre_phi {
