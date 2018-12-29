@@ -142,6 +142,7 @@ t/17-pseudoprime.t
 t/18-functions.t
 t/19-chebyshev.t
 t/19-chinese.t
+t/19-divint.t
 t/19-divisorsum.t
 t/19-gcd.t
 t/19-kronecker.t
