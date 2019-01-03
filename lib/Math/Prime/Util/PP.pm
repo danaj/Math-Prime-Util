@@ -2460,15 +2460,27 @@ sub powint {
   return Math::Prime::Util::_reftyped($_[0], Math::Prime::Util::GMP::powint($a,$b))
     if $Math::Prime::Util::_GMPfunc{"powint"};
   croak "powint: exponent must be >= 0" if $b < 0;
-  return ($b == 0) ? 1 : 0 if $a == 0;
-  return 1 if $a == 1;
-  return ($b % 2) ? -1 : 1 if $a == -1;
-  return 1 << $b if $a == 2 && $b < MPU_MAXBITS;
 
-  if (!ref($a) && !ref($b) && ($b >= MPU_MAXBITS || $b > Math::Prime::Util::logint(~0,abs($a)))) {
-    return Math::BigInt->new($a)->bpow($b);
+  # Special cases for small a and b
+  if ($a >= -1 && $a <= 4) {
+    return ($b == 0) ? 1 : 0 if $a == 0;
+    return 1 if $a == 1;
+    return ($b % 2) ? -1 : 1 if $a == -1;
+    return 1 << $b if $a == 2 && $b < MPU_MAXBITS;
+    return 1 << (2*$b) if $a == 4 && $b < MPU_MAXBITS/2;
   }
-  return $a ** $b;
+  return 1 if $b == 0;
+  return $a if $b == 1;
+
+  return $a ** $b if ref($a) || ref($b);
+
+  # Try normal integer exponentiation (floating point)
+  my $ires = int($a ** $b);
+  return $ires if abs($ires) < (1 << 53);
+
+  my $res = Math::BigInt->new($a)->bpow($b);
+  $res = _bigint_to_int($res) if $res->bacmp(BMAX) <= 0 && $res->bcmp(-(BMAX>>1)) > 0;
+  $res;
 }
 
 sub mulint {
