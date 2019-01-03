@@ -210,3 +210,5 @@
   - optimize XS for (1) both neg, (2) either neg
 
 - random_safe_prime, p and (p-1)/2 are prime, see Wiener sieve
+
+- factor, factor_exp accept negative inputs

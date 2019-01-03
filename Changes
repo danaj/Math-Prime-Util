@@ -19,6 +19,8 @@ Revision history for Perl module Math::Prime::Util
 
     - nth_ramanujan_* returns undef with input of 0.
 
+    - PP code for is_polygonal with n=0 was wrong.  Fixed and refactored.
+
 0.73 2018-11-15
 
     [ADDED]
