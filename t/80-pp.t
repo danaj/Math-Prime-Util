@@ -318,7 +318,8 @@ require_ok 'Math::Prime::Util::PrimalityProving';
     *is_frobenius_underwood_pseudoprime = \&Math::Prime::Util::PP::is_frobenius_underwood_pseudoprime;
     *is_perrin_pseudoprime = \&Math::Prime::Util::PP::is_perrin_pseudoprime;
     *is_frobenius_pseudoprime = \&Math::Prime::Util::PP::is_frobenius_pseudoprime;
-    *is_aks_prime   = \&Math::Prime::Util::PP::is_aks_prime;
+    *is_aks_prime = \&Math::Prime::Util::PP::is_aks_prime;
+    *is_gaussian_prime = \&Math::Prime::Util::PP::is_gaussian_prime;
 
     *is_ramanujan_prime = \&Math::Prime::Util::PP::is_ramanujan_prime;
     *nth_ramanujan_prime = \&Math::Prime::Util::PP::nth_ramanujan_prime;
@@ -883,18 +884,13 @@ if ($use64) {
   prime_set_config(xs=>$xs, gmp=>$gmp, verbose=>$verbose);
 }
 
-# is_gaussian_prime
-{
-  ok( !Math::Prime::Util::_is_gaussian_prime(29,0), "29 is not a Gaussian Prime" );
-  ok(  Math::Prime::Util::_is_gaussian_prime(31,0), "31 is a Gaussian Prime" );
-
-  ok( !Math::Prime::Util::_is_gaussian_prime(0,-29), "0-29i is not a Gaussian Prime" );
-  ok(  Math::Prime::Util::_is_gaussian_prime(0,-31), "0-31i is a Gaussian Prime" );
-
-  ok(  Math::Prime::Util::_is_gaussian_prime(58924,132000511), "58924+132000511i is a Gaussian Prime" );
-  ok(  Math::Prime::Util::_is_gaussian_prime(519880,-2265929), "519880-2265929i is a Gaussian Prime" );
-  ok( !Math::Prime::Util::_is_gaussian_prime(20571,150592260), "20571+150592260i is not a Gaussian Prime" );
-}
+ok( !is_gaussian_prime(29,0), "29 is not a Gaussian Prime" );
+ok(  is_gaussian_prime(31,0), "31 is a Gaussian Prime" );
+ok( !is_gaussian_prime(0,-29), "0-29i is not a Gaussian Prime" );
+ok(  is_gaussian_prime(0,-31), "0-31i is a Gaussian Prime" );
+ok(  is_gaussian_prime(58924,132000511), "58924+132000511i is a Gaussian Prime" );
+ok(  is_gaussian_prime(519880,-2265929), "519880-2265929i is a Gaussian Prime" );
+ok( !is_gaussian_prime(20571,150592260), "20571+150592260i is not a Gaussian Prime" );
 
 ok(  is_semiprime(1110000001), "1110000001 is a semiprime" );
 ok( !is_semiprime(1110000201), "1110000201 is not a semiprime" );

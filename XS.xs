@@ -1983,7 +1983,8 @@ kronecker(IN SV* sva, IN SV* svb)
     modint = 8
     divrem = 9
     tdivrem = 10
-    is_primitive_root = 11
+    is_gaussian_prime = 11
+    is_primitive_root = 12
   PREINIT:
     int astatus, bstatus, abpositive, abnegative;
   PPCODE:
@@ -2065,6 +2066,16 @@ kronecker(IN SV* sva, IN SV* svb)
           }
           if (!overflow) XSRETURN_UV(ret);
         }
+      } else if (ix == 11) {
+        UV a = (astatus != -1) ? my_svuv(sva) : (UV)(-(my_sviv(sva)));
+        UV b = (bstatus != -1) ? my_svuv(svb) : (UV)(-(my_sviv(svb)));
+        if (a == 0) RETURN_NPARITY( ((b % 4) == 3) && is_prime(b) );
+        if (b == 0) RETURN_NPARITY( ((a % 4) == 3) && is_prime(a) );
+        if (a < HALF_WORD && b < HALF_WORD) {
+          UV aa = a*a, bb = b*b;
+          if (UV_MAX-aa >= bb)
+            RETURN_NPARITY( is_prime(aa+bb) );
+        }
       } else {
         UV a, n;
         n = (bstatus != -1) ? my_svuv(svb) : (UV)(-(my_sviv(svb)));
@@ -2084,7 +2095,8 @@ kronecker(IN SV* sva, IN SV* svb)
       case 8:  _vcallsub_with_gmp(0.52,"modint"); break;
       case 9:  _vcallsubn(aTHX_ GIMME_V, VCALL_PP|VCALL_GMP, "divrem", items, 52); break;
       case 10: _vcallsubn(aTHX_ GIMME_V, VCALL_PP|VCALL_GMP, "tdivrem", items, 52); break;
-      case 11:
+      case 11: _vcallsub_with_gmp(0.52,"is_gaussian_prime"); break;
+      case 12:
       default: _vcallsub_with_gmp(0.36,"is_primitive_root"); break;
     }
     return; /* skip implicit PUTBACK */

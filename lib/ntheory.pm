@@ -50,6 +50,7 @@ Tags:
   is_mersenne_prime(p)                is 2^p-1 prime or composite
   is_aks_prime(n)                     AKS deterministic test (slow)
   is_ramanujan_prime(n)               is n a Ramanujan prime
+  is_gaussian_prime(a,b)              is a+bi a Gaussian prime
 
 =head2 PROBABLE PRIME TESTS
 

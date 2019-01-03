@@ -28,7 +28,7 @@ our @EXPORT_OK =
       is_aks_prime is_bpsw_prime is_ramanujan_prime is_mersenne_prime
       is_power is_prime_power is_pillai is_semiprime is_square is_polygonal
       is_square_free is_primitive_root is_carmichael is_quasi_carmichael
-      is_fundamental is_totient
+      is_fundamental is_totient is_gaussian_prime
       sqrtint rootint logint
       powint mulint addint divint modint divrem tdivrem
       miller_rabin_random
@@ -796,16 +796,6 @@ sub _generic_factor_exp {
   my @factors = grep { !$exponents{$_}++ } factor($n);
   return scalar @factors unless wantarray;
   return (map { [$_, $exponents{$_}] } @factors);
-}
-
-#############################################################################
-
-sub _is_gaussian_prime {
-  my($a,$b) = @_;
-  my($A,$B) = ($a >= 0 ? $a : -$a, $b >= 0 ? $b : -$b);
-  return ((($B % 4) == 3) ? is_prime($B) : 0) if $a == 0;
-  return ((($A % 4) == 3) ? is_prime($A) : 0) if $b == 0;
-  is_prime( vecsum( vecprod($a,$a), vecprod($b,$b) ) );
 }
 
 #############################################################################
@@ -2625,6 +2615,22 @@ return 1, while all other numbers will return 0.
 There is no simple function for this predicate, so Ramanujan primes through
 at least C<n> are generated, then a search is performed for C<n>.  This is
 not efficient for multiple calls.
+
+
+=head2 is_gaussian_prime
+
+Given two integers C<a> and C<b>, returns either 0 or 1 to indicate whether
+C<n = a+bi> is a Guassian prime.  This is true if and only if one of:
+
+=over 4
+
+=item C<a = 0> and |b| is a prime congruent to 3 modulo 4.
+
+=item C<b = 0> and |a| is a prime congruent to 3 modulo 4.
+
+=item C<a> and C<b> are nonzero and C<a^2 + b^2> is prime.
+
+=back
 
 
 =head2 is_power

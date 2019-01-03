@@ -1109,7 +1109,7 @@ sub _totpred {
   return 1 if $n == 1 || ($n < $maxd && Math::Prime::Util::is_prime(2*$n+1));
   for my $d (Math::Prime::Util::divisors($n)) {
     last if $d >= $maxd;
-    my $p = ($d < (INTMAX >> 1))  ?  ($d<<1)+1  :  Math::Prime::Util::vecprod(2,$d)+1;
+    my $p = ($d < (INTMAX >> 1))  ?  ($d<<1)+1  :  Math::Prime::Util::mulint(2,$d)+1;
     next unless Math::Prime::Util::is_prime($p);
     my $r = int($n / $d);
     while (1) {
@@ -2457,6 +2457,8 @@ sub _powmod {
 
 sub powint {
   my($a, $b) = @_;
+  return Math::Prime::Util::_reftyped($_[0], Math::Prime::Util::GMP::powint($a,$b))
+    if $Math::Prime::Util::_GMPfunc{"powint"};
   croak "powint: exponent must be >= 0" if $b < 0;
   return ($b == 0) ? 1 : 0 if $a == 0;
   return 1 if $a == 1;
@@ -2472,6 +2474,8 @@ sub powint {
 sub mulint {
   my($a, $b) = @_;
   return 0 if $a == 0 || $b == 0;
+  return Math::Prime::Util::_reftyped($_[0], Math::Prime::Util::GMP::mulint($a,$b))
+    if $Math::Prime::Util::_GMPfunc{"mulint"};
   my $prod = $a*$b;
   return $prod if ref($a) || ref($b);
   return $prod if $a > 0 && $b > 0 && int(INTMAX/$a) >= $b;
@@ -2482,6 +2486,8 @@ sub mulint {
 }
 sub addint {
   my($a, $b) = @_;
+  return Math::Prime::Util::_reftyped($_[0], Math::Prime::Util::GMP::addint($a,$b))
+    if $Math::Prime::Util::_GMPfunc{"addint"};
   my $sum = $a+$b;
   return $sum if ref($a) || ref($b);
   return $sum if $a > 0 && $b > 0 && int(INTMAX-$a) >= $b;
@@ -3002,6 +3008,17 @@ sub is_prime_power {
   $k;
 }
 
+sub is_gaussian_prime {
+  my($a,$b) = @_;
+  _validate_integer($a);
+  _validate_integer($b);
+  $a = -$a if $a < 0;
+  $b = -$b if $b < 0;
+  return ((($b % 4) == 3) ? is_prime($b) : 0) if $a == 0;
+  return ((($a % 4) == 3) ? is_prime($a) : 0) if $b == 0;
+  is_prime( addint( mulint($a,$a), mulint($b,$b) ) );
+}
+
 sub is_polygonal {
   my ($n, $k, $refp) = @_;
   croak("is_polygonal third argument not a scalar reference") if defined($refp) && !ref($refp);
@@ -3269,8 +3286,8 @@ sub stirling {
   } elsif ($type == 2) {
     my @terms;
     for my $j (1 .. $m) {
-      my $t = Math::Prime::Util::vecprod(
-                Math::BigInt->new($j) ** $n,
+      my $t = Math::Prime::Util::mulint(
+                Math::Prime::Util::powint($j,$n),
                 Math::Prime::Util::binomial($m,$j)
               );
       push @terms, (($m-$j) & 1)  ?  "-$t"  :  $t;
@@ -5857,9 +5874,9 @@ sub LogarithmicIntegral {
     my $k = 0;
     my $neglogx = -$logx;
     for my $n (1 .. 1000) {
-      $factorial = vecprod($factorial, $n);
-      $q = vecprod($factorial, $power2);
-      $power2 = vecprod(2, $power2);
+      $factorial = mulint($factorial, $n);
+      $q = mulint($factorial, $power2);
+      $power2 = mulint(2, $power2);
       while ($k <= ($n-1)>>1) {
         $inner_sum += Math::BigFloat->new(1) / (2*$k+1);
         $k++;
@@ -6494,8 +6511,8 @@ sub numtoperm {
   _validate_integer($k);
   return () if $n == 0;
   return (0) if $n == 1;
-  my $f = factorial($n-1);
-  $k %= vecprod($f,$n) if $k < 0 || int($k/$f) >= $n;
+  my $f = Math::Prime::Util::factorial($n-1);
+  $k %= Math::Prime::Util::mulint($f,$n) if $k < 0 || int($k/$f) >= $n;
   my @S = map { $_ } 0 .. $n-1;
   my @V;
   while ($n-- > 0) {
@@ -6528,7 +6545,7 @@ sub permtonum {
     for my $j ($i+1 .. $n-1) {
       $k++ if $A->[$j] < $A->[$i];
     }
-    $rank = Math::Prime::Util::vecsum($rank, Math::Prime::Util::vecprod($k,$f));
+    $rank = Math::Prime::Util::addint($rank, Math::Prime::Util::mulint($k,$f));
     $f /= $n-$i-1;
   }
   $rank;
@@ -6809,7 +6826,7 @@ sub random_unrestricted_semiprime {
     my $ranmin = ref($min) ? $min->badd($p-1)->bdiv($p)->as_int : int(($min+$p-1)/$p);
     my $ranmax = ref($max) ? $max->bdiv($p)->as_int : int($max/$p);
     my $q = random_prime($ranmin, $ranmax);
-    $n = Math::Prime::Util::vecprod($p,$q);
+    $n = Math::Prime::Util::mulint($p,$q);
   }
   $n = _bigint_to_int($n) if ref($n) && $n->bacmp(BMAX) <= 0;
   $n;

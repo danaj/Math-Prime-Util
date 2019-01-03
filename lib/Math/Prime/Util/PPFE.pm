@@ -118,6 +118,7 @@ sub entropy_bytes {
 *is_totient = \&Math::Prime::Util::PP::is_totient;
 *is_square = \&Math::Prime::Util::PP::is_square;
 *is_lucky = \&Math::Prime::Util::PP::is_lucky;
+*is_gaussian_prime = \&Math::Prime::Util::PP::is_gaussian_prime;
 
 *random_prime = \&Math::Prime::Util::PP::random_prime;
 *random_ndigit_prime = \&Math::Prime::Util::PP::random_ndigit_prime;

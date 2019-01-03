@@ -14,6 +14,7 @@ Revision history for Perl module Math::Prime::Util
     - modint(a, b)                    signed integer a%b (floor)
     - divrem(a, b)                    Euclidean quotient and remainder
     - tdivrem(a, b)                   Truncated quotient and remainder
+    - is_gaussian_prime(a,b)          is a+bi a Gaussian prime
 
     [FIXES]
 
