@@ -438,16 +438,8 @@ sub lemoine_count {
 }
 
 sub powerflip {
-  my($n, $prod) = (shift, 1);
-  # The spiffy log solution for bigints taken from Math::NumSeq
-  my $log = 0;
-  foreach my $pe (factor_exp($n)) {
-    my ($p,$e) = @$pe;
-    $log += $p * log($e);
-    $e = Math::BigInt->new($e) if $log > 31;
-    $prod *= $e ** $p;
-  }
-  $prod;
+  my $n = shift;
+  vecprod( map { powint($_->[1], $_->[0]) } factor_exp($n) );
 }
 
 sub primeindexprime {
