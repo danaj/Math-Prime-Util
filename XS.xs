@@ -2069,8 +2069,8 @@ kronecker(IN SV* sva, IN SV* svb)
       } else if (ix == 11) {
         UV a = (astatus != -1) ? my_svuv(sva) : (UV)(-(my_sviv(sva)));
         UV b = (bstatus != -1) ? my_svuv(svb) : (UV)(-(my_sviv(svb)));
-        if (a == 0) RETURN_NPARITY( ((b % 4) == 3) && is_prime(b) );
-        if (b == 0) RETURN_NPARITY( ((a % 4) == 3) && is_prime(a) );
+        if (a == 0) RETURN_NPARITY( ((b % 4) == 3) ? is_prime(b) : 0 );
+        if (b == 0) RETURN_NPARITY( ((a % 4) == 3) ? is_prime(a) : 0 );
         if (a < HALF_WORD && b < HALF_WORD) {
           UV aa = a*a, bb = b*b;
           if (UV_MAX-aa >= bb)

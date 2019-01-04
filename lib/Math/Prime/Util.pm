@@ -2619,8 +2619,10 @@ not efficient for multiple calls.
 
 =head2 is_gaussian_prime
 
-Given two integers C<a> and C<b>, returns either 0 or 1 to indicate whether
-C<n = a+bi> is a Guassian prime.  This is true if and only if one of:
+Given two integers C<a> and C<b>, returns either 0, 1, or 2 to indicate
+whether C<n = a+bi> is, respectively, a Guassian composite,
+probable Gaussian prime, or definite Gaussian prime.
+This is true if and only if one of:
 
 =over 4
 
