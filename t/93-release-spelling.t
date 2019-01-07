@@ -38,7 +38,7 @@ add_stopwords(qw/bigint bigints
                  bernfrac bernreal harmfrac harmreal stirling hclassno
                  vecsum vecprod vecmin vecmax vecreduce vecextract
                  vecall vecany vecnone vecnotall vecfirst vecfirstidx
-                 sqrtint logint rootint
+                 sqrtint logint rootint powint addint mulint divint modint divrem tdivrem
                  factorialmod
                  todigits todigitstring fromdigits sumdigits hammingweight
                  lucasu lucasv

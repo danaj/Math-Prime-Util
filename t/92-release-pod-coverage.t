@@ -56,7 +56,7 @@ sub mpu_public_regex {
       is_aks_prime is_bpsw_prime is_ramanujan_prime is_mersenne_prime
       is_power is_prime_power is_pillai is_semiprime is_square is_polygonal
       is_square_free is_primitive_root is_carmichael is_quasi_carmichael
-      is_fundamental is_totient
+      is_fundamental is_totient is_gaussian_prime
       sqrtint rootint logint
       powint mulint addint divint modint divrem tdivrem
       miller_rabin_random

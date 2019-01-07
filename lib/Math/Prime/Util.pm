@@ -2720,6 +2720,60 @@ It will be set to C<b^e>.
 This corresponds to Pari/GP's C<logint> function.
 
 
+=head2 powint
+
+Given integers C<a> and C<b>, returns C<a^b>.  For <0^0> we return 1.
+
+The exponent C<b> is converted into an unsigned long.
+
+=head2 mulint
+
+Given integers C<a> and C<b>, returns C<a * b>.
+
+=head2 addint
+
+Given integers C<a> and C<b>, returns C<a + b>.
+
+=head2 divint
+
+Given integers C<a> and C<b>, returns the quotient C<a / b>.
+
+Floor division is used, so q is rounded towards C<-inf> and
+the remainder has the same sign as the divisor C<b>.
+This is the same as modern L<Math::BigInt/bdiv> and the
+GMP C<fdiv> functions, but not the same as Pari/GP's C<\\> operator.
+
+=head2 modint
+
+Given integers C<a> and C<b>, returns the modulo C<a % b>.
+
+    C<r = a - b * floor(a / b)>
+
+Floor division is used, so q is rounded towards C<-inf>
+and r has the same sign as the divisor C<b>.
+This is the same as modern L<Math::BigInt/bmod> and the
+GMP C<fdiv> functions, but not the same as Pari/GP's C<%> operator.
+
+=head2 divrem
+
+    my($quo, $rem) = divrem($a, $b);
+
+Given integers C<a> and C<b>, returns a list of two items:
+the Euclidean quotient and the Euclidean remainder.
+
+This corresponds to Pari/GP's C<divrem> function.
+There is no explicit function in L<Math::BigInt> that gives
+this division method for signed inputs.
+
+=head2 tdivrem
+
+Given integers C<a> and C<b>, returns a list of two items:
+the truncated quotient and the truncated remainder.
+
+The resulting pair will match
+L<Math::BigInt/btdiv> and L<Math::BigInt/btmod>.
+
+
 =head2 lucasu
 
   say "Fibonacci($_) = ", lucasu(1,-1,$_) for 0..100;
