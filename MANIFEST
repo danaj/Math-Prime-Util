@@ -202,6 +202,7 @@ t/92-release-pod-coverage.t
 t/93-release-spelling.t
 t/94-weaken.t
 t/97-synopsis.t
+xt/A003459.pl
 xt/check-nth-bounds.pl
 xt/chinese.pl
 xt/create-pc-tables.pl
