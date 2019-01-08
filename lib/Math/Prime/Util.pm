@@ -3519,6 +3519,9 @@ or Carmichael λ(n)) of a positive integer argument.  It is the smallest
 positive integer C<m> such that C<a^m = 1 mod n> for every integer C<a>
 coprime to C<n>.  This is L<OEIS series A002322|http://oeis.org/A002322>.
 
+This corresponds to Mathematica's C<CarmichaelLambda[n]> function.
+It can be computed in Pari/GP as C<lcm(znstar(n)[2])>.
+
 =head2 kronecker
 
 Returns the Kronecker symbol C<(a|n)> for two integers.  The possible
