@@ -1750,13 +1750,13 @@ int sqrtmod_composite(UV *s, UV a, UV n) {
 
     /* Lift solution of x^2 = a mod p  to  x^2 = a mod p^e */
     for (j = 1; j < exp[i]; j++) {
-      UV xk2, yk, expect, sol;
+      UV xk2, yk, expected, sol;
       xk2 = addmod(sqr[i],sqr[i],p);
       yk = modinverse(xk2, p);
-      expect = mulmod(xk2,yk,p);
+      expected = mulmod(xk2,yk,p);
       p *= fac[i];
       sol = submod(sqr[i], mulmod(submod(sqrmod(sqr[i],p), a % p, p), yk, p), p);
-      if (expect != 1 || sqrmod(sol,p) != (a % p)) {
+      if (expected != 1 || sqrmod(sol,p) != (a % p)) {
         /* printf("a %lu failure to lift to %lu^%d\n", a, fac[i], j+1); */
         return 0;
       }
