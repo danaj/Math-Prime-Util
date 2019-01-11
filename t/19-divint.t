@@ -31,7 +31,7 @@ my @quotients = (  # trunc, floor, euclidian
 );
 
 plan tests => 0
-            + 7*4 + scalar(@powints) + 3     # powint
+            + 7*4 + scalar(@powints) + 5     # powint
             + 1 + scalar(@mulints)           # mulint
             + 1 + scalar(@addints)           # addint
             + 2 + 2                          # divint
@@ -56,6 +56,8 @@ foreach my $r (@powints) {
 is(powint(powint(2,32),3),"79228162514264337593543950336","(2^32)^3");
 is(powint(3,powint(2,7)),"11790184577738583171520872861412518665678211592275841109096961","3^(2^7)");
 is(powint(46,22)+1, "3807783932766699862493193563344470017", "powint returns a bigint if needed");
+is(powint(-544,7),"-14099129446552305664","powint(-544,7) = -14099129446552305664");
+is(powint(-544,7)-1,"-14099129446552305665","powint(-544,7)-1 = -14099129446552305665");
 
 ###### mulint
 { my(@got,@exp);

@@ -212,4 +212,4 @@
 
 - factor, factor_exp accept negative inputs
 
-- test for values < -2^63, returned correct.  e.g. powint(-544,7)
+- NEGMAXINT testing in PP

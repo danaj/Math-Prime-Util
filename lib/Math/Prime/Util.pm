@@ -120,6 +120,7 @@ BEGIN {
   use constant MPU_MAXPRIMEIDX => MPU_32BIT ?  203280221 :   425656284035217743;
   use constant UVPACKLET       => MPU_32BIT ?        'L' : 'Q';
   use constant INTMAX          => (!OLD_PERL_VERSION || MPU_32BIT) ? ~0 : 562949953421312;
+  use constant NEGINTMAX       => -(INTMAX >> 1) - 1;
 
   eval {
     return 0 if defined $ENV{MPU_NO_XS} && $ENV{MPU_NO_XS} == 1;
@@ -257,12 +258,10 @@ sub _to_bigint {
   return (!defined($_[0]) || ref($_[0]) eq 'Math::BigInt') ? $_[0] : Math::BigInt->new("$_[0]");
 }
 sub _to_bigint_if_needed {
-  return $_[0] if !defined $_[0] || ref($_[0]) || ($_[0] <= INTMAX && $_[0] > -(INTMAX >> 1));
+  return $_[0] if !defined $_[0] || ref($_[0]) || ($_[0] <= INTMAX && $_[0] > NEGINTMAX);
   do { require Math::BigInt;  Math::BigInt->import(try=>"GMP,Pari"); }
     unless defined $Math::BigInt::VERSION;
-  my $n = Math::BigInt->new("$_[0]");
-  $n = _bigint_to_int($n) if ref($n) eq 'Math::BigInt' && $n->bacmp(INTMAX) <= 0;
-  return $n;
+  return Math::BigInt->new("$_[0]");
 }
 sub _to_gmpz {
   do { require Math::GMPz; } unless defined $Math::GMPz::VERSION;
@@ -280,7 +279,7 @@ sub _reftyped {
   }
   if (OLD_PERL_VERSION) {
     # Perl 5.6 truncates arguments to doubles if you look at them funny
-    return "$_[1]" if "$_[1]" <= INTMAX;
+    return "$_[1]" if "$_[1]" <= INTMAX && "$_[1]" >= NEGINTMAX;
   } elsif ($_[1] >= 0) {
     # TODO: This wasn't working right in 5.20.0-RC1, verify correct
     return $_[1] if $_[1] <= ~0;
