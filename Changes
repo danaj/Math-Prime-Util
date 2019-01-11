@@ -22,9 +22,13 @@ Revision history for Perl module Math::Prime::Util
 
     - PP code for is_polygonal with n=0 was wrong.  Fixed and refactored.
 
+    - Some large results that used GMP are properly objectified.
+
+    - Using GMP returnint native int results is no longer objectified.
+
     [FUNCTIONALITY AND PERFORMANCE]
 
-    - refactor objectification.  Doesn't force.  Enable  on Perl < 5.9.
+    - refactor objectification.  Doesn't force.  Enable on Perl < 5.9.
 
 0.73 2018-11-15
 

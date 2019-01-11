@@ -247,7 +247,8 @@ static int _vcallsubn(pTHX_ I32 flags, I32 stashflags, const char* name, int nar
 #define _vcallsub(func) (void)_vcallsubn(aTHX_ G_SCALAR, VCALL_ROOT, func, items,0)
 #define _vcallsub_with_gmp(ver,func) (void)_vcallsubn(aTHX_ G_SCALAR, VCALL_GMP|VCALL_PP, func, items,(int)(100*(ver)))
 #define _vcallsub_with_pp(func) (void)_vcallsubn(aTHX_ G_SCALAR, VCALL_PP, func, items,0)
-#define _vcallsub_with_gmpobj(ver,func) (void)_vcallsubn(aTHX_ G_SCALAR, (PERL_REVISION >= 5 && PERL_VERSION > 8) ? VCALL_GMP|VCALL_PP : VCALL_PP, func, items,(int)(100*(ver)))
+/* #define _vcallsub_with_gmpobj(ver,func) (void)_vcallsubn(aTHX_ G_SCALAR, (PERL_REVISION >= 5 && PERL_VERSION > 8) ? VCALL_GMP|VCALL_PP : VCALL_PP, func, items,(int)(100*(ver))) */
+#define _vcallsub_with_gmpobj(ver,func) _vcallsub_with_gmp(ver,func)
 
 #if 0
 static int _vcallgmpsubn(pTHX_ I32 flags, const char* name, int nargs, int minversion)
@@ -284,12 +285,15 @@ static int _vcallgmpsubn(pTHX_ I32 flags, const char* name, int nargs, int minve
   } while (0)
 
 static void objectify_result(pTHX_ SV* input, SV* output) {
-  if (   !sv_isobject(output) && !SVNUMTEST(output) ) {
-    const char *iname = (input && sv_isobject(input))
-                      ? HvNAME_get(SvSTASH(SvRV(input))) : 0;
-    if (iname == 0) {
-      (void)_vcallsubn(aTHX_ G_SCALAR, VCALL_ROOT, "_to_bigint_if_needed", 1, 0);
-    } else if (strEQ(iname, "Math::BigInt")) {
+  /* Leave unchanged: undef, objects, small integers */
+  if (!SvOK(output) || sv_isobject(output) || SVNUMTEST(output))
+    return;
+  /* If they didn't give us a bigint, then try to be smart */
+  if (!input || !sv_isobject(input)) {
+    (void)_vcallsubn(aTHX_ G_SCALAR, VCALL_ROOT, "_to_bigint_if_needed", 1, 0);
+  } else {
+    const char *iname = HvNAME_get(SvSTASH(SvRV(input)));
+    if (strEQ(iname, "Math::BigInt")) {
       (void)_vcallsubn(aTHX_ G_SCALAR, VCALL_ROOT, "_to_bigint", 1, 0);
     } else if (strEQ(iname, "Math::GMPz")) {
       (void)_vcallsubn(aTHX_ G_SCALAR, VCALL_ROOT, "_to_gmpz", 1, 0);
@@ -1595,14 +1599,9 @@ next_prime(IN SV* svn)
         XSRETURN_UV(ret);
       }
     }
-    if ((ix == 0 || ix == 1) && _XS_get_callgmp() && PERL_REVISION >= 5 && PERL_VERSION > 8) {
-      _vcallsub_with_gmpobj(0.01, ix ? "prev_prime" : "next_prime");
-      objectify_result(aTHX_ svn, ST(0));
-      return;
-    }
     switch (ix) {
-      case 0:  _vcallsub_with_pp("next_prime");         break;
-      case 1:  _vcallsub_with_pp("prev_prime");         break;
+      case 0:  _vcallsub_with_gmpobj(0.01,"next_prime");   break;
+      case 1:  _vcallsub_with_gmpobj(0.01,"prev_prime");   break;
       case 2:  _vcallsub_with_pp("nth_prime");          break;
       case 3:  _vcallsub_with_pp("nth_prime_upper");    break;
       case 4:  _vcallsub_with_pp("nth_prime_lower");    break;
@@ -1625,10 +1624,10 @@ next_prime(IN SV* svn)
       case 21: _vcallsub_with_pp("twin_prime_count_approx"); break;
       case 22: _vcallsub_with_pp("semiprime_count_approx"); break;
       case 23:
-      default: _vcallsub_with_gmpobj(0.44,"urandomm");
-               objectify_result(aTHX_ svn, ST(0));
-               break;
+      default: _vcallsub_with_gmpobj(0.44,"urandomm"); break;
     }
+    if (ix == 0 || ix == 1 || ix == 23)
+      objectify_result(aTHX_ svn, ST(0));
     return; /* skip implicit PUTBACK */
 
 void urandomb(IN UV bits)
@@ -1838,7 +1837,7 @@ divisor_sum(IN SV* svn, ...)
       UV sigma = divisor_sum(n, k);
       if (sigma != 0)  XSRETURN_UV(sigma);   /* sigma 0 means overflow */
     }
-    _vcallsub_with_gmp(0.00,"divisor_sum");
+    _vcallsub_with_pp("divisor_sum");
     return; /* skip implicit PUTBACK */
 
 void
@@ -1900,14 +1899,15 @@ znorder(IN SV* sva, IN SV* svn)
     }
     overflow:
     switch (ix) {
-      case 0:  _vcallsub_with_pp("znorder");  break;
-      case 1:  _vcallsub_with_pp("binomial");  break;
-      case 2:  _vcallsub_with_pp("jordan_totient");  break;
+      case 0:  _vcallsub_with_gmp(0.22,"znorder");  break;
+      case 1:  _vcallsub_with_gmp(0.22,"binomial");  break;
+      case 2:  _vcallsub_with_gmp(0.22,"jordan_totient");  break;
       case 3:  _vcallsub_with_pp("ramanujan_sum");  break;
-      case 4:  _vcallsub_with_pp("factorialmod");  break;
+      case 4:  _vcallsub_with_gmp(0.47,"factorialmod");  break;
       case 5:
       default: _vcallsub_with_pp("legendre_phi"); break;
     }
+    objectify_result(aTHX_ sva, ST(0));
     return; /* skip implicit PUTBACK */
 
 void
@@ -2101,9 +2101,8 @@ kronecker(IN SV* sva, IN SV* svb)
       case 12:
       default: _vcallsub_with_gmp(0.36,"is_primitive_root"); break;
     }
-    if (ix >= 4 && ix <= 10) {
+    if (ix >= 2 && ix <= 10)
       objectify_result(aTHX_ ST(0), ST(0));
-    }
     return; /* skip implicit PUTBACK */
 
 void
@@ -2286,8 +2285,8 @@ carmichael_lambda(IN SV* svn)
       case 2:  _vcallsub_with_gmp(0.22,"liouville"); break;
       case 3:  _vcallsub_with_pp("chebyshev_theta"); break;
       case 4:  _vcallsub_with_pp("chebyshev_psi"); break;
-      case 5:  _vcallsub_with_pp("factorial"); break;
-      case 6:  _vcallsub_with_pp("sqrtint"); break;
+      case 5:  _vcallsub_with_pp("factorial"); break;  /* use PP */
+      case 6:  _vcallsub_with_gmp(0.40,"sqrtint"); break;
       case 7:  _vcallsub_with_gmp(0.19,"exp_mangoldt"); break;
       case 8:  _vcallsub_with_gmp(0.22,"znprimroot"); break;
       case 9:  if (_XS_get_callgmp() >= 47) { /* Very fast */
@@ -2300,8 +2299,9 @@ carmichael_lambda(IN SV* svn)
       case 10: _vcallsub_with_pp("hclassno"); break;
       case 11: _vcallsub_with_gmp(0.00,"is_pillai"); break;
       case 12:
-      default: _vcallsub_with_pp("ramanujan_tau"); break;
+      default: _vcallsub_with_gmp(0.32,"ramanujan_tau"); break;
     }
+    objectify_result(aTHX_ svn, ST(0));
     return; /* skip implicit PUTBACK */
 
 void
