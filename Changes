@@ -22,6 +22,10 @@ Revision history for Perl module Math::Prime::Util
 
     - PP code for is_polygonal with n=0 was wrong.  Fixed and refactored.
 
+    [FUNCTIONALITY AND PERFORMANCE]
+
+    - refactor objectification.  Doesn't force.  Enable  on Perl < 5.9.
+
 0.73 2018-11-15
 
     [ADDED]
