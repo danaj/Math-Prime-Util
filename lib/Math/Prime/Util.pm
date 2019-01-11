@@ -256,6 +256,14 @@ sub _to_bigint {
     unless defined $Math::BigInt::VERSION;
   return (!defined($_[0]) || ref($_[0]) eq 'Math::BigInt') ? $_[0] : Math::BigInt->new("$_[0]");
 }
+sub _to_bigint_if_needed {
+  return $_[0] if !defined $_[0] || ref($_[0]) || ($_[0] <= INTMAX && $_[0] > -(INTMAX >> 1));
+  do { require Math::BigInt;  Math::BigInt->import(try=>"GMP,Pari"); }
+    unless defined $Math::BigInt::VERSION;
+  my $n = Math::BigInt->new("$_[0]");
+  $n = _bigint_to_int($n) if ref($n) eq 'Math::BigInt' && $n->bacmp(INTMAX) <= 0;
+  return $n;
+}
 sub _to_gmpz {
   do { require Math::GMPz; } unless defined $Math::GMPz::VERSION;
   return (ref($_[0]) eq 'Math::GMPz') ? $_[0] : Math::GMPz->new($_[0]);

@@ -283,23 +283,25 @@ static int _vcallgmpsubn(pTHX_ I32 flags, const char* name, int nargs, int minve
        else                      { PUSHs(sv_2mortal(newSViv(r_))); } \
   } while (0)
 
-#define OBJECTIFY_RESULT(input, output) \
-  if (!sv_isobject(output) && PERL_REVISION >= 5 && PERL_VERSION > 8) { \
-    SV* resptr = output; \
-    const char *iname = (input && sv_isobject(input)) \
-                      ? HvNAME_get(SvSTASH(SvRV(input))) : 0; \
-    if (iname == 0 || strEQ(iname, "Math::BigInt")) { \
-      (void)_vcallsubn(aTHX_ G_SCALAR, VCALL_ROOT, "_to_bigint", 1, 0); \
-    } else if (iname == 0 || strEQ(iname, "Math::GMPz")) { \
-      (void)_vcallsubn(aTHX_ G_SCALAR, VCALL_ROOT, "_to_gmpz", 1, 0); \
-    } else if (iname == 0 || strEQ(iname, "Math::GMP")) { \
-      (void)_vcallsubn(aTHX_ G_SCALAR, VCALL_ROOT, "_to_gmp", 1, 0); \
-    } else { /* Return it as: ref(input)->new(result) */ \
-      dSP;  (void)POPs;  ENTER;  PUSHMARK(SP); \
-      XPUSHs(sv_2mortal(newSVpv(iname, 0)));  XPUSHs(resptr); \
-      PUTBACK;  call_method("new", G_SCALAR);  LEAVE; \
-    } \
+static void objectify_result(pTHX_ SV* input, SV* output) {
+  if (   !sv_isobject(output) && !SVNUMTEST(output) ) {
+    const char *iname = (input && sv_isobject(input))
+                      ? HvNAME_get(SvSTASH(SvRV(input))) : 0;
+    if (iname == 0) {
+      (void)_vcallsubn(aTHX_ G_SCALAR, VCALL_ROOT, "_to_bigint_if_needed", 1, 0);
+    } else if (strEQ(iname, "Math::BigInt")) {
+      (void)_vcallsubn(aTHX_ G_SCALAR, VCALL_ROOT, "_to_bigint", 1, 0);
+    } else if (strEQ(iname, "Math::GMPz")) {
+      (void)_vcallsubn(aTHX_ G_SCALAR, VCALL_ROOT, "_to_gmpz", 1, 0);
+    } else if (strEQ(iname, "Math::GMP")) {
+      (void)_vcallsubn(aTHX_ G_SCALAR, VCALL_ROOT, "_to_gmp", 1, 0);
+    } else { /* Return it as: ref(input)->new(result) */
+      dSP;  (void)POPs;  ENTER;  PUSHMARK(SP);
+      XPUSHs(sv_2mortal(newSVpv(iname, 0)));  XPUSHs(output);
+      PUTBACK;  call_method("new", G_SCALAR);  LEAVE;
+    }
   }
+}
 
 static SV* sv_to_bigint(pTHX_ SV* r) {
   dSP;  ENTER;  PUSHMARK(SP);
@@ -709,7 +711,7 @@ void random_prime(IN SV* svlo, IN SV* svhi = 0)
       else     XSRETURN_UNDEF;
     }
     _vcallsub_with_gmpobj(0.44,"random_prime");
-    OBJECTIFY_RESULT(ST(0), ST(0));
+    objectify_result(aTHX_ ST(0), ST(0));
     XSRETURN(1);
 
 UV
@@ -1209,7 +1211,7 @@ chinese(...)
     if (status)       XSRETURN_UV(ret);
     psvn = av_fetch((AV*) SvRV(ST(0)), 1, 0);
     _vcallsub_with_gmpobj(0.32,"chinese");
-    OBJECTIFY_RESULT( (psvn ? *psvn : 0), ST(0));
+    objectify_result(aTHX_  (psvn ? *psvn : 0), ST(0));
     return; /* skip implicit PUTBACK */
 
 void
@@ -1232,7 +1234,7 @@ lucas_sequence(...)
         if (ok) XSRETURN_IV(ret);
       }
       _vcallsub_with_gmpobj(0.29,(ix==1) ? "lucasu" : "lucasv");
-      OBJECTIFY_RESULT(ST(2), ST(0));
+      objectify_result(aTHX_ ST(2), ST(0));
       return;
     }
     if (items != 4) croak("lucas_sequence: n, P, Q, k");
@@ -1595,7 +1597,7 @@ next_prime(IN SV* svn)
     }
     if ((ix == 0 || ix == 1) && _XS_get_callgmp() && PERL_REVISION >= 5 && PERL_VERSION > 8) {
       _vcallsub_with_gmpobj(0.01, ix ? "prev_prime" : "next_prime");
-      OBJECTIFY_RESULT(svn, ST(0));
+      objectify_result(aTHX_ svn, ST(0));
       return;
     }
     switch (ix) {
@@ -1624,7 +1626,7 @@ next_prime(IN SV* svn)
       case 22: _vcallsub_with_pp("semiprime_count_approx"); break;
       case 23:
       default: _vcallsub_with_gmpobj(0.44,"urandomm");
-               OBJECTIFY_RESULT(svn, ST(0));
+               objectify_result(aTHX_ svn, ST(0));
                break;
     }
     return; /* skip implicit PUTBACK */
@@ -1685,7 +1687,7 @@ void urandomb(IN UV bits)
       case 8:
       default: _vcallsub_with_gmpobj(0.43,"random_strong_prime"); break;
     }
-    OBJECTIFY_RESULT(ST(0), ST(0));
+    objectify_result(aTHX_ ST(0), ST(0));
     XSRETURN(1);
 
 void random_factored_integer(IN SV* svn)
@@ -1967,7 +1969,7 @@ znlog(IN SV* sva, IN SV* svg, IN SV* svp)
       case 4:
       default:_vcallsub_with_gmpobj(0.36,"powmod"); break;
     }
-    OBJECTIFY_RESULT(svp, ST(items-1));
+    objectify_result(aTHX_ svp, ST(items-1));
     return; /* skip implicit PUTBACK */
 
 void
@@ -2099,6 +2101,9 @@ kronecker(IN SV* sva, IN SV* svb)
       case 12:
       default: _vcallsub_with_gmp(0.36,"is_primitive_root"); break;
     }
+    if (ix >= 4 && ix <= 10) {
+      objectify_result(aTHX_ ST(0), ST(0));
+    }
     return; /* skip implicit PUTBACK */
 
 void
@@ -2146,7 +2151,7 @@ stirling(IN UV n, IN UV m, IN UV type = 1)
       if (s != 0) XSRETURN_IV(s);
     }
     _vcallsub_with_gmpobj(0.26,"stirling");
-    OBJECTIFY_RESULT(ST(0), ST(0));
+    objectify_result(aTHX_ ST(0), ST(0));
     return;
 
 NV
@@ -2345,7 +2350,7 @@ permtonum(IN SV* svp)
         XSRETURN_UV(num);
     }
     _vcallsub_with_gmpobj(0.47,"permtonum");
-    OBJECTIFY_RESULT(ST(0), ST(0));
+    objectify_result(aTHX_ ST(0), ST(0));
     XSRETURN(1);
 
 void
