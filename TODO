@@ -195,10 +195,6 @@
 
 - check memory use for non-multicall.  We need enter/leave which were removed.
 
-- consider the various *mod, two arg or 0 for last arg means no mod.
-  we could use this for e.g. numseqs.pl powerflip to do powmod.
-  or ..  powint, divint, mulint, addint.  We already do the latter via vec*
-
 - Add aliquot sum
 
 - split 80-PP into multiple tests: random, float, numeric, factor, prime, etc.
