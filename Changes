@@ -30,6 +30,8 @@ Revision history for Perl module Math::Prime::Util
 
     - refactor objectification.  Doesn't force.  Enable on Perl < 5.9.
 
+    - save a nanosecond or two in 32-bit primality testing.
+
 0.73 2018-11-15
 
     [ADDED]
