@@ -1969,7 +1969,7 @@ znlog(IN SV* sva, IN SV* svg, IN SV* svp)
       case 4:
       default:_vcallsub_with_gmpobj(0.36,"powmod"); break;
     }
-    objectify_result(aTHX_ svp, ST(items-1));
+    objectify_result(aTHX_ svp, ST(0));
     return; /* skip implicit PUTBACK */
 
 void
