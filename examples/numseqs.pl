@@ -4,24 +4,31 @@ use strict;
 use Math::Prime::Util qw/:all/;
 use Math::BigInt try=>"GMP";
 
-# This shows examples of many sequences from:
+# The Math::NumSeq module on CPAN is pretty neat, offering a uniform set of operations
+# such as next, predicate, iterators, approximations, and more.  Numerous sequences
+# are implemented.
+#
 #   https://metacpan.org/release/Math-NumSeq
+#
+
+# This example program shows how we could implement some of these, though this purely
+# looks at generating the first 'N' values from the sequence.
+#
 # Some of them are faster, some are much faster, a few are slower.
 # This usually shows up once past ~ 10k values, or for large preds/iths.
 #
 # For comparison, we can use something like:
-
+#
 #  perl -MMath::NumSeq::Emirps -E 'my $seq = Math::NumSeq::Emirps->new; say 0+($seq->next)[1] for 1..1000'
-
+#
 #  perl -MMath::NumSeq::Factorials -E 'my $seq = Math::NumSeq::Factorials->new; say join(" ",map { ($seq->next)[1] } 1..1000)' | md5sum
 
-# In general, these will work just fine for values up to 2^64, and typically
+
+# In general, what is implemented here works for values up to 2^64, and typically
 # quite well beyond that.  This is in contrast to many Math::NumSeq sequences
 # which limit themselves to 2^32 because Math::Factor::XS and Math::Prime::XS
 # do not scale well.  Some other sequences such as Factorials and LucasNumbers
 # are implemented well in Math::NumSeq.
-
-# The argument method is really simple -- this is just to show code.
 
 # Note that this completely lacks the framework of the module, and Math::NumSeq
 # often implements various options that aren't always here.  It's just
@@ -33,6 +40,8 @@ use Math::BigInt try=>"GMP";
 # These use the simple method of joining the results.  For very large counts
 # this consumes a lot of memory, but is purely for the printing.
 
+
+# The argument method here is really simple -- this is just to show code.
 my $type = shift || 'AllPrimeFactors';
 my $count = shift || 100;
 my $arg = shift;  $arg = '' unless defined $arg;
@@ -93,27 +102,24 @@ if      ($type eq 'Abundant') {
     push @n, $i++;
   }
   print join " ", @n;
+} elsif ($type eq 'CullenNumbers') {
+  print join " ", map { addint(1,mulint($_,powint(2,$_))) } 0..$count-1;
 } elsif ($type eq 'DedekindPsiCumulative') {
   my $c = 0;
   print join " ", map { $c += psi($_) } 1..$count;
 } elsif ($type eq 'DedekindPsiSteps') {
   print join " ", map { dedekind_psi_steps($_) } 1..$count;
 } elsif ($type eq 'DeletablePrimes') {
-  my $i = 0;
-  while (@n < $count) {
-    $i++ while !is_deletable_prime($i);
-    push @n, $i++;
-  }
-  print join " ", @n;
+  print join " ",n_with_pred(0, $count, \&is_deletable_prime);
+} elsif ($type eq 'DigitSum') {
+  print join " ", map { sumdigits($_) } 0..$count-1;
+} elsif ($type eq 'DigitProduct') {
+  # remember todigits(0) returns empty array
+  print join " ", map { vecprod($_ && todigits($_)) } 0..$count-1;
 } elsif ($type eq 'DivisorCount') {
   print join " ", map { scalar divisors($_) } 1..$count;
 } elsif ($type eq 'DuffinianNumbers') {
-  my $i = 0;
-  while (@n < $count) {
-    $i++ while !is_duffinian($i);
-    push @n, $i++;
-  }
-  print join " ", @n;
+  print join " ",n_with_pred(0, $count, \&is_duffinian);
 } elsif ($type eq 'Emirps') {
   # About 15x faster until 200k or so, then exponentially faster.
   my($i, $inc) = (13, 100+10*$count);
@@ -146,6 +152,8 @@ if      ($type eq 'Abundant') {
   } else {
     print join " ", map { goldbach_count($_) } 1..$count;
   }
+} elsif ($type eq 'HappyNumbers') {
+  print join " ",n_with_pred(1, $count, \&is_happy);
 } elsif ($type eq 'LemoineCount') {
   print join " ", map { lemoine_count($_) } 1..$count;
 } elsif ($type eq 'LiouvilleFunction') {
@@ -153,17 +161,14 @@ if      ($type eq 'Abundant') {
 } elsif ($type eq 'LucasNumbers') {
   # Note the different starting point
   print join " ", map { lucasv(1, -1, $_) } 1..$count;
+} elsif ($type eq 'LuckyNumbers') {
+  print join " ", @{lucky_numbers(nth_lucky($count))};
 } elsif ($type eq 'MephistoWaltz') {
   print join " ", map { mephisto_waltz($_) } 0..$count-1;
 } elsif ($type eq 'MobiusFunction') {
   print join " ", moebius(1,$count);
 } elsif ($type eq 'MoranNumbers') {
-  my $i = 1;
-  while (@n < $count) {
-    $i++ while !is_moran($i);
-    push @n, $i++;
-  }
-  print join " ", @n;
+  print join " ",n_with_pred(1, $count, \&is_moran);
 } elsif ($type eq 'Pell') {
   print join " ", map { lucasu(2, -1, $_) } 0..$count-1;
 } elsif ($type eq 'PisanoPeriod') {
@@ -176,21 +181,23 @@ if      ($type eq 'Abundant') {
     $i += 2;
   }
   print join " ", @n;
+} elsif ($type eq 'Polygonal') {
+  # Use predicate:
+  # my $i=0; while (@n<$count) { $i++ while !is_polygonal($i,5); push @n,$i++; }
+  # Or do the trivial way (using the constants (3,1) for k=5):
+  @n = map { ($_ * (3*$_-1)) >> 1 } 0 .. $count-1;
+  print join " ", @n;
 } elsif ($type eq 'PowerFlip') {
   print join " ", map { powerflip($_) } 1..$count;
 } elsif ($type eq 'Powerful') {
   my($which,$power) = ($arg =~ /^(all|some)?(\d+)?$/);
   $which = 'some' unless defined $which;
   $power = 2 unless defined $power;
-  my $i = 1;
   if ($which eq 'some' && $power == 2) {
-    while (@n < $count) {
-      $i++ while moebius($i);
-      push @n, $i++;
-    }
+    print join " ",n_with_pred(1, $count, sub { moebius($_[0]) == 0 });
   } else {
     my(@pe,$nmore);
-    $i = 0;
+    my $i = 0;
     while (@n < $count) {
       do {
         @pe = factor_exp(++$i);
@@ -199,13 +206,13 @@ if      ($type eq 'Abundant') {
            || ($which eq 'all' && $nmore != scalar @pe);
       push @n, $i;
     }
+    print join " ", @n;
   }
-  print join " ", @n;
 } elsif ($type eq 'PowerPart') {
   $arg = 2 unless $arg =~ /^\d+$/;
   print join " ", map { power_part($_,$arg) } 1..$count;
 } elsif ($type eq 'Primes') {
-  print join " ", @{primes($count)};
+  print join " ", @{primes(nth_prime($count))};
 } elsif ($type eq 'PrimeFactorCount') {
   if ($arg eq 'distinct') {
     print join " ", map { scalar factor_exp($_) } 1..$count;
@@ -228,44 +235,30 @@ if      ($type eq 'Abundant') {
   print join " ", map { pn_primorial($_) } 0..$count-1;
 } elsif ($type eq 'ProthNumbers') {
   # The pred is faster and far simpler than MNS's pred, but slow as a sequence.
-  my $i = 0;
-  while (@n < $count) {
-    $i++ while !is_proth($i);
-    push @n, $i++;
-  }
-  print join " ", @n;
+  print join " ",n_with_pred(0, $count, \&is_proth);
 } elsif ($type eq 'PythagoreanHypots') {
-  my $i = 2;
   if ($arg eq 'primitive') {
-    while (@n < $count) {
-      $i++ while scalar grep { 0 != ($_-1) % 4 } factor($i);
-      push @n, $i++;
-    }
+    print join " ",n_with_pred(2, $count, sub { vecall { ($_ & 3) == 1 } factor($_[0]) });
   } else {
-    while (@n < $count) {
-      $i++ while !scalar grep { 0 == ($_-1) % 4 } factor($i);
-      push @n, $i++;
-    }
+    print join " ",n_with_pred(2, $count, sub { vecany { ($_ & 3) == 1 } factor($_[0]) });
   }
-  print join " ", @n;
 } elsif ($type eq 'SophieGermainPrimes') {
   my $estimate = sg_upper_bound($count);
   my $numfound = 0;
   forprimes {  push @n, $_ if is_prime(2*$_+1);  } $estimate;
   print join " ", @n[0..$count-1];
 } elsif ($type eq 'Squares') {
-  # Done via pred to show use
-  my $i = 0;
-  while (@n < $count) {
-    $i++ while !is_power($i,2);
-    push @n, $i++;
-  }
-  print join " ", @n;
+  print join " ",n_with_pred(0, $count, sub { is_power($_[0],2) });
 } elsif ($type eq 'SternDiatomic') {
   # Slow direct way for ith value:
   #   vecsum( map { binomial($i-$_-1,$_) % 2 } 0..(($i-1)>>1) );
-  # Bitwise method described in MNS documentation:
-  print join " ", map { stern_diatomic($_) } 0..$count-1;
+  # Bitwise method (used in MNS for nth):
+  #   print join " ", map { stern_diatomic($_) } 0..$count-1;
+  # Using recurrence:
+  my(@n)=(0,1);
+  push @n, $n[-2] + $n[-1] - (($n[-2] % $n[-1]) << 1)  for 3..$count;
+  $#n = $count-1 if $count < 2;
+  print join " ",@n;
 } elsif ($type eq 'Totient') {
   print join " ", euler_phi(1,$count);
 } elsif ($type eq 'TotientCumulative') {
@@ -289,6 +282,8 @@ if      ($type eq 'Abundant') {
   my $upper = 400 + int(1.01 * nth_twin_prime_approx($count));
   $l=2; forprimes { push @n, $l if $l+2==$_; $l=$_; } $upper;
   print join " ", @n[0..$count-1];
+} elsif ($type eq 'WoodallNumbers') {
+  print join " ", map { mulint($_,powint(2,$_)) - 1 } 1..$count;
 } else {
 
 # The following sequences, other than those marked TODO, do not exercise the
@@ -304,15 +299,12 @@ if      ($type eq 'Abundant') {
 # Beastly
 # CollatzSteps
 # ConcatNumbers
-# CullenNumbers
 # DigitCount
 # DigitCountHigh
 # DigitCountLow
 # DigitLength
 # DigitLengthCumulative
-# DigitProduct
 # DigitProductSteps
-# DigitSum
 # DigitSumModulo
 # Even
 # Expression
@@ -333,7 +325,6 @@ if      ($type eq 'Abundant') {
 # JugglerSteps
 # KlarnerRado
 # Kolakoski
-# LuckyNumbers
 # MaxDigitCount
 # Modulo
 # Multiples
@@ -345,7 +336,6 @@ if      ($type eq 'Abundant') {
 # Palindromes
 # Perrin
 # PisanoPeriodSteps
-# Polygonal
 # Pronic
 # RadixConversion
 # RadixWithoutDigit
@@ -368,7 +358,6 @@ if      ($type eq 'Abundant') {
 # Triangular            -stirling($_+1,$_) is a complicated solution
 # UlamSequence
 # UndulatingNumbers
-# WoodallNumbers
 # Xenodromes
 
   die "sequence '$type' is not implemented here\n";
@@ -376,6 +365,15 @@ if      ($type eq 'Abundant') {
 print "\n";
 exit(0);
 
+sub n_with_pred {
+  my($i,$count, $sub) = @_;
+  my @n;
+  while (@n < $count) {
+    $i++ while !$sub->($i);
+    push @n, $i++;
+  }
+  @n;
+}
 
 # DedekindPsi
 sub psi { jordan_totient(2,$_[0])/jordan_totient(1,$_[0]) }
@@ -409,6 +407,12 @@ sub is_moran {
   return 0 if $n % $digsum;
   return 0 unless is_prime($n/$digsum);
   1;
+}
+
+sub is_happy {
+  my $n = shift;
+  while ($n > 6) { $n = vecsum(map { $_*$_ } todigits($n)); }
+  $n == 1;
 }
 
 sub is_polignac_obstinate {
