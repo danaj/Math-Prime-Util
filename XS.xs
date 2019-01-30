@@ -168,6 +168,7 @@ static int _is_sv_bigint(pTHX_ SV* n)
  */
 static int _validate_int(pTHX_ SV* n, int negok)
 {
+  const char* mustbe = (negok) ? "must be an integer" : "must be a positive integer";
   const char* maxstr;
   char* ptr;
   STRLEN i, len, maxlen;
@@ -177,7 +178,7 @@ static int _validate_int(pTHX_ SV* n, int negok)
   if (SVNUMTEST(n)) { /* If defined as number, use it */
     if (SvIsUV(n) || SvIVX(n) >= 0)  return 1; /* The normal case */
     if (negok)  return -1;
-    else croak("Parameter '%" SVf "' must be a positive integer", n);
+    else croak("Parameter '%" SVf "' %s", n, mustbe);
   }
   if (sv_isobject(n)) {
     isbignum = _is_sv_bigint(aTHX_ n);
@@ -187,21 +188,21 @@ static int _validate_int(pTHX_ SV* n, int negok)
   if (SvGAMAGIC(n) && !isbignum) return 0;
   if (!SvOK(n))  croak("Parameter must be defined");
   ptr = SvPV_nomg(n, len);             /* Includes stringifying bigints */
-  if (len == 0 || ptr == 0)  croak("Parameter must be a positive integer");
+  if (len == 0 || ptr == 0)  croak("Parameter %s", mustbe);
   if (ptr[0] == '-' && negok) {
     isneg = 1; ptr++; len--;           /* Read negative sign */
   } else if (ptr[0] == '+') {
     ptr++; len--;                      /* Allow a single plus sign */
   }
   if (len == 0 || !isDIGIT(ptr[0]))
-    croak("Parameter '%" SVf "' must be a positive integer", n);
+    croak("Parameter '%" SVf "' %s", n, mustbe);
   while (len > 0 && *ptr == '0')       /* Strip all leading zeros */
     { ptr++; len--; }
   if (len > uvmax_maxlen)              /* Huge number, don't even look at it */
     return 0;
   for (i = 0; i < len; i++)            /* Ensure all characters are digits */
     if (!isDIGIT(ptr[i]))
-      croak("Parameter '%" SVf "' must be a positive integer", n);
+      croak("Parameter '%" SVf "' %s", n, mustbe);
   if (isneg == 1)                      /* Negative number (ignore overflow) */
     return -1;
   ret    = isneg ? -1           : 1;
