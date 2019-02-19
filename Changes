@@ -24,13 +24,24 @@ Revision history for Perl module Math::Prime::Util
 
     - Some large results that used GMP are properly objectified.
 
-    - Using GMP returnint native int results is no longer objectified.
+    - When using GMP, native int results are no longer objectified.
 
     [FUNCTIONALITY AND PERFORMANCE]
 
     - refactor objectification.  Doesn't force.  Enable on Perl < 5.9.
 
     - save a nanosecond or two in 32-bit primality testing.
+
+    - Rewrite Ramanujan prime bounds using Axler (2017).  For large values
+      this is much improved.  Big speedup for large exact nth/count.
+
+    - Approx Ramanujan prime nth and count are much more accurate.
+
+    - Internally, approx prime counts are faster, as we don't need
+      to compute RiemannR to extreme precision.
+
+    - Faster and slightly tighter nth_prime_upper bounds.
+
 
 0.73 2018-11-15
 

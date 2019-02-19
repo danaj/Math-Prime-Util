@@ -2169,7 +2169,7 @@ _XS_ExponentialIntegral(IN SV* x)
       case 0: ret = Ei(nv); break;
       case 1: ret = Li(nv); break;
       case 2: ret = (NV) ld_riemann_zeta(nv); break;
-      case 3: ret = (NV) RiemannR(nv); break;
+      case 3: ret = (NV) RiemannR(nv,0); break;
       case 4:
       default:ret = lambertw(nv); break;
     }

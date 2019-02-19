@@ -2257,7 +2257,7 @@ static long double ld_inverse_R(long double lx) {
   }
   /* Iterate 1-n rounds of Halley, usually only 3 needed. */
   for (i = 0; i < 100; i++) {
-    dn = RiemannR(t) - lx;
+    dn = RiemannR(t, 1e-12) - lx;
 #if 1  /* Use f(t) = li(t) for derivatives */
     term = dn * logl(t) / (1.0L + dn/(2*t));
 #else  /* Use f(t) = li(t) - li(sqrt(t))/2 for derivatives */
@@ -2467,12 +2467,13 @@ long double ld_riemann_zeta(long double x) {
   }
 }
 
-long double RiemannR(long double x) {
+long double RiemannR(long double x, long double eps) {
   long double part_term, term, flogx, ki, old_sum;
   unsigned int k;
   KAHAN_INIT(sum);
 
   if (x <= 0) croak("Invalid input to RiemannR:  x must be > 0");
+  if (eps < LDBL_EPSILON) eps = LDBL_EPSILON;
 
   if (x > 1e19) {
     const signed char* amob = range_moebius(0, 100);
@@ -2485,7 +2486,7 @@ long double RiemannR(long double x) {
       term = amob[k] * ki * Li(part_term);
       old_sum = sum;
       KAHAN_SUM(sum, term);
-      if (fabsl(sum - old_sum) <= LDBL_EPSILON) break;
+      if (fabsl(sum - old_sum) <= eps) break;
     }
     Safefree(amob);
     return sum;
@@ -2502,7 +2503,7 @@ long double RiemannR(long double x) {
     old_sum = sum;
     KAHAN_SUM(sum, term);
     /* printf("R %5d after adding %.18Lg, sum = %.19Lg (%Lg)\n", k, term, sum, fabsl(sum-old_sum)); */
-    if (fabsl(sum - old_sum) <= LDBL_EPSILON) break;
+    if (fabsl(sum - old_sum) <= eps) break;
   }
 
   return sum;

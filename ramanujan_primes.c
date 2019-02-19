@@ -14,225 +14,183 @@
 /*                             RAMANUJAN PRIMES                               */
 /******************************************************************************/
 
-/* For Ramanujan prime estimates:
- *  - counts are done via inverse nth, so only one thing to tune.
- *  - For nth tables, upper values ok if too high, lower values ok if too low.
- *  - both upper & lower empirically tested to 175e9 (175 thousand million),
- *    with a return value of over 10^13.
+static const uint8_t small_ram_primes[] = {
+2,11,17,29,41,47,59,67,71,97,101,107,127,149,151,167,179,181,227,229,233,239,241
+};
+#define NSMALL_RAM (sizeof(small_ram_primes)/sizeof(small_ram_primes[0]))
+
+#define FAST_SMALL_NTH(n) \
+  if (n <= NSMALL_RAM) \
+    { return (n == 0) ? 0 : small_ram_primes[n-1]; }
+#define FAST_SMALL_COUNT(n) \
+ if (n <= small_ram_primes[NSMALL_RAM-1]) { \
+   UV i; \
+   for (i = 0; i < NSMALL_RAM; i++) \
+     if (n < small_ram_primes[i]) break; \
+   return i; \
+ }
+
+
+/*******************************     Bounds     *******************************/
+
+/* Upper and lower bounds done using Axler 2017:
+ *    https://arxiv.org/pdf/1711.04588.pdf
+ * The parameter values have been computed using exact nth_prime,
+ * so does not depend on the nth_prime_upper / nth_prime_lower method.
  */
 
-/* These are playing loose with Sondow/Nicholson/Noe 2011 theorem 4.
- * The last value should be rigorously checked using actual R_n values. */
-static const uint32_t small_ram_upper_idx[] = {
-  3970,3980,5218,5221,5224,5226,5262,5270,5272,5278,5281,5553,5556,7432,
-  7449,7453,8580,8584,8607,12589,12603,12620,12729,18119,18134,18174,18289,
-  18300,18401,18419,25799,27247,27267,28663,39635,40061,40366,45338,51320,
-  64439,65566,65829,84761,89055,104959,107852,146968,151755,186499,217258,
-  223956,270700,332195,347223,440804,508096,565039,768276,828377,1090285,
-  1277320,1568165,1896508,2375799,3300765,4162908,5124977,6522443,9298256,
-  11406250, 15873245, 21307556, 29899174, 40666215,
-  57180770, 81543888, 119596564, 177392936, 266391665,
-  411512446, 646331578, 1043239835, 1723380058, UVCONST(2919198776),
-  UVCONST(4294967295)
-};
-#define SMALL_NRAM_UPPER_MULT 2852
-#define SMALL_NRAM_UPPER (sizeof(small_ram_upper_idx)/sizeof(small_ram_upper_idx[0]))
-
-#if BITS_PER_WORD == 64
-static const UV large_ram_upper_idx[] = {
-  UVCONST(     2256197513), UVCONST(     2556868249), UVCONST(     2919198776),
-  /* 11071, 11070, 11069,   11068, 11067, 11066,   11065, 11064, 11063 */
-  UVCONST(     3371836636), UVCONST(     3874119737), UVCONST(     4467380631),
-  UVCONST(     5163817509), UVCONST(     5950413657), UVCONST(     6901033442),
-  UVCONST(     8015893438), UVCONST(     9322299866), UVCONST(    10845166831),
-  /* 11062, 11061, 11060,   11059, 11058, 11057,   11056, 11055, 11054 */
-  UVCONST(    12727569836), UVCONST(    14852585181), UVCONST(    17463419944),
-  UVCONST(    20585027534), UVCONST(    24252210453), UVCONST(    28704897522),
-  UVCONST(    34003499133), UVCONST(    40436019651), UVCONST(    48229247660),
-  /* 11053, 11052, 11051,   11050, 11049, 11048,   11047, 11046, 11045 */
-  UVCONST(    57558675911), UVCONST(    69028965312), UVCONST(    83015434548),
-  UVCONST(   100138535684), UVCONST(   121051505524), UVCONST(   146783829698),
-  UVCONST(   178727808587), UVCONST(   218113299173), UVCONST(   267104085772),
-  /* 11044, 11043, 11042,   11041, 11040, 11039,   11038, 11037, 11036 */
-  UVCONST(   328057281739), UVCONST(   404608665617), UVCONST(   500552556306),
-  UVCONST(   621794385742), UVCONST(   774739900202), UVCONST(   969943548548),
-  UVCONST(  1218276754392), UVCONST(  1536655221634), UVCONST(  1946308957195),
-  /* 11035, 11034, 11033,   11032, 11031, 11030,   11029, 11028, 11027 */
-  UVCONST(  2475456777850), UVCONST(  3162491651655), UVCONST(  4058282334559),
-  UVCONST(  5233096936468), UVCONST(  6776539822896), UVCONST(  8821085181511),
-  UVCONST( 11539712635284), UVCONST( 15171808426849), UVCONST( 20056581407599),
-  /* 11026, 11025, 11024,   11023, 11022, 11021,   11020, 11019, 11018 */
-  UVCONST( 26656864542121), UVCONST( 35627338984775), UVCONST( 47899755943330),
-  UVCONST( 64773009691258), UVCONST( 88134778026475), UVCONST(120680838280663),
-  UVCONST(166331208358410), UVCONST(230783974844445), UVCONST(322443487572932),
-  /* 11017, 11016, 11015,   11014, 11013, 11012,   11011, 11010, 11009 */
-  UVCONST(453738479744216), UVCONST(643248344602940), UVCONST(918867804392140),
-  UVCONST(1322953724888193),UVCONST(1920282116080684),
-  1.47*UVCONST(1920282116080684),  /* Estimates for larger */
-  2.3*UVCONST(1920282116080684),
-  3.4*UVCONST(1920282116080684),
-  5.1*UVCONST(1920282116080684),
-  7.9*UVCONST(1920282116080684),
-  12.2*UVCONST(1920282116080684),
-};
-#define LARGE_NRAM_UPPER_MULT 11075
-#define LARGE_NRAM_UPPER (sizeof(large_ram_upper_idx)/sizeof(large_ram_upper_idx[0]))
-#endif
-
 UV nth_ramanujan_prime_upper(UV n) {
-  UV i, mult, res;
+  long double R = 0, D = 0.565;
 
-  if (n <= 2) return (n==0) ? 0 : (n==1) ? 2 : 11;
-  res = nth_prime_upper(3*n);
+  FAST_SMALL_NTH(n);
 
-  if (n < UVCONST(2256197512) || BITS_PER_WORD < 64) {
-    /* While p_3n is a complete upper bound, Rp_n tends to p_2n, and
-     * SNN(2011) theorem 4 shows how we can find (m,c) values where m < 1,
-     * Rn < m*p_3n for all n > c.  Here we use various quantized m values
-     * and the table gives us c values where it applies. */
-    if      (n < 20) mult = 3580;
-    else if (n < 98) mult = 3340;
-    else if (n < 1580) mult = 3040;
-    else if (n < 3242) mult = 2885;
-    else {
-      for (i = 0; i < SMALL_NRAM_UPPER; i++)
-        if (small_ram_upper_idx[i] > n)
-          break;
-      mult = SMALL_NRAM_UPPER_MULT-i;
-    }
-    if (res > (UV_MAX/mult)) res = (UV) (((long double) mult / 4096.0L) * res);
-    else                     res = (res * mult) >> 12;
+  if (n < 12581) {
+    if      (n <       168) R = ramanujan_axler(n, -4.7691, -6.2682);
+    else if (n <      2290) R = ramanujan_axler(n, -0.9315, -0.5635);
+    else if (n <      5225) R = ramanujan_axler(n, -0.5318, -0.0710);
+    else if (n <     12581) R = ramanujan_axler(n,  0.1212,  0.7973);
+    return nth_prime_upper(R);
+  }
+  if      (n <     18175) D =  0.3548;
+  else if (n <     82883) D = -0.2450;
+  else if (n <    316314) D = -0.6384;
+  else if (n <   1000001) D = -0.9353;
+  else if (n <   4000001) D = -1.1271;
+  else if (n <  16000001) D = -1.4152;
+  else if (n <  64000001) D = -1.6671;
+  else if (n < 128000001) D = -1.8855;
+  else if (n < 256000001) D = -1.9325;
+  else if (n < 384000001) D = -2.0190;
+  else if (n < 512000001) D = -2.0310;
+  else {
+    D = -2.0884;
+    if (n > UVCONST(     3999654659)) D = -2.235;
 #if BITS_PER_WORD == 64
-  } else {
-    for (i = 0; i < LARGE_NRAM_UPPER; i++)
-      if (large_ram_upper_idx[i] > n)
-        break;
-    mult = (LARGE_NRAM_UPPER_MULT-i);
-    if (res > (UV_MAX/mult)) res = (UV) (((long double) mult / 16384.0L) * res);
-    else                     res = (res * mult) >> 14;
+    if (n > UVCONST(    84086679236)) D = -2.435;
+    if (n > UVCONST(   514808375201)) D = -2.535;
+    if (n > UVCONST(  3594243587299)) D = -2.635;
+    if (n > UVCONST( 28330126673435)) D = -2.735;
+    if (n > UVCONST(117462814829787)) D = -2.8;
 #endif
   }
-  if (n > 43 && n < 10000) {
-    /* Calculate upper bound using Srinivasan and Arés 2017 */
-    /* TODO We should construct a tighter bound like this. */
-    double s = (2 * (double)n) * (1.0L + 1.0L/ramanujan_sa_gn(n));
-    UV ps = nth_prime_upper( (UV) s );
-    if (ps < res)
-      res = ps;
-  }
-  return res;
+
+  return nth_prime_upper(ramanujan_axler(n, 0.0, D));
 }
-static const uint32_t small_ram_lower_idx[] = {
-  2785, 2800, 4275, 5935, 6107, 8797, 9556, 13314, 13641, 20457, 23745,
-  34432, 50564, 69194, 97434, 149399, 224590, 337116, 514260, 804041,
-  1317612, 2340461, 4332796, 8393680, 17227225, 38996663, 94437897,
-  253560792, 763315838, UVCONST(2663598260), UVCONST(4294967295)
-};
-#define SMALL_NRAM_LOWER_MULT 557
-#define SMALL_NRAM_LOWER (sizeof(small_ram_lower_idx)/sizeof(small_ram_lower_idx[0]))
-
-#if BITS_PER_WORD == 64
-static const UV large_ram_lower_idx[] = {
-  UVCONST(    2267483962), UVCONST(    2663598260), UVCONST(    3152476871),
-  UVCONST(    3742932857), UVCONST(    4446913643), UVCONST(    5298293978),
-  UVCONST(    6318053149), UVCONST(    7608807497), UVCONST(    9140758346),
-  UVCONST(   11015956390), UVCONST(   13351265915), UVCONST(   16199147294),
-  /* 4213, 4212, 4211,   4210, 4209, 4208,   4207, 4206, 4205 */
-  UVCONST(   19739499402), UVCONST(   24137542585), UVCONST(   29629560254),
-  UVCONST(   36435870727), UVCONST(   45085624406), UVCONST(   55940244390),
-  UVCONST(   69713814138), UVCONST(   87221199999), UVCONST(  109606558728),
-  /* 4204, 4203, 4202,   4201, 4200, 4199,   4198, 4197, 4196 */
-  UVCONST(  138227790751), UVCONST(  175290761423), UVCONST(  223132516788),
-  UVCONST(  285315117360), UVCONST(  366761235749), UVCONST(  473606049986),
-  UVCONST(  614858505562), UVCONST(  802552362351), UVCONST( 1052957884730),
-  /* 4195, 4194, 4193,   4192, 4191, 4190,   4189, 4188, 4187 */
-  UVCONST(  1389550174208), UVCONST(  1843854433659), UVCONST(  2461728402552),
-  UVCONST(  3306766457564), UVCONST(  4469341663210), UVCONST(  6080948095909),
-  UVCONST(  8329279118918), UVCONST( 11488848759561), UVCONST( 15959135388235),
-  /* 4186, 4185, 4184,   4183, 4182, 4181,   4180, 4179, 4178 */
-  UVCONST( 22336622435614), UVCONST( 31501671598985), UVCONST( 44779902229212),
-  UVCONST( 64180867011184), UVCONST( 92772523880955), UVCONST(135282253437392),
-  UVCONST(199079826917291), UVCONST(295746797998912), UVCONST(443667118326600),
-  /* 4177, 4176, 4175,   4174, 4173, 4172,   4171, 4170, 4169 */
-  UVCONST(672350086039900),UVCONST(1029719394152693),UVCONST(1594365662292999),
-  1.55*UVCONST(1594365662292999), /* estimates here and further */
-  2.45*UVCONST(1594365662292999),
-  3.90*UVCONST(1594365662292999),
-  6.30*UVCONST(1594365662292999),
-  10.4*UVCONST(1594365662292999),
-  17.2*UVCONST(1594365662292999),
-};
-#define LARGE_NRAM_LOWER_MULT 4225
-#define LARGE_NRAM_LOWER (sizeof(large_ram_lower_idx)/sizeof(large_ram_lower_idx[0]))
-#endif
 
 UV nth_ramanujan_prime_lower(UV n) {
-  UV res, i, mult;
-  if (n <= 2) return (n==0) ? 0 : (n==1) ? 2 : 11;
+  double R = 0, D = 0;
 
-  res = nth_prime_lower(2*n);
+  FAST_SMALL_NTH(n);
 
-  if (n < UVCONST(2267483962) || BITS_PER_WORD < 64) {
-    for (i = 0; i < SMALL_NRAM_LOWER; i++)
-      if (small_ram_lower_idx[i] > n)
-        break;
-    mult = (SMALL_NRAM_LOWER_MULT-i);
-    if (res > (UV_MAX/mult)) res = (UV) (((long double) mult / 512.0L) * res);
-    else                     res = (res * mult) >> 9;
+  if (n < 34816) {
+    if      (n <       189) R = ramanujan_axler(n,  4.2720,  0.340);
+    else if (n <      1245) R = ramanujan_axler(n, -0.2179, -6.179);
+    else if (n <      2984) R = ramanujan_axler(n,  0.1446, -4.8693);
+    else if (n <     14303) R = ramanujan_axler(n, -0.3570, -5.1154);
+    else if (n <     34816) R = ramanujan_axler(n, -1.5770, -7.5332);
+    return nth_prime_lower(R);
+  }
+
+  if      (n <     76400) D = 0.0126;
+  else if (n <    280816) D = 0.5132;
+  else if (n <    915887) D = 0.9967;
+  else if (n <   4000001) D = 1.5004;
+  else if (n <  16000001) D = 1.7184;
+  else if (n <  64000001) D = 1.9860;
+  else if (n < 128000001) D = 2.1352;
+  else if (n < 256000001) D = 2.1658;
+  else if (n < 384000001) D = 2.1999;
+  else if (n < 512000001) D = 2.2047;
+  else if (n < 640000001) D = 2.2324;
+  else {
+    D = 2.2385;
 #if BITS_PER_WORD == 64
-  } else {
-    if (n < large_ram_lower_idx[LARGE_NRAM_LOWER-1]) {
-      for (i = 0; i < LARGE_NRAM_LOWER; i++)
-        if (large_ram_lower_idx[i] > n)
-          break;
-      mult = (LARGE_NRAM_LOWER_MULT-i);
-      if (res > (UV_MAX/mult)) res = (UV) (((long double) mult / 4096.0L) * res);
-      else                     res = (res * mult) >> 12;
-    }
+    if (n > UVCONST(    14888378285)) D = 2.29;
+    if (n > UVCONST(   467037926604)) D = 2.31;
+    if (n > UVCONST(  2778491401197)) D = 2.315;
+    if (n > UVCONST( 10656144781918)) D = 2.317;
+    if (n > UVCONST( 63698770351741)) D = 2.319;
 #endif
   }
-  return res;
+
+  return nth_prime_lower(ramanujan_axler(n, 1.472, D));
 }
 
-/* An advantage of making these binary searches on the inverse is that we
- * don't have to tune them separately, and nothing changes if the prime
- * count bounds are modified.  We do need to keep up to date with any
- * changes to nth_prime_{lower,upper} however. */
+/* For Ramanujan prime count bounds, use binary searches on the inverses. */
+/* TODO: Consider using interpolation searches to reduce number of calls. */
 
 UV ramanujan_prime_count_lower(UV n) {
   UV lo, hi;
-  if (n < 29) return (n < 2) ? 0 : (n < 11) ? 1 : (n < 17) ? 2 : 3;
-  /* Binary search on nth_ramanujan_prime_upper */
+  FAST_SMALL_COUNT(n);
   /* We know we're between p_2n and p_3n, probably close to the former. */
   lo = prime_count_lower(n)/3;
   hi = prime_count_upper(n) >> 1;
   while (lo < hi) {
     UV mid = lo + (hi-lo)/2;
-    if (nth_ramanujan_prime_upper(mid) < n) lo = mid+1;
-    else                                    hi = mid;
+    if (nth_ramanujan_prime_upper(mid) <= n) lo = mid+1;
+    else                                     hi = mid;
   }
   return lo-1;
 }
 UV ramanujan_prime_count_upper(UV n) {
-  /* return prime_count_upper(n) >> 1; */       /* Simple bound */
   UV lo, hi;
-  if (n < 29) return (n < 2) ? 0 : (n < 11) ? 1 : (n < 17) ? 2 : 3;
-  /* Binary search on nth_ramanujan_prime_upper */
+  FAST_SMALL_COUNT(n);
   /* We know we're between p_2n and p_3n, probably close to the former. */
   lo = prime_count_lower(n)/3;
   hi = prime_count_upper(n) >> 1;
   while (lo < hi) {
     UV mid = lo + (hi-lo)/2;
-    if (nth_ramanujan_prime_lower(mid) < n) lo = mid+1;
-    else                                    hi = mid;
+    if (nth_ramanujan_prime_lower(mid) <= n) lo = mid+1;
+    else                                     hi = mid;
   }
   return lo-1;
 }
+
+/****************************     Approximate     ****************************/
+
+UV ramanujan_prime_count_approx(UV n)
+{
+  FAST_SMALL_COUNT(n);
+  /* Extremely accurate but a bit slow */
+  return prime_count_approx(n) - prime_count_approx(n >> 1);
+}
+
+UV nth_ramanujan_prime_approx(UV n)
+{
+  UV i, lo, hi, mid;
+  double rlo, rhi, rmid;
+  FAST_SMALL_NTH(n);
+  /* Interpolating using ramanujan prime count approximation */
+  lo = nth_ramanujan_prime_lower(n);
+  hi = nth_ramanujan_prime_upper(n);
+  rlo = ramanujan_prime_count_approx(lo);
+  rhi = ramanujan_prime_count_approx(hi);
+  mid = lo + (UV)((((n-rlo) * (hi-lo) / (rhi-rlo))) + 0.5);
+
+  for (i = 0; i < 3; i++) {
+    rmid = ramanujan_prime_count_approx(mid);
+    if (rmid == n) break;
+    if (rmid < n) { lo = mid; rlo = rmid; }
+    else          { hi = mid; rhi = rmid; }
+    mid = lo + (UV)((((n-rlo) * (hi-lo) / (rhi-rlo))) + 0.5);
+  }
+  return mid;
+}
+
+/*******************************     Arrays     *******************************/
 
 /* Return array of first n ramanujan primes.  Use Noe's algorithm. */
 UV* n_ramanujan_primes(UV n) {
   UV max, k, s, *L;
   unsigned char* sieve;
+
+  if (n <= NSMALL_RAM) {
+    New(0, L, n, UV);
+    for (k = 0; k < n; k++)
+      L[k] = small_ram_primes[k];
+    return L;
+  }
+
   max = nth_ramanujan_prime_upper(n); /* Rn <= max, so we can sieve to there */
   MPUverbose(2, "sieving to %"UVuf" for first %"UVuf" Ramanujan primes\n", max, n);
   Newz(0, L, n, UV);
@@ -298,15 +256,6 @@ UV* n_range_ramanujan_primes(UV nlo, UV nhi) {
   return L;
 }
 
-UV nth_ramanujan_prime(UV n) {
-  UV rn, *L;
-  if (n <= 2) return (n == 0) ? 0 : (n == 1) ? 2 : 11;
-  L = n_range_ramanujan_primes(n, n);
-  rn = L[0];
-  Safefree(L);
-  return rn;
-}
-
 /* Returns array of Ram primes between low and high, results from first->last */
 UV* ramanujan_primes(UV* first, UV* last, UV low, UV high)
 {
@@ -336,39 +285,73 @@ UV* ramanujan_primes(UV* first, UV* last, UV low, UV high)
   return L;
 }
 
+/* Generate a small window of Rp's around n */
+static UV* _ramanujan_prime_window(UV n, UV* winsize, UV* npos) {
+  UV i, v, rn, *L, window, swin, ewin, wlen, winmult = 1;
+
+  MPUverbose(1, "ramanujan_prime_count calculating Pi(%"UVuf")\n",n);
+  v = prime_count(2,n) - prime_count(2,n >> 1);
+
+  /* For large enough n make a slightly bigger window */
+  if (n > 1000000000U) winmult = 16;
+
+  while (1) {
+    window = 20 * winmult;
+    swin = (v <= window) ? 1 : v-window;
+    ewin = v+window;
+    wlen = ewin-swin+1;
+    L = n_range_ramanujan_primes(swin, ewin);
+    if (L[0] < n && L[wlen-1] > n) {
+      /* Naive linear search from the start. */
+      for (i = 1; i < wlen; i++)
+        if (L[i] > n && L[i-1] <= n)
+          break;
+      if (i < wlen) break;
+    }
+    winmult *= 2;
+    MPUverbose(1, "  ramanujan_prime_count increasing window\n");
+  }
+  *winsize = swin;
+  *npos = i-1;
+  return L;
+}
+
+/*******************************     Exact     *******************************/
+
+UV nth_ramanujan_prime(UV n) {
+  UV rn, *L;
+  FAST_SMALL_NTH(n);
+  L = n_range_ramanujan_primes(n, n);
+  rn = L[0];
+  Safefree(L);
+  return rn;
+}
+
 int is_ramanujan_prime(UV n) {
-  UV beg, end, *L;
+  UV i, d, beg, end, *L, swin, rn;
 
   if (!is_prime(n))  return 0;
   if (n < 17)        return (n == 2 || n == 11);
 
-  /* Generate Ramanujan primes and see if we're in the list.  Slow. */
-  L = ramanujan_primes(&beg, &end, n, n);
+  /* Pre-test: Check if Pi(n/2) increases before Pi(n) does. */
+  if (is_prime(n/2+1)) return 0;
+  d = (next_prime(n) - n)/2;
+  for (i = 2; i <= d; i++)
+    if (is_prime(n/2+i)) return 0;
+
+  /* Very straightforward, but not the fastest method:
+   *   return nth_ramanujan_prime(ramanujan_prime_count(2,n)) == n;
+   *
+   * Slower than below for most input sizes:
+   *   L = ramanujan_primes(&beg, &end, n, n);
+   *   Safefree(L);
+   *   return (beg <= end);
+   */
+
+  L = _ramanujan_prime_window(n, &swin, &rn);
+  d = (L[rn] == n);
   Safefree(L);
-  return (beg <= end);
-}
-
-UV ramanujan_prime_count_approx(UV n)
-{
-  /* Binary search on nth_ramanujan_prime_approx */
-  UV lo, hi;
-  if (n < 29) return (n < 2) ? 0 : (n < 11) ? 1 : (n < 17) ? 2 : 3;
-  lo = ramanujan_prime_count_lower(n);
-  hi = ramanujan_prime_count_upper(n);
-  while (lo < hi) {
-    UV mid = lo + (hi-lo)/2;
-    if (nth_ramanujan_prime_approx(mid) < n) lo = mid+1;
-    else                                     hi = mid;
-  }
-  return lo-1;
-}
-
-UV nth_ramanujan_prime_approx(UV n)
-{
-  UV lo = nth_ramanujan_prime_lower(n),  hi = nth_ramanujan_prime_upper(n);
-  /* Our upper bounds come out much closer, so weight toward them. */
-  double weight = (n <= UVCONST(4294967295))  ?  1.62  :  1.51;
-  return lo + weight * ((hi-lo) >> 1);
+  return d;
 }
 
 #if BITS_PER_WORD == 64
@@ -394,39 +377,15 @@ static const UV ramanujan_counts_pow2[RAMPC2+1] = {
 #endif
 
 static UV _ramanujan_prime_count(UV n) {
-  UV i, v, rn, *L, window, swin, ewin, wlen, log2 = log2floor(n), winmult = 1;
+  UV swin, rn, *L, log2 = log2floor(n);
 
-  if (n <= 10) return (n < 2) ? 0 : 1;
-
-  /* We have some perfect powers of 2 in our table */
-  if ((n & (n-1)) == 0 && log2 <= RAMPC2)
+  if ((n & (n-1)) == 0 && log2 <= RAMPC2) /* Powers of two from table */
     return ramanujan_counts_pow2[log2];
+  FAST_SMALL_COUNT(n);
 
-  MPUverbose(1, "ramanujan_prime_count calculating Pi(%"UVuf")\n",n);
-  v = prime_count(2,n) - prime_count(2,n >> 1);
-
-  /* For large enough n make a slightly bigger window */
-  if (n > 1000000000U) winmult = 16;
-
-  while (1) {
-    window = 20 * winmult;
-    swin = (v <= window) ? 1 : v-window;
-    ewin = v+window;
-    wlen = ewin-swin+1;
-    L = n_range_ramanujan_primes(swin, ewin);
-    if (L[0] < n && L[wlen-1] > n) {
-      /* Naive linear search from the start. */
-      for (i = 1; i < wlen; i++)
-        if (L[i] > n && L[i-1] <= n)
-          break;
-      if (i < wlen) break;
-    }
-    winmult *= 2;
-    MPUverbose(1, "  ramanujan_prime_count increasing window\n");
-  }
-  rn = swin + i - 1;
+  L = _ramanujan_prime_window(n, &swin, &rn);
   Safefree(L);
-  return rn;
+  return swin+rn;
 }
 
 UV ramanujan_prime_count(UV lo, UV hi)

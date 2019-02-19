@@ -352,7 +352,7 @@ UV prime_count(UV lo, UV hi)
 UV prime_count_approx(UV n)
 {
   if (n < 3000000) return segment_prime_count(2, n);
-  return (UV) (RiemannR( (long double) n ) + 0.5 );
+  return (UV) (RiemannR((long double) n, 1e-6) + 0.5);
 }
 
 /* See http://numbers.computation.free.fr/Constants/Primes/twin.pdf, page 5 */
@@ -509,7 +509,8 @@ UV nth_prime_upper(UV n)
   flogn  = logl(n);
   flog2n = logl(flogn);    /* Note distinction between log_2(n) and log^2(n) */
 
-  if (n < 688383) {
+  /* Binary search on prime count lower.  Good but quite slow. */
+  if (n < 39017) {
     UV lo,hi;
     simple_nth_limits(&lo, &hi, fn, flogn, flog2n);
     while (lo < hi) {
@@ -518,6 +519,18 @@ UV nth_prime_upper(UV n)
       else hi = mid;
     }
     return lo;
+  }
+  /* Tuned Axler (2013,2017) for small inputs. */
+  if (n < 688383) {
+    long double c, d;
+    if      (n > 493000) { c = 1.42; d =  24.1728; }  /* 493-688 */
+    else if (n > 371000) { c = 2.92; d = -15.4768; }  /* 371-493 */
+    else if (n > 310000) { c = 6.75; d =-112.4720; }  /* 310-371 */
+    else if (n > 157000) { c = 2.01; d =   7.2842; }  /* 157-310 */
+    else if (n >  39016) { c = 3.08; d = -18.6291; }  /*  39-157 */
+    else                 { c = 3.49; d = -28.0702; }  /*   0- 39 */
+    upper = fn * (flogn + flog2n - 1.0 + ((flog2n-c)/flogn) - (flog2n*flog2n-6*flog2n+d)/(2*flogn*flogn));
+    return (UV) floorl(upper);
   }
 
   /* Dusart 2010 page 2 */
@@ -1008,11 +1021,15 @@ int sum_primes(UV low, UV high, UV *return_sum) {
   return !overflow;
 }
 
-double ramanujan_sa_gn(UV un)
-{
-  long double n = (long double) un;
-  long double logn = logl(n);
-  long double log2 = logl(2);
+double ramanujan_axler(long double n, long double c, long double d) {
+  long double res, U, c1, c2, log2 = logl(2), logn = logl(n), loglogn = logl(logn);
 
-  return (double)( (logn + logl(logn) - log2 - 0.5) / (log2 + 0.5) );
+  c1 = 2*log2*log2 + log2 + c;
+  c2 = log2*log2*log2 + 2*log2*log2 + d;
+
+  U = (log2 * logn*loglogn*loglogn - c1*logn*loglogn + c2*logn - log2*log2*loglogn + log2*log2*log2 + log2*log2)
+    / (logn*logn*logn*logn + logn*logn*logn*loglogn - logn*logn*logn*log2 - logn*logn*log2);
+
+  res = 2*n * (1.0L + log2/logn - (log2*loglogn - log2*log2 - log2) / (logn*logn) + U);
+  return res;
 }
