@@ -500,7 +500,7 @@ static void simple_nth_limits(UV *lo, UV *hi, long double n, long double logn, l
 /* The nth prime will be less or equal to this number */
 UV nth_prime_upper(UV n)
 {
-  long double fn, flogn, flog2n, upper;
+  long double fn, flogn, flog2n, upper, c, d;
 
   if (n < NPRIMES_SMALL)
     return primes_small[n];
@@ -510,7 +510,7 @@ UV nth_prime_upper(UV n)
   flog2n = logl(flogn);    /* Note distinction between log_2(n) and log^2(n) */
 
   /* Binary search on prime count lower.  Good but quite slow. */
-  if (n < 39017) {
+  if (n < 15360) {
     UV lo,hi;
     simple_nth_limits(&lo, &hi, fn, flogn, flog2n);
     while (lo < hi) {
@@ -520,28 +520,38 @@ UV nth_prime_upper(UV n)
     }
     return lo;
   }
-  /* Tuned Axler (2013,2017) for small inputs. */
-  if (n < 688383) {
-    long double c, d;
-    if      (n > 493000) { c = 1.42; d =  24.1728; }  /* 493-688 */
-    else if (n > 371000) { c = 2.92; d = -15.4768; }  /* 371-493 */
-    else if (n > 310000) { c = 6.75; d =-112.4720; }  /* 310-371 */
-    else if (n > 157000) { c = 2.01; d =   7.2842; }  /* 157-310 */
-    else if (n >  39016) { c = 3.08; d = -18.6291; }  /*  39-157 */
-    else                 { c = 3.49; d = -28.0702; }  /*   0- 39 */
-    upper = fn * (flogn + flog2n - 1.0 + ((flog2n-c)/flogn) - (flog2n*flog2n-6*flog2n+d)/(2*flogn*flogn));
-    return (UV) floorl(upper);
-  }
 
-  /* Dusart 2010 page 2 */
-  upper = fn * (flogn + flog2n - 1.0 + ((flog2n-2.00)/flogn));
-  if        (n >= 46254381) {
-     /* Axler 2017 http://arxiv.org/pdf/1706.03651.pdf Corollary 1.2 */
-    upper -= fn * ((flog2n*flog2n-6*flog2n+10.667)/(2*flogn*flogn));
-  } else if (n >=  8009824) {
-    /* Axler 2013 page viii Korollar G */
-    upper -= fn * ((flog2n*flog2n-6*flog2n+10.273)/(2*flogn*flogn));
-  }
+  /* See: Axler 2013, Dusart 2010 */
+  /*      Axler 2017: http://arxiv.org/pdf/1706.03651.pdf */
+
+  if      (n >= 46254381) { c = 2.00; d =  10.667;  } /* Axler 2017 Cor 1.2 */
+  else if (n >=  8009824) { c = 2.00; d =  10.273;  } /* Axler 2013 Kor G */
+  /* This is about 3x better than Dusart (2010) for 688382-8009823:
+   *
+   * else if (n >=   688382) { c = 2.30; d =   0.5730; }
+   *
+   * but we can split the range and get another 2x improvement in MSE.
+   */
+  else if (n >=  5450000) { c = 2.00; d =  10.1335; }  /*5450-8009 */
+  else if (n >=  3906280) { c = 1.67; d =  20.2675; }  /*3906-5450 */
+  else if (n >=  2110840) { c = 2.51; d =  -5.5714; }  /*2110-3906 */
+  else if (n >=   876700) { c = 2.49; d =  -4.5129; }  /* 877-2110 */
+  else if (n >=   688382) { c = 3.31; d = -26.3858; }  /* 688-877 */
+  /* Use the Axler framework to get good bounds for smaller inputs. */
+  else if (n >=   575750) { c =-0.79; d =  83.5215; }  /* 580-688 */
+  else if (n >=   467650) { c = 0.93; d =  37.1597; }  /* 467-580 */
+  else if (n >=   382440) { c = 2.92; d = -15.4768; }  /* 382-467 */
+  else if (n >=   301130) { c = 5.92; d = -91.3415; }  /* 301-382 */
+  else if (n >=   138630) { c = 2.01; d =   7.2842; }  /* 138-301 */
+  else if (n >=    85820) { c = 2.07; d =   5.2103; }  /*  86-138 */
+  else if (n >=    39016) { c = 2.77; d = -11.5918; }  /*  39- 86 */
+  else if (n >=    31490) { c = 1.49; d =  15.1821; }  /*  31- 39 */
+  else if (n >=    25070) { c =11.89; d =-197.8951; }  /*  25- 31 */
+  else if (n >=    15359) { c = 4.80; d = -51.5928; }  /*  15- 25 */
+  else                    { c = 3.92; d = -33.3994; }  /*   0- 15 */
+
+  upper = fn * ( flogn + flog2n - 1.0 + ((flog2n-c)/flogn)
+                 - (flog2n*flog2n-6*flog2n+d)/(2*flogn*flogn) );
 
   if (upper >= (long double)UV_MAX) {
     if (n <= MPU_MAX_PRIME_IDX) return MPU_MAX_PRIME;

@@ -40,7 +40,7 @@ Revision history for Perl module Math::Prime::Util
     - Internally, approx prime counts are faster, as we don't need
       to compute RiemannR to extreme precision.
 
-    - Faster and slightly tighter nth_prime_upper bounds.
+    - Faster and tighter nth_prime_upper bounds.
 
 
 0.73 2018-11-15
