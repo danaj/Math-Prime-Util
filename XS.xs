@@ -1636,11 +1636,12 @@ void urandomb(IN UV bits)
     random_ndigit_prime = 1
     random_semiprime = 2
     random_unrestricted_semiprime = 3
-    random_nbit_prime = 4
-    random_shawe_taylor_prime = 5
-    random_maurer_prime = 6
-    random_proven_prime = 7
-    random_strong_prime = 8
+    random_safe_prime = 4
+    random_nbit_prime = 5
+    random_shawe_taylor_prime = 6
+    random_maurer_prime = 7
+    random_proven_prime = 8
+    random_strong_prime = 9
   PREINIT:
     UV res, minarg;
     dMY_CXT;
@@ -1650,11 +1651,12 @@ void urandomb(IN UV bits)
       case 1:  minarg =   1; break;
       case 2:  minarg =   4; break;
       case 3:  minarg =   3; break;
-      case 4:
+      case 4:  minarg =   3; break;
       case 5:
       case 6:
-      case 7:  minarg =   2; break;
-      case 8:  minarg = 128; break;
+      case 7:
+      case 8:  minarg =   2; break;
+      case 9:  minarg = 128; break;
       default: minarg =   0; break;
     }
     if (minarg > 0 && bits < minarg)
@@ -1666,11 +1668,12 @@ void urandomb(IN UV bits)
         case 1:  res = random_ndigit_prime(cs,bits); break;
         case 2:  res = random_semiprime(cs,bits); break;
         case 3:  res = random_unrestricted_semiprime(cs,bits); break;
-        case 4:
+        case 4:  res = random_safe_prime(cs,bits); break;
         case 5:
         case 6:
         case 7:
         case 8:
+        case 9:
         default: res = random_nbit_prime(cs,bits); break;
       }
       if (res || ix == 0) XSRETURN_UV(res);
@@ -1680,11 +1683,12 @@ void urandomb(IN UV bits)
       case 1:  _vcallsub_with_gmpobj(0.42,"random_ndigit_prime"); break;
       case 2:  _vcallsub_with_gmpobj(0.00,"random_semiprime"); break;
       case 3:  _vcallsub_with_gmpobj(0.00,"random_unrestricted_semiprime"); break;
-      case 4:  _vcallsub_with_gmpobj(0.42,"random_nbit_prime"); break;
-      case 5:  _vcallsub_with_gmpobj(0.43,"random_shawe_taylor_prime"); break;
-      case 6:
-      case 7:  _vcallsub_with_gmpobj(0.43,"random_maurer_prime"); break;
-      case 8:
+      case 4:  _vcallsub_with_gmpobj(0,"random_safe_prime"); break;
+      case 5:  _vcallsub_with_gmpobj(0.42,"random_nbit_prime"); break;
+      case 6:  _vcallsub_with_gmpobj(0.43,"random_shawe_taylor_prime"); break;
+      case 7:
+      case 8:  _vcallsub_with_gmpobj(0.43,"random_maurer_prime"); break;
+      case 9:
       default: _vcallsub_with_gmpobj(0.43,"random_strong_prime"); break;
     }
     objectify_result(aTHX_ ST(0), ST(0));

@@ -204,8 +204,6 @@
 - powint, divint, mulint, addint:
   - optimize XS for (1) both neg, (2) either neg
 
-- random_safe_prime, p and (p-1)/2 are prime, see Wiener sieve
-
 - factor, factor_exp should accept negative inputs
 
 - NEGMAXINT testing in PP.
@@ -213,3 +211,5 @@
 - NEGMAXINT input in XS.
 
 - euler_phi should do XS -> GMP directly.  Maybe make totient in PP for uniform name.
+
+- random_safe_prime, doc, PPFE, testing, GMP

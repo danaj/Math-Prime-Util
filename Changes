@@ -15,6 +15,7 @@ Revision history for Perl module Math::Prime::Util
     - divrem(a, b)                    Euclidean quotient and remainder
     - tdivrem(a, b)                   Truncated quotient and remainder
     - is_gaussian_prime(a,b)          is a+bi a Gaussian prime
+    - random_safe_prime               for n-bit safe primes
 
     [FIXES]
 

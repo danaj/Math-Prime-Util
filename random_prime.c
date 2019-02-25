@@ -143,3 +143,34 @@ UV random_unrestricted_semiprime(void* ctx, UV b) { /* generic semiprime */
   } while (!is_semiprime(n));
   return n;
 }
+
+UV random_safe_prime(void* ctx, UV bits)
+{
+  static const unsigned char small_safe[] = {5,7,11,23,47,59,83,107};
+  const uint16_t p15mask = 14079;
+  UV p, q, B;
+
+  if (bits < 3 || bits > BITS_PER_WORD)
+    return 0;
+
+  switch (bits) {
+    case 3:  return small_safe[  0 + urandomm32(ctx, 2) ];
+    case 4:  return 11;
+    case 5:  return 23;
+    case 6:  return small_safe[  4 + urandomm32(ctx, 2) ];
+    case 7:  return small_safe[  6 + urandomm32(ctx, 2) ];
+    default: break;
+  }
+
+  /* do { q = 2 * random_nbit_prime(ctx, bits-1) + 1; } while (!is_prob_prime(q)); */
+
+  B = (UVCONST(1) << (bits-2)) + 1;
+  do {
+    p = B + (urandomb(ctx, bits-3) << 1);
+    q = 2*p+1;
+  } while ( (p15mask & (1U << (p%15))) ||
+            (p%7) == 0 || (p%7) == 3 ||
+            !is_prob_prime(p) || !is_prob_prime(q) );
+
+  return q;
+}

@@ -163,6 +163,7 @@ Tags:
   random_prime([start,] end)          random prime in a range
   random_ndigit_prime(n)              random prime with n digits
   random_nbit_prime(n)                random prime with n bits
+  random_safe_prime(n)                random safe prime with n bits
   random_strong_prime(n)              random strong prime with n bits
   random_proven_prime(n)              random n-bit prime with proof
   random_proven_prime_with_cert(n)    as above and include certificate

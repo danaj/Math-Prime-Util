@@ -49,7 +49,8 @@ my @functions =  qw(
       nth_ramanujan_prime nth_ramanujan_prime_approx
       nth_ramanujan_prime_lower nth_ramanujan_prime_upper
       sum_primes print_primes
-      random_prime random_ndigit_prime random_nbit_prime random_strong_prime
+      random_prime random_ndigit_prime
+      random_nbit_prime random_safe_prime random_strong_prime
       random_proven_prime random_proven_prime_with_cert
       random_maurer_prime random_maurer_prime_with_cert
       random_shawe_taylor_prime random_shawe_taylor_prime_with_cert
