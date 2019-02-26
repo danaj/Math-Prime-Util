@@ -1683,7 +1683,7 @@ void urandomb(IN UV bits)
       case 1:  _vcallsub_with_gmpobj(0.42,"random_ndigit_prime"); break;
       case 2:  _vcallsub_with_gmpobj(0.00,"random_semiprime"); break;
       case 3:  _vcallsub_with_gmpobj(0.00,"random_unrestricted_semiprime"); break;
-      case 4:  _vcallsub_with_gmpobj(0,"random_safe_prime"); break;
+      case 4:  _vcallsub_with_gmpobj(0.52,"random_safe_prime"); break;
       case 5:  _vcallsub_with_gmpobj(0.42,"random_nbit_prime"); break;
       case 6:  _vcallsub_with_gmpobj(0.43,"random_shawe_taylor_prime"); break;
       case 7:

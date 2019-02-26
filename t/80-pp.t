@@ -976,6 +976,7 @@ ok(  is_carmichael(1125038377), "1125038377 is a Carmichael number" );
 #  urandomb
 #  urandomm
 #  random_ndigit_prime
+#  random_safe_prime
 #  random_strong_prime
 #  random_maurer_prime
 #  random_shawe_taylor_prime

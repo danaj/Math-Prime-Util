@@ -6676,8 +6676,8 @@ sub random_nbit_prime {
 }
 sub random_safe_prime {
   my($bits) = @_;
-  _validate_positive_integer($bits, 2);
-  return Math::Prime::Util::_reftyped($_[0], Math::Prime::Util::GMP::random_safe_prime($bits))
+  _validate_positive_integer($bits, 3);
+  return Math::Prime::Util::_reftyped($_[0], eval "Math::Prime::Util::GMP::random_safe_prime($bits)")
     if $Math::Prime::Util::_GMPfunc{"random_safe_prime"};
   require Math::Prime::Util::RandomPrimes;
   return Math::Prime::Util::RandomPrimes::random_safe_prime($bits);
@@ -6685,7 +6685,7 @@ sub random_safe_prime {
 sub random_strong_prime {
   my($bits) = @_;
   _validate_positive_integer($bits, 128);
-  return Math::Prime::Util::_reftyped($_[0], Math::Prime::Util::GMP::random_strong_prime($bits))
+  return Math::Prime::Util::_reftyped($_[0], eval "Math::Prime::Util::GMP::random_strong_prime($bits)")
     if $Math::Prime::Util::_GMPfunc{"random_strong_prime"};
   require Math::Prime::Util::RandomPrimes;
   return Math::Prime::Util::RandomPrimes::random_strong_prime($bits);

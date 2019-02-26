@@ -124,6 +124,7 @@ sub entropy_bytes {
 *random_ndigit_prime = \&Math::Prime::Util::PP::random_ndigit_prime;
 *random_nbit_prime = \&Math::Prime::Util::PP::random_nbit_prime;
 *random_proven_prime = \&Math::Prime::Util::PP::random_maurer_prime; # redir
+*random_safe_prime = \&Math::Prime::Util::PP::random_safe_prime;
 *random_strong_prime = \&Math::Prime::Util::PP::random_strong_prime;
 *random_maurer_prime = \&Math::Prime::Util::PP::random_maurer_prime;
 *random_shawe_taylor_prime =\&Math::Prime::Util::PP::random_shawe_taylor_prime;

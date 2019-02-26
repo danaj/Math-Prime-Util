@@ -179,6 +179,8 @@ is( length(random_ndigit_prime(4)), 4, "random_ndigit_prime(4) is 4 digits" );
   my $bigprime;
   $bigprime = random_nbit_prime(512);
   is( length($bigprime->as_bin), 2+512, "random_nbit_prime(512) is 512 bits" );
+  $bigprime = random_safe_prime(512);
+  is( length($bigprime->as_bin), 2+512, "random_safe_prime(512) is 512 bits" );
   $bigprime = random_strong_prime(512);
   is( length($bigprime->as_bin), 2+512, "random_strong_prime(512) is 512 bits" );
   $bigprime = random_proven_prime(512);

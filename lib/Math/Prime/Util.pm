@@ -1175,6 +1175,7 @@ Version 0.73
   $rand_prime = random_prime(100, 10000);  # random prime within a range
   $rand_prime = random_ndigit_prime(6);    # random 6-digit prime
   $rand_prime = random_nbit_prime(128);    # random 128-bit prime
+  $rand_prime = random_safe_prime(192);    # random 192-bit safe prime
   $rand_prime = random_strong_prime(256);  # random 256-bit strong prime
   $rand_prime = random_maurer_prime(256);  # random 256-bit provable prime
   $rand_prime = random_shawe_taylor_prime(256);  # as above
@@ -4051,6 +4052,18 @@ towards smaller numbers).
 The result will be a BigInt if the number of bits is greater than the native
 bit size.  For better performance with large bit sizes, install
 L<Math::Prime::Util::GMP>.
+
+
+=head2 random_safe_prime
+
+  my $bigprime = random_safe_prime(512);
+
+Produces an n-bit safe prime.  This is a prime C<p> where C<p = 2q+1> and
+C<q> is also prime.
+
+These types of primes are sometimes useful for discrete logarithm based
+cryptography, and can be generated more efficiently using
+simultaneous sieving.
 
 
 =head2 random_strong_prime

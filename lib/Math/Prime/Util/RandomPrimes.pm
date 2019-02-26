@@ -851,12 +851,13 @@ sub random_safe_prime {
   croak "random_safe_prime, bits must be >= 3" unless $b >= 3;
 
   my($p,$q);
+
   do {
-    $p = Math::Prime::Util::random_nbit_prime($b-1);
-    $q = Math::Prime::Util::mulint(2,$p) + 1;
-  } while ( ($p % 3) != 2 || ($p % 5) == 2 || ($q % 3) != 2 ||
-            !Math::Prime::Util::is_prob_prime($q) );
-  return $q;
+    $q = Math::Prime::Util::random_nbit_prime($b-1);
+    $p = Math::Prime::Util::mulint(2,$q) + 1;
+  } while ( ($q % 3) != 2 || ($q % 5) == 2 || ($p % 3) != 2 ||
+            !Math::Prime::Util::is_prob_prime($p) );
+  return $p;
 }
 
 

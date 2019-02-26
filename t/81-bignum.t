@@ -86,7 +86,7 @@ plan tests =>  0
              + 1   # gcdext
              + 1   # chinese
              + 4   # ispower
-             + 15  # random primes
+             + 18  # random primes
              + 8   # miller-rabin random
              + 2   # Perrin PsP
              + 1   # valuation
@@ -140,6 +140,7 @@ use Math::Prime::Util qw/
   random_prime
   random_ndigit_prime
   random_nbit_prime
+  random_safe_prime
   random_strong_prime
   random_maurer_prime
   miller_rabin_random
@@ -354,6 +355,11 @@ $randprime = random_nbit_prime(80);
 cmp_ok( $randprime, '>', 2**79, "random 80-bit prime is not too small");
 cmp_ok( $randprime, '<', 2**80, "random 80-bit prime is not too big");
 ok( is_prime($randprime), "random 80-bit prime is just right");
+
+$randprime = random_safe_prime(180);
+cmp_ok( $randprime, '>', 2**179, "random 180-bit safe prime is not too small");
+cmp_ok( $randprime, '<', 2**180, "random 180-bit safe prime is not too big");
+ok( is_prime($randprime), "random 180-bit safe prime is just right");
 
 $randprime = random_strong_prime(180);
 cmp_ok( $randprime, '>', 2**179, "random 180-bit strong prime is not too small");

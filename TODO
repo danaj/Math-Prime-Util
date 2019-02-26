@@ -211,5 +211,3 @@
 - NEGMAXINT input in XS.
 
 - euler_phi should do XS -> GMP directly.  Maybe make totient in PP for uniform name.
-
-- random_safe_prime, doc, PPFE, testing, GMP
