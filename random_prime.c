@@ -164,6 +164,7 @@ UV random_safe_prime(void* ctx, UV bits)
 
   /* do { q = 2 * random_nbit_prime(ctx, bits-1) + 1; } while (!is_prob_prime(q)); */
 
+  /* Alternately we could construct p with last 2 bits set, then q = p >> 1. */
   B = (UVCONST(1) << (bits-2)) + 1;
   do {
     p = B + (urandomb(ctx, bits-3) << 1);
