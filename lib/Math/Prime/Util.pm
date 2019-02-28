@@ -5118,9 +5118,9 @@ L<Math::Cartesian::Product>, L<Set::Scalar>, and L<Set::CrossProduct>,
 as well as a few others.
 The L<Set::CartesianProduct::Lazy> module provides random access,
 albeit rather slowly.
-Our L</forsetproduct> matches L<Set::Product> in both high performance
-and functionality (that module's single function L<Set::Product/product>
-is essentially identical to ours).
+Our L</forsetproduct> matches L<Set::Product::XS> in both high performance
+and functionality (that module was written earlier, and our function is
+nearly identical to L<Set::Product::XS/product>).
 
 L<Math::Pari> supports a lot of features, with a great deal of overlap.  In
 general, MPU will be faster for native 64-bit integers, while it differs
