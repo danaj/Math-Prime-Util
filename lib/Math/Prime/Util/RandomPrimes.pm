@@ -986,6 +986,10 @@ Construct a random provable prime of C<n> bits using Shawe-Taylor's
 algorithm.  C<n> must be at least 2.  Returns a list of two items: the
 prime and the certificate.
 
+=head2 random_safe_prime
+
+Construct a random safe prime of C<n> bits.  C<n> must be at least 3.
+
 =head2 random_strong_prime
 
 Construct a random strong prime of C<n> bits.  C<n> must be at least 128.
