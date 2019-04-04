@@ -27,6 +27,8 @@ Revision history for Perl module Math::Prime::Util
 
     - When using GMP, native int results are no longer objectified.
 
+    - AKS was modding a with r, since 2012.
+
     [FUNCTIONALITY AND PERFORMANCE]
 
     - refactor objectification.  Doesn't force.  Enable on Perl < 5.9.

@@ -280,7 +280,7 @@ static int test_anr(UV a, UV n, UV r)
   int retval = 1;
 
   Newz(0, pn, r, UV);
-  a %= r;
+  if (a >= n) a %= n;
   pn[0] = a;
   pn[1] = 1;
   res = poly_mod_pow(pn, n, r, n);
