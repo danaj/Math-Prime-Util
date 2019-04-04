@@ -119,8 +119,8 @@ static UV isqrt(UV n) {
   if (n >= UVCONST(18446744065119617025)) return UVCONST(4294967295);
 #endif
   root = (UV) sqrt((double)n);
-  while (root*root > n)  root--;
-  while ((root+1)*(root+1) <= n)  root++;
+  if (root*root > n)  root--;
+  if ((root+1)*(root+1) <= n)  root++;
   return root;
 }
 #endif
