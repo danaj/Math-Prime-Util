@@ -3,7 +3,7 @@ use strict;
 use warnings;
 
 use Test::More;
-use Math::Prime::Util qw/ powint mulint addint divint modint divrem tdivrem /;
+use Math::Prime::Util qw/ powint mulint addint subint divint modint divrem tdivrem /;
 use Math::BigInt;
 
 
@@ -23,6 +23,10 @@ my @addints = (
   ["1178630961471601951655862","827639478068904540012","1179458600949670856195874"],
   ["-2555488174170453670799","1726145541361106236340","-829342632809347434459"],
 );
+my @subints = (
+  ["1178630961471601951655862","827639478068904540012","1177803321993533047115850"],
+  ["-2555488174170453670799","1726145541361106236340","-4281633715531559907139"],
+);
 my @quotients = (  # trunc, floor, euclidian
   ["+ +",  "39458349850349850394853049583049",  "85889",  "459410982202026457344398579",  "459410982202026457344398579",  "459410982202026457344398579"],
   ["+ -",  "39458349850349850394853049583049", "-85889", "-459410982202026457344398579", "-459410982202026457344398580", "-459410982202026457344398579"],
@@ -34,6 +38,7 @@ plan tests => 0
             + 7*4 + scalar(@powints) + 5     # powint
             + 1 + scalar(@mulints)           # mulint
             + 1 + scalar(@addints)           # addint
+            + 1 + scalar(@subints)           # subint
             + 2 + 2                          # divint
             + 2 + 2                          # modint
             + 2                              # divrem
@@ -87,6 +92,21 @@ foreach my $r (@mulints) {
 foreach my $r (@addints) {
   my($a, $b, $exp) = @$r;
   is( addint($a,$b), $exp, "addint($a,$b) = ".((defined $exp)?$exp:"<undef>") );
+}
+
+###### subint
+{ my(@got,@exp);
+  for my $a (-3 .. 3) {
+    for my $b (-3 .. 3) {
+      push @got, subint($a,$b);
+      push @exp, $a-$b;
+    }
+  }
+  is_deeply( \@got, \@exp, "subint( -3 .. 3, -3 .. 3)" );
+}
+foreach my $r (@subints) {
+  my($a, $b, $exp) = @$r;
+  is( subint($a,$b), $exp, "subint($a,$b) = ".((defined $exp)?$exp:"<undef>") );
 }
 
 ###### divint
