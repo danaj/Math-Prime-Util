@@ -30,7 +30,7 @@ our @EXPORT_OK =
       is_square_free is_primitive_root is_carmichael is_quasi_carmichael
       is_fundamental is_totient is_gaussian_prime
       sqrtint rootint logint
-      powint mulint addint divint modint divrem tdivrem
+      powint mulint addint subint divint modint divrem tdivrem absint negint
       miller_rabin_random
       lucas_sequence lucasu lucasv
       primes twin_primes semi_primes ramanujan_primes
@@ -2743,6 +2743,10 @@ Given integers C<a> and C<b>, returns C<a * b>.
 
 Given integers C<a> and C<b>, returns C<a + b>.
 
+=head2 subint
+
+Given integers C<a> and C<b>, returns C<a - b>.
+
 =head2 divint
 
 Given integers C<a> and C<b>, returns the quotient C<a / b>.
@@ -2781,6 +2785,14 @@ the truncated quotient and the truncated remainder.
 
 The resulting pair will match
 L<Math::BigInt/btdiv> and L<Math::BigInt/btmod>.
+
+=head2 absint
+
+Given integer C<n>, return C<|n|>, i.e. the absolute value of C<n>.
+
+=head2 negint
+
+Given integer C<n>, return C<-n>.
 
 
 =head2 lucasu

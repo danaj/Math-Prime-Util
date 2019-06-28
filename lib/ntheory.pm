@@ -216,10 +216,13 @@ Tags:
   powint(a,b)                         signed integer a^b
   mulint(a,b)                         signed integer a * b
   addint(a,b)                         signed integer a + b
+  subint(a,b)                         signed integer a - b
   divint(a,b)                         signed integer a / b     (floor)
   modint(a,b)                         signed integer a % b     (floor)
   divrem(a,b)                         return (quot,rem) of a/b (Euclidian)
   tdivrem(a,b)                        return (quot,rem) of a/b (truncated)
+  absint(n)                           integer absolute value
+  negint(n)                           integer negation
   sqrtint(n)                          integer square root
   rootint(n,k)                        integer k-th root
   rootint(n,k,\$rk)                   as above but also set $rk to r^k

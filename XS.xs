@@ -1986,12 +1986,13 @@ kronecker(IN SV* sva, IN SV* svb)
     powint = 4
     mulint = 5
     addint = 6
-    divint = 7
-    modint = 8
-    divrem = 9
-    tdivrem = 10
-    is_gaussian_prime = 11
-    is_primitive_root = 12
+    subint = 7
+    divint = 8
+    modint = 9
+    divrem = 10
+    tdivrem = 11
+    is_gaussian_prime = 12
+    is_primitive_root = 13
   PREINIT:
     int astatus, bstatus, abpositive, abnegative;
   PPCODE:
@@ -2037,7 +2038,7 @@ kronecker(IN SV* sva, IN SV* svb)
           if (!sqrtmod_composite(&s, a, n)) XSRETURN_UNDEF;
         }
         XSRETURN_UV(s);
-      } else if (ix >= 4 && ix <= 10) {
+      } else if (ix >= 4 && ix <= 11) {
         if (abpositive) {
           UV ret = 0, a = my_svuv(sva), b = my_svuv(svb);
           int overflow = 0;
@@ -2057,15 +2058,19 @@ kronecker(IN SV* sva, IN SV* svb)
             case  6: ret = a + b;                  /* addint */
                      overflow = UV_MAX-a < b;
                      break;
-            case  7: if (b == 0) croak("divint: divide by zero");
+            case  7: ret = a - b;                  /* subint */
+                     if (b > a && (IV)ret < 0) XSRETURN_IV((IV)ret);
+                     overflow = (b > a);
+                     break;
+            case  8: if (b == 0) croak("divint: divide by zero");
                      ret = a / b; break;           /* divint */
-            case  8: if (b == 0) croak("modint: divide by zero");
+            case  9: if (b == 0) croak("modint: divide by zero");
                      ret = a % b; break;           /* modint */
-            case  9: if (b == 0) croak("divrem: divide by zero");
+            case 10: if (b == 0) croak("divrem: divide by zero");
                      XPUSHs(sv_2mortal(newSVuv( a / b )));
                      XPUSHs(sv_2mortal(newSVuv( a % b )));
                      XSRETURN(2); break;           /* divrem */
-            case 10:
+            case 11:
             default: if (b == 0) croak("tdivrem: divide by zero");
                      XPUSHs(sv_2mortal(newSVuv( a / b )));
                      XPUSHs(sv_2mortal(newSVuv( a % b )));
@@ -2073,7 +2078,7 @@ kronecker(IN SV* sva, IN SV* svb)
           }
           if (!overflow) XSRETURN_UV(ret);
         }
-      } else if (ix == 11) {
+      } else if (ix == 12) {
         UV a = (astatus != -1) ? my_svuv(sva) : (UV)(-(my_sviv(sva)));
         UV b = (bstatus != -1) ? my_svuv(svb) : (UV)(-(my_sviv(svb)));
         if (a == 0) RETURN_NPARITY( ((b % 4) == 3) ? is_prime(b) : 0 );
@@ -2098,12 +2103,13 @@ kronecker(IN SV* sva, IN SV* svb)
       case 4:  _vcallsub_with_gmp(0.52,"powint"); break;
       case 5:  _vcallsub_with_gmp(0.52,"mulint"); break;
       case 6:  _vcallsub_with_gmp(0.52,"addint"); break;
-      case 7:  _vcallsub_with_gmp(0.52,"divint"); break;
-      case 8:  _vcallsub_with_gmp(0.52,"modint"); break;
-      case 9:  _vcallsubn(aTHX_ GIMME_V, VCALL_PP|VCALL_GMP, "divrem", items, 52); break;
-      case 10: _vcallsubn(aTHX_ GIMME_V, VCALL_PP|VCALL_GMP, "tdivrem", items, 52); break;
-      case 11: _vcallsub_with_gmp(0.52,"is_gaussian_prime"); break;
-      case 12:
+      case 7:  _vcallsub_with_gmp(0.52,"subint"); break;
+      case 8:  _vcallsub_with_gmp(0.52,"divint"); break;
+      case 9:  _vcallsub_with_gmp(0.52,"modint"); break;
+      case 10: _vcallsubn(aTHX_ GIMME_V, VCALL_PP|VCALL_GMP, "divrem", items, 52); break;
+      case 11: _vcallsubn(aTHX_ GIMME_V, VCALL_PP|VCALL_GMP, "tdivrem", items, 52); break;
+      case 12: _vcallsub_with_gmp(0.52,"is_gaussian_prime"); break;
+      case 13:
       default: _vcallsub_with_gmp(0.36,"is_primitive_root"); break;
     }
     if (ix >= 2 && ix <= 10)
@@ -2247,7 +2253,9 @@ carmichael_lambda(IN SV* svn)
     hammingweight = 9
     hclassno = 10
     is_pillai = 11
-    ramanujan_tau = 12
+    absint = 12
+    negint = 13
+    ramanujan_tau = 14
   PREINIT:
     int status;
   PPCODE:
@@ -2276,7 +2284,11 @@ carmichael_lambda(IN SV* svn)
                  XSRETURN_UV(popcnt(n));  break;
         case 10: XSRETURN_IV( (status == -1) ? 0 : hclassno(n) ); break;
         case 11: RETURN_NPARITY( (status == -1) ? 0 : pillai_v(n) ); break;
-        case 12:
+        case 12: XSRETURN_UV( (status == -1) ? -(IV)n : n ); break;
+        case 13: if (status == 1 && n > IV_MAX) status = 0;
+                 else XSRETURN_IV( (status == -1) ? -(IV)n : -n );
+                 break;
+        case 14:
         default: { IV tau = (status == 1) ? ramanujan_tau(n) : 0;
                    if (tau != 0 || status == -1 || n == 0)
                      XSRETURN_IV(tau);
@@ -2303,7 +2315,9 @@ carmichael_lambda(IN SV* svn)
                break;
       case 10: _vcallsub_with_pp("hclassno"); break;
       case 11: _vcallsub_with_gmp(0.00,"is_pillai"); break;
-      case 12:
+      case 12: _vcallsub_with_gmp(0.52,"absint"); break;
+      case 13: _vcallsub_with_gmp(0.52,"negint"); break;
+      case 14:
       default: _vcallsub_with_gmp(0.32,"ramanujan_tau"); break;
     }
     objectify_result(aTHX_ svn, ST(0));

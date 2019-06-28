@@ -146,6 +146,8 @@ sub entropy_bytes {
 *modint = \&Math::Prime::Util::PP::modint;
 *divrem = \&Math::Prime::Util::PP::divrem;
 *tdivrem = \&Math::Prime::Util::PP::tdivrem;
+*absint = \&Math::Prime::Util::PP::absint;
+*subint = \&Math::Prime::Util::PP::subint;
 
 sub jordan_totient {
   my($k, $n) = @_;
@@ -710,6 +712,12 @@ sub addint {
   _validate_integer($a);
   _validate_integer($b);
   return Math::Prime::Util::PP::addint($a, $b);
+}
+sub subint {
+  my($a, $b) = @_;
+  _validate_integer($a);
+  _validate_integer($b);
+  return Math::Prime::Util::PP::subint($a, $b);
 }
 
 sub legendre_phi {

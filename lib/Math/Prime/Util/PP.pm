@@ -2507,9 +2507,19 @@ sub addint {
     if $Math::Prime::Util::_GMPfunc{"addint"};
   my $sum = $a+$b;
   return $sum if ref($a) || ref($b);
-  return $sum if $a > 0 && $b > 0 && int(INTMAX-$a) >= $b;
+  return $sum if $a >= 0 && $b >= 0 && int(INTMAX-$a) >= $b;
   # return Math::Prime::Util::vecsum(@_);
   my $res = Math::BigInt->new("$a")->badd("$b");
+  $res = _bigint_to_int($res) if $res->bacmp(BMAX) <= 0 && $res->bcmp(-(BMAX>>1)) > 0;
+  $res;
+}
+sub subint {
+  my($a, $b) = @_;
+  return Math::Prime::Util::_reftyped($_[0], eval "Math::Prime::Util::GMP::subint($a,$b)")
+    if $Math::Prime::Util::_GMPfunc{"subint"};
+  my $sum = $a-$b;
+  return $sum if ref($a) || ref($b);
+  my $res = Math::BigInt->new("$a")->bsub("$b");
   $res = _bigint_to_int($res) if $res->bacmp(BMAX) <= 0 && $res->bcmp(-(BMAX>>1)) > 0;
   $res;
 }
@@ -2569,6 +2579,21 @@ sub modint {
   return int($a % $b) if $a >= 0 && $b >= 0;
   my($q,$r) = _fdivrem($a,$b);
   $r;
+}
+
+sub absint {
+  my($n) = @_;
+  return (($n >= 0) ? $n : -$n) if ref($n);
+  $n =~ s/^-// if $n < 0;
+  Math::Prime::Util::_reftyped($_[0], $n);
+}
+sub negint {
+  my($n) = @_;
+  return -$n if ref($n);
+  if    ($n == 0) { return 0; }
+  elsif ($n >  0) { $n = "-$n"; }
+  else            { $n =~ s/^-//; }
+  Math::Prime::Util::_reftyped($_[0], $n);
 }
 
 # Make sure to work around RT71548, Math::BigInt::Lite,

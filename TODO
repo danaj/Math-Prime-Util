@@ -210,4 +210,9 @@
 
 - NEGMAXINT input in XS.
 
+- looks like lots of dodgy cases with -(2**63+1) and higher.  Our validate
+  is shortcutting negative range checks.  Why?
+
 - euler_phi should do XS -> GMP directly.  Maybe make totient in PP for uniform name.
+
+- tests for subint, negint, absint
