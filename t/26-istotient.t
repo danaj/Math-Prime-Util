@@ -12,6 +12,7 @@ plan tests => 0
             + 2
             + 3
             + 3
+            + 1
             ;
 
 is_deeply( [map { is_totient($_) } 0..40],
@@ -34,3 +35,6 @@ SKIP: {
   is( is_totient("9671406556917033397649458"), 0, "is_totient(2^83+50)" );
   is( is_totient("9671406556917033397649472"), 1, "is_totient(2^83+64)" );
 }
+
+# trizen found this error in 2019
+is( is_totient("281474976710656"), 1, "is_totient(2**48)" );
