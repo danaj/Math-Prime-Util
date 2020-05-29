@@ -3379,6 +3379,7 @@ forfactored (SV* block, IN SV* svbeg, IN SV* svend = 0)
         PUTBACK; call_sv((SV*)cv, G_VOID|G_DISCARD); SPAGAIN;
       }
     }
+    factor_range_destroy(&fctx);
     SvREFCNT_dec(svarg);
     for (i = 0; i < maxfactors; i++)
       SvREFCNT_dec(svals[i]);
