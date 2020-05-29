@@ -34,7 +34,9 @@ Revision history for Perl module Math::Prime::Util
 
     - is_totient(2^k) with k >= 33, found by Trizen in 2019.
 
-    - forsquarefree and forfactored were missing a destroy.  Thanks Trizen.
+    - forsquarefree and forfactored were missing a destroy.  From Trizen.
+
+    - todigitstring with non-standard bases and long strings.  From Trizen.
 
     [FUNCTIONALITY AND PERFORMANCE]
 

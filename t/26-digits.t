@@ -15,6 +15,7 @@ my $extra = defined $ENV{EXTENDED_TESTING} && $ENV{EXTENDED_TESTING};
 plan tests => 0 + 6 + 3 + 2 + 1  # fromdigits
                 + 6 + 4 + 1      # todigits
                 + 4 + 2*$extra   # sumdigits
+                + 3              # todigitstring
                 + 12;
 
 ###### fromdigits
@@ -62,6 +63,11 @@ if ($extra) {
   is(sumdigits(factorial(1000)), 10539, "sumdigits 1000!");
   is(sumdigits(factorial(10000)), 149346, "sumdigits 10000!");
 }
+
+####### some longer todigitstring examples
+is(todigitstring("3" x 21, 3), "10001020211011120202011020201202220201012100", "todigitstring base 3");
+is(todigitstring("7" x 26, 9), "1303055203367717374834745502", "todigitstring base 9");
+is(todigitstring("9" x 27, 11), "92586630a001888a8112250349", "todigitstring base 11");
 
 ###### examples from Wolfram docs
 is_deeply([todigits(1234135634,16)], [4,9,8,15,6,10,5,2], "todigits 1234135634 base 16");

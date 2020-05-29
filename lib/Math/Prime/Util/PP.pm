@@ -3132,6 +3132,7 @@ my @_digitmap = (0..9, 'a'..'z');
 my %_mapdigit = map { $_digitmap[$_] => $_ } 0 .. $#_digitmap;
 sub _splitdigits {
   my($n, $base, $len) = @_;    # n is num or bigint, base is in range
+  _validate_num($n) || _validate_positive_integer($n);
   my @d;
   if ($base == 10) {
     @d = split(//,"$n");
@@ -3140,6 +3141,7 @@ sub _splitdigits {
   } elsif ($base == 16) {
     @d = map { $_mapdigit{$_} } split(//,substr(Math::BigInt->new("$n")->as_hex,2));
   } else {
+    # The validation turned n into a bigint if necessary
     while ($n >= 1) {
       my $rem = $n % $base;
       unshift @d, $rem;
@@ -3160,7 +3162,6 @@ sub todigits {
   die "Invalid base: $base" if $base < 2;
   return if $n == 0;
   $n = -$n if $n < 0;
-  _validate_num($n) || _validate_positive_integer($n);
   _splitdigits($n, $base, $len);
 }
 
