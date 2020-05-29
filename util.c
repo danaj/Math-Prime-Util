@@ -2608,7 +2608,7 @@ char* pidigits(int digits)
   U64T d64;  /* 64-bit intermediate for 2*2*10000*b > 2^32 (~30k digits) */
 
   if (digits <= 0) return 0;
-  if (digits <= DBL_DIG && digits <= 18) {
+  if (digits >= 1 && digits <= DBL_DIG && digits <= 18) {
     Newz(0, out, 19, char);
     (void)sprintf(out, "%.*lf", (digits-1), 3.141592653589793238);
     return out;
