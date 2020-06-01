@@ -537,11 +537,14 @@ IV mertens(UV n) {
   }
 
   j = icbrt(n);
-  maxmu = 2 * j * j;
+  maxmu = 1 * j * j;
   hsize = next_prime(100 + 8*j);
 
+  /* A 16-bit signed short will overflow at maxmu > 7613644883 */
+  if (maxmu > 7613644883UL) maxmu = 7613644883UL;
+
   mu = range_moebius(0, maxmu);
-  New(0, M, maxmu+1, short);      /* Works up to maxmu < 7613644886 */
+  New(0, M, maxmu+1, short);
   M[0] = 0;
   for (j = 1; j <= maxmu; j++)
     M[j] = M[j-1] + mu[j];
