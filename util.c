@@ -540,6 +540,9 @@ IV mertens(UV n) {
   maxmu = 1 * j * j;
   hsize = next_prime(100 + 8*j);
 
+  /* Use a bit less memory when we get much over 1GB */
+  if (maxmu > 1000000000UL) maxmu >>= 1;
+
   /* A 16-bit signed short will overflow at maxmu > 7613644883 */
   if (maxmu > 7613644883UL) maxmu = 7613644883UL;
 
