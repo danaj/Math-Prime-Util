@@ -147,7 +147,6 @@ sub entropy_bytes {
 *divrem = \&Math::Prime::Util::PP::divrem;
 *tdivrem = \&Math::Prime::Util::PP::tdivrem;
 *absint = \&Math::Prime::Util::PP::absint;
-*subint = \&Math::Prime::Util::PP::subint;
 
 sub jordan_totient {
   my($k, $n) = @_;
