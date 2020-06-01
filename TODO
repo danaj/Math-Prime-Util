@@ -18,8 +18,7 @@
 
 - An assembler version of mulmod for i386.
 
-- More efficient Mertens.  The current version has poor growth.
-  For 32-bit, consider doing XS followed by sum for remainder.
+- Faster Mertens in PP.
 
 - It may be possible to have a more efficient ranged totient.  We're using
   the sieve up to n/2, which is better than most people seem to use, but I'm

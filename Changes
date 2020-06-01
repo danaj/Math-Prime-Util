@@ -54,6 +54,9 @@ Revision history for Perl module Math::Prime::Util
 
     - Faster and tighter nth_prime_upper bounds.
 
+    - Rewritten C version of Mertens based on pseudocode from Trizen.
+      Over 100x faster at 2^32 and grows O(n^(2/3)) vs O(n).
+
 
 0.73 2018-11-15
 

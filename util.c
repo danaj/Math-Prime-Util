@@ -416,6 +416,7 @@ UV* range_totient(UV lo, UV hi) {
   return totients;
 }
 
+#if 0
 IV mertens(UV n) {
   /* See Deléglise and Rivat (1996) for O(n^2/3 log(log(n))^1/3) algorithm.
    * This implementation uses their lemma 2.1 directly, so is ~ O(n).
@@ -455,6 +456,102 @@ IV mertens(UV n) {
   }
   Safefree(M);
   Safefree(mu);
+  return sum;
+}
+#endif
+
+typedef struct {
+  UV n;
+  IV sum;
+} mertens_value_t;
+static void _insert_mert_hash(mertens_value_t *H, UV hsize, UV n, IV sum) {
+  UV idx = n % hsize;
+  H[idx].n = n;
+  H[idx].sum = sum;
+}
+static int _get_mert_hash(mertens_value_t *H, UV hsize, UV n, IV *sum) {
+  UV idx = n % hsize;
+  if (H[idx].n == n) {
+    *sum = H[idx].sum;
+    return 1;
+  }
+  return 0;
+}
+
+/* Thanks to Trizen for this algorithm. */
+static IV _rmertens(UV n, UV maxmu, short *M, mertens_value_t *H, UV hsize) {
+  UV s, k, ns, nk, nk1;
+  IV sum;
+
+  if (n <= maxmu)
+    return M[n];
+
+  if (_get_mert_hash(H, hsize, n, &sum))
+    return sum;
+
+  s = isqrt(n);
+  ns = n / (s+1);
+  sum = 1;
+
+#if 0
+  for (k = 2; k <= ns; k++) {
+    UV nk = n/k;
+    sum -= (nk <= maxmu) ? M[nk] : _rmertens(nk, maxmu, M, H, hsize);
+  }
+  for (k = 1; k <= s; k++)
+    sum -= M[k] * (n/k - n/(k+1));
+#else
+  /* Take the above: merge the loops and iterate the divides. */
+  if (s != ns && s != ns+1) croak("mertens  s / ns");
+  nk  = n;
+  nk1 = n/2;
+  sum -= (nk - nk1);
+  for (k = 2; k <= ns; k++) {
+    nk = nk1;
+    nk1 = n/(k+1);
+    sum -= (nk <= maxmu)  ?  M[nk]  :  _rmertens(nk, maxmu, M, H, hsize);
+    sum -= M[k] * (nk - nk1);
+  }
+  if (s > ns)
+    sum -= M[s] * (n/s - n/(s+1));
+#endif
+
+  _insert_mert_hash(H, hsize, n, sum);
+  return sum;
+}
+
+IV mertens(UV n) {
+  UV j, maxmu, hsize;
+  signed char* mu;
+  short* M;   /* 16 bits is enough range for all 32-bit M => 64-bit n */
+  mertens_value_t *H;  /* Cache of calculated values */
+  IV sum;
+
+  if (n <= 512) {
+    static signed char MV16[33] = {0,-1,-4,-3,-1,-4,2,-4,-2,-1,0,-4,-5,-3,3,-1,-1,-3,-7,-2,-4,2,1,-1,-2,1,1,-3,-6,-6,-6,-5,-4};
+    j = n/16;
+    sum = MV16[j];
+    for (j = j*16 + 1; j <= n; j++)
+      sum += moebius(j);
+    return sum;
+  }
+
+  j = icbrt(n);
+  maxmu = 2 * j * j;
+  hsize = next_prime(100 + 8*j);
+
+  mu = range_moebius(0, maxmu);
+  New(0, M, maxmu+1, short);      /* Works up to maxmu < 7613644886 */
+  M[0] = 0;
+  for (j = 1; j <= maxmu; j++)
+    M[j] = M[j-1] + mu[j];
+  Safefree(mu);
+
+  Newz(0, H, hsize, mertens_value_t);
+  sum = _rmertens(n, maxmu, M, H, hsize);
+
+  Safefree(H);
+  Safefree(M);
   return sum;
 }
 
