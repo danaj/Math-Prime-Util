@@ -1176,9 +1176,9 @@ sub moebius_range {
   return @mu;
 }
 
-sub mertens {
+sub omertens {
   my($n) = @_;
-    # This is the most basic Deléglise and Rivat algorithm.  u = n^1/2
+  # This is the most basic Deléglise and Rivat algorithm.  u = n^1/2
   # and no segmenting is done.  Their algorithm uses u = n^1/3, breaks
   # the summation into two parts, and calculates those in segments.  Their
   # computation time growth is half of this code.
@@ -1205,6 +1205,44 @@ sub mertens {
   }
   return $sum;
 }
+
+sub _rmertens {
+  my($n, $Mref, $Href, $size) = @_;
+  return $Mref->[$n] if $n <= $size;
+  return $Href->{$n} if exists $Href->{$n};
+  my $s = Math::Prime::Util::sqrtint($n);
+  my $ns = int($n/($s+1));
+
+  my ($nk, $nk1) = ($n, $n >> 1);
+  my $SUM = 1 - ($nk - $nk1);
+  foreach my $k (2 .. $ns) {
+    ($nk, $nk1) = ($nk1, int($n/($k+1)));
+    $SUM -= ($nk <= $size) ? $Mref->[$nk]
+                           : _rmertens($nk, $Mref, $Href, $size);
+    $SUM -= $Mref->[$k] * ($nk - $nk1);
+  }
+  $SUM -= $Mref->[$s] * (int($n/$s) - $ns)  if $s > $ns;
+
+  $Href->{$n} = $SUM;
+  $SUM;
+}
+
+sub mertens {
+  my($n) = @_;
+
+  return omertens($n) if $n < 20000;
+
+  # Larger size would be faster, but more memory.
+  my $size = (Math::Prime::Util::rootint($n, 3)**2) >> 2;
+  $size = sqrtint($n) if $size < sqrtint($n);
+
+  my @M = (0);
+  push @M, $M[-1] + $_ for Math::Prime::Util::moebius(1, $size);
+
+  my %seen;
+  return _rmertens($n, \@M, \%seen, $size);
+}
+
 
 sub ramanujan_sum {
   my($k,$n) = @_;

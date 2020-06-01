@@ -18,8 +18,6 @@
 
 - An assembler version of mulmod for i386.
 
-- Faster Mertens in PP.
-
 - It may be possible to have a more efficient ranged totient.  We're using
   the sieve up to n/2, which is better than most people seem to use, but I'm
   not completely convinced we can't do better.  The method at:
