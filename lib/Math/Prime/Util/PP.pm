@@ -1105,6 +1105,7 @@ sub _totpred {
   my($n, $maxd) = @_;
   return 0 if $maxd <= 1 || (ref($n) ? $n->is_odd() : ($n & 1));
   $n = Math::BigInt->new("$n") unless ref($n) || $n < INTMAX;
+  return 1 if ($n & ($n-1)) == 0;
   $n >>= 1;
   return 1 if $n == 1 || ($n < $maxd && Math::Prime::Util::is_prime(2*$n+1));
   for my $d (Math::Prime::Util::divisors($n)) {
