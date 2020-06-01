@@ -1059,6 +1059,7 @@ static int _totpred(UV n, UV maxd) {
   int res;
 
   if (n & 1) return 0;
+  if ((n & (n-1)) == 0) return 1;
   n >>= 1;
   if (n == 1) return 1;
   if (n < maxd && is_prime(2*n+1)) return 1;
