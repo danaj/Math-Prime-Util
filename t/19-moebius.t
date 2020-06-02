@@ -67,9 +67,12 @@ if ($extra && $use64) {
       2**23 =>  -10,
 
      10**8  => 1928,
-#     10**9  => -222,
-#  1*10**10 => -33722,  # From Deleglise and Rivat
-#  2*10**10 => -48723,  # Too slow with current method
+     10**9  => -222,
+  1*10**10  => -33722,  # From Deleglise and Rivat
+  2*10**10  =>  48723,
+  3*10**10  =>  42411,
+  4*10**10  => -25295,
+    10**11  => -87856,
   );
 }
 # These are slow with XS, and *really* slow with PP.

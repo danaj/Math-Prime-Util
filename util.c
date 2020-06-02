@@ -328,6 +328,23 @@ signed char* range_moebius(UV lo, UV hi)
   return mu;
 }
 
+static short* mertens_array(UV hi)
+{
+  signed char* mu;
+  short* M;
+  UV i;
+
+  /* We could blend this with range_moebius but it seems not worth it. */
+  mu = range_moebius(0, hi);
+  New(0, M, hi+1, short);
+  M[0] = 0;
+  for (i = 1; i <= hi; i++)
+    M[i] = M[i-1] + mu[i];
+  Safefree(mu);
+
+  return M;
+}
+
 UV* range_totient(UV lo, UV hi) {
   UV* totients;
   UV i, seg_base, seg_low, seg_high, count = hi-lo+1;
@@ -480,7 +497,7 @@ static int _get_mert_hash(mertens_value_t *H, UV hsize, UV n, IV *sum) {
 
 /* Thanks to Trizen for this algorithm. */
 static IV _rmertens(UV n, UV maxmu, short *M, mertens_value_t *H, UV hsize) {
-  UV s, k, ns, nk, nk1;
+  UV s, k, ns, nk, nk1, mk, mnk;
   IV sum;
 
   if (n <= maxmu)
@@ -494,10 +511,8 @@ static IV _rmertens(UV n, UV maxmu, short *M, mertens_value_t *H, UV hsize) {
   sum = 1;
 
 #if 0
-  for (k = 2; k <= ns; k++) {
-    UV nk = n/k;
-    sum -= (nk <= maxmu) ? M[nk] : _rmertens(nk, maxmu, M, H, hsize);
-  }
+  for (k = 2; k <= ns; k++)
+    sum -= _rmertens(n/k, maxmu, M, H, hsize);
   for (k = 1; k <= s; k++)
     sum -= M[k] * (n/k - n/(k+1));
 #else
@@ -509,11 +524,12 @@ static IV _rmertens(UV n, UV maxmu, short *M, mertens_value_t *H, UV hsize) {
   for (k = 2; k <= ns; k++) {
     nk = nk1;
     nk1 = n/(k+1);
-    sum -= (nk <= maxmu)  ?  M[nk]  :  _rmertens(nk, maxmu, M, H, hsize);
-    sum -= M[k] * (nk - nk1);
+    mnk = (nk <= maxmu)  ?  M[nk]  :  _rmertens(nk, maxmu, M, H, hsize);
+    mk  = (k  <= maxmu)  ?  M[k]   :  _rmertens(k,  maxmu, M, H, hsize);
+    sum -= mnk + mk * (nk-nk1);
   }
   if (s > ns)
-    sum -= M[s] * (n/s - n/(s+1));
+    sum -= _rmertens(s, maxmu, M, H, hsize) * (n/s - n/(s+1));
 #endif
 
   _insert_mert_hash(H, hsize, n, sum);
@@ -540,19 +556,20 @@ IV mertens(UV n) {
   maxmu = 1 * j * j;
   hsize = next_prime(100 + 8*j);
 
-  /* Use a bit less memory when we get much over 1GB */
-  if (maxmu > 1000000000UL) maxmu >>= 1;
+  /* At large sizes, start clamping memory use. */
+  if (maxmu > 100000000UL) {
+    /* Exponential decay, reduce by factor of 1 to 8 */
+    float rfactor = 1.0 + 7.0 * (1.0 - exp(-(float)maxmu/15000000000.0));
+    maxmu /= rfactor;
+    hsize = next_prime(hsize * 16);  /* Increase the result cache size */
+  }
 
+#if BITS_PER_WORD == 64
   /* A 16-bit signed short will overflow at maxmu > 7613644883 */
-  if (maxmu > 7613644883UL) maxmu = 7613644883UL;
+  if (maxmu > UVCONST(7613644883))  maxmu = UVCONST(7613644883);
+#endif
 
-  mu = range_moebius(0, maxmu);
-  New(0, M, maxmu+1, short);
-  M[0] = 0;
-  for (j = 1; j <= maxmu; j++)
-    M[j] = M[j-1] + mu[j];
-  Safefree(mu);
-
+  M = mertens_array(maxmu);
   Newz(0, H, hsize, mertens_value_t);
   sum = _rmertens(n, maxmu, M, H, hsize);
 
