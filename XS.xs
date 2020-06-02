@@ -2284,8 +2284,11 @@ carmichael_lambda(IN SV* svn)
                  XSRETURN_UV(popcnt(n));  break;
         case 10: XSRETURN_IV( (status == -1) ? 0 : hclassno(n) ); break;
         case 11: RETURN_NPARITY( (status == -1) ? 0 : pillai_v(n) ); break;
-        case 12: XSRETURN_UV( (status == -1) ? -(IV)n : n ); break;
-        case 13: if (status == 1 && n > IV_MAX) status = 0;
+        case 12: if (status == -1 && my_sviv(svn) < -IV_MAX) status = 0;
+                 else XSRETURN_UV( (status == -1) ? -(IV)n : n );
+                 break;
+        case 13: if (status == -1 && my_sviv(svn) < -IV_MAX) status = 0;
+                 else if (status == 1 && n > IV_MAX) status = 0;
                  else XSRETURN_IV( (status == -1) ? -(IV)n : -n );
                  break;
         case 14:
