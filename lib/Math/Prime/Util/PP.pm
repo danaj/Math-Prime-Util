@@ -2554,7 +2554,7 @@ sub addint {
 }
 sub subint {
   my($a, $b) = @_;
-  return Math::Prime::Util::_reftyped($_[0], eval "Math::Prime::Util::GMP::subint($a,$b)")
+  return Math::Prime::Util::_reftyped($_[0], Math::Prime::Util::GMP::subint($a,$b))
     if $Math::Prime::Util::_GMPfunc{"subint"};
   my $sum = $a-$b;
   return $sum if ref($a) || ref($b);
@@ -2622,13 +2622,15 @@ sub modint {
 
 sub absint {
   my($n) = @_;
+  _validate_integer($n);
   return (($n >= 0) ? $n : -$n) if ref($n);
-  $n =~ s/^-// if $n < 0;
+  $n =~ s/^-// if $n <= 0;
   Math::Prime::Util::_reftyped($_[0], $n);
 }
 sub negint {
   my($n) = @_;
-  return -$n if ref($n);
+  _validate_integer($n);
+  return -$n if ref($n) || $n < (~0 >> 1);
   if    ($n == 0) { return 0; }
   elsif ($n >  0) { $n = "-$n"; }
   else            { $n =~ s/^-//; }

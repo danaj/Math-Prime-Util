@@ -211,5 +211,3 @@
   is shortcutting negative range checks.  Why?
 
 - euler_phi should do XS -> GMP directly.  Maybe make totient in PP for uniform name.
-
-- tests for subint, negint, absint

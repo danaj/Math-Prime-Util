@@ -3,7 +3,7 @@ use strict;
 use warnings;
 
 use Test::More;
-use Math::Prime::Util qw/ powint mulint addint subint divint modint divrem tdivrem /;
+use Math::Prime::Util qw/ powint mulint addint subint divint modint divrem tdivrem absint negint /;
 use Math::BigInt;
 
 
@@ -27,6 +27,21 @@ my @subints = (
   ["1178630961471601951655862","827639478068904540012","1177803321993533047115850"],
   ["-2555488174170453670799","1726145541361106236340","-4281633715531559907139"],
 );
+my @anvals = (
+  "1178630961471601951655862","827639478068904540012",
+  "-2555488174170453670799","1726145541361106236340",
+  "-829342632809347434459","-4281633715531559907139",
+  "-230948092384903284908329048239084023984092384",
+  "982349082340982348502392937523840234029384908325098234",
+  "32767","-32767","32768","-32768",
+  "4294967295","-4294967295","4294967296","-4294967296",
+  "9223372036854775807","-9223372036854775807",
+  "9223372036854775808","-9223372036854775808",
+  "18446744073709551614","-18446744073709551614",
+  "18446744073709551615","-18446744073709551615",
+  "18446744073709551616","-18446744073709551616",
+  "18446744073709551617","-18446744073709551617",
+);
 my @quotients = (  # trunc, floor, euclidian
   ["+ +",  "39458349850349850394853049583049",  "85889",  "459410982202026457344398579",  "459410982202026457344398579",  "459410982202026457344398579"],
   ["+ -",  "39458349850349850394853049583049", "-85889", "-459410982202026457344398579", "-459410982202026457344398580", "-459410982202026457344398579"],
@@ -45,6 +60,8 @@ plan tests => 0
             + 2                              # tdivrem
             + 4 * scalar(@quotients)         # signed bigint division
             + 6                              # table 1.3 from Leijen 2001
+            + 4                              # absint
+            + 4                              # negint
             + 0;
 
 ###### powint
@@ -172,3 +189,46 @@ is( join(" ", divrem(1,2), divrem(1,-2), divrem(-1,2), divrem(-1,-2)),
 is( join(" ", divint(1,2), modint(1,2), divint(1,-2), modint(1,-2), divint(-1,2), modint(-1,2), divint(-1,-2), modint(-1,-2)),
     "0 1 -1 -1 -1 1 0 -1",
     "divint+modint with +/- 1,2" );
+
+###### absint
+{ my(@got,@exp);
+  for my $n (-100 .. 100) {
+    push @got, absint($n);
+    push @exp, abs($n);
+  }
+  is_deeply( \@got, \@exp, "absint( -100 .. 100)" );
+  is( absint("0"), 0, "absint(0) = 0" );
+  is( absint("-0"), 0, "absint(-0) = 0" );
+}
+{ my(@got,@exp);
+  for my $n (@anvals) {
+    my $av = $n;  $av =~ s/^-//;
+    push @got, absint($n);
+    push @exp, $av;
+  }
+  is_deeply( \@got, \@exp, "absint on large values" );
+}
+
+###### negint
+{ my(@got,@exp);
+  for my $n (-100 .. 100) {
+    push @got, negint($n);
+    push @exp, -$n;
+  }
+  is_deeply( \@got, \@exp, "negint( -100 .. 100)" );
+  is( negint("0"), 0, "negint(0) = 0" );
+  is( negint("-0"), 0, "negint(-0) = 0" );
+}
+{ my(@got,@exp);
+  for my $n (@anvals) {
+    my $nv = $n;
+    if ($nv =~ /^-/) {
+      $nv =~ s/^-//;
+    } else {
+      $nv = "-$nv";
+    }
+    push @got, negint($n);
+    push @exp, $nv;
+  }
+  is_deeply( \@got, \@exp, "negint on large values" );
+}
