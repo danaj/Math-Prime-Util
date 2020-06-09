@@ -2654,7 +2654,7 @@ static long double _lambertw_approx(long double x) {
   if (x < -0.312) {
     /* Use Puiseux series, e.g. Verberic 2009, Boost, Johannson (2020). */
     /* Near the branch point.  See Fukushima (2013) section 2.5. */
-    k2 = 2.0L * (1.0L + 2.71828182845904523536L * x);
+    k2 = 2.0L * (1.0L + 2.7182818284590452353603L * x);
     if (k2 <= 0) return -1.0L + 1*LDBL_EPSILON;
     k1 = sqrtl(k2);
     w = -1.0L + (1.0L + (-1.0L/3.0L + (11.0L/72.0L + (-43.0L/540.0L + (769.0L/17280.0L + (-221.0L/8505.0L + (680863.0L/43545600.0L + (-1963.0L/204120.0L + 226287557.0L/37623398400.0L
@@ -2667,8 +2667,8 @@ static long double _lambertw_approx(long double x) {
 
   } else if (x < 1) {
     /* This and the rest from Vazquez-Leal et al. (2019). */
-    k1 = sqrtl(1.0L + 2.71828182845904523536L * x);
-    k2 = 0.33333333333333333333L + 0.7071067811865475244L / k1 - 0.058925565098880L * k1 +
+    k1 = sqrtl(1.0L + 2.7182818284590452353603L * x);
+    k2 = 0.33333333333333333333333L + 0.70710678118654752440084L / k1 - 0.058925565098878960366737L * k1 +
          (x + 0.36787944117144L) * (0.050248489761611L + (0.11138904851051 + 0.040744556245195L * x) * x)
          /
          (1.0L + (2.7090878606183L + (1.5510922597820L + 0.095477712183841L * x) * x) * x);
@@ -2710,7 +2710,7 @@ NV lambertw(NV x) {
   /* If input is too small, return .99999.... */
   /* if (w <= -1.0L) return -1.0L + LDBL_EPSILON; */
   /* For very small inputs, don't iterate, return approx directly. */
-  if (x < -0.36728) return w;
+  if (x < -0.36768) return w;
 
 #if 0  /* Halley */
   long double lastw = w;
@@ -2736,6 +2736,7 @@ NV lambertw(NV x) {
     if (fabsl(wen) <= 64*LDBL_EPSILON) break;
   }
 #endif
+
 #if LNV_IS_QUAD /* For quadmath, one high precision correction */
   if (w != LNV_ZERO) {
     LNV lw = w;
@@ -2747,31 +2748,12 @@ NV lambertw(NV x) {
   }
 #endif
 
-  /* We can laboriously correct to the nearest LDBL_EPSILON, but in general
-   * the cases where this applies are where we require extended precision.
-   * See the region < -0.15 for problematic areas. */
-#if 0
-  {
-    long double zmid, zadd;
-    int cor = 1, ncor = 0;
-    do {
-      cor = 0;
-      zmid = w*expl(w);
-      if (zmid == x) break;
-      long double wlo  = w-LDBL_EPSILON;
-      long double whi  = w+LDBL_EPSILON;
-      long double zlo  = wlo * expl(wlo);
-      long double zhi  = whi * expl(whi);
-      long double epsmid = fabsl(x-zmid);
-      long double epslo  = fabsl(x-zlo);
-      long double epshi  = fabsl(x-zhi);
-      if (epslo < epshi && epslo < epsmid)
-        { w = wlo; cor = -1; ncor++; }
-      else if (epshi < epslo && epshi < epsmid)
-        { w = whi; cor = +1; ncor++; }
-    } while (cor != 0 && ncor < 8192);
-  }
-#endif
+  /* With long double = 64-bit double, we have 15 digits precision
+   * near the branch point, and 16 over the rest of the range.
+   * With long double = x86 extended precision, we have over 17 digits
+   * over the entire range.
+   * Correcting to the exact LDBL_EPSILON does not improve this. */
+
   return w;
 }
 
