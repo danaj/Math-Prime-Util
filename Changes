@@ -38,6 +38,9 @@ Revision history for Perl module Math::Prime::Util
 
     - todigitstring with non-standard bases and long strings.  From Trizen.
 
+    - Fix v0.62 breaking extended precision long doubles on some machines.
+      Big difference in epsilon-level precision for LambertW, Li, Zeta.
+
     [FUNCTIONALITY AND PERFORMANCE]
 
     - refactor objectification.  Doesn't force.  Enable on Perl < 5.9.

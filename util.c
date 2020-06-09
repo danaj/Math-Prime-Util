@@ -14,7 +14,7 @@
  * functions for 13 years).
  */
 #include <math.h>
-#if _MSC_VER || defined(__IBMC__) | defined(__IBMCPP__) || (defined(__STDC_VERSION__) && __STDC_VERSION >= 199901L)
+#if _MSC_VER || defined(__IBMC__) | defined(__IBMCPP__) || (defined(__STDC_VERSION__) && __STDC_VERSION__ >= 199901L)
   /* math.h should give us these as functions or macros.
    *
    *  extern long double fabsl(long double);
