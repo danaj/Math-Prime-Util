@@ -24,6 +24,7 @@
    *  extern long double powl(long double, long double);
    *  extern long double expl(long double);
    *  extern long double logl(long double);
+   *  extern long double log1pl(long double);
    */
 #else
   #define fabsl(x)    (long double) fabs( (double) (x) )
@@ -33,6 +34,7 @@
   #define powl(x, y)  (long double) pow( (double) (x), (double) (y) )
   #define expl(x)     (long double) exp( (double) (x) )
   #define logl(x)     (long double) log( (double) (x) )
+  #define log1pl(x)   (long double) log1p( (double) (x) )
 #endif
 
 #ifdef LDBL_INFINITY
@@ -2630,34 +2632,67 @@ long double RiemannR(long double x, long double eps) {
   return sum;
 }
 
+/* Options for LambertW initial approximation:
+ *
+ * - Four regions, we used before:
+ *      Pade(3,2), Winitzki 2003, Vargas 2013, Corless 1993
+ *   Has issues near -1/e but ok around zero.
+ *
+ * - Iacono and Boyd (2017).  Very simple function over whole range.
+ *   Doesn't work right very near -1/e and around zero.
+ *
+ * - Vazquez-Leal et al. (2019).  Divides into four regions, power
+ *   series for each.  Great results.  Also has issues near -1/e and zero.
+ *
+ * We use known solutions for near -1/e and around zero.  See Fukushima (2013)
+ * and Johannson (2017,2020) for lots of discussion and solutions.
+ * Use Vazquez-Leal (PSEM Approximations) for the rest.
+ */
 static long double _lambertw_approx(long double x) {
-  /* See Veberic 2009 for other approximations */
-  if (x < -0.060) {  /* Pade(3,2) */
-    long double ti = 5.4365636569180904707205749L * x + 2.0L;
-    long double t  = (ti <= 0.0L) ? 0.0L : sqrtl(ti);
-    long double t2 = t*t;
-    long double t3 = t*t2;
-    return (-1.0L + (1.0L/6.0L)*t + (257.0L/720.0L)*t2 + (13.0L/720.0L)*t3) / (1.0L + (5.0L/6.0L)*t + (103.0L/720.0L)*t2);
-  } else if (x < 1.363) {  /* Winitzki 2003 section 3.5 */
-    long double l1 = logl(1.0L+x);
-    return l1 * (1.0L - logl(1.0L+l1) / (2.0L+l1));
-  } else if (x < 3.7) {    /* Modification of Vargas 2013 */
-    long double l1 = logl(x);
-    long double l2 = logl(l1);
-    return l1 - l2 - logl(1.0L - l2/l1)/2.0L;
-  } else {                 /* Corless et al. 1993, page 22 */
-    long double l1 = logl(x);
-    long double l2 = logl(l1);
-    long double d1 = 2.0L*l1*l1;
-    long double d2 = 3.0L*l1*d1;
-    long double d3 = 2.0L*l1*d2;
-    long double d4 = 5.0L*l1*d3;
-    long double w = l1 - l2 + l2/l1 + l2*(l2-2.0L)/d1;
-    w += l2*(6.0L+l2*(-9.0L+2.0L*l2))/d2;
-    w += l2*(-12.0L+l2*(36.0L+l2*(-22.0L+3.0L*l2)))/d3;
-    w += l2*(60.0L+l2*(-300.0L+l2*(350.0L+l2*(-125.0L+12.0L*l2))))/d4;
-    return w;
+  long double w, k1, k2, k3;
+
+  if (x < -0.312) {
+    /* Use Puiseux series, e.g. Verberic 2009, Boost, Johannson (2020). */
+    /* Near the branch point.  See Fukushima (2013) section 2.5. */
+    k2 = 2.0L * (1.0L + 2.71828182845904523536L * x);
+    if (k2 <= 0) return -1.0L + 1*LDBL_EPSILON;
+    k1 = sqrtl(k2);
+    w = -1.0L + (1.0L + (-1.0L/3.0L + (11.0L/72.0L + (-43.0L/540.0L + (769.0L/17280.0L + (-221.0L/8505.0L + (680863.0L/43545600.0L + (-1963.0L/204120.0L + 226287557.0L/37623398400.0L
+    * k1) * k1) * k1) * k1) * k1) * k1) * k1) * k1) * k1;
+
+  } else if (x > -0.14 && x < 0.085) {
+    /* Around zero.  See Fukushima (2013) section 2.6. */
+    w = (1.0L + (-1.0L + (3.0L/2.0L + (-8.0L/3.0L + (125.0L/24.0L + (-54.0L/5.0L + (16807.0L/720.0L + (-16384.0L/315.0L + 531441.0L/4480.0L
+        * x) * x) * x) * x) * x) * x) * x) * x) * x;
+
+  } else if (x < 1) {
+    /* This and the rest from Vazquez-Leal et al. (2019). */
+    k1 = sqrtl(1.0L + 2.71828182845904523536L * x);
+    k2 = 0.33333333333333333333L + 0.7071067811865475244L / k1 - 0.058925565098880L * k1 +
+         (x + 0.36787944117144L) * (0.050248489761611L + (0.11138904851051 + 0.040744556245195L * x) * x)
+         /
+         (1.0L + (2.7090878606183L + (1.5510922597820L + 0.095477712183841L * x) * x) * x);
+    w = -(k2-1)/k2;
+
+  } else if (x < 40) {
+    k1 = 1.0L + (5.950065500550155L + (13.96586471370701L + (10.52192021050505L + (3.065294254265870L + 0.1204576876518760L * x) * x) * x) * x) * x;
+    w = 0.1600049638651493L * logl(k1);
+
+  } else if (x < 20000) {
+    k1 = 1.0L + (-3.16866642511229e11L + (3.420439800038598e10L +
+         (-1.501433652432257e9L + (3.44887729947585e7L + (-4.453783741137856e5L +
+         (3257.926478908996L + (-10.82545259305382L + (0.6898058947898353e-1L +
+         0.4703653406071575e-4L * x) * x) * x) * x) * x) * x) * x) * x) * x;
+    w = 0.9898045358731312e-1L * logl(k1);
+
+  } else {
+    k1 = 1.0L / (1.0L + logl(1.0L + x));
+    k2 = 1.0L / k1;
+    k3 = logl(k2);
+    w = k2-1-k3+(1+k3+(-1/2+(1/2)*k3*k3 +(-1/6+(-1+(-1/2+
+        (1/3) * k3) * k3) * k3) * k1) * k1) * k1;
   }
+  return w;
 }
 
 NV lambertw(NV x) {
@@ -2670,13 +2705,15 @@ NV lambertw(NV x) {
 
   /* Estimate initial value */
   w = _lambertw_approx(x);
+
+  /* TODO: this section might not be best for quad precision */
   /* If input is too small, return .99999.... */
-  if (w <= -1.0L) return -1.0L + 8*LDBL_EPSILON;
+  /* if (w <= -1.0L) return -1.0L + LDBL_EPSILON; */
   /* For very small inputs, don't iterate, return approx directly. */
-  if (x < -0.36783) return w;
+  if (x < -0.36728) return w;
 
 #if 0  /* Halley */
-  lastw = w;
+  long double lastw = w;
   for (i = 0; i < 100; i++) {
     long double ew = expl(w);
     long double wew = w * ew;
@@ -2694,6 +2731,7 @@ NV lambertw(NV x) {
     long double en = (zn/w1) * (qn-zn)/(qn-2.0L*zn);
     /* w *= 1.0L + en;  if (fabsl(en) <= 16*LDBL_EPSILON) break; */
     long double wen = w * en;
+    if (isnan(wen)) return 0;
     w += wen;
     if (fabsl(wen) <= 64*LDBL_EPSILON) break;
   }
@@ -2709,6 +2747,31 @@ NV lambertw(NV x) {
   }
 #endif
 
+  /* We can laboriously correct to the nearest LDBL_EPSILON, but in general
+   * the cases where this applies are where we require extended precision.
+   * See the region < -0.15 for problematic areas. */
+#if 0
+  {
+    long double zmid, zadd;
+    int cor = 1, ncor = 0;
+    do {
+      cor = 0;
+      zmid = w*expl(w);
+      if (zmid == x) break;
+      long double wlo  = w-LDBL_EPSILON;
+      long double whi  = w+LDBL_EPSILON;
+      long double zlo  = wlo * expl(wlo);
+      long double zhi  = whi * expl(whi);
+      long double epsmid = fabsl(x-zmid);
+      long double epslo  = fabsl(x-zlo);
+      long double epshi  = fabsl(x-zhi);
+      if (epslo < epshi && epslo < epsmid)
+        { w = wlo; cor = -1; ncor++; }
+      else if (epshi < epslo && epshi < epsmid)
+        { w = whi; cor = +1; ncor++; }
+    } while (cor != 0 && ncor < 8192);
+  }
+#endif
   return w;
 }
 
