@@ -286,6 +286,8 @@ signed char* range_moebius(UV lo, UV hi)
   signed char* mu;
   UV i, sqrtn = isqrt(hi), count = hi-lo+1;
 
+  if (hi < lo) croak("range_mobius error hi %"UVuf" < lo %"UVuf"\n", hi, lo);
+
   /* Kuznetsov indicates that the Deléglise & Rivat (1996) method can be
    * modified to work on logs, which allows us to operate with no
    * intermediate memory at all.  Same time as the D&R method, less memory. */
@@ -538,25 +540,10 @@ static IV _rmertens(UV n, UV maxmu, short *M, mertens_value_t *H, UV hsize) {
   return sum;
 }
 
-IV mertens(UV n) {
-  UV j, maxmu, hsize;
-  signed char* mu;
-  short* M;   /* 16 bits is enough range for all 32-bit M => 64-bit n */
-  mertens_value_t *H;  /* Cache of calculated values */
-  IV sum;
-
-  if (n <= 512) {
-    static signed char MV16[33] = {0,-1,-4,-3,-1,-4,2,-4,-2,-1,0,-4,-5,-3,3,-1,-1,-3,-7,-2,-4,2,1,-1,-2,1,1,-3,-6,-6,-6,-5,-4};
-    j = n/16;
-    sum = MV16[j];
-    for (j = j*16 + 1; j <= n; j++)
-      sum += moebius(j);
-    return sum;
-  }
-
-  j = icbrt(n);
-  maxmu = 1 * j * j;
-  hsize = next_prime(100 + 8*j);
+static short* _prep_rmertens(UV n, UV* pmaxmu, UV* phsize) {
+  UV j = icbrt(n);
+  UV maxmu = 1 * j * j;
+  UV hsize = next_prime(100 + 8*j);
 
   /* At large sizes, start clamping memory use. */
   if (maxmu > 100000000UL) {
@@ -571,13 +558,117 @@ IV mertens(UV n) {
   if (maxmu > UVCONST(7613644883))  maxmu = UVCONST(7613644883);
 #endif
 
-  M = mertens_array(maxmu);
+  *pmaxmu = maxmu;
+  *phsize = hsize;
+  return mertens_array(maxmu);
+}
+
+IV mertens(UV n) {
+  UV j, maxmu, hsize;
+  short* M;   /* 16 bits is enough range for all 32-bit M => 64-bit n */
+  mertens_value_t *H;  /* Cache of calculated values */
+  IV sum;
+
+  if (n <= 512) {
+    static signed char MV16[33] = {0,-1,-4,-3,-1,-4,2,-4,-2,-1,0,-4,-5,-3,3,-1,-1,-3,-7,-2,-4,2,1,-1,-2,1,1,-3,-6,-6,-6,-5,-4};
+    j = n/16;
+    sum = MV16[j];
+    for (j = j*16 + 1; j <= n; j++)
+      sum += moebius(j);
+    return sum;
+  }
+
+  M = _prep_rmertens(n, &maxmu, &hsize);
   Newz(0, H, hsize, mertens_value_t);
+
   sum = _rmertens(n, maxmu, M, H, hsize);
 
   Safefree(H);
   Safefree(M);
   return sum;
+}
+
+static const signed char _small_liouville[16] = {-1,1,-1,-1,1,-1,1,-1,-1,1,1,-1,-1,-1,1,1};
+
+static signed char* liouville_array(UV hi)
+{
+  signed char* l;
+  UV i, a, b, k;
+
+  if (hi < 16) hi = 15;
+  New(0, l, hi+1, signed char);
+  memcpy(l, _small_liouville, 16);
+  if (hi >= 16) memset(l+16, -1, hi-16+1);
+
+  for (a = 16; a <= hi; a = b+1) {
+    /* TODO: 2*a >= UV_MAX */
+    b = (2*a-1 <= hi)  ?  2*a-1  :  hi;
+    START_DO_FOR_EACH_PRIME(2, isqrt(b)) {
+      for (k = 2*p; k <= b; k += p) {
+        if (k >= a)
+          l[k] = -1 * l[k/p];
+      }
+    } END_DO_FOR_EACH_PRIME
+  }
+
+  return l;
+}
+
+int liouville(UV n) {
+  if (n < 16) {
+    return _small_liouville[n];
+  } else {
+    UV factors[MPU_MAX_FACTORS+1];
+    int nfactors = factor(n, factors);
+    return( (nfactors & 1) ? -1 : 1 );
+  }
+}
+
+IV sumliouville(UV n) {
+  short* M;
+  mertens_value_t *H;
+  UV j, maxmu, hsize, k, nk, sqrtn;
+  IV sum;
+
+  if (n <= 96) {
+    signed char* l = liouville_array(n);
+    for (sum = 0, j = 1; j <= n; j++)
+      sum += l[j];
+    Safefree(l);
+    return sum;
+  }
+
+  M = _prep_rmertens(n, &maxmu, &hsize);
+  Newz(0, H, hsize, mertens_value_t);
+
+  sqrtn = isqrt(n);
+  sum = _rmertens(n, maxmu, M, H, hsize);
+  for (k = 2; k <= sqrtn; k++) {
+    nk = n / (k*k);
+    if (nk == 1) break;
+    sum += (nk <= maxmu) ? M[nk] : _rmertens(nk, maxmu, M, H, hsize);
+  }
+  sum += (sqrtn + 1 - k);  /* all k where n/(k*k) == 1 */
+  /* TODO: find method to get exact number of n/(k*k)==1 .. 4.  Halves k */
+  /*       Ends up with method like Lehmer's g. */
+
+  Safefree(H);
+  Safefree(M);
+  return sum;
+}
+
+/* This paper shows an algorithm for sieving an interval:
+ *https://www.ams.org/journals/mcom/2008-77-263/S0025-5718-08-02036-X/S0025-5718-08-02036-X.pdf */
+signed char* range_liouville(UV lo, UV hi)
+{
+  signed char *l, *la;
+
+  if (hi < lo) croak("range_liouvillle error hi %"UVuf" < lo %"UVuf"\n", hi, lo);
+  la = liouville_array(hi);
+  New(0, l, hi-lo+1, signed char);
+  memcpy(l, la+lo, hi-lo+1);
+  Safefree(la);
+  return l;
 }
 
 /******************************************************************************/

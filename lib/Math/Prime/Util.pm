@@ -68,7 +68,8 @@ our @EXPORT_OK =
       invmod sqrtmod addmod mulmod divmod powmod
       vecsum vecmin vecmax vecprod vecreduce vecextract
       vecany vecall vecnotall vecnone vecfirst vecfirstidx
-      moebius mertens euler_phi jordan_totient exp_mangoldt liouville
+      moebius mertens liouville sumliouville
+      euler_phi jordan_totient exp_mangoldt
       partitions bernfrac bernreal harmfrac harmreal
       chebyshev_theta chebyshev_psi
       divisor_sum carmichael_lambda kronecker hclassno inverse_totient
@@ -3261,7 +3262,7 @@ function is defined as C<sum(moebius(1..n))>, but calculated more efficiently
 for large inputs.  For example, computing Mertens(100M) takes:
 
    time    approx mem
-     0.4s      0.1MB   mertens(100_000_000)
+     0.03s     0.1MB   mertens(100_000_000)
      3.0s    880MB     vecsum(moebius(1,100_000_000))
     56s        0MB     $sum += moebius($_) for 1..100_000_000
 
@@ -3354,6 +3355,19 @@ Hence the return value for C<exp_mangoldt> is:
 
 Returns λ(n), the Liouville function for a non-negative integer input.
 This is -1 raised to Ω(n) (the total number of prime factors).
+
+This corresponds to Mathematica's C<LiouvilleLambda[n]> function.
+It can be computed in Pari/GP as C<(-1)^bigomega(n)>.
+
+=head2 sumliouville
+
+Returns L(n), the summatory Liouville function for a non-negative integer
+input.  This function is defined as C<sum(liouville(1..n))>, but calculated
+much more efficiently.
+
+There are a number of relations to the C<mertens> function.
+
+This is L<OEIS series A002819|http://oeis.org/A002819>.
 
 
 =head2 chebyshev_theta

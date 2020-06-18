@@ -1259,6 +1259,29 @@ sub liouville {
   return $l;
 }
 
+sub sumliouville {
+  my($n) = @_;
+  return (0,1,0,-1,0,-1,0,-1,-2,-1,0,-1,-2,-3,-2,-1)[$n] if $n < 16;
+
+  # Build the Mertens lookup info once.
+  my $sqrtn = Math::Prime::Util::sqrtint($n);
+  my $size = (Math::Prime::Util::rootint($n, 3)**2) >> 2;
+  $size = $sqrtn if $size < $sqrtn;
+  my %seen;
+  my @M = (0);
+  push @M, $M[-1] + $_ for Math::Prime::Util::moebius(1, $size);
+
+  # L(n) = sum[k=1..sqrt(n)](Mertens(n/(k^2)))
+  my $L = 0;
+  for my $k (1 .. $sqrtn) {
+    #my $nk = Math::Prime::Util::divint($n, Math::Prime::Util::mulint($k,$k));
+    my $nk = int($n/($k*$k));
+    return $L + $sqrtn - $k + 1 if $nk == 1;
+    $L += ($nk <= $size)  ?  $M[$nk]  :  _rmertens($nk, \@M, \%seen, $size);
+  }
+  return $L;
+}
+
 # Exponential of Mangoldt function (A014963).
 # Return p if n = p^m [p prime, m >= 1], 1 otherwise.
 sub exp_mangoldt {

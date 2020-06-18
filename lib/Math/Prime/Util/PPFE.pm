@@ -177,6 +177,11 @@ sub liouville {
   _validate_positive_integer($n);
   return Math::Prime::Util::PP::liouville($n);
 }
+sub sumliouville {
+  my($n) = @_;
+  _validate_positive_integer($n);
+  return Math::Prime::Util::PP::sumliouville($n);
+}
 sub exp_mangoldt {
   my($n) = @_;
   return 1 if defined $n && $n <= 1;

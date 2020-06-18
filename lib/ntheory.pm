@@ -258,6 +258,7 @@ Tags:
   ramanujan_sum(k,n)                  Ramanujan's sum
   exp_mangoldt                        exponential of Mangoldt function
   liouville(n)                        Liouville function
+  sumliouville(n)                     sum of Liouville for 1 to n
   znorder(a,n)                        multiplicative order of a mod n
   znprimroot(n)                       smallest primitive root
   chebyshev_theta(n)                  first Chebyshev function

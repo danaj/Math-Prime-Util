@@ -3,10 +3,10 @@ use strict;
 use warnings;
 
 use Test::More;
-use Math::Prime::Util qw/liouville/;
+use Math::Prime::Util qw/liouville sumliouville/;
 
-#my $extra = defined $ENV{EXTENDED_TESTING} && $ENV{EXTENDED_TESTING};
-#my $usexs = Math::Prime::Util::prime_get_config->{'xs'};
+my $extra = defined $ENV{EXTENDED_TESTING} && $ENV{EXTENDED_TESTING};
+my $usexs = Math::Prime::Util::prime_get_config->{'xs'};
 #my $usegmp= Math::Prime::Util::prime_get_config->{'gmp'};
 my $use64 = Math::Prime::Util::prime_get_config->{'maxbits'} > 32;
 $use64 = 0 if $use64 && 18446744073709550592 == ~0;
@@ -22,8 +22,32 @@ if ($use64) {
   push @liouville_neg, (qw/1807253903626380 12063177829788352512/);
 }
 
+my @sums = (qw/0 1 0 -1 0 -1 0 -1 -2 -1 0 -1 -2 -3 -2 -1 0 -1 -2 -3 -4 -3 -2 -3 -2 -1 0 -1 -2 -3 -4 -5 -6 -5 -4 -3 -2 -3 -2 -1 0/);
 
-plan tests => scalar(@liouville_pos) + scalar(@liouville_neg);
+my %suml = (
+         100 => -2,
+        1000 => -14,
+       10000 => -94,
+      100000 => -288,
+     1000000 => -530,
+         293 => -21,
+         468 => -24,
+         684 => -28,
+       96862 => -414,
+    76015169 => -10443,
+ 10097286319 => -123643,
+       48512 => -2,
+      444444 => -368,
+   906150257 => 1,
+#  906180359 => 1,
+);
+
+if (!$usexs) {
+  %suml = map { $_ => $suml{$_} } grep { $_ < 10000000 } keys %suml;
+}
+delete $suml{"10097286319"} unless $extra;
+
+plan tests => scalar(@liouville_pos) + scalar(@liouville_neg) + 1 + scalar(keys %suml);
 
 ###### liouville
 foreach my $i (@liouville_pos) {
@@ -31,4 +55,13 @@ foreach my $i (@liouville_pos) {
 }
 foreach my $i (@liouville_neg) {
   is( liouville($i), -1, "liouville($i) = -1" );
+}
+
+###### sumliouville
+is_deeply( [map { sumliouville($_) } 0 .. $#sums],
+           \@sums,
+           "sumliouvills L(n) for small n" );
+
+while (my($n,$L) = each (%suml)) {
+  is( sumliouville($n), $L, "sumliouville($n) = $L" );
 }
