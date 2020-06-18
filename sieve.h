@@ -172,7 +172,7 @@ static const unsigned char wheel240[] = {1,7,11,13,17,19,23,29,31,37,41,43,47,49
     UV lastd_ = l_/30; \
     unsigned char s_, bit_; \
     get_prime_cache(l_, &sieve_); \
-    if (p == 2) p = 1; \
+    if (p > 1 && p < 7) p--; \
     s_ = sieve_[d_] | clearprev30[p-d_*30]; \
     while (1) { \
       if (p < 5) { \
