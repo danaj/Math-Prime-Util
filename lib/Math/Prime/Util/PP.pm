@@ -1059,6 +1059,13 @@ sub euler_phi_range {
   @totients;
 }
 
+sub prime_bigomega {
+  return scalar(Math::Prime::Util::factor($_[0]));
+}
+sub prime_omega {
+  return scalar(Math::Prime::Util::factor_exp($_[0]));
+}
+
 sub moebius {
   return moebius_range(@_) if scalar @_ > 1;
   my($n) = @_;

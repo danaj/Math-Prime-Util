@@ -8,6 +8,8 @@ Revision history for Perl module Math::Prime::Util
     - nth_lucky(n)                    the nth lucky number
     - is_lucky(n)                     predicate for lucky number sieve
     - sumliouville(n)                 L(n), sum of liouville(1..n)
+    - prime_bigomega(n)               # of factors (with multiplicity)
+    - prime_omega(n)                  # of factors (distinct)
     - powint(a, b)                    signed integer a^b
     - mulint(a, b)                    signed integer a*b
     - addint(a, b)                    signed integer a+b

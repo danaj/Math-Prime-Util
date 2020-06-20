@@ -3,7 +3,8 @@ use strict;
 use warnings;
 
 use Test::More;
-use Math::Prime::Util qw/factor factor_exp divisors divisor_sum is_prime/;
+use Math::Prime::Util qw/factor factor_exp divisors divisor_sum is_prime
+                         prime_bigomega prime_omega/;
 
 my $use64 = Math::Prime::Util::prime_get_config->{'maxbits'} > 32;
 my $extra = defined $ENV{EXTENDED_TESTING} && $ENV{EXTENDED_TESTING};
@@ -46,6 +47,8 @@ my @testn64 = qw/37607912018 346065536839 600851475143
                  440091295252541 5333042142001571
                  79127989298
                 /;
+
+my @omega = ([0,1,1], [1,0,0], [2,1,1], [36,4,2], [102,3,3], [8593952,7,3]);
 
 push @testn, @testn64 if $use64;
 
@@ -117,6 +120,7 @@ plan tests => (3 * scalar @testn)
             + 2*scalar(keys %factor_exponents)
             + 10*8  # 10 extra factoring tests * 8 algorithms
             + 8
+            + 2*scalar(@omega)
             + 1;
 
 foreach my $n (@testn) {
@@ -201,4 +205,11 @@ sub linear_to_exp {
   my %exponents;
   my @factors = grep { !$exponents{$_}++ } @_;
   return (map { [$_, $exponents{$_}] } @factors);
+}
+
+######
+for my $ov (@omega) {
+  my($n,$bo,$o) = @$ov;
+  is( prime_bigomega($n), $bo, "prime_bigomega($n) = $bo" );
+  is( prime_omega($n), $o, "prime_omega($n) = $o" );
 }

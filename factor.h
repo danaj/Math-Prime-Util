@@ -22,6 +22,9 @@ extern int lehman_factor(UV n, UV *factors, int dotrial);
 
 extern UV* _divisor_list(UV n, UV *num_divisors);
 
+extern int prime_omega(UV n);     /* number of distinct prime factors */
+extern int prime_bigomega(UV n);  /* number of prime factors w/ multiplicity */
+
 /* Factoring all numbers in a range. */
 typedef struct {
   UV   lo;

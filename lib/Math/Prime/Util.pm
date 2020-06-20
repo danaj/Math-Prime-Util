@@ -68,7 +68,7 @@ our @EXPORT_OK =
       invmod sqrtmod addmod mulmod divmod powmod
       vecsum vecmin vecmax vecprod vecreduce vecextract
       vecany vecall vecnotall vecnone vecfirst vecfirstidx
-      moebius mertens liouville sumliouville
+      moebius mertens liouville sumliouville prime_omega prime_bigomega
       euler_phi jordan_totient exp_mangoldt
       partitions bernfrac bernreal harmfrac harmreal
       chebyshev_theta chebyshev_psi
@@ -3227,6 +3227,30 @@ set to n if x is the nth s-gonal number.  If the function returns 0, then
 it will be unchanged.
 
 This corresponds to Pari's C<ispolygonal> function.
+
+=head2 prime_bigomega
+
+  say "$n has ", prime_bigomega($n), " total factors";
+
+Returns Ω(n), the prime omega function returning the total number of
+prime factors of n including multiplicities.
+The result is identical to C<scalar(factor($n))>.
+The return value is a read-only constant.
+
+This corresponds to Pari's C<bigomega> function
+and Mathematica's C<PrimeOmega[n]> function.
+
+=head2 prime_omega
+
+  say "$n has ", prime_omega($n), " distinct factors";
+
+Returns ω(n), the prime omega function returning the number of
+distinct prime factors of n.
+The result is identical to C<scalar(factor_exp($n))>.
+The return value is a read-only constant.
+
+This corresponds to Pari's C<omega> function
+and Mathematica's C<PrimeNu[n]> function.
 
 =head2 moebius
 

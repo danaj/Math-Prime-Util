@@ -615,13 +615,10 @@ static signed char* liouville_array(UV hi)
 }
 
 int liouville(UV n) {
-  if (n < 16) {
+  if (n < 16)
     return _small_liouville[n];
-  } else {
-    UV factors[MPU_MAX_FACTORS+1];
-    int nfactors = factor(n, factors);
-    return( (nfactors & 1) ? -1 : 1 );
-  }
+  else
+    return( (prime_bigomega(n) & 1) ? -1 : 1 );
 }
 
 IV sumliouville(UV n) {

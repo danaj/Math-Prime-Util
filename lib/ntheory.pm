@@ -247,6 +247,8 @@ Tags:
   powmod(a,b,n)                       a ^ b mod n
   invmod(a,n)                         inverse of a modulo n
   sqrtmod(a,n)                        modular square root
+  prime_bigomega(n)                   number of prime factors
+  prime_omega(n)                      number of distinct prime factors
   moebius(n)                          Moebius function of n
   moebius(beg, end)                   array of Moebius in range
   mertens(n)                          sum of Moebius for 1 to n

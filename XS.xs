@@ -2249,22 +2249,24 @@ carmichael_lambda(IN SV* svn)
     mertens = 1
     liouville = 2
     sumliouville = 3
-    chebyshev_theta = 4
-    chebyshev_psi = 5
-    factorial = 6
-    sqrtint = 7
-    exp_mangoldt = 8
-    znprimroot = 9
-    hammingweight = 10
-    hclassno = 11
-    is_pillai = 12
-    absint = 13
-    negint = 14
-    ramanujan_tau = 15
+    prime_omega = 4
+    prime_bigomega = 5
+    chebyshev_theta = 6
+    chebyshev_psi = 7
+    factorial = 8
+    sqrtint = 9
+    exp_mangoldt = 10
+    znprimroot = 11
+    hammingweight = 12
+    hclassno = 13
+    is_pillai = 14
+    absint = 15
+    negint = 16
+    ramanujan_tau = 17
   PREINIT:
     int status;
   PPCODE:
-    status = _validate_int(aTHX_ svn, (ix >= 8) ? 1 : 0);
+    status = _validate_int(aTHX_ svn, (ix >= 10) ? 1 : 0);
     if (status != 0) {
       UV r, n = my_svuv(svn);
       switch (ix) {
@@ -2272,29 +2274,31 @@ carmichael_lambda(IN SV* svn)
         case 1:  XSRETURN_IV(mertens(n)); break;
         case 2:  RETURN_NPARITY(liouville(n)); break;
         case 3:  XSRETURN_IV(sumliouville(n)); break;
-        case 4:  XSRETURN_NV(chebyshev_theta(n)); break;
-        case 5:  XSRETURN_NV(chebyshev_psi(n)); break;
-        case 6:  r = factorial(n);
+        case 4:  RETURN_NPARITY(prime_omega(n)); break;
+        case 5:  RETURN_NPARITY(prime_bigomega(n)); break;
+        case 6:  XSRETURN_NV(chebyshev_theta(n)); break;
+        case 7:  XSRETURN_NV(chebyshev_psi(n)); break;
+        case 8:  r = factorial(n);
                  if (r != 0) XSRETURN_UV(r);
                  status = 0; break;
-        case 7:  XSRETURN_UV(isqrt(n)); break;
-        case 8:  XSRETURN_UV( (status == -1) ? 1 : exp_mangoldt(n) ); break;
-        case 9:  if (status == -1) n = -(IV)n;
+        case 9:  XSRETURN_UV(isqrt(n)); break;
+        case 10: XSRETURN_UV( (status == -1) ? 1 : exp_mangoldt(n) ); break;
+        case 11: if (status == -1) n = -(IV)n;
                  r = znprimroot(n);
                  if (r == 0 && n != 1)  XSRETURN_UNDEF;  /* No root */
                  XSRETURN_UV(r);  break;
-        case 10: if (status == -1) n = -(IV)n;
+        case 12: if (status == -1) n = -(IV)n;
                  XSRETURN_UV(popcnt(n));  break;
-        case 11: XSRETURN_IV( (status == -1) ? 0 : hclassno(n) ); break;
-        case 12: RETURN_NPARITY( (status == -1) ? 0 : pillai_v(n) ); break;
-        case 13: if (status == -1 && my_sviv(svn) < -IV_MAX) status = 0;
+        case 13: XSRETURN_IV( (status == -1) ? 0 : hclassno(n) ); break;
+        case 14: RETURN_NPARITY( (status == -1) ? 0 : pillai_v(n) ); break;
+        case 15: if (status == -1 && my_sviv(svn) < -IV_MAX) status = 0;
                  else XSRETURN_UV( (status == -1) ? -(IV)n : n );
                  break;
-        case 14: if (status == -1 && my_sviv(svn) < -IV_MAX) status = 0;
+        case 16: if (status == -1 && my_sviv(svn) < -IV_MAX) status = 0;
                  else if (status == 1 && n > IV_MAX) status = 0;
                  else XSRETURN_IV( (status == -1) ? -(IV)n : -n );
                  break;
-        case 15:
+        case 17:
         default: { IV tau = (status == 1) ? ramanujan_tau(n) : 0;
                    if (tau != 0 || status == -1 || n == 0)
                      XSRETURN_IV(tau);
@@ -2307,24 +2311,26 @@ carmichael_lambda(IN SV* svn)
       case 1:  _vcallsub_with_pp("mertens"); break;
       case 2:  _vcallsub_with_gmp(0.22,"liouville"); break;
       case 3:  _vcallsub_with_gmp(0.00,"sumliouville"); break;
-      case 4:  _vcallsub_with_pp("chebyshev_theta"); break;
-      case 5:  _vcallsub_with_pp("chebyshev_psi"); break;
-      case 6:  _vcallsub_with_pp("factorial"); break;  /* use PP */
-      case 7:  _vcallsub_with_gmp(0.40,"sqrtint"); break;
-      case 8:  _vcallsub_with_gmp(0.19,"exp_mangoldt"); break;
-      case 9:  _vcallsub_with_gmp(0.22,"znprimroot"); break;
-      case 10: if (_XS_get_callgmp() >= 47) { /* Very fast */
+      case 4:  _vcallsub_with_gmp(0.00,"prime_omega"); break;
+      case 5:  _vcallsub_with_gmp(0.00,"prime_bigomega"); break;
+      case 6:  _vcallsub_with_pp("chebyshev_theta"); break;
+      case 7:  _vcallsub_with_pp("chebyshev_psi"); break;
+      case 8:  _vcallsub_with_pp("factorial"); break;  /* use PP */
+      case 9:  _vcallsub_with_gmp(0.40,"sqrtint"); break;
+      case 10: _vcallsub_with_gmp(0.19,"exp_mangoldt"); break;
+      case 11: _vcallsub_with_gmp(0.22,"znprimroot"); break;
+      case 12: if (_XS_get_callgmp() >= 47) { /* Very fast */
                  _vcallsub_with_gmp(0.47,"hammingweight");
                } else {                       /* Better than PP */
                  char* ptr;  STRLEN len;  ptr = SvPV(svn, len);
                  XSRETURN_UV(mpu_popcount_string(ptr, len));
                }
                break;
-      case 11: _vcallsub_with_pp("hclassno"); break;
-      case 12: _vcallsub_with_gmp(0.00,"is_pillai"); break;
-      case 13: _vcallsub_with_gmp(0.52,"absint"); break;
-      case 14: _vcallsub_with_gmp(0.52,"negint"); break;
-      case 15:
+      case 13: _vcallsub_with_pp("hclassno"); break;
+      case 14: _vcallsub_with_gmp(0.00,"is_pillai"); break;
+      case 15: _vcallsub_with_gmp(0.52,"absint"); break;
+      case 16: _vcallsub_with_gmp(0.52,"negint"); break;
+      case 17:
       default: _vcallsub_with_gmp(0.32,"ramanujan_tau"); break;
     }
     objectify_result(aTHX_ svn, ST(0));

@@ -225,8 +225,6 @@
        Hunter/Sorenson(1997)
        https://cosec.bit.uni-bonn.de/fileadmin/user_upload/teaching/08us/08us-cryptabit/AnatInt_Crypto-sld.pdf
 
-- add factor.[hc] functions:  prime_omega, prime_bigomega.  Use as desired.
-
 - consider random_smooth_integer, random_rough_integer.  nbit or range or mod?
   See: https://cr.yp.to/papers/epsi.pdf
        https://arxiv.org/pdf/2006.07445.pdf

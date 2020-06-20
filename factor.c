@@ -292,6 +292,26 @@ int factor_exp(UV n, UV *factors, UV* exponents)
   return j;
 }
 
+int prime_bigomega(UV n)
+{
+  UV factors[MPU_MAX_FACTORS+1];
+  return factor(n, factors);
+}
+int prime_omega(UV n)
+{
+  UV factors[MPU_MAX_FACTORS+1];
+  int i, j, nfactors;
+
+  if (n <= 1) return (n==0);
+  nfactors = factor(n, factors);
+
+  for (i = 1, j = 1; i < nfactors; i++)
+    if (factors[i] != factors[i-1])
+      j++;
+  return j;
+}
+
+
 int trial_factor(UV n, UV *factors, UV f, UV last)
 {
   int sp, nfactors = 0;

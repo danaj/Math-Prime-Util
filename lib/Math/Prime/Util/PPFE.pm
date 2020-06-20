@@ -138,6 +138,8 @@ sub entropy_bytes {
 *randperm = \&Math::Prime::Util::PP::randperm;
 *shuffle = \&Math::Prime::Util::PP::shuffle;
 
+*prime_bigomega = \&Math::Prime::Util::PP::prime_bigomega;
+*prime_omega = \&Math::Prime::Util::PP::prime_omega;
 *moebius = \&Math::Prime::Util::PP::moebius;
 *euler_phi = \&Math::Prime::Util::PP::euler_phi;
 *inverse_totient = \&Math::Prime::Util::PP::inverse_totient;
