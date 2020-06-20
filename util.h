@@ -75,6 +75,8 @@ extern int is_carmichael(UV n);
 extern UV  is_quasi_carmichael(UV n);  /* Returns number of bases */
 extern UV  pillai_v(UV n);             /* v: v! % n == n-1 && n % v != 1 */
 
+extern UV  debruijn_psi(UV x, UV y);
+
 extern UV inverse_totient_count(UV n);
 extern UV* inverse_totient_list(UV *ntotients, UV n);
 

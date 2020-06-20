@@ -1853,6 +1853,7 @@ znorder(IN SV* sva, IN SV* svn)
     ramanujan_sum = 3
     factorialmod = 4
     legendre_phi = 5
+    debruijn_psi = 6
   PREINIT:
     int astatus, nstatus;
   PPCODE:
@@ -1895,8 +1896,10 @@ znorder(IN SV* sva, IN SV* svn)
                  break;
         case 4:  ret = factorialmod(a, n);
                  break;
-        case 5:
-        default: ret = legendre_phi(a, n);
+        case 5:  ret = legendre_phi(a, n);
+                 break;
+        case 6:
+        default: ret = debruijn_psi(a, n);
                  break;
       }
       if (ret == 0 && ix == 0)  XSRETURN_UNDEF;  /* not defined */
@@ -1909,8 +1912,9 @@ znorder(IN SV* sva, IN SV* svn)
       case 2:  _vcallsub_with_gmp(0.22,"jordan_totient");  break;
       case 3:  _vcallsub_with_pp("ramanujan_sum");  break;
       case 4:  _vcallsub_with_gmp(0.47,"factorialmod");  break;
-      case 5:
-      default: _vcallsub_with_pp("legendre_phi"); break;
+      case 5:  _vcallsub_with_pp("legendre_phi");  break;
+      case 6:
+      default: _vcallsub_with_pp("debruijn_psi"); break;
     }
     objectify_result(aTHX_ sva, ST(0));
     return; /* skip implicit PUTBACK */

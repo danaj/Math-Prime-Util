@@ -213,3 +213,20 @@
 - euler_phi should do XS -> GMP directly.  Maybe make totient in PP for uniform name.
 
 - consider making liouville ranged just like moebius and euler_phi.
+
+- as part of ranged liouville, perhaps an option to ranged factor to just
+  return the number of distinct factors.  Trivially this is easy to do just
+  in the return portion, but we could speed things up by not bothering to
+  save the factors at all.
+
+- dickman_rho, debruijn_psi
+  See: https://arxiv.org/pdf/1301.5293.pdf
+       https://www.ams.org/journals/mcom/1969-23-106/S0025-5718-1969-0247789-3/S0025-5718-1969-0247789-3.pdf
+       Hunter/Sorenson(1997)
+       https://cosec.bit.uni-bonn.de/fileadmin/user_upload/teaching/08us/08us-cryptabit/AnatInt_Crypto-sld.pdf
+
+- add factor.[hc] functions:  prime_omega, prime_bigomega.  Use as desired.
+
+- consider random_smooth_integer, random_rough_integer.  nbit or range or mod?
+  See: https://cr.yp.to/papers/epsi.pdf
+       https://arxiv.org/pdf/2006.07445.pdf

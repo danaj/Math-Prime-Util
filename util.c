@@ -593,7 +593,7 @@ static const signed char _small_liouville[16] = {-1,1,-1,-1,1,-1,1,-1,-1,1,1,-1,
 static signed char* liouville_array(UV hi)
 {
   signed char* l;
-  UV i, a, b, k;
+  UV a, b, k;
 
   if (hi < 16) hi = 15;
   New(0, l, hi+1, signed char);
@@ -3434,6 +3434,73 @@ void randperm(void* ctx, UV n, UV k, UV *S) {
     }
   }
 }
+
+#if 0
+/* This is the de Bruijn approximation, not exact! */
+static long double dickman_rho(long double u) {
+  int i;
+  long double zeta;
+
+  if (u <= 1) return 1;
+  if (u <= 2) return 1-logl(u);
+
+  /* Also see Granville (2008) Smooth numbers */
+
+  /* Calculate zeta.  See Bach and Sorenson (2013) page 10 */
+  zeta = 2*(u-1);
+  for (i = 0; i < 7; i++) {
+    long double uz1 = 1 + u*zeta;
+    zeta = zeta - ( (zeta-logl(uz1))*uz1 ) / (uz1-u);
+  }
+  /* Alternately:  zeta = -1/u - LambertW1(-exp(-1/u)/u) */
+
+  return expl(-u*zeta+Ei(zeta)) / (zeta * sqrtl(2*3.1415926535*u));
+}
+#endif
+
+UV debruijn_psi(UV x, UV y) {
+  UV sum, x3, x5;
+  if (x < 1 || y < 1) return 0;
+  if (y == 1) return 1;
+  if (y == 2) return 1 + log2floor(x);
+  if (y >= x) return x;
+
+  /*  given z < y < x,  (e.g. z=2 or z=19)
+   *  psi(x,y) = psi(x,z) + sum[z+1..y] psi(x/p,p) */
+
+  sum = 1 + log2floor(x);  /* debruijn_psi(x,2) */
+  /* if (y >= 3)  sum += debruijn_psi(x/3, 3); */
+  /* if (y >= 5)  sum += debruijn_psi(x/5, 5); */
+  if (y >= 3) {
+    for (x3 = x/3; x3 > 3; x3 /= 3)
+      sum += 1+log2floor(x3);
+    sum += x3;
+  }
+  if (y >= 5) {
+    for (x5 = x/5; x5 > 5; x5 /= 5) {
+      sum += 1+log2floor(x5);
+      for (x3 = x5/3; x3 > 3; x3 /= 3)
+        sum += 1+log2floor(x3);
+      sum += x3;
+    }
+    sum += x5;
+  }
+  if (y >=  7) sum += debruijn_psi(x/ 7, 7);
+  if (y >= 11) sum += debruijn_psi(x/11,11);
+  if (y >= 13) sum += debruijn_psi(x/13,13);
+  if (y >= 17) sum += debruijn_psi(x/17,17);
+  if (y >= 19) sum += debruijn_psi(x/19,19);
+  if (y >= 23) sum += debruijn_psi(x/23,23);
+  if (y >= 29) {
+    START_DO_FOR_EACH_PRIME(29, y) {
+      UV xp = x/p;
+      sum += (p >= xp)  ?  xp  :  debruijn_psi(xp, p);
+    } END_DO_FOR_EACH_PRIME
+  }
+
+  return sum;
+}
+
 
 UV random_factored_integer(void* ctx, UV n, int *nf, UV *factors) {
   UV r, s, nfac;
