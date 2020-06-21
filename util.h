@@ -207,13 +207,13 @@ static int is_perfect_square(UV n)
 #ifdef FUNC_is_perfect_cube
 static int is_perfect_cube(UV n)
 {
-  UV m;
-  if ((n & 3) == 2) return 0;
-  /* m = n & 511; if ((m*5016427) & (m*95638165) & 438)  return 0; */
-  m = n % 117; if ((m*833230740) & (m*120676722) & 813764715)  return 0;
-  m = n % 133; if ((m*76846229) & (m*305817297) & 306336544)  return 0;
+  uint32_t m;
+  m = n % 117; if ((m*833230740) & (m*120676722) & 813764715) return 0;
+  m = n % 133; if ((m*76846229) & (m*305817297) & 306336544) return 0;
+  m = n % 43; if ((m*193635074) & (m*3653322805) & 74401) return 0;
+  m = n % 37; if ((m*919307198) & (m*3908849845) & 6665) return 0;
   m = icbrt(n);
-  return m*m*m == n;
+  return (UV)m*m*m == n;
 }
 #endif
 
