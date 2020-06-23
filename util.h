@@ -49,6 +49,7 @@ extern int kronecker_uu(UV a, UV b);
 extern int kronecker_su(IV a, UV b);
 extern int kronecker_ss(IV a, IV b);
 
+extern UV primorial(UV n);
 extern UV factorial(UV n);
 extern UV binomial(UV n, UV k);
 extern IV gcdext(IV a, IV b, IV* u, IV* v, IV* s, IV* t); /* Ext Euclidean */
@@ -74,6 +75,9 @@ extern int is_semiprime(UV n);
 extern int is_carmichael(UV n);
 extern UV  is_quasi_carmichael(UV n);  /* Returns number of bases */
 extern UV  pillai_v(UV n);             /* v: v! % n == n-1 && n % v != 1 */
+
+extern int is_smooth(UV n, UV k);
+extern int is_rough(UV n, UV k);
 
 extern UV  debruijn_psi(UV x, UV y);
 

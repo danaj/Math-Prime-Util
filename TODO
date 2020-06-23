@@ -228,3 +228,10 @@
 - consider random_smooth_integer, random_rough_integer.  nbit or range or mod?
   See: https://cr.yp.to/papers/epsi.pdf
        https://arxiv.org/pdf/2006.07445.pdf
+
+- consider count_smooth, smooth_count, ??? instead of debruijn_psi.  Maybe
+  similar for rough.
+
+- almost_prime_count(n, k).  Maybe other almost_prime functions?
+
+- primorial and pn_primorial to XS with direct to GMP.  Remember to objectify.

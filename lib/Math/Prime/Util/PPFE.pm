@@ -119,6 +119,8 @@ sub entropy_bytes {
 *is_square = \&Math::Prime::Util::PP::is_square;
 *is_lucky = \&Math::Prime::Util::PP::is_lucky;
 *is_gaussian_prime = \&Math::Prime::Util::PP::is_gaussian_prime;
+*is_smooth = \&Math::Prime::Util::PP::is_smooth;
+*is_rough = \&Math::Prime::Util::PP::is_rough;
 
 *random_prime = \&Math::Prime::Util::PP::random_prime;
 *random_ndigit_prime = \&Math::Prime::Util::PP::random_ndigit_prime;

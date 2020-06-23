@@ -1082,6 +1082,55 @@ sub moebius {
 sub is_square_free {
   return (Math::Prime::Util::moebius($_[0]) != 0) ? 1 : 0;
 }
+
+sub is_smooth {
+  my($n, $k) = @_;
+  _validate_positive_integer($n);
+  _validate_positive_integer($k);
+
+  return 1 if $n <= 1;
+  return 0 if $k <= 1;
+  return 1 if $n <= $k;
+
+  if ($Math::Prime::Util::_GMPfunc{"is_smooth"}) {
+    return eval "Math::Prime::Util::GMP::is_smooth($n, $k)";
+  }
+
+  if ($k <= 10000000 && $Math::Prime::Util::_GMPfunc{"trial_factor"}) {
+    my @f;
+    while (1) {
+      @f = Math::Prime::Util::GMP::trial_factor($n, $k);
+      last if scalar(@f) <= 1;
+      return 0 if $f[-2] > $k;
+      $n = $f[-1];
+    }
+    return 0 + ($f[0] <= $k);
+  }
+
+  return 0 + (Math::Prime::Util::vecnone(sub { $_ > $k }, Math::Prime::Util::factor($n)));
+}
+sub is_rough {
+  my($n, $k) = @_;
+  _validate_positive_integer($n);
+  _validate_positive_integer($k);
+
+  return 0+($k == 0) if $n == 0;
+  return 1 if $n == 1;
+  return 1 if $k <= 1;
+  return 0+($n >= 1) if $k == 2;
+
+  if ($Math::Prime::Util::_GMPfunc{"is_rough"}) {
+    return eval "Math::Prime::Util::GMP::is_rough($n, $k)";
+  }
+
+  if ($k < 10000 && $Math::Prime::Util::_GMPfunc{"trial_factor"}) {
+    my @f = Math::Prime::Util::GMP::trial_factor($n, $k);
+    return 0 + ($f[0] >= $k);
+  }
+
+  return 0 + (Math::Prime::Util::vecnone(sub { $_ < $k }, Math::Prime::Util::factor($n)));
+}
+
 sub is_semiprime {
   my($n) = @_;
   _validate_positive_integer($n);

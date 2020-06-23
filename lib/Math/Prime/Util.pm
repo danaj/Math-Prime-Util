@@ -29,6 +29,7 @@ our @EXPORT_OK =
       is_power is_prime_power is_pillai is_semiprime is_square is_polygonal
       is_square_free is_primitive_root is_carmichael is_quasi_carmichael
       is_fundamental is_totient is_gaussian_prime
+      is_smooth is_rough
       sqrtint rootint logint
       powint mulint addint subint divint modint divrem tdivrem absint negint
       miller_rabin_random
@@ -3569,6 +3570,43 @@ and C<0> otherwise.  The process used is analogous to trial division
 using the lucky numbers less than C<n/log(n)>.  For inputs not
 immediately discarded, the performance is essentially the same as
 generating the nth lucky number nearest to the input.
+
+
+=head2 is_smooth
+
+  my $is_23_smooth = is_smooth($n, 23);
+
+Given two non-negative integer inputs C<n> and C<k>,
+returns C<1> if C<n> is C<k>-smooth, and C<0> otherwise.
+This uses the OEIS definition: Returns true if no prime factors
+of C<n> are larger than C<k>.
+
+The values for C<n=0> and C<n=1> use the definition along with noting
+that C<factor(0)> returns 0 and C<factor(1)> returns an empty list.
+
+The result is identical to:
+
+  sub is_smooth { my($n,$k)=@_; return 0+(vecnone { $_ > $k } factor($n)); }
+
+but shortcuts are taken to avoid fully factoring if possible.
+
+=head2 is_rough
+
+  my $is_23_rough = is_rough($n, 23);
+
+Given two non-negative integer inputs C<n> and C<k>,
+returns C<1> if C<n> is C<k>-rough, and C<0> otherwise.
+This uses the OEIS definition: Returns true if no prime factors
+of C<n> are smaller than C<k>.
+
+The values for C<n=0> and C<n=1> use the definition along with noting
+that C<factor(0)> returns 0 and C<factor(1)> returns an empty list.
+
+The result is identical to:
+
+  sub is_rough { my($n,$k)=@_; return 0+(vecnone { $_ < $k } factor($n)); }
+
+but shortcuts are taken to avoid fully factoring if possible.
 
 
 =head2 carmichael_lambda

@@ -954,6 +954,15 @@ int kronecker_ss(IV a, IV b) {
   return kronecker_su(a, -b) * ((a < 0) ? -1 : 1);
 }
 
+UV primorial(UV n) {
+  UV pi, prim = 1;
+  for (pi = 1; pi < NPRIMES_TINY; pi++) {
+    UV pt = primes_tiny[pi];
+    if (n < pt) return prim;
+    if (UV_MAX/pt < prim) return 0;
+    prim *= pt;
+  }
+}
 UV factorial(UV n) {
   UV i, r = 1;
   if ( (n > 12 && sizeof(UV) <= 4) || (n > 20 && sizeof(UV) <= 8) ) return 0;
@@ -3430,6 +3439,82 @@ void randperm(void* ctx, UV n, UV k, UV *S) {
       { UV t = S[i]; S[i] = S[i+j]; S[i+j] = t; }
     }
   }
+}
+
+
+int is_smooth(UV n, UV k) {
+  UV fac[MPU_MAX_FACTORS+1];
+  int nfac;
+
+  /* True if no prime factors of n are larger than k. */
+  if (n <= 1) return 1;   /* (0,k) = 1, (1,k) = 1 */
+  if (k <= 1) return 0;   /* (n,0) = (n,1) = 0 if n > 1 */
+  if (n <= k) return 1;
+  /* k >= 2, n >= 2 */
+  if (k == 2) return ((n & (n-1)) == 0);
+  while (n > 1 && !(n&1)) n >>= 1;
+  if (n <= k) return 1;
+  /* k >= 3, n >= 3 */
+
+  /* Could do: gcd with primorial, p-1/pbrent/ecm to find small factors */
+
+  if (k <= 9000) {
+    nfac = trial_factor(n, fac, 2, k);
+    return (fac[nfac-1] <= k);
+  }
+
+  /* Get rid of small factors */
+  nfac = trial_factor(n, fac, 2, 500);
+  n = fac[nfac-1];
+  if (n <= k) return 1;
+
+  /* Complete factoring including primality test */
+  nfac = factor_exp(n, fac, 0);
+  return (fac[nfac-1] <= k);
+}
+int is_rough(UV n, UV k) {
+  UV fac[MPU_MAX_FACTORS+1];
+  int nfac;
+
+  /* True if no prime factors of n are smaller than k. */
+
+  if (n == 0) return (k == 0);
+  if (n == 1) return 1;
+  /* n >= 2 */
+  if (k <= 1) return 1;
+  if (k == 2) return (n >= 1);
+  if (k == 3) return (n > 1 && (n&1));
+  /* k >= 4 */
+
+  if (!(n&1)) return 0;
+  if (!(n%3)) return 0;
+  if (k <= 5) return 1;
+  if (!(n%5)) return 0;
+
+  if (k <= 2500) {
+    nfac = trial_factor(n, fac, 7, k);
+    return (fac[0] >= k);
+  }
+
+  nfac = trial_factor(n, fac, 7, 200);
+  if (nfac > 1 && fac[nfac-2] <= k) return 0;
+  n = fac[nfac-1];
+
+  if ( (n >> 30) >= 64) {  /* Arbitrarily chose 2^36 for more tests */
+    if (is_prime(n)) return 1;
+    nfac = pminus1_factor(n, fac, 500, 500);
+    if (nfac > 1) {  /* 2 factors, but they could be composites */
+      UV f1 = fac[0], f2 = fac[1];
+      nfac = factor_exp(f1, fac, 0);
+      if (fac[0] < k) return 0;
+      nfac = factor_exp(f2, fac, 0);
+      if (fac[0] < k) return 0;
+      return 1;
+    }
+  }
+
+  nfac = factor_exp(n, fac, 0);
+  return (fac[0] >= k);
 }
 
 #if 0

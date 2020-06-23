@@ -213,6 +213,8 @@ Tags:
   is_fundamental(d)                   is d a fundamental discriminant
   is_totient(n)                       is n = euler_phi(x) for some x
   is_lucky(n)                         is n a lucky number
+  is_smooth(n,k)                      is n a k-smooth number
+  is_rough(n,k)                       is n a k-rough number
   powint(a,b)                         signed integer a^b
   mulint(a,b)                         signed integer a * b
   addint(a,b)                         signed integer a + b

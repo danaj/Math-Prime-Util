@@ -22,6 +22,8 @@ Revision history for Perl module Math::Prime::Util
     - negint(n)                       integer negation
     - is_gaussian_prime(a,b)          is a+bi a Gaussian prime
     - random_safe_prime               for n-bit safe primes
+    - is_smooth(n,k)                  is n a k-smooth number
+    - is_rough(n,k)                   is n a k-rough number
 
     [FIXES]
 

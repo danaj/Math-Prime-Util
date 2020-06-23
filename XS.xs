@@ -1358,7 +1358,6 @@ void is_fundamental(IN SV* svn)
     _vcallsub_with_gmp(0.00,"is_fundamental");
     return;
 
-
 void
 is_power(IN SV* svn, IN UV k = 0, IN SV* svroot = 0)
   PREINIT:
@@ -1980,6 +1979,29 @@ znlog(IN SV* sva, IN SV* svg, IN SV* svp)
     }
     objectify_result(aTHX_ svp, ST(0));
     return; /* skip implicit PUTBACK */
+
+void
+is_smooth(IN SV* svn, IN SV* svk)
+  ALIAS:
+    is_rough = 1
+  PREINIT:
+    int nstatus, kstatus, res;
+    IV sk;
+  PPCODE:
+    nstatus = _validate_int(aTHX_ svn, 0);
+    kstatus = _validate_int(aTHX_ svk, 1);
+    if (nstatus == 1 && kstatus == 1) {
+      UV n = my_svuv(svn), k = my_svuv(svk);
+      res = (ix == 0)  ?  is_smooth(n,k)  :  is_rough(n,k);
+      RETURN_NPARITY(res);
+    }
+    switch (ix) {
+      case 0:  _vcallsub_with_gmp(0.53,"is_smooth");  break;
+      case 1:
+      default: _vcallsub_with_gmp(0.53,"is_rough"); break;
+    }
+    return;
+
 
 void
 kronecker(IN SV* sva, IN SV* svb)

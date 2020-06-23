@@ -178,6 +178,7 @@ t/26-lucky.t
 t/26-mod.t
 t/26-pillai.t
 t/26-polygonal.t
+t/26-smooth.t
 t/26-vec.t
 t/27-bernfrac.t
 t/28-pi.t
