@@ -22,6 +22,7 @@ extern void print_primes(UV low, UV high, int fd);
 extern int powerof(UV n);
 extern int is_power(UV n, UV a);
 extern UV rootof(UV n, UV k);
+extern UV ipowsafe(UV n, UV k);  /* returns UV_MAX if overflows */
 extern int primepower(UV n, UV* prime);
 extern UV valuation(UV n, UV k);
 extern UV logint(UV n, UV b);
@@ -72,6 +73,7 @@ extern UV  factorialmod(UV n, UV m);
 extern int is_fundamental(UV n, int neg);
 extern int is_totient(UV n);
 extern int is_semiprime(UV n);
+extern int is_almost_prime(UV n, UV k);
 extern int is_carmichael(UV n);
 extern UV  is_quasi_carmichael(UV n);  /* Returns number of bases */
 extern UV  pillai_v(UV n);             /* v: v! % n == n-1 && n % v != 1 */

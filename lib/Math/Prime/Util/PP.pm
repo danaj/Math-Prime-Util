@@ -1157,6 +1157,21 @@ sub is_semiprime {
   return (scalar(Math::Prime::Util::factor($n)) == 2) ? 1 : 0;
 }
 
+sub is_almost_prime {
+  my($n, $k) = @_;
+  _validate_positive_integer($n);
+  _validate_positive_integer($k);
+
+  return 0+($n==1) if $k == 0;
+  return (Math::Prime::Util::is_prime($n) ? 1 : 0) if $k == 1;
+  return Math::Prime::Util::is_semiprime($n) if $k == 2;
+  return 0 if ($n >> $k) == 0;
+
+  # TODO: Optimization here
+
+  return (scalar(Math::Prime::Util::factor($n)) == $k) ? 1 : 0;
+}
+
 sub _totpred {
   my($n, $maxd) = @_;
   return 0 if $maxd <= 1 || (ref($n) ? $n->is_odd() : ($n & 1));

@@ -208,6 +208,7 @@ Tags:
   is_primitive_root(r,n)              is r a primitive root mod n
   is_pillai(n)                        v where  v! % n == n-1  and  n % v != 1
   is_semiprime(n)                     does n have exactly 2 prime factors
+  is_almost_prime(n,k)                does n have exactly k prime factors
   is_polygonal(n,k)                   is n a k-polygonal number
   is_polygonal(n,k,\$root)            as above but also set $root
   is_fundamental(d)                   is d a fundamental discriminant

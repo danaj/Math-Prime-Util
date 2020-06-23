@@ -761,10 +761,10 @@ int is_power(UV n, UV a)
 
 #if BITS_PER_WORD == 64
 #define ROOT_MAX_3 41
-static const uint32_t root_max[ROOT_MAX_3] = {0,0,0,2642245,65535,7131,1625,565,255,138,84,56,40,30,23,19,15,13,11,10,9,8,7,6,6,5,5,5,4,4,4,4,3,3,3,3,3,3,3,3,3};
+static const uint32_t root_max[ROOT_MAX_3] = {0,0,4294967295,2642245,65535,7131,1625,565,255,138,84,56,40,30,23,19,15,13,11,10,9,8,7,6,6,5,5,5,4,4,4,4,3,3,3,3,3,3,3,3,3};
 #else
 #define ROOT_MAX_3 21
-static const uint32_t root_max[ROOT_MAX_3] = {0,0,0,1625,255,84,40,23,15,11,9,7,6,5,4,4,3,3,3,3,3};
+static const uint32_t root_max[ROOT_MAX_3] = {0,0,65535,1625,255,84,40,23,15,11,9,7,6,5,4,4,3,3,3,3,3};
 #endif
 
 UV rootof(UV n, UV k) {
@@ -786,6 +786,21 @@ UV rootof(UV n, UV k) {
     else                  hi = mid;
   }
   return lo-1;
+}
+
+/* Like ipow but returns UV_MAX if overflow */
+UV ipowsafe(UV n, UV k) {
+  UV p = 1;
+
+  if (k < ROOT_MAX_3)
+    return (n <= root_max[k]) ? ipow(n,k) : UV_MAX;
+
+  while (k) {
+    if (k & 1) { if (UV_MAX/n < p) return UV_MAX;  p *= n; }
+    k >>= 1;
+    if (k)     { if (UV_MAX/n < n) return UV_MAX;  n *= n; }
+  }
+  return p;
 }
 
 int primepower(UV n, UV* prime)
@@ -1251,6 +1266,39 @@ int is_semiprime(UV n) {
   /* 4-8% of random inputs left */
   if (factor_one(n, factors, 0, 0) != 2) return 0;
   return (is_def_prime(factors[0]) && is_def_prime(factors[1]));
+}
+int is_almost_prime(UV n, UV k) {
+  UV p, fac[MPU_MAX_FACTORS+1];
+  int nfac, sp;
+
+  if (k == 0) return (n == 1);
+  if (k == 1) return !!is_prob_prime(n);
+  if (k == 2) return is_semiprime(n);
+
+  if ((n >> k) == 0) return 0;  /* The smallest k-almost prime is 2^k */
+
+  while (k > 0 && !(n& 1)) { k--; n >>= 1; }
+  while (k > 0 && !(n% 3)) { k--; n /=  3; }
+  while (k > 0 && !(n% 5)) { k--; n /=  5; }
+  while (k > 0 && !(n% 7)) { k--; n /=  7; }
+  p = 11;
+  if (k >= 5) {
+    for (sp = 5; k > 1 && n > 1 && sp < NPRIMES_TINY-1; sp++) {
+      p = primes_tiny[sp];
+      if (n < ipowsafe(p,k))
+        return 0;
+      while ((n % p) == 0 && k > 0)
+        { k--; n /= p; }
+    }
+    p = primes_tiny[sp];
+  }
+  if (k == 0) return (n == 1);
+  if (k == 1) return !!is_prob_prime(n);
+  if (k == 2) return is_semiprime(n);
+  if (n < ipowsafe(p,k)) return 0;
+
+  nfac = factor(n, fac);
+  return (nfac == k);
 }
 
 int is_fundamental(UV n, int neg) {

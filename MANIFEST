@@ -167,6 +167,7 @@ t/24-partitions.t
 t/25-lucas_sequences.t
 t/26-combinatorial.t
 t/26-digits.t
+t/26-isalmostprime.t
 t/26-iscarmichael.t
 t/26-isfundamental.t
 t/26-isgaussianprime.t

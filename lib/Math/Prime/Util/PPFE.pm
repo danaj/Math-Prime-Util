@@ -115,6 +115,7 @@ sub entropy_bytes {
 *is_pillai = \&Math::Prime::Util::PP::is_pillai;
 *is_fundamental = \&Math::Prime::Util::PP::is_fundamental;
 *is_semiprime = \&Math::Prime::Util::PP::is_semiprime;
+*is_almost_prime = \&Math::Prime::Util::PP::is_almost_prime;
 *is_totient = \&Math::Prime::Util::PP::is_totient;
 *is_square = \&Math::Prime::Util::PP::is_square;
 *is_lucky = \&Math::Prime::Util::PP::is_lucky;

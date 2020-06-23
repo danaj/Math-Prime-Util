@@ -26,7 +26,8 @@ our @EXPORT_OK =
       is_frobenius_underwood_pseudoprime is_frobenius_khashin_pseudoprime
       is_perrin_pseudoprime is_catalan_pseudoprime
       is_aks_prime is_bpsw_prime is_ramanujan_prime is_mersenne_prime
-      is_power is_prime_power is_pillai is_semiprime is_square is_polygonal
+      is_power is_prime_power is_pillai is_square is_polygonal
+      is_semiprime is_almost_prime
       is_square_free is_primitive_root is_carmichael is_quasi_carmichael
       is_fundamental is_totient is_gaussian_prime
       is_smooth is_rough
@@ -3187,6 +3188,12 @@ A semiprime is the product of exactly two primes.
 
 The boolean result is the same as C<scalar(factor(n)) == 2>, but this
 function performs shortcuts that can greatly speed up the operation.
+
+=head2 is_almost_prime
+
+Given positive integers C<n> and C<k>, returns 1 if C<n> has exactly C<k>
+prime factors.  The primes themselves are 1-almost primes, while semiprimes
+are 2-almost primes.
 
 =head2 is_fundamental
 

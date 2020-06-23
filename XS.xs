@@ -1984,6 +1984,7 @@ void
 is_smooth(IN SV* svn, IN SV* svk)
   ALIAS:
     is_rough = 1
+    is_almost_prime = 2
   PREINIT:
     int nstatus, kstatus, res;
     IV sk;
@@ -1992,13 +1993,19 @@ is_smooth(IN SV* svn, IN SV* svk)
     kstatus = _validate_int(aTHX_ svk, 1);
     if (nstatus == 1 && kstatus == 1) {
       UV n = my_svuv(svn), k = my_svuv(svk);
-      res = (ix == 0)  ?  is_smooth(n,k)  :  is_rough(n,k);
+      switch (ix) {
+        case 0:  res = is_smooth(n,k); break;
+        case 1:  res = is_rough(n,k); break;
+        case 2:
+        default: res = is_almost_prime(n,k); break;
+      }
       RETURN_NPARITY(res);
     }
     switch (ix) {
       case 0:  _vcallsub_with_gmp(0.53,"is_smooth");  break;
-      case 1:
-      default: _vcallsub_with_gmp(0.53,"is_rough"); break;
+      case 1:  _vcallsub_with_gmp(0.53,"is_rough");  break;
+      case 2:
+      default: _vcallsub_with_gmp(0.53,"is_almost_prime"); break;
     }
     return;
 
