@@ -26,6 +26,8 @@ multicall.h
 mulmod.h
 aks.h
 aks.c
+almost_primes.h
+almost_primes.c
 cache.h
 cache.c
 constants.h

@@ -522,7 +522,7 @@ void end_segment_primes(void* vctx)
   Safefree(ctx);
 }
 
-void* array_of_primes_in_range(UV* count, UV beg, UV end)
+UV* array_of_primes_in_range(UV* count, UV beg, UV end)
 {
   UV *P, i = 0;
   UV cntest = prime_count_upper(end) - prime_count_lower(beg) + 1;

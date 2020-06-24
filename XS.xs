@@ -33,6 +33,7 @@
 #include "random_prime.h"
 #include "ramanujan_primes.h"
 #include "semi_primes.h"
+#include "almost_primes.h"
 #include "prime_nth_count.h"
 
 #ifdef FACTORING_HARNESSES
@@ -1852,7 +1853,9 @@ znorder(IN SV* sva, IN SV* svn)
     ramanujan_sum = 3
     factorialmod = 4
     legendre_phi = 5
-    debruijn_psi = 6
+    almost_prime_count = 6
+    almost_prime_count_approx = 7
+    debruijn_psi = 8
   PREINIT:
     int astatus, nstatus;
   PPCODE:
@@ -1897,7 +1900,11 @@ znorder(IN SV* sva, IN SV* svn)
                  break;
         case 5:  ret = legendre_phi(a, n);
                  break;
-        case 6:
+        case 6:  ret = almost_prime_count(a, n);
+                 break;
+        case 7:  ret = almost_prime_count_approx(a, n);
+                 break;
+        case 8:
         default: ret = debruijn_psi(a, n);
                  break;
       }
@@ -1912,7 +1919,9 @@ znorder(IN SV* sva, IN SV* svn)
       case 3:  _vcallsub_with_pp("ramanujan_sum");  break;
       case 4:  _vcallsub_with_gmp(0.47,"factorialmod");  break;
       case 5:  _vcallsub_with_pp("legendre_phi");  break;
-      case 6:
+      case 6:  _vcallsub_with_pp("almost_prime_count");  break;
+      case 7:  _vcallsub_with_pp("almost_prime_count_approx");  break;
+      case 8:
       default: _vcallsub_with_pp("debruijn_psi"); break;
     }
     objectify_result(aTHX_ sva, ST(0));

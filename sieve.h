@@ -12,7 +12,7 @@ extern void* start_segment_primes(UV low, UV high, unsigned char** segmentmem);
 extern int next_segment_primes(void* vctx, UV* base, UV* low, UV* high);
 extern void end_segment_primes(void* vctx);
 
-extern void* array_of_primes_in_range(UV* count, UV beg, UV end);
+extern UV* array_of_primes_in_range(UV* count, UV beg, UV end);
 
 static const UV wheel30[] = {1, 7, 11, 13, 17, 19, 23, 29};
 /* Used for moving between primes */
@@ -201,6 +201,22 @@ static const unsigned char wheel240[] = {1,7,11,13,17,19,23,29,31,37,41,43,47,49
       } \
     } \
     release_prime_cache(sieve_); \
+  }
+
+
+#define SIMPLE_FOR_EACH_PRIME(a, b) \
+  { \
+    UV p_ = a; \
+    UV l_ = b; \
+    if (p_ > 0) p_--; \
+    while (1) { \
+      UV p = (p_ = next_prime(p_)); \
+      if (p > l_ || p == 0) break; \
+      { \
+
+#define END_SIMPLE_FOR_EACH_PRIME \
+      } \
+    } \
   }
 
 #endif

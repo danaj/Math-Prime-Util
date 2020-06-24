@@ -232,10 +232,16 @@
 - consider count_smooth, smooth_count, ??? instead of debruijn_psi.  Maybe
   similar for rough.
 
-- almost_prime_count(n, k).  Maybe other almost_prime functions?
-
 - primorial and pn_primorial to XS with direct to GMP.  Remember to objectify.
 
 - optimize PP is_almost_prime
 
 - ipowsafe could have the limits using hard-coded sqrt and cbrt to avoid div.
+
+- almost_primes:
+      range API
+      range sieve
+      nth
+      nth_approx
+
+- almost primes:   PPFE, PP, tests

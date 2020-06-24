@@ -51,6 +51,7 @@ our @EXPORT_OK =
       twin_prime_count twin_prime_count_approx
       nth_twin_prime nth_twin_prime_approx
       semiprime_count semiprime_count_approx
+      almost_prime_count almost_prime_count_approx
       nth_semiprime nth_semiprime_approx
       ramanujan_prime_count ramanujan_prime_count_approx
       ramanujan_prime_count_lower ramanujan_prime_count_upper
@@ -1798,6 +1799,21 @@ range end is used, unless the range is so small that walking it is faster.
 
 Returns an approximation to the semiprime count of C<n>.
 This returns quickly and is typically square root accurate.
+
+
+=head2 almost_prime_count
+
+Given non-negative integers C<n> and C<k>, returns the count of
+C<k>-almost-prime numbers up to and including C<n>.  With C<k=1> this
+is the standard prime count.  With C<k=2> this is the semiprime count.
+It is the count of all integers through C<n> that have exactly
+C<k> prime factors.
+
+=head2 almost_prime_count_approx
+
+Returns an approximation to the C<k>-almost-prime count of C<n>.
+This returns quickly but does not have good estimates with C<k>
+greater than 3.
 
 
 =head2 ramanujan_primes

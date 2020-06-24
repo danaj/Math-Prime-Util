@@ -25,6 +25,8 @@ Revision history for Perl module Math::Prime::Util
     - is_smooth(n,k)                  is n a k-smooth number
     - is_rough(n,k)                   is n a k-rough number
     - is_almost_prime(n,k)            does n have exactly k prime factors
+    - almost_prime_count(n,k)         Counts integers with exactly k factors
+    - almost_prime_count_approx(n,k)  Approximate count for k-almost-primes
 
     [FIXES]
 
