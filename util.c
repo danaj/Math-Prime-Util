@@ -1268,8 +1268,7 @@ int is_semiprime(UV n) {
   return (is_def_prime(factors[0]) && is_def_prime(factors[1]));
 }
 int is_almost_prime(UV n, UV k) {
-  UV p, fac[MPU_MAX_FACTORS+1];
-  int nfac, sp;
+  UV p, sp;
 
   if (k == 0) return (n == 1);
   if (k == 1) return !!is_prob_prime(n);
@@ -1297,8 +1296,7 @@ int is_almost_prime(UV n, UV k) {
   if (k == 2) return is_semiprime(n);
   if (n < ipowsafe(p,k)) return 0;
 
-  nfac = factor(n, fac);
-  return (nfac == k);
+  return (prime_bigomega(n) == k);
 }
 
 int is_fundamental(UV n, int neg) {
