@@ -212,12 +212,10 @@
 
 - euler_phi should do XS -> GMP directly.  Maybe make totient in PP for uniform name.
 
-- consider making liouville ranged just like moebius and euler_phi.
+- Make prime_omega, prime_bigomega, and liouville take a range like moebius.
 
-- as part of ranged liouville, perhaps an option to ranged factor to just
-  return the number of distinct factors.  Trivially this is easy to do just
-  in the return portion, but we could speed things up by not bothering to
-  save the factors at all.
+- think about making an iterator for range omega/bigomega.  We can precalc
+  the primes and offsets, which should enable fast sieving of small windows.
 
 - dickman_rho, debruijn_psi
   See: https://arxiv.org/pdf/1301.5293.pdf
@@ -234,7 +232,7 @@
 
 - primorial and pn_primorial to XS with direct to GMP.  Remember to objectify.
 
-- optimize PP is_almost_prime
+- optimize PP is_almost_prime, nth_almost_prime
 
 - ipowsafe could have the limits using hard-coded sqrt and cbrt to avoid div.
 
@@ -243,5 +241,24 @@
       range sieve
       nth
       nth_approx
+      tests for nth
 
 - almost primes:   PPFE, PP, tests
+  check and enter new for
+   3 http://oeis.org/A109251
+   4 http://oeis.org/A114106
+   5 http://oeis.org/A114453
+   6 http://oeis.org/A120047
+   7 http://oeis.org/A120048
+   8 http://oeis.org/A120049
+   9 http://oeis.org/A120050
+  10 http://oeis.org/A120051
+  11 http://oeis.org/A120052
+  12 http://oeis.org/A120053
+  4^n https://oeis.org/A116426
+  6^n https://oeis.org/A116427
+  8^n https://oeis.org/A116428
+  9^n https://oeis.org/A116429
+  nth https://oeis.org/A101695
+
+- Possibly improve semiprimes using the Bayless (2018) bounds.

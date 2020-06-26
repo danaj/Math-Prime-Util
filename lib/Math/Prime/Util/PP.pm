@@ -2256,6 +2256,35 @@ sub semiprime_count {
   my $sum = _semiprime_count($high) - (($low < 4) ? 0 : semiprime_count($low-1));
   $sum;
 }
+
+sub _kapc_count {
+  my($n, $pdiv, $lo, $k) = @_;
+  my $hi = Math::Prime::Util::rootint(Math::Prime::Util::divint($n,$pdiv),$k);
+  my $sum = 0;
+
+  if ($k == 2) {
+    my $pc = Math::Prime::Util::prime_count($lo) - 1;
+    Math::Prime::Util::forprimes( sub {
+      $sum += Math::Prime::Util::prime_count(int($n/($pdiv*$_)))-$pc++;
+    }, $lo, $hi);
+  } else {
+    Math::Prime::Util::forprimes( sub {
+      $sum += _kapc_count($n, Math::Prime::Util::mulint($pdiv,$_), $_, $k-1);
+    }, $lo, $hi);
+  }
+  $sum;
+}
+sub almost_prime_count {
+  my($n,$k) = @_;
+  _validate_positive_integer($n);
+  _validate_positive_integer($k);
+  return ($n >= 1) if $k == 0;
+  return Math::Prime::Util::prime_count($n) if $k == 1;
+  return Math::Prime::Util::semiprime_count($n) if $k == 2;
+  return 0 if ($n >> $k) == 0;
+
+  _kapc_count($n, 1, 2, $k);
+}
 sub ramanujan_prime_count {
   my($low,$high) = @_;
   if (defined $high) { _validate_positive_integer($low); }
@@ -2316,6 +2345,24 @@ sub semiprime_count_approx {
   int(0.5+$est);
 }
 
+sub almost_prime_count_approx {
+  my($n,$k) = @_;
+  _validate_positive_integer($n);
+  _validate_positive_integer($k);
+  return ($n >= 1) if $k == 0;
+  return Math::Prime::Util::prime_count_approx($n) if $k == 1;
+  return Math::Prime::Util::semiprime_count_approx($n) if $k == 2;
+  return 0 if ($n >> $k) == 0;
+
+  my $pc = Math::Prime::Util::prime_count_approx($n);
+  my $loglogn = log(log($n + 0.0));
+  my $est = $pc;
+  for my $i (1 .. $k-1) {
+    $est *= ($loglogn/$i);
+  }
+  int(0.5+$est);
+}
+
 sub nth_twin_prime {
   my($n) = @_;
   return undef if $n < 0;  ## no critic qw(ProhibitExplicitReturnUndef)
@@ -2371,6 +2418,25 @@ sub nth_semiprime_approx {
   my $l2 = log($l1);
   my $est = 0.966 * $n * $l1 / $l2;
   int(0.5+$est);
+}
+
+sub nth_almost_prime {
+  my($n, $k) = @_;
+  return undef if $n == 0;
+  return 1 << $k if $n == 1;
+  return undef if $k == 0;  # n==1 already returned
+  return Math::Prime::Util::nth_prime($n) if $k == 1;
+  return Math::Prime::Util::nth_semiprime($n) if $k == 2;
+
+  # Brutally inefficient algorithm.
+  my $i = 1 << $k;
+  while (1) {
+    while (!Math::Prime::Util::is_almost_prime($i,$k)) {
+      $i++;
+    }
+    return $i if --$n == 0;
+    $i++;
+  }
 }
 
 sub nth_ramanujan_prime_upper {

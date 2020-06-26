@@ -99,6 +99,7 @@ Tags:
   semiprime_count_approx(n)           fast approximate count of semiprimes
   nth_semiprime(n)                    the nth semiprime
   nth_semiprime_approx(n)             fast approximate nth semiprime
+  nth_almost_prime(n,k)               the nth number with exactly k factors
   almost_prime_count(n,k)             count of k-almost-primes
   almost_prime_count_approx(n,k)      fast approximate k-almost-prime count
   ramanujan_prime_count(n)            count of Ramanujan primes <= n

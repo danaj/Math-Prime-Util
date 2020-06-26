@@ -1855,7 +1855,8 @@ znorder(IN SV* sva, IN SV* svn)
     legendre_phi = 5
     almost_prime_count = 6
     almost_prime_count_approx = 7
-    debruijn_psi = 8
+    nth_almost_prime = 8
+    debruijn_psi = 9
   PREINIT:
     int astatus, nstatus;
   PPCODE:
@@ -1904,7 +1905,12 @@ znorder(IN SV* sva, IN SV* svn)
                  break;
         case 7:  ret = almost_prime_count_approx(a, n);
                  break;
-        case 8:
+        case 8:  if (a == 0 || (n == 0 && a > 1)) XSRETURN_UNDEF;
+                 if (n > max_almost_prime_count(n))
+                   goto overflow;
+                 ret = nth_almost_prime(a, n);
+                 break;
+        case 9:
         default: ret = debruijn_psi(a, n);
                  break;
       }
@@ -1921,7 +1927,8 @@ znorder(IN SV* sva, IN SV* svn)
       case 5:  _vcallsub_with_pp("legendre_phi");  break;
       case 6:  _vcallsub_with_pp("almost_prime_count");  break;
       case 7:  _vcallsub_with_pp("almost_prime_count_approx");  break;
-      case 8:
+      case 8:  _vcallsub_with_pp("nth_almost_prime");  break;
+      case 9:
       default: _vcallsub_with_pp("debruijn_psi"); break;
     }
     objectify_result(aTHX_ sva, ST(0));

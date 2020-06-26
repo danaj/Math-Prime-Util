@@ -106,6 +106,7 @@ sub entropy_bytes {
 *sieve_prime_cluster = \&Math::Prime::Util::PP::sieve_prime_cluster;
 *twin_prime_count = \&Math::Prime::Util::PP::twin_prime_count;
 *semiprime_count = \&Math::Prime::Util::PP::semiprime_count;
+*almost_prime_count = \&Math::Prime::Util::PP::almost_prime_count;
 *ramanujan_prime_count = \&Math::Prime::Util::PP::ramanujan_prime_count;
 *sum_primes = \&Math::Prime::Util::PP::sum_primes;
 *print_primes = \&Math::Prime::Util::PP::print_primes;
@@ -256,6 +257,11 @@ sub semiprime_count_approx {
   _validate_positive_integer($n);
   return Math::Prime::Util::PP::semiprime_count_approx($n);
 }
+sub almost_prime_count_approx {
+  my($n) = @_;
+  _validate_positive_integer($n);
+  return Math::Prime::Util::PP::almost_prime_count_approx($n);
+}
 sub ramanujan_prime_count_lower {
   my($n) = @_;
   _validate_positive_integer($n);
@@ -290,6 +296,12 @@ sub nth_semiprime_approx {
   my($n) = @_;
   _validate_positive_integer($n);
   return Math::Prime::Util::PP::nth_semiprime_approx($n);
+}
+sub nth_almost_prime {
+  my($n,$k) = @_;
+  _validate_positive_integer($n);
+  _validate_positive_integer($k);
+  return Math::Prime::Util::PP::nth_almost_prime($n,$k);
 }
 sub nth_ramanujan_prime {
   my($n) = @_;
