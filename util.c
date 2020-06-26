@@ -969,13 +969,13 @@ int kronecker_ss(IV a, IV b) {
 }
 
 UV primorial(UV n) {
-  UV pi, prim = 1;
-  for (pi = 1; pi < NPRIMES_TINY; pi++) {
-    UV pt = primes_tiny[pi];
-    if (n < pt) return prim;
-    if (UV_MAX/pt < prim) return 0;
-    prim *= pt;
+  UV pi, prim = 1, max = (sizeof(UV) <= 4) ? 28 : 52;
+  if (n > max) return 0;
+  for (pi = 1; pi <= max; pi++) {
+    if (n < primes_tiny[pi]) break;
+    prim *= primes_tiny[pi];
   }
+  return prim;
 }
 UV factorial(UV n) {
   UV i, r = 1;
