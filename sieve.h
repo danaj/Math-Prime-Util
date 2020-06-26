@@ -219,4 +219,13 @@ static const unsigned char wheel240[] = {1,7,11,13,17,19,23,29,31,37,41,43,47,49
     } \
   }
 
+/* Mark at <first>, but if that is less than <lo>, then use the first multiple
+ * of <p> at or after lo.
+ *
+ * I.e. the result n is n = p2 + k*p >= lo with the smallest possible k.
+ * TODO: this assumes first is a multiple of p.  Fix. */
+#define P_GT_LO(first,p,lo)  ( ((first)>=(lo)) ? (first) : (lo)+(((p)-((lo)%(p)))%(p)) )
+/* As above, but as an offset from lo, so returns 0+ */
+#define P_GT_LO_0(first,p,lo)  ( ((first)>=(lo)) ? ((first)-(lo)) : (((p)-((lo)%(p)))%(p)) )
+
 #endif
