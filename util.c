@@ -657,13 +657,14 @@ IV sumliouville(UV n) {
  *https://www.ams.org/journals/mcom/2008-77-263/S0025-5718-08-02036-X/S0025-5718-08-02036-X.pdf */
 signed char* range_liouville(UV lo, UV hi)
 {
-  signed char *l, *la;
-
-  if (hi < lo) croak("range_liouvillle error hi %"UVuf" < lo %"UVuf"\n", hi, lo);
-  la = liouville_array(hi);
+  UV i;
+  signed char *l;
+  if (hi < lo) croak("range_liouvillle error hi %"UVuf" < lo %"UVuf"\n",hi,lo);
+  unsigned char *nf = range_nfactor_sieve(lo, hi, 1);
   New(0, l, hi-lo+1, signed char);
-  memcpy(l, la+lo, hi-lo+1);
-  Safefree(la);
+  for (i = 0; i < hi-lo+1; i++)
+    l[i] = (nf[i] & 1) ? -1 : 1;
+  Safefree(nf);
   return l;
 }
 
