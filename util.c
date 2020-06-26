@@ -280,7 +280,6 @@ void print_primes(UV low, UV high, int fd) {
 
 /* Return a char array with lo-hi+1 elements. mu[k-lo] = µ(k) for k = lo .. hi.
  * It is the callers responsibility to call Safefree on the result. */
-#define PGTLO(ip,p,lo)  ((ip)>=(lo)) ? (ip) : ((p)*((lo)/(p)) + (((lo)%(p))?(p):0))
 signed char* range_moebius(UV lo, UV hi)
 {
   signed char* mu;
@@ -311,9 +310,9 @@ signed char* range_moebius(UV lo, UV hi)
       logp += 2;   /* logp is 1 | ceil(log(p)/log(2)) */
       nextlog = ((nextlog-1)*4)+1;
     }
-    for (i = PGTLO(p, p, lo); i >= lo && i <= hi; i += p)
+    for (i = P_GT_LO(p, p, lo); i >= lo && i <= hi; i += p)
       mu[i-lo] += logp;
-    for (i = PGTLO(p2, p2, lo); i >= lo && i <= hi; i += p2)
+    for (i = P_GT_LO(p2, p2, lo); i >= lo && i <= hi; i += p2)
       mu[i-lo] = 0x80;
   } END_DO_FOR_EACH_PRIME
 
@@ -422,7 +421,7 @@ UV* range_totient(UV lo, UV hi) {
   ctx = start_segment_primes(7, hi/2, &segment);
   while (next_segment_primes(ctx, &seg_base, &seg_low, &seg_high)) {
     START_DO_FOR_EACH_SIEVE_PRIME( segment, seg_base, seg_low, seg_high ) {
-      for (i = PGTLO(2*p,p,lo); i >= lo && i <= hi; i += p)
+      for (i = P_GT_LO(2*p,p,lo); i >= lo && i <= hi; i += p)
         totients[i-lo] -= totients[i-lo]/p;
     } END_DO_FOR_EACH_SIEVE_PRIME
   }
