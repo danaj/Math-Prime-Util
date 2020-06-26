@@ -2003,7 +2003,6 @@ is_smooth(IN SV* svn, IN SV* svk)
     is_almost_prime = 2
   PREINIT:
     int nstatus, kstatus, res;
-    IV sk;
   PPCODE:
     nstatus = _validate_int(aTHX_ svn, 0);
     kstatus = _validate_int(aTHX_ svk, 1);

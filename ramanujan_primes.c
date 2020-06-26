@@ -287,7 +287,7 @@ UV* ramanujan_primes(UV* first, UV* last, UV low, UV high)
 
 /* Generate a small window of Rp's around n */
 static UV* _ramanujan_prime_window(UV n, UV* winsize, UV* npos) {
-  UV i, v, rn, *L, window, swin, ewin, wlen, winmult = 1;
+  UV i, v, *L, window, swin, ewin, wlen, winmult = 1;
 
   MPUverbose(1, "ramanujan_prime_count calculating Pi(%"UVuf")\n",n);
   v = prime_count(2,n) - prime_count(2,n >> 1);
@@ -328,7 +328,7 @@ UV nth_ramanujan_prime(UV n) {
 }
 
 int is_ramanujan_prime(UV n) {
-  UV i, d, beg, end, *L, swin, rn;
+  UV i, d, *L, swin, rn;
 
   if (!is_prime(n))  return 0;
   if (n < 17)        return (n == 2 || n == 11);
