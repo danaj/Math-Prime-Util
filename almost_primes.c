@@ -23,19 +23,6 @@
 /*                                KAP UTILITY                                 */
 /******************************************************************************/
 
-#if 0
-static UV _next_almost_prime(UV k, UV n) {
-  while (!is_almost_prime(k, ++n))
-    ;
-  return n;
-}
-#endif
-static UV _prev_almost_semiprime(UV k, UV n) {
-  while (!is_almost_prime(k, --n))
-    ;
-  return n;
-}
-
 /* Least r s.t.  almost_prime_count(k, n)  =  almost_prime_count(k-r, n >> r) */
 static UV reduce_prime_count_factor(UV k, UV n) {
   UV const maxpow3 = (BITS_PER_WORD == 32) ? 20 : 40;
@@ -76,6 +63,22 @@ static UV _fast_small_nth_almost_prime(UV k, UV n) {
 }
 
 static void _almost_prime_count_bounds(UV *lower, UV *upper, UV k, UV n);
+
+#if 0   /* Not currently used */
+/* Somewhere around k=20 it is faster to do:
+ *    return nth_almost_prime(h, 1+almost_prime_count(k,n));
+ */
+static UV _next_almost_prime(UV k, UV n) {
+  while (!is_almost_prime(k, ++n))
+    ;
+  return n;
+}
+static UV _prev_almost_semiprime(UV k, UV n) {
+  while (!is_almost_prime(k, --n))
+    ;
+  return n;
+}
+#endif
 
 
 /******************************************************************************/
@@ -205,6 +208,7 @@ UV almost_prime_count(UV k, UV lo, UV hi) {
   if (k == 0) return (lo <= 1 || hi >= 1);
   if (k == 1) return prime_count(lo, hi);
   if (k == 2) return semiprime_count(lo, hi);
+  /* See semiprime_count.  Possibly clever solutions for small ranges. */
   return _almost_prime_count(k, hi) - _almost_prime_count(k, lo-1);
 }
 #endif
@@ -431,7 +435,8 @@ UV nth_almost_prime(UV k, UV n) {
   /* Binary search for the transition, with a shortcut to linear once close. */
   while (lo < hi) {
     if (rhi == n && (hi-lo < 60000)) {
-      hi = _prev_almost_semiprime(k, hi+1);
+      while (!is_almost_prime(k,hi))
+        hi--;
       break;
     }
     mid = lo + (hi-lo)/2;
@@ -488,7 +493,7 @@ static const double _lower_32[21] = {0,0, 1.004,0.7383,0.6828,
   /* 13-20 */ 0.03426,0.0290,0.02617,0.02344,0.02183,0.01972,0.02073,0.02252 };
 static const double _lower_64[41] = {0,0, 1.011,0.8093,0.7484,
   /* 5-12 */
-  0.6465,0.3982,0.2463,0.1571,0.1048,0.07363,0.0545,    0.042,
+  0.6465,0.3982,0.2463,0.1571,0.1048,0.07363,0.0545,0.042,
   /* 13-20 */
   0.033,0.025,0.024,0.021,0.020,0.019,0.019,0.021,
   /* 21-28 */
