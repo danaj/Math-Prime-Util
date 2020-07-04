@@ -1158,9 +1158,9 @@ sub is_semiprime {
 }
 
 sub is_almost_prime {
-  my($n, $k) = @_;
-  _validate_positive_integer($n);
+  my($k, $n) = @_;
   _validate_positive_integer($k);
+  _validate_positive_integer($n);
 
   return 0+($n==1) if $k == 0;
   return (Math::Prime::Util::is_prime($n) ? 1 : 0) if $k == 1;
@@ -2275,9 +2275,9 @@ sub _kapc_count {
   $sum;
 }
 sub almost_prime_count {
-  my($n,$k) = @_;
-  _validate_positive_integer($n);
+  my($k,$n) = @_;
   _validate_positive_integer($k);
+  _validate_positive_integer($n);
   return ($n >= 1) if $k == 0;
   return Math::Prime::Util::prime_count($n) if $k == 1;
   return Math::Prime::Util::semiprime_count($n) if $k == 2;
@@ -2346,9 +2346,9 @@ sub semiprime_count_approx {
 }
 
 sub almost_prime_count_approx {
-  my($n,$k) = @_;
-  _validate_positive_integer($n);
+  my($k,$n) = @_;
   _validate_positive_integer($k);
+  _validate_positive_integer($n);
   return ($n >= 1) if $k == 0;
   return Math::Prime::Util::prime_count_approx($n) if $k == 1;
   return Math::Prime::Util::semiprime_count_approx($n) if $k == 2;
@@ -2421,7 +2421,7 @@ sub nth_semiprime_approx {
 }
 
 sub nth_almost_prime {
-  my($n, $k) = @_;
+  my($k, $n) = @_;
   return undef if $n == 0;
   return 1 << $k if $n == 1;
   return undef if $k == 0;  # n==1 already returned
@@ -2431,7 +2431,7 @@ sub nth_almost_prime {
   # Brutally inefficient algorithm.
   my $i = 1 << $k;
   while (1) {
-    while (!Math::Prime::Util::is_almost_prime($i,$k)) {
+    while (!Math::Prime::Util::is_almost_prime($k,$i)) {
       $i++;
     }
     return $i if --$n == 0;

@@ -99,9 +99,14 @@ Tags:
   semiprime_count_approx(n)           fast approximate count of semiprimes
   nth_semiprime(n)                    the nth semiprime
   nth_semiprime_approx(n)             fast approximate nth semiprime
-  nth_almost_prime(n,k)               the nth number with exactly k factors
-  almost_prime_count(n,k)             count of k-almost-primes
-  almost_prime_count_approx(n,k)      fast approximate k-almost-prime count
+  almost_prime_count(k,n)             count of k-almost-primes
+  almost_prime_count_approx(k,n)      fast approximate k-almost-prime count
+  almost_prime_count_lower(k,n)       fast k-almost-prime count lower bound
+  almost_prime_count_upper(k,n)       fast k-almost-prime count upper bound
+  nth_almost_prime(k,n)               the nth number with exactly k factors
+  nth_almost_prime_approx(k,n)        fast approximate nth k-almost prime
+  nth_almost_prime_lower(k,n)         fast nth k-almost prime lower bound
+  nth_almost_prime_upper(k,n)         fast nth k-almost prime upper bound
   ramanujan_prime_count(n)            count of Ramanujan primes <= n
   ramanujan_prime_count(start, end)   count of Ramanujan primes in range
   ramanujan_prime_count_lower(n)      fast lower bound for Ramanujan count
@@ -211,7 +216,7 @@ Tags:
   is_primitive_root(r,n)              is r a primitive root mod n
   is_pillai(n)                        v where  v! % n == n-1  and  n % v != 1
   is_semiprime(n)                     does n have exactly 2 prime factors
-  is_almost_prime(n,k)                does n have exactly k prime factors
+  is_almost_prime(k,n)                does n have exactly k prime factors
   is_polygonal(n,k)                   is n a k-polygonal number
   is_polygonal(n,k,\$root)            as above but also set $root
   is_fundamental(d)                   is d a fundamental discriminant

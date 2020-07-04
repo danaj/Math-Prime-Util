@@ -1400,47 +1400,38 @@ void factor_range_destroy(factor_range_context_t *ctx) {
 /* Find number of factors for all values in a range */
 /******************************************************************************/
 
-#define MARK_MULTIPLES(p) \
-  { UV p2 = (p)*(p); \
-    /* Mark p and all multiples */ \
-    for (i = P_GT_LO_0(p,p,lo); i < range; i += p) \
-      { nf[i]++; N[i] /= p; } \
-    for (i = P_GT_LO_0(p2,p2,lo); i < range; i += p2) \
-      do { \
-        if (with_multiplicity) nf[i]++; \
-        N[i] /= p; \
-      } while ((N[i] % p) == 0); \
-  }
-
 unsigned char* range_nfactor_sieve(UV lo, UV hi, int with_multiplicity) {
   unsigned char* nf;
   UV *N, i, range = hi-lo+1, sqrtn = isqrt(hi);
 
-  New(0, N, range, UV);
   Newz(0, nf, range, unsigned char);
-  for (i = lo; i <= hi; i++)
-    N[i-lo] = i;
+  New(0, N, range, UV);
 
-  /* Other ways to deal with mutiples of 2:
-   *   - Pull out when we set above.
-   *   - don't sieve, but detect evens and perfect powers at the end.
-   *   - presieve.  cycling array of initial counts and divisors,
-   *     probably mod something like 2*2*2*3*5 so we can skip those.
-   * They seem to save less than 5% time.
-   */
+  /* We could set to 1 and sieve from 2, or do this initialization */
+  for (i = lo; i <= hi; i++) {
+    N[i-lo] = 1;
+    if (!(i&1) && i >= 2) {
+      UV k = i >> 1;
+      int nz = 1;
+      while (!(k&1)) { nz++; k >>= 1; }
+      nf[i-lo] = (with_multiplicity) ? nz : 1;
+      N[i-lo] = UVCONST(1) << nz;
+    }
+  }
 
-  for (i = P_GT_LO_0(2,2,lo); i < range; i += 2)
-    { nf[i]++;  N[i] >>= 1; }
-  for (i = P_GT_LO_0(4,4,lo); i < range; i += 4)
-    do { if (with_multiplicity) nf[i]++; N[i] >>= 1; } while (!(N[i] & 1));
-  if (sqrtn >= 3) MARK_MULTIPLES(3)
-  if (sqrtn >= 5) MARK_MULTIPLES(5)
-  START_DO_FOR_EACH_PRIME(7, sqrtn) {
-    MARK_MULTIPLES(p)
+  START_DO_FOR_EACH_PRIME(3, sqrtn) {
+    UV pk, maxpk = UV_MAX/p; \
+    for (i = P_GT_LO_0(p,p,lo); i < range; i += p)
+      { N[i] *= p;  nf[i]++; }
+    for (pk = p*p; pk <= hi; pk *= p) {
+      for (i = P_GT_LO_0(pk,pk,lo); i < range; i += pk)
+        { N[i] *= p;  if (with_multiplicity) nf[i]++; }
+      if (pk >= maxpk) break;  /* Overflow protection */
+    }
   } END_DO_FOR_EACH_PRIME
 
   for (i = 0; i < range; i++)
-    if (N[i] > 1)
+    if (N[i] < (lo+i))
       nf[i]++;
   Safefree(N);
   if (lo == 0) nf[0] = 1;

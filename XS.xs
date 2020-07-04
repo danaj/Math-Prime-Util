@@ -832,6 +832,34 @@ sieve_primes(IN UV low, IN UV high)
     return; /* skip implicit PUTBACK */
 
 void
+almost_primes(IN UV k, IN UV lo, IN UV hi)
+  PREINIT:
+    AV* av;
+  PPCODE:
+    /* TODO: This should have a proper SV interface with calls to GMP/PP. */
+    av = newAV();
+    {
+      SV * retsv = sv_2mortal(newRV_noinc( (SV*) av ));
+      PUSHs(retsv);
+      PUTBACK;
+      SP = NULL; /* never use SP again, poison */
+    }
+    if (k > 63) return;
+    if (hi == 0) { lo = 0; hi = lo; }
+    if (lo < (UVCONST(1)<<k)) lo = UVCONST(1) << k;
+    if (hi < lo) return;
+    /* Stupid, monolith, doesn't do special for k=0,1,2. */
+    {
+      unsigned char* nf = range_nfactor_sieve(lo, hi, 1);
+      UV i;
+      for (i = 0; i < hi-lo+1; i++)
+        if (nf[i] == k)
+          av_push(av, newSVuv(i+lo));
+      Safefree(nf);
+    }
+    return;
+
+void
 lucky_numbers(IN UV high)
   PREINIT:
     AV* av;
@@ -1855,8 +1883,13 @@ znorder(IN SV* sva, IN SV* svn)
     legendre_phi = 5
     almost_prime_count = 6
     almost_prime_count_approx = 7
-    nth_almost_prime = 8
-    debruijn_psi = 9
+    almost_prime_count_lower = 8
+    almost_prime_count_upper = 9
+    nth_almost_prime = 10
+    nth_almost_prime_approx = 11
+    nth_almost_prime_lower = 12
+    nth_almost_prime_upper = 13
+    debruijn_psi = 14
   PREINIT:
     int astatus, nstatus;
   PPCODE:
@@ -1897,20 +1930,26 @@ znorder(IN SV* sva, IN SV* svn)
                    XSRETURN_IV( m * (totient(a) / totient(g)) );
                  }
                  break;
-        case 4:  ret = factorialmod(a, n);
-                 break;
-        case 5:  ret = legendre_phi(a, n);
-                 break;
-        case 6:  ret = almost_prime_count(a, n);
-                 break;
-        case 7:  ret = almost_prime_count_approx(a, n);
-                 break;
-        case 8:  if (a == 0 || (n == 0 && a > 1)) XSRETURN_UNDEF;
-                 if (n > max_almost_prime_count(n))
+        case 4:  ret = factorialmod(a, n); break;
+        case 5:  ret = legendre_phi(a, n); break;
+        case 6:  ret = almost_prime_count(a, n); break;
+        case 7:  ret = almost_prime_count_approx(a, n); break;
+        case 8:  ret = almost_prime_count_lower(a, n); break;
+        case 9:  ret = almost_prime_count_upper(a, n); break;
+        case 10:
+        case 11:
+        case 12:
+        case 13: if (n == 0 || (a == 0 && n > 1)) XSRETURN_UNDEF;
+                 if (n > max_almost_prime_count(a))
                    goto overflow;
-                 ret = nth_almost_prime(a, n);
+                 switch (ix) {
+                   case 10: ret = nth_almost_prime(a, n); break;
+                   case 11: ret = nth_almost_prime_approx(a, n); break;
+                   case 12: ret = nth_almost_prime_lower(a, n); break;
+                   case 13: ret = nth_almost_prime_upper(a, n); break;
+                 }
                  break;
-        case 9:
+        case 14:
         default: ret = debruijn_psi(a, n);
                  break;
       }
@@ -1927,8 +1966,13 @@ znorder(IN SV* sva, IN SV* svn)
       case 5:  _vcallsub_with_pp("legendre_phi");  break;
       case 6:  _vcallsub_with_pp("almost_prime_count");  break;
       case 7:  _vcallsub_with_pp("almost_prime_count_approx");  break;
-      case 8:  _vcallsub_with_pp("nth_almost_prime");  break;
-      case 9:
+      case 8:  _vcallsub_with_pp("almost_prime_count_lower");  break;
+      case 9:  _vcallsub_with_pp("almost_prime_count_upper");  break;
+      case 10: _vcallsub_with_pp("nth_almost_prime");  break;
+      case 11: _vcallsub_with_pp("nth_almost_prime_approx");  break;
+      case 12: _vcallsub_with_pp("nth_almost_prime_lower");  break;
+      case 13: _vcallsub_with_pp("nth_almost_prime_upper");  break;
+      case 14:
       default: _vcallsub_with_pp("debruijn_psi"); break;
     }
     objectify_result(aTHX_ sva, ST(0));
@@ -2012,7 +2056,7 @@ is_smooth(IN SV* svn, IN SV* svk)
         case 0:  res = is_smooth(n,k); break;
         case 1:  res = is_rough(n,k); break;
         case 2:
-        default: res = is_almost_prime(n,k); break;
+        default: res = is_almost_prime(n,k); break; /* Note order */
       }
       RETURN_NPARITY(res);
     }

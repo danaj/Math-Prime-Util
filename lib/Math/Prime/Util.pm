@@ -53,7 +53,9 @@ our @EXPORT_OK =
       semiprime_count semiprime_count_approx
       nth_semiprime nth_semiprime_approx
       almost_prime_count almost_prime_count_approx
-      nth_almost_prime
+      almost_prime_count_lower almost_prime_count_upper
+      nth_almost_prime nth_almost_prime_approx
+      nth_almost_prime_lower nth_almost_prime_upper
       ramanujan_prime_count ramanujan_prime_count_approx
       ramanujan_prime_count_lower ramanujan_prime_count_upper
       nth_ramanujan_prime nth_ramanujan_prime_approx
@@ -1804,32 +1806,31 @@ This returns quickly and is typically square root accurate.
 
 =head2 almost_prime_count
 
-Given non-negative integers C<n> and C<k>, returns the count of
+  say almost_prime_count(3,10000); # number of 3-almost-primes <= 10000
+
+Given non-negative integers C<k> and C<n>, returns the count of
 C<k>-almost-prime numbers up to and including C<n>.  With C<k=1> this
 is the standard prime count.  With C<k=2> this is the semiprime count.
-It is the count of all integers through C<n> that have exactly
-C<k> prime factors.
+In general, this is the count of all integers through C<n> that have
+exactly C<k> prime factors.
 
 The implementation uses nested prime count sums, and caching along
 with LMO prime counts to get quite reasonable speeds.
 
 =head2 almost_prime_count_approx
 
-Returns an approximation to the C<k>-almost-prime count of C<n>.
-This returns quickly but does not have good estimates with C<k>
-greater than 3.
+A fast approximation of the C<k>-almost-prime count of C<n>.
 
-=head2 nth_almost_prime
+=head2 almost_prime_count_lower
 
-Given non-negative integers C<n> and C<k>, returns the
-C<n>-th C<k>-almost prime.  That is, the C<n>-th integer that
-has exactly C<k> prime factors.
+Quickly returns a lower bound for the C<k>-almost-prime count of C<n>.
+The actual count will be greater than or equal to this result.
 
-The implementation does a binary search lookup with
-L</almost_prime_count> so is efficient for large values.
+=head2 almost_prime_count_upper
 
-C<undef> is returned for C<n == 0> and for all C<k == 0>
-other than C<n == 1>.
+Quickly returns an upper bound for the C<k>-almost-prime count of C<n>.
+The actual count will be less than or equal to this result.
+
 
 
 =head2 ramanujan_primes
@@ -2031,6 +2032,36 @@ end after C<N> iterations, but much more efficiently.
 Returns an approximation to the Nth semiprime.  Curve fitting is used to
 get a fairly close approximation that is orders of magnitude better than
 the simple C<n log n / log log n> approximation for large C<n>.
+
+=head2 nth_almost_prime
+
+  say "500th number with exactly 3 factors: ", nth_almost_prime(3,500);
+
+Given non-negative integers C<k> and C<n>, returns the
+C<n>-th C<k>-almost prime.
+With C<k=1> this is the nth prime.
+With C<k=2> this is the nth semiprime.
+In general this is the C<n>-th integer with exactly C<k> prime factors.
+
+The implementation does a binary search lookup with
+L</almost_prime_count> so is reasonably efficient for large values.
+
+C<undef> is returned for C<n == 0> and for all C<k == 0>
+other than C<n == 1>.
+
+=head2 nth_almost_prime_approx
+
+A fast approximation of the C<n>-th C<k>-almost prime.
+
+=head2 nth_almost_prime_lower
+
+Quickly returns a lower bound for the C<n>-th C<k>-almost prime.
+The actual nth k-almost-prime will be greater than or equal to this result.
+
+=head2 nth_almost_prime_upper
+
+Quickly returns an upper bound for the C<n>-th C<k>-almost prime.
+The actual nth k-almost-prime will be less than or equal to this result.
 
 =head2 nth_ramanujan_prime
 
@@ -3223,9 +3254,12 @@ function performs shortcuts that can greatly speed up the operation.
 
 =head2 is_almost_prime
 
-Given positive integers C<n> and C<k>, returns 1 if C<n> has exactly C<k>
-prime factors.  The primes themselves are 1-almost primes, while semiprimes
-are 2-almost primes.
+  say is_almost_prime(6,2169229601);  # True if n has exactly 6 factors
+
+Given positive integers C<k> and C<n>, returns 1 if C<n> has exactly C<k>
+prime factors, and 0 otherwise.
+With C<k=1>, this is a standard primality test.
+With C<k=2>, this is the same as L</is_semiprime>.
 
 =head2 is_fundamental
 

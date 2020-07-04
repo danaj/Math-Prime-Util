@@ -258,9 +258,10 @@ sub semiprime_count_approx {
   return Math::Prime::Util::PP::semiprime_count_approx($n);
 }
 sub almost_prime_count_approx {
-  my($n) = @_;
+  my($k,$n) = @_;
+  _validate_positive_integer($k);
   _validate_positive_integer($n);
-  return Math::Prime::Util::PP::almost_prime_count_approx($n);
+  return Math::Prime::Util::PP::almost_prime_count_approx($k,$n);
 }
 sub ramanujan_prime_count_lower {
   my($n) = @_;
@@ -298,10 +299,10 @@ sub nth_semiprime_approx {
   return Math::Prime::Util::PP::nth_semiprime_approx($n);
 }
 sub nth_almost_prime {
-  my($n,$k) = @_;
-  _validate_positive_integer($n);
+  my($k,$n) = @_;
   _validate_positive_integer($k);
-  return Math::Prime::Util::PP::nth_almost_prime($n,$k);
+  _validate_positive_integer($n);
+  return Math::Prime::Util::PP::nth_almost_prime($k,$n);
 }
 sub nth_ramanujan_prime {
   my($n) = @_;
