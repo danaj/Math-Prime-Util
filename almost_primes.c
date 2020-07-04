@@ -229,6 +229,12 @@ UV almost_prime_count_approx(UV k, UV n) {
 
   _almost_prime_count_bounds(&lo, &hi, k, n);
 
+  if (k == 3) {  /* Closer to one or the other to give better fit */
+    if      (n <=     500194) return lo + 0.78*(hi-lo);
+    else if (n <= 3184393786) return lo + 0.31*(hi-lo);
+    else                      return lo + 0.04*(hi-lo);
+  }
+
   /* TODO: Consider weighting based on k,n */
   return lo + (hi-lo)/2;
 }
@@ -487,11 +493,12 @@ static const double _upper_64[41] = {0,0, 1.028, 1.028, 1.3043,/* <--corrrect */
   0.7071,1.071,1.654,2.607,4.188,6.857,11.45,19.43,33.58,
 };
 
-static const double _lower_20[13] = {0,0, 0.7716,0.3994,0.4999,0.4778,0.2699,0.1631,0.1050,0.0718,0.05185,0.03943,0.03149};
-static const double _lower_32[21] = {0,0, 1.004,0.7383,0.6828,
+static const double _lower_20[13] = {0,0, 0.7716, 0.3994, 0.4999,
+  /*  5-12 */ 0.4778,0.2699,0.1631,0.1050,0.0718,0.05185,0.03943,0.03149};
+static const double _lower_32[21] = {0,0, 1.004,  0.7383, 0.6828,
   /*  5-12 */ 0.5939,0.3594,0.2222,0.1438,0.09754,0.06981,0.05245,0.04151,
   /* 13-20 */ 0.03426,0.0290,0.02617,0.02344,0.02183,0.01972,0.02073,0.02252 };
-static const double _lower_64[41] = {0,0, 1.011,0.8093,0.7484,
+static const double _lower_64[41] = {0,0, 1.011,  0.8093, 0.7484,
   /* 5-12 */
   0.6465,0.3982,0.2463,0.1571,0.1048,0.07363,0.0545,0.042,
   /* 13-20 */
@@ -546,16 +553,19 @@ static void _almost_prime_count_bounds(UV *lower, UV *upper, UV k, UV n) {
       multl = 1;
     }
   } else if (k == 3) {
-    boundl = boundu = x * (logplus*logplus + 1.055852) / (2*logx);
-    /* Kinlaw Theorem 1 */
-    /* if (x >= 500194) { boundl = x*loglogx*loglogx/(2*logx); multl=1.0; } */
+    boundu = x * (logplus*logplus + 1.055852) / (2*logx);
+    /* Kinlaw (2019) Theorem 1 (with 1.000) */
+    boundl = x * loglogx * loglogx / (2*logx);
+    multl = (x <=      500194)  ?  0.8418
+          : (x <= 3184393786U)  ?  1.0000
+          :                        1.04;
   } else if (k == 4) {
-    /* Bayless Theorem 5.4 with multu = 1.3043 */
+    /* Bayless Theorem 5.4 part 1 (with multu = 1.3043) */
     boundl = boundu = x * logplus*logplus*logplus / (6*logx);
+    /* Bayless Theorem 5.4 part 2 */
     if (x > 1e12) {
-      boundu = 1.028 * x * logplus*logplus*logplus / (6*logx)
-             + 0.511977 * 1.028 * x * (log(log(x/4)) + 0.261536) / logx;
-      multu = 1;
+      boundu += 0.511977 * x * (log(log(x/4)) + 0.261536) / logx;
+      multu = 1.028;
     }
   } else {
     /* Completely empirical and by no means optimal.
