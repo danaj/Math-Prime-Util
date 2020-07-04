@@ -35,7 +35,7 @@ our @EXPORT_OK =
       powint mulint addint subint divint modint divrem tdivrem absint negint
       miller_rabin_random
       lucas_sequence lucasu lucasv
-      primes twin_primes semi_primes ramanujan_primes
+      primes twin_primes semi_primes almost_primes ramanujan_primes
       sieve_prime_cluster sieve_range
       lucky_numbers is_lucky nth_lucky
       forprimes forcomposites foroddcomposites forsemiprimes fordivisors
@@ -454,6 +454,34 @@ sub semi_primes {
   my $sp = [];
   Math::Prime::Util::forsemiprimes(sub { push @$sp,$_; }, $low, $high);
   $sp;
+}
+
+sub almost_primes {
+  my($k,$low,$high) = @_;
+  _validate_num($k) || _validate_positive_integer($k);
+  if (scalar @_ > 2) {
+    _validate_num($low) || _validate_positive_integer($low);
+  } else {
+    ($low,$high) = (1, $low);
+  }
+  _validate_num($high) || _validate_positive_integer($high);
+
+  if ($k == 0) { return ($low <= 1 && $high >= 1) ? [1] : [] }
+  if ($k == 1) { return Math::Prime::Util::primes($low,$high); }
+  if ($k == 2) { return Math::Prime::Util::semi_primes($low,$high); }
+
+  # Bring low up to the first one
+  my $minlow = Math::Prime::Util::powint(2, $k);
+  $low = $minlow if $low < $minlow;
+
+  return [] if $low > $high;
+
+  if ($high <= $_XS_MAXVAL && ($high-$low+1) < 1000000000) {
+    return Math::Prime::Util::almost_prime_sieve($k,$low,$high);
+  } else {
+    require Math::Prime::Util::PP;
+    return Math::Prime::Util::PP::almost_primes($k,$low,$high);
+  }
 }
 
 sub ramanujan_primes {
@@ -1803,6 +1831,24 @@ range end is used, unless the range is so small that walking it is faster.
 Returns an approximation to the semiprime count of C<n>.
 This returns quickly and is typically square root accurate.
 
+
+=head2 almost_primes
+
+  my $ref_to_3_almost_primes = almost_primes(3, 1000, 2000);
+
+Takes a non-negative integer argument C<k> and either one or two additional
+non-negative integer arguments indicating the upper limit or lower and upper
+limits.  The limits are inclusive.
+The k-almost-primes are integers which have exactly C<k> prime factors.
+
+This works just like the L</primes> function.
+Like that function, an array reference is returned.
+
+With C<k=1> these are the primes (L<OEIS A000040|http://oeis.org/A000040>).
+With C<k=2> these are the semiprimes (L<OEIS A001358|http://oeis.org/A001358>).
+With C<k=3> these are the 3-almost-primes (L<OEIS A014612|http://oeis.org/A014612>).
+With C<k=4> these are the 4-almost-primes (L<OEIS A014613|http://oeis.org/A014613>).
+OEIS sequences can be through C<k=20>.
 
 =head2 almost_prime_count
 

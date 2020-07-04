@@ -832,7 +832,7 @@ sieve_primes(IN UV low, IN UV high)
     return; /* skip implicit PUTBACK */
 
 void
-almost_primes(IN UV k, IN UV lo, IN UV hi)
+almost_prime_sieve(IN UV k, IN UV lo, IN UV hi)
   PREINIT:
     AV* av;
   PPCODE:

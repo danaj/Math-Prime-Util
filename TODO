@@ -232,21 +232,11 @@
 
 - primorial and pn_primorial to XS with direct to GMP.  Remember to objectify.
 
-- optimize PP is_almost_prime, nth_almost_prime
-
 - ipowsafe could have the limits using hard-coded sqrt and cbrt to avoid div.
 
-- almost_primes should look just like primes, but with a leading int k
+- Possibly improve semiprimes using the Bayless (2018) bounds.
 
-- almost_primes:
-      range API
-      range sieve
-      nth
-      nth_approx
-      tests for nth
-
-- almost primes:   PPFE, PP, tests
-  check and enter new for
+- almost primes check and enter new for
    3 http://oeis.org/A109251
    4 http://oeis.org/A114106
    5 http://oeis.org/A114453
@@ -262,34 +252,25 @@
   8^n https://oeis.org/A116428
   9^n https://oeis.org/A116429
   nth https://oeis.org/A101695
+  Try sequence A052130.
+    a(n) = {my m = ceil(n*log(3)/log(1.5)); return apc(1<<m,m-n); }
+    Or: apc(m=floor(n*(1+1/sqrt(2))); return apc(2^(n+m+2), m+2)
+    mpu '$n=19; $m=int($n*log(3)/log(1.5)+1); say almost_prime_count($m-$n,1<<$m);'
+    mpu '$n=19; $m=int($n*(1+1/sqrt(2))); say almost_prime_count($m+2,1<<($n+$m+2));'
+    It looks like the Mathematica table has a misplaced paren.
 
-- Possibly improve semiprimes using the Bayless (2018) bounds.
-
-- XS almost_primes should just call a routine to get a UV list, possibly in
-  segments.  We can use almost_prime_count_approx to determine segment size.
-
-- TODO for almost primes:
-    count_upper for k=5+
-    count_lower for k=5+
-
-    max_almost_prime_count fill in k=5-13. Somehow.
-    max_almost_prime_count improve k=2,3,4.  Somehow.
-
-    for k=6+ we should use values from genk as well as searching backwards.
-
-    tests for all
-      apc, apca, apcl, apcu
-      nap, napa, napl, napu
-    PPFE for all
-      apcl, apcu
-      napa, napl, napu
-    PP for all
+- Almost primes things:
+  - Once we have a range bigomega, use it in PP almost_primes.
+  - Make a C function for getting a list between lo and hi, like semiprimes.
+  - XS almost_primes should call this in segments, use count_approx for seg size
+  - more work on verifying count_upper for k=5+
+  - more work on verifying count_lower for k=5+
+  - max_almost_prime_count fill in k=5-13. Somehow.
+  - max_almost_prime_count improve k=2,3,4.  Somehow.
+  - optimize PP is_almost_prime
+  - optimize nth_almost_prime
+  - any use for genk (iterator for k)?
+  - PP for all
+      almost_primes(k,lo,hi)
       apca (adjust), apcl, apcu
       nap (adjust), napa, napl, napu
-
-    Try sequence A052130.
-      a(n) = {my m = ceil(n*log(3)/log(1.5)); return apc(1<<m,m-n); }
-      Or: apc(m=floor(n*(1+1/sqrt(2))); return apc(2^(n+m+2), m+2)
-      mpu '$n=19; $m=int($n*log(3)/log(1.5)+1); say almost_prime_count(1<<$m, $m-$n);'
-      mpu '$n=19; $m=int($n*(1+1/sqrt(2))); say almost_prime_count(1<<($n+$m+2), $m+2);'
-      It looks like the Mathematica table has a misplaced paren.
