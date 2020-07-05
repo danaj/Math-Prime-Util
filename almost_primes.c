@@ -288,8 +288,7 @@ UV nth_almost_prime_upper(UV k, UV n) {
   if (r > 0)  return nth_almost_prime_upper(k-r, n) << r;
 
   /* We start out with the literal min and max because we have NO idea. */
-  lo = 5 * (UVCONST(1) << k);  /* For k >= 3 and n >= 8 */
-  if (k == 2) lo = 22;
+  lo = 5 * (UVCONST(1) << k);  /* For k >= 1 and n >= 8 */
   hi = max_nth_almost_prime(k);
 
   rlo = almost_prime_count_lower(k,lo);
@@ -338,8 +337,7 @@ UV nth_almost_prime_lower(UV k, UV n) {
   if (r > 0)  return nth_almost_prime_lower(k-r, n) << r;
 
   /* We start out with the literal min and max because we have NO idea. */
-  lo = 5 * (UVCONST(1) << k);  /* For k >= 3 and n >= 8 */
-  if (k == 2) lo = 22;
+  lo = 5 * (UVCONST(1) << k);  /* For k >= 1 and n >= 8 */
   hi = max_nth_almost_prime(k);
 
   rlo = almost_prime_count_upper(k,lo);
@@ -640,7 +638,7 @@ UV max_almost_prime_count(UV k) {
     UVCONST(3738241841329689241), /* max 3-almost-prime count (upper limit) */
     UVCONST(5626791887645067628), /* max 4-almost-prime count (upper limit) */
     /* 5-12 */  0,0,0,0,0,0,0,0,
-    /* 13-22 */ 0,UVCONST(16967424859951587),UVCONST(8393048221327186),UVCONST(4139595949113890),UVCONST(2037655246635364),UVCONST(1001591348315641),UVCONST(491808604962296),UVCONST(241293656953012),UVCONST(118304122014405),UVCONST(57968649799947),
+    /* 13-22 */ UVCONST(34151861008771016),UVCONST(16967424859951587),UVCONST(8393048221327186),UVCONST(4139595949113890),UVCONST(2037655246635364),UVCONST(1001591348315641),UVCONST(491808604962296),UVCONST(241293656953012),UVCONST(118304122014405),UVCONST(57968649799947),
     /* 23-32 */ UVCONST(28388662714236),UVCONST(13895161400556),UVCONST(6797526392535),UVCONST(3323560145881),UVCONST(1624109166018),UVCONST(793189260998),UVCONST(387148515886),UVCONST(188844769357),UVCONST(92054377509),UVCONST(44841620426),
     /* 33-63 */ UVCONST(21827124353),UVCONST(10616326552),UVCONST(5159281045),UVCONST(2505087309),1215204383,588891145,285076316,137840686,66567488,32103728,15460810,7433670,3567978,1709640,817053,389954,185387,87993,41604,19611,9184,4283,2001,914,421,187,84,37,15,7,2
   };
