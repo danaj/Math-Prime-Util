@@ -696,7 +696,6 @@ sub sieve_prime_cluster {
   @p;
 }
 
-
 sub _n_ramanujan_primes {
   my($n) = @_;
   return [] if $n <= 0;
@@ -1129,6 +1128,22 @@ sub is_rough {
   }
 
   return 0 + (Math::Prime::Util::vecnone(sub { $_ < $k }, Math::Prime::Util::factor($n)));
+}
+
+
+sub almost_primes {
+  my($k, $low, $high) = @_;
+
+  my $minlow = Math::Prime::Util::powint(2,$k);
+  $low = $minlow if $low < $minlow;
+  return [] unless $low <= $high;
+
+  my $ap = [];
+  Math::Prime::Util::forfactored(
+    sub { push @$ap, $_ if scalar(@_) == $k; },
+    $low, $high
+  );
+  $ap;
 }
 
 sub is_semiprime {
@@ -2257,6 +2272,17 @@ sub semiprime_count {
   $sum;
 }
 
+sub _kap_reduce_count {   # returns new k and n
+  my($k, $n) = @_;
+
+  my $pow3k = Math::Prime::Util::powint(3, $k);
+  while ($n  < $pow3k) {
+    $n = Math::Prime::Util::divint($n, 2);
+    $k--;
+    $pow3k = Math::Prime::Util::divint($pow3k, 3);
+  }
+  ($k, $n);
+}
 sub _kapc_count {
   my($n, $pdiv, $lo, $k) = @_;
   my $hi = Math::Prime::Util::rootint(Math::Prime::Util::divint($n,$pdiv),$k);
@@ -2279,6 +2305,7 @@ sub almost_prime_count {
   _validate_positive_integer($k);
   _validate_positive_integer($n);
   return ($n >= 1) if $k == 0;
+  ($k, $n) = _kap_reduce_count($k, $n);
   return Math::Prime::Util::prime_count($n) if $k == 1;
   return Math::Prime::Util::semiprime_count($n) if $k == 2;
   return 0 if ($n >> $k) == 0;
@@ -2354,13 +2381,17 @@ sub almost_prime_count_approx {
   return Math::Prime::Util::semiprime_count_approx($n) if $k == 2;
   return 0 if ($n >> $k) == 0;
 
-  my $pc = Math::Prime::Util::prime_count_approx($n);
-  my $loglogn = log(log($n + 0.0));
-  my $est = $pc;
-  for my $i (1 .. $k-1) {
-    $est *= ($loglogn/$i);
+  if ($k <= 4) {
+    my $lo = Math::Prime::Util::almost_prime_count_lower($k, $n);
+    my $hi = Math::Prime::Util::almost_prime_count_upper($k, $n);
+    return $lo + (($hi - $lo) >> 1);
+  } else {
+    return int(0.5 + _almost_prime_count_asymptotic($k,$n));
+    #my $est = Math::Prime::Util::prime_count_approx($n);
+    #my $loglogn = log(log(0.0 + "$n"));
+    #for my $i (1 .. $k-1) { $est *= ($loglogn/$i); }
+    #return int(0.5+$est);
   }
-  int(0.5+$est);
 }
 
 sub nth_twin_prime {
@@ -2420,6 +2451,209 @@ sub nth_semiprime_approx {
   int(0.5+$est);
 }
 
+sub _almost_prime_count_asymptotic {
+  my($k, $n) = @_;
+  return 0 if ($n >> $k) == 0;
+  return ($n >= 1) if $k == 0;
+
+  my $x = 0.0 + "$n";
+  my $logx = log($x);
+  my $loglogx = log($logx);
+  my $est = $x / $logx;
+  $est *= ($loglogx/$_) for 1 .. $k-1;
+  $est;  # Returns FP
+}
+sub _almost_prime_nth_asymptotic {
+  my($k, $n) = @_;
+  return 0 if $k == 0 || $n == 0;
+  return 1 << $k if $n == 1;
+  my $x = 0.0 + "$n";
+  my $logx = log($x);
+  my $loglogx = log($logx);
+  my $est = $x * $logx;
+  $est *= ($_/$loglogx) for 1 .. $k-1;
+  $est;  # Returns FP
+}
+
+sub almost_prime_count_lower {
+  my($k, $n) = @_;
+
+  return 0 if ($n >> $k) == 0;
+  ($k, $n) = _kap_reduce_count($k, $n);
+  return ($n >= 1) if $k == 0;
+  return Math::Prime::Util::prime_count_lower($n) if $k == 1;
+
+  my $bound = 0;
+  my $x = 0.0 + "$n";
+  my $logx = log($x);
+  my $loglogx = log($logx);
+  my $logplus = $loglogx + 0.26153;
+
+  if ($k == 2) {
+    if ($x <= 1e12) {
+      $bound = 0.7716 * $x * ($loglogx + 0.261536) / $logx;
+    } else {
+      # Bayless Theorem 5.2
+      $bound = ($x * ($loglogx+0.1769)/$logx) * (1 + 0.4232/$logx);
+    }
+  } elsif ($k == 3) {
+    # Kinlaw Theorem 1 (with multiplier = 1 -- using 1.04 is not proven)
+    $bound = $x * $loglogx * $loglogx / (2*$logx);
+    $bound *= ($x <= 500194) ? 0.8418 : ($x <= 3184393786) ? 1.0000 : 1.04;
+  } elsif ($k == 4) {
+    $bound = 0.4999 * $x * $logplus*$logplus*$logplus / (6*$logx);
+  } else {
+    # TODO this is not correct!
+    $bound = 0.8 * _almost_prime_count_asymptotic($k,$n);
+  }
+  $bound = 1 if $bound < 1;  # We would have returned zero earlier
+  int($bound);
+}
+sub almost_prime_count_upper {
+  my($k, $n) = @_;
+
+  return 0 if ($n >> $k) == 0;
+  ($k, $n) = _kap_reduce_count($k, $n);
+  return ($n >= 1) if $k == 0;
+  return Math::Prime::Util::prime_count_upper($n) if $k == 1;
+
+  my $bound = 0;
+  my $x = 0.0 + "$n";
+  my $logx = log($x);
+  my $loglogx = log($logx);
+  my $logplus = $loglogx + 0.26153;
+
+  if ($k == 2) {
+    # Bayless Corollary 5.1
+    $bound = 1.028 * $x * ($loglogx + 0.261536) / $logx;
+  } elsif ($k == 3) {
+    # Bayless Theorem 5.3
+    $bound = $x * ($logplus * $logplus + 1.055852) / (2*$logx);
+    $bound *= ($x < 2**20) ? 0.7385 : ($x < 2**32) ? 0.8095 : 1.028;
+  } elsif ($k == 4) {
+    # Bayless Theorem 5.4
+    if ($x <= 1e12) {
+      $bound = $x * $logplus*$logplus*$logplus / (6*$logx);
+      $bound *= ($x < 2**20) ? 0.6830 : ($x < 2**32) ? 0.7486 : 1.3043;
+    } else {
+      $bound = 1.028 * $x * $logplus*$logplus*$logplus / (6*$logx)
+             + 1.028 * 0.511977 * $x * (log(log($x/4)) + 0.261536) / $logx;
+    }
+  } else {
+    # A proven upper bound for all k and n doesn't exist as far as I know.
+    # We will end up with something correct, but also *really* slow for
+    # high k as well as estimating far too high.
+
+    # Bayless (2018) Theorem 3.5.
+    # First we have Pi_k(x) -- the upper bound for the square free kaps.
+    $bound = 1.028 * $x / $logx;
+    $bound *= ($logplus/$_) for 1..$k-1;
+    # Second, we need to turn this into Tau_k(x).
+    # We use the definition paragraph before Theorem 5.4.
+    my $sigmalim = Math::Prime::Util::sqrtint(Math::Prime::Util::divint($n, Math::Prime::Util::powint(2,$k-2)));
+    Math::Prime::Util::forprimes( sub {
+      $bound += almost_prime_count_upper($k-2, Math::Prime::Util::divint($x,$_*$_));
+    }, 2, $sigmalim);
+  }
+  int($bound+1);
+}
+
+sub _kap_reduce_nth {   # returns reduction amount r
+  my($k, $n) = @_;
+  return 0 if $k <= 1;
+
+  my @A078843 = (1, 2, 3, 5, 8, 14, 23, 39, 64, 103, 169, 269, 427, 676, 1065, 1669, 2628, 4104, 6414, 10023, 15608, 24281, 37733, 58503, 90616, 140187, 216625, 334527, 516126, 795632, 1225641, 1886570, 2901796, 4460359, 6851532, 10518476, 16138642, 24748319, 37932129, 58110457, 88981343, 136192537, 208364721, 318653143, 487128905, 744398307, 1137129971, 1736461477, 2650785552, 4045250962, 6171386419, 9412197641, 14350773978, 21874583987, 33334053149, 50783701654, 77348521640, 117780873397, 179306456282, 272909472119, 415284741506);
+  my $r = 0;
+  if ($k > $#A078843) {
+    return 0 if $n >= $A078843[-1];
+    $r = $k - scalar(@A078843);
+  }
+  $r++ while $n < $A078843[$k-$r];
+  $r;
+}
+sub _fast_small_nth_almost_prime {
+  my($k,$n) = @_;
+  croak "Internal kap out of range error" if $n >= 8 || $k < 2;
+  return (0, 4,  6,  9, 10, 14, 15, 21)[$n] if $k == 2;
+  return (0, 8, 12, 18, 20, 27, 28, 30)[$n] * (1 << ($k-3));
+}
+
+sub nth_almost_prime_upper {
+  my($k, $n) = @_;
+  return 0 if $n == 0;
+  return (($n == 1) ? 1 : 0) if $k == 0;
+  return Math::Prime::Util::nth_prime_upper($n) if $k == 1;
+  return _fast_small_nth_almost_prime($k,$n) if $n < 8;
+
+  my $r = _kap_reduce_nth($k,$n);
+  return(nth_almost_prime_upper($k-$r, $n) << $r) if $r > 0;
+
+  my $lo = 5 * (1 << $k);   # $k >= 1, $n >= 8
+  my $hi = int(1 + _almost_prime_nth_asymptotic($k, $n));
+  # We just guessed at hi, so bump it up until it's in range
+  my $rhi = almost_prime_count_lower($k, $hi);
+  while ($rhi < $n) {
+    $lo = $hi+1;
+    $hi = $hi + int(1.02 * ($hi/$rhi) * ($n - $rhi)) + 100;
+    $rhi = almost_prime_count_lower($k, $hi);
+  }
+  while ($lo < $hi) {
+    my $mid = $lo + (($hi-$lo) >> 1);
+    if (almost_prime_count_lower($k,$mid) < $n) { $lo = $mid+1; }
+    else                                        { $hi = $mid; }
+  }
+  $lo;
+}
+sub nth_almost_prime_lower {
+  my($k, $n) = @_;
+  return 0 if $n == 0;
+  return (($n == 1) ? 1 : 0) if $k == 0;
+  return Math::Prime::Util::nth_prime_lower($n) if $k == 1;
+  return _fast_small_nth_almost_prime($k,$n) if $n < 8;
+
+  my $r = _kap_reduce_nth($k,$n);
+  return(nth_almost_prime_lower($k-$r, $n) << $r) if $r > 0;
+
+  my $lo = 5 * (1 << $k);   # $k >= 1, $n >= 8
+  my $hi = int(1 + _almost_prime_nth_asymptotic($k, $n));
+  # We just guessed at hi, so bump it up until it's in range
+  my $rhi = almost_prime_count_upper($k, $hi);
+  while ($rhi < $n) {
+    $lo = $hi+1;
+    $hi = $hi + int(1.02 * ($hi/$rhi) * ($n - $rhi)) + 100;
+    $rhi = almost_prime_count_upper($k, $hi);
+  }
+
+  while ($lo < $hi) {
+    my $mid = $lo + (($hi-$lo) >> 1);
+    if (almost_prime_count_upper($k,$mid) < $n) { $lo = $mid+1; }
+    else                                        { $hi = $mid; }
+  }
+  $lo;
+}
+
+sub nth_almost_prime_approx {
+  my($k, $n) = @_;
+  return undef if $n == 0;
+  return 1 << $k if $n == 1;
+  return undef if $k == 0;  # n==1 already returned
+  return Math::Prime::Util::nth_prime_approx($n) if $k == 1;
+  return Math::Prime::Util::nth_semiprime_approx($n) if $k == 2;
+  return _fast_small_nth_almost_prime($k,$n) if $n < 8;
+
+  my $lo = Math::Prime::Util::nth_almost_prime_lower($k, $n);
+  my $hi = Math::Prime::Util::nth_almost_prime_upper($k, $n);
+
+  # TODO: Add interpolation speedup steps
+
+  while ($lo < $hi) {
+    my $mid = $lo + (($hi-$lo) >> 1);
+    if (almost_prime_count_approx($k,$mid) < $n) { $lo = $mid+1; }
+    else                                         { $hi = $mid; }
+  }
+  $lo;
+}
+
 sub nth_almost_prime {
   my($k, $n) = @_;
   return undef if $n == 0;
@@ -2427,16 +2661,27 @@ sub nth_almost_prime {
   return undef if $k == 0;  # n==1 already returned
   return Math::Prime::Util::nth_prime($n) if $k == 1;
   return Math::Prime::Util::nth_semiprime($n) if $k == 2;
+  return _fast_small_nth_almost_prime($k,$n) if $n < 8;
+
+  my $lo = Math::Prime::Util::nth_almost_prime_lower($k, $n);
+  my $hi = Math::Prime::Util::nth_almost_prime_upper($k, $n);
+
+  # TODO: Add interpolation speedup steps
+
+  while ($lo < $hi) {
+    my $mid = $lo + (($hi-$lo) >> 1);
+    if (almost_prime_count($k,$mid) < $n) { $lo = $mid+1; }
+    else                                  { $hi = $mid; }
+  }
+  $lo;
 
   # Brutally inefficient algorithm.
-  my $i = 1 << $k;
-  while (1) {
-    while (!Math::Prime::Util::is_almost_prime($k,$i)) {
-      $i++;
-    }
-    return $i if --$n == 0;
-    $i++;
-  }
+  #my $i = 1 << $k;
+  #while (1) {
+  #  $i++ while !Math::Prime::Util::is_almost_prime($k,$i);
+  #  return $i if --$n == 0;
+  #  $i++;
+  #}
 }
 
 sub nth_ramanujan_prime_upper {

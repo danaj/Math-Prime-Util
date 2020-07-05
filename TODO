@@ -258,6 +258,9 @@
     mpu '$n=19; $m=int($n*log(3)/log(1.5)+1); say almost_prime_count($m-$n,1<<$m);'
     mpu '$n=19; $m=int($n*(1+1/sqrt(2))); say almost_prime_count($m+2,1<<($n+$m+2));'
     It looks like the Mathematica table has a misplaced paren.
+  Sequence A078843:
+    mpu 'use POSIX; $|=1; sub app3i { my($k,$n)=@_; almost_prime_count($k,$n) - (($k < 1) ? 0 : almost_prime_count($k-1, divint($n,3))); } my $a=1; for my $n (1..60) { $k=POSIX::ceil($n*log(5/3)/log(5/2)); $a +=app3i($n-$k,divint(powint(3,$n),powint(2,$k))); print "$a, "; }'
+
 
 - Almost primes things:
   - Once we have a range bigomega, use it in PP almost_primes.
@@ -268,9 +271,8 @@
   - max_almost_prime_count fill in k=5-13. Somehow.
   - max_almost_prime_count improve k=2,3,4.  Somehow.
   - optimize PP is_almost_prime
-  - optimize nth_almost_prime
+  - better PP almost_prime_count bounds for k > 3
+  - optimize PP nth_almost_prime and bounds
+  - optimize PP almost_primes() (uses forfactored)
   - any use for genk (iterator for k)?
-  - PP for all
-      almost_primes(k,lo,hi)
-      apca (adjust), apcl, apcu
-      nap (adjust), napa, napl, napu
+  - reduce_prime_count_factor(k,n) should be void and modify k,n.
