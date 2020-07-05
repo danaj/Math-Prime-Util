@@ -9,7 +9,6 @@
 #include "ptypes.h"
 #include "constants.h"
 #define FUNC_isqrt 1
-#define FUNC_ipow 1
 #define FUNC_ctz 1
 #include "util.h"
 #include "cache.h"
@@ -24,24 +23,26 @@
 /******************************************************************************/
 
 /* Least r s.t.  almost_prime_count(k, n)  =  almost_prime_count(k-r, n >> r) */
-static UV reduce_prime_count_factor(UV k, UV n) {
-  UV const maxpow3 = (BITS_PER_WORD == 32) ? 20 : 40;
-  UV pow3k, r = 0;
-  if (k > maxpow3) {
+static uint32_t reduce_prime_count_factor(uint32_t k, UV n) {
+  static uint32_t const maxpow3 = (BITS_PER_WORD == 32) ? 20 : 40;
+#if BITS_PER_WORD == 32
+  static uint32_t const pow3[21] = {1,3,9,27,81,243,729,2187,6561,19683,59049,177147,531441,1594323,4782969,14348907,43046721,129140163,387420489,1162261467,3486784401U};
+#else
+  static UV const pow3[41] = {1,3,9,27,81,243,729,2187,6561,19683,59049,177147,531441,1594323,4782969,14348907,43046721,129140163,387420489,1162261467,3486784401U,UVCONST(10460353203),UVCONST(31381059609),UVCONST(94143178827),UVCONST(282429536481),UVCONST(847288609443),UVCONST(2541865828329),UVCONST(7625597484987),UVCONST(22876792454961),UVCONST(68630377364883),UVCONST(205891132094649),UVCONST(617673396283947),UVCONST(1853020188851841),UVCONST(5559060566555523),UVCONST(16677181699666569),UVCONST(50031545098999707),UVCONST(150094635296999121),UVCONST(450283905890997363),UVCONST(1350851717672992089),UVCONST(4052555153018976267),UVCONST(12157665459056928801)};
+#endif
+  uint32_t r = 0;
+  if (k > maxpow3)    /* Larger n would not fit in a UV type */
     r = k-maxpow3;
-    k = maxpow3;
-  }
-  /* We could do this with log(3)/log(1.5) but we want to be integer precise */
-  for (pow3k = ipow(3,k);  (n>>r) < pow3k && (n>>r) > 0;  pow3k /= 3)
+  while (k >= r && (n>>r) < pow3[k-r])
     r++;
   return r;
 }
 
 /* Least r s.t.  nth_almost_prime(k,n)  =  nth_almost_prime(k-r,n) << r */
-static UV reduce_nth_factor(UV k, UV n) {
+static uint32_t reduce_nth_factor(uint32_t k, UV n) {
 #define A078843_MAX_K 49
   static const uint32_t first_3[A078843_MAX_K+1] = {1, 2, 3, 5, 8, 14, 23, 39, 64, 103, 169, 269, 427, 676, 1065, 1669, 2628, 4104, 6414, 10023, 15608, 24281, 37733, 58503, 90616, 140187, 216625, 334527, 516126, 795632, 1225641, 1886570, 2901796, 4460359, 6851532, 10518476, 16138642, 24748319, 37932129, 58110457, 88981343, 136192537, 208364721, 318653143, 487128905, 744398307, 1137129971, 1736461477, 2650785552U, 4045250962U};
-  UV r = 0;
+  uint32_t r = 0;
   if (k <= 1 || k > 63) return 0;
   if (k > A078843_MAX_K) {
     if (n >= first_3[A078843_MAX_K])
@@ -54,7 +55,7 @@ static UV reduce_nth_factor(UV k, UV n) {
 }
 
 /* This could be easily extended to 16 or 32 */
-static UV _fast_small_nth_almost_prime(UV k, UV n) {
+static UV _fast_small_nth_almost_prime(uint32_t k, UV n) {
   static const uint8_t semi[8] = {0, 4,  6,  9, 10, 14, 15, 21};
   static const uint8_t mult[8] = {0, 8, 12, 18, 20, 27, 28, 30};
   MPUassert(n < 8 && k >= 2, "Fast small nth almost prime out of range");
@@ -62,7 +63,7 @@ static UV _fast_small_nth_almost_prime(UV k, UV n) {
   return mult[n] * (UVCONST(1) << (k-3));
 }
 
-static void _almost_prime_count_bounds(UV *lower, UV *upper, UV k, UV n);
+static void _almost_prime_count_bounds(UV *lower, UV *upper, uint32_t k, UV n);
 
 #if 0   /* Not currently used */
 /* Somewhere around k=20 it is faster to do:
@@ -165,7 +166,7 @@ static UV _final_sum(UV n, UV pdiv, UV lo, prime_array_t cache) {
   return s;
 }
 
-static UV _cs(UV n, UV pdiv, UV lo, UV k, prime_array_t cache) {
+static UV _cs(UV n, UV pdiv, UV lo, uint32_t k, prime_array_t cache) {
   UV count = 0;
 
   if (k == 2)
@@ -245,8 +246,8 @@ UV almost_prime_count_approx(UV k, UV n) {
 /******************************************************************************/
 
 /* Asymptotic estimate for the nth k-almost prime */
-static double _asymptotic_nth(UV k, UV n) {
-  UV i;  double x, logn, loglogn;
+static double _asymptotic_nth(uint32_t k, UV n) {
+  uint32_t i;  double x, logn, loglogn;
   if (k == 0 || n == 0) return 0;
   if (n == 1) return UVCONST(1) << k;
   logn = log(n);
@@ -511,9 +512,10 @@ static const double _lower_64[41] = {0,0, 1.011,  0.8093, 0.7484,
   0.44,0.67,1.06,1.71,2.8,4.7,8.0,13.89,23.98,
 };
 
-static void _almost_prime_count_bounds(UV *lower, UV *upper, UV k, UV n) {
+static void _almost_prime_count_bounds(UV *lower, UV *upper, uint32_t k, UV n) {
   double x, logx, loglogx, logplus, multl, multu, boundl, boundu;
-  UV i, r, max;
+  UV max;
+  uint32_t i, r;
 
   if (k >= BITS_PER_WORD || (n >> k) == 0) { *lower = *upper = 0; return; }
   r = reduce_prime_count_factor(k,n); /* Reduce to lower k,n if possible */
