@@ -123,6 +123,7 @@ sub entropy_bytes {
 *is_gaussian_prime = \&Math::Prime::Util::PP::is_gaussian_prime;
 *is_smooth = \&Math::Prime::Util::PP::is_smooth;
 *is_rough = \&Math::Prime::Util::PP::is_rough;
+*is_powerful = \&Math::Prime::Util::PP::is_powerful;
 
 *random_prime = \&Math::Prime::Util::PP::random_prime;
 *random_ndigit_prime = \&Math::Prime::Util::PP::random_ndigit_prime;
@@ -483,7 +484,6 @@ sub is_primitive_root {
   _validate_positive_integer($n);
   return Math::Prime::Util::PP::is_primitive_root($a,$n);
 }
-
 
 sub lucas_sequence {
   my($n, $P, $Q, $k) = @_;

@@ -30,7 +30,7 @@ our @EXPORT_OK =
       is_semiprime is_almost_prime
       is_square_free is_primitive_root is_carmichael is_quasi_carmichael
       is_fundamental is_totient is_gaussian_prime
-      is_smooth is_rough
+      is_smooth is_rough is_powerful
       sqrtint rootint logint
       powint mulint addint subint divint modint divrem tdivrem absint negint
       miller_rabin_random
@@ -3727,6 +3727,24 @@ The result is identical to:
 
 but shortcuts are taken to avoid fully factoring if possible.
 
+=head2 is_powerful
+
+  my $all_factors_cubes_or_higher = is_powerful($n, 3);
+
+Given two non-negative integer inputs C<n> and C<k>,
+returns C<1> if C<n> is C<k>-powerful, and C<0> otherwise.
+If C<k> is omitted or zero, C<k=2> is used.
+
+A k-powerful number is one that where all prime factors appear at least
+C<k> times.  All numbers are therefore 1-powerful, and C<1> is powerful
+for all C<k>.
+
+With C<k=2> this corresponds to Pari's C<ispowerful> function.
+
+While we can easily code this as a one line function using
+L</vecall> and L</factor_exp>, this is 10x faster and avoids fully
+factoring the input in most cases.
+
 
 =head2 carmichael_lambda
 
@@ -5042,9 +5060,10 @@ Recognizing tetrahedral numbers (L<OEIS A000292|http://oeis.org/A000292>):
     vecprod($k,$k+1,$k+2) == $n6;
   }
 
-Recognizing powerful numbers (e.g. C<ispowerful> from Pari/GP):
+Recognizing powerful numbers (e.g. C<ispowerful> from Pari/GP, or our
+built-in and much faster L</is_powerful>):
 
-  sub ispowerful { 0 + vecall { $_->[1] > 1 } factor_exp(shift); }
+  sub ispowerful { (vecall { $_->[1] > 1 } factor_exp(shift)) ? 1 : 0; }
 
 Convert from binary to hex (3000x faster than Math::BaseConvert):
 

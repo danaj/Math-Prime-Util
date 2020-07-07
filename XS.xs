@@ -1445,6 +1445,7 @@ void
 is_perrin_pseudoprime(IN SV* svn, IN int k = 0)
   ALIAS:
     is_almost_extra_strong_lucas_pseudoprime = 1
+    is_powerful = 2
   PREINIT:
     int status, ret;
   PPCODE:
@@ -1452,14 +1453,20 @@ is_perrin_pseudoprime(IN SV* svn, IN int k = 0)
     status = _validate_int(aTHX_ svn, 1);
     if (status == 1) {
       UV n = my_svuv(svn);
-      if (ix == 0)  ret = is_perrin_pseudoprime(n, k);
-      else          ret = is_almost_extra_strong_lucas_pseudoprime(n, (k < 1) ? 1 : k);
+      switch (ix) {
+        case 0:  ret = is_perrin_pseudoprime(n, k); break;
+        case 1:  ret = is_almost_extra_strong_lucas_pseudoprime(n, (k < 1) ? 1 : k); break;
+        case 2:  ret = is_powerful(n, (k == 0) ? 2 : k); break;
+        default: break;
+      }
     }
     if (status != 0) RETURN_NPARITY(ret);
-    if (ix == 0)
-      _vcallsub_with_gmp( (k == 0) ? 0.20 : 0.40, "is_perrin_pseudoprime");
-    else
-      _vcallsub_with_gmp(0.13,"is_almost_extra_strong_lucas_pseudoprime");
+    switch (ix) {
+      case 0: _vcallsub_with_gmp( (k == 0) ? 0.20 : 0.40, "is_perrin_pseudoprime"); break;
+      case 1: _vcallsub_with_gmp(0.13,"is_almost_extra_strong_lucas_pseudoprime"); break;
+      case 2: _vcallsub_with_gmp(0.00, "is_powerful"); break;
+      default: break;
+    }
     return;
 
 void

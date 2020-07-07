@@ -1106,7 +1106,7 @@ sub is_smooth {
     return 0 + ($f[0] <= $k);
   }
 
-  return 0 + (Math::Prime::Util::vecnone(sub { $_ > $k }, Math::Prime::Util::factor($n)));
+  return (Math::Prime::Util::vecnone(sub { $_ > $k }, Math::Prime::Util::factor($n))) ? 1 : 0;
 }
 sub is_rough {
   my($n, $k) = @_;
@@ -1127,7 +1127,97 @@ sub is_rough {
     return 0 + ($f[0] >= $k);
   }
 
-  return 0 + (Math::Prime::Util::vecnone(sub { $_ < $k }, Math::Prime::Util::factor($n)));
+  return (Math::Prime::Util::vecnone(sub { $_ < $k }, Math::Prime::Util::factor($n))) ? 1 : 0;
+}
+sub is_powerful {
+  my($n, $k) = @_;
+  _validate_positive_integer($n);
+  if (defined $k) {
+    _validate_positive_integer($k);
+  } else {
+    $k = 2;
+  }
+
+  return 1 if $n <= 1 || $k <= 1;
+
+  if ($Math::Prime::Util::_GMPfunc{"is_powerful"}) {
+    return eval "Math::Prime::Util::GMP::is_powerful($n, $k)";
+  }
+
+  # First quick checks for inadmissibility.
+  if ($k == 2) {
+    return 0 if !($n%3) && ($n%9);
+    return 0 if !($n%5) && ($n%25);
+    return 0 if !($n%7) && ($n%49);
+    return 0 if !($n%11) && ($n%121);
+  } else {
+    return 0 if !($n%3) && ($n%27);
+    return 0 if !($n%5) && ($n%125);
+    return 0 if !($n%7) && ($n%343);
+    return 0 if !($n%11) && ($n%1331);
+  }
+
+  # Next, check and remove all primes under 149 with three 64-bit gcds.
+  for my $GCD ("614889782588491410","3749562977351496827","4343678784233766587") {
+    my $g = Math::Prime::Util::gcd($n, $GCD);
+    if ($g != 1) {
+      # Check anything that divides n also divides k times (and remove).
+      my $gk = Math::Prime::Util::powint($g, $k);
+      return 0 if $n % $gk;
+      $n = Math::Prime::Util::divint($n, $gk);
+      # Now remove any possible further amounts of these divisors.
+      $g = Math::Prime::Util::gcd($n, $g);
+      while ($n > 1 && $g > 1) {
+        $n = Math::Prime::Util::divint($n, $g);
+        $g = Math::Prime::Util::gcd($n, $g);
+      }
+      return 1 if $n == 1;
+    }
+  }
+
+  # For small primes, check for perfect powers and thereby limit the search
+  # to divisibiilty conditions on primes less than n^(1/(2k)).  This is
+  # usually faster than full factoring.
+  #
+  # But ... it's possible this will take far too long (e.g. n=2^256+1).  So
+  # limit to something reasonable.
+
+  return 1 if $n == 1 || is_power($n) >= $k;
+  return 0 if $n < Math::Prime::Util::powint(149, 2*$k);
+
+  my $lim_actual = rootint($n, 2*$k);
+  my $lim_effect = ($lim_actual > 10000) ? 10000 : $lim_actual;
+
+  if ($Math::Prime::Util::_GMPfunc{"trial_factor"}) {
+    while (1) {
+      my @fac = Math::Prime::Util::GMP::trial_factor($n, $lim_effect);
+      last if scalar(@fac) <= 1;
+      my $f = $fac[0];
+      my $fk = ($k==2) ? $f*$f : Math::Prime::Util::powint($f,$k);
+      return 0 if $n % $fk;
+      $n = Math::Prime::Util::divint($n, $fk);
+      $n = Math::Prime::Util::divint($n, $f) while !($n % $f);
+      return 1 if $n == 1 || is_power($n) >= $k;
+      return 0 if $n < $fk*$fk;
+    }
+  } else {
+    Math::Prime::Util::forprimes( sub {
+      my $pk = ($k==2) ? $_*$_ : Math::Prime::Util::powint($_,$k);
+      Math::Prime::Util::lastfor(),return if $n < $pk*$pk;
+      if (!($n%$_)) {
+        Math::Prime::Util::lastfor(),return if $n % $pk;
+        $n = Math::Prime::Util::divint($n, $pk);
+        $n = Math::Prime::Util::divint($n, $_) while !($n % $_);
+        Math::Prime::Util::lastfor(),return if $n == 1 || is_power($n) >= $k;
+      }
+    }, 149, $lim_effect);
+  }
+  return 1 if $n == 1 || is_power($n) >= $k;
+  return 0 if $n <= Math::Prime::Util::powint($lim_effect, 2*$k);
+
+  # Taking too long.  Factor what is left.
+  return (Math::Prime::Util::vecall(sub { $_->[1] >= $k }, Math::Prime::Util::factor_exp($n))) ? 1 : 0;
+
 }
 
 

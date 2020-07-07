@@ -181,6 +181,7 @@ t/26-istotient.t
 t/26-lucky.t
 t/26-mod.t
 t/26-pillai.t
+t/26-powerful.t
 t/26-polygonal.t
 t/26-smooth.t
 t/26-vec.t

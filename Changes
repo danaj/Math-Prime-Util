@@ -24,6 +24,7 @@ Revision history for Perl module Math::Prime::Util
     - random_safe_prime               for n-bit safe primes
     - is_smooth(n,k)                  is n a k-smooth number
     - is_rough(n,k)                   is n a k-rough number
+    - is_powerful(n[,k])              is n a k-powerful number
     - is_almost_prime(k,n)            does n have exactly k prime factors
     - almost_prime_count(k,n)         Counts integers with exactly k factors
     - almost_prime_count_approx(k,n)  fast approximate k-almost-prime count

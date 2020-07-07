@@ -224,6 +224,7 @@ Tags:
   is_lucky(n)                         is n a lucky number
   is_smooth(n,k)                      is n a k-smooth number
   is_rough(n,k)                       is n a k-rough number
+  is_powerful(n[,k])                  is n a k-powerful number
   powint(a,b)                         signed integer a^b
   mulint(a,b)                         signed integer a * b
   addint(a,b)                         signed integer a + b
