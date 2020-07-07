@@ -1132,7 +1132,7 @@ sub is_rough {
 sub is_powerful {
   my($n, $k) = @_;
   _validate_positive_integer($n);
-  if (defined $k) {
+  if (defined $k && $k != 0) {
     _validate_positive_integer($k);
   } else {
     $k = 2;
