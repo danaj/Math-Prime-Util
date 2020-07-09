@@ -81,6 +81,8 @@ extern UV  pillai_v(UV n);             /* v: v! % n == n-1 && n % v != 1 */
 extern int is_smooth(UV n, UV k);
 extern int is_rough(UV n, UV k);
 extern int is_powerful(UV n, UV k);
+extern UV powerful_count(UV n, UV k);
+extern UV nth_powerful(UV n, UV k);
 
 extern UV  debruijn_psi(UV x, UV y);
 

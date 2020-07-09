@@ -3635,6 +3635,109 @@ int is_powerful(UV n, UV k) {
   return res;
 }
 
+static unsigned char* _squarefree_range(UV lo, UV hi) {
+  unsigned char* isf;
+  UV i, i2, j, range = hi-lo+1, sqrthi = isqrt(hi);
+
+  if (hi < lo) return 0;
+
+  New(0, isf, range, char);
+  memset(isf, 1, range);
+  if (lo == 0) isf[0] = 0;
+  for (i = 2; i <= sqrthi; i++)
+    for (i2 = i*i, j = P_GT_LO(i2, i2, lo); j <= hi; j += i2)
+      isf[j] = 0;
+  return isf;
+}
+
+static UV _pcr(UV n, UV k, unsigned char* isf, UV m, UV r) {
+  UV i, sum = 0, lim = rootof(n/m, r);
+
+  if (r <= k) return lim;
+
+  if (r-1 == k) {
+    for (i = 1; i <= lim; i++)
+      if (isf[i] && gcd_ui(m,i) == 1)
+        sum += rootof(n/(m*ipow(i,r)),k);
+  } else {
+    for (i = 1; i <= lim; i++)
+      if (isf[i] && gcd_ui(m,i) == 1)
+        sum += _pcr(n, k, isf,  m * ipow(i,r), r-1);
+  }
+  return sum;
+}
+
+UV powerful_count(UV n, UV k) {
+  UV i, r, lim, sum = 0;
+  unsigned char *isf;
+
+  if (k == 0) return 0;
+  if (k == 1 || n <= 1) return n;
+  if (k >= BITS_PER_WORD) return 1;
+
+  lim = rootof(n, k+1);
+  isf = _squarefree_range(0, lim);
+
+  if (k == 2) {
+    for (i = 1; i <= lim; i++)
+      if (isf[i])
+        sum += isqrt(n/(i*i*i));
+  } else {
+    /* sum = _pcr(n, k, isf,  1, 2*k-1); */
+    r = 2*k-1;
+    lim = rootof(n, r);
+    for (i = 1; i <= lim; i++)
+      if (isf[i])
+        sum += _pcr(n, k, isf,  ipow(i,r), r-1);
+  }
+
+  Safefree(isf);
+  return sum;
+}
+
+/* We want:
+ *    k=0 turned into k=2 in XS (0 here ok)
+ *    n=0 undef in XS (0 here ok)
+ *    k=1 => n
+ *    n=1 => 1
+ *    n=2 => 1<<k
+ *    overflow here should return 0
+ */
+UV nth_powerful(UV n, UV k) {
+  static UV const maxpow[11] = {0,UV_MAX,9330124695,11938035,526402,85014,25017,10251,5137,2903,1796};
+  static unsigned char const mink[20+1] = {0,0,1,2,4,6,7,9,11,12,14,16,18,19,21,23,24,26,28,30,31};
+  UV lo, hi, mid;
+
+  if (k == 0 || k >= BITS_PER_WORD) return 0;
+  if (k == 1 || n <= 1) return n;
+
+  if (k <= 10 && n > maxpow[k]) return 0;
+  if (k > 10 && (n > maxpow[10] || n > powerful_count(UV_MAX,k))) return 0;
+
+  if (n <= 20 && k >= mink[n]) return UVCONST(1) << (k+(n-2));
+  /* Now k >= 2, n >= 4 */
+
+  if (k == 2) { /* From Mincu and Panaitopol 2009 */
+    double n53 = pow(n, 5.0/3.0);
+    double nc = pow(n, 2) / pow(2.1732543125195541, 2);
+    double dlo = nc + 0.3 * n53;
+    double dhi = nc + 0.5 * n53;
+    lo = (UV) dlo;
+    hi = (n < 170) ? 8575 : (dhi >= UV_MAX) ? UV_MAX : 1 + (UV) dhi;
+  } else { /* min/max so not good at all */
+    lo = (UVCONST(1) << (k+1))+1;
+    hi = UV_MAX;
+  }
+
+  while (lo < hi) {
+    mid = lo + ((hi-lo)>>1);
+    if (powerful_count(mid,k) < n) lo = mid+1;
+    else                           hi = mid;
+  }
+  return hi;
+}
+
+
 #if 0
 /* This is the de Bruijn approximation, not exact! */
 static long double dickman_rho(long double u) {

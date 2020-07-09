@@ -124,6 +124,8 @@ sub entropy_bytes {
 *is_smooth = \&Math::Prime::Util::PP::is_smooth;
 *is_rough = \&Math::Prime::Util::PP::is_rough;
 *is_powerful = \&Math::Prime::Util::PP::is_powerful;
+*powerful_count = \&Math::Prime::Util::PP::powerful_count;
+*nth_powerful = \&Math::Prime::Util::PP::nth_powerful;
 
 *random_prime = \&Math::Prime::Util::PP::random_prime;
 *random_ndigit_prime = \&Math::Prime::Util::PP::random_ndigit_prime;

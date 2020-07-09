@@ -1217,7 +1217,84 @@ sub is_powerful {
 
   # Taking too long.  Factor what is left.
   return (Math::Prime::Util::vecall(sub { $_->[1] >= $k }, Math::Prime::Util::factor_exp($n))) ? 1 : 0;
+}
 
+sub _powerful_count_recurse {
+  my($n, $k, $m, $r) = @_;
+  my $lim = Math::Prime::Util::rootint(Math::Prime::Util::divint($n, $m), $r);
+
+  return $lim if $r <= $k;
+
+  my $sum = 0;
+  for my $i (1 .. $lim) {
+    if (Math::Prime::Util::gcd($m,$i) == 1 && Math::Prime::Util::is_square_free($i)) {
+      $sum += _powerful_count_recurse($n, $k, Math::Prime::Util::mulint($m, Math::Prime::Util::powint($i,$r)), $r-1)
+    }
+  }
+  $sum;
+}
+
+sub powerful_count {
+  my($n, $k) = @_;
+  _validate_positive_integer($n);
+  if (defined $k && $k != 0) {
+    _validate_positive_integer($k);
+  } else {
+    $k = 2;
+  }
+
+  return $n if $k == 1 || $n <= 1;
+
+  if ($k == 2) {
+    my $sum = 0;
+    for my $i (1 .. Math::Prime::Util::rootint($n,3)) {
+      $sum += Math::Prime::Util::sqrtint(Math::Prime::Util::divint($n,Math::Prime::Util::powint($i,3)))
+        if Math::Prime::Util::is_square_free($i);
+    }
+    return $sum;
+  }
+
+  _powerful_count_recurse($n, $k, 1, 2*$k-1);
+}
+
+sub nth_powerful {
+  my($n, $k) = @_;
+  _validate_positive_integer($n);
+  if (defined $k && $k != 0) {
+    _validate_positive_integer($k);
+  } else {
+    $k = 2;
+  }
+  return undef if $n == 0;
+  return $n if $k == 1 || $n <= 1;
+  return Math::Prime::Util::powint(2,$k) if $n == 2;
+  return Math::Prime::Util::powint(2,$k+1) if $n == 3;
+
+  # For small n, we can generate k-powerful numbers rapidly.  But without
+  # a reasonable upper limit, it's not clear how to effectively do it.
+  # E.g. nth_powerful(100,60) = 11972515182562019788602740026717047105681
+
+  my $lo = Math::Prime::Util::powint(2, $k+1);
+  my $hi = ~0;
+  if ($k == 2) {
+    $lo = int( $n*$n/4.72303430688484 + 0.3 * $n**(5/3) );
+    $hi = int( $n*$n/4.72303430688484 + 0.5 * $n**(5/3) );  # for n >= 170
+    $hi = ~0 if $hi > ~0;
+    $lo = $hi >> 1 if $lo > $hi;
+  }
+
+  # hi could be too low.
+  while (Math::Prime::Util::powerful_count($hi,$k) < $n) {
+    $lo = $hi+1;
+    $hi = mulint(2, $hi);
+  }
+
+  while ($lo < $hi) {
+    my $mid = $lo + (($hi-$lo) >> 1);
+    if (Math::Prime::Util::powerful_count($mid,$k) < $n) { $lo = $mid+1; }
+    else                                                 { $hi = $mid; }
+  }
+  $lo;
 }
 
 

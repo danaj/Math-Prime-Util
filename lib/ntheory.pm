@@ -294,6 +294,8 @@ Tags:
   shuffle(...)                        random permutation of an array
   lucky_numbers(n)                    array ref of lucky sieve up to n
   nth_lucky(n)                        nth entry in lucky sieve
+  powerful_count(n[,k])               count of k-powerful numbers <= n
+  nth_powerful(n[,k])                 the nth k-powerful number
 
 =head2 NON-INTEGER MATH
 

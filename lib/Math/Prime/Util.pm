@@ -45,8 +45,7 @@ our @EXPORT_OK =
       numtoperm permtonum randperm shuffle
       prime_iterator prime_iterator_object
       next_prime  prev_prime
-      prime_count
-      prime_count_lower prime_count_upper prime_count_approx
+      prime_count prime_count_lower prime_count_upper prime_count_approx
       nth_prime nth_prime_lower nth_prime_upper nth_prime_approx inverse_li
       twin_prime_count twin_prime_count_approx
       nth_twin_prime nth_twin_prime_approx
@@ -60,6 +59,7 @@ our @EXPORT_OK =
       ramanujan_prime_count_lower ramanujan_prime_count_upper
       nth_ramanujan_prime nth_ramanujan_prime_approx
       nth_ramanujan_prime_lower nth_ramanujan_prime_upper
+      powerful_count nth_powerful
       sum_primes print_primes
       random_prime random_ndigit_prime
       random_nbit_prime random_safe_prime random_strong_prime
@@ -3744,6 +3744,21 @@ With C<k=2> this corresponds to Pari's C<ispowerful> function.
 While we can easily code this as a one line function using
 L</vecall> and L</factor_exp>, this is 10x faster and avoids fully
 factoring the input in most cases.
+
+=head2 powerful_count
+
+  my $npowerful3 = powerful_count(2**32, 3);
+
+Given two non-negative integer inputs C<n> and C<k>, returns the total
+number of C<k>-powerful numbers from C<1> to C<n> inclusive.
+If C<k> is omitted or zero, C<k=2> is used.
+
+=head2 nth_powerful
+
+Given two non-negative integer inputs C<n> and C<k>, returns the
+C<n>-th C<k>-powerful number.
+If C<k> is omitted or zero, C<k=2> is used.
+For all C<k> returns undef for C<n=0> and 1 for C<n=1>.
 
 
 =head2 carmichael_lambda
