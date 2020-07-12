@@ -32,15 +32,15 @@ my %kap=(
 plan tests => 11 + scalar(keys(%kap));
 
 for my $k (0 .. 10) {
-  my @exp = map { fac_is_almost_prime($_, $k) } 0 .. 40;
-  my @got = map {     is_almost_prime($_, $k) } 0 .. 40;
-  is_deeply( \@got, \@exp, "is_almost_prime(0..40, $k)" );
+  my @exp = map { fac_is_almost_prime($k, $_) } 0 .. 40;
+  my @got = map {     is_almost_prime($k, $_) } 0 .. 40;
+  is_deeply( \@got, \@exp, "is_almost_prime($k, 0..40)" );
 }
 
 while (my($k, $pvals) = each (%kap)) {
   my $failed = 0;
   my $nvals = scalar(@$pvals);
-  for my $n (@$pvals) { $failed++ if is_almost_prime($n, $k) != 1; }
+  for my $n (@$pvals) { $failed++ if is_almost_prime($k, $n) != 1; }
   is( 0, $failed, "Test first $nvals $k-almost-primes return true" );
 }
 
@@ -48,7 +48,7 @@ while (my($k, $pvals) = each (%kap)) {
 
 
 sub fac_is_almost_prime {
-  my($n, $k) = @_;
+  my($k, $n) = @_;
   return 0+($n==1) if $k == 0;
   return (is_prime($n) ? 1 : 0) if $k == 1;
   return is_semiprime($n) if $k == 2;
