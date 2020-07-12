@@ -262,17 +262,15 @@ static double _asymptotic_nth(uint32_t k, UV n) {
   (lo + (UV) (((double)(n-rlo) * (double)(hi-lo) / (double)(rhi-rlo))+0.5))
 /* Uses n and k.  Uses and modified lo, hi, rlo, rhi.  Will set newmid. */
 #define INTERP_STEP(newmid, try, funcptr) \
-  do { \
+  { \
     UV _mid = try; \
     if (_mid > lo && _mid < hi) { \
       UV rmid = (*funcptr)(k,_mid); \
-      /* if (rmid == n) return _mid; */ \
       if (rmid < n) { lo = _mid; rlo = rmid; } \
       else          { hi = _mid; rhi = rmid; } \
-      if (rmid == n) break; \
     } \
     newmid = LINEAR_INTERP(n, lo, hi, rlo, rhi); \
-  } while (0)
+  }
 
 UV nth_almost_prime_upper(UV k, UV n) {
   UV i, r, max, lo, hi, rlo, rhi, mid;
@@ -305,10 +303,13 @@ UV nth_almost_prime_upper(UV k, UV n) {
   for (i = 0; i < 8; i++) { /* Pull in the farthest */
     UV dlo, dhi;
     INTERP_STEP(mid, mid, &almost_prime_count_lower);
+    if (rhi == n) break;
     INTERP_STEP(mid, mid, &almost_prime_count_lower);
+    if (rhi == n) break;
     dlo = mid-lo; dhi = hi-mid;
     if (dlo < 10 && dhi < 10) break;
     INTERP_STEP(mid, (dlo < dhi) ? mid+(dhi+9)/10 : mid-(dlo+9)/10, &almost_prime_count_lower);
+    if (rhi == n) break;
   }
 
   /* Binary search between lo and hi, finds transition point */
@@ -354,10 +355,13 @@ UV nth_almost_prime_lower(UV k, UV n) {
   for (i = 0; i < 8; i++) { /* Pull in the farthest */
     UV dlo, dhi;
     INTERP_STEP(mid, mid, &almost_prime_count_upper);
+    if (rhi == n) break;
     INTERP_STEP(mid, mid, &almost_prime_count_upper);
+    if (rhi == n) break;
     dlo = mid-lo; dhi = hi-mid;
     if (dlo < 10 && dhi < 10) break;
     INTERP_STEP(mid, (dlo < dhi) ? mid+(dhi+9)/10 : mid-(dlo+9)/10, &almost_prime_count_upper);
+    if (rhi == n) break;
   }
 
   /* Binary search between lo and hi, finds transition point */
@@ -371,7 +375,6 @@ UV nth_almost_prime_lower(UV k, UV n) {
 #endif
   return lo;
 }
-
 
 UV nth_almost_prime_approx(UV k, UV n) {
   UV i, max, lo, hi, rlo, rhi, mid;
@@ -388,16 +391,21 @@ UV nth_almost_prime_approx(UV k, UV n) {
   if (n < 8) return _fast_small_nth_almost_prime(k,n);
   lo = nth_almost_prime_lower(k,n);
   hi = nth_almost_prime_upper(k,n);
-  /* Rapidly improve */
   rlo = almost_prime_count_approx(k,lo);
   rhi = almost_prime_count_approx(k,hi);
-  mid = _asymptotic_nth(k,n);
-  INTERP_STEP(mid, mid, &almost_prime_count_approx);
-  mid = LINEAR_INTERP(n, lo, hi, rlo, rhi);
-  for (i = 0; i < 4; i++) {
+  if (rlo == n) return lo;
+
+  mid = LINEAR_INTERP(n,lo,hi,rlo,rhi);
+  for (i = 1; i <= 12 && lo < hi && rhi != n; i++) {
     INTERP_STEP(mid, mid, &almost_prime_count_approx);
   }
-  /* Binary search for transition point*/
+  if (rlo < n-1) {
+    mid = LINEAR_INTERP(n-1,lo,hi,rlo,rhi);
+    if (mid > lo && mid < hi) {
+      if (almost_prime_count_approx(k,mid) < n) lo = mid+1;
+      else                                      hi = mid;
+    }
+  }
   while (lo < hi) {
     UV mid = lo + (hi-lo)/2;
     if (almost_prime_count_approx(k,mid) < n) lo = mid+1;
@@ -435,7 +443,17 @@ UV nth_almost_prime(UV k, UV n) {
     if (rmid < n) { lo = mid; rlo = rmid; }
     else          { hi = mid; rhi = rmid; }
   }
-  /* It is very common for rhi = n now. */
+  /* rhi = n or close to it.  Pull the low side in. */
+  if (rlo < n-1) {
+    mid = LINEAR_INTERP(n-4,lo,hi,rlo,rhi);
+    if (mid <= lo)
+      mid = LINEAR_INTERP(n-1,lo,hi,rlo,rhi);
+    if (mid > lo && mid < hi) {
+      rmid = almost_prime_count(k,mid);
+      if (rmid < n) { lo = mid+1; }
+      else          { hi = mid; rhi = rmid; }
+    }
+  }
 
   /* Binary search for the transition, with a shortcut to linear once close. */
   while (lo < hi) {
