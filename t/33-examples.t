@@ -14,7 +14,7 @@ BEGIN {
   }
 }
 
-plan tests => 99;
+plan tests => 100;
 
 {
   my @nums;
