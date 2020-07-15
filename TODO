@@ -234,8 +234,6 @@
 
 - ipowsafe could have the limits using hard-coded sqrt and cbrt to avoid div.
 
-- Possibly improve semiprimes using the Bayless (2018) bounds.
-
 - almost primes check and enter new for
    3 http://oeis.org/A109251
    4 http://oeis.org/A114106
@@ -268,7 +266,7 @@
   - XS almost_primes should call this in segments, use count_approx for seg size
   - more work on verifying count_upper for k=5+
   - more work on verifying count_lower for k=5+
-  - max_almost_prime_count fill in k=5-13. Somehow.
+  - max_almost_prime_count fill in k=5-11. Somehow.
   - max_almost_prime_count improve k=2,3,4.  Somehow.
   - optimize PP is_almost_prime
   - better PP almost_prime_count bounds for k > 3
@@ -276,8 +274,6 @@
   - optimize PP almost_primes() (uses forfactored)
   - any use for genk (iterator for k)?
   - reduce_prime_count_factor(k,n) should be void and modify k,n.
-
-- various from Pari 2.11
 
 - GMP is_smooth, is_rough, is_powerful, various almost_primes
 
@@ -287,3 +283,13 @@
 
 - Add OEIS sequence, a(n) = the k-th k-powerful number
   mpu 'for my $k (1..40) { say "$k ",nth_powerful($k,$k); }'
+
+- See about trying to unify some of the multitude of inverse methods.
+    util.c:  nth_powerful
+    semi_primes.c: semiprime_count_approx, nth_semiprime
+    ramanujan_primes.c: count_lower, count_upper, nth_approx
+    prime_nth_count.c: nth_upper, nth_lower, nth_twin_approx
+    almost_primes.c: nth_upper, nth_lower, nth_approx, nth
+  plus lots of PP code.
+  Lagrange estimator for initialization when we don't know bounds?
+  Can use Aitken's method, but it didn't help for almost primes.

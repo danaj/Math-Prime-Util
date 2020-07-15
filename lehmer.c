@@ -128,7 +128,7 @@ static UV icbrt(UV n) {
   return root;
 }
 
-/* Use version 5.x of PrimeSieve */
+/* Use version 6.x of PrimeSieve */
 #include <limits.h>
 #include <sys/time.h>
 #include <primesieve.hpp>
@@ -137,7 +137,7 @@ static UV icbrt(UV n) {
   #include <omp.h>
 #endif
 
-#define segment_prime_count(a, b)     primesieve::parallel_count_primes(a, b)
+#define segment_prime_count(a, b)     primesieve::count_primes(a, b)
 
 /* Generate an array of n small primes, where the kth prime is element p[k].
  * Remember to free when done. */
