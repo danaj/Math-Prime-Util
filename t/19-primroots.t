@@ -3,7 +3,7 @@ use strict;
 use warnings;
 
 use Test::More;
-use Math::Prime::Util qw/ znprimroot is_primitive_root /;
+use Math::Prime::Util qw/ znprimroot is_primitive_root qnr /;
 
 #my $extra = defined $ENV{EXTENDED_TESTING} && $ENV{EXTENDED_TESTING};
 my $use64 = Math::Prime::Util::prime_get_config->{'maxbits'} > 32;
@@ -43,6 +43,7 @@ if ($use64) {
 plan tests => 0
                 + scalar(keys %primroots) + 1  # znprimroot
                 + scalar(keys %primroots) + 3  # is_primitive_root
+                + 6                            # qnr
                 ;
 
 ###### znprimroot
@@ -64,3 +65,11 @@ while (my($n, $root) = each (%primroots)) {
 is(is_primitive_root(19,191), 1, "19 is a primitive root mod 191");
 is(is_primitive_root(13,191), 0, "13 is not a primitive root mod 191");
 is(is_primitive_root(35,982), 0, "35 is not a primitive root mod 982");
+
+###### qnr
+is_deeply([map{qnr($_)}0..15], [0,1,2,2,2,2,2,3,2,2,2,2,2,2,3,2], "qnr(1..15)");
+is_deeply([map{qnr(2**$_)}1..16], [map{2}1..16], "qnr(2^k) = 2 for k>=1");
+is(qnr(5711), 19, "The least quadratice non-residue of 5711 is 19");
+is(qnr(366791), 43, "The least quadratice non-residue of 366791 is 43");
+is(qnr(2737), 3, "qnr(7*17*23) = 2");
+is(qnr(9257330), 2, "qnr(2*5*925733) = 2");

@@ -77,6 +77,7 @@ extern int is_almost_prime(UV k, UV n);
 extern int is_carmichael(UV n);
 extern UV  is_quasi_carmichael(UV n);  /* Returns number of bases */
 extern UV  pillai_v(UV n);             /* v: v! % n == n-1 && n % v != 1 */
+extern UV  qnr(UV n);
 
 extern int is_smooth(UV n, UV k);
 extern int is_rough(UV n, UV k);

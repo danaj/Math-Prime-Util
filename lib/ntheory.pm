@@ -275,6 +275,7 @@ Tags:
   sumliouville(n)                     sum of Liouville for 1 to n
   znorder(a,n)                        multiplicative order of a mod n
   znprimroot(n)                       smallest primitive root
+  qnr(n)                              least quadratic non-residue
   chebyshev_theta(n)                  first Chebyshev function
   chebyshev_psi(n)                    second Chebyshev function
   hclassno(n)                         Hurwitz class number H(n) * 12

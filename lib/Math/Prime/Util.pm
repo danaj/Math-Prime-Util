@@ -71,7 +71,7 @@ our @EXPORT_OK =
       primorial pn_primorial consecutive_integer_lcm gcdext chinese
       gcd lcm factor factor_exp divisors valuation hammingweight
       todigits fromdigits todigitstring sumdigits
-      invmod sqrtmod addmod mulmod divmod powmod
+      invmod sqrtmod addmod mulmod divmod powmod qnr
       vecsum vecmin vecmax vecprod vecreduce vecextract
       vecany vecall vecnotall vecnone vecfirst vecfirstidx
       moebius mertens liouville sumliouville prime_omega prime_bigomega
@@ -3239,7 +3239,6 @@ Given three integers C<a>, C<b>, and C<n> where C<n> is positive,
 return C<(a/b) mod n>.  This is done as C<(a * (1/b mod n)) mod n>.  If
 no inverse of C<b> mod C<n> exists then undef if returned.
 
-
 =head2 valuation
 
   say "$n is divisible by 2 ", valuation($n,2), " times.";
@@ -3928,6 +3927,15 @@ produces.
 Given two non-negative numbers C<a> and C<n>, returns C<1> if C<a> is a
 primitive root modulo C<n>, and C<0> if not.  If C<a> is a primitive root,
 then C<euler_phi(n)> is the smallest C<e> for which C<a^e = 1 mod n>.
+
+=head2 qnr
+
+Given an integer C<n>, returns the least quadratic non-residue modulo C<n>.
+This is the smallest integer C<a> where there does not exist an integer
+C<b> such that C<a = b^2 mod n>.
+
+This is the L<OEIS series A020649|http://oeis.org/A053760>.  For primes
+it is L<OEIS series A020649|http://oeis.org/A053760>.
 
 =head2 znlog
 

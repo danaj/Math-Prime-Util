@@ -4607,6 +4607,35 @@ sub znprimroot {
   }
 }
 
+sub qnr {
+  my($n) = @_;
+  _validate_positive_integer($n);
+
+  return $n if $n <= 2;
+  return 2 if Math::Prime::Util::kronecker(2,$n) == -1;
+
+  if (is_prime($n)) {
+    for (my $a = 3; $a < $n; $a = next_prime($a)) {
+      return $a if Math::Prime::Util::kronecker($a,$n) == -1;
+    }
+  } else {
+    if ($n % 2 == 0) {
+      my $e = valuation($n, 2);
+      $n >>= $e;
+      return 2 if $n == 1 || $e >= 2;
+    }
+    return 2 if !($n%3) || !($n%5) || !($n%11) || !($n%13) || !($n%19);
+    my @F = Math::Prime::Util::factor_exp($n);
+    for (my $a = 2; $a < $n; $a = next_prime($a)) {
+      for my $pe (@F) {
+        my $p = $pe->[0];
+        return $a if $a < $p && Math::Prime::Util::kronecker($a,$p) == -1;
+      }
+    }
+  }
+  0;
+}
+
 
 # Find first D in sequence (5,-7,9,-11,13,-15,...) where (D|N) == -1
 sub _lucas_selfridge_params {

@@ -293,3 +293,5 @@
   plus lots of PP code.
   Lagrange estimator for initialization when we don't know bounds?
   Can use Aitken's method, but it didn't help for almost primes.
+
+- Speed up PP sqrtmod -- it's horrifically slow.

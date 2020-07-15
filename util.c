@@ -1510,6 +1510,43 @@ UV exp_mangoldt(UV n) {
   return p;
 }
 
+/* least quadratic non-residue mod p */
+UV qnr(UV n) {
+  UV a;
+
+  if (n <= 2) return n;
+
+  /* The result is always a prime */
+  if (kronecker_uu(2,n) == -1) return 2;
+
+  if (is_prime(n)) {
+    for (a = 3; a < n; a += 2)
+      if (kronecker_uu(a,n) == -1)
+        return a;
+  } else {
+#if 0 /* Not terrible, but does more work than we need. */
+    for (a = 2; a < n; a = next_prime(a))
+      if (!sqrtmod_composite(0, a, n))
+        return a;
+#endif
+    UV fac[MPU_MAX_FACTORS+1];
+    int i, nfactors;
+    if (!(n&1)) { /* Check and remove all multiples of 2 */
+      int e = ctz(n);
+      n >>= e;
+      if (e >= 2 || n == 1) return 2;
+    }
+    if (!(n % 3) || !(n % 5) || !(n % 11) || !(n % 13) || !(n % 19)) return 2;
+    nfactors = factor_exp(n, fac, 0);
+    for (a = 2; a < n; a = next_prime(a)) {
+      for (i = 0; i < nfactors; i++)
+        if (a < fac[i] && kronecker_uu(a,fac[i]) == -1)
+          return a;
+    }
+  }
+  return 0;
+}
+
 
 UV znorder(UV a, UV n) {
   UV fac[MPU_MAX_FACTORS+1];
@@ -1781,7 +1818,7 @@ UV factorialmod(UV n, UV m) {  /*  n! mod m */
 static int verify_sqrtmod(UV s, UV *rs, UV a, UV p) {
   if (p-s < s)  s = p-s;
   if (mulmod(s, s, p) != a) return 0;
-  *rs = s;
+  if (rs != 0) *rs = s;
   return 1;
 }
 #if !USE_MONTMATH
@@ -1969,10 +2006,12 @@ int sqrtmod_composite(UV *s, UV a, UV n) {
   /* Factor n */
   nfactors = factor_exp(n, fac, exp);
 
-  /* If gcd(a,n)==1, this answers comclusively if a solution exists. */
+  /* If gcd(a,n)==1, this answers conclusively if a solution exists. */
   if (gcdan == 1) {
     for (i = 0; i < nfactors; i++)
       if (fac[i] > 7 && kronecker_uu(a, fac[i]) != 1) return 0;
+    if (s == 0)  /* They only care about existence */
+      return 1;
   }
 
   for (i = 0; i < nfactors; i++) {
