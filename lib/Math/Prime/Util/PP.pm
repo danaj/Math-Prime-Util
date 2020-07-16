@@ -1306,8 +1306,8 @@ sub perfect_power_count {
   my $log2n = Math::Prime::Util::logint($n,2);
   for my $k (2 .. $log2n) {
     my $m = Math::Prime::Util::moebius($k);
-    next unless $m != 0;
-    push @T, Math::Prime::Util::mulint($m, Math::Prime::Util::subint(Math::Prime::Util::rootint($n,$_),1));
+    next if $m == 0;
+    push @T, Math::Prime::Util::mulint(-$m, Math::Prime::Util::subint(Math::Prime::Util::rootint($n,$k),1));
   }
   Math::Prime::Util::vecsum(@T);
 }
@@ -1318,8 +1318,12 @@ sub prime_power_count {
   return 0 if $n == 0;
   return $n-1 if $n <= 5;
 
-  my $log2n = Math::Prime::Util::logint($n,2);
-  Math::Prime::Util::vecsum(map { Math::Prime::Util::prime_count(Math::Prime::Util::rootint($n, $_)) } 1..$log2n);
+  Math::Prime::Util::vecsum(
+    map { Math::Prime::Util::prime_count(
+            Math::Prime::Util::rootint($n, $_)
+          )
+        } 1 .. Math::Prime::Util::logint($n,2)
+  );
 }
 
 sub almost_primes {
