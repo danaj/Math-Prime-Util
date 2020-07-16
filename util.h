@@ -85,6 +85,8 @@ extern int is_powerful(UV n, UV k);
 extern UV powerful_count(UV n, UV k);
 extern UV nth_powerful(UV n, UV k);
 
+extern UV perfect_power_count(UV n);
+
 extern UV  debruijn_psi(UV x, UV y);
 
 extern UV inverse_totient_count(UV n);

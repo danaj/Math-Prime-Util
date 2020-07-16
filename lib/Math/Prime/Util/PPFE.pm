@@ -126,6 +126,8 @@ sub entropy_bytes {
 *is_powerful = \&Math::Prime::Util::PP::is_powerful;
 *powerful_count = \&Math::Prime::Util::PP::powerful_count;
 *nth_powerful = \&Math::Prime::Util::PP::nth_powerful;
+*perfect_power_count = \&Math::Prime::Util::PP::perfect_power_count;
+*prime_power_count = \&Math::Prime::Util::PP::prime_power_count;
 
 *random_prime = \&Math::Prime::Util::PP::random_prime;
 *random_ndigit_prime = \&Math::Prime::Util::PP::random_ndigit_prime;

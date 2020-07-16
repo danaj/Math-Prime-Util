@@ -295,3 +295,12 @@
   Can use Aitken's method, but it didn't help for almost primes.
 
 - Speed up PP sqrtmod -- it's horrifically slow.
+
+- modular roots?  Pari/gp gives sqrtmod another argument.   rootmod(n,k,p)?
+  https://eprint.iacr.org/2014/212.pdf
+  https://www.ams.org/journals/mcom/1993-61-203/S0025-5718-1993-1182249-0/S0025-5718-1993-1182249-0.pdf
+  https://link.springer.com/article/10.1007/s00200-018-0362-2
+  https://www.researchgate.net/publication/325975350_On_the_Cipolla-Lehmer_type_algorithms_in_finite_fields
+  https://stackoverflow.com/questions/6752374/cube-root-modulo-p-how-do-i-do-this
+
+- perfect_power_count, prime_power_count: test

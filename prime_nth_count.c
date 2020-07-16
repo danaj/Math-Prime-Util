@@ -1043,3 +1043,18 @@ double ramanujan_axler(long double n, long double c, long double d) {
   res = 2*n * (1.0L + log2/logn - (log2*loglogn - log2*log2 - log2) / (logn*logn) + U);
   return res;
 }
+
+/* n A025528; 10^n A267712 */
+UV prime_power_count(UV n) {
+  uint32_t k, log2n;
+  UV sum;
+
+  if (n <= 5) return (n==0) ? 0 : n-1;
+
+  sum = prime_count(0,n);
+  log2n = log2floor(n);
+  for (k = 2; k <= log2n; k++) {
+    sum += prime_count(0,rootof(n,k));
+  }
+  return sum;
+}

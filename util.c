@@ -1851,6 +1851,7 @@ UV _sqrtmod_prime(UV a, UV p) {
   /* Verify Euler condition for odd p */
   if ((p & 1) && powmod(a,(p-1)>>1,p) != 1) return 0;
 
+  /* Algorithm 1.5.1 from Cohen.  Tonelli/Shanks. */
   {
     UV x, q, e, t, z, r, m, b;
     q = p-1;
@@ -1926,6 +1927,7 @@ UV _sqrtmod_prime(UV a, UV p) {
   /* Verify Euler condition for odd p */
   if ((p & 1) && mont_powmod(a,(p-1)>>1,p) != mont1) return 0;
 
+  /* Algorithm 1.5.1 from Cohen.  Tonelli/Shanks. */
   {
     UV x, q, e, t, z, r, m, b;
     q = p-1;
@@ -3776,6 +3778,21 @@ UV nth_powerful(UV n, UV k) {
   return hi;
 }
 
+/* n A069623; 10^n A070428 */
+UV perfect_power_count(UV n) {
+  const signed char* m;
+  uint32_t k, log2n;
+  UV sum = 1;
+
+  if (n <= 1) return n;
+
+  log2n = log2floor(n);
+  for (k = 2; k <= log2n; k++) {
+    IV m = moebius(k);
+    if (m != 0) sum -= m * (rootof(n, k)-1);
+  }
+  return sum;
+}
 
 #if 0
 /* This is the de Bruijn approximation, not exact! */

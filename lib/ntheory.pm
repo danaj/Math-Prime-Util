@@ -297,6 +297,8 @@ Tags:
   nth_lucky(n)                        nth entry in lucky sieve
   powerful_count(n[,k])               count of k-powerful numbers <= n
   nth_powerful(n[,k])                 the nth k-powerful number
+  perfect_power_count(n)              count of perfect powers <= n
+  prime_power_count(n)                count of prime powers <= n
 
 =head2 NON-INTEGER MATH
 

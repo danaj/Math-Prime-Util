@@ -1596,7 +1596,9 @@ next_prime(IN SV* svn)
     ramanujan_prime_count_lower = 20
     twin_prime_count_approx = 21
     semiprime_count_approx = 22
-    urandomm = 23
+    perfect_power_count = 23
+    prime_power_count = 24
+    urandomm = 25
   PPCODE:
     if (_validate_int(aTHX_ svn, 0)) {
       UV n = my_svuv(svn);
@@ -1639,7 +1641,9 @@ next_prime(IN SV* svn)
           case 20:ret = ramanujan_prime_count_lower(n); break;
           case 21:ret = twin_prime_count_approx(n); break;
           case 22:ret = semiprime_count_approx(n); break;
-          case 23:
+          case 23:ret = perfect_power_count(n); break;
+          case 24:ret = prime_power_count(n); break;
+          case 25:
           default:{ dMY_CXT; ret = urandomm64(MY_CXT.randcxt,n); } break;
         }
         XSRETURN_UV(ret);
@@ -1669,7 +1673,9 @@ next_prime(IN SV* svn)
       case 20: _vcallsub_with_pp("ramanujan_prime_count_lower");  break;
       case 21: _vcallsub_with_pp("twin_prime_count_approx"); break;
       case 22: _vcallsub_with_pp("semiprime_count_approx"); break;
-      case 23:
+      case 23: _vcallsub_with_pp("perfect_power_count"); break;
+      case 24: _vcallsub_with_pp("prime_power_count"); break;
+      case 25:
       default: _vcallsub_with_gmpobj(0.44,"urandomm"); break;
     }
     if (ix == 0 || ix == 1 || ix == 23)

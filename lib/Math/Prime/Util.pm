@@ -60,6 +60,7 @@ our @EXPORT_OK =
       nth_ramanujan_prime nth_ramanujan_prime_approx
       nth_ramanujan_prime_lower nth_ramanujan_prime_upper
       powerful_count nth_powerful
+      perfect_power_count prime_power_count
       sum_primes print_primes
       random_prime random_ndigit_prime
       random_nbit_prime random_safe_prime random_strong_prime
@@ -3758,6 +3759,20 @@ Given two non-negative integer inputs C<n> and C<k>, returns the
 C<n>-th C<k>-powerful number.
 If C<k> is omitted or zero, C<k=2> is used.
 For all C<k> returns undef for C<n=0> and 1 for C<n=1>.
+
+=head2 perfect_power_count
+
+Given a non-negative integer input C<n>, returns the number of integers,
+not exceeding n, which are perfect powers.  By convention, 1 is included
+here even though L</is_power(1) = 0>.
+This is L<OEIS series A069623|http://oeis.org/A069623>.
+
+head2 prime_power_count
+
+Given a non-negative integer input C<n>, returns the number of integers,
+not exceeding n, which are prime powers.  By convention, 1 is included
+here even though L</is_prime_power(1) = 0>.
+This is L<OEIS series A025528|http://oeis.org/A025528>.
 
 
 =head2 carmichael_lambda
