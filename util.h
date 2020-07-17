@@ -19,7 +19,7 @@ extern UV  prev_prime(UV x);
 
 extern void print_primes(UV low, UV high, int fd);
 
-extern int powerof(UV n);
+extern uint32_t powerof(UV n);
 extern int is_power(UV n, UV a);
 extern UV rootof(UV n, UV k);
 extern UV ipowsafe(UV n, UV k);  /* returns UV_MAX if overflows */

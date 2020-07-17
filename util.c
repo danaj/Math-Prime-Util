@@ -679,7 +679,7 @@ signed char* range_liouville(UV lo, UV hi)
  * 4) Dietzfelbinger algorithm 2.3.5.  Quite slow.
  * This currently uses a hybrid of 1 and 2.
  */
-int powerof(UV n) {
+uint32_t powerof(UV n) {
   UV t;
   if ((n <= 3) || (n == UV_MAX)) return 1;
   if ((n & (n-1)) == 0)          return ctz(n);  /* powers of 2    */
@@ -3686,7 +3686,7 @@ int is_rough(UV n, UV k) {
 
 int is_powerful(UV n, UV k) {
   UV pk;
-  int e, res;
+  int res;
 
   if (n <= 1 || k <= 1) return 1;
 
@@ -3762,7 +3762,7 @@ static unsigned char* _squarefree_range(UV lo, UV hi) {
 
   if (hi < lo) return 0;
 
-  New(0, isf, range, char);
+  New(0, isf, range, unsigned char);
   memset(isf, 1, range);
   if (lo == 0) isf[0] = 0;
   for (i = 2; i <= sqrthi; i++)
@@ -3860,7 +3860,6 @@ UV nth_powerful(UV n, UV k) {
 
 /* n A069623; 10^n A070428 */
 UV perfect_power_count(UV n) {
-  const signed char* m;
   uint32_t k, log2n;
   UV sum = 1;
 
