@@ -23,19 +23,23 @@
 /******************************************************************************/
 
 /* Least r s.t.  almost_prime_count(k, n)  =  almost_prime_count(k-r, n >> r) */
-static uint32_t reduce_prime_count_factor(uint32_t k, UV n) {
+static void reduce_prime_count_factor(uint32_t *pk, UV *n) {
   static uint32_t const maxpow3 = (BITS_PER_WORD == 32) ? 20 : 40;
 #if BITS_PER_WORD == 32
   static uint32_t const pow3[21] = {1,3,9,27,81,243,729,2187,6561,19683,59049,177147,531441,1594323,4782969,14348907,43046721,129140163,387420489,1162261467,3486784401U};
 #else
   static UV const pow3[41] = {1,3,9,27,81,243,729,2187,6561,19683,59049,177147,531441,1594323,4782969,14348907,43046721,129140163,387420489,1162261467,3486784401U,UVCONST(10460353203),UVCONST(31381059609),UVCONST(94143178827),UVCONST(282429536481),UVCONST(847288609443),UVCONST(2541865828329),UVCONST(7625597484987),UVCONST(22876792454961),UVCONST(68630377364883),UVCONST(205891132094649),UVCONST(617673396283947),UVCONST(1853020188851841),UVCONST(5559060566555523),UVCONST(16677181699666569),UVCONST(50031545098999707),UVCONST(150094635296999121),UVCONST(450283905890997363),UVCONST(1350851717672992089),UVCONST(4052555153018976267),UVCONST(12157665459056928801)};
 #endif
-  uint32_t r = 0;
+  uint32_t k = *pk, r = 0;
   if (k > maxpow3)    /* Larger n would not fit in a UV type */
     r = k-maxpow3;
-  while (k >= r && (n>>r) < pow3[k-r])
+  while (k >= r && ((*n)>>r) < pow3[k-r])
     r++;
-  return r;
+  /* Reduce */
+  if (r > 0) {
+    *pk -= r;
+    *n >>= r;
+  }
 }
 
 /* Least r s.t.  nth_almost_prime(k,n)  =  nth_almost_prime(k-r,n) << r */
@@ -183,12 +187,11 @@ static UV _cs(UV n, UV pdiv, UV lo, uint32_t k, prime_array_t cache) {
 UV almost_prime_count(uint32_t k, UV n)
 {
   prime_array_t cache;
-  UV r, count, csize;
+  UV count, csize;
 
   if (k == 0) return (n >= 1);
   if (k >= BITS_PER_WORD || (n >> k) == 0) return 0;
-  r = reduce_prime_count_factor(k, n); /* Reduce to lower k,n if possible */
-  if (r > 0) {  n >>= r;  k -= r;  }
+  reduce_prime_count_factor(&k, &n); /* Reduce to lower k,n if possible */
 
   if (k == 1) return LMO_prime_count(n);
   if (k == 2) return semiprime_count(0,n);
@@ -215,12 +218,11 @@ UV almost_prime_count(uint32_t k, UV lo, UV hi) {
 #endif
 
 UV almost_prime_count_approx(uint32_t k, UV n) {
-  UV r, lo, hi;
+  UV lo, hi;
 
   if (k == 0) return (n >= 1);
   if (k >= BITS_PER_WORD || (n >> k) == 0) return 0;
-  r = reduce_prime_count_factor(k, n); /* Reduce to lower k,n if possible */
-  if (r > 0) {  n >>= r;  k -= r;  }
+  reduce_prime_count_factor(&k, &n); /* Reduce to lower k,n if possible */
 
   if (k == 1) return prime_count_approx(n);
   if (k == 2) return semiprime_count_approx(n);
@@ -531,11 +533,10 @@ static const double _lower_64[41] = {0,0, 1.011,  0.8093, 0.7484,
 static void _almost_prime_count_bounds(UV *lower, UV *upper, uint32_t k, UV n) {
   double x, logx, loglogx, logplus, multl, multu, boundl, boundu;
   UV max;
-  uint32_t i, r;
+  uint32_t i;
 
   if (k >= BITS_PER_WORD || (n >> k) == 0) { *lower = *upper = 0; return; }
-  r = reduce_prime_count_factor(k,n); /* Reduce to lower k,n if possible */
-  if (r > 0) {  n >>= r;  k -= r;  }
+  reduce_prime_count_factor(&k, &n); /* Reduce to lower k,n if possible */
   if (k == 0) { *lower = *upper = (n >= 1); return; }
   if (k == 1) { *lower = prime_count_lower(n); *upper = prime_count_upper(n); return; }
   if (n <  3*(UVCONST(1) << (k-1))) { *lower = *upper = 1; return; }

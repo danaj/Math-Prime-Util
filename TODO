@@ -270,7 +270,6 @@
   - optimize PP nth_almost_prime and bounds
   - optimize PP almost_primes() (uses forfactored)
   - any use for genk (iterator for k)?
-  - reduce_prime_count_factor(k,n) should be void and modify k,n.
 
 - GMP is_smooth, is_rough, is_powerful, various almost_primes
 
