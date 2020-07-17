@@ -21,7 +21,7 @@ extern void print_primes(UV low, UV high, int fd);
 
 extern uint32_t powerof(UV n);
 extern int is_power(UV n, UV a);
-extern UV rootof(UV n, UV k);
+extern UV rootint(UV n, UV k);
 extern UV ipowsafe(UV n, UV k);  /* returns UV_MAX if overflows */
 extern int primepower(UV n, UV* prime);
 extern UV valuation(UV n, UV k);
@@ -240,7 +240,7 @@ static int is_perfect_fifth(UV n)
   m = n %  31; if ((m*80682551) & (m*73523539) & 45414528)  return 0;
   m = n %  41; if ((m*92806493) & (m*130690042) & 35668129)  return 0;
   /* m = n %  25; if ((m*109794298) & (m*105535723) & 16097553)  return 0; */
-  m = rootof(n, 5);
+  m = rootint(n, 5);
   return m*m*m*m*m == n;
 }
 #endif
@@ -256,7 +256,7 @@ static int is_perfect_seventh(UV n)
   /* m = n %  43; if ((m*101368253) & (m*814158665) & 142131408)  return 0; */
   /* m = n %  29; if ((m*81935611) & (m*84736134) & 37831965)  return 0; */
   /* m = n % 116; if ((m*348163737) & (m*1539055705) & 2735997248)  return 0; */
-  m = rootof(n, 7);
+  m = rootint(n, 7);
   return m*m*m*m*m*m*m == n;
 }
 #endif

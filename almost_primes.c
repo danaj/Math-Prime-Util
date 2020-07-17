@@ -176,7 +176,7 @@ static UV _cs(UV n, UV pdiv, UV lo, uint32_t k, prime_array_t cache) {
   if (k == 2)
     return _final_sum(n, pdiv, lo, cache);
 
-  SIMPLE_FOR_EACH_PRIME(lo, rootof(n/pdiv,k)) {
+  SIMPLE_FOR_EACH_PRIME(lo, rootint(n/pdiv,k)) {
     if (k == 3)  count += _final_sum(n, pdiv*p, p, cache);
     else         count += _cs(n, pdiv*p, p, k-1, cache);
   } END_SIMPLE_FOR_EACH_PRIME

@@ -975,6 +975,10 @@ int sum_primes(UV low, UV high, UV *return_sum) {
   if (low == 7 && high >= 323381)  return 0;
 #endif
 
+#if 0   /* TODO: use this */
+  if (sum_primes128(high, &sum, return_sum) && sum == 0)  return 1;
+#endif
+
 #if 1 && BITS_PER_WORD == 64    /* Tables */
   if (low == 7 && high >= 2e8) {
     UV step;
@@ -1054,7 +1058,7 @@ UV prime_power_count(UV n) {
   sum = prime_count(0,n);
   log2n = log2floor(n);
   for (k = 2; k <= log2n; k++) {
-    sum += prime_count(0,rootof(n,k));
+    sum += prime_count(0,rootint(n,k));
   }
   return sum;
 }

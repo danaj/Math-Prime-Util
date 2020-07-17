@@ -689,8 +689,8 @@ uint32_t powerof(UV n) {
   /* Simple rejection filter for non-powers of 5-37.  Rejects 47.85%. */
   t = n & 511; if ((t*77855451) & (t*4598053) & 862)  return 1;
 
-  if (is_perfect_fifth(n))       return 5 * powerof(rootof(n,5));
-  if (is_perfect_seventh(n))     return 7 * powerof(rootof(n,7));
+  if (is_perfect_fifth(n))       return 5 * powerof(rootint(n,5));
+  if (is_perfect_seventh(n))     return 7 * powerof(rootint(n,7));
 
   if (n > 177146 && n <= UVCONST(1977326743)) {
     switch (n) { /* Check for powers of 11, 13, 17, 19 within 32 bits */
@@ -709,13 +709,13 @@ uint32_t powerof(UV n) {
     if ( (t = n %121, !((t*19706187) & (t*61524433) & 876897796)) &&
          (t = n % 89, !((t*28913398) & (t*69888189) & 2705511937U)) ) {
       /* (t = n % 67, !((t*117621317) & (t*48719734) & 537242019)) ) { */
-      UV root = rootof(n,11);
+      UV root = rootint(n,11);
       if (n == ipow(root,11)) return 11;
     }
     if ( (t = n %131, !((t*1545928325) & (t*1355660813) & 2771533888U)) &&
          (t = n % 79, !((t*48902028) & (t*48589927) & 404082779)) ) {
       /* (t = n % 53, !((t*79918293) & (t*236846524) & 694943819)) ) { */
-      UV root = rootof(n,13);
+      UV root = rootint(n,13);
       if (n == ipow(root,13)) return 13;
     }
     switch (n) {
@@ -752,7 +752,7 @@ int is_power(UV n, UV a)
     if ((a % 3) == 0)
       return !is_perfect_cube(n) ? 0 : (a == 3) ? 1 : is_power(icbrt(n),a/3);
     if ((a % 5) == 0)
-      return !is_perfect_fifth(n) ? 0 : (a == 5) ? 1 :is_power(rootof(n,5),a/5);
+      return !is_perfect_fifth(n) ? 0 : (a == 5) ? 1 :is_power(rootint(n,5),a/5);
   }
   ret = powerof(n);
   if (a != 0) return !(ret % a);  /* Is the max power divisible by a? */
@@ -767,7 +767,7 @@ static const uint32_t root_max[ROOT_MAX_3] = {0,0,4294967295U,2642245,65535,7131
 static const uint32_t root_max[ROOT_MAX_3] = {0,0,65535,1625,255,84,40,23,15,11,9,7,6,5,4,4,3,3,3,3,3};
 #endif
 
-UV rootof(UV n, UV k) {
+UV rootint(UV n, UV k) {
   UV lo, hi, max;
   if (k == 0) return 0;
   if (k == 1) return n;
@@ -838,7 +838,7 @@ int primepower(UV n, UV* prime)
   power = powerof(n);
   if (power == 1) power = 0;
   if (power) {
-    UV root = rootof(n, (UV)power);
+    UV root = rootint(n, (UV)power);
     if (is_prob_prime(root))
       *prime = root;
     else
@@ -1600,7 +1600,7 @@ UV znprimroot(UV n) {
 
   on = (n&1) ? n : (n>>1);
   a = powerof(on);
-  r = rootof(on, a);
+  r = rootint(on, a);
   if (!is_prob_prime(r)) return 0;        /* c^a or 2c^a */
   phi = (r-1) * (on/r);                   /* p^a or 2p^a */
 
@@ -1657,7 +1657,7 @@ int is_primitive_root(UV a, UV n, int nprime) {
   } else {
     UV on = (n&1) ? n : (n>>1);
     UV k = powerof(on);
-    UV r = rootof(on, k);
+    UV r = rootint(on, k);
     if (!is_prob_prime(r)) return 0;        /* c^a or 2c^a */
     s = (r-1) * (on/r);                     /* p^a or 2p^a */
   }
@@ -2230,7 +2230,7 @@ NV chebyshev_psi(UV n)
   KAHAN_INIT(sum);
 
   for (k = log2floor(n); k > 0; k--) {
-    KAHAN_SUM(sum, chebyshev_theta(rootof(n,k)));
+    KAHAN_SUM(sum, chebyshev_theta(rootint(n,k)));
   }
   return sum;
 }
@@ -3744,7 +3744,7 @@ int is_powerful(UV n, UV k) {
 
   if (n == 1 || powerof(n) >= k) return 1;
   res = 0;
-  START_DO_FOR_EACH_PRIME(3, rootof(n, 2*k)) {
+  START_DO_FOR_EACH_PRIME(3, rootint(n, 2*k)) {
     pk = ipow(p,k);
     if (n < pk*pk) break;
     if (!(n%p)) {
@@ -3772,14 +3772,14 @@ static unsigned char* _squarefree_range(UV lo, UV hi) {
 }
 
 static UV _pcr(UV n, UV k, unsigned char* isf, UV m, UV r) {
-  UV i, sum = 0, lim = rootof(n/m, r);
+  UV i, sum = 0, lim = rootint(n/m, r);
 
   if (r <= k) return lim;
 
   if (r-1 == k) {
     for (i = 1; i <= lim; i++)
       if (isf[i] && gcd_ui(m,i) == 1)
-        sum += rootof(n/(m*ipow(i,r)),k);
+        sum += rootint(n/(m*ipow(i,r)),k);
   } else {
     for (i = 1; i <= lim; i++)
       if (isf[i] && gcd_ui(m,i) == 1)
@@ -3796,7 +3796,7 @@ UV powerful_count(UV n, UV k) {
   if (k == 1 || n <= 1) return n;
   if (k >= BITS_PER_WORD) return 1;
 
-  lim = rootof(n, k+1);
+  lim = rootint(n, k+1);
   isf = _squarefree_range(0, lim);
 
   if (k == 2) {
@@ -3806,7 +3806,7 @@ UV powerful_count(UV n, UV k) {
   } else {
     /* sum = _pcr(n, k, isf,  1, 2*k-1); */
     r = 2*k-1;
-    lim = rootof(n, r);
+    lim = rootint(n, r);
     for (i = 1; i <= lim; i++)
       if (isf[i])
         sum += _pcr(n, k, isf,  ipow(i,r), r-1);
@@ -3868,7 +3868,7 @@ UV perfect_power_count(UV n) {
   log2n = log2floor(n);
   for (k = 2; k <= log2n; k++) {
     IV m = moebius(k);
-    if (m != 0) sum -= m * (rootof(n, k)-1);
+    if (m != 0) sum -= m * (rootint(n, k)-1);
   }
   return sum;
 }

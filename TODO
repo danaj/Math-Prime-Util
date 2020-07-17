@@ -273,8 +273,6 @@
 
 - GMP is_smooth, is_rough, is_powerful, various almost_primes
 
-- internal name rootof(n,k) should probably be rootint(n,k)
-
 - optimize nth_powerful, both in C and PP.
 
 - Add OEIS sequence, a(n) = the k-th k-powerful number

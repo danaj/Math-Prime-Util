@@ -114,7 +114,7 @@ static int _power_factor(UV n, UV *factors)
 {
   int nfactors, i, j, k = powerof(n);
   if (k > 1) {
-    UV p = rootof(n, k);
+    UV p = rootint(n, k);
     nfactors = factor(p, factors);
     for (i = nfactors; i >= 0; i--)
       for (j = 0; j < k; j++)
@@ -1196,7 +1196,7 @@ int lehman_factor(UV n, UV *factors, int do_trial) {
 
   if (!(n&1)) return found_factor(n, 2, factors);
 
-  B = Tune * (1+rootof(n,3));
+  B = Tune * (1+rootint(n,3));
 
   if (do_trial) {
     uint32_t FirstCut = 0.1 * B;

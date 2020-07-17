@@ -1408,7 +1408,7 @@ is_power(IN SV* svn, IN UV k = 0, IN SV* svroot = 0)
           if (ret == 1) ret = 0;
         }
         if (ret && svroot != 0) {
-          UV root = rootof(n, k ? k : (UV)ret);
+          UV root = rootint(n, k ? k : (UV)ret);
           if (!SvROK(svroot)) croak("is_power: third argument not a scalar reference");
           if (status == 1) sv_setuv(SvRV(svroot),  root);
           else             sv_setiv(SvRV(svroot), -root);
@@ -1544,7 +1544,7 @@ logint(IN SV* svn, IN UV k, IN SV* svret = 0)
       } else {
         if (status == -1)            croak("rootint: n must be >= 0");
         if (k <= 0)                  croak("rootint: k must be > 0");
-        root = rootof(n, k);
+        root = rootint(n, k);
         if (svret) sv_setuv(SvRV(svret), ipow(root,k));
       }
       XSRETURN_UV(root);
