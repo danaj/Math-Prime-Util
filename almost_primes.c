@@ -69,12 +69,12 @@ static void _almost_prime_count_bounds(UV *lower, UV *upper, uint32_t k, UV n);
 /* Somewhere around k=20 it is faster to do:
  *    return nth_almost_prime(h, 1+almost_prime_count(k,n));
  */
-static UV _next_almost_prime(UV k, UV n) {
+static UV _next_almost_prime(uint32_t k, UV n) {
   while (!is_almost_prime(k, ++n))
     ;
   return n;
 }
-static UV _prev_almost_semiprime(UV k, UV n) {
+static UV _prev_almost_semiprime(uint32_t k, UV n) {
   while (!is_almost_prime(k, --n))
     ;
   return n;
@@ -180,7 +180,7 @@ static UV _cs(UV n, UV pdiv, UV lo, uint32_t k, prime_array_t cache) {
   return count;
 }
 
-UV almost_prime_count(UV k, UV n)
+UV almost_prime_count(uint32_t k, UV n)
 {
   prime_array_t cache;
   UV r, count, csize;
@@ -205,7 +205,7 @@ UV almost_prime_count(UV k, UV n)
 }
 
 #if 0
-UV almost_prime_count(UV k, UV lo, UV hi) {
+UV almost_prime_count(uint32_t k, UV lo, UV hi) {
   if (k == 0) return (lo <= 1 || hi >= 1);
   if (k == 1) return prime_count(lo, hi);
   if (k == 2) return semiprime_count(lo, hi);
@@ -214,7 +214,7 @@ UV almost_prime_count(UV k, UV lo, UV hi) {
 }
 #endif
 
-UV almost_prime_count_approx(UV k, UV n) {
+UV almost_prime_count_approx(uint32_t k, UV n) {
   UV r, lo, hi;
 
   if (k == 0) return (n >= 1);
@@ -272,7 +272,7 @@ static double _asymptotic_nth(uint32_t k, UV n) {
     newmid = LINEAR_INTERP(n, lo, hi, rlo, rhi); \
   }
 
-UV nth_almost_prime_upper(UV k, UV n) {
+UV nth_almost_prime_upper(uint32_t k, UV n) {
   UV i, r, max, lo, hi, rlo, rhi, mid;
 
   if (n == 0) return 0;
@@ -324,7 +324,7 @@ UV nth_almost_prime_upper(UV k, UV n) {
   return lo;
 }
 
-UV nth_almost_prime_lower(UV k, UV n) {
+UV nth_almost_prime_lower(uint32_t k, UV n) {
   UV i, r, max, lo, hi, rlo, rhi, mid;
 
   if (n == 0) return 0;
@@ -376,7 +376,7 @@ UV nth_almost_prime_lower(UV k, UV n) {
   return lo;
 }
 
-UV nth_almost_prime_approx(UV k, UV n) {
+UV nth_almost_prime_approx(uint32_t k, UV n) {
   UV i, max, lo, hi, rlo, rhi, mid;
 
   if (n == 0) return 0;
@@ -414,7 +414,7 @@ UV nth_almost_prime_approx(UV k, UV n) {
   return lo;
 }
 
-UV nth_almost_prime(UV k, UV n) {
+UV nth_almost_prime(uint32_t k, UV n) {
   UV i, r, max, lo, hi, mid, rlo, rhi, rmid;
 
   if (n == 0) return 0;
@@ -608,19 +608,19 @@ static void _almost_prime_count_bounds(UV *lower, UV *upper, uint32_t k, UV n) {
   *upper = (boundu >= UV_MAX || (max > 0 && boundu > max)) ? max : (UV)(boundu+1.0);
 }
 
-UV almost_prime_count_upper(UV k, UV n) {
+UV almost_prime_count_upper(uint32_t k, UV n) {
   UV l, u;
   _almost_prime_count_bounds(&l, &u, k, n);
   return u;
 }
 
-UV almost_prime_count_lower(UV k, UV n) {
+UV almost_prime_count_lower(uint32_t k, UV n) {
   UV l, u;
   _almost_prime_count_bounds(&l, &u, k, n);
   return l;
 }
 
-UV max_nth_almost_prime(UV k) {
+UV max_nth_almost_prime(uint32_t k) {
 #if BITS_PER_WORD == 32
   static const UV offset[32] = {0,4,1,9,5,0,7,47,31,3,15,511,1263,5119,1023,255,23295,2559,4095,126975,16383,262143,2359295,2097151,5767167,1048575,33554431,16777215,100663295,67108863,268435455,1073741823};
 #else
@@ -646,7 +646,7 @@ UV max_nth_almost_prime(UV k) {
   return UV_MAX - offset[k];
 }
 
-UV max_almost_prime_count(UV k) {
+UV max_almost_prime_count(uint32_t k) {
 #if BITS_PER_WORD == 32
   static const UV max[32] = {1,203280221,658662065,967785236,916899721,665533848,410630859,229679168,121092503,61600699,30653019,15043269,7315315,3535071,1700690,814699,389357,185245,87964,41599,19611,9184,4283,2001,914,421,187,84,37,15,7,2,0};
 #else
@@ -709,7 +709,7 @@ static void _tidy_list(UV **list, UV *Lsize, UV *count, int minimal) {
   }
 }
 
-UV range_construct_almost_prime(UV** list, UV k, UV lo, UV hi) {
+UV range_construct_almost_prime(UV** list, uint32_t k, UV lo, UV hi) {
   UV *L, minkap1, lastprime, count = 0;
 
   if (k == 0 || k > 63) { *list = 0; return 0; }
