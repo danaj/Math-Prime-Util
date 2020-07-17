@@ -1326,6 +1326,30 @@ sub prime_power_count {
   );
 }
 
+sub smooth_count {
+  my($n, $k) = @_;
+  return 0 if $n < 1;
+  return 1 if $k <= 1;
+  return $n if $k >= $n;
+
+  my $sum = 1 + Math::Prime::Util::logint($n,2);
+  return $sum if $k == 2;
+  my $p = 3;
+  while ($p <= $k) {
+    my $np = Math::Prime::Util::divint($n, $p);
+    $sum += ($p >= $np) ? $np : Math::Prime::Util::smooth_count($np, $p);
+    $p = Math::Prime::Util::next_prime($p);
+  }
+  $sum;
+}
+
+sub rough_count {
+  my($n, $k) = @_;
+  return $n if $k <= 2;
+  return $n-($n>>1) if $k <= 3;
+  Math::Prime::Util::legendre_phi($n, Math::Prime::Util::prime_count($k-1));
+}
+
 sub almost_primes {
   my($k, $low, $high) = @_;
 

@@ -3819,8 +3819,8 @@ static long double dickman_rho(long double u) {
 
 UV debruijn_psi(UV x, UV y) {
   UV sum, x3, x5;
-  if (x < 1 || y < 1) return 0;
-  if (y == 1) return 1;
+  if (x < 1) return 0;
+  if (y <= 1) return 1;
   if (y == 2) return 1 + log2floor(x);
   if (y >= x) return x;
 
@@ -3858,6 +3858,14 @@ UV debruijn_psi(UV x, UV y) {
   }
 
   return sum;
+}
+
+UV buchstab_phi(UV x, UV y) {
+  if (y <= 2) return x;
+  if (y <= 3) return x - x/2;
+  if (y <= 5) return x - x/2 - x/3 + x/6;
+  /* We'll use the legendre_phi function we already have. */
+  return legendre_phi(x, LMO_prime_count(y-1));
 }
 
 

@@ -299,6 +299,8 @@ Tags:
   nth_powerful(n[,k])                 the nth k-powerful number
   perfect_power_count(n)              count of perfect powers <= n
   prime_power_count(n)                count of prime powers <= n
+  smooth_count(n,k)                   count of k-smooth numbers <= n
+  rough_count(n,k)                    count of k-rough numbers <= n
 
 =head2 NON-INTEGER MATH
 

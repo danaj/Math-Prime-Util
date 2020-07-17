@@ -365,6 +365,18 @@ sub nth_lucky {
   _validate_positive_integer($n);
   return Math::Prime::Util::PP::nth_lucky($n);
 }
+sub smooth_count {
+  my($n, $k) = @_;
+  _validate_positive_integer($n);
+  _validate_positive_integer($k);
+  return Math::Prime::Util::PP::smooth_count($n, $k);
+}
+sub rough_count {
+  my($n, $k) = @_;
+  _validate_positive_integer($n);
+  _validate_positive_integer($k);
+  return Math::Prime::Util::PP::rough_count($n, $k);
+}
 
 
 *is_prime          = \&Math::Prime::Util::PP::is_prime;

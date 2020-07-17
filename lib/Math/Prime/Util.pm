@@ -61,6 +61,7 @@ our @EXPORT_OK =
       nth_ramanujan_prime_lower nth_ramanujan_prime_upper
       powerful_count nth_powerful
       perfect_power_count prime_power_count
+      smooth_count rough_count
       sum_primes print_primes
       random_prime random_ndigit_prime
       random_nbit_prime random_safe_prime random_strong_prime
@@ -3767,12 +3768,36 @@ not exceeding n, which are perfect powers.  By convention, 1 is included
 here even though L</is_power(1) = 0>.
 This is L<OEIS series A069623|http://oeis.org/A069623>.
 
-head2 prime_power_count
+=head2 prime_power_count
 
 Given a non-negative integer input C<n>, returns the number of integers,
 not exceeding n, which are prime powers.  By convention, 1 is included
 here even though L</is_prime_power(1) = 0>.
 This is L<OEIS series A025528|http://oeis.org/A025528>.
+
+=head2 smooth_count
+
+Given non-negative integer inputs C<n> and C<k>, returns the numbers of
+integers between C<1> and C<n> inclusive, that have no prime factor larger
+than C<k>.
+
+For all C<n>, C<smooth_count(n,0) = smooth_count(n,1) = 1>.
+For all C<k>, C<smooth_count(0,k) = 0> and C<smooth_count(1,k) = 1>.
+
+This is equivalent to, but much faster than,
+C<vecsum( map { is_smooth($_,$k) } 1..$n )>.
+
+=head2 rough_count
+
+Given non-negative integer inputs C<n> and C<k>, returns the numbers of
+integers between C<1> and C<n> inclusive, that have no prime factor less
+than C<k>.
+
+For all C<n>, C<rough_count(n,0) = rough_count(n,1) = rough_count(n,2) = n>.
+For all C<k>, C<rough_count(0,k) = 0> and C<rough_count(1,k) = 1>.
+
+This is equivalent to, but much faster than,
+C<vecsum( map { is_rough($_,$k) } 1..$n )>.
 
 
 =head2 carmichael_lambda

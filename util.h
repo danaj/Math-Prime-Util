@@ -87,7 +87,8 @@ extern UV nth_powerful(UV n, UV k);
 
 extern UV perfect_power_count(UV n);
 
-extern UV  debruijn_psi(UV x, UV y);
+extern UV debruijn_psi(UV x, UV y);
+extern UV buchstab_phi(UV x, UV y);
 
 extern UV inverse_totient_count(UV n);
 extern UV* inverse_totient_list(UV *ntotients, UV n);

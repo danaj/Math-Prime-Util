@@ -25,7 +25,7 @@ Revision history for Perl module Math::Prime::Util
     - is_smooth(n,k)                  is n a k-smooth number
     - is_rough(n,k)                   is n a k-rough number
     - is_almost_prime(k,n)            does n have exactly k prime factors
-    - almost_prime_count(k,n)         Counts integers with exactly k factors
+    - almost_prime_count(k,n)         count of integers with exactly k factors
     - almost_prime_count_approx(k,n)  fast approximate k-almost-prime count
     - almost_prime_count_lower(k,n)   fast k-almost-prime count lower bound
     - almost_prime_count_upper(k,n)   fast k-almost-prime count upper bound
@@ -34,11 +34,13 @@ Revision history for Perl module Math::Prime::Util
     - nth_almost_prime_lower(k,n)     fast nth k-almost-prime lower bound
     - nth_almost_prime_upper(k,n)     fast nth k-almost-prime upper bound
     - is_powerful(n[,k])              is n a k-powerful number (default k=2)
-    - powerful_count(n[,k])           Count of k-powerful numbers <= n
-    - nth_powerful(n[,k])             The nth k-powerful number (default k=2)
-    - perfect_power_count(n)          Count of perfect powers <= n
-    - prime_power_count(n)            Count of prime powers <= n
-    - qnr(n)                          Least quadratic non-residue
+    - powerful_count(n[,k])           count of k-powerful numbers <= n
+    - nth_powerful(n[,k])             the nth k-powerful number (default k=2)
+    - perfect_power_count(n)          count of perfect powers <= n
+    - prime_power_count(n)            count of prime powers <= n
+    - smooth_count(n,k)               count of k-smooth numbers <= n
+    - rough_count(n,k)                count of k-rough numbers <= n
+    - qnr(n)                          least quadratic non-residue
 
     [FIXES]
 

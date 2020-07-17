@@ -1912,7 +1912,8 @@ znorder(IN SV* sva, IN SV* svn)
     nth_almost_prime_approx = 11
     nth_almost_prime_lower = 12
     nth_almost_prime_upper = 13
-    debruijn_psi = 14
+    smooth_count = 14
+    rough_count = 15
   PREINIT:
     int astatus, nstatus;
   PPCODE:
@@ -1972,9 +1973,9 @@ znorder(IN SV* sva, IN SV* svn)
                    case 13: ret = nth_almost_prime_upper(a, n); break;
                  }
                  break;
-        case 14:
-        default: ret = debruijn_psi(a, n);
-                 break;
+        case 14: ret = debruijn_psi(a, n); break;
+        case 15:
+        default: ret = buchstab_phi(a, n); break;
       }
       if (ret == 0 && ix == 0)  XSRETURN_UNDEF;  /* not defined */
       XSRETURN_UV(ret);
@@ -1995,8 +1996,9 @@ znorder(IN SV* sva, IN SV* svn)
       case 11: _vcallsub_with_pp("nth_almost_prime_approx");  break;
       case 12: _vcallsub_with_pp("nth_almost_prime_lower");  break;
       case 13: _vcallsub_with_pp("nth_almost_prime_upper");  break;
-      case 14:
-      default: _vcallsub_with_pp("debruijn_psi"); break;
+      case 14: _vcallsub_with_pp("smooth_count"); break;
+      case 15:
+      default: _vcallsub_with_pp("rough_count"); break;
     }
     objectify_result(aTHX_ sva, ST(0));
     return; /* skip implicit PUTBACK */
