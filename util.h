@@ -59,6 +59,7 @@ extern UV divmod(UV a, UV b, UV n);            /* Returns a/b mod n */
 extern int sqrtmod(UV* s, UV a, UV p);         /* sqrt(a) mod p */
 extern int sqrtmod_composite(UV* s, UV a,UV n);/* sqrt(a) mod n */
 extern UV chinese(UV* a, UV* n, UV num, int *status); /* Chinese Remainder */
+extern UV rootmod(UV n, UV k, UV p);           /* n^(1/k) mod p */
 
 extern UV totient(UV n);
 extern int moebius(UV n);

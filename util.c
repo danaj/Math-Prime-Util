@@ -2079,6 +2079,86 @@ int sqrtmod_composite(UV *s, UV a, UV n) {
   return (i == 1) ? verify_sqrtmod(p, s, a, n) : 0;
 }
 
+UV rootmod(UV n, UV k, UV p) {
+  UV i;
+
+  /* TODO:
+   *  1) prime powers
+   *  2) composites (Factor + CRT + Hensel)
+   *  3) k > 3
+   */
+
+  if (!is_prime(p)) croak("bad rootmod call: only prime modulus supported");
+  n %= p;
+
+  if (k == 0) return 1;
+  if (k == 1) return n;
+  if (k == 2) { if (sqrtmod(&i, n, p)) return i; return 0; }
+  if (n <= 2) return n;
+
+  if (k == 3) {
+    /* https://www.sciencedirect.com/science/article/pii/S0893965902000319 */
+    if ( (p % 3) == 2)
+      return powmod(n, 2*((p-2)/3)+1, p);  /* (2p-1)/3 */
+    if (powmod(n, (p-1)/3, p) != 1)
+      return 0;                        /* no root exists */
+    /* It would be nice to return the smallest root */
+    if ((p % 9) == 4)
+      return powmod(n, 2*((p-4)/9)+1, p);  /* (2p+1)/9 */
+    if ((p % 9) == 7)
+      return powmod(n, (p+2)/9, p);
+    { /* Tonelli-Shanks as shown in Padró and Sáez (2002) */
+      UV e, q, h, g, s, y, r, b, x, m, B, t;
+      for (e = 0, q = p-1; !(q % 3); q /= 3)
+        e++;
+      /* MPUassert(e >= 1, "Error in rootmod T-S cube root: e = 0"); */
+      for (i = 1, s = 1; i < 10000 && s == 1; i++) {
+        h = i % p;  /* "random" */
+        if (h == 0) break;
+        s = powmod(h, (p-1)/3, p);
+      }
+      if (s == 1) return 0;
+      g = powmod(h, q, p);
+      y = g;
+      r = e;
+      x = ((q % 3) == 2) ? powmod(n, (q-2)/3, p) : powmod(n, (2*q-2)/3, p);
+      b = mulmod(sqrmod(n,p),powmod(x,3,p),p);
+      x = mulmod(n,x,p);
+      while (1) {
+        if ((b % p) == 1) {   /* return smallest root x,x*s,x*s*s */
+          UV x2 = mulmod(x, s, p), x3 = mulmod(x2, s, p);
+          return (x <= x2 && x <= x3) ? x : (x2 <= x3) ? x2 : x3;
+        }
+        for (m = 1, B = b; m < r; m++) {
+          B = powmod(B, 3, p);
+          if ((B % p) == 1) break;
+        }
+        if (m == r) return 0;
+        if (s == powmod(b, ipow(3,m-1), p)) {
+          t = sqrmod(y,p);
+          s = sqrmod(s,p);
+        } else {
+          t = y;
+        }
+        t = powmod(t, ipow(3, r-m-1), p);
+        y = powmod(t, 3, p);
+        r = m;
+        x = mulmod(x, t, p);
+        b = mulmod(b, y, p);
+      }
+    }
+  }
+
+  /* TODO: generic k-th roots */
+
+  /* .... */
+  for (i = 2; i < p; i++) {
+    if (powmod(i, k, p) == n)
+      return i;
+  }
+  return 0;
+}
+
 /* works only for co-prime inputs and also slower than the algorithm below,
  * but handles the case where IV_MAX < lcm <= UV_MAX.
  */

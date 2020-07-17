@@ -2010,6 +2010,7 @@ znlog(IN SV* sva, IN SV* svg, IN SV* svp)
     mulmod = 2
     divmod = 3
     powmod = 4
+    rootmod = 5
   PREINIT:
     int astatus, gstatus, pstatus, retundef;
     UV ret;
@@ -2025,7 +2026,7 @@ znlog(IN SV* sva, IN SV* svg, IN SV* svp)
       a = (astatus == 1) ? my_svuv(sva) : negmod(my_sviv(sva), p);
       g = (gstatus == 1) ? my_svuv(svg) : negmod(my_sviv(svg), p);
       if (a >= p) a %= p;
-      if (g >= p && ix != 4) g %= p;
+      if (g >= p && ix < 4) g %= p;
       switch (ix) {
         case 0: ret = znlog(a, g, p);
                 if (ret == 0 && a > 1) retundef = 1;
@@ -2037,8 +2038,7 @@ znlog(IN SV* sva, IN SV* svg, IN SV* svp)
                 if (g == 0) retundef = 1;
                 else        ret = mulmod(a, g, p);
                 break;
-        case 4:
-        default:if (a == 0) {
+        case 4: if (a == 0) {
                   ret = (g == 0);
                   retundef = (gstatus == -1);
                 } else {
@@ -2050,6 +2050,11 @@ znlog(IN SV* sva, IN SV* svg, IN SV* svp)
                   ret = powmod(a, g, p);
                 }
                 break;
+        case 5:
+        default:/* TODO: special cases, a 0, a neg, g neg, etc. */
+                ret = rootmod(a, g, p);
+                retundef = (ret == 0);
+                break;
       }
       if (retundef) XSRETURN_UNDEF;
       XSRETURN_UV(ret);
@@ -2059,8 +2064,9 @@ znlog(IN SV* sva, IN SV* svg, IN SV* svp)
       case 1: _vcallsub_with_gmpobj(0.36,"addmod"); break;
       case 2: _vcallsub_with_gmpobj(0.36,"mulmod"); break;
       case 3: _vcallsub_with_gmpobj(0.36,"divmod"); break;
-      case 4:
-      default:_vcallsub_with_gmpobj(0.36,"powmod"); break;
+      case 4: _vcallsub_with_gmpobj(0.36,"powmod"); break;
+      case 5:
+      default:_vcallsub_with_gmpobj(0.00,"rootmod"); break;
     }
     objectify_result(aTHX_ svp, ST(0));
     return; /* skip implicit PUTBACK */
