@@ -126,6 +126,9 @@ foreach my $n (0 .. $small) {
     my $gn = PARI "Mod($g,$n)";
     my $log = znlog($a, $g, $n);
     die "znlog($a, $g, $n) should be defined" unless defined $log;
+    # znlog(1,Mod(1,2)) MPU and Pari 2.12.1 => 0.  Math::Pari 2.030518 => 1
+    if ($a == 1 && $g == 1 && $n == 2)
+      { die "znlog(1, 1, 2)" unless $log == 0; next; }
     die "znlog($a, $g, $n)" unless Math::Pari::znlog($a,$gn) == $log;
   }
 
