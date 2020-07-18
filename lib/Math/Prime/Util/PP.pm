@@ -6735,7 +6735,7 @@ sub RiemannZeta {
     if ($strval =~ s/^(1\.0*)/./) {
       $strval .= "e-".(length($1)-2) if length($1) > 2;
     } else {
-      $strval =~ s/^(\d+)/$1-1/e;
+      $strval =~ s/^(-?\d+)/$1-1/e;
     }
 
     return ($wantbf)  ?  Math::BigFloat->new($strval,$wantbf)  : 0.0 + $strval;
