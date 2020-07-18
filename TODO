@@ -278,15 +278,11 @@
 - Add OEIS sequence, a(n) = the k-th k-powerful number
   mpu 'for my $k (1..40) { say "$k ",nth_powerful($k,$k); }'
 
-- See about trying to unify some of the multitude of inverse methods.
-    util.c:  nth_powerful
-    semi_primes.c: semiprime_count_approx, nth_semiprime
-    ramanujan_primes.c: count_lower, count_upper, nth_approx
-    prime_nth_count.c: nth_upper, nth_lower, nth_twin_approx
-    almost_primes.c: nth_upper, nth_lower, nth_approx, nth
-  plus lots of PP code.
-  Lagrange estimator for initialization when we don't know bounds?
-  Can use Aitken's method, but it didn't help for almost primes.
+- Improve inverse_interpolation.  We're using linear interpolation.
+  Consider 2nd order or Aitken's method.  Dubiously useful here.
+
+- For almost primes in PP, maybe use Lagrange estimator to start, given
+  that we have no bounds.
 
 - Speed up PP sqrtmod -- it's horrifically slow.
 

@@ -16,6 +16,7 @@
 #include "lmo.h"
 #include "prime_nth_count.h"
 #include "semi_primes.h"
+#include "inverse_interpolate.h"
 #include "almost_primes.h"
 
 /******************************************************************************/
@@ -247,6 +248,7 @@ UV almost_prime_count_approx(uint32_t k, UV n) {
 /*                                  NTH KAP                                   */
 /******************************************************************************/
 
+#if 0
 /* Asymptotic estimate for the nth k-almost prime */
 static double _asymptotic_nth(uint32_t k, UV n) {
   uint32_t i;  double x, logn, loglogn;
@@ -259,20 +261,12 @@ static double _asymptotic_nth(uint32_t k, UV n) {
     x *= (double)i / loglogn;
   return x;
 }
+#endif
 
-#define LINEAR_INTERP(n, lo, hi, rlo, rhi) \
-  (lo + (UV) (((double)(n-rlo) * (double)(hi-lo) / (double)(rhi-rlo))+0.5))
-/* Uses n and k.  Uses and modified lo, hi, rlo, rhi.  Will set newmid. */
-#define INTERP_STEP(newmid, try, funcptr) \
-  { \
-    UV _mid = try; \
-    if (_mid > lo && _mid < hi) { \
-      UV rmid = (*funcptr)(k,_mid); \
-      if (rmid < n) { lo = _mid; rlo = rmid; } \
-      else          { hi = _mid; rhi = rmid; } \
-    } \
-    newmid = LINEAR_INTERP(n, lo, hi, rlo, rhi); \
-  }
+static UV apcu(UV mid, UV k) { return almost_prime_count_upper(k, mid); }
+static UV apcl(UV mid, UV k) { return almost_prime_count_lower(k, mid); }
+static UV apca(UV mid, UV k) { return almost_prime_count_approx(k, mid); }
+static UV apce(UV mid, UV k) { return almost_prime_count(k, mid); }
 
 UV nth_almost_prime_upper(uint32_t k, UV n) {
   UV i, r, max, lo, hi, rlo, rhi, mid;
@@ -294,40 +288,11 @@ UV nth_almost_prime_upper(uint32_t k, UV n) {
   rlo = almost_prime_count_lower(k,lo);
   rhi = almost_prime_count_lower(k,hi);
 
-  /* We'll do some interpolation to try to pull it in quickly. */
-  mid = _asymptotic_nth(k,n);
-  INTERP_STEP(mid, mid, &almost_prime_count_lower);
-  INTERP_STEP(mid, mid, &almost_prime_count_lower);
-  /* In most cases we end up with hi being stupid high, so pull it in */
-  if ((mid*8.00)<hi) {INTERP_STEP(mid, (mid*8.00), &almost_prime_count_lower);}
-  if ((mid*2.00)<hi) {INTERP_STEP(mid, (mid*2.00), &almost_prime_count_lower);}
-
-  for (i = 0; i < 8; i++) { /* Pull in the farthest */
-    UV dlo, dhi;
-    INTERP_STEP(mid, mid, &almost_prime_count_lower);
-    if (rhi == n) break;
-    INTERP_STEP(mid, mid, &almost_prime_count_lower);
-    if (rhi == n) break;
-    dlo = mid-lo; dhi = hi-mid;
-    if (dlo < 10 && dhi < 10) break;
-    INTERP_STEP(mid, (dlo < dhi) ? mid+(dhi+9)/10 : mid-(dlo+9)/10, &almost_prime_count_lower);
-    if (rhi == n) break;
-  }
-
-  /* Binary search between lo and hi, finds transition point */
-  while (lo < hi) {
-    UV mid = lo + (hi-lo)/2;
-    if (almost_prime_count_lower(k,mid) < n) lo = mid+1;
-    else hi = mid;
-  }
-#if 0
-  if (almost_prime_count(k,lo)<n) croak("nth ap upper (%lu,%lu) failed\n",k,n);
-#endif
-  return lo;
+  return inverse_interpolate(lo, hi, n, k, &apcl, 0);
 }
 
 UV nth_almost_prime_lower(uint32_t k, UV n) {
-  UV i, r, max, lo, hi, rlo, rhi, mid;
+  UV i, r, max, lo, hi;
 
   if (n == 0) return 0;
   if (k == 0) return (n == 1) ? 1 : 0;
@@ -343,43 +308,11 @@ UV nth_almost_prime_lower(uint32_t k, UV n) {
   lo = 5 * (UVCONST(1) << k);  /* For k >= 1 and n >= 8 */
   hi = max_nth_almost_prime(k);
 
-  rlo = almost_prime_count_upper(k,lo);
-  rhi = almost_prime_count_upper(k,hi);
-
-  /* We'll do some interpolation to try to pull it in quickly. */
-  mid = _asymptotic_nth(k,n);
-  INTERP_STEP(mid, mid, &almost_prime_count_upper);
-  INTERP_STEP(mid, mid, &almost_prime_count_upper);
-  /* In most cases we end up with hi being stupid high, so pull it in */
-  if ((mid*8.00)<hi) {INTERP_STEP(mid, (mid*8.00), &almost_prime_count_upper);}
-  if ((mid*2.00)<hi) {INTERP_STEP(mid, (mid*2.00), &almost_prime_count_upper);}
-
-  for (i = 0; i < 8; i++) { /* Pull in the farthest */
-    UV dlo, dhi;
-    INTERP_STEP(mid, mid, &almost_prime_count_upper);
-    if (rhi == n) break;
-    INTERP_STEP(mid, mid, &almost_prime_count_upper);
-    if (rhi == n) break;
-    dlo = mid-lo; dhi = hi-mid;
-    if (dlo < 10 && dhi < 10) break;
-    INTERP_STEP(mid, (dlo < dhi) ? mid+(dhi+9)/10 : mid-(dlo+9)/10, &almost_prime_count_upper);
-    if (rhi == n) break;
-  }
-
-  /* Binary search between lo and hi, finds transition point */
-  while (lo < hi) {
-    UV mid = lo + (hi-lo)/2;
-    if (almost_prime_count_upper(k,mid) < n) lo = mid+1;
-    else hi = mid;
-  }
-#if 0
-  if (almost_prime_count(k,lo)>n) croak("nth ap lower (%lu,%lu) failed\n",k,n);
-#endif
-  return lo;
+  return inverse_interpolate(lo, hi, n, k, &apcu, 0);
 }
 
 UV nth_almost_prime_approx(uint32_t k, UV n) {
-  UV i, max, lo, hi, rlo, rhi, mid;
+  UV i, max, lo, hi;
 
   if (n == 0) return 0;
   if (k == 0) return (n == 1) ? 1 : 0;
@@ -393,31 +326,12 @@ UV nth_almost_prime_approx(uint32_t k, UV n) {
   if (n < 8) return _fast_small_nth_almost_prime(k,n);
   lo = nth_almost_prime_lower(k,n);
   hi = nth_almost_prime_upper(k,n);
-  rlo = almost_prime_count_approx(k,lo);
-  rhi = almost_prime_count_approx(k,hi);
-  if (rlo == n) return lo;
 
-  mid = LINEAR_INTERP(n,lo,hi,rlo,rhi);
-  for (i = 1; i <= 12 && lo < hi && rhi != n; i++) {
-    INTERP_STEP(mid, mid, &almost_prime_count_approx);
-  }
-  if (rlo < n-1) {
-    mid = LINEAR_INTERP(n-1,lo,hi,rlo,rhi);
-    if (mid > lo && mid < hi) {
-      if (almost_prime_count_approx(k,mid) < n) lo = mid+1;
-      else                                      hi = mid;
-    }
-  }
-  while (lo < hi) {
-    UV mid = lo + (hi-lo)/2;
-    if (almost_prime_count_approx(k,mid) < n) lo = mid+1;
-    else                                      hi = mid;
-  }
-  return lo;
+  return inverse_interpolate(lo, hi, n, k, &apca, 0);
 }
 
 UV nth_almost_prime(uint32_t k, UV n) {
-  UV i, r, max, lo, hi, mid, rlo, rhi, rmid;
+  UV i, r, max, lo, hi;
 
   if (n == 0) return 0;
   if (k == 0) return (n == 1) ? 1 : 0;
@@ -435,44 +349,9 @@ UV nth_almost_prime(uint32_t k, UV n) {
 
   lo = nth_almost_prime_lower(k,n);
   hi = nth_almost_prime_upper(k,n);
-  rlo = almost_prime_count(k,lo);
-  rhi = almost_prime_count(k,hi);
-  /* Use interpolation search to start to rapidly narrow bounds. */
-  for (i = 0; i < 8 && lo < hi && rhi != n; i++) {
-    mid = LINEAR_INTERP(n, lo, hi, rlo, rhi);
-    if (mid == lo || mid == hi) break;
-    rmid = almost_prime_count(k,mid);
-    if (rmid < n) { lo = mid; rlo = rmid; }
-    else          { hi = mid; rhi = rmid; }
-  }
-  /* rhi = n or close to it.  Pull the low side in. */
-  if (rlo < n-1) {
-    mid = LINEAR_INTERP(n-4,lo,hi,rlo,rhi);
-    if (mid <= lo)
-      mid = LINEAR_INTERP(n-1,lo,hi,rlo,rhi);
-    if (mid > lo && mid < hi) {
-      rmid = almost_prime_count(k,mid);
-      if (rmid < n) { lo = mid+1; }
-      else          { hi = mid; rhi = rmid; }
-    }
-  }
-
-  /* Binary search for the transition, with a shortcut to linear once close. */
-  while (lo < hi) {
-    if (rhi == n && (hi-lo < 60000)) {
-      while (!is_almost_prime(k,hi))
-        hi--;
-      break;
-    }
-    mid = lo + (hi-lo)/2;
-    rmid = almost_prime_count(k,mid);
-    if (rmid < n)  { lo = mid+1; }
-    else           { hi = mid; rhi = rmid; }
-  }
-#if 0
-  if (almost_prime_count(k,hi) != n) printf("wrong apc(%lu,%lu)\n",k,hi);
-  if (!is_almost_prime(k,hi)) printf("wrong exact value %lu\n",hi);
-#endif
+  hi = inverse_interpolate(lo, hi, n, k, &apce, 60000);
+  while (!is_almost_prime(k,hi))
+    hi--;
   return hi;
 }
 

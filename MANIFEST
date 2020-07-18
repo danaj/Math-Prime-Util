@@ -35,6 +35,8 @@ entropy.h
 entropy.c
 factor.h
 factor.c
+inverse_interpolate.h
+inverse_interpolate.c
 keyval.h
 lehmer.h
 lehmer.c

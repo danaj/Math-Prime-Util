@@ -11,6 +11,7 @@
 #include "cache.h"
 #include "sieve.h"
 #include "lmo.h"
+#include "inverse_interpolate.h"
 #include "semi_primes.h"
 
 #define SP_SIEVE_THRESH 100  /* When to sieve vs. iterate */
@@ -239,6 +240,8 @@ UV semiprime_count(UV lo, UV hi)
   return _semiprime_count(hi) - _semiprime_count(lo-1);
 }
 
+static UV _cb_nsa(UV mid, UV k) { return nth_semiprime_approx(mid); }
+
 UV semiprime_count_approx(UV n) {
   if (n <= _semiprimelist[NSEMIPRIMELIST-1]) {
     UV i = 0;
@@ -249,18 +252,11 @@ UV semiprime_count_approx(UV n) {
     UV lo, hi;
     double init, logn = log(n), loglogn = log(logn);
     /* init = n * loglogn / logn; */
-    /* init = (n/logn) * (0.11147910114 + 0.00223801350*logn + 0.44233207922*loglogn + 1.65236647896*log(loglogn)); */
-    init = n * (loglogn + 0.302) / logn;
-    if (1.05*init >= (double)UV_MAX)
-      return init;
-
-    lo = 0.90 * init - 5,   hi = 1.05 * init;
-    while (lo < hi) {
-      UV mid = lo + (hi-lo)/2;
-      if (nth_semiprime_approx(mid) < n) lo = mid+1;
-      else                               hi = mid;
-    }
-    return lo;
+    /* init = n * (loglogn + 0.302) / logn; */
+    init = (n/logn) * (0.11147910114 + 0.00223801350*logn + 0.44233207922*loglogn + 1.65236647896*log(loglogn));
+    lo = 0.97 * init - 5;
+    hi = 1.03 * init;
+    return inverse_interpolate(lo, hi, n, 0, &_cb_nsa, 0);
   }
 }
 

@@ -10,8 +10,10 @@
 #include "lmo.h"
 #include "constants.h"
 #include "prime_nth_count.h"
+#include "inverse_interpolate.h"
 #include "util.h"
 
+#include <float.h>
 #include <math.h>
 #if _MSC_VER || defined(__IBMC__) || defined(__IBMCPP__) || (defined(__STDC_VERSION__) && __STDC_VERSION >= 199901L)
   /* math.h should give us these as functions or macros.
@@ -516,7 +518,7 @@ UV nth_prime_upper(UV n)
     while (lo < hi) {
       UV mid = lo + (hi-lo)/2;
       if (prime_count_lower(mid) < n) lo = mid+1;
-      else hi = mid;
+      else                            hi = mid;
     }
     return lo;
   }
@@ -544,7 +546,7 @@ UV nth_prime_upper(UV n)
   else if (n >=   301130) { c = 5.92; d = -91.3415; }  /* 301-382 */
   else if (n >=   138630) { c = 2.01; d =   7.2842; }  /* 138-301 */
   else if (n >=    85820) { c = 2.07; d =   5.2103; }  /*  86-138 */
-  else if (n >=    39016) { c = 2.77; d = -11.5918; }  /*  39- 86 */
+  else if (n >=    39016) { c = 2.76; d = -11.5918; }  /*  39- 86 */
   else if (n >=    31490) { c = 1.49; d =  15.1821; }  /*  31- 39 */
   else if (n >=    25070) { c =11.89; d =-197.8951; }  /*  25- 31 */
   else if (n >=    15359) { c = 4.80; d = -51.5928; }  /*  15- 25 */
@@ -830,6 +832,8 @@ UV nth_twin_prime(UV n)
   return nth;
 }
 
+static UV _cb_tpca(UV mid, UV k) { return twin_prime_count_approx(mid); }
+
 UV nth_twin_prime_approx(UV n)
 {
   long double fn = (long double) n;
@@ -851,12 +855,7 @@ UV nth_twin_prime_approx(UV n)
               (n >= 1200) ? (1.70 * fnlog2n) :
               (2.3 * fnlog2n + 5) );
   if (hi <= lo) hi = UV_MAX;
-  while (lo < hi) {
-    UV mid = lo + (hi-lo)/2;
-    if (twin_prime_count_approx(mid) < fn) lo = mid+1;
-    else                                   hi = mid;
-  }
-  return lo;
+  return inverse_interpolate(lo, hi, n, 0, &_cb_tpca, 0);
 }
 
 /******************************************************************************/

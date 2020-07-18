@@ -74,6 +74,7 @@
 #include "montmath.h"
 #include "csprng.h"
 #include "keyval.h"
+#include "inverse_interpolate.h"
 
 #define KAHAN_INIT(s) \
   LNV s ## _y, s ## _t; \
@@ -3850,12 +3851,7 @@ UV nth_powerful(UV n, UV k) {
     hi = UV_MAX;
   }
 
-  while (lo < hi) {
-    mid = lo + ((hi-lo)>>1);
-    if (powerful_count(mid,k) < n) lo = mid+1;
-    else                           hi = mid;
-  }
-  return hi;
+  return inverse_interpolate(lo, hi, n, k, &powerful_count, 0);
 }
 
 /* n A069623; 10^n A070428 */

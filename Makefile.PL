@@ -48,6 +48,7 @@ WriteMakefile1(
                     'almost_primes.o ' .
                     'prime_nth_count.o ' .
                     'util.o '     .
+                    'inverse_interpolate.o ' .
                     'entropy.o '  .
                     'csprng.o '   .
                     'chacha.o '   .
