@@ -3139,7 +3139,7 @@ int from_digit_string(UV* rn, const char* s, int base)
   len = strlen(s);
   max = (UV_MAX-base+1)/base;
 
-  for (i = 0, len = strlen(s); i < len; i++) {
+  for (i = 0; i < len; i++) {
     const char c = s[i];
     int d = !isalnum(c) ? 255 : (c <= '9') ? c-'0' : (c <= 'Z') ? c-'A'+10 : c-'a'+10;
     if (d >= base) croak("Invalid digit for base %d", base);
