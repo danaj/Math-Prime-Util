@@ -2654,7 +2654,9 @@ void todigits(SV* svn, int base=10, int length=-1)
       case 0:  _vcallsubn(aTHX_ GIMME_V, VCALL_GMP|VCALL_PP, "todigits", items, 41); break;
       case 1:  _vcallsub_with_gmp(0.00,"todigitstring"); break;
       case 2:
-      default: _vcallsub_with_gmp(0.00,"fromdigits"); break;
+      default: _vcallsub_with_gmp(0.53,"fromdigits");
+               objectify_result(aTHX_ 0, ST(0));
+               break;
     }
     return;
 
