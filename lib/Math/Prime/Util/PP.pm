@@ -3844,6 +3844,27 @@ sub todigitstring {
   join("", map { $_digitmap[$_] } @d);
 }
 
+sub _FastIntegerInput {
+  my($digits, $B) = @_;
+  return 0 if scalar(@$digits) == 0;
+  return $digits->[0] if scalar(@$digits) == 1;
+  my $L = [reverse @$digits];
+  my $k = scalar(@$L);
+  while ($k > 1) {
+    my @T;
+    for my $i (1 .. $k>>1) {
+      my $x = $L->[2*$i-2];
+      my $y = $L->[2*$i-1];
+      push(@T, Math::Prime::Util::addint($x, Math::Prime::Util::mulint($B, $y)));
+    }
+    push(@T, $L->[$k-1]) if ($k&1);
+    $L = \@T;
+    $B = Math::Prime::Util::mulint($B, $B);
+    $k = ($k+1) >> 1;
+  }
+  $L->[0];
+}
+
 sub fromdigits {
   my($r, $base) = @_;
   $base = 10 unless defined $base;
@@ -3852,10 +3873,7 @@ sub fromdigits {
   if (ref($r) && ref($r) !~ /^Math::/) {
     croak "fromdigits first argument must be a string or array reference"
       unless ref($r) eq 'ARRAY';
-    ($n,$base) = (BZERO->copy, BZERO + $base);
-    for my $d (@$r) {
-      $n = $n * $base + $d;
-    }
+    $n = BZERO + _FastIntegerInput($r,$base);
   } elsif ($base == 2) {
     $n = Math::BigInt->from_bin("0b$r");
   } elsif ($base == 8) {
