@@ -166,7 +166,7 @@ BEGIN {
     if (eval { require Math::Prime::Util::GMP;
                Math::Prime::Util::GMP->import();
                1; }) {
-      $_Config{'gmp'} = int(100*$Math::Prime::Util::GMP::VERSION);
+      $_Config{'gmp'} = int(100 * $Math::Prime::Util::GMP::VERSION + 1e-6);
     }
     for my $e (@Math::Prime::Util::GMP::EXPORT_OK) {
       $Math::Prime::Util::_GMPfunc{"$e"} = $_Config{'gmp'};
