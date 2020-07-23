@@ -2080,22 +2080,17 @@ int sqrtmod_composite(UV *s, UV a, UV n) {
   return (i == 1) ? verify_sqrtmod(p, s, a, n) : 0;
 }
 
-UV rootmod(UV n, UV k, UV p) {
+UV rootmodp(UV n, UV k, UV p) {
   UV i;
 
-  /* TODO:
-   *  1) prime powers
-   *  2) composites (Factor + CRT + Hensel)
-   *  3) k > 3
-   */
+  /* TODO k > 3 */
 
-  if (!is_prime(p)) croak("bad rootmod call: only prime modulus supported");
-  n %= p;
-
+  n = (p <= 1)  ?  0  :  (n % p);
+  if (n <= 2) return n;
   if (k == 0) return 1;
   if (k == 1) return n;
+  if (!is_prime(p)) croak("rootmodp: modulus must be prime");
   if (k == 2) { if (sqrtmod(&i, n, p)) return i; return 0; }
-  if (n <= 2) return n;
 
   if (k == 3) {
     /* https://www.sciencedirect.com/science/article/pii/S0893965902000319 */
@@ -2150,7 +2145,39 @@ UV rootmod(UV n, UV k, UV p) {
     }
   }
 
+  /* Easy case: always exists */
+  if (gcd_ui(k, p-1) == 1)
+    return powmod(n, modinverse(k, p-1), p);
+
+  /* General Euler Criterion for odd p */
+  if (powmod(n, (p-1)/gcd_ui(k,p-1), p) != 1)
+    return 0;
+
   /* TODO: generic k-th roots */
+
+  /* .... */
+  for (i = 2; i < p; i++) {
+    if (powmod(i, k, p) == n)
+      return i;
+  }
+  return 0;
+}
+
+UV rootmod(UV n, UV k, UV p) {
+  UV i;
+
+  /* TODO:
+   *  1) prime powers
+   *  2) composites (Factor + CRT + Hensel)
+   */
+
+  n = (p <= 1)  ?  0  :  (n % p);
+  if (n <= 2) return n;
+  if (k == 0) return 1;
+  if (k == 1) return n;
+  if (k == 2) { if (sqrtmod_composite(&i, n, p)) return i; return 0; }
+
+  /* TODO: combine calls to rootmodp */
 
   /* .... */
   for (i = 2; i < p; i++) {
@@ -3755,6 +3782,35 @@ int is_powerful(UV n, UV k) {
     }
   } END_DO_FOR_EACH_PRIME
   return res;
+}
+
+int is_practical(UV n) {
+  UV fac[MPU_MAX_FACTORS+1];
+  UV exp[MPU_MAX_FACTORS+1];
+  UV prod;
+  int i, nfactors;
+
+  if (n == 0 || (n & 1)) return (n == 1);
+  if ((n & (n-1)) == 0) return 1;  /* All powers of 2 are practical */
+  /* Allowable prefixes: {6,4} => {6,20,28,8} => {6,20,28,88,104,16} */
+  if ((n % 6) && (n % 20) && (n % 28) && (n % 88) && (n % 104) && (n % 16))
+    return 0;
+
+  nfactors = factor_exp(n, fac, exp);
+  /* fac[0] must be 2 */
+  prod = 1;  /* running divisor sum of product of all previous factors */
+  for (i = 1; i < nfactors; i++) {
+    /* prod *= ipow(fac[i-1],exp[i-1]);  sum = 1 + divisor_sum(prod,1); */
+    UV f = fac[i-1], e = exp[i-1], pke, fmult;
+    for (pke = f, fmult = 1+f; e > 1; e--) {
+      pke *= f;
+      fmult += pke;
+    }
+    prod *= fmult;
+    if (fac[i] > (1 + prod))
+      return 0;
+  }
+  return 1;
 }
 
 static unsigned char* _squarefree_range(UV lo, UV hi) {

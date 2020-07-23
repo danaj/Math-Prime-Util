@@ -1305,7 +1305,8 @@ void is_prime(IN SV* svn)
     is_square = 17
     is_mersenne_prime = 18
     is_lucky = 19
-    is_totient = 20
+    is_practical = 20
+    is_totient = 21
   PREINIT:
     int status, ret;
   PPCODE:
@@ -1334,7 +1335,8 @@ void is_prime(IN SV* svn)
         case 17: ret = is_power(n,2); break;
         case 18: ret = is_mersenne_prime(n);  if (ret == -1) status = 0; break;
         case 19: ret = is_lucky(n); break;
-        case 20:
+        case 20: ret = is_practical(n); break;
+        case 21:
         default: ret = is_totient(n); break;
       }
     } else if (status == -1) {
@@ -1367,7 +1369,8 @@ void is_prime(IN SV* svn)
       case 17:_vcallsub_with_gmp(0.47,"is_square"); break;
       case 18:_vcallsub_with_gmp(0.28,"is_mersenne_prime"); break;
       case 19:_vcallsub_with_gmp(0.48,"is_lucky"); break;
-      case 20:
+      case 20:_vcallsub_with_gmp(0.00,"is_practical"); break;
+      case 21:
       default:_vcallsub_with_gmp(0.47,"is_totient"); break;
     }
     return; /* skip implicit PUTBACK */
@@ -2010,7 +2013,8 @@ znlog(IN SV* sva, IN SV* svg, IN SV* svp)
     mulmod = 2
     divmod = 3
     powmod = 4
-    rootmod = 5
+    rootmodp = 5
+    rootmod = 6
   PREINIT:
     int astatus, gstatus, pstatus, retundef;
     UV ret;
@@ -2050,10 +2054,16 @@ znlog(IN SV* sva, IN SV* svg, IN SV* svp)
                   ret = powmod(a, g, p);
                 }
                 break;
-        case 5:
-        default:/* TODO: special cases, a 0, a neg, g neg, etc. */
+        case 5: /* TODO: special cases, a neg, g neg, p 0, etc. */
+                a = (p == 0) ? 0 : a % p;
+                ret = rootmodp(a, g, p);
+                retundef = (ret == 0 && a != 0);
+                break;
+        case 6:
+        default:/* TODO: special cases, a neg, g neg, p 0, etc. */
+                a = (p == 0) ? 0 : a % p;
                 ret = rootmod(a, g, p);
-                retundef = (ret == 0);
+                retundef = (ret == 0 && a != 0);
                 break;
       }
       if (retundef) XSRETURN_UNDEF;
@@ -2065,7 +2075,8 @@ znlog(IN SV* sva, IN SV* svg, IN SV* svp)
       case 2: _vcallsub_with_gmpobj(0.36,"mulmod"); break;
       case 3: _vcallsub_with_gmpobj(0.36,"divmod"); break;
       case 4: _vcallsub_with_gmpobj(0.36,"powmod"); break;
-      case 5:
+      case 5: _vcallsub_with_gmpobj(0.00,"rootmodp"); break;
+      case 6:
       default:_vcallsub_with_gmpobj(0.00,"rootmod"); break;
     }
     objectify_result(aTHX_ svp, ST(0));

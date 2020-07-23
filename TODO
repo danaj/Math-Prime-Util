@@ -271,7 +271,7 @@
   - optimize PP almost_primes() (uses forfactored)
   - any use for genk (iterator for k)?
 
-- GMP is_smooth, is_rough, is_powerful, various almost_primes
+- GMP is_powerful, various almost_primes
 
 - optimize nth_powerful, both in C and PP.
 
@@ -297,3 +297,18 @@
   http://bkms.kms.or.kr/journal/view.html?doi=10.4134/BKMS.b160769
   https://github.com/sagemath/sagelib/blob/fd0c7c46e6a2da4b84df582e0da0333ce5cf79d9/sage/rings/finite_rings/element_base.pyx#L33
   should we return 1 root or a list of all roots?
+
+- rootmodp general k, verify p=2 works
+
+- rootmod (possibly non-prime)
+
+- rewrite sqrtmod / sqrtmod_composite to be sqrtmodp and sqrtmod
+
+- extend qnr with optional root argument, cubic non-residue, etc.
+
+- to_zeckendorf (https://oeis.org/A014417), from_zeckendorf ?
+  Is fibbinary better?
+
+- practical numbers: make OEIS sequence with count <= 10^n.
+  mpu '$s=1; for my $e (1..9) { $s += is_practical($_) for 10**($e-1)+1..10**$e; say "10^$e  $s"; }'
+  mpu 'for my $e (1..9) { $s=0; $s += is_practical($_) for 1..10**$e; say "10^$e  $s"; }'

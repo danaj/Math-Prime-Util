@@ -59,7 +59,8 @@ extern UV divmod(UV a, UV b, UV n);            /* Returns a/b mod n */
 extern int sqrtmod(UV* s, UV a, UV p);         /* sqrt(a) mod p */
 extern int sqrtmod_composite(UV* s, UV a,UV n);/* sqrt(a) mod n */
 extern UV chinese(UV* a, UV* n, UV num, int *status); /* Chinese Remainder */
-extern UV rootmod(UV n, UV k, UV p);           /* n^(1/k) mod p */
+extern UV rootmodp(UV n, UV k, UV p);          /* n^(1/k) mod p for p prime */
+extern UV rootmod(UV n, UV k, UV p);           /* n^(1/k) mod p for any p */
 
 extern UV totient(UV n);
 extern int moebius(UV n);
@@ -79,6 +80,7 @@ extern int is_carmichael(UV n);
 extern UV  is_quasi_carmichael(UV n);  /* Returns number of bases */
 extern UV  pillai_v(UV n);             /* v: v! % n == n-1 && n % v != 1 */
 extern UV  qnr(UV n);
+extern int is_practical(UV n);
 
 extern int is_smooth(UV n, UV k);
 extern int is_rough(UV n, UV k);

@@ -1406,6 +1406,31 @@ sub is_almost_prime {
   return (scalar(Math::Prime::Util::factor($n)) == $k) ? 1 : 0;
 }
 
+sub is_practical {
+  my($n) = @_;
+
+  return (($n==1) ? 1 : 0) if ($n == 0) || ($n & 1);
+  return 1 if ($n & ($n-1)) == 0; 
+  return 0 if ($n % 6) && ($n % 20) && ($n % 28) && ($n % 88) && ($n % 104) && ($n % 16);
+
+  my $prod = 1;
+  my @pe = Math::Prime::Util::factor_exp($n);
+  for my $i (1 .. $#pe) {
+    my($f,$e) = @{$pe[$i-1]};
+    my $fmult = $f + 1;
+    if ($e >= 2) {
+      my $pke = $f;
+      for (2 .. $e) {
+        $pke = Math::Prime::Util::mulint($pke, $f);
+        $fmult = Math::Prime::Util::addint($fmult, $pke);
+      }
+    }
+    $prod = Math::Prime::Util::mulint($prod, $fmult);
+    return 0 if $pe[$i]->[0] > (1 + $prod);
+  }
+  1;
+}
+
 sub _totpred {
   my($n, $maxd) = @_;
   return 0 if $maxd <= 1 || (ref($n) ? $n->is_odd() : ($n & 1));

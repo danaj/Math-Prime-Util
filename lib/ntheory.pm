@@ -225,6 +225,7 @@ Tags:
   is_smooth(n,k)                      is n a k-smooth number
   is_rough(n,k)                       is n a k-rough number
   is_powerful(n[,k])                  is n a k-powerful number
+  is_practical(n)                     is n a practical number
   powint(a,b)                         signed integer a^b
   mulint(a,b)                         signed integer a * b
   addint(a,b)                         signed integer a + b

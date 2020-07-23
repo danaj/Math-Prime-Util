@@ -30,7 +30,7 @@ our @EXPORT_OK =
       is_semiprime is_almost_prime
       is_square_free is_primitive_root is_carmichael is_quasi_carmichael
       is_fundamental is_totient is_gaussian_prime
-      is_smooth is_rough is_powerful
+      is_smooth is_rough is_powerful is_practical
       sqrtint rootint logint
       powint mulint addint subint divint modint divrem tdivrem absint negint
       miller_rabin_random
@@ -3798,6 +3798,14 @@ For all C<k>, C<rough_count(0,k) = 0> and C<rough_count(1,k) = 1>.
 
 This is equivalent to, but much faster than,
 C<vecsum( map { is_rough($_,$k) } 1..$n )>.
+
+=head2 is_practical
+
+Given a non-negative integer C<n>, returns 1 if C<n> is a practical number,
+and 0 otherwise.
+A practical number is a positive integer C<n> such that all smaller
+positive integers can be represented as sums of distinct divisors of C<n>.
+This is L<OEIS series A005153|http://oeis.org/A005153>.
 
 
 =head2 carmichael_lambda
