@@ -3784,6 +3784,15 @@ int is_powerful(UV n, UV k) {
   return res;
 }
 
+static UV _divsum1(UV prod, UV f, uint32_t e) {
+  UV pke, fmult;
+  for (pke = f, fmult = 1+f; e > 1; e--) {
+    pke *= f;
+    fmult += pke;
+  }
+  return prod * fmult;
+}
+
 int is_practical(UV n) {
   UV fac[MPU_MAX_FACTORS+1];
   UV exp[MPU_MAX_FACTORS+1];
@@ -3801,12 +3810,7 @@ int is_practical(UV n) {
   prod = 1;  /* running divisor sum of product of all previous factors */
   for (i = 1; i < nfactors; i++) {
     /* prod *= ipow(fac[i-1],exp[i-1]);  sum = 1 + divisor_sum(prod,1); */
-    UV f = fac[i-1], e = exp[i-1], pke, fmult;
-    for (pke = f, fmult = 1+f; e > 1; e--) {
-      pke *= f;
-      fmult += pke;
-    }
-    prod *= fmult;
+    prod = _divsum1(prod, fac[i-1], exp[i-1]);
     if (fac[i] > (1 + prod))
       return 0;
   }
