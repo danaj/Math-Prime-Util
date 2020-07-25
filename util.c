@@ -1511,13 +1511,14 @@ UV exp_mangoldt(UV n) {
   return p;
 }
 
-/* least quadratic non-residue mod p */
+/* least quadratic non-residue mod p (p may be composite) */
+/* The returned result will always be 0 or a prime */
 UV qnr(UV n) {
   UV a;
 
   if (n <= 2) return n;
 
-  /* The result is always a prime */
+  /* If n is not a prime, this may or may not succeed */
   if (kronecker_uu(2,n) == -1) return 2;
 
   if (is_prime(n)) {
@@ -3690,6 +3691,9 @@ int is_rough(UV n, UV k) {
     nfac = trial_factor(n, fac, 7, k);
     return (fac[0] >= k);
   }
+
+  /* TODO: look into factor_one. */
+  /* But it doesn't guarantee returning a prime factor or the smallest. */
 
   nfac = trial_factor(n, fac, 7, 200);
   if (nfac > 1 && fac[nfac-2] <= k) return 0;

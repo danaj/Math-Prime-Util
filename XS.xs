@@ -891,20 +891,15 @@ sieve_range(IN SV* svn, IN UV width, IN UV depth)
   PREINIT:
     int status;
   PPCODE:
+    /* Return index of every n unless it is a composite with factor > depth */
     status = _validate_int(aTHX_ svn, 0);
     if (status == 1) {
-      /* TODO: actually sieve */
-      UV factors[MPU_MAX_FACTORS+1], i, n = my_svuv(svn);
-      if (depth == 0) depth = 1; /* Trial factor takes 0 to means sqrt(n) */
-      if ( (n + width) < n) {  /* Overflow */
-        status = 0;
-      } else if (depth <= 100) { /* trial division for each value */
+      UV i, n = my_svuv(svn);
+      if (status == 1 && (n+width) < n) {
+        status = 0;   /* range will overflow */
+      } else { /* TODO: actually sieve */
         for (i = (n<2)?2-n:0; i < width; i++)
-          if (trial_factor(n+i, factors, 2, depth) < 2)
-            XPUSHs(sv_2mortal(newSVuv( i )));
-      } else {                   /* small trial + factor for each value */
-        for (i = (n<2)?2-n:0; i < width; i++)
-          if (factor_one(n+i, factors, 1, 1) < 2 || factors[0] > depth)
+          if (is_rough(n+i, (depth+1) >= (n+i) ? n+i : depth+1))
             XPUSHs(sv_2mortal(newSVuv( i )));
       }
     }

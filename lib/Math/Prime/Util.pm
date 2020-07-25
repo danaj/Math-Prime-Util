@@ -1926,7 +1926,11 @@ a sieve of maximum depth C<depth> is done for the C<width> consecutive
 numbers beginning with C<n>.  An array of offsets from the start is returned.
 
 The returned list contains those offsets in the range C<n> to C<n+width-1>
-where C<n + offset> has no prime factors less than C<depth>.
+where C<n + offset> has no prime factors smaller than itself and
+less than or equal to C<depth>.  Hence a depth of 2 will remove all even
+numbers (other than 2 itself if it is in the range).
+A depth of 3 will remove all numbers divisible by 2 or 3 other than those
+primes themselves.
 
 
 =head2 sieve_prime_cluster
