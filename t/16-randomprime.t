@@ -10,7 +10,8 @@ use Math::Prime::Util qw/random_prime random_ndigit_prime random_nbit_prime
                          random_maurer_prime random_shawe_taylor_prime
                          random_proven_prime
                          random_semiprime random_unrestricted_semiprime
-                         factor is_prime prime_set_config/;
+                         random_safe_prime random_strong_prime
+                         factor is_prime is_semiprime is_smooth prime_set_config/;
 
 my $use64 = Math::Prime::Util::prime_get_config->{'maxbits'} > 32;
 my $broken64 = (18446744073709550592 == ~0);
@@ -24,7 +25,7 @@ $do_st = 0 unless eval { require Digest::SHA;
 
 my @random_to = (2, 3, 4, 5, 6, 7, 8, 9, 100, 1000, 1000000, 4294967295);
 
-my @random_nbit_tests = ( 2 .. 6, 10, 15 .. 17, 28, 32 );
+my @random_nbit_tests = ( 2 .. 10, 15 .. 17, 28, 32 );
 push @random_nbit_tests, (34) if $use64;
 @random_nbit_tests = (2 .. $maxbits) if $extra;
 push @random_nbit_tests, (75);
@@ -81,7 +82,9 @@ plan tests => 13+1+1+1+1
               + (1 * scalar @random_ndigit_tests)
               + (4 * scalar @random_nbit_tests)
               + 4
-              + 7 # random_semiprime
+              + 7+14 # random_semiprime
+              + 11   # random_safe_prime
+              + 4    # random_strong_prime
               + 0;
 
 my $infinity = 20**20**20;
@@ -177,17 +180,7 @@ foreach my $bits ( @random_nbit_tests ) {
 
 sub check_bits {
   my($n, $bits, $what) = @_;
-  my($min,$max);
-  use Math::BigInt;
-  if ($bits <= $maxbits) {
-    $min = 1 << ($bits-1);
-    $max = ~0 >> ($maxbits - $bits);
-    $max = Math::BigInt->new("$max") if ref($n) eq 'Math::BigInt';
-  } else {
-    $min = Math::BigInt->new(2)->bpow($bits-1);
-    $max = Math::BigInt->new(2)->bpow($bits)->bdec;
-  }
-  ok ( $n >= $min && $n <= $max && is_prime($n),
+  ok ( is_nbit($n, $bits) && is_prime($n),
        "$bits-bit random $what prime '$n' is in range and prime");
 }
 prime_set_config(nobigint=>0);
@@ -208,6 +201,7 @@ SKIP: {
       "random 30-digit prime '$n' is in range" );
 }
 
+###### semiprimes
 {
   my $n;
   ok(!eval { random_semiprime(3); }, "random_semiprime(3)");
@@ -215,6 +209,10 @@ SKIP: {
   is(random_semiprime(4),9,"random_semiprime(4) = 9");
   $n = random_unrestricted_semiprime(3);
   ok($n ==4 || $n == 6, "random_unrestricted_semiprime(3) is 4 or 6");
+  for my $bits (4 .. 10) {
+    check_semi_bits(random_semiprime($bits), $bits, "random_semiprime");
+    check_semi_bits(random_unrestricted_semiprime($bits), $bits, "random_unrestricted_semiprime");
+  }
   $n = random_semiprime(26);
   ok($n >= 33554432 && $n < 67108864 && scalar(factor($n)) == 2, "random_semiprime(26) is a 26-bit semiprime");
   my $min = Math::BigInt->new(2)->bpow(81-1);
@@ -226,4 +224,41 @@ SKIP: {
     $n = random_unrestricted_semiprime(81);
     ok($n >= $min && $n <= $max, "random_unrestricted_semiprime(81) is 81 bits");
   }
+}
+
+sub check_semi_bits {
+  my($n, $bits, $name) = @_;
+  ok ( is_nbit($n, $bits) && is_semiprime($n),
+       "$name($bits) is in range and semiprime");
+}
+
+###### Safe primes
+ok(!eval { random_safe_prime(2); }, "random_safe_prime(2) is invalid");
+for my $bits (3 .. 10, 48, 80) {
+  my $p = random_safe_prime($bits);
+  my $q = ($p-1) >> 1;
+  ok ( is_nbit($p, $bits) && is_prime($p) && is_prime($q),
+       "random_safe_prime($bits) is in range and is a safe prime");
+}
+
+###### Strong primes
+ok(!eval { random_strong_prime(127); }, "random_strong_prime(127) is invalid");
+for my $bits (128, 247, 512) {
+  my $p = random_strong_prime($bits);
+  ok ( is_nbit($p, $bits) && is_prime($p) && !is_smooth($p-1, 10000) && !is_smooth($p+1, 10000),
+       "random_strong_prime($bits) is in range and not obviously weak");
+}
+
+sub is_nbit {
+  my($n, $bits) = @_;
+  my($min,$max);
+  use Math::BigInt;
+  if (($bits <= $maxbits) && (ref($n) ne 'Math::BigInt')) {
+    $min = 1 << ($bits-1);
+    $max = ~0 >> ($maxbits - $bits);
+  } else {
+    $min = Math::BigInt->new(2)->bpow($bits-1);
+    $max = Math::BigInt->new(2)->bpow($bits)->bdec;
+  }
+  return ($n >= $min && $n <= $max);
 }

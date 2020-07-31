@@ -13,6 +13,7 @@ plan tests =>   6   # range
               + 1   # small number
               + 2   # medium numbers
               + 1*$extra
+              + 4   # Numbers for BERN41 version
               + 0;
 
 # Note: AKS testing is *extremely* sparse due to its lack of speed.
@@ -49,4 +50,16 @@ is( is_aks_prime(69199), 0, "is_aks_prime(69199) is false" );
 if ($extra) {
   # A composite (product of two 5-digit primes)
   is( is_aks_prime(1262952907), 0, "is_aks_prime(1262952907) is false" );
+}
+
+# With Bernstein 4.1, we need to use different numbers.  Nothing earlier
+# has even run the test!
+{
+  is(is_aks_prime(101), 1, "is_aks_prime(101)=1");
+  is(is_aks_prime(15481), 0, "is_aks_prime(15481)=0");
+  is(is_aks_prime(12109), 1, "is_aks_prime(12109)=1");
+  SKIP: {
+    skip "Skip large n for PP AKS", 1 if $ispp;
+    is(is_aks_prime(536891893), 1, "is_aks_prime(536891893)=1");
+  }
 }

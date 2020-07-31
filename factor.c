@@ -1856,6 +1856,7 @@ UV znlog(UV a, UV g, UV p) {
 
   gorder = znorder(g,p);
   if (gorder != 0 && powmod(a, gorder, p) != 1) return 0;
+  /* TODO: Can these tests every fail?  Do we need aorder? */
   aorder = znorder(a,p);
   if (aorder == 0 && gorder != 0) return 0;
   if (aorder != 0 && gorder % aorder != 0) return 0;

@@ -34,6 +34,8 @@ my @znlogs = (
 if ($usexs || $extra) {
   push @znlogs, [[5675,5,10000019], 2003974];  # 5675 = 5^2003974 mod 10000019
   push @znlogs, [[18478760,5,314138927], 34034873];
+  push @znlogs, [[553521,459996,557057], 15471];
+  push @znlogs, [[7443282,4,13524947], 6762454];
 }
 if ($usexs && $use64) {
   # Nice case for PH

@@ -46,6 +46,9 @@ my @testn64 = qw/37607912018 346065536839 600851475143
                  13082761331670030 614889782588491410
                  440091295252541 5333042142001571
                  79127989298
+                 2339796554687 124838608575421729
+                 1434569741817480287 1256490565186616147
+                 13356777177440210791
                 /;
 
 my @omega = ([0,1,1], [1,0,0], [2,1,1], [36,4,2], [102,3,3], [8593952,7,3]);
@@ -118,10 +121,10 @@ plan tests => (3 * scalar @testn)
             + 2*scalar(keys %prime_factors)
             + 4*scalar(keys %all_factors)
             + 2*scalar(keys %factor_exponents)
-            + 10*8  # 10 extra factoring tests * 8 algorithms
+            + 10*9  # 10 extra factoring tests * 9 algorithms
             + 8
             + 2*scalar(@omega)
-            + 1;
+            + 6;
 
 foreach my $n (@testn) {
   my @f = factor($n);
@@ -169,11 +172,19 @@ extra_factor_test("pbrent_factor", sub {Math::Prime::Util::pbrent_factor(shift)}
 extra_factor_test("prho_factor",   sub {Math::Prime::Util::prho_factor(shift)});
 extra_factor_test("pminus1_factor",sub {Math::Prime::Util::pminus1_factor(shift)});
 extra_factor_test("pplus1_factor", sub {Math::Prime::Util::pplus1_factor(shift)});
+extra_factor_test("lehman_factor", sub {Math::Prime::Util::lehman_factor(shift)});
 # TODO: old versions of MPUGMP didn't pull out factors of 3 or 5.
 #extra_factor_test("ecm_factor", sub {Math::Prime::Util::ecm_factor(shift)});
 
 # To hit some extra coverage
-is_deeply( [Math::Prime::Util::trial_factor(5514109)], [2203,2503], "trial factor 2203*2503" );
+is_deeply( [Math::Prime::Util::trial_factor(5514109)], [2203,2503], "trial factor 2203 * 2503" );
+is_deeply( [Math::Prime::Util::holf_factor(3747785838079,80000)], [1935281,1936559], "holf factor 1935281 * 1936559" );
+is_deeply( [Math::Prime::Util::pminus1_factor(899,20)], [29,31], "p-1 factor 29 * 31 with tiny B1" );
+is_deeply( [Math::Prime::Util::pminus1_factor(667,1000)], [23,29], "p-1 factor 23 * 29 with small B1" );
+is_deeply( [Math::Prime::Util::pminus1_factor(166213)], [347,479], "p-1 factor 347 * 479" );
+is_deeply( [Math::Prime::Util::pminus1_factor(563777293,1000,20000)], [23099,24407], "p-1 factor 23099 * 24407 using stage 2" );
+
+
 
 sub extra_factor_test {
   my $fname = shift;

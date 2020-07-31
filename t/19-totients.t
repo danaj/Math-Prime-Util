@@ -25,7 +25,7 @@ my @A002322 = (0,1,1,2,2,4,2,6,2,6,4,10,2,12,6,4,4,16,6,18,4,6,10,22,2,20,12,18,
 
 plan tests => 2 + 10 + scalar(keys %totients)
                 + 1 # Small Carmichael Lambda
-                + 5 # inverse_totient
+                + 6 # inverse_totient
                 ;
 
 ###### euler_phi (totient)
@@ -73,5 +73,6 @@ is_deeply( [euler_phi(-5,5)], [0,0,0,0,0,0,1,1,2,2,4], "euler_phi -5 to 5" );
   is(0+inverse_totient(1728), 62, "inverse_totient(1728) = 62");
   is(0+inverse_totient(362880), 1138, "inverse_totient(9!) = 1138");
   is_deeply( [inverse_totient(10000008)], [10555583,15000039,21111166,30000078], "inverse_totient(10000008)" );
+  is_deeply( [inverse_totient(10000)], [10291,12625,13805,18825,20582,20625,22088,25000,25100,25250,27500,27610,33132,37500,37650,41250], "inverse_totient(10000)" );
   ok( scalar(grep { $_ == 123456789} inverse_totient(82260072)) == 1, "inverse_totient(82260072) includes 123456789" );
 }

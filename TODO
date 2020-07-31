@@ -315,3 +315,5 @@
   5, 30, 198, 1456, 11751, 97385, 829157, 7266286, 64782731, 582798892, 5283879886
 
 - add vecequal (equality for flat numeric arrays)
+
+- checksums?  Rather than print | md5sum.
