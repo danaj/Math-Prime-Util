@@ -88,6 +88,8 @@ Revision history for Perl module Math::Prime::Util
     - fromdigits for bigints uses subquadratic algorithm, thanks from Trizen.
       It also will call GMP if possible.  The large example runs 100x faster.
 
+    - ExponentialIntegral with quadmath is much more precise across the range.
+
 
 0.73 2018-11-15
 

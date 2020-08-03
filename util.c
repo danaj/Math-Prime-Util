@@ -2463,129 +2463,180 @@ NV chebyshev_theta(UV n)
  *      by William H. Press et al.
  *  "Rational Chevyshev Approximations for the Exponential Integral E_1(x)"
  *      by W. J. Cody and Henry C. Thacher, Jr.
+ *  "High-precision Computation of Uniform Asymptotic Expansions for Special Functions"
+ *      by Guillermo Navas-Palencia (2019)
  *
- * Any mistakes here are completely my fault.  This code has not been
- * verified for anything serious.  For better results, see:
- *    http://www.trnicely.net/pi/pix_0000.htm
- * which although the author claims are demonstration programs, will
- * undoubtedly produce more reliable results than this code does (I don't
- * know of any obvious issues with this code, but it just hasn't been used
- * by many people).
+ * Any mistakes here are mine.  This code has not been rigorously verified.
+ * Alternates: Navas-Palencia, Boost, MPFR, Pari/GP, Arb.
+ *
+ * We are trying to get close to maximum precision for all x with double, long
+ * double, and quadmath.  Hence the rational Chebyshev approximations should
+ * not be used with quadmath (unless they are are modified).
+ *
+ * Performance, i7-6700HQ, 2.6GHz, 1e-9 to 1000 step 0.001
+ * range x > 0:
+ *   0.22 microseconds, NV = double         max rel error 1.4e-14
+ *   0.19 microseconds, NV = long double    max rel error 4.3e-17
+ *  18.97 microseconds, NV = quad           max rel error 4.4e-32
+ * range x < 0:
+ *   0.18 microseconds, NV = double         max rel error 1.4e-14
+ *   0.15 microseconds, NV = long double    max rel error 1.2e-17
+ *   9.31 microseconds, NV = quad           max rel error 1.7e-32
+ *
+ * max error is at 0.372.  The relative error profile for double precision
+ * is essentially identical to the Navas-Palencia expintei(x) function.
+ * Using long double on x86 greatly improves the results with no time penalty.
+ * Using quadmath gives improved results at a substantial time penalty.
  */
 
 static LNV const euler_mascheroni = LNVCONST(0.57721566490153286060651209008240243104215933593992);
 static LNV const li2 = LNVCONST(1.045163780117492784844588889194613136522615578151);
 
-NV Ei(NV x) {
-  LNV val, term;
+/* Rational Chebyshev approximation (Cody, Thacher), good for -1 < x < 0 */
+static LNV _ei_chebyshev_neg(const LNV x) {
+  static const LNV C6p[7] = { LNVCONST(-148151.02102575750838086),
+                              LNVCONST( 150260.59476436982420737),
+                              LNVCONST(  89904.972007457256553251),
+                              LNVCONST(  15924.175980637303639884),
+                              LNVCONST(   2150.0672908092918123209),
+                              LNVCONST(    116.69552669734461083368),
+                              LNVCONST(      5.0196785185439843791020) };
+  static const LNV C6q[7] = { LNVCONST( 256664.93484897117319268),
+                              LNVCONST( 184340.70063353677359298),
+                              LNVCONST(  52440.529172056355429883),
+                              LNVCONST(   8125.8035174768735759866),
+                              LNVCONST(    750.43163907103936624165),
+                              LNVCONST(     40.205465640027706061433),
+                              LNVCONST(      1.0000000000000000000000) };
+  LNV sumn = C6p[0]-x*(C6p[1]-x*(C6p[2]-x*(C6p[3]-x*(C6p[4]-x*(C6p[5]-x*C6p[6])))));
+  LNV sumd = C6q[0]-x*(C6q[1]-x*(C6q[2]-x*(C6q[3]-x*(C6q[4]-x*(C6q[5]-x*C6q[6])))));
+  return loglnv(-x) - sumn/sumd;
+}
+/* Cody / Thacher rational Chebyshev for x > 24 */
+static LNV _ei_chebyshev_pos24(const LNV x) {
+  static const LNV P2[10] = {
+      LNVCONST( 1.75338801265465972390E02),
+      LNVCONST(-2.23127670777632409550E02),
+      LNVCONST(-1.81949664929868906455E01),
+      LNVCONST(-2.79798528624305389340E01),
+      LNVCONST(-7.63147701620253630855E00),
+      LNVCONST(-1.52856623636929636839E01),
+      LNVCONST(-7.06810977895029358836E00),
+      LNVCONST(-5.00006640413131002475E00),
+      LNVCONST(-3.00000000320981265753E00),
+      LNVCONST( 1.00000000000000485503E00) };
+  static const LNV Q2[9] = {
+      LNVCONST( 3.97845977167414720840E04),
+      LNVCONST( 3.97277109100414518365E00),
+      LNVCONST( 1.37790390235747998793E02),
+      LNVCONST( 1.17179220502086455287E02),
+      LNVCONST( 7.04831847180424675988E01),
+      LNVCONST(-1.20187763547154743238E01),
+      LNVCONST(-7.99243595776339741065E00),
+      LNVCONST(-2.99999894040324959612E00),
+      LNVCONST( 1.99999999999048104167E00) };
+  LNV invx = LNV_ONE / x, frac = 0.0;
+  uint32_t n;
+  for (n = 0; n <= 8; n++)
+    frac = Q2[n] / (P2[n] + x + frac);
+  frac += P2[9];
+  return explnv(x) * (invx + invx*invx*frac);
+}
+#if 0
+/* Continued fraction, good for x < -1 */
+static LNV _ei_cfrac_neg(const LNV x) {
+  LNV lc = 0, ld = LNV_ONE / (LNV_ONE - x);
+  LNV val = ld * (-explnv(x));
+  uint32_t n;
+  for (n = 1; n <= 20000; n++) {
+    LNV old, t, n2 = n * n;
+    t = (LNV)(2*n + 1) - x;
+    lc = LNV_ONE / (t - n2 * lc);
+    ld = LNV_ONE / (t - n2 * ld);
+    old = val;
+    val *= ld/lc;
+    if ( fabslnv(val-old) <= LNV_EPSILON*fabslnv(val) )
+      break;
+  }
+  return val;
+}
+#endif
+/* eint_v using Laguerre series, Navas-Palencia (2019). */
+static LNV _eintv_laguerre_series(const LNV v, const LNV x) {
+  LNV L_k = 1.0, L_k1 = x + v;
+  LNV q, r, u = LNV_ONE, d = LNV_ONE;
+  uint32_t k;
+  KAHAN_INIT(sum);
+  KAHAN_SUM(sum, (LNV_ONE/L_k1));
+  for (k = 1; k < 500; k++) {
+    u *= v + k - 1;
+    d *= 1 + k;
+    q = L_k1 * (x + 2*k + v) / (k + 1)  -  L_k * (k + v - 1) / (k + 1);
+    r = u / (d * (q * L_k1));
+    KAHAN_SUM(sum, r);
+    L_k = L_k1;
+    L_k1 = q;
+    if (fabslnv(r) < 0.1 * LNV_EPSILON)
+      break;
+  }
+  return sum * explnv(-x);
+}
+/* Convergent series for small negative x through medium positive x */
+static LNV _ei_series_convergent(LNV const x) {
+  LNV val, term, fact_n = x;
+  uint32_t n;
+  KAHAN_INIT(sum);
+  for (n = 2; n <= 400; n++) {
+    LNV invn = LNV_ONE / n;
+    fact_n *= (LNV)x * invn;
+    term = fact_n * invn;
+    KAHAN_SUM(sum, term);
+    /* printf("C  after adding %.20Lf, val = %.20Lf\n", term, sum); */
+    if (fabslnv(term) < LNV_EPSILON*fabslnv(sum)) break;
+  }
+  KAHAN_SUM(sum, euler_mascheroni);
+  KAHAN_SUM(sum, loglnv(fabslnv(x)));
+  KAHAN_SUM(sum, x);
+  return sum;
+}
+/* Asymptotic divergent series, for large positive x */
+static LNV _ei_series_divergent(LNV const x) {
+  LNV val, invx = LNV_ONE / x, term = invx;
   unsigned int n;
   KAHAN_INIT(sum);
+  for (n = 2; n <= 400; n++) {
+    LNV last_term = term;
+    term = term * ( (LNV)n * invx );
+    if (term < LNV_EPSILON*sum) break;
+    if (term < last_term) {
+      KAHAN_SUM(sum, term);
+      /* printf("A  after adding %.20llf, sum = %.20llf\n", term, sum); */
+    } else {
+      KAHAN_SUM(sum, (-last_term/1.07) );
+      /* printf("A  after adding %.20llf, sum = %.20llf\n", -last_term/1.07, sum); */
+      break;
+    }
+  }
+  KAHAN_SUM(sum, invx);
+  KAHAN_SUM(sum, LNV_ONE);
+  return explnv(x) * sum * invx;
+}
 
+NV Ei(NV x) {
   if (x == 0) croak("Invalid input to ExponentialIntegral:  x must be != 0");
   /* Protect against messed up rounding modes */
   if (x >=  12000) return INFINITY;
   if (x <= -12000) return 0;
 
-  if (x < -1) {
-    /* Continued fraction, good for x < -1 */
-    LNV lc = 0;
-    LNV ld = LNV_ONE / (LNV_ONE - (LNV)x);
-    val = ld * (-explnv(x));
-    for (n = 1; n <= 100000; n++) {
-      LNV old, t, n2;
-      t = (LNV)(2*n + 1) - (LNV) x;
-      n2 = n * n;
-      lc = LNV_ONE / (t - n2 * lc);
-      ld = LNV_ONE / (t - n2 * ld);
-      old = val;
-      val *= ld/lc;
-      if ( fabslnv(val-old) <= LNV_EPSILON*fabslnv(val) )
-        break;
-    }
-  } else if (x < 0) {
-    /* Rational Chebyshev approximation (Cody, Thacher), good for -1 < x < 0 */
-    static const LNV C6p[7] = { LNVCONST(-148151.02102575750838086),
-                                LNVCONST( 150260.59476436982420737),
-                                LNVCONST(  89904.972007457256553251),
-                                LNVCONST(  15924.175980637303639884),
-                                LNVCONST(   2150.0672908092918123209),
-                                LNVCONST(    116.69552669734461083368),
-                                LNVCONST(      5.0196785185439843791020) };
-    static const LNV C6q[7] = { LNVCONST( 256664.93484897117319268),
-                                LNVCONST( 184340.70063353677359298),
-                                LNVCONST(  52440.529172056355429883),
-                                LNVCONST(   8125.8035174768735759866),
-                                LNVCONST(    750.43163907103936624165),
-                                LNVCONST(     40.205465640027706061433),
-                                LNVCONST(      1.0000000000000000000000) };
-    LNV sumn = C6p[0]-x*(C6p[1]-x*(C6p[2]-x*(C6p[3]-x*(C6p[4]-x*(C6p[5]-x*C6p[6])))));
-    LNV sumd = C6q[0]-x*(C6q[1]-x*(C6q[2]-x*(C6q[3]-x*(C6q[4]-x*(C6q[5]-x*C6q[6])))));
-    val = loglnv(-x) - sumn/sumd;
-  } else if (x < (-2 * loglnv(LNV_EPSILON))) {
-    /* Convergent series.  Accurate but slow especially with large x. */
-    LNV fact_n = x;
-    for (n = 2; n <= 200; n++) {
-      LNV invn = LNV_ONE / n;
-      fact_n *= (LNV)x * invn;
-      term = fact_n * invn;
-      KAHAN_SUM(sum, term);
-      /* printf("C  after adding %.20Lf, val = %.20Lf\n", term, sum); */
-      if (term < LNV_EPSILON*sum) break;
-    }
-    KAHAN_SUM(sum, euler_mascheroni);
-    KAHAN_SUM(sum, loglnv(x));
-    KAHAN_SUM(sum, x);
-    val = sum;
-  } else if (x >= 24) {
-    /* Cody / Thacher rational Chebyshev */
-    static const LNV P2[10] = {
-        LNVCONST( 1.75338801265465972390E02),
-        LNVCONST(-2.23127670777632409550E02),
-        LNVCONST(-1.81949664929868906455E01),
-        LNVCONST(-2.79798528624305389340E01),
-        LNVCONST(-7.63147701620253630855E00),
-        LNVCONST(-1.52856623636929636839E01),
-        LNVCONST(-7.06810977895029358836E00),
-        LNVCONST(-5.00006640413131002475E00),
-        LNVCONST(-3.00000000320981265753E00),
-        LNVCONST( 1.00000000000000485503E00) };
-    static const LNV Q2[9] = {
-        LNVCONST( 3.97845977167414720840E04),
-        LNVCONST( 3.97277109100414518365E00),
-        LNVCONST( 1.37790390235747998793E02),
-        LNVCONST( 1.17179220502086455287E02),
-        LNVCONST( 7.04831847180424675988E01),
-        LNVCONST(-1.20187763547154743238E01),
-        LNVCONST(-7.99243595776339741065E00),
-        LNVCONST(-2.99999894040324959612E00),
-        LNVCONST( 1.99999999999048104167E00) };
-    LNV invx = LNV_ONE / x, frac = 0.0;
-    for (n = 0; n <= 8; n++)
-      frac = Q2[n] / (P2[n] + x + frac);
-    frac += P2[9];
-    val = explnv(x) * (invx + invx*invx*frac);
+  if (x < 0) {
+    if (x >= -1.0 && !LNV_IS_QUAD) return _ei_chebyshev_neg(x);
+    else if (x < -0.80)            return -_eintv_laguerre_series(1, -x);
+    else                           return _ei_series_convergent(x);
   } else {
-    /* Asymptotic divergent series */
-    LNV invx = LNV_ONE / x;
-    term = 1.0;
-    for (n = 1; n <= 200; n++) {
-      LNV last_term = term;
-      term = term * ( (LNV)n * invx );
-      if (term < LNV_EPSILON*sum) break;
-      if (term < last_term) {
-        KAHAN_SUM(sum, term);
-        /* printf("A  after adding %.20llf, sum = %.20llf\n", term, sum); */
-      } else {
-        KAHAN_SUM(sum, (-last_term/3) );
-        /* printf("A  after adding %.20llf, sum = %.20llf\n", -last_term/3, sum); */
-        break;
-      }
-    }
-    KAHAN_SUM(sum, LNV_ONE);
-    val = explnv(x) * sum * invx;
+    if (x < (-2 * loglnv(LNV_EPSILON)))         return _ei_series_convergent(x);
+    if (x >= 24 && (!LNV_IS_QUAD || x <= 43.2)) return _ei_chebyshev_pos24(x);
+    else                                        return _ei_series_divergent(x);
   }
-
-  return val;
 }
 
 NV Li(NV x) {
