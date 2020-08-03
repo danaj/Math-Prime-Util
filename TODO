@@ -317,3 +317,9 @@
 - add vecequal (equality for flat numeric arrays)
 
 - checksums?  Rather than print | md5sum.
+
+- test coverage for PP.
+
+- Revisit AKS in PP.
+
+- 81-bignum.t takes too much time with PP

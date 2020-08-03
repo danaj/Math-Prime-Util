@@ -7,7 +7,8 @@ use Math::Prime::Util qw/is_aks_prime/;
 
 my $use64 = Math::Prime::Util::prime_get_config->{'maxbits'} > 32;
 my $extra = defined $ENV{EXTENDED_TESTING} && $ENV{EXTENDED_TESTING};
-my $ispp = !Math::Prime::Util::prime_get_config->{xs};
+my $usexs = Math::Prime::Util::prime_get_config->{'xs'};
+my $usegmp = Math::Prime::Util::prime_get_config->{'gmp'};
 
 plan tests =>   6   # range
               + 1   # small number
@@ -39,7 +40,7 @@ is( is_aks_prime(877), 1, "is_aks_prime(877) is true" );
 SKIP: {
   # If we're pure Perl, then this is definitely too slow.
   # Arguably we should check to see if they have the GMP code.
-  skip "Skipping PP AKS on PP -- just too slow.", 1 if $ispp;
+  skip "Skipping PP AKS on PP -- just too slow.", 1 unless $usexs || $usegmp;
   # The least number that performs the full test with either implementation.
   is( is_aks_prime(69197), 1, "is_aks_prime(69197) is true" );
 }
@@ -57,9 +58,9 @@ if ($extra) {
 {
   is(is_aks_prime(101), 1, "is_aks_prime(101)=1");
   is(is_aks_prime(15481), 0, "is_aks_prime(15481)=0");
-  is(is_aks_prime(12109), 1, "is_aks_prime(12109)=1");
   SKIP: {
-    skip "Skip large n for PP AKS", 1 if $ispp;
+    skip "Skip large n for PP AKS", 2 unless $usexs || $usegmp;
+    is(is_aks_prime(12109), 1, "is_aks_prime(12109)=1");
     is(is_aks_prime(536891893), 1, "is_aks_prime(536891893)=1");
   }
 }

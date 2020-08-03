@@ -12,7 +12,7 @@ my %samples = (1144=>10239, 3378=>34639, 4996=>53595, 24406=>308119, 26427=>3362
 my $nsamples = scalar(keys %samples);
 
 plan tests => 3 + 1*$extra                # lucky_numbers
-            + 4 + (1+$nsamples)*$extra    # is_lucky
+            + 5 + (1+$nsamples)*$extra    # is_lucky
             + 3 + (0+$nsamples)*$extra;   # nth_lucky
 
 # Simple test for correct set
@@ -41,6 +41,7 @@ is_deeply( [grep { is_lucky($_) } 0..200], \@lucky, "is_lucky for 0 to 200" );
 ok( is_lucky(42975), "42975 is a lucky number" );
 ok( !is_lucky(513), "513 is not a lucky number" );
 ok( !is_lucky(49023), "49023 is not a lucky number" );
+ok( is_lucky(120001), "120001 is a lucky number" );
 
 if ($extra) {
   ok( is_lucky(9999997), "9999997 is a lucky number" );

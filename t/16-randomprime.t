@@ -13,6 +13,8 @@ use Math::Prime::Util qw/random_prime random_ndigit_prime random_nbit_prime
                          random_safe_prime random_strong_prime
                          factor is_prime is_semiprime is_smooth prime_set_config/;
 
+my $usexs = Math::Prime::Util::prime_get_config->{'xs'};
+my $usegmp = Math::Prime::Util::prime_get_config->{'gmp'};
 my $use64 = Math::Prime::Util::prime_get_config->{'maxbits'} > 32;
 my $broken64 = (18446744073709550592 == ~0);
 my $extra = defined $ENV{EXTENDED_TESTING} && $ENV{EXTENDED_TESTING};
@@ -243,10 +245,13 @@ for my $bits (3 .. 10, 48, 80) {
 
 ###### Strong primes
 ok(!eval { random_strong_prime(127); }, "random_strong_prime(127) is invalid");
-for my $bits (128, 247, 512) {
-  my $p = random_strong_prime($bits);
-  ok ( is_nbit($p, $bits) && is_prime($p) && !is_smooth($p-1, 10000) && !is_smooth($p+1, 10000),
-       "random_strong_prime($bits) is in range and not obviously weak");
+SKIP: {
+  skip "skipping random_string_prime(n) with PP", 3 unless $usexs || $usegmp;
+  for my $bits (128, 247, 512) {
+    my $p = random_strong_prime($bits);
+    ok ( is_nbit($p, $bits) && is_prime($p) && !is_smooth($p-1, 10000) && !is_smooth($p+1, 10000),
+         "random_strong_prime($bits) is in range and not obviously weak");
+  }
 }
 
 sub is_nbit {

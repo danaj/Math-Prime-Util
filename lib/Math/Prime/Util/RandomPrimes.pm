@@ -847,13 +847,16 @@ sub _ST_Random_prime {  # From FIPS 186-4
 }
 
 sub random_safe_prime {
-  my $b = int("$_[0]");
-  croak "random_safe_prime, bits must be >= 3" unless $b >= 3;
+  my $bits = int("$_[0]");
+  croak "random_safe_prime, bits must be >= 3" unless $bits >= 3;
+  return (5,7)[urandomb(1)] if $bits == 3;
+  return 11 if $bits == 4;
+  return 23 if $bits == 5;
 
   my($p,$q);
 
   do {
-    $q = Math::Prime::Util::random_nbit_prime($b-1);
+    $q = Math::Prime::Util::random_nbit_prime($bits-1);
     $p = Math::Prime::Util::mulint(2,$q) + 1;
   } while ( ($q % 3) != 2 || ($q % 5) == 2 || ($p % 3) != 2 ||
             !Math::Prime::Util::is_prob_prime($p) );

@@ -89,13 +89,16 @@ while (my($n, $spc) = each (%small_counts)) {
   is( semiprime_count($n), $spc, "semiprime_count($n) = $spc");
 }
 while (my($range, $count) = each (%range_counts)) {
-  my($low,$high) = $range =~ /(\d+) to (\d+)/;
-  is_deeply( semiprime_count($low, $high), $count, "semiprime_count($low,$high) = $count");
+  SKIP: {
+    my($low,$high) = $range =~ /(\d+) to (\d+)/;
+    skip "skip PP semiprime_count($low,$high)", 1 if !$usexs && $low > 1000000 && ($high-$low+1) > 1000;
+    is_deeply( semiprime_count($low, $high), $count, "semiprime_count($low,$high) = $count");
+  }
 }
 
 while (my($n, $nth) = each (%small_semis)) {
   SKIP: {
-    skip "PP nth_semiprime is slow",1 unless $n < 10000 || $usexs || $extra;
+    skip "skip PP nth_semiprime($n)",1 unless $n < 10000 || $usexs || $extra;
     is( nth_semiprime($n), $nth, "nth_semiprime($n) = $nth");
   }
 }

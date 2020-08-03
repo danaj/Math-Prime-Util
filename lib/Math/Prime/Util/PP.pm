@@ -1372,6 +1372,8 @@ sub is_semiprime {
   return (Math::Prime::Util::is_prob_prime($n>>1) ? 1 : 0) if ($n % 2) == 0;
   return (Math::Prime::Util::is_prob_prime($n/3)  ? 1 : 0) if ($n % 3) == 0;
   return (Math::Prime::Util::is_prob_prime($n/5)  ? 1 : 0) if ($n % 5) == 0;
+
+  # TODO: Something with GMP.  If nothing else, just factor.
   {
     my @f = trial_factor($n, 4999);
     return 0 if @f > 2;
@@ -2507,12 +2509,20 @@ sub _semiprime_count {
   $sum;
 }
 sub semiprime_count {
-  my($low,$high) = @_;
-  if (defined $high) { _validate_positive_integer($low); }
-  else               { ($low,$high) = (2, $low);         }
-  _validate_positive_integer($high);
+  my($lo,$hi) = @_;
+  if (defined $hi) { _validate_positive_integer($lo); }
+  else             { ($lo,$hi) = (2, $lo);            }
+  _validate_positive_integer($hi);
   # todo: threshold of fast count vs. walk
-  my $sum = _semiprime_count($high) - (($low < 4) ? 0 : semiprime_count($low-1));
+  if (($hi-$lo+1) < $hi / (sqrt($hi)/4)) {
+    my $sum = 0;
+    while ($lo < $hi) {
+      $sum++ if Math::Prime::Util::is_semiprime($lo);
+      $lo++;
+    }
+    return $sum;
+  }
+  my $sum = _semiprime_count($hi) - (($lo < 4) ? 0 : semiprime_count($lo-1));
   $sum;
 }
 
