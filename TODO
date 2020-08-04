@@ -323,3 +323,5 @@
 - Revisit AKS in PP.
 
 - 81-bignum.t takes too much time with PP
+
+- any way to make non-GMP random_strong_prime faster

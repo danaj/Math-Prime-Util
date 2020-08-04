@@ -246,7 +246,7 @@ for my $bits (3 .. 10, 48, 80) {
 ###### Strong primes
 ok(!eval { random_strong_prime(127); }, "random_strong_prime(127) is invalid");
 SKIP: {
-  skip "skipping random_string_prime(n) with PP", 3 unless $usexs || $usegmp;
+  skip "skipping random_string_prime(n) without GMP", 3 unless $usegmp;
   for my $bits (128, 247, 512) {
     my $p = random_strong_prime($bits);
     ok ( is_nbit($p, $bits) && is_prime($p) && !is_smooth($p-1, 10000) && !is_smooth($p+1, 10000),
