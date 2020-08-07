@@ -160,6 +160,7 @@ sub entropy_bytes {
 *tdivrem = \&Math::Prime::Util::PP::tdivrem;
 *absint = \&Math::Prime::Util::PP::absint;
 *negint = \&Math::Prime::Util::PP::negint;
+*sqrtmod = \&Math::Prime::Util::PP::sqrtmod;
 
 sub jordan_totient {
   my($k, $n) = @_;
@@ -721,12 +722,6 @@ sub invmod {
   _validate_integer($a);
   _validate_integer($n);
   return Math::Prime::Util::PP::invmod($a,$n);
-}
-sub sqrtmod {
-  my ($a, $n) = @_;
-  _validate_integer($a);
-  _validate_integer($n);
-  return Math::Prime::Util::PP::sqrtmod($a,$n);
 }
 sub addmod {
   my ($a, $b, $n) = @_;

@@ -1333,8 +1333,29 @@ sub smooth_count {
   return $n if $k >= $n;
 
   my $sum = 1 + Math::Prime::Util::logint($n,2);
-  return $sum if $k == 2;
-  my $p = 3;
+  if ($k >= 3) {
+    my $n3 = Math::Prime::Util::divint($n, 3);
+    while ($n3 > 3) {
+      $sum += 1 + Math::Prime::Util::logint($n3,2);
+      $n3 = Math::Prime::Util::divint($n3, 3);
+    }
+    $sum += $n3;
+  }
+  if ($k >= 5) {
+    my $n5 = Math::Prime::Util::divint($n, 5);
+    while ($n5 > 5) {
+      $sum += 1 + Math::Prime::Util::logint($n5,2);
+      my $n3 = Math::Prime::Util::divint($n5, 3);
+      while ($n3 > 3) {
+        $sum += 1 + Math::Prime::Util::logint($n3,2);
+        $n3 = Math::Prime::Util::divint($n3, 3);
+      }
+      $sum += $n3;
+      $n5 = Math::Prime::Util::divint($n5, 5);
+    }
+    $sum += $n5;
+  }
+  my $p = 7;
   while ($p <= $k) {
     my $np = Math::Prime::Util::divint($n, $p);
     $sum += ($p >= $np) ? $np : Math::Prime::Util::smooth_count($np, $p);
@@ -2622,7 +2643,8 @@ sub semiprime_count_approx {
   my $l1 = log($n);
   my $l2 = log($l1);
   #my $est = $n * $l2 / $l1;
-  my $est = $n * ($l2 + 0.302) / $l1;
+  #my $est = $n * ($l2 + 0.302) / $l1;
+  my $est = ($n/$l1) * (0.11147910114 + 0.00223801350*$l1 + 0.44233207922*$l2 + 1.65236647896*log($l2));
   int(0.5+$est);
 }
 
@@ -2687,10 +2709,14 @@ sub nth_semiprime {
   my $n = shift;
   return undef if $n < 0;  ## no critic qw(ProhibitExplicitReturnUndef)
   return (undef,4,6,9,10,14,15,21,22)[$n] if $n <= 8;
-  my $logn = log($n);
-  my $est = 0.966 * $n * $logn / log($logn);
-  1+_binary_search($n, int(0.9*$est)-1, int(1.15*$est)+1,
-                   sub{Math::Prime::Util::semiprime_count(shift)});
+  my $x = "$n" + 0.000000001; # Get rid of bigint so we can safely call log
+  my $logx = log($x);
+  my $loglogx = log($logx);
+  my $a = ($n < 1000) ? 1.027 : ($n < 10000) ? 0.995 : 0.966;
+  my $est = $a * $x * $logx / $loglogx;
+  my $lo = ($n < 20000) ? int(0.97*$est)-1 : int(0.98*$est)-1;
+  my $hi = ($n < 20000) ? int(1.07*$est)+1 : int(1.02*$est)+1;
+  1+_binary_search($n,$lo,$hi, sub{Math::Prime::Util::semiprime_count(shift)});
 }
 
 sub nth_semiprime_approx {
@@ -3532,31 +3558,66 @@ sub invmod {
   $t;
 }
 
+sub _cipolla_sqrtmod {
+  my($n, $p) = @_;
+  return undef if Math::Prime::Util::kronecker($n,$p) != 1;
+
+  if (($p % 4) == 3) {
+    return powmod($n, ($p+1)>>2, $p);
+  }
+  if (($p % 8) == 5) {
+    my $q = powmod($n, ($p-1)>>2, $p);
+    return powmod($n, ($p+3)>>3, $p) if $q == 1;
+    my $v = powmod( mulmod($n,4,$p), ($p-5)>>3, $p );
+    return mulmod( mulmod($a, 2, $p), $v, $p);
+  }
+
+  my($a,$w2) = (0);
+  for (1 .. 10000) {
+    $a++;
+    $w2 = addmod( powmod($a,2,$p), -$n,$p);
+    last if Math::Prime::Util::kronecker($w2, $p) == -1;
+  }
+
+  my ($rx,$ry,$sx,$sy, $i) = (1,0,$a,1, $p+1);
+  while (($i >>= 1) >= 1) {
+    ($rx,$ry)= (addmod(mulmod($rx,$sx,$p),mulmod(mulmod($ry,$sy,$p),$w2,$p),$p),
+                addmod(mulmod($rx,$sy,$p),       mulmod($sx,$ry,$p)        ,$p))
+      if $i % 2;
+    ($sx,$sy)= (addmod(mulmod($sx,$sx,$p),mulmod(mulmod($sy,$sy,$p),$w2,$p),$p),
+                addmod(mulmod($sx,$sy,$p),       mulmod($sx,$sy,$p)        ,$p))
+  }
+  return ($ry) ? undef : $rx;
+}
+
 sub _verify_sqrtmod {
   my($r,$a,$n) = @_;
-  if (ref($r)) {
-    return if $r->copy->bmul($r)->bmod($n)->bcmp($a);
-    $r = _bigint_to_int($r) if $r->bacmp(BMAX) <= 0;
-  } else {
-    return unless (($r*$r) % $n) == $a;
-  }
-  $r = $n-$r if $n-$r < $r;
+  return undef unless defined $r;
+  $r = Math::Prime::Util::vecmin($r, Math::Prime::Util::subint($n,$r));
+  return undef unless Math::Prime::Util::powmod($r,2,$n) == $a;
   $r;
 }
 
 sub sqrtmod {
   my($a,$n) = @_;
+  _validate_integer($a);
+  _validate_integer($n);
   return if $n == 0;
-  if ($n <= 2 || $a <= 1) {
-    $a %= $n;
-    return ((($a*$a) % $n) == $a) ? $a : undef;
-  }
 
-  if ($n < 10000000) {
-    # Horrible trial search
-    $a = _bigint_to_int($a);
-    $n = _bigint_to_int($n);
-    $a %= $n;
+  $a = modint($a,$n);
+
+  return ((powmod($a,2,$n) == $a) ? $a : undef) if $n <= 2 || $a <= 1;
+
+  return sqrtint($a) if _is_perfect_square($a);
+
+  # Use Cipolla for primes.  Probably should use Tonelli-Shanks, but no worry.
+  return _verify_sqrtmod(_cipolla_sqrtmod($a,$n), $a, $n) if is_prime($n);
+
+  # n is a composite.  We should factor n, solve each p, lift to p^k, then
+  # use CRT to combine into a solution for n.  That's a TODO.
+
+  # Hack....  native math trial search
+  if ($n < MPU_HALFWORD) {
     return 1 if $a == 1;
     my $lim = ($n+1) >> 1;
     for my $r (2 .. $lim) {
@@ -3567,27 +3628,12 @@ sub sqrtmod {
 
   $a = Math::BigInt->new("$a") unless ref($a) eq 'Math::BigInt';
   $n = Math::BigInt->new("$n") unless ref($n) eq 'Math::BigInt';
-  $a->bmod($n);
   my $r;
 
-  if (($n % 4) == 3) {
-    $r = $a->copy->bmodpow(($n+1)>>2, $n);
-    return _verify_sqrtmod($r, $a, $n);
-  }
-  if (($n % 8) == 5) {
-    my $q = $a->copy->bmodpow(($n-1)>>2, $n);
-    if ($q->is_one) {
-      $r = $a->copy->bmodpow(($n+3)>>3, $n);
-    } else {
-      my $v = $a->copy->bmul(4)->bmodpow(($n-5)>>3, $n);
-      $r = $a->copy->bmul(2)->bmul($v)->bmod($n);
-    }
-    return _verify_sqrtmod($r, $a, $n);
-  }
-
+  # For composites this isn't right....
   return if $n->is_odd && !$a->copy->bmodpow(($n-1)>>1,$n)->is_one();
 
-  # Horrible trial search.  Need to use Tonelli-Shanks here.
+  # Slow, slow, slow trial search.
   $r = Math::BigInt->new(2);
   my $lim = int( ($n+1) / 2 );
   while ($r < $lim) {
