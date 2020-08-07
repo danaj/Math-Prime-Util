@@ -16,7 +16,8 @@ use Test::More;
 eval "use Test::Spellunker";
 plan skip_all => "Test::Spellunker required for testing POD spelling" if $@;
 
-add_stopwords(qw/bigint bigints
+add_stopwords(qw/-th
+                 bigint bigints
                  bignum bignums
                  quadmath
                  pseudoprime pseudoprimes
@@ -34,12 +35,14 @@ add_stopwords(qw/bigint bigints
                  lastfor
                  numtoperm permtonum randperm
                  totient moebius mertens liouville kronecker znorder znprimroot znlog
+                 sumliouville
                  gcd lcm gcdext chinese invmod sqrtmod addmod mulmod powmod divmod
                  bernfrac bernreal harmfrac harmreal stirling hclassno
                  vecsum vecprod vecmin vecmax vecreduce vecextract
                  vecall vecany vecnone vecnotall vecfirst vecfirstidx
-                 sqrtint logint rootint powint addint mulint divint modint divrem tdivrem
+                 sqrtint logint rootint powint addint subint mulint divint modint negint absint divrem tdivrem
                  factorialmod
+                 qnr
                  todigits todigitstring fromdigits sumdigits hammingweight
                  lucasu lucasv
                  pp/);

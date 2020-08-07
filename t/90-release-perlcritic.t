@@ -19,6 +19,8 @@ Test::Perl::Critic->import(
         -verbose => 10,
         -severity => 'gentle',   # default
         -force => 0,             # default (allow ## no critic)
+        # We probably shouldn't do this, but this is tiresome
+        -exclude => [qw/ProhibitExplicitReturnUndef/],
        );
 
 all_critic_ok();

@@ -1092,7 +1092,7 @@ sub is_smooth {
   return 1 if $n <= $k;
 
   if ($Math::Prime::Util::_GMPfunc{"is_smooth"}) {
-    return eval "Math::Prime::Util::GMP::is_smooth($n, $k)";
+    return eval "Math::Prime::Util::GMP::is_smooth($n, $k)"; ## no critic qw(ProhibitStringyEval)
   }
 
   if ($k <= 10000000 && $Math::Prime::Util::_GMPfunc{"trial_factor"}) {
@@ -1119,7 +1119,7 @@ sub is_rough {
   return 0+($n >= 1) if $k == 2;
 
   if ($Math::Prime::Util::_GMPfunc{"is_rough"}) {
-    return eval "Math::Prime::Util::GMP::is_rough($n, $k)";
+    return eval "Math::Prime::Util::GMP::is_rough($n, $k)";  ## no critic qw(ProhibitStringyEval)
   }
 
   if ($k < 10000 && $Math::Prime::Util::_GMPfunc{"trial_factor"}) {
@@ -1141,7 +1141,7 @@ sub is_powerful {
   return 1 if $n <= 1 || $k <= 1;
 
   if ($Math::Prime::Util::_GMPfunc{"is_powerful"}) {
-    return eval "Math::Prime::Util::GMP::is_powerful($n, $k)";
+    return eval "Math::Prime::Util::GMP::is_powerful($n, $k)";  ## no critic qw(ProhibitStringyEval)
   }
 
   # First quick checks for inadmissibility.
@@ -1529,7 +1529,7 @@ sub moebius_range {
   return @mu;
 }
 
-sub omertens {
+sub _omertens {
   my($n) = @_;
   # This is the most basic Deléglise and Rivat algorithm.  u = n^1/2
   # and no segmenting is done.  Their algorithm uses u = n^1/3, breaks
@@ -1583,7 +1583,7 @@ sub _rmertens {
 sub mertens {
   my($n) = @_;
 
-  return omertens($n) if $n < 20000;
+  return _omertens($n) if $n < 20000;
 
   # Larger size would be faster, but more memory.
   my $size = (Math::Prime::Util::rootint($n, 3)**2) >> 2;
@@ -7496,7 +7496,7 @@ sub random_nbit_prime {
 sub random_safe_prime {
   my($bits) = @_;
   _validate_positive_integer($bits, 3);
-  return Math::Prime::Util::_reftyped($_[0], eval "Math::Prime::Util::GMP::random_safe_prime($bits)")
+  return Math::Prime::Util::_reftyped($_[0], eval "Math::Prime::Util::GMP::random_safe_prime($bits)")  ## no critic qw(ProhibitStringyEval)
     if $Math::Prime::Util::_GMPfunc{"random_safe_prime"};
   require Math::Prime::Util::RandomPrimes;
   return Math::Prime::Util::RandomPrimes::random_safe_prime($bits);
@@ -7504,7 +7504,7 @@ sub random_safe_prime {
 sub random_strong_prime {
   my($bits) = @_;
   _validate_positive_integer($bits, 128);
-  return Math::Prime::Util::_reftyped($_[0], eval "Math::Prime::Util::GMP::random_strong_prime($bits)")
+  return Math::Prime::Util::_reftyped($_[0], eval "Math::Prime::Util::GMP::random_strong_prime($bits)")  ## no critic qw(ProhibitStringyEval)
     if $Math::Prime::Util::_GMPfunc{"random_strong_prime"};
   require Math::Prime::Util::RandomPrimes;
   return Math::Prime::Util::RandomPrimes::random_strong_prime($bits);

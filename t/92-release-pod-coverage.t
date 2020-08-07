@@ -28,7 +28,7 @@ foreach my $m (@modules) {
   my $param = {
     also_private => [
                       qr/^(erat|segment|trial|sieve|segment_twin)_primes$/,
-                      'semi_prime_sieve',
+                      'semi_prime_sieve', 'almost_prime_sieve',
                     ],
   };
   $param->{trustme} = [mpu_public_regex(), mpu_factor_regex()]
@@ -55,13 +55,15 @@ sub mpu_public_regex {
       is_perrin_pseudoprime is_catalan_pseudoprime
       is_aks_prime is_bpsw_prime is_ramanujan_prime is_mersenne_prime
       is_power is_prime_power is_pillai is_semiprime is_square is_polygonal
+      is_semiprime is_almost_prime
       is_square_free is_primitive_root is_carmichael is_quasi_carmichael
       is_fundamental is_totient is_gaussian_prime
+      is_smooth is_rough is_powerful is_practical
       sqrtint rootint logint
-      powint mulint addint divint modint divrem tdivrem
+      powint mulint addint subint divint modint divrem tdivrem absint negint
       miller_rabin_random
       lucas_sequence lucasu lucasv
-      primes twin_primes semi_primes ramanujan_primes
+      primes twin_primes semi_primes almost_primes ramanujan_primes
       sieve_prime_cluster sieve_range
       lucky_numbers is_lucky nth_lucky
       forprimes forcomposites foroddcomposites forsemiprimes fordivisors
@@ -71,17 +73,23 @@ sub mpu_public_regex {
       numtoperm permtonum randperm shuffle
       prime_iterator prime_iterator_object
       next_prime  prev_prime
-      prime_count
-      prime_count_lower prime_count_upper prime_count_approx
+      prime_count prime_count_lower prime_count_upper prime_count_approx
       nth_prime nth_prime_lower nth_prime_upper nth_prime_approx inverse_li
       twin_prime_count twin_prime_count_approx
       nth_twin_prime nth_twin_prime_approx
       semiprime_count semiprime_count_approx
       nth_semiprime nth_semiprime_approx
+      almost_prime_count almost_prime_count_approx
+      almost_prime_count_lower almost_prime_count_upper
+      nth_almost_prime nth_almost_prime_approx
+      nth_almost_prime_lower nth_almost_prime_upper
       ramanujan_prime_count ramanujan_prime_count_approx
       ramanujan_prime_count_lower ramanujan_prime_count_upper
       nth_ramanujan_prime nth_ramanujan_prime_approx
       nth_ramanujan_prime_lower nth_ramanujan_prime_upper
+      powerful_count nth_powerful
+      perfect_power_count prime_power_count
+      smooth_count rough_count
       sum_primes print_primes
       random_prime random_ndigit_prime
       random_nbit_prime random_safe_prime random_strong_prime
@@ -93,10 +101,11 @@ sub mpu_public_regex {
       primorial pn_primorial consecutive_integer_lcm gcdext chinese
       gcd lcm factor factor_exp divisors valuation hammingweight
       todigits fromdigits todigitstring sumdigits
-      invmod sqrtmod addmod mulmod divmod powmod
+      invmod sqrtmod addmod mulmod divmod powmod qnr
       vecsum vecmin vecmax vecprod vecreduce vecextract
       vecany vecall vecnotall vecnone vecfirst vecfirstidx
-      moebius mertens euler_phi jordan_totient exp_mangoldt liouville
+      moebius mertens liouville sumliouville prime_omega prime_bigomega
+      euler_phi jordan_totient exp_mangoldt
       partitions bernfrac bernreal harmfrac harmreal
       chebyshev_theta chebyshev_psi
       divisor_sum carmichael_lambda kronecker hclassno inverse_totient

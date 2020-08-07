@@ -107,7 +107,7 @@ thread_test(
   $numthreads, "moebius");
 
 thread_test(
-  sub { my $sum = 0;  $sum += int(RiemannR($_)) for (@randn); return $sum;},
+  sub { my $sum = 0;  $sum += int(RiemannR($_)) for @randn[0..50]; return $sum;},
   $numthreads, "RiemannR");
 
 # Requires per-thread context
