@@ -3219,7 +3219,7 @@ sub mulint {
     if $Math::Prime::Util::_GMPfunc{"mulint"};
   my $prod = $a*$b;
   return $prod if ref($a) || ref($b);
-  return $prod if $a > 0 && $b > 0 && int(INTMAX/$a) >= $b;
+  return $prod if $a > 0 && $b > 0 && int(INTMAX/$a) > $b;
   # return Math::Prime::Util::vecprod($a,$b);
   my $res = Math::BigInt->new("$a")->bmul("$b");
   $res = _bigint_to_int($res) if $res->bacmp(BMAX) <= 0 && $res->bcmp(-(BMAX>>1)) > 0;
