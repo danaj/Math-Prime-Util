@@ -40,7 +40,7 @@ is( is_aks_prime(877), 1, "is_aks_prime(877) is true" );
 SKIP: {
   # If we're pure Perl, then this is definitely too slow.
   # Arguably we should check to see if they have the GMP code.
-  skip "Skipping PP AKS on PP -- just too slow.", 1 unless $usexs || $usegmp;
+  skip "Skipping PP AKS on PP -- just too slow.", 1 unless $usexs;
   # The least number that performs the full test with either implementation.
   is( is_aks_prime(69197), 1, "is_aks_prime(69197) is true" );
 }
@@ -59,7 +59,7 @@ if ($extra) {
   is(is_aks_prime(101), 1, "is_aks_prime(101)=1");
   is(is_aks_prime(15481), 0, "is_aks_prime(15481)=0");
   SKIP: {
-    skip "Skip large n for PP AKS", 2 unless $usexs || $usegmp;
+    skip "Skip large n for PP AKS", 2 unless $usexs;
     is(is_aks_prime(12109), 1, "is_aks_prime(12109)=1");
     is(is_aks_prime(536891893), 1, "is_aks_prime(536891893)=1");
   }

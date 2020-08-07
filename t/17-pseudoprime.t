@@ -102,10 +102,17 @@ if ($use64) {
   push @{$pseudoprimes{aeslucas2}}, 34372519409;
 }
 if (!$usexs) {
+
+  # Always cut down on the testing with PP for these mostly-novelty tests
+  $#{$pseudoprimes{catalan}} = 1 unless $extra;
+  $#{$pseudoprimes{perrin}} = 6 unless $extra;
+
+  # Maybe cut even more
   if (!$usegmp || !defined &Math::Prime::Util::GMP::binomial || $Math::Prime::Util::GMP::VERSION < 0.27) {
     # Don't make Math::BigInt do large binomials
     $pseudoprimes{catalan} = [5907];
   }
+
 }
 
 my @small_lucas_trials = (2, 9, 16, 100, 102, 2047, 2048, 5781, 9000, 14381);
