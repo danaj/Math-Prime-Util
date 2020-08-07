@@ -233,10 +233,28 @@ UV almost_prime_count_approx(uint32_t k, UV n) {
 
   _almost_prime_count_bounds(&lo, &hi, k, n);
 
-  if (k == 3) {  /* Closer to one or the other to give better fit */
-    if      (n <=     500194) return lo + 0.78*(hi-lo);
-    else if (n <= 3184393786) return lo + 0.31*(hi-lo);
-    else                      return lo + 0.04*(hi-lo);
+  /* Much better fit for k=3.  We should get the right term. */
+  if (k == 3) {
+    double x = n, logx = log(x), loglogx = log(logx);
+    double a, s = (n <= 10000000) ? 1.0 : 1.0 + logx/21.7;
+    UV est;
+    if      (n <=     4000)   a = 1.17971;
+    else if (n <=    33000)   a = 1.18889;
+    else if (n <=   100000)   a = 1.19341;
+    else if (n <=   500000)   a = 1.19569;
+    else if (n <=  1000000)   a = 1.1967;
+    else if (n <=  5000000)   a = 1.1965;
+    else if (n <= 10000000)   a = 1.1959;
+    else if (x <= 5e7)      { a = 1.1571;  s = 0.78; }
+    else if (x <= 3e8)      { a = 1.1422;  s = 0.69; }
+    else if (x <= 3e9)      { a = 1.12657; s = 0.59; }
+    else if (x <= 4e10)     { a = 1.11344; s = 0.50; }
+    else if (x <= 2e11)     { a = 1.10658; s = 0.45; }
+    else                    { a = 1.33619; s = 1.0 + logx/21.7; }
+    est = 0.5 * a * x * (loglogx*loglogx) / (logx+s*loglogx) + 0.5;
+    if      (est < lo) est = lo;
+    else if (est > hi) est = hi;
+    return est;
   }
 
   /* TODO: Consider weighting based on k,n */
