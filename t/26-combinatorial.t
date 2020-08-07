@@ -5,8 +5,12 @@ use warnings;
 use Test::More;
 use Math::Prime::Util qw/binomial factorial factorialmod
                          forcomb forperm forderange formultiperm
-                         numtoperm permtonum randperm shuffle/;
+                         numtoperm permtonum randperm shuffle
+                         csrand
+                        /;
 my $extra = defined $ENV{EXTENDED_TESTING} && $ENV{EXTENDED_TESTING};
+my $usexs  = Math::Prime::Util::prime_get_config->{'xs'};
+my $usegmp = Math::Prime::Util::prime_get_config->{'gmp'};
 
 use Math::BigInt try => "GMP,Pari";
 
@@ -45,7 +49,7 @@ my @binomials = (
 # TODO: Add a bunch of combs here:  "5,3" => [[..],[..],[..]],
 
 plan tests => 1                        # Factorial
-            + 1 + 1*$extra             # Factorialmod
+            + 1 + 1*$extra + 2         # Factorialmod
             + 2 + scalar(@binomials)   # Binomial
             + 7 + 4                    # Combinations
             + scalar(keys(%perms)) + 1 # Permutations
@@ -54,6 +58,8 @@ plan tests => 1                        # Factorial
             + 5 + 5 + 1                # numtoperm, permtonum
             + 5                        # randperm
             + 5                        # shuffle
+            + 11                       # randperm using csrand
+            + 3                        # shuffle using csrand
             ;
 
 ###### factorial
@@ -72,6 +78,11 @@ sub fact { my $n = Math::BigInt->new("$_[0]"); $n->bfac; }
 }
 if ($extra) {
   is( factorialmod(5000001,"8000036000054000027"), "4179720539133404343", "factorialmod with large n and large composite non-square-free m" );
+}
+SKIP: {
+  skip "medium size factorialmods in PP",2 unless $usexs || $extra;
+  is( factorialmod(1000000000,1000000008), 0, "1000000000! mod 1000000008 is zero" );
+  is( factorialmod(50000,10000019), 8482159, "50000! mod 10000019" );
 }
 
 ###### binomial
@@ -189,4 +200,31 @@ is_deeply([shuffle("a")],["a"],"shuffle with one arg");
   isnt("@s", "@p", "shuffle has shuffled input");
   my @ss = sort { $a<=>$b } @s;
   is("@ss", "@p", "shuffle contains original data");
+}
+
+###### randperm, making sure we hit different algorithms
+# TODO: Make versions for the PP code
+SKIP: {
+  skip "Skip set randperm tests with PP", 11 unless $usexs;
+  csrand(15);  # arbitrarily chosen
+  is_deeply([randperm(4,8)], [3,2,1,0], "randperm(4,8)");
+  is_deeply([randperm(4,0)], [], "randperm(4,0)");
+  is_deeply([randperm(42,1)], [35], "randperm(42,1)");
+  is_deeply([randperm(2,2)], [1,0], "randperm(2,2)");
+  is_deeply([randperm(2,2)], [0,1], "randperm(2,2)");
+  is_deeply([randperm(1024,2)], [251,774], "randperm(1024,2)");
+  is_deeply([randperm(75,6)], [74,19,0,24,33,11], "randperm(75,6)");
+  is_deeply([randperm(123456789,37)], [2562439,85749631,40232376,82949734,102392910,100235558,85230001,27316639,65518150,64663313,73135111,90372409,112792441,89573412,46169851,106373363,112630472,20654195,111100168,48606846,88079756,109850048,61974647,123348106,121858399,60997453,105081822,84147357,81592378,11253701,24115274,70091937,22151205,69290886,52258596,118497340,10911837], "randperm(123456789,37)");
+  is_deeply([randperm(54321,10)], [25785,17023,6559,15532,23397,32841,48735,15208,46324,2659], "randperm(54321,10)");
+  is_deeply([randperm(30,12)], [15,7,11,4,26,2,13,25,6,17,14,19], "randperm(30,12)");
+  is_deeply([randperm(16)], [3,10,7,1,5,0,8,14,2,9,13,6,4,12,15,11], "randperm(16)");
+}
+
+###### shuffling
+SKIP: {
+  skip "Skip set shuffle tests with PP", 3 unless $usexs;
+  csrand(20); # arbitrary
+  is_deeply([shuffle(qw<a b c d e f>)], [qw<d f c a b e>], "shuffle(a b c d e f)");
+  is_deeply([shuffle(10..20)], [11,17,14,20,13,15,10,19,12,18,16], "shuffle(10..20)");
+  is_deeply([shuffle(qw<a b b b b b c>)], [qw<b b b b a c b>], "shuffle(a b b b b b c)");
 }
