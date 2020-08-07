@@ -2483,9 +2483,10 @@ NV chebyshev_theta(UV n)
  *   0.15 microseconds, NV = long double    max rel error 1.2e-17
  *   9.31 microseconds, NV = quad           max rel error 1.7e-32
  *
- * max error is at 0.372.  The relative error profile for double precision
- * is essentially identical to the Navas-Palencia expintei(x) function.
- * Using long double on x86 greatly improves the results with no time penalty.
+ * The maximum error is near the root 0.3725074...
+ * The relative error profile for double precision is essentially identical
+ * to the Navas-Palencia expintei(x) function.
+ * Using long double on x86 improves the results with no time penalty.
  * Using quadmath gives improved results at a substantial time penalty.
  */
 

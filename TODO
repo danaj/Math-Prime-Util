@@ -270,6 +270,7 @@
   - optimize PP nth_almost_prime and bounds
   - optimize PP almost_primes() (uses forfactored)
   - any use for genk (iterator for k)?
+  - We have (not very efficient) construction code, but not using or testing it.
 
 - GMP is_powerful, various almost_primes
 
@@ -320,8 +321,19 @@
 
 - test coverage for PP.
 
-- Revisit AKS in PP.
+- Revisit AKS in PP.  Essentially all the time is spent in two lines of
+  poly_mod_mul.  (1) Move to Bern 4.1, (2) try using bigint multiply
+  (Kronecker) like we do in GMP.
 
 - 81-bignum.t takes too much time with PP
 
 - any way to make non-GMP random_strong_prime faster
+
+- test and use sum_primes128
+
+- I think we should have an explicit submod command
+
+- binomialmod (we have factorialmod)
+  https://fishi.devtail.io/weblog/2015/06/25/computing-large-binomial-coefficients-modulo-prime-non-prime/
+  https://pari.math.u-bordeaux.fr/archives/pari-users-0501/msg00001.html
+  https://home.gwu.edu/~maxal/gpscripts/
