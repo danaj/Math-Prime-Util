@@ -5,14 +5,15 @@ use warnings;
 use Test::More;
 use Math::Prime::Util qw/lucky_numbers nth_lucky is_lucky/;
 my $extra = defined $ENV{EXTENDED_TESTING} && $ENV{EXTENDED_TESTING};
+my $usexs = Math::Prime::Util::prime_get_config->{'xs'};
 
 my @lucky = (qw/1 3 7 9 13 15 21 25 31 33 37 43 49 51 63 67 69 73 75 79 87 93 99 105 111 115 127 129 133 135 141 151 159 163 169 171 189 193 195/);
 # 10 randomly selected samples up to 1e6
 my %samples = (1144=>10239, 3378=>34639, 4996=>53595, 24406=>308119, 26427=>336201, 43449=>578395, 67655=>935911, 69526=>964101, 69985=>971011, 70970=>985983);
 my $nsamples = scalar(keys %samples);
 
-plan tests => 3 + 1*$extra                # lucky_numbers
-            + 5 + (1+$nsamples)*$extra    # is_lucky
+plan tests => 5 + 1*$extra                # lucky_numbers
+            + 7 + (1+$nsamples)*$extra    # is_lucky
             + 3 + (0+$nsamples)*$extra;   # nth_lucky
 
 # Simple test for correct set
@@ -33,15 +34,26 @@ if ($extra) {
   is( scalar(@{lucky_numbers(145845)}), 12345, "correct count for lucky_numbers(145845)" );
   #is( scalar(@{lucky_numbers(1795453)}), 123456, "correct count for lucky_numbers(1795453)" );
 }
+SKIP: {
+  skip "skip mid-size lucky sieve for PP without EXTENDED_TESTING",2
+    unless $usexs || $extra;
+  my $l = lucky_numbers(350000);
+  is( scalar(@$l), 27420, "Lucky numbers under 350k: 27420" );
+  my $sum = 0;
+  $sum += $_ for @$l;
+  is( $sum, 4574808744, "Lucky numbers under 350k: correct sum" );
+}
 
 ###############################################################################
 
 is_deeply( [grep { is_lucky($_) } 0..200], \@lucky, "is_lucky for 0 to 200" );
 
-ok( is_lucky(42975), "42975 is a lucky number" );
+ok(  is_lucky(42975), "42975 is a lucky number" );
 ok( !is_lucky(513), "513 is not a lucky number" );
 ok( !is_lucky(49023), "49023 is not a lucky number" );
-ok( is_lucky(120001), "120001 is a lucky number" );
+ok(  is_lucky(120001), "120001 is a lucky number" );
+ok( !is_lucky(1000047), "1000047 is not a lucky number" );
+ok(  is_lucky(1000071), "1000047 is a lucky number" );
 
 if ($extra) {
   ok( is_lucky(9999997), "9999997 is a lucky number" );

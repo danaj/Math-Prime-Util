@@ -48,6 +48,9 @@ my %powers = (
   3 => [8, 27, 125, 343, 17576],
   4 => [16, 38416],
   9 => [19683, 1000000000],
+ 11 => [362797056],
+ 13 => [1594323],
+ 17 => [129140163],
 );
 if ($use64) {
   push @{$powers{0}}, 9908918038843197151;
@@ -55,6 +58,10 @@ if ($use64) {
   push @{$powers{3}}, 2250923753991375;
   push @{$powers{4}}, 1150530828529256001;
   push @{$powers{9}}, 118587876497;
+  push @{$powers{11}}, 12200509765705829;
+  push @{$powers{13}}, 9904578032905937;
+  push @{$powers{17}}, 232630513987207;
+  push @{$powers{31}}, 617673396283947;
 }
 my @negpowers = (0,0,0,3,0,5,3,7,0,9,5);
 
@@ -65,6 +72,7 @@ plan tests => 0
             + scalar(keys(%bppow))
             + 4
             + 7 + scalar(keys %powers) + scalar(@negpowers)
+            + 6  # tests for 3,5,7 power
             + 3  # is_square
             + 0;
 
@@ -105,7 +113,7 @@ while (my($e, $vals) = each (%powers)) {
   foreach my $val (@$vals) {
     push @fail, $val unless is_power($val) == $e;
   }
-  ok( @fail == 0, "is_power returns $e for " . join(",",@fail) );
+  ok( @fail == 0, "is_power returns $e for " . join(",",@$vals) );
 }
 foreach my $e (0 .. $#negpowers) {
   is( is_power(-7 ** $e), $negpowers[$e], "is_power(-7^$e ) = $negpowers[$e]" );
@@ -123,6 +131,13 @@ is( is_power(-1,5), 1, "-1 is a 5th power" );
   is( $ispow, 10, "36^5 is a 10th power...");
   is( $root, 6, "...and the root is 6");
 }
+
+is( is_power(56129,3), 0, "56129 is not a 3rd power" );
+is( is_power(50653,3), 1, "50653 is a 3rd power" );
+is( is_power(76840601,5), 0, "76840601 is not a 5th power" );
+is( is_power(69343957,5), 1, "69343957 is a 5th power" );
+is( is_power(4782969,7), 1, "4782969 is a 7th power" );
+is( is_power(4782971,7), 0, "4782971 is not a 7th power" );
 
 ###### is_square
 is_deeply(

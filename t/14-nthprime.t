@@ -81,8 +81,8 @@ my %nthsemi = (
           1234 =>          4497,
          12345 =>         51019,
         123456 =>        573355,
-       1234567 =>       6365389,
 );
+$nthsemi{1234567}     =      6365389  if $usexs || $extra;
 $nthsemi{12345678}    =     69914722  if $usexs || $extra;
 $nthsemi{123456789}   =    760797011  if $usexs && $extra;
 $nthsemi{1234567890}  =   8214915893  if $usexs && $extra && $use64;

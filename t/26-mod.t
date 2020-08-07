@@ -9,6 +9,7 @@ use Math::BigInt try=>"GMP,Pari";
 my $extra = defined $ENV{EXTENDED_TESTING} && $ENV{EXTENDED_TESTING};
 my $use64 = Math::Prime::Util::prime_get_config->{'maxbits'} > 32;
 $use64 = 0 if $use64 && 18446744073709550592 == ~0;
+my $usexs = Math::Prime::Util::prime_get_config->{'xs'};
 
 my @invmods = (
  [ 0, 0, undef],
@@ -37,10 +38,21 @@ my @sqrtmods = (
  [ 30, 1000969, 89676],
  [ "9223372036854775808", "5675921253449092823", "22172359690642254" ],
  [ "18446744073709551625", "340282366920938463463374607431768211507", "57825146747270203522128844001742059051" ],
- [ 30, 74, 20 ],
- [ 56, 1018, 458 ],
- [ 42, 979986, 356034 ],
+
+ [ 30, 74, [20,54] ],
+ [ 56, 1018, [458,560] ],
+ [ 42, 979986, [356034,623952] ],
+ [ 5, 301, undef ],
+ [ 5, 302, [55,247] ],
+ [ 5, 404, [45,157,247,359] ],
+ [ 5, 400, undef ],
+ [ 9, 400, [3,53,147,197,203,253,347,397] ],
+ [ 15, 402, [45,357] ],
 );
+
+if ($usexs || $extra) {
+  push @sqrtmods, [ 2, 72388801, 20312446 ];
+}
 
 plan tests => 0
             + 3 + scalar(@invmods)
@@ -66,7 +78,14 @@ foreach my $r (@invmods) {
 ###### sqrtmod
 foreach my $r (@sqrtmods) {
   my($a, $n, $exp) = @$r;
-  is( sqrtmod($a,$n), $exp, "sqrtmod($a,$n) = ".((defined $exp)?$exp:"<undef>") );
+  if (!defined $exp) {
+    is( sqrtmod($a,$n), $exp, "sqrtmod($a,$n) = <undef>");
+  } elsif (!ref($exp)) {
+    is( sqrtmod($a,$n), $exp, "sqrtmod($a,$n) = $exp");
+  } else {
+    my $val = sqrtmod($a,$n);
+    ok( is_one_of($val, @$exp), "sqrtmod($a,$n) = $val, roots [@$exp]" );
+  }
 }
 
 
@@ -178,4 +197,12 @@ sub nrand {
   my $r = int(rand(4294967296));
   $r = ($r << 32) + int(rand(4294967296)) if $use64;
   $r;
+}
+
+sub is_one_of {
+  my($n, @list) = @_;
+  for (@list) {
+    return 1 if $n eq $_;
+  }
+  0;
 }

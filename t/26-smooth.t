@@ -6,7 +6,15 @@ use Test::More;
 use Math::Prime::Util qw/is_smooth is_rough smooth_count rough_count
                          factor vecnone/;
 
-plan tests => 13+13 + 4+4 + 2+2;
+my $use64 = Math::Prime::Util::prime_get_config->{'maxbits'} > 32;
+$use64 = 0 if 18446744073709550592 == ~0;
+my $usexs = Math::Prime::Util::prime_get_config->{'xs'};
+my $extra = defined $ENV{EXTENDED_TESTING} && $ENV{EXTENDED_TESTING};
+
+plan tests => 13+13      # small is_smooth / is_rough
+            + 4+3        # special case is_smooth / is_rough
+            + 4+4        # is_smooth large
+            + 4+2;       # smooth_count / rough_count
 
 ###### is_smooth / is_rough
 
@@ -20,6 +28,15 @@ for my $n (0 .. 12) {
   my @got = map {     is_rough($n, $_) } 0 .. 12;
   is_deeply( \@got, \@exp, "is_rough($n, 0..12)" );
 }
+
+is(is_smooth(1000000,10000),1,"1000000 is 10000-smooth");
+is(is_smooth(1000127,10000),0,"1000127 is not 10000-smooth");
+is(is_rough(1000127,3000),0,"1000127 is not 3000-rough");
+is(is_rough(1000157,3000),0,"1000157 is not 3000-rough");
+
+is(is_rough("137438953481",3000),1,"137438953481 is 3000-rough");
+is(is_rough("137438953493",3000),0,"137438953493 is not 3000-rough");
+is(is_rough("137438953529",3000),1,"137438953529 is 3000-rough");
 
 {
   my $n = "1377276413364943226363244108454842276965894752197358387200000"; # 97
@@ -44,7 +61,12 @@ for my $n (0 .. 12) {
   for my $n (0..5) { for my $k (0..5) { push @got, smooth_count($n,$k); } }
   is_deeply( \@got, \@exp, "smooth_count(0..5, 0..5)" );
 }
+is(smooth_count(100,17), 67, "smooth_count(100,17)");
 is(smooth_count(1980627498,9), 5832, "smooth_count(1980627498,9)");
+SKIP: {
+  skip "skipping slow smooth count test with PP", 1 unless $usexs || $extra;
+  is(smooth_count(10000000,400), 1132424, "smooth_count(10000000,400)");
+}
 
 ###### rough_count
 {

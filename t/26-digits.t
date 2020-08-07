@@ -12,7 +12,7 @@ my $extra = defined $ENV{EXTENDED_TESTING} && $ENV{EXTENDED_TESTING};
 #my $usegmp= Math::Prime::Util::prime_get_config->{'gmp'};
 #$use64 = 0 if $use64 && 18446744073709550592 == ~0;
 
-plan tests => 0 + 6 + 3 + 2 + 1  # fromdigits
+plan tests => 0 + 7 + 3 + 2 + 1  # fromdigits
                 + 6 + 4 + 1      # todigits
                 + 4 + 2*$extra   # sumdigits
                 + 3              # todigitstring
@@ -29,6 +29,7 @@ is(fromdigits([0,1,1,0,2216],16), 6568, "fromdigits base 16 with overflow");
 is(fromdigits([7,999,44],5), 7*5**2 + 999*5 + 44*1, "fromdigits base 5 with carry");
 is(fromdigits([7,999,44],3), 7*3**2 + 999*3 + 44*1, "fromdigits base 3 with carry");
 is(fromdigits([7,999,44],2), 7*2**2 + 999*2 + 44*1, "fromdigits base 2 with carry");
+is(fromdigits([1..15,1..15,1..15],16), "108977460683796539709587792812439445667270661579197935", "fromdigits base 15 with many digits");
 
 is(fromdigits("1f",16), 31, "fromdigits hex string");
 is(fromdigits("24"), 24, "fromdigits decimal");

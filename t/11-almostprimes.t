@@ -23,11 +23,19 @@ my @small_kaps = (
 );
 my @counts_at_1e6 = (1,78498,210035,250853,198062,124465,68963,35585,17572,8491,4016,1878,865,400,179,79,35,14,7,2,0);
 
+my @aptests = (
+  [1,46,199],
+  [2,67,206],
+  [3,48,195],
+  [4,26,204],
+);
+
 plan tests =>   5   # almost_primes sieve
-              + 2   # count
-              + 6   # nth
+              + 3   # count
+              + 9   # nth
               + 2   # limits
               + 2   # approx
+              + scalar(@aptests)  # approx
                 ;
 
 for my $k (1..5) {
@@ -44,10 +52,17 @@ is_deeply([map { almost_prime_count($_, 1e6) } 0..20], \@counts_at_1e6, "k-almos
 
 is(almost_prime_count(17,1e9), 38537, "There are 38537 17-almost-primes <= 1,000,000,000");
 
+is_deeply([map{almost_prime_count($_,206)}1..10],[46,67,48,26,12,4,2,0,0,0],"almost_prime_count_approx n=206, k 1..10");
+
 ###### Test nth_almost_prime
 is(nth_almost_prime(1,2), 3, "2nd 1-almost-prime is 3");
 is(nth_almost_prime(2,34), 95, "34th 2-almost-prime is 94");
 is(nth_almost_prime(3,456), 1802, "456th 3-almost-prime is 1802");
+
+is(nth_almost_prime(2,4), 10, "4th 2-almost-prime is 10");
+is(nth_almost_prime(3,4), 20, "4th 3-almost-prime is 20");
+is(nth_almost_prime(4,4), 40, "4th 4-almost-prime is 40");
+
 SKIP: {
   skip "The almost prime pure Perl is *very* slow",3 unless $usexs;
   is(nth_almost_prime(4,5678), 31382, "5678th 4-almost-prime is 31382");
@@ -65,7 +80,10 @@ SKIP: {
   skip "The almost prime pure Perl has bad approximations for high k",1 unless $usexs;
   is( approx_in_range(32,12,"26843545600"), "26843545600", "32-almost prime limits for 12" );
 }
-
+for my $aap (@aptests) {
+  my($k, $n, $count) = @$aap;
+  is( approx_in_range($k,$n,$count), $count, "small approx $k-almost prime");
+}
 
 sub cmp_closeto {
   my $got = shift;
@@ -88,7 +106,9 @@ sub approx_in_range {
   my($k,$n,$rn) = @_;
   my $arn = nth_almost_prime_approx($k,$n);
   my $an  = almost_prime_count_approx($k,$rn);
-  my $div = $usexs ? 50 : 10;
+  my $div = $usexs ? 20 : 4;
+  $div *= 0.3 if $k > 2 && $n < 60;
+  $div *= 0.5 if $k > 3;
   return 'nth approx too low' if $arn < ($rn-$rn/$div);
   return 'nth approx too high' if $arn > ($rn+$rn/$div);
   return 'count approx too low' if $an < ($n-$n/$div);

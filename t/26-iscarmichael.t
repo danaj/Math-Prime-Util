@@ -11,7 +11,7 @@ my $usegmp= Math::Prime::Util::prime_get_config->{'gmp'};
 #my $use64 = Math::Prime::Util::prime_get_config->{'maxbits'} > 32;
 #$use64 = 0 if $use64 && 18446744073709550592 == ~0;
 
-plan tests => 3 + 4;
+plan tests => 4 + 4;
 
 ###### is_carmichael
 is_deeply( [grep { is_carmichael($_) } 1 .. 20000],
@@ -25,6 +25,8 @@ SKIP: {
   skip "Skipping larger Carmichael", 1 unless $usegmp && $extra;
   ok( is_carmichael("341627175004511735787409078802107169251"), "Larger Carmichael" );
 }
+# Cover the "fast check" tests
+is_deeply( [map { is_carmichael($_) } 5000209,5000145,5000069,5000483,5000169,5000001], [0,0,0,0,0,0], "Medium size non-Carmichael numbers that should be quickly rejected" );
 
 ###### is_quasi_carmichael
 is_deeply( [grep { is_quasi_carmichael($_) } 1 .. 400],

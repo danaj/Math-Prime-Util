@@ -29,7 +29,6 @@ my %eivals = (
          40  =>  6039718263611241.5783592,
          41  =>  16006649143245041.110700,
          79  =>  2.61362206325045575150640392249037e+32,
-        170  =>  4.00120321792254728767739056606721e+71
 );
 
 my %livals = (  # In pari these are:  -eint1(-log($n))
@@ -87,6 +86,7 @@ plan tests => 3 + 6 + 1
               + scalar(keys(%rvals))
               + scalar(keys(%rzvals))
               + scalar(keys(%lamvals))
+              + 1
               ;
 
 eval { LogarithmicIntegral(-1); };
@@ -110,7 +110,6 @@ cmp_closeto( ExponentialIntegral(2.2), 5.732614700, 1e-06, "Ei(2.2)");
 while (my($n, $ein) = each (%eivals)) {
   cmp_closeto( ExponentialIntegral($n), $ein, 0.00000001 * abs($ein), "Ei($n) ~= $ein");
 }
-
 while (my($n, $lin) = each (%livals)) {
   cmp_closeto( LogarithmicIntegral($n), $lin, 0.00000001 * abs($lin), "li($n) ~= $lin");
 }
@@ -125,6 +124,13 @@ while (my($n, $zin) = each (%rzvals)) {
 while (my($n, $lin) = each (%lamvals)) {
   # Machines with long double will be a little different near -1/e
   cmp_closeto( LambertW($n), $lin, 0.0000001 * abs($lin), "LambertW($n) ~= $lin");
+}
+
+
+# Put at end to not hit bug in pre-0.53 MPU::GMP
+{
+  my($n,$ein) = (170, 4.00120321792254728767739056606721e+71);
+  cmp_closeto( ExponentialIntegral($n), $ein, 0.00000001 * abs($ein), "Ei($n) ~= $ein");
 }
 
 
