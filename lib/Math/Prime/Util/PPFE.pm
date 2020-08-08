@@ -565,6 +565,14 @@ sub binomial {
   return Math::Prime::Util::PP::binomial($n, $k);
 }
 
+sub binomialmod {
+  my($n, $k, $m) = @_;
+  _validate_integer($n);
+  _validate_integer($k);
+  _validate_positive_integer($m);
+  return Math::Prime::Util::PP::binomialmod($n, $k, $m);
+}
+
 sub stirling {
   my($n, $k, $type) = @_;
   _validate_positive_integer($n);

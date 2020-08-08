@@ -2078,6 +2078,28 @@ znlog(IN SV* sva, IN SV* svg, IN SV* svp)
     return; /* skip implicit PUTBACK */
 
 void
+binomialmod(IN SV* svn, IN SV* svk, IN SV* svm)
+  PREINIT:
+    int nstatus, kstatus, mstatus;
+    UV ret;
+  PPCODE:
+    nstatus = _validate_int(aTHX_ svn, 1);
+    kstatus = _validate_int(aTHX_ svk, 1);
+    mstatus = _validate_int(aTHX_ svm, 0);
+    if (nstatus != 0 && kstatus != 0 && mstatus == 1) {
+      UV n = my_svuv(svn), k = my_svuv(svk), m = my_svuv(svm);
+      if (m <= 1 || kstatus == 0) XSRETURN_UV(0);
+      if (nstatus == -1) n = -my_sviv(svn)+k-1;
+      if (binomialmod(&ret, n, k, m)) {
+        if ((nstatus == -1) && (k & 1)) ret = m-ret;
+        XSRETURN_UV(ret);
+      }
+    }
+    _vcallsub_with_gmpobj(0.00,"binomialmod");
+    objectify_result(aTHX_ svm, ST(0));
+    return; /* skip implicit PUTBACK */
+
+void
 is_smooth(IN SV* svn, IN SV* svk)
   ALIAS:
     is_rough = 1

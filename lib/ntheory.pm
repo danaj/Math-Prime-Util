@@ -250,6 +250,7 @@ Tags:
   factorial(n)                        product of first n integers: n!
   factorialmod(n,m)                   factorial mod m
   binomial(n,k)                       binomial coefficient
+  binomialmod(n,k,m)                  binomial(n,k) mod m
   partitions(n)                       number of integer partitions
   valuation(n,k)                      number of times n is divisible by k
   hammingweight(n)                    population count (# of binary 1s)

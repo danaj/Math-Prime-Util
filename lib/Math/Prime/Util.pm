@@ -82,8 +82,8 @@ our @EXPORT_OK =
       chebyshev_theta chebyshev_psi
       divisor_sum carmichael_lambda kronecker hclassno inverse_totient
       ramanujan_tau ramanujan_sum
-      binomial stirling znorder znprimroot znlog legendre_phi
-      factorial factorialmod
+      stirling znorder znprimroot znlog legendre_phi
+      factorial factorialmod binomial binomialmod
       ExponentialIntegral LogarithmicIntegral RiemannZeta RiemannR LambertW Pi
       irand irand64 drand urandomb urandomm csrand random_bytes entropy_bytes
   );
@@ -3873,6 +3873,16 @@ case.  GMP's API does not allow negative C<k> but otherwise matches.
 L<Math::BigInt> does not implement any extensions and the results for
 C<n E<lt> 0, k > 0> are undefined.
 
+=head binomialmod
+
+Given integer arguments C<n>, C<k>, and C<m>, efficiently returns
+C<binomial(n,k) mod m>.  C<m> does not need to be prime.
+The result is extended to negative C<n>.
+Negative C<k> will return zero.
+C<m> must be non-negative.
+
+This corresponds to Mathematica's C<BinomialMod[n,m,p]> function.  It has
+similar functionality to Max Alekseyev's binomod.gp Pari routine.
 
 =head2 hclassno
 

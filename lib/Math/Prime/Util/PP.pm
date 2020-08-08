@@ -4473,6 +4473,24 @@ sub binomial {
   $r;
 }
 
+sub binomialmod {
+  my($n,$k,$m) = @_;
+
+  return Math::Prime::Util::_reftyped($_[2], eval "Math::Prime::Util::GMP::binomialmod($n,$k,$m)")  ## no critic qw(ProhibitStringyEval)
+    if $Math::Prime::Util::_GMPfunc{"binomialmod"};
+
+  return 0 if $m <= 1 || $k < 0;
+  return 1 if $k == 0 || $k == $n;
+  return 0 if $n >= 0 && $k > $n;
+  return 0+!(($n-$k) & $k) if $m == 2;
+
+  # TODO: Lucas split, etc.
+
+  # Give up.
+  return Math::Prime::Util::modint(Math::Prime::Util::binomial($n,$k),$m);
+}
+
+
 sub _product {
   my($a, $b, $r) = @_;
   if ($b <= $a) {

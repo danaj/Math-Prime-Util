@@ -1817,6 +1817,123 @@ UV factorialmod(UV n, UV m) {  /*  n! mod m */
   return res;
 }
 
+
+static UV _factorial_valuation(UV n, UV p) {
+  UV k = 0;
+  while (n >= p) {
+    n /= p;
+    k += n;
+  }
+  return k;
+}
+static int _binoval(UV n, UV k, UV m) {
+  return _factorial_valuation(n,m) - _factorial_valuation(k,m) - _factorial_valuation(n-k,m);
+}
+static UV _binomial_mod_prime_power(UV n, UV k, UV p, UV e) {
+  UV r, b, m, i, num, den, ip, ires;
+
+  if (k > n) return 0;
+  if (k == 0 || k == n) return 1;
+  if (k > n/2)  k = n-k;
+
+  b = _binoval(n,k,p);
+  if (e <= b) return 0;
+  m = ipow(p,e);
+
+  if (k == 1) return n % m;
+
+  if (p == 2 || !USE_MONTMATH) {
+    num = den = 1;
+    for (i = 2, ires = (i-1) % p; i <= k; i++) {
+      ip = i;
+      if (++ires == p) { ires = 0; do { ip /= p; } while ((ip % p) == 0); }
+      den = mulmod(den, ip, m);
+    }
+    for (i = n-k+1, ires = (i-1) % p; i <= n; i++) {
+      ip = i;
+      if (++ires == p) { ires = 0; do { ip /= p; } while ((ip % p) == 0); }
+      num = mulmod(num, ip, m);
+    }
+  } else {
+    const uint64_t npi = mont_inverse(m),  mont1 = mont_get1(m);
+
+    num = den = mont1;
+    for (i = 2, ires = (i-1)%p; i <= k; i++) {
+      ip = i;
+      if (++ires == p) { ires = 0; do { ip /= p; } while ((ip % p) == 0); }
+      den = mont_mulmod(den, mont_geta(ip, m), m);
+    }
+    for (i = n-k+1, ires = (i-1)%p; i <= n; i++) {
+      ip = i;
+      if (++ires == p) { ires = 0; do { ip /= p; } while ((ip % p) == 0); }
+      num = mont_mulmod(num, mont_geta(ip, m), m);
+    }
+    den = mont_recover(den, m);
+    num = mont_recover(num, m);
+  }
+  r = divmod(num, den, m);
+  if (b > 0) r = mulmod(r, ipow(p,b), m);
+  return r;
+}
+
+static UV _binomial_lucas_mod_prime(UV n, UV k, UV p) {
+  UV res, t, vn[64], vk[64];
+  int i, ln, lk;
+
+  if (p < 2) return 0;
+  if (p == 2) return !(~n & k);
+
+  for (t = n, ln = 0; t > 0; t /= p)
+    vn[ln++] = t % p;
+  for (t = k, lk = 0; t > 0; t /= p)
+    vk[lk++] = t % p;
+
+  res = 1;
+  for (i = ln-1; i >= 0; i--) {
+    UV ni = vn[i];
+    UV ki = (i < lk) ? vk[i] : 0;
+    res = mulmod(res, _binomial_mod_prime_power(ni, ki, p, 1), p);
+  }
+  return res;
+}
+
+int binomialmod(UV *res, UV n, UV k, UV m) {
+
+  if (m <= 1)           { *res = 0; return 1; }
+  if (k == 0 || k >= n) { *res = (k == 0 || k == n); return 1; }
+
+  if (m == 2) { *res = !(~n & k); return 1; }
+
+#if 0
+    if ( (*res = binomial(n,k)) )
+      { *res %= m; return 1; }
+#endif
+
+  if (is_prime(m)) {
+    *res = _binomial_lucas_mod_prime(n, k, m);
+    return 1;
+  }
+  {
+    UV bin[MPU_MAX_FACTORS+1];
+    UV fac[MPU_MAX_FACTORS+1];
+    UV exp[MPU_MAX_FACTORS+1];
+    int crt, i, nfactors = factor_exp(m, fac, exp);
+    for (i = 0; i < nfactors; i++) {
+      if (exp[i] == 1) {
+        bin[i] = _binomial_lucas_mod_prime(n, k, fac[i]);
+      } else {
+        /* TODO: Generalized Lucas */
+        bin[i] = _binomial_mod_prime_power(n, k, fac[i], exp[i]);
+        fac[i] = ipow(fac[i], exp[i]);
+      }
+    }
+    *res = chinese(bin, fac, nfactors, &crt);
+    return (crt == 1) ? 1 : 0;
+  }
+  return 0;
+}
+
+
 static int verify_sqrtmod(UV s, UV *rs, UV a, UV p) {
   if (p-s < s)  s = p-s;
   if (mulmod(s, s, p) != a) return 0;

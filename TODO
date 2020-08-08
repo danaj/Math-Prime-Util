@@ -333,9 +333,12 @@
 
 - I think we should have an explicit submod command
 
-- binomialmod (we have factorialmod)
-  https://fishi.devtail.io/weblog/2015/06/25/computing-large-binomial-coefficients-modulo-prime-non-prime/
-  https://pari.math.u-bordeaux.fr/archives/pari-users-0501/msg00001.html
-  https://home.gwu.edu/~maxal/gpscripts/
-
 - Speed up XS RiemannR with quadmath.
+
+- binomialmod:
+   - PP implementation for primes, squarefree, and general composites.
+   - GMP.
+   - C code, generalized Lucas to go a little faster.
+   - look at Max's factorialmodp1 for some time savings.  We run very fast
+     for small k, but his method is much better for large k.
+   - negative k extension

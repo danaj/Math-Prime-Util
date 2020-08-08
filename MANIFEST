@@ -170,6 +170,7 @@ t/23-primality-proofs.t
 t/23-random-certs.t
 t/24-partitions.t
 t/25-lucas_sequences.t
+t/26-binomialmod.t
 t/26-combinatorial.t
 t/26-digits.t
 t/26-isalmostprime.t
@@ -213,6 +214,7 @@ t/93-release-spelling.t
 t/94-weaken.t
 t/97-synopsis.t
 xt/A003459.pl
+xt/binomialmod.pl
 xt/check-nth-bounds.pl
 xt/chinese.pl
 xt/create-pc-tables.pl
