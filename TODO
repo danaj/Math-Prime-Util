@@ -338,7 +338,5 @@
 - binomialmod:
    - PP implementation for primes, squarefree, and general composites.
    - GMP.
-   - C code, generalized Lucas to go a little faster.
-   - look at Max's factorialmodp1 for some time savings.  We run very fast
-     for small k, but his method is much better for large k.
+   - C code could still go a bit faster.
    - negative k extension

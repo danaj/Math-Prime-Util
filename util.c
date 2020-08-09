@@ -1829,6 +1829,43 @@ static UV _factorial_valuation(UV n, UV p) {
 static int _binoval(UV n, UV k, UV m) {
   return _factorial_valuation(n,m) - _factorial_valuation(k,m) - _factorial_valuation(n-k,m);
 }
+static UV _factorialmod_without_prime(UV n, UV p, UV m) {
+  UV i, pmod, r = 1;
+  MPUassert(p >= 2 && m >= p && (m % p) == 0, "_factorialmod called with wrong args");
+  if (n <= 1) return 1;
+
+  if (n >= m) {
+    /* Note with p=2 the behaviour is different */
+    if ( ((n/m) & 1) && (p > 2 || m == 4) )  r = m-1;
+    n %= m;
+  }
+
+  if (p == 2 || !USE_MONTMATH) {
+    for (i = pmod = 2; i <= n; i++) {
+      if (pmod++ == p) pmod = 1;
+      else             r = mulmod(r, i, m);
+    }
+  } else {
+    const uint64_t npi = mont_inverse(m),  mont1 = mont_get1(m);
+    uint64_t mi = mont1;
+    r = mont_geta(r, m);
+    for (i = pmod = 2; i <= n; i++) {
+      mi = addmod(mi, mont1, m);
+      if (pmod++ == p) pmod = 1;
+      else             r = mont_mulmod(r, mi, m);
+    }
+    r = mont_recover(r, m);
+  }
+  return r;
+}
+static UV _factorialmod_without_prime_powers(UV n, UV p, UV m) {
+  UV i, ip, r = 1;
+
+  for (ip = n; ip > 1; ip /= p)
+    r = mulmod(r, _factorialmod_without_prime(ip, p, m), m);
+
+  return r;
+}
 static UV _binomial_mod_prime_power(UV n, UV k, UV p, UV e) {
   UV r, b, m, i, num, den, ip, ires;
 
@@ -1842,35 +1879,32 @@ static UV _binomial_mod_prime_power(UV n, UV k, UV p, UV e) {
 
   if (k == 1) return n % m;
 
-  if (p == 2 || !USE_MONTMATH) {
-    num = den = 1;
-    for (i = 2, ires = (i-1) % p; i <= k; i++) {
-      ip = i;
-      if (++ires == p) { ires = 0; do { ip /= p; } while ((ip % p) == 0); }
-      den = mulmod(den, ip, m);
-    }
-    for (i = n-k+1, ires = (i-1) % p; i <= n; i++) {
-      ip = i;
-      if (++ires == p) { ires = 0; do { ip /= p; } while ((ip % p) == 0); }
-      num = mulmod(num, ip, m);
-    }
+  /* Both methods work fine -- choose based on performance. */
+  den  = _factorialmod_without_prime_powers(k, p, m);
+  if (k >= m) {
+    num  = _factorialmod_without_prime_powers(n, p, m);
+    ip   = _factorialmod_without_prime_powers(n-k, p, m);
+    den = mulmod(den, ip, m);
   } else {
-    const uint64_t npi = mont_inverse(m),  mont1 = mont_get1(m);
-
-    num = den = mont1;
-    for (i = 2, ires = (i-1)%p; i <= k; i++) {
-      ip = i;
-      if (++ires == p) { ires = 0; do { ip /= p; } while ((ip % p) == 0); }
-      den = mont_mulmod(den, mont_geta(ip, m), m);
+    if (p == 2 || !USE_MONTMATH) {
+      num = 1;
+      for (i = n-k+1, ires = (i-1) % p; i <= n; i++) {
+        ip = i;
+        if (++ires == p) { ires = 0; do { ip /= p; } while ((ip % p) == 0); }
+        num = mulmod(num, ip, m);
+      }
+    } else {
+      const uint64_t npi = mont_inverse(m),  mont1 = mont_get1(m);
+      num = mont1;
+      for (i = n-k+1, ires = (i-1)%p; i <= n; i++) {
+        ip = i;
+        if (++ires == p) { ires = 0; do { ip /= p; } while ((ip % p) == 0); }
+        num = mont_mulmod(num, mont_geta(ip, m), m);
+      }
+      num = mont_recover(num, m);
     }
-    for (i = n-k+1, ires = (i-1)%p; i <= n; i++) {
-      ip = i;
-      if (++ires == p) { ires = 0; do { ip /= p; } while ((ip % p) == 0); }
-      num = mont_mulmod(num, mont_geta(ip, m), m);
-    }
-    den = mont_recover(den, m);
-    num = mont_recover(num, m);
   }
+
   r = divmod(num, den, m);
   if (b > 0) r = mulmod(r, ipow(p,b), m);
   return r;
