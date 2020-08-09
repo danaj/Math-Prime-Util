@@ -1911,7 +1911,7 @@ static UV _binomial_mod_prime_power(UV n, UV k, UV p, UV e) {
 }
 
 static UV _binomial_lucas_mod_prime(UV n, UV k, UV p) {
-  UV res, t, vn[64], vk[64];
+  UV res, t, vn[BITS_PER_WORD], vk[BITS_PER_WORD];
   int i, ln, lk;
 
   if (p < 2) return 0;
@@ -1927,6 +1927,57 @@ static UV _binomial_lucas_mod_prime(UV n, UV k, UV p) {
     UV ni = vn[i];
     UV ki = (i < lk) ? vk[i] : 0;
     res = mulmod(res, _binomial_mod_prime_power(ni, ki, p, 1), p);
+  }
+  return res;
+}
+
+/* Based on Granville's paper on the generalization of Lucas's theorem to
+ * prime powers: https://www.dms.umontreal.ca/~andrew/Binomial/genlucas.html
+ * and Max Alekseyev's binomod.gp program. */
+static UV _binomial_lucas_mod_prime_power(UV n, UV k, UV p, UV q) {
+  UV N[BITS_PER_WORD], K[BITS_PER_WORD], R[BITS_PER_WORD], e[BITS_PER_WORD];
+  UV i, d, m, n1, k1, r1, m1, res;
+
+  MPUassert(q < BITS_PER_WORD, "bad exponent in binomialmod generalized lucas");
+  m = ipow(p, q);
+
+  /* Construct the digits for N, K, and N-K (R). */
+  n1 = n;   k1 = k;  r1 = n-k;
+  for (d = 0; n1 > 0; d++) {
+    N[d] = n1 % p;  n1 /= p;
+    K[d] = k1 % p;  k1 /= p;
+    R[d] = r1 % p;  r1 /= p;
+  }
+  /* Compute the number of carries. */
+  for (i = 0; i < d; i++)
+    e[i] = (N[i] < (K[i] + ((i > 0) ? e[i-1] : 0)));
+  /* Turn the carries into a cumulative count. */
+  for (i = d-1; i >= 1; i--)
+    e[i-1] += e[i];
+
+  if (e[0] >= q) return 0;
+  q -= e[0];
+  m1 = ipow(p, q);
+
+  /* Now make the digits for the reduced N, K, N-K */
+  n1 = n;   k1 = k;  r1 = n-k;
+  for (d = 0; n1 > 0; d++) {
+    N[d] = n1 % m1;  n1 /= p;
+    K[d] = k1 % m1;  k1 /= p;
+    R[d] = r1 % m1;  r1 /= p;
+  }
+
+  /* Theorem 1 from Granville indicates the +/- 1.  */
+  res = ((p > 2 || q < 3) && q < d && e[q-1] % 2)  ?  m-1  :  1;
+  res = mulmod(res, powmod(p, e[0], m), m);
+
+  /* Compute the individual binomials (again, theorem 1) */
+  for (i = 0; i < d; i++) {
+    UV ni = _factorialmod_without_prime(N[i], p, m);
+    UV ki = _factorialmod_without_prime(K[i], p, m);
+    UV ri = _factorialmod_without_prime(R[i], p, m);
+    UV r = divmod(ni, mulmod(ki, ri, m), m);
+    res = mulmod(res, r, m);
   }
   return res;
 }
@@ -1956,8 +2007,9 @@ int binomialmod(UV *res, UV n, UV k, UV m) {
       if (exp[i] == 1) {
         bin[i] = _binomial_lucas_mod_prime(n, k, fac[i]);
       } else {
-        /* TODO: Generalized Lucas */
-        bin[i] = _binomial_mod_prime_power(n, k, fac[i], exp[i]);
+        /* bin[i] = _binomial_mod_prime_power(n, k, fac[i], exp[i]); */
+        /* Use generalized Lucas */
+        bin[i] = _binomial_lucas_mod_prime_power(n, k, fac[i], exp[i]);
         fac[i] = ipow(fac[i], exp[i]);
       }
     }

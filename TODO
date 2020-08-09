@@ -338,5 +338,4 @@
 - binomialmod:
    - PP implementation for primes, squarefree, and general composites.
    - GMP.
-   - C code could still go a bit faster.
    - negative k extension

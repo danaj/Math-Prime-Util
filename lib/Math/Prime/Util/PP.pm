@@ -4485,6 +4485,11 @@ sub binomialmod {
   return 0+!(($n-$k) & $k) if $m == 2;
 
   # TODO: Lucas split, etc.
+  # 1. factorexp
+  # 2.   bin[i] = _binomial_lucas_mod_prime_power(n, k, $f, $e)
+  # 2a.            _factorialmod_without_prime
+  # 3.   chinese(bin, p^e)
+  # we can just run the more general code path.
 
   # Give up.
   return Math::Prime::Util::modint(Math::Prime::Util::binomial($n,$k),$m);
