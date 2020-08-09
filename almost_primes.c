@@ -287,7 +287,7 @@ static UV apca(UV mid, UV k) { return almost_prime_count_approx(k, mid); }
 static UV apce(UV mid, UV k) { return almost_prime_count(k, mid); }
 
 UV nth_almost_prime_upper(uint32_t k, UV n) {
-  UV i, r, max, lo, hi, rlo, rhi, mid;
+  UV r, max, lo, hi;
 
   if (n == 0) return 0;
   if (k == 0) return (n == 1) ? 1 : 0;
@@ -303,14 +303,11 @@ UV nth_almost_prime_upper(uint32_t k, UV n) {
   lo = 5 * (UVCONST(1) << k);  /* For k >= 1 and n >= 8 */
   hi = max_nth_almost_prime(k);
 
-  rlo = almost_prime_count_lower(k,lo);
-  rhi = almost_prime_count_lower(k,hi);
-
   return inverse_interpolate(lo, hi, n, k, &apcl, 0);
 }
 
 UV nth_almost_prime_lower(uint32_t k, UV n) {
-  UV i, r, max, lo, hi;
+  UV r, max, lo, hi;
 
   if (n == 0) return 0;
   if (k == 0) return (n == 1) ? 1 : 0;
@@ -330,7 +327,7 @@ UV nth_almost_prime_lower(uint32_t k, UV n) {
 }
 
 UV nth_almost_prime_approx(uint32_t k, UV n) {
-  UV i, max, lo, hi;
+  UV max, lo, hi;
 
   if (n == 0) return 0;
   if (k == 0) return (n == 1) ? 1 : 0;
@@ -349,7 +346,7 @@ UV nth_almost_prime_approx(uint32_t k, UV n) {
 }
 
 UV nth_almost_prime(uint32_t k, UV n) {
-  UV i, r, max, lo, hi;
+  UV r, max, lo, hi;
 
   if (n == 0) return 0;
   if (k == 0) return (n == 1) ? 1 : 0;

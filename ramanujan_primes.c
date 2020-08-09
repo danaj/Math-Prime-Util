@@ -151,8 +151,7 @@ UV ramanujan_prime_count_approx(UV n)
 
 UV nth_ramanujan_prime_approx(UV n)
 {
-  UV i, lo, hi, mid;
-  double rlo, rhi, rmid;
+  UV lo, hi;
   FAST_SMALL_NTH(n);
   /* Interpolating using ramanujan prime count approximation */
   lo = nth_ramanujan_prime_lower(n);

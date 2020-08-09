@@ -286,13 +286,13 @@ signed char* range_moebius(UV lo, UV hi)
   signed char* mu;
   UV i, sqrtn = isqrt(hi), count = hi-lo+1;
 
-  if (hi < lo) croak("range_mobius error hi %"UVuf" < lo %"UVuf"\n", hi, lo);
-
   /* Kuznetsov indicates that the Deléglise & Rivat (1996) method can be
    * modified to work on logs, which allows us to operate with no
    * intermediate memory at all.  Same time as the D&R method, less memory. */
   unsigned char logp;
   UV nextlog, nextlogi;
+
+  if (hi < lo) croak("range_mobius error hi %"UVuf" < lo %"UVuf"\n", hi, lo);
 
   Newz(0, mu, count, signed char);
   if (sqrtn*sqrtn != hi && sqrtn < (UVCONST(1)<<(BITS_PER_WORD/2))-1) sqrtn++;
@@ -660,8 +660,10 @@ signed char* range_liouville(UV lo, UV hi)
 {
   UV i;
   signed char *l;
+  unsigned char *nf;
+
   if (hi < lo) croak("range_liouvillle error hi %"UVuf" < lo %"UVuf"\n",hi,lo);
-  unsigned char *nf = range_nfactor_sieve(lo, hi, 1);
+  nf = range_nfactor_sieve(lo, hi, 1);
   New(0, l, hi-lo+1, signed char);
   for (i = 0; i < hi-lo+1; i++)
     l[i] = (nf[i] & 1) ? -1 : 1;
@@ -1840,12 +1842,8 @@ static UV _factorialmod_without_prime(UV n, UV p, UV m) {
     n %= m;
   }
 
-  if (p == 2 || !USE_MONTMATH) {
-    for (i = pmod = 2; i <= n; i++) {
-      if (pmod++ == p) pmod = 1;
-      else             r = mulmod(r, i, m);
-    }
-  } else {
+#if USE_MONTMATH
+  if (p != 2) {
     const uint64_t npi = mont_inverse(m),  mont1 = mont_get1(m);
     uint64_t mi = mont1;
     r = mont_geta(r, m);
@@ -1855,11 +1853,18 @@ static UV _factorialmod_without_prime(UV n, UV p, UV m) {
       else             r = mont_mulmod(r, mi, m);
     }
     r = mont_recover(r, m);
+  } else
+#endif
+  {
+    for (i = pmod = 2; i <= n; i++) {
+      if (pmod++ == p) pmod = 1;
+      else             r = mulmod(r, i, m);
+    }
   }
   return r;
 }
 static UV _factorialmod_without_prime_powers(UV n, UV p, UV m) {
-  UV i, ip, r = 1;
+  UV ip, r = 1;
 
   for (ip = n; ip > 1; ip /= p)
     r = mulmod(r, _factorialmod_without_prime(ip, p, m), m);
@@ -1886,14 +1891,8 @@ static UV _binomial_mod_prime_power(UV n, UV k, UV p, UV e) {
     ip   = _factorialmod_without_prime_powers(n-k, p, m);
     den = mulmod(den, ip, m);
   } else {
-    if (p == 2 || !USE_MONTMATH) {
-      num = 1;
-      for (i = n-k+1, ires = (i-1) % p; i <= n; i++) {
-        ip = i;
-        if (++ires == p) { ires = 0; do { ip /= p; } while ((ip % p) == 0); }
-        num = mulmod(num, ip, m);
-      }
-    } else {
+#if USE_MONTMATH
+    if (p != 2) {
       const uint64_t npi = mont_inverse(m),  mont1 = mont_get1(m);
       num = mont1;
       for (i = n-k+1, ires = (i-1)%p; i <= n; i++) {
@@ -1902,6 +1901,15 @@ static UV _binomial_mod_prime_power(UV n, UV k, UV p, UV e) {
         num = mont_mulmod(num, mont_geta(ip, m), m);
       }
       num = mont_recover(num, m);
+    } else
+#endif
+    {
+      num = 1;
+      for (i = n-k+1, ires = (i-1) % p; i <= n; i++) {
+        ip = i;
+        if (++ires == p) { ires = 0; do { ip /= p; } while ((ip % p) == 0); }
+        num = mulmod(num, ip, m);
+      }
     }
   }
 
@@ -2787,7 +2795,7 @@ static LNV _eintv_laguerre_series(const LNV v, const LNV x) {
 }
 /* Convergent series for small negative x through medium positive x */
 static LNV _ei_series_convergent(LNV const x) {
-  LNV val, term, fact_n = x;
+  LNV term, fact_n = x;
   uint32_t n;
   KAHAN_INIT(sum);
   for (n = 2; n <= 400; n++) {
@@ -2805,7 +2813,7 @@ static LNV _ei_series_convergent(LNV const x) {
 }
 /* Asymptotic divergent series, for large positive x */
 static LNV _ei_series_divergent(LNV const x) {
-  LNV val, invx = LNV_ONE / x, term = invx;
+  LNV invx = LNV_ONE / x, term = invx;
   unsigned int n;
   KAHAN_INIT(sum);
   for (n = 2; n <= 400; n++) {
@@ -4147,7 +4155,7 @@ UV powerful_count(UV n, UV k) {
 UV nth_powerful(UV n, UV k) {
   static UV const maxpow[11] = {0,UV_MAX,9330124695,11938035,526402,85014,25017,10251,5137,2903,1796};
   static unsigned char const mink[20+1] = {0,0,1,2,4,6,7,9,11,12,14,16,18,19,21,23,24,26,28,30,31};
-  UV lo, hi, mid;
+  UV lo, hi;
 
   if (k == 0 || k >= BITS_PER_WORD) return 0;
   if (k == 1 || n <= 1) return n;
