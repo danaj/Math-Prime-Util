@@ -1739,16 +1739,116 @@ UV divmod(UV a, UV b, UV n) {   /* a / b  mod n */
   return mulmod(a, binv, n);
 }
 
-static UV _powfactor(UV p, UV d, UV m) {
-  UV e = 0;
-  do { d /= p; e += d; } while (d > 0);
-  return powmod(p, e, m);
+static UV _powersin(UV p, UV d) {
+  UV td = d/p, e = td;
+  do { td/=p; e += td; } while (td > 0);
+  return e;
 }
 
+static UV _facmod(UV n, UV m) {
+  UV i, res = 1;
+
+  if (n < 1000) {
+
+    for (i = 2; i <= n && res != 0; i++)
+      res = mulmod(res,i,m);
+
+  } else {
+
+    unsigned char* segment;
+    UV seg_base, seg_low, seg_high;
+    UV sqn = isqrt(n), nsqn = n/sqn, j = sqn, nlo = 0, nhi = 0, s1 = 1;
+    void* ctx = start_segment_primes(7, n, &segment);
+
+    for (i = 1; i <= 3; i++) {  /* Handle 2,3,5 assume n>=25*/
+      UV p = primes_tiny[i];
+      res = mulmod(res, powmod(p,_powersin(p, n),m), m);
+    }
+    while (res!=0 && next_segment_primes(ctx, &seg_base, &seg_low, &seg_high)) {
+      START_DO_FOR_EACH_SIEVE_PRIME( segment, seg_base, seg_low, seg_high )
+        if (p <= nsqn) {
+          res = mulmod(res, powmod(p,_powersin(p,n),m), m);
+        } else {
+          while (p > nhi) {
+            res = mulmod(res, powmod(s1,j,m), m);
+            s1 = 1;
+            j--;
+            nlo = n/(j+1)+1;
+            nhi = n/j;
+          }
+          if (p >= nlo)
+            s1 = mulmod(s1, p, m);
+        }
+        if (res == 0) break;
+      END_DO_FOR_EACH_SIEVE_PRIME
+    }
+    end_segment_primes(ctx);
+    res = mulmod(res, s1, m);
+
+  }
+
+  return res;
+}
+#if USE_MONTMATH
+static UV _facmod_mont(UV n, UV m) {
+  const uint64_t npi = mont_inverse(m),  mont1 = mont_get1(m);
+  uint64_t monti = mont1;
+  UV i, res = mont1;
+
+  if (n < 1000) {
+
+    for (i = 2; i <= n && res != 0; i++) {
+      monti = addmod(monti,mont1,m);
+      res = mont_mulmod(res,monti,m);
+    }
+
+  } else {
+
+    unsigned char* segment;
+    UV seg_base, seg_low, seg_high;
+    UV sqn = isqrt(n), nsqn = n/sqn, j = sqn, nlo = 0, nhi = 0;
+    UV s1 = mont1;
+    void* ctx = start_segment_primes(7, n, &segment);
+
+    for (i = 1; i <= 3; i++) {  /* Handle 2,3,5 assume n>=25*/
+      UV p = primes_tiny[i];
+      UV mp = mont_geta(p,m);
+      res = mont_mulmod(res, mont_powmod(mp,_powersin(p,n),m), m);
+    }
+    while (res!=0 && next_segment_primes(ctx, &seg_base, &seg_low, &seg_high)) {
+      START_DO_FOR_EACH_SIEVE_PRIME( segment, seg_base, seg_low, seg_high )
+        UV mp = mont_geta(p,m);
+        if (p <= nsqn) {
+          res = mont_mulmod(res, mont_powmod(mp,_powersin(p,n),m), m);
+        } else {
+          while (p > nhi) {
+            res = mont_mulmod(res, mont_powmod(s1,j,m), m);
+            s1 = mont1;
+            j--;
+            nlo = n/(j+1)+1;
+            nhi = n/j;
+          }
+          if (p >= nlo)
+            s1 = mont_mulmod(s1, mp, m);
+        }
+        if (res == 0) break;
+      END_DO_FOR_EACH_SIEVE_PRIME
+    }
+    end_segment_primes(ctx);
+    res = mont_mulmod(res, s1, m);
+
+  }
+
+  res = mont_recover(res, m);
+  return res;
+}
+#endif
+
 UV factorialmod(UV n, UV m) {  /*  n! mod m */
-  UV i, d = n, res = 1;
+  UV i, m_prime, d = n, res = 1;
 
   if (n >= m || m == 1) return 0;
+  if (n <= 1 || m == 2) return (n <= 1);
 
   if (n <= 10) { /* Keep things simple for small n */
     for (i = 2; i <= n && res != 0; i++)
@@ -1756,59 +1856,31 @@ UV factorialmod(UV n, UV m) {  /*  n! mod m */
     return res;
   }
 
-  if (n > m/2 && is_prime(m))    /* Check if we can go backwards */
+  m_prime = is_prime(m);
+  if (n > m/2 && m_prime)    /* Check if we can go backwards */
     d = m-n-1;
   if (d < 2)
     return (d == 0) ? m-1 : 1;   /* Wilson's Theorem: n = m-1 and n = m-2 */
 
-  if (d == n && d > 5000000) {   /* Check for composite m that leads to 0 */
-    UV fac[MPU_MAX_FACTORS+1], exp[MPU_MAX_FACTORS+1];
-    int j, k, nfacs = factor_exp(m, fac, exp);
+  if (d > 100 && !m_prime) {   /* Check for composite m that leads to 0 */
+    UV maxpk = 0, fac[MPU_MAX_FACTORS+1], exp[MPU_MAX_FACTORS+1];
+    int j, nfacs = factor_exp(m, fac, exp);
     for (j = 0; j < nfacs; j++) {
-      UV t = fac[j];
-      for (k = 1; (UV)k < exp[j]; k++)
-        t *= fac[j];
-      if (n >= t) return 0;
+      fac[j] = ipow(fac[j], exp[j]);
+      if (fac[j] > maxpk)
+        maxpk = fac[j];
     }
+    if (maxpk <= n)
+      return 0;
   }
 
 #if USE_MONTMATH
-  if (m & 1 && d < 40000) {
-    const uint64_t npi = mont_inverse(m),  mont1 = mont_get1(m);
-    uint64_t monti = mont1;
-    res = mont1;
-    for (i = 2; i <= d && res != 0; i++) {
-      monti = addmod(monti,mont1,m);
-      res = mont_mulmod(res,monti,m);
-    }
-    res = mont_recover(res, m);
+  if (m & 1) {
+    res = _facmod_mont(d, m);
   } else
 #endif
-  if (d < 10000) {
-    for (i = 2; i <= d && res != 0; i++)
-      res = mulmod(res,i,m);
-  } else {
-#if 0    /* Monolithic prime walk */
-    START_DO_FOR_EACH_PRIME(2, d) {
-      UV k = (p > (d>>1))  ?  p  :  _powfactor(p, d, m);
-      res = mulmod(res, k, m);
-      if (res == 0) break;
-    } END_DO_FOR_EACH_PRIME;
-#else    /* Segmented prime walk */
-    unsigned char* segment;
-    UV seg_base, seg_low, seg_high;
-    void* ctx = start_segment_primes(7, d, &segment);
-    for (i = 1; i <= 3; i++)    /* Handle 2,3,5 assume d>10*/
-      res = mulmod(res, _powfactor(2*i - (i>1), d, m), m);
-    while (res != 0 && next_segment_primes(ctx, &seg_base, &seg_low, &seg_high)) {
-      START_DO_FOR_EACH_SIEVE_PRIME( segment, seg_base, seg_low, seg_high )
-        UV k = (p > (d>>1))  ?  p  :  _powfactor(p, d, m);
-        res = mulmod(res, k, m);
-        if (res == 0) break;
-      END_DO_FOR_EACH_SIEVE_PRIME
-    }
-    end_segment_primes(ctx);
-#endif
+  {
+    res = _facmod(d, m);
   }
 
   if (d != n && res != 0) {      /* Handle backwards case */
@@ -1843,7 +1915,7 @@ static UV _factorialmod_without_prime(UV n, UV p, UV m) {
   }
 
 #if USE_MONTMATH
-  if (p != 2) {
+  if (m & 1) {
     const uint64_t npi = mont_inverse(m),  mont1 = mont_get1(m);
     uint64_t mi = mont1;
     r = mont_geta(r, m);
@@ -1892,7 +1964,7 @@ static UV _binomial_mod_prime_power(UV n, UV k, UV p, UV e) {
     den = mulmod(den, ip, m);
   } else {
 #if USE_MONTMATH
-    if (p != 2) {
+    if (m & 1) {
       const uint64_t npi = mont_inverse(m),  mont1 = mont_get1(m);
       num = mont1;
       for (i = n-k+1, ires = (i-1)%p; i <= n; i++) {
