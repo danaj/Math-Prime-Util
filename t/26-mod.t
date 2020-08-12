@@ -63,6 +63,7 @@ plan tests => 0
             + 2                      # mulmod
             + 2 + 1                  # divmod
             + 2                      # powmod
+            + 5                      # large negative args
             + 0;
 
 ###### invmod
@@ -190,6 +191,16 @@ for (0 .. $num) {
 }
 @exp = map { $_->is_nan() ? undef : $_ } @exp;
 is_deeply( \@res, \@exp, "powmod with negative exponent on ".($num+1)." random inputs" );
+
+###### large negative args (github issue 43)
+{
+  my($a, $b, $m) = (1363362182, "-26315271553053477373", 2000000011);
+  is( addmod($a,$b,$m), 1043877553, "addmod with large negative arg" );
+  is( mulmod($a,$b,$m), 1486752452, "mulmod with large negative arg" );
+  is( divmod($a,$b,$m),  160625959, "mulmod with large negative arg" );
+  is( powmod($a,$b,$m), 1550454861, "powmod with large negative arg" );
+  is( powmod($b,$a,$m),   16491583, "powmod with large negative arg" );
+}
 
 
 

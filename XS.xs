@@ -199,13 +199,11 @@ static int _validate_int(pTHX_ SV* n, int negok)
     croak("Parameter '%" SVf "' %s", n, mustbe);
   while (len > 0 && *ptr == '0')       /* Strip all leading zeros */
     { ptr++; len--; }
-  if (len > uvmax_maxlen)              /* Huge number, don't even look at it */
-    return 0;
+  if (len > (negok ? ivmax_maxlen : uvmax_maxlen))
+    return 0;                          /* Huge number, don't even look at it */
   for (i = 0; i < len; i++)            /* Ensure all characters are digits */
     if (!isDIGIT(ptr[i]))
       croak("Parameter '%" SVf "' %s", n, mustbe);
-  if (isneg == 1)                      /* Negative number (ignore overflow) */
-    return -1;
   ret    = isneg ? -1           : 1;
   maxlen = isneg ? ivmax_maxlen : uvmax_maxlen;
   maxstr = isneg ? ivmax_str    : uvmax_str;
