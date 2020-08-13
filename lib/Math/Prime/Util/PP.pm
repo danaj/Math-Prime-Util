@@ -4601,12 +4601,12 @@ sub is_primitive_root {
 
   return 0 if Math::Prime::Util::gcd($a, $n) != 1;
   my $s = Math::Prime::Util::euler_phi($n);
-  return 0 if ($s % 2) == 0 && Math::Prime::Util::powmod($a, $s/2, $n) == 1;
-  return 0 if ($s % 3) == 0 && Math::Prime::Util::powmod($a, $s/3, $n) == 1;
-  return 0 if ($s % 5) == 0 && Math::Prime::Util::powmod($a, $s/5, $n) == 1;
+  return 0 if ($s % 2) == 0 && Math::Prime::Util::powmod($a,$s >> 1,$n) == 1;
+  return 0 if ($s % 3) == 0 && Math::Prime::Util::powmod($a,int($s/3),$n) == 1;
+  return 0 if ($s % 5) == 0 && Math::Prime::Util::powmod($a,int($s/5),$n) == 1;
   foreach my $f (Math::Prime::Util::factor_exp($s)) {
     my $fp = $f->[0];
-    return 0 if $fp > 5 && Math::Prime::Util::powmod($a, $s/$fp, $n) == 1;
+    return 0 if $fp > 5 && Math::Prime::Util::powmod($a, int($s/$fp), $n) == 1;
   }
   1;
 }
