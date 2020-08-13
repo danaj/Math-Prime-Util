@@ -210,8 +210,9 @@
 - Looks like lots of dodgy cases with -(2**63+1) and higher.
   Build in the svn conversion as well?  stat = get(&n, svn, flags);
   We're now restricting negative inputs to -ivmax, which is better, but
-  means we're skipping optimizations for where we want abs(n) or -n.  If
-  we built this into the flags, it would be slightly messy but now in
+  means we're skipping optimizations for where we want abs(n) or just want
+  to know if it is negative.
+  If we built this into the flags, it would be slightly messy but now in
   exactly one place instead of all over.
 
 - euler_phi should do XS -> GMP directly.  Maybe make totient in PP for uniform name.

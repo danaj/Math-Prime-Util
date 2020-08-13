@@ -1739,6 +1739,11 @@ UV divmod(UV a, UV b, UV n) {   /* a / b  mod n */
   return mulmod(a, binv, n);
 }
 
+
+/******************************************************************************/
+/*                                  N! MOD M                                  */
+/******************************************************************************/
+
 static UV _powersin(UV p, UV d) {
   UV td = d/p, e = td;
   do { td/=p; e += td; } while (td > 0);
@@ -1866,11 +1871,12 @@ UV factorialmod(UV n, UV m) {  /*  n! mod m */
     UV maxpk = 0, fac[MPU_MAX_FACTORS+1], exp[MPU_MAX_FACTORS+1];
     int j, nfacs = factor_exp(m, fac, exp);
     for (j = 0; j < nfacs; j++) {
-      fac[j] = ipow(fac[j], exp[j]);
+      fac[j] = fac[j] * exp[j];   /* Possibly too high if exp[j] > fac[j] */
       if (fac[j] > maxpk)
         maxpk = fac[j];
     }
-    if (maxpk <= n)
+    /* Maxpk is >= S(m), the Kempner number A002034 */
+    if (n >= maxpk)
       return 0;
   }
 
@@ -1891,6 +1897,10 @@ UV factorialmod(UV n, UV m) {  /*  n! mod m */
   return res;
 }
 
+
+/******************************************************************************/
+/*                          BINOMIAL(N,K) MOD M                               */
+/******************************************************************************/
 
 static UV _factorial_valuation(UV n, UV p) {
   UV k = 0;
@@ -2099,6 +2109,10 @@ int binomialmod(UV *res, UV n, UV k, UV m) {
   return 0;
 }
 
+
+/******************************************************************************/
+/*                               SQRT(N) MOD M                                */
+/******************************************************************************/
 
 static int verify_sqrtmod(UV s, UV *rs, UV a, UV p) {
   if (p-s < s)  s = p-s;
@@ -2364,6 +2378,10 @@ int sqrtmod_composite(UV *s, UV a, UV n) {
   return (i == 1) ? verify_sqrtmod(p, s, a, n) : 0;
 }
 
+/******************************************************************************/
+/*                          K-TH ROOT OF N MOD M                              */
+/******************************************************************************/
+
 UV rootmodp(UV n, UV k, UV p) {
   UV i;
 
@@ -2471,6 +2489,10 @@ UV rootmod(UV n, UV k, UV p) {
   return 0;
 }
 
+/******************************************************************************/
+/*                                    CRT                                     */
+/******************************************************************************/
+
 /* works only for co-prime inputs and also slower than the algorithm below,
  * but handles the case where IV_MAX < lcm <= UV_MAX.
  */
@@ -2535,6 +2557,10 @@ UV chinese(UV* a, UV* n, UV num, int* status) {
   }
   return sum;
 }
+
+/******************************************************************************/
+/*                        Chebyshev PSI / THETA                               */
+/******************************************************************************/
 
 NV chebyshev_psi(UV n)
 {
@@ -2734,6 +2760,9 @@ NV chebyshev_theta(UV n)
   return sum;
 }
 
+/******************************************************************************/
+/*                       REAL FUNCTIONS (EI,LI,etc.)                          */
+/******************************************************************************/
 
 
 /*
