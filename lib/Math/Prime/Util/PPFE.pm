@@ -733,22 +733,22 @@ sub invmod {
 }
 sub addmod {
   my ($a, $b, $n) = @_;
-  _validate_integer($a); _validate_integer($b>=0?$b:-$b); _validate_integer($n);
+  _validate_integer($a); _validate_integer($b); _validate_positive_integer($n);
   return Math::Prime::Util::PP::addmod($a,$b, $n);
 }
 sub mulmod {
   my ($a, $b, $n) = @_;
-  _validate_integer($a); _validate_integer($b>=0?$b:-$b); _validate_integer($n);
+  _validate_integer($a); _validate_integer($b); _validate_positive_integer($n);
   return Math::Prime::Util::PP::mulmod($a,$b, $n);
 }
 sub divmod {
   my ($a, $b, $n) = @_;
-  _validate_integer($a); _validate_integer($b>=0?$b:-$b); _validate_integer($n);
+  _validate_integer($a); _validate_integer($b); _validate_positive_integer($n);
   return Math::Prime::Util::PP::divmod($a,$b, $n);
 }
 sub powmod {
   my ($a, $b, $n) = @_;
-  _validate_integer($a); _validate_integer($b>=0?$b:-$b); _validate_integer($n);
+  _validate_integer($a); _validate_integer($b); _validate_positive_integer($n);
   return Math::Prime::Util::PP::powmod($a,$b, $n);
 }
 sub sqrtint {
