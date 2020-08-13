@@ -4755,18 +4755,17 @@ sub znprimroot {
     return $n-1;
   }
   return if $n % 4 == 0;
-  my $a = 1;
   my $phi = $n-1;
   if (!is_prob_prime($n)) {
     $phi = euler_phi($n);
     # Check that a primitive root exists.
     return if $phi != Math::Prime::Util::carmichael_lambda($n);
   }
-  my @exp = map { Math::BigInt->new("$_") }
-            map { int($phi/$_->[0]) }
+  my @exp = map { Math::Prime::Util::divint($phi, $_->[0]) }
             Math::Prime::Util::factor_exp($phi);
   #print "phi: $phi  factors: ", join(",",factor($phi)), "\n";
   #print "  exponents: ", join(",", @exp), "\n";
+  my $a = 1;
   while (1) {
     my $fail = 0;
     do { $a++ } while Math::Prime::Util::kronecker($a,$n) == 0;
