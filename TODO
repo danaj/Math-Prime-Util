@@ -292,7 +292,7 @@
 
 - Speed up PP sqrtmod -- it's horrifically slow.
 
-- modular roots?  Pari/gp gives sqrtmod another argument.   rootmod(n,k,p)?
+- rootmod(n, k, p)
   https://eprint.iacr.org/2014/212.pdf
   https://www.ams.org/journals/mcom/1993-61-203/S0025-5718-1993-1182249-0/S0025-5718-1993-1182249-0.pdf
   https://link.springer.com/article/10.1007/s00200-018-0362-2
@@ -302,13 +302,7 @@
   https://arxiv.org/pdf/1111.4877.pdf
   http://bkms.kms.or.kr/journal/view.html?doi=10.4134/BKMS.b160769
   https://github.com/sagemath/sagelib/blob/fd0c7c46e6a2da4b84df582e0da0333ce5cf79d9/sage/rings/finite_rings/element_base.pyx#L33
-  should we return 1 root or a list of all roots?
-
-- rootmodp general k, verify p=2 works
-
-- rootmod (possibly non-prime)
-
-- rewrite sqrtmod / sqrtmod_composite to be sqrtmodp and sqrtmod
+  should we return any root, the smallest root, or a list of all roots?
 
 - extend qnr with optional root argument, cubic non-residue, etc.
 

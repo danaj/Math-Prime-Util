@@ -56,11 +56,11 @@ extern UV binomial(UV n, UV k);
 extern IV gcdext(IV a, IV b, IV* u, IV* v, IV* s, IV* t); /* Ext Euclidean */
 extern UV modinverse(UV a, UV p);              /* Returns 1/a mod p */
 extern UV divmod(UV a, UV b, UV n);            /* Returns a/b mod n */
-extern int sqrtmod(UV* s, UV a, UV p);         /* sqrt(a) mod p */
-extern int sqrtmod_composite(UV* s, UV a,UV n);/* sqrt(a) mod n */
+extern int sqrtmodp(UV *r, UV a, UV p);        /* sqrt(a) mod p */
+extern int sqrtmod(UV *r, UV a, UV n);         /* sqrt(a) mod n */
+extern int rootmodp(UV *r, UV n, UV k, UV p);  /* n^(1/k) mod p for p prime */
+extern int rootmod(UV *r, UV n, UV k, UV p);   /* n^(1/k) mod p for any p */
 extern UV chinese(UV* a, UV* n, UV num, int *status); /* Chinese Remainder */
-extern UV rootmodp(UV n, UV k, UV p);          /* n^(1/k) mod p for p prime */
-extern UV rootmod(UV n, UV k, UV p);           /* n^(1/k) mod p for any p */
 
 extern UV totient(UV n);
 extern int moebius(UV n);

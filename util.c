@@ -1530,7 +1530,7 @@ UV qnr(UV n) {
   } else {
 #if 0 /* Not terrible, but does more work than we need. */
     for (a = 2; a < n; a = next_prime(a))
-      if (!sqrtmod_composite(0, a, n))
+      if (!_sqrtmod_composite(a, n))
         return a;
 #endif
     UV fac[MPU_MAX_FACTORS+1];
@@ -1738,6 +1738,15 @@ UV divmod(UV a, UV b, UV n) {   /* a / b  mod n */
   if (binv == 0)  return 0;
   return mulmod(a, binv, n);
 }
+
+#if 0
+int is_regular(UV a, UV n) {  /* there exists an x s.t. a^2*x = a mod n */
+  UV d;
+  if (a == 0) return 1;
+  d = gcd_ui(a, n);
+  return ( (d % n) == 0 && gcd_ui(d, n/d) == 1);
+}
+#endif
 
 
 /******************************************************************************/
@@ -2114,14 +2123,21 @@ int binomialmod(UV *res, UV n, UV k, UV m) {
 /*                               SQRT(N) MOD M                                */
 /******************************************************************************/
 
-static int verify_sqrtmod(UV s, UV *rs, UV a, UV p) {
-  if (p-s < s)  s = p-s;
-  if (mulmod(s, s, p) != a) return 0;
-  if (rs != 0) *rs = s;
-  return 1;
-}
+/* _sqrtmod_prime     assumes  1 < a < p,  p > 2,  p prime. */
+/* _sqrtmod_composite assumes  1 < a < p,  p > 2 */
+/* If any of these are not true, the result is undefined. */
+
+/* Calling sqrtmod(a,p) will:
+ * 1. take care of those edge conditions
+ * 2. select correct prime or composite routine
+ * 3. verify result
+ * 4. returns a distinct "root exists" vs. "root does not exist"
+ *
+ * sqrtmodp does the same except #2 is assumed prime.
+ */
+
 #if !USE_MONTMATH
-UV _sqrtmod_prime(UV a, UV p) {
+static UV _sqrtmod_prime(UV a, UV p) {
   if ((p % 4) == 3) {
     return powmod(a, (p+1)>>2, p);
   }
@@ -2187,7 +2203,7 @@ UV _sqrtmod_prime(UV a, UV p) {
   return 0;
 }
 #else
-UV _sqrtmod_prime(UV a, UV p) {
+static UV _sqrtmod_prime(UV a, UV p) {
   const uint64_t npi = mont_inverse(p),  mont1 = mont_get1(p);
   a = mont_geta(a,p);
 
@@ -2265,24 +2281,12 @@ UV _sqrtmod_prime(UV a, UV p) {
 }
 #endif
 
-int sqrtmod(UV *s, UV a, UV p) {
-  if (p == 0) return 0;
-  if (a >= p) a %= p;
-  if (p <= 2 || a <= 1) return verify_sqrtmod(a, s,a,p);
-
-  return verify_sqrtmod(_sqrtmod_prime(a,p), s,a,p);
-}
-
-int sqrtmod_composite(UV *s, UV a, UV n) {
+static UV _sqrtmod_composite(UV a, UV n) {
   UV fac[MPU_MAX_FACTORS+1];
   UV exp[MPU_MAX_FACTORS+1];
   UV sqr[MPU_MAX_FACTORS+1];
   UV p, j, k, gcdan;
   int i, nfactors;
-
-  if (n == 0) return 0;
-  if (a >= n) a %= n;
-  if (n <= 2 || a <= 1) return verify_sqrtmod(a, s,a,n);
 
   /* Simple existence check.  It's still possible no solution exists.*/
   if (kronecker_uu(a, ((n%4) == 2) ? n/2 : n) == -1) return 0;
@@ -2307,12 +2311,13 @@ int sqrtmod_composite(UV *s, UV a, UV n) {
   /* Factor n */
   nfactors = factor_exp(n, fac, exp);
 
+  if (nfactors == 1)
+    return _sqrtmod_prime(a, n);
+
   /* If gcd(a,n)==1, this answers conclusively if a solution exists. */
   if (gcdan == 1) {
     for (i = 0; i < nfactors; i++)
       if (fac[i] > 7 && kronecker_uu(a, fac[i]) != 1) return 0;
-    if (s == 0)  /* They only care about existence */
-      return 1;
   }
 
   for (i = 0; i < nfactors; i++) {
@@ -2351,7 +2356,7 @@ int sqrtmod_composite(UV *s, UV a, UV n) {
 
     /* p is an odd prime */
     p = fac[i];
-    if (!sqrtmod(&(sqr[i]), a, p))
+    if (!sqrtmodp(&(sqr[i]), a, p))
       return 0;
 
     /* Lift solution of x^2 = a mod p  to  x^2 = a mod p^e */
@@ -2375,24 +2380,45 @@ int sqrtmod_composite(UV *s, UV a, UV n) {
     fac[i] = ipow(fac[i], exp[i]);
 
   p = chinese(sqr, fac, nfactors, &i);
-  return (i == 1) ? verify_sqrtmod(p, s, a, n) : 0;
+  return (i == 1) ? p : 0;
 }
+
+static int _rootmod_return(UV r, UV *s, UV a, UV k, UV p) {
+  if (k == 2 && p-r < r)  r = p-r;
+  if (powmod(r, k, p) != a) return 0;
+  if (s != 0) *s = r;
+  return 1;
+}
+
+int sqrtmodp(UV *s, UV a, UV p) {
+  UV r;
+  if (p == 0) return 0;
+  if (a >= p) a %= p;
+  if (p <= 2 || a <= 1) return _rootmod_return(a, s, a, 2, p);
+  r = _sqrtmod_prime(a,p);
+  return _rootmod_return(r, s, a, 2, p);
+}
+
+int sqrtmod(UV *s, UV a, UV p) {
+  UV r;
+  if (p == 0) return 0;
+  if (a >= p) a %= p;
+  if (p <= 2 || a <= 1) return _rootmod_return(a, s, a, 2, p);
+  r = is_prime(p)  ?  _sqrtmod_prime(a,p)  :  _sqrtmod_composite(a,p);
+  return _rootmod_return(r, s, a, 2, p);
+}
+
 
 /******************************************************************************/
 /*                          K-TH ROOT OF N MOD M                              */
 /******************************************************************************/
 
-UV rootmodp(UV n, UV k, UV p) {
-  UV i;
+/* TODO: See Andrew James Holt's thesis page 37, for AMM algorithm */
 
-  /* TODO k > 3 */
+static UV _rootmod_prime(UV n, UV k, UV p) {
+  UV i, g, gcdkp1;
 
-  n = (p <= 1)  ?  0  :  (n % p);
-  if (n <= 2) return n;
-  if (k == 0) return 1;
-  if (k == 1) return n;
-  if (!is_prime(p)) croak("rootmodp: modulus must be prime");
-  if (k == 2) { if (sqrtmod(&i, n, p)) return i; return 0; }
+  /* Assume:  k > 2,  1 < n < p,  p > 2,  p prime */
 
   if (k == 3) {
     /* https://www.sciencedirect.com/science/article/pii/S0893965902000319 */
@@ -2406,7 +2432,7 @@ UV rootmodp(UV n, UV k, UV p) {
     if ((p % 9) == 7)
       return powmod(n, (p+2)/9, p);
     { /* Tonelli-Shanks as shown in Padró and Sáez (2002) */
-      UV e, q, h, g, s, y, r, b, x, m, B, t;
+      UV e, q, h, s, y, r, b, x, m, B, t;
       for (e = 0, q = p-1; !(q % 3); q /= 3)
         e++;
       /* MPUassert(e >= 1, "Error in rootmod T-S cube root: e = 0"); */
@@ -2447,47 +2473,106 @@ UV rootmodp(UV n, UV k, UV p) {
     }
   }
 
+  /* TODO k > 3, e.g. AMM */
+
+  gcdkp1 = gcd_ui(k, p-1);
+
   /* Easy case: always exists */
-  if (gcd_ui(k, p-1) == 1)
+  if (gcdkp1 == 1)
     return powmod(n, modinverse(k, p-1), p);
 
   /* General Euler Criterion for odd p */
-  if (powmod(n, (p-1)/gcd_ui(k,p-1), p) != 1)
+  if (powmod(n, (p-1)/gcdkp1, p) != 1)
     return 0;
 
-  /* TODO: generic k-th roots */
-
-  /* .... */
+  /* TODO: We should be able to do this faster.  */
+#if 1
+  g = znprimroot(p);
+  if (g != 0) {
+    UV y = znlog(n, powmod(g,k,p), p);
+    return powmod(g, y, p);
+  }
+#else
   for (i = 2; i < p; i++) {
     if (powmod(i, k, p) == n)
       return i;
   }
+#endif
   return 0;
 }
 
-UV rootmod(UV n, UV k, UV p) {
-  UV i;
+static UV _rootmod_composite(UV n, UV k, UV p) {
+  UV i, g, y, r, phi;
 
   /* TODO:
    *  1) prime powers
    *  2) composites (Factor + CRT + Hensel)
    */
 
-  n = (p <= 1)  ?  0  :  (n % p);
-  if (n <= 2) return n;
-  if (k == 0) return 1;
-  if (k == 1) return n;
-  if (k == 2) { if (sqrtmod_composite(&i, n, p)) return i; return 0; }
+  /* Assume:  k > 2,  1 < n < p,  p > 2 */
 
-  /* TODO: combine calls to rootmodp */
+  /* TODO: We should have a robust existence check.
+   *
+   * 1. if znprimroot(p) != 0 && gcd_ui(n,p) == 1:
+   *      if (powmod(n,phi/gcd_ui(k,phi),p) != 1) return 0;
+   *      else root exists
+   * this works, but tells us nothing in the other cases.
+   */
 
-  /* .... */
+  /* If we can get an inverse, this is fast (other than factoring p) */
+  phi = totient(p);
+  g = modinverse(k, phi);
+  if (g != 0) {
+    r = powmod(n, g, p);
+    if (powmod(r, k, p) == n) return r;
+  }
+
+  /* If we find a primitive root, this should work, albeit maybe not fast */
+  g = znprimroot(p);
+  if (g != 0) {
+    if (gcd_ui(n,p) == 1 && powmod(n,phi/gcd_ui(k,phi),p) != 1) return 0;
+    y = znlog(n, powmod(g,k,p), p);
+    r = powmod(g, y, p);
+    if (powmod(r, k, p) == n) return r;
+  }
+
+  /* Trial division */
   for (i = 2; i < p; i++) {
     if (powmod(i, k, p) == n)
       return i;
   }
   return 0;
 }
+
+int rootmodp(UV *s, UV a, UV k, UV p) {
+  UV r;
+  if (p == 0) return 0;
+  if (a >= p) a %= p;
+  if (p <= 2 || a <= 1) return _rootmod_return(a, s, a, k, p);
+  if (k == 0) return _rootmod_return(1, s, a, k, p);
+  if (k == 1) return _rootmod_return(a, s, a, k, p);
+  if (k == 2) return sqrtmodp(s, a, p);
+
+  /* It's not clear whether breaking down k is beneficial */
+  /* if ( (k % 2) == 0) return sqrtmodp(s, rootmodp(s,a,k/2,p), p); */
+
+  r = _rootmod_prime(a,k,p);
+  return _rootmod_return(r, s, a, k, p);
+}
+
+int rootmod(UV *s, UV a, UV k, UV p) {
+  UV r;
+  if (p == 0) return 0;
+  if (a >= p) a %= p;
+  if (p <= 2 || a <= 1) return _rootmod_return(a, s, a, k, p);
+  if (k == 0) return _rootmod_return(1, s, a, k, p);
+  if (k == 1) return _rootmod_return(a, s, a, k, p);
+  if (k == 2) return sqrtmod(s, a, p);
+
+  r = is_prime(p)  ?  _rootmod_prime(a,k,p)  :  _rootmod_composite(a,k,p);
+  return _rootmod_return(r, s, a, k, p);
+}
+
 
 /******************************************************************************/
 /*                                    CRT                                     */

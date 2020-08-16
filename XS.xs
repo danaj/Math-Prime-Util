@@ -2006,8 +2006,7 @@ znlog(IN SV* sva, IN SV* svg, IN SV* svp)
     mulmod = 2
     divmod = 3
     powmod = 4
-    rootmodp = 5
-    rootmod = 6
+    rootmod = 5
   PREINIT:
     int astatus, gstatus, pstatus, retundef;
     UV ret;
@@ -2047,16 +2046,9 @@ znlog(IN SV* sva, IN SV* svg, IN SV* svp)
                   ret = powmod(a, g, p);
                 }
                 break;
-        case 5: /* TODO: special cases, a neg, g neg, p 0, etc. */
-                a = (p == 0) ? 0 : a % p;
-                ret = rootmodp(a, g, p);
-                retundef = (ret == 0 && a != 0);
-                break;
-        case 6:
-        default:/* TODO: special cases, a neg, g neg, p 0, etc. */
-                a = (p == 0) ? 0 : a % p;
-                ret = rootmod(a, g, p);
-                retundef = (ret == 0 && a != 0);
+        case 5:
+        default:/* TODO: special cases, a neg, g neg, etc. */
+                retundef = !rootmod(&ret, a, g, p);
                 break;
       }
       if (retundef) XSRETURN_UNDEF;
@@ -2181,11 +2173,7 @@ kronecker(IN SV* sva, IN SV* svb)
         UV a, n, s;
         n = (bstatus != -1) ? my_svuv(svb) : (UV)(-(my_sviv(svb)));
         a = (n == 0) ? 0 : (astatus != -1) ? my_svuv(sva) % n : negmod(my_sviv(sva), n);
-        if (is_prob_prime(n)) {
-          if (!sqrtmod(&s, a, n)) XSRETURN_UNDEF;
-        } else {
-          if (!sqrtmod_composite(&s, a, n)) XSRETURN_UNDEF;
-        }
+        if (!sqrtmod(&s, a, n)) XSRETURN_UNDEF;
         XSRETURN_UV(s);
       } else if (ix >= 4 && ix <= 11) {
         if (abpositive) {
