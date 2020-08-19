@@ -73,7 +73,7 @@ our @EXPORT_OK =
       primorial pn_primorial consecutive_integer_lcm gcdext chinese
       gcd lcm factor factor_exp divisors valuation hammingweight
       todigits fromdigits todigitstring sumdigits
-      invmod sqrtmod addmod mulmod divmod powmod qnr
+      invmod sqrtmod addmod submod mulmod divmod powmod qnr
       vecsum vecmin vecmax vecprod vecreduce vecextract
       vecany vecall vecnotall vecnone vecfirst vecfirstidx
       moebius mertens liouville sumliouville prime_omega prime_bigomega
@@ -3224,6 +3224,11 @@ Given three integers C<a>, C<b>, and C<n> where C<n> is positive,
 return C<(a+b) mod n>.  This is particularly useful when dealing with
 numbers that are larger than a half-word but still native size.  No
 bigint package is needed and this can be 10-200x faster than using one.
+
+=head2 submod
+
+Given three integers C<a>, C<b>, and C<n> where C<n> is positive,
+return C<(a-b) mod n>.
 
 =head2 mulmod
 

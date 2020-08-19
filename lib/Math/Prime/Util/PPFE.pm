@@ -736,6 +736,11 @@ sub addmod {
   _validate_integer($a); _validate_integer($b); _validate_positive_integer($n);
   return Math::Prime::Util::PP::addmod($a,$b, $n);
 }
+sub submod {
+  my ($a, $b, $n) = @_;
+  _validate_integer($a); _validate_integer($b); _validate_positive_integer($n);
+  return Math::Prime::Util::PP::submod($a,$b, $n);
+}
 sub mulmod {
   my ($a, $b, $n) = @_;
   _validate_integer($a); _validate_integer($b); _validate_positive_integer($n);

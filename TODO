@@ -277,8 +277,6 @@
   - any use for genk (iterator for k)?
   - We have (not very efficient) construction code, but not using or testing it.
 
-- GMP is_powerful, various almost_primes
-
 - optimize nth_powerful, both in C and PP.
 
 - Add OEIS sequence, a(n) = the k-th k-powerful number
@@ -330,11 +328,11 @@
 
 - test and use sum_primes128
 
-- I think we should have an explicit submod command
-
 - Speed up XS RiemannR with quadmath.
 
 - binomialmod:
    - PP implementation for primes, squarefree, and general composites.
    - GMP.
    - negative k extension
+
+- GMP is_powerful, various almost_primes, binomialmod, rootmod

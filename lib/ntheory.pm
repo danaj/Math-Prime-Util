@@ -256,6 +256,7 @@ Tags:
   hammingweight(n)                    population count (# of binary 1s)
   kronecker(a,b)                      Kronecker (Jacobi) symbol
   addmod(a,b,n)                       a + b mod n
+  submod(a,b,n)                       a - b mod n
   mulmod(a,b,n)                       a * b mod n
   divmod(a,b,n)                       a / b mod n
   powmod(a,b,n)                       a ^ b mod n

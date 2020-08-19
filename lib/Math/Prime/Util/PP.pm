@@ -188,6 +188,14 @@ sub _validate_integer {
   1;
 }
 
+# If we try to call the function in any normal way, just loading this module
+# will auto-vivify an empty sub.  So we do a string eval to keep it hidden.
+sub _gmpcall {
+  my($fname, @args) = @_;
+  my $call = "Math::Prime::Util::GMP::$fname(".join(",",map {"\"$_\""} @args).");";
+  return eval $call ## no critic qw(ProhibitStringyEval)
+}
+
 sub _binary_search {
   my($n, $lo, $hi, $sub, $exitsub) = @_;
   while ($lo < $hi) {
@@ -1091,9 +1099,8 @@ sub is_smooth {
   return 0 if $k <= 1;
   return 1 if $n <= $k;
 
-  if ($Math::Prime::Util::_GMPfunc{"is_smooth"}) {
-    return eval "Math::Prime::Util::GMP::is_smooth($n, $k)"; ## no critic qw(ProhibitStringyEval)
-  }
+  return _gmpcall("is_smooth",$n,$k)
+    if $Math::Prime::Util::_GMPfunc{"is_smooth"};
 
   if ($k <= 10000000 && $Math::Prime::Util::_GMPfunc{"trial_factor"}) {
     my @f;
@@ -1118,9 +1125,8 @@ sub is_rough {
   return 1 if $k <= 1;
   return 0+($n >= 1) if $k == 2;
 
-  if ($Math::Prime::Util::_GMPfunc{"is_rough"}) {
-    return eval "Math::Prime::Util::GMP::is_rough($n, $k)";  ## no critic qw(ProhibitStringyEval)
-  }
+  return _gmpcall("is_rough",$n,$k)
+    if $Math::Prime::Util::_GMPfunc{"is_rough"};
 
   if ($k < 10000 && $Math::Prime::Util::_GMPfunc{"trial_factor"}) {
     my @f = Math::Prime::Util::GMP::trial_factor($n, $k);
@@ -1140,9 +1146,8 @@ sub is_powerful {
 
   return 1 if $n <= 1 || $k <= 1;
 
-  if ($Math::Prime::Util::_GMPfunc{"is_powerful"}) {
-    return eval "Math::Prime::Util::GMP::is_powerful($n, $k)";  ## no critic qw(ProhibitStringyEval)
-  }
+  return _gmpcall("is_powerful",$n,$k)
+    if $Math::Prime::Util::_GMPfunc{"is_powerful"};
 
   # First quick checks for inadmissibility.
   if ($k == 2) {
@@ -3575,7 +3580,7 @@ sub _cipolla_sqrtmod {
   my($a,$w2) = (0);
   for (1 .. 10000) {
     $a++;
-    $w2 = addmod( powmod($a,2,$p), -$n,$p);
+    $w2 = submod( powmod($a,2,$p), $n,$p);
     last if Math::Prime::Util::kronecker($w2, $p) == -1;
   }
 
@@ -3646,8 +3651,27 @@ sub sqrtmod {
 sub addmod {
   my($a, $b, $n) = @_;
   return 0 if $n <= 1;
-  return _addmod($a,$b,$n) if $n < INTMAX && $a>=0 && $a<INTMAX && $b>=0 && $b<INTMAX;
+  if ($n < INTMAX && $a < INTMAX && $b < INTMAX && $a > -INTMAX && $b > -INTMAX) {
+    $a = $n - ((-$a) % $n) if $a < 0;
+    $b = $n - ((-$b) % $n) if $b < 0;
+    #$a %= $n if $a >= $n;  $b %= $n if $b >= $n;
+    return _addmod($a,$b,$n);
+  }
   my $ret = Math::BigInt->new("$a")->badd("$b")->bmod("$n");
+  $ret = _bigint_to_int($ret) if $ret->bacmp(BMAX) <= 0;
+  $ret;
+}
+sub submod {
+  my($a, $b, $n) = @_;
+  return 0 if $n <= 1;
+  if ($n < INTMAX && $a < INTMAX && $b < INTMAX && $a > -INTMAX && $b > -INTMAX) {
+    $a = $n - ((-$a) % $n) if $a < 0;
+    $b = $n - ((-$b) % $n) if $b < 0;
+    #$a %= $n if $a >= $n;
+    $b %= $n if $b >= $n;
+    return _addmod($a,$n-$b,$n);
+  }
+  my $ret = Math::BigInt->new("$a")->bsub("$b")->bmod("$n");
   $ret = _bigint_to_int($ret) if $ret->bacmp(BMAX) <= 0;
   $ret;
 }
@@ -4476,7 +4500,7 @@ sub binomial {
 sub binomialmod {
   my($n,$k,$m) = @_;
 
-  return Math::Prime::Util::_reftyped($_[2], eval "Math::Prime::Util::GMP::binomialmod($n,$k,$m)")  ## no critic qw(ProhibitStringyEval)
+  return Math::Prime::Util::_reftyped($_[2], _gmpcall("binomialmod",$n,$k,$m))
     if $Math::Prime::Util::_GMPfunc{"binomialmod"};
 
   return 0 if $m <= 1 || $k < 0;
@@ -6397,7 +6421,7 @@ sub divisors {
 
   if ($Math::Prime::Util::_GMPfunc{"divisors"}) {
     # This trips an erroneous compile time error without the eval.
-    eval ' @d = Math::Prime::Util::GMP::divisors($n); ';  ## no critic qw(ProhibitStringyEval)
+    eval "\@d = Math::Prime::Util::GMP::divisors(\"$n\"); ";  ## no critic qw(ProhibitStringyEval)
     @d = map { $_ <= ~0 ? $_ : ref($n)->new($_) } @d   if ref($n);
     return @d;
   }

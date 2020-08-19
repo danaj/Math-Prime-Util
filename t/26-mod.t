@@ -3,7 +3,7 @@ use strict;
 use warnings;
 
 use Test::More;
-use Math::Prime::Util qw/invmod sqrtmod addmod mulmod divmod powmod/;
+use Math::Prime::Util qw/invmod sqrtmod addmod submod mulmod divmod powmod/;
 use Math::BigInt try=>"GMP,Pari";
 
 my $extra = defined $ENV{EXTENDED_TESTING} && $ENV{EXTENDED_TESTING};
@@ -57,13 +57,13 @@ if ($usexs || $extra) {
 plan tests => 0
             + 3 + scalar(@invmods)
             + scalar(@sqrtmods)
-            + 4*2
+            + 5*2
             + 1                      # addmod
-            + 1                      # submod
+            + 2                      # submod / addmod
             + 2                      # mulmod
             + 2 + 1                  # divmod
             + 2                      # powmod
-            + 5                      # large negative args
+            + 6                      # large negative args
             + 0;
 
 ###### invmod
@@ -103,11 +103,13 @@ my(@exp,@res);
 ###### add/mul/div/pow with small arguments
 @exp = map { 0 } 0..27;
 is_deeply(\@exp, [map { addmod($_ & 3, ($_>>2)-3, 0) } 0..27], "addmod(..,0)");
+is_deeply(\@exp, [map { submod($_ & 3, ($_>>2)-3, 0) } 0..27], "submod(..,0)");
 is_deeply(\@exp, [map { mulmod($_ & 3, ($_>>2)-3, 0) } 0..27], "mulmod(..,0)");
 is_deeply(\@exp, [map { divmod($_ & 3, ($_>>2)-3, 0) } 0..27], "divmod(..,0)");
 is_deeply(\@exp, [map { powmod($_ & 3, ($_>>2)-3, 0) } 0..27], "powmod(..,0)");
 
 is_deeply(\@exp, [map { addmod($_ & 3, ($_>>2)-3, 1) } 0..27], "addmod(..,1)");
+is_deeply(\@exp, [map { submod($_ & 3, ($_>>2)-3, 1) } 0..27], "submod(..,1)");
 is_deeply(\@exp, [map { mulmod($_ & 3, ($_>>2)-3, 1) } 0..27], "mulmod(..,1)");
 is_deeply(\@exp, [map { divmod($_ & 3, ($_>>2)-3, 1) } 0..27], "divmod(..,1)");
 is_deeply(\@exp, [map { powmod($_ & 3, ($_>>2)-3, 1) } 0..27], "powmod(..,1)");
@@ -125,6 +127,12 @@ is_deeply( \@res, \@exp, "addmod on ".($num+1)." random inputs" );
 @exp = (); @res = ();
 for (0 .. $num) {
   push @exp, Math::BigInt->new("$i1[$_]")->bsub("$i2t[$_]")->bmod("$i3[$_]");
+  push @res, submod($i1[$_], $i2t[$_], $i3[$_]);
+}
+is_deeply( \@res, \@exp, "submod on ".($num+1)." random inputs" );
+##### addmod with negative
+@res = ();
+for (0 .. $num) {
   push @res, addmod($i1[$_], -$i2t[$_], $i3[$_]);
 }
 is_deeply( \@res, \@exp, "addmod with negative second input on ".($num+1)." random inputs" );
@@ -196,6 +204,7 @@ is_deeply( \@res, \@exp, "powmod with negative exponent on ".($num+1)." random i
 {
   my($a, $b, $m) = (1363362182, "-26315271553053477373", 2000000011);
   is( addmod($a,$b,$m), 1043877553, "addmod with large negative arg" );
+  is( submod($a,$b,$m), 1682846811, "submod with large negative arg" );
   is( mulmod($a,$b,$m), 1486752452, "mulmod with large negative arg" );
   is( divmod($a,$b,$m),  160625959, "mulmod with large negative arg" );
   is( powmod($a,$b,$m), 1550454861, "powmod with large negative arg" );

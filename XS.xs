@@ -2003,10 +2003,11 @@ void
 znlog(IN SV* sva, IN SV* svg, IN SV* svp)
   ALIAS:
     addmod = 1
-    mulmod = 2
-    divmod = 3
-    powmod = 4
-    rootmod = 5
+    submod = 2
+    mulmod = 3
+    divmod = 4
+    powmod = 5
+    rootmod = 6
   PREINIT:
     int astatus, gstatus, pstatus, retundef;
     UV ret;
@@ -2022,19 +2023,20 @@ znlog(IN SV* sva, IN SV* svg, IN SV* svp)
       a = (astatus == 1) ? my_svuv(sva) : negmod(my_sviv(sva), p);
       g = (gstatus == 1) ? my_svuv(svg) : negmod(my_sviv(svg), p);
       if (a >= p) a %= p;
-      if (g >= p && ix < 4) g %= p;
+      if (g >= p && ix < 5) g %= p;
       switch (ix) {
         case 0: ret = znlog(a, g, p);
                 if (ret == 0 && a > 1) retundef = 1;
                 if (ret == 0 && (a == 0 || g == 0)) retundef = 1;
                 break;
         case 1: ret = addmod(a, g, p); break;
-        case 2: ret = mulmod(a, g, p); break;
-        case 3: g = modinverse(g, p);
+        case 2: ret = submod(a, g, p); break;
+        case 3: ret = mulmod(a, g, p); break;
+        case 4: g = modinverse(g, p);
                 if (g == 0) retundef = 1;
                 else        ret = mulmod(a, g, p);
                 break;
-        case 4: if (a == 0) {
+        case 5: if (a == 0) {
                   ret = (g == 0);
                   retundef = (gstatus == -1);
                 } else {
@@ -2046,7 +2048,7 @@ znlog(IN SV* sva, IN SV* svg, IN SV* svp)
                   ret = powmod(a, g, p);
                 }
                 break;
-        case 5:
+        case 6:
         default:/* TODO: special cases, a neg, g neg, etc. */
                 retundef = !rootmod(&ret, a, g, p);
                 break;
@@ -2057,10 +2059,10 @@ znlog(IN SV* sva, IN SV* svg, IN SV* svp)
     switch (ix) {
       case 0: _vcallsub_with_gmpobj(0.00,"znlog"); break;
       case 1: _vcallsub_with_gmpobj(0.36,"addmod"); break;
-      case 2: _vcallsub_with_gmpobj(0.36,"mulmod"); break;
-      case 3: _vcallsub_with_gmpobj(0.36,"divmod"); break;
-      case 4: _vcallsub_with_gmpobj(0.36,"powmod"); break;
-      case 5: _vcallsub_with_gmpobj(0.00,"rootmodp"); break;
+      case 2: _vcallsub_with_gmpobj(0.53,"submod"); break;
+      case 3: _vcallsub_with_gmpobj(0.36,"mulmod"); break;
+      case 4: _vcallsub_with_gmpobj(0.36,"divmod"); break;
+      case 5: _vcallsub_with_gmpobj(0.36,"powmod"); break;
       case 6:
       default:_vcallsub_with_gmpobj(0.00,"rootmod"); break;
     }
