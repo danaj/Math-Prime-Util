@@ -2017,7 +2017,10 @@ znlog(IN SV* sva, IN SV* svg, IN SV* svp)
     pstatus = _validate_int(aTHX_ svp, 0);
     if (astatus != 0 && gstatus != 0 && pstatus == 1) {
       UV a, g, p = my_svuv(svp);
-      if (p <= 1) XSRETURN_UV(0);
+      if (p <= 1) {
+        if (p == 0 && ix == 6) XSRETURN_UNDEF;
+        XSRETURN_UV(0);
+      }
       ret = 0;
       retundef = 0;
       a = (astatus == 1) ? my_svuv(sva) : negmod(my_sviv(sva), p);
@@ -2049,8 +2052,17 @@ znlog(IN SV* sva, IN SV* svg, IN SV* svp)
                 }
                 break;
         case 6:
-        default:/* TODO: special cases, a neg, g neg, etc. */
-                retundef = !rootmod(&ret, a, g, p);
+        default:if (a == 0) {
+                  ret = (g == 0);
+                  retundef = (gstatus == -1 || g == 0);
+                } else {
+                  if (gstatus == -1) {
+                    a = modinverse(a,p);
+                    if (a == 0) retundef = 1;
+                    else        g = -my_sviv(svg);
+                  }
+                  retundef = !rootmod(&ret, a, g, p);
+                }
                 break;
       }
       if (retundef) XSRETURN_UNDEF;

@@ -2420,6 +2420,9 @@ static UV _rootmod_prime(UV n, UV k, UV p) {
 
   /* Assume:  k > 2,  1 < n < p,  p > 2,  p prime */
 
+  if (k == p)
+    return n;
+
   if (k == 3) {
     /* https://www.sciencedirect.com/science/article/pii/S0893965902000319 */
     if ( (p % 3) == 2)
@@ -2477,7 +2480,7 @@ static UV _rootmod_prime(UV n, UV k, UV p) {
 
   gcdkp1 = gcd_ui(k, p-1);
 
-  /* Easy case: always exists */
+  /* Easy case: always exists and exactly one. */
   if (gcdkp1 == 1)
     return powmod(n, modinverse(k, p-1), p);
 
@@ -2521,6 +2524,14 @@ static UV _rootmod_composite(UV n, UV k, UV p) {
 
   /* If we can get an inverse, this is fast (other than factoring p) */
   phi = totient(p);
+
+  /* Given these gcds, there is always one solution. */
+  if (gcd_ui(k,phi) == 1 && gcd_ui(n,p) == 1) {
+    g = modinverse(k, phi);
+    return powmod(n, g, p);
+  }
+
+  /* If we can get an inverse, it might work, but might not. */
   g = modinverse(k, phi);
   if (g != 0) {
     r = powmod(n, g, p);

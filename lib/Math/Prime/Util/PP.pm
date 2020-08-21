@@ -3606,7 +3606,7 @@ sub _verify_sqrtmod {
 sub sqrtmod {
   my($a,$n) = @_;
   _validate_integer($a);
-  _validate_integer($n);
+  _validate_num($n) || _validate_positive_integer($n);
   return if $n == 0;
 
   $a = modint($a,$n);
@@ -3647,6 +3647,73 @@ sub sqrtmod {
   }
   undef;
 }
+
+sub rootmod {
+  my($a,$k,$n) = @_;
+  _validate_integer($a);
+  _validate_integer($k);
+  _validate_num($n) || _validate_positive_integer($n);
+
+  # Be especially careful with zeros, as we can't divide or inverse them.
+
+  if ($n <= 1) { return ($n == 1) ? 0 : undef; }
+  $a = modint($a,$n);
+  if ($a == 0) {
+    return undef if $k <= 0;
+    return ($k == 0) ? 1 : 0;
+  }
+  if ($k < 0) {
+    $a = invmod($a, $n);
+    return undef if $a == 0;
+    $k = -$k;
+  }
+  return if $k == 0 && $a != 1;
+  return 1 if $k == 0 || $a == 1;
+
+  # The nasty special cases are done.
+  # We can start dealing with the sane cases:   0 < a < p,  k >= 1,  n >= 2
+  return $a if $k == 1;
+  return sqrtmod($a,$n) if $k == 2;
+
+  if (Math::Prime::Util::is_prime($n)) {
+    my $g = gcd($k, $n-1);
+    return powmod($a, invmod($k,$n-1), $n) if $g == 1;
+    return unless powmod($a, divint($n-1,$g), $n) == 1;
+
+    my $z = Math::Prime::Util::znprimroot($n);
+    return unless defined $z;
+    my $y = Math::Prime::Util::znlog($a, powmod($z, $k, $n), $n);
+    return powmod($z, $y, $n);
+  }
+
+  # Requires factoring n
+  my $phi = euler_phi($n);
+
+  # 1. Try getting an inverse.  If we can, we have an easy solution.
+  my $g = invmod($k, $phi);
+  if (defined $g) {
+    my $r = powmod($a, $g, $n);
+    return $r if powmod($r, $k, $n) == $a;
+  }
+
+  # 2. Try seeing if it is a cyclic group, where we have a primitive root.
+  my $z = Math::Prime::Util::znprimroot($n);
+  if (defined $z) {
+    return if gcd($a,$n)==1 && powmod($a,divint($phi,gcd($k,$phi)),$n) != 1;
+    my $y = Math::Prime::Util::znlog($a, powmod($z, $k, $n), $n);
+    my $r = powmod($z, $y, $n);
+    return $r if powmod($r, $k, $n) == $a;
+  }
+
+  # 3. Oh dear.  Trial division.
+  my $r = 2;
+  while ($r < $n) {
+    return $r if powmod($r, $k, $n) == $a;
+    $r = addint($r, 1);
+  }
+  undef;
+}
+
 
 sub addmod {
   my($a, $b, $n) = @_;

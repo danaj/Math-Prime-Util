@@ -10,7 +10,6 @@ Revision history for Perl module Math::Prime::Util
     - sumliouville(n)                 L(n), sum of liouville(1..n)
     - prime_bigomega(n)               # of factors (with multiplicity)
     - prime_omega(n)                  # of factors (distinct)
-    - submod(a, b, n)                 a - b mod n
     - powint(a, b)                    signed integer a^b
     - mulint(a, b)                    signed integer a*b
     - addint(a, b)                    signed integer a+b
@@ -44,6 +43,8 @@ Revision history for Perl module Math::Prime::Util
     - rough_count(n,k)                count of k-rough numbers <= n
     - qnr(n)                          least quadratic non-residue
     - binomialmod(n,k,m)              fast binomial(n,k) mod m
+    - submod(a, b, n)                 a - b mod n
+    - rootmod(a, k, n)                modular k-th root
 
     [FIXES]
 

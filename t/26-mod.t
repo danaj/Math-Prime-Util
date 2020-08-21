@@ -3,7 +3,7 @@ use strict;
 use warnings;
 
 use Test::More;
-use Math::Prime::Util qw/invmod sqrtmod addmod submod mulmod divmod powmod/;
+use Math::Prime::Util qw/invmod sqrtmod rootmod addmod submod mulmod divmod powmod/;
 use Math::BigInt try=>"GMP,Pari";
 
 my $extra = defined $ENV{EXTENDED_TESTING} && $ENV{EXTENDED_TESTING};
@@ -54,6 +54,28 @@ if ($usexs || $extra) {
   push @sqrtmods, [ 2, 72388801, 20312446 ];
 }
 
+my @rootmods = (
+ # prime moduli
+ [14,-3, 101, 17],
+ [13, 6, 107, [24,83]],
+ [13,-6, 107, [49,58]],
+ [64, 6, 101, [2, 99]],
+ [ 2, 3, 3, 2],
+ [ 2, 3, 7, undef],
+ [17, 29, 19, 6],
+ [ 5, 3, 13, [7,8,11]],
+ [53, 3, 151, [15,27,109]],
+ [3,3,73, [25,54,67]],
+ [7,3,73, [13,29,31]],
+ [49,3,73, [12,23,38]],
+ # composite moduli
+ [ 2, 3, 21, undef],  # Pari says 2
+ [ 8, 3, 27, 2],      # Pari says 26
+ [22, 3, 1505, 148],  # Pari says 1408
+ [13, 6, 112, undef],
+ [ 6, 6, 35, undef],
+);
+
 plan tests => 0
             + 3 + scalar(@invmods)
             + scalar(@sqrtmods)
@@ -64,6 +86,8 @@ plan tests => 0
             + 2 + 1                  # divmod
             + 2                      # powmod
             + 6                      # large negative args
+            + 5 + scalar(@rootmods)  # rootmod
+            + 1                      # more rootmod
             + 0;
 
 ###### invmod
@@ -212,6 +236,48 @@ is_deeply( \@res, \@exp, "powmod with negative exponent on ".($num+1)." random i
 }
 
 
+###### rootmod
+{
+  my(@out0,@out1);
+  for my $a (0..3) {
+    for my $k (0..3) {
+      push @out0, "$a,$k,0"  if defined rootmod($a,$k,0);
+      push @out1, "$a,$k,1"  unless iseq(0,rootmod($a,$k,1));
+    }
+  }
+  is(join('  ',@out0),'',"rootmod(a,k,0) should be undef");
+  is(join('  ',@out1),'',"rootmod(a,k,1) should be 0");
+}
+{
+  my(@out0,@out1,@out2);
+  for my $a (0..19) {
+    my $a17 = $a % 17;
+    push @out0, "$a,0,17" if ($a17 == 1 && !iseq(1,rootmod($a,0,17)))
+                          || ($a17 != 1 && defined rootmod($a,0,17));
+    push @out1, "$a,1,17"  unless iseq($a17,rootmod($a,1,17));
+    push @out2, "$a,2,17"  unless iseq(sqrtmod($a,17),  rootmod($a,2,17));
+  }
+  is(join('  ',@out0),'',"rootmod(a,0,17) should be 1 or undef");
+  is(join('  ',@out1),'',"rootmod(a,1,17) should be a mod 17");
+  is(join('  ',@out2),'',"rootmod(a,2,17) should be sqrtmod(a,17)");
+}
+
+foreach my $r (@rootmods) {
+  my($a, $k, $n, $exp) = @$r;
+  if (!defined $exp) {
+    is( rootmod($a,$k,$n), $exp, "rootmod($a,$k,$n) = <undef>");
+  } elsif (!ref($exp)) {
+    is( rootmod($a,$k,$n), $exp, "rootmod($a,$k,$n) = $exp");
+  } else {
+    my $val = rootmod($a,$k,$n);
+    ok( is_one_of($val, @$exp), "rootmod($a,$k,$n) = $val, roots [@$exp]" );
+  }
+}
+
+is(powmod(rootmod(12,41,1147),41,1147), 12, "41st root of 12 mod 1147 is correct");
+
+
+
 
 sub nrand {
   my $r = int(rand(4294967296));
@@ -225,4 +291,11 @@ sub is_one_of {
     return 1 if $n eq $_;
   }
   0;
+}
+
+sub iseq {    # numerical comparison allowing undef = undef
+  my($x,$y) = @_;
+  return 1 if !defined $x && !defined $y;
+  return 0 if !defined $x || !defined $y;
+  $x == $y;
 }

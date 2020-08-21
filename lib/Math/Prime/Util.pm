@@ -73,7 +73,7 @@ our @EXPORT_OK =
       primorial pn_primorial consecutive_integer_lcm gcdext chinese
       gcd lcm factor factor_exp divisors valuation hammingweight
       todigits fromdigits todigitstring sumdigits
-      invmod sqrtmod addmod submod mulmod divmod powmod qnr
+      invmod sqrtmod rootmod addmod submod mulmod divmod powmod qnr
       vecsum vecmin vecmax vecprod vecreduce vecextract
       vecany vecall vecnotall vecnone vecfirst vecfirstidx
       moebius mertens liouville sumliouville prime_omega prime_bigomega
@@ -3217,6 +3217,20 @@ If the modulus is prime, the function will always return C<r>, the smaller
 of the two square roots (the other being C<-r mod p>.  If the modulus is
 composite, one of possibly many square roots will be returned, and it will
 not necessarily be the smallest.
+
+=head2 rootmod
+
+Given three integers C<a>, C<k>, and C<n>, returns the C<k>-th root of
+C<a> modulo C<n>, or undef if it does not exist.
+If defined, the return value C<r> will satisfy C<r^k = a mod n>.
+
+There is no guarantee that the smallest root will be returned.
+
+Currently the function is not efficient for all inputs.  Square roots are
+efficient, as are cube roots modulo a prime.  Other inputs rely on either
+finding an inverse or a primitive root.
+For some composite moduli the time is extremely slow.
+Later implementations may use better methods.
 
 =head2 addmod
 
