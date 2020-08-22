@@ -2288,6 +2288,17 @@ static UV _sqrtmod_composite(UV a, UV n) {
   UV p, j, k, gcdan;
   int i, nfactors;
 
+  /* Use Tonelli's equation if n is a prime power. */
+  i = primepower(n, &p);
+  if (i) {
+    /* Note that if a%p == 0 or 1 we can't find a good solution. */
+    UV pl1 = ipow(p, i-1);
+    UV r = _sqrtmod_prime(a % p, p);
+    j = powmod(r, pl1, n);
+    k = powmod(a, (p*pl1 - 2*pl1 + 1) >> 1, n);
+    return mulmod(j, k, n);
+  }
+
   /* Simple existence check.  It's still possible no solution exists.*/
   if (kronecker_uu(a, ((n%4) == 2) ? n/2 : n) == -1) return 0;
 
@@ -2418,7 +2429,9 @@ int sqrtmod(UV *s, UV a, UV p) {
 static UV _rootmod_prime(UV n, UV k, UV p) {
   UV i, g, gcdkp1;
 
-  /* Assume:  k > 2,  1 < n < p,  p > 2,  p prime */
+  if (k == 2) return _sqrtmod_prime(n, p);
+
+  /* Assume:  k > 2,  1 < n < p,  p > 2,  k prime,  p prime */
 
   if (k == p)
     return n;
@@ -2507,12 +2520,14 @@ static UV _rootmod_prime(UV n, UV k, UV p) {
 static UV _rootmod_composite(UV n, UV k, UV p) {
   UV i, g, y, r, phi;
 
+  if (k == 2) return _sqrtmod_composite(n, p);
+
   /* TODO:
    *  1) prime powers
    *  2) composites (Factor + CRT + Hensel)
    */
 
-  /* Assume:  k > 2,  1 < n < p,  p > 2 */
+  /* Assume:  k > 2,  1 < n < p,  p > 2,  k prime */
 
   /* TODO: We should have a robust existence check.
    *
@@ -2555,6 +2570,30 @@ static UV _rootmod_composite(UV n, UV k, UV p) {
   return 0;
 }
 
+static UV _rootmod_splitk(UV a, UV k, UV p, int pprime) {
+  UV fac[MPU_MAX_FACTORS+1];
+  UV exp[MPU_MAX_FACTORS+1];
+  int i, nfactors;
+
+  /* Assume:  k >= 2,  1 < n < p,  p > 2 */
+  /* Factor out k and split by prime/composite modulus. */
+  /* We don't *have* to factor k, but it can make a big time difference. */
+
+  /* Note that trying to do three roots of the same k in succession can
+   * lead to a bad path.  E.g. 51^(1/27) mod 73 has a solution, but if we
+   * do three cube roots, the last one is likely to be unsolvable. */
+
+  nfactors = factor_exp(k, fac, exp);
+  for (i = 0; a != 0 && i < nfactors; i++) {
+    a = pprime ? _rootmod_prime(a,fac[i],p) : _rootmod_composite(a,fac[i],p);
+    if (exp[i] > 1) {
+      UV ki = ipow(fac[i], exp[i] - 1);
+      a = pprime ? _rootmod_prime(a,ki,p) : _rootmod_composite(a,ki,p);
+    }
+  }
+  return a;
+}
+
 int rootmodp(UV *s, UV a, UV k, UV p) {
   UV r;
   if (p == 0) return 0;
@@ -2562,12 +2601,8 @@ int rootmodp(UV *s, UV a, UV k, UV p) {
   if (p <= 2 || a <= 1) return _rootmod_return(a, s, a, k, p);
   if (k == 0) return _rootmod_return(1, s, a, k, p);
   if (k == 1) return _rootmod_return(a, s, a, k, p);
-  if (k == 2) return sqrtmodp(s, a, p);
 
-  /* It's not clear whether breaking down k is beneficial */
-  /* if ( (k % 2) == 0) return sqrtmodp(s, rootmodp(s,a,k/2,p), p); */
-
-  r = _rootmod_prime(a,k,p);
+  r = _rootmod_splitk(a, k, p, 1);
   return _rootmod_return(r, s, a, k, p);
 }
 
@@ -2578,9 +2613,8 @@ int rootmod(UV *s, UV a, UV k, UV p) {
   if (p <= 2 || a <= 1) return _rootmod_return(a, s, a, k, p);
   if (k == 0) return _rootmod_return(1, s, a, k, p);
   if (k == 1) return _rootmod_return(a, s, a, k, p);
-  if (k == 2) return sqrtmod(s, a, p);
 
-  r = is_prime(p)  ?  _rootmod_prime(a,k,p)  :  _rootmod_composite(a,k,p);
+  r = _rootmod_splitk(a, k, p, is_prime(p));
   return _rootmod_return(r, s, a, k, p);
 }
 
