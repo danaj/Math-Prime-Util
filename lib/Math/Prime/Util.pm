@@ -5976,7 +5976,7 @@ Douglas A. Stoll and Patrick Demichel , "The impact of ζ(s) complex zeros on π
 
 =head1 COPYRIGHT
 
-Copyright 2011-2018 by Dana Jacobsen E<lt>dana@acm.orgE<gt>
+Copyright 2011-2020 by Dana Jacobsen E<lt>dana@acm.orgE<gt>
 
 This program is free software; you can redistribute it and/or modify it under the same terms as Perl itself.
 

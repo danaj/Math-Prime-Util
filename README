@@ -60,7 +60,7 @@ Bytes::Random::Secure::Tiny 1.002 or later.
 
 COPYRIGHT AND LICENCE
 
-Copyright (C) 2011-2018 by Dana Jacobsen <dana@acm.org>
+Copyright (C) 2011-2020 by Dana Jacobsen <dana@acm.org>
 
 This library is free software; you can redistribute it and/or modify
 it under the same terms as Perl itself.
