@@ -2291,121 +2291,6 @@ static UV _sqrtmod_prime(UV a, UV p) {
 }
 #endif
 
-#if 0
-static UV _sqrtmod_composite(UV a, UV n) {
-  UV fac[MPU_MAX_FACTORS+1];
-  UV exp[MPU_MAX_FACTORS+1];
-  UV sqr[MPU_MAX_FACTORS+1];
-  UV p, j, k, gcdan;
-  int i, nfactors;
-
-  /* Use Tonelli's equation if n is a prime power. */
-  i = primepower(n, &p);
-  if (i) {
-    /* Note that if a%p == 0 or 1 we can't find a good solution. */
-    UV pl1 = ipow(p, i-1);
-    UV r = _sqrtmod_prime(a % p, p);
-    j = powmod(r, pl1, n);
-    k = powmod(a, (p*pl1 - 2*pl1 + 1) >> 1, n);
-    return mulmod(j, k, n);
-  }
-
-  /* Simple existence check.  It's still possible no solution exists.*/
-  if (kronecker_uu(a, ((n%4) == 2) ? n/2 : n) == -1) return 0;
-
-  /* if 8|n 'a' must = 1 mod 8, else if 4|n 'a' must = 1 mod 4 */
-  if ((n % 4) == 0) {
-    if ((n % 8) == 0) {
-      if ((a % 8) != 1) return 0;
-    } else {
-      if ((a % 4) != 1) return 0;
-    }
-  }
-
-  /* More detailed existence check before factoring.  Still possible. */
-  gcdan = gcd_ui(a, n);
-  if (gcdan == 1) {
-    if ((n % 3) == 0 && kronecker_uu(a, 3) != 1) return 0;
-    if ((n % 5) == 0 && kronecker_uu(a, 5) != 1) return 0;
-    if ((n % 7) == 0 && kronecker_uu(a, 7) != 1) return 0;
-  }
-
-  /* Factor n */
-  nfactors = factor_exp(n, fac, exp);
-
-  if (nfactors == 1)
-    return _sqrtmod_prime(a, n);
-
-  /* If gcd(a,n)==1, this answers conclusively if a solution exists. */
-  if (gcdan == 1) {
-    for (i = 0; i < nfactors; i++)
-      if (fac[i] > 7 && kronecker_uu(a, fac[i]) != 1) return 0;
-  }
-
-  for (i = 0; i < nfactors; i++) {
-
-    /* Powers of 2 */
-    if (fac[i] == 2) {
-      if (exp[i] == 1) {
-        sqr[i] = a & 1;
-      } else if (exp[i] == 2) {
-        sqr[i] = 1;  /* and 3 */
-      } else {
-        UV this_roots[256], next_roots[256];
-        UV nthis = 0, nnext = 0;
-        this_roots[nthis++] = 1;
-        this_roots[nthis++] = 3;
-        for (j = 2; j < exp[i]; j++) {
-          p = UVCONST(1) << (j+1);
-          nnext = 0;
-          for (k = 0; k < nthis && nnext < 254; k++) {
-            UV r = this_roots[k];
-            if (sqrmod(r,p) == (a % p))
-              next_roots[nnext++] = r;
-            if (sqrmod(p-r,p) == (a % p))
-              next_roots[nnext++] = p-r;
-          }
-          if (nnext == 0) return 0;
-          /* copy next exponent's found roots to this one */
-          nthis = nnext;
-          for (k = 0; k < nnext; k++)
-            this_roots[k] = next_roots[k];
-        }
-        sqr[i] = this_roots[0];
-      }
-      continue;
-    }
-
-    /* p is an odd prime */
-    p = fac[i];
-    if (!sqrtmodp(&(sqr[i]), a, p))
-      return 0;
-
-    /* Lift solution of x^2 = a mod p  to  x^2 = a mod p^e */
-    for (j = 1; j < exp[i]; j++) {
-      UV xk2, yk, expected, sol;
-      xk2 = addmod(sqr[i],sqr[i],p);
-      yk = modinverse(xk2, p);
-      expected = mulmod(xk2,yk,p);
-      p *= fac[i];
-      sol = submod(sqr[i], mulmod(submod(sqrmod(sqr[i],p), a % p, p), yk, p), p);
-      if (expected != 1 || sqrmod(sol,p) != (a % p)) {
-        /* printf("a %lu failure to lift to %lu^%d\n", a, fac[i], j+1); */
-        return 0;
-      }
-      sqr[i] = sol;
-    }
-  }
-
-  /* raise fac[i] */
-  for (i = 0; i < nfactors; i++)
-    fac[i] = ipow(fac[i], exp[i]);
-
-  p = chinese(sqr, fac, nfactors, &i);
-  return (i == 1) ? p : 0;
-}
-#endif
-
 static int _rootmod_return(UV r, UV *s, UV a, UV k, UV p) {
   if (k == 2 && p-r < r)  r = p-r;
   if (powmod(r, k, p) != a) return 0;
@@ -2441,65 +2326,6 @@ static UV _trial_rootmod(UV a, UV k, UV p) {
 }
 #endif
 
-#if 0
-/* https://www.sciencedirect.com/science/article/pii/S0893965902000319 */
-static UV _cuberoot_prime(UV a, UV p) {
-  UV g, e, q, h, s, y, r, b, x, m, B, t;
-
-  if (p == 3) return a;
-
-  if ( (p % 3) == 2)
-    return powmod(a, 2*((p-2)/3)+1, p);  /* (2p-1)/3 */
-
-  /* Should we look at p%3==0 => p=3^s here? */
-  if (powmod(a, (p-1)/3, p) != 1)
-    return 0;                        /* no root exists */
-
-  /* It would be nice to return the smallest root */
-  if ((p % 9) == 4)
-    return powmod(a, 2*((p-4)/9)+1, p);  /* (2p+1)/9 */
-
-  if ((p % 9) == 7)
-    return powmod(a, (p+2)/9, p);
-
-  /* Tonelli-Shanks as shown in Padró and Sáez (2002) */
-  for (e = 0, q = p-1; !(q % 3); q /= 3)
-    e++;
-  /* MPUassert(e >= 1, "Error in rootmod T-S cube root: e = 0"); */
-  for (h = 1, s = 1; s == 1 && h < p; h++) {
-    s = powmod(h, (p-1)/3, p);
-  }
-  if (s == 1) return 0;
-  g = powmod(h, q, p);
-  y = g;
-  r = e;
-  x = ((q % 3) == 2) ? powmod(a, (q-2)/3, p) : powmod(a, (2*q-2)/3, p);
-  b = mulmod(sqrmod(a,p),powmod(x,3,p),p);
-  x = mulmod(a,x,p);
-  while (1) {
-    if ((b % p) == 1) {   /* return smallest root x,x*s,x*s*s */
-      UV x2 = mulmod(x, s, p), x3 = mulmod(x2, s, p);
-      return (x <= x2 && x <= x3) ? x : (x2 <= x3) ? x2 : x3;
-    }
-    for (m = 1, B = b; m < r; m++) {
-      B = powmod(B, 3, p);
-      if ((B % p) == 1) break;
-    }
-    if (m == r) return 0;
-    if (s == powmod(b, ipow(3,m-1), p)) {
-      t = sqrmod(y,p);
-      s = sqrmod(s,p);
-    } else {
-      t = y;
-    }
-    t = powmod(t, ipow(3, r-m-1), p);
-    y = powmod(t, 3, p);
-    r = m;
-    x = mulmod(x, t, p);
-    b = mulmod(b, y, p);
-  }
-}
-#endif
 
 /* k-th root using Tonelli-Shanks for prime k and p */
 /* This works much better for me than AMM (Holt 2003 or Cao/Sha/Fan 2011). */
@@ -2571,7 +2397,6 @@ static UV _rootmod_prime_splitk(UV a, UV k, UV p) {
   /* Assume:  k >= 2,  1 < a < p,  p > 2, p prime */
 
   if (k == 2) return _sqrtmod_prime(a, p);
-  /* if (k == 3) return _cuberoot_prime(a, p); */
 
   /* See Algorithm 2.1 of van de Woestijne (2006), or Lindhurst (1997) */
   /* The latter's proposition 7 generalizes to composite p */
