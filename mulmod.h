@@ -149,4 +149,9 @@ static INLINE UV submod(UV a, UV b, UV n) {
 /* a^k + c mod n */
 #define powaddmod(a, k, c, n)  addmod(powmod(a,k,n),c,n)
 
+static INLINE UV negmod(UV a, UV n) {
+  if (a >= n) a %= n;
+  return  (a) ? (n-a) : 0;
+}
+
 #endif

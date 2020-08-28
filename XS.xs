@@ -352,7 +352,7 @@ static int arrayref_to_int_array(pTHX_ UV** ret, AV* av, int base)
   return len;
 }
 
-static UV negmod(IV a, UV n) {
+static UV negamod(IV a, UV n) {
   UV negamod = ((UV)(-a)) % n;
   return (negamod == 0) ? 0 : n-negamod;
 }
@@ -2023,8 +2023,8 @@ znlog(IN SV* sva, IN SV* svg, IN SV* svp)
       }
       ret = 0;
       retundef = 0;
-      a = (astatus == 1) ? my_svuv(sva) : negmod(my_sviv(sva), p);
-      g = (gstatus == 1) ? my_svuv(svg) : negmod(my_sviv(svg), p);
+      a = (astatus == 1) ? my_svuv(sva) : negamod(my_sviv(sva), p);
+      g = (gstatus == 1) ? my_svuv(svg) : negamod(my_sviv(svg), p);
       if (a >= p) a %= p;
       if (g >= p && ix < 5) g %= p;
       switch (ix) {
@@ -2175,7 +2175,7 @@ kronecker(IN SV* sva, IN SV* svb)
         UV a, n, ret = 0;
         n = (bstatus != -1) ? my_svuv(svb) : (UV)(-(my_sviv(svb)));
         if (n > 0) {
-          a = (astatus == 1) ? my_svuv(sva) : negmod(my_sviv(sva), n);
+          a = (astatus == 1) ? my_svuv(sva) : negamod(my_sviv(sva), n);
           if (a > 0) {
             if (n == 1) XSRETURN_UV(0);
             ret = modinverse(a, n);
@@ -2186,7 +2186,7 @@ kronecker(IN SV* sva, IN SV* svb)
       } else if (ix == 3) {
         UV a, n, s;
         n = (bstatus != -1) ? my_svuv(svb) : (UV)(-(my_sviv(svb)));
-        a = (n == 0) ? 0 : (astatus != -1) ? my_svuv(sva) % n : negmod(my_sviv(sva), n);
+        a = (n == 0) ? 0 : (astatus != -1) ? my_svuv(sva) % n : negamod(my_sviv(sva), n);
         if (!sqrtmod(&s, a, n)) XSRETURN_UNDEF;
         XSRETURN_UV(s);
       } else if (ix >= 4 && ix <= 11) {
@@ -2242,7 +2242,7 @@ kronecker(IN SV* sva, IN SV* svb)
       } else {
         UV a, n;
         n = (bstatus != -1) ? my_svuv(svb) : (UV)(-(my_sviv(svb)));
-        a = (n == 0) ? 0 : (astatus != -1) ? my_svuv(sva) % n : negmod(my_sviv(sva), n);
+        a = (n == 0) ? 0 : (astatus != -1) ? my_svuv(sva) % n : negamod(my_sviv(sva), n);
         RETURN_NPARITY( is_primitive_root(a,n,0) );
       }
     }
