@@ -293,6 +293,7 @@
 - rootmod(a,k,p)
   - Better PP
   - Possibly better prime power handling.
+  - Possibly some earlier existence checks, with benchmarking method
   - Maybe Johnston algorithm (see:
     https://github.com/sagemath/sagelib/blob/fd0c7c46e6a2da4b84df582e0da0333ce5cf79d9/sage/rings/finite_rings/element_base.pyx#L33
     https://github.com/symengine/symengine/blob/master/symengine/ntheory.cpp#L1135

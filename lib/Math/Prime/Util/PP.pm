@@ -3574,7 +3574,7 @@ sub _cipolla_sqrtmod {
     my $q = powmod($n, ($p-1)>>2, $p);
     return powmod($n, ($p+3)>>3, $p) if $q == 1;
     my $v = powmod( mulmod($n,4,$p), ($p-5)>>3, $p );
-    return mulmod( mulmod($a, 2, $p), $v, $p);
+    return mulmod( mulmod($n, 2, $p), $v, $p);
   }
 
   my($a,$w2) = (0);

@@ -3220,17 +3220,12 @@ not necessarily be the smallest.
 
 =head2 rootmod
 
-Given three integers C<a>, C<k>, and C<n>, returns the C<k>-th root of
-C<a> modulo C<n>, or undef if it does not exist.
+Given three integers C<a>, C<k>, and C<n>, returns a C<k>-th root of
+C<a> modulo C<n>, or undef if one does not exist.
 If defined, the return value C<r> will satisfy C<r^k = a mod n>.
-
 There is no guarantee that the smallest root will be returned.
 
-Currently the function is not efficient for all inputs.  Square roots are
-efficient, as are cube roots modulo a prime.  Other inputs rely on either
-finding an inverse or a primitive root.
-For some composite moduli the time is extremely slow.
-Later implementations may use better methods.
+For some composites with large prime powers this may not be efficient.
 
 =head2 addmod
 

@@ -25,6 +25,7 @@ extern UV rootint(UV n, UV k);
 extern UV ipowsafe(UV n, UV k);  /* returns UV_MAX if overflows */
 extern int primepower(UV n, UV* prime);
 extern UV valuation(UV n, UV k);
+extern UV valuation_remainder(UV n, UV k, UV *r);
 extern UV logint(UV n, UV b);
 extern UV mpu_popcount_string(const char* ptr, uint32_t len);
 

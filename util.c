@@ -862,6 +862,18 @@ UV valuation(UV n, UV k)
   }
   return v;
 }
+/* N => k^s * t   =>   s = valuation_remainder(N, k, &t); */
+UV valuation_remainder(UV n, UV k, UV *r) {
+  UV v;
+  if      (k <= 1) { v = 0; }
+  else if (k == 2) { v = ctz(n); n >>= v; }
+  else {
+    for (v=0;  !(n % k);  v++)
+      n /= k;
+  }
+  *r = n;
+  return v;
+}
 
 UV logint(UV n, UV b)
 {
@@ -2127,13 +2139,13 @@ int binomialmod(UV *res, UV n, UV k, UV m) {
 /* _sqrtmod_composite assumes  1 < a < p,  p > 2 */
 /* If any of these are not true, the result is undefined. */
 
-/* Calling sqrtmod(a,p) will:
+/* Calling sqrtmod(a,p) or rootmod(a,2,p) will:
  * 1. take care of those edge conditions
  * 2. select correct prime or composite routine
  * 3. verify result
  * 4. returns a distinct "root exists" vs. "root does not exist"
  *
- * sqrtmodp does the same except #2 is assumed prime.
+ * sqrtmodp / rootmodp does the same except #2 is assumed prime.
  */
 
 #if !USE_MONTMATH
@@ -2170,8 +2182,7 @@ static UV _sqrtmod_prime(UV a, UV p) {
   {
     UV x, q, e, t, z, r, m, b;
     q = p-1;
-    e = valuation(q, 2);
-    q >>= e;
+    e = valuation_remainder(q, 2, &q);
     t = 3;
     while (kronecker_uu(t, p) != -1) {
       t += 2;
@@ -2246,8 +2257,7 @@ static UV _sqrtmod_prime(UV a, UV p) {
   {
     UV x, q, e, t, z, r, m, b;
     q = p-1;
-    e = valuation(q, 2);
-    q >>= e;
+    e = valuation_remainder(q, 2, &q);
     t = 3;
     while (kronecker_uu(t, p) != -1) {
       t += 2;
@@ -2281,6 +2291,7 @@ static UV _sqrtmod_prime(UV a, UV p) {
 }
 #endif
 
+#if 0
 static UV _sqrtmod_composite(UV a, UV n) {
   UV fac[MPU_MAX_FACTORS+1];
   UV exp[MPU_MAX_FACTORS+1];
@@ -2393,6 +2404,7 @@ static UV _sqrtmod_composite(UV a, UV n) {
   p = chinese(sqr, fac, nfactors, &i);
   return (i == 1) ? p : 0;
 }
+#endif
 
 static int _rootmod_return(UV r, UV *s, UV a, UV k, UV p) {
   if (k == 2 && p-r < r)  r = p-r;
@@ -2402,21 +2414,14 @@ static int _rootmod_return(UV r, UV *s, UV a, UV k, UV p) {
 }
 
 int sqrtmodp(UV *s, UV a, UV p) {
-  UV r;
   if (p == 0) return 0;
   if (a >= p) a %= p;
   if (p <= 2 || a <= 1) return _rootmod_return(a, s, a, 2, p);
-  r = _sqrtmod_prime(a,p);
-  return _rootmod_return(r, s, a, 2, p);
+  return _rootmod_return(_sqrtmod_prime(a,p), s, a, 2, p);
 }
 
 int sqrtmod(UV *s, UV a, UV p) {
-  UV r;
-  if (p == 0) return 0;
-  if (a >= p) a %= p;
-  if (p <= 2 || a <= 1) return _rootmod_return(a, s, a, 2, p);
-  r = is_prime(p)  ?  _sqrtmod_prime(a,p)  :  _sqrtmod_composite(a,p);
-  return _rootmod_return(r, s, a, 2, p);
+  return rootmod(s, a, 2, p);
 }
 
 
@@ -2424,185 +2429,251 @@ int sqrtmod(UV *s, UV a, UV p) {
 /*                          K-TH ROOT OF N MOD M                              */
 /******************************************************************************/
 
-/* TODO: See Andrew James Holt's thesis page 37, for AMM algorithm */
-
-static UV _rootmod_prime(UV n, UV k, UV p) {
-  UV i, g, gcdkp1;
-
-  if (k == 2) return _sqrtmod_prime(n, p);
-
-  /* Assume:  k > 2,  1 < n < p,  p > 2,  k prime,  p prime */
-
-  if (k == p)
-    return n;
-
-  if (k == 3) {
-    /* https://www.sciencedirect.com/science/article/pii/S0893965902000319 */
-    if ( (p % 3) == 2)
-      return powmod(n, 2*((p-2)/3)+1, p);  /* (2p-1)/3 */
-    if (powmod(n, (p-1)/3, p) != 1)
-      return 0;                        /* no root exists */
-    /* It would be nice to return the smallest root */
-    if ((p % 9) == 4)
-      return powmod(n, 2*((p-4)/9)+1, p);  /* (2p+1)/9 */
-    if ((p % 9) == 7)
-      return powmod(n, (p+2)/9, p);
-    { /* Tonelli-Shanks as shown in Padró and Sáez (2002) */
-      UV e, q, h, s, y, r, b, x, m, B, t;
-      for (e = 0, q = p-1; !(q % 3); q /= 3)
-        e++;
-      /* MPUassert(e >= 1, "Error in rootmod T-S cube root: e = 0"); */
-      for (i = 1, s = 1; i < 10000 && s == 1; i++) {
-        h = i % p;  /* "random" */
-        if (h == 0) break;
-        s = powmod(h, (p-1)/3, p);
-      }
-      if (s == 1) return 0;
-      g = powmod(h, q, p);
-      y = g;
-      r = e;
-      x = ((q % 3) == 2) ? powmod(n, (q-2)/3, p) : powmod(n, (2*q-2)/3, p);
-      b = mulmod(sqrmod(n,p),powmod(x,3,p),p);
-      x = mulmod(n,x,p);
-      while (1) {
-        if ((b % p) == 1) {   /* return smallest root x,x*s,x*s*s */
-          UV x2 = mulmod(x, s, p), x3 = mulmod(x2, s, p);
-          return (x <= x2 && x <= x3) ? x : (x2 <= x3) ? x2 : x3;
-        }
-        for (m = 1, B = b; m < r; m++) {
-          B = powmod(B, 3, p);
-          if ((B % p) == 1) break;
-        }
-        if (m == r) return 0;
-        if (s == powmod(b, ipow(3,m-1), p)) {
-          t = sqrmod(y,p);
-          s = sqrmod(s,p);
-        } else {
-          t = y;
-        }
-        t = powmod(t, ipow(3, r-m-1), p);
-        y = powmod(t, 3, p);
-        r = m;
-        x = mulmod(x, t, p);
-        b = mulmod(b, y, p);
-      }
-    }
-  }
-
-  /* TODO k > 3, e.g. AMM */
-
-  gcdkp1 = gcd_ui(k, p-1);
-
-  /* Easy case: always exists and exactly one. */
-  if (gcdkp1 == 1)
-    return powmod(n, modinverse(k, p-1), p);
-
-  /* General Euler Criterion for odd p */
-  if (powmod(n, (p-1)/gcdkp1, p) != 1)
-    return 0;
-
-  /* TODO: We should be able to do this faster.  */
-#if 1
-  g = znprimroot(p);
-  if (g != 0) {
-    UV y = znlog(n, powmod(g,k,p), p);
-    return powmod(g, y, p);
-  }
-#else
-  for (i = 2; i < p; i++) {
-    if (powmod(i, k, p) == n)
-      return i;
-  }
+#if 0
+static UV _trial_rootmod(UV a, UV k, UV p) {
+  UV r;
+  if (a >= p) a %= p;
+  if (a <= 1) return a;
+  for (r = 2; r < p; r++)
+    if (powmod(r, k, p) == a)
+      return r;
+  return 0;
+}
 #endif
-  return 0;
+
+#if 0
+/* https://www.sciencedirect.com/science/article/pii/S0893965902000319 */
+static UV _cuberoot_prime(UV a, UV p) {
+  UV g, e, q, h, s, y, r, b, x, m, B, t;
+
+  if (p == 3) return a;
+
+  if ( (p % 3) == 2)
+    return powmod(a, 2*((p-2)/3)+1, p);  /* (2p-1)/3 */
+
+  /* Should we look at p%3==0 => p=3^s here? */
+  if (powmod(a, (p-1)/3, p) != 1)
+    return 0;                        /* no root exists */
+
+  /* It would be nice to return the smallest root */
+  if ((p % 9) == 4)
+    return powmod(a, 2*((p-4)/9)+1, p);  /* (2p+1)/9 */
+
+  if ((p % 9) == 7)
+    return powmod(a, (p+2)/9, p);
+
+  /* Tonelli-Shanks as shown in Padró and Sáez (2002) */
+  for (e = 0, q = p-1; !(q % 3); q /= 3)
+    e++;
+  /* MPUassert(e >= 1, "Error in rootmod T-S cube root: e = 0"); */
+  for (h = 1, s = 1; s == 1 && h < p; h++) {
+    s = powmod(h, (p-1)/3, p);
+  }
+  if (s == 1) return 0;
+  g = powmod(h, q, p);
+  y = g;
+  r = e;
+  x = ((q % 3) == 2) ? powmod(a, (q-2)/3, p) : powmod(a, (2*q-2)/3, p);
+  b = mulmod(sqrmod(a,p),powmod(x,3,p),p);
+  x = mulmod(a,x,p);
+  while (1) {
+    if ((b % p) == 1) {   /* return smallest root x,x*s,x*s*s */
+      UV x2 = mulmod(x, s, p), x3 = mulmod(x2, s, p);
+      return (x <= x2 && x <= x3) ? x : (x2 <= x3) ? x2 : x3;
+    }
+    for (m = 1, B = b; m < r; m++) {
+      B = powmod(B, 3, p);
+      if ((B % p) == 1) break;
+    }
+    if (m == r) return 0;
+    if (s == powmod(b, ipow(3,m-1), p)) {
+      t = sqrmod(y,p);
+      s = sqrmod(s,p);
+    } else {
+      t = y;
+    }
+    t = powmod(t, ipow(3, r-m-1), p);
+    y = powmod(t, 3, p);
+    r = m;
+    x = mulmod(x, t, p);
+    b = mulmod(b, y, p);
+  }
+}
+#endif
+
+/* k-th root using Tonelli-Shanks for prime k and p */
+/* This works much better for me than AMM (Holt 2003 or Cao/Sha/Fan 2011). */
+/* See Algorithm 3.3 of van de Woestijne (2006). */
+/* https://www.opt.math.tugraz.at/~cvdwoest/maths/dissertatie.pdf */
+/* Also see Pari's Tonelli-Shanks by Bill Allombert, 2014,2017, which seems */
+/* to be the same algorithm. */
+
+/* Algorithm 3.3, step 2 "Find generator" */
+static void _find_ts_generator(UV *py, UV *pm, UV a, UV k, UV p) {
+  UV e, r, y, m, x, ke1;
+  /* Assume:  k > 2,  1 < a < p,  p > 2,  k prime,  p prime */
+  /* e = valuation_remainder(p-1,k,&r); */
+  for (e = 0, r = p-1; !(r % k); r /= k)  e++;
+  ke1 = ipow(k, e-1);
+  for (x = 2, m = 1; m == 1; x++) {
+    y = powmod(x, r, p);
+    if (y != 1)
+      m = powmod(y, ke1, p);
+    MPUassert(x < p, "bad Tonelli-Shanks input\n");
+  }
+  *py = y;
+  *pm = m;
 }
 
-static UV _rootmod_composite(UV n, UV k, UV p) {
-  UV i, g, y, r, phi;
+static UV _ts_rootmod(UV a, UV k, UV p, UV y, UV m) {
+  UV e, r, A, x,  l, T, z, kz;
 
-  if (k == 2) return _sqrtmod_composite(n, p);
+  /* Assume:  k > 2,  1 < a < p,  p > 2,  k prime,  p prime */
+  /* It is not expected to work with prime powers. */
 
-  /* TODO:
-   *  1) prime powers
-   *  2) composites (Factor + CRT + Hensel)
-   */
+  /* e = valuation_remainder(p-1,k,&r); */
+  for (e = 0, r = p-1; !(r % k); r /= k) e++;
+  /* p-1 = r * k^e */
+  x = powmod(a, modinverse(k % r, r), p);
+  A = mulmod(powmod(x, k, p), modinverse(a, p), p);
 
-  /* Assume:  k > 2,  1 < n < p,  p > 2,  k prime */
+  if (y == 0 && A != 1)
+    _find_ts_generator(&y, &m, a, k, p);
 
-  /* TODO: We should have a robust existence check.
-   *
-   * 1. if znprimroot(p) != 0 && gcd_ui(n,p) == 1:
-   *      if (powmod(n,phi/gcd_ui(k,phi),p) != 1) return 0;
-   *      else root exists
-   * this works, but tells us nothing in the other cases.
-   */
-
-  /* If we can get an inverse, this is fast (other than factoring p) */
-  phi = totient(p);
-
-  /* Given these gcds, there is always one solution. */
-  if (gcd_ui(k,phi) == 1 && gcd_ui(n,p) == 1) {
-    g = modinverse(k, phi);
-    return powmod(n, g, p);
+  while (A != 1) {
+    for (l = 1, T = A;  T != 1;  l++) {
+      if (l >= e) return 0;
+      z = T;
+      T = powmod(T, k, p);
+    }
+    kz = negmod( znlog_solve(z, m, p, k), k);  /* k = znorder(m,p) */
+    m = powmod(m, kz, p);
+    T = powmod(y, kz * ipow(k, e-l), p);
+    /* In the loop we always end with l < e, so e always gets smaller */
+    e = l-1;
+    x = mulmod(x, T, p);
+    y = powmod(T, k, p);
+    if (y <= 1) return 0;  /* In theory this will never be hit. */
+    A = mulmod(A, y, p);
   }
-
-  /* If we can get an inverse, it might work, but might not. */
-  g = modinverse(k, phi);
-  if (g != 0) {
-    r = powmod(n, g, p);
-    if (powmod(r, k, p) == n) return r;
-  }
-
-  /* If we find a primitive root, this should work, albeit maybe not fast */
-  g = znprimroot(p);
-  if (g != 0) {
-    if (gcd_ui(n,p) == 1 && powmod(n,phi/gcd_ui(k,phi),p) != 1) return 0;
-    y = znlog(n, powmod(g,k,p), p);
-    r = powmod(g, y, p);
-    if (powmod(r, k, p) == n) return r;
-  }
-
-  /* Trial division */
-  for (i = 2; i < p; i++) {
-    if (powmod(i, k, p) == n)
-      return i;
-  }
-  return 0;
+  return x;
 }
 
-static UV _rootmod_splitk(UV a, UV k, UV p, int pprime) {
+static UV _rootmod_prime_splitk(UV a, UV k, UV p) {
+  UV g, y, m;
   UV fac[MPU_MAX_FACTORS+1];
   UV exp[MPU_MAX_FACTORS+1];
   int i, nfactors;
 
-  /* Assume:  k >= 2,  1 < n < p,  p > 2 */
-  /* Factor out k and split by prime/composite modulus. */
-  /* We don't *have* to factor k, but it can make a big time difference. */
+  if (a >= p) a %= p;
+  if (a < 2) return a;
 
-  /* Note that trying to do three roots of the same k in succession can
-   * lead to a bad path.  E.g. 51^(1/27) mod 73 has a solution, but if we
-   * do three cube roots, the last one is likely to be unsolvable. */
+  /* Assume:  k >= 2,  1 < a < p,  p > 2, p prime */
 
-  nfactors = factor_exp(k, fac, exp);
-  for (i = 0; a != 0 && i < nfactors; i++) {
-    a = pprime ? _rootmod_prime(a,fac[i],p) : _rootmod_composite(a,fac[i],p);
-    if (exp[i] > 1) {
-      UV ki = ipow(fac[i], exp[i] - 1);
-      a = pprime ? _rootmod_prime(a,ki,p) : _rootmod_composite(a,ki,p);
+  if (k == 2) return _sqrtmod_prime(a, p);
+  /* if (k == 3) return _cuberoot_prime(a, p); */
+
+  /* See Algorithm 2.1 of van de Woestijne (2006), or Lindhurst (1997) */
+  /* The latter's proposition 7 generalizes to composite p */
+
+  g = gcd_ui(k, p-1);
+
+  if (g != 1) {
+    nfactors = factor_exp(g, fac, exp);
+    for (i = 0; a != 0 && i < nfactors; i++) {
+      _find_ts_generator(&y, &m,  a, fac[i], p);
+      while (exp[i]-- > 0)
+        a = _ts_rootmod(a, fac[i], p,  y, m);
     }
   }
+  if (g != k) {
+    UV kg = k/g,  pg = (p-1)/g;
+    a = powmod(a, modinverse(kg % pg, pg), p);
+  }
   return a;
+}
+
+/* Given a solution to r^k = a mod p^(e-1), return r^k = a mod p^e */
+static int _hensel_lift(UV *re, UV r, UV a, UV k, UV pe) {
+  UV f, fp, d;
+
+  /* UV pe = ipow(p, e); */
+  if (a >= pe) a %= pe;
+  f = submod(powmod(r, k, pe), a, pe);
+  if (f == 0) { *re = r; return 1; }
+  fp = mulmod(k, powmod(r, k-1, pe), pe);
+  d = divmod(f, fp, pe);
+  if (d == 0) return 0;  /* We need a different base root */
+  *re = submod(r, d, pe);
+  return 1;
+}
+
+static UV _rootmod_composite(UV a, UV k, UV p) {
+  UV f, g, e, r;
+  UV fac[MPU_MAX_FACTORS+1];
+  UV exp[MPU_MAX_FACTORS+1];
+  int i, nfactors;
+
+  /* Assume:  k >= 2,  1 < n < p,  p > 2, p composite */
+
+#if 0
+  /* For square roots of p^k with gcd(a,p)==1, this is straightforward. */
+  if (k == 2 && (i = primepower(p, &f)) && (a % f) > 1) {
+    UV x = _sqrtmod_prime(a % f, f);
+    UV r = p/f;
+    UV j = powmod(x, r, p);
+    UV k = powmod(a, (p - r - r + 1) >> 1, p);
+    return mulmod(j, k, p);
+  }
+#endif
+
+  nfactors = factor_exp(p, fac, exp);
+  for (i = 0; i < nfactors; i++) {
+    f = fac[i];
+    /* Find a root mod this factor.  If none exists, there is no root for p. */
+    if (!rootmodp(&r, a, k, f))
+      return 0;
+    /* If we have a prime power, use Hensel lifting to solve for p^e */
+    if (exp[i] > 1) {
+      UV fe = f;
+      for (e = 2; e <= exp[i]; e++) {
+        fe *= f;
+        /* We aren't guaranteed a solution, though we usually get one. */
+        if (!_hensel_lift(&r, r, a, k, fe)) {
+          /* Search for a different base root */
+          UV t, m = fe / (f*f);
+          for (t = 1; t < f; t++) {
+            if (_hensel_lift(&r, r + t*m, a, k, fe))
+              break;
+          }
+          /* That didn't work, do a stronger but time consuming search. */
+          if (t >= f) {
+            UV afe = a % fe;
+            for (r = (a % f); r < fe; r += f)
+              if (powmod(r, k, fe) == afe)
+                break;
+            if (r >= fe) return 0;
+          }
+        }
+      }
+      fac[i] = fe;
+    }
+    exp[i] = r;
+  }
+  g = chinese(exp, fac, nfactors, &i);
+  return g;
 }
 
 int rootmodp(UV *s, UV a, UV k, UV p) {
   UV r;
   if (p == 0) return 0;
   if (a >= p) a %= p;
-  if (p <= 2 || a <= 1) return _rootmod_return(a, s, a, k, p);
-  if (k == 0) return _rootmod_return(1, s, a, k, p);
-  if (k == 1) return _rootmod_return(a, s, a, k, p);
 
-  r = _rootmod_splitk(a, k, p, 1);
+  if      (p <= 2 || a <= 1)  r = a;
+  else if (k <= 1)            r = (k == 0) ? 1 : a;
+  else if (is_power(a,k))     r = rootint(a,k);
+  else                        r = _rootmod_prime_splitk(a,k,p);
+
   return _rootmod_return(r, s, a, k, p);
 }
 
@@ -2610,11 +2681,13 @@ int rootmod(UV *s, UV a, UV k, UV p) {
   UV r;
   if (p == 0) return 0;
   if (a >= p) a %= p;
-  if (p <= 2 || a <= 1) return _rootmod_return(a, s, a, k, p);
-  if (k == 0) return _rootmod_return(1, s, a, k, p);
-  if (k == 1) return _rootmod_return(a, s, a, k, p);
 
-  r = _rootmod_splitk(a, k, p, is_prime(p));
+  if      (p <= 2 || a <= 1)  r = a;
+  else if (k <= 1)            r = (k == 0) ? 1 : a;
+  else if (is_power(a,k))     r = rootint(a,k);
+  else if (is_prime(p))       r = _rootmod_prime_splitk(a,k,p);
+  else                        r = _rootmod_composite(a,k,p);
+
   return _rootmod_return(r, s, a, k, p);
 }
 

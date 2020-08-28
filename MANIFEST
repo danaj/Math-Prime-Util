@@ -235,6 +235,7 @@ xt/pari-compare.pl
 xt/primecount-approx.t
 xt/primecount-many.t
 xt/primes-edgecases.pl
+xt/rootmod.pl
 xt/rwh_primecount.py
 xt/rwh_primecount_numpy.py
 xt/test-bpsw.pl
