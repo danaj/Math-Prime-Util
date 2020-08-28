@@ -1770,7 +1770,7 @@ static UV dlp_bsgs(UV a, UV g, UV p, UV n, UV maxent, int race_rho) {
 
 /* Find smallest k where a = g^k mod p */
 #define DLP_TRIAL_NUM  10000
-static UV znlog_solve(UV a, UV g, UV p, UV n) {
+UV znlog_solve(UV a, UV g, UV p, UV n) {
   UV k, sqrtn;
   const int verbose = _XS_get_verbose();
 
