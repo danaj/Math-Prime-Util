@@ -2741,7 +2741,14 @@ sub _almost_prime_count_asymptotic {
   return 0 if ($n >> $k) == 0;
   return ($n >= 1) if $k == 0;
 
-  my $x = 0.0 + "$n";
+  my $x;
+  if (ref($n) || $n > ~0) {
+    require Math::BigFloat;
+    Math::BigFloat->import();
+    $x = Math::BigFloat->new($n);
+  } else {
+    $x = 0.0 + "$n";
+  }
   my $logx = log($x);
   my $loglogx = log($logx);
   my $est = $x / $logx;
@@ -2751,18 +2758,21 @@ sub _almost_prime_count_asymptotic {
 sub _almost_prime_nth_asymptotic {
   my($k, $n) = @_;
   return 0 if $k == 0 || $n == 0;
-  return 1 << $k if $n == 1;
-  my $x = 0.0 + "$n";
+  return Math::Prime::Util::powint(2,$k) if $n == 1;
+
+  my $x;
+  if (ref($n) || $n > ~0) {
+    require Math::BigFloat;
+    Math::BigFloat->import();
+    $x = Math::BigFloat->new($n);
+  } else {
+    $x = 0.0 + "$n";
+  }
   my $logx = log($x);
   my $loglogx = log($logx);
   my $est = $x * $logx;
   $est *= ($_/$loglogx) for 1 .. $k-1;
-  return int($est) if $est <= BMAX;
-  {
-    require Math::BigFloat;
-    Math::BigFloat->import();
-    return Math::BigFloat->new($est)->as_int();
-  }
+  $est;  # Returns FP
 }
 
 sub almost_prime_count_lower {
@@ -2946,7 +2956,6 @@ sub nth_almost_prime_approx {
     my $nth = Math::Prime::Util::nth_almost_prime_approx($k-$r, $n);
     return mulint($nth, powint(2,$r));
   }
-
 
   my $lo = Math::Prime::Util::nth_almost_prime_lower($k, $n);
   my $hi = Math::Prime::Util::nth_almost_prime_upper($k, $n);
