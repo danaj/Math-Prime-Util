@@ -612,10 +612,7 @@ UV range_construct_almost_prime(UV** list, uint32_t k, UV lo, UV hi) {
   if (hi > max_nth_almost_prime(k)) hi = max_nth_almost_prime(k);
   if (lo > hi) { *list = 0; return 0; }
 
-  if (k == 1) {
-    *list = array_of_primes_in_range(&count, lo, hi);
-    return count;
-  }
+  if (k == 1) return range_prime_sieve(list, lo, hi);
   if (k == 2) return range_semiprime_sieve(list, lo, hi);
 
   minkap1 = 1 << (k-1);

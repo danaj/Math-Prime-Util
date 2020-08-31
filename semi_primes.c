@@ -72,7 +72,7 @@ static UV _semiprime_count(UV n)
             xbeg = prev_prime(xbeg);
             xend = next_prime(xend);
             xoff = LMO_prime_count(xbeg);
-            xarr = array_of_primes_in_range(&xsize, xbeg, xend);
+            xsize = range_prime_sieve(&xarr, xbeg, xend);
             xend = xarr[xsize-1];
           }
           cnt = xoff + _bs_count(np, xarr, xsize-1);
@@ -184,7 +184,7 @@ static UV _range_semiprime_selection(UV** semis, UV lo, UV hi)
     New(0, S, cn, UV);
   }
 
-  pr = array_of_primes_in_range(&xsize, 0, lim);
+  xsize = range_prime_sieve(&pr, 0, lim);
 
   for (i = 0; pr[i] <= sqrtn; i++) {
     UV const pi = pr[i], jlo = (lo+pi-1)/pi, jhi = hi/pi;

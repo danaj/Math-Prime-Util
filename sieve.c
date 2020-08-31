@@ -522,18 +522,19 @@ void end_segment_primes(void* vctx)
   Safefree(ctx);
 }
 
-UV* array_of_primes_in_range(UV* count, UV beg, UV end)
+UV range_prime_sieve(UV**list, UV lo, UV hi)
 {
-  UV *P, i = 0;
-  UV cntest = prime_count_upper(end) - prime_count_lower(beg) + 1;
-  New(0, P, cntest, UV);
-  if (beg <= 2 && end >= 2) P[i++] = 2;
-  if (beg <= 3 && end >= 3) P[i++] = 3;
-  if (beg <= 5 && end >= 5) P[i++] = 5;
+  UV *P, Psize, i = 0;
+  if (hi < lo) { *list = 0; return 0; }
+  Psize = prime_count_upper(hi) - prime_count_lower(lo) + 1;
+  New(0, P, Psize, UV);
+  if (lo <= 2 && hi >= 2) P[i++] = 2;
+  if (lo <= 3 && hi >= 3) P[i++] = 3;
+  if (lo <= 5 && hi >= 5) P[i++] = 5;
   {
     unsigned char* segment;
     UV seg_base, seg_low, seg_high;
-    void* ctx = start_segment_primes(beg, end, &segment);
+    void* ctx = start_segment_primes(lo, hi, &segment);
     while (next_segment_primes(ctx, &seg_base, &seg_low, &seg_high)) {
       START_DO_FOR_EACH_SIEVE_PRIME( segment, seg_base, seg_low, seg_high )
         P[i++] = p;
@@ -541,6 +542,6 @@ UV* array_of_primes_in_range(UV* count, UV beg, UV end)
     }
     end_segment_primes(ctx);
   }
-  *count = i;
-  return P;
+  *list = P;
+  return i;
 }
