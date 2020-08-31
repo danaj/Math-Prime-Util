@@ -2757,7 +2757,12 @@ sub _almost_prime_nth_asymptotic {
   my $loglogx = log($logx);
   my $est = $x * $logx;
   $est *= ($_/$loglogx) for 1 .. $k-1;
-  $est;  # Returns FP
+  return int($est) if $est <= BMAX;
+  {
+    require Math::BigFloat;
+    Math::BigFloat->import();
+    return Math::BigFloat->new($est)->as_int();
+  }
 }
 
 sub almost_prime_count_lower {
@@ -2829,6 +2834,8 @@ sub almost_prime_count_upper {
     # We will end up with something correct, but also *really* slow for
     # high k as well as estimating far too high.
 
+    # TODO: This is insanely slow.  This has to be fixed.
+
     # Bayless (2018) Theorem 3.5.
     # First we have Pi_k(x) -- the upper bound for the square free kaps.
     $bound = 1.028 * $x / $logx;
@@ -2836,8 +2843,9 @@ sub almost_prime_count_upper {
     # Second, we need to turn this into Tau_k(x).
     # We use the definition paragraph before Theorem 5.4.
     my $sigmalim = Math::Prime::Util::sqrtint(Math::Prime::Util::divint($n, Math::Prime::Util::powint(2,$k-2)));
+    my $ix = Math::BigInt->new("$x");
     Math::Prime::Util::forprimes( sub {
-      $bound += almost_prime_count_upper($k-2, Math::Prime::Util::divint($x,$_*$_));
+      $bound += almost_prime_count_upper($k-2, Math::Prime::Util::divint($ix,Math::Prime::Util::mulint($_,$_)));
     }, 2, $sigmalim);
   }
   int($bound+1);
@@ -2847,11 +2855,12 @@ sub _kap_reduce_nth {   # returns reduction amount r
   my($k, $n) = @_;
   return 0 if $k <= 1;
 
+  # We could calculate new values as needed.
   my @A078843 = (1, 2, 3, 5, 8, 14, 23, 39, 64, 103, 169, 269, 427, 676, 1065, 1669, 2628, 4104, 6414, 10023, 15608, 24281, 37733, 58503, 90616, 140187, 216625, 334527, 516126, 795632, 1225641, 1886570, 2901796, 4460359, 6851532, 10518476, 16138642, 24748319, 37932129, 58110457, 88981343, 136192537, 208364721, 318653143, 487128905, 744398307, 1137129971, 1736461477, 2650785552, 4045250962, 6171386419, 9412197641, 14350773978, 21874583987, 33334053149, 50783701654, 77348521640, 117780873397, 179306456282, 272909472119, 415284741506);
   my $r = 0;
   if ($k > $#A078843) {
     return 0 if $n >= $A078843[-1];
-    $r = $k - scalar(@A078843);
+    $r = $k - $#A078843;
   }
   $r++ while $n < $A078843[$k-$r];
   $r;
@@ -2871,10 +2880,13 @@ sub nth_almost_prime_upper {
   return _fast_small_nth_almost_prime($k,$n) if $n < 8;
 
   my $r = _kap_reduce_nth($k,$n);
-  return(nth_almost_prime_upper($k-$r, $n) << $r) if $r > 0;
+  if ($r > 0) {
+    my $nth = Math::Prime::Util::nth_almost_prime_upper($k-$r, $n);
+    return mulint($nth, powint(2,$r));
+  }
 
   my $lo = 5 * (1 << $k);   # $k >= 1, $n >= 8
-  my $hi = int(1 + _almost_prime_nth_asymptotic($k, $n));
+  my $hi = 1 + _almost_prime_nth_asymptotic($k, $n);
   # We just guessed at hi, so bump it up until it's in range
   my $rhi = almost_prime_count_lower($k, $hi);
   while ($rhi < $n) {
@@ -2897,10 +2909,13 @@ sub nth_almost_prime_lower {
   return _fast_small_nth_almost_prime($k,$n) if $n < 8;
 
   my $r = _kap_reduce_nth($k,$n);
-  return(nth_almost_prime_lower($k-$r, $n) << $r) if $r > 0;
+  if ($r > 0) {
+    my $nth = Math::Prime::Util::nth_almost_prime_lower($k-$r, $n);
+    return mulint($nth, powint(2,$r));
+  }
 
   my $lo = 5 * (1 << $k);   # $k >= 1, $n >= 8
-  my $hi = int(1 + _almost_prime_nth_asymptotic($k, $n));
+  my $hi = 1 + _almost_prime_nth_asymptotic($k, $n);
   # We just guessed at hi, so bump it up until it's in range
   my $rhi = almost_prime_count_upper($k, $hi);
   while ($rhi < $n) {
@@ -2926,6 +2941,13 @@ sub nth_almost_prime_approx {
   return Math::Prime::Util::nth_semiprime_approx($n) if $k == 2;
   return _fast_small_nth_almost_prime($k,$n) if $n < 8;
 
+  my $r = _kap_reduce_nth($k,$n);
+  if ($r > 0) {
+    my $nth = Math::Prime::Util::nth_almost_prime_approx($k-$r, $n);
+    return mulint($nth, powint(2,$r));
+  }
+
+
   my $lo = Math::Prime::Util::nth_almost_prime_lower($k, $n);
   my $hi = Math::Prime::Util::nth_almost_prime_upper($k, $n);
 
@@ -2947,6 +2969,12 @@ sub nth_almost_prime {
   return Math::Prime::Util::nth_prime($n) if $k == 1;
   return Math::Prime::Util::nth_semiprime($n) if $k == 2;
   return _fast_small_nth_almost_prime($k,$n) if $n < 8;
+
+  my $r = _kap_reduce_nth($k,$n);
+  if ($r > 0) {
+    my $nth = Math::Prime::Util::nth_almost_prime($k-$r, $n);
+    return mulint($nth, powint(2,$r));
+  }
 
   my $lo = Math::Prime::Util::nth_almost_prime_lower($k, $n);
   my $hi = Math::Prime::Util::nth_almost_prime_upper($k, $n);

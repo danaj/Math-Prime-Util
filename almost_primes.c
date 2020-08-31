@@ -231,34 +231,42 @@ UV almost_prime_count_approx(uint32_t k, UV n) {
   if (n <  9*(UVCONST(1) << (k-2))) return 2;
   if (n < 10*(UVCONST(1) << (k-2))) return 3;
 
+  if (k == 3 && n < 102) {
+    unsigned char const sm3[19] = {27,28,30,42,44,45,50,52,63,66,68,70,75,76,78,92,98,99};
+    for (lo=0; lo < 19; lo++)
+      if (n < sm3[lo])
+        break;
+    return 4+lo;
+  }
+
   _almost_prime_count_bounds(&lo, &hi, k, n);
 
-  /* Much better fit for k=3.  We should get the right term. */
-  if (k == 3) {
+  if (k == 3) {  /* Much better fit for k=3. */
     double x = n, logx = log(x), loglogx = log(logx);
-    double a, s = (n <= 10000000) ? 1.0 : 1.0 + logx/21.7;
+    double a = 1.0, s = 2.0;
     UV est;
-    if      (n <=     4000)   a = 1.17971;
-    else if (n <=    33000)   a = 1.18889;
-    else if (n <=   100000)   a = 1.19341;
-    else if (n <=   500000)   a = 1.19569;
-    else if (n <=  1000000)   a = 1.1967;
-    else if (n <=  5000000)   a = 1.1965;
-    else if (n <= 10000000)   a = 1.1959;
-    else if (x <= 5e7)      { a = 1.1571;  s = 0.78; }
-    else if (x <= 3e8)      { a = 1.1422;  s = 0.69; }
-    else if (x <= 3e9)      { a = 1.12657; s = 0.59; }
-    else if (x <= 4e10)     { a = 1.11344; s = 0.50; }
-    else if (x <= 2e11)     { a = 1.10658; s = 0.45; }
-    else                    { a = 1.33619; s = 1.0 + logx/21.7; }
-    est = 0.5 * a * x * (loglogx*loglogx) / (logx+s*loglogx) + 0.5;
+    if      (x <=      638) { s = 1.554688; a = 0.865814; }
+    else if (x <=     1544) { s = 1.050000; a = 0.822256; }
+    else if (x <=     1927) { s = 0.625000; a = 0.791747; }
+    else if (x <=   486586) { s = 2.865611; a = 1.004090; }
+    else if (x <=  1913680) { s = 2.790963; a = 0.999618; }
+    else if (x <= 22347532) { s = 2.719238; a = 0.995635; }
+    else if (x <= 2.95e8)   { s = 2.584473; a = 0.988802; }
+    else if (x <= 4.20e9)   { s = 2.457108; a = 0.983098; }
+    else if (x <= 7.07e10)  { s = 2.352818; a = 0.978931; }
+    else if (x <= 1.36e12)  { s = 2.269745; a = 0.975953; }
+    else if (x <= 4.1e13)   { s = 2.203002; a = 0.973796; }
+    else if (x <= 9.2e14)   { s = 2.148463; a = 0.972213; }
+    else                    { s = 2.119279; a = 0.971438; }
+    est = 0.5 * a * x * ((loglogx+0.26153)*(loglogx+0.26153)) / (logx+s)+0.5;
     if      (est < lo) est = lo;
     else if (est > hi) est = hi;
     return est;
   }
 
-  /* TODO: Consider weighting based on k,n */
-  return lo + (hi-lo)/2;
+  /* We should look at (1) better bounds, (2) better weighting here */
+  /* return lo + (hi-lo)/2; */
+  return lo + (hi-lo) * 0.8;
 }
 
 
@@ -593,7 +601,7 @@ static void _tidy_list(UV **list, UV *Lsize, UV *count, int minimal) {
       if (L[i] != L[j])
         L[++j] = L[i];
     }
-    *count = j;
+    *count = j+1;
   }
   if (minimal) {
     *Lsize = *count;
@@ -614,13 +622,14 @@ UV range_construct_almost_prime(UV** list, uint32_t k, UV lo, UV hi) {
 
   if (k == 1) return range_prime_sieve(list, lo, hi);
   if (k == 2) return range_semiprime_sieve(list, lo, hi);
+  /* if (k <= 5) return range_almost_prime_sieve(list, k, lo, hi); */
 
   minkap1 = 1 << (k-1);
   lastprime = hi / minkap1;  /* lastprime = prev_prime(lastprime+1); */
 
   {
     UV i, Lsize;
-    UV *lkap1, nkap1=range_construct_almost_prime(&lkap1, minkap1, hi>>1, k-1);
+    UV *lkap1, nkap1=range_construct_almost_prime(&lkap1, k-1, minkap1, hi>>1);
 
     /* Now multiply through exhaustively. */
     Lsize = nkap1*4 + 100;
@@ -640,5 +649,89 @@ UV range_construct_almost_prime(UV** list, uint32_t k, UV lo, UV hi) {
     Safefree(lkap1);
   }
   *list = L;
+  return count;
+}
+
+UV range_almost_prime_sieve(UV** list, uint32_t k, UV slo, UV shi)
+{
+  UV *S, Ssize, i, count;
+
+  if (k == 0 || k > 63) { *list = 0; return 0; }
+  if ((slo >> k) == 0) slo = UVCONST(1) << k;
+  if (shi > max_nth_almost_prime(k)) shi = max_nth_almost_prime(k);
+  if (slo > shi) { *list = 0; return 0; }
+
+  if (k == 1) return range_prime_sieve(list, slo, shi);
+  if (k == 2) return range_semiprime_sieve(list, slo, shi);
+
+  Ssize = (almost_prime_count_approx(k,shi) - almost_prime_count_approx(k,slo) + 1) * 1.2 + 100;
+  New(0, S, Ssize, UV);
+
+  /* Do a range nfactor sieve in small windows, with one optimization.
+   *
+   * We know that we are looking for numbers with k factors, hence after
+   * looking for small factors we could get a remainder R as large as:
+   * 2 x 2 x ... x R where R could be prime or semiprime.  Hence we can
+   * reduce the sieve limit somewhat.  Effectively we are sieving to the
+   * maximum possible *second largest* factor for a k-almost-prime,
+   * allowing us to correctly decide whether R is prime or semiprime
+   * (if it has >= k factors).
+   *
+   * This isn't a big deal for small k, but it's a big impact for high k.
+   *
+   * I still think there should be a better way to do this for high k.
+   * Is there any way to do this just sieving to rootint(hi,k+1)?
+   * Given hi=10^6:
+   *   k=3 =>         97^3,   2x701^2,   2x2x249989
+   *   k=4 => 31^4, 2x79^3, 2x2x499^2, 2x2x2x724991
+   */
+  {
+    unsigned char* nf;
+    UV const segsize = 65536*4;
+    UV *N, lo, hi, range;
+    UV kdiv = (k < 3) ? UVCONST(1) : (UVCONST(1) << (k-2));
+
+    New(0, nf, segsize+1, unsigned char);
+    New(0, N, segsize+1, UV);
+    prime_precalc(isqrt(shi/kdiv));
+    count = 0;
+
+    for (lo = slo; lo <= shi && lo >= slo; lo = hi+1) {
+      hi = lo+segsize-1;
+      if (hi > shi  ||  hi < lo)  hi = shi;
+      range = hi - lo + 1;
+      memset(nf, 0, range);
+      for (i = lo; i <= hi; i++) {
+        if (!(i&1) && i >= 2) {
+          unsigned char nz = ctz(i);
+          nf[i-lo] = nz;
+          N[i-lo] = UVCONST(1) << nz;
+        } else
+          N[i-lo] = 1;
+      }
+      START_DO_FOR_EACH_PRIME(3, isqrt(hi/kdiv)) {
+        UV pk, maxpk = UV_MAX/p; \
+        for (i = P_GT_LO_0(p,p,lo); i < range; i += p)
+          { N[i] *= p;  nf[i]++; }
+        for (pk = p*p; pk <= hi; pk *= p) {
+          for (i = P_GT_LO_0(pk,pk,lo); i < range; i += pk)
+            { N[i] *= p;  nf[i]++; }
+          if (pk >= maxpk) break;  /* Overflow protection */
+        }
+      } END_DO_FOR_EACH_PRIME
+      for (i = 0; i < range; i++) {
+        if (N[i] < (lo+i))
+          nf[i]++;
+        if (nf[i] == k) {
+          if (count >= Ssize)
+            Renew(S, Ssize += 10000, UV);
+          S[count++] = i+lo;
+        }
+      }
+    }
+    Safefree(N);
+    Safefree(nf);
+  }
+  *list = S;
   return count;
 }

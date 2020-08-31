@@ -833,6 +833,7 @@ void
 almost_prime_sieve(IN UV k, IN UV lo, IN UV hi)
   PREINIT:
     AV* av;
+    UV *S, n, i;
   PPCODE:
     /* TODO: This should have a proper SV interface with calls to GMP/PP. */
     av = newAV();
@@ -842,19 +843,10 @@ almost_prime_sieve(IN UV k, IN UV lo, IN UV hi)
       PUTBACK;
       SP = NULL; /* never use SP again, poison */
     }
-    if (k > 63) return;
-    if (hi == 0) { lo = 0; hi = lo; }
-    if (lo < (UVCONST(1)<<k)) lo = UVCONST(1) << k;
-    if (hi < lo) return;
-    /* Stupid, monolith, doesn't do special for k=0,1,2. */
-    {
-      unsigned char* nf = range_nfactor_sieve(lo, hi, 1);
-      UV i;
-      for (i = 0; i < hi-lo+1; i++)
-        if (nf[i] == k)
-          av_push(av, newSVuv(i+lo));
-      Safefree(nf);
-    }
+    n = range_almost_prime_sieve(&S, k, lo, hi);
+    for (i = 0; i < n; i++)
+      av_push(av, newSVuv(S[i]));
+    if (S != 0) Safefree(S);
     return;
 
 void

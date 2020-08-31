@@ -21,5 +21,6 @@ extern UV almost_prime_count_upper(uint32_t k, UV n);
 extern UV almost_prime_count_lower(uint32_t k, UV n);
 
 extern UV range_construct_almost_prime(UV** list, uint32_t k, UV lo, UV hi);
+extern UV range_almost_prime_sieve(UV** list, uint32_t k, UV lo, UV hi);
 
 #endif

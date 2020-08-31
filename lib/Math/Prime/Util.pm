@@ -478,7 +478,7 @@ sub almost_primes {
 
   return [] if $low > $high;
 
-  if ($high <= $_XS_MAXVAL && ($high-$low+1) < 1000000000) {
+  if ($high <= $_XS_MAXVAL) {
     return Math::Prime::Util::almost_prime_sieve($k,$low,$high);
   } else {
     require Math::Prime::Util::PP;

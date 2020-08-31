@@ -272,10 +272,11 @@
   - max_almost_prime_count improve k=2,3,4.  Somehow.
   - optimize PP is_almost_prime
   - better PP almost_prime_count bounds for k > 3
-  - optimize PP nth_almost_prime and bounds
+  - optimize PP nth_almost_prime and bounds (this is super slow)
   - optimize PP almost_primes() (uses forfactored)
   - any use for genk (iterator for k)?
   - We have (not very efficient) construction code, but not using or testing it.
+  - foralmostprimes
 
 - optimize nth_powerful, both in C and PP.
 
@@ -329,7 +330,6 @@
 
 - binomialmod:
    - PP implementation for primes, squarefree, and general composites.
-   - GMP.
    - negative k extension
 
 - GMP is_powerful, various almost_primes, binomialmod, rootmod
