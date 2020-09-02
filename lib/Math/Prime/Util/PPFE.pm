@@ -913,6 +913,9 @@ sub foroddcomposites(&$;$) { ## no critic qw(ProhibitSubroutinePrototypes)
 sub forsemiprimes(&$;$) { ## no critic qw(ProhibitSubroutinePrototypes)
   Math::Prime::Util::_generic_forcomp_sub('semiprimes', @_);
 }
+sub foralmostprimes(&$$;$) { ## no critic qw(ProhibitSubroutinePrototypes)
+  Math::Prime::Util::_generic_foralmostprimes(@_);
+}
 
 sub forfactored(&$;$) { ## no critic qw(ProhibitSubroutinePrototypes)
   Math::Prime::Util::_generic_forfac(0, @_);

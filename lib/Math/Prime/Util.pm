@@ -38,9 +38,9 @@ our @EXPORT_OK =
       primes twin_primes semi_primes almost_primes ramanujan_primes
       sieve_prime_cluster sieve_range
       lucky_numbers is_lucky nth_lucky
-      forprimes forcomposites foroddcomposites forsemiprimes fordivisors
+      forprimes forcomposites foroddcomposites forsemiprimes foralmostprimes
       forpart forcomp forcomb forperm forderange formultiperm forsetproduct
-      forfactored forsquarefree
+      fordivisors forfactored forsquarefree
       lastfor
       numtoperm permtonum randperm shuffle
       prime_iterator prime_iterator_object
@@ -615,6 +615,31 @@ sub partitions {
 # forprimes, forcomposites, fordivisors.
 # These are used when the XS code can't handle it.
 
+sub _for_almost_primes {
+  my($sub, $k, $beg, $end) = @_;
+  # Only called by _generic_for* which do input validation
+
+  # This is *really* inefficient for large k.  We should be either sieving
+  # or at least doing a k reduction when possible.
+
+  my $binc = ref($end) && !ref($beg);
+  my $oldforexit = Math::Prime::Util::_start_for_loop();
+  {
+    my $pp;
+    local *_ = \$pp;
+    while ($beg <= $end) {
+      if (Math::Prime::Util::is_almost_prime($k, $beg)) {
+        $pp = $beg;
+        $sub->();
+        last if Math::Prime::Util::_get_forexit();
+      }
+      if ($binc) { $beg = Math::Prime::Util::addint($beg,1); } else { $beg++; }
+    }
+  }
+  Math::Prime::Util::_end_for_loop($oldforexit);
+}
+
+
 sub _generic_forprimes {
   my($sub, $beg, $end) = @_;
   if (!defined $end) { $end = $beg; $beg = 2; }
@@ -677,6 +702,24 @@ sub _generic_foroddcomposites {
 
 sub _generic_forsemiprimes {
   _generic_forcomp_sub('semiprimes', @_);
+}
+
+sub _generic_foralmostprimes {
+  my($sub, $k, $beg, $end) = @_;
+  _validate_positive_integer($k);
+  _validate_positive_integer($beg);
+  if (defined $end) {
+    _validate_positive_integer($end);
+  } else {
+    ($beg,$end) = (1,$beg);
+  }
+  return if $k == 0;
+  my $min = Math::Prime::Util::powint(2,$k);
+  $beg = $min if $beg < $min;
+  return unless $beg <= $end;
+  return _generic_forprimes($sub,$beg,$end) if $k == 1;
+  return _generic_forcomp_sub('semiprimes', $sub, $beg, $end) if $k == 2;
+  _for_almost_primes($sub, $k, $beg, $end);
 }
 
 sub _generic_forfac {

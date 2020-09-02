@@ -264,7 +264,6 @@
 
 - Almost primes things:
   - Once we have a range bigomega, use it in PP almost_primes.
-  - Make a C function for getting a list between lo and hi, like semiprimes.
   - XS almost_primes should call this in segments, use count_approx for seg size
   - more work on verifying count_upper for k=5+
   - more work on verifying count_lower for k=5+
@@ -274,9 +273,9 @@
   - better PP almost_prime_count bounds for k > 3
   - optimize PP nth_almost_prime and bounds (this is super slow)
   - optimize PP almost_primes() (uses forfactored)
-  - any use for genk (iterator for k)?
-  - We have (not very efficient) construction code, but not using or testing it.
-  - foralmostprimes
+  - Consider getting rid of the unused construction code.
+  - foralmostprimes k reduction in PP
+  - foralmostprimes XS tuning (size, when to do incremental, etc.)
 
 - optimize nth_powerful, both in C and PP.
 
@@ -310,10 +309,6 @@
   mpu 'for my $e (1..9) { $s=0; $s += is_practical($_) for 1..10**$e; say "10^$e  $s"; }'
   5, 30, 198, 1456, 11751, 97385, 829157, 7266286, 64782731, 582798892, 5283879886
 
-- add vecequal (equality for flat numeric arrays)
-
-- checksums?  Rather than print | md5sum.
-
 - test coverage for PP.
 
 - Revisit AKS in PP.  Essentially all the time is spent in two lines of
@@ -332,4 +327,18 @@
    - PP implementation for primes, squarefree, and general composites.
    - negative k extension
 
-- GMP is_powerful, various almost_primes, binomialmod, rootmod
+- GMP
+  - powerful_count
+  - nth_powerful
+  - is_practical
+  - rootmod, binomialmod
+  - is_almost_prime
+  - almost primes
+  - bigomega, omega
+
+- Possible new:
+  - lshiftint($n,$bits), rshiftint
+  - vecequal (equality for integer arrays, possibly recursive)
+  - checksums?  Rather than print | md5sum.  adler32, sha1/2/3, blake2 (b2sum)
+
+- foralmostprimes:  doc, test

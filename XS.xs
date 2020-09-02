@@ -1460,7 +1460,7 @@ is_perrin_pseudoprime(IN SV* svn, IN int k = 0)
     switch (ix) {
       case 0: _vcallsub_with_gmp( (k == 0) ? 0.20 : 0.40, "is_perrin_pseudoprime"); break;
       case 1: _vcallsub_with_gmp(0.13,"is_almost_extra_strong_lucas_pseudoprime"); break;
-      case 2: _vcallsub_with_gmp(0.00, "is_powerful"); break;
+      case 2: _vcallsub_with_gmp(0.53, "is_powerful"); break;
       case 3: _vcallsub_with_gmp(0.00, "powerful_count"); break;
       case 4: _vcallsub_with_gmp(0.00, "nth_powerful"); break;
       default: break;
@@ -3065,6 +3065,94 @@ forsemiprimes (SV* block, IN SV* svbeg, IN SV* svend = 0)
       beg = (beg <= 4) ? 3 : beg-1;
       while (beg++ < end) {
         if (is_semiprime(beg)) {
+          sv_setuv(svarg, beg);
+          PUSHMARK(SP);
+          call_sv((SV*)cv, G_VOID|G_DISCARD);
+          CHECK_FORCOUNT;
+        }
+      }
+    }
+    SvREFCNT_dec(svarg);
+    END_FORCOUNT;
+
+void
+foralmostprimes (SV* block, IN UV k, IN SV* svbeg, IN SV* svend = 0)
+  PROTOTYPE: &$$;$
+  PREINIT:
+    UV beg, end;
+    GV *gv;
+    HV *stash;
+    SV* svarg;  /* We use svarg to prevent clobbering $_ outside the block */
+    CV *cv;
+    DECL_FORCOUNT;
+    dMY_CXT;
+  PPCODE:
+    cv = sv_2cv(block, &stash, &gv, 0);
+    if (cv == Nullcv)
+      croak("Not a subroutine reference");
+
+    if (!_validate_int(aTHX_ svbeg, 0) || (items >= 4 && !_validate_int(aTHX_ svend,0))) {
+      _vcallsubn(aTHX_ G_VOID|G_DISCARD, VCALL_ROOT, "_generic_foralmostprimes", items, 0);
+      return;
+    }
+
+    /* If k is over 63 but the beg/end points are UVs, then we're empty. */
+    if (k == 0 || k > (BITS_PER_WORD-1)) return;
+
+    if (items < 4) {
+      beg = 1;
+      end = my_svuv(svbeg);
+    } else {
+      beg = my_svuv(svbeg);
+      end = my_svuv(svend);
+    }
+    if (beg < (UVCONST(1) << k)) beg = UVCONST(1) << k;
+    if (end > max_nth_almost_prime(k)) end = max_nth_almost_prime(k);
+
+    START_FORCOUNT;
+    SAVESPTR(GvSV(PL_defgv));
+    svarg = newSVuv(0);
+    GvSV(PL_defgv) = svarg;
+#if USE_MULTICALL
+    if (!CvISXSUB(cv) && end >= beg) {
+      UV c, seg_beg, seg_end, *S, count;
+      dMULTICALL;
+      I32 gimme = G_VOID;
+      PUSH_MULTICALL(cv);
+      if ( end-beg < 200 ) {
+        while (beg++ < end) {
+          if (is_almost_prime(k, beg)) {
+            sv_setuv(svarg, beg);
+            { ENTER; MULTICALL; LEAVE; }
+          }
+          CHECK_FORCOUNT;
+        }
+      } else {
+        while (beg < end) {
+          UV ssize = (k < 8) ? 262144 : (262144 * 8 * k);
+          if (k > 38) ssize <<= (k-38);
+          seg_beg = beg;
+          seg_end = end;
+          if ((seg_end - seg_beg) > ssize) seg_end = seg_beg + ssize - 1;
+          count = range_almost_prime_sieve(&S, k, seg_beg, seg_end);
+          for (c = 0; c < count; c++) {
+            sv_setuv(svarg, S[c]);
+            { ENTER; MULTICALL; LEAVE; }
+            CHECK_FORCOUNT;
+          }
+          Safefree(S);
+          beg = seg_end+1;
+          CHECK_FORCOUNT;
+        }
+      }
+      FIX_MULTICALL_REFCOUNT;
+      POP_MULTICALL;
+    }
+    else
+#endif
+    if (beg <= end) {
+      while (beg++ < end) {
+        if (is_almost_prime(k,beg)) {
           sv_setuv(svarg, beg);
           PUSHMARK(SP);
           call_sv((SV*)cv, G_VOID|G_DISCARD);

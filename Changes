@@ -34,6 +34,7 @@ Revision history for Perl module Math::Prime::Util
     - nth_almost_prime_approx(k,n)    fast approximate nth k-almost-prime
     - nth_almost_prime_lower(k,n)     fast nth k-almost-prime lower bound
     - nth_almost_prime_upper(k,n)     fast nth k-almost-prime upper bound
+    - foralmostprimes {} k,a,b        loop over k-almost-primes
     - is_powerful(n[,k])              is n a k-powerful number (default k=2)
     - powerful_count(n[,k])           count of k-powerful numbers <= n
     - nth_powerful(n[,k])             the nth k-powerful number (default k=2)

@@ -23,18 +23,34 @@
 /*                                KAP UTILITY                                 */
 /******************************************************************************/
 
+static uint32_t const _maxpow3 = (BITS_PER_WORD == 32) ? 20 : 40;
+#if BITS_PER_WORD == 32
+static uint32_t const _pow3[21] = {1,3,9,27,81,243,729,2187,6561,19683,59049,177147,531441,1594323,4782969,14348907,43046721,129140163,387420489,1162261467,3486784401U};
+#else
+static UV const _pow3[41] = {1,3,9,27,81,243,729,2187,6561,19683,59049,177147,531441,1594323,4782969,14348907,43046721,129140163,387420489,1162261467,3486784401U,UVCONST(10460353203),UVCONST(31381059609),UVCONST(94143178827),UVCONST(282429536481),UVCONST(847288609443),UVCONST(2541865828329),UVCONST(7625597484987),UVCONST(22876792454961),UVCONST(68630377364883),UVCONST(205891132094649),UVCONST(617673396283947),UVCONST(1853020188851841),UVCONST(5559060566555523),UVCONST(16677181699666569),UVCONST(50031545098999707),UVCONST(150094635296999121),UVCONST(450283905890997363),UVCONST(1350851717672992089),UVCONST(4052555153018976267),UVCONST(12157665459056928801)};
+#endif
+#define A078843_MAX_K 49
+static const uint32_t _first_3[A078843_MAX_K+1] = {1, 2, 3, 5, 8, 14, 23, 39, 64, 103, 169, 269, 427, 676, 1065, 1669, 2628, 4104, 6414, 10023, 15608, 24281, 37733, 58503, 90616, 140187, 216625, 334527, 516126, 795632, 1225641, 1886570, 2901796, 4460359, 6851532, 10518476, 16138642, 24748319, 37932129, 58110457, 88981343, 136192537, 208364721, 318653143, 487128905, 744398307, 1137129971, 1736461477, 2650785552U, 4045250962U};
+
+/* For all n <= hi, we can get the same results using 2*result with lower k */
+static uint32_t reduce_k_for_n(uint32_t k, UV n) {
+  uint32_t r = 0;
+  if (k <= 1 || k > 63) return 0;
+  if (k > _maxpow3)    /* Larger n would not fit in a UV type */
+    r = k-_maxpow3;
+  while (r < k && n < _pow3[k-r]) {
+    r++;
+    n = (n+1) >> 1;
+  }
+  return r;
+}
+
 /* Least r s.t.  almost_prime_count(k, n)  =  almost_prime_count(k-r, n >> r) */
 static void reduce_prime_count_factor(uint32_t *pk, UV *n) {
-  static uint32_t const maxpow3 = (BITS_PER_WORD == 32) ? 20 : 40;
-#if BITS_PER_WORD == 32
-  static uint32_t const pow3[21] = {1,3,9,27,81,243,729,2187,6561,19683,59049,177147,531441,1594323,4782969,14348907,43046721,129140163,387420489,1162261467,3486784401U};
-#else
-  static UV const pow3[41] = {1,3,9,27,81,243,729,2187,6561,19683,59049,177147,531441,1594323,4782969,14348907,43046721,129140163,387420489,1162261467,3486784401U,UVCONST(10460353203),UVCONST(31381059609),UVCONST(94143178827),UVCONST(282429536481),UVCONST(847288609443),UVCONST(2541865828329),UVCONST(7625597484987),UVCONST(22876792454961),UVCONST(68630377364883),UVCONST(205891132094649),UVCONST(617673396283947),UVCONST(1853020188851841),UVCONST(5559060566555523),UVCONST(16677181699666569),UVCONST(50031545098999707),UVCONST(150094635296999121),UVCONST(450283905890997363),UVCONST(1350851717672992089),UVCONST(4052555153018976267),UVCONST(12157665459056928801)};
-#endif
   uint32_t k = *pk, r = 0;
-  if (k > maxpow3)    /* Larger n would not fit in a UV type */
-    r = k-maxpow3;
-  while (k >= r && ((*n)>>r) < pow3[k-r])
+  if (k > _maxpow3)    /* Larger n would not fit in a UV type */
+    r = k-_maxpow3;
+  while (k >= r && ((*n)>>r) < _pow3[k-r])
     r++;
   /* Reduce */
   if (r > 0) {
@@ -45,19 +61,18 @@ static void reduce_prime_count_factor(uint32_t *pk, UV *n) {
 
 /* Least r s.t.  nth_almost_prime(k,n)  =  nth_almost_prime(k-r,n) << r */
 static uint32_t reduce_nth_factor(uint32_t k, UV n) {
-#define A078843_MAX_K 49
-  static const uint32_t first_3[A078843_MAX_K+1] = {1, 2, 3, 5, 8, 14, 23, 39, 64, 103, 169, 269, 427, 676, 1065, 1669, 2628, 4104, 6414, 10023, 15608, 24281, 37733, 58503, 90616, 140187, 216625, 334527, 516126, 795632, 1225641, 1886570, 2901796, 4460359, 6851532, 10518476, 16138642, 24748319, 37932129, 58110457, 88981343, 136192537, 208364721, 318653143, 487128905, 744398307, 1137129971, 1736461477, 2650785552U, 4045250962U};
   uint32_t r = 0;
   if (k <= 1 || k > 63) return 0;
   if (k > A078843_MAX_K) {
-    if (n >= first_3[A078843_MAX_K])
+    if (n >= _first_3[A078843_MAX_K])
       return 0;
     r = k-A078843_MAX_K+1;
   }
-  while (n < first_3[k-r])
+  while (n < _first_3[k-r])
     r++;
   return r;
 }
+
 
 /* This could be easily extended to 16 or 32 */
 static UV _fast_small_nth_almost_prime(uint32_t k, UV n) {
@@ -654,7 +669,7 @@ UV range_construct_almost_prime(UV** list, uint32_t k, UV lo, UV hi) {
 
 UV range_almost_prime_sieve(UV** list, uint32_t k, UV slo, UV shi)
 {
-  UV *S, Ssize, i, count;
+  UV *S, Ssize, i, j, count;
 
   if (k == 0 || k > 63) { *list = 0; return 0; }
   if ((slo >> k) == 0) slo = UVCONST(1) << k;
@@ -663,6 +678,25 @@ UV range_almost_prime_sieve(UV** list, uint32_t k, UV slo, UV shi)
 
   if (k == 1) return range_prime_sieve(list, slo, shi);
   if (k == 2) return range_semiprime_sieve(list, slo, shi);
+
+  /* See if we can reduce k.
+   * If for all possible kap from 1 to shi, ap(k,n) = 2*ap(k-1,n), then
+   * sieve for k-1 from lo/2 to hi/2+1.
+   * For large k this can continue even further so we might reduce a lot.
+   */
+  {
+    uint32_t r = reduce_k_for_n(k, shi);
+    if (r > 0) {
+      count = range_almost_prime_sieve(&S, k-r, slo >> r, 1+(shi >> r));
+      for (i = 0, j = 0; i < count; i++) {
+        UV v = S[i] << r;
+        if (v >= slo && v <= shi)
+          S[j++] = v;
+      }
+      *list = S;
+      return j;
+    }
+  }
 
   Ssize = (almost_prime_count_approx(k,shi) - almost_prime_count_approx(k,slo) + 1) * 1.2 + 100;
   New(0, S, Ssize, UV);
