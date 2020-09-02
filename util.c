@@ -795,8 +795,11 @@ UV rootint(UV n, UV k) {
 UV ipowsafe(UV n, UV k) {
   UV p = 1;
 
-  if (k < ROOT_MAX_3)
+  if (k < ROOT_MAX_3) {
+    if (k == 0) return 1;
+    if (k == 1) return n;
     return (n <= root_max[k]) ? ipow(n,k) : UV_MAX;
+  }
 
   while (k) {
     if (k & 1) { if (UV_MAX/n < p) return UV_MAX;  p *= n; }
