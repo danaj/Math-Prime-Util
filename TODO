@@ -276,6 +276,9 @@
   - Consider getting rid of the unused construction code.
   - foralmostprimes k reduction in PP
   - foralmostprimes XS tuning (size, when to do incremental, etc.)
+  - rethink the structure for foralmostprimes: iterator?  smart segment size?
+  - foralmostprimes ssize, maybe use approx counts?
+  - almost_prime_count(k,beg,end)
 
 - optimize nth_powerful, both in C and PP.
 
@@ -341,4 +344,4 @@
   - vecequal (equality for integer arrays, possibly recursive)
   - checksums?  Rather than print | md5sum.  adler32, sha1/2/3, blake2 (b2sum)
 
-- foralmostprimes:  doc, test
+- foralmostprimes:  test

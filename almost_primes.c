@@ -23,7 +23,6 @@
 /*                                KAP UTILITY                                 */
 /******************************************************************************/
 
-static uint32_t const _maxpow3 = (BITS_PER_WORD == 32) ? 20 : 40;
 #if BITS_PER_WORD == 32
 static uint32_t const _pow3[21] = {1,3,9,27,81,243,729,2187,6561,19683,59049,177147,531441,1594323,4782969,14348907,43046721,129140163,387420489,1162261467,3486784401U};
 #else
@@ -35,21 +34,19 @@ static const uint32_t _first_3[A078843_MAX_K+1] = {1, 2, 3, 5, 8, 14, 23, 39, 64
 /* For all n <= hi, we can get the same results using 2*result with lower k */
 static uint32_t reduce_k_for_n(uint32_t k, UV n) {
   uint32_t r = 0;
-  if (k <= 1 || k > 63) return 0;
-  if (k > _maxpow3)    /* Larger n would not fit in a UV type */
-    r = k-_maxpow3;
-  while (r < k && n < _pow3[k-r]) {
+  if (k <= 1 || k >= BITS_PER_WORD) return 0;
+  if (k > MPU_MAX_POW3)    /* Larger n would not fit in a UV type */
+    r = k-MPU_MAX_POW3;
+  while ((k-r) > 1 && (n>>r) < _pow3[k-r])
     r++;
-    n = (n+1) >> 1;
-  }
   return r;
 }
 
 /* Least r s.t.  almost_prime_count(k, n)  =  almost_prime_count(k-r, n >> r) */
 static void reduce_prime_count_factor(uint32_t *pk, UV *n) {
   uint32_t k = *pk, r = 0;
-  if (k > _maxpow3)    /* Larger n would not fit in a UV type */
-    r = k-_maxpow3;
+  if (k > MPU_MAX_POW3)    /* Larger n would not fit in a UV type */
+    r = k-MPU_MAX_POW3;
   while (k >= r && ((*n)>>r) < _pow3[k-r])
     r++;
   /* Reduce */
@@ -62,7 +59,7 @@ static void reduce_prime_count_factor(uint32_t *pk, UV *n) {
 /* Least r s.t.  nth_almost_prime(k,n)  =  nth_almost_prime(k-r,n) << r */
 static uint32_t reduce_nth_factor(uint32_t k, UV n) {
   uint32_t r = 0;
-  if (k <= 1 || k > 63) return 0;
+  if (k <= 1 || k >= BITS_PER_WORD) return 0;
   if (k > A078843_MAX_K) {
     if (n >= _first_3[A078843_MAX_K])
       return 0;
@@ -630,7 +627,7 @@ static void _tidy_list(UV **list, UV *Lsize, UV *count, int minimal) {
 UV range_construct_almost_prime(UV** list, uint32_t k, UV lo, UV hi) {
   UV *L, minkap1, lastprime, count = 0;
 
-  if (k == 0 || k > 63) { *list = 0; return 0; }
+  if (k == 0 || k >= BITS_PER_WORD) { *list = 0; return 0; }
   if ((lo >> k) == 0) lo = UVCONST(1) << k;
   if (hi > max_nth_almost_prime(k)) hi = max_nth_almost_prime(k);
   if (lo > hi) { *list = 0; return 0; }
@@ -670,11 +667,24 @@ UV range_construct_almost_prime(UV** list, uint32_t k, UV lo, UV hi) {
 UV range_almost_prime_sieve(UV** list, uint32_t k, UV slo, UV shi)
 {
   UV *S, Ssize, i, j, count;
+  const UV const thresh_pred = 40;
 
-  if (k == 0 || k > 63) { *list = 0; return 0; }
+  if (k == 0 || k >= BITS_PER_WORD) { *list = 0; return 0; }
   if ((slo >> k) == 0) slo = UVCONST(1) << k;
   if (shi > max_nth_almost_prime(k)) shi = max_nth_almost_prime(k);
   if (slo > shi) { *list = 0; return 0; }
+
+#if 1
+  if (shi-slo+1 < thresh_pred) {
+    Ssize = 3 + (thresh_pred >> 1);
+    New(0, S, Ssize, UV);
+    for (i = 0, j = 0; i < shi-slo+1; i++)
+      if (is_almost_prime(k, slo+i))
+        S[j++] = slo+i;
+    *list = S;
+    return j;
+  }
+#endif
 
   if (k == 1) return range_prime_sieve(list, slo, shi);
   if (k == 2) return range_semiprime_sieve(list, slo, shi);
@@ -687,14 +697,13 @@ UV range_almost_prime_sieve(UV** list, uint32_t k, UV slo, UV shi)
   {
     uint32_t r = reduce_k_for_n(k, shi);
     if (r > 0) {
-      count = range_almost_prime_sieve(&S, k-r, slo >> r, 1+(shi >> r));
-      for (i = 0, j = 0; i < count; i++) {
-        UV v = S[i] << r;
-        if (v >= slo && v <= shi)
-          S[j++] = v;
-      }
+      UV lo = (slo >> r) + (((slo >> r) << r) < slo);
+      UV hi = shi >> r;
+      count = range_almost_prime_sieve(&S, k-r, lo, hi);
+      for (i = 0; i < count; i++)
+        S[i] <<= r;
       *list = S;
-      return j;
+      return count;
     }
   }
 

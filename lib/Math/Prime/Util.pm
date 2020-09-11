@@ -1528,6 +1528,23 @@ This is essentially equivalent to:
 
   forcomposites { if (is_semiprime($_)) { ... } }
 
+=head2 foralmostprimes
+
+  foralmostprimes  { say }  3,  1000,2000;  # 3-almost-primes in [1000,2000]
+
+Similar to L</forprimes>, L</forsemiprimes>, etc. but takes an additional
+first argument C<k> and loops through the inclusive range for only those
+numbers with exactly C<k> factors.  If C<k=1> these are the primes, if
+C<k=2> these are the semiprimes, if C<k=3> these are the integers in the
+range with exactly 3 prime factors, etc.
+
+This is functionally equivalent to:
+
+  for ($a .. $b) { if (is_almost_prime($k,$_)) { ... } }
+  # or
+  for ($a .. $b) { if (prime_bigomega($_) == $k) { ... } }
+
+though B<significantly> faster and avoids issues with large loop variables.
 
 =head2 forfactored
 

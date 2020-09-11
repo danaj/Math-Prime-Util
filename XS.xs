@@ -3032,10 +3032,9 @@ forsemiprimes (SV* block, IN SV* svbeg, IN SV* svend = 0)
           (beg >= UVCONST(       1000000000000) && end-beg <     5000) ||
 #endif
           end-beg < 200 ) {
-        beg = (beg <= 4) ? 3 : beg-1;
-        while (beg++ < end) {
-          if (is_semiprime(beg)) {
-            sv_setuv(svarg, beg);
+        for (c = beg; c <= end && c >= beg; c++) {
+          if (is_semiprime(c)) {
+            sv_setuv(svarg, c);
             { ENTER; MULTICALL; LEAVE; }
           }
           CHECK_FORCOUNT;
@@ -3079,7 +3078,7 @@ void
 foralmostprimes (SV* block, IN UV k, IN SV* svbeg, IN SV* svend = 0)
   PROTOTYPE: &$$;$
   PREINIT:
-    UV beg, end;
+    UV c, beg, end, shiftres;
     GV *gv;
     HV *stash;
     SV* svarg;  /* We use svarg to prevent clobbering $_ outside the block */
@@ -3097,7 +3096,7 @@ foralmostprimes (SV* block, IN UV k, IN SV* svbeg, IN SV* svend = 0)
     }
 
     /* If k is over 63 but the beg/end points are UVs, then we're empty. */
-    if (k == 0 || k > (BITS_PER_WORD-1)) return;
+    if (k == 0 || k >= BITS_PER_WORD) return;
 
     if (items < 4) {
       beg = 1;
@@ -3106,8 +3105,21 @@ foralmostprimes (SV* block, IN UV k, IN SV* svbeg, IN SV* svend = 0)
       beg = my_svuv(svbeg);
       end = my_svuv(svend);
     }
+
     if (beg < (UVCONST(1) << k)) beg = UVCONST(1) << k;
     if (end > max_nth_almost_prime(k)) end = max_nth_almost_prime(k);
+    if (beg > end) return;
+
+    /* We might be able to reduce the k value. */
+    shiftres = 0;
+    if (k > MPU_MAX_POW3)
+      shiftres = k - MPU_MAX_POW3;
+    while ((k-shiftres) > 1 && (end >> shiftres) < ipow(3, k - shiftres))
+      shiftres++;
+    beg = (beg >> shiftres) + (((beg >> shiftres) << shiftres) < beg);
+    end = end >> shiftres;
+    k -= shiftres;
+    /* k <= 40 (64-bit) or 20 (32-bit). */
 
     START_FORCOUNT;
     SAVESPTR(GvSV(PL_defgv));
@@ -3115,35 +3127,28 @@ foralmostprimes (SV* block, IN UV k, IN SV* svbeg, IN SV* svend = 0)
     GvSV(PL_defgv) = svarg;
 #if USE_MULTICALL
     if (!CvISXSUB(cv) && end >= beg) {
-      UV c, seg_beg, seg_end, *S, count;
+      UV seg_beg, seg_end, *S, count, k3 = ipow(3,k);
       dMULTICALL;
       I32 gimme = G_VOID;
       PUSH_MULTICALL(cv);
-      if ( end-beg < 200 ) {
-        while (beg++ < end) {
-          if (is_almost_prime(k, beg)) {
-            sv_setuv(svarg, beg);
-            { ENTER; MULTICALL; LEAVE; }
-          }
+      while (beg <= end) {
+        /* TODO: The ideal size varies with k+range: 8k, 32k, 64k, 256k, ... */
+        UV ssize = 65536;
+        if (k > 30 || seg_beg >  9*k3) ssize *= 4;
+        if (k > 35 || seg_beg > 81*k3) ssize *= 4;
+        seg_beg = beg;
+        seg_end = end;
+        if ((seg_end - seg_beg) > ssize) seg_end = seg_beg + ssize - 1;
+        count = range_almost_prime_sieve(&S, k, seg_beg, seg_end);
+        for (c = 0; c < count; c++) {
+          sv_setuv(svarg, S[c] << shiftres);
+          { ENTER; MULTICALL; LEAVE; }
           CHECK_FORCOUNT;
         }
-      } else {
-        while (beg < end) {
-          UV ssize = (k < 8) ? 262144 : (262144 * 8 * k);
-          if (k > 38) ssize <<= (k-38);
-          seg_beg = beg;
-          seg_end = end;
-          if ((seg_end - seg_beg) > ssize) seg_end = seg_beg + ssize - 1;
-          count = range_almost_prime_sieve(&S, k, seg_beg, seg_end);
-          for (c = 0; c < count; c++) {
-            sv_setuv(svarg, S[c]);
-            { ENTER; MULTICALL; LEAVE; }
-            CHECK_FORCOUNT;
-          }
-          Safefree(S);
-          beg = seg_end+1;
-          CHECK_FORCOUNT;
-        }
+        Safefree(S);
+        if (seg_end == UV_MAX) break;
+        beg = seg_end+1;
+        CHECK_FORCOUNT;
       }
       FIX_MULTICALL_REFCOUNT;
       POP_MULTICALL;
@@ -3151,9 +3156,9 @@ foralmostprimes (SV* block, IN UV k, IN SV* svbeg, IN SV* svend = 0)
     else
 #endif
     if (beg <= end) {
-      while (beg++ < end) {
-        if (is_almost_prime(k,beg)) {
-          sv_setuv(svarg, beg);
+      for (c = beg; c <= end && c >= beg; c++) {
+        if (is_almost_prime(k,c)) {
+          sv_setuv(svarg, c << shiftres);
           PUSHMARK(SP);
           call_sv((SV*)cv, G_VOID|G_DISCARD);
           CHECK_FORCOUNT;

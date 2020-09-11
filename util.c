@@ -763,11 +763,9 @@ int is_power(UV n, UV a)
 }
 
 #if BITS_PER_WORD == 64
-#define ROOT_MAX_3 41
-static const uint32_t root_max[ROOT_MAX_3] = {0,0,4294967295U,2642245,65535,7131,1625,565,255,138,84,56,40,30,23,19,15,13,11,10,9,8,7,6,6,5,5,5,4,4,4,4,3,3,3,3,3,3,3,3,3};
+static const uint32_t root_max[1+MPU_MAX_POW3] = {0,0,4294967295U,2642245,65535,7131,1625,565,255,138,84,56,40,30,23,19,15,13,11,10,9,8,7,6,6,5,5,5,4,4,4,4,3,3,3,3,3,3,3,3,3};
 #else
-#define ROOT_MAX_3 21
-static const uint32_t root_max[ROOT_MAX_3] = {0,0,65535,1625,255,84,40,23,15,11,9,7,6,5,4,4,3,3,3,3,3};
+static const uint32_t root_max[1+MPU_MAX_POW3] = {0,0,65535,1625,255,84,40,23,15,11,9,7,6,5,4,4,3,3,3,3,3};
 #endif
 
 UV rootint(UV n, UV k) {
@@ -778,7 +776,7 @@ UV rootint(UV n, UV k) {
   if (k == 3) return icbrt(n);
 
   /* Bracket between powers of 2, but never exceed max power so ipow works */
-  max = 1 + ((k >= ROOT_MAX_3) ? 2 : root_max[k]);
+  max = 1 + ((k > MPU_MAX_POW3) ? 2 : root_max[k]);
   lo = UVCONST(1) << (log2floor(n)/k);
   hi = ((lo*2) < max) ? lo*2 : max;
 
@@ -795,7 +793,7 @@ UV rootint(UV n, UV k) {
 UV ipowsafe(UV n, UV k) {
   UV p = 1;
 
-  if (k < ROOT_MAX_3) {
+  if (k <= MPU_MAX_POW3) {
     if (k == 0) return 1;
     if (k == 1) return n;
     return (n <= root_max[k]) ? ipow(n,k) : UV_MAX;
