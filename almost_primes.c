@@ -667,7 +667,7 @@ UV range_construct_almost_prime(UV** list, uint32_t k, UV lo, UV hi) {
 UV range_almost_prime_sieve(UV** list, uint32_t k, UV slo, UV shi)
 {
   UV *S, Ssize, i, j, count;
-  const UV const thresh_pred = 40;
+  const UV thresh_pred = 40;
 
   if (k == 0 || k >= BITS_PER_WORD) { *list = 0; return 0; }
   if ((slo >> k) == 0) slo = UVCONST(1) << k;

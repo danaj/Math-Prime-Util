@@ -142,7 +142,7 @@ static const unsigned char wheel240[] = {1,7,11,13,17,19,23,29,31,37,41,43,47,49
     UV b_ = a;                       /* begin value n */     \
     UV f_ = b;                       /* final value n */     \
     UV begw_ = (b_-base_)/nperw_;    /* first word */        \
-    UV endw_ = (f_-base_)/nperw_;    /* first word */        \
+    UV endw_ = (f_-base_)/nperw_;    /* last word */         \
     UV sw_, tz_, p; \
     base_ += begw_*nperw_; \
     while (begw_ <= endw_) { \
