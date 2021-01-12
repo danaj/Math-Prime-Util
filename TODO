@@ -333,15 +333,13 @@
 - GMP
   - powerful_count
   - nth_powerful
-  - is_practical
   - rootmod, binomialmod
   - is_almost_prime
   - almost primes
-  - bigomega, omega
 
 - Possible new:
-  - lshiftint($n,$bits), rshiftint
+  - shiftint($n,$bits), just like Pari/GP shift(n,bits).  Left shift, with
+    right shift being negative $bits.  Negative $n gives divrem's quotient.
+    q: shiftint or lshiftint + rshiftint, arithmetic / logical.
   - vecequal (equality for integer arrays, possibly recursive)
   - checksums?  Rather than print | md5sum.  adler32, sha1/2/3, blake2 (b2sum)
-
-- foralmostprimes:  test

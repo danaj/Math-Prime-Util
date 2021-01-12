@@ -6,10 +6,12 @@ use Test::More;
 use Math::Prime::Util qw/primes prev_prime next_prime
                          forprimes forcomposites foroddcomposites fordivisors
                          forpart forcomp forcomb forperm forderange formultiperm
-                         forfactored forsquarefree forsemiprimes
+                         forfactored forsquarefree
+                         forsemiprimes foralmostprimes
                          forsetproduct
                          lastfor
-                         is_power is_semiprime vecsum sqrtint
+                         is_power is_semiprime is_almost_prime
+                         vecsum sqrtint
                          prime_iterator prime_iterator_object/;
 use Math::BigInt try => "GMP,Pari";
 use Math::BigFloat;
@@ -32,6 +34,7 @@ plan tests => 8        # forprimes errors
             + 12       # lastfor
             + 5        # forfactored and forsquarefree
             + 1        # forsemiprimes
+            + 1+10     # foralmostprimes
             + 9        # forsetproduct
             + 0;
 
@@ -364,6 +367,19 @@ sub a053462 {
   my @got;
   forsemiprimes { push @got, $_; } 1000;
   is_deeply(\@got, [grep { is_semiprime($_) } 0 .. 1000], "forsemiprimes 1000");
+}
+
+################### foralmostprimes
+
+{
+  my $num = 0;
+  foralmostprimes { $num++; } 0,1,1000;
+  is($num, 0, "foralmostprimes 0,1000 is empty");
+}
+for my $k (1 .. 10) {
+  my @got;
+  foralmostprimes { push @got, $_; } $k,1000;
+  is_deeply(\@got, [grep { is_almost_prime($k,$_) } 0 .. 1000], "foralmostprimes $k,1000");
 }
 
 ################### forsetproduct
