@@ -1354,7 +1354,7 @@ void is_prime(IN SV* svn)
       case 17:_vcallsub_with_gmp(0.47,"is_square"); break;
       case 18:_vcallsub_with_gmp(0.28,"is_mersenne_prime"); break;
       case 19:_vcallsub_with_gmp(0.48,"is_lucky"); break;
-      case 20:_vcallsub_with_gmp(0.00,"is_practical"); break;
+      case 20:_vcallsub_with_gmp(0.53,"is_practical"); break;
       case 21:
       default:_vcallsub_with_gmp(0.47,"is_totient"); break;
     }
@@ -2119,7 +2119,7 @@ is_smooth(IN SV* svn, IN SV* svk)
       case 0:  _vcallsub_with_gmp(0.53,"is_smooth");  break;
       case 1:  _vcallsub_with_gmp(0.53,"is_rough");  break;
       case 2:
-      default: _vcallsub_with_gmp(0.53,"is_almost_prime"); break;
+      default: _vcallsub_with_gmp(0.00,"is_almost_prime"); break;
     }
     return;
 
@@ -2255,7 +2255,7 @@ kronecker(IN SV* sva, IN SV* svb)
       case 13:
       default: _vcallsub_with_gmp(0.36,"is_primitive_root"); break;
     }
-    if (ix >= 2 && ix <= 10)
+    if (ix >= 2 && ix <= 11)
       objectify_result(aTHX_ ST(0), ST(0));
     return; /* skip implicit PUTBACK */
 
@@ -2452,8 +2452,8 @@ carmichael_lambda(IN SV* svn)
       case 1:  _vcallsub_with_pp("mertens"); break;
       case 2:  _vcallsub_with_gmp(0.22,"liouville"); break;
       case 3:  _vcallsub_with_gmp(0.00,"sumliouville"); break;
-      case 4:  _vcallsub_with_gmp(0.00,"prime_omega"); break;
-      case 5:  _vcallsub_with_gmp(0.00,"prime_bigomega"); break;
+      case 4:  _vcallsub_with_gmp(0.53,"prime_omega"); break;
+      case 5:  _vcallsub_with_gmp(0.53,"prime_bigomega"); break;
       case 6:  _vcallsub_with_pp("chebyshev_theta"); break;
       case 7:  _vcallsub_with_pp("chebyshev_psi"); break;
       case 8:  _vcallsub_with_pp("factorial"); break;  /* use PP */
