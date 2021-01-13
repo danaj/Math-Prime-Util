@@ -90,6 +90,7 @@ plan tests =>  0
              + 8   # miller-rabin random
              + 2   # Perrin PsP
              + 1   # valuation
+             + 5   # vecequal
              + 1;
 
 # Using GMP makes these tests run about 2x faster on some machines
@@ -148,6 +149,7 @@ use Math::Prime::Util qw/
   is_bpsw_prime
   verify_prime
   valuation
+  vecequal
 /;
 # TODO:  is_strong_lucas_pseudoprime
 #        ExponentialIntegral
@@ -401,6 +403,19 @@ SKIP: {
 ###############################################################################
 
 is( valuation(6**10000-1,5), 5, "valuation(6^10000,5) = 5" );
+
+###############################################################################
+
+{
+  my $ten = Math::BigInt->new("10");
+  my $six = Math::BigInt->new("6");
+  is( vecequal([$ten,20],[$ten,20]), 1, "vecequal with Math::BigInt" );
+  is( vecequal([$ten,20],[10,20]), 1, "vecequal with Math::BigInt and scalar" );
+  is( vecequal([$ten,$six],[$ten,$six]), 1, "vecequal with equal Math::BigInt" );
+  is( vecequal([$ten,20],[$six,20]), 0, "vecequal with unequal Math::BigInt" );
+
+  ok(!eval { vecequal([$ten,{}],[$ten,{}]); }, "vecequal with hash should error");
+}
 
 ###############################################################################
 

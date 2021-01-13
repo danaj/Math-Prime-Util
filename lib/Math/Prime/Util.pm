@@ -74,7 +74,7 @@ our @EXPORT_OK =
       gcd lcm factor factor_exp divisors valuation hammingweight
       todigits fromdigits todigitstring sumdigits
       invmod sqrtmod rootmod addmod submod mulmod divmod powmod qnr
-      vecsum vecmin vecmax vecprod vecreduce vecextract
+      vecsum vecmin vecmax vecprod vecreduce vecextract vecequal
       vecany vecall vecnotall vecnone vecfirst vecfirstidx
       moebius mertens liouville sumliouville prime_omega prime_bigomega
       euler_phi jordan_totient exp_mangoldt
@@ -3180,6 +3180,28 @@ the ordering is preserved.  Hence these are equivalent:
 
     vecextract($aref, $iref);
     @$aref[@$iref];
+
+=head2 vecequal
+
+  my $is_equal = vecequal( [1,2,-3,[4,5,undef]], [1,2,-3,[4,5,undef]] );
+
+Compare two arrays for equality, including nested arrays.  The values inside
+the two input array references must be either an array reference, a scalar,
+or undef.  Simple integers are tested with integer comparison, while other
+scalars use string comparison.
+
+This is a vector comparison, not set comparison, so ordering is important.
+For the sake of wider applicability, non-integers are allowed.  Types other
+than integers and strings (e.g. floating point values) are not guaranteed
+to have consistent results.
+
+No circular reference detection is performed.
+
+Performance with XS is 3x to 100x faster than perl looping or modules like
+Array::Compare, Data::Cmp, match::smart, List::Compare, and Algorithm::Diff.
+Those modules have additional functionality so this is not a complete
+comparison.
+
 
 =head2 todigits
 

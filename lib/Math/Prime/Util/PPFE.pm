@@ -163,6 +163,8 @@ sub entropy_bytes {
 *sqrtmod = \&Math::Prime::Util::PP::sqrtmod;
 *rootmod = \&Math::Prime::Util::PP::rootmod;
 
+*vecequal = \&Math::Prime::Util::PP::vecequal;
+
 sub jordan_totient {
   my($k, $n) = @_;
   _validate_positive_integer($k);

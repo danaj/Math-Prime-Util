@@ -352,6 +352,81 @@ static int arrayref_to_int_array(pTHX_ UV** ret, AV* av, int base)
   return len;
 }
 
+static int _compare_array_refs(pTHX_ SV* a, SV* b)
+{
+  AV *ava, *avb;
+  int i, alen, blen;
+  if ( ((!SvROK(a)) || (SvTYPE(SvRV(a)) != SVt_PVAV)) ||
+       ((!SvROK(b)) || (SvTYPE(SvRV(b)) != SVt_PVAV)) )
+    return -1;
+  ava = (AV*) SvRV(a);
+  avb = (AV*) SvRV(b);
+  alen = av_len(ava);
+  blen = av_len(avb);
+  if (alen != blen)
+    return 0;
+  for (i = 0; i <= alen; i++) {
+    SV** iva = av_fetch(ava, i, 0);
+    SV** ivb = av_fetch(avb, i, 0);
+    SV *sva, *svb;
+    int res;
+
+    if (!iva || !ivb)  return -1;
+    sva = *iva;
+    svb = *ivb;
+
+    /* One undef and one defined value are not equal. */
+    if (SvOK(sva) != SvOK(svb))
+      return 0;
+    /* Two undefs are fine. */
+    if (!SvOK(sva) && !SvOK(svb))
+      continue;
+    /* Hashes, I/O, etc. are not ok. */
+    if (SvTYPE(sva) >= SVt_PVAV || SvTYPE(svb) >= SVt_PVAV)
+      return -1;
+
+    /* One of them is a non-object reference */
+    if ( (SvROK(sva) && !sv_isobject(sva)) ||
+         (SvROK(svb) && !sv_isobject(svb)) ) {
+      /* Always error if either one is not an array reference. */
+      if ( (SvROK(sva) && SvTYPE(SvRV(sva)) != SVt_PVAV) ||
+           (SvROK(svb) && SvTYPE(SvRV(svb)) != SVt_PVAV) )
+        return -1;
+      /* One reference, one non-reference = not equal */
+      if (SvROK(sva) != SvROK(svb))
+        return 0;
+      /* Now we know both are array references.  Compare. */
+      res = _compare_array_refs(aTHX_ sva, svb);
+      if (res == 1) continue;
+      return res;
+    }
+
+    /* Common case: two simple integers */
+    if (    SVNUMTEST(sva) && SVNUMTEST(svb)
+         && (SvTYPE(sva) == SVt_IV || SvTYPE(sva) == SVt_PVIV)
+         && (SvTYPE(svb) == SVt_IV || SvTYPE(svb) == SVt_PVIV) ) {
+      UV va = my_svuv(sva), vb = my_svuv(svb);
+      if (va != vb) return 0;
+      continue;
+    }
+
+#if 0   /* Allow other types */
+    /* If not integers, fail. */
+    if (_validate_int(aTHX_ sva, 1) == 0 || _validate_int(aTHX_ svb, 1) == 0)
+      return -1;
+#endif
+
+    /* Convert both to strings and compare. */
+    {
+      const char* stra = SvPV_nolen(sva);
+      const char* strb = SvPV_nolen(svb);
+      if (strlen(stra) != strlen(strb) || strcmp(stra,strb) != 0)
+        return 0;
+    }
+  }
+  return 1;
+}
+
 static UV negamod(IV a, UV n) {
   UV negamod = ((UV)(-a)) % n;
   return (negamod == 0) ? 0 : n-negamod;
@@ -1197,6 +1272,17 @@ vecextract(IN SV* x, IN SV* svm)
       _vcallsubn(aTHX_ GIMME_V, VCALL_PP, "vecextract", items, 0);
       return;
     }
+
+void
+vecequal(IN SV* a, IN SV* b)
+  PREINIT:
+    int res;
+  PPCODE:
+    res = _compare_array_refs(aTHX_ a, b);
+    if (res == -1)
+      croak("vecequal element not scalar or array reference");
+    RETURN_NPARITY(res);
+    return;
 
 void
 chinese(...)

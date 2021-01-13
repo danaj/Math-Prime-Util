@@ -190,6 +190,7 @@ Tags:
   vecmin(@list)                       minimum of list of integers
   vecmax(@list)                       maximum of list of integers
   vecextract(\@list, mask)            select from list based on mask
+  vecequal(\@list1, \@list2)          compare equality of two arrays
   vecreduce { ... } @list             reduce / left fold applied to list
   vecall { ... } @list                return true if all are true
   vecany { ... } @list                return true if any are true

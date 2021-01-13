@@ -3558,6 +3558,29 @@ sub vecextract {
   @$aref[@v];
 }
 
+sub vecequal {
+  my($aref, $bref) = @_;
+  croak "vecequal element not scalar or array reference"
+    unless ref($aref) eq 'ARRAY' && ref($bref) eq 'ARRAY';
+  return 0 unless $#$aref == $#$bref;
+  my $i = 0;
+  for my $av (@$aref) {
+    my $bv = $bref->[$i++];
+    next if !defined $av && !defined $bv;
+    return 0 if !defined $av || !defined $bv;
+    if ( (ref($av) =~ /^(ARRAY|HASH|CODE|FORMAT|IO|REGEXP)$/i) ||
+         (ref($bv) =~ /^(ARRAY|HASH|CODE|FORMAT|IO|REGEXP)$/i) ) {
+      next if (ref($av) eq ref($bv)) && vecequal($av, $bv);
+      return 0;
+    }
+    # About 7x faster if we skip the validates.
+    # _validate_integer($av);
+    # _validate_integer($bv);
+    return 0 unless $av eq $bv;
+  }
+  1;
+}
+
 sub sumdigits {
   my($n,$base) = @_;
   my $sum = 0;

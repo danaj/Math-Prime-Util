@@ -5,6 +5,7 @@ use warnings;
 use Test::More;
 use Math::Prime::Util qw/vecreduce
                          vecextract
+                         vecequal
                          vecmin vecmax
                          vecsum vecprod factorial
                          vecany vecall vecnotall vecnone vecfirst vecfirstidx/;
@@ -85,6 +86,7 @@ plan tests => 0
             + 1 + scalar(@vecprods)
             + 4    # vecreduce
             + 2    # vecextract
+            + 14   # vecequal
             + 3*4  # vec{any,all,notall,none}
             + 5    # vecfirst
             + 5    # vecfirstidx
@@ -140,6 +142,26 @@ foreach my $r (@vecprods) {
 {
   is_deeply([vecextract(['a'..'z'],12345758)], [qw/b c d e h i n o s t u v x/], "vecextract bits");
   is(join("", vecextract(['a'..'z'],[22,14,17,10,18])), "works", "vecextract list");
+}
+
+###### vecequal
+{
+  is(vecequal([],[]), 1, "vecequal([],[]) = 1");
+  is(vecequal([undef],[undef]), 1, "vecequal([undef],[undef]) = 1");
+  is(vecequal([0],[0]), 1, "vecequal([0],[0]) = 1");
+  is(vecequal([undef],[]), 0, "vecequal([undef],[]) = 0");
+  is(vecequal([undef],[0]), 0, "vecequal([undef],[0]) = 0");
+  is(vecequal([0],[[]]), 0, "vecequal([0],[[]]) = 0");
+  is(vecequal([],[[]]), 0, "vecequal([],[[]]) = 0");
+  is(vecequal([0],["a"]), 0, "vecequal([0],[\"a\"]) = 0");
+
+  is(vecequal([1,2,3],[1,2,3]), 1, "vecequal([1,2,3],[1,2,3]) = 1");
+  is(vecequal([1,2,3],[3,2,1]), 0, "vecequal([1,2,3],[3,2,1]) = 0");
+  is(vecequal([-1,2,3],[-1,2,3]), 1, "vecequal([-1,2,3],[-1,2,3]) = 1");
+  is(vecequal([undef,[1,2],"a"],[undef,[1,2],"a"]), 1, "vecequal([undef,[1,2],\"a\"],[undef,[1,2],\"a\"] = 1");
+
+  is(vecequal(\@vecsums, \@vecsums), 1, "vecequal = 1 for vecsums");
+  is(vecequal(\@vecsums, \@vecprods), 0, "vecequal = 0 for vecsums");
 }
 
 ###### vec{any,all,notall,none}
