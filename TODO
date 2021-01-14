@@ -304,9 +304,6 @@
 
 - extend qnr with optional root argument, cubic non-residue, etc.
 
-- to_zeckendorf (https://oeis.org/A014417), from_zeckendorf ?
-  Is fibbinary better?
-
 - practical numbers: make OEIS sequence with count <= 10^n.
   mpu '$s=1; for my $e (1..9) { $s += is_practical($_) for 10**($e-1)+1..10**$e; say "10^$e  $s"; }'
   mpu 'for my $e (1..9) { $s=0; $s += is_practical($_) for 1..10**$e; say "10^$e  $s"; }'
@@ -342,3 +339,5 @@
     right shift being negative $bits.  Negative $n gives divrem's quotient.
     q: shiftint or lshiftint + rshiftint, arithmetic / logical.
   - checksums?  Rather than print | md5sum.  adler32, sha1/2/3, blake2 (b2sum)
+
+- inverse sigma.  Better, determine how to generalize this somehow.

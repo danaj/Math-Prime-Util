@@ -116,6 +116,10 @@ extern int to_digit_array(int* bits, UV n, int base, int length);
 extern int to_digit_string(char *s, UV n, int base, int length);
 extern int to_string_128(char s[40], IV hi, UV lo);
 
+extern int validate_zeckendorf(const char* str);
+extern UV from_zeckendorf(const char* str);
+extern char* to_zeckendorf(UV n);
+
 extern int is_catalan_pseudoprime(UV n);
 
 extern UV  polygonal_root(UV n, UV k, int* overflow);

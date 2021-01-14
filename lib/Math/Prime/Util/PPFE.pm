@@ -164,6 +164,8 @@ sub entropy_bytes {
 *rootmod = \&Math::Prime::Util::PP::rootmod;
 
 *vecequal = \&Math::Prime::Util::PP::vecequal;
+*tozeckendorf = \&Math::Prime::Util::PP::tozeckendorf;
+*fromzeckendorf = \&Math::Prime::Util::PP::fromzeckendorf;
 
 sub jordan_totient {
   my($k, $n) = @_;

@@ -4132,6 +4132,53 @@ sub fromdigits {
   $n;
 }
 
+sub _validate_zeckendorf {
+  my $s = shift;
+  if ($s ne '0') {
+    croak "fromzeckendorf takes a binary string as input"
+      unless $s =~ /^1[01]*$/;
+    croak "fromzeckendorf binary input not in canonical Zeckendorf form"
+      if $s =~ /11/;
+  }
+  1;
+}
+
+sub fromzeckendorf {
+  my($s) = @_;
+  _validate_zeckendorf($s);
+
+  my($n, $fb, $fc) = (0, 1, 1);
+  for my $c (split(//,reverse $s)) {
+    $n = Math::Prime::Util::addint($n,$fc) if $c eq '1';
+    ($fb, $fc) = ($fc, Math::Prime::Util::addint($fb,$fc));
+  }
+  $n;
+}
+
+sub tozeckendorf {
+  my($n) = @_;
+  _validate_positive_integer($n);
+  return '0' if $n == 0;
+
+  my($rn, $s, $fa, $fb, $fc) = ($n, '', 0, 1, 1);
+  my($i, $k);
+  for ($k = 2; $fc <= $rn; $k++) {
+    ($fa, $fb, $fc) = ($fb, $fc, Math::Prime::Util::addint($fb,$fc));
+  }
+  for ($i = $k-1; $i >= 2; $i--) {
+    ($fc, $fb, $fa) = ($fb, $fa, Math::Prime::Util::subint($fb,$fa));
+    if ($fc <= $rn) {
+      $rn = subint($rn, $fc);
+      $s .= '1';
+    } else {
+      $s .= '0';
+    }
+  }
+  # croak "wrong tozeckendorf $n" unless $n == fromzeckendorf($s);
+  $s;
+}
+
+
 sub sqrtint {
   my($n) = @_;
   my $sqrt = Math::BigInt->new("$n")->bsqrt;

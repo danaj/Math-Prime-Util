@@ -206,6 +206,8 @@ Tags:
   fromdigits(\@d,[,base])             convert base digit vector to number
   fromdigits(str,[,base])             convert base digit string to number
   sumdigits(n)                        sum of digits, with optional base
+  tozeckendorf(n)                     convert n to Zeckendorf/Fibbinary
+  fromzeckendorf(str)                 convert Zeckendorf binary str to num
   is_square(n)                        return 1 if n is a perfect square
   is_power(n)                         return k if n = c^k for integer c
   is_power(n,k)                       return 1 if n = c^k for integer c, k

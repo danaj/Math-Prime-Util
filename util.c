@@ -3700,6 +3700,85 @@ int to_string_128(char str[40], IV hi, UV lo)
   return slen;
 }
 
+#if BITS_PER_WORD == 64
+  #define MAX_FIB_LEN 92
+  #define MAX_FIB_STR "10100101000100000101000100010010001001000000001001000100100010101000100000101000101000001010"
+#else
+  #define MAX_FIB_LEN 46
+  #define MAX_FIB_STR "1010001000010101000101000100000001000100100100"
+#endif
+#define MAX_FIB_VAL (MAX_FIB_LEN+1)
+
+/* 0 = bad,   -1 = not canonical,   1 = good,   2 = ok but out of UV range */
+int validate_zeckendorf(const char* str)
+{
+  int i;
+  if (str == 0)
+    return 0;
+  if (str[0] != '1')
+    return (str[0] == '0' && str[1] == '\0');
+  /* str[0] = 1 */
+  for (i = 1; str[i] != '\0'; i++) {
+    if (str[i] == '1') {
+      if (str[i-1] == '1')
+        return -1;
+    } else if (str[i] != '0') {
+      return 0;
+    }
+  }
+  /* Valid number.  Check if in range. */
+  if (i > MAX_FIB_LEN || (i == MAX_FIB_LEN && strcmp(str, MAX_FIB_STR) > 0))
+    return 2;
+  return 1;
+}
+
+UV from_zeckendorf(const char* str)
+{
+  int i, len;
+  UV n, fa = 0, fb = 1, fc = 1;  /* fc = fib(2) */
+
+  if (str == 0) return 0;
+  for (len = 0; len+1 <= MAX_FIB_LEN && str[len] != '\0'; len++)
+    if (str[len] != '0' && str[len] != '1')
+      return 0;
+  if (len == 0 || len > MAX_FIB_LEN) return 0;
+  n = (str[len-1] == '1');
+  for (i = len-2; i >= 0; i--) {
+    fa = fb; fb = fc; fc = fa+fb;  /* Advance */
+    if (str[i] == '1') n += fc;
+  }
+  return n;
+}
+
+char* to_zeckendorf(UV n)
+{
+  char *str;
+  int i, k, spos = 0;
+  UV fa = 0, fb = 1, fc = 1;  /* fc = fib(2) */
+
+  New(0, str, MAX_FIB_LEN+1, char);
+  if (n == 0) {
+    str[spos++] = '0';
+  } else {
+    UV rn = n;
+    for (k = 2; k <= MAX_FIB_VAL && fc <= rn; k++) {
+      fa = fb; fb = fc; fc = fa+fb;  /* Advance: fc = fib(k) */
+    }
+    for (i = k-1; i >= 2; i--) {
+      fc = fb; fb = fa; fa = fc-fb;  /* Reverse: fc = fib(i) */
+      str[spos++] = '0' + (fc <= rn);
+      if (fc <= rn) rn -= fc;
+    }
+  }
+  str[spos++] = '\0';
+#if 0
+  if (validate_zeckendorf(str) != 1) croak("to_zeckendorf bad for %lu\n",n);
+  if (from_zeckendorf(str) != n) croak("to_zeckendorf wrong for %lu\n",n);
+#endif
+  return str;
+}
+
+
 /* Oddball primality test.
  * In this file rather than primality.c because it uses factoring (!).
  * Algorithm from Charles R Greathouse IV, 2015 */

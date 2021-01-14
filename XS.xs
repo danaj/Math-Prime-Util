@@ -2766,6 +2766,39 @@ void todigits(SV* svn, int base=10, int length=-1)
     }
     return;
 
+void tozeckendorf(SV* svn)
+  PREINIT:
+    int i, status;
+    char *str;
+  PPCODE:
+    status = _validate_int(aTHX_ svn, 0);
+    if (status == 1) {
+      str = to_zeckendorf(my_svuv(svn));
+      XPUSHs(sv_2mortal(newSVpv(str, 0)));
+      Safefree(str);
+      XSRETURN(1);
+    } else {
+      _vcallsub_with_pp("tozeckendorf");
+    }
+    return;
+
+void fromzeckendorf(IN char* str)
+  PREINIT:
+    int status;
+  PPCODE:
+    status = validate_zeckendorf(str);
+    if (status == 0) {
+      croak("fromzeckendorf takes a binary string as input");
+    } else if (status == -1) {
+      croak("fromzeckendorf binary input not in canonical Zeckendorf form");
+    } else if (status == 1) {
+      XSRETURN_UV(from_zeckendorf(str));
+    } else {
+      _vcallsub_with_pp("fromzeckendorf");
+      objectify_result(aTHX_ 0, ST(0));
+    }
+    return;
+
 bool
 _validate_num(SV* svn, ...)
   PREINIT:

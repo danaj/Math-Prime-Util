@@ -73,6 +73,7 @@ our @EXPORT_OK =
       primorial pn_primorial consecutive_integer_lcm gcdext chinese
       gcd lcm factor factor_exp divisors valuation hammingweight
       todigits fromdigits todigitstring sumdigits
+      tozeckendorf fromzeckendorf
       invmod sqrtmod rootmod addmod submod mulmod divmod powmod qnr
       vecsum vecmin vecmax vecprod vecreduce vecextract vecequal
       vecany vecall vecnotall vecnone vecfirst vecfirstidx
@@ -3249,6 +3250,42 @@ native integer or a bigint).
 
 This corresponds to Pari's C<fromdigits> function and
 Mathematica's C<FromDigits> function.
+
+=head2 tozeckendorf
+
+  say tozeckendorf(24);                     #  "1000100"
+  say fromdigits(tozeckendorf(24),2);       #  68
+
+Given an unsigned integer C<n>, return the Zeckendorf representation as
+a binary string.  This represents C<n> as a sum of nonconsecutive
+Fibonacci numbers.
+Each set bit indicates summing the corresponding Fibonacci number,
+e.g. 24 = 21+3 = F(8)+F(4).
+F(0)=0 and F(1)=1 are not used.
+This is sometimes also called Fibbinary or the Fibonacci base.
+
+The restriction that consecutive values are not used ("11" cannot appear)
+is required to create a unique mapping to the positive integers.
+A simple greedy algorithm suffices to construct the encoding.
+
+    say reverse(tozeckendorf($_)).'1'  for  1..20
+
+shows the first twenty Fibonacci C1 codes (Fraenkel and Klein, 1996).
+This is an example of a self-synchronizing variable length code.
+
+This corresponds to Mathematica's C<ZeckendorfRepresentation[n]> function.
+Also see L<Math::NumSeq::Fibbinary> and L<Data::BitStream::Code::Fibonacci>.
+
+=head2 fromzeckendorf
+
+  say fromzeckendorf("1000100");            #  24
+  say fromzeckendorf(todigitstring(68,2));  #  24
+
+Given a binary string in Zeckendorf representation, return the corresponding
+integer.  The string may not contain anything other than the characters
+C<0> and C<1>, and must not contain C<11>.  The resulting number is the sum
+of the Fibinacci numbers in the position starting from the right
+(The Fibonacci index is offset by two, as F(0)=0 and F(1)=1 are not used).
 
 =head2 sumdigits
 

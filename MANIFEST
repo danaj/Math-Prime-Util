@@ -190,6 +190,7 @@ t/26-powerful.t
 t/26-practical.t
 t/26-smooth.t
 t/26-vec.t
+t/26-zeckendorf.t
 t/27-bernfrac.t
 t/28-pi.t
 t/29-mersenne.t
