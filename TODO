@@ -328,10 +328,7 @@
    - negative k extension
 
 - GMP
-  - powerful_count
-  - nth_powerful
   - rootmod, binomialmod
-  - is_almost_prime
   - almost primes
 
 - Possible new:

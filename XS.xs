@@ -1547,7 +1547,7 @@ is_perrin_pseudoprime(IN SV* svn, IN int k = 0)
       case 0: _vcallsub_with_gmp( (k == 0) ? 0.20 : 0.40, "is_perrin_pseudoprime"); break;
       case 1: _vcallsub_with_gmp(0.13,"is_almost_extra_strong_lucas_pseudoprime"); break;
       case 2: _vcallsub_with_gmp(0.53, "is_powerful"); break;
-      case 3: _vcallsub_with_gmp(0.00, "powerful_count"); break;
+      case 3: _vcallsub_with_gmp(0.53, "powerful_count"); break;
       case 4: _vcallsub_with_gmp(0.00, "nth_powerful"); break;
       default: break;
     }
@@ -2205,7 +2205,7 @@ is_smooth(IN SV* svn, IN SV* svk)
       case 0:  _vcallsub_with_gmp(0.53,"is_smooth");  break;
       case 1:  _vcallsub_with_gmp(0.53,"is_rough");  break;
       case 2:
-      default: _vcallsub_with_gmp(0.00,"is_almost_prime"); break;
+      default: _vcallsub_with_gmp(0.53,"is_almost_prime"); break;
     }
     return;
 
