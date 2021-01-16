@@ -1747,8 +1747,8 @@ next_prime(IN SV* svn)
       case 20: _vcallsub_with_pp("ramanujan_prime_count_lower");  break;
       case 21: _vcallsub_with_pp("twin_prime_count_approx"); break;
       case 22: _vcallsub_with_pp("semiprime_count_approx"); break;
-      case 23: _vcallsub_with_pp("perfect_power_count"); break;
-      case 24: _vcallsub_with_pp("prime_power_count"); break;
+      case 23: _vcallsub_with_gmpobj(0.53,"perfect_power_count"); break;
+      case 24: _vcallsub_with_gmpobj(0.53,"prime_power_count"); break;
       case 25:
       default: _vcallsub_with_gmpobj(0.44,"urandomm"); break;
     }

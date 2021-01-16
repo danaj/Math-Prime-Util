@@ -338,3 +338,8 @@
   - checksums?  Rather than print | md5sum.  adler32, sha1/2/3, blake2 (b2sum)
 
 - inverse sigma.  Better, determine how to generalize this somehow.
+
+- stronger BPSW test:  https://arxiv.org/abs/2006.14425
+
+- faster prime gaps:  https://arxiv.org/abs/2012.03771
+                      https://github.com/sethtroisi/prime-gap
