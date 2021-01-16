@@ -56,7 +56,8 @@
 #elif BITS_PER_WORD == 64 && HAVE_UINT128
 
   /* We're 64-bit, using a modern gcc, and the target has some 128-bit type.
-   * The actual number of targets that have this implemented are limited. */
+   * The actual number of targets that have this implemented are limited.
+   * However, the late 2020 Apple M1 Macs use this. */
 
   #define mulmod(a,b,n) (UV)( ((uint128_t)(a) * (b)) % (n) )
   #define sqrmod(a,n)   (UV)( ((uint128_t)(a) * (a)) % (n) )
