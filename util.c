@@ -4362,15 +4362,19 @@ UV powerful_count(UV n, UV k) {
  *    overflow here should return 0
  */
 UV nth_powerful(UV n, UV k) {
-  static UV const maxpow[11] = {0,UV_MAX,9330124695,11938035,526402,85014,25017,10251,5137,2903,1796};
   static unsigned char const mink[20+1] = {0,0,1,2,4,6,7,9,11,12,14,16,18,19,21,23,24,26,28,30,31};
-  UV lo, hi;
+#if BITS_PER_WORD == 64
+  static UV const maxpow[11] = {0,UV_MAX,9330124695,11938035,526402,85014,25017,10251,5137,2903,1796};
+#else
+  static UV const maxpow[11] = {0,UV_MAX,140008,6215,1373,536,281,172,115,79,57};
+#endif
+  UV lo, hi, max;
 
   if (k == 0 || k >= BITS_PER_WORD) return 0;
   if (k == 1 || n <= 1) return n;
 
-  if (k <= 10 && n > maxpow[k]) return 0;
-  if (k > 10 && (n > maxpow[10] || n > powerful_count(UV_MAX,k))) return 0;
+  max = (k <= 10) ? maxpow[k] : powerful_count(UV_MAX,k);
+  if (n > max) return 0;
 
   if (n <= 20 && k >= mink[n]) return UVCONST(1) << (k+(n-2));
   /* Now k >= 2, n >= 4 */
@@ -4382,9 +4386,11 @@ UV nth_powerful(UV n, UV k) {
     double dhi = nc + 0.5 * n53;
     lo = (UV) dlo;
     hi = (n < 170) ? 8575 : (dhi >= UV_MAX) ? UV_MAX : 1 + (UV) dhi;
-  } else { /* min/max so not good at all */
+  } else { /* Very poor estimates: TODO make these better */
     lo = (UVCONST(1) << (k+1))+1;
     hi = UV_MAX;
+    /* Linear from min to max rather than a nice power fit as above */
+    if (n < max)  hi = lo + (((double)n / (double)max) * (UV_MAX-lo) + 1);
   }
 
   return inverse_interpolate(lo, hi, n, k, &powerful_count, 0);

@@ -1291,15 +1291,16 @@ sub nth_powerful {
   # hi could be too low.
   while (Math::Prime::Util::powerful_count($hi,$k) < $n) {
     $lo = $hi+1;
-    $hi = mulint(2, $hi);
+    $hi = mulint($k, $hi);
   }
 
+  # Simple binary search
   while ($lo < $hi) {
     my $mid = $lo + (($hi-$lo) >> 1);
     if (Math::Prime::Util::powerful_count($mid,$k) < $n) { $lo = $mid+1; }
     else                                                 { $hi = $mid; }
   }
-  $lo;
+  $hi;
 }
 
 sub perfect_power_count {
