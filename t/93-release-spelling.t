@@ -31,19 +31,21 @@ add_stopwords(qw/-th
                  csrand srand irand irand64 drand urandomb urandomm
                  forprimes forcomposites foroddcomposites fordivisors
                  forpart forcomp forcomb forperm forderange formultiperm forsetproduct
-                 forsemiprimes forfactored forsquarefree
+                 forsemiprimes forfactored forsquarefree foralmostprimes
                  lastfor
                  numtoperm permtonum randperm
                  totient moebius mertens liouville kronecker znorder znprimroot znlog
                  sumliouville
-                 gcd lcm gcdext chinese invmod sqrtmod addmod mulmod powmod divmod
+                 gcd lcm gcdext chinese
+                 invmod sqrtmod rootmod addmod submod mulmod powmod divmod
+                 binomialmod factorialmod
                  bernfrac bernreal harmfrac harmreal stirling hclassno
-                 vecsum vecprod vecmin vecmax vecreduce vecextract
+                 vecsum vecprod vecmin vecmax vecreduce vecextract vecequal
                  vecall vecany vecnone vecnotall vecfirst vecfirstidx
                  sqrtint logint rootint powint addint subint mulint divint modint negint absint divrem tdivrem
-                 factorialmod
                  qnr
                  todigits todigitstring fromdigits sumdigits hammingweight
+                 tozeckendorf fromzeckendorf
                  lucasu lucasv
                  pp/);
 

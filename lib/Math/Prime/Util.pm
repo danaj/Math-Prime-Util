@@ -4006,7 +4006,7 @@ case.  GMP's API does not allow negative C<k> but otherwise matches.
 L<Math::BigInt> does not implement any extensions and the results for
 C<n E<lt> 0, k > 0> are undefined.
 
-=head binomialmod
+=head2 binomialmod
 
 Given integer arguments C<n>, C<k>, and C<m>, efficiently returns
 C<binomial(n,k) mod m>.  C<m> does not need to be prime.

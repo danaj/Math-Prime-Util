@@ -54,7 +54,7 @@ sub mpu_public_regex {
       is_frobenius_underwood_pseudoprime is_frobenius_khashin_pseudoprime
       is_perrin_pseudoprime is_catalan_pseudoprime
       is_aks_prime is_bpsw_prime is_ramanujan_prime is_mersenne_prime
-      is_power is_prime_power is_pillai is_semiprime is_square is_polygonal
+      is_power is_prime_power is_pillai is_square is_polygonal
       is_semiprime is_almost_prime
       is_square_free is_primitive_root is_carmichael is_quasi_carmichael
       is_fundamental is_totient is_gaussian_prime
@@ -66,9 +66,9 @@ sub mpu_public_regex {
       primes twin_primes semi_primes almost_primes ramanujan_primes
       sieve_prime_cluster sieve_range
       lucky_numbers is_lucky nth_lucky
-      forprimes forcomposites foroddcomposites forsemiprimes fordivisors
+      forprimes forcomposites foroddcomposites forsemiprimes foralmostprimes
       forpart forcomp forcomb forperm forderange formultiperm forsetproduct
-      forfactored forsquarefree
+      fordivisors forfactored forsquarefree
       lastfor
       numtoperm permtonum randperm shuffle
       prime_iterator prime_iterator_object
@@ -101,8 +101,9 @@ sub mpu_public_regex {
       primorial pn_primorial consecutive_integer_lcm gcdext chinese
       gcd lcm factor factor_exp divisors valuation hammingweight
       todigits fromdigits todigitstring sumdigits
-      invmod sqrtmod addmod mulmod divmod powmod qnr
-      vecsum vecmin vecmax vecprod vecreduce vecextract
+      tozeckendorf fromzeckendorf
+      invmod sqrtmod rootmod addmod submod mulmod divmod powmod qnr
+      vecsum vecmin vecmax vecprod vecreduce vecextract vecequal
       vecany vecall vecnotall vecnone vecfirst vecfirstidx
       moebius mertens liouville sumliouville prime_omega prime_bigomega
       euler_phi jordan_totient exp_mangoldt
@@ -110,8 +111,8 @@ sub mpu_public_regex {
       chebyshev_theta chebyshev_psi
       divisor_sum carmichael_lambda kronecker hclassno inverse_totient
       ramanujan_tau ramanujan_sum
-      binomial stirling znorder znprimroot znlog legendre_phi
-      factorial factorialmod
+      stirling znorder znprimroot znlog legendre_phi
+      factorial factorialmod binomial binomialmod
       ExponentialIntegral LogarithmicIntegral RiemannZeta RiemannR LambertW Pi
       irand irand64 drand urandomb urandomm csrand random_bytes entropy_bytes
   );
