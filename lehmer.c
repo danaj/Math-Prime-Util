@@ -52,6 +52,25 @@
  *     191.19s   24.8MB    Meissel   Walisch primecount v0.9, 1 thread
  *     868.96s 1668.1MB    Lehmer    pix4 by T.R. Nicely
  *
+ * Times on a 2020 M1 Macbook, 10^15, with more recent code.  All single
+ * threaded.  Our Lehmer and LMO are quite decent, but primecount's
+ * default Gourdon is 2-4x faster, and that is before parallelization.
+ * primecount parallelizes wonderfully, will perform better as the size
+ * increases, and has support for larger than 64-bit.
+ *
+ *       1.27s   Gourdon  Walisch primecount 6.2
+ *       3.06s   D-R      Walisch primecount 6.2
+ *       4.03s   LMO      Walisch primecount 6.2
+ *       4.03s   LMO      Walisch primecount 6.2
+ *      43.46s   Lehmer   Walisch primecount 6.2
+ *      20.11s   Meissel  Walisch primecount 6.2
+ *      50.38s   Legendre Walisch primecount 6.2
+ *       2.92s   LMO
+ *      35.87s   LMOS
+ *      24.80s   Lehmer
+ *      64.30s   Meissel
+ *      99.68s   Legendre
+ *
  * Reference: Hans Riesel, "Prime Numbers and Computer Methods for
  * Factorization", 2nd edition, 1994.
  */

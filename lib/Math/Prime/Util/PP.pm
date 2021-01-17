@@ -1439,7 +1439,7 @@ sub is_practical {
   my($n) = @_;
 
   return (($n==1) ? 1 : 0) if ($n == 0) || ($n & 1);
-  return 1 if ($n & ($n-1)) == 0; 
+  return 1 if ($n & ($n-1)) == 0;
   return 0 if ($n % 6) && ($n % 20) && ($n % 28) && ($n % 88) && ($n % 104) && ($n % 16);
 
   my $prod = 1;
