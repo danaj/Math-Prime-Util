@@ -238,6 +238,9 @@ Tags:
   modint(a,b)                         signed integer a % b     (floor)
   divrem(a,b)                         return (quot,rem) of a/b (Euclidian)
   tdivrem(a,b)                        return (quot,rem) of a/b (truncated)
+  lshiftint(n,k)                      left shift n by k bits
+  rshiftint(n,k)                      right shift n by k bits (truncate)
+  rashiftint(n,k)                     right shift n by k bits (floor)
   absint(n)                           integer absolute value
   negint(n)                           integer negation
   sqrtint(n)                          integer square root

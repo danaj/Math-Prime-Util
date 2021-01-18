@@ -332,9 +332,6 @@
   - almost primes
 
 - Possible new:
-  - shiftint($n,$bits), just like Pari/GP shift(n,bits).  Left shift, with
-    right shift being negative $bits.  Negative $n gives divrem's quotient.
-    q: shiftint or lshiftint + rshiftint, arithmetic / logical.
   - checksums?  Rather than print | md5sum.  adler32, sha1/2/3, blake2 (b2sum)
 
 - inverse sigma.  Better, determine how to generalize this somehow.

@@ -2345,6 +2345,42 @@ kronecker(IN SV* sva, IN SV* svb)
       objectify_result(aTHX_ ST(0), ST(0));
     return; /* skip implicit PUTBACK */
 
+void lshiftint(IN SV* svn, IN unsigned long k = 1)
+  ALIAS:
+    rshiftint = 1
+    rashiftint = 2
+  PREINIT:
+    int status;
+  PPCODE:
+    status = _validate_int(aTHX_ svn, 1);
+    if (k == 0) {
+      ST(0) = svn;
+      XSRETURN(1);
+    }
+    if (status != 0 && ix > 0 && k >= BITS_PER_WORD)  /* Big right shift */
+      XSRETURN_UV(0);
+    if (status == 1 && k < BITS_PER_WORD) {
+      UV n = my_svuv(svn);
+      if (ix > 0)                       XSRETURN_UV(n >> k);  /* Right shift */
+      if ( ((n << k) >> k) == n)        XSRETURN_UV(n << k);  /* Left shift */
+      /* Fall through -- left shift needs more bits */
+    } else if (status == -1 && k < BITS_PER_WORD) {
+      UV n = -my_sviv(svn);
+      UV nk = n >> k;
+      if (ix == 1)                      XSRETURN_IV(-nk);
+      if (ix == 2)                      XSRETURN_IV(((nk<<k)==n) ? -nk : -nk-1);
+      if (((n << (k+1)) >> (k+1)) == n) XSRETURN_IV(-(n << k));
+      /* Fall through -- left shift needs more bits */
+    }
+    switch (ix) {
+      case 0:  _vcallsub_with_gmpobj(0.53,"lshiftint");  break;
+      case 1:  _vcallsub_with_gmpobj(0.53,"rshiftint");  break;
+      case 2:
+      default: _vcallsub_with_gmpobj(0.53,"rashiftint"); break;
+    }
+    objectify_result(aTHX_ ST(0), ST(0));
+    return;
+
 void
 gcdext(IN SV* sva, IN SV* svb)
   PREINIT:

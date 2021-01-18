@@ -13,11 +13,14 @@ Revision history for Perl module Math::Prime::Util
     - powint(a, b)                    signed integer a^b
     - mulint(a, b)                    signed integer a*b
     - addint(a, b)                    signed integer a+b
-    - subint(a,b)                     signed integer a-b
+    - subint(a, b)                    signed integer a-b
     - divint(a, b)                    signed integer a/b (floor)
     - modint(a, b)                    signed integer a%b (floor)
     - divrem(a, b)                    Euclidean quotient and remainder
     - tdivrem(a, b)                   Truncated quotient and remainder
+    - lshiftint(n, k)                 left shift n by k bits
+    - rshiftint(n, k)                 right shift n by k bits (truncating)
+    - rashiftint(n, k)                right shift n by k bits (flooring)
     - absint(n)                       integer absolute value
     - negint(n)                       integer negation
     - is_gaussian_prime(a,b)          is a+bi a Gaussian prime

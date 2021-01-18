@@ -802,7 +802,24 @@ sub subint {
   _validate_integer($b);
   return Math::Prime::Util::PP::subint($a, $b);
 }
-
+sub lshiftint {
+  my($n, $k) = @_;
+  _validate_integer($n);
+  if (!defined $k) { $k = 1; } else { _validate_positive_integer($k); }
+  return Math::Prime::Util::PP::lshiftint($n, $k);
+}
+sub rshiftint {
+  my($n, $k) = @_;
+  _validate_integer($n);
+  if (!defined $k) { $k = 1; } else { _validate_positive_integer($k); }
+  return Math::Prime::Util::PP::rshiftint($n, $k);
+}
+sub rashiftint {
+  my($n, $k) = @_;
+  _validate_integer($n);
+  if (!defined $k) { $k = 1; } else { _validate_positive_integer($k); }
+  return Math::Prime::Util::PP::rashiftint($n, $k);
+}
 sub legendre_phi {
   my($x, $a) = @_;
   _validate_positive_integer($x);

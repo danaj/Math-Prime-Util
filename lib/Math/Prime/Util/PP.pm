@@ -3312,6 +3312,7 @@ sub tdivrem {
   _validate_integer($a);
   _validate_integer($b);
   croak "tdivrem: divide by zero" if $b == 0;
+  $a = Math::Prime::Util::_to_bigint("$a") if !ref($a) && abs($a) >= (1<<53);
   my $q = ($a >= 0 && $b >= 0) ? int($a/$b) : _tquotient($a,$b);
   ($q, $a - $b * $q);
 }
@@ -3320,6 +3321,7 @@ sub divrem {
   _validate_integer($a);
   _validate_integer($b);
   croak "divrem: divide by zero" if $b == 0;
+  $a = Math::Prime::Util::_to_bigint("$a") if !ref($a) && abs($a) >= (1<<53);
   my $q = ($a >= 0 && $b >= 0) ? int($a/$b) : _tquotient($a,$b);
   my $r = $a - $b * $q;
   if ($r <0) {
@@ -3334,6 +3336,7 @@ sub divint {
   _validate_integer($a);
   _validate_integer($b);
   croak "divint: divide by zero" if $b == 0;
+  $a = Math::Prime::Util::_to_bigint("$a") if !ref($a) && abs($a) >= (1<<53);
   return int($a / $b) if $a >= 0 && $b >= 0;
   my($q,$r) = _fdivrem($a,$b);
   $q;
@@ -3363,6 +3366,23 @@ sub negint {
   elsif ($n >  0) { $n = "-$n"; }
   else            { $n =~ s/^-//; }
   Math::Prime::Util::_reftyped($_[0], $n);
+}
+
+sub lshiftint {
+  my($n, $k) = @_;
+  my $k2 = (!defined $k) ? 2 : ($k < MPU_MAXBITS) ? (1<<$k) : Math::Prime::Util::powint(2,$k);
+  Math::Prime::Util::mulint($n, $k2);
+}
+sub rshiftint {
+  my($n, $k) = @_;
+  my $k2 = (!defined $k) ? 2 : ($k < MPU_MAXBITS) ? (1<<$k) : Math::Prime::Util::powint(2,$k);
+  (Math::Prime::Util::tdivrem($n, $k2))[0];
+}
+
+sub rashiftint {
+  my($n, $k) = @_;
+  my $k2 = (!defined $k) ? 2 : ($k < MPU_MAXBITS) ? (1<<$k) : Math::Prime::Util::powint(2,$k);
+  Math::Prime::Util::divint($n, $k2);
 }
 
 # Make sure to work around RT71548, Math::BigInt::Lite,

@@ -31,7 +31,7 @@ our @EXPORT_OK =
       is_square_free is_primitive_root is_carmichael is_quasi_carmichael
       is_fundamental is_totient is_gaussian_prime
       is_smooth is_rough is_powerful is_practical
-      sqrtint rootint logint
+      sqrtint rootint logint lshiftint rshiftint rashiftint
       powint mulint addint subint divint modint divrem tdivrem absint negint
       miller_rabin_random
       lucas_sequence lucasu lucasv
@@ -2907,6 +2907,48 @@ It will be set to C<b^e>.
 
 This corresponds to Pari/GP's C<logint> function.
 
+
+=head2 lshiftint
+
+Given an integer C<n> and an optional unsigned integer number of bits C<k>,
+perform a left shift of C<n> by C<k> bits.
+If the second argument is not provided, it is assumed to be 1.
+This is equivalent to multiplying by C<2^k>.
+
+This corresponds to Pari/GP's C<shift> function with a positive number
+of bits, and Mathematica's C<BitShiftLeft> function.
+
+=head2 rshiftint
+
+Given an integer C<n> and an optional unsigned integer number of bits C<k>,
+perform a right shift of C<n> by C<k> bits.
+If the second argument is not provided, it is assumed to be 1.
+This is equivalent to truncated division by C<2^k>.
+
+With a negative C<n>, the result is equal to C<-rshiftint(-n,k)>.
+This means it is not "arithmetic right shift" or "logical right shift"
+as commonly used with fixed-width registers in a particular bit format,
+but instead treated as sign and magnitude, where the magnitude
+is right shifted.
+
+For an interesting discussion of arithmetic right shift, see
+Guy Steele's 1977 article "Arithmetic Shift Considered Harmful".
+
+This corresponds to Pari/GP's C<shift> function with a negative number
+of bits, and Mathematica's C<BitShiftRight> function.  The result is equal
+to dividing by the power of 2 using L</tdivrem> or GMP's C<mpz_tdiv_q_2exp>.
+
+=head2 rashiftint
+
+Given an integer C<n> and an optional unsigned integer number of bits C<k>,
+perform a signed arithmetic right shift of C<n> by C<k> bits.
+If the second argument is not provided, it is assumed to be 1.
+This is equivalent to floor division by C<2^k>.
+
+For non-negative C<n>, this is always equal to L</rshiftint>.
+With negative arguments it is similar to L<Math::BigInt#brsft>, Python,
+and Java's BigInteger, which use floor division by C<2^k>.  The result is equal
+to dividing by the power of 2 using L</divint> or GMP's C<mpz_fdiv_q_2exp>.
 
 =head2 powint
 
