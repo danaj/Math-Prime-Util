@@ -3068,67 +3068,73 @@ sub _sum_primes_n {
   my $n = shift;
   return (0,0,2,5,5)[$n] if $n < 5;
   my $r = Math::Prime::Util::sqrtint($n);
-  my $r2 = $r + int($n/($r+1));
+  my $r2 = $r + Math::Prime::Util::divint($n, $r+1);
   my(@V,@S);
   for my $k (0 .. $r2) {
-    my $v = ($k <= $r) ? $k : int($n/($r2-$k+1));
+    my $v = ($k <= $r) ? $k : Math::Prime::Util::divint($n,($r2-$k+1));
     $V[$k] = $v;
-    $S[$k] = (($v*($v+1)) >> 1) - 1;
+    $S[$k] = Math::Prime::Util::addint(
+              Math::Prime::Util::rshiftint(Math::Prime::Util::mulint($v, $v-1)),
+              $v-1);
   }
-  Math::Prime::Util::forprimes( sub { my $p = $_;
+  for my $p (2 .. $r) {
+    next unless $S[$p] > $S[$p-1];
     my $sp = $S[$p-1];
-    my $p2 = $p*$p;
+    my $p2 = Math::Prime::Util::mulint($p,$p);
     for my $v (reverse @V) {
       last if $v < $p2;
-      my($a,$b) = ($v,int($v/$p));
-      $a = $r2 - int($n/$a) + 1 if $a > $r;
-      $b = $r2 - int($n/$b) + 1 if $b > $r;
-      $S[$a] -= $p * ($S[$b] - $sp);
+      my($a,$b) = ($v,Math::Prime::Util::divint($v,$p));
+      $a = $r2 - Math::Prime::Util::divint($n,$a) + 1 if $a > $r;
+      $b = $r2 - Math::Prime::Util::divint($n,$b) + 1 if $b > $r;
+      $S[$a] -= Math::Prime::Util::mulint($p, $S[$b]-$sp);
+      #$S[$a] = Math::Prime::Util::subint($S[$a], Math::Prime::Util::mulint($p, Math::Prime::Util::subint($S[$b],$sp)));
     }
-  }, 2, $r);
+  }
   $S[$r2];
 }
-
 sub sum_primes {
   my($low,$high) = @_;
   if (defined $high) { _validate_positive_integer($low); }
   else               { ($low,$high) = (2, $low);         }
   _validate_positive_integer($high);
   my $sum = 0;
-  $sum = BZERO->copy if ( (MPU_32BIT && $high >        323_380) ||
-                          (MPU_64BIT && $high > 29_505_444_490) );
+
+  return $sum if $high < $low;
 
   # It's very possible we're here because they've counted too high.  Skip fwd.
   if ($low <= 2 && $high >= 29505444491) {
-    $low = 29505444503;
-    $sum = Math::BigInt->new("18446744087046669523");
+    ($low, $sum) = (29505444503, Math::BigInt->new("18446744087046669523"));
   }
 
   return $sum if $low > $high;
 
-  # We have to make some decision about whether to use our PP prime sum or loop
-  # doing the XS sieve.  TODO: Be smarter here?
-  if (!Math::Prime::Util::prime_get_config()->{'xs'} && !ref($sum) && !MPU_32BIT && ($high-$low) > 1000000) {
-    # Unfortunately with bigints this is horrifically slow, but we have to do it.
-    $high = BZERO->copy + $high  if $high >= (1 << (MPU_MAXBITS/2))-1;
-    $sum = _sum_primes_n($high);
-    $sum -= _sum_primes_n($low-1) if $low > 2;
-    return $sum;
+  # Easy, not unreasonable, but seems slower than the windowed sum.
+  # return _sum_primes_n($high) if $low <= 2;
+
+  # Performance decision, which to use.  TODO: This needs tuning!
+  if ($high <= ~0 && $high > 10_000_000 && ($high-$low) > $high/50 && !Math::Prime::Util::prime_get_config()->{'xs'}) {
+    my $hsum = _sum_primes_n($high);
+    my $lsum = ($low <= 2) ? 0 : _sum_primes_n($low - 1);
+    return $hsum - $lsum;
   }
 
+  # Sum in windows.
+  # TODO: consider some skipping forward with small tables.
   my $xssum = (MPU_64BIT && $high < 6e14 && Math::Prime::Util::prime_get_config()->{'xs'});
   my $step = ($xssum && $high > 5e13) ? 1_000_000 : 11_000_000;
   Math::Prime::Util::prime_precalc(sqrtint($high));
   while ($low <= $high) {
-    my $next = $low + $step - 1;
+    my $next = Math::Prime::Util::addint($low, $step) - 1;
     $next = $high if $next > $high;
-    $sum += ($xssum) ? Math::Prime::Util::sum_primes($low,$next)
-                     : Math::Prime::Util::vecsum( @{Math::Prime::Util::primes($low,$next)} );
+    $sum = Math::Prime::Util::addint($sum,
+            ($xssum) ? Math::Prime::Util::sum_primes($low,$next)
+                     : Math::Prime::Util::vecsum( @{Math::Prime::Util::primes($low,$next)} ));
     last if $next == $high;
-    $low = $next+1;
+    $low = Math::Prime::Util::addint($next,1);
   }
   $sum;
 }
+
 sub print_primes {
   my($low,$high,$fd) = @_;
   if (defined $high) { _validate_positive_integer($low); }

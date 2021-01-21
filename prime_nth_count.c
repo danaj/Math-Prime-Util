@@ -863,25 +863,94 @@ UV nth_twin_prime_approx(UV n)
 /******************************************************************************/
 
 /* The fastest way to compute the sum of primes is using a combinatorial
- * algorithm such as Deleglise 2012.  Since this code is purely native,
- * it will overflow a 64-bit result quite quickly.  Hence a relatively small
- * table plus sum over sieved primes works quite well.
+ * algorithm such as the Deleglise-Rivat.  This is what Kim Walisch's
+ * primesum program does.  Note that one quickly needs 128-bit or larger
+ * storage, as the sums grow rapidly.
  *
- * The following info is useful if we ever return 128-bit results or for a
- * GMP implementation.
- *
- * Combinatorial sum of primes < n.  Call with phisum(n, isqrt(n)).
- * Needs optimization, either caching, Lehmer, or LMO.
- * http://mathoverflow.net/questions/81443/fastest-algorithm-to-compute-the-sum-of-primes
- * http://www.ams.org/journals/mcom/2009-78-268/S0025-5718-09-02249-2/S0025-5718-09-02249-2.pdf
- * http://mathematica.stackexchange.com/questions/80291/efficient-way-to-sum-all-the-primes-below-n-million-in-mathematica
- * Deleglise 2012, page 27, simple Meissel:
- *   y = x^1/3
- *   a = Pi(y)
- *   Pi_f(x) = phisum(x,a) + Pi_f(y) - 1 - P_2(x,a)
- *   P_2(x,a) = sum prime p : y < p <= sqrt(x) of f(p) * Pi_f(x/p) -
- *              sum prime p : y < p <= sqrt(x) of f(p) * Pi_f(p-1)
+ * We are using much simpler methods.  Performance at small sizes is also a
+ * consideration.  Using tables combined with summing over sieved primes can
+ * work well with small input sizes.
  */
+
+/* Simplified Legendre method giving pisum(n) for n <= 65535 or 4294967295. */
+
+UV sum_primes64(UV n) {
+  uint32_t *V, j, k, r, r2, p;
+  UV *S, sum;
+
+  if (n < 2 || (n >> (BITS_PER_WORD/2)) > 0)  /* S[] will overflow */
+    return 0;
+  r = isqrt(n);
+  r2 = r + n/(r+1);
+
+  New(0, V, r2+1, uint32_t);
+  New(0, S, r2+1, UV);
+  for (k = 1; k <= r2; k++) {
+    UV v = (k <= r)  ?  k  :  n/(r2-k+1);
+    V[k] = v;
+    S[k] = ((v*(v-1))>>1) + (v-1);
+  }
+
+  for (p = 2; p <= r; p++) {
+    if (S[p] > S[p-1]) { /* For each prime p from 2 to r */
+      UV sp = S[p-1], p2 = p*p;
+      for (j = r2; j > 1 && V[j] >= p2; j--) {
+        uint32_t a = V[j], b = a/p;
+        if (a > r) a = r2 - n/a + 1;
+        if (b > r) b = r2 - n/b + 1;
+        S[a] -= (UV)p * (S[b] - sp);   /* sp = sum of primes less than p */
+      }
+    }
+  }
+  sum = S[r2];
+  Safefree(V);
+  Safefree(S);
+  return sum;
+}
+
+/* Simplified Legendre method giving pisum(n) for any 64-bit input n,
+ * assuming the uint128_t type is available.  The result is returned as
+ * two 64-bit results. */
+
+int sum_primes128(UV n, UV *hi_sum, UV *lo_sum) {
+#if HAVE_SUM_PRIMES128
+  uint128_t *S;
+  UV *V, j, k, r, r2, p;
+
+  /* pisum(2^64-1) < 2^128-1, so no overflow issues */
+  r = isqrt(n);
+  r2 = r + n/(r+1);
+
+  New(0, V, r2+1, UV);
+  New(0, S, r2+1, uint128_t);
+  for (k = 0; k <= r2; k++) {
+    uint128_t v = (k <= r)  ?  k  :  n/(r2-k+1);
+    V[k] = v;
+    S[k] = (v*(v+1))/2 - 1;
+  }
+
+  for (p = 2; p <= r; p++) {
+    if (S[p] > S[p-1]) { /* For each prime p from 2 to r */
+      uint128_t sp = S[p-1], p2 = ((uint128_t)p) * p;
+      for (j = r2; j > 1 && V[j] >= p2; j--) {
+        UV a = V[j], b = a/p;
+        if (a > r) a = r2 - n/a + 1;
+        if (b > r) b = r2 - n/b + 1;
+        S[a] -= p * (S[b] - sp);   /* sp = sum of primes less than p */
+      }
+    }
+  }
+  *hi_sum = (S[r2] >> 64) & UV_MAX;
+  *lo_sum = (S[r2]      ) & UV_MAX;
+  Safefree(V);
+  Safefree(S);
+  return 1;
+#else
+  return 0;
+#endif
+}
+
+/* sum primes in a 64-bit range using a sieving with table acceleration */
 
 static const unsigned char byte_sum[256] =
   {120,119,113,112,109,108,102,101,107,106,100,99,96,95,89,88,103,102,96,95,92,
@@ -915,50 +984,16 @@ static const UV sum_table_2e8[] =
 #define N_SUM_TABLE  (sizeof(sum_table_2e8)/sizeof(sum_table_2e8[0]))
 #endif
 
-/* Add n to the double-word hi,lo */
-#define ADD_128(hi, lo, n)  \
-  do {  UV _n = n; \
-        if (_n > (UV_MAX-lo)) { hi++; if (hi == 0) overflow = 1; } \
-        lo += _n;   } while (0)
-#define SET_128(hi, lo, n) \
-  do { hi = (UV) (((n) >> 64) & UV_MAX); \
-       lo = (UV) (((n)      ) & UV_MAX); } while (0)
-
-/* Legendre method for prime sum */
-int sum_primes128(UV n, UV *hi_sum, UV *lo_sum) {
-#if BITS_PER_WORD == 64 && HAVE_UINT128
-  uint128_t *V, *S;
-  UV j, k, r = isqrt(n), r2 = r + n/(r+1);
-
-  New(0, V, r2+1, uint128_t);
-  New(0, S, r2+1, uint128_t);
-  for (k = 0; k <= r2; k++) {
-    uint128_t v = (k <= r)  ?  k  :  n/(r2-k+1);
-    V[k] = v;
-    S[k] = (v*(v+1))/2 - 1;
-  }
-
-  START_DO_FOR_EACH_PRIME(2, r) {
-    uint128_t a, b, sp = S[p-1], p2 = ((uint128_t)p) * p;
-    for (j = k-1; j > 1 && V[j] >= p2; j--) {
-      a = V[j], b = a/p;
-      if (a > r) a = r2 - n/a + 1;
-      if (b > r) b = r2 - n/b + 1;
-      S[a] -= p * (S[b] - sp);   /* sp = sum of primes less than p */
-    }
-  } END_DO_FOR_EACH_PRIME;
-  SET_128(*hi_sum, *lo_sum, S[r2]);
-  Safefree(V);
-  Safefree(S);
-  return 1;
-#else
-  return 0;
-#endif
-}
-
 int sum_primes(UV low, UV high, UV *return_sum) {
   UV sum = 0;
   int overflow = 0;
+
+  if (low <= 2 && high >= 100000) {
+    *return_sum = sum_primes64(high);
+    if (*return_sum != 0)
+      return 1;
+  }
+  /* TODO: performance: more cases where using sum_primes64 is faster. */
 
   if ((low <= 2) && (high >= 2)) sum += 2;
   if ((low <= 3) && (high >= 3)) sum += 3;
@@ -972,10 +1007,6 @@ int sum_primes(UV low, UV high, UV *return_sum) {
   if (low >= 1e13 && (high-low) >=  5e7) return 0;
 #else
   if (low == 7 && high >= 323381)  return 0;
-#endif
-
-#if 0   /* TODO: use this */
-  if (sum_primes128(high, &sum, return_sum) && sum == 0)  return 1;
 #endif
 
 #if 1 && BITS_PER_WORD == 64    /* Tables */
@@ -1033,6 +1064,8 @@ int sum_primes(UV low, UV high, UV *return_sum) {
   if (!overflow && return_sum != 0)  *return_sum = sum;
   return !overflow;
 }
+
+
 
 double ramanujan_axler(long double n, long double c, long double d) {
   long double res, U, c1, c2, log2 = logl(2), logn = logl(n), loglogn = logl(logn);

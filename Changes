@@ -102,6 +102,8 @@ Revision history for Perl module Math::Prime::Util
 
     - rewrote C factorialmod.  1.1-2x faster for small inputs, 3-4x for large.
 
+    - sum_primes faster for some inputs.
+
 
 0.73 2018-11-15
 

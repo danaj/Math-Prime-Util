@@ -2033,9 +2033,9 @@ essentially similar to either of:
 
 but is much more efficient.
 
-The current implementation is a small-table-enhanced sieve count for
-sums that fit in a UV, an efficient sieve count for small ranges, and
-a Legendre sum method for larger values.
+The current implementation is a mix of small-table-enhanced sieve count
+for sums that fit in a UV, an efficient sieve count for small ranges, and
+a Legendre sum method, including XS support for 128-bit results.
 
 While this is fairly efficient, the state of the art is Kim Walisch's
 L<primesum|https://github.com/kimwalisch/primesum>.

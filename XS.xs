@@ -734,8 +734,10 @@ prime_count(IN SV* svlo, ...)
                             if (lo > 2)
                               count -= ramanujan_prime_count_approx(lo-1); }
         else if (ix == 5) {
-#if BITS_PER_WORD == 64 && HAVE_UINT128
-          if (hi >= 29505444491UL && hi-lo > hi/50) {
+          /* 32/64-bit, Legendre or table-accelerated sieving. */
+          lostatus = sum_primes(lo, hi, &count);
+          /* If that didn't work, try the 128-bit version if supported. */
+          if (lostatus == 0 && HAVE_SUM_PRIMES128) {
             UV hicount, lo_hic, lo_loc;
             lostatus = sum_primes128(hi, &hicount, &count);
             if (lostatus == 1 && lo > 2) {
@@ -747,8 +749,6 @@ prime_count(IN SV* svlo, ...)
             if (lostatus == 1 && hicount > 0)
               RETURN_128(hicount, count);
           }
-#endif
-          lostatus = sum_primes(lo, hi, &count);
         } else if (ix == 6) {
           int fd = (items < 3) ? fileno(stdout) : my_sviv(ST(2));
           print_primes(lo, hi, fd);
