@@ -548,7 +548,7 @@ static short* _prep_rmertens(UV n, UV* pmaxmu, UV* phsize) {
   /* At large sizes, start clamping memory use. */
   if (maxmu > 100000000UL) {
     /* Exponential decay, reduce by factor of 1 to 8 */
-    float rfactor = 1.0 + 7.0 * (1.0 - exp(-(float)maxmu/15000000000.0));
+    float rfactor = 1.0 + 7.0 * (1.0 - exp(-(float)maxmu/8000000000.0));
     maxmu /= rfactor;
     hsize = next_prime(hsize * 16);  /* Increase the result cache size */
   }
