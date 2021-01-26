@@ -77,10 +77,12 @@ sub fact { my $n = Math::BigInt->new("$_[0]"); $n->bfac; }
   is_deeply( \@result, \@expect, "factorialmod n! mod m for m 1 to 50, n 0 to m" );
 }
 if ($extra) {
+  # Very slow in PP without GMP
   is( factorialmod(5000001,"8000036000054000027"), "4179720539133404343", "factorialmod with large n and large composite non-square-free m" );
 }
 SKIP: {
-  skip "medium size factorialmods in PP",2 unless $usexs || $extra;
+  # CRAZY SLOW IN PP WITHOUT GMP
+  skip "medium size factorialmods in PP",2 unless $usexs || ($extra && $usegmp);
   is( factorialmod(1000000000,1000000008), 0, "1000000000! mod 1000000008 is zero" );
   is( factorialmod(50000,10000019), 8482159, "50000! mod 10000019" );
 }

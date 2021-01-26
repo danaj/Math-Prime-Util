@@ -47,6 +47,7 @@ add_stopwords(qw/-th
                  todigits todigitstring fromdigits sumdigits hammingweight
                  tozeckendorf fromzeckendorf
                  lucasu lucasv
+                 lshiftint rshiftint rashiftint
                  pp/);
 
 all_pod_files_spelling_ok();
