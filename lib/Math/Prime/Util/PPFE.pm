@@ -871,6 +871,11 @@ sub is_practical {
   _validate_positive_integer($n);
   return Math::Prime::Util::PP::is_practical($n);
 }
+sub is_delicate_prime {
+  my($n) = @_;
+  _validate_positive_integer($n);
+  return Math::Prime::Util::PP::is_delicate_prime($n);
+}
 sub valuation {
   my($n, $k) = @_;
   $n = -$n if defined $n && $n < 0;

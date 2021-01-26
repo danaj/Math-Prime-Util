@@ -1460,6 +1460,28 @@ sub is_practical {
   1;
 }
 
+sub is_delicate_prime {
+  my($n) = @_;
+
+  return 0 if $n < 100;  # Easily seen.
+  return 0 unless Math::Prime::Util::is_prime($n);
+
+  # We'll use a string replacement method, because it's a lot easier with
+  # Perl and we can completely ignore all bigint type issues.
+
+  my $ndigits = length($n);
+  for my $d (0 .. $ndigits-1) {
+    my $N = "$n";
+    my $dold = substr($N,$d,1);
+    for my $dnew (0 .. 9) {
+      next if $dnew == $dold;
+      substr($N,$d,1) = $dnew;
+      return 0 if Math::Prime::Util::is_prime($N);
+    }
+  }
+  1;
+}
+
 sub _totpred {
   my($n, $maxd) = @_;
   return 0 if $maxd <= 1 || (ref($n) ? $n->is_odd() : ($n & 1));

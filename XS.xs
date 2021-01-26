@@ -1375,9 +1375,10 @@ void is_prime(IN SV* svn)
     is_semiprime = 16
     is_square = 17
     is_mersenne_prime = 18
-    is_lucky = 19
-    is_practical = 20
-    is_totient = 21
+    is_delicate_prime = 19
+    is_lucky = 20
+    is_practical = 21
+    is_totient = 22
   PREINIT:
     int status, ret;
   PPCODE:
@@ -1405,9 +1406,10 @@ void is_prime(IN SV* svn)
         case 16: ret = is_semiprime(n); break;
         case 17: ret = is_power(n,2); break;
         case 18: ret = is_mersenne_prime(n);  if (ret == -1) status = 0; break;
-        case 19: ret = is_lucky(n); break;
-        case 20: ret = is_practical(n); break;
-        case 21:
+        case 19: ret = is_delicate_prime(n);  if (ret == -1) status = 0; break;
+        case 20: ret = is_lucky(n); break;
+        case 21: ret = is_practical(n); break;
+        case 22:
         default: ret = is_totient(n); break;
       }
     } else if (status == -1) {
@@ -1439,9 +1441,10 @@ void is_prime(IN SV* svn)
       case 16:_vcallsub_with_gmp(0.42,"is_semiprime"); break;
       case 17:_vcallsub_with_gmp(0.47,"is_square"); break;
       case 18:_vcallsub_with_gmp(0.28,"is_mersenne_prime"); break;
-      case 19:_vcallsub_with_gmp(0.48,"is_lucky"); break;
-      case 20:_vcallsub_with_gmp(0.53,"is_practical"); break;
-      case 21:
+      case 19:_vcallsub_with_gmp(0.00,"is_delicate_prime"); break;
+      case 20:_vcallsub_with_gmp(0.48,"is_lucky"); break;
+      case 21:_vcallsub_with_gmp(0.53,"is_practical"); break;
+      case 22:
       default:_vcallsub_with_gmp(0.47,"is_totient"); break;
     }
     return; /* skip implicit PUTBACK */

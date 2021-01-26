@@ -340,3 +340,13 @@
 
 - faster prime gaps:  https://arxiv.org/abs/2012.03771
                       https://github.com/sethtroisi/prime-gap
+
+- Pari 2.13 has faster exp, Catalan, log2, gamma, factorial, lngamma.
+  Completely new Bernoulli and bernvec.
+  eulerreal, eulervec, ramanujantau
+  MPQS
+  Take a look.
+
+- Pari 2.13 added an optional third argument to sqrtint, just like rootint.
+
+- Faster Mertens. Helfgott/Thompson 2020.  https://arxiv.org/pdf/2101.08773.pdf

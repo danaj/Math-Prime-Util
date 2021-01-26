@@ -71,7 +71,7 @@ plan tests => 2
             + scalar(keys %range_counts)
             + scalar(keys %big_counts)
             + scalar(keys %big_semis)
-            + 1 * $extra;
+            + (($extra && $usexs) ? 1 : 0);
 
 is_deeply( semi_primes($small_semis[-1]), \@small_semis, "semi_primes($small_semis[-1])" );
 

@@ -28,6 +28,7 @@ Revision history for Perl module Math::Prime::Util
     - is_smooth(n,k)                  is n a k-smooth number
     - is_rough(n,k)                   is n a k-rough number
     - is_practical(n)                 is n a practical number
+    - is_delicate_prime(n)            is n a digitally delicate prime
     - is_almost_prime(k,n)            does n have exactly k prime factors
     - almost_prime_count(k,n)         count of integers with exactly k factors
     - almost_prime_count_approx(k,n)  fast approximate k-almost-prime count

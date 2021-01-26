@@ -230,6 +230,7 @@ Tags:
   is_rough(n,k)                       is n a k-rough number
   is_powerful(n[,k])                  is n a k-powerful number
   is_practical(n)                     is n a practical number
+  is_delicate_prime(n)                is n a digitally delicate prime
   powint(a,b)                         signed integer a^b
   mulint(a,b)                         signed integer a * b
   addint(a,b)                         signed integer a + b

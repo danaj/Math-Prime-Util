@@ -26,6 +26,7 @@ our @EXPORT_OK =
       is_frobenius_underwood_pseudoprime is_frobenius_khashin_pseudoprime
       is_perrin_pseudoprime is_catalan_pseudoprime
       is_aks_prime is_bpsw_prime is_ramanujan_prime is_mersenne_prime
+      is_delicate_prime
       is_power is_prime_power is_pillai is_square is_polygonal
       is_semiprime is_almost_prime
       is_square_free is_primitive_root is_carmichael is_quasi_carmichael
@@ -592,13 +593,20 @@ sub consecutive_integer_lcm {
   return Math::Prime::Util::PP::consecutive_integer_lcm($n);
 }
 
-# See 2011+ FLINT and Fredrik Johansson's work for state of the art.
-# Very crude timing estimates (ignores growth rates).
-#   Perl-comb   partitions(10^5)  ~ 300 seconds  ~200,000x slower than Pari
-#   GMP-comb    partitions(10^6)  ~ 120 seconds    ~1,000x slower than Pari
-#   Pari        partitions(10^8)  ~ 100 seconds
-#   Bober 0.6   partitions(10^9)  ~  20 seconds       ~50x faster than Pari
-#   Johansson   partitions(10^12) ~  10 seconds     >1000x faster than Pari
+# On Mac M1.  The combinatorial solution that we use is both slower and
+# has *much* worse growth than the Rademacher implementation that uses high
+# precision floating point (e.g. Pari, MPFR, Arb).
+#
+#               10^5      10^6      10^7    10^8    10^9    10^10
+#   Perl-comb   78        ----
+#   GMP-comb     0.32     44        ----
+#   Sympy 1.7.1  0.0045    0.018    0.091    0.62     5.3     51
+#   Pari 2.14    0.00043   0.0018   0.013    0.19     4.5     54
+#   Bober 0.6    0.00010   0.00085  0.062    0.91    10.9     15
+#   Arb 2.19     0.00018   0.00044  0.004    0.011   0.031     0.086
+#
+#   Arb 2.19 takes only 62 seconds for 10^14.
+#
 sub partitions {
   my($n) = @_;
   return 1 if defined $n && $n <= 0;
@@ -615,31 +623,6 @@ sub partitions {
 #############################################################################
 # forprimes, forcomposites, fordivisors.
 # These are used when the XS code can't handle it.
-
-sub _for_almost_primes {
-  my($sub, $k, $beg, $end) = @_;
-  # Only called by _generic_for* which do input validation
-
-  # This is *really* inefficient for large k.  We should be either sieving
-  # or at least doing a k reduction when possible.
-
-  my $binc = ref($end) && !ref($beg);
-  my $oldforexit = Math::Prime::Util::_start_for_loop();
-  {
-    my $pp;
-    local *_ = \$pp;
-    while ($beg <= $end) {
-      if (Math::Prime::Util::is_almost_prime($k, $beg)) {
-        $pp = $beg;
-        $sub->();
-        last if Math::Prime::Util::_get_forexit();
-      }
-      if ($binc) { $beg = Math::Prime::Util::addint($beg,1); } else { $beg++; }
-    }
-  }
-  Math::Prime::Util::_end_for_loop($oldforexit);
-}
-
 
 sub _generic_forprimes {
   my($sub, $beg, $end) = @_;
@@ -665,9 +648,12 @@ sub _generic_forcomp_sub {
   if (!defined $end) { $end = $beg; $beg = 0; }
   _validate_positive_integer($beg);
   _validate_positive_integer($end);
-  my $cinc = 1;
-  my $semiprimes = ($what eq 'semiprimes');
-  if ($what eq 'oddcomposites') {
+  my($cinc,$k) = (1,0);
+  $what = 'almost-2' if $what eq 'semiprimes';
+  if ($what =~ /^almost-(\d+)$/) {
+    $k = int($1);
+    $beg = (1 << $k) if $beg < (1 << $k);
+  } elsif ($what eq 'oddcomposites') {
     $beg = 9 if $beg < 9;
     $beg++ unless $beg & 1;
     $cinc = 2;
@@ -681,7 +667,7 @@ sub _generic_forcomp_sub {
     local *_ = \$pp;
     for (my $p = next_prime($beg-1);  $beg <= $end;  $p = next_prime($p)) {
       for ( ; $beg < $p && $beg <= $end ; $beg += $cinc ) {
-        next if $semiprimes && !is_semiprime($beg);
+        next if $k && !is_almost_prime($k,$beg);
         $pp = $beg;
         $sub->();
         last if Math::Prime::Util::_get_forexit();
@@ -720,7 +706,7 @@ sub _generic_foralmostprimes {
   return unless $beg <= $end;
   return _generic_forprimes($sub,$beg,$end) if $k == 1;
   return _generic_forcomp_sub('semiprimes', $sub, $beg, $end) if $k == 2;
-  _for_almost_primes($sub, $k, $beg, $end);
+  return _generic_forcomp_sub('almost-' . $k, $sub, $beg, $end);
 }
 
 sub _generic_forfac {
@@ -2821,6 +2807,16 @@ This is true if and only if one of:
 =item C<a> and C<b> are nonzero and C<a^2 + b^2> is prime.
 
 =back
+
+
+=head2 is_delicate_prime
+
+Given a non-negative integer C<n>, returns 1 if it is a digitally delicate
+prime, and 0 otherwise.
+These are numbers which are prime, but changing any single base-10 digit
+always produces a composite number.
+
+This is the L<OEIS series A050249|http://oeis.org/A050249>.
 
 
 =head2 is_power

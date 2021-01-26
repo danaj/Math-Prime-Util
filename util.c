@@ -4293,6 +4293,35 @@ int is_practical(UV n) {
   return 1;
 }
 
+int is_delicate_prime(UV n) {
+  UV d, dnew, dold, digpow, maxd = (BITS_PER_WORD == 32) ? 9 : 19;
+
+  /* All 1, 2, 3, and 4 digit inputs are false.  For one digit, we can see
+   * that given a prime [X] there is another prime [Y].  For two digits,
+   * it's easily checked that for any prime X[Y] there exists a prime Z[Y].
+   * Since it isn't immediately clear for larger inputs, just check them. */
+  if (n < 100) return 0;
+  if (!is_prime(n)) return 0;
+  if (n >= ipow(10,maxd)) return -1;  /* We can't check all values */
+
+  /* Check the last digit, given a > 1 digit prime, must be one of these. */
+  dold = n % 10;
+  if ( (dold != 1 && is_prime(n - dold + 1)) ||
+       (dold != 3 && is_prime(n - dold + 3)) ||
+       (dold != 7 && is_prime(n - dold + 7)) ||
+       (dold != 9 && is_prime(n - dold + 9)) )
+    return 0;
+
+  /* Check the rest of the digits. */
+  for (d = 1, digpow = 10;  d <= maxd && n >= digpow;  digpow *= 10, d++) {
+    dold = (n / digpow) % 10;
+    for (dnew = 0; dnew < 10; dnew++)
+      if (dnew != dold && is_prime(n - dold*digpow + dnew*digpow))
+        return 0;
+  }
+  return 1;
+}
+
 static unsigned char* _squarefree_range(UV lo, UV hi) {
   unsigned char* isf;
   UV i, i2, j, range = hi-lo+1, sqrthi = isqrt(hi);
