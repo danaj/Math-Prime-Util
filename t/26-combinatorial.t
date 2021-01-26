@@ -81,8 +81,7 @@ if ($extra) {
   is( factorialmod(5000001,"8000036000054000027"), "4179720539133404343", "factorialmod with large n and large composite non-square-free m" );
 }
 SKIP: {
-  # CRAZY SLOW IN PP WITHOUT GMP
-  skip "medium size factorialmods in PP",2 unless $usexs || ($extra && $usegmp);
+  skip "medium size factorialmods in PP",2 unless $usexs || $extra;
   is( factorialmod(1000000000,1000000008), 0, "1000000000! mod 1000000008 is zero" );
   is( factorialmod(50000,10000019), 8482159, "50000! mod 10000019" );
 }

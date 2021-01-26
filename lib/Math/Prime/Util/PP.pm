@@ -4790,23 +4790,43 @@ sub factorialmod {
 
   return 0 if $n >= $m || $m == 1;
 
-  if ($n > 10) {
-    my($s,$t,$e) = (1);
-    Math::Prime::Util::forprimes( sub {
-      ($t,$e) = ($n,0);
-      while ($t > 0) {
-        $t = int($t/$_);
-        $e += $t;
-      }
-      $s = Math::Prime::Util::mulmod($s, Math::Prime::Util::powmod($_,$e,$m), $m);
-    }, 2, $n >> 1);
-    Math::Prime::Util::forprimes( sub {
-      $s = Math::Prime::Util::mulmod($s, $_, $m);
-    }, ($n >> 1)+1, $n);
-    return $s;
+  return factorial($n) % $m if $n <= 10;
+
+  my($F, $N, $m_prime) = (1, $n, Math::Prime::Util::is_prime($m));
+
+  # Check for Wilson's theorem letting us go backwards
+  $n = $m-$n-1 if $m_prime && $n > Math::Prime::Util::rshiftint($m);
+  return ($n == 0) ? ($m-1) : 1  if $n < 2;
+
+  if ($n > 100 && !$m_prime) {   # Check for a composite that leads to zero
+    my $maxpk = 0;
+    foreach my $f (Math::Prime::Util::factor_exp($m)) {
+      my $pk = Math::Prime::Util::mulint($f->[0],$f->[1]);
+      $maxpk = $pk if $pk > $maxpk;
+    }
+    return 0 if $n >= $maxpk;
   }
 
-  return factorial($n) % $m;
+  my($t,$e);
+  Math::Prime::Util::forprimes( sub {
+    ($t,$e) = ($n,0);
+    while ($t > 0) {
+      $t = int($t/$_);
+      $e += $t;
+    }
+    $F = Math::Prime::Util::mulmod($F,Math::Prime::Util::powmod($_,$e,$m),$m);
+  }, 2, $n >> 1);
+  Math::Prime::Util::forprimes( sub {
+    $F = Math::Prime::Util::mulmod($F, $_, $m);
+  }, ($n >> 1)+1, $n);
+
+  # Adjust for Wilson's theorem if we used it
+  if ($n != $N && $F != 0) {
+    $F = Math::Prime::Util::submod($m, $F, $m) if !($n & 1);
+    $F = Math::Prime::Util::invmod($F, $m);
+  }
+
+  $F;
 }
 
 sub _is_perfect_square {

@@ -102,6 +102,7 @@ Revision history for Perl module Math::Prime::Util
     - ExponentialIntegral with quadmath is much more precise across the range.
 
     - rewrote C factorialmod.  1.1-2x faster for small inputs, 3-4x for large.
+      The PP non-GMP version also has optimizations added.
 
     - sum_primes faster for some inputs.
 
