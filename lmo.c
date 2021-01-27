@@ -580,7 +580,7 @@ UV LMO_prime_count(UV n)
   /* n should now be reasonably sized (not tiny). */
 
 #ifdef USE_PRIMECOUNT_FOR_LARGE_LMO
-  if (n > 110000000000UL) {
+  if (n > 5000000000000UL) {   /* Crossover on 2020 Macbook M1 */
     FILE *f;
     char cmd[100];
     sprintf(cmd, "primecount %lu", n);
