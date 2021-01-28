@@ -350,3 +350,8 @@
 - Pari 2.13 added an optional third argument to sqrtint, just like rootint.
 
 - Faster Mertens. Helfgott/Thompson 2020.  https://arxiv.org/pdf/2101.08773.pdf
+
+- Add optional base to is_delicate_prime(n,base=10).  This should be relatively
+  easy in C, but we'll need to put the math back in PP.
+
+- Make lehmer use prime_count_cache.c

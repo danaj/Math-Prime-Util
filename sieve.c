@@ -545,3 +545,27 @@ UV range_prime_sieve(UV**list, UV lo, UV hi)
   *list = P;
   return i;
 }
+
+uint32_t range_prime_sieve_32(uint32_t** list, uint32_t n, uint32_t offset)
+{
+  uint32_t *P, i = offset;
+
+  New(0, P, prime_count_upper(n) + offset + 3, uint32_t);   /* Allocate list */
+  if (offset > 0)  memset(P, 0, offset * sizeof(uint32_t)); /* Zero to offset */
+  P[i++] = 2;  P[i++] = 3;  P[i++] = 5;                     /* Fill in 2/3/5 */
+
+  if (n >= 7) {
+    unsigned char* segment;
+    UV seg_base, seg_low, seg_high;
+    void* ctx = start_segment_primes(7, n, &segment);
+    while (next_segment_primes(ctx, &seg_base, &seg_low, &seg_high)) {
+      START_DO_FOR_EACH_SIEVE_PRIME( segment, seg_base, seg_low, seg_high )
+        P[i++] = p;
+      END_DO_FOR_EACH_SIEVE_PRIME
+    }
+    end_segment_primes(ctx);
+  }
+  while (P[i-1] > n)  i--;  /* Truncate the count if necesssary. */
+  *list = P;
+  return i-offset;          /* Returns number of primes, excluding offset */
+}

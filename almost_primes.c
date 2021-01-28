@@ -15,6 +15,7 @@
 #include "sieve.h"
 #include "lmo.h"
 #include "prime_nth_count.h"
+#include "prime_count_cache.h"
 #include "semi_primes.h"
 #include "inverse_interpolate.h"
 #include "almost_primes.h"
@@ -103,71 +104,29 @@ static UV _prev_almost_semiprime(uint32_t k, UV n) {
 /*                                KAP COUNT                                   */
 /******************************************************************************/
 
-/* Scaffolding for simple precalcs of prime counts.  Not sophisticated and
- * much more memory intensive than the binary-search methods on prime lists
- * we use in a few other places.  But simple and fast.
- */
 
-#define HCPC 101
-static const uint32_t _pcnt[1 + ((HCPC-1)>>1)] = {
-1,2,3,4,4,5,6,6,7,8,8,9,9,9,10,11,11,11,12,12,13,14,14,15,15,15,16,16,16,17,18,18,18,19,19,20,21,21,21,22,22,23,23,23,24,24,24,24,25,25,26
-};
+/* almost_prime_count(k,n) is the main interface, it will call the recursive
+ * function _cs(), with the terminal function _final_sum(). */
 
-typedef struct {
-  uint32_t *count;
-  uint32_t lastidx;
-} prime_array_t;
-
-static UV _cached_count(UV n, prime_array_t precalc) {
-  if (n < 2) return 0;
-  return (n <= precalc.lastidx)  ?  precalc.count[(n-1)>>1]
-                                 :  LMO_prime_count(n);
-}
-static void _create_precalc(UV limit, prime_array_t *precalc) {
-  uint32_t *counts = 0, idx = 1, cnt = 1;
-
-  if (limit <= HCPC) {
-    limit = HCPC;
-    counts = (uint32_t*) _pcnt;
-    if (_pcnt[(limit-1)>>1] != LMO_prime_count(limit)) croak("fail limit");
-  } else {
-    limit |= 1;
-    New(0, counts, limit+1, uint32_t);
-    counts[0] = 1;
-    START_DO_FOR_EACH_PRIME(3, limit) {
-      while (idx < ((p-1)>>1)) counts[idx++] = cnt;
-      counts[idx++] = ++cnt;
-    } END_DO_FOR_EACH_PRIME
-    while (idx <= ((limit-1)>>1)) counts[idx++] = cnt;
-  }
-  precalc->lastidx = limit;
-  precalc->count = counts;
-}
-static void _destroy_precalc(prime_array_t *precalc) {
-  if (precalc->count != 0 && precalc->count != _pcnt)
-    Safefree(precalc->count);
-}
-#undef HCPC
-
-/* The actual counting functions: _final_sum, _cs, almost_prime_count(k,n) */
+#define CACHED_PC(cache,n) prime_count_cache_lookup(cache,n)
 
 /* for Pi from Pi to isqrt(N/Pi) [pc[n/Pi]-idx(Pi)+1] */
 /* semiprime count = _final_sum(n, 1, 2, cache); */
 /* 3-almost prime count = sum(Pj < icbrt(n) of _final_sum(n, Pj, Pj, cache); */
-static UV _final_sum(UV n, UV pdiv, UV lo, prime_array_t cache) {
+static UV _final_sum(UV n, UV pdiv, UV lo, void *cache) {
   UV s = 0, hi = isqrt(n/pdiv);
-  UV j = _cached_count(lo, cache) - 1;  /* IDX(Pi) */
+  UV j = CACHED_PC(cache, lo) - 1;  /* IDX(Pi) */
 
   if (hi-lo < 500) {
     SIMPLE_FOR_EACH_PRIME(lo, hi) {
-      s += _cached_count(n/(pdiv*p),cache) - j++;
+      s += CACHED_PC(cache,n/(pdiv*p)) - j++;
     } END_SIMPLE_FOR_EACH_PRIME
     return s;
   }
 
-  if ((lo <= 2) && (hi >= 2)) s += _cached_count(n/(pdiv*2),cache) - j++;
-  if ((lo <= 3) && (hi >= 3)) s += _cached_count(n/(pdiv*3),cache) - j++;
-  if ((lo <= 5) && (hi >= 5)) s += _cached_count(n/(pdiv*5),cache) - j++;
+  if ((lo <= 2) && (hi >= 2)) s += CACHED_PC(cache,n/(pdiv*2)) - j++;
+  if ((lo <= 3) && (hi >= 3)) s += CACHED_PC(cache,n/(pdiv*3)) - j++;
+  if ((lo <= 5) && (hi >= 5)) s += CACHED_PC(cache,n/(pdiv*5)) - j++;
   if (lo < 7) lo = 7;
   if (lo <= hi) {
     unsigned char* segment;
@@ -175,7 +134,7 @@ static UV _final_sum(UV n, UV pdiv, UV lo, prime_array_t cache) {
     void* ctx = start_segment_primes(lo, hi, &segment);
     while (next_segment_primes(ctx, &seg_base, &seg_low, &seg_high)) {
       START_DO_FOR_EACH_SIEVE_PRIME( segment, seg_base, seg_low, seg_high )
-        s += _cached_count(n/(pdiv*p),cache) - j++;
+        s += CACHED_PC(cache,n/(pdiv*p)) - j++;
       END_DO_FOR_EACH_SIEVE_PRIME
     }
     end_segment_primes(ctx);
@@ -183,7 +142,7 @@ static UV _final_sum(UV n, UV pdiv, UV lo, prime_array_t cache) {
   return s;
 }
 
-static UV _cs(UV n, UV pdiv, UV lo, uint32_t k, prime_array_t cache) {
+static UV _cs(UV n, UV pdiv, UV lo, uint32_t k, void *cache) {
   UV count = 0;
 
   if (k == 2)
@@ -199,7 +158,7 @@ static UV _cs(UV n, UV pdiv, UV lo, uint32_t k, prime_array_t cache) {
 
 UV almost_prime_count(uint32_t k, UV n)
 {
-  prime_array_t cache;
+  void* cache;
   UV count, csize;
 
   if (k == 0) return (n >= 1);
@@ -212,11 +171,20 @@ UV almost_prime_count(uint32_t k, UV n)
   if (n <  9*(UVCONST(1) << (k-2))) return 2;
   if (n < 10*(UVCONST(1) << (k-2))) return 3;
 
-  csize = isqrt(n);
-  if (csize > 128*1024*1024) csize = 128*1024*1024;
-  _create_precalc(csize, &cache);
+  /* Decide how much we will cache prime counts.
+   *
+   * n/(1UL << (k+M)) has 0,1,2,7,15,37,84,187,... lookups for M=-2,-1,0,...
+   * The number of non-cached counts performed follows OEIS A052130. */
+
+  csize = n / (1UL << (k-2));
+  if (csize < 32) csize = 32;
+  if (csize >       16UL*1024)  csize = n / (1UL << (k+2));  /*  15 */
+  if (csize >      128UL*1024)  csize = n / (1UL << (k+4));  /*  84 */
+  if (csize >   1UL*1024*1024)  csize = n / (1UL << (k+6));  /* 421 */
+
+  cache = prime_count_cache_create( csize );
   count = _cs(n, 1, 2, k, cache);
-  _destroy_precalc(&cache);
+  prime_count_cache_destroy(cache);
   return count;
 }
 
