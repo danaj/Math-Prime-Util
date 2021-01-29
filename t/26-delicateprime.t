@@ -9,9 +9,12 @@ my $extra = defined $ENV{EXTENDED_TESTING} && $ENV{EXTENDED_TESTING};
 
 my @a050249 = (294001, 505447, 584141, 604171, 971767, 1062599, 1282529, 1524181, 2017963, 2474431, 2690201, 3085553, 3326489, 4393139, 5152507, 5564453, 5575259, 6173731, 6191371, 6236179, 6463267, 6712591, 7204777, 7469789, 7469797);
 
-plan tests => 2 + 3*$extra;
+plan tests => 3 + 3*$extra;
 
+# If we forget to change digits to zeros:
 is(is_delicate_prime(504991), 0, "is_delicate_prime(504991) = 0");
+# If we don't change the leading digit to zero (OEIS A158124):
+is(is_delicate_prime(929573), 0, "is_delicate_prime(929573) = 0");
 
 is_deeply( [map { is_delicate_prime($_) } @a050249], [map { 1 } @a050249], "is_delicate_prime(n) = 1 for first ".scalar(@a050249)." known.");
 

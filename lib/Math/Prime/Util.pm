@@ -2816,6 +2816,14 @@ prime, and 0 otherwise.
 These are numbers which are prime, but changing any single base-10 digit
 always produces a composite number.
 
+These are variously called "weakly prime" or "digitally delicate prime"
+numbers.
+Note that the first digit can be changed to a zero.
+
+Variations not considered here include different bases (e.g. OEIS A186995),
+making changing the first digit restricted to non-zero (OEIS A158124),
+and allowing leading zero digits to be changed ("widely DDPs").
+
 This is the L<OEIS series A050249|http://oeis.org/A050249>.
 
 

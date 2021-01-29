@@ -268,6 +268,7 @@
   - more work on verifying count_upper for k=5+
   - more work on verifying count_lower for k=5+
   - max_almost_prime_count fill in k=5-11. Somehow.
+    Time for almost_prime_count(17,~0) is 39min, so k=11 is ~2 days.
   - max_almost_prime_count improve k=2,3,4.  Somehow.
   - optimize PP is_almost_prime
   - better PP almost_prime_count bounds for k > 3
@@ -355,3 +356,5 @@
   easy in C, but we'll need to put the math back in PP.
 
 - Make lehmer use prime_count_cache.c
+
+- Split out Legendre Phi into separate file.
