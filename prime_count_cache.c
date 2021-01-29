@@ -16,6 +16,13 @@
  * If caching past this is requested, also make a uint32_t list of primes.
  * We use this to do a binary search.
  *
+ * It's possible to halve the memory size by using a uint32_t base plus a
+ * uint16_t offset.  For counts, shift the index by 19.  For the primes,
+ * shift the index by 11 (2048).
+ *
+ * After implementing for the counts, it's about 5% slower.  For primes it
+ * might make more sense because we're under far more memory pressure.
+ * However this really should be done in sieve.c.
  */
 
 typedef struct {
@@ -99,7 +106,7 @@ void prime_count_cache_destroy(void* cobj) {
 
   MPUverbose(2, "  Prime Count Cache:  Small: %u (%uk)  Large: %u (%uk)\n  Lookups  Total %lu  Small %lu  Large %lu  LMO %lu\n",
     cache->last_count_n, (((cache->last_count_n-1)>>1)+1)*4/1024,
-    cache->primes[cache->last_prime_idx], (cache->last_prime_idx+1)*4/1024,
+    cache->primes ? cache->primes[cache->last_prime_idx] : 0, (cache->last_prime_idx+1)*4/1024,
     cache->nl_total, cache->nl_small, cache->nl_large, cache->nl_lmo);
 
   if (cache->primes != 0)
@@ -109,11 +116,8 @@ void prime_count_cache_destroy(void* cobj) {
   Safefree(cache);
 }
 
-#if 1 /* About 16MB */
-#define LIM_SMALL  8388607
-#else /* About 8MB */
-#define LIM_SMALL  4194303
-#endif
+/* 32MB, 16MB, 8MB  16777211 8388605 4194301 */
+#define LIM_SMALL 8388605
 
 void* prime_count_cache_create(UV n) {
   pc_cache_t *cache;
@@ -132,10 +136,10 @@ void* prime_count_cache_create(UV n) {
     New(0, counts, count_last_idx+1, uint32_t);
     counts[0] = 1;
     START_DO_FOR_EACH_PRIME(3, count_last_n) {
-      while (idx < ((p-1)>>1)) counts[idx++] = cnt;
+      while (idx < ((p-1)>>1))  counts[idx++] = cnt;
       counts[idx++] = ++cnt;
     } END_DO_FOR_EACH_PRIME
-    while (idx <= count_last_idx) counts[idx++] = cnt;
+    while (idx <= count_last_idx)  counts[idx++] = cnt;
   }
   /* If more needed, generate small primes. */
   if (n > count_last_n)
