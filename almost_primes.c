@@ -181,6 +181,7 @@ UV almost_prime_count(uint32_t k, UV n)
   if (csize >       16UL*1024)  csize = n / (1UL << (k+2));  /*  15 */
   if (csize >      128UL*1024)  csize = n / (1UL << (k+4));  /*  84 */
   if (csize >   1UL*1024*1024)  csize = n / (1UL << (k+6));  /* 421 */
+  if (((csize >> 16) >> 16) >= 3)  csize >>= 1;
 
   cache = prime_count_cache_create( csize );
   count = _cs(n, 1, 2, k, cache);

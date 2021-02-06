@@ -4199,10 +4199,12 @@ being used.
   $phi = legendre_phi(1000000000, 41);
 
 Given a non-negative integer C<n> and a non-negative prime number C<a>,
-returns the Legendre phi function (also called Legendre's sum).  This is
+returns the Legendre phi function (also called the Legendre sum).  This is
 the count of positive integers E<lt>= C<n> which are not divisible by any
 of the first C<a> primes.
 
+This corresponds to the C<legendre_phi(n,a)> function in SAGE, and the
+C<--phi n a> feature of primecount.
 
 =head2 inverse_li
 

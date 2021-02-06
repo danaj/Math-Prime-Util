@@ -38,6 +38,8 @@ factor.c
 inverse_interpolate.h
 inverse_interpolate.c
 keyval.h
+legendre_phi.h
+legendre_phi.c
 lehmer.h
 lehmer.c
 lmo.h

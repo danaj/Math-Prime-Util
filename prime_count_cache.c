@@ -2,154 +2,251 @@
 #include <stdlib.h>
 #include <string.h>
 
+#define FUNC_popcnt 1
 #include "ptypes.h"
 #include "prime_nth_count.h"
 #include "sieve.h"
 #include "cache.h"
 #include "lmo.h"
+#include "util.h"
+#include "prime_count_cache.h"
 
 /*
  * Cache small counts directly using a uint32_t array.
- * Very fast, but space intensive for larger sizes.
- * We limit this to 16MB, e.g. counts to 8M.
+ * Very fast, but space intensive.
  *
- * If caching past this is requested, also make a uint32_t list of primes.
- * We use this to do a binary search.
+ * Cache larger counts using a base count + a single-word bit count.
  *
- * It's possible to halve the memory size by using a uint32_t base plus a
- * uint16_t offset.  For counts, shift the index by 19.  For the primes,
- * shift the index by 11 (2048).
+ * We used to use a binary search on a prime list, which is reasonable,
+ * but the bit mask uses less memory and is faster on average.  It also
+ * easily allows larger sizes.  Note: in 32-bit this isn't very efficient.
  *
- * After implementing for the counts, it's about 5% slower.  For primes it
- * might make more sense because we're under far more memory pressure.
- * However this really should be done in sieve.c.
+ * If memory is a concern, we could switch to a base count every two words.
  */
 
 typedef struct {
-  uint32_t *count;
-  uint32_t *primes;
-  uint32_t last_count_n;
-  uint32_t last_prime_idx;
+  uint16_t *count;
+  uint32_t *bm_count;
+  UV       *bm_mask;
+
+  UV last_n;
+  UV last_count_n;
+  UV last_bmask_n;
+
   /* Statistics counting */
-  unsigned long nl_total;
   unsigned long nl_small;
-  unsigned long nl_large;
+  unsigned long nl_bmask;
   unsigned long nl_lmo;
 } pc_cache_t;
 
+
 UV prime_count_cache_lookup(void* cobj, UV n) {
   pc_cache_t *cache = (pc_cache_t*)cobj;
-  uint32_t *primes;
-  UV i, j;
-
-  cache->nl_total++;
 
   if (n <= 2)
     return (n==2);
-
   /* Look in the small direct cache. */
   if (n <= cache->last_count_n) {
     cache->nl_small++;
     return cache->count[(n-1)>>1];
   }
-
-  /* Binary search if within our limits, otherwise call LMO to calculate. */
-  primes = cache->primes;
-  if (!primes || n >= primes[cache->last_prime_idx]) {
-    cache->nl_lmo++;
-    return LMO_prime_count(n);
+  /* Look in bitmask */
+  if (n <= cache->last_bmask_n) {
+    UV m = (n-1) >> 1;
+    uint32_t idx = m / BITS_PER_WORD;
+    uint32_t rem = m % BITS_PER_WORD;
+    cache->nl_bmask++;
+    return (UV)cache->bm_count[idx]  +  popcnt(cache->bm_mask[idx] >> (BITS_PER_WORD - 1 - rem));
   }
-
-  cache->nl_large++;
-
-  /* Select starting and ending limits for the binary search */
-  j = cache->last_prime_idx;
-#if 0
-  if      (n <     8480) { i = 1 + (n>>4);    if (j > 1060) j = 1060; }
-  else if (n < 25875000) { i = 793 + (n>>5);  if (j > (n>>3)) j = n>>3; }
-  else                   { i = 1617183;       if (j > (n>>4)) j = n>>4; }
-#else
-  if (n < 8480) {
-    i =      1 + ((n*31)>>8);
-    j =      3 + ((n*68)>>8) + 1;
-    if (j > 1060) j = 1060;
-  } else if (n < 8400000) {
-    i =    495 + ((n*17)>>8);
-    j =   4620 + ((n*19)>>8) + 1;
-    if (j > (n>>3)) j = n>>3;
-  } else if (n < 25875000) {
-    i =  72670 + ((n*15)>>8);
-    j = 101170 + ((n*15)>>8) + 1;
-    if (j > (n>>3)) j = n>>3;
-  } else {
-#if BITS_PER_WORD == 64
-    i = 404290 + ((n*12)>>8);
-    j = 890170 + ((n*14)>>8) + 1;
-#else
-    i = 1617183;
-#endif
-    if (j > (n>>4)) j = n>>4;
-  }
-  if (j > cache->last_prime_idx) j = cache->last_prime_idx;
-#endif
-
-  while (i < j) {
-    UV mid = i + (j-i)/2;  
-    if (primes[mid] <= n)  i = mid+1;
-    else                   j = mid;
-  }
-  return i-1;
+  /* OK, call LMO/segment */
+  cache->nl_lmo++;
+  return LMO_prime_count(n);
 }
+
+
+#if 0
+static void _checkn(pc_cache_t *cache, UV n, UV count) {
+  UV pc = prime_count_cache_lookup(cache, n);
+  if (pc != count)
+    croak("  pc cache [%lu] returned %lu instead of %lu\n", n, pc, count);
+}
+static void verify_cache(pc_cache_t *cache) {
+  UV n = 3, c = 1, lastn = cache->last_n;
+
+  _checkn(cache, 0, 0);
+  _checkn(cache, 1, 0);
+  _checkn(cache, 2, 1);
+  START_DO_FOR_EACH_PRIME(3, next_prime(lastn)) {
+    while (n < p)  _checkn(cache, n++, c);
+    _checkn(cache, n++, ++c);
+  } END_DO_FOR_EACH_PRIME
+  printf("  prime count cache verified to %lu complete\n", lastn);
+}
+static UV _bm_lookup(pc_cache_t *cache, UV n) {
+  uint32_t m = (n-1) >> 1;
+  uint32_t idx = m / BITS_PER_WORD;
+  uint32_t rem = m % BITS_PER_WORD;
+  return cache->bm_count[idx]  +  popcnt(cache->bm_mask[idx] >> (BITS_PER_WORD - 1 - rem));
+}
+#else
+#define verify_cache(cache)  /* nothing */
+#define _bm_lookup(cache,n) prime_count_cache_lookup(cache,n)
+#endif
+
 
 void prime_count_cache_destroy(void* cobj) {
   pc_cache_t *cache = (pc_cache_t*)cobj;
 
-  MPUverbose(2, "  Prime Count Cache:  Small: %u (%uk)  Large: %u (%uk)\n  Lookups  Total %lu  Small %lu  Large %lu  LMO %lu\n",
-    cache->last_count_n, (((cache->last_count_n-1)>>1)+1)*4/1024,
-    cache->primes ? cache->primes[cache->last_prime_idx] : 0, (cache->last_prime_idx+1)*4/1024,
-    cache->nl_total, cache->nl_small, cache->nl_large, cache->nl_lmo);
+  MPUverbose(2, "  Prime Count Cache (max %lu):\n", (UV)cache->last_n);
+  MPUverbose(2, "    Small: %lu (%luk)   Mask: %lu (%luk)\n",
+    (unsigned long)cache->last_count_n,
+    cache->last_count_n ? (unsigned long)(((cache->last_count_n-1)>>1)+1)*4/1024 : 0,
+    (unsigned long)cache->last_bmask_n,
+    (unsigned long) (sizeof(UV)+sizeof(uint32_t)) * (cache->last_bmask_n/(2*BITS_PER_WORD) + 1) / 1024);
+  MPUverbose(2, "    Lookups  Small %lu  Mask %lu  LMO %lu\n",
+    cache->nl_small, cache->nl_bmask, cache->nl_lmo);
 
-  if (cache->primes != 0)
-    Safefree(cache->primes);
   if (cache->count != 0)
     Safefree(cache->count);
+  if (cache->bm_count != 0)
+    Safefree(cache->bm_count);
+  if (cache->bm_mask != 0)
+    Safefree(cache->bm_mask);
   Safefree(cache);
 }
 
-/* 32MB, 16MB, 8MB  16777211 8388605 4194301 */
-#define LIM_SMALL 8388605
+
+/* prime_count(LIM_SMALL) <= 65535 */
+#define LIM_SMALL 821640
 
 void* prime_count_cache_create(UV n) {
   pc_cache_t *cache;
-  uint32_t *counts = 0,  *primes = 0;
-  uint32_t count_last_n = 0,  prime_last_idx = 0;
+  uint32_t i, idx, cnt;
 
-  if (n < 4)  n = 4;
-  if (n > 4294967295U)   n = 4294967295U;   /* Limit to uint32_t */
+  if (n < 5)  n = 5;
+#if BITS_PER_WORD == 64
+  /* The prime count has to fit in a uint32_t, so must be < 104484802057 */
+  /* Further limit to ~ 3GB. */
+  if (n > UVCONST( 34359738367))   n = UVCONST( 34359738367);
+#endif
   prime_precalc(LIM_SMALL);
 
-  { /* First make the counts */
-    uint32_t idx = 1, cnt = 1, count_last_idx;
+  Newz(0, cache, 1, pc_cache_t);  /* Allocate cache object, everything zero */
+  cache->last_n = n;
 
-    count_last_n   = ((n <= LIM_SMALL)  ?  n  :  LIM_SMALL) | 1;
-    count_last_idx = (count_last_n-1) >> 1;
-    New(0, counts, count_last_idx+1, uint32_t);
+  /* Fill in small counts */
+  {
+    uint16_t *counts;
+    uint32_t count_last_n   = (n <= LIM_SMALL) ? n : LIM_SMALL;
+    uint32_t count_last_idx = (count_last_n-1) >> 1;
+    New(0, counts, count_last_idx+1, uint16_t);
     counts[0] = 1;
+    idx = cnt = 1;
     START_DO_FOR_EACH_PRIME(3, count_last_n) {
       while (idx < ((p-1)>>1))  counts[idx++] = cnt;
       counts[idx++] = ++cnt;
     } END_DO_FOR_EACH_PRIME
+    MPUassert(cnt <= 65535, "small count overflow");
     while (idx <= count_last_idx)  counts[idx++] = cnt;
-  }
-  /* If more needed, generate small primes. */
-  if (n > count_last_n)
-    prime_last_idx = range_prime_sieve_32(&primes, n, /* Offset */ 1);
 
-  New(0, cache, 1, pc_cache_t);
-  cache->last_count_n = count_last_n;
-  cache->count = counts;
-  cache->last_prime_idx = prime_last_idx;
-  cache->primes = primes;
-  cache->nl_total = cache->nl_small = cache->nl_large = cache->nl_lmo = 0;
+    cache->count = counts;
+    cache->last_count_n = count_last_n;
+  }
+
+  /* Fill in bitmask and base counts */
+  if (n > cache->last_count_n) {
+    UV       *mask;
+    uint32_t *count;
+    uint32_t words = (n / (2*BITS_PER_WORD)) + 1;  /* 0-127=1, 128-255=2 */
+    Newz(0, count, words, uint32_t);
+    Newz(0,  mask, words, UV);
+
+    mask[0] = UVCONST(15) << (BITS_PER_WORD-4);
+    {
+      unsigned char* segment;
+      UV seg_base, seg_low, seg_high;
+      void* ctx = start_segment_primes(7, n, &segment);
+      while (next_segment_primes(ctx, &seg_base, &seg_low, &seg_high)) {
+        START_DO_FOR_EACH_SIEVE_PRIME( segment, seg_base, seg_low, seg_high )
+          UV m = (p-1)>>1;
+          uint32_t midx = m / BITS_PER_WORD;
+          uint32_t mrem = m % BITS_PER_WORD;
+          mask[midx] |= UVCONST(1) << (BITS_PER_WORD-1-mrem);
+        END_DO_FOR_EACH_SIEVE_PRIME
+      }
+      end_segment_primes(ctx);
+    }
+    for (i = 1; i < words; i++)
+      count[i] = count[i-1] + popcnt(mask[i-1]);
+
+    cache->bm_mask  = mask;
+    cache->bm_count = count;
+    cache->last_bmask_n = n;
+  }
+  verify_cache(cache);
   return cache;
+}
+
+void* prime_count_cache_create_with_primes(const uint32_t *primes, uint32_t lastidx) {
+#if 0  /* Slower  */
+  return prime_count_cache_create(primes[lastidx]);
+#else  /* Faster, but so much code duplication.... */
+  pc_cache_t *cache;
+  uint32_t i, idx, cnt, n;
+
+  MPUassert(primes != 0, "prime_count_cache_create called with null pointer");
+  if (lastidx <= 1) return prime_count_cache_create(5);
+  if (lastidx > 203280221) lastidx = 203280221;
+
+  Newz(0, cache, 1, pc_cache_t);  /* Allocate cache object, everything zero */
+  cache->last_n = n = primes[lastidx];
+
+  /* Fill in small counts */
+  {
+    uint16_t *counts;
+    uint32_t count_last_n   = (n <= LIM_SMALL) ? n : LIM_SMALL;
+    uint32_t count_last_idx = (count_last_n-1) >> 1;
+    New(0, counts, count_last_idx+1, uint16_t);
+    counts[0] = 1;
+    idx = cnt = 1;
+    for (i = 2;  i <= lastidx;  i++) {
+      uint32_t p = primes[i];
+      if (p > count_last_n) break;
+      while (idx < ((p-1)>>1))  counts[idx++] = cnt;
+      counts[idx++] = ++cnt;
+    }
+    MPUassert(cnt <= 65535, "small count overflow");
+    while (idx <= count_last_idx)  counts[idx++] = cnt;
+
+    cache->count = counts;
+    cache->last_count_n = count_last_n;
+  }
+
+  /* Fill in bitmask and base counts */
+  if (n > cache->last_count_n) {
+    UV       *mask;
+    uint32_t *count;
+    uint32_t words = (n / (2*BITS_PER_WORD)) + 1;  /* 0-127=1, 128-255=2 */
+    Newz(0, count, words, uint32_t);
+    Newz(0,  mask, words, UV);
+
+    mask[0] = UVCONST(1) << (BITS_PER_WORD-1);
+    for (i = 2;  i <= lastidx;  i++) {
+      uint32_t p = primes[i];
+      uint32_t m = (p-1)>>1;
+      uint32_t midx = m / BITS_PER_WORD;
+      uint32_t mrem = m % BITS_PER_WORD;
+      mask[midx] |= UVCONST(1) << (BITS_PER_WORD-1-mrem);
+    }
+
+    for (i = 1; i < words; i++)
+      count[i] = count[i-1] + popcnt(mask[i-1]);
+
+    cache->bm_mask  = mask;
+    cache->bm_count = count;
+    cache->last_bmask_n = n;
+  }
+  verify_cache(cache);
+  return cache;
+#endif
 }

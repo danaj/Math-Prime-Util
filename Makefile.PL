@@ -38,6 +38,7 @@ WriteMakefile1(
                     'factor.o '   .
                     'primality.o '.
                     'aks.o '      .
+                    'legendre_phi.o ' .
                     'lehmer.o '   .
                     'lmo.o '      .
                     'random_prime.o ' .
