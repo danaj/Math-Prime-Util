@@ -110,9 +110,12 @@ static UV phi_recurse_small(UV x, UV a, UV npa) {
   return sum;
 }
 
+/* TODO: Make a small walk using small fixed arrays.  Compare. */
+
 /*============================================================================*/
 
-/* Max memory = 2*X*A bytes, e.g. 2*65536*256 = 32 MB */
+/* Phi cache */
+
 #define PHICACHEA 512
 typedef struct
 {
@@ -129,8 +132,7 @@ static phi_cache_t* phi_cache_create(uint32_t xlim) {
     cache->val[a] = 0;
     cache->siz[a] = 0;
   }
-  /* Reserve 0xFFFFFFFF */
-  cache->xlim = (xlim < 0xFFFFFFFFU)  ?  xlim  :  xlim-1;
+  cache->xlim = (xlim < 0xFFFFFFFFU) ? xlim : xlim-1;  /* Reserve 0xFFFFFFFF */
   return cache;
 }
 
@@ -166,18 +168,10 @@ static void phi_cache_insert(uint32_t x, uint32_t a, IV sum, phi_cache_t* cache)
 
 #define PHI_CACHE_INSERT(x, a, val, pcache) \
   if ((a) < PHICACHEA && (x) <= (pcache)->xlim) \
-    phi_cache_insert((x), (a), (val), pcache);
+    { phi_cache_insert((x), (a), (val), pcache); }
 
-#if 1
 #define PHI_CACHE_GET_VAL(x, a, pcache) \
   (pcache)->val[a][x]
-#else
-#define PHI_CACHE_GET_VAL(x, a, pcache) \
-  phi_cache_get(x,a,pcache)
-uint16_t phi_cache_get(uint32_t x, uint32_t a, phi_cache_t* cache) {
-  return cache->val[a][x];
-}
-#endif
 
 /* End of Phi cache definitions */
 
@@ -241,7 +235,7 @@ static IV _phi3(UV x, UV a, int sign, phidata_t *d)
   }
 }
 
-static UV phi_recurse(UV x, UV a, UV npa)
+static UV phi_recurse(UV x, UV a, UV primes_to_n)
 {
   uint32_t* primes;
   uint32_t lastidx;
@@ -251,7 +245,7 @@ static UV phi_recurse(UV x, UV a, UV npa)
   if (x <= PHIC || a <= PHIC)  return tablephi(x, (a > PHIC) ? PHIC : a);
   if (a > 203280221) croak("64-bit phi out of range");
 
-  lastidx = range_prime_sieve_32(&primes, npa, 1);
+  lastidx = range_prime_sieve_32(&primes, primes_to_n, 1);
 
   if (primes[a] < x) {
     phidata_t *d = phidata_create(primes, lastidx, x, a);
@@ -419,7 +413,7 @@ static void vcarray_remove_zeros(vcarray_t* a)
 
 /* phi(x,a) non-recursive, using list merging.   Memory intensive. */
 
-static UV phi_walk(UV x, UV a, UV npa)
+static UV phi_walk(UV x, UV a, UV primes_to_n)
 {
   UV i, val, sval, lastidx, lastprime;
   UV sum = 0;
@@ -433,7 +427,7 @@ static UV phi_walk(UV x, UV a, UV npa)
   if (x <= PHIC || a <= PHIC)  return tablephi(x, (a > PHIC) ? PHIC : a);
   if (a > 203280221) croak("64-bit phi out of range");
 
-  lastidx = range_prime_sieve_32(&primes, npa, 1);
+  lastidx = range_prime_sieve_32(&primes, primes_to_n, 1);
   lastprime = primes[lastidx];
   if (x < lastprime)  { Safefree(primes); return 1; }
 
@@ -542,22 +536,17 @@ UV legendre_phi(UV x, UV a)
   npa = nth_prime(a);
   if (x <= npa) return 1;  /* Technically x < next_prime(npa) */
 
-#if 0
-  //return phi_recurse_small(x, a, npa);
-  //return phi_recurse(x, a, npa);
-  //return phi_walk(x, a, npa);
-#endif
-
   if (a <= 25) return phi_recurse_small(x, a, npa);
 
+  /* For large x, it is faster to compute more primes. */
+  if (npa < isqrt(x)) npa = isqrt(x);
+
   /* The best crossover between recurse and walk is complicated */
-  if (x < 1e7)
+  if (x <= 1e9)
     return phi_recurse(x, a, npa);
 
-  if (x <= 1e8 ) return (a <    250) ? phi_walk(x,a,npa) : phi_recurse(x,a,npa);
-  if (x <= 1e9 ) return (a <    500) ? phi_walk(x,a,npa) : phi_recurse(x,a,npa);
-  if (x <= 1e10) return (a <   2000) ? phi_walk(x,a,npa) : phi_recurse(x,a,npa);
-  if (x <= 1e11) return (a <   6000) ? phi_walk(x,a,npa) : phi_recurse(x,a,npa);
+  if (x <= 1e10) return (a <   1400) ? phi_walk(x,a,npa) : phi_recurse(x,a,npa);
+  if (x <= 1e11) return (a <   5000) ? phi_walk(x,a,npa) : phi_recurse(x,a,npa);
   if (x <= 1e12) return (a <  15000) ? phi_walk(x,a,npa) : phi_recurse(x,a,npa);
   if (x <= 1e13) return (a <  31000) ? phi_walk(x,a,npa) : phi_recurse(x,a,npa);
   if (x <= 1e14) return (a <  70000) ? phi_walk(x,a,npa) : phi_recurse(x,a,npa);
@@ -575,4 +564,43 @@ uint32_t tiny_phi_max_a(void)
 UV tiny_phi(UV n, uint32_t a)
 {
   return (a <= PHIC) ? tablephi(n, a) : phi_recurse_small(n, a, nth_prime(a));
+}
+
+/* void* prepare_cached_legendre_phi(x, a); */
+
+void* prepare_cached_legendre_phi(UV x, UV a)
+{
+  uint32_t npa, lastidx, *primes;
+  UV sum;
+
+  if (a > 203280221)  a = 203280221;
+  npa = nth_prime_upper(a);
+  if (npa < isqrt(x)) npa = isqrt(x);
+  lastidx = range_prime_sieve_32(&primes, npa, 1);
+  return (void*) phidata_create(primes, lastidx, x, a);
+}
+UV cached_legendre_phi(void* cache, UV x, UV a)
+{
+  phidata_t *d = (phidata_t*) cache;
+
+  if (x < 1 || a >= x) return (x > 0);
+  if (x <= PHIC || a <= PHIC)  return tablephi(x, (a > PHIC) ? PHIC : a);
+  if (a > (x >> 1))  return 1;
+
+  /* Make the function work even if x,a outside of cached conditions */
+  if (a > 203280221) {  /* prime_count(2**32) */
+    UV pc = LMO_prime_count(x);
+    return (a >= pc)  ?  1  :  pc - a + 1;
+  }
+  if (a > d->lastidx)
+    return legendre_phi(x, a);
+
+  return (UV) _phi3(x, a-1, 1, d)  -  (UV) _phi3(x/d->primes[a], a-1, 1, d);
+}
+
+void destroy_cached_legendre_phi(void* cache)
+{
+  phidata_t *d = (phidata_t*) cache;
+  Safefree(d->primes);
+  phidata_destroy(d);
 }
