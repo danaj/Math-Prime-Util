@@ -124,7 +124,7 @@ plan tests => 0 + 1
                 + $use64 * 3 * scalar(keys %pivals64)
                 + scalar(keys %intervals)
                 + 1
-                + 5 + 2*$extra # prime count specific methods
+                + 9 + 2*$extra # prime count specific methods
                 + 3 + (($isxs && $use64) ? 1+2*scalar(keys %tpcs) : 0) # twin pc
                 + 2 + (($isxs && $use64) ? 2+1*scalar(keys %spcs) : 0) # semi pc
                 + 2 + (($isxs && $use64) ? 2+1*scalar(keys %rpcs) : 0) # ram pc
@@ -197,14 +197,14 @@ sub parse_range {
 
 # Make sure each specific algorithm isn't broken.
 SKIP: {
-  skip "Not XS -- skipping direct primecount tests", 2 unless $isxs;
+  skip "Not XS -- skipping direct primecount tests", 6 unless $isxs;
   # This has to be above SIEVE_LIMIT in lehmer.c and lmo.c or nothing happens.
-  #is(Math::Prime::Util::_lehmer_pi  (66123456),3903023,"XS Lehmer count");
-  #is(Math::Prime::Util::_meissel_pi (66123456),3903023,"XS Meissel count");
-  #is(Math::Prime::Util::_legendre_pi(66123456),3903023,"XS Legendre count");
-  #is(Math::Prime::Util::_LMOS_pi    (66123456),3903023,"XS LMOS count");
-  is(Math::Prime::Util::_LMO_pi     (66123456), 3903023,"XS LMO count");
-  is(Math::Prime::Util::_segment_pi (66123456), 3903023,"XS segment count");
+  is(Math::Prime::Util::_lehmer_pi  (66123456), 3903023, "XS Lehmer count");
+  is(Math::Prime::Util::_meissel_pi (66123456), 3903023, "XS Meissel count");
+  is(Math::Prime::Util::_legendre_pi(66123456), 3903023, "XS Legendre count");
+  is(Math::Prime::Util::_LMOS_pi    (66123456), 3903023, "XS LMOS count");
+  is(Math::Prime::Util::_LMO_pi     (66123456), 3903023, "XS LMO count");
+  is(Math::Prime::Util::_segment_pi (66123456), 3903023, "XS segment count");
 }
 
 require_ok 'Math::Prime::Util::PP';

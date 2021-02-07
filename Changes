@@ -111,6 +111,12 @@ Revision history for Perl module Math::Prime::Util
     - Rewrote prime count caching and removed code duplication.
       Uses less memory at large sizes and is faster.
 
+    [OTHER]
+
+    - Legendre, Meissel, and Lehmer prime counting got rewritten to use our
+      common code.  3x less code.  No longer buildable standalone.  Included
+      by default, though still not called internally.
+
 
 0.73 2018-11-15
 
