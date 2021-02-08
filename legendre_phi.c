@@ -38,18 +38,22 @@
  *
  * legendre_phi
  *    decides what to do, including handling some special cases
- */ 
+ */
 
 /*============================================================================*/
-
-static unsigned char _small_nth[10+1] = {0,2,3,5,7,11,13,17,19,23,29};
 
 #define FAST_DIV(x,y) \
   ( ((x) <= 4294967295U) ? (uint32_t)(x)/(uint32_t)(y) : (x)/(y) )
 
+#define PHIC  6U  /* phi(x,a) with a <= PHIC can go to tablephi */
+
+#define PHIS 15U  /* phi(x,a) with a <= PHIS can go to phi_small */
+#define PHIS_XMIN (_snth[PHIS+1]-1)   /* nth_prime(PHIS+1)-1 */
+
+#define PHIR 20U  /* phi(x,a) with a <= PHIR is faster with phi_recurse_small */
+
 /*============================================================================*/
 
-#define PHIC 7
 
 /* static const uint8_t _s0[ 1] = {0};
    static const uint8_t _s1[ 2] = {0,1};
@@ -69,7 +73,11 @@ static UV tablephi(UV x, uint32_t a)
               return ((x /210) * 48 + _s4[x  % 210]) -
                      ((xp/210) * 48 + _s4[xp % 210]);
              }
-    case 6: {
+    case 6:
+#if PHIC == 6
+    default:
+#endif
+            {
               UV xp  = x / 11U;
               UV x2  = x / 13U;
               UV x2p = x2 / 11U;
@@ -78,23 +86,60 @@ static UV tablephi(UV x, uint32_t a)
                      ((x2 /210) * 48 + _s4[x2 % 210]) +
                      ((x2p/210) * 48 + _s4[x2p% 210]);
             }
+#if PHIC == 7
     case 7:
     default:return tablephi(x,a-1) - tablephi(x/17,a-1);   /* Hacky */
+#endif
   }
+}
+/*============================================================================*/
+
+/* Iterate with simple arrays */
+
+static const unsigned char _snth[25+1] = {0,2,3,5,7,11,13,17,19,23,29,31,37,41,43,47,53,59,61,67,71,73,79,83,89,97};
+
+static UV phi_small(UV x, uint32_t a) {
+  UV sum = 0, xpos[1025], xneg[1025];  /* For 32-bit x, 848 is enough */
+  uint32_t i, npos, nneg;
+
+  if (a < 4) {
+    return (a==0) ? x :
+           (a==1) ? x-x/2 :
+           (a==2) ? x-x/2-x/3+x/6
+                  : (x/30U) * 8U + _s3[x % 30U];
+  }
+  MPUassert(a <= PHIS, "phi_small: a too large");
+  if (x < _snth[a+1]) return (x>0);
+
+  for (npos = nneg = 0, xpos[npos++] = x;  a > 4U;  a--) {
+    uint32_t oneg = nneg,  opos = npos;
+    for (i = 0; i < opos; i++)
+      if (xpos[i] >= _snth[a])
+        xneg[nneg++] = xpos[i]/_snth[a];
+    for (i = 0; i < oneg; i++)
+      if (xneg[i] >= _snth[a])
+        xpos[npos++] = xneg[i]/_snth[a];
+  }
+  for (i = 0; i < npos; i++)
+    sum += (xpos[i]/210U)*48U + _s4[xpos[i] % 210U];
+  for (i = 0; i < nneg; i++)
+    sum -= (xneg[i]/210U)*48U + _s4[xneg[i] % 210U];
+  return sum;
 }
 
 /*============================================================================*/
+
+/* Recurse until a <= PHIS */
 
 static UV phi_recurse_small(UV x, UV a, UV npa) {
   UV sum, i, xp, p, lp;
 
   if (x < 1 || a >= x) return (x > 0);
-  if (x <= PHIC || a <= PHIC)  return tablephi(x, (a > PHIC) ? PHIC : a);
+  if (a <= PHIS || x <= PHIS_XMIN)  return phi_small(x, a);
 
-  /* a > PHIC */
-  sum = tablephi(x, PHIC);
-  p = _small_nth[PHIC];
-  for (i = PHIC+1; i <= a; i++) {
+  sum = phi_small(x, PHIS);
+  p = _snth[PHIS];
+  for (i = PHIS+1; i <= a; i++) {
     lp = p;
     p = next_prime(p);
     xp = FAST_DIV(x,p);
@@ -110,11 +155,10 @@ static UV phi_recurse_small(UV x, UV a, UV npa) {
   return sum;
 }
 
-/* TODO: Make a small walk using small fixed arrays.  Compare. */
-
+/*============================================================================*/
 /*============================================================================*/
 
-/* Phi cache */
+/* Cache for phi(x,a) */
 
 #define PHICACHEA 512
 typedef struct
@@ -175,6 +219,7 @@ static void phi_cache_insert(uint32_t x, uint32_t a, IV sum, phi_cache_t* cache)
 
 /* End of Phi cache definitions */
 
+/* Struct of everything needed for recursive phi call */
 
 typedef struct {
   const uint32_t* primes;
@@ -186,7 +231,7 @@ typedef struct {
 static phidata_t* phidata_create(const uint32_t* primes, uint32_t lastidx, UV x, UV a)
 {
   phidata_t *d;
-  uint32_t xlim = isqrt(x);  /* TODO: This is crude */
+  uint32_t xlim = isqrt(x);  /* Not ideal */
 
   New(0, d, 1, phidata_t);
   d->primes = primes;
@@ -208,6 +253,7 @@ static void phidata_destroy(phidata_t *d)
 #define PHI_PRIMECOUNT(x) \
   prime_count_cache_lookup(d->cachepc, (x))
 
+/* The recursive cached phi routine, given the struct with primes and cache */
 
 static IV _phi3(UV x, UV a, int sign, phidata_t *d)
 {
@@ -242,7 +288,7 @@ static UV phi_recurse(UV x, UV a, UV primes_to_n)
   UV sum = 1;
 
   if (x < 1 || a >= x) return (x > 0);
-  if (x <= PHIC || a <= PHIC)  return tablephi(x, (a > PHIC) ? PHIC : a);
+  if (a <= PHIS || x <= PHIS_XMIN)  return phi_small(x, a);
   if (a > 203280221) croak("64-bit phi out of range");
 
   lastidx = range_prime_sieve_32(&primes, primes_to_n, 1);
@@ -259,6 +305,7 @@ static UV phi_recurse(UV x, UV a, UV primes_to_n)
   return sum;
 }
 
+/*============================================================================*/
 /*============================================================================*/
 
 static int const verbose = 0;
@@ -503,70 +550,29 @@ static UV phi_walk(UV x, UV a, UV primes_to_n)
 }
 
 /*============================================================================*/
+/*============================================================================*/
 
-static UV phi_stupid(UV x, UV a) {
-  if (a <= PHIC) return tablephi(x,a);
-  return phi_stupid(x, a-1) - phi_stupid(x/nth_prime(a), a-1);
+uint32_t tiny_phi_max_a(void) { return PHIC; }
+
+UV tiny_phi(UV n, uint32_t a) {
+  return (a <= PHIC) ? tablephi(n, a)
+       : (a <= PHIS) ? phi_small(n, a)
+                     : phi_recurse_small(n, a, nth_prime(a));
 }
 
-/*============================================================================*/
-/*============================================================================*/
+uint32_t small_phi_max_a(void) { return PHIS; }
 
-UV legendre_phi(UV x, UV a)
-{
+UV small_phi(UV n, uint32_t a) {
   UV npa;
-  /* If 'x' is very small, give a quick answer with any 'a' */
-  if (x < 1 || a >= x) return (x > 0);
-  if (x <= PHIC || a <= PHIC)  return tablephi(x, (a > PHIC) ? PHIC : a);
-
-  /* Two shortcuts for large values, from R. Andrew Ohana */
-  if (a > (x >> 1))  return 1;
-
-  /* If a > prime_count(2^32), then we need not be concerned with composite
-   * x values with all factors > 2^32, as x is limited to 64-bit. */
-  if (a > 203280221) {  /* prime_count(2**32) */
-    UV pc = LMO_prime_count(x);
-    return (a >= pc)  ?  1  :  pc - a + 1;
-  }
-  /* After the two checks above,  7 <= a <= MIN(203280221, 2*x) */
-
-  /* If a >= prime_count(x), return 1 */
-  if (a > 25  &&  a >= prime_count_upper(x)) return 1;
-
+  if (a <= PHIS) return phi_small(n, a);
   npa = nth_prime(a);
-  if (x <= npa) return 1;  /* Technically x < next_prime(npa) */
-
-  if (a <= 25) return phi_recurse_small(x, a, npa);
-
-  /* For large x, it is faster to compute more primes. */
-  if (npa < isqrt(x)) npa = isqrt(x);
-
-  /* The best crossover between recurse and walk is complicated */
-  if (x <= 1e9)
-    return phi_recurse(x, a, npa);
-
-  if (x <= 1e10) return (a <   1400) ? phi_walk(x,a,npa) : phi_recurse(x,a,npa);
-  if (x <= 1e11) return (a <   5000) ? phi_walk(x,a,npa) : phi_recurse(x,a,npa);
-  if (x <= 1e12) return (a <  15000) ? phi_walk(x,a,npa) : phi_recurse(x,a,npa);
-  if (x <= 1e13) return (a <  31000) ? phi_walk(x,a,npa) : phi_recurse(x,a,npa);
-  if (x <= 1e14) return (a <  70000) ? phi_walk(x,a,npa) : phi_recurse(x,a,npa);
-  if (x <= 1e15) return (a < 120000) ? phi_walk(x,a,npa) : phi_recurse(x,a,npa);
-
-  return (a < 200000) ? phi_walk(x,a,npa) : phi_recurse(x,a,npa);
+  if (n <= npa) return 1;
+  if (npa < isqrt(n)) npa = isqrt(n);
+  return phi_recurse(n, a, npa);
 }
 
-
-uint32_t tiny_phi_max_a(void)
-{
-  return PHIC;
-}
-
-UV tiny_phi(UV n, uint32_t a)
-{
-  return (a <= PHIC) ? tablephi(n, a) : phi_recurse_small(n, a, nth_prime(a));
-}
-
-/* void* prepare_cached_legendre_phi(x, a); */
+/*============================================================================*/
+/*============================================================================*/
 
 void* prepare_cached_legendre_phi(UV x, UV a)
 {
@@ -603,4 +609,55 @@ void destroy_cached_legendre_phi(void* cache)
   phidata_t *d = (phidata_t*) cache;
   Safefree(d->primes);
   phidata_destroy(d);
+}
+
+/* static UV phi_stupid(UV x, UV a) {
+  if (a <= PHIC) return tablephi(x,a);
+  return phi_stupid(x, a-1) - phi_stupid(x/nth_prime(a), a-1);
+} */
+
+/*============================================================================*/
+/*============================================================================*/
+
+UV legendre_phi(UV x, UV a)
+{
+  UV npa;
+  /* If 'x' is very small, give a quick answer with any 'a' */
+  if (x < 1 || a >= x) return (x > 0);
+  if (x <= PHIC || a <= PHIC)  return tablephi(x, (a > PHIC) ? PHIC : a);
+
+  /* Two shortcuts for large values, from R. Andrew Ohana */
+  if (a > (x >> 1))  return 1;
+
+  /* If a > prime_count(2^32), then we need not be concerned with composite
+   * x values with all factors > 2^32, as x is limited to 64-bit. */
+  if (a > 203280221) {  /* prime_count(2**32) */
+    UV pc = LMO_prime_count(x);
+    return (a >= pc)  ?  1  :  pc - a + 1;
+  }
+  /* After the two checks above,  7 <= a <= MIN(203280221, 2*x) */
+
+  if (a <= PHIS)  return phi_small(x, a);
+
+  if (a > PHIR  &&  a >= prime_count_upper(x)) return 1;
+  npa = nth_prime(a);
+  if (x <= npa) return 1;  /* Technically x < next_prime(npa) */
+  if (a <= PHIR) return phi_recurse_small(x, a, npa); /* npa must = P[a] */
+
+  /* For large x, it is faster to compute more primes. */
+  if (npa < isqrt(x)) npa = isqrt(x);
+
+  /* The best crossover between recurse and walk is complicated */
+  if (x <= 1e10)
+    return phi_recurse(x, a, npa);
+
+  /* TODO: More tuning of these, or just improve them. */
+
+  if (x <= 1e11) return (a <   5000) ? phi_walk(x,a,npa) : phi_recurse(x,a,npa);
+  if (x <= 1e12) return (a <  15000) ? phi_walk(x,a,npa) : phi_recurse(x,a,npa);
+  if (x <= 1e13) return (a <  31000) ? phi_walk(x,a,npa) : phi_recurse(x,a,npa);
+  if (x <= 1e14) return (a <  70000) ? phi_walk(x,a,npa) : phi_recurse(x,a,npa);
+  if (x <= 1e15) return (a < 120000) ? phi_walk(x,a,npa) : phi_recurse(x,a,npa);
+
+  return (a < 200000) ? phi_walk(x,a,npa) : phi_recurse(x,a,npa);
 }

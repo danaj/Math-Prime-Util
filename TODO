@@ -67,10 +67,6 @@
 
 - Ensure a fast path for Math::GMP from MPU -> MPU:GMP -> GMP, and back.
 
-- We don't use legendre_phi for other functions any more, but it'd be nice
-  to speed it up using some ideas from the Ohana 2011 SAGE branch.  For example
-  (10**13,10**5) takes 2.5x longer, albeit with 6x less memory.
-
 - More Pari:  parforprime
 
 - znlog:
@@ -355,5 +351,3 @@
 
 - Add optional base to is_delicate_prime(n,base=10).  This should be relatively
   easy in C, but we'll need to put the math back in PP.
-
-- Tune crossover for legendre phi with large x and a.
