@@ -41,7 +41,7 @@ static UV select_extra_strong_parameters(UV n, UV increment) {
   while (1) {
     D = P*P - 4;
     j = jacobi_iu(D, n);
-    if (j == 0) return 0;
+    if (j == 0) { UV g = gcd_ui(D,n);  if (g != 1 && g != n) return 0; }
     if (j == -1) break;
     if (P == (3+20*increment) && is_perfect_square(n)) return 0;
     P += increment;

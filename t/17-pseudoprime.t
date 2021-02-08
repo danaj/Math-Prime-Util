@@ -25,7 +25,7 @@ my $usegmp =Math::Prime::Util::prime_get_config->{'gmp'};
 my $extra = 0+(defined $ENV{EXTENDED_TESTING} && $ENV{EXTENDED_TESTING});
 
 # small primes
-my @sp = qw/2 3 5 7 11 13 17 19 23 29 31 37/;
+my @sp = qw/2 3 5 7 11 13 17 19 23 29 31 37 41 43 47 53 59 61 67 71 73 79 83 89 97/;
 # strong pseudoprimes for all prime bases 2 .. pn
 my @phis = qw/2047 1373653 25326001 3215031751 2152302898747 3474749660383 341550071728321 341550071728321/;
 $#phis = 3 unless $use64;
@@ -141,6 +141,7 @@ plan tests => 0 + 3
                 + 1  # mr base 2    2-4k
                 + 9  # mr with large bases
                 + 3  # multi-base Fermat/strong pseudoprimes
+                + 1  # small extra_strong
                 + scalar @small_lucas_trials
                 + scalar(keys %lucas_sequences)
                 + 1  # frob-underwood
@@ -258,6 +259,9 @@ is( is_strong_pseudoprime(49117, 921211727), 1, "spsp(49117, 921211727)");
 is(is_pseudoprime(143168581, 2, 3, 5, 7, 11), 1, "143168581 is a Fermat pseudoprime to bases 2,3,5,7,11");
 is(is_strong_pseudoprime(3215031751, 2, 3, 5, 7), 1, "3215031751 is a strong pseudoprime to bases 2,3,5,7");
 is(is_strong_pseudoprime("2152302898747", 2, 3, 5, 7, 11), 1, "2152302898747 is a strong pseudoprime to bases 2,3,5,7,11");
+
+# Verify extra strong for a few small primes
+is_deeply( [grep { is_extra_strong_lucas_pseudoprime($_) } 2..100], [grep { $_ >= 2 && $_ <= 100 } @sp], "The first 100 primes are selected by is_extra_strong_lucas_pseudoprime" );
 
 # Verify Lucas for some small numbers
 for my $n (@small_lucas_trials) {

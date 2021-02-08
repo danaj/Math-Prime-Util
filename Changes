@@ -77,6 +77,8 @@ Revision history for Perl module Math::Prime::Util
 
     - sieve_range documentation for depth didn't exactly match the XS code.
 
+    - is_extra_strong_lucas_pseudoprime(5) was returning 0.
+
     [FUNCTIONALITY AND PERFORMANCE]
 
     - refactor objectification.  Doesn't force.  Enable on Perl < 5.9.
