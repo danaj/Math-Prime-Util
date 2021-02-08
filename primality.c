@@ -354,17 +354,18 @@ void lucas_seq(UV* Uret, UV* Vret, UV* Qkret, UV n, IV P, IV Q, UV k)
   UV U, V, b, Dmod, Qmod, Pmod, Qk;
 
   MPUassert(n > 1, "lucas_sequence:  modulus n must be > 1");
-  if (k == 0) {
-    *Uret = 0;
-    *Vret = 2;
-    *Qkret = Q;
-    return;
-  }
 
   Qmod = (Q < 0)  ?  (UV) (Q + (IV)(((-Q/n)+1)*n))  :  (UV)Q % n;
   Pmod = (P < 0)  ?  (UV) (P + (IV)(((-P/n)+1)*n))  :  (UV)P % n;
   Dmod = submod( mulmod(Pmod, Pmod, n), mulmod(4, Qmod, n), n);
-  if (Dmod == 0) {
+
+  if (k == 0) {
+    *Uret = 0;
+    *Vret = 2;
+    *Qkret = Qmod;
+    return;
+  }
+  if (Dmod == 0 && (n & 1) && (n != 5)) {
     b = Pmod >> 1;
     *Uret = mulmod(k, powmod(b, k-1, n), n);
     *Vret = mulmod(2, powmod(b, k, n), n);

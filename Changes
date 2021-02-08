@@ -79,6 +79,8 @@ Revision history for Perl module Math::Prime::Util
 
     - is_extra_strong_lucas_pseudoprime(5) was returning 0.
 
+    - lucas_sequence wasn't right for n=5, and k even.
+
     [FUNCTIONALITY AND PERFORMANCE]
 
     - refactor objectification.  Doesn't force.  Enable on Perl < 5.9.

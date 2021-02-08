@@ -72,7 +72,18 @@ my @oeis_81264 = (323, 377, 1891, 3827, 4181, 5777, 6601, 6721, 8149, 10877, 116
 # The PP lucas sequence is really slow.
 $#oeis_81264 = 2 unless $usexs || $usegmp;
 
-plan tests => 0 + 2*scalar(@lucas_seqs) + 1 + 1;
+my @issue47 = (
+  [4,1,-1,951, "2 0 3"],
+  [4,2,-1,951, "1 2 3"],
+  [8,1,-1,47, "1 7 7"],
+  [8,2,-1,47, "1 6 7"],
+  [5,1,-1,0, "0 2 4"],
+  [5,2,-1,0, "0 2 4"],
+  [5,1,-1,66, "3 3 1"],
+  [5,2,-1,66, "0 3 1"],
+);
+
+plan tests => 0 + 2*scalar(@lucas_seqs) + 1 + 1 + scalar(@issue47);
 
 foreach my $seqs (@lucas_seqs) {
   my($apq, $isneg, $uorv, $name, $exp) = @$seqs;
@@ -106,4 +117,9 @@ foreach my $seqs (@lucas_seqs) {
   my $e = (0,-1,1,1,-1)[$n%5];
   my($U,$V,$Q) = lucas_sequence($n, 1, -1, $n+$e);
   is_deeply( [$U,$V,$Q], [0,5466722,8539785], "First entry of OEIS A141137: Even Fibonacci pseudoprimes" );
+}
+
+for my $i (@issue47) {
+  my($n,$P,$Q,$k,$expstr) = @$i;
+  is( join(" ",lucas_sequence($n,$P,$Q,$k)), $expstr, "lucas_sequence(mod $n,$P,$Q,$k) = $expstr");
 }
