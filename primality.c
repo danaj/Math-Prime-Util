@@ -319,6 +319,7 @@ static void alt_lucas_seq(UV* Uret, UV* Vret, UV* Qkret, UV n, UV Pmod, UV Qmod,
     return;
   }
 
+  /* TODO: Measure speed:  X-Qh-Qh vs X-2*Qh */
   for (j = m; j > s; j--) {
     Ql = mulmod(Ql, Qh, n);
     if ( (k >> j) & UVCONST(1) ) {
@@ -353,20 +354,21 @@ void lucas_seq(UV* Uret, UV* Vret, UV* Qkret, UV n, IV P, IV Q, UV k)
 {
   UV U, V, b, Dmod, Qmod, Pmod, Qk;
 
-  MPUassert(n > 1, "lucas_sequence:  modulus n must be > 1");
+  MPUassert(n > 0, "lucas_sequence:  modulus n must be > 0");
+  if (n == 1) { *Uret = *Vret = *Qkret = 0; return; }
 
-  Qmod = (Q < 0)  ?  (UV) (Q + (IV)(((-Q/n)+1)*n))  :  (UV)Q % n;
-  Pmod = (P < 0)  ?  (UV) (P + (IV)(((-P/n)+1)*n))  :  (UV)P % n;
+  Qmod = ivmod(Q, n);
+  Pmod = ivmod(P, n);
   Dmod = submod( mulmod(Pmod, Pmod, n), mulmod(4, Qmod, n), n);
 
   if (k == 0) {
     *Uret = 0;
     *Vret = 2;
-    *Qkret = Qmod;
+    *Qkret = 1;
     return;
   }
-  if (Dmod == 0 && (n & 1) && (n != 5)) {
-    b = Pmod >> 1;
+
+  if (Dmod == 0 && (b = divmod(Pmod,2,n)) != 0) {
     *Uret = mulmod(k, powmod(b, k-1, n), n);
     *Vret = mulmod(2, powmod(b, k, n), n);
     *Qkret = powmod(Qmod, k, n);

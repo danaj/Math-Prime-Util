@@ -1752,6 +1752,15 @@ UV divmod(UV a, UV b, UV n) {   /* a / b  mod n */
   return mulmod(a, binv, n);
 }
 
+UV ivmod(IV a, UV n) {   /* signed a mod n, always defined */
+  if (a >= 0) {
+    return (UV)(a) % n;
+  } else {
+    UV amodn = (UV)(-a) % n;
+    return (amodn == 0)  ?  0  :  n-amodn;
+  }
+}
+
 #if 0
 int is_regular(UV a, UV n) {  /* there exists an x s.t. a^2*x = a mod n */
   UV d;

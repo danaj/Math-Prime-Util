@@ -3050,12 +3050,7 @@ function.
 Computes C<U_k>, C<V_k>, and C<Q_k> for the Lucas sequence defined by
 C<P>,C<Q>, modulo C<n>.  The modular Lucas sequence is used in a
 number of primality tests and proofs.
-The following conditions must hold:
-C< |P| E<lt> n>  ;
-C< |Q| E<lt> n>  ;
-C< k E<gt>= 0>  ;
-C< n E<gt>= 2>.
-
+C<k> must be non-negative, and C<n> must be greater than zero.
 
 =head2 gcd
 
@@ -3270,14 +3265,24 @@ Mathematica's C<IntegerDigits> function.
 
 =head2 todigitstring
 
+  # arguments are:  input integet, base (optional), truncate (optional)
   say "decimal 456 in hex is ", todigitstring(456, 16);
   say "last 4 bits of $n are: ", todigitstring($n, 2, 4);
 
-Similar to L</todigits> but returns a string.  For bases E<lt>= 10,
-this is equivalent to joining the array returned by L</todigits>.  For
-bases between 11 and 36, lower case characters C<a> to C<z> are used
-to represent larger values.  This makes C<todigitstring($n,16)>
-return a usable hex string.
+Similar to L</todigits> but returns a string.
+For bases E<lt>= 10, this is equivalent to joining the array returned
+by L</todigits>.
+
+The first argument C<n> is the input integer.  The sign is ignored.
+If no other arguments are given, this just returns the string of C<n>.
+
+An optional second argument is the base C<base> which must be between 2 and 36.
+No prefix such as "0x" will be added, and all bases over 9 use lower case
+C<a> to C<z>.
+
+An optional third argument C<k> requires the result to be exactly C<k> digits.
+This truncates to the last C<k> digits if the result has C<k> or fewer digits,
+or zero extends if the result has more digits.
 
 This corresponds to Mathematica's C<IntegerString> function.
 

@@ -79,7 +79,8 @@ Revision history for Perl module Math::Prime::Util
 
     - is_extra_strong_lucas_pseudoprime(5) was returning 0.
 
-    - lucas_sequence wasn't right for n=5, and k even.
+    - lucas_sequence wasn't right for some outlier cases.  This did not
+      impact any primality tests or other internal code.
 
     [FUNCTIONALITY AND PERFORMANCE]
 

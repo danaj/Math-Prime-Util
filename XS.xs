@@ -427,14 +427,6 @@ static int _compare_array_refs(pTHX_ SV* a, SV* b)
   return 1;
 }
 
-#if 0
-static UV ivmod(IV a, UV n) {
-  UV negamod;
-  if (a >= 0) return (UV)a % n;
-  negamod = ((UV)(-a)) % n;
-  return (negamod == 0) ? 0 : n-negamod;
-}
-#endif
 static UV negamod(IV a, UV n) {
   UV negamod = ((UV)(-a)) % n;
   return (negamod == 0) ? 0 : n-negamod;
