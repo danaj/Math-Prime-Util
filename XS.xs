@@ -1319,29 +1319,10 @@ chinese(...)
     objectify_result(aTHX_  (psvn ? *psvn : 0), ST(0));
     return; /* skip implicit PUTBACK */
 
-void
-lucas_sequence(...)
-  ALIAS:
-    lucasu = 1
-    lucasv = 2
+void lucas_sequence(...)
   PREINIT:
     UV U, V, Qk;
   PPCODE:
-    if (ix == 1 || ix == 2) {
-      if (items != 3) croak("lucasu: P, Q, k");
-      if (_validate_int(aTHX_ ST(0), 1) && _validate_int(aTHX_ ST(1), 1) &&
-          _validate_int(aTHX_ ST(2), 0)) {
-        IV P = my_sviv(ST(0));
-        IV Q = my_sviv(ST(1));
-        UV k = my_svuv(ST(2));
-        IV ret;
-        int ok = (ix == 1) ? lucasu(&ret, P, Q, k) : lucasv(&ret, P, Q, k);
-        if (ok) XSRETURN_IV(ret);
-      }
-      _vcallsub_with_gmpobj(0.29,(ix==1) ? "lucasu" : "lucasv");
-      objectify_result(aTHX_ ST(2), ST(0));
-      return;
-    }
     if (items != 4) croak("lucas_sequence: n, P, Q, k");
     if (_validate_int(aTHX_ ST(0), 0) && _validate_int(aTHX_ ST(1), 1) &&
         _validate_int(aTHX_ ST(2), 1) && _validate_int(aTHX_ ST(3), 0)) {
@@ -1354,6 +1335,58 @@ lucas_sequence(...)
       _vcallsubn(aTHX_ GIMME_V, VCALL_PP, "lucas_sequence", items, 0);
       return;
     }
+
+void lucasuvmod(IN IV P, IN IV Q, IN SV* svk, IN SV* svn)
+  ALIAS:
+    lucasumod = 1
+    lucasvmod = 2
+  PPCODE:
+    if (_validate_int(aTHX_ svk, 0) == 1 && _validate_int(aTHX_ svn, 0) == 1) {
+      UV U, V, Qk;
+      UV k = my_svuv(svk);
+      UV n = my_svuv(svn);
+      lucas_seq(&U, &V, &Qk, n, P, Q, k);
+      switch (ix) {
+        case 0:  PUSHs(sv_2mortal(newSVuv( U )));
+                 PUSHs(sv_2mortal(newSVuv( V )));
+                 PUSHs(sv_2mortal(newSVuv( Qk )));
+                 break;
+        case 1:  XSRETURN_UV(U); break;
+        case 2:
+        default: XSRETURN_UV(V); break;
+      }
+    } else {
+      if (ix == 0) {
+        _vcallsubn(aTHX_ GIMME_V, VCALL_PP, "lucasuvmod", items, 0);
+      } else {
+        _vcallsub_with_gmp(0.53, (ix == 1) ? "lucasumod" : "lucasvmod");
+        objectify_result(aTHX_ ST(3), ST(0));
+      }
+      return;
+    }
+
+void lucasuv(IN IV P, IN IV Q, IN SV* svk)
+  ALIAS:
+    lucasu = 1
+    lucasv = 2
+  PREINIT:
+    IV U, V;
+  PPCODE:
+    if (_validate_int(aTHX_ svk, 0)==1 && lucasuv(&U, &V, P, Q, my_svuv(svk))) {
+      if (ix == 1)  XSRETURN_IV(U);     /* U = lucasu(P,Q,k) */
+      if (ix == 2)  XSRETURN_IV(V);     /* V = lucasv(P,Q,k) */
+      PUSHs(sv_2mortal(newSViv( U )));  /* (U,V) = lucasuv(P,Q,k) */
+      PUSHs(sv_2mortal(newSViv( V )));
+    } else {
+      if (ix == 0) {
+        _vcallsubn(aTHX_ GIMME_V, VCALL_PP, "lucasuv", items, 0);
+      } else {
+        _vcallsub_with_gmpobj(0.29, (ix==1) ? "lucasu" : "lucasv");
+        objectify_result(aTHX_ ST(0), ST(0));
+      }
+      return;
+    }
+
 
 void is_prime(IN SV* svn)
   ALIAS:
@@ -2219,16 +2252,8 @@ kronecker(IN SV* sva, IN SV* svb)
     valuation = 1
     invmod = 2
     sqrtmod = 3
-    powint = 4
-    mulint = 5
-    addint = 6
-    subint = 7
-    divint = 8
-    modint = 9
-    divrem = 10
-    tdivrem = 11
-    is_gaussian_prime = 12
-    is_primitive_root = 13
+    is_gaussian_prime = 4
+    is_primitive_root = 5
   PREINIT:
     int astatus, bstatus, abpositive, abnegative;
   PPCODE:
@@ -2270,47 +2295,7 @@ kronecker(IN SV* sva, IN SV* svb)
         a = (n == 0) ? 0 : (astatus != -1) ? my_svuv(sva) % n : negamod(my_sviv(sva), n);
         if (!sqrtmod(&s, a, n)) XSRETURN_UNDEF;
         XSRETURN_UV(s);
-      } else if (ix >= 4 && ix <= 11) {
-        if (abpositive) {
-          UV ret = 0, a = my_svuv(sva), b = my_svuv(svb);
-          int overflow = 0;
-          switch (ix) {
-            case  4: if (a < 2)
-                       ret = (b == 0) ? 1 : a;
-                     else if (a == 2 && b < BITS_PER_WORD)
-                       ret = UVCONST(1) << b;
-                     else if (a >= 3 && b < BITS_PER_WORD && b <= logint(UV_MAX, a))
-                       ret = ipow(a,b);
-                     else
-                       overflow = 1;
-                     break;
-            case  5: ret = a * b;                  /* mulint */
-                     overflow = a > 0 && UV_MAX/a < b;
-                     break;
-            case  6: ret = a + b;                  /* addint */
-                     overflow = UV_MAX-a < b;
-                     break;
-            case  7: ret = a - b;                  /* subint */
-                     if (b > a && (IV)ret < 0) XSRETURN_IV((IV)ret);
-                     overflow = (b > a);
-                     break;
-            case  8: if (b == 0) croak("divint: divide by zero");
-                     ret = a / b; break;           /* divint */
-            case  9: if (b == 0) croak("modint: divide by zero");
-                     ret = a % b; break;           /* modint */
-            case 10: if (b == 0) croak("divrem: divide by zero");
-                     XPUSHs(sv_2mortal(newSVuv( a / b )));
-                     XPUSHs(sv_2mortal(newSVuv( a % b )));
-                     XSRETURN(2); break;           /* divrem */
-            case 11:
-            default: if (b == 0) croak("tdivrem: divide by zero");
-                     XPUSHs(sv_2mortal(newSVuv( a / b )));
-                     XPUSHs(sv_2mortal(newSVuv( a % b )));
-                     XSRETURN(2); break;           /* tdivrem */
-          }
-          if (!overflow) XSRETURN_UV(ret);
-        }
-      } else if (ix == 12) {
+      } else if (ix == 4) {
         UV a = (astatus != -1) ? my_svuv(sva) : (UV)(-(my_sviv(sva)));
         UV b = (bstatus != -1) ? my_svuv(svb) : (UV)(-(my_sviv(svb)));
         if (a == 0) RETURN_NPARITY( ((b % 4) == 3) ? is_prime(b) : 0 );
@@ -2332,20 +2317,100 @@ kronecker(IN SV* sva, IN SV* svb)
       case 1:  _vcallsub_with_gmp(0.20,"valuation"); break;
       case 2:  _vcallsub_with_gmp(0.20,"invmod"); break;
       case 3:  _vcallsub_with_gmp(0.36,"sqrtmod"); break;
-      case 4:  _vcallsub_with_gmp(0.52,"powint"); break;
-      case 5:  _vcallsub_with_gmp(0.52,"mulint"); break;
-      case 6:  _vcallsub_with_gmp(0.52,"addint"); break;
-      case 7:  _vcallsub_with_gmp(0.52,"subint"); break;
-      case 8:  _vcallsub_with_gmp(0.52,"divint"); break;
-      case 9:  _vcallsub_with_gmp(0.52,"modint"); break;
-      case 10: _vcallsubn(aTHX_ GIMME_V, VCALL_PP|VCALL_GMP, "divrem", items, 52); break;
-      case 11: _vcallsubn(aTHX_ GIMME_V, VCALL_PP|VCALL_GMP, "tdivrem", items, 52); break;
-      case 12: _vcallsub_with_gmp(0.52,"is_gaussian_prime"); break;
-      case 13:
+      case 4:  _vcallsub_with_gmp(0.52,"is_gaussian_prime"); break;
+      case 5:
       default: _vcallsub_with_gmp(0.36,"is_primitive_root"); break;
     }
-    if (ix >= 2 && ix <= 11)
+    if (ix == 2 || ix == 3)
       objectify_result(aTHX_ ST(0), ST(0));
+    return; /* skip implicit PUTBACK */
+
+void addint(IN SV* sva, IN SV* svb)
+  ALIAS:
+    subint = 1
+    mulint = 2
+    divint = 3
+    modint = 4
+    powint = 5
+  PREINIT:
+    int astatus, bstatus, overflow;
+  PPCODE:
+    astatus = _validate_int(aTHX_ sva, 2);
+    bstatus = _validate_int(aTHX_ svb, 2);
+    overflow = 0;
+    /* TODO: we should do negative inputs as well */
+    if (astatus == 1 && bstatus == 1) {
+      UV ret = 0, a = my_svuv(sva), b = my_svuv(svb);
+      switch (ix) {
+        case 0:  ret = a + b;                  /* addint */
+                 overflow = UV_MAX-a < b;
+                 break;
+        case 1:  ret = a - b;                  /* subint */
+                 if (b > a && (IV)ret < 0) XSRETURN_IV((IV)ret);
+                 overflow = (b > a);
+                 break;
+        case 2:  ret = a * b;                  /* mulint */
+                 overflow = a > 0 && UV_MAX/a < b;
+                 break;
+        case 3:  if (b == 0) croak("divint: divide by zero");
+                 ret = a / b; break;           /* divint */
+        case 4:  if (b == 0) croak("modint: divide by zero");
+                 ret = a % b; break;           /* modint */
+        case 5:
+        default: ret = ipowsafe(a, b);
+                 overflow = (a > 1 && ret == UV_MAX);
+                 break;
+      }
+      if (!overflow) XSRETURN_UV(ret);
+    }
+    switch (ix) {
+      case 0:  _vcallsub_with_gmp(0.52,"addint"); break;
+      case 1:  _vcallsub_with_gmp(0.52,"subint"); break;
+      case 2:  _vcallsub_with_gmp(0.52,"mulint"); break;
+      case 3:  _vcallsub_with_gmp(0.52,"divint"); break;
+      case 4:  _vcallsub_with_gmp(0.52,"modint"); break;
+      case 5:
+      default: _vcallsub_with_gmp(0.52,"powint"); break;
+    }
+    objectify_result(aTHX_ ST(0), ST(0));
+    return; /* skip implicit PUTBACK */
+
+void divrem(IN SV* sva, IN SV* svb)
+  ALIAS:
+    fdivrem = 1
+    tdivrem = 2
+  PREINIT:
+    int astatus, bstatus, abpositive, abnegative;
+  PPCODE:
+    astatus = _validate_int(aTHX_ sva, 1);
+    bstatus = _validate_int(aTHX_ svb, 1);
+    if (astatus == 1 && bstatus == 1) {
+      UV D = my_svuv(sva), d = my_svuv(svb);
+      if (d == 0) croak("divrem: divide by zero");
+      XPUSHs(sv_2mortal(newSVuv( D / d )));
+      XPUSHs(sv_2mortal(newSVuv( D % d )));
+      XSRETURN(2);
+    } else if (1 && astatus != 0 && (SvIOK(sva) && !SvIsUV(sva)) &&
+               bstatus != 0 && (SvIOK(svb) && !SvIsUV(svb))) {
+      /* Both values fit in an IV */
+      IV q, r, D = my_sviv(sva), d = my_sviv(svb);
+      if (d == 0) croak("divrem: divide by zero");
+      switch (ix) {
+        case 0:  edivrem(&q, &r, D, d); break;
+        case 1:  fdivrem(&q, &r, D, d); break;
+        case 2:
+        default: tdivrem(&q, &r, D, d); break;
+      }
+      XPUSHs(sv_2mortal(newSViv( q )));
+      XPUSHs(sv_2mortal(newSViv( r )));
+      XSRETURN(2);
+    }
+    switch (ix) {
+      case 0:  _vcallsubn(aTHX_ GIMME_V, VCALL_PP|VCALL_GMP, "divrem", items, 52); break;
+      case 1:  _vcallsubn(aTHX_ GIMME_V, VCALL_PP|VCALL_GMP, "fdivrem", items, 52); break;
+      case 2:
+      default: _vcallsubn(aTHX_ GIMME_V, VCALL_PP|VCALL_GMP, "tdivrem", items, 53); break;
+    }
     return; /* skip implicit PUTBACK */
 
 void lshiftint(IN SV* svn, IN unsigned long k = 1)
