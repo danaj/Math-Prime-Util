@@ -17,6 +17,7 @@ Revision history for Perl module Math::Prime::Util
     - divint(a, b)                    signed integer a/b (floor)
     - modint(a, b)                    signed integer a%b (floor)
     - divrem(a, b)                    Euclidean quotient and remainder
+    - fdivrem(a, b)                   Floored quotient and remainder
     - tdivrem(a, b)                   Truncated quotient and remainder
     - lshiftint(n, k)                 left shift n by k bits
     - rshiftint(n, k)                 right shift n by k bits (truncating)
@@ -53,6 +54,12 @@ Revision history for Perl module Math::Prime::Util
     - vecequal(\@a, \@b)              compare two arrays for equality
     - tozeckendorf(n)                 Zeckendorf binary string from n
     - fromzeckendorf(str)             n from Zeckendorf binary string
+    - lucasu(p,q,k)                   U(p,q)_k
+    - lucasv(p,q,k)                   V(p,q)_k
+    - lucasuv(p,q,k)                  U(p,q)_k, V(p,q)_k
+    - lucasumod(p,q,k,n)              U(p,q)_k mod n
+    - lucasvmod(p,q,k,n)              V(p,q)_k mod n
+    - lucasuvmod(p,q,k,n)             U(p,q)_k, V(p,q)_k, q^k  all mod n
 
     [FIXES]
 
@@ -121,6 +128,8 @@ Revision history for Perl module Math::Prime::Util
     - Legendre, Meissel, and Lehmer prime counting got rewritten to use our
       common code.  3x less code.  No longer buildable standalone.  Included
       by default, though still not called internally.
+
+    - lucas_sequence(n,p,q,k) deprecated.  Use lucasuvmod(p,q,k,n) instead.
 
 
 0.73 2018-11-15

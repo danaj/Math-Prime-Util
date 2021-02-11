@@ -1752,12 +1752,50 @@ UV divmod(UV a, UV b, UV n) {   /* a / b  mod n */
   return mulmod(a, binv, n);
 }
 
-UV ivmod(IV a, UV n) {   /* signed a mod n, always defined */
+/* In C89, the division and modulo operators are implementation-defined
+ * for negative inputs.  C99 fixed this. */
+#if __STDC_VERSION__ >= 199901L
+  #define _tdivrem(q,r, D,d)   q = D/d, r = D % d
+#else
+  #define _tdivrem(q,r, D,d) \
+    q = ((D>=0) ? ( (d>=0) ? D/d : -(D/-d) ) \
+                : ( (d>=0) ? -(-D/d) : (-D/-d) ) ), \
+    r = D - d*q
+#endif
+
+IV tdivrem(IV *Q, IV *R, IV D, IV d) {
+  IV q,r;
+  _tdivrem(q,r,D,d);
+  if (Q) *Q=q;
+  if (R) *R=r;
+  return r;
+}
+IV fdivrem(IV *Q, IV *R, IV D, IV d) {
+  IV q,r;
+  _tdivrem(q,r,D,d);
+  if ((r > 0 && d < 0) || (r < 0 && d > 0)) { q = q-1; r += d; }
+  if (Q) *Q=q;
+  if (R) *R=r;
+  return r;
+}
+IV edivrem(IV *Q, IV *R, IV D, IV d) {
+  IV q,r;
+  _tdivrem(q,r,D,d);
+  if (r < 0) {
+    if (d > 0) { q--; r += d; }
+    else       { q++; r -= d; }
+  }
+  if (Q) *Q=q;
+  if (R) *R=r;
+  return r;
+}
+
+UV ivmod(IV a, UV n) {   /* a mod n with signed a (0 <= r < n) */
   if (a >= 0) {
     return (UV)(a) % n;
   } else {
-    UV amodn = (UV)(-a) % n;
-    return (amodn == 0)  ?  0  :  n-amodn;
+    UV r = (UV)(-a) % n;
+    return (r == 0)  ?  0  :  n-r;
   }
 }
 
