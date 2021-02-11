@@ -158,6 +158,7 @@ sub entropy_bytes {
 *modint = \&Math::Prime::Util::PP::modint;
 *divrem = \&Math::Prime::Util::PP::divrem;
 *tdivrem = \&Math::Prime::Util::PP::tdivrem;
+*fdivrem = \&Math::Prime::Util::PP::fdivrem;
 *absint = \&Math::Prime::Util::PP::absint;
 *negint = \&Math::Prime::Util::PP::negint;
 *sqrtmod = \&Math::Prime::Util::PP::sqrtmod;
