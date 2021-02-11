@@ -4,7 +4,7 @@ use warnings;
 
 use Test::More;
 use Math::Prime::Util qw/ powint mulint addint subint
-                          divint modint divrem tdivrem
+                          divint modint divrem fdivrem tdivrem
                           lshiftint rshiftint rashiftint
                           absint negint /;
 use Math::BigInt;
@@ -84,11 +84,12 @@ plan tests => 0
             + 1 + scalar(@addints)           # addint
             + 1 + scalar(@subints)           # subint
             + 2 + 2                          # divint
-            + 2 + 2                          # modint
+            + 2 + 2 + 1                      # modint
             + 2                              # divrem
+            + 2                              # fdivrem
             + 2                              # tdivrem
-            + 4 * scalar(@quotients)         # signed bigint division
-            + 6                              # table 1.3 from Leijen 2001
+            + 5 * scalar(@quotients)         # signed bigint division
+            + 8                              # table 1.3 from Leijen 2001
             + 4 + 3*scalar(@negshifts)       # shiftint
             + 4                              # absint
             + 4                              # negint
@@ -179,16 +180,22 @@ ok(!eval { modint(1,0); }, "modint(1,0)");
 is_deeply( [map { modint(1024,$_) } 1..1025], \@rpos1024, "modint(1024,x) for 1 .. 1025" );
 is_deeply( [map { modint(-1024,$_) } 1..1025], \@rneg1024, "modint(-1024,x) for 1 .. 1025" );
 
+is(modint("-1117091728166568014",59), 4, "modint(-1117091728166568014,59) = 4");
+
 ###### divrem
 ok(!eval { divrem(0,0); }, "divrem(1,0)");
 ok(!eval { divrem(1,0); }, "divrem(1,0)");
+
+###### fdivrem
+ok(!eval { fdivrem(0,0); }, "fdivrem(1,0)");
+ok(!eval { fdivrem(1,0); }, "fdivrem(1,0)");
 
 ###### tdivrem
 ok(!eval { tdivrem(0,0); }, "tdivrem(1,0)");
 ok(!eval { tdivrem(1,0); }, "tdivrem(1,0)");
 
 
-###### large values through divint, modint, divrem, tdivrem
+###### large values through divint, modint, divrem, fdivrem, tdivrem
 for my $s (@quotients) {
   my($signs, $n, $m, $qt, $qf, $qe) = @$s;
   my($bn,$bm) = map { Math::BigInt->new($_) } ($n,$m);
@@ -196,16 +203,20 @@ for my $s (@quotients) {
   is( divint($n, $m), $qf, "large divint  $signs" );
   is( modint($n, $m), $rf, "large modint  $signs" );
   is_deeply( [divrem($n, $m)], [$qe, $re], "large divrem  $signs" );
+  is_deeply( [fdivrem($n, $m)], [$qf, $rf], "large fdivrem  $signs" );
   is_deeply( [tdivrem($n, $m)], [$qt, $rt], "large tdivrem $signs" );
 }
 
-###### small values through divint, modint, divrem, tdivrem
+###### small values through divint, modint, divrem, fdivrem, tdivrem
 is( join(" ", tdivrem(8,3), tdivrem(8,-3), tdivrem(-8,3), tdivrem(-8,-3)),
     "2 2 -2 2 -2 -2 2 -2",
     "tdivrem with +/- 8,3" );
 is( join(" ", divrem(8,3), divrem(8,-3), divrem(-8,3), divrem(-8,-3)),
     "2 2 -2 2 -3 1 3 1",
     "divrem with +/- 8,3" );
+is( join(" ", fdivrem(8,3), fdivrem(8,-3), fdivrem(-8,3), fdivrem(-8,-3)),
+    "2 2 -3 -1 -3 1 2 -2",
+    "fdivrem with +/- 8,3" );
 is( join(" ", divint(8,3), modint(8,3), divint(8,-3), modint(8,-3), divint(-8,3), modint(-8,3), divint(-8,-3), modint(-8,-3)),
     "2 2 -3 -1 -3 1 2 -2",
     "divint+modint with +/- 8,3" );
@@ -216,6 +227,9 @@ is( join(" ", tdivrem(1,2), tdivrem(1,-2), tdivrem(-1,2), tdivrem(-1,-2)),
 is( join(" ", divrem(1,2), divrem(1,-2), divrem(-1,2), divrem(-1,-2)),
     "0 1 0 1 -1 1 1 1",
     "divrem with +/- 1,2" );
+is( join(" ", fdivrem(1,2), fdivrem(1,-2), fdivrem(-1,2), fdivrem(-1,-2)),
+    "0 1 -1 -1 -1 1 0 -1",
+    "fdivrem with +/- 1,2" );
 is( join(" ", divint(1,2), modint(1,2), divint(1,-2), modint(1,-2), divint(-1,2), modint(-1,2), divint(-1,-2), modint(-1,-2)),
     "0 1 -1 -1 -1 1 0 -1",
     "divint+modint with +/- 1,2" );

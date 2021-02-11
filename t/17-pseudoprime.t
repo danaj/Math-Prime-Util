@@ -17,7 +17,7 @@ use Math::Prime::Util qw/is_prime
                          is_perrin_pseudoprime
                          is_catalan_pseudoprime
                          is_frobenius_pseudoprime
-                         lucas_sequence kronecker/;
+                         lucasuvmod kronecker/;
 
 my $use64 = Math::Prime::Util::prime_get_config->{'maxbits'} > 32;
 my $usexs = Math::Prime::Util::prime_get_config->{'xs'};
@@ -205,15 +205,15 @@ for my $base (sort keys %pseudoprimes) {
   } elsif ($base eq 'fibonacci') {
     @fails = grep {
       my $t = (($_%5)==2||($_%5)==3) ? $_+1 : $_-1;
-      my $is_fib = !(lucas_sequence($_, 1, -1, $t))[0];
+      my $is_fib = !(lucasuvmod(1, -1, $t, $_))[0];
       !$is_fib;
     } @c;
     $text = "Fibonacci pseudoprimes";
   } elsif ($base eq 'pell') {
     if ($] < 5.008) {  # Work around a fault in ancient Perl
-      @fails = grep { "" . (((lucas_sequence($_,2,-1,$_))[0] - kronecker(2,$_)) % $_) } @c;
+      @fails = grep { "" . (((lucasuvmod(2,-1,$_,$_))[0] - kronecker(2,$_)) % $_) } @c;
     } else {
-      @fails = grep { (((lucas_sequence($_,2,-1,$_))[0] - kronecker(2,$_)) % $_) } @c;
+      @fails = grep { (((lucasuvmod(2,-1,$_,$_))[0] - kronecker(2,$_)) % $_) } @c;
     }
     $text = "Pell pseudoprimes";
   } else {
@@ -291,7 +291,8 @@ if ($extra) {
 
 # Lucas sequences, used for quite a few primality tests
 while (my($params, $expect) = each (%lucas_sequences)) {
-  is_deeply( [lucas_sequence(split(' ', $params))], $expect, "Lucas sequence $params" );
+  my($n,$P,$Q,$k) = split(' ', $params);
+  is_deeply( [lucasuvmod($P,$Q,$k,$n)], $expect, "Lucas sequence $params" );
 }
 
 {

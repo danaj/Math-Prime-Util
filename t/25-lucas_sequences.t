@@ -3,7 +3,9 @@ use strict;
 use warnings;
 
 use Test::More;
-use Math::Prime::Util qw/lucas_sequence lucasu lucasv foroddcomposites/;
+use Math::Prime::Util qw/lucasu    lucasv    lucasuv
+                         lucasumod lucasvmod lucasuvmod
+                         foroddcomposites/;
 
 #my $use64 = Math::Prime::Util::prime_get_config->{'maxbits'} > 32;
 my $usexs = Math::Prime::Util::prime_get_config->{'xs'};
@@ -93,24 +95,32 @@ my @issue47 = (
   [3,3,3,1, "1 0 0"],
   [3,-30,-30,1, "1 0 0"],
   [1,9,5,0, "0 0 0"],      # Everything mod 1
+  [104,-14,49,0, "0 2 1"],
+  [104,-14,49,1, "1 90 49"],
+  [8,2,1,1, "1 2 1"],
+  [16,0,0,1, "1 0 0"],
+  [2,11,-27,0, "0 0 1"],
+  [3,30,-2,1, "1 0 1"],
 );
 
 plan tests => 0 + 2*scalar(@lucas_seqs) + 1 + 1 + scalar(@issue47);
 
 foreach my $seqs (@lucas_seqs) {
   my($apq, $isneg, $uorv, $name, $exp) = @$seqs;
+  my($P,$Q) = @$apq;
   my $idx = ($uorv eq 'U') ? 0 : 1;
-  my @seq = map { (lucas_sequence(2**32-1, @$apq, $_))[$idx] } 0 .. $#$exp;
+  my @seq = map { (lucasuvmod($P,$Q,$_,2**32-1))[$idx] } 0 .. $#$exp;
   do { for (@seq) { $_ -= (2**32-1) if $_ > 2**31; } } if $isneg;
   is_deeply( [@seq], $exp, "lucas_sequence ${uorv}_n(@$apq) -- $name" );
 }
 
 foreach my $seqs (@lucas_seqs) {
   my($apq, $isneg, $uorv, $name, $exp) = @$seqs;
+  my($P,$Q) = @$apq;
   if ($uorv eq 'U') {
-    is_deeply([map { lucasu(@$apq,$_) } 0..$#$exp], $exp, "lucasu(@$apq) -- $name");
+    is_deeply([map { lucasu($P,$Q,$_) } 0..$#$exp], $exp, "lucasu(@$apq) -- $name");
   } else {
-    is_deeply([map { lucasv(@$apq,$_) } 0..$#$exp], $exp, "lucasv(@$apq) -- $name");
+    is_deeply([map { lucasv($P,$Q,$_) } 0..$#$exp], $exp, "lucasv(@$apq) -- $name");
   }
 }
 
@@ -118,7 +128,7 @@ foreach my $seqs (@lucas_seqs) {
   my @p;
   foroddcomposites {
     my $t = (($_%5)==2||($_%5)==3) ? $_+1 : $_-1;
-    my($U,$V) = lucas_sequence($_,1,-1,$t);
+    my($U,$V) = lucasuvmod(1,-1,$t,$_);
     push @p, $_ if $U == 0;
   } $oeis_81264[-1];
   is_deeply( \@p, \@oeis_81264, "OEIS 81264: Odd Fibonacci pseudoprimes" );
@@ -127,11 +137,11 @@ foreach my $seqs (@lucas_seqs) {
 {
   my $n = 8539786;
   my $e = (0,-1,1,1,-1)[$n%5];
-  my($U,$V,$Q) = lucas_sequence($n, 1, -1, $n+$e);
+  my($U,$V,$Q) = lucasuvmod(1, -1, $n+$e, $n);
   is_deeply( [$U,$V,$Q], [0,5466722,8539785], "First entry of OEIS A141137: Even Fibonacci pseudoprimes" );
 }
 
 for my $i (@issue47) {
   my($n,$P,$Q,$k,$expstr) = @$i;
-  is( join(" ",lucas_sequence($n,$P,$Q,$k)), $expstr, "lucas_sequence(mod $n,$P,$Q,$k) = $expstr");
+  is( join(" ",lucasuvmod($P,$Q,$k,$n)), $expstr, "lucasuvmod($P,$Q,$k,$n) = $expstr");
 }
