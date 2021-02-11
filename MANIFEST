@@ -224,6 +224,7 @@ xt/binomialmod.pl
 xt/check-nth-bounds.pl
 xt/chinese.pl
 xt/create-pc-tables.pl
+xt/division.pl
 xt/moebius-mertens.pl
 xt/totient-range.pl
 xt/primality-small.pl
@@ -232,6 +233,7 @@ xt/primality-proofs.pl
 xt/small-is-next-prev.pl
 xt/factor-holf.pl
 xt/legendre_phi.t
+xt/lucasseq.pl
 xt/make-chacha20-inner.pl
 xt/make-script-test-data.pl
 xt/measure_zeta_accuracy.pl
