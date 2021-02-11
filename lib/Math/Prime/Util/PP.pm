@@ -3319,22 +3319,19 @@ sub subint {
   $res;
 }
 
+# For division / modulo, see:
+#
+# https://www.researchgate.net/publication/234829884_The_Euclidean_definition_of_the_functions_div_and_mod
+#
+# https://www.microsoft.com/en-us/research/wp-content/uploads/2016/02/divmodnote-letter.pdf
+
 sub _tquotient {
   my($a,$b) = @_;
   return -int(-$a /  $b)  if $a < 0 && $b > 0;
   return -int( $a / -$b)  if $b < 0 && $a > 0;
   int($a / $b);
 }
-sub _fdivrem {
-  my($a,$b) = @_;
-  my $q = ($a >= 0 && $b >= 0) ? int($a/$b) : _tquotient($a,$b);
-  my $r = $a - $b * $q;
-  if (($r < 0 && $b > 0) || ($r > 0 && $b < 0)) {
-    $q--;
-    $r += $b;
-  }
-  ($q, $r);
-}
+# Truncated Division
 sub tdivrem {
   my($a,$b) = @_;
   _validate_integer($a);
@@ -3344,6 +3341,22 @@ sub tdivrem {
   my $q = ($a >= 0 && $b >= 0) ? int($a/$b) : _tquotient($a,$b);
   ($q, $a - $b * $q);
 }
+# Floored Division
+sub fdivrem {
+  my($a,$b) = @_;
+  _validate_integer($a);
+  _validate_integer($b);
+  croak "fdivrem: divide by zero" if $b == 0;
+  $a = Math::Prime::Util::_to_bigint("$a") if !ref($a) && abs($a) >= (1<<53);
+  # qe = qt-I     re = rt+I*d    I = (rt >= 0) ? 0 : (b>0) ? 1 : -1;
+  # qf = qt-I     rf = rt+I*d    I = (signum(rt) = -signum(b)) 1 : 0
+  my $q = ($a >= 0 && $b >= 0) ? int($a/$b) : _tquotient($a,$b);
+  my $r = $a - $b * $q;
+  if ( ($r < 0 && $b > 0) || ($r > 0 && $b < 0) )
+    { $q--; $r += $b; }
+  ($q,$r);
+}
+# Euclidean Division
 sub divrem {
   my($a,$b) = @_;
   _validate_integer($a);
@@ -3360,23 +3373,10 @@ sub divrem {
 }
 
 sub divint {
-  my($a,$b) = @_;
-  _validate_integer($a);
-  _validate_integer($b);
-  croak "divint: divide by zero" if $b == 0;
-  $a = Math::Prime::Util::_to_bigint("$a") if !ref($a) && abs($a) >= (1<<53);
-  return int($a / $b) if $a >= 0 && $b >= 0;
-  my($q,$r) = _fdivrem($a,$b);
-  $q;
+  (fdivrem(@_))[0];
 }
 sub modint {
-  my($a,$b) = @_;
-  _validate_integer($a);
-  _validate_integer($b);
-  croak "modint: divide by zero" if $b == 0;
-  return int($a % $b) if $a >= 0 && $b >= 0;
-  my($q,$r) = _fdivrem($a,$b);
-  $r;
+  (fdivrem(@_))[1];
 }
 
 sub absint {
@@ -5122,32 +5122,38 @@ sub _lucas_extrastrong_params {
 sub lucas_sequence {
   my($n, $P, $Q, $k) = @_;
 
-  croak "lucas_sequence: n must be >= 2" if $n < 2;
+  croak "lucas_sequence: n must be > 0" if $n < 1;
   croak "lucas_sequence: k must be >= 0" if $k < 0;
-  croak "lucas_sequence: P out of range" if abs($P) >= $n;
-  croak "lucas_sequence: Q out of range" if abs($Q) >= $n;
-
-  if ($Math::Prime::Util::_GMPfunc{"lucas_sequence"} && $Math::Prime::Util::GMP::VERSION >= 0.30) {
-    return map { ($_ > ''.~0) ? Math::BigInt->new(''.$_) : $_ }
-           Math::Prime::Util::GMP::lucas_sequence($n, $P, $Q, $k);
-  }
+  return (0,0,0) if $n == 1;
+  $P = Math::Prime::Util::modint($P,$n) if abs($P) >= $n;
+  $Q = Math::Prime::Util::modint($Q,$n) if abs($Q) >= $n;
 
   $n = Math::BigInt->new("$n") unless ref($n) eq 'Math::BigInt';
+  return (0, 2 % $n, 1) if $k == 0;
 
   my $ZERO = $n->copy->bzero;
   $P = $ZERO+$P unless ref($P) eq 'Math::BigInt';
   $Q = $ZERO+$Q unless ref($Q) eq 'Math::BigInt';
   my $D = $P*$P - BTWO*BTWO*$Q;
   if ($D->is_zero) {
-    my $S = ($ZERO+$P) >> 1;
+    # If D is zero, P must be even (P*P = 4Q)
+    my $S = $P >> 1;
     my $U = $S->copy->bmodpow($k-1,$n)->bmul($k)->bmod($n);
+    #die "  U $U : $P $Q $k $n\n" unless $U == modint(lucasu($P,$Q,$k),$n);
     my $V = $S->copy->bmodpow($k,$n)->bmul(BTWO)->bmod($n);
+    #die "  V $V : $P $Q $k $n\n" unless $V == modint(lucasv($P,$Q,$k),$n);
     my $Qk = ($ZERO+$Q)->bmodpow($k, $n);
     return ($U, $V, $Qk);
   }
+
+  if ($Math::Prime::Util::_GMPfunc{"lucas_sequence"} && $Math::Prime::Util::GMP::VERSION >= 0.30) {
+    return map { ($_ > ''.~0) ? Math::BigInt->new(''.$_) : $_ }
+           Math::Prime::Util::GMP::lucas_sequence($n, $P, $Q, $k);
+  }
+
   my $U = BONE->copy;
   my $V = $P->copy;
-  my $Qk = $Q->copy;
+  my $Qk = $Q->copy->bmod($n);
 
   return (BZERO->copy, BTWO->copy, $Qk) if $k == 0;
   $k = Math::BigInt->new("$k") unless ref($k) eq 'Math::BigInt';
@@ -5242,12 +5248,14 @@ sub lucas_sequence {
     }
     if    ($qsign ==  1) { $Qk->bneg; }
     elsif ($qsign == -1) { $Qk = $n->copy->bdec; }
+    $Qk->bmod($n);
   }
   $U->bmod($n);
   $V->bmod($n);
   return ($U, $V, $Qk);
 }
-sub _lucasuv {
+
+sub lucasuv {
   my($P, $Q, $k) = @_;
 
   croak "lucas_sequence: k must be >= 0" if $k < 0;
@@ -5347,10 +5355,18 @@ sub _lucasuv {
     $Vl->bmul($Vl)->bsub(BTWO * $Ql);
     $Ql->bmul($Ql);
   }
-  return map { ($_ > ''.~0) ? Math::BigInt->new(''.$_) : $_ } ($Uh, $Vl, $Ql);
+  return map { ($_ > ''.~0) ? Math::BigInt->new(''.$_) : $_ } ($Uh, $Vl);
 }
-sub lucasu { (_lucasuv(@_))[0] }
-sub lucasv { (_lucasuv(@_))[1] }
+
+sub lucasuvmod {
+  my($P, $Q, $k, $n) = @_;
+  lucas_sequence($n, $P, $Q, $k);
+}
+
+sub lucasu { (lucasuv(@_))[0] }
+sub lucasv { (lucasuv(@_))[1] }
+sub lucasumod { (lucasuvmod(@_))[0] }
+sub lucasvmod { (lucasuvmod(@_))[1] }
 
 sub is_lucas_pseudoprime {
   my($n) = @_;

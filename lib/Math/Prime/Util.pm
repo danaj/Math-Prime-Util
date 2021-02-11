@@ -32,10 +32,11 @@ our @EXPORT_OK =
       is_square_free is_primitive_root is_carmichael is_quasi_carmichael
       is_fundamental is_totient is_gaussian_prime
       is_smooth is_rough is_powerful is_practical
-      sqrtint rootint logint lshiftint rshiftint rashiftint
-      powint mulint addint subint divint modint divrem tdivrem absint negint
+      sqrtint rootint logint lshiftint rshiftint rashiftint absint negint
+      powint mulint addint subint divint modint divrem fdivrem tdivrem
       miller_rabin_random
-      lucas_sequence lucasu lucasv
+      lucas_sequence
+      lucasu lucasv lucasuv lucasumod lucasvmod lucasuvmod
       primes twin_primes semi_primes almost_primes ramanujan_primes
       sieve_prime_cluster sieve_range
       lucky_numbers is_lucky nth_lucky
@@ -3011,6 +3012,18 @@ the truncated quotient and the truncated remainder.
 The resulting pair will match
 L<Math::BigInt/btdiv> and L<Math::BigInt/btmod>.
 
+=head2 fdivrem
+
+Given integers C<a> and C<b>, returns a list of two items:
+the floored quotient and the floored remainder.
+The results will match the individual L</divint> and L</modint>
+functions, since they also use floored division.
+
+This corresponds to Python's builtin C<divmod> function, and
+Raku's builtin C<div> and C<mod> functions.
+The resulting pair will match
+L<Math::BigInt/bdiv> and L<Math::BigInt/bmod>.
+
 =head2 absint
 
 Given integer C<n>, return C<|n|>, i.e. the absolute value of C<n>.
@@ -3043,9 +3056,48 @@ the Lucas numbers (C<1,-1>).
 This corresponds to OpenPFGW's C<lucasV> function and gmpy2's C<lucasv>
 function.
 
+=head2 lucasuv
+
+  ($U, $V) = lucasuv(1,-2,17); # 17-th Jacobsthal, Jacobsthal-Lucas.
+
+Given integers C<P>, C<Q>, and the non-negative integer C<k>,
+computes both C<U_k> and C<V_k> for the Lucas sequence defined
+by C<P>,C<Q>.
+Generating both values is typically not much more time than one.
+
+=head2 lucasumod
+
+Given integers C<P>, C<Q>, the non-negative integer C<k>, and the
+non-zero positive integer C<n>, efficiently compute
+C<lucasu(P,Q,k) mod n>.
+
+This corresponds to gmpy2's C<lucasu_mod> function.
+
+=head2 lucasvmod
+
+Given integers C<P>, C<Q>, the non-negative integer C<k>, and the
+non-zero positive integer C<n>, efficiently compute
+C<lucasv(P,Q,k) mod n>.
+
+This corresponds to gmpy2's C<lucasv_mod> function.
+
+=head2 lucasuvmod
+
+  # Compute the 5000-th Fibonacci and Lucas numbers, mod 1001
+  ($U,$V,$Qk) = lucasuvmod(1, -1, 5000, 1001);
+
+Given integers C<P>, C<Q>, the non-negative integer C<k>, and the
+non-zero positive integer C<n>, efficiently compute the k-th value
+of C<U(P,Q) mod n>, C<V(P,Q) mod n>, and C<Q^k mod n>.
+
+Other than the more consistent order of arguments, this is the same
+as the deprecated C<lucas_sequence> function.
+
 =head2 lucas_sequence
 
   my($U, $V, $Qk) = lucas_sequence($n, $P, $Q, $k)
+
+B<lucas_sequence() is deprecated.  Use lucasuvmod() instead.>
 
 Computes C<U_k>, C<V_k>, and C<Q_k> for the Lucas sequence defined by
 C<P>,C<Q>, modulo C<n>.  The modular Lucas sequence is used in a

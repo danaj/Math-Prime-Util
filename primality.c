@@ -363,7 +363,7 @@ void lucas_seq(UV* Uret, UV* Vret, UV* Qkret, UV n, IV P, IV Q, UV k)
 
   if (k == 0) {
     *Uret = 0;
-    *Vret = 2;
+    *Vret = 2 % n;
     *Qkret = 1;
     return;
   }
@@ -435,13 +435,16 @@ void lucas_seq(UV* Uret, UV* Vret, UV* Qkret, UV n, IV P, IV Q, UV k)
 }
 
 #define OVERHALF(v)  ( (UV)((v>=0)?v:-v) > (UVCONST(1) << (BITS_PER_WORD/2-1)) )
-int lucasu(IV* U, IV P, IV Q, UV k)
+int lucasuv(IV* U, IV *V, IV P, IV Q, UV k)
 {
   IV Uh, Vl, Vh, Ql, Qh;
   int j, s, n;
 
-  if (U == 0) return 0;
-  if (k == 0) { *U = 0; return 1; }
+  if (k == 0) {
+    if (U) *U = 0;
+    if (V) *V = 2;
+    return 1;
+  }
 
   Uh = 1;  Vl = 2;  Vh = P;  Ql = 1;  Qh = 1;
   s = 0; n = 0;
@@ -476,49 +479,14 @@ int lucasu(IV* U, IV P, IV Q, UV k)
     Vl = Vl * Vl - 2 * Ql;
     Ql *= Ql;
   }
-  *U = Uh;
+  if (U) *U = Uh;
+  if (V) *V = Vl;
   return 1;
 }
-int lucasv(IV* V, IV P, IV Q, UV k)
-{
-  IV Vl, Vh, Ql, Qh;
-  int j, s, n;
 
-  if (V == 0) return 0;
-  if (k == 0) { *V = 2; return 1; }
 
-  Vl = 2;  Vh = P;  Ql = 1;  Qh = 1;
-  s = 0; n = 0;
-  { UV v = k; while (!(v & 1)) { v >>= 1; s++; } }
-  { UV v = k; while (v >>= 1) n++; }
-
-  for (j = n; j > s; j--) {
-    if (OVERHALF(Vh) || OVERHALF(Vl) || OVERHALF(Ql) || OVERHALF(Qh)) return 0;
-    Ql *= Qh;
-    if ( (k >> j) & UVCONST(1) ) {
-      Qh = Ql * Q;
-      Vl = Vh * Vl - P * Ql;
-      Vh = Vh * Vh - 2 * Qh;
-    } else {
-      Qh = Ql;
-      Vh = Vh * Vl - P * Ql;
-      Vl = Vl * Vl - 2 * Ql;
-    }
-  }
-  if (OVERHALF(Ql) || OVERHALF(Qh)) return 0;
-  Ql = Ql * Qh;
-  Qh = Ql * Q;
-  if (OVERHALF(Vh) || OVERHALF(Vl) || OVERHALF(Ql) || OVERHALF(Qh)) return 0;
-  Vl = Vh * Vl - P * Ql;
-  Ql = Ql * Qh;
-  for (j = 0; j < s; j++) {
-    if (OVERHALF(Vl) || OVERHALF(Ql)) return 0;
-    Vl = Vl * Vl - 2 * Ql;
-    Ql *= Ql;
-  }
-  *V = Vl;
-  return 1;
-}
+/******************************************************************************/
+/******************************************************************************/
 
 /* Lucas tests:
  *  0: Standard

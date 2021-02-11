@@ -238,6 +238,7 @@ Tags:
   divint(a,b)                         signed integer a / b     (floor)
   modint(a,b)                         signed integer a % b     (floor)
   divrem(a,b)                         return (quot,rem) of a/b (Euclidian)
+  fdivrem(a,b)                        return (quot,rem) of a/b (floored)
   tdivrem(a,b)                        return (quot,rem) of a/b (truncated)
   lshiftint(n,k)                      left shift n by k bits
   rshiftint(n,k)                      right shift n by k bits (truncate)
@@ -295,7 +296,10 @@ Tags:
   consecutive_integer_lcm(n)          lcm(1 .. n)
   lucasu(P, Q, k)                     U_k for Lucas(P,Q)
   lucasv(P, Q, k)                     V_k for Lucas(P,Q)
-  lucas_sequence(n, P, Q, k)          (U_k,V_k,Q_k) for Lucas(P,Q) mod n
+  lucasuv(P, Q, k)                    (U_k,V_k) for Lucas(P,Q)
+  lucasumod(P, Q, k, n)               U_k for Lucas(P,Q) mod n
+  lucasvmod(P, Q, k, n)               V_k for Lucas(P,Q) mod n
+  lucasuvmod(P, Q, k, n)              (U_k,V_k,Q^k) for Lucas(P,Q) mod n
   bernfrac(n)                         Bernoulli number as (num,den)
   bernreal(n)                         Bernoulli number as BigFloat
   harmfrac(n)                         Harmonic number as (num,den)

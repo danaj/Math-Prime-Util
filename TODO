@@ -351,3 +351,12 @@
 
 - Add optional base to is_delicate_prime(n,base=10).  This should be relatively
   easy in C, but we'll need to put the math back in PP.
+
+- refactor lucas code.
+  split out all the different codes, benchmark them all.
+
+- XS negative args for addint,subint,mulint,powint,divint,modint
+
+- tests for lucasuv lucasumod lucasvmod
+
+- GMP for new fdivrem, lucasuv, lucasumod, lucasvmod, lucasuvmod

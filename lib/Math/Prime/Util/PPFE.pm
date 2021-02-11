@@ -527,7 +527,7 @@ sub lucasu {
   _validate_positive_integer($vp);
   _validate_positive_integer($vq);
   _validate_positive_integer($k);
-  return Math::Prime::Util::PP::lucasu(@_);
+  return Math::Prime::Util::PP::lucasu($P,$Q,$k);
 }
 sub lucasv {
   my($P, $Q, $k) = @_;
@@ -537,7 +537,38 @@ sub lucasv {
   _validate_positive_integer($vp);
   _validate_positive_integer($vq);
   _validate_positive_integer($k);
-  return Math::Prime::Util::PP::lucasv(@_);
+  return Math::Prime::Util::PP::lucasv($P,$Q,$k);
+}
+sub lucasuv {
+  my($P, $Q, $k) = @_;
+  _validate_integer($P);
+  _validate_integer($Q);
+  _validate_positive_integer($k);
+  return Math::Prime::Util::PP::lucasuv($P,$Q,$k);
+}
+sub lucasumod {
+  my($P, $Q, $k, $n) = @_;
+  _validate_integer($P);
+  _validate_integer($Q);
+  _validate_positive_integer($k);
+  _validate_positive_integer($n);
+  return Math::Prime::Util::PP::lucasumod($P,$Q,$k,$n);
+}
+sub lucasvmod {
+  my($P, $Q, $k, $n) = @_;
+  _validate_integer($P);
+  _validate_integer($Q);
+  _validate_positive_integer($k);
+  _validate_positive_integer($n);
+  return Math::Prime::Util::PP::lucasvmod($P,$Q,$k,$n);
+}
+sub lucasuvmod {
+  my($P, $Q, $k, $n) = @_;
+  _validate_integer($P);
+  _validate_integer($Q);
+  _validate_positive_integer($k);
+  _validate_positive_integer($n);
+  return Math::Prime::Util::PP::lucasuvmod($P,$Q,$k,$n);
 }
 
 sub kronecker {
