@@ -10,9 +10,6 @@
 #include "prime_nth_count.h"
 #include "prime_count_cache.h"
 #include "legendre_phi.h"
-#ifdef _OPENMP
-  #include <omp.h>
-#endif
 
 
 /*
@@ -54,6 +51,13 @@
 
 /*============================================================================*/
 
+/* For x >= 1 and a >= 3,  phi(x,a) = phi(x-_pred5[x%30],a)
+ * This allows us to collapse multiple x values, useful for caching. */
+
+static const unsigned char _pred5[30] = {1,0,1,2,3,4,5,0,1,2,3,0,1,0,1,2,3,0,1,0,1,2,3,0,1,2,3,4,5,0};
+static const unsigned char _pred7[210] = {1,0,1,2,3,4,5,6,7,8,9,0,1,0,1,2,3,0,1,0,1,2,3,0,1,2,3,4,5,0,1,0,1,2,3,4,5,0,1,2,3,0,1,0,1,2,3,0,1,2,3,4,5,0,1,2,3,4,5,0,1,0,1,2,3,4,5,0,1,2,3,0,1,0,1,2,3,4,5,0,1,2,3,0,1,2,3,4,5,0,1,2,3,4,5,6,7,0,1,2,3,0,1,0,1,2,3,0,1,0,1,2,3,0,1,2,3,4,5,6,7,0,1,2,3,4,5,0,1,2,3,0,1,2,3,4,5,0,1,0,1,2,3,0,1,2,3,4,5,0,1,0,1,2,3,4,5,0,1,2,3,4,5,0,1,2,3,0,1,0,1,2,3,0,1,2,3,4,5,0,1,0,1,2,3,4,5,0,1,2,3,0,1,0,1,2,3,0,1,0,1,2,3,4,5,6,7,8,9,0};
+
+/*============================================================================*/
 
 /* static const uint8_t _s0[ 1] = {0};
    static const uint8_t _s1[ 2] = {0,1};
@@ -94,7 +98,7 @@ static UV tablephi(UV x, uint32_t a)
 }
 /*============================================================================*/
 
-/* Iterate with simple arrays */
+/* Iterate with simple arrays, no merging or cleverness. */
 
 static const unsigned char _snth[25+1] = {0,2,3,5,7,11,13,17,19,23,29,31,37,41,43,47,53,59,61,67,71,73,79,83,89,97};
 
@@ -207,15 +211,15 @@ static void phi_cache_insert(uint32_t x, uint32_t a, IV sum, phi_cache_t* cache)
   cache->val[a][x] = (uint16_t) sum;
 }
 
-#define PHI_CACHE_HAS_VAL(x, a, pcache) \
-  ((a) < PHICACHEA && (x) < (pcache)->siz[a] && (pcache)->val[a][x] != 0)
-
 #define PHI_CACHE_INSERT(x, a, val, pcache) \
-  if ((a) < PHICACHEA && (x) <= (pcache)->xlim) \
-    { phi_cache_insert((x), (a), (val), pcache); }
+  if ((a) < PHICACHEA && ((x)+1)/2 <= (pcache)->xlim) \
+    { phi_cache_insert(((x)+1)/2, (a), (val), pcache); }
 
 #define PHI_CACHE_GET_VAL(x, a, pcache) \
-  (pcache)->val[a][x]
+  (pcache)->val[a][((x)+1)/2]
+
+#define PHI_CACHE_HAS_VAL(x, a, pcache) \
+  ((a) < PHICACHEA && ((x)+1)/2 < (pcache)->siz[a] && PHI_CACHE_GET_VAL(x,a,pcache) != 0)
 
 /* End of Phi cache definitions */
 
@@ -231,7 +235,9 @@ typedef struct {
 static phidata_t* phidata_create(const uint32_t* primes, uint32_t lastidx, UV x, UV a)
 {
   phidata_t *d;
-  uint32_t xlim = isqrt(x);  /* Not ideal */
+  /* Suggestion from Kim Walisch: reduce from isqrt(x). */
+  uint32_t xlim = (UV) pow(x, 1.0/2.70);
+  if (xlim < 256) xlim = 256;  /* Don't make this too high */
 
   New(0, d, 1, phidata_t);
   d->primes = primes;
@@ -269,12 +275,29 @@ static IV _phi3(UV x, UV a, int sign, phidata_t *d)
   else if (PHI_CACHE_HAS_VAL(x, a, pcache))
     return sign * PHI_CACHE_GET_VAL(x, a, pcache);
   else {
-    UV ai, iters = ((UV)a*a > x)  ?  PHI_PRIMECOUNT(isqrt(x))  :  a;
+    UV xp, ai, iters = ((UV)a*a > x)  ?  PHI_PRIMECOUNT(isqrt(x))  :  a;
     UV c = (iters > PHIC) ? PHIC : iters;
     IV sum = sign * (iters - a + tablephi(x,c));
 
-    for (ai = c+1; ai <= iters; ai++)
-      sum += _phi3(FAST_DIV(x,primes[ai]), ai-1, -sign, d);
+    /* As suggested by Kim Walisch, split this loop:
+     * for (ai = c+1; ai <= iters; ai++)
+     *   sum += _phi3(FAST_DIV(x,primes[ai]), ai-1, -sign, d); */
+
+    for (ai = c+1; ai <= iters; ai++) {
+      xp = FAST_DIV(x,primes[ai]);
+      xp -= _pred7[xp % 210];
+      if (PHI_IS_X_SMALL(xp,ai-1))
+        break;
+      sum += _phi3(xp, ai-1, -sign, d);
+    }
+    for (; ai <= iters; ai++) {
+      xp = FAST_DIV(x,primes[ai]);
+      if (xp < primes[ai])
+        break;
+      sum += -sign * (PHI_PRIMECOUNT(xp) - (ai-1) + 1);
+    }
+    if (ai <= iters)
+      sum += -sign * (iters - ai + 1);
 
     PHI_CACHE_INSERT(x, a, sum, pcache);
     return sum;
@@ -344,13 +367,20 @@ static void vcarray_destroy(vcarray_t* l)
   l->size = 0;
   l->n = 0;
 }
-/* Insert a value/count pair.  We do this indirection because about 80% of
- * the calls result in a merge with the previous entry. */
+
+/* Insert a value/count pair.  Must be done in decreasing size order. */
 static void vcarray_insert(vcarray_t* l, UV val, IV count)
 {
   UV n = l->n;
-  if (n > 0 && l->a[n-1].v < val)
-    croak("Previous value was %lu, inserting %lu out of order\n", l->a[n-1].v, val);
+  vc_t* arr = l->a;
+
+  if (n > 0 && arr[n-1].v <= val) {
+    if (arr[n-1].v == val) {
+      arr[n-1].c += count;
+      return;
+    }
+    croak("Previous value was %lu, inserting %lu out of order\n", arr[n-1].v, val);
+  }
   if (n >= l->size) {
     UV new_size;
     if (l->size == 0) {
@@ -363,9 +393,10 @@ static void vcarray_insert(vcarray_t* l, UV val, IV count)
       Renew( l->a, new_size, vc_t );
     }
     l->size = new_size;
+    arr = l->a;
   }
-  l->a[n].v = val;
-  l->a[n].c = count;
+  arr[n].v = val;
+  arr[n].c = count;
   l->n++;
 }
 
@@ -464,7 +495,6 @@ static UV phi_walk(UV x, UV a, UV primes_to_n)
 {
   UV i, val, sval, lastidx, lastprime;
   UV sum = 0;
-  IV count;
   uint32_t* primes;
   vcarray_t a1, a2;
   vc_t* arr;
@@ -486,44 +516,31 @@ static UV phi_walk(UV x, UV a, UV primes_to_n)
 
   while (a > PHIC) {
     UV primea = primes[a];
-    UV sval_last = 0;
-    IV sval_count = 0;
     arr = a1.a;
+
     for (i = 0; i < a1.n; i++) {
-      count = arr[i].c;
-      val  = arr[i].v;
-      sval = FAST_DIV(val, primea);
-      if (sval < primea) break;      /* stop inserting into a2 if small */
-      if (sval != sval_last) {       /* non-merged value.  Insert into a2 */
-        if (sval_last != 0) {
-          if (PHI_IS_X_SMALL(sval_last, a-1))
-            sum += sval_count*(PHI_PRIMECOUNT(sval_last)-a+2);
-          else
-            vcarray_insert(&a2, sval_last, sval_count);
-        }
-        sval_last = sval;
-        sval_count = 0;
-      }
-      sval_count -= count;           /* Accumulate count for this sval */
+      sval = FAST_DIV(arr[i].v, primea);
+      sval -= _pred7[sval % 210];     /* Reduce to lower value if possible */
+      if (sval < primea || PHI_IS_X_SMALL(sval, a-1))
+        break;
+      vcarray_insert(&a2, sval, -arr[i].c);
     }
-    if (sval_last != 0) {            /* Insert the last sval */
-      if (PHI_IS_X_SMALL(sval_last, a-1))
-        sum += sval_count*(PHI_PRIMECOUNT(sval_last)-a+2);
-      else
-        vcarray_insert(&a2, sval_last, sval_count);
+    for ( ; i < a1.n; i++) {
+      sval = FAST_DIV(arr[i].v, primea);
+      if (sval < primea)
+        break;
+      sum -= arr[i].c * (PHI_PRIMECOUNT(sval)-a+2);
     }
-    /* For each small sval, add up the counts */
     for ( ; i < a1.n; i++)
       sum -= arr[i].c;
+
     /* Merge a1 and a2 into a1.  a2 will be emptied. */
     vcarray_merge(&a1, &a2);
+
     /* If we've grown too large, use recursive phi to clip. */
     if ( a1.n > NTHRESH ) {
       arr = a1.a;
       if (verbose > 0) printf("clipping small values at a=%lu a1.n=%lu \n", a, a1.n);
-#ifdef _OPENMP
-      /* #pragma omp parallel for reduction(+: sum) firstprivate(pcache) schedule(dynamic, 16) */
-#endif
       for (i = 0; i < a1.n-NTHRESH+NTHRESH/50; i++) {
         UV j = a1.n - 1 - i;
         IV count = arr[j].c;
@@ -533,6 +550,7 @@ static UV phi_walk(UV x, UV a, UV primes_to_n)
         }
       }
     }
+
     vcarray_remove_zeros(&a1);
     a--;
   }
@@ -540,9 +558,6 @@ static UV phi_walk(UV x, UV a, UV primes_to_n)
   Safefree(primes);
   vcarray_destroy(&a2);
   arr = a1.a;
-#ifdef _OPENMP
-  #pragma omp parallel for reduction(+: sum) schedule(dynamic, 16)
-#endif
   for (i = 0; i < a1.n; i++)
     sum += arr[i].c * tablephi( arr[i].v, PHIC );
   vcarray_destroy(&a1);
@@ -653,11 +668,11 @@ UV legendre_phi(UV x, UV a)
 
   /* TODO: More tuning of these, or just improve them. */
 
-  if (x <= 1e11) return (a <   5000) ? phi_walk(x,a,npa) : phi_recurse(x,a,npa);
-  if (x <= 1e12) return (a <  15000) ? phi_walk(x,a,npa) : phi_recurse(x,a,npa);
-  if (x <= 1e13) return (a <  31000) ? phi_walk(x,a,npa) : phi_recurse(x,a,npa);
-  if (x <= 1e14) return (a <  70000) ? phi_walk(x,a,npa) : phi_recurse(x,a,npa);
-  if (x <= 1e15) return (a < 120000) ? phi_walk(x,a,npa) : phi_recurse(x,a,npa);
+  if (x <= 1e11) return (a <   3000) ? phi_walk(x,a,npa) : phi_recurse(x,a,npa);
+  if (x <= 1e12) return (a <   8000) ? phi_walk(x,a,npa) : phi_recurse(x,a,npa);
+  if (x <= 1e13) return (a <  18000) ? phi_walk(x,a,npa) : phi_recurse(x,a,npa);
+  if (x <= 1e14) return (a <  30000) ? phi_walk(x,a,npa) : phi_recurse(x,a,npa);
+  if (x <= 1e15) return (a <  80000) ? phi_walk(x,a,npa) : phi_recurse(x,a,npa);
 
-  return (a < 200000) ? phi_walk(x,a,npa) : phi_recurse(x,a,npa);
+  return (a < 150000) ? phi_walk(x,a,npa) : phi_recurse(x,a,npa);
 }
