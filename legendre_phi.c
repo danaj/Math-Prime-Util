@@ -636,43 +636,47 @@ void destroy_cached_legendre_phi(void* cache)
 
 UV legendre_phi(UV x, UV a)
 {
-  UV npa;
+  UV sqrtx = isqrt(x);
+
   /* If 'x' is very small, give a quick answer with any 'a' */
   if (x < 1 || a >= x) return (x > 0);
   if (x <= PHIC || a <= PHIC)  return tablephi(x, (a > PHIC) ? PHIC : a);
 
-  /* Two shortcuts for large values, from R. Andrew Ohana */
-  if (a > (x >> 1))  return 1;
-
-  /* If a > prime_count(2^32), then we need not be concerned with composite
-   * x values with all factors > 2^32, as x is limited to 64-bit. */
-  if (a > 203280221) {  /* prime_count(2**32) */
+  /* Very fast shortcuts for large values */
+  if (a > (x >> 1))
+    return 1;
+  if (a >= sqrtx || a > 203280221) {   /* 203280221 = prime_count(2^32) */
     UV pc = LMO_prime_count(x);
     return (a >= pc)  ?  1  :  pc - a + 1;
   }
-  /* After the two checks above,  7 <= a <= MIN(203280221, 2*x) */
+  /* After this:  7 <= a <= MIN(203280221, sqrtx) */
 
+  /* For very small a, calculate now. */
   if (a <= PHIS)  return phi_small(x, a);
+  if (a <= PHIR)  return phi_recurse_small(x, a, nth_prime(a));
 
-  if (a > PHIR  &&  a >= prime_count_upper(x)) return 1;
-  npa = nth_prime(a);
-  if (x <= npa) return 1;  /* Technically x < next_prime(npa) */
-  if (a <= PHIR) return phi_recurse_small(x, a, npa); /* npa must = P[a] */
-
-  /* For large x, it is faster to compute more primes. */
-  if (npa < isqrt(x)) npa = isqrt(x);
+  /* Better shortcuts, slightly more time */
+  if (prime_count_upper(x) <= a)
+    return 1;
+  if (prime_count_upper(sqrtx) < a+1) {
+    UV pc = LMO_prime_count(x);
+    return (a >= pc)  ?  1  :  pc - a + 1;
+  }
+  /* Because we used the fast bounds, there are still a few easy cases. */
 
   /* The best crossover between recurse and walk is complicated */
+  /* TODO: More tuning of the crossovers, or just improve the algorithms. */
+
   if (x <= 1e10)
-    return phi_recurse(x, a, npa);
+    return phi_recurse(x, a, sqrtx);
 
-  /* TODO: More tuning of these, or just improve them. */
+  if ( (x <= 1e11 && a <   3000) ||
+       (x <= 1e12 && a <   8000) ||
+       (x <= 1e13 && a <  18000) ||
+       (x <= 1e14 && a <  30000) ||
+       (x <= 1e15 && a <  80000) ||
+       (x >  1e15 && a < 150000) )
+    return phi_walk(x, a, sqrtx);
 
-  if (x <= 1e11) return (a <   3000) ? phi_walk(x,a,npa) : phi_recurse(x,a,npa);
-  if (x <= 1e12) return (a <   8000) ? phi_walk(x,a,npa) : phi_recurse(x,a,npa);
-  if (x <= 1e13) return (a <  18000) ? phi_walk(x,a,npa) : phi_recurse(x,a,npa);
-  if (x <= 1e14) return (a <  30000) ? phi_walk(x,a,npa) : phi_recurse(x,a,npa);
-  if (x <= 1e15) return (a <  80000) ? phi_walk(x,a,npa) : phi_recurse(x,a,npa);
-
-  return (a < 150000) ? phi_walk(x,a,npa) : phi_recurse(x,a,npa);
+  return phi_recurse(x, a, sqrtx);
 }
