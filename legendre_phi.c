@@ -51,11 +51,17 @@
 
 /*============================================================================*/
 
-/* For x >= 1 and a >= 3,  phi(x,a) = phi(x-_pred5[x%30],a)
+/* For x >= 1 and a >= 4,  phi(x,a) = phi(x-_pred7[x%210],a)
  * This allows us to collapse multiple x values, useful for caching. */
-
-static const unsigned char _pred5[30] = {1,0,1,2,3,4,5,0,1,2,3,0,1,0,1,2,3,0,1,0,1,2,3,0,1,2,3,4,5,0};
 static const unsigned char _pred7[210] = {1,0,1,2,3,4,5,6,7,8,9,0,1,0,1,2,3,0,1,0,1,2,3,0,1,2,3,4,5,0,1,0,1,2,3,4,5,0,1,2,3,0,1,0,1,2,3,0,1,2,3,4,5,0,1,2,3,4,5,0,1,0,1,2,3,4,5,0,1,2,3,0,1,0,1,2,3,4,5,0,1,2,3,0,1,2,3,4,5,0,1,2,3,4,5,6,7,0,1,2,3,0,1,0,1,2,3,0,1,0,1,2,3,0,1,2,3,4,5,6,7,0,1,2,3,4,5,0,1,2,3,0,1,2,3,4,5,0,1,0,1,2,3,0,1,2,3,4,5,0,1,0,1,2,3,4,5,0,1,2,3,4,5,0,1,2,3,0,1,0,1,2,3,0,1,2,3,4,5,0,1,0,1,2,3,4,5,0,1,2,3,0,1,0,1,2,3,0,1,0,1,2,3,4,5,6,7,8,9,0};
+
+/* Maps x to value <= x not divisible by first 4 primes */
+/* mpu 'say join(",",map { legendre_phi($_,4)-1 } 0..209);' */
+static const int8_t _coprime_idx210[210]={-1,0,0,0,0,0,0,0,0,0,0,1,1,2,2,2,2,3,3,4,4,4,4,5,5,5,5,5,5,6,6,7,7,7,7,7,7,8,8,8,8,9,9,10,10,10,10,11,11,11,11,11,11,12,12,12,12,12,12,13,13,14,14,14,14,14,14,15,15,15,15,16,16,17,17,17,17,17,17,18,18,18,18,19,19,19,19,19,19,20,20,20,20,20,20,20,20,21,21,21,21,22,22,23,23,23,23,24,24,25,25,25,25,26,26,26,26,26,26,26,26,27,27,27,27,27,27,28,28,28,28,29,29,29,29,29,29,30,30,31,31,31,31,32,32,32,32,32,32,33,33,34,34,34,34,34,34,35,35,35,35,35,35,36,36,36,36,37,37,38,38,38,38,39,39,39,39,39,39,40,40,41,41,41,41,41,41,42,42,42,42,43,43,44,44,44,44,45,45,46,46,46,46,46,46,46,46,46,46,47};
+static UV _toindex210(UV x) {
+  UV q = x / 210, r = x % 210;
+  return 48 * q + _coprime_idx210[r];
+}
 
 /*============================================================================*/
 
@@ -211,16 +217,6 @@ static void phi_cache_insert(uint32_t x, uint32_t a, IV sum, phi_cache_t* cache)
   cache->val[a][x] = (uint16_t) sum;
 }
 
-#define PHI_CACHE_INSERT(x, a, val, pcache) \
-  if ((a) < PHICACHEA && ((x)+1)/2 <= (pcache)->xlim) \
-    { phi_cache_insert(((x)+1)/2, (a), (val), pcache); }
-
-#define PHI_CACHE_GET_VAL(x, a, pcache) \
-  (pcache)->val[a][((x)+1)/2]
-
-#define PHI_CACHE_HAS_VAL(x, a, pcache) \
-  ((a) < PHICACHEA && ((x)+1)/2 < (pcache)->siz[a] && PHI_CACHE_GET_VAL(x,a,pcache) != 0)
-
 /* End of Phi cache definitions */
 
 /* Struct of everything needed for recursive phi call */
@@ -235,9 +231,8 @@ typedef struct {
 static phidata_t* phidata_create(const uint32_t* primes, uint32_t lastidx, UV x, UV a)
 {
   phidata_t *d;
-  /* Suggestion from Kim Walisch: reduce from isqrt(x). */
   uint32_t xlim = (UV) pow(x, 1.0/2.70);
-  if (xlim < 256) xlim = 256;  /* Don't make this too high */
+  if (xlim < 256) xlim = 256;
 
   New(0, d, 1, phidata_t);
   d->primes = primes;
@@ -265,6 +260,7 @@ static IV _phi3(UV x, UV a, int sign, phidata_t *d)
 {
   const uint32_t* const primes = d->primes;
   phi_cache_t* pcache = d->cachephi;
+  UV mapx;
 
   if (x < primes[a+1])
     return sign;
@@ -272,34 +268,42 @@ static IV _phi3(UV x, UV a, int sign, phidata_t *d)
     return sign * tablephi(x,a);
   else if (PHI_IS_X_SMALL(x,a))
     return sign * (PHI_PRIMECOUNT(x) - a + 1);
-  else if (PHI_CACHE_HAS_VAL(x, a, pcache))
-    return sign * PHI_CACHE_GET_VAL(x, a, pcache);
-  else {
-    UV xp, ai, iters = ((UV)a*a > x)  ?  PHI_PRIMECOUNT(isqrt(x))  :  a;
+
+  /* Choose a mapping:   x,  (x+1)>>1,  _toindex30(x),  _toindex210(x) */
+  mapx = (a < PHICACHEA)  ?  _toindex210(x)  :  0;
+  //mapx = (a < PHICACHEA)  ?  (x+1)>>1  :  0;
+
+  if (a < PHICACHEA && mapx < pcache->siz[a]) {
+    IV v = pcache->val[a][mapx];
+    if (v != 0)
+      return sign * v;
+  }
+  {
+    UV xp, i, iters = ((UV)a*a > x)  ?  PHI_PRIMECOUNT(isqrt(x))  :  a;
     UV c = (iters > PHIC) ? PHIC : iters;
     IV sum = sign * (iters - a + tablephi(x,c));
 
-    /* As suggested by Kim Walisch, split this loop:
-     * for (ai = c+1; ai <= iters; ai++)
-     *   sum += _phi3(FAST_DIV(x,primes[ai]), ai-1, -sign, d); */
+    /* for (i=c; i<iters; i++)  sum += _phi3(x/primes[i+1], i, -sign, d); */
 
-    for (ai = c+1; ai <= iters; ai++) {
-      xp = FAST_DIV(x,primes[ai]);
-      xp -= _pred7[xp % 210];
-      if (PHI_IS_X_SMALL(xp,ai-1))
+    if (c < iters)
+      sum += -sign * tablephi(FAST_DIV(x,primes[c+1]), c);
+    for (i = c+1; i < iters; i++) {
+      xp = FAST_DIV(x,primes[i+1]);
+      if (PHI_IS_X_SMALL(xp,i))
         break;
-      sum += _phi3(xp, ai-1, -sign, d);
+      sum += _phi3(xp, i, -sign, d);
     }
-    for (; ai <= iters; ai++) {
-      xp = FAST_DIV(x,primes[ai]);
-      if (xp < primes[ai])
+    for (; i < iters; i++) {
+      xp = FAST_DIV(x,primes[i+1]);
+      if (xp < primes[i+1])
         break;
-      sum += -sign * (PHI_PRIMECOUNT(xp) - (ai-1) + 1);
+      sum += -sign * (PHI_PRIMECOUNT(xp) - i + 1);
     }
-    if (ai <= iters)
-      sum += -sign * (iters - ai + 1);
+    if (i < iters)
+      sum += -sign * (iters - i);
 
-    PHI_CACHE_INSERT(x, a, sum, pcache);
+    if (a < PHICACHEA && mapx <= pcache->xlim)
+      phi_cache_insert(mapx, a, sum, pcache);
     return sum;
   }
 }
@@ -314,6 +318,7 @@ static UV phi_recurse(UV x, UV a, UV primes_to_n)
   if (a <= PHIS || x <= PHIS_XMIN)  return phi_small(x, a);
   if (a > 203280221) croak("64-bit phi out of range");
 
+  if (primes_to_n < nth_prime_upper(a)) primes_to_n = nth_prime_upper(a);
   lastidx = range_prime_sieve_32(&primes, primes_to_n, 1);
 
   if (primes[a] < x) {
@@ -658,7 +663,8 @@ UV legendre_phi(UV x, UV a)
   /* Better shortcuts, slightly more time */
   if (prime_count_upper(x) <= a)
     return 1;
-  if (prime_count_upper(sqrtx) < a+1) {
+  /* Use 'a' instead of 'a+1' to ensure Legendre Pi doesn't call here */
+  if (prime_count_upper(sqrtx) < a) {
     UV pc = LMO_prime_count(x);
     return (a >= pc)  ?  1  :  pc - a + 1;
   }
@@ -667,15 +673,15 @@ UV legendre_phi(UV x, UV a)
   /* The best crossover between recurse and walk is complicated */
   /* TODO: More tuning of the crossovers, or just improve the algorithms. */
 
-  if (x <= 1e10)
+  if (x < 1e10)
     return phi_recurse(x, a, sqrtx);
 
-  if ( (x <= 1e11 && a <   3000) ||
-       (x <= 1e12 && a <   8000) ||
-       (x <= 1e13 && a <  18000) ||
-       (x <= 1e14 && a <  30000) ||
-       (x <= 1e15 && a <  80000) ||
-       (x >  1e15 && a < 150000) )
+  if ( (x >= 1e10 && x < 1e11 && a <   2000) ||
+       (x >= 1e11 && x < 1e12 && a <   4000) ||
+       (x >= 1e12 && x < 1e13 && a <  10000) ||
+       (x >= 1e13 && x < 1e14 && a <  24000) ||
+       (x >= 1e14 && x < 1e15 && a <  80000) ||
+       (x >  1e15             && a < 150000) )
     return phi_walk(x, a, sqrtx);
 
   return phi_recurse(x, a, sqrtx);
