@@ -118,7 +118,8 @@ Revision history for Perl module Math::Prime::Util
 
     - sum_primes faster for some inputs.
 
-    - Rewrote legendre_phi and removed code duplication.  Faster.
+    - Rewrote legendre_phi and removed code duplication.  Much faster.
+      Also makes _legendre_pi(n) about 4x faster.
 
     - Rewrote prime count caching and removed code duplication.
       Uses less memory at large sizes and is faster.

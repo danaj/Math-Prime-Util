@@ -17,20 +17,25 @@
  *    a must be very small (e.g. 6, 7)
  *    direct answer
  *
+ * phi_small
+ *    a must be very small (e.g. 15)
+ *    calls tablephi
+ *    simple iteration using fixed size lists
+ *
  * phi_recurse_small
  *    memoryless recursive
- *    calls tablephi, nth_prime, prev_prime, next_prime
+ *    calls phi_small, nth_prime (if a > 25), prev_prime, next_prime
  *    good for very small a (e.g. less than 25)
  *
  * phi_recurse
- *    recursive with a small cache
+ *    recursive with a cache
  *    calls tablephi, prime_count_cache, phi_recurse internal
- *    generates primes to nth_prime(a)
+ *    generates primes to max(nth_prime(a),isqrt(x))
  *
  * phi_walk
  *    iterative using list merges
  *    calls tablephi, prime_count_cache, phi_recurse internal
- *    generates primes to nth_prime(a)
+ *    generates primes to max(nth_prime(a),isqrt(x))
  *    complicated, can be much faster than the others, but uses a lot of memory
  *
  * legendre_phi
@@ -62,6 +67,9 @@ static UV _toindex210(UV x) {
   UV q = x / 210, r = x % 210;
   return 48 * q + _coprime_idx210[r];
 }
+
+/* Small table of nth primes */
+static const unsigned char _snth[25+1] = {0,2,3,5,7,11,13,17,19,23,29,31,37,41,43,47,53,59,61,67,71,73,79,83,89,97};
 
 /*============================================================================*/
 
@@ -106,8 +114,6 @@ static UV tablephi(UV x, uint32_t a)
 
 /* Iterate with simple arrays, no merging or cleverness. */
 
-static const unsigned char _snth[25+1] = {0,2,3,5,7,11,13,17,19,23,29,31,37,41,43,47,53,59,61,67,71,73,79,83,89,97};
-
 static UV phi_small(UV x, uint32_t a) {
   UV sum = 0, xpos[1025], xneg[1025];  /* For 32-bit x, 848 is enough */
   uint32_t i, npos, nneg;
@@ -141,16 +147,16 @@ static UV phi_small(UV x, uint32_t a) {
 
 /* Recurse until a <= PHIS */
 
-static UV phi_recurse_small(UV x, UV a, UV npa) {
-  UV sum, i, xp, p, lp;
+static UV phi_recurse_small(UV x, UV a) {
+  UV sum, i, xp, p, npa;
 
   if (x < 1 || a >= x) return (x > 0);
   if (a <= PHIS || x <= PHIS_XMIN)  return phi_small(x, a);
 
+  npa = (a <= 25) ? _snth[a] : nth_prime(a);
   sum = phi_small(x, PHIS);
   p = _snth[PHIS];
   for (i = PHIS+1; i <= a; i++) {
-    lp = p;
     p = next_prime(p);
     xp = FAST_DIV(x,p);
     if (xp < p) {
@@ -160,7 +166,7 @@ static UV phi_recurse_small(UV x, UV a, UV npa) {
       }
       return (sum - a + i - 1);
     }
-    sum -= phi_recurse_small(xp, i-1, lp);
+    sum -= phi_recurse_small(xp, i-1);
   }
   return sum;
 }
@@ -271,7 +277,6 @@ static IV _phi3(UV x, UV a, int sign, phidata_t *d)
 
   /* Choose a mapping:   x,  (x+1)>>1,  _toindex30(x),  _toindex210(x) */
   mapx = (a < PHICACHEA)  ?  _toindex210(x)  :  0;
-  //mapx = (a < PHICACHEA)  ?  (x+1)>>1  :  0;
 
   if (a < PHICACHEA && mapx < pcache->siz[a]) {
     IV v = pcache->val[a][mapx];
@@ -308,17 +313,18 @@ static IV _phi3(UV x, UV a, int sign, phidata_t *d)
   }
 }
 
-static UV phi_recurse(UV x, UV a, UV primes_to_n)
+static UV phi_recurse(UV x, UV a)
 {
   uint32_t* primes;
   uint32_t lastidx;
-  UV sum = 1;
+  UV primes_to_n, sum = 1;
 
   if (x < 1 || a >= x) return (x > 0);
   if (a <= PHIS || x <= PHIS_XMIN)  return phi_small(x, a);
   if (a > 203280221) croak("64-bit phi out of range");
 
-  if (primes_to_n < nth_prime_upper(a)) primes_to_n = nth_prime_upper(a);
+  primes_to_n = nth_prime_upper(a);
+  if (isqrt(x) > primes_to_n) primes_to_n = isqrt(x);
   lastidx = range_prime_sieve_32(&primes, primes_to_n, 1);
 
   if (primes[a] < x) {
@@ -496,9 +502,9 @@ static void vcarray_remove_zeros(vcarray_t* a)
 
 /* phi(x,a) non-recursive, using list merging.   Memory intensive. */
 
-static UV phi_walk(UV x, UV a, UV primes_to_n)
+static UV phi_walk(UV x, UV a)
 {
-  UV i, val, sval, lastidx, lastprime;
+  UV i, val, sval, lastidx, lastprime, primes_to_n;
   UV sum = 0;
   uint32_t* primes;
   vcarray_t a1, a2;
@@ -508,6 +514,9 @@ static UV phi_walk(UV x, UV a, UV primes_to_n)
   if (x < 1 || a >= x) return (x > 0);
   if (x <= PHIC || a <= PHIC)  return tablephi(x, (a > PHIC) ? PHIC : a);
   if (a > 203280221) croak("64-bit phi out of range");
+
+  primes_to_n = nth_prime_upper(a);
+  if (isqrt(x) > primes_to_n) primes_to_n = isqrt(x);
 
   lastidx = range_prime_sieve_32(&primes, primes_to_n, 1);
   lastprime = primes[lastidx];
@@ -577,18 +586,13 @@ uint32_t tiny_phi_max_a(void) { return PHIC; }
 UV tiny_phi(UV n, uint32_t a) {
   return (a <= PHIC) ? tablephi(n, a)
        : (a <= PHIS) ? phi_small(n, a)
-                     : phi_recurse_small(n, a, nth_prime(a));
+                     : phi_recurse_small(n, a);
 }
 
 uint32_t small_phi_max_a(void) { return PHIS; }
 
 UV small_phi(UV n, uint32_t a) {
-  UV npa;
-  if (a <= PHIS) return phi_small(n, a);
-  npa = nth_prime(a);
-  if (n <= npa) return 1;
-  if (npa < isqrt(n)) npa = isqrt(n);
-  return phi_recurse(n, a, npa);
+  return (a <= PHIS) ? phi_small(n, a) : phi_recurse(n, a);
 }
 
 /*============================================================================*/
@@ -658,7 +662,7 @@ UV legendre_phi(UV x, UV a)
 
   /* For very small a, calculate now. */
   if (a <= PHIS)  return phi_small(x, a);
-  if (a <= PHIR)  return phi_recurse_small(x, a, nth_prime(a));
+  if (a <= PHIR)  return phi_recurse_small(x, a);
 
   /* Better shortcuts, slightly more time */
   if (prime_count_upper(x) <= a)
@@ -674,7 +678,7 @@ UV legendre_phi(UV x, UV a)
   /* TODO: More tuning of the crossovers, or just improve the algorithms. */
 
   if (x < 1e10)
-    return phi_recurse(x, a, sqrtx);
+    return phi_recurse(x, a);
 
   if ( (x >= 1e10 && x < 1e11 && a <   2000) ||
        (x >= 1e11 && x < 1e12 && a <   4000) ||
@@ -682,7 +686,7 @@ UV legendre_phi(UV x, UV a)
        (x >= 1e13 && x < 1e14 && a <  24000) ||
        (x >= 1e14 && x < 1e15 && a <  80000) ||
        (x >  1e15             && a < 150000) )
-    return phi_walk(x, a, sqrtx);
+    return phi_walk(x, a);
 
-  return phi_recurse(x, a, sqrtx);
+  return phi_recurse(x, a);
 }
