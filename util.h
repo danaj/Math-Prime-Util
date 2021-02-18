@@ -59,9 +59,12 @@ extern UV modinverse(UV a, UV p);              /* Returns 1/a mod p */
 extern UV divmod(UV a, UV b, UV n);            /* Returns a/b mod n */
 extern int sqrtmodp(UV *r, UV a, UV p);        /* sqrt(a) mod p */
 extern int sqrtmod(UV *r, UV a, UV n);         /* sqrt(a) mod n */
-extern int rootmodp(UV *r, UV n, UV k, UV p);  /* n^(1/k) mod p for p prime */
-extern int rootmod(UV *r, UV n, UV k, UV p);   /* n^(1/k) mod p for any p */
+extern int rootmodp(UV *r, UV a, UV k, UV p);  /* a^(1/k) mod p for p prime */
+extern int rootmod(UV *r, UV a, UV k, UV n);   /* a^(1/k) mod n for any n */
 extern UV chinese(UV* a, UV* n, UV num, int *status); /* Chinese Remainder */
+
+/* Do the inverse for a negative modular power / root. a^-k => (1/a)^k mod n */
+extern int prep_pow_inv(UV *a, UV *k, int kstatus, UV n);
 
 /* Division and remainder.  Returns remainder. */
 extern IV tdivrem(IV *q, IV *r, IV D, IV d);   /* signed div/rem trunc */

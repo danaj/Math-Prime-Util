@@ -904,7 +904,7 @@ UV mpu_popcount_string(const char* ptr, uint32_t len)
   for (i = 0; i < slen; i++) {  /* Chunks of 8 digits */
     for (j = 0, d = 0, power = 1;  j < 8 && len > 0;  j++, power *= 10) {
       v = ptr[--len] - '0';
-      if (v > 9) croak("Parameter '%s' must be a positive integer",ptr);
+      if (v > 9) croak("Parameter '%s' must be a single decimal number",ptr);
       d += power * v;
     }
     s[slen - 1 - i] = d;
@@ -2550,18 +2550,28 @@ int rootmodp(UV *s, UV a, UV k, UV p) {
   return _rootmod_return(r, s, a, k, p);
 }
 
-int rootmod(UV *s, UV a, UV k, UV p) {
+int rootmod(UV *s, UV a, UV k, UV n) {
   UV r;
-  if (p == 0) return 0;
-  if (a >= p) a %= p;
+  if (n == 0) return 0;
+  if (a >= n) a %= n;
 
-  if      (p <= 2 || a <= 1)  r = a;
+  if      (n <= 2 || a <= 1)  r = a;
   else if (k <= 1)            r = (k == 0) ? 1 : a;
   else if (is_power(a,k))     r = rootint(a,k);
-  else if (is_prime(p))       r = _rootmod_prime_splitk(a,k,p);
-  else                        r = _rootmod_composite(a,k,p);
+  else if (is_prime(n))       r = _rootmod_prime_splitk(a,k,n);
+  else                        r = _rootmod_composite(a,k,n);
 
-  return _rootmod_return(r, s, a, k, p);
+  return _rootmod_return(r, s, a, k, n);
+}
+
+int prep_pow_inv(UV *a, UV *k, int kstatus, UV n) {
+  if (n == 0) return 0;
+  if (kstatus < 0) {
+    if (*a != 0) *a = modinverse(*a, n);
+    if (*a == 0) return 0;
+    *k = -(IV)*k;
+  }
+  return 1;
 }
 
 
@@ -2614,6 +2624,7 @@ UV chinese(UV* a, UV* n, UV num, int* status) {
     }
   }
 
+  if (n[num-1] == 0) { *status = -1; return 0; }
   if (n[0] > IV_MAX) return _simple_chinese(a,n,num,status);
   lcm = n[0]; sum = a[0] % n[0];
   for (i = 1; i < num; i++) {
@@ -3569,7 +3580,7 @@ int strnum_minmax(int min, char* a, STRLEN alen, char* b, STRLEN blen)
   int aneg, bneg;
   STRLEN i;
   /* a is checked, process b */
-  if (b == 0 || blen == 0) croak("Parameter must be a positive integer");
+  if (b == 0 || blen == 0) croak("Parameter must be a non-negative integer");
   bneg = (b[0] == '-');
   if (b[0] == '-' || b[0] == '+') { b++; blen--; }
   while (blen > 0 && *b == '0') { b++; blen--; }
@@ -3577,7 +3588,7 @@ int strnum_minmax(int min, char* a, STRLEN alen, char* b, STRLEN blen)
     if (!isDIGIT(b[i]))
       break;
   if (blen == 0 || i < blen)
-    croak("Parameter must be a positive integer");
+    croak("Parameter must be a non-negative integer");
 
   if (a == 0) return 1;
 
