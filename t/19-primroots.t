@@ -13,7 +13,6 @@ $use64 = 0 if $use64 && 18446744073709550592 == ~0;
 
 my %primroots = (
    -11 => 2,
-     0 => undef,
      1 => 0,
      2 => 1,
      3 => 2,
@@ -42,8 +41,8 @@ if ($use64) {
 
 plan tests => 0
                 + scalar(keys %primroots) + 1  # znprimroot
-                + scalar(keys %primroots) + 3  # is_primitive_root
-                + 6                            # qnr
+                + scalar(keys %primroots) + 4  # is_primitive_root
+                + 7                            # qnr
                 ;
 
 ###### znprimroot
@@ -62,12 +61,14 @@ while (my($n, $root) = each (%primroots)) {
     is( is_primitive_root(2,0+$n), 0, "2 is not a primitive root mod $n" );
   }
 }
+is(is_primitive_root(2,0), undef, "is_primitive_root(2,0) => undef");
 is(is_primitive_root(19,191), 1, "19 is a primitive root mod 191");
 is(is_primitive_root(13,191), 0, "13 is not a primitive root mod 191");
 is(is_primitive_root(35,982), 0, "35 is not a primitive root mod 982");
 
 ###### qnr
-is_deeply([map{qnr($_)}0..15], [0,1,2,2,2,2,2,3,2,2,2,2,2,2,3,2], "qnr(1..15)");
+is(qnr(0), undef, "qnr(0) returns undef");
+is_deeply([map{qnr($_)}1..15], [1,2,2,2,2,2,3,2,2,2,2,2,2,3,2], "qnr(1..15)");
 is_deeply([map{qnr(2**$_)}1..16], [map{2}1..16], "qnr(2^k) = 2 for k>=1");
 is(qnr(5711), 19, "The least quadratice non-residue of 5711 is 19");
 is(qnr(366791), 43, "The least quadratice non-residue of 366791 is 43");

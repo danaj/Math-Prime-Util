@@ -126,11 +126,13 @@ static double my_difftime (struct timeval * start, struct timeval * end) {
   static const unsigned int ivmax_maxlen = 10;
   static const char uvmax_str[] = "4294967295";
   static const char ivmax_str[] = "2147483648";
+  static const char ivmin_str[] = "2147483647";
 #else
   static const unsigned int uvmax_maxlen = 20;
   static const unsigned int ivmax_maxlen = 19;
   static const char uvmax_str[] = "18446744073709551615";
   static const char ivmax_str[] =  "9223372036854775808";
+  static const char ivmin_str[] =  "9223372036854775807";
 #endif
 
 #define MY_CXT_KEY "Math::Prime::Util::API_guts"
@@ -169,7 +171,7 @@ static int _is_sv_bigint(pTHX_ SV* n)
  */
 static int _validate_int(pTHX_ SV* n, int negok)
 {
-  const char* mustbe = (negok) ? "must be an integer" : "must be a positive integer";
+  const char* mustbe = (negok) ? "must be an integer" : "must be a non-negative integer";
   const char* maxstr;
   char* ptr;
   STRLEN i, len, maxlen;
@@ -206,7 +208,7 @@ static int _validate_int(pTHX_ SV* n, int negok)
       croak("Parameter '%" SVf "' %s", n, mustbe);
   ret    = isneg ? -1           : 1;
   maxlen = isneg ? ivmax_maxlen : uvmax_maxlen;
-  maxstr = isneg ? ivmax_str    : uvmax_str;
+  maxstr = isneg ? ivmin_str    : uvmax_str;
   if (len < maxlen)                    /* Valid small integer */
     return ret;
   for (i = 0; i < maxlen; i++) {       /* Check if in range */
@@ -216,9 +218,58 @@ static int _validate_int(pTHX_ SV* n, int negok)
   return ret;                          /* value = UV_MAX/UV_MIN.  That's ok */
 }
 
+#define IFLAG_ANY      0x00000000U
+#define IFLAG_POS      0x00000001U  /* Must be non-negative */
+#define IFLAG_NONZERO  0x00000002U  /* Must not be zero */
+#define IFLAG_ABS      0x00000004U  /* Absolute value returned */
+#define IFLAG_IV       0x00000008U  /* Value returned as IV */
+
+static int _validate_and_set(UV* val, pTHX_ SV* svn, uint32_t mask) {
+  UV n;
+  int negok = !(mask & IFLAG_POS);
+  int status = _validate_int(aTHX_ svn, negok);
+
+  if (status == 1) {
+    n = my_svuv(svn);
+#if 0  /* _validate_int already does this */
+  } else if (status == -1 && (mask & IFLAG_POS)) {
+    croak("parameter must be a non-negative integer");
+#endif
+  } else if (status == -1) {
+    if (mask & IFLAG_ABS) {
+      n = (UV)(-(my_sviv(svn)));
+      status = 1;
+    } else {
+      n = (UV)my_sviv(svn);
+    }
+  }
+
+  if (status != 0 && (mask & IFLAG_NONZERO) && n == 0)
+    croak("parameter must be a positive integer (x > 0)");
+
+  /* If they want an IV returned, varify it fits. */
+  if (status == 1 && (mask & IFLAG_IV) && n > (UV)IV_MAX)
+    status = 0;
+
+  if (status != 0)
+    *val = n;
+
+  return status;
+}
+
+/* Given 'a' and astatus (-1 means 'a' is an IV), properly mod with n */
+static void _mod_with(UV *a, int astatus, UV n) {
+  if (astatus != -1) {
+    *a %= n;
+  } else {
+    UV r = (-(IV)*a) % n;
+    *a = (r == 0) ? 0 : n-r;
+  }
+}
+
 #define VCALL_ROOT 0x0
-#define VCALL_PP 0x1
-#define VCALL_GMP 0x2
+#define VCALL_PP   0x1
+#define VCALL_GMP  0x2
 /* Call a Perl sub to handle work for us. */
 static int _vcallsubn(pTHX_ I32 flags, I32 stashflags, const char* name, int nargs, int minversion)
 {
@@ -334,8 +385,8 @@ static int arrayref_to_int_array(pTHX_ UV** ret, AV* av, int base)
   New(0, r, len, UV);
   for (i = len-1; i >= 0; i--) {
     SV** psvd = av_fetch(av, i, 0);
-    if (_validate_int(aTHX_ *psvd, 1) != 1) break;
-    r[i] = my_svuv(*psvd) + carry;
+    if (_validate_and_set(r+i, aTHX_ *psvd, IFLAG_ANY) != 1) break;
+    r[i] += carry;
     if (r[i] >= (UV)base && i > 0) {
       carry = r[i] / base;
       r[i] -= carry * base;
@@ -425,11 +476,6 @@ static int _compare_array_refs(pTHX_ SV* a, SV* b)
     }
   }
   return 1;
-}
-
-static UV negamod(IV a, UV n) {
-  UV negamod = ((UV)(-a)) % n;
-  return (negamod == 0) ? 0 : n-negamod;
 }
 
 static void csprng_init_seed(void* ctx) {
@@ -701,6 +747,7 @@ prime_precalc(IN UV n)
     }
     return; /* skip implicit PUTBACK */
 
+
 void
 prime_count(IN SV* svlo, ...)
   ALIAS:
@@ -711,20 +758,13 @@ prime_count(IN SV* svlo, ...)
     sum_primes = 5
     print_primes = 6
   PREINIT:
-    int lostatus, histatus;
     UV lo, hi;
   PPCODE:
-    lostatus = _validate_int(aTHX_ svlo, 0);
-    histatus = (items == 1 || _validate_int(aTHX_ ST(1), 0));
-    if (lostatus == 1 && histatus == 1) {
+    lo = 2;
+    if ((items == 1 && _validate_and_set(&hi, aTHX_ svlo, IFLAG_POS)) ||
+        (items == 2 && _validate_and_set(&lo, aTHX_ svlo, IFLAG_POS) && _validate_and_set(&hi, aTHX_ ST(1), IFLAG_POS))) {
       UV count = 0;
-      if (items == 1) {
-        lo = 2;
-        hi = my_svuv(svlo);
-      } else {
-        lo = my_svuv(svlo);
-        hi = my_svuv(ST(1));
-      }
+      int retok = 1;
       if (lo <= hi) {
         if      (ix == 0) { count = prime_count(lo, hi); }
         else if (ix == 1) { count = semiprime_count(lo, hi); }
@@ -735,18 +775,18 @@ prime_count(IN SV* svlo, ...)
                               count -= ramanujan_prime_count_approx(lo-1); }
         else if (ix == 5) {
           /* 32/64-bit, Legendre or table-accelerated sieving. */
-          lostatus = sum_primes(lo, hi, &count);
+          retok = sum_primes(lo, hi, &count);
           /* If that didn't work, try the 128-bit version if supported. */
-          if (lostatus == 0 && HAVE_SUM_PRIMES128) {
+          if (retok == 0 && HAVE_SUM_PRIMES128) {
             UV hicount, lo_hic, lo_loc;
-            lostatus = sum_primes128(hi, &hicount, &count);
-            if (lostatus == 1 && lo > 2) {
-              lostatus = sum_primes128(lo-1, &lo_hic, &lo_loc);
+            retok = sum_primes128(hi, &hicount, &count);
+            if (retok == 1 && lo > 2) {
+              retok = sum_primes128(lo-1, &lo_hic, &lo_loc);
               hicount -= lo_hic;
               if (count < lo_loc) hicount--;
               count -= lo_loc;
             }
-            if (lostatus == 1 && hicount > 0)
+            if (retok == 1 && hicount > 0)
               RETURN_128(hicount, count);
           }
         } else if (ix == 6) {
@@ -755,7 +795,7 @@ prime_count(IN SV* svlo, ...)
           XSRETURN_EMPTY;
         }
       }
-      if (lostatus == 1) XSRETURN_UV(count);
+      if (retok == 1) XSRETURN_UV(count);
     }
     switch (ix) {
       case 0: _vcallsubn(aTHX_ GIMME_V, VCALL_ROOT, "_generic_prime_count", items, 0); break;
@@ -771,20 +811,12 @@ prime_count(IN SV* svlo, ...)
 
 void random_prime(IN SV* svlo, IN SV* svhi = 0)
   PREINIT:
-    int lostatus, histatus;
     UV lo, hi, ret;
     dMY_CXT;
   PPCODE:
-    lostatus = _validate_int(aTHX_ svlo, 0);
-    histatus = (items == 1 || _validate_int(aTHX_ svhi, 0));
-    if (lostatus == 1 && histatus == 1) {
-      if (items == 1) {
-        lo = 2;
-        hi = my_svuv(svlo);
-      } else {
-        lo = my_svuv(svlo);
-        hi = my_svuv(svhi);
-      }
+    lo = 2;
+    if ((items == 1 && _validate_and_set(&hi, aTHX_ svlo, IFLAG_POS)) ||
+        (items == 2 && _validate_and_set(&lo, aTHX_ svlo, IFLAG_POS) && _validate_and_set(&hi, aTHX_ svhi, IFLAG_POS))) {
       ret = random_prime(MY_CXT.randcxt,lo,hi);
       if (ret) XSRETURN_UV(ret);
       else     XSRETURN_UNDEF;
@@ -815,6 +847,9 @@ _LMO_pi(IN UV n)
     RETVAL = ret;
   OUTPUT:
     RETVAL
+
+
+
 
 void
 sieve_primes(IN UV low, IN UV high)
@@ -955,12 +990,12 @@ void
 sieve_range(IN SV* svn, IN UV width, IN UV depth)
   PREINIT:
     int status;
+    UV i, n;
   PPCODE:
     /* Return index of every n unless it is a composite with factor > depth */
-    status = _validate_int(aTHX_ svn, 0);
+    status = _validate_and_set(&n, aTHX_ svn, IFLAG_POS);
     if (status == 1) {
-      UV i, n = my_svuv(svn);
-      if (status == 1 && (n+width) < n) {
+      if ((n+width) < n) {
         status = 0;   /* range will overflow */
       } else { /* TODO: actually sieve */
         for (i = (n<2)?2-n:0; i < width; i++)
@@ -977,27 +1012,24 @@ void
 sieve_prime_cluster(IN SV* svlo, IN SV* svhi, ...)
   PREINIT:
     uint32_t nc, cl[100];
-    UV i, cval, nprimes, *list;
-    int lostatus, histatus, done;
+    UV i, lo, hi, cval, nprimes, *list;
+    int done;
   PPCODE:
     nc = items-1;
     if (items > 100) croak("sieve_prime_cluster: too many entries");
     cl[0] = 0;
     for (i = 1; i < nc; i++) {
-      if (!_validate_int(aTHX_ ST(1+i), 0)) croak("sieve_prime_cluster: cluster values must be standard integers");
-      cval = my_svuv(ST(1+i));
+      if (!_validate_and_set(&cval, aTHX_ ST(1+i), IFLAG_POS))
+        croak("sieve_prime_cluster: cluster values must be standard integers");
       if (cval & 1) croak("sieve_prime_cluster: values must be even");
       if (cval > 2147483647UL) croak("sieve_prime_cluster: values must be 31-bit");
       if (cval <= cl[i-1]) croak("sieve_prime_cluster: values must be increasing");
       cl[i] = cval;
     }
-    lostatus = _validate_int(aTHX_ svlo, 1);
-    histatus = _validate_int(aTHX_ svhi, 1);
     done = 0;
-    if (lostatus == 1 && histatus == 1) {
-      UV low = my_svuv(svlo);
-      UV high = my_svuv(svhi);
-      list = sieve_cluster(low, high, nc, cl, &nprimes);
+    if (_validate_and_set(&lo, aTHX_ svlo, IFLAG_POS) &&
+        _validate_and_set(&hi, aTHX_ svhi, IFLAG_POS)) {
+      list = sieve_cluster(lo, hi, nc, cl, &nprimes);
       if (list != 0) {
         done = 1;
         EXTEND(SP, (IV)nprimes);
@@ -1011,59 +1043,7 @@ sieve_prime_cluster(IN SV* svlo, IN SV* svhi, ...)
       return;
     }
 
-void
-trial_factor(IN UV n, ...)
-  ALIAS:
-    fermat_factor = 1
-    holf_factor = 2
-    squfof_factor = 3
-    lehman_factor = 4
-    prho_factor = 5
-    pplus1_factor = 6
-    pbrent_factor = 7
-    pminus1_factor = 8
-    ecm_factor = 9
-  PREINIT:
-    UV arg1, arg2;
-    static const UV default_arg1[] =
-       {0,     64000000, 8000000, 4000000, 1,   4000000, 200, 4000000, 1000000};
-     /* Trial, Fermat,   Holf,    SQUFOF,  Lmn, PRHO,    P+1, Brent,    P-1 */
-  PPCODE:
-    if (n == 0)  XSRETURN_UV(0);
-    if (ix == 9) {  /* We don't have an ecm_factor, call PP. */
-      _vcallsubn(aTHX_ GIMME_V, VCALL_PP, "ecm_factor", 1, 0);
-      return;
-    }
-    /* Must read arguments before pushing anything */
-    arg1 = (items >= 2) ? my_svuv(ST(1)) : default_arg1[ix];
-    arg2 = (items >= 3) ? my_svuv(ST(2)) : 0;
-    /* Small factors */
-    while ( (n% 2) == 0 ) {  n /=  2;  XPUSHs(sv_2mortal(newSVuv( 2 ))); }
-    while ( (n% 3) == 0 ) {  n /=  3;  XPUSHs(sv_2mortal(newSVuv( 3 ))); }
-    while ( (n% 5) == 0 ) {  n /=  5;  XPUSHs(sv_2mortal(newSVuv( 5 ))); }
-    if (n == 1) {  /* done */ }
-    else if (is_prime(n)) { XPUSHs(sv_2mortal(newSVuv( n ))); }
-    else {
-      UV factors[MPU_MAX_FACTORS+1];
-      int i, nfactors = 0;
-      switch (ix) {
-        case 0:  nfactors = trial_factor  (n, factors, 2, arg1);  break;
-        case 1:  nfactors = fermat_factor (n, factors, arg1);  break;
-        case 2:  nfactors = holf_factor   (n, factors, arg1);  break;
-        case 3:  nfactors = squfof_factor (n, factors, arg1);  break;
-        case 4:  nfactors = lehman_factor (n, factors, arg1);  break;
-        case 5:  nfactors = prho_factor   (n, factors, arg1);  break;
-        case 6:  nfactors = pplus1_factor (n, factors, arg1);  break;
-        case 7:  if (items < 3) arg2 = 1;
-                 nfactors = pbrent_factor (n, factors, arg1, arg2);  break;
-        case 8:
-        default: if (items < 3) arg2 = 10*arg1;
-                 nfactors = pminus1_factor(n, factors, arg1, arg2);  break;
-      }
-      EXTEND(SP, nfactors);
-      for (i = 0; i < nfactors; i++)
-        PUSHs(sv_2mortal(newSVuv( factors[i] )));
-    }
+
 
 void
 is_strong_pseudoprime(IN SV* svn, ...)
@@ -1110,6 +1090,143 @@ is_strong_pseudoprime(IN SV* svn, ...)
     }
     return; /* skip implicit PUTBACK */
 
+void is_prime(IN SV* svn)
+  ALIAS:
+    is_prob_prime = 1
+    is_provable_prime = 2
+    is_bpsw_prime = 3
+    is_aks_prime = 4
+    is_lucas_pseudoprime = 5
+    is_strong_lucas_pseudoprime = 6
+    is_extra_strong_lucas_pseudoprime = 7
+    is_frobenius_underwood_pseudoprime = 8
+    is_frobenius_khashin_pseudoprime = 9
+    is_catalan_pseudoprime = 10
+    is_euler_plumb_pseudoprime = 11
+    is_ramanujan_prime = 12
+    is_semiprime = 13
+    is_mersenne_prime = 14
+    is_delicate_prime = 15
+  PREINIT:
+    int status, ret;
+    UV n;
+  PPCODE:
+    ret = 0;
+    status = _validate_and_set(&n, aTHX_ svn, IFLAG_ANY);
+    if (status == 1) {
+      switch (ix) {
+        case 0:
+        case 1:
+        case 2:  ret = is_prime(n); break;
+        case 3:  ret = BPSW(n); break;
+        case 4:  ret = is_aks_prime(n); break;
+        case 5:  ret = is_lucas_pseudoprime(n, 0); break;
+        case 6:  ret = is_lucas_pseudoprime(n, 1); break;
+        case 7:  ret = is_lucas_pseudoprime(n, 3); break;
+        case 8:  ret = is_frobenius_underwood_pseudoprime(n); break;
+        case 9:  ret = is_frobenius_khashin_pseudoprime(n); break;
+        case 10: ret = is_catalan_pseudoprime(n); break;
+        case 11: ret = is_euler_plumb_pseudoprime(n); break;
+        case 12: ret = is_ramanujan_prime(n); break;
+        case 13: ret = is_semiprime(n); break;
+        case 14: ret = is_mersenne_prime(n);  if (ret == -1) status = 0; break;
+        case 15: ret = is_delicate_prime(n);  if (ret == -1) status = 0; break;
+        default: break;
+      }
+    }
+    if (status != 0)  RETURN_NPARITY(ret);
+    switch (ix) {
+      case 0: _vcallsub_with_gmp(0.01,"is_prime");       break;
+      case 1: _vcallsub_with_gmp(0.01,"is_prob_prime");  break;
+      case 2: _vcallsub_with_gmp(0.04,"is_provable_prime");  break;
+      case 3: _vcallsub_with_gmp(0.17,"is_bpsw_prime");  break;
+      case 4: _vcallsub_with_gmp(0.16,"is_aks_prime"); break;
+      case 5: _vcallsub_with_gmp(0.01,"is_lucas_pseudoprime"); break;
+      case 6: _vcallsub_with_gmp(0.01,"is_strong_lucas_pseudoprime"); break;
+      case 7: _vcallsub_with_gmp(0.01,"is_extra_strong_lucas_pseudoprime"); break;
+      case 8: _vcallsub_with_gmp(0.13,"is_frobenius_underwood_pseudoprime"); break;
+      case 9: _vcallsub_with_gmp(0.30,"is_frobenius_khashin_pseudoprime"); break;
+      case 10:_vcallsub_with_gmp(0.00,"is_catalan_pseudoprime"); break;
+      case 11:_vcallsub_with_gmp(0.39,"is_euler_plumb_pseudoprime"); break;
+      case 12:_vcallsub_with_gmp(0.00,"is_ramanujan_prime"); break;
+      case 13:_vcallsub_with_gmp(0.42,"is_semiprime"); break;
+      case 14:_vcallsub_with_gmp(0.28,"is_mersenne_prime"); break;
+      case 15:_vcallsub_with_gmp(0.00,"is_delicate_prime"); break;
+      default: break;
+    }
+    return; /* skip implicit PUTBACK */
+
+void
+is_perrin_pseudoprime(IN SV* svn, IN int k = 0)
+  ALIAS:
+    is_almost_extra_strong_lucas_pseudoprime = 1
+  PREINIT:
+    int status, ret;
+    UV n;
+  PPCODE:
+    if (k < 0) croak("second argument must not be negative");
+    /*  ix = 0    k = 0 - 3       n below 2 returns 0 for all k
+     *  ix = 1    k = 0 - 256     n below 2 returns 0 for all k
+     */
+    status = _validate_and_set(&n, aTHX_ svn, IFLAG_ANY);
+    ret = 0;
+    if (status == 1) {
+      switch (ix) {
+        case 0:  ret = is_perrin_pseudoprime(n, k); break;
+        case 1:  ret = is_almost_extra_strong_lucas_pseudoprime(n, (k < 1) ? 1 : k); break;
+        default: break;
+      }
+    }
+    if (status != 0) RETURN_NPARITY(ret);
+    switch (ix) {
+      case 0: _vcallsub_with_gmp( (k == 0) ? 0.20 : 0.40, "is_perrin_pseudoprime"); break;
+      case 1: _vcallsub_with_gmp(0.13,"is_almost_extra_strong_lucas_pseudoprime"); break;
+      default: break;
+    }
+    return;
+
+void
+is_frobenius_pseudoprime(IN SV* svn, IN IV P = 0, IN IV Q = 0)
+  PREINIT:
+    int status;
+    UV n;
+  PPCODE:
+    status = _validate_and_set(&n, aTHX_ svn, IFLAG_ANY);
+    if (status != 0)
+      RETURN_NPARITY((status == 1) ?  is_frobenius_pseudoprime(n, P, Q)  :  0);
+    _vcallsub_with_gmp(0.24,"is_frobenius_pseudoprime");
+    return;
+
+void
+miller_rabin_random(IN SV* svn, IN IV bases = 1, IN char* seed = 0)
+  PREINIT:
+    UV n;
+    dMY_CXT;
+  PPCODE:
+    if (bases < 0) croak("miller_rabin_random: number of bases must be positive");
+    if (seed == 0 && _validate_and_set(&n, aTHX_ svn, IFLAG_POS))
+      RETURN_NPARITY( is_mr_random(MY_CXT.randcxt, n, bases) );
+    _vcallsub_with_gmp(0.46,"miller_rabin_random");
+    return;
+
+void is_gaussian_prime(IN SV* sva, IN SV* svb)
+  PREINIT:
+    UV a, b;
+  PPCODE:
+    if (_validate_and_set(&a, aTHX_ sva, IFLAG_ABS) &&
+        _validate_and_set(&b, aTHX_ svb, IFLAG_ABS)) {
+      if (a == 0) RETURN_NPARITY( ((b % 4) == 3) ? is_prime(b) : 0 );
+      if (b == 0) RETURN_NPARITY( ((a % 4) == 3) ? is_prime(a) : 0 );
+      if (a < HALF_WORD && b < HALF_WORD) {
+        UV aa = a*a, bb = b*b;
+        if (UV_MAX-aa >= bb)
+          RETURN_NPARITY( is_prime(aa+bb) );
+      }
+    }
+    _vcallsub_with_gmp(0.52,"is_gaussian_prime");
+    return;
+
+
 void
 gcd(...)
   PROTOTYPE: @
@@ -1128,14 +1245,11 @@ gcd(...)
       int sign, minmax = (ix == 2);
       if (items == 0) XSRETURN_UNDEF;
       if (items == 1) XSRETURN(1);
-      status = _validate_int(aTHX_ ST(0), 2);
-      if (status != 0 && items > 1) {
+      if (items > 1 && (status = _validate_and_set(&ret, aTHX_ ST(0), IFLAG_ANY))) {
         sign = status;
-        ret = my_svuv(ST(0));
         for (i = 1; i < items; i++) {
-          status = _validate_int(aTHX_ ST(i), 2);
+          status = _validate_and_set(&n, aTHX_ ST(i), IFLAG_ANY);
           if (status == 0) break;
-          n = my_svuv(ST(i));
           if (( (sign == -1 && status == 1) ||
                 (n >= ret && sign == status)
               ) ? !minmax : minmax ) {
@@ -1153,9 +1267,8 @@ gcd(...)
       UV lo = 0;
       IV hi = 0;
       for (ret = i = 0; i < items; i++) {
-        status = _validate_int(aTHX_ ST(i), 2);
+        status = _validate_and_set(&n, aTHX_ ST(i), IFLAG_ANY);
         if (status == 0) break;
-        n = my_svuv(ST(i));
         if (status == 1) {
           hi += (n > (UV_MAX - lo));
         } else {
@@ -1173,9 +1286,8 @@ gcd(...)
       int sign = 1;
       ret = 1;
       for (i = 0; i < items; i++) {
-        status = _validate_int(aTHX_ ST(i), 2);
+        status = _validate_and_set(&n, aTHX_ ST(i), IFLAG_ANY);
         if (status == 0) break;
-        n = (status == 1) ? my_svuv(ST(i)) : (UV)-my_sviv(ST(i));
         if (ret > 0 && n > UV_MAX/ret) { status = 0; break; }
         sign *= status;
         ret *= n;
@@ -1189,10 +1301,8 @@ gcd(...)
       if (ix == 0) { ret = 0; nullv = 1; }
       else         { ret = (items == 0) ? 0 : 1; nullv = 0; }
       for (i = 0; i < items && ret != nullv && status != 0; i++) {
-        status = _validate_int(aTHX_ ST(i), 2);
-        if (status == 0)
-          break;
-        n = status * my_svuv(ST(i));  /* n = abs(arg) */
+        status = _validate_and_set(&n, aTHX_ ST(i), IFLAG_ABS);
+        if (status == 0) break;
         if (i == 0) {
           ret = n;
         } else {
@@ -1243,7 +1353,7 @@ void
 vecextract(IN SV* x, IN SV* svm)
   PREINIT:
     AV* av;
-    UV i = 0;
+    UV mask, i = 0;
   PPCODE:
     if ((!SvROK(x)) || (SvTYPE(SvRV(x)) != SVt_PVAV))
       croak("vecextract first argument must be an array reference");
@@ -1258,8 +1368,7 @@ vecextract(IN SV* x, IN SV* svm)
           if (v) XPUSHs(*v);
         }
       }
-    } else if (_validate_int(aTHX_ svm, 0)) {
-      UV mask = my_svuv(svm);
+    } else if (_validate_and_set(&mask, aTHX_ svm, IFLAG_POS)) {
       while (mask) {
         if (mask & 1) {
           SV** v = av_fetch(av, i, 0);
@@ -1302,12 +1411,12 @@ chinese(...)
       av = (AV*) SvRV(ST(i));
       psva = av_fetch(av, 0, 0);
       psvn = av_fetch(av, 1, 0);
-      if (psva == 0 || psvn == 0 || _validate_int(aTHX_ *psva, 1) != 1 || !_validate_int(aTHX_ *psvn, 0)) {
+      if (psva == 0 || psvn == 0 ||
+          _validate_and_set(an+i, aTHX_ *psva, IFLAG_ANY) != 1 ||
+          _validate_and_set(an+i+items, aTHX_ *psvn, IFLAG_POS) != 1) {
         status = 0;
         break;
       }
-      an[i+0]     = my_svuv(*psva);
-      an[i+items] = my_svuv(*psvn);
     }
     if (status)
       ret = chinese(an, an+items, items, &status);
@@ -1321,13 +1430,14 @@ chinese(...)
 
 void lucas_sequence(...)
   PREINIT:
-    UV U, V, Qk;
+    UV U, V, Qk,  n, P, Q, k;
   PPCODE:
     if (items != 4) croak("lucas_sequence: n, P, Q, k");
-    if (_validate_int(aTHX_ ST(0), 0) && _validate_int(aTHX_ ST(1), 1) &&
-        _validate_int(aTHX_ ST(2), 1) && _validate_int(aTHX_ ST(3), 0)) {
-      lucas_seq(&U, &V, &Qk,
-                my_svuv(ST(0)), my_sviv(ST(1)), my_sviv(ST(2)), my_svuv(ST(3)));
+    if (_validate_and_set(&n, aTHX_ ST(0), IFLAG_POS | IFLAG_NONZERO) &&
+        _validate_and_set(&P, aTHX_ ST(1), IFLAG_ANY | IFLAG_IV) &&
+        _validate_and_set(&Q, aTHX_ ST(2), IFLAG_ANY | IFLAG_IV) &&
+        _validate_and_set(&k, aTHX_ ST(3), IFLAG_POS)) {
+      lucas_seq(&U, &V, &Qk, n, (IV)P, (IV)Q, k);
       PUSHs(sv_2mortal(newSVuv( U )));  /* 4 args in, 3 out, no EXTEND needed */
       PUSHs(sv_2mortal(newSVuv( V )));
       PUSHs(sv_2mortal(newSVuv( Qk )));
@@ -1340,11 +1450,11 @@ void lucasuvmod(IN IV P, IN IV Q, IN SV* svk, IN SV* svn)
   ALIAS:
     lucasumod = 1
     lucasvmod = 2
+  PREINIT:
+    UV k, n, U, V, Qk;
   PPCODE:
-    if (_validate_int(aTHX_ svk, 0) == 1 && _validate_int(aTHX_ svn, 0) == 1) {
-      UV U, V, Qk;
-      UV k = my_svuv(svk);
-      UV n = my_svuv(svn);
+    if (_validate_and_set(&k, aTHX_ svk, IFLAG_POS) &&
+        _validate_and_set(&n, aTHX_ svn, IFLAG_POS | IFLAG_NONZERO)) {
       lucas_seq(&U, &V, &Qk, n, P, Q, k);
       switch (ix) {
         case 0:  PUSHs(sv_2mortal(newSVuv( U )));
@@ -1370,9 +1480,11 @@ void lucasuv(IN IV P, IN IV Q, IN SV* svk)
     lucasu = 1
     lucasv = 2
   PREINIT:
+    UV k;
     IV U, V;
   PPCODE:
-    if (_validate_int(aTHX_ svk, 0)==1 && lucasuv(&U, &V, P, Q, my_svuv(svk))) {
+    if (_validate_and_set(&k, aTHX_ svk, IFLAG_POS) &&
+        lucasuv(&U, &V, P, Q, k)) {
       if (ix == 1)  XSRETURN_IV(U);     /* U = lucasu(P,Q,k) */
       if (ix == 2)  XSRETURN_IV(V);     /* V = lucasv(P,Q,k) */
       PUSHs(sv_2mortal(newSViv( U )));  /* (U,V) = lucasuv(P,Q,k) */
@@ -1388,143 +1500,84 @@ void lucasuv(IN IV P, IN IV Q, IN SV* svk)
     }
 
 
-void is_prime(IN SV* svn)
-  ALIAS:
-    is_prob_prime = 1
-    is_provable_prime = 2
-    is_bpsw_prime = 3
-    is_aks_prime = 4
-    is_lucas_pseudoprime = 5
-    is_strong_lucas_pseudoprime = 6
-    is_extra_strong_lucas_pseudoprime = 7
-    is_frobenius_underwood_pseudoprime = 8
-    is_frobenius_khashin_pseudoprime = 9
-    is_catalan_pseudoprime = 10
-    is_euler_plumb_pseudoprime = 11
-    is_ramanujan_prime = 12
-    is_square_free = 13
-    is_carmichael = 14
-    is_quasi_carmichael = 15
-    is_semiprime = 16
-    is_square = 17
-    is_mersenne_prime = 18
-    is_delicate_prime = 19
-    is_lucky = 20
-    is_practical = 21
-    is_totient = 22
-  PREINIT:
-    int status, ret;
-  PPCODE:
-    ret = 0;
-    status = _validate_int(aTHX_ svn, 1);
-    if (status == 1) {
-      UV n = my_svuv(svn);
-      switch (ix) {
-        case 0:
-        case 1:
-        case 2:  ret = is_prime(n); break;
-        case 3:  ret = BPSW(n); break;
-        case 4:  ret = is_aks_prime(n); break;
-        case 5:  ret = is_lucas_pseudoprime(n, 0); break;
-        case 6:  ret = is_lucas_pseudoprime(n, 1); break;
-        case 7:  ret = is_lucas_pseudoprime(n, 3); break;
-        case 8:  ret = is_frobenius_underwood_pseudoprime(n); break;
-        case 9:  ret = is_frobenius_khashin_pseudoprime(n); break;
-        case 10: ret = is_catalan_pseudoprime(n); break;
-        case 11: ret = is_euler_plumb_pseudoprime(n); break;
-        case 12: ret = is_ramanujan_prime(n); break;
-        case 13: ret = is_square_free(n); break;
-        case 14: ret = is_carmichael(n); break;
-        case 15: ret = is_quasi_carmichael(n); break;
-        case 16: ret = is_semiprime(n); break;
-        case 17: ret = is_power(n,2); break;
-        case 18: ret = is_mersenne_prime(n);  if (ret == -1) status = 0; break;
-        case 19: ret = is_delicate_prime(n);  if (ret == -1) status = 0; break;
-        case 20: ret = is_lucky(n); break;
-        case 21: ret = is_practical(n); break;
-        case 22:
-        default: ret = is_totient(n); break;
-      }
-    } else if (status == -1) {
-      /* Result for negative inputs will be zero unless changed here */
-      if (ix == 13) {
-        IV sn = my_sviv(svn);
-        if (sn > -IV_MAX) ret = is_square_free(-sn);
-        else              status = 0;
-      }
-    }
-    if (status != 0)  RETURN_NPARITY(ret);
-    switch (ix) {
-      case 0: _vcallsub_with_gmp(0.01,"is_prime");       break;
-      case 1: _vcallsub_with_gmp(0.01,"is_prob_prime");  break;
-      case 2: _vcallsub_with_gmp(0.04,"is_provable_prime");  break;
-      case 3: _vcallsub_with_gmp(0.17,"is_bpsw_prime");  break;
-      case 4: _vcallsub_with_gmp(0.16,"is_aks_prime"); break;
-      case 5: _vcallsub_with_gmp(0.01,"is_lucas_pseudoprime"); break;
-      case 6: _vcallsub_with_gmp(0.01,"is_strong_lucas_pseudoprime"); break;
-      case 7: _vcallsub_with_gmp(0.01,"is_extra_strong_lucas_pseudoprime"); break;
-      case 8: _vcallsub_with_gmp(0.13,"is_frobenius_underwood_pseudoprime"); break;
-      case 9: _vcallsub_with_gmp(0.30,"is_frobenius_khashin_pseudoprime"); break;
-      case 10:_vcallsub_with_gmp(0.00,"is_catalan_pseudoprime"); break;
-      case 11:_vcallsub_with_gmp(0.39,"is_euler_plumb_pseudoprime"); break;
-      case 12:_vcallsub_with_gmp(0.00,"is_ramanujan_prime"); break;
-      case 13:_vcallsub_with_gmp(0.00,"is_square_free"); break;
-      case 14:_vcallsub_with_gmp(0.47,"is_carmichael"); break;
-      case 15:_vcallsub_with_gmp(0.00,"is_quasi_carmichael"); break;
-      case 16:_vcallsub_with_gmp(0.42,"is_semiprime"); break;
-      case 17:_vcallsub_with_gmp(0.47,"is_square"); break;
-      case 18:_vcallsub_with_gmp(0.28,"is_mersenne_prime"); break;
-      case 19:_vcallsub_with_gmp(0.00,"is_delicate_prime"); break;
-      case 20:_vcallsub_with_gmp(0.48,"is_lucky"); break;
-      case 21:_vcallsub_with_gmp(0.53,"is_practical"); break;
-      case 22:
-      default:_vcallsub_with_gmp(0.47,"is_totient"); break;
-    }
-    return; /* skip implicit PUTBACK */
-
 void is_fundamental(IN SV* svn)
   PREINIT:
-    int status;
+    int status, ret;
+    UV n;
   PPCODE:
-    status = _validate_int(aTHX_ svn, 1);
-    if (status == 1)
-      RETURN_NPARITY(is_fundamental(my_svuv(svn), 0));
-    if (status == -1) {
-      IV sn = my_sviv(svn);
-      if (sn > -IV_MAX)
-        RETURN_NPARITY(is_fundamental(-sn, 1));
+    status = _validate_and_set(&n, aTHX_ svn, IFLAG_ANY);
+    if (status != 0) {
+      ret = (status == 1) ? is_fundamental(n, 0)
+                          : is_fundamental(-(IV)n, 1);
+      RETURN_NPARITY(ret);
     }
     _vcallsub_with_gmp(0.00,"is_fundamental");
     return;
 
+void is_square_free(IN SV* svn)
+  ALIAS:
+    is_carmichael = 1
+    is_quasi_carmichael = 2
+    is_square = 3
+    is_lucky = 4
+    is_practical = 5
+    is_totient = 6
+  PREINIT:
+    int status, ret;
+    UV n;
+  PPCODE:
+    ret = 0;
+    status = _validate_and_set(&n, aTHX_ svn, (ix==0) ? IFLAG_ABS : IFLAG_ANY);
+    if (status == 1) {
+      switch (ix) {
+        case 0: ret = is_square_free(n); break;
+        case 1: ret = is_carmichael(n); break;
+        case 2: ret = is_quasi_carmichael(n); break;
+        case 3: ret = is_power(n,2); break;
+        case 4: ret = is_lucky(n); break;
+        case 5: ret = is_practical(n); break;
+        case 6:
+        default:ret = is_totient(n); break;
+      }
+    }
+    if (status != 0)  RETURN_NPARITY(ret);
+    switch (ix) {
+      case  0: _vcallsub_with_gmp(0.00,"is_square_free"); break;
+      case  1: _vcallsub_with_gmp(0.47,"is_carmichael"); break;
+      case  2: _vcallsub_with_gmp(0.00,"is_quasi_carmichael"); break;
+      case  3: _vcallsub_with_gmp(0.47,"is_square"); break;
+      case  4: _vcallsub_with_gmp(0.48,"is_lucky"); break;
+      case  5: _vcallsub_with_gmp(0.53,"is_practical"); break;
+      case  6:
+      default: _vcallsub_with_gmp(0.47,"is_totient"); break;
+    }
+    return; /* skip implicit PUTBACK */
+
 void
 is_power(IN SV* svn, IN UV k = 0, IN SV* svroot = 0)
   PREINIT:
-    int status;
+    int status, ret;
+    UV n;
   PPCODE:
-    status = _validate_int(aTHX_ svn, 1);
+    status = _validate_and_set(&n, aTHX_ svn, IFLAG_ANY);
     if (status != 0) {
-      int ret = 0;
-      UV n = my_svuv(svn);
       if (status == -1) {
-        IV sn = my_sviv(svn);
-        if (sn <= -IV_MAX) status = 0;
-        else               n = -sn;
+        /* Negative n with even positive k return 0. */
+        if (k > 0 && !(k & 1))  RETURN_NPARITY(0);
+        n = -(IV)n;
       }
-      if (status == 1 || (status == -1 && (k == 0 || k & 1))) {
-        ret = is_power(n, k);
-        if (status == -1 && k == 0) {
-          ret >>= valuation(ret,2);
-          if (ret == 1) ret = 0;
-        }
-        if (ret && svroot != 0) {
-          UV root = rootint(n, k ? k : (UV)ret);
-          if (!SvROK(svroot)) croak("is_power: third argument not a scalar reference");
-          if (status == 1) sv_setuv(SvRV(svroot),  root);
-          else             sv_setiv(SvRV(svroot), -root);
-        }
+      ret = is_power(n, k);
+      if (status == -1 && k == 0) {
+        ret >>= valuation(ret,2);
+        if (ret == 1) ret = 0;
       }
-      if (status != 0) RETURN_NPARITY(ret);
+      if (ret && svroot != 0) {
+        UV root = rootint(n, k ? k : (UV)ret);
+        if (!SvROK(svroot)) croak("is_power: third argument not a scalar reference");
+        if (status == 1) sv_setuv(SvRV(svroot),  root);
+        else             sv_setiv(SvRV(svroot), -root);
+      }
+      RETURN_NPARITY(ret);
     }
     if (svroot == 0) { _vcallsub_with_gmp(0.28, "is_power"); }
     else             { _vcallsub_with_pp("is_power"); }
@@ -1536,12 +1589,9 @@ is_prime_power(IN SV* svn, IN SV* svroot = 0)
     int status, ret;
     UV n, root;
   PPCODE:
-    status = _validate_int(aTHX_ svn, 1);
-    if (status == -1)
-      RETURN_NPARITY(0);
+    status = _validate_and_set(&n, aTHX_ svn, IFLAG_ANY);
     if (status != 0) {
-      n = my_svuv(svn);
-      ret = primepower(n, &root);
+      ret = (status == 1)  ?  primepower(n, &root)  :  0;
       if (ret && svroot != 0) {
         if (!SvROK(svroot))croak("is_prime_power: second argument not a scalar reference");
         sv_setuv(SvRV(svroot), root);
@@ -1552,133 +1602,31 @@ is_prime_power(IN SV* svn, IN SV* svroot = 0)
     return;
 
 void
-is_perrin_pseudoprime(IN SV* svn, IN int k = 0)
-  ALIAS:
-    is_almost_extra_strong_lucas_pseudoprime = 1
-    is_powerful = 2
-    powerful_count = 3
-    nth_powerful = 4
-  PREINIT:
-    int status, ret;
-  PPCODE:
-    ret = 0;
-    status = _validate_int(aTHX_ svn, 1);
-    if (status == 1) {
-      UV res, n = my_svuv(svn);
-      switch (ix) {
-        case 0:  ret = is_perrin_pseudoprime(n, k); break;
-        case 1:  ret = is_almost_extra_strong_lucas_pseudoprime(n, (k < 1) ? 1 : k); break;
-        case 2:  ret = is_powerful(n, (k == 0) ? 2 : k); break;
-        case 3:  XSRETURN_UV(powerful_count(n, (k == 0) ? 2 : k)); break;
-        case 4:  if (n == 0) XSRETURN_UNDEF;
-                 res = nth_powerful(n, (k == 0) ? 2 : k);
-                 if (res > 0) XSRETURN_UV(res);
-                 status = 0;
-                 break;
-        default: break;
-      }
-    }
-    if (status != 0) RETURN_NPARITY(ret);
-    switch (ix) {
-      case 0: _vcallsub_with_gmp( (k == 0) ? 0.20 : 0.40, "is_perrin_pseudoprime"); break;
-      case 1: _vcallsub_with_gmp(0.13,"is_almost_extra_strong_lucas_pseudoprime"); break;
-      case 2: _vcallsub_with_gmp(0.53, "is_powerful"); break;
-      case 3: _vcallsub_with_gmp(0.53, "powerful_count"); break;
-      case 4: _vcallsub_with_gmp(0.00, "nth_powerful"); break;
-      default: break;
-    }
-    return;
-
-void
-is_frobenius_pseudoprime(IN SV* svn, IN IV P = 0, IN IV Q = 0)
-  PREINIT:
-    int status, ret;
-  PPCODE:
-    ret = 0;
-    status = _validate_int(aTHX_ svn, 1);
-    if (status == 1) {
-      UV n = my_svuv(svn);
-      ret = is_frobenius_pseudoprime(n, P, Q);
-    }
-    if (status != 0) RETURN_NPARITY(ret);
-    _vcallsub_with_gmp(0.24,"is_frobenius_pseudoprime");
-    return;
-
-void
 is_polygonal(IN SV* svn, IN UV k, IN SV* svroot = 0)
   PREINIT:
     int status, result, overflow;
     UV n, root;
   PPCODE:
-    if (k < 3) croak("is_polygonal: k must be >= 3");
-    status = _validate_int(aTHX_ svn, 1);
-    if (status != 0) {
+    if (svroot != 0 && !SvROK(svroot))
+      croak("is_polygonal: third argument not a scalar reference");
+    if (k < 3)
+      croak("is_polygonal: k must be >= 3");
+
+    status = _validate_and_set(&n, aTHX_ svn, IFLAG_ANY);
+    if (status == -1)
+      RETURN_NPARITY(0);
+    if (status == 1) {
       overflow = 0;
-      if (status == -1) {
-        result = 0;
-      } else {
-        n = my_svuv(svn);
-        root = polygonal_root(n, k, &overflow);
-        result = (n == 0) || root;
-      }
+      root = polygonal_root(n, k, &overflow);
+      result = (n == 0) || root;
       if (!overflow) {
-        if (result && svroot != 0) {
-          if (!SvROK(svroot)) croak("is_polygonal: third argument not a scalar reference");
-           sv_setuv(SvRV(svroot), root);
-        }
+        if (result && svroot != 0)
+          sv_setuv(SvRV(svroot), root);
         RETURN_NPARITY(result);
       }
     }
     if (items != 3) { _vcallsub_with_gmp(0.47, "is_polygonal"); }
     else            { _vcallsub_with_pp("is_polygonal"); }
-    return;
-
-void
-logint(IN SV* svn, IN UV k, IN SV* svret = 0)
-  ALIAS:
-    rootint = 1
-  PREINIT:
-    int status;
-    UV n, root;
-  PPCODE:
-    status = _validate_int(aTHX_ svn, 1);
-    if (status != 0) {
-      n = my_svuv(svn);
-      if (svret != 0 && !SvROK(svret))
-         croak("%s: third argument not a scalar reference",(ix==0)?"logint":"rootint");
-      if (ix == 0) {
-        if (status != 1 || n <= 0)   croak("logint: n must be > 0");
-        if (k <= 1)                  croak("logint: base must be > 1");
-        root = logint(n, k);
-        if (svret) sv_setuv(SvRV(svret), ipow(k,root));
-      } else {
-        if (status == -1)            croak("rootint: n must be >= 0");
-        if (k <= 0)                  croak("rootint: k must be > 0");
-        root = rootint(n, k);
-        if (svret) sv_setuv(SvRV(svret), ipow(root,k));
-      }
-      XSRETURN_UV(root);
-    }
-    switch (ix) {
-      case 0: (void)_vcallsubn(aTHX_ G_SCALAR, (svret == 0) ? (VCALL_GMP|VCALL_PP) : (VCALL_PP), "logint", items, 47); break;
-      case 1: (void)_vcallsubn(aTHX_ G_SCALAR, (svret == 0) ? (VCALL_GMP|VCALL_PP) : (VCALL_PP), "rootint", items, 40); break;
-      default: break;
-    }
-    return;
-
-void
-miller_rabin_random(IN SV* svn, IN IV bases = 1, IN char* seed = 0)
-  PREINIT:
-    int status;
-    dMY_CXT;
-  PPCODE:
-    status = _validate_int(aTHX_ svn, 0);
-    if (bases < 0) croak("miller_rabin_random: number of bases must be positive");
-    if (status != 0 && seed == 0) {
-      UV n = my_svuv(svn);
-      RETURN_NPARITY( is_mr_random(MY_CXT.randcxt, n, bases) );
-    }
-    _vcallsub_with_gmp(0.46,"miller_rabin_random");
     return;
 
 void
@@ -1709,9 +1657,10 @@ next_prime(IN SV* svn)
     perfect_power_count = 23
     prime_power_count = 24
     urandomm = 25
+  PREINIT:
+    UV n, ret;
   PPCODE:
-    if (_validate_int(aTHX_ svn, 0)) {
-      UV n = my_svuv(svn);
+    if (_validate_and_set(&n, aTHX_ svn, IFLAG_POS)) {
       if (   (n >= MPU_MAX_PRIME     && ix == 0)
           || (n >= MPU_MAX_PRIME_IDX && (ix==2 || ix==3 || ix==4 || ix==5 || ix == 6))
           || (n >= MPU_MAX_TWIN_PRIME_IDX && (ix==7 || ix==8))
@@ -1719,7 +1668,6 @@ next_prime(IN SV* svn)
           || (n >= MPU_MAX_RMJN_PRIME_IDX && (ix==11 || ix==12 || ix==13 || ix==14)) ) {
         /* Out of range.  Fall through to Perl. */
       } else {
-        UV ret;
         /* Prev prime of 2 or less should return undef */
         if (ix == 1 && n < 3) XSRETURN_UNDEF;
         /* nth_prime(0) and similar should return undef */
@@ -1856,13 +1804,14 @@ void urandomb(IN UV bits)
     XSRETURN(1);
 
 void random_factored_integer(IN SV* svn)
+  PREINIT:
+    UV n;
   PPCODE:
-    if (_validate_int(aTHX_ svn, 0)) {
+    if (_validate_and_set(&n, aTHX_ svn, IFLAG_POS | IFLAG_NONZERO)) {
       dMY_CXT;
       int f, nf, flip;
-      UV r, F[MPU_MAX_FACTORS+1], n = my_svuv(svn);
+      UV r, F[MPU_MAX_FACTORS+1];
       AV* av = newAV();
-      if (n < 1) croak("random_factored_integer: n must be >= 1");
       r = random_factored_integer(MY_CXT.randcxt, n, &nf, F);
       flip = (F[0] >= F[nf-1]);  /* Handle results in either sort order */
       for (f = 0; f < nf; f++)
@@ -1921,14 +1870,14 @@ factor(IN SV* svn)
   PREINIT:
     U32 gimme_v;
     int status, i, nfactors, it_overflow;
+    UV n;
   PPCODE:
     gimme_v = GIMME_V;
-    status = _validate_int(aTHX_ svn, 0);
-    it_overflow = (status == 1 && ix==3 && gimme_v == G_ARRAY && my_svuv(svn) > UV_MAX/7.5 );
+    status = _validate_and_set(&n, aTHX_ svn, IFLAG_POS);
+    it_overflow = (status == 1 && ix==3 && gimme_v == G_ARRAY && n > UV_MAX/7.5 );
     if (status == 1 && !it_overflow) {
       UV factors[MPU_MAX_FACTORS+1];
       UV exponents[MPU_MAX_FACTORS+1];
-      UV n = my_svuv(svn);
       if (gimme_v == G_SCALAR) {
         UV res;
         switch (ix) {
@@ -1986,77 +1935,101 @@ factor(IN SV* svn)
     }
 
 void
+trial_factor(IN UV n, ...)
+  ALIAS:
+    fermat_factor = 1
+    holf_factor = 2
+    squfof_factor = 3
+    lehman_factor = 4
+    prho_factor = 5
+    pplus1_factor = 6
+    pbrent_factor = 7
+    pminus1_factor = 8
+    ecm_factor = 9
+  PREINIT:
+    UV arg1, arg2;
+    static const UV default_arg1[] =
+       {0,     64000000, 8000000, 4000000, 1,   4000000, 200, 4000000, 1000000};
+     /* Trial, Fermat,   Holf,    SQUFOF,  Lmn, PRHO,    P+1, Brent,    P-1 */
+  PPCODE:
+    if (n == 0)  XSRETURN_UV(0);
+    if (ix == 9) {  /* We don't have an ecm_factor, call PP. */
+      _vcallsubn(aTHX_ GIMME_V, VCALL_PP, "ecm_factor", 1, 0);
+      return;
+    }
+    /* Must read arguments before pushing anything */
+    arg1 = (items >= 2) ? my_svuv(ST(1)) : default_arg1[ix];
+    arg2 = (items >= 3) ? my_svuv(ST(2)) : 0;
+    /* Small factors */
+    while ( (n% 2) == 0 ) {  n /=  2;  XPUSHs(sv_2mortal(newSVuv( 2 ))); }
+    while ( (n% 3) == 0 ) {  n /=  3;  XPUSHs(sv_2mortal(newSVuv( 3 ))); }
+    while ( (n% 5) == 0 ) {  n /=  5;  XPUSHs(sv_2mortal(newSVuv( 5 ))); }
+    if (n == 1) {  /* done */ }
+    else if (is_prime(n)) { XPUSHs(sv_2mortal(newSVuv( n ))); }
+    else {
+      UV factors[MPU_MAX_FACTORS+1];
+      int i, nfactors = 0;
+      switch (ix) {
+        case 0:  nfactors = trial_factor  (n, factors, 2, arg1);  break;
+        case 1:  nfactors = fermat_factor (n, factors, arg1);  break;
+        case 2:  nfactors = holf_factor   (n, factors, arg1);  break;
+        case 3:  nfactors = squfof_factor (n, factors, arg1);  break;
+        case 4:  nfactors = lehman_factor (n, factors, arg1);  break;
+        case 5:  nfactors = prho_factor   (n, factors, arg1);  break;
+        case 6:  nfactors = pplus1_factor (n, factors, arg1);  break;
+        case 7:  if (items < 3) arg2 = 1;
+                 nfactors = pbrent_factor (n, factors, arg1, arg2);  break;
+        case 8:
+        default: if (items < 3) arg2 = 10*arg1;
+                 nfactors = pminus1_factor(n, factors, arg1, arg2);  break;
+      }
+      EXTEND(SP, nfactors);
+      for (i = 0; i < nfactors; i++)
+        PUSHs(sv_2mortal(newSVuv( factors[i] )));
+    }
+
+
+void
 divisor_sum(IN SV* svn, ...)
   PREINIT:
-    SV* svk;
-    int nstatus, kstatus;
+    UV n, k, sigma;
   PPCODE:
-    svk = (items > 1) ? ST(1) : 0;
-    nstatus = _validate_int(aTHX_ svn, 0);
-    kstatus = (items == 1 || (SvIOK(svk) && SvIV(svk) >= 0))  ?  1  :  0;
-    /* The above doesn't understand small bigints */
-    if (nstatus == 1 && kstatus == 0 && SvROK(svk) && (sv_isa(svk, "Math::BigInt") || sv_isa(svk, "Math::GMP") || sv_isa(svk, "Math::GMPz")))
-      kstatus = _validate_int(aTHX_ svk, 0);
-    if (nstatus == 1 && kstatus == 1) {
-      UV n = my_svuv(svn);
-      UV k = (items > 1) ? my_svuv(svk) : 1;
-      UV sigma = divisor_sum(n, k);
-      if (sigma != 0)  XSRETURN_UV(sigma);   /* sigma 0 means overflow */
+    sigma = 0;
+    if (items == 1) {
+      if ( _validate_and_set(&n, aTHX_ svn, IFLAG_POS))
+        sigma = divisor_sum(n, 1);
+    } else {
+      SV* svk = ST(1);
+      if ( (!SvROK(svk) || (SvROK(svk) && SvTYPE(SvRV(svk)) != SVt_PVCV)) &&
+           _validate_and_set(&n, aTHX_ svn, IFLAG_POS) &&
+           _validate_and_set(&k, aTHX_ svk, IFLAG_POS) )
+        sigma = divisor_sum(n, k);
     }
+    if (sigma != 0)   /* sigma 0 means overflow */
+      XSRETURN_UV(sigma);
     _vcallsub_with_pp("divisor_sum");
     return; /* skip implicit PUTBACK */
 
 void
-znorder(IN SV* sva, IN SV* svn)
+jordan_totient(IN SV* sva, IN SV* svn)
   ALIAS:
-    binomial = 1
-    jordan_totient = 2
-    ramanujan_sum = 3
-    factorialmod = 4
-    legendre_phi = 5
-    almost_prime_count = 6
-    almost_prime_count_approx = 7
-    almost_prime_count_lower = 8
-    almost_prime_count_upper = 9
-    nth_almost_prime = 10
-    nth_almost_prime_approx = 11
-    nth_almost_prime_lower = 12
-    nth_almost_prime_upper = 13
-    smooth_count = 14
-    rough_count = 15
+    ramanujan_sum = 1
+    legendre_phi = 2
+    smooth_count = 3
+    rough_count = 4
   PREINIT:
     int astatus, nstatus;
+    UV a, n, ret;
   PPCODE:
-    astatus = _validate_int(aTHX_ sva, (ix==1) ? 2 : 0);
-    nstatus = _validate_int(aTHX_ svn, (ix==1) ? 2 : 0);
+    astatus = _validate_and_set(&a, aTHX_ sva, IFLAG_POS);
+    nstatus = _validate_and_set(&n, aTHX_ svn, IFLAG_POS);
     if (astatus != 0 && nstatus != 0) {
-      UV a = my_svuv(sva);
-      UV n = my_svuv(svn);
-      UV ret;
       switch (ix) {
-        case 0:  ret = znorder(a, n);
-                 break;
-        case 1:  if ( (astatus == 1 && (nstatus == -1 || n > a)) ||
-                      (astatus ==-1 && (nstatus == -1 && n > a)) )
-                   { ret = 0; break; }
-                 if (nstatus == -1)
-                   n = a - n; /* n<0,k<=n:  (-1)^(n-k) * binomial(-k-1,n-k) */
-                 if (astatus == -1) {
-                   ret = binomial( -my_sviv(sva)+n-1, n );
-                   if (ret > 0 && ret <= (UV)IV_MAX)
-                     XSRETURN_IV( (IV)ret * ((n&1) ? -1 : 1) );
-                   goto overflow;
-                 } else {
-                   ret = binomial(a, n);
-                   if (ret == 0)
-                     goto overflow;
-                 }
-                 break;
-        case 2:  ret = jordan_totient(a, n);
+        case 0:  ret = jordan_totient(a, n);
                  if (ret == 0 && n > 1)
                    goto overflow;
                  break;
-        case 3:  if (a < 1 || n < 1) XSRETURN_IV(0);
+        case 1:  if (a < 1 || n < 1) XSRETURN_IV(0);
                  {
                    UV g = a / gcd_ui(a,n);
                    int m = moebius(g);
@@ -2064,150 +2037,174 @@ znorder(IN SV* sva, IN SV* svn)
                    XSRETURN_IV( m * (totient(a) / totient(g)) );
                  }
                  break;
-        case 4:  ret = factorialmod(a, n); break;
-        case 5:  ret = legendre_phi(a, n); break;
-        case 6:  ret = almost_prime_count(a, n); break;
-        case 7:  ret = almost_prime_count_approx(a, n); break;
-        case 8:  ret = almost_prime_count_lower(a, n); break;
-        case 9:  ret = almost_prime_count_upper(a, n); break;
-        case 10:
-        case 11:
-        case 12:
-        case 13: if (n == 0 || (a == 0 && n > 1)) XSRETURN_UNDEF;
-                 if (n > max_almost_prime_count(a))
-                   goto overflow;
-                 switch (ix) {
-                   case 10: ret = nth_almost_prime(a, n); break;
-                   case 11: ret = nth_almost_prime_approx(a, n); break;
-                   case 12: ret = nth_almost_prime_lower(a, n); break;
-                   case 13: ret = nth_almost_prime_upper(a, n); break;
-                 }
-                 break;
-        case 14: ret = debruijn_psi(a, n); break;
-        case 15:
+        case 2:  ret = legendre_phi(a, n); break;
+        case 3:  ret = debruijn_psi(a, n); break;
+        case 4:
         default: ret = buchstab_phi(a, n); break;
       }
-      if (ret == 0 && ix == 0)  XSRETURN_UNDEF;  /* not defined */
       XSRETURN_UV(ret);
     }
     overflow:
     switch (ix) {
-      case 0:  _vcallsub_with_gmp(0.22,"znorder");  break;
-      case 1:  _vcallsub_with_gmp(0.22,"binomial");  break;
-      case 2:  _vcallsub_with_gmp(0.22,"jordan_totient");  break;
-      case 3:  _vcallsub_with_pp("ramanujan_sum");  break;
-      case 4:  _vcallsub_with_gmp(0.47,"factorialmod");  break;
-      case 5:  _vcallsub_with_pp("legendre_phi");  break;
-      case 6:  _vcallsub_with_pp("almost_prime_count");  break;
-      case 7:  _vcallsub_with_pp("almost_prime_count_approx");  break;
-      case 8:  _vcallsub_with_pp("almost_prime_count_lower");  break;
-      case 9:  _vcallsub_with_pp("almost_prime_count_upper");  break;
-      case 10: _vcallsub_with_pp("nth_almost_prime");  break;
-      case 11: _vcallsub_with_pp("nth_almost_prime_approx");  break;
-      case 12: _vcallsub_with_pp("nth_almost_prime_lower");  break;
-      case 13: _vcallsub_with_pp("nth_almost_prime_upper");  break;
-      case 14: _vcallsub_with_pp("smooth_count"); break;
-      case 15:
+      case 0:  _vcallsub_with_gmp(0.22,"jordan_totient");  break;
+      case 1:  _vcallsub_with_pp("ramanujan_sum");  break;
+      case 2:  _vcallsub_with_pp("legendre_phi");  break;
+      case 3:  _vcallsub_with_pp("smooth_count"); break;
+      case 4:
       default: _vcallsub_with_pp("rough_count"); break;
     }
     objectify_result(aTHX_ sva, ST(0));
     return; /* skip implicit PUTBACK */
 
-void
-znlog(IN SV* sva, IN SV* svg, IN SV* svp)
+void almost_prime_count(IN SV* svk, IN SV* svn)
   ALIAS:
-    addmod = 1
-    submod = 2
-    mulmod = 3
-    divmod = 4
-    powmod = 5
-    rootmod = 6
+    almost_prime_count_approx = 1
+    almost_prime_count_lower = 2
+    almost_prime_count_upper = 3
   PREINIT:
-    int astatus, gstatus, pstatus, retundef;
-    UV ret;
+    UV k, n, ret;
   PPCODE:
-    astatus = _validate_int(aTHX_ sva, (ix == 0) ? 0 : 1);
-    gstatus = _validate_int(aTHX_ svg, (ix == 0) ? 0 : 1);
-    pstatus = _validate_int(aTHX_ svp, 0);
-    if (astatus != 0 && gstatus != 0 && pstatus == 1) {
-      UV a, g, p = my_svuv(svp);
-      if (p <= 1) {
-        if (p == 0 && ix == 6) XSRETURN_UNDEF;
-        XSRETURN_UV(0);
-      }
-      ret = 0;
-      retundef = 0;
-      a = (astatus == 1) ? my_svuv(sva) : negamod(my_sviv(sva), p);
-      g = (gstatus == 1) ? my_svuv(svg) : negamod(my_sviv(svg), p);
-      if (a >= p) a %= p;
-      if (g >= p && ix < 5) g %= p;
+    if (_validate_and_set(&k, aTHX_ svk, IFLAG_ABS) &&
+        _validate_and_set(&n, aTHX_ svn, IFLAG_ABS) &&
+        k < BITS_PER_WORD) {
       switch (ix) {
-        case 0: ret = znlog(a, g, p);
-                if (ret == 0 && a > 1) retundef = 1;
-                if (ret == 0 && (a == 0 || g == 0)) retundef = 1;
-                break;
-        case 1: ret = addmod(a, g, p); break;
-        case 2: ret = submod(a, g, p); break;
-        case 3: ret = mulmod(a, g, p); break;
-        case 4: g = modinverse(g, p);
-                if (g == 0) retundef = 1;
-                else        ret = mulmod(a, g, p);
-                break;
-        case 5: if (a == 0) {
-                  ret = (g == 0);
-                  retundef = (gstatus == -1);
-                } else {
-                  if (gstatus == -1) {
-                    a = modinverse(a, p);
-                    if (a == 0) retundef = 1;
-                    else        g = -my_sviv(svg);
-                  }
-                  ret = powmod(a, g, p);
-                }
-                break;
-        case 6:
-        default:if (a == 0) {
-                  ret = (g == 0);
-                  retundef = (gstatus == -1 || g == 0);
-                } else {
-                  if (gstatus == -1) {
-                    a = modinverse(a,p);
-                    if (a == 0) retundef = 1;
-                    else        g = -my_sviv(svg);
-                  }
-                  retundef = !rootmod(&ret, a, g, p);
-                }
-                break;
+        case 0:  ret = almost_prime_count(k, n); break;
+        case 1:  ret = almost_prime_count_approx(k, n); break;
+        case 2:  ret = almost_prime_count_lower(k, n); break;
+        case 3:  ret = almost_prime_count_upper(k, n); break;
+      }
+      XSRETURN_UV(ret);
+    }
+    switch (ix) {
+      case 0:  _vcallsub_with_pp("almost_prime_count");  break;
+      case 1:  _vcallsub_with_pp("almost_prime_count_approx");  break;
+      case 2:  _vcallsub_with_pp("almost_prime_count_lower");  break;
+      case 3:
+      default: _vcallsub_with_pp("almost_prime_count_upper");  break;
+    }
+    objectify_result(aTHX_ svn, ST(0));
+    return;
+
+void nth_almost_prime(IN SV* svk, IN SV* svn)
+  ALIAS:
+    nth_almost_prime_approx = 1
+    nth_almost_prime_lower = 2
+    nth_almost_prime_upper = 3
+  PREINIT:
+    UV k, n, max, ret;
+  PPCODE:
+    if (_validate_and_set(&k, aTHX_ svk, IFLAG_ABS) &&
+        _validate_and_set(&n, aTHX_ svn, IFLAG_ABS) &&
+        k < BITS_PER_WORD) {
+      if (n == 0 || (k == 0 && n > 1)) XSRETURN_UNDEF;
+      max = max_almost_prime_count(k);
+      if (max > 0  &&  n <= max_almost_prime_count(k)) {
+        switch (ix) {
+          case 0: ret = nth_almost_prime(k, n); break;
+          case 1: ret = nth_almost_prime_approx(k, n); break;
+          case 2: ret = nth_almost_prime_lower(k, n); break;
+          case 3: ret = nth_almost_prime_upper(k, n); break;
+        }
+        XSRETURN_UV(ret);
+      }
+    }
+    switch (ix) {
+      case 0:  _vcallsub_with_pp("nth_almost_prime");  break;
+      case 1:  _vcallsub_with_pp("nth_almost_prime_approx");  break;
+      case 2:  _vcallsub_with_pp("nth_almost_prime_lower");  break;
+      case 3:
+      default: _vcallsub_with_pp("nth_almost_prime_upper");  break;
+    }
+    objectify_result(aTHX_ svn, ST(0));
+    return;
+
+
+void powmod(IN SV* sva, IN SV* svg, IN SV* svn)
+  ALIAS:
+    rootmod = 1
+  PREINIT:
+    int astatus, gstatus, nstatus, retundef;
+    UV a, g, n, ret;
+  PPCODE:
+    astatus = _validate_and_set(&a, aTHX_ sva, IFLAG_ANY);
+    gstatus = _validate_and_set(&g, aTHX_ svg, IFLAG_ANY);
+    nstatus = _validate_and_set(&n, aTHX_ svn, IFLAG_ABS);
+    if (astatus != 0 && gstatus != 0 && nstatus != 0) {
+      if (n == 0) XSRETURN_UNDEF;
+      if (n == 1) XSRETURN_UV(0);
+      _mod_with(&a, astatus, n);
+      retundef = ret = 0;
+      if (ix == 0) {
+        retundef = !prep_pow_inv(&a,&g,gstatus,n);
+        if (!retundef) ret = powmod(a, g, n);
+      } else {
+        retundef = prep_pow_inv(&a,&g,gstatus,n) && !rootmod(&ret,a,g,n);
+      }
+      if (retundef) XSRETURN_UNDEF;
+      XSRETURN_UV(ret);
+    }
+    if (ix == 0) _vcallsub_with_gmpobj(0.36,"powmod");
+    else         _vcallsub_with_gmpobj(0.00,"rootmod");
+    objectify_result(aTHX_ svn, ST(0));
+    return;
+
+void addmod(IN SV* sva, IN SV* svb, IN SV* svn)
+  ALIAS:
+    submod = 1
+    mulmod = 2
+    divmod = 3
+    znlog = 4
+  PREINIT:
+    int astatus, bstatus, nstatus, retundef;
+    UV a, b, n, ret;
+  PPCODE:
+    astatus = _validate_and_set(&a, aTHX_ sva, IFLAG_ANY);
+    bstatus = _validate_and_set(&b, aTHX_ svb, IFLAG_ANY);
+    nstatus = _validate_and_set(&n, aTHX_ svn, IFLAG_ABS);
+    if (astatus != 0 && bstatus != 0 && nstatus != 0) {
+      if (n == 0) XSRETURN_UNDEF;
+      if (n == 1) XSRETURN_UV(0);
+      _mod_with(&a, astatus, n);
+      _mod_with(&b, bstatus, n);
+      retundef = ret = 0;
+      switch (ix) {
+        case 0:  ret = addmod(a, b, n); break;
+        case 1:  ret = submod(a, b, n); break;
+        case 2:  ret = mulmod(a, b, n); break;
+        case 3:  b = modinverse(b, n);
+                 if (b == 0) retundef = 1;
+                 else        ret = mulmod(a, b, n);
+                 break;
+        case 4:  ret = znlog(a, b, n);
+                 if (ret == 0 && (b == 0 || a != 1))  retundef = 1;
+        default: break;
       }
       if (retundef) XSRETURN_UNDEF;
       XSRETURN_UV(ret);
     }
     switch (ix) {
-      case 0: _vcallsub_with_gmpobj(0.00,"znlog"); break;
-      case 1: _vcallsub_with_gmpobj(0.36,"addmod"); break;
-      case 2: _vcallsub_with_gmpobj(0.53,"submod"); break;
-      case 3: _vcallsub_with_gmpobj(0.36,"mulmod"); break;
-      case 4: _vcallsub_with_gmpobj(0.36,"divmod"); break;
-      case 5: _vcallsub_with_gmpobj(0.36,"powmod"); break;
-      case 6:
-      default:_vcallsub_with_gmpobj(0.00,"rootmod"); break;
+      case 0: _vcallsub_with_gmpobj(0.36,"addmod"); break;
+      case 1: _vcallsub_with_gmpobj(0.53,"submod"); break;
+      case 2: _vcallsub_with_gmpobj(0.36,"mulmod"); break;
+      case 3: _vcallsub_with_gmpobj(0.36,"divmod"); break;
+      case 4: _vcallsub_with_gmpobj(0.00,"znlog"); break;
+      default:break;
     }
-    objectify_result(aTHX_ svp, ST(0));
-    return; /* skip implicit PUTBACK */
+    objectify_result(aTHX_ svn, ST(0));
+    return;
 
-void
-binomialmod(IN SV* svn, IN SV* svk, IN SV* svm)
+void binomialmod(IN SV* svn, IN SV* svk, IN SV* svm)
   PREINIT:
     int nstatus, kstatus, mstatus;
-    UV ret;
+    UV ret, n, k, m;
   PPCODE:
-    nstatus = _validate_int(aTHX_ svn, 1);
-    kstatus = _validate_int(aTHX_ svk, 1);
-    mstatus = _validate_int(aTHX_ svm, 0);
-    if (nstatus != 0 && kstatus != 0 && mstatus == 1) {
-      UV n = my_svuv(svn), k = my_svuv(svk), m = my_svuv(svm);
-      if (m <= 1 || kstatus == 0) XSRETURN_UV(0);
-      if (nstatus == -1) n = -my_sviv(svn)+k-1;
+    nstatus = _validate_and_set(&n, aTHX_ svn, IFLAG_ANY);
+    kstatus = _validate_and_set(&k, aTHX_ svk, IFLAG_ANY);
+    mstatus = _validate_and_set(&m, aTHX_ svm, IFLAG_ABS);
+    if (nstatus != 0 && kstatus != 0 && mstatus != 0) {
+      if (m == 0) XSRETURN_UNDEF;
+      if (m == 1 || kstatus == -1) XSRETURN_UV(0);
+      if (nstatus == -1) n = -(IV)n + k - 1;
       if (binomialmod(&ret, n, k, m)) {
         if ((nstatus == -1) && (k & 1)) ret = m-ret;
         XSRETURN_UV(ret);
@@ -2215,7 +2212,94 @@ binomialmod(IN SV* svn, IN SV* svk, IN SV* svm)
     }
     _vcallsub_with_gmpobj(0.00,"binomialmod");
     objectify_result(aTHX_ svm, ST(0));
-    return; /* skip implicit PUTBACK */
+    return;
+
+void factorialmod(IN SV* sva, IN SV* svn)
+  PREINIT:
+    int astatus, nstatus;
+    UV a, n;
+  PPCODE:
+    astatus = _validate_and_set(&a, aTHX_ sva, IFLAG_POS);
+    nstatus = _validate_and_set(&n, aTHX_ svn, IFLAG_ABS);
+    if (astatus != 0 && nstatus != 0) {
+      if (n == 0) XSRETURN_UNDEF;
+      if (n == 1) XSRETURN_UV(0);
+      XSRETURN_UV( factorialmod(a, n) );
+    }
+    _vcallsub_with_gmp(0.47,"factorialmod");
+    objectify_result(aTHX_ svn, ST(0));
+    return;
+
+void invmod(IN SV* sva, IN SV* svn)
+  ALIAS:
+    znorder = 1
+    sqrtmod = 2
+  PREINIT:
+    int astatus, nstatus;
+    UV a, n, r, retok;
+  PPCODE:
+    astatus = _validate_and_set(&a, aTHX_ sva, IFLAG_ANY);
+    nstatus = _validate_and_set(&n, aTHX_ svn, IFLAG_ABS);
+    if (astatus != 0 && nstatus != 0) {
+      if (n == 0) XSRETURN_UNDEF;
+      if (n == 1) XSRETURN_UV((ix==1) ? 1 : 0); /* znorder different */
+      _mod_with(&a, astatus, n);
+      retok = 1;
+      switch (ix) {
+        case 0:  retok = r = modinverse(a, n); break;
+        case 1:  retok = r = znorder(a, n);    break;
+        case 2:
+        default: retok = sqrtmod(&r, a, n); break;
+      }
+      if (retok == 0) XSRETURN_UNDEF;
+      XSRETURN_UV(r);
+    }
+    switch (ix) {
+      case 0:  _vcallsub_with_gmp(0.20,"invmod"); break;
+      case 1:  _vcallsub_with_gmp(0.22,"znorder"); break;
+      case 2:
+      default: _vcallsub_with_gmp(0.36,"sqrtmod");  break;
+    }
+    objectify_result(aTHX_ ST(0), ST(0));
+    return;
+
+void is_primitive_root(IN SV* sva, IN SV* svn)
+  PREINIT:
+    int astatus, nstatus;
+    UV a, n;
+  PPCODE:
+    astatus = _validate_and_set(&a, aTHX_ sva, IFLAG_ANY);
+    nstatus = _validate_and_set(&n, aTHX_ svn, IFLAG_ABS);
+    if (astatus != 0 && nstatus != 0) {
+      if (n == 0) XSRETURN_UNDEF;
+      _mod_with(&a, astatus, n);
+      RETURN_NPARITY( is_primitive_root(a,n,0) );
+    }
+    _vcallsub_with_gmp(0.36,"is_primitive_root");
+    return;
+
+void qnr(IN SV* svn)
+  ALIAS:
+    znprimroot = 1
+  PREINIT:
+    UV n, r;
+  PPCODE:
+    if (_validate_and_set(&n, aTHX_ svn, IFLAG_ABS)) {
+      if (n == 0) XSRETURN_UNDEF;
+      if (ix == 0) {
+        r = qnr(n);
+      } else {
+        r = znprimroot(n);
+        if (r == 0 && n != 1)  XSRETURN_UNDEF;
+      }
+      if (r < 100)  RETURN_NPARITY(r);
+      else          XSRETURN_UV(r);
+    }
+    if (ix == 0)  _vcallsub_with_gmp(0.00,"qnr");
+    else          _vcallsub_with_gmp(0.22,"znprimroot");
+    objectify_result(aTHX_ svn, ST(0));
+    return;
+
 
 void
 is_smooth(IN SV* svn, IN SV* svk)
@@ -2223,12 +2307,11 @@ is_smooth(IN SV* svn, IN SV* svk)
     is_rough = 1
     is_almost_prime = 2
   PREINIT:
-    int nstatus, kstatus, res;
+    UV n, k;
   PPCODE:
-    nstatus = _validate_int(aTHX_ svn, 0);
-    kstatus = _validate_int(aTHX_ svk, 1);
-    if (nstatus == 1 && kstatus == 1) {
-      UV n = my_svuv(svn), k = my_svuv(svk);
+    if (_validate_and_set(&n, aTHX_ svn, IFLAG_POS) &&
+        _validate_and_set(&k, aTHX_ svk, IFLAG_POS)) {
+      int res;
       switch (ix) {
         case 0:  res = is_smooth(n,k); break;
         case 1:  res = is_rough(n,k); break;
@@ -2245,85 +2328,63 @@ is_smooth(IN SV* svn, IN SV* svk)
     }
     return;
 
-
-void
-kronecker(IN SV* sva, IN SV* svb)
-  ALIAS:
-    valuation = 1
-    invmod = 2
-    sqrtmod = 3
-    is_gaussian_prime = 4
-    is_primitive_root = 5
+void valuation(IN SV* svn, IN SV* svk)
   PREINIT:
-    int astatus, bstatus, abpositive, abnegative;
+    UV n, k;
   PPCODE:
-    astatus = _validate_int(aTHX_ sva, 2);
-    bstatus = _validate_int(aTHX_ svb, 2);
-    if (astatus != 0 && bstatus != 0) {
-      abpositive = astatus == 1 && bstatus == 1; /* both arguments positive */
-      if (ix == 0) {
-        /* Will both fit in IVs?  We should use a bitmask return. */
-        abnegative = !abpositive
-                     && (SvIOK(sva) && !SvIsUV(sva))
-                     && (SvIOK(svb) && !SvIsUV(svb));
-        if (abpositive || abnegative) {
-          UV a = my_svuv(sva);
-          UV b = my_svuv(svb);
-          int k = (abpositive) ? kronecker_uu(a,b) : kronecker_ss(a,b);
-          RETURN_NPARITY(k);
-        }
-      } else if (ix == 1) {
-        UV n = (astatus == -1) ? (UV)(-(my_sviv(sva))) : my_svuv(sva);
-        UV k = (bstatus == -1) ? (UV)(-(my_sviv(svb))) : my_svuv(svb);
-        /* valuation of 0-2 is very common, so return a constant if possible */
-        RETURN_NPARITY( valuation(n, k) );
-      } else if (ix == 2) {
-        UV a, n, ret = 0;
-        n = (bstatus != -1) ? my_svuv(svb) : (UV)(-(my_sviv(svb)));
-        if (n > 0) {
-          a = (astatus == 1) ? my_svuv(sva) : negamod(my_sviv(sva), n);
-          if (a > 0) {
-            if (n == 1) XSRETURN_UV(0);
-            ret = modinverse(a, n);
-          }
-        }
-        if (ret == 0) XSRETURN_UNDEF;
-        XSRETURN_UV(ret);
-      } else if (ix == 3) {
-        UV a, n, s;
-        n = (bstatus != -1) ? my_svuv(svb) : (UV)(-(my_sviv(svb)));
-        a = (n == 0) ? 0 : (astatus != -1) ? my_svuv(sva) % n : negamod(my_sviv(sva), n);
-        if (!sqrtmod(&s, a, n)) XSRETURN_UNDEF;
-        XSRETURN_UV(s);
-      } else if (ix == 4) {
-        UV a = (astatus != -1) ? my_svuv(sva) : (UV)(-(my_sviv(sva)));
-        UV b = (bstatus != -1) ? my_svuv(svb) : (UV)(-(my_sviv(svb)));
-        if (a == 0) RETURN_NPARITY( ((b % 4) == 3) ? is_prime(b) : 0 );
-        if (b == 0) RETURN_NPARITY( ((a % 4) == 3) ? is_prime(a) : 0 );
-        if (a < HALF_WORD && b < HALF_WORD) {
-          UV aa = a*a, bb = b*b;
-          if (UV_MAX-aa >= bb)
-            RETURN_NPARITY( is_prime(aa+bb) );
-        }
-      } else {
-        UV a, n;
-        n = (bstatus != -1) ? my_svuv(svb) : (UV)(-(my_sviv(svb)));
-        a = (n == 0) ? 0 : (astatus != -1) ? my_svuv(sva) % n : negamod(my_sviv(sva), n);
-        RETURN_NPARITY( is_primitive_root(a,n,0) );
-      }
+    if (_validate_and_set(&n, aTHX_ svn, IFLAG_ABS) &&
+        _validate_and_set(&k, aTHX_ svk, IFLAG_POS)) {
+      if (k <= 1)  croak("valuation: k must be > 1");
+      if (n == 0) XSRETURN_UNDEF;
+      RETURN_NPARITY(valuation(n, k));
+    }
+    _vcallsub_with_gmp(0.20,"valuation");
+    return;
+
+void is_powerful(IN SV* svn, IN SV* svk = 0);
+  ALIAS:
+    powerful_count = 1
+    nth_powerful = 2
+  PREINIT:
+    UV n, k, ret;
+  PPCODE:
+    if (_validate_and_set(&n, aTHX_ svn, (ix < 2) ? IFLAG_ABS : IFLAG_POS) &&
+        (!svk || _validate_and_set(&k, aTHX_ svk, IFLAG_POS))) {
+      if (!svk || k == 0) k = 2;
+      if (ix == 0) RETURN_NPARITY( is_powerful(n, k) );
+      if (ix == 1) XSRETURN_UV( powerful_count(n, k) );
+
+      if (n == 0) XSRETURN_UNDEF;
+      ret = nth_powerful(n, k);
+      if (ret > 0) XSRETURN_UV(ret);
+      /* ret=0: nth_powerful > UV_MAX, so go to PP/GMP */
     }
     switch (ix) {
-      case 0:  _vcallsub_with_gmp(0.17,"kronecker");  break;
-      case 1:  _vcallsub_with_gmp(0.20,"valuation"); break;
-      case 2:  _vcallsub_with_gmp(0.20,"invmod"); break;
-      case 3:  _vcallsub_with_gmp(0.36,"sqrtmod"); break;
-      case 4:  _vcallsub_with_gmp(0.52,"is_gaussian_prime"); break;
-      case 5:
-      default: _vcallsub_with_gmp(0.36,"is_primitive_root"); break;
+      case 0: _vcallsub_with_gmp(0.53, "is_powerful"); break;
+      case 1: _vcallsub_with_gmp(0.53, "powerful_count"); break;
+      case 2: _vcallsub_with_gmp(0.00, "nth_powerful"); break;
+      default: break;
     }
-    if (ix == 2 || ix == 3)
-      objectify_result(aTHX_ ST(0), ST(0));
-    return; /* skip implicit PUTBACK */
+    return;
+
+
+void kronecker(IN SV* sva, IN SV* svb)
+  PREINIT:
+    int astatus, bstatus;
+    UV a, b;
+  PPCODE:
+    astatus = _validate_and_set(&a, aTHX_ sva, IFLAG_ANY);
+    bstatus = _validate_and_set(&b, aTHX_ svb, IFLAG_ANY);
+    if (astatus != 0 && bstatus != 0) {
+      int k;
+      if (bstatus == 1)
+        k = (astatus==1) ? kronecker_uu(a,b)      :  kronecker_su((IV)a,b);
+      else
+        k = (astatus==1) ? kronecker_uu(a,-(IV)b) : -kronecker_su((IV)a,-(IV)b);
+      RETURN_NPARITY( k );
+    }
+    _vcallsub_with_gmp(0.17,"kronecker");
+    return;
 
 void addint(IN SV* sva, IN SV* svb)
   ALIAS:
@@ -2333,35 +2394,88 @@ void addint(IN SV* sva, IN SV* svb)
     modint = 4
     powint = 5
   PREINIT:
-    int astatus, bstatus, overflow;
+    int astatus, bstatus, overflow, postneg, nix, smask;
+    UV a, b, t, ret;
   PPCODE:
-    astatus = _validate_int(aTHX_ sva, 2);
-    bstatus = _validate_int(aTHX_ svb, 2);
-    overflow = 0;
-    /* TODO: we should do negative inputs as well */
-    if (astatus == 1 && bstatus == 1) {
-      UV ret = 0, a = my_svuv(sva), b = my_svuv(svb);
-      switch (ix) {
-        case 0:  ret = a + b;                  /* addint */
-                 overflow = UV_MAX-a < b;
-                 break;
-        case 1:  ret = a - b;                  /* subint */
-                 if (b > a && (IV)ret < 0) XSRETURN_IV((IV)ret);
-                 overflow = (b > a);
-                 break;
-        case 2:  ret = a * b;                  /* mulint */
-                 overflow = a > 0 && UV_MAX/a < b;
-                 break;
-        case 3:  if (b == 0) croak("divint: divide by zero");
-                 ret = a / b; break;           /* divint */
-        case 4:  if (b == 0) croak("modint: divide by zero");
-                 ret = a % b; break;           /* modint */
-        case 5:
-        default: ret = ipowsafe(a, b);
-                 overflow = (a > 1 && ret == UV_MAX);
-                 break;
+    astatus = _validate_and_set(&a, aTHX_ sva, IFLAG_ANY);
+    bstatus = _validate_and_set(&b, aTHX_ svb, (ix == 5) ? IFLAG_POS : IFLAG_ANY);
+
+    if (astatus != 0 && bstatus != 0) {
+      /* We will try to do everything with non-negative integers, with overflow
+       * detection.  This means some pre-processing and post-processing for
+       * negative inputs. */
+      nix = ix;  /* So we can modify */
+      ret = overflow = postneg = 0;
+      smask = ((astatus == -1) << 1) + (bstatus == -1);
+      /* smask=0: +a +b  smask=1: +a -b  smask=2: -a +b  smask=3: -a -b */
+
+      if (ix == 0 && smask != 0) {
+        switch (smask) {
+          case 1: nix=1; b = -(IV)b; break;                  /* a - |b| */
+          case 2: nix=1; t = -(IV)a; a = b; b = t; break;    /* b - |a| */
+          case 3: a = -(IV)a; b = -(IV)b; postneg=1; break;  /* -(|a| + |b|) */
+          default: break;
+        }
+        astatus = bstatus = 1;
       }
-      if (!overflow) XSRETURN_UV(ret);
+      if (ix == 1 && smask != 0) {
+        switch (smask) {
+          case 1: nix=0; b = -(IV)b; break;                  /* a + |b| */
+          case 2: nix=0; a = -(IV)a; postneg=1; break;       /* -(|a| + b) */
+          case 3: t = -(IV)a; a = -(IV)b; b = t; break;      /* |b| - |a| */
+          default: break;
+        }
+        astatus = bstatus = 1;
+      }
+      if (ix == 2 && smask != 0) {
+        switch (smask) {
+          case 1: b = -(IV)b; postneg = 1; break;
+          case 2: a = -(IV)a; postneg = 1; break;
+          case 3: a = -(IV)a; b = -(IV)b; break;
+          default: break;
+        }
+        astatus = bstatus = 1;
+      }
+      if (ix == 3 || ix == 4) {
+        if (ix == 3 && b == 0) croak("divint: divide by zero");
+        if (ix == 4 && b == 0) croak("modint: divide by zero");
+        if (smask != 0 && (astatus == -1 || a <= (UV)IV_MAX) && (bstatus == -1 || b <= (UV)IV_MAX)) {
+          IV q, r;
+          (void) fdivrem(&q, &r, (IV)a, (IV)b);
+          XSRETURN_IV( (ix == 3) ? q : r );
+        }
+      }
+      if (ix == 5 && astatus != 1) {  /* bstatus is never -1 for powint */
+        a = -(IV)a;
+        postneg = (b & 1);
+        astatus = 1;
+      }
+      if (astatus == 1 && bstatus == 1) {
+        switch (nix) {
+          case 0:  ret = a + b;                  /* addint */
+                   overflow = UV_MAX-a < b;
+                   break;
+          case 1:  ret = a - b;                  /* subint */
+                   if (b > a && (IV)ret < 0) XSRETURN_IV((IV)ret);
+                   overflow = (b > a);
+                   break;
+          case 2:  ret = a * b;                  /* mulint */
+                   overflow = a > 0 && UV_MAX/a < b;
+                   break;
+          case 3:  ret = a / b; break;           /* divint */
+          case 4:  ret = a % b; break;           /* modint */
+          case 5:
+          default: ret = ipowsafe(a, b);
+                   overflow = (a > 1 && ret == UV_MAX);
+                   break;
+        }
+        if (!overflow) {
+          if (!postneg)
+            XSRETURN_UV(ret);
+          if (ret <= (UV)IV_MAX)
+            XSRETURN_IV(-(IV)ret);
+        }
+      }
     }
     switch (ix) {
       case 0:  _vcallsub_with_gmp(0.52,"addint"); break;
@@ -2375,29 +2489,71 @@ void addint(IN SV* sva, IN SV* svb)
     objectify_result(aTHX_ ST(0), ST(0));
     return; /* skip implicit PUTBACK */
 
+void absint(IN SV* svn)
+  ALIAS:
+    negint = 1
+  PREINIT:
+    UV n;
+  PPCODE:
+    if (ix == 0) {
+      if (_validate_and_set(&n, aTHX_ svn, IFLAG_ABS))
+        XSRETURN_UV(n);
+      _vcallsub_with_gmp(0.52,"absint");
+    } else {
+      if (_validate_and_set(&n, aTHX_ svn, IFLAG_IV))
+        XSRETURN_IV( -(IV)n );
+      _vcallsub_with_gmp(0.52,"negint");
+    }
+    objectify_result(aTHX_ svn, ST(0));
+    return;
+
+void logint(IN SV* svn, IN UV k, IN SV* svret = 0)
+  ALIAS:
+    rootint = 1
+  PREINIT:
+    UV n, root;
+  PPCODE:
+    if (ix == 0 && k <= 1)  croak("logint: base must be > 1");
+    if (ix == 1 && k <= 0)  croak("rootint: k must be > 0");
+    if (svret != 0 && !SvROK(svret))
+      croak("%s: third argument not a scalar reference",(ix==0)?"logint":"rootint");
+    if (_validate_and_set(&n, aTHX_ svn, ix == 0 ? IFLAG_POS | IFLAG_NONZERO : IFLAG_POS)) {
+      root = (ix == 0) ? logint(n, k) : rootint(n, k);
+      if (svret) sv_setuv(SvRV(svret), ix == 0 ? ipow(k,root) : ipow(root,k));
+      XSRETURN_UV(root);
+    }
+    switch (ix) {
+      case 0: (void)_vcallsubn(aTHX_ G_SCALAR, (svret == 0) ? (VCALL_GMP|VCALL_PP) : (VCALL_PP), "logint", items, 47); break;
+      case 1: (void)_vcallsubn(aTHX_ G_SCALAR, (svret == 0) ? (VCALL_GMP|VCALL_PP) : (VCALL_PP), "rootint", items, 40); break;
+      default: break;
+    }
+    return;
+
 void divrem(IN SV* sva, IN SV* svb)
   ALIAS:
     fdivrem = 1
     tdivrem = 2
   PREINIT:
-    int astatus, bstatus, abpositive, abnegative;
+    int astatus, bstatus;
+    UV D, d;
+    IV iD, id;
   PPCODE:
-    astatus = _validate_int(aTHX_ sva, 1);
-    bstatus = _validate_int(aTHX_ svb, 1);
+    astatus = _validate_and_set(&D, aTHX_ sva, IFLAG_ANY);
+    bstatus = _validate_and_set(&d, aTHX_ svb, IFLAG_ANY);
     if (astatus == 1 && bstatus == 1) {
-      UV D = my_svuv(sva), d = my_svuv(svb);
       if (d == 0) croak("divrem: divide by zero");
       XPUSHs(sv_2mortal(newSVuv( D / d )));
       XPUSHs(sv_2mortal(newSVuv( D % d )));
       XSRETURN(2);
-    } else if (1 && astatus != 0 && (SvIOK(sva) && !SvIsUV(sva)) &&
-               bstatus != 0 && (SvIOK(svb) && !SvIsUV(svb))) {
+    } else if (astatus != 0 && bstatus != 0 &&
+               _validate_and_set((UV*)&iD, aTHX_ sva, IFLAG_IV) != 0 &&
+               _validate_and_set((UV*)&id, aTHX_ svb, IFLAG_IV) != 0) {
       /* Both values fit in an IV */
-      IV q, r, D = my_sviv(sva), d = my_sviv(svb);
-      if (d == 0) croak("divrem: divide by zero");
+      IV q, r;
+      if (id == 0) croak("divrem: divide by zero");
       switch (ix) {
-        case 0:  edivrem(&q, &r, D, d); break;
-        case 1:  fdivrem(&q, &r, D, d); break;
+        case 0:  edivrem(&q, &r, iD, id); break;
+        case 1:  fdivrem(&q, &r, iD, id); break;
         case 2:
         default: tdivrem(&q, &r, D, d); break;
       }
@@ -2419,8 +2575,9 @@ void lshiftint(IN SV* svn, IN unsigned long k = 1)
     rashiftint = 2
   PREINIT:
     int status;
+    UV n, nk;
   PPCODE:
-    status = _validate_int(aTHX_ svn, 1);
+    status = _validate_and_set(&n, aTHX_ svn, IFLAG_ANY);
     if (k == 0) {
       ST(0) = svn;
       XSRETURN(1);
@@ -2428,13 +2585,12 @@ void lshiftint(IN SV* svn, IN unsigned long k = 1)
     if (status != 0 && ix > 0 && k >= BITS_PER_WORD)  /* Big right shift */
       XSRETURN_UV(0);
     if (status == 1 && k < BITS_PER_WORD) {
-      UV n = my_svuv(svn);
       if (ix > 0)                       XSRETURN_UV(n >> k);  /* Right shift */
       if ( ((n << k) >> k) == n)        XSRETURN_UV(n << k);  /* Left shift */
       /* Fall through -- left shift needs more bits */
     } else if (status == -1 && k < BITS_PER_WORD) {
-      UV n = -my_sviv(svn);
-      UV nk = n >> k;
+      n = -(IV)n;
+      nk = n >> k;
       if (ix == 1)                      XSRETURN_IV(-nk);
       if (ix == 2)                      XSRETURN_IV(((nk<<k)==n) ? -nk : -nk-1);
       if (((n << (k+1)) >> (k+1)) == n) XSRETURN_IV(-(n << k));
@@ -2452,19 +2608,10 @@ void lshiftint(IN SV* svn, IN unsigned long k = 1)
 void
 gcdext(IN SV* sva, IN SV* svb)
   PREINIT:
-    int astatus, bstatus;
+    IV u, v, d, a, b;
   PPCODE:
-    astatus = _validate_int(aTHX_ sva, 2);
-    bstatus = _validate_int(aTHX_ svb, 2);
-    /* TODO: These should be built into validate_int */
-    if ( (astatus == 1 && SvIsUV(sva)) || (astatus == -1 && !SvIOK(sva)) )
-      astatus = 0;  /* too large */
-    if ( (bstatus == 1 && SvIsUV(svb)) || (bstatus == -1 && !SvIOK(svb)) )
-      bstatus = 0;  /* too large */
-    if (astatus != 0 && bstatus != 0) {
-      IV u, v, d;
-      IV a = my_sviv(sva);
-      IV b = my_sviv(svb);
+    if (_validate_and_set((UV*)&a, aTHX_ sva, IFLAG_IV) &&
+        _validate_and_set((UV*)&b, aTHX_ svb, IFLAG_IV)) {
       d = gcdext(a, b, &u, &v, 0, 0);
       XPUSHs(sv_2mortal(newSViv( u )));
       XPUSHs(sv_2mortal(newSViv( v )));
@@ -2520,28 +2667,22 @@ _XS_ExponentialIntegral(IN SV* x)
   OUTPUT:
     RETVAL
 
-void
-euler_phi(IN SV* svlo, IN SV* svhi = 0)
+
+void euler_phi(IN SV* svlo, IN SV* svhi = 0)
   ALIAS:
     moebius = 1
   PREINIT:
+    UV lo, hi;
     int lostatus, histatus;
+    uint32_t mask;
   PPCODE:
-    lostatus = _validate_int(aTHX_ svlo, 2);
-    histatus = (svhi == 0 || _validate_int(aTHX_ svhi, 1));
+    mask = (ix == 1 && items == 1)  ?  IFLAG_ABS  :  IFLAG_ANY;
+    lostatus = _validate_and_set(&lo, aTHX_ svlo, mask);
+    histatus = (svhi == 0) || _validate_and_set(&hi, aTHX_ svhi, IFLAG_ANY);
     if (svhi == 0 && lostatus != 0) {
-      /* input is a single value and in UV/IV range */
-      if (ix == 0) {
-        UV ret = (lostatus == -1) ? 0 : totient(my_svuv(svlo));
-        XSRETURN_UV(ret);
-      } else {
-        UV n = (lostatus == -1) ? (UV)(-(my_sviv(svlo))) : my_svuv(svlo);
-        RETURN_NPARITY(moebius(n));
-      }
+      if (ix == 0) XSRETURN_UV( (lostatus == -1) ? 0 : totient(lo) );
+      else         RETURN_NPARITY( moebius(lo) );
     } else if (items == 2 && lostatus == 1 && histatus == 1) {
-      /* input is a range and both lo and hi are non-negative */
-      UV lo = my_svuv(svlo);
-      UV hi = my_svuv(svhi);
       if (lo <= hi) {
         UV i, count = hi - lo + 1;
         EXTEND(SP, (IV)count);
@@ -2560,113 +2701,142 @@ euler_phi(IN SV* svlo, IN SV* svhi = 0)
         }
       }
     } else {
-      /* Whatever we didn't handle above */
-      U32 gimme_v = GIMME_V;
       I32 flags = VCALL_PP;
-      if (ix == 1 && lostatus == 1 && histatus == 1)  flags |= VCALL_GMP;
-      switch (ix) {
-        case 0:  _vcallsubn(aTHX_ gimme_v, flags, "euler_phi", items, 22);break;
-        case 1:
-        default: _vcallsubn(aTHX_ gimme_v, flags, "moebius", items, 22);  break;
+      if (ix == 0) {
+        _vcallsubn(aTHX_ GIMME_V, flags, "euler_phi", items, 22);
+      } else {
+        if (lostatus == 1 && histatus == 1)  flags |= VCALL_GMP;
+        _vcallsubn(aTHX_ GIMME_V, flags, "moebius", items, 22);
       }
       return;
     }
 
-void
-carmichael_lambda(IN SV* svn)
+void sqrtint(IN SV* svn)
   ALIAS:
-    mertens = 1
-    liouville = 2
-    sumliouville = 3
-    prime_omega = 4
-    prime_bigomega = 5
-    chebyshev_theta = 6
-    chebyshev_psi = 7
-    factorial = 8
-    sqrtint = 9
-    qnr = 10
-    exp_mangoldt = 11
-    znprimroot = 12
-    hammingweight = 13
-    hclassno = 14
-    is_pillai = 15
-    absint = 16
-    negint = 17
-    ramanujan_tau = 18
+    factorial = 1
+    carmichael_lambda = 2
+    exp_mangoldt = 3
+    hammingweight = 4
   PREINIT:
-    int status;
+    UV n, r;
   PPCODE:
-    status = _validate_int(aTHX_ svn, (ix >= 11) ? 1 : 0);
-    if (status != 0) {
-      UV r, n = my_svuv(svn);
+    if (_validate_and_set(&n, aTHX_ svn, (ix <= 3) ? IFLAG_POS : IFLAG_ABS)) {
+      int retok = 1;
       switch (ix) {
-        case 0:  XSRETURN_UV(carmichael_lambda(n)); break;
-        case 1:  XSRETURN_IV(mertens(n)); break;
-        case 2:  RETURN_NPARITY(liouville(n)); break;
-        case 3:  XSRETURN_IV(sumliouville(n)); break;
-        case 4:  RETURN_NPARITY(prime_omega(n)); break;
-        case 5:  RETURN_NPARITY(prime_bigomega(n)); break;
-        case 6:  XSRETURN_NV(chebyshev_theta(n)); break;
-        case 7:  XSRETURN_NV(chebyshev_psi(n)); break;
-        case 8:  r = factorial(n);
-                 if (r != 0) XSRETURN_UV(r);
-                 status = 0; break;
-        case 9:  XSRETURN_UV(isqrt(n)); break;
-        case 10: RETURN_NPARITY(qnr(n)); break;
-        case 11: XSRETURN_UV( (status == -1) ? 1 : exp_mangoldt(n) ); break;
-        case 12: if (status == -1) n = -(IV)n;
-                 r = znprimroot(n);
-                 if (r == 0 && n != 1)  XSRETURN_UNDEF;  /* No root */
-                 XSRETURN_UV(r);  break;
-        case 13: if (status == -1) n = -(IV)n;
-                 XSRETURN_UV(popcnt(n));  break;
-        case 14: XSRETURN_IV( (status == -1) ? 0 : hclassno(n) ); break;
-        case 15: RETURN_NPARITY( (status == -1) ? 0 : pillai_v(n) ); break;
-        case 16: if (status == -1 && my_sviv(svn) < -IV_MAX) status = 0;
-                 else XSRETURN_UV( (status == -1) ? -(IV)n : n );
-                 break;
-        case 17: if (status == -1 && my_sviv(svn) < -IV_MAX) status = 0;
-                 else if (status == 1 && n > IV_MAX) status = 0;
-                 else XSRETURN_IV( (status == -1) ? -(IV)n : -n );
-                 break;
-        case 18:
-        default: { IV tau = (status == 1) ? ramanujan_tau(n) : 0;
-                   if (tau != 0 || status == -1 || n == 0)
-                     XSRETURN_IV(tau);
-                 } /* Fall through if n > 0 and we got 0 back */
-                 break;
+        case 0:  r = isqrt(n);  break;
+        case 1:  r = factorial(n);  if (r == 0) retok = 0;  break;
+        case 2:  r = carmichael_lambda(n);  break;
+        case 3:  r = exp_mangoldt(n);  break;
+        case 4:  r = popcnt(n);  break;
+        default: break;
       }
+      if (retok)  XSRETURN_UV(r);
     }
     switch (ix) {
-      case 0:  _vcallsub_with_gmp(0.22,"carmichael_lambda"); break;
-      case 1:  _vcallsub_with_pp("mertens"); break;
-      case 2:  _vcallsub_with_gmp(0.22,"liouville"); break;
-      case 3:  _vcallsub_with_gmp(0.00,"sumliouville"); break;
-      case 4:  _vcallsub_with_gmp(0.53,"prime_omega"); break;
-      case 5:  _vcallsub_with_gmp(0.53,"prime_bigomega"); break;
-      case 6:  _vcallsub_with_pp("chebyshev_theta"); break;
-      case 7:  _vcallsub_with_pp("chebyshev_psi"); break;
-      case 8:  _vcallsub_with_pp("factorial"); break;  /* use PP */
-      case 9:  _vcallsub_with_gmp(0.40,"sqrtint"); break;
-      case 10: _vcallsub_with_gmp(0.00,"qnr"); break;
-      case 11: _vcallsub_with_gmp(0.19,"exp_mangoldt"); break;
-      case 12: _vcallsub_with_gmp(0.22,"znprimroot"); break;
-      case 13: if (_XS_get_callgmp() >= 47) { /* Very fast */
+      case 0:  _vcallsub_with_gmp(0.40,"sqrtint"); break;
+      case 1:  _vcallsub_with_pp("factorial"); break;  /* use PP */
+      case 2:  _vcallsub_with_gmp(0.22,"carmichael_lambda"); break;
+      case 3:  _vcallsub_with_gmp(0.19,"exp_mangoldt"); break;
+      case 4:  if (_XS_get_callgmp() >= 47) { /* Very fast */
                  _vcallsub_with_gmp(0.47,"hammingweight");
                } else {                       /* Better than PP */
                  char* ptr;  STRLEN len;  ptr = SvPV(svn, len);
                  XSRETURN_UV(mpu_popcount_string(ptr, len));
                }
                break;
-      case 14: _vcallsub_with_pp("hclassno"); break;
-      case 15: _vcallsub_with_gmp(0.00,"is_pillai"); break;
-      case 16: _vcallsub_with_gmp(0.52,"absint"); break;
-      case 17: _vcallsub_with_gmp(0.52,"negint"); break;
-      case 18:
-      default: _vcallsub_with_gmp(0.32,"ramanujan_tau"); break;
+      default: break;
     }
     objectify_result(aTHX_ svn, ST(0));
     return; /* skip implicit PUTBACK */
+
+void binomial(IN SV* sva, IN SV* svn)
+  PREINIT:
+    int astatus, nstatus;
+    UV a, n, ret;
+  PPCODE:
+    astatus = _validate_and_set(&a, aTHX_ sva, IFLAG_ANY);
+    nstatus = _validate_and_set(&n, aTHX_ svn, IFLAG_ANY);
+    if (astatus != 0 && nstatus != 0) {
+      if ( (astatus == 1 && (nstatus == -1 || n > a)) ||
+           (astatus ==-1 && (nstatus == -1 && n > a)) )
+         XSRETURN_UV(0);
+      if (nstatus == -1)
+        n = a - n; /* n<0,k<=n:  (-1)^(n-k) * binomial(-k-1,n-k) */
+      if (astatus == -1) {
+        ret = binomial( (-(IV)a)+n-1, n );
+        if (ret > 0 && ret <= (UV)IV_MAX)
+          XSRETURN_IV( (IV)ret * ((n&1) ? -1 : 1) );
+      } else {
+        ret = binomial(a, n);
+        if (ret != 0) XSRETURN_UV(ret);
+      }
+    }
+    _vcallsub_with_gmp(0.22,"binomial");
+    objectify_result(aTHX_ sva, ST(0));
+    return;
+
+void mertens(IN SV* svn)
+  ALIAS:
+    liouville = 1
+    sumliouville = 2
+    prime_omega = 3
+    prime_bigomega = 4
+    is_pillai = 5
+    hclassno = 6
+    ramanujan_tau = 7
+  PREINIT:
+    UV n;
+    IV r;
+    int status;
+  PPCODE:
+    status = _validate_and_set(&n, aTHX_ svn, (ix < 6) ? IFLAG_POS : IFLAG_ANY);
+    if (status == -1)
+      XSRETURN_IV(0);
+    if (status == 1) {
+      switch(ix) {
+        case 0:  r = mertens(n); break;
+        case 1:  r = liouville(n); break;
+        case 2:  r = sumliouville(n); break;
+        case 3:  r = prime_omega(n); break;
+        case 4:  r = prime_bigomega(n); break;
+        case 5:  r = pillai_v(n); break;
+        case 6:  r = hclassno(n); break;
+        case 7:  r = ramanujan_tau(n);
+                 if (r == 0 && n != 0)
+                   status = 0;
+                 break;
+        default: break;
+      }
+      if (status != 0) RETURN_NPARITY(r);
+    }
+    switch (ix) {
+      case 0:  _vcallsub_with_pp("mertens"); break;
+      case 1:  _vcallsub_with_gmp(0.22,"liouville"); break;
+      case 2:  _vcallsub_with_gmp(0.00,"sumliouville"); break;
+      case 3:  _vcallsub_with_gmp(0.53,"prime_omega"); break;
+      case 4:  _vcallsub_with_gmp(0.53,"prime_bigomega"); break;
+      case 5:  _vcallsub_with_gmp(0.00,"is_pillai"); break;
+      case 6:  _vcallsub_with_pp("hclassno"); break;
+      case 7:  _vcallsub_with_gmp(0.32,"ramanujan_tau"); break;
+      default: break;
+    }
+    objectify_result(aTHX_ svn, ST(0));
+    return;
+
+void chebyshev_theta(IN SV* svn)
+  ALIAS:
+    chebyshev_psi = 1
+  PREINIT:
+    UV n;
+  PPCODE:
+    if (_validate_and_set(&n, aTHX_ svn, IFLAG_POS)) {
+      NV r = (ix==0)  ?  chebyshev_theta(n)  :  chebyshev_psi(n);
+      XSRETURN_NV(r);
+    }
+    _vcallsub_with_pp( (ix==0) ? "chebyshev_theta" : "chebyshev_psi" );
+    /* Result is FP, don't objectify */
+    return;
+
 
 void
 numtoperm(IN UV n, IN SV* svk)
@@ -2676,8 +2846,7 @@ numtoperm(IN UV n, IN SV* svk)
   PPCODE:
     if (n == 0)
       XSRETURN_EMPTY;
-    if (n < 32 && _validate_int(aTHX_ svk, 1) == 1) {
-      k = my_svuv(svk);
+    if (n < 32 && _validate_and_set(&k, aTHX_ svk, IFLAG_ABS) == 1) {
       if (num_to_perm(k, n, S)) {
         dMY_CXT;
         EXTEND(SP, (IV)n);
@@ -2704,8 +2873,8 @@ permtonum(IN SV* svp)
       int V[32], A[32] = {0};
       for (i = 0; i <= plen; i++) {
         SV **iv = av_fetch(av, i, 0);
-        if (iv == 0 || _validate_int(aTHX_ *iv, 1) != 1) break;
-        val = my_svuv(*iv);
+        if (iv == 0 || _validate_and_set(&val, aTHX_ *iv, IFLAG_POS) != 1)
+          break;
         if (val > (UV)plen || A[val] != 0) break;
         A[val] = i+1;
         V[i] = val;
@@ -2799,8 +2968,7 @@ void todigits(SV* svn, int base=10, int length=-1)
     if (base < 2) croak("invalid base: %d", base);
     status = 0;
     if (ix == 0 || ix == 1) {
-      status = _validate_int(aTHX_ svn, 1);
-      n = (status == 0) ? 0 : status * my_svuv(svn);
+      status = _validate_and_set(&n, aTHX_ svn, IFLAG_ABS);
     }
     /* todigits with native input */
     if (ix == 0 && status != 0 && length < 128) {
@@ -2872,12 +3040,10 @@ void todigits(SV* svn, int base=10, int length=-1)
 
 void tozeckendorf(SV* svn)
   PREINIT:
-    int i, status;
-    char *str;
+    UV n;
   PPCODE:
-    status = _validate_int(aTHX_ svn, 0);
-    if (status == 1) {
-      str = to_zeckendorf(my_svuv(svn));
+    if (_validate_and_set(&n, aTHX_ svn, IFLAG_POS)) {
+      char *str = to_zeckendorf(n);
       XPUSHs(sv_2mortal(newSVpv(str, 0)));
       Safefree(str);
       XSRETURN(1);
@@ -2909,7 +3075,7 @@ _validate_num(SV* svn, ...)
     SV* sv1;
     SV* sv2;
   CODE:
-    /* Internal function.  Emulate the PP version of this:
+    /* Non-exported function.  Emulate the PP version of this:
      *   $is_valid = _validate_num( $n [, $min [, $max] ] )
      * Return 0 if we're befuddled by the input.
      * Otherwise croak if n isn't >= 0 and integer, n < min, or n > max.
@@ -2994,18 +3160,12 @@ forprimes (SV* block, IN SV* svbeg, IN SV* svend = 0)
     if (cv == Nullcv)
       croak("Not a subroutine reference");
 
-    if (!_validate_int(aTHX_ svbeg, 0) || (items >= 3 && !_validate_int(aTHX_ svend,0))) {
+    if (!_validate_and_set(&beg, aTHX_ svbeg, IFLAG_POS) ||
+        (svend && !_validate_and_set(&end, aTHX_ svend, IFLAG_POS))) {
       _vcallsubn(aTHX_ G_VOID|G_DISCARD, VCALL_ROOT, "_generic_forprimes", items, 0);
       return;
     }
-
-    if (items < 3) {
-      beg = 2;
-      end = my_svuv(svbeg);
-    } else {
-      beg = my_svuv(svbeg);
-      end = my_svuv(svend);
-    }
+    if (!svend) { end = beg; beg = 2; }
 
     START_FORCOUNT;
     SAVESPTR(GvSV(PL_defgv));
@@ -3097,20 +3257,14 @@ foroddcomposites (SV* block, IN SV* svbeg, IN SV* svend = 0)
     if (cv == Nullcv)
       croak("Not a subroutine reference");
 
-    if (!_validate_int(aTHX_ svbeg, 0) || (items >= 3 && !_validate_int(aTHX_ svend,0))) {
+    if (!_validate_and_set(&beg, aTHX_ svbeg, IFLAG_POS) ||
+        (svend && !_validate_and_set(&end, aTHX_ svend, IFLAG_POS))) {
       _vcallsubn(aTHX_ G_VOID|G_DISCARD, VCALL_ROOT,
          (ix == 0) ? "_generic_foroddcomposites"
        :             "_generic_forcomposites", items, 0);
       return;
     }
-
-    if (items < 3) {
-      beg = ix ? 4 : 9;
-      end = my_svuv(svbeg);
-    } else {
-      beg = my_svuv(svbeg);
-      end = my_svuv(svend);
-    }
+    if (!svend) { end = beg; beg = ix ? 4 : 9; }
 
     START_FORCOUNT;
     SAVESPTR(GvSV(PL_defgv));
@@ -3218,18 +3372,13 @@ forsemiprimes (SV* block, IN SV* svbeg, IN SV* svend = 0)
     if (cv == Nullcv)
       croak("Not a subroutine reference");
 
-    if (!_validate_int(aTHX_ svbeg, 0) || (items >= 3 && !_validate_int(aTHX_ svend,0))) {
+    if (!_validate_and_set(&beg, aTHX_ svbeg, IFLAG_POS) ||
+        (svend && !_validate_and_set(&end, aTHX_ svend, IFLAG_POS))) {
       _vcallsubn(aTHX_ G_VOID|G_DISCARD, VCALL_ROOT, "_generic_forsemiprimes", items, 0);
       return;
     }
+    if (!svend) { end = beg; beg = 4; }
 
-    if (items < 3) {
-      beg = 4;
-      end = my_svuv(svbeg);
-    } else {
-      beg = my_svuv(svbeg);
-      end = my_svuv(svend);
-    }
     if (beg < 4) beg = 4;
     if (end > MPU_MAX_SEMI_PRIME) end = MPU_MAX_SEMI_PRIME;
 
@@ -3313,21 +3462,15 @@ foralmostprimes (SV* block, IN UV k, IN SV* svbeg, IN SV* svend = 0)
     if (cv == Nullcv)
       croak("Not a subroutine reference");
 
-    if (!_validate_int(aTHX_ svbeg, 0) || (items >= 4 && !_validate_int(aTHX_ svend,0))) {
+    if (!_validate_and_set(&beg, aTHX_ svbeg, IFLAG_POS) ||
+        (svend && !_validate_and_set(&end, aTHX_ svend, IFLAG_POS))) {
       _vcallsubn(aTHX_ G_VOID|G_DISCARD, VCALL_ROOT, "_generic_foralmostprimes", items, 0);
       return;
     }
+    if (!svend) { end = beg; beg = 1; }
 
     /* If k is over 63 but the beg/end points are UVs, then we're empty. */
     if (k == 0 || k >= BITS_PER_WORD) return;
-
-    if (items < 4) {
-      beg = 1;
-      end = my_svuv(svbeg);
-    } else {
-      beg = my_svuv(svbeg);
-      end = my_svuv(svend);
-    }
 
     if (beg < (UVCONST(1) << k)) beg = UVCONST(1) << k;
     if (end > max_nth_almost_prime(k)) end = max_nth_almost_prime(k);
@@ -3408,12 +3551,11 @@ fordivisors (SV* block, IN SV* svn)
     if (cv == Nullcv)
       croak("Not a subroutine reference");
 
-    if (!_validate_int(aTHX_ svn, 0)) {
+    if (!_validate_and_set(&n, aTHX_ svn, IFLAG_POS)) {
       _vcallsubn(aTHX_ G_VOID|G_DISCARD, VCALL_ROOT, "_generic_fordivisors", 2, 0);
       return;
     }
 
-    n = my_svuv(svn);
     divs = _divisor_list(n, &ndivisors);
 
     START_FORCOUNT;
@@ -3465,11 +3607,10 @@ forpart (SV* block, IN SV* svn, IN SV* svh = 0)
     cv = sv_2cv(block, &stash, &gv, 0);
     if (cv == Nullcv)
       croak("Not a subroutine reference");
-    if (!_validate_int(aTHX_ svn, 0)) {
+    if (!_validate_and_set(&n, aTHX_ svn, IFLAG_POS)) {
       _vcallsub_with_pp("forpart");
       return;
     }
-    n = my_svuv(svn);
     if (n > (UV_MAX-2)) croak("forpart argument overflow");
 
     New(0, svals, n+1, SV*);
@@ -3598,19 +3739,19 @@ forcomb (SV* block, IN SV* svn, IN SV* svk = 0)
     if (ix > 0 && svk != 0)
       croak("Too many arguments for forperm");
 
-    if (!_validate_int(aTHX_ svn, 0) || (svk != 0 && !_validate_int(aTHX_ svk, 0))) {
+    if (!_validate_and_set(&n, aTHX_ svn, IFLAG_POS) ||
+        (svk && !_validate_and_set(&k, aTHX_ svk, IFLAG_POS))) {
       _vcallsub_with_pp(   (ix == 0) ? "forcomb"
                          : (ix == 1) ? "forperm"
                                      : "forderange" );
       return;
     }
 
-    n = my_svuv(svn);
     if (svk == 0) {
       begk = (ix == 0) ? 0 : n;
       endk = n;
     } else {
-      begk = endk = my_svuv(svk);
+      begk = endk = k;
       if (begk > n)
         return;
     }
@@ -3773,18 +3914,12 @@ forfactored (SV* block, IN SV* svbeg, IN SV* svend = 0)
     if (cv == Nullcv)
       croak("Not a subroutine reference");
 
-    if (!_validate_int(aTHX_ svbeg, 0) || (items >= 3 && !_validate_int(aTHX_ svend,0))) {
+    if (!_validate_and_set(&beg, aTHX_ svbeg, IFLAG_POS) ||
+        (svend && !_validate_and_set(&end, aTHX_ svend, IFLAG_POS))) {
       _vcallsubn(aTHX_ G_VOID|G_DISCARD, VCALL_ROOT, (ix == 0) ? "_generic_forfactored" : "_generic_forsquarefree", items, 0);
       return;
     }
-
-    if (items < 3) {
-      beg = 1;
-      end = my_svuv(svbeg);
-    } else {
-      beg = my_svuv(svbeg);
-      end = my_svuv(svend);
-    }
+    if (!svend) { end = beg; beg = 1; }
     if (beg > end) return;
 
     for (maxfactors = 0, n = end >> 1;  n;  n >>= 1)

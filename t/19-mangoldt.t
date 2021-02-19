@@ -12,7 +12,7 @@ use Math::Prime::Util qw/exp_mangoldt/;
 #$use64 = 0 if $use64 && 18446744073709550592 == ~0;
 
 my %mangoldt = (
--13 => 1,
+#-13 => 1,    # Non-negative inputs
   0 => 1,
   1 => 1,
   2 => 2,

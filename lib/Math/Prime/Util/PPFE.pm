@@ -501,7 +501,7 @@ sub is_square_free {
 }
 sub is_primitive_root {
   my($a,$n) = @_;
-  return 0 if $n == 0;
+  return if !defined $n || $n == 0;
   $n = -$n if defined $n && $n < 0;
   $a %= $n if defined $a && $a < 0;
   _validate_positive_integer($a);

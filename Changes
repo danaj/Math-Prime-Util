@@ -89,6 +89,14 @@ Revision history for Perl module Math::Prime::Util
     - lucas_sequence wasn't right for some outlier cases.  This did not
       impact any primality tests or other internal code.
 
+    - gcd(-n) and lcd(-n) would return -n instead of n.
+
+    - All mod functions are more consistent.  Like Pari, we use mod abs(n).
+      If n=0, we return undef.  If n=1, we return 0.
+
+    - invmod(0,1) = 0 instead of undef.  Both cases make sense, but
+      Pari, Mathematica, SAGE, and Math::BigInt all return 0.
+
     [FUNCTIONALITY AND PERFORMANCE]
 
     - refactor objectification.  Doesn't force.  Enable on Perl < 5.9.
@@ -124,6 +132,9 @@ Revision history for Perl module Math::Prime::Util
     - Rewrote prime count caching and removed code duplication.
       Uses less memory at large sizes and is faster.
 
+    - Error message "must be a positive integer" changed to
+      "must be a non-negative integer" when zero is allowed.
+
     [OTHER]
 
     - Legendre, Meissel, and Lehmer prime counting got rewritten to use our
@@ -132,6 +143,10 @@ Revision history for Perl module Math::Prime::Util
 
     - lucas_sequence(n,p,q,k) deprecated.  Use lucasuvmod(p,q,k,n) instead.
 
+    - Documentation more consistent with 'positive' vs 'non-negative'.
+
+    - valuation(n,k) now will error if k < 2.  This follows Pari and SAGE.
+      undef is returned for n = 0.  Arguable "Inf" would be preferable.
 
 0.73 2018-11-15
 

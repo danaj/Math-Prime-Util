@@ -46,7 +46,7 @@ BEGIN {
 my $_precalc_size = 0;
 sub prime_precalc {
   my($n) = @_;
-  croak "Parameter '$n' must be a positive integer" unless _is_positive_int($n);
+  croak "Parameter '$n' must be a non-negative integer" unless _is_nonneg_int($n);
   $_precalc_size = $n if $n > $_precalc_size;
 }
 sub prime_memfree {
@@ -58,7 +58,7 @@ sub _get_prime_cache_size { $_precalc_size }
 sub _prime_memfreeall { prime_memfree; }
 
 
-sub _is_positive_int {
+sub _is_nonneg_int {
   ((defined $_[0]) && $_[0] ne '' && ($_[0] !~ tr/0123456789//c));
 }
 
@@ -121,7 +121,7 @@ sub _validate_num {
   my($n, $min, $max) = @_;
   croak "Parameter must be defined" if !defined $n;
   return 0 if ref($n);
-  croak "Parameter '$n' must be a positive integer"
+  croak "Parameter '$n' must be a non-negative integer"
           if $n eq '' || ($n =~ tr/0123456789//c && $n !~ /^\+\d+$/);
   croak "Parameter '$n' must be >= $min" if defined $min && $n < $min;
   croak "Parameter '$n' must be <= $max" if defined $max && $n > $max;
@@ -138,16 +138,16 @@ sub _validate_positive_integer {
     $n = $_[0];
   }
   if (ref($n) eq 'Math::BigInt') {
-    croak "Parameter '$n' must be a positive integer"
+    croak "Parameter '$n' must be a non-negative integer"
       if $n->sign() ne '+' || !$n->is_int();
     $_[0] = _bigint_to_int($_[0]) if $n <= BMAX;
   } elsif (ref($n) eq 'Math::GMPz') {
-    croak "Parameter '$n' must be a positive integer" if Math::GMPz::Rmpz_sgn($n) < 0;
+    croak "Parameter '$n' must be a non-negative integer" if Math::GMPz::Rmpz_sgn($n) < 0;
     $_[0] = _bigint_to_int($_[0]) if $n <= INTMAX;
   } else {
     my $strn = "$n";
     if ($strn eq '-0') { $_[0] = 0; $strn = '0'; }
-    croak "Parameter '$strn' must be a positive integer"
+    croak "Parameter '$strn' must be a non-negative integer"
       if $strn eq '' || ($strn =~ tr/0123456789//c && $strn !~ /^\+?\d+$/);
     if ($n <= INTMAX) {
       $_[0] = $strn if ref($n);
@@ -3422,6 +3422,7 @@ sub gcd {
   # First see if all inputs are non-bigints  5-10x faster if so.
   if (0 == scalar(grep { ref($_) } @_)) {
     my($x,$y) = (shift || 0, 0);
+    $x = -$x if $x < 0;
     while (@_) {
       $y = shift;
       while ($y) {  ($x,$y) = ($y, $x % $y);  }
@@ -3489,7 +3490,6 @@ sub gcdext {
 
 sub chinese {
   return 0 unless scalar @_;
-  return $_[0]->[0] % $_[0]->[1] if scalar @_ == 1;
   my($lcm, $sum);
 
   if ($Math::Prime::Util::_GMPfunc{"chinese"} && $Math::Prime::Util::GMP::VERSION >= 0.42) {
@@ -3500,7 +3500,10 @@ sub chinese {
     }
     return $sum;
   }
-  foreach my $aref (sort { $b->[1] <=> $a->[1] } @_) {
+  my @items = sort { $b->[1] <=> $a->[1] } @_;
+  return if $items[-1]->[1] == 0;
+  return Math::Prime::Util::modint($items[0]->[0], $items[0]->[1]) if scalar @items == 1;
+  foreach my $aref (@items) {
     my($ai, $ni) = @$aref;
     $ai = Math::BigInt->new("$ai") if !ref($ai) && (abs($ai) > (~0>>1) || OLD_PERL_VERSION);
     $ni = Math::BigInt->new("$ni") if !ref($ni) && (abs($ni) > (~0>>1) || OLD_PERL_VERSION);
@@ -3654,9 +3657,9 @@ sub sumdigits {
 
 sub invmod {
   my($a,$n) = @_;
-  return if $n == 0 || $a == 0;
-  return 0 if $n == 1;
-  $n = -$n if $n < 0;  # Pari semantics
+  $n = -$n if $n < 0;
+  return ($n == 0) ? undef : 0  if $n <= 1;
+  return if $a == 0;
   if ($n > ~0) {
     my $invmod = Math::BigInt->new("$a")->bmodinv("$n");
     return if !defined $invmod || $invmod->is_nan;
@@ -3719,7 +3722,8 @@ sub sqrtmod {
   my($a,$n) = @_;
   _validate_integer($a);
   _validate_num($n) || _validate_positive_integer($n);
-  return if $n == 0;
+  $n = -$n if $n < 0;
+  return ($n == 0) ? undef : 0  if $n <= 1;
 
   $a = modint($a,$n);
 
@@ -3768,7 +3772,8 @@ sub rootmod {
 
   # Be especially careful with zeros, as we can't divide or inverse them.
 
-  if ($n <= 1) { return ($n == 1) ? 0 : undef; }
+  $n = -$n if $n < 0;
+  return ($n == 0) ? undef : 0  if $n <= 1;
   $a = modint($a,$n);
   if ($a == 0) {
     return undef if $k <= 0;
@@ -3829,7 +3834,8 @@ sub rootmod {
 
 sub addmod {
   my($a, $b, $n) = @_;
-  return 0 if $n <= 1;
+  $n = -$n if $n < 0;
+  return ($n == 0) ? undef : 0  if $n <= 1;
   if ($n < INTMAX && $a < INTMAX && $b < INTMAX && $a > -INTMAX && $b > -INTMAX) {
     $a = $n - ((-$a) % $n) if $a < 0;
     $b = $n - ((-$b) % $n) if $b < 0;
@@ -3842,7 +3848,8 @@ sub addmod {
 }
 sub submod {
   my($a, $b, $n) = @_;
-  return 0 if $n <= 1;
+  $n = -$n if $n < 0;
+  return ($n == 0) ? undef : 0  if $n <= 1;
   if ($n < INTMAX && $a < INTMAX && $b < INTMAX && $a > -INTMAX && $b > -INTMAX) {
     $a = $n - ((-$a) % $n) if $a < 0;
     $b = $n - ((-$b) % $n) if $b < 0;
@@ -3857,7 +3864,8 @@ sub submod {
 
 sub mulmod {
   my($a, $b, $n) = @_;
-  return 0 if $n <= 1;
+  $n = -$n if $n < 0;
+  return ($n == 0) ? undef : 0  if $n <= 1;
   return _mulmod($a,$b,$n) if $n < INTMAX && $a>0 && $a<INTMAX && $b>0 && $b<INTMAX;
   return Math::Prime::Util::_reftyped($_[0], Math::Prime::Util::GMP::mulmod($a,$b,$n))
     if $Math::Prime::Util::_GMPfunc{"mulmod"};
@@ -3867,7 +3875,8 @@ sub mulmod {
 }
 sub divmod {
   my($a, $b, $n) = @_;
-  return 0 if $n <= 1;
+  $n = -$n if $n < 0;
+  return ($n == 0) ? undef : 0  if $n <= 1;
   my $ret = Math::BigInt->new("$b")->bmodinv("$n")->bmul("$a")->bmod("$n");
   if ($ret->is_nan) {
     $ret = undef;
@@ -3878,7 +3887,8 @@ sub divmod {
 }
 sub powmod {
   my($a, $b, $n) = @_;
-  return 0 if $n <= 1;
+  $n = -$n if $n < 0;
+  return ($n == 0) ? undef : 0  if $n <= 1;
   if ($Math::Prime::Util::_GMPfunc{"powmod"}) {
     my $r = Math::Prime::Util::GMP::powmod($a,$b,$n);
     return (defined $r) ? Math::Prime::Util::_reftyped($_[0], $r) : undef;
@@ -4054,7 +4064,9 @@ sub valuation {
   my($n, $k) = @_;
   $n = -$n if defined $n && $n < 0;
   _validate_num($n) || _validate_positive_integer($n);
-  return 0 if $n < 2 || $k < 2;
+  _validate_num($k) || _validate_positive_integer($k);
+  croak "valuation: k must be > 1" if $k <= 1;
+  return (undef,0)[$n] if $n <= 1;
   my $v = 0;
   if ($k == 2) { # Accelerate power of 2
     if (ref($n) eq 'Math::BigInt') {   # This can pay off for big inputs
@@ -4856,7 +4868,7 @@ sub _is_perfect_square {
 sub is_primitive_root {
   my($a, $n) = @_;
   $n = -$n if $n < 0;  # Ignore sign of n
-  return ($n==1) ? 1 : 0 if $n <= 1;
+  return (undef,1)[$n] if $n <= 1;
   $a %= $n if $a < 0 || $a >= $n;
 
   return Math::Prime::Util::GMP::is_primitive_root($a,$n)
@@ -5054,7 +5066,9 @@ sub qnr {
   my($n) = @_;
   _validate_positive_integer($n);
 
-  return $n if $n <= 2;
+  $n = -$n if $n < 0;  # Ignore sign of n
+  return (undef,1,2)[$n] if $n <= 2;
+
   return 2 if Math::Prime::Util::kronecker(2,$n) == -1;
 
   if (is_prime($n)) {

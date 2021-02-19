@@ -14,7 +14,6 @@ my $usexs = Math::Prime::Util::prime_get_config->{'xs'};
 my @invmods = (
  [ 0, 0, undef],
  [ 1, 0, undef],
- [ 0, 1, undef],
  [ 1, 1, 0],
  [ 45, 59, 21],
  [  42,  2017, 1969],
@@ -93,7 +92,7 @@ my @rootmods = (
 );
 
 plan tests => 0
-            + 3 + scalar(@invmods)
+            + 5 + scalar(@invmods)
             + scalar(@sqrtmods)
             + 5*2
             + 1                      # addmod
@@ -115,6 +114,11 @@ foreach my $r (@invmods) {
   my($a, $n, $exp) = @$r;
   is( invmod($a,$n), $exp, "invmod($a,$n) = ".((defined $exp)?$exp:"<undef>") );
 }
+# Pari, Mathematica, SAGE, Math::BigInt  all return 0 for this case.
+is( invmod(0,1), 0, "invmod(0,1) = 0");
+is( invmod(0,-1), 0, "invmod(0,-1) = 0");
+# my $res = invmod(0,1);   $res = "<undef>" if !defined $res;
+# ok($res eq '0' || $res eq '<undef>', "invmod(0,1) = $res");
 
 ###### sqrtmod
 foreach my $r (@sqrtmods) {
@@ -141,13 +145,14 @@ my(@exp,@res);
 
 
 ###### add/mul/div/pow with small arguments
-@exp = map { 0 } 0..27;
+@exp = map { undef } 0..27;
 is_deeply(\@exp, [map { addmod($_ & 3, ($_>>2)-3, 0) } 0..27], "addmod(..,0)");
 is_deeply(\@exp, [map { submod($_ & 3, ($_>>2)-3, 0) } 0..27], "submod(..,0)");
 is_deeply(\@exp, [map { mulmod($_ & 3, ($_>>2)-3, 0) } 0..27], "mulmod(..,0)");
 is_deeply(\@exp, [map { divmod($_ & 3, ($_>>2)-3, 0) } 0..27], "divmod(..,0)");
 is_deeply(\@exp, [map { powmod($_ & 3, ($_>>2)-3, 0) } 0..27], "powmod(..,0)");
 
+@exp = map { 0 } 0..27;
 is_deeply(\@exp, [map { addmod($_ & 3, ($_>>2)-3, 1) } 0..27], "addmod(..,1)");
 is_deeply(\@exp, [map { submod($_ & 3, ($_>>2)-3, 1) } 0..27], "submod(..,1)");
 is_deeply(\@exp, [map { mulmod($_ & 3, ($_>>2)-3, 1) } 0..27], "mulmod(..,1)");
@@ -303,8 +308,14 @@ sub nrand {
 
 sub is_one_of {
   my($n, @list) = @_;
-  for (@list) {
-    return 1 if $n eq $_;
+  if (defined $n) {
+    for (@list) {
+      return 1 if defined $_ && $n eq $_;
+    }
+  } else {
+    for (@list) {
+      return 1 if !defined $_;
+    }
   }
   0;
 }

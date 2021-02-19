@@ -314,15 +314,15 @@ sub _validate_positive_integer {
     $n = $_[0];
   }
   if (ref($n) eq 'Math::BigInt') {
-    croak "Parameter '$n' must be a positive integer"
+    croak "Parameter '$n' must be a non-negative integer"
       if $n->sign() ne '+' || !$n->is_int();
     $_[0] = _bigint_to_int($_[0]) if $n <= '' . INTMAX;
   } elsif (ref($n) eq 'Math::GMPz') {
-    croak "Parameter '$n' must be a positive integer" if Math::GMPz::Rmpz_sgn($n) < 0;
+    croak "Parameter '$n' must be a non-negative integer" if Math::GMPz::Rmpz_sgn($n) < 0;
     $_[0] = _bigint_to_int($_[0]) if $n <= INTMAX;
   } else {
     my $strn = "$n";
-    croak "Parameter '$strn' must be a positive integer"
+    croak "Parameter '$strn' must be a non-negative integer"
       if $strn eq '' || ($strn =~ tr/0123456789//c && $strn !~ /^\+?\d+$/);
     if ($n <= INTMAX) {
       $_[0] = $strn if ref($n);
@@ -3042,6 +3042,8 @@ computes C<U_k> for the Lucas sequence defined by C<P>,C<Q>.  These include
 the Fibonacci numbers (C<1,-1>), the Pell numbers (C<2,-1>), the Jacobsthal
 numbers (C<1,-2>), the Mersenne numbers (C<3,2>), and more.
 
+Also see L</lucasumod> for fast computation mod n.
+
 This corresponds to OpenPFGW's C<lucasU> function and gmpy2's C<lucasu>
 function.
 
@@ -3052,6 +3054,8 @@ function.
 Given integers C<P>, C<Q>, and the non-negative integer C<k>,
 computes C<V_k> for the Lucas sequence defined by C<P>,C<Q>.  These include
 the Lucas numbers (C<1,-1>).
+
+Also see L</lucasvmod> for fast computation mod n.
 
 This corresponds to OpenPFGW's C<lucasV> function and gmpy2's C<lucasv>
 function.
@@ -3065,44 +3069,7 @@ computes both C<U_k> and C<V_k> for the Lucas sequence defined
 by C<P>,C<Q>.
 Generating both values is typically not much more time than one.
 
-=head2 lucasumod
-
-Given integers C<P>, C<Q>, the non-negative integer C<k>, and the
-non-zero positive integer C<n>, efficiently compute
-C<lucasu(P,Q,k) mod n>.
-
-This corresponds to gmpy2's C<lucasu_mod> function.
-
-=head2 lucasvmod
-
-Given integers C<P>, C<Q>, the non-negative integer C<k>, and the
-non-zero positive integer C<n>, efficiently compute
-C<lucasv(P,Q,k) mod n>.
-
-This corresponds to gmpy2's C<lucasv_mod> function.
-
-=head2 lucasuvmod
-
-  # Compute the 5000-th Fibonacci and Lucas numbers, mod 1001
-  ($U,$V,$Qk) = lucasuvmod(1, -1, 5000, 1001);
-
-Given integers C<P>, C<Q>, the non-negative integer C<k>, and the
-non-zero positive integer C<n>, efficiently compute the k-th value
-of C<U(P,Q) mod n>, C<V(P,Q) mod n>, and C<Q^k mod n>.
-
-Other than the more consistent order of arguments, this is the same
-as the deprecated C<lucas_sequence> function.
-
-=head2 lucas_sequence
-
-  my($U, $V, $Qk) = lucas_sequence($n, $P, $Q, $k)
-
-B<lucas_sequence() is deprecated.  Use lucasuvmod() instead.>
-
-Computes C<U_k>, C<V_k>, and C<Q_k> for the Lucas sequence defined by
-C<P>,C<Q>, modulo C<n>.  The modular Lucas sequence is used in a
-number of primality tests and proofs.
-C<k> must be non-negative, and C<n> must be greater than zero.
+Also see L</lucasuvmod> for fast computation mod n.
 
 =head2 gcd
 
@@ -3415,81 +3382,18 @@ a decimal number, uses the optional base as a base to first convert to,
 then sums the digits.  This can be done with either
 C<vecsum(todigits($n, $base))> or C<sumdigits(todigitstring($n,$base))>.
 
-
-=head2 invmod
-
-  say "The inverse of 42 mod 2017 = ", invmod(42,2017);
-
-Given two integers C<a> and C<n>, return the inverse of C<a> modulo C<n>.
-If not defined, undef is returned.  If defined, then the return value
-multiplied by C<a> equals C<1> modulo C<n>.
-
-The results correspond to the Pari result of C<lift(Mod(1/a,n))>.  The
-semantics with respect to negative arguments match Pari.  Notably, a
-negative C<n> is negated, which is different from Math::BigInt, but in both
-cases the return value is still congruent to C<1> modulo C<n> as expected.
-
-=head2 sqrtmod
-
-Given two integers C<a> and C<n>, return the square root of C<a> mod C<n>.
-If no square root exists, undef is returned.  If defined, the return value
-C<r> will always satisfy C<r^2 = a mod n>.
-
-If the modulus is prime, the function will always return C<r>, the smaller
-of the two square roots (the other being C<-r mod p>.  If the modulus is
-composite, one of possibly many square roots will be returned, and it will
-not necessarily be the smallest.
-
-=head2 rootmod
-
-Given three integers C<a>, C<k>, and C<n>, returns a C<k>-th root of
-C<a> modulo C<n>, or undef if one does not exist.
-If defined, the return value C<r> will satisfy C<r^k = a mod n>.
-There is no guarantee that the smallest root will be returned.
-
-For some composites with large prime powers this may not be efficient.
-
-=head2 addmod
-
-Given three integers C<a>, C<b>, and C<n> where C<n> is positive,
-return C<(a+b) mod n>.  This is particularly useful when dealing with
-numbers that are larger than a half-word but still native size.  No
-bigint package is needed and this can be 10-200x faster than using one.
-
-=head2 submod
-
-Given three integers C<a>, C<b>, and C<n> where C<n> is positive,
-return C<(a-b) mod n>.
-
-=head2 mulmod
-
-Given three integers C<a>, C<b>, and C<n> where C<n> is positive,
-return C<(a*b) mod n>.  This is particularly useful when C<n> fits in a
-native integer.  No bigint package is needed and this can be 10-200x
-faster than using one.
-
-=head2 powmod
-
-Given three integers C<a>, C<b>, and C<n> where C<n> is positive,
-return C<(a ** b) mod n>.  Typically binary exponentiation is used, so
-the process is very efficient.  With native size inputs, no bigint
-library is needed.
-
-=head2 divmod
-
-Given three integers C<a>, C<b>, and C<n> where C<n> is positive,
-return C<(a/b) mod n>.  This is done as C<(a * (1/b mod n)) mod n>.  If
-no inverse of C<b> mod C<n> exists then undef if returned.
-
 =head2 valuation
 
   say "$n is divisible by 2 ", valuation($n,2), " times.";
 
 Given integers C<n> and C<k>, returns the numbers of times C<n> is divisible
-by C<k>.  This is a very limited version of the algebraic valuation meaning,
-just applied to integers.
-This corresponds to Pari's C<valuation> function.
-C<0> is returned if C<n> or C<k> is one of the values C<-1>, C<0>, or C<1>.
+by C<k>.  This is a very limited version of the algebraic valuation -- here
+it is just applied to integers.
+
+C<k> must be greater than 1.
+C<|n| is used, C<|n| = 0> returns undef, and C<|n| = 1> returns zero.
+
+This corresponds to Pari and SAGE's C<valuation> function.
 
 =head2 hammingweight
 
@@ -3727,7 +3631,7 @@ This is the sum of the nth powers of the primitive k-th roots of unity.
   say "exp(lambda($_)) = ", exp_mangoldt($_) for 1 .. 100;
 
 Returns EXP(Λ(n)), the exponential of the Mangoldt function (also known
-as von Mangoldt's function) for an integer value.
+as von Mangoldt's function) for a non-negative integer input.
 The Mangoldt function is equal to log p if n is prime or a power of a prime,
 and 0 otherwise.  We return the exponential so all results are integers.
 Hence the return value for C<exp_mangoldt> is:
@@ -3819,8 +3723,8 @@ bigints if overflow will be a concern.
 
 =head2 ramanujan_tau
 
-Takes a positive integer as input and returns the value of Ramanujan's tau
-function.  The result is a signed integer.
+Takes a non-negative integer as input and returns the value of
+Ramanujan's tau function.  The result is a signed integer.
 This corresponds to Pari v2.8's C<tauramanujan> function and
 Mathematica's C<RamanujanTau> function.
 
@@ -4083,18 +3987,6 @@ defined as the product of the integers 1 to C<n> with the special case
 of C<factorial(0) = 1>.  This corresponds to Pari's C<factorial(n)>
 and Mathematica's C<Factorial[n]> functions.
 
-=head2 factorialmod
-
-Given two positive integer arguments C<n> and C<m>, returns C<n! mod m>.
-This is much faster than computing the large C<factorial(n)> followed
-by a mod operation.
-
-While very efficient, this is not state of the art.  Currently,
-Fredrik Johansson's fast multi-point polynomial evaluation method as
-used in FLINT is the fastest known method.  This becomes noticeable for
-C<n> E<gt> C<10^8> or so, and the O(n^.5) versus O(n) complexity makes
-it quite extreme as the input gets larger.
-
 =head2 binomial
 
 Given integer arguments C<n> and C<k>, returns the binomial coefficient
@@ -4109,22 +4001,12 @@ case.  GMP's API does not allow negative C<k> but otherwise matches.
 L<Math::BigInt> does not implement any extensions and the results for
 C<n E<lt> 0, k > 0> are undefined.
 
-=head2 binomialmod
-
-Given integer arguments C<n>, C<k>, and C<m>, efficiently returns
-C<binomial(n,k) mod m>.  C<m> does not need to be prime.
-The result is extended to negative C<n>.
-Negative C<k> will return zero.
-C<m> must be non-negative.
-
-This corresponds to Mathematica's C<BinomialMod[n,m,p]> function.  It has
-similar functionality to Max Alekseyev's binomod.gp Pari routine.
-
 =head2 hclassno
 
-Returns 12 times the Hurwitz-Kronecker class number of the input integer C<n>.
+Given a non-negative input integer C<n>, returns 12 times the
+Hurwitz-Kronecker class number.
 This will always be an integer due to the pre-multiplication by 12.
-The result is C<0> for any input less than zero or congruent to 1 or 2 mod 4.
+The result is C<0> for any input congruent to 1 or 2 mod 4.
 
 This is related to Pari's C<qfbhclassno(n)> where C<hclassno(n)> for positive
 C<n> equals C<12 * qfbhclassno(n)> in Pari/GP.
@@ -4195,61 +4077,6 @@ second argument may be given specifying the precision to be used.
 For large C<n> values, using a lower precision may result in faster
 computation as an asymptotic formula may be used.  For precisions of
 13 or less, native floating point is used for even more speed.
-
-=head2 znorder
-
-  $order = znorder(2, next_prime(10**16)-6);
-
-Given two positive integers C<a> and C<n>, returns the multiplicative order
-of C<a> modulo C<n>.  This is the smallest positive integer C<k> such that
-C<a^k ≡ 1 mod n>.  Returns 1 if C<a = 1>.  Returns undef if C<a = 0> or if
-C<a> and C<n> are not coprime, since no value will result in 1 mod n.
-
-This corresponds to Pari's C<znorder(Mod(a,n))> function and Mathematica's
-C<MultiplicativeOrder[a,n]> function.
-
-=head2 znprimroot
-
-Given a positive integer C<n>, returns the smallest primitive root
-of C<(Z/nZ)^*>, or C<undef> if no root exists.  A root exists when
-C<euler_phi($n) == carmichael_lambda($n)>, which will be true for
-all prime C<n> and some composites.
-
-L<OEIS A033948|http://oeis.org/A033948> is a sequence of integers where
-the primitive root exists, while L<OEIS A046145|http://oeis.org/A046145>
-is a list of the smallest primitive roots, which is what this function
-produces.
-
-=head2 is_primitive_root
-
-Given two non-negative numbers C<a> and C<n>, returns C<1> if C<a> is a
-primitive root modulo C<n>, and C<0> if not.  If C<a> is a primitive root,
-then C<euler_phi(n)> is the smallest C<e> for which C<a^e = 1 mod n>.
-
-=head2 qnr
-
-Given an integer C<n>, returns the least quadratic non-residue modulo C<n>.
-This is the smallest integer C<a> where there does not exist an integer
-C<b> such that C<a = b^2 mod n>.
-
-This is the L<OEIS series A020649|http://oeis.org/A053760>.  For primes
-it is L<OEIS series A020649|http://oeis.org/A053760>.
-
-=head2 znlog
-
-  $k = znlog($a, $g, $p)
-
-Returns the integer C<k> that solves the equation C<a = g^k mod p>, or
-undef if no solution is found.  This is the discrete logarithm problem.
-
-The implementation for native integers first applies Silver-Pohlig-Hellman
-on the group order to possibly reduce the problem to a set of smaller
-problems.  The solutions are then performed using a mixture of trial,
-Shanks' BSGS, and Pollard's DLP Rho.
-
-The PP implementation is less sophisticated, with only a memory-heavy BSGS
-being used.
-
 
 =head2 legendre_phi
 
@@ -4332,6 +4159,237 @@ If the entire shuffled array is desired, this is faster than slicing
 with L</randperm> as shown in its example above.  If, however, a "pick"
 operation is desired, e.g. pick 2 random elements from a large array,
 then the slice technique can be hundreds of times faster.
+
+
+
+=head1 MODULAR ARITHMETIC
+
+=head2 OVERVIEW
+
+Functions for fast modular arithmitic are provided:
+add, subtract, multiply, divide, power, square root, nth root, inverse.
+Additionally, fast modular calculation of factorial, binomial,
+and Lucas sequences are provided.
+See L</"MODULAR FUNCTIONS"> for more functions that operation mod n.
+
+Semantics mostly follow Pari/GP, though in some cases they will indicate
+an error while we return undef.
+
+  We use the absolute value of the modulus.
+  A modulus of zero returns undef.
+  A modulus of 1 will return 0.
+  If a modular result doesn't exist, we return undef.
+
+=head2 addmod
+
+Given three integers C<a>, C<b>, and C<n> where C<n> is positive,
+return C<(a+b) mod n>.  This is particularly useful when dealing with
+numbers that are larger than a half-word but still native size.  No
+bigint package is needed and this can be 10-200x faster than using one.
+
+=head2 submod
+
+Given three integers C<a>, C<b>, and C<n> where C<n> is positive,
+return C<(a-b) mod n>.
+
+=head2 mulmod
+
+Given three integers C<a>, C<b>, and C<n> where C<n> is positive,
+return C<(a*b) mod n>.  This is particularly useful when C<n> fits in a
+native integer.  No bigint package is needed and this can be 10-200x
+faster than using one.
+
+=head2 divmod
+
+Given three integers C<a>, C<b>, and C<n> where C<n> is positive,
+return C<(a/b) mod n>.  This is done as C<(a * (1/b mod n)) mod n>.  If
+no inverse of C<b> mod C<n> exists then undef if returned.
+
+=head2 powmod
+
+Given three integers C<a>, C<b>, and C<n> where C<n> is positive,
+return C<(a ** b) mod n>.  Typically binary exponentiation is used, so
+the process is very efficient.  With native size inputs, no bigint
+library is needed.
+
+C<powmod(a,-b,n)> is calculated as C<powmod(invmod(a,n),b,n)>.
+If C<1/a mod n> does not exist, undef is returned.
+
+=head2 sqrtmod
+
+Given two integers C<a> and C<n>, return the square root of C<a> mod C<n>.
+If no square root exists, undef is returned.  If defined, the return value
+C<r> will always satisfy C<r^2 = a mod n>.
+
+As with invmod, we use C<abs(n)> for the modulus.
+
+If the modulus is prime, the function will always return C<r>, the smaller
+of the two square roots (the other being C<-r mod p>.  If the modulus is
+composite, one of possibly many square roots will be returned, and it will
+not necessarily be the smallest.
+
+=head2 rootmod
+
+Given three integers C<a>, C<k>, and C<n>, returns a C<k>-th root of
+C<a> modulo C<n>, or undef if one does not exist.
+If defined, the return value C<r> will satisfy C<r^k = a mod n>.
+There is no guarantee that the smallest root will be returned.
+
+For some composites with large prime powers this may not be efficient.
+
+C<rootmod(a,-k,n)> is calculated as C<rootmod(invmod(a,n),k,n)>.
+If C<1/a mod n> does not exist, undef is returned.
+
+=head2 invmod
+
+  say "The inverse of 42 mod 2017 = ", invmod(42,2017);
+
+Given two integers C<a> and C<n>, return the inverse of C<a> modulo C<n>.
+If not defined, undef is returned.  If defined, then the return value
+multiplied by C<a> equals C<1> modulo C<n>.
+
+The results correspond to the Pari result of C<lift(Mod(1/a,n))>.  The
+semantics with respect to negative arguments match Pari.  Notably, a
+negative C<n> is negated, which is different from Math::BigInt, but in both
+cases the return value is still congruent to C<1> modulo C<n> as expected.
+
+Mathematica uses C<Powermod[a, -1, n]>, where C<n> must be positive.
+
+=head2 factorialmod
+
+Given two positive integer arguments C<n> and C<m>, returns C<n! mod m>.
+This is much faster than computing the large C<factorial(n)> followed
+by a mod operation.
+
+While very efficient, this is not state of the art.  Currently,
+Fredrik Johansson's fast multi-point polynomial evaluation method as
+used in FLINT is the fastest known method.  This becomes noticeable for
+C<n> E<gt> C<10^8> or so, and the O(n^.5) versus O(n) complexity makes
+it quite extreme as the input gets larger.
+
+=head2 binomialmod
+
+Given integer arguments C<n>, C<k>, and C<m>, efficiently returns
+C<binomial(n,k) mod m>.  C<m> does not need to be prime.
+The result is extended to negative C<n>.
+Negative C<k> will return zero.
+C<m> must be non-negative.
+
+This corresponds to Mathematica's C<BinomialMod[n,m,p]> function.  It has
+similar functionality to Max Alekseyev's binomod.gp Pari routine.
+
+=head2 lucasumod
+
+Given integers C<P>, C<Q>, the non-negative integer C<k>, and the
+non-zero positive integer C<n>, efficiently compute
+C<lucasu(P,Q,k) mod n>.
+
+This corresponds to gmpy2's C<lucasu_mod> function.
+
+=head2 lucasvmod
+
+Given integers C<P>, C<Q>, the non-negative integer C<k>, and the
+non-zero positive integer C<n>, efficiently compute
+C<lucasv(P,Q,k) mod n>.
+
+This corresponds to gmpy2's C<lucasv_mod> function.
+
+=head2 lucasuvmod
+
+  # Compute the 5000-th Fibonacci and Lucas numbers, mod 1001
+  ($U,$V,$Qk) = lucasuvmod(1, -1, 5000, 1001);
+
+Given integers C<P>, C<Q>, the non-negative integer C<k>, and the
+non-zero positive integer C<n>, efficiently compute the k-th value
+of C<U(P,Q) mod n>, C<V(P,Q) mod n>, and C<Q^k mod n>.
+
+Other than the more consistent order of arguments, this is the same
+as the deprecated C<lucas_sequence> function.
+
+=head2 lucas_sequence
+
+  my($U, $V, $Qk) = lucas_sequence($n, $P, $Q, $k)
+
+B<lucas_sequence() is deprecated.  Use lucasuvmod() instead.>
+
+Computes C<U_k>, C<V_k>, and C<Q_k> for the Lucas sequence defined by
+C<P>,C<Q>, modulo C<n>.  The modular Lucas sequence is used in a
+number of primality tests and proofs.
+C<k> must be non-negative, and C<n> must be greater than zero.
+
+
+=head1 MODULAR FUNCTIONS
+
+=head2 OVERVIEW
+
+More functions are provided that operate mod n.  They use similar semantics
+with respect to the modulus: the absolute value is used, and a modulus of 0
+will return undef.  However the behavior with C<n = 1> is not always the same.
+
+=head2 znlog
+
+  $k = znlog($a, $g, $p)
+
+Returns the integer C<k> that solves the equation C<a = g^k mod p>, or
+undef if no solution is found.  This is the discrete logarithm problem.
+
+The implementation for native integers first applies Silver-Pohlig-Hellman
+on the group order to possibly reduce the problem to a set of smaller
+problems.  The solutions are then performed using a mixture of trial,
+Shanks' BSGS, and Pollard's DLP Rho.
+
+The PP implementation is less sophisticated, with only a memory-heavy BSGS
+being used.
+
+=head2 znorder
+
+  $order = znorder(2, next_prime(10**16)-6);
+
+Given two positive integers C<a> and C<n>, returns the multiplicative order
+of C<a> modulo C<n>.  This is the smallest positive integer C<k> such that
+C<a^k ≡ 1 mod n>.  Returns undef if C<n = 0>, C<a = 0>, or if
+C<a> and C<n> are not coprime, since no value can result in 1 mod n.
+Returns 1 if C<a = 1> or if C<n = 1>.
+
+Note the latter differs from other mod functions, because the return value
+is a positive integer, not an integer mod n.
+
+This corresponds to Pari's C<znorder(Mod(a,n))> function and Mathematica's
+C<MultiplicativeOrder[a,n]> function.
+
+=head2 znprimroot
+
+Given a positive integer C<n>, returns the smallest primitive root
+of C<(Z/nZ)^*>, or C<undef> if no root exists.  A root exists when
+C<euler_phi($n) == carmichael_lambda($n)>, which will be true for
+all prime C<n> and some composites.
+
+Like other modular functions, if C<n = 0> the function returns undef.
+
+L<OEIS A033948|http://oeis.org/A033948> is a sequence of integers where
+the primitive root exists, while L<OEIS A046145|http://oeis.org/A046145>
+is a list of the smallest primitive roots, which is what this function
+produces.
+
+=head2 is_primitive_root
+
+Given two non-negative numbers C<a> and C<n>, returns C<1> if C<a> is a
+primitive root modulo C<n>, and C<0> if not.  If C<a> is a primitive root,
+then C<euler_phi(n)> is the smallest C<e> for which C<a^e = 1 mod n>.
+
+Like other modular functions, if C<n = 0> the function returns undef.
+
+=head2 qnr
+
+Given a positive integer C<n>, returns the least quadratic non-residue
+modulo C<n>.  This is the smallest integer C<a> where there does not
+exist an integer C<b> such that C<a = b^2 mod n>.
+
+Like other modular functions, if C<n = 0> the function returns undef.
+
+This is the L<OEIS series A020649|http://oeis.org/A053760>.  For primes
+it is L<OEIS series A020649|http://oeis.org/A053760>.
+
 
 
 =head1 RANDOM NUMBERS
