@@ -3391,7 +3391,7 @@ by C<k>.  This is a very limited version of the algebraic valuation -- here
 it is just applied to integers.
 
 C<k> must be greater than 1.
-C<|n| is used, C<|n| = 0> returns undef, and C<|n| = 1> returns zero.
+C<|n|> is used, C<|n| = 0> returns undef, and C<|n| = 1> returns zero.
 
 This corresponds to Pari and SAGE's C<valuation> function.
 
@@ -4088,7 +4088,7 @@ the count of positive integers E<lt>= C<n> which are not divisible by any
 of the first C<a> primes.
 
 This corresponds to the C<legendre_phi(n,a)> function in SAGE, and the
-C<--phi n a> feature of primecount.
+C<--phi n a> feature of C<primecount>.
 
 =head2 inverse_li
 
@@ -4166,7 +4166,7 @@ then the slice technique can be hundreds of times faster.
 
 =head2 OVERVIEW
 
-Functions for fast modular arithmitic are provided:
+Functions for fast modular arithmetic are provided:
 add, subtract, multiply, divide, power, square root, nth root, inverse.
 Additionally, fast modular calculation of factorial, binomial,
 and Lucas sequences are provided.

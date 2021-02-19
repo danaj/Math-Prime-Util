@@ -42,11 +42,11 @@ add_stopwords(qw/-th
                  bernfrac bernreal harmfrac harmreal stirling hclassno
                  vecsum vecprod vecmin vecmax vecreduce vecextract vecequal
                  vecall vecany vecnone vecnotall vecfirst vecfirstidx
-                 sqrtint logint rootint powint addint subint mulint divint modint negint absint divrem tdivrem
+                 sqrtint logint rootint powint addint subint mulint divint modint negint absint divrem tdivrem fdivrem
                  qnr
                  todigits todigitstring fromdigits sumdigits hammingweight
                  tozeckendorf fromzeckendorf
-                 lucasu lucasv
+                 lucasu lucasv lucasuv lucasumod lucasvmod lucasuvmod
                  lshiftint rshiftint rashiftint
                  pp/);
 
