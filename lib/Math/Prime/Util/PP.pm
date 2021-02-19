@@ -3658,7 +3658,7 @@ sub sumdigits {
 sub invmod {
   my($a,$n) = @_;
   $n = -$n if $n < 0;
-  return ($n == 0) ? undef : 0  if $n <= 1;
+  return (undef,0)[$n] if $n <= 1;
   return if $a == 0;
   if ($n > ~0) {
     my $invmod = Math::BigInt->new("$a")->bmodinv("$n");
@@ -3721,11 +3721,10 @@ sub _verify_sqrtmod {
 sub sqrtmod {
   my($a,$n) = @_;
   _validate_integer($a);
-  _validate_num($n) || _validate_positive_integer($n);
+  _validate_integer($n);
   $n = -$n if $n < 0;
-  return ($n == 0) ? undef : 0  if $n <= 1;
-
-  $a = modint($a,$n);
+  return (undef,0)[$n] if $n <= 1;
+  $a = Math::Prime::Util::modint($a,$n);
 
   return ((powmod($a,2,$n) == $a) ? $a : undef) if $n <= 2 || $a <= 1;
 
@@ -3768,13 +3767,13 @@ sub rootmod {
   my($a,$k,$n) = @_;
   _validate_integer($a);
   _validate_integer($k);
-  _validate_num($n) || _validate_positive_integer($n);
-
-  # Be especially careful with zeros, as we can't divide or inverse them.
-
+  _validate_integer($n);
   $n = -$n if $n < 0;
-  return ($n == 0) ? undef : 0  if $n <= 1;
-  $a = modint($a,$n);
+  return (undef,0)[$n] if $n <= 1;
+  $a = Math::Prime::Util::modint($a,$n);
+
+  # Be especially careful with zeros, as we can't divide or invert them.
+
   if ($a == 0) {
     return undef if $k <= 0;
     return ($k == 0) ? 1 : 0;
@@ -3835,7 +3834,7 @@ sub rootmod {
 sub addmod {
   my($a, $b, $n) = @_;
   $n = -$n if $n < 0;
-  return ($n == 0) ? undef : 0  if $n <= 1;
+  return (undef,0)[$n] if $n <= 1;
   if ($n < INTMAX && $a < INTMAX && $b < INTMAX && $a > -INTMAX && $b > -INTMAX) {
     $a = $n - ((-$a) % $n) if $a < 0;
     $b = $n - ((-$b) % $n) if $b < 0;
@@ -3849,7 +3848,7 @@ sub addmod {
 sub submod {
   my($a, $b, $n) = @_;
   $n = -$n if $n < 0;
-  return ($n == 0) ? undef : 0  if $n <= 1;
+  return (undef,0)[$n] if $n <= 1;
   if ($n < INTMAX && $a < INTMAX && $b < INTMAX && $a > -INTMAX && $b > -INTMAX) {
     $a = $n - ((-$a) % $n) if $a < 0;
     $b = $n - ((-$b) % $n) if $b < 0;
@@ -3865,7 +3864,7 @@ sub submod {
 sub mulmod {
   my($a, $b, $n) = @_;
   $n = -$n if $n < 0;
-  return ($n == 0) ? undef : 0  if $n <= 1;
+  return (undef,0)[$n] if $n <= 1;
   return _mulmod($a,$b,$n) if $n < INTMAX && $a>0 && $a<INTMAX && $b>0 && $b<INTMAX;
   return Math::Prime::Util::_reftyped($_[0], Math::Prime::Util::GMP::mulmod($a,$b,$n))
     if $Math::Prime::Util::_GMPfunc{"mulmod"};
@@ -3876,7 +3875,7 @@ sub mulmod {
 sub divmod {
   my($a, $b, $n) = @_;
   $n = -$n if $n < 0;
-  return ($n == 0) ? undef : 0  if $n <= 1;
+  return (undef,0)[$n] if $n <= 1;
   my $ret = Math::BigInt->new("$b")->bmodinv("$n")->bmul("$a")->bmod("$n");
   if ($ret->is_nan) {
     $ret = undef;
@@ -3888,7 +3887,7 @@ sub divmod {
 sub powmod {
   my($a, $b, $n) = @_;
   $n = -$n if $n < 0;
-  return ($n == 0) ? undef : 0  if $n <= 1;
+  return (undef,0)[$n] if $n <= 1;
   if ($Math::Prime::Util::_GMPfunc{"powmod"}) {
     my $r = Math::Prime::Util::GMP::powmod($a,$b,$n);
     return (defined $r) ? Math::Prime::Util::_reftyped($_[0], $r) : undef;
@@ -4062,11 +4061,9 @@ sub is_polygonal {
 
 sub valuation {
   my($n, $k) = @_;
-  $n = -$n if defined $n && $n < 0;
-  _validate_num($n) || _validate_positive_integer($n);
-  _validate_num($k) || _validate_positive_integer($k);
   croak "valuation: k must be > 1" if $k <= 1;
-  return (undef,0)[$n] if $n <= 1;
+  $n = -$n if defined $n && $n < 0;
+  return if $n == 0;
   my $v = 0;
   if ($k == 2) { # Accelerate power of 2
     if (ref($n) eq 'Math::BigInt') {   # This can pay off for big inputs
@@ -4737,6 +4734,11 @@ sub binomial {
 
 sub binomialmod {
   my($n,$k,$m) = @_;
+  _validate_integer($n);
+  _validate_integer($k);
+  _validate_integer($m);
+  $m = -$m if $m < 0;
+  return (undef,0)[$m] if $m <= 1;
 
   return Math::Prime::Util::_reftyped($_[2], _gmpcall("binomialmod",$n,$k,$m))
     if $Math::Prime::Util::_GMPfunc{"binomialmod"};
@@ -4799,6 +4801,10 @@ sub factorial {
 
 sub factorialmod {
   my($n,$m) = @_;
+  _validate_integer($n);
+  _validate_integer($m);
+  $m = -$m if $m < 0;
+  return (undef,0)[$m] if $m <= 1;
 
   return Math::Prime::Util::GMP::factorialmod($n,$m)
     if $Math::Prime::Util::_GMPfunc{"factorialmod"};
@@ -4867,9 +4873,11 @@ sub _is_perfect_square {
 
 sub is_primitive_root {
   my($a, $n) = @_;
+  _validate_integer($a);
+  _validate_integer($n);
   $n = -$n if $n < 0;  # Ignore sign of n
   return (undef,1)[$n] if $n <= 1;
-  $a %= $n if $a < 0 || $a >= $n;
+  $a = Math::Prime::Util::modint($a, $n)  if $a < 0 || $a >= $n;
 
   return Math::Prime::Util::GMP::is_primitive_root($a,$n)
     if $Math::Prime::Util::_GMPfunc{"is_primitive_root"};
@@ -4895,8 +4903,10 @@ sub is_primitive_root {
 
 sub znorder {
   my($a, $n) = @_;
-  return if $n <= 0;
-  return 1 if $n == 1;
+  _validate_integer($n);
+  $n = -$n if $n < 0;
+  return (undef,1)[$n] if $n <= 1;
+  $a = Math::Prime::Util::modint($a, $n);
   return if $a <= 0;
   return 1 if $a == 1;
 
@@ -4938,9 +4948,9 @@ sub znorder {
 sub _dlp_trial {
   my ($a,$g,$p,$limit) = @_;
   $limit = $p if !defined $limit || $limit > $p;
-  my $t = $g->copy;
 
   if ($limit < 1_000_000_000) {
+    my $t = $g;
     for my $k (1 .. $limit) {
       return $k if $t == $a;
       $t = Math::Prime::Util::mulmod($t, $g, $p);
@@ -4948,6 +4958,7 @@ sub _dlp_trial {
     return 0;
   }
 
+  my $t = $g->copy;
   for (my $k = BONE->copy; $k < $limit; $k->binc) {
     if ($t == $a) {
       $k = _bigint_to_int($k) if $k->bacmp(BMAX) <= 0;
@@ -5004,26 +5015,34 @@ sub _dlp_bsgs {
 }
 
 sub znlog {
-  my ($a,$g,$p) =
-    map { ref($_) eq 'Math::BigInt' ? $_ : Math::BigInt->new("$_") } @_;
-  $a->bmod($p);
-  $g->bmod($p);
-  return 0 if $a == 1 || $g == 0 || $p < 2;
+  my($a, $g, $n) = @_;
+  _validate_integer($a);
+  _validate_integer($g);
+  _validate_integer($n);
+  $n = -$n if $n < 0;
+  return (undef,0,1)[$n] if $n <= 1;
+  $a = Math::Prime::Util::modint($a, $n);
+  $g = Math::Prime::Util::modint($g, $n);
+  return 0 if $a == 1 || $g == 0 || $n < 2;
+
   my $_verbose = Math::Prime::Util::prime_get_config()->{'verbose'};
 
-  # For large p, znorder can be very slow.  Do trial test first.
-  my $x = _dlp_trial($a, $g, $p, 200);
+  # For large p, znorder can be very slow.  Do a small trial test first.
+  my $x = _dlp_trial($a, $g, $n, 200);
+
+  ($a,$g,$n) = map { ref($_) eq 'Math::BigInt' ? $_ : Math::BigInt->new("$_") } ($a,$g,$n);
+
   if ($x == 0) {
-    my $n = znorder($g, $p);
-    if (defined $n && $n > 1000) {
-      $n = Math::BigInt->new("$n") unless ref($n) eq 'Math::BigInt';
-      $x = _dlp_bsgs($a, $g, $p, $n, $_verbose);
+    my $ord = znorder($g, $n);
+    if (defined $ord && $ord > 1000) {
+      $ord = Math::BigInt->new("$ord") unless ref($ord) eq 'Math::BigInt';
+      $x = _dlp_bsgs($a, $g, $n, $ord, $_verbose);
       $x = _bigint_to_int($x) if ref($x) && $x->bacmp(BMAX) <= 0;
-      return $x if $x > 0 && $g->copy->bmodpow($x, $p) == $a;
+      return $x if $x > 0 && $g->copy->bmodpow($x, $n) == $a;
       print "  BSGS giving up\n" if $x == 0 && $_verbose;
       print "  BSGS incorrect answer $x\n" if $x > 0 && $_verbose > 1;
     }
-    $x = _dlp_trial($a,$g,$p);
+    $x = _dlp_trial($a,$g,$n);
   }
   $x = _bigint_to_int($x) if ref($x) && $x->bacmp(BMAX) <= 0;
   return ($x == 0) ? undef : $x;
@@ -5031,11 +5050,9 @@ sub znlog {
 
 sub znprimroot {
   my($n) = @_;
+  _validate_integer($n);
   $n = -$n if $n < 0;
-  if ($n <= 4) {
-    return if $n == 0;
-    return $n-1;
-  }
+  return (undef,0,1,2,3)[$n] if $n <= 4;
   return if $n % 4 == 0;
   my $phi = $n-1;
   if (!is_prob_prime($n)) {
@@ -5064,9 +5081,8 @@ sub znprimroot {
 
 sub qnr {
   my($n) = @_;
-  _validate_positive_integer($n);
-
-  $n = -$n if $n < 0;  # Ignore sign of n
+  _validate_integer($n);
+  $n = -$n if $n < 0;
   return (undef,1,2)[$n] if $n <= 2;
 
   return 2 if Math::Prime::Util::kronecker(2,$n) == -1;
@@ -5377,6 +5393,13 @@ sub lucasuv {
 
 sub lucasuvmod {
   my($P, $Q, $k, $n) = @_;
+  _validate_integer($P);
+  _validate_integer($Q);
+  _validate_positive_integer($k);
+  _validate_integer($n);
+  $n = -$n if $n < 0;
+  return if $n == 0;
+
   lucas_sequence($n, $P, $Q, $k);
 }
 

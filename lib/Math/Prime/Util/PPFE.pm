@@ -152,7 +152,6 @@ sub entropy_bytes {
 *moebius = \&Math::Prime::Util::PP::moebius;
 *euler_phi = \&Math::Prime::Util::PP::euler_phi;
 *inverse_totient = \&Math::Prime::Util::PP::inverse_totient;
-*qnr = \&Math::Prime::Util::PP::qnr;
 
 *divint = \&Math::Prime::Util::PP::divint;
 *modint = \&Math::Prime::Util::PP::modint;
@@ -161,8 +160,20 @@ sub entropy_bytes {
 *fdivrem = \&Math::Prime::Util::PP::fdivrem;
 *absint = \&Math::Prime::Util::PP::absint;
 *negint = \&Math::Prime::Util::PP::negint;
+
 *sqrtmod = \&Math::Prime::Util::PP::sqrtmod;
 *rootmod = \&Math::Prime::Util::PP::rootmod;
+*factorialmod = \&Math::Prime::Util::PP::factorialmod;
+*binomialmod = \&Math::Prime::Util::PP::binomialmod;
+*lucasumod = \&Math::Prime::Util::PP::lucasumod;
+*lucasvmod = \&Math::Prime::Util::PP::lucasvmod;
+*lucasuvmod = \&Math::Prime::Util::PP::lucasuvmod;
+*znlog = \&Math::Prime::Util::PP::znlog;
+*znorder = \&Math::Prime::Util::PP::znorder;
+*znprimroot = \&Math::Prime::Util::PP::znprimroot;
+*is_primitive_root = \&Math::Prime::Util::PP::is_primitive_root;
+*qnr = \&Math::Prime::Util::PP::qnr;
+
 
 *vecequal = \&Math::Prime::Util::PP::vecequal;
 *tozeckendorf = \&Math::Prime::Util::PP::tozeckendorf;
@@ -499,16 +510,6 @@ sub is_square_free {
   _validate_integer($n);
   return Math::Prime::Util::PP::is_square_free($n);
 }
-sub is_primitive_root {
-  my($a,$n) = @_;
-  return if !defined $n || $n == 0;
-  $n = -$n if defined $n && $n < 0;
-  $a %= $n if defined $a && $a < 0;
-  _validate_positive_integer($a);
-  _validate_positive_integer($n);
-  return Math::Prime::Util::PP::is_primitive_root($a,$n);
-}
-
 sub lucas_sequence {
   my($n, $P, $Q, $k) = @_;
   my ($vp, $vq) = ($P, $Q);
@@ -547,30 +548,6 @@ sub lucasuv {
   _validate_positive_integer($k);
   return Math::Prime::Util::PP::lucasuv($P,$Q,$k);
 }
-sub lucasumod {
-  my($P, $Q, $k, $n) = @_;
-  _validate_integer($P);
-  _validate_integer($Q);
-  _validate_positive_integer($k);
-  _validate_positive_integer($n);
-  return Math::Prime::Util::PP::lucasumod($P,$Q,$k,$n);
-}
-sub lucasvmod {
-  my($P, $Q, $k, $n) = @_;
-  _validate_integer($P);
-  _validate_integer($Q);
-  _validate_positive_integer($k);
-  _validate_positive_integer($n);
-  return Math::Prime::Util::PP::lucasvmod($P,$Q,$k,$n);
-}
-sub lucasuvmod {
-  my($P, $Q, $k, $n) = @_;
-  _validate_integer($P);
-  _validate_integer($Q);
-  _validate_positive_integer($k);
-  _validate_positive_integer($n);
-  return Math::Prime::Util::PP::lucasuvmod($P,$Q,$k,$n);
-}
 
 sub kronecker {
   my($a, $b) = @_;
@@ -588,26 +565,11 @@ sub factorial {
   return Math::Prime::Util::PP::factorial($n);
 }
 
-sub factorialmod {
-  my($n, $m) = @_;
-  _validate_integer($n);
-  _validate_integer($m);
-  return Math::Prime::Util::PP::factorialmod($n, $m);
-}
-
 sub binomial {
   my($n, $k) = @_;
   _validate_integer($n);
   _validate_integer($k);
   return Math::Prime::Util::PP::binomial($n, $k);
-}
-
-sub binomialmod {
-  my($n, $k, $m) = @_;
-  _validate_integer($n);
-  _validate_integer($k);
-  _validate_positive_integer($m);
-  return Math::Prime::Util::PP::binomialmod($n, $k, $m);
 }
 
 sub stirling {
@@ -616,28 +578,6 @@ sub stirling {
   _validate_positive_integer($k);
   _validate_positive_integer($type) if defined $type;
   return Math::Prime::Util::PP::stirling($n, $k, $type);
-}
-
-sub znorder {
-  my($a, $n) = @_;
-  _validate_positive_integer($a);
-  _validate_positive_integer($n);
-  return Math::Prime::Util::PP::znorder($a, $n);
-}
-
-sub znlog {
-  my($a, $g, $p) = @_;
-  _validate_positive_integer($a);
-  _validate_positive_integer($g);
-  _validate_positive_integer($p);
-  return Math::Prime::Util::PP::znlog($a, $g, $p);
-}
-
-sub znprimroot {
-  my($n) = @_;
-  $n =~ s/^-(\d+)/$1/ if defined $n;
-  _validate_positive_integer($n);
-  return Math::Prime::Util::PP::znprimroot($n);
 }
 
 sub trial_factor {
@@ -770,27 +710,27 @@ sub invmod {
 }
 sub addmod {
   my ($a, $b, $n) = @_;
-  _validate_integer($a); _validate_integer($b); _validate_positive_integer($n);
+  _validate_integer($a); _validate_integer($b); _validate_integer($n);
   return Math::Prime::Util::PP::addmod($a,$b, $n);
 }
 sub submod {
   my ($a, $b, $n) = @_;
-  _validate_integer($a); _validate_integer($b); _validate_positive_integer($n);
+  _validate_integer($a); _validate_integer($b); _validate_integer($n);
   return Math::Prime::Util::PP::submod($a,$b, $n);
 }
 sub mulmod {
   my ($a, $b, $n) = @_;
-  _validate_integer($a); _validate_integer($b); _validate_positive_integer($n);
+  _validate_integer($a); _validate_integer($b); _validate_integer($n);
   return Math::Prime::Util::PP::mulmod($a,$b, $n);
 }
 sub divmod {
   my ($a, $b, $n) = @_;
-  _validate_integer($a); _validate_integer($b); _validate_positive_integer($n);
+  _validate_integer($a); _validate_integer($b); _validate_integer($n);
   return Math::Prime::Util::PP::divmod($a,$b, $n);
 }
 sub powmod {
   my ($a, $b, $n) = @_;
-  _validate_integer($a); _validate_integer($b); _validate_positive_integer($n);
+  _validate_integer($a); _validate_integer($b); _validate_integer($n);
   return Math::Prime::Util::PP::powmod($a,$b, $n);
 }
 sub sqrtint {
@@ -910,9 +850,7 @@ sub is_delicate_prime {
 }
 sub valuation {
   my($n, $k) = @_;
-  $n = -$n if defined $n && $n < 0;
-  $k = -$k if defined $k && $k < 0;
-  _validate_positive_integer($n);
+  _validate_integer($n);
   _validate_positive_integer($k);
   return Math::Prime::Util::PP::valuation($n, $k);
 }
