@@ -2172,8 +2172,7 @@ int binomialmod(UV *res, UV n, UV k, UV m) {
         fac[i] = ipow(fac[i], exp[i]);
       }
     }
-    *res = chinese(bin, fac, nfactors, &crt);
-    return (crt == 1) ? 1 : 0;
+    return (chinese(res, bin, fac, nfactors) == 1);
   }
   return 0;
 }
@@ -2533,7 +2532,7 @@ static UV _rootmod_composite(UV a, UV k, UV p) {
     }
     exp[i] = r;
   }
-  g = chinese(exp, fac, nfactors, &i);
+  if (chinese(&g, exp, fac, nfactors) != 1) return 0;
   return g;
 }
 
@@ -2581,11 +2580,11 @@ int prep_pow_inv(UV *a, UV *k, int kstatus, UV n) {
 
 /* works only for co-prime inputs and also slower than the algorithm below,
  * but handles the case where IV_MAX < lcm <= UV_MAX.
+ * status = 1 means good result, 0 means try another method.
  */
-static UV _simple_chinese(UV* a, UV* n, UV num, int* status) {
+static int _simple_chinese(UV *r, UV* a, UV* n, UV num) {
   UV i, lcm = 1, res = 0;
-  *status = 0;
-  if (num == 0) return 0;
+  if (num == 0) { *r = 0; return 1; }  /* Dubious return */
 
   for (i = 0; i < num; i++) {
     UV ni = n[i];
@@ -2603,16 +2602,15 @@ static UV _simple_chinese(UV* a, UV* n, UV num, int* status) {
     term = mulmod(p, mulmod(a[i], inverse, lcm), lcm);
     res = addmod(res, term, lcm);
   }
-  *status = 1;
-  return res;
+  *r = res;
+  return 1;
 }
 
 /* status: 1 ok, -1 no inverse, 0 overflow */
-UV chinese(UV* a, UV* n, UV num, int* status) {
+int chinese(UV *r, UV* a, UV* n, UV num) {
   static unsigned short sgaps[] = {7983,3548,1577,701,301,132,57,23,10,4,1,0};
   UV gcd, i, j, lcm, sum, gi, gap;
-  *status = 1;
-  if (num == 0) return 0;
+  if (num == 0) { *r = 0; return 1; }  /* Dubious return */
 
   /* Sort modulii, largest first */
   for (gi = 0, gap = sgaps[gi]; gap >= 1; gap = sgaps[++gi]) {
@@ -2624,17 +2622,17 @@ UV chinese(UV* a, UV* n, UV num, int* status) {
     }
   }
 
-  if (n[num-1] == 0) { *status = -1; return 0; }
-  if (n[0] > IV_MAX) return _simple_chinese(a,n,num,status);
+  if (n[num-1] == 0) return -1;  /* mod 0 */
+  if (n[0] > IV_MAX) return _simple_chinese(r,a,n,num);
   lcm = n[0]; sum = a[0] % n[0];
   for (i = 1; i < num; i++) {
     IV u, v, t, s;
     UV vs, ut;
     gcd = gcdext(lcm, n[i], &u, &v, &s, &t);
-    if (gcd != 1 && ((sum % gcd) != (a[i] % gcd))) { *status = -1; return 0; }
+    if (gcd != 1 && ((sum % gcd) != (a[i] % gcd))) return -1;
     if (s < 0) s = -s;
     if (t < 0) t = -t;
-    if (s > (IV)(IV_MAX/lcm)) return _simple_chinese(a,n,num,status);
+    if (s > (IV)(IV_MAX/lcm)) return _simple_chinese(r,a,n,num);
     lcm *= s;
     if (u < 0) u += lcm;
     if (v < 0) v += lcm;
@@ -2642,7 +2640,8 @@ UV chinese(UV* a, UV* n, UV num, int* status) {
     ut = mulmod((UV)u, (UV)t, lcm);
     sum = addmod(  mulmod(vs, sum, lcm),  mulmod(ut, a[i], lcm),  lcm  );
   }
-  return sum;
+  *r = sum;
+  return 1;
 }
 
 /******************************************************************************/
@@ -4257,6 +4256,9 @@ int is_powerful(UV n, UV k) {
     n >>= ctz(n);
     if (n == 1) return 1;
   }
+
+  if (k > MPU_MAX_POW3) return 0;
+  /* if (k > logint(n,3)) return 0; */
 
   /* Quick checks */
   if (k == 2) {

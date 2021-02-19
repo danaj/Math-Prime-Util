@@ -1419,7 +1419,7 @@ chinese(...)
       }
     }
     if (status)
-      ret = chinese(an, an+items, items, &status);
+      status = chinese(&ret, an, an+items, items);
     Safefree(an);
     if (status == -1) XSRETURN_UNDEF;
     if (status)       XSRETURN_UV(ret);
