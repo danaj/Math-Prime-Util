@@ -3115,7 +3115,12 @@ Comparison to similar functions in other software:
     chinese( [Mod(a1,m1), Mod(a2,m2), ...] )
 
   Mathematica:
-    ChineseRemainder[{a1, a2, ...}{m1, m2, ...}]
+    ChineseRemainder[{a1, a2, ...}, {m1, m2, ...}]
+
+  SAGE:
+    crt( [a1,m1], [a2,m2], ... )
+    crt(a1,m1,a2,m2,...)
+    CRT_list( [a1,a2,...], [m1,m2,...] )
 
 =head2 vecsum
 
@@ -4182,71 +4187,66 @@ an error while we return undef.
 
 =head2 addmod
 
-Given three integers C<a>, C<b>, and C<n> where C<n> is positive,
-return C<(a+b) mod n>.  This is particularly useful when dealing with
-numbers that are larger than a half-word but still native size.  No
-bigint package is needed and this can be 10-200x faster than using one.
+Given three integers C<a>, C<b>, and C<n>, return C<(a+b) mod |n|>.
+This is particularly useful when dealing with numbers that are larger
+than a half-word but still native size.
+No bigint package is needed and this can be 10-200x faster than using one.
 
 =head2 submod
 
-Given three integers C<a>, C<b>, and C<n> where C<n> is positive,
-return C<(a-b) mod n>.
+Given three integers C<a>, C<b>, and C<n>, return C<(a-b) mod |n|>.
 
 =head2 mulmod
 
-Given three integers C<a>, C<b>, and C<n> where C<n> is positive,
-return C<(a*b) mod n>.  This is particularly useful when C<n> fits in a
-native integer.  No bigint package is needed and this can be 10-200x
-faster than using one.
+Given three integers C<a>, C<b>, and C<n>, return C<(a*b) mod |n|>.
+This is particularly useful when C<n> fits in a native integer.
+No bigint package is needed and this can be 10-200x faster than using one.
 
 =head2 divmod
 
-Given three integers C<a>, C<b>, and C<n> where C<n> is positive,
-return C<(a/b) mod n>.  This is done as C<(a * (1/b mod n)) mod n>.  If
-no inverse of C<b> mod C<n> exists then undef if returned.
+Given three integers C<a>, C<b>, and C<n>, return C<(a/b) mod |n|>.
+This is done as C<(a * (1/b mod |n|)) mod |n|>.
+If no inverse of C<b> mod C<|n|> exists then undef if returned.
 
 =head2 powmod
 
-Given three integers C<a>, C<b>, and C<n> where C<n> is positive,
-return C<(a ** b) mod n>.  Typically binary exponentiation is used, so
-the process is very efficient.  With native size inputs, no bigint
-library is needed.
+Given three integers C<a>, C<b>, and C<n>, return C<(a ** b) mod |n|>.
+Typically binary exponentiation is used, so the process is very efficient.
+With native size inputs, no bigint library is needed.
 
 C<powmod(a,-b,n)> is calculated as C<powmod(invmod(a,n),b,n)>.
-If C<1/a mod n> does not exist, undef is returned.
+If C<1/a mod |n|> does not exist, undef is returned.
 
 =head2 sqrtmod
 
-Given two integers C<a> and C<n>, return the square root of C<a> mod C<n>.
+Given two integers C<a> and C<n>, return the square root of C<a> mod C<|n|>.
 If no square root exists, undef is returned.  If defined, the return value
-C<r> will always satisfy C<r^2 = a mod n>.
-
-As with invmod, we use C<abs(n)> for the modulus.
+C<r> will always satisfy C<r^2 = a mod |n|>.
 
 If the modulus is prime, the function will always return C<r>, the smaller
-of the two square roots (the other being C<-r mod p>.  If the modulus is
+of the two square roots (the other being C<-r mod |n|>.  If the modulus is
 composite, one of possibly many square roots will be returned, and it will
 not necessarily be the smallest.
 
 =head2 rootmod
 
 Given three integers C<a>, C<k>, and C<n>, returns a C<k>-th root of
-C<a> modulo C<n>, or undef if one does not exist.
-If defined, the return value C<r> will satisfy C<r^k = a mod n>.
+C<a> modulo C<|n|>, or undef if one does not exist.
+If defined, the return value C<r> will satisfy C<r^k = a mod |n|>.
 There is no guarantee that the smallest root will be returned.
 
 For some composites with large prime powers this may not be efficient.
 
 C<rootmod(a,-k,n)> is calculated as C<rootmod(invmod(a,n),k,n)>.
-If C<1/a mod n> does not exist, undef is returned.
+If C<1/a mod |n|> does not exist, undef is returned.
 
 =head2 invmod
 
   say "The inverse of 42 mod 2017 = ", invmod(42,2017);
 
-Given two integers C<a> and C<n>, return the inverse of C<a> modulo C<n>.
+Given two integers C<a> and C<n>, return the inverse of C<a> modulo C<|n|>.
 If not defined, undef is returned.  If defined, then the return value
-multiplied by C<a> equals C<1> modulo C<n>.
+multiplied by C<a> equals C<1> modulo C<|n|>.
 
 The results correspond to the Pari result of C<lift(Mod(1/a,n))>.  The
 semantics with respect to negative arguments match Pari.  Notably, a
@@ -4257,40 +4257,40 @@ Mathematica uses C<Powermod[a, -1, n]>, where C<n> must be positive.
 
 =head2 factorialmod
 
-Given two positive integer arguments C<n> and C<m>, returns C<n! mod m>.
+Given a non-negative integer C<n> and an integer C<m>, returns C<n! mod |m|>.
 This is much faster than computing the large C<factorial(n)> followed
 by a mod operation.
 
 While very efficient, this is not state of the art.  Currently,
 Fredrik Johansson's fast multi-point polynomial evaluation method as
-used in FLINT is the fastest known method.  This becomes noticeable for
-C<n> E<gt> C<10^8> or so, and the O(n^.5) versus O(n) complexity makes
-it quite extreme as the input gets larger.
+used in FLINT is the fastest known implementation.
+This becomes noticeable for C<n> E<gt> C<10^8> or so,
+and the O(n^.5) versus O(n) complexity is very apparent with large C<n>.
 
 =head2 binomialmod
 
-Given integer arguments C<n>, C<k>, and C<m>, efficiently returns
-C<binomial(n,k) mod m>.  C<m> does not need to be prime.
+Given integer arguments C<n>, C<k>, and C<m>, returns C<binomial(n,k) mod |m|>.
+This is much faster than computing the large C<binomial(n,k)> followed
+by a mod operation.
+
+C<|m|> does not need to be prime.
 The result is extended to negative C<n>.
 Negative C<k> will return zero.
-C<m> must be non-negative.
 
 This corresponds to Mathematica's C<BinomialMod[n,m,p]> function.  It has
-similar functionality to Max Alekseyev's binomod.gp Pari routine.
+similar functionality to Max Alekseyev's C<binomod.gp> Pari routine.
 
 =head2 lucasumod
 
 Given integers C<P>, C<Q>, the non-negative integer C<k>, and the
-non-zero positive integer C<n>, efficiently compute
-C<lucasu(P,Q,k) mod n>.
+integer C<n>, efficiently compute C<lucasu(P,Q,k) mod |n|>.
 
 This corresponds to gmpy2's C<lucasu_mod> function.
 
 =head2 lucasvmod
 
 Given integers C<P>, C<Q>, the non-negative integer C<k>, and the
-non-zero positive integer C<n>, efficiently compute
-C<lucasv(P,Q,k) mod n>.
+integer C<n>, efficiently compute C<lucasv(P,Q,k) mod |n|>.
 
 This corresponds to gmpy2's C<lucasv_mod> function.
 
@@ -4300,8 +4300,8 @@ This corresponds to gmpy2's C<lucasv_mod> function.
   ($U,$V,$Qk) = lucasuvmod(1, -1, 5000, 1001);
 
 Given integers C<P>, C<Q>, the non-negative integer C<k>, and the
-non-zero positive integer C<n>, efficiently compute the k-th value
-of C<U(P,Q) mod n>, C<V(P,Q) mod n>, and C<Q^k mod n>.
+integer C<n>, efficiently compute the k-th value
+of C<U(P,Q) mod |n|>, C<V(P,Q) mod |n|>, and C<Q^k mod |n|>.
 
 Other than the more consistent order of arguments, this is the same
 as the deprecated C<lucas_sequence> function.
@@ -4313,9 +4313,9 @@ as the deprecated C<lucas_sequence> function.
 B<lucas_sequence() is deprecated.  Use lucasuvmod() instead.>
 
 Computes C<U_k>, C<V_k>, and C<Q_k> for the Lucas sequence defined by
-C<P>,C<Q>, modulo C<n>.  The modular Lucas sequence is used in a
+C<P>,C<Q>, modulo C<|n|>.  The modular Lucas sequence is used in a
 number of primality tests and proofs.
-C<k> must be non-negative, and C<n> must be greater than zero.
+C<k> must be non-negative, and C<n> must be non-zero.
 
 
 =head1 MODULAR FUNCTIONS
@@ -4330,7 +4330,7 @@ will return undef.  However the behavior with C<n = 1> is not always the same.
 
   $k = znlog($a, $g, $p)
 
-Returns the integer C<k> that solves the equation C<a = g^k mod p>, or
+Returns the integer C<k> that solves the equation C<a = g^k mod |p|>, or
 undef if no solution is found.  This is the discrete logarithm problem.
 
 The implementation for native integers first applies Silver-Pohlig-Hellman
@@ -4346,8 +4346,8 @@ being used.
   $order = znorder(2, next_prime(10**16)-6);
 
 Given two positive integers C<a> and C<n>, returns the multiplicative order
-of C<a> modulo C<n>.  This is the smallest positive integer C<k> such that
-C<a^k ≡ 1 mod n>.  Returns undef if C<n = 0>, C<a = 0>, or if
+of C<a> modulo C<|n|>.  This is the smallest positive integer C<k> such that
+C<a^k ≡ 1 mod |n|>.  Returns undef if C<n = 0>, C<a = 0>, or if
 C<a> and C<n> are not coprime, since no value can result in 1 mod n.
 Returns 1 if C<a = 1> or if C<n = 1>.
 
@@ -4359,10 +4359,11 @@ C<MultiplicativeOrder[a,n]> function.
 
 =head2 znprimroot
 
-Given a positive integer C<n>, returns the smallest primitive root
-of C<(Z/nZ)^*>, or C<undef> if no root exists.  A root exists when
-C<euler_phi($n) == carmichael_lambda($n)>, which will be true for
-all prime C<n> and some composites.
+Given an integer C<n>, where C<n> is treated as C<|n>,
+ returns the smallest primitive root of C<(Z/nZ)^*>,
+or C<undef> if no root exists.
+A root exists when C<euler_phi($n) == carmichael_lambda($n)>,
+which will be true for all prime C<n> and some composites.
 
 Like other modular functions, if C<n = 0> the function returns undef.
 
@@ -4373,17 +4374,17 @@ produces.
 
 =head2 is_primitive_root
 
-Given two non-negative numbers C<a> and C<n>, returns C<1> if C<a> is a
-primitive root modulo C<n>, and C<0> if not.  If C<a> is a primitive root,
+Given two integers C<a> and C<n>, returns C<1> if C<a> is a
+primitive root modulo C<|n|>, and C<0> if not.  If C<a> is a primitive root,
 then C<euler_phi(n)> is the smallest C<e> for which C<a^e = 1 mod n>.
 
 Like other modular functions, if C<n = 0> the function returns undef.
 
 =head2 qnr
 
-Given a positive integer C<n>, returns the least quadratic non-residue
-modulo C<n>.  This is the smallest integer C<a> where there does not
-exist an integer C<b> such that C<a = b^2 mod n>.
+Given an integer C<n>, returns the least quadratic non-residue
+modulo C<|n|>.  This is the smallest integer C<a> where there does not
+exist an integer C<b> such that C<a = b^2 mod |n|>.
 
 Like other modular functions, if C<n = 0> the function returns undef.
 
