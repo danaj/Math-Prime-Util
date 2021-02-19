@@ -197,18 +197,18 @@ static int _validate_int(pTHX_ SV* n, int negok)
   } else if (ptr[0] == '+') {
     ptr++; len--;                      /* Allow a single plus sign */
   }
+  ret    = isneg ? -1           : 1;
+  maxlen = isneg ? ivmax_maxlen : uvmax_maxlen;
+  maxstr = isneg ? ivmin_str    : uvmax_str;
   if (len == 0 || !isDIGIT(ptr[0]))
     croak("Parameter '%" SVf "' %s", n, mustbe);
   while (len > 0 && *ptr == '0')       /* Strip all leading zeros */
     { ptr++; len--; }
-  if (len > (negok ? ivmax_maxlen : uvmax_maxlen))
+  if (len > maxlen)
     return 0;                          /* Huge number, don't even look at it */
   for (i = 0; i < len; i++)            /* Ensure all characters are digits */
     if (!isDIGIT(ptr[i]))
       croak("Parameter '%" SVf "' %s", n, mustbe);
-  ret    = isneg ? -1           : 1;
-  maxlen = isneg ? ivmax_maxlen : uvmax_maxlen;
-  maxstr = isneg ? ivmin_str    : uvmax_str;
   if (len < maxlen)                    /* Valid small integer */
     return ret;
   for (i = 0; i < maxlen; i++) {       /* Check if in range */
@@ -1454,7 +1454,8 @@ void lucasuvmod(IN IV P, IN IV Q, IN SV* svk, IN SV* svn)
     UV k, n, U, V, Qk;
   PPCODE:
     if (_validate_and_set(&k, aTHX_ svk, IFLAG_POS) &&
-        _validate_and_set(&n, aTHX_ svn, IFLAG_POS | IFLAG_NONZERO)) {
+        _validate_and_set(&n, aTHX_ svn, IFLAG_ABS)) {
+      if (n == 0) XSRETURN_UNDEF;
       lucas_seq(&U, &V, &Qk, n, P, Q, k);
       switch (ix) {
         case 0:  PUSHs(sv_2mortal(newSVuv( U )));
