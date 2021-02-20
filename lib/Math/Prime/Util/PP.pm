@@ -1493,7 +1493,8 @@ sub _totpred {
   return 1 if $n == 1 || ($n < $maxd && Math::Prime::Util::is_prime(2*$n+1));
   for my $d (Math::Prime::Util::divisors($n)) {
     last if $d >= $maxd;
-    my $p = ($d < (INTMAX >> 1))  ?  ($d<<1)+1  :  Math::Prime::Util::mulint(2,$d)+1;
+    my $p = ($d < (INTMAX >> 2))  ?  ($d << 1) + 1 :
+            Math::Prime::Util::addint(Math::Prime::Util::lshiftint($d,1),1);
     next unless Math::Prime::Util::is_prime($p);
     my $r = int($n / $d);
     while (1) {
@@ -3280,7 +3281,7 @@ sub powint {
   return $a ** $b if ref($a) || ref($b);
 
   # Try normal integer exponentiation (floating point)
-  my $ires = int($a ** $b);
+  my $ires = "" . int($a ** $b);
   return $ires if abs($ires) < (1 << 53);
 
   my $res = Math::BigInt->new($a)->bpow($b);
@@ -3900,10 +3901,13 @@ sub powmod {
   my($a, $b, $n) = @_;
   $n = -$n if $n < 0;
   return (undef,0)[$n] if $n <= 1;
+  return ($b > 0) ? 0 : 1  if $a == 0;
+
   if ($Math::Prime::Util::_GMPfunc{"powmod"}) {
     my $r = Math::Prime::Util::GMP::powmod($a,$b,$n);
     return (defined $r) ? Math::Prime::Util::_reftyped($_[0], $r) : undef;
   }
+
   my $ret = Math::BigInt->new("$a")->bmod("$n")->bmodpow("$b","$n");
   if ($ret->is_nan) {
     $ret = undef;
@@ -4358,9 +4362,9 @@ sub stirling {
   croak "stirling type must be 1, 2, or 3" unless $type == 1 || $type == 2 || $type == 3;
   if ($m == 1) {
     return 1 if $type == 2;
-    return factorial($n) if $type == 3;
-    return factorial($n-1) if $n&1;
-    return vecprod(-1, factorial($n-1));
+    return Math::Prime::Util::factorial($n) if $type == 3;
+    return Math::Prime::Util::factorial($n-1) if $n & 1;
+    return vecprod(-1, Math::Prime::Util::factorial($n-1));
   }
   return Math::Prime::Util::_reftyped($_[0], Math::Prime::Util::GMP::stirling($n,$m,$type))
     if $Math::Prime::Util::_GMPfunc{"stirling"};
@@ -4375,7 +4379,8 @@ sub stirling {
                 Math::Prime::Util::powint($j,$n),
                 Math::Prime::Util::binomial($m,$j)
               );
-      push @terms, (($m-$j) & 1)  ?  "-$t"  :  $t;
+      $t = Math::Prime::Util::negint($t) if ($m-$j) & 1;
+      push @terms, $t;
     }
     $s = Math::Prime::Util::vecsum(@terms) / factorial($m);
   } else {
@@ -4386,7 +4391,8 @@ sub stirling {
         Math::Prime::Util::binomial(2 * $n - $m, $n - $k - $m),
         Math::Prime::Util::stirling($k - $m + $n, $k, 2),
       );
-      push @terms, ($k & 1)  ?  "-$t"  :  $t;
+      $t = Math::Prime::Util::negint($t) if $k & 1;
+      push @terms, $t;
     }
     $s = Math::Prime::Util::vecsum(@terms);
   }
@@ -4694,11 +4700,11 @@ sub _binomialu {
   return ($k == $n) ? 1 : 0 if $k >= $n;
   $k = $n - $k if $k > ($n >> 1);
   foreach my $d (1 .. $k) {
-    if ($r >= int(~0/$n)) {
+    if ($r >= int(INTMAX/$n)) {
       my($g, $nr, $dr);
       $g = _gcd_ui($n, $d);   $nr = int($n/$g);   $dr = int($d/$g);
       $g = _gcd_ui($r, $dr);  $r  = int($r/$g);   $dr = int($dr/$g);
-      return 0 if $r >= int(~0/$nr);
+      return 0 if $r >= int(INTMAX/$nr);
       $r *= $nr;
       $r = int($r/$dr);
     } else {
@@ -4726,11 +4732,13 @@ sub binomial {
   my $r;
   if ($n >= 0) {
     $r = _binomialu($n, $k);
-    return $r  if $r > 0;
+    return $r  if $r > 0 && $r eq int($r);
   } else {
     $r = _binomialu(-$n+$k-1, $k);
-    return $r   if $r > 0 && !($k & 1);
-    return -$r  if $r > 0 && $r <= (~0>>1);
+    if ($r > 0 && $r eq int($r)) {
+      return $r   if !($k & 1);
+      return Math::Prime::Util::negint($r);
+    }
   }
 
   # 4. Overflow.  Solve using Math::BigInt
@@ -5177,24 +5185,23 @@ sub lucas_sequence {
   croak "lucas_sequence: n must be > 0" if $n < 1;
   croak "lucas_sequence: k must be >= 0" if $k < 0;
   return (0,0,0) if $n == 1;
-  $P = Math::Prime::Util::modint($P,$n) if abs($P) >= $n;
-  $Q = Math::Prime::Util::modint($Q,$n) if abs($Q) >= $n;
+  $P = Math::Prime::Util::modint($P,$n) if $P < 0 || $P >= $n;
+  $Q = Math::Prime::Util::modint($Q,$n) if $Q < 0 || $Q >= $n;
 
   $n = Math::BigInt->new("$n") unless ref($n) eq 'Math::BigInt';
   return (0, 2 % $n, 1) if $k == 0;
 
-  my $ZERO = $n->copy->bzero;
-  $P = $ZERO+$P unless ref($P) eq 'Math::BigInt';
-  $Q = $ZERO+$Q unless ref($Q) eq 'Math::BigInt';
-  my $D = $P*$P - BTWO*BTWO*$Q;
-  if ($D->is_zero) {
-    # If D is zero, P must be even (P*P = 4Q)
-    my $S = $P >> 1;
-    my $U = $S->copy->bmodpow($k-1,$n)->bmul($k)->bmod($n);
+  my $D = Math::Prime::Util::subint(
+            Math::Prime::Util::mulint($P,$P),
+            Math::Prime::Util::mulint(4,$Q)
+          );
+  if ($D == 0) {
+    my $S = $P >> 1;  # If D is zero, P must be even (P*P = 4Q)
+    my $U = Math::Prime::Util::mulmod($k, Math::Prime::Util::powmod($S, $k-1, $n), $n);
     #die "  U $U : $P $Q $k $n\n" unless $U == modint(lucasu($P,$Q,$k),$n);
-    my $V = $S->copy->bmodpow($k,$n)->bmul(BTWO)->bmod($n);
+    my $V = Math::Prime::Util::mulmod(2, Math::Prime::Util::powmod($S, $k, $n), $n);
     #die "  V $V : $P $Q $k $n\n" unless $V == modint(lucasv($P,$Q,$k),$n);
-    my $Qk = ($ZERO+$Q)->bmodpow($k, $n);
+    my $Qk = Math::Prime::Util::powmod($Q, $k, $n);
     return ($U, $V, $Qk);
   }
 
@@ -5202,6 +5209,11 @@ sub lucas_sequence {
     return map { ($_ > ''.~0) ? Math::BigInt->new(''.$_) : $_ }
            Math::Prime::Util::GMP::lucas_sequence($n, $P, $Q, $k);
   }
+
+  my $ZERO = $n->copy->bzero;
+  $P = $ZERO+$P unless ref($P) eq 'Math::BigInt';
+  $Q = $ZERO+$Q unless ref($Q) eq 'Math::BigInt';
+  $D = $ZERO+$D unless ref($D) eq 'Math::BigInt';
 
   my $U = BONE->copy;
   my $V = $P->copy;
@@ -5816,7 +5828,7 @@ sub _poly_mod_pow {
   my $p = $power;
 
   while ($p) {
-    $res = _poly_mod_mul($res, $pn, $r, $mod) if ($p & 1);
+    $res = _poly_mod_mul($res, $pn, $r, $mod) if ($p % 2) != 0;
     $p >>= 1;
     $pn  = _poly_mod_mul($pn,  $pn, $r, $mod) if $p;
   }
@@ -5826,8 +5838,9 @@ sub _poly_mod_pow {
 sub _test_anr {
   my($a, $n, $r) = @_;
   my $pp = _poly_mod_pow(_poly_new($a, 1), $n, $r, $n);
-  $pp->[$n % $r] = (($pp->[$n % $r] || 0) -  1) % $n;  # subtract X^(n%r)
-  $pp->[      0] = (($pp->[      0] || 0) - $a) % $n;  # subtract a
+  my $nr = $n % $r;
+  $pp->[$nr] = (($pp->[$nr] || 0) -  1) % $n;  # subtract X^(n%r)
+  $pp->[  0] = (($pp->[  0] || 0) - $a) % $n;  # subtract a
   return 0 if scalar grep { $_ } @$pp;
   1;
 }
