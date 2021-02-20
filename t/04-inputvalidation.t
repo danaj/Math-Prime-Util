@@ -85,7 +85,7 @@ SKIP: {
 
 SKIP: {
   skip "You need to upgrade either Perl or Carp to avoid invalid non-native inputs from causing a segfault.  Makefile.PL should have requested a Carp upgrade.", 1
-    if $] < 5.008 && $Carp::VERSION < 1.17;
+    if $] < 5.008 || $Carp::VERSION < 1.17;
   eval { next_prime("11111111111111111111111111111111111111111x"); };
   like($@, $qrnn, "next_prime('111...111x')");
 }

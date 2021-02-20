@@ -325,13 +325,13 @@ my @negpowers = (qw/0 0 0 3 0 5 3 7 0 9 5 11 3 13 7 15 0 17 9 19 5 21 11 23 3 25
 push @negpowers, (qw/0 33 17 35 9 37 19 39 5 41 21 43 11 45 23 47 3 49 25 51 13 53 27 55 7 57 29 59 15 61 31 63 0 65 33 67 17 69 35 71 9 73 37 75 19 77 39 79 5 81 41 83 21 85 43 87 11 89 45 91 23 93 47 95 3 97 49 99 25 101 51 103 13 105 53 107 27 109 55 111 7 113 57 115 29 117 59 119 15 121 61 123 31 125 63 127 0 129 65 131 33 133 67 135 17 137 69 139 35 141 71 143 9 145 73 147 37 149 75/) if $extra;
 # Work around bug in Math::BigInt::Pari and Perl pre-5.18.
 if ($bigintlib eq 'Pari' && $] < "5.018") {
-  is_deeply( [map { is_power("".-7 ** $_) } 0 .. $#negpowers], \@negpowers, "-7 ^ i for 0 .. $#negpowers" );
-  is_deeply( [map { my $r; my $p=is_power("".-7 ** $_, "0", \$r); $p ? (0+$r) ** $p : -7 ** $_; } 0 .. $#negpowers], [map { -7 ** $_ } 0 .. $#negpowers], "correct root from is_power for -7^i for 0 .. $#negpowers" );
+  is_deeply( [map { is_power("".-7 ** $_) } int("0") .. $#negpowers], \@negpowers, "-7 ^ i for 0 .. $#negpowers" );
+  is_deeply( [map { my $r; my $p=is_power("".-7 ** $_, "0", \$r); $p ? (0+$r) ** $p : -7 ** $_; } int("0") .. $#negpowers], [map { -7 ** $_ } int("0") .. $#negpowers], "correct root from is_power for -7^i for 0 .. $#negpowers" );
 } else {
-  is_deeply( [map { is_power(-7 ** $_) } 0 .. $#negpowers], \@negpowers, "-7 ^ i for 0 .. $#negpowers" );
+  is_deeply( [map { is_power(-7 ** $_) } int("0") .. $#negpowers], \@negpowers, "-7 ^ i for 0 .. $#negpowers" );
   SKIP: {
     skip "Skipping some is_power tests on broken 64-bit Perl", 1 if $broken64;
-    is_deeply( [map { my $r; my $p=is_power(-7 ** $_, "0", \$r); $p ? (1*$r) ** $p : -7 ** $_; } 0 .. $#negpowers], [map { -7 ** $_ } 0 .. $#negpowers], "correct root from is_power for -7^i for 0 .. $#negpowers" );
+    is_deeply( [map { my $r; my $p=is_power(-7 ** $_, "0", \$r); $p ? (1*$r) ** $p : -7 ** $_; } int("0") .. $#negpowers], [map { -7 ** $_ } int("0") .. $#negpowers], "correct root from is_power for -7^i for 0 .. $#negpowers" );
   }
 }
 
@@ -358,10 +358,11 @@ cmp_ok( $randprime, '>', 2**79, "random 80-bit prime is not too small");
 cmp_ok( $randprime, '<', 2**80, "random 80-bit prime is not too big");
 ok( is_prime($randprime), "random 80-bit prime is just right");
 
-$randprime = random_safe_prime(180);
-cmp_ok( $randprime, '>', 2**179, "random 180-bit safe prime is not too small");
-cmp_ok( $randprime, '<', 2**180, "random 180-bit safe prime is not too big");
-ok( is_prime($randprime), "random 180-bit safe prime is just right");
+# This routine is very slow without GMP
+$randprime = random_safe_prime(100);
+cmp_ok( $randprime, '>', 2**99, "random 100-bit safe prime is not too small");
+cmp_ok( $randprime, '<', 2**100, "random 100-bit safe prime is not too big");
+ok( is_prime($randprime), "random 100-bit safe prime is just right");
 
 $randprime = random_strong_prime(180);
 cmp_ok( $randprime, '>', 2**179, "random 180-bit strong prime is not too small");
@@ -412,7 +413,7 @@ is( valuation(6**10000-1,5), 5, "valuation(6^10000,5) = 5" );
   is( vecequal([$ten,20],[$ten,20]), 1, "vecequal with Math::BigInt" );
   is( vecequal([$ten,20],[10,20]), 1, "vecequal with Math::BigInt and scalar" );
   is( vecequal([$ten,$six],[$ten,$six]), 1, "vecequal with equal Math::BigInt" );
-  is( vecequal([$ten,20],[$six,20]), 0, "vecequal with unequal Math::BigInt" );
+  is( vecequal([$ten,20],[$six,20]), "0", "vecequal with unequal Math::BigInt" );
 
   ok(!eval { vecequal([$ten,{}],[$ten,{}]); }, "vecequal with hash should error");
 }

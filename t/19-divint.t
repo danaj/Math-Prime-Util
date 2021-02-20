@@ -117,7 +117,7 @@ is(powint(-544,7)-1,"-14099129446552305665","powint(-544,7)-1 = -140991294465523
   for my $a (-3 .. 3) {
     for my $b (-3 .. 3) {
       push @got, mulint($a,$b);
-      push @exp, $a*$b;
+      push @exp, ($a == 0 || $b == 0) ? 0 : $a*$b;  # Perl 5.6: -1*0 = -0
     }
   }
   is_deeply( \@got, \@exp, "mulint( -3 .. 3, -3 .. 3)" );
@@ -271,7 +271,7 @@ for my $d (@negshifts) {
 { my(@got,@exp);
   for my $n (-100 .. 100) {
     push @got, negint($n);
-    push @exp, -$n;
+    push @exp, ($n == 0) ? 0 : -$n;
   }
   is_deeply( \@got, \@exp, "negint( -100 .. 100)" );
   is( negint("0"), 0, "negint(0) = 0" );

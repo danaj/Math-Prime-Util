@@ -1153,15 +1153,15 @@ sub is_powerful {
 
   # First quick checks for inadmissibility.
   if ($k == 2) {
-    return 0 if !($n%3) && ($n%9);
-    return 0 if !($n%5) && ($n%25);
-    return 0 if !($n%7) && ($n%49);
-    return 0 if !($n%11) && ($n%121);
+    return 0 if ($n%3)  == 0 && ($n%9) != 0;
+    return 0 if ($n%5)  == 0 && ($n%25) != 0;
+    return 0 if ($n%7)  == 0 && ($n%49) != 0;
+    return 0 if ($n%11) == 0 && ($n%121) != 0;
   } else {
-    return 0 if !($n%3) && ($n%27);
-    return 0 if !($n%5) && ($n%125);
-    return 0 if !($n%7) && ($n%343);
-    return 0 if !($n%11) && ($n%1331);
+    return 0 if ($n%3)  == 0 && ($n%27) != 0;
+    return 0 if ($n%5)  == 0 && ($n%125) != 0;
+    return 0 if ($n%7)  == 0 && ($n%343) != 0;
+    return 0 if ($n%11) == 0 && ($n%1331) != 0;
   }
 
   # Next, check and remove all primes under 149 with three 64-bit gcds.
@@ -1170,7 +1170,7 @@ sub is_powerful {
     if ($g != 1) {
       # Check anything that divides n also divides k times (and remove).
       my $gk = Math::Prime::Util::powint($g, $k);
-      return 0 if $n % $gk;
+      return 0 if ($n % $gk) != 0;
       $n = Math::Prime::Util::divint($n, $gk);
       # Now remove any possible further amounts of these divisors.
       $g = Math::Prime::Util::gcd($n, $g);
@@ -1201,7 +1201,7 @@ sub is_powerful {
       last if scalar(@fac) <= 1;
       my $f = $fac[0];
       my $fk = ($k==2) ? $f*$f : Math::Prime::Util::powint($f,$k);
-      return 0 if $n % $fk;
+      return 0 if ($n % $fk) != 0;
       $n = Math::Prime::Util::divint($n, $fk);
       $n = Math::Prime::Util::divint($n, $f) while !($n % $f);
       return 1 if $n == 1 || is_power($n) >= $k;
@@ -1211,10 +1211,10 @@ sub is_powerful {
     Math::Prime::Util::forprimes( sub {
       my $pk = ($k==2) ? $_*$_ : Math::Prime::Util::powint($_,$k);
       Math::Prime::Util::lastfor(),return if $n < $pk*$pk;
-      if (!($n%$_)) {
-        Math::Prime::Util::lastfor(),return if $n % $pk;
+      if (($n%$_) == 0) {
+        Math::Prime::Util::lastfor(),return if ($n % $pk) != 0;
         $n = Math::Prime::Util::divint($n, $pk);
-        $n = Math::Prime::Util::divint($n, $_) while !($n % $_);
+        $n = Math::Prime::Util::divint($n, $_) while ($n % $_) == 0;
         Math::Prime::Util::lastfor(),return if $n == 1 || is_power($n) >= $k;
       }
     }, 149, $lim_effect);
@@ -1498,7 +1498,7 @@ sub _totpred {
     my $r = int($n / $d);
     while (1) {
       return 1 if $r == $p || _totpred($r, $d);
-      last if $r % $p;
+      last if ($r % $p) != 0;
       $r = int($r / $p);
     }
   }
@@ -3332,6 +3332,16 @@ sub subint {
 
 sub _tquotient {
   my($a,$b) = @_;
+  if (ref($a)) {
+    # Earlier versions of Math::BigInt did not use floor division for bdiv.
+    return $a->copy->btdiv($b) if $Math::BigInt::VERSION >= 1.999716;
+    $b = Math::BigInt->new("$b") unless ref($b);
+    my $A = $a->copy->babs;
+    my $B = $b->copy->babs;
+    my $Q = $A->bdiv($B);
+    return -$Q if ($a < 0 && $b > 0) || ($b < 0 && $a > 0);
+    return $Q;
+  }
   return -int(-$a /  $b)  if $a < 0 && $b > 0;
   return -int( $a / -$b)  if $b < 0 && $a > 0;
   int($a / $b);
@@ -3342,8 +3352,8 @@ sub tdivrem {
   _validate_integer($a);
   _validate_integer($b);
   croak "tdivrem: divide by zero" if $b == 0;
-  $a = Math::Prime::Util::_to_bigint("$a") if !ref($a) && abs($a) >= (1<<53);
-  my $q = ($a >= 0 && $b >= 0) ? int($a/$b) : _tquotient($a,$b);
+  $a = Math::Prime::Util::_to_bigint("$a") if !ref($a) && ($a < INTMIN || $a > INTMAX);
+  my $q = ($a >= 0 && $b >= 0 && !ref($a)) ? int($a/$b) : _tquotient($a,$b);
   ($q, $a - $b * $q);
 }
 # Floored Division
@@ -3352,11 +3362,11 @@ sub fdivrem {
   _validate_integer($a);
   _validate_integer($b);
   croak "fdivrem: divide by zero" if $b == 0;
-  $a = Math::Prime::Util::_to_bigint("$a") if !ref($a) && abs($a) >= (1<<53);
+  $a = Math::Prime::Util::_to_bigint("$a") if !ref($a) && ($a < INTMIN || $a > INTMAX);
+  my $q = ($a >= 0 && $b >= 0 && !ref($a)) ? int($a/$b) : _tquotient($a,$b);
+  my $r = $a - $b * $q;
   # qe = qt-I     re = rt+I*d    I = (rt >= 0) ? 0 : (b>0) ? 1 : -1;
   # qf = qt-I     rf = rt+I*d    I = (signum(rt) = -signum(b)) 1 : 0
-  my $q = ($a >= 0 && $b >= 0) ? int($a/$b) : _tquotient($a,$b);
-  my $r = $a - $b * $q;
   if ( ($r < 0 && $b > 0) || ($r > 0 && $b < 0) )
     { $q--; $r += $b; }
   ($q,$r);
@@ -3367,8 +3377,8 @@ sub divrem {
   _validate_integer($a);
   _validate_integer($b);
   croak "divrem: divide by zero" if $b == 0;
-  $a = Math::Prime::Util::_to_bigint("$a") if !ref($a) && abs($a) >= (1<<53);
-  my $q = ($a >= 0 && $b >= 0) ? int($a/$b) : _tquotient($a,$b);
+  $a = Math::Prime::Util::_to_bigint("$a") if !ref($a) && ($a < INTMIN || $a > INTMAX);
+  my $q = ($a >= 0 && $b >= 0 && !ref($a)) ? int($a/$b) : _tquotient($a,$b);
   my $r = $a - $b * $q;
   if ($r <0) {
     if ($b > 0) { $q--; $r += $b; }
@@ -3394,10 +3404,10 @@ sub absint {
 sub negint {
   my($n) = @_;
   _validate_integer($n);
+  return 0 if $n == 0;  # Perl 5.6 has to have this: if $n=0 => -$n = -0
   return -$n if ref($n) || $n < (~0 >> 1);
-  if    ($n == 0) { return 0; }
-  elsif ($n >  0) { $n = "-$n"; }
-  else            { $n =~ s/^-//; }
+  if ($n > 0) { $n = "-$n"; }
+  else        { $n =~ s/^-//; }
   Math::Prime::Util::_reftyped($_[0], $n);
 }
 
@@ -4074,7 +4084,7 @@ sub valuation {
   return (undef,0)[$n] if $n <= 1;
   my $v = 0;
   if ($k == 2) { # Accelerate power of 2
-    if (ref($k)) {
+    if (ref($n)) {
       $n = Math::BigInt->new("$n") unless ref($n) eq 'Math::BigInt';
       my $s = substr($n->as_bin,2);
       return length($s) - rindex($s,'1') - 1;
