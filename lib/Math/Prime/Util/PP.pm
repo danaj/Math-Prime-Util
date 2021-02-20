@@ -38,6 +38,8 @@ BEGIN {
   use constant BTWO            => Math::BigInt->new(2);
   use constant INTMAX          => (!OLD_PERL_VERSION || MPU_32BIT) ? ~0 : 562949953421312;
   use constant BMAX            => Math::BigInt->new('' . INTMAX);
+  use constant INTMIN          => (MPU_32BIT ? -2147483648 : !OLD_PERL_VERSION ? -9223372036854775808 : -562949953421312);
+(!OLD_PERL_VERSION || MPU_32BIT) ? ~0 : 562949953421312;
   use constant B_PRIM767       => Math::BigInt->new("261944051702675568529303");
   use constant B_PRIM235       => Math::BigInt->new("30");
   use constant PI_TIMES_8      => 25.13274122871834590770114707;
@@ -3559,10 +3561,10 @@ sub vecsum {
   return Math::Prime::Util::_reftyped($_[0], Math::Prime::Util::GMP::vecsum(@_))
     if $Math::Prime::Util::_GMPfunc{"vecsum"};
   my $sum = 0;
-  my $neglim = -(INTMAX >> 1) - 1;
   foreach my $v (@_) {
     $sum += $v;
-    if ($sum > (INTMAX-250) || $sum < $neglim) {
+    if ($sum > (INTMAX-250) || $sum < (INTMIN+250)) {
+      # Sum again from the start using bigint sum
       $sum = BZERO->copy;
       $sum->badd("$_") for @_;
       return $sum;
@@ -3835,7 +3837,7 @@ sub addmod {
   my($a, $b, $n) = @_;
   $n = -$n if $n < 0;
   return (undef,0)[$n] if $n <= 1;
-  if ($n < INTMAX && $a < INTMAX && $b < INTMAX && $a > -INTMAX && $b > -INTMAX) {
+  if ($n < INTMAX && $a < INTMAX && $b < INTMAX && $a > INTMIN && $b > INTMIN) {
     $a = $n - ((-$a) % $n) if $a < 0;
     $b = $n - ((-$b) % $n) if $b < 0;
     #$a %= $n if $a >= $n;  $b %= $n if $b >= $n;
@@ -3849,7 +3851,7 @@ sub submod {
   my($a, $b, $n) = @_;
   $n = -$n if $n < 0;
   return (undef,0)[$n] if $n <= 1;
-  if ($n < INTMAX && $a < INTMAX && $b < INTMAX && $a > -INTMAX && $b > -INTMAX) {
+  if ($n < INTMAX && $a < INTMAX && $b < INTMAX && $a > INTMIN && $b > INTMIN) {
     $a = $n - ((-$a) % $n) if $a < 0;
     $b = $n - ((-$b) % $n) if $b < 0;
     #$a %= $n if $a >= $n;
@@ -4062,17 +4064,24 @@ sub is_polygonal {
 sub valuation {
   my($n, $k) = @_;
   croak "valuation: k must be > 1" if $k <= 1;
-  $n = -$n if defined $n && $n < 0;
-  return if $n == 0;
+  #Math::Prime::Util::_validate_num($n) || _validate_integer($n);
+  #_validate_integer($n) unless defined $n && $n eq int($n);
+  # OMG, doing the input validation is more than 2x the time of the function.
+  _validate_integer($n);   # OMG this is slow
+  _validate_num($k) || _validate_positive_integer($k);
+  return if $k < 2;
+  $n = -$n if $n < 0;
+  return (undef,0)[$n] if $n <= 1;
   my $v = 0;
   if ($k == 2) { # Accelerate power of 2
-    if (ref($n) eq 'Math::BigInt') {   # This can pay off for big inputs
-      return 0 unless $n->is_even;
-      my $s = $n->as_bin;              # We could do same for k=10
+    if (ref($k)) {
+      $n = Math::BigInt->new("$n") unless ref($n) eq 'Math::BigInt';
+      my $s = substr($n->as_bin,2);
       return length($s) - rindex($s,'1') - 1;
     }
-    while (!($n & 0xFFFF) ) {  $n >>=16;  $v +=16;  }
-    while (!($n & 0x000F) ) {  $n >>= 4;  $v += 4;  }
+    return 0 if $n & 1;
+    $n >>= 1;                # So -$n stays an integer
+    return 1 + (32,0,1,26,2,23,27,0,3,16,24,30,28,11,0,13,4,7,17,0,25,22,31,15,29,10,12,6,0,21,14,9,5,20,8,19,18)[(-$n & $n) % 37];
   }
   while ( !($n % $k) ) {
     $n /= $k;

@@ -152,6 +152,7 @@ sub entropy_bytes {
 *moebius = \&Math::Prime::Util::PP::moebius;
 *euler_phi = \&Math::Prime::Util::PP::euler_phi;
 *inverse_totient = \&Math::Prime::Util::PP::inverse_totient;
+*valuation = \&Math::Prime::Util::PP::valuation;
 
 *divint = \&Math::Prime::Util::PP::divint;
 *modint = \&Math::Prime::Util::PP::modint;
@@ -847,12 +848,6 @@ sub is_delicate_prime {
   my($n) = @_;
   _validate_positive_integer($n);
   return Math::Prime::Util::PP::is_delicate_prime($n);
-}
-sub valuation {
-  my($n, $k) = @_;
-  _validate_integer($n);
-  _validate_positive_integer($k);
-  return Math::Prime::Util::PP::valuation($n, $k);
 }
 sub hammingweight {
   my($n) = @_;
