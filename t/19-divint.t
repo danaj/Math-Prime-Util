@@ -90,6 +90,7 @@ plan tests => 0
             + 2                              # tdivrem
             + 5 * scalar(@quotients)         # signed bigint division
             + 8                              # table 1.3 from Leijen 2001
+            + 8                              # divint with large neg returns
             + 4 + 3*scalar(@negshifts)       # shiftint
             + 4                              # absint
             + 4                              # negint
@@ -233,6 +234,17 @@ is( join(" ", fdivrem(1,2), fdivrem(1,-2), fdivrem(-1,2), fdivrem(-1,-2)),
 is( join(" ", divint(1,2), modint(1,2), divint(1,-2), modint(1,-2), divint(-1,2), modint(-1,2), divint(-1,-2), modint(-1,-2)),
     "0 1 -1 -1 -1 1 0 -1",
     "divint+modint with +/- 1,2" );
+
+###### divint and modint with interesting values
+is(divint("1895315831", -1), "-1895315831", "Divide 31-bit input by -1");
+is(divint("3483637757", -1), "-3483637757", "Divide 32-bit input by -1");
+is(divint("6127303089832103323", -1), "-6127303089832103323", "Divide 63-bit input by -1");
+is(divint("13026328650942325963", -1), "-13026328650942325963", "Divide 64-bit input by -1");
+is(divint("14123555781055773270", 2), "7061777890527886635", "Divide 64-bit input by 2");
+is(divint("12844039487317506779", "12844039487317506779"), 1, "Divide 64-bit input by itself");
+is(divint(3, "12844039487317506779"), 0, "Divide small int by 64-bit input");
+# Note this is floor division:
+is(divint(-3, "12844039487317506779"), -1, "Divide negative small int by 64-bit input");
 
 ###### lshiftint
 is_deeply([map { lshiftint($_) } 0..50], [map { $_ << 1 } 0..50], "lshiftint(0..50)");

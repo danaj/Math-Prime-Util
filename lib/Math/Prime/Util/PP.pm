@@ -38,8 +38,8 @@ BEGIN {
   use constant BTWO            => Math::BigInt->new(2);
   use constant INTMAX          => (!OLD_PERL_VERSION || MPU_32BIT) ? ~0 : 562949953421312;
   use constant BMAX            => Math::BigInt->new('' . INTMAX);
+  use constant SINTMAX         => (INTMAX >> 1);
   use constant INTMIN          => (MPU_32BIT ? -2147483648 : !OLD_PERL_VERSION ? -9223372036854775808 : -562949953421312);
-(!OLD_PERL_VERSION || MPU_32BIT) ? ~0 : 562949953421312;
   use constant B_PRIM767       => Math::BigInt->new("261944051702675568529303");
   use constant B_PRIM235       => Math::BigInt->new("30");
   use constant PI_TIMES_8      => 25.13274122871834590770114707;
@@ -3333,7 +3333,15 @@ sub subint {
 
 sub _tquotient {
   my($a,$b) = @_;
-  if (ref($a)) {
+  return $a if $b == 1;
+
+  # Large unsigned values cause all sorts of consistency issues, so => bigint.
+  $a = Math::BigInt->new("$a") if !ref($a) && ($a > SINTMAX || $b > SINTMAX);
+
+  return -$a if $b == -1;  # $a is always able to be safely negated now
+
+  if (ref($a) || ref($b)) {
+    $a = Math::BigInt->new("$a") unless ref($a);
     # Earlier versions of Math::BigInt did not use floor division for bdiv.
     return $a->copy->btdiv($b) if $Math::BigInt::VERSION >= 1.999716;
     $b = Math::BigInt->new("$b") unless ref($b);
@@ -3342,10 +3350,14 @@ sub _tquotient {
     my $Q = $A->bdiv($B);
     return -$Q if ($a < 0 && $b > 0) || ($b < 0 && $a > 0);
     return $Q;
+  } else {
+    use integer;  # Beware: this is >>> SIGNED <<< integer.
+    # Don't trust native division for negative inputs.  C89 impl defined.
+    return -(-$a /  $b)  if $a < 0 && $b > 0;
+    return -( $a / -$b)  if $b < 0 && $a > 0;
+    return  (-$a / -$b)  if $a < 0 && $b < 0;
+    return  ( $a /  $b);
   }
-  return -int(-$a /  $b)  if $a < 0 && $b > 0;
-  return -int( $a / -$b)  if $b < 0 && $a > 0;
-  int($a / $b);
 }
 # Truncated Division
 sub tdivrem {
@@ -3353,9 +3365,14 @@ sub tdivrem {
   _validate_integer($a);
   _validate_integer($b);
   croak "tdivrem: divide by zero" if $b == 0;
-  $a = Math::Prime::Util::_to_bigint("$a") if !ref($a) && ($a < INTMIN || $a > INTMAX);
-  my $q = ($a >= 0 && $b >= 0 && !ref($a)) ? int($a/$b) : _tquotient($a,$b);
-  ($q, $a - $b * $q);
+  my($q,$r);
+  if (!ref($a) && !ref($b) && $a>=0 && $b>=0 && $a<SINTMAX && $b<SINTMAX) {
+    use integer; $q = $a / $b;
+  } else {
+    $q = _tquotient($a, $b);
+  }
+  $r = $a - $b * $q;
+  ($q,$r);
 }
 # Floored Division
 sub fdivrem {
@@ -3363,9 +3380,13 @@ sub fdivrem {
   _validate_integer($a);
   _validate_integer($b);
   croak "fdivrem: divide by zero" if $b == 0;
-  $a = Math::Prime::Util::_to_bigint("$a") if !ref($a) && ($a < INTMIN || $a > INTMAX);
-  my $q = ($a >= 0 && $b >= 0 && !ref($a)) ? int($a/$b) : _tquotient($a,$b);
-  my $r = $a - $b * $q;
+  my($q,$r);
+  if (!ref($a) && !ref($b) && $a>=0 && $b>=0 && $a<SINTMAX && $b<SINTMAX) {
+    use integer; $q = $a / $b;
+  } else {
+    $q = _tquotient($a, $b);
+  }
+  $r = $a - $b * $q;
   # qe = qt-I     re = rt+I*d    I = (rt >= 0) ? 0 : (b>0) ? 1 : -1;
   # qf = qt-I     rf = rt+I*d    I = (signum(rt) = -signum(b)) 1 : 0
   if ( ($r < 0 && $b > 0) || ($r > 0 && $b < 0) )
@@ -3378,9 +3399,13 @@ sub divrem {
   _validate_integer($a);
   _validate_integer($b);
   croak "divrem: divide by zero" if $b == 0;
-  $a = Math::Prime::Util::_to_bigint("$a") if !ref($a) && ($a < INTMIN || $a > INTMAX);
-  my $q = ($a >= 0 && $b >= 0 && !ref($a)) ? int($a/$b) : _tquotient($a,$b);
-  my $r = $a - $b * $q;
+  my($q,$r);
+  if (!ref($a) && !ref($b) && $a>=0 && $b>=0 && $a<SINTMAX && $b<SINTMAX) {
+    use integer; $q = $a / $b;
+  } else {
+    $q = _tquotient($a, $b);
+  }
+  $r = $a - $b * $q;
   if ($r <0) {
     if ($b > 0) { $q--; $r += $b; }
     else        { $q++; $r -= $b; }
