@@ -153,6 +153,7 @@ sub entropy_bytes {
 *euler_phi = \&Math::Prime::Util::PP::euler_phi;
 *inverse_totient = \&Math::Prime::Util::PP::inverse_totient;
 *valuation = \&Math::Prime::Util::PP::valuation;
+*chinese = \&Math::Prime::Util::PP::chinese;
 
 *divint = \&Math::Prime::Util::PP::divint;
 *modint = \&Math::Prime::Util::PP::modint;
@@ -672,16 +673,6 @@ sub gcdext {
   _validate_integer($a);
   _validate_integer($b);
   return Math::Prime::Util::PP::gcdext($a,$b);
-}
-sub chinese {
-  # TODO: make sure we're not modding their data
-  foreach my $aref (@_) {
-    die "chinese arguments are two-element array references"
-      unless ref($aref) eq 'ARRAY' && scalar @$aref == 2;
-    _validate_integer($aref->[0]);
-    _validate_integer($aref->[1]);
-  }
-  return Math::Prime::Util::PP::chinese(@_);
 }
 sub vecsum {
   my(@v) = @_;

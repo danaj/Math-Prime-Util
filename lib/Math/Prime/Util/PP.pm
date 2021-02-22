@@ -3538,9 +3538,21 @@ sub chinese {
     }
     return $sum;
   }
-  my @items = sort { $b->[1] <=> $a->[1] } @_;
-  return if $items[-1]->[1] == 0;
+
+  # Validate, copy, and do abs on the inputs.
+  my @items;
+  foreach my $aref (@_) {
+    die "chinese arguments are two-element array references"
+      unless ref($aref) eq 'ARRAY' && scalar @$aref == 2;
+    my($a,$n) = @$aref;
+    _validate_integer($a);
+    _validate_integer($n);
+    return if $n == 0;
+    $n = -$n if $n < 0;
+    push @items, [$a,$n];
+  }
   return Math::Prime::Util::modint($items[0]->[0], $items[0]->[1]) if scalar @items == 1;
+  @items = sort { $b->[1] <=> $a->[1] } @items;
   foreach my $aref (@items) {
     my($ai, $ni) = @$aref;
     $ai = Math::BigInt->new("$ai") if !ref($ai) && (abs($ai) > (~0>>1) || OLD_PERL_VERSION);
