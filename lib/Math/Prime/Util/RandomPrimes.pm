@@ -9,6 +9,7 @@ use Math::Prime::Util qw/ prime_get_config
                           is_prob_prime is_strong_pseudoprime
                           next_prime prev_prime
                           urandomb urandomm random_bytes
+                          addint mulint lshiftint
                         /;
 
 BEGIN {
@@ -853,13 +854,14 @@ sub random_safe_prime {
   return 11 if $bits == 4;
   return 23 if $bits == 5;
 
-  my($p,$q);
+  # This is very slow.  See the GMP code for much faster way with large bits.
 
+  my($p,$q);
   do {
     $q = Math::Prime::Util::random_nbit_prime($bits-1);
-    $p = Math::Prime::Util::mulint(2,$q) + 1;
+    $p = mulint(2,$q) + 1;
   } while ( ($q % 3) != 2 || ($q % 5) == 2 || ($p % 3) != 2 ||
-            !Math::Prime::Util::is_prob_prime($p) );
+            !is_prob_prime($p) );
   return $p;
 }
 

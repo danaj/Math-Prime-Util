@@ -1051,16 +1051,20 @@ is_strong_pseudoprime(IN SV* svn, ...)
     is_pseudoprime = 1
     is_euler_pseudoprime = 2
   PREINIT:
-    int c, status = 1;
+    int c, status;
+    UV n;
   PPCODE:
     if (items < 2)
       croak("No bases given to is_strong_pseudoprime");
-    /* Check all arguments */
-    for (c = 0; c < items && status == 1; c++)
+    status = _validate_and_set(&n, aTHX_ svn, IFLAG_ANY);
+    /* Check all base arguments */
+    for (c = 1; c < items && status == 1; c++)
       if (_validate_int(aTHX_ ST(c), 0) != 1)
         status = 0;
+    /* All bases are legit, n is negative.  Return 0. */
+    if (status == -1)
+      RETURN_NPARITY(0);
     if (status == 1) {
-      UV n = my_svuv(svn);
       int b, ret = 1;
       if        (n < 4) {                        /* 0,1 composite; 2,3 prime */
         ret = (n >= 2);
@@ -1200,11 +1204,14 @@ is_frobenius_pseudoprime(IN SV* svn, IN IV P = 0, IN IV Q = 0)
 void
 miller_rabin_random(IN SV* svn, IN IV bases = 1, IN char* seed = 0)
   PREINIT:
+    int status;
     UV n;
     dMY_CXT;
   PPCODE:
     if (bases < 0) croak("miller_rabin_random: number of bases must be positive");
-    if (seed == 0 && _validate_and_set(&n, aTHX_ svn, IFLAG_POS))
+    status = _validate_and_set(&n, aTHX_ svn, IFLAG_ANY);
+    if (status == -1) RETURN_NPARITY(0);
+    if (seed == 0 && status == 1)
       RETURN_NPARITY( is_mr_random(MY_CXT.randcxt, n, bases) );
     _vcallsub_with_gmp(0.46,"miller_rabin_random");
     return;
@@ -1272,6 +1279,7 @@ gcd(...)
         if (status == 1) {
           hi += (n > (UV_MAX - lo));
         } else {
+          /* TODO: This shouldn't be needed with validate_and_set */
           if (UV_MAX-n == (UV)IV_MAX) { status = 0; break; }  /* IV Overflow */
           hi -= ((UV_MAX-n) >= lo);
         }
@@ -1413,7 +1421,7 @@ chinese(...)
       psvn = av_fetch(av, 1, 0);
       if (psva == 0 || psvn == 0 ||
           _validate_and_set(an+i, aTHX_ *psva, IFLAG_ANY) != 1 ||
-          _validate_and_set(an+i+items, aTHX_ *psvn, IFLAG_POS) != 1) {
+          _validate_and_set(an+i+items, aTHX_ *psvn, IFLAG_ABS) != 1) {
         status = 0;
         break;
       }
