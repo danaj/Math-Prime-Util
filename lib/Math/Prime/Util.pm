@@ -3326,7 +3326,7 @@ Mathematica's C<IntegerDigits> function.
 
 =head2 todigitstring
 
-  # arguments are:  input integet, base (optional), truncate (optional)
+  # arguments are:  input integer, base (optional), truncate (optional)
   say "decimal 456 in hex is ", todigitstring(456, 16);
   say "last 4 bits of $n are: ", todigitstring($n, 2, 4);
 
