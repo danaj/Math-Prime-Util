@@ -2516,6 +2516,24 @@ void absint(IN SV* svn)
     objectify_result(aTHX_ svn, ST(0));
     return;
 
+void signint(IN SV* svn)
+  PREINIT:
+    int status, sign;
+    UV n;
+    const char* s;
+    STRLEN len;
+  PPCODE:
+    status = _validate_and_set(&n, aTHX_ svn, IFLAG_ANY);
+    if (status == 0) {
+      /* Look at the string input */
+      s = SvPV(svn, len);
+      if (len == 0 || s == 0) croak("signint invalid parameter");
+      sign = (s[0] == '-')  ?  -1  : (s[0] == '0')  ?  0  :  1;
+    } else {
+      sign = (status == -1)  ?  -1  :  (n == 0)  ?  0  :  1;
+    }
+    RETURN_NPARITY( sign );
+
 void logint(IN SV* svn, IN UV k, IN SV* svret = 0)
   ALIAS:
     rootint = 1

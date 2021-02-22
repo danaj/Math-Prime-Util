@@ -245,6 +245,7 @@ Tags:
   rashiftint(n,k)                     right shift n by k bits (floor)
   absint(n)                           integer absolute value
   negint(n)                           integer negation
+  signint(n)                          integer sign (-1,0,1)
   sqrtint(n)                          integer square root
   rootint(n,k)                        integer k-th root
   rootint(n,k,\$rk)                   as above but also set $rk to r^k

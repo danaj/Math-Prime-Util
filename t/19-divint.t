@@ -6,7 +6,7 @@ use Test::More;
 use Math::Prime::Util qw/ powint mulint addint subint
                           divint modint divrem fdivrem tdivrem
                           lshiftint rshiftint rashiftint
-                          absint negint /;
+                          absint negint signint/;
 use Math::BigInt;
 
 
@@ -94,6 +94,7 @@ plan tests => 0
             + 4 + 3*scalar(@negshifts)       # shiftint
             + 4                              # absint
             + 4                              # negint
+            + 3                              # signint
             + 0;
 
 ###### powint
@@ -302,3 +303,8 @@ for my $d (@negshifts) {
   }
   is_deeply( \@got, \@exp, "negint on large values" );
 }
+
+###### signint
+is(signint(-13), -1, "signint(-13) = -1");
+is(signint(0), 0, "signint(0) = 0");
+is(signint(13), 1, "signint(13) = 1");

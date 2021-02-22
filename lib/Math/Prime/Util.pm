@@ -33,7 +33,7 @@ our @EXPORT_OK =
       is_fundamental is_totient is_gaussian_prime
       is_smooth is_rough is_powerful is_practical
       sqrtint rootint logint lshiftint rshiftint rashiftint absint negint
-      powint mulint addint subint divint modint divrem fdivrem tdivrem
+      signint addint subint mulint powint divint modint divrem fdivrem tdivrem
       miller_rabin_random
       lucas_sequence
       lucasu lucasv lucasuv lucasumod lucasvmod lucasuvmod
@@ -2973,16 +2973,14 @@ and Java's BigInteger, which use floor division by C<2^k>.  The result is equal
 to dividing by the power of 2 using L</divint> or GMP's C<mpz_fdiv_q_2exp>.
 
 
-=head2 powint
+=head2 signint
 
-Given an integer C<a> and a non-negative integer C<b>,
-returns C<a^b>.  C<0^0> will return 1.
+Given an integer C<n>, returns the sign of C<n>.
+Returns -1, 0, or 1 if C<n> is negative, zero, or positive respectively.
 
-The exponent C<b> is converted into an unsigned long.
-
-=head2 mulint
-
-Given integers C<a> and C<b>, returns C<a * b>.
+This corresponds to Pari/GP's C<sign> function, GMP's C<mpz_sgn> function,
+Raku's C<sign> method, and Math::BigInt's C<sign> method.
+Some of those extend to non-integers.
 
 =head2 addint
 
@@ -2991,6 +2989,17 @@ Given integers C<a> and C<b>, returns C<a + b>.
 =head2 subint
 
 Given integers C<a> and C<b>, returns C<a - b>.
+
+=head2 mulint
+
+Given integers C<a> and C<b>, returns C<a * b>.
+
+=head2 powint
+
+Given an integer C<a> and a non-negative integer C<b>,
+returns C<a^b>.  C<0^0> will return 1.
+
+The exponent C<b> is converted into an unsigned long.
 
 =head2 divint
 

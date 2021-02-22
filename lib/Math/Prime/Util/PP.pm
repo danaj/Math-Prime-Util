@@ -3436,6 +3436,11 @@ sub negint {
   else        { $n =~ s/^-//; }
   Math::Prime::Util::_reftyped($_[0], $n);
 }
+sub signint {
+  my($n) = @_;
+  _validate_integer($n);
+  $n <=> 0;
+}
 
 sub lshiftint {
   my($n, $k) = @_;
