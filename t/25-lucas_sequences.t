@@ -5,7 +5,7 @@ use warnings;
 use Test::More;
 use Math::Prime::Util qw/lucasu    lucasv    lucasuv
                          lucasumod lucasvmod lucasuvmod
-                         foroddcomposites/;
+                         foroddcomposites modint/;
 
 #my $use64 = Math::Prime::Util::prime_get_config->{'maxbits'} > 32;
 my $usexs = Math::Prime::Util::prime_get_config->{'xs'};
@@ -70,6 +70,24 @@ if ($usexs || !$usegmp) {
     [0, 1, 4, 12, 32, 80, 192, 448, 1024, 2304, 5120, 11264, 24576, 53248] ],
 }
 
+my %lucas_sequences = (
+  "323 1 1 324" => [0,2,1],
+  "323 4 1 324" => [170,308,1],
+  "323 4 5 324" => [194,156,115],
+  "323 3 1 324" => [0,2,1],
+  "323 3 1  81" => [0,287,1],
+  "323 5 -1 81" => [153,195,322],
+  "49001 25 117 24501" => [20933,18744,19141],
+  "18971 10001 -1 4743" => [5866,14421,18970],
+  "18971 10001 -1 4743" => [5866,14421,18970],
+  "3613982123 1 -1 3613982124" => [0,3613982121,1],
+  "3613982121 1 -1 3613982122" => [2586640546,2746447323,1],
+  "3613982121 1 -1 1806991061" => [3535079342,1187662808,3613982120],
+  "547968611 1 -1 547968612" => [1,3,1],
+  "547968611 1 -1 136992153" => [27044236,448467899,547968610],
+);
+
+
 my @oeis_81264 = (323, 377, 1891, 3827, 4181, 5777, 6601, 6721, 8149, 10877, 11663, 13201, 13981, 15251, 17119, 17711, 18407, 19043, 23407, 25877, 27323, 30889, 34561, 34943, 35207, 39203, 40501, 50183, 51841, 51983, 52701, 53663, 60377, 64079, 64681);
 # The PP lucas sequence is really slow.
 $#oeis_81264 = 2 unless $usexs || $usegmp;
@@ -103,7 +121,11 @@ my @issue47 = (
   [3,30,-2,1, "1 0 1"],
 );
 
-plan tests => 0 + 2*scalar(@lucas_seqs) + 1 + 1 + scalar(@issue47);
+plan tests => 0 + 2*scalar(@lucas_seqs) + 1
+                + 3
+                + scalar(keys %lucas_sequences)
+                + scalar(@issue47)
+                + 3;
 
 foreach my $seqs (@lucas_seqs) {
   my($apq, $isneg, $uorv, $name, $exp) = @$seqs;
@@ -128,8 +150,7 @@ foreach my $seqs (@lucas_seqs) {
   my @p;
   foroddcomposites {
     my $t = (($_%5)==2||($_%5)==3) ? $_+1 : $_-1;
-    my($U,$V) = lucasuvmod(1,-1,$t,$_);
-    push @p, $_ if $U == 0;
+    push @p, $_ if lucasumod(1,-1,$t,$_) == 0;
   } $oeis_81264[-1];
   is_deeply( \@p, \@oeis_81264, "OEIS 81264: Odd Fibonacci pseudoprimes" );
 }
@@ -139,9 +160,35 @@ foreach my $seqs (@lucas_seqs) {
   my $e = (0,-1,1,1,-1)[$n%5];
   my($U,$V,$Q) = lucasuvmod(1, -1, $n+$e, $n);
   is_deeply( [$U,$V,$Q], [0,5466722,8539785], "First entry of OEIS A141137: Even Fibonacci pseudoprimes" );
+  is(lucasumod(1, -1, $n+$e, $n), 0, "lucasumod agrees");
+  is(lucasvmod(1, -1, $n+$e, $n), 5466722, "lucasvmod agrees");
 }
+
+
+# Simple Lucas sequences
+while (my($params, $expect) = each (%lucas_sequences)) {
+  my($n,$P,$Q,$k) = split(' ', $params);
+  is_deeply( [lucasuvmod($P,$Q,$k,$n)], $expect, "Lucas sequence $params" );
+}
+
 
 for my $i (@issue47) {
   my($n,$P,$Q,$k,$expstr) = @$i;
   is( join(" ",lucasuvmod($P,$Q,$k,$n)), $expstr, "lucasuvmod($P,$Q,$k,$n) = $expstr");
+}
+
+{
+  my $n = 257;
+  my @u1 = map { lucasumod(1,-1,$_,$n) } 0 .. 100;
+  my @v1 = map { lucasvmod(1,-1,$_,$n) } 0 .. 100;
+
+  my @u2 = map { modint(lucasu(1,-1,$_),$n) } 0 .. 100;
+  my @v2 = map { modint(lucasv(1,-1,$_),$n) } 0 .. 100;
+
+  my @uv1 = map { [(lucasuvmod(1,-1,$_,$n))[0,1]] } 0 .. 100;
+  my @uv2 = map { [map { modint($_,$n) } lucasuv(1,-1,$_)] } 0 .. 100;
+
+  is_deeply(\@u1, \@u2, "lucasumod comparison with modint lucasu");
+  is_deeply(\@v1, \@v2, "lucasvmod comparison with modint lucasv");
+  is_deeply(\@uv1, \@uv2, "lucasuvmod comparison with modint lucasuv");
 }
