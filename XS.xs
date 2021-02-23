@@ -461,17 +461,12 @@ static int _compare_array_refs(pTHX_ SV* a, SV* b)
       continue;
     }
 
-#if 0   /* Allow other types */
-    /* If not integers, fail. */
-    if (_validate_int(aTHX_ sva, 1) == 0 || _validate_int(aTHX_ svb, 1) == 0)
-      return -1;
-#endif
-
-    /* Convert both to strings and compare. */
-    {
-      const char* stra = SvPV_nolen(sva);
-      const char* strb = SvPV_nolen(svb);
-      if (strlen(stra) != strlen(strb) || strcmp(stra,strb) != 0)
+    /* This function is more useful if we allow more than strictly integers */
+    {  /* Compare the string representation */
+      STRLEN alen, blen;
+      const char* stra = SvPV(sva, alen);
+      const char* strb = SvPV(svb, blen);
+      if (alen != blen || strcmp(stra,strb) != 0)
         return 0;
     }
   }
@@ -1043,56 +1038,51 @@ sieve_prime_cluster(IN SV* svlo, IN SV* svhi, ...)
       return;
     }
 
-
-
-void
-is_strong_pseudoprime(IN SV* svn, ...)
-  ALIAS:
-    is_pseudoprime = 1
-    is_euler_pseudoprime = 2
+void is_strong_pseudoprime(IN SV* svn, IN SV* svb1, ...)
   PREINIT:
-    int c, status;
-    UV n;
+    int i, j, status, ret = 0;
+    UV n, base;
   PPCODE:
-    if (items < 2)
-      croak("No bases given to is_strong_pseudoprime");
     status = _validate_and_set(&n, aTHX_ svn, IFLAG_ANY);
-    /* Check all base arguments */
-    for (c = 1; c < items && status == 1; c++)
-      if (_validate_int(aTHX_ ST(c), 0) != 1)
-        status = 0;
-    /* All bases are legit, n is negative.  Return 0. */
-    if (status == -1)
-      RETURN_NPARITY(0);
-    if (status == 1) {
-      int b, ret = 1;
-      if        (n < 4) {                        /* 0,1 composite; 2,3 prime */
-        ret = (n >= 2);
-      } else if (ix == 1) {                      /* Fermat test */
-        for (c = 1; c < items && ret == 1; c++)
-          ret = is_pseudoprime(n, my_svuv(ST(c)));
-      } else if (ix == 2) {                      /* Euler test */
-        for (c = 1; c < items && ret == 1; c++)
-          ret = is_euler_pseudoprime(n, my_svuv(ST(c)));
-      } else if ((n % 2) == 0) {                 /* evens composite */
-         ret = 0;
-      } else {
-        UV bases[32];
-        for (c = 1; c < items && ret == 1; ) {
-          for (b = 0; b < 32 && c < items; c++)
-            bases[b++] = my_svuv(ST(c));
-          ret = miller_rabin(n, bases, b);
+    if (status == 1 && (n < 4 || !(n&1))) {
+      ret = (n == 2 || n == 3);
+    } else if (status == 1) {
+      for (i = 1, ret = 1;  i < items && ret == 1; ) {
+        UV bases[32];  /* Fill this with up to 32 bases */
+        for (j = 0;  j < 32 && i < items;  i++) {
+          status = _validate_and_set(&base, aTHX_ ST(i), IFLAG_POS);
+          if (status != 1) break;
+          bases[j++] = base;
         }
+        if (status != 1) break;
+        ret = miller_rabin(n, bases, j);
       }
-      RETURN_NPARITY(ret);
     }
-    switch (ix) {
-      case 0: _vcallsub_with_gmp(0.00,"is_strong_pseudoprime"); break;
-      case 1: _vcallsub_with_gmp(0.20,"is_pseudoprime"); break;
-      case 2:
-      default:_vcallsub_with_gmp(0.00,"is_euler_pseudoprime");  break;
-    }
+    if (status != 0)  RETURN_NPARITY(ret);
+    _vcallsub_with_gmp(0.41,"is_strong_pseudoprime");
     return; /* skip implicit PUTBACK */
+
+void is_pseudoprime(IN SV* svn, IN SV* svb1, ...)
+  ALIAS:
+    is_euler_pseudoprime = 1
+  PREINIT:
+    int i, status, ret = 0;
+    UV n, base;
+  PPCODE:
+    status = _validate_and_set(&n, aTHX_ svn, IFLAG_ANY);
+    if (status == 1 && n < 4) {
+      ret = (n == 2 || n == 3);
+    } else if (status == 1) {
+      for (i = 1, ret = 1;  i < items && ret == 1; i++) {
+        status = _validate_and_set(&base, aTHX_ ST(i), IFLAG_POS);
+        if (status != 1) break;
+        ret = (ix == 0) ? is_pseudoprime(n,base) : is_euler_pseudoprime(n,base);
+      }
+    }
+    if (status != 0)  RETURN_NPARITY(ret);
+    _vcallsub_with_gmp(0.41, (ix == 0) ? "is_pseudoprime" : "is_euler_pseudoprime");
+    return; /* skip implicit PUTBACK */
+
 
 void is_prime(IN SV* svn)
   ALIAS:

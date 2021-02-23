@@ -117,7 +117,7 @@ if (!$usexs) {
 
 my @small_lucas_trials = (2, 9, 16, 100, 102, 2047, 2048, 5781, 9000, 14381);
 
-plan tests => 0 + 3
+plan tests => 0 + 2
                 + 4
                 + scalar(keys %pseudoprimes)
                 + scalar @phis
@@ -134,7 +134,8 @@ plan tests => 0 + 3
                 + 6  # Perrin restrictions
                 + 0;
 
-ok(!eval { is_strong_pseudoprime(2047); }, "MR with no base fails");
+# Enforced by XS prototype.
+#ok(!eval { is_strong_pseudoprime(2047); }, "MR with no base fails");
 ok(!eval { is_strong_pseudoprime(2047,0); }, "MR base 0 fails");
 ok(!eval { is_strong_pseudoprime(2047,1); }, "MR base 1 fails");
 
