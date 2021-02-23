@@ -2202,10 +2202,14 @@ void binomialmod(IN SV* svn, IN SV* svk, IN SV* svm)
     mstatus = _validate_and_set(&m, aTHX_ svm, IFLAG_ABS);
     if (nstatus != 0 && kstatus != 0 && mstatus != 0) {
       if (m == 0) XSRETURN_UNDEF;
-      if (m == 1 || kstatus == -1) XSRETURN_UV(0);
-      if (nstatus == -1) n = -(IV)n + k - 1;
+      if (m == 1) XSRETURN_UV(0);
+      if ( (nstatus == 1 && (kstatus == -1 || k > n)) ||
+           (nstatus ==-1 && (kstatus == -1 && k > n)) )
+         XSRETURN_UV(0);
+      if (kstatus == -1) k = n - k;
+      if (nstatus == -1) n = (-(IV)n) + k - 1;
       if (binomialmod(&ret, n, k, m)) {
-        if ((nstatus == -1) && (k & 1)) ret = m-ret;
+        if ((nstatus == -1) && (k & 1)) ret = (ret==0) ? 0 : m-ret;
         XSRETURN_UV(ret);
       }
     }
@@ -2766,30 +2770,30 @@ void sqrtint(IN SV* svn)
     objectify_result(aTHX_ svn, ST(0));
     return; /* skip implicit PUTBACK */
 
-void binomial(IN SV* sva, IN SV* svn)
+void binomial(IN SV* svn, IN SV* svk)
   PREINIT:
-    int astatus, nstatus;
-    UV a, n, ret;
+    int nstatus, kstatus;
+    UV n, k, ret;
   PPCODE:
-    astatus = _validate_and_set(&a, aTHX_ sva, IFLAG_ANY);
     nstatus = _validate_and_set(&n, aTHX_ svn, IFLAG_ANY);
-    if (astatus != 0 && nstatus != 0) {
-      if ( (astatus == 1 && (nstatus == -1 || n > a)) ||
-           (astatus ==-1 && (nstatus == -1 && n > a)) )
+    kstatus = _validate_and_set(&k, aTHX_ svk, IFLAG_ANY);
+    if (nstatus != 0 && kstatus != 0) {
+      if ( (nstatus == 1 && (kstatus == -1 || k > n)) ||
+           (nstatus ==-1 && (kstatus == -1 && k > n)) )
          XSRETURN_UV(0);
-      if (nstatus == -1)
-        n = a - n; /* n<0,k<=n:  (-1)^(n-k) * binomial(-k-1,n-k) */
-      if (astatus == -1) {
-        ret = binomial( (-(IV)a)+n-1, n );
+      if (kstatus == -1)
+        k = n - k; /* n<0,k<=n:  (-1)^(n-k) * binomial(-k-1,n-k) */
+      if (nstatus == -1) {
+        ret = binomial( (-(IV)n)+k-1, k );
         if (ret > 0 && ret <= (UV)IV_MAX)
-          XSRETURN_IV( (IV)ret * ((n&1) ? -1 : 1) );
+          XSRETURN_IV( (IV)ret * ((k&1) ? -1 : 1) );
       } else {
-        ret = binomial(a, n);
+        ret = binomial(n, k);
         if (ret != 0) XSRETURN_UV(ret);
       }
     }
     _vcallsub_with_gmp(0.22,"binomial");
-    objectify_result(aTHX_ sva, ST(0));
+    objectify_result(aTHX_ svn, ST(0));
     return;
 
 void mertens(IN SV* svn)

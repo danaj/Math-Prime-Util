@@ -4812,9 +4812,9 @@ sub binomialmod {
   return Math::Prime::Util::_reftyped($_[2], _gmpcall("binomialmod",$n,$k,$m))
     if $Math::Prime::Util::_GMPfunc{"binomialmod"};
 
-  return 0 if $m <= 1 || $k < 0;
   return 1 if $k == 0 || $k == $n;
-  return 0 if $n >= 0 && $k > $n;
+  return 0 if $n >= 0 && ($k < 0 || $k > $n);
+  return 0 if $n  < 0 && ($k < 0 && $k > $n);
   return 0+!(($n-$k) & $k) if $m == 2;
 
   # TODO: Lucas split, etc.
