@@ -33,7 +33,8 @@ our @EXPORT_OK =
       is_fundamental is_totient is_gaussian_prime
       is_smooth is_rough is_powerful is_practical
       sqrtint rootint logint lshiftint rshiftint rashiftint absint negint
-      signint addint subint mulint powint divint modint divrem fdivrem tdivrem
+      signint cmpint addint subint add1int sub1int mulint powint
+      divint modint divrem fdivrem tdivrem
       miller_rabin_random
       lucas_sequence
       lucasu lucasv lucasuv lucasumod lucasvmod lucasuvmod
@@ -556,31 +557,6 @@ sub random_proven_prime_with_cert {
 # These functions almost always return bigints, so there is no XS
 # implementation.  Try to run the GMP version, and if it isn't available,
 # load PP and call it.
-
-sub primorial {
-  my($n) = @_;
-  _validate_num($n) || _validate_positive_integer($n);
-  return (1,1,2,6,6,30,30,210,210,210)[$n] if $n < 10;
-
-  if ($_HAVE_GMP && defined &Math::Prime::Util::GMP::primorial) {
-    return _reftyped($_[0], Math::Prime::Util::GMP::primorial($n));
-  }
-  require Math::Prime::Util::PP;
-  return Math::Prime::Util::PP::primorial($n);
-}
-
-sub pn_primorial {
-  my($n) = @_;
-  _validate_num($n) || _validate_positive_integer($n);
-  return (1,2,6,30,210,2310,30030,510510,9699690,223092870)[$n] if $n < 10;
-
-  if ($_HAVE_GMP && defined &Math::Prime::Util::GMP::pn_primorial) {
-    return _reftyped($_[0], Math::Prime::Util::GMP::pn_primorial($n));
-  }
-
-  require Math::Prime::Util::PP;
-  return Math::Prime::Util::PP::primorial(nth_prime($n));
-}
 
 sub consecutive_integer_lcm {
   my($n) = @_;
@@ -2982,6 +2958,19 @@ This corresponds to Pari/GP's C<sign> function, GMP's C<mpz_sgn> function,
 Raku's C<sign> method, and Math::BigInt's C<sign> method.
 Some of those extend to non-integers.
 
+=head2 cmpint
+
+Given integers C<a> and C<b>, returns a positive value if C<a> is greater
+and C<b>, zero if thet are equal, and a negative value if C<a> is less than
+C<b>.
+
+The main value of this is to ensure Perl never silently converts the values
+to floating point, which can give wrong results, and also avoid having to
+manually convert everything to bigints.
+
+This corresponds to Pari/GP's C<cmp> function, GMP's C<mpz_cmp> function,
+Math::BigInt's C<bcmp> method, and Perl's E<lt>=E<gt> operator.
+
 =head2 addint
 
 Given integers C<a> and C<b>, returns C<a + b>.
@@ -2989,6 +2978,14 @@ Given integers C<a> and C<b>, returns C<a + b>.
 =head2 subint
 
 Given integers C<a> and C<b>, returns C<a - b>.
+
+=head2 add1int
+
+Given integer C<n>, returns C<n + 1>.
+
+=head2 sub1int
+
+Given integer C<n>, returns C<n - 1>.
 
 =head2 mulint
 

@@ -235,6 +235,8 @@ Tags:
   mulint(a,b)                         signed integer a * b
   addint(a,b)                         signed integer a + b
   subint(a,b)                         signed integer a - b
+  add1int(n)                          signed integer n + 1
+  sub1int(n)                          signed integer n - 1
   divint(a,b)                         signed integer a / b     (floor)
   modint(a,b)                         signed integer a % b     (floor)
   divrem(a,b)                         return (quot,rem) of a/b (Euclidian)
@@ -245,6 +247,7 @@ Tags:
   rashiftint(n,k)                     right shift n by k bits (floor)
   absint(n)                           integer absolute value
   negint(n)                           integer negation
+  cmpint(a,b)                         integer comparison (like <=>)
   signint(n)                          integer sign (-1,0,1)
   sqrtint(n)                          integer square root
   rootint(n,k)                        integer k-th root

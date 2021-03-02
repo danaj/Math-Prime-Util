@@ -2492,6 +2492,26 @@ void addint(IN SV* sva, IN SV* svb)
     objectify_result(aTHX_ ST(0), ST(0));
     return; /* skip implicit PUTBACK */
 
+void add1int(IN SV* svn)
+  ALIAS:
+    sub1int = 1
+  PREINIT:
+    int status;
+    UV n;
+  PPCODE:
+    status = _validate_and_set(&n, aTHX_ svn, IFLAG_ANY);
+    if (status == 1) {
+      if (ix == 1 && n == 0)  XSRETURN_IV(-1);
+      if (ix == 1 || (ix == 0 && n < UV_MAX))
+        XSRETURN_UV( (ix==0) ? n+1 : n-1 );
+    } else if (status == -1) {
+      if (ix == 0 || (ix == 1 && (IV)n > IV_MAX))
+        XSRETURN_IV( (ix==0) ? (IV)n+1 : (IV)n-1 );
+    }
+    _vcallsub_with_gmp(0.00, (ix == 0) ? "add1int" : "sub1int");
+    objectify_result(aTHX_ svn, ST(0));
+    return;
+
 void absint(IN SV* svn)
   ALIAS:
     negint = 1
@@ -2521,12 +2541,33 @@ void signint(IN SV* svn)
     if (status == 0) {
       /* Look at the string input */
       s = SvPV(svn, len);
-      if (len == 0 || s == 0) croak("signint invalid parameter");
+      if (len == 0 || s == 0) croak("signint: invalid parameter");
       sign = (s[0] == '-')  ?  -1  : (s[0] == '0')  ?  0  :  1;
     } else {
       sign = (status == -1)  ?  -1  :  (n == 0)  ?  0  :  1;
     }
     RETURN_NPARITY( sign );
+
+void cmpint(IN SV* sva, IN SV* svb)
+  PREINIT:
+    int astatus, bstatus, ret = 0;
+    UV a, b;
+  PPCODE:
+    astatus = _validate_and_set(&a, aTHX_ sva, IFLAG_ANY);
+    bstatus = _validate_and_set(&b, aTHX_ svb, IFLAG_ANY);
+    if (astatus != 0 && bstatus != 0) {
+      if      (astatus > bstatus) ret = 1;
+      else if (astatus < bstatus) ret = -1;
+      else if (a == b)            ret = 0;
+      else                        ret = ((astatus == 1 && a > b) || (astatus == -1 && (IV)a > (IV)b)) ? 1 : -1;
+    } else {
+      STRLEN alen, blen;
+      char *aptr, *bptr;
+      aptr = SvPV(sva, alen);
+      bptr = SvPV(svb, blen);
+      ret = strnum_cmp(aptr, alen, bptr, blen);
+    }
+    RETURN_NPARITY(ret);
 
 void logint(IN SV* svn, IN UV k, IN SV* svret = 0)
   ALIAS:
@@ -2734,31 +2775,27 @@ void euler_phi(IN SV* svlo, IN SV* svhi = 0)
 
 void sqrtint(IN SV* svn)
   ALIAS:
-    factorial = 1
-    carmichael_lambda = 2
-    exp_mangoldt = 3
-    hammingweight = 4
+    carmichael_lambda = 1
+    exp_mangoldt = 2
+    hammingweight = 3
   PREINIT:
     UV n, r;
   PPCODE:
-    if (_validate_and_set(&n, aTHX_ svn, (ix <= 3) ? IFLAG_POS : IFLAG_ABS)) {
-      int retok = 1;
+    if (_validate_and_set(&n, aTHX_ svn, (ix <= 2) ? IFLAG_POS : IFLAG_ABS)) {
       switch (ix) {
         case 0:  r = isqrt(n);  break;
-        case 1:  r = factorial(n);  if (r == 0) retok = 0;  break;
-        case 2:  r = carmichael_lambda(n);  break;
-        case 3:  r = exp_mangoldt(n);  break;
-        case 4:  r = popcnt(n);  break;
+        case 1:  r = carmichael_lambda(n);  break;
+        case 2:  r = exp_mangoldt(n);  break;
+        case 3:  r = popcnt(n);  break;
         default: break;
       }
-      if (retok)  XSRETURN_UV(r);
+      XSRETURN_UV(r);
     }
     switch (ix) {
       case 0:  _vcallsub_with_gmp(0.40,"sqrtint"); break;
-      case 1:  _vcallsub_with_pp("factorial"); break;  /* use PP */
-      case 2:  _vcallsub_with_gmp(0.22,"carmichael_lambda"); break;
-      case 3:  _vcallsub_with_gmp(0.19,"exp_mangoldt"); break;
-      case 4:  if (_XS_get_callgmp() >= 47) { /* Very fast */
+      case 1:  _vcallsub_with_gmp(0.22,"carmichael_lambda"); break;
+      case 2:  _vcallsub_with_gmp(0.19,"exp_mangoldt"); break;
+      case 3:  if (_XS_get_callgmp() >= 47) { /* Very fast */
                  _vcallsub_with_gmp(0.47,"hammingweight");
                } else {                       /* Better than PP */
                  char* ptr;  STRLEN len;  ptr = SvPV(svn, len);
@@ -2769,6 +2806,33 @@ void sqrtint(IN SV* svn)
     }
     objectify_result(aTHX_ svn, ST(0));
     return; /* skip implicit PUTBACK */
+
+void factorial(IN SV* svn)
+  ALIAS:
+    primorial = 1
+    pn_primorial = 2
+  PREINIT:
+    UV n, r;
+  PPCODE:
+    if (_validate_and_set(&n, aTHX_ svn, IFLAG_POS)) {
+      switch(ix) {
+        case 0:  r = factorial(n);  break;
+        case 1:  r = primorial(n); break;
+        case 2:  if (n >= MPU_MAX_PRIME_IDX) r = primorial(nth_prime(n));
+                 else                        r = 0;
+                 break;
+        default: break;
+      }
+      if (r > 0) XSRETURN_UV(r);
+    }
+    switch (ix) {
+      case 0:  _vcallsub_with_pp("factorial"); break;  /* use PP */
+      case 1:  _vcallsub_with_gmp(0.37,"primorial"); break;
+      case 2:  _vcallsub_with_gmp(0.37,"pn_primorial"); break;
+      default: break;
+    }
+    objectify_result(aTHX_ svn, ST(0));
+    return;
 
 void binomial(IN SV* svn, IN SV* svk)
   PREINIT:

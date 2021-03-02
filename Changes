@@ -10,11 +10,12 @@ Revision history for Perl module Math::Prime::Util
     - sumliouville(n)                 L(n), sum of liouville(1..n)
     - prime_bigomega(n)               # of factors (with multiplicity)
     - prime_omega(n)                  # of factors (distinct)
-    - signint(a, b)                   integer sign (-1,0,1)
     - powint(a, b)                    signed integer a^b
     - mulint(a, b)                    signed integer a*b
     - addint(a, b)                    signed integer a+b
     - subint(a, b)                    signed integer a-b
+    - add1int(n)                      signed integer n+1
+    - sub1int(n)                      signed integer n-1
     - divint(a, b)                    signed integer a/b (floor)
     - modint(a, b)                    signed integer a%b (floor)
     - divrem(a, b)                    Euclidean quotient and remainder
@@ -25,6 +26,8 @@ Revision history for Perl module Math::Prime::Util
     - rashiftint(n, k)                right shift n by k bits (flooring)
     - absint(n)                       integer absolute value
     - negint(n)                       integer negation
+    - cmpint(a, b)                    integer comparison (like <=>)
+    - signint(a, b)                   integer sign (-1,0,1)
     - is_gaussian_prime(a,b)          is a+bi a Gaussian prime
     - random_safe_prime               for n-bit safe primes
     - is_smooth(n,k)                  is n a k-smooth number

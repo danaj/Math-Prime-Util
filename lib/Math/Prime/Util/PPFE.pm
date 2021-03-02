@@ -154,6 +154,8 @@ sub entropy_bytes {
 *inverse_totient = \&Math::Prime::Util::PP::inverse_totient;
 *valuation = \&Math::Prime::Util::PP::valuation;
 *chinese = \&Math::Prime::Util::PP::chinese;
+*primorial = \&Math::Prime::Util::PP::primorial;
+*pn_primorial = \&Math::Prime::Util::PP::pn_primorial;
 
 *divint = \&Math::Prime::Util::PP::divint;
 *modint = \&Math::Prime::Util::PP::modint;
@@ -163,6 +165,9 @@ sub entropy_bytes {
 *absint = \&Math::Prime::Util::PP::absint;
 *negint = \&Math::Prime::Util::PP::negint;
 *signint = \&Math::Prime::Util::PP::signint;
+*cmpint = \&Math::Prime::Util::PP::cmpint;
+*add1int = \&Math::Prime::Util::PP::add1int;
+*sub1int = \&Math::Prime::Util::PP::sub1int;
 
 *sqrtmod = \&Math::Prime::Util::PP::sqrtmod;
 *rootmod = \&Math::Prime::Util::PP::rootmod;

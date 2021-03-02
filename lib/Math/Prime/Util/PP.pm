@@ -151,10 +151,10 @@ sub _validate_positive_integer {
     if ($strn eq '-0') { $_[0] = 0; $strn = '0'; }
     croak "Parameter '$strn' must be a non-negative integer"
       if $strn eq '' || ($strn =~ tr/0123456789//c && $strn !~ /^\+?\d+$/);
-    if ($n <= INTMAX) {
-      $_[0] = $strn if ref($n);
-    } else {
-      $_[0] = Math::BigInt->new($strn)
+    # TODO: look into using cmp or cmpint
+    if (ref($n) || $n >= INTMAX) {      # Looks like a bigint
+      $n = Math::BigInt->new($strn);    # Make n a bigint
+      $_[0] = $n if $n > INTMAX;        # input becomes bigint if needed
     }
   }
   $_[0]->upgrade(undef) if ref($_[0]) eq 'Math::BigInt' && $_[0]->upgrade();
@@ -170,20 +170,17 @@ sub _validate_integer {
     $_[0] = $_[0]->();
     $n = $_[0];
   }
-  my $poscmp = OLD_PERL_VERSION ?  562949953421312 : ''.~0;
-  my $negcmp = OLD_PERL_VERSION ? -562949953421312 : -(~0 >> 1);
   if (ref($n) eq 'Math::BigInt') {
     croak "Parameter '$n' must be an integer" if !$n->is_int();
-    $_[0] = _bigint_to_int($_[0]) if $n <= $poscmp && $n >= $negcmp;
+    $_[0] = _bigint_to_int($_[0]) if $n <= INTMAX && $n >= INTMIN;
   } else {
     my $strn = "$n";
     if ($strn eq '-0') { $_[0] = 0; $strn = '0'; }
     croak "Parameter '$strn' must be an integer"
       if $strn eq '' || ($strn =~ tr/-0123456789//c && $strn !~ /^[-+]?\d+$/);
-    if ($n <= $poscmp && $n >= $negcmp) {
-      $_[0] = $strn if ref($n);
-    } else {
-      $_[0] = Math::BigInt->new($strn)
+    if (ref($n) || $n >= INTMAX || $n <= INTMIN) {  # Looks like a bigint
+      $n = Math::BigInt->new($strn);
+      $_[0] = $n if $n > INTMAX || $n < INTMIN;
     }
   }
   $_[0]->upgrade(undef) if ref($_[0]) && $_[0]->upgrade();
@@ -892,6 +889,12 @@ sub primorial {
     else              { $i++;                      }
   }
   vecprod(@plist);
+}
+
+sub pn_primorial {
+  my $n = shift;
+  return (1,2,6,30,210,2310,30030,510510,9699690,223092870)[$n] if $n < 10;
+  primorial(nth_prime($n));
 }
 
 sub consecutive_integer_lcm {
@@ -3324,6 +3327,16 @@ sub subint {
   $res = _bigint_to_int($res) if $res->bacmp(BMAX) <= 0 && $res->bcmp(-(BMAX>>1)) > 0;
   $res;
 }
+sub add1int {
+  my($n) = @_;
+  _validate_integer($n);
+  return (!ref($n) && $n >= INTMAX)  ?  Math::BigInt->new("$n")->binc  :  $n+1;
+}
+sub sub1int {
+  my($n) = @_;
+  _validate_integer($n);
+  return (!ref($n) && $n <= INTMIN)  ?  Math::BigInt->new("$n")->bdec  :  $n-1;
+}
 
 # For division / modulo, see:
 #
@@ -3440,6 +3453,12 @@ sub signint {
   my($n) = @_;
   _validate_integer($n);
   $n <=> 0;
+}
+sub cmpint {
+  my($a, $b) = @_;
+  _validate_integer($a);
+  _validate_integer($b);
+  $a <=> $b;
 }
 
 sub lshiftint {

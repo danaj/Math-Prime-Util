@@ -117,7 +117,8 @@ extern IV ramanujan_tau(UV n);
 
 extern char* pidigits(int digits);
 
-extern int strnum_minmax(int min, char* a, STRLEN alen, char* b, STRLEN blen);
+extern int strnum_minmax(int min, const char* a, STRLEN alen, const char* b, STRLEN blen);
+extern int strnum_cmp(const char* a, STRLEN alen, const char* b, STRLEN blen);
 
 extern int from_digit_string(UV* n, const char* s, int base);
 extern int from_digit_to_UV(UV* rn, UV* r, int len, int base);
