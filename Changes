@@ -106,6 +106,8 @@ Revision history for Perl module Math::Prime::Util
 
     [FUNCTIONALITY AND PERFORMANCE]
 
+    - LMO prime count is 1.2-1.5x faster.
+
     - refactor objectification.  Doesn't force.  Enable on Perl < 5.9.
 
     - save a nanosecond or two in 32-bit primality testing.

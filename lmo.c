@@ -304,15 +304,16 @@ static UV _sieve_phi(UV segment_x, const sword_t* sieve, const uint32* sieve_wor
 
 /* Erasing primes from the sieve is done using Christian Bau's
  * case statement walker.  It's not pretty, but it is short, fast,
- * clever, and does the job. */
+ * clever, and does the job.
+ * Kim W. gave a nice branchless speedup for sieve_zero */
 
 #define sieve_zero(sieve, si, wordcount) \
   { uint32  index_ = si/SWORD_BITS; \
     sword_t mask_  = SWORD_MASKBIT(si); \
-    if (sieve[index_] & mask_) { \
-      sieve[index_] &= ~mask_; \
-      wordcount[index_]--; \
-    }  }
+    sword_t is_bit = (sieve[index_] >> (si % SWORD_BITS)) & 1; \
+    sieve[index_] &= ~mask_; \
+    wordcount[index_] -= is_bit; \
+  }
 
 #define sieve_case_zero(casenum, skip, si, p, size, mult, sieve, wordcount) \
   case casenum: sieve_zero(sieve, si, wordcount); \
