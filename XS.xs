@@ -936,6 +936,8 @@ sieve_primes(IN UV low, IN UV high)
 
 void
 almost_prime_sieve(IN UV k, IN UV lo, IN UV hi)
+  ALIAS:
+    omega_prime_sieve = 1
   PREINIT:
     AV* av;
     UV *S, n, i;
@@ -948,7 +950,8 @@ almost_prime_sieve(IN UV k, IN UV lo, IN UV hi)
       PUTBACK;
       SP = NULL; /* never use SP again, poison */
     }
-    n = range_almost_prime_sieve(&S, k, lo, hi);
+    if (ix == 0) n = range_almost_prime_sieve(&S, k, lo, hi);
+    else         n = range_omega_prime_sieve(&S, k, lo, hi);
     for (i = 0; i < n; i++)
       av_push(av, newSVuv(S[i]));
     if (S != 0) Safefree(S);
@@ -2060,6 +2063,7 @@ void almost_prime_count(IN SV* svk, IN SV* svn)
     almost_prime_count_approx = 1
     almost_prime_count_lower = 2
     almost_prime_count_upper = 3
+    omega_prime_count = 4
   PREINIT:
     UV k, n, ret;
   PPCODE:
@@ -2071,6 +2075,8 @@ void almost_prime_count(IN SV* svk, IN SV* svn)
         case 1:  ret = almost_prime_count_approx(k, n); break;
         case 2:  ret = almost_prime_count_lower(k, n); break;
         case 3:  ret = almost_prime_count_upper(k, n); break;
+        case 4:  ret = omega_prime_count(k, n); break;
+        default: break;
       }
       XSRETURN_UV(ret);
     }
@@ -2078,8 +2084,9 @@ void almost_prime_count(IN SV* svk, IN SV* svn)
       case 0:  _vcallsub_with_pp("almost_prime_count");  break;
       case 1:  _vcallsub_with_pp("almost_prime_count_approx");  break;
       case 2:  _vcallsub_with_pp("almost_prime_count_lower");  break;
-      case 3:
-      default: _vcallsub_with_pp("almost_prime_count_upper");  break;
+      case 3:  _vcallsub_with_pp("almost_prime_count_upper");  break;
+      case 4:
+      default: _vcallsub_with_pp("omega_prime_count");  break;
     }
     objectify_result(aTHX_ svn, ST(0));
     return;

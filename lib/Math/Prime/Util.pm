@@ -38,7 +38,7 @@ our @EXPORT_OK =
       miller_rabin_random
       lucas_sequence
       lucasu lucasv lucasuv lucasumod lucasvmod lucasuvmod
-      primes twin_primes semi_primes almost_primes ramanujan_primes
+      primes twin_primes semi_primes almost_primes omega_primes ramanujan_primes
       sieve_prime_cluster sieve_range
       lucky_numbers is_lucky nth_lucky
       forprimes forcomposites foroddcomposites forsemiprimes foralmostprimes
@@ -56,6 +56,7 @@ our @EXPORT_OK =
       nth_semiprime nth_semiprime_approx
       almost_prime_count almost_prime_count_approx
       almost_prime_count_lower almost_prime_count_upper
+      omega_prime_count
       nth_almost_prime nth_almost_prime_approx
       nth_almost_prime_lower nth_almost_prime_upper
       ramanujan_prime_count ramanujan_prime_count_approx
@@ -488,6 +489,32 @@ sub almost_primes {
     require Math::Prime::Util::PP;
     return Math::Prime::Util::PP::almost_primes($k,$low,$high);
   }
+}
+
+sub omega_primes {
+  my($k,$low,$high) = @_;
+  _validate_num($k) || _validate_positive_integer($k);
+  if (scalar @_ > 2) {
+    _validate_num($low) || _validate_positive_integer($low);
+  } else {
+    ($low,$high) = (1, $low);
+  }
+  _validate_num($high) || _validate_positive_integer($high);
+
+  if ($k == 0) { return ($low <= 1 && $high >= 1) ? [1] : [] }
+  # k = 1 => prime powers
+
+  # Bring low up to the first one
+  my $minlow = Math::Prime::Util::pn_primorial($k);
+  $low = $minlow if $low < $minlow;
+
+  return [] if $low > $high;
+
+  if ($high > $_XS_MAXVAL) {
+    require Math::Prime::Util::PP;
+    return Math::Prime::Util::PP::omega_primes($k,$low,$high);
+  }
+  return Math::Prime::Util::omega_prime_sieve($k,$low,$high);
 }
 
 sub ramanujan_primes {
@@ -1909,6 +1936,34 @@ Quickly returns an upper bound for the C<k>-almost-prime count of C<n>.
 The actual count will be less than or equal to this result.
 
 
+
+=head2 omega_primes
+
+Takes a non-negative integer argument C<k> and either one or two additional
+non-negative integer arguments indicating the upper limit or lower and upper
+limits.  The limits are inclusive.
+The k-omega-primes are positive integers which have exactly C<k> distinct
+prime factors, with possible multiplicity.  Hence these numbers are divisible
+by exactly C<k> different primes.
+
+The k-omega-primes (not a common term) are exactly those integers where
+C<prime_omega(n) == k>.
+Compare to k-almost-primes where C<prime_bigomega(n) == k).
+
+With C<k=1> these are the prime powers.
+With C<k=2> these are (L<OEIS A007774|http://oeis.org/A007774>).
+With C<k=3> these are (L<OEIS A033992|http://oeis.org/A033992>).
+
+=head2 omega_prime_count
+
+Given non-negative integers C<k> and C<n>, returns the count of
+C<k>-omega-prime numbers from C<1> up to and including C<n>.
+This is the count of all positive integers through C<n> that are
+divisible by exactly C<k> different primes.
+
+Counting is done using linear-complexity sieving.
+
+Though we have defined C<prime_omega(0) = 1>, it is not included.
 
 =head2 ramanujan_primes
 

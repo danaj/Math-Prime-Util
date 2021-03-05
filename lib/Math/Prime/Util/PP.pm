@@ -37,9 +37,10 @@ BEGIN {
   use constant BONE            => Math::BigInt->bone;
   use constant BTWO            => Math::BigInt->new(2);
   use constant INTMAX          => (!OLD_PERL_VERSION || MPU_32BIT) ? ~0 : 562949953421312;
-  use constant BMAX            => Math::BigInt->new('' . INTMAX);
-  use constant SINTMAX         => (INTMAX >> 1);
   use constant INTMIN          => (MPU_32BIT ? -2147483648 : !OLD_PERL_VERSION ? -9223372036854775808 : -562949953421312);
+  use constant SINTMAX         => (INTMAX >> 1);
+  use constant BMAX            => Math::BigInt->new('' . INTMAX);
+  use constant BMIN            => Math::BigInt->new('' . INTMIN);
   use constant B_PRIM767       => Math::BigInt->new("261944051702675568529303");
   use constant B_PRIM235       => Math::BigInt->new("30");
   use constant PI_TIMES_8      => 25.13274122871834590770114707;
@@ -1397,10 +1398,33 @@ sub almost_primes {
   $ap;
 }
 
+sub omega_primes {
+  my($k, $low, $high) = @_;
+
+  my $minlow = Math::Prime::Util::pn_primorial($k);
+  $low = $minlow if $low < $minlow;
+  return [] unless $low <= $high;
+
+  # For k=0, we should return empty or 1
+  # For k=1, we want the prime powers
+  # is there a good constructive technique for further ones?
+
+  my $op = [];
+  while ($low <= $high) {
+    push @$op, $low if Math::Prime::Util::prime_omega($low) == $k;
+    $low++;
+  }
+  $op;
+}
+
 sub is_semiprime {
   my($n) = @_;
   _validate_positive_integer($n);
   return ($n == 4) if $n < 6;
+  if ($n > 15) {
+    return 0 if ($n %  4) == 0 || ($n %  6) == 0 || ($n %  9) == 0
+             || ($n % 10) == 0 || ($n % 14) == 0 || ($n % 15) == 0;
+  }
   return (Math::Prime::Util::is_prob_prime($n>>1) ? 1 : 0) if ($n % 2) == 0;
   return (Math::Prime::Util::is_prob_prime($n/3)  ? 1 : 0) if ($n % 3) == 0;
   return (Math::Prime::Util::is_prob_prime($n/5)  ? 1 : 0) if ($n % 5) == 0;
@@ -2574,7 +2598,7 @@ sub semiprime_count {
   # todo: threshold of fast count vs. walk
   if (($hi-$lo+1) < $hi / (sqrt($hi)/4)) {
     my $sum = 0;
-    while ($lo < $hi) {
+    while ($lo <= $hi) {
       $sum++ if Math::Prime::Util::is_semiprime($lo);
       $lo++;
     }
@@ -2623,6 +2647,22 @@ sub almost_prime_count {
   return 0 if ($n >> $k) == 0;
 
   _kapc_count($n, 1, 2, $k);
+}
+sub omega_prime_count {
+  my($k,$n) = @_;
+  _validate_positive_integer($k);
+  _validate_positive_integer($n);
+
+  return ($n >= 1) ? 1 : 0 if $k == 0;
+  return prime_power_count($n) if $k == 1;
+  # find a formula for k=2.
+
+  my $sum = 0;
+  my $low = Math::Prime::Util::pn_primorial($k);
+  for (my $i = $low; $i <= $n; $i++) {
+    $sum++ if Math::Prime::Util::prime_omega($i) == $k;
+  }
+  $sum;
 }
 sub ramanujan_prime_count {
   my($low,$high) = @_;
@@ -3404,6 +3444,8 @@ sub fdivrem {
   # qf = qt-I     rf = rt+I*d    I = (signum(rt) = -signum(b)) 1 : 0
   if ( ($r < 0 && $b > 0) || ($r > 0 && $b < 0) )
     { $q--; $r += $b; }
+  $q = _bigint_to_int($q) if ref($q) && $q->bcmp(BMAX) <= 0 && $q->bcmp(BMIN) >= 0;
+  $r = _bigint_to_int($r) if ref($r) && $r->bcmp(BMAX) <= 0 && $r->bcmp(BMIN) >= 0;
   ($q,$r);
 }
 # Euclidean Division
@@ -3423,6 +3465,8 @@ sub divrem {
     if ($b > 0) { $q--; $r += $b; }
     else        { $q++; $r -= $b; }
   }
+  $q = _bigint_to_int($q) if ref($q) && $q->bcmp(BMAX) <= 0 && $q->bcmp(BMIN) >= 0;
+  $r = _bigint_to_int($r) if ref($r) && $r->bcmp(BMAX) <= 0 && $r->bcmp(BMIN) >= 0;
   ($q,$r);
 }
 

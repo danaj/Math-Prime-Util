@@ -75,6 +75,8 @@ Tags:
   primes([start,] end)                array ref of primes
   twin_primes([start,] end)           array ref of twin primes
   semi_primes([start,] end)           array ref of semiprimes
+  almost_primes(k, [start,] end)      array ref of k-almost-primes
+  omega_primes(k, [start,] end)       array ref of k-omega-primes
   ramanujan_primes([start,] end)      array ref of Ramanujan primes
   sieve_prime_cluster(start, end, @C) list of prime k-tuples
   sieve_range(n, width, depth)        sieve out small factors to depth
@@ -107,6 +109,7 @@ Tags:
   nth_almost_prime_approx(k,n)        fast approximate nth k-almost prime
   nth_almost_prime_lower(k,n)         fast nth k-almost prime lower bound
   nth_almost_prime_upper(k,n)         fast nth k-almost prime upper bound
+  omega_prime_count(k,n)              count divisible by exactly k primes
   ramanujan_prime_count(n)            count of Ramanujan primes <= n
   ramanujan_prime_count(start, end)   count of Ramanujan primes in range
   ramanujan_prime_count_lower(n)      fast lower bound for Ramanujan count

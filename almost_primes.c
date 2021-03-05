@@ -17,6 +17,7 @@
 #include "prime_nth_count.h"
 #include "prime_count_cache.h"
 #include "semi_primes.h"
+#include "factor.h"   /* for omega primes */
 #include "inverse_interpolate.h"
 #include "almost_primes.h"
 
@@ -745,5 +746,61 @@ UV range_almost_prime_sieve(UV** list, uint32_t k, UV slo, UV shi)
     Safefree(nf);
   }
   *list = S;
+  return count;
+}
+
+/******************************************************************************/
+/*                              OMEGA PRIMES                                  */
+/******************************************************************************/
+UV range_omega_prime_sieve(UV** ret, uint32_t k, UV lo, UV hi) {
+  UV i, lmax = 0, n = 0;
+  UV* l = 0;
+  unsigned char *nf;
+
+  if (hi < lo) croak("range_omega_prime_sieve error hi %"UVuf" < lo %"UVuf"\n",hi,lo);
+  nf = range_nfactor_sieve(lo, hi, 0);
+  if (ret != 0) {
+    lmax = 1000;
+    New(0, l, lmax, UV);
+  }
+  for (i = 0; i < hi-lo+1; i++) {
+    if (nf[i] != k) continue;
+    if (l != 0) {
+      if (n >= lmax)  { lmax = 1 + lmax * 1.2;  Renew(l, lmax, UV); }
+      l[n] = lo+i;
+    }
+    n++;
+  }
+  Safefree(nf);
+  if (ret != 0)  *ret = l;
+  return n;
+}
+
+UV omega_prime_count(uint32_t k, UV n)
+{
+  UV const incr = 500000;
+  UV i, lo, hi, count;
+
+  if (k == 0) return (n >= 1);
+  if (k == 1) return prime_power_count(n);
+
+  /* The first k-omega-prime is primorial(p_k) (ignoring zero for k=1) */
+  lo = primorial(nth_prime(k));
+  if (lo == 0) return 0;
+
+  prime_precalc(isqrt(n));
+
+  for (count = 0;  lo <= n;  lo = hi+1) {
+    hi = lo + incr - 1;
+    if (hi > n) hi = n;
+    {
+      unsigned char* nf = range_nfactor_sieve(lo, hi, 0);
+      for (i = 0; i < hi-lo+1; i++)
+        if (nf[i] == k)
+          count++;
+      Safefree(nf);
+    }
+  }
+  /* Do not count prime_omega(0) = 1 */
   return count;
 }

@@ -107,6 +107,7 @@ sub entropy_bytes {
 *twin_prime_count = \&Math::Prime::Util::PP::twin_prime_count;
 *semiprime_count = \&Math::Prime::Util::PP::semiprime_count;
 *almost_prime_count = \&Math::Prime::Util::PP::almost_prime_count;
+*omega_prime_count = \&Math::Prime::Util::PP::omega_prime_count;
 *ramanujan_prime_count = \&Math::Prime::Util::PP::ramanujan_prime_count;
 *sum_primes = \&Math::Prime::Util::PP::sum_primes;
 *print_primes = \&Math::Prime::Util::PP::print_primes;

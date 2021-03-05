@@ -35,6 +35,7 @@ Revision history for Perl module Math::Prime::Util
     - is_practical(n)                 is n a practical number
     - is_delicate_prime(n)            is n a digitally delicate prime
     - is_almost_prime(k,n)            does n have exactly k prime factors
+    - almost_primes(k,[start,]end)    array ref of k-almost-primes
     - almost_prime_count(k,n)         count of integers with exactly k factors
     - almost_prime_count_approx(k,n)  fast approximate k-almost-prime count
     - almost_prime_count_lower(k,n)   fast k-almost-prime count lower bound
@@ -44,6 +45,8 @@ Revision history for Perl module Math::Prime::Util
     - nth_almost_prime_lower(k,n)     fast nth k-almost-prime lower bound
     - nth_almost_prime_upper(k,n)     fast nth k-almost-prime upper bound
     - foralmostprimes {} k,a,b        loop over k-almost-primes
+    - omega_primes(k,[start,]end)     array ref of k-omega-primes
+    - omega_prime_count(k,n)          count nums divisible by exactly k primes
     - is_powerful(n[,k])              is n a k-powerful number (default k=2)
     - powerful_count(n[,k])           count of k-powerful numbers <= n
     - nth_powerful(n[,k])             the nth k-powerful number (default k=2)
