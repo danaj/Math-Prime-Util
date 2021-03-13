@@ -28,7 +28,7 @@ our @EXPORT_OK =
       is_aks_prime is_bpsw_prime is_ramanujan_prime is_mersenne_prime
       is_delicate_prime
       is_power is_prime_power is_pillai is_square is_polygonal
-      is_semiprime is_almost_prime
+      is_semiprime is_almost_prime is_omega_prime
       is_square_free is_primitive_root is_carmichael is_quasi_carmichael
       is_fundamental is_totient is_gaussian_prime
       is_smooth is_rough is_powerful is_practical
@@ -1961,7 +1961,7 @@ C<k>-omega-prime numbers from C<1> up to and including C<n>.
 This is the count of all positive integers through C<n> that are
 divisible by exactly C<k> different primes.
 
-Counting is done using linear-complexity sieving.
+The implementation uses nested loops over prime powers.
 
 Though we have defined C<prime_omega(0) = 1>, it is not included.
 
@@ -3560,6 +3560,18 @@ Given non-negative integers C<k> and C<n>, returns 1 if C<n> has
 exactly C<k> prime factors, and 0 otherwise.
 With C<k=1>, this is a standard primality test.
 With C<k=2>, this is the same as L</is_semiprime>.
+
+Functionally identical but possibly faster than C<prime_bigomega(n) == k>.
+
+=head2 is_omega_prime
+
+  say is_omega_prime(6,2169229601);  # True if n has 6 distinct factors
+
+Given non-negative integers C<k> and C<n>, returns 1 if C<n> has
+exactly C<k> distinct prime factors (allowing multiplicity), and 0 otherwise.
+With C<k=1>, this is the same as L</is_prime_power>.
+
+Functionally identical but possibly faster than C<prime_omega(n) == k>.
 
 =head2 is_fundamental
 

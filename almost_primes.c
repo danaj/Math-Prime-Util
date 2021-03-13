@@ -779,8 +779,33 @@ UV range_omega_prime_sieve(UV** ret, uint32_t k, UV lo, UV hi) {
   return n;
 }
 
+
+/* Recursive nested summation over prime powers */
+static UV _opcn(uint32_t k, UV n, UV qi, UV PQ, uint32_t* pr, UV numprimes) {
+  UV nPQ = n / PQ;
+  UV i, maxi, sum;
+
+  if (k == 1) {
+    sum = prime_power_count(nPQ);
+    for (i = 0; i < qi; i++)
+      sum -= logint(nPQ, pr[i]);
+  } else {
+    sum = 0;
+    maxi = prime_count(0, rootint(nPQ,k));
+    if (maxi > numprimes) croak("not enough primes in opcn");
+    for (i = qi;  i < maxi;  i++) {
+      UV R, r = pr[i];
+      for (R = r;  R < n / (PQ*r);  R *= r) {    /* TODO: overflow */
+        sum += _opcn(k-1, n, i+1, PQ*R, pr, numprimes);
+      }
+    }
+  }
+  return sum;
+}
+
 UV omega_prime_count(uint32_t k, UV n)
 {
+#if 0
   UV const incr = 500000;
   UV i, lo, hi, count;
 
@@ -806,4 +831,20 @@ UV omega_prime_count(uint32_t k, UV n)
   }
   /* Do not count prime_omega(0) = 1 */
   return count;
+#else
+  uint32_t* pr;
+  UV npr, sum, lo;
+
+  if (k == 0) return (n >= 1);
+  if (k == 1) return prime_power_count(n);
+
+  /* The first k-omega-prime is primorial(p_k) (ignoring zero for k=1) */
+  lo = primorial(nth_prime(k));
+  if (lo == 0 || n < lo) return 0;
+
+  npr = range_prime_sieve_32(&pr, isqrt(n), 0);  /* p[0]=2, p[1]=3,... */
+  sum = _opcn(k, n, 0, 1, pr, npr);
+  Safefree(pr);
+  return sum;
+#endif
 }
