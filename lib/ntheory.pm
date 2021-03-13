@@ -224,6 +224,7 @@ Tags:
   is_pillai(n)                        v where  v! % n == n-1  and  n % v != 1
   is_semiprime(n)                     does n have exactly 2 prime factors
   is_almost_prime(k,n)                does n have exactly k prime factors
+  is_omega_prime(k,n)                 is n divisible by exactly k primes
   is_polygonal(n,k)                   is n a k-polygonal number
   is_polygonal(n,k,\$root)            as above but also set $root
   is_fundamental(d)                   is d a fundamental discriminant

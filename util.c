@@ -1314,6 +1314,22 @@ int is_almost_prime(UV k, UV n) {
 
   return ((UV)prime_bigomega(n) == k);
 }
+int is_omega_prime(UV k, UV n) {
+  UV p;
+
+  if (k > 0 && !(n& 1)) { k--; do { n >>= 1; } while (!(n& 1)); }
+  if (k > 0 && !(n% 3)) { k--; do { n /=  3; } while (!(n% 3)); }
+  if (k > 0 && !(n% 5)) { k--; do { n /=  5; } while (!(n% 5)); }
+  if (k > 0 && !(n% 7)) { k--; do { n /=  7; } while (!(n% 7)); }
+  if (k > 0 && !(n%11)) { k--; do { n /= 11; } while (!(n%11)); }
+
+  if (n == 1) return (k == 0);
+  if (k == 0) return (n == 1);
+  if (k == 1) return !!primepower(n,&p);
+  if (n < ipowsafe(13,k)) return 0;
+
+  return ((UV)prime_omega(n) == k);
+}
 
 int is_fundamental(UV n, int neg) {
   UV r = n & 15;

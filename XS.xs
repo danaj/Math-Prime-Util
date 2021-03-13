@@ -2315,7 +2315,8 @@ void
 is_smooth(IN SV* svn, IN SV* svk)
   ALIAS:
     is_rough = 1
-    is_almost_prime = 2
+    is_omega_prime = 2
+    is_almost_prime = 3
   PREINIT:
     UV n, k;
   PPCODE:
@@ -2325,7 +2326,8 @@ is_smooth(IN SV* svn, IN SV* svk)
       switch (ix) {
         case 0:  res = is_smooth(n,k); break;
         case 1:  res = is_rough(n,k); break;
-        case 2:
+        case 2:  res = is_omega_prime(n,k); break; /* Note order */
+        case 3:
         default: res = is_almost_prime(n,k); break; /* Note order */
       }
       RETURN_NPARITY(res);
@@ -2333,7 +2335,8 @@ is_smooth(IN SV* svn, IN SV* svk)
     switch (ix) {
       case 0:  _vcallsub_with_gmp(0.53,"is_smooth");  break;
       case 1:  _vcallsub_with_gmp(0.53,"is_rough");  break;
-      case 2:
+      case 2:  _vcallsub_with_gmp(0.00,"is_omega_prime");  break;
+      case 3:
       default: _vcallsub_with_gmp(0.53,"is_almost_prime"); break;
     }
     return;
@@ -2515,7 +2518,7 @@ void add1int(IN SV* svn)
       if (ix == 0 || (ix == 1 && (IV)n > IV_MAX))
         XSRETURN_IV( (ix==0) ? (IV)n+1 : (IV)n-1 );
     }
-    _vcallsub_with_gmp(0.00, (ix == 0) ? "add1int" : "sub1int");
+    _vcallsub_with_gmp(0.53, (ix == 0) ? "add1int" : "sub1int");
     objectify_result(aTHX_ svn, ST(0));
     return;
 
