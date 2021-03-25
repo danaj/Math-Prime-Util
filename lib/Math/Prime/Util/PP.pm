@@ -1398,23 +1398,41 @@ sub almost_primes {
   $ap;
 }
 
+sub _rec_omega_primes {
+  my($k, $lo, $hi, $m, $p, $opl) = @_;
+  my $s = rootint(divint($hi, $m), $k);
+  foreach my $q (@{primes($p, $s)}) {
+    next if Math::Prime::Util::modint($m,$q) == 0;
+    for (my $v = mulint($m, $q); $v <= $hi ; $v = Math::Prime::Util::mulint($v, $q)) {
+      if ($k == 1) {
+        push @$opl, $v  if $v >= $lo;
+      } else {
+        _rec_omega_primes($k-1,$lo,$hi,$v,$q,$opl)  if Math::Prime::Util::mulint($v,$q) <= $hi;
+      }
+    }
+  }
+}
+
 sub omega_primes {
   my($k, $low, $high) = @_;
 
-  my $minlow = Math::Prime::Util::pn_primorial($k);
-  $low = $minlow if $low < $minlow;
+  $low = vecmax($low, pn_primorial($k));
   return [] unless $low <= $high;
+  return ($low <= 1 && $high >= 1) ? [1] : []  if $k == 0;
 
-  # For k=0, we should return empty or 1
-  # For k=1, we want the prime powers
-  # is there a good constructive technique for further ones?
+  my @opl;
 
-  my $op = [];
-  while ($low <= $high) {
-    push @$op, $low if Math::Prime::Util::prime_omega($low) == $k;
-    $low++;
-  }
-  $op;
+  # Simple iteration
+  #  while ($low <= $high) {
+  #    push @opl, $low if Math::Prime::Util::prime_omega($low) == $k;
+  #    $low++;
+  #  }
+
+  # Recursive method from trizen
+  _rec_omega_primes($k, $low, $high, 1, 2, \@opl);
+  @opl = sort { $a <=> $b } @opl;
+
+  \@opl;
 }
 
 sub is_semiprime {
