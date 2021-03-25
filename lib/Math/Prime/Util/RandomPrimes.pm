@@ -6,10 +6,13 @@ use Math::Prime::Util qw/ prime_get_config
                           verify_prime
                           is_provable_prime_with_cert
                           primorial prime_count nth_prime
-                          is_prob_prime is_strong_pseudoprime
+                          is_prob_prime is_pseudoprime is_strong_pseudoprime
+                          is_extra_strong_lucas_pseudoprime
                           next_prime prev_prime
                           urandomb urandomm random_bytes
-                          addint mulint lshiftint
+                          addint subint add1int sub1int
+                          mulint divint powint modint lshiftint rshiftint
+                          powmod vecprod divrem
                         /;
 
 BEGIN {
@@ -853,21 +856,82 @@ sub random_safe_prime {
   return (5,7)[urandomb(1)] if $bits == 3;
   return 11 if $bits == 4;
   return 23 if $bits == 5;
+  return (47,59)[urandomb(1)] if $bits == 6;
+  return (83,107)[urandomb(1)] if $bits == 7;
 
-  # This is very slow.  See the GMP code for much faster way with large bits.
+  # In general not faster :(
+  #return random_safe_prime_large($bits) if $bits > 35;
 
   my($p,$q);
-  do {
+  while (1) {
     $q = Math::Prime::Util::random_nbit_prime($bits-1);
-    $p = mulint(2,$q) + 1;
-  } while ( ($q % 3) != 2 || ($q % 5) == 2 || ($p % 3) != 2 ||
-            !is_prob_prime($p) );
+    my $qm = modint($q, 1155);  # a nice native int
+    next if ($qm % 3) != 2
+         || ($qm % 5) == 2 || ($qm % 7) == 3 || ($qm % 11) == 5;
+    $p = mulint(2, $q) + 1;
+    # This is sufficient, but we'll do the full test including pre-tests.
+    #last if is_pseudoprime($p,2);  # p is prime if q is prime
+    last if is_prob_prime($p);
+  }
   return $p;
+}
+
+sub random_safe_prime_large {
+  my $bits = shift;
+  croak "Not enough bits for large random_safe_prime" if $bits <= 35;
+
+  # Set first and last two bits
+  my $base = addint(lshiftint(1, $bits-1),3);
+  # Fill in lower portion with random bits, leaving 32 upper
+  $base = addint($base, lshiftint(urandomb($bits - 35), 2));
+
+  while (1) {
+    my($p,$q,$qmod);
+    # 1. generate random nbit p
+    $p = lshiftint(urandomb(32), $bits-33);
+    $p = addint($base, $p);
+    # 2. p = 2q+1  =>  q = p>>1
+    $q = rshiftint($p,1);
+    croak "fail rsp" unless $p == 2*$q+1;
+    # 3. Fast compositeness pre-tests for q and p
+    $qmod = modint($q, 1155);  # qmod is now a nice native int
+    croak "something wrong with modint" if ref($qmod);
+    next if ($qmod % 3) != 2
+         || ($qmod % 5) == 0 || ($qmod % 7) == 0 || ($qmod % 11) == 0
+         || ($qmod % 5) == 2 || ($qmod % 7) == 3 || ($qmod % 11) == 5;
+    # 4. more pre-testing for p or 1 divisible by small numbers
+    $qmod = modint($q, 13*17*19*23*29);
+    next if ($qmod % 13) == 0 || ($qmod % 13) == (13>>1);
+    next if ($qmod % 17) == 0 || ($qmod % 17) == (17>>1);
+    next if ($qmod % 19) == 0 || ($qmod % 19) == (19>>1);
+    next if ($qmod % 23) == 0 || ($qmod % 23) == (23>>1);
+    next if ($qmod % 29) == 0 || ($qmod % 29) == (29>>1);
+    # ... more
+
+    # 5. Strong testing.
+    #    We will do a strong test on q, split into two.
+    #    For p, we will be using Pocklington's theorem
+    next unless is_strong_pseudoprime($q, 2);
+    #
+    # If we find an 'a' such that
+    #   1. a^(p-1) = 1 mod p   (This is a Fermat test base 'a')
+    #   2. gcd(a^(p-1)/q - 1, p) = 1   =>  gcd(a^2-1, p) = 1
+    # then p is prime if q is prime.
+    # Choose a=2.
+    # Then p is prime if:
+    #   - q is prime
+    #   - p passes a base 2 Fermat test
+    #   - p is not divisible by 3
+    next unless is_pseudoprime($p, 2);
+    next unless is_extra_strong_lucas_pseudoprime($q);
+    # q passes BPSW, and p is prime if q is prime.
+    return $p;
+  }
 }
 
 
 # Gordon's algorithm for generating a strong prime.
-sub random_strong_prime {
+sub xrandom_strong_prime {
   my $t = shift;
   croak "random_strong_prime, bits must be >= 128" unless $t >= 128;
   $t = int("$t");
@@ -899,6 +963,42 @@ sub random_strong_prime {
       my $jstart = $jl + urandomm($ju - $jl + 1);
       for (my $j = $jstart; $j <= $ju; $j++) {  # Search for p
         my $p = $pp + 2 * $j * $q * $qp;
+        return $p if is_prob_prime($p);
+      }
+    }
+  }
+}
+sub random_strong_prime {
+  my $t = shift;
+  croak "random_strong_prime, bits must be >= 128" unless $t >= 128;
+  $t = int("$t");
+
+  croak "Random strong primes must be >= 173 bits on old Perl"
+    if OLD_PERL_VERSION && MPU_64BIT && $t < 173;
+
+  my $l   = (($t+1) >> 1) - 2;
+  my $lp  = ($t >> 1) - 20;
+  my $lpp = $l - 20;
+  while (1) {
+    my $qp  = random_nbit_prime($lp);
+    my $qpp = random_nbit_prime($lpp);
+    my $qp2 = mulint(2,$qp);
+    my $qpp2 = mulint(2,$qpp);
+    my ($il, $rem) = divrem(sub1int(lshiftint(1,$l-1)),$qpp2);
+    $il = add1int($il) if $rem > 0;
+    my $iu = divint(subint(lshiftint(2,$l),2),$qpp2);
+    my $istart = addint($il, urandomm($iu - $il + 1));
+    for (my $i = $istart; $i <= $iu; $i=add1int($i)) {  # Search for q
+      my $q = add1int(mulint($i,$qpp2));
+      next unless is_prob_prime($q);
+      my $qqp2 = mulint($q,$qp2);
+      my $pp = sub1int(mulint($qp2, powmod($qp, $q-2, $q)));
+      my ($jl, $rem) = divrem(subint(lshiftint(1,$t-1),$pp), $qqp2);
+      $jl = add1int($jl) if $rem > 0;
+      my $ju = divint(subint(lshiftint(1,$t),$pp+1), $qqp2);
+      my $jstart = addint($jl, urandomm($ju - $jl + 1));
+      for (my $j = $jstart; $j <= $ju; $j=add1int($j)) {  # Search for p
+        my $p = addint($pp, mulint($j,$qqp2));
         return $p if is_prob_prime($p);
       }
     }
