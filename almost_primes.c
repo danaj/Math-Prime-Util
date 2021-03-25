@@ -677,6 +677,7 @@ UV range_almost_prime_sieve(UV** list, uint32_t k, UV slo, UV shi)
   }
 
   Ssize = (almost_prime_count_approx(k,shi) - almost_prime_count_approx(k,slo) + 1) * 1.2 + 100;
+  if (Ssize > 10000000UL) Ssize = 10000000UL;
   New(0, S, Ssize, UV);
 
   /* Do a range nfactor sieve in small windows, with one optimization.

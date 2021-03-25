@@ -1408,7 +1408,7 @@ unsigned char* range_nfactor_sieve(UV lo, UV hi, int with_multiplicity) {
   New(0, N, range, UV);
 
   /* We could set to 1 and sieve from 2, or do this initialization */
-  for (i = lo; i <= hi; i++) {
+  for (i = lo; i <= hi && i >= lo; i++) {
     N[i-lo] = 1;
     if (!(i&1) && i >= 2) {
       UV k = i >> 1;

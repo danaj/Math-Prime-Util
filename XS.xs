@@ -951,6 +951,7 @@ almost_prime_sieve(IN UV k, IN UV lo, IN UV hi)
       PUTBACK;
       SP = NULL; /* never use SP again, poison */
     }
+    S = 0;
     if (ix == 0) n = range_almost_prime_sieve(&S, k, lo, hi);
     else         n = range_omega_prime_sieve(&S, k, lo, hi);
     for (i = 0; i < n; i++)
@@ -2122,6 +2123,24 @@ void nth_almost_prime(IN SV* svk, IN SV* svn)
       case 3:
       default: _vcallsub_with_pp("nth_almost_prime_upper");  break;
     }
+    objectify_result(aTHX_ svn, ST(0));
+    return;
+
+void nth_omega_prime(IN SV* svk, IN SV* svn)
+  PREINIT:
+    UV k, n, max, ret;
+  PPCODE:
+    if (_validate_and_set(&k, aTHX_ svk, IFLAG_ABS) &&
+        _validate_and_set(&n, aTHX_ svn, IFLAG_ABS) &&
+        k < 16) {
+      if (n == 0 || (k == 0 && n > 1)) XSRETURN_UNDEF;
+      max = max_omega_prime_count(k);
+      if (max > 0  &&  n <= max) {
+        ret = nth_omega_prime(k, n);
+        XSRETURN_UV(ret);
+      }
+    }
+    _vcallsub_with_pp("nth_omega_prime");
     objectify_result(aTHX_ svn, ST(0));
     return;
 
