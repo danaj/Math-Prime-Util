@@ -135,7 +135,7 @@ BEGIN {
   use constant MPU_MAXPRIMEIDX => MPU_32BIT ?  203280221 :   425656284035217743;
   use constant UVPACKLET       => MPU_32BIT ?        'L' : 'Q';
   use constant INTMAX          => (!OLD_PERL_VERSION || MPU_32BIT) ? ~0 : 562949953421312;
-  use constant NEGINTMAX       => -(INTMAX >> 1) - 1;
+  use constant INTMIN          => -(INTMAX >> 1) - 1;
 
   eval {
     return 0 if defined $ENV{MPU_NO_XS} && $ENV{MPU_NO_XS} == 1;
@@ -273,10 +273,14 @@ sub _to_bigint {
   return (!defined($_[0]) || ref($_[0]) eq 'Math::BigInt') ? $_[0] : Math::BigInt->new("$_[0]");
 }
 sub _to_bigint_if_needed {
-  return $_[0] if !defined $_[0] || ref($_[0]) || ($_[0] <= INTMAX && $_[0] > NEGINTMAX);
-  do { require Math::BigInt;  Math::BigInt->import(try=>"GMP,Pari"); }
-    unless defined $Math::BigInt::VERSION;
-  return Math::BigInt->new("$_[0]");
+  return $_[0] if !defined $_[0] || ref($_[0]);
+  if ($_[0] >= INTMAX || $_[0] <= INTMIN) {    # Probably a bigint
+    do { require Math::BigInt;  Math::BigInt->import(try=>"GMP,Pari"); }
+      unless defined $Math::BigInt::VERSION;
+    my $n = Math::BigInt->new("$_[0]");
+    return $n if $n > INTMAX || $n < INTMIN;   # Definitely a bigint
+  }
+  $_[0];
 }
 sub _to_gmpz {
   do { require Math::GMPz; } unless defined $Math::GMPz::VERSION;
@@ -294,7 +298,7 @@ sub _reftyped {
   }
   if (OLD_PERL_VERSION) {
     # Perl 5.6 truncates arguments to doubles if you look at them funny
-    return "$_[1]" if "$_[1]" <= INTMAX && "$_[1]" >= NEGINTMAX;
+    return "$_[1]" if "$_[1]" <= INTMAX && "$_[1]" >= INTMIN;
   } elsif ($_[1] >= 0) {
     # TODO: This wasn't working right in 5.20.0-RC1, verify correct
     return $_[1] if $_[1] <= ~0;
@@ -2910,8 +2914,9 @@ and zero otherwise.
 If a second argument is present, it must be a scalar reference.  If the
 return value is non-zero, then it will be set to C<p>.
 
-This corresponds to Pari/GP's C<isprimepower> function.
-
+This corresponds to Pari/GP's C<isprimepower> function.  It is related to
+Mathematica's C<PrimePowerQ[n]> function.
+These all return zero/false for C<n=1>.
 
 =head2 is_square
 
@@ -4063,8 +4068,8 @@ This is L<OEIS series A069623|http://oeis.org/A069623>.
 =head2 prime_power_count
 
 Given an integer C<n>, returns the number of integers not exceeding C<n>
-which are prime powers.  By convention, 1 is included
-here even though L</is_prime_power(1) = 0>.
+which are prime powers with exponent greater than 0 (i.e. the prime powers
+not including C<1>).
 This is L<OEIS series A025528|http://oeis.org/A025528>.
 
 =head2 smooth_count
