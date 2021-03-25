@@ -47,6 +47,7 @@ WriteMakefile1(
                     'ramanujan_primes.o ' .
                     'semi_primes.o ' .
                     'almost_primes.o ' .
+                    'omega_primes.o ' .
                     'prime_count_cache.o ' .
                     'prime_nth_count.o ' .
                     'util.o '     .

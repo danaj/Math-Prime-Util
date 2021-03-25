@@ -17,7 +17,6 @@
 #include "prime_nth_count.h"
 #include "prime_count_cache.h"
 #include "semi_primes.h"
-#include "factor.h"   /* for omega primes */
 #include "inverse_interpolate.h"
 #include "almost_primes.h"
 
@@ -747,104 +746,4 @@ UV range_almost_prime_sieve(UV** list, uint32_t k, UV slo, UV shi)
   }
   *list = S;
   return count;
-}
-
-/******************************************************************************/
-/*                              OMEGA PRIMES                                  */
-/******************************************************************************/
-
-/* See https://arxiv.org/pdf/2006.16491.pdf page 12 for a brief note */
-
-UV range_omega_prime_sieve(UV** ret, uint32_t k, UV lo, UV hi) {
-  UV i, lmax = 0, n = 0;
-  UV* l = 0;
-  unsigned char *nf;
-
-  if (hi < lo) croak("range_omega_prime_sieve error hi %"UVuf" < lo %"UVuf"\n",hi,lo);
-  nf = range_nfactor_sieve(lo, hi, 0);
-  if (ret != 0) {
-    lmax = 1000;
-    New(0, l, lmax, UV);
-  }
-  for (i = 0; i < hi-lo+1; i++) {
-    if (nf[i] != k) continue;
-    if (l != 0) {
-      if (n >= lmax)  { lmax = 1 + lmax * 1.2;  Renew(l, lmax, UV); }
-      l[n] = lo+i;
-    }
-    n++;
-  }
-  Safefree(nf);
-  if (ret != 0)  *ret = l;
-  return n;
-}
-
-
-/* Recursive nested summation over prime powers */
-static UV _opcn(uint32_t k, UV n, UV qi, UV PQ, uint32_t* pr, UV numprimes) {
-  UV nPQ = n / PQ;
-  UV i, maxi, sum;
-
-  if (k == 1) {
-    sum = prime_power_count(nPQ);
-    for (i = 0; i < qi; i++)
-      sum -= logint(nPQ, pr[i]);
-  } else {
-    sum = 0;
-    maxi = prime_count(0, rootint(nPQ,k));
-    if (maxi > numprimes) croak("not enough primes in opcn");
-    for (i = qi;  i < maxi;  i++) {
-      UV R, r = pr[i];
-      for (R = r;  R < n / (PQ*r);  R *= r) {    /* TODO: overflow */
-        sum += _opcn(k-1, n, i+1, PQ*R, pr, numprimes);
-      }
-    }
-  }
-  return sum;
-}
-
-UV omega_prime_count(uint32_t k, UV n)
-{
-#if 0
-  UV const incr = 500000;
-  UV i, lo, hi, count;
-
-  if (k == 0) return (n >= 1);
-  if (k == 1) return prime_power_count(n);
-
-  /* The first k-omega-prime is primorial(p_k) (ignoring zero for k=1) */
-  lo = primorial(nth_prime(k));
-  if (lo == 0) return 0;
-
-  prime_precalc(isqrt(n));
-
-  for (count = 0;  lo <= n;  lo = hi+1) {
-    hi = lo + incr - 1;
-    if (hi > n) hi = n;
-    {
-      unsigned char* nf = range_nfactor_sieve(lo, hi, 0);
-      for (i = 0; i < hi-lo+1; i++)
-        if (nf[i] == k)
-          count++;
-      Safefree(nf);
-    }
-  }
-  /* Do not count prime_omega(0) = 1 */
-  return count;
-#else
-  uint32_t* pr;
-  UV npr, sum, lo;
-
-  if (k == 0) return (n >= 1);
-  if (k == 1) return prime_power_count(n);
-
-  /* The first k-omega-prime is primorial(p_k) (ignoring zero for k=1) */
-  lo = primorial(nth_prime(k));
-  if (lo == 0 || n < lo) return 0;
-
-  npr = range_prime_sieve_32(&pr, isqrt(n), 0);  /* p[0]=2, p[1]=3,... */
-  sum = _opcn(k, n, 0, 1, pr, npr);
-  Safefree(pr);
-  return sum;
-#endif
 }

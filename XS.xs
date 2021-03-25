@@ -34,6 +34,7 @@
 #include "ramanujan_primes.h"
 #include "semi_primes.h"
 #include "almost_primes.h"
+#include "omega_primes.h"
 #include "prime_nth_count.h"
 
 #ifdef FACTORING_HARNESSES

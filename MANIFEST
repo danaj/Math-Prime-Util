@@ -44,6 +44,8 @@ lehmer.h
 lehmer.c
 lmo.h
 lmo.c
+omega_primes.h
+omega_primes.c
 ppport.h
 primality.h
 primality.c
