@@ -2104,7 +2104,7 @@ void nth_almost_prime(IN SV* svk, IN SV* svn)
         k < BITS_PER_WORD) {
       if (n == 0 || (k == 0 && n > 1)) XSRETURN_UNDEF;
       max = max_almost_prime_count(k);
-      if (max > 0  &&  n <= max_almost_prime_count(k)) {
+      if (max > 0  &&  n <= max) {
         switch (ix) {
           case 0: ret = nth_almost_prime(k, n); break;
           case 1: ret = nth_almost_prime_approx(k, n); break;
@@ -2515,7 +2515,7 @@ void add1int(IN SV* svn)
       if (ix == 1 || (ix == 0 && n < UV_MAX))
         XSRETURN_UV( (ix==0) ? n+1 : n-1 );
     } else if (status == -1) {
-      if (ix == 0 || (ix == 1 && (IV)n > IV_MAX))
+      if (ix == 0 || (ix == 1 && (IV)n > IV_MIN))
         XSRETURN_IV( (ix==0) ? (IV)n+1 : (IV)n-1 );
     }
     _vcallsub_with_gmp(0.53, (ix == 0) ? "add1int" : "sub1int");
