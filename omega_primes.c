@@ -113,7 +113,7 @@ UV omega_prime_count(uint32_t k, UV n)
   if (k == 1) return prime_power_count(n);
 
   /* The first k-omega-prime is primorial(p_k) (ignoring zero for k=1) */
-  lo = primorial(nth_prime(k));
+  lo = pn_primorial(k);
   if (lo == 0) return 0;
 
   prime_precalc(isqrt(n));
@@ -139,7 +139,7 @@ UV omega_prime_count(uint32_t k, UV n)
   if (k == 1) return prime_power_count(n);
 
   /* The first k-omega-prime is primorial(p_k) (ignoring zero for k=1) */
-  lo = primorial(nth_prime(k));
+  lo = pn_primorial(k);
   if (lo == 0 || n < lo) return 0;
 
   npr = range_prime_sieve_32(&pr, isqrt(n), 0);  /* p[0]=2, p[1]=3,... */
@@ -164,7 +164,7 @@ UV nth_omega_prime(uint32_t k, UV n) {
 
   if (k > 15 || n > max_omega_prime_count(k)) return 0;
 
-  lo = primorial(nth_prime(k));
+  lo = pn_primorial(k);
   if (lo == 0) return 0;
   if (n == 1) return lo;
 

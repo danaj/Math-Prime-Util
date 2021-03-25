@@ -985,14 +985,26 @@ int kronecker_ss(IV a, IV b) {
   return kronecker_su(a, -b) * ((a < 0) ? -1 : 1);
 }
 
+#define MAX_PNPRIM ( (BITS_PER_WORD == 64) ? 15 : 9 )
+#define MAX_PRIM   ( (BITS_PER_WORD == 64) ? 52 : 28 )
+#if BITS_PER_WORD == 64
+  static const UV _pn_prim[MAX_PNPRIM+1] =
+    {1,2,6,30,210,2310,30030,510510,9699690,223092870,
+     UVCONST(6469693230),UVCONST(200560490130),UVCONST(7420738134810),UVCONST(304250263527210),UVCONST(13082761331670030),UVCONST(614889782588491410)};
+  static const unsigned char _prim_map[MAX_PRIM+1] =
+    {0,0,1,2,2,3,3,4,4,4,4,5,5,6,6,6,6,7,7,8,8,8,8,9,9,9,9,9,9,10,10,11,11,11,11,11,11,12,12,12,12,13,13,14,14,14,14,15,15,15,15,15,15};
+#else
+  static const UV _pn_prim[MAX_PNPRIM+1] =
+    {1,2,6,30,210,2310,30030,510510,9699690,223092870};
+  static const unsigned char _prim_map[MAX_PRIM+1] =
+    {0,0,1,2,2,3,3,4,4,4,4,5,5,6,6,6,6,7,7,8,8,8,8,9,9,9,9,9,9};
+#endif
+
+UV pn_primorial(UV n) {
+  return (n > MAX_PNPRIM)  ?  0  :  _pn_prim[n];
+}
 UV primorial(UV n) {
-  UV pi, prim = 1, max = (sizeof(UV) <= 4) ? 28 : 52;
-  if (n > max) return 0;
-  for (pi = 1; pi <= max; pi++) {
-    if (n < primes_tiny[pi]) break;
-    prim *= primes_tiny[pi];
-  }
-  return prim;
+  return (n > MAX_PRIM)  ?  0  :  _pn_prim[_prim_map[n]];
 }
 UV factorial(UV n) {
   UV i, r = 1;

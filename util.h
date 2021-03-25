@@ -51,6 +51,7 @@ extern int kronecker_uu(UV a, UV b);
 extern int kronecker_su(IV a, UV b);
 extern int kronecker_ss(IV a, IV b);
 
+extern UV pn_primorial(UV n);
 extern UV primorial(UV n);
 extern UV factorial(UV n);
 extern UV binomial(UV n, UV k);

@@ -2827,11 +2827,9 @@ void factorial(IN SV* svn)
   PPCODE:
     if (_validate_and_set(&n, aTHX_ svn, IFLAG_POS)) {
       switch(ix) {
-        case 0:  r = factorial(n);  break;
-        case 1:  r = primorial(n); break;
-        case 2:  if (n >= MPU_MAX_PRIME_IDX) r = primorial(nth_prime(n));
-                 else                        r = 0;
-                 break;
+        case 0:  r = factorial(n);    break;
+        case 1:  r = primorial(n);    break;
+        case 2:  r = pn_primorial(n); break;
         default: break;
       }
       if (r > 0) XSRETURN_UV(r);
