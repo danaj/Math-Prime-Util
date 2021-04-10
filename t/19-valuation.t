@@ -13,8 +13,10 @@ use Math::Prime::Util qw/valuation/;
 
 my @valuations = (
   [-4,2, 2],
-  [0,0, 0],
-  [1,0, 0],
+  #[0,0, 0],  error
+  #[1,0, 0],
+  [0,2, undef],
+  [1,2, 0],
   [96552,6, 3],
   [1879048192,2, 28],
   ["65520150907877741108803406077280119039314703968014509493068998974809747144832",2, 7],
@@ -25,5 +27,5 @@ plan tests => scalar(@valuations);
 ###### valuation
 foreach my $r (@valuations) {
   my($n, $k, $exp) = @$r;
-  is( valuation($n, $k), $exp, "valuation($n,$k) = $exp" );
+  is(valuation($n, $k), $exp, "valuation($n,$k) = ".(defined($exp)?$exp:"<undef>"));
 }

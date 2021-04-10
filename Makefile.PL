@@ -38,6 +38,7 @@ WriteMakefile1(
                     'factor.o '   .
                     'primality.o '.
                     'aks.o '      .
+                    'legendre_phi.o ' .
                     'lehmer.o '   .
                     'lmo.o '      .
                     'random_prime.o ' .
@@ -46,6 +47,8 @@ WriteMakefile1(
                     'ramanujan_primes.o ' .
                     'semi_primes.o ' .
                     'almost_primes.o ' .
+                    'omega_primes.o ' .
+                    'prime_count_cache.o ' .
                     'prime_nth_count.o ' .
                     'util.o '     .
                     'inverse_interpolate.o ' .

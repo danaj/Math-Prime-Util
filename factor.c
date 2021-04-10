@@ -1834,8 +1834,7 @@ static UV znlog_ph(UV a, UV g, UV p, UV p1) {
     fac[i] = znlog_solve( delta, gamma, p, znorder(gamma,p) );
     exp[i] = pi;
   }
-  x = chinese(fac, exp, nfactors, &i);
-  if (i == 1 && powmod(g, x, p) == a)
+  if (chinese(&x, fac, exp, nfactors) == 1 && powmod(g, x, p) == a)
     return x;
   return 0;
 }

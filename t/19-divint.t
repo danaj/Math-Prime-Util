@@ -3,7 +3,11 @@ use strict;
 use warnings;
 
 use Test::More;
-use Math::Prime::Util qw/ powint mulint addint subint divint modint divrem tdivrem absint negint /;
+use Math::Prime::Util qw/ powint mulint addint subint
+                          add1int sub1int
+                          divint modint divrem fdivrem tdivrem
+                          lshiftint rshiftint rashiftint
+                          absint negint cmpint signint/;
 use Math::BigInt;
 
 
@@ -47,25 +51,54 @@ my @anvals = (
   "18446744073709551617","-18446744073709551617",
 );
 my @quotients = (  # trunc, floor, euclidian
-  ["+ +",  "39458349850349850394853049583049",  "85889",  "459410982202026457344398579",  "459410982202026457344398579",  "459410982202026457344398579"],
-  ["+ -",  "39458349850349850394853049583049", "-85889", "-459410982202026457344398579", "-459410982202026457344398580", "-459410982202026457344398579"],
-  ["- +", "-39458349850349850394853049583049",  "85889", "-459410982202026457344398579", "-459410982202026457344398580", "-459410982202026457344398580"],
-  ["- -", "-39458349850349850394853049583049", "-85889",  "459410982202026457344398579",  "459410982202026457344398579",  "459410982202026457344398580"],
+  ["S + +", "9949242744253247", "64", "155456917878956", "155456917878956", "155456917878956"],
+  ["S - +", "-9949242744253247", "64", "-155456917878956", "-155456917878957", "-155456917878957"],
+  ["L + +",  "39458349850349850394853049583049",  "85889",  "459410982202026457344398579",  "459410982202026457344398579",  "459410982202026457344398579"],
+  ["L + -",  "39458349850349850394853049583049", "-85889", "-459410982202026457344398579", "-459410982202026457344398580", "-459410982202026457344398579"],
+  ["L - +", "-39458349850349850394853049583049",  "85889", "-459410982202026457344398579", "-459410982202026457344398580", "-459410982202026457344398580"],
+  ["L - -", "-39458349850349850394853049583049", "-85889",  "459410982202026457344398579",  "459410982202026457344398579",  "459410982202026457344398580"],
 );
+my @negshifts = (
+  # n, k,  >>, >>arith
+  [ 0, 1,  0, 0],
+  [-1, 1,  0, -1],
+  [-5, 1,  -2, -3],
+  [-8, 2,  -2, -2],
+  ["-307385513", 6, -4802898, -4802899],
+  ["-637526413", 6, -9961350, -9961351],
+  ["-2045651239", 6, -31963300, -31963301],
+  ["-3675663743", 6, -57432245, -57432246],
+  ["-2332267979728172537", 6, "-36441687183252695", "-36441687183252696"],
+  ["-8408654401686460807", 6, "-131385225026350950", "-131385225026350951"],
+  ["-17640827963513397449", 6, "-275637936929896835", "-275637936929896836"],
+  ["-32659506018295865747", 6, "-510304781535872902", "-510304781535872903"],
+  ["-79231600218559026832557301750107210001", 6, "-1237993753414984794258707839845425156", "-1237993753414984794258707839845425157"],
+  ["-131954888069700539887213633881194728277", 6, "-2061795126089070935737713029393667629", "-2061795126089070935737713029393667630"],
+  ["-254262665582332530470619504253273698569", 6, "-3972854149723945788603429753957401540", "-3972854149723945788603429753957401541"],
+  ["-416649423645764932216789232242651032187", 6, "-6510147244465077065887331753791422377", "-6510147244465077065887331753791422378"],
+);
+
 
 plan tests => 0
             + 7*4 + scalar(@powints) + 5     # powint
             + 1 + scalar(@mulints)           # mulint
             + 1 + scalar(@addints)           # addint
             + 1 + scalar(@subints)           # subint
+            + 1                              # add1int
+            + 1                              # sub1int
             + 2 + 2                          # divint
-            + 2 + 2                          # modint
+            + 2 + 2 + 1                      # modint
             + 2                              # divrem
+            + 2                              # fdivrem
             + 2                              # tdivrem
-            + 4 * scalar(@quotients)         # signed bigint division
-            + 6                              # table 1.3 from Leijen 2001
+            + 5 * scalar(@quotients)         # signed bigint division
+            + 8                              # table 1.3 from Leijen 2001
+            + 8                              # divint with large neg returns
+            + 4 + 3*scalar(@negshifts)       # shiftint
             + 4                              # absint
             + 4                              # negint
+            + 5                              # cmpint
+            + 3                              # signint
             + 0;
 
 ###### powint
@@ -90,7 +123,7 @@ is(powint(-544,7)-1,"-14099129446552305665","powint(-544,7)-1 = -140991294465523
   for my $a (-3 .. 3) {
     for my $b (-3 .. 3) {
       push @got, mulint($a,$b);
-      push @exp, $a*$b;
+      push @exp, ($a == 0 || $b == 0) ? 0 : $a*$b;  # Perl 5.6: -1*0 = -0
     }
   }
   is_deeply( \@got, \@exp, "mulint( -3 .. 3, -3 .. 3)" );
@@ -130,6 +163,17 @@ foreach my $r (@subints) {
   is( subint($a,$b), $exp, "subint($a,$b) = ".((defined $exp)?$exp:"<undef>") );
 }
 
+###### add1int / sub1int
+{
+  my @N = (-17 .. 17,
+           "4294967295", "4294967296", "4294967297",
+           "9223372036854775807", "9223372036854775808", "9223372036854775809",
+           "18446744073709551615", "18446744073709551616", "18446744073709551617",
+           "158456325028528675187087900671");
+  is_deeply([map { add1int($_) } @N], [map { addint($_,1) } @N], "add1int");
+  is_deeply([map { sub1int($_) } @N], [map { subint($_,1) } @N], "sub1int");
+}
+
 ###### divint
 ok(!eval { divint(0,0); }, "divint(1,0)");
 ok(!eval { divint(1,0); }, "divint(1,0)");
@@ -153,16 +197,22 @@ ok(!eval { modint(1,0); }, "modint(1,0)");
 is_deeply( [map { modint(1024,$_) } 1..1025], \@rpos1024, "modint(1024,x) for 1 .. 1025" );
 is_deeply( [map { modint(-1024,$_) } 1..1025], \@rneg1024, "modint(-1024,x) for 1 .. 1025" );
 
+is(modint("-1117091728166568014",59), 4, "modint(-1117091728166568014,59) = 4");
+
 ###### divrem
 ok(!eval { divrem(0,0); }, "divrem(1,0)");
 ok(!eval { divrem(1,0); }, "divrem(1,0)");
+
+###### fdivrem
+ok(!eval { fdivrem(0,0); }, "fdivrem(1,0)");
+ok(!eval { fdivrem(1,0); }, "fdivrem(1,0)");
 
 ###### tdivrem
 ok(!eval { tdivrem(0,0); }, "tdivrem(1,0)");
 ok(!eval { tdivrem(1,0); }, "tdivrem(1,0)");
 
 
-###### large values through divint, modint, divrem, tdivrem
+###### large values through divint, modint, divrem, fdivrem, tdivrem
 for my $s (@quotients) {
   my($signs, $n, $m, $qt, $qf, $qe) = @$s;
   my($bn,$bm) = map { Math::BigInt->new($_) } ($n,$m);
@@ -170,16 +220,20 @@ for my $s (@quotients) {
   is( divint($n, $m), $qf, "large divint  $signs" );
   is( modint($n, $m), $rf, "large modint  $signs" );
   is_deeply( [divrem($n, $m)], [$qe, $re], "large divrem  $signs" );
+  is_deeply( [fdivrem($n, $m)], [$qf, $rf], "large fdivrem  $signs" );
   is_deeply( [tdivrem($n, $m)], [$qt, $rt], "large tdivrem $signs" );
 }
 
-###### small values through divint, modint, divrem, tdivrem
+###### small values through divint, modint, divrem, fdivrem, tdivrem
 is( join(" ", tdivrem(8,3), tdivrem(8,-3), tdivrem(-8,3), tdivrem(-8,-3)),
     "2 2 -2 2 -2 -2 2 -2",
     "tdivrem with +/- 8,3" );
 is( join(" ", divrem(8,3), divrem(8,-3), divrem(-8,3), divrem(-8,-3)),
     "2 2 -2 2 -3 1 3 1",
     "divrem with +/- 8,3" );
+is( join(" ", fdivrem(8,3), fdivrem(8,-3), fdivrem(-8,3), fdivrem(-8,-3)),
+    "2 2 -3 -1 -3 1 2 -2",
+    "fdivrem with +/- 8,3" );
 is( join(" ", divint(8,3), modint(8,3), divint(8,-3), modint(8,-3), divint(-8,3), modint(-8,3), divint(-8,-3), modint(-8,-3)),
     "2 2 -3 -1 -3 1 2 -2",
     "divint+modint with +/- 8,3" );
@@ -190,9 +244,37 @@ is( join(" ", tdivrem(1,2), tdivrem(1,-2), tdivrem(-1,2), tdivrem(-1,-2)),
 is( join(" ", divrem(1,2), divrem(1,-2), divrem(-1,2), divrem(-1,-2)),
     "0 1 0 1 -1 1 1 1",
     "divrem with +/- 1,2" );
+is( join(" ", fdivrem(1,2), fdivrem(1,-2), fdivrem(-1,2), fdivrem(-1,-2)),
+    "0 1 -1 -1 -1 1 0 -1",
+    "fdivrem with +/- 1,2" );
 is( join(" ", divint(1,2), modint(1,2), divint(1,-2), modint(1,-2), divint(-1,2), modint(-1,2), divint(-1,-2), modint(-1,-2)),
     "0 1 -1 -1 -1 1 0 -1",
     "divint+modint with +/- 1,2" );
+
+###### divint and modint with interesting values
+is(divint("1895315831", -1), "-1895315831", "Divide 31-bit input by -1");
+is(divint("3483637757", -1), "-3483637757", "Divide 32-bit input by -1");
+is(divint("6127303089832103323", -1), "-6127303089832103323", "Divide 63-bit input by -1");
+is(divint("13026328650942325963", -1), "-13026328650942325963", "Divide 64-bit input by -1");
+is(divint("14123555781055773270", 2), "7061777890527886635", "Divide 64-bit input by 2");
+is(divint("12844039487317506779", "12844039487317506779"), 1, "Divide 64-bit input by itself");
+is(divint(3, "12844039487317506779"), 0, "Divide small int by 64-bit input");
+# Note this is floor division:
+is(divint(-3, "12844039487317506779"), -1, "Divide negative small int by 64-bit input");
+
+###### lshiftint
+is_deeply([map { lshiftint($_) } 0..50], [map { $_ << 1 } 0..50], "lshiftint(0..50)");
+is_deeply([map { rshiftint($_) } 0..50], [map { $_ >> 1 } 0..50], "rshiftint(0..50)");
+is_deeply([map { rashiftint($_) } 0..50], [map { $_ >> 1 } 0..50], "rashiftint(0..50)");
+is_deeply([map { lshiftint($_,5) } -65 .. 65], [map { $_ * 32 } -65 .. 65], "lshiftint(-65 .. 65, 5)");
+
+for my $d (@negshifts) {
+  my($n, $k, $rs, $ras) = @$d;
+  my $ls = mulint($n, powint(2,$k));
+  is( lshiftint($n,$k), $ls, "lshiftint($n,$k) = $ls" );
+  is( rshiftint($n,$k), $rs, "rshiftint($n,$k) = $rs" );
+  is( rashiftint($n,$k), $ras, "rashiftint($n,$k) = $ras" );
+}
 
 ###### absint
 { my(@got,@exp);
@@ -217,7 +299,7 @@ is( join(" ", divint(1,2), modint(1,2), divint(1,-2), modint(1,-2), divint(-1,2)
 { my(@got,@exp);
   for my $n (-100 .. 100) {
     push @got, negint($n);
-    push @exp, -$n;
+    push @exp, ($n == 0) ? 0 : -$n;
   }
   is_deeply( \@got, \@exp, "negint( -100 .. 100)" );
   is( negint("0"), 0, "negint(0) = 0" );
@@ -236,3 +318,16 @@ is( join(" ", divint(1,2), modint(1,2), divint(1,-2), modint(1,-2), divint(-1,2)
   }
   is_deeply( \@got, \@exp, "negint on large values" );
 }
+
+###### cmpint
+
+is(cmpint(1,2),-1,"1 < 2");
+is(cmpint(2,1), 1,"2 > 1");
+is(cmpint(2,2), 0,"2 == 2");
+is(cmpint("18446744073709553664","18446744073709551615"),1,"2^64+2048 > 2^64-1");
+is(cmpint("18446744073709551664","18446744073709551615"),1,"2^64+1048 > 2^64-1");
+
+###### signint
+is(signint(-13), -1, "signint(-13) = -1");
+is(signint(0), 0, "signint(0) = 0");
+is(signint(13), 1, "signint(13) = 1");

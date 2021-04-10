@@ -12,10 +12,10 @@ my $extra = defined $ENV{EXTENDED_TESTING} && $ENV{EXTENDED_TESTING};
 #my $usegmp= Math::Prime::Util::prime_get_config->{'gmp'};
 #$use64 = 0 if $use64 && 18446744073709550592 == ~0;
 
-plan tests => 0 + 7 + 3 + 2 + 1  # fromdigits
-                + 6 + 4 + 1      # todigits
-                + 4 + 2*$extra   # sumdigits
-                + 3              # todigitstring
+plan tests => 0 + 7 + 3 + 2 + 1    # fromdigits
+                + 6 + 4 + 1 + 1    # todigits
+                + 4 + 2*$extra + 1 # sumdigits
+                + 3 + 1            # todigitstring
                 + 12;
 
 ###### fromdigits
@@ -51,6 +51,8 @@ is_deeply([todigits(900,2,32)], [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1
 
 is(vecsum(todigits("293852387239761276234029385230912847923872323")), 201, "vecsum of todigits of bigint");
 
+is_deeply([todigits(-143)], [1,4,3], "todigits ignores negative sign");
+
 ###### sumdigits
 is(sumdigits("-45.36"), 4+5+3+6, "sumdigits(-45.36)");
 {
@@ -65,10 +67,14 @@ if ($extra) {
   is(sumdigits(factorial(10000)), 149346, "sumdigits 10000!");
 }
 
+is(sumdigits(-143), 8, "sumdigits ignores negative sign");
+
 ####### some longer todigitstring examples
 is(todigitstring("3" x 21, 3), "10001020211011120202011020201202220201012100", "todigitstring base 3");
 is(todigitstring("7" x 26, 9), "1303055203367717374834745502", "todigitstring base 9");
 is(todigitstring("9" x 27, 11), "92586630a001888a8112250349", "todigitstring base 11");
+
+is(todigitstring(-143,16), "8f", "todigitstring ignores negative sign");
 
 ###### examples from Wolfram docs
 is_deeply([todigits(1234135634,16)], [4,9,8,15,6,10,5,2], "todigits 1234135634 base 16");

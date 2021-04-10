@@ -67,10 +67,6 @@
 
 - Ensure a fast path for Math::GMP from MPU -> MPU:GMP -> GMP, and back.
 
-- We don't use legendre_phi for other functions any more, but it'd be nice
-  to speed it up using some ideas from the Ohana 2011 SAGE branch.  For example
-  (10**13,10**5) takes 2.5x longer, albeit with 6x less memory.
-
 - More Pari:  parforprime
 
 - znlog:
@@ -268,6 +264,8 @@
   - more work on verifying count_upper for k=5+
   - more work on verifying count_lower for k=5+
   - max_almost_prime_count fill in k=5-11. Somehow.
+    almost_prime_count(n,~0): 38min n=17, 74min n=16, 136min k=15, 262min k=14
+    Doubling each time, so k=11 looks like ~2 days, k=10 => ~4 days, etc.
   - max_almost_prime_count improve k=2,3,4.  Somehow.
   - optimize PP is_almost_prime
   - better PP almost_prime_count bounds for k > 3
@@ -304,9 +302,6 @@
 
 - extend qnr with optional root argument, cubic non-residue, etc.
 
-- to_zeckendorf (https://oeis.org/A014417), from_zeckendorf ?
-  Is fibbinary better?
-
 - practical numbers: make OEIS sequence with count <= 10^n.
   mpu '$s=1; for my $e (1..9) { $s += is_practical($_) for 10**($e-1)+1..10**$e; say "10^$e  $s"; }'
   mpu 'for my $e (1..9) { $s=0; $s += is_practical($_) for 1..10**$e; say "10^$e  $s"; }'
@@ -322,7 +317,7 @@
 
 - any way to make non-GMP random_strong_prime faster
 
-- test and use sum_primes128
+- sum_primes128, try using Meissel.
 
 - Speed up XS RiemannR with quadmath.
 
@@ -331,17 +326,37 @@
    - negative k extension
 
 - GMP
-  - powerful_count
-  - nth_powerful
-  - is_practical
   - rootmod, binomialmod
-  - is_almost_prime
   - almost primes
-  - bigomega, omega
 
 - Possible new:
-  - lshiftint($n,$bits), rshiftint
-  - vecequal (equality for integer arrays, possibly recursive)
   - checksums?  Rather than print | md5sum.  adler32, sha1/2/3, blake2 (b2sum)
 
-- foralmostprimes:  test
+- inverse sigma.  Better, determine how to generalize this somehow.
+
+- stronger BPSW test:  https://arxiv.org/abs/2006.14425
+
+- faster prime gaps:  https://arxiv.org/abs/2012.03771
+                      https://github.com/sethtroisi/prime-gap
+
+- Pari 2.13 has faster exp, Catalan, log2, gamma, factorial, lngamma.
+  Completely new Bernoulli and bernvec.
+  eulerreal, eulervec, ramanujantau
+  MPQS
+  Take a look.
+
+- Pari 2.13 added an optional third argument to sqrtint, just like rootint.
+
+- Faster Mertens. Helfgott/Thompson 2020.  https://arxiv.org/pdf/2101.08773.pdf
+
+- Add optional base to is_delicate_prime(n,base=10).  This should be relatively
+  easy in C, but we'll need to put the math back in PP.
+
+- refactor lucas code.
+  split out all the different codes, benchmark them all.
+
+- XS negative args for addint,subint,mulint,powint,divint,modint
+
+- tests for lucasuv lucasumod lucasvmod
+
+- GMP for new fdivrem, lucasuv, lucasumod, lucasvmod, lucasuvmod

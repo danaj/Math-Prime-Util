@@ -3,13 +3,13 @@
 
 #include "ptypes.h"
 
-extern UV  almost_prime_count(uint32_t k, UV n);
-extern UV  almost_prime_count_approx(uint32_t k, UV n);
+extern UV almost_prime_count(uint32_t k, UV n);
+extern UV almost_prime_count_approx(uint32_t k, UV n);
 
-extern UV  nth_almost_prime(uint32_t k, UV n);
-extern UV  nth_almost_prime_approx(uint32_t k, UV n);
-extern UV  nth_almost_prime_lower(uint32_t k, UV n);
-extern UV  nth_almost_prime_upper(uint32_t k, UV n);
+extern UV nth_almost_prime(uint32_t k, UV n);
+extern UV nth_almost_prime_approx(uint32_t k, UV n);
+extern UV nth_almost_prime_lower(uint32_t k, UV n);
+extern UV nth_almost_prime_upper(uint32_t k, UV n);
 
 /* The largest k-almost-prime that fits in a UV */
 extern UV max_nth_almost_prime(uint32_t k);

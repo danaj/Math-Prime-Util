@@ -38,13 +38,19 @@ factor.c
 inverse_interpolate.h
 inverse_interpolate.c
 keyval.h
+legendre_phi.h
+legendre_phi.c
 lehmer.h
 lehmer.c
 lmo.h
 lmo.c
+omega_primes.h
+omega_primes.c
 ppport.h
 primality.h
 primality.c
+prime_count_cache.c
+prime_count_cache.h
 prime_count_tables.h
 prime_nth_count.h
 prime_nth_count.c
@@ -138,6 +144,7 @@ t/11-twinprimes.t
 t/11-sumprimes.t
 t/11-clusters.t
 t/11-almostprimes.t
+t/11-omegaprimes.t
 t/12-nextprime.t
 t/13-primecount.t
 t/14-nthprime.t
@@ -172,6 +179,7 @@ t/24-partitions.t
 t/25-lucas_sequences.t
 t/26-binomialmod.t
 t/26-combinatorial.t
+t/26-delicateprime.t
 t/26-digits.t
 t/26-isalmostprime.t
 t/26-iscarmichael.t
@@ -190,6 +198,7 @@ t/26-powerful.t
 t/26-practical.t
 t/26-smooth.t
 t/26-vec.t
+t/26-zeckendorf.t
 t/27-bernfrac.t
 t/28-pi.t
 t/29-mersenne.t
@@ -218,6 +227,7 @@ xt/binomialmod.pl
 xt/check-nth-bounds.pl
 xt/chinese.pl
 xt/create-pc-tables.pl
+xt/division.pl
 xt/moebius-mertens.pl
 xt/totient-range.pl
 xt/primality-small.pl
@@ -226,6 +236,7 @@ xt/primality-proofs.pl
 xt/small-is-next-prev.pl
 xt/factor-holf.pl
 xt/legendre_phi.t
+xt/lucasseq.pl
 xt/make-chacha20-inner.pl
 xt/make-script-test-data.pl
 xt/measure_zeta_accuracy.pl

@@ -138,11 +138,11 @@ static void init_setlist(set_list_t *L, UV isize) {
 
 static void free_setlist(set_list_t *L) {
   long i;
-  L->size = L->maxsize = 0;
   for (i = 0; i < L->maxsize; i++)
     if (L->keylist[i].size > 0)
       Safefree(L->keylist[i].vals);
   Safefree(L->keylist);
+  L->size = L->maxsize = 0;
 }
 
 static void _setlist_expand(set_list_t *L) {

@@ -17,7 +17,7 @@ use Math::Prime::Util qw/is_prime
                          is_perrin_pseudoprime
                          is_catalan_pseudoprime
                          is_frobenius_pseudoprime
-                         lucas_sequence kronecker/;
+                         lucasumod kronecker/;
 
 my $use64 = Math::Prime::Util::prime_get_config->{'maxbits'} > 32;
 my $usexs = Math::Prime::Util::prime_get_config->{'xs'};
@@ -25,7 +25,7 @@ my $usegmp =Math::Prime::Util::prime_get_config->{'gmp'};
 my $extra = 0+(defined $ENV{EXTENDED_TESTING} && $ENV{EXTENDED_TESTING});
 
 # small primes
-my @sp = qw/2 3 5 7 11 13 17 19 23 29 31 37/;
+my @sp = qw/2 3 5 7 11 13 17 19 23 29 31 37 41 43 47 53 59 61 67 71 73 79 83 89 97/;
 # strong pseudoprimes for all prime bases 2 .. pn
 my @phis = qw/2047 1373653 25326001 3215031751 2152302898747 3474749660383 341550071728321 341550071728321/;
 $#phis = 3 unless $use64;
@@ -117,32 +117,15 @@ if (!$usexs) {
 
 my @small_lucas_trials = (2, 9, 16, 100, 102, 2047, 2048, 5781, 9000, 14381);
 
-my %lucas_sequences = (
-  "323 1 1 324" => [0,2,1],
-  "323 4 1 324" => [170,308,1],
-  "323 4 5 324" => [194,156,115],
-  "323 3 1 324" => [0,2,1],
-  "323 3 1  81" => [0,287,1],
-  "323 5 -1 81" => [153,195,322],
-  "49001 25 117 24501" => [20933,18744,19141],
-  "18971 10001 -1 4743" => [5866,14421,18970],
-  "18971 10001 -1 4743" => [5866,14421,18970],
-  "3613982123 1 -1 3613982124" => [0,3613982121,1],
-  "3613982121 1 -1 3613982122" => [2586640546,2746447323,1],
-  "3613982121 1 -1 1806991061" => [3535079342,1187662808,3613982120],
-  "547968611 1 -1 547968612" => [1,3,1],
-  "547968611 1 -1 136992153" => [27044236,448467899,547968610],
-);
-
-plan tests => 0 + 3
+plan tests => 0 + 2
                 + 4
                 + scalar(keys %pseudoprimes)
                 + scalar @phis
                 + 1  # mr base 2    2-4k
                 + 9  # mr with large bases
                 + 3  # multi-base Fermat/strong pseudoprimes
+                + 1  # small extra_strong
                 + scalar @small_lucas_trials
-                + scalar(keys %lucas_sequences)
                 + 1  # frob-underwood
                 + 2*$use64  # frob-underwood
                 + 1  # frob-khashin
@@ -151,7 +134,8 @@ plan tests => 0 + 3
                 + 6  # Perrin restrictions
                 + 0;
 
-ok(!eval { is_strong_pseudoprime(2047); }, "MR with no base fails");
+# Enforced by XS prototype.
+#ok(!eval { is_strong_pseudoprime(2047); }, "MR with no base fails");
 ok(!eval { is_strong_pseudoprime(2047,0); }, "MR base 0 fails");
 ok(!eval { is_strong_pseudoprime(2047,1); }, "MR base 1 fails");
 
@@ -204,15 +188,15 @@ for my $base (sort keys %pseudoprimes) {
   } elsif ($base eq 'fibonacci') {
     @fails = grep {
       my $t = (($_%5)==2||($_%5)==3) ? $_+1 : $_-1;
-      my $is_fib = !(lucas_sequence($_, 1, -1, $t))[0];
+      my $is_fib = !lucasumod(1, -1, $t, $_);
       !$is_fib;
     } @c;
     $text = "Fibonacci pseudoprimes";
   } elsif ($base eq 'pell') {
     if ($] < 5.008) {  # Work around a fault in ancient Perl
-      @fails = grep { "" . (((lucas_sequence($_,2,-1,$_))[0] - kronecker(2,$_)) % $_) } @c;
+      @fails = grep { "" . ((lucasumod(2,-1,$_,$_) - kronecker(2,$_)) % $_) } @c;
     } else {
-      @fails = grep { (((lucas_sequence($_,2,-1,$_))[0] - kronecker(2,$_)) % $_) } @c;
+      @fails = grep { ((lucasumod(2,-1,$_,$_) - kronecker(2,$_)) % $_) } @c;
     }
     $text = "Pell pseudoprimes";
   } else {
@@ -259,6 +243,9 @@ is(is_pseudoprime(143168581, 2, 3, 5, 7, 11), 1, "143168581 is a Fermat pseudopr
 is(is_strong_pseudoprime(3215031751, 2, 3, 5, 7), 1, "3215031751 is a strong pseudoprime to bases 2,3,5,7");
 is(is_strong_pseudoprime("2152302898747", 2, 3, 5, 7, 11), 1, "2152302898747 is a strong pseudoprime to bases 2,3,5,7,11");
 
+# Verify extra strong for a few small primes
+is_deeply( [grep { is_extra_strong_lucas_pseudoprime($_) } 2..100], [grep { $_ >= 2 && $_ <= 100 } @sp], "The first 100 primes are selected by is_extra_strong_lucas_pseudoprime" );
+
 # Verify Lucas for some small numbers
 for my $n (@small_lucas_trials) {
   next if $n == 5459 || $n == 5777 || $n == 10877 || $n == 16109 || $n == 18971;
@@ -283,11 +270,6 @@ if ($extra) {
     }
   }
   is($mr2fail, 0, "is_strong_pseudoprime bases 2,3 matches is_prime");
-}
-
-# Lucas sequences, used for quite a few primality tests
-while (my($params, $expect) = each (%lucas_sequences)) {
-  is_deeply( [lucas_sequence(split(' ', $params))], $expect, "Lucas sequence $params" );
 }
 
 {

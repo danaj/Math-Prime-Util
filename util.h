@@ -59,9 +59,18 @@ extern UV modinverse(UV a, UV p);              /* Returns 1/a mod p */
 extern UV divmod(UV a, UV b, UV n);            /* Returns a/b mod n */
 extern int sqrtmodp(UV *r, UV a, UV p);        /* sqrt(a) mod p */
 extern int sqrtmod(UV *r, UV a, UV n);         /* sqrt(a) mod n */
-extern int rootmodp(UV *r, UV n, UV k, UV p);  /* n^(1/k) mod p for p prime */
-extern int rootmod(UV *r, UV n, UV k, UV p);   /* n^(1/k) mod p for any p */
-extern UV chinese(UV* a, UV* n, UV num, int *status); /* Chinese Remainder */
+extern int rootmodp(UV *r, UV a, UV k, UV p);  /* a^(1/k) mod p for p prime */
+extern int rootmod(UV *r, UV a, UV k, UV n);   /* a^(1/k) mod n for any n */
+extern int chinese(UV *r, UV* a, UV* n, UV num); /* Chinese Remainder */
+
+/* Do the inverse for a negative modular power / root. a^-k => (1/a)^k mod n */
+extern int prep_pow_inv(UV *a, UV *k, int kstatus, UV n);
+
+/* Division and remainder.  Returns remainder. */
+extern IV tdivrem(IV *q, IV *r, IV D, IV d);   /* signed div/rem trunc */
+extern IV fdivrem(IV *q, IV *r, IV D, IV d);   /* signed div/rem floor */
+extern IV edivrem(IV *q, IV *r, IV D, IV d);   /* signed div/rem Euclidian */
+extern UV ivmod(IV a, UV n);                   /* Returns a mod n (trunc) */
 
 extern UV totient(UV n);
 extern int moebius(UV n);
@@ -78,11 +87,13 @@ extern int is_fundamental(UV n, int neg);
 extern int is_totient(UV n);
 extern int is_semiprime(UV n);
 extern int is_almost_prime(UV k, UV n);
+extern int is_omega_prime(UV k, UV n);
 extern int is_carmichael(UV n);
 extern UV  is_quasi_carmichael(UV n);  /* Returns number of bases */
 extern UV  pillai_v(UV n);             /* v: v! % n == n-1 && n % v != 1 */
 extern UV  qnr(UV n);
 extern int is_practical(UV n);
+extern int is_delicate_prime(UV n);
 
 extern int is_smooth(UV n, UV k);
 extern int is_rough(UV n, UV k);
@@ -107,7 +118,8 @@ extern IV ramanujan_tau(UV n);
 
 extern char* pidigits(int digits);
 
-extern int strnum_minmax(int min, char* a, STRLEN alen, char* b, STRLEN blen);
+extern int strnum_minmax(int min, const char* a, STRLEN alen, const char* b, STRLEN blen);
+extern int strnum_cmp(const char* a, STRLEN alen, const char* b, STRLEN blen);
 
 extern int from_digit_string(UV* n, const char* s, int base);
 extern int from_digit_to_UV(UV* rn, UV* r, int len, int base);
@@ -115,6 +127,10 @@ extern int from_digit_to_str(char** rstr, UV* r, int len, int base);
 extern int to_digit_array(int* bits, UV n, int base, int length);
 extern int to_digit_string(char *s, UV n, int base, int length);
 extern int to_string_128(char s[40], IV hi, UV lo);
+
+extern int validate_zeckendorf(const char* str);
+extern UV from_zeckendorf(const char* str);
+extern char* to_zeckendorf(UV n);
 
 extern int is_catalan_pseudoprime(UV n);
 

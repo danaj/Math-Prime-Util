@@ -75,6 +75,8 @@ Tags:
   primes([start,] end)                array ref of primes
   twin_primes([start,] end)           array ref of twin primes
   semi_primes([start,] end)           array ref of semiprimes
+  almost_primes(k, [start,] end)      array ref of k-almost-primes
+  omega_primes(k, [start,] end)       array ref of k-omega-primes
   ramanujan_primes([start,] end)      array ref of Ramanujan primes
   sieve_prime_cluster(start, end, @C) list of prime k-tuples
   sieve_range(n, width, depth)        sieve out small factors to depth
@@ -107,6 +109,7 @@ Tags:
   nth_almost_prime_approx(k,n)        fast approximate nth k-almost prime
   nth_almost_prime_lower(k,n)         fast nth k-almost prime lower bound
   nth_almost_prime_upper(k,n)         fast nth k-almost prime upper bound
+  omega_prime_count(k,n)              count divisible by exactly k primes
   ramanujan_prime_count(n)            count of Ramanujan primes <= n
   ramanujan_prime_count(start, end)   count of Ramanujan primes in range
   ramanujan_prime_count_lower(n)      fast lower bound for Ramanujan count
@@ -190,6 +193,7 @@ Tags:
   vecmin(@list)                       minimum of list of integers
   vecmax(@list)                       maximum of list of integers
   vecextract(\@list, mask)            select from list based on mask
+  vecequal(\@list1, \@list2)          compare equality of two arrays
   vecreduce { ... } @list             reduce / left fold applied to list
   vecall { ... } @list                return true if all are true
   vecany { ... } @list                return true if any are true
@@ -205,6 +209,8 @@ Tags:
   fromdigits(\@d,[,base])             convert base digit vector to number
   fromdigits(str,[,base])             convert base digit string to number
   sumdigits(n)                        sum of digits, with optional base
+  tozeckendorf(n)                     convert n to Zeckendorf/Fibbinary
+  fromzeckendorf(str)                 convert Zeckendorf binary str to num
   is_square(n)                        return 1 if n is a perfect square
   is_power(n)                         return k if n = c^k for integer c
   is_power(n,k)                       return 1 if n = c^k for integer c, k
@@ -218,6 +224,7 @@ Tags:
   is_pillai(n)                        v where  v! % n == n-1  and  n % v != 1
   is_semiprime(n)                     does n have exactly 2 prime factors
   is_almost_prime(k,n)                does n have exactly k prime factors
+  is_omega_prime(k,n)                 is n divisible by exactly k primes
   is_polygonal(n,k)                   is n a k-polygonal number
   is_polygonal(n,k,\$root)            as above but also set $root
   is_fundamental(d)                   is d a fundamental discriminant
@@ -227,16 +234,25 @@ Tags:
   is_rough(n,k)                       is n a k-rough number
   is_powerful(n[,k])                  is n a k-powerful number
   is_practical(n)                     is n a practical number
+  is_delicate_prime(n)                is n a digitally delicate prime
   powint(a,b)                         signed integer a^b
   mulint(a,b)                         signed integer a * b
   addint(a,b)                         signed integer a + b
   subint(a,b)                         signed integer a - b
+  add1int(n)                          signed integer n + 1
+  sub1int(n)                          signed integer n - 1
   divint(a,b)                         signed integer a / b     (floor)
   modint(a,b)                         signed integer a % b     (floor)
   divrem(a,b)                         return (quot,rem) of a/b (Euclidian)
+  fdivrem(a,b)                        return (quot,rem) of a/b (floored)
   tdivrem(a,b)                        return (quot,rem) of a/b (truncated)
+  lshiftint(n,k)                      left shift n by k bits
+  rshiftint(n,k)                      right shift n by k bits (truncate)
+  rashiftint(n,k)                     right shift n by k bits (floor)
   absint(n)                           integer absolute value
   negint(n)                           integer negation
+  cmpint(a,b)                         integer comparison (like <=>)
+  signint(n)                          integer sign (-1,0,1)
   sqrtint(n)                          integer square root
   rootint(n,k)                        integer k-th root
   rootint(n,k,\$rk)                   as above but also set $rk to r^k
@@ -288,7 +304,10 @@ Tags:
   consecutive_integer_lcm(n)          lcm(1 .. n)
   lucasu(P, Q, k)                     U_k for Lucas(P,Q)
   lucasv(P, Q, k)                     V_k for Lucas(P,Q)
-  lucas_sequence(n, P, Q, k)          (U_k,V_k,Q_k) for Lucas(P,Q) mod n
+  lucasuv(P, Q, k)                    (U_k,V_k) for Lucas(P,Q)
+  lucasumod(P, Q, k, n)               U_k for Lucas(P,Q) mod n
+  lucasvmod(P, Q, k, n)               V_k for Lucas(P,Q) mod n
+  lucasuvmod(P, Q, k, n)              (U_k,V_k,Q^k) for Lucas(P,Q) mod n
   bernfrac(n)                         Bernoulli number as (num,den)
   bernreal(n)                         Bernoulli number as BigFloat
   harmfrac(n)                         Harmonic number as (num,den)

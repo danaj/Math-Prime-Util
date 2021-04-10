@@ -62,12 +62,13 @@
 
 #define FUNC_isqrt 1
 #define FUNC_icbrt 1
-#include "lmo.h"
 #include "util.h"
 #include "constants.h"
 #include "prime_nth_count.h"
 #include "cache.h"
 #include "sieve.h"
+#include "legendre_phi.h"
+#include "lmo.h"
 
 #ifdef _MSC_VER
   typedef unsigned __int8   uint8;
@@ -116,8 +117,11 @@ typedef UV sword_t;
 /* Create array of small primes: 0,2,3,5,...,prev_prime(n+1) */
 static uint32_t* make_primelist(uint32 n, uint32* number_of_primes)
 {
-  uint32 i = 0;
   uint32_t* plist;
+#if 1
+  *number_of_primes = range_prime_sieve_32(&plist, n, 1);
+#else
+  uint32 i = 0;
   double logn = log(n);
   uint32 max_index = (n < 67)     ? 18
                    : (n < 355991) ? 15+(n/(logn-1.09))
@@ -130,6 +134,7 @@ static uint32_t* make_primelist(uint32 n, uint32* number_of_primes)
     plist[++i] = p;
   } END_DO_FOR_EACH_PRIME;
   *number_of_primes = i;
+#endif
   return plist;
 }
 #if 0  /* primesieve 5.0 example */
@@ -244,136 +249,7 @@ static uint16* ft_create(uint32 max)
   return factor_table;
 }
 
-#define PHIC 6
 
-/* static const uint8_t _s0[ 1] = {0};
-  static const uint8_t _s1[ 2] = {0,1};
-  static const uint8_t _s2[ 6] = {0,1,1,1,1,2}; */
-static const uint8_t _s3[30] = {0,1,1,1,1,1,1,2,2,2,2,3,3,4,4,4,4,5,5,6,6,6,6,7,7,7,7,7,7,8};
-static const uint8_t _s4[210]= {0,1,1,1,1,1,1,1,1,1,1,2,2,3,3,3,3,4,4,5,5,5,5,6,6,6,6,6,6,7,7,8,8,8,8,8,8,9,9,9,9,10,10,11,11,11,11,12,12,12,12,12,12,13,13,13,13,13,13,14,14,15,15,15,15,15,15,16,16,16,16,17,17,18,18,18,18,18,18,19,19,19,19,20,20,20,20,20,20,21,21,21,21,21,21,21,21,22,22,22,22,23,23,24,24,24,24,25,25,26,26,26,26,27,27,27,27,27,27,27,27,28,28,28,28,28,28,29,29,29,29,30,30,30,30,30,30,31,31,32,32,32,32,33,33,33,33,33,33,34,34,35,35,35,35,35,35,36,36,36,36,36,36,37,37,37,37,38,38,39,39,39,39,40,40,40,40,40,40,41,41,42,42,42,42,42,42,43,43,43,43,44,44,45,45,45,45,46,46,47,47,47,47,47,47,47,47,47,47,48};
-static UV tablephi(UV x, uint32 a)
-{
-  switch (a) {
-    case 0: return x;
-    case 1: return x-x/2;
-    case 2: return x-x/2-x/3+x/6;
-    case 3: return (x/    30U) *     8U + _s3[x %     30U];
-    case 4: return (x/   210U) *    48U + _s4[x %    210U];
-    case 5: {
-              UV xp  = x / 11U;
-              return ((x /210) * 48 + _s4[x  % 210]) -
-                     ((xp/210) * 48 + _s4[xp % 210]);
-             }
-    case 6:
-    default:{
-              UV xp  = x / 11U;
-              UV x2  = x / 13U;
-              UV x2p = x2 / 11U;
-              return ((x  /210) * 48 + _s4[x  % 210]) -
-                     ((xp /210) * 48 + _s4[xp % 210]) -
-                     ((x2 /210) * 48 + _s4[x2 % 210]) +
-                     ((x2p/210) * 48 + _s4[x2p% 210]);
-            }
-    /* case 7: return tablephi(x,a-1)-tablephi(x/17,a-1); */  /* Hack hack */
-  }
-}
-
-/****************************************************************************/
-/*              Legendre Phi.  Not used by LMO, but exported.               */
-/****************************************************************************/
-
-/*
- * Choices include:
- *   1) recursive, memory-less.  We use this for small values.
- *   2) recursive, caching.  We use a this for larger values w/ 32MB cache.
- *   3) a-walker sorted list.  lehmer.c has this implementation.  It is
- *      faster for some values, but big and memory intensive.
- */
-static UV _phi_recurse(UV x, UV a) {
-  UV i, c = (a > PHIC) ? PHIC : a;
-  UV sum = tablephi(x, c);
-  if (a > c) {
-    UV p  = nth_prime(c);
-    UV pa = nth_prime(a);
-    for (i = c+1; i <= a; i++) {
-      UV xp;
-      p = next_prime(p);
-      xp = x/p;
-      if (xp < p) {
-        while (x < pa) {
-          a--;
-          pa = prev_prime(pa);
-        }
-        return (sum - a + i - 1);
-      }
-      sum -= legendre_phi(xp, i-1);
-    }
-  }
-  return sum;
-}
-
-#define PHICACHEA 256
-#define PHICACHEX 65536
-#define PHICACHE_EXISTS(x,a) \
-  ((x < PHICACHEX && a < PHICACHEA) ? cache[a*PHICACHEX+x] : 0)
-static IV _phi(UV x, UV a, int sign, const uint32_t* const primes, const uint32_t lastidx, uint16_t* cache)
-{
-  IV sum;
-  if      (PHICACHE_EXISTS(x,a))  return sign * cache[a*PHICACHEX+x];
-  else if (a <= PHIC)             return sign * tablephi(x, a);
-  else if (x < primes[a+1])       sum = sign;
-  else {
-    /* sum = _phi(x, a-1, sign, primes, lastidx, cache) +              */
-    /*       _phi(x/primes[a], a-1, -sign, primes, lastidx, cache);    */
-    UV a2, iters = (a*a > x)  ?  segment_prime_count(2,isqrt(x))  :  a;
-    UV c = (iters > PHIC) ? PHIC : iters;
-    IV phixc = PHICACHE_EXISTS(x,c) ? cache[a*PHICACHEX+x] : tablephi(x,c);
-    sum = sign * (iters - a + phixc);
-    for (a2 = c+1; a2 <= iters; a2++)
-      sum += _phi(x/primes[a2], a2-1, -sign, primes, lastidx, cache);
-  }
-  if (x < PHICACHEX && a < PHICACHEA && sign*sum <= SHRT_MAX)
-    cache[a*PHICACHEX+x] = sign * sum;
-  return sum;
-}
-UV legendre_phi(UV x, UV a)
-{
-  /* If 'x' is very small, give a quick answer with any 'a' */
-  if (x <= PHIC)
-    return tablephi(x, (a > PHIC) ? PHIC : a);
-
-  /* Shortcuts for large values, from R. Andrew Ohana */
-  if (a > (x >> 1))  return 1;
-  /* If a > prime_count(2^32), then we need not be concerned with composite
-   * x values with all factors > 2^32, as x is limited to 64-bit. */
-  if (a > 203280221) {  /* prime_count(2**32) */
-    UV pc = LMO_prime_count(x);
-    return (a > pc)  ?  1  :  pc - a + 1;
-  }
-  /* If a is large enough, check the ratios */
-  if (a > 1000000 && x < a*21) {  /* x always less than 2^32 */
-    if ( LMO_prime_count(x) < a)  return 1;
-  }
-
-  /* TODO:  R. Andrew Ohana's 2011 SAGE code is faster as the a value
-   * increases.  It uses a primelist as in the caching code below, as
-   * well as a binary search prime count on it (like in our lehmer). */
-
-  if ( a > 254 || (x > 1000000000 && a > 30) ) {
-    uint16_t* cache;
-    uint32_t* primes;
-    uint32_t lastidx;
-    UV res, max_cache_a = (a >= PHICACHEA) ? PHICACHEA : a+1;
-    Newz(0, cache, PHICACHEX * max_cache_a, uint16_t);
-    primes = make_primelist(nth_prime(a+1), &lastidx);
-    res = (UV) _phi(x, a, 1, primes, lastidx, cache);
-    Safefree(primes);
-    Safefree(cache);
-    return res;
-  }
-
-  return _phi_recurse(x, a);
-}
 /****************************************************************************/
 
 
@@ -428,15 +304,16 @@ static UV _sieve_phi(UV segment_x, const sword_t* sieve, const uint32* sieve_wor
 
 /* Erasing primes from the sieve is done using Christian Bau's
  * case statement walker.  It's not pretty, but it is short, fast,
- * clever, and does the job. */
+ * clever, and does the job.
+ * Kim W. gave a nice branchless speedup for sieve_zero */
 
 #define sieve_zero(sieve, si, wordcount) \
   { uint32  index_ = si/SWORD_BITS; \
     sword_t mask_  = SWORD_MASKBIT(si); \
-    if (sieve[index_] & mask_) { \
-      sieve[index_] &= ~mask_; \
-      wordcount[index_]--; \
-    }  }
+    sword_t is_bit = (sieve[index_] >> (si % SWORD_BITS)) & 1; \
+    sieve[index_] &= ~mask_; \
+    wordcount[index_] -= is_bit; \
+  }
 
 #define sieve_case_zero(casenum, skip, si, p, size, mult, sieve, wordcount) \
   case casenum: sieve_zero(sieve, si, wordcount); \
@@ -573,14 +450,14 @@ UV LMO_prime_count(UV n)
   uint16   *factor_table;
   sieve_t   ss;
 
-  const uint32 c = PHIC;  /* We can use our fast function for this */
+  const uint32 c = tiny_phi_max_a(); /* We can use our fast function for this */
 
   /* For "small" n, use our table+segment sieve. */
   if (n < _MPU_LMO_CROSSOVER || n < 10000)  return segment_prime_count(2, n);
   /* n should now be reasonably sized (not tiny). */
 
 #ifdef USE_PRIMECOUNT_FOR_LARGE_LMO
-  if (n > 110000000000UL) {
+  if (n >  500000000000UL) { /* Crossover on 2020 Macbook M1 (with parallel!) */
     FILE *f;
     char cmd[100];
     sprintf(cmd, "primecount %lu", n);
@@ -655,7 +532,7 @@ UV LMO_prime_count(UV n)
   for (j = 0; j < end; j++) {
     uint32 lpf = factor_table[j];
     if (lpf > primes[c]) {
-      phi_value = tablephi(n / (2*j+1), c);   /* x = 2j+1 */
+      phi_value = tiny_phi(n / (2*j+1), c);   /* x = 2j+1 */
       if (lpf & 0x01) sum2 += phi_value; else sum1 += phi_value;
     }
   }
@@ -667,7 +544,7 @@ UV LMO_prime_count(UV n)
     for (j = (1+M/pc_1)/2; j < end; j++) {
       uint32 lpf = factor_table[j];
       if (lpf > pc_1) {
-        phi_value = tablephi(n / (pc_1 * (2*j+1)), c);   /* x = 2j+1 */
+        phi_value = tiny_phi(n / (pc_1 * (2*j+1)), c);   /* x = 2j+1 */
         if (lpf & 0x01) sum1 += phi_value; else sum2 += phi_value;
       }
     }

@@ -12,7 +12,18 @@ extern void* start_segment_primes(UV low, UV high, unsigned char** segmentmem);
 extern int next_segment_primes(void* vctx, UV* base, UV* low, UV* high);
 extern void end_segment_primes(void* vctx);
 
+/* Generate primes P[0] = 2, P[1] = 3, P[2] = 5, .... */
 extern UV range_prime_sieve(UV** list, UV lo, UV hi);
+
+/* Generate 32-bit primes up to n.
+ * The first <offset> entries will be zero, followed by 2, 3, 5, 7, 11, ...
+ * Returns the count of primes created, irrespective of the offset.
+ * Hence, the last prime will be in P[offset+count-1].
+ */
+extern uint32_t range_prime_sieve_32(uint32_t** list, uint32_t n, uint32_t offset);
+
+
+
 
 static const UV wheel30[] = {1, 7, 11, 13, 17, 19, 23, 29};
 /* Used for moving between primes */
@@ -142,7 +153,7 @@ static const unsigned char wheel240[] = {1,7,11,13,17,19,23,29,31,37,41,43,47,49
     UV b_ = a;                       /* begin value n */     \
     UV f_ = b;                       /* final value n */     \
     UV begw_ = (b_-base_)/nperw_;    /* first word */        \
-    UV endw_ = (f_-base_)/nperw_;    /* first word */        \
+    UV endw_ = (f_-base_)/nperw_;    /* last word */         \
     UV sw_, tz_, p; \
     base_ += begw_*nperw_; \
     while (begw_ <= endw_) { \

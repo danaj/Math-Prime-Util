@@ -548,7 +548,7 @@ static short* _prep_rmertens(UV n, UV* pmaxmu, UV* phsize) {
   /* At large sizes, start clamping memory use. */
   if (maxmu > 100000000UL) {
     /* Exponential decay, reduce by factor of 1 to 8 */
-    float rfactor = 1.0 + 7.0 * (1.0 - exp(-(float)maxmu/15000000000.0));
+    float rfactor = 1.0 + 7.0 * (1.0 - exp(-(float)maxmu/8000000000.0));
     maxmu /= rfactor;
     hsize = next_prime(hsize * 16);  /* Increase the result cache size */
   }
@@ -904,7 +904,7 @@ UV mpu_popcount_string(const char* ptr, uint32_t len)
   for (i = 0; i < slen; i++) {  /* Chunks of 8 digits */
     for (j = 0, d = 0, power = 1;  j < 8 && len > 0;  j++, power *= 10) {
       v = ptr[--len] - '0';
-      if (v > 9) croak("Parameter '%s' must be a positive integer",ptr);
+      if (v > 9) croak("Parameter '%s' must be a single decimal number",ptr);
       d += power * v;
     }
     s[slen - 1 - i] = d;
@@ -1313,6 +1313,22 @@ int is_almost_prime(UV k, UV n) {
   if (n < ipowsafe(p,k)) return 0;
 
   return ((UV)prime_bigomega(n) == k);
+}
+int is_omega_prime(UV k, UV n) {
+  UV p;
+
+  if (k > 0 && !(n& 1)) { k--; do { n >>= 1; } while (!(n& 1)); }
+  if (k > 0 && !(n% 3)) { k--; do { n /=  3; } while (!(n% 3)); }
+  if (k > 0 && !(n% 5)) { k--; do { n /=  5; } while (!(n% 5)); }
+  if (k > 0 && !(n% 7)) { k--; do { n /=  7; } while (!(n% 7)); }
+  if (k > 0 && !(n%11)) { k--; do { n /= 11; } while (!(n%11)); }
+
+  if (n == 1) return (k == 0);
+  if (k == 0) return (n == 1);
+  if (k == 1) return !!primepower(n,&p);
+  if (n < ipowsafe(13,k)) return 0;
+
+  return ((UV)prime_omega(n) == k);
 }
 
 int is_fundamental(UV n, int neg) {
@@ -1752,6 +1768,53 @@ UV divmod(UV a, UV b, UV n) {   /* a / b  mod n */
   return mulmod(a, binv, n);
 }
 
+/* In C89, the division and modulo operators are implementation-defined
+ * for negative inputs.  C99 fixed this. */
+#if __STDC_VERSION__ >= 199901L
+  #define _tdivrem(q,r, D,d)   q = D/d, r = D % d
+#else
+  #define _tdivrem(q,r, D,d) \
+    q = ((D>=0) ? ( (d>=0) ? D/d : -(D/-d) ) \
+                : ( (d>=0) ? -(-D/d) : (-D/-d) ) ), \
+    r = D - d*q
+#endif
+
+IV tdivrem(IV *Q, IV *R, IV D, IV d) {
+  IV q,r;
+  _tdivrem(q,r,D,d);
+  if (Q) *Q=q;
+  if (R) *R=r;
+  return r;
+}
+IV fdivrem(IV *Q, IV *R, IV D, IV d) {
+  IV q,r;
+  _tdivrem(q,r,D,d);
+  if ((r > 0 && d < 0) || (r < 0 && d > 0)) { q = q-1; r += d; }
+  if (Q) *Q=q;
+  if (R) *R=r;
+  return r;
+}
+IV edivrem(IV *Q, IV *R, IV D, IV d) {
+  IV q,r;
+  _tdivrem(q,r,D,d);
+  if (r < 0) {
+    if (d > 0) { q--; r += d; }
+    else       { q++; r -= d; }
+  }
+  if (Q) *Q=q;
+  if (R) *R=r;
+  return r;
+}
+
+UV ivmod(IV a, UV n) {   /* a mod n with signed a (0 <= r < n) */
+  if (a >= 0) {
+    return (UV)(a) % n;
+  } else {
+    UV r = (UV)(-a) % n;
+    return (r == 0)  ?  0  :  n-r;
+  }
+}
+
 #if 0
 int is_regular(UV a, UV n) {  /* there exists an x s.t. a^2*x = a mod n */
   UV d;
@@ -2125,8 +2188,7 @@ int binomialmod(UV *res, UV n, UV k, UV m) {
         fac[i] = ipow(fac[i], exp[i]);
       }
     }
-    *res = chinese(bin, fac, nfactors, &crt);
-    return (crt == 1) ? 1 : 0;
+    return (chinese(res, bin, fac, nfactors) == 1);
   }
   return 0;
 }
@@ -2486,7 +2548,7 @@ static UV _rootmod_composite(UV a, UV k, UV p) {
     }
     exp[i] = r;
   }
-  g = chinese(exp, fac, nfactors, &i);
+  if (chinese(&g, exp, fac, nfactors) != 1) return 0;
   return g;
 }
 
@@ -2503,18 +2565,28 @@ int rootmodp(UV *s, UV a, UV k, UV p) {
   return _rootmod_return(r, s, a, k, p);
 }
 
-int rootmod(UV *s, UV a, UV k, UV p) {
+int rootmod(UV *s, UV a, UV k, UV n) {
   UV r;
-  if (p == 0) return 0;
-  if (a >= p) a %= p;
+  if (n == 0) return 0;
+  if (a >= n) a %= n;
 
-  if      (p <= 2 || a <= 1)  r = a;
+  if      (n <= 2 || a <= 1)  r = a;
   else if (k <= 1)            r = (k == 0) ? 1 : a;
   else if (is_power(a,k))     r = rootint(a,k);
-  else if (is_prime(p))       r = _rootmod_prime_splitk(a,k,p);
-  else                        r = _rootmod_composite(a,k,p);
+  else if (is_prime(n))       r = _rootmod_prime_splitk(a,k,n);
+  else                        r = _rootmod_composite(a,k,n);
 
-  return _rootmod_return(r, s, a, k, p);
+  return _rootmod_return(r, s, a, k, n);
+}
+
+int prep_pow_inv(UV *a, UV *k, int kstatus, UV n) {
+  if (n == 0) return 0;
+  if (kstatus < 0) {
+    if (*a != 0) *a = modinverse(*a, n);
+    if (*a == 0) return 0;
+    *k = -(IV)*k;
+  }
+  return 1;
 }
 
 
@@ -2524,11 +2596,11 @@ int rootmod(UV *s, UV a, UV k, UV p) {
 
 /* works only for co-prime inputs and also slower than the algorithm below,
  * but handles the case where IV_MAX < lcm <= UV_MAX.
+ * status = 1 means good result, 0 means try another method.
  */
-static UV _simple_chinese(UV* a, UV* n, UV num, int* status) {
+static int _simple_chinese(UV *r, UV* a, UV* n, UV num) {
   UV i, lcm = 1, res = 0;
-  *status = 0;
-  if (num == 0) return 0;
+  if (num == 0) { *r = 0; return 1; }  /* Dubious return */
 
   for (i = 0; i < num; i++) {
     UV ni = n[i];
@@ -2546,16 +2618,15 @@ static UV _simple_chinese(UV* a, UV* n, UV num, int* status) {
     term = mulmod(p, mulmod(a[i], inverse, lcm), lcm);
     res = addmod(res, term, lcm);
   }
-  *status = 1;
-  return res;
+  *r = res;
+  return 1;
 }
 
 /* status: 1 ok, -1 no inverse, 0 overflow */
-UV chinese(UV* a, UV* n, UV num, int* status) {
+int chinese(UV *r, UV* a, UV* n, UV num) {
   static unsigned short sgaps[] = {7983,3548,1577,701,301,132,57,23,10,4,1,0};
   UV gcd, i, j, lcm, sum, gi, gap;
-  *status = 1;
-  if (num == 0) return 0;
+  if (num == 0) { *r = 0; return 1; }  /* Dubious return */
 
   /* Sort modulii, largest first */
   for (gi = 0, gap = sgaps[gi]; gap >= 1; gap = sgaps[++gi]) {
@@ -2567,16 +2638,17 @@ UV chinese(UV* a, UV* n, UV num, int* status) {
     }
   }
 
-  if (n[0] > IV_MAX) return _simple_chinese(a,n,num,status);
+  if (n[num-1] == 0) return -1;  /* mod 0 */
+  if (n[0] > IV_MAX) return _simple_chinese(r,a,n,num);
   lcm = n[0]; sum = a[0] % n[0];
   for (i = 1; i < num; i++) {
     IV u, v, t, s;
     UV vs, ut;
     gcd = gcdext(lcm, n[i], &u, &v, &s, &t);
-    if (gcd != 1 && ((sum % gcd) != (a[i] % gcd))) { *status = -1; return 0; }
+    if (gcd != 1 && ((sum % gcd) != (a[i] % gcd))) return -1;
     if (s < 0) s = -s;
     if (t < 0) t = -t;
-    if (s > (IV)(IV_MAX/lcm)) return _simple_chinese(a,n,num,status);
+    if (s > (IV)(IV_MAX/lcm)) return _simple_chinese(r,a,n,num);
     lcm *= s;
     if (u < 0) u += lcm;
     if (v < 0) v += lcm;
@@ -2584,7 +2656,8 @@ UV chinese(UV* a, UV* n, UV num, int* status) {
     ut = mulmod((UV)u, (UV)t, lcm);
     sum = addmod(  mulmod(vs, sum, lcm),  mulmod(ut, a[i], lcm),  lcm  );
   }
-  return sum;
+  *r = sum;
+  return 1;
 }
 
 /******************************************************************************/
@@ -3513,24 +3586,52 @@ char* pidigits(int digits)
   return out;
 }
 
+static int strnum_parse(const char **sp, STRLEN *slen)
+{
+  const char* s = *sp;
+  STRLEN i, len = *slen;
+  int neg = 0;
+
+  if (s != 0 && len > 0) {
+    neg = (s[0] == '-');
+    if (s[0] == '-' || s[0] == '+') { s++; len--; }
+    while (len > 0 && *s == '0') { s++; len--; }
+    for (i = 0; i < len; i++)
+      if (!isDIGIT(s[i]))
+        break;
+  }
+  if (s == 0 || len == 0 || i < len) croak("Parameter must be an integer");
+  *sp = s;
+  *slen = len;
+  return neg;
+}
+int strnum_cmp(const char* a, STRLEN alen, const char* b, STRLEN blen) {
+  STRLEN i;
+  int aneg = strnum_parse(&a, &alen);
+  int bneg = strnum_parse(&b, &blen);
+  if (aneg != bneg)  return (bneg) ? 1 : -1;
+  if (aneg) { /* swap a and b if both negative */
+    const char* t = a;  STRLEN tlen = alen;
+    a = b; b = t;  alen = blen;  blen = tlen;
+  }
+  if (alen != blen)  return (alen > blen) ? 1 : -1;
+  for (i = 0; i < blen; i++)
+    if (a[i] != b[i])
+      return  (a[i] > b[i]) ? 1 : -1;
+  return 0;
+}
+
 /* 1. Perform signed integer validation on b/blen.
  * 2. Compare to a/alen using min or max based on first arg.
  * 3. Return 0 to select a, 1 to select b.
  */
-int strnum_minmax(int min, char* a, STRLEN alen, char* b, STRLEN blen)
+int strnum_minmax(int min, const char* a, STRLEN alen, const char* b, STRLEN blen)
 {
   int aneg, bneg;
   STRLEN i;
+
   /* a is checked, process b */
-  if (b == 0 || blen == 0) croak("Parameter must be a positive integer");
-  bneg = (b[0] == '-');
-  if (b[0] == '-' || b[0] == '+') { b++; blen--; }
-  while (blen > 0 && *b == '0') { b++; blen--; }
-  for (i = 0; i < blen; i++)
-    if (!isDIGIT(b[i]))
-      break;
-  if (blen == 0 || i < blen)
-    croak("Parameter must be a positive integer");
+  bneg = strnum_parse(&b, &blen);
 
   if (a == 0) return 1;
 
@@ -3699,6 +3800,85 @@ int to_string_128(char str[40], IV hi, UV lo)
   str[slen] = '\0';
   return slen;
 }
+
+#if BITS_PER_WORD == 64
+  #define MAX_FIB_LEN 92
+  #define MAX_FIB_STR "10100101000100000101000100010010001001000000001001000100100010101000100000101000101000001010"
+#else
+  #define MAX_FIB_LEN 46
+  #define MAX_FIB_STR "1010001000010101000101000100000001000100100100"
+#endif
+#define MAX_FIB_VAL (MAX_FIB_LEN+1)
+
+/* 0 = bad,   -1 = not canonical,   1 = good,   2 = ok but out of UV range */
+int validate_zeckendorf(const char* str)
+{
+  int i;
+  if (str == 0)
+    return 0;
+  if (str[0] != '1')
+    return (str[0] == '0' && str[1] == '\0');
+  /* str[0] = 1 */
+  for (i = 1; str[i] != '\0'; i++) {
+    if (str[i] == '1') {
+      if (str[i-1] == '1')
+        return -1;
+    } else if (str[i] != '0') {
+      return 0;
+    }
+  }
+  /* Valid number.  Check if in range. */
+  if (i > MAX_FIB_LEN || (i == MAX_FIB_LEN && strcmp(str, MAX_FIB_STR) > 0))
+    return 2;
+  return 1;
+}
+
+UV from_zeckendorf(const char* str)
+{
+  int i, len;
+  UV n, fa = 0, fb = 1, fc = 1;  /* fc = fib(2) */
+
+  if (str == 0) return 0;
+  for (len = 0; len+1 <= MAX_FIB_LEN && str[len] != '\0'; len++)
+    if (str[len] != '0' && str[len] != '1')
+      return 0;
+  if (len == 0 || len > MAX_FIB_LEN) return 0;
+  n = (str[len-1] == '1');
+  for (i = len-2; i >= 0; i--) {
+    fa = fb; fb = fc; fc = fa+fb;  /* Advance */
+    if (str[i] == '1') n += fc;
+  }
+  return n;
+}
+
+char* to_zeckendorf(UV n)
+{
+  char *str;
+  int i, k, spos = 0;
+  UV fa = 0, fb = 1, fc = 1;  /* fc = fib(2) */
+
+  New(0, str, MAX_FIB_LEN+1, char);
+  if (n == 0) {
+    str[spos++] = '0';
+  } else {
+    UV rn = n;
+    for (k = 2; k <= MAX_FIB_VAL && fc <= rn; k++) {
+      fa = fb; fb = fc; fc = fa+fb;  /* Advance: fc = fib(k) */
+    }
+    for (i = k-1; i >= 2; i--) {
+      fc = fb; fb = fa; fa = fc-fb;  /* Reverse: fc = fib(i) */
+      str[spos++] = '0' + (fc <= rn);
+      if (fc <= rn) rn -= fc;
+    }
+  }
+  str[spos++] = '\0';
+#if 0
+  if (validate_zeckendorf(str) != 1) croak("to_zeckendorf bad for %lu\n",n);
+  if (from_zeckendorf(str) != n) croak("to_zeckendorf wrong for %lu\n",n);
+#endif
+  return str;
+}
+
 
 /* Oddball primality test.
  * In this file rather than primality.c because it uses factoring (!).
@@ -4121,6 +4301,9 @@ int is_powerful(UV n, UV k) {
     if (n == 1) return 1;
   }
 
+  if (k > MPU_MAX_POW3) return 0;
+  /* if (k > logint(n,3)) return 0; */
+
   /* Quick checks */
   if (k == 2) {
     if (   (!(n %  3) && (n %     9))
@@ -4214,6 +4397,35 @@ int is_practical(UV n) {
   return 1;
 }
 
+int is_delicate_prime(UV n) {
+  UV d, dnew, dold, digpow, maxd = (BITS_PER_WORD == 32) ? 9 : 19;
+
+  /* All 1, 2, 3, and 4 digit inputs are false.  For one digit, we can see
+   * that given a prime [X] there is another prime [Y].  For two digits,
+   * it's easily checked that for any prime X[Y] there exists a prime Z[Y].
+   * Since it isn't immediately clear for larger inputs, just check them. */
+  if (n < 100) return 0;
+  if (!is_prime(n)) return 0;
+  if (n >= ipow(10,maxd)) return -1;  /* We can't check all values */
+
+  /* Check the last digit, given a > 1 digit prime, must be one of these. */
+  dold = n % 10;
+  if ( (dold != 1 && is_prime(n - dold + 1)) ||
+       (dold != 3 && is_prime(n - dold + 3)) ||
+       (dold != 7 && is_prime(n - dold + 7)) ||
+       (dold != 9 && is_prime(n - dold + 9)) )
+    return 0;
+
+  /* Check the rest of the digits. */
+  for (d = 1, digpow = 10;  d <= maxd && n >= digpow;  digpow *= 10, d++) {
+    dold = (n / digpow) % 10;
+    for (dnew = 0; dnew < 10; dnew++)
+      if (dnew != dold && is_prime(n - dold*digpow + dnew*digpow))
+        return 0;
+  }
+  return 1;
+}
+
 static unsigned char* _squarefree_range(UV lo, UV hi) {
   unsigned char* isf;
   UV i, i2, j, range = hi-lo+1, sqrthi = isqrt(hi);
@@ -4283,15 +4495,19 @@ UV powerful_count(UV n, UV k) {
  *    overflow here should return 0
  */
 UV nth_powerful(UV n, UV k) {
-  static UV const maxpow[11] = {0,UV_MAX,9330124695,11938035,526402,85014,25017,10251,5137,2903,1796};
   static unsigned char const mink[20+1] = {0,0,1,2,4,6,7,9,11,12,14,16,18,19,21,23,24,26,28,30,31};
-  UV lo, hi;
+#if BITS_PER_WORD == 64
+  static UV const maxpow[11] = {0,UV_MAX,9330124695,11938035,526402,85014,25017,10251,5137,2903,1796};
+#else
+  static UV const maxpow[11] = {0,UV_MAX,140008,6215,1373,536,281,172,115,79,57};
+#endif
+  UV lo, hi, max;
 
   if (k == 0 || k >= BITS_PER_WORD) return 0;
   if (k == 1 || n <= 1) return n;
 
-  if (k <= 10 && n > maxpow[k]) return 0;
-  if (k > 10 && (n > maxpow[10] || n > powerful_count(UV_MAX,k))) return 0;
+  max = (k <= 10) ? maxpow[k] : powerful_count(UV_MAX,k);
+  if (n > max) return 0;
 
   if (n <= 20 && k >= mink[n]) return UVCONST(1) << (k+(n-2));
   /* Now k >= 2, n >= 4 */
@@ -4303,9 +4519,11 @@ UV nth_powerful(UV n, UV k) {
     double dhi = nc + 0.5 * n53;
     lo = (UV) dlo;
     hi = (n < 170) ? 8575 : (dhi >= UV_MAX) ? UV_MAX : 1 + (UV) dhi;
-  } else { /* min/max so not good at all */
+  } else { /* Very poor estimates: TODO make these better */
     lo = (UVCONST(1) << (k+1))+1;
     hi = UV_MAX;
+    /* Linear from min to max rather than a nice power fit as above */
+    if (n < max)  hi = lo + (((double)n / (double)max) * (UV_MAX-lo) + 1);
   }
 
   return inverse_interpolate(lo, hi, n, k, &powerful_count, 0);

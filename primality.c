@@ -41,7 +41,7 @@ static UV select_extra_strong_parameters(UV n, UV increment) {
   while (1) {
     D = P*P - 4;
     j = jacobi_iu(D, n);
-    if (j == 0) return 0;
+    if (j == 0) { UV g = gcd_ui(D,n);  if (g != 1 && g != n) return 0; }
     if (j == -1) break;
     if (P == (3+20*increment) && is_perfect_square(n)) return 0;
     P += increment;
@@ -319,6 +319,7 @@ static void alt_lucas_seq(UV* Uret, UV* Vret, UV* Qkret, UV n, UV Pmod, UV Qmod,
     return;
   }
 
+  /* TODO: Measure speed:  X-Qh-Qh vs X-2*Qh */
   for (j = m; j > s; j--) {
     Ql = mulmod(Ql, Qh, n);
     if ( (k >> j) & UVCONST(1) ) {
@@ -353,19 +354,21 @@ void lucas_seq(UV* Uret, UV* Vret, UV* Qkret, UV n, IV P, IV Q, UV k)
 {
   UV U, V, b, Dmod, Qmod, Pmod, Qk;
 
-  MPUassert(n > 1, "lucas_sequence:  modulus n must be > 1");
+  MPUassert(n > 0, "lucas_sequence:  modulus n must be > 0");
+  if (n == 1) { *Uret = *Vret = *Qkret = 0; return; }
+
+  Qmod = ivmod(Q, n);
+  Pmod = ivmod(P, n);
+  Dmod = submod( mulmod(Pmod, Pmod, n), mulmod(4, Qmod, n), n);
+
   if (k == 0) {
     *Uret = 0;
-    *Vret = 2;
-    *Qkret = Q;
+    *Vret = 2 % n;
+    *Qkret = 1;
     return;
   }
 
-  Qmod = (Q < 0)  ?  (UV) (Q + (IV)(((-Q/n)+1)*n))  :  (UV)Q % n;
-  Pmod = (P < 0)  ?  (UV) (P + (IV)(((-P/n)+1)*n))  :  (UV)P % n;
-  Dmod = submod( mulmod(Pmod, Pmod, n), mulmod(4, Qmod, n), n);
-  if (Dmod == 0) {
-    b = Pmod >> 1;
+  if (Dmod == 0 && (b = divmod(Pmod,2,n)) != 0) {
     *Uret = mulmod(k, powmod(b, k-1, n), n);
     *Vret = mulmod(2, powmod(b, k, n), n);
     *Qkret = powmod(Qmod, k, n);
@@ -432,13 +435,16 @@ void lucas_seq(UV* Uret, UV* Vret, UV* Qkret, UV n, IV P, IV Q, UV k)
 }
 
 #define OVERHALF(v)  ( (UV)((v>=0)?v:-v) > (UVCONST(1) << (BITS_PER_WORD/2-1)) )
-int lucasu(IV* U, IV P, IV Q, UV k)
+int lucasuv(IV* U, IV *V, IV P, IV Q, UV k)
 {
   IV Uh, Vl, Vh, Ql, Qh;
   int j, s, n;
 
-  if (U == 0) return 0;
-  if (k == 0) { *U = 0; return 1; }
+  if (k == 0) {
+    if (U) *U = 0;
+    if (V) *V = 2;
+    return 1;
+  }
 
   Uh = 1;  Vl = 2;  Vh = P;  Ql = 1;  Qh = 1;
   s = 0; n = 0;
@@ -473,49 +479,14 @@ int lucasu(IV* U, IV P, IV Q, UV k)
     Vl = Vl * Vl - 2 * Ql;
     Ql *= Ql;
   }
-  *U = Uh;
+  if (U) *U = Uh;
+  if (V) *V = Vl;
   return 1;
 }
-int lucasv(IV* V, IV P, IV Q, UV k)
-{
-  IV Vl, Vh, Ql, Qh;
-  int j, s, n;
 
-  if (V == 0) return 0;
-  if (k == 0) { *V = 2; return 1; }
 
-  Vl = 2;  Vh = P;  Ql = 1;  Qh = 1;
-  s = 0; n = 0;
-  { UV v = k; while (!(v & 1)) { v >>= 1; s++; } }
-  { UV v = k; while (v >>= 1) n++; }
-
-  for (j = n; j > s; j--) {
-    if (OVERHALF(Vh) || OVERHALF(Vl) || OVERHALF(Ql) || OVERHALF(Qh)) return 0;
-    Ql *= Qh;
-    if ( (k >> j) & UVCONST(1) ) {
-      Qh = Ql * Q;
-      Vl = Vh * Vl - P * Ql;
-      Vh = Vh * Vh - 2 * Qh;
-    } else {
-      Qh = Ql;
-      Vh = Vh * Vl - P * Ql;
-      Vl = Vl * Vl - 2 * Ql;
-    }
-  }
-  if (OVERHALF(Ql) || OVERHALF(Qh)) return 0;
-  Ql = Ql * Qh;
-  Qh = Ql * Q;
-  if (OVERHALF(Vh) || OVERHALF(Vl) || OVERHALF(Ql) || OVERHALF(Qh)) return 0;
-  Vl = Vh * Vl - P * Ql;
-  Ql = Ql * Qh;
-  for (j = 0; j < s; j++) {
-    if (OVERHALF(Vl) || OVERHALF(Ql)) return 0;
-    Vl = Vl * Vl - 2 * Ql;
-    Ql *= Ql;
-  }
-  *V = Vl;
-  return 1;
-}
+/******************************************************************************/
+/******************************************************************************/
 
 /* Lucas tests:
  *  0: Standard
@@ -1249,7 +1220,7 @@ int is_frobenius_underwood_pseudoprime(UV n)
  * instead we'll use a table. */
 #define NUM_KNOWN_MERSENNE_PRIMES 51
 static const uint32_t _mersenne_primes[NUM_KNOWN_MERSENNE_PRIMES] = {2,3,5,7,13,17,19,31,61,89,107,127,521,607,1279,2203,2281,3217,4253,4423,9689,9941,11213,19937,21701,23209,44497,86243,110503,132049,216091,756839,859433,1257787,1398269,2976221,3021377,6972593,13466917,20996011,24036583,25964951,30402457,32582657,37156667,42643801,43112609,57885161,74207281,77232917,82589933};
-#define LAST_CHECKED_MERSENNE 50845813
+#define LAST_CHECKED_MERSENNE 54434041
 int is_mersenne_prime(UV p)
 {
   int i;

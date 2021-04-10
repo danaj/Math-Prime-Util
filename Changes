@@ -13,19 +13,30 @@ Revision history for Perl module Math::Prime::Util
     - powint(a, b)                    signed integer a^b
     - mulint(a, b)                    signed integer a*b
     - addint(a, b)                    signed integer a+b
-    - subint(a,b)                     signed integer a-b
+    - subint(a, b)                    signed integer a-b
+    - add1int(n)                      signed integer n+1
+    - sub1int(n)                      signed integer n-1
     - divint(a, b)                    signed integer a/b (floor)
     - modint(a, b)                    signed integer a%b (floor)
     - divrem(a, b)                    Euclidean quotient and remainder
+    - fdivrem(a, b)                   Floored quotient and remainder
     - tdivrem(a, b)                   Truncated quotient and remainder
+    - lshiftint(n, k)                 left shift n by k bits
+    - rshiftint(n, k)                 right shift n by k bits (truncating)
+    - rashiftint(n, k)                right shift n by k bits (flooring)
     - absint(n)                       integer absolute value
     - negint(n)                       integer negation
+    - cmpint(a, b)                    integer comparison (like <=>)
+    - signint(a, b)                   integer sign (-1,0,1)
     - is_gaussian_prime(a,b)          is a+bi a Gaussian prime
     - random_safe_prime               for n-bit safe primes
     - is_smooth(n,k)                  is n a k-smooth number
     - is_rough(n,k)                   is n a k-rough number
     - is_practical(n)                 is n a practical number
+    - is_delicate_prime(n)            is n a digitally delicate prime
+    - is_omega_prime(k,n)             is n divisible by exactly k primes
     - is_almost_prime(k,n)            does n have exactly k prime factors
+    - almost_primes(k,[start,]end)    array ref of k-almost-primes
     - almost_prime_count(k,n)         count of integers with exactly k factors
     - almost_prime_count_approx(k,n)  fast approximate k-almost-prime count
     - almost_prime_count_lower(k,n)   fast k-almost-prime count lower bound
@@ -35,6 +46,8 @@ Revision history for Perl module Math::Prime::Util
     - nth_almost_prime_lower(k,n)     fast nth k-almost-prime lower bound
     - nth_almost_prime_upper(k,n)     fast nth k-almost-prime upper bound
     - foralmostprimes {} k,a,b        loop over k-almost-primes
+    - omega_primes(k,[start,]end)     array ref of k-omega-primes
+    - omega_prime_count(k,n)          count nums divisible by exactly k primes
     - is_powerful(n[,k])              is n a k-powerful number (default k=2)
     - powerful_count(n[,k])           count of k-powerful numbers <= n
     - nth_powerful(n[,k])             the nth k-powerful number (default k=2)
@@ -46,6 +59,15 @@ Revision history for Perl module Math::Prime::Util
     - binomialmod(n,k,m)              fast binomial(n,k) mod m
     - submod(a, b, n)                 a - b mod n
     - rootmod(a, k, n)                modular k-th root
+    - vecequal(\@a, \@b)              compare two arrays for equality
+    - tozeckendorf(n)                 Zeckendorf binary string from n
+    - fromzeckendorf(str)             n from Zeckendorf binary string
+    - lucasu(p,q,k)                   U(p,q)_k
+    - lucasv(p,q,k)                   V(p,q)_k
+    - lucasuv(p,q,k)                  U(p,q)_k, V(p,q)_k
+    - lucasumod(p,q,k,n)              U(p,q)_k mod n
+    - lucasvmod(p,q,k,n)              V(p,q)_k mod n
+    - lucasuvmod(p,q,k,n)             U(p,q)_k, V(p,q)_k, q^k  all mod n
 
     [FIXES]
 
@@ -70,7 +92,22 @@ Revision history for Perl module Math::Prime::Util
 
     - sieve_range documentation for depth didn't exactly match the XS code.
 
+    - is_extra_strong_lucas_pseudoprime(5) was returning 0.
+
+    - lucas_sequence wasn't right for some outlier cases.  This did not
+      impact any primality tests or other internal code.
+
+    - gcd(-n) and lcd(-n) would return -n instead of n.
+
+    - All mod functions are more consistent.  Like Pari, we use mod abs(n).
+      If n=0, we return undef.  If n=1, we return 0.
+
+    - invmod(0,1) = 0 instead of undef.  Both cases make sense, but
+      Pari, Mathematica, SAGE, and Math::BigInt all return 0.
+
     [FUNCTIONALITY AND PERFORMANCE]
+
+    - LMO prime count is 1.2-1.5x faster.
 
     - refactor objectification.  Doesn't force.  Enable on Perl < 5.9.
 
@@ -95,7 +132,31 @@ Revision history for Perl module Math::Prime::Util
     - ExponentialIntegral with quadmath is much more precise across the range.
 
     - rewrote C factorialmod.  1.1-2x faster for small inputs, 3-4x for large.
+      The PP non-GMP version also has optimizations added.
 
+    - sum_primes faster for some inputs.
+
+    - Rewrote legendre_phi and removed code duplication.  Much faster.
+      Also makes _legendre_pi(n) about 4x faster.
+
+    - Rewrote prime count caching and removed code duplication.
+      Uses less memory at large sizes and is faster.
+
+    - Error message "must be a positive integer" changed to
+      "must be a non-negative integer" when zero is allowed.
+
+    [OTHER]
+
+    - Legendre, Meissel, and Lehmer prime counting got rewritten to use our
+      common code.  3x less code.  No longer buildable standalone.  Included
+      by default, though still not called internally.
+
+    - lucas_sequence(n,p,q,k) deprecated.  Use lucasuvmod(p,q,k,n) instead.
+
+    - Documentation more consistent with 'positive' vs 'non-negative'.
+
+    - valuation(n,k) now will error if k < 2.  This follows Pari and SAGE.
+      undef is returned for n = 0.  Arguable "Inf" would be preferable.
 
 0.73 2018-11-15
 

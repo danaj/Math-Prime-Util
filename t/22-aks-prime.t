@@ -49,6 +49,10 @@ SKIP: {
 is( is_aks_prime(69199), 0, "is_aks_prime(69199) is false" );
 
 if ($extra) {
+  # A composite (product of two 3-digit primes)
+  #is( is_aks_prime(370781), 0, "is_aks_prime(370781) is false" );
+  # A composite (product of two 4-digit primes)
+  #is( is_aks_prime(37809463), 0, "is_aks_prime(37809463) is false" );
   # A composite (product of two 5-digit primes)
   is( is_aks_prime(1262952907), 0, "is_aks_prime(1262952907) is false" );
 }

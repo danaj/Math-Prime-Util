@@ -35,6 +35,7 @@ my @binomials = (
  [ 67,31, "11923179284862717872" ], # ...and this
  [ 228,12, "30689926618143230620" ],# But the result of this is too big.
  [ 177,78, "3314450882216440395106465322941753788648564665022000" ],
+ [ 61,17, "536830054536825" ],
  [ -10,5, -2002 ],
  [ -11,22, 64512240 ],
  [ -12,23, -286097760 ],
@@ -77,6 +78,7 @@ sub fact { my $n = Math::BigInt->new("$_[0]"); $n->bfac; }
   is_deeply( \@result, \@expect, "factorialmod n! mod m for m 1 to 50, n 0 to m" );
 }
 if ($extra) {
+  # Very slow in PP without GMP
   is( factorialmod(5000001,"8000036000054000027"), "4179720539133404343", "factorialmod with large n and large composite non-square-free m" );
 }
 SKIP: {

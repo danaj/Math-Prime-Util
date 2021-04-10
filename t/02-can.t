@@ -23,10 +23,12 @@ my @functions =  qw(
       is_power is_prime_power is_pillai is_semiprime is_square is_polygonal
       is_square_free is_primitive_root is_carmichael is_quasi_carmichael
       is_fundamental is_totient
-      sqrtint rootint logint
-      powint mulint addint divint modint divrem tdivrem
+      is_smooth is_rough is_powerful is_practical
+      sqrtint rootint logint lshiftint rshiftint rashiftint absint negint
+      powint mulint addint subint divint modint divrem fdivrem tdivrem
       miller_rabin_random
-      lucas_sequence lucasu lucasv
+      lucas_sequence
+      lucasu lucasv lucasuv lucasumod lucasvmod lucasuvmod
       primes twin_primes semi_primes ramanujan_primes
       sieve_prime_cluster sieve_range
       lucky_numbers is_lucky nth_lucky
