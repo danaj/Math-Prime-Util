@@ -422,21 +422,18 @@ sub is_pseudoprime {
   my($n, @bases) = @_;
   return 0 if defined $n && int($n) < 0;
   _validate_positive_integer($n);
-  croak "No bases given to is_strong_pseudoprime" unless @bases;
   return Math::Prime::Util::PP::is_pseudoprime($n, @bases);
 }
 sub is_euler_pseudoprime {
   my($n, @bases) = @_;
   return 0 if defined $n && int($n) < 0;
   _validate_positive_integer($n);
-  croak "No bases given to is_euler_pseudoprime" unless @bases;
   return Math::Prime::Util::PP::is_euler_pseudoprime($n, @bases);
 }
 sub is_strong_pseudoprime {
   my($n, @bases) = @_;
   return 0 if defined $n && int($n) < 0;
   _validate_positive_integer($n);
-  croak "No bases given to is_strong_pseudoprime" unless @bases;
   return Math::Prime::Util::PP::is_strong_pseudoprime($n, @bases);
 }
 sub is_euler_plumb_pseudoprime {

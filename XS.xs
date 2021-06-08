@@ -16,6 +16,7 @@
 #define FUNC_isqrt 1
 #define FUNC_ipow 1
 #define FUNC_popcnt 1
+#define FUNC_is_strong_pseudoprime 1
 #include "ptypes.h"
 #include "cache.h"
 #include "sieve.h"
@@ -1043,49 +1044,39 @@ sieve_prime_cluster(IN SV* svlo, IN SV* svhi, ...)
       return;
     }
 
-void is_strong_pseudoprime(IN SV* svn, IN SV* svb1, ...)
-  PREINIT:
-    int i, j, status, ret = 0;
-    UV n, base;
-  PPCODE:
-    status = _validate_and_set(&n, aTHX_ svn, IFLAG_ANY);
-    if (status == 1 && (n < 4 || !(n&1))) {
-      ret = (n == 2 || n == 3);
-    } else if (status == 1) {
-      for (i = 1, ret = 1;  i < items && ret == 1; ) {
-        UV bases[32];  /* Fill this with up to 32 bases */
-        for (j = 0;  j < 32 && i < items;  i++) {
-          status = _validate_and_set(&base, aTHX_ ST(i), IFLAG_POS);
-          if (status != 1) break;
-          bases[j++] = base;
-        }
-        if (status != 1) break;
-        ret = miller_rabin(n, bases, j);
-      }
-    }
-    if (status != 0)  RETURN_NPARITY(ret);
-    _vcallsub_with_gmp(0.41,"is_strong_pseudoprime");
-    return; /* skip implicit PUTBACK */
-
-void is_pseudoprime(IN SV* svn, IN SV* svb1, ...)
+void is_pseudoprime(IN SV* svn, ...)
   ALIAS:
     is_euler_pseudoprime = 1
+    is_strong_pseudoprime = 2
   PREINIT:
     int i, status, ret = 0;
     UV n, base;
   PPCODE:
     status = _validate_and_set(&n, aTHX_ svn, IFLAG_ANY);
-    if (status == 1 && n < 4) {
-      ret = (n == 2 || n == 3);
-    } else if (status == 1) {
-      for (i = 1, ret = 1;  i < items && ret == 1; i++) {
-        status = _validate_and_set(&base, aTHX_ ST(i), IFLAG_POS);
-        if (status != 1) break;
-        ret = (ix == 0) ? is_pseudoprime(n,base) : is_euler_pseudoprime(n,base);
+    if (status == 1) {
+      if (n < 4) {
+        ret = (n == 2 || n == 3);
+      } else if (ix == 2 && !(n&1)) {
+        ret = 0;
+      } else if (items == 1) {
+        ret = (ix == 0) ? is_pseudoprime(n, 2) :
+              (ix == 1) ? is_euler_pseudoprime(n, 2) :
+                          is_strong_pseudoprime(n, 2);
+      } else {
+        for (i = 1, ret = 1;  i < items && ret == 1; i++) {
+          status = _validate_and_set(&base, aTHX_ ST(i), IFLAG_POS);
+          if (status != 1) break;
+          ret = (ix == 0) ? is_pseudoprime(n, base) :
+                (ix == 1) ? is_euler_pseudoprime(n, base) :
+                            is_strong_pseudoprime(n, base);
+        }
       }
     }
     if (status != 0)  RETURN_NPARITY(ret);
-    _vcallsub_with_gmp(0.41, (ix == 0) ? "is_pseudoprime" : "is_euler_pseudoprime");
+    _vcallsub_with_gmp( (items == 1) ? 0.74 : 0.41,
+                        (ix == 0) ? "is_pseudoprime" :
+                        (ix == 1) ? "is_euler_pseudoprime" :
+                                    "is_strong_pseudoprime");
     return; /* skip implicit PUTBACK */
 
 

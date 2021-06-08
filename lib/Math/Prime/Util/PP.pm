@@ -4608,7 +4608,7 @@ sub is_pseudoprime {
   my($n, @bases) = @_;
   return 0 if int($n) < 0;
   _validate_positive_integer($n);
-  croak("No bases given to is_pseudoprime") unless scalar(@bases) > 0;
+  @bases = (2) if scalar(@bases) == 0;
   return 0+($n >= 2) if $n < 4;
 
   foreach my $base (@bases) {
@@ -4628,7 +4628,7 @@ sub is_euler_pseudoprime {
   my($n, @bases) = @_;
   return 0 if int($n) < 0;
   _validate_positive_integer($n);
-  croak("No bases given to is_euler_pseudoprime") unless scalar(@bases) > 0;
+  @bases = (2) if scalar(@bases) == 0;
   return 0+($n >= 2) if $n < 4;
 
   foreach my $base (@bases) {
@@ -4720,7 +4720,7 @@ sub is_strong_pseudoprime {
   my($n, @bases) = @_;
   return 0 if int($n) < 0;
   _validate_positive_integer($n);
-  croak("No bases given to is_strong_pseudoprime") unless scalar(@bases) > 0;
+  return _miller_rabin_2($n) if scalar(@bases) == 0;
 
   return 0+($n >= 2) if $n < 4;
   return 0 if ($n % 2) == 0;

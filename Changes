@@ -2,6 +2,12 @@ Revision history for Perl module Math::Prime::Util
 
 0.74 ?
 
+    [API Changes]
+
+    - is_pseudoprime, is_euler_pseudoprime, and is_strong_pseudoprime will
+      use an implicit base of 2 rather than a missing base error.  This also
+      means is_pseudoprime($n, @bases) works properly.
+
     [ADDED]
 
     - lucky_numbers(n)                array ref of lucky numbers <= n
@@ -48,6 +54,7 @@ Revision history for Perl module Math::Prime::Util
     - foralmostprimes {} k,a,b        loop over k-almost-primes
     - omega_primes(k,[start,]end)     array ref of k-omega-primes
     - omega_prime_count(k,n)          count nums divisible by exactly k primes
+    - nth_omega_prime(k,n)            The nth number dvsbl by exactly k primes
     - is_powerful(n[,k])              is n a k-powerful number (default k=2)
     - powerful_count(n[,k])           count of k-powerful numbers <= n
     - nth_powerful(n[,k])             the nth k-powerful number (default k=2)
@@ -105,6 +112,8 @@ Revision history for Perl module Math::Prime::Util
     - invmod(0,1) = 0 instead of undef.  Both cases make sense, but
       Pari, Mathematica, SAGE, and Math::BigInt all return 0.
 
+    - sqrtmod was not solving some cases, e.g. sqrtmod(4,8).
+
     [FUNCTIONALITY AND PERFORMANCE]
 
     - LMO prime count is 1.2-1.5x faster.
@@ -157,6 +166,7 @@ Revision history for Perl module Math::Prime::Util
 
     - valuation(n,k) now will error if k < 2.  This follows Pari and SAGE.
       undef is returned for n = 0.  Arguable "Inf" would be preferable.
+
 
 0.73 2018-11-15
 

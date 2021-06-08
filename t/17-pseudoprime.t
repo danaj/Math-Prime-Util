@@ -132,6 +132,7 @@ plan tests => 0 + 2
                 + 2*$use64  # frob-khashin
                 + 1*$extra
                 + 6  # Perrin restrictions
+                + 3  # Test implicit bases and array of bases
                 + 0;
 
 # Enforced by XS prototype.
@@ -317,3 +318,23 @@ is( is_perrin_pseudoprime("36407440637569",1), 1, "36407440637569 is minimal res
 is( is_perrin_pseudoprime("36407440637569",2), 0, "36407440637569 is not an Adams/Shanks Perrin pseudoprime");
 is( is_perrin_pseudoprime("364573433665",2), 1, "364573433665 is an Adams/Shanks Perrin pseudoprime");
 is( is_perrin_pseudoprime("364573433665",3), 0, "364573433665 is not a Grantham restricted Perrin pseudoprime");
+
+# Implicit base 2
+{
+  my(@ns) = (2047,3277,121,703,781,1541);
+  my(@carm) = (1729, 2821, 6601, 8911);
+
+  is_deeply( [map { is_pseudoprime($_, 2) } @ns],
+             [map { is_pseudoprime($_)    } @ns],
+             "implicit base 2" );
+
+  my(@bases235) = (2,3,5);
+  is_deeply( [map { is_pseudoprime($_, 2, 3, 5)   } @carm],
+             [map { is_pseudoprime($_, @bases235) } @carm],
+             "is_pseudoprime can take array of bases" );
+
+  my(@basesnull) = ();
+  is_deeply( [map { is_pseudoprime($_, 2)          } @ns],
+             [map { is_pseudoprime($_, @basesnull) } @ns],
+             "empty array of bases is implicit base 2" );
+}
