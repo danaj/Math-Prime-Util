@@ -57,6 +57,7 @@ our @EXPORT_OK =
       almost_prime_count almost_prime_count_approx
       almost_prime_count_lower almost_prime_count_upper
       omega_prime_count
+      nth_omega_prime
       nth_almost_prime nth_almost_prime_approx
       nth_almost_prime_lower nth_almost_prime_upper
       ramanujan_prime_count ramanujan_prime_count_approx
@@ -2202,6 +2203,20 @@ The actual nth k-almost-prime will be greater than or equal to this result.
 
 Quickly returns an upper bound for the C<n>-th C<k>-almost prime.
 The actual nth k-almost-prime will be less than or equal to this result.
+
+
+=head2 nth_omega_prime
+
+Given non-negative integers C<k> and C<n>, returns the
+C<n>-th C<k>-omega prime.
+This is the C<n>-th integer divisible by exactly C<k> different primes.
+
+The implementation does a binary search lookup with
+L</omega_prime_count> so is reasonably efficient for large values.
+
+C<undef> is returned for C<n == 0> and for all C<k == 0>
+other than C<n == 1>.
+
 
 =head2 nth_ramanujan_prime
 

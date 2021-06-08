@@ -1481,6 +1481,15 @@ sub is_almost_prime {
 
   return (scalar(Math::Prime::Util::factor($n)) == $k) ? 1 : 0;
 }
+sub is_omega_prime {
+  my($k, $n) = @_;
+  _validate_positive_integer($k);
+  _validate_positive_integer($n);
+
+  return 0+($n==1) if $k == 0;
+
+  return (Math::Prime::Util::prime_omega($n) == $k) ? 1 : 0;
+}
 
 sub is_practical {
   my($n) = @_;
@@ -3096,6 +3105,21 @@ sub nth_almost_prime {
   #}
 }
 
+sub nth_omega_prime {
+  my($k, $n) = @_;
+  return undef if $n == 0;
+  return pn_primorial($k) if $n == 1;
+  return undef if $k == 0;  # n==1 already returned
+
+  # Very inefficient algorithm.
+  my $i = pn_primorial($k);
+  while (1) {
+    $i++ while Math::Prime::Util::prime_omega($i) != $k;
+    return $i if --$n == 0;
+    $i++;
+  }
+}
+
 sub nth_ramanujan_prime_upper {
   my $n = shift;
   return (0,2,11)[$n] if $n <= 2;
@@ -3879,7 +3903,7 @@ sub sqrtmod {
     for my $r (2 .. $lim) {
       return $r if (($r*$r) % $n) == $a;
     }
-    undef;
+    return undef;
   }
 
   $a = Math::BigInt->new("$a") unless ref($a) eq 'Math::BigInt';

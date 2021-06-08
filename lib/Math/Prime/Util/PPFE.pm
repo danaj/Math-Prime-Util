@@ -118,6 +118,7 @@ sub entropy_bytes {
 *is_fundamental = \&Math::Prime::Util::PP::is_fundamental;
 *is_semiprime = \&Math::Prime::Util::PP::is_semiprime;
 *is_almost_prime = \&Math::Prime::Util::PP::is_almost_prime;
+*is_omega_prime = \&Math::Prime::Util::PP::is_omega_prime;
 *is_totient = \&Math::Prime::Util::PP::is_totient;
 *is_square = \&Math::Prime::Util::PP::is_square;
 *is_lucky = \&Math::Prime::Util::PP::is_lucky;
@@ -366,6 +367,12 @@ sub nth_almost_prime_upper {
   _validate_positive_integer($k);
   _validate_positive_integer($n);
   return Math::Prime::Util::PP::nth_almost_prime_upper($k,$n);
+}
+sub nth_omega_prime {
+  my($k,$n) = @_;
+  _validate_positive_integer($k);
+  _validate_positive_integer($n);
+  return Math::Prime::Util::PP::nth_omega_prime($k,$n);
 }
 sub nth_ramanujan_prime {
   my($n) = @_;

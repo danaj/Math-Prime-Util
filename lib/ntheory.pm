@@ -110,6 +110,7 @@ Tags:
   nth_almost_prime_lower(k,n)         fast nth k-almost prime lower bound
   nth_almost_prime_upper(k,n)         fast nth k-almost prime upper bound
   omega_prime_count(k,n)              count divisible by exactly k primes
+  nth_omega_prime(k,n)                the nth number div by exactly k primes
   ramanujan_prime_count(n)            count of Ramanujan primes <= n
   ramanujan_prime_count(start, end)   count of Ramanujan primes in range
   ramanujan_prime_count_lower(n)      fast lower bound for Ramanujan count
