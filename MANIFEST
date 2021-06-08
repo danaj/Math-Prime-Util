@@ -185,6 +185,7 @@ t/26-isalmostprime.t
 t/26-iscarmichael.t
 t/26-isfundamental.t
 t/26-isgaussianprime.t
+t/26-isomegaprime.t
 t/26-ispower.t
 t/26-issemiprime.t
 t/26-issquarefree.t
