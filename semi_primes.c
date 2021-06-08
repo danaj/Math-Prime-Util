@@ -27,6 +27,7 @@ static const unsigned char _semiprimelist[] =
    203,205,206,209,213,214,215,217,218,219,221,226,235,237,247,249,253,254};
 #define NSEMIPRIMELIST (sizeof(_semiprimelist)/sizeof(_semiprimelist[0]))
 
+#if 1
 static UV _bs_count(UV n, UV const* const primes, UV lastidx)
 {
   UV i = 0, j = lastidx;   /* primes may not start at 0 */
@@ -87,6 +88,38 @@ static UV _semiprime_count(UV n)
   }
   return sum;
 }
+#else
+
+/* This is much cleaner, but ends up being slower. */
+
+#include "prime_count_cache.h"
+#define CACHED_PC(cache,n) prime_count_cache_lookup(cache,n)
+
+static UV _semiprime_count(UV n)
+{
+  UV sum = 0, sqrtn = prev_prime(isqrt(n)+1), pc_sqrtn;
+  void *cache = prime_count_cache_create( (UV)pow(n,0.70) );
+
+  if (sqrtn >= 2)  sum += CACHED_PC(cache,n/2);
+  if (sqrtn >= 3)  sum += CACHED_PC(cache,n/3);
+  if (sqrtn >= 5)  sum += CACHED_PC(cache,n/5);
+  if (sqrtn >= 7) {
+    unsigned char* segment;
+    UV seg_base, seg_low, seg_high;
+    void* ctx = start_segment_primes(7, sqrtn, &segment);
+    while (next_segment_primes(ctx, &seg_base, &seg_low, &seg_high)) {
+      START_DO_FOR_EACH_SIEVE_PRIME( segment, seg_base, seg_low, seg_high )
+        sum += CACHED_PC(cache, n/p);
+      END_DO_FOR_EACH_SIEVE_PRIME
+    }
+    end_segment_primes(ctx);
+  }
+  pc_sqrtn = CACHED_PC(cache, sqrtn);
+  sum -= (pc_sqrtn * pc_sqrtn - pc_sqrtn) / 2;
+  prime_count_cache_destroy(cache);
+  return sum;
+}
+#endif
 
 /* TODO: This overflows, see p=3037000507,lo=10739422018595509581.
  *       p2 = 9223372079518257049 => 9223372079518257049 + 9223372079518257049
