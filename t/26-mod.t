@@ -3,7 +3,7 @@ use strict;
 use warnings;
 
 use Test::More;
-use Math::Prime::Util qw/invmod sqrtmod rootmod addmod submod mulmod divmod powmod/;
+use Math::Prime::Util qw/invmod sqrtmod allsqrtmod rootmod addmod submod mulmod divmod powmod/;
 use Math::BigInt try=>"GMP,Pari";
 
 my $extra = defined $ENV{EXTENDED_TESTING} && $ENV{EXTENDED_TESTING};
@@ -27,19 +27,21 @@ if ($use64) {
  push @invmods, [ 14, 18446744073709551615, 17129119497016012214 ];
 }
 my @sqrtmods = (
- [ 0, 0, undef],
- [ 1, 0, undef],
- [ 0, 1, 0],
- [ 1, 1, 0],
- [ 4, 8, 2],    # github #52
- [ -1, 17, 4],  # github #51
- [ 58, 101, 19],
- [ 111, 113, 26],
- [ 37, 999221, 9946],
- [ 30, 1000969, 89676],
- [ "9223372036854775808", "5675921253449092823", "22172359690642254" ],
- [ "18446744073709551625", "340282366920938463463374607431768211507", "57825146747270203522128844001742059051" ],
+ [ 0, 0, undef ],
+ [ 1, 0, undef ],
+ [ 0, 1, 0 ],
+ [ 1, 1, 0 ],
 
+ # prime moduli
+ [ -1, 17, [4,13], 1 ],  # github #51
+ [ 58, 101, [19,82], 1 ],
+ [ 111, 113, [26,87], 1 ],
+ [ 37, 999221, [9946,989275], 1 ],
+ [ 30, 1000969, [89676,911293], 1 ],
+ [ "9223372036854775808", "5675921253449092823", ["22172359690642254","5653748893758450569"], 1 ],
+ [ "18446744073709551625", "340282366920938463463374607431768211507", ["57825146747270203522128844001742059051","282457220173668259941245763430026152456"], 1 ],
+
+ # composite moduli
  [ 30, 74, [20,54] ],
  [ 56, 1018, [458,560] ],
  [ 42, 979986, [356034,623952] ],
@@ -50,10 +52,20 @@ my @sqrtmods = (
  [ 9, 400, [3,53,147,197,203,253,347,397] ],
  [ 15, 402, [45,357] ],
  [ 1242, 1849, [851, 998] ],  # prime power
+ [ 0, 4, [0,2] ],
+ [ 1, 4, [1,3] ],
+ [ 4, 8, [2,6] ],        # github #52
+ [ 4, 16, [2,6,10,14] ],
+ [ 0, 9, [0,3,6] ],
+ [ 3, 9, undef ],
+ [ 0, 27, [0,9,18] ],
+ [ 9, 27, [3,6,12,15,21,24] ],
+ [ 0, 36, [0,6,12,18,24,30] ],
+ [ 4, 36, [2,16,20,34] ],
 );
 
 if ($usexs || $extra) {
-  push @sqrtmods, [ 2, 72388801, 20312446 ];
+  push @sqrtmods, [ 2, 72388801, [20312446,52076355], 1 ];
 }
 
 # Check:
@@ -95,7 +107,7 @@ my @rootmods = (
 
 plan tests => 0
             + 5 + scalar(@invmods)
-            + scalar(@sqrtmods)
+            + scalar(@sqrtmods)*2    # sqrtmod / allsqrtmod
             + 5*2
             + 1                      # addmod
             + 2                      # submod / addmod
@@ -122,16 +134,27 @@ is( invmod(0,-1), 0, "invmod(0,-1) = 0");
 # my $res = invmod(0,1);   $res = "<undef>" if !defined $res;
 # ok($res eq '0' || $res eq '<undef>', "invmod(0,1) = $res");
 
+sub numeric { $_[0] <=> $_[1] }
+
 ###### sqrtmod
 foreach my $r (@sqrtmods) {
-  my($a, $n, $exp) = @$r;
+  my($a, $n, $exp, $prime) = @$r;
   if (!defined $exp) {
     is( sqrtmod($a,$n), $exp, "sqrtmod($a,$n) = <undef>");
+    is_deeply( [allsqrtmod($a,$n)], [], "allsqrtmod($a,$n) = ()");
   } elsif (!ref($exp)) {
     is( sqrtmod($a,$n), $exp, "sqrtmod($a,$n) = $exp");
+    is_deeply( [allsqrtmod($a,$n)], [$exp], "allsqrtmod($a,$n) = ($exp)");
   } else {
     my $val = sqrtmod($a,$n);
-    ok( is_one_of($val, @$exp), "sqrtmod($a,$n) = $val, roots [@$exp]" );
+    if ($prime) {
+        # sqrtmod() must return least root for prime modulus
+        is($val, $exp->[0], "sqrtmod($a,$n) = $exp->[0]");
+    } else {
+        ok( is_one_of($val, @$exp), "sqrtmod($a,$n) = $val, roots [@$exp]" );
+    }
+    my $all = [ sort numeric, allsqrtmod($a,$n) ];
+    is_deeply($all, [ sort numeric, @$exp ], "allsqrtmod($a,$n) = (@$exp)");
   }
 }
 
