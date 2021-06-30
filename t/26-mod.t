@@ -134,8 +134,6 @@ is( invmod(0,-1), 0, "invmod(0,-1) = 0");
 # my $res = invmod(0,1);   $res = "<undef>" if !defined $res;
 # ok($res eq '0' || $res eq '<undef>', "invmod(0,1) = $res");
 
-sub numeric { $_[0] <=> $_[1] }
-
 ###### sqrtmod
 foreach my $r (@sqrtmods) {
   my($a, $n, $exp, $prime) = @$r;
@@ -153,8 +151,7 @@ foreach my $r (@sqrtmods) {
     } else {
         ok( is_one_of($val, @$exp), "sqrtmod($a,$n) = $val, roots [@$exp]" );
     }
-    my $all = [ sort numeric, allsqrtmod($a,$n) ];
-    is_deeply($all, [ sort numeric, @$exp ], "allsqrtmod($a,$n) = (@$exp)");
+    is_deeply([allsqrtmod($a,$n)], $exp, "allsqrtmod($a,$n) = (@$exp)");
   }
 }
 
