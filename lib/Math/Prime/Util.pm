@@ -344,31 +344,6 @@ sub _validate_positive_integer {
   1;
 }
 
-#*_validate_integer = \&Math::Prime::Util::PP::_validate_integer;
-sub _validate_integer {
-  my($n) = @_;
-  croak "Parameter must be defined" if !defined $n;
-  if (ref($n) eq 'CODE') {
-    $_[0] = $_[0]->();
-    $n = $_[0];
-  }
-  if (ref($n) eq 'Math::BigInt') {
-    croak "Parameter '$n' must be an integer" if !$n->is_int();
-    $_[0] = _bigint_to_int($_[0]) if $n <= INTMAX && $n >= INTMIN;
-  } else {
-    my $strn = "$n";
-    if ($strn eq '-0') { $_[0] = 0; $strn = '0'; }
-    croak "Parameter '$strn' must be an integer"
-      if $strn eq '' || ($strn =~ tr/-0123456789//c && $strn !~ /^[-+]?\d+$/);
-    if (ref($n) || $n >= INTMAX || $n <= INTMIN) {  # Looks like a bigint
-      $n = Math::BigInt->new($strn);
-      $_[0] = $n if $n > INTMAX || $n < INTMIN;
-    }
-  }
-  $_[0]->upgrade(undef) if ref($_[0]) && $_[0]->upgrade();
-  1;
-}
-
 #############################################################################
 
 # These are called by the XS code to keep the GMP CSPRNG in sync with us.
@@ -1111,62 +1086,6 @@ sub harmreal {
   Math::Prime::Util::PP::harmreal($n, $precision);
 }
 
-# helper function for allsqrtmod() - return list of all square roots of
-# a (mod p^k), assuming a integer, p prime, k positive integer.
-sub _allsqrtmodpk {
-  my($a,$p,$k) = @_;
-  my $pk = $p ** $k;
-  unless ($a % $p) {
-    unless ($a % ($pk)) {
-      # if p^k divides a, we need the square roots of zero, satisfied by
-      # ip^j with 0 <= i < p^{floor(k/2)}, j = p^{ceil(k/2)}
-      my $low = $p ** ($k >> 1);
-      my $high = ($k & 1) ? $low * $p : $low;
-      return map $high * $_, 0 .. $low - 1;
-    }
-    # p divides a, p^2 does not
-    my $a2 = $a / $p;
-    return () if $a2 % $p;
-    my $pj = $pk / $p;
-    return map {
-      my $q = $_;
-      map $q * $p + $_ * $pj, 0 .. $p - 1;
-    } _allsqrtmodpk($a2 / $p, $p, $k - 2);
-  }
-  my $q = sqrtmod($a, $pk);
-  return () unless defined $q;
-  return ($q, $pk - $q) if $p != 2;
-  return ($q) if $k == 1;
-  return ($q, $pk - $q) if $k == 2;
-  my $pj = $p ** ($k - 1);
-  my $q2 = ($q * ($pj - 1)) % $pk;
-  return ($q, $pk - $q, $q2, $pk - $q2);
-}
-
-# helper function for allsqrtmod() - return list of all square roots of
-# a (mod p^k), assuming a integer, n positive integer > 1, f arrayref
-# of [ p, k ] pairs representing factorization of n. Destroys f.
-sub _allsqrtmodfact {
-  my($a,$n,$f) = @_;
-  my($p,$k) = @{ shift @$f };
-  my @q = _allsqrtmodpk($a, $p, $k);
-  return @q unless @$f;
-  my $pk = $p ** $k;
-  my $n2 = $n / $pk;
-  return map {
-    my $q2 = $_;
-    map chinese([ $q2, $n2 ], [ $_, $pk ]), @q;
-  } _allsqrtmodfact($a, $n2, $f);
-}
-
-sub allsqrtmod {
-  my($a,$n) = @_;
-  _validate_integer($a);
-  _validate_integer($n);
-  $n = -$n if $n < 0;
-  return $n ? (0) : () if $n <= 1;
-  return _allsqrtmodfact($a, $n, [ factor_exp($n) ]);
-}
 
 #############################################################################
 
@@ -4476,9 +4395,13 @@ not necessarily be the smallest.
 
 =head2 allsqrtmod
 
-Given two integers C<a> and C<n>, return a list of the principal values
-of all square roots of C<a> mod C<|n|>. If no square root exists, an empty
+Given two integers C<a> and C<n>, return a sorted list of all modular
+square roots of C<a> mod C<|n|>. If no square root exists, an empty
 list is returned.
+
+Certain composites, e.g. C<24 * p^2 * q^2> with large p and/or q, have
+very many roots.  There is an implementation limit on the number that
+will be returned (currently 500,000,000).
 
 =head2 rootmod
 

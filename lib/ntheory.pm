@@ -280,12 +280,12 @@ Tags:
   powmod(a,b,n)                       a ^ b mod n
   invmod(a,n)                         inverse of a modulo n
   sqrtmod(a,n)                        modular square root
-  allsqrtmod(a,n)                     modular square roots
+  allsqrtmod(a,n)                     list of all modular square roots
   rootmod(a,k,n)                      modular k-th root
   prime_bigomega(n)                   number of prime factors
   prime_omega(n)                      number of distinct prime factors
   moebius(n)                          Moebius function of n
-  moebius(beg, end)                   array of Moebius in range
+  moebius(beg, end)                   list of Moebius in range
   mertens(n)                          sum of Moebius for 1 to n
   euler_phi(n)                        Euler totient of n
   euler_phi(beg, end)                 Euler totient for a range
