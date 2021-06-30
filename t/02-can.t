@@ -61,7 +61,7 @@ my @functions =  qw(
       primorial pn_primorial consecutive_integer_lcm gcdext chinese
       gcd lcm factor factor_exp divisors valuation hammingweight
       todigits fromdigits todigitstring sumdigits
-      invmod sqrtmod addmod mulmod divmod powmod
+      invmod sqrtmod allsqrtmod addmod mulmod divmod powmod
       vecsum vecmin vecmax vecprod vecreduce vecextract
       vecany vecall vecnotall vecnone vecfirst vecfirstidx
       moebius mertens euler_phi jordan_totient exp_mangoldt liouville

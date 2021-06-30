@@ -107,6 +107,7 @@ examples/numseqs.pl
 examples/fibprime-serial.pl
 examples/fibprime-threads.pl
 examples/fibprime-mce.pl
+examples/findomegaseq.c
 examples/porter.pl
 examples/verify-gmp-ecpp-cert.pl
 examples/verify-sage-ecpp-cert.pl

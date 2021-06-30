@@ -62,6 +62,7 @@ Revision history for Perl module Math::Prime::Util
     - prime_power_count(n)            count of prime powers <= n
     - smooth_count(n,k)               count of k-smooth numbers <= n
     - rough_count(n,k)                count of k-rough numbers <= n
+    - allsqrtmod(a,n)                 all square roots of a (mod n)
     - qnr(n)                          least quadratic non-residue
     - binomialmod(n,k,m)              fast binomial(n,k) mod m
     - submod(a, b, n)                 a - b mod n
