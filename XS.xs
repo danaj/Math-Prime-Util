@@ -2284,6 +2284,28 @@ void invmod(IN SV* sva, IN SV* svn)
     objectify_result(aTHX_ ST(0), ST(0));
     return;
 
+void allsqrtmod(IN SV* sva, IN SV* svn)
+  PREINIT:
+    int astatus, nstatus, i;
+    UV a, n, numr, *roots;
+  PPCODE:
+    astatus = _validate_and_set(&a, aTHX_ sva, IFLAG_ANY);
+    nstatus = _validate_and_set(&n, aTHX_ svn, IFLAG_ABS);
+    if (astatus != 0 && nstatus != 0) {
+      if (n == 0) XSRETURN_EMPTY;
+      _mod_with(&a, astatus, n);
+      roots = allsqrtmod(&numr, a, n);
+      if (roots != 0) {
+        EXTEND(SP, (IV)numr);
+        for (i = 0; i < numr; i++)
+          PUSHs(sv_2mortal(newSViv(roots[i])));
+        Safefree(roots);
+      }
+    } else {
+      (void)_vcallsubn(aTHX_ GIMME_V, VCALL_PP, "allsqrtmod", items, 0);
+      return;
+    }
+
 void is_primitive_root(IN SV* sva, IN SV* svn)
   PREINIT:
     int astatus, nstatus;

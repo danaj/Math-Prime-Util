@@ -2591,15 +2591,158 @@ int rootmod(UV *s, UV a, UV k, UV n) {
   return _rootmod_return(r, s, a, k, n);
 }
 
-int prep_pow_inv(UV *a, UV *k, int kstatus, UV n) {
-  if (n == 0) return 0;
-  if (kstatus < 0) {
-    if (*a != 0) *a = modinverse(*a, n);
-    if (*a == 0) return 0;
-    *k = -(IV)*k;
+/******************************************************************************/
+/*                     SQRTMOD RETURNING ALL RESULTS                          */
+/******************************************************************************/
+
+/* Algorithm from Hugo van der Sanden, 2021 */
+
+/* We could alternately just let the allocation fail */
+#define MAX_ROOTS_RETURNED 500000000
+
+static UV* _allsqrtmodpk(UV *nroots, UV a, UV p, UV k) {
+  UV *roots, *roots2, nr = 0, nr2 = 0;
+  UV i, j, pk, pj, q, q2, a2;
+
+  pk = ipow(p,k);
+  *nroots = 0;
+
+  if ((a % p) == 0) {
+    if ((a % pk) == 0) {
+      UV low = ipow(p, k >> 1);
+      UV high = (k & 1) ? low * p : low;
+      if (low > MAX_ROOTS_RETURNED) croak("Maximum returned roots exceeded");
+      New(0, roots, low, UV);
+      for (i = 0; i < low; i++)
+        roots[i] = high * i;
+      *nroots = low;
+      return roots;
+    }
+    a2 = a / p;
+    if ((a2 % p) != 0)
+      return 0;
+    pj = pk / p;
+    roots2 = _allsqrtmodpk(&nr2, a2/p, p, k-2);
+    if (roots2 == 0) return 0;
+    *nroots = nr2 * p;
+    if (*nroots > MAX_ROOTS_RETURNED) croak("Maximum returned roots exceeded");
+    New(0, roots, *nroots, UV);
+    for (i = 0; i < nr2; i++)
+      for (j = 0; j < p; j++)
+        roots[i*p+j] = roots2[i] * p  +  j * pj;
+    Safefree(roots2);
+    return roots;
   }
-  return 1;
+
+  if (!sqrtmod(&q, a, pk))
+    return 0;
+  New(0, roots, 4, UV);
+  roots[0] = q;  roots[1] = pk - q;
+  if      (p != 2) { *nroots = 2; }
+  else if (k == 1) { *nroots = 1; }
+  else if (k == 2) { *nroots = 2; }
+  else {
+    pj = pk / p;
+    q2 = mulmod(q, pj-1, pk);
+    roots[2] = q2;  roots[3] = pk - q2;
+    *nroots = 4;
+  }
+  return roots;
 }
+
+static UV* _allsqrtmodfact(UV *nroots, UV a, UV n, int nf, UV *fac, UV *exp) {
+  UV *roots, *roots1, *roots2, nr, nr1, nr2, p, k, pk, n2, i, j;
+  UV ca[2], cn[2]; /* for chinese calls */
+
+  MPUassert(nf > 0, "empty factor list in _allsqrtmodfact");
+
+  p = fac[0], k = exp[0];
+  *nroots = 0;
+
+  /* nr1,roots1 are roots of p^k -- the first prime power */
+  roots1 = _allsqrtmodpk(&nr1, a, p, k);
+  if (roots1 == 0) return 0;
+  if (nf == 1) {
+    *nroots = nr1;
+    return roots1;
+  }
+  pk = ipow(p, k);
+  n2 = n / pk;
+
+  /* nr2,roots2 are roots of all the rest, found recursively */
+  roots2 = _allsqrtmodfact(&nr2, a, n2, nf-1, fac+1, exp+1);
+  if (roots2 == 0) return 0;
+
+  /* nr,roots are the resulting CRT using the Cartesian product */
+  nr = nr1 * nr2;
+  if (nr > MAX_ROOTS_RETURNED) croak("Maximum returned roots exceeded");
+  New(0, roots, nr, UV);
+
+  for (i = 0; i < nr2; i++) {
+    UV q2 = roots2[i];
+    for (j = 0; j < nr1; j++) {
+      UV q1 = roots1[j];
+      ca[0] = q2;  cn[0] = n2;
+      ca[1] = q1;  cn[1] = pk;
+      if (chinese(roots + i * nr1 + j, ca, cn, 2) != 1)
+        croak("chinese fail in allsqrtmod");
+    }
+  }
+  Safefree(roots1);
+  Safefree(roots2);
+
+  *nroots = nr;
+  return roots;
+}
+
+#if 0
+UV* allsqrtmod(UV* nroots, UV a, UV n) {  /* Trial, for testing only */
+  UV i, *roots, numr = 0, allocr = 16;
+
+  if (n == 0) return 0;
+  if (a >= n) a %= n;
+
+  New(0, roots, allocr, UV);
+  for (i = 0; i <= n/2; i++) {
+    if (mulmod(i,i,n) == a) {
+      if (numr >= allocr-1)  Renew(roots, allocr += 256, UV);
+      roots[numr++] = i;
+      if (i != 0 && 2*i != n)
+        roots[numr++] = n-i;
+    }
+  }
+  qsort(roots, numr, sizeof(UV), _numcmp);
+  *nroots = numr;
+  return roots;
+}
+#else
+UV* allsqrtmod(UV* nroots, UV a, UV n) {
+  UV i, *roots, numr = 0;
+  UV fac[MPU_MAX_FACTORS+1];
+  UV exp[MPU_MAX_FACTORS+1];
+  int nfactors;
+
+  if (n == 0) return 0;
+  if (a >= n) a %= n;
+
+  if (n <= 2) {
+    New(0, roots, 1, UV);
+    roots[0] = a;          /* n=1 => [0],  n=2 => [0] or [1] */
+    *nroots = 1;
+    return roots;
+  }
+  /* a == 0 is not trivial for composites */
+
+  nfactors = factor_exp(n, fac, exp);
+  roots = _allsqrtmodfact(&numr, a, n, nfactors, fac, exp);
+  if (roots == 0) return 0;
+
+  qsort(roots, numr, sizeof(UV), _numcmp);
+
+  *nroots = numr;
+  return roots;
+}
+#endif
 
 
 /******************************************************************************/
@@ -2671,6 +2814,17 @@ int chinese(UV *r, UV* a, UV* n, UV num) {
   *r = sum;
   return 1;
 }
+
+int prep_pow_inv(UV *a, UV *k, int kstatus, UV n) {
+  if (n == 0) return 0;
+  if (kstatus < 0) {
+    if (*a != 0) *a = modinverse(*a, n);
+    if (*a == 0) return 0;
+    *k = -(IV)*k;
+  }
+  return 1;
+}
+
 
 /******************************************************************************/
 /*                        Chebyshev PSI / THETA                               */
