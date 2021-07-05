@@ -4057,7 +4057,12 @@ sub allrootmod {
   _validate_integer($n);
   $n = -$n if $n < 0;
 
-  croak "TODO";
+  return () if $n <= 1;
+  $A = Math::Prime::Util::modint($A,$n);
+
+  my @roots = sort { $a <=> $b }
+              grep { Math::Prime::Util::powmod($_,$k,$n) == $A } 0 .. $n-1;
+  return @roots;
 }
 
 
