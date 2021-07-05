@@ -4050,6 +4050,16 @@ sub allsqrtmod {
   return @roots;
 }
 
+sub allrootmod {
+  my($A,$k,$n) = @_;
+  _validate_integer($A);
+  _validate_integer($k);
+  _validate_integer($n);
+  $n = -$n if $n < 0;
+
+  croak "TODO";
+}
+
 
 sub addmod {
   my($a, $b, $n) = @_;

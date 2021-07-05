@@ -106,7 +106,8 @@ sub mpu_public_regex {
       gcd lcm factor factor_exp divisors valuation hammingweight
       todigits fromdigits todigitstring sumdigits
       tozeckendorf fromzeckendorf
-      invmod sqrtmod allsqrtmod rootmod addmod submod mulmod divmod powmod qnr
+      sqrtmod allsqrtmod rootmod allrootmod
+      invmod addmod submod mulmod divmod powmod qnr
       vecsum vecmin vecmax vecprod vecreduce vecextract vecequal
       vecany vecall vecnotall vecnone vecfirst vecfirstidx
       moebius mertens liouville sumliouville prime_omega prime_bigomega

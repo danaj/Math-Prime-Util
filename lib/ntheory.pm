@@ -280,8 +280,9 @@ Tags:
   powmod(a,b,n)                       a ^ b mod n
   invmod(a,n)                         inverse of a modulo n
   sqrtmod(a,n)                        modular square root
-  allsqrtmod(a,n)                     list of all modular square roots
   rootmod(a,k,n)                      modular k-th root
+  allsqrtmod(a,n)                     list of all modular square roots
+  allrootmod(a,k,n)                   list of all modular k-th roots
   prime_bigomega(n)                   number of prime factors
   prime_omega(n)                      number of distinct prime factors
   moebius(n)                          Moebius function of n

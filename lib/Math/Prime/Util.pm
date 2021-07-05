@@ -79,7 +79,8 @@ our @EXPORT_OK =
       gcd lcm factor factor_exp divisors valuation hammingweight
       todigits fromdigits todigitstring sumdigits
       tozeckendorf fromzeckendorf
-      invmod sqrtmod allsqrtmod rootmod addmod submod mulmod divmod powmod qnr
+      sqrtmod allsqrtmod rootmod allrootmod
+      invmod addmod submod mulmod divmod powmod qnr
       vecsum vecmin vecmax vecprod vecreduce vecextract vecequal
       vecany vecall vecnotall vecnone vecfirst vecfirstidx
       moebius mertens liouville sumliouville prime_omega prime_bigomega
@@ -4395,13 +4396,14 @@ not necessarily be the smallest.
 
 =head2 allsqrtmod
 
-Given two integers C<a> and C<n>, return a sorted list of all modular
+Given two integers C<a> and C<n>, returns a sorted list of all modular
 square roots of C<a> mod C<|n|>. If no square root exists, an empty
 list is returned.
 
-Certain composites, e.g. C<24 * p^2 * q^2> with large p and/or q, have
-very many roots.  There is an implementation limit on the number that
-will be returned (currently 500,000,000).
+Some inputs, e.g. C<a = p^4, n = 24 * p^4> for prime p, have very many roots.
+There is an implementation limit on the maximum number
+(currently 500,000,000).
+If the result has more roots than this, it will croak.
 
 =head2 rootmod
 
@@ -4414,6 +4416,15 @@ For some composites with large prime powers this may not be efficient.
 
 C<rootmod(a,-k,n)> is calculated as C<rootmod(invmod(a,n),k,n)>.
 If C<1/a mod |n|> does not exist, undef is returned.
+
+=head2 allrootmod
+
+Given three integers C<a>, C<k>, and C<n>, returns a sorted list of all
+modular C<k>-th root of C<a> modulo C<|n|>.
+If no root exists, an empty list is returned.
+
+There is an implementation list on the maximum number of roots
+(currently 500,000,000).
 
 =head2 invmod
 

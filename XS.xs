@@ -201,7 +201,7 @@ static int _validate_int(pTHX_ SV* n, int negok)
   }
   ret    = isneg ? -1           : 1;
   maxlen = isneg ? ivmax_maxlen : uvmax_maxlen;
-  maxstr = isneg ? ivmin_str    : uvmax_str;
+  maxstr = isneg ? ivmin_str    : uvmax_str;    /* ivmin_str is intentional */
   if (len == 0 || !isDIGIT(ptr[0]))
     croak("Parameter '%" SVf "' %s", n, mustbe);
   while (len > 0 && *ptr == '0')       /* Strip all leading zeros */
@@ -2063,6 +2063,7 @@ void almost_prime_count(IN SV* svk, IN SV* svn)
     if (_validate_and_set(&k, aTHX_ svk, IFLAG_ABS) &&
         _validate_and_set(&n, aTHX_ svn, IFLAG_ABS) &&
         k < BITS_PER_WORD) {
+      ret = 0;
       switch (ix) {
         case 0:  ret = almost_prime_count(k, n); break;
         case 1:  ret = almost_prime_count_approx(k, n); break;
@@ -2286,8 +2287,8 @@ void invmod(IN SV* sva, IN SV* svn)
 
 void allsqrtmod(IN SV* sva, IN SV* svn)
   PREINIT:
-    int astatus, nstatus, i;
-    UV a, n, numr, *roots;
+    int astatus, nstatus;
+    UV a, n, i, numr, *roots;
   PPCODE:
     astatus = _validate_and_set(&a, aTHX_ sva, IFLAG_ANY);
     nstatus = _validate_and_set(&n, aTHX_ svn, IFLAG_ABS);
@@ -2298,11 +2299,35 @@ void allsqrtmod(IN SV* sva, IN SV* svn)
       if (roots != 0) {
         EXTEND(SP, (IV)numr);
         for (i = 0; i < numr; i++)
-          PUSHs(sv_2mortal(newSViv(roots[i])));
+          PUSHs(sv_2mortal(newSVuv(roots[i])));
         Safefree(roots);
       }
     } else {
       (void)_vcallsubn(aTHX_ GIMME_V, VCALL_PP, "allsqrtmod", items, 0);
+      return;
+    }
+
+void allrootmod(IN SV* sva, IN SV* svg, IN SV* svn)
+  PREINIT:
+    int astatus, gstatus, nstatus;
+    UV a, g, n, i, numr, *roots;
+  PPCODE:
+    astatus = _validate_and_set(&a, aTHX_ sva, IFLAG_ANY);
+    gstatus = _validate_and_set(&g, aTHX_ svg, IFLAG_ANY);
+    nstatus = _validate_and_set(&n, aTHX_ svn, IFLAG_ABS);
+    if (astatus != 0 && gstatus != 0 && nstatus != 0) {
+      if (n == 0) XSRETURN_EMPTY;
+      _mod_with(&a, astatus, n);
+      if (!prep_pow_inv(&a,&g,gstatus,n)) XSRETURN_EMPTY;
+      roots = allrootmod(&numr, a, g, n);
+      if (roots != 0) {
+        EXTEND(SP, (IV)numr);
+        for (i = 0; i < numr; i++)
+          PUSHs(sv_2mortal(newSVuv(roots[i])));
+        Safefree(roots);
+      }
+    } else {
+      (void)_vcallsubn(aTHX_ GIMME_V, VCALL_PP, "allrootmod", items, 0);
       return;
     }
 
@@ -2825,6 +2850,7 @@ void sqrtint(IN SV* svn)
     UV n, r;
   PPCODE:
     if (_validate_and_set(&n, aTHX_ svn, (ix <= 2) ? IFLAG_POS : IFLAG_ABS)) {
+      r = 0;
       switch (ix) {
         case 0:  r = isqrt(n);  break;
         case 1:  r = carmichael_lambda(n);  break;
@@ -2858,6 +2884,7 @@ void factorial(IN SV* svn)
     UV n, r;
   PPCODE:
     if (_validate_and_set(&n, aTHX_ svn, IFLAG_POS)) {
+      r = 0;
       switch(ix) {
         case 0:  r = factorial(n);    break;
         case 1:  r = primorial(n);    break;

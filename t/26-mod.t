@@ -3,7 +3,7 @@ use strict;
 use warnings;
 
 use Test::More;
-use Math::Prime::Util qw/invmod sqrtmod allsqrtmod rootmod addmod submod mulmod divmod powmod/;
+use Math::Prime::Util qw/invmod sqrtmod allsqrtmod rootmod allrootmod addmod submod mulmod divmod powmod/;
 use Math::BigInt try=>"GMP,Pari";
 
 my $extra = defined $ENV{EXTENDED_TESTING} && $ENV{EXTENDED_TESTING};
@@ -93,7 +93,7 @@ my @rootmods = (
  # The right way with Pari is to use p-adic.
  [ 4, 2, 10, [2,8]],
  [ 2, 3, 21, undef],  # Pari says 2
- [ 8, 3, 27, 2],      # Pari says 26
+ [ 8, 3, 27, [2,11,20]],      # Pari says 26
  [22, 3, 1505, [148,578,673,793,813,1103,1243,1318,1458] ],  # Pari says 1408
  [58787, 3, 100035, [3773,8633,10793,13763,19163,24293,26183,26588,31313,37118,41978,44138,47108,52508,57638,59528,59933,64658,70463,75323,77483,80453,85853,90983,92873,93278,98003]],
  [3748, 2, 4992, [154,262,314,518,730,934,986,1094,1402,1510,1562,1766,1978,2182,2234,2342,2650,2758,2810,3014,3226,3430,3482,3590,3898,4006,4058,4262,4474,4678,4730,4838]],
@@ -103,6 +103,11 @@ my @rootmods = (
  [13, 6, 112, undef],
  [ 6, 6, 35, undef],
  [ 3, 4, 19, undef],
+ [ 36,2, 40, [6,14,26,34]],
+ [ 9, 2, 24, [3,9,15,21]],
+ [ 382, 3, 1000, undef],
+ [ 16, 12, 48, [2,4,8,10,14,16,20,22,26,28,32,34,38,40,44,46]],
+ [ 1, 4, 20, [1,3,7,9,11,13,17,19]],
 );
 
 plan tests => 0
@@ -115,7 +120,8 @@ plan tests => 0
             + 2 + 1                  # divmod
             + 2                      # powmod
             + 6                      # large negative args
-            + 5 + scalar(@rootmods)  # rootmod
+            + 5                      # rootmod
+            + scalar(@rootmods)*2    # allrootmod
             + 1                      # more rootmod
             + 0;
 
@@ -309,11 +315,14 @@ foreach my $r (@rootmods) {
   my($a, $k, $n, $exp) = @$r;
   if (!defined $exp) {
     is( rootmod($a,$k,$n), $exp, "rootmod($a,$k,$n) = <undef>");
+    is_deeply( [allrootmod($a,$k,$n)], [], "allrootmod($a,$k,$n) = ()");
   } elsif (!ref($exp)) {
     is( rootmod($a,$k,$n), $exp, "rootmod($a,$k,$n) = $exp");
+    is_deeply( [allrootmod($a,$k,$n)], [$exp], "allrootmod($a,$k,$n) = ($exp)");
   } else {
     my $val = rootmod($a,$k,$n);
     ok( is_one_of($val, @$exp), "rootmod($a,$k,$n) = $val, roots [@$exp]" );
+    is_deeply([allrootmod($a,$k,$n)], $exp, "allrootmod($a,$k,$n) = (@$exp)");
   }
 }
 

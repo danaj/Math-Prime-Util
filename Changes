@@ -67,6 +67,7 @@ Revision history for Perl module Math::Prime::Util
     - binomialmod(n,k,m)              fast binomial(n,k) mod m
     - submod(a, b, n)                 a - b mod n
     - rootmod(a, k, n)                modular k-th root
+    - allrootmod(a,k,n)               all k-th roots of a (mod n)
     - vecequal(\@a, \@b)              compare two arrays for equality
     - tozeckendorf(n)                 Zeckendorf binary string from n
     - fromzeckendorf(str)             n from Zeckendorf binary string

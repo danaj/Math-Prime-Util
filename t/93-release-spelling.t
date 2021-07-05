@@ -37,8 +37,8 @@ add_stopwords(qw/-th
                  totient moebius mertens liouville kronecker znorder znprimroot znlog
                  sumliouville
                  gcd lcm gcdext chinese
-                 invmod sqrtmod allsqrtmod rootmod
-                 addmod submod mulmod powmod divmod
+                 sqrtmod allsqrtmod rootmod allrootmod
+                 invmod addmod submod mulmod powmod divmod
                  binomialmod factorialmod
                  bernfrac bernreal harmfrac harmreal stirling hclassno
                  vecsum vecprod vecmin vecmax vecreduce vecextract vecequal
