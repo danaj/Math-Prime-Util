@@ -2662,10 +2662,52 @@ UV* allrootmod(UV* nroots, UV a, UV g, UV n) {  /* Trial, for testing only */
 
 #else
 
-/* allsqrtmod algorithm from Hugo van der Sanden, 2021 */
-
 /* We could alternately just let the allocation fail */
 #define MAX_ROOTS_RETURNED 500000000
+
+/* Combine roots using Cartesian product CRT */
+static UV* _rootmod_cprod(UV* nroots,
+                          UV nr1, UV *roots1, UV p1,
+                          UV nr2, UV *roots2, UV p2) {
+  UV i, j,  nr, *roots, inv;
+
+  nr = nr1 * nr2;
+  if (nr > MAX_ROOTS_RETURNED) croak("Maximum returned roots exceeded");
+  New(0, roots, nr, UV);
+
+  inv = modinverse(p1, p2);
+  for (i = 0; i < nr1; i++) {
+    UV q1 = roots1[i];
+    for (j = 0; j < nr2; j++) {
+      UV q2 = roots2[j];
+#if 0
+      UV ca[2], cn[2];
+      ca[0] = q1;  cn[0] = p1;
+      ca[1] = q2;  cn[1] = p2;
+      if (chinese(roots + i * nr2 + j, ca, cn, 2) != 1)
+        croak("chinese fail in allrootmod");
+#else
+      UV t = mulmod(inv, submod(q2 % p2,q1 % p2,p2), p2);
+      roots[i * nr2 + j] = addmod(q1, mulmod(p1,t,p1*p2), p1*p2);
+#endif
+    }
+  }
+  Safefree(roots1);
+  Safefree(roots2);
+  *nroots = nr;
+  return roots;
+}
+
+static UV* _one_root(UV* nroots, UV r) {
+  UV *roots;
+  New(0, roots, 1, UV);
+  roots[0] = r;
+  *nroots = 1;
+  return roots;
+}
+
+
+/* allsqrtmod algorithm from Hugo van der Sanden, 2021 */
 
 static UV* _allsqrtmodpk(UV *nroots, UV a, UV p, UV k) {
   UV *roots, *roots2, nr2 = 0;
@@ -2717,39 +2759,6 @@ static UV* _allsqrtmodpk(UV *nroots, UV a, UV p, UV k) {
   return roots;
 }
 
-/* Combine roots using Cartesian product CRT */
-static UV* _rootmod_cprod(UV* nroots,
-                          UV nr1, UV *roots1, UV p1,
-                          UV nr2, UV *roots2, UV p2) {
-  UV i, j,  nr, *roots, inv;
-
-  nr = nr1 * nr2;
-  if (nr > MAX_ROOTS_RETURNED) croak("Maximum returned roots exceeded");
-  New(0, roots, nr, UV);
-
-  inv = modinverse(p1, p2);
-  for (i = 0; i < nr1; i++) {
-    UV q1 = roots1[i];
-    for (j = 0; j < nr2; j++) {
-      UV q2 = roots2[j];
-#if 0
-      UV ca[2], cn[2];
-      ca[0] = q1;  cn[0] = p1;
-      ca[1] = q2;  cn[1] = p2;
-      if (chinese(roots + i * nr2 + j, ca, cn, 2) != 1)
-        croak("chinese fail in allrootmod");
-#else
-      UV t = mulmod(inv, submod(q2 % p2,q1 % p2,p2), p2);
-      roots[i * nr2 + j] = addmod(q1, mulmod(p1,t,p1*p2), p1*p2);
-#endif
-    }
-  }
-  Safefree(roots1);
-  Safefree(roots2);
-  *nroots = nr;
-  return roots;
-}
-
 static UV* _allsqrtmodfact(UV *nroots, UV a, UV n, int nf, UV *fac, UV *exp) {
   UV *roots, *roots1, *roots2, nr, nr1, nr2, p, k, pk, n2;
 
@@ -2787,12 +2796,8 @@ UV* allsqrtmod(UV* nroots, UV a, UV n) {
   if (n == 0) return 0;
   if (a >= n) a %= n;
 
-  if (n <= 2) {
-    New(0, roots, 1, UV);
-    roots[0] = a;          /* n=1 => [0],  n=2 => [0] or [1] */
-    *nroots = 1;
-    return roots;
-  }
+  if (n <= 2)
+    return _one_root(nroots, a);   /* n=1 => [0],  n=2 => [0] or [1] */
   /* a == 0 is not trivial for composites */
 
   nfactors = factor_exp(n, fac, exp);
@@ -2809,14 +2814,6 @@ UV* allsqrtmod(UV* nroots, UV a, UV n) {
 /* The allrootmod method is a little different.
  * We're splitting k first, then n into prime powers, and finally primes.
  */
-
-static UV* _one_root(UV* nroots, UV r) {
-  UV *roots;
-  New(0, roots, 1, UV);
-  roots[0] = r;
-  *nroots = 1;
-  return roots;
-}
 
 static UV* _allrootmod_prime(UV* nroots, UV a, UV k, UV p) {
   UV r, r2, z, *roots, numr = 0, allocr = k;
@@ -3014,7 +3011,7 @@ UV* allrootmod(UV* nroots, UV a, UV k, UV n) {
     return roots;
   }
 
-  if (k == 2) return allsqrtmod(nroots, a, n);
+  /* if (k == 2) return allsqrtmod(nroots, a, n); */
 
   /* Split k into primes */
   if (!is_prime(k)) {
