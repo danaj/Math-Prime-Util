@@ -3,7 +3,6 @@
 #include <string.h>
 
 #define FUNC_isqrt 1
-#define FUNC_icbrt 1
 #include "util.h"
 #include "sieve.h"
 #include "lmo.h"
@@ -504,7 +503,7 @@ static void vcarray_remove_zeros(vcarray_t* a)
 
 static UV phi_walk(UV x, UV a)
 {
-  UV i, val, sval, lastidx, lastprime, primes_to_n;
+  UV i, sval, lastidx, lastprime, primes_to_n;
   UV sum = 0;
   uint32_t* primes;
   vcarray_t a1, a2;
@@ -601,7 +600,6 @@ UV small_phi(UV n, uint32_t a) {
 void* prepare_cached_legendre_phi(UV x, UV a)
 {
   uint32_t npa, lastidx, *primes;
-  UV sum;
 
   if (a > 203280221)  a = 203280221;
   npa = nth_prime_upper(a);
