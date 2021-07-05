@@ -2189,7 +2189,7 @@ int binomialmod(UV *res, UV n, UV k, UV m) {
     UV bin[MPU_MAX_FACTORS+1];
     UV fac[MPU_MAX_FACTORS+1];
     UV exp[MPU_MAX_FACTORS+1];
-    int crt, i, nfactors = factor_exp(m, fac, exp);
+    int i, nfactors = factor_exp(m, fac, exp);
     for (i = 0; i < nfactors; i++) {
       if (exp[i] == 1) {
         bin[i] = _binomial_lucas_mod_prime(n, k, fac[i]);
@@ -2460,18 +2460,34 @@ static UV _ts_rootmod(UV a, UV k, UV p, UV y, UV m) {
   return x;
 }
 
-static UV _rootmod_prime_splitk(UV a, UV k, UV p) {
+static UV _compute_generator(UV l, UV e, UV r, UV p) {
+  UV x, y, m = 1;
+  UV lem1 = ipow(l, e-1);
+  for (x = 2; m == 1; x++) {
+    y = powmod(x, r, p);
+    if (y == 1) continue;
+    m = powmod(y, lem1, p);
+  }
+  return y;   /* We might want to also return m */
+}
+
+/* Following Pari, we calculate a root of unity to allow finding other roots */
+static UV _rootmod_prime_splitk(UV a, UV k, UV p, UV *zeta) {
   UV g, y, m;
   UV fac[MPU_MAX_FACTORS+1];
   UV exp[MPU_MAX_FACTORS+1];
   int i, nfactors;
 
+  if (zeta) *zeta = 1;
   if (a >= p) a %= p;
-  if (a < 2) return a;
+  if (a == 0 || (a == 1 && !zeta)) return a;
 
   /* Assume:  k >= 2,  1 < a < p,  p > 2, p prime */
 
-  if (k == 2) return _sqrtmod_prime(a, p);
+  if (k == 2) {
+    if (zeta) *zeta = p-1;
+    return _sqrtmod_prime(a, p);
+  }
 
   /* See Algorithm 2.1 of van de Woestijne (2006), or Lindhurst (1997) */
   /* The latter's proposition 7 generalizes to composite p */
@@ -2481,9 +2497,16 @@ static UV _rootmod_prime_splitk(UV a, UV k, UV p) {
   if (g != 1) {
     nfactors = factor_exp(g, fac, exp);
     for (i = 0; a != 0 && i < nfactors; i++) {
-      _find_ts_generator(&y, &m,  a, fac[i], p);
-      while (exp[i]-- > 0)
-        a = _ts_rootmod(a, fac[i], p,  y, m);
+      UV F = fac[i],  E = exp[i];
+      if (zeta) {
+        UV REM, V, Y;
+        V = valuation_remainder(p-1, F, &REM);
+        Y = _compute_generator(F, V, REM, p);
+        *zeta = mulmod(*zeta, powmod(Y, ipow(F, V-E), p), p);
+      }
+      _find_ts_generator(&y, &m,  a, F, p);
+      while (E-- > 0)
+        a = _ts_rootmod(a, F, p,  y, m);
     }
   }
   if (g != k) {
@@ -2572,7 +2595,7 @@ int rootmodp(UV *s, UV a, UV k, UV p) {
   if      (p <= 2 || a <= 1)  r = a;
   else if (k <= 1)            r = (k == 0) ? 1 : a;
   else if (is_power(a,k))     r = rootint(a,k);
-  else                        r = _rootmod_prime_splitk(a,k,p);
+  else                        r = _rootmod_prime_splitk(a,k,p,0);
 
   return _rootmod_return(r, s, a, k, p);
 }
@@ -2585,23 +2608,67 @@ int rootmod(UV *s, UV a, UV k, UV n) {
   if      (n <= 2 || a <= 1)  r = a;
   else if (k <= 1)            r = (k == 0) ? 1 : a;
   else if (is_power(a,k))     r = rootint(a,k);
-  else if (is_prime(n))       r = _rootmod_prime_splitk(a,k,n);
+  else if (is_prime(n))       r = _rootmod_prime_splitk(a,k,n,0);
   else                        r = _rootmod_composite(a,k,n);
 
   return _rootmod_return(r, s, a, k, n);
 }
 
+
 /******************************************************************************/
-/*                     SQRTMOD RETURNING ALL RESULTS                          */
+/*               SQRTMOD AND ROOTMOD RETURNING ALL RESULTS                    */
 /******************************************************************************/
 
-/* Algorithm from Hugo van der Sanden, 2021 */
+#define ALLROOTMOD_TRIAL 0
+
+#if ALLROOTMOD_TRIAL
+
+UV* allsqrtmod(UV* nroots, UV a, UV n) {  /* Trial, for testing only */
+  UV i, *roots, numr = 0, allocr = 16;
+
+  if (n == 0) return 0;
+  if (a >= n) a %= n;
+
+  New(0, roots, allocr, UV);
+  for (i = 0; i <= n/2; i++) {
+    if (mulmod(i,i,n) == a) {
+      if (numr >= allocr-1)  Renew(roots, allocr += 256, UV);
+      roots[numr++] = i;
+      if (i != 0 && 2*i != n)
+        roots[numr++] = n-i;
+    }
+  }
+  qsort(roots, numr, sizeof(UV), _numcmp);
+  *nroots = numr;
+  return roots;
+}
+
+UV* allrootmod(UV* nroots, UV a, UV g, UV n) {  /* Trial, for testing only */
+  UV i, *roots, numr = 0, allocr = 16;
+
+  if (n == 0) return 0;
+  if (a >= n) a %= n;
+
+  New(0, roots, allocr, UV);
+  for (i = 0; i < n; i++) {
+    if (powmod(i,g,n) == a) {
+      if (numr >= allocr-1)  Renew(roots, allocr += 256, UV);
+      roots[numr++] = i;
+    }
+  }
+  *nroots = numr;
+  return roots;
+}
+
+#else
+
+/* allsqrtmod algorithm from Hugo van der Sanden, 2021 */
 
 /* We could alternately just let the allocation fail */
 #define MAX_ROOTS_RETURNED 500000000
 
 static UV* _allsqrtmodpk(UV *nroots, UV a, UV p, UV k) {
-  UV *roots, *roots2, nr = 0, nr2 = 0;
+  UV *roots, *roots2, nr2 = 0;
   UV i, j, pk, pj, q, q2, a2;
 
   pk = ipow(p,k);
@@ -2650,9 +2717,41 @@ static UV* _allsqrtmodpk(UV *nroots, UV a, UV p, UV k) {
   return roots;
 }
 
+/* Combine roots using Cartesian product CRT */
+static UV* _rootmod_cprod(UV* nroots,
+                          UV nr1, UV *roots1, UV p1,
+                          UV nr2, UV *roots2, UV p2) {
+  UV i, j,  nr, *roots, inv;
+
+  nr = nr1 * nr2;
+  if (nr > MAX_ROOTS_RETURNED) croak("Maximum returned roots exceeded");
+  New(0, roots, nr, UV);
+
+  inv = modinverse(p1, p2);
+  for (i = 0; i < nr1; i++) {
+    UV q1 = roots1[i];
+    for (j = 0; j < nr2; j++) {
+      UV q2 = roots2[j];
+#if 0
+      UV ca[2], cn[2];
+      ca[0] = q1;  cn[0] = p1;
+      ca[1] = q2;  cn[1] = p2;
+      if (chinese(roots + i * nr2 + j, ca, cn, 2) != 1)
+        croak("chinese fail in allrootmod");
+#else
+      UV t = mulmod(inv, submod(q2 % p2,q1 % p2,p2), p2);
+      roots[i * nr2 + j] = addmod(q1, mulmod(p1,t,p1*p2), p1*p2);
+#endif
+    }
+  }
+  Safefree(roots1);
+  Safefree(roots2);
+  *nroots = nr;
+  return roots;
+}
+
 static UV* _allsqrtmodfact(UV *nroots, UV a, UV n, int nf, UV *fac, UV *exp) {
-  UV *roots, *roots1, *roots2, nr, nr1, nr2, p, k, pk, n2, i, j;
-  UV ca[2], cn[2]; /* for chinese calls */
+  UV *roots, *roots1, *roots2, nr, nr1, nr2, p, k, pk, n2;
 
   MPUassert(nf > 0, "empty factor list in _allsqrtmodfact");
 
@@ -2673,51 +2772,14 @@ static UV* _allsqrtmodfact(UV *nroots, UV a, UV n, int nf, UV *fac, UV *exp) {
   roots2 = _allsqrtmodfact(&nr2, a, n2, nf-1, fac+1, exp+1);
   if (roots2 == 0) return 0;
 
-  /* nr,roots are the resulting CRT using the Cartesian product */
-  nr = nr1 * nr2;
-  if (nr > MAX_ROOTS_RETURNED) croak("Maximum returned roots exceeded");
-  New(0, roots, nr, UV);
-
-  for (i = 0; i < nr2; i++) {
-    UV q2 = roots2[i];
-    for (j = 0; j < nr1; j++) {
-      UV q1 = roots1[j];
-      ca[0] = q2;  cn[0] = n2;
-      ca[1] = q1;  cn[1] = pk;
-      if (chinese(roots + i * nr1 + j, ca, cn, 2) != 1)
-        croak("chinese fail in allsqrtmod");
-    }
-  }
-  Safefree(roots1);
-  Safefree(roots2);
+  roots = _rootmod_cprod(&nr,  nr1, roots1, pk,  nr2, roots2, n2);
 
   *nroots = nr;
   return roots;
 }
 
-#if 0
-UV* allsqrtmod(UV* nroots, UV a, UV n) {  /* Trial, for testing only */
-  UV i, *roots, numr = 0, allocr = 16;
-
-  if (n == 0) return 0;
-  if (a >= n) a %= n;
-
-  New(0, roots, allocr, UV);
-  for (i = 0; i <= n/2; i++) {
-    if (mulmod(i,i,n) == a) {
-      if (numr >= allocr-1)  Renew(roots, allocr += 256, UV);
-      roots[numr++] = i;
-      if (i != 0 && 2*i != n)
-        roots[numr++] = n-i;
-    }
-  }
-  qsort(roots, numr, sizeof(UV), _numcmp);
-  *nroots = numr;
-  return roots;
-}
-#else
 UV* allsqrtmod(UV* nroots, UV a, UV n) {
-  UV i, *roots, numr = 0;
+  UV *roots, numr = 0;
   UV fac[MPU_MAX_FACTORS+1];
   UV exp[MPU_MAX_FACTORS+1];
   int nfactors;
@@ -2742,6 +2804,258 @@ UV* allsqrtmod(UV* nroots, UV a, UV n) {
   *nroots = numr;
   return roots;
 }
+
+
+/* The allrootmod method is a little different.
+ * We're splitting k first, then n into prime powers, and finally primes.
+ */
+
+static UV* _one_root(UV* nroots, UV r) {
+  UV *roots;
+  New(0, roots, 1, UV);
+  roots[0] = r;
+  *nroots = 1;
+  return roots;
+}
+
+static UV* _allrootmod_prime(UV* nroots, UV a, UV k, UV p) {
+  UV r, r2, z, *roots, numr = 0, allocr = k;
+
+  *nroots = 0;
+  if (a >= p) a %= p;
+
+  /* Assume: p is prime, k is prime */
+
+  /* simple case */
+  if (p == 2 || a == 0)
+    return _one_root(nroots, a);
+
+  /* If co-prime, we have one root */
+  if (gcd_ui(k, p-1) == 1) {
+    UV r = powmod(a, modinverse(k % (p-1), p-1), p);
+    return _one_root(nroots, r);
+  }
+
+  /* Check Euler's criterion */
+  if (powmod(a, (p-1)/k, p) != 1)
+    return 0;
+
+  /* Shortcut directly to allsqrtmod function for k = 2 */
+  if (k == 2) return _allsqrtmodpk(nroots, a, p, 1);
+
+  r = _rootmod_prime_splitk(a, k, p, &z);
+  if (powmod(r, k, p) != a || z == 0) return 0;
+
+  if (z == 1)
+    return _one_root(nroots, r);
+
+  New(0, roots, allocr, UV);
+  roots[numr++] = r;
+  for (r2 = mulmod(r, z, p); r2 != r; r2 = mulmod(r2, z, p) ) {
+    if (numr >= allocr-1)  Renew(roots, allocr += k, UV);
+    roots[numr++] = r2;
+  }
+  *nroots = numr;
+  return roots;
+}
+
+static UV* _allrootmod_prime_power(UV* nroots, UV a, UV k, UV p, UV e) {
+  UV n, i, j, pk, ered, numr = 0, *roots = 0, nr2 = 0, *roots2 = 0;
+
+#if 0
+  MPUassert(p >= 2, "_allrootmod_prime_power must be given a prime modulus");
+  MPUassert(e >= 1, "_allrootmod_prime_power must be given exponent >= 1");
+  MPUassert(k >= 2, "_allrootmod_prime_power must be given k >= 2");
+  MPUassert(is_prime(k), "_allrootmod_prime_power must be given prime k");
+  MPUassert(is_prime(p), "_allrootmod_prime_power must be given prime p");
+#endif
+
+  if (e == 1) return _allrootmod_prime(nroots, a, k, p);
+
+  n = ipow(p,e);
+  if (a >= n) a %= n;
+  pk = ipow(p, k);
+
+  if ((a % n) == 0) {
+
+    UV t = ((e-1) / k) + 1;
+    UV nt = ipow(p,t);
+    numr  = ipow(p,e-t);
+    New(0, roots, numr, UV);
+    for (i = 0; i < numr; i++)
+      roots[i] = mulmod(i, nt, n);
+
+  } else if ((a % pk) == 0) {
+
+    UV npk = a / pk;
+    UV pe1 = ipow(p, k-1);
+    UV pek = ipow(p, e-k+1);
+    roots2 = _allrootmod_prime_power(&nr2, npk, k, p, e-k);
+    numr = pe1 * nr2;
+    New(0, roots, numr, UV);
+    for (i = 0; i < nr2; i++)
+      for (j = 0; j < pe1; j++)
+        roots[i*pe1+j] = addmod(mulmod(roots2[i],p,n), mulmod(j,pek,n), n);
+    Safefree(roots2);
+
+  } else if ((a % p) != 0) {
+
+    ered = (e+1)>>1;
+    roots2 = _allrootmod_prime_power(&nr2, a, k, p, ered);
+
+    if (k != p) {
+
+      for (j = 0; j < nr2; j++) {
+        UV s = roots2[j];
+        UV t = powmod(s, k-1, n);
+        UV r = addmod(s, divmod(submod(a,mulmod(t,s,n),n), mulmod(k,t,n), n), n);
+        roots2[j] = r;
+      }
+      roots = roots2;
+      numr = nr2;
+
+    } else {
+
+      /* Step 1, transform roots, eliding any that aren't valid */
+      for (j = 0; j < nr2; j++) {
+        UV s = roots2[j];
+        UV t = powmod(s, k-1, n);
+        UV t1 = submod(a, mulmod(t,s,n), n);
+        UV t2 = mulmod(k,t,n);
+        UV gcd = gcd_ui(t1,t2);
+        UV r = addmod(s, divmod(t1/gcd,t2/gcd,n), n);
+        if (powmod(r, k, n) == a)
+          roots2[numr++] = r;
+      }
+      nr2 = numr;
+
+      /* Step 2, Expand out by k */
+      if (nr2 > 0) {
+        numr = nr2 * k;
+        New(0, roots, numr, UV);
+        for (j = 0; j < nr2; j++) {
+          UV r = roots2[j];
+          for (i = 0; i < k; i++)
+            roots[j*k+i] = mulmod( r, addmod( mulmod(i,n/p,n), 1, n), n);
+        }
+      }
+      Safefree(roots2);
+
+      /* Step 3, Remove any duplicates */
+      if (numr == 2 && roots[0] == roots[1])
+        numr = 1;
+      if (numr > 2) {
+        qsort(roots, numr, sizeof(UV), _numcmp);
+        for (j = 0, i = 1; i < numr; i++)
+          if (roots[j] != roots[i])
+            roots[++j] = roots[i];
+        numr = j+1;
+      }
+
+    }
+  }
+
+  *nroots = numr;
+  return roots;
+}
+
+static UV* _allrootmod_splitn(UV* nroots, UV a, UV k, UV n) {
+  UV i, fe, N, *roots = 0, *roots2, numr = 0, nr2;
+  UV fac[MPU_MAX_FACTORS+1];
+  UV exp[MPU_MAX_FACTORS+1];
+  int nfactors;
+
+#if 0
+  MPUassert(n >= 2, "_allrootmod_splitn must be given n >= 2");
+  MPUassert(k >= 2, "_allrootmod_splitn must be given k >= 2");
+  MPUassert(is_prime(k), "_allrootmod_splitn must be given prime k");
+#endif
+
+  *nroots = 0;
+  if (a >= n) a %= n;
+
+  nfactors = factor_exp(n, fac, exp);
+
+  for (N = 1, i = 0; i < (UV) nfactors; i++) {
+    fe = ipow(fac[i], exp[i]);
+    roots2 = _allrootmod_prime_power(&nr2, a, k, fac[i], exp[i]);
+    if (nr2 == 0) { Safefree(roots); Safefree(roots2); return 0; }
+
+    if (i == 0) {
+      numr = nr2;
+      roots = roots2;
+    } else {
+      /* Cartesian product using CRT.  roots and roots2 are freed. */
+      roots = _rootmod_cprod(&numr,  numr, roots, N,  nr2, roots2, fe);
+    }
+    N *= fe;
+  }
+
+  *nroots = numr;
+  return roots;
+}
+
+UV* allrootmod(UV* nroots, UV a, UV k, UV n) {
+  UV i, numr = 0, *roots = 0;
+
+  *nroots = 0;
+  if (n == 0) return 0;
+  if (a >= n) a %= n;
+
+  if (n <= 2 || k == 1)
+    return _one_root(nroots, a);   /* n=1 => [0],  n=2 => [0] or [1] */
+
+  if (k == 0) {
+    if (a != 1) return 0;
+    New(0, roots, n, UV);
+    for (i = 0; i < n; i++)
+      roots[i] = i;
+    *nroots = n;
+    return roots;
+  }
+
+  if (k == 2) return allsqrtmod(nroots, a, n);
+
+  /* Split k into primes */
+  if (!is_prime(k)) {
+    UV j, *roots2 = 0, nr2 = 0;
+    UV fac[MPU_MAX_FACTORS+1];
+    int nfactors;
+
+    New(0, roots, 1, UV);
+    roots[0] = a;
+    numr = 1;
+    nfactors = factor(k, fac);
+    for (i = 0; i < (UV)nfactors; i++) {   /* for each prime k */
+      UV primek = fac[i];
+      UV *rootsnew, nrn = 0, allocr = numr, inew;
+      New(0, rootsnew, allocr, UV);
+      for (j = 0; j < numr; j++) {         /* get a list from each root */
+        roots2 = _allrootmod_splitn(&nr2, roots[j], primek, n);
+        if (nr2 == 0) continue;
+        /* Append to rootsnew */
+        if (nrn + nr2 > MAX_ROOTS_RETURNED) croak("Maximum returned roots exceeded");
+        if (nrn + nr2 >= allocr)  Renew(rootsnew, allocr += nr2, UV);
+        for (inew = 0; inew < nr2; inew++)
+          rootsnew[nrn++] = roots2[inew];
+        Safefree(roots2);
+      }
+      /* We've walked through all the roots */
+      Safefree(roots);
+      roots = rootsnew;
+      numr = nrn;
+    }
+
+  } else {
+    roots = _allrootmod_splitn(&numr, a, k, n);
+  }
+
+  if (numr > 1)
+    qsort(roots, numr, sizeof(UV), _numcmp);
+  *nroots = numr;
+  return roots;
+}
+
 #endif
 
 
