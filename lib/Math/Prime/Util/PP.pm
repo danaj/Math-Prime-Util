@@ -46,6 +46,25 @@ BEGIN {
   use constant PI_TIMES_8      => 25.13274122871834590770114707;
 }
 
+*Maddint = \&Math::Prime::Util::addint;
+*Msubint = \&Math::Prime::Util::subint;
+*Mmulint = \&Math::Prime::Util::mulint;
+*Mdivint = \&Math::Prime::Util::divint;
+*Mpowint = \&Math::Prime::Util::powint;
+*Mmodint = \&Math::Prime::Util::modint;
+
+*Maddmod = \&Math::Prime::Util::addmod;
+*Msubmod = \&Math::Prime::Util::submod;
+*Mmulmod = \&Math::Prime::Util::mulmod;
+*Mdivmod = \&Math::Prime::Util::divmod;
+*Mpowmod = \&Math::Prime::Util::powmod;
+*Minvmod = \&Math::Prime::Util::invmod;
+
+*Mgcd = \&Math::Prime::Util::gcd;
+*Mfactor = \&Math::Prime::Util::factor;
+*Mfactor_exp = \&Math::Prime::Util::factor_exp;
+
+
 my $_precalc_size = 0;
 sub prime_precalc {
   my($n) = @_;
@@ -3977,9 +3996,13 @@ sub rootmod {
   if (defined $z) {
     return if gcd($a,$n)==1 && powmod($a,divint($phi,gcd($k,$phi)),$n) != 1;
     my $y = Math::Prime::Util::znlog($a, powmod($z, $k, $n), $n);
-    my $r = powmod($z, $y, $n);
-    return $r if powmod($r, $k, $n) == $a;
+    if (defined $y) {
+      my $r = powmod($z, $y, $n);
+      return $r if powmod($r, $k, $n) == $a;
+    }
   }
+
+  # return (allrootmod($a, $k, $n))[0];
 
   # 3. Oh dear.  Trial division.
   my $r = 2;
@@ -4050,6 +4073,152 @@ sub allsqrtmod {
   return @roots;
 }
 
+
+
+sub _allrootmod_cprod {
+  my($aroots1, $p1, $aroots2, $p2) = @_;
+  my($t, $n, $inv);
+
+  $n = mulint($p1, $p2);
+  $inv = Minvmod($p1, $p2);
+  croak("CRT has undefined inverse") unless defined $inv;
+
+  my @roots;
+  for my $q1 (@$aroots1) {
+    for my $q2 (@$aroots2) {
+      $t = Mmulmod( $inv, Msubmod( $q2, $q1, $p2), $p2);
+      $t = Maddmod($q1, Mmulmod($p1,$t,$n), $n);
+      push @roots, $t;
+    }
+  }
+  return @roots;
+}
+
+sub _allrootmod_prime {
+  my($A,$k,$p) = @_;        # prime k, prime p
+  $A = Mmodint($A,$p) if $A >= $p;
+
+  return ($A) if $p == 2 || $A == 0;
+
+  my $g = Mgcd($k, $p-1);
+  if ($g == 1) {
+    my $r = Mpowmod($A, Minvmod($k % ($p-1), $p-1), $p);
+    return ($r);
+  }
+
+  return () if Mpowmod($A, Mdivint($p-1, $g), $p) != 1;
+
+  return (1,2) if $p == 3;
+
+  return _allsqrtmodpk($A, $p, 1) if $k == 2;
+
+  # We should call a general TS solver that also returns the root of unity.
+
+  # Brute force, reasonable for small p:
+  # my @roots = grep { Mpowmod($_,$k,$p) == $A } 0 .. $p-1;
+
+  # Brute force with early exits, averages about 2x faster for k=3.
+  my @roots;
+  for (0 .. $p-1) {
+    next unless Mpowmod($_,$k,$p) == $A;
+    push @roots, $_;
+    if ($k == 3 && @roots == $k-1) {
+      my $r = Mmulmod($roots[1], Mdivmod($roots[1],$roots[0],$p), $p);
+      croak("allrootmod bad cube root") unless Mpowmod($r,$k,$p) == $A;
+      push @roots, $r;
+    }
+    last if @roots == $k;
+  }
+  return @roots;
+}
+
+sub _allrootmod_prime_power {
+  my($A,$k,$p,$e) = @_;        # prime k, prime p
+
+  return _allrootmod_prime($A, $k, $p) if $e == 1;
+
+  my $n = Mpowint($p,$e);
+  $A = Mmodint($A,$n) if $A >= $n;
+  my $pk = Mpowint($p,$k);
+  my @roots;
+
+  if (($A % $n) == 0) {
+    my $t = Mdivint($e-1, $k) + 1;
+    my $nt = Mpowint($p, $t);
+    my $nr = Mpowint($p, $e-$t);
+    @roots = map { Mmulmod($_, $nt, $n) } 0 .. $nr-1;
+    return @roots;
+  }
+
+  if (($A % $pk) == 0) {
+    my $npk = Mdivint($A, $pk);
+    my $pe1 = Mpowint($p, $k-1);
+    my $pek = Mpowint($p, $e-$k+1);
+    my @roots2 = _allrootmod_prime_power($npk, $k, $p, $e-$k);
+    for my $r (@roots2) {
+      for my $j (0 .. $pe1-1) {
+        push @roots, Maddmod( Mmulmod($r, $p, $n), Mmulmod($j, $pek, $n), $n);
+      }
+    }
+    return @roots;
+  }
+
+  return () if ($A % $p) == 0;
+
+  my $ered = ($e+1) >> 1;
+  my @roots2 = _allrootmod_prime_power($A, $k, $p, $ered);
+
+  if ($k != $p) {
+    for my $s (@roots2) {
+      my $t = Mpowmod($s, $k-1, $n);
+      my $r = Maddmod($s, Mdivmod( Msubmod($A, Mmulmod($t,$s,$n), $n),
+                                   Mmulmod($k,$t,$n), $n), $n);
+      push @roots, $r;
+    }
+  } else {
+    my @rootst;
+    for my $s (@roots2) {
+      my $t  = Mpowmod($s, $k-1, $n);
+      my $t1 = Msubmod($A, Mmulmod($t, $s, $n), $n);
+      my $t2 = Mmulmod($k, $t, $n);
+      my $gcd= Mgcd($t1, $t2);
+      my $r = Maddmod($s, Mdivmod(Mdivint($t1,$gcd),Mdivint($t2,$gcd),$n), $n);
+      push @rootst, $r if Mpowmod($r, $k, $n) == $A;
+    }
+    my $np = divint($n,$p);
+    my %roots;  # We want to remove duplicates
+    for my $r (@rootst) {
+      for my $j (0 .. $k-1) {
+        $roots{ Mmulmod($r, Maddmod(Mmulmod($j, $np, $n), 1, $n), $n) } = undef;
+      }
+    }
+    @roots = keys(%roots);
+  }
+
+  return @roots;
+}
+
+sub _allrootmod_splitn {
+  my($A,$k,$n) = @_;        # prime k
+
+  my $N = 1;
+  my @roots;
+  foreach my $F (Mfactor_exp($n)) {
+    my($f,$e) = @$F;
+    my $fe = Mpowint($f, $e);
+    my @roots2 = _allrootmod_prime_power($A, $k, $f, $e);
+    return () unless @roots2;
+    if (scalar(@roots) == 0) {
+      @roots = @roots2;
+    } else {
+      @roots = _allrootmod_cprod(\@roots, $N, \@roots2, $fe);
+    }
+    $N = Mmulint($N, $fe);
+  }
+
+  return @roots;
+}
+
 sub allrootmod {
   my($A,$k,$n) = @_;
   _validate_integer($A);
@@ -4057,11 +4226,42 @@ sub allrootmod {
   _validate_integer($n);
   $n = -$n if $n < 0;
 
-  return () if $n <= 1;
-  $A = Math::Prime::Util::modint($A,$n);
+  return () if $n == 0;
+  $A = Mmodint($A,$n) if $A >= $n;
 
-  my @roots = sort { $a <=> $b }
-              grep { Math::Prime::Util::powmod($_,$k,$n) == $A } 0 .. $n-1;
+  if ($k < 0) {
+    $A = invmod($A, $n);
+    return () if $A == 0;
+    $k = -$k;
+  }
+
+  # TODO: For testing
+  #my @roots = sort { $a <=> $b }
+  #            grep { Mpowmod($_,$k,$n) == $A } 0 .. $n-1;
+  #return @roots;
+
+  return ($A) if $n <= 2 || $k == 1;
+  return ($a == 1) ? (0..$n-1) : ()  if $k == 0;
+  # TODO: consider removing the comment
+  #return allsqrtmod($A,$n) if $k == 2;
+
+  my @roots;
+  my @f = Mfactor($k);
+
+  if (scalar(@f) == 1) {
+    @roots = _allrootmod_splitn($A, $k, $n);
+  } else {
+    @roots = ($A);
+    for my $primek (@f) {
+      my @rootsnew = ();
+      for my $r (@roots) {
+        push @rootsnew, _allrootmod_splitn($r, $primek, $n);
+      }
+      @roots = @rootsnew;
+    }
+  }
+
+  @roots = sort { $a <=> $b } @roots;
   return @roots;
 }
 
