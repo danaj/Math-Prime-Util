@@ -2705,6 +2705,13 @@ static UV* _one_root(UV* nroots, UV r) {
   *nroots = 1;
   return roots;
 }
+static UV* _two_roots(UV* nroots, UV r, UV s) {
+  UV *roots;
+  New(0, roots, 2, UV);
+  roots[0] = r;  roots[1] = s;
+  *nroots = 2;
+  return roots;
+}
 
 
 /* allsqrtmod algorithm from Hugo van der Sanden, 2021 */
@@ -2816,7 +2823,7 @@ UV* allsqrtmod(UV* nroots, UV a, UV n) {
  */
 
 static UV* _allrootmod_prime(UV* nroots, UV a, UV k, UV p) {
-  UV r, r2, z, *roots, numr = 0, allocr = k;
+  UV r, r2, g, z, *roots, numr = 0;
 
   *nroots = 0;
   if (a >= p) a %= p;
@@ -2824,33 +2831,39 @@ static UV* _allrootmod_prime(UV* nroots, UV a, UV k, UV p) {
   /* Assume: p is prime, k is prime */
 
   /* simple case */
-  if (p == 2 || a == 0)
-    return _one_root(nroots, a);
+  if (p == 2 || a == 0)  return _one_root(nroots, a);
 
   /* If co-prime, we have one root */
-  if (gcd_ui(k, p-1) == 1) {
+  g = gcd_ui(k, p-1);
+  if (g == 1) {
     UV r = powmod(a, modinverse(k % (p-1), p-1), p);
     return _one_root(nroots, r);
   }
+  /* At this point k < p.  (k is a prime so if k>=p, g=1) */
 
   /* Check Euler's criterion */
-  if (powmod(a, (p-1)/k, p) != 1)
+  if (powmod(a, (p-1)/g, p) != 1)
     return 0;
 
+  /* Special case p=3 for performance */
+  if (p == 3)  return (k == 2 && a == 1)  ?  _two_roots(nroots, 1, 2)  :  0;
+
   /* Shortcut directly to allsqrtmod function for k = 2 */
-  if (k == 2) return _allsqrtmodpk(nroots, a, p, 1);
+  if (k == 2)  return _allsqrtmodpk(nroots, a, p, 1);
 
-  r = _rootmod_prime_splitk(a, k, p, &z);
-  if (powmod(r, k, p) != a || z == 0) return 0;
+  New(0, roots, k, UV);  /* We expect to find k roots */
 
-  if (z == 1)
-    return _one_root(nroots, r);
-
-  New(0, roots, allocr, UV);
-  roots[numr++] = r;
-  for (r2 = mulmod(r, z, p); r2 != r; r2 = mulmod(r2, z, p) ) {
-    if (numr >= allocr-1)  Renew(roots, allocr += k, UV);
-    roots[numr++] = r2;
+  if (p <= 23) { /* For small values, search directly for performance */
+    for (r = 1;  r < p && numr < k; r++)
+      if (powmod(r,k,p) == a)
+        roots[numr++] = r;
+  } else {
+    r = _rootmod_prime_splitk(a, k, p, &z);
+    if (powmod(r,k,p) != a || z == 0) croak("allrootmod: failed to find root");
+    roots[numr++] = r;
+    for (r2 = mulmod(r, z, p); r2 != r && numr < k; r2 = mulmod(r2, z, p) )
+      roots[numr++] = r2;
+    if (r2 != r) croak("allrootmod: excess roots found");
   }
   *nroots = numr;
   return roots;
@@ -2969,7 +2982,6 @@ static UV* _allrootmod_splitn(UV* nroots, UV a, UV k, UV n) {
 #endif
 
   *nroots = 0;
-  if (a >= n) a %= n;
 
   nfactors = factor_exp(n, fac, exp);
 
