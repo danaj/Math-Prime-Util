@@ -2376,7 +2376,7 @@ static UV _sqrtmod_prime(UV a, UV p) {
 #endif
 
 static UV _sqrtmod_prime_power(UV a, UV p, UV e) {
-  UV r, s, t, n, pk, apk, ered, np;
+  UV r, s, n, pk, apk, ered, np;
 
   if (e == 1) {
     if (a >= p) a %= p;
@@ -2760,7 +2760,7 @@ static UV _ts_prime(UV a, UV k, UV p, UV *z) {
 }
 
 static UV _rootmod_prime(UV a, UV k, UV p) {
-  UV r, g, z;
+  UV r, g;
 
   /* Assume: p is prime, k is prime */
 
@@ -3250,7 +3250,7 @@ static UV* _allrootmod_splitn(UV* nroots, UV a, UV k, UV n) {
 }
 
 UV* allrootmod(UV* nroots, UV a, UV k, UV n) {
-  UV i, j, numr = 0, *roots = 0;
+  UV i, numr = 0, *roots = 0;
 
 #if USE_ROOTMOD_TRIAL
   return _trial_allrootmod(nroots, a, k, n);
