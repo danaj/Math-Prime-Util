@@ -4400,10 +4400,9 @@ Given two integers C<a> and C<n>, returns a sorted list of all modular
 square roots of C<a> mod C<|n|>. If no square root exists, an empty
 list is returned.
 
-Some inputs, e.g. C<a = p^4, n = 24 * p^4> for prime p, have very many roots.
-There is an implementation limit on the maximum number
-(currently 500,000,000).
-If the result has more roots than this, it will croak.
+Some inputs will return very many roots.
+For example, C<a = p^4, n = 24 * p^4> for prime p, has many roots,
+and C<sqrtmod(89**8, 24*89**8)> has over 500 million.
 
 =head2 rootmod
 
@@ -4423,8 +4422,8 @@ Given three integers C<a>, C<k>, and C<n>, returns a sorted list of all
 modular C<k>-th root of C<a> modulo C<|n|>.
 If no root exists, an empty list is returned.
 
-There is an implementation list on the maximum number of roots
-(currently 500,000,000).
+Similar to L/allsqrtmod>, some inputs have millions or billions of roots,
+so it might not be able to successfully return them all.
 
 =head2 invmod
 

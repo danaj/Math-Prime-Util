@@ -58,6 +58,7 @@ extern UV binomial(UV n, UV k);
 extern IV gcdext(IV a, IV b, IV* u, IV* v, IV* s, IV* t); /* Ext Euclidean */
 extern UV modinverse(UV a, UV p);              /* Returns 1/a mod p */
 extern UV divmod(UV a, UV b, UV n);            /* Returns a/b mod n */
+extern UV gcddivmod(UV a, UV b, UV n);         /* divmod(a/gcd,b/gcd,n) */
 extern int sqrtmodp(UV *r, UV a, UV p);        /* sqrt(a) mod p */
 extern int sqrtmod(UV *r, UV a, UV n);         /* sqrt(a) mod n */
 extern int rootmodp(UV *r, UV a, UV k, UV p);  /* a^(1/k) mod p for p prime */

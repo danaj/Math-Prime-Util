@@ -2156,7 +2156,7 @@ void powmod(IN SV* sva, IN SV* svg, IN SV* svn)
         retundef = !prep_pow_inv(&a,&g,gstatus,n);
         if (!retundef) ret = powmod(a, g, n);
       } else {
-        retundef = prep_pow_inv(&a,&g,gstatus,n) && !rootmod(&ret,a,g,n);
+        retundef = !(prep_pow_inv(&a,&g,gstatus,n) && rootmod(&ret,a,g,n));
       }
       if (retundef) XSRETURN_UNDEF;
       XSRETURN_UV(ret);

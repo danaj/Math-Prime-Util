@@ -263,9 +263,11 @@
   - XS almost_primes should call this in segments, use count_approx for seg size
   - more work on verifying count_upper for k=5+
   - more work on verifying count_lower for k=5+
-  - max_almost_prime_count fill in k=5-11. Somehow.
-    almost_prime_count(n,~0): 38min n=17, 74min n=16, 136min k=15, 262min k=14
-    Doubling each time, so k=11 looks like ~2 days, k=10 => ~4 days, etc.
+  - max_almost_prime_count fill in k=5-9.
+    almost_prime_count(n,~0): n=17   23m   n=16   41m   n=15  71m   n=14  127m
+                              n=13  225m   n=12  397m   n=11 699m   n=10 1217m
+    We could estimate n=9 at 38 hours, n=8 at 66 hours, n=7 at 116 hours.
+    Note this is *significantly* faster than when this was first written.
   - max_almost_prime_count improve k=2,3,4.  Somehow.
   - optimize PP is_almost_prime
   - better PP almost_prime_count bounds for k > 3
@@ -286,19 +288,16 @@
 - Improve inverse_interpolation.  We're using linear interpolation.
   Consider 2nd order or Aitken's method.  Dubiously useful here.
 
+- omega primes, work on figuring out formula for omega_prime_count
+  better construction and counting
+  OEIS sequence for omega k=3 counts for 10^i
+
 - For almost primes in PP, maybe use Lagrange estimator to start, given
   that we have no bounds.
 
-- Speed up PP sqrtmod -- it's horrifically slow.
+- There might be a better method for _sqrtmod_prime_power.
 
-- rootmod(a,k,p)
-  - Better PP
-  - Possibly better prime power handling.
-  - Possibly some earlier existence checks, with benchmarking method
-  - Maybe Johnston algorithm (see:
-    https://github.com/sagemath/sagelib/blob/fd0c7c46e6a2da4b84df582e0da0333ce5cf79d9/sage/rings/finite_rings/element_base.pyx#L33
-    https://github.com/symengine/symengine/blob/master/symengine/ntheory.cpp#L1135
-  - a way to get all the roots?
+- PP submod native ints should be streamlined.
 
 - extend qnr with optional root argument, cubic non-residue, etc.
 
@@ -315,6 +314,8 @@
 
 - 81-bignum.t takes too much time with PP
 
+- PP random_safe_prime(180) is very slow.  GMP algorithm doesn't help.
+
 - any way to make non-GMP random_strong_prime faster
 
 - sum_primes128, try using Meissel.
@@ -323,11 +324,6 @@
 
 - binomialmod:
    - PP implementation for primes, squarefree, and general composites.
-   - negative k extension
-
-- GMP
-  - rootmod, binomialmod
-  - almost primes
 
 - Possible new:
   - checksums?  Rather than print | md5sum.  adler32, sha1/2/3, blake2 (b2sum)
@@ -349,14 +345,53 @@
 
 - Faster Mertens. Helfgott/Thompson 2020.  https://arxiv.org/pdf/2101.08773.pdf
 
+- gcdext, see Sorenson, Jabelean, and kernel/none/gcdll.c.
+
 - Add optional base to is_delicate_prime(n,base=10).  This should be relatively
   easy in C, but we'll need to put the math back in PP.
 
 - refactor lucas code.
   split out all the different codes, benchmark them all.
 
-- XS negative args for addint,subint,mulint,powint,divint,modint
+- Complete reviewing docs for positive vs. non-negative, and comparing
+  to XS.xs.  Everything after modular functions was not reviewed.
 
-- tests for lucasuv lucasumod lucasvmod
 
-- GMP for new fdivrem, lucasuv, lucasumod, lucasvmod, lucasuvmod
+- make new XS routine: _validate_simple_int(SV *svn, int negok)
+  then make PP link _valint($n,negok) to either XS or PP.
+  especially PP valuation base 2 is really slow with current validation
+  .
+  Similarly, a routine to return the best form (int or bigint) for post-calc
+
+- GMP
+  - rootmod, binomialmod
+  - almost primes
+  - fdivrem, lucasuv, lucasumod, lucasvmod, lucasuvmod
+
+- consider (in GMP 0.53):
+  - setbit, clrbit, combit, tstbit
+  - bitand, bitor, bitxor, bitcom
+
+- other *int functions?  See overload and GMP for possible things we want.
+  is_divisible, remove_factors, clzint, ctzint (scan0,scan1), is_even, is_odd
+
+- an overload option or module, to call our *int functions.
+  have: add, sub, mul, pow, div, rem, neg, ++, --, <<, >>, <=>
+  need: not, bnot, and, or, xor, gt, lt, geq, leq, eq, neq,
+        as_bool, as_string, as_num, clone
+
+- PP needs a revamp of the bigint->int downgrade.  Using the babs(BMAX) is
+  wrong.  We can use max/min.  Better come up with something more consistent.
+  Possibly XS, or try "$x=$n->numify; return ($x eq $n) ? $x : $n;"
+
+- prime_powers(lo,hi) ?   to generate prime powers
+  use minheap, data is [p^k,p].  Remove min.
+  if (p^k == p) { add p^2 and next_prime(p) } else { add p^k * p }
+  to init for a range, .... do something clever ...
+  Alternately, do a SoE without removing prime powers
+
+- use Mdivint etc. all over PP
+
+- move rootmod etc from util.c into new file
+
+- move real functions from util.c into new file

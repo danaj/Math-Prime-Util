@@ -52,6 +52,10 @@ BEGIN {
 *Mdivint = \&Math::Prime::Util::divint;
 *Mpowint = \&Math::Prime::Util::powint;
 *Mmodint = \&Math::Prime::Util::modint;
+*Msqrtint = \&Math::Prime::Util::sqrtint;
+*Mrootint = \&Math::Prime::Util::rootint;
+*Mlshiftint = \&Math::Prime::Util::lshiftint;
+*Mrshiftint = \&Math::Prime::Util::rshiftint;
 
 *Maddmod = \&Math::Prime::Util::addmod;
 *Msubmod = \&Math::Prime::Util::submod;
@@ -59,10 +63,15 @@ BEGIN {
 *Mdivmod = \&Math::Prime::Util::divmod;
 *Mpowmod = \&Math::Prime::Util::powmod;
 *Minvmod = \&Math::Prime::Util::invmod;
+*Mrootmod = \&Math::Prime::Util::rootmod;
 
 *Mgcd = \&Math::Prime::Util::gcd;
 *Mfactor = \&Math::Prime::Util::factor;
 *Mfactor_exp = \&Math::Prime::Util::factor_exp;
+*Mis_prime = \&Math::Prime::Util::is_prime;
+*Mchinese = \&Math::Prime::Util::chinese;
+*Mvaluation = \&Math::Prime::Util::valuation;
+*Mkronecker = \&Math::Prime::Util::kronecker;
 
 
 my $_precalc_size = 0;
@@ -3857,43 +3866,118 @@ sub invmod {
   $t;
 }
 
-sub _cipolla_sqrtmod {
-  my($n, $p) = @_;
-  return undef if Math::Prime::Util::kronecker($n,$p) != 1;
+
+
+# Tonelli-Shanks
+sub _sqrtmod_prime {
+  my($a, $p) = @_;
+  my($x, $q, $e, $t, $z, $r, $m, $b);
+  my $Q = Msubint($p,1);
 
   if (($p % 4) == 3) {
-    return powmod($n, ($p+1)>>2, $p);
+    $r = Mpowmod($a, Mrshiftint(Maddint($p,1),2), $p);
+    return undef unless Mmulmod($r,$r,$p) == $a;
+    return $r;
   }
   if (($p % 8) == 5) {
-    my $q = powmod($n, ($p-1)>>2, $p);
-    return powmod($n, ($p+3)>>3, $p) if $q == 1;
-    my $v = powmod( mulmod($n,4,$p), ($p-5)>>3, $p );
-    return mulmod( mulmod($n, 2, $p), $v, $p);
+    $m = Maddmod($a,$a,$p);
+    $t = Mpowmod($m, Mrshiftint(Msubint($p,5),3), $p);
+    $z = Mmulmod($m, Mmulmod($t,$t,$p), $p);
+    $r = Mmulmod($t, Mmulmod($a, Msubmod($z,1,$p), $p), $p);
+    return undef unless Mmulmod($r,$r,$p) == $a;
+    return $r;
   }
 
-  my($a,$w2) = (0);
-  for (1 .. 10000) {
-    $a++;
-    $w2 = submod( powmod($a,2,$p), $n,$p);
-    last if Math::Prime::Util::kronecker($w2, $p) == -1;
-  }
+  # Verify Euler's criterion for odd p
+  return undef if $p != 2 && Mpowmod($a, Mrshiftint($Q,1), $p) != 1;
 
-  my ($rx,$ry,$sx,$sy, $i) = (1,0,$a,1, $p+1);
-  while (($i >>= 1) >= 1) {
-    ($rx,$ry)= (addmod(mulmod($rx,$sx,$p),mulmod(mulmod($ry,$sy,$p),$w2,$p),$p),
-                addmod(mulmod($rx,$sy,$p),       mulmod($sx,$ry,$p)        ,$p))
-      if $i % 2;
-    ($sx,$sy)= (addmod(mulmod($sx,$sx,$p),mulmod(mulmod($sy,$sy,$p),$w2,$p),$p),
-                addmod(mulmod($sx,$sy,$p),       mulmod($sx,$sy,$p)        ,$p))
+  # Cohen Algorithm 1.5.1.  Tonelli-Shanks.
+  $e = Mvaluation($Q, 2);
+  $q = Mdivint($Q, Mpowint(2,$e));
+  $t = 3;
+  while (Mkronecker($t,$p) != -1) {
+    $t += 2;
+    return undef if $t == 201 && !Mis_prime($p);
   }
-  return ($ry) ? undef : $rx;
+  $z = Mpowmod($t, $q, $p);
+  $b = Mpowmod($a, $q, $p);
+  $r = $e;
+  $q = ($q+1) >> 1;
+  $x = Mpowmod($a, $q, $p);
+  while ($b != 1) {
+    $t = $b;
+    for ($m = 0;  $m < $r && $t != 1;  $m++) {
+      $t = Mmulmod($t, $t, $p);
+    }
+    $t = Mpowmod($z, Mlshiftint(1, $r-$m-1), $p);
+    $x = Mmulmod($x, $t, $p);
+    $z = Mmulmod($t, $t, $p);
+    $b = Mmulmod($b, $z, $p);
+    $r = $m;
+  }
+  # Expected to always be true.
+  return undef unless Mmulmod($x,$x,$p) == $a;
+  return $x;
 }
 
-sub _verify_sqrtmod {
-  my($r,$a,$n) = @_;
-  return undef unless defined $r;
-  $r = Math::Prime::Util::vecmin($r, Math::Prime::Util::subint($n,$r));
-  return undef unless Math::Prime::Util::powmod($r,2,$n) == $a;
+sub _sqrtmod_prime_power {
+  my($a,$p,$e) = @_;
+  my($r,$s);
+
+  if ($e == 1) {
+    $a %= $p if $a >= $p;
+    return $a if $p == 2 || $a == 0;
+    $r = _sqrtmod_prime($a,$p);
+    return (defined $r && (Mmulmod($r,$r,$p) == $a) ? $r : undef);
+  }
+
+  my $n = Mpowint($p,$e);
+  my $pk = Mmulint($p,$p);
+
+  return 0 if ($a % $n) == 0;
+
+  if (($a % $pk) == 0) {
+    my $apk = Mdivint($a, $pk);
+    $s = _sqrtmod_prime_power($apk, $p, $e-2);
+    return undef unless defined $s;
+    return Mmulint($s,$p);
+  }
+
+  return undef if ($a % $p) == 0;
+
+  my $ered = ($p > 2 || $e < 5)  ?  ($e+1) >> 1  :  ($e+3) >> 1;
+  $s = _sqrtmod_prime_power($a,$p,$ered);
+  return undef unless defined $s;
+
+  my $np  = ($p == 2)  ?  Mmulint($n,$p)  :  $n;
+  my $t1  = Msubmod($a, Mmulmod($s,$s,$np), $np);
+  my $t2  = Maddmod($s, $s, $np);
+  my $gcd = Mgcd($t1, $t2);
+  $r = Maddmod($s, Mdivmod(Mdivint($t1,$gcd),Mdivint($t2,$gcd),$n), $n);
+  return ((Mmulmod($r,$r,$n) == ($a % $n)) ? $r : undef);
+}
+
+sub _sqrtmod_composite {
+  my($a,$n) = @_;
+
+  return undef if $n <= 0;
+  $a %= $n if $a >= $n;
+  return $a if $n <= 2 || $a <= 1;
+  return Msqrtint($a) if _is_perfect_square($a);
+
+  my $N = 1;
+  my $r = 0;
+  foreach my $F (Mfactor_exp($n)) {
+    my($f,$e) = @$F;
+    my $fe = Mpowint($f, $e);
+    my $s = _sqrtmod_prime_power($a, $f, $e);
+    return undef unless defined $s;
+    my $inv = Minvmod($N, $fe);
+    my $t = Mmulmod($inv, Msubmod($s % $fe, $r % $fe, $fe), $fe);
+    $r = Maddmod($r, Mmulmod($N,$t,$n), $n);
+    $N = Mmulint($N, $fe);
+  }
+  #croak "Bad _sqrtmod_composite root $a,$n" unless Mmulmod($r,$r,$n) == $a;
   $r;
 }
 
@@ -3903,145 +3987,47 @@ sub sqrtmod {
   _validate_integer($n);
   $n = -$n if $n < 0;
   return (undef,0)[$n] if $n <= 1;
-  $a = Math::Prime::Util::modint($a,$n);
+  $a = Mmodint($a,$n);
 
-  return ((powmod($a,2,$n) == $a) ? $a : undef) if $n <= 2 || $a <= 1;
-
-  return sqrtint($a) if _is_perfect_square($a);
-
-  # Use Cipolla for primes.  Probably should use Tonelli-Shanks, but no worry.
-  return _verify_sqrtmod(_cipolla_sqrtmod($a,$n), $a, $n) if is_prime($n);
-
-  # n is a composite.  We should factor n, solve each p, lift to p^k, then
-  # use CRT to combine into a solution for n.  That's a TODO.
-
-  # Hack....  native math trial search
-  if ($n < MPU_HALFWORD) {
-    return 1 if $a == 1;
-    my $lim = ($n+1) >> 1;
-    for my $r (2 .. $lim) {
-      return $r if (($r*$r) % $n) == $a;
-    }
-    return undef;
+  my $r = _sqrtmod_composite($a,$n);
+  if (defined $r) {
+    $r = $n-$r if $n-$r < $r;
+    #croak "Bad _sqrtmod_composite root $a,$n" unless Mmulmod($r,$r,$n) == $a;
   }
-
-  $a = Math::BigInt->new("$a") unless ref($a) eq 'Math::BigInt';
-  $n = Math::BigInt->new("$n") unless ref($n) eq 'Math::BigInt';
-  my $r;
-
-  # For composites this isn't right....
-  return if $n->is_odd && !$a->copy->bmodpow(($n-1)>>1,$n)->is_one();
-
-  # Slow, slow, slow trial search.
-  $r = Math::BigInt->new(2);
-  my $lim = int( ($n+1) / 2 );
-  while ($r < $lim) {
-    return $r if $r->copy->bmul($r)->bmod($n) == $a;
-    $r++;
-  }
-  undef;
+  return $r;
 }
 
-sub rootmod {
-  my($a,$k,$n) = @_;
-  _validate_integer($a);
-  _validate_integer($k);
-  _validate_integer($n);
-  $n = -$n if $n < 0;
-  return (undef,0)[$n] if $n <= 1;
-  $a = Math::Prime::Util::modint($a,$n);
 
-  # Be especially careful with zeros, as we can't divide or invert them.
-
-  if ($a == 0) {
-    return undef if $k <= 0;
-    return ($k == 0) ? 1 : 0;
-  }
-  if ($k < 0) {
-    $a = invmod($a, $n);
-    return undef if $a == 0;
-    $k = -$k;
-  }
-  return if $k == 0 && $a != 1;
-  return 1 if $k == 0 || $a == 1;
-
-  # The nasty special cases are done.
-  # We can start dealing with the sane cases:   0 < a < p,  k >= 1,  n >= 2
-  return $a if $k == 1;
-  return sqrtmod($a,$n) if $k == 2;
-
-  if (Math::Prime::Util::is_prime($n)) {
-    my $g = gcd($k, $n-1);
-    return powmod($a, invmod($k,$n-1), $n) if $g == 1;
-    return unless powmod($a, divint($n-1,$g), $n) == 1;
-
-    my $z = Math::Prime::Util::znprimroot($n);
-    return unless defined $z;
-    my $y = Math::Prime::Util::znlog($a, powmod($z, $k, $n), $n);
-    return powmod($z, $y, $n);
-  }
-
-  # Requires factoring n
-  my $phi = euler_phi($n);
-
-  # 1. Try getting an inverse.  If we can, we have an easy solution.
-  my $g = invmod($k, $phi);
-  if (defined $g) {
-    my $r = powmod($a, $g, $n);
-    return $r if powmod($r, $k, $n) == $a;
-  }
-
-  # 2. Try seeing if it is a cyclic group, where we have a primitive root.
-  my $z = Math::Prime::Util::znprimroot($n);
-  if (defined $z) {
-    return if gcd($a,$n)==1 && powmod($a,divint($phi,gcd($k,$phi)),$n) != 1;
-    my $y = Math::Prime::Util::znlog($a, powmod($z, $k, $n), $n);
-    if (defined $y) {
-      my $r = powmod($z, $y, $n);
-      return $r if powmod($r, $k, $n) == $a;
-    }
-  }
-
-  # return (allrootmod($a, $k, $n))[0];
-
-  # 3. Oh dear.  Trial division.
-  my $r = 2;
-  while ($r < $n) {
-    return $r if powmod($r, $k, $n) == $a;
-    $r = addint($r, 1);
-  }
-  undef;
-}
 
 
 # helper function for allsqrtmod() - return list of all square roots of
 # a (mod p^k), assuming a integer, p prime, k positive integer.
 sub _allsqrtmodpk {
   my($a,$p,$k) = @_;
-  my $pk = $p ** $k;
+  my $pk = Mpowint($p,$k);
   unless ($a % $p) {
     unless ($a % ($pk)) {
       # if p^k divides a, we need the square roots of zero, satisfied by
       # ip^j with 0 <= i < p^{floor(k/2)}, j = p^{ceil(k/2)}
-      my $low = $p ** ($k >> 1);
-      my $high = ($k & 1) ? $low * $p : $low;
-      return map $high * $_, 0 .. $low - 1;
+      my $low = Mpowint($p,$k >> 1);
+      my $high = ($k & 1)  ?  Mmulint($low, $p)  :  $low;
+      return map Mmulint($high, $_), 0 .. $low - 1;
     }
     # p divides a, p^2 does not
-    my $a2 = $a / $p;
+    my $a2 = Mdivint($a,$p);
     return () if $a2 % $p;
-    my $pj = $pk / $p;
+    my $pj = Mdivint($pk, $p);
     return map {
-      my $q = $_;
-      map $q * $p + $_ * $pj, 0 .. $p - 1;
-    } _allsqrtmodpk($a2 / $p, $p, $k - 2);
+      my $qp = Mmulint($_,$p);
+      map Maddint($qp,Mmulint($_,$pj)), 0 .. $p - 1;
+    } _allsqrtmodpk(Mdivint($a2,$p), $p, $k - 2);
   }
-  my $q = sqrtmod($a, $pk);
+  my $q = _sqrtmod_prime_power($a,$p,$k);
   return () unless defined $q;
   return ($q, $pk - $q) if $p != 2;
   return ($q) if $k == 1;
   return ($q, $pk - $q) if $k == 2;
-  my $pj = $p ** ($k - 1);
+  my $pj = Mdivint($pk,$p);
   my $q2 = ($q * ($pj - 1)) % $pk;
   return ($q, $pk - $q, $q2, $pk - $q2);
 }
@@ -4054,11 +4040,11 @@ sub _allsqrtmodfact {
   my($p,$k) = @{ shift @$f };
   my @q = _allsqrtmodpk($a, $p, $k);
   return @q unless @$f;
-  my $pk = Math::Prime::Util::powint($p, $k);
-  my $n2 = Math::Prime::Util::divint($n, $pk);
+  my $pk = Mpowint($p, $k);
+  my $n2 = Mdivint($n, $pk);
   return map {
     my $q2 = $_;
-    map chinese([ $q2, $n2 ], [ $_, $pk ]), @q;
+    map Mchinese([ $q2, $n2 ], [ $_, $pk ]), @q;
   } _allsqrtmodfact($a, $n2, $f);
 }
 
@@ -4068,12 +4054,326 @@ sub allsqrtmod {
   _validate_integer($n);
   $n = -$n if $n < 0;
   return $n ? (0) : () if $n <= 1;
+  $A = Mmodint($A,$n);
   my @roots = sort { $a <=> $b }
-              _allsqrtmodfact($A, $n, [ Math::Prime::Util::factor_exp($n) ]);
+              _allsqrtmodfact($A, $n, [ Mfactor_exp($n) ]);
   return @roots;
 }
 
 
+###############################################################################
+#       Tonelli-Shanks kth roots
+###############################################################################
+
+# Algorithm 3.3, step 2 "Find generator"
+sub _find_ts_generator {
+  my ($a, $k, $p) = @_;
+  # Assume:  k > 2,  1 < a < p,  p > 2,  k prime,  p prime
+
+  my($e,$r) = (0, $p-1);
+  while (!($r % $k)) {
+    $e++;
+    $r /= $k;
+  }
+  my $ke1 = Mpowint($k, $e-1);
+  my($x,$m,$y) = (2,1);
+  while ($m == 1) {
+    $y = Mpowmod($x, $r, $p);
+    $m = Mpowmod($y, $ke1, $p) if $y != 1;
+    croak "bad T-S input" if $x >= $p;
+    $x++;
+  }
+  ($y, $m);
+}
+
+sub _ts_rootmod {
+  my($a, $k, $p, $y, $m) = @_;
+
+  my($e,$r) = (0, $p-1);
+  while (!($r % $k)) {
+    $e++;
+    $r /= $k;
+  }
+  # p-1 = r * k^e
+  my $x = Mpowmod($a, Minvmod($k % $r, $r), $p);
+  my $A = ($a == 0) ? 0 : Mmulmod(Mpowmod($x,$k,$p), Minvmod($a,$p), $p);
+
+  ($y,$m) = _find_ts_generator($a,$k,$p) if $y == 0 && $A != 1;
+
+  while ($A != 1) {
+    my ($l,$T,$z) = (1,$A);
+    while ($T != 1) {
+      return 0 if $l >= $e;
+      $z = $T;
+      $T = Mpowmod($T, $k, $p);
+      $l++;
+    }
+    # We want a znlog that takes gorder as well (k=znorder(m,p))
+    my $kz = negmod(znlog($z, $m, $p), $k);
+    $m = Mpowmod($m, $kz, $p);
+    $T = Mpowmod($y, Mmulint($kz,powint($k,$e-$l)), $p);
+    # In the loop we always end with l < e, so e always gets smaller
+    $e = $l-1;
+    $x = Mmulmod($x, $T, $p);
+    $y = Mpowmod($T, $k, $p);
+    return 0 if $y <= 1;  # In theory this will never be hit.
+    $A = Mmulmod($A, $y, $p);
+  }
+  $x;
+}
+
+sub _compute_generator {
+  my($l, $e, $r, $p) = @_;
+  my($m, $lem1, $y) = (1, Mpowint($l, $e-1));
+  for (my $x = 2; $m == 1; $x++) {
+    $y = Mpowmod($x, $r, $p);
+    next if $y == 1;
+    $m = Mpowmod($y, $lem1, $p);
+  }
+  $y;
+}
+
+sub _rootmod_prime_splitk {
+  my($a, $k, $p, $refzeta) = @_;
+
+  $$refzeta = 1 if defined $refzeta;
+  $a = Mmodint($a, $p) if $a >= $p;
+  return $a if $a == 0 || ($a == 1 && !defined $refzeta);
+  my $p1 = Msubint($p,1);
+
+  if ($k == 2) {
+    my $r = _sqrtmod_prime($a,$p);
+    $$refzeta = (defined $r) ? $p1 : 0     if defined $refzeta;
+    return $r;
+  }
+
+  # See Algorithm 2.1 of van de Woestijne (2006), or Lindhurst (1997).
+  # The latter's proposition 7 generalizes to composite p.
+
+  my $g = Mgcd($k, $p1);
+  my $r = $a;
+
+  if ($g != 1) {
+    foreach my $fac (Mfactor_exp($g)) {
+      my($F,$E) = @$fac;
+      last if $r == 0;
+      if (defined $refzeta) {
+        my $V   = Mvaluation($p1, $F);
+        my $REM = Mdivint($p1, Mpowint($F,$V));
+        my $Y   = _compute_generator($F, $V, $REM, $p);
+        $$refzeta = Mmulmod($$refzeta, Mpowmod($Y, Mpowint($F, $V-$E), $p), $p);
+      }
+      my ($y,$m) = _find_ts_generator($r, $F, $p);
+      while ($E-- > 0) {
+        $r = _ts_rootmod($r, $F, $p,  $y, $m);
+      }
+    }
+  }
+  if ($g != $k) {
+    my($kg, $pg) = (Mdivint($k,$g), Mdivint($p1,$g));
+    $r = Mpowmod($r, Minvmod($kg % $pg, $pg), $p);
+  }
+  return $r if Mpowmod($r, $k, $p) == $a;
+  $$refzeta = 0 if defined $refzeta;
+  undef;
+}
+
+sub _rootmod_composite1 {
+  my($a,$k,$n) = @_;
+  my $r;
+
+  croak "_rootmod_composite1 bad parameters" if $a < 1 || $k < 2 || $n < 2;
+
+  if (Math::Prime::Util::is_power($a, $k, \$r)) {
+    return $r;
+  }
+
+  if (Mis_prime($n)) {
+    return _rootmod_prime_splitk($a,$k,$n,undef);
+  }
+
+  # We should do this iteratively using cprod
+  my @rootmap;
+  foreach my $fac (Mfactor_exp($n)) {
+    my($F,$E) = @$fac;
+    my $FE = Mpowint($F,$E);
+    my $A = $a % $FE;
+    if ($E == 1) {
+      $r = _rootmod_prime_splitk($A,$k,$F,undef)
+    } else {
+      # TODO: Fix this.  We should do this directly.
+      $r = (allrootmod($A, $k, $FE))[0];
+    }
+    return undef unless defined $r && Mpowmod($r, $k, $FE) == $A;
+    push @rootmap, [ $r, $FE ];
+  }
+  $r = Mchinese(@rootmap) if @rootmap > 1;
+
+  #return (defined $r && Mpowmod($r, $k, $n) == ($a % $n))  ?  $r  :  undef;
+  croak "Bad _rootmod_composite1 root $a,$k,$n" unless defined $r && Mpowmod($r,$k,$n) == ($a % $n);
+  $r;
+}
+
+###############################################################################
+#       Tonelli-Shanks kth roots  alternate version
+###############################################################################
+
+sub _ts_prime {
+  my($a, $k, $p, $refzeta) = @_;
+
+  my($e,$r) = (0, $p-1);
+  while (!($r % $k)) {
+    $e++;
+    $r /= $k;
+  }
+  my $ke = Mdivint($p-1, $r);
+
+  my $x = Mpowmod($a, Minvmod($k % $r, $r), $p);
+  my $B = Mmulmod(Mpowmod($x, $k, $p), Minvmod($a, $p), $p);
+
+  my($T,$y,$t,$A) = (2,1);
+  while ($y == 1) {
+    $t = Mpowmod($T, $r, $p);
+    $y = Mpowmod($t, Mdivint($ke,$k), $p);
+    $T++;
+  }
+  while ($ke != $k) {
+    $ke = Mdivint($ke, $k);
+    $T = $t;
+    $t = Mpowmod($t, $k, $p);
+    $A = Mpowmod($B, Mdivint($ke,$k), $p);
+    while ($A != 1) {
+      $x = Mmulmod($x, $T, $p);
+      $B = Mmulmod($B, $t, $p);
+      $A = Mmulmod($A, $y, $p);
+    }
+  }
+  $$refzeta = $t if defined $refzeta;
+  $x;
+}
+
+sub _rootmod_prime {
+  my($a, $k, $p) = @_;
+
+  # p must be a prime, k must be a prime.  Otherwise UNDEFINED.
+  $a %= $p if $a >= $p;
+
+  return $a if $p == 2 || $a == 0;
+  return _sqrtmod_prime($a, $p) if $k == 2;
+
+  # If co-prime, there is exactly one root.
+  my $g = Mgcd($k, $p-1);
+  return Mpowmod($a, Minvmod($k % ($p-1), $p-1), $p)  if $g == 1;
+  # Check generalized Euler's criterion
+  return undef if Mpowmod($a, Mdivint($p-1, $g), $p) != 1;
+
+  _ts_prime($a, $k, $p);
+}
+
+sub _rootmod_prime_power {
+  my($a,$k,$p,$e) = @_;        # prime k, prime p
+
+  return _sqrtmod_prime_power($a, $p, $e) if $k == 2;
+  return _rootmod_prime($a, $k, $p)       if $e == 1;
+
+  my $n = Mpowint($p,$e);
+  my $pk = Mpowint($p,$k);
+
+  return 0 if ($a % $n) == 0;
+
+  if (($a % $pk) == 0) {
+    my $apk = Mdivint($a, $pk);
+    my $s = _rootmod_prime_power($apk, $k, $p, $e-$k);
+    return (defined $s)  ?  Mmulint($s,$p)  :  undef;
+  }
+
+  return undef if ($a % $p) == 0;
+
+  my $ered = ($p > 2 || $e < 5)  ?  ($e+1) >> 1  :  ($e+3) >> 1;
+  my $s = _rootmod_prime_power($a, $k, $p, $ered);
+  return undef if !defined $s;
+
+  my $np  = ($p == $k)  ?  Mmulint($n,$p)  :  $n;
+  my $t = Mpowmod($s, $k-1, $np);
+  my $t1  = Msubmod($a, Mmulmod($t,$s,$np), $np);
+  my $t2  = Mmulmod($k, $t, $np);
+  my $gcd = Mgcd($t1, $t2);
+  my $r   = Maddmod($s,Mdivmod(Mdivint($t1,$gcd),Mdivint($t2,$gcd),$n),$n);
+  return ((Mpowmod($r,$k,$n) == ($a % $n)) ? $r : undef);
+}
+
+sub _rootmod_composite2 {
+  my($a,$k,$n) = @_;
+
+  croak "_rootmod_composite2 bad parameters" if $a < 1 || $k < 2 || $n < 2;
+
+  if (!Mis_prime($k)) {
+    my $r = $a;
+    foreach my $kf (Mfactor($k)) {
+      $r = _rootmod_composite2($r, $kf, $n);
+      if (!defined $r) {
+        # Choose one.  The former is faster but makes more intertwined code.
+        return _rootmod_composite1($a,$k,$n);
+        #return (allrootmod($a,$k,$n))[0];
+      }
+    }
+    return $r;
+  }
+
+  # Prime k, composite n
+  my($N,$r) = (1,0);
+  foreach my $F (Mfactor_exp($n)) {
+    my($f,$e) = @$F;
+    my $fe = Mpowint($f, $e);
+    my $s = _rootmod_prime_power($a, $k, $f, $e);
+    return undef unless defined $s;
+    my $inv = Minvmod($N, $fe);
+    my $t = Mmulmod($inv, Msubmod($s % $fe, $r % $fe, $fe), $fe);
+    $r = Maddmod($r, Mmulmod($N,$t,$n), $n);
+    $N = Mmulint($N, $fe);
+  }
+  #return (defined $r && Mpowmod($r, $k, $n) == ($a % $n))  ?  $r  :  undef;
+  croak "Bad _rootmod_composite2 root $a,$k,$n" unless defined $r && Mpowmod($r,$k,$n) == ($a % $n);
+  $r;
+}
+
+
+###############################################################################
+#       Modular k-th root
+###############################################################################
+
+sub rootmod {
+  my($a,$k,$n) = @_;
+  _validate_integer($a);
+  _validate_integer($k);
+  _validate_integer($n);
+  $n = -$n if $n < 0;
+  return (undef,0)[$n] if $n <= 1;
+  $a = Mmodint($a,$n);
+
+  # Be careful with zeros, as we can't divide or invert them.
+  if ($a == 0) {
+    return ($k <= 0) ? undef : 0;
+  }
+  if ($k < 0) {
+    $a = Minvmod($a, $n);
+    return undef unless defined $a && $a > 0;
+    $k = -$k;
+  }
+  return undef if $k == 0 && $a != 1;
+  return 1 if $k == 0 || $a == 1;
+  return $a if $k == 1;
+
+  # Choose either one based on performance.
+  my $r = _rootmod_composite1($a, $k, $n);
+  #my $r = _rootmod_composite2($a, $k, $n);
+  $r = $n-$r if defined $r && $k == 2 && ($n-$r) < $r; # Select smallest root
+  $r;
+}
+
+###############################################################################
+#       All modular k-th roots
+###############################################################################
 
 sub _allrootmod_cprod {
   my($aroots1, $p1, $aroots2, $p2) = @_;
@@ -4086,7 +4386,7 @@ sub _allrootmod_cprod {
   my @roots;
   for my $q1 (@$aroots1) {
     for my $q2 (@$aroots2) {
-      $t = Mmulmod( $inv, Msubmod( $q2, $q1, $p2), $p2);
+      $t = Mmulmod($inv, Msubmod($q2, $q1, $p2), $p2);
       $t = Maddmod($q1, Mmulmod($p1,$t,$n), $n);
       push @roots, $t;
     }
@@ -4095,54 +4395,52 @@ sub _allrootmod_cprod {
 }
 
 sub _allrootmod_prime {
-  my($A,$k,$p) = @_;        # prime k, prime p
-  $A = Mmodint($A,$p) if $A >= $p;
+  my($a,$k,$p) = @_;        # prime k, prime p
+  $a %= $p if $a >= $p;     #$a = Mmodint($a,$p) if $a >= $p;
 
-  return ($A) if $p == 2 || $A == 0;
+  return ($a) if $p == 2 || $a == 0;
 
+  # If co-prime, there is exactly one root.
   my $g = Mgcd($k, $p-1);
   if ($g == 1) {
-    my $r = Mpowmod($A, Minvmod($k % ($p-1), $p-1), $p);
+    my $r = Mpowmod($a, Minvmod($k % ($p-1), $p-1), $p);
     return ($r);
   }
 
-  return () if Mpowmod($A, Mdivint($p-1, $g), $p) != 1;
+  # Check generalized Euler's criterion
+  return () if Mpowmod($a, Mdivint($p-1, $g), $p) != 1;
 
+  # Special case for p=3 for performance
   return (1,2) if $p == 3;
 
-  return _allsqrtmodpk($A, $p, 1) if $k == 2;
+  # A trivial brute force search:
+  # return grep { Mpowmod($_,$k,$p) == $a } 0 .. $p-1;
 
-  # We should call a general TS solver that also returns the root of unity.
-
-  # Brute force, reasonable for small p:
-  # my @roots = grep { Mpowmod($_,$k,$p) == $A } 0 .. $p-1;
-
-  # Brute force with early exits, averages about 2x faster for k=3.
-  my @roots;
-  for (0 .. $p-1) {
-    next unless Mpowmod($_,$k,$p) == $A;
-    push @roots, $_;
-    if ($k == 3 && @roots == $k-1) {
-      my $r = Mmulmod($roots[1], Mdivmod($roots[1],$roots[0],$p), $p);
-      croak("allrootmod bad cube root") unless Mpowmod($r,$k,$p) == $A;
-      push @roots, $r;
-    }
-    last if @roots == $k;
+  # Call one of the general TS solvers that also allow us to get all the roots.
+  my $z;
+  #my $r = _rootmod_prime_splitk($a, $k, $p, \$z);
+  my $r = _ts_prime($a, $k, $p, \$z);
+  croak "allrootmod: failed to find root" if $z==0 || Mpowmod($r,$k,$p) != $a;
+  my @roots = ($r);
+  my $r2 = Mmulmod($r,$z,$p);
+  while ($r2 != $r && @roots < $k) {
+    push @roots, $r2;
+    $r2 = mulmod($r2, $z, $p);
   }
+  croak "allrootmod: excess roots found" if $r2 != $r;
   return @roots;
 }
 
 sub _allrootmod_prime_power {
-  my($A,$k,$p,$e) = @_;        # prime k, prime p
+  my($a,$k,$p,$e) = @_;        # prime k, prime p
 
-  return _allrootmod_prime($A, $k, $p) if $e == 1;
+  return _allrootmod_prime($a, $k, $p) if $e == 1;
 
   my $n = Mpowint($p,$e);
-  $A = Mmodint($A,$n) if $A >= $n;
   my $pk = Mpowint($p,$k);
   my @roots;
 
-  if (($A % $n) == 0) {
+  if (($a % $n) == 0) {
     my $t = Mdivint($e-1, $k) + 1;
     my $nt = Mpowint($p, $t);
     my $nr = Mpowint($p, $e-$t);
@@ -4150,63 +4448,67 @@ sub _allrootmod_prime_power {
     return @roots;
   }
 
-  if (($A % $pk) == 0) {
-    my $npk = Mdivint($A, $pk);
+  if (($a % $pk) == 0) {
+    my $apk = Mdivint($a, $pk);
     my $pe1 = Mpowint($p, $k-1);
     my $pek = Mpowint($p, $e-$k+1);
-    my @roots2 = _allrootmod_prime_power($npk, $k, $p, $e-$k);
+    my @roots2 = _allrootmod_prime_power($apk, $k, $p, $e-$k);
     for my $r (@roots2) {
+      my $rp = Mmulmod($r, $p, $n);
       for my $j (0 .. $pe1-1) {
-        push @roots, Maddmod( Mmulmod($r, $p, $n), Mmulmod($j, $pek, $n), $n);
+        push @roots, Maddmod( $rp, Mmulmod($j, $pek, $n), $n);
       }
     }
     return @roots;
   }
 
-  return () if ($A % $p) == 0;
+  return () if ($a % $p) == 0;
 
-  my $ered = ($e+1) >> 1;
-  my @roots2 = _allrootmod_prime_power($A, $k, $p, $ered);
+  my $np  = Mmulint($n,$p);
+  my $ered = ($p > 2 || $e < 5)  ?  ($e+1) >> 1  :  ($e+3) >> 1;
+  my @roots2 = _allrootmod_prime_power($a, $k, $p, $ered);
 
   if ($k != $p) {
     for my $s (@roots2) {
       my $t = Mpowmod($s, $k-1, $n);
-      my $r = Maddmod($s, Mdivmod( Msubmod($A, Mmulmod($t,$s,$n), $n),
-                                   Mmulmod($k,$t,$n), $n), $n);
+      my $t1  = Msubmod($a, Mmulmod($t,$s,$n), $n);
+      my $t2  = Mmulmod($k, $t, $n);
+      my $gcd = Mgcd($t1, $t2);
+      my $r   = Maddmod($s,Mdivmod(Mdivint($t1,$gcd),Mdivint($t2,$gcd),$n),$n);
       push @roots, $r;
     }
   } else {
     my @rootst;
     for my $s (@roots2) {
-      my $t  = Mpowmod($s, $k-1, $n);
-      my $t1 = Msubmod($A, Mmulmod($t, $s, $n), $n);
-      my $t2 = Mmulmod($k, $t, $n);
-      my $gcd= Mgcd($t1, $t2);
-      my $r = Maddmod($s, Mdivmod(Mdivint($t1,$gcd),Mdivint($t2,$gcd),$n), $n);
-      push @rootst, $r if Mpowmod($r, $k, $n) == $A;
+      my $t  = Mpowmod($s, $k-1, $np);
+      my $t1  = Msubmod($a, Mmulmod($t,$s,$np), $np);
+      my $t2  = Mmulmod($k, $t, $np);
+      my $gcd = Mgcd($t1, $t2);
+      my $r   = Maddmod($s,Mdivmod(Mdivint($t1,$gcd), Mdivint($t2,$gcd),$n),$n);
+      push @rootst, $r if Mpowmod($r, $k, $n) == ($a % $n);
     }
-    my $np = divint($n,$p);
+    my $ndivp = divint($n,$p);
     my %roots;  # We want to remove duplicates
     for my $r (@rootst) {
       for my $j (0 .. $k-1) {
-        $roots{ Mmulmod($r, Maddmod(Mmulmod($j, $np, $n), 1, $n), $n) } = undef;
+        $roots{ Mmulmod($r, Maddmod(Mmulmod($j, $ndivp, $n), 1, $n), $n) } = undef;
       }
     }
     @roots = keys(%roots);
   }
-
   return @roots;
 }
 
 sub _allrootmod_splitn {
-  my($A,$k,$n) = @_;        # prime k
+  my($a,$k,$n) = @_;        # prime k
 
   my $N = 1;
   my @roots;
   foreach my $F (Mfactor_exp($n)) {
     my($f,$e) = @$F;
     my $fe = Mpowint($f, $e);
-    my @roots2 = _allrootmod_prime_power($A, $k, $f, $e);
+    my @roots2 = ($e==1) ? _allrootmod_prime($a, $k, $f)
+                         : _allrootmod_prime_power($a, $k, $f, $e);
     return () unless @roots2;
     if (scalar(@roots) == 0) {
       @roots = @roots2;
@@ -4227,11 +4529,13 @@ sub allrootmod {
   $n = -$n if $n < 0;
 
   return () if $n == 0;
-  $A = Mmodint($A,$n) if $A >= $n;
+  $A = Mmodint($A,$n);
+
+  return () if $k <= 0 && $A == 0;
 
   if ($k < 0) {
     $A = invmod($A, $n);
-    return () if $A == 0;
+    return () unless defined $A && $A > 0;
     $k = -$k;
   }
 
@@ -4241,9 +4545,7 @@ sub allrootmod {
   #return @roots;
 
   return ($A) if $n <= 2 || $k == 1;
-  return ($a == 1) ? (0..$n-1) : ()  if $k == 0;
-  # TODO: consider removing the comment
-  #return allsqrtmod($A,$n) if $k == 2;
+  return ($A == 1) ? (0..$n-1) : ()  if $k == 0;
 
   my @roots;
   my @f = Mfactor($k);
@@ -4265,6 +4567,8 @@ sub allrootmod {
   return @roots;
 }
 
+################################################################################
+################################################################################
 
 sub addmod {
   my($a, $b, $n) = @_;
@@ -4337,6 +4641,12 @@ sub powmod {
     $ret = _bigint_to_int($ret) if $ret->bacmp(BMAX) <= 0;
   }
   $ret;
+}
+
+sub negmod {
+  my($a,$n) = @_;
+  $a = Mmodint($a,$n) if $a >= $n;
+  return ($a) ? ($n-$a) : 0;
 }
 
 # no validation, x is allowed to be negative, y must be >= 0
