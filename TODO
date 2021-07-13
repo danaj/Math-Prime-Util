@@ -392,6 +392,6 @@
 
 - use Mdivint etc. all over PP
 
-- move rootmod etc from util.c into new file
-
 - move real functions from util.c into new file
+
+- 32-bit testing

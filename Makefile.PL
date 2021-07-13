@@ -50,6 +50,7 @@ WriteMakefile1(
                     'omega_primes.o ' .
                     'prime_count_cache.o ' .
                     'prime_nth_count.o ' .
+                    'rootmod.o '  .
                     'util.o '     .
                     'inverse_interpolate.o ' .
                     'entropy.o '  .

@@ -59,15 +59,8 @@ extern IV gcdext(IV a, IV b, IV* u, IV* v, IV* s, IV* t); /* Ext Euclidean */
 extern UV modinverse(UV a, UV p);              /* Returns 1/a mod p */
 extern UV divmod(UV a, UV b, UV n);            /* Returns a/b mod n */
 extern UV gcddivmod(UV a, UV b, UV n);         /* divmod(a/gcd,b/gcd,n) */
-extern int sqrtmodp(UV *r, UV a, UV p);        /* sqrt(a) mod p */
-extern int sqrtmod(UV *r, UV a, UV n);         /* sqrt(a) mod n */
-extern int rootmodp(UV *r, UV a, UV k, UV p);  /* a^(1/k) mod p for p prime */
-extern int rootmod(UV *r, UV a, UV k, UV n);   /* a^(1/k) mod n for any n */
-extern UV* allsqrtmod(UV* nroots, UV a, UV n); /* all results */
-extern UV* allrootmod(UV* nroots, UV a, UV g, UV n); /* all results */
 
 extern int chinese(UV *r, UV* a, UV* n, UV num); /* Chinese Remainder */
-
 
 /* Do the inverse for a negative modular power / root. a^-k => (1/a)^k mod n */
 extern int prep_pow_inv(UV *a, UV *k, int kstatus, UV n);
