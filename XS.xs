@@ -38,6 +38,7 @@
 #include "omega_primes.h"
 #include "prime_nth_count.h"
 #include "rootmod.h"
+#include "real.h"
 
 #ifdef FACTORING_HARNESSES
 #include <sys/time.h>

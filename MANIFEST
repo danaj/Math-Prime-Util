@@ -58,6 +58,8 @@ ramanujan_primes.h
 ramanujan_primes.c
 random_prime.h
 random_prime.c
+real.h
+real.c
 rootmod.h
 rootmod.c
 semi_primes.h
