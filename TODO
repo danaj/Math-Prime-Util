@@ -390,8 +390,10 @@
   to init for a range, .... do something clever ...
   Alternately, do a SoE without removing prime powers
 
-- use Mdivint etc. all over PP
-
 - move real functions from util.c into new file
 
 - 32-bit testing
+
+- Lots of older PP code, especially factoring, is built on a bigint vs PP
+  idea.  It might be useful to write normally using Mpowmod etc. and
+  benchmark various inputs.

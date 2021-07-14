@@ -46,6 +46,22 @@ BEGIN {
   use constant PI_TIMES_8      => 25.13274122871834590770114707;
 }
 
+# By using these aliases, we call into the main code instead of
+# to the PP function.
+#
+# If we have turned off XS, then this will call the PPFE or direct function.
+# This might be the same, but if the PPFE does input validation it will
+# be slower (albeit every call will be validated).
+#
+# Otherwise, we'll go to the XS function, which will either handle it
+# directly (e.g. we've broken down the input into smaller values which
+# the XS code can handle), or call the GMP backend, otherwise call here.
+#
+# For the usual case where we have XS, this is significantly faster.  The
+# aliases make the code here much easier to read.  An alternate
+# implementation would be to make the perl subs here use a pp_{...} prefix.
+
+
 *Maddint = \&Math::Prime::Util::addint;
 *Msubint = \&Math::Prime::Util::subint;
 *Mmulint = \&Math::Prime::Util::mulint;
@@ -54,6 +70,8 @@ BEGIN {
 *Mmodint = \&Math::Prime::Util::modint;
 *Msqrtint = \&Math::Prime::Util::sqrtint;
 *Mrootint = \&Math::Prime::Util::rootint;
+*Mlogint = \&Math::Prime::Util::logint;
+*Mnegint = \&Math::Prime::Util::negint;
 *Mlshiftint = \&Math::Prime::Util::lshiftint;
 *Mrshiftint = \&Math::Prime::Util::rshiftint;
 
@@ -72,7 +90,24 @@ BEGIN {
 *Mchinese = \&Math::Prime::Util::chinese;
 *Mvaluation = \&Math::Prime::Util::valuation;
 *Mkronecker = \&Math::Prime::Util::kronecker;
+*Mmoebius = \&Math::Prime::Util::moebius;
+*Mfactorial = \&Math::Prime::Util::factorial;
+*Mprimorial = \&Math::Prime::Util::primorial;
+*Mpn_primorial = \&Math::Prime::Util::pn_primorial;
+*Mbinomial = \&Math::Prime::Util::binomial;
+*Murandomm = \&Math::Prime::Util::urandomm;
+*Murandomb = \&Math::Prime::Util::urandomb;
+*Mnext_prime = \&Math::Prime::Util::next_prime;
 
+*Mvecall = \&Math::Prime::Util::vecall;
+*Mvecany = \&Math::Prime::Util::vecany;
+*Mvecnone = \&Math::Prime::Util::vecnone;
+*Mvecsum = \&Math::Prime::Util::vecsum;
+*Mvecprod = \&Math::Prime::Util::vecprod;
+*Mvecmax = \&Math::Prime::Util::vecmax;
+
+*Mfordivisors = \&Math::Prime::Util::fordivisors;
+*Mforprimes = \&Math::Prime::Util::forprimes;
 
 my $_precalc_size = 0;
 sub prime_precalc {
@@ -509,10 +544,10 @@ sub trial_primes {
   # For a tiny range, just use next_prime calls
   if (($high-$low) < 1000) {
     $low-- if $low >= 2;
-    my $curprime = next_prime($low);
+    my $curprime = Mnext_prime($low);
     while ($curprime <= $high) {
       push @primes, $curprime;
-      $curprime = next_prime($curprime);
+      $curprime = Mnext_prime($curprime);
     }
     return \@primes;
   }
@@ -644,16 +679,16 @@ sub sieve_prime_cluster {
     for my $n (@{primes($lo,$sievelim)}) {
       my $ac = 1;
       for my $ci (1 .. $#cl) {
-        if (!is_prime($n+$cl[$ci])) { $ac = 0; last; }
+        if (!Mis_prime($n+$cl[$ci])) { $ac = 0; last; }
       }
       push @p, $n if $ac;
     }
-    $lo = next_prime($sievelim);
+    $lo = Mnext_prime($sievelim);
   }
   return @p if $lo > $hi;
 
   # Compute acceptable residues.
-  my $pr = primorial($p);
+  my $pr = Mprimorial($p);
   my $startpr = _bigint_to_int($lo % $pr);
 
   my @acc = grep { ($_ & 1) && $_%3 }  ($startpr .. $startpr + $pr - 1);
@@ -665,7 +700,7 @@ sub sieve_prime_cluster {
     }
   }
   for my $c (@cl) {
-    @acc = grep { Math::Prime::Util::gcd($_+$c,$pr) == 1 } @acc;
+    @acc = grep { Mgcd($_+$c,$pr) == 1 } @acc;
   }
   @acc = map { $_-$startpr } @acc;
 
@@ -706,7 +741,7 @@ sub sieve_prime_cluster {
         my($good, $p) = (1, $lo + $r);
         for my $c (@cl) {
           $nummr++;
-          if (!Math::Prime::Util::is_prime($p+$c)) { $good = 0; last; }
+          if (!Mis_prime($p+$c)) { $good = 0; last; }
         }
         push @p, $p if $good;
       }
@@ -739,9 +774,9 @@ sub _n_ramanujan_primes {
   my @L = (2, (0) x $n-1);
   my $s = 1;
   for (my $k = 7; $k <= $max; $k += 2) {
-    $s++ if is_prime($k);
+    $s++ if Mis_prime($k);
     $L[$s] = $k+1 if $s < $n;
-    $s-- if ($k&3) == 1 && is_prime(($k+1)>>1);
+    $s-- if ($k&3) == 1 && Mis_prime(($k+1)>>1);
     $L[$s] = $k+2 if $s < $n;
   }
   \@L;
@@ -917,13 +952,13 @@ sub primorial {
     if ($m <= INTMAX) { splice(@plist, $i, 2, $m); }
     else              { $i++;                      }
   }
-  vecprod(@plist);
+  Mvecprod(@plist);
 }
 
 sub pn_primorial {
   my $n = shift;
   return (1,2,6,30,210,2310,30030,510510,9699690,223092870)[$n] if $n < 10;
-  primorial(nth_prime($n));
+  Mprimorial(nth_prime($n));
 }
 
 sub consecutive_integer_lcm {
@@ -931,7 +966,7 @@ sub consecutive_integer_lcm {
 
   my $max = (MPU_32BIT) ? 22 : (OLD_PERL_VERSION) ? 37 : 46;
   my $pn = ref($n) ? ref($n)->new(1) : ($n >= $max) ? Math::BigInt->bone() : 1;
-  for (my $p = 2; $p <= $n; $p = next_prime($p)) {
+  for (my $p = 2; $p <= $n; $p = Mnext_prime($p)) {
     my($p_power, $pmin) = ($p, int($n/$p));
     $p_power *= $p while $p_power <= $pmin;
     $pn *= $p_power;
@@ -950,7 +985,7 @@ sub jordan_totient {
     if $Math::Prime::Util::_GMPfunc{"jordan_totient"};
 
 
-  my @pe = Math::Prime::Util::factor_exp($n);
+  my @pe = Mfactor_exp($n);
   $n = Math::BigInt->new("$n") unless ref($n) eq 'Math::BigInt';
   my $totient = BONE->copy;
   foreach my $f (@pe) {
@@ -988,7 +1023,7 @@ sub euler_phi {
     if (($n % 2) == 0) { $n >>= 1; }
   }
 
-  my @pe = Math::Prime::Util::factor_exp($n);
+  my @pe = Mfactor_exp($n);
 
   if ($#pe == 0 && $pe[0]->[1] == 1) {
     if (ref($n) ne 'Math::BigInt') { $totient *= $n-1; }
@@ -1023,20 +1058,20 @@ sub inverse_totient {
   $n = Math::Prime::Util::_to_bigint("$n") if !ref($n) && $n > 2**49;
   my $do_bigint = ref($n);
 
-  if (is_prime($n >> 1)) {   # Coleman Remark 3.3 (Thm 3.1) and Prop 6.2
-    return wantarray ? () : 0             if !is_prime($n+1);
+  if (Mis_prime($n >> 1)) {   # Coleman Remark 3.3 (Thm 3.1) and Prop 6.2
+    return wantarray ? () : 0             if !Mis_prime($n+1);
     return wantarray ? ($n+1, 2*$n+2) : 2 if $n >= 10;
   }
 
   if (!wantarray) {
     my %r = ( 1 => 1 );
-    Math::Prime::Util::fordivisors(sub { my $d = $_;
+    Mfordivisors(sub { my $d = $_;
       $d = $do_bigint->new("$d") if $do_bigint;
       my $p = $d+1;
-      if (Math::Prime::Util::is_prime($p)) {
+      if (Mis_prime($p)) {
         my($dp,@sumi,@sumv) = ($d);
-        for my $v (1 .. 1 + Math::Prime::Util::valuation($n, $p)) {
-          Math::Prime::Util::fordivisors(sub { my $d2 = $_;
+        for my $v (1 .. 1 + Mvaluation($n, $p)) {
+          Mfordivisors(sub { my $d2 = $_;
             if (defined $r{$d2}) { push @sumi, $d2*$dp; push @sumv, $r{$d2}; }
           }, $n / $dp);
           $dp *= $p;
@@ -1047,13 +1082,13 @@ sub inverse_totient {
     return (defined $r{$n}) ? $r{$n} : 0;
   } else {
     my %r = ( 1 => [1] );
-    Math::Prime::Util::fordivisors(sub { my $d = $_;
+    Mfordivisors(sub { my $d = $_;
       $d = $do_bigint->new("$d") if $do_bigint;
       my $p = $d+1;
-      if (Math::Prime::Util::is_prime($p)) {
+      if (Mis_prime($p)) {
         my($dp,$pp,@T) = ($d,$p);
-        for my $v (1 .. 1 + Math::Prime::Util::valuation($n, $p)) {
-          Math::Prime::Util::fordivisors(sub { my $d2 = $_;
+        for my $v (1 .. 1 + Mvaluation($n, $p)) {
+          Mfordivisors(sub { my $d2 = $_;
             push @T, [ $d2*$dp, [map { $_ * $pp } @{ $r{$d2} }] ] if defined $r{$d2};
           }, $n / $dp);
           $dp *= $p;
@@ -1101,10 +1136,10 @@ sub euler_phi_range {
 }
 
 sub prime_bigomega {
-  return scalar(Math::Prime::Util::factor($_[0]));
+  return scalar(Mfactor($_[0]));
 }
 sub prime_omega {
-  return scalar(Math::Prime::Util::factor_exp($_[0]));
+  return scalar(Mfactor_exp($_[0]));
 }
 
 sub moebius {
@@ -1114,14 +1149,14 @@ sub moebius {
   _validate_num($n) || _validate_positive_integer($n);
   return ($n == 1) ? 1 : 0  if $n <= 1;
   return 0 if ($n >= 49) && (!($n % 4) || !($n % 9) || !($n % 25) || !($n%49) );
-  my @factors = Math::Prime::Util::factor($n);
+  my @factors = Mfactor($n);
   foreach my $i (1 .. $#factors) {
     return 0 if $factors[$i] == $factors[$i-1];
   }
   return ((scalar @factors) % 2) ? -1 : 1;
 }
 sub is_square_free {
-  return (Math::Prime::Util::moebius($_[0]) != 0) ? 1 : 0;
+  return (Mmoebius($_[0]) != 0) ? 1 : 0;
 }
 
 sub is_smooth {
@@ -1147,7 +1182,7 @@ sub is_smooth {
     return 0 + ($f[0] <= $k);
   }
 
-  return (Math::Prime::Util::vecnone(sub { $_ > $k }, Math::Prime::Util::factor($n))) ? 1 : 0;
+  return (Mvecnone(sub { $_ > $k }, Mfactor($n))) ? 1 : 0;
 }
 sub is_rough {
   my($n, $k) = @_;
@@ -1167,7 +1202,7 @@ sub is_rough {
     return 0 + ($f[0] >= $k);
   }
 
-  return (Math::Prime::Util::vecnone(sub { $_ < $k }, Math::Prime::Util::factor($n))) ? 1 : 0;
+  return (Mvecnone(sub { $_ < $k }, Mfactor($n))) ? 1 : 0;
 }
 sub is_powerful {
   my($n, $k) = @_;
@@ -1198,17 +1233,17 @@ sub is_powerful {
 
   # Next, check and remove all primes under 149 with three 64-bit gcds.
   for my $GCD ("614889782588491410","3749562977351496827","4343678784233766587") {
-    my $g = Math::Prime::Util::gcd($n, $GCD);
+    my $g = Mgcd($n, $GCD);
     if ($g != 1) {
       # Check anything that divides n also divides k times (and remove).
-      my $gk = Math::Prime::Util::powint($g, $k);
+      my $gk = Mpowint($g, $k);
       return 0 if ($n % $gk) != 0;
-      $n = Math::Prime::Util::divint($n, $gk);
+      $n = Mdivint($n, $gk);
       # Now remove any possible further amounts of these divisors.
-      $g = Math::Prime::Util::gcd($n, $g);
+      $g = Mgcd($n, $g);
       while ($n > 1 && $g > 1) {
-        $n = Math::Prime::Util::divint($n, $g);
-        $g = Math::Prime::Util::gcd($n, $g);
+        $n = Mdivint($n, $g);
+        $g = Mgcd($n, $g);
       }
       return 1 if $n == 1;
     }
@@ -1222,9 +1257,9 @@ sub is_powerful {
   # limit to something reasonable.
 
   return 1 if $n == 1 || is_power($n) >= $k;
-  return 0 if $n < Math::Prime::Util::powint(149, 2*$k);
+  return 0 if $n < Mpowint(149, 2*$k);
 
-  my $lim_actual = rootint($n, 2*$k);
+  my $lim_actual = Mrootint($n, 2*$k);
   my $lim_effect = ($lim_actual > 10000) ? 10000 : $lim_actual;
 
   if ($Math::Prime::Util::_GMPfunc{"trial_factor"}) {
@@ -1232,42 +1267,42 @@ sub is_powerful {
       my @fac = Math::Prime::Util::GMP::trial_factor($n, $lim_effect);
       last if scalar(@fac) <= 1;
       my $f = $fac[0];
-      my $fk = ($k==2) ? $f*$f : Math::Prime::Util::powint($f,$k);
+      my $fk = ($k==2) ? $f*$f : Mpowint($f,$k);
       return 0 if ($n % $fk) != 0;
-      $n = Math::Prime::Util::divint($n, $fk);
-      $n = Math::Prime::Util::divint($n, $f) while !($n % $f);
+      $n = Mdivint($n, $fk);
+      $n = Mdivint($n, $f) while !($n % $f);
       return 1 if $n == 1 || is_power($n) >= $k;
       return 0 if $n < $fk*$fk;
     }
   } else {
-    Math::Prime::Util::forprimes( sub {
-      my $pk = ($k==2) ? $_*$_ : Math::Prime::Util::powint($_,$k);
+    Mforprimes( sub {
+      my $pk = ($k==2) ? $_*$_ : Mpowint($_,$k);
       Math::Prime::Util::lastfor(),return if $n < $pk*$pk;
       if (($n%$_) == 0) {
         Math::Prime::Util::lastfor(),return if ($n % $pk) != 0;
-        $n = Math::Prime::Util::divint($n, $pk);
-        $n = Math::Prime::Util::divint($n, $_) while ($n % $_) == 0;
+        $n = Mdivint($n, $pk);
+        $n = Mdivint($n, $_) while ($n % $_) == 0;
         Math::Prime::Util::lastfor(),return if $n == 1 || is_power($n) >= $k;
       }
     }, 149, $lim_effect);
   }
   return 1 if $n == 1 || is_power($n) >= $k;
-  return 0 if $n <= Math::Prime::Util::powint($lim_effect, 2*$k);
+  return 0 if $n <= Mpowint($lim_effect, 2*$k);
 
   # Taking too long.  Factor what is left.
-  return (Math::Prime::Util::vecall(sub { $_->[1] >= $k }, Math::Prime::Util::factor_exp($n))) ? 1 : 0;
+  return (Mvecall(sub { $_->[1] >= $k }, Mfactor_exp($n))) ? 1 : 0;
 }
 
 sub _powerful_count_recurse {
   my($n, $k, $m, $r) = @_;
-  my $lim = Math::Prime::Util::rootint(Math::Prime::Util::divint($n, $m), $r);
+  my $lim = Mrootint(Mdivint($n, $m), $r);
 
   return $lim if $r <= $k;
 
   my $sum = 0;
   for my $i (1 .. $lim) {
-    if (Math::Prime::Util::gcd($m,$i) == 1 && Math::Prime::Util::is_square_free($i)) {
-      $sum += _powerful_count_recurse($n, $k, Math::Prime::Util::mulint($m, Math::Prime::Util::powint($i,$r)), $r-1)
+    if (Mgcd($m,$i) == 1 && Math::Prime::Util::is_square_free($i)) {
+      $sum += _powerful_count_recurse($n, $k, Mmulint($m, Mpowint($i,$r)), $r-1)
     }
   }
   $sum;
@@ -1286,8 +1321,8 @@ sub powerful_count {
 
   if ($k == 2) {
     my $sum = 0;
-    for my $i (1 .. Math::Prime::Util::rootint($n,3)) {
-      $sum += Math::Prime::Util::sqrtint(Math::Prime::Util::divint($n,Math::Prime::Util::powint($i,3)))
+    for my $i (1 .. Mrootint($n,3)) {
+      $sum += Msqrtint(Mdivint($n,Mpowint($i,3)))
         if Math::Prime::Util::is_square_free($i);
     }
     return $sum;
@@ -1306,14 +1341,14 @@ sub nth_powerful {
   }
   return undef if $n == 0;
   return $n if $k == 1 || $n <= 1;
-  return Math::Prime::Util::powint(2,$k) if $n == 2;
-  return Math::Prime::Util::powint(2,$k+1) if $n == 3;
+  return Mpowint(2,$k) if $n == 2;
+  return Mpowint(2,$k+1) if $n == 3;
 
   # For small n, we can generate k-powerful numbers rapidly.  But without
   # a reasonable upper limit, it's not clear how to effectively do it.
   # E.g. nth_powerful(100,60) = 11972515182562019788602740026717047105681
 
-  my $lo = Math::Prime::Util::powint(2, $k+1);
+  my $lo = Mpowint(2, $k+1);
   my $hi = ~0;
   if ($k == 2) {
     $lo = int( $n*$n/4.72303430688484 + 0.3 * $n**(5/3) );
@@ -1325,7 +1360,7 @@ sub nth_powerful {
   # hi could be too low.
   while (Math::Prime::Util::powerful_count($hi,$k) < $n) {
     $lo = $hi+1;
-    $hi = mulint($k, $hi);
+    $hi = Mmulint($k, $hi);
   }
 
   # Simple binary search
@@ -1343,13 +1378,13 @@ sub perfect_power_count {
   return $n if $n <= 1;
   my @T = (1);
 
-  my $log2n = Math::Prime::Util::logint($n,2);
+  my $log2n = Mlogint($n,2);
   for my $k (2 .. $log2n) {
-    my $m = Math::Prime::Util::moebius($k);
+    my $m = Mmoebius($k);
     next if $m == 0;
-    push @T, Math::Prime::Util::mulint(-$m, Math::Prime::Util::subint(Math::Prime::Util::rootint($n,$k),1));
+    push @T, Mmulint(-$m, Msubint(Mrootint($n,$k),1));
   }
-  Math::Prime::Util::vecsum(@T);
+  Mvecsum(@T);
 }
 
 sub prime_power_count {
@@ -1358,11 +1393,11 @@ sub prime_power_count {
   return 0 if $n == 0;
   return $n-1 if $n <= 5;
 
-  Math::Prime::Util::vecsum(
+  Mvecsum(
     map { Math::Prime::Util::prime_count(
-            Math::Prime::Util::rootint($n, $_)
+            Mrootint($n, $_)
           )
-        } 1 .. Math::Prime::Util::logint($n,2)
+        } 1 .. Mlogint($n,2)
   );
 }
 
@@ -1372,34 +1407,34 @@ sub smooth_count {
   return 1 if $k <= 1;
   return $n if $k >= $n;
 
-  my $sum = 1 + Math::Prime::Util::logint($n,2);
+  my $sum = 1 + Mlogint($n,2);
   if ($k >= 3) {
-    my $n3 = Math::Prime::Util::divint($n, 3);
+    my $n3 = Mdivint($n, 3);
     while ($n3 > 3) {
-      $sum += 1 + Math::Prime::Util::logint($n3,2);
-      $n3 = Math::Prime::Util::divint($n3, 3);
+      $sum += 1 + Mlogint($n3,2);
+      $n3 = Mdivint($n3, 3);
     }
     $sum += $n3;
   }
   if ($k >= 5) {
-    my $n5 = Math::Prime::Util::divint($n, 5);
+    my $n5 = Mdivint($n, 5);
     while ($n5 > 5) {
-      $sum += 1 + Math::Prime::Util::logint($n5,2);
-      my $n3 = Math::Prime::Util::divint($n5, 3);
+      $sum += 1 + Mlogint($n5,2);
+      my $n3 = Mdivint($n5, 3);
       while ($n3 > 3) {
-        $sum += 1 + Math::Prime::Util::logint($n3,2);
-        $n3 = Math::Prime::Util::divint($n3, 3);
+        $sum += 1 + Mlogint($n3,2);
+        $n3 = Mdivint($n3, 3);
       }
       $sum += $n3;
-      $n5 = Math::Prime::Util::divint($n5, 5);
+      $n5 = Mdivint($n5, 5);
     }
     $sum += $n5;
   }
   my $p = 7;
   while ($p <= $k) {
-    my $np = Math::Prime::Util::divint($n, $p);
+    my $np = Mdivint($n, $p);
     $sum += ($p >= $np) ? $np : Math::Prime::Util::smooth_count($np, $p);
-    $p = Math::Prime::Util::next_prime($p);
+    $p = Mnext_prime($p);
   }
   $sum;
 }
@@ -1414,7 +1449,7 @@ sub rough_count {
 sub almost_primes {
   my($k, $low, $high) = @_;
 
-  my $minlow = Math::Prime::Util::powint(2,$k);
+  my $minlow = Mpowint(2,$k);
   $low = $minlow if $low < $minlow;
   return [] unless $low <= $high;
 
@@ -1428,14 +1463,14 @@ sub almost_primes {
 
 sub _rec_omega_primes {
   my($k, $lo, $hi, $m, $p, $opl) = @_;
-  my $s = rootint(divint($hi, $m), $k);
+  my $s = Mrootint(Mdivint($hi, $m), $k);
   foreach my $q (@{primes($p, $s)}) {
-    next if Math::Prime::Util::modint($m,$q) == 0;
-    for (my $v = mulint($m, $q); $v <= $hi ; $v = Math::Prime::Util::mulint($v, $q)) {
+    next if Mmodint($m,$q) == 0;
+    for (my $v = Mmulint($m, $q); $v <= $hi ; $v = Mmulint($v, $q)) {
       if ($k == 1) {
         push @$opl, $v  if $v >= $lo;
       } else {
-        _rec_omega_primes($k-1,$lo,$hi,$v,$q,$opl)  if Math::Prime::Util::mulint($v,$q) <= $hi;
+        _rec_omega_primes($k-1,$lo,$hi,$v,$q,$opl)  if Mmulint($v,$q) <= $hi;
       }
     }
   }
@@ -1444,7 +1479,7 @@ sub _rec_omega_primes {
 sub omega_primes {
   my($k, $low, $high) = @_;
 
-  $low = vecmax($low, pn_primorial($k));
+  $low = Mvecmax($low, Mpn_primorial($k));
   return [] unless $low <= $high;
   return ($low <= 1 && $high >= 1) ? [1] : []  if $k == 0;
 
@@ -1492,7 +1527,7 @@ sub is_semiprime {
     return 0 if @f > 2;
     return (_is_prime7($f[1]) ? 1 : 0) if @f == 2;
   }
-  return (scalar(Math::Prime::Util::factor($n)) == 2) ? 1 : 0;
+  return (scalar(Mfactor($n)) == 2) ? 1 : 0;
 }
 
 sub is_almost_prime {
@@ -1501,13 +1536,13 @@ sub is_almost_prime {
   _validate_positive_integer($n);
 
   return 0+($n==1) if $k == 0;
-  return (Math::Prime::Util::is_prime($n) ? 1 : 0) if $k == 1;
+  return (Mis_prime($n) ? 1 : 0) if $k == 1;
   return Math::Prime::Util::is_semiprime($n) if $k == 2;
   return 0 if ($n >> $k) == 0;
 
   # TODO: Optimization here
 
-  return (scalar(Math::Prime::Util::factor($n)) == $k) ? 1 : 0;
+  return (scalar(Mfactor($n)) == $k) ? 1 : 0;
 }
 sub is_omega_prime {
   my($k, $n) = @_;
@@ -1527,18 +1562,18 @@ sub is_practical {
   return 0 if ($n % 6) && ($n % 20) && ($n % 28) && ($n % 88) && ($n % 104) && ($n % 16);
 
   my $prod = 1;
-  my @pe = Math::Prime::Util::factor_exp($n);
+  my @pe = Mfactor_exp($n);
   for my $i (1 .. $#pe) {
     my($f,$e) = @{$pe[$i-1]};
     my $fmult = $f + 1;
     if ($e >= 2) {
       my $pke = $f;
       for (2 .. $e) {
-        $pke = Math::Prime::Util::mulint($pke, $f);
-        $fmult = Math::Prime::Util::addint($fmult, $pke);
+        $pke = Mmulint($pke, $f);
+        $fmult = Maddint($fmult, $pke);
       }
     }
-    $prod = Math::Prime::Util::mulint($prod, $fmult);
+    $prod = Mmulint($prod, $fmult);
     return 0 if $pe[$i]->[0] > (1 + $prod);
   }
   1;
@@ -1548,7 +1583,7 @@ sub is_delicate_prime {
   my($n) = @_;
 
   return 0 if $n < 100;  # Easily seen.
-  return 0 unless Math::Prime::Util::is_prime($n);
+  return 0 unless Mis_prime($n);
 
   # We'll use a string replacement method, because it's a lot easier with
   # Perl and we can completely ignore all bigint type issues.
@@ -1560,7 +1595,7 @@ sub is_delicate_prime {
     for my $dnew (0 .. 9) {
       next if $dnew == $dold;
       substr($N,$d,1) = $dnew;
-      return 0 if Math::Prime::Util::is_prime($N);
+      return 0 if Mis_prime($N);
     }
   }
   1;
@@ -1572,12 +1607,12 @@ sub _totpred {
   $n = Math::BigInt->new("$n") unless ref($n) || $n < INTMAX;
   return 1 if ($n & ($n-1)) == 0;
   $n >>= 1;
-  return 1 if $n == 1 || ($n < $maxd && Math::Prime::Util::is_prime(2*$n+1));
+  return 1 if $n == 1 || ($n < $maxd && Mis_prime(2*$n+1));
   for my $d (Math::Prime::Util::divisors($n)) {
     last if $d >= $maxd;
     my $p = ($d < (INTMAX >> 2))  ?  ($d << 1) + 1 :
-            Math::Prime::Util::addint(Math::Prime::Util::lshiftint($d,1),1);
-    next unless Math::Prime::Util::is_prime($p);
+            Maddint(Mlshiftint($d,1),1);
+    next unless Mis_prime($p);
     my $r = int($n / $d);
     while (1) {
       return 1 if $r == $p || _totpred($r, $d);
@@ -1632,7 +1667,7 @@ sub moebius_range {
       $mu[$i-$lo] *= -$p;
       $i += $p;
     }
-    $p = next_prime($p);
+    $p = Mnext_prime($p);
   }
   foreach my $i ($lo .. $hi) {
     my $m = $mu[$i-$lo];
@@ -1650,7 +1685,7 @@ sub _omertens {
   # computation time growth is half of this code.
   return $n if $n <= 1;
   my $u = int(sqrt($n));
-  my @mu = (0, Math::Prime::Util::moebius(1, $u)); # Hold values of mu for 0-u
+  my @mu = (0, Mmoebius(1, $u)); # Hold values of mu for 0-u
   my $musum = 0;
   my @M = map { $musum += $_; } @mu;     # Hold values of M for 0-u
   my $sum = $M[$u];
@@ -1676,7 +1711,7 @@ sub _rmertens {
   my($n, $Mref, $Href, $size) = @_;
   return $Mref->[$n] if $n <= $size;
   return $Href->{$n} if exists $Href->{$n};
-  my $s = Math::Prime::Util::sqrtint($n);
+  my $s = Msqrtint($n);
   my $ns = int($n/($s+1));
 
   my ($nk, $nk1) = ($n, $n >> 1);
@@ -1699,11 +1734,11 @@ sub mertens {
   return _omertens($n) if $n < 20000;
 
   # Larger size would be faster, but more memory.
-  my $size = (Math::Prime::Util::rootint($n, 3)**2) >> 2;
-  $size = sqrtint($n) if $size < sqrtint($n);
+  my $size = (Mrootint($n, 3)**2) >> 2;
+  $size = Msqrtint($n) if $size < Msqrtint($n);
 
   my @M = (0);
-  push @M, $M[-1] + $_ for Math::Prime::Util::moebius(1, $size);
+  push @M, $M[-1] + $_ for Mmoebius(1, $size);
 
   my %seen;
   return _rmertens($n, \@M, \%seen, $size);
@@ -1713,15 +1748,15 @@ sub mertens {
 sub ramanujan_sum {
   my($k,$n) = @_;
   return 0 if $k < 1 || $n <  1;
-  my $g = $k / Math::Prime::Util::gcd($k,$n);
-  my $m = Math::Prime::Util::moebius($g);
+  my $g = $k / Mgcd($k,$n);
+  my $m = Mmoebius($g);
   return $m if $m == 0 || $k == $g;
   $m * (Math::Prime::Util::euler_phi($k) / Math::Prime::Util::euler_phi($g));
 }
 
 sub liouville {
   my($n) = @_;
-  my $l = (-1) ** scalar Math::Prime::Util::factor($n);
+  my $l = (-1) ** scalar Mfactor($n);
   return $l;
 }
 
@@ -1730,17 +1765,17 @@ sub sumliouville {
   return (0,1,0,-1,0,-1,0,-1,-2,-1,0,-1,-2,-3,-2,-1)[$n] if $n < 16;
 
   # Build the Mertens lookup info once.
-  my $sqrtn = Math::Prime::Util::sqrtint($n);
-  my $size = (Math::Prime::Util::rootint($n, 3)**2) >> 2;
+  my $sqrtn = Msqrtint($n);
+  my $size = (Mrootint($n, 3)**2) >> 2;
   $size = $sqrtn if $size < $sqrtn;
   my %seen;
   my @M = (0);
-  push @M, $M[-1] + $_ for Math::Prime::Util::moebius(1, $size);
+  push @M, $M[-1] + $_ for Mmoebius(1, $size);
 
   # L(n) = sum[k=1..sqrt(n)](Mertens(n/(k^2)))
   my $L = 0;
   for my $k (1 .. $sqrtn) {
-    #my $nk = Math::Prime::Util::divint($n, Math::Prime::Util::mulint($k,$k));
+    #my $nk = Mdivint($n, Mmulint($k,$k));
     my $nk = int($n/($k*$k));
     return $L + $sqrtn - $k + 1 if $nk == 1;
     $L += ($nk <= $size)  ?  $M[$nk]  :  _rmertens($nk, \@M, \%seen, $size);
@@ -1762,7 +1797,7 @@ sub carmichael_lambda {
   return euler_phi($n) if $n < 8;          # = phi(n) for n < 8
   return $n >> 2 if ($n & ($n-1)) == 0;    # = phi(n)/2 = n/4 for 2^k, k>2
 
-  my @pe = Math::Prime::Util::factor_exp($n);
+  my @pe = Mfactor_exp($n);
   $pe[0]->[1]-- if $pe[0]->[0] == 2 && $pe[0]->[1] > 2;
 
   my $lcm;
@@ -1800,18 +1835,18 @@ sub is_carmichael {
       return 0 unless $fn % $a;             # not square free
     }
   }
-  return 0 if Math::Prime::Util::powmod(2, $n-1, $n) != 1;
+  return 0 if Mpowmod(2, $n-1, $n) != 1;
 
   # After pre-tests, it's reasonably likely $n is a Carmichael number or prime
 
   # Use probabilistic test if too large to reasonably factor.
   if (length($fn) > 50) {
-    return 0 if Math::Prime::Util::is_prime($n);
+    return 0 if Mis_prime($n);
     for my $t (13 .. 150) {
       my $a = $_primes_small[$t];
-      my $gcd = Math::Prime::Util::gcd($a, $fn);
+      my $gcd = Mgcd($a, $fn);
       if ($gcd == 1) {
-        return 0 if Math::Prime::Util::powmod($a, $n-1, $n) != 1;
+        return 0 if Mpowmod($a, $n-1, $n) != 1;
       } else {
         return 0 if $gcd != $a;              # Not square free
         return 0 if (($n-1) % ($a-1)) != 0;  # factor doesn't divide
@@ -1822,7 +1857,7 @@ sub is_carmichael {
   }
 
   # Verify with factoring.
-  my @pe = Math::Prime::Util::factor_exp($n);
+  my @pe = Mfactor_exp($n);
   return 0 if scalar(@pe) < 3;
   for my $pe (@pe) {
     return 0 if $pe->[1] > 1 || (($n-1) % ($pe->[0]-1)) != 0;
@@ -1837,7 +1872,7 @@ sub is_quasi_carmichael {
   return 0 if $n < 35;
   return 0 if (!($n % 4) || !($n % 9) || !($n % 25) || !($n%49) || !($n%121));
 
-  my @pe = Math::Prime::Util::factor_exp($n);
+  my @pe = Mfactor_exp($n);
   # Not quasi-Carmichael if prime
   return 0 if scalar(@pe) < 2;
   # Not quasi-Carmichael if not square free
@@ -1852,12 +1887,12 @@ sub is_quasi_carmichael {
     $lim = (($n-$lim*$lim) + $lim - 1) / $lim;
     for my $b (1 .. $f[0]-1) {
       my $nb = $n - $b;
-      $nbases++ if Math::Prime::Util::vecall(sub { $nb % ($_-$b) == 0 }, @f);
+      $nbases++ if Mvecall(sub { $nb % ($_-$b) == 0 }, @f);
     }
     if (scalar(@f) > 2) {
       for my $b (1 .. $lim-1) {
         my $nb = $n + $b;
-        $nbases++ if Math::Prime::Util::vecall(sub { $nb % ($_+$b) == 0 }, @f);
+        $nbases++ if Mvecall(sub { $nb % ($_+$b) == 0 }, @f);
       }
     }
   } else {
@@ -1867,14 +1902,14 @@ sub is_quasi_carmichael {
         my $k = $spf - $d;
         my $p = $n - $k;
         last if $d >= $spf;
-        $nbases++ if Math::Prime::Util::vecall(sub { my $j = $_-$k;  $j && ($p % $j) == 0 }, @f);
+        $nbases++ if Mvecall(sub { my $j = $_-$k;  $j && ($p % $j) == 0 }, @f);
       }
     } else {
       foreach my $d (Math::Prime::Util::divisors($lpf * ($n/$lpf - 1))) {
         my $k = $lpf - $d;
         my $p = $n - $k;
         next if $k == 0 || $k >= $spf;
-        $nbases++ if Math::Prime::Util::vecall(sub { my $j = $_-$k;  $j && ($p % $j) == 0 }, @f);
+        $nbases++ if Mvecall(sub { my $j = $_-$k;  $j && ($p % $j) == 0 }, @f);
       }
     }
   }
@@ -1890,7 +1925,7 @@ sub is_pillai {
   my $pm1 = $p-1;
   my $nfac = 5040 % $p;
   for (my $n = 8; $n < $p; $n++) {
-    $nfac = Math::Prime::Util::mulmod($nfac, $n, $p);
+    $nfac = Mmulmod($nfac, $n, $p);
     return $n if $nfac == $pm1 && ($p % $n) != 1;
   }
   0;
@@ -1950,11 +1985,11 @@ sub divisor_sum {
   #    my $pk = $f ** $k;  $product *= $pk**E for E in 0 .. e
   # Also separate BigInt and do fiddly bits for better performance.
 
-  my @factors = Math::Prime::Util::factor_exp($n);
+  my @factors = Mfactor_exp($n);
   my $product = 1;
   my @fm;
   if ($k == 0) {
-    $product = Math::Prime::Util::vecprod(map { $_->[1]+1 } @factors);
+    $product = Mvecprod(map { $_->[1]+1 } @factors);
   } elsif (!$will_overflow) {
     foreach my $f (@factors) {
       my ($p, $e) = @$f;
@@ -1989,7 +2024,7 @@ sub divisor_sum {
       }
       push @fm, $fmult;
     }
-    $product = Math::Prime::Util::vecprod(@fm);
+    $product = Mvecprod(@fm);
   } else {
     my $bik = Math::BigInt->new("$k");
     foreach my $f (@factors) {
@@ -2004,7 +2039,7 @@ sub divisor_sum {
       }
       push @fm, $fmult;
     }
-    $product = Math::Prime::Util::vecprod(@fm);
+    $product = Mvecprod(@fm);
   }
   $product;
 }
@@ -2173,10 +2208,10 @@ sub prime_count {
       || ($high-$low) < 10
       || ($high-$low) < int($low/100_000_000_000) ) {
     # Trial primes seems best.  Needs some tuning.
-    my $curprime = next_prime($low-1);
+    my $curprime = Mnext_prime($low-1);
     while ($curprime <= $high) {
       $count++;
-      $curprime = next_prime($curprime);
+      $curprime = Mnext_prime($curprime);
     }
     return $count;
   }
@@ -2459,11 +2494,11 @@ sub prime_count_approx {
       next unless $m != 0;
       # With Math::BigFloat and the Calc backend, FP root is ungodly slow.
       # Use integer root instead.  For more accuracy (not useful here):
-      # my $v = Math::BigFloat->new( "" . rootint($x->as_int,$k) );
+      # my $v = Math::BigFloat->new( "" . Mrootint($x->as_int,$k) );
       # $v->accuracy(length($v)+5);
       # $v = $v - Math::BigFloat->new(($v**$k - $x))->bdiv($k * $v**($k-1));
       # my $term = LogarithmicIntegral($v)/$k;
-      my $term = LogarithmicIntegral(rootint($intx,$k)) / $k;
+      my $term = LogarithmicIntegral(Mrootint($intx,$k)) / $k;
       last if $term < .25;
       if ($m == 1) { $result->badd(Math::BigFloat->new($term)) }
       else         { $result->bsub(Math::BigFloat->new($term)) }
@@ -2640,9 +2675,9 @@ sub twin_prime_count {
 sub _semiprime_count {
   my $n = shift;
   my($sum,$pc) = (0,0);
-  Math::Prime::Util::forprimes( sub {
+  Mforprimes( sub {
     $sum += Math::Prime::Util::prime_count(int($n/$_))-$pc++;
-  }, sqrtint($n));
+  }, Msqrtint($n));
   $sum;
 }
 sub semiprime_count {
@@ -2666,27 +2701,27 @@ sub semiprime_count {
 sub _kap_reduce_count {   # returns new k and n
   my($k, $n) = @_;
 
-  my $pow3k = Math::Prime::Util::powint(3, $k);
+  my $pow3k = Mpowint(3, $k);
   while ($n  < $pow3k) {
-    $n = Math::Prime::Util::divint($n, 2);
+    $n = Mdivint($n, 2);
     $k--;
-    $pow3k = Math::Prime::Util::divint($pow3k, 3);
+    $pow3k = Mdivint($pow3k, 3);
   }
   ($k, $n);
 }
 sub _kapc_count {
   my($n, $pdiv, $lo, $k) = @_;
-  my $hi = Math::Prime::Util::rootint(Math::Prime::Util::divint($n,$pdiv),$k);
+  my $hi = Mrootint(Mdivint($n,$pdiv),$k);
   my $sum = 0;
 
   if ($k == 2) {
     my $pc = Math::Prime::Util::prime_count($lo) - 1;
-    Math::Prime::Util::forprimes( sub {
+    Mforprimes( sub {
       $sum += Math::Prime::Util::prime_count(int($n/($pdiv*$_)))-$pc++;
     }, $lo, $hi);
   } else {
-    Math::Prime::Util::forprimes( sub {
-      $sum += _kapc_count($n, Math::Prime::Util::mulint($pdiv,$_), $_, $k-1);
+    Mforprimes( sub {
+      $sum += _kapc_count($n, Mmulint($pdiv,$_), $_, $k-1);
     }, $lo, $hi);
   }
   $sum;
@@ -2713,7 +2748,7 @@ sub omega_prime_count {
   # find a formula for k=2.
 
   my $sum = 0;
-  my $low = Math::Prime::Util::pn_primorial($k);
+  my $low = Mpn_primorial($k);
   for (my $i = $low; $i <= $n; $i++) {
     $sum++ if Math::Prime::Util::prime_omega($i) == $k;
   }
@@ -2885,7 +2920,7 @@ sub _almost_prime_count_asymptotic {
 sub _almost_prime_nth_asymptotic {
   my($k, $n) = @_;
   return 0 if $k == 0 || $n == 0;
-  return Math::Prime::Util::powint(2,$k) if $n == 1;
+  return Mpowint(2,$k) if $n == 1;
 
   my $x;
   if (ref($n) || $n > ~0) {
@@ -2979,10 +3014,10 @@ sub almost_prime_count_upper {
     $bound *= ($logplus/$_) for 1..$k-1;
     # Second, we need to turn this into Tau_k(x).
     # We use the definition paragraph before Theorem 5.4.
-    my $sigmalim = Math::Prime::Util::sqrtint(Math::Prime::Util::divint($n, Math::Prime::Util::powint(2,$k-2)));
+    my $sigmalim = Msqrtint(Mdivint($n, Mpowint(2,$k-2)));
     my $ix = Math::BigInt->new("$x");
-    Math::Prime::Util::forprimes( sub {
-      $bound += almost_prime_count_upper($k-2, Math::Prime::Util::divint($ix,Math::Prime::Util::mulint($_,$_)));
+    Mforprimes( sub {
+      $bound += almost_prime_count_upper($k-2, Mdivint($ix,Mmulint($_,$_)));
     }, 2, $sigmalim);
   }
   int($bound+1);
@@ -3019,7 +3054,7 @@ sub nth_almost_prime_upper {
   my $r = _kap_reduce_nth($k,$n);
   if ($r > 0) {
     my $nth = Math::Prime::Util::nth_almost_prime_upper($k-$r, $n);
-    return mulint($nth, powint(2,$r));
+    return Mmulint($nth, Mpowint(2,$r));
   }
 
   my $lo = 5 * (1 << $k);   # $k >= 1, $n >= 8
@@ -3048,7 +3083,7 @@ sub nth_almost_prime_lower {
   my $r = _kap_reduce_nth($k,$n);
   if ($r > 0) {
     my $nth = Math::Prime::Util::nth_almost_prime_lower($k-$r, $n);
-    return mulint($nth, powint(2,$r));
+    return Mmulint($nth, Mpowint(2,$r));
   }
 
   my $lo = 5 * (1 << $k);   # $k >= 1, $n >= 8
@@ -3081,7 +3116,7 @@ sub nth_almost_prime_approx {
   my $r = _kap_reduce_nth($k,$n);
   if ($r > 0) {
     my $nth = Math::Prime::Util::nth_almost_prime_approx($k-$r, $n);
-    return mulint($nth, powint(2,$r));
+    return Mmulint($nth, Mpowint(2,$r));
   }
 
   my $lo = Math::Prime::Util::nth_almost_prime_lower($k, $n);
@@ -3109,7 +3144,7 @@ sub nth_almost_prime {
   my $r = _kap_reduce_nth($k,$n);
   if ($r > 0) {
     my $nth = Math::Prime::Util::nth_almost_prime($k-$r, $n);
-    return mulint($nth, powint(2,$r));
+    return Mmulint($nth, Mpowint(2,$r));
   }
 
   my $lo = Math::Prime::Util::nth_almost_prime_lower($k, $n);
@@ -3136,11 +3171,11 @@ sub nth_almost_prime {
 sub nth_omega_prime {
   my($k, $n) = @_;
   return undef if $n == 0;
-  return pn_primorial($k) if $n == 1;
+  return Mpn_primorial($k) if $n == 1;
   return undef if $k == 0;  # n==1 already returned
 
   # Very inefficient algorithm.
-  my $i = pn_primorial($k);
+  my $i = Mpn_primorial($k);
   while (1) {
     $i++ while Math::Prime::Util::prime_omega($i) != $k;
     return $i if --$n == 0;
@@ -3208,27 +3243,27 @@ sub ramanujan_prime_count_approx {
 sub _sum_primes_n {
   my $n = shift;
   return (0,0,2,5,5)[$n] if $n < 5;
-  my $r = Math::Prime::Util::sqrtint($n);
-  my $r2 = $r + Math::Prime::Util::divint($n, $r+1);
+  my $r = Msqrtint($n);
+  my $r2 = $r + Mdivint($n, $r+1);
   my(@V,@S);
   for my $k (0 .. $r2) {
-    my $v = ($k <= $r) ? $k : Math::Prime::Util::divint($n,($r2-$k+1));
+    my $v = ($k <= $r) ? $k : Mdivint($n,($r2-$k+1));
     $V[$k] = $v;
-    $S[$k] = Math::Prime::Util::addint(
-              Math::Prime::Util::rshiftint(Math::Prime::Util::mulint($v, $v-1)),
+    $S[$k] = Maddint(
+              Mrshiftint(Mmulint($v, $v-1)),
               $v-1);
   }
   for my $p (2 .. $r) {
     next unless $S[$p] > $S[$p-1];
     my $sp = $S[$p-1];
-    my $p2 = Math::Prime::Util::mulint($p,$p);
+    my $p2 = Mmulint($p,$p);
     for my $v (reverse @V) {
       last if $v < $p2;
-      my($a,$b) = ($v,Math::Prime::Util::divint($v,$p));
-      $a = $r2 - Math::Prime::Util::divint($n,$a) + 1 if $a > $r;
-      $b = $r2 - Math::Prime::Util::divint($n,$b) + 1 if $b > $r;
-      $S[$a] -= Math::Prime::Util::mulint($p, $S[$b]-$sp);
-      #$S[$a] = Math::Prime::Util::subint($S[$a], Math::Prime::Util::mulint($p, Math::Prime::Util::subint($S[$b],$sp)));
+      my($a,$b) = ($v,Mdivint($v,$p));
+      $a = $r2 - Mdivint($n,$a) + 1 if $a > $r;
+      $b = $r2 - Mdivint($n,$b) + 1 if $b > $r;
+      $S[$a] -= Mmulint($p, $S[$b]-$sp);
+      #$S[$a] = Msubint($S[$a], Mmulint($p, Msubint($S[$b],$sp)));
     }
   }
   $S[$r2];
@@ -3263,15 +3298,15 @@ sub sum_primes {
   # TODO: consider some skipping forward with small tables.
   my $xssum = (MPU_64BIT && $high < 6e14 && Math::Prime::Util::prime_get_config()->{'xs'});
   my $step = ($xssum && $high > 5e13) ? 1_000_000 : 11_000_000;
-  Math::Prime::Util::prime_precalc(sqrtint($high));
+  Math::Prime::Util::prime_precalc(Msqrtint($high));
   while ($low <= $high) {
-    my $next = Math::Prime::Util::addint($low, $step) - 1;
+    my $next = Maddint($low, $step) - 1;
     $next = $high if $next > $high;
-    $sum = Math::Prime::Util::addint($sum,
+    $sum = Maddint($sum,
             ($xssum) ? Math::Prime::Util::sum_primes($low,$next)
-                     : Math::Prime::Util::vecsum( @{Math::Prime::Util::primes($low,$next)} ));
+                     : Mvecsum( @{Math::Prime::Util::primes($low,$next)} ));
     last if $next == $high;
-    $low = Math::Prime::Util::addint($next,1);
+    $low = Maddint($next,1);
   }
   $sum;
 }
@@ -3410,7 +3445,7 @@ sub mulint {
   my $prod = $a*$b;
   return $prod if ref($a) || ref($b);
   return $prod if $a > 0 && $b > 0 && int(INTMAX/$a) > $b;
-  # return Math::Prime::Util::vecprod($a,$b);
+  # return Mvecprod($a,$b);
   my $res = Math::BigInt->new("$a")->bmul("$b");
   $res = _bigint_to_int($res) if $res->bacmp(BMAX) <= 0 && $res->bcmp(-(BMAX>>1)) > 0;
   $res;
@@ -3422,7 +3457,7 @@ sub addint {
   my $sum = $a+$b;
   return $sum if ref($a) || ref($b);
   return $sum if $a >= 0 && $b >= 0 && int(INTMAX-$a) >= $b;
-  # return Math::Prime::Util::vecsum(@_);
+  # return Mvecsum(@_);
   my $res = Math::BigInt->new("$a")->badd("$b");
   $res = _bigint_to_int($res) if $res->bacmp(BMAX) <= 0 && $res->bcmp(-(BMAX>>1)) > 0;
   $res;
@@ -3577,19 +3612,19 @@ sub cmpint {
 
 sub lshiftint {
   my($n, $k) = @_;
-  my $k2 = (!defined $k) ? 2 : ($k < MPU_MAXBITS) ? (1<<$k) : Math::Prime::Util::powint(2,$k);
-  Math::Prime::Util::mulint($n, $k2);
+  my $k2 = (!defined $k) ? 2 : ($k < MPU_MAXBITS) ? (1<<$k) : Mpowint(2,$k);
+  Mmulint($n, $k2);
 }
 sub rshiftint {
   my($n, $k) = @_;
-  my $k2 = (!defined $k) ? 2 : ($k < MPU_MAXBITS) ? (1<<$k) : Math::Prime::Util::powint(2,$k);
+  my $k2 = (!defined $k) ? 2 : ($k < MPU_MAXBITS) ? (1<<$k) : Mpowint(2,$k);
   (Math::Prime::Util::tdivrem($n, $k2))[0];
 }
 
 sub rashiftint {
   my($n, $k) = @_;
-  my $k2 = (!defined $k) ? 2 : ($k < MPU_MAXBITS) ? (1<<$k) : Math::Prime::Util::powint(2,$k);
-  Math::Prime::Util::divint($n, $k2);
+  my $k2 = (!defined $k) ? 2 : ($k < MPU_MAXBITS) ? (1<<$k) : Mpowint(2,$k);
+  Mdivint($n, $k2);
 }
 
 # Make sure to work around RT71548, Math::BigInt::Lite,
@@ -3689,7 +3724,7 @@ sub chinese {
     $n = -$n if $n < 0;
     push @items, [$a,$n];
   }
-  return Math::Prime::Util::modint($items[0]->[0], $items[0]->[1]) if scalar @items == 1;
+  return Mmodint($items[0]->[0], $items[0]->[1]) if scalar @items == 1;
   @items = sort { $b->[1] <=> $a->[1] } @items;
   foreach my $aref (@items) {
     my($ai, $ni) = @$aref;
@@ -4111,7 +4146,7 @@ sub _ts_rootmod {
     # We want a znlog that takes gorder as well (k=znorder(m,p))
     my $kz = negmod(znlog($z, $m, $p), $k);
     $m = Mpowmod($m, $kz, $p);
-    $T = Mpowmod($y, Mmulint($kz,powint($k,$e-$l)), $p);
+    $T = Mpowmod($y, Mmulint($kz,Mpowint($k,$e-$l)), $p);
     # In the loop we always end with l < e, so e always gets smaller
     $e = $l-1;
     $x = Mmulmod($x, $T, $p);
@@ -4425,7 +4460,7 @@ sub _allrootmod_prime {
   my $r2 = Mmulmod($r,$z,$p);
   while ($r2 != $r && @roots < $k) {
     push @roots, $r2;
-    $r2 = mulmod($r2, $z, $p);
+    $r2 = Mmulmod($r2, $z, $p);
   }
   croak "allrootmod: excess roots found" if $r2 != $r;
   return @roots;
@@ -4487,7 +4522,7 @@ sub _allrootmod_prime_power {
       my $r   = Maddmod($s,Mdivmod(Mdivint($t1,$gcd), Mdivint($t2,$gcd),$n),$n);
       push @rootst, $r if Mpowmod($r, $k, $n) == ($a % $n);
     }
-    my $ndivp = divint($n,$p);
+    my $ndivp = Mdivint($n,$p);
     my %roots;  # We want to remove duplicates
     for my $r (@rootst) {
       for my $j (0 .. $k-1) {
@@ -4676,7 +4711,7 @@ sub is_power {
       $a = $k unless $a;
       my $isneg = ($n < 0);
       $n =~ s/^-// if $isneg;
-      $$refp = Math::Prime::Util::rootint($n, $a);
+      $$refp = Mrootint($n, $a);
       $$refp = Math::Prime::Util::_reftyped($_[0], $$refp) if $$refp > INTMAX;
       $$refp = -$$refp if $isneg;
     }
@@ -4726,7 +4761,7 @@ sub is_power {
         $e *= $next if $next != 0;
         return $e;
       }
-      $e = next_prime($e);
+      $e = Mnext_prime($e);
     }
   }
   0;
@@ -4745,12 +4780,12 @@ sub is_prime_power {
   croak("is_prime_power second argument not a scalar reference") if defined($refp) && !ref($refp);
   return 0 if $n <= 1;
 
-  if (Math::Prime::Util::is_prime($n)) { $$refp = $n if defined $refp; return 1; }
+  if (Mis_prime($n)) { $$refp = $n if defined $refp; return 1; }
   my $r;
   my $k = Math::Prime::Util::is_power($n,0,\$r);
   if ($k) {
     $r = _bigint_to_int($r) if ref($r) && $r->bacmp(BMAX) <= 0;
-    return 0 unless Math::Prime::Util::is_prime($r);
+    return 0 unless Mis_prime($r);
     $$refp = $r if defined $refp;
   }
   $k;
@@ -4762,9 +4797,9 @@ sub is_gaussian_prime {
   _validate_integer($b);
   $a = -$a if $a < 0;
   $b = -$b if $b < 0;
-  return ((($b % 4) == 3) ? is_prime($b) : 0) if $a == 0;
-  return ((($a % 4) == 3) ? is_prime($a) : 0) if $b == 0;
-  is_prime( addint( mulint($a,$a), mulint($b,$b) ) );
+  return ((($b % 4) == 3) ? Mis_prime($b) : 0) if $a == 0;
+  return ((($a % 4) == 3) ? Mis_prime($a) : 0) if $b == 0;
+  Mis_prime( Maddint( Mmulint($a,$a), Mmulint($b,$b) ) );
 }
 
 sub is_polygonal {
@@ -4784,23 +4819,23 @@ sub is_polygonal {
   my($D,$R);
   if ($k == 4) {
     return 0 unless _is_perfect_square($n);
-    $$refp = sqrtint($n) if defined $refp;
+    $$refp = Msqrtint($n) if defined $refp;
     return 1;
   }
   if ($n <= MPU_HALFWORD && $k <= MPU_HALFWORD) {
     $D = ($k==3) ? 1+($n<<3) : (8*$k-16)*$n + ($k-4)*($k-4);
     return 0 unless _is_perfect_square($D);
-    $D = $k-4 + Math::Prime::Util::sqrtint($D);
+    $D = $k-4 + Msqrtint($D);
     $R = 2*$k-4;
   } else {
     if ($k == 3) {
-      $D = addint(1, mulint($n, 8));
+      $D = Maddint(1, Mmulint($n, 8));
     } else {
-      $D = addint(mulint($n, mulint(8, $k) - 16), mulint($k-4,$k-4));
+      $D = Maddint(Mmulint($n, Mmulint(8, $k) - 16), Mmulint($k-4,$k-4));
     }
     return 0 unless _is_perfect_square($D);
-    $D = addint( sqrtint($D), $k-4 );
-    $R = mulint(2, $k) - 4;
+    $D = Maddint( Msqrtint($D), $k-4 );
+    $R = Mmulint(2, $k) - 4;
   }
   return 0 if ($D % $R) != 0;
   $$refp = $D / $R if defined $refp;
@@ -4903,11 +4938,11 @@ sub _FastIntegerInput {
     for my $i (1 .. $k>>1) {
       my $x = $L->[2*$i-2];
       my $y = $L->[2*$i-1];
-      push(@T, Math::Prime::Util::addint($x, Math::Prime::Util::mulint($B, $y)));
+      push(@T, Maddint($x, Mmulint($B, $y)));
     }
     push(@T, $L->[$k-1]) if ($k&1);
     $L = \@T;
-    $B = Math::Prime::Util::mulint($B, $B);
+    $B = Mmulint($B, $B);
     $k = ($k+1) >> 1;
   }
   $L->[0];
@@ -4965,8 +5000,8 @@ sub fromzeckendorf {
 
   my($n, $fb, $fc) = (0, 1, 1);
   for my $c (split(//,reverse $s)) {
-    $n = Math::Prime::Util::addint($n,$fc) if $c eq '1';
-    ($fb, $fc) = ($fc, Math::Prime::Util::addint($fb,$fc));
+    $n = Maddint($n,$fc) if $c eq '1';
+    ($fb, $fc) = ($fc, Maddint($fb,$fc));
   }
   $n;
 }
@@ -4979,12 +5014,12 @@ sub tozeckendorf {
   my($rn, $s, $fa, $fb, $fc) = ($n, '', 0, 1, 1);
   my($i, $k);
   for ($k = 2; $fc <= $rn; $k++) {
-    ($fa, $fb, $fc) = ($fb, $fc, Math::Prime::Util::addint($fb,$fc));
+    ($fa, $fb, $fc) = ($fb, $fc, Maddint($fb,$fc));
   }
   for ($i = $k-1; $i >= 2; $i--) {
-    ($fc, $fb, $fa) = ($fb, $fa, Math::Prime::Util::subint($fb,$fa));
+    ($fc, $fb, $fa) = ($fb, $fa, Msubint($fb,$fa));
     if ($fc <= $rn) {
-      $rn = subint($rn, $fc);
+      $rn = Msubint($rn, $fc);
       $s .= '1';
     } else {
       $s .= '0';
@@ -5094,39 +5129,39 @@ sub stirling {
   croak "stirling type must be 1, 2, or 3" unless $type == 1 || $type == 2 || $type == 3;
   if ($m == 1) {
     return 1 if $type == 2;
-    return Math::Prime::Util::factorial($n) if $type == 3;
-    return Math::Prime::Util::factorial($n-1) if $n & 1;
-    return vecprod(-1, Math::Prime::Util::factorial($n-1));
+    return Mfactorial($n) if $type == 3;
+    return Mfactorial($n-1) if $n & 1;
+    return Mvecprod(-1, Mfactorial($n-1));
   }
   return Math::Prime::Util::_reftyped($_[0], Math::Prime::Util::GMP::stirling($n,$m,$type))
     if $Math::Prime::Util::_GMPfunc{"stirling"};
   # Go through vecsum with quoted negatives to make sure we don't overflow.
   my $s;
   if ($type == 3) {
-    $s = Math::Prime::Util::vecprod( Math::Prime::Util::binomial($n,$m), Math::Prime::Util::binomial($n-1,$m-1), Math::Prime::Util::factorial($n-$m) );
+    $s = Mvecprod( Mbinomial($n,$m), Mbinomial($n-1,$m-1), Mfactorial($n-$m) );
   } elsif ($type == 2) {
     my @terms;
     for my $j (1 .. $m) {
-      my $t = Math::Prime::Util::mulint(
-                Math::Prime::Util::powint($j,$n),
-                Math::Prime::Util::binomial($m,$j)
+      my $t = Mmulint(
+                Mpowint($j,$n),
+                Mbinomial($m,$j)
               );
-      $t = Math::Prime::Util::negint($t) if ($m-$j) & 1;
+      $t = Mnegint($t) if ($m-$j) & 1;
       push @terms, $t;
     }
-    $s = Math::Prime::Util::vecsum(@terms) / factorial($m);
+    $s = Mvecsum(@terms) / Mfactorial($m);
   } else {
     my @terms;
     for my $k (1 .. $n-$m) {
-      my $t = Math::Prime::Util::vecprod(
-        Math::Prime::Util::binomial($k + $n - 1, $k + $n - $m),
-        Math::Prime::Util::binomial(2 * $n - $m, $n - $k - $m),
+      my $t = Mvecprod(
+        Mbinomial($k + $n - 1, $k + $n - $m),
+        Mbinomial(2 * $n - $m, $n - $k - $m),
         Math::Prime::Util::stirling($k - $m + $n, $k, 2),
       );
-      $t = Math::Prime::Util::negint($t) if $k & 1;
+      $t = Mnegint($t) if $k & 1;
       push @terms, $t;
     }
-    $s = Math::Prime::Util::vecsum(@terms);
+    $s = Mvecsum(@terms);
   }
   $s;
 }
@@ -5240,7 +5275,7 @@ sub is_euler_plumb_pseudoprime {
   return 0 if ($n % 2) == 0;
   my $nmod8 = $n % 8;
   my $exp = 1 + ($nmod8 == 1);
-  my $ap = Math::Prime::Util::powmod(2, ($n-1) >> $exp, $n);
+  my $ap = Mpowmod(2, ($n-1) >> $exp, $n);
   if ($ap ==    1) { return ($nmod8 == 1 || $nmod8 == 7); }
   if ($ap == $n-1) { return ($nmod8 == 1 || $nmod8 == 3 || $nmod8 == 5); }
   0;
@@ -5469,7 +5504,7 @@ sub binomial {
     $r = _binomialu(-$n+$k-1, $k);
     if ($r > 0 && $r eq int($r)) {
       return $r   if !($k & 1);
-      return Math::Prime::Util::negint($r);
+      return Mnegint($r);
     }
   }
 
@@ -5515,7 +5550,7 @@ sub binomialmod {
   # we can just run the more general code path.
 
   # Give up.
-  return Math::Prime::Util::modint(Math::Prime::Util::binomial($n,$k),$m);
+  return Mmodint(Mbinomial($n,$k),$m);
 }
 
 
@@ -5572,38 +5607,38 @@ sub factorialmod {
 
   return factorial($n) % $m if $n <= 10;
 
-  my($F, $N, $m_prime) = (1, $n, Math::Prime::Util::is_prime($m));
+  my($F, $N, $m_prime) = (1, $n, Mis_prime($m));
 
   # Check for Wilson's theorem letting us go backwards
-  $n = $m-$n-1 if $m_prime && $n > Math::Prime::Util::rshiftint($m);
+  $n = $m-$n-1 if $m_prime && $n > Mrshiftint($m);
   return ($n == 0) ? ($m-1) : 1  if $n < 2;
 
   if ($n > 100 && !$m_prime) {   # Check for a composite that leads to zero
     my $maxpk = 0;
-    foreach my $f (Math::Prime::Util::factor_exp($m)) {
-      my $pk = Math::Prime::Util::mulint($f->[0],$f->[1]);
+    foreach my $f (Mfactor_exp($m)) {
+      my $pk = Mmulint($f->[0],$f->[1]);
       $maxpk = $pk if $pk > $maxpk;
     }
     return 0 if $n >= $maxpk;
   }
 
   my($t,$e);
-  Math::Prime::Util::forprimes( sub {
+  Mforprimes( sub {
     ($t,$e) = ($n,0);
     while ($t > 0) {
       $t = int($t/$_);
       $e += $t;
     }
-    $F = Math::Prime::Util::mulmod($F,Math::Prime::Util::powmod($_,$e,$m),$m);
+    $F = Mmulmod($F,Mpowmod($_,$e,$m),$m);
   }, 2, $n >> 1);
-  Math::Prime::Util::forprimes( sub {
-    $F = Math::Prime::Util::mulmod($F, $_, $m);
+  Mforprimes( sub {
+    $F = Mmulmod($F, $_, $m);
   }, ($n >> 1)+1, $n);
 
   # Adjust for Wilson's theorem if we used it
   if ($n != $N && $F != 0) {
-    $F = Math::Prime::Util::submod($m, $F, $m) if !($n & 1);
-    $F = Math::Prime::Util::invmod($F, $m);
+    $F = Msubmod($m, $F, $m) if !($n & 1);
+    $F = Minvmod($F, $m);
   }
 
   $F;
@@ -5636,7 +5671,7 @@ sub is_primitive_root {
   _validate_integer($n);
   $n = -$n if $n < 0;  # Ignore sign of n
   return (undef,1)[$n] if $n <= 1;
-  $a = Math::Prime::Util::modint($a, $n)  if $a < 0 || $a >= $n;
+  $a = Mmodint($a, $n)  if $a < 0 || $a >= $n;
 
   return Math::Prime::Util::GMP::is_primitive_root($a,$n)
     if $Math::Prime::Util::_GMPfunc{"is_primitive_root"};
@@ -5648,14 +5683,14 @@ sub is_primitive_root {
     return ($order eq $totient) ? 1 : 0;
   }
 
-  return 0 if Math::Prime::Util::gcd($a, $n) != 1;
+  return 0 if Mgcd($a, $n) != 1;
   my $s = Math::Prime::Util::euler_phi($n);
-  return 0 if ($s % 2) == 0 && Math::Prime::Util::powmod($a,$s >> 1,$n) == 1;
-  return 0 if ($s % 3) == 0 && Math::Prime::Util::powmod($a,int($s/3),$n) == 1;
-  return 0 if ($s % 5) == 0 && Math::Prime::Util::powmod($a,int($s/5),$n) == 1;
-  foreach my $f (Math::Prime::Util::factor_exp($s)) {
+  return 0 if ($s % 2) == 0 && Mpowmod($a,$s >> 1,$n) == 1;
+  return 0 if ($s % 3) == 0 && Mpowmod($a,int($s/3),$n) == 1;
+  return 0 if ($s % 5) == 0 && Mpowmod($a,int($s/5),$n) == 1;
+  foreach my $f (Mfactor_exp($s)) {
     my $fp = $f->[0];
-    return 0 if $fp > 5 && Math::Prime::Util::powmod($a, int($s/$fp), $n) == 1;
+    return 0 if $fp > 5 && Mpowmod($a, int($s/$fp), $n) == 1;
   }
   1;
 }
@@ -5665,7 +5700,7 @@ sub znorder {
   _validate_integer($n);
   $n = -$n if $n < 0;
   return (undef,1)[$n] if $n <= 1;
-  $a = Math::Prime::Util::modint($a, $n);
+  $a = Mmodint($a, $n);
   return if $a <= 0;
   return 1 if $a == 1;
 
@@ -5673,7 +5708,7 @@ sub znorder {
     if $Math::Prime::Util::_GMPfunc{"znorder"};
 
   # Sadly, Calc/FastCalc are horrendously slow for this function.
-  return if Math::Prime::Util::gcd($a, $n) > 1;
+  return if Mgcd($a, $n) > 1;
 
   # The answer is one of the divisors of phi(n) and lambda(n).
   my $lambda = Math::Prime::Util::carmichael_lambda($n);
@@ -5682,7 +5717,7 @@ sub znorder {
   # This is easy and usually fast, but can bog down with too many divisors.
   if ($lambda <= 2**64) {
     foreach my $k (Math::Prime::Util::divisors($lambda)) {
-      return $k if Math::Prime::Util::powmod($a,$k,$n) == 1;
+      return $k if Mpowmod($a,$k,$n) == 1;
     }
     return;
   }
@@ -5690,13 +5725,13 @@ sub znorder {
   # Algorithm 1.7 from A. Das applied to Carmichael Lambda.
   $lambda = Math::BigInt->new("$lambda") unless ref($lambda) eq 'Math::BigInt';
   my $k = Math::BigInt->bone;
-  foreach my $f (Math::Prime::Util::factor_exp($lambda)) {
+  foreach my $f (Mfactor_exp($lambda)) {
     my($pi, $ei, $enum) = (Math::BigInt->new("$f->[0]"), $f->[1], 0);
     my $phidiv = $lambda / ($pi**$ei);
-    my $b = Math::Prime::Util::powmod($a,$phidiv,$n);
+    my $b = Mpowmod($a,$phidiv,$n);
     while ($b != 1) {
       return if $enum++ >= $ei;
-      $b = Math::Prime::Util::powmod($b,$pi,$n);
+      $b = Mpowmod($b,$pi,$n);
       $k *= $pi;
     }
   }
@@ -5712,7 +5747,7 @@ sub _dlp_trial {
     my $t = $g;
     for my $k (1 .. $limit) {
       return $k if $t == $a;
-      $t = Math::Prime::Util::mulmod($t, $g, $p);
+      $t = Mmulmod($t, $g, $p);
     }
     return 0;
   }
@@ -5731,7 +5766,7 @@ sub _dlp_bsgs {
   my ($a,$g,$p,$n,$_verbose) = @_;
   my $invg = invmod($g, $p);
   return unless defined $invg;
-  my $maxm = Math::Prime::Util::sqrtint($n)+1;
+  my $maxm = Msqrtint($n)+1;
   my $b = ($p + $maxm - 1) / $maxm;
   # Limit for time and space.
   $b = ($b > 4_000_000) ? 4_000_000 : int("$b");
@@ -5739,7 +5774,7 @@ sub _dlp_bsgs {
 
   my %hash;
   my $am = BONE->copy;
-  my $gm = Math::Prime::Util::powmod($invg, $maxm, $p);
+  my $gm = Mpowmod($invg, $maxm, $p);
   my $key = $a->copy;
   my $r;
 
@@ -5749,11 +5784,11 @@ sub _dlp_bsgs {
       $r = $hash{"$am"};
       if (defined $r) {
         print "  bsgs found in stage 1 after $m tries\n" if $_verbose;
-        $r = Math::Prime::Util::addmod($m, Math::Prime::Util::mulmod($r,$maxm,$p), $p);
+        $r = Maddmod($m, Mmulmod($r,$maxm,$p), $p);
         return $r;
       }
       $hash{"$am"} = $m;
-      $am = Math::Prime::Util::mulmod($am,$g,$p);
+      $am = Mmulmod($am,$g,$p);
       if ($am == $a) {
         print "  bsgs found during bs\n" if $_verbose;
         return $m+1;
@@ -5764,11 +5799,11 @@ sub _dlp_bsgs {
     $r = $hash{"$key"};
     if (defined $r) {
       print "  bsgs found in stage 2 after $m tries\n" if $_verbose;
-      $r = Math::Prime::Util::addmod($r, Math::Prime::Util::mulmod($m,$maxm,$p), $p);
+      $r = Maddmod($r, Mmulmod($m,$maxm,$p), $p);
       return $r;
     }
     $hash{"$key"} = $m if $m <= $maxm;
-    $key = Math::Prime::Util::mulmod($key,$gm,$p);
+    $key = Mmulmod($key,$gm,$p);
   }
   0;
 }
@@ -5780,8 +5815,8 @@ sub znlog {
   _validate_integer($n);
   $n = -$n if $n < 0;
   return (undef,0,1)[$n] if $n <= 1;
-  $a = Math::Prime::Util::modint($a, $n);
-  $g = Math::Prime::Util::modint($g, $n);
+  $a = Mmodint($a, $n);
+  $g = Mmodint($g, $n);
   return 0 if $a == 1 || $g == 0 || $n < 2;
 
   my $_verbose = Math::Prime::Util::prime_get_config()->{'verbose'};
@@ -5819,17 +5854,17 @@ sub znprimroot {
     # Check that a primitive root exists.
     return if $phi != Math::Prime::Util::carmichael_lambda($n);
   }
-  my @exp = map { Math::Prime::Util::divint($phi, $_->[0]) }
-            Math::Prime::Util::factor_exp($phi);
+  my @exp = map { Mdivint($phi, $_->[0]) }
+            Mfactor_exp($phi);
   #print "phi: $phi  factors: ", join(",",factor($phi)), "\n";
   #print "  exponents: ", join(",", @exp), "\n";
   my $a = 1;
   while (1) {
     my $fail = 0;
-    do { $a++ } while Math::Prime::Util::kronecker($a,$n) == 0;
+    do { $a++ } while Mkronecker($a,$n) == 0;
     return if $a >= $n;
     foreach my $f (@exp) {
-      if (Math::Prime::Util::powmod($a,$f,$n) == 1) {
+      if (Mpowmod($a,$f,$n) == 1) {
         $fail = 1;
         last;
       }
@@ -5844,24 +5879,24 @@ sub qnr {
   $n = -$n if $n < 0;
   return (undef,1,2)[$n] if $n <= 2;
 
-  return 2 if Math::Prime::Util::kronecker(2,$n) == -1;
+  return 2 if Mkronecker(2,$n) == -1;
 
-  if (is_prime($n)) {
-    for (my $a = 3; $a < $n; $a = next_prime($a)) {
-      return $a if Math::Prime::Util::kronecker($a,$n) == -1;
+  if (Mis_prime($n)) {
+    for (my $a = 3; $a < $n; $a = Mnext_prime($a)) {
+      return $a if Mkronecker($a,$n) == -1;
     }
   } else {
     if ($n % 2 == 0) {
-      my $e = valuation($n, 2);
+      my $e = Mvaluation($n, 2);
       $n >>= $e;
       return 2 if $n == 1 || $e >= 2;
     }
     return 2 if !($n%3) || !($n%5) || !($n%11) || !($n%13) || !($n%19);
-    my @F = Math::Prime::Util::factor_exp($n);
-    for (my $a = 2; $a < $n; $a = next_prime($a)) {
+    my @F = Mfactor_exp($n);
+    for (my $a = 2; $a < $n; $a = Mnext_prime($a)) {
       for my $pe (@F) {
         my $p = $pe->[0];
-        return $a if $a < $p && Math::Prime::Util::kronecker($a,$p) == -1;
+        return $a if $a < $p && Mkronecker($a,$p) == -1;
       }
     }
   }
@@ -5881,7 +5916,7 @@ sub _lucas_selfridge_params {
     my $gcd = (ref($n) eq 'Math::BigInt') ? Math::BigInt::bgcd($d, $n)
                                           : _gcd_ui($d, $n);
     return (0,0,0) if $gcd > 1 && $gcd != $n;  # Found divisor $d
-    my $j = kronecker($d * $sign, $n);
+    my $j = Mkronecker($d * $sign, $n);
     last if $j == -1;
     $d += 2;
     croak "Could not find Jacobi sequence for $n" if $d > 4_000_000_000;
@@ -5917,23 +5952,23 @@ sub lucas_sequence {
   croak "lucas_sequence: n must be > 0" if $n < 1;
   croak "lucas_sequence: k must be >= 0" if $k < 0;
   return (0,0,0) if $n == 1;
-  $P = Math::Prime::Util::modint($P,$n) if $P < 0 || $P >= $n;
-  $Q = Math::Prime::Util::modint($Q,$n) if $Q < 0 || $Q >= $n;
+  $P = Mmodint($P,$n) if $P < 0 || $P >= $n;
+  $Q = Mmodint($Q,$n) if $Q < 0 || $Q >= $n;
 
   $n = Math::BigInt->new("$n") unless ref($n) eq 'Math::BigInt';
   return (0, 2 % $n, 1) if $k == 0;
 
-  my $D = Math::Prime::Util::subint(
-            Math::Prime::Util::mulint($P,$P),
-            Math::Prime::Util::mulint(4,$Q)
+  my $D = Msubint(
+            Mmulint($P,$P),
+            Mmulint(4,$Q)
           );
   if ($D == 0) {
     my $S = $P >> 1;  # If D is zero, P must be even (P*P = 4Q)
-    my $U = Math::Prime::Util::mulmod($k, Math::Prime::Util::powmod($S, $k-1, $n), $n);
-    #die "  U $U : $P $Q $k $n\n" unless $U == modint(lucasu($P,$Q,$k),$n);
-    my $V = Math::Prime::Util::mulmod(2, Math::Prime::Util::powmod($S, $k, $n), $n);
-    #die "  V $V : $P $Q $k $n\n" unless $V == modint(lucasv($P,$Q,$k),$n);
-    my $Qk = Math::Prime::Util::powmod($Q, $k, $n);
+    my $U = Mmulmod($k, Mpowmod($S, $k-1, $n), $n);
+    #die "  U $U : $P $Q $k $n\n" unless $U == Mmodint(lucasu($P,$Q,$k),$n);
+    my $V = Mmulmod(2, Mpowmod($S, $k, $n), $n);
+    #die "  V $V : $P $Q $k $n\n" unless $V == Mmodint(lucasv($P,$Q,$k),$n);
+    my $Qk = Mpowmod($Q, $k, $n);
     return ($U, $V, $Qk);
   }
 
@@ -6337,7 +6372,7 @@ sub is_frobenius_underwood_pseudoprime {
       return 0 if $j == 0 || ($a == 20 && _is_perfect_square($n));
     }
   }
-  $temp1 = Math::Prime::Util::gcd(($a+4)*(2*$a+5), $n);
+  $temp1 = Mgcd(($a+4)*(2*$a+5), $n);
   return 0 if $temp1 != 1 && $temp1 != $n;
 
   $n = Math::BigInt->new("$n") unless ref($n) eq 'Math::BigInt';
@@ -6379,14 +6414,14 @@ sub _perrin_signature {
   shift @nbin;
 
   while (@nbin) {
-    my @T = map { addmod(addmod(Math::Prime::Util::mulmod($S[$_],$S[$_],$n), $n-$S[5-$_],$n), $n-$S[5-$_],$n); } 0..5;
-    my $T01 = addmod($T[2], $n-$T[1], $n);
-    my $T34 = addmod($T[5], $n-$T[4], $n);
-    my $T45 = addmod($T34, $T[3], $n);
+    my @T = map { Maddmod(Maddmod(Mmulmod($S[$_],$S[$_],$n), $n-$S[5-$_],$n), $n-$S[5-$_],$n); } 0..5;
+    my $T01 = Maddmod($T[2], $n-$T[1], $n);
+    my $T34 = Maddmod($T[5], $n-$T[4], $n);
+    my $T45 = Maddmod($T34, $T[3], $n);
     if (shift @nbin) {
       @S = ($T[0], $T01, $T[1], $T[4], $T45, $T[5]);
     } else {
-      @S = ($T01, $T[1], addmod($T01,$T[0],$n), $T34, $T[4], $T45);
+      @S = ($T01, $T[1], Maddmod($T01,$T[0],$n), $T34, $T[4], $T45);
     }
   }
   @S;
@@ -6405,17 +6440,17 @@ sub is_perrin_pseudoprime {
   return 1 if $restrict == 0;
   return 0 unless $S[1] == $n-1;
   return 1 if $restrict == 1;
-  my $j = kronecker(-23,$n);
+  my $j = Mkronecker(-23,$n);
   if ($j == -1) {
     my $B = $S[2];
-    my $B2 = mulmod($B,$B,$n);
-    my $A = addmod(addmod(1,mulmod(3,$B,$n),$n),$n-$B2,$n);
-    my $C = addmod(mulmod(3,$B2,$n),$n-2,$n);
-    return 1 if $S[0] == $A && $S[2] == $B && $S[3] == $B && $S[5] == $C && $B != 3 && addmod(mulmod($B2,$B,$n),$n-$B,$n) == 1;
+    my $B2 = Mmulmod($B,$B,$n);
+    my $A = Maddmod(Maddmod(1,Mmulmod(3,$B,$n),$n),$n-$B2,$n);
+    my $C = Maddmod(Mmulmod(3,$B2,$n),$n-2,$n);
+    return 1 if $S[0] == $A && $S[2] == $B && $S[3] == $B && $S[5] == $C && $B != 3 && Maddmod(Mmulmod($B2,$B,$n),$n-$B,$n) == 1;
   } else {
     return 0 if $j == 0 && $n != 23 && $restrict > 2;
     return 1 if $S[0] == 1 && $S[2] == 3 && $S[3] == 3 && $S[5] == 2;
-    return 1 if $S[0] == 0 && $S[5] == $n-1 && $S[2] != $S[3] && addmod($S[2],$S[3],$n) == $n-3 && mulmod(addmod($S[2],$n-$S[3],$n),addmod($S[2],$n-$S[3],$n),$n) == $n-(23%$n);
+    return 1 if $S[0] == 0 && $S[5] == $n-1 && $S[2] != $S[3] && Maddmod($S[2],$S[3],$n) == $n-3 && Mmulmod(Maddmod($S[2],$n-$S[3],$n),Maddmod($S[2],$n-$S[3],$n),$n) == $n-(23%$n);
   }
   0;
 }
@@ -6444,7 +6479,7 @@ sub is_frobenius_pseudoprime {
       $D = $P*$P-4*$Q;
       $Du = ($D >= 0) ? $D : -$D;
       last if $P >= $n || $Du >= $n;   # TODO: remove?
-      $k = kronecker($D, $n);
+      $k = Mkronecker($D, $n);
       return 0 if $k == 0;
       return 0 if $P == 10001 && _is_perfect_square($n);
     }
@@ -6453,11 +6488,11 @@ sub is_frobenius_pseudoprime {
     $Du = ($D >= 0) ? $D : -$D;
     croak "Frobenius invalid P,Q: ($P,$Q)" if _is_perfect_square($Du);
   }
-  return (is_prime($n) ? 1 : 0) if $n <= $Du || $n <= abs($Q) || $n <= abs($P);
-  return 0 if Math::Prime::Util::gcd(abs($P*$Q*$D), $n) > 1;
+  return (Mis_prime($n) ? 1 : 0) if $n <= $Du || $n <= abs($Q) || $n <= abs($P);
+  return 0 if Mgcd(abs($P*$Q*$D), $n) > 1;
 
   if ($k == 0) {
-    $k = kronecker($D, $n);
+    $k = Mkronecker($D, $n);
     return 0 if $k == 0;
     my $Q2 = (2*abs($Q)) % $n;
     $Vcomp = ($k == 1) ? 2 : ($Q >= 0) ? $Q2 : $n-$Q2;
@@ -6597,7 +6632,7 @@ sub is_aks_prime {
     $limit = int( $log2n*$log2n + 0.0001 );
   }
 
-  my $r = next_prime($limit);
+  my $r = Mnext_prime($limit);
   foreach my $f (@{primes(0,$r-1)}) {
     return 1 if $f == $n;
     return 0 if !($n % $f);
@@ -6607,7 +6642,7 @@ sub is_aks_prime {
     return 0 if !($n % $r);
     #return 1 if $r >= $sqrtn;
     last if znorder($n, $r) > $limit;  # Note the arguments!
-    $r = next_prime($r);
+    $r = Mnext_prime($r);
   }
 
   return 1 if $r >= $n;
@@ -7143,7 +7178,7 @@ sub pminus1_factor {
       my $f = Math::BigInt::bgcd( $pa-1, $n );
       if ($f == $n) { push @factors, $n; return @factors; }
       last if !$f->is_one;
-      $q = next_prime($q);
+      $q = Mnext_prime($q);
     }
   }
   # STAGE 2
@@ -7365,7 +7400,7 @@ sub ecm_factor {
   my @b2primes = ($B2 > $B1) ? @{primes($B1+1, $B2)} : ();
 
   foreach my $curve (1 .. $ncurves) {
-    my $sigma = Math::Prime::Util::urandomm($n-6) + 6;
+    my $sigma = Murandomm($n-6) + 6;
     my ($u, $v) = ( ($sigma*$sigma - 5) % $n, (4 * $sigma) % $n );
     my ($x, $z) = ( ($u*$u*$u) % $n,  ($v*$v*$v) % $n );
     my $cb = (4 * $x * $v) % $n;
@@ -7489,7 +7524,7 @@ sub divisors {
     return @d;
   }
 
-  @factors = Math::Prime::Util::factor($n);
+  @factors = Mfactor($n);
   return (1,$n) if scalar @factors == 1;
 
   my $bigint = ref($n);
@@ -7580,7 +7615,7 @@ sub _taup {
     return (0,1,-24,252,-1472,4830,-6048,-16744,84480)[$p] if $p <= 8;
     my $ds5  = $bp->copy->bpow( 5)->binc();  # divisor_sum(p,5)
     my $ds11 = $bp->copy->bpow(11)->binc();  # divisor_sum(p,11)
-    my $s    = Math::BigInt->new("".vecsum(map { vecprod(BTWO,Math::Prime::Util::divisor_sum($_,5), Math::Prime::Util::divisor_sum($p-$_,5)) } 1..($p-1)>>1));
+    my $s    = Math::BigInt->new("".Mvecsum(map { Mvecprod(BTWO,Math::Prime::Util::divisor_sum($_,5), Math::Prime::Util::divisor_sum($p-$_,5)) } 1..($p-1)>>1));
     $n = ( 65*$ds11 + 691*$ds5 - (691*252)*$s ) / 756;
   } else {
     my $t = Math::BigInt->new(""._taup($p,1));
@@ -7590,10 +7625,10 @@ sub _taup {
     } elsif ($e == 3) {
       $n -= BTWO * $t * $bp->copy->bpow(11);
     } else {
-      $n += vecsum( map { vecprod( ($_&1) ? - BONE : BONE,
-                                   $bp->copy->bpow(11*$_),
-                                   binomial($e-$_, $e-2*$_),
-                                   $t ** ($e-2*$_) ) } 1 .. ($e>>1) );
+      $n += Mvecsum( map { Mvecprod( ($_&1) ? - BONE : BONE,
+                                     $bp->copy->bpow(11*$_),
+                                     Mbinomial($e-$_, $e-2*$_),
+                                     $t ** ($e-2*$_) ) } 1 .. ($e>>1) );
     }
   }
   $n = _bigint_to_int($n) if ref($n) && $n->bacmp(BMAX) <= 0;
@@ -7608,7 +7643,7 @@ sub _tauprime {
   my $sum = Math::BigInt->new(0);
   if ($p < (MPU_32BIT ?  300  :  1600)) {
     my($p9,$pp7) = (9*$p, 7*$p*$p);
-    for my $t (1 .. Math::Prime::Util::sqrtint($p)) {
+    for my $t (1 .. Msqrtint($p)) {
       my $t2 = $t * $t;
       my $v = $p - $t2;
       $sum += $t2**3 * (4*$t2*$t2 - $p9*$t2 + $pp7) * (Math::Prime::Util::hclassno(4*$v) + 2 * Math::Prime::Util::hclassno($v));
@@ -7617,7 +7652,7 @@ sub _tauprime {
   } else {
     $p = Math::BigInt->new("$p");
     my($p9,$pp7) = (9*$p, 7*$p*$p);
-    for my $t (1 .. Math::Prime::Util::sqrtint($p)) {
+    for my $t (1 .. Msqrtint($p)) {
       my $t2 = Math::BigInt->new("$t") ** 2;
       my $v = $p - $t2;
       $sum += $t2**3 * (4*$t2*$t2 - $p9*$t2 + $pp7) * (Math::Prime::Util::hclassno(4*$v) + 2 * Math::Prime::Util::hclassno($v));
@@ -7653,7 +7688,7 @@ sub ramanujan_tau {
 
   # _taup is faster for small numbers, but gets very slow.  It's not a huge
   # deal, and the GMP code will probably get run for small inputs anyway.
-  vecprod(map { _taupower($_->[0],$_->[1]) } Math::Prime::Util::factor_exp($n));
+  Mvecprod(map { _taupower($_->[0],$_->[1]) } Mfactor_exp($n));
 }
 
 sub _Euler {
@@ -8055,7 +8090,7 @@ if (0 && $Math::Prime::Util::_GMPfunc{"zeta"}) {
   my $tol = 1e-18;
   my($c, $y, $t) = (0.0);
   if ($x > 10**17) {
-    my @mob = Math::Prime::Util::moebius(0,300);
+    my @mob = Mmoebius(0,300);
     for my $k (1 .. 300) {
       next if $mob[$k] == 0;
       my $term = $mob[$k] / $k *
@@ -8317,11 +8352,11 @@ sub _forcompositions {
       if ($ispart) {
         next if $a[$k] > $maxa;
       } else {
-        next if Math::Prime::Util::vecany(sub{ $_ < $mina || $_ > $maxa }, @a[0..$k]);
+        next if Mvecany(sub{ $_ < $mina || $_ > $maxa }, @a[0..$k]);
       }
     }
-    next if $primeq == 0 && Math::Prime::Util::vecany(sub{ is_prime($_) }, @a[0..$k]);
-    next if $primeq == 2 && Math::Prime::Util::vecany(sub{ !is_prime($_) }, @a[0..$k]);
+    next if $primeq == 0 && Mvecany(sub{ Mis_prime($_) }, @a[0..$k]);
+    next if $primeq == 2 && Mvecany(sub{ !Mis_prime($_) }, @a[0..$k]);
     last if Math::Prime::Util::_get_forexit();
     $sub->(@a[0 .. $k]);
   }
@@ -8456,8 +8491,8 @@ sub numtoperm {
   _validate_integer($k);
   return () if $n == 0;
   return (0) if $n == 1;
-  my $f = Math::Prime::Util::factorial($n-1);
-  $k %= Math::Prime::Util::mulint($f,$n) if $k < 0 || int($k/$f) >= $n;
+  my $f = Mfactorial($n-1);
+  $k %= Mmulint($f,$n) if $k < 0 || int($k/$f) >= $n;
   my @S = map { $_ } 0 .. $n-1;
   my @V;
   while ($n-- > 0) {
@@ -8490,7 +8525,7 @@ sub permtonum {
     for my $j ($i+1 .. $n-1) {
       $k++ if $A->[$j] < $A->[$i];
     }
-    $rank = Math::Prime::Util::addint($rank, Math::Prime::Util::mulint($k,$f));
+    $rank = Maddint($rank, Mmulint($k,$f));
     $f /= $n-$i-1;
   }
   $rank;
@@ -8510,14 +8545,14 @@ sub randperm {
     my %seen;
     my $v;
     for my $i (1 .. $k) {
-      do { $v = Math::Prime::Util::urandomm($n); } while $seen{$v}++;
+      do { $v = Murandomm($n); } while $seen{$v}++;
       push @S,$v;
     }
   } else {
     @S = map { $_ } 0..$n-1;
     for my $i (0 .. $n-2) {
       last if $i >= $k;
-      my $j = Math::Prime::Util::urandomm($n-$i);
+      my $j = Murandomm($n-$i);
       @S[$i,$i+$j] = @S[$i+$j,$i];
     }
     $#S = $k-1;
@@ -8529,7 +8564,7 @@ sub shuffle {
   my @S=@_;
   # Note: almost all the time is spent in urandomm.
   for (my $i = $#S; $i >= 1; $i--) {
-    my $j = Math::Prime::Util::urandomm($i+1);
+    my $j = Murandomm($i+1);
     @S[$i,$j] = @S[$j,$i];
   }
   @S;
@@ -8568,7 +8603,7 @@ sub urandomm {
     my $bytes = 1 + (($bits+7)>>3);
     my $rmax = Math::BigInt->bone->blsft($bytes*8)->bdec;
     my $overflow = $rmax - ($rmax % $n);
-    do { $r = Math::Prime::Util::urandomb($bytes*8); } while $r >= $overflow;
+    do { $r = Murandomb($bytes*8); } while $r >= $overflow;
   }
   return $r % $n;
 }
@@ -8669,11 +8704,11 @@ sub miller_rabin_random {
     return 1;
   }
   my $brange = $n-2;
-  return 0 unless Math::Prime::Util::is_strong_pseudoprime($n, Math::Prime::Util::urandomm($brange)+2 );
+  return 0 unless Math::Prime::Util::is_strong_pseudoprime($n, Murandomm($brange)+2 );
   $k--;
   while ($k > 0) {
     my $nbases = ($k >= 20) ? 20 : $k;
-    return 0 unless is_strong_pseudoprime($n, map { urandomm($brange)+2 } 1 .. $nbases);
+    return 0 unless is_strong_pseudoprime($n, map { Murandomm($brange)+2 } 1 .. $nbases);
     $k -= $nbases;
   }
   1;
@@ -8708,7 +8743,7 @@ sub random_unrestricted_semiprime {
 
   if ($b <= 64) {
     do {
-      $n = $min + urandomb($b-1);
+      $n = $min + Murandomb($b-1);
     } while !Math::Prime::Util::is_semiprime($n);
   } else {
     # Try to get probabilities right for small divisors
@@ -8779,7 +8814,7 @@ sub random_unrestricted_semiprime {
     my $ranmin = ref($min) ? $min->badd($p-1)->bdiv($p)->as_int : int(($min+$p-1)/$p);
     my $ranmax = ref($max) ? $max->bdiv($p)->as_int : int($max/$p);
     my $q = random_prime($ranmin, $ranmax);
-    $n = Math::Prime::Util::mulint($p,$q);
+    $n = Mmulint($p,$q);
   }
   $n = _bigint_to_int($n) if ref($n) && $n->bacmp(BMAX) <= 0;
   $n;
@@ -8793,11 +8828,11 @@ sub random_factored_integer {
   while (1) {
     my @S = ($n);
     # make s_i chain
-    push @S, 1 + Math::Prime::Util::urandomm($S[-1])  while $S[-1] > 1;
+    push @S, 1 + Murandomm($S[-1])  while $S[-1] > 1;
     # first is n, last is 1
-    @S = grep { is_prime($_) } @S[1 .. $#S-1];
-    my $r = Math::Prime::Util::vecprod(@S);
-    return ($r, [@S]) if $r <= $n && (1+urandomm($n)) <= $r;
+    @S = grep { Mis_prime($_) } @S[1 .. $#S-1];
+    my $r = Mvecprod(@S);
+    return ($r, [@S]) if $r <= $n && (1+Murandomm($n)) <= $r;
   }
 }
 
@@ -8935,7 +8970,7 @@ Dana Jacobsen E<lt>dana@acm.orgE<gt>
 
 =head1 COPYRIGHT
 
-Copyright 2012-2020 by Dana Jacobsen E<lt>dana@acm.orgE<gt>
+Copyright 2012-2021 by Dana Jacobsen E<lt>dana@acm.orgE<gt>
 
 This program is free software; you can redistribute it and/or modify it under the same terms as Perl itself.
 
