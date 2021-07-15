@@ -228,8 +228,6 @@
   See: https://cr.yp.to/papers/epsi.pdf
        https://arxiv.org/pdf/2006.07445.pdf
 
-- primorial and pn_primorial to XS with direct to GMP.  Remember to objectify.
-
 - ipowsafe could have the limits using hard-coded sqrt and cbrt to avoid div.
 
 - almost primes check and enter new for
@@ -288,12 +286,12 @@
 - Improve inverse_interpolation.  We're using linear interpolation.
   Consider 2nd order or Aitken's method.  Dubiously useful here.
 
+- For almost primes in PP, maybe use Lagrange estimator to start, given
+  that we have no bounds.
+
 - omega primes, work on figuring out formula for omega_prime_count
   better construction and counting
   OEIS sequence for omega k=3 counts for 10^i
-
-- For almost primes in PP, maybe use Lagrange estimator to start, given
-  that we have no bounds.
 
 - There might be a better method for _sqrtmod_prime_power.
 
@@ -305,6 +303,17 @@
   mpu '$s=1; for my $e (1..9) { $s += is_practical($_) for 10**($e-1)+1..10**$e; say "10^$e  $s"; }'
   mpu 'for my $e (1..9) { $s=0; $s += is_practical($_) for 1..10**$e; say "10^$e  $s"; }'
   5, 30, 198, 1456, 11751, 97385, 829157, 7266286, 64782731, 582798892, 5283879886
+
+- export prime_powers, test, document, etc.
+
+- Better method for prime_powers
+  use minheap, data is [p^k,p].  Remove min.
+  if (p^k == p) { add p^2 and next_prime(p) } else { add p^k * p }
+  to init for a range, .... do something clever ...
+  Alternately, do a SoE without removing prime powers
+  Alternately, SoE then merge with p^2,p^3,etc for p <= sqrt(end)
+
+- consider forprimepowers { ... } beg,end
 
 - test coverage for PP.
 
@@ -342,6 +351,7 @@
   Take a look.
 
 - Pari 2.13 added an optional third argument to sqrtint, just like rootint.
+  Not high priority since we can just call rootint with k=2.
 
 - Faster Mertens. Helfgott/Thompson 2020.  https://arxiv.org/pdf/2101.08773.pdf
 
@@ -363,6 +373,11 @@
   .
   Similarly, a routine to return the best form (int or bigint) for post-calc
 
+- PP needs a revamp of the bigint->int downgrade.  Using the babs(BMAX) is
+  wrong.  We can use max/min.  Better come up with something more consistent.
+  Possibly XS, or try "$x=$n->numify; return ($x eq $n) ? $x : $n;"
+
+
 - GMP
   - rootmod, binomialmod
   - almost primes
@@ -379,16 +394,6 @@
   have: add, sub, mul, pow, div, rem, neg, ++, --, <<, >>, <=>
   need: not, bnot, and, or, xor, gt, lt, geq, leq, eq, neq,
         as_bool, as_string, as_num, clone
-
-- PP needs a revamp of the bigint->int downgrade.  Using the babs(BMAX) is
-  wrong.  We can use max/min.  Better come up with something more consistent.
-  Possibly XS, or try "$x=$n->numify; return ($x eq $n) ? $x : $n;"
-
-- prime_powers(lo,hi) ?   to generate prime powers
-  use minheap, data is [p^k,p].  Remove min.
-  if (p^k == p) { add p^2 and next_prime(p) } else { add p^k * p }
-  to init for a range, .... do something clever ...
-  Alternately, do a SoE without removing prime powers
 
 - 32-bit testing
 

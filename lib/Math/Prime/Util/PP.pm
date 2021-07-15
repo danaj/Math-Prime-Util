@@ -767,6 +767,24 @@ sub sieve_prime_cluster {
   @p;
 }
 
+sub prime_powers {
+  my($low,$high) = @_;
+  if (scalar @_ > 1) {
+    _validate_positive_integer($low);
+    _validate_positive_integer($high);
+    $low = 2 if $low < 2;
+  } else {
+    ($low,$high) = (2, $low);
+    _validate_positive_integer($high);
+  }
+  my $sref = [];
+  while ($low <= $high) {
+    push @$sref, $low if Math::Prime::Util::is_prime_power($low);
+    $low = Maddint($low, 1);
+  }
+  $sref;
+}
+
 sub _n_ramanujan_primes {
   my($n) = @_;
   return [] if $n <= 0;

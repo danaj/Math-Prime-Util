@@ -2935,6 +2935,8 @@ This corresponds to Pari/GP's C<isprimepower> function.  It is related to
 Mathematica's C<PrimePowerQ[n]> function.
 These all return zero/false for C<n=1>.
 
+This is the L<OEIS series A246655|http://oeis.org/A246655>.
+
 =head2 is_square
 
 Given a integer C<n>, returns 1 if C<n> is a perfect square,

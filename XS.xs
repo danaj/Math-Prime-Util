@@ -860,6 +860,7 @@ sieve_primes(IN UV low, IN UV high)
     semi_prime_sieve = 5
     _ramanujan_primes = 6
     _n_ramanujan_primes = 7
+    prime_powers = 8
   PREINIT:
     AV* av;
   PPCODE:
@@ -878,6 +879,11 @@ sieve_primes(IN UV low, IN UV high)
       if ((low <= 6) && (high >= 6)) av_push(av, newSVuv( 6 ));
     } else if (ix == 6) { /* ramanujan primes */
       if ((low <= 2) && (high >= 2)) av_push(av, newSVuv( 2 ));
+    } else if (ix == 8) { /* prime powers */
+      if ((low <= 2) && (high >= 2)) av_push(av, newSVuv( 2 ));
+      if ((low <= 3) && (high >= 3)) av_push(av, newSVuv( 3 ));
+      if ((low <= 4) && (high >= 4)) av_push(av, newSVuv( 4 ));
+      if ((low <= 5) && (high >= 5)) av_push(av, newSVuv( 5 ));
     } else {
       if ((low <= 2) && (high >= 2)) av_push(av, newSVuv( 2 ));
       if ((low <= 3) && (high >= 3)) av_push(av, newSVuv( 3 ));
@@ -934,6 +940,11 @@ sieve_primes(IN UV low, IN UV high)
           for (i = 0; i <= (high-low); i++)
             av_push(av,newSVuv(L[i]));
         Safefree(L);
+      } else if (ix == 8) {                   /* Prime powers */
+        UV i, prime;
+        for (i = low-1; i < high; i++)
+          if (primepower(i+1, &prime))
+            av_push(av,newSVuv(i+1));
       }
     }
     return; /* skip implicit PUTBACK */
