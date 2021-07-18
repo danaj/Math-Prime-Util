@@ -1039,6 +1039,31 @@ IV stirling1(UV n, UV m) {
   return s;
 }
 
+UV totient_factored(UV n, UV nfacs, UV* fac, UV* exp) {
+  UV i, lastf, totient = 1;
+  if (n <= 1) return n;
+  /* while ((n & 0x3) == 0) { n >>= 1; totient <<= 1; }         */
+  /* if    ((n & 0x1) == 0) { n >>= 1; nfacs--; fac++; exp++; } */
+  if (fac[0] == 2) {  /* Handle factors of 2 more efficiently */
+    n       >>= exp[0];
+    totient <<= (exp[0]-1);
+    nfacs--; fac++; exp++;
+  }
+  for (lastf = 0, i = 0; i < nfacs; i++) {
+    UV f = fac[i], e = exp[i];
+    totient *= f-1;
+    while (e > 1) { totient *= f; e--; }
+  }
+  return totient;
+}
+#if 0
+UV totient(UV n) {
+  UV nfacs, fac[MPU_MAX_FACTORS+1], exp[MPU_MAX_FACTORS+1];
+  if (n <= 1) return n;
+  nfacs = factor_exp(n, fac, exp); /* factor and calculate totient */
+  return totient_factored(n, nfacs, fac, exp);
+}
+#else
 UV totient(UV n) {
   UV i, nfacs, totient, lastf, facs[MPU_MAX_FACTORS+1];
   if (n <= 1) return n;
@@ -1056,6 +1081,7 @@ UV totient(UV n) {
   }
   return totient;
 }
+#endif
 
 static const UV jordan_overflow[5] =
 #if BITS_PER_WORD == 64

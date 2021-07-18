@@ -61,6 +61,7 @@ extern IV fdivrem(IV *q, IV *r, IV D, IV d);   /* signed div/rem floor */
 extern IV edivrem(IV *q, IV *r, IV D, IV d);   /* signed div/rem Euclidian */
 extern UV ivmod(IV a, UV n);                   /* Returns a mod n (trunc) */
 
+extern UV totient_factored(UV n, UV nfacs, UV* fac, UV* exp);
 extern UV totient(UV n);
 extern int moebius(UV n);
 extern UV exp_mangoldt(UV n);
