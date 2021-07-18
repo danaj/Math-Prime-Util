@@ -12,6 +12,7 @@
 #include "prime_nth_count.h"
 #include "inverse_interpolate.h"
 #include "util.h"
+#include "real.h"
 
 #include <float.h>
 #include <math.h>
