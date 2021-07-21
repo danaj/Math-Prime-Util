@@ -15,6 +15,10 @@
 #include "factor.h"
 #include "rootmod.h"
 
+/* Pick one or both */
+#define USE_ROOTMOD_SPLITK 1    /* enables rootmod_composite1 */
+#define USE_ROOTMOD_SPLITN 1    /* enables rootmod_composite2 */
+
 
 /******************************************************************************/
 /*                               SQRT(N) MOD M                                */
@@ -261,6 +265,8 @@ int sqrtmod(UV *s, UV a, UV n) {
 }
 
 
+
+
 /******************************************************************************/
 /*                          K-TH ROOT OF N MOD M                              */
 /******************************************************************************/
@@ -272,67 +278,42 @@ static int _rootmod_return(UV r, UV *s, UV a, UV k, UV p) {
   return 1;
 }
 
-/* Two methods, each with different tradeoffs.  No clear winner. */
 
-#define USE_ROOTMOD_TRIAL  0
-#define USE_ROOTMOD_SPLITK 1
-#define USE_ROOTMOD_SPLITN 1
+/* Generalized Tonelli-Shanks for k-th root mod a prime, with k prime */
+static UV _ts_prime(UV a, UV k, UV p, UV *z) {
+  UV A, B, y, x, e, r, T, ke, t;
 
+  /* Assume:  k > 1,  1 < a < p,  p > 2,  k prime,  p prime */
 
-#if USE_ROOTMOD_TRIAL /* For testing purposes only. */
-static UV _trial_rootmod(UV a, UV k, UV n) {
-  UV r;
-  if (n == 0) return 0;
-  if (a >= n) a %= n;
-  if (a <= 1) return a;
-  for (r = 2; r < n; r++)
-    if (powmod(r, k, n) == a)
-      return r;
-  return 0;
-}
-static UV* _trial_allsqrtmod(UV* nroots, UV a, UV n) {
-  UV i, *roots, numr = 0, allocr = 16;
+  for (e = 0, r = p-1; !(r % k); r /= k) e++;
+  /*  p-1 = r * k^e   =>   ke = ipow(k,e) = (p-1)/r  */
+  ke = (p-1)/r;
 
-  if (n == 0) return 0;
-  if (a >= n) a %= n;
+  x = powmod(a, modinverse(k % r, r), p);
+  B = mulmod(powmod(x, k, p), modinverse(a, p), p);
 
-  New(0, roots, allocr, UV);
-  for (i = 0; i <= n/2; i++) {
-    if (mulmod(i,i,n) == a) {
-      if (numr >= allocr-1)  Renew(roots, allocr += 256, UV);
-      roots[numr++] = i;
-      if (i != 0 && 2*i != n)
-        roots[numr++] = n-i;
+  for (T = 2, y = 1;  y == 1;  T++) {
+    t = powmod(T, r, p);
+    y = powmod(t, ke/k, p);
+  }
+
+  while (ke != k) {
+    ke = ke/k;
+    T = t;
+    t = powmod(t, k, p);
+    A = powmod(B, ke/k, p);
+    while (A != 1) {
+      x = mulmod(x, T, p);
+      B = mulmod(B, t, p);
+      A = mulmod(A, y, p);
     }
   }
-  qsort(roots, numr, sizeof(UV), _numcmp);
-  *nroots = numr;
-  return roots;
+  if (z)  *z = t;
+  return x;
 }
-static UV* _trial_allrootmod(UV* nroots, UV a, UV g, UV n) {
-  UV i, *roots, numr = 0, allocr = 16;
-
-  if (n == 0) return 0;
-  if (a >= n) a %= n;
-
-  New(0, roots, allocr, UV);
-  for (i = 0; i < n; i++) {
-    if (powmod(i,g,n) == a) {
-      if (numr >= allocr-1)  Renew(roots, allocr += 256, UV);
-      roots[numr++] = i;
-    }
-  }
-  *nroots = numr;
-  return roots;
-}
-#endif
-
-
-/******************************************************************************/
-/*                          K-TH ROOT OF N MOD M (splitk)                     */
-/******************************************************************************/
 
 #if USE_ROOTMOD_SPLITK
+/* Alternate, taking prime p but composite k. */
 /* k-th root using Tonelli-Shanks for prime k and p */
 /* This works much better for me than AMM (Holt 2003 or Cao/Sha/Fan 2011). */
 /* See Algorithm 3.3 of van de Woestijne (2006). */
@@ -445,7 +426,63 @@ static UV _rootmod_prime_splitk(UV a, UV k, UV p, UV *zeta) {
   }
   return a;
 }
+#endif
 
+
+#if 0 /* For testing purposes only. */
+static UV _trial_rootmod(UV a, UV k, UV n) {
+  UV r;
+  if (n == 0) return 0;
+  if (a >= n) a %= n;
+  if (a <= 1) return a;
+  for (r = 2; r < n; r++)
+    if (powmod(r, k, n) == a)
+      return r;
+  return 0;
+}
+static UV* _trial_allsqrtmod(UV* nroots, UV a, UV n) {
+  UV i, *roots, numr = 0, allocr = 16;
+
+  if (n == 0) return 0;
+  if (a >= n) a %= n;
+
+  New(0, roots, allocr, UV);
+  for (i = 0; i <= n/2; i++) {
+    if (mulmod(i,i,n) == a) {
+      if (numr >= allocr-1)  Renew(roots, allocr += 256, UV);
+      roots[numr++] = i;
+      if (i != 0 && 2*i != n)
+        roots[numr++] = n-i;
+    }
+  }
+  qsort(roots, numr, sizeof(UV), _numcmp);
+  *nroots = numr;
+  return roots;
+}
+static UV* _trial_allrootmod(UV* nroots, UV a, UV g, UV n) {
+  UV i, *roots, numr = 0, allocr = 16;
+
+  if (n == 0) return 0;
+  if (a >= n) a %= n;
+
+  New(0, roots, allocr, UV);
+  for (i = 0; i < n; i++) {
+    if (powmod(i,g,n) == a) {
+      if (numr >= allocr-1)  Renew(roots, allocr += 256, UV);
+      roots[numr++] = i;
+    }
+  }
+  *nroots = numr;
+  return roots;
+}
+#endif
+
+
+/******************************************************************************/
+/*                          K-TH ROOT OF N MOD M (splitk)                     */
+/******************************************************************************/
+
+#if USE_ROOTMOD_SPLITK
 /* Given a solution to r^k = a mod p^(e-1), return r^k = a mod p^e */
 static int _hensel_lift(UV *re, UV r, UV a, UV k, UV pe) {
   UV f, fp, d;
@@ -522,47 +559,15 @@ static UV _rootmod_composite1(UV a, UV k, UV n) {
 /*                          K-TH ROOT OF N MOD M (splitn)                     */
 /******************************************************************************/
 
-/* _rootmod_composite2 splits k into primes, then n into prime powers:
- *    _rootmod_prime_power splits p^e into primes (prime k):
- *       _rootmod_prime finds a root (prime p and prime k)
- *          _sqrtmod_prime  (if k==2)
- *          _ts_prime
+/* _rootmod_composite2 factors k and combines:
+ *    _rootmod_kprime takes prime k along with factored n:
+ *       _rootmod_prime_power splits p^e into primes (prime k):
+ *          _rootmod_prime finds a root (prime p and prime k)
+ *             _sqrtmod_prime  (if k==2)
+ *             _ts_prime
  */
 
-#if USE_ROOTMOD_SPLITN
-/* Generalized Tonelli-Shanks for k-th root mod a prime */
-static UV _ts_prime(UV a, UV k, UV p, UV *z) {
-  UV A, B, y, x, e, r, T, ke, t;
-
-  /* Assume:  k > 1,  1 < a < p,  p > 2,  k prime,  p prime */
-
-  for (e = 0, r = p-1; !(r % k); r /= k) e++;
-  /*  p-1 = r * k^e   =>   ke = ipow(k,e) = (p-1)/r  */
-  ke = (p-1)/r;
-
-  x = powmod(a, modinverse(k % r, r), p);
-  B = mulmod(powmod(x, k, p), modinverse(a, p), p);
-
-  for (T = 2, y = 1;  y == 1;  T++) {
-    t = powmod(T, r, p);
-    y = powmod(t, ke/k, p);
-  }
-
-  while (ke != k) {
-    ke = ke/k;
-    T = t;
-    t = powmod(t, k, p);
-    A = powmod(B, ke/k, p);
-    while (A != 1) {
-      x = mulmod(x, T, p);
-      B = mulmod(B, t, p);
-      A = mulmod(A, y, p);
-    }
-  }
-  if (z)  *z = t;
-  return x;
-}
-
+#if USE_ROOTMOD_SPLITN && !USE_ROOTMOD_SPLITK
 static UV _rootmod_prime(UV a, UV k, UV p) {
   UV r, g;
 
@@ -623,39 +628,11 @@ static UV _rootmod_prime_power(UV a, UV k, UV p, UV e) {
   return r;
 }
 
-static UV _rootmod_composite2(UV a, UV k, UV n) {
-  UV r, s, t, i, fe, N, inv;
-  UV fac[MPU_MAX_FACTORS+1];
-  UV exp[MPU_MAX_FACTORS+1];
-  int nfactors;
+static UV _rootmod_kprime(UV a, UV k, UV n, int nfactors, UV *fac, UV *exp) {
+  UV i, N, fe, r, s, t, inv;
 
-  if (n == 0) return 0;
-  if (a >= n) a %= n;
+  /* Assume: k is prime */
 
-  if (n <= 2 || a <= 1) return a;
-  if (k <= 1)           return (k == 0) ? 1 : a;
-
-  if (!is_prime(k)) {
-    nfactors = factor(k, fac);
-    r = a;
-    for (i = 0; i < (UV)nfactors; i++) {   /* for each prime k */
-      r = _rootmod_composite2(r, fac[i], n);
-      if (r == UV_MAX) { /* Bad path.  We have to use a fallback method. */
-#if USE_ROOTMOD_SPLITK
-        r = _rootmod_composite1(a,k,n);
-#else
-        UV *roots, numr;
-        roots = allrootmod(&numr,a,k,n);
-        r = (numr > 0)  ?  roots[0]  :  UV_MAX;
-        Safefree(roots);
-#endif
-        return r;
-      }
-    }
-    return r;
-  }
-
-  nfactors = factor_exp(n, fac, exp);
   N = ipow(fac[0], exp[0]);
   r = _rootmod_prime_power(a, k, fac[0], exp[0]);
   if (r == UV_MAX) return UV_MAX;
@@ -667,6 +644,45 @@ static UV _rootmod_composite2(UV a, UV k, UV n) {
     t = mulmod(inv, submod(s % fe,r % fe,fe), fe);
     r = addmod(r, mulmod(N,t,n), n);
     N *= fe;
+  }
+  return r;
+
+}
+
+static UV _rootmod_composite2(UV a, UV k, UV n) {
+  UV i, r;
+  UV kfac[MPU_MAX_FACTORS+1];
+  UV nfac[MPU_MAX_FACTORS+1];
+  UV nexp[MPU_MAX_FACTORS+1];
+  int nfactors, kfactors;
+
+  if (n == 0) return 0;
+  if (a >= n) a %= n;
+
+  if (n <= 2 || a <= 1) return a;
+  if (k <= 1)           return (k == 0) ? 1 : a;
+
+  /* Factor n */
+  nfactors = factor_exp(n, nfac, nexp);
+
+  if (is_prime(k))
+    return _rootmod_kprime(a, k, n, nfactors, nfac, nexp);
+
+  kfactors = factor(k, kfac);
+  r = a;
+  for (i = 0; i < (UV)kfactors; i++) {   /* for each prime k */
+    r = _rootmod_kprime(r, kfac[i], n, nfactors, nfac, nexp);
+    if (r == UV_MAX) { /* Bad path.  We have to use a fallback method. */
+#if USE_ROOTMOD_SPLITK
+      r = _rootmod_composite1(a,k,n);
+#else
+      UV *roots, numr;
+      roots = allrootmod(&numr,a,k,n);
+      r = (numr > 0)  ?  roots[0]  :  UV_MAX;
+      Safefree(roots);
+#endif
+      break;
+    }
   }
   return r;
 }
@@ -708,6 +724,7 @@ int rootmod(UV *s, UV a, UV k, UV n) {
 #endif
   return _rootmod_return(r, s, a, k, n);
 }
+
 
 
 
@@ -858,9 +875,7 @@ UV* allsqrtmod(UV* nroots, UV a, UV n) {
   if (n == 0) return 0;
   if (a >= n) a %= n;
 
-#if USE_ROOTMOD_TRIAL
-  return _trial_allsqrtmod(nroots, a, n);
-#endif
+  /* return _trial_allsqrtmod(nroots, a, n); */
 
   if (n <= 2)  return _one_root(nroots, a);
 
@@ -872,11 +887,11 @@ UV* allsqrtmod(UV* nroots, UV a, UV n) {
 }
 
 
-/* allrootmod splits k into primes:
- *    _allrootmod_splitn splits n into prime powers:
+/* allrootmod factors k and combines:
+ *    _allrootmod_kprime takes prime k and factored n:
  *       _allrootmod_prime_power splits p^e into primes:
  *          _allrootmod_prime finds all the roots for prime p and prime k
- *             _ts_prime or _rootmod_prime_splitk
+ *             _ts_prime (could alternately call _rootmod_prime_splitk)
  */
 
 static UV* _allrootmod_prime(UV* nroots, UV a, UV k, UV p) {
@@ -906,11 +921,8 @@ static UV* _allrootmod_prime(UV* nroots, UV a, UV k, UV p) {
   /* Special case p=3 for performance */
   if (p == 3)  return (k == 2 && a == 1)  ?  _two_roots(nroots, 1, 2)  :  0;
 
-#if USE_ROOTMOD_SPLITN
+  /* functionally identical:   r = _rootmod_prime_splitk(a, k, p, &z); */
   r = _ts_prime(a, k, p, &z);
-#else
-  r = _rootmod_prime_splitk(a, k, p, &z);
-#endif
   if (powmod(r,k,p) != a || z == 0) croak("allrootmod: failed to find root");
 
   New(0, roots, k, UV);
@@ -1021,22 +1033,12 @@ static UV* _allrootmod_prime_power(UV* nroots, UV a, UV k, UV p, UV e) {
   return roots;
 }
 
-
-static UV* _allrootmod_splitn(UV* nroots, UV a, UV k, UV n) {
+static UV* _allrootmod_kprime(UV* nroots, UV a, UV k, UV n, int nfactors, UV *fac, UV *exp) {
   UV i, fe, N, *roots = 0, *roots2, numr = 0, nr2;
-  UV fac[MPU_MAX_FACTORS+1];
-  UV exp[MPU_MAX_FACTORS+1];
-  int nfactors;
 
-#if 0
-  MPUassert(n >= 2, "_allrootmod_splitn must be given n >= 2");
-  MPUassert(k >= 2, "_allrootmod_splitn must be given k >= 2");
-  MPUassert(is_prime(k), "_allrootmod_splitn must be given prime k");
-#endif
+  if (k == 2) return _allsqrtmodfact(nroots, a, n, nfactors, fac, exp);
 
   *nroots = 0;
-
-  nfactors = factor_exp(n, fac, exp);
   N = ipow(fac[0], exp[0]);
   roots = _allrootmod_prime_power(&numr, a, k, fac[0], exp[0]);
   if (numr == 0) { Safefree(roots); return 0; }
@@ -1048,6 +1050,7 @@ static UV* _allrootmod_splitn(UV* nroots, UV a, UV k, UV n) {
     roots = _rootmod_cprod(&numr,  numr, roots, N,  nr2, roots2, fe);
     N *= fe;
   }
+  MPUassert(N == n, "allrootmod: Incorrect factoring");
 
   *nroots = numr;
   return roots;
@@ -1055,10 +1058,12 @@ static UV* _allrootmod_splitn(UV* nroots, UV a, UV k, UV n) {
 
 UV* allrootmod(UV* nroots, UV a, UV k, UV n) {
   UV i, numr = 0, *roots = 0;
+  UV kfac[MPU_MAX_FACTORS+1];
+  UV nfac[MPU_MAX_FACTORS+1];
+  UV nexp[MPU_MAX_FACTORS+1];
+  int nfactors, kfactors;
 
-#if USE_ROOTMOD_TRIAL
-  return _trial_allrootmod(nroots, a, k, n);
-#endif
+  /* return _trial_allrootmod(nroots, a, k, n); */
 
   *nroots = 0;
   if (n == 0) return 0;
@@ -1076,23 +1081,24 @@ UV* allrootmod(UV* nroots, UV a, UV k, UV n) {
     return roots;
   }
 
-  /* There is no reason not to do this */
-  /* if (k == 2) return allsqrtmod(nroots, a, n); */
+  /* Factor n */
+  nfactors = factor_exp(n, nfac, nexp);
 
   if (is_prime(k)) {
-    roots = _allrootmod_splitn(&numr, a, k, n);
-  } else { /* Split k into primes */
-    UV fac[MPU_MAX_FACTORS+1];
-    int nfactors;
 
-    nfactors = factor(k, fac);
-    roots = _allrootmod_splitn(&numr, a, fac[0], n);
-    for (i = 1; numr > 0 && i < (UV)nfactors; i++) {   /* for each prime k */
-      UV j, t, allocr = numr, primek = fac[i];
+    roots = _allrootmod_kprime(&numr, a, k, n, nfactors, nfac, nexp);
+
+  } else { /* Split k into primes */
+
+    kfactors = factor(k, kfac);
+    roots = _allrootmod_kprime(&numr, a, kfac[0], n, nfactors, nfac, nexp);
+
+    for (i = 1; numr > 0 && i < (UV)kfactors; i++) {   /* for each prime k */
+      UV j, t, allocr = numr, primek = kfac[i];
       UV *roots2 = 0, nr2 = 0,  *roots3 = 0, nr3 = 0;
       New(0, roots3, allocr, UV);
       for (j = 0; j < numr; j++) {         /* get a list from each root */
-        roots2 = _allrootmod_splitn(&nr2, roots[j], primek, n);
+        roots2 = _allrootmod_kprime(&nr2, roots[j], primek, n, nfactors, nfac, nexp);
         if (nr2 == 0) continue;
         /* Append to roots3 */
         if (nr3 + nr2 > MAX_ROOTS_RETURNED) croak("Maximum returned roots exceeded");
@@ -1106,6 +1112,7 @@ UV* allrootmod(UV* nroots, UV a, UV k, UV n) {
       roots = roots3;
       numr = nr3;
     }
+
   }
   if (numr > 1)
     qsort(roots, numr, sizeof(UV), _numcmp);
