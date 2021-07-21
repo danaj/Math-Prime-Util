@@ -38,11 +38,11 @@ is_deeply([map{omega_prime_count($_,206)}1..10],[60,113,32,0,0,0,0,0,0,0],"omega
 is_deeply([map { omega_prime_count($_, 1e4) } 0..10], \@counts_at_1e4, "k-omega prime counts at 10000 for k=1..10");
 
 is(omega_prime_count(6,9e4), 19, "There are 19 6-omega-primes <= 90,000");
+is(omega_prime_count(8,2e7), 10, "There are 10 8-omega-primes <= 20,000,000");
 
 SKIP: {
-  skip "Very slow in PP", 3 unless $usexs;
+  skip "Slow in PP", 2 unless $usexs || $extra;
   is_deeply([map { omega_prime_count($_, 1e6) } 0..20], \@counts_at_1e6, "k-omega prime counts at 1000000 for k=1..20");
-  is(omega_prime_count(8,2e7), 10, "There are 10 8-omega-primes <= 20,000,000");
   is_deeply([map{omega_prime_count($_,206111)}1..10],[18613,66025,79801,36364,5182,125,0,0,0,0],"omega_prime_count n=206111, k 1..10");
 }
 

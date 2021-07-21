@@ -98,6 +98,8 @@ BEGIN {
 *Murandomm = \&Math::Prime::Util::urandomm;
 *Murandomb = \&Math::Prime::Util::urandomb;
 *Mnext_prime = \&Math::Prime::Util::next_prime;
+*Mprev_prime = \&Math::Prime::Util::prev_prime;
+*Mprime_count = \&Math::Prime::Util::prime_count;
 
 *Mvecall = \&Math::Prime::Util::vecall;
 *Mvecany = \&Math::Prime::Util::vecany;
@@ -1412,10 +1414,7 @@ sub prime_power_count {
   return $n-1 if $n <= 5;
 
   Mvecsum(
-    map { Math::Prime::Util::prime_count(
-            Mrootint($n, $_)
-          )
-        } 1 .. Mlogint($n,2)
+    map { Mprime_count( Mrootint($n, $_)) }  1 .. Mlogint($n,2)
   );
 }
 
@@ -1461,7 +1460,7 @@ sub rough_count {
   my($n, $k) = @_;
   return $n if $k <= 2;
   return $n-($n>>1) if $k <= 3;
-  Math::Prime::Util::legendre_phi($n, Math::Prime::Util::prime_count($k-1));
+  Math::Prime::Util::legendre_phi($n, Mprime_count($k-1));
 }
 
 sub almost_primes {
@@ -2694,7 +2693,7 @@ sub _semiprime_count {
   my $n = shift;
   my($sum,$pc) = (0,0);
   Mforprimes( sub {
-    $sum += Math::Prime::Util::prime_count(int($n/$_))-$pc++;
+    $sum += Mprime_count(int($n/$_))-$pc++;
   }, Msqrtint($n));
   $sum;
 }
@@ -2733,9 +2732,9 @@ sub _kapc_count {
   my $sum = 0;
 
   if ($k == 2) {
-    my $pc = Math::Prime::Util::prime_count($lo) - 1;
+    my $pc = Mprime_count($lo) - 1;
     Mforprimes( sub {
-      $sum += Math::Prime::Util::prime_count(int($n/($pdiv*$_)))-$pc++;
+      $sum += Mprime_count(int($n/($pdiv*$_)))-$pc++;
     }, $lo, $hi);
   } else {
     Mforprimes( sub {
@@ -2750,11 +2749,52 @@ sub almost_prime_count {
   _validate_positive_integer($n);
   return ($n >= 1) if $k == 0;
   ($k, $n) = _kap_reduce_count($k, $n);
-  return Math::Prime::Util::prime_count($n) if $k == 1;
+  return Mprime_count($n) if $k == 1;
   return Math::Prime::Util::semiprime_count($n) if $k == 2;
   return 0 if ($n >> $k) == 0;
 
   _kapc_count($n, 1, 2, $k);
+}
+
+sub _omega_prime_count_rec {
+  my($k, $n,  $m, $p, $s, $j) = @_;
+  $s = Mrootint(Mdivint($n,$m),$k) unless defined $s;
+  $j = 1 unless defined $j;
+  my $count = 0;
+
+  if ($k == 2) {
+
+    for (;  $p <= $s  ;  ++$j) {
+      my $r = Mnext_prime($p);
+      for (my $t = Mmulint($m, $p) ; $t <= $n ; $t = Mmulint($t, $p)) {
+        my $w = Mdivint($n, $t);
+        last if $r > $w;
+        $count += Mprime_count($w) - $j;
+        for (my $r2 = $r ; $r2 <= $w ; $r2 = Mnext_prime($r2)) {
+          my $u = Mvecprod($t, $r2, $r2);
+          last if $u > $n;
+          for (; $u <= $n ; $u = Mmulint($u, $r2)) {
+             ++$count;
+          }
+        }
+      }
+      $p = $r;
+    }
+
+  }  else  {
+
+    for (;  $p <= $s  ;  ++$j) {
+      my $r = Mnext_prime($p);
+      for (my $t = Mmulint($m, $p) ; $t <= $n ; $t = Mmulint($t, $p)) {
+        my $s = Mrootint(Mdivint($n, $t), $k - 1);
+        last if $r > $s;
+        $count += _omega_prime_count_rec($k-1, $n,  $t, $r, $s, $j+1);
+      }
+      $p = $r;
+    }
+
+  }
+  $count;
 }
 sub omega_prime_count {
   my($k,$n) = @_;
@@ -2763,14 +2803,17 @@ sub omega_prime_count {
 
   return ($n >= 1) ? 1 : 0 if $k == 0;
   return prime_power_count($n) if $k == 1;
-  # find a formula for k=2.
+  # find a simple formula for k=2.
 
-  my $sum = 0;
-  my $low = Mpn_primorial($k);
-  for (my $i = $low; $i <= $n; $i++) {
-    $sum++ if Math::Prime::Util::prime_omega($i) == $k;
-  }
-  $sum;
+  # Naive method
+  # my ($sum, $low) = (0, Mpn_primorial($k));
+  # for (my $i = $low; $i <= $n; $i++) {
+  #   $sum++ if Math::Prime::Util::prime_omega($i) == $k;
+  # }
+  # return $sum;
+
+  # Recursive method from trizen
+  return _omega_prime_count_rec($k, $n,  1, 2);
 }
 sub ramanujan_prime_count {
   my($low,$high) = @_;
@@ -8827,7 +8870,7 @@ sub random_unrestricted_semiprime {
       my $re = exp($r);
       my $a = ($re < log(~0)) ? int(exp($re)+0.5)
                               : _upgrade_to_float($re)->bexp->bround->as_int;
-      $p = $a < 2 ? 2 : Math::Prime::Util::prev_prime($a+1);
+      $p = $a < 2 ? 2 : Mprev_prime($a+1);
     }
     my $ranmin = ref($min) ? $min->badd($p-1)->bdiv($p)->as_int : int(($min+$p-1)/$p);
     my $ranmax = ref($max) ? $max->bdiv($p)->as_int : int($max/$p);
