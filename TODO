@@ -381,7 +381,17 @@
 - GMP
   - rootmod, binomialmod
   - almost primes
+  - omega primes
+  - powerful numbers, counts
+  - prime_power_count
+  - smooth_count
+  - rough_count
   - fdivrem, lucasuv, lucasumod, lucasvmod, lucasuvmod
+  - prime_bigomega
+  - prime_omega
+  - qnr
+  - fdivrem
+
 
 - consider (in GMP 0.53):
   - setbit, clrbit, combit, tstbit

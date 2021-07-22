@@ -4398,27 +4398,11 @@ sub _rootmod_prime_power {
   return ((Mpowmod($r,$k,$n) == ($a % $n)) ? $r : undef);
 }
 
-sub _rootmod_composite2 {
-  my($a,$k,$n) = @_;
+sub _rootmod_kprime {
+  my($a,$k,$n,@nf) = @_;       # k prime, n factored into f^e,f^e,...
 
-  croak "_rootmod_composite2 bad parameters" if $a < 1 || $k < 2 || $n < 2;
-
-  if (!Mis_prime($k)) {
-    my $r = $a;
-    foreach my $kf (Mfactor($k)) {
-      $r = _rootmod_composite2($r, $kf, $n);
-      if (!defined $r) {
-        # Choose one.  The former is faster but makes more intertwined code.
-        return _rootmod_composite1($a,$k,$n);
-        #return (allrootmod($a,$k,$n))[0];
-      }
-    }
-    return $r;
-  }
-
-  # Prime k, composite n
   my($N,$r) = (1,0);
-  foreach my $F (Mfactor_exp($n)) {
+  foreach my $F (@nf) {
     my($f,$e) = @$F;
     my $fe = Mpowint($f, $e);
     my $s = _rootmod_prime_power($a, $k, $f, $e);
@@ -4428,7 +4412,27 @@ sub _rootmod_composite2 {
     $r = Maddmod($r, Mmulmod($N,$t,$n), $n);
     $N = Mmulint($N, $fe);
   }
-  #return (defined $r && Mpowmod($r, $k, $n) == ($a % $n))  ?  $r  :  undef;
+  $r;
+}
+
+sub _rootmod_composite2 {
+  my($a,$k,$n) = @_;
+
+  croak "_rootmod_composite2 bad parameters" if $a < 1 || $k < 2 || $n < 2;
+
+  my @nf = Mfactor_exp($n);
+
+  return _rootmod_kprime($a, $k, $n, @nf) if Mis_prime($k);
+
+  my $r = $a;
+  foreach my $kf (Mfactor($k)) {
+    $r = _rootmod_kprime($r, $kf, $n, @nf);
+    if (!defined $r) {
+      # Choose one.  The former is faster but makes more intertwined code.
+      return _rootmod_composite1($a,$k,$n);
+      #return (allrootmod($a,$k,$n))[0];
+    }
+  }
   croak "Bad _rootmod_composite2 root $a,$k,$n" unless defined $r && Mpowmod($r,$k,$n) == ($a % $n);
   $r;
 }
@@ -4595,12 +4599,14 @@ sub _allrootmod_prime_power {
   return @roots;
 }
 
-sub _allrootmod_splitn {
-  my($a,$k,$n) = @_;        # prime k
+sub _allrootmod_kprime {
+  my($a,$k,$n,@nf) = @_;       # k prime, n factored into f^e,f^e,...
+
+  return _allsqrtmodfact($a, $n, \@nf) if $k == 2;
 
   my $N = 1;
   my @roots;
-  foreach my $F (Mfactor_exp($n)) {
+  foreach my $F (@nf) {
     my($f,$e) = @$F;
     my $fe = Mpowint($f, $e);
     my @roots2 = ($e==1) ? _allrootmod_prime($a, $k, $f)
@@ -4644,16 +4650,16 @@ sub allrootmod {
   return ($A == 1) ? (0..$n-1) : ()  if $k == 0;
 
   my @roots;
-  my @f = Mfactor($k);
+  my @nf = Mfactor_exp($n);
 
-  if (scalar(@f) == 1) {
-    @roots = _allrootmod_splitn($A, $k, $n);
+  if (Mis_prime($k)) {
+    @roots = _allrootmod_kprime($A, $k, $n, @nf);
   } else {
     @roots = ($A);
-    for my $primek (@f) {
+    for my $primek (Mfactor($k)) {
       my @rootsnew = ();
       for my $r (@roots) {
-        push @rootsnew, _allrootmod_splitn($r, $primek, $n);
+        push @rootsnew, _allrootmod_kprime($r, $primek, $n, @nf);
       }
       @roots = @rootsnew;
     }
