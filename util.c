@@ -1258,6 +1258,12 @@ int is_semiprime(UV n) {
   if (is_def_prime(n)) return 0;
   if (p > n3) return 1; /* past this, n is a composite and larger than p^3 */
   /* 4-8% of random inputs left */
+
+  /* Fast power check */
+  sp = powerof(n);
+  if (sp >= 2)  return (sp == 2 && is_def_prime(isqrt(n)));
+
+  /* Find one factor, check primality of factor and co-factor */
   if (factor_one(n, factors, 0, 0) != 2) return 0;
   return (is_def_prime(factors[0]) && is_def_prime(factors[1]));
 }
