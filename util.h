@@ -93,6 +93,9 @@ extern UV nth_powerful(UV n, UV k);
 
 extern UV perfect_power_count(UV n);
 
+extern int is_sum_of_two_squares(UV n);
+extern int is_sum_of_three_squares(UV n);
+
 extern UV debruijn_psi(UV x, UV y);
 extern UV buchstab_phi(UV x, UV y);
 

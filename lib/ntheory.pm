@@ -228,6 +228,7 @@ Tags:
   is_omega_prime(k,n)                 is n divisible by exactly k primes
   is_polygonal(n,k)                   is n a k-polygonal number
   is_polygonal(n,k,\$root)            as above but also set $root
+  is_sum_of_squares(n[,k])            is n a sum of k (def 2) squares
   is_fundamental(d)                   is d a fundamental discriminant
   is_totient(n)                       is n = euler_phi(x) for some x
   is_lucky(n)                         is n a lucky number

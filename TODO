@@ -8,7 +8,7 @@
   * prove -b -I../Math-Prime-Util-GMP/blib/lib -I../Math-Prime-Util-GMP/blib/arch
 
 - For new functions:
-  XS, .h, .c, PP, PPFE, export, t exports, lib/ntheory.pm, doc, test
+  XS, .h, .c, PP, PPFE, export, t exports, lib/ntheory.pm, Changes, doc, test
 
 
 - Move .c / .h files into separate directory.
@@ -179,6 +179,8 @@
    - DLP/PH
 
 - semiprime_count PP just walk if small range.
+
+- add b125527.txt to oeis 125527.  (semiprime counts 2^n)
 
 - limit for semiprime and ramanujan prime
 
@@ -410,3 +412,5 @@
 - Lots of older PP code, especially factoring, is built on a bigint vs PP
   idea.  It might be useful to write normally using Mpowmod etc. and
   benchmark various inputs.
+
+- incremental factoring.  Maybe a stateful iterator?

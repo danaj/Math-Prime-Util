@@ -2956,7 +2956,7 @@ sub nth_semiprime_approx {
   my $l1 = log($n);
   my $l2 = log($l1);
   my $est = 0.966 * $n * $l1 / $l2;
-  int(0.5+$est);
+  return  ($est < INTMAX)  ?  int(0.5+$est)  :  Math::BigInt->new($est+0.5);
 }
 
 sub _almost_prime_count_asymptotic {
@@ -4906,6 +4906,32 @@ sub is_polygonal {
   }
   return 0 if ($D % $R) != 0;
   $$refp = $D / $R if defined $refp;
+  1;
+}
+
+sub is_sum_of_squares {
+  my($n, $k) = @_;
+  $n = -$n if $n < 0;
+  $k = 2 unless defined $k;
+  return ($n == 0) ? 1 : 0 if $k == 0;
+  return 1 if $k > 3;
+  return _is_perfect_square($n) if $k == 1;
+
+  return 1 if $n < 3;
+
+  if ($k == 3) {
+    my $tz = Mvaluation($n,2);
+    return ( (($tz & 1) == 1) || ((($n >> $tz) % 8) != 7) ) ? 1 : 0;
+  }
+
+  # k = 2
+  while (($n % 2) == 0) { $n >>= 1; }
+  return 0 if ($n % 4) == 3;
+
+  foreach my $F (Mfactor_exp($n)) {
+    my($f,$e) = @$F;
+    return 0 if ($f % 4) == 3 && ($e & 1) == 1;
+  }
   1;
 }
 

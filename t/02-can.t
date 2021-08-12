@@ -20,12 +20,15 @@ my @functions =  qw(
       is_frobenius_underwood_pseudoprime is_frobenius_khashin_pseudoprime
       is_perrin_pseudoprime is_catalan_pseudoprime
       is_aks_prime is_bpsw_prime is_ramanujan_prime is_mersenne_prime
-      is_power is_prime_power is_pillai is_semiprime is_square is_polygonal
+      is_delicate_prime
+      is_power is_prime_power is_pillai is_square is_polygonal
+      is_semiprime is_almost_prime is_omega_prime
       is_square_free is_primitive_root is_carmichael is_quasi_carmichael
-      is_fundamental is_totient
+      is_fundamental is_totient is_gaussian_prime is_sum_of_squares
       is_smooth is_rough is_powerful is_practical
       sqrtint rootint logint lshiftint rshiftint rashiftint absint negint
-      powint mulint addint subint divint modint divrem fdivrem tdivrem
+      signint cmpint addint subint add1int sub1int mulint powint
+      divint modint divrem fdivrem tdivrem
       miller_rabin_random
       lucas_sequence
       lucasu lucasv lucasuv lucasumod lucasvmod lucasuvmod

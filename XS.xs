@@ -1522,6 +1522,26 @@ void is_fundamental(IN SV* svn)
     _vcallsub_with_gmp(0.00,"is_fundamental");
     return;
 
+void is_sum_of_squares(IN SV* svn, IN UV k = 2)
+  PREINIT:
+    int status, ret;
+    UV n;
+  PPCODE:
+    status = _validate_and_set(&n, aTHX_ svn, IFLAG_ABS);
+    if (status != 0) {
+      switch (k) {
+        case 0:  ret = (n==0);                     break;
+        case 1:  ret = is_power(n,2);              break;
+        case 2:  ret = is_sum_of_two_squares(n);   break;
+        case 3:  ret = is_sum_of_three_squares(n); break;
+        default: ret = 1;                          break;
+      }
+      RETURN_NPARITY(ret);
+    }
+    _vcallsub_with_pp("is_sum_of_squares");
+    return;
+
+
 void is_square_free(IN SV* svn)
   ALIAS:
     is_carmichael = 1
@@ -1636,6 +1656,7 @@ is_polygonal(IN SV* svn, IN UV k, IN SV* svroot = 0)
     if (items != 3) { _vcallsub_with_gmp(0.47, "is_polygonal"); }
     else            { _vcallsub_with_pp("is_polygonal"); }
     return;
+
 
 void
 next_prime(IN SV* svn)

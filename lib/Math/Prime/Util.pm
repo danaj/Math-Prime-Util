@@ -30,7 +30,7 @@ our @EXPORT_OK =
       is_power is_prime_power is_pillai is_square is_polygonal
       is_semiprime is_almost_prime is_omega_prime
       is_square_free is_primitive_root is_carmichael is_quasi_carmichael
-      is_fundamental is_totient is_gaussian_prime
+      is_fundamental is_totient is_gaussian_prime is_sum_of_squares
       is_smooth is_rough is_powerful is_practical
       sqrtint rootint logint lshiftint rshiftint rashiftint absint negint
       signint cmpint addint subint add1int sub1int mulint powint
@@ -2943,6 +2943,19 @@ Given a integer C<n>, returns 1 if C<n> is a perfect square,
 and returns 0 otherwise.  This is identical to C<is_power(n,2)>.
 
 This corresponds to Pari/GP's C<issquare> function.
+
+=head2 is_sum_of_squares
+
+Given an integer C<n> and an optional positive integer number of squares C<k>,
+returns 1 if C<|n|> can be represented as the sum of exactly C<k> squares.
+C<k> defaults to 2.
+All positive integers can be represented by 4 or more squares, so
+only C<k == 2> and C<k == 3> are interesting cases.
+
+With C<k == 2> this produces the sequence
+L<OEIS A001481|http://oeis.org/A001481>.
+With C<k == 3> this produces the sequence
+L<OEIS A000378|http://oeis.org/A000378>.
 
 
 =head2 sqrtint

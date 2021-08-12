@@ -843,6 +843,14 @@ sub is_polygonal {
   $vx = '-'.$vx if $x < 0;
   return Math::Prime::Util::PP::is_polygonal($vx, $s, $refp);
 }
+sub is_sum_of_squares {
+  my($n, $k) = @_;
+  $n = -$n if defined $n && $n < 0;
+  $k = 2 unless defined $k;
+  _validate_positive_integer($n);
+  _validate_positive_integer($k);
+  return Math::Prime::Util::PP::is_sum_of_squares($n, $k);
+}
 sub is_practical {
   my($n) = @_;
   _validate_positive_integer($n);
