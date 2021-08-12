@@ -4,7 +4,8 @@ use warnings;
 use Getopt::Long;
 use Math::BigInt try => 'GMP';
 use Math::Prime::Util qw/primes  prime_count  next_prime  prev_prime
-                         twin_primes  sieve_prime_cluster  mulmod  is_pillai
+                         twin_primes  sieve_prime_cluster  mulmod
+                         is_pillai is_sum_of_squares
                          lucky_numbers
                          is_prime  is_provable_prime  is_mersenne_prime
                          lucasu  lucasv
@@ -101,6 +102,7 @@ GetOptions(\%opts,
            'euclid|A018239',
            'circular|A068652',
            'panaitopol|A027862',
+           'linnik|A079545',
            'provable',
            'nompugmp',   # turn off MPU::GMP for debugging
            'version',
@@ -157,6 +159,7 @@ if ($start > $end) {
          || exists $opts{'mersenne'}
          || exists $opts{'cuban1'}
          || exists $opts{'cuban2'}
+         || exists $opts{'linnik'}
         ) {
   my $p = gen_and_filter($start, $end);
   print join("\n", @$p), "\n"  if scalar @$p > 0;
@@ -482,6 +485,9 @@ sub gen_and_filter {
   # See: http://en.wikipedia.org/wiki/Pillai_prime
     @$p = grep { is_pillai($_); } @$p;
   }
+  if (exists $opts{'linnik'}) {
+    @$p = grep { is_sum_of_squares($_-1); } @$p;
+  }
   if (exists $opts{'good'}) {
     @$p = grep { is_good_prime($_); } @$p;
   }
@@ -580,6 +586,7 @@ to only those primes additionally meeting these conditions:
   --euclid     Euclid           pn#+1 is prime
   --circular   Circular         all digit rotations of p are prime
   --panaitopol Panaitopol       p = (x^4-y^4)/(x^3+y^3) for some x,y
+  --linnik     Linnik           p = x^2 + y^2 + 1 for x,y >= 0
   --provable                    Ensure all primes are provably prime
 
 Note that options can be combined, e.g. display only safe twin primes.
