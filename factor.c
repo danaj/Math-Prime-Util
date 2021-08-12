@@ -161,7 +161,7 @@ int factor_one(UV n, UV *factors, int primality, int trial)
     UV const br_rounds = 8000 + (9000 * ((nbits <= 45) ? 0 : (nbits-45)));
     UV const sq_rounds = 200000;
 #elif MULMODS_ARE_FAST
-    UV const br_rounds =  500 + ( 200 * ((nbits <= 45) ? 0 : (nbits-45)));
+    UV const br_rounds =  100 + ( 100 * ((nbits <= 45) ? 0 : (nbits-45)));
     UV const sq_rounds = 100000;
 #else
     UV const br_rounds = (nbits >= 63) ? 120000 : (nbits >= 58) ? 500 : 0;
