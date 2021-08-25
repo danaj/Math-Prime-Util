@@ -1894,7 +1894,11 @@ range end is used, unless the range is so small that walking it is faster.
 =head2 semiprime_count_approx
 
 Returns an approximation to the semiprime count of C<n>.
-This returns quickly and is typically square root accurate.
+This returns quickly and is square root accurate for native size inputs.
+
+The series of Crisan and Erban (2020) is used with a maximum of 19 terms.
+Truncation is performed at empirical good crossovers.  Clamping is done
+as needed at crossovers to ensure monotonic results.
 
 
 =head2 almost_primes
@@ -2172,9 +2176,10 @@ end after C<N> iterations, but much more efficiently.
 
 =head2 nth_semiprime_approx
 
-Returns an approximation to the Nth semiprime.  Curve fitting is used to
-get a fairly close approximation that is orders of magnitude better than
-the simple C<n log n / log log n> approximation for large C<n>.
+Returns an approximation to the Nth semiprime.  The approximation is
+orders of magnitude better than the simple C<n log n / log log n>
+approximation for large C<n>.  E.g. for C<n=10^12> the simple estimate
+is within 3.6%, but this function is within 0.000012%.
 
 =head2 nth_almost_prime
 
@@ -6072,6 +6077,9 @@ ECPP primality proofs with certificates, approximations and limits for both,
 random primes, fast Mertens calculations, Chebyshev theta and psi functions,
 and the logarithmic integral and Riemann R functions.  All with fairly
 minimal installation requirements.
+
+For Python, the package L<labmath|https://pypi.org/project/labmath/> looks
+to have similar overall goals.
 
 
 =head1 PERFORMANCE
