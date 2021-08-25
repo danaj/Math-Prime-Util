@@ -3,7 +3,7 @@
 #include "csprng.h"
 #include "primality.h"
 #include "util.h"
-#include "prime_nth_count.h"
+#include "prime_counts.h"
 #include "lmo.h"
 #include "mulmod.h"
 #include "constants.h"

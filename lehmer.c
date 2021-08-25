@@ -10,7 +10,7 @@
 #include "util.h"
 #include "cache.h"
 #include "sieve.h"
-#include "prime_nth_count.h"
+#include "prime_counts.h"
 #include "prime_count_cache.h"
 #include "legendre_phi.h"
 

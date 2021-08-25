@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <float.h>
 
 #include "ptypes.h"
 #define FUNC_isqrt 1
@@ -21,6 +22,7 @@
 #include "primality.h"
 #include "cache.h"
 #include "lmo.h"
+#include "legendre_phi.h"
 #include "factor.h"
 #include "mulmod.h"
 #include "constants.h"
@@ -1040,7 +1042,7 @@ IV stirling1(UV n, UV m) {
 }
 
 UV totient_factored(UV n, UV nfacs, UV* fac, UV* exp) {
-  UV i, lastf, totient = 1;
+  UV i, totient = 1;
   if (n <= 1) return n;
   /* while ((n & 0x3) == 0) { n >>= 1; totient <<= 1; }         */
   /* if    ((n & 0x1) == 0) { n >>= 1; nfacs--; fac++; exp++; } */
@@ -1049,7 +1051,7 @@ UV totient_factored(UV n, UV nfacs, UV* fac, UV* exp) {
     totient <<= (exp[0]-1);
     nfacs--; fac++; exp++;
   }
-  for (lastf = 0, i = 0; i < nfacs; i++) {
+  for (i = 0; i < nfacs; i++) {
     UV f = fac[i], e = exp[i];
     totient *= f-1;
     while (e > 1) { totient *= f; e--; }
@@ -2339,7 +2341,7 @@ char* pidigits(int digits)
 static int strnum_parse(const char **sp, STRLEN *slen)
 {
   const char* s = *sp;
-  STRLEN i, len = *slen;
+  STRLEN i = 0, len = *slen;
   int neg = 0;
 
   if (s != 0 && len > 0) {

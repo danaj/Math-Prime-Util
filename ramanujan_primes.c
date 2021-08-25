@@ -6,7 +6,7 @@
 #define FUNC_log2floor 1
 #include "util.h"
 #define FUNC_is_prime_in_sieve 1
-#include "prime_nth_count.h"
+#include "prime_counts.h"
 #include "sieve.h"
 #include "inverse_interpolate.h"
 #include "ramanujan_primes.h"

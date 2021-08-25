@@ -4,12 +4,10 @@
 
 #define FUNC_popcnt 1
 #include "ptypes.h"
-#include "prime_nth_count.h"
-#include "sieve.h"
 #include "cache.h"
-#include "lmo.h"
+#include "sieve.h"
 #include "util.h"
-#include "prime_count_cache.h"
+#include "lmo.h"
 
 /*
  * Cache small counts directly using a uint32_t array.

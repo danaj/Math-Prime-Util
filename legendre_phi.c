@@ -6,7 +6,7 @@
 #include "util.h"
 #include "sieve.h"
 #include "lmo.h"
-#include "prime_nth_count.h"
+#include "prime_counts.h"
 #include "prime_count_cache.h"
 #include "legendre_phi.h"
 
@@ -688,3 +688,25 @@ UV legendre_phi(UV x, UV a)
 
   return phi_recurse(x, a);
 }
+
+
+
+
+/*============================================================================*/
+
+#if 0
+  // TODO: setup with initial function.  optimize.  export.
+IV phi_sum(UV x, UV a, int sign) {
+  IV sum = 0;
+  //if (x < 1) return 0;
+  for (; a > 0; a--) {
+    UV p = nth_prime(a);
+    if (x <= p) {
+      return sum + (long)sign;
+    }
+    sum += p * phi_sum(x / p, a-1, -sign);
+  }
+  if (sign > 0) sum += (x*(x+1))/2; else sum -= (x*(x+1))/2;
+  return sum;
+}
+#endif

@@ -64,7 +64,7 @@
 #define FUNC_icbrt 1
 #include "util.h"
 #include "constants.h"
-#include "prime_nth_count.h"
+#include "prime_counts.h"
 #include "cache.h"
 #include "sieve.h"
 #include "legendre_phi.h"

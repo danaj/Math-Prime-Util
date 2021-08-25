@@ -11,7 +11,7 @@
 #include "util.h"
 #include "primality.h"
 #include "montmath.h"
-#include "prime_nth_count.h"
+#include "prime_counts.h"
 
 /* Is it better to do a partial sieve + primality tests vs. full sieve? */
 static int do_partial_sieve(UV startp, UV endp) {

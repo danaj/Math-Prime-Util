@@ -182,7 +182,9 @@
 
 - add b125527.txt to oeis 125527.  (semiprime counts 2^n)
 
-- limit for semiprime and ramanujan prime
+- limit for twin prime and ramanujan prime
+
+- add to A033843 (twin prime count < 2^n).  Oliviera e Silva has good data.
 
 - consider adding multifactorial.  See MPU::GMP.
 

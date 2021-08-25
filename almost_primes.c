@@ -14,7 +14,7 @@
 #include "cache.h"
 #include "sieve.h"
 #include "lmo.h"
-#include "prime_nth_count.h"
+#include "prime_counts.h"
 #include "prime_count_cache.h"
 #include "semi_primes.h"
 #include "inverse_interpolate.h"

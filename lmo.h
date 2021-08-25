@@ -5,6 +5,4 @@
 
 extern UV LMO_prime_count(UV n);
 
-extern UV legendre_phi(UV n, UV a);
-
 #endif
