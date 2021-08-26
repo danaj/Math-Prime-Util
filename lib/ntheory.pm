@@ -219,6 +219,7 @@ Tags:
   is_prime_power(n)                   return k if n = p^k for prime p
   is_prime_power(n,\$p)               as above but also set $p to p
   is_square_free(n)                   return true if no repeated factors
+  is_powerfree(n[,k])                 is n free of any k-th powers
   is_carmichael(n)                    is n a Carmichael number
   is_quasi_carmichael(n)              is n a quasi-Carmichael number
   is_primitive_root(r,n)              is r a primitive root mod n
@@ -329,6 +330,8 @@ Tags:
   prime_power_count(n)                count of prime powers <= n
   smooth_count(n,k)                   count of k-smooth numbers <= n
   rough_count(n,k)                    count of k-rough numbers <= n
+  powerfree_count(n[,k])              count of k-powerfree numbers <= n
+  powerfree_sum(n[,k])                sum of k-powerfree numbers <= n
 
 =head2 NON-INTEGER MATH
 

@@ -48,6 +48,8 @@ lmo.h
 lmo.c
 omega_primes.h
 omega_primes.c
+powerfree.h
+powerfree.c
 primality.h
 primality.c
 prime_count_cache.c
@@ -205,6 +207,7 @@ t/26-mod.t
 t/26-pillai.t
 t/26-polygonal.t
 t/26-powercount.t
+t/26-powerfree.t
 t/26-powerful.t
 t/26-practical.t
 t/26-smooth.t

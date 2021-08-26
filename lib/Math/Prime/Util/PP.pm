@@ -1392,6 +1392,84 @@ sub nth_powerful {
   $hi;
 }
 
+sub is_powerfree {
+  my($n, $k) = @_;
+  $n = -$n if defined $n && $n < 0;
+  _validate_positive_integer($n);
+  if (defined $k) { _validate_positive_integer($k); }
+  else            { $k = 2; }
+
+  return (($n == 1) ? 1 : 0)  if $k < 2 || $n <= 1;
+  #return 1 if $n < Mpowint(2,$k);
+  return 1 if $n < 4;
+
+  if ($k == 2) {
+    return 0 if !($n % 4) || !($n % 9) || !($n % 25);
+    return 1 if $n < 49;   # 7^2
+  } elsif ($k == 3) {
+    return 0 if !($n % 8) || !($n % 27) || !($n % 125);
+    return 1 if $n < 343;  # 7^3
+  }
+
+  # return (Mvecall(sub { $_->[1] < $k }, Mfactor_exp($n))) ? 1 : 0;
+  for my $pe (Mfactor_exp($n)) {
+    return 0 if $pe->[1] >= $k;
+  }
+  1;
+}
+
+sub powerfree_count {
+  my($n, $k) = @_;
+  $n = -$n if defined $n && $n < 0;
+  _validate_positive_integer($n);
+  if (defined $k) { _validate_positive_integer($k); }
+  else            { $k = 2; }
+
+  return (($n >= 1) ? 1 : 0)  if $k < 2 || $n <= 1;
+
+  my $count = $n;
+  my $nk = Mrootint($n, $k);
+
+  if ($nk < 100 || $nk > 1e8) {
+    Math::Prime::Util::forsquarefree(
+      sub {
+        $count += ((scalar(@_) & 1) ? -1 : 1) * Mdivint($n, Mpowint($_, $k));
+      },
+      2, $nk
+    );
+  } else {
+    my @mu = (0, Mmoebius(1, $nk));
+    foreach my $i (2 .. $nk) {
+      next if $mu[$i] == 0;
+      $count += $mu[$i] * Mdivint($n, Mpowint($i, $k));
+    }
+  }
+  $count;
+}
+
+sub powerfree_sum {
+  my($n, $k) = @_;
+  $n = -$n if defined $n && $n < 0;
+  _validate_positive_integer($n);
+  if (defined $k) { _validate_positive_integer($k); }
+  else            { $k = 2; }
+
+  return (($n >= 1) ? 1 : 0)  if $k < 2 || $n <= 1;
+
+  my $sum = 0;
+  my($ik, $nik, $T);
+  Math::Prime::Util::forsquarefree(
+    sub {
+      $ik = Mpowint($_, $k);
+      $nik = Mdivint($n, $ik);
+      $T = Mrshiftint(Mmulint($nik, Maddint($nik,1)), 1);
+      $sum = Maddint($sum, ((scalar(@_) & 1) ? -1 : 1) * Mmulint($ik, $T));
+    },
+    Mrootint($n, $k)
+  );
+  $sum;
+}
+
 sub perfect_power_count {
   my($n) = @_;
   _validate_positive_integer($n);

@@ -34,31 +34,32 @@ WriteMakefile1(
     LICENSE      => 'perl',
     AUTHOR       => 'Dana A Jacobsen <dana@acm.org>',
 
-    OBJECT       => 'cache.o '    .
-                    'factor.o '   .
-                    'primality.o '.
-                    'aks.o '      .
+    OBJECT       => 'cache.o '        .
+                    'factor.o '       .
+                    'primality.o '    .
+                    'aks.o '          .
                     'legendre_phi.o ' .
-                    'lehmer.o '   .
-                    'lmo.o '      .
+                    'lehmer.o '       .
+                    'lmo.o '          .
                     'random_prime.o ' .
-                    'sieve.o '    .
-                    'sieve_cluster.o ' .
+                    'sieve.o '        .
+                    'sieve_cluster.o '.
                     'ramanujan_primes.o ' .
-                    'semi_primes.o ' .
-                    'almost_primes.o ' .
-                    'twin_primes.o ' .
+                    'semi_primes.o '  .
+                    'almost_primes.o '.
+                    'twin_primes.o '  .
                     'omega_primes.o ' .
                     'prime_count_cache.o ' .
                     'prime_counts.o ' .
-                    'prime_sums.o ' .
-                    'real.o '     .
-                    'rootmod.o '  .
-                    'util.o '     .
+                    'prime_sums.o '   .
+                    'powerfree.o '    .
+                    'real.o '         .
+                    'rootmod.o '      .
+                    'util.o '         .
                     'inverse_interpolate.o ' .
-                    'entropy.o '  .
-                    'csprng.o '   .
-                    'chacha.o '   .
+                    'entropy.o '      .
+                    'csprng.o '       .
+                    'chacha.o '       .
                     'XS.o',
     LIBS         => ['-lm'],
 

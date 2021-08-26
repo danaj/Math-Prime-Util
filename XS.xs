@@ -40,6 +40,7 @@
 #include "omega_primes.h"
 #include "prime_counts.h"
 #include "prime_sums.h"
+#include "powerfree.h"
 #include "rootmod.h"
 #include "real.h"
 
@@ -1583,6 +1584,31 @@ void is_square_free(IN SV* svn)
       default: _vcallsub_with_gmp(0.47,"is_totient"); break;
     }
     return; /* skip implicit PUTBACK */
+
+void is_powerfree(IN SV* svn, IN int k = 2)
+  ALIAS:
+    powerfree_count = 1
+    powerfree_sum = 2
+  PREINIT:
+    int status;
+    UV n, res;
+  PPCODE:
+    status = _validate_and_set(&n, aTHX_ svn, IFLAG_ABS);
+    res = 0;
+    if (status == 1) {
+      if (ix == 0)
+        RETURN_NPARITY(is_powerfree(n,k));
+      res = (ix == 1)  ?  powerfree_count(n,k)  :  powerfree_sum(n,k);
+      if (!(res == 0 && n > 0))  /* overflow */
+        XSRETURN_UV(res);
+    }
+    switch (ix) {
+      case  0: _vcallsub_with_gmp(0.00,"is_powerfree"); break;
+      case  1: _vcallsub_with_pp("powerfree_count"); break;
+      case  2:
+      default: _vcallsub_with_pp("powerfree_sum"); break;
+    }
+    return;
 
 void
 is_power(IN SV* svn, IN UV k = 0, IN SV* svroot = 0)

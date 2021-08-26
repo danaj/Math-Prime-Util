@@ -56,16 +56,16 @@ our @EXPORT_OK =
       nth_semiprime nth_semiprime_approx
       almost_prime_count almost_prime_count_approx
       almost_prime_count_lower almost_prime_count_upper
-      omega_prime_count
-      nth_omega_prime
       nth_almost_prime nth_almost_prime_approx
       nth_almost_prime_lower nth_almost_prime_upper
+      omega_prime_count nth_omega_prime
       ramanujan_prime_count ramanujan_prime_count_approx
       ramanujan_prime_count_lower ramanujan_prime_count_upper
       nth_ramanujan_prime nth_ramanujan_prime_approx
       nth_ramanujan_prime_lower nth_ramanujan_prime_upper
       powerful_count nth_powerful
       perfect_power_count prime_power_count
+      is_powerfree powerfree_count powerfree_sum
       smooth_count rough_count
       sum_primes print_primes
       random_prime random_ndigit_prime
@@ -2962,6 +2962,40 @@ L<OEIS A001481|http://oeis.org/A001481>.
 With C<k == 3> this produces the sequence
 L<OEIS A000378|http://oeis.org/A000378>.
 
+=head2 is_powerfree
+
+Given an integer C<n> and an optional non-negative integer C<k>, returns
+1 is C<|n|> has no divisor C<d^k>, and returns 0 otherwise.
+This determines if C<|n|> has any k-th (or higher) powers in the prime
+factorization.
+C<k> defaults to 2.
+
+With C<k == 2> this produces the sequence of squarefree integers
+L<OEIS A005117|http://oeis.org/A005117>.
+With C<k == 3> this produces the sequence of cubefree integers
+L<OEIS A004709|http://oeis.org/A004709>.
+With C<k == 3> this produces the sequence of biquadratefree integers
+L<OEIS A046100|http://oeis.org/A046100>.
+
+=head2 powerfree_count
+
+Given an integer C<n> and an optional non-negative integer C<k>, returns
+the number of k-powerfree positive integers less than or equal to C<n>.
+C<k> defaults to 2.
+
+With C<k == 2> this produces the sequence
+L<OEIS A013928|http://oeis.org/A013928>.
+With C<k == 3> this produces the sequence
+L<OEIS A060431|http://oeis.org/A060431>.
+
+=head2 powerfree_sum
+
+Given an integer C<n> and an optional non-negative integer C<k>, returns
+the sum of k-powerfree positive integers less than or equal to C<n>.
+C<k> defaults to 2.
+
+With C<k == 2> this produces the sequence
+L<OEIS A066779|http://oeis.org/A066779>.
 
 =head2 sqrtint
 

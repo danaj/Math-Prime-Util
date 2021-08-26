@@ -32,27 +32,35 @@ my @functions =  qw(
       miller_rabin_random
       lucas_sequence
       lucasu lucasv lucasuv lucasumod lucasvmod lucasuvmod
-      primes twin_primes semi_primes ramanujan_primes
+      primes twin_primes semi_primes almost_primes omega_primes ramanujan_primes
       sieve_prime_cluster sieve_range
       lucky_numbers is_lucky nth_lucky
-      forprimes forcomposites foroddcomposites forsemiprimes fordivisors
+      forprimes forcomposites foroddcomposites forsemiprimes foralmostprimes
       forpart forcomp forcomb forperm forderange formultiperm forsetproduct
-      forfactored forsquarefree
+      fordivisors forfactored forsquarefree
       lastfor
       numtoperm permtonum randperm shuffle
       prime_iterator prime_iterator_object
       next_prime  prev_prime
-      prime_count
-      prime_count_lower prime_count_upper prime_count_approx
+      prime_count prime_count_lower prime_count_upper prime_count_approx
       nth_prime nth_prime_lower nth_prime_upper nth_prime_approx inverse_li
       twin_prime_count twin_prime_count_approx
       nth_twin_prime nth_twin_prime_approx
       semiprime_count semiprime_count_approx
       nth_semiprime nth_semiprime_approx
+      almost_prime_count almost_prime_count_approx
+      almost_prime_count_lower almost_prime_count_upper
+      nth_almost_prime nth_almost_prime_approx
+      nth_almost_prime_lower nth_almost_prime_upper
+      omega_prime_count nth_omega_prime
       ramanujan_prime_count ramanujan_prime_count_approx
       ramanujan_prime_count_lower ramanujan_prime_count_upper
       nth_ramanujan_prime nth_ramanujan_prime_approx
       nth_ramanujan_prime_lower nth_ramanujan_prime_upper
+      powerful_count nth_powerful
+      perfect_power_count prime_power_count
+      is_powerfree powerfree_count powerfree_sum
+      smooth_count rough_count
       sum_primes print_primes
       random_prime random_ndigit_prime
       random_nbit_prime random_safe_prime random_strong_prime
@@ -67,15 +75,16 @@ my @functions =  qw(
       tozeckendorf fromzeckendorf
       sqrtmod allsqrtmod rootmod allrootmod
       invmod addmod submod mulmod divmod powmod qnr
-      vecsum vecmin vecmax vecprod vecreduce vecextract
+      vecsum vecmin vecmax vecprod vecreduce vecextract vecequal
       vecany vecall vecnotall vecnone vecfirst vecfirstidx
-      moebius mertens euler_phi jordan_totient exp_mangoldt liouville
+      moebius mertens liouville sumliouville prime_omega prime_bigomega
+      euler_phi jordan_totient exp_mangoldt
       partitions bernfrac bernreal harmfrac harmreal
       chebyshev_theta chebyshev_psi
       divisor_sum carmichael_lambda kronecker hclassno inverse_totient
       ramanujan_tau ramanujan_sum
-      binomial stirling znorder znprimroot znlog legendre_phi
-      factorial factorialmod
+      stirling znorder znprimroot znlog legendre_phi
+      factorial factorialmod binomial binomialmod
       ExponentialIntegral LogarithmicIntegral RiemannZeta RiemannR LambertW Pi
       irand irand64 drand urandomb urandomm csrand random_bytes entropy_bytes
 );

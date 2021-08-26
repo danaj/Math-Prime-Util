@@ -416,3 +416,5 @@
   benchmark various inputs.
 
 - incremental factoring.  Maybe a stateful iterator?
+
+- new semiprime approximations should be used in PP.
