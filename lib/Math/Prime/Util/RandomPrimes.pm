@@ -491,8 +491,8 @@ sub random_nbit_prime {
     # Precalculate some modulii so we can do trial division on native int
     # 9699690 = 2*3*5*7*11*13*17*19, so later operations can be native ints
     my @premod;
-    my $bpremod = _bigint_to_int($b->copy->bmod(9699690));
-    my $twopremod = _bigint_to_int(Math::BigInt->new(2)->bmodpow($bits-$l-1, 9699690));
+    my $bpremod = modint($b, 9699690);
+    my $twopremod = powmod(2, $bits-$l-1, 9699690);
     foreach my $zi (0 .. 19-1) {
       foreach my $pm (3, 5, 7, 11, 13, 17, 19) {
         next if $zi >= $pm || defined $premod[$pm];
