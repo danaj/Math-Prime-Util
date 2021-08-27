@@ -65,7 +65,7 @@ our @EXPORT_OK =
       nth_ramanujan_prime_lower nth_ramanujan_prime_upper
       powerful_count nth_powerful
       perfect_power_count prime_power_count
-      is_powerfree powerfree_count powerfree_sum
+      is_powerfree powerfree_count powerfree_sum powerfree_part
       smooth_count rough_count
       sum_primes print_primes
       random_prime random_ndigit_prime
@@ -2996,6 +2996,27 @@ C<k> defaults to 2.
 
 With C<k == 2> this produces the sequence
 L<OEIS A066779|http://oeis.org/A066779>.
+
+=head2 powerfree_part
+
+Given an integer C<n> and an optional non-negative integer C<k>, returns
+the k-powerfree part of C<n>.  This is done via removing "excess" powers,
+i.e. in the prime factorization of C<n>, we reduce any exponents C<E>
+from C<P^E> to C<P^(E % k)>.  Alternately we can say all k-th powers are
+divided out.
+C<k> defaults to 2.
+
+When C<k == 2>, This is also sometimes called C<core(n)>.  It is the
+unique squarefree integer C<d> such that C<n/d> is a square.
+
+With C<k == 2> this produces the sequence
+L<OEIS A007913|http://oeis.org/A007913>.
+With C<k == 3> this produces the sequence
+L<OEIS A050985|http://oeis.org/A050985>.
+
+With C<k == 2> (the default), this corresponds to Pari/GP's C<core>
+function and Sage's C<squarefree_part> function.
+
 
 =head2 sqrtint
 

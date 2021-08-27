@@ -133,6 +133,7 @@ sub entropy_bytes {
 *is_powerfree = \&Math::Prime::Util::PP::is_powerfree;
 *powerfree_count = \&Math::Prime::Util::PP::powerfree_count;
 *powerfree_sum = \&Math::Prime::Util::PP::powerfree_sum;
+*powerfree_part = \&Math::Prime::Util::PP::powerfree_part;
 
 *random_prime = \&Math::Prime::Util::PP::random_prime;
 *random_ndigit_prime = \&Math::Prime::Util::PP::random_ndigit_prime;

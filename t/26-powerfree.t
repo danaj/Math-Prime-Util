@@ -4,6 +4,7 @@ use warnings;
 
 use Test::More;
 use Math::Prime::Util qw/is_powerfree powerfree_count powerfree_sum
+                         powerfree_part
                          is_square_free vecsum vecmax factor_exp/;
 
 my @simple = (0 .. 16,
@@ -12,7 +13,8 @@ my @simple = (0 .. 16,
 
 plan tests => 3     # simple is square free
             + 11*2  # powerfree_count, powerfree_sum
-            + 6+2;  # ""
+            + 6+2   # ""
+            + 1+8;  # powerfree_part
 
 is_deeply( [map { is_powerfree($_)   } @simple],
            [map { is_square_free($_) } @simple],
@@ -56,4 +58,20 @@ sub ipf {
   return 1 if $n == 1;
 
   (vecmax(map { $_->[1] } factor_exp($n)) < $k) ? 1 : 0;
+}
+
+is_deeply( [map { powerfree_part($_) } 0..30],
+           [0,1,2,3,1,5,6,7,2,1,10,11,3,13,14,15,1,17,2,19,5,21,22,23,6,1,26,3,7,29,30],
+           "powerfree_part(0..30)" );
+
+{
+  my $n = "3709362688507618309707310743757146859608351353598858915828644464895074572939593330420817674692554750";
+  is(powerfree_part($n,0), 0, "powerfree_part(n,0) = 0");
+  is(powerfree_part($n,1), 0, "powerfree_part(n,1) = 0");
+  is(powerfree_part($n,2), 1333310, "powerfree_part(n,2) = 1333310");
+  is(powerfree_part($n,3), "2607554680038", "powerfree_part(n,3)");
+  is(powerfree_part($n,4), "11841796277238534750", "powerfree_part(n,4)");
+  is(powerfree_part($n,5), "1653305696539190388308250", "powerfree_part(n,5)");
+  is(powerfree_part($n,6), "1315461663807740740160892737772750", "powerfree_part(n,6)");
+  is(powerfree_part($n,7), "65926023382783093515719030419129876118250", "powerfree_part(n,7)");
 }

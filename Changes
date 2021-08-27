@@ -61,6 +61,7 @@ Revision history for Perl module Math::Prime::Util
     - is_powerfree(n[,k])             is n a k-powerfree number (default k=2)
     - powerfree_count(n[,k])          count of k-powerfree numbers <= n
     - powerfree_sum(n[,k])            sum of k-powerfree numbers <= n
+    - powerfree_part(n[,k])           remove excess powers from n
     - perfect_power_count(n)          count of perfect powers <= n
     - prime_power_count(n)            count of prime powers <= n
     - smooth_count(n,k)               count of k-smooth numbers <= n

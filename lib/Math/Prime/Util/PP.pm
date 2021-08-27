@@ -1470,6 +1470,27 @@ sub powerfree_sum {
   $sum;
 }
 
+sub powerfree_part {
+  my($n, $k) = @_;
+  $n = -$n if defined $n && $n < 0;
+  _validate_positive_integer($n);
+  if (defined $k) { _validate_positive_integer($k); }
+  else            { $k = 2; }
+
+  return (($n == 1) ? 1 : 0)  if $k < 2 || $n <= 1;
+
+  #return Mvecprod(map { Mpowint($_->[0], $_->[1] % $k) } Mfactor_exp($n));
+
+  # Rather than build with k-free section, we will remove excess powers
+  my $P = $n;
+  for my $pe (Mfactor_exp($n)) {
+    if ($pe->[1] >= $k) {
+      $P = Mdivint($P, Mpowint($pe->[0], $pe->[1] - ($pe->[1] % $k)));
+    }
+  }
+  $P;
+}
+
 sub perfect_power_count {
   my($n) = @_;
   _validate_positive_integer($n);

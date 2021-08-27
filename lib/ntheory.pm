@@ -332,6 +332,7 @@ Tags:
   rough_count(n,k)                    count of k-rough numbers <= n
   powerfree_count(n[,k])              count of k-powerfree numbers <= n
   powerfree_sum(n[,k])                sum of k-powerfree numbers <= n
+  powerfree_part(n[,k])               remove excess powers so n is k-free
 
 =head2 NON-INTEGER MATH
 

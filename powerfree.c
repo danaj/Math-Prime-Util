@@ -3,6 +3,7 @@
 #include <string.h>
 
 #define FUNC_ipow 1
+#define FUNC_ctz 1
 #include "ptypes.h"
 #include "constants.h"
 #include "powerfree.h"
@@ -87,4 +88,31 @@ UV powerfree_sum(UV n, uint32_t k)
     }
   }
   return sum;
+}
+
+
+UV powerfree_part(UV n, uint32_t k)
+{
+  UV fac[MPU_MAX_FACTORS+1];
+  UV exp[MPU_MAX_FACTORS+1];
+  UV t, P;
+  int i, nfactors;
+
+  if (k < 2 || n <= 1)
+    return (n==1);
+
+  if (k >= BITS_PER_WORD || n < (UVCONST(1) << (k-1)))
+    return n;
+
+  /* Pull all powers of two out */
+  t = ctz(n);
+  P = n >> t;
+  if ((t % k))  P <<= (t % k);
+
+  nfactors = factor_exp(P, fac, exp);
+  for (i = 0; i < nfactors; i++)
+    if (exp[i] >= k)
+      P /= ipow(fac[i], exp[i] - (exp[i] % k));
+
+  return P;
 }

@@ -1589,6 +1589,7 @@ void is_powerfree(IN SV* svn, IN int k = 2)
   ALIAS:
     powerfree_count = 1
     powerfree_sum = 2
+    powerfree_part = 3
   PREINIT:
     int status;
     UV n, res;
@@ -1596,17 +1597,27 @@ void is_powerfree(IN SV* svn, IN int k = 2)
     status = _validate_and_set(&n, aTHX_ svn, IFLAG_ABS);
     res = 0;
     if (status == 1) {
+      switch (ix) {
+        case 0:  res = is_powerfree(n,k);    break;
+        case 1:  res = powerfree_count(n,k); break;
+        case 2:  res = powerfree_sum(n,k);   break;
+        case 3:
+        default: res = powerfree_part(n,k);  break;
+      }
       if (ix == 0)
-        RETURN_NPARITY(is_powerfree(n,k));
-      res = (ix == 1)  ?  powerfree_count(n,k)  :  powerfree_sum(n,k);
-      if (!(res == 0 && n > 0))  /* overflow */
+        RETURN_NPARITY(res);
+      if (res == 0 && n > 0) {
+        /* overflow.  Go to PP below. */
+      } else {
         XSRETURN_UV(res);
+      }
     }
     switch (ix) {
       case  0: _vcallsub_with_gmp(0.00,"is_powerfree"); break;
       case  1: _vcallsub_with_pp("powerfree_count"); break;
-      case  2:
-      default: _vcallsub_with_pp("powerfree_sum"); break;
+      case  2: _vcallsub_with_pp("powerfree_sum"); break;
+      case  3:
+      default: _vcallsub_with_pp("powerfree_part"); break;
     }
     return;
 
