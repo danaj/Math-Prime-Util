@@ -93,8 +93,6 @@
 
 - Test for print_primes.  Not as easy with filenos.
 
-- sum primes better than current method.  Especially using less memory.
-
 - divsum and divsummult as block functions.
   The latter does sum = vecprod(1 + f(p_i) + f(p_i^2) + ... f(p_i^e) for all p.
 
@@ -308,16 +306,9 @@
   mpu 'for my $e (1..9) { $s=0; $s += is_practical($_) for 1..10**$e; say "10^$e  $s"; }'
   5, 30, 198, 1456, 11751, 97385, 829157, 7266286, 64782731, 582798892, 5283879886
 
-- export prime_powers, test, document, etc.
-
-- Better method for prime_powers
-  use minheap, data is [p^k,p].  Remove min.
-  if (p^k == p) { add p^2 and next_prime(p) } else { add p^k * p }
-  to init for a range, .... do something clever ...
-  Alternately, do a SoE without removing prime powers
-  Alternately, SoE then merge with p^2,p^3,etc for p <= sqrt(end)
-
 - consider forprimepowers { ... } beg,end
+
+- PP next_prime_power, prev_prime_power: skip evens.
 
 - test coverage for PP.
 
@@ -418,3 +409,5 @@
 - incremental factoring.  Maybe a stateful iterator?
 
 - new semiprime approximations should be used in PP.
+
+- get rid of the pp shell for prime_powers, semiprimes, etc.  Just use XS.

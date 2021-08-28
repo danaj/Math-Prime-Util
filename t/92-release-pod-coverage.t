@@ -29,7 +29,7 @@ foreach my $m (@modules) {
     also_private => [
                       qr/^(erat|segment|trial|sieve|segment_twin)_primes$/,
                       'semi_prime_sieve', 'almost_prime_sieve',
-                      'omega_prime_sieve', 'prime_powers',
+                      'omega_prime_sieve', 'prime_power_sieve',
                     ],
   };
   $param->{trustme} = [mpu_public_regex(), mpu_factor_regex()]
@@ -68,7 +68,7 @@ sub mpu_public_regex {
       lucas_sequence
       lucasu lucasv lucasuv lucasumod lucasvmod lucasuvmod
       primes twin_primes semi_primes almost_primes omega_primes ramanujan_primes
-      sieve_prime_cluster sieve_range
+      sieve_prime_cluster sieve_range prime_powers
       lucky_numbers is_lucky nth_lucky
       forprimes forcomposites foroddcomposites forsemiprimes foralmostprimes
       forpart forcomp forcomb forperm forderange formultiperm forsetproduct
@@ -76,7 +76,7 @@ sub mpu_public_regex {
       lastfor
       numtoperm permtonum randperm shuffle
       prime_iterator prime_iterator_object
-      next_prime  prev_prime
+      next_prime prev_prime  next_prime_power prev_prime_power
       prime_count prime_count_lower prime_count_upper prime_count_approx
       nth_prime nth_prime_lower nth_prime_upper nth_prime_approx inverse_li
       twin_prime_count twin_prime_count_approx

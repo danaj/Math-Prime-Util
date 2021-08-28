@@ -73,6 +73,7 @@ Tags:
 =head2 PRIMES
 
   primes([start,] end)                array ref of primes
+  prime_powers([start,] end)          array ref of prime powers
   twin_primes([start,] end)           array ref of twin primes
   semi_primes([start,] end)           array ref of semiprimes
   almost_primes(k, [start,] end)      array ref of k-almost-primes
@@ -82,6 +83,8 @@ Tags:
   sieve_range(n, width, depth)        sieve out small factors to depth
   next_prime(n)                       next prime > n
   prev_prime(n)                       previous prime < n
+  next_prime_power(n)                 next prime power > n
+  prev_prime_power(n)                 previous prime power < n
   prime_count(n)                      count of primes <= n
   prime_count(start, end)             count of primes in range
   prime_count_lower(n)                fast lower bound for prime count

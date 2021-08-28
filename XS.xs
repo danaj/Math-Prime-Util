@@ -864,7 +864,7 @@ sieve_primes(IN UV low, IN UV high)
     semi_prime_sieve = 5
     _ramanujan_primes = 6
     _n_ramanujan_primes = 7
-    prime_powers = 8
+    prime_power_sieve = 8
   PREINIT:
     AV* av;
   PPCODE:
@@ -945,10 +945,12 @@ sieve_primes(IN UV low, IN UV high)
             av_push(av,newSVuv(L[i]));
         Safefree(L);
       } else if (ix == 8) {                   /* Prime powers */
-        UV i, prime;
-        for (i = low-1; i < high; i++)
-          if (primepower(i+1, &prime))
-            av_push(av,newSVuv(i+1));
+        /* for (low = next_prime_power(low-1); low <= high && low != 0; low = next_prime_power(low))  av_push(av,newSVuv(low)); */
+        UV i, np, *pow;
+        np = prime_power_sieve(&pow,low,high);
+        for (i = 0; i < np; i++)
+          av_push(av,newSVuv(pow[i]));
+        Safefree(pow);
       }
     }
     return; /* skip implicit PUTBACK */
@@ -1662,7 +1664,7 @@ is_prime_power(IN SV* svn, IN SV* svroot = 0)
   PPCODE:
     status = _validate_and_set(&n, aTHX_ svn, IFLAG_ANY);
     if (status != 0) {
-      ret = (status == 1)  ?  primepower(n, &root)  :  0;
+      ret = (status == 1)  ?  prime_power(n, &root)  :  0;
       if (ret && svroot != 0) {
         if (!SvROK(svroot))croak("is_prime_power: second argument not a scalar reference");
         sv_setuv(SvRV(svroot), root);
@@ -1811,6 +1813,30 @@ next_prime(IN SV* svn)
     if (ix == 0 || ix == 1 || ix == 23)
       objectify_result(aTHX_ svn, ST(0));
     return; /* skip implicit PUTBACK */
+
+void next_prime_power(IN SV* svn)
+  ALIAS:
+    prev_prime_power = 1
+  PREINIT:
+    UV n, ret;
+  PPCODE:
+    if (_validate_and_set(&n, aTHX_ svn, IFLAG_ABS)) {
+      if (ix == 1 && n < 3) XSRETURN_UNDEF;
+      ret = 0;
+      switch (ix) {
+        case 0:  ret = next_prime_power(n); break;
+        case 1:  ret = prev_prime_power(n); break;
+        default: break;
+      }
+      if (ret != 0) XSRETURN_UV(ret);
+    }
+    switch (ix) {
+      case 0:  _vcallsub_with_pp("next_prime_power");  break;
+      case 1:
+      default: _vcallsub_with_pp("prev_prime_power");  break;
+    }
+    objectify_result(aTHX_ svn, ST(0));
+    return;
 
 void urandomb(IN UV bits)
   ALIAS:

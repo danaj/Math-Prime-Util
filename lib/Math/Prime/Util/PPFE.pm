@@ -112,6 +112,8 @@ sub entropy_bytes {
 *sum_primes = \&Math::Prime::Util::PP::sum_primes;
 *print_primes = \&Math::Prime::Util::PP::print_primes;
 *sieve_range = \&Math::Prime::Util::PP::sieve_range;
+#*prime_powers = \&Math::Prime::Util::PP::prime_powers;
+
 *is_carmichael = \&Math::Prime::Util::PP::is_carmichael;
 *is_quasi_carmichael = \&Math::Prime::Util::PP::is_quasi_carmichael;
 *is_pillai = \&Math::Prime::Util::PP::is_pillai;
@@ -148,6 +150,11 @@ sub entropy_bytes {
 *random_semiprime = \&Math::Prime::Util::PP::random_semiprime;
 *random_unrestricted_semiprime = \&Math::Prime::Util::PP::random_unrestricted_semiprime;
 *random_factored_integer = \&Math::Prime::Util::PP::random_factored_integer;
+
+*next_prime = \&Math::Prime::Util::PP::next_prime;
+*prev_prime = \&Math::Prime::Util::PP::prev_prime;
+*next_prime_power = \&Math::Prime::Util::PP::next_prime_power;
+*prev_prime_power = \&Math::Prime::Util::PP::prev_prime_power;
 
 *numtoperm = \&Math::Prime::Util::PP::numtoperm;
 *permtonum = \&Math::Prime::Util::PP::permtonum;
@@ -243,16 +250,6 @@ sub hclassno {
 }
 
 
-sub next_prime {
-  my($n) = @_;
-  _validate_positive_integer($n);
-  return Math::Prime::Util::PP::next_prime($n);
-}
-sub prev_prime {
-  my($n) = @_;
-  _validate_positive_integer($n);
-  return Math::Prime::Util::PP::prev_prime($n);
-}
 sub nth_prime {
   my($n) = @_;
   _validate_positive_integer($n);

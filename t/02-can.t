@@ -33,7 +33,7 @@ my @functions =  qw(
       lucas_sequence
       lucasu lucasv lucasuv lucasumod lucasvmod lucasuvmod
       primes twin_primes semi_primes almost_primes omega_primes ramanujan_primes
-      sieve_prime_cluster sieve_range
+      sieve_prime_cluster sieve_range prime_powers
       lucky_numbers is_lucky nth_lucky
       forprimes forcomposites foroddcomposites forsemiprimes foralmostprimes
       forpart forcomp forcomb forperm forderange formultiperm forsetproduct
@@ -41,7 +41,7 @@ my @functions =  qw(
       lastfor
       numtoperm permtonum randperm shuffle
       prime_iterator prime_iterator_object
-      next_prime  prev_prime
+      next_prime prev_prime  next_prime_power prev_prime_power
       prime_count prime_count_lower prime_count_upper prime_count_approx
       nth_prime nth_prime_lower nth_prime_upper nth_prime_approx inverse_li
       twin_prime_count twin_prime_count_approx

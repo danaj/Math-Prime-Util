@@ -39,7 +39,7 @@ our @EXPORT_OK =
       lucas_sequence
       lucasu lucasv lucasuv lucasumod lucasvmod lucasuvmod
       primes twin_primes semi_primes almost_primes omega_primes ramanujan_primes
-      sieve_prime_cluster sieve_range
+      sieve_prime_cluster sieve_range prime_powers
       lucky_numbers is_lucky nth_lucky
       forprimes forcomposites foroddcomposites forsemiprimes foralmostprimes
       forpart forcomp forcomb forperm forderange formultiperm forsetproduct
@@ -47,7 +47,7 @@ our @EXPORT_OK =
       lastfor
       numtoperm permtonum randperm shuffle
       prime_iterator prime_iterator_object
-      next_prime  prev_prime
+      next_prime prev_prime  next_prime_power prev_prime_power
       prime_count prime_count_lower prime_count_upper prime_count_approx
       nth_prime nth_prime_lower nth_prime_upper nth_prime_approx inverse_li
       twin_prime_count twin_prime_count_approx
@@ -424,6 +424,27 @@ sub primes {
 
 # Shortcut for primes returning an array instead of array reference.
 # sub aprimes { @{primes(@_)}; }
+
+# TODO: These should just be in XS
+
+sub prime_powers {
+  my($low,$high) = @_;
+  if (scalar @_ > 1) {
+    _validate_num($low) || _validate_positive_integer($low);
+  } else {
+    ($low,$high) = (2, $low);
+  }
+  _validate_num($high) || _validate_positive_integer($high);
+
+  return [] if ($low > $high) || ($high < 2);
+
+  if ($high > $_XS_MAXVAL) {
+    require Math::Prime::Util::PP;
+    return Math::Prime::Util::PP::prime_powers($low,$high);
+  }
+
+  return Math::Prime::Util::prime_power_sieve($low, $high);
+}
 
 sub twin_primes {
   my($low,$high) = @_;
@@ -1479,6 +1500,33 @@ return value will be the first prime less than C<2>,
 L<Math::Prime::FastSieve>, L<Math::Pari>, Pari/GP, and older versions of
 MPU will return C<0>.  L<Math::Primality> and the current MPU will return
 C<undef>.  WolframAlpha returns C<-2>.  Maple gives a range error.
+
+
+=head2 prime_powers
+
+  my $aref = prime_powers( 10**4 );
+
+Given either two non-negative limits C<lo>, C<hi>, or one non-negative
+limit C<hi>, returns an array reference with all prime powers between
+the limits (inclusive).  With only one input, the lower limit is C<2>.
+
+The array reference values will be all C<p^e> where
+C<lo E<lt>= p^e E<lt>= hi> with C<p> prime and C<e E<gt>= 1>.  Hence this
+includes the primes as well as higher powers of primes.
+
+See also L</primes> and L</prime_power_count>.
+
+=head2 next_prime_power
+
+Given an integer C<n>, returns the smallest prime power greater than C<|n|>.
+Similar to L</next_prime>, but also includes powers of primes.
+
+=head2 prev_prime_power
+
+Given an integer C<n>, returns the greatest prime power less than C<|n|>.
+Similar to L</prev_prime>, but also includes powers of primes.
+If given C<|n|> less than 3, C<undef> will be returned.
+
 
 =head2 forprimes
 

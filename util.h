@@ -17,13 +17,17 @@ extern int is_prime(UV x);
 extern UV  next_prime(UV x);
 extern UV  prev_prime(UV x);
 
+extern UV  next_prime_power(UV x);
+extern UV  prev_prime_power(UV x);
+
 extern void print_primes(UV low, UV high, int fd);
 
 extern uint32_t powerof(UV n);
 extern int is_power(UV n, UV a);
 extern UV rootint(UV n, UV k);
 extern UV ipowsafe(UV n, UV k);  /* returns UV_MAX if overflows */
-extern int primepower(UV n, UV* prime);
+extern int prime_power(UV n, UV* prime);
+#define is_prime_power(n)  (!!prime_power(n,0))
 extern UV valuation(UV n, UV k);
 extern UV valuation_remainder(UV n, UV k, UV *r);
 extern UV logint(UV n, UV b);
@@ -92,6 +96,9 @@ extern UV powerful_count(UV n, UV k);
 extern UV nth_powerful(UV n, UV k);
 
 extern UV perfect_power_count(UV n);
+
+extern UV prime_power_sieve2(UV** list, UV lo, UV hi);  /* p^e with e >= 2 */
+extern UV prime_power_sieve(UV** list, UV lo, UV hi);   /* p^e with e >= 1 */
 
 extern int is_sum_of_two_squares(UV n);
 extern int is_sum_of_three_squares(UV n);

@@ -877,6 +877,25 @@ sub prev_prime {
   $n;
 }
 
+sub next_prime_power {
+  my($n) = @_;
+  _validate_positive_integer($n);
+  return (2,2,3,4,5,7,7,8,9)[$n] if $n <= 8;
+  while (1) {
+    $n = Maddint($n, 1);
+    return $n if is_prime_power($n);
+  }
+}
+sub prev_prime_power {
+  my($n) = @_;
+  _validate_positive_integer($n);
+  return (undef,undef,undef,2,3,4,5,5,7)[$n] if $n <= 8;
+  while (1) {
+    $n = Msubint($n, 1);
+    return $n if is_prime_power($n);
+  }
+}
+
 sub partitions {
   my $n = shift;
 
