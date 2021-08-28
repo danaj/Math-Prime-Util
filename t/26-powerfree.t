@@ -4,7 +4,7 @@ use warnings;
 
 use Test::More;
 use Math::Prime::Util qw/is_powerfree powerfree_count powerfree_sum
-                         powerfree_part
+                         powerfree_part powerfree_part_sum
                          is_square_free vecsum vecmax factor_exp/;
 
 my @simple = (0 .. 16,
@@ -14,7 +14,8 @@ my @simple = (0 .. 16,
 plan tests => 3     # simple is square free
             + 11*2  # powerfree_count, powerfree_sum
             + 6+2   # ""
-            + 1+8;  # powerfree_part
+            + 1+8   # powerfree_part
+            + 8*2;  # powerfree_part_sum
 
 is_deeply( [map { is_powerfree($_)   } @simple],
            [map { is_square_free($_) } @simple],
@@ -74,4 +75,14 @@ is_deeply( [map { powerfree_part($_) } 0..30],
   is(powerfree_part($n,5), "1653305696539190388308250", "powerfree_part(n,5)");
   is(powerfree_part($n,6), "1315461663807740740160892737772750", "powerfree_part(n,6)");
   is(powerfree_part($n,7), "65926023382783093515719030419129876118250", "powerfree_part(n,7)");
+}
+
+my @pfpst = (1,1,140859826282,181173729990,198592475728,206650589642,210471526468,212309099991);
+for my $k (0 .. 7) {
+  is_deeply(
+      [map { powerfree_part_sum($_, $k) } 0..32],
+      [map { vecsum(map { powerfree_part($_, $k) } 1..$_) } 0..32],
+      "powerfree_part_sum(0..64, $k)"
+  );
+  is( powerfree_part_sum(654321,$k), $pfpst[$k], "powerfree_part_sum(654321,$k) = $pfpst[$k]" );
 }

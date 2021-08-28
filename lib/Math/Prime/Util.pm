@@ -65,7 +65,8 @@ our @EXPORT_OK =
       nth_ramanujan_prime_lower nth_ramanujan_prime_upper
       powerful_count nth_powerful
       perfect_power_count prime_power_count
-      is_powerfree powerfree_count powerfree_sum powerfree_part
+      is_powerfree powerfree_count powerfree_sum
+      powerfree_part powerfree_part_sum
       smooth_count rough_count
       sum_primes print_primes
       random_prime random_ndigit_prime
@@ -1959,7 +1960,7 @@ by exactly C<k> different primes.
 
 The k-omega-primes (not a common term) are exactly those integers where
 C<prime_omega(n) == k>.
-Compare to k-almost-primes where C<prime_bigomega(n) == k).
+Compare to k-almost-primes where C<prime_bigomega(n) == k>.
 
 With C<k=1> these are the prime powers.
 With C<k=2> these are (L<OEIS A007774|http://oeis.org/A007774>).
@@ -2970,11 +2971,11 @@ This determines if C<|n|> has any k-th (or higher) powers in the prime
 factorization.
 C<k> defaults to 2.
 
-With C<k == 2> this produces the sequence of squarefree integers
+With C<k == 2> this produces the sequence of square-free integers
 L<OEIS A005117|http://oeis.org/A005117>.
-With C<k == 3> this produces the sequence of cubefree integers
+With C<k == 3> this produces the sequence of cube-free integers
 L<OEIS A004709|http://oeis.org/A004709>.
-With C<k == 3> this produces the sequence of biquadratefree integers
+With C<k == 3> this produces the sequence of biquadrate-free integers
 L<OEIS A046100|http://oeis.org/A046100>.
 
 =head2 powerfree_count
@@ -3007,7 +3008,7 @@ divided out.
 C<k> defaults to 2.
 
 When C<k == 2>, This is also sometimes called C<core(n)>.  It is the
-unique squarefree integer C<d> such that C<n/d> is a square.
+unique square-free integer C<d> such that C<n/d> is a square.
 
 With C<k == 2> this produces the sequence
 L<OEIS A007913|http://oeis.org/A007913>.
@@ -3017,6 +3018,18 @@ L<OEIS A050985|http://oeis.org/A050985>.
 With C<k == 2> (the default), this corresponds to Pari/GP's C<core>
 function and Sage's C<squarefree_part> function.
 
+=head2 powerfree_part_sum
+
+Given an integer C<n> and an optional non-negative integer C<k>, returns
+the sum of k-powerfree parts of all positive integers E<lt>= C<n>.  This
+is equivalent to
+
+    vecsum(map { powerfree_part($_,$k) } 1..$n)
+
+but substantially faster.
+
+With C<k == 2> this produces the sequence
+L<OEIS A069891|http://oeis.org/A069891>.
 
 =head2 sqrtint
 
@@ -3113,7 +3126,7 @@ Some of those extend to non-integers.
 =head2 cmpint
 
 Given integers C<a> and C<b>, returns a positive value if C<a> is greater
-and C<b>, zero if thet are equal, and a negative value if C<a> is less than
+and C<b>, zero if they are equal, and a negative value if C<a> is less than
 C<b>.
 
 The main value of this is to ensure Perl never silently converts the values

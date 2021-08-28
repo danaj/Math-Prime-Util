@@ -1590,6 +1590,7 @@ void is_powerfree(IN SV* svn, IN int k = 2)
     powerfree_count = 1
     powerfree_sum = 2
     powerfree_part = 3
+    powerfree_part_sum = 4
   PREINIT:
     int status;
     UV n, res;
@@ -1601,8 +1602,9 @@ void is_powerfree(IN SV* svn, IN int k = 2)
         case 0:  res = is_powerfree(n,k);    break;
         case 1:  res = powerfree_count(n,k); break;
         case 2:  res = powerfree_sum(n,k);   break;
-        case 3:
-        default: res = powerfree_part(n,k);  break;
+        case 3:  res = powerfree_part(n,k);  break;
+        case 4:
+        default: res = powerfree_part_sum(n,k);  break;
       }
       if (ix == 0)
         RETURN_NPARITY(res);
@@ -1616,8 +1618,9 @@ void is_powerfree(IN SV* svn, IN int k = 2)
       case  0: _vcallsub_with_gmp(0.00,"is_powerfree"); break;
       case  1: _vcallsub_with_pp("powerfree_count"); break;
       case  2: _vcallsub_with_pp("powerfree_sum"); break;
-      case  3:
-      default: _vcallsub_with_pp("powerfree_part"); break;
+      case  3: _vcallsub_with_pp("powerfree_part"); break;
+      case  4:
+      default: _vcallsub_with_pp("powerfree_part_sum"); break;
     }
     return;
 

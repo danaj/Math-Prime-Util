@@ -29,6 +29,7 @@ foreach my $m (@modules) {
     also_private => [
                       qr/^(erat|segment|trial|sieve|segment_twin)_primes$/,
                       'semi_prime_sieve', 'almost_prime_sieve',
+                      'omega_prime_sieve', 'prime_powers',
                     ],
   };
   $param->{trustme} = [mpu_public_regex(), mpu_factor_regex()]
@@ -93,7 +94,8 @@ sub mpu_public_regex {
       nth_ramanujan_prime_lower nth_ramanujan_prime_upper
       powerful_count nth_powerful
       perfect_power_count prime_power_count
-      is_powerfree powerfree_count powerfree_sum powerfree_part
+      is_powerfree powerfree_count powerfree_sum
+      powerfree_part powerfree_part_sum
       smooth_count rough_count
       sum_primes print_primes
       random_prime random_ndigit_prime

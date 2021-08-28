@@ -59,7 +59,8 @@ my @functions =  qw(
       nth_ramanujan_prime_lower nth_ramanujan_prime_upper
       powerful_count nth_powerful
       perfect_power_count prime_power_count
-      is_powerfree powerfree_count powerfree_sum powerfree_part
+      is_powerfree powerfree_count powerfree_sum
+      powerfree_part powerfree_part_sum
       smooth_count rough_count
       sum_primes print_primes
       random_prime random_ndigit_prime

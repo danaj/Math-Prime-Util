@@ -1491,6 +1491,31 @@ sub powerfree_part {
   $P;
 }
 
+sub _T {
+  my($n)=shift;
+  Mdivint(Mmulint($n, Maddint($n, 1)), 2);
+}
+sub _fprod {
+  my($n,$k)=@_;
+  Mvecprod(map { 1 - Mpowint($_->[0], $k) } Mfactor_exp($n));
+}
+
+sub powerfree_part_sum {
+  my($n, $k) = @_;
+  $n = -$n if defined $n && $n < 0;
+  _validate_positive_integer($n);
+  if (defined $k) { _validate_positive_integer($k); }
+  else            { $k = 2; }
+
+  return (($n >= 1) ? 1 : 0)  if $k < 2 || $n <= 1;
+
+  my $sum = _T($n);
+  for (2 .. Mrootint($n,$k)) {
+    $sum = Maddint($sum, Mmulint(_fprod($_,$k), _T(Mdivint($n, Mpowint($_, $k)))));
+  }
+  $sum;
+}
+
 sub perfect_power_count {
   my($n) = @_;
   _validate_positive_integer($n);
@@ -4304,7 +4329,7 @@ sub _ts_rootmod {
       $l++;
     }
     # We want a znlog that takes gorder as well (k=znorder(m,p))
-    my $kz = negmod(znlog($z, $m, $p), $k);
+    my $kz = _negmod(znlog($z, $m, $p), $k);
     $m = Mpowmod($m, $kz, $p);
     $T = Mpowmod($y, Mmulint($kz,Mpowint($k,$e-$l)), $p);
     # In the loop we always end with l < e, so e always gets smaller
@@ -4844,7 +4869,7 @@ sub powmod {
   $ret;
 }
 
-sub negmod {
+sub _negmod {
   my($a,$n) = @_;
   $a = Mmodint($a,$n) if $a >= $n;
   return ($a) ? ($n-$a) : 0;
