@@ -14,6 +14,7 @@
 #include "cache.h"
 #include "sieve.h"
 #include "prime_counts.h"
+#include "prime_powers.h"
 #include "factor.h"
 #include "inverse_interpolate.h"
 #include "omega_primes.h"
@@ -21,6 +22,21 @@
 /******************************************************************************/
 /*                              OMEGA PRIMES                                  */
 /******************************************************************************/
+
+int is_omega_prime(uint32_t k, UV n) {
+  if (k > 0 && !(n& 1)) { k--; do { n >>= 1; } while (!(n& 1)); }
+  if (k > 0 && !(n% 3)) { k--; do { n /=  3; } while (!(n% 3)); }
+  if (k > 0 && !(n% 5)) { k--; do { n /=  5; } while (!(n% 5)); }
+  if (k > 0 && !(n% 7)) { k--; do { n /=  7; } while (!(n% 7)); }
+  if (k > 0 && !(n%11)) { k--; do { n /= 11; } while (!(n%11)); }
+
+  if (n == 1) return (k == 0);
+  if (k == 0) return (n == 1);
+  if (k == 1) return is_prime_power(n);
+  if (n < ipowsafe(13,k)) return 0;
+
+  return ((UV)prime_omega(n) == k);
+}
 
 /* See https://arxiv.org/pdf/2006.16491.pdf page 12 for a brief note */
 

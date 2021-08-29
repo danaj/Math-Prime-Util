@@ -52,6 +52,7 @@ WriteMakefile1(
                     'prime_count_cache.o ' .
                     'prime_counts.o ' .
                     'prime_sums.o '   .
+                    'prime_powers.o ' .
                     'powerfree.o '    .
                     'real.o '         .
                     'rootmod.o '      .

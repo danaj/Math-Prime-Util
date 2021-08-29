@@ -57,6 +57,8 @@ prime_count_cache.h
 prime_count_tables.h
 prime_counts.h
 prime_counts.c
+prime_powers.h
+prime_powers.c
 prime_sums.h
 prime_sums.c
 ramanujan_primes.h

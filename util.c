@@ -24,6 +24,7 @@
 #include "lmo.h"
 #include "legendre_phi.h"
 #include "prime_counts.h"
+#include "prime_powers.h"
 #include "factor.h"
 #include "mulmod.h"
 #include "constants.h"
@@ -173,37 +174,6 @@ UV prev_prime(UV n)
     m = prevwheel30[m];
   } while (!is_prob_prime(n));
   return n;
-}
-
-UV next_prime_power(UV n)
-{
-  UV i, bit;
-
-  if (n < 2) return 2;
-  if (n >= MPU_MAX_PRIME) return 0; /* Overflow (max power = max prime) */
-
-#if 0
-  /* Straightforward loop */
-  for (i = n+1;  !is_prime_power(i);  i++)
-    ;
-  return i;
-#else
-  /* Skip evens */
-  bit = UVCONST(1) << log2floor(n);
-  for (i = n+1+(n&1);  i & bit;  i += 2)
-    if (is_prime_power(i))
-      return i;
-  return i-1;  /* We went past a power of two */
-#endif
-}
-
-UV prev_prime_power(UV n)
-{
-  UV i;
-  if (n <= 2) return 0;
-  for (i = n-1;  !is_prime_power(i);  i--)
-    ;
-  return i;
 }
 
 /******************************************************************************/
@@ -781,50 +751,6 @@ UV ipowsafe(UV n, UV k) {
   return p;
 }
 
-int prime_power(UV n, UV* prime)
-{
-  int power = 0;
-  if (n < 2) return 0;
-  /* Check for small divisors */
-  if (!(n&1)) {
-    if (n & (n-1)) return 0;
-    if (prime) *prime = 2;
-    return ctz(n);
-  }
-  if ((n%3) == 0) {
-    /* if (UVCONST(12157665459056928801) % n) return 0; */
-    do { n /= 3; power++; } while (n > 1 && (n%3) == 0);
-    if (n != 1) return 0;
-    if (prime) *prime = 3;
-    return power;
-  }
-  if ((n%5) == 0) {
-    do { n /= 5; power++; } while (n > 1 && (n%5) == 0);
-    if (n != 1) return 0;
-    if (prime) *prime = 5;
-    return power;
-  }
-  if ((n%7) == 0) {
-    do { n /= 7; power++; } while (n > 1 && (n%7) == 0);
-    if (n != 1) return 0;
-    if (prime) *prime = 7;
-    return power;
-  }
-  if (is_prob_prime(n))
-    { if (prime) *prime = n; return 1; }
-  /* Composite.  Test for perfect power with prime root. */
-  power = powerof(n);
-  if (power == 1) power = 0;
-  if (power) {
-    UV root = rootint(n, (UV)power);
-    if (is_prob_prime(root))
-      { if (prime) *prime = root; }
-    else
-      power = 0;
-  }
-  return power;
-}
-
 UV valuation(UV n, UV k)
 {
   UV v = 0;
@@ -1331,20 +1257,6 @@ int is_almost_prime(UV k, UV n) {
   if (n < ipowsafe(p,k)) return 0;
 
   return ((UV)prime_bigomega(n) == k);
-}
-int is_omega_prime(UV k, UV n) {
-  if (k > 0 && !(n& 1)) { k--; do { n >>= 1; } while (!(n& 1)); }
-  if (k > 0 && !(n% 3)) { k--; do { n /=  3; } while (!(n% 3)); }
-  if (k > 0 && !(n% 5)) { k--; do { n /=  5; } while (!(n% 5)); }
-  if (k > 0 && !(n% 7)) { k--; do { n /=  7; } while (!(n% 7)); }
-  if (k > 0 && !(n%11)) { k--; do { n /= 11; } while (!(n%11)); }
-
-  if (n == 1) return (k == 0);
-  if (k == 0) return (n == 1);
-  if (k == 1) return is_prime_power(n);
-  if (n < ipowsafe(13,k)) return 0;
-
-  return ((UV)prime_omega(n) == k);
 }
 
 int is_fundamental(UV n, int neg) {
@@ -3661,66 +3573,4 @@ int is_lucky(UV n) {
   }
   Safefree(lucky32);
   return 1;
-}
-
-/* The prime powers without the primes */
-UV prime_power_sieve2(UV** list, UV lo, UV hi) {
-  UV k, log2n, *powers, np = 0, npmax = 0;
-
-  if (hi < 2 || lo > hi) { *list = 0; return 0; }
-
-  /* Estimate how many powers we'll have */
-  log2n = log2floor(hi);
-  for (k = 2; k <= log2n; k++) {
-    npmax += prime_count_upper(rootint(hi,k));
-    if (lo > 2) npmax -= prime_count_lower(rootint(lo-1,k));
-  }
-
-  New(0, powers, npmax, UV);
-
-  /* Find all powers and add to list */
-  for (k = 2; k <= log2n; k++) {
-    START_DO_FOR_EACH_PRIME(2, rootint(hi,k)) {
-      UV pk = ipow(p,k);
-      //if (pk >= lo)  powers[np++] = pk;
-      if (pk >= lo)  { if (np >= npmax) croak("overflow"); powers[np++] = pk; }
-    } END_DO_FOR_EACH_PRIME
-  }
-
-  /* Sort them and return */
-  qsort(powers, np, sizeof(UV), _numcmp);
-  *list = powers;
-  return np;
-}
-
-/* The prime powers with the primes */
-UV prime_power_sieve(UV** list, UV lo, UV hi) {
-  UV npower, nprime, ipower, iprime, ntotal, i, *powers, *primes, *tot;
-
-  if (hi < 2 || lo > hi) { *list = 0; return 0; }
-
-  /* For better performance / memory:
-   *   1) realloc primes, use reverse merge to add powers in with one pass
-   *   2) sieve the primes here and merge the powers in.
-   */
-
-  npower = prime_power_sieve2(&powers, lo, hi);
-  nprime = range_prime_sieve(&primes, lo, hi);
-
-  /* The powers get sparse, so this isn't impossible. */
-  if (npower == 0) { Safefree(powers); *list = primes; return nprime; }
-
-  ipower = 0;
-  iprime = 0;
-  ntotal = nprime + npower;
-  New(0, tot, ntotal, UV);
-  for (i = 0; i < ntotal; i++) {
-    if      (ipower == npower)  tot[i] = primes[iprime++];
-    else if (iprime == nprime)  tot[i] = powers[ipower++];
-    else                        tot[i] = (primes[iprime] < powers[ipower]) ?  primes[iprime++]  :  powers[ipower++];
-  }
-  Safefree(powers);
-  Safefree(primes);
-  *list = tot;
-  return ntotal;
 }

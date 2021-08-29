@@ -16,6 +16,4 @@ extern UV  prime_count_approx(UV x);
 /* Used for Ramanujan prime bounds */
 extern double ramanujan_axler(long double n, long double c, long double d);
 
-extern UV prime_power_count(UV n);
-
 #endif
