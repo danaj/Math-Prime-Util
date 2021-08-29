@@ -309,7 +309,8 @@ UV nth_almost_prime_lower(uint32_t k, UV n) {
   if (r > 0)  return nth_almost_prime_lower(k-r, n) << r;
 
   /* We start out with the literal min and max because we have NO idea. */
-  lo = 5 * (UVCONST(1) << k);  /* For k >= 1 and n >= 8 */
+  /*  \_/ note 3 instead of 5!  TODO:  apcu is not tight enough, so reduce */
+  lo = 3 * (UVCONST(1) << k);  /* For k >= 1 and n >= 8 */
   hi = max_nth_almost_prime(k);
 
   return inverse_interpolate(lo, hi, n, k, &apcu, 0);
@@ -494,12 +495,14 @@ static void _almost_prime_count_bounds(UV *lower, UV *upper, uint32_t k, UV n) {
 
 UV almost_prime_count_upper(uint32_t k, UV n) {
   UV l, u;
+  if (k == 2 && n < 256) return semiprime_count(4,n);
   _almost_prime_count_bounds(&l, &u, k, n);
   return u;
 }
 
 UV almost_prime_count_lower(uint32_t k, UV n) {
   UV l, u;
+  if (k == 2 && n < 256) return semiprime_count(4,n);
   _almost_prime_count_bounds(&l, &u, k, n);
   return l;
 }
