@@ -246,6 +246,7 @@ xt/check-nth-bounds.pl
 xt/chinese.pl
 xt/create-pc-tables.pl
 xt/division.pl
+xt/foralmostprimes.pl
 xt/moebius-mertens.pl
 xt/totient-range.pl
 xt/primality-small.pl
