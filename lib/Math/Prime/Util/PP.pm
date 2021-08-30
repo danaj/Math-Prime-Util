@@ -3698,7 +3698,9 @@ sub _tquotient {
   return $a if $b == 1;
 
   # Large unsigned values cause all sorts of consistency issues, so => bigint.
-  $a = Math::BigInt->new("$a") if !ref($a) && ($a > SINTMAX || $b > SINTMAX);
+  # Additionally, with use integer, if $a = -(1<<63), -$a = $a.  Sigh.
+  $a = Math::BigInt->new("$a") if !ref($a)
+       && ($a > SINTMAX || $b > SINTMAX || $a < -SINTMAX || $b < -SINTMAX);
 
   return -$a if $b == -1;  # $a is always able to be safely negated now
 
@@ -3710,8 +3712,7 @@ sub _tquotient {
     my $A = $a->copy->babs;
     my $B = $b->copy->babs;
     my $Q = $A->bdiv($B);
-    return -$Q if ($a < 0 && $b > 0) || ($b < 0 && $a > 0);
-    return $Q;
+    return ($a < 0 && $b > 0) || ($b < 0 && $a > 0)  ?  -$Q  :  $Q;
   } else {
     use integer;  # Beware: this is >>> SIGNED <<< integer.
     # Don't trust native division for negative inputs.  C89 impl defined.
