@@ -330,7 +330,7 @@ UV nth_almost_prime_approx(uint32_t k, UV n) {
 
   if (n < 8) return _fast_small_nth_almost_prime(k,n);
   lo = nth_almost_prime_lower(k,n);
-  hi = nth_almost_prime_upper(k,n);
+  hi = nth_almost_prime_upper(k,n) + 1;  /* Make sure we span the approx */
 
   return inverse_interpolate(lo, hi, n, k, &apca, 0);
 }

@@ -540,7 +540,7 @@ UV nth_prime_lower(UV n)
   }
 
   { /* Axler 2017 http://arxiv.org/pdf/1706.03651.pdf Corollary 1.4 */
-    double b1 = (n < 56000000)  ?  11.200  :  11.508;
+    double b1 = (n < 56000000)  ?  11.200  :  11.50800000002;
     lower = fn * (flogn + flog2n-1.0 + ((flog2n-2.00)/flogn) - ((flog2n*flog2n-6*flog2n+b1)/(2*flogn*flogn)));
   }
 

@@ -15,6 +15,11 @@
 /*                                   SUMS                                     */
 /******************************************************************************/
 
+/* As an aside, good information about bounds and approximations can be
+ * found in Axler (2019) "On the sum of the first n prime numbers"
+ * https://jtnb.centre-mersenne.org/item/10.5802/jtnb.1081.pdf
+ */
+
 static const unsigned char byte_zeros[256] =
   {8,7,7,6,7,6,6,5,7,6,6,5,6,5,5,4,7,6,6,5,6,5,5,4,6,5,5,4,5,4,4,3,
    7,6,6,5,6,5,5,4,6,5,5,4,5,4,4,3,6,5,5,4,5,4,4,3,5,4,4,3,4,3,3,2,

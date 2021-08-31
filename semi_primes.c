@@ -407,7 +407,7 @@ UV nth_semiprime_approx(UV n) {
 
   /* Use inverse interpolation to improve the result. */
   lo = 0.98 * est - 5;
-  hi = 1.02 * est;
+  hi = 1.03 * est;
   return inverse_interpolate(lo, hi, n, 0, &_cb_sca, 0);
 }
 
