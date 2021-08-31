@@ -5,8 +5,34 @@
 #include "ptypes.h"
 #include "inverse_interpolate.h"
 
+/* Return x with v(x)=(*func)(x,k) s.t. either of:
+ *    1.  v(x) == n  and v(x-1-threshold) < n
+ *    2.  v(x) < n   and v(x+1) > n
+ */
+
 #define LINEAR_INTERP(n, lo, hi, rlo, rhi) \
   (lo + (UV) (((double)(n-rlo) * (double)(hi-lo) / (double)(rhi-rlo))+0.5))
+
+#if 0   /* Debugging return, checking the conditions above. */
+#define RETURNI(x) \
+  { \
+    UV v = x; \
+    UV rv = (*func)(v,k); \
+    /* printf("v  %lu    rv %lu   n %lu\n",v,rv,n); */\
+    MPUassert( rv <= n, "BAD INTERP  v > n" ); \
+    if (rv == n) { \
+      if (v > threshold) { \
+        /* printf("threshold %lu v %lu    func(%lu) = %lu\n", threshold, v, v-1-threshold, (*func)(v-1-threshold,k)); */\
+        MPUassert( (*func)(v-1-threshold,k) < n, "BAD INTERP  v-1-thresh >= n" ); \
+      } \
+    } else { \
+      MPUassert( (*func)(v+1,k) > n, "BAD INTERP  v+1 <= n" ); \
+    } \
+    return v; \
+  }
+#else
+  #define RETURNI(x) { return x; }
+#endif
 
 UV inverse_interpolate(UV lo, UV hi, UV n, UV k,
                        UV (*func)(UV mid, UV k),
@@ -14,13 +40,14 @@ UV inverse_interpolate(UV lo, UV hi, UV n, UV k,
   UV mid, rlo, rhi, rmid;
 
   rlo = (*func)(lo,k);
-  if (rlo == n)  return lo;  /* Possible bad limit */
+  if (rlo == n)  RETURNI(lo);  /* Possible bad limit */
   rhi = (*func)(hi,k);
 
+  /* printf("n %lu\n   lo %lu  rlo  %lu\n   hi %lu  rhi  %lu\n",n,lo,rlo,hi,rhi);*/
   MPUassert(rlo <= n && rhi >= n, "interpolation: bad initial limits");
 
   if ((hi-lo) == 1)
-    return (rlo == n) ? lo : hi;
+    RETURNI( (rlo == n) ? lo : hi );
 
   mid = LINEAR_INTERP(n,lo,hi,rlo,rhi);
   if (mid == lo) mid++;  else if (mid == hi) mid--;
@@ -41,23 +68,25 @@ UV inverse_interpolate(UV lo, UV hi, UV n, UV k,
   MPUassert(lo <= mid && mid <= hi, "interpolation: range error");
   MPUassert(rlo <= n && rhi >= n, "interpolation: bad initial interpolation");
 
-  if (rlo == n) return lo;
+  if (rlo == n)
+    RETURNI(lo);
 
-  if (hi-lo <= 2) {
-    if ((hi-lo) == 2 && (hi == mid || lo == mid)) croak("bad mid assumption");
-    return (rlo == n) ? lo : (mid <= hi && rmid == n) ? mid : hi;
+  if ((hi-lo) == 1)
+    RETURNI( (rlo == n || (rlo < n && rhi > n)) ? lo : hi );
+  if ((hi-lo) == 2) {
+    if (hi == mid || lo == mid) croak("bad mid assumption");
+    if      (rlo  == n || (rlo  < n && rmid > n)) { RETURNI(lo);  }
+    else if (rmid == n || (rmid < n && rhi  > n)) { RETURNI(mid); }
+    else                                          { RETURNI(hi);  }
   }
 
+  /* printf("   lo %lu  rlo  %lu\n  mid %lu  rmid %lu\n   hi %lu  rhi  %lu\n",lo,rlo,mid,rmid,hi,rhi); */
   MPUassert(rmid == n, "interpolation: bad rmid");
 
-  /* mid / rmid are correct, but it coulud be a one to many mapping
-   * and they want the least value.
-   *
-   * We will return x such that x <= n and x+1+threshold > n
-   */
+  /* mid / rmid are correct, but we need to find the least value */
 
   if ((mid-lo) <= threshold)
-    return mid;
+    RETURNI(mid);
 
   /* hi and rhi will always remain a correct value, we're pulling lo in */
   hi = mid; rhi = rmid;
@@ -77,5 +106,5 @@ UV inverse_interpolate(UV lo, UV hi, UV n, UV k,
     if ((*func)(mid,k) < n) lo = mid+1;
     else                    hi = mid;
   }
-  return hi;
+  RETURNI(hi);
 }
