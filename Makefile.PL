@@ -54,6 +54,7 @@ WriteMakefile1(
                     'prime_sums.o '   .
                     'prime_powers.o ' .
                     'powerfree.o '    .
+                    'lucky_numbers.o '.
                     'real.o '         .
                     'rootmod.o '      .
                     'util.o '         .

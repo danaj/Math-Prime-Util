@@ -46,6 +46,8 @@ lehmer.h
 lehmer.c
 lmo.h
 lmo.c
+lucky_numbers.h
+lucky_numbers.c
 omega_primes.h
 omega_primes.c
 powerfree.h
