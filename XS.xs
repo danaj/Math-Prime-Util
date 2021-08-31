@@ -33,6 +33,7 @@
 #include "entropy.h"
 #include "csprng.h"
 #include "random_prime.h"
+#include "prime_powers.h"
 #include "ramanujan_primes.h"
 #include "semi_primes.h"
 #include "twin_primes.h"
@@ -41,6 +42,7 @@
 #include "prime_counts.h"
 #include "prime_sums.h"
 #include "powerfree.h"
+#include "lucky_numbers.h"
 #include "rootmod.h"
 #include "real.h"
 
@@ -757,12 +759,12 @@ prime_count(IN SV* svlo, ...)
     semiprime_count = 1
     twin_prime_count = 2
     ramanujan_prime_count = 3
-    ramanujan_prime_count_approx = 4
-    sum_primes = 5
-    print_primes = 6
+    sum_primes = 4
+    print_primes = 5
   PREINIT:
     UV lo, hi;
   PPCODE:
+    /* TODO: prime power_count and perfect_power_count should go here */
     lo = 2;
     if ((items == 1 && _validate_and_set(&hi, aTHX_ svlo, IFLAG_POS)) ||
         (items == 2 && _validate_and_set(&lo, aTHX_ svlo, IFLAG_POS) && _validate_and_set(&hi, aTHX_ ST(1), IFLAG_POS))) {
@@ -773,10 +775,7 @@ prime_count(IN SV* svlo, ...)
         else if (ix == 1) { count = semiprime_count(lo, hi); }
         else if (ix == 2) { count = twin_prime_count(lo, hi); }
         else if (ix == 3) { count = ramanujan_prime_count(lo, hi); }
-        else if (ix == 4) { count = ramanujan_prime_count_approx(hi);
-                            if (lo > 2)
-                              count -= ramanujan_prime_count_approx(lo-1); }
-        else if (ix == 5) {
+        else if (ix == 4) {
           /* 32/64-bit, Legendre or table-accelerated sieving. */
           retok = sum_primes(lo, hi, &count);
           /* If that didn't work, try the 128-bit version if supported. */
@@ -792,7 +791,7 @@ prime_count(IN SV* svlo, ...)
             if (retok == 1 && hicount > 0)
               RETURN_128(hicount, count);
           }
-        } else if (ix == 6) {
+        } else if (ix == 5) {
           int fd = (items < 3) ? fileno(stdout) : my_sviv(ST(2));
           print_primes(lo, hi, fd);
           XSRETURN_EMPTY;
@@ -805,12 +804,72 @@ prime_count(IN SV* svlo, ...)
       case 1: _vcallsub_with_pp("semiprime_count");  break;
       case 2: _vcallsub_with_pp("twin_prime_count");  break;
       case 3: _vcallsub_with_pp("ramanujan_prime_count");  break;
-      case 4: _vcallsub_with_pp("ramanujan_prime_count_approx");  break;
-      case 5: _vcallsub_with_pp("sum_primes");  break;
-      case 6:
+      case 4: _vcallsub_with_pp("sum_primes");  break;
+      case 5:
       default:_vcallsub_with_pp("print_primes");  break;
     }
     return; /* skip implicit PUTBACK */
+
+
+void prime_count_upper(IN SV* svn)
+  ALIAS:
+    prime_count_lower = 1
+    prime_count_approx = 2
+    prime_power_count_upper = 3
+    prime_power_count_lower = 4
+    prime_power_count_approx = 5
+    ramanujan_prime_count_upper = 6
+    ramanujan_prime_count_lower = 7
+    ramanujan_prime_count_approx = 8
+    twin_prime_count_approx = 9
+    semiprime_count_approx = 10
+    lucky_count = 11
+    lucky_count_upper = 12
+    lucky_count_lower = 13
+    lucky_count_approx = 14
+  PREINIT:
+    UV n, ret;
+  PPCODE:
+    if (_validate_and_set(&n, aTHX_ svn, IFLAG_POS)) {
+      if (n == 0) XSRETURN_UNDEF;
+      switch (ix) {
+        case  0: ret = prime_count_upper(n); break;
+        case  1: ret = prime_count_lower(n); break;
+        case  2: ret = prime_count_approx(n); break;
+        case  3: ret = prime_power_count_upper(n); break;
+        case  4: ret = prime_power_count_lower(n); break;
+        case  5: ret = prime_power_count_approx(n); break;
+        case  6: ret = ramanujan_prime_count_upper(n); break;
+        case  7: ret = ramanujan_prime_count_lower(n); break;
+        case  8: ret = ramanujan_prime_count_approx(n); break;
+        case  9: ret = twin_prime_count_approx(n); break;
+        case 10: ret = semiprime_count_approx(n); break;
+        case 11: ret = lucky_count(n); break;
+        case 12: ret = lucky_count_upper(n); break;
+        case 13: ret = lucky_count_lower(n); break;
+        case 14:
+        default: ret = lucky_count_approx(n); break;
+      }
+      XSRETURN_UV(ret);
+    }
+    switch (ix) {
+      case  0: _vcallsub_with_pp("prime_count_upper");   break;
+      case  1: _vcallsub_with_pp("prime_count_lower");   break;
+      case  2: _vcallsub_with_pp("prime_count_approx");   break;
+      case  3: _vcallsub_with_pp("prime_power_count_upper");   break;
+      case  4: _vcallsub_with_pp("prime_power_count_lower");   break;
+      case  5: _vcallsub_with_pp("prime_power_count_approx");   break;
+      case  6: _vcallsub_with_pp("ramanujan_prime_count_upper");  break;
+      case  7: _vcallsub_with_pp("ramanujan_prime_count_lower");  break;
+      case  8: _vcallsub_with_pp("ramanujan_prime_count_approx");  break;
+      case  9: _vcallsub_with_pp("twin_prime_count_approx"); break;
+      case 10:
+      default: _vcallsub_with_pp("semiprime_count_approx"); break;
+    }
+    objectify_result(aTHX_ svn, ST(0));
+    return; /* skip implicit PUTBACK */
+
+
 
 void random_prime(IN SV* svlo, IN SV* svhi = 0)
   PREINIT:
@@ -1704,115 +1763,226 @@ is_polygonal(IN SV* svn, IN UV k, IN SV* svroot = 0)
 
 
 void
-next_prime(IN SV* svn)
+inverse_li(IN SV* svn)
   ALIAS:
-    prev_prime = 1
-    nth_prime = 2
-    nth_prime_upper = 3
-    nth_prime_lower = 4
-    nth_prime_approx = 5
-    inverse_li = 6
-    nth_twin_prime = 7
-    nth_twin_prime_approx = 8
-    nth_semiprime = 9
-    nth_semiprime_approx = 10
-    nth_ramanujan_prime = 11
-    nth_ramanujan_prime_upper = 12
-    nth_ramanujan_prime_lower = 13
-    nth_ramanujan_prime_approx = 14
-    nth_lucky = 15
-    prime_count_upper = 16
-    prime_count_lower = 17
-    prime_count_approx = 18
-    ramanujan_prime_count_upper = 19
-    ramanujan_prime_count_lower = 20
-    twin_prime_count_approx = 21
-    semiprime_count_approx = 22
     perfect_power_count = 23
     prime_power_count = 24
-    urandomm = 25
+    urandomm = 29
   PREINIT:
     UV n, ret;
   PPCODE:
     if (_validate_and_set(&n, aTHX_ svn, IFLAG_POS)) {
-      if (   (n >= MPU_MAX_PRIME     && ix == 0)
-          || (n >= MPU_MAX_PRIME_IDX && (ix==2 || ix==3 || ix==4 || ix==5 || ix == 6))
-          || (n >= MPU_MAX_TWIN_PRIME_IDX && (ix==7 || ix==8))
-          || (n >= MPU_MAX_SEMI_PRIME_IDX && (ix==9 || ix==10))
-          || (n >= MPU_MAX_RMJN_PRIME_IDX && (ix==11 || ix==12 || ix==13 || ix==14)) ) {
+      if (ix == 0 && n >= MPU_MAX_PRIME_IDX) {
         /* Out of range.  Fall through to Perl. */
       } else {
-        /* Prev prime of 2 or less should return undef */
-        if (ix == 1 && n < 3) XSRETURN_UNDEF;
-        /* nth_prime(0) and similar should return undef */
-        if (n == 0 && (ix >= 2 && ix <= 15 && ix != 6)) XSRETURN_UNDEF;
         switch (ix) {
-          case 0: ret = next_prime(n);  break;
-          case 1: ret = (n < 3) ? 0 : prev_prime(n);  break;
-          case 2: ret = nth_prime(n); break;
-          case 3: ret = nth_prime_upper(n); break;
-          case 4: ret = nth_prime_lower(n); break;
-          case 5: ret = nth_prime_approx(n); break;
-          case 6: ret = inverse_li(n); break;
-          case 7: ret = nth_twin_prime(n); break;
-          case 8: ret = nth_twin_prime_approx(n); break;
-          case 9: ret = nth_semiprime(n); break;
-          case 10:ret = nth_semiprime_approx(n);
-                  /* Do the following if we need a semiprime returned. */
-                  /* while (!is_semiprime(ret)) ret++;  */
-                  break;
-          case 11:ret = nth_ramanujan_prime(n); break;
-          case 12:ret = nth_ramanujan_prime_upper(n); break;
-          case 13:ret = nth_ramanujan_prime_lower(n); break;
-          case 14:ret = nth_ramanujan_prime_approx(n); break;
-          case 15:ret = nth_lucky(n); break;
-          case 16:ret = prime_count_upper(n); break;
-          case 17:ret = prime_count_lower(n); break;
-          case 18:ret = prime_count_approx(n); break;
-          case 19:ret = ramanujan_prime_count_upper(n); break;
-          case 20:ret = ramanujan_prime_count_lower(n); break;
-          case 21:ret = twin_prime_count_approx(n); break;
-          case 22:ret = semiprime_count_approx(n); break;
+          case 0: ret = inverse_li(n); break;
           case 23:ret = perfect_power_count(n); break;
           case 24:ret = prime_power_count(n); break;
-          case 25:
+          case 29:
           default:{ dMY_CXT; ret = urandomm64(MY_CXT.randcxt,n); } break;
         }
         XSRETURN_UV(ret);
       }
     }
     switch (ix) {
-      case 0:  _vcallsub_with_gmpobj(0.01,"next_prime");   break;
-      case 1:  _vcallsub_with_gmpobj(0.01,"prev_prime");   break;
-      case 2:  _vcallsub_with_pp("nth_prime");          break;
-      case 3:  _vcallsub_with_pp("nth_prime_upper");    break;
-      case 4:  _vcallsub_with_pp("nth_prime_lower");    break;
-      case 5:  _vcallsub_with_pp("nth_prime_approx");   break;
-      case 6:  _vcallsub_with_pp("inverse_li");   break;
-      case 7:  _vcallsub_with_pp("nth_twin_prime");     break;
-      case 8:  _vcallsub_with_pp("nth_twin_prime_approx"); break;
-      case 9:  _vcallsub_with_pp("nth_semiprime"); break;
-      case 10: _vcallsub_with_pp("nth_semiprime_approx"); break;
-      case 11: _vcallsub_with_pp("nth_ramanujan_prime"); break;
-      case 12: _vcallsub_with_pp("nth_ramanujan_prime_upper"); break;
-      case 13: _vcallsub_with_pp("nth_ramanujan_prime_lower"); break;
-      case 14: _vcallsub_with_pp("nth_ramanujan_prime_approx"); break;
-      case 15: _vcallsub_with_pp("nth_lucky");  break;
-      case 16: _vcallsub_with_pp("prime_count_upper");  break;
-      case 17: _vcallsub_with_pp("prime_count_lower");  break;
-      case 18: _vcallsub_with_pp("prime_count_approx"); break;
-      case 19: _vcallsub_with_pp("ramanujan_prime_count_upper");  break;
-      case 20: _vcallsub_with_pp("ramanujan_prime_count_lower");  break;
-      case 21: _vcallsub_with_pp("twin_prime_count_approx"); break;
-      case 22: _vcallsub_with_pp("semiprime_count_approx"); break;
+      case 0:  _vcallsub_with_pp("inverse_li");   break;
       case 23: _vcallsub_with_gmpobj(0.53,"perfect_power_count"); break;
       case 24: _vcallsub_with_gmpobj(0.53,"prime_power_count"); break;
-      case 25:
+      case 29:
       default: _vcallsub_with_gmpobj(0.44,"urandomm"); break;
     }
-    if (ix == 0 || ix == 1 || ix == 23)
+    if (ix == 0 || ix == 1 || ix == 23 || ix == 25)
       objectify_result(aTHX_ svn, ST(0));
     return; /* skip implicit PUTBACK */
+
+void nth_prime(IN SV* svn)
+  ALIAS:
+    nth_prime_upper = 1
+    nth_prime_lower = 2
+    nth_prime_approx = 3
+  PREINIT:
+    UV n, ret;
+  PPCODE:
+    if ( _validate_and_set(&n, aTHX_ svn, IFLAG_POS) &&
+         n <= MPU_MAX_PRIME_IDX ) {
+      if (n == 0) XSRETURN_UNDEF;
+      switch (ix) {
+        case 0:  ret = nth_prime(n); break;
+        case 1:  ret = nth_prime_upper(n); break;
+        case 2:  ret = nth_prime_lower(n); break;
+        case 3:
+        default: ret = nth_prime_approx(n); break;
+      }
+      XSRETURN_UV(ret);
+    }
+    switch (ix) {
+      case 0:  _vcallsub_with_pp("nth_prime");          break;
+      case 1:  _vcallsub_with_pp("nth_prime_upper");    break;
+      case 2:  _vcallsub_with_pp("nth_prime_lower");    break;
+      case 3:
+      default: _vcallsub_with_pp("nth_prime_approx");   break;
+    }
+    return;
+
+void nth_prime_power(IN SV* svn)
+  ALIAS:
+    nth_prime_power_upper = 1
+    nth_prime_power_lower = 2
+    nth_prime_power_approx = 3
+  PREINIT:
+    UV n, ret;
+  PPCODE:
+    if ( _validate_and_set(&n, aTHX_ svn, IFLAG_POS) &&
+         n <= MPU_MAX_PRIME_IDX ) {
+      if (n == 0) XSRETURN_UNDEF;
+      switch (ix) {
+        case 0:  ret = nth_prime_power(n); break;
+        case 1:  ret = nth_prime_power_upper(n); break;
+        case 2:  ret = nth_prime_power_lower(n); break;
+        case 3:
+        default: ret = nth_prime_power_approx(n); break;
+      }
+      XSRETURN_UV(ret);
+    }
+    switch (ix) {
+      case 0:  _vcallsub_with_pp("nth_prime_power");          break;
+      case 1:  _vcallsub_with_pp("nth_prime_power_upper");    break;
+      case 2:  _vcallsub_with_pp("nth_prime_power_lower");    break;
+      case 3:
+      default: _vcallsub_with_pp("nth_prime_power_approx");   break;
+    }
+    return;
+
+void nth_ramanujan_prime(IN SV* svn)
+  ALIAS:
+    nth_ramanujan_prime_upper = 1
+    nth_ramanujan_prime_lower = 2
+    nth_ramanujan_prime_approx = 3
+  PREINIT:
+    UV n, ret;
+  PPCODE:
+    if ( _validate_and_set(&n, aTHX_ svn, IFLAG_POS) &&
+         n <= MPU_MAX_RMJN_PRIME_IDX ) {
+      if (n == 0) XSRETURN_UNDEF;
+      switch (ix) {
+        case 0:  ret = nth_ramanujan_prime(n); break;
+        case 1:  ret = nth_ramanujan_prime_upper(n); break;
+        case 2:  ret = nth_ramanujan_prime_lower(n); break;
+        case 3:
+        default: ret = nth_ramanujan_prime_approx(n); break;
+      }
+      XSRETURN_UV(ret);
+    }
+    switch (ix) {
+      case 0:  _vcallsub_with_pp("nth_ramanujan_prime");          break;
+      case 1:  _vcallsub_with_pp("nth_ramanujan_prime_upper");    break;
+      case 2:  _vcallsub_with_pp("nth_ramanujan_prime_lower");    break;
+      case 3:
+      default: _vcallsub_with_pp("nth_ramanujan_prime_approx");   break;
+    }
+    return;
+
+void nth_twin_prime(IN SV* svn)
+  ALIAS:
+    nth_twin_prime_approx = 1
+  PREINIT:
+    UV n, ret;
+  PPCODE:
+    if ( _validate_and_set(&n, aTHX_ svn, IFLAG_POS) &&
+         n <= MPU_MAX_TWIN_PRIME_IDX ) {
+      if (n == 0) XSRETURN_UNDEF;
+      switch (ix) {
+        case 0:  ret = nth_twin_prime(n); break;
+        case 1:
+        default: ret = nth_twin_prime_approx(n); break;
+      }
+      XSRETURN_UV(ret);
+    }
+    switch (ix) {
+      case 0:  _vcallsub_with_pp("nth_twin_prime");          break;
+      case 1:
+      default: _vcallsub_with_pp("nth_twin_prime_approx");   break;
+    }
+    return;
+
+void nth_semiprime(IN SV* svn)
+  ALIAS:
+    nth_semiprime_approx = 1
+  PREINIT:
+    UV n, ret;
+  PPCODE:
+    if ( _validate_and_set(&n, aTHX_ svn, IFLAG_POS) &&
+         n <= MPU_MAX_SEMI_PRIME_IDX ) {
+      if (n == 0) XSRETURN_UNDEF;
+      switch (ix) {
+        case 0:  ret = nth_semiprime(n); break;
+        case 1:
+        default: ret = nth_semiprime_approx(n); break;
+      }
+      XSRETURN_UV(ret);
+    }
+    switch (ix) {
+      case 0:  _vcallsub_with_pp("nth_semiprime");          break;
+      case 1:
+      default: _vcallsub_with_pp("nth_semiprime_approx");   break;
+    }
+    return;
+
+void nth_lucky(IN SV* svn)
+  ALIAS:
+    nth_lucky_upper = 1
+    nth_lucky_lower = 2
+    nth_lucky_approx = 3
+  PREINIT:
+    UV n, ret;
+  PPCODE:
+    /* TODO: max lucky number */
+    if ( _validate_and_set(&n, aTHX_ svn, IFLAG_POS) ) {
+      if (n == 0) XSRETURN_UNDEF;
+      switch (ix) {
+        case 0:  ret = nth_lucky(n); break;
+        case 1:  ret = nth_lucky_upper(n); break;
+        case 2:  ret = nth_lucky_lower(n); break;
+        case 3:
+        default: ret = nth_lucky_approx(n); break;
+      }
+      XSRETURN_UV(ret);
+    }
+    switch (ix) {
+      case 0:  _vcallsub_with_pp("nth_lucky");          break;
+      case 1:  _vcallsub_with_pp("nth_lucky_upper");    break;
+      case 2:  _vcallsub_with_pp("nth_lucky_lower");    break;
+      case 3:
+      default: _vcallsub_with_pp("nth_lucky_approx");   break;
+    }
+    return;
+
+
+void next_prime(IN SV* svn)
+  ALIAS:
+    prev_prime = 1
+  PREINIT:
+    UV n, ret;
+  PPCODE:
+    if (_validate_and_set(&n, aTHX_ svn, IFLAG_POS)
+        && !(ix == 0 && n >= MPU_MAX_PRIME)) {
+      ret = 0;
+      switch (ix) {
+        case 0:  ret = next_prime(n); break;
+        case 1:  ret = prev_prime(n); break;
+        default: break;
+      }
+      if (ret == 0) XSRETURN_UNDEF;
+      XSRETURN_UV(ret);
+    }
+    switch (ix) {
+      case 0:  _vcallsub_with_gmpobj(0.01,"next_prime");   break;
+      case 1:
+      default: _vcallsub_with_gmpobj(0.01,"prev_prime");   break;
+    }
+    objectify_result(aTHX_ svn, ST(0));
+    return;
 
 void next_prime_power(IN SV* svn)
   ALIAS:
@@ -1820,15 +1990,16 @@ void next_prime_power(IN SV* svn)
   PREINIT:
     UV n, ret;
   PPCODE:
-    if (_validate_and_set(&n, aTHX_ svn, IFLAG_ABS)) {
-      if (ix == 1 && n < 3) XSRETURN_UNDEF;
+    if (_validate_and_set(&n, aTHX_ svn, IFLAG_ABS)
+        && !(ix == 0 && n >= MPU_MAX_PRIME)) {
       ret = 0;
       switch (ix) {
         case 0:  ret = next_prime_power(n); break;
         case 1:  ret = prev_prime_power(n); break;
         default: break;
       }
-      if (ret != 0) XSRETURN_UV(ret);
+      if (ret == 0) XSRETURN_UNDEF;
+      XSRETURN_UV(ret);
     }
     switch (ix) {
       case 0:  _vcallsub_with_pp("next_prime_power");  break;

@@ -40,7 +40,9 @@ our @EXPORT_OK =
       lucasu lucasv lucasuv lucasumod lucasvmod lucasuvmod
       primes twin_primes semi_primes almost_primes omega_primes ramanujan_primes
       sieve_prime_cluster sieve_range prime_powers
-      lucky_numbers is_lucky nth_lucky
+      lucky_numbers is_lucky
+      nth_lucky nth_lucky_lower nth_lucky_upper nth_lucky_approx
+      lucky_count lucky_count_lower lucky_count_upper lucky_count_approx
       forprimes forcomposites foroddcomposites forsemiprimes foralmostprimes
       forpart forcomp forcomb forperm forderange formultiperm forsetproduct
       fordivisors forfactored forsquarefree
@@ -64,7 +66,9 @@ our @EXPORT_OK =
       nth_ramanujan_prime nth_ramanujan_prime_approx
       nth_ramanujan_prime_lower nth_ramanujan_prime_upper
       powerful_count nth_powerful
-      perfect_power_count prime_power_count
+      perfect_power_count
+      prime_power_count nth_prime_power
+      nth_prime_power_lower nth_prime_power_upper nth_prime_power_approx
       is_powerfree powerfree_count powerfree_sum
       powerfree_part powerfree_part_sum
       smooth_count rough_count
