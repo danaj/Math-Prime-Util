@@ -21,7 +21,6 @@
 #include "sieve.h"
 #include "primality.h"
 #include "cache.h"
-#include "lmo.h"
 #include "legendre_phi.h"
 #include "prime_counts.h"
 #include "prime_powers.h"
@@ -3223,6 +3222,11 @@ UV nth_powerful(UV n, UV k) {
   return inverse_interpolate(lo, hi, n, k, &powerful_count, 0);
 }
 
+UV perfect_power_count_range(UV lo, UV hi) {
+  if (hi < 1 || hi < lo) return 0;
+  return perfect_power_count(hi) - ((lo <= 1) ? 0 : perfect_power_count(lo-1));
+}
+
 /* n A069623; 10^n A070428 */
 UV perfect_power_count(UV n) {
   uint32_t k, log2n;
@@ -3338,7 +3342,7 @@ UV buchstab_phi(UV x, UV y) {
   if (y <= 3) return x - x/2;
   if (y <= 5) return x - x/2 - x/3 + x/6;
   /* We'll use the legendre_phi function we already have. */
-  return legendre_phi(x, LMO_prime_count(y-1));
+  return legendre_phi(x, prime_count(y-1));
 }
 
 

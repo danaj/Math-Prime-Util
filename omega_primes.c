@@ -108,7 +108,7 @@ static UV _omega_prime_count_rec2(uint32_t k, UV n, UV m, UV p, UV s, UV j, uint
     for (;  p <= s;  j++, p = r) {
       r = (j < numprimes)  ?  pr[j]  :  next_prime(p);
       for (t = m*p, w = n/t;  t <= n && w >= r;  t *= p, w = n/t) {
-        count += prime_count(0, w) - j;
+        count += prime_count(w) - j;
         for (k = j, r2 = r, rlim = isqrt(w);
              r2 <= rlim;
              r2 = (++k < numprimes) ? pr[k] : rlim+1) {

@@ -12,6 +12,8 @@ extern UV  prev_prime_power(UV x);
 extern UV prime_power_sieve2(UV** list, UV lo, UV hi);  /* p^e with e >= 2 */
 extern UV prime_power_sieve(UV** list, UV lo, UV hi);   /* p^e with e >= 1 */
 
+extern UV  prime_power_count_range(UV lo, UV hi);
+
 extern UV  prime_power_count(UV n);
 extern UV  prime_power_count_lower(UV n);
 extern UV  prime_power_count_upper(UV n);

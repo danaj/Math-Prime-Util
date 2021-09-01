@@ -4,7 +4,6 @@
 #include "primality.h"
 #include "util.h"
 #include "prime_counts.h"
-#include "lmo.h"
 #include "mulmod.h"
 #include "constants.h"
 #include "random_prime.h"

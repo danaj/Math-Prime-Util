@@ -771,10 +771,10 @@ prime_count(IN SV* svlo, ...)
       UV count = 0;
       int retok = 1;
       if (lo <= hi) {
-        if      (ix == 0) { count = prime_count(lo, hi); }
-        else if (ix == 1) { count = semiprime_count(lo, hi); }
-        else if (ix == 2) { count = twin_prime_count(lo, hi); }
-        else if (ix == 3) { count = ramanujan_prime_count(lo, hi); }
+        if      (ix == 0) { count = prime_count_range(lo, hi); }
+        else if (ix == 1) { count = semiprime_count_range(lo, hi); }
+        else if (ix == 2) { count = twin_prime_count_range(lo, hi); }
+        else if (ix == 3) { count = ramanujan_prime_count_range(lo, hi); }
         else if (ix == 4) {
           /* 32/64-bit, Legendre or table-accelerated sieving. */
           retok = sum_primes(lo, hi, &count);

@@ -316,7 +316,7 @@ UV segment_prime_count(UV low, UV high)
   return count;
 }
 
-UV prime_count(UV lo, UV hi)
+UV prime_count_range(UV lo, UV hi)
 {
   if (lo > hi || hi < 2)
     return 0;
@@ -334,6 +334,16 @@ UV prime_count(UV lo, UV hi)
       return segment_prime_count(lo, hi);
   }
   return LMO_prime_count(hi) - ((lo < 2) ? 0 : LMO_prime_count(lo-1));
+}
+
+UV prime_count(UV n)
+{
+  if (n < 2) return 0;
+
+  /* We use table acceleration so this is preferable for small inputs */
+  if (n < _MPU_LMO_CROSSOVER)  return segment_prime_count(0, n);
+
+  return LMO_prime_count(n);
 }
 
 UV prime_count_approx(UV n)
@@ -594,7 +604,7 @@ UV nth_prime(UV n)
     lower_limit += inverse_li(isqrt(n))/4;
     segment_size = lower_limit / 30;
     lower_limit = 30 * segment_size - 1;
-    count = prime_count(2,lower_limit);
+    count = prime_count(lower_limit);
 
     /* printf("We've estimated %lu too %s.\n", (count>n)?count-n:n-count, (count>n)?"FAR":"little"); */
     /* printf("Our limit %lu %s a prime\n", lower_limit, is_prime(lower_limit) ? "is" : "is not"); */

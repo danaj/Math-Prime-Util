@@ -13,7 +13,6 @@
 #include "util.h"
 #include "cache.h"
 #include "sieve.h"
-#include "lmo.h"
 #include "prime_counts.h"
 #include "prime_count_cache.h"
 #include "semi_primes.h"
@@ -165,8 +164,8 @@ UV almost_prime_count(uint32_t k, UV n)
   if (k >= BITS_PER_WORD || (n >> k) == 0) return 0;
   reduce_prime_count_factor(&k, &n); /* Reduce to lower k,n if possible */
 
-  if (k == 1) return LMO_prime_count(n);
-  if (k == 2) return semiprime_count(0,n);
+  if (k == 1) return prime_count(n);
+  if (k == 2) return semiprime_count(n);
   if (n <  3*(UVCONST(1) << (k-1))) return 1;
   if (n <  9*(UVCONST(1) << (k-2))) return 2;
   if (n < 10*(UVCONST(1) << (k-2))) return 3;
@@ -189,15 +188,15 @@ UV almost_prime_count(uint32_t k, UV n)
   return count;
 }
 
-#if 0
-UV almost_prime_count(uint32_t k, UV lo, UV hi) {
+UV almost_prime_count_range(uint32_t k, UV lo, UV hi) {
   if (k == 0) return (lo <= 1 || hi >= 1);
-  if (k == 1) return prime_count(lo, hi);
-  if (k == 2) return semiprime_count(lo, hi);
+  if (k == 1) return prime_count_range(lo, hi);
+  if (k == 2) return semiprime_count_range(lo, hi);
   /* See semiprime_count.  Possibly clever solutions for small ranges. */
-  return _almost_prime_count(k, hi) - _almost_prime_count(k, lo-1);
+  if (k >= BITS_PER_WORD || (hi >> k) == 0 || hi < lo) return 0;
+  return almost_prime_count(k, hi)
+         - (((lo >> k) == 0) ? 0 : almost_prime_count(k,lo-1));
 }
-#endif
 
 UV almost_prime_count_approx(uint32_t k, UV n) {
   UV lo, hi;
@@ -495,14 +494,14 @@ static void _almost_prime_count_bounds(UV *lower, UV *upper, uint32_t k, UV n) {
 
 UV almost_prime_count_upper(uint32_t k, UV n) {
   UV l, u;
-  if (k == 2 && n < 256) return semiprime_count(4,n);
+  if (k == 2 && n < 256) return semiprime_count(n);
   _almost_prime_count_bounds(&l, &u, k, n);
   return u;
 }
 
 UV almost_prime_count_lower(uint32_t k, UV n) {
   UV l, u;
-  if (k == 2 && n < 256) return semiprime_count(4,n);
+  if (k == 2 && n < 256) return semiprime_count(n);
   _almost_prime_count_bounds(&l, &u, k, n);
   return l;
 }

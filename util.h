@@ -89,6 +89,7 @@ extern int is_powerful(UV n, UV k);
 extern UV powerful_count(UV n, UV k);
 extern UV nth_powerful(UV n, UV k);
 
+extern UV perfect_power_count_range(UV lo, UV hi);
 extern UV perfect_power_count(UV n);
 
 extern int is_sum_of_two_squares(UV n);

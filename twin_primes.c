@@ -45,7 +45,11 @@ static const unsigned int twin_num_exponents = 12;
 static const unsigned int twin_last_mult = 4;      /* 4e18 */
 #endif
 
-UV twin_prime_count(UV beg, UV end)
+UV twin_prime_count(UV n)
+{
+  return (n < 3) ? 0 : twin_prime_count_range(0,n);
+}
+UV twin_prime_count_range(UV beg, UV end)
 {
   unsigned char* segment;
   UV sum = 0;
@@ -108,7 +112,7 @@ UV twin_prime_count(UV beg, UV end)
 UV twin_prime_count_approx(UV n)
 {
   /* Best would be another estimate for n < ~ 5000 */
-  if (n < 2000) return twin_prime_count(3,n);
+  if (n < 2000) return twin_prime_count(n);
   {
     /* Sebah and Gourdon 2002 */
     const long double two_C2 = 1.32032363169373914785562422L;

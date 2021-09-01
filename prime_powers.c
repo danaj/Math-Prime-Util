@@ -12,7 +12,6 @@
 #include "cache.h"
 #include "sieve.h"
 #include "primality.h"
-#include "lmo.h"
 #include "prime_counts.h"
 #include "inverse_interpolate.h"
 
@@ -159,6 +158,10 @@ UV prime_power_sieve(UV** list, UV lo, UV hi) {
 }
 
 
+UV prime_power_count_range(UV lo, UV hi) {
+  if (hi < 2 || hi < lo) return 0;
+  return prime_power_count(hi)  -  ((lo <= 2) ? 0 : prime_power_count(lo-1));
+}
 
 /* n A025528; 10^n A267712 */
 UV prime_power_count(UV n) {
@@ -167,10 +170,10 @@ UV prime_power_count(UV n) {
 
   if (n <= 5) return (n==0) ? 0 : n-1;
 
-  sum = LMO_prime_count(n);
+  sum = prime_count(n);
   log2n = log2floor(n);
   for (k = 2; k <= log2n; k++)
-    sum += prime_count(0,rootint(n,k));
+    sum += prime_count(rootint(n,k));
   return sum;
 }
 

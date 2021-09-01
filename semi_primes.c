@@ -54,7 +54,7 @@ static UV _bs_count(UV n, UV const* const primes, UV lastidx)
   return i-1;
 }
 
-static UV _semiprime_count(UV n)
+UV semiprime_count(UV n)
 {
   UV pc = 0, sum = 0, sqrtn = prev_prime(isqrt(n)+1);
   UV xbeg = 0, xend = 0, xlim = 0, xoff = 0, xsize, *xarr = 0;
@@ -109,7 +109,7 @@ static UV _semiprime_count(UV n)
 #include "prime_count_cache.h"
 #define CACHED_PC(cache,n) prime_count_cache_lookup(cache,n)
 
-static UV _semiprime_count(UV n)
+UV semiprime_count(UV n)
 {
   UV sum = 0, sqrtn = prev_prime(isqrt(n)+1), pc_sqrtn;
   void *cache = prime_count_cache_create( (UV)pow(n,0.70) );
@@ -262,7 +262,7 @@ static UV _range_semiprime_selection(UV** semis, UV lo, UV hi)
 
 
 
-UV semiprime_count(UV lo, UV hi)
+UV semiprime_count_range(UV lo, UV hi)
 {
   if (lo > hi || hi < 4)
     return 0;
@@ -270,7 +270,7 @@ UV semiprime_count(UV lo, UV hi)
   /* tiny sizes fastest with the sieving code */
   if (hi <= 400) return range_semiprime_sieve(0, lo, hi);
   /* Large sizes best with the prime count method */
-  if (lo <= 4) return _semiprime_count(hi);
+  if (lo <= 4) return semiprime_count(hi);
 
   /* Now it gets interesting.  lo > 4, hi > 400. */
 
@@ -284,7 +284,7 @@ UV semiprime_count(UV lo, UV hi)
     return range_semiprime_sieve(0, lo, hi);
   }
   MPUverbose(2, "semiprimes %"UVuf"-%"UVuf" via prime count\n", lo, hi);
-  return _semiprime_count(hi) - _semiprime_count(lo-1);
+  return semiprime_count(hi) - semiprime_count(lo-1);
 }
 
 static UV _cb_sca(UV mid, UV k) { return semiprime_count_approx(mid); }
@@ -438,7 +438,7 @@ UV nth_semiprime(UV n)
     while (!is_semiprime(guess)) guess++;  /* Guess is a semiprime */
     MPUverbose(2, "  %"UVuf"-th semiprime is around %"UVuf" ... ", n, guess);
     /* Compute exact count at our nth-semiprime guess */
-    spcnt = _semiprime_count(guess);
+    spcnt = semiprime_count(guess);
     MPUverbose(2, "(%"IVdf")\n", (IV)(n-spcnt));
     /* Stop guessing if within our tolerance */
     if (n==spcnt || (n>spcnt && n-spcnt < sptol) || (n<spcnt && spcnt-n < sptol)) break;
