@@ -10,7 +10,7 @@
 #include "util.h"
 #include "cache.h"
 #include "sieve.h"
-#include "lmo.h"
+#include "prime_counts.h"
 #include "inverse_interpolate.h"
 #include "semi_primes.h"
 
@@ -68,9 +68,9 @@ UV semiprime_count(UV n)
     xlim = (UV) pow(n, 0.70);
   }
 
-  if (sqrtn >= 2)  sum += LMO_prime_count(n/2) - pc++;
-  if (sqrtn >= 3)  sum += LMO_prime_count(n/3) - pc++;
-  if (sqrtn >= 5)  sum += LMO_prime_count(n/5) - pc++;
+  if (sqrtn >= 2)  sum += prime_count(n/2) - pc++;
+  if (sqrtn >= 3)  sum += prime_count(n/3) - pc++;
+  if (sqrtn >= 5)  sum += prime_count(n/5) - pc++;
   if (sqrtn >= 7) {
     unsigned char* segment;
     UV seg_base, seg_low, seg_high, np, cnt;
@@ -86,13 +86,13 @@ UV semiprime_count(UV n)
             if (xend - xbeg > xmax) xbeg = xend - xmax;
             xbeg = prev_prime(xbeg);
             xend = next_prime(xend);
-            xoff = LMO_prime_count(xbeg);
+            xoff = prime_count(xbeg);
             xsize = range_prime_sieve(&xarr, xbeg, xend);
             xend = xarr[xsize-1];
           }
           cnt = xoff + _bs_count(np, xarr, xsize-1);
         } else {
-          cnt = LMO_prime_count(np);
+          cnt = prime_count(np);
         }
         sum += cnt - pc++;
       END_DO_FOR_EACH_SIEVE_PRIME

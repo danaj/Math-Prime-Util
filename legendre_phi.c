@@ -5,7 +5,6 @@
 #define FUNC_isqrt 1
 #include "util.h"
 #include "sieve.h"
-#include "lmo.h"
 #include "prime_counts.h"
 #include "prime_count_cache.h"
 #include "legendre_phi.h"
@@ -617,7 +616,7 @@ UV cached_legendre_phi(void* cache, UV x, UV a)
 
   /* Make the function work even if x,a outside of cached conditions */
   if (a > 203280221) {  /* prime_count(2**32) */
-    UV pc = LMO_prime_count(x);
+    UV pc = prime_count(x);
     return (a >= pc)  ?  1  :  pc - a + 1;
   }
   if (a > d->lastidx)
@@ -653,7 +652,7 @@ UV legendre_phi(UV x, UV a)
   if (a > (x >> 1))
     return 1;
   if (a >= sqrtx || a > 203280221) {   /* 203280221 = prime_count(2^32) */
-    UV pc = LMO_prime_count(x);
+    UV pc = prime_count(x);
     return (a >= pc)  ?  1  :  pc - a + 1;
   }
   /* After this:  7 <= a <= MIN(203280221, sqrtx) */
@@ -667,7 +666,7 @@ UV legendre_phi(UV x, UV a)
     return 1;
   /* Use 'a' instead of 'a+1' to ensure Legendre Pi doesn't call here */
   if (prime_count_upper(sqrtx) < a) {
-    UV pc = LMO_prime_count(x);
+    UV pc = prime_count(x);
     return (a >= pc)  ?  1  :  pc - a + 1;
   }
   /* Because we used the fast bounds, there are still a few easy cases. */
