@@ -190,6 +190,27 @@ UV lucky_count(UV n) {
   }
   return nlucky;
 }
+UV lucky_count_range(UV lo, UV hi) {
+  UV nlo = 0, nlucky;
+
+  if (hi < 1 || hi < lo) return 0;
+
+  if (hi < 48) {
+    nlucky = _small_lucky_count[hi];
+    if (lo > 0) nlo = _small_lucky_count[lo-1];
+  } else if (hi <= UVCONST(2000000000)) {
+    uint32_t *lucky32 = lucky_sieve32(&nlucky, hi);
+    while (nlo < nlucky && lucky32[nlo] < lo)
+      nlo++;
+    Safefree(lucky32);
+  } else {
+    UV *lucky64 = lucky_sieve(&nlucky, hi);
+    while (nlo < nlucky && lucky64[nlo] < lo)
+      nlo++;
+    Safefree(lucky64);
+  }
+  return nlucky - nlo;
+}
 
 UV nth_lucky_approx(UV n) {
   double corr, fn = n, logn = log(n), loglogn = log(logn);

@@ -8,7 +8,7 @@ extern UV  segment_prime_count(UV low, UV high);
 
 extern UV  prime_count_range(UV low, UV high);
 
-extern UV  prime_count(UV n);
+extern UV  prime_count(UV x);
 extern UV  prime_count_upper(UV x);
 extern UV  prime_count_lower(UV x);
 extern UV  prime_count_approx(UV x);

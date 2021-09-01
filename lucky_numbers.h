@@ -8,6 +8,8 @@ extern int is_lucky(UV n);
 extern UV* lucky_sieve(UV *size, UV n);
 extern uint32_t* lucky_sieve32(UV *size, UV n);
 
+extern UV lucky_count_range(UV lo, UV hi);
+
 extern UV lucky_count(UV n);
 extern UV lucky_count_upper(UV n);
 extern UV lucky_count_lower(UV n);

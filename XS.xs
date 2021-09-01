@@ -753,62 +753,42 @@ prime_precalc(IN UV n)
     return; /* skip implicit PUTBACK */
 
 
-void
-prime_count(IN SV* svlo, ...)
+void prime_count(IN SV* svlo, IN SV* svhi = 0)
   ALIAS:
     semiprime_count = 1
     twin_prime_count = 2
     ramanujan_prime_count = 3
-    sum_primes = 4
-    print_primes = 5
+    perfect_power_count = 4
+    prime_power_count = 5
+    lucky_count = 6
   PREINIT:
-    UV lo, hi;
+    UV lo = 0, hi, count = 0;
   PPCODE:
-    /* TODO: prime power_count and perfect_power_count should go here */
-    lo = 2;
     if ((items == 1 && _validate_and_set(&hi, aTHX_ svlo, IFLAG_POS)) ||
-        (items == 2 && _validate_and_set(&lo, aTHX_ svlo, IFLAG_POS) && _validate_and_set(&hi, aTHX_ ST(1), IFLAG_POS))) {
-      UV count = 0;
-      int retok = 1;
+        (items == 2 && _validate_and_set(&lo, aTHX_ svlo, IFLAG_POS) && _validate_and_set(&hi, aTHX_ svhi, IFLAG_POS))) {
       if (lo <= hi) {
-        if      (ix == 0) { count = prime_count_range(lo, hi); }
-        else if (ix == 1) { count = semiprime_count_range(lo, hi); }
-        else if (ix == 2) { count = twin_prime_count_range(lo, hi); }
-        else if (ix == 3) { count = ramanujan_prime_count_range(lo, hi); }
-        else if (ix == 4) {
-          /* 32/64-bit, Legendre or table-accelerated sieving. */
-          retok = sum_primes(lo, hi, &count);
-          /* If that didn't work, try the 128-bit version if supported. */
-          if (retok == 0 && HAVE_SUM_PRIMES128) {
-            UV hicount, lo_hic, lo_loc;
-            retok = sum_primes128(hi, &hicount, &count);
-            if (retok == 1 && lo > 2) {
-              retok = sum_primes128(lo-1, &lo_hic, &lo_loc);
-              hicount -= lo_hic;
-              if (count < lo_loc) hicount--;
-              count -= lo_loc;
-            }
-            if (retok == 1 && hicount > 0)
-              RETURN_128(hicount, count);
-          }
-        } else if (ix == 5) {
-          int fd = (items < 3) ? fileno(stdout) : my_sviv(ST(2));
-          print_primes(lo, hi, fd);
-          XSRETURN_EMPTY;
+        switch (ix) {
+          case 0:  count = prime_count_range(lo, hi);           break;
+          case 1:  count = semiprime_count_range(lo, hi);       break;
+          case 2:  count = twin_prime_count_range(lo, hi);      break;
+          case 3:  count = ramanujan_prime_count_range(lo, hi); break;
+          case 4:  count = perfect_power_count_range(lo, hi);   break;
+          case 5:  count = prime_power_count_range(lo, hi);     break;
+          case 6:  count = lucky_count_range(lo, hi);     break;
         }
       }
-      if (retok == 1) XSRETURN_UV(count);
+      XSRETURN_UV(count);
     }
     switch (ix) {
       case 0: _vcallsubn(aTHX_ GIMME_V, VCALL_ROOT, "_generic_prime_count", items, 0); break;
       case 1: _vcallsub_with_pp("semiprime_count");  break;
       case 2: _vcallsub_with_pp("twin_prime_count");  break;
       case 3: _vcallsub_with_pp("ramanujan_prime_count");  break;
-      case 4: _vcallsub_with_pp("sum_primes");  break;
-      case 5:
-      default:_vcallsub_with_pp("print_primes");  break;
+      case 4: _vcallsub_with_gmpobj(0.53,"perfect_power_count"); break;
+      case 5: _vcallsub_with_gmpobj(0.53,"prime_power_count"); break;
+      case 6: _vcallsub_with_pp("lucky_count"); break;
     }
-    return; /* skip implicit PUTBACK */
+    return;
 
 
 void prime_count_upper(IN SV* svn)
@@ -823,10 +803,9 @@ void prime_count_upper(IN SV* svn)
     ramanujan_prime_count_approx = 8
     twin_prime_count_approx = 9
     semiprime_count_approx = 10
-    lucky_count = 11
-    lucky_count_upper = 12
-    lucky_count_lower = 13
-    lucky_count_approx = 14
+    lucky_count_upper = 11
+    lucky_count_lower = 12
+    lucky_count_approx = 13
   PREINIT:
     UV n, ret;
   PPCODE:
@@ -844,10 +823,9 @@ void prime_count_upper(IN SV* svn)
         case  8: ret = ramanujan_prime_count_approx(n); break;
         case  9: ret = twin_prime_count_approx(n); break;
         case 10: ret = semiprime_count_approx(n); break;
-        case 11: ret = lucky_count(n); break;
-        case 12: ret = lucky_count_upper(n); break;
-        case 13: ret = lucky_count_lower(n); break;
-        case 14:
+        case 11: ret = lucky_count_upper(n); break;
+        case 12: ret = lucky_count_lower(n); break;
+        case 13:
         default: ret = lucky_count_approx(n); break;
       }
       XSRETURN_UV(ret);
@@ -863,20 +841,50 @@ void prime_count_upper(IN SV* svn)
       case  7: _vcallsub_with_pp("ramanujan_prime_count_lower");  break;
       case  8: _vcallsub_with_pp("ramanujan_prime_count_approx");  break;
       case  9: _vcallsub_with_pp("twin_prime_count_approx"); break;
-      case 10:
-      default: _vcallsub_with_pp("semiprime_count_approx"); break;
+      case 10: _vcallsub_with_pp("semiprime_count_approx"); break;
+      case 11: _vcallsub_with_pp("lucky_count_upper"); break;
+      case 12: _vcallsub_with_pp("lucky_count_lower"); break;
+      case 13:
+      default: _vcallsub_with_pp("lucky_count_approx"); break;
     }
     objectify_result(aTHX_ svn, ST(0));
     return; /* skip implicit PUTBACK */
 
 
+void sum_primes(IN SV* svlo, IN SV* svhi = 0)
+  PREINIT:
+    UV lo = 2, hi, ret;
+  PPCODE:
+    if ((items == 1 && _validate_and_set(&hi, aTHX_ svlo, IFLAG_POS)) ||
+        (items == 2 && _validate_and_set(&lo, aTHX_ svlo, IFLAG_POS) && _validate_and_set(&hi, aTHX_ svhi, IFLAG_POS))) {
+      UV count = 0;
+      int retok = 1;
+      /* 32/64-bit, Legendre or table-accelerated sieving. */
+      retok = sum_primes(lo, hi, &count);
+      /* If that didn't work, try the 128-bit version if supported. */
+      if (retok == 0 && HAVE_SUM_PRIMES128) {
+        UV hicount, lo_hic, lo_loc;
+        retok = sum_primes128(hi, &hicount, &count);
+        if (retok == 1 && lo > 2) {
+          retok = sum_primes128(lo-1, &lo_hic, &lo_loc);
+          hicount -= lo_hic;
+          if (count < lo_loc) hicount--;
+          count -= lo_loc;
+        }
+        if (retok == 1 && hicount > 0)
+          RETURN_128(hicount, count);
+      }
+      if (retok == 1)
+        XSRETURN_UV(count);
+    }
+    _vcallsub_with_pp("sum_primes");
+    return;
 
 void random_prime(IN SV* svlo, IN SV* svhi = 0)
   PREINIT:
-    UV lo, hi, ret;
+    UV lo = 2, hi, ret;
     dMY_CXT;
   PPCODE:
-    lo = 2;
     if ((items == 1 && _validate_and_set(&hi, aTHX_ svlo, IFLAG_POS)) ||
         (items == 2 && _validate_and_set(&lo, aTHX_ svlo, IFLAG_POS) && _validate_and_set(&hi, aTHX_ svhi, IFLAG_POS))) {
       ret = random_prime(MY_CXT.randcxt,lo,hi);
@@ -886,6 +894,21 @@ void random_prime(IN SV* svlo, IN SV* svhi = 0)
     _vcallsub_with_gmpobj(0.44,"random_prime");
     objectify_result(aTHX_ ST(0), ST(0));
     XSRETURN(1);
+
+void print_primes(IN SV* svlo, IN SV* svhi = 0, IN int infd = -1)
+  PREINIT:
+    UV lo = 2, hi, ret;
+  PPCODE:
+    if ((items == 1 && _validate_and_set(&hi, aTHX_ svlo, IFLAG_POS)) ||
+        (items >= 2 && _validate_and_set(&lo, aTHX_ svlo, IFLAG_POS) && _validate_and_set(&hi, aTHX_ svhi, IFLAG_POS))) {
+      if (lo <= hi) {
+        int fd = (infd == -1) ? fileno(stdout) : infd;
+        print_primes(lo, hi, fd);
+      }
+    } else {
+      _vcallsub_with_pp("print_primes");
+    }
+    return;
 
 UV
 _LMO_pi(IN UV n)
@@ -1762,39 +1785,16 @@ is_polygonal(IN SV* svn, IN UV k, IN SV* svroot = 0)
     return;
 
 
-void
-inverse_li(IN SV* svn)
-  ALIAS:
-    perfect_power_count = 23
-    prime_power_count = 24
-    urandomm = 29
+void inverse_li(IN SV* svn)
   PREINIT:
-    UV n, ret;
+    UV n;
   PPCODE:
     if (_validate_and_set(&n, aTHX_ svn, IFLAG_POS)) {
-      if (ix == 0 && n >= MPU_MAX_PRIME_IDX) {
-        /* Out of range.  Fall through to Perl. */
-      } else {
-        switch (ix) {
-          case 0: ret = inverse_li(n); break;
-          case 23:ret = perfect_power_count(n); break;
-          case 24:ret = prime_power_count(n); break;
-          case 29:
-          default:{ dMY_CXT; ret = urandomm64(MY_CXT.randcxt,n); } break;
-        }
-        XSRETURN_UV(ret);
-      }
+      if (n < MPU_MAX_PRIME_IDX) /* Fall through to Perl if out of range. */
+        XSRETURN_UV(inverse_li(n));
     }
-    switch (ix) {
-      case 0:  _vcallsub_with_pp("inverse_li");   break;
-      case 23: _vcallsub_with_gmpobj(0.53,"perfect_power_count"); break;
-      case 24: _vcallsub_with_gmpobj(0.53,"prime_power_count"); break;
-      case 29:
-      default: _vcallsub_with_gmpobj(0.44,"urandomm"); break;
-    }
-    if (ix == 0 || ix == 1 || ix == 23 || ix == 25)
-      objectify_result(aTHX_ svn, ST(0));
-    return; /* skip implicit PUTBACK */
+    _vcallsub_with_pp("inverse_li");
+    XSRETURN(1);
 
 void nth_prime(IN SV* svn)
   ALIAS:
@@ -2070,6 +2070,19 @@ void urandomb(IN UV bits)
       default: _vcallsub_with_gmpobj(0.43,"random_strong_prime"); break;
     }
     objectify_result(aTHX_ ST(0), ST(0));
+    XSRETURN(1);
+
+void urandomm(IN SV* svn)
+  PREINIT:
+    UV n, ret;
+  PPCODE:
+    if (_validate_and_set(&n, aTHX_ svn, IFLAG_POS)) {
+      dMY_CXT;
+      ret = urandomm64(MY_CXT.randcxt, n);
+      XSRETURN_UV(ret);
+    }
+    _vcallsub_with_gmpobj(0.44,"urandomm");
+    objectify_result(aTHX_ svn, ST(0));
     XSRETURN(1);
 
 void random_factored_integer(IN SV* svn)
