@@ -550,7 +550,7 @@ static UV _rootmod_composite1(UV a, UV k, UV n) {
     }
     exp[i] = r;
   }
-  if (chinese(&g, exp, fac, nfactors) != 1) return 0;
+  if (chinese(&g, 0, exp, fac, nfactors) != 1) return 0;
   return g;
 }
 #endif
@@ -755,7 +755,7 @@ static UV* _rootmod_cprod(UV* nroots,
       UV ca[2], cn[2];
       ca[0] = r1;  cn[0] = p1;
       ca[1] = r2;  cn[1] = p2;
-      if (chinese(roots + i * nr2 + j, ca, cn, 2) != 1)
+      if (chinese(roots + i * nr2 + j, 0, ca, cn, 2) != 1)
         croak("chinese fail in allrootmod");
 #else
       UV t = mulmod(inv, submod(r2 % p2,r1 % p2,p2), p2);

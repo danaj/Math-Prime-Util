@@ -68,6 +68,7 @@ BEGIN {
 *Mdivint = \&Math::Prime::Util::divint;
 *Mpowint = \&Math::Prime::Util::powint;
 *Mmodint = \&Math::Prime::Util::modint;
+*Mabsint = \&Math::Prime::Util::absint;
 *Msqrtint = \&Math::Prime::Util::sqrtint;
 *Mrootint = \&Math::Prime::Util::rootint;
 *Mlogint = \&Math::Prime::Util::logint;
@@ -4068,17 +4069,21 @@ sub gcdext {
   return ($a,$b,$g);
 }
 
-sub chinese {
-  return 0 unless scalar @_;
+sub chinese2 {
+  return (0,0) unless scalar @_;
   my($lcm, $sum);
 
-  if ($Math::Prime::Util::_GMPfunc{"chinese"} && $Math::Prime::Util::GMP::VERSION >= 0.53) {
-    $sum = Math::Prime::Util::GMP::chinese(@_);
+  if ($Math::Prime::Util::_GMPfunc{"chinese2"} && $Math::Prime::Util::GMP::VERSION >= 0.53) {
+    ($sum,$lcm) = Math::Prime::Util::GMP::chinese2(@_);
     if (defined $sum) {
       $sum = Math::BigInt->new("$sum");
       $sum = _bigint_to_int($sum) if ref($sum) && $sum->bacmp(BMAX) <= 0;
     }
-    return $sum;
+    if (defined $lcm) {
+      $lcm = Math::BigInt->new("$lcm");
+      $lcm = _bigint_to_int($lcm) if ref($lcm) && $lcm->bacmp(BMAX) <= 0;
+    }
+    return ($sum,$lcm);
   }
 
   # Validate, copy, and do abs on the inputs.
@@ -4089,18 +4094,19 @@ sub chinese {
     my($a,$n) = @$aref;
     _validate_integer($a);
     _validate_integer($n);
-    return if $n == 0;
-    $n = -$n if $n < 0;
+    return (undef,undef) if $n == 0;
+    $n = Mabsint($n);
+    $a = Mmodint($a,$n);
     push @items, [$a,$n];
   }
-  return Mmodint($items[0]->[0], $items[0]->[1]) if scalar @items == 1;
+  return @{$items[0]} if scalar @items == 1;
   @items = sort { $b->[1] <=> $a->[1] } @items;
   foreach my $aref (@items) {
     my($ai, $ni) = @$aref;
-    $ai = Math::BigInt->new("$ai") if !ref($ai) && (abs($ai) > (~0>>1) || OLD_PERL_VERSION);
-    $ni = Math::BigInt->new("$ni") if !ref($ni) && (abs($ni) > (~0>>1) || OLD_PERL_VERSION);
+    $ai = Math::BigInt->new("$ai") if !ref($ai) && ($ai > (~0>>1) || OLD_PERL_VERSION);
+    $ni = Math::BigInt->new("$ni") if !ref($ni) && ($ni > (~0>>1) || OLD_PERL_VERSION);
     if (!defined $lcm) {
-      ($sum,$lcm) = ($ai % $ni, $ni);
+      ($sum, $lcm) = ($ai, $ni);
       next;
     }
     # gcdext
@@ -4111,7 +4117,7 @@ sub chinese {
       ($u,$v,$g,$s,$t,$w) = ($s,$t,$w,$u-$q*$s,$v-$q*$t,$r);
     }
     ($u,$v,$g) = (-$u,-$v,-$g)  if $g < 0;
-    return if $g != 1 && ($sum % $g) != ($ai % $g);  # Not co-prime
+    return (undef,undef) if $g != 1 && ($sum % $g) != ($ai % $g); # Not co-prime
     $s = -$s if $s < 0;
     $t = -$t if $t < 0;
     # Convert to bigint if necessary.  Performance goes to hell.
@@ -4130,12 +4136,17 @@ sub chinese {
       my $vs = _mulmod($v,$s,$lcm);
       my $ut = _mulmod($u,$t,$lcm);
       my $m1 = _mulmod($sum,$vs,$lcm);
-      my $m2 = _mulmod($ut,$ai % $lcm,$lcm);
+      my $m2 = _mulmod($ut,$ai,$lcm);
       $sum = _addmod($m1, $m2, $lcm);
     }
   }
   $sum = _bigint_to_int($sum) if ref($sum) && $sum->bacmp(BMAX) <= 0;
-  $sum;
+  $lcm = _bigint_to_int($lcm) if ref($lcm) && $lcm->bacmp(BMAX) <= 0;
+  ($sum,$lcm);
+}
+
+sub chinese {
+  (chinese2(@_))[0];
 }
 
 sub _from_128 {

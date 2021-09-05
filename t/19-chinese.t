@@ -3,7 +3,7 @@ use strict;
 use warnings;
 
 use Test::More;
-use Math::Prime::Util qw/chinese/;
+use Math::Prime::Util qw/chinese chinese2/;
 
 #my $extra = defined $ENV{EXTENDED_TESTING} && $ENV{EXTENDED_TESTING};
 #my $use64 = Math::Prime::Util::prime_get_config->{'maxbits'} > 32;
@@ -62,7 +62,7 @@ my @crts = (
   [ [[-4,17], [ 17,-19]], 302, 323],
 );
 
-plan tests => 1;
+plan tests => 2;
 
 ###### chinese
 is_deeply(
@@ -70,8 +70,9 @@ is_deeply(
   [ map { $_->[1] } @crts ],
   "chinese()"
 );
-#is_deeply(
-#  [ map { [chinese2(@{$_->[0]})] } @crts ],
-#  [ map { [$_->[1],$_->[2]] } @crts ],
-#  "chinese2()"
-#);
+###### chinese2
+is_deeply(
+  [ map { [chinese2(@{$_->[0]})] } @crts ],
+  [ map { [$_->[1],$_->[2]] } @crts ],
+  "chinese2()"
+);

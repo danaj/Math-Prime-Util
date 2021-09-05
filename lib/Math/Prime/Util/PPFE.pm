@@ -190,6 +190,7 @@ sub entropy_bytes {
 *inverse_totient = \&Math::Prime::Util::PP::inverse_totient;
 *valuation = \&Math::Prime::Util::PP::valuation;
 *chinese = \&Math::Prime::Util::PP::chinese;
+*chinese2 = \&Math::Prime::Util::PP::chinese2;
 *primorial = \&Math::Prime::Util::PP::primorial;
 *pn_primorial = \&Math::Prime::Util::PP::pn_primorial;
 *divisors = \&Math::Prime::Util::PP::divisors;

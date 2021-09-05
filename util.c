@@ -2121,7 +2121,7 @@ int binomialmod(UV *res, UV n, UV k, UV m) {
         fac[i] = ipow(fac[i], exp[i]);
       }
     }
-    return (chinese(res, bin, fac, nfactors) == 1);
+    return (chinese(res, 0, bin, fac, nfactors) == 1);
   }
   return 0;
 }
@@ -2135,9 +2135,9 @@ int binomialmod(UV *res, UV n, UV k, UV m) {
  * but handles the case where IV_MAX < lcm <= UV_MAX.
  * status = 1 means good result, 0 means try another method.
  */
-static int _simple_chinese(UV *r, UV* a, UV* n, UV num) {
+static int _simple_chinese(UV *r, UV *mod, UV* a, UV* n, UV num) {
   UV i, lcm = 1, res = 0;
-  if (num == 0) { *r = 0; return 1; }  /* Dubious return */
+  if (num == 0) { *r = 0; if (mod) *mod = 0; return 1; }  /* Dubious return */
 
   for (i = 0; i < num; i++) {
     UV ni = n[i];
@@ -2156,14 +2156,15 @@ static int _simple_chinese(UV *r, UV* a, UV* n, UV num) {
     res = addmod(res, term, lcm);
   }
   *r = res;
+  if (mod) *mod = lcm;
   return 1;
 }
 
 /* status: 1 ok, -1 no inverse, 0 overflow */
-int chinese(UV *r, UV* a, UV* n, UV num) {
+int chinese(UV *r, UV *mod, UV* a, UV* n, UV num) {
   static unsigned short sgaps[] = {7983,3548,1577,701,301,132,57,23,10,4,1,0};
   UV gcd, i, j, lcm, sum, gi, gap;
-  if (num == 0) { *r = 0; return 1; }  /* Dubious return */
+  if (num == 0) { *r = 0; if (mod) *mod = 0; return 1; }  /* Dubious return */
 
   /* Sort modulii, largest first */
   for (gi = 0, gap = sgaps[gi]; gap >= 1; gap = sgaps[++gi]) {
@@ -2176,7 +2177,7 @@ int chinese(UV *r, UV* a, UV* n, UV num) {
   }
 
   if (n[num-1] == 0) return -1;  /* mod 0 */
-  if (n[0] > IV_MAX) return _simple_chinese(r,a,n,num);
+  if (n[0] > IV_MAX) return _simple_chinese(r,mod,a,n,num);
   lcm = n[0]; sum = a[0] % n[0];
   for (i = 1; i < num; i++) {
     IV u, v, t, s;
@@ -2185,7 +2186,7 @@ int chinese(UV *r, UV* a, UV* n, UV num) {
     if (gcd != 1 && ((sum % gcd) != (a[i] % gcd))) return -1;
     if (s < 0) s = -s;
     if (t < 0) t = -t;
-    if (s > (IV)(IV_MAX/lcm)) return _simple_chinese(r,a,n,num);
+    if (s > (IV)(IV_MAX/lcm)) return _simple_chinese(r,mod,a,n,num);
     lcm *= s;
     if (u < 0) u += lcm;
     if (v < 0) v += lcm;
@@ -2194,6 +2195,7 @@ int chinese(UV *r, UV* a, UV* n, UV num) {
     sum = addmod(  mulmod(vs, sum, lcm),  mulmod(ut, a[i], lcm),  lcm  );
   }
   *r = sum;
+  if (mod) *mod = lcm;
   return 1;
 }
 

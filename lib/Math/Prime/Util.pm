@@ -81,7 +81,7 @@ our @EXPORT_OK =
       random_shawe_taylor_prime random_shawe_taylor_prime_with_cert
       random_semiprime random_unrestricted_semiprime
       random_factored_integer
-      primorial pn_primorial consecutive_integer_lcm gcdext chinese
+      primorial pn_primorial consecutive_integer_lcm gcdext chinese chinese2
       gcd lcm factor factor_exp divisors valuation hammingweight
       todigits fromdigits todigitstring sumdigits
       tozeckendorf fromzeckendorf
@@ -3411,10 +3411,11 @@ Solves a system of simultaneous congruences using the Chinese Remainder
 Theorem (with extension to non-coprime moduli).  A list of C<[a,n]> pairs
 are taken as input, each representing an equation C<x ≡ a mod |n|>.  If no
 solution exists, C<undef> is returned.  If a solution is returned, the
-modulus is equal to the lcm of all the given moduli (see L</lcm>.  In
+modulus is equal to the lcm of all the given moduli (see L</lcm>).  In
 the standard case where all values of C<n> are coprime, this is just the
-product.  The C<a> and C<n> values must be integers, and like other mod
-functions, we use C<abs(n)>.
+product.
+The C<a> values must be integers, while the C<n> values must be
+non-zero integers.  Like other mod functions, we use C<abs(n)>.
 
 Comparison to similar functions in other software:
 
@@ -3431,6 +3432,16 @@ Comparison to similar functions in other software:
     crt( [a1,m1], [a2,m2], ... )
     crt(a1,m1,a2,m2,...)
     CRT_list( [a1,a2,...], [m1,m2,...] )
+
+=head2 chinese2
+
+Functions like L</chinese> but returns two items: the remainder
+and the modulus.
+If a solution exists, the second value (the final modulus) is equal to
+the lcm of the absolute values of all the given moduli.
+
+If no solution exists, both return values will be C<undef>.
+
 
 =head2 vecsum
 

@@ -1489,10 +1489,12 @@ vecequal(IN SV* a, IN SV* b)
 
 void
 chinese(...)
+  ALIAS:
+    chinese2 = 1
   PROTOTYPE: @
   PREINIT:
     int i, status, astatus, nstatus;
-    UV ret, *an;
+    UV ret, lcm, *an;
     SV **psva, **psvn;
   PPCODE:
     status = 1;
@@ -1512,10 +1514,23 @@ chinese(...)
       _mod_with(an+i, astatus, an[i+items]);
     }
     if (status)
-      status = chinese(&ret, an, an+items, items);
+      status = chinese(&ret, &lcm, an, an+items, items);
     Safefree(an);
-    if (status == -1) XSRETURN_UNDEF;
-    if (status)       XSRETURN_UV(ret);
+    if (status) {
+      if (ix == 0) {
+        if (status < 0)  XSRETURN_UNDEF;
+        else             XSRETURN_UV(ret);
+      } else {
+        if (status < 0) {
+          XPUSHs(&PL_sv_undef);
+          XPUSHs(&PL_sv_undef);
+        } else {
+          XPUSHs(sv_2mortal(newSVuv( ret )));
+          XPUSHs(sv_2mortal(newSVuv( lcm )));
+        }
+        XSRETURN(2);
+      }
+    }
     psvn = av_fetch((AV*) SvRV(ST(0)), 1, 0);
     _vcallsub_with_gmpobj(0.32,"chinese");
     objectify_result(aTHX_  (psvn ? *psvn : 0), ST(0));

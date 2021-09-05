@@ -277,6 +277,7 @@ Tags:
   lcm(@list)                          least common multiple
   gcdext(x,y)                         return (u,v,d) where u*x+v*y=d
   chinese([a,mod1],[b,mod2],...)      Chinese Remainder Theorem
+  chinese2([a,mod1],[b,mod2],...)     Chinese Remainder Theorem
   primorial(n)                        product of primes below n
   pn_primorial(n)                     product of first n primes
   factorial(n)                        product of first n integers: n!

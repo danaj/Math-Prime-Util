@@ -75,7 +75,7 @@ my @functions =  qw(
       random_shawe_taylor_prime random_shawe_taylor_prime_with_cert
       random_semiprime random_unrestricted_semiprime
       random_factored_integer
-      primorial pn_primorial consecutive_integer_lcm gcdext chinese
+      primorial pn_primorial consecutive_integer_lcm gcdext chinese chinese2
       gcd lcm factor factor_exp divisors valuation hammingweight
       todigits fromdigits todigitstring sumdigits
       tozeckendorf fromzeckendorf

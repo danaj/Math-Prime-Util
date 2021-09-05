@@ -110,7 +110,7 @@ sub mpu_public_regex {
       random_shawe_taylor_prime random_shawe_taylor_prime_with_cert
       random_semiprime random_unrestricted_semiprime
       random_factored_integer
-      primorial pn_primorial consecutive_integer_lcm gcdext chinese
+      primorial pn_primorial consecutive_integer_lcm gcdext chinese chinese2
       gcd lcm factor factor_exp divisors valuation hammingweight
       todigits fromdigits todigitstring sumdigits
       tozeckendorf fromzeckendorf
@@ -141,8 +141,8 @@ sub mpu_factor_regex {
 
 sub mpu_PPM_regex {
   my @funcs = qw(
-      Maddint Msubint Mmulint Mdivint Mpowint Mnegint Mmodint
-      Mlogint Mrootint Msqrtint
+      Maddint Msubint Mmulint Mdivint Mpowint Mabsint Mnegint
+      Mmodint Mlogint Mrootint Msqrtint
       Mlshiftint Mrshiftint
       Maddmod Msubmod Mmulmod Mrootmod Mdivmod Mpowmod Minvmod
       Mbinomial Mchinese Mfactor Mfactor_exp
