@@ -89,19 +89,28 @@ Tags:
   prime_count(start, end)             count of primes in range
   prime_count_lower(n)                fast lower bound for prime count
   prime_count_upper(n)                fast upper bound for prime count
-  prime_count_approx(n)               fast approximate count of primes
+  prime_count_approx(n)               fast approximate prime count
+  prime_power_count(n)                count of prime powers <= n
+  prime_power_count(start, end)       count of prime powers in range
+  prime_power_count_lower(n)          fast lower bound for prime power count
+  prime_power_count_upper(n)          fast upper bound for prime power count
+  prime_power_count_approx(n)         fast approximate prime power count
   nth_prime(n)                        the nth prime (n=1 returns 2)
   nth_prime_lower(n)                  fast lower bound for nth prime
   nth_prime_upper(n)                  fast upper bound for nth prime
   nth_prime_approx(n)                 fast approximate nth prime
+  nth_prime_power(n)                  the nth prime power (n=1 returns 2)
+  nth_prime_power_lower(n)            fast lower bound for nth prime power
+  nth_prime_power_upper(n)            fast upper bound for nth prime power
+  nth_prime_power_approx(n)           fast approximate nth prime power
   twin_prime_count(n)                 count of twin primes <= n
   twin_prime_count(start, end)        count of twin primes in range
-  twin_prime_count_approx(n)          fast approx count of twin primes
+  twin_prime_count_approx(n)          fast approximate twin prime count
   nth_twin_prime(n)                   the nth twin prime (n=1 returns 3)
   nth_twin_prime_approx(n)            fast approximate nth twin prime
   semiprime_count(n)                  count of semiprimes <= n
   semiprime_count(start, end)         count of semiprimes in range
-  semiprime_count_approx(n)           fast approximate count of semiprimes
+  semiprime_count_approx(n)           fast approximate semiprime count
   nth_semiprime(n)                    the nth semiprime
   nth_semiprime_approx(n)             fast approximate nth semiprime
   almost_prime_count(k,n)             count of k-almost-primes
@@ -326,11 +335,19 @@ Tags:
   randperm(n,[k])                     random permutation of n elems
   shuffle(...)                        random permutation of an array
   lucky_numbers(n)                    array ref of lucky sieve up to n
+  lucky_count(n)                      count of lucky numbers <= n
+  lucky_count(start, end)             count of lucky numbers in range
+  lucky_count_lower(n)                fast lower bound for lucky count
+  lucky_count_upper(n)                fast upper bound for lucky count
+  lucky_count_approx(n)               fast approximate lucky count
   nth_lucky(n)                        nth entry in lucky sieve
+  nth_lucky_lower(n)                  fast lower bound for nth lucky number
+  nth_lucky_upper(n)                  fast upper bound for nth lucky number
+  nth_lucky_approx(n)                 fast approximate nth lucky number
   powerful_count(n[,k])               count of k-powerful numbers <= n
   nth_powerful(n[,k])                 the nth k-powerful number
   perfect_power_count(n)              count of perfect powers <= n
-  prime_power_count(n)                count of prime powers <= n
+  perfect_power_count(start, end)     count of perfect powers in range
   smooth_count(n,k)                   count of k-smooth numbers <= n
   rough_count(n,k)                    count of k-rough numbers <= n
   powerfree_count(n[,k])              count of k-powerfree numbers <= n

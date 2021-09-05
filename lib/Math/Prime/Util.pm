@@ -31,7 +31,7 @@ our @EXPORT_OK =
       is_semiprime is_almost_prime is_omega_prime
       is_square_free is_primitive_root is_carmichael is_quasi_carmichael
       is_fundamental is_totient is_gaussian_prime is_sum_of_squares
-      is_smooth is_rough is_powerful is_practical
+      is_smooth is_rough is_powerful is_practical is_lucky is_powerfree
       sqrtint rootint logint lshiftint rshiftint rashiftint absint negint
       signint cmpint addint subint add1int sub1int mulint powint
       divint modint divrem fdivrem tdivrem
@@ -39,10 +39,7 @@ our @EXPORT_OK =
       lucas_sequence
       lucasu lucasv lucasuv lucasumod lucasvmod lucasuvmod
       primes twin_primes semi_primes almost_primes omega_primes ramanujan_primes
-      sieve_prime_cluster sieve_range prime_powers
-      lucky_numbers is_lucky
-      nth_lucky nth_lucky_lower nth_lucky_upper nth_lucky_approx
-      lucky_count lucky_count_lower lucky_count_upper lucky_count_approx
+      sieve_prime_cluster sieve_range prime_powers lucky_numbers
       forprimes forcomposites foroddcomposites forsemiprimes foralmostprimes
       forpart forcomp forcomb forperm forderange formultiperm forsetproduct
       fordivisors forfactored forsquarefree
@@ -67,11 +64,15 @@ our @EXPORT_OK =
       nth_ramanujan_prime_lower nth_ramanujan_prime_upper
       powerful_count nth_powerful
       perfect_power_count
-      prime_power_count nth_prime_power
-      nth_prime_power_lower nth_prime_power_upper nth_prime_power_approx
-      is_powerfree powerfree_count powerfree_sum
+      prime_power_count prime_power_count_approx
+      prime_power_count_lower prime_power_count_upper
+      nth_prime_power nth_prime_power_approx
+      nth_prime_power_lower nth_prime_power_upper
+      powerfree_count powerfree_sum
       powerfree_part powerfree_part_sum
       smooth_count rough_count
+      lucky_count lucky_count_approx lucky_count_lower lucky_count_upper
+      nth_lucky nth_lucky_approx nth_lucky_lower nth_lucky_upper
       sum_primes print_primes
       random_prime random_ndigit_prime
       random_nbit_prime random_safe_prime random_strong_prime
@@ -1506,31 +1507,6 @@ MPU will return C<0>.  L<Math::Primality> and the current MPU will return
 C<undef>.  WolframAlpha returns C<-2>.  Maple gives a range error.
 
 
-=head2 prime_powers
-
-  my $aref = prime_powers( 10**4 );
-
-Given either two non-negative limits C<lo>, C<hi>, or one non-negative
-limit C<hi>, returns an array reference with all prime powers between
-the limits (inclusive).  With only one input, the lower limit is C<2>.
-
-The array reference values will be all C<p^e> where
-C<lo E<lt>= p^e E<lt>= hi> with C<p> prime and C<e E<gt>= 1>.  Hence this
-includes the primes as well as higher powers of primes.
-
-See also L</primes> and L</prime_power_count>.
-
-=head2 next_prime_power
-
-Given an integer C<n>, returns the smallest prime power greater than C<|n|>.
-Similar to L</next_prime>, but also includes powers of primes.
-
-=head2 prev_prime_power
-
-Given an integer C<n>, returns the greatest prime power less than C<|n|>.
-Similar to L</prev_prime>, but also includes powers of primes.
-If given C<|n|> less than 3, C<undef> will be returned.
-
 
 =head2 forprimes
 
@@ -1882,6 +1858,96 @@ for input values over C<2^32>, and decreases as the input gets larger.
 
 A slightly faster but much less accurate answer can be obtained by averaging
 the upper and lower bounds.
+
+
+=head2 is_prime_power
+
+Given an integer C<n>, returns C<k> if C<n = p^k> for some prime p,
+and zero otherwise.
+
+If a second argument is present, it must be a scalar reference.  If the
+return value is non-zero, then it will be set to C<p>.
+
+This corresponds to Pari/GP's C<isprimepower> function.  It is related to
+Mathematica's C<PrimePowerQ[n]> function.
+These all return zero/false for C<n=1>.
+
+This is the L<OEIS series A246655|http://oeis.org/A246655>.
+
+=head2 prime_powers
+
+  my $aref = prime_powers( 10**4 );
+
+Given either two non-negative limits C<lo>, C<hi>, or one non-negative
+limit C<hi>, returns an array reference with all prime powers between
+the limits (inclusive).  With only one input, the lower limit is C<2>.
+
+The array reference values will be all C<p^e> where
+C<lo E<lt>= p^e E<lt>= hi> with C<p> prime and C<e E<gt>= 1>.  Hence this
+includes the primes as well as higher powers of primes.
+
+See also L</primes> and L</prime_power_count>.
+
+=head2 next_prime_power
+
+Given an integer C<n>, returns the smallest prime power greater than C<|n|>.
+Similar to L</next_prime>, but also includes powers of primes.
+
+=head2 prev_prime_power
+
+Given an integer C<n>, returns the greatest prime power less than C<|n|>.
+Similar to L</prev_prime>, but also includes powers of primes.
+If given C<|n|> less than 3, C<undef> will be returned.
+
+=head2 prime_power_count
+
+Given a single non-negative integer C<n>, returns the count of
+prime powers less than or equal to C<n>.
+If given two non-negative integers C<lo> and C<hi>, returns the count
+of prime powers between C<lo> and C<hi> inclusive.
+
+These are prime powers with exponent greater than 0.
+I.e. the prime powers not including C<1>.
+This is L<OEIS series A025528|http://oeis.org/A025528>.
+
+=head2 prime_power_count_approx
+
+Given a non-negative integer C<n>, quickly returns a
+good estimate of the count of prime powers less than or equal to C<n>.
+
+=head2 prime_power_count_lower
+
+Given a non-negative integer C<n>, quickly returns a
+lower bound of the count of prime powers less than or equal to C<n>.
+The actual count will always be greater than or equal to the result.
+
+=head2 prime_power_count_upper
+
+Given a non-negative integer C<n>, quickly returns a
+upper bound of the count of prime powers less than or equal to C<n>.
+The actual count will always be less than or equal to the result.
+
+=head2 nth_prime_power
+
+Given a non-negative integer C<n>, returns the C<n>-th prime power.
+
+=head2 nth_prime_power_approx
+
+Given a non-negative integer C<n>, quickly returns a
+good estimate of the C<n>-th prime power.
+
+=head2 nth_prime_power_lower
+
+Given a non-negative integer C<n>, quickly returns a
+lower bound of the C<n>-th prime power.
+The actual value will always be greater than or equal to the result.
+
+=head2 nth_prime_power_upper
+
+Given a non-negative integer C<n>, quickly returns a
+upper bound of the C<n>-th prime power.
+The actual value will always be less than or equal to the result.
+
 
 
 =head2 twin_primes
@@ -2980,20 +3046,6 @@ a k-th power, then this will be set to the k-th root of C<n>.  For example:
 
 This corresponds to Pari/GP's C<ispower> function with integer arguments.
 
-
-=head2 is_prime_power
-
-Given an integer C<n>, returns C<k> if C<n = p^k> for some prime p,
-and zero otherwise.
-
-If a second argument is present, it must be a scalar reference.  If the
-return value is non-zero, then it will be set to C<p>.
-
-This corresponds to Pari/GP's C<isprimepower> function.  It is related to
-Mathematica's C<PrimePowerQ[n]> function.
-These all return zero/false for C<n=1>.
-
-This is the L<OEIS series A246655|http://oeis.org/A246655>.
 
 =head2 is_square
 
@@ -4114,7 +4166,7 @@ If you want the enumerated partitions, see L</forpart>.
 
 =head2 lucky_numbers
 
-Given a 32-/64-bit non-negative integer C<n>, 
+Given a 32-/64-bit non-negative integer C<n>,
 returns an array reference of values up to the input C<n> (inclusive)
 which remain after the lucky number sieve originally defined by
 Gardiner, Lazarus, Metropolis, and Ulam.
@@ -4127,14 +4179,6 @@ There is no current algorithm for efficiently sieving a segment,
 and the time for the monolithic sieving process by currently known
 best methods is empirically C<O(n^1.8)>.
 
-=head2 nth_lucky
-
-Given a non-negative integer C<n>, returns the C<n>-th lucky numbers.
-This is done by sieving lucky numbers to C<n> then performing
-a reverse calculation to determine the value at the nth position.
-This is much more efficient than generating all the lucky numbers
-up to the nth position, but is vastly slower than L</nth_prime>.
-
 =head2 is_lucky
 
 Given an integer C</n>, Returns C<1> if the C<n> is included in the
@@ -4143,6 +4187,56 @@ The process used is analogous to trial division using the lucky
 numbers less than C<n/log(n)>.
 For inputs not immediately discarded, the performance is essentially
 the same as generating the nth lucky number nearest to the input.
+
+=head2 lucky_count
+
+Given a single non-negative integer C<n>, returns the count of lucky
+numbers less than or equal to C<n>.
+If given two non-negative integers C<lo> and C<hi>, returns the count
+of lucky numbers between C<lo> and C<hi> inclusive.
+
+=head2 lucky_count_approx
+
+Given a single non-negative integer C<n>, quickly returns a
+good estimate of the count of lucky numbers less than or equal to C<n>.
+
+=head2 lucky_count_lower
+
+Given a single non-negative integer C<n>, quickly returns a
+lower bound of the count of lucky numbers less than or equal to C<n>.
+The actual count will always be greater than or equal to the result.
+
+=head2 lucky_count_upper
+
+Given a single non-negative integer C<n>, quickly returns a
+upper bound of the count of lucky numbers less than or equal to C<n>.
+The actual count will always be less than or equal to the result.
+
+=head2 nth_lucky
+
+Given a non-negative integer C<n>, returns the C<n>-th lucky number.
+This is done by sieving lucky numbers to C<n> then performing
+a reverse calculation to determine the value at the nth position.
+This is much more efficient than generating all the lucky numbers
+up to the nth position, but is vastly slower than L</nth_prime>.
+
+=head2 nth_lucky_approx
+
+Given a single non-negative integer C<n>, quickly returns a
+good estimate of the C<n>-th lucky number.
+
+=head2 nth_lucky_lower
+
+Given a single non-negative integer C<n>, quickly returns a
+lower bound of the C<n>-th lucky number.
+The actual value will always be greater than or equal to the result.
+
+=head2 nth_lucky_upper
+
+Given a single non-negative integer C<n>, quickly returns a
+upper bound of the C<n>-th lucky number.
+The actual value will always be less than or equal to the result.
+
 
 
 =head2 is_smooth
@@ -4217,17 +4311,13 @@ For all C<k>, returns undef for C<n=0> and 1 for C<n=1>.
 
 =head2 perfect_power_count
 
-Given an integer C<n>, returns the number of integers not exceeding C<n>
-which are perfect powers.  By convention, 1 is included
-here even though L</is_power(1) = 0>.
+Given a non-negative integer C<n>, returns the number of integers
+not exceeding C<n> which are perfect powers.
+If given two non-negative integers C<lo> and C<hi>, returns the count
+of perfect powers between C<lo> and C<hi> inclusive.
+
+By convention, 1 is included here even though L</is_power(1) = 0>.
 This is L<OEIS series A069623|http://oeis.org/A069623>.
-
-=head2 prime_power_count
-
-Given an integer C<n>, returns the number of integers not exceeding C<n>
-which are prime powers with exponent greater than 0 (i.e. the prime powers
-not including C<1>).
-This is L<OEIS series A025528|http://oeis.org/A025528>.
 
 =head2 smooth_count
 

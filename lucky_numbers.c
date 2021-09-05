@@ -225,7 +225,7 @@ UV nth_lucky_approx(UV n) {
            (n <= 10000000) ? -0.0422 :
                              -0.0440 ;
     /* Hawkins and Briggs (1958), attributed to S. Chowla. */
-    return (UV)(fn*(logn + 0.5*loglogn*loglogn + corr*loglogn*loglogn) + 0.5);
+    return (UV)(fn*(logn + (0.5+corr)*loglogn*loglogn) + 0.5);
   }
 }
 UV nth_lucky_upper(UV n) {
@@ -276,8 +276,13 @@ int is_lucky(UV n) {
   if ( !(n & 1) || (n%6) == 5 || !_lmask63[n % 63]) return 0;
   if (n < 45) return 1;
 
+  {
+    UV dr = (n==0)?0:1+((n-1)%9);
+    if (dr == 2 || dr == 5 || dr == 8) croak("dr found %lu",n);
+  }
   /* Check valid position using the static list */
   pos = (n+1) >> 1;  /* Initial position in odds */
+
   for (i = 1; i < 48; i++) {
     l = _small_lucky[i];
     if (pos < l) return 1;
@@ -301,9 +306,10 @@ int is_lucky(UV n) {
   }
 
   /* Generate all needed values and continue checking from where we left off. */
-  lucky32 = lucky_sieve32(&nlucky, lsize = lucky_count_upper(n));
-  while (1) {
-    if (i >= nlucky) { Safefree(lucky32); lucky32 = lucky_sieve32(&nlucky, lsize *= 1.02); }
+
+  /* TODO: Using the 32-bit sieve means n > ~113,500,000,000 won't work. */
+  lucky32 = lucky_sieve32(&nlucky, lsize = 1+lucky_count_upper(n));
+  while (i < nlucky) {
     l = lucky32[i++];
     if (pos < l)  break;
     quo = pos / l;

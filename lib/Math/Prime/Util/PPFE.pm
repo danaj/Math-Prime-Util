@@ -92,27 +92,50 @@ sub entropy_bytes {
 }
 
 
+# These functions all do input validation within the PP code.
+# Therefore we can send user input straight to them.
+
+# The advantage is simplicity and speed for a single user call.
+#
+# The disadvantage is that we're doing very expensive PP validation
+# for each function call within the PP code itself.
+
+# Rules of thumb:
+#   if a function is expensive, no harm in validation
+#   if a function is cheap and often called, consider validation here.
+
+# TODO: revisit decision for all of these
+
 *urandomb = \&Math::Prime::Util::PP::urandomb;
 *urandomm = \&Math::Prime::Util::PP::urandomm;
 
-# TODO: Go through these and decide if they should be doing anything extra here,
-#       such as input validation.
-# TODO: If not, why not the other functions?
 *sumdigits = \&Math::Prime::Util::PP::sumdigits;
 *todigits = \&Math::Prime::Util::PP::todigits;
 *todigitstring = \&Math::Prime::Util::PP::todigitstring;
 *fromdigits = \&Math::Prime::Util::PP::fromdigits;
 *inverse_li = \&Math::Prime::Util::PP::inverse_li;
 *sieve_prime_cluster = \&Math::Prime::Util::PP::sieve_prime_cluster;
+*sieve_range = \&Math::Prime::Util::PP::sieve_range;
+
+*prime_power_count = \&Math::Prime::Util::PP::prime_power_count;
 *twin_prime_count = \&Math::Prime::Util::PP::twin_prime_count;
 *semiprime_count = \&Math::Prime::Util::PP::semiprime_count;
 *almost_prime_count = \&Math::Prime::Util::PP::almost_prime_count;
 *omega_prime_count = \&Math::Prime::Util::PP::omega_prime_count;
 *ramanujan_prime_count = \&Math::Prime::Util::PP::ramanujan_prime_count;
+*lucky_count = \&Math::Prime::Util::PP::lucky_count;
+
 *sum_primes = \&Math::Prime::Util::PP::sum_primes;
 *print_primes = \&Math::Prime::Util::PP::print_primes;
-*sieve_range = \&Math::Prime::Util::PP::sieve_range;
-#*prime_powers = \&Math::Prime::Util::PP::prime_powers;
+
+*is_prime          = \&Math::Prime::Util::PP::is_prime;
+*is_prob_prime     = \&Math::Prime::Util::PP::is_prob_prime;
+*is_provable_prime = \&Math::Prime::Util::PP::is_provable_prime;
+*is_bpsw_prime     = \&Math::Prime::Util::PP::is_bpsw_prime;
+*is_pseudoprime    = \&Math::Prime::Util::PP::is_pseudoprime;
+*is_euler_pseudoprime = \&Math::Prime::Util::PP::is_euler_pseudoprime;
+*is_strong_pseudoprime = \&Math::Prime::Util::PP::is_strong_pseudoprime;
+*is_euler_plumb_pseudoprime = \&Math::Prime::Util::PP::is_euler_plumb_pseudoprime;
 
 *is_carmichael = \&Math::Prime::Util::PP::is_carmichael;
 *is_quasi_carmichael = \&Math::Prime::Util::PP::is_quasi_carmichael;
@@ -131,7 +154,6 @@ sub entropy_bytes {
 *powerful_count = \&Math::Prime::Util::PP::powerful_count;
 *nth_powerful = \&Math::Prime::Util::PP::nth_powerful;
 *perfect_power_count = \&Math::Prime::Util::PP::perfect_power_count;
-*prime_power_count = \&Math::Prime::Util::PP::prime_power_count;
 *is_powerfree = \&Math::Prime::Util::PP::is_powerfree;
 *powerfree_count = \&Math::Prime::Util::PP::powerfree_count;
 *powerfree_sum = \&Math::Prime::Util::PP::powerfree_sum;
@@ -170,6 +192,7 @@ sub entropy_bytes {
 *chinese = \&Math::Prime::Util::PP::chinese;
 *primorial = \&Math::Prime::Util::PP::primorial;
 *pn_primorial = \&Math::Prime::Util::PP::pn_primorial;
+*divisors = \&Math::Prime::Util::PP::divisors;
 
 *divint = \&Math::Prime::Util::PP::divint;
 *modint = \&Math::Prime::Util::PP::modint;
@@ -202,6 +225,35 @@ sub entropy_bytes {
 *vecequal = \&Math::Prime::Util::PP::vecequal;
 *tozeckendorf = \&Math::Prime::Util::PP::tozeckendorf;
 *fromzeckendorf = \&Math::Prime::Util::PP::fromzeckendorf;
+
+*prime_count_approx = \&Math::Prime::Util::PP::prime_count_approx;
+*prime_count_lower = \&Math::Prime::Util::PP::prime_count_lower;
+*prime_count_upper = \&Math::Prime::Util::PP::prime_count_upper;
+*prime_power_count_approx = \&Math::Prime::Util::PP::prime_power_count_approx;
+*prime_power_count_lower = \&Math::Prime::Util::PP::prime_power_count_lower;
+*prime_power_count_upper = \&Math::Prime::Util::PP::prime_power_count_upper;
+*lucky_count_approx = \&Math::Prime::Util::PP::lucky_count_approx;
+*lucky_count_lower = \&Math::Prime::Util::PP::lucky_count_lower;
+*lucky_count_upper = \&Math::Prime::Util::PP::lucky_count_upper;
+*nth_prime_power = \&Math::Prime::Util::PP::nth_prime_power;
+*nth_prime_power_approx = \&Math::Prime::Util::PP::nth_prime_power_approx;
+*nth_prime_power_lower = \&Math::Prime::Util::PP::nth_prime_power_lower;
+*nth_prime_power_upper = \&Math::Prime::Util::PP::nth_prime_power_upper;
+#*nth_lucky = \&Math::Prime::Util::PP::nth_lucky;
+*nth_lucky_approx = \&Math::Prime::Util::PP::nth_lucky_approx;
+*nth_lucky_lower = \&Math::Prime::Util::PP::nth_lucky_lower;
+*nth_lucky_upper = \&Math::Prime::Util::PP::nth_lucky_upper;
+
+*semiprime_count_approx = \&Math::Prime::Util::PP::semiprime_count_approx;
+*nth_semiprime_approx = \&Math::Prime::Util::PP::nth_semiprime_approx;
+*twin_prime_count_approx = \&Math::Prime::Util::PP::twin_prime_count_approx;
+*nth_twin_prime_approx = \&Math::Prime::Util::PP::nth_twin_prime_approx;
+*nth_semiprime = \&Math::Prime::Util::PP::nth_semiprime;
+
+*almost_prime_count_approx = \&Math::Prime::Util::PP::almost_prime_count_approx;
+
+
+# We are doing the validation here so the PP code doesn't have to do it.
 
 sub jordan_totient {
   my($k, $n) = @_;
@@ -270,37 +322,6 @@ sub nth_prime_approx {
   _validate_positive_integer($n);
   return Math::Prime::Util::PP::nth_prime_approx($n);
 }
-sub prime_count_lower {
-  my($n) = @_;
-  _validate_positive_integer($n);
-  return Math::Prime::Util::PP::prime_count_lower($n);
-}
-sub prime_count_upper {
-  my($n) = @_;
-  _validate_positive_integer($n);
-  return Math::Prime::Util::PP::prime_count_upper($n);
-}
-sub prime_count_approx {
-  my($n) = @_;
-  _validate_positive_integer($n);
-  return Math::Prime::Util::PP::prime_count_approx($n);
-}
-sub twin_prime_count_approx {
-  my($n) = @_;
-  _validate_positive_integer($n);
-  return Math::Prime::Util::PP::twin_prime_count_approx($n);
-}
-sub semiprime_count_approx {
-  my($n) = @_;
-  _validate_positive_integer($n);
-  return Math::Prime::Util::PP::semiprime_count_approx($n);
-}
-sub almost_prime_count_approx {
-  my($k,$n) = @_;
-  _validate_positive_integer($k);
-  _validate_positive_integer($n);
-  return Math::Prime::Util::PP::almost_prime_count_approx($k,$n);
-}
 sub almost_prime_count_lower {
   my($k,$n) = @_;
   _validate_positive_integer($k);
@@ -332,21 +353,6 @@ sub nth_twin_prime {
   my($n) = @_;
   _validate_positive_integer($n);
   return Math::Prime::Util::PP::nth_twin_prime($n);
-}
-sub nth_twin_prime_approx {
-  my($n) = @_;
-  _validate_positive_integer($n);
-  return Math::Prime::Util::PP::nth_twin_prime_approx($n);
-}
-sub nth_semiprime {
-  my($n) = @_;
-  _validate_positive_integer($n);
-  return Math::Prime::Util::PP::nth_semiprime($n);
-}
-sub nth_semiprime_approx {
-  my($n) = @_;
-  _validate_positive_integer($n);
-  return Math::Prime::Util::PP::nth_semiprime_approx($n);
 }
 sub nth_almost_prime {
   my($k,$n) = @_;
@@ -417,35 +423,6 @@ sub rough_count {
 }
 
 
-*is_prime          = \&Math::Prime::Util::PP::is_prime;
-*is_prob_prime     = \&Math::Prime::Util::PP::is_prob_prime;
-*is_provable_prime = \&Math::Prime::Util::PP::is_provable_prime;
-*is_bpsw_prime     = \&Math::Prime::Util::PP::is_bpsw_prime;
-
-sub is_pseudoprime {
-  my($n, @bases) = @_;
-  return 0 if defined $n && int($n) < 0;
-  _validate_positive_integer($n);
-  return Math::Prime::Util::PP::is_pseudoprime($n, @bases);
-}
-sub is_euler_pseudoprime {
-  my($n, @bases) = @_;
-  return 0 if defined $n && int($n) < 0;
-  _validate_positive_integer($n);
-  return Math::Prime::Util::PP::is_euler_pseudoprime($n, @bases);
-}
-sub is_strong_pseudoprime {
-  my($n, @bases) = @_;
-  return 0 if defined $n && int($n) < 0;
-  _validate_positive_integer($n);
-  return Math::Prime::Util::PP::is_strong_pseudoprime($n, @bases);
-}
-sub is_euler_plumb_pseudoprime {
-  my($n) = @_;
-  return 0 if defined $n && int($n) < 0;
-  _validate_positive_integer($n);
-  return Math::Prime::Util::PP::is_euler_plumb_pseudoprime($n);
-}
 sub is_lucas_pseudoprime {
   my($n) = @_;
   return 0 if defined $n && int($n) < 0;
@@ -659,12 +636,6 @@ sub pminus1_factor {
   Math::Prime::Util::PP::pminus1_factor($n, $B1, $B2);
 }
 *pplus1_factor = \&pminus1_factor;
-
-sub divisors {
-  my($n) = @_;
-  _validate_positive_integer($n);
-  return Math::Prime::Util::PP::divisors($n);
-}
 
 sub divisor_sum {
   my($n, $k) = @_;

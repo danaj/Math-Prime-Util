@@ -32,7 +32,7 @@ foreach my $m (@modules) {
                       'omega_prime_sieve', 'prime_power_sieve',
                     ],
   };
-  $param->{trustme} = [mpu_public_regex(), mpu_factor_regex()]
+  $param->{trustme} = [mpu_public_regex(), mpu_factor_regex(), mpu_PPM_regex()]
     if $m eq 'Math::Prime::Util::PP';
   $param->{trustme} = [mpu_public_regex(), mpu_factor_regex(), qw/rand srand/]
     if $m eq 'ntheory';
@@ -60,7 +60,7 @@ sub mpu_public_regex {
       is_semiprime is_almost_prime is_omega_prime
       is_square_free is_primitive_root is_carmichael is_quasi_carmichael
       is_fundamental is_totient is_gaussian_prime is_sum_of_squares
-      is_smooth is_rough is_powerful is_practical
+      is_smooth is_rough is_powerful is_practical is_lucky is_powerfree
       sqrtint rootint logint lshiftint rshiftint rashiftint absint negint
       signint cmpint addint subint add1int sub1int mulint powint
       divint modint divrem fdivrem tdivrem
@@ -68,8 +68,7 @@ sub mpu_public_regex {
       lucas_sequence
       lucasu lucasv lucasuv lucasumod lucasvmod lucasuvmod
       primes twin_primes semi_primes almost_primes omega_primes ramanujan_primes
-      sieve_prime_cluster sieve_range prime_powers
-      lucky_numbers is_lucky nth_lucky
+      sieve_prime_cluster sieve_range prime_powers lucky_numbers
       forprimes forcomposites foroddcomposites forsemiprimes foralmostprimes
       forpart forcomp forcomb forperm forderange formultiperm forsetproduct
       fordivisors forfactored forsquarefree
@@ -93,10 +92,16 @@ sub mpu_public_regex {
       nth_ramanujan_prime nth_ramanujan_prime_approx
       nth_ramanujan_prime_lower nth_ramanujan_prime_upper
       powerful_count nth_powerful
-      perfect_power_count prime_power_count
-      is_powerfree powerfree_count powerfree_sum
+      perfect_power_count
+      prime_power_count prime_power_count_approx
+      prime_power_count_lower prime_power_count_upper
+      nth_prime_power nth_prime_power_approx
+      nth_prime_power_lower nth_prime_power_upper
+      powerfree_count powerfree_sum
       powerfree_part powerfree_part_sum
       smooth_count rough_count
+      lucky_count lucky_count_approx lucky_count_lower lucky_count_upper
+      nth_lucky nth_lucky_approx nth_lucky_lower nth_lucky_upper
       sum_primes print_primes
       random_prime random_ndigit_prime
       random_nbit_prime random_safe_prime random_strong_prime
@@ -130,6 +135,25 @@ sub mpu_public_regex {
 
 sub mpu_factor_regex {
   my @funcs = (qw/trial_factor fermat_factor holf_factor lehman_factor squfof_factor prho_factor pbrent_factor pminus1_factor pplus1_factor ecm_factor/);
+  my $pattern = '^(' . join('|', @funcs) . ')$';
+  return qr/$pattern/;
+}
+
+sub mpu_PPM_regex {
+  my @funcs = qw(
+      Maddint Msubint Mmulint Mdivint Mpowint Mnegint Mmodint
+      Mlogint Mrootint Msqrtint
+      Mlshiftint Mrshiftint
+      Maddmod Msubmod Mmulmod Mrootmod Mdivmod Mpowmod Minvmod
+      Mbinomial Mchinese Mfactor Mfactor_exp
+      Mfactorial Mfordivisors Mforprimes Mgcd
+      Mkronecker Mmoebius
+      Mnext_prime Mprev_prime Mprime_count
+      Mprimorial Mpn_primorial
+      Murandomb Murandomm Mvaluation
+      Mis_power Mis_prime
+      Mvecall Mvecany Mvecmax Mvecnone Mvecprod Mvecsum
+  );
   my $pattern = '^(' . join('|', @funcs) . ')$';
   return qr/$pattern/;
 }

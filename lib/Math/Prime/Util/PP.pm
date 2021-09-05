@@ -87,6 +87,7 @@ BEGIN {
 *Mfactor = \&Math::Prime::Util::factor;
 *Mfactor_exp = \&Math::Prime::Util::factor_exp;
 *Mis_prime = \&Math::Prime::Util::is_prime;
+*Mis_power = \&Math::Prime::Util::is_power;
 *Mchinese = \&Math::Prime::Util::chinese;
 *Mvaluation = \&Math::Prime::Util::valuation;
 *Mkronecker = \&Math::Prime::Util::kronecker;
@@ -916,6 +917,7 @@ sub partitions {
 }
 
 my @_lf63 = (0,0,1,0,0,1,0,0,1,0,0,1,0,0,1,0,0,1,1,1,1,0,0,1,0,0,1,1,1,1,0,0,1,0,0,1,0,0,1,1,1,1,0,0,1,0,0,1,0,0,1,0,0,1,0,0,1,1,1,1,1,1,1,0,0);
+my @_small_lucky = (undef,1,3,7,9,13,15,21,25,31,33,37,43,49,51,63,67,69,73,75,79,87,93,99,105,111,115,127,129,133,135,141,151,159,163,169,171,189,193,195);
 
 sub lucky_numbers {
   my $n = shift;
@@ -939,15 +941,99 @@ sub lucky_numbers {
   }
   \@lucky;
 }
+
+sub lucky_count {
+  my($lo,$hi) = @_;
+  if (defined $hi) { _validate_positive_integer($lo); }
+  else             { ($lo,$hi) = (1, $lo);            }
+  _validate_positive_integer($hi);
+  return 0 if $hi < $lo || $hi == 0;
+  my $ln = lucky_numbers($hi);
+  $ln = [grep { $_ >= $lo } @$ln] if $lo > 1;
+  scalar(@$ln);
+}
+sub _simple_lucky_count_approx {
+  my $n = shift;
+  return 0 + ($n > 0) + ($n > 2) if $n < 7;
+  return 0.9957 * $n/log($n) if $n <= 1000000;
+  return (1.03670 - log($n)/299) * $n/log($n);
+}
+sub _simple_lucky_count_upper {
+  my $n = shift;
+  my $est = ($n <= 10000)  ?  10 + _simple_lucky_count_approx($n) * 1.1
+                           : 140 + _simple_lucky_count_approx($n) * 1.004;
+  int($est);
+}
+sub _simple_lucky_count_lower {
+  my $n = shift;
+  my $est = ($n <= 10000)  ?  _simple_lucky_count_approx($n) * 0.9
+                           :  _simple_lucky_count_approx($n) * 0.99;
+  int($est);
+}
+sub lucky_count_approx {
+  my $n = shift;
+  _validate_positive_integer($n);
+  return scalar(grep { defined $_ && $_ <= $n } @_small_lucky) if $n <= $_small_lucky[-1];
+  my($lo,$hi) = (_simple_lucky_count_lower($n), _simple_lucky_count_upper($n));
+  _binary_search($n, $lo, $hi,
+                 sub{Math::Prime::Util::nth_lucky_approx(shift)});
+}
+sub lucky_count_upper {
+  my $n = shift;
+  _validate_positive_integer($n);
+  return scalar(grep { defined $_ && $_ <= $n } @_small_lucky) if $n <= $_small_lucky[-1];
+  my($lo,$hi) = (_simple_lucky_count_lower($n), _simple_lucky_count_upper($n));
+  1+_binary_search($n, $lo, $hi,
+                   sub{Math::Prime::Util::nth_lucky_lower(shift)});
+}
+sub lucky_count_lower {
+  my $n = shift;
+  _validate_positive_integer($n);
+  return scalar(grep { defined $_ && $_ <= $n } @_small_lucky) if $n <= $_small_lucky[-1];
+  my($lo,$hi) = (_simple_lucky_count_lower($n), _simple_lucky_count_upper($n));
+  _binary_search($n, $lo, $hi,
+                 sub{Math::Prime::Util::nth_lucky_upper(shift)});
+}
+
 sub nth_lucky {
   my $n = shift;
-  return (undef,1,3,7,9)[$n] if $n <= 4;
+  return $_small_lucky[$n] if $n <= $#_small_lucky;
   my $k = $n-1;
-  my $l = lucky_numbers($n);
-  shift @$l;
-  $k += int($k / ($_-1)) for reverse @$l;
+  my $ln = lucky_numbers($n);
+  shift @$ln;
+  $k += int($k / ($_-1)) for reverse @$ln;
   2*$k+1;
 }
+sub nth_lucky_approx {
+  my $n = shift;
+  _validate_positive_integer($n);
+  return $_small_lucky[$n] if $n <= $#_small_lucky;
+  my($logn, $loglogn, $mult) = (log($n), log(log($n)), 1);
+  if ($n <= 80000) {
+    my $c = ($n <= 10000) ? 0.2502 : 0.2581;
+    $mult = $logn + 0.5 * $loglogn + $c * $loglogn * $loglogn;
+  } else {
+    my $c = ($n <=    10000) ? -0.0173 : ($n <=   100000) ? -0.0318 :
+            ($n <=  1000000) ? -0.0384 : ($n <= 10000000) ? -0.0422 : -0.0440;
+    $mult = $logn + (0.5 + $c) * $loglogn *$loglogn;
+  }
+  return int( $n * $mult + 0.5);
+}
+sub nth_lucky_upper {
+  my $n = shift;
+  _validate_positive_integer($n);
+  return $_small_lucky[$n] if $n <= $#_small_lucky;
+  my $c = ($n <= 100) ? 1.05 : ($n <= 300) ? 1.03 : ($n <= 800) ? 1.01 : 1.0033;
+  return 1 + int( $c * nth_lucky_approx($n) + 0.5 );
+}
+sub nth_lucky_lower {
+  my $n = shift;
+  _validate_positive_integer($n);
+  return $_small_lucky[$n] if $n <= $#_small_lucky;
+  my $c = ($n <= 130) ? 0.985 : ($n <= 1000) ? 0.992 : 0.996;
+  return int( $c * nth_lucky_approx($n) );
+}
+
 sub is_lucky {
   my $n = shift;
 
@@ -1022,7 +1108,6 @@ sub jordan_totient {
 
   return Math::Prime::Util::_reftyped($_[0], Math::Prime::Util::GMP::jordan_totient($k, $n))
     if $Math::Prime::Util::_GMPfunc{"jordan_totient"};
-
 
   my @pe = Mfactor_exp($n);
   $n = Math::BigInt->new("$n") unless ref($n) eq 'Math::BigInt';
@@ -1295,7 +1380,7 @@ sub is_powerful {
   # But ... it's possible this will take far too long (e.g. n=2^256+1).  So
   # limit to something reasonable.
 
-  return 1 if $n == 1 || is_power($n) >= $k;
+  return 1 if $n == 1 || Mis_power($n) >= $k;
   return 0 if $n < Mpowint(149, 2*$k);
 
   my $lim_actual = Mrootint($n, 2*$k);
@@ -1310,7 +1395,7 @@ sub is_powerful {
       return 0 if ($n % $fk) != 0;
       $n = Mdivint($n, $fk);
       $n = Mdivint($n, $f) while !($n % $f);
-      return 1 if $n == 1 || is_power($n) >= $k;
+      return 1 if $n == 1 || Mis_power($n) >= $k;
       return 0 if $n < $fk*$fk;
     }
   } else {
@@ -1321,11 +1406,11 @@ sub is_powerful {
         Math::Prime::Util::lastfor(),return if ($n % $pk) != 0;
         $n = Mdivint($n, $pk);
         $n = Mdivint($n, $_) while ($n % $_) == 0;
-        Math::Prime::Util::lastfor(),return if $n == 1 || is_power($n) >= $k;
+        Math::Prime::Util::lastfor(),return if $n == 1 || Mis_power($n) >= $k;
       }
     }, 149, $lim_effect);
   }
-  return 1 if $n == 1 || is_power($n) >= $k;
+  return 1 if $n == 1 || Mis_power($n) >= $k;
   return 0 if $n <= Mpowint($lim_effect, 2*$k);
 
   # Taking too long.  Factor what is left.
@@ -1535,10 +1620,10 @@ sub powerfree_part_sum {
   $sum;
 }
 
-sub perfect_power_count {
+sub _perfect_power_count {
   my($n) = @_;
   _validate_positive_integer($n);
-  return $n if $n <= 1;
+  return 0+($n>=1)+($n>=4) if $n < 8;
   my @T = (1);
 
   my $log2n = Mlogint($n,2);
@@ -1549,17 +1634,98 @@ sub perfect_power_count {
   }
   Mvecsum(@T);
 }
+sub perfect_power_count {
+  my($lo,$hi) = @_;
+  if (defined $hi) { _validate_positive_integer($lo); }
+  else             { ($lo,$hi) = (1, $lo);            }
+  _validate_positive_integer($hi);
+  return 0 if $hi < $lo || $hi == 0;
+  return _perfect_power_count($hi) - (($lo <= 1) ? 0 : _perfect_power_count($lo-1));
+}
 
-sub prime_power_count {
+sub _prime_power_count {
   my($n) = @_;
-  _validate_positive_integer($n);
-  return 0 if $n == 0;
-  return $n-1 if $n <= 5;
-
+  return (0,0,1,2,3,4)[$n] if $n <= 5;
   Mvecsum(
     map { Mprime_count( Mrootint($n, $_)) }  1 .. Mlogint($n,2)
   );
 }
+sub prime_power_count {
+  my($lo,$hi) = @_;
+  if (defined $hi) { _validate_positive_integer($lo); }
+  else             { ($lo,$hi) = (2, $lo);            }
+  _validate_positive_integer($hi);
+  return 0 if $hi < $lo || $hi == 0;
+  return _prime_power_count($hi) - (($lo <= 2) ? 0 : _prime_power_count($lo-1));
+}
+sub prime_power_count_lower {
+  my $n = shift;
+  _validate_positive_integer($n);
+  return (0,0,1,2,3,4)[$n] if $n <= 5;
+  Mvecsum(
+    map { Math::Prime::Util::prime_count_lower( Mrootint($n, $_)) }  1 .. Mlogint($n,2)
+  );
+}
+sub prime_power_count_upper {
+  my $n = shift;
+  _validate_positive_integer($n);
+  return (0,0,1,2,3,4)[$n] if $n <= 5;
+  Mvecsum(
+    map { Math::Prime::Util::prime_count_upper( Mrootint($n, $_)) }  1 .. Mlogint($n,2)
+  );
+}
+sub prime_power_count_approx {
+  my $n = shift;
+  _validate_positive_integer($n);
+  return (0,0,1,2,3,4)[$n] if $n <= 5;
+  Mvecsum(
+    map { Math::Prime::Util::prime_count_approx( Mrootint($n, $_)) }  1 .. Mlogint($n,2)
+  );
+}
+
+sub _simple_nth_prime_power_upper {
+  my $n = shift;
+  Math::Prime::Util::nth_prime_upper($n);
+}
+sub _simple_nth_prime_power_lower {
+  my $n = shift;
+  return nth_prime_lower(int(0.65*$n)) if $n < 90;
+  int( 0.98 * Math::Prime::Util::nth_prime_lower($n) - 400 );
+}
+sub nth_prime_power_lower {
+  my $n = shift;
+  _validate_positive_integer($n);
+  return (undef,2,3,4,5,7,8,9)[$n] if $n < 8;
+  my($lo,$hi) = (_simple_nth_prime_power_lower($n), _simple_nth_prime_power_upper($n));
+  _binary_search($n, $lo, $hi,
+                 sub{Math::Prime::Util::prime_power_count_upper(shift)});
+}
+sub nth_prime_power_upper {
+  my $n = shift;
+  _validate_positive_integer($n);
+  return (undef,2,3,4,5,7,8,9)[$n] if $n < 8;
+  my($lo,$hi) = (_simple_nth_prime_power_lower($n), _simple_nth_prime_power_upper($n));
+  1+_binary_search($n, $lo, $hi,
+                   sub{Math::Prime::Util::prime_power_count_lower(shift)});
+}
+sub nth_prime_power_approx {
+  my $n = shift;
+  _validate_positive_integer($n);
+  return (undef,2,3,4,5,7,8,9)[$n] if $n < 8;
+  my($lo,$hi) = (_simple_nth_prime_power_lower($n), _simple_nth_prime_power_upper($n));
+  _binary_search($n, $lo, $hi,
+                 sub{Math::Prime::Util::prime_power_count_approx(shift)});
+}
+sub nth_prime_power {
+  my $n = shift;
+  _validate_positive_integer($n);
+  return (undef,2,3,4,5,7,8,9)[$n] if $n < 8;
+  # TODO: This is a good candidte for the approx interpolation method
+  my($lo,$hi) = (_simple_nth_prime_power_lower($n), _simple_nth_prime_power_upper($n));
+  1+_binary_search($n, $lo, $hi,
+                   sub{Math::Prime::Util::prime_power_count(shift)});
+}
+
 
 sub smooth_count {
   my($n, $k) = @_;
@@ -2395,7 +2561,6 @@ sub prime_count {
 
 sub nth_prime {
   my($n) = @_;
-  _validate_positive_integer($n);
 
   return undef if $n <= 0;  ## no critic qw(ProhibitExplicitReturnUndef)
   return $_primes_small[$n] if $n <= $#_primes_small;
@@ -2445,7 +2610,6 @@ sub nth_prime {
 # The nth prime will be less or equal to this number
 sub nth_prime_upper {
   my($n) = @_;
-  _validate_positive_integer($n);
 
   return undef if $n <= 0;  ## no critic qw(ProhibitExplicitReturnUndef)
   return $_primes_small[$n] if $n <= $#_primes_small;
@@ -2478,7 +2642,6 @@ sub nth_prime_upper {
 # The nth prime will be greater than or equal to this number
 sub nth_prime_lower {
   my($n) = @_;
-  _validate_num($n) || _validate_positive_integer($n);
 
   return undef if $n <= 0;  ## no critic qw(ProhibitExplicitReturnUndef)
   return $_primes_small[$n] if $n <= $#_primes_small;
@@ -2555,7 +2718,6 @@ sub _inverse_R {
 
 sub nth_prime_approx {
   my($n) = @_;
-  _validate_num($n) || _validate_positive_integer($n);
 
   return undef if $n <= 0;  ## no critic qw(ProhibitExplicitReturnUndef)
   return $_primes_small[$n] if $n <= $#_primes_small;
@@ -2612,6 +2774,8 @@ sub nth_prime_approx {
 sub prime_count_approx {
   my($x) = @_;
   _validate_num($x) || _validate_positive_integer($x);
+  #return (0,0,1,2,2,3,3,4,4,4,4,5,5,6,6,6)[$x] if $x < 16;
+  return _tiny_prime_count($x) if $x < $_primes_small[-1];
 
   # Turn on high precision FP if they gave us a big number.
   $x = _upgrade_to_float($x) if ref($_[0]) eq 'Math::BigInt' && $x > 1e16;
@@ -2975,6 +3139,7 @@ sub ramanujan_prime_count {
 
 sub twin_prime_count_approx {
   my($n) = @_;
+  _validate_positive_integer($n);
   return twin_prime_count(3,$n) if $n < 2000;
   $n = _upgrade_to_float($n) if ref($n);
   my $logn = log($n);
@@ -3008,8 +3173,8 @@ sub twin_prime_count_approx {
 
 sub semiprime_count_approx {
   my($n) = @_;
-  return 0 if $n < 4;
   _validate_positive_integer($n);
+  return 0 if $n < 4;
   $n = "$n" + 0.00000001;
   my $l1 = log($n);
   my $l2 = log($l1);
@@ -3078,7 +3243,7 @@ sub nth_twin_prime_approx {
 
 sub nth_semiprime {
   my $n = shift;
-  return undef if $n < 0;  ## no critic qw(ProhibitExplicitReturnUndef)
+  _validate_positive_integer($n);
   return (undef,4,6,9,10,14,15,21,22)[$n] if $n <= 8;
   my $x = "$n" + 0.000000001; # Get rid of bigint so we can safely call log
   my $logx = log($x);
@@ -3092,7 +3257,6 @@ sub nth_semiprime {
 
 sub nth_semiprime_approx {
   my $n = shift;
-  return undef if $n < 0;  ## no critic qw(ProhibitExplicitReturnUndef)
   _validate_positive_integer($n);
   return (undef,4,6,9,10,14,15,21,22)[$n] if $n <= 8;
   $n = "$n" + 0.00000001;
@@ -3908,7 +4072,7 @@ sub chinese {
   return 0 unless scalar @_;
   my($lcm, $sum);
 
-  if ($Math::Prime::Util::_GMPfunc{"chinese"} && $Math::Prime::Util::GMP::VERSION >= 0.42) {
+  if ($Math::Prime::Util::_GMPfunc{"chinese"} && $Math::Prime::Util::GMP::VERSION >= 0.53) {
     $sum = Math::Prime::Util::GMP::chinese(@_);
     if (defined $sum) {
       $sum = Math::BigInt->new("$sum");
@@ -4424,7 +4588,7 @@ sub _rootmod_composite1 {
 
   croak "_rootmod_composite1 bad parameters" if $a < 1 || $k < 2 || $n < 2;
 
-  if (Math::Prime::Util::is_power($a, $k, \$r)) {
+  if (Mis_power($a, $k, \$r)) {
     return $r;
   }
 
@@ -4909,7 +5073,6 @@ sub _gcd_ui {
 sub is_power {
   my ($n, $a, $refp) = @_;
   croak("is_power third argument not a scalar reference") if defined($refp) && !ref($refp);
-  _validate_integer($n);
   return 0 if abs($n) <= 3 && !$a;
 
   if ($Math::Prime::Util::_GMPfunc{"is_power"} &&
@@ -4953,7 +5116,7 @@ sub is_power {
       my $root = is_power($absn, 0, $refp);
       return 0 unless $root;
       if ($root % 2 == 0) {
-        my $power = valuation($root, 2);
+        my $power = Mvaluation($root, 2);
         $root >>= $power;
         return 0 if $root == 1;
         $power = BTWO->copy->bpow($power);
@@ -4981,7 +5144,7 @@ sub is_power {
 sub is_square {
   my($n) = @_;
   return 0 if $n < 0;
-  #is_power($n,2);
+  #Mis_power($n,2);
   _validate_integer($n);
   _is_perfect_square($n);
 }
@@ -4993,7 +5156,7 @@ sub is_prime_power {
 
   if (Mis_prime($n)) { $$refp = $n if defined $refp; return 1; }
   my $r;
-  my $k = Math::Prime::Util::is_power($n,0,\$r);
+  my $k = Mis_power($n,0,\$r);
   if ($k) {
     $r = _bigint_to_int($r) if ref($r) && $r->bacmp(BMAX) <= 0;
     return 0 unless Mis_prime($r);
@@ -5463,7 +5626,7 @@ sub harmreal {
 
 sub is_pseudoprime {
   my($n, @bases) = @_;
-  return 0 if int($n) < 0;
+  return 0 if defined $n && int($n) < 0;
   _validate_positive_integer($n);
   @bases = (2) if scalar(@bases) == 0;
   return 0+($n >= 2) if $n < 4;
@@ -5483,7 +5646,7 @@ sub is_pseudoprime {
 
 sub is_euler_pseudoprime {
   my($n, @bases) = @_;
-  return 0 if int($n) < 0;
+  return 0 if defined $n && int($n) < 0;
   _validate_positive_integer($n);
   @bases = (2) if scalar(@bases) == 0;
   return 0+($n >= 2) if $n < 4;
@@ -5506,7 +5669,7 @@ sub is_euler_pseudoprime {
 
 sub is_euler_plumb_pseudoprime {
   my($n) = @_;
-  return 0 if int($n) < 0;
+  return 0 if defined $n && int($n) < 0;
   _validate_positive_integer($n);
   return 0+($n >= 2) if $n < 4;
   return 0 if ($n % 2) == 0;
@@ -5575,7 +5738,7 @@ sub _miller_rabin_2 {
 
 sub is_strong_pseudoprime {
   my($n, @bases) = @_;
-  return 0 if int($n) < 0;
+  return 0 if defined $n && int($n) < 0;
   _validate_positive_integer($n);
   return _miller_rabin_2($n) if scalar(@bases) == 0;
 
@@ -6851,7 +7014,7 @@ sub _test_anr {
 
 sub is_aks_prime {
   my $n = shift;
-  return 0 if $n < 2 || is_power($n);
+  return 0 if $n < 2 || Mis_power($n);
 
   my($log2n, $limit);
   if ($n > 2**48) {
