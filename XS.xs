@@ -810,7 +810,6 @@ void prime_count_upper(IN SV* svn)
     UV n, ret;
   PPCODE:
     if (_validate_and_set(&n, aTHX_ svn, IFLAG_POS)) {
-      if (n == 0) XSRETURN_UNDEF;
       switch (ix) {
         case  0: ret = prime_count_upper(n); break;
         case  1: ret = prime_count_lower(n); break;
@@ -1492,7 +1491,7 @@ void
 chinese(...)
   PROTOTYPE: @
   PREINIT:
-    int i, status;
+    int i, status, astatus, nstatus;
     UV ret, *an;
     SV **psva, **psvn;
   PPCODE:
@@ -1506,12 +1505,11 @@ chinese(...)
       av = (AV*) SvRV(ST(i));
       psva = av_fetch(av, 0, 0);
       psvn = av_fetch(av, 1, 0);
-      if (psva == 0 || psvn == 0 ||
-          _validate_and_set(an+i, aTHX_ *psva, IFLAG_ANY) != 1 ||
-          _validate_and_set(an+i+items, aTHX_ *psvn, IFLAG_ABS) != 1) {
-        status = 0;
-        break;
-      }
+      if (psva == 0 || psvn == 0) { status = 0; break; }
+      astatus = _validate_and_set(an+i, aTHX_ *psva, IFLAG_ANY);
+      nstatus = _validate_and_set(an+i+items, aTHX_ *psvn, IFLAG_ABS);
+      if (astatus == 0 || nstatus == 0) { status = 0; break; }
+      _mod_with(an+i, astatus, an[i+items]);
     }
     if (status)
       status = chinese(&ret, an, an+items, items);
