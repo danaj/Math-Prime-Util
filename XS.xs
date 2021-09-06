@@ -852,7 +852,7 @@ void prime_count_upper(IN SV* svn)
 
 void sum_primes(IN SV* svlo, IN SV* svhi = 0)
   PREINIT:
-    UV lo = 2, hi, ret;
+    UV lo = 2, hi;
   PPCODE:
     if ((items == 1 && _validate_and_set(&hi, aTHX_ svlo, IFLAG_POS)) ||
         (items == 2 && _validate_and_set(&lo, aTHX_ svlo, IFLAG_POS) && _validate_and_set(&hi, aTHX_ svhi, IFLAG_POS))) {
@@ -896,7 +896,7 @@ void random_prime(IN SV* svlo, IN SV* svhi = 0)
 
 void print_primes(IN SV* svlo, IN SV* svhi = 0, IN int infd = -1)
   PREINIT:
-    UV lo = 2, hi, ret;
+    UV lo = 2, hi;
   PPCODE:
     if ((items == 1 && _validate_and_set(&hi, aTHX_ svlo, IFLAG_POS)) ||
         (items >= 2 && _validate_and_set(&lo, aTHX_ svlo, IFLAG_POS) && _validate_and_set(&hi, aTHX_ svhi, IFLAG_POS))) {
@@ -1074,13 +1074,12 @@ lucky_numbers(IN UV high)
       SP = NULL; /* never use SP again, poison */
     }
     if (high <= UVCONST(2000000000)) {
-      /* 2-3x faster, but uses more memory */
       uint32_t* lucky = lucky_sieve32(&num, high);
       for (i = 0; i < num; i++)
         av_push(av,newSVuv(lucky[i]));
       Safefree(lucky);
     } else {
-      UV* lucky = lucky_sieve(&num, high);
+      UV* lucky = lucky_sieve64(&num, high);
       for (i = 0; i < num; i++)
         av_push(av,newSVuv(lucky[i]));
       Safefree(lucky);
@@ -1531,9 +1530,13 @@ chinese(...)
         XSRETURN(2);
       }
     }
-    psvn = av_fetch((AV*) SvRV(ST(0)), 1, 0);
-    _vcallsub_with_gmpobj(0.32,"chinese");
-    objectify_result(aTHX_  (psvn ? *psvn : 0), ST(0));
+    if (ix == 0) {
+      psvn = av_fetch((AV*) SvRV(ST(0)), 1, 0);
+      _vcallsub_with_gmpobj(0.32,"chinese");
+      objectify_result(aTHX_  (psvn ? *psvn : 0), ST(0));
+    } else {
+      _vcallsub_with_pp("chinese2");
+    }
     return; /* skip implicit PUTBACK */
 
 void lucas_sequence(...)

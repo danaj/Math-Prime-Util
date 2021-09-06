@@ -3,7 +3,6 @@
 #include <string.h>
 
 #define FUNC_isqrt 1
-#define FUNC_icbrt 1
 #include "ptypes.h"
 #include "constants.h"
 #include "util.h"

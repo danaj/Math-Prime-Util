@@ -5,8 +5,10 @@
 #include "ptypes.h"
 #include "constants.h"
 #include "lucky_numbers.h"
-//#include "util.h"
 #include "inverse_interpolate.h"
+#include "ds_ull.h"   /* The unrolled linked list that we use for sieving */
+
+static const int _verbose = 0;
 
 /******************************************************************************/
 /*                             LUCKY NUMBERS                                  */
@@ -16,82 +18,155 @@ static const char _lmask63[63+2] = {1,1,0,1,1,0,1,1,0,1,1,0,1,1,0,1,1,0,0,0,0,1,
 static const unsigned char _small_lucky[48] = {1,3,7,9,13,15,21,25,31,33,37,43,49,51,63,67,69,73,75,79,87,93,99,105,111,115,127,129,133,135,141,151,159,163,169,171,189,193,195,201,205,211,219,223,231,235,237,241};
 static const unsigned char _small_lucky_count[48] = {0,1,1,2,2,2,2,3,3,4,4,4,4,5,5,6,6,6,6,6,6,7,7,7,7,8,8,8,8,8,8,9,9,10,10,10,10,11,11,11,11,11,11,12,12,12,12,12};
 
-/* Lucky Number sieve for 32-bit inputs.
- * Pre-sieve for first 4-7 levels, then in-place deletion using memmove,
- * plus an optimization for a single pass for all single skips.
- * On x86 at least, faster than the other sieves, but uses more memory.
+/* Lucky Number sieves.
+ * Presieving for the first 4-11 levels, then standard sieving.
+ *
+ * 1) the presieving saves a lot of work but has diminishing returns.
+ *
+ * 2) using a hybrid array / linked list makes a good tradeoff, especially
+ *    with a simple position cache so we don't walk from the start every time.
+ *
+ * This is not particularly memory efficient, but is very fast.
+ *
+ * Generate first 10M lucky numbers (from 1 to 196502733) on 2020 M1 Mac:
+ *          20.8s  lucky_sieve32   memory:  4 * count * ~3.6    (150MB)
+ *          40.0s  lucky_sieve64   memory:  8 * count * ~3.6    (270MB)
+ *        1356s    lucky_cgen      memory:  8 * count * 2       (160MB)
+ *        8950s    wilson          memory:  8 * count * 1       ( 80MB)
  */
-uint32_t* lucky_sieve32(UV *size, UV n) {
-  UV i, m, l15, l21, lsize = 0, level, init_level;
-  uint32_t *lucky;
+
+uint32_t* lucky_sieve32(UV *size, uint32_t n) {
+  uint32_t i, lsize = 0, level, init_level, *lucky;
+  uint32_t m, l15, l21, l25, l31, l33, l37;
+  ull32_t *pl;
 
   if (n == 0) { *size = 0; return 0; }
-  MPUassert(n < 0xFFFFFFFFUL, "lucky_sieve32 n too large");
 
-  /* make initial list, with more culling if it seems worth doing */
-  if (n < 300000) {
-    const UV fsize = 96*(n+377)/378;  /* 378 = 2*3*7*9 */
-    New(0, lucky, 1 + fsize, uint32_t);
-    /* Cut 2,3 using mod 6 wheel, 7,9 using a mod 63 mask */
-    for (i = 1, m = 1; i <= n; i += 6) {
-      if (_lmask63[m  ])  lucky[lsize++] = i;
-      if (_lmask63[m+2])  lucky[lsize++] = i+2;
-      if ((m += 6) >= 63) m -= 63;
-    }
-    init_level = 4;
-  } else {
+  pl = ull32_create();
+
+  /* make initial list, including presieving with small lucky numbers */
+#if 0
+  for (i = 1, m = 1; i <= n; i += 6) {
+    if (_lmask63[m  ]              ) ull32_append(pl, i);
+    if (_lmask63[m+2] && (i+2) <= n) ull32_append(pl, i+2);
+    if ((m += 6) >= 63) m -= 63;
+  }
+  init_level = 4;
+#endif
+  {
+    /* Use a mask to give us 5 levels (2,3,7,9,13). */
     char mask819[819+2];
     const uint16_t v13[16] = {45,96,147,198,252,300,351,402,453,507,555,609,660,708,762,810};
-    const UV fsize = (n < 1000000) ? 16128*(n+73709)/73710
-                                   : 322560*(n+1547909)/1547910;
-    New(0, lucky, 1 + fsize, uint32_t);
     /* Create the mod 819 mask from the smaller one */
     for (i = 0; i < 13; i++) memcpy(mask819+63*i,_lmask63,65);
     for (i = 0; i < 16; i++) mask819[v13[i]] = mask819[v13[i]+1] = 0;
-    /* Use the mask and additionally two counters for another two levels */
-    for (i = 1, m = 1, l15 = 0, l21 = 0; i <= n; i += 6) {
-      if (mask819[m  ] && ++l15 != 15 && ++l21 != 21)  lucky[lsize++] = i;
-      if (mask819[m+2] && ++l15 != 15 && ++l21 != 21)  lucky[lsize++] = i+2;
+
+    /* Also use counters for 6 more levels */
+    for (i = 1, m = 1, l15 = l21 = l25 = l31 = l33 = l37 = 0; i <= n; i += 6) {
+      if (mask819[m  ] && ++l15 != 15 && ++l21 != 21 && ++l25 != 25 && ++l31 != 31 && ++l33 != 33 && ++l37 != 37)
+        ull32_append(pl, i);
+      if (mask819[m+2] && ++l15 != 15 && ++l21 != 21 && ++l25 != 25 && ++l31 != 31 && ++l33 != 33 && ++l37 != 37)
+        if ((i+2) <= n)
+          ull32_append(pl, i+2);
       if ((m += 6) >= 819) m -= 819;
       if (l15 >= 15) l15 -= 15;
       if (l21 >= 21) l21 -= 21;
+      if (l25 >= 25) l25 -= 25;
+      if (l31 >= 31) l31 -= 31;
+      if (l33 >= 33) l33 -= 33;
+      if (l37 >= 37) l37 -= 37;
     }
-    init_level = 7;
+    init_level = 11;   /* We'll start sieving out every 43'th entry */
   }
-  if (lucky[lsize-1] > n) lsize--;   /* The +2 could have gone past N */
 
-  /* After the fill-in, we'll start deleting at 13 or 25 */
-  for (level = init_level; level < lsize && lucky[level]-1 < lsize; level++) {
-    UV skip = lucky[level]-1, nlsize = skip;
-    if (2*(skip+1) > lsize) break;  /* Only single skips left */
-    for (i = skip+1; i < lsize; i += skip+1) {
-      UV ncopy = (skip <= (lsize-i)) ? skip : (lsize-i);
-      memmove( lucky + nlsize, lucky + i, ncopy * sizeof(uint32_t) );
-      nlsize += ncopy;
+  lsize = pl->nelems;
+  if (_verbose) printf("lucky_sieve32 done inserting.  values:  %u   pages: %u\n", lsize, ull32_npages(pl));
+
+  if (init_level < lsize) {
+    ull32_iter_t iter = ull32_iterator_create(pl, init_level);
+    for (level = init_level; level < lsize; level++) {
+      uint32_t skip = ull32_iterator_next(&iter) - 1;
+      if (skip >= lsize) break;
+      for (i = skip; i < lsize; i += skip) {
+        ull32_delete(pl, i);
+        lsize--;
+      }
     }
-    lsize = nlsize;
+    if (_verbose) printf("lucky_sieve32 done sieving.  values:  %u   pages: %u\n", lsize, ull32_npages(pl));
   }
-  /* Now we just have single skips.  Process them all in one pass. */
-  if (level < lsize && lucky[level]-1 < lsize) {
-    UV skip = lucky[level], nlsize = skip-1;
-    while (skip < lsize) {
-      UV ncopy = lucky[level+1] - lucky[level];
-      if (ncopy > lsize-skip)  ncopy = lsize - skip;
-      memmove(lucky + nlsize, lucky + skip, ncopy * sizeof(uint32_t));
-      nlsize += ncopy;
-      skip += ncopy + 1;
-      level++;
-    }
-    lsize = nlsize;
-  }
-  *size = lsize;
+
+  lucky = ull32_toarray(size, pl);
+  if (*size != lsize) croak("bad sizes in lucky sieve 32");
+  if (_verbose) printf("lucky_sieve32 done copying.\n");
+  ull32_destroy(pl);
   return lucky;
 }
+
+UV* lucky_sieve64(UV *size, UV n) {
+  UV i, lsize = 0, level, init_level, *lucky;
+  uint32_t m, l15, l21, l25, l31, l33, l37;
+  ull_t *pl;
+
+  if (n == 0) { *size = 0; return 0; }
+
+  pl = ull_create();
+
+  /* make initial list, including presieving with small lucky numbers */
+  {
+    /* Use a mask to give us 5 levels (2,3,7,9,13). */
+    char mask819[819+2];
+    const uint16_t v13[16] = {45,96,147,198,252,300,351,402,453,507,555,609,660,708,762,810};
+    /* Create the mod 819 mask from the smaller one */
+    for (i = 0; i < 13; i++) memcpy(mask819+63*i,_lmask63,65);
+    for (i = 0; i < 16; i++) mask819[v13[i]] = mask819[v13[i]+1] = 0;
+
+    /* Also use counters for 6 more levels */
+    for (i = 1, m = 1, l15 = l21 = l25 = l31 = l33 = l37 = 0; i <= n; i += 6) {
+      if (mask819[m  ] && ++l15 != 15 && ++l21 != 21 && ++l25 != 25 && ++l31 != 31 && ++l33 != 33 && ++l37 != 37)
+        ull_append(pl, i);
+      if (mask819[m+2] && ++l15 != 15 && ++l21 != 21 && ++l25 != 25 && ++l31 != 31 && ++l33 != 33 && ++l37 != 37)
+        if ((i+2) <= n)
+          ull_append(pl, i+2);
+      if ((m += 6) >= 819) m -= 819;
+      if (l15 >= 15) l15 -= 15;
+      if (l21 >= 21) l21 -= 21;
+      if (l25 >= 25) l25 -= 25;
+      if (l31 >= 31) l31 -= 31;
+      if (l33 >= 33) l33 -= 33;
+      if (l37 >= 37) l37 -= 37;
+    }
+    init_level = 11;   /* We'll start sieving out every 43'th entry */
+  }
+
+  lsize = pl->nelems;
+  if (_verbose) printf("lucky_sieve64 done inserting.  values:  %lu   pages: %lu\n", lsize, ull_npages(pl));
+
+  if (init_level < lsize) {
+    ull_iter_t iter = ull_iterator_create(pl, init_level);
+    for (level = init_level; level < lsize; level++) {
+      UV skip = ull_iterator_next(&iter) - 1;
+      if (skip >= lsize) break;
+      for (i = skip; i < lsize; i += skip) {
+        ull_delete(pl, i);
+        lsize--;
+      }
+    }
+    if (_verbose) printf("lucky_sieve64 done sieving.  values:  %lu   pages: %lu\n", lsize, ull_npages(pl));
+  }
+
+  lucky = ull_toarray(size, pl);
+  if (*size != lsize) croak("bad sizes in lucky sieve 64");
+  if (_verbose) printf("lucky_sieve64 done copying.\n");
+  ull_destroy(pl);
+  return lucky;
+}
+
+
 /* Lucky Number sieve for 64-bit inputs.
  * Uses running counters to skip entries while we add them.
  * Based substantially on Hugo van der Sanden's cgen_lucky.c.
  */
-UV* lucky_sieve(UV *size, UV n) {
+UV* lucky_sieve_cgen(UV *size, UV n) {
   UV i, j, c3, lsize, lmax, lindex, *lucky, *count;
 
   if (n == 0) { *size = 0; return 0; }
@@ -134,6 +209,8 @@ UV* lucky_sieve(UV *size, UV n) {
   return lucky;
 }
 
+/******************************************************************************/
+
 /* static UV lucky_count_approx(UV n) { return 0.5 + 0.970 * n / log(n); } */
 /* static UV lucky_count_upper(UV n) { return 200 + lucky_count_approx(n) * 1.025; } */
 
@@ -142,17 +219,18 @@ static UV _cb_nll(UV mid, UV k) { return nth_lucky_lower(mid); }
 static UV _cb_nla(UV mid, UV k) { return nth_lucky_approx(mid); }
 
 static UV _simple_lucky_count_approx(UV n) {
-  return   (n <        7)  ?  (n > 0) + (n > 2)
-         : (n <= 1000000)  ?  0.9957 * n/log(n)
-                           : (1.03670 - log(n)/299) * n/log(n);
+  return   (n <           7)  ?  (n > 0) + (n > 2)
+         : (n <=    1000000)  ?  0.9957 * n/log(n)
+         : (n <= 1000000000)  ? (1.03670 - log(n)/299) * n/log(n)
+                              : (1.03670 - log(n)/(120*log(log(n)))) * n/log(n);
 }
 static UV _simple_lucky_count_upper(UV n) {
   return (n <= 10000) ?  10 + _simple_lucky_count_approx(n) * 1.1
-                      : 140 + _simple_lucky_count_approx(n) * 1.004;
+                      : 140 + _simple_lucky_count_approx(n) * 1.05;
 }
 static UV _simple_lucky_count_lower(UV n) {
   return (n <= 10000) ? _simple_lucky_count_approx(n) * 0.9
-                      : _simple_lucky_count_approx(n) * 0.99;
+                      : _simple_lucky_count_approx(n) * 0.98;
 }
 
 UV lucky_count_approx(UV n) {
@@ -167,7 +245,7 @@ UV lucky_count_upper(UV n) {   /* Holds under 1e9 */
   UV lo, hi;
   if (n < 48) return _small_lucky_count[n];
   lo = _simple_lucky_count_lower(n);
-  hi = 1.01 * _simple_lucky_count_upper(n);
+  hi = _simple_lucky_count_upper(n);
   return inverse_interpolate(lo, hi, n, 0, &_cb_nll, 0);
 }
 UV lucky_count_lower(UV n) {   /* Holds under 1e9 */
@@ -185,7 +263,7 @@ UV lucky_count(UV n) {
     uint32_t *lucky32 = lucky_sieve32(&nlucky, n);
     Safefree(lucky32);
   } else {
-    UV *lucky64 = lucky_sieve(&nlucky, n);
+    UV *lucky64 = lucky_sieve64(&nlucky, n);
     Safefree(lucky64);
   }
   return nlucky;
@@ -204,7 +282,7 @@ UV lucky_count_range(UV lo, UV hi) {
       nlo++;
     Safefree(lucky32);
   } else {
-    UV *lucky64 = lucky_sieve(&nlucky, hi);
+    UV *lucky64 = lucky_sieve64(&nlucky, hi);
     while (nlo < nlucky && lucky64[nlo] < lo)
       nlo++;
     Safefree(lucky64);
@@ -258,7 +336,7 @@ UV nth_lucky(UV n) {
       k += k/(lucky32[i]-1);
     Safefree(lucky32);
   } else {
-    UV *lucky64 = lucky_sieve(&nlucky, n);
+    UV *lucky64 = lucky_sieve64(&nlucky, n);
     for (i = nlucky-1, k = n-1; i >= 1; i--)
       k += k/(lucky64[i]-1);
     Safefree(lucky64);
@@ -276,10 +354,6 @@ int is_lucky(UV n) {
   if ( !(n & 1) || (n%6) == 5 || !_lmask63[n % 63]) return 0;
   if (n < 45) return 1;
 
-  {
-    UV dr = (n==0)?0:1+((n-1)%9);
-    if (dr == 2 || dr == 5 || dr == 8) croak("dr found %lu",n);
-  }
   /* Check valid position using the static list */
   pos = (n+1) >> 1;  /* Initial position in odds */
 
@@ -293,7 +367,9 @@ int is_lucky(UV n) {
 
   /* Check more small values */
   if (n >= 1000000U) {
-    lucky32 = lucky_sieve32(&nlucky, lsize = lucky_count_upper(n)/25);
+    lsize = lucky_count_upper(n) / 25;
+    if (lsize > 1000000000U) lsize = 1000000000U;
+    lucky32 = lucky_sieve32(&nlucky, lsize);
     while (i < nlucky) {
       l = lucky32[i++];
       if (pos < l) break;
@@ -307,15 +383,27 @@ int is_lucky(UV n) {
 
   /* Generate all needed values and continue checking from where we left off. */
 
-  /* TODO: Using the 32-bit sieve means n > ~113,500,000,000 won't work. */
-  lucky32 = lucky_sieve32(&nlucky, lsize = 1+lucky_count_upper(n));
-  while (i < nlucky) {
-    l = lucky32[i++];
-    if (pos < l)  break;
-    quo = pos / l;
-    if (pos == quo*l) { Safefree(lucky32); return 0; }
-    pos -= quo;
+  lsize = 1+lucky_count_upper(n);
+  if (lsize <= 0xFFFFFFFFU) {
+    lucky32 = lucky_sieve32(&nlucky, lsize);
+    while (i < nlucky) {
+      l = lucky32[i++];
+      if (pos < l)  break;
+      quo = pos / l;
+      if (pos == quo*l) { Safefree(lucky32); return 0; }
+      pos -= quo;
+    }
+    Safefree(lucky32);
+  } else {
+    UV* lucky64 = lucky_sieve64(&nlucky, lsize);
+    while (i < nlucky) {
+      l = lucky64[i++];
+      if (pos < l)  break;
+      quo = pos / l;
+      if (pos == quo*l) { Safefree(lucky64); return 0; }
+      pos -= quo;
+    }
+    Safefree(lucky64);
   }
-  Safefree(lucky32);
   return 1;
 }
