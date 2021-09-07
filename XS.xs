@@ -269,6 +269,7 @@ static int _validate_and_set(UV* val, pTHX_ SV* svn, uint32_t mask) {
 
 /* Given 'a' and astatus (-1 means 'a' is an IV), properly mod with n */
 static void _mod_with(UV *a, int astatus, UV n) {
+  if (n == 0) return;
   if (astatus != -1) {
     *a %= n;
   } else {
@@ -1510,6 +1511,11 @@ chinese(...)
       astatus = _validate_and_set(an+i, aTHX_ *psva, IFLAG_ANY);
       nstatus = _validate_and_set(an+i+items, aTHX_ *psvn, IFLAG_ABS);
       if (astatus == 0 || nstatus == 0) { status = 0; break; }
+      if (an[i+items] == 0) {
+        XPUSHs(&PL_sv_undef);
+        if (ix == 1) XPUSHs(&PL_sv_undef);
+        XSRETURN(1 + ix);
+      }
       _mod_with(an+i, astatus, an[i+items]);
     }
     if (status)
