@@ -2862,7 +2862,12 @@ sub prime_count_lower {
   # Axler 2014 (1.2)     ""+...                          x >= 1332450001
   # Axler 2014 (1.2)     x/(logx-1-1/logx-...)           x >= 1332479531
   # Büthe 2015 (1.9)     li(x)-(sqrtx/logx)*(...)        x <= 10^19
-  # Büthe 2014 Th 2      li(x)-logx*sqrtx/8Pi    x > 2657, x <= 1.4*10^25
+  # Büthe 2014 Th 2      li(x)-logx*sqrtx/8Pi    x > 2657, x <= 1.4   * 10^25
+  # Johnston 2021 Cor3.3 li(x)-logx*sqrtx/8Pi    x > 2657, x <= 1.101 * 10^26
+
+  # Also see Dusart 2018: if RH and x >= 5639,
+  #     |pi(x)-li(x)|<= x * (logx-loglogx)/(8*Pi*sqrtx)
+  # TODO: evaluate this
 
   if ($x < 599) {                         # Decent for small numbers
     $result = $x / ($fl1 - 0.7);
@@ -2878,7 +2883,7 @@ sub prime_count_lower {
     elsif ($x <    4500000) { $a = 2.31; }
     else                    { $a = 2.35; }
     $result = ($x/$fl1) * ($one + $one/$fl1 + $a/$fl2);
-  } elsif ($x < 1.4e25 || Math::Prime::Util::prime_get_config()->{'assume_rh'}){
+  } elsif ($x < 1.1e26 || Math::Prime::Util::prime_get_config()->{'assume_rh'}){
                                           # Büthe 2014/2015
     my $lix = LogarithmicIntegral($x);
     my $sqx = sqrt($x);
@@ -2923,7 +2928,13 @@ sub prime_count_upper {
   # Axler 2014:           x/(logx-1-1/logx-3.35/logxlogx...) x >= e^3.804
   # Büthe 2014 7.4        Schoenfeld bounds hold to x <= 1.4e25
   # Axler 2017 Prop 2.2   Schoenfeld bounds hold to x <= 5.5e25
+  # Johnston 2021 Cor 3.3 Schoenfeld bounds hold to x <= 1.0e26
   # Skewes                li(x)                x < 1e14
+
+  # TODO: Also look at these from Dusart (2018) [paywalled].
+  # 1  If RH and x >= 5639, |pi(x)-li(x)|<= x * (logx-loglogx)/(8*Pi*sqrtx)
+  # 2  pi(x) <= li(x) for all 2 <= x <= 10^20
+  # 3  [li(x) - 2sqrt(x)/log(x)] <= pi(x) for 1090877 <= x <= 10^20
 
   my($result,$a);
   my $fl1 = log($x);
@@ -2963,7 +2974,7 @@ sub prime_count_upper {
   } elsif ($x < 1e19) {                     # Skewes number lower limit
     $a = ($x < 110e7) ? 0.032 : ($x < 1001e7) ? 0.027 : ($x < 10126e7) ? 0.021 : 0.0;
     $result = LogarithmicIntegral($x) - $a * $fl1*sqrt($x)/PI_TIMES_8;
-  } elsif ($x < 5.5e25 || Math::Prime::Util::prime_get_config()->{'assume_rh'}) {
+  } elsif ($x < 1.1e26 || Math::Prime::Util::prime_get_config()->{'assume_rh'}) {
                                             # Schoenfeld / Büthe 2014 Th 7.4
     my $lix = LogarithmicIntegral($x);
     my $sqx = sqrt($x);

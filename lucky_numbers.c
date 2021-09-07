@@ -29,10 +29,14 @@ static const unsigned char _small_lucky_count[48] = {0,1,1,2,2,2,2,3,3,4,4,4,4,5
  * This is not particularly memory efficient, but is very fast.
  *
  * Generate first 10M lucky numbers (from 1 to 196502733) on 2020 M1 Mac:
- *          20.8s  lucky_sieve32   memory:  4 * count * ~3.6    (150MB)
- *          40.0s  lucky_sieve64   memory:  8 * count * ~3.6    (270MB)
+ *          16.1s  lucky_sieve32   memory:  4 * count * ~3.6    (150MB)
+ *          32.6s  lucky_sieve64   memory:  8 * count * ~3.6    (270MB)
  *        1356s    lucky_cgen      memory:  8 * count * 2       (160MB)
  *        8950s    wilson          memory:  8 * count * 1       ( 80MB)
+ *
+ * Find the 2^31'th lucky number (55291335127):
+ *         35min using lucky_sieve32, 1.4GB
+ *         90min using lucky_sieve64, 3.0GB
  */
 
 uint32_t* lucky_sieve32(UV *size, uint32_t n) {
@@ -87,6 +91,7 @@ uint32_t* lucky_sieve32(UV *size, uint32_t n) {
     for (level = init_level; level < lsize; level++) {
       uint32_t skip = ull32_iterator_next(&iter) - 1;
       if (skip >= lsize) break;
+      ull32_set_fastpage(pl, skip);
       for (i = skip; i < lsize; i += skip) {
         ull32_delete(pl, i);
         lsize--;
@@ -146,6 +151,7 @@ UV* lucky_sieve64(UV *size, UV n) {
     for (level = init_level; level < lsize; level++) {
       UV skip = ull_iterator_next(&iter) - 1;
       if (skip >= lsize) break;
+      ull_set_fastpage(pl, skip);
       for (i = skip; i < lsize; i += skip) {
         ull_delete(pl, i);
         lsize--;
@@ -259,7 +265,7 @@ UV lucky_count(UV n) {
   UV nlucky;
   if (n < 48) {
     nlucky = _small_lucky_count[n];
-  } else if (n <= UVCONST(2000000000)) {
+  } else if (n <= UVCONST(4000000000)) {
     uint32_t *lucky32 = lucky_sieve32(&nlucky, n);
     Safefree(lucky32);
   } else {
@@ -276,7 +282,7 @@ UV lucky_count_range(UV lo, UV hi) {
   if (hi < 48) {
     nlucky = _small_lucky_count[hi];
     if (lo > 0) nlo = _small_lucky_count[lo-1];
-  } else if (hi <= UVCONST(2000000000)) {
+  } else if (hi <= UVCONST(4000000000)) {
     uint32_t *lucky32 = lucky_sieve32(&nlucky, hi);
     while (nlo < nlucky && lucky32[nlo] < lo)
       nlo++;
@@ -330,7 +336,7 @@ UV nth_lucky(UV n) {
   if (n <= 48)  return (n == 0) ? 0 : _small_lucky[n-1];
 
   /* Apply the backward sieve, ala Wilson, for entry n */
-  if (n <= UVCONST(2000000000)) {
+  if (n <= UVCONST(4000000000)) {
     uint32_t *lucky32 = lucky_sieve32(&nlucky, n);
     for (i = nlucky-1, k = n-1; i >= 1; i--)
       k += k/(lucky32[i]-1);

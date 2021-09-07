@@ -1073,7 +1073,7 @@ lucky_numbers(IN UV high)
       PUTBACK;
       SP = NULL; /* never use SP again, poison */
     }
-    if (high <= UVCONST(2000000000)) {
+    if (high <= UVCONST(4000000000)) {
       uint32_t* lucky = lucky_sieve32(&num, high);
       for (i = 0; i < num; i++)
         av_push(av,newSVuv(lucky[i]));

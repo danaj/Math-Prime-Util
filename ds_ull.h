@@ -43,8 +43,9 @@ static _page32_t* _page32_create(void) {
 }
 
 typedef struct ull32_t {
-  uint32_t nelems, skip_amount;
-  _page32_t *head, *tail, *skip_page;
+  /* skip is the last-used page, fast is a settable index */
+  uint32_t nelems, skip_amount, fast_amount;
+  _page32_t *head, *tail, *skip_page, *fast_page;
 } ull32_t;
 
 static _page32_t* _page32_for_index(ull32_t *pl, uint32_t *idx) {
@@ -53,12 +54,15 @@ static _page32_t* _page32_for_index(ull32_t *pl, uint32_t *idx) {
 
   if (*idx >= pl->nelems) croak("ull32 index out of range");
 
-  if (*idx >= pl->skip_amount) {   /* Use cached skip amount */
-    p = pl->skip_page;
-    *idx -= pl->skip_amount;
+  if (oidx >= pl->fast_amount) {
+    if (oidx >= pl->skip_amount && pl->skip_amount >= pl->fast_amount)
+                                 { p = pl->skip_page; *idx -= pl->skip_amount; }
+    else                         { p = pl->fast_page; *idx -= pl->fast_amount; }
   } else {
-    p = pl->head;
+    if (oidx >= pl->skip_amount) { p = pl->skip_page; *idx -= pl->skip_amount; }
+    else                         { p = pl->head; }
   }
+
   for ( ;  p != 0;  p = p->next) {  /* Walk to correct page */
     if (*idx < p->size)  break;
     *idx -= p->size;
@@ -69,13 +73,33 @@ static _page32_t* _page32_for_index(ull32_t *pl, uint32_t *idx) {
   return p;
 }
 
+static void ull32_set_fastpage(ull32_t *pl, uint32_t idx) {
+  uint32_t oidx = idx;
+  _page32_t *p;
+  if (oidx >= pl->nelems) croak("ull32 index out of range");
+  if (oidx >= pl->fast_amount) {
+    if (oidx >= pl->skip_amount && pl->skip_amount >= pl->fast_amount)
+                                 { p = pl->skip_page; idx -= pl->skip_amount; }
+    else                         { p = pl->fast_page; idx -= pl->fast_amount; }
+  } else {
+    if (oidx >= pl->skip_amount) { p = pl->skip_page; idx -= pl->skip_amount; }
+    else                         { p = pl->head; }
+  }
+  for ( ;  p != 0;  p = p->next) {  /* Walk to correct page */
+    if (idx < p->size)  break;
+    idx -= p->size;
+  }
+  pl->fast_amount = oidx - idx;
+  pl->fast_page = p;
+}
+
 static ull32_t* ull32_create(void) {
   ull32_t *pl;
   New(0, pl, 1, ull32_t);
   pl->head = pl->tail = _page32_create();
   pl->nelems = 0;
-  pl->skip_amount = 0;
-  pl->skip_page = pl->head;
+  pl->skip_amount = pl->fast_amount = 0;
+  pl->skip_page = pl->fast_page = pl->head;
   return pl;
 }
 
@@ -87,8 +111,8 @@ static void ull32_destroy(ull32_t *pl) {
     head = next;
   }
   pl->head = pl->tail = 0;
-  pl->skip_amount = 0;
-  pl->skip_page = 0;
+  pl->skip_amount = pl->fast_amount = 0;
+  pl->skip_page = pl->fast_page = 0;
 }
 
 /* For insert function, do it by splitting this page into two if needed */
@@ -108,13 +132,16 @@ static void ull32_append(ull32_t *pl, uint32_t n) {
 }
 
 static void ull32_delete(ull32_t *pl, uint32_t idx) {   /* Index 0,1,... */
-  _page32_t *q, *p = _page32_for_index(pl, &idx);
-  uint32_t ncopy = p->size - idx - 1;
-  if (ncopy > 0)
-    memmove( p->data + idx, p->data + idx + 1, ncopy * sizeof(uint32_t) );
+  _page32_t *q, *p;
+  /* Invalidate cached pages if needed. */
+  if (pl->skip_amount > idx) { pl->skip_amount = 0; pl->skip_page = pl->head; }
+  if (pl->fast_amount > idx) { pl->fast_amount = 0; pl->fast_page = pl->head; }
+  /* Delete entry */
+  p = _page32_for_index(pl, &idx);
+  if (idx < p->size - 1)
+    memmove(p->data+idx, p->data+idx+1, (p->size-idx-1) * sizeof(uint32_t));
   p->size--;
   pl->nelems--;
-
   /* Try to merge with next page */
   q = p->next;
   if (q != 0 && (p->size + q->size <= ULL32PAGESIZE)) {
@@ -123,7 +150,6 @@ static void ull32_delete(ull32_t *pl, uint32_t idx) {   /* Index 0,1,... */
     p->next = q->next;
     Safefree(q);
   }
-  /* If we have cached skips to future pages, we need to invalidate them */
 }
 
 static uint32_t ull32_val(ull32_t *pl, uint32_t idx) {
@@ -194,8 +220,9 @@ static _page_t* _page_create(void) {
 }
 
 typedef struct ull_t {
-  UV nelems, skip_amount;
-  _page_t *head, *tail, *skip_page;
+  /* skip is the last-used page, fast is a settable index */
+  UV nelems, skip_amount, fast_amount;
+  _page_t *head, *tail, *skip_page, *fast_page;
 } ull_t;
 
 static _page_t* _page_for_index(ull_t *pl, UV *idx) {
@@ -204,11 +231,13 @@ static _page_t* _page_for_index(ull_t *pl, UV *idx) {
 
   if (*idx >= pl->nelems) croak("ull index out of range");
 
-  if (*idx >= pl->skip_amount) {   /* Use cached skip amount */
-    p = pl->skip_page;
-    *idx -= pl->skip_amount;
+  if (oidx >= pl->fast_amount) {
+    if (oidx >= pl->skip_amount && pl->skip_amount >= pl->fast_amount)
+                                 { p = pl->skip_page; *idx -= pl->skip_amount; }
+    else                         { p = pl->fast_page; *idx -= pl->fast_amount; }
   } else {
-    p = pl->head;
+    if (oidx >= pl->skip_amount) { p = pl->skip_page; *idx -= pl->skip_amount; }
+    else                         { p = pl->head; }
   }
   for ( ;  p != 0;  p = p->next) {  /* Walk to correct page */
     if (*idx < p->size)  break;
@@ -220,13 +249,33 @@ static _page_t* _page_for_index(ull_t *pl, UV *idx) {
   return p;
 }
 
+static void ull_set_fastpage(ull_t *pl, UV idx) {
+  UV oidx = idx;
+  _page_t *p;
+  if (oidx >= pl->nelems) croak("ull32 index out of range");
+  if (oidx >= pl->fast_amount) {
+    if (oidx >= pl->skip_amount && pl->skip_amount >= pl->fast_amount)
+                                 { p = pl->skip_page; idx -= pl->skip_amount; }
+    else                         { p = pl->fast_page; idx -= pl->fast_amount; }
+  } else {
+    if (oidx >= pl->skip_amount) { p = pl->skip_page; idx -= pl->skip_amount; }
+    else                         { p = pl->head; }
+  }
+  for ( ;  p != 0;  p = p->next) {  /* Walk to correct page */
+    if (idx < p->size)  break;
+    idx -= p->size;
+  }
+  pl->fast_amount = oidx - idx;
+  pl->fast_page = p;
+}
+
 static ull_t* ull_create(void) {
   ull_t *pl;
   New(0, pl, 1, ull_t);
   pl->head = pl->tail = _page_create();
   pl->nelems = 0;
-  pl->skip_amount = 0;
-  pl->skip_page = pl->head;
+  pl->skip_amount = pl->fast_amount = 0;
+  pl->skip_page = pl->fast_page = pl->head;
   return pl;
 }
 
@@ -238,8 +287,8 @@ static void ull_destroy(ull_t *pl) {
     head = next;
   }
   pl->head = pl->tail = 0;
-  pl->skip_amount = 0;
-  pl->skip_page = 0;
+  pl->skip_amount = pl->fast_amount = 0;
+  pl->skip_page = pl->fast_page = 0;
 }
 
 /* For insert function, do it by splitting this page into two if needed */
@@ -259,13 +308,16 @@ static void ull_append(ull_t *pl, ULLTYPE n) {
 }
 
 static void ull_delete(ull_t *pl, UV idx) {   /* Index 0,1,... */
-  _page_t *q, *p = _page_for_index(pl, &idx);
-  UV ncopy = p->size - idx - 1;
-  if (ncopy > 0)
-    memmove( p->data + idx, p->data + idx + 1, ncopy * sizeof(ULLTYPE) );
+  _page_t *q, *p;
+  /* Invalidate cached pages if needed. */
+  if (pl->skip_amount > idx) { pl->skip_amount = 0; pl->skip_page = pl->head; }
+  if (pl->fast_amount > idx) { pl->fast_amount = 0; pl->fast_page = pl->head; }
+  /* Delete entry */
+  p = _page_for_index(pl, &idx);
+  if (idx < p->size - 1)
+    memmove(p->data+idx, p->data+idx+1, (p->size-idx-1) * sizeof(ULLTYPE));
   p->size--;
   pl->nelems--;
-
   /* Try to merge with next page */
   q = p->next;
   if (q != 0 && (p->size + q->size <= ULLPAGESIZE)) {
@@ -274,7 +326,6 @@ static void ull_delete(ull_t *pl, UV idx) {   /* Index 0,1,... */
     p->next = q->next;
     Safefree(q);
   }
-  /* If we have cached skips to future pages, we need to invalidate them */
 }
 
 static ULLTYPE ull_val(ull_t *pl, UV idx) {
