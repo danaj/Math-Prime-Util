@@ -22,7 +22,7 @@
 #define ULLTYPE UV
 #endif
 #ifndef ULLPAGESIZE
-#define ULLPAGESIZE (398*sizeof(ULLTYPE))
+#define ULLPAGESIZE (2303*sizeof(ULLTYPE))
 #endif
 #ifndef ULL32PAGESIZE
 #define ULL32PAGESIZE (1303*sizeof(uint32_t))
