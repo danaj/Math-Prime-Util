@@ -6,7 +6,6 @@
 #include "constants.h"
 #include "lucky_numbers.h"
 #include "inverse_interpolate.h"
-#define ULLPAGESIZE (2303*sizeof(ULLTYPE))
 #include "ds_ull.h"   /* The unrolled linked list that we use for sieving */
 
 static const int _verbose = 0;
@@ -348,25 +347,46 @@ UV lucky_count_lower(UV n) {   /* Holds under 1e9 */
   return inverse_interpolate(lo, hi, n, 0, &_cb_nlu, 0);
 }
 UV lucky_count_range(UV lo, UV hi) {
-  UV nlo = 0, nlucky;
+  UV nlo = 0, nlucky, lsize;
 
   if (hi < lo)
     return 0;
   if (hi < 48)
     return _small_lucky_count[hi] - (lo == 0 ? 0 : _small_lucky_count[lo-1]);
 
+  /*
+   * Analogous to how nth_lucky works, we sieve enough lucky numbers to
+   * ensure we cover everything up to 'hi'.  We can then get an exact
+   * count by determining exactly how many values will be removed.
+   */
+
+  if ((lo & 1)) lo--;    /* Both lo and hi will be even */
+  if ((hi & 1)) hi++;
+  lsize = 1+lucky_count_upper(hi);
+
   if (hi <= UVCONST(4000000000)) {
-    uint32_t *lucky32 = lucky_sieve32(&nlucky, hi);
-    while (nlo < nlucky && lucky32[nlo] < lo)
-      nlo++;
+    uint32_t i, hicount = hi/2, locount = lo/2;
+    uint32_t *lucky32 = lucky_sieve32(&nlucky, lsize);
+    for (i = 1; i < nlucky && lucky32[i] <= lo; i++) {
+      locount -= locount/lucky32[i];
+      hicount -= hicount/lucky32[i];
+    }
+    for ( ; i < nlucky && lucky32[i] <= hi; i++)
+      hicount -= hicount/lucky32[i];
     Safefree(lucky32);
+    return hicount - locount;
   } else {
-    UV *lucky64 = lucky_sieve64(&nlucky, hi);
-    while (nlo < nlucky && lucky64[nlo] < lo)
-      nlo++;
+    UV i, hicount = hi/2, locount = lo/2;
+    UV *lucky64 = lucky_sieve64(&nlucky, lsize);
+    for (i = 1; i < nlucky && lucky64[i] <= lo; i++) {
+      locount -= locount/lucky64[i];
+      hicount -= hicount/lucky64[i];
+    }
+    for ( ; i < nlucky && lucky64[i] <= hi; i++)
+      hicount -= hicount/lucky64[i];
     Safefree(lucky64);
+    return hicount - locount;
   }
-  return nlucky - nlo;
 }
 UV lucky_count(UV n) {
   return lucky_count_range(0,n);
