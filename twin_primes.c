@@ -109,6 +109,7 @@ UV twin_prime_count_range(UV beg, UV end)
 
 /* See http://numbers.computation.free.fr/Constants/Primes/twin.pdf, page 5 */
 /* Upper limit is in Wu, Acta Arith 114 (2004).  4.48857*x/(log(x)*log(x) */
+/* Lichtman (2021) improved the limit: https://arxiv.org/pdf/2109.02851.pdf */
 UV twin_prime_count_approx(UV n)
 {
   /* Best would be another estimate for n < ~ 5000 */
