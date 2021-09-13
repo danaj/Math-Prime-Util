@@ -33,7 +33,8 @@ almost_primes.c
 cache.h
 cache.c
 constants.h
-ds_ull.h
+ds_pagelist32.h
+ds_pagelist64.h
 entropy.h
 entropy.c
 factor.h

@@ -6,7 +6,8 @@
 #include "constants.h"
 #include "lucky_numbers.h"
 #include "inverse_interpolate.h"
-#include "ds_ull.h"   /* The unrolled linked list that we use for sieving */
+#include "ds_pagelist32.h"
+#include "ds_pagelist64.h"
 
 static const int _verbose = 0;
 
@@ -32,15 +33,15 @@ static const uint32_t _lmask5[77] = {2334495963,2261929142,1169344621,2204739155
  * This is not the most memory efficient, but is very fast.
  *
  * Generate first 10M lucky numbers (from 1 to 196502733) on 2020 M1 Mac:
- *          13.8s  lucky_sieve32   memory:  4 * count * ~2.5    (100MB)
- *          27.1s  lucky_sieve64   memory:  8 * count * ~2.3    (190MB)
+ *           3.1s  lucky_sieve32   memory:  4 * count * ~2.5    (100MB)
+ *           4.2s  lucky_sieve64   memory:  8 * count * ~2.3    (190MB)
  *        1356s    lucky_cgen      memory:  8 * count * 2       (160MB)
  *        8950s    Wilson          memory:  8 * count * 1       ( 80MB)
  *
- * nth_lucky(1<<31):   55291335127    25 min using lucky_sieve32, 930MB
- * nth_lucky(1<<32):  113924214621   107 min using lucky_sieve64  3.2GB
- *
- * lucky_sieve64 for the first example uses 398 el/page, second uses 2303.
+ * nth_lucky(1<<31):   55291335127    47 sec using lucky_sieve32, 930MB
+ * nth_lucky(1<<32):  113924214621   140 sec using lucky_sieve64  3.2GB
+ * nth_lucky(1<<33):  234516370291   312 sec using lucky_sieve64  6.3GB
+ * nth_lucky(1<<34):  482339741617   733 sec using lucky_sieve64 12.1GB
  */
 
 
@@ -107,11 +108,11 @@ uint32_t* _small_lucky_sieve32(UV *size, uint32_t n) {
 
 uint32_t* lucky_sieve32(UV *size, uint32_t n) {
   uint32_t i, m, lsize, level, init_level, *lucky;
-  ull32_t *pl;
+  pagelist32_t *pl;
 
-  if (n <= 1000000) return _small_lucky_sieve32(size, n);
+  if (n <= 280000) return _small_lucky_sieve32(size, n);
 
-  pl = ull32_create();
+  pl = pagelist32_create();
 
   /* make initial list using filters for small lucky numbers. */
   {
@@ -147,7 +148,7 @@ uint32_t* lucky_sieve32(UV *size, uint32_t n) {
           }
         }
         if (ln > lend)
-          ull32_append(pl, i);
+          pagelist32_append(pl,i);
       }
     }
     init_level = lend+1;
@@ -156,36 +157,36 @@ uint32_t* lucky_sieve32(UV *size, uint32_t n) {
   }
 
   lsize = pl->nelems;
-  if (_verbose) printf("lucky_sieve32 done inserting.  values:  %u   pages: %u\n", lsize, ull32_npages(pl));
+  if (_verbose) printf("lucky_sieve32 done inserting.  values:  %u   pages: %u\n", lsize, pl->npages[0]);
 
   if (init_level < lsize) {
-    ull32_iter_t iter = ull32_iterator_create(pl, init_level);
+    /* Use an iterator rather than calling pagelist32_val(pl,level) */
+    pagelist32_iter_t iter = pagelist32_iterator_create(pl, init_level);
     for (level = init_level; level < lsize; level++) {
-      uint32_t skip = ull32_iterator_next(&iter) - 1;
+      uint32_t skip = pagelist32_iterator_next(&iter) - 1;
       if (skip >= lsize) break;
-      ull32_set_fastpage(pl, skip);
       for (i = skip; i < lsize; i += skip) {
-        ull32_delete(pl, i);
+        pagelist32_delete(pl, i);
         lsize--;
       }
     }
-    if (_verbose) printf("lucky_sieve32 done sieving.    values:  %u   pages: %u\n", lsize, ull32_npages(pl));
+    if (_verbose) printf("lucky_sieve32 done sieving.    values:  %u   pages: %u\n", lsize, pl->npages[0]);
   }
 
-  lucky = ull32_toarray(size, pl);
+  lucky = pagelist32_to_array(size, pl);
   if (*size != lsize) croak("bad sizes in lucky sieve 32");
   if (_verbose) printf("lucky_sieve32 done copying.\n");
-  ull32_destroy(pl);
+  pagelist32_destroy(pl);
   return lucky;
 }
 
 UV* lucky_sieve64(UV *size, UV n) {
   UV i, m, lsize, level, init_level, *lucky;
-  ull_t *pl;
+  pagelist64_t *pl;
 
   if (n == 0) { *size = 0; return 0; }
 
-  pl = ull_create();
+  pl = pagelist64_create();
 
   {
     UV slsize;
@@ -220,7 +221,7 @@ UV* lucky_sieve64(UV *size, UV n) {
           }
         }
         if (ln > lend)
-          ull_append(pl, i);
+          pagelist64_append(pl, i);
       }
     }
     init_level = lend+1;
@@ -229,26 +230,25 @@ UV* lucky_sieve64(UV *size, UV n) {
   }
 
   lsize = pl->nelems;
-  if (_verbose) printf("lucky_sieve64 done inserting.  values:  %lu   pages: %lu\n", lsize, ull_npages(pl));
+  if (_verbose) printf("lucky_sieve64 done inserting.  values:  %lu   pages: %lu\n", lsize, pl->npages[0]);
 
   if (init_level < lsize) {
-    ull_iter_t iter = ull_iterator_create(pl, init_level);
+    pagelist64_iter_t iter = pagelist64_iterator_create(pl, init_level);
     for (level = init_level; level < lsize; level++) {
-      UV skip = ull_iterator_next(&iter) - 1;
+      UV skip = pagelist64_iterator_next(&iter) - 1;
       if (skip >= lsize) break;
-      ull_set_fastpage(pl, skip);
       for (i = skip; i < lsize; i += skip) {
-        ull_delete(pl, i);
+        pagelist64_delete(pl, i);
         lsize--;
       }
     }
-    if (_verbose) printf("lucky_sieve64 done sieving.    values:  %lu   pages: %lu\n", lsize, ull_npages(pl));
+    if (_verbose) printf("lucky_sieve64 done sieving.    values:  %lu   pages: %lu\n", lsize, pl->npages[0]);
   }
 
-  lucky = ull_toarray(size, pl);
+  lucky = pagelist64_to_array(size, pl);
   if (*size != lsize) croak("bad sizes in lucky sieve 64");
   if (_verbose) printf("lucky_sieve64 done copying.\n");
-  ull_destroy(pl);
+  pagelist64_destroy(pl);
   return lucky;
 }
 
