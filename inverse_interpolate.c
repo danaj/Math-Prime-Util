@@ -13,20 +13,22 @@
 #define LINEAR_INTERP(n, lo, hi, rlo, rhi) \
   (lo + (UV) (((double)(n-rlo) * (double)(hi-lo) / (double)(rhi-rlo))+0.5))
 
+#define CALLBACK(n)  ((funck) ? (*funck)(n,k) : (*func)(n))
+
 #if 0   /* Debugging return, checking the conditions above. */
 #define RETURNI(x) \
   { \
     UV v = x; \
-    UV rv = (*func)(v,k); \
+    UV rv = CALLBACK(v); \
     /* printf("v  %lu    rv %lu   n %lu\n",v,rv,n); */\
     MPUassert( rv <= n, "BAD INTERP  v > n" ); \
     if (rv == n) { \
       if (v > threshold) { \
-        /* printf("threshold %lu v %lu    func(%lu) = %lu\n", threshold, v, v-1-threshold, (*func)(v-1-threshold,k)); */\
-        MPUassert( (*func)(v-1-threshold,k) < n, "BAD INTERP  v-1-thresh >= n" ); \
+        /* printf("threshold %lu v %lu    func(%lu) = %lu\n", threshold, v, v-1-threshold, CALLBACK(v-1-threshold)); */\
+        MPUassert( CALLBACK(v-1-threshold) < n, "BAD INTERP  v-1-thresh >= n" ); \
       } \
     } else { \
-      MPUassert( (*func)(v+1,k) > n, "BAD INTERP  v+1 <= n" ); \
+      MPUassert( CALLBACK(v+1) > n, "BAD INTERP  v+1 <= n" ); \
     } \
     return v; \
   }
@@ -34,14 +36,15 @@
   #define RETURNI(x) { return x; }
 #endif
 
-UV inverse_interpolate(UV lo, UV hi, UV n, UV k,
-                       UV (*func)(UV mid, UV k),
-                       UV threshold) {
+static UV _inverse_interpolate(UV lo, UV hi, UV n,
+                               UV k, UV (*funck)(UV mid, UV k),
+                               UV (*func)(UV mid),
+                               UV threshold) {
   UV mid, rlo, rhi, rmid;
 
-  rlo = (*func)(lo,k);
+  rlo = CALLBACK(lo);
   if (rlo == n)  RETURNI(lo);  /* Possible bad limit */
-  rhi = (*func)(hi,k);
+  rhi = CALLBACK(hi);
 
   /* printf("n %lu\n   lo %lu  rlo  %lu\n   hi %lu  rhi  %lu\n",n,lo,rlo,hi,rhi);*/
   MPUassert(rlo <= n && rhi >= n, "interpolation: bad initial limits");
@@ -51,7 +54,7 @@ UV inverse_interpolate(UV lo, UV hi, UV n, UV k,
 
   mid = LINEAR_INTERP(n,lo,hi,rlo,rhi);
   if (mid == lo) mid++;  else if (mid == hi) mid--;
-  rmid = (*func)(mid,k);
+  rmid = CALLBACK(mid);
 
   while (lo < mid && mid < hi && rmid != n && rlo != n) {
     if (rmid > n) {
@@ -62,7 +65,7 @@ UV inverse_interpolate(UV lo, UV hi, UV n, UV k,
       mid += (UV)((double)(hi-mid) * (double)(n-rmid)/(double)(rhi-rmid) + 0.5);
     }
     if (mid == lo) mid++;  else if (mid == hi) mid--;
-    rmid = (*func)(mid,k);
+    rmid = CALLBACK(mid);
   }
 
   MPUassert(lo <= mid && mid <= hi, "interpolation: range error");
@@ -95,7 +98,7 @@ UV inverse_interpolate(UV lo, UV hi, UV n, UV k,
   if (rlo < n-1) {
     mid = mid - (UV)((hi-lo) * 0.10 + 1);
     if (mid == lo) mid++;  else if (mid == hi) mid--;
-    rmid = (*func)(mid,k);
+    rmid = CALLBACK(mid);
     if (rmid < n) lo = mid;
     else          hi = mid;
   }
@@ -103,8 +106,17 @@ UV inverse_interpolate(UV lo, UV hi, UV n, UV k,
   /* Binary search until within threshold */
   while (lo < hi && (hi-lo) >= threshold) {
     mid = lo + ((hi-lo)>>1);
-    if ((*func)(mid,k) < n) lo = mid+1;
+    if (CALLBACK(mid) < n) lo = mid+1;
     else                    hi = mid;
   }
   RETURNI(hi);
+}
+
+
+UV inverse_interpolate(UV lo, UV hi, UV n, UV (*func)(UV mid), UV threshold) {
+  return _inverse_interpolate(lo,hi,n,0,0,func,threshold);
+}
+
+UV inverse_interpolate_k(UV lo, UV hi, UV n, UV k, UV (*funck)(UV mid, UV k), UV threshold) {
+  return _inverse_interpolate(lo,hi,n,k,funck,0,threshold);
 }

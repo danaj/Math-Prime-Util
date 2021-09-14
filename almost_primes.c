@@ -291,7 +291,7 @@ UV nth_almost_prime_upper(uint32_t k, UV n) {
   lo = 5 * (UVCONST(1) << k);  /* For k >= 1 and n >= 8 */
   hi = max_nth_almost_prime(k);
 
-  return inverse_interpolate(lo, hi, n, k, &apcl, 0);
+  return inverse_interpolate_k(lo, hi, n, k, &apcl, 0);
 }
 
 UV nth_almost_prime_lower(uint32_t k, UV n) {
@@ -312,7 +312,7 @@ UV nth_almost_prime_lower(uint32_t k, UV n) {
   lo = 3 * (UVCONST(1) << k);  /* For k >= 1 and n >= 8 */
   hi = max_nth_almost_prime(k);
 
-  return inverse_interpolate(lo, hi, n, k, &apcu, 0);
+  return inverse_interpolate_k(lo, hi, n, k, &apcu, 0);
 }
 
 UV nth_almost_prime_approx(uint32_t k, UV n) {
@@ -331,7 +331,7 @@ UV nth_almost_prime_approx(uint32_t k, UV n) {
   lo = nth_almost_prime_lower(k,n);
   hi = nth_almost_prime_upper(k,n) + 1;  /* Make sure we span the approx */
 
-  return inverse_interpolate(lo, hi, n, k, &apca, 0);
+  return inverse_interpolate_k(lo, hi, n, k, &apca, 0);
 }
 
 UV nth_almost_prime(uint32_t k, UV n) {
@@ -353,7 +353,7 @@ UV nth_almost_prime(uint32_t k, UV n) {
 
   lo = nth_almost_prime_lower(k,n);
   hi = nth_almost_prime_upper(k,n);
-  hi = inverse_interpolate(lo, hi, n, k, &apce, 60000);
+  hi = inverse_interpolate_k(lo, hi, n, k, &apce, 60000);
   while (!is_almost_prime(k,hi))
     hi--;
   return hi;

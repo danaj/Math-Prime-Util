@@ -31,10 +31,6 @@ static const uint8_t small_ram_primes[] = {
    return i; \
  }
 
-static UV _cb_nrpu(UV mid, UV k) { return nth_ramanujan_prime_upper(mid); }
-static UV _cb_nrpl(UV mid, UV k) { return nth_ramanujan_prime_lower(mid); }
-static UV _cb_rpca(UV mid, UV k) { return ramanujan_prime_count_approx(mid); }
-
 
 /*******************************     Bounds     *******************************/
 
@@ -129,7 +125,7 @@ UV ramanujan_prime_count_lower(UV n) {
   /* We know we're between p_2n and p_3n, probably close to the former. */
   lo = prime_count_lower(n)/3;
   hi = prime_count_upper(n) >> 1;
-  return inverse_interpolate(lo, hi, n, 0, &_cb_nrpu, 0);
+  return inverse_interpolate(lo, hi, n, &nth_ramanujan_prime_upper, 0);
 }
 UV ramanujan_prime_count_upper(UV n) {
   UV lo, hi;
@@ -137,7 +133,7 @@ UV ramanujan_prime_count_upper(UV n) {
   /* We know we're between p_2n and p_3n, probably close to the former. */
   lo = prime_count_lower(n)/3;
   hi = prime_count_upper(n) >> 1;
-  return inverse_interpolate(lo, hi, n, 0, &_cb_nrpl, 0);
+  return inverse_interpolate(lo, hi, n, &nth_ramanujan_prime_lower, 0);
 }
 
 /****************************     Approximate     ****************************/
@@ -156,7 +152,7 @@ UV nth_ramanujan_prime_approx(UV n)
   /* Interpolating using ramanujan prime count approximation */
   lo = nth_ramanujan_prime_lower(n);
   hi = nth_ramanujan_prime_upper(n);
-  return inverse_interpolate(lo, hi, n, 0, &_cb_rpca, 0);
+  return inverse_interpolate(lo, hi, n, &ramanujan_prime_count_approx, 0);
 }
 
 /*******************************     Arrays     *******************************/

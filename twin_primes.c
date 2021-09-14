@@ -201,8 +201,6 @@ UV nth_twin_prime(UV n)
   return nth;
 }
 
-static UV _cb_tpca(UV mid, UV k) { return twin_prime_count_approx(mid); }
-
 UV nth_twin_prime_approx(UV n)
 {
   long double fn = (long double) n;
@@ -224,5 +222,5 @@ UV nth_twin_prime_approx(UV n)
               (n >= 1200) ? (1.70 * fnlog2n) :
               (2.3 * fnlog2n + 5) );
   if (hi <= lo) hi = UV_MAX;
-  return inverse_interpolate(lo, hi, n, 0, &_cb_tpca, 0);
+  return inverse_interpolate(lo, hi, n, &twin_prime_count_approx, 0);
 }

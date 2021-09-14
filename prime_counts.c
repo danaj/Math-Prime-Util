@@ -10,7 +10,6 @@
 #include "lmo.h"
 #include "constants.h"
 #include "prime_counts.h"
-#include "inverse_interpolate.h"
 #include "util.h"
 #include "real.h"
 #include "mathl.h"

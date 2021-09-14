@@ -305,10 +305,6 @@ UV* lucky_sieve_cgen(UV *size, UV n) {
 /* static UV lucky_count_approx(UV n) { return 0.5 + 0.970 * n / log(n); } */
 /* static UV lucky_count_upper(UV n) { return 200 + lucky_count_approx(n) * 1.025; } */
 
-static UV _cb_nlu(UV mid, UV k) { return nth_lucky_upper(mid); }
-static UV _cb_nll(UV mid, UV k) { return nth_lucky_lower(mid); }
-static UV _cb_nla(UV mid, UV k) { return nth_lucky_approx(mid); }
-
 static UV _simple_lucky_count_approx(UV n) {
   return   (n <           7)  ?  (n > 0) + (n > 2)
          : (n <=    1000000)  ?  0.9957 * n/log(n)
@@ -330,21 +326,21 @@ UV lucky_count_approx(UV n) {
   /* return _simple_lucky_count_approx(n); */
   lo = _simple_lucky_count_lower(n);
   hi = _simple_lucky_count_upper(n);
-  return inverse_interpolate(lo, hi, n, 0, &_cb_nla, 0);
+  return inverse_interpolate(lo, hi, n, &nth_lucky_approx, 0);
 }
 UV lucky_count_upper(UV n) {   /* Holds under 1e9 */
   UV lo, hi;
   if (n < 48) return _small_lucky_count[n];
   lo = _simple_lucky_count_lower(n);
   hi = _simple_lucky_count_upper(n);
-  return inverse_interpolate(lo, hi, n, 0, &_cb_nll, 0);
+  return inverse_interpolate(lo, hi, n, &nth_lucky_lower, 0);
 }
 UV lucky_count_lower(UV n) {   /* Holds under 1e9 */
   UV lo, hi;
   if (n < 48) return _small_lucky_count[n];
   lo = _simple_lucky_count_lower(n);
   hi = _simple_lucky_count_upper(n);
-  return inverse_interpolate(lo, hi, n, 0, &_cb_nlu, 0);
+  return inverse_interpolate(lo, hi, n, &nth_lucky_upper, 0);
 }
 UV lucky_count_range(UV lo, UV hi) {
   UV nlo = 0, nlucky, lsize;

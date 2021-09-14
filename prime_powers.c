@@ -214,11 +214,6 @@ UV prime_power_count_approx(UV n) {
   return sum;
 }
 
-static UV _cb_ppcl(UV mid, UV k) { return prime_power_count_lower(mid); }
-static UV _cb_ppcu(UV mid, UV k) { return prime_power_count_upper(mid); }
-static UV _cb_ppca(UV mid, UV k) { return prime_power_count_approx(mid); }
-static UV _cb_ppc(UV mid, UV k)  { return prime_power_count(mid); }
-
 static UV _simple_nth_prime_power_lower(UV n) {
   if (n <= 100) return n+1;
   return (0.98 * nth_prime_lower(n)) - 400;
@@ -232,21 +227,21 @@ UV nth_prime_power_lower(UV n) {
   if (n <= 7) return (n==0) ? 0 : n+1+(n/5);
   lo = _simple_nth_prime_power_lower(n);
   hi = _simple_nth_prime_power_upper(n);
-  return inverse_interpolate(lo, hi, n, 0, &_cb_ppcu, 0);
+  return inverse_interpolate(lo, hi, n, &prime_power_count_upper, 0);
 }
 UV nth_prime_power_upper(UV n) {
   UV lo, hi;
   if (n <= 7) return (n==0) ? 0 : n+1+(n/5);
   lo = _simple_nth_prime_power_lower(n);
   hi = _simple_nth_prime_power_upper(n);
-  return inverse_interpolate(lo, hi, n, 0, &_cb_ppcl, 0);
+  return inverse_interpolate(lo, hi, n, &prime_power_count_lower, 0);
 }
 UV nth_prime_power_approx(UV n) {
   UV lo, hi;
   if (n <= 7) return (n==0) ? 0 : n+1+(n/5);
   lo = _simple_nth_prime_power_lower(n);
   hi = _simple_nth_prime_power_upper(n);
-  return inverse_interpolate(lo, hi, n, 0, &_cb_ppca, 0);
+  return inverse_interpolate(lo, hi, n, &prime_power_count_approx, 0);
 }
 UV nth_prime_power(UV n) {
   UV lo, hi, pp;
@@ -254,6 +249,6 @@ UV nth_prime_power(UV n) {
 
   lo = nth_prime_power_lower(n);
   hi = nth_prime_power_upper(n);
-  pp = inverse_interpolate(lo, hi, n, 0, &_cb_ppc, 10000);
+  pp = inverse_interpolate(lo, hi, n, &prime_power_count, 10000);
   return prev_prime_power(pp+1);
 }

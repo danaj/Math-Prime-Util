@@ -3221,7 +3221,7 @@ UV nth_powerful(UV n, UV k) {
     if (n < max)  hi = lo + (((double)n / (double)max) * (UV_MAX-lo) + 1);
   }
 
-  return inverse_interpolate(lo, hi, n, k, &powerful_count, 0);
+  return inverse_interpolate_k(lo, hi, n, k, &powerful_count, 0);
 }
 
 UV perfect_power_count_range(UV lo, UV hi) {
