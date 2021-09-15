@@ -244,6 +244,7 @@ UV nth_prime_power_approx(UV n) {
   return inverse_interpolate(lo, hi, n, &prime_power_count_approx, 0);
 }
 UV nth_prime_power(UV n) {
+#if 0
   UV lo, hi, pp;
   if (n <= 7) return (n==0) ? 0 : n+1+(n/5);
 
@@ -251,4 +252,10 @@ UV nth_prime_power(UV n) {
   hi = nth_prime_power_upper(n);
   pp = inverse_interpolate(lo, hi, n, &prime_power_count, 10000);
   return prev_prime_power(pp+1);
+#else
+  if (n <= 7) return (n==0) ? 0 : n+1+(n/5);
+  return interpolate_with_approx(n, 0, 1000,
+                                 &nth_prime_power_approx, &prime_power_count,
+                                 &is_prime_power);
+#endif
 }

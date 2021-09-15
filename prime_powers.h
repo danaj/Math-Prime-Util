@@ -4,7 +4,7 @@
 #include "ptypes.h"
 
 extern int prime_power(UV n, UV* prime);
-#define is_prime_power(n)  (!!prime_power(n,0))
+static INLINE int is_prime_power(UV n) { return !!prime_power(n,0); }
 
 extern UV  next_prime_power(UV x);
 extern UV  prev_prime_power(UV x);

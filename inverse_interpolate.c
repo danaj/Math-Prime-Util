@@ -4,6 +4,7 @@
 
 #include "ptypes.h"
 #include "inverse_interpolate.h"
+#include "util.h"
 
 /* Return x with v(x)=(*func)(x,k) s.t. either of:
  *    1.  v(x) == n  and v(x-1-threshold) < n
@@ -119,4 +120,62 @@ UV inverse_interpolate(UV lo, UV hi, UV n, UV (*func)(UV mid), UV threshold) {
 
 UV inverse_interpolate_k(UV lo, UV hi, UV n, UV k, UV (*funck)(UV mid, UV k), UV threshold) {
   return _inverse_interpolate(lo,hi,n,k,funck,0,threshold);
+}
+
+
+/******************************************************************************/
+
+
+UV interpolate_with_approx(UV n,
+                           UV *gcount,
+                           UV tol,
+                           UV (*fnth)(UV n),
+                           UV (*fcnt)(UV n),
+                           int (*fis)(UV n)   /* optional */
+                          ) {
+  UV guess, gn, count, ming = 0, maxg = UV_MAX;
+
+  guess = (*fnth)(n);
+  for (gn = 2; gn < 20; gn++) {
+    IV adjust;
+    MPUverbose(2, "  interp  %"UVuf"-th is around %"UVuf" ... ", n, guess);
+    count = (*fcnt)(guess);
+    MPUverbose(2, "(%"IVdf")\n", (IV)(n-count));
+    /* Stop guessing if within our tolerance */
+    if (n==count || (n>count && n-count < tol) || (n<count && count-n < tol)) break;
+    /* Determine how far off we think we are */
+    adjust = (IV) ((fnth)(n) - (fnth)(count));
+    /* When computing new guess, ensure we don't overshoot.  Rarely used. */
+    if (count <= n && guess > ming) ming = guess;   /* Previous guesses */
+    if (count >= n && guess < maxg) maxg = guess;
+    guess += adjust;
+    if (guess <= ming || guess >= maxg) MPUverbose(2, "  fix min/max for %"UVuf"\n",n);
+    if (guess <= ming) guess = ming + tol - 1;
+    if (guess >= maxg) guess = maxg - tol + 1;
+    /* TODO: if min/max dist is small, split the difference. */
+  }
+  if (gn == 20) count = (*fcnt)(guess);
+
+  if (fis) {
+    if (count < n) {
+
+      /* Increase count one at a time if needed */
+      for ( ; count < n; count++)
+        while (!(*fis)(++guess))
+          ;
+
+    } else if (count >= n) {
+
+      /* Make sure this is the least value at this count */
+      while (!(*fis)(guess))  guess--;
+      /* Reduce count one at a time if needed */
+      for ( ; count > n; count--)
+        while (!(*fis)(--guess))
+          ;
+
+    }
+  }
+
+  if (gcount) *gcount = count;
+  return guess;
 }

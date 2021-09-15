@@ -334,22 +334,37 @@ UV nth_almost_prime_approx(uint32_t k, UV n) {
   return inverse_interpolate_k(lo, hi, n, k, &apca, 0);
 }
 
+static UV  _cb_nth3(UV n) { return nth_almost_prime_approx(3,n); }
+static UV  _cb_cnt3(UV n) { return almost_prime_count(3,n); }
+static int _cb_is3(UV n)  { return is_almost_prime(3,n); }
+
+static UV  _cb_nth4(UV n) { return nth_almost_prime_approx(4,n); }
+static UV  _cb_cnt4(UV n) { return almost_prime_count(4,n); }
+static int _cb_is4(UV n)  { return is_almost_prime(4,n); }
+
 UV nth_almost_prime(uint32_t k, UV n) {
-  UV r, max, lo, hi;
+  UV r, lo, hi;
 
   if (n == 0) return 0;
   if (k == 0) return (n == 1) ? 1 : 0;
   if (k == 1) return nth_prime(n);
   if (k == 2) return nth_semiprime(n);
 
-  max = max_almost_prime_count(k);
-  if (n > max) return 0;
+  if (n > max_almost_prime_count(k)) return 0;
 
   /* For k >= 3 and small n we can answer this quickly. */
   if (n < 8) return _fast_small_nth_almost_prime(k,n);
   r = reduce_nth_factor(k,n);
   if (r > 0)  return nth_almost_prime(k-r,n) << r;
   /* NOTE: given n a 64-bit integer, k always <= 40 after reduction */
+
+  /* Using the approximation to narrow in is *much* more efficient.  But
+   * there is no good way to make it generic without closures (GCC extension)
+   * or statics (not thread-safe). */
+  if (k == 3)
+    return interpolate_with_approx(n, 0, 20000, &_cb_nth3, &_cb_cnt3, &_cb_is3);
+  if (k == 4)
+    return interpolate_with_approx(n, 0, 20000, &_cb_nth4, &_cb_cnt4, &_cb_is4);
 
   lo = nth_almost_prime_lower(k,n);
   hi = nth_almost_prime_upper(k,n);
