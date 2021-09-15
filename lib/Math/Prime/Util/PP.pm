@@ -7247,13 +7247,21 @@ my @_fsublist = (
 
 sub factor {
   my($n) = @_;
-  _validate_positive_integer($n);
   my @factors;
 
   if ($n < 4) {
     @factors = ($n == 1) ? () : ($n);
     return @factors;
   }
+
+  if ($Math::Prime::Util::_GMPfunc{"factor"}) {
+    my @factors = Math::Prime::Util::GMP::factor($n);
+    if (ref($_[0])) {
+      @factors = map { Math::Prime::Util::_reftyped($_[0], $_) } @factors
+    }
+    return @factors;
+  }
+
   $n = $n->copy if ref($n) eq 'Math::BigInt';
   my $lim = 4999;  # How much trial factoring to do
 
