@@ -53,6 +53,7 @@ WriteMakefile1(
                     'prime_counts.o ' .
                     'prime_sums.o '   .
                     'prime_powers.o ' .
+                    'perfect_powers.o ' .
                     'powerfree.o '    .
                     'lucky_numbers.o '.
                     'real.o '         .

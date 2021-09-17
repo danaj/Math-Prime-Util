@@ -46,7 +46,9 @@ our @EXPORT_OK =
       lastfor
       numtoperm permtonum randperm shuffle
       prime_iterator prime_iterator_object
-      next_prime prev_prime  next_prime_power prev_prime_power
+      next_prime prev_prime
+      next_prime_power prev_prime_power
+      next_perfect_power prev_perfect_power
       prime_count prime_count_lower prime_count_upper prime_count_approx
       nth_prime nth_prime_lower nth_prime_upper nth_prime_approx inverse_li
       twin_prime_count twin_prime_count_approx
@@ -63,11 +65,14 @@ our @EXPORT_OK =
       nth_ramanujan_prime nth_ramanujan_prime_approx
       nth_ramanujan_prime_lower nth_ramanujan_prime_upper
       powerful_count nth_powerful
-      perfect_power_count
       prime_power_count prime_power_count_approx
       prime_power_count_lower prime_power_count_upper
       nth_prime_power nth_prime_power_approx
       nth_prime_power_lower nth_prime_power_upper
+      perfect_power_count perfect_power_count_approx
+      perfect_power_count_lower perfect_power_count_upper
+      nth_perfect_power nth_perfect_power_approx
+      nth_perfect_power_lower nth_perfect_power_upper
       powerfree_count powerfree_sum
       powerfree_part powerfree_part_sum
       smooth_count rough_count

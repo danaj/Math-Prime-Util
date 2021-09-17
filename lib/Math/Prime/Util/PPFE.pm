@@ -177,6 +177,8 @@ sub entropy_bytes {
 *prev_prime = \&Math::Prime::Util::PP::prev_prime;
 *next_prime_power = \&Math::Prime::Util::PP::next_prime_power;
 *prev_prime_power = \&Math::Prime::Util::PP::prev_prime_power;
+*next_perfect_power = \&Math::Prime::Util::PP::next_perfect_power;
+*prev_perfect_power = \&Math::Prime::Util::PP::prev_perfect_power;
 
 *numtoperm = \&Math::Prime::Util::PP::numtoperm;
 *permtonum = \&Math::Prime::Util::PP::permtonum;
@@ -233,6 +235,9 @@ sub entropy_bytes {
 *prime_power_count_approx = \&Math::Prime::Util::PP::prime_power_count_approx;
 *prime_power_count_lower = \&Math::Prime::Util::PP::prime_power_count_lower;
 *prime_power_count_upper = \&Math::Prime::Util::PP::prime_power_count_upper;
+*perfect_power_count_approx = \&Math::Prime::Util::PP::perfect_power_count_approx;
+*perfect_power_count_lower = \&Math::Prime::Util::PP::perfect_power_count_lower;
+*perfect_power_count_upper = \&Math::Prime::Util::PP::perfect_power_count_upper;
 *lucky_count_approx = \&Math::Prime::Util::PP::lucky_count_approx;
 *lucky_count_lower = \&Math::Prime::Util::PP::lucky_count_lower;
 *lucky_count_upper = \&Math::Prime::Util::PP::lucky_count_upper;
@@ -240,6 +245,10 @@ sub entropy_bytes {
 *nth_prime_power_approx = \&Math::Prime::Util::PP::nth_prime_power_approx;
 *nth_prime_power_lower = \&Math::Prime::Util::PP::nth_prime_power_lower;
 *nth_prime_power_upper = \&Math::Prime::Util::PP::nth_prime_power_upper;
+*nth_perfect_power = \&Math::Prime::Util::PP::nth_perfect_power;
+*nth_perfect_power_approx = \&Math::Prime::Util::PP::nth_perfect_power_approx;
+*nth_perfect_power_lower = \&Math::Prime::Util::PP::nth_perfect_power_lower;
+*nth_perfect_power_upper = \&Math::Prime::Util::PP::nth_perfect_power_upper;
 #*nth_lucky = \&Math::Prime::Util::PP::nth_lucky;
 *nth_lucky_approx = \&Math::Prime::Util::PP::nth_lucky_approx;
 *nth_lucky_lower = \&Math::Prime::Util::PP::nth_lucky_lower;

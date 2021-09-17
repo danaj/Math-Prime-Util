@@ -52,6 +52,8 @@ lucky_numbers.h
 lucky_numbers.c
 omega_primes.h
 omega_primes.c
+perfect_powers.h
+perfect_powers.c
 powerfree.h
 powerfree.c
 primality.h

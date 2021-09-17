@@ -1,0 +1,145 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+#include "ptypes.h"
+#include "constants.h"
+#include "perfect_powers.h"
+#define FUNC_log2floor 1
+#define FUNC_ipow 1
+#include "util.h"
+#include "inverse_interpolate.h"
+
+/******************************************************************************/
+/*                             PERFECT POWERS                                 */
+/******************************************************************************/
+
+int is_perfect_power(UV n) {
+  return (n == 1) || (powerof(n) > 1);
+}
+
+UV next_perfect_power(UV n)
+{
+  uint32_t k, log2n;
+  UV best = MPU_MAX_PERFECT_POW;
+
+  if (n <= 4) return (n <= 1);
+  if (n >= MPU_MAX_PERFECT_POW) return 0; /* Overflow */
+
+  log2n = log2floor(n);
+  for (k = 2; k <= 1+log2n; k++) {
+    UV c = ipow( rootint(n,k)+1, k);
+    if (c < best && c > n) best = c;
+  }
+  return best;
+}
+
+UV prev_perfect_power(UV n)
+{
+  uint32_t k, log2n;
+  UV best = 4;
+
+  if (n <= 4) return (n > 1);
+
+  log2n = log2floor(n);
+  for (k = 2; k <= log2n; k++) {
+    UV c, r = rootint(n,k);
+    c = ipow(r,k);
+    if (c >= n) c = ipow(r-1,k);
+    if (c > best && c < n) best = c;
+  }
+  return best;
+}
+
+/* Should we have a generator / sieve?   This is a common exercise using PQs. */
+
+UV perfect_power_count_range(UV lo, UV hi) {
+  if (hi < 1 || hi < lo) return 0;
+  return perfect_power_count(hi) - ((lo <= 1) ? 0 : perfect_power_count(lo-1));
+}
+
+static const unsigned char _roots[] = {2,3,5,6,7,10,11,13,14,15,17,19,21,22,23,26,29,30,31,33,34,35,37,38,39,41,42,43,46,47,51,53,55,57,58,59,61,62};
+static const char _signs[] = {1,1,1,-1,1,-1,1,1,-1,-1,1,1,-1,-1,1,-1,1,1,1,-1,-1,-1,1,-1,-1,1,1,1,-1,1,-1,1,-1,-1,-1,1,1,-1};
+#define NROOTS (sizeof(_roots)/sizeof(_roots[0]))  /* 38 */
+
+/* n A069623; 10^n A070428 */
+UV perfect_power_count(UV n) {
+  uint32_t i, log2n;
+  UV sum = 1;
+
+  if (n < 8) return 0+(n>=1)+(n>=4);
+
+  log2n = log2floor(n);
+  for (i = 0; i <= NROOTS && _roots[i] <= log2n; i++) {
+    sum += _signs[i] * (rootint(n, _roots[i]) - 1);
+  }
+  return sum;
+}
+
+/* About 0.5uS per call for exact, so not really worth truncation. */
+
+UV perfect_power_count_lower(UV n) {  return perfect_power_count(n);  }
+
+UV perfect_power_count_upper(UV n) {  return perfect_power_count(n);  }
+
+UV perfect_power_count_approx(UV n) {  return perfect_power_count(n);  }
+
+
+UV nth_perfect_power_lower(UV n) {
+  double pp;
+  if (n <= 1) return n;
+
+  pp = pow(n,2.)  +  (13./3.)*pow(n,4./3.)  +  (32./15.)*pow(n,16./15.);
+  pp += -2*pow(n, 5./ 3.) - 2*pow(n, 7./ 5.) - 2*pow(n, 9./ 7.) + 2*pow(n,12./10.);
+  pp += -2*pow(n,13./11.) - 2*pow(n,15./13.);
+  return (UV) (pp + 5.5);
+}
+UV nth_perfect_power_upper(UV n) {
+  double pp;
+  if (n <= 1) return n;
+
+  pp = pow(n,2.)  +  (13./3.)*pow(n,4./3.)  +  (32./15.)*pow(n,16./15.);
+  pp += -2*pow(n, 5./ 3.) - 2*pow(n, 7./ 5.) - 2*pow(n, 9./ 7.) + 2*pow(n,12./10.);
+  pp += /* skip 11 and 13 */ 2*pow(n,16./14.);
+  return (UV) (pp - 3.5);
+}
+UV nth_perfect_power_approx(UV n) {
+  double pp;
+  if (n <= 1) return n;
+  if (n >= MPU_MAX_PERFECT_POW_IDX) return MPU_MAX_PERFECT_POW_IDX;
+
+  pp = pow(n,2.)  +  (13./3.)*pow(n,4./3.)  +  (32./15.)*pow(n,16./15.);
+
+#if 0
+  uint32_t q;
+  for (q = 3; q <= 26; q++) {
+    int m = moebius(q);
+    if (m == 0 || q == 2 || q == 6 || q == 30) continue;
+    pp += m * 2.0 * pow(n, (double)(q+2)/(double)q);
+  }
+#endif
+
+  pp += -2*pow(n, 5./ 3.) - 2*pow(n, 7./ 5.) - 2*pow(n, 9./ 7.) + 2*pow(n,12./10.);
+  pp += -2*pow(n,13./11.) - 2*pow(n,15./13.) + 2*pow(n,16./14.) + 2*pow(n,17./15.);
+  pp -= 0.48 * pow(n,19.0/17.0);
+  return (UV) (pp - 1.5);
+}
+
+UV nth_perfect_power(UV n) {
+  UV g, count;
+
+  if (n <= 1) return n;  /* 1,4,8,9,16,25,... */
+  if (n >= MPU_MAX_PERFECT_POW_IDX) return MPU_MAX_PERFECT_POW_IDX;
+
+  g = interpolate_with_approx(n, &count, 1000,
+                              &nth_perfect_power_approx, &perfect_power_count,
+                              0);
+  if (count >= n) {
+    for (g = prev_perfect_power(g+1);  count > n;  count--)
+      g = prev_perfect_power(g);
+  } else {
+    for (; count < n; count++)
+      g = next_perfect_power(g);
+  }
+  return g;
+}

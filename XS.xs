@@ -33,6 +33,7 @@
 #include "entropy.h"
 #include "csprng.h"
 #include "random_prime.h"
+#include "perfect_powers.h"
 #include "prime_powers.h"
 #include "ramanujan_primes.h"
 #include "semi_primes.h"
@@ -799,14 +800,17 @@ void prime_count_upper(IN SV* svn)
     prime_power_count_upper = 3
     prime_power_count_lower = 4
     prime_power_count_approx = 5
-    ramanujan_prime_count_upper = 6
-    ramanujan_prime_count_lower = 7
-    ramanujan_prime_count_approx = 8
-    twin_prime_count_approx = 9
-    semiprime_count_approx = 10
-    lucky_count_upper = 11
-    lucky_count_lower = 12
-    lucky_count_approx = 13
+    perfect_power_count_upper = 6
+    perfect_power_count_lower = 7
+    perfect_power_count_approx = 8
+    ramanujan_prime_count_upper = 9
+    ramanujan_prime_count_lower = 10
+    ramanujan_prime_count_approx = 11
+    twin_prime_count_approx = 12
+    semiprime_count_approx = 13
+    lucky_count_upper = 14
+    lucky_count_lower = 15
+    lucky_count_approx = 16
   PREINIT:
     UV n, ret;
   PPCODE:
@@ -818,14 +822,17 @@ void prime_count_upper(IN SV* svn)
         case  3: ret = prime_power_count_upper(n); break;
         case  4: ret = prime_power_count_lower(n); break;
         case  5: ret = prime_power_count_approx(n); break;
-        case  6: ret = ramanujan_prime_count_upper(n); break;
-        case  7: ret = ramanujan_prime_count_lower(n); break;
-        case  8: ret = ramanujan_prime_count_approx(n); break;
-        case  9: ret = twin_prime_count_approx(n); break;
-        case 10: ret = semiprime_count_approx(n); break;
-        case 11: ret = lucky_count_upper(n); break;
-        case 12: ret = lucky_count_lower(n); break;
-        case 13:
+        case  6: ret = perfect_power_count_upper(n); break;
+        case  7: ret = perfect_power_count_lower(n); break;
+        case  8: ret = perfect_power_count_approx(n); break;
+        case  9: ret = ramanujan_prime_count_upper(n); break;
+        case 10: ret = ramanujan_prime_count_lower(n); break;
+        case 11: ret = ramanujan_prime_count_approx(n); break;
+        case 12: ret = twin_prime_count_approx(n); break;
+        case 13: ret = semiprime_count_approx(n); break;
+        case 14: ret = lucky_count_upper(n); break;
+        case 15: ret = lucky_count_lower(n); break;
+        case 16:
         default: ret = lucky_count_approx(n); break;
       }
       XSRETURN_UV(ret);
@@ -837,14 +844,17 @@ void prime_count_upper(IN SV* svn)
       case  3: _vcallsub_with_pp("prime_power_count_upper");   break;
       case  4: _vcallsub_with_pp("prime_power_count_lower");   break;
       case  5: _vcallsub_with_pp("prime_power_count_approx");   break;
-      case  6: _vcallsub_with_pp("ramanujan_prime_count_upper");  break;
-      case  7: _vcallsub_with_pp("ramanujan_prime_count_lower");  break;
-      case  8: _vcallsub_with_pp("ramanujan_prime_count_approx");  break;
-      case  9: _vcallsub_with_pp("twin_prime_count_approx"); break;
-      case 10: _vcallsub_with_pp("semiprime_count_approx"); break;
-      case 11: _vcallsub_with_pp("lucky_count_upper"); break;
-      case 12: _vcallsub_with_pp("lucky_count_lower"); break;
-      case 13:
+      case  6: _vcallsub_with_pp("perfect_power_count_upper");   break;
+      case  7: _vcallsub_with_pp("perfect_power_count_lower");   break;
+      case  8: _vcallsub_with_pp("perfect_power_count_approx");   break;
+      case  9: _vcallsub_with_pp("ramanujan_prime_count_upper");  break;
+      case 10: _vcallsub_with_pp("ramanujan_prime_count_lower");  break;
+      case 11: _vcallsub_with_pp("ramanujan_prime_count_approx");  break;
+      case 12: _vcallsub_with_pp("twin_prime_count_approx"); break;
+      case 13: _vcallsub_with_pp("semiprime_count_approx"); break;
+      case 14: _vcallsub_with_pp("lucky_count_upper"); break;
+      case 15: _vcallsub_with_pp("lucky_count_lower"); break;
+      case 16:
       default: _vcallsub_with_pp("lucky_count_approx"); break;
     }
     objectify_result(aTHX_ svn, ST(0));
@@ -1657,9 +1667,10 @@ void is_square_free(IN SV* svn)
     is_carmichael = 1
     is_quasi_carmichael = 2
     is_square = 3
-    is_lucky = 4
-    is_practical = 5
-    is_totient = 6
+    is_perfect_power = 4
+    is_lucky = 5
+    is_practical = 6
+    is_totient = 7
   PREINIT:
     int status, ret;
     UV n;
@@ -1672,9 +1683,10 @@ void is_square_free(IN SV* svn)
         case 1: ret = is_carmichael(n); break;
         case 2: ret = is_quasi_carmichael(n); break;
         case 3: ret = is_power(n,2); break;
-        case 4: ret = is_lucky(n); break;
-        case 5: ret = is_practical(n); break;
-        case 6:
+        case 4: ret = is_perfect_power(n); break;
+        case 5: ret = is_lucky(n); break;
+        case 6: ret = is_practical(n); break;
+        case 7:
         default:ret = is_totient(n); break;
       }
     }
@@ -1684,9 +1696,10 @@ void is_square_free(IN SV* svn)
       case  1: _vcallsub_with_gmp(0.47,"is_carmichael"); break;
       case  2: _vcallsub_with_gmp(0.00,"is_quasi_carmichael"); break;
       case  3: _vcallsub_with_gmp(0.47,"is_square"); break;
-      case  4: _vcallsub_with_gmp(0.48,"is_lucky"); break;
-      case  5: _vcallsub_with_gmp(0.53,"is_practical"); break;
-      case  6:
+      case  4: _vcallsub_with_gmp(0.47,"is_perfect_power"); break;
+      case  5: _vcallsub_with_gmp(0.48,"is_lucky"); break;
+      case  6: _vcallsub_with_gmp(0.53,"is_practical"); break;
+      case  7:
       default: _vcallsub_with_gmp(0.47,"is_totient"); break;
     }
     return; /* skip implicit PUTBACK */
@@ -1876,6 +1889,35 @@ void nth_prime_power(IN SV* svn)
     }
     return;
 
+void nth_perfect_power(IN SV* svn)
+  ALIAS:
+    nth_perfect_power_upper = 1
+    nth_perfect_power_lower = 2
+    nth_perfect_power_approx = 3
+  PREINIT:
+    UV n, ret;
+  PPCODE:
+    if ( _validate_and_set(&n, aTHX_ svn, IFLAG_POS) &&
+         n <= MPU_MAX_PERFECT_POW_IDX ) {
+      if (n == 0) XSRETURN_UNDEF;
+      switch (ix) {
+        case 0:  ret = nth_perfect_power(n); break;
+        case 1:  ret = nth_perfect_power_upper(n); break;
+        case 2:  ret = nth_perfect_power_lower(n); break;
+        case 3:
+        default: ret = nth_perfect_power_approx(n); break;
+      }
+      XSRETURN_UV(ret);
+    }
+    switch (ix) {
+      case 0:  _vcallsub_with_pp("nth_perfect_power");          break;
+      case 1:  _vcallsub_with_pp("nth_perfect_power_upper");    break;
+      case 2:  _vcallsub_with_pp("nth_perfect_power_lower");    break;
+      case 3:
+      default: _vcallsub_with_pp("nth_perfect_power_approx");   break;
+    }
+    return;
+
 void nth_ramanujan_prime(IN SV* svn)
   ALIAS:
     nth_ramanujan_prime_upper = 1
@@ -2027,6 +2069,31 @@ void next_prime_power(IN SV* svn)
       case 0:  _vcallsub_with_pp("next_prime_power");  break;
       case 1:
       default: _vcallsub_with_pp("prev_prime_power");  break;
+    }
+    objectify_result(aTHX_ svn, ST(0));
+    return;
+
+void next_perfect_power(IN SV* svn)
+  ALIAS:
+    prev_perfect_power = 1
+  PREINIT:
+    UV n, ret;
+  PPCODE:
+    if (_validate_and_set(&n, aTHX_ svn, IFLAG_ABS)
+        && !(ix == 0 && n >= MPU_MAX_PERFECT_POW)) {
+      ret = 0;
+      switch (ix) {
+        case 0:  ret = next_perfect_power(n); break;
+        case 1:  ret = prev_perfect_power(n); break;
+        default: break;
+      }
+      if (ret == 0) XSRETURN_UNDEF;
+      XSRETURN_UV(ret);
+    }
+    switch (ix) {
+      case 0:  _vcallsub_with_pp("next_perfect_power");  break;
+      case 1:
+      default: _vcallsub_with_pp("prev_perfect_power");  break;
     }
     objectify_result(aTHX_ svn, ST(0));
     return;

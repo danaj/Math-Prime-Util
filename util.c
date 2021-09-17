@@ -3224,26 +3224,6 @@ UV nth_powerful(UV n, UV k) {
   return inverse_interpolate_k(lo, hi, n, k, &powerful_count, 0);
 }
 
-UV perfect_power_count_range(UV lo, UV hi) {
-  if (hi < 1 || hi < lo) return 0;
-  return perfect_power_count(hi) - ((lo <= 1) ? 0 : perfect_power_count(lo-1));
-}
-
-/* n A069623; 10^n A070428 */
-UV perfect_power_count(UV n) {
-  uint32_t k, log2n;
-  UV sum = 1;
-
-  if (n <= 1) return n;
-
-  log2n = log2floor(n);
-  for (k = 2; k <= log2n; k++) {
-    IV m = moebius(k);
-    if (m != 0) sum -= m * (rootint(n, k)-1);
-  }
-  return sum;
-}
-
 int is_sum_of_two_squares(UV n) {
   UV i, nfacs, fac[MPU_MAX_FACTORS+1], exp[MPU_MAX_FACTORS+1];
   if (n < 3) return 1;
