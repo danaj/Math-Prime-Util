@@ -343,7 +343,7 @@ UV lucky_count_lower(UV n) {   /* Holds under 1e9 */
   return inverse_interpolate(lo, hi, n, &nth_lucky_upper, 0);
 }
 UV lucky_count_range(UV lo, UV hi) {
-  UV nlo = 0, nlucky, lsize;
+  UV nlucky, lsize;
 
   if (hi < lo)
     return 0;
@@ -474,7 +474,7 @@ static int test_lucky_to(UV lsize, UV *beg, UV *end) {
 }
 
 int is_lucky(UV n) {
-  UV i, l, quo, pos, nlucky, lsize;
+  UV i, l, quo, pos, lsize;
   int res;
 
   /* Simple pre-tests */
