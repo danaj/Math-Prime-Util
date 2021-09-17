@@ -6,7 +6,7 @@
 #include "inverse_interpolate.h"
 #include "util.h"
 
-/* Return x with v(x)=(*func)(x,k) s.t. either of:
+/* Return x with v(x)=func(x,k) s.t. either of:
  *    1.  v(x) == n  and v(x-1-threshold) < n
  *    2.  v(x) < n   and v(x+1) > n
  */
@@ -14,7 +14,7 @@
 #define LINEAR_INTERP(n, lo, hi, rlo, rhi) \
   (lo + (UV) (((double)(n-rlo) * (double)(hi-lo) / (double)(rhi-rlo))+0.5))
 
-#define CALLBACK(n)  ((funck) ? (*funck)(n,k) : (*func)(n))
+#define CALLBACK(n)  ((funck) ? funck(n,k) : func(n))
 
 #if 0   /* Debugging return, checking the conditions above. */
 #define RETURNI(x) \
@@ -133,18 +133,18 @@ UV interpolate_with_approx(UV n,
                            UV (*fcnt)(UV n),
                            int (*fis)(UV n)   /* optional */
                           ) {
-  UV guess, gn, count, ming = 0, maxg = UV_MAX;
+  UV approx_nth_n, guess, gn, count, ming = 0, maxg = UV_MAX;
 
-  guess = (*fnth)(n);
+  approx_nth_n = guess = fnth(n);
   for (gn = 2; gn < 20; gn++) {
     IV adjust;
     MPUverbose(2, "  interp  %"UVuf"-th is around %"UVuf" ... ", n, guess);
-    count = (*fcnt)(guess);
+    count = fcnt(guess);
     MPUverbose(2, "(%"IVdf")\n", (IV)(n-count));
     /* Stop guessing if within our tolerance */
     if (n==count || (n>count && n-count < tol) || (n<count && count-n < tol)) break;
     /* Determine how far off we think we are */
-    adjust = (IV) ((fnth)(n) - (fnth)(count));
+    adjust = (IV) (approx_nth_n - fnth(count));
     /* When computing new guess, ensure we don't overshoot.  Rarely used. */
     if (count <= n && guess > ming) ming = guess;   /* Previous guesses */
     if (count >= n && guess < maxg) maxg = guess;
@@ -161,16 +161,16 @@ UV interpolate_with_approx(UV n,
 
       /* Increase count one at a time if needed */
       for ( ; count < n; count++)
-        while (!(*fis)(++guess))
+        while (!fis(++guess))
           ;
 
     } else if (count >= n) {
 
       /* Make sure this is the least value at this count */
-      while (!(*fis)(guess))  guess--;
+      while (!fis(guess))  guess--;
       /* Reduce count one at a time if needed */
       for ( ; count > n; count--)
-        while (!(*fis)(--guess))
+        while (!fis(--guess))
           ;
 
     }
