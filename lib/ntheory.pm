@@ -228,7 +228,8 @@ Tags:
   is_power(n)                         return k if n = c^k for integer c
   is_power(n,k)                       return 1 if n = c^k for integer c, k
   is_power(n,k,\$root)                as above but also set $root to c.
-  is_prime_power(n)                   return k if n = p^k for prime p
+  is_perfect_power(n)                 return 1 if n = c^k for c != 0, k > 1
+  is_prime_power(n)                   return k if n = p^k for prime p, k > 0
   is_prime_power(n,\$p)               as above but also set $p to p
   is_square_free(n)                   return true if no repeated factors
   is_powerfree(n[,k])                 is n free of any k-th powers
@@ -347,8 +348,17 @@ Tags:
   nth_lucky_approx(n)                 fast approximate nth lucky number
   powerful_count(n[,k])               count of k-powerful numbers <= n
   nth_powerful(n[,k])                 the nth k-powerful number
+  next_perfect_power(n)               the next perfect power > n
+  prev_perfect_power(n)               the previous perfect power < n
   perfect_power_count(n)              count of perfect powers <= n
   perfect_power_count(start, end)     count of perfect powers in range
+  perfect_power_count_lower(n)        fast lower bound for perf power count
+  perfect_power_count_upper(n)        fast upper bound for perf power count
+  perfect_power_count_approx(n)       fast approximate perfect power count
+  nth_perfect_power(n)                the nth perfect power
+  nth_perfect_power_lower(n)          fast lower bound for nth perfect power
+  nth_perfect_power_upper(n)          fast upper bound for nth perfect power
+  nth_perfect_power_approx(n)         fast approximate nth perfect power
   smooth_count(n,k)                   count of k-smooth numbers <= n
   rough_count(n,k)                    count of k-rough numbers <= n
   powerfree_count(n[,k])              count of k-powerfree numbers <= n

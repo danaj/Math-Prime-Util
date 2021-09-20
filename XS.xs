@@ -258,7 +258,7 @@ static int _validate_and_set(UV* val, pTHX_ SV* svn, uint32_t mask) {
   if (status != 0 && (mask & IFLAG_NONZERO) && n == 0)
     croak("parameter must be a positive integer (x > 0)");
 
-  /* If they want an IV returned, varify it fits. */
+  /* If they want an IV returned, verify it fits. */
   if (status == 1 && (mask & IFLAG_IV) && n > (UV)IV_MAX)
     status = 0;
 
@@ -1677,6 +1677,12 @@ void is_square_free(IN SV* svn)
   PPCODE:
     ret = 0;
     status = _validate_and_set(&n, aTHX_ svn, (ix==0) ? IFLAG_ABS : IFLAG_ANY);
+    if (ix == 4 && status == -1) {  /* is_perfect_power special behavior */
+      n = -(IV)n;
+      ret = is_power(n,0);
+      /* A power with exponent other than 0,1,2,4,8,... is ok */
+      ret = (n == 1 || (ret > 2 && (ret & (ret-1)) != 0));
+    }
     if (status == 1) {
       switch (ix) {
         case 0: ret = is_square_free(n); break;

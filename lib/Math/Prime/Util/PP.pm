@@ -1621,9 +1621,19 @@ sub powerfree_part_sum {
   $sum;
 }
 
+sub is_perfect_power {
+  my($n) = @_;
+  _validate_integer($n);
+  if ($n < 0) {
+    my $res = Mis_power(Mnegint($n));
+    return ($n == -1 || ($res > 2 && (($res & ($res-1)) != 0)))  ?  1  :  0;
+  }
+  return (0,1,0,0,1,0,0,0,1,1)[$n] if $n <= 9;
+  return (Mis_power($n) > 1) ? 1 : 0;
+}
+
 sub _perfect_power_count {
   my($n) = @_;
-  _validate_positive_integer($n);
   return 0+($n>=1)+($n>=4) if $n < 8;
   my @T = (1);
 
@@ -1642,6 +1652,136 @@ sub perfect_power_count {
   _validate_positive_integer($hi);
   return 0 if $hi < $lo || $hi == 0;
   return _perfect_power_count($hi) - (($lo <= 1) ? 0 : _perfect_power_count($lo-1));
+}
+
+sub perfect_power_count_approx {
+  my($n) = @_;
+  _validate_positive_integer($n);
+  _perfect_power_count($n);
+}
+sub perfect_power_count_lower {
+  my($n) = @_;
+  _validate_positive_integer($n);
+  _perfect_power_count($n);
+}
+sub perfect_power_count_upper {
+  my($n) = @_;
+  _validate_positive_integer($n);
+  _perfect_power_count($n);
+}
+
+sub next_perfect_power {
+  my($n) = @_;
+  _validate_positive_integer($n);
+  return ($n == 0) ? 1 : 4 if $n <= 1;
+
+  my $best = Mpowint(Maddint(Msqrtint($n),1),2);
+  my $log2n = Mlogint($n,2);
+  for (my $k = 3; $k <= 1+$log2n; $k++) {
+    my $r = Mrootint($n,$k);
+    my $c = Mpowint(Maddint($r,1),$k);
+    $best = $c if $c < $best && $c > $n;
+  }
+  $best;
+}
+sub prev_perfect_power {
+  my($n) = @_;
+  _validate_positive_integer($n);
+  return ($n > 1) ? 1 : undef  if $n <= 4;
+
+  my $best = 4;
+  my $log2n = Mlogint($n,2);
+  for (my $k = 2; $k <= $log2n; $k++) {
+    my $r = Mrootint($n,$k);
+    my $c = Mpowint($r,$k);
+    $c = Mpowint(Msubint($r,1),$k) if $c >= $n;
+    $best = $c if $c > $best && $c < $n;
+  }
+  $best;
+}
+
+
+sub nth_perfect_power_approx {
+  my($n) = @_;
+  _validate_positive_integer($n);
+  return (undef,1,4,8,9,16,25,27)[$n] if $n < 8;
+
+  # See  https://www.emis.de/journals/JIS/VOL15/Jakimczuk/jak29.pdf
+  # See  https://www.researchgate.net/publication/268998744_Sums_of_perfect_powers
+
+  # Without this upgrade, it will return non-integers.
+  $n = _upgrade_to_float($n) if $n > 2**32;
+
+  my $pp = $n*$n  +  (13/3)*$n**(4/3)  +  (32/15)*$n**(16/15);
+
+  $pp += -2*$n**( 5/ 3) + -2*$n**( 7/ 5);
+  $pp += -2*$n**( 9/ 7) +  2*$n**(12/10);
+  $pp += -2*$n**(13/11) + -2*$n**(15/13);
+  $pp +=  2*$n**(16/14) +  2*$n**(17/15);
+
+  $pp -= 0.48*$n**(19/17);
+  $pp -= 1.5;
+
+  return int($pp) if $pp < ~0;
+  $pp->bint() if ref($pp);
+  return Math::BigInt->new("$pp");
+}
+
+sub nth_perfect_power_lower {
+  my($n) = @_;
+  _validate_positive_integer($n);
+  return (undef,1,4,8,9,16,25,27)[$n] if $n < 8;
+  $n = _upgrade_to_float($n) if $n > 2**32;
+
+  my $pp = $n*$n  +  (13/3)*$n**(4/3)  +  (32/15)*$n**(16/15);
+  $pp += -2*$n**( 5/ 3) + -2*$n**( 7/ 5);
+  $pp += -2*$n**( 9/ 7) +  2*$n**(12/10);
+  $pp += -2*$n**(13/11) + -2*$n**(15/13);
+  $pp += 1.5;
+  return int($pp) if $pp < ~0;
+  $pp->bint() if ref($pp);
+  return Math::BigInt->new("$pp");
+}
+sub nth_perfect_power_upper {
+  my($n) = @_;
+  _validate_positive_integer($n);
+  return (undef,1,4,8,9,16,25,27)[$n] if $n < 8;
+  $n = _upgrade_to_float($n) if $n > 2**32;
+
+  my $pp = $n*$n  +  (13/3)*$n**(4/3)  +  (32/15)*$n**(16/15);
+  $pp += -2*$n**( 5/ 3) + -2*$n**( 7/ 5);
+  $pp += -2*$n**( 9/ 7) +  2*$n**(12/10);
+  $pp +=  2*$n**(16/14);
+  $pp -= 3.5;
+  return int($pp) if $pp < ~0;
+  $pp->bint() if ref($pp);
+  return Math::BigInt->new("$pp");
+}
+
+sub nth_perfect_power {
+  my($n) = @_;
+  _validate_positive_integer($n);
+  return (undef,1,4,8,9,16,25,27)[$n] if $n < 8;
+  my($g,$c,$gn);
+
+  $gn = 1;
+  $g = nth_perfect_power_approx($n);
+  $c = _perfect_power_count($g);
+  while ($n != $c && abs($n-$c) > 1000) {
+    $g += nth_perfect_power_approx($n) - nth_perfect_power_approx($c);
+    $c = _perfect_power_count($g);
+    last if $gn++ >= 20;
+  }
+  if ($c >= $n) {
+    for ($g = prev_perfect_power($g+1);  $c > $n;  $c--) {
+      $g = prev_perfect_power($g);
+    }
+  } else {
+    for ( ; $c < $n; $c++) {
+      $g = next_perfect_power($g);
+     }
+  }
+  $g;
 }
 
 sub _prime_power_count {

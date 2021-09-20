@@ -43,6 +43,7 @@ Revision history for Perl module Math::Prime::Util
     - is_almost_prime(k,n)            does n have exactly k prime factors
     - is_powerfree(n[,k])             is n a k-powerfree number (default k=2)
     - is_powerful(n[,k])              is n a k-powerful number (default k=2)
+    - is_perfect_power(n)             is n a perfect power (1,4,8,9,16,25,..)
     - almost_primes(k,[start,]end)    array ref of k-almost-primes
     - almost_prime_count(k,n)         count of integers with exactly k factors
     - almost_prime_count_approx(k,n)  fast approximate k-almost-prime count
@@ -91,6 +92,16 @@ Revision history for Perl module Math::Prime::Util
     - nth_prime_power_approx(n)       fast approximate nth prime power
     - nth_prime_power_lower(n)        fast nth prime power lower bound
     - nth_prime_power_upper(n)        fast nth prime power upper bound
+    - next_perfect_power(n)           next perfect power: p > n
+    - prev_perfect_power(n)           previous perfect power: p < n
+    - perfect_power_count([beg,] end) count of perfect powers
+    - perfect_power_count_approx(n)   fast approximate perfect power count
+    - perfect_power_count_lower(n)    fast perfect power count lower bound
+    - perfect_power_count_upper(n)    fast perfect power count upper bound
+    - nth_perfect_power(n)            the nth perfect power
+    - nth_perfect_power_approx(n)     fast approximate nth perfect power
+    - nth_perfect_power_lower(n)      fast nth perfect power lower bound
+    - nth_perfect_power_upper(n)      fast nth perfect power upper bound
     - lucky_numbers(n)                array ref of lucky numbers <= n
     - lucky_count([start,] end)       count of lucky numbers
     - lucky_count_approx(n)           fast approximate lucky count

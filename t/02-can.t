@@ -21,11 +21,13 @@ my @functions =  qw(
       is_perrin_pseudoprime is_catalan_pseudoprime
       is_aks_prime is_bpsw_prime is_ramanujan_prime is_mersenne_prime
       is_delicate_prime
-      is_power is_prime_power is_pillai is_square is_polygonal
+      is_power is_prime_power is_perfect_power is_square
+      is_square_free is_powerfree
+      is_pillai is_polygonal
       is_semiprime is_almost_prime is_omega_prime
-      is_square_free is_primitive_root is_carmichael is_quasi_carmichael
+      is_primitive_root is_carmichael is_quasi_carmichael
       is_fundamental is_totient is_gaussian_prime is_sum_of_squares
-      is_smooth is_rough is_powerful is_practical is_lucky is_powerfree
+      is_smooth is_rough is_powerful is_practical is_lucky
       sqrtint rootint logint lshiftint rshiftint rashiftint absint negint
       signint cmpint addint subint add1int sub1int mulint powint
       divint modint divrem fdivrem tdivrem
@@ -40,7 +42,9 @@ my @functions =  qw(
       lastfor
       numtoperm permtonum randperm shuffle
       prime_iterator prime_iterator_object
-      next_prime prev_prime  next_prime_power prev_prime_power
+      next_prime prev_prime
+      next_prime_power prev_prime_power
+      next_perfect_power prev_perfect_power
       prime_count prime_count_lower prime_count_upper prime_count_approx
       nth_prime nth_prime_lower nth_prime_upper nth_prime_approx inverse_li
       twin_prime_count twin_prime_count_approx
@@ -57,11 +61,14 @@ my @functions =  qw(
       nth_ramanujan_prime nth_ramanujan_prime_approx
       nth_ramanujan_prime_lower nth_ramanujan_prime_upper
       powerful_count nth_powerful
-      perfect_power_count
       prime_power_count prime_power_count_approx
       prime_power_count_lower prime_power_count_upper
       nth_prime_power nth_prime_power_approx
       nth_prime_power_lower nth_prime_power_upper
+      perfect_power_count perfect_power_count_approx
+      perfect_power_count_lower perfect_power_count_upper
+      nth_perfect_power nth_perfect_power_approx
+      nth_perfect_power_lower nth_perfect_power_upper
       powerfree_count powerfree_sum
       powerfree_part powerfree_part_sum
       smooth_count rough_count

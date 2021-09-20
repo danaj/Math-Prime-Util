@@ -27,11 +27,13 @@ our @EXPORT_OK =
       is_perrin_pseudoprime is_catalan_pseudoprime
       is_aks_prime is_bpsw_prime is_ramanujan_prime is_mersenne_prime
       is_delicate_prime
-      is_power is_prime_power is_pillai is_square is_polygonal
+      is_power is_prime_power is_perfect_power is_square
+      is_square_free is_powerfree
+      is_pillai is_polygonal
       is_semiprime is_almost_prime is_omega_prime
-      is_square_free is_primitive_root is_carmichael is_quasi_carmichael
+      is_primitive_root is_carmichael is_quasi_carmichael
       is_fundamental is_totient is_gaussian_prime is_sum_of_squares
-      is_smooth is_rough is_powerful is_practical is_lucky is_powerfree
+      is_smooth is_rough is_powerful is_practical is_lucky
       sqrtint rootint logint lshiftint rshiftint rashiftint absint negint
       signint cmpint addint subint add1int sub1int mulint powint
       divint modint divrem fdivrem tdivrem
@@ -4291,6 +4293,7 @@ The result is identical to:
 
 but shortcuts are taken to avoid fully factoring if possible.
 
+
 =head2 is_powerful
 
   my $all_factors_cubes_or_higher = is_powerful($n, 3);
@@ -4325,6 +4328,29 @@ C<n>-th C<k>-powerful number.
 If C<k> is omitted or zero, C<k=2> is used.
 For all C<k>, returns undef for C<n=0> and 1 for C<n=1>.
 
+
+=head2 is_perfect_power
+
+Given an integer C<n>, returns C<1> if C<n> is a perfect power,
+and C<0> otherwise.  That is, if C<n = c^k> for some non-zero
+integer C<c> with C<k> greater than 1.
+
+This is L<OEIS series A001597|http://oeis.org/A001597>.
+
+=head2 next_perfect_power
+
+Given an integer C<n>, returns the smallest perfect power greater
+than C<|n|>.  Similar in API to L</next_prime>, but returns the next
+perfect power with exponent greater than 1.
+Hence the sequence C<1,4,8,9,16,25,...>.
+
+=head2 prev_perfect_power
+
+Given an integer C<n>, returns the greatest prime power less than C<|n|>.
+Similar in API to L</prev_prime>, but returns the next perfect power
+with exponent greater than 1.
+If given C<|n|> less than 2, C<undef> will be returned.
+
 =head2 perfect_power_count
 
 Given a non-negative integer C<n>, returns the number of integers
@@ -4332,8 +4358,55 @@ not exceeding C<n> which are perfect powers.
 If given two non-negative integers C<lo> and C<hi>, returns the count
 of perfect powers between C<lo> and C<hi> inclusive.
 
+This can be calculated extremely quickly (less than 100ns per call
+for native size integers), so in most cases there is no need for the
+approximations or bounds.
+
 By convention, 1 is included here even though L</is_power(1) = 0>.
 This is L<OEIS series A069623|http://oeis.org/A069623>.
+
+=head2 perfect_power_count_approx
+
+Given a non-negative integer C<n>, quickly returns a
+good estimate of the count of perfect powers less than or equal to C<n>.
+
+=head2 perfect_power_count_lower
+
+Given a non-negative integer C<n>, quickly returns a
+lower bound of the count of perfect powers less than or equal to C<n>.
+The actual count will always be greater than or equal to the result.
+
+=head2 perfect_power_count_upper
+
+Given a non-negative integer C<n>, quickly returns a
+upper bound of the count of perfect powers less than or equal to C<n>.
+The actual count will always be less than or equal to the result.
+
+=head2 nth_perfect_power
+
+Given a non-negative integer C<n>, returns the C<n>-th perfect power.
+
+Since the perfect power count can be calculated extremely quickly,
+using inverse interpolation can calculate the C<n>-th perfect power
+quite rapidly.
+
+=head2 nth_perfect_power_approx
+
+Given a non-negative integer C<n>, quickly returns a
+good estimate of the C<n>-th perfect power.
+
+=head2 nth_perfect_power_lower
+
+Given a non-negative integer C<n>, quickly returns a
+lower bound of the C<n>-th perfect power.
+The actual value will always be greater than or equal to the result.
+
+=head2 nth_perfect_power_upper
+
+Given a non-negative integer C<n>, quickly returns a
+upper bound of the C<n>-th perfect power.
+The actual value will always be less than or equal to the result.
+
 
 =head2 smooth_count
 

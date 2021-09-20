@@ -215,7 +215,7 @@ t/26-lucky.t
 t/26-mod.t
 t/26-pillai.t
 t/26-polygonal.t
-t/26-powercount.t
+t/26-perfectpowers.t
 t/26-powerfree.t
 t/26-powerful.t
 t/26-practical.t

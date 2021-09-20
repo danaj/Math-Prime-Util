@@ -23,7 +23,7 @@ UV next_perfect_power(UV n)
   uint32_t k, log2n;
   UV best = MPU_MAX_PERFECT_POW;
 
-  if (n <= 4) return (n <= 1);
+  if (n <= 1) return (n) ? 4 : 1;
   if (n >= MPU_MAX_PERFECT_POW) return 0; /* Overflow */
 
   log2n = log2floor(n);
@@ -40,6 +40,7 @@ UV prev_perfect_power(UV n)
   UV best = 4;
 
   if (n <= 4) return (n > 1);
+  if (n > MPU_MAX_PERFECT_POW) return MPU_MAX_PERFECT_POW;
 
   log2n = log2floor(n);
   for (k = 2; k <= log2n; k++) {
@@ -58,25 +59,23 @@ UV perfect_power_count_range(UV lo, UV hi) {
   return perfect_power_count(hi) - ((lo <= 1) ? 0 : perfect_power_count(lo-1));
 }
 
-static const unsigned char _roots[] = {2,3,5,6,7,10,11,13,14,15,17,19,21,22,23,26,29,30,31,33,34,35,37,38,39,41,42,43,46,47,51,53,55,57,58,59,61,62};
-static const char _signs[] = {1,1,1,-1,1,-1,1,1,-1,-1,1,1,-1,-1,1,-1,1,1,1,-1,-1,-1,1,-1,-1,1,1,1,-1,1,-1,1,-1,-1,-1,1,1,-1};
-#define NROOTS (sizeof(_roots)/sizeof(_roots[0]))  /* 38 */
+static const char _moebius[65] = {0,1,-1,-1,0,-1,1,-1,0,0,1,-1,0,-1,1,1,0,-1,0,-1,0,1,1,-1,0,0,1,0,0,-1,-1,-1,0,1,1,1,0,-1,1,1,0,-1,-1,-1,0,0,1,-1,0,0,0,1,0,-1,0,1,0,1,1,-1,0,-1,1,0,0};
 
 /* n A069623; 10^n A070428 */
 UV perfect_power_count(UV n) {
-  uint32_t i, log2n;
-  UV sum = 1;
+  uint32_t k, log2n;
+  UV sum;
 
   if (n < 8) return 0+(n>=1)+(n>=4);
 
   log2n = log2floor(n);
-  for (i = 0; i <= NROOTS && _roots[i] <= log2n; i++) {
-    sum += _signs[i] * (rootint(n, _roots[i]) - 1);
-  }
+  for (sum = 1, k = 2; k <= log2n; k++)
+    if (_moebius[k])
+      sum -= _moebius[k] * (rootint(n, k) - 1);
   return sum;
 }
 
-/* About 0.5uS per call for exact, so not really worth truncation. */
+/* About 50 ns per call for exact, so not really worth truncation. */
 
 UV perfect_power_count_lower(UV n) {  return perfect_power_count(n);  }
 
@@ -88,6 +87,7 @@ UV perfect_power_count_approx(UV n) {  return perfect_power_count(n);  }
 UV nth_perfect_power_lower(UV n) {
   double pp;
   if (n <= 1) return n;
+  if (n >= MPU_MAX_PERFECT_POW_IDX) return MPU_MAX_PERFECT_POW;
 
   pp = pow(n,2.)  +  (13./3.)*pow(n,4./3.)  +  (32./15.)*pow(n,16./15.);
   pp += -2*pow(n, 5./ 3.) - 2*pow(n, 7./ 5.) - 2*pow(n, 9./ 7.) + 2*pow(n,12./10.);
@@ -97,6 +97,7 @@ UV nth_perfect_power_lower(UV n) {
 UV nth_perfect_power_upper(UV n) {
   double pp;
   if (n <= 1) return n;
+  if (n >= MPU_MAX_PERFECT_POW_IDX) return MPU_MAX_PERFECT_POW;
 
   pp = pow(n,2.)  +  (13./3.)*pow(n,4./3.)  +  (32./15.)*pow(n,16./15.);
   pp += -2*pow(n, 5./ 3.) - 2*pow(n, 7./ 5.) - 2*pow(n, 9./ 7.) + 2*pow(n,12./10.);
@@ -106,7 +107,7 @@ UV nth_perfect_power_upper(UV n) {
 UV nth_perfect_power_approx(UV n) {
   double pp;
   if (n <= 1) return n;
-  if (n >= MPU_MAX_PERFECT_POW_IDX) return MPU_MAX_PERFECT_POW_IDX;
+  if (n >= MPU_MAX_PERFECT_POW_IDX) return MPU_MAX_PERFECT_POW;
 
   pp = pow(n,2.)  +  (13./3.)*pow(n,4./3.)  +  (32./15.)*pow(n,16./15.);
 
@@ -129,11 +130,14 @@ UV nth_perfect_power(UV n) {
   UV g, count;
 
   if (n <= 1) return n;  /* 1,4,8,9,16,25,... */
-  if (n >= MPU_MAX_PERFECT_POW_IDX) return MPU_MAX_PERFECT_POW_IDX;
+  if (n >= MPU_MAX_PERFECT_POW_IDX) return MPU_MAX_PERFECT_POW;
 
   g = interpolate_with_approx(n, &count, 1000,
                               &nth_perfect_power_approx, &perfect_power_count,
                               0);
+  if (g > MPU_MAX_PERFECT_POW)
+    g = MPU_MAX_PERFECT_POW;
+
   if (count >= n) {
     for (g = prev_perfect_power(g+1);  count > n;  count--)
       g = prev_perfect_power(g);
