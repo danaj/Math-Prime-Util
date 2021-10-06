@@ -7467,8 +7467,11 @@ sub squfof_factor { trial_factor(@_) }
 
 sub prho_factor {
   my($n, $rounds, $pa, $skipbasic) = @_;
-  $rounds = 4*1024*1024 unless defined $rounds;
-  $pa = 3 unless defined $pa;
+  _validate_positive_integer($n);
+  if (defined $rounds) { _validate_positive_integer($rounds); }
+  else                 { $rounds = 4*1024*1024; }
+  if (defined $pa)     { _validate_positive_integer($pa); }
+  else                 { $pa = 3; }
 
   my @factors;
   if (!$skipbasic) {
@@ -7559,8 +7562,11 @@ sub prho_factor {
 
 sub pbrent_factor {
   my($n, $rounds, $pa, $skipbasic) = @_;
-  $rounds = 4*1024*1024 unless defined $rounds;
-  $pa = 3 unless defined $pa;
+  _validate_positive_integer($n);
+  if (defined $rounds) { _validate_positive_integer($rounds); }
+  else                 { $rounds = 4*1024*1024; }
+  if (defined $pa)     { _validate_positive_integer($pa); }
+  else                 { $pa = 3; }
 
   my @factors;
   if (!$skipbasic) {

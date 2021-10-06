@@ -154,6 +154,9 @@ Revision history for Perl module Math::Prime::Util
     - chinese uses abs modulos, and values are all pre-modded.
       This fixes negative inputs, e.g. chinese([-4,17],[17,-19])
 
+    - The 70-rt-bignum test was horrendously slow with bignum 0.60+.
+      It was bypassing the validation that sanitized the input.
+
     [FUNCTIONALITY AND PERFORMANCE]
 
     - LMO prime count is 1.2-1.5x faster.

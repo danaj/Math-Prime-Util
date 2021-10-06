@@ -263,6 +263,10 @@ sub entropy_bytes {
 
 *almost_prime_count_approx = \&Math::Prime::Util::PP::almost_prime_count_approx;
 
+*prho_factor = \&Math::Prime::Util::PP::prho_factor;
+*pbrent_factor = \&Math::Prime::Util::PP::pbrent_factor;
+*ecm_factor = \&Math::Prime::Util::PP::ecm_factor;
+
 
 # We are doing the validation here so the PP code doesn't have to do it.
 
@@ -620,24 +624,6 @@ sub squfof_factor {
     return Math::Prime::Util::PP::squfof_factor($n, $rounds);
   }
   return Math::Prime::Util::PP::squfof_factor($n);
-}
-sub pbrent_factor {
-  my($n, $rounds, $pa) = @_;
-  _validate_positive_integer($n);
-  if (defined $rounds) { _validate_positive_integer($rounds);
-  } else               { $rounds = 4*1024*1024; }
-  if (defined $pa    ) { _validate_positive_integer($pa);
-  } else               { $pa = 3; }
-  return Math::Prime::Util::PP::pbrent_factor($n, $rounds, $pa);
-}
-sub prho_factor {
-  my($n, $rounds, $pa) = @_;
-  _validate_positive_integer($n);
-  if (defined $rounds) { _validate_positive_integer($rounds);
-  } else               { $rounds = 4*1024*1024; }
-  if (defined $pa    ) { _validate_positive_integer($pa);
-  } else               { $pa = 3; }
-  return Math::Prime::Util::PP::prho_factor($n, $rounds, $pa);
 }
 sub pminus1_factor {
   my($n, $B1, $B2) = @_;
