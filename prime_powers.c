@@ -88,11 +88,21 @@ UV next_prime_power(UV n)
 
 UV prev_prime_power(UV n)
 {
-  UV i;
+  UV i, bit;
   if (n <= 2) return 0;
+
+#if 0
   for (i = n-1;  !is_prime_power(i);  i--)
     ;
   return i;
+#else
+  n--;
+  bit = UVCONST(1) << log2floor(n);
+  for (i = n-!(n&1);  i & bit;  i -= 2)
+    if (is_prime_power(i))
+      return i;
+  return i+1;  /* We went past a power of two */
+#endif
 }
 
 /* The prime powers without the primes */
@@ -244,7 +254,10 @@ UV nth_prime_power_approx(UV n) {
   return inverse_interpolate(lo, hi, n, &prime_power_count_approx, 0);
 }
 UV nth_prime_power(UV n) {
-#if 0
+  if (n <= 7) return (n==0) ? 0 : n+1+(n/5);
+  if (n >= MPU_MAX_PRIME_IDX) return MPU_MAX_PRIME;
+
+#if 0    /* Bilinear interpolation.  Not bad, but not great. */
   UV lo, hi, pp;
   if (n <= 7) return (n==0) ? 0 : n+1+(n/5);
 
@@ -252,10 +265,30 @@ UV nth_prime_power(UV n) {
   hi = nth_prime_power_upper(n);
   pp = inverse_interpolate(lo, hi, n, &prime_power_count, 10000);
   return prev_prime_power(pp+1);
-#else
-  if (n <= 7) return (n==0) ? 0 : n+1+(n/5);
-  return interpolate_with_approx(n, 0, 1000,
+#endif
+
+#if 0    /* Approximating interpolation.  Very good, but prefer simpler. */
+  UV g, count;
+  g = interpolate_with_approx(n, &count, 500,
+                              &nth_prime_power_approx, &prime_power_count,
+                              0);
+  if (g > MPU_MAX_PRIME)
+    g = MPU_MAX_PRIME;
+
+  if (count >= n) {
+    for (g = prev_prime_power(g+1);  count > n;  count--)
+      g = prev_prime_power(g);
+  } else {
+    for (; count < n; count++)
+      g = next_prime_power(g);
+  }
+  return g;
+#endif
+
+  /* Interpolation using functions for approximate nth and exact count.
+   * This works quite well, and uses the is_prime_power() function to get
+   * the exact result.  Our next/prev functions save negligible time. */
+  return interpolate_with_approx(n, 0, 800,
                                  &nth_prime_power_approx, &prime_power_count,
                                  &is_prime_power);
-#endif
 }
