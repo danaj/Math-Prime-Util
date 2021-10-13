@@ -7272,6 +7272,8 @@ sub _basic_factor {
 
 sub trial_factor {
   my($n, $limit) = @_;
+  _validate_positive_integer($n);
+  _validate_positive_integer($limit) if defined $limit;
 
   # Don't use _basic_factor here -- they want a trial forced.
   my @factors;
@@ -7464,6 +7466,8 @@ sub _found_factor {
 
 # TODO:
 sub squfof_factor { trial_factor(@_) }
+sub lehman_factor { trial_factor(@_) }
+sub pplus1_factor { pminus1_factor(@_) }
 
 sub prho_factor {
   my($n, $rounds, $pa, $skipbasic) = @_;
@@ -7649,6 +7653,9 @@ sub pbrent_factor {
 
 sub pminus1_factor {
   my($n, $B1, $B2, $skipbasic) = @_;
+  _validate_positive_integer($n);
+  _validate_positive_integer($B1) if defined $B1;
+  _validate_positive_integer($B2) if defined $B2;
 
   my @factors;
   if (!$skipbasic) {
@@ -7800,9 +7807,10 @@ sub pminus1_factor {
 
 sub holf_factor {
   my($n, $rounds, $startrounds) = @_;
-  $rounds = 64*1024*1024 unless defined $rounds;
-  $startrounds = 1 unless defined $startrounds;
-  $startrounds = 1 if $startrounds < 1;
+  _validate_positive_integer($n);
+  if (defined $rounds) { _validate_positive_integer($rounds); }
+  else                 { $rounds = 64*1024*1024; }
+  $startrounds = 1 if (!defined $startrounds) || ($startrounds < 1);
 
   my @factors = _basic_factor($n);
   return @factors if $n < 4;
@@ -7846,7 +7854,9 @@ sub holf_factor {
 
 sub fermat_factor {
   my($n, $rounds) = @_;
-  $rounds = 64*1024*1024 unless defined $rounds;
+  _validate_positive_integer($n);
+  if (defined $rounds) { _validate_positive_integer($rounds); }
+  else                 { $rounds = 64*1024*1024; }
 
   my @factors = _basic_factor($n);
   return @factors if $n < 4;

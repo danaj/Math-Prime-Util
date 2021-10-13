@@ -266,6 +266,13 @@ sub entropy_bytes {
 *prho_factor = \&Math::Prime::Util::PP::prho_factor;
 *pbrent_factor = \&Math::Prime::Util::PP::pbrent_factor;
 *ecm_factor = \&Math::Prime::Util::PP::ecm_factor;
+*trial_factor = \&Math::Prime::Util::PP::trial_factor;
+*fermat_factor = \&Math::Prime::Util::PP::fermat_factor;
+*holf_factor = \&Math::Prime::Util::PP::holf_factor;
+*squfof_factor = \&Math::Prime::Util::PP::squfof_factor;
+*lehman_factor = \&Math::Prime::Util::PP::lehman_factor;
+*pminus1_factor = \&Math::Prime::Util::PP::pminus1_factor;
+*pplus1_factor = \&Math::Prime::Util::PP::pplus1_factor;
 
 
 # We are doing the validation here so the PP code doesn't have to do it.
@@ -588,51 +595,6 @@ sub stirling {
   _validate_positive_integer($type) if defined $type;
   return Math::Prime::Util::PP::stirling($n, $k, $type);
 }
-
-sub trial_factor {
-  my($n, $maxlim) = @_;
-  _validate_positive_integer($n);
-  if (defined $maxlim) {
-    _validate_positive_integer($maxlim);
-    return Math::Prime::Util::PP::trial_factor($n, $maxlim);
-  }
-  return Math::Prime::Util::PP::trial_factor($n);
-}
-sub fermat_factor {
-  my($n, $rounds) = @_;
-  _validate_positive_integer($n);
-  if (defined $rounds) {
-    _validate_positive_integer($rounds);
-    return Math::Prime::Util::PP::fermat_factor($n, $rounds);
-  }
-  return Math::Prime::Util::PP::fermat_factor($n);
-}
-sub holf_factor {
-  my($n, $rounds) = @_;
-  _validate_positive_integer($n);
-  if (defined $rounds) {
-    _validate_positive_integer($rounds);
-    return Math::Prime::Util::PP::holf_factor($n, $rounds);
-  }
-  return Math::Prime::Util::PP::holf_factor($n);
-}
-sub squfof_factor {
-  my($n, $rounds) = @_;
-  _validate_positive_integer($n);
-  if (defined $rounds) {
-    _validate_positive_integer($rounds);
-    return Math::Prime::Util::PP::squfof_factor($n, $rounds);
-  }
-  return Math::Prime::Util::PP::squfof_factor($n);
-}
-sub pminus1_factor {
-  my($n, $B1, $B2) = @_;
-  _validate_positive_integer($n);
-  _validate_positive_integer($B1) if defined $B1;
-  _validate_positive_integer($B2) if defined $B2;
-  Math::Prime::Util::PP::pminus1_factor($n, $B1, $B2);
-}
-*pplus1_factor = \&pminus1_factor;
 
 sub divisor_sum {
   my($n, $k) = @_;
