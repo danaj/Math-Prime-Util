@@ -3,7 +3,8 @@ use strict;
 use warnings;
 
 use Test::More;
-use Math::Prime::Util qw/is_power is_prime_power is_square vecsum/;
+use Math::Prime::Util qw/is_power is_prime_power is_square is_sum_of_squares
+                         vecsum/;
 #use Math::BigInt try=>"GMP,Pari";
 
 my $extra = defined $ENV{EXTENDED_TESTING} && $ENV{EXTENDED_TESTING};
@@ -74,6 +75,7 @@ plan tests => 0
             + 7 + scalar(keys %powers) + scalar(@negpowers)
             + 6  # tests for 3,5,7 power
             + 3  # is_square
+            + 6  # is_sum_of_squares
             + 0;
 
 is_deeply( [map { is_power($_) } 0 .. $#pow1],        \@pow1,  "is_power 0 .. $#pow1" );
@@ -147,3 +149,36 @@ is_deeply(
 );
 is(is_square(603729), 1, "603729 is a square");
 is(is_square("765413284212226299051111674934086564882382225721"), 1, "is_square(<square of 80-bit prime>) = 1");
+
+###### is_sum_of_squares
+is_deeply(
+  [map { is_sum_of_squares($_,0) } (-10 .. 10)],
+  [0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0],
+  "is_sum_of_squares (k=0) for -10 .. 10"
+);
+is_deeply(
+  [map { is_sum_of_squares($_,1) } (-10 .. 10)],
+  [0,1,0,0,0,0,1,0,0,1,1,1,0,0,1,0,0,0,0,1,0],
+  "is_sum_of_squares (k=1) for -10 .. 10"
+);
+is_deeply(
+  [map { is_sum_of_squares($_) } (-10 .. 100)],
+  [1,1,1,0,0,1,1,0,1,1,1,1,1,0,1,1,0,0,1,1,1,0,0,1,0,0,1,1,1,0,1,0,0,0,0,1,1,0,0,1,0,0,1,0,1,0,1,1,0,0,1,1,0,0,0,1,0,0,0,1,1,0,1,1,0,0,0,0,1,0,0,1,0,0,1,1,0,0,1,0,0,0,1,1,1,0,0,0,0,0,1,1,1,0,0,1,0,0,0,1,1,0,0,0,0,0,0,1,1,0,1],
+  "is_sum_of_squares (k=2) for -10 .. 100"
+);
+is_deeply(
+  [map { is_sum_of_squares($_,3) } (-10 .. 100)],
+  [1,1,1,0,1,1,1,1,1,1,1,1,1,1,1,1,1,0,1,1,1,1,1,1,1,0,1,1,1,1,1,1,1,0,1,1,1,1,0,1,1,0,1,1,1,1,1,1,1,0,1,1,1,1,1,1,1,0,1,1,1,1,1,1,1,0,1,1,1,1,0,1,1,0,1,1,1,1,1,1,1,0,1,1,1,1,1,1,1,0,1,1,1,1,1,1,1,0,1,1,1,1,0,1,1,0,1,1,1,1,1],
+  "is_sum_of_squares (k=3) for -10 .. 100"
+);
+is_deeply(
+  [map { is_sum_of_squares($_,4) } (-10 .. 10)],
+  [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+  "is_sum_of_squares (k=4) for -10 .. 10"
+);
+
+is_deeply(
+  [map { is_sum_of_squares($_) } (209, 437, 713, 1333, 2021)],
+  [0,0,0,0,0],
+  "is_sum_of_squares (k=2) for selected non-representable integers"
+);

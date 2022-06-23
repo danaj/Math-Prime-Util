@@ -8,7 +8,7 @@
   * prove -b -I../Math-Prime-Util-GMP/blib/lib -I../Math-Prime-Util-GMP/blib/arch
 
 - For new functions:
-  XS, .h, .c, PP, PPFE, export, t exports, lib/ntheory.pm, doc, test
+  XS, .h, .c, PP, PPFE, export, t exports, lib/ntheory.pm, Changes, doc, test
 
 
 - Move .c / .h files into separate directory.
@@ -92,8 +92,6 @@
 - Support FH for print_primes.  PerlIO_write is giving me fits.
 
 - Test for print_primes.  Not as easy with filenos.
-
-- sum primes better than current method.  Especially using less memory.
 
 - divsum and divsummult as block functions.
   The latter does sum = vecprod(1 + f(p_i) + f(p_i^2) + ... f(p_i^e) for all p.
@@ -180,7 +178,11 @@
 
 - semiprime_count PP just walk if small range.
 
-- limit for semiprime and ramanujan prime
+- add b125527.txt to oeis 125527.  (semiprime counts 2^n)
+
+- limit for twin prime and ramanujan prime
+
+- add to A033843 (twin prime count < 2^n).  Oliviera e Silva has good data.
 
 - consider adding multifactorial.  See MPU::GMP.
 
@@ -228,8 +230,6 @@
   See: https://cr.yp.to/papers/epsi.pdf
        https://arxiv.org/pdf/2006.07445.pdf
 
-- primorial and pn_primorial to XS with direct to GMP.  Remember to objectify.
-
 - ipowsafe could have the limits using hard-coded sqrt and cbrt to avoid div.
 
 - almost primes check and enter new for
@@ -263,9 +263,11 @@
   - XS almost_primes should call this in segments, use count_approx for seg size
   - more work on verifying count_upper for k=5+
   - more work on verifying count_lower for k=5+
-  - max_almost_prime_count fill in k=5-11. Somehow.
-    almost_prime_count(n,~0): 38min n=17, 74min n=16, 136min k=15, 262min k=14
-    Doubling each time, so k=11 looks like ~2 days, k=10 => ~4 days, etc.
+  - max_almost_prime_count fill in k=5-9.
+    almost_prime_count(n,~0): n=17   23m   n=16   41m   n=15  71m   n=14  127m
+                              n=13  225m   n=12  397m   n=11 699m   n=10 1217m
+    We could estimate n=9 at 38 hours, n=8 at 66 hours, n=7 at 116 hours.
+    Note this is *significantly* faster than when this was first written.
   - max_almost_prime_count improve k=2,3,4.  Somehow.
   - optimize PP is_almost_prime
   - better PP almost_prime_count bounds for k > 3
@@ -289,16 +291,13 @@
 - For almost primes in PP, maybe use Lagrange estimator to start, given
   that we have no bounds.
 
-- Speed up PP sqrtmod -- it's horrifically slow.
+- omega primes, work on figuring out formula for omega_prime_count
+  better construction and counting
+  OEIS sequence for omega k=3 counts for 10^i
 
-- rootmod(a,k,p)
-  - Better PP
-  - Possibly better prime power handling.
-  - Possibly some earlier existence checks, with benchmarking method
-  - Maybe Johnston algorithm (see:
-    https://github.com/sagemath/sagelib/blob/fd0c7c46e6a2da4b84df582e0da0333ce5cf79d9/sage/rings/finite_rings/element_base.pyx#L33
-    https://github.com/symengine/symengine/blob/master/symengine/ntheory.cpp#L1135
-  - a way to get all the roots?
+- There might be a better method for _sqrtmod_prime_power.
+
+- PP submod native ints should be streamlined.
 
 - extend qnr with optional root argument, cubic non-residue, etc.
 
@@ -306,6 +305,10 @@
   mpu '$s=1; for my $e (1..9) { $s += is_practical($_) for 10**($e-1)+1..10**$e; say "10^$e  $s"; }'
   mpu 'for my $e (1..9) { $s=0; $s += is_practical($_) for 1..10**$e; say "10^$e  $s"; }'
   5, 30, 198, 1456, 11751, 97385, 829157, 7266286, 64782731, 582798892, 5283879886
+
+- consider forprimepowers { ... } beg,end
+
+- PP next_prime_power, prev_prime_power: skip evens.
 
 - test coverage for PP.
 
@@ -315,6 +318,8 @@
 
 - 81-bignum.t takes too much time with PP
 
+- PP random_safe_prime(180) is very slow.  GMP algorithm doesn't help.
+
 - any way to make non-GMP random_strong_prime faster
 
 - sum_primes128, try using Meissel.
@@ -323,11 +328,6 @@
 
 - binomialmod:
    - PP implementation for primes, squarefree, and general composites.
-   - negative k extension
-
-- GMP
-  - rootmod, binomialmod
-  - almost primes
 
 - Possible new:
   - checksums?  Rather than print | md5sum.  adler32, sha1/2/3, blake2 (b2sum)
@@ -346,8 +346,11 @@
   Take a look.
 
 - Pari 2.13 added an optional third argument to sqrtint, just like rootint.
+  Not high priority since we can just call rootint with k=2.
 
 - Faster Mertens. Helfgott/Thompson 2020.  https://arxiv.org/pdf/2101.08773.pdf
+
+- gcdext, see Sorenson, Jabelean, and kernel/none/gcdll.c.
 
 - Add optional base to is_delicate_prime(n,base=10).  This should be relatively
   easy in C, but we'll need to put the math back in PP.
@@ -355,8 +358,56 @@
 - refactor lucas code.
   split out all the different codes, benchmark them all.
 
-- XS negative args for addint,subint,mulint,powint,divint,modint
+- Complete reviewing docs for positive vs. non-negative, and comparing
+  to XS.xs.  Everything after modular functions was not reviewed.
 
-- tests for lucasuv lucasumod lucasvmod
 
-- GMP for new fdivrem, lucasuv, lucasumod, lucasvmod, lucasuvmod
+- make new XS routine: _validate_simple_int(SV *svn, int negok)
+  then make PP link _valint($n,negok) to either XS or PP.
+  especially PP valuation base 2 is really slow with current validation
+  .
+  Similarly, a routine to return the best form (int or bigint) for post-calc
+
+- PP needs a revamp of the bigint->int downgrade.  Using the babs(BMAX) is
+  wrong.  We can use max/min.  Better come up with something more consistent.
+  Possibly XS, or try "$x=$n->numify; return ($x eq $n) ? $x : $n;"
+
+
+- GMP
+  - rootmod, binomialmod
+  - almost primes
+  - omega primes
+  - powerful numbers, counts
+  - prime_power_count
+  - smooth_count
+  - rough_count
+  - fdivrem, lucasuv, lucasumod, lucasvmod, lucasuvmod
+  - prime_bigomega
+  - prime_omega
+  - qnr
+  - fdivrem
+
+
+- consider (in GMP 0.53):
+  - setbit, clrbit, combit, tstbit
+  - bitand, bitor, bitxor, bitcom
+
+- other *int functions?  See overload and GMP for possible things we want.
+  is_divisible, remove_factors, clzint, ctzint (scan0,scan1), is_even, is_odd
+
+- an overload option or module, to call our *int functions.
+  have: add, sub, mul, pow, div, rem, neg, ++, --, <<, >>, <=>
+  need: not, bnot, and, or, xor, gt, lt, geq, leq, eq, neq,
+        as_bool, as_string, as_num, clone
+
+- 32-bit testing
+
+- Lots of older PP code, especially factoring, is built on a bigint vs PP
+  idea.  It might be useful to write normally using Mpowmod etc. and
+  benchmark various inputs.
+
+- incremental factoring.  Maybe a stateful iterator?
+
+- new semiprime approximations should be used in PP.
+
+- get rid of the pp shell for prime_powers, semiprimes, etc.  Just use XS.

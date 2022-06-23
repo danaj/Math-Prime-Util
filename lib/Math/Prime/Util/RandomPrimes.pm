@@ -491,8 +491,8 @@ sub random_nbit_prime {
     # Precalculate some modulii so we can do trial division on native int
     # 9699690 = 2*3*5*7*11*13*17*19, so later operations can be native ints
     my @premod;
-    my $bpremod = _bigint_to_int($b->copy->bmod(9699690));
-    my $twopremod = _bigint_to_int(Math::BigInt->new(2)->bmodpow($bits-$l-1, 9699690));
+    my $bpremod = modint($b, 9699690);
+    my $twopremod = powmod(2, $bits-$l-1, 9699690);
     foreach my $zi (0 .. 19-1) {
       foreach my $pm (3, 5, 7, 11, 13, 17, 19) {
         next if $zi >= $pm || defined $premod[$pm];
@@ -876,7 +876,7 @@ sub random_safe_prime {
   return $p;
 }
 
-sub random_safe_prime_large {
+sub _random_safe_prime_large {
   my $bits = shift;
   croak "Not enough bits for large random_safe_prime" if $bits <= 35;
 
@@ -931,43 +931,6 @@ sub random_safe_prime_large {
 
 
 # Gordon's algorithm for generating a strong prime.
-sub xrandom_strong_prime {
-  my $t = shift;
-  croak "random_strong_prime, bits must be >= 128" unless $t >= 128;
-  $t = int("$t");
-
-  croak "Random strong primes must be >= 173 bits on old Perl"
-    if OLD_PERL_VERSION && MPU_64BIT && $t < 173;
-
-  my $l   = (($t+1) >> 1) - 2;
-  my $lp  = int($t/2) - 20;
-  my $lpp = $l - 20;
-  while (1) {
-    my $qp  = random_nbit_prime($lp);
-    my $qpp = random_nbit_prime($lpp);
-    $qp  = Math::BigInt->new("$qp")  unless ref($qp)  eq 'Math::BigInt';
-    $qpp = Math::BigInt->new("$qpp") unless ref($qpp) eq 'Math::BigInt';
-    my ($il, $rem) = Math::BigInt->new(2)->bpow($l-1)->bdec()->bdiv(2*$qpp);
-    $il++ if $rem > 0;
-    $il = $il->as_int();
-    my $iu = Math::BigInt->new(2)->bpow($l)->bsub(2)->bdiv(2*$qpp)->as_int();
-    my $istart = $il + urandomm($iu - $il + 1);
-    for (my $i = $istart; $i <= $iu; $i++) {  # Search for q
-      my $q = 2 * $i * $qpp + 1;
-      next unless is_prob_prime($q);
-      my $pp = $qp->copy->bmodpow($q-2, $q)->bmul(2)->bmul($qp)->bdec();
-      my ($jl, $rem) = Math::BigInt->new(2)->bpow($t-1)->bsub($pp)->bdiv(2*$q*$qp);
-      $jl++ if $rem > 0;
-      $jl = $jl->as_int();
-      my $ju = Math::BigInt->new(2)->bpow($t)->bdec()->bsub($pp)->bdiv(2*$q*$qp)->as_int();
-      my $jstart = $jl + urandomm($ju - $jl + 1);
-      for (my $j = $jstart; $j <= $ju; $j++) {  # Search for p
-        my $p = $pp + 2 * $j * $q * $qp;
-        return $p if is_prob_prime($p);
-      }
-    }
-  }
-}
 sub random_strong_prime {
   my $t = shift;
   croak "random_strong_prime, bits must be >= 128" unless $t >= 128;

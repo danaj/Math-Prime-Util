@@ -6,7 +6,7 @@
 #define FUNC_log2floor 1
 #include "util.h"
 #define FUNC_is_prime_in_sieve 1
-#include "prime_nth_count.h"
+#include "prime_counts.h"
 #include "sieve.h"
 #include "inverse_interpolate.h"
 #include "ramanujan_primes.h"
@@ -30,10 +30,6 @@ static const uint8_t small_ram_primes[] = {
      if (n < small_ram_primes[i]) break; \
    return i; \
  }
-
-static UV _cb_nrpu(UV mid, UV k) { return nth_ramanujan_prime_upper(mid); }
-static UV _cb_nrpl(UV mid, UV k) { return nth_ramanujan_prime_lower(mid); }
-static UV _cb_rpca(UV mid, UV k) { return ramanujan_prime_count_approx(mid); }
 
 
 /*******************************     Bounds     *******************************/
@@ -129,7 +125,7 @@ UV ramanujan_prime_count_lower(UV n) {
   /* We know we're between p_2n and p_3n, probably close to the former. */
   lo = prime_count_lower(n)/3;
   hi = prime_count_upper(n) >> 1;
-  return inverse_interpolate(lo, hi, n, 0, &_cb_nrpu, 0);
+  return inverse_interpolate(lo, hi, n, &nth_ramanujan_prime_upper, 0);
 }
 UV ramanujan_prime_count_upper(UV n) {
   UV lo, hi;
@@ -137,7 +133,7 @@ UV ramanujan_prime_count_upper(UV n) {
   /* We know we're between p_2n and p_3n, probably close to the former. */
   lo = prime_count_lower(n)/3;
   hi = prime_count_upper(n) >> 1;
-  return inverse_interpolate(lo, hi, n, 0, &_cb_nrpl, 0);
+  return inverse_interpolate(lo, hi, n, &nth_ramanujan_prime_lower, 0);
 }
 
 /****************************     Approximate     ****************************/
@@ -156,7 +152,7 @@ UV nth_ramanujan_prime_approx(UV n)
   /* Interpolating using ramanujan prime count approximation */
   lo = nth_ramanujan_prime_lower(n);
   hi = nth_ramanujan_prime_upper(n);
-  return inverse_interpolate(lo, hi, n, 0, &_cb_rpca, 0);
+  return inverse_interpolate(lo, hi, n, &ramanujan_prime_count_approx, 0);
 }
 
 /*******************************     Arrays     *******************************/
@@ -209,7 +205,7 @@ UV* n_range_ramanujan_primes(UV nlo, UV nhi) {
   if (mink % 2 == 0) mink--;
   MPUverbose(2, "Rn[%"UVuf"] to Rn[%"UVuf"]     Noe's: %"UVuf" to %"UVuf"\n", nlo, nhi, mink, maxk);
 
-  s = 1 + prime_count(2,mink-2) - prime_count(2,(mink-1)>>1);
+  s = 1 + prime_count(mink-2) - prime_count((mink-1)>>1);
   {
     unsigned char *segment, *seg2 = 0;
     void* ctx = start_segment_primes(mink, maxk, &segment);
@@ -272,7 +268,7 @@ static UV* _ramanujan_prime_window(UV n, UV* winsize, UV* npos) {
   UV i, v, *L, window, swin, ewin, wlen, winmult = 1;
 
   MPUverbose(1, "ramanujan_prime_count calculating Pi(%"UVuf")\n",n);
-  v = prime_count(2,n) - prime_count(2,n >> 1);
+  v = prime_count(n) - prime_count(n >> 1);
 
   /* For large enough n make a slightly bigger window */
   if (n > 1000000000U) winmult = 16;
@@ -322,7 +318,7 @@ int is_ramanujan_prime(UV n) {
     if (is_prime(n/2+i)) return 0;
 
   /* Very straightforward, but not the fastest method:
-   *   return nth_ramanujan_prime(ramanujan_prime_count(2,n)) == n;
+   *   return nth_ramanujan_prime(ramanujan_prime_count(n)) == n;
    *
    * Slower than below for most input sizes:
    *   L = ramanujan_primes(&beg, &end, n, n);
@@ -358,7 +354,7 @@ static const UV ramanujan_counts_pow2[RAMPC2+1] = {
    985818, 1894120, 3645744, 7027290, 13561906, 26207278, 50697533 };
 #endif
 
-static UV _ramanujan_prime_count(UV n) {
+UV ramanujan_prime_count(UV n) {
   UV swin, rn, *L, log2 = log2floor(n);
 
   if ((n & (n-1)) == 0 && log2 <= RAMPC2) /* Powers of two from table */
@@ -370,24 +366,8 @@ static UV _ramanujan_prime_count(UV n) {
   return swin+rn;
 }
 
-UV ramanujan_prime_count(UV lo, UV hi)
+UV ramanujan_prime_count_range(UV lo, UV hi)
 {
-  UV count;
-
   if (hi < 2 || hi < lo) return 0;
-
-#if 1
-  count = _ramanujan_prime_count(hi);
-  if (lo > 2)
-    count -= _ramanujan_prime_count(lo-1);
-#else
-  {
-    UV beg, end, *L;
-    /* Generate all Rp from lo to hi */
-    L = ramanujan_primes(&beg, &end, lo, hi);
-    count = (L && end >= beg) ? end-beg+1 : 0;
-    Safefree(L);
-  }
-#endif
-  return count;
+  return ramanujan_prime_count(hi)  -  ((lo <= 2) ? 0 : ramanujan_prime_count(lo-1));
 }

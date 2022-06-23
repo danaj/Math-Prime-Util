@@ -3,11 +3,9 @@
 #include <string.h>
 
 #define FUNC_isqrt 1
-#define FUNC_icbrt 1
 #include "util.h"
 #include "sieve.h"
-#include "lmo.h"
-#include "prime_nth_count.h"
+#include "prime_counts.h"
 #include "prime_count_cache.h"
 #include "legendre_phi.h"
 
@@ -504,7 +502,7 @@ static void vcarray_remove_zeros(vcarray_t* a)
 
 static UV phi_walk(UV x, UV a)
 {
-  UV i, val, sval, lastidx, lastprime, primes_to_n;
+  UV i, sval, lastidx, lastprime, primes_to_n;
   UV sum = 0;
   uint32_t* primes;
   vcarray_t a1, a2;
@@ -601,7 +599,6 @@ UV small_phi(UV n, uint32_t a) {
 void* prepare_cached_legendre_phi(UV x, UV a)
 {
   uint32_t npa, lastidx, *primes;
-  UV sum;
 
   if (a > 203280221)  a = 203280221;
   npa = nth_prime_upper(a);
@@ -619,7 +616,7 @@ UV cached_legendre_phi(void* cache, UV x, UV a)
 
   /* Make the function work even if x,a outside of cached conditions */
   if (a > 203280221) {  /* prime_count(2**32) */
-    UV pc = LMO_prime_count(x);
+    UV pc = prime_count(x);
     return (a >= pc)  ?  1  :  pc - a + 1;
   }
   if (a > d->lastidx)
@@ -655,7 +652,7 @@ UV legendre_phi(UV x, UV a)
   if (a > (x >> 1))
     return 1;
   if (a >= sqrtx || a > 203280221) {   /* 203280221 = prime_count(2^32) */
-    UV pc = LMO_prime_count(x);
+    UV pc = prime_count(x);
     return (a >= pc)  ?  1  :  pc - a + 1;
   }
   /* After this:  7 <= a <= MIN(203280221, sqrtx) */
@@ -669,7 +666,7 @@ UV legendre_phi(UV x, UV a)
     return 1;
   /* Use 'a' instead of 'a+1' to ensure Legendre Pi doesn't call here */
   if (prime_count_upper(sqrtx) < a) {
-    UV pc = LMO_prime_count(x);
+    UV pc = prime_count(x);
     return (a >= pc)  ?  1  :  pc - a + 1;
   }
   /* Because we used the fast bounds, there are still a few easy cases. */
@@ -690,3 +687,25 @@ UV legendre_phi(UV x, UV a)
 
   return phi_recurse(x, a);
 }
+
+
+
+
+/*============================================================================*/
+
+#if 0
+  // TODO: setup with initial function.  optimize.  export.
+IV phi_sum(UV x, UV a, int sign) {
+  IV sum = 0;
+  //if (x < 1) return 0;
+  for (; a > 0; a--) {
+    UV p = nth_prime(a);
+    if (x <= p) {
+      return sum + (long)sign;
+    }
+    sum += p * phi_sum(x / p, a-1, -sign);
+  }
+  if (sign > 0) sum += (x*(x+1))/2; else sum -= (x*(x+1))/2;
+  return sum;
+}
+#endif

@@ -1,4 +1,4 @@
-#!/usr/bin/perl
+#!/usr/bin/env perl
 use warnings;
 use strict;
 use ntheory ":all";
@@ -114,9 +114,9 @@ for my $n (1 .. 20) {    # n 1
   }
 }
 
-#   3.2s  XS
-#  10.6s  GMP
-#  35.9s  funcs here (w/ XS)
+#   2.8s  XS
+#  10.1s  GMP
+#  34.1s  funcs here (w/ XS)
 # 270.4s  PP (w/ XS)
 # 299.0s  PP (no XS)
 # 803.3s  funcs here (no XS)

@@ -73,6 +73,7 @@ Tags:
 =head2 PRIMES
 
   primes([start,] end)                array ref of primes
+  prime_powers([start,] end)          array ref of prime powers
   twin_primes([start,] end)           array ref of twin primes
   semi_primes([start,] end)           array ref of semiprimes
   almost_primes(k, [start,] end)      array ref of k-almost-primes
@@ -82,23 +83,34 @@ Tags:
   sieve_range(n, width, depth)        sieve out small factors to depth
   next_prime(n)                       next prime > n
   prev_prime(n)                       previous prime < n
+  next_prime_power(n)                 next prime power > n
+  prev_prime_power(n)                 previous prime power < n
   prime_count(n)                      count of primes <= n
   prime_count(start, end)             count of primes in range
   prime_count_lower(n)                fast lower bound for prime count
   prime_count_upper(n)                fast upper bound for prime count
-  prime_count_approx(n)               fast approximate count of primes
+  prime_count_approx(n)               fast approximate prime count
+  prime_power_count(n)                count of prime powers <= n
+  prime_power_count(start, end)       count of prime powers in range
+  prime_power_count_lower(n)          fast lower bound for prime power count
+  prime_power_count_upper(n)          fast upper bound for prime power count
+  prime_power_count_approx(n)         fast approximate prime power count
   nth_prime(n)                        the nth prime (n=1 returns 2)
   nth_prime_lower(n)                  fast lower bound for nth prime
   nth_prime_upper(n)                  fast upper bound for nth prime
   nth_prime_approx(n)                 fast approximate nth prime
+  nth_prime_power(n)                  the nth prime power (n=1 returns 2)
+  nth_prime_power_lower(n)            fast lower bound for nth prime power
+  nth_prime_power_upper(n)            fast upper bound for nth prime power
+  nth_prime_power_approx(n)           fast approximate nth prime power
   twin_prime_count(n)                 count of twin primes <= n
   twin_prime_count(start, end)        count of twin primes in range
-  twin_prime_count_approx(n)          fast approx count of twin primes
+  twin_prime_count_approx(n)          fast approximate twin prime count
   nth_twin_prime(n)                   the nth twin prime (n=1 returns 3)
   nth_twin_prime_approx(n)            fast approximate nth twin prime
   semiprime_count(n)                  count of semiprimes <= n
   semiprime_count(start, end)         count of semiprimes in range
-  semiprime_count_approx(n)           fast approximate count of semiprimes
+  semiprime_count_approx(n)           fast approximate semiprime count
   nth_semiprime(n)                    the nth semiprime
   nth_semiprime_approx(n)             fast approximate nth semiprime
   almost_prime_count(k,n)             count of k-almost-primes
@@ -110,6 +122,7 @@ Tags:
   nth_almost_prime_lower(k,n)         fast nth k-almost prime lower bound
   nth_almost_prime_upper(k,n)         fast nth k-almost prime upper bound
   omega_prime_count(k,n)              count divisible by exactly k primes
+  nth_omega_prime(k,n)                the nth number div by exactly k primes
   ramanujan_prime_count(n)            count of Ramanujan primes <= n
   ramanujan_prime_count(start, end)   count of Ramanujan primes in range
   ramanujan_prime_count_lower(n)      fast lower bound for Ramanujan count
@@ -215,9 +228,11 @@ Tags:
   is_power(n)                         return k if n = c^k for integer c
   is_power(n,k)                       return 1 if n = c^k for integer c, k
   is_power(n,k,\$root)                as above but also set $root to c.
-  is_prime_power(n)                   return k if n = p^k for prime p
+  is_perfect_power(n)                 return 1 if n = c^k for c != 0, k > 1
+  is_prime_power(n)                   return k if n = p^k for prime p, k > 0
   is_prime_power(n,\$p)               as above but also set $p to p
   is_square_free(n)                   return true if no repeated factors
+  is_powerfree(n[,k])                 is n free of any k-th powers
   is_carmichael(n)                    is n a Carmichael number
   is_quasi_carmichael(n)              is n a quasi-Carmichael number
   is_primitive_root(r,n)              is r a primitive root mod n
@@ -227,6 +242,7 @@ Tags:
   is_omega_prime(k,n)                 is n divisible by exactly k primes
   is_polygonal(n,k)                   is n a k-polygonal number
   is_polygonal(n,k,\$root)            as above but also set $root
+  is_sum_of_squares(n[,k])            is n a sum of k (def 2) squares
   is_fundamental(d)                   is d a fundamental discriminant
   is_totient(n)                       is n = euler_phi(x) for some x
   is_lucky(n)                         is n a lucky number
@@ -262,6 +278,7 @@ Tags:
   lcm(@list)                          least common multiple
   gcdext(x,y)                         return (u,v,d) where u*x+v*y=d
   chinese([a,mod1],[b,mod2],...)      Chinese Remainder Theorem
+  chinese2([a,mod1],[b,mod2],...)     Chinese Remainder Theorem
   primorial(n)                        product of primes below n
   pn_primorial(n)                     product of first n primes
   factorial(n)                        product of first n integers: n!
@@ -280,10 +297,12 @@ Tags:
   invmod(a,n)                         inverse of a modulo n
   sqrtmod(a,n)                        modular square root
   rootmod(a,k,n)                      modular k-th root
+  allsqrtmod(a,n)                     list of all modular square roots
+  allrootmod(a,k,n)                   list of all modular k-th roots
   prime_bigomega(n)                   number of prime factors
   prime_omega(n)                      number of distinct prime factors
   moebius(n)                          Moebius function of n
-  moebius(beg, end)                   array of Moebius in range
+  moebius(beg, end)                   list of Moebius in range
   mertens(n)                          sum of Moebius for 1 to n
   euler_phi(n)                        Euler totient of n
   euler_phi(beg, end)                 Euler totient for a range
@@ -318,13 +337,34 @@ Tags:
   randperm(n,[k])                     random permutation of n elems
   shuffle(...)                        random permutation of an array
   lucky_numbers(n)                    array ref of lucky sieve up to n
+  lucky_count(n)                      count of lucky numbers <= n
+  lucky_count(start, end)             count of lucky numbers in range
+  lucky_count_lower(n)                fast lower bound for lucky count
+  lucky_count_upper(n)                fast upper bound for lucky count
+  lucky_count_approx(n)               fast approximate lucky count
   nth_lucky(n)                        nth entry in lucky sieve
+  nth_lucky_lower(n)                  fast lower bound for nth lucky number
+  nth_lucky_upper(n)                  fast upper bound for nth lucky number
+  nth_lucky_approx(n)                 fast approximate nth lucky number
   powerful_count(n[,k])               count of k-powerful numbers <= n
   nth_powerful(n[,k])                 the nth k-powerful number
+  next_perfect_power(n)               the next perfect power > n
+  prev_perfect_power(n)               the previous perfect power < n
   perfect_power_count(n)              count of perfect powers <= n
-  prime_power_count(n)                count of prime powers <= n
+  perfect_power_count(start, end)     count of perfect powers in range
+  perfect_power_count_lower(n)        fast lower bound for perf power count
+  perfect_power_count_upper(n)        fast upper bound for perf power count
+  perfect_power_count_approx(n)       fast approximate perfect power count
+  nth_perfect_power(n)                the nth perfect power
+  nth_perfect_power_lower(n)          fast lower bound for nth perfect power
+  nth_perfect_power_upper(n)          fast upper bound for nth perfect power
+  nth_perfect_power_approx(n)         fast approximate nth perfect power
   smooth_count(n,k)                   count of k-smooth numbers <= n
   rough_count(n,k)                    count of k-rough numbers <= n
+  powerfree_count(n[,k])              count of k-powerfree numbers <= n
+  powerfree_sum(n[,k])                sum of k-powerfree numbers <= n
+  powerfree_part(n[,k])               remove excess powers so n is k-free
+  powerfree_part_sum(n[,k])           sum of k-powerfree parts for 1 to n
 
 =head2 NON-INTEGER MATH
 
@@ -344,7 +384,7 @@ Tags:
 
 =head1 COPYRIGHT
 
-Copyright 2011-2018 by Dana Jacobsen E<lt>dana@acm.orgE<gt>
+Copyright 2011-2021 by Dana Jacobsen E<lt>dana@acm.orgE<gt>
 
 This program is free software; you can redistribute it and/or modify it under the same terms as Perl itself.
 

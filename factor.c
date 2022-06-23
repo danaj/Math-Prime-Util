@@ -161,7 +161,7 @@ int factor_one(UV n, UV *factors, int primality, int trial)
     UV const br_rounds = 8000 + (9000 * ((nbits <= 45) ? 0 : (nbits-45)));
     UV const sq_rounds = 200000;
 #elif MULMODS_ARE_FAST
-    UV const br_rounds =  500 + ( 200 * ((nbits <= 45) ? 0 : (nbits-45)));
+    UV const br_rounds =  100 + ( 100 * ((nbits <= 45) ? 0 : (nbits-45)));
     UV const sq_rounds = 100000;
 #else
     UV const br_rounds = (nbits >= 63) ? 120000 : (nbits >= 58) ? 500 : 0;
@@ -1408,7 +1408,7 @@ unsigned char* range_nfactor_sieve(UV lo, UV hi, int with_multiplicity) {
   New(0, N, range, UV);
 
   /* We could set to 1 and sieve from 2, or do this initialization */
-  for (i = lo; i <= hi; i++) {
+  for (i = lo; i <= hi && i >= lo; i++) {
     N[i-lo] = 1;
     if (!(i&1) && i >= 2) {
       UV k = i >> 1;
@@ -1834,7 +1834,7 @@ static UV znlog_ph(UV a, UV g, UV p, UV p1) {
     fac[i] = znlog_solve( delta, gamma, p, znorder(gamma,p) );
     exp[i] = pi;
   }
-  if (chinese(&x, fac, exp, nfactors) == 1 && powmod(g, x, p) == a)
+  if (chinese(&x, 0, fac, exp, nfactors) == 1 && powmod(g, x, p) == a)
     return x;
   return 0;
 }
@@ -1878,7 +1878,7 @@ UV znlog(UV a, UV g, UV p) {
 
 
 /* Compile with:
- *  gcc -O3 -fomit-frame-pointer -march=native -Wall -DSTANDALONE -DFACTOR_STANDALONE factor.c util.c primality.c cache.c sieve.c chacha.c csprng.c prime_nth_count.c lmo.c -lm
+ *  gcc -O3 -fomit-frame-pointer -march=native -Wall -DSTANDALONE -DFACTOR_STANDALONE factor.c util.c primality.c cache.c sieve.c chacha.c csprng.c prime_counts.c prime_count_cache.c lmo.c legendre_phi.c real.c inverse_interpolate.c -lm
  */
 #ifdef FACTOR_STANDALONE
 #include <errno.h>

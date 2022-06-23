@@ -13,8 +13,7 @@
 #include "util.h"
 #include "cache.h"
 #include "sieve.h"
-#include "lmo.h"
-#include "prime_nth_count.h"
+#include "prime_counts.h"
 #include "prime_count_cache.h"
 #include "semi_primes.h"
 #include "inverse_interpolate.h"
@@ -165,8 +164,8 @@ UV almost_prime_count(uint32_t k, UV n)
   if (k >= BITS_PER_WORD || (n >> k) == 0) return 0;
   reduce_prime_count_factor(&k, &n); /* Reduce to lower k,n if possible */
 
-  if (k == 1) return LMO_prime_count(n);
-  if (k == 2) return semiprime_count(0,n);
+  if (k == 1) return prime_count(n);
+  if (k == 2) return semiprime_count(n);
   if (n <  3*(UVCONST(1) << (k-1))) return 1;
   if (n <  9*(UVCONST(1) << (k-2))) return 2;
   if (n < 10*(UVCONST(1) << (k-2))) return 3;
@@ -189,15 +188,15 @@ UV almost_prime_count(uint32_t k, UV n)
   return count;
 }
 
-#if 0
-UV almost_prime_count(uint32_t k, UV lo, UV hi) {
+UV almost_prime_count_range(uint32_t k, UV lo, UV hi) {
   if (k == 0) return (lo <= 1 || hi >= 1);
-  if (k == 1) return prime_count(lo, hi);
-  if (k == 2) return semiprime_count(lo, hi);
+  if (k == 1) return prime_count_range(lo, hi);
+  if (k == 2) return semiprime_count_range(lo, hi);
   /* See semiprime_count.  Possibly clever solutions for small ranges. */
-  return _almost_prime_count(k, hi) - _almost_prime_count(k, lo-1);
+  if (k >= BITS_PER_WORD || (hi >> k) == 0 || hi < lo) return 0;
+  return almost_prime_count(k, hi)
+         - (((lo >> k) == 0) ? 0 : almost_prime_count(k,lo-1));
 }
-#endif
 
 UV almost_prime_count_approx(uint32_t k, UV n) {
   UV lo, hi;
@@ -292,7 +291,7 @@ UV nth_almost_prime_upper(uint32_t k, UV n) {
   lo = 5 * (UVCONST(1) << k);  /* For k >= 1 and n >= 8 */
   hi = max_nth_almost_prime(k);
 
-  return inverse_interpolate(lo, hi, n, k, &apcl, 0);
+  return inverse_interpolate_k(lo, hi, n, k, &apcl, 0);
 }
 
 UV nth_almost_prime_lower(uint32_t k, UV n) {
@@ -309,10 +308,11 @@ UV nth_almost_prime_lower(uint32_t k, UV n) {
   if (r > 0)  return nth_almost_prime_lower(k-r, n) << r;
 
   /* We start out with the literal min and max because we have NO idea. */
-  lo = 5 * (UVCONST(1) << k);  /* For k >= 1 and n >= 8 */
+  /*  \_/ note 3 instead of 5!  TODO:  apcu is not tight enough, so reduce */
+  lo = 3 * (UVCONST(1) << k);  /* For k >= 1 and n >= 8 */
   hi = max_nth_almost_prime(k);
 
-  return inverse_interpolate(lo, hi, n, k, &apcu, 0);
+  return inverse_interpolate_k(lo, hi, n, k, &apcu, 0);
 }
 
 UV nth_almost_prime_approx(uint32_t k, UV n) {
@@ -329,21 +329,28 @@ UV nth_almost_prime_approx(uint32_t k, UV n) {
 
   if (n < 8) return _fast_small_nth_almost_prime(k,n);
   lo = nth_almost_prime_lower(k,n);
-  hi = nth_almost_prime_upper(k,n);
+  hi = nth_almost_prime_upper(k,n) + 1;  /* Make sure we span the approx */
 
-  return inverse_interpolate(lo, hi, n, k, &apca, 0);
+  return inverse_interpolate_k(lo, hi, n, k, &apca, 0);
 }
 
+static UV  _cb_nth3(UV n) { return nth_almost_prime_approx(3,n); }
+static UV  _cb_cnt3(UV n) { return almost_prime_count(3,n); }
+static int _cb_is3(UV n)  { return is_almost_prime(3,n); }
+
+static UV  _cb_nth4(UV n) { return nth_almost_prime_approx(4,n); }
+static UV  _cb_cnt4(UV n) { return almost_prime_count(4,n); }
+static int _cb_is4(UV n)  { return is_almost_prime(4,n); }
+
 UV nth_almost_prime(uint32_t k, UV n) {
-  UV r, max, lo, hi;
+  UV r, lo, hi;
 
   if (n == 0) return 0;
   if (k == 0) return (n == 1) ? 1 : 0;
   if (k == 1) return nth_prime(n);
   if (k == 2) return nth_semiprime(n);
 
-  max = max_almost_prime_count(k);
-  if (n > max) return 0;
+  if (n > max_almost_prime_count(k)) return 0;
 
   /* For k >= 3 and small n we can answer this quickly. */
   if (n < 8) return _fast_small_nth_almost_prime(k,n);
@@ -351,9 +358,17 @@ UV nth_almost_prime(uint32_t k, UV n) {
   if (r > 0)  return nth_almost_prime(k-r,n) << r;
   /* NOTE: given n a 64-bit integer, k always <= 40 after reduction */
 
+  /* Using the approximation to narrow in is *much* more efficient.  But
+   * there is no good way to make it generic without closures (GCC extension)
+   * or statics (not thread-safe). */
+  if (k == 3)
+    return interpolate_with_approx(n, 0, 20000, &_cb_nth3, &_cb_cnt3, &_cb_is3);
+  if (k == 4)
+    return interpolate_with_approx(n, 0, 20000, &_cb_nth4, &_cb_cnt4, &_cb_is4);
+
   lo = nth_almost_prime_lower(k,n);
   hi = nth_almost_prime_upper(k,n);
-  hi = inverse_interpolate(lo, hi, n, k, &apce, 60000);
+  hi = inverse_interpolate_k(lo, hi, n, k, &apce, 60000);
   while (!is_almost_prime(k,hi))
     hi--;
   return hi;
@@ -494,12 +509,14 @@ static void _almost_prime_count_bounds(UV *lower, UV *upper, uint32_t k, UV n) {
 
 UV almost_prime_count_upper(uint32_t k, UV n) {
   UV l, u;
+  if (k == 2 && n < 256) return semiprime_count(n);
   _almost_prime_count_bounds(&l, &u, k, n);
   return u;
 }
 
 UV almost_prime_count_lower(uint32_t k, UV n) {
   UV l, u;
+  if (k == 2 && n < 256) return semiprime_count(n);
   _almost_prime_count_bounds(&l, &u, k, n);
   return l;
 }
@@ -677,6 +694,7 @@ UV range_almost_prime_sieve(UV** list, uint32_t k, UV slo, UV shi)
   }
 
   Ssize = (almost_prime_count_approx(k,shi) - almost_prime_count_approx(k,slo) + 1) * 1.2 + 100;
+  if (Ssize > 10000000UL) Ssize = 10000000UL;
   New(0, S, Ssize, UV);
 
   /* Do a range nfactor sieve in small windows, with one optimization.

@@ -1,8 +1,9 @@
-#!/usr/bin/perl
+#!/usr/bin/env perl
 use warnings;
 use strict;
 use v5.16;
 use ntheory ":all";
+use Math::Prime::Util::PP;
 #*rootmod = \&Math::Prime::Util::rootmod;
 
 my $lpr = primes(1e10,1e10+1000);
@@ -69,6 +70,7 @@ sub test {
     my $lim = $p > 1000 ? 1000 : $p-1;
     $h{ powmod($p-$_, $k, $p) }++ for 1..$lim;
     for my $a (keys %h) {
+      #my $r = Math::Prime::Util::PP::rootmod($a, $k, $p);
       my $r = rootmod($a, $k, $p);
       if (!defined $r) { $und++; }
       elsif (powmod($r,$k,$p) != $a) { $bad++; }

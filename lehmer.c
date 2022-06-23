@@ -10,7 +10,7 @@
 #include "util.h"
 #include "cache.h"
 #include "sieve.h"
-#include "prime_nth_count.h"
+#include "prime_counts.h"
 #include "prime_count_cache.h"
 #include "legendre_phi.h"
 
@@ -84,7 +84,7 @@ static UV P2_with_primes(UV n, UV a, UV b, const uint32_t *primes, uint32_t last
 static UV P2(UV n, UV a, UV b)
 {
   uint32_t lastidx, *primes;
-  UV lastprime, maxn, P2;
+  UV maxn, P2;
 
   maxn = nth_prime_upper( b );
   if (maxn > 4294967291U) maxn = 4294967291U;

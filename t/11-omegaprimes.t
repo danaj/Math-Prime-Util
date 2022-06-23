@@ -3,7 +3,7 @@ use strict;
 use warnings;
 
 use Test::More;
-use Math::Prime::Util qw/omega_primes omega_prime_count/;
+use Math::Prime::Util qw/omega_primes omega_prime_count nth_omega_prime/;
 
 my $extra = defined $ENV{EXTENDED_TESTING} && $ENV{EXTENDED_TESTING};
 my $usexs = Math::Prime::Util::prime_get_config->{'xs'};
@@ -21,23 +21,45 @@ my @counts_at_1e4 = (1,1280,4097,3695,894,33,0,0,0,0,0);
 
 plan tests =>   5   # omega_primes sieve
               + 6   # count
+              + 8   # nth_omega_prime
                 ;
+
+###### omega_primes
 
 for my $k (1..5) {
   my $kop = $small_kops[$k];
   is_deeply(omega_primes($k,1,$kop->[-1]), $kop, "small $k-omega-primes");
 }
 
-###### Test omega_prime_count
+###### omega_prime_count
+
 is_deeply([map{omega_prime_count($_,206)}1..10],[60,113,32,0,0,0,0,0,0,0],"omega_prime_count n=206, k 1..10");
 
 is_deeply([map { omega_prime_count($_, 1e4) } 0..10], \@counts_at_1e4, "k-omega prime counts at 10000 for k=1..10");
 
 is(omega_prime_count(6,9e4), 19, "There are 19 6-omega-primes <= 90,000");
+is(omega_prime_count(8,2e7), 10, "There are 10 8-omega-primes <= 20,000,000");
 
 SKIP: {
-  skip "Very slow in PP", 3 unless $usexs;
+  skip "Slow in PP", 2 unless $usexs || $extra;
   is_deeply([map { omega_prime_count($_, 1e6) } 0..20], \@counts_at_1e6, "k-omega prime counts at 1000000 for k=1..20");
-  is(omega_prime_count(8,2e7), 10, "There are 10 8-omega-primes <= 20,000,000");
   is_deeply([map{omega_prime_count($_,206111)}1..10],[18613,66025,79801,36364,5182,125,0,0,0,0],"omega_prime_count n=206111, k 1..10");
+}
+
+###### nth_omega_prime
+
+is_deeply([map { nth_omega_prime(0,$_) } 0..4], [undef,1,undef,undef,undef],
+          "nth_omega_prime(0,...)");
+is_deeply([map { nth_omega_prime($_,0) } 1..10], [(undef) x 10],
+          "nth_omega_prime(...,0)");
+for my $k (1..5) {
+  my $nops = scalar(@{$small_kops[$k]});
+  $nops = 10 unless $usexs;
+  my @expect = @{$small_kops[$k]}[0..$nops-1];
+  is_deeply([map { nth_omega_prime($k,$_) } 1..$nops], \@expect,
+          "nth_omega_prime($k, 1 .. $nops)");
+}
+SKIP: {
+  skip "nth_omega_prime is very slow in PP", 1 unless $usexs;
+  is(nth_omega_prime(8,122), 46692030, "The 122nd 8-omega prime is 46692030");
 }

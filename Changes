@@ -2,11 +2,14 @@ Revision history for Perl module Math::Prime::Util
 
 0.74 ?
 
+    [API Changes]
+
+    - is_pseudoprime, is_euler_pseudoprime, and is_strong_pseudoprime will
+      use an implicit base of 2 rather than a missing base error.  This also
+      means is_pseudoprime($n, @bases) works properly.
+
     [ADDED]
 
-    - lucky_numbers(n)                array ref of lucky numbers <= n
-    - nth_lucky(n)                    the nth lucky number
-    - is_lucky(n)                     predicate for lucky number sieve
     - sumliouville(n)                 L(n), sum of liouville(1..n)
     - prime_bigomega(n)               # of factors (with multiplicity)
     - prime_omega(n)                  # of factors (distinct)
@@ -28,14 +31,19 @@ Revision history for Perl module Math::Prime::Util
     - negint(n)                       integer negation
     - cmpint(a, b)                    integer comparison (like <=>)
     - signint(a, b)                   integer sign (-1,0,1)
-    - is_gaussian_prime(a,b)          is a+bi a Gaussian prime
     - random_safe_prime               for n-bit safe primes
+    - is_gaussian_prime(a,b)          is a+bi a Gaussian prime
+    - is_lucky(n)                     predicate for lucky number sieve
     - is_smooth(n,k)                  is n a k-smooth number
     - is_rough(n,k)                   is n a k-rough number
     - is_practical(n)                 is n a practical number
     - is_delicate_prime(n)            is n a digitally delicate prime
+    - is_sum_of_squares(n[,k])        can n be a sum of k squares (dflt k=2)
     - is_omega_prime(k,n)             is n divisible by exactly k primes
     - is_almost_prime(k,n)            does n have exactly k prime factors
+    - is_powerfree(n[,k])             is n a k-powerfree number (default k=2)
+    - is_powerful(n[,k])              is n a k-powerful number (default k=2)
+    - is_perfect_power(n)             is n a perfect power (1,4,8,9,16,25,..)
     - almost_primes(k,[start,]end)    array ref of k-almost-primes
     - almost_prime_count(k,n)         count of integers with exactly k factors
     - almost_prime_count_approx(k,n)  fast approximate k-almost-prime count
@@ -48,17 +56,22 @@ Revision history for Perl module Math::Prime::Util
     - foralmostprimes {} k,a,b        loop over k-almost-primes
     - omega_primes(k,[start,]end)     array ref of k-omega-primes
     - omega_prime_count(k,n)          count nums divisible by exactly k primes
-    - is_powerful(n[,k])              is n a k-powerful number (default k=2)
+    - nth_omega_prime(k,n)            The nth number dvsbl by exactly k primes
     - powerful_count(n[,k])           count of k-powerful numbers <= n
     - nth_powerful(n[,k])             the nth k-powerful number (default k=2)
-    - perfect_power_count(n)          count of perfect powers <= n
-    - prime_power_count(n)            count of prime powers <= n
+    - powerfree_count(n[,k])          count of k-powerfree numbers <= n
+    - powerfree_sum(n[,k])            sum of k-powerfree numbers <= n
+    - powerfree_part(n[,k])           remove excess powers from n
+    - powerfree_part_sum(n[,k])       sum of k-powerfree parts for 1 to n
+    - perfect_power_count([lo,] hi)   count of perfect powers
     - smooth_count(n,k)               count of k-smooth numbers <= n
     - rough_count(n,k)                count of k-rough numbers <= n
+    - allsqrtmod(a,n)                 all square roots of a (mod n)
     - qnr(n)                          least quadratic non-residue
     - binomialmod(n,k,m)              fast binomial(n,k) mod m
     - submod(a, b, n)                 a - b mod n
     - rootmod(a, k, n)                modular k-th root
+    - allrootmod(a,k,n)               all k-th roots of a (mod n)
     - vecequal(\@a, \@b)              compare two arrays for equality
     - tozeckendorf(n)                 Zeckendorf binary string from n
     - fromzeckendorf(str)             n from Zeckendorf binary string
@@ -68,6 +81,37 @@ Revision history for Perl module Math::Prime::Util
     - lucasumod(p,q,k,n)              U(p,q)_k mod n
     - lucasvmod(p,q,k,n)              V(p,q)_k mod n
     - lucasuvmod(p,q,k,n)             U(p,q)_k, V(p,q)_k, q^k  all mod n
+    - prime_powers([start,] end)      array ref of prime powers
+    - next_prime_power(n)             next prime power: p > n
+    - prev_prime_power(n)             previous prime power: p < n
+    - prime_power_count([start,] end) count of prime powers
+    - prime_power_count_approx(n)     fast approximate prime power count
+    - prime_power_count_lower(n)      fast prime power count lower bound
+    - prime_power_count_upper(n)      fast prime power count upper bound
+    - nth_prime_power(n)              the nth prime power
+    - nth_prime_power_approx(n)       fast approximate nth prime power
+    - nth_prime_power_lower(n)        fast nth prime power lower bound
+    - nth_prime_power_upper(n)        fast nth prime power upper bound
+    - next_perfect_power(n)           next perfect power: p > n
+    - prev_perfect_power(n)           previous perfect power: p < n
+    - perfect_power_count([beg,] end) count of perfect powers
+    - perfect_power_count_approx(n)   fast approximate perfect power count
+    - perfect_power_count_lower(n)    fast perfect power count lower bound
+    - perfect_power_count_upper(n)    fast perfect power count upper bound
+    - nth_perfect_power(n)            the nth perfect power
+    - nth_perfect_power_approx(n)     fast approximate nth perfect power
+    - nth_perfect_power_lower(n)      fast nth perfect power lower bound
+    - nth_perfect_power_upper(n)      fast nth perfect power upper bound
+    - lucky_numbers(n)                array ref of lucky numbers <= n
+    - lucky_count([start,] end)       count of lucky numbers
+    - lucky_count_approx(n)           fast approximate lucky count
+    - lucky_count_lower(n)            fast lucky count lower bound
+    - lucky_count_upper(n)            fast lucky count upper bound
+    - nth_lucky(n)                    the nth lucky number
+    - nth_lucky_approx(n)             fast approximate nth lucky number
+    - nth_lucky_lower(n)              fast nth lucky number lower bound
+    - nth_lucky_upper(n)              fast nth lucky number upper bound
+    - chinese2([a1,m1],[a2,m2],...)   CRT returning (solution,modulus)
 
     [FIXES]
 
@@ -104,6 +148,14 @@ Revision history for Perl module Math::Prime::Util
 
     - invmod(0,1) = 0 instead of undef.  Both cases make sense, but
       Pari, Mathematica, SAGE, and Math::BigInt all return 0.
+
+    - sqrtmod was not solving some cases, e.g. sqrtmod(4,8).
+
+    - chinese uses abs modulos, and values are all pre-modded.
+      This fixes negative inputs, e.g. chinese([-4,17],[17,-19])
+
+    - The 70-rt-bignum test was horrendously slow with bignum 0.60+.
+      It was bypassing the validation that sanitized the input.
 
     [FUNCTIONALITY AND PERFORMANCE]
 
@@ -145,6 +197,8 @@ Revision history for Perl module Math::Prime::Util
     - Error message "must be a positive integer" changed to
       "must be a non-negative integer" when zero is allowed.
 
+    - More accurate semiprime_count_approx and nth_semiprime_approx.
+
     [OTHER]
 
     - Legendre, Meissel, and Lehmer prime counting got rewritten to use our
@@ -157,6 +211,7 @@ Revision history for Perl module Math::Prime::Util
 
     - valuation(n,k) now will error if k < 2.  This follows Pari and SAGE.
       undef is returned for n = 0.  Arguable "Inf" would be preferable.
+
 
 0.73 2018-11-15
 

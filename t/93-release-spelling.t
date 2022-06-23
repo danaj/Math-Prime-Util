@@ -37,7 +37,8 @@ add_stopwords(qw/-th
                  totient moebius mertens liouville kronecker znorder znprimroot znlog
                  sumliouville
                  gcd lcm gcdext chinese
-                 invmod sqrtmod rootmod addmod submod mulmod powmod divmod
+                 sqrtmod allsqrtmod rootmod allrootmod
+                 invmod addmod submod mulmod powmod divmod
                  binomialmod factorialmod
                  bernfrac bernreal harmfrac harmreal stirling hclassno
                  vecsum vecprod vecmin vecmax vecreduce vecextract vecequal
@@ -47,7 +48,8 @@ add_stopwords(qw/-th
                  todigits todigitstring fromdigits sumdigits hammingweight
                  tozeckendorf fromzeckendorf
                  lucasu lucasv lucasuv lucasumod lucasvmod lucasuvmod
-                 lshiftint rshiftint rashiftint
+                 lshiftint rshiftint rashiftint signint cmpint
+                 biquadrate powerfree k-powerfree k-free
                  pp/);
 
 all_pod_files_spelling_ok();

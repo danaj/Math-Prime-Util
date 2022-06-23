@@ -23,7 +23,6 @@ extern uint32_t powerof(UV n);
 extern int is_power(UV n, UV a);
 extern UV rootint(UV n, UV k);
 extern UV ipowsafe(UV n, UV k);  /* returns UV_MAX if overflows */
-extern int primepower(UV n, UV* prime);
 extern UV valuation(UV n, UV k);
 extern UV valuation_remainder(UV n, UV k, UV *r);
 extern UV logint(UV n, UV b);
@@ -36,32 +35,21 @@ extern signed char* range_liouville(UV low, UV high);
 extern int liouville(UV n);
 extern IV  mertens(UV n);
 extern IV  sumliouville(UV n);
-extern NV  chebyshev_psi(UV n);
-extern NV  chebyshev_theta(UV n);
-
-extern NV Ei(NV x);
-extern NV Li(NV x);
-extern long double ld_riemann_zeta(long double x);
-extern long double RiemannR(long double x, long double eps);
-extern NV lambertw(NV k);
-extern UV inverse_li(UV x);
-extern UV inverse_R(UV x);
 
 extern int kronecker_uu(UV a, UV b);
 extern int kronecker_su(IV a, UV b);
 extern int kronecker_ss(IV a, IV b);
 
+extern UV pn_primorial(UV n);
 extern UV primorial(UV n);
 extern UV factorial(UV n);
 extern UV binomial(UV n, UV k);
 extern IV gcdext(IV a, IV b, IV* u, IV* v, IV* s, IV* t); /* Ext Euclidean */
 extern UV modinverse(UV a, UV p);              /* Returns 1/a mod p */
 extern UV divmod(UV a, UV b, UV n);            /* Returns a/b mod n */
-extern int sqrtmodp(UV *r, UV a, UV p);        /* sqrt(a) mod p */
-extern int sqrtmod(UV *r, UV a, UV n);         /* sqrt(a) mod n */
-extern int rootmodp(UV *r, UV a, UV k, UV p);  /* a^(1/k) mod p for p prime */
-extern int rootmod(UV *r, UV a, UV k, UV n);   /* a^(1/k) mod n for any n */
-extern int chinese(UV *r, UV* a, UV* n, UV num); /* Chinese Remainder */
+extern UV gcddivmod(UV a, UV b, UV n);         /* divmod(a/gcd,b/gcd,n) */
+
+extern int chinese(UV *r, UV *lcm, UV* a, UV* n, UV num);/* Chinese Remainder */
 
 /* Do the inverse for a negative modular power / root. a^-k => (1/a)^k mod n */
 extern int prep_pow_inv(UV *a, UV *k, int kstatus, UV n);
@@ -72,6 +60,7 @@ extern IV fdivrem(IV *q, IV *r, IV D, IV d);   /* signed div/rem floor */
 extern IV edivrem(IV *q, IV *r, IV D, IV d);   /* signed div/rem Euclidian */
 extern UV ivmod(IV a, UV n);                   /* Returns a mod n (trunc) */
 
+extern UV totient_factored(UV n, UV nfacs, UV* fac, UV* exp);
 extern UV totient(UV n);
 extern int moebius(UV n);
 extern UV exp_mangoldt(UV n);
@@ -87,7 +76,6 @@ extern int is_fundamental(UV n, int neg);
 extern int is_totient(UV n);
 extern int is_semiprime(UV n);
 extern int is_almost_prime(UV k, UV n);
-extern int is_omega_prime(UV k, UV n);
 extern int is_carmichael(UV n);
 extern UV  is_quasi_carmichael(UV n);  /* Returns number of bases */
 extern UV  pillai_v(UV n);             /* v: v! % n == n-1 && n % v != 1 */
@@ -101,7 +89,8 @@ extern int is_powerful(UV n, UV k);
 extern UV powerful_count(UV n, UV k);
 extern UV nth_powerful(UV n, UV k);
 
-extern UV perfect_power_count(UV n);
+extern int is_sum_of_two_squares(UV n);
+extern int is_sum_of_three_squares(UV n);
 
 extern UV debruijn_psi(UV x, UV y);
 extern UV buchstab_phi(UV x, UV y);
@@ -141,11 +130,6 @@ extern int perm_to_num(int n, int *vec, UV *rank);
 extern void randperm(void* ctx, UV n, UV k, UV *S);
 
 extern UV random_factored_integer(void* ctx, UV n, int *nf, UV *factors);
-
-extern UV* lucky_sieve(UV *size, UV n);
-extern uint32_t* lucky_sieve32(UV *size, UV n);
-extern int is_lucky(UV n);
-extern UV nth_lucky(UV n);
 
 extern UV gcdz(UV x, UV y);
 
