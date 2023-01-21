@@ -4048,7 +4048,7 @@ Effectively:
   my $s = 0;  for (1..$n) { $s += log(exp_mangoldt($_)) }  return $s;
 
 but computed more efficiently and accurately.
-We compute it as a (Kahan) sum from C<k = 1 .. floor(log2(n))> of
+We compute it as a Neumaier sum from C<k = 1 .. floor(log2(n))> of
 C<chebyshev_theta(n^(1/k))>.
 
 =head2 divisor_sum

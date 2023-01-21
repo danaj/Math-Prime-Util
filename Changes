@@ -199,6 +199,8 @@ Revision history for Perl module Math::Prime::Util
 
     - More accurate semiprime_count_approx and nth_semiprime_approx.
 
+    - Switched from Kahan to Neumaier sum in some real computations.
+
     [OTHER]
 
     - Legendre, Meissel, and Lehmer prime counting got rewritten to use our

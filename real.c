@@ -10,18 +10,71 @@
 #include "real.h"
 #include "mathl.h"
 
-#define KAHAN_INIT(s) \
-  LNV s ## _y, s ## _t; \
-  LNV s ## _c = 0.0; \
-  LNV s = 0.0;
+#define SUM_TYPE_NORMAL    0
+#define SUM_TYPE_KAHAN     0
+#define SUM_TYPE_NEUMAIER  1
+#define SUM_TYPE_KLEIN     0
 
-#define KAHAN_SUM(s, term) \
-  do { \
-    s ## _y = (term) - s ## _c; \
-    s ## _t = s + s ## _y; \
-    s ## _c = (s ## _t - s) - s ## _y; \
-    s = s ## _t; \
-  } while (0)
+#if SUM_TYPE_NORMAL
+  #define SUM_INIT(s)        LNV s = 0.0;
+  #define SUM_ADD(s, term)   s = s + (term);
+  #define SUM_FINAL(s)       s
+#endif
+#if SUM_TYPE_KAHAN
+  #define SUM_INIT(s) \
+    LNV s ## _y, s ## _t; \
+    LNV s ## _c = 0.0; \
+    LNV s = 0.0;
+  #define SUM_ADD(s, term) \
+    do { \
+      s ## _y = (term) - s ## _c; \
+      s ## _t = s + s ## _y; \
+      s ## _c = (s ## _t - s) - s ## _y; \
+      s = s ## _t; \
+    } while (0)
+  #define SUM_FINAL(s)       s
+#endif
+#if SUM_TYPE_NEUMAIER
+  #define SUM_INIT(s) \
+    LNV s ## _c = 0.0; \
+    LNV s = 0.0;
+  #define SUM_ADD(s, term) \
+    do { \
+      LNV _term = term; \
+      LNV _t = s + _term; \
+      if ( fabslnv(s) >= fabslnv(_term) ) \
+        s ## _c += (s - _t) + _term; \
+      else \
+        s ## _c += (_term - _t) + s; \
+      s = _t; \
+    } while (0)
+  #define SUM_FINAL(s)  (s + s ## _c)
+#endif
+#if SUM_TYPE_KLEIN
+  #define SUM_INIT(s) \
+    LNV s ## _cs  = 0.0; \
+    LNV s ## _ccs = 0.0; \
+    LNV s = 0.0;
+  #define SUM_ADD(s, term) \
+    do { \
+      LNV _term = term; \
+      LNV _c, _cc, _t = s + _term; \
+      if ( fabslnv(s) >= fabslnv(_term) ) \
+        _c = (s - _t) + _term; \
+      else \
+        _c = (_term - _t) + s; \
+      s = _t; \
+      _t = s ## _cs + _c; \
+      if ( fabslnv(s ## _cs) >= fabslnv(_c) ) \
+        _cc = (s ## _cs - _t) + _c; \
+      else \
+        _cc = (_c - _t) + s ## _cs; \
+      s ## _cs = _t; \
+      s ## _ccs += _cc; \
+    } while (0)
+  #define SUM_FINAL(s)  (s + s ## _cs + s ## _ccs)
+#endif
+
 
 static const unsigned short primes_tiny[] =
   {0,2,3,5,7,11,13,17,19,23,29,31,37,41,43,47,53,59,61,67,71,73,79,83,89,97,
@@ -150,60 +203,60 @@ static LNV _eintv_laguerre_series(const LNV v, const LNV x) {
   LNV L_k = 1.0, L_k1 = x + v;
   LNV q, r, u = LNV_ONE, d = LNV_ONE;
   uint32_t k;
-  KAHAN_INIT(sum);
-  KAHAN_SUM(sum, (LNV_ONE/L_k1));
+  SUM_INIT(sum);
+  SUM_ADD(sum, (LNV_ONE/L_k1));
   for (k = 1; k < 500; k++) {
     u *= v + k - 1;
     d *= 1 + k;
     q = L_k1 * (x + 2*k + v) / (k + 1)  -  L_k * (k + v - 1) / (k + 1);
     r = u / (d * (q * L_k1));
-    KAHAN_SUM(sum, r);
+    SUM_ADD(sum, r);
     L_k = L_k1;
     L_k1 = q;
     if (fabslnv(r) < 0.1 * LNV_EPSILON)
       break;
   }
-  return sum * explnv(-x);
+  return SUM_FINAL(sum) * explnv(-x);
 }
 /* Convergent series for small negative x through medium positive x */
 static LNV _ei_series_convergent(LNV const x) {
   LNV term, fact_n = x;
   uint32_t n;
-  KAHAN_INIT(sum);
+  SUM_INIT(sum);
   for (n = 2; n <= 400; n++) {
     LNV invn = LNV_ONE / n;
     fact_n *= (LNV)x * invn;
     term = fact_n * invn;
-    KAHAN_SUM(sum, term);
-    /* printf("C  after adding %.20Lf, val = %.20Lf\n", term, sum); */
-    if (fabslnv(term) < LNV_EPSILON*fabslnv(sum)) break;
+    SUM_ADD(sum, term);
+    /* printf("C after adding %.20Lf, val = %.20Lf\n", term, SUM_FINAL(sum)); */
+    if (fabslnv(term) < LNV_EPSILON*fabslnv(SUM_FINAL(sum))) break;
   }
-  KAHAN_SUM(sum, euler_mascheroni);
-  KAHAN_SUM(sum, loglnv(fabslnv(x)));
-  KAHAN_SUM(sum, x);
-  return sum;
+  SUM_ADD(sum, euler_mascheroni);
+  SUM_ADD(sum, loglnv(fabslnv(x)));
+  SUM_ADD(sum, x);
+  return SUM_FINAL(sum);
 }
 /* Asymptotic divergent series, for large positive x */
 static LNV _ei_series_divergent(LNV const x) {
   LNV invx = LNV_ONE / x, term = invx;
   unsigned int n;
-  KAHAN_INIT(sum);
+  SUM_INIT(sum);
   for (n = 2; n <= 400; n++) {
     LNV last_term = term;
     term = term * ( (LNV)n * invx );
-    if (term < LNV_EPSILON*sum) break;
+    if (term < LNV_EPSILON*SUM_FINAL(sum)) break;
     if (term < last_term) {
-      KAHAN_SUM(sum, term);
-      /* printf("A  after adding %.20llf, sum = %.20llf\n", term, sum); */
+      SUM_ADD(sum, term);
+      /* printf("A after adding %.20llf, sum = %.20llf\n", term, SUM_FINAL(sum)); */
     } else {
-      KAHAN_SUM(sum, (-last_term/1.07) );
-      /* printf("A  after adding %.20llf, sum = %.20llf\n", -last_term/1.07, sum); */
+      SUM_ADD(sum, (-last_term/1.07) );
+      /* printf("A after adding %.20llf, sum = %.20llf\n", -last_term/1.07, SUM_FINAL(sum)); */
       break;
     }
   }
-  KAHAN_SUM(sum, invx);
-  KAHAN_SUM(sum, LNV_ONE);
-  return explnv(x) * sum * invx;
+  SUM_ADD(sum, invx);
+  SUM_ADD(sum, LNV_ONE);
+  return explnv(x) * SUM_FINAL(sum) * invx;
 }
 
 NV Ei(NV x) {
@@ -454,17 +507,17 @@ long double ld_riemann_zeta(long double x) {
 
 #if 0
   {
-    KAHAN_INIT(sum);
+    SUM_INIT(sum);
     /* Simple defining series, works well. */
     for (i = 5; i <= 1000000; i++) {
       long double term = powl(i, -x);
-      KAHAN_SUM(sum, term);
-      if (term < LDBL_EPSILON*sum) break;
+      SUM_ADD(sum, term);
+      if (term < LDBL_EPSILON*SUM_FINAL(sum)) break;
     }
-    KAHAN_SUM(sum, powl(4, -x) );
-    KAHAN_SUM(sum, powl(3, -x) );
-    KAHAN_SUM(sum, powl(2, -x) );
-    return sum;
+    SUM_ADD(sum, powl(4, -x) );
+    SUM_ADD(sum, powl(3, -x) );
+    SUM_ADD(sum, powl(2, -x) );
+    return SUM_FINAL(sum);
   }
 #endif
 
@@ -521,29 +574,29 @@ long double ld_riemann_zeta(long double x) {
 long double RiemannR(long double x, long double eps) {
   long double part_term, term, flogx, ki, old_sum;
   unsigned int k;
-  KAHAN_INIT(sum);
+  SUM_INIT(sum);
 
   if (x <= 0) croak("Invalid input to RiemannR:  x must be > 0");
   if (eps < LDBL_EPSILON) eps = LDBL_EPSILON;
 
   if (x > 1e19) {
     const signed char* amob = range_moebius(0, 100);
-    KAHAN_SUM(sum, Li(x));
+    SUM_ADD(sum, Li(x));
     for (k = 2; k <= 100; k++) {
       if (amob[k] == 0) continue;
       ki = 1.0L / (long double) k;
       part_term = powl(x,ki);
       if (part_term > LDBL_MAX) return INFINITY;
       term = amob[k] * ki * Li(part_term);
-      old_sum = sum;
-      KAHAN_SUM(sum, term);
-      if (fabsl(sum - old_sum) <= eps) break;
+      old_sum = SUM_FINAL(sum);
+      SUM_ADD(sum, term);
+      if (fabslnv(SUM_FINAL(sum) - old_sum) <= eps) break;
     }
     Safefree(amob);
-    return sum;
+    return SUM_FINAL(sum);
   }
 
-  KAHAN_SUM(sum, 1.0);
+  SUM_ADD(sum, 1.0);
   flogx = logl(x);
   part_term = 1;
 
@@ -551,13 +604,13 @@ long double RiemannR(long double x, long double eps) {
     ki = (k-1 < NPRECALC_ZETA) ? riemann_zeta_table[k-1] : ld_riemann_zeta(k+1);
     part_term *= flogx / k;
     term = part_term / (k + k * ki);
-    old_sum = sum;
-    KAHAN_SUM(sum, term);
+    old_sum = SUM_FINAL(sum);
+    SUM_ADD(sum, term);
     /* printf("R %5d after adding %.18Lg, sum = %.19Lg (%Lg)\n", k, term, sum, fabsl(sum-old_sum)); */
-    if (fabsl(sum - old_sum) <= eps) break;
+    if (fabslnv(SUM_FINAL(sum) - old_sum) <= eps) break;
   }
 
-  return sum;
+  return SUM_FINAL(sum);
 }
 
 /* Options for LambertW initial approximation:
@@ -693,12 +746,12 @@ NV lambertw(NV x) {
 NV chebyshev_psi(UV n)
 {
   UV k;
-  KAHAN_INIT(sum);
+  SUM_INIT(sum);
 
   for (k = log2floor(n); k > 0; k--) {
-    KAHAN_SUM(sum, chebyshev_theta(rootint(n,k)));
+    SUM_ADD(sum, chebyshev_theta(rootint(n,k)));
   }
-  return sum;
+  return SUM_FINAL(sum);
 }
 
 #if BITS_PER_WORD == 64
@@ -838,13 +891,13 @@ NV chebyshev_theta(UV n)
   unsigned char* segment;
   void* ctx;
   LNV initial_sum, prod = LNV_ONE;
-  KAHAN_INIT(sum);
+  SUM_INIT(sum);
 
   if (n < 500) {
     for (i = 1;  (tp = primes_tiny[i]) <= n; i++) {
-      KAHAN_SUM(sum, loglnv(tp));
+      SUM_ADD(sum, loglnv(tp));
     }
-    return sum;
+    return SUM_FINAL(sum);
   }
 
 #if defined NCHEBY_VALS
@@ -857,7 +910,7 @@ NV chebyshev_theta(UV n)
   } else
 #endif
   {
-    KAHAN_SUM(sum, loglnv(2*3*5*7*11*13));
+    SUM_ADD(sum, loglnv(2*3*5*7*11*13));
     startn = 17;
     initial_sum = 0;
   }
@@ -866,7 +919,7 @@ NV chebyshev_theta(UV n)
 #if 0
   while (next_segment_primes(ctx, &seg_base, &seg_low, &seg_high)) {
     START_DO_FOR_EACH_SIEVE_PRIME( segment, seg_base, seg_low, seg_high ) {
-      KAHAN_SUM(sum, loglnv(p));
+      SUM_ADD(sum, loglnv(p));
     } END_DO_FOR_EACH_SIEVE_PRIME
   }
 #else
@@ -874,18 +927,18 @@ NV chebyshev_theta(UV n)
     START_DO_FOR_EACH_SIEVE_PRIME( segment, seg_base, seg_low, seg_high ) {
       prod *= (LNV) p;
       if (++i >= (LNV_IS_QUAD ? 64 : 8)) {
-        KAHAN_SUM(sum, loglnv(prod));
+        SUM_ADD(sum, loglnv(prod));
         prod = LNV_ONE;
         i = 0;
       }
     } END_DO_FOR_EACH_SIEVE_PRIME
   }
-  if (prod > 1.0) { KAHAN_SUM(sum, loglnv(prod));  prod = LNV_ONE; }
+  if (prod > 1.0) { SUM_ADD(sum, loglnv(prod));  prod = LNV_ONE; }
 #endif
   end_segment_primes(ctx);
 
-  if (initial_sum > 0) KAHAN_SUM(sum, initial_sum);
-  return sum;
+  if (initial_sum > 0) SUM_ADD(sum, initial_sum);
+  return SUM_FINAL(sum);
 }
 
 
