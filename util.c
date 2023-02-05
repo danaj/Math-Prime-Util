@@ -3080,14 +3080,15 @@ int is_practical(UV n) {
   if ((n % 6) && (n % 20) && (n % 28) && (n % 88) && (n % 104) && (n % 16))
     return 0;
 
+  /* In theory for better performance we should test with small primes
+   * before fully factoring.  On average it doesn't seem to help. */
   nfactors = factor_exp(n, fac, exp);
-  /* fac[0] must be 2 */
-  prod = 1;  /* running divisor sum of product of all previous factors */
+  MPUassert(fac[0] == 2, "is_practical first factor must be 2");
+  prod = _divsum1(1, 2, exp[0]);
   for (i = 1; i < nfactors; i++) {
-    /* prod *= ipow(fac[i-1],exp[i-1]);  sum = 1 + divisor_sum(prod,1); */
-    prod = _divsum1(prod, fac[i-1], exp[i-1]);
     if (fac[i] > (1 + prod))
       return 0;
+    prod = _divsum1(prod, fac[i], exp[i]);
   }
   return 1;
 }
@@ -3255,6 +3256,10 @@ int is_sum_of_three_squares(UV n) {
   return ((tz & 1) == 1) || (((n>>tz) % 8) != 7);
 }
 
+
+/* TODO: */
+/* See https://arxiv.org/pdf/2208.01725.pdf for new info on smooth count
+ * estimate methods.  Consider adding an estimate function. */
 
 static const unsigned char _psi_cache_v__7[128] = {8,9,10,10,11,11,12,13,14,14,15,15,16,17,17,17,18,19,19,20,21,21,22,22,23,23,23,24,25,25,25,25,26,26,27,27,27,28,28,28,29,30,31,31,31,31,32,32,33,33,33,33,34,34,34,35,36,36,36,36,36,36,37,37,38,38,38,39,39,39,39,39,40,41,41,41,42,42,42,42,42,42,43,43,43,43,43,43,44,44,45,45,46,46,46,46,46,47,47,47,48,48,48,48,49,49,49,49,49,49,49,49,50,50,50,50,50,51,52,52,53,53,53,53,53,53,53,54};
 static const unsigned char _psi_cache_v_11[96] = {12,12,13,14,15,15,16,16,17,18,19,19,20,21,21,22,23,23,24,24,25,26,26,27,28,28,28,28,29,29,30,30,31,32,32,32,33,34,35,35,35,35,36,37,38,38,38,38,39,39,39,40,41,41,42,42,42,42,43,43,44,44,44,45,45,46,46,46,47,48,48,48,49,49,49,49,50,50,51,51,51,51,51,51,52,52,53,54,55,55,55,55,55,56,56,56};
