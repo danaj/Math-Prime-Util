@@ -360,7 +360,8 @@ static UV _simple_lucky_count_upper(UV n) {
                         :  60 + _simple_lucky_count_approx(n) * 1.0360;
 }
 static UV _simple_lucky_count_lower(UV n) {
-  return _simple_lucky_count_approx(n) * 0.99;
+  return   (n <= 10000) ?  _simple_lucky_count_approx(n) * 0.98
+                        :  _simple_lucky_count_approx(n) * 0.99;
 }
 
 UV lucky_count_approx(UV n) {
@@ -369,19 +370,18 @@ UV lucky_count_approx(UV n) {
   /* return _simple_lucky_count_approx(n); */
   lo = _simple_lucky_count_lower(n);
   hi = _simple_lucky_count_upper(n);
-  if (n <= 65536) { lo -= 4;  hi = 5+1.04*hi; }  /* Hack for interpolation */
   return inverse_interpolate(lo, hi, n, &nth_lucky_approx, 0);
 }
 UV lucky_count_upper(UV n) {   /* Holds under 1e9 */
   UV lo, hi;
   if (n < 48) return _small_lucky_count[n];
-#if 1 && BITS_PER_WORD == 64
+    return _simple_lucky_count_upper(n);
+#if 0 && BITS_PER_WORD == 64
   if (n > UVCONST(18409850581000000000))
     return _simple_lucky_count_upper(n);
 #endif
   lo = _simple_lucky_count_lower(n);
   hi = _simple_lucky_count_upper(n);
-  if (n <= 65536) { lo -= 4;  hi = 5+1.04*hi; }  /* Hack for interpolation */
   return inverse_interpolate(lo, hi, n, &nth_lucky_lower, 0);
 }
 UV lucky_count_lower(UV n) {   /* Holds under 1e9 */
@@ -389,7 +389,6 @@ UV lucky_count_lower(UV n) {   /* Holds under 1e9 */
   if (n < 48) return _small_lucky_count[n];
   lo = _simple_lucky_count_lower(n);
   hi = _simple_lucky_count_upper(n);
-  if (n <= 65536) { lo -= 4;  hi = 5+1.04*hi; }  /* Hack for interpolation */
   return inverse_interpolate(lo, hi, n, &nth_lucky_upper, 0);
 }
 UV lucky_count_range(UV lo, UV hi) {

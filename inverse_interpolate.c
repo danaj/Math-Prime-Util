@@ -108,7 +108,7 @@ static UV _inverse_interpolate(UV lo, UV hi, UV n,
   while (lo < hi && (hi-lo) >= threshold) {
     mid = lo + ((hi-lo)>>1);
     if (CALLBACK(mid) < n) lo = mid+1;
-    else                    hi = mid;
+    else                   hi = mid;
   }
   RETURNI(hi);
 }
