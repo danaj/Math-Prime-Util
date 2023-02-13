@@ -7,7 +7,7 @@
 #include "lucky_numbers.h"
 #include "inverse_interpolate.h"
 #include "ds_pagelist32.h"
-#include "ds_pagelist64.h"
+#include "ds_bitmask126.h"
 
 static const int _verbose = 0;
 
@@ -19,35 +19,51 @@ static const unsigned char _small_lucky[48] = {1,3,7,9,13,15,21,25,31,33,37,43,4
 static const unsigned char _small_lucky_count[48] = {0,1,1,2,2,2,2,3,3,4,4,4,4,5,5,6,6,6,6,6,6,7,7,7,7,8,8,8,8,8,8,9,9,10,10,10,10,11,11,11,11,11,11,12,12,12,12,12};
 /* True for any position where (n % 7*9) could be a lucky number */
 static const char _lmask63[63+2] = {1,1,0,1,1,0,1,1,0,1,1,0,1,1,0,1,1,0,0,0,0,1,1,0,1,1,0,0,0,0,1,1,0,1,1,0,1,1,0,0,0,0,1,1,0,1,1,0,1,1,0,1,1,0,1,1,0,0,0,0,0,0,0,1,1};
-/* A large bitmask for ((n>>1) % 3*7*9*13) (2457) */
-static const uint32_t _lmask5[77] = {2334495963,2261929142,1169344621,2204739155,2727961910,1639207725,3513561243,2430232978,1754683725,3630970059,3025873062,1278646881,3658323539,3055177010,1830209833,3406669457,3054200212,1837519692,1531293898,650340770,757258597,2606838995,2530306226,1169218145,3408442969,2799185204,1706318124,1131165330,848965014,699669325,2574062795,2228948386,1284934501,3396110035,2790999218,1161216865,3540886233,2996462004,1771491436,1229828306,881551542,749099117,2590355547,2253614130,1293081133,3408475675,2795071766,1167383305,3540825739,2999594374,1772509509,3378853569,3029544354,1823611745,3664352465,2790870432,1830079336,1529620184,916087988,630608740,453849818,382347702,229021805,2204472531,2257800374,1169312365,3278480475,2195285298,1637143341,3513528987,2967103638,1219909961,3628938443,3025808550,1815517285,3391985233,740658};
+/* mpufile '$n++; chomp; $v=$_; next unless $v > 10000; $m[ ($v>>1) % 4095 ]++; END { for (0..4094) { next unless $m[$_]; $b[$_ >> 5] |= (1 << ($_%32)); } say join ",",@b; }' ~/misc/ntheory/lucky_1e8.txt */
+/* A large bitmask for ((n>>1) % 3*7*3*13) (819).  Covers 2,3,7,9,13. */
+static const uint32_t _lmask5[26] = {2334495963,2261929142,1169344621,2204739155,2727961910,1639207725,3513561243,2430232978,1754683725,3630970059,3025873062,1278646881,3658323539,3055177010,1830209833,3406669457,3054200212,1837519692,1531293898,650340770,757258597,2606838995,2530306226,1169218145,3408442969,11572};
+
 
 /* Lucky Number sieves.
- * Presieving for the first 4-11 levels, then standard sieving.
  *
- * 1) the presieving saves a lot of work but has diminishing returns.
+ * Mask presieving for the first 5 levels.  Simple pre-sieving for a small
+ * number of initial values.  Two different data structure choices for the
+ * main sieve:
  *
- * 2) using a hybrid array / linked list makes a good tradeoff, especially
- *    with a simple position cache so we don't walk from the start every time.
+ * 1) Pagelist using index tree and memmove inside the array.  Fast but can
+ *    use quite a bit of memory, and not nearly as fast as the bitmask method
+ *    for larger sizes.  But efficient for small sizes.
  *
- * This is not the most memory efficient, but is very fast.
+ * 2) bitmask (32 bits per 126 integers) using index tree.  Quite fast and
+ *    less memory than the other methods.
  *
  * Generate first 10M lucky numbers (from 1 to 196502733) on 2020 M1 Mac:
- *           3.1s  lucky_sieve32   memory:  4 * count * ~2.5    (100MB)
- *           4.2s  lucky_sieve64   memory:  8 * count * ~2.3    (190MB)
- *        1356s    lucky_cgen      memory:  8 * count * 2       (160MB)
- *        8950s    Wilson          memory:  8 * count * 1       ( 80MB)
+ *           2.6s  lucky_sieve32     memory:  about n/25          (  8MB)
+ *           3.1s  pagelist_sieve32  memory:  4 * count * ~2.5    (100MB)
+ *           4.2s  pagelist_sieve64  memory:  8 * count * ~2.3    (190MB)
+ *        1356s    lucky_cgen        memory:  8 * count * 2       (160MB)
+ *        8950s    Wilson            memory:  8 * count * 1       ( 80MB)
  *
- * nth_lucky(1<<31):   55291335127    47 sec using lucky_sieve32, 930MB
+ * pagelist:
+ * nth_lucky(1<<31):   55291335127    47 sec using lucky_sieve32  930MB
  * nth_lucky(1<<32):  113924214621   140 sec using lucky_sieve64  3.2GB
  * nth_lucky(1<<33):  234516370291   312 sec using lucky_sieve64  6.3GB
  * nth_lucky(1<<34):  482339741617   733 sec using lucky_sieve64 12.1GB
+ *
+ * bitmask:
+ * nth_lucky(1<<31):   55291335127    35 sec using lucky_sieve32   89MB
+ * nth_lucky(1<<32):  113924214621    74 sec using lucky_sieve64  173MB
+ * nth_lucky(1<<33):  234516370291   157 sec using lucky_sieve64  341MB
+ * nth_lucky(1<<34):  482339741617   330 sec using lucky_sieve64  677MB
+ * nth_lucky(1<<35):  991238156013   684 sec using lucky_sieve64  1.3GB
+ * nth_lucky(1<<36): 2035487409679  1422 sec using lucky_sieve64  2.6GB
+ * nth_lucky(1<<37): 4176793875529  2989 sec using lucky_sieve64  5.3GB
  */
 
 
 /* This is fast for small (less than 10M or so) inputs.
  * Simple filtering, then sieve a big block using memmove.
- * This memory intensive and has poor performance with large n.
+ * This is memory intensive and has poor performance with large n.
  */
 uint32_t* _small_lucky_sieve32(UV *size, uint32_t n) {
   uint32_t i, m, c13, level, init_level, fsize, lsize, *lucky;
@@ -106,13 +122,15 @@ uint32_t* _small_lucky_sieve32(UV *size, uint32_t n) {
   return lucky;
 }
 
-uint32_t* lucky_sieve32(UV *size, uint32_t n) {
+uint32_t* _pagelist_lucky_sieve32(UV *size, uint32_t n) {
   uint32_t i, m, lsize, level, init_level, *lucky;
   pagelist32_t *pl;
 
+  if (n > 4294967275U)  n = 4294967275U;  /* Max 32-bit lucky number */
+
   if (n <= 280000) return _small_lucky_sieve32(size, n);
 
-  pl = pagelist32_create();
+  pl = pagelist32_create(n);
 
   /* make initial list using filters for small lucky numbers. */
   {
@@ -139,7 +157,7 @@ uint32_t* lucky_sieve32(UV *size, uint32_t n) {
 
     /* Construct the initial list */
     for (i = 1, m = 0; i <= n; i += 2, m += 1) {
-      if (m >= 2457) m -= 2457;  /* m = (i>>1) % 2457 */
+      if (m >= 819) m -= 819;  /* m = (i>>1) % 819 */
       if (_lmask5[m >> 5] & (1U << (m & 0x1F))) {
         for (ln = lbeg; ln <= lend; ln++) {
           if (++count[ln] == slucky[ln]) {
@@ -180,39 +198,31 @@ uint32_t* lucky_sieve32(UV *size, uint32_t n) {
   return lucky;
 }
 
-UV* lucky_sieve64(UV *size, UV n) {
-  UV i, m, lsize, level, init_level, *lucky;
-  pagelist64_t *pl;
+bitmask126_t* bitmask126_sieve(UV* size, UV n) {
+  UV i, lsize, level, init_level, *lucky;
+  bitmask126_t *pl;
 
-  if (n == 0) { *size = 0; return 0; }
+  pl = bitmask126_create(n);
 
-  pl = pagelist64_create();
-
+  /* make initial list using filters for small lucky numbers. */
   {
     UV slsize;
-    uint32_t sln, ln, lbeg, lend, *count, *slucky;
+    uint32_t sln, ln, lbeg, lend, m, *count, *slucky;
 
     /* Decide how much additional filtering we'll do. */
-    sln = !(n>>26) ? 391 : !(n>>32) ? 1879 : !(n>>36) ? 5385 : 60000;
+    sln =  (n <=    1000000)  ?  105  :
+           (n <=  100000000)  ?  127  :
+           (n <= 0xFFFFFFFF)  ?  151  :  163;
     slucky = _small_lucky_sieve32(&slsize, sln);
     Newz(0, count, slsize, uint32_t);
     lbeg = 5;
     lend = slsize-1;
 
-    if (1) {
-      UV ntarget = (2.2 * (double)n/log(n));
-      UV ninit = n/2;
-      for (i = 1; i < slsize && ninit > ntarget; i++)
-        ninit -= ninit/slucky[i];
-      if (i < slsize) lend = i;
-      if (lend < lbeg) lend = lbeg;
-    }
-
-    if (_verbose) printf("lucky_sieve64 pre-sieve using %u lucky numbers up to %u\n", lend, slucky[lend]);
+    if (_verbose) printf("bitmask lucky pre-sieve using %u lucky numbers up to %u\n", lend, slucky[lend]);
 
     /* Construct the initial list */
     for (i = 1, m = 0; i <= n; i += 2, m += 1) {
-      if (m >= 2457) m -= 2457;  /* m = (i>>1) % 2457 */
+      if (m >= 819) m -= 819;  /* m = (i>>1) % 819 */
       if (_lmask5[m >> 5] & (1U << (m & 0x1F))) {
         for (ln = lbeg; ln <= lend; ln++) {
           if (++count[ln] == slucky[ln]) {
@@ -221,7 +231,7 @@ UV* lucky_sieve64(UV *size, UV n) {
           }
         }
         if (ln > lend)
-          pagelist64_append(pl, i);
+          bitmask126_append(pl,i);
       }
     }
     init_level = lend+1;
@@ -230,25 +240,53 @@ UV* lucky_sieve64(UV *size, UV n) {
   }
 
   lsize = pl->nelems;
-  if (_verbose) printf("lucky_sieve64 done inserting.  values:  %lu   pages: %lu\n", lsize, pl->npages[0]);
+  if (_verbose) printf("bitmask lucky done inserting.  values:  %lu\n",lsize);
 
   if (init_level < lsize) {
-    pagelist64_iter_t iter = pagelist64_iterator_create(pl, init_level);
+    bitmask126_iter_t iter = bitmask126_iterator_create(pl, init_level);
     for (level = init_level; level < lsize; level++) {
-      UV skip = pagelist64_iterator_next(&iter) - 1;
+      UV skip = bitmask126_iterator_next(&iter) - 1;
       if (skip >= lsize) break;
       for (i = skip; i < lsize; i += skip) {
-        pagelist64_delete(pl, i);
+        bitmask126_delete(pl, i);
         lsize--;
       }
     }
-    if (_verbose) printf("lucky_sieve64 done sieving.    values:  %lu   pages: %lu\n", lsize, pl->npages[0]);
+    if (_verbose) printf("bitmask lucky done sieving.    values:  %lu\n",lsize);
   }
+  *size = lsize;
+  return pl;
+}
 
-  lucky = pagelist64_to_array(size, pl);
-  if (*size != lsize) croak("bad sizes in lucky sieve 64");
+uint32_t* lucky_sieve32(UV *size, uint32_t n) {
+  uint32_t *lucky;
+  bitmask126_t *pl;
+
+  if (n == 0) { *size = 0; return 0; }
+  if (n > 4294967275U)  n = 4294967275U;  /* Max 32-bit lucky number */
+
+  if (n <=   280000U) return _small_lucky_sieve32(size, n);
+  if (n <= 70000000U) return _pagelist_lucky_sieve32(size, n);
+
+  pl = bitmask126_sieve(size, n);
+
+  lucky = bitmask126_to_array32(size, pl);
+  if (_verbose) printf("lucky_sieve32 done copying.\n");
+  bitmask126_destroy(pl);
+  return lucky;
+}
+
+UV* lucky_sieve64(UV *size, UV n) {
+  UV *lucky;
+  bitmask126_t *pl;
+
+  if (n == 0) { *size = 0; return 0; }
+
+  pl = bitmask126_sieve(size, n);
+
+  lucky = bitmask126_to_array(size, pl);
   if (_verbose) printf("lucky_sieve64 done copying.\n");
-  pagelist64_destroy(pl);
+  bitmask126_destroy(pl);
   return lucky;
 }
 
@@ -306,18 +344,23 @@ UV* lucky_sieve_cgen(UV *size, UV n) {
 /* static UV lucky_count_upper(UV n) { return 200 + lucky_count_approx(n) * 1.025; } */
 
 static UV _simple_lucky_count_approx(UV n) {
+  double logn = log(n);
   return   (n <           7)  ?  (n > 0) + (n > 2)
-         : (n <=    1000000)  ?  0.9957 * n/log(n)
-         : (n <= 1000000000)  ? (1.03670 - log(n)/299) * n/log(n)
-                              : (1.03670 - log(n)/(120*log(log(n)))) * n/log(n);
+         : (n <=      10000)  ?  1.03591 * n/logn
+         : (n <=    1000000)  ?  0.99575 * n/logn
+         : (n <=   10000000)  ? (1.03523 - logn/305) * n/logn
+         : (n <=  100000000)  ? (1.03432 - logn/304) * n/logn
+         : (n <= 4000000000U) ? (1.03613 - logn/(100*log(logn))) * n/logn
+         /* fit 1e9 to 1e10 */
+                              : (1.03654 - logn/(100*log(logn))) * n/logn;
 }
 static UV _simple_lucky_count_upper(UV n) {
-  return (n <= 10000) ?  10 + _simple_lucky_count_approx(n) * 1.1
-                      : 140 + _simple_lucky_count_approx(n) * 1.05;
+  return   (n <= 10000) ?   5 + _simple_lucky_count_approx(n) * 1.01
+         : (n <= 1e10)  ?  50 + _simple_lucky_count_approx(n) * 1.011
+                        :  60 + _simple_lucky_count_approx(n) * 1.0360;
 }
 static UV _simple_lucky_count_lower(UV n) {
-  return (n <= 10000) ? _simple_lucky_count_approx(n) * 0.9
-                      : _simple_lucky_count_approx(n) * 0.98;
+  return _simple_lucky_count_approx(n) * 0.99;
 }
 
 UV lucky_count_approx(UV n) {
@@ -326,13 +369,19 @@ UV lucky_count_approx(UV n) {
   /* return _simple_lucky_count_approx(n); */
   lo = _simple_lucky_count_lower(n);
   hi = _simple_lucky_count_upper(n);
+  if (n <= 65536) { lo -= 4;  hi = 5+1.04*hi; }  /* Hack for interpolation */
   return inverse_interpolate(lo, hi, n, &nth_lucky_approx, 0);
 }
 UV lucky_count_upper(UV n) {   /* Holds under 1e9 */
   UV lo, hi;
   if (n < 48) return _small_lucky_count[n];
+#if 1 && BITS_PER_WORD == 64
+  if (n > UVCONST(18409850581000000000))
+    return _simple_lucky_count_upper(n);
+#endif
   lo = _simple_lucky_count_lower(n);
   hi = _simple_lucky_count_upper(n);
+  if (n <= 65536) { lo -= 4;  hi = 5+1.04*hi; }  /* Hack for interpolation */
   return inverse_interpolate(lo, hi, n, &nth_lucky_lower, 0);
 }
 UV lucky_count_lower(UV n) {   /* Holds under 1e9 */
@@ -340,6 +389,7 @@ UV lucky_count_lower(UV n) {   /* Holds under 1e9 */
   if (n < 48) return _small_lucky_count[n];
   lo = _simple_lucky_count_lower(n);
   hi = _simple_lucky_count_upper(n);
+  if (n <= 65536) { lo -= 4;  hi = 5+1.04*hi; }  /* Hack for interpolation */
   return inverse_interpolate(lo, hi, n, &nth_lucky_upper, 0);
 }
 UV lucky_count_range(UV lo, UV hi) {
@@ -360,27 +410,29 @@ UV lucky_count_range(UV lo, UV hi) {
   if ((hi & 1)) hi++;
   lsize = 1+lucky_count_upper(hi);
 
-  if (hi <= UVCONST(4000000000)) {
+  if (hi <= UVCONST(2000000000)) {
     uint32_t i, hicount = hi/2, locount = lo/2;
     uint32_t *lucky32 = lucky_sieve32(&nlucky, lsize);
     for (i = 1; i < nlucky && lucky32[i] <= lo; i++) {
       locount -= locount/lucky32[i];
       hicount -= hicount/lucky32[i];
     }
-    for ( ; i < nlucky && lucky32[i] <= hi; i++)
+    for ( ; i < nlucky && lucky32[i] <= hicount; i++)
       hicount -= hicount/lucky32[i];
     Safefree(lucky32);
     return hicount - locount;
   } else {
+    /* We use the iterator here to cut down on memory use. */
     UV i, hicount = hi/2, locount = lo/2;
-    UV *lucky64 = lucky_sieve64(&nlucky, lsize);
-    for (i = 1; i < nlucky && lucky64[i] <= lo; i++) {
-      locount -= locount/lucky64[i];
-      hicount -= hicount/lucky64[i];
+    bitmask126_t* pl = bitmask126_sieve(&nlucky, lsize);
+    bitmask126_iter_t iter = bitmask126_iterator_create(pl, 1);
+    for (i = 1; i < nlucky; i++) {
+      UV l = bitmask126_iterator_next(&iter);
+      if (l <= lo)  locount -= locount/l;
+      if (l > hicount)  break;
+      hicount -= hicount/l;
     }
-    for ( ; i < nlucky && lucky64[i] <= hi; i++)
-      hicount -= hicount/lucky64[i];
-    Safefree(lucky64);
+    bitmask126_destroy(pl);
     return hicount - locount;
   }
 }
@@ -389,37 +441,68 @@ UV lucky_count(UV n) {
 }
 
 UV nth_lucky_approx(UV n) {
-  double corr, fn = n, logn = log(n), loglogn = log(logn);
+  double est, corr, m, fn, logn, loglogn, loglogn2;
   if (n <= 48)  return (n == 0) ? 0 : _small_lucky[n-1];
-  if (n <= 80000) {
-    corr = (n <= 10000)  ?  0.2502  :  0.2581;
-    return (UV)(fn*(logn + 0.5*loglogn + corr*loglogn*loglogn) + 0.5);
+  fn = n;  logn = log(fn);  loglogn = log(logn);  loglogn2 = loglogn * loglogn;
+
+  /* Use interpolation so we don't get discontinuities, as well as giving good
+   * results.  We use one formula for small values, and another for larger. */
+
+  /* p1=1<<14; e1=199123;  p2=1<<16; e2=904225;
+   * x1=log(log(p1))^2;  x2=log(log(p2))^2;  y1=(e1/p1-log(p1)-0.5*log(log(p1)))/x1;  y2=(e2/p2-log(p2)-0.5*log(log(p2)))/x2;  m=(y2-y1)/(x2-x1);  printf("      corr = %13.11f + %.11f * (loglogn2 - %.11f);\n", y1, m, x1);
+   */
+  if (n <= 65536) {
+    if      (n >= 16384)             /* 16384 -- 65536 */
+      corr = 0.25427076035 + 0.00883698771 * (loglogn2 - 5.16445809103);
+    else if (n >= 2048)              /*  2048 -- 16384 */
+      corr = 0.24513311782 +  0.00880360023 * (loglogn2 - 4.12651426090);
+    else if (n >= 256)               /*   256 --   2048 */
+      corr = 0.25585213066 + -0.00898952075 * (loglogn2 - 2.93412446098);
+    else                             /*    49 --   256 */
+      corr = 0.38691439589 - 0.12050840608 * (loglogn2 - 1.84654667704);
+    est = fn * (logn + 0.5*loglogn + corr*loglogn2) + 0.5;
   } else {
-    corr = (n <=    10000) ? -0.0173 :
-           (n <=   100000) ? -0.0318 :
-           (n <=  1000000) ? -0.0384 :
-           (n <= 10000000) ? -0.0422 :
-                             -0.0440 ;
+    /* p1=1<<32; e1=113924214621;   p2=1<<37; e2=4176793875529;
+     * x1=log(log(p1))^2;  x2=log(log(p2))^2;  y1=(e1/p1-log(p1)-0.5*x1)/x1;  y2=(e2/p2-log(p2)-0.5*x2)/x2;  m=(y2-y1)/(x2-x1);  printf("      corr = %13.11f + %.11f * (loglogn2 - %.11f);\n", y1, m, x1);
+     */
+    if      (fn >= 68719476736.0)    /* 2^36 -- 2e11 */
+      corr = -0.04904974983 + -0.00161982023 * (loglogn2 - 10.34912771904);
+    else if (fn >= 4294967296.0)     /* 2^32 -- 2^36 */
+      corr = -0.04770894029 + -0.00180229750 * (loglogn2 - 9.60518309351);
+    else if (fn >=   67108864)       /* 2^26 -- 2^32 */
+      corr = -0.04484819198 + -0.00229977135 * (loglogn2 - 8.36125581665);
+    else if (fn >=    1048576)       /* 2^20 -- 2^26 */
+      corr = -0.03971615189 + -0.00354309756 * (loglogn2 - 6.91279440604);
+    else if (fn >=      16384)       /* 2^14 -- 2^20 */
+      corr = -0.02571153702 + -0.00801025223 * (loglogn2 - 5.16445809103);
+    else if (fn >=        512)       /* 2^9  -- 2^14 */
+      corr =  0.00990254026 + -0.01964423724 * (loglogn2 - 3.35150517018);
+    else                             /* 2^6  -- 2^9 */
+      corr =  0.13714087150 + -0.09637971899 * (loglogn2 - 2.03132772443);
     /* Hawkins and Briggs (1958), attributed to S. Chowla. */
-    return (UV)(fn*(logn + (0.5+corr)*loglogn*loglogn) + 0.5);
+    est = fn * (logn + (0.5+corr)*loglogn2) + 0.5;
   }
+  if (est >= MPU_MAX_LUCKY) return MPU_MAX_LUCKY;
+  return (UV)est;
 }
 UV nth_lucky_upper(UV n) {
-  double corr;
+  double est, corr;
   if (n <= 48)  return (n == 0) ? 0 : _small_lucky[n-1];
-  corr = (n <= 100) ? 1.05  :
-         (n <= 300) ? 1.03  :
-         (n <= 800) ? 1.01  :
-                      1.0033;   /* verified to 1e9 */
-  return (UV)(corr * nth_lucky_approx(n) + 0.5);
+  corr = (n <= 16384) ? 1.01   :
+                        1.001;   /* verified to n=4e8 / v=1e10 */
+  est = corr * nth_lucky_approx(n) + 0.5;
+  if (est >= MPU_MAX_LUCKY) return MPU_MAX_LUCKY;
+  return (UV)est;
 }
 UV nth_lucky_lower(UV n) {
-  double corr;
+  double est, corr;
   if (n <= 48)  return (n == 0) ? 0 : _small_lucky[n-1];
-  corr = (n <=  130) ? 0.985 :
-         (n <= 2000) ? 0.992 :
-                       0.996 ;   /* verified to 1e9 */
-  return (UV)(corr * nth_lucky_approx(n));
+  est = nth_lucky_approx(n);
+  corr = (n <=        122) ? 0.95  :
+         (n <=       4096) ? 0.97  :
+                             0.998 ;    /* verified to n=4e8 / v=1e10 */
+  est = corr * nth_lucky_approx(n);
+  return (UV)est;
 }
 
 UV nth_lucky(UV n) {
@@ -428,16 +511,17 @@ UV nth_lucky(UV n) {
   if (n <= 48)  return (n == 0) ? 0 : _small_lucky[n-1];
 
   /* Apply the backward sieve, ala Wilson, for entry n */
-  if (n <= UVCONST(4000000000)) {
+  if (n <= UVCONST(100000000)) {
     uint32_t *lucky32 = lucky_sieve32(&nlucky, n);
     for (i = nlucky-1, k = n-1; i >= 1; i--)
       k += k/(lucky32[i]-1);
     Safefree(lucky32);
-  } else {
-    UV *lucky64 = lucky_sieve64(&nlucky, n);
+  } else { /* Iterate backwards through the sieve directly to save memory. */
+    bitmask126_t* pl = bitmask126_sieve(&nlucky, n);
+    bitmask126_iter_t iter = bitmask126_iterator_create(pl, nlucky-1);
     for (i = nlucky-1, k = n-1; i >= 1; i--)
-      k += k/(lucky64[i]-1);
-    Safefree(lucky64);
+      k += k / (bitmask126_iterator_prev(&iter) - 1);
+    bitmask126_destroy(pl);
   }
   return (2 * k + 1);
 }
@@ -447,7 +531,7 @@ static int test_lucky_to(UV lsize, UV *beg, UV *end) {
   UV i = *beg, pos = *end, l, quo, nlucky;
   int ret = -1;
 
-  if (lsize <= 0xFFFFFFFFU) {
+  if (lsize <= 700000000U) {
     uint32_t *lucky32 = lucky_sieve32(&nlucky, lsize);
     while (i < nlucky) {
       l = lucky32[i++];
@@ -458,16 +542,22 @@ static int test_lucky_to(UV lsize, UV *beg, UV *end) {
     }
     Safefree(lucky32);
   } else {
-    UV* lucky64 = lucky_sieve64(&nlucky, lsize);
-    while (i < nlucky) {
-      l = lucky64[i++];
-      if (pos < l)      { ret = 1; break; }
-      quo = pos / l;
-      if (pos == quo*l) { ret = 0; break; }
-      pos -= quo;
+    /* For 64-bit, iterate directly through the bit-mask to save memory. */
+    bitmask126_t* pl = bitmask126_sieve(&nlucky, lsize);
+    if (i < nlucky) {
+      bitmask126_iter_t iter = bitmask126_iterator_create(pl, i);
+      while (i < nlucky) {
+        l = bitmask126_iterator_next(&iter);
+        i++;
+        if (pos < l)      { ret = 1; break; }
+        quo = pos / l;
+        if (pos == quo*l) { ret = 0; break; }
+        pos -= quo;
+      }
     }
-    Safefree(lucky64);
+    bitmask126_destroy(pl);
   }
+  /* printf("tested lsize = %lu  from %lu to %lu\n", lsize, *beg, i-1); */
   *beg = i;
   *end = pos;
   return ret;
@@ -480,6 +570,7 @@ int is_lucky(UV n) {
   /* Simple pre-tests */
   if ( !(n & 1) || (n%6) == 5 || !_lmask63[n % 63]) return 0;
   if (n < 45) return 1;
+  if (n > MPU_MAX_LUCKY) return 0;
 
   /* Check valid position using the static list */
   pos = (n+1) >> 1;  /* Initial position in odds */
@@ -492,19 +583,17 @@ int is_lucky(UV n) {
     pos -= quo;
   }
 
-  /* Check more small values */
-  if (n > 100000) {
-    lsize = n/(1.3*log(n)*log(n));
-    if (lsize > 100000) {
-      res = test_lucky_to(lsize/100, &i, &pos);
-      if (res != -1) return res;
-    }
-    res = test_lucky_to(lsize, &i, &pos);
-    if (res != -1) return res;
-  }
-
-  /* Generate all needed values and continue checking from where we left off. */
   lsize = 1+lucky_count_upper(n);
+
+  { /* Check more small values */
+    UV psize = 800, gfac = 6;
+    while (psize < lsize/3) {
+      res = test_lucky_to(psize, &i, &pos);
+      if (res != -1) return res;
+      psize *= gfac;
+      gfac += 2;
+    }
+  }
   res = test_lucky_to(lsize, &i, &pos);
   return (res == 0) ? 0 : 1;
 }

@@ -38,7 +38,7 @@ typedef struct pagelist32_t {
   PLTYPE   **pgdata;
 } pagelist32_t;
 
-static pagelist32_t* pagelist32_create(void) {
+static pagelist32_t* pagelist32_create(uint32_t n) {
   pagelist32_t *pl;
   int i;
   New(0, pl, 1, pagelist32_t);

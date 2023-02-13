@@ -38,7 +38,7 @@ typedef struct pagelist64_t {
   PLTYPE   **pgdata;
 } pagelist64_t;
 
-static pagelist64_t* pagelist64_create(void) {
+static pagelist64_t* pagelist64_create(UV n) {
   pagelist64_t *pl;
   int i;
   New(0, pl, 1, pagelist64_t);
