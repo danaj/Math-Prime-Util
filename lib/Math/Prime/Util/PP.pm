@@ -1723,7 +1723,7 @@ sub nth_perfect_power_approx {
   $pp -= 1.5;
 
   return int($pp) if $pp < ~0;
-  $pp->bint() if ref($pp);
+  $pp = $pp->as_int() if ref($pp);
   return Math::BigInt->new("$pp");
 }
 
@@ -1739,7 +1739,7 @@ sub nth_perfect_power_lower {
   $pp += -2*$n**(13/11) + -2*$n**(15/13);
   $pp += 1.5;
   return int($pp) if $pp < ~0;
-  $pp->bint() if ref($pp);
+  $pp = $pp->as_int() if ref($pp);
   return Math::BigInt->new("$pp");
 }
 sub nth_perfect_power_upper {
@@ -1754,7 +1754,7 @@ sub nth_perfect_power_upper {
   $pp +=  2*$n**(16/14);
   $pp -= 3.5;
   return int($pp) if $pp < ~0;
-  $pp->bint() if ref($pp);
+  $pp = $pp->as_int() if ref($pp);
   return Math::BigInt->new("$pp");
 }
 
@@ -4016,7 +4016,7 @@ sub _tquotient {
   # Large unsigned values cause all sorts of consistency issues, so => bigint.
   # Additionally, with use integer, if $a = -(1<<63), -$a = $a.  Sigh.
   $a = Math::BigInt->new("$a") if !ref($a)
-       && ($a > SINTMAX || $b > SINTMAX || $a < -SINTMAX || $b < -SINTMAX);
+       && ($a > SINTMAX || $b > SINTMAX || $a < -(SINTMAX) || $b < -(SINTMAX));
 
   return -$a if $b == -1;  # $a is always able to be safely negated now
 
