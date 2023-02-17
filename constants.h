@@ -31,7 +31,7 @@
  #define MPU_MAX_PERFECT_POW_IDX UVCONST(4297615581)
  /* Max Lucky Tested through 200000000000, but need to 394961521040845441. */
  #define MPU_MAX_LUCKY          UVCONST(18446744073709551517) /* Maybe */
- #define MPU_MAX_LUCKY_IDX      UVCONST(393190767000000000)  /* Not correct */
+ #define MPU_MAX_LUCKY_IDX      UVCONST(395236168661920929)  /* Not correct */
 #endif
 
 
