@@ -64,7 +64,7 @@ typedef struct bitmask126_t {
 } bitmask126_t;
 
 static bitmask126_t* bitmask126_create(BMTYPE n) {
-  BMTYPE i, nblocks, nlevels;
+  BMTYPE nblocks, nlevels;
   bitmask126_t *bm;
   New(0, bm, 1, bitmask126_t);
 
@@ -78,7 +78,7 @@ static bitmask126_t* bitmask126_create(BMTYPE n) {
   nblocks = (nblocks + (1U << SSHIFT) - 1) >> SSHIFT;
   Newz(0, bm->sbsize, nblocks, uint16_t);
 
-  for (i=0, nlevels=0;  nlevels < 8 && nblocks > 2*(1U<<TSHIFT);  nlevels++) {
+  for (nlevels=0;  nlevels < 8 && nblocks > 2*(1U<<TSHIFT);  nlevels++) {
     nblocks = (nblocks + (1U << TSHIFT) - 1) >> TSHIFT;
 #if BMDEBUG
     printf("    level %lu blocks = %lu\n", nlevels, nblocks);

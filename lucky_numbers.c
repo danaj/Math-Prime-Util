@@ -30,15 +30,17 @@ static const uint32_t _lmask5[26] = {2334495963,2261929142,1169344621,2204739155
  * number of initial values.  Two different data structure choices for the
  * main sieve:
  *
- * 1) Pagelist using index tree and memmove inside the array.  Fast but can
- *    use quite a bit of memory, and not nearly as fast as the bitmask method
- *    for larger sizes.  But efficient for small sizes.
+ * 1) Pagelist using index tree and memmove inside the array.  Fast for
+ *    smaller sizes, but the bitmask method is faster and much more memory
+ *    efficient once beyond 100M or so.
  *
  * 2) bitmask (32 bits per 126 integers) using index tree.  Quite fast and
- *    less memory than the other methods.
+ *    substantially less memory than the other methods.
+ *
+ * With bitmask, memory grows linearly.
  *
  * Generate first 10M lucky numbers (from 1 to 196502733) on 2020 M1 Mac:
- *           2.6s  lucky_sieve32     memory:  about n/25          (  8MB)
+ *           2.6s  lucky_sieve32     memory:  n/25                (  8MB)
  *           3.1s  pagelist_sieve32  memory:  4 * count * ~2.5    (100MB)
  *           4.2s  pagelist_sieve64  memory:  8 * count * ~2.3    (190MB)
  *        1356s    lucky_cgen        memory:  8 * count * 2       (160MB)
@@ -58,10 +60,13 @@ static const uint32_t _lmask5[26] = {2334495963,2261929142,1169344621,2204739155
  * nth_lucky(1<<35):  991238156013   684 sec using lucky_sieve64  1.3GB
  * nth_lucky(1<<36): 2035487409679  1422 sec using lucky_sieve64  2.6GB
  * nth_lucky(1<<37): 4176793875529  2989 sec using lucky_sieve64  5.3GB
+ *
+ * An Intel 8375C/2.9GHz takes about 1.5x more CPU time.
+ * nth_lucky(1<<39) 17551419620869 in 317min on 8375C/2.9GHz, 20.5GB.
  */
 
 
-/* This is fast for small (less than 10M or so) inputs.
+/* Simple 32-bit pagelist: fast for small (less than 10M or so) inputs.
  * Simple filtering, then sieve a big block using memmove.
  * This is memory intensive and has poor performance with large n.
  */
@@ -199,7 +204,7 @@ uint32_t* _pagelist_lucky_sieve32(UV *size, uint32_t n) {
 }
 
 bitmask126_t* bitmask126_sieve(UV* size, UV n) {
-  UV i, lsize, level, init_level, *lucky;
+  UV i, lsize, level, init_level;
   bitmask126_t *pl;
 
   pl = bitmask126_create(n);
@@ -440,12 +445,12 @@ UV lucky_count(UV n) {
 }
 
 UV nth_lucky_approx(UV n) {
-  double est, corr, m, fn, logn, loglogn, loglogn2;
+  double est, corr, fn, logn, loglogn, loglogn2;
   if (n <= 48)  return (n == 0) ? 0 : _small_lucky[n-1];
   fn = n;  logn = log(fn);  loglogn = log(logn);  loglogn2 = loglogn * loglogn;
 
-  /* Use interpolation so we don't get discontinuities, as well as giving good
-   * results.  We use one formula for small values, and another for larger. */
+  /* Use interpolation so we have monotonic growth, as well as good results.
+   * We use one formula for small values, and another for larger. */
 
   /* p1=1<<14; e1=199123;  p2=1<<16; e2=904225;
    * x1=log(log(p1))^2;  x2=log(log(p2))^2;  y1=(e1/p1-log(p1)-0.5*log(log(p1)))/x1;  y2=(e2/p2-log(p2)-0.5*log(log(p2)))/x2;  m=(y2-y1)/(x2-x1);  printf("      corr = %13.11f + %.11f * (loglogn2 - %.11f);\n", y1, m, x1);
@@ -454,9 +459,9 @@ UV nth_lucky_approx(UV n) {
     if      (n >= 16384)             /* 16384 -- 65536 */
       corr = 0.25427076035 + 0.00883698771 * (loglogn2 - 5.16445809103);
     else if (n >= 2048)              /*  2048 -- 16384 */
-      corr = 0.24513311782 +  0.00880360023 * (loglogn2 - 4.12651426090);
+      corr = 0.24513311782 + 0.00880360023 * (loglogn2 - 4.12651426090);
     else if (n >= 256)               /*   256 --   2048 */
-      corr = 0.25585213066 + -0.00898952075 * (loglogn2 - 2.93412446098);
+      corr = 0.25585213066 - 0.00898952075 * (loglogn2 - 2.93412446098);
     else                             /*    49 --   256 */
       corr = 0.38691439589 - 0.12050840608 * (loglogn2 - 1.84654667704);
     est = fn * (logn + 0.5*loglogn + corr*loglogn2) + 0.5;
@@ -464,20 +469,20 @@ UV nth_lucky_approx(UV n) {
     /* p1=1<<32; e1=113924214621;   p2=1<<37; e2=4176793875529;
      * x1=log(log(p1))^2;  x2=log(log(p2))^2;  y1=(e1/p1-log(p1)-0.5*x1)/x1;  y2=(e2/p2-log(p2)-0.5*x2)/x2;  m=(y2-y1)/(x2-x1);  printf("      corr = %13.11f + %.11f * (loglogn2 - %.11f);\n", y1, m, x1);
      */
-    if      (fn >= 68719476736.0)    /* 2^36 -- 2e11 */
-      corr = -0.04904974983 + -0.00161982023 * (loglogn2 - 10.34912771904);
+    if      (fn >= 68719476736.0)    /* 2^36 -- 2^40 */
+      corr = -0.04904974983 - 0.00155649126 * (loglogn2 - 10.34912771904);
     else if (fn >= 4294967296.0)     /* 2^32 -- 2^36 */
-      corr = -0.04770894029 + -0.00180229750 * (loglogn2 - 9.60518309351);
+      corr = -0.04770894029 - 0.00180229750 * (loglogn2 -  9.60518309351);
     else if (fn >=   67108864)       /* 2^26 -- 2^32 */
-      corr = -0.04484819198 + -0.00229977135 * (loglogn2 - 8.36125581665);
+      corr = -0.04484819198 - 0.00229977135 * (loglogn2 -  8.36125581665);
     else if (fn >=    1048576)       /* 2^20 -- 2^26 */
-      corr = -0.03971615189 + -0.00354309756 * (loglogn2 - 6.91279440604);
-    else if (fn >=      16384)       /* 2^14 -- 2^20 */
-      corr = -0.02571153702 + -0.00801025223 * (loglogn2 - 5.16445809103);
-    else if (fn >=        512)       /* 2^9  -- 2^14 */
-      corr =  0.00990254026 + -0.01964423724 * (loglogn2 - 3.35150517018);
+      corr = -0.03971615189 - 0.00354309756 * (loglogn2 -  6.91279440604);
+    else if (n >=      65536)       /* 2^16 -- 2^20 */
+      corr = -0.03240114452 - 0.00651036735 * (loglogn2 -  5.78920076332);
+    else if (n >=        512)       /* 2^9  -- 2^16 */
+      corr =  0.00990254026 - 0.01735396532 * (loglogn2 -  3.35150517018);
     else                             /* 2^6  -- 2^9 */
-      corr =  0.13714087150 + -0.09637971899 * (loglogn2 - 2.03132772443);
+      corr =  0.13714087150 - 0.09637971899 * (loglogn2 -  2.03132772443);
     /* Hawkins and Briggs (1958), attributed to S. Chowla. */
     est = fn * (logn + (0.5+corr)*loglogn2) + 0.5;
   }
@@ -487,8 +492,9 @@ UV nth_lucky_approx(UV n) {
 UV nth_lucky_upper(UV n) {
   double est, corr;
   if (n <= 48)  return (n == 0) ? 0 : _small_lucky[n-1];
-  corr = (n <= 16384) ? 1.01   :
-                        1.001;   /* verified to n=4e8 / v=1e10 */
+  corr = (n <=  1000) ? 1.01   :
+         (n <=  8200) ? 1.005   :
+                        1.001;   /* verified to n=3e9 / v=1e11 */
   est = corr * nth_lucky_approx(n) + 0.5;
   if (est >= MPU_MAX_LUCKY) return MPU_MAX_LUCKY;
   return (UV)est;
@@ -499,7 +505,8 @@ UV nth_lucky_lower(UV n) {
   est = nth_lucky_approx(n);
   corr = (n <=        122) ? 0.95  :
          (n <=       4096) ? 0.97  :
-                             0.998 ;    /* verified to n=4e8 / v=1e10 */
+         (n <=     115000) ? 0.998 :
+                             0.999 ;    /* verified to n=3e9 / v=1e11 */
   est = corr * nth_lucky_approx(n);
   return (UV)est;
 }
