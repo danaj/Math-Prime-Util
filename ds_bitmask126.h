@@ -22,8 +22,10 @@
 #endif
 
 #define BMDEBUG    0
-#define SSHIFT     3
-#define TSHIFT     4
+/*  Not clear if SSHIFT/TSHIFT should be 3/3, 3/4, 4/3, or 4/4  */
+#define SSHIFT     4
+#define TSHIFT     3
+
 
 #define ADDSIZE(bm, wi, n) \
   { int _i; \
@@ -41,14 +43,29 @@ static unsigned char _bm_bit[63] = {0,1,1,2,3,3,4,5,5,5,6,6,7,7,7,8,9,9,10,10,10
 #define BM_BITN(n)  _bm_bit[(((n)>>1) % 63)]
 #define BM_BITM(n)  (1U << _bm_bit[(((n)>>1) % 63)])
 
+/* From Stanford Bit Twiddling Hacks, via "Nominal Animal" */
 static uint32_t _nth_bit_set(uint32_t n, uint32_t word) {
-  uint32_t bit;
-  for (bit = 0;  bit < 32;  bit++, word >>= 1)
-    if (word & 1)
-      if (n-- == 0)
-        break;
-  if (bit > 31) croak("bitmask126: bad nth_bit");
-  return bit;
+  const uint32_t  pop2  = (word  & 0x55555555u) + ((word  >> 1) & 0x55555555u);
+  const uint32_t  pop4  = (pop2  & 0x33333333u) + ((pop2  >> 2) & 0x33333333u);
+  const uint32_t  pop8  = (pop4  & 0x0f0f0f0fu) + ((pop4  >> 4) & 0x0f0f0f0fu);
+  const uint32_t  pop16 = (pop8  & 0x00ff00ffu) + ((pop8  >> 8) & 0x00ff00ffu);
+  const uint32_t  pop32 = (pop16 & 0x000000ffu) + ((pop16 >>16) & 0x000000ffu);
+  uint32_t        temp, rank = 0;
+
+  if (n++ >= pop32)  return 32;
+
+  temp = pop16 & 0xffu;
+  if (n > temp) { n -= temp; rank += 16; }
+  temp = (pop8 >> rank) & 0xffu;
+  if (n > temp) { n -= temp; rank += 8; }
+  temp = (pop4 >> rank) & 0x0fu;
+  if (n > temp) { n -= temp; rank += 4; }
+  temp = (pop2 >> rank) & 0x03u;
+  if (n > temp) { n -= temp; rank += 2; }
+  temp = (word >> rank) & 0x01u;
+  if (n > temp) rank += 1;
+
+  return rank;
 }
 
 typedef struct bitmask126_t {
@@ -60,7 +77,7 @@ typedef struct bitmask126_t {
   uint8_t*   size;
   uint8_t*   bsize;
   uint16_t*  sbsize;
-  BMTYPE*    tbsize[8];  /* Further index levels */
+  BMTYPE*    tbsize[12];  /* Further index levels */
 } bitmask126_t;
 
 static bitmask126_t* bitmask126_create(BMTYPE n) {
@@ -78,7 +95,7 @@ static bitmask126_t* bitmask126_create(BMTYPE n) {
   nblocks = (nblocks + (1U << SSHIFT) - 1) >> SSHIFT;
   Newz(0, bm->sbsize, nblocks, uint16_t);
 
-  for (nlevels=0;  nlevels < 8 && nblocks > 2*(1U<<TSHIFT);  nlevels++) {
+  for (nlevels=0;  nlevels < 12 && nblocks > 2*(1U<<TSHIFT);  nlevels++) {
     nblocks = (nblocks + (1U << TSHIFT) - 1) >> TSHIFT;
 #if BMDEBUG
     printf("    level %lu blocks = %lu\n", nlevels, nblocks);
