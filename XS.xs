@@ -236,7 +236,7 @@ static int _validate_int(pTHX_ SV* n, int negok)
 #define IFLAG_IV       0x00000008U  /* Value returned as IV */
 
 static int _validate_and_set(UV* val, pTHX_ SV* svn, uint32_t mask) {
-  UV n;
+  UV n = 0;
   int negok = !(mask & IFLAG_POS);
   int status = _validate_int(aTHX_ svn, negok);
 
@@ -2473,11 +2473,12 @@ void nth_almost_prime(IN SV* svk, IN SV* svn)
     nth_almost_prime_lower = 2
     nth_almost_prime_upper = 3
   PREINIT:
-    UV k, n, max, ret;
+    UV k, n, max;
   PPCODE:
     if (_validate_and_set(&k, aTHX_ svk, IFLAG_ABS) &&
         _validate_and_set(&n, aTHX_ svn, IFLAG_ABS) &&
         k < BITS_PER_WORD) {
+      UV ret = 0;
       if (n == 0 || (k == 0 && n > 1)) XSRETURN_UNDEF;
       max = max_almost_prime_count(k);
       if (max > 0  &&  n <= max) {
@@ -3321,13 +3322,13 @@ void mertens(IN SV* svn)
     ramanujan_tau = 7
   PREINIT:
     UV n;
-    IV r;
     int status;
   PPCODE:
     status = _validate_and_set(&n, aTHX_ svn, (ix < 6) ? IFLAG_POS : IFLAG_ANY);
     if (status == -1)
       XSRETURN_IV(0);
     if (status == 1) {
+      IV r = 0;
       switch(ix) {
         case 0:  r = mertens(n); break;
         case 1:  r = liouville(n); break;
@@ -4035,10 +4036,10 @@ foralmostprimes (SV* block, IN UV k, IN SV* svbeg, IN SV* svend = 0)
       while (beg <= end) {
         /* TODO: The ideal size varies with k+range: 8k, 32k, 64k, 256k, ... */
         UV ssize = 65536;
-        if (k > 30 || seg_beg >  9*k3) ssize *= 4;
-        if (k > 35 || seg_beg > 81*k3) ssize *= 4;
         seg_beg = beg;
         seg_end = end;
+        if (k > 30 || seg_beg >  9*k3) ssize *= 4;
+        if (k > 35 || seg_beg > 81*k3) ssize *= 4;
         if ((seg_end - seg_beg) > ssize) seg_end = seg_beg + ssize - 1;
         count = range_almost_prime_sieve(&S, k, seg_beg, seg_end);
         for (c = 0; c < count; c++) {
