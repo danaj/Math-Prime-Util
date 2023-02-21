@@ -6,7 +6,6 @@
 #include "constants.h"
 #include "lucky_numbers.h"
 #include "inverse_interpolate.h"
-#include "ds_pagelist32.h"
 #include "ds_bitmask126.h"
 
 static const int _verbose = 0;
@@ -26,21 +25,19 @@ static const uint32_t _lmask5[26] = {2334495963,2261929142,1169344621,2204739155
 
 /* Lucky Number sieves.
  *
- * Mask presieving for the first 5 levels.  Simple pre-sieving for a small
- * number of initial values.  Two different data structure choices for the
- * main sieve:
+ * Mask presieving for the first 5 levels, followed by pre-sieving with a small
+ * number of initial values.
  *
- * 1) Pagelist using index tree and memmove inside the array.  Fast for
- *    smaller sizes, but the bitmask method is faster and much more memory
- *    efficient once beyond 100M or so.
+ * For fairly small sieves, e.g. 250k or so values, we use a simplied pagelist.
+ * Unlike the full pagelist method, this does not use an index tree.
  *
- * 2) bitmask (32 bits per 126 integers) using index tree.  Quite fast and
- *    substantially less memory than the other methods.
- *
- * With bitmask, memory grows linearly.
+ * For sieving of non-small sizes, a bitmask (32 bits per 126 integers) is
+ * used, with an index tree allowing log(n) time index lookups.  This is much
+ * faster and uses substantially less memory than the other methods.  Memory
+ * use grows linearly with the sieve size n.
  *
  * Generate first 10M lucky numbers (from 1 to 196502733) on 2020 M1 Mac:
- *           2.6s  lucky_sieve32     memory:  n/25                (  8MB)
+ *           1.8s  bitmask126        memory:  n/25                (  8MB)
  *           3.1s  pagelist_sieve32  memory:  4 * count * ~2.5    (100MB)
  *           4.2s  pagelist_sieve64  memory:  8 * count * ~2.3    (190MB)
  *        1356s    lucky_cgen        memory:  8 * count * 2       (160MB)
@@ -53,16 +50,19 @@ static const uint32_t _lmask5[26] = {2334495963,2261929142,1169344621,2204739155
  * nth_lucky(1<<34):  482339741617   733 sec using lucky_sieve64 12.1GB
  *
  * bitmask:
- * nth_lucky(1<<31):   55291335127    35 sec using lucky_sieve32   89MB
- * nth_lucky(1<<32):  113924214621    74 sec using lucky_sieve64  173MB
- * nth_lucky(1<<33):  234516370291   157 sec using lucky_sieve64  341MB
- * nth_lucky(1<<34):  482339741617   330 sec using lucky_sieve64  677MB
- * nth_lucky(1<<35):  991238156013   684 sec using lucky_sieve64  1.3GB
- * nth_lucky(1<<36): 2035487409679  1422 sec using lucky_sieve64  2.6GB
- * nth_lucky(1<<37): 4176793875529  2989 sec using lucky_sieve64  5.3GB
+ * nth_lucky(1<<31):   55291335127    24 sec using lucky_sieve32   89MB
+ * nth_lucky(1<<32):  113924214621    51 sec using lucky_sieve64  173MB
+ * nth_lucky(1<<33):  234516370291   107 sec using lucky_sieve64  341MB
+ * nth_lucky(1<<34):  482339741617   225 sec using lucky_sieve64  677MB
+ * nth_lucky(1<<35):  991238156013   471 sec using lucky_sieve64  1.3GB
+ * nth_lucky(1<<36): 2035487409679   994 sec using lucky_sieve64  2.6GB
+ * nth_lucky(1<<37): 4176793875529  2063 sec using lucky_sieve64  5.3GB
  *
- * An Intel 8375C/2.9GHz takes about 1.5x more CPU time.
- * nth_lucky(1<<39) 17551419620869 in 317min on 8375C/2.9GHz, 20.5GB.
+ * A Graviton3 r7g takes about 1.6x more CPU time.
+ * nth_lucky(1<<39)  17551419620869 in 264min on Graviton3 r7g, 21GB.
+ * nth_lucky(1<<40)  35944896074391 in 582min on Graviton3 r7g, 42GB.
+ * nth_lucky(1<<41)  73571139180453 in 1205min on Graviton3 r7g, 84GB.
+ * nth_lucky(1<<42) 150499648533909 in 2530min on Graviton3 r7g, 168GB.
  */
 
 
@@ -127,6 +127,8 @@ uint32_t* _small_lucky_sieve32(UV *size, uint32_t n) {
   return lucky;
 }
 
+#if 0  /* No longer used */
+#include "ds_pagelist32.h"
 uint32_t* _pagelist_lucky_sieve32(UV *size, uint32_t n) {
   uint32_t i, m, lsize, level, init_level, *lucky;
   pagelist32_t *pl;
@@ -202,6 +204,7 @@ uint32_t* _pagelist_lucky_sieve32(UV *size, uint32_t n) {
   pagelist32_destroy(pl);
   return lucky;
 }
+#endif
 
 bitmask126_t* bitmask126_sieve(UV* size, UV n) {
   UV i, lsize, level, init_level;
@@ -212,12 +215,11 @@ bitmask126_t* bitmask126_sieve(UV* size, UV n) {
   /* make initial list using filters for small lucky numbers. */
   {
     UV slsize;
-    uint32_t sln, ln, lbeg, lend, m, *count, *slucky;
+    uint32_t m, sln, ln, lbeg, lend, *count, *slucky;
 
     /* Decide how much additional filtering we'll do. */
-    sln =  (n <=    1000000)  ?  105  :
-           (n <=  100000000)  ?  127  :
-           (n <= 0xFFFFFFFF)  ?  151  :  163;
+    sln =  (n <=  200000000)  ?   21  :
+           (n <= 0xFFFFFFFF)  ?   25  :   87;
     slucky = _small_lucky_sieve32(&slsize, sln);
     Newz(0, count, slsize, uint32_t);
     lbeg = 5;
@@ -271,7 +273,6 @@ uint32_t* lucky_sieve32(UV *size, uint32_t n) {
   if (n > 4294967275U)  n = 4294967275U;  /* Max 32-bit lucky number */
 
   if (n <=   280000U) return _small_lucky_sieve32(size, n);
-  if (n <= 70000000U) return _pagelist_lucky_sieve32(size, n);
 
   pl = bitmask126_sieve(size, n);
 
@@ -469,7 +470,9 @@ UV nth_lucky_approx(UV n) {
     /* p1=1<<32; e1=113924214621;   p2=1<<37; e2=4176793875529;
      * x1=log(log(p1))^2;  x2=log(log(p2))^2;  y1=(e1/p1-log(p1)-0.5*x1)/x1;  y2=(e2/p2-log(p2)-0.5*x2)/x2;  m=(y2-y1)/(x2-x1);  printf("      corr = %13.11f + %.11f * (loglogn2 - %.11f);\n", y1, m, x1);
      */
-    if      (fn >= 68719476736.0)    /* 2^36 -- 2^40 */
+    if    (fn >= 1099511627776.0)    /* 2^40 -- 2^42 */
+      corr = -0.05012215934 - 0.00141424235 * (loglogn2 - 11.03811938314);
+    else if (fn >= 68719476736.0)    /* 2^36 -- 2^40 */
       corr = -0.04904974983 - 0.00155649126 * (loglogn2 - 10.34912771904);
     else if (fn >= 4294967296.0)     /* 2^32 -- 2^36 */
       corr = -0.04770894029 - 0.00180229750 * (loglogn2 -  9.60518309351);
