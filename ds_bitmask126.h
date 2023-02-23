@@ -240,10 +240,9 @@ static bitmask126_iter_t bitmask126_iterator_create(bitmask126_t *bm, BMTYPE idx
 }
 
 static BMTYPE bitmask126_iterator_next(bitmask126_iter_t *iter) {
-  BMTYPE v;
-  uint32_t bit = iter->bit;
-  uint32_t wi  = iter->wi;
-  uint32_t w = iter->data[wi] >> bit;
+  BMTYPE   v, wi  = iter->wi;
+  uint32_t    bit = iter->bit;
+  uint32_t    w   = iter->data[wi] >> bit;
 
   while (w == 0) {   /* skip any empty words */
     w = iter->data[++wi];
@@ -270,10 +269,9 @@ static BMTYPE bitmask126_iterator_next(bitmask126_iter_t *iter) {
 }
 
 static BMTYPE bitmask126_iterator_prev(bitmask126_iter_t *iter) {
-  BMTYPE v;
-  int      bit = iter->bit;
-  uint32_t wi  = iter->wi;
-  uint32_t w   = iter->data[wi];
+  BMTYPE   v, wi  = iter->wi;
+  int         bit = iter->bit;
+  uint32_t    w   = iter->data[wi];
 
   do {
     if (bit < 0) {
