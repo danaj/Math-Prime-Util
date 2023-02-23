@@ -222,11 +222,6 @@ static void bitmask126_delete(bitmask126_t *bm, BMTYPE idx) { /* idx 0,1,... */
 
 
 
-/* TODO:  The iterator might be faster using a function that gets all values
- * from a word and inserts into an array.  The iterator could hand these off
- * and refill as needed.
- */
-
 typedef struct bitmask126_iter_t {
   bitmask126_t *bm;
   uint32_t     *data;
@@ -236,7 +231,7 @@ typedef struct bitmask126_iter_t {
 
 static bitmask126_iter_t bitmask126_iterator_create(bitmask126_t *bm, BMTYPE idx) {
   bitmask126_iter_t iter;
-  if (idx >= bm->nelems) croak("bitmask 126: invalid iterator initial position\n");
+  if (idx >= bm->nelems) croak("bitmask126: invalid iterator initial position\n");
   iter.bm = bm;
   iter.data = bm->data;
   iter.wi = _bitmask126_find_index(bm, &idx);
@@ -246,40 +241,44 @@ static bitmask126_iter_t bitmask126_iterator_create(bitmask126_t *bm, BMTYPE idx
 
 static BMTYPE bitmask126_iterator_next(bitmask126_iter_t *iter) {
   BMTYPE v;
-  uint32_t w = iter->data[iter->wi] >> iter->bit;
+  uint32_t bit = iter->bit;
+  uint32_t wi  = iter->wi;
+  uint32_t w = iter->data[wi] >> bit;
 
   while (w == 0) {   /* skip any empty words */
-    w = iter->bm->data[++iter->wi];
-    iter->bit = 0;
+    w = iter->data[++wi];
+    bit = 0;
   }
 
-  for ( ; iter->bit < 32; iter->bit++, w >>= 1)    /* Find next set bit */
+#if defined(__GNUC__) && (__GNUC__ >= 4 || (__GNUC__ == 3 && __GNUC_MINOR__ >= 4))
+  bit += __builtin_ctzl(w);
+#else
+  for ( ; bit < 32; bit++, w >>= 1)    /* Find next set bit */
     if (w & 1)
       break;
-  if (iter->bit > 31) croak("bitmask126: iterator bad nth_bit");
+#endif
 
-  v = iter->wi * 126 + _bm_offset[iter->bit];
+  v = wi * 126 + _bm_offset[bit];
 
-  iter->bit++;              /* Skip to next set bit */
-  if (iter->bit > 31) {
-    iter->bit = 0;
-    iter->wi++;
+  if (++bit > 31) {   /* Skip to next set bit */
+    bit = 0;
+    wi++;
   }
+  iter->bit = bit;
+  iter->wi  = wi;
   return v;
 }
 
 static BMTYPE bitmask126_iterator_prev(bitmask126_iter_t *iter) {
   BMTYPE v;
-  uint32_t w;
-  int bit = iter->bit;
-
-  if (iter->wi >= iter->bm->nwords) croak("bitmask126: iterator underflow");
-  w = iter->data[iter->wi];
+  int      bit = iter->bit;
+  uint32_t wi  = iter->wi;
+  uint32_t w   = iter->data[wi];
 
   do {
     if (bit < 0) {
-      if (iter->wi == 0) croak("bitmask126: iterator underflow");
-      w = iter->data[--iter->wi];
+      if (wi == 0) croak("bitmask126: iterator underflow");
+      w = iter->data[--wi];
       bit = 31;
     }
     for ( ; bit >= 0; bit--) {      /* Find prev set bit */
@@ -288,13 +287,14 @@ static BMTYPE bitmask126_iterator_prev(bitmask126_iter_t *iter) {
     }
   } while (bit < 0);
 
-  v = iter->wi * 126 + _bm_offset[bit];
+  v = wi * 126 + _bm_offset[bit];
 
   if (bit > 0) {
     iter->bit = bit-1;
+    iter->wi = wi;
   } else {
     iter->bit = 31;
-    iter->wi--;
+    iter->wi = wi-1;
   }
   return v;
 }
