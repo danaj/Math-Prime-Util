@@ -50,19 +50,20 @@ static const uint32_t _lmask5[26] = {2334495963,2261929142,1169344621,2204739155
  * nth_lucky(1<<34):  482339741617   733 sec using lucky_sieve64 12.1GB
  *
  * bitmask:
- * nth_lucky(1<<31):   55291335127    24 sec using lucky_sieve32   89MB
- * nth_lucky(1<<32):  113924214621    51 sec using lucky_sieve64  173MB
+ * nth_lucky(1<<31):   55291335127    23 sec using lucky_sieve32   89MB
+ * nth_lucky(1<<32):  113924214621    50 sec using lucky_sieve64  173MB
  * nth_lucky(1<<33):  234516370291   107 sec using lucky_sieve64  341MB
- * nth_lucky(1<<34):  482339741617   225 sec using lucky_sieve64  677MB
- * nth_lucky(1<<35):  991238156013   471 sec using lucky_sieve64  1.3GB
- * nth_lucky(1<<36): 2035487409679   994 sec using lucky_sieve64  2.6GB
+ * nth_lucky(1<<34):  482339741617   224 sec using lucky_sieve64  675MB
+ * nth_lucky(1<<35):  991238156013   469 sec using lucky_sieve64  1.3GB
+ * nth_lucky(1<<36): 2035487409679   987 sec using lucky_sieve64  2.6GB
  * nth_lucky(1<<37): 4176793875529  2063 sec using lucky_sieve64  5.3GB
  *
  * A Graviton3 r7g takes about 1.6x more CPU time.
- * nth_lucky(1<<39)  17551419620869 in 264min on Graviton3 r7g, 21GB.
- * nth_lucky(1<<40)  35944896074391 in 582min on Graviton3 r7g, 42GB.
+ * nth_lucky(1<<39)  17551419620869 in 255min on Graviton3 r7g, 21GB.
+ * nth_lucky(1<<40)  35944896074391 in 531min on Graviton3 r7g, 42GB.
  * nth_lucky(1<<41)  73571139180453 in 1205min on Graviton3 r7g, 84GB.
  * nth_lucky(1<<42) 150499648533909 in 2530min on Graviton3 r7g, 168GB.
+ * nth_lucky(1<<43) 307703784778627 in 3691min on Graviton3 r7g, 334GB.
  */
 
 
@@ -212,27 +213,25 @@ bitmask126_t* bitmask126_sieve(UV* size, UV n) {
 
   pl = bitmask126_create(n);
 
-  /* make initial list using filters for small lucky numbers. */
   {
-    UV slsize;
-    uint32_t m, sln, ln, lbeg, lend, *count, *slucky;
+    uint8_t count[48] = {0};
+    uint32_t m, sln, ln, lbeg, lend;
 
     /* Decide how much additional filtering we'll do. */
     sln =  (n <=  200000000)  ?   21  :
            (n <= 0xFFFFFFFF)  ?   25  :   87;
-    slucky = _small_lucky_sieve32(&slsize, sln);
-    Newz(0, count, slsize, uint32_t);
-    lbeg = 5;
-    lend = slsize-1;
+    for (lbeg = lend = 5; lend < 48; lend++)
+      if (_small_lucky[lend] >= sln)
+        break;
 
-    if (_verbose) printf("bitmask lucky pre-sieve using %u lucky numbers up to %u\n", lend, slucky[lend]);
+    if (_verbose) printf("bitmask lucky pre-sieve using %u lucky numbers up to %u\n", lend, _small_lucky[lend]);
 
     /* Construct the initial list */
     for (i = 1, m = 0; i <= n; i += 2, m += 1) {
       if (m >= 819) m -= 819;  /* m = (i>>1) % 819 */
       if (_lmask5[m >> 5] & (1U << (m & 0x1F))) {
         for (ln = lbeg; ln <= lend; ln++) {
-          if (++count[ln] == slucky[ln]) {
+          if (++count[ln] == _small_lucky[ln]) {
             count[ln] = 0;
             break;
           }
@@ -242,8 +241,6 @@ bitmask126_t* bitmask126_sieve(UV* size, UV n) {
       }
     }
     init_level = lend+1;
-    Safefree(slucky);
-    Safefree(count);
   }
 
   lsize = pl->nelems;
@@ -272,7 +269,7 @@ uint32_t* lucky_sieve32(UV *size, uint32_t n) {
   if (n == 0) { *size = 0; return 0; }
   if (n > 4294967275U)  n = 4294967275U;  /* Max 32-bit lucky number */
 
-  if (n <=   280000U) return _small_lucky_sieve32(size, n);
+  if (n <=   240000U) return _small_lucky_sieve32(size, n);
 
   pl = bitmask126_sieve(size, n);
 
@@ -470,8 +467,8 @@ UV nth_lucky_approx(UV n) {
     /* p1=1<<32; e1=113924214621;   p2=1<<37; e2=4176793875529;
      * x1=log(log(p1))^2;  x2=log(log(p2))^2;  y1=(e1/p1-log(p1)-0.5*x1)/x1;  y2=(e2/p2-log(p2)-0.5*x2)/x2;  m=(y2-y1)/(x2-x1);  printf("      corr = %13.11f + %.11f * (loglogn2 - %.11f);\n", y1, m, x1);
      */
-    if    (fn >= 1099511627776.0)    /* 2^40 -- 2^42 */
-      corr = -0.05012215934 - 0.00141424235 * (loglogn2 - 11.03811938314);
+    if    (fn >= 1099511627776.0)    /* 2^40 -- 2^43 */
+      corr = -0.05012215934 - 0.00139445216 * (loglogn2 - 11.03811938314);
     else if (fn >= 68719476736.0)    /* 2^36 -- 2^40 */
       corr = -0.04904974983 - 0.00155649126 * (loglogn2 - 10.34912771904);
     else if (fn >= 4294967296.0)     /* 2^32 -- 2^36 */
@@ -595,12 +592,12 @@ int is_lucky(UV n) {
   lsize = 1+lucky_count_upper(n);
 
   { /* Check more small values */
-    UV psize = 800, gfac = 6;
+    UV psize = 600, gfac = 6;
     while (psize < lsize/3) {
       res = test_lucky_to(psize, &i, &pos);
       if (res != -1) return res;
       psize *= gfac;
-      gfac += 2;
+      gfac += 1;
     }
   }
   res = test_lucky_to(lsize, &i, &pos);
