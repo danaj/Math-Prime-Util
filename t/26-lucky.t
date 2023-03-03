@@ -22,8 +22,8 @@ plan tests => 5 + 1*$extra                # lucky_numbers
             + 3 + (0+$nsamples)*$extra    # nth_lucky
             + 1                           # lucky_count
             + 1                           # lucky_count ranges
-            + 4                           # lucky_count bounds
-            + 10;                         # nth_lucky bounds
+            + 5                           # lucky_count bounds
+            + 11;                         # nth_lucky bounds
 
 
 ###### lucky_numbers sieve
@@ -126,6 +126,8 @@ is_deeply( [map { check_count_bounds($samples{$_},$_) } keys %samples],
            [map { 1 } keys %samples],
            "lucky count bounds for small samples" );
 
+is(check_count_bounds(307703784778627, 8796093022208), 1, "lucky count bounds for 2^43-rd lucky number");
+
 ###### nth_lucky
 
 is( nth_lucky(0), undef, "nth_lucky(0) returns undef" );
@@ -148,6 +150,7 @@ is(check_nth_bounds(123456, 1795453), 1, "nth_lucky(123456) bounds");
 is(check_nth_bounds(5286238, 99999979), 1, "nth_lucky(5286238) bounds");
 is(check_nth_bounds(46697909, 999999991), 1, "nth_lucky(46697909) bounds");
 is(check_nth_bounds(1<<31, 55291335127), 1, "nth_lucky(2^31) bounds");
+is(check_nth_bounds(1<<43, 307703784778627), 1, "nth_lucky(2^43) bounds");
 
 is_deeply( [map { check_nth_bounds($_, $ln1k->[$_-1]) } 1..100],
            [map { 1 } 1..100],

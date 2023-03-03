@@ -381,13 +381,18 @@ static UV _simple_lucky_count_approx(UV n) {
                               : (1.03654 - logn/(100*log(logn))) * n/logn;
 }
 static UV _simple_lucky_count_upper(UV n) {
-  return   (n <= 10000) ?   5 + _simple_lucky_count_approx(n) * 1.01
-         : (n <= 1e10)  ?  50 + _simple_lucky_count_approx(n) * 1.011
-                        :  60 + _simple_lucky_count_approx(n) * 1.0360;
+  double a, logn = log(n);
+  if (n <=    6) return (n > 0) + (n > 2);
+  if (n <= 7000) return 5 + 1.039 * n/logn;
+
+  /* Don't make discontinities */
+  a = (n < 10017000) ?   0.58003 - 3.00e-9 * (n-7000)   : 0.55;
+  return n/(1.065*logn - a - 3.1/logn - 2.85/(logn*logn));
 }
 static UV _simple_lucky_count_lower(UV n) {
-  return   (n <= 10000) ?  _simple_lucky_count_approx(n) * 0.98
-                        :  _simple_lucky_count_approx(n) * 0.99;
+  if (n <=     6) return (n > 0) + (n > 2);
+  if (n <=  9000) return 1.028 * n/log(n) - 1;
+  return 0.99 * _simple_lucky_count_approx(n);
 }
 
 UV lucky_count_approx(UV n) {
@@ -400,19 +405,21 @@ UV lucky_count_approx(UV n) {
 }
 UV lucky_count_upper(UV n) {   /* Holds under 1e9 */
   UV lo, hi;
-  if (n < 48) return _small_lucky_count[n];
-    return _simple_lucky_count_upper(n);
-#if 0 && BITS_PER_WORD == 64
-  if (n > UVCONST(18409850581000000000))
+  if (n <       48) return _small_lucky_count[n];
+  /* The count estimator is better than nth lucky estimator for small values */
+  if (n < 40000000) return _simple_lucky_count_upper(n);
+#if 1 && BITS_PER_WORD == 64
+  if (n > UVCONST(18428297000000000000))
     return _simple_lucky_count_upper(n);
 #endif
   lo = _simple_lucky_count_lower(n);
-  hi = _simple_lucky_count_upper(n);
+  hi = 1 + (_simple_lucky_count_upper(n) * 1.001);
   return inverse_interpolate(lo, hi, n, &nth_lucky_lower, 0);
 }
 UV lucky_count_lower(UV n) {   /* Holds under 1e9 */
   UV lo, hi;
-  if (n < 48) return _small_lucky_count[n];
+  if (n <    48) return _small_lucky_count[n];
+  if (n <  9000) return _simple_lucky_count_lower(n);
   lo = _simple_lucky_count_lower(n);
   hi = _simple_lucky_count_upper(n);
   return inverse_interpolate(lo, hi, n, &nth_lucky_upper, 0);

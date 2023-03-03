@@ -987,9 +987,10 @@ sub _simple_lucky_count_approx {
 }
 sub _simple_lucky_count_upper {
   my $n = shift;
-  my $est = ($n <= 10000)  ?  10 + _simple_lucky_count_approx($n) * 1.1
-                           : 140 + _simple_lucky_count_approx($n) * 1.004;
-  int($est);
+  return 0 + ($n > 0) + ($n > 2) if $n < 7;
+  return int(5 + 1.039 * $n/log($n)) if $n <= 7000;
+  my $a = ($n < 10017000) ?   0.58003 - 3.00e-9 * ($n-7000)   : 0.55;
+  return int($n/(1.065*log($n) - $a - 3.1/log($n) - 2.85/(log($n)*log($n))));
 }
 sub _simple_lucky_count_lower {
   my $n = shift;
