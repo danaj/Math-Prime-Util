@@ -116,6 +116,7 @@ sub entropy_bytes {
 *inverse_li = \&Math::Prime::Util::PP::inverse_li;
 *sieve_prime_cluster = \&Math::Prime::Util::PP::sieve_prime_cluster;
 *sieve_range = \&Math::Prime::Util::PP::sieve_range;
+*lucky_numbers = \&Math::Prime::Util::PP::lucky_numbers;
 
 *prime_power_count = \&Math::Prime::Util::PP::prime_power_count;
 *twin_prime_count = \&Math::Prime::Util::PP::twin_prime_count;
@@ -804,12 +805,6 @@ sub Pi {
   my($digits) = @_;
   _validate_positive_integer($digits) if defined $digits;
   return Math::Prime::Util::PP::Pi($digits);
-}
-
-sub lucky_numbers {
-  my($n) = @_;
-  _validate_positive_integer($n);
-  return Math::Prime::Util::PP::lucky_numbers($n);
 }
 
 #############################################################################

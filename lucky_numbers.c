@@ -59,10 +59,10 @@ static const uint32_t _lmask5[26] = {2334495963,2261929142,1169344621,2204739155
  * nth_lucky(1<<37): 4176793875529  2063 sec using lucky_sieve64  5.3GB
  *
  * A Graviton3 r7g takes about 1.6x more CPU time.
- * nth_lucky(1<<39)  17551419620869 in 255min on Graviton3 r7g, 21GB.
- * nth_lucky(1<<40)  35944896074391 in 531min on Graviton3 r7g, 42GB.
- * nth_lucky(1<<41)  73571139180453 in 1205min on Graviton3 r7g, 84GB.
- * nth_lucky(1<<42) 150499648533909 in 2530min on Graviton3 r7g, 168GB.
+ * nth_lucky(1<<39)  17551419620869 in 258min on Graviton3 r7g, 21GB.
+ * nth_lucky(1<<40)  35944896074391 in 523min on Graviton3 r7g, 42GB.
+ * nth_lucky(1<<41)  73571139180453 in 1112min on Graviton3 r7g, 84GB.
+ * nth_lucky(1<<42) 150499648533909 in 2303min on Graviton3 r7g, 168GB.
  * nth_lucky(1<<43) 307703784778627 in 3691min on Graviton3 r7g, 334GB.
  */
 
@@ -71,7 +71,7 @@ static const uint32_t _lmask5[26] = {2334495963,2261929142,1169344621,2204739155
  * Simple filtering, then sieve a big block using memmove.
  * This is memory intensive and has poor performance with large n.
  */
-uint32_t* _small_lucky_sieve32(UV *size, uint32_t n) {
+static uint32_t* _small_lucky_sieve32(UV *size, uint32_t n) {
   uint32_t i, m, c13, level, init_level, fsize, lsize, *lucky;
 
   if (n < 259) {
@@ -207,7 +207,7 @@ uint32_t* _pagelist_lucky_sieve32(UV *size, uint32_t n) {
 }
 #endif
 
-bitmask126_t* bitmask126_sieve(UV* size, UV n) {
+static bitmask126_t* _bitmask126_sieve(UV* size, UV n) {
   UV i, lsize, level, init_level;
   bitmask126_t *pl;
 
@@ -271,7 +271,7 @@ uint32_t* lucky_sieve32(UV *size, uint32_t n) {
 
   if (n <=   240000U) return _small_lucky_sieve32(size, n);
 
-  pl = bitmask126_sieve(size, n);
+  pl = _bitmask126_sieve(size, n);
 
   lucky = bitmask126_to_array32(size, pl);
   if (_verbose) printf("lucky_sieve32 done copying.\n");
@@ -285,11 +285,34 @@ UV* lucky_sieve64(UV *size, UV n) {
 
   if (n == 0) { *size = 0; return 0; }
 
-  pl = bitmask126_sieve(size, n);
+  pl = _bitmask126_sieve(size, n);
 
   lucky = bitmask126_to_array(size, pl);
   if (_verbose) printf("lucky_sieve64 done copying.\n");
   bitmask126_destroy(pl);
+  return lucky;
+}
+
+UV* lucky_sieve_range(UV *size, UV beg, UV end) {
+  UV i, nlucky, startcount, *lucky;
+  bitmask126_t *pl;
+  bitmask126_iter_t iter;
+
+  if (end == 0 || beg > end) { *size = 0; return 0; }
+
+  if (beg <= 1)  return lucky_sieve64(size, end);
+
+  startcount = lucky_count_lower(beg) - 1;
+  pl = _bitmask126_sieve(size, end);
+  New(0, lucky, *size - startcount, UV);
+  iter = bitmask126_iterator_create(pl, startcount);
+  for (i = startcount, nlucky = 0;  i < *size;  i++) {
+    UV l = bitmask126_iterator_next(&iter);
+    if (l >= beg)
+      lucky[nlucky++] = l;
+  }
+  bitmask126_destroy(pl);
+  *size = nlucky;
   return lucky;
 }
 
@@ -426,7 +449,7 @@ UV lucky_count_range(UV lo, UV hi) {
   } else {
     /* We use the iterator here to cut down on memory use. */
     UV i, hicount = hi/2, locount = lo/2;
-    bitmask126_t* pl = bitmask126_sieve(&nlucky, lsize);
+    bitmask126_t* pl = _bitmask126_sieve(&nlucky, lsize);
     bitmask126_iter_t iter = bitmask126_iterator_create(pl, 1);
     for (i = 1; i < nlucky; i++) {
       UV l = bitmask126_iterator_next(&iter);
@@ -523,7 +546,7 @@ UV nth_lucky(UV n) {
       k += k/(lucky32[i]-1);
     Safefree(lucky32);
   } else { /* Iterate backwards through the sieve directly to save memory. */
-    bitmask126_t* pl = bitmask126_sieve(&nlucky, n);
+    bitmask126_t* pl = _bitmask126_sieve(&nlucky, n);
     bitmask126_iter_t iter = bitmask126_iterator_create(pl, nlucky-1);
     for (i = nlucky-1, k = n-1; i >= 1; i--)
       k += k / (bitmask126_iterator_prev(&iter) - 1);
@@ -533,7 +556,7 @@ UV nth_lucky(UV n) {
 }
 
 
-static int test_lucky_to(UV lsize, UV *beg, UV *end) {
+static int _test_lucky_to(UV lsize, UV *beg, UV *end) {
   UV i = *beg, pos = *end, l, quo, nlucky;
   int ret = -1;
 
@@ -549,7 +572,7 @@ static int test_lucky_to(UV lsize, UV *beg, UV *end) {
     Safefree(lucky32);
   } else {
     /* For 64-bit, iterate directly through the bit-mask to save memory. */
-    bitmask126_t* pl = bitmask126_sieve(&nlucky, lsize);
+    bitmask126_t* pl = _bitmask126_sieve(&nlucky, lsize);
     if (i < nlucky) {
       bitmask126_iter_t iter = bitmask126_iterator_create(pl, i);
       while (i < nlucky) {
@@ -594,12 +617,12 @@ int is_lucky(UV n) {
   { /* Check more small values */
     UV psize = 600, gfac = 6;
     while (psize < lsize/3) {
-      res = test_lucky_to(psize, &i, &pos);
+      res = _test_lucky_to(psize, &i, &pos);
       if (res != -1) return res;
       psize *= gfac;
       gfac += 1;
     }
   }
-  res = test_lucky_to(lsize, &i, &pos);
+  res = _test_lucky_to(lsize, &i, &pos);
   return (res == 0) ? 0 : 1;
 }

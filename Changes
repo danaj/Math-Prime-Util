@@ -102,7 +102,7 @@ Revision history for Perl module Math::Prime::Util
     - nth_perfect_power_approx(n)     fast approximate nth perfect power
     - nth_perfect_power_lower(n)      fast nth perfect power lower bound
     - nth_perfect_power_upper(n)      fast nth perfect power upper bound
-    - lucky_numbers(n)                array ref of lucky numbers <= n
+    - lucky_numbers([start],] end)    array ref of lucky numbers
     - lucky_count([start,] end)       count of lucky numbers
     - lucky_count_approx(n)           fast approximate lucky count
     - lucky_count_lower(n)            fast lucky count lower bound

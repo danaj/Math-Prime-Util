@@ -921,18 +921,21 @@ my @_lf63 = (0,0,1,0,0,1,0,0,1,0,0,1,0,0,1,0,0,1,1,1,1,0,0,1,0,0,1,1,1,1,0,0,1,0
 my @_small_lucky = (undef,1,3,7,9,13,15,21,25,31,33,37,43,49,51,63,67,69,73,75,79,87,93,99,105,111,115,127,129,133,135,141,151,159,163,169,171,189,193,195);
 
 sub lucky_numbers {
-  my $n = shift;
-  return [] if $n <= 0;
+  my($lo,$hi) = @_;
+  if (defined $hi) { _validate_positive_integer($lo); }
+  else             { ($lo,$hi) = (1, $lo);            }
+  _validate_positive_integer($hi);
+  return [] if $hi < $lo || $hi == 0;
 
   my @lucky;
   # This wheel handles the evens and every 3rd by a mod 6 wheel,
   # then uses the mask to skip every 7th and 9th remaining value.
-  for (my $k = 1;  $k <= $n;  $k += 6) {
+  for (my $k = 1;  $k <= $hi;  $k += 6) {
     my $m63 = $k % 63;
     push @lucky, $k unless $_lf63[$m63];
     push @lucky, $k+2 unless $_lf63[$m63+2];
   }
-  delete $lucky[-1] if $lucky[-1] > $n;
+  delete $lucky[-1] if $lucky[-1] > $hi;
 
   # Do the standard lucky sieve.
   for (my $k = 4; $k <= $#lucky && $lucky[$k]-1 <= $#lucky; $k++) {
@@ -940,6 +943,9 @@ sub lucky_numbers {
       splice(@lucky, $index, 1);
     }
   }
+
+  if ($lo > 1) { @lucky = grep { $_ >= $lo } @lucky; }
+
   \@lucky;
 }
 
@@ -949,9 +955,29 @@ sub lucky_count {
   else             { ($lo,$hi) = (1, $lo);            }
   _validate_positive_integer($hi);
   return 0 if $hi < $lo || $hi == 0;
-  my $ln = lucky_numbers($hi);
-  $ln = [grep { $_ >= $lo } @$ln] if $lo > 1;
-  scalar(@$ln);
+
+  # Return from our static data if very small.
+  return scalar(grep { defined $_ && $_ >= $lo && $_ <= $hi } @_small_lucky) if $hi <= $_small_lucky[-1];
+
+  # Trivial but slow way:
+  # return scalar(@{Math::Prime::Util::lucky_numbers($lo, $hi)});
+
+  $lo-- if $lo & 1;
+  $hi++ if $hi & 1;
+  my $lsize = 1 + lucky_count_upper($hi);
+  my ($locount, $hicount) = ($lo >> 1, $hi >> 1);
+  my $ln = Math::Prime::Util::lucky_numbers($lsize);
+  shift @$ln;
+  if ($lo <= 1) {
+    $hicount -= int($hicount / $_) for @$ln;
+  } else {
+    for my $l (@$ln) {
+      last if $l > $hicount;
+      $locount -= int($locount / $l) if $l <= $lo;
+      $hicount -= int($hicount / $l);
+    }
+  }
+  return $hicount - $locount;
 }
 sub _simple_lucky_count_approx {
   my $n = shift;

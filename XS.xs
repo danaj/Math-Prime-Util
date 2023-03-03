@@ -1072,30 +1072,35 @@ almost_prime_sieve(IN UV k, IN UV lo, IN UV hi)
     return;
 
 void
-lucky_numbers(IN UV high)
+lucky_numbers(IN SV* svlo, IN SV* svhi = 0)
   PREINIT:
     AV* av;
-    UV i, num;
+    UV lo = 0, hi, i, nlucky = 0;
   PPCODE:
-    av = newAV();
-    {
-      SV * retsv = sv_2mortal(newRV_noinc( (SV*) av ));
-      PUSHs(retsv);
-      PUTBACK;
-      SP = NULL; /* never use SP again, poison */
-    }
-    if (high <= UVCONST(4000000000)) {
-      uint32_t* lucky = lucky_sieve32(&num, high);
-      for (i = 0; i < num; i++)
-        av_push(av,newSVuv(lucky[i]));
-      Safefree(lucky);
+    if ((items == 1 && _validate_and_set(&hi, aTHX_ svlo, IFLAG_POS)) ||
+        (items == 2 && _validate_and_set(&lo, aTHX_ svlo, IFLAG_POS) && _validate_and_set(&hi, aTHX_ svhi, IFLAG_POS))) {
+      av = newAV();
+      {
+        SV * retsv = sv_2mortal(newRV_noinc( (SV*) av ));
+        PUSHs(retsv);
+        PUTBACK;
+        SP = NULL; /* never use SP again, poison */
+      }
+      if (lo == 0 && hi <= UVCONST(4000000000)) {
+        uint32_t* lucky = lucky_sieve32(&nlucky, hi);
+        for (i = 0; i < nlucky; i++)
+          av_push(av,newSVuv(lucky[i]));
+        Safefree(lucky);
+      } else {
+        UV* lucky = lucky_sieve_range(&nlucky, lo, hi);
+        for (i = 0; i < nlucky; i++)
+          av_push(av,newSVuv(lucky[i]));
+        Safefree(lucky);
+      }
     } else {
-      UV* lucky = lucky_sieve64(&num, high);
-      for (i = 0; i < num; i++)
-        av_push(av,newSVuv(lucky[i]));
-      Safefree(lucky);
+      _vcallsub_with_pp("lucky_numbers");
     }
-    return; /* skip implicit PUTBACK */
+    return;
 
 void
 sieve_range(IN SV* svn, IN UV width, IN UV depth)

@@ -17,7 +17,7 @@ my %samples = (1144=>10239, 3378=>34639, 4996=>53595, 24406=>308119, 26427=>3362
 my $nsamples = scalar(keys %samples);
 
 plan tests => 5 + 1*$extra                # lucky_numbers
-            + 1                           # lucky_numbers ranges
+            + 2                           # lucky_numbers ranges
             + 7 + (1+$nsamples)*$extra    # is_lucky
             + 3 + (0+$nsamples)*$extra    # nth_lucky
             + 1                           # lucky_count
@@ -59,8 +59,7 @@ SKIP: {
 }
 
 # ranges
-SKIP: {
-  skip "lucky_numbers should take ranges.  Skipping until it does.",1;
+{
   my(@expect,@got);
   for my $lo (0 .. 40) {
     for my $hi (0 .. 40) {
@@ -69,6 +68,8 @@ SKIP: {
     }
   }
   is_deeply( \@got, \@expect, "all lucky numbers ranges 0 .. 40" );
+
+  is_deeply( lucky_numbers(51221,51289), [51229,51253,51255,51271,51283,51289], "range sieve: lucky_numbers(51221,51289)" );
 }
 
 ###### is_lucky

@@ -4184,18 +4184,26 @@ If you want the enumerated partitions, see L</forpart>.
 
 =head2 lucky_numbers
 
-Given a 32-/64-bit non-negative integer C<n>,
+Given a single 32-/64-bit non-negative integer C<n>,
 returns an array reference of values up to the input C<n> (inclusive)
 which remain after the lucky number sieve originally defined by
 Gardiner, Lazarus, Metropolis, and Ulam.
 This is L<OEIS series A000959|http://oeis.org/A000959>.
 
+If given two non-negative integers C<lo> and C<hi>, returns sieve results
+between the two ranges inclusive.  This is identical to the above but does
+not include any numbers less than C<lo>.  Currently there is very little
+time savings, but it does use less memory.
+
 A surprising number of asymptotic properties of the primes are shared
 with this sieve, though the resulting sets are quite different.
 
-There is no current algorithm for efficiently sieving a segment,
-and the time for the monolithic sieving process by currently known
-best methods is empirically C<O(n^1.8)>.
+There is no current algorithm for efficiently sieving a segment, though
+the method used here is orders of magnitude faster than those linked
+on OEIS as of early 2023.
+CPU time growth is similar to prime sieving, about C<n log n>.
+Memory use is linear with size and uses about C<n/25> bytes for the
+internal sieve.
 
 =head2 is_lucky
 
@@ -4203,7 +4211,7 @@ Given an integer C</n>, Returns C<1> if the C<n> is included in the
 set of lucky numbers and returns C<0> otherwise.
 The process used is analogous to trial division using the lucky
 numbers less than C<n/log(n)>.
-For inputs not immediately discarded, the performance is essentially
+For inputs not quickly discarded, the performance is essentially
 the same as generating the nth lucky number nearest to the input.
 
 =head2 lucky_count
@@ -4236,7 +4244,7 @@ Given a non-negative integer C<n>, returns the C<n>-th lucky number.
 This is done by sieving lucky numbers to C<n> then performing
 a reverse calculation to determine the value at the nth position.
 This is much more efficient than generating all the lucky numbers
-up to the nth position, but is vastly slower than L</nth_prime>.
+up to the nth position, but is much slower than L</nth_prime>.
 
 =head2 nth_lucky_approx
 
