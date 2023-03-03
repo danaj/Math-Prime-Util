@@ -2012,8 +2012,8 @@ void nth_lucky(IN SV* svn)
   PREINIT:
     UV n, ret;
   PPCODE:
-    /* TODO: max lucky number */
-    if ( _validate_and_set(&n, aTHX_ svn, IFLAG_POS) ) {
+    if ( _validate_and_set(&n, aTHX_ svn, IFLAG_POS) &&
+         n <= MPU_MAX_LUCKY_IDX ) {
       if (n == 0) XSRETURN_UNDEF;
       switch (ix) {
         case 0:  ret = nth_lucky(n); break;
