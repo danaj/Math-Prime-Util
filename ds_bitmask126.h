@@ -72,7 +72,7 @@ typedef struct bitmask126_t {
   BMTYPE     n;
   BMTYPE     nelems;
   BMTYPE     nwords;
-  BMTYPE     nilevels;
+  int        nilevels;
   uint32_t*  data;
   uint8_t*   size;
   uint8_t*   bsize;
@@ -108,7 +108,7 @@ static bitmask126_t* bitmask126_create(BMTYPE n) {
 }
 
 static void bitmask126_destroy(bitmask126_t *bm) {
-  BMTYPE i;
+  int i;
 
   Safefree(bm->data);
   Safefree(bm->size);
