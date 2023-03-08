@@ -28,7 +28,7 @@ static const uint32_t _lmask5[26] = {2334495963,2261929142,1169344621,2204739155
  * Mask presieving for the first 5 levels, followed by pre-sieving with a small
  * number of initial values.
  *
- * For fairly small sieves, e.g. 250k or so values, we use a simplied pagelist.
+ * For fairly small sieves, less than 250k or so, we use a simplied pagelist.
  * Unlike the full pagelist method, this does not use an index tree.
  *
  * For sieving of non-small sizes, a bitmask (32 bits per 126 integers) is
