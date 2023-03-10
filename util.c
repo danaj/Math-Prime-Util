@@ -381,20 +381,23 @@ UV* range_totient(UV lo, UV hi) {
 }
 
 #define _CACHED_SUMT(x) \
-  (((x)<csize && cdata[x]!=0)  ?  cdata[x]  :  _sumt((x), cdata, csize))
+  (((x)<csize)  ?  cdata[x]  :  _sumt((x), cdata, csize))
 
 static UV _sumt(UV n, UV *cdata, UV csize) {
-  UV sum, m, x, y;
+  UV sum, s, k, lim;
 
-  if (n <= 1) return 0;
-  if (n < csize && cdata[n] != 0)  return cdata[n];
+  if (n < csize) return cdata[n];
+  sum = (n & 1)  ?  n*((n+1)>>1)  :  (n>>1)*(n+1);
+  s = isqrt(n);
+  lim = n/(s+1);
 
-  sum = (n & 1)  ?  n*((n-1)>>1)  :  (n>>1)*(n-1);
-
-  for (m = 2, x = n/m, y = n/x;  y < n;  m = y+1, x = n/m, y = n/x) {
-    sum -= (y - m + 1)  *  _CACHED_SUMT(x);
+  sum -= (n - n/2) * _CACHED_SUMT(1);
+  for (k = 2; k <= lim; k++) {
+    sum -= _CACHED_SUMT(n/k);
+    sum -= ((n/k) - (n/(k+1))) * _CACHED_SUMT(k);
   }
-  sum -= (n - m + 1)  *  _CACHED_SUMT(x);
+  if (s > lim)
+    sum -= ((n/s) - (n/(s+1))) * _CACHED_SUMT(s);
 
   if (n < csize)  cdata[n] = sum;
   return sum;
@@ -409,7 +412,7 @@ UV sumtotient(UV n) {
   if (n <= 2)  return n;
   if (n > MAX_TOTSUM)  return 0;
 
-  if (n < 500) {    /* For very small values, do a simple sum */
+  if (n < 250) {    /* For very small values, do a simple sum */
     UV *phi = range_totient(0,n);
     for (sum = 0, i = 1; i <= n; i++)
       sum += phi[i];
@@ -417,17 +420,16 @@ UV sumtotient(UV n) {
     return sum;
   }
 
-  csize = 6 * icbrt(n) * icbrt(n);
+  csize = 4 * icbrt(n) * icbrt(n);
 
   sumcache = range_totient(0, csize-1);
-  sumcache[1] = 0;
-  for (i = 3; i < csize; i++)
+  for (i = 2; i < csize; i++)
     sumcache[i] += sumcache[i-1];
 
   sum = _sumt(n, sumcache, csize);
   Safefree(sumcache);
 
-  return 1+sum;
+  return sum;
 }
 
 #if 0

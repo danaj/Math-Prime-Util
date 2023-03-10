@@ -1290,22 +1290,27 @@ sub euler_phi_range {
 
 sub _sumtot {
   my($n, $cdata, $ecache) = @_;
-  return 0 if $n <= 1;
   return $cdata->[$n] if $n <= $#$cdata;
   return $ecache->{$n} if defined $ecache->{$n};
 
-  my $sum = ($n&1)  ?  Mmulint($n, ($n-1) >> 1)  :  Mmulint($n >> 1, $n-1);
+  my $sum = Mmulint($n, $n+1) >> 1;
+  my $s = sqrtint($n);
+  my $lim = Mdivint($n, $s+1);
 
-  my $m = 2;
-  my $x = Mdivint($n,$m);
-  my $y = Mdivint($n,$x);
-  while ($y < $n) {
-    $sum -= Mmulint($y - $m + 1,  ($x <= $#$cdata) ? $cdata->[$x] : _sumtot($x, $cdata, $ecache));
-    $m = $y+1;
-    $x = Mdivint($n,$m);
-    $y = Mdivint($n,$x);
+  my($x, $nextx) = ($n, Mdivint($n,2));
+  $sum -= Mmulint($x - $nextx, $cdata->[1]);
+  for my $k (2 .. $lim) {
+    ($x,$nextx) = ($nextx, Mdivint($n,$k+1));
+    $sum -= ($x <= $#$cdata) ? $cdata->[$x] : _sumtot($x, $cdata, $ecache);
+    $sum -= Mmulint($x - $nextx,
+                    ($k <= $#$cdata) ? $cdata->[$k] : _sumtot($k, $cdata, $ecache));
   }
-  $sum -= Mmulint($n - $m + 1,  ($x <= $#$cdata) ? $cdata->[$x] : _sumtot($x, $cdata, $ecache));
+  if ($s > $lim) {
+    ($x,$nextx) = ($nextx, Mdivint($n,$s+1));
+    $sum -= Mmulint($x - $nextx,
+                    ($s <= $#$cdata) ? $cdata->[$s] : _sumtot($s, $cdata, $ecache));
+  }
+
   if ($n <= $#$cdata) { $cdata->[$n]  = $sum; }
   else                { $ecache->{$n} = $sum; }
   $sum;
@@ -1316,19 +1321,18 @@ sub sumtotient {
   _validate_num($n) || _validate_positive_integer($n);
   return $n if $n <= 2;
 
-  if ($n < 75) {     # Simple linear sum for small values.
+  if ($n < 900) {     # Simple linear sum for small values.
     my $sum = 0;
     $sum += $_ for Mtotient(1,$n);
     return $sum;
   }
 
   my $cbrt = Mrootint($n,3);
-  my $csize = Mvecprod(1, $cbrt, $cbrt);
-  $csize = 50_000_000 if $csize > 50_000_000;  # Limit memory use to ~2GB
+  my $csize = Mvecprod(4, $cbrt, $cbrt);
+  $csize = 50_000_000 if $csize > 50_000_000;  # Limit memory use to ~2.5GB
   my @sumcache = Mtotient(0,$csize);
-  $sumcache[1] = 0;
-  $sumcache[$_] += $sumcache[$_-1] for 3 .. $csize;
-  1 + _sumtot($n, \@sumcache, {});
+  $sumcache[$_] += $sumcache[$_-1] for 2 .. $csize;
+  _sumtot($n, \@sumcache, {});
 }
 
 
