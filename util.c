@@ -380,6 +380,56 @@ UV* range_totient(UV lo, UV hi) {
   return totients;
 }
 
+#define _CACHED_SUMT(x) \
+  (((x)<csize && cdata[x]!=0)  ?  cdata[x]  :  _sumt((x), cdata, csize))
+
+static UV _sumt(UV n, UV *cdata, UV csize) {
+  UV sum, m, x, y;
+
+  if (n <= 1) return 0;
+  if (n < csize && cdata[n] != 0)  return cdata[n];
+
+  sum = (n & 1)  ?  n*((n-1)>>1)  :  (n>>1)*(n-1);
+
+  for (m = 2, x = n/m, y = n/x;  y < n;  m = y+1, x = n/m, y = n/x) {
+    sum -= (y - m + 1)  *  _CACHED_SUMT(x);
+  }
+  sum -= (n - m + 1)  *  _CACHED_SUMT(x);
+
+  if (n < csize)  cdata[n] = sum;
+  return sum;
+}
+
+#define MAX_TOTSUM ( (BITS_PER_WORD == 64) ? UVCONST(7790208950) : 118868 )
+
+UV sumtotient(UV n) {
+  UV *sumcache;
+  UV sum, i, csize;
+
+  if (n <= 2)  return n;
+  if (n > MAX_TOTSUM)  return 0;
+
+  if (n < 500) {    /* For very small values, do a simple sum */
+    UV *phi = range_totient(0,n);
+    for (sum = 0, i = 1; i <= n; i++)
+      sum += phi[i];
+    Safefree(phi);
+    return sum;
+  }
+
+  csize = 6 * icbrt(n) * icbrt(n);
+
+  sumcache = range_totient(0, csize-1);
+  sumcache[1] = 0;
+  for (i = 3; i < csize; i++)
+    sumcache[i] += sumcache[i-1];
+
+  sum = _sumt(n, sumcache, csize);
+  Safefree(sumcache);
+
+  return 1+sum;
+}
+
 #if 0
 IV mertens(UV n) {
   /* See Deléglise and Rivat (1996) for O(n^2/3 log(log(n))^1/3) algorithm.

@@ -1503,6 +1503,39 @@ vecequal(IN SV* a, IN SV* b)
     return;
 
 void
+vecmex(...)
+  ALIAS:
+    vecpmex = 1
+  PROTOTYPE: @
+  PREINIT:
+    char *setv;
+    int i, status = 1;
+    UV min, ret, n;
+    uint32_t mask;
+  PPCODE:
+    if (ix == 0) {
+      min = 0;
+      mask = IFLAG_POS;
+    } else {
+      min = 1;
+      mask = IFLAG_POS | IFLAG_NONZERO;
+    }
+    if (items == 0)
+      XSRETURN_UV(min);
+    Newz(0, setv, items, char);
+    for (i = 0; i < items; i++) {
+      status = _validate_and_set(&n, aTHX_ ST(i), mask);
+      /* Ignore any bigint */
+      if (status == 1 && n-min < (UV)items)
+        setv[n-min] = 1;
+    }
+    for (i = 0; i < items; i++)
+      if (setv[i] == 0)
+        break;
+    Safefree(setv);
+    XSRETURN_UV(i+min);
+
+void
 chinese(...)
   ALIAS:
     chinese2 = 1
@@ -3268,6 +3301,7 @@ void factorial(IN SV* svn)
   ALIAS:
     primorial = 1
     pn_primorial = 2
+    sumtotient = 3
   PREINIT:
     UV n, r;
   PPCODE:
@@ -3277,14 +3311,16 @@ void factorial(IN SV* svn)
         case 0:  r = factorial(n);    break;
         case 1:  r = primorial(n);    break;
         case 2:  r = pn_primorial(n); break;
+        case 3:  r = sumtotient(n);   break;
         default: break;
       }
-      if (r > 0) XSRETURN_UV(r);
+      if (n == 0 || r > 0) XSRETURN_UV(r);
     }
     switch (ix) {
       case 0:  _vcallsub_with_pp("factorial"); break;  /* use PP */
       case 1:  _vcallsub_with_gmp(0.37,"primorial"); break;
       case 2:  _vcallsub_with_gmp(0.37,"pn_primorial"); break;
+      case 3:  _vcallsub_with_gmp(0.00,"sumtotient"); break;
       default: break;
     }
     objectify_result(aTHX_ svn, ST(0));

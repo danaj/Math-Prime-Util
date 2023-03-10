@@ -89,9 +89,9 @@ my @functions =  qw(
       sqrtmod allsqrtmod rootmod allrootmod
       invmod addmod submod mulmod divmod powmod qnr
       vecsum vecmin vecmax vecprod vecreduce vecextract vecequal
-      vecany vecall vecnotall vecnone vecfirst vecfirstidx
+      vecany vecall vecnotall vecnone vecfirst vecfirstidx vecmex vecpmex
       moebius mertens liouville sumliouville prime_omega prime_bigomega
-      euler_phi jordan_totient exp_mangoldt
+      euler_phi jordan_totient exp_mangoldt sumtotient
       partitions bernfrac bernreal harmfrac harmreal
       chebyshev_theta chebyshev_psi
       divisor_sum carmichael_lambda kronecker hclassno inverse_totient

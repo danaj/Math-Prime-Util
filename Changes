@@ -11,6 +11,7 @@ Revision history for Perl module Math::Prime::Util
     [ADDED]
 
     - sumliouville(n)                 L(n), sum of liouville(1..n)
+    - sumtotient(n)                   sum of euler_phi(1..n)
     - prime_bigomega(n)               # of factors (with multiplicity)
     - prime_omega(n)                  # of factors (distinct)
     - powint(a, b)                    signed integer a^b
@@ -112,6 +113,8 @@ Revision history for Perl module Math::Prime::Util
     - nth_lucky_lower(n)              fast nth lucky number lower bound
     - nth_lucky_upper(n)              fast nth lucky number upper bound
     - chinese2([a1,m1],[a2,m2],...)   CRT returning (solution,modulus)
+    - vecmex(...)                     least non-negative value not in list
+    - vecpmex(...)                    least positive value not in list
 
     [FIXES]
 

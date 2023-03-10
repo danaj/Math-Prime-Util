@@ -213,6 +213,7 @@ t/26-issemiprime.t
 t/26-issquarefree.t
 t/26-istotient.t
 t/26-lucky.t
+t/26-mex.t
 t/26-mod.t
 t/26-pillai.t
 t/26-polygonal.t

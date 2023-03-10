@@ -93,6 +93,7 @@ BEGIN {
 *Mvaluation = \&Math::Prime::Util::valuation;
 *Mkronecker = \&Math::Prime::Util::kronecker;
 *Mmoebius = \&Math::Prime::Util::moebius;
+*Mtotient = \&Math::Prime::Util::euler_phi;
 *Mfactorial = \&Math::Prime::Util::factorial;
 *Mprimorial = \&Math::Prime::Util::primorial;
 *Mpn_primorial = \&Math::Prime::Util::pn_primorial;
@@ -1131,7 +1132,7 @@ sub consecutive_integer_lcm {
 sub jordan_totient {
   my($k, $n) = @_;
   return ($n == 1) ? 1 : 0  if $k == 0;
-  return euler_phi($n)      if $k == 1;
+  return Mtotient($n)       if $k == 1;
   return ($n == 1) ? 1 : 0  if $n <= 1;
 
   return Math::Prime::Util::_reftyped($_[0], Math::Prime::Util::GMP::jordan_totient($k, $n))
@@ -1286,6 +1287,50 @@ sub euler_phi_range {
   }
   @totients;
 }
+
+sub _sumtot {
+  my($n, $cdata, $ecache) = @_;
+  return 0 if $n <= 1;
+  return $cdata->[$n] if $n <= $#$cdata;
+  return $ecache->{$n} if defined $ecache->{$n};
+
+  my $sum = ($n&1)  ?  Mmulint($n, ($n-1) >> 1)  :  Mmulint($n >> 1, $n-1);
+
+  my $m = 2;
+  my $x = Mdivint($n,$m);
+  my $y = Mdivint($n,$x);
+  while ($y < $n) {
+    $sum -= Mmulint($y - $m + 1,  ($x <= $#$cdata) ? $cdata->[$x] : _sumtot($x, $cdata, $ecache));
+    $m = $y+1;
+    $x = Mdivint($n,$m);
+    $y = Mdivint($n,$x);
+  }
+  $sum -= Mmulint($n - $m + 1,  ($x <= $#$cdata) ? $cdata->[$x] : _sumtot($x, $cdata, $ecache));
+  if ($n <= $#$cdata) { $cdata->[$n]  = $sum; }
+  else                { $ecache->{$n} = $sum; }
+  $sum;
+}
+
+sub sumtotient {
+  my($n) = @_;
+  _validate_num($n) || _validate_positive_integer($n);
+  return $n if $n <= 2;
+
+  if ($n < 75) {     # Simple linear sum for small values.
+    my $sum = 0;
+    $sum += $_ for Mtotient(1,$n);
+    return $sum;
+  }
+
+  my $cbrt = Mrootint($n,3);
+  my $csize = Mvecprod(1, $cbrt, $cbrt);
+  $csize = 50_000_000 if $csize > 50_000_000;  # Limit memory use to ~2GB
+  my @sumcache = Mtotient(0,$csize);
+  $sumcache[1] = 0;
+  $sumcache[$_] += $sumcache[$_-1] for 3 .. $csize;
+  1 + _sumtot($n, \@sumcache, {});
+}
+
 
 sub prime_bigomega {
   return scalar(Mfactor($_[0]));
@@ -2245,7 +2290,7 @@ sub ramanujan_sum {
   my $g = $k / Mgcd($k,$n);
   my $m = Mmoebius($g);
   return $m if $m == 0 || $k == $g;
-  $m * (Math::Prime::Util::euler_phi($k) / Math::Prime::Util::euler_phi($g));
+  $m * (Mtotient($k) / Mtotient($g));
 }
 
 sub liouville {
@@ -2288,7 +2333,7 @@ sub exp_mangoldt {
 
 sub carmichael_lambda {
   my($n) = @_;
-  return euler_phi($n) if $n < 8;          # = phi(n) for n < 8
+  return Mtotient($n) if $n < 8;           # = phi(n) for n < 8
   return $n >> 2 if ($n & ($n-1)) == 0;    # = phi(n)/2 = n/4 for 2^k, k>2
 
   my @pe = Mfactor_exp($n);
@@ -4417,6 +4462,30 @@ sub vecequal {
   1;
 }
 
+sub vecmex {
+  my $items = scalar(@_);
+  my @seen;
+  for (@_) {
+    $seen[$_] = 0 if $_ < $items;
+  }
+  for (0 .. $items-1) {
+    return $_ unless defined $seen[$_];
+  }
+  return $items;
+}
+
+sub vecpmex {
+  my $items = scalar(@_);
+  my @seen;
+  for (@_) {
+    $seen[$_] = 0 if $_ <= $items;
+  }
+  for (1 .. $items) {
+    return $_ unless defined $seen[$_];
+  }
+  return $items+1;
+}
+
 sub sumdigits {
   my($n,$base) = @_;
   my $sum = 0;
@@ -6273,7 +6342,7 @@ sub is_primitive_root {
   }
 
   return 0 if Mgcd($a, $n) != 1;
-  my $s = Math::Prime::Util::euler_phi($n);
+  my $s = Mtotient($n);
   return 0 if ($s % 2) == 0 && Mpowmod($a,$s >> 1,$n) == 1;
   return 0 if ($s % 3) == 0 && Mpowmod($a,int($s/3),$n) == 1;
   return 0 if ($s % 5) == 0 && Mpowmod($a,int($s/5),$n) == 1;
@@ -6439,7 +6508,7 @@ sub znprimroot {
   return if $n % 4 == 0;
   my $phi = $n-1;
   if (!is_prob_prime($n)) {
-    $phi = euler_phi($n);
+    $phi = Mtotient($n);
     # Check that a primitive root exists.
     return if $phi != Math::Prime::Util::carmichael_lambda($n);
   }

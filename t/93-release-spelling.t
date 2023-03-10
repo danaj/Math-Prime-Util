@@ -35,14 +35,14 @@ add_stopwords(qw/-th
                  lastfor
                  numtoperm permtonum randperm
                  totient moebius mertens liouville kronecker znorder znprimroot znlog
-                 sumliouville
+                 sumliouville sumtotient
                  gcd lcm gcdext chinese
                  sqrtmod allsqrtmod rootmod allrootmod
                  invmod addmod submod mulmod powmod divmod
                  binomialmod factorialmod
                  bernfrac bernreal harmfrac harmreal stirling hclassno
                  vecsum vecprod vecmin vecmax vecreduce vecextract vecequal
-                 vecall vecany vecnone vecnotall vecfirst vecfirstidx
+                 vecall vecany vecnone vecnotall vecfirst vecfirstidx vecmex vecpmex
                  sqrtint logint rootint powint addint subint mulint divint modint negint absint divrem tdivrem fdivrem
                  qnr
                  todigits todigitstring fromdigits sumdigits hammingweight

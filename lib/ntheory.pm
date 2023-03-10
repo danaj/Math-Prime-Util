@@ -214,6 +214,8 @@ Tags:
   vecnotall { ... } @list             return true if not all are true
   vecfirst { ... } @list              return first value that evals true
   vecfirstidx { ... } @list           return first index that evals true
+  vecmex(@list)                       return least non-neg value not in list
+  vecpmex(@list)                      return least positive value not in list
 
 =head2 MATH
 
@@ -308,6 +310,7 @@ Tags:
   euler_phi(beg, end)                 Euler totient for a range
   inverse_totient(n)                  image of Euler totient
   jordan_totient(n,k)                 Jordan's totient
+  sumtotient(n)                       sum of Euler totient for 1 to n
   carmichael_lambda(n)                Carmichael's Lambda function
   ramanujan_sum(k,n)                  Ramanujan's sum
   exp_mangoldt                        exponential of Mangoldt function

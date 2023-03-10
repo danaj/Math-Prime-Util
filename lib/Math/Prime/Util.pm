@@ -95,9 +95,9 @@ our @EXPORT_OK =
       sqrtmod allsqrtmod rootmod allrootmod
       invmod addmod submod mulmod divmod powmod qnr
       vecsum vecmin vecmax vecprod vecreduce vecextract vecequal
-      vecany vecall vecnotall vecnone vecfirst vecfirstidx
+      vecany vecall vecnotall vecnone vecfirst vecfirstidx vecmex vecpmex
       moebius mertens liouville sumliouville prime_omega prime_bigomega
-      euler_phi jordan_totient exp_mangoldt
+      euler_phi jordan_totient exp_mangoldt sumtotient
       partitions bernfrac bernreal harmfrac harmreal
       chebyshev_theta chebyshev_psi
       divisor_sum carmichael_lambda kronecker hclassno inverse_totient
@@ -3599,6 +3599,32 @@ Those modules have additional functionality so this is not a complete
 comparison.
 
 
+=head2 vecmex
+
+  my $minimum_excluded = vecmex(0,1,2,4,6);  # returns 3
+
+Given a list of non-negative integers, returns the smallest non-negative
+integer that is not in the list.  C<mex> is short for "minimum excluded".
+The list can be seen as a set, and the return value is the minimum
+of the set complement.  Repeated values are allowed in the list.
+
+C<vecmex>() = 0.
+C<vecmex>(0,1,2,...,I<w>) = I<w>+1.
+
+
+=head2 vecpmex
+
+  my $minimum_excluded = vecmex(1,2,4,6);  # returns 3
+
+Given a list of positive integers, returns the smallest positive
+integer that is not in the list.  C<mex> is short for "minimum excluded".
+The list can be seen as a set, and the return value is the minimum
+of the set complement.  Repeated values are allowed in the list.
+
+C<vecpmex>() = 1.
+C<vecpmex>(1,2,...,I<w>) = I<w>+1.
+
+
 =head2 todigits
 
   say "product of digits of n: ", vecprod(todigits($n));
@@ -3978,6 +4004,16 @@ This counts the number of k-tuples less than or equal to n that form a coprime
 tuple with n.  As with C<euler_phi>, 0 is returned for all C<n E<lt> 1>.
 This function can be used to generate some other useful functions, such as
 the Dedekind psi function, where C<psi(n) = J(2,n) / J(1,n)>.
+
+=head2 sumtotient
+
+Given a non-negative integer C<n>,
+returns the summatory Euler totient function.
+This function is defined as C<sum(euler_phi(1..n))>, but calculated
+much more efficiently.
+A sub-linear time recursion is implemented, using O(n^2/3) memory.
+
+This is L<OEIS series A002088|http://oeis.org/A002088>.
 
 
 =head2 ramanujan_sum

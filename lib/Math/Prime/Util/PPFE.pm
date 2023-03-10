@@ -192,6 +192,7 @@ sub entropy_bytes {
 *moebius = \&Math::Prime::Util::PP::moebius;
 *euler_phi = \&Math::Prime::Util::PP::euler_phi;
 *inverse_totient = \&Math::Prime::Util::PP::inverse_totient;
+*sumtotient = \&Math::Prime::Util::PP::sumtotient;
 *valuation = \&Math::Prime::Util::PP::valuation;
 *chinese = \&Math::Prime::Util::PP::chinese;
 *chinese2 = \&Math::Prime::Util::PP::chinese2;
@@ -639,6 +640,19 @@ sub vecmax {
   my(@v) = @_;
   _validate_integer($_) for @v;
   return Math::Prime::Util::PP::vecmax(@v);
+}
+sub vecmex {
+  my(@v) = @_;
+  _validate_positive_integer($_) for @v;
+  return Math::Prime::Util::PP::vecmex(@v);
+}
+sub vecpmex {
+  my(@v) = @_;
+  for (@v) {
+    _validate_positive_integer($_);
+    croak "parameter must be a positive integer (x > 0)" if $_ <= 0;
+  }
+  return Math::Prime::Util::PP::vecpmex(@v);
 }
 sub invmod {
   my ($a, $n) = @_;
