@@ -365,9 +365,15 @@ UV prime_count_lower(UV n)
   /* Axler 2014: https://arxiv.org/abs/1409.1780  (v7 2016), Cor 3.6
    * show variations of this. */
 
-  if (n <= 300000) { /* Quite accurate and avoids calling Li for speed. */
-    a = (n < 70200) ? 947 : (n < 176000) ? 904 : 829;
-    lower = fn / (fl1 - 1 - 1/fl1 - 2.85/fl2 - 13.15/(fl1*fl2) + a/(fl2*fl2));
+  if (n <= 300070) { /* Quite accurate and avoids calling Li for speed. */
+    /* Based on Axler 2022, page 9, Corollary 5.1 */
+    a = (n <  69720) ? 905 :
+        (n <  70120) ? 961 :
+        (n <  88800) ? 918.2 :
+        (n < 176000) ? 887.7 :
+        (n < 299270) ? 839.46 :
+                       846.66;  /* Good to 300071 */
+    lower = fn / (fl1 - 1 - 1/fl1 - 2.975666/fl2 - 13.024334/(fl1*fl2) + a/(fl2*fl2));
   } else if (n < UVCONST(4000000000)) {
     /* Loose enough that FP differences in Li(n) should be ok. */
     a = (n <     88783) ?   4.0L
@@ -433,6 +439,8 @@ UV prime_count_upper(UV n)
    *
    * upper = fn/(fl1-1.0L-1.0L/fl1-3.35L/fl2-12.65L/(fl2*fl1)-89.6L/(fl2*fl2));
    * return (UV) floorl(upper);
+   *
+   * Axler 2022: https://arxiv.org/pdf/2203.05917.pdf (v4 2022) improves this.
    */
 
   if (BITS_PER_WORD == 32 || fn <= 821800000.0) {  /* Dusart 2010, page 2 */
