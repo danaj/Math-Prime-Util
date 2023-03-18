@@ -2123,22 +2123,40 @@ sub is_practical {
 }
 
 sub is_delicate_prime {
-  my($n) = @_;
+  my($n, $b) = @_;
 
-  return 0 if $n < 100;  # Easily seen.
+  $b = 10 unless defined $b;
+  croak "is_delicate_prime base must be >= 2" if $b < 2;
+
+  return 0 if $b == 10 && $n < 100;   # Easy shown.
+  return 1 if $b ==  3 && $n == 2;
   return 0 unless Mis_prime($n);
 
-  # We'll use a string replacement method, because it's a lot easier with
-  # Perl and we can completely ignore all bigint type issues.
-
-  my $ndigits = length($n);
-  for my $d (0 .. $ndigits-1) {
-    my $N = "$n";
-    my $dold = substr($N,$d,1);
-    for my $dnew (0 .. 9) {
-      next if $dnew == $dold;
-      substr($N,$d,1) = $dnew;
-      return 0 if Mis_prime($N);
+  if ($b == 10) {
+    # String replacement method.  Faster in Perl.
+    my $ndigits = length($n);
+    for my $d (0 .. $ndigits-1) {
+      my $N = "$n";
+      my $dold = substr($N,$d,1);
+      for my $dnew (0 .. 9) {
+        next if $dnew == $dold;
+        substr($N,$d,1) = $dnew;
+        return 0 if Mis_prime($N);
+      }
+    }
+  } else {
+    # Using todigitstring is slightly faster for bases < 10, but this is
+    # decent and works for all 32-bit bases.
+    # This is faster than Stamm's algorithm (in Perl, for possible bigints).
+    my $D = [Math::Prime::Util::todigits($n, $b)];
+    for my $d (0 .. $#$D) {
+      my $dold = $D->[$d];
+      for my $dnew (0 .. $b-1) {
+        next if $dnew == $dold;
+        $D->[$d] = $dnew;
+        return 0 if Mis_prime(Math::Prime::Util::fromdigits($D,$b));
+      }
+      $D->[$d] = $dold;
     }
   }
   1;

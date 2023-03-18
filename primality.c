@@ -886,7 +886,7 @@ static void calc_perrin_sig(UV* S, UV n) {
 #endif
 }
 
-int is_perrin_pseudoprime(UV n, int restricted)
+int is_perrin_pseudoprime(UV n, uint32_t restricted)
 {
   int jacobi, i;
   UV S[6];

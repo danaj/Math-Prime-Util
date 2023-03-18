@@ -3145,31 +3145,59 @@ int is_practical(UV n) {
   return 1;
 }
 
-int is_delicate_prime(UV n) {
-  UV d, dnew, dold, digpow, maxd = (BITS_PER_WORD == 32) ? 9 : 19;
+int is_delicate_prime(UV n, uint32_t b) {
 
-  /* All 1, 2, 3, and 4 digit inputs are false.  For one digit, we can see
-   * that given a prime [X] there is another prime [Y].  For two digits,
-   * it's easily checked that for any prime X[Y] there exists a prime Z[Y].
-   * Since it isn't immediately clear for larger inputs, just check them. */
-  if (n < 100) return 0;
+  if (b < 2) croak("is_delicate_prime base must be >= 2");
+  if (b == 10 && n < 100)  return 0;  /* All 1,2,3,4 digit inputs are false */
+  if (b ==  3 && n ==  2)  return 1;
+
   if (!is_prime(n)) return 0;
-  if (n >= ipow(10,maxd)) return -1;  /* We can't check all values */
 
-  /* Check the last digit, given a > 1 digit prime, must be one of these. */
-  dold = n % 10;
-  if ( (dold != 1 && is_prime(n - dold + 1)) ||
-       (dold != 3 && is_prime(n - dold + 3)) ||
-       (dold != 7 && is_prime(n - dold + 7)) ||
-       (dold != 9 && is_prime(n - dold + 9)) )
-    return 0;
+  if (b == 10) {
 
-  /* Check the rest of the digits. */
-  for (d = 1, digpow = 10;  d <= maxd && n >= digpow;  digpow *= 10, d++) {
-    dold = (n / digpow) % 10;
-    for (dnew = 0; dnew < 10; dnew++)
-      if (dnew != dold && is_prime(n - dold*digpow + dnew*digpow))
-        return 0;
+    UV d, dold, dnew, digpow, maxd = (BITS_PER_WORD == 32) ? 9 : 19;
+
+    if (n >= ipow(10,maxd)) return -1;  /* We can't check all values */
+
+    /* Check the last digit, given a > 1 digit prime, must be one of these. */
+    dold = n % 10;
+    if ( (dold != 1 && is_prime(n - dold + 1)) ||
+         (dold != 3 && is_prime(n - dold + 3)) ||
+         (dold != 7 && is_prime(n - dold + 7)) ||
+         (dold != 9 && is_prime(n - dold + 9)) )
+      return 0;
+
+    /* Check the rest of the digits. */
+    for (d = 1, digpow = 10;  d <= maxd && n >= digpow;  digpow *= 10, d++) {
+      dold = (n / digpow) % 10;
+      for (dnew = 0; dnew < 10; dnew++)
+        if (dnew != dold && is_prime(n - dold*digpow + dnew*digpow))
+          return 0;
+    }
+
+  } else {
+
+    /* Algorithm isWeakly from Emily Stamm, 2020 */
+    UV current, m, bm = 1;
+    for (m = 0;  n >= bm;  m++, bm *= b) {
+      uint32_t j, counter;
+      UV bmb = bm * b;
+      if ( ((UV_MAX/b) < bm) || ((UV_MAX-bmb) < n) ) return -1; /* overflow */
+      /* Check all n + j * b^m are composite */
+      for (counter = 0, current = n+bm;
+           (n % bm) != (current % bmb);
+           counter++,  current += bm) {
+        if (counter >= b-1) croak("is_delicate_prime overflow failure\n");
+        if (is_prime(current))
+          return 0;
+      }
+      /* Check all n - j * b^m are composite */
+      for (j = 1, current = n-bm;  j < b-counter;  j++, current -= bm) {
+        if (is_prime(current))
+          return 0;
+      }
+    }
+
   }
   return 1;
 }

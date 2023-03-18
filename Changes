@@ -38,7 +38,7 @@ Revision history for Perl module Math::Prime::Util
     - is_smooth(n,k)                  is n a k-smooth number
     - is_rough(n,k)                   is n a k-rough number
     - is_practical(n)                 is n a practical number
-    - is_delicate_prime(n)            is n a digitally delicate prime
+    - is_delicate_prime(n[,b])        is n a digitally delicate prime (base b)
     - is_sum_of_squares(n[,k])        can n be a sum of k squares (dflt k=2)
     - is_omega_prime(k,n)             is n divisible by exactly k primes
     - is_almost_prime(k,n)            does n have exactly k prime factors

@@ -1211,7 +1211,6 @@ void is_prime(IN SV* svn)
     is_ramanujan_prime = 12
     is_semiprime = 13
     is_mersenne_prime = 14
-    is_delicate_prime = 15
   PREINIT:
     int status, ret;
     UV n;
@@ -1235,7 +1234,6 @@ void is_prime(IN SV* svn)
         case 12: ret = is_ramanujan_prime(n); break;
         case 13: ret = is_semiprime(n); break;
         case 14: ret = is_mersenne_prime(n);  if (ret == -1) status = 0; break;
-        case 15: ret = is_delicate_prime(n);  if (ret == -1) status = 0; break;
         default: break;
       }
     }
@@ -1256,15 +1254,15 @@ void is_prime(IN SV* svn)
       case 12:_vcallsub_with_gmp(0.00,"is_ramanujan_prime"); break;
       case 13:_vcallsub_with_gmp(0.42,"is_semiprime"); break;
       case 14:_vcallsub_with_gmp(0.28,"is_mersenne_prime"); break;
-      case 15:_vcallsub_with_gmp(0.00,"is_delicate_prime"); break;
       default: break;
     }
     return; /* skip implicit PUTBACK */
 
 void
-is_perrin_pseudoprime(IN SV* svn, IN int k = 0)
+is_perrin_pseudoprime(IN SV* svn, IN UV k = 0)
   ALIAS:
     is_almost_extra_strong_lucas_pseudoprime = 1
+    is_delicate_prime = 2
   PREINIT:
     int status, ret;
     UV n;
@@ -1272,6 +1270,7 @@ is_perrin_pseudoprime(IN SV* svn, IN int k = 0)
     if (k < 0) croak("second argument must not be negative");
     /*  ix = 0    k = 0 - 3       n below 2 returns 0 for all k
      *  ix = 1    k = 0 - 256     n below 2 returns 0 for all k
+     *  ix = 2    k = 0 - 2^32    n below 2 returns 0 for all k
      */
     status = _validate_and_set(&n, aTHX_ svn, IFLAG_ANY);
     ret = 0;
@@ -1279,6 +1278,8 @@ is_perrin_pseudoprime(IN SV* svn, IN int k = 0)
       switch (ix) {
         case 0:  ret = is_perrin_pseudoprime(n, k); break;
         case 1:  ret = is_almost_extra_strong_lucas_pseudoprime(n, (k < 1) ? 1 : k); break;
+        case 2:  ret = is_delicate_prime(n, (k<1) ? 10 : k);
+                 if (ret < 0) status = 0; break;
         default: break;
       }
     }
@@ -1286,6 +1287,7 @@ is_perrin_pseudoprime(IN SV* svn, IN int k = 0)
     switch (ix) {
       case 0: _vcallsub_with_gmp( (k == 0) ? 0.20 : 0.40, "is_perrin_pseudoprime"); break;
       case 1: _vcallsub_with_gmp(0.13,"is_almost_extra_strong_lucas_pseudoprime"); break;
+      case 2: _vcallsub_with_gmp(0.00,"is_delicate_prime"); break;
       default: break;
     }
     return;

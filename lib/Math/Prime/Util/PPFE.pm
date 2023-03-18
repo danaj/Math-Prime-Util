@@ -804,9 +804,10 @@ sub is_practical {
   return Math::Prime::Util::PP::is_practical($n);
 }
 sub is_delicate_prime {
-  my($n) = @_;
+  my($n, $b) = @_;
   _validate_positive_integer($n);
-  return Math::Prime::Util::PP::is_delicate_prime($n);
+  if (!defined $b) { $b = 10; } else { _validate_positive_integer($b); }
+  return Math::Prime::Util::PP::is_delicate_prime($n,$b);
 }
 sub hammingweight {
   my($n) = @_;

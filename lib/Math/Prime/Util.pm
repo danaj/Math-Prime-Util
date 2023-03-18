@@ -3016,15 +3016,19 @@ is a digitally delicate prime, and returns 0 otherwise.
 These are numbers which are prime, but changing any single base-10 digit
 always produces a composite number.
 
+An optional second argument is the base C<base> which must be at least 2.
+This is the base used for changing digits to check for compositeness.
+
 These are variously called "weakly prime" or "digitally delicate prime"
 numbers.
 Note that the first digit can be changed to a zero.
 
-Variations not considered here include different bases (e.g. OEIS A186995),
-making changing the first digit restricted to non-zero (OEIS A158124),
+Variations not considered here include
+making changing the first digit restricted to non-zero (OEIS A158124)
 and allowing leading zero digits to be changed ("widely DDPs").
 
 This is the L<OEIS series A050249|http://oeis.org/A050249>.
+With different bases, this is L<OEIS series A186995|http://oeis.org/A186995>.
 
 
 =head2 is_power
