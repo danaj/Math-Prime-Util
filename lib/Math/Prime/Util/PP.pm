@@ -113,6 +113,7 @@ BEGIN {
 
 *Mfordivisors = \&Math::Prime::Util::fordivisors;
 *Mforprimes = \&Math::Prime::Util::forprimes;
+*MLi = \&Math::Prime::Util::LogarithmicIntegral;
 
 my $_precalc_size = 0;
 sub prime_precalc {
@@ -2929,22 +2930,38 @@ sub inverse_li {
   $n = _upgrade_to_float($n) if $n > MPU_MAXPRIMEIDX || $n > 2**45;
   my $t = $n * log($n);
 
-  # Iterator Halley's method until error term grows
+  # Iterate Halley's method until error term grows
   my $old_term = MPU_INFINITY;
   for my $iter (1 .. 10000) {
-    my $dn = Math::Prime::Util::LogarithmicIntegral($t) - $n;
+    my $dn = MLi($t) - $n;
     my $term = $dn * log($t) / (1.0 + $dn/(2*$t));
     last if abs($term) >= abs($old_term);
     $old_term = $term;
     $t -= $term;
     last if abs($term) < 1e-6;
   }
+
   if (ref($t)) {
     $t = Math::BigInt->new($t->bceil->bstr);
     $t = _bigint_to_int($t) if $t->bacmp(BMAX) <= 0;
   } else {
     $t = int($t+0.999999);
   }
+
+  # Make it an exact answer
+  my $inc = ($n > 4e16) ? 2048 : 128;
+  if (int(MLi($t-1)) >= $n) {
+    $t -= $inc while int(MLi($t-$inc)) >= $n;
+    for ($inc = $inc >> 1;  $inc > 0;  $inc >>= 1) {
+      $t -= $inc if int(MLi($t-$inc)) >= $n;
+    }
+  } else {
+    $t += $inc while int(MLi($t+$inc-1)) < $n;
+    for ($inc = $inc >> 1;  $inc > 0;  $inc >>= 1) {
+      $t += $inc if int(MLi($t+$inc-1)) < $n;
+    }
+  }
+
   $t;
 }
 sub _inverse_R {
@@ -2955,7 +2972,7 @@ sub _inverse_R {
   $n = _upgrade_to_float($n) if $n > MPU_MAXPRIMEIDX || $n > 2**45;
   my $t = $n * log($n);
 
-  # Iterator Halley's method until error term grows
+  # Iterate Halley's method until error term grows
   my $old_term = MPU_INFINITY;
   for my $iter (1 .. 10000) {
     my $dn = Math::Prime::Util::RiemannR($t) - $n;
@@ -3068,8 +3085,8 @@ sub prime_count_approx {
     $x = _upgrade_to_float($x) unless ref($x) eq 'Math::BigFloat';
     $result = Math::BigFloat->new(0);
     $result->accuracy($x->accuracy) if ref($x) && $x->accuracy;
-    $result += Math::BigFloat->new(LogarithmicIntegral($x));
-    $result -= Math::BigFloat->new(LogarithmicIntegral(sqrt($x))/2);
+    $result += Math::BigFloat->new(MLi($x));
+    $result -= Math::BigFloat->new(MLi(sqrt($x))/2);
     my $intx = ref($x) ? Math::BigInt->new($x->bfround(0)) : $x;
     for my $k (3 .. 1000) {
       my $m = moebius($k);
@@ -3080,7 +3097,7 @@ sub prime_count_approx {
       # $v->accuracy(length($v)+5);
       # $v = $v - Math::BigFloat->new(($v**$k - $x))->bdiv($k * $v**($k-1));
       # my $term = LogarithmicIntegral($v)/$k;
-      my $term = LogarithmicIntegral(Mrootint($intx,$k)) / $k;
+      my $term = MLi(Mrootint($intx,$k)) / $k;
       last if $term < .25;
       if ($m == 1) { $result->badd(Math::BigFloat->new($term)) }
       else         { $result->bsub(Math::BigFloat->new($term)) }
@@ -3142,7 +3159,7 @@ sub prime_count_lower {
     $result = ($x/$fl1) * ($one + $one/$fl1 + $a/$fl2);
   } elsif ($x < 1.1e26 || Math::Prime::Util::prime_get_config()->{'assume_rh'}){
                                           # Büthe 2014/2015
-    my $lix = LogarithmicIntegral($x);
+    my $lix = MLi($x);
     my $sqx = sqrt($x);
     if ($x < 1e19) {
       $result = $lix - ($sqx/$fl1) * (1.94 + 3.88/$fl1 + 27.57/$fl2);
@@ -3230,10 +3247,10 @@ sub prime_count_upper {
     $result = ($x/$fl1) * ($one + $one/$fl1 + $a/$fl2) + $one;
   } elsif ($x < 1e19) {                     # Skewes number lower limit
     $a = ($x < 110e7) ? 0.032 : ($x < 1001e7) ? 0.027 : ($x < 10126e7) ? 0.021 : 0.0;
-    $result = LogarithmicIntegral($x) - $a * $fl1*sqrt($x)/PI_TIMES_8;
+    $result = MLi($x) - $a * $fl1*sqrt($x)/PI_TIMES_8;
   } elsif ($x < 1.1e26 || Math::Prime::Util::prime_get_config()->{'assume_rh'}) {
                                             # Schoenfeld / Büthe 2014 Th 7.4
-    my $lix = LogarithmicIntegral($x);
+    my $lix = MLi($x);
     my $sqx = sqrt($x);
     if (ref($x) eq 'Math::BigFloat') {
       my $xdigits = _find_big_acc($x);
@@ -8821,8 +8838,7 @@ if (0 && $Math::Prime::Util::_GMPfunc{"zeta"}) {
     my @mob = Mmoebius(0,300);
     for my $k (1 .. 300) {
       next if $mob[$k] == 0;
-      my $term = $mob[$k] / $k *
-                 Math::Prime::Util::LogarithmicIntegral($x**(1.0/$k));
+      my $term = $mob[$k] / $k * MLi($x**(1.0/$k));
       $y = $term-$c; $t = $sum+$y; $c = ($t-$sum)-$y; $sum = $t;
       last if abs($term) < ($tol * abs($sum));
     }
