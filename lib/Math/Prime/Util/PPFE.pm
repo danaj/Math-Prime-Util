@@ -687,7 +687,7 @@ sub powmod {
 }
 sub sqrtint {
   my($n) = @_;
-  _validate_integer($n);
+  _validate_positive_integer($n);
   return Math::Prime::Util::PP::sqrtint($n);
 }
 sub rootint {

@@ -5735,6 +5735,7 @@ sub tozeckendorf {
 
 sub sqrtint {
   my($n) = @_;
+  return int(sqrt($n)) if $n <= 562949953421312;  # 2^49 safe everywhere
   my $sqrt = Math::BigInt->new("$n")->bsqrt;
   return Math::Prime::Util::_reftyped($_[0], "$sqrt");
 }
