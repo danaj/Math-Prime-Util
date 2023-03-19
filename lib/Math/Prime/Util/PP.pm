@@ -1748,7 +1748,19 @@ sub perfect_power_count_upper {
 
 sub next_perfect_power {
   my($n) = @_;
-  _validate_positive_integer($n);
+  _validate_integer($n);
+
+  if ($n < 0) {
+    my $power;
+    return 1 if $n == -1;
+    $n = Mnegint($n);
+    do {
+      $n = prev_perfect_power($n);
+      $power = Mis_power($n);
+    } while ($n > 1 && ($power <= 2 || ($power & ($power-1)) == 0));
+    return Mnegint($n);
+  }
+
   return ($n == 0) ? 1 : 4 if $n <= 1;
 
   my $best = Mpowint(Maddint(Msqrtint($n),1),2);
@@ -1762,8 +1774,19 @@ sub next_perfect_power {
 }
 sub prev_perfect_power {
   my($n) = @_;
-  _validate_positive_integer($n);
-  return ($n > 1) ? 1 : undef  if $n <= 4;
+  _validate_integer($n);
+
+  if ($n < 0) {
+    my $power;
+    $n = Mnegint($n);
+    do {
+      $n = next_perfect_power($n);
+      $power = Mis_power($n);
+    } while ($n > 1 && ($power <= 2 || ($power & ($power-1)) == 0));
+    return Mnegint($n);
+  }
+
+  return ($n > 1) ? 1 : -1  if $n <= 4;
 
   my $best = 4;
   my $log2n = Mlogint($n,2);

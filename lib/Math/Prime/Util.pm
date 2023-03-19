@@ -4388,16 +4388,24 @@ This is L<OEIS series A001597|http://oeis.org/A001597>.
 =head2 next_perfect_power
 
 Given an integer C<n>, returns the smallest perfect power greater
-than C<|n|>.  Similar in API to L</next_prime>, but returns the next
+than C<n>.  Similar in API to L</next_prime>, but returns the next
 perfect power with exponent greater than 1.
 Hence the sequence C<1,4,8,9,16,25,...>.
 
+Negative inputs are supported, with the result being the nearest value
+greater than C<n> where C<is_perfect_power> returns true.
+
 =head2 prev_perfect_power
 
-Given an integer C<n>, returns the greatest prime power less than C<|n|>.
+Given an integer C<n>, returns the greatest perfect power less than C<n>.
 Similar in API to L</prev_prime>, but returns the next perfect power
 with exponent greater than 1.
-If given C<|n|> less than 2, C<undef> will be returned.
+
+Negative inputs are supported, with the result being the nearest value
+less than C<n> where C<is_perfect_power> returns true.
+
+Given an input of 0 or 1, returns C<-1> which is the nearest perfect power
+less than 1.
 
 =head2 perfect_power_count
 

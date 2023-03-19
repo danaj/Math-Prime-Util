@@ -3197,6 +3197,16 @@ int is_delicate_prime(UV n, uint32_t b) {
           return 0;
       }
     }
+#if 0   /* Our simpler method, but must add proper overflow check. */
+    UV d, dold, dnew, digpow;
+    for (d = 0, digpow = 1;  n >= digpow;  digpow *= b, d++) {
+      dold = (n / digpow) % b;
+      if ( (UV_MAX-(b-1)*digpow) < (n-dold*digpow) ) return -1;
+      for (dnew = 0; dnew < b; dnew++)
+        if (dnew != dold && is_prime(n - dold*digpow + dnew*digpow))
+          return 0;
+    }
+#endif
 
   }
   return 1;

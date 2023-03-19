@@ -2124,17 +2124,31 @@ void next_perfect_power(IN SV* svn)
     prev_perfect_power = 1
   PREINIT:
     UV n, ret;
+    int status, power;
   PPCODE:
-    if (_validate_and_set(&n, aTHX_ svn, IFLAG_ABS)
-        && !(ix == 0 && n >= MPU_MAX_PERFECT_POW)) {
-      ret = 0;
-      switch (ix) {
-        case 0:  ret = next_perfect_power(n); break;
-        case 1:  ret = prev_perfect_power(n); break;
-        default: break;
-      }
-      if (ret == 0) XSRETURN_UNDEF;
-      XSRETURN_UV(ret);
+    status = _validate_and_set(&n, aTHX_ svn, IFLAG_ANY);
+    if (status == -1) n = -(IV)n;
+    if        (status == 1 && ix == 0) {
+      ret = next_perfect_power(n);
+      if (ret != 0) XSRETURN_UV(ret);
+    } else if (status == 1 && ix == 1) {
+      if (n <= 1) XSRETURN_IV(-1);
+      ret = prev_perfect_power(n);
+      if (ret != 0) XSRETURN_UV(ret);
+    } else if (status == -1 && ix == 0) { /* next perfect power: negative n */
+      if (n == 1) XSRETURN_UV(1);
+      do {
+        n = prev_perfect_power(n);
+        power = is_power(n,0);
+      } while (n > 1 && (power <= 2 || (power & (power-1)) == 0));
+      XSRETURN_IV(-(IV)n);
+    } else if (status == -1 && ix == 1) { /* prev perfect power: negative n */
+      do {
+        n = next_perfect_power(n);
+        power = is_power(n,0);
+      } while (n > 1 && (power <= 2 || (power & (power-1)) == 0));
+      if (n <= (UV)IV_MAX)
+        XSRETURN_IV(-(IV)n);
     }
     switch (ix) {
       case 0:  _vcallsub_with_pp("next_perfect_power");  break;

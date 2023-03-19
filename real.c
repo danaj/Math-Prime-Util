@@ -955,7 +955,11 @@ static long double dickman_rho(long double u) {
   if (u <= 1) return 1;
   if (u <= 2) return 1-logl(u);
 
-  /* Also see Granville (2008) Smooth numbers */
+  /* Also see:
+   *   Granville 2008  https://dms.umontreal.ca/~andrew/PDF/msrire.pdf
+   *   Gorodetsky 2022 https://arxiv.org/pdf/2212.01949.pdf
+   *   van Hoek 2019   https://studenttheses.uu.nl/bitstream/handle/20.500.12932/32867/Masterscriptie%20Bart%20van%20Hoek.pdf
+   */
 
   /* Calculate zeta.  See Bach and Sorenson (2013) page 10 */
   zeta = 2*(u-1);
