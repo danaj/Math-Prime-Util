@@ -3319,21 +3319,29 @@ sub _kap_reduce_count {   # returns new k and n
   }
   ($k, $n);
 }
-sub _kapc_count {
-  my($n, $pdiv, $lo, $k) = @_;
-  my $hi = Mrootint(Mdivint($n,$pdiv),$k);
-  my $sum = 0;
-
-  if ($k == 2) {
-    my $pc = Mprime_count($lo) - 1;
+sub _kapc_final {              # k = 2
+  my($n, $pdiv, $lo) = @_;
+  my($sum, $hi, $pc) = (0,  Msqrtint(Mdivint($n,$pdiv)),  Mprime_count($lo)-1);
+  if (Mmulint($pdiv,$hi) <= ~0) {
     Mforprimes( sub {
       $sum += Mprime_count(int($n/($pdiv*$_)))-$pc++;
     }, $lo, $hi);
   } else {
     Mforprimes( sub {
-      $sum += _kapc_count($n, Mmulint($pdiv,$_), $_, $k-1);
+      $sum += Mprime_count(Mdivint($n,Mmulint($pdiv,$_)))-$pc++;
     }, $lo, $hi);
   }
+  $sum;
+}
+sub _kapc_count {
+  my($n, $pdiv, $lo, $k) = @_;
+  return _kapc_final($n, $pdiv, $lo)  if $k == 2;
+  my($sum, $hi) = (0,  Mrootint(Mdivint($n,$pdiv),$k));
+  Mforprimes(
+    ($k == 3) ? sub { $sum += _kapc_final($n, Mmulint($pdiv,$_), $_); }
+              : sub { $sum += _kapc_count($n, Mmulint($pdiv,$_), $_, $k-1); },
+    $lo, $hi
+  );
   $sum;
 }
 sub almost_prime_count {
