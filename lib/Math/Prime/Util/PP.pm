@@ -3641,6 +3641,9 @@ sub almost_prime_count_upper {
   return ($n >= 1) if $k == 0;
   return Math::Prime::Util::prime_count_upper($n) if $k == 1;
 
+  # In theory we might have reduced k/n to where XS can handle it.
+  # We should consider handling that, especially for k >= 5.
+
   my $bound = 0;
   my $x = 0.0 + "$n";
   my $logx = log($x);
@@ -3664,23 +3667,33 @@ sub almost_prime_count_upper {
              + 1.028 * 0.511977 * $x * (log(log($x/4)) + 0.261536) / $logx;
     }
   } else {
-    # A proven upper bound for all k and n doesn't exist as far as I know.
-    # We will end up with something correct, but also *really* slow for
-    # high k as well as estimating far too high.
+    # We could use Bayless (2018) Theorem 3.5:
+    #   # First we have Pi_k(x) -- the upper bound for the square free kaps.
+    #   $bound = 1.028 * $x / $logx;
+    #   $bound *= ($logplus/$_) for 1..$k-1;
+    #   # Second, turn into Tau_k(x) using the paragraph before Theorem 5.4.
+    #   my $sigmalim = Msqrtint(Mdivint($n, Mpowint(2,$k-2)));
+    #   my $ix = Math::BigInt->new("$x");
+    #   Mforprimes( sub {
+    #     $bound += almost_prime_count_upper($k-2, Mdivint($ix,Mmulint($_,$_)));
+    #   }, 2, $sigmalim);
+    # This is incredibly slow.
 
-    # TODO: This is insanely slow.  This has to be fixed.
+    # Erdős and Sárközy, "On the number of prime factors of integers", 1980.
+    # Theorem 1 gives us an upper bound for all k and all x >= 3.
+    # The constant here is empirical and not proven.
+    # Sadly this bound will be quite high.
 
-    # Bayless (2018) Theorem 3.5.
-    # First we have Pi_k(x) -- the upper bound for the square free kaps.
-    $bound = 1.028 * $x / $logx;
-    $bound *= ($logplus/$_) for 1..$k-1;
-    # Second, we need to turn this into Tau_k(x).
-    # We use the definition paragraph before Theorem 5.4.
-    my $sigmalim = Msqrtint(Mdivint($n, Mpowint(2,$k-2)));
-    my $ix = Math::BigInt->new("$x");
-    Mforprimes( sub {
-      $bound += almost_prime_count_upper($k-2, Mdivint($ix,Mmulint($_,$_)));
-    }, 2, $sigmalim);
+    do { require Math::BigFloat; Math::BigFloat->import(); } unless defined $Math::BigFloat::VERSION;
+    my $temp = Math::BigFloat->new("$n");
+    $bound = Math::BigFloat->new("0.00061")->bmul($temp);
+    $temp->blog;
+    $bound->bmul($temp);
+    $temp = Math::BigFloat->new($k)->bpow(4);
+    $bound->bmul($temp);
+    $temp = Math::BigFloat->new(2)->bpow($k);
+    $bound->bdiv($temp);
+    return $bound->bceil->as_int();
   }
   int($bound+1);
 }

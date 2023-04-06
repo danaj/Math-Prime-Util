@@ -3,7 +3,7 @@
 
 #include "ptypes.h"
 
-extern UV range_semiprime_sieve(UV** semis, UV lo, UV hi);
+extern UV  range_semiprime_sieve(UV** semis, UV lo, UV hi);
 
 extern UV  semiprime_count_range(UV lo, UV hi);
 
