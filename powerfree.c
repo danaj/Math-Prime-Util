@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#define FUNC_isqrt 1
 #define FUNC_ipow 1
 #define FUNC_ctz 1
 #include "ptypes.h"
@@ -57,11 +58,58 @@ int is_powerfree(UV n, uint32_t k)
   return 1;
 }
 
+/* Basic method from https://arxiv.org/pdf/1107.4890.pdf */
+static UV squarefree_count(UV n)
+{
+  signed char* mu;
+  IV *M, *Mx, Mxisum;
+  UV sqrtn, I, D, i, j, S1 = 0, S2 = 0;
+
+  if (n < 4) return n;
+
+  sqrtn = isqrt(n);
+  I = rootint(n, 5);   /* times loglogn ^ (4/5) */
+  D = isqrt(n / I);
+  mu = range_moebius(0, D);
+
+  S1 += n;
+  for (i = 2; i <= D; i++)
+    if (mu[i] != 0)
+      S1 += mu[i] * (n/(i*i));
+
+  New(0, M, D+1, IV);
+  M[0] = 0;
+  for (i = 1; i <= D; i++)
+    M[i] = M[i-1] + mu[i];
+  Safefree(mu);
+
+  Newz(0, Mx, I+1, IV);
+  Mxisum = 0;
+  for (i = I-1; i > 0; i--) {
+    IV Mxi = 1;
+    UV xi = isqrt(n/i);
+    UV L = isqrt(xi);
+    for (j = 1; j <= xi/(L+1); j++)
+      Mxi -= M[j] * (xi/j - xi/(j+1));
+    for (j = 2; j <= L; j++)
+      Mxi -=  (xi/j <= D)  ?  M[xi/j]  :  Mx[j*j*i];
+    Mx[i] = Mxi;
+    Mxisum += Mxi;
+  }
+  S2 = Mxisum - (I - 1) * M[D];
+  Safefree(Mx);
+  Safefree(M);
+
+  return S1 + S2;
+}
+
 UV powerfree_count(UV n, uint32_t k)
 {
   UV i, nk, count;
 
   if (k < 2) return (n >= 1);
+  if (n < 4) return n;
+  if (k == 2) return squarefree_count(n);
 
   count = n;
   nk = rootint(n, k);
@@ -76,7 +124,7 @@ UV powerfree_count(UV n, uint32_t k)
     signed char* mu = range_moebius(0, nk);
     for (i = 2; i <= nk; i++)
       if (mu[i] != 0)
-        count += mu[i] * ( (k==2) ? n/(i*i) : n/ipow(i,k) );
+        count += mu[i] * n/ipow(i,k);
     Safefree(mu);
   }
   return count;
