@@ -3349,7 +3349,10 @@ sub almost_prime_count {
   _validate_positive_integer($k);
   _validate_positive_integer($n);
   return ($n >= 1) if $k == 0;
+  my $ok = $k;
   ($k, $n) = _kap_reduce_count($k, $n);
+  # If we reduced parameters, try again if XS might be able to do it.
+  return Math::Prime::Util::almost_prime_count($k,$n) if $ok != $k && !ref($n) && Math::Prime::Util::prime_get_config()->{'xs'};
   return Mprime_count($n) if $k == 1;
   return Math::Prime::Util::semiprime_count($n) if $k == 2;
   return 0 if ($n >> $k) == 0;
