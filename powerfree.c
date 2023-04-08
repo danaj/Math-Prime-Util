@@ -124,7 +124,7 @@ UV powerfree_count(UV n, uint32_t k)
     signed char* mu = range_moebius(0, nk);
     for (i = 2; i <= nk; i++)
       if (mu[i] != 0)
-        count += mu[i] * n/ipow(i,k);
+        count += mu[i] * (n/ipow(i,k));
     Safefree(mu);
   }
   return count;
