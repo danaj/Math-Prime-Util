@@ -3175,9 +3175,28 @@ int is_delicate_prime(UV n, uint32_t b) {
           return 0;
     }
 
+  } else if (b == 2) {
+
+    UV bit;
+    if (n < 127)  return 0;
+    for (bit = log2floor(n); bit > 0; bit--)
+      if (is_prime(n ^ (UVCONST(1) << bit)))
+        return 0;
+
   } else {
 
-    /* Algorithm isWeakly from Emily Stamm, 2020 */
+#if 0   /* Our simpler method, but must add proper overflow check. */
+    UV dold, dnew, digpow, N;
+    for (digpow = 1;  n >= digpow;  digpow *= b) {
+      dold = (n / digpow) % b;
+      if ( (UV_MAX-(b-1)*digpow) < (n-dold*digpow) ) return -1;
+      for (dnew = 0, N = n-dold*digpow;  dnew < b;  dnew++, N += digpow)
+        if (dnew != dold && is_prime(N))
+          return 0;
+    }
+#endif
+
+    /* Algorithm isWeakly from Emily Stamm, 2020. */
     UV current, m, bm = 1;
     for (m = 0;  n >= bm;  m++, bm *= b) {
       uint32_t j, counter;
@@ -3197,16 +3216,6 @@ int is_delicate_prime(UV n, uint32_t b) {
           return 0;
       }
     }
-#if 0   /* Our simpler method, but must add proper overflow check. */
-    UV d, dold, dnew, digpow;
-    for (d = 0, digpow = 1;  n >= digpow;  digpow *= b, d++) {
-      dold = (n / digpow) % b;
-      if ( (UV_MAX-(b-1)*digpow) < (n-dold*digpow) ) return -1;
-      for (dnew = 0; dnew < b; dnew++)
-        if (dnew != dold && is_prime(n - dold*digpow + dnew*digpow))
-          return 0;
-    }
-#endif
 
   }
   return 1;
@@ -3288,6 +3297,7 @@ UV nth_powerful(UV n, UV k) {
   static UV const maxpow[11] = {0,UV_MAX,140008,6215,1373,536,281,172,115,79,57};
 #endif
   UV lo, hi, max;
+  double nc, npow, nest, dlo, dhi;
 
   if (k == 0 || k >= BITS_PER_WORD) return 0;
   if (k == 1 || n <= 1) return n;
@@ -3298,14 +3308,45 @@ UV nth_powerful(UV n, UV k) {
   if (n <= 20 && k >= mink[n]) return UVCONST(1) << (k+(n-2));
   /* Now k >= 2, n >= 4 */
 
+  nc = pow(n, 2) / pow(2.1732543125195541, 2);
+
   if (k == 2) { /* From Mincu and Panaitopol 2009 */
-    double n53 = pow(n, 5.0/3.0);
-    double nc = pow(n, 2) / pow(2.1732543125195541, 2);
-    double dlo = nc + 0.3 * n53;
-    double dhi = nc + 0.5 * n53;
+    npow = pow(n, 5.0/3.0);
+    dlo = nc + 0.3 * npow;
+    dhi = nc + 0.5 * npow;
     lo = (UV) dlo;
     hi = (n < 170) ? 8575 : (dhi >= UV_MAX) ? UV_MAX : 1 + (UV) dhi;
-  } else { /* Very poor estimates: TODO make these better */
+  } else if (k == 3) {
+    /* Splitting the range is hacky but overall this isn't bad */
+    if (n < 84000) {
+      nest = .06003 * pow(n, 2.865);
+      dlo = 0.96 * (nc + nest);
+      dhi = 1.08 * (nc + nest);
+    } else {
+      nest = .02209 * pow(n, 2.955);
+      dlo = 0.987 * (nc + nest);
+      dhi = 1.020 * (nc + nest);
+    }
+    lo = (UV) dlo;
+    if (n < 900) dhi *= 1.3;
+    if (n < 160) dhi = 1.3 * dhi + 600;
+    hi = (dhi >= UV_MAX) ? UV_MAX : 1 + (UV) dhi;
+  } else if (k <= 10) {
+    /* Slopppy but better than linear.  4 <= k <= 10. */
+    if (n < 200) {
+      npow = pow(n, 3.031 + 0.460*(k-4));
+      nest = (.5462 / pow(1.15, k-4)) * npow;
+      dlo = 0.79 * (nc + nest);
+      dhi = 1.86 * (nc + nest);
+    } else {
+      npow = pow(n, 3.690 + 0.665*(k-4));
+      nest = (.01275 / pow(4.11, k-4)) * npow;
+      dlo = 0.76 * (nc + nest);
+      dhi = 4.3 * (nc + nest);
+    }
+    lo = (UV) dlo;
+    hi = (dhi >= UV_MAX) ? UV_MAX : 1 + (UV) dhi;
+  } else {
     lo = (UVCONST(1) << (k+1))+1;
     hi = UV_MAX;
     /* Linear from min to max rather than a nice power fit as above */
