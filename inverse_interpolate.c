@@ -53,7 +53,7 @@ static UV _inverse_interpolate(UV lo, UV hi, UV n,
   if ((hi-lo) == 1)
     RETURNI( (rlo == n) ? lo : hi );
 
-  mid = LINEAR_INTERP(n,lo,hi,rlo,rhi);
+  mid = (n == rhi)  ?  hi-1  :  LINEAR_INTERP(n,lo,hi,rlo,rhi);
   if (mid == lo) mid++;  else if (mid == hi) mid--;
   rmid = CALLBACK(mid);
 
