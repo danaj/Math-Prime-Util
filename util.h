@@ -36,6 +36,7 @@ extern int liouville(UV n);
 extern IV  mertens(UV n);
 extern IV  sumliouville(UV n);
 extern UV  sumtotient(UV n);
+extern int sumtotient128(UV n, UV *hisum, UV *losum);
 
 extern int kronecker_uu(UV a, UV b);
 extern int kronecker_su(IV a, UV b);

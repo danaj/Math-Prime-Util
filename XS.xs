@@ -3331,6 +3331,14 @@ void factorial(IN SV* svn)
         default: break;
       }
       if (n == 0 || r > 0) XSRETURN_UV(r);
+      if (ix == 3) {  /* Probably an overflow, try 128-bit. */
+        UV hicount, count;
+        int retok = sumtotient128(n, &hicount, &count);
+        if (retok == 1 && hicount > 0)
+          RETURN_128(hicount, count);
+        if (retok == 1)
+          XSRETURN_UV(count);
+      }
     }
     switch (ix) {
       case 0:  _vcallsub_with_pp("factorial"); break;  /* use PP */

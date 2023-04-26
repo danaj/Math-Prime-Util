@@ -380,13 +380,24 @@ UV* range_totient(UV lo, UV hi) {
   return totients;
 }
 
-#define _CACHED_SUMT(x) \
-  (((x)<csize)  ?  cdata[x]  :  _sumt((x), cdata, csize))
+/******************************************************************************/
 
-static UV _sumt(UV n, UV *cdata, UV csize) {
-  UV sum, s, k, lim;
+#define HAVE_SUMTOTIENT_128 (BITS_PER_WORD == 64 && HAVE_UINT128)
+#define MAX_TOTSUM ( (BITS_PER_WORD == 64) ? UVCONST(7790208950) : 118868 )
+
+typedef struct {
+  UV    hsize;
+  UV   *nhash;  /* n value */
+  UV   *shash;  /* sum for n */
+} sumt_hash_t;
+#define _CACHED_SUMT(x) \
+  (((x)<csize)  ?  cdata[x]  :  _sumt((x), cdata, csize, thash))
+static UV _sumt(UV n, const UV *cdata, UV csize, sumt_hash_t thash) {
+  UV sum, s, k, lim, hn = n % thash.hsize;
 
   if (n < csize) return cdata[n];
+  if (thash.nhash[hn] == n)  return thash.shash[hn];
+
   sum = (n & 1)  ?  n*((n+1)>>1)  :  (n>>1)*(n+1);
   s = isqrt(n);
   lim = n/(s+1);
@@ -399,20 +410,18 @@ static UV _sumt(UV n, UV *cdata, UV csize) {
   if (s > lim)
     sum -= ((n/s) - (n/(s+1))) * _CACHED_SUMT(s);
 
-  if (n < csize)  cdata[n] = sum;
+  thash.nhash[hn] = n;
+  thash.shash[hn] = sum;
   return sum;
 }
-
-#define MAX_TOTSUM ( (BITS_PER_WORD == 64) ? UVCONST(7790208950) : 118868 )
-
 UV sumtotient(UV n) {
-  UV *sumcache;
-  UV sum, i, csize;
+  UV sum, i, csize, *sumcache;
+  sumt_hash_t thash;
 
   if (n <= 2)  return n;
   if (n > MAX_TOTSUM)  return 0;
 
-  if (n < 250) {    /* For very small values, do a simple sum */
+  if (n < 500) {    /* For very small values, do a simple sum */
     UV *phi = range_totient(0,n);
     for (sum = 0, i = 1; i <= n; i++)
       sum += phi[i];
@@ -420,17 +429,96 @@ UV sumtotient(UV n) {
     return sum;
   }
 
-  csize = 4 * icbrt(n) * icbrt(n);
+  csize = ((n < 1900) ? 2 : 1)  * icbrt(n) * icbrt(n);
 
   sumcache = range_totient(0, csize-1);
   for (i = 2; i < csize; i++)
     sumcache[i] += sumcache[i-1];
 
-  sum = _sumt(n, sumcache, csize);
+  thash.hsize = next_prime(10 + csize/16);
+  Newz(0, thash.nhash, thash.hsize, UV);
+  New( 0, thash.shash, thash.hsize, UV);
+
+  sum = _sumt(n, sumcache, csize, thash);
+  Safefree(thash.nhash);
+  Safefree(thash.shash);
   Safefree(sumcache);
+  return sum;
+}
+
+#if HAVE_SUMTOTIENT_128
+#define _CACHED_SUMT128(x) \
+  (((x)<csize)  ?  (uint128_t)cdata[x]  :  _sumt128((x), cdata, csize, thash))
+typedef struct {
+  UV         hsize;
+  UV        *nhash;  /* n value */
+  uint128_t *shash;  /* sum for n */
+} sumt_hash_128_t;
+static uint128_t _sumt128(UV n, const UV *cdata, UV csize, sumt_hash_128_t thash) {
+  uint128_t sum;
+  UV s, k, lim, hn = n % thash.hsize;
+
+  if (n < csize) return cdata[n];
+  if (thash.nhash[hn] == n)  return thash.shash[hn];
+
+  sum = (n & 1)  ?  (uint128_t)n * ((n+1)>>1)  :  (uint128_t)(n+1) * (n>>1);
+  s = isqrt(n);
+  lim = n/(s+1);
+  sum -= (n - n/2);
+  for (k = 2; k <= lim; k++) {
+    sum -= _CACHED_SUMT128(n/k);
+    sum -= ((n/k) - (n/(k+1))) * _CACHED_SUMT128(k);
+  }
+  if (s > lim)
+    sum -= ((n/s) - (n/(s+1))) * _CACHED_SUMT128(s);
+
+  thash.nhash[hn] = n;
+  thash.shash[hn] = sum;
 
   return sum;
 }
+
+int sumtotient128(UV n, UV *hi_sum, UV *lo_sum) {
+  UV i, cbrtn, csize, *sumcache;
+  uint128_t sum;
+  sumt_hash_128_t thash;
+
+  if (n <= 2)  { *hi_sum = 0;  *lo_sum = n; return 1; }
+
+  cbrtn = icbrt(n);
+  csize = 1 * cbrtn * cbrtn;
+  if (csize > 400000000U)  csize = 400000000;  /* Limit to 3GB */
+
+  sumcache = range_totient(0, csize-1);
+  for (i = 2; i < csize; i++)
+    sumcache[i] += sumcache[i-1];
+
+#if 0
+  thash.hsize = (n <= UVCONST( 10000000000000))  ?    500009
+              : (n <= UVCONST(100000000000000))  ?   8000009
+                                                 :  24000001;
+#else
+  thash.hsize = next_prime(10 + (cbrtn * cbrtn)/128);
+#endif
+  /* printf("hsize %lu  csize %lu  sumcache[%lu] = %lu\n", thash.hsize, csize, csize-1, sumcache[csize-1]); */
+  Newz(0, thash.nhash, thash.hsize, UV);
+  New( 0, thash.shash, thash.hsize, uint128_t);
+
+  sum = _sumt128(n, sumcache, csize, thash);
+  *hi_sum = (sum >> 64) & UV_MAX;
+  *lo_sum = (sum      ) & UV_MAX;
+  Safefree(thash.nhash);
+  Safefree(thash.shash);
+  Safefree(sumcache);
+  return 1;
+}
+#else
+int sumtotient128(UV n, UV *hi_sum, UV *lo_sum) {
+  return 0;
+}
+#endif
+
+/******************************************************************************/
 
 #if 0
 IV mertens(UV n) {

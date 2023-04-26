@@ -1312,9 +1312,7 @@ sub _sumtot {
     $sum -= Mmulint($x - $nextx,
                     ($s <= $#$cdata) ? $cdata->[$s] : _sumtot($s, $cdata, $ecache));
   }
-
-  if ($n <= $#$cdata) { $cdata->[$n]  = $sum; }
-  else                { $ecache->{$n} = $sum; }
+  $ecache->{$n} = $sum;
   $sum;
 }
 
