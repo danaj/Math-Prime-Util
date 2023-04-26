@@ -88,6 +88,7 @@ BEGIN {
 *Mfactor = \&Math::Prime::Util::factor;
 *Mfactor_exp = \&Math::Prime::Util::factor_exp;
 *Mis_prime = \&Math::Prime::Util::is_prime;
+*Mis_semiprime = \&Math::Prime::Util::is_semiprime;
 *Mis_power = \&Math::Prime::Util::is_power;
 *Mchinese = \&Math::Prime::Util::chinese;
 *Mvaluation = \&Math::Prime::Util::valuation;
@@ -1558,6 +1559,7 @@ sub nth_powerful {
     $hi = ~0 if $hi > ~0;
     $lo = $hi >> 1 if $lo > $hi;
   }
+  # We should use some power estimate here.
 
   # hi could be too low.
   while (Math::Prime::Util::powerful_count($hi,$k) < $n) {
@@ -2077,6 +2079,7 @@ sub is_semiprime {
   return (Math::Prime::Util::is_prob_prime($n/3)  ? 1 : 0) if ($n % 3) == 0;
   return (Math::Prime::Util::is_prob_prime($n/5)  ? 1 : 0) if ($n % 5) == 0;
 
+if (0) {  # TODO:  This is all REALLY slow without GMP
   # TODO: Something with GMP.  If nothing else, just factor.
   {
     my @f = trial_factor($n, 4999);
@@ -2094,6 +2097,7 @@ sub is_semiprime {
     return 0 if @f > 2;
     return (_is_prime7($f[1]) ? 1 : 0) if @f == 2;
   }
+}
   return (scalar(Mfactor($n)) == 2) ? 1 : 0;
 }
 
@@ -2104,10 +2108,20 @@ sub is_almost_prime {
 
   return 0+($n==1) if $k == 0;
   return (Mis_prime($n) ? 1 : 0) if $k == 1;
-  return Math::Prime::Util::is_semiprime($n) if $k == 2;
+  return Mis_semiprime($n) if $k == 2;
   return 0 if ($n >> $k) == 0;
 
   # TODO: Optimization here
+  if (0) {  # This seems to just be slower
+    while ($k > 0 && !($n % 2)) { $k--;  $n >>= 1; }
+    while ($k > 0 && !($n % 3)) { $k--;  $n /= 3; }
+    while ($k > 0 && !($n % 5)) { $k--;  $n /= 5; }
+    while ($k > 0 && !($n % 7)) { $k--;  $n /= 7; }
+    return 0+($n == 1) if $k == 0;
+    return (Mis_prime($n) ? 1 : 0) if $k == 1;
+    return Mis_semiprime($n) if $k == 2;
+    return 0 if $n < Mpowint(11,$k);
+  }
 
   return (scalar(Mfactor($n)) == $k) ? 1 : 0;
 }
@@ -3299,7 +3313,7 @@ sub semiprime_count {
   if (($hi-$lo+1) < $hi / (sqrt($hi)/4)) {
     my $sum = 0;
     while ($lo <= $hi) {
-      $sum++ if Math::Prime::Util::is_semiprime($lo);
+      $sum++ if Mis_semiprime($lo);
       $lo++;
     }
     return $sum;
@@ -9512,7 +9526,7 @@ sub random_unrestricted_semiprime {
   if ($b <= 64) {
     do {
       $n = $min + Murandomb($b-1);
-    } while !Math::Prime::Util::is_semiprime($n);
+    } while !Mis_semiprime($n);
   } else {
     # Try to get probabilities right for small divisors
     my %M = (
