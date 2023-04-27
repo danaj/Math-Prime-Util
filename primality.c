@@ -484,6 +484,73 @@ int lucasuv(IV* U, IV *V, IV P, IV Q, UV k)
   return 1;
 }
 
+UV lucasvmod_ui(UV P, UV Q, UV k, UV n)
+{
+  UV D, b, U, V, Qk;
+
+  MPUassert(n > 0, "lucas_sequence:  modulus n must be > 0");
+  if (n == 1) return 0;
+  if (k == 0) return 2 % n;
+  if (P >= n) P = P % n;
+  if (Q >= n) Q = Q % n;
+
+  D = submod(mulmod(P, P, n), mulmod(4, Q, n), n);
+  if (D == 0 && (b = divmod(P,2,n)) != 0)
+    return mulmod(2, powmod(b, k, n), n);
+  if ((n % 2) == 0) {
+    UV Uret, Vret, Qkret;
+    alt_lucas_seq(&Uret, &Vret, &Qkret, n, P, Q, k);
+    return Vret;
+  }
+  { UV v = k; b = 0; while (v >>= 1) b++; }
+
+  if (Q == 1) {
+    V = P;
+    U = mulsubmod(P, P, 2, n);
+    while (b--) {
+      UV T = mulsubmod(U, V, P, n);
+      if ( (k >> b) & UVCONST(1) ) {
+        V = T;
+        U = mulsubmod(U, U, 2, n);
+      } else {
+        U = T;
+        V = mulsubmod(V, V, 2, n);
+      }
+    }
+  } else {
+    U = 1;
+    V = P;
+    Qk = Q;
+    while (b--) {
+      U = mulmod(U, V, n);
+      V = mulsubmod(V, V, addmod(Qk,Qk,n), n);
+      Qk = sqrmod(Qk, n);
+      if ( (k >> b) & UVCONST(1) ) {
+        UV t2 = mulmod(U, D, n);
+        U = muladdmod(U, P, V, n);
+        if (U & 1) { U = (n>>1) + (U>>1) + 1; } else { U >>= 1; }
+        V = muladdmod(V, P, t2, n);
+        if (V & 1) { V = (n>>1) + (V>>1) + 1; } else { V >>= 1; }
+        Qk = mulmod(Qk, Q, n);
+      }
+    }
+  }
+  return V;
+}
+
+UV lucasvmod(IV P, IV Q, UV k, UV n)
+{
+  return lucasvmod_ui(ivmod(P,n), ivmod(Q,n), k, n);
+}
+
+UV lucasumod(IV P, IV Q, UV k, UV n)
+{
+  UV U, V, Qk;
+  lucas_seq(&U, &V, &Qk, n, P, Q, k);
+  return U;
+}
+
+
 
 /******************************************************************************/
 /******************************************************************************/
