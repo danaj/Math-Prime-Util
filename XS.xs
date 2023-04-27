@@ -2381,8 +2381,8 @@ trial_factor(IN UV n, ...)
   PREINIT:
     UV arg1, arg2;
     static const UV default_arg1[] =
-       {0,     64000000, 8000000, 4000000, 1,   4000000, 10000, 200, 4000000, 1000000};
-     /* Trial, Fermat,   Holf,    SQUFOF,  Lmn, PRHO,    Cheb,  P+1, Brent,    P-1 */
+       {0,     64000000, 8000000, 4000000, 1,   4000000, 0,    200, 4000000, 1000000};
+     /* Trial, Fermat,   Holf,    SQUFOF,  Lmn, PRHO,    Cheb, P+1, Brent,    P-1 */
   PPCODE:
     if (n == 0)  XSRETURN_UV(0);
     if (ix == 10) {  /* We don't have an ecm_factor, call PP. */

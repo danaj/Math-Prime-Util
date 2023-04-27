@@ -127,7 +127,7 @@ plan tests => (3 * scalar @testn)
             + 2*scalar(keys %prime_factors)
             + 4*scalar(keys %all_factors)
             + 2*scalar(keys %factor_exponents)
-            + 10*9  # 10 extra factoring tests * 9 algorithms
+            + 10*10  # 10 extra factoring tests * 10 algorithms
             + 8
             + 2*scalar(@omega)
             + 6;
@@ -178,6 +178,7 @@ extra_factor_test("pbrent_factor", sub {Math::Prime::Util::pbrent_factor(shift)}
 extra_factor_test("prho_factor",   sub {Math::Prime::Util::prho_factor(shift)});
 extra_factor_test("pminus1_factor",sub {Math::Prime::Util::pminus1_factor(shift)});
 extra_factor_test("pplus1_factor", sub {Math::Prime::Util::pplus1_factor(shift)});
+extra_factor_test("cheb_factor", sub {Math::Prime::Util::cheb_factor(shift)});
 SKIP: {
   skip "No lehman_factor in PP", 10 unless $usexs;
   extra_factor_test("lehman_factor", sub {Math::Prime::Util::lehman_factor(shift)});
