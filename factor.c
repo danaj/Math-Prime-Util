@@ -201,11 +201,13 @@ int factor_one(UV n, UV *factors, int primality, int trial)
     nfactors = pminus1_factor(n, factors, 8000, 120000);
     if (nfactors > 1) return nfactors;
     /* Get the stragglers */
+    nfactors = cheb_factor(n, factors, 4000, 0);
+    if (nfactors > 1) return nfactors;
     nfactors = prho_factor(n, factors, 120000);
     if (nfactors > 1) return nfactors;
     nfactors = pbrent_factor(n, factors, 500000, 5);
     if (nfactors > 1) return nfactors;
-    nfactors = prho_factor(n, factors, 120000);
+    nfactors = cheb_factor(n, factors, 1000000, 0);
     if (nfactors > 1) return nfactors;
     croak("factor_one failed on %lu\n", n);
   }
@@ -1261,6 +1263,42 @@ int lehman_factor(UV n, UV *factors, int do_trial) {
   factors[0] = n;
   return 1;
 }
+
+/* Chebyshev polynomials of the first kind T_n(x) = V_n(2x,1) / 2. */
+/* Basic algorithm from Daniel "Trizen" Șuteu */
+int cheb_factor(UV n, UV *factors, UV B, UV initx)
+{
+  UV sqrtB, inv, x, f, i;
+
+  if (B == 0) { B = log2floor(n);  B = B*B; }
+  sqrtB = isqrt(B);
+  inv = modinverse(2,n);   /* multiplying by this will divide by two */
+  x = (initx == 0) ? 72 : initx;
+  f = 1;
+
+  START_DO_FOR_EACH_PRIME(2, B) {
+    if (p <= sqrtB) {
+      UV lgp = logint(B, p);
+      UV plgp = ipowsafe(p, lgp);
+      if (plgp < UV_MAX) {
+        x = mulmod(lucasvmod_ui(addmod(x,x,n), 1, plgp, n), inv, n);
+      } else {
+        for (i = 1; i <= lgp; i++)
+          x = mulmod(lucasvmod_ui(addmod(x,x,n), 1, p, n), inv, n);
+      }
+    } else {
+      x = mulmod(lucasvmod_ui(addmod(x,x,n), 1, p, n), inv, n);
+    }
+    f = gcd_ui(x-1, n);  if (f > 1)  break;
+  } END_DO_FOR_EACH_PRIME
+  if (f > 1 && f < n)
+    return found_factor(n, f, factors);
+  factors[0] = n;
+  return 1;
+}
+
+
+
 
 static const uint32_t _fr_chunk = 8192;
 static const uint32_t _fr_sieve_crossover = 10000000;  /* About 10^14 */
