@@ -1623,15 +1623,15 @@ void lucasuvmod(IN IV P, IN IV Q, IN SV* svk, IN SV* svn)
     if (_validate_and_set(&k, aTHX_ svk, IFLAG_POS) &&
         _validate_and_set(&n, aTHX_ svn, IFLAG_ABS)) {
       if (n == 0) XSRETURN_UNDEF;
-      lucas_seq(&U, &V, &Qk, n, P, Q, k);
       switch (ix) {
-        case 0:  PUSHs(sv_2mortal(newSVuv( U )));
+        case 0:  lucas_seq(&U, &V, &Qk, n, P, Q, k);
+                 PUSHs(sv_2mortal(newSVuv( U )));
                  PUSHs(sv_2mortal(newSVuv( V )));
                  PUSHs(sv_2mortal(newSVuv( Qk )));
                  break;
-        case 1:  XSRETURN_UV(U); break;
+        case 1:  XSRETURN_UV(lucasumod(P, Q, k, n)); break;
         case 2:
-        default: XSRETURN_UV(V); break;
+        default: XSRETURN_UV(lucasvmod(P, Q, k, n)); break;
       }
     } else {
       if (ix == 0) {
@@ -2373,18 +2373,19 @@ trial_factor(IN UV n, ...)
     squfof_factor = 3
     lehman_factor = 4
     prho_factor = 5
-    pplus1_factor = 6
-    pbrent_factor = 7
-    pminus1_factor = 8
-    ecm_factor = 9
+    cheb_factor = 6
+    pplus1_factor = 7
+    pbrent_factor = 8
+    pminus1_factor = 9
+    ecm_factor = 10
   PREINIT:
     UV arg1, arg2;
     static const UV default_arg1[] =
-       {0,     64000000, 8000000, 4000000, 1,   4000000, 200, 4000000, 1000000};
-     /* Trial, Fermat,   Holf,    SQUFOF,  Lmn, PRHO,    P+1, Brent,    P-1 */
+       {0,     64000000, 8000000, 4000000, 1,   4000000, 10000, 200, 4000000, 1000000};
+     /* Trial, Fermat,   Holf,    SQUFOF,  Lmn, PRHO,    Cheb,  P+1, Brent,    P-1 */
   PPCODE:
     if (n == 0)  XSRETURN_UV(0);
-    if (ix == 9) {  /* We don't have an ecm_factor, call PP. */
+    if (ix == 10) {  /* We don't have an ecm_factor, call PP. */
       _vcallsubn(aTHX_ GIMME_V, VCALL_PP, "ecm_factor", 1, 0);
       return;
     }
@@ -2407,10 +2408,11 @@ trial_factor(IN UV n, ...)
         case 3:  nfactors = squfof_factor (n, factors, arg1);  break;
         case 4:  nfactors = lehman_factor (n, factors, arg1);  break;
         case 5:  nfactors = prho_factor   (n, factors, arg1);  break;
-        case 6:  nfactors = pplus1_factor (n, factors, arg1);  break;
-        case 7:  if (items < 3) arg2 = 1;
+        case 6:  nfactors = cheb_factor   (n, factors, arg1, arg2);  break;
+        case 7:  nfactors = pplus1_factor (n, factors, arg1);  break;
+        case 8:  if (items < 3) arg2 = 1;
                  nfactors = pbrent_factor (n, factors, arg1, arg2);  break;
-        case 8:
+        case 9:
         default: if (items < 3) arg2 = 10*arg1;
                  nfactors = pminus1_factor(n, factors, arg1, arg2);  break;
       }
