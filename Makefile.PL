@@ -58,6 +58,7 @@ WriteMakefile1(
                     'lucky_numbers.o '.
                     'real.o '         .
                     'rootmod.o '      .
+                    'totients.o '     .
                     'util.o '         .
                     'inverse_interpolate.o ' .
                     'entropy.o '      .

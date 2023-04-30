@@ -24,6 +24,7 @@
 #include "util.h"
 #include "primality.h"
 #include "factor.h"
+#include "totients.h"
 #include "lehmer.h"
 #include "lmo.h"
 #include "legendre_phi.h"

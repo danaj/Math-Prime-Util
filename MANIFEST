@@ -83,6 +83,8 @@ sieve.c
 sieve_cluster.h
 sieve_cluster.c
 threadlock.h
+totients.h
+totients.c
 twin_primes.h
 twin_primes.c
 util.h

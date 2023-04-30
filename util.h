@@ -28,15 +28,12 @@ extern UV valuation_remainder(UV n, UV k, UV *r);
 extern UV logint(UV n, UV b);
 extern UV mpu_popcount_string(const char* ptr, uint32_t len);
 
-extern UV*          range_totient(UV low, UV high);
 extern signed char* range_moebius(UV low, UV high);
 extern signed char* range_liouville(UV low, UV high);
 
 extern int liouville(UV n);
 extern IV  mertens(UV n);
 extern IV  sumliouville(UV n);
-extern UV  sumtotient(UV n);
-extern int sumtotient128(UV n, UV *hisum, UV *losum);
 
 extern int kronecker_uu(UV a, UV b);
 extern int kronecker_su(IV a, UV b);
@@ -62,20 +59,16 @@ extern IV fdivrem(IV *q, IV *r, IV D, IV d);   /* signed div/rem floor */
 extern IV edivrem(IV *q, IV *r, IV D, IV d);   /* signed div/rem Euclidian */
 extern UV ivmod(IV a, UV n);                   /* Returns a mod n (trunc) */
 
-extern UV totient_factored(UV n, UV nfacs, UV* fac, UV* exp);
-extern UV totient(UV n);
+extern UV  carmichael_lambda(UV n);
 extern int moebius(UV n);
-extern UV exp_mangoldt(UV n);
-extern UV carmichael_lambda(UV n);
-extern UV jordan_totient(UV k, UV n);
-extern UV znprimroot(UV n);
-extern UV znorder(UV a, UV n);
+extern UV  exp_mangoldt(UV n);
+extern UV  znprimroot(UV n);
+extern UV  znorder(UV a, UV n);
 extern int is_primitive_root(UV a, UV n, int nprime);
 extern UV  factorialmod(UV n, UV m);
 extern int binomialmod(UV *res, UV n, UV k, UV m);
 #define is_square_free(n)  (moebius(n) != 0)
 extern int is_fundamental(UV n, int neg);
-extern int is_totient(UV n);
 extern int is_semiprime(UV n);
 extern int is_almost_prime(UV k, UV n);
 extern int is_carmichael(UV n);
@@ -96,9 +89,6 @@ extern int is_sum_of_three_squares(UV n);
 
 extern UV debruijn_psi(UV x, UV y);
 extern UV buchstab_phi(UV x, UV y);
-
-extern UV inverse_totient_count(UV n);
-extern UV* inverse_totient_list(UV *ntotients, UV n);
 
 extern UV stirling3(UV n, UV m);
 extern IV stirling2(UV n, UV m);
