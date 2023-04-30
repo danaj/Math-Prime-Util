@@ -44,6 +44,7 @@
 #include "prime_counts.h"
 #include "prime_sums.h"
 #include "powerfree.h"
+#include "powerful.h"
 #include "lucky_numbers.h"
 #include "rootmod.h"
 #include "real.h"

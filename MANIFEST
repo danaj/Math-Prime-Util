@@ -57,6 +57,8 @@ perfect_powers.h
 perfect_powers.c
 powerfree.h
 powerfree.c
+powerful.h
+powerful.c
 primality.h
 primality.c
 prime_count_cache.c

@@ -1,8 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
-#include <float.h>
 
 #include "ptypes.h"
 #define FUNC_isqrt 1

@@ -80,9 +80,6 @@ extern int is_delicate_prime(UV n, uint32_t b);
 
 extern int is_smooth(UV n, UV k);
 extern int is_rough(UV n, UV k);
-extern int is_powerful(UV n, UV k);
-extern UV powerful_count(UV n, UV k);
-extern UV nth_powerful(UV n, UV k);
 
 extern int is_sum_of_two_squares(UV n);
 extern int is_sum_of_three_squares(UV n);
