@@ -204,7 +204,7 @@ UV nth_powerful(UV n, UV k) {
     if (n < 200) {
       npow = pow(n, 3.031 + 0.460*(k-4));
       nest = (.5462 / pow(1.15, k-4)) * npow;
-      dlo = 0.79 * (nc + nest);
+      dlo = 0.51 * (nc + nest);
       dhi = 1.86 * (nc + nest);
     } else {
       npow = pow(n, 3.690 + 0.665*(k-4));
@@ -222,4 +222,62 @@ UV nth_powerful(UV n, UV k) {
   }
 
   return inverse_interpolate_k(lo, hi, n, k, &powerful_count, 0);
+}
+
+
+static UV _sumpowerful(UV m, UV r, UV n, UV k, unsigned char* isf) {
+  UV i, rootdiv, sum;
+
+  if (r < k)  return m;
+
+  rootdiv = rootint(n/m, r);
+
+  if (r == k)  return m * powersum(rootdiv, r);
+
+  for (sum = 0, i = 1; i <= rootdiv; i++)
+    if (isf[i] && gcd_ui(i,m) == 1)
+      sum += _sumpowerful(m * ipow(i,r), r-1, n, k, isf);
+
+  return sum;
+}
+UV sumpowerful(UV n, UV k)
+{
+  UV lim, sum;
+  unsigned char *isf;
+
+#if BITS_PER_WORD == 64
+  static UV const maxpow[41] = {0,6074000999,8676161894447,263030040471727,
+  1856371767674975,6768543273131775,17199267839999999,35098120384607510,
+  62985599999999999,104857599999999999,157641800537109374,246512345193381887,
+  312499999999999999,406381963906121727,499999999999999999,592297667290202111,
+  701982420492091391,935976560656121855,1184595334580404223,1350851717672992088,
+  1579460446107205631,2105947261476274175,2369190669160808447,
+  4052555153018976266,4738381338321616895,7450580596923828124,
+  7450580596923828124,7450580596923828124,
+  UVCONST(9223372036854775807),UVCONST(9223372036854775807),
+  UVCONST(9223372036854775807),UVCONST(9223372036854775807),
+  UVCONST(9223372036854775807),UVCONST(9223372036854775807),
+  UVCONST(9223372036854775807),UVCONST(9223372036854775807),
+  UVCONST(9223372036854775807),UVCONST(9223372036854775807),
+  UVCONST(9223372036854775807),UVCONST(9223372036854775807),
+  UVCONST(12157665459056928800)};
+
+  if (k == 0 || n == 0) return 0;
+  if (k >= 64) return 1;
+  if (k < 41 && n > maxpow[k]) return 0;
+#else
+  static UV const maxpow[21] = {0,92681,3367224,18224999,48599999,102036671,161243135,244140624,362797055,536870911,725594111,1088391167,1220703124,1220703124,2147483647,2147483647,2147483647,2147483647,2147483647,2147483647,3486784400};
+
+  if (k == 0 || n == 0) return 0;
+  if (k >= 32) return 1;
+  if (k < 21 && n > maxpow[k]) return 0;
+#endif
+
+  if (k == 1)  return (n & 1)  ?  n*((n+1)>>1)  :  (n>>1)*(n+1);
+
+  lim = rootint(n, k+1);
+  isf = _squarefree_range(0, lim);
+  sum = _sumpowerful(1, 2*k-1, n, k, isf);
+  Safefree(isf);
+  return sum;
 }

@@ -155,12 +155,15 @@ sub entropy_bytes {
 *is_powerful = \&Math::Prime::Util::PP::is_powerful;
 *powerful_count = \&Math::Prime::Util::PP::powerful_count;
 *nth_powerful = \&Math::Prime::Util::PP::nth_powerful;
+*sumpowerful = \&Math::Prime::Util::PP::sumpowerful;
 *perfect_power_count = \&Math::Prime::Util::PP::perfect_power_count;
 *is_powerfree = \&Math::Prime::Util::PP::is_powerfree;
 *powerfree_count = \&Math::Prime::Util::PP::powerfree_count;
 *powerfree_sum = \&Math::Prime::Util::PP::powerfree_sum;
 *powerfree_part = \&Math::Prime::Util::PP::powerfree_part;
 *powerfree_part_sum = \&Math::Prime::Util::PP::powerfree_part_sum;
+# TODO: Should this do validation here?
+*powersum = \&Math::Prime::Util::PP::powersum;
 
 *random_prime = \&Math::Prime::Util::PP::random_prime;
 *random_ndigit_prime = \&Math::Prime::Util::PP::random_ndigit_prime;
@@ -275,6 +278,7 @@ sub entropy_bytes {
 *lehman_factor = \&Math::Prime::Util::PP::lehman_factor;
 *pminus1_factor = \&Math::Prime::Util::PP::pminus1_factor;
 *pplus1_factor = \&Math::Prime::Util::PP::pplus1_factor;
+*cheb_factor = \&Math::Prime::Util::PP::cheb_factor;
 
 
 # We are doing the validation here so the PP code doesn't have to do it.

@@ -386,7 +386,7 @@ static SV* sv_to_bigint(pTHX_ SV* r) {
 #define RETURN_128(hi,lo) \
   do { char str[40]; \
        int slen = to_string_128(str, hi, lo); \
-       XPUSHs( sv_to_bigint( aTHX_ sv_2mortal(newSVpv(str,slen)) ) ); \
+       ST(0) = sv_to_bigint( aTHX_ sv_2mortal(newSVpv(str,slen)) ); \
        XSRETURN(1); } while(0)
 
 static int arrayref_to_int_array(pTHX_ UV** ret, AV* av, int base)
@@ -2448,10 +2448,11 @@ divisor_sum(IN SV* svn, ...)
 void
 jordan_totient(IN SV* sva, IN SV* svn)
   ALIAS:
-    ramanujan_sum = 1
-    legendre_phi = 2
-    smooth_count = 3
-    rough_count = 4
+    powersum = 1
+    ramanujan_sum = 2
+    legendre_phi = 3
+    smooth_count = 4
+    rough_count = 5
   PREINIT:
     int astatus, nstatus;
     UV a, n, ret;
@@ -2464,7 +2465,11 @@ jordan_totient(IN SV* sva, IN SV* svn)
                  if (ret == 0 && n > 1)
                    goto overflow;
                  break;
-        case 1:  if (a < 1 || n < 1) XSRETURN_IV(0);
+        case 1:  ret = powersum(a, n);
+                 if (ret == 0 && a > 0)
+                   goto overflow;
+                 break;
+        case 2:  if (a < 1 || n < 1) XSRETURN_IV(0);
                  {
                    UV g = a / gcd_ui(a,n);
                    int m = moebius(g);
@@ -2472,9 +2477,9 @@ jordan_totient(IN SV* sva, IN SV* svn)
                    XSRETURN_IV( m * (totient(a) / totient(g)) );
                  }
                  break;
-        case 2:  ret = legendre_phi(a, n); break;
-        case 3:  ret = debruijn_psi(a, n); break;
-        case 4:
+        case 3:  ret = legendre_phi(a, n); break;
+        case 4:  ret = debruijn_psi(a, n); break;
+        case 5:
         default: ret = buchstab_phi(a, n); break;
       }
       XSRETURN_UV(ret);
@@ -2482,10 +2487,11 @@ jordan_totient(IN SV* sva, IN SV* svn)
     overflow:
     switch (ix) {
       case 0:  _vcallsub_with_gmp(0.22,"jordan_totient");  break;
-      case 1:  _vcallsub_with_pp("ramanujan_sum");  break;
-      case 2:  _vcallsub_with_pp("legendre_phi");  break;
-      case 3:  _vcallsub_with_pp("smooth_count"); break;
-      case 4:
+      case 1:  _vcallsub_with_gmp(0.0,"powersum");  break;
+      case 2:  _vcallsub_with_pp("ramanujan_sum");  break;
+      case 3:  _vcallsub_with_pp("legendre_phi");  break;
+      case 4:  _vcallsub_with_pp("smooth_count"); break;
+      case 5:
       default: _vcallsub_with_pp("rough_count"); break;
     }
     objectify_result(aTHX_ sva, ST(0));
@@ -2857,6 +2863,7 @@ void is_powerful(IN SV* svn, IN SV* svk = 0);
   ALIAS:
     powerful_count = 1
     nth_powerful = 2
+    sumpowerful = 3
   PREINIT:
     UV n, k, ret;
   PPCODE:
@@ -2865,16 +2872,21 @@ void is_powerful(IN SV* svn, IN SV* svk = 0);
       if (!svk || k == 0) k = 2;
       if (ix == 0) RETURN_NPARITY( is_powerful(n, k) );
       if (ix == 1) XSRETURN_UV( powerful_count(n, k) );
-
-      if (n == 0) XSRETURN_UNDEF;
-      ret = nth_powerful(n, k);
+      if (ix == 2) {
+        if (n == 0) XSRETURN_UNDEF;
+        ret = nth_powerful(n, k);
+      } else {
+        if (n == 0) XSRETURN_UV(0);
+        ret = sumpowerful(n, k);
+      }
+      /* ret=0: nth_powerful / sumpowerful result > UV_MAX, so go to PP/GMP */
       if (ret > 0) XSRETURN_UV(ret);
-      /* ret=0: nth_powerful > UV_MAX, so go to PP/GMP */
     }
     switch (ix) {
       case 0: _vcallsub_with_gmp(0.53, "is_powerful"); break;
       case 1: _vcallsub_with_gmp(0.53, "powerful_count"); break;
       case 2: _vcallsub_with_gmp(0.00, "nth_powerful"); break;
+      case 3: _vcallsub_with_gmp(0.00, "sumpowerful"); break;
       default: break;
     }
     return;

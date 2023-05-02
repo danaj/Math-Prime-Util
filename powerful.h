@@ -9,4 +9,6 @@ extern UV powerful_count(UV n, UV k);
 
 extern UV nth_powerful(UV n, UV k);
 
+extern UV sumpowerful(UV n, UV k);
+
 #endif

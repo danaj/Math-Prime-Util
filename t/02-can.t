@@ -60,7 +60,7 @@ my @functions =  qw(
       ramanujan_prime_count_lower ramanujan_prime_count_upper
       nth_ramanujan_prime nth_ramanujan_prime_approx
       nth_ramanujan_prime_lower nth_ramanujan_prime_upper
-      powerful_count nth_powerful
+      powerful_count nth_powerful sumpowerful
       prime_power_count prime_power_count_approx
       prime_power_count_lower prime_power_count_upper
       nth_prime_power nth_prime_power_approx
@@ -71,7 +71,7 @@ my @functions =  qw(
       nth_perfect_power_lower nth_perfect_power_upper
       powerfree_count powerfree_sum
       powerfree_part powerfree_part_sum
-      smooth_count rough_count
+      smooth_count rough_count powersum
       lucky_count lucky_count_approx lucky_count_lower lucky_count_upper
       nth_lucky nth_lucky_approx nth_lucky_lower nth_lucky_upper
       sum_primes print_primes

@@ -350,6 +350,7 @@ Tags:
   nth_lucky_upper(n)                  fast upper bound for nth lucky number
   nth_lucky_approx(n)                 fast approximate nth lucky number
   powerful_count(n[,k])               count of k-powerful numbers <= n
+  sumpowerful(n[,k])                  sum of k-powerful numbers <= n
   nth_powerful(n[,k])                 the nth k-powerful number
   next_perfect_power(n)               the next perfect power > n
   prev_perfect_power(n)               the previous perfect power < n
@@ -368,6 +369,7 @@ Tags:
   powerfree_sum(n[,k])                sum of k-powerfree numbers <= n
   powerfree_part(n[,k])               remove excess powers so n is k-free
   powerfree_part_sum(n[,k])           sum of k-powerfree parts for 1 to n
+  powersum(n,k)                       sum of kth powers from 1 to n
 
 =head2 NON-INTEGER MATH
 

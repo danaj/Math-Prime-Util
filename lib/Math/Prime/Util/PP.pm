@@ -90,6 +90,7 @@ BEGIN {
 *Mis_prime = \&Math::Prime::Util::is_prime;
 *Mis_semiprime = \&Math::Prime::Util::is_semiprime;
 *Mis_power = \&Math::Prime::Util::is_power;
+*Mis_square_free = \&Math::Prime::Util::is_square_free;
 *Mchinese = \&Math::Prime::Util::chinese;
 *Mvaluation = \&Math::Prime::Util::valuation;
 *Mkronecker = \&Math::Prime::Util::kronecker;
@@ -99,6 +100,8 @@ BEGIN {
 *Mprimorial = \&Math::Prime::Util::primorial;
 *Mpn_primorial = \&Math::Prime::Util::pn_primorial;
 *Mbinomial = \&Math::Prime::Util::binomial;
+*Mstirling = \&Math::Prime::Util::stirling;
+*Mpowersum = \&Math::Prime::Util::powersum;
 *Murandomm = \&Math::Prime::Util::urandomm;
 *Murandomb = \&Math::Prime::Util::urandomb;
 *Mnext_prime = \&Math::Prime::Util::next_prime;
@@ -1502,8 +1505,8 @@ sub _powerful_count_recurse {
 
   my $sum = 0;
   for my $i (1 .. $lim) {
-    if (Mgcd($m,$i) == 1 && Math::Prime::Util::is_square_free($i)) {
-      $sum += _powerful_count_recurse($n, $k, Mmulint($m, Mpowint($i,$r)), $r-1)
+    if (Mgcd($m,$i) == 1 && Mis_square_free($i)) {
+      $sum += _powerful_count_recurse($n, $k, Mmulint($m,Mpowint($i,$r)), $r-1);
     }
   }
   $sum;
@@ -1523,8 +1526,7 @@ sub powerful_count {
   if ($k == 2) {
     my $sum = 0;
     for my $i (1 .. Mrootint($n,3)) {
-      $sum += Msqrtint(Mdivint($n,Mpowint($i,3)))
-        if Math::Prime::Util::is_square_free($i);
+      $sum += Msqrtint(Mdivint($n,Mpowint($i,3)))  if Mis_square_free($i);
     }
     return $sum;
   }
@@ -1573,6 +1575,55 @@ sub nth_powerful {
   }
   $hi;
 }
+
+sub _genpowerful {
+  my($m, $r, $n, $k, $arr) = @_;
+  if ($r < $k) { push @$arr, $m; return; }
+  my $rootdiv = Mrootint(Mdivint($n, $m), $r);
+  if ($r == $k) {
+    push @$arr, Mmulint($m, Mpowint($_,$k))  for 1 .. $rootdiv;
+  } else {
+    for my $i (1 .. $rootdiv) {
+      if (Mgcd($m,$i) == 1 && Mis_square_free($i)) {
+        _genpowerful(Mmulint($m, Mpowint($i,$r)), $r-1, $n, $k, $arr);
+      }
+    }
+  }
+}
+
+sub _sumpowerful {
+  my($m, $r, $n, $k) = @_;
+  return $m if $r < $k;
+
+  my $rootdiv = Mrootint(Mdivint($n, $m), $r);
+
+  return Mmulint($m, Mpowersum($rootdiv, $k))  if $r == $k;
+
+  # Generating then summing the list turns out to be MUCH faster than
+  # summing as we go.
+  my @v;
+  for my $i (1 .. $rootdiv) {
+    if (Mgcd($m,$i) == 1 && Mis_square_free($i)) {
+      push @v, _sumpowerful(Mmulint($m, Mpowint($i,$r)), $r-1, $n, $k);
+    }
+  }
+  Mvecsum(@v);
+}
+
+sub sumpowerful {
+  my($n, $k) = @_;
+  _validate_positive_integer($n);
+  if (defined $k && $k != 0) {
+    _validate_positive_integer($k);
+  } else {
+    $k = 2;
+  }
+  return $n if $n <= 1;
+  return Mrshiftint(Mmulint($n,Maddint($n,1)),1) if $k == 1;
+
+  return _sumpowerful(1, 2*$k-1, $n, $k);
+}
+
 
 sub is_powerfree {
   my($n, $k) = @_;
@@ -1645,7 +1696,8 @@ sub powerfree_sum {
       $ik = Mpowint($_, $k);
       $nik = Mdivint($n, $ik);
       $T = Mrshiftint(Mmulint($nik, Maddint($nik,1)), 1);
-      $sum = Maddint($sum, ((scalar(@_) & 1) ? -1 : 1) * Mmulint($ik, $T));
+      $sum = (scalar(@_) & 1) ? Msubint($sum, Mmulint($ik,$T)) :
+                                Maddint($sum, Mmulint($ik,$T));
     },
     Mrootint($n, $k)
   );
@@ -2537,11 +2589,11 @@ sub is_fundamental {
   if ($r) {
     my $r4 = $r & 3;
     if (!$neg) {
-      return (($r ==  4) ? 0 : is_square_free($n >> 2)) if $r4 == 0;
-      return is_square_free($n) if $r4 == 1;
+      return (($r ==  4) ? 0 : Mis_square_free($n >> 2)) if $r4 == 0;
+      return Mis_square_free($n) if $r4 == 1;
     } else {
-      return (($r == 12) ? 0 : is_square_free($n >> 2)) if $r4 == 0;
-      return is_square_free($n) if $r4 == 3;
+      return (($r == 12) ? 0 : Mis_square_free($n >> 2)) if $r4 == 0;
+      return Mis_square_free($n) if $r4 == 3;
     }
   }
   0;
@@ -4318,6 +4370,33 @@ sub rashiftint {
   Mdivint($n, $k2);
 }
 
+sub powersum {
+  my($n, $k) = @_;
+  _validate_num($n) || _validate_positive_integer($n);
+  _validate_num($k) || _validate_positive_integer($k);
+
+  return $n if $n <= 1 || $k == 0;
+
+  return Mdivint(Mvecprod($n, Maddint($n,1), Maddint(Mmulint($n,2),1)),6) if $k==2;
+  return Mdivint(Mvecprod(
+                          $n, Maddint($n,1), Maddint(Mmulint($n,2),1),
+                          Mvecsum( Mmulint(3,Mpowint($n,2)), Mmulint(3,$n), -1 )
+                         ),30) if $k==4;
+
+  my $a = Mrshiftint(Mmulint($n,Maddint($n,1)),1);
+  return $a if $k == 1;
+  return Mmulint($a,$a) if $k == 3;
+  return Mdivint(Msubint(Mmulint(4,Mpowint($a,3)),Mmulint($a,$a)),3) if $k == 5;
+
+  if ($k < $n) {
+    return Mvecsum( map { Mvecprod( Mfactorial($_),
+                                    Mbinomial($n+1,$_+1),
+                                    Mstirling($k,$_,2)     ) } 1..$k );
+  }
+
+  Mvecsum(map { Mpowint($_,$k) } 1..$n);
+}
+
 # Make sure to work around RT71548, Math::BigInt::Lite,
 # and use correct lcm semantics.
 sub gcd {
@@ -5913,7 +5992,7 @@ sub stirling {
       my $t = Mvecprod(
         Mbinomial($k + $n - 1, $k + $n - $m),
         Mbinomial(2 * $n - $m, $n - $k - $m),
-        Math::Prime::Util::stirling($k - $m + $n, $k, 2),
+        Mstirling($k - $m + $n, $k, 2),
       );
       $t = Mnegint($t) if $k & 1;
       push @terms, $t;
@@ -7663,6 +7742,7 @@ sub _found_factor {
 sub squfof_factor { trial_factor(@_) }
 sub lehman_factor { trial_factor(@_) }
 sub pplus1_factor { pminus1_factor(@_) }
+sub cheb_factor   { pminus1_factor(@_) }
 
 sub prho_factor {
   my($n, $rounds, $pa, $skipbasic) = @_;

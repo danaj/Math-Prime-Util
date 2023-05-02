@@ -10,6 +10,8 @@ Revision history for Perl module Math::Prime::Util
 
     [ADDED]
 
+    - powersum(n,k)                   sum of k-th powers of positive ints <= n
+    - sumpowerful(n[,k])              sum of k-powerful numbers <= n
     - sumliouville(n)                 L(n), sum of liouville(1..n)
     - sumtotient(n)                   sum of euler_phi(1..n)
     - prime_bigomega(n)               # of factors (with multiplicity)

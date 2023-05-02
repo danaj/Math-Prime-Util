@@ -66,7 +66,7 @@ our @EXPORT_OK =
       ramanujan_prime_count_lower ramanujan_prime_count_upper
       nth_ramanujan_prime nth_ramanujan_prime_approx
       nth_ramanujan_prime_lower nth_ramanujan_prime_upper
-      powerful_count nth_powerful
+      powerful_count nth_powerful sumpowerful
       prime_power_count prime_power_count_approx
       prime_power_count_lower prime_power_count_upper
       nth_prime_power nth_prime_power_approx
@@ -77,7 +77,7 @@ our @EXPORT_OK =
       nth_perfect_power_lower nth_perfect_power_upper
       powerfree_count powerfree_sum
       powerfree_part powerfree_part_sum
-      smooth_count rough_count
+      smooth_count rough_count powersum
       lucky_count lucky_count_approx lucky_count_lower lucky_count_upper
       nth_lucky nth_lucky_approx nth_lucky_lower nth_lucky_upper
       sum_primes print_primes
@@ -2043,7 +2043,7 @@ With C<k=1> these are the primes (L<OEIS A000040|http://oeis.org/A000040>).
 With C<k=2> these are the semiprimes (L<OEIS A001358|http://oeis.org/A001358>).
 With C<k=3> these are the 3-almost-primes (L<OEIS A014612|http://oeis.org/A014612>).
 With C<k=4> these are the 4-almost-primes (L<OEIS A014613|http://oeis.org/A014613>).
-OEIS sequences can be through C<k=20>.
+OEIS sequences can be found through C<k=20>.
 
 =head2 almost_prime_count
 
@@ -4015,7 +4015,9 @@ Given a non-negative integer C<n>,
 returns the summatory Euler totient function.
 This function is defined as C<sum(euler_phi(1..n))>, but calculated
 much more efficiently.
+
 A sub-linear time recursion is implemented, using O(n^2/3) memory.
+Memory use is restricted so growth becomes approximately linear above C<10^13>.
 
 This is L<OEIS series A002088|http://oeis.org/A002088>.
 
@@ -4369,6 +4371,14 @@ returns the total number of C<k>-powerful numbers
 from C<1> to C<|n|> inclusive.
 If C<k> is omitted or zero, C<k=2> is used.
 
+=head2 sumpowerful
+
+Given an integer C<n> and a non-negative integer C<k>,
+returns the sum of positive integer C<k>-powerful numbers less than or equal
+to C<|n|>.
+That is, the sum for all C<x>, C<1> E<lt>= C<x> E<gt>= C<|n|>, where C<x> is a C<k>-powerful number.
+If C<k> is omitted or zero, C<k=2> is used.
+
 =head2 nth_powerful
 
 Given two non-negative integer inputs C<n> and C<k>, returns the
@@ -4546,6 +4556,19 @@ the C<n E<lt> 0, k E<lt>= n> extension and instead returns C<0> for this
 case.  GMP's API does not allow negative C<k> but otherwise matches.
 C<Math::BigInt> version 1.999816 and later supports negative arguments
 with similar semantics.  Prior to this, C<n E<lt> 0, k > 0> was undefined.
+
+=head2 powersum
+
+Given two non-negative integers C<n> and C<k>, returns the sum of C<k>-th
+powers of the first C<n> positive integers.
+
+With C<k=2> this is (L<OEIS A000330|http://oeis.org/A000330>).
+With C<k=3> this is (L<OEIS A000537|http://oeis.org/A000537>).
+With C<k=4> this is (L<OEIS A000538|http://oeis.org/A000538>).
+OEIS sequences can be found through C<k=8>.
+
+This corresponds to the C<faulhaber_sum(n,k)> function in L<Math::AnyNum>.
+
 
 =head2 hclassno
 
