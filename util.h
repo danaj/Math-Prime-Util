@@ -28,6 +28,8 @@ extern UV valuation_remainder(UV n, UV k, UV *r);
 extern UV logint(UV n, UV b);
 extern UV mpu_popcount_string(const char* ptr, uint32_t len);
 
+extern UV powersum(UV n, UV k);
+
 extern signed char* range_moebius(UV low, UV high);
 extern signed char* range_liouville(UV low, UV high);
 

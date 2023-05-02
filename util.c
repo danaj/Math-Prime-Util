@@ -729,6 +729,52 @@ UV logint(UV n, UV b)
   return e;
 }
 
+#if BITS_PER_WORD == 32
+static const uint32_t _maxpowersumn[32] = {0,92681,2343,361,116,53,30,20,14,11,8,7,6,5,4,4,3,3,3,3,3,2,2,2,2,2,2,2,2,2,2,2};
+#else
+static const UV _maxpowersumn[64] = {0,6074000999,3810777,92681,9839,2190,745,331,175,105,69,49,36,28,22,18,15,13,11,10,9,8,7,6,6,5,5,5,4,4,4,4,3,3,3,3,3,3,3,3,3,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2};
+#endif
+
+UV powersum(UV n, UV k)
+{
+  UV a, a2, i, sum;
+  if (n <= 1 || k == 0) return n;
+
+  if (k >= BITS_PER_WORD || n > _maxpowersumn[k]) return 0;
+
+  sum = 1 + (UVCONST(1)<<k);
+  if (n == 2) return sum;
+
+  a = (n & 1)  ?  n*((n+1)>>1)  :  (n>>1)*(n+1);
+  if (k == 1) return a;
+  if (k == 2) return n * (1+n) * (1+2*n) / 6;
+  a2 = a*a;
+  if (k == 3) return a2;
+
+  if (k == 4) return n * (1+n) * (1+2*n) * (-1 + 3*n + 3*n*n)/30;
+  if (k == 5) return (4*a2*a-a2)/3;
+  if (k == 6) return n * (1+n) * (1+2*n) * (1 - 3*n + 6*n*n*n + 3*n*n*n*n)/42;
+  if (k == 7) return (6*a2*a2-4*a2*a+a2)/3;
+  if (k == 8 && n <= 106 && BITS_PER_WORD == 64)
+    return n * (1+n) * (1+2*n) * (5*ipow(n,6) + 15*ipow(n,5) + 5*ipow(n,4) - 15*n*n*n - n*n + 9*n - 3)/90;
+  if (k == 8) {
+    UV r, fac = 1, bin = binomial(n+1,2);
+    for (sum = 0, r = 1; r <= k; r++) {
+      /* sum += factorial(r) * stirling2(k,r) * binomial(n+1,r+1); */
+      /* if (fac != factorial(r)) croak("bad factorial %lu\n",r); */
+      /* if (bin != binomial(n+1,r+1)) croak("bad binomial %lu  bin %lu  binomial %lu\n",r, bin, binomial(n+1,r+1)); */
+      sum += fac * stirling2(k,r) * bin;
+      bin = (bin*(n-r))/(r+2);
+      fac *= (r+1);
+    }
+    return sum;
+  }
+  for (i = 3; i <= n; i++)
+    sum += ipow(i, k);
+  return sum;
+}
+
+
 UV mpu_popcount_string(const char* ptr, uint32_t len)
 {
   uint32_t count = 0, i, j, d, v, power, slen, *s, *sptr;
