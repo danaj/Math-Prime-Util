@@ -2862,22 +2862,22 @@ void valuation(IN SV* svn, IN SV* svk)
 void is_powerful(IN SV* svn, IN SV* svk = 0);
   ALIAS:
     powerful_count = 1
-    nth_powerful = 2
-    sumpowerful = 3
+    sumpowerful = 2
+    nth_powerful = 3
   PREINIT:
     UV n, k, ret;
   PPCODE:
-    if (_validate_and_set(&n, aTHX_ svn, (ix < 2) ? IFLAG_ABS : IFLAG_POS) &&
+    if (_validate_and_set(&n, aTHX_ svn, (ix < 3) ? IFLAG_ABS : IFLAG_POS) &&
         (!svk || _validate_and_set(&k, aTHX_ svk, IFLAG_POS))) {
       if (!svk || k == 0) k = 2;
       if (ix == 0) RETURN_NPARITY( is_powerful(n, k) );
       if (ix == 1) XSRETURN_UV( powerful_count(n, k) );
       if (ix == 2) {
-        if (n == 0) XSRETURN_UNDEF;
-        ret = nth_powerful(n, k);
-      } else {
         if (n == 0) XSRETURN_UV(0);
         ret = sumpowerful(n, k);
+      } else {
+        if (n == 0) XSRETURN_UNDEF;
+        ret = nth_powerful(n, k);
       }
       /* ret=0: nth_powerful / sumpowerful result > UV_MAX, so go to PP/GMP */
       if (ret > 0) XSRETURN_UV(ret);
@@ -2885,8 +2885,8 @@ void is_powerful(IN SV* svn, IN SV* svk = 0);
     switch (ix) {
       case 0: _vcallsub_with_gmp(0.53, "is_powerful"); break;
       case 1: _vcallsub_with_gmp(0.53, "powerful_count"); break;
-      case 2: _vcallsub_with_gmp(0.00, "nth_powerful"); break;
-      case 3: _vcallsub_with_gmp(0.00, "sumpowerful"); break;
+      case 2: _vcallsub_with_gmp(0.00, "sumpowerful"); break;
+      case 3: _vcallsub_with_gmp(0.00, "nth_powerful"); break;
       default: break;
     }
     return;

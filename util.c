@@ -738,12 +738,10 @@ static const UV _maxpowersumn[64] = {0,6074000999,3810777,92681,9839,2190,745,33
 UV powersum(UV n, UV k)
 {
   UV a, a2, i, sum;
+
   if (n <= 1 || k == 0) return n;
-
   if (k >= BITS_PER_WORD || n > _maxpowersumn[k]) return 0;
-
-  sum = 1 + (UVCONST(1)<<k);
-  if (n == 2) return sum;
+  if (n == 2) return 1 + (UVCONST(1) << k);
 
   a = (n & 1)  ?  n*((n+1)>>1)  :  (n>>1)*(n+1);
   a2 = a*a;
@@ -758,7 +756,7 @@ UV powersum(UV n, UV k)
   if (k == 7 && n <=    288) return a2 * (6*a2 - 4*a + 1) / 3;
   if (k == 8 && n <=    115) return a * (2*n+1) * (n*(n*(n*(n*(n*(5*n+15)+5)-15)-1)+9)-3) / 45;
 #else
-  /* TODO:  find the 32-bit limit */
+  /* TODO:  find the 32-bit limits */
 #endif
 
   if (k <= 8 && k < n) {
@@ -771,6 +769,7 @@ UV powersum(UV n, UV k)
     return sum;
   }
 
+  sum = 1 + (UVCONST(1)<<k);
   for (i = 3; i <= n; i++)
     sum += ipow(i, k);
   return sum;
