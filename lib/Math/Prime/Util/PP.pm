@@ -4511,6 +4511,9 @@ sub chinese2 {
     $ni = Math::BigInt->new("$ni") if !ref($ni) && ($ni > (~0>>1) || OLD_PERL_VERSION);
     if (!defined $lcm) {
       ($sum, $lcm) = ($ai, $ni);
+      # Make sure we have our own versions
+      $sum = $sum->copy if ref $sum;
+      $lcm = $lcm->copy if ref $lcm;
       next;
     }
     # gcdext
