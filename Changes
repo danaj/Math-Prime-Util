@@ -162,7 +162,9 @@ Revision history for Perl module Math::Prime::Util
     - The 70-rt-bignum test was horrendously slow with bignum 0.60+.
       It was bypassing the validation that sanitized the input.
 
-    - Fix logint for base > n.  Github 75.
+    - Fix logint for base > n.  Github #75.
+
+    - lcm with empty list returns 1 instead of 0.  Github #73.
 
     [FUNCTIONALITY AND PERFORMANCE]
 

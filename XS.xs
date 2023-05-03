@@ -1412,7 +1412,7 @@ gcd(...)
     } else {
       /* For each arg, while valid input, validate+gcd/lcm.  Shortcut stop. */
       if (ix == 0) { ret = 0; nullv = 1; }
-      else         { ret = (items == 0) ? 0 : 1; nullv = 0; }
+      else         { ret = 1; nullv = 0; }
       for (i = 0; i < items && ret != nullv && status != 0; i++) {
         status = _validate_and_set(&n, aTHX_ ST(i), IFLAG_ABS);
         if (status == 0) break;

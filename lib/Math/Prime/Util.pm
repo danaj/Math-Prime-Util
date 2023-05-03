@@ -3404,6 +3404,7 @@ follow the semantics of Mathematica, Pari, and Perl 6, re:
 
   lcm(0, n) = 0              Any zero in list results in zero return
   lcm(n,-m) = lcm(n, m)      We use the absolute values
+  lcm() = 1                  lcm of empty list returns 1
 
 =head2 gcdext
 

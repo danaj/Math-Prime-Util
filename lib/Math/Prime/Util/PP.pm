@@ -3376,7 +3376,7 @@ sub _kap_reduce_count {   # returns new k and n
   my($k, $n) = @_;
 
   my $pow3k = Mpowint(3, $k);
-  while ($n  < $pow3k) {
+  while ($n < $pow3k) {
     $n = Mdivint($n, 2);
     $k--;
     $pow3k = Mdivint($pow3k, 3);
@@ -3668,6 +3668,7 @@ sub _almost_prime_nth_asymptotic {
 
 sub almost_prime_count_lower {
   my($k, $n) = @_;
+  _validate_positive_integer($n);
 
   return 0 if ($n >> $k) == 0;
   ($k, $n) = _kap_reduce_count($k, $n);
@@ -3702,6 +3703,7 @@ sub almost_prime_count_lower {
 }
 sub almost_prime_count_upper {
   my($k, $n) = @_;
+  _validate_positive_integer($n);
 
   return 0 if ($n >> $k) == 0;
   ($k, $n) = _kap_reduce_count($k, $n);
@@ -4419,7 +4421,7 @@ sub gcd {
   return $gcd;
 }
 sub lcm {
-  return 0 unless @_;
+  return 1 unless @_;
   my $lcm = Math::BigInt::blcm( map {
     my $v = (($_ < 2147483647 && !ref($_)) || ref($_) eq 'Math::BigInt') ? $_ : "$_";
     return 0 if $v == 0;
