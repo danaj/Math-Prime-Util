@@ -720,6 +720,8 @@ UV logint(UV n, UV b)
   UV v, e = 0;
   if (b == 2)
     return log2floor(n);
+  if (b > n)
+    return 0;
   if (n > UV_MAX/b) {
     n /= b;
     e = 1;

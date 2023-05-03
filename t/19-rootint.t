@@ -36,7 +36,7 @@ my @roots = (
 
 plan tests => 0 + 4  # sqrtint
                 + 6  # rootint
-                + 5; # logint
+                + 6; # logint
 
 ###### sqrtint
 is_deeply( [map { sqrtint($_) } 0..100], [map { int(sqrt($_)) } 0..100], "sqrtint 0 .. 100" );
@@ -72,3 +72,4 @@ is_deeply( [map { logint($_,5) } 1..200], [map { int(log($_)/log(5)+1e-10) } 1..
   is( logint(19284098234,16,\$be), 8, "logint(19284098234,16) = 8" );
   is( $be, 16**8, "power is 16^8" );
 }
+is( logint(58,~0), 0, "logint(58,~0) = 0" );
