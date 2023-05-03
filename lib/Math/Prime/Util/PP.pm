@@ -254,7 +254,7 @@ sub _validate_integer {
       if $strn eq '' || ($strn =~ tr/-0123456789//c && $strn !~ /^[-+]?\d+$/);
     if (ref($n) || $n >= INTMAX || $n <= INTMIN) {  # Looks like a bigint
       $n = Math::BigInt->new($strn);
-      $_[0] = $n if $n > INTMAX || $n < INTMIN;
+      $_[0] = ($n > INTMAX || $n < INTMIN)  ?  $n  :  int($strn);
     }
   }
   $_[0]->upgrade(undef) if ref($_[0]) && $_[0]->upgrade();
