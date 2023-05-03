@@ -100,6 +100,7 @@ UV max_nth_omega_prime(uint32_t k) {
 #define RECURSIVE_OMEGA_COUNT(k,n,pr,npr) \
   _omega_prime_count_rec2(k, n, 1, 2, rootint(n,k), 1, pr, npr)
 
+/*  Initial call:   m = 1, p = 2, s = sqrtn(n), j = 1  */
 static UV _omega_prime_count_rec2(uint32_t k, UV n, UV m, UV p, UV s, UV j, uint32_t* pr, UV numprimes) {
   UV t, r, count = 0;
 
@@ -108,6 +109,7 @@ static UV _omega_prime_count_rec2(uint32_t k, UV n, UV m, UV p, UV s, UV j, uint
     for (;  p <= s;  j++, p = r) {
       r = (j < numprimes)  ?  pr[j]  :  next_prime(p);
       for (t = m*p, w = n/t;  t <= n && w >= r;  t *= p, w = n/t) {
+#if 1
         count += prime_count(w) - j;
         for (k = j, r2 = r, rlim = isqrt(w);
              r2 <= rlim;
@@ -115,6 +117,17 @@ static UV _omega_prime_count_rec2(uint32_t k, UV n, UV m, UV p, UV s, UV j, uint
           u = t * r2;
           do {  u *= r2;  count++;  } while (n/r2 >= u);
         }
+#else
+        /* This is the basic method from the definition, before optimizing */
+        UV q;
+        count += prime_power_count(w);
+        rlim = prev_prime(r);
+        for (k = 1, q = 2;
+             q <= rlim;
+             q = (++k < numprimes) ? pr[k-1] : nth_prime(k)) {
+          count -= logint(w, q);
+        }
+#endif
         if (t > n/p) break;
       }
     }
@@ -136,7 +149,7 @@ static UV _omega_prime_count_rec2(uint32_t k, UV n, UV m, UV p, UV s, UV j, uint
 UV omega_prime_count(uint32_t k, UV n)
 {
   uint32_t* pr;
-  UV npr, sum, lo;
+  UV maxpr, npr, sum, lo;
 
   if (k == 0) return (n >= 1);
   if (k == 1) return prime_power_count(n);
@@ -145,7 +158,8 @@ UV omega_prime_count(uint32_t k, UV n)
   lo = pn_primorial(k);
   if (lo == 0 || n < lo) return 0;
 
-  npr = range_prime_sieve_32(&pr, isqrt(n), 0);  /* p[0]=2, p[1]=3,... */
+  maxpr = rootint(n, (k > 10)  ?  4  :  (k > 6)  ?  3  :  2);
+  npr = range_prime_sieve_32(&pr, maxpr, 0);  /* p[0]=2, p[1]=3,... */
   sum = RECURSIVE_OMEGA_COUNT(k, n, pr, npr);
   Safefree(pr);
   return sum;
