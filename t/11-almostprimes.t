@@ -32,7 +32,7 @@ my @aptests = (
 
 plan tests =>   5   # almost_primes sieve
               + 3   # count
-              + 9   # nth
+              + 10  # nth
               + 2   # limits
               + 2   # approx
               + scalar(@aptests)  # approx
@@ -69,6 +69,8 @@ SKIP: {
   is(nth_almost_prime(5,67890), 558246, "67890th 5-almost-prime is 558246");
   is(nth_almost_prime(24,5555), "21678243840", "5555th 24-almost-prime is 21678243840");
 }
+
+is(nth_almost_prime(100,3), "2852213850513516153367582212096", "nth_almost_prime with k=100 n=3");
 
 ###### Test limits
 is( cmp_kap(3,59643,234618), 234618, "3-almost prime limits for 59643" );

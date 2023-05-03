@@ -3785,7 +3785,7 @@ sub _fast_small_nth_almost_prime {
   my($k,$n) = @_;
   croak "Internal kap out of range error" if $n >= 8 || $k < 2;
   return (0, 4,  6,  9, 10, 14, 15, 21)[$n] if $k == 2;
-  return (0, 8, 12, 18, 20, 27, 28, 30)[$n] * (1 << ($k-3));
+  return Mmulint((0, 8, 12, 18, 20, 27, 28, 30)[$n], Mlshiftint(1,$k-3));
 }
 
 sub nth_almost_prime_upper {
