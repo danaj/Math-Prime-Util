@@ -3803,6 +3803,7 @@ sub nth_almost_prime_upper {
 
   my $lo = 5 * (1 << $k);   # $k >= 1, $n >= 8
   my $hi = 1 + _almost_prime_nth_asymptotic($k, $n);
+  $hi = int($hi);
   # We just guessed at hi, so bump it up until it's in range
   my $rhi = almost_prime_count_lower($k, $hi);
   while ($rhi < $n) {
@@ -3833,6 +3834,7 @@ sub nth_almost_prime_lower {
   my $lo = 5 * (1 << $k);   # $k >= 1, $n >= 8
   my $hi = 1 + _almost_prime_nth_asymptotic($k, $n);
   # We just guessed at hi, so bump it up until it's in range
+  $hi = int($hi);
   my $rhi = almost_prime_count_upper($k, $hi);
   while ($rhi < $n) {
     $lo = $hi+1;

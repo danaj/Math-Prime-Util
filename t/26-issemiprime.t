@@ -17,7 +17,7 @@ plan tests => 6;
              "Identify semiprimes from 10000 to 10100" );
   is(is_semiprime("669386384129397581"), 1, "is_semiprime(669386384129397581)");
   is(is_semiprime("10631816576169524657"), 1, "is_semiprime(10631816576169524657)");
-  is(is_semiprime("1814186289136250293214268090047441303"), 0, "is_semiprime(1814186289136250293214268090047441303)");
+  is(is_semiprime("1814186289136250293214268090047441301"), 0, "is_semiprime(1814186289136250293214268090047441301)");
   SKIP: {
     skip "Skipping difficult is_semiprime", 1 unless $usegmp;
     is(is_semiprime("42535430147496493121551759"), 0, "is_semiprime(42535430147496493121551759)");
