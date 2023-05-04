@@ -209,7 +209,7 @@ UV nth_powerful(UV n, UV k) {
     } else {
       npow = pow(n, 3.690 + 0.665*(k-4));
       nest = (.01275 / pow(4.11, k-4)) * npow;
-      dlo = 0.76 * (nc + nest);
+      dlo = 0.70 * (nc + nest);
       dhi = 4.3 * (nc + nest);
     }
     lo = (UV) dlo;
