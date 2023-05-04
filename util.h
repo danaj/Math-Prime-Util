@@ -58,6 +58,7 @@ extern int prep_pow_inv(UV *a, UV *k, int kstatus, UV n);
 /* Division and remainder.  Returns remainder. */
 extern IV tdivrem(IV *q, IV *r, IV D, IV d);   /* signed div/rem trunc */
 extern IV fdivrem(IV *q, IV *r, IV D, IV d);   /* signed div/rem floor */
+extern IV cdivrem(IV *q, IV *r, IV D, IV d);   /* signed div/rem ceiling */
 extern IV edivrem(IV *q, IV *r, IV D, IV d);   /* signed div/rem Euclidian */
 extern UV ivmod(IV a, UV n);                   /* Returns a mod n (trunc) */
 

@@ -1460,7 +1460,15 @@ IV tdivrem(IV *Q, IV *R, IV D, IV d) {
 IV fdivrem(IV *Q, IV *R, IV D, IV d) {
   IV q,r;
   _tdivrem(q,r,D,d);
-  if ((r > 0 && d < 0) || (r < 0 && d > 0)) { q = q-1; r += d; }
+  if ((r > 0 && d < 0) || (r < 0 && d > 0)) { q--; r += d; }
+  if (Q) *Q=q;
+  if (R) *R=r;
+  return r;
+}
+IV cdivrem(IV *Q, IV *R, IV D, IV d) {
+  IV q,r;
+  _tdivrem(q,r,D,d);
+  if (r != 0 && ((D >= 0) == (d >= 0))) { q++; r -= d; }
   if (Q) *Q=q;
   if (R) *R=r;
   return r;

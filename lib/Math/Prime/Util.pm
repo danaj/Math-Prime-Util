@@ -36,7 +36,7 @@ our @EXPORT_OK =
       is_smooth is_rough is_powerful is_practical is_lucky
       sqrtint rootint logint lshiftint rshiftint rashiftint absint negint
       signint cmpint addint subint add1int sub1int mulint powint
-      divint modint divrem fdivrem tdivrem
+      divint modint divceilint divrem fdivrem cdivrem tdivrem
       miller_rabin_random
       lucas_sequence
       lucasu lucasv lucasuv lucasumod lucasvmod lucasuvmod
@@ -3311,6 +3311,13 @@ GMP C<fdiv> functions.
 Like with C<divint>, we use floor division, while Pari/GP uses Euclidian
 for their C<%> integer remainder operator.
 
+=head2 divceilint
+
+Given integers C<a> and C<b>, returns the quotient C<a / b>.
+
+Ceiling division is used, so q is rounded towards C<+inf> and
+the remainder has the opposite sign as the divisor C<b>.
+
 =head2 divrem
 
     my($quo, $rem) = divrem($a, $b);
@@ -3342,6 +3349,13 @@ This corresponds to Python's builtin C<divmod> function, and
 Raku's builtin C<div> and C<mod> functions.
 The resulting pair will match
 L<Math::BigInt/bdiv> and L<Math::BigInt/bmod>.
+
+=head2 cdivrem
+
+Given integers C<a> and C<b>, returns a list of two items:
+the ceiling quotient and the ceiling remainder.
+
+This allows one to perform division with rounding up.
 
 =head2 absint
 

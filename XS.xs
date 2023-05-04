@@ -2487,7 +2487,7 @@ jordan_totient(IN SV* sva, IN SV* svn)
     overflow:
     switch (ix) {
       case 0:  _vcallsub_with_gmp(0.22,"jordan_totient");  break;
-      case 1:  _vcallsub_with_gmp(0.0,"powersum");  break;
+      case 1:  _vcallsub_with_gmp(0.53,"powersum");  break;
       case 2:  _vcallsub_with_pp("ramanujan_sum");  break;
       case 3:  _vcallsub_with_pp("legendre_phi");  break;
       case 4:  _vcallsub_with_pp("smooth_count"); break;
@@ -2916,13 +2916,14 @@ void addint(IN SV* sva, IN SV* svb)
     mulint = 2
     divint = 3
     modint = 4
-    powint = 5
+    divceilint = 5
+    powint = 6
   PREINIT:
     int astatus, bstatus, overflow, postneg, nix, smask;
     UV a, b, t, ret;
   PPCODE:
     astatus = _validate_and_set(&a, aTHX_ sva, IFLAG_ANY);
-    bstatus = _validate_and_set(&b, aTHX_ svb, (ix == 5) ? IFLAG_POS : IFLAG_ANY);
+    bstatus = _validate_and_set(&b, aTHX_ svb, (ix == 6) ? IFLAG_POS : IFLAG_ANY);
 
     if (astatus != 0 && bstatus != 0) {
       /* We will try to do everything with non-negative integers, with overflow
@@ -2969,7 +2970,15 @@ void addint(IN SV* sva, IN SV* svb)
           XSRETURN_IV( (ix == 3) ? q : r );
         }
       }
-      if (ix == 5 && astatus != 1) {  /* bstatus is never -1 for powint */
+      if (ix == 5) {
+        if (b == 0) croak("divceilint: divide by zero");
+        if (smask != 0 && (astatus == -1 || a <= (UV)IV_MAX) && (bstatus == -1 || b <= (UV)IV_MAX)) {
+          IV q, r;
+          (void) cdivrem(&q, &r, (IV)a, (IV)b);
+          XSRETURN_IV( q );
+        }
+      }
+      if (ix == 6 && astatus != 1) {  /* bstatus is never -1 for powint */
         a = -(IV)a;
         postneg = (b & 1);
         astatus = 1;
@@ -2988,7 +2997,9 @@ void addint(IN SV* sva, IN SV* svb)
                    break;
           case 3:  ret = a / b; break;           /* divint */
           case 4:  ret = a % b; break;           /* modint */
-          case 5:
+          case 5:  ret = a / b + (a % b != 0);   /* divceilint */
+                   break;
+          case 6:
           default: ret = ipowsafe(a, b);
                    overflow = (a > 1 && ret == UV_MAX);
                    break;
@@ -3007,7 +3018,8 @@ void addint(IN SV* sva, IN SV* svb)
       case 2:  _vcallsub_with_gmp(0.52,"mulint"); break;
       case 3:  _vcallsub_with_gmp(0.52,"divint"); break;
       case 4:  _vcallsub_with_gmp(0.52,"modint"); break;
-      case 5:
+      case 5:  _vcallsub_with_gmp(0.53,"divceilint"); break;
+      case 6:
       default: _vcallsub_with_gmp(0.52,"powint"); break;
     }
     objectify_result(aTHX_ ST(0), ST(0));
@@ -3115,7 +3127,8 @@ void logint(IN SV* svn, IN UV k, IN SV* svret = 0)
 void divrem(IN SV* sva, IN SV* svb)
   ALIAS:
     fdivrem = 1
-    tdivrem = 2
+    cdivrem = 2
+    tdivrem = 3
   PREINIT:
     int astatus, bstatus;
     UV D, d;
@@ -3123,10 +3136,20 @@ void divrem(IN SV* sva, IN SV* svb)
   PPCODE:
     astatus = _validate_and_set(&D, aTHX_ sva, IFLAG_ANY);
     bstatus = _validate_and_set(&d, aTHX_ svb, IFLAG_ANY);
-    if (astatus == 1 && bstatus == 1) {
+    if (astatus == 1 && bstatus == 1 && (ix != 2 || (D % d) == 0)) {
       if (d == 0) croak("divrem: divide by zero");
       XPUSHs(sv_2mortal(newSVuv( D / d )));
       XPUSHs(sv_2mortal(newSVuv( D % d )));
+      XSRETURN(2);
+    } else if (ix == 2 && astatus == 1 && bstatus == 1 && d <= (UV)IV_MAX) {
+      if (d == 0) croak("cdivrem: divide by zero");
+      if ( (D % d) == 0 ) {
+        XPUSHs(sv_2mortal(newSVuv( D / d )));
+        XPUSHs(sv_2mortal(newSVuv( D % d )));
+      } else {
+        XPUSHs(sv_2mortal(newSVuv( D/d + 1 )));
+        XPUSHs(sv_2mortal(newSViv( ((IV)D%d) - d )));
+      }
       XSRETURN(2);
     } else if (astatus != 0 && bstatus != 0 &&
                _validate_and_set((UV*)&iD, aTHX_ sva, IFLAG_IV) != 0 &&
@@ -3137,7 +3160,8 @@ void divrem(IN SV* sva, IN SV* svb)
       switch (ix) {
         case 0:  edivrem(&q, &r, iD, id); break;
         case 1:  fdivrem(&q, &r, iD, id); break;
-        case 2:
+        case 2:  cdivrem(&q, &r, iD, id); break;
+        case 3:
         default: tdivrem(&q, &r, D, d); break;
       }
       XPUSHs(sv_2mortal(newSViv( q )));
@@ -3146,9 +3170,10 @@ void divrem(IN SV* sva, IN SV* svb)
     }
     switch (ix) {
       case 0:  _vcallsubn(aTHX_ GIMME_V, VCALL_PP|VCALL_GMP, "divrem", items, 52); break;
-      case 1:  _vcallsubn(aTHX_ GIMME_V, VCALL_PP|VCALL_GMP, "fdivrem", items, 52); break;
-      case 2:
-      default: _vcallsubn(aTHX_ GIMME_V, VCALL_PP|VCALL_GMP, "tdivrem", items, 53); break;
+      case 1:  _vcallsubn(aTHX_ GIMME_V, VCALL_PP|VCALL_GMP, "fdivrem", items, 53); break;
+      case 2:  _vcallsubn(aTHX_ GIMME_V, VCALL_PP|VCALL_GMP, "cdivrem", items, 53); break;
+      case 3:
+      default: _vcallsubn(aTHX_ GIMME_V, VCALL_PP|VCALL_GMP, "tdivrem", items, 52); break;
     }
     return; /* skip implicit PUTBACK */
 

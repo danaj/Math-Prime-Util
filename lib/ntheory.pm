@@ -261,8 +261,10 @@ Tags:
   sub1int(n)                          signed integer n - 1
   divint(a,b)                         signed integer a / b     (floor)
   modint(a,b)                         signed integer a % b     (floor)
+  divceilint(a,b)                     signed integer a / b     (ceilint)
   divrem(a,b)                         return (quot,rem) of a/b (Euclidian)
   fdivrem(a,b)                        return (quot,rem) of a/b (floored)
+  cdivrem(a,b)                        return (quot,rem) of a/b (ceiling)
   tdivrem(a,b)                        return (quot,rem) of a/b (truncated)
   lshiftint(n,k)                      left shift n by k bits
   rshiftint(n,k)                      right shift n by k bits (truncate)

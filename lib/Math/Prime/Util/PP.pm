@@ -4303,6 +4303,25 @@ sub fdivrem {
   $r = _bigint_to_int($r) if ref($r) && $r->bcmp(BMAX) <= 0 && $r->bcmp(BMIN) >= 0;
   ($q,$r);
 }
+# Ceiling Division
+sub cdivrem {
+  my($a,$b) = @_;
+  _validate_integer($a);
+  _validate_integer($b);
+  croak "cdivrem: divide by zero" if $b == 0;
+  my($q,$r);
+  if (!ref($a) && !ref($b) && $a>=0 && $b>=0 && $a<SINTMAX && $b<SINTMAX) {
+    use integer; $q = $a / $b;
+  } else {
+    $q = _tquotient($a, $b);
+  }
+  $r = $a - $b * $q;
+  if ($r != 0 && (($a >= 0) == ($b >= 0)))
+    { $q++; $r -= $b; }
+  $q = _bigint_to_int($q) if ref($q) && $q->bcmp(BMAX) <= 0 && $q->bcmp(BMIN) >= 0;
+  $r = _bigint_to_int($r) if ref($r) && $r->bcmp(BMAX) <= 0 && $r->bcmp(BMIN) >= 0;
+  ($q,$r);
+}
 # Euclidean Division
 sub divrem {
   my($a,$b) = @_;
@@ -4330,6 +4349,9 @@ sub divint {
 }
 sub modint {
   (fdivrem(@_))[1];
+}
+sub divceilint {
+  (cdivrem(@_))[0];
 }
 
 sub absint {
