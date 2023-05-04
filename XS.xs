@@ -1066,7 +1066,7 @@ almost_prime_sieve(IN UV k, IN UV lo, IN UV hi)
       SP = NULL; /* never use SP again, poison */
     }
     S = 0;
-    if (ix == 0) n = range_almost_prime_sieve(&S, k, lo, hi);
+    if (ix == 0) n = generate_almost_primes(&S, k, lo, hi);
     else         n = range_omega_prime_sieve(&S, k, lo, hi);
     for (i = 0; i < n; i++)
       av_push(av, newSVuv(S[i]));
@@ -4147,14 +4147,15 @@ foralmostprimes (SV* block, IN UV k, IN SV* svbeg, IN SV* svend = 0)
       I32 gimme = G_VOID;
       PUSH_MULTICALL(cv);
       while (beg <= end) {
-        /* TODO: The ideal size varies with k+range: 8k, 32k, 64k, 256k, ... */
-        UV ssize = 65536;
+        /* TODO: Tuning this better would be nice */
+        UV ssize = 65536 * 256;
         seg_beg = beg;
         seg_end = end;
-        if (k > 30 || seg_beg >  9*k3) ssize *= 4;
-        if (k > 35 || seg_beg > 81*k3) ssize *= 4;
+        if (k > 12)                    ssize *= 16;
+        if (k > 18 || seg_beg >  9*k3) ssize *= 4;
+        if (k > 24 || seg_beg > 81*k3) ssize *= 3;
         if ((seg_end - seg_beg) > ssize) seg_end = seg_beg + ssize - 1;
-        count = range_almost_prime_sieve(&S, k, seg_beg, seg_end);
+        count = generate_almost_primes(&S, k, seg_beg, seg_end);
         for (c = 0; c < count; c++) {
           sv_setuv(svarg, S[c] << shiftres);
           { ENTER; MULTICALL; LEAVE; }

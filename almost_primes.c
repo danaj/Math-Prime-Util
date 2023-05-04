@@ -103,11 +103,38 @@ static UV _prev_almost_semiprime(uint32_t k, UV n) {
 /*                                KAP COUNT                                   */
 /******************************************************************************/
 
+#define CACHED_PC(cache,n) prime_count_cache_lookup(cache,n)
+
+/* Debatably useful.  Slightly faster for small n, the same for larger. */
+static UV almost3prime_count(UV n) {
+  UV sum = 0, cbrtn = prev_prime(rootint(n,3)+1);
+  void *cache = prime_count_cache_create( (UV)pow(n,0.72) );
+
+  SIMPLE_FOR_EACH_PRIME(2, cbrtn) {
+    UV pdiv = p, lo = p, hi = isqrt(n/pdiv);
+    UV j = CACHED_PC(cache, lo) - 1;  /* IDX(Pi) */
+    if ((lo <= 2) && (hi >= 2)) sum += CACHED_PC(cache,n/(pdiv*2)) - j++;
+    if ((lo <= 3) && (hi >= 3)) sum += CACHED_PC(cache,n/(pdiv*3)) - j++;
+    if ((lo <= 5) && (hi >= 5)) sum += CACHED_PC(cache,n/(pdiv*5)) - j++;
+    if (lo < 7) lo = 7;
+    if (lo <= hi) {
+      unsigned char* segment;
+      UV seg_base, seg_low, seg_high;
+      void* ctx = start_segment_primes(lo, hi, &segment);
+      while (next_segment_primes(ctx, &seg_base, &seg_low, &seg_high)) {
+        START_DO_FOR_EACH_SIEVE_PRIME( segment, seg_base, seg_low, seg_high )
+          sum += CACHED_PC(cache,n/(pdiv*p)) - j++;
+        END_DO_FOR_EACH_SIEVE_PRIME
+      }
+      end_segment_primes(ctx);
+    }
+  } END_SIMPLE_FOR_EACH_PRIME
+  prime_count_cache_destroy(cache);
+  return sum;
+}
 
 /* almost_prime_count(k,n) is the main interface, it will call the recursive
  * function _cs(), with the terminal function _final_sum(). */
-
-#define CACHED_PC(cache,n) prime_count_cache_lookup(cache,n)
 
 /* for Pi from Pi to isqrt(N/Pi) [pc[n/Pi]-idx(Pi)+1] */
 /* semiprime count = _final_sum(n, 1, 2, cache); */
@@ -166,6 +193,7 @@ UV almost_prime_count(uint32_t k, UV n)
 
   if (k == 1) return prime_count(n);
   if (k == 2) return semiprime_count(n);
+  if (k == 3) return almost3prime_count(n);
   if (n <  3*(UVCONST(1) << (k-1))) return 1;
   if (n <  9*(UVCONST(1) << (k-2))) return 2;
   if (n < 10*(UVCONST(1) << (k-2))) return 3;
@@ -244,9 +272,32 @@ UV almost_prime_count_approx(uint32_t k, UV n) {
     return est;
   }
 
+#if 0     /* Equation 6 from https://arxiv.org/pdf/2103.09866v3.pdf */
+  {
+    const double nu[21] = {
+      1.0, 2.61497e-1, -5.62153e-1, 3.05978e-1, 2.62973e-2, -6.44501e-2,
+      3.64064e-2, -4.70865e-3, -4.33984e-4, 1.50850e-3, -1.83548e-4,
+      1.49365e-4, 4.99174e-5, 1.82657e-5, 1.30241e-5, 5.52779e-6,
+      2.90194e-6, 1.45075e-6, 7.19861e-7, 3.61606e-7, 1.80517e-7 };
+    double sum = 0, x = n, logx = log(x), loglogx = log(logx);
+    uint32_t i, j;
+    for (j = 0; j < k; j++) {
+      uint32_t idx = k-1-j;
+      double v = (idx <= 20) ? nu[idx] : 0.1893475 * powl(2.0, -(double)k);
+      for (i = 1; i <= j; i++)
+        v = v * loglogx / i;
+      sum += v;
+    }
+    sum = (x / logx) * sum;
+    return (UV) (sum+0.5);
+  }
+#endif
+
   /* We should look at (1) better bounds, (2) better weighting here */
   /* return lo + (hi-lo)/2; */
-  return lo + (hi-lo) * 0.8;
+  /* Consider two variables to control our weight: k and n */
+  if (k > 11) return lo + (hi-lo) * 0.20;
+  return lo + (hi-lo) * 0.76;
 }
 
 
@@ -380,6 +431,11 @@ UV nth_almost_prime(uint32_t k, UV n) {
 /******************************************************************************/
 
 /* Bayless et al. (2018) and Kinlaw (2019) are main references.
+ *
+ * https://www.researchgate.net/publication/329788487_Sums_over_primitive_sets_with_a_fixed_number_of_prime_factors
+ * http://math.colgate.edu/~integers/t22/t22.pdf
+ * https://arxiv.org/pdf/2103.09866v3.pdf
+ *
  * Note that they use Pi_k(x) to mean square-free numbers, and
  * Tau_k(x) to mean the general count like we use.
  * They also have results for k = 2,3,4 only.
@@ -393,40 +449,92 @@ UV nth_almost_prime(uint32_t k, UV n) {
  *
  */
 
-static const double _upper_20[13] = {0,0, 1.006,0.7385,0.6830,0.5940,0.3596,0.2227,0.1439, 0.09786,0.07017,0.05304,0.04205};
-static const double _upper_32[21] = {0,0, 1.013,0.8095,0.7486,
-  /*  5-12 */ 0.6467,0.3984,0.2465,0.1573,0.105,0.07374,0.05462,0.04275,
-  /* 13-20 */ 0.03552,0.03093,0.02814,0.02665,0.02619,0.02667,0.02808,0.03054};
+static const double _upper_20[13] = {0,0, 1.006,0.7385,0.6830,0.5940,0.3596,0.2227,0.1439, 0.09785,0.07016,0.05303,0.04202};
+static const double _upper_32[21] = {0,0, 1.013,0.8094,0.7485,
+  /*  5-12 */ 0.6467,0.3984,0.2464,0.1572,0.1049,0.07364,0.05452,0.04266,
+  /* 13-20 */ 0.03542,0.03082,0.02798,0.02642,0.02585,0.02615,0.02808,0.03054};
 static const double _upper_64[41] = {0,0, 1.028, 1.028, 1.3043,/* <--corrrect */
   /* 5-12 */
-  0.70,0.45,0.30,0.18,0.12,0.09,0.07,0.05,
+
+#if 0
+// apc(4,1<<58)  60047480128930409
+// apc(5,1<<58)  52082859678134376
+// apc(6,1<<58)  37116671742440264
+#endif
+
+  0.730,   /* <-- estimate */
+  0.46609, 0.29340,0.18571,0.12063,0.0815,0.0575,0.0427,
   /* 13-20 */
-  0.05, 0.03007, 0.02711, 0.02555, 0.02505, 0.02554, 0.02699, 0.02955,
+  0.03490, 0.03007, 0.02710, 0.02554, 0.02504, 0.02554, 0.02699, 0.02954,
   /* 21-28 */
-  0.03331, 0.03879, 0.04643, 0.05696, 0.07167, 0.09293, 0.1234, 0.1671,
+  0.03294, 0.03779, 0.04453, 0.05393, 0.06703, 0.08543, 0.1117, 0.1494,
   /* 29-31 */
-  0.2318,0.3288,0.477,
+  0.205,0.287,0.410,
   /* 32-40 */
-  0.7071,1.071,1.654,2.607,4.188,6.857,11.45,19.43,33.58,
+  0.60,0.90,1.36,2.12,3.35,5.38,8.83,14.75,25.07,
 };
 
-static const double _lower_20[13] = {0,0, 0.7716, 0.3994, 0.4999,
-  /*  5-12 */ 0.4778,0.2699,0.1631,0.1050,0.0718,0.05185,0.03943,0.03149};
+static const double _lower_20[13] = {0,0, 0.8197, 0.8418, 0.5242,
+  /*  5-12 */ 0.5154,0.3053,0.1901,0.1253,0.0892,0.06551,0.05082,0.04101};
 static const double _lower_32[21] = {0,0, 1.004,  0.7383, 0.6828,
   /*  5-12 */ 0.5939,0.3594,0.2222,0.1438,0.09754,0.06981,0.05245,0.04151,
-  /* 13-20 */ 0.03426,0.0290,0.02617,0.02344,0.02183,0.01972,0.02073,0.02252 };
+  /* 13-20 */ 0.03461,0.03006,0.02709,0.02553,0.02502,0.02552,0.02697,0.02945 };
 static const double _lower_64[41] = {0,0, 1.011,  0.8093, 0.7484,
   /* 5-12 */
-  0.6465,0.3982,0.2463,0.1571,0.1048,0.07363,0.0545,0.042,
+  0.6465,0.3982,0.2463,0.1571,0.1048,0.07363,0.0545,0.0422,
   /* 13-20 */
-  0.033,0.025,0.024,0.021,0.020,0.019,0.019,0.021,
+  0.0331,0.0270,0.0232,0.0208,0.0194,0.0190,0.0193,0.0203,
   /* 21-28 */
-  0.022,0.027,0.029,0.035,0.040,0.057,0.0115,0.10,
+  0.0222,0.0252,0.0295,0.0356,0.0444,0.0570,0.0753,0.102,
   /* 29-31 */
-  0.13,0.20,0.29,
+  0.14,0.20,0.297,
   /* 32-40 */
-  0.44,0.67,1.06,1.71,2.8,4.7,8.0,13.89,23.98,
+  0.44,0.68,1.07,1.71,2.8,4.7,8.0,13.89,23.98,
 };
+
+/*
+   k,count n <= 2^64-1
+   1,425656284035217743
+   2,1701748900850019777
+   3,3167597434038354478
+   4,?
+   5,?
+   6,2466706950238087748
+   7,1571012171387856192
+   8,913164427599983727
+   9,499840874923678341
+  10,263157990621533964
+  11,135128109904869290
+  12,68283616225825256
+  13,34151861008771016
+  14,16967424859951587
+  15,8393048221327186
+  16,4139595949113890
+  17,2037655246635364
+  18,1001591348315641
+  19,491808604962296
+  20,241293656953012
+  21,118304122014405
+  22,57968649799947
+  23,28388662714236
+  24,13895161400556
+  25,6797526392535
+  26,3323560145881
+  27,1624109166018
+  28,793189260998
+  29,387148515886
+  30,188844769357
+  31,92054377509
+  32,44841620426
+  33,21827124353
+  34,10616326552
+  35,5159281045
+  36,2505087309
+  37,1215204383
+  38,588891145
+  39,285076316
+  40,137840686
+*/
 
 static void _almost_prime_count_bounds(UV *lower, UV *upper, uint32_t k, UV n) {
   double x, logx, loglogx, logplus, multl, multu, boundl, boundu;
@@ -476,6 +584,11 @@ static void _almost_prime_count_bounds(UV *lower, UV *upper, uint32_t k, UV n) {
     multl = (x <=      500194)  ?  0.8418
           : (x <= 3184393786U)  ?  1.0000
           :                        1.04;
+    /* Bayless (2018) Theorem 5.3 proves that multu=1.028 is a correct bound
+     * for all x >= 10^12.  However it is not a tight bound for the range
+     * 2^32 to 2^64.  We tighten it a lot for the reduced range.
+     */
+    if (n > 4294967295U)  multu = 0.8711;
   } else if (k == 4) {
     /* Bayless Theorem 5.4 part 1 (with multu = 1.3043) */
     boundl = boundu = x * logplus*logplus*logplus / (6*logx);
@@ -484,9 +597,15 @@ static void _almost_prime_count_bounds(UV *lower, UV *upper, uint32_t k, UV n) {
       boundu += 0.511977 * x * (log(log(x/4)) + 0.261536) / logx;
       multu = 1.028;
     }
+    /* As with k=3, adjust to tighten in the finite range. */
+    if (n > 4294967295U)  multu = 0.780;
+    /*if (x > 1e12)         multu = 0.680;  // This works though 2^58, barely*/
+    if (x > 1e12)         multu = 0.6967;
   } else {
     /* Completely empirical and by no means optimal.
      * It is easy and seems fairly reasonable through k=20 or so.
+     *
+     * For high k, this follows the lower bound well but upper grows too fast.
      */
     boundl = x / logx;
     logplus = loglogx + (log(k)*log(log(k))-0.504377); /* k=5 => 0.26153 */
@@ -552,18 +671,18 @@ UV max_almost_prime_count(uint32_t k) {
   static const UV max[32] = {1,203280221,658662065,967785236,916899721,665533848,410630859,229679168,121092503,61600699,30653019,15043269,7315315,3535071,1700690,814699,389357,185245,87964,41599,19611,9184,4283,2001,914,421,187,84,37,15,7,2,0};
 #else
   static const UV max[64] = {1,
-    UVCONST(425656284035217743),  /* max prime count */
-    UVCONST(1701500000000000000), /* max semiprime count (estimate) */
-    UVCONST(3738241841329689241), /* max 3-almost-prime count (upper limit) */
+    UVCONST( 425656284035217743), /* max prime count */
+    UVCONST(1701748900850019777), /* max semiprime count */
+    UVCONST(3167597434038354478), /* max 3-almost-prime count */
     UVCONST(5626791887645067628), /* max 4-almost-prime count (upper limit) */
-    /* 5-12 */  0,0,0,0,0,UVCONST(263157990621533964),UVCONST(135128109904869290),UVCONST(68283616225825256),
+    /* 5-12 */  0,UVCONST(2466706950238087748),UVCONST(1571012171387856192),UVCONST(913164427599983727),UVCONST(499840874923678341),UVCONST(263157990621533964),UVCONST(135128109904869290),UVCONST(68283616225825256),
     /* 13-22 */ UVCONST(34151861008771016),UVCONST(16967424859951587),UVCONST(8393048221327186),UVCONST(4139595949113890),UVCONST(2037655246635364),UVCONST(1001591348315641),UVCONST(491808604962296),UVCONST(241293656953012),UVCONST(118304122014405),UVCONST(57968649799947),
     /* 23-32 */ UVCONST(28388662714236),UVCONST(13895161400556),UVCONST(6797526392535),UVCONST(3323560145881),UVCONST(1624109166018),UVCONST(793189260998),UVCONST(387148515886),UVCONST(188844769357),UVCONST(92054377509),UVCONST(44841620426),
     /* 33-63 */ UVCONST(21827124353),UVCONST(10616326552),UVCONST(5159281045),UVCONST(2505087309),1215204383,588891145,285076316,137840686,66567488,32103728,15460810,7433670,3567978,1709640,817053,389954,185387,87993,41604,19611,9184,4283,2001,914,421,187,84,37,15,7,2
   };
 #endif
   if (k >= BITS_PER_WORD) return 0;
-  if (max[k] == 0) return UV_MAX;  /* TODO: find these */
+  if (max[k] == 0) return UV_MAX;  /* TODO: fill in k=4 and k=5 */
   return max[k];
 }
 
@@ -763,5 +882,54 @@ UV range_almost_prime_sieve(UV** list, uint32_t k, UV slo, UV shi)
     Safefree(nf);
   }
   *list = S;
+  return count;
+}
+
+/* Algorithm from Trizen, May 2022 */
+static void _genkap(UV lo, UV hi, uint32_t k, UV m, UV begp, UV *L, UV *Lpos) {
+  if (k == 1) {
+
+    UV pos = *Lpos,  start = lo/m + (lo % m != 0),  end = hi/m;
+    START_DO_FOR_EACH_PRIME((start > begp) ? start : begp, end) {
+       if (L != 0) L[pos] = m*p;
+       pos++;
+    } END_DO_FOR_EACH_PRIME
+    *Lpos = pos;
+
+  } else {
+
+    UV p, s;
+    for (s = rootint(hi/m, k), p = begp;  p <= s;  p = next_prime(p)) {
+      UV t = m * p;
+      if ((lo/t + (lo % t != 0)) <= (hi/t))
+        _genkap(lo, hi, k-1, t, p, L, Lpos);
+    }
+
+  }
+}
+
+UV generate_almost_primes(UV** list, uint32_t k, UV lo, UV hi) {
+  UV *L, Lpos = 0, count = 0;
+
+  if (k == 0 || k >= BITS_PER_WORD) { *list = 0; return 0; }
+  if ((lo >> k) == 0) lo = UVCONST(1) << k;
+  if (hi > max_nth_almost_prime(k)) hi = max_nth_almost_prime(k);
+  if (lo > hi) { *list = 0; return 0; }
+
+  /* For these small k values, these are typically faster */
+  if (k == 1) return range_prime_sieve(list, lo, hi);
+  if (k == 2) return range_semiprime_sieve(list, lo, hi);
+
+  /* Optional:  we could try reduce_k_for_n() here. */
+
+  count = almost_prime_count(k, hi) - almost_prime_count(k, lo-1);
+  /* Alternately we could get the count using:
+   *     _genkap(lo, hi, k, 1, 2, 0, &count);     */
+
+  New(0, L, count, UV);
+  _genkap(lo, hi, k, 1, 2, L, &Lpos);
+  if (Lpos != count) croak("Expected %lu, got %lu almost primes", count, Lpos);
+  qsort(L, count, sizeof(UV), _numcmp);
+  *list = L;
   return count;
 }
