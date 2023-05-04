@@ -1563,7 +1563,7 @@ sub nth_powerful {
 
   # hi could be too low.
   while (Math::Prime::Util::powerful_count($hi,$k) < $n) {
-    $lo = $hi+1;
+    $lo = Maddint($hi,1);
     $hi = Mmulint($k, $hi);
   }
 
@@ -1620,6 +1620,9 @@ sub sumpowerful {
   }
   return $n if $n <= 1;
   return Mrshiftint(Mmulint($n,Maddint($n,1)),1) if $k == 1;
+
+  # Alternate method for testing.
+  # my @a;  _genpowerful(1, 2*$k-1, $n, $k, \@a);  return Mvecsum(@a);
 
   return _sumpowerful(1, 2*$k-1, $n, $k);
 }
