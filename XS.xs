@@ -3814,22 +3814,21 @@ forprimes (SV* block, IN SV* svbeg, IN SV* svend = 0)
     svarg = newSVuv(beg);
     GvSV(PL_defgv) = svarg;
     /* Handle early part */
-    while (beg < 6) {
-      beg = (beg <= 2) ? 2 : (beg <= 3) ? 3 : 5;
-      if (beg <= end) {
-        sv_setuv(svarg, beg);
-        PUSHMARK(SP);
-        call_sv((SV*)cv, G_VOID|G_DISCARD);
-        CHECK_FORCOUNT;
-      }
-      beg += 1 + (beg > 2);
-    }
 #if USE_MULTICALL
     if (!CvISXSUB(cv) && beg <= end) {
       dMULTICALL;
       I32 gimme = G_VOID;
       PUSH_MULTICALL(cv);
-      if (
+      if (beg < 6) {
+        beg = (beg <= 2) ? 2 : (beg <= 3) ? 3 : 5;
+        for ( ; beg < 6 && beg <= end; beg += 1+(beg>2) ) {
+          CHECK_FORCOUNT;
+          sv_setuv(svarg, beg);
+          { ENTER; MULTICALL; LEAVE; }
+        }
+      }
+      if (beg <= end) {
+       if (
 #if BITS_PER_WORD == 64
           (beg >= UVCONST(     100000000000000) && end-beg <    100000) ||
           (beg >= UVCONST(      10000000000000) && end-beg <     40000) ||
@@ -3841,7 +3840,7 @@ forprimes (SV* block, IN SV* svbeg, IN SV* svend = 0)
           sv_setuv(svarg, beg);
           { ENTER; MULTICALL; LEAVE; }
         }
-      } else {                      /* MULTICALL segment sieve */
+       } else {                      /* MULTICALL segment sieve */
         void* ctx = start_segment_primes(beg, end, &segment);
         while (next_segment_primes(ctx, &seg_base, &seg_low, &seg_high)) {
           int crossuv = (seg_high > IV_MAX) && !SvIsUV(svarg);
@@ -3856,24 +3855,34 @@ forprimes (SV* block, IN SV* svbeg, IN SV* svend = 0)
           CHECK_FORCOUNT;
         }
         end_segment_primes(ctx);
+       }
       }
       FIX_MULTICALL_REFCOUNT;
       POP_MULTICALL;
     }
     else
 #endif
-    if (beg <= end) {               /* NO-MULTICALL segment sieve */
-      void* ctx = start_segment_primes(beg, end, &segment);
-      while (next_segment_primes(ctx, &seg_base, &seg_low, &seg_high)) {
-        START_DO_FOR_EACH_SIEVE_PRIME( segment, seg_base, seg_low, seg_high )
+    {
+      if (beg < 6) {
+        beg = (beg <= 2) ? 2 : (beg <= 3) ? 3 : 5;
+        for ( ; beg < 6 && beg <= end; beg += 1+(beg>2) ) {
+          sv_setuv(svarg, beg);
+          PUSHMARK(SP); PUTBACK; call_sv((SV*)cv, G_VOID|G_DISCARD); SPAGAIN;
           CHECK_FORCOUNT;
-          sv_setuv(svarg, p);
-          PUSHMARK(SP);
-          call_sv((SV*)cv, G_VOID|G_DISCARD);
-        END_DO_FOR_EACH_SIEVE_PRIME
-        CHECK_FORCOUNT;
+        }
       }
-      end_segment_primes(ctx);
+      if (beg <= end) {               /* NO-MULTICALL segment sieve */
+        void* ctx = start_segment_primes(beg, end, &segment);
+        while (next_segment_primes(ctx, &seg_base, &seg_low, &seg_high)) {
+          START_DO_FOR_EACH_SIEVE_PRIME( segment, seg_base, seg_low, seg_high )
+            CHECK_FORCOUNT;
+            sv_setuv(svarg, p);
+            PUSHMARK(SP); PUTBACK; call_sv((SV*)cv, G_VOID|G_DISCARD); SPAGAIN;
+          END_DO_FOR_EACH_SIEVE_PRIME
+          CHECK_FORCOUNT;
+        }
+        end_segment_primes(ctx);
+      }
     }
     SvREFCNT_dec(svarg);
     END_FORCOUNT;
@@ -3989,8 +3998,7 @@ foroddcomposites (SV* block, IN SV* svbeg, IN SV* svend = 0)
       while (beg++ < end) {
         if (FORCOMPTEST(ix,beg) && !is_prob_prime(beg)) {
           sv_setuv(svarg, beg);
-          PUSHMARK(SP);
-          call_sv((SV*)cv, G_VOID|G_DISCARD);
+          PUSHMARK(SP); PUTBACK; call_sv((SV*)cv, G_VOID|G_DISCARD); SPAGAIN;
           CHECK_FORCOUNT;
         }
       }
@@ -4079,8 +4087,7 @@ forsemiprimes (SV* block, IN SV* svbeg, IN SV* svend = 0)
       while (beg++ < end) {
         if (is_semiprime(beg)) {
           sv_setuv(svarg, beg);
-          PUSHMARK(SP);
-          call_sv((SV*)cv, G_VOID|G_DISCARD);
+          PUSHMARK(SP); PUTBACK; call_sv((SV*)cv, G_VOID|G_DISCARD); SPAGAIN;
           CHECK_FORCOUNT;
         }
       }
@@ -4167,8 +4174,7 @@ foralmostprimes (SV* block, IN UV k, IN SV* svbeg, IN SV* svend = 0)
       for (c = beg; c <= end && c >= beg; c++) {
         if (is_almost_prime(k,c)) {
           sv_setuv(svarg, c << shiftres);
-          PUSHMARK(SP);
-          call_sv((SV*)cv, G_VOID|G_DISCARD);
+          PUSHMARK(SP); PUTBACK; call_sv((SV*)cv, G_VOID|G_DISCARD); SPAGAIN;
           CHECK_FORCOUNT;
         }
       }
@@ -4222,8 +4228,7 @@ fordivisors (SV* block, IN SV* svn)
     {
       for (i = 0; i < ndivisors; i++) {
         sv_setuv(svarg, divs[i]);
-        PUSHMARK(SP);
-        call_sv((SV*)cv, G_VOID|G_DISCARD);
+        PUSHMARK(SP); PUTBACK; call_sv((SV*)cv, G_VOID|G_DISCARD); SPAGAIN;
         CHECK_FORCOUNT;
       }
     }

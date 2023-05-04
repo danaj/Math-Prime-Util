@@ -11,7 +11,7 @@ use Math::Prime::Util qw/primes prev_prime next_prime
                          forsetproduct
                          lastfor
                          is_power is_semiprime is_almost_prime
-                         vecsum sqrtint
+                         vecsum sqrtint divisors
                          prime_iterator prime_iterator_object/;
 use Math::BigInt try => "GMP,Pari";
 use Math::BigFloat;
@@ -27,6 +27,7 @@ plan tests => 8        # forprimes errors
             + 7        # iterator simple
             + 1        # other forprimes
             + 2        # forprimes/iterator nesting
+            + 1        # forprimes nested function
             + 3        # forprimes BigInt/BigFloat
             + 3        # oo iterator errors
             + 7        # oo iterator simple
@@ -163,6 +164,17 @@ ok(!eval { prime_iterator(4.5); }, "iterator 4.5");
   }
   is_deeply( [@t], [qw/23 29 31 29 31 37 31 37 41 37 41 43 47 53 59 61 59 61 67 71 73 79 73 79 83 79 83 89/], "triple nested iterator" );
 }
+
+# Github 66, nesting a function inside forprimes
+{
+  my $sum = 0;
+  forprimes {
+    my @d = divisors(6486480 * ($_-1));
+    $sum += 1+$#d;
+  } 2,10;
+  is($sum, 2016, "Nested call to large divisors inside forprimes");
+}
+
 
 # With BigInt and BigFloat objects
 { my @t;

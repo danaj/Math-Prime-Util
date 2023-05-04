@@ -168,6 +168,8 @@ Revision history for Perl module Math::Prime::Util
 
     - lcm with empty list returns 1 instead of 0.  Github #73.
 
+    - fix an XS stack issue with calling other routines inside forprimes
+
     [FUNCTIONALITY AND PERFORMANCE]
 
     - LMO prime count is 1.2-1.5x faster.
