@@ -3177,7 +3177,7 @@ This corresponds to Pari/GP's C<sqrtnint> function.
   say "decimal digits: ", 1+logint($n, 10);
   say "digits in base 12: ", 1+logint($n, 12);
   my $be; my $e = logint(1000,2, \$be);
-  say "smallest power of 2 less than 1000:  2^$e = $be";
+  say "largest power of 2 less than 1000:  2^$e = $be";
 
 Given a non-zero positive integer C<n> and an integer base C<b> greater
 than 1, returns the largest integer C<e> such that C<b^e E<lt>= n>.
