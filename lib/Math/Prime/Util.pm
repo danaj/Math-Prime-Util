@@ -687,6 +687,8 @@ sub _generic_forprimes {
   Math::Prime::Util::_end_for_loop($oldforexit);
 }
 
+# TODO: This is awful for almost-primes with a large k
+
 sub _generic_forcomp_sub {
   my($what, $sub, $beg, $end) = @_;
   if (!defined $end) { $end = $beg; $beg = 0; }

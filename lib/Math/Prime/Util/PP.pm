@@ -68,6 +68,7 @@ BEGIN {
 *Mdivint = \&Math::Prime::Util::divint;
 *Mpowint = \&Math::Prime::Util::powint;
 *Mmodint = \&Math::Prime::Util::modint;
+*Mdivceilint = \&Math::Prime::Util::divceilint;
 *Mabsint = \&Math::Prime::Util::absint;
 *Msqrtint = \&Math::Prime::Util::sqrtint;
 *Mrootint = \&Math::Prime::Util::rootint;
@@ -2068,6 +2069,32 @@ sub rough_count {
   Math::Prime::Util::legendre_phi($n, Mprime_count($k-1));
 }
 
+
+# Recursive almost primes from Trizen.
+sub _genkap {
+  my($A, $B, $k, $m, $p, $cb) = @_;
+  if ($k == 1) {
+    Mforprimes( sub {
+      $cb->(Mmulint($m, $_));
+    }, Mvecmax($p, Mdivceilint($A, $m)), Mdivint($B, $m));
+  } else {
+    my $s = Mrootint(Mdivint($B, $m), $k);
+    while ($p <= $s) {
+      my $t = mulint($m, $p);
+      _genkap($A, $B, $k-1, $t, $p, $cb)
+        if Mdivceilint($A, $t) <= Mdivint($B, $t);  # Faster for tight ranges
+      $p = next_prime($p);
+    }
+  }
+}
+
+sub generate_almost_primes {
+  my($A, $B, $k, $cb) = @_;
+  $A = Mvecmax($A, Mpowint(2, $k));
+  _genkap($A, $B, $k, 1, 2, $cb)  if $A <= $B;
+}
+
+
 sub almost_primes {
   my($k, $low, $high) = @_;
 
@@ -2075,12 +2102,10 @@ sub almost_primes {
   $low = $minlow if $low < $minlow;
   return [] unless $low <= $high;
 
-  my $ap = [];
-  Math::Prime::Util::forfactored(
-    sub { push @$ap, $_ if scalar(@_) == $k; },
-    $low, $high
-  );
-  $ap;
+  my @ap;
+  generate_almost_primes($low, $high, $k, sub { push @ap,$_[0]; });
+  @ap = sort { $a <=> $b } @ap;
+  \@ap;
 }
 
 sub _rec_omega_primes {
