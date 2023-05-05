@@ -36,7 +36,7 @@ our @EXPORT_OK =
       is_smooth is_rough is_powerful is_practical is_lucky
       sqrtint rootint logint lshiftint rshiftint rashiftint absint negint
       signint cmpint addint subint add1int sub1int mulint powint
-      divint modint divceilint divrem fdivrem cdivrem tdivrem
+      divint modint cdivint divrem fdivrem cdivrem tdivrem
       miller_rabin_random
       lucas_sequence
       lucasu lucasv lucasuv lucasumod lucasvmod lucasuvmod
@@ -3176,8 +3176,8 @@ This corresponds to Pari/GP's C<sqrtnint> function.
 
   say "decimal digits: ", 1+logint($n, 10);
   say "digits in base 12: ", 1+logint($n, 12);
-  my $be; my $e = logint(1000,2, \$be);
-  say "largest power of 2 less than 1000:  2^$e = $be";
+  my $be; my $e = logint(1000, 2, \$be);
+  say "largest power of 2 less than or equal to 1000:  2^$e = $be";
 
 Given a non-zero positive integer C<n> and an integer base C<b> greater
 than 1, returns the largest integer C<e> such that C<b^e E<lt>= n>.
@@ -3313,7 +3313,7 @@ GMP C<fdiv> functions.
 Like with C<divint>, we use floor division, while Pari/GP uses Euclidian
 for their C<%> integer remainder operator.
 
-=head2 divceilint
+=head2 cdivint
 
 Given integers C<a> and C<b>, returns the quotient C<a / b>.
 

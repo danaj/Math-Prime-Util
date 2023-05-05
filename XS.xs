@@ -2916,7 +2916,7 @@ void addint(IN SV* sva, IN SV* svb)
     mulint = 2
     divint = 3
     modint = 4
-    divceilint = 5
+    cdivint = 5
     powint = 6
   PREINIT:
     int astatus, bstatus, overflow, postneg, nix, smask;
@@ -2971,7 +2971,7 @@ void addint(IN SV* sva, IN SV* svb)
         }
       }
       if (ix == 5) {
-        if (b == 0) croak("divceilint: divide by zero");
+        if (b == 0) croak("cdivint: divide by zero");
         if (smask != 0 && (astatus == -1 || a <= (UV)IV_MAX) && (bstatus == -1 || b <= (UV)IV_MAX)) {
           IV q, r;
           (void) cdivrem(&q, &r, (IV)a, (IV)b);
@@ -2997,7 +2997,7 @@ void addint(IN SV* sva, IN SV* svb)
                    break;
           case 3:  ret = a / b; break;           /* divint */
           case 4:  ret = a % b; break;           /* modint */
-          case 5:  ret = a / b + (a % b != 0);   /* divceilint */
+          case 5:  ret = a / b + (a % b != 0);   /* cdivint */
                    break;
           case 6:
           default: ret = ipowsafe(a, b);
@@ -3018,7 +3018,7 @@ void addint(IN SV* sva, IN SV* svb)
       case 2:  _vcallsub_with_gmp(0.52,"mulint"); break;
       case 3:  _vcallsub_with_gmp(0.52,"divint"); break;
       case 4:  _vcallsub_with_gmp(0.52,"modint"); break;
-      case 5:  _vcallsub_with_gmp(0.53,"divceilint"); break;
+      case 5:  _vcallsub_with_gmp(0.53,"cdivint"); break;
       case 6:
       default: _vcallsub_with_gmp(0.52,"powint"); break;
     }

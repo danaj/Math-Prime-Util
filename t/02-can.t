@@ -30,7 +30,7 @@ my @functions =  qw(
       is_smooth is_rough is_powerful is_practical is_lucky
       sqrtint rootint logint lshiftint rshiftint rashiftint absint negint
       signint cmpint addint subint add1int sub1int mulint powint
-      divint modint divceilint divrem fdivrem cdivrem tdivrem
+      divint modint cdivint divrem fdivrem cdivrem tdivrem
       miller_rabin_random
       lucas_sequence
       lucasu lucasv lucasuv lucasumod lucasvmod lucasuvmod

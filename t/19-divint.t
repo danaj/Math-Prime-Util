@@ -5,7 +5,7 @@ use warnings;
 use Test::More;
 use Math::Prime::Util qw/ powint mulint addint subint
                           add1int sub1int
-                          divint modint divceilint
+                          divint modint cdivint
                           divrem fdivrem cdivrem tdivrem
                           lshiftint rshiftint rashiftint
                           absint negint cmpint signint/;
@@ -219,7 +219,7 @@ ok(!eval { tdivrem(0,0); }, "tdivrem(0,0)");
 ok(!eval { tdivrem(1,0); }, "tdivrem(1,0)");
 
 
-###### large values through divint, divceilint, modint,
+###### large values through divint, cdivint, modint,
 ######                      divrem, tdivrem, fdivrem, cdivrem
 for my $s (@quotients) {
   my($signs, $n, $m, $qt, $qf, $qc, $qe) = @$s;
@@ -227,7 +227,7 @@ for my $s (@quotients) {
   my($rt, $rf, $rc, $re) = map { $bn - $bm * $_ } ($qt, $qf, $qc, $qe);
   is( divint($n, $m), $qf, "large divint  $signs" );
   is( modint($n, $m), $rf, "large modint  $signs" );
-  is( divceilint($n, $m), $qc, "large divint  $signs" );
+  is( cdivint($n, $m), $qc, "large cdivint  $signs" );
   is_deeply( [divrem($n, $m)], [$qe, $re], "large divrem  $signs" );
   is_deeply( [tdivrem($n, $m)], [$qt, $rt], "large tdivrem $signs" );
   is_deeply( [fdivrem($n, $m)], [$qf, $rf], "large fdivrem $signs" );
@@ -250,9 +250,9 @@ is( join(" ", cdivrem(8,3), cdivrem(8,-3), cdivrem(-8,3), cdivrem(-8,-3)),
 is( join(" ", divint(8,3), modint(8,3), divint(8,-3), modint(8,-3), divint(-8,3), modint(-8,3), divint(-8,-3), modint(-8,-3)),
     "2 2 -3 -1 -3 1 2 -2",
     "divint+modint with +/- 8,3" );
-is( join(" ", divceilint(8,3),divceilint(8,-3),divceilint(-8,3),divceilint(-8,-3)),
+is( join(" ", cdivint(8,3),cdivint(8,-3),cdivint(-8,3),cdivint(-8,-3)),
     "3 -2 -2 3",
-    "divceilint with +/- 8,3" );
+    "cdivint with +/- 8,3" );
 
 is( join(" ", tdivrem(1,2), tdivrem(1,-2), tdivrem(-1,2), tdivrem(-1,-2)),
     "0 1 0 1 0 -1 0 -1",
@@ -269,14 +269,14 @@ is( join(" ", cdivrem(1,2), cdivrem(1,-2), cdivrem(-1,2), cdivrem(-1,-2)),
 is( join(" ", divint(1,2), modint(1,2), divint(1,-2), modint(1,-2), divint(-1,2), modint(-1,2), divint(-1,-2), modint(-1,-2)),
     "0 1 -1 -1 -1 1 0 -1",
     "divint+modint with +/- 1,2" );
-is( join(" ", divceilint(1,2),divceilint(1,-2),divceilint(-1,2),divceilint(-1,-2)),
+is( join(" ", cdivint(1,2),cdivint(1,-2),cdivint(-1,2),cdivint(-1,-2)),
     "1 0 0 1",
-    "divceilint with +/- 1,2" );
+    "cdivint with +/- 1,2" );
 
 ###### divint and modint with interesting values
 is(divint("1895315831", -1), "-1895315831", "Divide 31-bit input by -1");
 is(divint("3483637757", -1), "-3483637757", "Divide 32-bit input by -1");
-is(divceilint("3483637757", -1), "-3483637757", "Divide 32-bit input by -1 (ceiling)");
+is(cdivint("3483637757", -1), "-3483637757", "Divide 32-bit input by -1 (ceiling)");
 is(divint("6127303089832103323", -1), "-6127303089832103323", "Divide 63-bit input by -1");
 is(divint("13026328650942325963", -1), "-13026328650942325963", "Divide 64-bit input by -1");
 is(divint("14123555781055773270", 2), "7061777890527886635", "Divide 64-bit input by 2");
@@ -285,8 +285,8 @@ is(divint(3, "12844039487317506779"), 0, "Divide small int by 64-bit input");
 # Note this is floor division:
 is(divint(-3, "12844039487317506779"), -1, "Divide negative small int by 64-bit input");
 # Now ceiling
-is(divceilint(3, "12844039487317506779"), 1, "Divide small int by 64-bit input");
-is(divceilint(-3, "12844039487317506779"), 0, "Divide negative small int by 64-bit input");
+is(cdivint(3, "12844039487317506779"), 1, "Divide (ceil) small int by 64-bit input");
+is(cdivint(-3, "12844039487317506779"), 0, "Divide (ceil) negative small int by 64-bit input");
 
 ###### cdivrem special test
 is( join(" ",cdivrem(3, "12844039487317506779")), "1 -12844039487317506776", "cdivrem with small quotient and 64-bit denominator shouldn't overflow IV" );

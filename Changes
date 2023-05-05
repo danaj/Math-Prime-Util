@@ -24,7 +24,7 @@ Revision history for Perl module Math::Prime::Util
     - sub1int(n)                      signed integer n-1
     - divint(a, b)                    signed integer a/b (floor)
     - modint(a, b)                    signed integer a%b (floor)
-    - divceilint(a, b)                signed integer a/b (ceiling)
+    - cdivint(a, b)                   signed integer a/b (ceiling)
     - divrem(a, b)                    Euclidean quotient and remainder
     - fdivrem(a, b)                   Floored quotient and remainder
     - cdivrem(a, b)                   Ceiling quotient and remainder

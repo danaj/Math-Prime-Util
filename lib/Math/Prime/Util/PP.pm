@@ -68,7 +68,7 @@ BEGIN {
 *Mdivint = \&Math::Prime::Util::divint;
 *Mpowint = \&Math::Prime::Util::powint;
 *Mmodint = \&Math::Prime::Util::modint;
-*Mdivceilint = \&Math::Prime::Util::divceilint;
+*Mcdivint = \&Math::Prime::Util::cdivint;
 *Mabsint = \&Math::Prime::Util::absint;
 *Msqrtint = \&Math::Prime::Util::sqrtint;
 *Mrootint = \&Math::Prime::Util::rootint;
@@ -2076,13 +2076,13 @@ sub _genkap {
   if ($k == 1) {
     Mforprimes( sub {
       $cb->(Mmulint($m, $_));
-    }, Mvecmax($p, Mdivceilint($A, $m)), Mdivint($B, $m));
+    }, Mvecmax($p, Mcdivint($A, $m)), Mdivint($B, $m));
   } else {
     my $s = Mrootint(Mdivint($B, $m), $k);
     while ($p <= $s) {
       my $t = mulint($m, $p);
       _genkap($A, $B, $k-1, $t, $p, $cb)
-        if Mdivceilint($A, $t) <= Mdivint($B, $t);  # Faster for tight ranges
+        if Mcdivint($A, $t) <= Mdivint($B, $t);  # Faster for tight ranges
       $p = next_prime($p);
     }
   }
@@ -4375,7 +4375,7 @@ sub divint {
 sub modint {
   (fdivrem(@_))[1];
 }
-sub divceilint {
+sub cdivint {
   (cdivrem(@_))[0];
 }
 

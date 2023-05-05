@@ -261,7 +261,7 @@ Tags:
   sub1int(n)                          signed integer n - 1
   divint(a,b)                         signed integer a / b     (floor)
   modint(a,b)                         signed integer a % b     (floor)
-  divceilint(a,b)                     signed integer a / b     (ceilint)
+  cdivint(a,b)                        signed integer a / b     (ceilint)
   divrem(a,b)                         return (quot,rem) of a/b (Euclidian)
   fdivrem(a,b)                        return (quot,rem) of a/b (floored)
   cdivrem(a,b)                        return (quot,rem) of a/b (ceiling)
@@ -391,7 +391,7 @@ Tags:
 
 =head1 COPYRIGHT
 
-Copyright 2011-2021 by Dana Jacobsen E<lt>dana@acm.orgE<gt>
+Copyright 2011-2023 by Dana Jacobsen E<lt>dana@acm.orgE<gt>
 
 This program is free software; you can redistribute it and/or modify it under the same terms as Perl itself.
 
