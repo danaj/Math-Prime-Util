@@ -886,15 +886,37 @@ UV range_almost_prime_sieve(UV** list, uint32_t k, UV slo, UV shi)
 }
 
 /* Algorithm from Trizen, May 2022 */
-static void _genkap(UV lo, UV hi, uint32_t k, UV m, UV begp, UV *L, UV *Lpos) {
+static void _genkap(UV lo, UV hi, uint32_t k, UV m, UV begp, UV **List, UV *Lpos, UV *Lsize) {
   if (k == 1) {
 
-    UV pos = *Lpos,  start = lo/m + (lo % m != 0),  end = hi/m;
-    START_DO_FOR_EACH_PRIME((start > begp) ? start : begp, end) {
-       if (L != 0) L[pos] = m*p;
-       pos++;
-    } END_DO_FOR_EACH_PRIME
+    UV pos = *Lpos,  size = *Lsize, *L = *List;
+    UV start = lo/m + (lo % m != 0),  endp = hi/m;
+
+    if (start > begp) begp = start;
+
+    if (endp < 10000000U) {
+      START_DO_FOR_EACH_PRIME(begp, endp) {
+        if (L != 0) {
+          if (pos >= size)  Renew(L, size += 100000, UV);
+          L[pos] = m*p;
+        }
+        pos++;
+      } END_DO_FOR_EACH_PRIME
+    } else {
+      UV i, count, *list;
+      count = range_prime_sieve(&list, begp, endp);
+      if (L == 0) {
+        pos += count;
+      } else {
+        if ((pos + count - 1) >= size)  Renew(L, size += (count + 100000), UV);
+        for (i = 0; i < count; i++)
+          L[pos++] = m * list[i];
+      }
+      Safefree(list);
+    }
     *Lpos = pos;
+    *Lsize = size;
+    *List = L;
 
   } else {
 
@@ -902,14 +924,14 @@ static void _genkap(UV lo, UV hi, uint32_t k, UV m, UV begp, UV *L, UV *Lpos) {
     for (s = rootint(hi/m, k), p = begp;  p <= s;  p = next_prime(p)) {
       UV t = m * p;
       if ((lo/t + (lo % t != 0)) <= (hi/t))
-        _genkap(lo, hi, k-1, t, p, L, Lpos);
+        _genkap(lo, hi, k-1, t, p, List, Lpos, Lsize);
     }
 
   }
 }
 
 UV generate_almost_primes(UV** list, uint32_t k, UV lo, UV hi) {
-  UV *L, Lpos = 0, count = 0;
+  UV *L, Lpos = 0, Lsize, countest;
 
   if (k == 0 || k >= BITS_PER_WORD) { *list = 0; return 0; }
   if ((lo >> k) == 0) lo = UVCONST(1) << k;
@@ -920,16 +942,21 @@ UV generate_almost_primes(UV** list, uint32_t k, UV lo, UV hi) {
   if (k == 1) return range_prime_sieve(list, lo, hi);
   if (k == 2) return range_semiprime_sieve(list, lo, hi);
 
+  /* Large base with small range: better to sieve */
+  if ( (k >= 3 && hi >= 1e12 && (hi-lo) <= 5e6) ||
+       (k >= 3 && hi >= 1e13 && (hi-lo) <= 2e8) ||
+       (k >= 3 && hi >= 1e14 && (hi-lo) <= 4e8)    )
+    return range_almost_prime_sieve(list, k, lo, hi);
+
   /* Optional:  we could try reduce_k_for_n() here. */
 
-  count = almost_prime_count(k, hi) - almost_prime_count(k, lo-1);
-  /* Alternately we could get the count using:
-   *     _genkap(lo, hi, k, 1, 2, 0, &count);     */
+  prime_precalc(10000000U);
+  countest = almost_prime_count_approx(k,hi) - almost_prime_count_approx(k,lo-1);
+  Lsize = (countest > 10000000U) ? 10000000U : countest+1000;
 
-  New(0, L, count, UV);
-  _genkap(lo, hi, k, 1, 2, L, &Lpos);
-  if (Lpos != count) croak("Expected %lu, got %lu almost primes", count, Lpos);
-  qsort(L, count, sizeof(UV), _numcmp);
+  New(0, L, Lsize, UV);
+  _genkap(lo, hi, k, 1, 2, &L, &Lpos, &Lsize);
+  qsort(L, Lpos, sizeof(UV), _numcmp);
   *list = L;
-  return count;
+  return Lpos;
 }
