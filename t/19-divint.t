@@ -96,7 +96,7 @@ plan tests => 0
             + 7 * scalar(@quotients)         # signed bigint division
             + 12                             # table 1.3 from Leijen 2001
             + 11                             # divint with large neg returns
-            + 1                              # cdivrem extra
+            + 3                              # cdivrem extra
             + 4 + 3*scalar(@negshifts)       # shiftint
             + 4                              # absint
             + 4                              # negint
@@ -290,6 +290,15 @@ is(cdivint(-3, "12844039487317506779"), 0, "Divide (ceil) negative small int by 
 
 ###### cdivrem special test
 is( join(" ",cdivrem(3, "12844039487317506779")), "1 -12844039487317506776", "cdivrem with small quotient and 64-bit denominator shouldn't overflow IV" );
+{
+ my ($x248, $x263, $x264) = (powint(2,48), powint(2,63), powint(2,64));
+ is_deeply([cdivint($x263-1,$x248),cdivint($x263,$x248),cdivint($x263+1,$x248)],
+           [32768, 32768, 32769],
+           "cdivint (2^63 +/- eps) / 2^48");
+ is_deeply([cdivint($x264-1,$x248),cdivint($x264,$x248),cdivint($x264+1,$x248)],
+           [65536, 65536, 65537],
+           "cdivint (2^64 +/- eps) / 2^48");
+}
 
 ###### lshiftint
 is_deeply([map { lshiftint($_) } 0..50], [map { $_ << 1 } 0..50], "lshiftint(0..50)");
