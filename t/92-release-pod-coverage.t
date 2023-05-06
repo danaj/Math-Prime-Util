@@ -161,7 +161,7 @@ sub mpu_PPM_regex {
       Murandomb Murandomm Mvaluation
       Mis_power Mis_prime
       Mis_semiprime Mis_square_free
-      Mvecall Mvecany Mvecmax Mvecnone Mvecprod Mvecsum
+      Mvecall Mvecany Mvecmin Mvecmax Mvecnone Mvecprod Mvecsum
   );
   my $pattern = '^(' . join('|', @funcs) . ')$';
   return qr/$pattern/;

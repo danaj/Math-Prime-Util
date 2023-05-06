@@ -737,24 +737,6 @@ sub _generic_forsemiprimes {
   _generic_forcomp_sub('semiprimes', @_);
 }
 
-sub _generic_foralmostprimes {
-  my($sub, $k, $beg, $end) = @_;
-  _validate_positive_integer($k);
-  _validate_positive_integer($beg);
-  if (defined $end) {
-    _validate_positive_integer($end);
-  } else {
-    ($beg,$end) = (1,$beg);
-  }
-  return if $k == 0;
-  my $min = Math::Prime::Util::powint(2,$k);
-  $beg = $min if $beg < $min;
-  return unless $beg <= $end;
-  return _generic_forprimes($sub,$beg,$end) if $k == 1;
-  return _generic_forcomp_sub('semiprimes', $sub, $beg, $end) if $k == 2;
-  return _generic_forcomp_sub('almost-' . $k, $sub, $beg, $end);
-}
-
 sub _generic_forfac {
   my($sf, $sub, $beg, $end) = @_;
   _validate_positive_integer($beg);

@@ -221,6 +221,7 @@ int sumtotient128(UV n, UV *hi_sum, UV *lo_sum) {
                                                  :  24000001;
 #else
   thash.hsize = next_prime(10 + (cbrtn * cbrtn)/128);
+  /* if (thash.hsize > 290000000U) thash.hsize=290000000U; */ /* Limit to 7GB */
 #endif
   /* printf("hsize %lu  csize %lu  sumcache[%lu] = %lu\n", thash.hsize, csize, csize-1, sumcache[csize-1]); */
   Newz(0, thash.nhash, thash.hsize, UV);

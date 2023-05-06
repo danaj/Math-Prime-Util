@@ -295,7 +295,7 @@ is( join(" ",cdivrem(3, "12844039487317506779")), "1 -12844039487317506776", "cd
  is_deeply([cdivint($x263-1,$x248),cdivint($x263,$x248),cdivint($x263+1,$x248)],
            [32768, 32768, 32769],
            "cdivint (2^63 +/- eps) / 2^48");
- is_deeply([cdivint($x264-1,$x248),cdivint($x264,$x248),cdivint($x264+1,$x248)],
+ is_deeply([cdivint(subint($x264,1),$x248),cdivint($x264,$x248),cdivint(addint($x264,1),$x248)],
            [65536, 65536, 65537],
            "cdivint (2^64 +/- eps) / 2^48");
 }

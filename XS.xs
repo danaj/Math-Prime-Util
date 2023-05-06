@@ -4113,7 +4113,7 @@ foralmostprimes (SV* block, IN UV k, IN SV* svbeg, IN SV* svend = 0)
 
     if (!_validate_and_set(&beg, aTHX_ svbeg, IFLAG_POS) ||
         (svend && !_validate_and_set(&end, aTHX_ svend, IFLAG_POS))) {
-      _vcallsubn(aTHX_ G_VOID|G_DISCARD, VCALL_ROOT, "_generic_foralmostprimes", items, 0);
+      _vcallsub_with_pp("foralmostprimes");
       return;
     }
     if (!svend) { end = beg; beg = 1; }

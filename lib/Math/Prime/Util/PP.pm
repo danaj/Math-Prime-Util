@@ -114,6 +114,7 @@ BEGIN {
 *Mvecnone = \&Math::Prime::Util::vecnone;
 *Mvecsum = \&Math::Prime::Util::vecsum;
 *Mvecprod = \&Math::Prime::Util::vecprod;
+*Mvecmin = \&Math::Prime::Util::vecmin;
 *Mvecmax = \&Math::Prime::Util::vecmax;
 
 *Mfordivisors = \&Math::Prime::Util::fordivisors;
@@ -7786,6 +7787,7 @@ sub _found_factor {
     # Perl 5.6.2 needs things spelled out for it.
     my $f2 = (ref($n) eq 'Math::BigInt') ? $n->copy->bdiv($f)->as_int
                                          : int($n/$f);
+    ($f,$f2) = ($f2,$f) if $f > $f2;
     push @factors, $f;
     push @factors, $f2;
     croak "internal error in $what" unless $f * $f2 == $n;
@@ -9520,6 +9522,58 @@ sub shuffle {
   }
   @S;
 }
+
+###############################################################################
+
+sub foralmostprimes {
+  my($sub, $k, $lo, $hi) = @_;
+  _validate_positive_integer($k);
+  return if $k == 0;
+  if (defined $hi) { _validate_positive_integer($lo); }
+  else             { ($lo,$hi) = (1, $lo);            }
+  _validate_positive_integer($hi);
+
+  $lo = Mvecmax($lo, Mpowint(2, $k));
+  return if $lo > $hi;
+
+  # These are typically slower.
+
+  #return Math::Prime::Util::_generic_forprimes($sub,$lo,$hi) if $k == 1;
+  #return Math::Prime::Util::_generic_forcomp_sub('semiprimes',$sub,$lo,$hi) if $k == 2;
+  #return Math::Prime::Util::_generic_forcomp_sub("almost-$k",$sub,$lo,$hi) if $k == 3;
+
+  # This could still be useful without the C code.
+  #return Math::Prime::Util::_generic_forcomp_sub("almost-$k",$sub,$lo,$hi)
+  #  if $k >= 3 && $lo >= 6e13 && ($hi-$lo) <= 1e6;
+
+  my $estcount = almost_prime_count_approx($k,$hi) - almost_prime_count_approx($k,$lo);
+  my $nsegs = $estcount / 1e6;
+  my $segsize = ($nsegs <= 1.1) ? ($hi-$lo+1) : int(1+($hi-$lo)/$nsegs);
+  if ($segsize < 5*1e6) { $segsize = 5e6; }
+  # warn "  estcount $estcount   nsegs $nsegs   segsize $segsize\n";
+
+  my $oldforexit = Math::Prime::Util::_start_for_loop();
+  while ($lo <= $hi) {
+    my $seghi = Mvecmin($hi, Maddint($lo,$segsize)-1);
+    my $ap = Math::Prime::Util::almost_primes($k, $lo, $seghi);
+    #my $ap = [];  _genkap($lo, $seghi, $k, 1, 2, sub { push @$ap,$_[0]; });
+    # warn "  from $lo to $seghi found ",scalar(@$ap), " $k-almost-primes\n";
+    {
+      my $pp;
+      local *_ = \$pp;
+      for my $kap (@$ap) {
+        $pp = $kap;
+        $sub->();
+        last if Math::Prime::Util::_get_forexit();
+      }
+    }
+    $lo = Maddint($seghi,1);
+    last if Math::Prime::Util::_get_forexit();
+  }
+  Math::Prime::Util::_end_for_loop($oldforexit);
+}
+
+
 
 ###############################################################################
 #       Random numbers

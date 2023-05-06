@@ -865,7 +865,7 @@ sub forsemiprimes(&$;$) { ## no critic qw(ProhibitSubroutinePrototypes)
   Math::Prime::Util::_generic_forcomp_sub('semiprimes', @_);
 }
 sub foralmostprimes(&$$;$) { ## no critic qw(ProhibitSubroutinePrototypes)
-  Math::Prime::Util::_generic_foralmostprimes(@_);
+  Math::Prime::Util::PP::foralmostprimes(@_);
 }
 
 sub forfactored(&$;$) { ## no critic qw(ProhibitSubroutinePrototypes)
