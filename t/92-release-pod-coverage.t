@@ -141,24 +141,26 @@ sub mpu_public_regex {
 }
 
 sub mpu_factor_regex {
-  my @funcs = (qw/trial_factor fermat_factor holf_factor lehman_factor squfof_factor prho_factor pbrent_factor pminus1_factor pplus1_factor ecm_factor/);
+  my @funcs = (qw/trial_factor fermat_factor holf_factor lehman_factor squfof_factor prho_factor pbrent_factor pminus1_factor pplus1_factor cheb_factor ecm_factor/);
   my $pattern = '^(' . join('|', @funcs) . ')$';
   return qr/$pattern/;
 }
 
 sub mpu_PPM_regex {
   my @funcs = qw(
-      Maddint Msubint Mmulint Mdivint Mpowint Mabsint Mnegint
+      Maddint Msubint Mmulint Mdivint Mcdivint Mpowint Mabsint Mnegint
       Mmodint Mlogint Mrootint Msqrtint
       Mlshiftint Mrshiftint
       Maddmod Msubmod Mmulmod Mrootmod Mdivmod Mpowmod Minvmod
       Mbinomial Mchinese Mfactor Mfactor_exp
       Mfactorial Mfordivisors Mforprimes Mgcd
-      Mkronecker Mmoebius
+      Mkronecker Mmoebius Mtotient Mstirling
       Mnext_prime Mprev_prime Mprime_count
       Mprimorial Mpn_primorial
+      MLi Mpowersum
       Murandomb Murandomm Mvaluation
       Mis_power Mis_prime
+      Mis_semiprime Mis_square_free
       Mvecall Mvecany Mvecmax Mvecnone Mvecprod Mvecsum
   );
   my $pattern = '^(' . join('|', @funcs) . ')$';

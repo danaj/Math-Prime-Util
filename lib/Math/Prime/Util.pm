@@ -112,7 +112,7 @@ our %EXPORT_TAGS = (all  => [ @EXPORT_OK ],
                    );
 
 # These are only exported if specifically asked for
-push @EXPORT_OK, (qw/trial_factor fermat_factor holf_factor lehman_factor squfof_factor prho_factor pbrent_factor pminus1_factor pplus1_factor ecm_factor rand srand/);
+push @EXPORT_OK, (qw/trial_factor fermat_factor holf_factor lehman_factor squfof_factor prho_factor pbrent_factor pminus1_factor pplus1_factor cheb_factor ecm_factor rand srand/);
 
 my %_Config;
 my %_GMPfunc;  # List of available MPU::GMP functions
@@ -5687,6 +5687,20 @@ find a factor C<p> of C<n> where C<p-1> is smooth (it has no large factors).
 
 Produces factors, not necessarily prime, of the positive number input.  This
 is Williams' C<p+1> method, using one stage and two predefined initial points.
+
+=head2 cheb_factor
+
+  my @factors = cheb_factor($n);
+  my @factors = cheb_factor($n, 1_000);          # set B1 smoothness
+
+Produces factors, not necessarily prime, of the positive number input.
+This uses the properties of Chebyshev polynomials
+(particularly that C<T_mn(x) = T_m(T_n(x))>)
+and their relationship with the Lucas sequence,
+to find factors if C<p-1> or C<p+1> is smooth.
+
+This generally works better than our L</pplus1_factor>, but is slower than our
+L</pminus1_factor>.
 
 =head2 ecm_factor
 

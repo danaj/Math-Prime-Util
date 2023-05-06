@@ -2088,7 +2088,7 @@ sub _genkap {
   }
 }
 
-sub generate_almost_primes {
+sub _generate_almost_primes {
   my($A, $B, $k, $cb) = @_;
   $A = Mvecmax($A, Mpowint(2, $k));
   _genkap($A, $B, $k, 1, 2, $cb)  if $A <= $B;
@@ -2103,7 +2103,7 @@ sub almost_primes {
   return [] unless $low <= $high;
 
   my @ap;
-  generate_almost_primes($low, $high, $k, sub { push @ap,$_[0]; });
+  _generate_almost_primes($low, $high, $k, sub { push @ap,$_[0]; });
   @ap = sort { $a <=> $b } @ap;
   \@ap;
 }

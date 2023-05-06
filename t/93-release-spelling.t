@@ -43,13 +43,14 @@ add_stopwords(qw/-th
                  bernfrac bernreal harmfrac harmreal stirling hclassno
                  vecsum vecprod vecmin vecmax vecreduce vecextract vecequal
                  vecall vecany vecnone vecnotall vecfirst vecfirstidx vecmex vecpmex
-                 sqrtint logint rootint powint addint subint mulint divint modint negint absint divrem tdivrem fdivrem
+                 sqrtint logint rootint powint addint subint mulint divint cdivint modint negint absint divrem tdivrem fdivrem cdivrem
                  qnr
                  todigits todigitstring fromdigits sumdigits hammingweight
                  tozeckendorf fromzeckendorf
                  lucasu lucasv lucasuv lucasumod lucasvmod lucasuvmod
                  lshiftint rshiftint rashiftint signint cmpint
                  biquadrate powerfree k-powerfree k-free
-                 pp/);
+                 sumpowerful powersum
+                 pp 100ns/);
 
 all_pod_files_spelling_ok();
