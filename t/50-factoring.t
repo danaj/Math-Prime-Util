@@ -130,7 +130,7 @@ plan tests => (3 * scalar @testn)
             + 10*10  # 10 extra factoring tests * 10 algorithms
             + 8
             + 2*scalar(@omega)
-            + 6;
+            + 7;
 
 foreach my $n (@testn) {
   my @f = factor($n);
@@ -196,6 +196,7 @@ SKIP: {
   is_deeply( [Math::Prime::Util::pminus1_factor(667,1000)], [23,29], "p-1 factor 23 * 29 with small B1" );
   is_deeply( [Math::Prime::Util::pminus1_factor(563777293,1000,20000)], [23099,24407], "p-1 factor 23099 * 24407 using stage 2" );
 }
+is_deeply( [Math::Prime::Util::cheb_factor("13581893559735945553",1500)], [3453481411,3932812123], "cheb factor 3453481411 * 3932812123" );
 
 
 

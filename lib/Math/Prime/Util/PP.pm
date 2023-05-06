@@ -7799,7 +7799,6 @@ sub _found_factor {
 sub squfof_factor { trial_factor(@_) }
 sub lehman_factor { trial_factor(@_) }
 sub pplus1_factor { pminus1_factor(@_) }
-sub cheb_factor   { pminus1_factor(@_) }
 
 sub prho_factor {
   my($n, $rounds, $pa, $skipbasic) = @_;
@@ -8135,6 +8134,41 @@ sub pminus1_factor {
     $f = Math::BigInt::bgcd( $b, $n );
   }
   return _found_factor($f, $n, "pminus1", @factors);
+}
+
+sub cheb_factor {
+  my($n, $B1, $initx, $skipbasic) = @_;
+  _validate_positive_integer($n);
+  _validate_positive_integer($B1) if defined $B1;
+  _validate_positive_integer($initx) if defined $initx;
+
+  my @factors;
+  if (!$skipbasic) {
+    @factors = _basic_factor($n);
+    return @factors if $n < 4;
+  }
+
+  my $x = (defined $initx && $initx > 0)  ?  $initx  :  72;  # Arbitrary
+  my $B = (defined $B1 && $B1 > 0)  ?  $B1  : Mpowint(Mlogint($n,2),2);
+  my $sqrtB = Msqrtint($B);
+  my $inv = Minvmod(2,$n);
+  my $f = 1;
+
+  my @bprimes = @{ primes(2, $B) };
+  foreach my $p (@bprimes) {
+    my $xx = Maddmod($x,$x,$n);
+    # If $xx > SINTMAX, this won't work, as P and Q are IVs in lucasvmod.
+    # We could write our own implementation, or try to get that changed.
+    if ($p <= $sqrtB) {
+      my $plgp = Mpowint($p, Mlogint($B, $p));
+      $x = Mmulmod(Math::Prime::Util::lucasvmod($xx, 1, $plgp, $n), $inv, $n);
+    } else {
+      $x = Mmulmod(Math::Prime::Util::lucasvmod($xx, 1, $p, $n), $inv, $n);
+    }
+    $f = Mgcd($x-1, $n);
+    last if $f != 1;
+  }
+  return _found_factor($f, $n, "cheb", @factors);
 }
 
 sub holf_factor {
