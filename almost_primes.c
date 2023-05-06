@@ -497,7 +497,7 @@ static const double _lower_64[41] = {0,0, 1.011,  0.8093, 0.7484,
    1,425656284035217743
    2,1701748900850019777
    3,3167597434038354478
-   4,?
+   4,3787884015050788482
    5,?
    6,2466706950238087748
    7,1571012171387856192
@@ -599,8 +599,7 @@ static void _almost_prime_count_bounds(UV *lower, UV *upper, uint32_t k, UV n) {
     }
     /* As with k=3, adjust to tighten in the finite range. */
     if (n > 4294967295U)  multu = 0.780;
-    /*if (x > 1e12)         multu = 0.680;  // This works though 2^58, barely*/
-    if (x > 1e12)         multu = 0.6967;
+    if (x > 1e12)         multu = 0.6921;
   } else {
     /* Completely empirical and by no means optimal.
      * It is easy and seems fairly reasonable through k=20 or so.
@@ -674,7 +673,7 @@ UV max_almost_prime_count(uint32_t k) {
     UVCONST( 425656284035217743), /* max prime count */
     UVCONST(1701748900850019777), /* max semiprime count */
     UVCONST(3167597434038354478), /* max 3-almost-prime count */
-    UVCONST(5626791887645067628), /* max 4-almost-prime count (upper limit) */
+    UVCONST(3787884015050788482), /* max 4-almost-prime count */
     /* 5-12 */  0,UVCONST(2466706950238087748),UVCONST(1571012171387856192),UVCONST(913164427599983727),UVCONST(499840874923678341),UVCONST(263157990621533964),UVCONST(135128109904869290),UVCONST(68283616225825256),
     /* 13-22 */ UVCONST(34151861008771016),UVCONST(16967424859951587),UVCONST(8393048221327186),UVCONST(4139595949113890),UVCONST(2037655246635364),UVCONST(1001591348315641),UVCONST(491808604962296),UVCONST(241293656953012),UVCONST(118304122014405),UVCONST(57968649799947),
     /* 23-32 */ UVCONST(28388662714236),UVCONST(13895161400556),UVCONST(6797526392535),UVCONST(3323560145881),UVCONST(1624109166018),UVCONST(793189260998),UVCONST(387148515886),UVCONST(188844769357),UVCONST(92054377509),UVCONST(44841620426),
@@ -682,7 +681,7 @@ UV max_almost_prime_count(uint32_t k) {
   };
 #endif
   if (k >= BITS_PER_WORD) return 0;
-  if (max[k] == 0) return UV_MAX;  /* TODO: fill in k=4 and k=5 */
+  if (max[k] == 0) return UV_MAX;  /* TODO: fill in k=5 */
   return max[k];
 }
 
