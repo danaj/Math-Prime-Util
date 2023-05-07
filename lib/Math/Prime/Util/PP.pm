@@ -116,6 +116,7 @@ BEGIN {
 *Mvecprod = \&Math::Prime::Util::vecprod;
 *Mvecmin = \&Math::Prime::Util::vecmin;
 *Mvecmax = \&Math::Prime::Util::vecmax;
+*Mtodigits = \&Math::Prime::Util::todigits;
 
 *Mfordivisors = \&Math::Prime::Util::fordivisors;
 *Mforprimes = \&Math::Prime::Util::forprimes;
@@ -2265,7 +2266,7 @@ sub is_delicate_prime {
     # Using todigitstring is slightly faster for bases < 10, but this is
     # decent and works for all 32-bit bases.
     # This is faster than Stamm's algorithm (in Perl, for possible bigints).
-    my $D = [Math::Prime::Util::todigits($n, $b)];
+    my $D = [Mtodigits($n, $b)];
     for my $d (0 .. $#$D) {
       my $dold = $D->[$d];
       for my $dnew (0 .. $b-1) {
@@ -7095,10 +7096,55 @@ sub lucasuvmod {
   lucas_sequence($n, $P, $Q, $k);
 }
 
-sub lucasu { (lucasuv(@_))[0] }
-sub lucasv { (lucasuv(@_))[1] }
-sub lucasumod { (lucasuvmod(@_))[0] }
-sub lucasvmod { (lucasuvmod(@_))[1] }
+sub lucasu {
+  return Math::Prime::Util::GMP::lucasu($_[0], $_[1], $_[2])
+    if $Math::Prime::Util::_GMPfunc{"lucasu"};
+  (lucasuv(@_))[0];
+}
+sub lucasv {
+  return Math::Prime::Util::GMP::lucasv($_[0], $_[1], $_[2])
+    if $Math::Prime::Util::_GMPfunc{"lucasv"};
+  (lucasuv(@_))[1];
+}
+
+sub lucasumod {
+  return Math::Prime::Util::GMP::lucasumod($_[0], $_[1], $_[2], $_[3])
+    if $Math::Prime::Util::_GMPfunc{"lucasumod"};
+  (lucasuvmod(@_))[0];
+}
+sub lucasvmod {
+  my($P, $Q, $k, $n) = @_;
+  return Math::Prime::Util::GMP::lucasvmod($P, $Q, $k, $n)
+    if $Math::Prime::Util::_GMPfunc{"lucasvmod"};
+  _validate_integer($P);
+  _validate_integer($Q);
+  _validate_positive_integer($k);
+  _validate_integer($n);
+  $n = -$n if $n < 0;
+  return if $n == 0;
+
+  if ($Q != 1) {
+    my($U,$V) = lucas_sequence($n, $P, $Q, $k);
+    return $V;
+  }
+
+  $P = Mmodint($P, $n);
+
+  # Fast algorithm for Q=1
+  my $V = 2;
+  my $U = $P;
+  foreach my $bit (Mtodigits($k, 2)) {
+    my $T = Msubmod(Mmulmod($U, $V, $n), $P, $n);
+    if ($bit) {
+      $V = $T;
+      $U = Msubmod(Mmulmod($U, $U, $n), 2, $n);
+    } else {
+      $U = $T;
+      $V = Msubmod(Mmulmod($V, $V, $n), 2, $n);
+    }
+  }
+  return $V;
+}
 
 sub is_lucas_pseudoprime {
   my($n) = @_;
@@ -7304,7 +7350,7 @@ sub _perrin_signature {
   my @S = (1,$n-1,3, 3,0,2);
   return @S if $n <= 1;
 
-  my @nbin = todigits($n,2);
+  my @nbin = Mtodigits($n,2);
   shift @nbin;
 
   while (@nbin) {
