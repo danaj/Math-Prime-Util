@@ -6867,7 +6867,7 @@ sub lucas_sequence {
     return ($U, $V, $Qk);
   }
 
-  if ($Math::Prime::Util::_GMPfunc{"lucas_sequence"} && $Math::Prime::Util::GMP::VERSION >= 0.30) {
+  if ($Math::Prime::Util::_GMPfunc{"lucas_sequence"} && $Math::Prime::Util::GMP::VERSION >= 0.30 && !ref($P) && !ref($Q)) {
     return map { ($_ > ''.~0) ? Math::BigInt->new(''.$_) : $_ }
            Math::Prime::Util::GMP::lucas_sequence($n, $P, $Q, $k);
   }
@@ -7093,7 +7093,9 @@ sub lucasuvmod {
   $n = -$n if $n < 0;
   return if $n == 0;
 
-  lucas_sequence($n, $P, $Q, $k);
+  # TODO: program this
+  my($U, $V, $Qk) = lucas_sequence($n, $P, $Q, $k);
+  ($U,$V);
 }
 
 sub lucasu {

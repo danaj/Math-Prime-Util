@@ -23,6 +23,7 @@
 #include "sieve_cluster.h"
 #include "util.h"
 #include "primality.h"
+#include "lucas_seq.h"
 #include "factor.h"
 #include "totients.h"
 #include "lehmer.h"
@@ -1615,21 +1616,27 @@ void lucas_sequence(...)
       return;
     }
 
-void lucasuvmod(IN IV P, IN IV Q, IN SV* svk, IN SV* svn)
+void lucasuvmod(IN SV* svp, IN SV* svq, IN SV* svk, IN SV* svn)
   ALIAS:
     lucasumod = 1
     lucasvmod = 2
   PREINIT:
-    UV k, n, U, V, Qk;
+    int pstatus, qstatus;
+    UV P, Q, k, n, U, V;
   PPCODE:
-    if (_validate_and_set(&k, aTHX_ svk, IFLAG_POS) &&
-        _validate_and_set(&n, aTHX_ svn, IFLAG_ABS)) {
+    pstatus = _validate_and_set(&P, aTHX_ svp, IFLAG_ANY);
+    qstatus = _validate_and_set(&Q, aTHX_ svq, IFLAG_ANY);
+    if ((pstatus != 0) && (qstatus != 0) &&
+        _validate_and_set(&k, aTHX_ svk, IFLAG_POS) &&
+        _validate_and_set(&n, aTHX_ svn, IFLAG_ABS)
+        ) {
       if (n == 0) XSRETURN_UNDEF;
+      P = (pstatus == 1)  ?  P % n  :  ivmod((IV)P,n);
+      Q = (qstatus == 1)  ?  Q % n  :  ivmod((IV)Q,n);
       switch (ix) {
-        case 0:  lucas_seq(&U, &V, &Qk, n, P, Q, k);
+        case 0:  lucasuvmod(&U, &V, P, Q, k, n);
                  PUSHs(sv_2mortal(newSVuv( U )));
                  PUSHs(sv_2mortal(newSVuv( V )));
-                 PUSHs(sv_2mortal(newSVuv( Qk )));
                  break;
         case 1:  XSRETURN_UV(lucasumod(P, Q, k, n)); break;
         case 2:
@@ -1637,23 +1644,28 @@ void lucasuvmod(IN IV P, IN IV Q, IN SV* svk, IN SV* svn)
       }
     } else {
       if (ix == 0) {
-        _vcallsubn(aTHX_ GIMME_V, VCALL_PP, "lucasuvmod", items, 0);
+        /* _vcallsubn(aTHX_ GIMME_V, VCALL_PP, "lucasuvmod", items, 0); */
+        (void)_vcallsubn(aTHX_ GIMME_V, VCALL_GMP|VCALL_PP, "lucasuvmod", items, 53);
+        objectify_result(aTHX_ svn, ST(0));
+        objectify_result(aTHX_ svn, ST(1));
       } else {
         _vcallsub_with_gmp(0.53, (ix == 1) ? "lucasumod" : "lucasvmod");
-        objectify_result(aTHX_ ST(3), ST(0));
+        objectify_result(aTHX_ svn, ST(0));
       }
       return;
     }
 
-void lucasuv(IN IV P, IN IV Q, IN SV* svk)
+void lucasuv(IN SV* svp, IN SV* svq, IN SV* svk)
   ALIAS:
     lucasu = 1
     lucasv = 2
   PREINIT:
     UV k;
-    IV U, V;
+    IV P, Q, U, V;
   PPCODE:
-    if (_validate_and_set(&k, aTHX_ svk, IFLAG_POS) &&
+    if (_validate_and_set((UV*)&P, aTHX_ svp, IFLAG_IV) &&
+        _validate_and_set((UV*)&Q, aTHX_ svq, IFLAG_IV) &&
+        _validate_and_set(&k, aTHX_ svk, IFLAG_POS) &&
         lucasuv(&U, &V, P, Q, k)) {
       if (ix == 1)  XSRETURN_IV(U);     /* U = lucasu(P,Q,k) */
       if (ix == 2)  XSRETURN_IV(V);     /* V = lucasv(P,Q,k) */
@@ -1661,6 +1673,7 @@ void lucasuv(IN IV P, IN IV Q, IN SV* svk)
       PUSHs(sv_2mortal(newSViv( V )));
     } else {
       if (ix == 0) {
+        /* TODO: call GMP as above */
         _vcallsubn(aTHX_ GIMME_V, VCALL_PP, "lucasuv", items, 0);
       } else {
         _vcallsub_with_gmpobj(0.29, (ix==1) ? "lucasu" : "lucasv");

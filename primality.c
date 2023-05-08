@@ -6,6 +6,7 @@
 #include "ptypes.h"
 #define FUNC_is_strong_pseudoprime 1
 #include "primality.h"
+#include "lucas_seq.h"
 #include "mulmod.h"
 #define FUNC_gcd_ui 1
 #define FUNC_is_perfect_square
@@ -276,280 +277,6 @@ int BPSW(UV const n)
 #endif
 }
 
-/* Alternate modular lucas sequence code.
- * A bit slower than the normal one, but works with even valued n. */
-static void alt_lucas_seq(UV* Uret, UV* Vret, UV* Qkret, UV n, UV Pmod, UV Qmod, UV k)
-{
-  UV Uh, Vl, Vh, Ql, Qh;
-  int j, s, m;
-
-  Uh = 1;  Vl = 2;  Vh = Pmod;  Ql = 1;  Qh = 1;
-  s = 0; m = 0;
-  { UV v = k; while (!(v & 1)) { v >>= 1; s++; } }
-  { UV v = k; while (v >>= 1) m++; }
-
-  if (Pmod == 1 && Qmod == (n-1)) {
-    int Sl = Ql, Sh = Qh;
-    for (j = m; j > s; j--) {
-      Sl *= Sh;
-      Ql = (Sl==1) ? 1 : n-1;
-      if ( (k >> j) & UVCONST(1) ) {
-        Sh = -Sl;
-        Uh = mulmod(Uh, Vh, n);
-        Vl = submod(mulmod(Vh, Vl, n), Ql, n);
-        Vh = submod(sqrmod(Vh, n), (Sh==1) ? 2 : n-2, n);
-      } else {
-        Sh = Sl;
-        Uh = submod(mulmod(Uh, Vl, n), Ql, n);
-        Vh = submod(mulmod(Vh, Vl, n), Ql, n);
-        Vl = submod(sqrmod(Vl, n), (Sl==1) ? 2 : n-2, n);
-      }
-    }
-    Sl *= Sh;
-    Ql = (Sl==1) ? 1 : n-1;
-    Uh = submod(mulmod(Uh, Vl, n), Ql, n);
-    Vl = submod(mulmod(Vh, Vl, n), Ql, n);
-    for (j = 0; j < s; j++) {
-      Uh = mulmod(Uh, Vl, n);
-      Vl = submod(sqrmod(Vl, n), (j>0) ? 2 : n-2, n);
-    }
-    *Uret = Uh;
-    *Vret = Vl;
-    *Qkret = (s>0)?1:n-1;
-    return;
-  }
-
-  /* TODO: Measure speed:  X-Qh-Qh vs X-2*Qh */
-  for (j = m; j > s; j--) {
-    Ql = mulmod(Ql, Qh, n);
-    if ( (k >> j) & UVCONST(1) ) {
-      Qh = mulmod(Ql, Qmod, n);
-      Uh = mulmod(Uh, Vh, n);
-      Vl = submod(mulmod(Vh, Vl, n), mulmod(Pmod, Ql, n), n);
-      Vh = submod(sqrmod(Vh, n), mulmod(2, Qh, n), n);
-    } else {
-      Qh = Ql;
-      Uh = submod(mulmod(Uh, Vl, n), Ql, n);
-      Vh = submod(mulmod(Vh, Vl, n), mulmod(Pmod, Ql, n), n);
-      Vl = submod(sqrmod(Vl, n), mulmod(2, Ql, n), n);
-    }
-  }
-  Ql = mulmod(Ql, Qh, n);
-  Qh = mulmod(Ql, Qmod, n);
-  Uh = submod(mulmod(Uh, Vl, n), Ql, n);
-  Vl = submod(mulmod(Vh, Vl, n), mulmod(Pmod, Ql, n), n);
-  Ql = mulmod(Ql, Qh, n);
-  for (j = 0; j < s; j++) {
-    Uh = mulmod(Uh, Vl, n);
-    Vl = submod(sqrmod(Vl, n), mulmod(2, Ql, n), n);
-    Ql = sqrmod(Ql, n);
-  }
-  *Uret = Uh;
-  *Vret = Vl;
-  *Qkret = Ql;
-}
-
-/* Generic Lucas sequence for any appropriate P and Q */
-void lucas_seq(UV* Uret, UV* Vret, UV* Qkret, UV n, IV P, IV Q, UV k)
-{
-  UV U, V, b, Dmod, Qmod, Pmod, Qk;
-
-  MPUassert(n > 0, "lucas_sequence:  modulus n must be > 0");
-  if (n == 1) { *Uret = *Vret = *Qkret = 0; return; }
-
-  Qmod = ivmod(Q, n);
-  Pmod = ivmod(P, n);
-  Dmod = submod( mulmod(Pmod, Pmod, n), mulmod(4, Qmod, n), n);
-
-  if (k == 0) {
-    *Uret = 0;
-    *Vret = 2 % n;
-    *Qkret = 1;
-    return;
-  }
-
-  if (Dmod == 0 && (b = divmod(Pmod,2,n)) != 0) {
-    *Uret = mulmod(k, powmod(b, k-1, n), n);
-    *Vret = mulmod(2, powmod(b, k, n), n);
-    *Qkret = powmod(Qmod, k, n);
-    return;
-  }
-  if ((n % 2) == 0) {
-    alt_lucas_seq(Uret, Vret, Qkret, n, Pmod, Qmod, k);
-    return;
-  }
-  U = 1;
-  V = Pmod;
-  Qk = Qmod;
-  { UV v = k; b = 0; while (v >>= 1) b++; }
-
-  if (Q == 1) {
-    while (b--) {
-      U = mulmod(U, V, n);
-      V = mulsubmod(V, V, 2, n);
-      if ( (k >> b) & UVCONST(1) ) {
-        UV t2 = mulmod(U, Dmod, n);
-        U = muladdmod(U, Pmod, V, n);
-        if (U & 1) { U = (n>>1) + (U>>1) + 1; } else { U >>= 1; }
-        V = muladdmod(V, Pmod, t2, n);
-        if (V & 1) { V = (n>>1) + (V>>1) + 1; } else { V >>= 1; }
-      }
-    }
-  } else if (P == 1 && Q == -1) {
-    /* This is about 30% faster than the generic code below.  Since 50% of
-     * Lucas and strong Lucas tests come here, I think it's worth doing. */
-    int sign = Q;
-    while (b--) {
-      U = mulmod(U, V, n);
-      if (sign == 1) V = mulsubmod(V, V, 2, n);
-      else           V = muladdmod(V, V, 2, n);
-      sign = 1;   /* Qk *= Qk */
-      if ( (k >> b) & UVCONST(1) ) {
-        UV t2 = mulmod(U, Dmod, n);
-        U = addmod(U, V, n);
-        if (U & 1) { U = (n>>1) + (U>>1) + 1; } else { U >>= 1; }
-        V = addmod(V, t2, n);
-        if (V & 1) { V = (n>>1) + (V>>1) + 1; } else { V >>= 1; }
-        sign = -1;  /* Qk *= Q */
-      }
-    }
-    if (sign == 1) Qk = 1;
-  } else {
-    while (b--) {
-      U = mulmod(U, V, n);
-      V = mulsubmod(V, V, addmod(Qk,Qk,n), n);
-      Qk = sqrmod(Qk, n);
-      if ( (k >> b) & UVCONST(1) ) {
-        UV t2 = mulmod(U, Dmod, n);
-        U = muladdmod(U, Pmod, V, n);
-        if (U & 1) { U = (n>>1) + (U>>1) + 1; } else { U >>= 1; }
-        V = muladdmod(V, Pmod, t2, n);
-        if (V & 1) { V = (n>>1) + (V>>1) + 1; } else { V >>= 1; }
-        Qk = mulmod(Qk, Qmod, n);
-      }
-    }
-  }
-  *Uret = U;
-  *Vret = V;
-  *Qkret = Qk;
-}
-
-#define OVERHALF(v)  ( (UV)((v>=0)?v:-v) > (UVCONST(1) << (BITS_PER_WORD/2-1)) )
-int lucasuv(IV* U, IV *V, IV P, IV Q, UV k)
-{
-  IV Uh, Vl, Vh, Ql, Qh;
-  int j, s, n;
-
-  if (k == 0) {
-    if (U) *U = 0;
-    if (V) *V = 2;
-    return 1;
-  }
-
-  Uh = 1;  Vl = 2;  Vh = P;  Ql = 1;  Qh = 1;
-  s = 0; n = 0;
-  { UV v = k; while (!(v & 1)) { v >>= 1; s++; } }
-  { UV v = k; while (v >>= 1) n++; }
-
-  for (j = n; j > s; j--) {
-    if (OVERHALF(Uh) || OVERHALF(Vh) || OVERHALF(Vl) || OVERHALF(Ql) || OVERHALF(Qh)) return 0;
-    Ql *= Qh;
-    if ( (k >> j) & UVCONST(1) ) {
-      Qh = Ql * Q;
-      Uh = Uh * Vh;
-      Vl = Vh * Vl - P * Ql;
-      Vh = Vh * Vh - 2 * Qh;
-    } else {
-      Qh = Ql;
-      Uh = Uh * Vl - Ql;
-      Vh = Vh * Vl - P * Ql;
-      Vl = Vl * Vl - 2 * Ql;
-    }
-  }
-  if (OVERHALF(Ql) || OVERHALF(Qh)) return 0;
-  Ql = Ql * Qh;
-  Qh = Ql * Q;
-  if (OVERHALF(Uh) || OVERHALF(Vh) || OVERHALF(Vl) || OVERHALF(Ql) || OVERHALF(Qh)) return 0;
-  Uh = Uh * Vl - Ql;
-  Vl = Vh * Vl - P * Ql;
-  Ql = Ql * Qh;
-  for (j = 0; j < s; j++) {
-    if (OVERHALF(Uh) || OVERHALF(Vl) || OVERHALF(Ql)) return 0;
-    Uh *= Vl;
-    Vl = Vl * Vl - 2 * Ql;
-    Ql *= Ql;
-  }
-  if (U) *U = Uh;
-  if (V) *V = Vl;
-  return 1;
-}
-
-UV lucasvmod_ui(UV P, UV Q, UV k, UV n)
-{
-  UV D, b, U, V, Qk;
-
-  MPUassert(n > 0, "lucas_sequence:  modulus n must be > 0");
-  if (n == 1) return 0;
-  if (k == 0) return 2 % n;
-  if (P >= n) P = P % n;
-  if (Q >= n) Q = Q % n;
-
-  D = submod(mulmod(P, P, n), mulmod(4, Q, n), n);
-  if (D == 0 && (b = divmod(P,2,n)) != 0)
-    return mulmod(2, powmod(b, k, n), n);
-  if ((n % 2) == 0) {
-    UV Uret, Vret, Qkret;
-    alt_lucas_seq(&Uret, &Vret, &Qkret, n, P, Q, k);
-    return Vret;
-  }
-  { UV v = k; b = 0; while (v >>= 1) b++; }
-
-  if (Q == 1) {
-    V = P;
-    U = mulsubmod(P, P, 2, n);
-    while (b--) {
-      UV T = mulsubmod(U, V, P, n);
-      if ( (k >> b) & UVCONST(1) ) {
-        V = T;
-        U = mulsubmod(U, U, 2, n);
-      } else {
-        U = T;
-        V = mulsubmod(V, V, 2, n);
-      }
-    }
-  } else {
-    U = 1;
-    V = P;
-    Qk = Q;
-    while (b--) {
-      U = mulmod(U, V, n);
-      V = mulsubmod(V, V, addmod(Qk,Qk,n), n);
-      Qk = sqrmod(Qk, n);
-      if ( (k >> b) & UVCONST(1) ) {
-        UV t2 = mulmod(U, D, n);
-        U = muladdmod(U, P, V, n);
-        if (U & 1) { U = (n>>1) + (U>>1) + 1; } else { U >>= 1; }
-        V = muladdmod(V, P, t2, n);
-        if (V & 1) { V = (n>>1) + (V>>1) + 1; } else { V >>= 1; }
-        Qk = mulmod(Qk, Q, n);
-      }
-    }
-  }
-  return V;
-}
-
-UV lucasvmod(IV P, IV Q, UV k, UV n)
-{
-  return lucasvmod_ui(ivmod(P,n), ivmod(Q,n), k, n);
-}
-
-UV lucasumod(IV P, IV Q, UV k, UV n)
-{
-  UV U, V, Qk;
-  lucas_seq(&U, &V, &Qk, n, P, Q, k);
-  return U;
-}
-
 
 
 /******************************************************************************/
@@ -567,7 +294,7 @@ UV lucasumod(IV P, IV Q, UV k, UV n)
 int is_lucas_pseudoprime(UV n, int strength)
 {
   IV P, Q, D;
-  UV U, V, Qk, d, s;
+  UV U, V, Pu, Qu, Qk, d, s;
 
   if (n < 5) return (n == 2 || n == 3);
   if ((n % 2) == 0 || n == UV_MAX) return 0;
@@ -600,7 +327,7 @@ int is_lucas_pseudoprime(UV n, int strength)
   MPUassert( D == (P*P - 4*Q) , "is_lucas_pseudoprime: incorrect DPQ");
 
 #if 0   /* Condition 2, V_n+1 = 2Q mod n */
-{ UV us, vs, qs; lucas_seq(&us, &vs, &qs, n, P, Q, n+1); return (vs == addmod(Q,Q,n)); }
+{ UV us, vs; lucasuvmod(&us, &vs, P, Q, n+1, n); return (vs == addmod(Q,Q,n)); }
 #endif
 #if 0   /* Condition 3, n is a epsp(Q) */
 return is_euler_pseudoprime(n,Qk);
@@ -715,7 +442,9 @@ return is_euler_pseudoprime(n,Qk);
     return 0;
   }
 #else
-  lucas_seq(&U, &V, &Qk, n, P, Q, d);
+  Pu = ivmod(P,n);
+  Qu = ivmod(Q,n);
+  lucasuvmod(&U, &V, Pu, Qu, d, n);
 
   if (strength == 0) {
     if (U == 0)
@@ -724,6 +453,7 @@ return is_euler_pseudoprime(n,Qk);
     if (U == 0)
       return 1;
     /* Now check to see if V_{d*2^r} == 0 for any 0 <= r < s */
+    Qk = powmod(Qu, d, n);
     while (s--) {
       if (V == 0)
         return 1;
@@ -734,10 +464,10 @@ return is_euler_pseudoprime(n,Qk);
     }
   } else if (strength == 2) {
     UV Ql = 0, Qj = 0;
-    UV Qu = (Q >= 0)  ?  Q % n  :  n-(((UV)(-Q)) % n);
     int qjacobi, is_slpsp = 0;
     if (U == 0)
       is_slpsp = 1;
+    Qk = powmod(Qu, d, n);
     while (s--) {
       if (V == 0)
         is_slpsp = 1;
@@ -748,7 +478,7 @@ return is_euler_pseudoprime(n,Qk);
     if (!is_slpsp)                  return 0; /* slpsp */
     if (V != addmod(Qu,Qu,n))       return 0; /* V_{n+1} != 2Q mod n */
     qjacobi = jacobi_iu(Q,n);
-    Qj = (qjacobi == 0) ? 0 : (qjacobi == 1) ? Qu : n-Qu;
+    Qj = (qjacobi == 0 || Qu == 0) ? 0 : (qjacobi == 1) ? Qu : n-Qu;
     if (Ql != Qj)                   return 0; /* n is epsp base Q */
     return 1;
   } else {
@@ -1035,7 +765,7 @@ int is_perrin_pseudoprime(UV n, uint32_t restricted)
 
 int is_frobenius_pseudoprime(UV n, IV P, IV Q)
 {
-  UV U, V, Qk, Vcomp;
+  UV U, V, t, Vcomp;
   int k = 0;
   IV D;
   UV Du, Pu, Qu;
@@ -1064,26 +794,21 @@ int is_frobenius_pseudoprime(UV n, IV P, IV Q)
     if (D != 5 && is_perfect_square(Du))
       croak("Frobenius invalid P,Q: (%"IVdf",%"IVdf")", P, Q);
   }
-  Pu = (P >= 0 ? P : -P) % n;
-  Qu = (Q >= 0 ? Q : -Q) % n;
+  Pu = ivmod(P,n);
+  Qu = ivmod(Q,n);
 
-  Qk = gcd_ui(n, Pu*Qu*Du);
-  if (Qk != 1) {
-    if (Qk == n) return !!is_prob_prime(n);
+  t = gcd_ui(n, Pu*Qu*Du);
+  if (t != 1) {
+    if (t == n) return !!is_prob_prime(n);
     return 0;
   }
   if (k == 0) {
     k = kronecker_su(D, n);
     if (k == 0) return 0;
-    if (k == 1) {
-      Vcomp = 2;
-    } else {
-      Qu = addmod(Qu,Qu,n);
-      Vcomp = (Q >= 0)  ?  Qu  :  n-Qu;
-    }
+    Vcomp = (k == 1)  ?  2  :  addmod(Qu,Qu,n);
   }
 
-  lucas_seq(&U, &V, &Qk, n, P, Q, n-k);
+  lucasuvmod(&U, &V, Pu, Qu, n-k, n);
   /* MPUverbose(1, "%"UVuf" Frobenius U = %"UVuf" V = %"UVuf"\n", n, U, V); */
   if (U == 0 && V == Vcomp) return 1;
   return 0;

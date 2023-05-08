@@ -15,6 +15,7 @@
 #include "mulmod.h"
 #include "cache.h"
 #include "primality.h"
+#include "lucas_seq.h"
 #include "montmath.h"
 static int holf32(uint32_t n, UV *factors, uint32_t rounds);
 
@@ -1281,13 +1282,13 @@ int cheb_factor(UV n, UV *factors, UV B, UV initx)
       UV lgp = logint(B, p);
       UV plgp = ipowsafe(p, lgp);
       if (plgp < UV_MAX) {
-        x = mulmod(lucasvmod_ui(addmod(x,x,n), 1, plgp, n), inv, n);
+        x = mulmod(lucasvmod(addmod(x,x,n), 1, plgp, n), inv, n);
       } else {
         for (i = 1; i <= lgp; i++)
-          x = mulmod(lucasvmod_ui(addmod(x,x,n), 1, p, n), inv, n);
+          x = mulmod(lucasvmod(addmod(x,x,n), 1, p, n), inv, n);
       }
     } else {
-      x = mulmod(lucasvmod_ui(addmod(x,x,n), 1, p, n), inv, n);
+      x = mulmod(lucasvmod(addmod(x,x,n), 1, p, n), inv, n);
     }
     f = gcd_ui(x-1, n);  if (f > 1)  break;
   } END_DO_FOR_EACH_PRIME

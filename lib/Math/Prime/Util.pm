@@ -4879,14 +4879,14 @@ This corresponds to gmpy2's C<lucasv_mod> function.
 =head2 lucasuvmod
 
   # Compute the 5000-th Fibonacci and Lucas numbers, mod 1001
-  ($U,$V,$Qk) = lucasuvmod(1, -1, 5000, 1001);
+  ($U,$V) = lucasuvmod(1, -1, 5000, 1001);
 
 Given integers C<P>, C<Q>, the non-negative integer C<k>, and the
 integer C<n>, efficiently compute the k-th value
-of C<U(P,Q) mod |n|>, C<V(P,Q) mod |n|>, and C<Q^k mod |n|>.
+of C<U(P,Q) mod |n|> and C<V(P,Q) mod |n|>.
 
-Other than the more consistent order of arguments, this is the same
-as the deprecated C<lucas_sequence> function.
+This is similar to the L</lucas_sequence> function, but uses a more
+consistent argument order and does not return C<Q_k>.
 
 =head2 lucas_sequence
 

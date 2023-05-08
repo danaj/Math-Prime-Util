@@ -16,12 +16,6 @@ extern int is_perrin_pseudoprime(UV n, uint32_t restricted);
 extern int is_mersenne_prime(UV p);
 extern int lucas_lehmer(UV p);
 
-extern int lucasuv(IV* U, IV* V,  IV P, IV Q, UV k);
-extern void lucas_seq(UV* U, UV* V, UV* Qk,  UV n, IV P, IV Q, UV k);
-extern UV lucasvmod_ui(UV P, UV Q, UV k, UV n);
-extern UV lucasvmod(IV P, IV Q, UV k, UV n);
-extern UV lucasumod(IV P, IV Q, UV k, UV n);
-
 #if defined(FUNC_is_strong_pseudoprime)
 static int is_strong_pseudoprime(UV n, UV base) {
   return miller_rabin(n, &base, 1);

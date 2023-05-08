@@ -85,7 +85,7 @@ Revision history for Perl module Math::Prime::Util
     - lucasuv(p,q,k)                  U(p,q)_k, V(p,q)_k
     - lucasumod(p,q,k,n)              U(p,q)_k mod n
     - lucasvmod(p,q,k,n)              V(p,q)_k mod n
-    - lucasuvmod(p,q,k,n)             U(p,q)_k, V(p,q)_k, q^k  all mod n
+    - lucasuvmod(p,q,k,n)             (U(p,q)_k mod n, V(p,q)_k mod n)
     - prime_powers([start,] end)      array ref of prime powers
     - next_prime_power(n)             next prime power: p > n
     - prev_prime_power(n)             previous prime power: p < n

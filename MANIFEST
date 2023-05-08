@@ -49,6 +49,8 @@ lehmer.h
 lehmer.c
 lmo.h
 lmo.c
+lucas_seq.h
+lucas_seq.c
 lucky_numbers.h
 lucky_numbers.c
 omega_primes.h
