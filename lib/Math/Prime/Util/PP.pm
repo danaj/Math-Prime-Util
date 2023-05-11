@@ -1370,13 +1370,13 @@ sub is_square_free {
 
 sub is_odd {
   my($n) = @_;
-  _validate_positive_integer($n);
+  _validate_integer($n);
   return $n % 2;
 }
 sub is_even {
   my($n) = @_;
-  _validate_positive_integer($n);
-  return !($n % 2);
+  _validate_integer($n);
+  return 1-($n % 2);
 }
 
 sub is_smooth {
@@ -7125,7 +7125,7 @@ sub lucasuvmod {
 
   if ($D == 0) {
     my $S = Mdivmod($P, 2, $n);
-    if ($S != 0) {
+    if ($S) {
       my $U = Mmulmod($k, Mpowmod($S, $k-1, $n), $n);
       my $V = Mmulmod(2,  Mpowmod($S, $k,   $n), $n);
       return ($U, $V);
@@ -7162,6 +7162,7 @@ sub lucasuvmod {
   } elsif ($nisodd && ($Q == 1 || $Q == ($n-1))) {
     my $ps = ($P == 1);
     my $qs = ($Q == 1);
+    my $halfn = Maddint(Mrshiftint($n,1),1);
     foreach my $bit (@kbits) {
       $U = Mmulmod($U, $V, $n);
       $V = Mmulmod($V, $V, $n);
@@ -7171,13 +7172,46 @@ sub lucasuvmod {
         my $t = Mmulmod($U, $D, $n);
         $U = Mmulmod($U, $P, $n)  if !$ps;
         $U = Maddmod($U, $V, $n);
-        $U = Maddint($U, $n)  if $U & 1;
-        $U = Mrshiftint($U, 1);
+        if (Mis_odd($U)) {
+          $U = Maddint(Mrshiftint($U, 1), $halfn);
+        } else {
+          $U = Mrshiftint($U, 1);
+        }
         $V = Mmulmod($V, $P, $n)  if !$ps;
         $V = Maddmod($V, $t, $n);
-        $V = Maddint($V, $n)  if $V & 1;
-        $V = Mrshiftint($V, 1);
+        if (Mis_odd($V)) {
+          $V = Maddint(Mrshiftint($V, 1), $halfn);
+        } else {
+          $V = Mrshiftint($V, 1);
+        }
         $qs = ($Q==1);
+      }
+    }
+  } elsif ($nisodd) {
+    my $Qk = $Q;
+    my $halfn = Maddint(Mrshiftint($n,1),1);
+    foreach my $bit (@kbits) {
+      $U = Mmulmod($U, $V, $n);
+      $V = Mmulmod($V, $V, $n);
+      $V = Msubmod($V, Maddmod($Qk, $Qk, $n), $n);
+      $Qk = Mmulmod($Qk, $Qk, $n);
+      if ($bit) {
+        my $t = Mmulmod($U, $D, $n);
+        $U = Mmulmod($U, $P, $n);
+        $U = Maddmod($U, $V, $n);
+        if (Mis_odd($U)) {
+          $U = Maddint(Mrshiftint($U, 1), $halfn);
+        } else {
+          $U = Mrshiftint($U, 1);
+        }
+        $V = Mmulmod($V, $P, $n);
+        $V = Maddmod($V, $t, $n);
+        if (Mis_odd($V)) {
+          $V = Maddint(Mrshiftint($V, 1), $halfn);
+        } else {
+          $V = Mrshiftint($V, 1);
+        }
+        $Qk = Mmulmod($Qk, $Q, $n);
       }
     }
   } else {
