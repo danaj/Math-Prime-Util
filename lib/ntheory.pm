@@ -226,6 +226,8 @@ Tags:
   sumdigits(n)                        sum of digits, with optional base
   tozeckendorf(n)                     convert n to Zeckendorf/Fibbinary
   fromzeckendorf(str)                 convert Zeckendorf binary str to num
+  is_odd(n)                           return 1 if n is odd, 0 otherwise
+  is_even(n)                          return 1 if n is even, 0 otherwise
   is_square(n)                        return 1 if n is a perfect square
   is_power(n)                         return k if n = c^k for integer c
   is_power(n,k)                       return 1 if n = c^k for integer c, k

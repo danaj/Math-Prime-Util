@@ -27,6 +27,7 @@ our @EXPORT_OK =
       is_perrin_pseudoprime is_catalan_pseudoprime
       is_aks_prime is_bpsw_prime is_ramanujan_prime is_mersenne_prime
       is_delicate_prime
+      is_odd is_even
       is_power is_prime_power is_perfect_power is_square
       is_square_free is_powerfree
       is_pillai is_polygonal
@@ -3013,6 +3014,15 @@ and allowing leading zero digits to be changed ("widely DDPs").
 
 This is the L<OEIS series A050249|http://oeis.org/A050249>.
 With different bases, this is L<OEIS series A186995|http://oeis.org/A186995>.
+
+
+=head2 is_odd
+
+Given an integer C<n>, returns 1 if C<n> is odd and 0 otherwise.
+
+=head2 is_even
+
+Given an integer C<n>, returns 1 if C<n> is even and 0 otherwise.
 
 
 =head2 is_power

@@ -92,6 +92,8 @@ BEGIN {
 *Mis_semiprime = \&Math::Prime::Util::is_semiprime;
 *Mis_power = \&Math::Prime::Util::is_power;
 *Mis_square_free = \&Math::Prime::Util::is_square_free;
+*Mis_odd = \&Math::Prime::Util::is_odd;
+*Mis_even = \&Math::Prime::Util::is_even;
 *Mchinese = \&Math::Prime::Util::chinese;
 *Mvaluation = \&Math::Prime::Util::valuation;
 *Mkronecker = \&Math::Prime::Util::kronecker;
@@ -1364,6 +1366,17 @@ sub moebius {
 }
 sub is_square_free {
   return (Mmoebius($_[0]) != 0) ? 1 : 0;
+}
+
+sub is_odd {
+  my($n) = @_;
+  _validate_positive_integer($n);
+  return $n % 2;
+}
+sub is_even {
+  my($n) = @_;
+  _validate_positive_integer($n);
+  return !($n % 2);
 }
 
 sub is_smooth {
@@ -7124,7 +7137,7 @@ sub lucasuvmod {
   my $U = 1;
   my $V = $P;
   my $invD = Minvmod($D, $n);
-  my $nisodd = ($n % 2) != 0;
+  my $nisodd = Mis_odd($n);
 
   #  muladdmod(a,b,c,n) = addmod(mulmod(a,b,n),c,n)
   #  mulsubmod(a,b,c,n) = submod(mulmod(a,b,n),c,n)

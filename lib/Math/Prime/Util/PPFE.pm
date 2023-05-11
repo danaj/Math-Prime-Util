@@ -153,6 +153,8 @@ sub entropy_bytes {
 *is_rough = \&Math::Prime::Util::PP::is_rough;
 *is_perfect_power = \&Math::Prime::Util::PP::is_perfect_power;
 *is_powerful = \&Math::Prime::Util::PP::is_powerful;
+*is_odd = \&Math::Prime::Util::PP::is_odd;
+*is_even = \&Math::Prime::Util::PP::is_even;
 *powerful_count = \&Math::Prime::Util::PP::powerful_count;
 *nth_powerful = \&Math::Prime::Util::PP::nth_powerful;
 *sumpowerful = \&Math::Prime::Util::PP::sumpowerful;

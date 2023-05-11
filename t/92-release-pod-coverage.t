@@ -56,6 +56,7 @@ sub mpu_public_regex {
       is_perrin_pseudoprime is_catalan_pseudoprime
       is_aks_prime is_bpsw_prime is_ramanujan_prime is_mersenne_prime
       is_delicate_prime
+      is_odd is_even
       is_power is_prime_power is_perfect_power is_square
       is_square_free is_powerfree
       is_pillai is_polygonal
@@ -159,7 +160,7 @@ sub mpu_PPM_regex {
       Mprimorial Mpn_primorial
       MLi Mpowersum
       Murandomb Murandomm Mvaluation
-      Mis_power Mis_prime
+      Mis_power Mis_prime Mis_odd Mis_even
       Mis_semiprime Mis_square_free
       Mvecall Mvecany Mvecmin Mvecmax Mvecnone Mvecprod Mvecsum
       Mtodigits
