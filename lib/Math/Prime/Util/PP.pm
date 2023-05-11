@@ -6858,7 +6858,8 @@ sub lucas_sequence {
             Mmulint(4,$Q)
           );
   if ($D == 0) {
-    my $S = $P >> 1;  # If D is zero, P must be even (P*P = 4Q)
+    # my $S = divmod($P,2,$n);  # We can use below optimization instead.
+    my $S = $P >> 1;  # If D (without mod) is zero, P must be even (P*P = 4Q)
     my $U = Mmulmod($k, Mpowmod($S, $k-1, $n), $n);
     #die "  U $U : $P $Q $k $n\n" unless $U == Mmodint(lucasu($P,$Q,$k),$n);
     my $V = Mmulmod(2, Mpowmod($S, $k, $n), $n);
@@ -6987,6 +6988,11 @@ sub lucasuv {
   croak "lucas_sequence: k must be >= 0" if $k < 0;
   return (0,2) if $k == 0;
 
+  if ($Math::Prime::Util::_GMPfunc{"lucasuv"} && $Math::Prime::Util::GMP::VERSION >= 0.53) {
+    return map { Math::Prime::Util::_to_bigint_if_needed($_) }
+           Math::Prime::Util::GMP::lucasuv($P, $Q, $k);
+  }
+
   $P = Math::BigInt->new("$P") unless ref($P) eq 'Math::BigInt';
   $Q = Math::BigInt->new("$Q") unless ref($Q) eq 'Math::BigInt';
 
@@ -7092,31 +7098,101 @@ sub lucasuvmod {
   _validate_integer($n);
   $n = -$n if $n < 0;
   return if $n == 0;
+  return (0,0) if $n == 1;
+  return (0, Mmodint(2,$n)) if $k == 0;
 
-  # TODO: program this
-  my($U, $V, $Qk) = lucas_sequence($n, $P, $Q, $k);
+  if ($Math::Prime::Util::_GMPfunc{"lucasuvmod"} && $Math::Prime::Util::GMP::VERSION >= 0.53) {
+    return map { Math::Prime::Util::_to_bigint_if_needed($_) }
+           Math::Prime::Util::GMP::lucasuvmod($P, $Q, $k, $n);
+  }
+
+  $P = Mmodint($P,$n) if $P < 0 || $P >= $n;
+  $Q = Mmodint($Q,$n) if $Q < 0 || $Q >= $n;
+  my $D = Msubmod( Mmulmod($P,$P,$n), Mmulmod(4,$Q,$n), $n);
+
+  if ($D == 0) {
+    my $S = Mdivmod($P, 2, $n);
+    if ($S != 0) {
+      my $U = Mmulmod($k, Mpowmod($S, $k-1, $n), $n);
+      my $V = Mmulmod(2,  Mpowmod($S, $k,   $n), $n);
+      return ($U, $V);
+    }
+  }
+
+  my @kbits = Mtodigits($k, 2);
+  shift @kbits;
+  my $U = 1;
+  my $V = $P;
+  my $invD = Minvmod($D, $n);
+  my $nisodd = ($n % 2) != 0;
+
+  #  muladdmod(a,b,c,n) = addmod(mulmod(a,b,n),c,n)
+  #  mulsubmod(a,b,c,n) = submod(mulmod(a,b,n),c,n)
+  #return (lucas_sequence($n, $P, $Q, $k))[0,1];
+
+  if ($Q == 1 && $invD) {
+    $U = Msubmod(Mmulmod($P,$P,$n),2,$n);
+    foreach my $bit (@kbits) {
+      my $T = Msubmod(Mmulmod($U, $V, $n), $P, $n);
+      if ($bit) {
+        $V = $T;
+        $U = Msubmod(Mmulmod($U, $U, $n), 2, $n);
+      } else {
+        $U = $T;
+        $V = Msubmod(Mmulmod($V, $V, $n), 2, $n);
+      }
+    }
+    $V = Mmodint($V,$n);
+    $U = Maddmod($U, $U, $n);
+    $U = Msubmod($U, Mmulmod($V, $P, $n), $n);
+    $U = Mmulmod($U, $invD, $n);
+  } elsif ($nisodd && ($Q == 1 || $Q == ($n-1))) {
+    my $ps = ($P == 1);
+    my $qs = ($Q == 1);
+    foreach my $bit (@kbits) {
+      $U = Mmulmod($U, $V, $n);
+      $V = Mmulmod($V, $V, $n);
+      $V = ($qs) ? Msubmod($V, 2, $n) : Maddmod($V, 2, $n);
+      $qs = 1;
+      if ($bit) {
+        my $t = Mmulmod($U, $D, $n);
+        $U = Mmulmod($U, $P, $n)  if !$ps;
+        $U = Maddmod($U, $V, $n);
+        $U = Maddint($U, $n)  if $U & 1;
+        $U = Mrshiftint($U, 1);
+        $V = Mmulmod($V, $P, $n)  if !$ps;
+        $V = Maddmod($V, $t, $n);
+        $V = Maddint($V, $n)  if $V & 1;
+        $V = Mrshiftint($V, 1);
+        $qs = ($Q==1);
+      }
+    }
+  } else {
+    # TODO
+    ($U, $V) = (lucas_sequence($n, $P, $Q, $k))[0,1];
+  }
   ($U,$V);
 }
 
 sub lucasu {
-  return Math::Prime::Util::GMP::lucasu($_[0], $_[1], $_[2])
+  return Math::Prime::Util::_to_bigint_if_needed( Math::Prime::Util::GMP::lucasu($_[0], $_[1], $_[2]) )
     if $Math::Prime::Util::_GMPfunc{"lucasu"};
   (lucasuv(@_))[0];
 }
 sub lucasv {
-  return Math::Prime::Util::GMP::lucasv($_[0], $_[1], $_[2])
+  return Math::Prime::Util::_to_bigint_if_needed( Math::Prime::Util::GMP::lucasv($_[0], $_[1], $_[2]) )
     if $Math::Prime::Util::_GMPfunc{"lucasv"};
   (lucasuv(@_))[1];
 }
 
 sub lucasumod {
-  return Math::Prime::Util::GMP::lucasumod($_[0], $_[1], $_[2], $_[3])
+  return Math::Prime::Util::_to_bigint_if_needed( Math::Prime::Util::GMP::lucasumod($_[0], $_[1], $_[2], $_[3]) )
     if $Math::Prime::Util::_GMPfunc{"lucasumod"};
   (lucasuvmod(@_))[0];
 }
 sub lucasvmod {
   my($P, $Q, $k, $n) = @_;
-  return Math::Prime::Util::GMP::lucasvmod($P, $Q, $k, $n)
+  return Math::Prime::Util::_to_bigint_if_needed( Math::Prime::Util::GMP::lucasvmod($P, $Q, $k, $n) )
     if $Math::Prime::Util::_GMPfunc{"lucasvmod"};
   _validate_integer($P);
   _validate_integer($Q);
@@ -8207,8 +8283,6 @@ sub cheb_factor {
   my @bprimes = @{ primes(2, $B) };
   foreach my $p (@bprimes) {
     my $xx = Maddmod($x,$x,$n);
-    # If $xx > SINTMAX, this won't work, as P and Q are IVs in lucasvmod.
-    # We could write our own implementation, or try to get that changed.
     if ($p <= $sqrtB) {
       my $plgp = Mpowint($p, Mlogint($B, $p));
       $x = Mmulmod(Math::Prime::Util::lucasvmod($xx, 1, $plgp, $n), $inv, $n);

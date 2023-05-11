@@ -64,7 +64,7 @@ my @lucas_seqs = (
 );
 
 # 4,4 has D=0.  Old GMP won't handle that.
-if ($usexs || !$usegmp) {
+if ($usexs || !$usegmp || $Math::Prime::Util::GMP::VERSION >= 0.53) {
   push @lucas_seqs,
   [ [4, 4], 0, "U", "n*2^(n-1)",
     [0, 1, 4, 12, 32, 80, 192, 448, 1024, 2304, 5120, 11264, 24576, 53248] ],
@@ -86,6 +86,32 @@ my %lucas_sequences = (
   "547968611 1 -1 547968612" => [1,3],
   "547968611 1 -1 136992153" => [27044236,448467899],
 );
+
+my %lucas_dcheck = ();
+if ($usexs || !$usegmp || $Math::Prime::Util::GMP::VERSION >= 0.53) {
+  %lucas_dcheck = (
+    "7777 -6 9 77"   => [5467,4624],   # D=0
+    "7777 -6 7 77"   => [2521,4663],   # D=8
+    "7777 4 3 77"    => [2732,5466],   # D=4
+    "7777 4 4 77"    => [6237,6889],   # D=0
+    "7777 3 5834 77" => [  30,4509],   # D=4 mod n
+    "7777 3 5835 77" => [4004,2883],   # D=0 mod n
+    "7777 1 5833 77" => [ 385,4449],   # D=0 mod n
+    "7777 2 1 77"    => [  77,   2],   # D=0 mod n
+    "7777 -8882 1 77"=> [6964, 687],   # D=32 mod n
+
+    "7778 7776 1 32" => [7746,   2],   # D=0 mod n and not invertible
+    "7778 7776 1 33" => [  33,7776],   # D=0 mod n and not invertible
+    "7778 1976 5 32" => [7764,1080],   # D=0 mod n and not invertible
+    "7778 1976 5 33" => [6153,1454],   # D=0 mod n and not invertible
+  );
+}
+my %lucas_large = ();
+if (!$usegmp || $Math::Prime::Util::GMP::VERSION >= 0.53) {
+  %lucas_large = (
+    "10891238901329801329801234 9823092438924798 9234809243809243890243 390" => [qw/6124196139840885691066464 8614669321673340197867400/],
+  );
+}
 
 
 my @oeis_81264 = (323, 377, 1891, 3827, 4181, 5777, 6601, 6721, 8149, 10877, 11663, 13201, 13981, 15251, 17119, 17711, 18407, 19043, 23407, 25877, 27323, 30889, 34561, 34943, 35207, 39203, 40501, 50183, 51841, 51983, 52701, 53663, 60377, 64079, 64681);
@@ -123,7 +149,9 @@ my @issue47 = (
 
 plan tests => 0 + 2*scalar(@lucas_seqs) + 1
                 + 3
-                + scalar(keys %lucas_sequences)
+                + 3 * scalar(keys %lucas_sequences)
+                + 6 * scalar(keys %lucas_dcheck)
+                + 6 * scalar(keys %lucas_large)
                 + scalar(@issue47)
                 + 3
                 + 3;    # large inputs
@@ -165,11 +193,29 @@ foreach my $seqs (@lucas_seqs) {
   is(lucasvmod(1, -1, $n+$e, $n), 5466722, "lucasvmod agrees");
 }
 
-
 # Simple Lucas sequences
 while (my($params, $expect) = each (%lucas_sequences)) {
   my($n,$P,$Q,$k) = split(' ', $params);
-  is_deeply( [lucasuvmod($P,$Q,$k,$n)], $expect, "Lucas sequence $params" );
+
+  is_deeply( [lucasuvmod($P,$Q,$k,$n)], $expect, "lucasuvmod($P,$Q,$k,$n)" );
+  is_deeply( lucasumod($P,$Q,$k,$n), $expect->[0], "lucasumod($P,$Q,$k,$n)" );
+  is_deeply( lucasvmod($P,$Q,$k,$n), $expect->[1], "lucasvmod($P,$Q,$k,$n)" );
+
+  # Don't run these through lucasuv, lucasu, lucasv
+}
+
+# Check D values
+my %allcheck = (%lucas_dcheck, %lucas_large);
+while (my($params, $expect) = each %allcheck) {
+  my($n,$P,$Q,$k) = split(' ', $params);
+
+  is_deeply( [lucasuvmod($P,$Q,$k,$n)], $expect, "lucasuvmod($P,$Q,$k,$n)" );
+  is_deeply( lucasumod($P,$Q,$k,$n), $expect->[0], "lucasumod($P,$Q,$k,$n)" );
+  is_deeply( lucasvmod($P,$Q,$k,$n), $expect->[1], "lucasvmod($P,$Q,$k,$n)" );
+
+  is_deeply( [map { $_ % $n } lucasuv($P,$Q,$k)], $expect, "lucasuv($P,$Q,$k) % $n" );
+  is_deeply( lucasu($P,$Q,$k) % $n, $expect->[0], "lucasu($P,$Q,$k) % $n" );
+  is_deeply( lucasv($P,$Q,$k) % $n, $expect->[1], "lucasv($P,$Q,$k) % $n" );
 }
 
 

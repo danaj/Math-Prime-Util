@@ -1644,10 +1644,7 @@ void lucasuvmod(IN SV* svp, IN SV* svq, IN SV* svk, IN SV* svn)
       }
     } else {
       if (ix == 0) {
-        /* _vcallsubn(aTHX_ GIMME_V, VCALL_PP, "lucasuvmod", items, 0); */
-        (void)_vcallsubn(aTHX_ GIMME_V, VCALL_GMP|VCALL_PP, "lucasuvmod", items, 53);
-        objectify_result(aTHX_ svn, ST(0));
-        objectify_result(aTHX_ svn, ST(1));
+        _vcallsubn(aTHX_ GIMME_V, VCALL_PP, "lucasuvmod", items, 0);
       } else {
         _vcallsub_with_gmp(0.53, (ix == 1) ? "lucasumod" : "lucasvmod");
         objectify_result(aTHX_ svn, ST(0));
@@ -1673,7 +1670,6 @@ void lucasuv(IN SV* svp, IN SV* svq, IN SV* svk)
       PUSHs(sv_2mortal(newSViv( V )));
     } else {
       if (ix == 0) {
-        /* TODO: call GMP as above */
         _vcallsubn(aTHX_ GIMME_V, VCALL_PP, "lucasuv", items, 0);
       } else {
         _vcallsub_with_gmpobj(0.29, (ix==1) ? "lucasu" : "lucasv");
@@ -3077,22 +3073,26 @@ void absint(IN SV* svn)
     return;
 
 void signint(IN SV* svn)
+  ALIAS:
+    is_odd = 1
+    is_even = 2
   PREINIT:
-    int status, sign;
+    int status, sign, isodd;
     UV n;
     const char* s;
     STRLEN len;
   PPCODE:
     status = _validate_and_set(&n, aTHX_ svn, IFLAG_ANY);
-    if (status == 0) {
-      /* Look at the string input */
+    if (status == 0) {  /* Look at the string input */
       s = SvPV(svn, len);
-      if (len == 0 || s == 0) croak("signint: invalid parameter");
+      if (len == 0 || s == 0) croak("%s: invalid parameter", (ix==0) ? "signint" : (ix==1) ? "is_odd" : "is_even");
       sign = (s[0] == '-')  ?  -1  : (s[0] == '0')  ?  0  :  1;
+      isodd = (s[len-1] == '1' || s[len-1] == '3' || s[len-1] == '5' || s[len-1] == '7' || s[len-1] == '9');
     } else {
       sign = (status == -1)  ?  -1  :  (n == 0)  ?  0  :  1;
+      isodd = n & 1;
     }
-    RETURN_NPARITY( sign );
+    RETURN_NPARITY( (ix==0) ? sign : (ix==1) ? isodd : !isodd );
 
 void cmpint(IN SV* sva, IN SV* svb)
   PREINIT:

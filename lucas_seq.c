@@ -99,14 +99,10 @@ void lucas_seq(UV* Uret, UV* Vret, UV* Qkret, UV n, IV P, IV Q, UV k)
 
 void lucasuvmod(UV* Uret, UV* Vret, UV P, UV Q, UV k, UV n)
 {
-  UV U, V, b, D;
+  UV U, V, b, D, invD;
 
   MPUassert(n > 0, "lucasuvmod:  modulus n must be > 0");
   if (n == 1) { *Uret = *Vret = 0; return; }
-
-  if (P >= n) P %= n;
-  if (Q >= n) Q %= n;
-  D = submod( mulmod(P, P, n), mulmod(4, Q, n), n);
 
   if (k == 0) {
     *Uret = 0;
@@ -114,69 +110,56 @@ void lucasuvmod(UV* Uret, UV* Vret, UV P, UV Q, UV k, UV n)
     return;
   }
 
+  if (P >= n) P %= n;
+  if (Q >= n) Q %= n;
+  D = submod( mulmod(P, P, n), mulmod(4, Q, n), n);
+
   if (D == 0 && (b = divmod(P,2,n)) != 0) {
     *Uret = mulmod(k, powmod(b, k-1, n), n);
     *Vret = mulmod(2, powmod(b, k, n), n);
     return;
   }
-  if ((n % 2) == 0) {
-    alt_lucas_seq(Uret, Vret, n, P, Q, k);
-    return;
-  }
+
+  { UV v = k; b = 0; while (v >>= 1) b++; }
   U = 1;
   V = P;
-  { UV v = k; b = 0; while (v >>= 1) b++; }
+  invD = modinverse(D, n);
 
-  if (Q == 1) {
-    /* Inverting D allows 2 mulmods/bit instead of 2-5 */
-    UV invD = modinverse(D, n);
-    if (invD != 0) {
-      U = mulsubmod(P,P,2,n);
-      while (b--) {
-        UV T = mulsubmod(U, V, P, n);
-        if ( (k >> b) & UVCONST(1) ) {
-          V = T;
-          U = mulsubmod(U, U, 2, n);
-        } else {
-          U = T;
-          V = mulsubmod(V, V, 2, n);
-        }
-      }
-      U = addmod(U,U,n);
-      U = submod(U, mulmod(V,P,n), n);
-      U = mulmod(U, invD, n);
-    } else {
-      while (b--) {
-        U = mulmod(U, V, n);
+  if (Q == 1 && invD != 0) { /* Inverting D: 2 mulmods/bit instead of 2-5 */
+    U = mulsubmod(P,P,2,n);
+    while (b--) {
+      UV T = mulsubmod(U, V, P, n);
+      if ( (k >> b) & UVCONST(1) ) {
+        V = T;
+        U = mulsubmod(U, U, 2, n);
+      } else {
+        U = T;
         V = mulsubmod(V, V, 2, n);
-        if ( (k >> b) & UVCONST(1) ) {
-          UV t2 = mulmod(U, D, n);
-          U = muladdmod(U, P, V, n);
-          if (U & 1) { U = (n>>1) + (U>>1) + 1; } else { U >>= 1; }
-          V = muladdmod(V, P, t2, n);
-          if (V & 1) { V = (n>>1) + (V>>1) + 1; } else { V >>= 1; }
-        }
       }
     }
-  } else if (P == 1 && Q == n-1) {
-    /* This is about 30% faster than the generic code below.  Since 50% of
-     * Lucas and strong Lucas tests come here, I think it's worth doing. */
-    int sign = -1;
+    U = addmod(U,U,n);
+    U = submod(U, mulmod(V,P,n), n);
+    U = mulmod(U, invD, n);
+  } else if (P == 1 && Q == (n-1)) {  /* code for P=1 Q=-1 in here */
+    alt_lucas_seq(&U, &V, n, P, Q, k);
+  } else if ((n & 1) && (Q == 1 || (Q == (n-1)))) {
+    int qs = (Q==1);
     while (b--) {
       U = mulmod(U, V, n);
-      if (sign == 1) V = mulsubmod(V, V, 2, n);
-      else           V = muladdmod(V, V, 2, n);
-      sign = 1; /* Qk *= Qk */
+      V = muladdmod(V, V, (qs) ? n-2 : 2, n);
+      qs = 1;
       if ( (k >> b) & UVCONST(1) ) {
         UV t2 = mulmod(U, D, n);
+        if (P != 1) U = mulmod(U, P, n);
         U = addmod(U, V, n);
         if (U & 1) { U = (n>>1) + (U>>1) + 1; } else { U >>= 1; }
+        if (P != 1) V = mulmod(V, P, n);
         V = addmod(V, t2, n);
         if (V & 1) { V = (n>>1) + (V>>1) + 1; } else { V >>= 1; }
-        sign = -1;  /* Qk *= Q */
+        qs = (Q==1);
       }
     }
-  } else {
+  } else if (n & 1) {
     UV Qk = Q;
     while (b--) {
       U = mulmod(U, V, n);
@@ -191,6 +174,9 @@ void lucasuvmod(UV* Uret, UV* Vret, UV P, UV Q, UV k, UV n)
         Qk = mulmod(Qk, Q, n);
       }
     }
+  } else {
+    /* This handles everything */
+    alt_lucas_seq(&U, &V, n, P, Q, k);
   }
   *Uret = U;
   *Vret = V;
@@ -313,4 +299,3 @@ int lucasuv(IV* U, IV *V, IV P, IV Q, UV k)
   if (V) *V = Vl;
   return 1;
 }
-
