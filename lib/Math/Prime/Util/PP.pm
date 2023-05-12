@@ -84,6 +84,8 @@ BEGIN {
 *Mpowmod = \&Math::Prime::Util::powmod;
 *Minvmod = \&Math::Prime::Util::invmod;
 *Mrootmod = \&Math::Prime::Util::rootmod;
+*Mmuladdmod = \&Math::Prime::Util::muladdmod;
+*Mmulsubmod = \&Math::Prime::Util::mulsubmod;
 
 *Mgcd = \&Math::Prime::Util::gcd;
 *Mfactor = \&Math::Prime::Util::factor;
@@ -7170,7 +7172,7 @@ sub lucasuvmod {
 
   $P = Mmodint($P,$n) if $P < 0 || $P >= $n;
   $Q = Mmodint($Q,$n) if $Q < 0 || $Q >= $n;
-  my $D = Msubmod( Mmulmod($P,$P,$n), Mmulmod(4,$Q,$n), $n);
+  my $D = Mmulsubmod($P, $P, Mmulmod(4,$Q,$n), $n);
 
   if ($D == 0) {
     my $S = Mdivmod($P, 2, $n);
@@ -7189,15 +7191,15 @@ sub lucasuvmod {
   my $nisodd = Mis_odd($n);
 
   if ($Q == 1 && $invD) {
-    $U = Msubmod(Mmulmod($P,$P,$n),2,$n);
+    $U = Mmulsubmod($P, $P, 2, $n);
     foreach my $bit (@kbits) {
-      my $T = Msubmod(Mmulmod($U, $V, $n), $P, $n);
+      my $T = Mmulsubmod($U, $V, $P, $n);
       if ($bit) {
         $V = $T;
-        $U = Msubmod(Mmulmod($U, $U, $n), 2, $n);
+        $U = Mmulsubmod($U, $U, 2, $n);
       } else {
         $U = $T;
-        $V = Msubmod(Mmulmod($V, $V, $n), 2, $n);
+        $V = Mmulsubmod($V, $V, 2, $n);
       }
     }
     $V = Mmodint($V,$n);
@@ -7210,20 +7212,17 @@ sub lucasuvmod {
     my $halfn = Maddint(Mrshiftint($n,1),1);
     foreach my $bit (@kbits) {
       $U = Mmulmod($U, $V, $n);
-      $V = Mmulmod($V, $V, $n);
-      $V = ($qs) ? Msubmod($V, 2, $n) : Maddmod($V, 2, $n);
+      $V = ($qs) ? Mmulsubmod($V,$V,2,$n) : Mmuladdmod($V,$V,2,$n);
       $qs = 1;
       if ($bit) {
         my $t = Mmulmod($U, $D, $n);
-        $U = Mmulmod($U, $P, $n)  if !$ps;
-        $U = Maddmod($U, $V, $n);
+        $U = (!$ps) ? Mmuladdmod($U,$P,$V,$n) : Maddmod($U,$V,$n);
         if (Mis_odd($U)) {
           $U = Maddint(Mrshiftint($U, 1), $halfn);
         } else {
           $U = Mrshiftint($U, 1);
         }
-        $V = Mmulmod($V, $P, $n)  if !$ps;
-        $V = Maddmod($V, $t, $n);
+        $V = (!$ps) ? Mmuladdmod($V,$P,$t,$n) : Maddmod($V,$t,$n);
         if (Mis_odd($V)) {
           $V = Maddint(Mrshiftint($V, 1), $halfn);
         } else {
@@ -7237,20 +7236,17 @@ sub lucasuvmod {
     my $halfn = Maddint(Mrshiftint($n,1),1);
     foreach my $bit (@kbits) {
       $U = Mmulmod($U, $V, $n);
-      $V = Mmulmod($V, $V, $n);
-      $V = Msubmod($V, Maddmod($Qk, $Qk, $n), $n);
+      $V = Mmulsubmod($V, $V, Maddmod($Qk, $Qk, $n), $n);
       $Qk = Mmulmod($Qk, $Qk, $n);
       if ($bit) {
         my $t = Mmulmod($U, $D, $n);
-        $U = Mmulmod($U, $P, $n);
-        $U = Maddmod($U, $V, $n);
+        $U = Mmuladdmod($U, $P, $V, $n);
         if (Mis_odd($U)) {
           $U = Maddint(Mrshiftint($U, 1), $halfn);
         } else {
           $U = Mrshiftint($U, 1);
         }
-        $V = Mmulmod($V, $P, $n);
-        $V = Maddmod($V, $t, $n);
+        $V = Mmuladdmod($V, $P, $t, $n);
         if (Mis_odd($V)) {
           $V = Maddint(Mrshiftint($V, 1), $halfn);
         } else {
@@ -7269,23 +7265,23 @@ sub lucasuvmod {
       if ($bit) {
         $Qh = Mmulmod($Ql, $Q, $n);
         $Uh = Mmulmod($Uh, $Vh, $n);
-        $Vl = Msubmod(Mmulmod($Vh, $Vl, $n), Mmulmod($P, $Ql, $n), $n);
-        $Vh = Msubmod(Mmulmod($Vh, $Vh, $n), Maddmod($Qh, $Qh, $n), $n);
+        $Vl = Mmulsubmod($Vh, $Vl, Mmulmod($P,  $Ql, $n), $n);
+        $Vh = Mmulsubmod($Vh, $Vh, Maddmod($Qh, $Qh, $n), $n);
       } else {
         $Qh = $Ql;
         $Uh = Msubmod(Mmulmod($Uh, $Vl, $n), $Ql, $n);
-        $Vh = Msubmod(Mmulmod($Vh, $Vl, $n), Mmulmod($P, $Ql, $n), $n);
-        $Vl = Msubmod(Mmulmod($Vl, $Vl, $n), Maddmod($Ql, $Ql, $n), $n);
+        $Vh = Mmulsubmod($Vh, $Vl, Mmulmod($P,  $Ql, $n), $n);
+        $Vl = Mmulsubmod($Vl, $Vl, Maddmod($Ql, $Ql, $n), $n);
       }
     }
     $Ql = Mmulmod($Ql, $Qh, $n);
     $Qh = Mmulmod($Ql, $Q, $n);
-    $Uh = Msubmod(Mmulmod($Uh, $Vl, $n), $Ql, $n);
-    $Vl = Msubmod(Mmulmod($Vh, $Vl, $n), Mmulmod($P, $Ql, $n), $n);
+    $Uh = Mmulsubmod($Uh, $Vl, $Ql, $n);
+    $Vl = Mmulsubmod($Vh, $Vl, Mmulmod($P, $Ql, $n), $n);
     $Ql = Mmulmod($Ql, $Qh, $n);
     for (1 .. $s) {
       $Uh = Mmulmod($Uh, $Vl, $n);
-      $Vl = Msubmod(Mmulmod($Vl, $Vl, $n), Maddmod($Ql, $Ql, $n), $n);
+      $Vl = Mmulsubmod($Vl, $Vl, Maddmod($Ql, $Ql, $n), $n);
       $Ql = Mmulmod($Ql, $Ql, $n);
     }
     ($U, $V) = ($Uh, $Vl);
@@ -7327,13 +7323,13 @@ sub lucasvmod {
   my $V = 2;
   my $U = $P;
   foreach my $bit (Mtodigits($k, 2)) {
-    my $T = Msubmod(Mmulmod($U, $V, $n), $P, $n);
+    my $T = Mmulsubmod($U, $V, $P, $n);
     if ($bit) {
       $V = $T;
-      $U = Msubmod(Mmulmod($U, $U, $n), 2, $n);
+      $U = Mmulsubmod($U, $U, 2, $n);
     } else {
       $U = $T;
-      $V = Msubmod(Mmulmod($V, $V, $n), 2, $n);
+      $V = Mmulsubmod($V, $V, 2, $n);
     }
   }
   return $V;
@@ -7376,7 +7372,7 @@ sub is_strong_lucas_pseudoprime {
   foreach my $r (0 .. $s-1) {
     return 1 if $V == 0;
     if ($r < ($s-1)) {
-      $V = Msubmod(Mmulmod($V,$V,$n), Maddmod($Qk,$Qk,$n), $n);
+      $V = Mmulsubmod($V, $V, Maddmod($Qk,$Qk,$n), $n);
       $Qk = Mmulmod($Qk, $Qk, $n);
     }
   }
@@ -7393,6 +7389,7 @@ sub is_extra_strong_lucas_pseudoprime {
   return 0 if $D == 0;  # We found a divisor in the sequence
   die "Lucas parameter error: $D, $P, $Q\n" if ($D != $P*$P - 4*$Q);
 
+  # This would be a great place to use a factor remove function
   my($s, $k) = (0, Maddint($n,1));
   while (Mis_even($k) && $k != 0) {
     $s++;
@@ -7403,7 +7400,7 @@ sub is_extra_strong_lucas_pseudoprime {
   return 1 if $U == 0 && ($V == 2 || $V == Msubint($n,2));
   foreach my $r (0 .. $s-2) {
     return 1 if $V == 0;
-    $V = Msubmod(Mmulmod($V,$V,$n),2,$n);
+    $V = Mmulsubmod($V, $V, 2, $n);
   }
   return 0;
 }
@@ -7570,13 +7567,13 @@ sub is_perrin_pseudoprime {
   if ($j == -1) {
     my $B = $S[2];
     my $B2 = Mmulmod($B,$B,$n);
-    my $A = Maddmod(Maddmod(1,Mmulmod(3,$B,$n),$n),$n-$B2,$n);
-    my $C = Maddmod(Mmulmod(3,$B2,$n),$n-2,$n);
-    return 1 if $S[0] == $A && $S[2] == $B && $S[3] == $B && $S[5] == $C && $B != 3 && Maddmod(Mmulmod($B2,$B,$n),$n-$B,$n) == 1;
+    my $A = Msubmod(Maddmod(1,Mmulmod(3,$B,$n),$n),$B2,$n);
+    my $C = Mmulsubmod(3,$B2,2,$n);
+    return 1 if $S[0] == $A && $S[2] == $B && $S[3] == $B && $S[5] == $C && $B != 3 && Mmulsubmod($B2,$B,$B,$n) == 1;
   } else {
     return 0 if $j == 0 && $n != 23 && $restrict > 2;
     return 1 if $S[0] == 1 && $S[2] == 3 && $S[3] == 3 && $S[5] == 2;
-    return 1 if $S[0] == 0 && $S[5] == $n-1 && $S[2] != $S[3] && Maddmod($S[2],$S[3],$n) == $n-3 && Mmulmod(Maddmod($S[2],$n-$S[3],$n),Maddmod($S[2],$n-$S[3],$n),$n) == $n-(23%$n);
+    return 1 if $S[0] == 0 && $S[5] == $n-1 && $S[2] != $S[3] && Maddmod($S[2],$S[3],$n) == $n-3 && Mmulmod(Msubmod($S[2],$S[3],$n),Msubmod($S[2],$S[3],$n),$n) == $n-(23%$n);
   }
   0;
 }
