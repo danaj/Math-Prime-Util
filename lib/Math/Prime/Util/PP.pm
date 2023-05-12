@@ -6860,9 +6860,20 @@ sub lucas_sequence {
   croak "lucas_sequence: n must be > 0" if $n < 1;
   croak "lucas_sequence: k must be >= 0" if $k < 0;
   return (0,0,0) if $n == 1;
+
+  # Try to do it in GMP if we can.
+  if ($Math::Prime::Util::_GMPfunc{"lucas_sequence"} && $Math::Prime::Util::GMP::VERSION >= 0.30 && !ref($P) && !ref($Q)) {
+    return map { ($_ > ''.~0) ? Math::BigInt->new(''.$_) : $_ }
+           Math::Prime::Util::GMP::lucas_sequence($n, $P, $Q, $k);
+  }
+
+  # Use lucasuvmod if either native integers or if we can use GMP there.
+  if ( !ref($n) || ($Math::Prime::Util::_GMPfunc{"lucasuvmod"} && $Math::Prime::Util::GMP::VERSION >= 0.53) ) {
+    return (lucasuvmod($P,$Q,$k,$n), Mpowmod($Q,$k,$n));
+  }
+
   $P = Mmodint($P,$n) if $P < 0 || $P >= $n;
   $Q = Mmodint($Q,$n) if $Q < 0 || $Q >= $n;
-
   $n = Math::BigInt->new("$n") unless ref($n) eq 'Math::BigInt';
   return (0, 2 % $n, 1) if $k == 0;
 
@@ -6879,11 +6890,6 @@ sub lucas_sequence {
     #die "  V $V : $P $Q $k $n\n" unless $V == Mmodint(lucasv($P,$Q,$k),$n);
     my $Qk = Mpowmod($Q, $k, $n);
     return ($U, $V, $Qk);
-  }
-
-  if ($Math::Prime::Util::_GMPfunc{"lucas_sequence"} && $Math::Prime::Util::GMP::VERSION >= 0.30 && !ref($P) && !ref($Q)) {
-    return map { ($_ > ''.~0) ? Math::BigInt->new(''.$_) : $_ }
-           Math::Prime::Util::GMP::lucas_sequence($n, $P, $Q, $k);
   }
 
   my $ZERO = $n->copy->bzero;
@@ -7133,7 +7139,7 @@ sub lucasuvmod {
   }
 
   my @kbits = Mtodigits($k, 2);
-  shift @kbits;
+  shift @kbits;  # Remove leading 1
   my $U = 1;
   my $V = $P;
   my $invD = Minvmod($D, $n);
@@ -7215,8 +7221,35 @@ sub lucasuvmod {
       }
     }
   } else {
-    # TODO
-    ($U, $V) = (lucas_sequence($n, $P, $Q, $k))[0,1];
+    my ($s, $Uh, $Vl, $Vh, $Ql, $Qh) = (0, 1, 2, $P, 1, 1);
+    unshift @kbits, 1;                             # Add back leading 1.
+    while ($kbits[-1] == 0) { $s++; pop @kbits; }  # Remove trailing zeros.
+    pop @kbits;                                    # Remove trailing 1.
+    foreach my $bit (@kbits) {
+      $Ql = Mmulmod($Ql, $Qh, $n);
+      if ($bit) {
+        $Qh = Mmulmod($Ql, $Q, $n);
+        $Uh = Mmulmod($Uh, $Vh, $n);
+        $Vl = Msubmod(Mmulmod($Vh, $Vl, $n), Mmulmod($P, $Ql, $n), $n);
+        $Vh = Msubmod(Mmulmod($Vh, $Vh, $n), Maddmod($Qh, $Qh, $n), $n);
+      } else {
+        $Qh = $Ql;
+        $Uh = Msubmod(Mmulmod($Uh, $Vl, $n), $Ql, $n);
+        $Vh = Msubmod(Mmulmod($Vh, $Vl, $n), Mmulmod($P, $Ql, $n), $n);
+        $Vl = Msubmod(Mmulmod($Vl, $Vl, $n), Maddmod($Ql, $Ql, $n), $n);
+      }
+    }
+    $Ql = Mmulmod($Ql, $Qh, $n);
+    $Qh = Mmulmod($Ql, $Q, $n);
+    $Uh = Msubmod(Mmulmod($Uh, $Vl, $n), $Ql, $n);
+    $Vl = Msubmod(Mmulmod($Vh, $Vl, $n), Mmulmod($P, $Ql, $n), $n);
+    $Ql = Mmulmod($Ql, $Qh, $n);
+    for (1 .. $s) {
+      $Uh = Mmulmod($Uh, $Vl, $n);
+      $Vl = Msubmod(Mmulmod($Vl, $Vl, $n), Maddmod($Ql, $Ql, $n), $n);
+      $Ql = Mmulmod($Ql, $Ql, $n);
+    }
+    ($U, $V) = ($Uh, $Vl);
   }
   ($U,$V);
 }
@@ -7248,14 +7281,10 @@ sub lucasvmod {
   $n = -$n if $n < 0;
   return if $n == 0;
 
-  if ($Q != 1) {
-    my($U,$V) = lucas_sequence($n, $P, $Q, $k);
-    return $V;
-  }
-
-  $P = Mmodint($P, $n);
+  return (lucasuvmod($P, $Q, $k, $n))[1] if $Q != 1;
 
   # Fast algorithm for Q=1
+  $P = Mmodint($P, $n);
   my $V = 2;
   my $U = $P;
   foreach my $bit (Mtodigits($k, 2)) {
