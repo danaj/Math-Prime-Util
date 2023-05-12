@@ -3,7 +3,7 @@ use strict;
 use warnings;
 
 use Test::More;
-use Math::Prime::Util qw/invmod sqrtmod allsqrtmod rootmod allrootmod addmod submod mulmod divmod powmod/;
+use Math::Prime::Util qw/invmod sqrtmod allsqrtmod rootmod allrootmod addmod submod mulmod muladdmod mulsubmod divmod powmod/;
 use Math::BigInt try=>"GMP,Pari";
 
 my $extra = defined $ENV{EXTENDED_TESTING} && $ENV{EXTENDED_TESTING};
@@ -143,6 +143,9 @@ plan tests => 0
             + 2 + 1                  # divmod
             + 2                      # powmod
             + 6                      # large negative args
+            + 1                      # muladdmod
+            + 1                      # mulsubmod
+            + 4                      # muladdmod and mulsubmod large inputs
             + 5                      # rootmod
             + scalar(@rootmods)*2    # allrootmod
             + 1                      # more rootmod
@@ -306,6 +309,33 @@ is_deeply( \@res, \@exp, "powmod with negative exponent on ".($num+1)." random i
   is( powmod($a,$b,$m), 1550454861, "powmod with large negative arg" );
   is( powmod($b,$a,$m),   16491583, "powmod with large negative arg" );
 }
+
+
+my @ic = map { nrand() } 0 .. $num;
+
+###### muladdmod
+@exp = (); @res = ();
+for (0 .. $num) {
+  push @exp, Math::BigInt->new($i1[$_])->bmul(-$i2t[$_])->badd($ic[$_])->bmod($i3[$_]);
+  push @res, muladdmod($i1[$_], -$i2t[$_], $ic[$_], $i3[$_]);
+}
+is_deeply( \@res, \@exp, "muladdmod on ".($num+1)." random inputs" );
+
+###### mulsubmod
+@exp = (); @res = ();
+for (0 .. $num) {
+  push @exp, Math::BigInt->new($i1[$_])->bmul(-$i2t[$_])->bsub($ic[$_])->bmod($i3[$_]);
+  push @res, mulsubmod($i1[$_], -$i2t[$_], $ic[$_], $i3[$_]);
+}
+is_deeply( \@res, \@exp, "mulsubmod on ".($num+1)." random inputs" );
+
+# Arbitrary non-tiny values
+is(muladdmod("293482938498234","982498230923490234234","982349823092355","87777777777757"), "20728855000562", "muladdmod with medium size inputs");
+is(mulsubmod("293482938498234","982498230923490234234","982349823092355","87777777777757"), "74918097704263", "mulsubmod with medium size inputs");
+# 128-bit inputs mod a 126-bit prime
+is(muladdmod("175109911729618543589989257539043768012","21887412602962542281538131483385626868","263466159656861646486075450888763957942","83494980727347746728226137271418851789"), "28511529282241296497665677199750506129", "muladdmod with 128-bit inputs mod a 126-bit prime");
+is(mulsubmod("171821502870939196679518625154011220409","182569474286058024586486590841354369890","329619958784558749434516006469339236320","49684876044205406960769234394385141897"), "43334010019275970236275282850802256285", "mulsubmod with 128-bit inputs mod a 126-bit prime");
+
 
 
 ###### rootmod

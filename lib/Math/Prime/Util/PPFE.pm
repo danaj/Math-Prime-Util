@@ -693,6 +693,16 @@ sub powmod {
   _validate_integer($a); _validate_integer($b); _validate_integer($n);
   return Math::Prime::Util::PP::powmod($a,$b, $n);
 }
+sub muladdmod {
+  my ($a, $b, $c, $n) = @_;
+  _validate_integer($a); _validate_integer($b); _validate_integer($c); _validate_integer($n);
+  return Math::Prime::Util::PP::muladdmod($a,$b,$c, $n);
+}
+sub mulsubmod {
+  my ($a, $b, $c, $n) = @_;
+  _validate_integer($a); _validate_integer($b); _validate_integer($c); _validate_integer($n);
+  return Math::Prime::Util::PP::mulsubmod($a,$b,$c, $n);
+}
 sub sqrtint {
   my($n) = @_;
   _validate_positive_integer($n);

@@ -298,6 +298,8 @@ Tags:
   addmod(a,b,n)                       a + b mod n
   submod(a,b,n)                       a - b mod n
   mulmod(a,b,n)                       a * b mod n
+  muladdmod(a,b,c,n)                  a * b + c mod n
+  mulsubmod(a,b,c,n)                  a * b - c mod n
   divmod(a,b,n)                       a / b mod n
   powmod(a,b,n)                       a ^ b mod n
   invmod(a,n)                         inverse of a modulo n

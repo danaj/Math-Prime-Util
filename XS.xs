@@ -2667,6 +2667,34 @@ void addmod(IN SV* sva, IN SV* svb, IN SV* svn)
     objectify_result(aTHX_ svn, ST(0));
     return;
 
+void muladdmod(IN SV* sva, IN SV* svb, IN SV* svc, IN SV* svn)
+  ALIAS:
+    mulsubmod = 1
+  PREINIT:
+    int astatus, bstatus, cstatus, nstatus;
+    UV a, b, c, n, ret;
+  PPCODE:
+    astatus = _validate_and_set(&a, aTHX_ sva, IFLAG_ANY);
+    bstatus = _validate_and_set(&b, aTHX_ svb, IFLAG_ANY);
+    cstatus = _validate_and_set(&c, aTHX_ svc, IFLAG_ANY);
+    nstatus = _validate_and_set(&n, aTHX_ svn, IFLAG_ABS);
+    if (astatus != 0 && bstatus != 0 && cstatus != 0 && nstatus != 0) {
+      if (n == 0) XSRETURN_UNDEF;
+      if (n == 1) XSRETURN_UV(0);
+      _mod_with(&a, astatus, n);
+      _mod_with(&b, bstatus, n);
+      _mod_with(&c, cstatus, n);
+      ret = (ix==0)  ?  muladdmod(a,b,c,n)  :  mulsubmod(a,b,c,n);
+      XSRETURN_UV(ret);
+    }
+    switch (ix) {
+      case 0: _vcallsub_with_gmpobj(0.53,"muladdmod"); break;
+      case 1: _vcallsub_with_gmpobj(0.53,"mulsubmod"); break;
+      default:break;
+    }
+    objectify_result(aTHX_ svn, ST(0));
+    return;
+
 void binomialmod(IN SV* svn, IN SV* svk, IN SV* svm)
   PREINIT:
     int nstatus, kstatus, mstatus;

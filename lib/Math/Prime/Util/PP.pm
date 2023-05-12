@@ -5560,6 +5560,49 @@ sub powmod {
   $ret;
 }
 
+sub muladdmod {
+  my($a, $b, $c, $n) = @_;
+  $n = -$n if $n < 0;
+  return (undef,0)[$n] if $n <= 1;
+
+  if ($n <= INTMAX && $a<=INTMAX && $b<=INTMAX && $c<=INTMAX
+                   && $a>=INTMIN && $b>=INTMIN && $c>=INTMIN) {
+    $a = $n - ((-$a) % $n) if $a < 0;
+    $b = $n - ((-$b) % $n) if $b < 0;
+    $c = $n - ((-$c) % $n) if $c < 0;
+    #$c %= $n if $c >= $n;   # For mulsubmod
+    return _addmod(_mulmod($a,$b,$n),$c,$n);
+  }
+  return Math::Prime::Util::_reftyped($_[0], Math::Prime::Util::GMP::muladdmod($a,$b,$c,$n))
+    if $Math::Prime::Util::_GMPfunc{"muladdmod"};
+
+  #Maddmod(Mmulmod($a,$b,$n),$c,$n);
+  my $ret = Math::BigInt->new("$a")->bmod("$n")->bmul("$b")->badd("$c")->bmod("$n");
+  $ret = _bigint_to_int($ret) if $ret->bacmp(BMAX) <= 0;
+  $ret;
+}
+sub mulsubmod {
+  my($a, $b, $c, $n) = @_;
+  $n = -$n if $n < 0;
+  return (undef,0)[$n] if $n <= 1;
+
+  if ($n <= INTMAX && $a<=INTMAX && $b<=INTMAX && $c<=INTMAX
+                   && $a>=INTMIN && $b>=INTMIN && $c>=INTMIN) {
+    $a = $n - ((-$a) % $n) if $a < 0;
+    $b = $n - ((-$b) % $n) if $b < 0;
+    $c = $n - ((-$c) % $n) if $c < 0;
+    $c = ($c < $n)  ?  $n-$c  :  $n-($c % $n);  # $c = -$c (mod n)
+    return _addmod(_mulmod($a,$b,$n),$c,$n);
+  }
+  return Math::Prime::Util::_reftyped($_[0], Math::Prime::Util::GMP::mulsubmod($a,$b,$c,$n))
+    if $Math::Prime::Util::_GMPfunc{"mulsubmod"};
+
+  #Msubmod(Mmulmod($a,$b,$n),$c,$n);
+  my $ret = Math::BigInt->new("$a")->bmod("$n")->bmul("$b")->bsub("$c")->bmod("$n");
+  $ret = _bigint_to_int($ret) if $ret->bacmp(BMAX) <= 0;
+  $ret;
+}
+
 sub _negmod {
   my($a,$n) = @_;
   $a = Mmodint($a,$n) if $a >= $n;

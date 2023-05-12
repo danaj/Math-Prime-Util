@@ -123,14 +123,14 @@ sub mpu_public_regex {
       todigits fromdigits todigitstring sumdigits
       tozeckendorf fromzeckendorf
       sqrtmod allsqrtmod rootmod allrootmod
-      invmod addmod submod mulmod divmod powmod qnr
+      invmod addmod submod mulmod divmod powmod muladdmod mulsubmod
       vecsum vecmin vecmax vecprod vecreduce vecextract vecequal
       vecany vecall vecnotall vecnone vecfirst vecfirstidx vecmex vecpmex
       moebius mertens liouville sumliouville prime_omega prime_bigomega
       euler_phi jordan_totient exp_mangoldt sumtotient
       partitions bernfrac bernreal harmfrac harmreal
       chebyshev_theta chebyshev_psi
-      divisor_sum carmichael_lambda kronecker hclassno inverse_totient
+      divisor_sum carmichael_lambda kronecker hclassno qnr inverse_totient
       ramanujan_tau ramanujan_sum
       stirling znorder znprimroot znlog legendre_phi
       factorial factorialmod binomial binomialmod
