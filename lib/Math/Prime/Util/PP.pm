@@ -7004,7 +7004,7 @@ sub lucas_sequence {
 sub lucasuv {
   my($P, $Q, $k) = @_;
 
-  croak "lucas_sequence: k must be >= 0" if $k < 0;
+  croak "lucasuv: k must be >= 0" if $k < 0;
   return (0,2) if $k == 0;
 
   if ($Math::Prime::Util::_GMPfunc{"lucasuv"} && $Math::Prime::Util::GMP::VERSION >= 0.53) {
@@ -7144,10 +7144,6 @@ sub lucasuvmod {
   my $V = $P;
   my $invD = Minvmod($D, $n);
   my $nisodd = Mis_odd($n);
-
-  #  muladdmod(a,b,c,n) = addmod(mulmod(a,b,n),c,n)
-  #  mulsubmod(a,b,c,n) = submod(mulmod(a,b,n),c,n)
-  #return (lucas_sequence($n, $P, $Q, $k))[0,1];
 
   if ($Q == 1 && $invD) {
     $U = Msubmod(Mmulmod($P,$P,$n),2,$n);
@@ -7310,7 +7306,7 @@ sub is_lucas_pseudoprime {
   return 0 if $D == 0;  # We found a divisor in the sequence
   die "Lucas parameter error: $D, $P, $Q\n" if ($D != $P*$P - 4*$Q);
 
-  my($U, $V, $Qk) = lucas_sequence($n, $P, $Q, $n+1);
+  my($U, $V) = lucasuvmod($P, $Q, $n+1, $n);
   return ($U == 0) ? 1 : 0;
 }
 
@@ -7330,16 +7326,15 @@ sub is_strong_lucas_pseudoprime {
     $s++;
     $k >>= 1;
   }
-  my($U, $V, $Qk) = lucas_sequence($n, $P, $Q, $k);
-
+  my($U, $V) = lucasuvmod($P, $Q, $k, $n);
   return 1 if $U == 0;
-  $V = Math::BigInt->new("$V") unless ref($V) eq 'Math::BigInt';
-  $Qk = Math::BigInt->new("$Qk") unless ref($Qk) eq 'Math::BigInt';
+
+  my $Qk = Mpowmod($Q,$k,$n);
   foreach my $r (0 .. $s-1) {
-    return 1 if $V->is_zero;
+    return 1 if $V == 0;
     if ($r < ($s-1)) {
-      $V->bmul($V)->bsub(BTWO*$Qk)->bmod($n);
-      $Qk->bmul($Qk)->bmod($n);
+      $V = Msubmod(Mmulmod($V,$V,$n), Maddmod($Qk,$Qk,$n), $n);
+      $Qk = Mmulmod($Qk, $Qk, $n);
     }
   }
   return 0;
@@ -7355,23 +7350,17 @@ sub is_extra_strong_lucas_pseudoprime {
   return 0 if $D == 0;  # We found a divisor in the sequence
   die "Lucas parameter error: $D, $P, $Q\n" if ($D != $P*$P - 4*$Q);
 
-  # We have to convert n to a bigint or Math::BigInt::GMP's stupid set_si bug
-  # (RT 71548) will hit us and make the test $V == $n-2 always return false.
-  $n = Math::BigInt->new("$n") unless ref($n) eq 'Math::BigInt';
-
-  my($s, $k) = (0, $n->copy->binc);
-  while ($k->is_even && !$k->is_zero) {
+  my($s, $k) = (0, Maddint($n,1));
+  while (Mis_even($k) && $k != 0) {
     $s++;
-    $k->brsft(BONE);
+    $k = Mrshiftint($k,1);
   }
 
-  my($U, $V, $Qk) = lucas_sequence($n, $P, $Q, $k);
-
-  $V = Math::BigInt->new("$V") unless ref($V) eq 'Math::BigInt';
-  return 1 if $U == 0 && ($V == BTWO || $V == ($n - BTWO));
+  my($U, $V) = lucasuvmod($P, $Q, $k, $n);
+  return 1 if $U == 0 && ($V == 2 || $V == Msubint($n,2));
   foreach my $r (0 .. $s-2) {
-    return 1 if $V->is_zero;
-    $V->bmul($V)->bsub(BTWO)->bmod($n);
+    return 1 if $V == 0;
+    $V = Msubmod(Mmulmod($V,$V,$n),2,$n);
   }
   return 0;
 }
@@ -7592,7 +7581,7 @@ sub is_frobenius_pseudoprime {
     $Vcomp = ($k == 1) ? 2 : ($Q >= 0) ? $Q2 : $n-$Q2;
   }
 
-  my($U, $V, $Qk) = lucas_sequence($n, $P, $Q, $n-$k);
+  my($U, $V) = lucasuvmod($P, $Q, $n-$k, $n);
   return 1 if $U == 0 && $V == $Vcomp;
   0;
 }
@@ -7603,14 +7592,14 @@ sub is_frobenius_pseudoprime {
 # size number.
 # See: http://www.mersenne.org/report_milestones/
 my %_mersenne_primes;
-undef @_mersenne_primes{2,3,5,7,13,17,19,31,61,89,107,127,521,607,1279,2203,2281,3217,4253,4423,9689,9941,11213,19937,21701,23209,44497,86243,110503,132049,216091,756839,859433,1257787,1398269,2976221,3021377,6972593,13466917,20996011,24036583,25964951,30402457,32582657,37156667,42643801,43112609,57885161,74207281};
+undef @_mersenne_primes{2,3,5,7,13,17,19,31,61,89,107,127,521,607,1279,2203,2281,3217,4253,4423,9689,9941,11213,19937,21701,23209,44497,86243,110503,132049,216091,756839,859433,1257787,1398269,2976221,3021377,6972593,13466917,20996011,24036583,25964951,30402457,32582657,37156667,42643801,43112609,57885161,74207281,77232917,82589933};
 
 sub is_mersenne_prime {
   my $p = shift;
 
   # Use the known Mersenne primes
   return 1 if exists $_mersenne_primes{$p};
-  return 0 if $p < 34007399; # GIMPS has checked all below
+  return 0 if $p < 63623249; # GIMPS has checked all below
   # Past this we do a generic Mersenne prime test
 
   return 1 if $p == 2;
@@ -7619,8 +7608,8 @@ sub is_mersenne_prime {
   my $mp = BONE->copy->blsft($p)->bdec;
 
   # Definitely faster than using Math::BigInt that doesn't have GMP.
-  return (0 == (Math::Prime::Util::GMP::lucas_sequence($mp, 4, 1, $mp+1))[0])
-    if $Math::Prime::Util::_GMPfunc{"lucas_sequence"};
+  return (0 == (Math::Prime::Util::GMP::lucasuvmod(4, 1, $mp+1, $mp))[0])
+    if $Math::Prime::Util::_GMPfunc{"lucasuvmod"};
 
   my $V = Math::BigInt->new(4);
   for my $k (3 .. $p) {
