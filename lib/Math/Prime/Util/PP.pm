@@ -205,7 +205,7 @@ sub _validate_num {
   croak "Parameter must be defined" if !defined $n;
   return 0 if ref($n);
   croak "Parameter '$n' must be a non-negative integer"
-          if $n eq '' || ($n =~ tr/0123456789//c && $n !~ /^\+\d+$/);
+          if $n eq '' || ($n =~ tr/0123456789//c && $n !~ /^\+\d+\z/);
   croak "Parameter '$n' must be >= $min" if defined $min && $n < $min;
   croak "Parameter '$n' must be <= $max" if defined $max && $n > $max;
   substr($_[0],0,1,'') if substr($n,0,1) eq '+';
@@ -231,7 +231,7 @@ sub _validate_positive_integer {
     my $strn = "$n";
     if ($strn eq '-0') { $_[0] = 0; $strn = '0'; }
     croak "Parameter '$strn' must be a non-negative integer"
-      if $strn eq '' || ($strn =~ tr/0123456789//c && $strn !~ /^\+?\d+$/);
+      if $strn eq '' || ($strn =~ tr/0123456789//c && $strn !~ /^\+?\d+\z/);
     # TODO: look into using cmp or cmpint
     if (ref($n) || $n >= INTMAX) {      # Looks like a bigint
       $n = Math::BigInt->new($strn);    # Make n a bigint
@@ -258,7 +258,7 @@ sub _validate_integer {
     my $strn = "$n";
     if ($strn eq '-0') { $_[0] = 0; $strn = '0'; }
     croak "Parameter '$strn' must be an integer"
-      if $strn eq '' || ($strn =~ tr/-0123456789//c && $strn !~ /^[-+]?\d+$/);
+      if $strn eq '' || ($strn =~ tr/-0123456789//c && $strn !~ /^[-+]?\d+\z/);
     if (ref($n) || $n >= INTMAX || $n <= INTMIN) {  # Looks like a bigint
       $n = Math::BigInt->new($strn);
       $_[0] = ($n > INTMAX || $n < INTMIN)  ?  $n  :  int($strn);
@@ -3431,15 +3431,11 @@ sub _kap_reduce_count {   # returns new k and n
 sub _kapc_final {              # k = 2
   my($n, $pdiv, $lo) = @_;
   my($sum, $hi, $pc) = (0,  Msqrtint(Mdivint($n,$pdiv)),  Mprime_count($lo)-1);
-  if (Mmulint($pdiv,$hi) <= ~0) {
-    Mforprimes( sub {
-      $sum += Mprime_count(int($n/($pdiv*$_)))-$pc++;
-    }, $lo, $hi);
-  } else {
-    Mforprimes( sub {
-      $sum += Mprime_count(Mdivint($n,Mmulint($pdiv,$_)))-$pc++;
-    }, $lo, $hi);
-  }
+  my $nlim = int(INTMAX / $pdiv);
+  Mforprimes( sub {
+    my $npp = ($_<=$nlim) ? int($n/($pdiv*$_)) : Mdivint($n,Mmulint($pdiv,$_));
+    $sum += Mprime_count($npp)-$pc++;
+  }, $lo, $hi);
   $sum;
 }
 sub _kapc_count {
@@ -3688,7 +3684,8 @@ sub _almost_prime_count_asymptotic {
   my $logx = log($x);
   my $loglogx = log($logx);
   my $est = $x / $logx;
-  $est *= ($loglogx/$_) for 1 .. $k-1;
+  my $numk = $k - ( ($k<7) ? 1 : ($k<12) ? 2 : ($k-6)>>2 );
+  $est *= ($loglogx/$_) for 1 .. $numk;
   $est;  # Returns FP
 }
 sub _almost_prime_nth_asymptotic {
@@ -3707,7 +3704,8 @@ sub _almost_prime_nth_asymptotic {
   my $logx = log($x);
   my $loglogx = log($logx);
   my $est = $x * $logx;
-  $est *= ($_/$loglogx) for 1 .. $k-1;
+  my $numk = $k - ( ($k<7) ? 1 : ($k<12) ? 2 : ($k-6)>>2 );
+  $est *= ($_/$loglogx) for 1 .. $numk;
   $est;  # Returns FP
 }
 
@@ -3848,7 +3846,7 @@ sub nth_almost_prime_upper {
 
   my $lo = 5 * (1 << $k);   # $k >= 1, $n >= 8
   my $hi = 1 + _almost_prime_nth_asymptotic($k, $n);
-  $hi = int($hi);
+  $hi = ($hi<=~0) ? int($hi) : Math::BigInt->new("$hi");
   # We just guessed at hi, so bump it up until it's in range
   my $rhi = almost_prime_count_lower($k, $hi);
   while ($rhi < $n) {
@@ -3879,7 +3877,7 @@ sub nth_almost_prime_lower {
   my $lo = 5 * (1 << $k);   # $k >= 1, $n >= 8
   my $hi = 1 + _almost_prime_nth_asymptotic($k, $n);
   # We just guessed at hi, so bump it up until it's in range
-  $hi = int($hi);
+  $hi = ($hi<=~0) ? int($hi) : Math::BigInt->new("$hi");
   my $rhi = almost_prime_count_upper($k, $hi);
   while ($rhi < $n) {
     $lo = $hi+1;
@@ -3939,14 +3937,41 @@ sub nth_almost_prime {
   }
 
   my $lo = Math::Prime::Util::nth_almost_prime_lower($k, $n);
-  my $hi = Math::Prime::Util::nth_almost_prime_upper($k, $n);
+  my $rlo = Math::Prime::Util::almost_prime_count($k,$lo);
+  return $lo if $rlo == $n;  # Seems unlikely
+  croak "nth_almost_prime: bad lower bound" if $rlo > $n;
 
-  # TODO: Add interpolation speedup steps
+  # We have the exact value (rlo) at lo.
+  # We want to use this to make an estimate at n.
+
+  my $hi = Math::Prime::Util::nth_almost_prime_upper($k, $n);
+  if (1) {
+    my($ehi,$rhi);
+    while (1) {
+      # Make an estimate of where we will end up
+      my $ef = Mdivint(Mlshiftint($n,8),$rlo) - 1; # slightly lower
+      $ef = 1+(1<<8) if $ef <= (1<<8);
+      $ehi = Mrshiftint(Mmulint($ef,$lo),8);
+      # Don't go over the upper bound.
+      if ($ehi >= $hi) { $ehi = $hi; last; }
+      # rhi is the exact count at this estimate
+      $rhi = Math::Prime::Util::almost_prime_count($k,$ehi);
+      return $hi if $rhi == $n;
+      # Either we have a hi value, or we pull in lo and do it again.
+      last if $rhi > $n;
+      $lo = $ehi;
+      $rlo = $rhi;
+    }
+    $hi = $ehi;
+  }
+
+  # An interpolating search would speed thing up.
 
   while ($lo < $hi) {
     my $mid = $lo + (($hi-$lo) >> 1);
-    if (almost_prime_count($k,$mid) < $n) { $lo = $mid+1; }
-    else                                  { $hi = $mid; }
+    my $rmid = Math::Prime::Util::almost_prime_count($k,$mid);
+    if ($rmid < $n) { $lo = $mid+1; }
+    else            { $hi = $mid; }
   }
   $lo;
 
@@ -4900,6 +4925,7 @@ sub sqrtmod {
   _validate_integer($n);
   $n = -$n if $n < 0;
   return (undef,0)[$n] if $n <= 1;
+  #return Mmodint(Msqrtint($a),$n) if _is_perfect_square($a);
   $a = Mmodint($a,$n);
 
   my $r = _sqrtmod_composite($a,$n);
@@ -5939,7 +5965,7 @@ sub _validate_zeckendorf {
   my $s = shift;
   if ($s ne '0') {
     croak "fromzeckendorf takes a binary string as input"
-      unless $s =~ /^1[01]*$/;
+      unless $s =~ /^1[01]*\z/;
     croak "fromzeckendorf binary input not in canonical Zeckendorf form"
       if $s =~ /11/;
   }
@@ -6956,7 +6982,7 @@ sub lucas_sequence {
     $Q->bmod($n);
     my($Uh,$Vl, $Vh, $Ql, $Qh) = (BONE->copy, BTWO->copy, $P->copy, BONE->copy, BONE->copy);
     my ($b,$s) = (length($kstr)-1, 0);
-    if ($kstr =~ /(0+)$/) { $s = length($1); }
+    if ($kstr =~ /(0+)\z/) { $s = length($1); }
     for my $bpos (0 .. $b-$s-1) {
       $Ql->bmul($Qh)->bmod($n);
       if (substr($kstr,$bpos,1)) {
@@ -7073,7 +7099,7 @@ sub lucasuv {
   $k = Math::BigInt->new("$k") unless ref($k) eq 'Math::BigInt';
   my $kstr = substr($k->as_bin, 2);
   my ($n,$s) = (length($kstr)-1, 0);
-  if ($kstr =~ /(0+)$/) { $s = length($1); }
+  if ($kstr =~ /(0+)\z/) { $s = length($1); }
 
   if ($Q == -1) {
     # This could be simplified, and it's running 10x slower than it should.
@@ -7423,7 +7449,7 @@ sub is_almost_extra_strong_lucas_pseudoprime {
   my $V = $ZERO + $P;           # V_{k}
   my $W = $ZERO + $P*$P-$TWO;   # V_{k+1}
   my $kstr = substr($n->copy->binc()->as_bin, 2);
-  $kstr =~ s/(0*)$//;
+  $kstr =~ s/(0*)\z//;
   my $s = length($1);
   my $bpos = 0;
   while (++$bpos < length($kstr)) {
