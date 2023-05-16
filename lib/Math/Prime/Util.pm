@@ -27,7 +27,7 @@ our @EXPORT_OK =
       is_perrin_pseudoprime is_catalan_pseudoprime
       is_aks_prime is_bpsw_prime is_ramanujan_prime is_mersenne_prime
       is_delicate_prime
-      is_odd is_even
+      is_odd is_even is_divisible is_congruent
       is_power is_prime_power is_perfect_power is_square
       is_square_free is_powerfree
       is_pillai is_polygonal
@@ -3023,6 +3023,22 @@ Given an integer C<n>, returns 1 if C<n> is odd and 0 otherwise.
 =head2 is_even
 
 Given an integer C<n>, returns 1 if C<n> is even and 0 otherwise.
+
+=head2 is_divisible
+
+Given integers C<n> and C<d>, returns 1 if C<n> is exactly divisible by C<d>,
+and 0 otherwise.
+
+This corresponds to the GMP function C<mpz_divisible_p>.
+This includes its semantics with C<d=0> which returns 0 unless C<n=0>.
+
+=head2 is_congruent
+
+Given integers C<n>, C<c>, and C<d>, returns 1 if C<n> is congruent to C<c>
+modulo C<d>, and 0 otherwise.
+
+This corresponds to the GMP function C<mpz_congruent_p>.
+This includes its semantics with C<d=0> which returns 0 unless C<n=c>.
 
 
 =head2 is_power

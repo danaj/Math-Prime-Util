@@ -21,7 +21,7 @@ my @functions =  qw(
       is_perrin_pseudoprime is_catalan_pseudoprime
       is_aks_prime is_bpsw_prime is_ramanujan_prime is_mersenne_prime
       is_delicate_prime
-      is_odd is_even
+      is_odd is_even is_divisible is_congruent
       is_power is_prime_power is_perfect_power is_square
       is_square_free is_powerfree
       is_pillai is_polygonal

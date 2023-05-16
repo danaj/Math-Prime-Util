@@ -155,6 +155,8 @@ sub entropy_bytes {
 *is_powerful = \&Math::Prime::Util::PP::is_powerful;
 *is_odd = \&Math::Prime::Util::PP::is_odd;
 *is_even = \&Math::Prime::Util::PP::is_even;
+*is_divisible = \&Math::Prime::Util::PP::is_divisible;
+*is_congruent = \&Math::Prime::Util::PP::is_congruent;
 *powerful_count = \&Math::Prime::Util::PP::powerful_count;
 *nth_powerful = \&Math::Prime::Util::PP::nth_powerful;
 *sumpowerful = \&Math::Prime::Util::PP::sumpowerful;

@@ -1381,6 +1381,27 @@ sub is_even {
   return 1-($n % 2);
 }
 
+sub is_divisible {
+  my($n,$d) = @_;
+  _validate_integer($n);
+  _validate_integer($d);
+  return 0+($n==0) if $d == 0;
+  $n = -$n if $n < 0;
+  $d = -$d if $d < 0;
+  return 0+(($n % $d) == 0);
+}
+sub is_congruent {
+  my($n,$c,$d) = @_;
+  _validate_integer($n);
+  _validate_integer($c);
+  _validate_integer($d);
+  if ($d != 0) {
+    $n = Mmodint($n,$d) if $n < 0 || $n >= $d;
+    $c = Mmodint($c,$d) if $c < 0 || $c >= $d;
+  }
+  return 0+($n == $c);
+}
+
 sub is_smooth {
   my($n, $k) = @_;
   _validate_positive_integer($n);

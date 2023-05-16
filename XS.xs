@@ -2760,11 +2760,12 @@ void invmod(IN SV* sva, IN SV* svn)
       if (retok == 0) XSRETURN_UNDEF;
       XSRETURN_UV(r);
     }
+    /* GMP sqrtmod didn't work with composites until 0.53. */
     switch (ix) {
       case 0:  _vcallsub_with_gmp(0.20,"invmod"); break;
       case 1:  _vcallsub_with_gmp(0.22,"znorder"); break;
       case 2:
-      default: _vcallsub_with_gmp(0.36,"sqrtmod");  break;
+      default: _vcallsub_with_gmp(0.53,"sqrtmod");  break;
     }
     objectify_result(aTHX_ ST(0), ST(0));
     return;
@@ -2881,6 +2882,36 @@ is_smooth(IN SV* svn, IN SV* svk)
       case 3:
       default: _vcallsub_with_gmp(0.53,"is_almost_prime"); break;
     }
+    return;
+
+void is_divisible(IN SV* svn, IN SV* svd)
+  PREINIT:
+    UV n, d;
+  PPCODE:
+    if (_validate_and_set(&n, aTHX_ svn, IFLAG_ABS) &&
+        _validate_and_set(&d, aTHX_ svd, IFLAG_ABS)) {
+      if (d == 0) RETURN_NPARITY(n == 0);
+      RETURN_NPARITY( (n % d) == 0 );
+    }
+    _vcallsub_with_gmp(0.53,"is_divisible");
+    return;
+
+void is_congruent(IN SV* svn, IN SV* svc, IN SV* svd)
+  PREINIT:
+    UV n, c, d;
+    int nstatus, cstatus, dstatus;
+  PPCODE:
+    nstatus = _validate_and_set(&n, aTHX_ svn, IFLAG_ANY);
+    cstatus = _validate_and_set(&c, aTHX_ svc, IFLAG_ANY);
+    dstatus = _validate_and_set(&d, aTHX_ svd, IFLAG_ABS);
+    if (nstatus != 0 && cstatus != 0 && dstatus != 0) {
+      if (d != 0) {
+        _mod_with(&n, nstatus, d);
+        _mod_with(&c, cstatus, d);
+      }
+      RETURN_NPARITY( n == c );
+    }
+    _vcallsub_with_gmp(0.53,"is_congruent");
     return;
 
 void valuation(IN SV* svn, IN SV* svk)

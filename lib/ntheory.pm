@@ -228,6 +228,8 @@ Tags:
   fromzeckendorf(str)                 convert Zeckendorf binary str to num
   is_odd(n)                           return 1 if n is odd, 0 otherwise
   is_even(n)                          return 1 if n is even, 0 otherwise
+  is_divisible(n,d)                   return 1 if n divisible by d
+  is_congruent(n,c,d)                 return 1 if n is congruent to c mod d
   is_square(n)                        return 1 if n is a perfect square
   is_power(n)                         return k if n = c^k for integer c
   is_power(n,k)                       return 1 if n = c^k for integer c, k
