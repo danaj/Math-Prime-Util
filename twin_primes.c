@@ -121,21 +121,22 @@ UV twin_prime_count_approx(UV n)
     long double ln = (long double) n;
     long double logn = logl(ln);
     long double li2 = Ei(logn) + two_over_log_two-ln/logn;
-    /* try to minimize MSE */
+    /* Try to minimize MSE. */
+    /* We compromise to prevent discontinuities. */
     if (n < 32000000) {
       long double fm;
       if      (n <    4000) fm = 0.2952;
-      else if (n <    8000) fm = 0.3152;
+      else if (n <    8000) fm = 0.3102;
       else if (n <   16000) fm = 0.3090;
       else if (n <   32000) fm = 0.3096;
-      else if (n <   64000) fm = 0.3100;
-      else if (n <  128000) fm = 0.3089;
+      else if (n <   64000) fm = 0.3097;
+      else if (n <  128000) fm = 0.3094;
       else if (n <  256000) fm = 0.3099;
-      else if (n <  600000) fm = .3091 + (n-256000) * (.3056-.3091) / (600000-256000);
+      else if (n <  600000) fm = .3098 + (n-256000) * (.3056-.3098) / (600000-256000);
       else if (n < 1000000) fm = .3062 + (n-600000) * (.3042-.3062) / (1000000-600000);
       else if (n < 4000000) fm = .3067 + (n-1000000) * (.3041-.3067) / (4000000-1000000);
-      else if (n <16000000) fm = .3033 + (n-4000000) * (.2983-.3033) / (16000000-4000000);
-      else                  fm = .2980 + (n-16000000) * (.2965-.2980) / (32000000-16000000);
+      else if (n <16000000) fm = .3041 + (n-4000000) * (.2983-.3041) / (16000000-4000000);
+      else                  fm = .2983 + (n-16000000) * (.2961-.2983) / (32000000-16000000);
       li2 *= fm * logl(12+logn);
     }
     return (UV) (two_C2 * li2 + 0.5L);
