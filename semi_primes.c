@@ -409,7 +409,7 @@ UV nth_semiprime_approx(UV n) {
   if (est >= MPU_MAX_SEMI_PRIME) return MPU_MAX_SEMI_PRIME;
 
   /* Use inverse interpolation to improve the result. */
-  lo = 0.98 * est - 5;
+  lo = 0.979 * est - 5;
   hi = 1.03 * est;
   return inverse_interpolate(lo, hi, n, &semiprime_count_approx, 0);
 }
