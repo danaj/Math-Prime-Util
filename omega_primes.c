@@ -43,12 +43,65 @@ int is_omega_prime(uint32_t k, UV n) {
 /* For the interpolation */
 static UV opce(UV mid, UV k) { return omega_prime_count(k, mid); }
 
+
+/*********************************  Construction  *****************************/
+
+static void _omega_prime_gen_rec(UV** kop, UV* skop, UV* nkop, uint32_t k, UV lo, UV hi, UV m, UV pstart) {
+  UV v, *l = *kop, lsize = *skop, n = *nkop;
+
+  if (k > 1) {
+    SIMPLE_FOR_EACH_PRIME(pstart, rootint(hi/m, k)) {
+      if ((m % p) == 0) continue;
+      for (v = m*p; v <= hi; v *= p)
+        if ((v*p) <= hi)
+          _omega_prime_gen_rec(kop, skop, nkop, k-1, lo, hi, v, p);
+    } END_SIMPLE_FOR_EACH_PRIME
+    return;
+  }
+
+  START_DO_FOR_EACH_PRIME(pstart, rootint(hi/m, k)) {
+    if ((m % p) == 0) continue;
+    for (v = m*p; v <= hi; v *= p) {
+      if (v >= lo) { // Add v to kop list
+        if (n >= lsize) {
+          lsize = 1 + lsize * 1.2;
+          Renew(l, lsize, UV);
+        }
+        l[n++] = v;
+      }
+    }
+  } END_DO_FOR_EACH_PRIME
+  *kop = l;  *skop = lsize;  *nkop = n;
+}
+
+UV rec_omega_primes(UV** ret, uint32_t k, UV lo, UV hi) {
+  UV min, nkop, skop, *kop;
+
+  min = pn_primorial(k);
+  if (lo < min) lo = min;
+
+  if (hi < lo) croak("range_omega_prime_sieve error hi %"UVuf" < lo %"UVuf"\n",hi,lo);
+
+  nkop = 0;
+  skop = 256;
+  New(0, *ret, skop, UV);
+  _omega_prime_gen_rec(ret, &skop, &nkop, k, lo, hi, 1, 2);
+  qsort(*ret, nkop, sizeof(UV), _numcmp);
+  return nkop;
+}
+
+
 UV range_omega_prime_sieve(UV** ret, uint32_t k, UV lo, UV hi) {
   UV i, lmax = 0, n = 0;
   UV* l = 0;
   unsigned char *nf;
 
   if (hi < lo) croak("range_omega_prime_sieve error hi %"UVuf" < lo %"UVuf"\n",hi,lo);
+
+  /* TODO: The recursive routine should compute primes like the count does */
+  if ( ((hi-lo) > 1000000000UL) || (k >= 10 && (hi-lo) > 10000000UL) )
+    return rec_omega_primes(ret, k, lo, hi);
+
   nf = range_nfactor_sieve(lo, hi, 0);
   if (ret != 0) {
     lmax = 1000;
@@ -66,6 +119,11 @@ UV range_omega_prime_sieve(UV** ret, uint32_t k, UV lo, UV hi) {
   if (ret != 0)  *ret = l;
   return n;
 }
+
+/* TODO: Should make a single construct routine that calls sieve or recurse */
+
+
+/*********************************  Counting  *********************************/
 
 UV max_omega_prime_count(uint32_t k) {
 #if BITS_PER_WORD == 32
@@ -171,6 +229,9 @@ UV omega_prime_count(uint32_t k, UV n)
  * double logn = log(n), loglogn = log(logn);
  * double lim = (1.0989 * n * pow(loglogn + 1.1174, k-1)) / (factorial(k-1)*logn);
  */
+
+
+/************************************  nth  ***********************************/
 
 UV nth_omega_prime(uint32_t k, UV n) {
   UV lo, hi;
