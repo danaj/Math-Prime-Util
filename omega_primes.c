@@ -186,16 +186,11 @@ UV nth_omega_prime(uint32_t k, UV n) {
 
   if (k == 1) {
     hi = nth_prime(n);
-    if (hi == 0) hi = UV_MAX;
+    if (hi == 0) hi = max_nth_omega_prime(1);
     lo = hi >> 1;  /* We could do better */
   } else {
-    hi = lo;  /* TODO better bounds */
-    while (omega_prime_count(k,hi) < n) {
-      if (hi >= UV_MAX/2) { hi = UV_MAX;  break; }
-      hi *= 2;
-    }
+    hi = 0;        /* Let the interpolation routine find it */
   }
-  if (hi > max_nth_omega_prime(k))  hi = max_nth_omega_prime(k);
   hi = inverse_interpolate_k(lo, hi, n, k, &opce, 600);
 
   while (!is_omega_prime(k,hi))
