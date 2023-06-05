@@ -317,7 +317,7 @@ Tags:
   euler_phi(n)                        Euler totient of n
   euler_phi(beg, end)                 Euler totient for a range
   inverse_totient(n)                  image of Euler totient
-  jordan_totient(n,k)                 Jordan's totient
+  jordan_totient(k,n)                 Jordan's totient
   sumtotient(n)                       sum of Euler totient for 1 to n
   carmichael_lambda(n)                Carmichael's Lambda function
   ramanujan_sum(k,n)                  Ramanujan's sum
