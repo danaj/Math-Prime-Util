@@ -153,6 +153,7 @@ sub mpu_PPM_regex {
       Mmodint Mlogint Mrootint Msqrtint
       Mlshiftint Mrshiftint
       Maddmod Msubmod Mmulmod Mrootmod Mdivmod Mpowmod Minvmod
+      Mmuladdmod Mmulsubmod
       Mbinomial Mchinese Mfactor Mfactor_exp
       Mfactorial Mfordivisors Mforprimes Mgcd
       Mkronecker Mmoebius Mtotient Mstirling

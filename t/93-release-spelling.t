@@ -38,7 +38,7 @@ add_stopwords(qw/-th
                  sumliouville sumtotient
                  gcd lcm gcdext chinese
                  sqrtmod allsqrtmod rootmod allrootmod
-                 invmod addmod submod mulmod powmod divmod
+                 invmod addmod submod mulmod powmod divmod muladdmod mulsubmod
                  binomialmod factorialmod
                  bernfrac bernreal harmfrac harmreal stirling hclassno
                  vecsum vecprod vecmin vecmax vecreduce vecextract vecequal
