@@ -3942,6 +3942,131 @@ sub nth_almost_prime_approx {
   $lo;
 }
 
+sub _interp_linear {
+  my($n, $rlo, $rhi, $lo, $hi) = @_;
+  #return int( ($n-$rlo) * ($hi-$lo) / ($rhi-$rlo) );
+  my $num = Mmulint( Msubint($n,$rlo), Msubint($hi,$lo) );
+  my $den = Msubint($rhi, $rlo);
+  return Mdivint(Maddint($num,$den>>1), $den);
+  #return divint($num, $den);
+}
+sub _inverse_interpolate {
+  my($lo, $hi, $n, $k, $callback) = @_;
+  my($mid, $rmid, $rlo, $rhi);
+
+  $rlo = $callback->($k, $lo);
+  croak "interp: bad lower bound" if $rlo > $n;
+  return $lo if $rlo == $n;   # If lo wasn't small enough, this could be wrong.
+
+  # We have the exact value (rlo) at lo.
+  #print "1   $lo  $hi   ",$hi-$lo,"\n";
+
+  $rhi = $callback->($k, $hi) if $hi != 0;
+
+  while ($hi == 0) {
+    # Use lo/rlo to make an estimate
+
+    # Make an estimate of where we will end up
+    my $estf = ($rlo == 0) ? 1 : Mdivint(Mlshiftint($n,8),$rlo) - 1; # slightly lower
+    $estf = 1+(1<<8) if $estf <= (1<<8);
+    $estf = (8<<8) if $estf > (8<<8);
+    $mid = Mrshiftint(Mmulint($estf,$lo),8);
+    # rmid is the exact count at this estimate
+    $rmid = $callback->($k, $mid);
+
+    # Either we have a hi value, or we pull in lo and do it again.
+    if ($rmid >= $n) { $hi = $mid;  $rhi = $rmid; }
+    else             { $lo = $mid;  $rlo = $rmid; }
+    #print "2   $lo  $hi   ",$hi-$lo,"\n";
+  }
+  croak "interp bad initial" unless $rlo <= $n && $rhi >= $n;
+  return $lo if $rlo == $n;
+  return (($rlo==$n || ($rlo<$n && $rhi>$n)) ? $lo : $hi) if $hi-$lo <= 1;
+
+  # Step 1.  Linear interpolation while it centers.
+
+  $mid = ($n == $rhi)  ?  $hi-1
+                       :  Maddint($lo, _interp_linear($n,$rlo,$rhi,$lo,$hi));
+  if ($mid == $lo) { $mid++; } elsif ($mid == $hi) { $mid--; }
+
+  while ($rhi > $n && ($hi-$lo) > 1) {
+    croak "interp: need 3 unique points" unless $lo < $mid && $mid < $hi;
+    #print "I   $lo  $hi   ",$hi-$lo,"\n";
+    $rmid = $callback->($k, $mid);
+    if ($rmid >= $n) { ($hi,$rhi) = ($mid,$rmid); }
+    else             { ($lo,$rlo) = ($mid,$rmid); }
+    last if $rhi == $n;
+
+    my $num = Mmulint(Msubint($n,$rmid),Msubint($hi,$lo));
+    my $den = Msubint($rhi,$rlo);
+    $mid = Maddint($mid, Mdivint($num, $den));
+    # Fairly crude way of pulling in opposite side so we bracket.
+    if    ($mid <= $lo) { $mid = Maddint($lo, Mdivint(Msubint($hi,$lo),100)); }
+    elsif ($mid >= $hi) { $mid = Msubint($hi, Mdivint(Msubint($hi,$lo),100)); }
+    if ($mid == $lo) { $mid++; } elsif ($mid == $hi) { $mid--; }
+    croak "interp: range error" unless $lo <= $mid && $mid <= $hi;
+  }
+
+  return $lo if $rlo == $n;
+  return (($rlo==$n || ($rlo<$n && $rhi>$n)) ? $lo : $hi) if $hi-$lo <= 1;
+
+  croak "interp: bad step 1 interpolation" unless $rlo < $n && $rhi == $n;
+
+  # Step 2.   Ridder's method until we're very close.
+
+  croak "interp: Ridder initial assumption error" unless $rlo<$n && $rhi>=$n;
+  #print "F   $lo  $hi   ",$hi-$lo,"\n";
+
+  while (($hi-$lo > 8) && ($hi-$lo) > 1) {
+    my($x0, $x2, $x1) = ($lo, $hi, Maddint($lo, Msubint($hi,$lo)>>1));
+    my($rx1) = $callback->($k, $x1);
+    my($fx0, $fx1, $fx2) = (Msubint($rlo,$n), Msubint($rx1,$n), Msubint($rhi,$n)+1);
+
+    # Calculate new point using false position method
+    #my $pos = (($x1-$x0) * "$fx1") / sqrt( "$fx1"*"$fx1" - "$fx0"*"$fx2" );
+    #my $x3 = $x1 - int($pos+0.5);
+    # Rather convoluted so it's all in integer.
+    my $num = Mmulint($fx1, Msubint($x1,$x0));
+    my $d1  = Msubint(Mmulint($fx1,$fx1),Mmulint($fx0,$fx2));
+    my $den = Msqrtint(Mlshiftint($d1,64));
+       $num = Mlshiftint($num, 32);
+    my $pos = Mdivint(Maddint($num,$den>>1), $den);
+    my $x3 = Msubint($x1, $pos);
+
+    # print "    Ridder mid = $x1 - $pos = $x3\n";
+    # print " $lo $x1 $x3 $hi\n";
+
+    if ($x3 >= $hi || $x3 <= $lo || $x3 == $x1) {
+
+      # The new point hasn't given us anything.  Just bisect.
+      if ($rx1 >= $n) { $hi = $x1; $rhi = $rx1; }
+      else            { $lo = $x1; $rlo = $rx1; }
+
+    } else {
+
+      my $rx3 = $callback->($k,$x3);
+      if ($rx1 > $rx3) { ($x1,$x3,$rx1,$rx3) = ($x3,$x1,$rx3,$rx1); }
+      if    ($rx1 >= $n) {                           $hi = $x1;  $rhi = $rx1; }
+      elsif ($rx3 >= $n) { $lo = $x1;  $rlo = $rx1;  $hi = $x3;  $rhi = $rx3; }
+      else               { $lo = $x3;  $rlo = $rx3;                           }
+
+    }
+    #print "R   $lo  $hi   ",$hi-$lo,"\n";
+    croak "interp: Ridder step error" unless $rlo < $n && $rhi >= $n;
+  }
+
+  # Step 3.  Binary search.  Invariant:  f(lo) < n, f(hi) >= n
+
+  while ($hi-$lo > 1) {
+    $mid = $lo + (($hi-$lo) >> 1);
+    $rmid = $callback->($k, $mid);
+    if ($rmid < $n) { $lo = $mid; }
+    else            { $hi = $mid; }
+    #print "B  $lo  $hi   ",$hi-$lo,"\n";
+  }
+  $hi;
+}
+
 sub nth_almost_prime {
   my($k, $n) = @_;
   return undef if $n == 0;
@@ -3958,51 +4083,13 @@ sub nth_almost_prime {
   }
 
   my $lo = Math::Prime::Util::nth_almost_prime_lower($k, $n);
-  my $rlo = Math::Prime::Util::almost_prime_count($k,$lo);
-  return $lo if $rlo == $n;  # Seems unlikely
-  croak "nth_almost_prime: bad lower bound" if $rlo > $n;
 
-  # We have the exact value (rlo) at lo.
-  # We want to use this to make an estimate at n.
-
-  my $hi = Math::Prime::Util::nth_almost_prime_upper($k, $n);
-  if (1) {
-    my($ehi,$rhi);
-    while (1) {
-      # Make an estimate of where we will end up
-      my $ef = Mdivint(Mlshiftint($n,8),$rlo) - 1; # slightly lower
-      $ef = 1+(1<<8) if $ef <= (1<<8);
-      $ehi = Mrshiftint(Mmulint($ef,$lo),8);
-      # Don't go over the upper bound.
-      if ($ehi >= $hi) { $ehi = $hi; last; }
-      # rhi is the exact count at this estimate
-      $rhi = Math::Prime::Util::almost_prime_count($k,$ehi);
-      return $hi if $rhi == $n;
-      # Either we have a hi value, or we pull in lo and do it again.
-      last if $rhi > $n;
-      $lo = $ehi;
-      $rlo = $rhi;
-    }
-    $hi = $ehi;
-  }
-
-  # An interpolating search would speed thing up.
-
-  while ($lo < $hi) {
-    my $mid = $lo + (($hi-$lo) >> 1);
-    my $rmid = Math::Prime::Util::almost_prime_count($k,$mid);
-    if ($rmid < $n) { $lo = $mid+1; }
-    else            { $hi = $mid; }
-  }
-  $lo;
-
-  # Brutally inefficient algorithm.
-  #my $i = 1 << $k;
-  #while (1) {
-  #  $i++ while !Math::Prime::Util::is_almost_prime($k,$i);
-  #  return $i if --$n == 0;
-  #  $i++;
-  #}
+  return _inverse_interpolate($lo, 0, $n, $k, sub { Math::Prime::Util::almost_prime_count($_[0],$_[1]); });
+  #my $ncalls = 0;
+  #my $res = _inverse_interpolate($lo, 0, $n, $k, sub { $ncalls++; Math::Prime::Util::almost_prime_count($_[0],$_[1]); });
+  #print "ncalls:  $ncalls\n";
+  #return $ncalls;
+  #return $res;
 }
 
 sub nth_omega_prime {

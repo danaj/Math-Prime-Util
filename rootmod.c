@@ -226,6 +226,7 @@ static UV _sqrtmod_composite(UV a, UV n) {
   int nfactors;
 
   if (n == 0) return UV_MAX;
+  /* TODO: if (is_perfect_square(a))  return (isqrt(a) % n); */
   if (a >= n) a %= n;
   if (n <= 2 || a <= 1)      return a;
   if (is_perfect_square(a))  return isqrt(a);
