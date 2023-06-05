@@ -219,6 +219,7 @@ UV nth_powerful(UV n, UV k) {
     hi = UV_MAX;
     /* Linear from min to max rather than a nice power fit as above */
     if (n < max)  hi = lo + (((double)n / (double)max) * (UV_MAX-lo) + 1);
+    /* Alternately hi=0 which makes interpolation routine handle it. */
   }
 
   return inverse_interpolate_k(lo, hi, n, k, &powerful_count, 0);
