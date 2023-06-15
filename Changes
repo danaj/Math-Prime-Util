@@ -8,6 +8,9 @@ Revision history for Perl module Math::Prime::Util
       use an implicit base of 2 rather than a missing base error.  This also
       means is_pseudoprime($n, @bases) works properly.
 
+    - is_strong_pseudoprime passes for bases equal to 0 mod n.  This matches
+      what the GMP code always did, and means primes return 1 for any base.
+
     [ADDED]
 
     - powersum(n,k)                   sum of k-th powers of positive ints <= n
@@ -175,6 +178,9 @@ Revision history for Perl module Math::Prime::Util
     - lcm with empty list returns 1 instead of 0.  Github #73.
 
     - fix an XS stack issue with calling other routines inside forprimes
+
+    - is_pseudoprime and is_euler_pseudoprime have consistent XS, PP, and GMP
+      behaviour.  Specifically, single digit inputs and bases a multiple of n.
 
     [FUNCTIONALITY AND PERFORMANCE]
 

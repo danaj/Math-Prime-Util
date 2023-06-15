@@ -2381,8 +2381,8 @@ and returns 0 otherwise.
 This is the Euler test, sometimes called the Euler-Jacobi test.
 Removing primes, given base 2 this produces the sequence L<OEIS A047713|http://oeis.org/A047713>.
 
-If 0 is returned, then the number really is a composite.  If 1 is returned,
-then it is either a prime or an Euler pseudoprime to all the given bases.
+If 0 is returned, then the number really is a composite (for bases less than n).
+If 1 is returned, then it is either a prime or an Euler pseudoprime to all the given bases.
 Given enough distinct bases, the chances become very high that the
 number is actually prime.
 
@@ -2401,9 +2401,9 @@ Given an integer C<n> and one or more positive bases,
 returns 1 if C<n> is positive and a strong probable prime to each base,
 and returns 0 otherwise.
 
-If 0 is returned, then the number really is a composite.  If 1 is returned,
-then it is either a prime or a strong pseudoprime to all the given bases.
-Given enough distinct bases, the chances become very, very high that the
+If 0 is returned, then the number really is a composite (for any base).
+If 1 is returned, then it is either a prime or a strong pseudoprime to all the given bases.
+Given enough distinct bases, the chances become very high that the
 number is actually prime.
 
 This is usually used in combination with other tests to make either stronger
@@ -2418,6 +2418,13 @@ algorithm does run with even input, most sources define it only on odd input.
 Returning composite for all non-2 even input makes the function match most
 other implementations including L<Math::Primality>'s C<is_strong_pseudoprime>
 function.
+
+Generally, bases of interest are between C<2> and C<n-2>.
+Bases C<1> and C<n-1> will return 1 for any odd composites.
+Most sources do not define the test for bases equal to C<0 mod n>,
+and many do not for any bases larger than C<n>.
+We allow all bases, noting that the case C<base = 0 mod n> is defined as 1.
+This allows primes to return 1 regardless of the base.
 
 =head2 is_lucas_pseudoprime
 

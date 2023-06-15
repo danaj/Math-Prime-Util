@@ -6316,17 +6316,12 @@ sub is_pseudoprime {
   return 0 if defined $n && int($n) < 0;
   _validate_positive_integer($n);
   @bases = (2) if scalar(@bases) == 0;
-  return 0+($n >= 2) if $n < 4;
+  return 0+($n >= 2) if $n < 3;
 
-  foreach my $base (@bases) {
-    croak "Base $base is invalid" if $base < 2;
-    $base = $base % $n if $base >= $n;
-    if ($base > 1 && $base != $n-1) {
-      my $x = (ref($n) eq 'Math::BigInt')
-        ? $n->copy->bzero->badd($base)->bmodpow($n-1,$n)->is_one
-        : _powmod($base, $n-1, $n);
-      return 0 unless $x == 1;
-    }
+  foreach my $a (@bases) {
+    croak "Base $a is invalid" if $a < 2;
+    $a = $a % $n if $a >= $n;
+    return 0 unless $a == 1 || Mpowmod($a, $n-1, $n) == 1;
   }
   1;
 }
@@ -6336,20 +6331,16 @@ sub is_euler_pseudoprime {
   return 0 if defined $n && int($n) < 0;
   _validate_positive_integer($n);
   @bases = (2) if scalar(@bases) == 0;
-  return 0+($n >= 2) if $n < 4;
+  return 0+($n >= 2) if $n < 3;
+  return 0 if ($n & 1) == 0;
 
-  foreach my $base (@bases) {
-    croak "Base $base is invalid" if $base < 2;
-    $base = $base % $n if $base >= $n;
-    if ($base > 1 && $base != $n-1) {
-      my $j = kronecker($base, $n);
-      return 0 if $j == 0;
-      $j = ($j > 0) ? 1 : $n-1;
-      my $x = (ref($n) eq 'Math::BigInt')
-        ? $n->copy->bzero->badd($base)->bmodpow(($n-1)/2,$n)
-        : _powmod($base, ($n-1)>>1, $n);
-      return 0 unless $x == $j;
-    }
+  foreach my $a (@bases) {
+    croak "Base $a is invalid" if $a < 2;
+    $a = $a % $n if $a >= $n;
+    my $j = kronecker($a, $n);
+    return 0 if $j == 0;   # gcd(a,n) != 1
+    $j = ($j > 0) ? 1 : $n-1;
+    return 0 unless Mpowmod($a, ($n-1)>>1, $n) == $j;
   }
   1;
 }
@@ -6432,19 +6423,18 @@ sub is_strong_pseudoprime {
   return 0+($n >= 2) if $n < 4;
   return 0 if ($n % 2) == 0;
 
-  if ($bases[0] == 2) {
-    return 0 unless _miller_rabin_2($n);
-    shift @bases;
-    return 1 unless @bases;
-  }
-
   my @newbases;
-  for my $base (@bases) {
-    croak "Base $base is invalid" if $base < 2;
-    $base %= $n if $base >= $n;
-    return 0 if $base == 0 || ($base == $n-1 && ($base % 2) == 1);
-    push @newbases, $base;
+  for my $a (@bases) {
+    croak "Base $a is invalid" if $a < 2;
+    $a %= $n if $a >= $n;
+    next if $a <= 1 || $a == $n-1;
+    if ($a == 2) {
+      return 0 unless _miller_rabin_2($n);
+      next;
+    }
+    push @newbases, $a;
   }
+  return 1 if scalar(@newbases) == 0;
   @bases = @newbases;
 
   if ( ref($n) eq 'Math::BigInt' ) {
@@ -6452,7 +6442,7 @@ sub is_strong_pseudoprime {
     my $nminus1 = $n->copy->bdec();
     my $s = 0;
     my $d = $nminus1->copy;
-    do {  # n is > 3 and odd, so n-1 must be even
+    do {  # n is > 2 and odd, so n-1 must be even
       $s++;
       $d->brsft(BONE);
     } while $d->is_even;
@@ -6497,7 +6487,6 @@ sub is_strong_pseudoprime {
     foreach my $ma (@bases) {
       my $x = _powmod($ma, $d, $n);
       next if ($x == 1) || ($x == ($n-1));
-
       foreach my $r (1 .. $s-1) {
         $x = ($x < MPU_HALFWORD) ? ($x*$x) % $n : _mulmod($x, $x, $n);
         return 0 if $x == 1;

@@ -230,13 +230,13 @@ for my $phi (1 .. scalar @phis) {
 
 # Verify MR for bases >= n
 is( is_strong_pseudoprime(  3,    3), 1, "spsp(  3,    3)");
-is( is_strong_pseudoprime( 11,   11), 0, "spsp( 11,   11)");
-is( is_strong_pseudoprime( 89, 5785), 0, "spsp( 89, 5785)");
-is( is_strong_pseudoprime(257, 6168), 0, "spsp(257, 6168)");
-is( is_strong_pseudoprime(367,  367), 0, "spsp(367,  367)");
-is( is_strong_pseudoprime(367, 1101), 0, "spsp(367, 1101)");
+is( is_strong_pseudoprime( 11,   11), 1, "spsp( 11,   11)");
+is( is_strong_pseudoprime( 89, 5785), 1, "spsp( 89, 5785)");
+is( is_strong_pseudoprime(257, 6168), 1, "spsp(257, 6168)");
+is( is_strong_pseudoprime(367,  367), 1, "spsp(367,  367)");
+is( is_strong_pseudoprime(367, 1101), 1, "spsp(367, 1101)");
 is( is_strong_pseudoprime(49001, 921211727), 0, "spsp(49001, 921211727)");
-is( is_strong_pseudoprime(  331, 921211727), 0, "spsp(  331, 921211727)");
+is( is_strong_pseudoprime(  331, 921211727), 1, "spsp(  331, 921211727)");
 is( is_strong_pseudoprime(49117, 921211727), 1, "spsp(49117, 921211727)");
 
 # Some examples of Fermat and strong pseudoprimes
