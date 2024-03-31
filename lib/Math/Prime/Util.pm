@@ -30,7 +30,7 @@ our @EXPORT_OK =
       is_odd is_even is_divisible is_congruent
       is_power is_prime_power is_perfect_power is_square
       is_square_free is_powerfree
-      is_pillai is_polygonal
+      is_pillai is_polygonal is_congruent_number
       is_semiprime is_almost_prime is_omega_prime
       is_primitive_root is_carmichael is_quasi_carmichael
       is_fundamental is_totient is_gaussian_prime is_sum_of_squares
@@ -101,7 +101,8 @@ our @EXPORT_OK =
       euler_phi jordan_totient exp_mangoldt sumtotient
       partitions bernfrac bernreal harmfrac harmreal
       chebyshev_theta chebyshev_psi
-      divisor_sum carmichael_lambda kronecker hclassno qnr inverse_totient
+      divisor_sum carmichael_lambda hclassno inverse_totient
+      kronecker is_qr qnr
       ramanujan_tau ramanujan_sum
       stirling znorder znprimroot znlog legendre_phi
       factorial factorialmod binomial binomialmod
@@ -3908,6 +3909,14 @@ it will be unchanged.
 
 This corresponds to Pari's C<ispolygonal> function.
 
+=head2 is_congruent_number
+
+Given a non-negative integer C<n>, returns 1 if C<n> is the area of a
+rational right triangle, and 0 otherwise.
+
+This function answers the B<congruent number problem> using Tunnell's theorem
+which relies on the Birch Swinnerton-Dyer conjecture.
+
 =head2 prime_bigomega
 
   say "$n has ", prime_bigomega($n), " total factors";
@@ -4567,6 +4576,9 @@ C<kronecker(a,n)> function, Mathematica's C<KroneckerSymbol[n,m]>
 function, and GMP's C<mpz_kronecker(a,n)>, C<mpz_jacobi(a,n)>, and
 C<mpz_legendre(a,n)> functions.
 
+If C<n> is not an odd prime, then the result does not necessarily
+indicate whether C<a> is a quadratic residue mod C<n>.  Using the function
+L</is_qr> will return correct results for any C<n>, though could be slower.
 
 =head2 factorial
 
@@ -5014,7 +5026,18 @@ Like other modular functions, if C<n = 0> the function returns undef.
 This is the L<OEIS series A020649|http://oeis.org/A053760>.  For primes
 it is L<OEIS series A020649|http://oeis.org/A053760>.
 
+=head2 is_qr
 
+Given two integers C<a> and C<n>, returns 1 if C<a> is a
+quadratic residue modulo C<|n|>, and 0 otherwise.
+A return value of 1 indicates there exists an C<x> where C<a = x^2 mod |n|>.
+
+For odd primes, this is similar to checking C<a==0 || kronecker(a,n) == 1>.
+
+For all values, this will be equal to C<sqrtmod(a,n) != undef>, with
+possibly better performance.
+
+Like other modular functions, if C<n = 0> the function returns undef.
 
 =head1 RANDOM NUMBERS
 

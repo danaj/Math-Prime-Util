@@ -47,6 +47,7 @@ Revision history for Perl module Math::Prime::Util
     - is_practical(n)                 is n a practical number
     - is_delicate_prime(n[,b])        is n a digitally delicate prime (base b)
     - is_sum_of_squares(n[,k])        can n be a sum of k squares (dflt k=2)
+    - is_congruent_number(n)          is n a "congruent number"
     - is_omega_prime(k,n)             is n divisible by exactly k primes
     - is_almost_prime(k,n)            does n have exactly k prime factors
     - is_powerfree(n[,k])             is n a k-powerfree number (default k=2)
@@ -56,6 +57,7 @@ Revision history for Perl module Math::Prime::Util
     - is_even(n)                      is n an even integer (divisible by 2)
     - is_divisible(n,d)               is n exactly divisible by d
     - is_congruent(n,c,d)             is n congruent to c mod d
+    - is_qr(a,n)                      is a a quadratic non-residue mod n
     - almost_primes(k,[start,]end)    array ref of k-almost-primes
     - almost_prime_count(k,n)         count of integers with exactly k factors
     - almost_prime_count_approx(k,n)  fast approximate k-almost-prime count

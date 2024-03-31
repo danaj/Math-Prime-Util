@@ -2978,6 +2978,22 @@ void kronecker(IN SV* sva, IN SV* svb)
     _vcallsub_with_gmp(0.17,"kronecker");
     return;
 
+void is_qr(IN SV* sva, IN SV* svn)
+  PREINIT:
+    int astatus, nstatus;
+    UV a, n;
+  PPCODE:
+    astatus = _validate_and_set(&a, aTHX_ sva, IFLAG_ANY);
+    nstatus = _validate_and_set(&n, aTHX_ svn, IFLAG_ABS);
+    if (astatus != 0 && nstatus != 0) {
+      if (n == 0) XSRETURN_UNDEF;
+      if (n == 1) RETURN_NPARITY(1);
+      _mod_with(&a, astatus, n);
+      RETURN_NPARITY( is_qr(a,n) );
+    }
+    _vcallsub_with_gmp(0.53,"is_qr");
+    return;
+
 void addint(IN SV* sva, IN SV* svb)
   ALIAS:
     subint = 1
@@ -3496,13 +3512,14 @@ void mertens(IN SV* svn)
     prime_omega = 3
     prime_bigomega = 4
     is_pillai = 5
-    hclassno = 6
-    ramanujan_tau = 7
+    is_congruent_number = 6
+    hclassno = 7
+    ramanujan_tau = 8
   PREINIT:
     UV n;
     int status;
   PPCODE:
-    status = _validate_and_set(&n, aTHX_ svn, (ix < 6) ? IFLAG_POS : IFLAG_ANY);
+    status = _validate_and_set(&n, aTHX_ svn, (ix < 7) ? IFLAG_POS : IFLAG_ANY);
     if (status == -1)
       XSRETURN_IV(0);
     if (status == 1) {
@@ -3514,8 +3531,9 @@ void mertens(IN SV* svn)
         case 3:  r = prime_omega(n); break;
         case 4:  r = prime_bigomega(n); break;
         case 5:  r = pillai_v(n); break;
-        case 6:  r = hclassno(n); break;
-        case 7:  r = ramanujan_tau(n);
+        case 6:  r = is_congruent_number(n); break;
+        case 7:  r = hclassno(n); break;
+        case 8:  r = ramanujan_tau(n);
                  if (r == 0 && n != 0)
                    status = 0;
                  break;
@@ -3530,8 +3548,9 @@ void mertens(IN SV* svn)
       case 3:  _vcallsub_with_gmp(0.53,"prime_omega"); break;
       case 4:  _vcallsub_with_gmp(0.53,"prime_bigomega"); break;
       case 5:  _vcallsub_with_gmp(0.00,"is_pillai"); break;
-      case 6:  _vcallsub_with_pp("hclassno"); break;
-      case 7:  _vcallsub_with_gmp(0.32,"ramanujan_tau"); break;
+      case 6:  _vcallsub_with_gmp(0.00,"is_congruent_number"); break;
+      case 7:  _vcallsub_with_pp("hclassno"); break;
+      case 8:  _vcallsub_with_gmp(0.32,"ramanujan_tau"); break;
       default: break;
     }
     objectify_result(aTHX_ svn, ST(0));

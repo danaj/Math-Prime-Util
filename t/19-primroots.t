@@ -3,7 +3,7 @@ use strict;
 use warnings;
 
 use Test::More;
-use Math::Prime::Util qw/ znprimroot is_primitive_root qnr /;
+use Math::Prime::Util qw/ znprimroot is_primitive_root qnr is_qr/;
 
 #my $extra = defined $ENV{EXTENDED_TESTING} && $ENV{EXTENDED_TESTING};
 my $use64 = Math::Prime::Util::prime_get_config->{'maxbits'} > 32;
@@ -43,6 +43,7 @@ plan tests => 0
                 + scalar(keys %primroots) + 1  # znprimroot
                 + scalar(keys %primroots) + 4  # is_primitive_root
                 + 7                            # qnr
+                + 9                            # is_qr
                 ;
 
 ###### znprimroot
@@ -74,3 +75,14 @@ is(qnr(5711), 19, "The least quadratice non-residue of 5711 is 19");
 is(qnr(366791), 43, "The least quadratice non-residue of 366791 is 43");
 is(qnr(2737), 3, "qnr(7*17*23) = 2");
 is(qnr(9257330), 2, "qnr(2*5*925733) = 2");
+
+###### is_qr
+is(is_qr(0,0), undef, "is_qr(x,0) returns undef");
+is_deeply([map{is_qr($_,1)}0..5], [1,1,1,1,1,1], "is_qr(a,1) = 1");
+is_deeply([map{is_qr($_,2)}0..5], [1,1,1,1,1,1], "is_qr(a,2) = 1");
+is_deeply([map{is_qr($_,3)}0..10], [1,1,0,1,1,0,1,1,0,1,1], "is_qr(0..10,3)");
+is_deeply([map{is_qr($_,4)}0..10], [1,1,0,0,1,1,0,0,1,1,0], "is_qr(0..10,4)");
+is_deeply([map{is_qr($_,6)}0..10], [1,1,0,1,1,0,1,1,0,1,1], "is_qr(0..10,6)");
+is_deeply([map{is_qr($_,9)}0..20], [1,1,0,0,1,0,0,1,0,1,1,0,0,1,0,0,1,0,1,1,0], "is_qr(0..20,9)");
+is_deeply([map{is_qr($_,15)}0..32], [1,1,0,0,1,0,1,0,0,1,1,0,0,0,0,1,1,0,0,1,0,1,0,0,1,1,0,0,0,0,1,1,0], "is_qr(0..32,15)");
+is(is_qr("2636542937688", "3409243234243"), 1, "2636542937688 is a qr mod 3409243234243");

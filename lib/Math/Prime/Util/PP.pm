@@ -5928,6 +5928,81 @@ sub is_sum_of_squares {
   1;
 }
 
+sub is_congruent_number {
+  my($n) = @_;
+
+  return ($n >= 5 && $n <= 7) if $n < 13;
+
+  my $n8 = $n % 8;
+  return 1 if $n8 == 5 || $n8 == 6 || $n8 == 7;
+
+  if (!Mis_square_free($n)) {
+    my $N = 1;
+    foreach my $f (Mfactor_exp($n)) {
+      my($p,$e) = @$f;
+      $N = Mmulint($N,$p) if ($e % 2) == 1;
+    }
+    return is_congruent_number($N);
+  }
+
+  my $ndiv2 = Mrshiftint($n);
+
+  if (Mis_even($n) && Mis_prime($ndiv2)) {
+    my $p = $ndiv2;
+    my $p8 = $p % 8;
+    return 1 if $p8 == 3 || $p8 == 7;
+    return 0 if $p8 == 5 || ($p % 16) == 9;
+  } elsif (Mis_prime($n)) {
+    return 0 if $n8 == 3;
+    return 1 if $n8 == 5 || $n8 == 7;
+
+    my $r = _sqrtmod_prime(2, $n);
+    return 0 if defined $r && Mkronecker(1+$r, $n) == -1;
+  } elsif (1) {
+    my @factors = Mfactor($n);
+    if (scalar(@factors) == 2) {
+      my($p, $q) = ($factors[0], $factors[1]);
+      my($p8, $q8) = ($p % 8, $q %8);
+      return 0 if $p8 == 3 && $q8 == 3;
+      return 0 if $p8 == 1 && $q8 == 3 && kronecker($p,$q) == -1;
+      return 0 if $p8 == 3 && $q8 == 1 && kronecker($q,$p) == -1;
+    } elsif (scalar(@factors) == 3 && $factors[0] == 2) {
+      my($p, $q) = ($factors[1], $factors[2]);
+      my($p8, $q8) = ($p % 8, $q %8);
+      return 0 if $p8 == 5 && $q8 == 5;
+      return 0 if $p8 == 1 && $q8 == 5 && kronecker($p,$q) == -1;
+      return 0 if $p8 == 5 && $q8 == 1 && kronecker($q,$p) == -1;
+    }
+  }
+
+  # General test
+  # TODO: big n, careful with 8*z*z
+  my @sols = (0,0);
+  if (Mis_odd($n)) {
+    for (my $z = 0; 8*$z*$z <= $n; $z++) {
+      my $n8z = $n - 8*$z*$z;
+      my $mx = Msqrtint($n8z >> 1);
+      foreach my $x (0 .. $mx) {
+        my $y = $n8z - 2*$x*$x;
+        $sols[$z % 2] += 1 << (($x>0) + ($y>0) + ($z>0))
+          if $y == 0 || _is_perfect_square($y);
+      }
+    }
+  } else {
+    for (my $z = 0; 8*$z*$z <= $ndiv2; $z++) {
+      my $n8z = $ndiv2 - 8*$z*$z;
+      my $mx = Msqrtint($n8z);
+      foreach my $x (0 .. $mx) {
+        my $y = $n8z - $x*$x;
+        $sols[$z % 2] += 1 << (($x>0) + ($y>0) + ($z>0))
+          if $y == 0 || _is_perfect_square($y);
+      }
+    }
+  }
+  return ($sols[0] == $sols[1]) ? 1 : 0;
+}
+
+
 sub valuation {
   my($n, $k) = @_;
   croak "valuation: k must be > 1" if $k <= 1;
@@ -6536,6 +6611,28 @@ sub kronecker {
     }
   }
   return ($b == 1) ? $k : 0;
+}
+
+sub is_qr {
+  my($a, $n) = @_;
+  _validate_integer($a);
+  _validate_integer($n);
+  $n = -$n if $n < 0;
+
+  # return (defined Math::Prime::Util::sqrtmod($a,$n)) ? 1 : 0;
+
+  return (undef,1,1)[$n] if $n <= 2;
+  $a = Mmodint($a,$n);
+  return 1 if $a <= 1;
+
+  return 0+(Mkronecker($a,$n) == 1) if Mis_prime($n);
+
+  foreach my $f (Mfactor_exp($n)) {
+    my($p,$e) = @$f;
+    next if $e == 1 && Mkronecker($a,$p) == 1;
+    return 0 unless defined _sqrtmod_prime_power($a,$p,$e);
+  }
+  1;
 }
 
 sub _binomialu {

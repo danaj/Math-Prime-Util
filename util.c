@@ -30,6 +30,7 @@
 #include "montmath.h"
 #include "csprng.h"
 #include "inverse_interpolate.h"
+#include "rootmod.h"
 
 int _numcmp(const void *a, const void *b) {
   const UV *x = a, *y = b;
@@ -1245,6 +1246,29 @@ UV qnr(UV n) {
   return 0;
 }
 
+int is_qr(UV a, UV n) {
+  int res;
+  if (n == 0) return (a == 1);    /* Should return undef */
+  if (n <= 2) return 1;
+  if (a >= n) a %= n;
+  if (a <= 1) return 1;
+
+  if (is_prob_prime(n)) {
+    res = (kronecker_uu(a,n) == 1);
+  } else {
+    UV r, fac[MPU_MAX_FACTORS+1], exp[MPU_MAX_FACTORS+1];
+    int i, nfactors, res;
+
+    nfactors = factor_exp(n, fac, exp);
+    for (i = 0, res = 1;  res && i < nfactors;  i++) {
+      if (exp[i] == 1)
+        res = (kronecker_uu(a,fac[i]) == 1) || sqrtmodp(&r, a, fac[i]);
+      else
+        res = sqrtmod(&r, a, ipow(fac[i],exp[i]));
+    }
+  }
+  return res;
+}
 
 UV znorder(UV a, UV n) {
   UV fac[MPU_MAX_FACTORS+1];
@@ -2872,6 +2896,155 @@ int is_sum_of_three_squares(UV n) {
   UV tz = valuation(n,2);
   return ((tz & 1) == 1) || (((n>>tz) % 8) != 7);
 }
+
+int cornacchia(UV *x, UV *y, IV D, UV p) {
+  UV a, b, c, d;
+
+  if (kronecker_su(D, p) < 0)  return 0;
+
+  if (!sqrtmodp(&b, (D >= 0) ? p-D : D, p)) return 0;
+  if (2*b < p) b = p - b;
+
+  a = p;
+  c = isqrt(p);
+
+  while (b > c) {
+    d = a;
+    a = b;
+    b = d % a;
+  }
+
+  d = (D >= 0) ? D : -D;
+  a = p - b*b;
+  if ((a % d) != 0) return 0;
+  c = a/d;
+  if (!is_perfect_square(c)) return 0;
+  *x = b;
+  *y = isqrt(c);
+  return 1;
+}
+
+/* is_congruent_number(n).  OEIS A003273. */
+int is_congruent_number(UV n) {
+  UV m8 = n % 8;
+
+  if (n < 13)   return (n >= 5 && n <= 7);
+  if (m8 == 5 || m8 == 6 || m8 == 7)  return 1;
+
+  if (!is_square_free(n)) {
+    UV N, fac[MPU_MAX_FACTORS+1], exp[MPU_MAX_FACTORS+1];
+    int i, nfactors;
+
+    nfactors = factor_exp(n, fac, exp);
+    for (i = 0, N = 1; i < nfactors; i++) {
+      if (exp[i] & 1)  /* Remove all squares */
+        N *= fac[i];
+    }
+    return is_congruent_number(N);
+  }
+
+  if (!(n&1) && is_prime(n>>1)) {
+    UV p = n >> 1, m8 = p % 8;
+    if (m8 == 3 || m8 == 7)     return 1;  /* we don't see these here */
+    if (m8 == 5 || (p%16) == 9) return 0;  /* Bastien 1915 */
+  } else if (is_prime(n)) {
+    UV r, p = n;
+    if (m8 == 3)  return 0;
+    if (m8 == 5 || m8 == 7)  return 1;  /* not seen here, handled earlier */
+
+    /* https://arxiv.org/pdf/2105.01450.pdf, Prop 2.1.2 */
+    if (sqrtmodp(&r, 2, p) && kronecker_uu(1+r, p) == -1)
+      return 0;
+
+#if 0
+    { /* Evink 2021 shows these are equivalent to the sqrt test above */
+      UV a,b;
+      if (1 && cornacchia(&a, &b, 1, p)) {
+        if (p != (a*a+b*b)) croak("bad corn for %lu\n",p);
+        if (sqrmod(a+b,16) != 1)
+          { printf("ret\n"); return 0; }
+      }
+      if (1 && cornacchia(&a, &b, 4, p))
+        if (kronecker_uu(a+2*b, p) == -1)
+          { printf("ret 2\n"); return 0; }
+    }
+#endif
+  } else { /* Some families for performance, see Feng 1996. */
+
+    UV fac[MPU_MAX_FACTORS+1];
+    int i, nfactors;
+
+    nfactors = factor(n, fac);
+
+    if (nfactors == 2) {
+
+      UV p = fac[0], q = fac[1], p8 = fac[0] % 8, q8 = fac[1] % 8;
+
+      if (p8 == 3 && q8 == 3) return 0;
+
+      if (p8 > q8) { UV t;  t=p; p=q; q=t;  t=p8; p8=q8; q8=t; }
+#if 0
+      /* Monsky: https://gdz.sub.uni-goettingen.de/id/PPN266833020_0204 */
+      if (p8 == 3 && q8 == 7) return 1;
+      if (p8 == 3 && q8 == 5) return 1;
+      if (p8 == 1 && q8 == 5 && kronecker_uu(p,q) == -1) return 1;
+      if (p8 == 1 && q8 == 7 && kronecker_uu(p,q) == -1) return 1;
+#endif
+
+      if (p8 == 1 && q8 == 3 && kronecker_uu(p,q) == -1) return 0;
+
+    } else if (nfactors == 3 && fac[0] == 2) {
+
+      UV p = fac[1], q = fac[2], p8 = fac[1] % 8, q8 = fac[2] % 8;
+
+      if (p8 == 5 && q8 == 5) return 0;
+
+      if (p8 > q8) { UV t;  t=p; p=q; q=t;  t=p8; p8=q8; q8=t; }
+#if 0
+      /* Monsky: https://gdz.sub.uni-goettingen.de/id/PPN266833020_0204 */
+      if (p8 == 3 && q8 == 5) return 1;
+      if (p8 == 5 && q8 == 7) return 1;
+      if (p8 == 1 && q8 == 7 && kronecker_uu(p,q) == -1) return 1;
+      if (p8 == 1 && q8 == 3 && kronecker_uu(p,q) == -1) return 1;
+#endif
+      if (p8 == 1 && q8 == 5 && kronecker_uu(p,q) == -1) return 0;
+
+    }
+
+  }
+
+  /* Assume the BSD conjecture.  Tunnell's method. */
+  {
+    UV x, y, z, n8z, mx, sols[2] = {0,0};
+
+    if (n&1) {
+      for (z = 0; 8*z*z <= n; z++) {
+        n8z = n - 8*z*z;
+        mx = isqrt(n8z/2);
+        for (x = 0; x <= mx; x++) {
+          y = n8z - 2*x*x;
+          if (y == 0 || is_perfect_square(y))
+            sols[z&1] += 1 << ((x>0)+(y>0)+(z>0));
+        }
+      }
+    } else {
+      for (z = 0; 8*z*z <= n/2; z++) {
+        n8z = n/2 - 8*z*z;
+        mx = isqrt(n8z);
+        for (x = 0; x <= mx; x++) {
+          y = n8z - x*x;
+          if (y == 0 || is_perfect_square(y))
+            sols[z&1] += 1 << ((x>0)+(y>0)+(z>0));
+        }
+      }
+    }
+    return (sols[0] == sols[1]);
+  }
+
+  return -1;
+}
+
+
 
 
 /* TODO: */

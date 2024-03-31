@@ -78,6 +78,7 @@ extern int is_carmichael(UV n);
 extern UV  is_quasi_carmichael(UV n);  /* Returns number of bases */
 extern UV  pillai_v(UV n);             /* v: v! % n == n-1 && n % v != 1 */
 extern UV  qnr(UV n);
+extern int is_qr(UV a, UV n);          /* kronecker that works for composites */
 extern int is_practical(UV n);
 extern int is_delicate_prime(UV n, uint32_t b);
 
@@ -86,6 +87,7 @@ extern int is_rough(UV n, UV k);
 
 extern int is_sum_of_two_squares(UV n);
 extern int is_sum_of_three_squares(UV n);
+extern int is_congruent_number(UV n);
 
 extern UV debruijn_psi(UV x, UV y);
 extern UV buchstab_phi(UV x, UV y);

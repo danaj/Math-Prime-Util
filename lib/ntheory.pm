@@ -230,6 +230,7 @@ Tags:
   is_even(n)                          return 1 if n is even, 0 otherwise
   is_divisible(n,d)                   return 1 if n divisible by d
   is_congruent(n,c,d)                 return 1 if n is congruent to c mod d
+  is_qr(a,n)                          return 1 if a is quadratic non-res mod n
   is_square(n)                        return 1 if n is a perfect square
   is_power(n)                         return k if n = c^k for integer c
   is_power(n,k)                       return 1 if n = c^k for integer c, k
@@ -249,6 +250,7 @@ Tags:
   is_polygonal(n,k)                   is n a k-polygonal number
   is_polygonal(n,k,\$root)            as above but also set $root
   is_sum_of_squares(n[,k])            is n a sum of k (def 2) squares
+  is_congruent_number(n)              is n a congruent number
   is_fundamental(d)                   is d a fundamental discriminant
   is_totient(n)                       is n = euler_phi(x) for some x
   is_lucky(n)                         is n a lucky number
