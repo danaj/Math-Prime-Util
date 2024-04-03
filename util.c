@@ -3065,24 +3065,24 @@ int is_congruent_number(UV n) {
 
   /* Assume the BSD conjecture.  Tunnell's method. */
   {
-    UV x, y, z, limz, n8z, limx, sols[2] = {0,0};
+    UV x, y, z, limz, limy, limx, n8z, sols[2] = {0,0};
 
     if (n&1) {
       for (z = 0, limz = isqrt(n/8);  z <= limz;  z++) {
         n8z = n - 8*z*z;
-        for (x = 0, limx = isqrt(n8z/2);  x <= limx;  x++) {
-          y = n8z - 2*x*x;
-          if (y == 0 || is_perfect_square(y))
-            sols[z&1] += 1 << ((x>0)+(y>0)+(z>0));
+        for (y = 0, limy = isqrt(n8z/2);  y <= limy;  y++) {
+          x = n8z - 2*y*y;
+          if ((x&1) && is_perfect_square(x))
+            sols[z&1] += 1 << (1+(y>0)+(z>0));
         }
       }
     } else {
       for (z = 0, limz = isqrt((n/2)/8);  z <= limz;  z++) {
         n8z = n/2 - 8*z*z;
-        for (x = 0, limx = isqrt(n8z);  x <= limx;  x++) {
+        for (x = 1, limx = isqrt(n8z);  x <= limx;  x += 2) {
           y = n8z - x*x;
           if (y == 0 || is_perfect_square(y))
-            sols[z&1] += 1 << ((x>0)+(y>0)+(z>0));
+            sols[z&1] += 1 << (1+(y>0)+(z>0));
         }
       }
     }
