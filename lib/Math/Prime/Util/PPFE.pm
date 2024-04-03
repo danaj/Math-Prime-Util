@@ -204,6 +204,7 @@ sub entropy_bytes {
 *valuation = \&Math::Prime::Util::PP::valuation;
 *chinese = \&Math::Prime::Util::PP::chinese;
 *chinese2 = \&Math::Prime::Util::PP::chinese2;
+*cornacchia = \&Math::Prime::Util::PP::cornacchia;
 *primorial = \&Math::Prime::Util::PP::primorial;
 *pn_primorial = \&Math::Prime::Util::PP::pn_primorial;
 *divisors = \&Math::Prime::Util::PP::divisors;

@@ -1515,7 +1515,7 @@ vecmex(...)
   PREINIT:
     char *setv;
     int i, status = 1;
-    UV min, ret, n;
+    UV min, n;
     uint32_t mask;
   PPCODE:
     if (ix == 0) {
@@ -1597,6 +1597,20 @@ chinese(...)
       (void)_vcallsubn(aTHX_ GIMME_V, VCALL_PP, "chinese2", 2, 0);
     }
     return; /* skip implicit PUTBACK */
+
+void cornacchia(IN SV* svd, IN SV* svn)
+  PREINIT:
+    UV d, n, x, y;
+  PPCODE:
+    if (_validate_and_set(&d, aTHX_ svd, IFLAG_POS) &&
+        _validate_and_set(&n, aTHX_ svn, IFLAG_POS) ) {
+      if (!cornacchia(&x, &y, d, n))  XSRETURN_UNDEF;
+      PUSHs(sv_2mortal(newSVuv( x )));
+      PUSHs(sv_2mortal(newSVuv( y )));
+    } else {
+      _vcallsubn(aTHX_ GIMME_V, VCALL_PP, "cornacchia", items, 0);
+      return;
+    }
 
 void lucas_sequence(...)
   PREINIT:

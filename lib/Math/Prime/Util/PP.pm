@@ -5741,7 +5741,7 @@ sub mulsubmod {
 
 sub _negmod {
   my($a,$n) = @_;
-  $a = Mmodint($a,$n) if $a >= $n;
+  $a = Mmodint($a,$n) if $a >= $n || $a < 0;;
   return ($a) ? ($n-$a) : 0;
 }
 
@@ -5928,8 +5928,49 @@ sub is_sum_of_squares {
   1;
 }
 
+sub cornacchia {
+  my($d, $n) = @_;
+  _validate_positive_integer($d);
+  _validate_positive_integer($n);
+
+  return (0,0) if $n == 0;
+  if ($d == 0) {
+    return undef unless _is_perfect_square($n);
+    return (Msqrtint($n), 0);
+  }
+
+  if (Mis_prime($n)) {
+    my ($u,$rk);
+    my $negd = _negmod($d,$n);
+    return undef if Mkronecker($negd, $n) == -1;
+    $u = _sqrtmod_prime($negd, $n);
+    return undef unless defined $u;
+    $u = $n-$u if $u > ($n>>1);
+    {
+      my $l = Msqrtint($n);
+      my($a, $b) = ($n, $u);
+      while ($a > $l) {
+        ($a,$b) = ($b, $a % $b);
+      }
+      $rk = $a;
+    }
+    $u = _negmod(Mmulmod($rk,$rk,$n),$n);
+    $u = (($u % $d) == 0) ? Mdivint($u,$d) : 0;
+    return ($rk, Msqrtint($u)) if $u && _is_perfect_square($u);
+    return undef;
+  }
+
+  my $limu = Msqrtint(Mdivint($n,$d));
+  for my $u (0 .. $limu) {
+    my $t = $n - Mvecprod($d,$u,$u);
+    return (Msqrtint($t), $u) if _is_perfect_square($t);
+  }
+  undef;
+}
+
 sub is_congruent_number {
   my($n) = @_;
+  _validate_positive_integer($n);
 
   return ($n >= 5 && $n <= 7) if $n < 13;
 

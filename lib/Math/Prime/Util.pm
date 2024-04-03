@@ -93,7 +93,7 @@ our @EXPORT_OK =
       gcd lcm factor factor_exp divisors valuation hammingweight
       todigits fromdigits todigitstring sumdigits
       tozeckendorf fromzeckendorf
-      sqrtmod allsqrtmod rootmod allrootmod
+      sqrtmod allsqrtmod rootmod allrootmod cornacchia
       invmod addmod submod mulmod divmod powmod muladdmod mulsubmod
       vecsum vecmin vecmax vecprod vecreduce vecextract vecequal
       vecany vecall vecnotall vecnone vecfirst vecfirstidx vecmex vecpmex
@@ -3916,6 +3916,21 @@ rational right triangle, and 0 otherwise.
 
 This function answers the B<congruent number problem> using Tunnell's theorem
 which relies on the Birch Swinnerton-Dyer conjecture.
+
+=head2 cornacchia
+
+Given a non-negative integer C<d> and a positive integer C<n>, finds
+solutions C<(x,y)> to the equation C<x^2 + d y^2 = n>.  C<undef> is
+returned if no solution exists.
+
+In the case of C<n> a prime, this is done using Cornacchia's algorithm.
+
+For non-prime C<n>, we use a combination of Cornacchia-Smith on all roots,
+as well as a loop to find solutions in the harder cases.  This means we
+will always return a solution.
+
+There will often be multiple solutions, but only one is returned.
+
 
 =head2 prime_bigomega
 

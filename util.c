@@ -1257,7 +1257,7 @@ int is_qr(UV a, UV n) {
     res = (kronecker_uu(a,n) == 1);
   } else {
     UV r, fac[MPU_MAX_FACTORS+1], exp[MPU_MAX_FACTORS+1];
-    int i, nfactors, res;
+    int i, nfactors;
 
     nfactors = factor_exp(n, fac, exp);
     for (i = 0, res = 1;  res && i < nfactors;  i++) {
@@ -2897,31 +2897,81 @@ int is_sum_of_three_squares(UV n) {
   return ((tz & 1) == 1) || (((n>>tz) % 8) != 7);
 }
 
-int cornacchia(UV *x, UV *y, IV D, UV p) {
-  UV a, b, c, d;
-
-  if (kronecker_su(D, p) < 0)  return 0;
-
-  if (!sqrtmodp(&b, (D >= 0) ? p-D : D, p)) return 0;
-  if (2*b < p) b = p - b;
-
-  a = p;
-  c = isqrt(p);
-
-  while (b > c) {
-    d = a;
+static UV halfgcd(UV m, UV u) {
+  UV l = isqrt(m);
+  UV a = m, b = u;
+  while (a > l) {
+    UV r = a % b;
     a = b;
-    b = d % a;
+    b = r;
+  }
+  return a;
+}
+
+/* Given an initial root, solve */
+static int corn_one(UV *x, UV *y, UV u, UV d, UV p) {
+  UV rk;
+
+  if (u > p/2) u = p-u;
+  rk = halfgcd(p, u);
+  u = negmod(sqrmod(rk,p),p);
+  u = (u % d == 0)  ?  u/d  :  0;
+  if (u && is_perfect_square(u)) {
+    *x = rk;
+    *y = isqrt(u);
+    return 1;
+  }
+  return 0;
+}
+
+  /* Cornacchia-Smith run over each root. */
+static int corn_all(UV *x, UV *y, UV d, UV p) {
+  UV negd = negmod(d,p),  i, nroots, *roots;
+  int success = 0;
+  roots = allsqrtmod(&nroots, negd, p);
+  if (roots) {
+    for (i = 0; i < nroots/2 && !success; i++)
+      success = corn_one(x, y, roots[i], d, p);
+    Safefree(roots);
+  }
+  return success;
+}
+
+int cornacchia(UV *x, UV *y, UV d, UV p) {
+  UV u, negd = negmod(d, p), limu;
+
+  if (p == 0) {
+    *x = *y = 0;
+    return 1;
   }
 
-  d = (D >= 0) ? D : -D;
-  a = p - b*b;
-  if ((a % d) != 0) return 0;
-  c = a/d;
-  if (!is_perfect_square(c)) return 0;
-  *x = b;
-  *y = isqrt(c);
-  return 1;
+  if (d == 0) {
+    if (!is_perfect_square(p))  return 0;
+    *x = isqrt(p);  *y = 0;
+    return 1;
+  }
+
+  if (is_prime(p)) {
+    if (kronecker_uu(negd,p) == -1) return 0;
+    if (!sqrtmodp(&u, negd, p))     return 0;
+    return corn_one(x, y, u, d, p);
+  }
+
+  if (((p >> 31) >> 22) && kronecker_uu(negd,p) != -1 && corn_all(x, y, d, p))
+    return 1;
+
+  /* Loop through all valid integers until one is found.
+   * Until p is quite large, this is faster than using allsqrtmod.
+   * It also finds many solutions for composites.
+   */
+  for (u = 0, limu = isqrt(p/d);  u <= limu;  u++) {
+    UV t = p - d*u*u;
+    if (is_perfect_square(t)) {
+      *x = isqrt(t);  *y = u;  return 1;
+    }
+  }
+
+  return 0;
 }
 
 /* is_congruent_number(n).  OEIS A003273. */
@@ -2972,7 +3022,7 @@ int is_congruent_number(UV n) {
   } else { /* Some families for performance, see Feng 1996. */
 
     UV fac[MPU_MAX_FACTORS+1];
-    int i, nfactors;
+    int nfactors;
 
     nfactors = factor(n, fac);
 
@@ -3015,23 +3065,21 @@ int is_congruent_number(UV n) {
 
   /* Assume the BSD conjecture.  Tunnell's method. */
   {
-    UV x, y, z, n8z, mx, sols[2] = {0,0};
+    UV x, y, z, limz, n8z, limx, sols[2] = {0,0};
 
     if (n&1) {
-      for (z = 0; 8*z*z <= n; z++) {
+      for (z = 0, limz = isqrt(n/8);  z <= limz;  z++) {
         n8z = n - 8*z*z;
-        mx = isqrt(n8z/2);
-        for (x = 0; x <= mx; x++) {
+        for (x = 0, limx = isqrt(n8z/2);  x <= limx;  x++) {
           y = n8z - 2*x*x;
           if (y == 0 || is_perfect_square(y))
             sols[z&1] += 1 << ((x>0)+(y>0)+(z>0));
         }
       }
     } else {
-      for (z = 0; 8*z*z <= n/2; z++) {
+      for (z = 0, limz = isqrt((n/2)/8);  z <= limz;  z++) {
         n8z = n/2 - 8*z*z;
-        mx = isqrt(n8z);
-        for (x = 0; x <= mx; x++) {
+        for (x = 0, limx = isqrt(n8z);  x <= limx;  x++) {
           y = n8z - x*x;
           if (y == 0 || is_perfect_square(y))
             sols[z&1] += 1 << ((x>0)+(y>0)+(z>0));

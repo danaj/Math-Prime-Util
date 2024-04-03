@@ -88,6 +88,7 @@ Revision history for Perl module Math::Prime::Util
     - mulsubmod(a, b, c, n)           a * b - c mod n
     - rootmod(a, k, n)                modular k-th root
     - allrootmod(a,k,n)               all k-th roots of a (mod n)
+    - cornacchia(d,n)                 find x,y for x^2 + d * y^2 = n
     - vecequal(\@a, \@b)              compare two arrays for equality
     - tozeckendorf(n)                 Zeckendorf binary string from n
     - fromzeckendorf(str)             n from Zeckendorf binary string

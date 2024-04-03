@@ -208,6 +208,7 @@ t/25-lucas_sequences.t
 t/26-binomialmod.t
 t/26-combinatorial.t
 t/26-congruentnum.t
+t/26-cornacchia.t
 t/26-delicateprime.t
 t/26-digits.t
 t/26-isalmostprime.t

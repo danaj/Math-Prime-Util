@@ -311,6 +311,7 @@ Tags:
   rootmod(a,k,n)                      modular k-th root
   allsqrtmod(a,n)                     list of all modular square roots
   allrootmod(a,k,n)                   list of all modular k-th roots
+  cornacchia(d,n)                     find x,y for x^2 + d * y^2 = n
   prime_bigomega(n)                   number of prime factors
   prime_omega(n)                      number of distinct prime factors
   moebius(n)                          Moebius function of n

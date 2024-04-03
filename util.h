@@ -87,6 +87,7 @@ extern int is_rough(UV n, UV k);
 
 extern int is_sum_of_two_squares(UV n);
 extern int is_sum_of_three_squares(UV n);
+extern int cornacchia(UV *x, UV *y, UV d, UV p);
 extern int is_congruent_number(UV n);
 
 extern UV debruijn_psi(UV x, UV y);

@@ -87,7 +87,7 @@ my @functions =  qw(
       gcd lcm factor factor_exp divisors valuation hammingweight
       todigits fromdigits todigitstring sumdigits
       tozeckendorf fromzeckendorf
-      sqrtmod allsqrtmod rootmod allrootmod
+      sqrtmod allsqrtmod rootmod allrootmod cornacchia
       invmod addmod submod mulmod divmod powmod muladdmod mulsubmod
       vecsum vecmin vecmax vecprod vecreduce vecextract vecequal
       vecany vecall vecnotall vecnone vecfirst vecfirstidx vecmex vecpmex
