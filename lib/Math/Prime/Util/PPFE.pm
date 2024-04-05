@@ -223,6 +223,7 @@ sub entropy_bytes {
 *add1int = \&Math::Prime::Util::PP::add1int;
 *sub1int = \&Math::Prime::Util::PP::sub1int;
 
+*negmod = \&Math::Prime::Util::PP::negmod;
 *sqrtmod = \&Math::Prime::Util::PP::sqrtmod;
 *allsqrtmod = \&Math::Prime::Util::PP::allsqrtmod;
 *rootmod = \&Math::Prime::Util::PP::rootmod;

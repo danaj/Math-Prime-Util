@@ -299,6 +299,7 @@ Tags:
   valuation(n,k)                      number of times n is divisible by k
   hammingweight(n)                    population count (# of binary 1s)
   kronecker(a,b)                      Kronecker (Jacobi) symbol
+  negmod(a,n)                         -a mod n
   addmod(a,b,n)                       a + b mod n
   submod(a,b,n)                       a - b mod n
   mulmod(a,b,n)                       a * b mod n

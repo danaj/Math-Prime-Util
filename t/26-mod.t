@@ -3,7 +3,7 @@ use strict;
 use warnings;
 
 use Test::More;
-use Math::Prime::Util qw/invmod sqrtmod allsqrtmod rootmod allrootmod addmod submod mulmod muladdmod mulsubmod divmod powmod/;
+use Math::Prime::Util qw/negmod invmod sqrtmod allsqrtmod rootmod allrootmod addmod submod mulmod muladdmod mulsubmod divmod powmod/;
 use Math::BigInt try=>"GMP,Pari";
 
 my $extra = defined $ENV{EXTENDED_TESTING} && $ENV{EXTENDED_TESTING};
@@ -134,7 +134,8 @@ my @rootmods = (
 );
 
 plan tests => 0
-            + 5 + scalar(@invmods)
+            + 8                      # negmod
+            + 5 + scalar(@invmods)   # invmod
             + scalar(@sqrtmods)*2    # sqrtmod / allsqrtmod
             + 5*2
             + 1                      # addmod
@@ -150,6 +151,19 @@ plan tests => 0
             + scalar(@rootmods)*2    # allrootmod
             + 1                      # more rootmod
             + 0;
+
+###### negmod
+
+# For n > 0, negmod(a,n) = modint(-a,n).
+# For all inputs, negmod(a,n) = $n ? submod(0, modint(a,n), n) : undef;
+is(negmod(0,0), undef, "negmod(0,0) = undef");
+is(negmod(1,0), undef, "negmod(1,0) = undef");
+is(negmod(0,1), 0, "negmod(0,1) = 0");
+is(negmod(100,1), 0, "negmod(100,1) = 0");
+is(negmod(100, 123), 23, "negmod(100, 123) = 23");
+is(negmod(100,-123), 23, "negmod(100,-123) = 23");
+is(negmod(10000, 123), 86, "negmod(10000, 123) = 86");
+is(negmod(10000,-123), 86, "negmod(10000,-123) = 86");
 
 ###### invmod
 ok(!eval { invmod(undef,11); }, "invmod(undef,11)");

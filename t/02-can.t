@@ -88,7 +88,7 @@ my @functions =  qw(
       todigits fromdigits todigitstring sumdigits
       tozeckendorf fromzeckendorf
       sqrtmod allsqrtmod rootmod allrootmod cornacchia
-      invmod addmod submod mulmod divmod powmod muladdmod mulsubmod
+      negmod invmod addmod submod mulmod divmod powmod muladdmod mulsubmod
       vecsum vecmin vecmax vecprod vecreduce vecextract vecequal
       vecany vecall vecnotall vecnone vecfirst vecfirstidx vecmex vecpmex
       moebius mertens liouville sumliouville prime_omega prime_bigomega

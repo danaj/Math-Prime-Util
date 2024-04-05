@@ -94,7 +94,7 @@ our @EXPORT_OK =
       todigits fromdigits todigitstring sumdigits
       tozeckendorf fromzeckendorf
       sqrtmod allsqrtmod rootmod allrootmod cornacchia
-      invmod addmod submod mulmod divmod powmod muladdmod mulsubmod
+      negmod invmod addmod submod mulmod divmod powmod muladdmod mulsubmod
       vecsum vecmin vecmax vecprod vecreduce vecextract vecequal
       vecany vecall vecnotall vecnone vecfirst vecfirstidx vecmex vecpmex
       moebius mertens liouville sumliouville prime_omega prime_bigomega
@@ -4807,6 +4807,12 @@ an error while we return undef.
   A modulus of zero returns undef.
   A modulus of 1 will return 0.
   If a modular result doesn't exist, we return undef.
+
+=head2 negmod
+
+Given two integers C<a> and C<n>, return C<-a mod |n|>.
+
+This is similar to C<n ? modint(-a, absint(n)) : undef>.
 
 =head2 addmod
 

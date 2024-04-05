@@ -2754,6 +2754,7 @@ void invmod(IN SV* sva, IN SV* svn)
   ALIAS:
     znorder = 1
     sqrtmod = 2
+    negmod = 3
   PREINIT:
     int astatus, nstatus;
     UV a, n, r, retok;
@@ -2768,8 +2769,9 @@ void invmod(IN SV* sva, IN SV* svn)
       switch (ix) {
         case 0:  retok = r = modinverse(a, n); break;
         case 1:  retok = r = znorder(a, n);    break;
-        case 2:
-        default: retok = sqrtmod(&r, a, n); break;
+        case 2:  retok = sqrtmod(&r, a, n);    break;
+        case 3:
+        default: r = negmod(a, n); break;
       }
       if (retok == 0) XSRETURN_UNDEF;
       XSRETURN_UV(r);
@@ -2778,8 +2780,9 @@ void invmod(IN SV* sva, IN SV* svn)
     switch (ix) {
       case 0:  _vcallsub_with_gmp(0.20,"invmod"); break;
       case 1:  _vcallsub_with_gmp(0.22,"znorder"); break;
-      case 2:
-      default: _vcallsub_with_gmp(0.53,"sqrtmod");  break;
+      case 2:  _vcallsub_with_gmp(0.53,"sqrtmod"); break;
+      case 3:
+      default: _vcallsub_with_gmp(0.00,"negmod");  break;
     }
     objectify_result(aTHX_ ST(0), ST(0));
     return;

@@ -5739,9 +5739,26 @@ sub mulsubmod {
   $ret;
 }
 
+sub negmod {
+  my($a,$n) = @_;
+  _validate_integer($a);
+  _validate_integer($n);
+
+  return undef if $n == 0;   # standard mod behavior with n = 0
+  $n = -$n if $n < 0;        # we use |n|, unlike modint
+
+  Mmodint(-$a,$n);
+
+  #Msubmod(0, Mmodint($a,$n), $n);
+
+  #$a = Mmodint($a,$n) if $a >= $n || $a < 0;
+  #return ($a) ? ($n-$a) : 0;
+}
+
 sub _negmod {
   my($a,$n) = @_;
-  $a = Mmodint($a,$n) if $a >= $n || $a < 0;;
+  return undef if $n == 0;
+  $a = Mmodint($a,$n) if $a >= $n || $a < 0;
   return ($a) ? ($n-$a) : 0;
 }
 
