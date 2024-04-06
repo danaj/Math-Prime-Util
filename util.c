@@ -2897,6 +2897,7 @@ int is_sum_of_three_squares(UV n) {
   return ((tz & 1) == 1) || (((n>>tz) % 8) != 7);
 }
 
+#if 0  /* https://eprint.iacr.org/2023/807.pdf */
 static UV halfgcd(UV m, UV u) {
   UV l = isqrt(m);
   UV a = m, b = u;
@@ -2910,10 +2911,7 @@ static UV halfgcd(UV m, UV u) {
 
 /* Given an initial root, solve */
 static int corn_one(UV *x, UV *y, UV u, UV d, UV p) {
-  UV rk;
-
-  if (u > p/2) u = p-u;
-  rk = halfgcd(p, u);
+  UV rk = halfgcd(p, u);
   u = negmod(sqrmod(rk,p),p);
   u = (u % d == 0)  ?  u/d  :  0;
   if (u && is_perfect_square(u)) {
@@ -2923,6 +2921,23 @@ static int corn_one(UV *x, UV *y, UV u, UV d, UV p) {
   }
   return 0;
 }
+#else
+/* Given an initial root, solve.  Algorithm 2.3.12 of C&P */
+static int corn_one(UV *x, UV *y, UV u, UV d, UV p) {
+  UV a = p;
+  UV b = (2*u < p) ? p-u : u;
+  UV c = isqrt(p);
+  while (b > c) {  UV t = a % b; a = b; b = t;  }
+  u = p - b*b;
+  u = (u % d == 0)  ?  u/d  :  0;
+  if (u && is_perfect_square(u)) {
+    *x = b;
+    *y = isqrt(u);
+    return 1;
+  }
+  return 0;
+}
+#endif
 
   /* Cornacchia-Smith run over each root. */
 static int corn_all(UV *x, UV *y, UV d, UV p) {
