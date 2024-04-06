@@ -3919,9 +3919,8 @@ which relies on the Birch Swinnerton-Dyer conjecture.
 
 =head2 cornacchia
 
-Given a non-negative integer C<d> and a positive integer C<n>, finds
-solutions C<(x,y)> to the equation C<x^2 + d y^2 = n>.  C<undef> is
-returned if no solution exists.
+Given non-negative integers C<d> and C<n>, finds solutions C<(x,y)> to the
+equation C<x^2 + d y^2 = n>.  C<undef> is returned if no solution exists.
 
 In the case of C<n> a prime, this is done using Cornacchia's algorithm.
 
