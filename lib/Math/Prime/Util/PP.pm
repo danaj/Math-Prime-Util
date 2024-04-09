@@ -1667,25 +1667,31 @@ sub sumpowerful {
 }
 
 
-# Generate k-powerful numbers.  See Trizen, Feb 2020.
+# Generate k-powerful numbers.  See Trizen, Feb 2020 and Feb 2024
 
 sub _pcg {
   my($lo, $hi, $k, $m, $r, $pn) = @_;
+  my($beg,$end) = (1, Mrootint(Mdivint($hi,$m), $r));
 
-  if ($r < $k) {
-    push @$pn, $m if $m >= $lo;
-  } else {
-    my $rr = Mrootint(Mdivint($hi,$m), $r);
-    for my $v (1 .. $rr) {
-      if ($r > $k) {
-        next unless Mgcd($m, $v) == 1;
-        next unless Mis_square_free($v);
+  if ($r <= $k) {
+    if ($lo > $m) {
+      my $lom = Mcdivint($lo,$m);
+      if ( ($lom >> $r) == 0) {
+        $beg = 2;
+      } else {
+        $beg = Mrootint($lom,$r);
+        $beg++ if Mpowint($beg,$r) != $lom;
       }
-      _pcg($lo, $hi, $k, $m * Mpowint($v,$r), $r-1, $pn);
     }
+    push @$pn, $m * Mpowint($_,$r) for ($beg .. $end);
+    return;
+  }
+
+  for my $v ($beg .. $end) {
+    _pcg($lo, $hi, $k, $m * Mpowint($v,$r), $r-1, $pn)
+       if Mgcd($m,$v) == 1 && Mis_square_free($v);
   }
 }
-
 sub powerful_numbers {
   my($lo, $hi, $k) = @_;
   if (defined $k) { _validate_positive_integer($k); } else { $k = 2; }

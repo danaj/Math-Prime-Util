@@ -283,23 +283,23 @@ UV sumpowerful(UV n, UV k)
   return sum;
 }
 
-
-static void _pcg(UV lo, UV n, UV k, UV m, UV r,   UV *pn, UV *npn)
+static void _pcg(UV lo, UV hi, UV k, UV m, UV r,   UV *pn, UV *npn)
 {
-  if (r < k) {
-    if (m >= lo) {
-      pn[*npn] = m;
-      *npn += 1;
+  UV v, *pnptr = pn + *npn, beg = 1, end = rootint(hi/m,r);
+  if (r > k) {
+    for (v = beg; v <= end; v++) {
+      if (gcd_ui(m,v) == 1 && is_square_free(v))
+        _pcg(lo, hi, k, m*ipow(v,r), r-1, pn, npn);
     }
   } else {
-    UV v, rr = rootint(n/m,r);
-    for (v = 1; v <= rr; v++) {
-      if (r > k) {
-        if (gcd_ui(m, v) != 1) continue;
-        if (!is_square_free(v)) continue;
-      }
-      _pcg(lo, n, k, m*ipow(v,r), r-1, pn, npn);
+    if (lo > m) {
+      UV lom = (lo/m)+!!(lo%m);   /* ceildiv(lo,m) */
+      beg = rootint(lom, r);
+      if (ipow(beg,r) != lom) beg++;
     }
+    for (v = beg; v <= end; v++)
+      *pnptr++ = m * ipow(v,r);
+    *npn += end-beg+1;
   }
 }
 
