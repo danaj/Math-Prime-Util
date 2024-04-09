@@ -117,6 +117,7 @@ sub entropy_bytes {
 *sieve_prime_cluster = \&Math::Prime::Util::PP::sieve_prime_cluster;
 *sieve_range = \&Math::Prime::Util::PP::sieve_range;
 *lucky_numbers = \&Math::Prime::Util::PP::lucky_numbers;
+*powerful_numbers = \&Math::Prime::Util::PP::powerful_numbers;
 
 *prime_power_count = \&Math::Prime::Util::PP::prime_power_count;
 *twin_prime_count = \&Math::Prime::Util::PP::twin_prime_count;

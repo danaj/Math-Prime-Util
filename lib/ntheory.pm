@@ -361,6 +361,7 @@ Tags:
   nth_lucky_lower(n)                  fast lower bound for nth lucky number
   nth_lucky_upper(n)                  fast upper bound for nth lucky number
   nth_lucky_approx(n)                 fast approximate nth lucky number
+  powerful_numbers([lo,]hi[,k])       array ref of k-powerful lo to hi
   powerful_count(n[,k])               count of k-powerful numbers <= n
   sumpowerful(n[,k])                  sum of k-powerful numbers <= n
   nth_powerful(n[,k])                 the nth k-powerful number

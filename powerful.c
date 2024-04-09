@@ -282,3 +282,50 @@ UV sumpowerful(UV n, UV k)
   Safefree(isf);
   return sum;
 }
+
+
+static void _pcg(UV lo, UV n, UV k, UV m, UV r,   UV *pn, UV *npn)
+{
+  if (r < k) {
+    if (m >= lo) {
+      pn[*npn] = m;
+      *npn += 1;
+    }
+  } else {
+    UV v, rr = rootint(n/m,r);
+    for (v = 1; v <= rr; v++) {
+      if (r > k) {
+        if (gcd_ui(m, v) != 1) continue;
+        if (!is_square_free(v)) continue;
+      }
+      _pcg(lo, n, k, m*ipow(v,r), r-1, pn, npn);
+    }
+  }
+}
+
+UV* powerful_numbers_range(UV* npowerful, UV lo, UV hi, UV k)
+{
+  UV *pn, npn, i;
+
+  /* Like powerful_count, we ignore 0. */
+  if (lo < 1) lo = 1;
+
+  if (hi < lo || (lo == hi && !is_powerful(lo,k))) {
+    pn = 0;
+    npn = 0;
+  } else if (k <= 1) {
+    npn = hi-lo+1;
+    New(0, pn, npn, UV);
+    for (i = lo; i <= hi; i++)
+      pn[i-lo] = i;
+  } else {
+    npn = powerful_count(hi,k) - ((lo <= 1) ? 0 : powerful_count(lo-1,k));
+    New(0, pn, npn, UV);
+    i = 0;
+    _pcg(lo, hi, k, 1, 2*k-1, pn, &i);
+    MPUassert(i == npn, "Number of powerful numbers generated != count");
+    qsort(pn, npn, sizeof(UV), _numcmp);
+  }
+  *npowerful = npn;
+  return pn;
+}

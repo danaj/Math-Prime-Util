@@ -4,7 +4,7 @@ use warnings;
 
 use Test::More;
 use Math::Prime::Util qw/is_powerful powerful_count nth_powerful sumpowerful
-                         factor_exp vecall vecnone/;
+                         powerful_numbers factor_exp vecall vecnone/;
 
 my $usexs = Math::Prime::Util::prime_get_config->{'xs'};
 my $extra = defined $ENV{EXTENDED_TESTING} && $ENV{EXTENDED_TESTING};
@@ -12,7 +12,8 @@ my $extra = defined $ENV{EXTENDED_TESTING} && $ENV{EXTENDED_TESTING};
 plan tests => 3+1+10+4+2+1       # is_powerful
             + 5 + 2*$extra       # powerful_count
             + 4                  # nth_powerful
-            + 6;                 # sumpowerful
+            + 6                  # sumpowerful
+            + 10;                # powerful_numbers
 
 {
   my @exp = map { fac_is_powerful($_, 2) } 0 .. 258;
@@ -113,6 +114,20 @@ is( sumpowerful("1234567890123456",1), "762078937661941480719405753696", "sumpow
 #  skip "Skipping sumpowerful(1234567890123456,2)",1 unless $extra;
 #  is( sumpowerful("1234567890123456",2), "31374760178828970927228", "sumpowerful(1234567890123456,2)" );
 #}
+
+###### powerful_numbers
+is_deeply( powerful_numbers(40,180,3), [64,81,125,128], "powerful_numbers(40,180,3)");
+is_deeply( powerful_numbers(9,20,0), [9..20], "powerful_numbers(9,20,0) = 9..20");
+is_deeply( powerful_numbers(9,20,1), [9..20], "powerful_numbers(9,20,1) = 9..20");
+is_deeply( powerful_numbers(120), [1,4,8,9,16,25,27,32,36,49,64,72,81,100,108], "powerful_numbers(120)");
+is_deeply( powerful_numbers(9,120), [9,16,25,27,32,36,49,64,72,81,100,108], "powerful_numbers(9,120)");
+is_deeply( powerful_numbers(9,200,2), [9,16,25,27,32,36,49,64,72,81,100,108,121,125,128,144,169,196,200], "powerful_numbers(9,200,2)");
+is_deeply( powerful_numbers(0,200,3), [1,8,16,27,32,64,81,125,128], "powerful_numbers(0,200,3)");
+is_deeply( powerful_numbers(1,200,4), [1,16,32,64,81,128], "powerful_numbers(1,200,4)");
+is_deeply( powerful_numbers(1,1000,5), [1,32,64,128,243,256,512,729], "powerful_numbers(1,1000,5)");
+is_deeply( powerful_numbers(1000000000000, 1010000000000,5),
+           [1000000000000,1004193907488,1007769600000,1008394404608],
+           "powerful_numbers(1e12,1e12+1e10,5)");
 
 
 sub fac_is_powerful {

@@ -1105,6 +1105,29 @@ lucky_numbers(IN SV* svlo, IN SV* svhi = 0)
     }
     return;
 
+void powerful_numbers(IN SV* svlo, IN SV* svhi = 0, IN UV k = 2)
+  PREINIT:
+    AV* av;
+    UV lo = 1, hi, i, npowerful, *powerful;
+  PPCODE:
+    if ((items == 1 && _validate_and_set(&hi, aTHX_ svlo, IFLAG_POS)) ||
+        (items >= 2 && _validate_and_set(&lo, aTHX_ svlo, IFLAG_POS) && _validate_and_set(&hi, aTHX_ svhi, IFLAG_POS))) {
+      av = newAV();
+      {
+        SV * retsv = sv_2mortal(newRV_noinc( (SV*) av ));
+        PUSHs(retsv);
+        PUTBACK;
+        SP = NULL; /* never use SP again, poison */
+      }
+      powerful = powerful_numbers_range(&npowerful, lo, hi, k);
+      for (i = 0; i < npowerful; i++)
+        av_push(av,newSVuv(powerful[i]));
+      Safefree(powerful);
+    } else {
+      _vcallsub_with_pp("powerful_numbers");
+    }
+    return;
+
 void
 sieve_range(IN SV* svn, IN UV width, IN UV depth)
   PREINIT:

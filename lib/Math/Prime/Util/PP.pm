@@ -1667,6 +1667,46 @@ sub sumpowerful {
 }
 
 
+# Generate k-powerful numbers.  See Trizen, Feb 2020.
+
+sub _pcg {
+  my($lo, $hi, $k, $m, $r, $pn) = @_;
+
+  if ($r < $k) {
+    push @$pn, $m if $m >= $lo;
+  } else {
+    my $rr = Mrootint(Mdivint($hi,$m), $r);
+    for my $v (1 .. $rr) {
+      if ($r > $k) {
+        next unless Mgcd($m, $v) == 1;
+        next unless Mis_square_free($v);
+      }
+      _pcg($lo, $hi, $k, $m * Mpowint($v,$r), $r-1, $pn);
+    }
+  }
+}
+
+sub powerful_numbers {
+  my($lo, $hi, $k) = @_;
+  if (defined $k) { _validate_positive_integer($k); } else { $k = 2; }
+  if (defined $hi) {
+    _validate_positive_integer($lo);
+  } else {
+    ($lo, $hi) = (1, $lo);
+  }
+  _validate_positive_integer($hi);
+  return [] if $hi < $lo;
+  return [$lo .. $hi] if $k <= 1;
+
+  my $npn = Math::Prime::Util::powerful_count($hi,$k);
+  $npn -= Math::Prime::Util::powerful_count($lo-1, $k) if $lo > 1;
+
+  my $pn = [];
+  _pcg($lo, $hi, $k, 1, 2*$k-1, $pn);
+  $pn = [sort { $a <=> $b } @$pn];
+  $pn;
+}
+
 sub is_powerfree {
   my($n, $k) = @_;
   $n = -$n if defined $n && $n < 0;

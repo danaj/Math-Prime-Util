@@ -11,4 +11,6 @@ extern UV nth_powerful(UV n, UV k);
 
 extern UV sumpowerful(UV n, UV k);
 
+extern UV* powerful_numbers_range(UV* npowerful, UV lo, UV hi, UV k);
+
 #endif

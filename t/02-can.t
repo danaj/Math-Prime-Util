@@ -61,7 +61,7 @@ my @functions =  qw(
       ramanujan_prime_count_lower ramanujan_prime_count_upper
       nth_ramanujan_prime nth_ramanujan_prime_approx
       nth_ramanujan_prime_lower nth_ramanujan_prime_upper
-      powerful_count nth_powerful sumpowerful
+      powerful_count nth_powerful sumpowerful powerful_numbers
       prime_power_count prime_power_count_approx
       prime_power_count_lower prime_power_count_upper
       nth_prime_power nth_prime_power_approx

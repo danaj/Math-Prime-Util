@@ -67,7 +67,7 @@ our @EXPORT_OK =
       ramanujan_prime_count_lower ramanujan_prime_count_upper
       nth_ramanujan_prime nth_ramanujan_prime_approx
       nth_ramanujan_prime_lower nth_ramanujan_prime_upper
-      powerful_count nth_powerful sumpowerful
+      powerful_count nth_powerful sumpowerful powerful_numbers
       prime_power_count prime_power_count_approx
       prime_power_count_lower prime_power_count_upper
       nth_prime_power nth_prime_power_approx
@@ -4416,6 +4416,34 @@ With C<k=2> this corresponds to Pari's C<ispowerful> function.
 While we can easily code this as a one line function using
 L</vecall> and L</factor_exp>, this is 10x faster and avoids fully
 factoring the input in most cases.
+
+=head2 powerful_numbers
+
+  my $arrayref_pn1 = powerful_numbers(20);      # 1,4,8,9,16
+  my $arrayref_pn2 = powerful_numbers(20,40);   # 25,27,32,36
+  my $arrayref_pn3 = powerful_numbers(1,70,3);  # 1,8,16,27,32,64
+
+Given a single non-negative integer C<n>, returns an array
+reference with all 2-powerful integers from C<1> to C<n> inclusive.
+
+Given two non-negative integers C<lo> and C<hi>, returns an array
+reference with all 2-powerful integers from C<lo> to C<hi> inclusive.
+
+Given three non-negative integers C<lo>, C<hi>, and C<k>, returns an array
+reference with all C<k>-powerful integers from C<lo> to C<hi> inclusive.
+
+  # Alternate solutions for values 1-n
+
+  # Simple, but very slow for high $n.
+  for (1..$n) { say if is_powerful($_,$k); }
+
+  # Not so bad, especially for high $k.
+  for (1..powerful_count($n,$k)) { say nth_powerful($_,$k); }
+
+  # Best by far.
+  say for @{powerful_numbers(1,$n,$k)};
+
+In this function, C<0> is never included in the returned list.
 
 =head2 powerful_count
 
