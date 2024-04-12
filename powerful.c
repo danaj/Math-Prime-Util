@@ -17,7 +17,8 @@ int is_powerful(UV n, UV k) {
   UV pk;
   int res;
 
-  if (n <= 1 || k <= 1) return 1;
+  if (n <= 1) return (n==1);
+  if (k <= 1) return 1;
 
   if (!(n&1)) { /* Check and remove all multiples of 2 */
     if (n & ((UVCONST(1) << k)-1)) return 0;

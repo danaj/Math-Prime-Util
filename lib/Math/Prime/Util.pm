@@ -4405,13 +4405,16 @@ but shortcuts are taken to avoid fully factoring if possible.
 
 Given an integer C<n> and a non-negative integer C<k>,
 returns C<1> if C<|n|> is C<k>-powerful, and C<0> otherwise.
-If C<k> is omitted or zero, C<k=2> is used.
+If C<k> is omitted, C<k=2> is used.
 
-A k-powerful number is one that where all prime factors appear at least
-C<k> times.  All numbers are therefore 1-powerful, and C<1> is powerful
-for all C<k>.
+A k-powerful number is a positive integer where all prime factors appear
+at least C<k> times.
+All positive integers are therefore 0- and 1-powerful,
+and C<1> is powerful for all C<k>.
+C<0> is returned for all cases where C<n> is negative or zero.
 
-With C<k=2> this corresponds to Pari's C<ispowerful> function.
+With C<k=2> this corresponds to Pari's C<ispowerful> function for positive
+values of C<n>.  Pari chooses to define 0 as powerful and uses C<abs(n)>.
 
 While we can easily code this as a one line function using
 L</vecall> and L</factor_exp>, this is 10x faster and avoids fully
@@ -4839,7 +4842,7 @@ an error while we return undef.
 
 Given two integers C<a> and C<n>, return C<-a mod |n|>.
 
-This is similar to C<n ? modint(-a, absint(n)) : undef>.
+This is similar to C<submod(0,$a,$n)> or C<n ? modint(-a, absint(n)) : undef>.
 
 =head2 addmod
 

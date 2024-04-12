@@ -2973,11 +2973,13 @@ void is_powerful(IN SV* svn, IN SV* svk = 0);
     sumpowerful = 2
     nth_powerful = 3
   PREINIT:
+    int nstatus;
     UV n, k, ret;
   PPCODE:
-    if (_validate_and_set(&n, aTHX_ svn, (ix < 3) ? IFLAG_ABS : IFLAG_POS) &&
-        (!svk || _validate_and_set(&k, aTHX_ svk, IFLAG_POS))) {
-      if (!svk || k == 0) k = 2;
+    nstatus = _validate_and_set(&n, aTHX_ svn, (ix < 3) ? IFLAG_ANY: IFLAG_POS);
+    if (nstatus != 0 && (!svk || _validate_and_set(&k, aTHX_ svk, IFLAG_POS))) {
+      if (!svk) k = 2;
+      if (nstatus == -1) RETURN_NPARITY(0);
       if (ix == 0) RETURN_NPARITY( is_powerful(n, k) );
       if (ix == 1) XSRETURN_UV( powerful_count(n, k) );
       if (ix == 2) {

@@ -1449,14 +1449,15 @@ sub is_rough {
 }
 sub is_powerful {
   my($n, $k) = @_;
-  _validate_positive_integer($n);
-  if (defined $k && $k != 0) {
+  _validate_integer($n);
+  if (defined $k) {
     _validate_positive_integer($k);
   } else {
     $k = 2;
   }
 
-  return 1 if $n <= 1 || $k <= 1;
+  return 0 if $n < 1;
+  return 1 if $n == 1 || $k <= 1;
 
   return _gmpcall("is_powerful",$n,$k)
     if $Math::Prime::Util::_GMPfunc{"is_powerful"};
@@ -5792,13 +5793,11 @@ sub negmod {
 
   return undef if $n == 0;   # standard mod behavior with n = 0
   $n = -$n if $n < 0;        # we use |n|, unlike modint
+  Msubmod(0, $a, $n);
 
-  Mmodint(-$a,$n);
-
+  #Mmodint(-$a,$n);
   #Msubmod(0, Mmodint($a,$n), $n);
-
-  #$a = Mmodint($a,$n) if $a >= $n || $a < 0;
-  #return ($a) ? ($n-$a) : 0;
+  #$a = Mmodint($a,$n) if $a >= $n || $a < 0;   return ($a) ? ($n-$a) : 0;
 }
 
 sub _negmod {

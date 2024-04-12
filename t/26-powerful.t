@@ -9,7 +9,7 @@ use Math::Prime::Util qw/is_powerful powerful_count nth_powerful sumpowerful
 my $usexs = Math::Prime::Util::prime_get_config->{'xs'};
 my $extra = defined $ENV{EXTENDED_TESTING} && $ENV{EXTENDED_TESTING};
 
-plan tests => 3+1+10+4+2+1       # is_powerful
+plan tests => 2+3+10+4+2+1       # is_powerful
             + 5 + 2*$extra       # powerful_count
             + 4                  # nth_powerful
             + 6                  # sumpowerful
@@ -19,10 +19,11 @@ plan tests => 3+1+10+4+2+1       # is_powerful
   my @exp = map { fac_is_powerful($_, 2) } 0 .. 258;
   is_deeply( [map { is_powerful($_,2) } 0..258], \@exp, "is_powerful(0..258,2)");
   is_deeply( [map { is_powerful($_) } 0..258], \@exp, "is_powerful(0..258)");
-  is_deeply( [map { is_powerful($_,0) } 0..258], \@exp, "is_powerful(0..258,0)");
 }
 
-ok( vecall(sub { is_powerful($_,1) }, 0..32), "is_powerful(n,1) = 1");
+ok( vecnone(sub { is_powerful(0,$_) }, 0..10), "is_powerful(0,n) = 0");
+ok( vecall(sub { is_powerful($_,0) }, 1..32), "is_powerful(n,0) = 1 for positive n");
+ok( vecall(sub { is_powerful($_,1) }, 1..32), "is_powerful(n,1) = 1 for positive n");
 
 for my $k (3 .. 12) {
   my @nums = (227411960,105218838,79368063,58308379,210322300,44982156,67831696,165946352,243118692,128757041,150085583);
@@ -132,7 +133,9 @@ is_deeply( powerful_numbers(1000000000000, 1010000000000,5),
 
 sub fac_is_powerful {
   my($n, $k) = @_;
-  return 1 if $n <= 1 || $k <= 1;
+  $k = 2 unless defined $k;
+  return 0 if $n < 1;
+  return 1 if $n == 1 || $k <= 1;
   return 0 if $n < (1<<$k);
   return 0 if (!($n%2)) && ($n%4);
   return (vecall { $_->[1] >= $k } factor_exp($n)) ? 1 : 0;
