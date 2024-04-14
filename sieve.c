@@ -550,6 +550,7 @@ uint32_t range_prime_sieve_32(uint32_t** list, uint32_t n, uint32_t offset)
 {
   uint32_t *P, i = offset;
 
+  if (n < 2) { *list = 0; return 0; }
   New(0, P, prime_count_upper(n) + offset + 3, uint32_t);   /* Allocate list */
   if (offset > 0)  memset(P, 0, offset * sizeof(uint32_t)); /* Zero to offset */
   P[i++] = 2;  P[i++] = 3;  P[i++] = 5;                     /* Fill in 2/3/5 */
