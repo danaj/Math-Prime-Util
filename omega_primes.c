@@ -75,7 +75,7 @@ static void _omega_prime_gen_rec(UV** kop, UV* skop, UV* nkop, uint32_t k, UV lo
 }
 
 UV rec_omega_primes(UV** ret, uint32_t k, UV lo, UV hi) {
-  UV min, nkop, skop, *kop;
+  UV min, nkop, skop;
 
   min = pn_primorial(k);
   if (lo < min) lo = min;
