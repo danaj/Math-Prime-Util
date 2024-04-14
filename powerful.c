@@ -73,20 +73,29 @@ int is_powerful(UV n, UV k) {
    * Check n < p^4 before each new prime, and condition 1 after modifying n.
    */
 
-  /* We could save 5-10% by special casing k=2 and pulling 3 from the loop */
-
   if (n == 1 || powerof(n) >= k) return 1;
-  res = 0;
-  START_DO_FOR_EACH_PRIME(3, rootint(n, 2*k)) {
-    pk = ipow(p,k);
-    if (n < pk*pk) break;
-    if (!(n%p)) {
-      if (n%pk) break;
-      for (n /= pk; (n%p) == 0; n /= p) ;
-      if (n == 1 || powerof(n) >= k) { res = 1; break; }
+
+#define LCHECK_POWERFUL(n, p, k) \
+    pk = ipow(p,k); \
+    if (n < pk*pk) { res = 0; break; } \
+    if (!(n%p)) { \
+      if (n%pk) { res = 0; break; } \
+      for (n /= pk; (n%p) == 0; n /= p) ; \
+      if (n == 1 || powerof(n) >= k) { res = 1; break; } \
     }
+#define CHECK_POWERFUL(n, p, k) \
+  do { LCHECK_POWERFUL(n, p, k); } while (0); \
+  if (res != -1) return res;
+
+  res = -1;
+  CHECK_POWERFUL(n, 3, k);    if (k >= 14 || n < ipow( 5,2*k)) return 0;
+  CHECK_POWERFUL(n, 5, k);    if (k >= 12 || n < ipow( 7,2*k)) return 0;
+  CHECK_POWERFUL(n, 7, k);    if (k >= 10 || n < ipow(11,2*k)) return 0;
+
+  START_DO_FOR_EACH_PRIME(11, rootint(n,2*k)) {
+    LCHECK_POWERFUL(n, p, k);
   } END_DO_FOR_EACH_PRIME
-  return res;
+  return (res == 1);
 }
 
 
@@ -311,7 +320,15 @@ UV* powerful_numbers_range(UV* npowerful, UV lo, UV hi, UV k)
   /* Like powerful_count, we ignore 0. */
   if (lo < 1) lo = 1;
 
-  if (hi < lo || (lo == hi && !is_powerful(lo,k))) {
+  /* For small ranges it is faster to test each number vs generate. */
+  UV const single_thresh = (    (lo <     500000U)  ?   30
+                              : (lo <  400000000U)  ?  160  :  600 )
+                           * ((k <= 2) ? 1 : 4);
+
+  /* Like powerful_count, we ignore 0. */
+  if (lo < 1) lo = 1;
+
+  if (hi < lo) {
     pn = 0;
     npn = 0;
   } else if (k <= 1) {
@@ -319,6 +336,11 @@ UV* powerful_numbers_range(UV* npowerful, UV lo, UV hi, UV k)
     New(0, pn, npn, UV);
     for (i = lo; i <= hi; i++)
       pn[i-lo] = i;
+  } else if ((lo+single_thresh) > hi || lo > (UV_MAX-single_thresh)) {
+    New(0, pn, hi-lo+1, UV);
+    for (i = lo, npn = 0; i <= hi && i != 0; i++)
+      if (is_powerful(i,k))
+        pn[npn++] = i;
   } else {
     npn = powerful_count(hi,k) - ((lo <= 1) ? 0 : powerful_count(lo-1,k));
     New(0, pn, npn, UV);
