@@ -9,10 +9,10 @@ use Math::Prime::Util qw/is_powerful powerful_count nth_powerful sumpowerful
 my $usexs = Math::Prime::Util::prime_get_config->{'xs'};
 my $extra = defined $ENV{EXTENDED_TESTING} && $ENV{EXTENDED_TESTING};
 
-plan tests => 2+3+10+4+2+1       # is_powerful
-            + 5 + 2*$extra       # powerful_count
+plan tests => 2+4+10+4+2+1       # is_powerful
+            + 10 + 2*$extra      # powerful_count
             + 4                  # nth_powerful
-            + 6                  # sumpowerful
+            + 7                  # sumpowerful
             + 10;                # powerful_numbers
 
 {
@@ -21,6 +21,7 @@ plan tests => 2+3+10+4+2+1       # is_powerful
   is_deeply( [map { is_powerful($_) } 0..258], \@exp, "is_powerful(0..258)");
 }
 
+ok( vecnone(sub { is_powerful(-8,$_) }, 0..10), "is_powerful(-8,n) = 0");
 ok( vecnone(sub { is_powerful(0,$_) }, 0..10), "is_powerful(0,n) = 0");
 ok( vecall(sub { is_powerful($_,0) }, 1..32), "is_powerful(n,0) = 1 for positive n");
 ok( vecall(sub { is_powerful($_,1) }, 1..32), "is_powerful(n,1) = 1 for positive n");
@@ -51,7 +52,17 @@ is( is_powerful("566480085731125386625969296765887372081240710389246663214878739
 
 
 ###### powerful_count
+is_deeply( [map { powerful_count($_) } -16..0], [map{0}-16..0], "powerful_count(-n)=0" );
+is_deeply( [map { powerful_count($_,0) } 0..20], [0..20], "powerful_count(n,0)=n" );
 is_deeply( [map { powerful_count($_,1) } 0..20], [0..20], "powerful_count(n,1)=n" );
+
+# test with n <= 0 and k = 0,1,2
+is_deeply( [map { powerful_count($_,0) } -100, -10, -4, -1, 0, 1, 4, 10, 100],
+           [0, 0, 0, 0, 0, 1, 4, 10, 100], "powerful_count(+/- n, 0)" );
+is_deeply( [map { powerful_count($_,0) } -100, -10, -4, -1, 0, 1, 4, 10, 100],
+           [0, 0, 0, 0, 0, 1, 4, 10, 100], "powerful_count(+/- n, 1)" );
+is_deeply( [map { powerful_count($_,2) } -100, -10, -4, -1, 0, 1, 4, 10, 100],
+           [0, 0, 0, 0, 0, 1, 2,  4 , 14], "powerful_count(+/- n, 2)" );
 
 is_deeply( [map { powerful_count($_) } 0..20],
            [0,1,1,1,2,2,2,2,3,4,4,4,4,4,4,4,5,5,5,5,5],
@@ -93,6 +104,7 @@ SKIP: {
 }
 
 ###### sumpowerful
+is_deeply( [map { sumpowerful($_) } -16..0], [map{0}-16..0], "sumpowerful(-n)=0" );
 is_deeply( [map { sumpowerful($_) } 0..48],
            [0,1,1,1,5,5,5,5,13,22,22,22,22,22,22,22,38,38,38,38,38,38,38,38,38,63,63,90,90,90,90,90,122,122,122,122,158,158,158,158,158,158,158,158,158,158,158,158,158],
            "sumpowerful(n) for 0 <= n <= 48" );
@@ -100,7 +112,7 @@ is_deeply( [map { sumpowerful($_,3) } 0..48],
            [0,1,1,1,1,1,1,1,9,9,9,9,9,9,9,9,25,25,25,25,25,25,25,25,25,25,25,52,52,52,52,52,84,84,84,84,84,84,84,84,84,84,84,84,84,84,84,84,84],
            "sumpowerful(n,3) for 0 <= n <= 48" );
 is_deeply( [map { sumpowerful(17411,$_) } 0..16],
-           [1464625,151580166,1464625,333416,164098,101342,57807,41389,39074,32257,31745,30721,28673,24577,16385,1,1],
+           [151580166,151580166,1464625,333416,164098,101342,57807,41389,39074,32257,31745,30721,28673,24577,16385,1,1],
            "sumpowerful(17411,k) for 0 <= k <= 16" );
 
 is_deeply( [map { sumpowerful("2147516495",$_) } 1..33],

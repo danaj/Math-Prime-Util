@@ -135,8 +135,7 @@ UV powerful_count(UV n, UV k) {
   UV i, r, lim, sum = 0;
   unsigned char *isf;
 
-  if (k == 0) return 0;
-  if (k == 1 || n <= 1) return n;
+  if (k <= 1 || n <= 1) return n;
   if (k >= BITS_PER_WORD) return 1;
 
   lim = rootint(n, k+1);

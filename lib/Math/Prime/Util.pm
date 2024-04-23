@@ -4403,22 +4403,22 @@ but shortcuts are taken to avoid fully factoring if possible.
 
   my $all_factors_cubes_or_higher = is_powerful($n, 3);
 
-Given an integer C<n> and a non-negative integer C<k>,
-returns C<1> if C<|n|> is C<k>-powerful, and C<0> otherwise.
+Given an integer C<n> and an optional non-negative integer C<k>,
+returns C<1> if C<n> is C<k>-powerful, and C<0> otherwise.
 If C<k> is omitted, C<k=2> is used.
 
 A k-powerful number is a positive integer where all prime factors appear
 at least C<k> times.
-All positive integers are therefore 0- and 1-powerful,
-and C<1> is powerful for all C<k>.
-C<0> is returned for all cases where C<n> is negative or zero.
+All positive integers are therefore 0- and 1-powerful.
+C<n=1> is powerful for all C<k>.
+C<0> is returned for all negative or zero values of C<n>.
 
 With C<k=2> this corresponds to Pari's C<ispowerful> function for positive
 values of C<n>.  Pari chooses to define 0 as powerful and uses C<abs(n)>.
 
 While we can easily code this as a one line function using
-L</vecall> and L</factor_exp>, this is 10x faster and avoids fully
-factoring the input in most cases.
+L</vecall> and L</factor_exp>, this is significantly faster and doesn't
+need to fully factor the input.
 
 =head2 powerful_numbers
 
@@ -4446,30 +4446,31 @@ reference with all C<k>-powerful integers from C<lo> to C<hi> inclusive.
   # Best by far.
   say for @{powerful_numbers(1,$n,$k)};
 
-In this function, C<0> is never included in the returned list.
+Note that C<n E<lt>= 0> are non-powerful.
 
 =head2 powerful_count
 
   my $npowerful3 = powerful_count(2**32, 3);
 
-Given an integer C<n> and a non-negative integer C<k>,
+Given an integer C<n> and an optional non-negative integer C<k>,
 returns the total number of C<k>-powerful numbers
-from C<1> to C<|n|> inclusive.
-If C<k> is omitted or zero, C<k=2> is used.
+from C<1> to C<n> inclusive.
+If C<k> is omitted, C<k=2> is used.
 
 =head2 sumpowerful
 
-Given an integer C<n> and a non-negative integer C<k>,
+Given an integer C<n> and an optional non-negative integer C<k>,
 returns the sum of positive integer C<k>-powerful numbers less than or equal
-to C<|n|>.
-That is, the sum for all C<x>, C<1> E<lt>= C<x> E<gt>= C<|n|>, where C<x> is a C<k>-powerful number.
-If C<k> is omitted or zero, C<k=2> is used.
+to C<n>.
+That is, the sum for all C<x>, C<1> E<lt>= C<x> E<gt>= C<n>,
+where C<x> is a C<k>-powerful number.
+If C<k> is omitted, C<k=2> is used.
 
 =head2 nth_powerful
 
-Given two non-negative integer inputs C<n> and C<k>, returns the
-C<n>-th C<k>-powerful number.
-If C<k> is omitted or zero, C<k=2> is used.
+Given a non-negative integer C<n> and an optional non-negative integer C<k>,
+returns the C<n>-th C<k>-powerful number.
+If C<k> is omitted, C<k=2> is used.
 For all C<k>, returns undef for C<n=0> and 1 for C<n=1>.
 
 

@@ -1449,12 +1449,8 @@ sub is_rough {
 }
 sub is_powerful {
   my($n, $k) = @_;
-  _validate_integer($n);
-  if (defined $k) {
-    _validate_positive_integer($k);
-  } else {
-    $k = 2;
-  }
+  _validate_integer($n);   $n = 0 if $n < 0;
+  if (defined $k) { _validate_positive_integer($k); } else { $k = 2; }
 
   return 0 if $n < 1;
   return 1 if $n == 1 || $k <= 1;
@@ -1554,14 +1550,10 @@ sub _powerful_count_recurse {
 
 sub powerful_count {
   my($n, $k) = @_;
-  _validate_positive_integer($n);
-  if (defined $k && $k != 0) {
-    _validate_positive_integer($k);
-  } else {
-    $k = 2;
-  }
+  _validate_integer($n);   $n = 0 if $n < 0;
+  if (defined $k) { _validate_positive_integer($k); } else { $k = 2; }
 
-  return $n if $k == 1 || $n <= 1;
+  return $n if $k <= 1 || $n <= 1;
 
   if ($k == 2) {
     my $sum = 0;
@@ -1577,13 +1569,10 @@ sub powerful_count {
 sub nth_powerful {
   my($n, $k) = @_;
   _validate_positive_integer($n);
-  if (defined $k && $k != 0) {
-    _validate_positive_integer($k);
-  } else {
-    $k = 2;
-  }
+  if (defined $k) { _validate_positive_integer($k); } else { $k = 2; }
+
   return undef if $n == 0;
-  return $n if $k == 1 || $n <= 1;
+  return $n if $k <= 1 || $n <= 1;
   return Mpowint(2,$k) if $n == 2;
   return Mpowint(2,$k+1) if $n == 3;
 
@@ -1652,14 +1641,11 @@ sub _sumpowerful {
 
 sub sumpowerful {
   my($n, $k) = @_;
-  _validate_positive_integer($n);
-  if (defined $k && $k != 0) {
-    _validate_positive_integer($k);
-  } else {
-    $k = 2;
-  }
+  _validate_integer($n);   $n = 0 if $n < 0;
+  if (defined $k) { _validate_positive_integer($k); } else { $k = 2; }
+
   return $n if $n <= 1;
-  return Mrshiftint(Mmulint($n,Maddint($n,1)),1) if $k == 1;
+  return Mrshiftint(Mmulint($n,Maddint($n,1)),1) if $k <= 1;
 
   # Alternate method for testing.
   # my @a;  _genpowerful(1, 2*$k-1, $n, $k, \@a);  return Mvecsum(@a);
