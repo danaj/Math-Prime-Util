@@ -329,7 +329,7 @@ static UV apca(UV mid, UV k) { return almost_prime_count_approx(k, mid); }
 static UV apce(UV mid, UV k) { return almost_prime_count(k, mid); }
 
 UV nth_almost_prime_upper(uint32_t k, UV n) {
-  UV r, max, lo, hi;
+  UV r, max, lo;
 
   if (n == 0) return 0;
   if (k == 0) return (n == 1) ? 1 : 0;
@@ -348,7 +348,7 @@ UV nth_almost_prime_upper(uint32_t k, UV n) {
 }
 
 UV nth_almost_prime_lower(uint32_t k, UV n) {
-  UV r, max, lo, hi;
+  UV r, max, lo;
 
   if (n == 0) return 0;
   if (k == 0) return (n == 1) ? 1 : 0;
@@ -368,7 +368,7 @@ UV nth_almost_prime_lower(uint32_t k, UV n) {
 }
 
 UV nth_almost_prime_approx(uint32_t k, UV n) {
-  UV max, lo, hi;
+  UV max, lo;
 
   if (n == 0) return 0;
   if (k == 0) return (n == 1) ? 1 : 0;
