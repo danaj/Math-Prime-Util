@@ -38,13 +38,13 @@ add_stopwords(qw/-th
                  sumliouville sumtotient
                  gcd lcm gcdext chinese
                  sqrtmod allsqrtmod rootmod allrootmod
-                 invmod addmod submod mulmod powmod divmod muladdmod mulsubmod
+                 negmod invmod addmod submod mulmod powmod divmod muladdmod mulsubmod
                  binomialmod factorialmod
                  bernfrac bernreal harmfrac harmreal stirling hclassno
                  vecsum vecprod vecmin vecmax vecreduce vecextract vecequal
                  vecall vecany vecnone vecnotall vecfirst vecfirstidx vecmex vecpmex
                  sqrtint logint rootint powint addint subint mulint divint cdivint modint negint absint divrem tdivrem fdivrem cdivrem
-                 qnr
+                 qnr cornacchia
                  todigits todigitstring fromdigits sumdigits hammingweight
                  tozeckendorf fromzeckendorf
                  lucasu lucasv lucasuv lucasumod lucasvmod lucasuvmod

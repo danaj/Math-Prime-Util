@@ -59,7 +59,7 @@ sub mpu_public_regex {
       is_odd is_even is_divisible is_congruent
       is_power is_prime_power is_perfect_power is_square
       is_square_free is_powerfree
-      is_pillai is_polygonal
+      is_pillai is_polygonal is_congruent_number
       is_semiprime is_almost_prime is_omega_prime
       is_primitive_root is_carmichael is_quasi_carmichael
       is_fundamental is_totient is_gaussian_prime is_sum_of_squares
@@ -96,7 +96,7 @@ sub mpu_public_regex {
       ramanujan_prime_count_lower ramanujan_prime_count_upper
       nth_ramanujan_prime nth_ramanujan_prime_approx
       nth_ramanujan_prime_lower nth_ramanujan_prime_upper
-      powerful_count nth_powerful sumpowerful
+      powerful_count nth_powerful sumpowerful powerful_numbers
       prime_power_count prime_power_count_approx
       prime_power_count_lower prime_power_count_upper
       nth_prime_power nth_prime_power_approx
@@ -122,15 +122,16 @@ sub mpu_public_regex {
       gcd lcm factor factor_exp divisors valuation hammingweight
       todigits fromdigits todigitstring sumdigits
       tozeckendorf fromzeckendorf
-      sqrtmod allsqrtmod rootmod allrootmod
-      invmod addmod submod mulmod divmod powmod muladdmod mulsubmod
+      sqrtmod allsqrtmod rootmod allrootmod cornacchia
+      negmod invmod addmod submod mulmod divmod powmod muladdmod mulsubmod
       vecsum vecmin vecmax vecprod vecreduce vecextract vecequal
       vecany vecall vecnotall vecnone vecfirst vecfirstidx vecmex vecpmex
       moebius mertens liouville sumliouville prime_omega prime_bigomega
       euler_phi jordan_totient exp_mangoldt sumtotient
       partitions bernfrac bernreal harmfrac harmreal
       chebyshev_theta chebyshev_psi
-      divisor_sum carmichael_lambda kronecker hclassno qnr inverse_totient
+      divisor_sum carmichael_lambda hclassno inverse_totient
+      kronecker is_qr qnr
       ramanujan_tau ramanujan_sum
       stirling znorder znprimroot znlog legendre_phi
       factorial factorialmod binomial binomialmod
