@@ -11,6 +11,10 @@ Revision history for Perl module Math::Prime::Util
     - is_strong_pseudoprime passes for bases equal to 0 mod n.  This matches
       what the GMP code always did, and means primes return 1 for any base.
 
+    - divisor_sum(0) returns 0.  divisors(0) returns an empty list.
+
+    - divisors takes an optional second argument to prune the returned list.
+
     [ADDED]
 
     - powersum(n,k)                   sum of k-th powers of positive ints <= n
@@ -186,6 +190,8 @@ Revision history for Perl module Math::Prime::Util
 
     - is_pseudoprime and is_euler_pseudoprime have consistent XS, PP, and GMP
       behaviour.  Specifically, single digit inputs and bases a multiple of n.
+
+    - kronecker in XS with 63-bit signed a and 64-bit unsigned n fixed.
 
     [FUNCTIONALITY AND PERFORMANCE]
 

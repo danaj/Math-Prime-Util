@@ -4155,7 +4155,7 @@ C<chebyshev_theta(n^(1/k))>.
   say "Number of divisors: sigma_0($n) = ", divisor_sum($n, 0);
 
 Given a single non-negative integer C<n>, returns the sum of the
-divisors of C<n>, including 1 and itself.
+divisors of C<n>, including 1 and itself.  We return 0 for C<n=0>.
 
 An optional second non-negative integer C<k> may be given, indicating
 the sum should use the C<k-th> powers of the divisors.
@@ -5694,6 +5694,13 @@ This corresponds to Pari's C<numdiv> and Mathematica's
 C<DivisorSigma[0,n]> functions.
 
 Also see the L</for_divisors> functions for looping over the divisors.
+
+When C<n=0> we return the empty set (zero in scalar context).
+
+An optional second positive integer argument C<k> indicates that the results
+should not include any value larger than C<k>.  This is especially useful
+when the number has thousands of divisors and we may only be interested in
+the small ones.
 
 
 =head2 trial_factor

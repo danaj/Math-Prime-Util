@@ -851,6 +851,7 @@ int kronecker_uu(UV a, UV b) {
 
 int kronecker_su(IV a, UV b) {
   int r, s;
+  UV rem;
   if (a >= 0)  return kronecker_uu(a, b);
   if (b == 0)  return (a == 1 || a == -1) ? 1 : 0;
   s = 1;
@@ -860,8 +861,8 @@ int kronecker_su(IV a, UV b) {
     if ((r&1) && IS_MOD8_3OR5(a))  s = -s;
     b >>= r;
   }
-  a %= (IV) b;
-  if (a < 0)  a += b;
+  rem = (-a) % b;
+  a = (rem == 0) ? 0 : b-rem;
   return kronecker_uu_sign(a, b, s);
 }
 
@@ -1066,7 +1067,7 @@ UV is_quasi_carmichael(UV n) {
 
   /* Algorithm from Hiroaki Yamanouchi, 2015 */
   if (nfactors == 2) {
-    divs = _divisor_list(n / spf - 1, &ndivisors);
+    divs = divisor_list(n / spf - 1, &ndivisors, UV_MAX);
     for (i = 0; i < (int)ndivisors; i++) {
       UV d = divs[i];
       UV k = spf - d;
@@ -1075,7 +1076,7 @@ UV is_quasi_carmichael(UV n) {
         nbases++;
     }
   } else {
-    divs = _divisor_list(lpf * (n / lpf - 1), &ndivisors);
+    divs = divisor_list(lpf * (n / lpf - 1), &ndivisors, UV_MAX);
     for (i = 0; i < (int)ndivisors; i++) {
       UV d = divs[i];
       UV k = lpf - d;
@@ -2486,7 +2487,7 @@ static UV _count_class_div(UV s, UV b2) {
       if (b2 % i == 0)
         h++;
   } else {             /* Walk through all the divisors */
-    divs = _divisor_list(b2, &ndivisors);
+    divs = divisor_list(b2, &ndivisors, lim);
     for (i = 0; i < ndivisors && divs[i] <= lim; i++)
       if (divs[i] >= s)
         h++;

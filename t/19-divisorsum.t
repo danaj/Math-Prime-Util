@@ -25,9 +25,12 @@ my %sigmak = (
 my @tau4 = (1,4,4,10,4,16,4,20,10,16,4,40,4,16,16,35,4,40,4,40,16,16,4,80,10,16,20,40,4,64,4,56,16,16,16,100);
 push @tau4, (4,16,16,80,4,64,4,40,40,16,4,140,10,40,16,40,4,80,16,80,16,16,4,160,4,16,40,84,16,64,4,40,16,64,4,200,4,16,40,40,16) if $extra;
 
-plan tests => 1 + 2*scalar(keys %sigmak) + 3;
+plan tests => 1 + 2*scalar(keys %sigmak) + 1 + 2 + 1;
 
 ###### Divisor sum
+
+is_deeply( [map { divisor_sum(0,$_) } 0..5], [0,0,0,0,0,0], "divisor_sum(0,k) = 0" );
+
 while (my($k, $sigmaref) = each (%sigmak)) {
   my @slist;
   foreach my $n (1 .. scalar @$sigmaref) {

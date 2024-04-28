@@ -2340,77 +2340,105 @@ _pidigits(IN int digits)
     XPUSHs(sv_2mortal(newSVpvn(out, digits+1)));
     Safefree(out);
 
+void inverse_totient(IN SV* svn)
+  PREINIT:
+    U32 gimme_v;
+    int status, it_overflow;
+    UV i, n, ntotients;
+  PPCODE:
+    gimme_v = GIMME_V;
+    status = _validate_and_set(&n, aTHX_ svn, IFLAG_POS);
+    it_overflow = (status == 1 && gimme_v == G_ARRAY && n > UV_MAX/7.5);
+    if (status == 1 && !it_overflow) {
+      if (gimme_v == G_SCALAR) {
+        XSRETURN_UV( inverse_totient_count(n) );
+      } else if (gimme_v == G_ARRAY) {
+        UV* tots = inverse_totient_list(&ntotients, n);
+        EXTEND(SP, (IV)ntotients);
+        for (i = 0; i < ntotients; i++)
+          PUSHs(sv_2mortal(newSVuv( tots[i] )));
+        Safefree(tots);
+      }
+    } else {
+      _vcallsubn(aTHX_ gimme_v, VCALL_GMP|VCALL_PP, "inverse_totient", 1, 0);
+      return; /* skip implicit PUTBACK */
+    }
+
 void
 factor(IN SV* svn)
   ALIAS:
     factor_exp = 1
-    divisors = 2
-    inverse_totient = 3
   PREINIT:
     U32 gimme_v;
-    int status, i, nfactors, it_overflow;
+    int status, i, nfactors;
     UV n;
   PPCODE:
     gimme_v = GIMME_V;
     status = _validate_and_set(&n, aTHX_ svn, IFLAG_POS);
-    it_overflow = (status == 1 && ix==3 && gimme_v == G_ARRAY && n > UV_MAX/7.5 );
-    if (status == 1 && !it_overflow) {
+    if (status == 1) {
       UV factors[MPU_MAX_FACTORS+1];
       UV exponents[MPU_MAX_FACTORS+1];
       if (gimme_v == G_SCALAR) {
-        UV res;
-        switch (ix) {
-          case 0:  res = factor(n, factors);        break;
-          case 1:  res = factor_exp(n, factors, 0); break;
-          case 2:  res = divisor_sum(n, 0);         break;
-          default: res = inverse_totient_count(n);  break;
-        }
-        PUSHs(sv_2mortal(newSVuv( res )));
+        UV res = (ix == 0)  ?  factor(n, factors)  :  factor_exp(n, factors, 0);
+        XSRETURN_UV(res);
       } else if (gimme_v == G_ARRAY) {
-        switch (ix) {
-          case 0:  nfactors = factor(n, factors);
-                   EXTEND(SP, nfactors);
-                   for (i = 0; i < nfactors; i++)
-                     PUSHs(sv_2mortal(newSVuv( factors[i] )));
-                   break;
-          case 1:  nfactors = factor_exp(n, factors, exponents);
-                   /* if (n == 1)  XSRETURN_EMPTY; */
-                   EXTEND(SP, nfactors);
-                   for (i = 0; i < nfactors; i++) {
-                     AV* av = newAV();
-                     av_push(av, newSVuv(factors[i]));
-                     av_push(av, newSVuv(exponents[i]));
-                     PUSHs( sv_2mortal(newRV_noinc( (SV*) av )) );
-                   }
-                   break;
-          case 2: {
-                     UV ndivisors;
-                     UV* divs = _divisor_list(n, &ndivisors);
-                     EXTEND(SP, (IV)ndivisors);
-                     for (i = 0; (UV)i < ndivisors; i++)
-                       PUSHs(sv_2mortal(newSVuv( divs[i] )));
-                     Safefree(divs);
-                   }
-                   break;
-          default: {
-                     UV ntotients;
-                     UV* tots = inverse_totient_list(&ntotients, n);
-                     EXTEND(SP, (IV)ntotients);
-                     for (i = 0; (UV)i < ntotients; i++)
-                       PUSHs(sv_2mortal(newSVuv( tots[i] )));
-                     Safefree(tots);
-                   }
-                   break;
+        if (ix == 0) {
+          nfactors = factor(n, factors);
+          EXTEND(SP, nfactors);
+          for (i = 0; i < nfactors; i++)
+            PUSHs(sv_2mortal(newSVuv( factors[i] )));
+        } else {
+          nfactors = factor_exp(n, factors, exponents);
+          /* if (n == 1)  XSRETURN_EMPTY; */
+          EXTEND(SP, nfactors);
+          for (i = 0; i < nfactors; i++) {
+            AV* av = newAV();
+            av_push(av, newSVuv(factors[i]));
+            av_push(av, newSVuv(exponents[i]));
+            PUSHs( sv_2mortal(newRV_noinc( (SV*) av )) );
+          }
         }
       }
     } else {
-      switch (ix) {
-        case 0:  _vcallsubn(aTHX_ gimme_v, VCALL_ROOT, "_generic_factor", 1, 0);     break;
-        case 1:  _vcallsubn(aTHX_ gimme_v, VCALL_ROOT, "_generic_factor_exp", 1, 0); break;
-        case 2:  _vcallsubn(aTHX_ gimme_v, VCALL_GMP|VCALL_PP, "divisors", 1, 0);   break;
-        default: _vcallsubn(aTHX_ gimme_v, VCALL_GMP|VCALL_PP, "inverse_totient", 1, 0);   break;
-      }
+      if (ix == 0)
+        _vcallsubn(aTHX_ gimme_v, VCALL_ROOT, "_generic_factor", 1, 0);
+      else
+        _vcallsubn(aTHX_ gimme_v, VCALL_ROOT, "_generic_factor_exp", 1, 0);
       return; /* skip implicit PUTBACK */
+    }
+
+void divisors(IN SV* svn, IN SV* svk = 0)
+  PREINIT:
+    U32 gimme_v;
+    int status;
+    UV n, k, i, ndivisors, *divs;
+  PPCODE:
+    gimme_v = GIMME_V;
+    status = _validate_and_set(&n, aTHX_ svn, IFLAG_POS);
+    k = n;
+    if (status == 1 && svk != 0) {
+      status = _validate_and_set(&k, aTHX_ svk, IFLAG_POS);
+      if (k > n)  k = n;
+    }
+    if (status != 1) {
+      _vcallsubn(aTHX_ gimme_v, VCALL_GMP|VCALL_PP, "divisors", items, 53);
+      return; /* skip implicit PUTBACK */
+    }
+    if (GIMME_V == G_VOID) {
+      /* Nothing */
+    } else if (GIMME_V == G_SCALAR && k >= n) {
+      ndivisors = divisor_sum(n, 0);
+      PUSHs(sv_2mortal(newSVuv( ndivisors )));
+    } else {
+      divs = divisor_list(n, &ndivisors, k);
+      if (GIMME_V == G_SCALAR) {
+        PUSHs(sv_2mortal(newSVuv( ndivisors )));
+      } else {
+        EXTEND(SP, (IV)ndivisors);
+        for (i = 0; i < ndivisors; i++)
+          PUSHs(sv_2mortal(newSVuv( divs[i] )));
+      }
+      Safefree(divs);
     }
 
 void
@@ -2475,19 +2503,20 @@ divisor_sum(IN SV* svn, ...)
   PREINIT:
     UV n, k, sigma;
   PPCODE:
-    sigma = 0;
-    if (items == 1) {
-      if ( _validate_and_set(&n, aTHX_ svn, IFLAG_POS))
-        sigma = divisor_sum(n, 1);
+    if (items == 1 && _validate_and_set(&n, aTHX_ svn, IFLAG_POS)) {
+      sigma = divisor_sum(n, 1);
+      if (n <= 1 || sigma != 0)
+        XSRETURN_UV(sigma);
     } else {
       SV* svk = ST(1);
       if ( (!SvROK(svk) || (SvROK(svk) && SvTYPE(SvRV(svk)) != SVt_PVCV)) &&
            _validate_and_set(&n, aTHX_ svn, IFLAG_POS) &&
-           _validate_and_set(&k, aTHX_ svk, IFLAG_POS) )
+           _validate_and_set(&k, aTHX_ svk, IFLAG_POS) ) {
         sigma = divisor_sum(n, k);
+        if (n <= 1 || sigma != 0)
+          XSRETURN_UV(sigma);
+      }
     }
-    if (sigma != 0)   /* sigma 0 means overflow */
-      XSRETURN_UV(sigma);
     _vcallsub_with_pp("divisor_sum");
     return; /* skip implicit PUTBACK */
 
@@ -4337,7 +4366,7 @@ fordivisors (SV* block, IN SV* svn)
       return;
     }
 
-    divs = _divisor_list(n, &ndivisors);
+    divs = divisor_list(n, &ndivisors, UV_MAX);
 
     START_FORCOUNT;
     SAVESPTR(GvSV(PL_defgv));

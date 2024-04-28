@@ -329,7 +329,7 @@ static int _totpred(UV n, UV maxd) {
   if (n == 1) return 1;
   if (n < maxd && is_prime(2*n+1)) return 1;
 
-  divs = _divisor_list(n, &ndivisors);
+  divs = divisor_list(n, &ndivisors, maxd);
   for (i = 0, res = 0; i < ndivisors && divs[i] < maxd && res == 0; i++) {
     UV r, d = divs[i], p = 2*d+1;
     if (!is_prime(p)) continue;
@@ -361,7 +361,7 @@ UV inverse_totient_count(UV n) {
     if (n >= 10)        return 2;
   }
 
-  divs = _divisor_list(n, &ndivisors);
+  divs = divisor_list(n, &ndivisors, n);
 
   init_set(&set, 2*ndivisors);
   keyval.key = 1;  keyval.val = 1;
@@ -431,7 +431,7 @@ UV* inverse_totient_list(UV *ntotients, UV n) {
     }
   }
 
-  divs = _divisor_list(n, &ndivisors);
+  divs = divisor_list(n, &ndivisors, n);
 
   init_setlist(&setlist, 2*ndivisors);
   setlist_addval(&setlist, 1, 1);   /* Add 1 => [1] */

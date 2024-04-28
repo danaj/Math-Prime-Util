@@ -96,7 +96,7 @@ foreach my $n (0 .. $small) {
     array_compare( \@a1, \@a2, "fordivisors($n)" );
   }
 
-  { my $m = int(rand($n-1));
+  { my $m = 1+int(rand($n-2));
     my $invmod = invmod($m, $n);
     if (defined $invmod) {
       die "invmod($m, $n)" unless Math::Pari::lift(PARI "Mod(1/$m,$n)") == $invmod;

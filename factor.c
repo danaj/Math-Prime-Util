@@ -367,33 +367,43 @@ int trial_factor(UV n, UV *factors, UV f, UV last)
 }
 
 
-static void _divisors_from_factors(UV nfactors, UV* fp, UV* fe, UV* res) {
-  UV s, count = 1;
+static UV _divisors_from_factors(UV nfactors, UV* fp, UV* fe, UV* res, UV k) {
+  UV s, t, count = 1;
 
   res[0] = 1;
   for (s = 0; s < nfactors; s++) {
     UV i, j, scount = count, p = fp[s], e = fe[s], mult = 1;
     for (j = 0; j < e; j++) {
       mult *= p;
-      for (i = 0; i < scount; i++)
-        res[count++] = res[i] * mult;
+      for (i = 0; i < scount; i++) {
+        t = res[i] * mult;
+        if (t <= k)
+          res[count++] = t;
+      }
     }
   }
+  return count;
 }
 
-UV* _divisor_list(UV n, UV *num_divisors)
+UV* divisor_list(UV n, UV *num_divisors, UV maxd)
 {
   UV factors[MPU_MAX_FACTORS+1];
   UV exponents[MPU_MAX_FACTORS+1];
   UV* divs;
   int i, nfactors, ndivisors;
 
-  if (n <= 1) {
-    New(0, divs, 2, UV);
-    if (n == 0) {  divs[0] = 0;  divs[1] = 1;  *num_divisors = 2;  }
-    if (n == 1) {  divs[0] = 1;                *num_divisors = 1;  }
+  if (n == 0 || maxd == 0) {
+    *num_divisors = 0;
+    return 0;
+  } else if (n == 1 || maxd == 1) {
+    New(0, divs, 1, UV);
+    divs[0] = 1;
+    *num_divisors = 1;
     return divs;
   }
+
+  if (maxd > n) maxd = n;
+
   /* Factor and convert to factor/exponent pair */
   nfactors = factor_exp(n, factors, exponents);
   /* Calculate number of divisors, allocate space, fill with divisors */
@@ -401,7 +411,7 @@ UV* _divisor_list(UV n, UV *num_divisors)
   for (i = 1; i < nfactors; i++)
     ndivisors *= (exponents[i] + 1);
   New(0, divs, ndivisors, UV);
-  _divisors_from_factors(nfactors, factors, exponents, divs);
+  ndivisors = _divisors_from_factors(nfactors, factors, exponents, divs, maxd);
   /* Sort divisors (numeric ascending) */
   qsort(divs, ndivisors, sizeof(UV), _numcmp);
   /* Return number of divisors and list */
@@ -430,8 +440,8 @@ UV divisor_sum(UV n, UV k)
   UV product = 1;
 
   if (k > 11 || (k > 0 && n >= sigma_overflow[k-1])) return 0;
-  if (n <= 1)                               /* n=0  divisors are [0,1] */
-    return (n == 1) ? 1 : (k == 0) ? 2 : 1; /* n=1  divisors are [1]   */
+  /*   divisors(0) = []   divisors(1) = [1]  */
+  if (n <= 1)  return n;
   nfac = factor(n,factors);
   if (k == 0) {
     for (i = 0; i < nfac; i++) {

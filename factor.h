@@ -21,7 +21,7 @@ extern int squfof_factor(UV n, UV *factors, UV rounds);
 extern int lehman_factor(UV n, UV *factors, int dotrial);
 extern int cheb_factor(UV n, UV *factors, UV B, UV initx);
 
-extern UV* _divisor_list(UV n, UV *num_divisors);
+extern UV* divisor_list(UV n, UV *num_divisors, UV maxd);
 
 extern int prime_omega(UV n);     /* number of distinct prime factors */
 extern int prime_bigomega(UV n);  /* number of prime factors w/ multiplicity */

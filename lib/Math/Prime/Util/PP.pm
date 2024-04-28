@@ -2704,8 +2704,7 @@ my @_ds_overflow =  # We'll use BigInt math if the input is larger than this.
    : ( 50,           845404560,      52560,    1548,   252,   84);
 sub divisor_sum {
   my($n, $k) = @_;
-  return ((defined $k && $k==0) ? 2 : 1) if $n == 0;
-  return 1 if $n == 1;
+  return 0 if $n <= 0;
 
   if (defined $k && ref($k) eq 'CODE') {
     my $sum = $n-$n;
@@ -2715,6 +2714,7 @@ sub divisor_sum {
     }
     return $sum;
   }
+  return 1 if $n == 1;
 
   croak "Second argument must be a code ref or number"
     unless !defined $k || _validate_num($k) || _validate_positive_integer($k);
@@ -8999,17 +8999,35 @@ sub ecm_factor {
 }
 
 sub divisors {
-  my($n) = @_;
+  my($n,$k) = @_;
   _validate_positive_integer($n);
-  my(@factors, @d, @t);
+  if (defined $k) {
+    _validate_positive_integer($k);
+    $k = $n if $k > $n;
+  } else {
+    $k = $n;
+  }
 
-  # In scalar context, returns sigma_0(n).  Very fast.
-  return Math::Prime::Util::divisor_sum($n,0) unless wantarray;
-  return ($n == 0) ? (0,1) : (1)  if $n <= 1;
+  if (!wantarray) {
+    # In scalar context, returns sigma_0(n).  Very fast.
+    return Math::Prime::Util::divisor_sum($n,0) if $k >= $n;
+    my @div = divisors($n,$k);
+    return scalar(@div);
+  }
+
+  return ()  if $n == 0 || $k == 0;
+  return (1) if $n == 1 || $k == 1;
+
+  my(@factors, @d, @t);
 
   if ($Math::Prime::Util::_GMPfunc{"divisors"}) {
     # This trips an erroneous compile time error without the eval.
-    eval "\@d = Math::Prime::Util::GMP::divisors(\"$n\"); ";  ## no critic qw(ProhibitStringyEval)
+    if ($k < $n && $Math::Prime::Util::GMP::VERSION >= 0.53) {
+      eval "\@d = Math::Prime::Util::GMP::divisors(\"$n\",\"$k\"); ";  ## no critic qw(ProhibitStringyEval)
+    } else {
+      eval "\@d = Math::Prime::Util::GMP::divisors(\"$n\"); ";  ## no critic qw(ProhibitStringyEval)
+      @d = grep { $_ <= $k } @d  if $k < $n;
+    }
     @d = map { $_ <= ~0 ? $_ : ref($n)->new($_) } @d   if ref($n);
     return @d;
   }
@@ -9024,10 +9042,12 @@ sub divisors {
   while (my $p = shift @factors) {
     my $e = 1;
     while (@factors && $p == $factors[0]) { $e++; shift(@factors); }
+    last if $p > $k;
     push @d,  @t = map { $_ * $p } @d;               # multiply through once
     push @d,  @t = map { $_ * $p } @t   for 2 .. $e; # repeat
   }
 
+  @d = grep { $_ <= $k } @d  if $k < $n;
   @d = map { $_ <= INTMAX ? _bigint_to_int($_) : $_ } @d   if $bigint;
   @d = sort { $a <=> $b } @d;
   @d;

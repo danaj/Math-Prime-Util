@@ -94,7 +94,7 @@ my %all_factors = (
       3 => [1,3],
       2 => [1,2],
       1 => [1],
-      0 => [0,1],
+      0 => [],
 );
 
 my %prime_factors = (
@@ -126,6 +126,7 @@ my %factor_exponents = (
 plan tests => (3 * scalar @testn)
             + 2*scalar(keys %prime_factors)
             + 4*scalar(keys %all_factors)
+            + 6  # divisors
             + 2*scalar(keys %factor_exponents)
             + 10*10  # 10 extra factoring tests * 10 algorithms
             + 8
@@ -164,6 +165,20 @@ while (my($n, $divisors) = each(%all_factors)) {
   my $sum = 0;  foreach my $f (@$divisors) { $sum += $f; }
   is( divisor_sum($n), $sum, "divisor_sum($n)" );
 }
+is_deeply( [divisors(5040, 120)],
+           [1,2,3,4,5,6,7,8,9,10,12,14,15,16,18,20,21,24,28,30,35,36,40,42,45,48,56,60,63,70,72,80,84,90,105,112,120],
+           "divisors(5040, 120)" );
+is_deeply( [divisors("340282366920938463463374607431768211455", 5040)],
+           [1,3,5,15,17,51,85,255,257,641,771,1285,1923,3205,3855,4369],
+           "divisors(2^128-1, 5040)" );
+is( scalar divisors( 0), 0, "scalar divisors(0) should be 0" );
+is( scalar divisors( 1), 1, "scalar divisors(1) should be 1" );
+is( scalar divisors(12), 6, "scalar divisors(12) should be 6" );
+is_deeply( [ [divisors( 0,0)], [divisors( 0,1)],
+             [divisors( 1,0)], [divisors( 1,1)], [divisors( 1,2)],
+             [divisors(12,0)], [divisors(12,1)], [divisors(12,4)] ],
+           [ [], [],   [], [1], [1],  [], [1], [1,2,3,4] ],
+           "divisors for n 0,1,12 and k 0,1,x" );
 
 while (my($n, $factors) = each(%factor_exponents)) {
   is_deeply( [factor_exp($n)], $factors, "factor_exp($n)" );
