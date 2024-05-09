@@ -2676,9 +2676,17 @@ void randperm(void* ctx, UV n, UV k, UV *S) {
   }
 }
 
+#define SMOOTH_TEST(n,k,p,nextprime) \
+  if (n < p*p) return (n <= k);  /* p*p > n means n is prime */ \
+  if ((n%p) == 0) { \
+    do { n /= p; } while ((n%p) == 0); \
+    if (n < nextprime) return 1; \
+  } \
+  if (k < nextprime) return (n <= k);
 
 int is_smooth(UV n, UV k) {
   UV fac[MPU_MAX_FACTORS+1];
+  uint32_t i, p, pn;
   int nfac;
 
   /* True if no prime factors of n are larger than k. */
@@ -2691,17 +2699,27 @@ int is_smooth(UV n, UV k) {
   if (n <= k) return 1;
   /* k >= 3, n >= 3 */
 
-  /* Could do: gcd with primorial, p-1/pbrent/ecm to find small factors */
+  SMOOTH_TEST(n, k, 3,  5);  /* after this, k >=  5, n > 3*3 */
+  SMOOTH_TEST(n, k, 5,  7);  /* after this, k >=  7, n > 5*5 */
+  SMOOTH_TEST(n, k, 7, 11);  /* after this, k >= 11, n > 7*7 */
 
-  if (k <= 9000) {
-    nfac = trial_factor(n, fac, 2, k);
+  /* Remove tiny factors.  Tests to 499. */
+  for (i = 5, pn = primes_tiny[i]; i < NPRIMES_TINY-1; i++) {
+    p = pn;  pn = primes_tiny[i+1];
+    SMOOTH_TEST(n, k, p, pn);
+  }
+  if (k < pn || n < pn*pn) return (n <= k);   /* k >= 503 and n >= 503*503. */
+
+  if (is_prime(n)) return 0;
+  if (k <= 290000) {
+    nfac = trial_factor(n, fac, pn, k);
     return (fac[nfac-1] <= k);
   }
 
-  /* Get rid of small factors */
-  nfac = trial_factor(n, fac, 2, 500);
+  nfac = trial_factor(n, fac, pn, 4999);
   n = fac[nfac-1];
-  if (n <= k) return 1;
+  pn = 5003;
+  if (k < pn || n < pn*pn) return (n <= k);  /* k > 290k, n > 25M */
 
   /* Complete factoring including primality test */
   nfac = factor_exp(n, fac, 0);
