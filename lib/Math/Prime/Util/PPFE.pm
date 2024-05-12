@@ -234,6 +234,7 @@ sub entropy_bytes {
 *lucasumod = \&Math::Prime::Util::PP::lucasumod;
 *lucasvmod = \&Math::Prime::Util::PP::lucasvmod;
 *lucasuvmod = \&Math::Prime::Util::PP::lucasuvmod;
+*pisano_period = \&Math::Prime::Util::PP::pisano_period;
 *znlog = \&Math::Prime::Util::PP::znlog;
 *znorder = \&Math::Prime::Util::PP::znorder;
 *znprimroot = \&Math::Prime::Util::PP::znprimroot;

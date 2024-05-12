@@ -50,6 +50,8 @@ extern UV modinverse(UV a, UV p);              /* Returns 1/a mod p */
 extern UV divmod(UV a, UV b, UV n);            /* Returns a/b mod n */
 extern UV gcddivmod(UV a, UV b, UV n);         /* divmod(a/gcd,b/gcd,n) */
 
+extern UV pisano_period(UV n);
+
 extern int chinese(UV *r, UV *lcm, UV* a, UV* n, UV num);/* Chinese Remainder */
 
 /* Do the inverse for a negative modular power / root. a^-k => (1/a)^k mod n */

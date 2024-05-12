@@ -88,8 +88,10 @@ BEGIN {
 *Mmulsubmod = \&Math::Prime::Util::mulsubmod;
 
 *Mgcd = \&Math::Prime::Util::gcd;
+*Mlcm = \&Math::Prime::Util::lcm;
 *Mfactor = \&Math::Prime::Util::factor;
 *Mfactor_exp = \&Math::Prime::Util::factor_exp;
+*Mdivisors = \&Math::Prime::Util::divisors;
 *Mis_prime = \&Math::Prime::Util::is_prime;
 *Mis_semiprime = \&Math::Prime::Util::is_semiprime;
 *Mis_power = \&Math::Prime::Util::is_power;
@@ -112,6 +114,7 @@ BEGIN {
 *Mnext_prime = \&Math::Prime::Util::next_prime;
 *Mprev_prime = \&Math::Prime::Util::prev_prime;
 *Mprime_count = \&Math::Prime::Util::prime_count;
+*Mlucasumod = \&Math::Prime::Util::lucasumod;
 
 *Mvecall = \&Math::Prime::Util::vecall;
 *Mvecany = \&Math::Prime::Util::vecany;
@@ -120,6 +123,7 @@ BEGIN {
 *Mvecprod = \&Math::Prime::Util::vecprod;
 *Mvecmin = \&Math::Prime::Util::vecmin;
 *Mvecmax = \&Math::Prime::Util::vecmax;
+*Mvecfirst = \&Math::Prime::Util::vecfirst;
 *Mtodigits = \&Math::Prime::Util::todigits;
 
 *Mfordivisors = \&Math::Prime::Util::fordivisors;
@@ -1411,9 +1415,6 @@ sub is_smooth {
   return 0 if $k <= 1;
   return 1 if $n <= $k;
 
-  return _gmpcall("is_smooth",$n,$k)
-    if $Math::Prime::Util::_GMPfunc{"is_smooth"};
-
   if ($k <= 10000000 && $Math::Prime::Util::_GMPfunc{"trial_factor"}) {
     my @f;
     while (1) {
@@ -1424,6 +1425,9 @@ sub is_smooth {
     }
     return 0 + ($f[0] <= $k);
   }
+
+  return _gmpcall("is_smooth",$n,$k)
+    if $Math::Prime::Util::_GMPfunc{"is_smooth"};
 
   return (Mvecnone(sub { $_ > $k }, Mfactor($n))) ? 1 : 0;
 }
@@ -1437,13 +1441,13 @@ sub is_rough {
   return 1 if $k <= 1;
   return 0+($n >= 1) if $k == 2;
 
-  return _gmpcall("is_rough",$n,$k)
-    if $Math::Prime::Util::_GMPfunc{"is_rough"};
-
   if ($k < 10000 && $Math::Prime::Util::_GMPfunc{"trial_factor"}) {
     my @f = Math::Prime::Util::GMP::trial_factor($n, $k);
     return 0 + ($f[0] >= $k);
   }
+
+  return _gmpcall("is_rough",$n,$k)
+    if $Math::Prime::Util::_GMPfunc{"is_rough"};
 
   return (Mvecnone(sub { $_ < $k }, Mfactor($n))) ? 1 : 0;
 }
@@ -2356,7 +2360,7 @@ sub _totpred {
   return 1 if ($n & ($n-1)) == 0;
   $n >>= 1;
   return 1 if $n == 1 || ($n < $maxd && Mis_prime(2*$n+1));
-  for my $d (Math::Prime::Util::divisors($n)) {
+  for my $d (Mdivisors($n)) {
     last if $d >= $maxd;
     my $p = ($d < (INTMAX >> 2))  ?  ($d << 1) + 1 :
             Maddint(Mlshiftint($d,1),1);
@@ -2550,7 +2554,7 @@ sub carmichael_lambda {
 
   my $lcm;
   if (!ref($n)) {
-    $lcm = Math::Prime::Util::lcm(
+    $lcm = Mlcm(
       map { ($_->[0] ** ($_->[1]-1)) * ($_->[0]-1) } @pe
     );
   } else {
@@ -2646,14 +2650,14 @@ sub is_quasi_carmichael {
   } else {
     my($spf,$lpf) = ($f[0], $f[-1]);
     if (scalar(@f) == 2) {
-      foreach my $d (Math::Prime::Util::divisors($n/$spf - 1)) {
+      foreach my $d (Mdivisors($n/$spf - 1)) {
         my $k = $spf - $d;
         my $p = $n - $k;
         last if $d >= $spf;
         $nbases++ if Mvecall(sub { my $j = $_-$k;  $j && ($p % $j) == 0 }, @f);
       }
     } else {
-      foreach my $d (Math::Prime::Util::divisors($lpf * ($n/$lpf - 1))) {
+      foreach my $d (Mdivisors($lpf * ($n/$lpf - 1))) {
         my $k = $lpf - $d;
         my $p = $n - $k;
         next if $k == 0 || $k >= $spf;
@@ -2709,7 +2713,7 @@ sub divisor_sum {
   if (defined $k && ref($k) eq 'CODE') {
     my $sum = $n-$n;
     my $refn = ref($n);
-    foreach my $d (Math::Prime::Util::divisors($n)) {
+    foreach my $d (Mdivisors($n)) {
       $sum += $k->( $refn ? $refn->new("$d") : $d );
     }
     return $sum;
@@ -3372,6 +3376,9 @@ sub prime_count_upper {
   # 1  If RH and x >= 5639, |pi(x)-li(x)|<= x * (logx-loglogx)/(8*Pi*sqrtx)
   # 2  pi(x) <= li(x) for all 2 <= x <= 10^20
   # 3  [li(x) - 2sqrt(x)/log(x)] <= pi(x) for 1090877 <= x <= 10^20
+  #
+  # See https://arxiv.org/pdf/2404.17165 page 9 for Mossinghoff and Trudgian.
+  # Page 26 also points out the Dusart 2018 improvement to Schoenfeld.
 
   my($result,$a);
   my $fl1 = log($x);
@@ -6978,7 +6985,7 @@ sub znorder {
 
   # This is easy and usually fast, but can bog down with too many divisors.
   if ($lambda <= 2**64) {
-    foreach my $k (Math::Prime::Util::divisors($lambda)) {
+    foreach my $k (Mdivisors($lambda)) {
       return $k if Mpowmod($a,$k,$n) == 1;
     }
     return;
@@ -7642,6 +7649,48 @@ sub lucasvmod {
     }
   }
   return $V;
+}
+
+
+sub _pisano_prime {
+  my($p) = @_;
+  return (0,1,3,8,6,20,24,16,12,24,60,10,24,28,48,40,24,36,24,18)[$p] if $p <= 19;
+
+  # Simple method.  Pretty much always slower.
+  # my($k,$a,$b) = (1,1,1);
+  # until ($a == 0 && $b == 1) {
+  #   $k++;
+  #   ($a,$b) = ($b,Maddmod($a,$b,$p));
+  # }
+  # return $k;
+
+  my $pn = $p - Mkronecker(5,$p);
+  Mvecfirst(sub { Mlucasumod(1,$p-1,$_,$p) == 0 }, Mdivisors($pn));
+}
+sub _pisano_prime_power {
+  my($p,$k) = @_;
+  return 1 if $k == 0;
+  return 3 << ($k-1) if $p == 2 && $k < 32;
+  #return Mmulint( 3,Mpowint(2,$k-1)) if $p == 2;
+  #return Mmulint(20,Mpowint(5,$k-1)) if $p == 5;
+  my $PERIOD = _pisano_prime($p);
+  $PERIOD = Mmulint($PERIOD, Mpowint($p,$k-1)) if $k > 1;
+  $PERIOD;
+}
+sub pisano_period {
+  my($n) = @_;
+  _validate_positive_integer($n);
+  return 0 if $n < 0;
+  return (0,1,3,8,6,20,24,16,12,24,60)[$n] if $n <= 10;
+
+  my $ret = Mlcm(map { _pisano_prime_power($_->[0],$_->[1]) } Mfactor_exp($n));
+
+  for my $i (0 .. 2) {
+    my $t = Mlshiftint($ret, $i);
+    return $t if Mlucasumod(1, -1, $t, $n) == 0
+              && Mlucasumod(1, -1, Maddint($t,1), $n) == 1;
+  }
+  return $ret;
 }
 
 sub is_lucas_pseudoprime {

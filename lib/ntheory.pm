@@ -342,6 +342,7 @@ Tags:
   lucasumod(P, Q, k, n)               U_k for Lucas(P,Q) mod n
   lucasvmod(P, Q, k, n)               V_k for Lucas(P,Q) mod n
   lucasuvmod(P, Q, k, n)              (U_k,V_k,Q^k) for Lucas(P,Q) mod n
+  pisano_period(n)                    The period of Fibonacci numbers mod n
   bernfrac(n)                         Bernoulli number as (num,den)
   bernreal(n)                         Bernoulli number as BigFloat
   harmfrac(n)                         Harmonic number as (num,den)

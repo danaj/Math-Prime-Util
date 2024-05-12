@@ -40,7 +40,7 @@ our @EXPORT_OK =
       divint modint cdivint divrem fdivrem cdivrem tdivrem
       miller_rabin_random
       lucas_sequence
-      lucasu lucasv lucasuv lucasumod lucasvmod lucasuvmod
+      lucasu lucasv lucasuv lucasumod lucasvmod lucasuvmod pisano_period
       primes twin_primes semi_primes almost_primes omega_primes ramanujan_primes
       sieve_prime_cluster sieve_range prime_powers lucky_numbers
       forprimes forcomposites foroddcomposites forsemiprimes foralmostprimes
@@ -4974,6 +4974,9 @@ integer C<n>, efficiently compute C<lucasu(P,Q,k) mod |n|>.
 
 This corresponds to gmpy2's C<lucasu_mod> function.
 
+When C<(P,Q) = (1,-1)> this returns the modular fibonacci sequence.  This
+corresponds to Sidef's C<fibmod> function.
+
 =head2 lucasvmod
 
 Given integers C<P>, C<Q>, the non-negative integer C<k>, and the
@@ -5004,6 +5007,15 @@ C<P>,C<Q>, modulo C<|n|>.  The modular Lucas sequence is used in a
 number of primality tests and proofs.
 C<k> must be non-negative, and C<n> must be non-zero.
 
+=head2 pisano_period
+
+Given a non-negative integer C<n>, returns the period of the Fibonacci
+sequence modulo C<n>.
+The modular Fibonacci numbers can be produced using C<lucasumod(1,-1,k,n)>.
+They are periodic for any integer C<n>, and the Pisano period is the
+length of the repeating sequence.
+
+This is the L<OEIS series A001175|http://oeis.org/A001175>.
 
 =head1 MODULAR FUNCTIONS
 

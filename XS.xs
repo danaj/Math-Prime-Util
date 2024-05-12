@@ -2282,6 +2282,16 @@ void urandomm(IN SV* svn)
     objectify_result(aTHX_ svn, ST(0));
     XSRETURN(1);
 
+void pisano_period(IN SV* svn)
+  PREINIT:
+    UV n;
+  PPCODE:
+    if (_validate_and_set(&n, aTHX_ svn, IFLAG_POS))
+      XSRETURN_UV( pisano_period(n) );
+    _vcallsub_with_gmpobj(0.53,"pisano_period");
+    objectify_result(aTHX_ svn, ST(0));
+    XSRETURN(1);
+
 void random_factored_integer(IN SV* svn)
   PREINIT:
     UV n;

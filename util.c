@@ -31,6 +31,7 @@
 #include "csprng.h"
 #include "inverse_interpolate.h"
 #include "rootmod.h"
+#include "lucas_seq.h"
 
 int _numcmp(const void *a, const void *b) {
   const UV *x = a, *y = b;
@@ -1247,6 +1248,11 @@ UV qnr(UV n) {
   return 0;
 }
 
+static const char _qr4[] = {1,1,0,0};
+static const char _qr8[] = {1,1,0,0,1,0,0,0};
+static const char _qr9[] = {1,1,0,0,1,0,0,1,0};
+static const char _qr16[] = {1,1,0,0,1,0,0,0,0,1,0,0,0,0,0,0};
+
 int is_qr(UV a, UV n) {
   int res;
   if (n == 0) return (a == 1);    /* Should return undef */
@@ -1262,10 +1268,18 @@ int is_qr(UV a, UV n) {
 
     nfactors = factor_exp(n, fac, exp);
     for (i = 0, res = 1;  res && i < nfactors;  i++) {
-      if (exp[i] == 1)
-        res = (kronecker_uu(a,fac[i]) == 1) || sqrtmodp(&r, a, fac[i]);
-      else
-        res = sqrtmod(&r, a, ipow(fac[i],exp[i]));
+      if (exp[i] == 1 && (fac[i] == 2 || gcd_ui(a,fac[i]) != 1))
+        res = 1;
+      else if (exp[i] == 1 || (fac[i] != 2 && gcd_ui(a,fac[i]) == 1))
+        res = (kronecker_uu(a,fac[i]) == 1);
+      else {
+        UV F = ipow(fac[i],exp[i]);
+        if      (F ==  4)  res = _qr4[a % 4];
+        else if (F ==  8)  res = _qr8[a % 8];
+        else if (F ==  9)  res = _qr9[a % 9];
+        else if (F == 16)  res = _qr16[a % 16];
+        else               res = sqrtmod(&r, a, F);
+      }
     }
   }
   return res;
@@ -1893,6 +1907,63 @@ int binomialmod(UV *res, UV n, UV k, UV m) {
       }
     }
     return (chinese(res, 0, bin, fac, nfactors) == 1);
+  }
+  return 0;
+}
+
+/* Pisano period.  */
+static UV _pisano_prime(UV p)
+{
+  if (p == 2) return  3;
+  if (p == 3) return  8;
+  if (p == 5) return 20;
+  if (p == 7) return 16;
+
+  if (p < 1000) {  /* Simple search */
+
+    UV k,a,b,t;
+    k=1; a=1, b=1;
+    while (!(a == 0 && b == 1)) {
+      k++;
+      t = b; b = addmod(a,b,p); a = t;
+    }
+    return k;
+
+  } else {         /* Search in divisors of p - (5|n) */
+
+    UV d, i, ndivisors, *divs;
+    UV pn = p - kronecker_uu(5,p);
+    divs = divisor_list(pn, &ndivisors, pn>>1);
+    for (i = 0; i < ndivisors; i++)
+      if (d = divs[i], lucasumod(1,p-1,d,p) == 0)
+        break;
+    Safefree(divs);
+    return d;
+
+  }
+}
+static UV _pisano_prime_power(UV p, UV k)
+{
+  if (k == 0) return 1;
+  /* No 64-bit Wall-Wall-Sun primes exist. */
+  return _pisano_prime(p) * ipow(p,k-1);
+}
+
+UV pisano_period(UV n)
+{
+  UV ret, fac[MPU_MAX_FACTORS+1], exp[MPU_MAX_FACTORS+1];
+  int i, nfactors;
+
+  if (n <= 1) return (n == 1);
+
+  nfactors = factor_exp(n, fac, exp);
+  for (i = 0, ret = 1; i < nfactors; i++)
+    ret = lcm_ui(ret, _pisano_prime_power(fac[i], exp[i]));
+
+  for (i = 0; i < 3; i++) {
+    UV t = ret << i;
+    if (lucasumod(1,n-1,t,n) == 0 && lucasumod(1,n-1,t+1,n) == 1)
+      return t;
   }
   return 0;
 }
