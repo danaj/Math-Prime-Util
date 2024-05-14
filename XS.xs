@@ -2286,8 +2286,11 @@ void pisano_period(IN SV* svn)
   PREINIT:
     UV n;
   PPCODE:
-    if (_validate_and_set(&n, aTHX_ svn, IFLAG_POS))
-      XSRETURN_UV( pisano_period(n) );
+    if (_validate_and_set(&n, aTHX_ svn, IFLAG_POS)) {
+      UV r = pisano_period(n);  /* Returns 0 if n=0 or result overflows */
+      if (r != 0 || n == 0)
+        XSRETURN_UV(r);
+    }
     _vcallsub_with_gmpobj(0.53,"pisano_period");
     objectify_result(aTHX_ svn, ST(0));
     XSRETURN(1);

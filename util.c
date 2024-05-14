@@ -691,6 +691,14 @@ UV ipowsafe(UV n, UV k) {
   return p;
 }
 
+/* Like lcm_ui, but returns 0 if overflow */
+UV lcmsafe(UV x, UV y) {
+  y /= gcd_ui(x,y);
+  if (UV_MAX/x < y) return 0;
+  return x*y;
+}
+
+
 UV valuation(UV n, UV k)
 {
   UV v = 0;
@@ -1912,59 +1920,60 @@ int binomialmod(UV *res, UV n, UV k, UV m) {
 }
 
 /* Pisano period.  */
-static UV _pisano_prime(UV p)
+/* Thanks to Trizen & Charles R Greathouse IV for ideas and working examples. */
+/* Algorithm from Charles R Greathouse IV, https://oeis.org/A001175 */
+static UV _pisano_prime_power(UV p, UV e)
 {
-  if (p == 2) return  3;
-  if (p == 3) return  8;
-  if (p == 5) return 20;
-  if (p == 7) return 16;
-
-  if (p < 1000) {  /* Simple search */
-
-    UV k,a,b,t;
-    k=1; a=1, b=1;
+  UV k;
+  if (e == 0) return 1;
+  if (p == 2) return 3UL << (e-1);
+  if      (p == 3) k = 8;
+  else if (p == 5) k = 20;
+  else if (p == 7) k = 16;
+  else if (p < 300) {          /* Simple search */
+    UV a = 1,b = 1, t;
+    k = 1;
     while (!(a == 0 && b == 1)) {
       k++;
       t = b; b = addmod(a,b,p); a = t;
     }
-    return k;
+  } else {                     /* Look through divisors of p-(5|p) */
+    int i, nfactors;
+    UV j, fac[MPU_MAX_FACTORS+1], exp[MPU_MAX_FACTORS+1];
 
-  } else {         /* Search in divisors of p - (5|n) */
-
-    UV d, i, ndivisors, *divs;
-    UV pn = p - kronecker_uu(5,p);
-    divs = divisor_list(pn, &ndivisors, pn>>1);
-    for (i = 0; i < ndivisors; i++)
-      if (d = divs[i], lucasumod(1,p-1,d,p) == 0)
-        break;
-    Safefree(divs);
-    return d;
-
+    k = p - kronecker_uu(5,p);
+    nfactors = factor_exp(k, fac, exp);
+    for (i = 0; i < nfactors; i++) {
+      for (j = 0; j < exp[i]; j++) {
+        if (lucasumod(1, p-1, k/fac[i], p) != 0) break;
+        k /= fac[i];
+      }
+    }
   }
+  return (e == 1)  ?  k  :  k * ipow(p, e-1);
 }
-static UV _pisano_prime_power(UV p, UV k)
-{
-  if (k == 0) return 1;
-  /* No 64-bit Wall-Wall-Sun primes exist. */
-  return _pisano_prime(p) * ipow(p,k-1);
-}
-
 UV pisano_period(UV n)
 {
-  UV ret, fac[MPU_MAX_FACTORS+1], exp[MPU_MAX_FACTORS+1];
+  UV r, lim, k, fac[MPU_MAX_FACTORS+1], exp[MPU_MAX_FACTORS+1];
   int i, nfactors;
 
   if (n <= 1) return (n == 1);
 
   nfactors = factor_exp(n, fac, exp);
-  for (i = 0, ret = 1; i < nfactors; i++)
-    ret = lcm_ui(ret, _pisano_prime_power(fac[i], exp[i]));
-
-  for (i = 0; i < 3; i++) {
-    UV t = ret << i;
-    if (lucasumod(1,n-1,t,n) == 0 && lucasumod(1,n-1,t+1,n) == 1)
-      return t;
+  for (i = 0, k = 1; i < nfactors; i++) {
+    k = lcmsafe(k, _pisano_prime_power(fac[i], exp[i]));
+    if (k == 0) return 0;
   }
+
+  /* Do this carefully to avoid overflow */
+  r = 0;
+  lim = (UV_MAX/6 < n) ? UV_MAX : 6*n;
+  do {
+    r += k;
+    if (lucasumod(1, n-1, r-1, n) == 1)
+      return r;
+  } while (r <= (lim-k));
+
   return 0;
 }
 

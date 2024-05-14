@@ -7651,31 +7651,28 @@ sub lucasvmod {
   return $V;
 }
 
+my %_ppc = (3 => 8, 5 => 20, 7 => 16, 11 => 10, 13 => 28, 17 => 36, 19 => 18);
+sub _pisano_pp {
+  my($p,$e) = @_;
+  return 1 if $e == 0;
+  return 3 << ($e-1) if $p == 2 && $e < 32;
+  return Mlshiftint(3,$e-1) if $p == 2;
+  my $k = $_ppc{$p};
 
-sub _pisano_prime {
-  my($p) = @_;
-  return (0,1,3,8,6,20,24,16,12,24,60,10,24,28,48,40,24,36,24,18)[$p] if $p <= 19;
-
-  # Simple method.  Pretty much always slower.
-  # my($k,$a,$b) = (1,1,1);
-  # until ($a == 0 && $b == 1) {
-  #   $k++;
-  #   ($a,$b) = ($b,Maddmod($a,$b,$p));
-  # }
-  # return $k;
-
-  my $pn = $p - Mkronecker(5,$p);
-  Mvecfirst(sub { Mlucasumod(1,$p-1,$_,$p) == 0 }, Mdivisors($pn));
-}
-sub _pisano_prime_power {
-  my($p,$k) = @_;
-  return 1 if $k == 0;
-  return 3 << ($k-1) if $p == 2 && $k < 32;
-  #return Mmulint( 3,Mpowint(2,$k-1)) if $p == 2;
-  #return Mmulint(20,Mpowint(5,$k-1)) if $p == 5;
-  my $PERIOD = _pisano_prime($p);
-  $PERIOD = Mmulint($PERIOD, Mpowint($p,$k-1)) if $k > 1;
-  $PERIOD;
+  if (!defined $k) {
+    $k = Msubint($p, Mkronecker(5,$p));
+    for my $f (Mfactor_exp($k)) {
+      my($fac,$exp) = @$f;
+      for my $j (1 .. $exp) {
+        my $rk = Mdivint($k,$fac);
+        last if Mlucasumod(1, $p-1, $rk, $p) != 0;
+        $k = $rk;
+      }
+    }
+    $_ppc{$p} = $k;
+  }
+  $k = Mmulint($k, Mpowint($p, $e-1)) if $e > 1;
+  $k;
 }
 sub pisano_period {
   my($n) = @_;
@@ -7683,14 +7680,13 @@ sub pisano_period {
   return 0 if $n < 0;
   return (0,1,3,8,6,20,24,16,12,24,60)[$n] if $n <= 10;
 
-  my $ret = Mlcm(map { _pisano_prime_power($_->[0],$_->[1]) } Mfactor_exp($n));
+  my $k = Mlcm(map { _pisano_pp($_->[0],$_->[1]) } Mfactor_exp($n));
 
-  for my $i (0 .. 2) {
-    my $t = Mlshiftint($ret, $i);
-    return $t if Mlucasumod(1, -1, $t, $n) == 0
-              && Mlucasumod(1, -1, Maddint($t,1), $n) == 1;
+  my $lim = Mmulint(6,$n);
+  for (my $ret = $k;  $ret <= $lim;  $ret = Maddint($ret,$k)) {
+    return $ret if Mlucasumod(1, -1, Msubint($ret,1), $n) == 1;
   }
-  return $ret;
+  undef;
 }
 
 sub is_lucas_pseudoprime {

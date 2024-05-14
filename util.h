@@ -23,6 +23,7 @@ extern uint32_t powerof(UV n);
 extern int is_power(UV n, UV a);
 extern UV rootint(UV n, UV k);
 extern UV ipowsafe(UV n, UV k);  /* returns UV_MAX if overflows */
+extern UV lcmsafe(UV x, UV u);  /* returns 0 if overflows */
 extern UV valuation(UV n, UV k);
 extern UV valuation_remainder(UV n, UV k, UV *r);
 extern UV logint(UV n, UV b);
