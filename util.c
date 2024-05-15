@@ -1256,11 +1256,6 @@ UV qnr(UV n) {
   return 0;
 }
 
-static const char _qr4[] = {1,1,0,0};
-static const char _qr8[] = {1,1,0,0,1,0,0,0};
-static const char _qr9[] = {1,1,0,0,1,0,0,1,0};
-static const char _qr16[] = {1,1,0,0,1,0,0,0,0,1,0,0,0,0,0,0};
-
 int is_qr(UV a, UV n) {
   int res;
   if (n == 0) return (a == 1);    /* Should return undef */
@@ -1271,7 +1266,7 @@ int is_qr(UV a, UV n) {
   if (is_prob_prime(n)) {
     res = (kronecker_uu(a,n) == 1);
   } else {
-    UV r, fac[MPU_MAX_FACTORS+1], exp[MPU_MAX_FACTORS+1];
+    UV fac[MPU_MAX_FACTORS+1], exp[MPU_MAX_FACTORS+1];
     int i, nfactors;
 
     nfactors = factor_exp(n, fac, exp);
@@ -1281,12 +1276,7 @@ int is_qr(UV a, UV n) {
       else if (exp[i] == 1 || (fac[i] != 2 && gcd_ui(a,fac[i]) == 1))
         res = (kronecker_uu(a,fac[i]) == 1);
       else {
-        UV F = ipow(fac[i],exp[i]);
-        if      (F ==  4)  res = _qr4[a % 4];
-        else if (F ==  8)  res = _qr8[a % 8];
-        else if (F ==  9)  res = _qr9[a % 9];
-        else if (F == 16)  res = _qr16[a % 16];
-        else               res = sqrtmod(&r, a, F);
+        res = sqrtmod(0, a, ipow(fac[i],exp[i]));
       }
     }
   }

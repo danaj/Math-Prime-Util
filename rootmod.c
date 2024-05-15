@@ -247,6 +247,35 @@ static UV _sqrtmod_composite(UV a, UV n) {
   return r;
 }
 
+/* Micro-optimization for fast returns with small values */
+#define NSMALL 16
+static char _small[NSMALL-3+1][NSMALL-2+1] = {
+  {0},
+  {0,0},
+  {0,0,2},
+  {0,3,2,0},
+  {3,0,2,0,0},
+  {0,0,2,0,0,0},
+  {0,0,2,0,0,4,0},
+  {0,0,2,5,4,0,0,3},
+  {0,5,2,4,0,0,0,3,0},
+  {0,0,2,0,0,0,0,3,0,0},
+  {0,4,2,0,0,0,0,3,6,0,5},
+  {4,0,2,0,0,7,6,3,0,5,0,0},
+  {0,0,2,0,6,0,0,3,5,0,0,0,0},
+  {0,0,2,0,0,0,0,3,0,0,0,0,0,0},
+};
+
+static int _sqrtmod_small_return(UV *s, UV a, UV n) {
+  if (n == 0) return 0;
+  if (a >= n) a %= n;
+  if (n > 2 && a > 1) {
+    a = _small[n-3][a-2];
+    if (a == 0) return 0;
+  }
+  if (s != 0) *s = a;
+  return 1;
+}
 static int _sqrtmod_return(UV r, UV *s, UV a, UV p) {
   if (p-r < r)  r = p-r;
   if (mulmod(r, r, p) != (a % p)) return 0;
@@ -256,12 +285,15 @@ static int _sqrtmod_return(UV r, UV *s, UV a, UV p) {
 int sqrtmodp(UV *s, UV a, UV p) {
   if (p == 0) return 0;
   if (a >= p) a %= p;
-  if (p <= 2 || a <= 1) return _sqrtmod_return(a, s, a, p);
+  if (p <= NSMALL || a <= 1) return _sqrtmod_small_return(s,a,p);
   return _sqrtmod_return(_sqrtmod_prime(a,p), s, a, p);
 }
 
 int sqrtmod(UV *s, UV a, UV n) {
   /* return rootmod(s, a, 2, n); */
+  if (n == 0) return 0;
+  if (a >= n) a %= n;
+  if (n <= NSMALL || a <= 1) return _sqrtmod_small_return(s,a,n);
   return _sqrtmod_return(_sqrtmod_composite(a,n), s, a, n);
 }
 
