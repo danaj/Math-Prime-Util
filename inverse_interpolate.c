@@ -49,30 +49,42 @@ static UV _inverse_interpolate(UV lo, UV hi, UV n,
                                UV threshold) {
   UV mid, rlo, rhi, rmid, iloopc;
 
-  rlo = CALLBACK(lo);
-  if (rlo == n)  RETURNI(lo);  /* Possible bad limit */
-
-  /* If they don't know what hi might be, estimate something. */
-  if (hi != 0) rhi = CALLBACK(hi);
-
-  while (hi == 0) {
-    double estf = (double)n/(double)rlo - 0.004;
-    if      (estf <= 1.004) estf = 1.004;
-    else if (estf > 8.0)    estf = 8.0;
-    mid =  ((double)UV_MAX/(double)lo <= estf)  ?  UV_MAX
-        :  (UV) (estf * (double)lo + 1);
-    if(_dbgprint)printf("  0s lo %lu  mid %lu  hi %lu\n", lo, mid, hi);
+  if (hi != 0) {
+    /* Given both lo and hi, halve the range on start. */
+    mid = lo + ((hi-lo)>>1);
     rmid = CALLBACK(mid);
-    if (rmid >= n) {  hi = mid;  rhi = rmid;  }
-    else           {  lo = mid;  rlo = rmid;  }
-    if (lo == UV_MAX)  break;  /* Overflow */
+    if(_dbgprint)printf("  01 lo %lu  mid %lu  hi %lu\n", lo, mid, hi);
+    if (rmid >= n) {
+      hi = mid;  rhi = rmid;
+      rlo = CALLBACK(lo);
+      if (rlo == n)  RETURNI(lo);  /* Possible bad limit */
+    } else {
+      lo = mid;  rlo = rmid;
+      rhi = CALLBACK(hi);
+    }
+  } else {
+    /* They don't know what hi might be, so estimate something. */
+    rlo = CALLBACK(lo);
+    if (rlo == n)  RETURNI(lo);  /* Possible bad limit */
+    while (hi == 0) {
+      double estf = (double)n/(double)rlo - 0.004;
+      if      (estf <= 1.004) estf = 1.004;
+      else if (estf > 8.0)    estf = 8.0;
+      mid =  ((double)UV_MAX/(double)lo <= estf)  ?  UV_MAX
+          :  (UV) (estf * (double)lo + 1);
+      if(_dbgprint)printf("  0s lo %lu  mid %lu  hi %lu\n", lo, mid, hi);
+      rmid = CALLBACK(mid);
+      if (rmid >= n) {  hi = mid;  rhi = rmid;  }
+      else           {  lo = mid;  rlo = rmid;  }
+      if (lo == UV_MAX)  break;  /* Overflow */
+    }
   }
-  MPUassert(rlo <= n && rhi >= n, "interpolation: bad initial limits");
 
+  MPUassert(rlo <= n && rhi >= n, "interpolation: bad initial limits");
   if ((hi-lo) <= 1)   RETURNI( (rlo == n || (rlo < n && rhi > n)) ? lo : hi );
 
   /* Step 1.  Linear interpolation until rhi is correct. */
-  if(_dbgprint)printf("   1  lo %lu hi %lu\n", lo, hi);
+  if(_dbgprint)printf("  1  lo %lu hi %lu\n", lo, hi);
 
   mid = (n == rhi)  ?  hi-1  :  LINEAR_INTERP(n,lo,hi,rlo,rhi);
   if (mid == lo) mid++;  else if (mid == hi) mid--;
@@ -115,7 +127,7 @@ static UV _inverse_interpolate(UV lo, UV hi, UV n,
   if(_dbgprint)printf("  2  lo %lu  mid %lu  hi %lu\n", lo, mid, hi);
 
   while ((hi-lo) > 8 && ((hi-lo) > threshold || rhi > n)) {
-    UV x0 = lo,  x2 = hi,  x1 = lo + ((hi-lo)>>1);
+    UV x0 = lo,  x1 = lo + ((hi-lo)>>1);   /* x2 = hi */
     UV rx1 = CALLBACK(x1);
     IV fx0 = rlo-n,  fx1 = rx1-n,  fx2=rhi-n+1;
 
