@@ -1193,23 +1193,54 @@ UV pillai_v(UV n) {
 }
 
 
+#define MOB_TESTP(p) \
+  { uint32_t psq = p*p;  if (n >= psq && (n % psq) == 0) return 0; }
+
+/* mpu 'for (0..255) { $x=moebius($_)+1; $b[$_ >> 4] |= ($x << (2*($_%16))); } say join ",",@b;' */
+static const uint32_t _smoebius[16] = {2703565065,23406865,620863913,1630114197,157354249,2844895525,2166423889,363177345,2835441929,2709852521,1095049497,92897577,1772687649,162113833,160497957,689538385};
 int moebius(UV n) {
-  UV factors[MPU_MAX_FACTORS+1];
-  int i, nfactors;
+  if (n < 256)  return (int)((_smoebius[n >> 4] >> (2*(n % 16))) & 3) - 1;
 
-  if (n <= 5) return (n == 1) ? 1 : (n % 4) ? -1 : 0;
-  if (n >=  49 && (!(n %   4) || !(n %   9) || !(n %  25) || !(n %  49)))
-    return 0;
-  if (n >= 361 && (!(n % 121) || !(n % 169) || !(n % 289) || !(n % 361)))
-    return 0;
-  if (n >= 961 && (!(n % 529) || !(n % 841) || !(n % 961)))
+  if (!(n % 4) || !(n % 9) || !(n % 25) || !(n % 49) || !(n %121) || !(n %169))
     return 0;
 
-  nfactors = factor(n, factors);
-  for (i = 1; i < nfactors; i++)
-    if (factors[i] == factors[i-1])
-      return 0;
-  return (nfactors % 2) ? -1 : 1;
+  MOB_TESTP(17); MOB_TESTP(19); MOB_TESTP(23);
+  MOB_TESTP(29); MOB_TESTP(31); MOB_TESTP(37);
+
+  {
+    UV factors[MPU_MAX_FACTORS+1];
+    int i, nfactors;
+    nfactors = factor(n, factors);
+    for (i = 1; i < nfactors; i++)
+      if (factors[i] == factors[i-1])
+        return 0;
+    return (nfactors % 2) ? -1 : 1;
+  }
+}
+
+#define ISF_TESTP(p) \
+  { uint32_t psq = p*p;  if (psq > n) return 1;  if ((n % psq) == 0) return 0; }
+
+static const uint32_t _isf[8] = {3840601326,1856556782,3941394158,2362371810,3970362990,3471729898,4008603310,3938642668};
+int is_square_free(UV n) {
+  if (n < 256)  return (_isf[n >> 5] & (1U << (n % 32))) != 0;
+
+  if (!(n % 4) || !(n % 9) || !(n % 25) || !(n % 49) || !(n %121) || !(n %169))
+    return 0;
+
+  ISF_TESTP(17); ISF_TESTP(19); ISF_TESTP(23);
+  ISF_TESTP(29); ISF_TESTP(31); ISF_TESTP(37);
+
+  /* return (moebius(n) != 0); */
+  {
+    UV factors[MPU_MAX_FACTORS+1];
+    int i, nfactors;
+    nfactors = factor(n, factors);
+    for (i = 1; i < nfactors; i++)
+      if (factors[i] == factors[i-1])
+        return 0;
+    return 1;
+  }
 }
 
 UV exp_mangoldt(UV n) {
