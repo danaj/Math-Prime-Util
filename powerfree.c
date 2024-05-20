@@ -10,6 +10,7 @@
 #include "powerfree.h"
 #include "util.h"
 #include "factor.h"
+#include "real.h"
 
 static INLINE UV T(UV n) {
   return (n*(n+1)) >> 1;
@@ -31,21 +32,18 @@ int is_powerfree(UV n, uint32_t k)
   UV exp[MPU_MAX_FACTORS+1];
   int i, nfactors;
 
-  if (k < 2 || n <= 1)   return (n==1);
+  if (k < 2 || n <= 1)           return (n==1);
 
-  if (k >= BITS_PER_WORD || n < (UVCONST(1) << (k-1)))
-    return 1;
+  if (k >= BITS_PER_WORD)        return 1;
+  if (n < (UVCONST(1) << (k-1))) return 1;
+  if (n == ((n >> k) << k))      return 0;
+  if (k == 2)                    return is_square_free(n);
 
   /* Try to quickly find common powers so we don't have to factor */
-  if (k == 2) {
-    if (!(n %   4) || !(n %   9) || !(n %  25) || !(n %  49) ||
-        !(n % 121) || !(n % 169) || !(n % 289) || !(n % 361))
+  if (k == 3) {
+    if ( !(n % 27) || !(n % 125) || !(n % 343) || !(n%1331) || !(n%2197) )
       return 0;
-    if (n < 529)
-      return 1;
-  } else if (k == 3) {
-    if ( !(n % 8) || !(n % 27) || !(n % 125) )
-      return 0;
+    if (n < 4913) return 1;
   }
 
   /* A factor iterator would be good to use here */
@@ -62,7 +60,7 @@ int is_powerfree(UV n, uint32_t k)
 static UV squarefree_count(UV n)
 {
   signed char* mu;
-  IV *M, *Mx, Mxisum;
+  IV *M, *Mx, Mxisum, mert;
   UV sqrtn, I, D, i, j, S1 = 0, S2 = 0;
 
   if (n < 4) return n;
@@ -73,14 +71,17 @@ static UV squarefree_count(UV n)
   mu = range_moebius(0, D);
 
   S1 += n;
-  for (i = 2; i <= D; i++)
-    if (mu[i] != 0)
-      S1 += mu[i] * (n/(i*i));
-
   New(0, M, D+1, IV);
   M[0] = 0;
-  for (i = 1; i <= D; i++)
-    M[i] = M[i-1] + mu[i];
+  M[1] = 1;
+  mert = 1;
+  for (i = 2; i <= D; i++) {
+    if (mu[i] != 0) {
+      S1 += mu[i] * (n/(i*i));
+      mert += mu[i];
+    }
+    M[i] = mert;
+  }
   Safefree(mu);
 
   Newz(0, Mx, I+1, IV);
@@ -214,4 +215,56 @@ UV powerfree_part_sum(UV n, uint32_t k)
   }
 
   return sum;
+}
+
+#if BITS_PER_WORD == 64
+  #define MAX_PFC2 UVCONST(11214275663373200251)
+  #define MAX_PFC3 UVCONST(15345982395028449439)
+  #define MAX_PFC4 UVCONST(17043655258566511333)
+#else
+  #define MAX_PFC2 UVCONST(2611027094)
+  #define MAX_PFC3 UVCONST(3573014938)
+  #define MAX_PFC4 UVCONST(3968285222)
+#endif
+
+UV nth_powerfree(UV n, uint32_t k)
+{
+  long double zm;
+  UV qk, count, diff, thresh, i;
+
+  if (k < 2) return 0;
+  if (n < 4) return n;
+
+  /* Check for overflow. */
+  if (k == 2 && n > MAX_PFC2) return 0;
+  if (k == 3 && n > MAX_PFC3) return 0;
+  if (k >= 4 && n > MAX_PFC4) {
+    if (k == 4) return 0;
+    if (n > powerfree_count(UV_MAX,k)) return 0;
+  }
+
+  /* Step 1:  Density ZM and expected value QK. */
+  zm = 1.0 + ld_riemann_zeta(k);
+  qk = (UV)(zm * (long double) n + 0.5);
+  thresh = (k <= 2) ? 200 : (k == 3) ? 60 : (k == 4) ? 2 : 1;
+
+  for (i = 0; i < 10; i++) {
+    /* Step 2: Initial count at QK and difference from goal. */
+    count = powerfree_count(qk, k);
+    diff = (count >= n) ? count-n : n-count;
+    /* Step 3: Update estimate using expected density. */
+    if (diff <= thresh) break;
+    if (count > n)  qk -= (UV)((long double)diff * zm);
+    else            qk += (UV)((long double)diff * zm);
+  }
+
+  /* Step 4: Get ourselves onto a powerfree number */
+  while (!is_powerfree(qk,k))  qk--;
+
+  /* Step 5: Walk forwards or backwards until we get to the goal. */
+  while (count != n) {
+    do { qk += (count < n) ? 1 : -1; } while (!is_powerfree(qk,k));
+    count += (count < n) ? 1 : -1;
+  }
+  return qk;
 }

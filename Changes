@@ -79,6 +79,7 @@ Revision history for Perl module Math::Prime::Util
     - powerful_count(n[,k])           count of k-powerful numbers <= n
     - nth_powerful(n[,k])             the nth k-powerful number (default k=2)
     - powerfree_count(n[,k])          count of k-powerfree numbers <= n
+    - nth_powerfree(n[,k])            The nth k-powerfree number (default k=2)
     - powerfree_sum(n[,k])            sum of k-powerfree numbers <= n
     - powerfree_part(n[,k])           remove excess powers from n
     - powerfree_part_sum(n[,k])       sum of k-powerfree parts for 1 to n

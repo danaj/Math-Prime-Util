@@ -76,7 +76,7 @@ our @EXPORT_OK =
       perfect_power_count_lower perfect_power_count_upper
       nth_perfect_power nth_perfect_power_approx
       nth_perfect_power_lower nth_perfect_power_upper
-      powerfree_count powerfree_sum
+      nth_powerfree powerfree_count powerfree_sum
       powerfree_part powerfree_part_sum
       smooth_count rough_count powersum
       lucky_count lucky_count_approx lucky_count_lower lucky_count_upper
@@ -3122,6 +3122,18 @@ L<OEIS A013928|http://oeis.org/A013928>.
 With C<k == 3> this produces the sequence
 L<OEIS A060431|http://oeis.org/A060431>.
 
+=head2 nth_powerfree
+
+Given a non-negative integer C<n> and an optional non-negative integer C<k>,
+returns the C<n>-th k-powerfree number.
+If C<k> is omitted, C<k=2> is used.
+Returns undef if C<k> is less than 2 or C<n=0>.  Returns 1 for C<n=1>.
+
+With C<k == 2> this produces the sequence
+L<OEIS A005117|http://oeis.org/A005117>.
+With C<k == 3> this produces the sequence
+L<OEIS A004709|http://oeis.org/A004709>.
+
 =head2 powerfree_sum
 
 Given an integer C<n> and an optional non-negative integer C<k>, returns
@@ -4974,7 +4986,7 @@ integer C<n>, efficiently compute C<lucasu(P,Q,k) mod |n|>.
 
 This corresponds to gmpy2's C<lucasu_mod> function.
 
-When C<(P,Q) = (1,-1)> this returns the modular fibonacci sequence.  This
+When C<(P,Q) = (1,-1)> this returns the modular Fibonacci sequence.  This
 corresponds to Sidef's C<fibmod> function.
 
 =head2 lucasvmod

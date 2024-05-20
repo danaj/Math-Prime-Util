@@ -69,7 +69,7 @@ sub mpu_public_regex {
       divint modint cdivint divrem fdivrem cdivrem tdivrem
       miller_rabin_random
       lucas_sequence
-      lucasu lucasv lucasuv lucasumod lucasvmod lucasuvmod
+      lucasu lucasv lucasuv lucasumod lucasvmod lucasuvmod pisano_period
       primes twin_primes semi_primes almost_primes omega_primes ramanujan_primes
       sieve_prime_cluster sieve_range prime_powers lucky_numbers
       forprimes forcomposites foroddcomposites forsemiprimes foralmostprimes
@@ -105,7 +105,7 @@ sub mpu_public_regex {
       perfect_power_count_lower perfect_power_count_upper
       nth_perfect_power nth_perfect_power_approx
       nth_perfect_power_lower nth_perfect_power_upper
-      powerfree_count powerfree_sum
+      nth_powerfree powerfree_count powerfree_sum
       powerfree_part powerfree_part_sum
       smooth_count rough_count powersum
       lucky_count lucky_count_approx lucky_count_lower lucky_count_upper
@@ -155,8 +155,8 @@ sub mpu_PPM_regex {
       Mlshiftint Mrshiftint
       Maddmod Msubmod Mmulmod Mrootmod Mdivmod Mpowmod Minvmod
       Mmuladdmod Mmulsubmod
-      Mbinomial Mchinese Mfactor Mfactor_exp
-      Mfactorial Mfordivisors Mforprimes Mgcd
+      Mbinomial Mchinese Mfactor Mfactor_exp Mdivisors
+      Mfactorial Mfordivisors Mforprimes Mgcd Mlcm
       Mkronecker Mmoebius Mtotient Mstirling
       Mnext_prime Mprev_prime Mprime_count
       Mprimorial Mpn_primorial
@@ -166,6 +166,8 @@ sub mpu_PPM_regex {
       Mis_semiprime Mis_square_free
       Mvecall Mvecany Mvecmin Mvecmax Mvecnone Mvecprod Mvecsum
       Mtodigits
+      Mlucasumod Mvecfirst
+      Saddint Ssubint Smulint Sdivint Spowint
   );
   my $pattern = '^(' . join('|', @funcs) . ')$';
   return qr/$pattern/;

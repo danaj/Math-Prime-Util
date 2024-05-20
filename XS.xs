@@ -1801,22 +1801,25 @@ void is_square_free(IN SV* svn)
 void is_powerfree(IN SV* svn, IN int k = 2)
   ALIAS:
     powerfree_count = 1
-    powerfree_sum = 2
-    powerfree_part = 3
-    powerfree_part_sum = 4
+    nth_powerfree = 2
+    powerfree_sum = 3
+    powerfree_part = 4
+    powerfree_part_sum = 5
   PREINIT:
     int status;
     UV n, res;
   PPCODE:
-    status = _validate_and_set(&n, aTHX_ svn, IFLAG_ABS);
+    status = _validate_and_set(&n, aTHX_ svn, (ix==2) ? IFLAG_POS : IFLAG_ABS);
     res = 0;
     if (status == 1) {
       switch (ix) {
         case 0:  res = is_powerfree(n,k);    break;
         case 1:  res = powerfree_count(n,k); break;
-        case 2:  res = powerfree_sum(n,k);   break;
-        case 3:  res = powerfree_part(n,k);  break;
-        case 4:
+        case 2:  if (n == 0 || k < 2)  XSRETURN_UNDEF;
+                 res = nth_powerfree(n,k);   break;
+        case 3:  res = powerfree_sum(n,k);   break;
+        case 4:  res = powerfree_part(n,k);  break;
+        case 5:
         default: res = powerfree_part_sum(n,k);  break;
       }
       if (ix == 0)
@@ -1830,9 +1833,10 @@ void is_powerfree(IN SV* svn, IN int k = 2)
     switch (ix) {
       case  0: _vcallsub_with_gmp(0.00,"is_powerfree"); break;
       case  1: _vcallsub_with_pp("powerfree_count"); break;
-      case  2: _vcallsub_with_pp("powerfree_sum"); break;
-      case  3: _vcallsub_with_pp("powerfree_part"); break;
-      case  4:
+      case  2: _vcallsub_with_pp("nth_powerfree"); break;
+      case  3: _vcallsub_with_pp("powerfree_sum"); break;
+      case  4: _vcallsub_with_pp("powerfree_part"); break;
+      case  5:
       default: _vcallsub_with_pp("powerfree_part_sum"); break;
     }
     return;

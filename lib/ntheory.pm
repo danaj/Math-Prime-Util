@@ -380,6 +380,7 @@ Tags:
   smooth_count(n,k)                   count of k-smooth numbers <= n
   rough_count(n,k)                    count of k-rough numbers <= n
   powerfree_count(n[,k])              count of k-powerfree numbers <= n
+  nth_powerfree(n[,k])                the nth k-powerfree number
   powerfree_sum(n[,k])                sum of k-powerfree numbers <= n
   powerfree_part(n[,k])               remove excess powers so n is k-free
   powerfree_part_sum(n[,k])           sum of k-powerfree parts for 1 to n

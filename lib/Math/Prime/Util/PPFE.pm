@@ -165,6 +165,7 @@ sub entropy_bytes {
 *perfect_power_count = \&Math::Prime::Util::PP::perfect_power_count;
 *is_powerfree = \&Math::Prime::Util::PP::is_powerfree;
 *powerfree_count = \&Math::Prime::Util::PP::powerfree_count;
+*nth_powerfree = \&Math::Prime::Util::PP::nth_powerfree;
 *powerfree_sum = \&Math::Prime::Util::PP::powerfree_sum;
 *powerfree_part = \&Math::Prime::Util::PP::powerfree_part;
 *powerfree_part_sum = \&Math::Prime::Util::PP::powerfree_part_sum;

@@ -130,6 +130,20 @@ BEGIN {
 *Mforprimes = \&Math::Prime::Util::forprimes;
 *MLi = \&Math::Prime::Util::LogarithmicIntegral;
 
+if (defined $Math::Prime::Util::GMP::VERSION && $Math::Prime::Util::GMP::VERSION >= 0.53) {
+  *Saddint = \&Math::Prime::Util::GMP::addint;
+  *Ssubint = \&Math::Prime::Util::GMP::subint;
+  *Smulint = \&Math::Prime::Util::GMP::mulint;
+  *Sdivint = \&Math::Prime::Util::GMP::divint;
+  *Spowint = \&Math::Prime::Util::GMP::powint;
+} else {
+  *Saddint = \&Math::Prime::Util::addint;
+  *Ssubint = \&Math::Prime::Util::subint;
+  *Smulint = \&Math::Prime::Util::mulint;
+  *Sdivint = \&Math::Prime::Util::divint;
+  *Spowint = \&Math::Prime::Util::powint;
+}
+
 my $_precalc_size = 0;
 sub prime_precalc {
   my($n) = @_;
@@ -1739,29 +1753,128 @@ sub powerfree_count {
 
   return (($n >= 1) ? 1 : 0)  if $k < 2 || $n <= 1;
 
-  my $count = $n;
+  my $count = 0;
   my $nk = Mrootint($n, $k);
 
-  if ($nk < 100 || $nk > 1e8) {
-    Math::Prime::Util::forsquarefree(
-      sub {
-        $count += ((scalar(@_) & 1) ? -1 : 1) * Mdivint($n, Mpowint($_, $k));
-      },
-      2, $nk
-    );
-  } else {
-    my @mu = (0, Mmoebius(1, $nk));
+  # If we can do everything native, do that.
+  if ($n < SINTMAX && $nk < 20000) {
+    use integer;
+    my @mu = Mmoebius(0, $nk);
     foreach my $i (2 .. $nk) {
-      next if $mu[$i] == 0;
-      $count += $mu[$i] * Mdivint($n, Mpowint($i, $k));
+      $count += $mu[$i] * $n/($i**$k) if $mu[$i];
+    }
+    return Maddint($count,$n);
+  } elsif ($n < SINTMAX && $nk < 1e8) {
+    # Split out the trailing n/i^k = 1, saves memory and time if large enough.
+    use integer;
+    my $L1 = Mrootint($n/2,$k);
+    my @mu = Mmoebius(0, $L1);
+    foreach my $i (2 .. $L1) {
+      $count += $mu[$i] * $n/($i**$k) if $mu[$i];
+    }
+    #@mu = Mmoebius($L1+1, $nk);   my $c1 = 0;   $c1 += $_ for @mu;
+    my $c1 = Math::Prime::Util::mertens($nk) - Math::Prime::Util::mertens($L1);
+    return Mvecsum($count,$c1,$n);
+  }
+
+  # Simple way.  All the bigint math kills performance.
+  # Math::Prime::Util::forsquarefree(
+  #   sub {
+  #     my $t = Mdivint($n, Mpowint($_, $k));
+  #     $count = (scalar(@_) & 1) ? Msubint($count,$t) : Maddint($count,$t);
+  #   },
+  #   2, $nk
+  # );
+
+  # Optimization 1:  pull out all the ranges at the end with small constant
+  #                  multiplications.
+  # Optimization 2:  Use GMP basic arithmetic functions if possible, saving
+  #                  all the bigint object overhead.  Can be 10x faster.
+
+  my $A = Msqrtint($nk);
+  my @L = (0, $nk, map { Mrootint(Mdivint($n,$_),$k) } 2..$A);
+  my @C;
+
+  Math::Prime::Util::forsquarefree(
+    sub {
+      $count = (scalar(@_) & 1)
+             ? Ssubint($count, Sdivint($n, Spowint($_, $k)))
+             : Saddint($count, Sdivint($n, Spowint($_, $k)));
+    },
+    2, $L[$A]
+  );
+  for my $i (2 .. $A) {
+    my($c, $lo, $hi) = (0, $L[$i], $L[$i-1]);
+    if ($i < 15) {
+      $c = Math::Prime::Util::mertens($hi) - Math::Prime::Util::mertens($lo);
+    } else {
+      $c += $_ for Mmoebius( Maddint($lo,1), $hi );
+    }
+    push @C, $c * ($i-1);
+    @C = (Mvecsum(@C)) if scalar(@C) > 100000;  # Save/restrict memory.
+  }
+  my $ctot = Mvecsum(@C); # Can typically be done in native math.
+  Mvecsum($count, $n, $ctot);
+}
+
+sub nth_powerfree {
+  my($n, $k) = @_;
+  _validate_positive_integer($n);
+  if (defined $k) { _validate_positive_integer($k); }
+  else            { $k = 2; }
+
+  return undef if $n == 0 || $k < 2;
+  return $n if $n < 4;
+
+  # 1. zm is the zeta multiplier, qk is the expected value.
+  my($zm, $qk);
+  if ($n <= 2**52) {
+    $zm = ($k == 2) ? 1.644934066848226 : 1.0 + RiemannZeta($k);
+    $qk = $zm * "$n";
+    $qk = int("$qk");
+  } else {
+    do { require Math::BigFloat; Math::BigFloat->import(); }
+      if !defined $Math::BigFloat::VERSION;
+    require Math::Prime::Util::ZetaBigFloat;
+    my $acc = length("$n")+10;
+    my $bk = Math::BigFloat->new($k);  $bk->accuracy($acc);
+    $zm = Math::Prime::Util::ZetaBigFloat::RiemannZeta($bk)->badd(1);
+    $qk = $zm->copy->bmul("$n");
+    $qk = Math::BigInt->new($qk->bfloor->bstr);
+  }
+  $zm = $zm->numify() if ref($zm);
+
+  my($count, $diff);
+  # In practice this converges very rapidly, usually needing only one iteration.
+  for (1 .. 10) {
+    # 2. Get the actual count at qk and the difference from our goal.
+    $count = Math::Prime::Util::powerfree_count($qk,$k);
+    $diff = ($count >= $n)  ?  $count-$n  :  $n-$count;
+    # print "qk $qk  count $count  diff $diff\n";
+
+    # 3. If not close, update the estimate using the expected density zm.
+    last if $diff <= 300;   # Threshold could be improved.
+    if ($count > $n) {
+      $qk -= int("$diff" * $zm);
+    } else {
+      $qk += int("$diff" * $zm);
     }
   }
-  $count;
+
+  # 4. Make sure we're on a powerfree number.
+  $qk-- while !Math::Prime::Util::is_powerfree($qk,$k);
+
+  # 5. Walk forward or backward to next/prev powerfree number.
+  my $adder = ($count < $n) ? 1 : -1;
+  while ($count != $n) {
+    do { $qk += $adder; } while !Math::Prime::Util::is_powerfree($qk,$k);
+    $count += $adder;
+  }
+  $qk;
 }
 
 sub powerfree_sum {
   my($n, $k) = @_;
-  $n = -$n if defined $n && $n < 0;
   _validate_positive_integer($n);
   if (defined $k) { _validate_positive_integer($k); }
   else            { $k = 2; }
@@ -7815,7 +7928,7 @@ sub is_frobenius_khashin_pseudoprime {
       $k = kronecker($c, $n);
     } while $k == 1;
   }
-  return 0 if $k == 0 || ($k == 2 && !($n % 3));;
+  return 0 if $k == 0 || ($k == 2 && !($n % 3));
 
   my $ea = ($k == 2) ? 2 : 1;
   my($ra,$rb,$a,$b,$d) = ($ea,1,$ea,1,$n-1);
