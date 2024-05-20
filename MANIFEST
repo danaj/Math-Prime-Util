@@ -218,6 +218,7 @@ t/26-isfundamental.t
 t/26-isgaussianprime.t
 t/26-isodd.t
 t/26-isomegaprime.t
+t/26-isperfectnumber.t
 t/26-ispower.t
 t/26-issemiprime.t
 t/26-issquarefree.t

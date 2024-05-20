@@ -130,6 +130,7 @@ static UV _inverse_interpolate(UV lo, UV hi, UV n,
     UV x0 = lo,  x1 = lo + ((hi-lo)>>1);   /* x2 = hi */
     UV rx1 = CALLBACK(x1);
     IV fx0 = rlo-n,  fx1 = rx1-n,  fx2=rhi-n+1;
+    if(_dbgprint)printf("  2s lo %lu  mid %lu  hi %lu  (%lu)\n", lo, x1, hi, (rx1>n) ? rx1-n : n-rx1);
 
     double pos = ((double)(x1-x0) * (double)fx1)
                / sqrtl((double)fx1 * (double)fx1 - (double)fx0 * (double)fx2);
@@ -141,6 +142,7 @@ static UV _inverse_interpolate(UV lo, UV hi, UV n,
       else          { lo = x1; rlo = rx1; }
     } else {
       UV rx3 = CALLBACK(x3);
+      if(_dbgprint)printf("  2S lo %lu  mid %lu  hi %lu  (%lu)\n", lo, x3, hi, (rx3>n) ? rx3-n : n-rx3);
       /* Swap if needed to have:   [lo  x1  x3  hi]  */
       if (rx1 > rx3) { UV t=x1; x1=x3; x3=t;  t=rx1; fx1=rx3; rx3=t; }
       if      (rx1 >= n) {                      hi = x1; rhi = rx1; }
@@ -148,7 +150,6 @@ static UV _inverse_interpolate(UV lo, UV hi, UV n,
       else               { lo = x3; rlo = rx3; }
     }
     MPUassert(rlo < n && rhi >= n, "interpolation: Ridder step error");
-    if(_dbgprint)printf("  2s lo %lu  mid %lu  hi %lu  (%lu)\n", lo, mid, hi, rhi-n);
   }
 
   /* Step 3.  Binary search. */
