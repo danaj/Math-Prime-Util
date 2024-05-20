@@ -52,6 +52,7 @@ Revision history for Perl module Math::Prime::Util
     - is_delicate_prime(n[,b])        is n a digitally delicate prime (base b)
     - is_sum_of_squares(n[,k])        can n be a sum of k squares (dflt k=2)
     - is_congruent_number(n)          is n a "congruent number"
+    - is_perfect_number(n)            is n equal to sum of its proper divisors
     - is_omega_prime(k,n)             is n divisible by exactly k primes
     - is_almost_prime(k,n)            does n have exactly k prime factors
     - is_powerfree(n[,k])             is n a k-powerfree number (default k=2)

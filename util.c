@@ -1243,6 +1243,17 @@ int is_square_free(UV n) {
   }
 }
 
+int is_perfect_number(UV n) {
+  UV v, m;
+  if (n == 0 || (n & 1)) return 0;
+
+  v = valuation(n,2);
+  m = n >> v;
+  if (m & (m+1)) return 0;
+  if ((m >> v) != 1) return 0;
+  return is_mersenne_prime(v+1);
+}
+
 UV exp_mangoldt(UV n) {
   UV p;
   if (!prime_power(n,&p)) return 1;     /* Not a prime power */

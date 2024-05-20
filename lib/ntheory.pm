@@ -251,6 +251,7 @@ Tags:
   is_polygonal(n,k,\$root)            as above but also set $root
   is_sum_of_squares(n[,k])            is n a sum of k (def 2) squares
   is_congruent_number(n)              is n a congruent number
+  is_perfect_number(n)                is n equal to sum of its proper divisors
   is_fundamental(d)                   is d a fundamental discriminant
   is_totient(n)                       is n = euler_phi(x) for some x
   is_lucky(n)                         is n a lucky number

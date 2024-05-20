@@ -24,7 +24,7 @@ my @functions =  qw(
       is_odd is_even is_divisible is_congruent
       is_power is_prime_power is_perfect_power is_square
       is_square_free is_powerfree
-      is_pillai is_polygonal is_congruent_number
+      is_pillai is_polygonal is_congruent_number is_perfect_number
       is_semiprime is_almost_prime is_omega_prime
       is_primitive_root is_carmichael is_quasi_carmichael
       is_fundamental is_totient is_gaussian_prime is_sum_of_squares

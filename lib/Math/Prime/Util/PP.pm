@@ -74,6 +74,7 @@ BEGIN {
 *Mrootint = \&Math::Prime::Util::rootint;
 *Mlogint = \&Math::Prime::Util::logint;
 *Mnegint = \&Math::Prime::Util::negint;
+*Mcmpint = \&Math::Prime::Util::cmpint;
 *Mlshiftint = \&Math::Prime::Util::lshiftint;
 *Mrshiftint = \&Math::Prime::Util::rshiftint;
 
@@ -6211,6 +6212,27 @@ sub is_congruent_number {
   return ($sols[0] == $sols[1]) ? 1 : 0;
 }
 
+sub is_perfect_number {
+  my($n) = @_;
+  _validate_integer($n);
+  return 0 if $n <= 0;
+
+  if (Mis_even($n)) {
+    my $v = Mvaluation($n,2);
+    my $m = Mrshiftint($n, $v);
+    return 0 if Mrshiftint($m,$v) != 1;
+    return 0 if Math::Prime::Util::hammingweight($m) != $v+1;
+    return Math::Prime::Util::is_mersenne_prime($v+1);
+  }
+
+  # N is odd.  See https://www.lirmm.fr/~ochem/opn/
+  return 0 if length($n) <= 2200;
+  return 0 unless Math::Prime::Util::is_divisible($n, 105);
+  return 0 unless Math::Prime::Util::is_congruent($n,  1, 12)
+               || Math::Prime::Util::is_congruent($n,117,468)
+               || Math::Prime::Util::is_congruent($n, 81, 324);
+  Mcmpint($n,Msubint(Math::Prime::Util::divisor_sum($n),$n)) == 0;
+}
 
 sub valuation {
   my($n, $k) = @_;

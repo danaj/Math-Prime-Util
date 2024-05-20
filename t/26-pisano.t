@@ -27,7 +27,7 @@ plan tests => 1
             ;
 
 is_deeply([map {pisano_period($_)} 0..180], \@pisano, "pisano_period(0..180)");
-           
+
 for my $data (@tests) {
   my($n,$exp) = @$data;
   is(pisano_period($n), $exp, "pisano_period($n) = $exp");

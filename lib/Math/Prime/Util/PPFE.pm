@@ -159,6 +159,7 @@ sub entropy_bytes {
 *is_divisible = \&Math::Prime::Util::PP::is_divisible;
 *is_congruent = \&Math::Prime::Util::PP::is_congruent;
 *is_congruent_number = \&Math::Prime::Util::PP::is_congruent_number;
+*is_perfect_number = \&Math::Prime::Util::PP::is_perfect_number;
 *powerful_count = \&Math::Prime::Util::PP::powerful_count;
 *nth_powerful = \&Math::Prime::Util::PP::nth_powerful;
 *sumpowerful = \&Math::Prime::Util::PP::sumpowerful;
