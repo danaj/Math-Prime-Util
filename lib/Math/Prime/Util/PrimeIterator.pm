@@ -56,8 +56,7 @@ sub rewind {
   my ($self, $start) = @_;
   $$self = 2;
   if (defined $start && $start ne '2') {
-    Math::Prime::Util::_validate_num($start)
-      || Math::Prime::Util::_validate_positive_integer($start);
+    Math::Prime::Util::_validate_integer_nonneg($start);
     $$self = next_prime($start-1) if $start > 2;
   }
   return $self;

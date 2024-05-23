@@ -10,8 +10,11 @@ use Math::Prime::Util::Entropy;
 package Math::Prime::Util;
 use Carp qw/carp croak confess/;
 
-*_validate_num = \&Math::Prime::Util::PP::_validate_num;
 *_validate_integer = \&Math::Prime::Util::PP::_validate_integer;
+*_validate_integer_nonneg = \&Math::Prime::Util::PP::_validate_integer_nonneg;
+*_validate_integer_positive = \&Math::Prime::Util::PP::_validate_integer_positive;
+*_validate_integer_abs = \&Math::Prime::Util::PP::_validate_integer_abs;
+
 *_prime_memfreeall = \&Math::Prime::Util::PP::_prime_memfreeall;
 *prime_memfree  = \&Math::Prime::Util::PP::prime_memfree;
 *prime_precalc  = \&Math::Prime::Util::PP::prime_precalc;
@@ -299,246 +302,247 @@ sub entropy_bytes {
 
 sub jordan_totient {
   my($k, $n) = @_;
-  _validate_positive_integer($k);
-  return 0 if defined $n && $n < 0;
-  _validate_positive_integer($n);
+  _validate_integer_nonneg($k);
+  _validate_integer_nonneg($n);
   return Math::Prime::Util::PP::jordan_totient($k, $n);
 }
 sub ramanujan_sum {
   my($k,$n) = @_;
-  _validate_positive_integer($k);
-  _validate_positive_integer($n);
+  _validate_integer_nonneg($k);
+  _validate_integer_nonneg($n);
   return Math::Prime::Util::PP::ramanujan_sum($k, $n);
 }
 sub carmichael_lambda {
   my($n) = @_;
-  _validate_positive_integer($n);
+  _validate_integer_nonneg($n);
   return Math::Prime::Util::PP::carmichael_lambda($n);
 }
 sub mertens {
   my($n) = @_;
-  _validate_positive_integer($n);
+  _validate_integer_nonneg($n);
   return Math::Prime::Util::PP::mertens($n);
 }
 sub liouville {
   my($n) = @_;
-  _validate_positive_integer($n);
+  _validate_integer_nonneg($n);
   return Math::Prime::Util::PP::liouville($n);
 }
 sub sumliouville {
   my($n) = @_;
-  _validate_positive_integer($n);
+  _validate_integer_nonneg($n);
   return Math::Prime::Util::PP::sumliouville($n);
 }
 sub exp_mangoldt {
   my($n) = @_;
-  return 1 if defined $n && $n <= 1;
-  _validate_positive_integer($n);
+  _validate_integer_nonneg($n);
+  return 1 if $n <= 1;
   return Math::Prime::Util::PP::exp_mangoldt($n);
 }
 sub hclassno {
   my($n) = @_;
-  return 0 if defined $n && int($n) < 0;
-  _validate_positive_integer($n);
+  _validate_integer($n);
+  return 0 if $n < 0;
   return Math::Prime::Util::PP::hclassno($n);
 }
 
 
 sub nth_prime {
   my($n) = @_;
-  _validate_positive_integer($n);
+  _validate_integer_nonneg($n);
   return Math::Prime::Util::PP::nth_prime($n);
 }
 sub nth_prime_lower {
   my($n) = @_;
-  _validate_positive_integer($n);
+  _validate_integer_nonneg($n);
   return Math::Prime::Util::PP::nth_prime_lower($n);
 }
 sub nth_prime_upper {
   my($n) = @_;
-  _validate_positive_integer($n);
+  _validate_integer_nonneg($n);
   return Math::Prime::Util::PP::nth_prime_upper($n);
 }
 sub nth_prime_approx {
   my($n) = @_;
-  _validate_positive_integer($n);
+  _validate_integer_nonneg($n);
   return Math::Prime::Util::PP::nth_prime_approx($n);
 }
 sub almost_prime_count_lower {
   my($k,$n) = @_;
-  _validate_positive_integer($k);
-  _validate_positive_integer($n);
+  _validate_integer_nonneg($k);
+  _validate_integer_nonneg($n);
   return Math::Prime::Util::PP::almost_prime_count_lower($k,$n);
 }
 sub almost_prime_count_upper {
   my($k,$n) = @_;
-  _validate_positive_integer($k);
-  _validate_positive_integer($n);
+  _validate_integer_nonneg($k);
+  _validate_integer_nonneg($n);
   return Math::Prime::Util::PP::almost_prime_count_upper($k,$n);
 }
 sub ramanujan_prime_count_lower {
   my($n) = @_;
-  _validate_positive_integer($n);
+  _validate_integer_nonneg($n);
   return Math::Prime::Util::PP::ramanujan_prime_count_lower($n);
 }
 sub ramanujan_prime_count_upper {
   my($n) = @_;
-  _validate_positive_integer($n);
+  _validate_integer_nonneg($n);
   return Math::Prime::Util::PP::ramanujan_prime_count_upper($n);
 }
 sub ramanujan_prime_count_approx {
   my($n) = @_;
-  _validate_positive_integer($n);
+  _validate_integer_nonneg($n);
   return Math::Prime::Util::PP::ramanujan_prime_count_approx($n);
 }
 sub nth_twin_prime {
   my($n) = @_;
-  _validate_positive_integer($n);
+  _validate_integer_nonneg($n);
   return Math::Prime::Util::PP::nth_twin_prime($n);
 }
 sub nth_almost_prime {
   my($k,$n) = @_;
-  _validate_positive_integer($k);
-  _validate_positive_integer($n);
+  _validate_integer_nonneg($k);
+  _validate_integer_nonneg($n);
   return Math::Prime::Util::PP::nth_almost_prime($k,$n);
 }
 sub nth_almost_prime_approx {
   my($k,$n) = @_;
-  _validate_positive_integer($k);
-  _validate_positive_integer($n);
+  _validate_integer_nonneg($k);
+  _validate_integer_nonneg($n);
   return Math::Prime::Util::PP::nth_almost_prime_approx($k,$n);
 }
 sub nth_almost_prime_lower {
   my($k,$n) = @_;
-  _validate_positive_integer($k);
-  _validate_positive_integer($n);
+  _validate_integer_nonneg($k);
+  _validate_integer_nonneg($n);
   return Math::Prime::Util::PP::nth_almost_prime_lower($k,$n);
 }
 sub nth_almost_prime_upper {
   my($k,$n) = @_;
-  _validate_positive_integer($k);
-  _validate_positive_integer($n);
+  _validate_integer_nonneg($k);
+  _validate_integer_nonneg($n);
   return Math::Prime::Util::PP::nth_almost_prime_upper($k,$n);
 }
 sub nth_omega_prime {
   my($k,$n) = @_;
-  _validate_positive_integer($k);
-  _validate_positive_integer($n);
+  _validate_integer_nonneg($k);
+  _validate_integer_nonneg($n);
   return Math::Prime::Util::PP::nth_omega_prime($k,$n);
 }
 sub nth_ramanujan_prime {
   my($n) = @_;
-  _validate_positive_integer($n);
+  _validate_integer_nonneg($n);
   return Math::Prime::Util::PP::nth_ramanujan_prime($n);
 }
 sub nth_ramanujan_prime_lower {
   my($n) = @_;
-  _validate_positive_integer($n);
+  _validate_integer_nonneg($n);
   return Math::Prime::Util::PP::nth_ramanujan_prime_lower($n);
 }
 sub nth_ramanujan_prime_upper {
   my($n) = @_;
-  _validate_positive_integer($n);
+  _validate_integer_nonneg($n);
   return Math::Prime::Util::PP::nth_ramanujan_prime_upper($n);
 }
 sub nth_ramanujan_prime_approx {
   my($n) = @_;
-  _validate_positive_integer($n);
+  _validate_integer_nonneg($n);
   return Math::Prime::Util::PP::nth_ramanujan_prime_approx($n);
 }
 sub nth_lucky {
   my($n) = @_;
-  _validate_positive_integer($n);
+  _validate_integer_nonneg($n);
   return Math::Prime::Util::PP::nth_lucky($n);
 }
 sub smooth_count {
   my($n, $k) = @_;
-  _validate_positive_integer($n);
-  _validate_positive_integer($k);
+  _validate_integer_nonneg($n);
+  _validate_integer_nonneg($k);
   return Math::Prime::Util::PP::smooth_count($n, $k);
 }
 sub rough_count {
   my($n, $k) = @_;
-  _validate_positive_integer($n);
-  _validate_positive_integer($k);
+  _validate_integer_nonneg($n);
+  _validate_integer_nonneg($k);
   return Math::Prime::Util::PP::rough_count($n, $k);
 }
 
 
 sub is_lucas_pseudoprime {
   my($n) = @_;
-  return 0 if defined $n && int($n) < 0;
-  _validate_positive_integer($n);
+  _validate_integer($n);
+  return 0 if $n < 0;
   return Math::Prime::Util::PP::is_lucas_pseudoprime($n);
 }
 sub is_strong_lucas_pseudoprime {
   my($n) = @_;
-  return 0 if defined $n && int($n) < 0;
-  _validate_positive_integer($n);
+  _validate_integer($n);
+  return 0 if $n < 0;
   return Math::Prime::Util::PP::is_strong_lucas_pseudoprime($n);
 }
 sub is_extra_strong_lucas_pseudoprime {
   my($n) = @_;
-  return 0 if defined $n && int($n) < 0;
-  _validate_positive_integer($n);
+  _validate_integer($n);
+  return 0 if $n < 0;
   return Math::Prime::Util::PP::is_extra_strong_lucas_pseudoprime($n);
 }
 sub is_almost_extra_strong_lucas_pseudoprime {
   my($n, $increment) = @_;
-  return 0 if defined $n && int($n) < 0;
-  _validate_positive_integer($n);
-  if (defined $increment) { _validate_positive_integer($increment, 1, 256);
-  } else                  { $increment = 1; }
+  _validate_integer($n);
+  return 0 if $n < 0;
+  if (defined $increment) { _validate_integer_nonneg($increment); }
+  else                    { $increment = 1; }
+  croak "aes lucas pseudoprime parameter must be 1-256"
+    if $increment < 1 || $increment > 256;
   return Math::Prime::Util::PP::is_almost_extra_strong_lucas_pseudoprime($n, $increment);
 }
 sub is_perrin_pseudoprime {
   my($n,$restrict) = @_;
-  return 0 if defined $n && int($n) < 0;
-  $restrict = 0 unless defined $restrict;
-  _validate_positive_integer($n);
-  _validate_positive_integer($restrict);
+  _validate_integer($n);
+  return 0 if $n < 0;
+  if (defined $restrict) { _validate_integer_nonneg($restrict); }
+  else                   { $restrict = 0; }
   return Math::Prime::Util::PP::is_perrin_pseudoprime($n, $restrict);
 }
 sub is_catalan_pseudoprime {
   my($n) = @_;
-  return 0 if defined $n && int($n) < 0;
-  _validate_positive_integer($n);
+  _validate_integer($n);
+  return 0 if $n < 0;
   return Math::Prime::Util::PP::is_catalan_pseudoprime($n);
 }
 sub is_frobenius_pseudoprime {
   my($n, $P, $Q) = @_;
-  return 0 if defined $n && int($n) < 0;
-  _validate_positive_integer($n);
+  _validate_integer($n);
+  return 0 if $n < 0;
   # TODO: validate P & Q
   return Math::Prime::Util::PP::is_frobenius_pseudoprime($n, $P, $Q);
 }
 sub is_frobenius_underwood_pseudoprime {
   my($n) = @_;
-  return 0 if defined $n && int($n) < 0;
-  _validate_positive_integer($n);
+  _validate_integer($n);
+  return 0 if $n < 0;
   return Math::Prime::Util::PP::is_frobenius_underwood_pseudoprime($n);
 }
 sub is_frobenius_khashin_pseudoprime {
   my($n) = @_;
-  return 0 if defined $n && int($n) < 0;
-  _validate_positive_integer($n);
+  _validate_integer($n);
+  return 0 if $n < 0;
   return Math::Prime::Util::PP::is_frobenius_khashin_pseudoprime($n);
 }
 sub is_aks_prime {
   my($n) = @_;
-  return 0 if defined $n && int($n) < 0;
-  _validate_positive_integer($n);
+  _validate_integer($n);
+  return 0 if $n < 0;
   return Math::Prime::Util::PP::is_aks_prime($n);
 }
 sub is_ramanujan_prime {
   my($n) = @_;
-  return 0 if defined $n && int($n) < 0;
-  _validate_positive_integer($n);
+  _validate_integer($n);
+  return 0 if $n < 0;
   return Math::Prime::Util::PP::is_ramanujan_prime($n);
 }
 sub is_mersenne_prime {
   my($p) = @_;
-  _validate_positive_integer($p);
+  _validate_integer_nonneg($p);
   return Math::Prime::Util::PP::is_mersenne_prime($p);
 }
 sub is_square_free {
@@ -549,49 +553,49 @@ sub is_square_free {
 sub lucas_sequence {
   my($n, $P, $Q, $k) = @_;
   my ($vp, $vq) = ($P, $Q);
-  $vp = -$vp if defined $vp && $vp < 0;
-  $vq = -$vq if defined $vq && $vq < 0;
-  _validate_positive_integer($n);
-  _validate_positive_integer($vp);
-  _validate_positive_integer($vq);
-  _validate_positive_integer($k);
+  _validate_integer_positive($n);
+  _validate_integer($vp);
+  _validate_integer($vq);
+  _validate_integer_nonneg($k);
+  $vp = -$vp if $vp < 0;
+  $vq = -$vq if $vq < 0;
   return Math::Prime::Util::PP::lucas_sequence(@_);
 }
 sub lucasu {
   my($P, $Q, $k) = @_;
   my ($vp, $vq) = ($P, $Q);
-  $vp = -$vp if defined $vp && $vp < 0;
-  $vq = -$vq if defined $vq && $vq < 0;
-  _validate_positive_integer($vp);
-  _validate_positive_integer($vq);
-  _validate_positive_integer($k);
+  _validate_integer($vp);
+  _validate_integer($vq);
+  _validate_integer_nonneg($k);
+  $vp = -$vp if $vp < 0;
+  $vq = -$vq if $vq < 0;
   return Math::Prime::Util::PP::lucasu($P,$Q,$k);
 }
 sub lucasv {
   my($P, $Q, $k) = @_;
   my ($vp, $vq) = ($P, $Q);
-  $vp = -$vp if defined $vp && $vp < 0;
-  $vq = -$vq if defined $vq && $vq < 0;
-  _validate_positive_integer($vp);
-  _validate_positive_integer($vq);
-  _validate_positive_integer($k);
+  _validate_integer($vp);
+  _validate_integer($vq);
+  _validate_integer_nonneg($k);
+  $vp = -$vp if $vp < 0;
+  $vq = -$vq if $vq < 0;
   return Math::Prime::Util::PP::lucasv($P,$Q,$k);
 }
 sub lucasuv {
   my($P, $Q, $k) = @_;
   _validate_integer($P);
   _validate_integer($Q);
-  _validate_positive_integer($k);
+  _validate_integer_nonneg($k);
   return Math::Prime::Util::PP::lucasuv($P,$Q,$k);
 }
 
 sub kronecker {
   my($a, $b) = @_;
   my ($va, $vb) = ($a, $b);
-  $va = -$va if defined $va && $va < 0;
-  $vb = -$vb if defined $vb && $vb < 0;
-  _validate_positive_integer($va);
-  _validate_positive_integer($vb);
+  _validate_integer($va);
+  _validate_integer($vb);
+  $vb = -$va if $va < 0;
+  $vb = -$vb if $vb < 0;
   return Math::Prime::Util::PP::kronecker(@_);
 }
 
@@ -610,16 +614,16 @@ sub binomial {
 
 sub stirling {
   my($n, $k, $type) = @_;
-  _validate_positive_integer($n);
-  _validate_positive_integer($k);
-  _validate_positive_integer($type) if defined $type;
+  _validate_integer_nonneg($n);
+  _validate_integer_nonneg($k);
+  _validate_integer_nonneg($type) if defined $type;
   return Math::Prime::Util::PP::stirling($n, $k, $type);
 }
 
 sub divisor_sum {
   my($n, $k) = @_;
-  _validate_positive_integer($n);
-  _validate_positive_integer($k) if defined $k && ref($k) ne 'CODE';
+  _validate_integer_nonneg($n);
+  _validate_integer_nonneg($k) if defined $k && ref($k) ne 'CODE';
   return Math::Prime::Util::PP::divisor_sum($n, $k);
 }
 
@@ -661,13 +665,13 @@ sub vecmax {
 }
 sub vecmex {
   my(@v) = @_;
-  _validate_positive_integer($_) for @v;
+  _validate_integer_nonneg($_) for @v;
   return Math::Prime::Util::PP::vecmex(@v);
 }
 sub vecpmex {
   my(@v) = @_;
   for (@v) {
-    _validate_positive_integer($_);
+    _validate_integer_nonneg($_);
     croak "parameter must be a positive integer (x > 0)" if $_ <= 0;
   }
   return Math::Prime::Util::PP::vecpmex(@v);
@@ -715,19 +719,19 @@ sub mulsubmod {
 }
 sub sqrtint {
   my($n) = @_;
-  _validate_positive_integer($n);
+  _validate_integer_nonneg($n);
   return Math::Prime::Util::PP::sqrtint($n);
 }
 sub rootint {
   my($n, $k, $refp) = @_;
-  _validate_positive_integer($n);
-  _validate_positive_integer($k);
+  _validate_integer_nonneg($n);
+  _validate_integer_nonneg($k);
   return Math::Prime::Util::PP::rootint($n, $k, $refp);
 }
 sub logint {
   my($n, $b, $refp) = @_;
-  _validate_positive_integer($n);
-  _validate_positive_integer($b);
+  _validate_integer_positive($n);
+  _validate_integer_nonneg($b);
   return Math::Prime::Util::PP::logint($n, $b, $refp);
 }
 sub powint {
@@ -757,96 +761,89 @@ sub subint {
 sub lshiftint {
   my($n, $k) = @_;
   _validate_integer($n);
-  if (!defined $k) { $k = 1; } else { _validate_positive_integer($k); }
+  if (!defined $k) { $k = 1; } else { _validate_integer_nonneg($k); }
   return Math::Prime::Util::PP::lshiftint($n, $k);
 }
 sub rshiftint {
   my($n, $k) = @_;
   _validate_integer($n);
-  if (!defined $k) { $k = 1; } else { _validate_positive_integer($k); }
+  if (!defined $k) { $k = 1; } else { _validate_integer_nonneg($k); }
   return Math::Prime::Util::PP::rshiftint($n, $k);
 }
 sub rashiftint {
   my($n, $k) = @_;
   _validate_integer($n);
-  if (!defined $k) { $k = 1; } else { _validate_positive_integer($k); }
+  if (!defined $k) { $k = 1; } else { _validate_integer_nonneg($k); }
   return Math::Prime::Util::PP::rashiftint($n, $k);
 }
 sub legendre_phi {
   my($x, $a) = @_;
-  _validate_positive_integer($x);
-  _validate_positive_integer($a);
+  _validate_integer_nonneg($x);
+  _validate_integer_nonneg($a);
   return Math::Prime::Util::PP::legendre_phi($x, $a);
 }
 
 sub chebyshev_theta {
   my($n) = @_;
-  _validate_positive_integer($n);
+  _validate_integer_nonneg($n);
   return Math::Prime::Util::PP::chebyshev_theta($n);
 }
 sub chebyshev_psi {
   my($n) = @_;
-  _validate_positive_integer($n);
+  _validate_integer_nonneg($n);
   return Math::Prime::Util::PP::chebyshev_psi($n);
 }
 sub ramanujan_tau {
   my($n) = @_;
-  _validate_positive_integer($n);
+  _validate_integer_nonneg($n);
   return Math::Prime::Util::PP::ramanujan_tau($n);
 }
 
 sub is_power {
   my($n, $a, $refp) = @_;
-  my $vn = "$n";  $vn =~ s/^-//;
-  _validate_positive_integer($vn);
-  _validate_positive_integer($a) if defined $a;
-  $vn = '-'.$vn if $n < 0;
-  return Math::Prime::Util::PP::is_power($vn, $a, $refp);
+  _validate_integer($n);
+  _validate_integer_nonneg($a) if defined $a;
+  return Math::Prime::Util::PP::is_power($n, $a, $refp);
 }
 sub is_prime_power {
   my($n, $refp) = @_;
-  my $vn = "$n";  $vn =~ s/^-//;
-  _validate_positive_integer($vn);
-  $vn = '-'.$vn if $n < 0;
-  return Math::Prime::Util::PP::is_prime_power($vn, $refp);
+  _validate_integer($n);
+  return Math::Prime::Util::PP::is_prime_power($n, $refp);
 }
 sub is_polygonal {
-  my($x, $s, $refp) = @_;
-  my $vx = "$x";  $vx =~ s/^-//;
-  _validate_positive_integer($vx);
-  _validate_positive_integer($s);
-  $vx = '-'.$vx if $x < 0;
-  return Math::Prime::Util::PP::is_polygonal($vx, $s, $refp);
+  my($n, $s, $refp) = @_;
+  _validate_integer($n);
+  _validate_integer_nonneg($s);
+  return Math::Prime::Util::PP::is_polygonal($n, $s, $refp);
 }
 sub is_sum_of_squares {
   my($n, $k) = @_;
-  $n = -$n if defined $n && $n < 0;
-  $k = 2 unless defined $k;
-  _validate_positive_integer($n);
-  _validate_positive_integer($k);
+  _validate_integer($n);
+  $n = -$n if $n < 0;
+  if (!defined $k) { $k = 2; } else { _validate_integer_nonneg($k); }
   return Math::Prime::Util::PP::is_sum_of_squares($n, $k);
 }
 sub is_practical {
   my($n) = @_;
-  _validate_positive_integer($n);
+  _validate_integer_nonneg($n);
   return Math::Prime::Util::PP::is_practical($n);
 }
 sub is_delicate_prime {
   my($n, $b) = @_;
-  _validate_positive_integer($n);
-  if (!defined $b) { $b = 10; } else { _validate_positive_integer($b); }
+  _validate_integer_nonneg($n);
+  if (!defined $b) { $b = 10; } else { _validate_integer_nonneg($b); }
   return Math::Prime::Util::PP::is_delicate_prime($n,$b);
 }
 sub hammingweight {
   my($n) = @_;
-  $n = -$n if defined $n && $n < 0;
-  _validate_positive_integer($n);
+  _validate_integer($n);
+  $n = -$n if $n < 0;
   return Math::Prime::Util::PP::hammingweight($n);
 }
 
 sub Pi {
   my($digits) = @_;
-  _validate_positive_integer($digits) if defined $digits;
+  _validate_integer_nonneg($digits) if defined $digits;
   return Math::Prime::Util::PP::Pi($digits);
 }
 
@@ -860,9 +857,12 @@ sub _end_for_loop { $_exitloop = shift; }
 
 sub forprimes (&$;$) {    ## no critic qw(ProhibitSubroutinePrototypes)
   my($sub, $beg, $end) = @_;
-  if (!defined $end) { $end = $beg; $beg = 2; }
-  _validate_num($beg) || _validate_positive_integer($beg);
-  _validate_num($end) || _validate_positive_integer($end);
+  if (scalar @_ > 2) {
+    _validate_integer_nonneg($beg);
+  } else {
+    ($beg,$end) = (2,$beg);
+  }
+  _validate_integer_nonneg($end);
   $beg = 2 if $beg < 2;
   my $oldforexit = _start_for_loop();
   {
@@ -899,7 +899,7 @@ sub forsquarefree(&$;$) { ## no critic qw(ProhibitSubroutinePrototypes)
 
 sub fordivisors (&$) {    ## no critic qw(ProhibitSubroutinePrototypes)
   my($sub, $n) = @_;
-  _validate_num($n) || _validate_positive_integer($n);
+  _validate_integer_nonneg($n);
   my @divisors = divisors($n);
   my $oldforexit = _start_for_loop();
   {
@@ -1043,7 +1043,7 @@ Dana Jacobsen E<lt>dana@acm.orgE<gt>
 
 =head1 COPYRIGHT
 
-Copyright 2014-2020 by Dana Jacobsen E<lt>dana@acm.orgE<gt>
+Copyright 2014-2024 by Dana Jacobsen E<lt>dana@acm.orgE<gt>
 
 This program is free software; you can redistribute it and/or modify it under the same terms as Perl itself.
 

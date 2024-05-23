@@ -287,7 +287,18 @@ sub _bigint_to_int {
 sub _to_bigint {
   do { require Math::BigInt;  Math::BigInt->import(try=>"GMP,Pari"); }
     unless defined $Math::BigInt::VERSION;
-  return (!defined($_[0]) || ref($_[0]) eq 'Math::BigInt') ? $_[0] : Math::BigInt->new("$_[0]");
+  return undef unless defined($_[0]);
+  my $n = (ref($_[0]) eq 'Math::BigInt') ? $_[0] : Math::BigInt->new("$_[0]");
+  croak "Parameter '$_[0]' must be an integer" unless $n->is_int();
+  $n;
+}
+sub _to_bigint_abs {
+  do { require Math::BigInt;  Math::BigInt->import(try=>"GMP,Pari"); }
+    unless defined $Math::BigInt::VERSION;
+  return undef unless defined($_[0]);
+  my $n = (ref($_[0]) eq 'Math::BigInt') ? $_[0] : Math::BigInt->new("$_[0]");
+  croak "Parameter '$_[0]' must be an integer" unless $n->is_int();
+  $n->copy->babs;
 }
 sub _to_bigint_if_needed {
   return $_[0] if !defined $_[0] || ref($_[0]);
@@ -328,38 +339,6 @@ sub _reftyped {
 }
 
 
-#*_validate_positive_integer = \&Math::Prime::Util::PP::_validate_positive_integer;
-sub _validate_positive_integer {
-  my($n, $min, $max) = @_;
-  croak "Parameter must be defined" if !defined $n;
-  if (ref($n) eq 'CODE') {
-    $_[0] = $_[0]->();
-    $n = $_[0];
-  }
-  if (ref($n) eq 'Math::BigInt') {
-    croak "Parameter '$n' must be a non-negative integer"
-      if $n->sign() ne '+' || !$n->is_int();
-    $_[0] = _bigint_to_int($_[0]) if $n <= '' . INTMAX;
-  } elsif (ref($n) eq 'Math::GMPz') {
-    croak "Parameter '$n' must be a non-negative integer" if Math::GMPz::Rmpz_sgn($n) < 0;
-    $_[0] = _bigint_to_int($_[0]) if $n <= INTMAX;
-  } else {
-    my $strn = "$n";
-    croak "Parameter '$strn' must be a non-negative integer"
-      if $strn eq '' || ($strn =~ tr/0123456789//c && $strn !~ /^\+?\d+$/);
-    if ($n <= INTMAX) {
-      $_[0] = $strn if ref($n);
-    } else {
-      #$_[0] = Math::BigInt->new($strn)
-      $_[0] = _to_bigint($strn);
-    }
-  }
-  $_[0]->upgrade(undef) if ref($_[0]) eq 'Math::BigInt' && $_[0]->upgrade();
-  croak "Parameter '$_[0]' must be >= $min" if defined $min && $_[0] < $min;
-  croak "Parameter '$_[0]' must be <= $max" if defined $max && $_[0] > $max;
-  1;
-}
-
 #############################################################################
 
 # These are called by the XS code to keep the GMP CSPRNG in sync with us.
@@ -384,11 +363,11 @@ sub _csrand_p {
 sub primes {
   my($low,$high) = @_;
   if (scalar @_ > 1) {
-    _validate_num($low) || _validate_positive_integer($low);
+    _validate_integer_nonneg($low);
   } else {
     ($low,$high) = (2, $low);
   }
-  _validate_num($high) || _validate_positive_integer($high);
+  _validate_integer_nonneg($high);
 
   my $sref = [];
   return $sref if ($low > $high) || ($high < 2);
@@ -444,11 +423,11 @@ sub primes {
 sub prime_powers {
   my($low,$high) = @_;
   if (scalar @_ > 1) {
-    _validate_num($low) || _validate_positive_integer($low);
+    _validate_integer_nonneg($low);
   } else {
     ($low,$high) = (2, $low);
   }
-  _validate_num($high) || _validate_positive_integer($high);
+  _validate_integer_nonneg($high);
 
   return [] if ($low > $high) || ($high < 2);
 
@@ -463,11 +442,11 @@ sub prime_powers {
 sub twin_primes {
   my($low,$high) = @_;
   if (scalar @_ > 1) {
-    _validate_num($low) || _validate_positive_integer($low);
+    _validate_integer_nonneg($low);
   } else {
     ($low,$high) = (2, $low);
   }
-  _validate_num($high) || _validate_positive_integer($high);
+  _validate_integer_nonneg($high);
 
   return [] if ($low > $high) || ($high < 2);
 
@@ -488,11 +467,11 @@ sub twin_primes {
 sub semi_primes {
   my($low,$high) = @_;
   if (scalar @_ > 1) {
-    _validate_num($low) || _validate_positive_integer($low);
+    _validate_integer_nonneg($low);
   } else {
     ($low,$high) = (4, $low);
   }
-  _validate_num($high) || _validate_positive_integer($high);
+  _validate_integer_nonneg($high);
 
   return [] if ($low > $high) || ($high < 4);
 
@@ -507,13 +486,13 @@ sub semi_primes {
 
 sub almost_primes {
   my($k,$low,$high) = @_;
-  _validate_num($k) || _validate_positive_integer($k);
+  _validate_integer_nonneg($k);
   if (scalar @_ > 2) {
-    _validate_num($low) || _validate_positive_integer($low);
+    _validate_integer_nonneg($low);
   } else {
     ($low,$high) = (1, $low);
   }
-  _validate_num($high) || _validate_positive_integer($high);
+  _validate_integer_nonneg($high);
 
   if ($k == 0) { return ($low <= 1 && $high >= 1) ? [1] : [] }
   if ($k == 1) { return Math::Prime::Util::primes($low,$high); }
@@ -535,13 +514,13 @@ sub almost_primes {
 
 sub omega_primes {
   my($k,$low,$high) = @_;
-  _validate_num($k) || _validate_positive_integer($k);
+  _validate_integer_nonneg($k);
   if (scalar @_ > 2) {
-    _validate_num($low) || _validate_positive_integer($low);
+    _validate_integer_nonneg($low);
   } else {
     ($low,$high) = (1, $low);
   }
-  _validate_num($high) || _validate_positive_integer($high);
+  _validate_integer_nonneg($high);
 
   if ($k == 0) { return ($low <= 1 && $high >= 1) ? [1] : [] }
   # k = 1 => prime powers
@@ -562,11 +541,11 @@ sub omega_primes {
 sub ramanujan_primes {
   my($low,$high) = @_;
   if (scalar @_ > 1) {
-    _validate_num($low) || _validate_positive_integer($low);
+    _validate_integer_nonneg($low);
   } else {
     ($low,$high) = (2, $low);
   }
-  _validate_num($high) || _validate_positive_integer($high);
+  _validate_integer_nonneg($high);
 
   return [] if ($low > $high) || ($high < 2);
 
@@ -583,7 +562,8 @@ sub ramanujan_primes {
 
 sub random_maurer_prime_with_cert {
   my($bits) = @_;
-  _validate_num($bits, 2) || _validate_positive_integer($bits, 2);
+  _validate_integer_nonneg($bits);
+  croak "random_maurer_prime bits must be >= 2" unless $bits >= 2;
 
   if ($Math::Prime::Util::_GMPfunc{"random_maurer_prime_with_cert"}) {
     my($n,$cert) = Math::Prime::Util::GMP::random_maurer_prime_with_cert($bits);
@@ -596,7 +576,8 @@ sub random_maurer_prime_with_cert {
 
 sub random_shawe_taylor_prime_with_cert {
   my($bits) = @_;
-  _validate_num($bits, 2) || _validate_positive_integer($bits, 2);
+  _validate_integer_nonneg($bits);
+  croak "random_shawe_taylor_prime bits must be >= 2" unless $bits >= 2;
 
   if ($Math::Prime::Util::_GMPfunc{"random_shawe_taylor_prime_with_cert"}) {
     my($n,$cert) =Math::Prime::Util::GMP::random_shawe_taylor_prime_with_cert($bits);
@@ -609,7 +590,8 @@ sub random_shawe_taylor_prime_with_cert {
 
 sub random_proven_prime_with_cert {
   my($bits) = @_;
-  _validate_num($bits, 2) || _validate_positive_integer($bits, 2);
+  _validate_integer_nonneg($bits);
+  croak "random_proven_prime bits must be >= 2" unless $bits >= 2;
 
   # Go to Maurer with GMP
   if ($Math::Prime::Util::_GMPfunc{"random_maurer_prime_with_cert"}) {
@@ -629,7 +611,7 @@ sub random_proven_prime_with_cert {
 
 sub consecutive_integer_lcm {
   my($n) = @_;
-  _validate_num($n) || _validate_positive_integer($n);
+  _validate_integer_nonneg($n);
   return 0 if $n < 1;
 
   if ($_HAVE_GMP && defined &Math::Prime::Util::GMP::consecutive_integer_lcm) {
@@ -655,8 +637,8 @@ sub consecutive_integer_lcm {
 #
 sub partitions {
   my($n) = @_;
-  return 0 if defined $n && $n < 0;
-  _validate_num($n) || _validate_positive_integer($n);
+  _validate_integer($n);
+  return 0 if $n < 0;
 
   if ($_HAVE_GMP && defined &Math::Prime::Util::GMP::partitions) {
     return _reftyped($_[0],Math::Prime::Util::GMP::partitions($n));
@@ -673,8 +655,8 @@ sub partitions {
 sub _generic_forprimes {
   my($sub, $beg, $end) = @_;
   if (!defined $end) { $end = $beg; $beg = 2; }
-  _validate_positive_integer($beg);
-  _validate_positive_integer($end);
+  _validate_integer_nonneg($beg);
+  _validate_integer_nonneg($end);
   $beg = 2 if $beg < 2;
   my $oldforexit = Math::Prime::Util::_start_for_loop();
   {
@@ -694,8 +676,8 @@ sub _generic_forprimes {
 sub _generic_forcomp_sub {
   my($what, $sub, $beg, $end) = @_;
   if (!defined $end) { $end = $beg; $beg = 0; }
-  _validate_positive_integer($beg);
-  _validate_positive_integer($end);
+  _validate_integer_nonneg($beg);
+  _validate_integer_nonneg($end);
   my($cinc,$k) = (1,0);
   $what = 'almost-2' if $what eq 'semiprimes';
   if ($what =~ /^almost-(\d+)$/) {
@@ -741,9 +723,9 @@ sub _generic_forsemiprimes {
 
 sub _generic_forfac {
   my($sf, $sub, $beg, $end) = @_;
-  _validate_positive_integer($beg);
+  _validate_integer_nonneg($beg);
   if (defined $end) {
-    _validate_positive_integer($end);
+    _validate_integer_nonneg($end);
     $beg = 1 if $beg < 1;
   } else {
     ($beg,$end) = (1,$beg);
@@ -773,7 +755,7 @@ sub _generic_forsquarefree {
 
 sub _generic_fordivisors {
   my($sub, $n) = @_;
-  _validate_positive_integer($n);
+  _validate_integer_nonneg($n);
   my @divisors = divisors($n);
   my $oldforexit = Math::Prime::Util::_start_for_loop();
   {
@@ -809,7 +791,7 @@ sub formultiperm (&$) {    ## no critic qw(ProhibitSubroutinePrototypes)
 sub prime_iterator {
   my($start) = @_;
   $start = 0 unless defined $start;
-  _validate_num($start) || _validate_positive_integer($start);
+  _validate_integer_nonneg($start);
   my $p = ($start > 0) ? $start-1 : 0;
   # This works fine:
   #   return sub { $p = next_prime($p); return $p; };
@@ -852,13 +834,12 @@ sub prime_iterator_object {
 
 sub _generic_prime_count {
   my($low,$high) = @_;
-  if (defined $high) {
-    _validate_num($low) || _validate_positive_integer($low);
-    _validate_num($high) || _validate_positive_integer($high);
+  if (scalar @_ > 1) {
+    _validate_integer_nonneg($low);
   } else {
     ($low,$high) = (2, $low);
-    _validate_num($high) || _validate_positive_integer($high);
   }
+  _validate_integer_nonneg($high);
   return 0 if $high < 2  ||  $low > $high;
 
   # We can relax these constraints if MPU::GMP gets a fast implementation.
@@ -873,7 +854,7 @@ sub _generic_prime_count {
 
 sub _generic_factor {
   my($n) = @_;
-  _validate_num($n) || _validate_positive_integer($n);
+  _validate_integer_nonneg($n);
 
   if ($_HAVE_GMP) {
     my @factors;
@@ -895,7 +876,7 @@ sub _generic_factor {
 
 sub _generic_factor_exp {
   my($n) = @_;
-  _validate_num($n) || _validate_positive_integer($n);
+  _validate_integer_nonneg($n);
 
   my %exponents;
   my @factors = grep { !$exponents{$_}++ } factor($n);
@@ -915,8 +896,8 @@ sub prime_certificate {
 
 sub is_provable_prime_with_cert {
   my($n) = @_;
-  return 0 if defined $n && $n < 2;
-  _validate_num($n) || _validate_positive_integer($n);
+  _validate_integer($n);
+  return 0 if $n < 2;
   my $header = "[MPU - Primality Certificate]\nVersion 1.0\n\nProof for:\nN $n\n\n";
 
   if ($n <= $_XS_MAXVAL) {
@@ -1042,7 +1023,7 @@ sub LambertW {
 sub bernfrac {
   my($n) = @_;
   return map { _to_bigint($_) } (0,1) if defined $n && $n < 0;
-  _validate_num($n) || _validate_positive_integer($n);
+  _validate_integer_nonneg($n);
   return map { _to_bigint($_) } (0,1) if $n > 1 && ($n & 1);
 
   if ($Math::Prime::Util::_GMPfunc{"bernfrac"}) {
@@ -1068,7 +1049,7 @@ sub bernreal {
 
 sub harmfrac {
   my($n) = @_;
-  _validate_num($n) || _validate_positive_integer($n);
+  _validate_integer_nonneg($n);
   return map { _to_bigint($_) } (0,1) if $n <= 0;
 
   if ($Math::Prime::Util::_GMPfunc{"harmfrac"}) {
@@ -1080,7 +1061,7 @@ sub harmfrac {
 }
 sub harmreal {
   my($n, $precision) = @_;
-  _validate_num($n) || _validate_positive_integer($n);
+  _validate_integer_nonneg($n);
   do { require Math::BigFloat; Math::BigFloat->import(); } unless defined $Math::BigFloat::VERSION;
   return Math::BigFloat->bzero if $n <= 0;
 

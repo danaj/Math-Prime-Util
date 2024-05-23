@@ -139,13 +139,13 @@ static double my_difftime (struct timeval * start, struct timeval * end) {
   static const unsigned int uvmax_maxlen = 10;
   static const unsigned int ivmax_maxlen = 10;
   static const char uvmax_str[] = "4294967295";
-  static const char ivmax_str[] = "2147483648";
+  /* static const char ivmax_str[] = "2147483648"; */
   static const char ivmin_str[] = "2147483647";
 #else
   static const unsigned int uvmax_maxlen = 20;
   static const unsigned int ivmax_maxlen = 19;
   static const char uvmax_str[] = "18446744073709551615";
-  static const char ivmax_str[] =  "9223372036854775808";
+  /* static const char ivmax_str[] =  "9223372036854775808"; */
   static const char ivmin_str[] =  "9223372036854775807";
 #endif
 
@@ -259,7 +259,7 @@ static int _validate_and_set(UV* val, pTHX_ SV* svn, uint32_t mask) {
   }
 
   if (status != 0 && (mask & IFLAG_NONZERO) && n == 0)
-    croak("parameter must be a positive integer (x > 0)");
+    croak("Parameter '%" SVf "' must be a positive integer", svn);
 
   /* If they want an IV returned, verify it fits. */
   if (status == 1 && (mask & IFLAG_IV) && n > (UV)IV_MAX)
@@ -378,6 +378,16 @@ static SV* sv_to_bigint(pTHX_ SV* r) {
   XPUSHs(r);
   PUTBACK;
   call_pv("Math::Prime::Util::_to_bigint", G_SCALAR);
+  SPAGAIN;
+  r = POPs;
+  PUTBACK; LEAVE;
+  return r;
+}
+static SV* sv_to_bigint_abs(pTHX_ SV* r) {
+  dSP;  ENTER;  PUSHMARK(SP);
+  XPUSHs(r);
+  PUTBACK;
+  call_pv("Math::Prime::Util::_to_bigint_abs", G_SCALAR);
   SPAGAIN;
   r = POPs;
   PUTBACK; LEAVE;
@@ -727,6 +737,45 @@ UV _is_csprng_well_seeded()
       case 7:
       default: RETVAL = get_prime_cache(0,0); break;
     }
+  OUTPUT:
+    RETVAL
+
+bool _validate_integer(SV* svn)
+  ALIAS:
+    _validate_integer_nonneg = 1
+    _validate_integer_positive = 2
+    _validate_integer_abs = 3
+  PREINIT:
+    uint32_t mask;
+    int status;
+    UV n;
+  CODE:
+    /* Flag:  0 neg ok,  1 neg err,  2 zero or neg err,  3 abs */
+    switch (ix) {
+      case 0: mask = IFLAG_ANY; break;
+      case 1: mask = IFLAG_POS; break;
+      case 2: mask = IFLAG_POS | IFLAG_NONZERO; break;
+      case 3: mask = IFLAG_ABS; break;
+      default: croak("_validate_integer unknown flag value");
+    }
+    status = _validate_and_set(&n, aTHX_ svn, mask);
+    if (status != 0) {
+#if PERL_REVISION <= 5 && PERL_VERSION < 8 && BITS_PER_WORD == 64
+      sv_setpviv(svn, n);
+#else
+      if (status == 1)  sv_setuv(svn, n);
+      else              sv_setiv(svn, n);
+#endif
+    } else {  /* Status 0 = bigint */
+      if (mask & IFLAG_ABS) {
+        /* TODO: if given a positive bigint, no need for this */
+        sv_setsv(svn, sv_to_bigint_abs(aTHX_ svn));
+      } else {
+        if (!_is_sv_bigint(aTHX_ svn))
+          sv_setsv(svn, sv_to_bigint(aTHX_ svn));
+      }
+    }
+    RETVAL = TRUE;
   OUTPUT:
     RETVAL
 
@@ -3891,45 +3940,6 @@ void fromzeckendorf(IN char* str)
       objectify_result(aTHX_ 0, ST(0));
     }
     return;
-
-bool
-_validate_num(SV* svn, ...)
-  PREINIT:
-    SV* sv1;
-    SV* sv2;
-  CODE:
-    /* Non-exported function.  Emulate the PP version of this:
-     *   $is_valid = _validate_num( $n [, $min [, $max] ] )
-     * Return 0 if we're befuddled by the input.
-     * Otherwise croak if n isn't >= 0 and integer, n < min, or n > max.
-     * Small bigints will be converted to scalars.
-     */
-    RETVAL = FALSE;
-    if (_validate_int(aTHX_ svn, 0)) {
-      if (SvROK(svn)) {  /* Convert small Math::BigInt object into scalar */
-        UV n = my_svuv(svn);
-#if PERL_REVISION <= 5 && PERL_VERSION < 8 && BITS_PER_WORD == 64
-        sv_setpviv(svn, n);
-#else
-        sv_setuv(svn, n);
-#endif
-      }
-      if (items > 1 && ((sv1 = ST(1)), SvOK(sv1))) {
-        UV n = my_svuv(svn);
-        UV min = my_svuv(sv1);
-        if (n < min)
-          croak("Parameter '%"UVuf"' must be >= %"UVuf, n, min);
-        if (items > 2 && ((sv2 = ST(2)), SvOK(sv2))) {
-          UV max = my_svuv(sv2);
-          if (n > max)
-            croak("Parameter '%"UVuf"' must be <= %"UVuf, n, max);
-          MPUassert( items <= 3, "_validate_num takes at most 3 parameters");
-        }
-      }
-      RETVAL = TRUE;
-    }
-  OUTPUT:
-    RETVAL
 
 void
 lastfor()
