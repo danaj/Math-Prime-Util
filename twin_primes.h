@@ -11,4 +11,6 @@ extern UV  twin_prime_count_approx(UV n);
 extern UV  nth_twin_prime(UV n);
 extern UV  nth_twin_prime_approx(UV n);
 
+extern UV  range_twin_prime_sieve(UV** list, UV lo, UV hi);
+
 #endif
