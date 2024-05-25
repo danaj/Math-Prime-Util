@@ -9,6 +9,8 @@ extern UV* n_ramanujan_primes(UV n);
 extern UV* n_range_ramanujan_primes(UV nlo, UV nhi);
 extern UV* ramanujan_primes(UV* first, UV* last, UV low, UV high);
 
+extern UV  range_ramanujan_prime_sieve(UV** list, UV lo, UV hi);
+
 extern UV  ramanujan_prime_count_range(UV lo, UV hi);
 
 extern UV  ramanujan_prime_count(UV n);

@@ -263,6 +263,17 @@ UV* ramanujan_primes(UV* first, UV* last, UV low, UV high)
   return L;
 }
 
+UV range_ramanujan_prime_sieve(UV** list, UV lo, UV hi)
+{
+  UV first, last, *L;
+  L = ramanujan_primes(&first, &last, lo, hi);
+  if (L == 0 || first > last) { *list = 0; return 0; }
+  if (first > 0)
+    memmove( L + 0,  L + first,  (last-first+1) * sizeof(UV) );
+  *list = L;
+  return last-first+1;
+}
+
 /* Generate a small window of Rp's around n */
 static UV* _ramanujan_prime_window(UV n, UV* winsize, UV* npos) {
   UV i, v, *L, window, swin, ewin, wlen, winmult = 1;
