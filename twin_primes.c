@@ -4,13 +4,14 @@
 
 #include "ptypes.h"
 #include "constants.h"
-#include "util.h"
 #include "cache.h"
 #include "sieve.h"
 #include "twin_primes.h"
+#include "prime_counts.h"
 #include "inverse_interpolate.h"
 #include "real.h"
 #include "mathl.h"
+#include "util.h"
 
 /******************************************************************************/
 /*                                TWIN PRIMES                                 */
@@ -225,3 +226,107 @@ UV nth_twin_prime_approx(UV n)
   if (hi <= lo) hi = UV_MAX;
   return inverse_interpolate(lo, hi, n, &twin_prime_count_approx, 0);
 }
+
+
+#if 0
+/* Generic cluster sieve.  Works but not as fast as we'd like. */
+#include "sieve_cluster.h"
+UV range_twin_prime_sieve(UV** list, UV beg, UV end)
+{
+  const uint32_t cl[2] = {0,2};
+  UV ntwin;
+
+  *list = sieve_cluster(beg, end, 2, cl, &ntwin);
+  return ntwin;
+}
+#endif
+
+#if 0
+/* Prime sieve and look for twins */
+UV range_twin_prime_sieve(UV** list, UV beg, UV end)
+{
+  UV nalloc, *L, ntwin;
+  if (end > MPU_MAX_TWIN_PRIME) end = MPU_MAX_TWIN_PRIME;
+  /* overshoot bounds, could also compare to 3*((end+29)/30 - beg/30) */
+  nalloc = prime_count_upper(end) - prime_count_lower(beg);
+  New(0, L, nalloc + 1 + 3, UV);
+  ntwin = 0;
+  if (beg <= 3 && end >= 3) L[ntwin++] = 3;
+  if (beg <= 5 && end >= 5) L[ntwin++] = 5;
+  if (beg < 11) beg = 7;
+  if (beg <= end) {
+    unsigned char* segment;
+    UV seg_base, seg_low, seg_high, lastp = 0;
+    void* ctx = start_segment_primes(beg, end+2, &segment);
+    while (next_segment_primes(ctx, &seg_base, &seg_low, &seg_high)) {
+      START_DO_FOR_EACH_SIEVE_PRIME( segment, seg_base, seg_low, seg_high )
+        if (lastp+2 == p)
+          L[ntwin++] = lastp;
+        lastp = p;
+      END_DO_FOR_EACH_SIEVE_PRIME
+    }
+    end_segment_primes(ctx);
+  }
+  *list = L;
+  return ntwin;
+}
+#endif
+
+#if 1
+/* Also just using the prime sieve and pulling out twins. */
+UV range_twin_prime_sieve(UV** list, UV beg, UV end)
+{
+  UV nalloc, *L, ntwin;
+  if (end > MPU_MAX_TWIN_PRIME) end = MPU_MAX_TWIN_PRIME;
+  /* overshoot bounds, could also compare to 3*((end+29)/30 - beg/30) */
+  nalloc = prime_count_upper(end) - prime_count_lower(beg);
+  New(0, L, nalloc + 1 + 3, UV);
+  ntwin = 0;
+
+  if (beg <= 3 && end >= 3) L[ntwin++] = 3;
+  if (beg <= 5 && end >= 5) L[ntwin++] = 5;
+  if (beg < 11) beg = 7;
+  if (beg <= end) {
+    /* Make end points odd */
+    beg |= 1;
+    end = (end-1) | 1;
+    while (1) {   /* Get us to the start of a sieve byte. */
+      uint32_t beg30 = beg % 30;
+      if      (beg30 ==  1) break;
+      else if (beg30 <= 11) beg = beg-beg30+11;
+      else if (beg30 <= 17) beg = beg-beg30+17;
+      else if (beg30 <= 29) beg = beg-beg30+29;
+      if (beg <= end && is_prime(beg) && is_prime(beg+2)) L[ntwin++] = beg;
+      beg = (beg30 <= 11) ? beg+6 : (beg30 <= 17) ? beg+12 : beg+2;
+    }
+  }
+  if (beg <= end) {
+    unsigned char* segment;
+    UV seg_base, seg_low, seg_high;
+    void* ctx = start_segment_primes(beg, end, &segment);
+    while (next_segment_primes(ctx, &seg_base, &seg_low, &seg_high)) {
+      UV bytes = seg_high/30 - seg_low/30 + 1;
+      UV pos = seg_base;
+      unsigned char s, x;
+      const unsigned char* sp = segment;
+      const unsigned char* const spend = segment + bytes - 1;
+      for (s = x = *sp;  sp++ < spend;  s = x) {
+        x = *sp;
+        if (!(s & 0x0C)) L[ntwin++] = pos+11;
+        if (!(s & 0x30)) L[ntwin++] = pos+17;
+        if (!(s & 0x80) && !(x & 0x01)) L[ntwin++] = pos+29;
+        pos += 30;
+      }
+      x = is_prime(seg_high+2) ? 0x00 : 0xFF;
+      if (!(s & 0x0C)) L[ntwin++] = pos+11;
+      if (!(s & 0x30)) L[ntwin++] = pos+17;
+      if (!(s & 0x80) && !(x & 0x01)) L[ntwin++] = pos+29;
+    }
+    end_segment_primes(ctx);
+    /* Remove anything from the end because we did full bytes. */
+    while (ntwin > 0 && L[ntwin-1] > end) ntwin--;
+  }
+  *list = L;
+  return ntwin;
+}
+#endif
