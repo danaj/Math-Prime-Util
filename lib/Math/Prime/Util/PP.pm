@@ -649,7 +649,8 @@ sub primes {
   return [grep { $_ >= $low && $_ <= $high } @_primes_small]
     if $high <= $_primes_small[-1];
 
-  return [ Math::Prime::Util::GMP::sieve_primes($low, $high, 0) ]
+  return [ map { reftyped($_[0],$_) }
+           Math::Prime::Util::GMP::sieve_primes($low, $high, 0) ]
     if $Math::Prime::Util::_GMPfunc{"sieve_primes"} && $Math::Prime::Util::GMP::VERSION >= 0.34;
 
   # At some point even the pretty-fast pure perl sieve is going to be a

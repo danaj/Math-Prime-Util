@@ -368,65 +368,6 @@ sub _csrand_p {
 
 #############################################################################
 
-sub primes {
-  my($low,$high) = @_;
-  if (scalar @_ > 1) {
-    _validate_integer_nonneg($low);
-  } else {
-    ($low,$high) = (2, $low);
-  }
-  _validate_integer_nonneg($high);
-
-  my $sref = [];
-  return $sref if ($low > $high) || ($high < 2);
-
-  if ($high > $_XS_MAXVAL) {
-    if ($_HAVE_GMP) {
-      $sref = Math::Prime::Util::GMP::primes($low,$high);
-      if ($high > ~0) {
-        # Convert the returned strings into BigInts
-        @$sref = map { _reftyped($_[0],$_) } @$sref;
-      } else {
-        @$sref = map { int($_) } @$sref;
-      }
-      return $sref;
-    }
-    require Math::Prime::Util::PP;
-    return Math::Prime::Util::PP::primes($low,$high);
-  }
-
-  # Decide the method to use.  We have four to choose from:
-  #  1. Trial     No memory, no overhead, but more time per prime.
-  #  2. Sieve     Monolithic cached sieve.
-  #  3. Erat      Monolithic uncached sieve.
-  #  4. Segment   Segment sieve.  Never a bad decision.
-
-  if (($low+1) >= $high ||                      # Tiny range, or
-      $high > 10**14 && ($high-$low) < 50000) { # Small relative range
-
-      $sref = trial_primes($low, $high);
-
-  } elsif ($high <= (65536*30) ||                # Very small, or
-           $high <= _get_prime_cache_size()) {   # already in the main cache.
-
-      $sref = sieve_primes($low, $high);
-
-  } else {
-
-      $sref = segment_primes($low, $high);
-
-  }
-
-  # We could return an array ref in scalar context, array in list context with:
-  #   return (wantarray) ? @{$sref} : $sref;
-  # but I think the dual interface could be confusing, albeit often handy.
-  return $sref;
-}
-
-# Shortcut for primes returning an array instead of array reference.
-# sub aprimes { @{primes(@_)}; }
-
-
 
 #############################################################################
 # Random primes.  These are front end functions that do input validation,

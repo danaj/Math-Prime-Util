@@ -297,6 +297,7 @@ sub entropy_bytes {
 *pplus1_factor = \&Math::Prime::Util::PP::pplus1_factor;
 *cheb_factor = \&Math::Prime::Util::PP::cheb_factor;
 
+*primes = \&Math::Prime::Util::PP::primes;
 *prime_powers = \&Math::Prime::Util::PP::prime_powers;
 *twin_primes = \&Math::Prime::Util::PP::twin_primes;
 *semi_primes = \&Math::Prime::Util::PP::semi_primes;

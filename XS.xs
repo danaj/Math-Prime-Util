@@ -1056,6 +1056,48 @@ sieve_primes(IN UV low, IN UV high)
     }
     return; /* skip implicit PUTBACK */
 
+
+void primes(IN SV* svlo, IN SV* svhi = 0)
+  PREINIT:
+    AV* av;
+    UV lo = 0, hi, i;
+  PPCODE:
+    if ((items == 1 && _validate_and_set(&hi, aTHX_ svlo, IFLAG_POS)) ||
+        (items == 2 && _validate_and_set(&lo, aTHX_ svlo, IFLAG_POS) && _validate_and_set(&hi, aTHX_ svhi, IFLAG_POS))) {
+      CREATE_AV(av);
+      if ((lo <= 2) && (hi >= 2)) av_push(av, newSVuv( 2 ));
+      if ((lo <= 3) && (hi >= 3)) av_push(av, newSVuv( 3 ));
+      if ((lo <= 5) && (hi >= 5)) av_push(av, newSVuv( 5 ));
+      if (lo < 7)  lo = 7;
+      if (lo <= hi) {
+        if ( hi-lo <= 10
+             || (hi >  100000000UL && hi-lo <=  330)
+             || (hi > 4000000000UL && hi-lo <= 1500)
+           ) {
+          for (i = !(lo&1); i <= hi-lo; i += 2)
+            if (is_prime(lo+i))
+              av_push(av,newSVuv(lo+i));
+        } else if (hi < (65536*30) ||  hi <= get_prime_cache(0,0)) {
+          START_DO_FOR_EACH_PRIME(lo, hi) {
+            av_push(av,newSVuv(p));
+          } END_DO_FOR_EACH_PRIME
+        } else {
+          unsigned char* segment;
+          UV seg_base, seg_low, seg_high;
+          void* ctx = start_segment_primes(lo, hi, &segment);
+          while (next_segment_primes(ctx, &seg_base, &seg_low, &seg_high)) {
+            START_DO_FOR_EACH_SIEVE_PRIME(segment, seg_base, seg_low, seg_high)
+              av_push(av,newSVuv( p ));
+            END_DO_FOR_EACH_SIEVE_PRIME
+          }
+          end_segment_primes(ctx);
+        }
+      }
+    } else {
+      _vcallsub_with_pp("primes");
+    }
+    return;
+
 void almost_primes(IN UV k, IN SV* svlo, IN SV* svhi = 0)
   ALIAS:
     omega_primes = 1
