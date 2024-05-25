@@ -98,6 +98,8 @@ UV range_omega_prime_sieve(UV** ret, uint32_t k, UV lo, UV hi) {
 
   if (hi < lo) croak("range_omega_prime_sieve error hi %"UVuf" < lo %"UVuf"\n",hi,lo);
 
+  if (k == 1) return prime_power_sieve(ret, lo, hi);
+
   /* TODO: The recursive routine should compute primes like the count does */
   if ( ((hi-lo) > 1000000000UL) || (k >= 10 && (hi-lo) > 10000000UL) )
     return rec_omega_primes(ret, k, lo, hi);
