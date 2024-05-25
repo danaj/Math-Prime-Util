@@ -34,7 +34,7 @@ typedef struct {
             t_ = n1;  n1 = n2;  n2 = t_; \
             t_ = m1;  m1 = m2;  m2 = t_; }
 
-static int is_admissible(uint32_t nc, uint32_t* cl) {
+static int is_admissible(uint32_t nc, const uint32_t* cl) {
   uint32_t i, j, c;
   char rset[sprimes[NSMALLPRIMES-1]];
 
@@ -54,7 +54,7 @@ static int is_admissible(uint32_t nc, uint32_t* cl) {
 }
 
 /* Given p prime, is this a cluster? */
-static int is_cluster(UV p, uint32_t nc, uint32_t* cl) {
+static int is_cluster(UV p, uint32_t nc, const uint32_t* cl) {
   uint32_t c;
   for (c = 1; c < nc; c++)
     if (!is_prob_prime(p+cl[c]))
@@ -63,7 +63,7 @@ static int is_cluster(UV p, uint32_t nc, uint32_t* cl) {
 }
 
 /* This is fine for small ranges.  Low overhead. */
-UV* sieve_cluster_simple(UV beg, UV end, uint32_t nc, uint32_t* cl, UV* numret)
+UV* sieve_cluster_simple(UV beg, UV end, uint32_t nc, const uint32_t* cl, UV* numret)
 {
   vlist retlist;
 
@@ -108,7 +108,7 @@ UV* sieve_cluster_simple(UV beg, UV end, uint32_t nc, uint32_t* cl, UV* numret)
 
 #define addmodded(r,a,b,n)  do { r = a + b; if (r >= n) r -= n; } while(0)
 
-UV* sieve_cluster(UV low, UV high, uint32_t nc, uint32_t* cl, UV* numret)
+UV* sieve_cluster(UV low, UV high, uint32_t nc, const uint32_t* cl, UV* numret)
 {
   vlist retlist;
   UV i, ppr, nres, allocres;
