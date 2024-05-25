@@ -292,6 +292,14 @@ sub _to_bigint {
   croak "Parameter '$_[0]' must be an integer" unless $n->is_int();
   $n;
 }
+sub _to_bigint_nonneg {
+  do { require Math::BigInt;  Math::BigInt->import(try=>"GMP,Pari"); }
+    unless defined $Math::BigInt::VERSION;
+  return undef unless defined($_[0]);
+  my $n = (ref($_[0]) eq 'Math::BigInt') ? $_[0] : Math::BigInt->new("$_[0]");
+  croak "Parameter '$_[0]' must be a non-negative integer" unless $n->is_int() && !$n->is_negative();
+  $n;
+}
 sub _to_bigint_abs {
   do { require Math::BigInt;  Math::BigInt->import(try=>"GMP,Pari"); }
     unless defined $Math::BigInt::VERSION;

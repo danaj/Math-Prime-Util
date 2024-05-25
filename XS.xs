@@ -373,25 +373,24 @@ static void objectify_result(pTHX_ SV* input, SV* output) {
   }
 }
 
-static SV* sv_to_bigint(pTHX_ SV* r) {
+static SV* call_sv_to_func(pTHX_ SV* r, const char* name) {
   dSP;  ENTER;  PUSHMARK(SP);
   XPUSHs(r);
   PUTBACK;
-  call_pv("Math::Prime::Util::_to_bigint", G_SCALAR);
+  call_pv(name, G_SCALAR);
   SPAGAIN;
   r = POPs;
   PUTBACK; LEAVE;
   return r;
 }
+static SV* sv_to_bigint(pTHX_ SV* r) {
+  return call_sv_to_func(aTHX_ r, "Math::Prime::Util::_to_bigint");
+}
 static SV* sv_to_bigint_abs(pTHX_ SV* r) {
-  dSP;  ENTER;  PUSHMARK(SP);
-  XPUSHs(r);
-  PUTBACK;
-  call_pv("Math::Prime::Util::_to_bigint_abs", G_SCALAR);
-  SPAGAIN;
-  r = POPs;
-  PUTBACK; LEAVE;
-  return r;
+  return call_sv_to_func(aTHX_ r, "Math::Prime::Util::_to_bigint_abs");
+}
+static SV* sv_to_bigint_nonneg(pTHX_ SV* r) {
+  return call_sv_to_func(aTHX_ r, "Math::Prime::Util::_to_bigint_nonneg");
 }
 
 #define RETURN_128(hi,lo) \
@@ -781,6 +780,9 @@ bool _validate_integer(SV* svn)
       if (mask & IFLAG_ABS) {
         /* TODO: if given a positive bigint, no need for this */
         sv_setsv(svn, sv_to_bigint_abs(aTHX_ svn));
+      } else if (mask & IFLAG_POS) {
+        if (!_is_sv_bigint(aTHX_ svn))
+          sv_setsv(svn, sv_to_bigint_nonneg(aTHX_ svn));
       } else {
         if (!_is_sv_bigint(aTHX_ svn))
           sv_setsv(svn, sv_to_bigint(aTHX_ svn));
