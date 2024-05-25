@@ -297,6 +297,13 @@ sub entropy_bytes {
 *pplus1_factor = \&Math::Prime::Util::PP::pplus1_factor;
 *cheb_factor = \&Math::Prime::Util::PP::cheb_factor;
 
+*prime_powers = \&Math::Prime::Util::PP::prime_powers;
+*twin_primes = \&Math::Prime::Util::PP::twin_primes;
+*semi_primes = \&Math::Prime::Util::PP::semi_primes;
+*ramanujan_primes = \&Math::Prime::Util::PP::ramanujan_primes;
+*almost_primes = \&Math::Prime::Util::PP::almost_primes;
+*omega_primes = \&Math::Prime::Util::PP::omega_primes;
+
 
 # We are doing the validation here so the PP code doesn't have to do it.
 

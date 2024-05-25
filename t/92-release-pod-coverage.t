@@ -27,9 +27,7 @@ plan tests => scalar @modules;
 foreach my $m (@modules) {
   my $param = {
     also_private => [
-                      qr/^(erat|segment|trial|sieve|segment_twin)_primes$/,
-                      'semi_prime_sieve', 'almost_prime_sieve',
-                      'omega_prime_sieve', 'prime_power_sieve',
+                      qr/^(erat|segment|trial|sieve)_primes$/,
                     ],
   };
   $param->{trustme} = [mpu_public_regex(), mpu_factor_regex(), mpu_PPM_regex()]

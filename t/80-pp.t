@@ -823,7 +823,7 @@ if ($use64) {
   is(is_ramanujan_prime(41),1,"41 is a Ramanujan prime");
   is(is_ramanujan_prime(43),0,"43 is not a Ramanujan prime");
   is(nth_ramanujan_prime(28),311,"R_n(28) = 311");
-  is_deeply( Math::Prime::Util::PP::_ramanujan_primes(0,100), [2,11,17,29,41,47,59,67,71,97], "Ramanujan primes under 100");
+  is_deeply( Math::Prime::Util::PP::ramanujan_primes(0,100), [2,11,17,29,41,47,59,67,71,97], "Ramanujan primes under 100");
 
   is(inverse_totient(42), 4, "inverse totient 42 count");
   is_deeply([inverse_totient(42)], [43,49,86,98], "inverse totient 42 list");

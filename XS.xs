@@ -400,6 +400,17 @@ static SV* sv_to_bigint_abs(pTHX_ SV* r) {
        ST(0) = sv_to_bigint( aTHX_ sv_2mortal(newSVpv(str,slen)) ); \
        XSRETURN(1); } while(0)
 
+#define CREATE_AV(av) \
+  do { \
+       av = newAV(); \
+       { \
+         SV * retsv = sv_2mortal(newRV_noinc( (SV*) av )); \
+         PUSHs(retsv); \
+         PUTBACK; \
+         SP = NULL; /* never use SP again, poison */ \
+       } \
+  } while(0)
+
 static int arrayref_to_int_array(pTHX_ UV** ret, AV* av, int base)
 {
   int len, i;
@@ -1004,42 +1015,15 @@ sieve_primes(IN UV low, IN UV high)
     trial_primes = 1
     erat_primes = 2
     segment_primes = 3
-    segment_twin_primes = 4
-    semi_prime_sieve = 5
-    _ramanujan_primes = 6
-    _n_ramanujan_primes = 7
-    prime_power_sieve = 8
   PREINIT:
     AV* av;
   PPCODE:
-    av = newAV();
-    {
-      SV * retsv = sv_2mortal(newRV_noinc( (SV*) av ));
-      PUSHs(retsv);
-      PUTBACK;
-      SP = NULL; /* never use SP again, poison */
-    }
-    if        (ix == 4) { /* twin primes */
-      if ((low <= 3) && (high >= 3)) av_push(av, newSVuv( 3 ));
-      if ((low <= 5) && (high >= 5)) av_push(av, newSVuv( 5 ));
-    } else if (ix == 5) {  /* semiprimes */
-      if ((low <= 4) && (high >= 4)) av_push(av, newSVuv( 4 ));
-      if ((low <= 6) && (high >= 6)) av_push(av, newSVuv( 6 ));
-    } else if (ix == 6) { /* ramanujan primes */
-      if ((low <= 2) && (high >= 2)) av_push(av, newSVuv( 2 ));
-    } else if (ix == 8) { /* prime powers */
-      if ((low <= 2) && (high >= 2)) av_push(av, newSVuv( 2 ));
-      if ((low <= 3) && (high >= 3)) av_push(av, newSVuv( 3 ));
-      if ((low <= 4) && (high >= 4)) av_push(av, newSVuv( 4 ));
-      if ((low <= 5) && (high >= 5)) av_push(av, newSVuv( 5 ));
-    } else {
-      if ((low <= 2) && (high >= 2)) av_push(av, newSVuv( 2 ));
-      if ((low <= 3) && (high >= 3)) av_push(av, newSVuv( 3 ));
-      if ((low <= 5) && (high >= 5)) av_push(av, newSVuv( 5 ));
-    }
+    CREATE_AV(av);
+    if ((low <= 2) && (high >= 2)) av_push(av, newSVuv( 2 ));
+    if ((low <= 3) && (high >= 3)) av_push(av, newSVuv( 3 ));
+    if ((low <= 5) && (high >= 5)) av_push(av, newSVuv( 5 ));
     if (low < 7)  low = 7;
     if (low <= high) {
-      if (ix == 4) high += 2;
       if (ix == 0) {                          /* Sieve with primary cache */
         START_DO_FOR_EACH_PRIME(low, high) {
           av_push(av,newSVuv(p));
@@ -1056,71 +1040,91 @@ sieve_primes(IN UV low, IN UV high)
            av_push(av,newSVuv(p));
         } END_DO_FOR_EACH_SIEVE_PRIME
         Safefree(sieve);
-      } else if (ix == 3 || ix == 4) {        /* Segment */
+      } else if (ix == 3) {        /* Segment */
         unsigned char* segment;
-        UV seg_base, seg_low, seg_high, lastp = 0;
+        UV seg_base, seg_low, seg_high;
         void* ctx = start_segment_primes(low, high, &segment);
         while (next_segment_primes(ctx, &seg_base, &seg_low, &seg_high)) {
           START_DO_FOR_EACH_SIEVE_PRIME( segment, seg_base, seg_low, seg_high )
-            if (ix == 3)            av_push(av,newSVuv( p ));
-            else if (lastp+2 == p)  av_push(av,newSVuv( lastp ));
-            lastp = p;
+            av_push(av,newSVuv( p ));
           END_DO_FOR_EACH_SIEVE_PRIME
         }
         end_segment_primes(ctx);
-      } else if (ix == 5) {                   /* Semiprimes */
-        UV i, count, *semi;
-        count = range_semiprime_sieve(&semi, low, high);
-        for (i = 0; i < count; i++)
-          av_push(av, newSVuv(semi[i]));
-        Safefree(semi);
-      } else if (ix == 6) {                   /* Ramanujan primes */
-        UV i, beg, end, *L;
-        L = ramanujan_primes(&beg, &end, low, high);
-        if (L && end >= beg)
-          for (i = beg; i <= end; i++)
-            av_push(av,newSVuv(L[i]));
-        Safefree(L);
-      } else if (ix == 7) {                   /* Ramanujan primes */
-        UV i, *L;
-        L = n_range_ramanujan_primes(low, high);
-        if (L && high >= low)
-          for (i = 0; i <= (high-low); i++)
-            av_push(av,newSVuv(L[i]));
-        Safefree(L);
-      } else if (ix == 8) {                   /* Prime powers */
-        /* for (low = next_prime_power(low-1); low <= high && low != 0; low = next_prime_power(low))  av_push(av,newSVuv(low)); */
-        UV i, np, *pow;
-        np = prime_power_sieve(&pow,low,high);
-        for (i = 0; i < np; i++)
-          av_push(av,newSVuv(pow[i]));
-        Safefree(pow);
       }
     }
     return; /* skip implicit PUTBACK */
 
-void
-almost_prime_sieve(IN UV k, IN UV lo, IN UV hi)
+void almost_primes(IN UV k, IN SV* svlo, IN SV* svhi = 0)
   ALIAS:
-    omega_prime_sieve = 1
+    omega_primes = 1
   PREINIT:
     AV* av;
-    UV *S, n, i;
+    UV lo = 1, hi, i, n, *S;
   PPCODE:
-    /* TODO: This should have a proper SV interface with calls to GMP/PP. */
-    av = newAV();
-    {
-      SV * retsv = sv_2mortal(newRV_noinc( (SV*) av ));
-      PUSHs(retsv);
-      PUTBACK;
-      SP = NULL; /* never use SP again, poison */
+    if ((items == 1 && _validate_and_set(&hi, aTHX_ svlo, IFLAG_POS)) ||
+        (items >= 2 && _validate_and_set(&lo, aTHX_ svlo, IFLAG_POS) && _validate_and_set(&hi, aTHX_ svhi, IFLAG_POS))) {
+      CREATE_AV(av);
+      S = 0;
+      if (ix == 0) n = generate_almost_primes(&S, k, lo, hi);
+      else         n = range_omega_prime_sieve(&S, k, lo, hi);
+      for (i = 0; i < n; i++)
+        av_push(av, newSVuv(S[i]));
+      if (S != 0) Safefree(S);
+    } else {
+      if (ix == 0) _vcallsub_with_pp("almost_primes");
+      else         _vcallsub_with_pp("omega_primes");
     }
-    S = 0;
-    if (ix == 0) n = generate_almost_primes(&S, k, lo, hi);
-    else         n = range_omega_prime_sieve(&S, k, lo, hi);
-    for (i = 0; i < n; i++)
-      av_push(av, newSVuv(S[i]));
-    if (S != 0) Safefree(S);
+    return;
+
+
+void prime_powers(IN SV* svlo, IN SV* svhi = 0)
+  ALIAS:
+    twin_primes = 1
+    semi_primes = 2
+    ramanujan_primes = 3
+  PREINIT:
+    AV* av;
+    UV lo = 0, hi, i, num, *L;
+  PPCODE:
+    if ((items == 1 && _validate_and_set(&hi, aTHX_ svlo, IFLAG_POS)) ||
+        (items == 2 && _validate_and_set(&lo, aTHX_ svlo, IFLAG_POS) && _validate_and_set(&hi, aTHX_ svhi, IFLAG_POS))) {
+      CREATE_AV(av);
+      if (ix == 0) {         /* Prime power */
+        if ((lo <= 2) && (hi >= 2)) av_push(av, newSVuv( 2 ));
+        if ((lo <= 3) && (hi >= 3)) av_push(av, newSVuv( 3 ));
+        if ((lo <= 4) && (hi >= 4)) av_push(av, newSVuv( 4 ));
+        if ((lo <= 5) && (hi >= 5)) av_push(av, newSVuv( 5 ));
+      } else if (ix == 1) {  /* Twin */
+        if ((lo <= 3) && (hi >= 3)) av_push(av, newSVuv( 3 ));
+        if ((lo <= 5) && (hi >= 5)) av_push(av, newSVuv( 5 ));
+      } else if (ix == 2) {  /* Semi */
+        if ((lo <= 4) && (hi >= 4)) av_push(av, newSVuv( 4 ));
+        if ((lo <= 6) && (hi >= 6)) av_push(av, newSVuv( 6 ));
+      } else if (ix == 3) {  /* Ramanujan */
+        if ((lo <= 2) && (hi >= 2)) av_push(av, newSVuv( 2 ));
+      }
+      if (lo < 7)  lo = 7;
+      if (lo <= hi) {
+        switch (ix) {
+          case  0: num = prime_power_sieve(&L,lo,hi);           break;
+          case  1: num = range_twin_prime_sieve(&L,lo,hi);      break;
+          case  2: num = range_semiprime_sieve(&L,lo,hi);       break;
+          case  3: num = range_ramanujan_prime_sieve(&L,lo,hi); break;
+          default: num = 0; L = 0; break;
+        }
+        for (i = 0; i < num; i++)
+          av_push(av,newSVuv(L[i]));
+        Safefree(L);
+      }
+    } else {
+      switch (ix) {
+        case  0: _vcallsub_with_pp("prime_powers"); break;
+        case  1: _vcallsub_with_pp("twin_primes"); break;
+        case  2: _vcallsub_with_pp("semi_primes"); break;
+        case  3: _vcallsub_with_pp("ramanujan_primes"); break;
+        default: break;
+      }
+    }
     return;
 
 void
@@ -1131,13 +1135,7 @@ lucky_numbers(IN SV* svlo, IN SV* svhi = 0)
   PPCODE:
     if ((items == 1 && _validate_and_set(&hi, aTHX_ svlo, IFLAG_POS)) ||
         (items == 2 && _validate_and_set(&lo, aTHX_ svlo, IFLAG_POS) && _validate_and_set(&hi, aTHX_ svhi, IFLAG_POS))) {
-      av = newAV();
-      {
-        SV * retsv = sv_2mortal(newRV_noinc( (SV*) av ));
-        PUSHs(retsv);
-        PUTBACK;
-        SP = NULL; /* never use SP again, poison */
-      }
+      CREATE_AV(av);
       if (lo == 0 && hi <= UVCONST(4000000000)) {
         uint32_t* lucky = lucky_sieve32(&nlucky, hi);
         for (i = 0; i < nlucky; i++)
@@ -1161,13 +1159,7 @@ void powerful_numbers(IN SV* svlo, IN SV* svhi = 0, IN UV k = 2)
   PPCODE:
     if ((items == 1 && _validate_and_set(&hi, aTHX_ svlo, IFLAG_POS)) ||
         (items >= 2 && _validate_and_set(&lo, aTHX_ svlo, IFLAG_POS) && _validate_and_set(&hi, aTHX_ svhi, IFLAG_POS))) {
-      av = newAV();
-      {
-        SV * retsv = sv_2mortal(newRV_noinc( (SV*) av ));
-        PUSHs(retsv);
-        PUTBACK;
-        SP = NULL; /* never use SP again, poison */
-      }
+      CREATE_AV(av);
       powerful = powerful_numbers_range(&npowerful, lo, hi, k);
       for (i = 0; i < npowerful; i++)
         av_push(av,newSVuv(powerful[i]));
