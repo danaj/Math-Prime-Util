@@ -101,6 +101,7 @@ BEGIN {
 *Mdivisors = \&Math::Prime::Util::divisors;
 *Mis_prime = \&Math::Prime::Util::is_prime;
 *Mis_semiprime = \&Math::Prime::Util::is_semiprime;
+*Mis_prime_power = \&Math::Prime::Util::is_prime_power;
 *Mis_power = \&Math::Prime::Util::is_power;
 *Mis_square_free = \&Math::Prime::Util::is_square_free;
 *Mis_odd = \&Math::Prime::Util::is_odd;
@@ -133,6 +134,7 @@ BEGIN {
 *Mvecfirst = \&Math::Prime::Util::vecfirst;
 *Mtodigits = \&Math::Prime::Util::todigits;
 
+*Mprimes = \&Math::Prime::Util::primes;
 *Mfordivisors = \&Math::Prime::Util::fordivisors;
 *Mforprimes = \&Math::Prime::Util::forprimes;
 *MLi = \&Math::Prime::Util::LogarithmicIntegral;
@@ -727,7 +729,7 @@ sub sieve_prime_cluster {
            Math::Prime::Util::GMP::sieve_prime_cluster($lo,$hi,@cl);
   }
 
-  return @{primes($lo,$hi)} if scalar(@cl) == 0;
+  return @{Mprimes($lo,$hi)} if scalar(@cl) == 0;
 
   unshift @cl, 0;
   for my $i (1 .. $#cl) {
@@ -743,7 +745,7 @@ sub sieve_prime_cluster {
   # Add any cases under our sieving point.
   if ($lo <= $sievelim) {
     $sievelim = $hi if $sievelim > $hi;
-    for my $n (@{primes($lo,$sievelim)}) {
+    for my $n (@{Mprimes($lo,$sievelim)}) {
       my $ac = 1;
       for my $ci (1 .. $#cl) {
         if (!Mis_prime($n+$cl[$ci])) { $ac = 0; last; }
@@ -775,7 +777,7 @@ sub sieve_prime_cluster {
   return @p if scalar(@acc) == 0;
 
   # Prepare table for more sieving.
-  my @mprimes = @{primes( $p+1, $sievelim)};
+  my @mprimes = @{Mprimes( $p+1, $sievelim)};
   my @vprem;
   for my $p (@mprimes) {
     for my $c (@cl) {
@@ -843,12 +845,34 @@ sub prime_powers {
     ($low,$high) = (2, $low);
   }
   validate_integer_nonneg($high);
-  my $sref = [];
-  while ($low <= $high) {
-    push @$sref, $low if Math::Prime::Util::is_prime_power($low);
-    $low = Maddint($low, 1);
+
+  if ($high > 1e18 || ($high-$low) < 10) {
+    my $sref = [];
+    while ($low <= $high) {
+      push @$sref, $low if Mis_prime_power($low);
+      $low = Maddint($low, 1);
+    }
+    return $sref;
+  } else {
+    my @powers;
+    for my $k (2 .. Mlogint($high,2)) {
+      my $P = Mpowint(2,$k);
+      push @powers, $P if $P >= $low;
+    }
+    for my $k (2 .. Mlogint($high,3)) {
+      my $P = Mpowint(3,$k);
+      push @powers, $P if $P >= $low;
+    }
+    for my $k (2 .. Mlogint($high,5)) {
+      my $rootn = Mrootint($high, $k);
+      Mforprimes( sub {
+        my $P = Mpowint($_,$k);
+        push @powers, $P if $P >= $low;
+      }, 5, $rootn);
+    }
+    my @result = sort { $a <=> $b } @powers, @{Mprimes($low,$high)};
+    return \@result;
   }
-  $sref;
 }
 
 sub twin_primes {
@@ -990,7 +1014,7 @@ sub next_prime_power {
   return (2,2,3,4,5,7,7,8,9)[$n] if $n <= 8;
   while (1) {
     $n = Maddint($n, 1);
-    return $n if Math::Prime::Util::is_prime_power($n);
+    return $n if Mis_prime_power($n);
   }
 }
 sub prev_prime_power {
@@ -999,7 +1023,7 @@ sub prev_prime_power {
   return (undef,undef,undef,2,3,4,5,5,7)[$n] if $n <= 8;
   while (1) {
     $n = Msubint($n, 1);
-    return $n if Math::Prime::Util::is_prime_power($n);
+    return $n if Mis_prime_power($n);
   }
 }
 
@@ -1194,7 +1218,7 @@ sub is_lucky {
 sub primorial {
   my $n = shift;
 
-  my @plist = @{primes($n)};
+  my @plist = @{Mprimes($n)};
   my $max = (MPU_32BIT) ? 29 : (OLD_PERL_VERSION) ? 43 : 53;
 
   # If small enough, multiply the small primes.
@@ -2368,7 +2392,7 @@ sub almost_primes {
   validate_integer_nonneg($high);
 
   if ($k == 0) { return ($low <= 1 && $high >= 1) ? [1] : [] }
-  if ($k == 1) { return Math::Prime::Util::primes($low,$high); }
+  if ($k == 1) { return Mprimes($low,$high); }
   if ($k == 2) { return Math::Prime::Util::semi_primes($low,$high); }
 
   my $minlow = Mpowint(2,$k);
@@ -2384,7 +2408,7 @@ sub almost_primes {
 sub _rec_omega_primes {
   my($k, $lo, $hi, $m, $p, $opl) = @_;
   my $s = Mrootint(Mdivint($hi, $m), $k);
-  foreach my $q (@{primes($p, $s)}) {
+  foreach my $q (@{Mprimes($p, $s)}) {
     next if Mmodint($m,$q) == 0;
     for (my $v = Mmulint($m, $q); $v <= $hi ; $v = Mmulint($v, $q)) {
       if ($k == 1) {
@@ -2744,7 +2768,7 @@ sub sumliouville {
 sub exp_mangoldt {
   my($n) = @_;
   my $p;
-  return 1 unless Math::Prime::Util::is_prime_power($n,\$p);
+  return 1 unless Mis_prime_power($n,\$p);
   $p;
 }
 
@@ -3036,7 +3060,7 @@ sub legendre_phi {
     @_s4 = (0,1,1,1,1,1,1,1,1,1,1,2,2,3,3,3,3,4,4,5,5,5,5,6,6,6,6,6,6,7,7,8,8,8,8,8,8,9,9,9,9,10,10,11,11,11,11,12,12,12,12,12,12,13,13,13,13,13,13,14,14,15,15,15,15,15,15,16,16,16,16,17,17,18,18,18,18,18,18,19,19,19,19,20,20,20,20,20,20,21,21,21,21,21,21,21,21,22,22,22,22,23,23,24,24,24,24,25,25,26,26,26,26,27,27,27,27,27,27,27,27,28,28,28,28,28,28,29,29,29,29,30,30,30,30,30,30,31,31,32,32,32,32,33,33,33,33,33,33,34,34,35,35,35,35,35,35,36,36,36,36,36,36,37,37,37,37,38,38,39,39,39,39,40,40,40,40,40,40,41,41,42,42,42,42,42,42,43,43,43,43,44,44,45,45,45,45,46,46,47,47,47,47,47,47,47,47,47,47,48);
   }
   return _tablephi($x,$a) if $a <= 6;
-  $primes = primes(Math::Prime::Util::nth_prime_upper($a+1)) unless defined $primes;
+  $primes = Mprimes(Math::Prime::Util::nth_prime_upper($a+1)) unless defined $primes;
   return ($x > 0 ? 1 : 0) if $x < $primes->[$a];
 
   my $sum = 0;
@@ -3111,7 +3135,7 @@ sub _lehmer_pi {
 
   # Generate at least b primes.
   my $bth_prime_upper = ($b <= 10) ? 29 : int($b*(log($b) + log(log($b)))) + 1;
-  my $primes = primes( $bth_prime_upper );
+  my $primes = Mprimes( $bth_prime_upper );
 
   my $sum = int(($b + $a - 2) * ($b - $a + 1) / 2);
   $sum += legendre_phi($x, $a, $primes);
@@ -4470,7 +4494,7 @@ sub sum_primes {
     $next = $high if $next > $high;
     $sum = Maddint($sum,
             ($xssum) ? Math::Prime::Util::sum_primes($low,$next)
-                     : Mvecsum( @{Math::Prime::Util::primes($low,$next)} ));
+                     : Mvecsum( @{Mprimes($low,$next)} ));
     last if $next == $high;
     $low = Maddint($next,1);
   }
@@ -4494,7 +4518,7 @@ sub print_primes {
       if ($Math::Prime::Util::_GMPfunc{"sieve_primes"}) {
         print $fh "$_\n" for Math::Prime::Util::GMP::sieve_primes($p1,$p2,0);
       } else {
-        print $fh "$_\n" for @{primes($p1,$p2)};
+        print $fh "$_\n" for @{Mprimes($p1,$p2)};
       }
       $p1 = $p2+1;
     }
@@ -8332,7 +8356,7 @@ sub is_aks_prime {
   }
 
   my $r = Mnext_prime($limit);
-  foreach my $f (@{primes(0,$r-1)}) {
+  foreach my $f (@{Mprimes(0,$r-1)}) {
     return 1 if $f == $n;
     return 0 if !($n % $f);
   }
@@ -8421,7 +8445,7 @@ sub trial_factor {
 
   my $start_idx = 1;
   # Expand small primes if it would help.
-  push @_primes_small, @{primes($_primes_small[-1]+1, 100_003)}
+  push @_primes_small, @{Mprimes($_primes_small[-1]+1, 100_003)}
     if $n > 400_000_000
     && $_primes_small[-1] < 99_000
     && (!defined $limit || $limit > $_primes_small[-1]);
@@ -8812,7 +8836,7 @@ sub pminus1_factor {
     my $sqrtb1 = int(sqrt($B1));
     while (1) {
       $pc_end = $B1 if $pc_end > $B1;
-      @bprimes = @{ primes($pc_beg, $pc_end) };
+      @bprimes = @{ Mprimes($pc_beg, $pc_end) };
       foreach my $q (@bprimes) {
         my $k = $q;
         if ($q <= $sqrtb1) {
@@ -8863,7 +8887,7 @@ sub pminus1_factor {
   $pc_end = $pc_beg + 100_000;
   while (1) {
     $pc_end = $B1 if $pc_end > $B1;
-    @bprimes = @{ primes($pc_beg, $pc_end) };
+    @bprimes = @{ Mprimes($pc_beg, $pc_end) };
     foreach my $q (@bprimes) {
       my($k, $kmin) = ($q, int($B1 / $q));
       while ($k <= $kmin) { $k *= $q; }
@@ -8917,7 +8941,7 @@ sub pminus1_factor {
     $pc_end = $pc_beg + 100_000;
     while (1) {
       $pc_end = $B2 if $pc_end > $B2;
-      @bprimes = @{ primes($pc_beg, $pc_end) };
+      @bprimes = @{ Mprimes($pc_beg, $pc_end) };
       foreach my $i (0 .. $#bprimes) {
         my $diff = $bprimes[$i] - $q;
         $q = $bprimes[$i];
@@ -8961,7 +8985,7 @@ sub cheb_factor {
   my $inv = Minvmod(2,$n);
   my $f = 1;
 
-  my @bprimes = @{ primes(2, $B) };
+  my @bprimes = @{ Mprimes(2, $B) };
   foreach my $p (@bprimes) {
     my $xx = Maddmod($x,$x,$n);
     if ($p <= $sqrtB) {
@@ -9147,14 +9171,14 @@ sub ecm_factor {
 
   # With multiple curves, it's better to get all the primes at once.
   # The downside is this can kill memory with a very large B1.
-  my @bprimes = @{ primes(3, $B1) };
+  my @bprimes = @{ Mprimes(3, $B1) };
   foreach my $q (@bprimes) {
     last if $q > $sqrt_b1;
     my($k,$kmin) = ($q, int($B1/$q));
     while ($k <= $kmin) { $k *= $q; }
     $q = $k;
   }
-  my @b2primes = ($B2 > $B1) ? @{primes($B1+1, $B2)} : ();
+  my @b2primes = ($B2 > $B1) ? @{Mprimes($B1+1, $B2)} : ();
 
   foreach my $curve (1 .. $ncurves) {
     my $sigma = Murandomm($n-6) + 6;
@@ -9328,7 +9352,7 @@ sub chebyshev_theta {
   while ($low <= $n) {
     $high = $low + 1e6;
     $high = $n if $high > $n;
-    $sum += log($_) for @{primes($low,$high)};
+    $sum += log($_) for @{Mprimes($low,$high)};
     $low = $high+1;
   }
   $sum;
@@ -9340,7 +9364,7 @@ sub chebyshev_psi {
   my ($sum, $logn, $sqrtn) = (0.0, log($n), int(sqrt($n)));
 
   # Sum the log of prime powers first
-  for my $p (@{primes($sqrtn)}) {
+  for my $p (@{Mprimes($sqrtn)}) {
     my $logp = log($p);
     $sum += $logp * int($logn/$logp+1e-15);
   }
