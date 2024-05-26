@@ -2057,6 +2057,8 @@ sub is_perfect_power {
 sub _perfect_power_count {
   my($n) = @_;
   return 0+($n>=1)+($n>=4) if $n < 8;
+  #return reftyped($_[0], Math::Prime::Util::GMP::perfect_power_count($n))
+  #  if $Math::Prime::Util::_GMPfunc{"perfect_power_count"};
   my @T = (1);
 
   my $log2n = Mlogint($n,2);
@@ -2138,9 +2140,11 @@ sub prev_perfect_power {
   my $log2n = Mlogint($n,2);
   for (my $k = 2; $k <= $log2n; $k++) {
     my $r = Mrootint($n,$k);
-    my $c = Mpowint($r,$k);
-    $c = Mpowint(Msubint($r,1),$k) if $c >= $n;
-    $best = $c if $c > $best && $c < $n;
+    if ($r > 1) {
+      my $c = Mpowint($r,$k);
+      $c = Mpowint(Msubint($r,1),$k) if $c >= $n;
+      $best = $c if $c > $best && $c < $n;
+    }
   }
   $best;
 }
@@ -2153,6 +2157,29 @@ sub nth_perfect_power_approx {
 
   # See  https://www.emis.de/journals/JIS/VOL15/Jakimczuk/jak29.pdf
   # See  https://www.researchgate.net/publication/268998744_Sums_of_perfect_powers
+
+  # This is more accurate and about 200x faster than using BigFloat.
+  if ($n > 2**32 && $Math::Prime::Util::_GMPfunc{"powreal"}) {
+    *Gaddreal = \&Math::Prime::Util::GMP::addreal;
+    *Gmulreal = \&Math::Prime::Util::GMP::mulreal;
+    *Gpowreal = \&Math::Prime::Util::GMP::powreal;
+    my $d = 2 * length($n) + 2;
+    my $pp = Gmulreal($n,$n,$d);
+    $pp = Gaddreal($pp, Gmulreal(13/3 ,Gpowreal($n, 4/3 ,$d),$d),$d);
+    $pp = Gaddreal($pp, Gmulreal(32/15,Gpowreal($n,16/15,$d),$d),$d);
+    $pp = Gaddreal($pp, Gmulreal(-2   ,Gpowreal($n, 5/3 ,$d),$d),$d);
+    $pp = Gaddreal($pp, Gmulreal(-2   ,Gpowreal($n, 7/5 ,$d),$d),$d);
+    $pp = Gaddreal($pp, Gmulreal(-2   ,Gpowreal($n, 9/7 ,$d),$d),$d);
+    $pp = Gaddreal($pp, Gmulreal( 2   ,Gpowreal($n,12/10,$d),$d),$d);
+    $pp = Gaddreal($pp, Gmulreal(-2   ,Gpowreal($n,13/11,$d),$d),$d);
+    $pp = Gaddreal($pp, Gmulreal(-2   ,Gpowreal($n,15/13,$d),$d),$d);
+    $pp = Gaddreal($pp, Gmulreal( 2   ,Gpowreal($n,16/14,$d),$d),$d);
+    $pp = Gaddreal($pp, Gmulreal( 2   ,Gpowreal($n,17/15,$d),$d),$d);
+    $pp = Gaddreal($pp, Gmulreal(-0.48,Gpowreal($n,19/17,$d),$d),$d);
+    $pp = Gaddreal($pp, -1.5,$d);
+    $pp =~ s/\..*//;
+    return Math::BigInt->new("$pp");
+  }
 
   # Without this upgrade, it will return non-integers.
   $n = _upgrade_to_float($n) if $n > 2**32;
@@ -2218,12 +2245,12 @@ sub nth_perfect_power {
     last if $gn++ >= 20;
   }
   if ($c >= $n) {
-    for ($g = prev_perfect_power($g+1);  $c > $n;  $c--) {
-      $g = prev_perfect_power($g);
+    for ($g = Math::Prime::Util::prev_perfect_power($g+1);  $c > $n;  $c--) {
+      $g = Math::Prime::Util::prev_perfect_power($g);
     }
   } else {
     for ( ; $c < $n; $c++) {
-      $g = next_perfect_power($g);
+      $g = Math::Prime::Util::next_perfect_power($g);
      }
   }
   $g;
