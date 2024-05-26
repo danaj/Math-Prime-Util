@@ -15,6 +15,9 @@ Revision history for Perl module Math::Prime::Util
 
     - divisors takes an optional second argument to prune the returned list.
 
+    - consecutive_integer_lcm(0) was returning 0.  Now returns 1, matching
+      the original GMP API as well as the OEIS series.
+
     [ADDED]
 
     - powersum(n,k)                   sum of k-th powers of positive ints <= n

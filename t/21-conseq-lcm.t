@@ -7,8 +7,9 @@ use Math::Prime::Util qw/consecutive_integer_lcm/;
 
 plan tests => 101 + 1;
 
+# As per A003418, a(0) = 1
 my @lcms = qw/
-0
+1
 1
 2
 6

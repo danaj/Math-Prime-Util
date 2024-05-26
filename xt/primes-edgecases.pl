@@ -93,7 +93,8 @@ diag "\nChecking numbers near end with segment primes().\n";
 
 
 sub gen_primes {
-  return primes(@_);
+  my($lo, $hi) = @_;
+  return primes($lo,$hi);
 }
 sub gen_segment_primes {
   my($low, $high) = @_;

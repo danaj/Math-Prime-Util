@@ -149,7 +149,7 @@ sub mpu_factor_regex {
 sub mpu_PPM_regex {
   my @funcs = qw(
       Maddint Msubint Mmulint Mdivint Mcdivint Mpowint Mabsint Mnegint
-      Mmodint Mlogint Mrootint Msqrtint
+      Mmodint Mlogint Mrootint Msqrtint Mcmpint
       Mlshiftint Mrshiftint
       Maddmod Msubmod Mmulmod Mrootmod Mdivmod Mpowmod Minvmod
       Mmuladdmod Mmulsubmod
@@ -166,6 +166,9 @@ sub mpu_PPM_regex {
       Mtodigits
       Mlucasumod Mvecfirst
       Saddint Ssubint Smulint Sdivint Spowint
+      reftyped
+      validate_integer     validate_integer_nonneg
+      validate_integer_abs validate_integer_positive
   );
   my $pattern = '^(' . join('|', @funcs) . ')$';
   return qr/$pattern/;

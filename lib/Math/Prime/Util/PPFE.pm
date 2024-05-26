@@ -214,6 +214,8 @@ sub entropy_bytes {
 *primorial = \&Math::Prime::Util::PP::primorial;
 *pn_primorial = \&Math::Prime::Util::PP::pn_primorial;
 *divisors = \&Math::Prime::Util::PP::divisors;
+*partitions = \&Math::Prime::Util::PP::partitions;
+*consecutive_integer_lcm = \&Math::Prime::Util::PP::consecutive_integer_lcm;
 
 *divint = \&Math::Prime::Util::PP::divint;
 *modint = \&Math::Prime::Util::PP::modint;

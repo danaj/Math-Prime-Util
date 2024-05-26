@@ -416,51 +416,6 @@ sub random_proven_prime_with_cert {
   return Math::Prime::Util::RandomPrimes::random_proven_prime_with_cert($bits);
 }
 
-
-#############################################################################
-# These functions almost always return bigints, so there is no XS
-# implementation.  Try to run the GMP version, and if it isn't available,
-# load PP and call it.
-
-sub consecutive_integer_lcm {
-  my($n) = @_;
-  _validate_integer_nonneg($n);
-  return 0 if $n < 1;
-
-  if ($_HAVE_GMP && defined &Math::Prime::Util::GMP::consecutive_integer_lcm) {
-    return _reftyped($_[0],Math::Prime::Util::GMP::consecutive_integer_lcm($n));
-  }
-  require Math::Prime::Util::PP;
-  return Math::Prime::Util::PP::consecutive_integer_lcm($n);
-}
-
-# On Mac M1.  The combinatorial solution that we use is both slower and
-# has *much* worse growth than the Rademacher implementation that uses high
-# precision floating point (e.g. Pari, MPFR, Arb).
-#
-#               10^5      10^6      10^7    10^8    10^9    10^10
-#   Perl-comb   78        ----
-#   GMP-comb     0.32     44        ----
-#   Sympy 1.7.1  0.0045    0.018    0.091    0.62     5.3     51
-#   Pari 2.14    0.00043   0.0018   0.013    0.19     4.5     54
-#   Bober 0.6    0.00010   0.00085  0.062    0.91    10.9     15
-#   Arb 2.19     0.00018   0.00044  0.004    0.011   0.031     0.086
-#
-#   Arb 2.19 takes only 62 seconds for 10^14.
-#
-sub partitions {
-  my($n) = @_;
-  _validate_integer($n);
-  return 0 if $n < 0;
-
-  if ($_HAVE_GMP && defined &Math::Prime::Util::GMP::partitions) {
-    return _reftyped($_[0],Math::Prime::Util::GMP::partitions($n));
-  }
-
-  require Math::Prime::Util::PP;
-  return Math::Prime::Util::PP::partitions($n);
-}
-
 #############################################################################
 # forprimes, forcomposites, fordivisors.
 # These are used when the XS code can't handle it.
@@ -4063,6 +4018,8 @@ integers from 1 to C<n>.  This can be done by manipulation of the primes up
 to C<n>, resulting in much faster and memory-friendly results than using
 a factorial.
 
+This is L<OEIS series A003418|http://oeis.org/A003418>.
+Matching that series, we define C<consecutive_integer_lcm(0) = 1>.
 
 =head2 partitions
 

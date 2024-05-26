@@ -2660,6 +2660,71 @@ UV polygonal_root(UV n, UV k, int* overflow) {
   return D/R;
 }
 
+/*
+ # On Mac M1.  The combinatorial solution that we use is both slower and
+ # has *much* worse growth than the Rademacher implementation that uses high
+ # precision floating point (e.g. Pari, MPFR, Arb).
+ #
+ #               10^5      10^6      10^7    10^8    10^9    10^10
+ #   Perl-comb   78        ----
+ #   GMP-comb     0.32     44        ----
+ #   Sympy 1.7.1  0.0045    0.018    0.091    0.62     5.3     51
+ #   Pari 2.14    0.00043   0.0018   0.013    0.19     4.5     54
+ #   Bober 0.6    0.00010   0.00085  0.062    0.91    10.9     15
+ #   Arb 2.19     0.00018   0.00044  0.004    0.011   0.031     0.086
+ #
+ #   Arb 2.19 takes only 62 seconds for 10^14.
+*/
+
+UV npartitions(UV n) {
+  UV *part, *pent, i, j, k, d, npart;
+
+  if (n <= 3)  return (n == 0) ? 1 : n;
+  if (n > ((BITS_PER_WORD == 32) ? 127 : 416)) return 0;  /* Overflow */
+
+  d = isqrt(n+1);
+  New(0, pent, 2*d+2, UV);
+  pent[0] = 0;
+  pent[1] = 1;
+  for (i = 1; i <= d; i++) {
+    pent[2*i  ] = ( i   *(3*i+1)) / 2;
+    pent[2*i+1] = ((i+1)*(3*i+2)) / 2;
+  }
+  New(0, part, n+1, UV);
+  part[0] = 1;
+  for (j = 1; j <= n; j++) {
+    UV psum = 0;
+    for (k = 1; pent[k] <= j; k++) {
+      if ((k+1) & 2) psum += part[ j - pent[k] ];
+      else           psum -= part[ j - pent[k] ];
+    }
+    part[j] = psum;
+  }
+  npart = part[n];
+  Safefree(part);
+  Safefree(pent);
+  return npart;
+}
+
+UV consecutive_integer_lcm(UV n)
+{
+  UV i, ilcm, sqrtn;
+
+  if (n <= 2)  return (n == 0) ? 1 : n;
+
+  ilcm = 1;
+  sqrtn = isqrt(n);
+  for (i = 1; i < NPRIMES_TINY; i++) {
+    uint32_t p = primes_tiny[i];
+    if (p > n) break;
+    if (p <= sqrtn) p = ipow(p, logint(n,p));
+    if (ilcm > UV_MAX/p) return 0;
+    ilcm *= p;
+  }
+  return ilcm;
+}
+
+
 /* These rank/unrank are O(n^2) algorithms using O(n) in-place space.
  * Bonet 2008 gives O(n log n) algorithms using a bit more space.
  */

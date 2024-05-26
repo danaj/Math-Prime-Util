@@ -2375,15 +2375,29 @@ void urandomm(IN SV* svn)
     XSRETURN(1);
 
 void pisano_period(IN SV* svn)
+  ALIAS:
+    partitions = 1
+    consecutive_integer_lcm = 2
   PREINIT:
-    UV n;
+    UV n, r = 0;
   PPCODE:
     if (_validate_and_set(&n, aTHX_ svn, IFLAG_POS)) {
-      UV r = pisano_period(n);  /* Returns 0 if n=0 or result overflows */
+      switch (ix) {
+        case  0: r = pisano_period(n); break;
+        case  1: r = npartitions(n); break;
+        case  2: r = consecutive_integer_lcm(n); break;
+        default: break;
+      }
+      /* Returns 0 if n=0 or result overflows */
       if (r != 0 || n == 0)
         XSRETURN_UV(r);
     }
-    _vcallsub_with_gmpobj(0.53,"pisano_period");
+    switch (ix) {
+      case 0: _vcallsub_with_gmp(0.53,"pisano_period"); break;
+      case 1: _vcallsub_with_gmp(0.16,"partitions"); break;
+      case 2: _vcallsub_with_gmp(0.04,"consecutive_integer_lcm"); break;
+      default: break;
+    }
     objectify_result(aTHX_ svn, ST(0));
     XSRETURN(1);
 

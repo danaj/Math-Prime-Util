@@ -124,6 +124,9 @@ extern int is_catalan_pseudoprime(UV n);
 
 extern UV  polygonal_root(UV n, UV k, int* overflow);
 
+extern UV  npartitions(UV n);
+extern UV  consecutive_integer_lcm(UV n);
+
 extern int num_to_perm(UV rank, int n, int *vec);
 extern int perm_to_num(int n, int *vec, UV *rank);
 extern void randperm(void* ctx, UV n, UV k, UV *S);

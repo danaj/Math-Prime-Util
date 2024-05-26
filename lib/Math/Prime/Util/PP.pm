@@ -1005,6 +1005,7 @@ sub prev_prime_power {
 
 sub partitions {
   my $n = shift;
+  validate_integer_nonneg($n);
 
   my $d = int(sqrt($n+1));
   my @pent = (1, map { (($_*(3*$_+1))>>1, (($_+1)*(3*$_+2))>>1) } 1 .. $d);
@@ -1221,7 +1222,9 @@ sub pn_primorial {
 
 sub consecutive_integer_lcm {
   my $n = shift;
+  validate_integer_nonneg($n);
 
+  return (1,1,2)[$n] if $n <= 2;
   my $max = (MPU_32BIT) ? 22 : (OLD_PERL_VERSION) ? 37 : 46;
   my $pn = ref($n) ? ref($n)->new(1) : ($n >= $max) ? Math::BigInt->bone() : 1;
   for (my $p = 2; $p <= $n; $p = Mnext_prime($p)) {
