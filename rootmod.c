@@ -190,6 +190,7 @@ static UV _sqrtmod_prime_power(UV a, UV p, UV e) {
     if (a >= p) a %= p;
     if (p == 2 || a == 0)  return a;
     r = _sqrtmod_prime(a,p);
+    if (p-r < r) r = p-r;
     return (sqrmod(r,p) == a) ? r : UV_MAX;
   }
 
@@ -215,6 +216,7 @@ static UV _sqrtmod_prime_power(UV a, UV p, UV e) {
 
   np = (p != 2 || (n > (UV_MAX/p)))  ?  n  :  n * p;
   r = addmod(s, gcddivmod(submod(a,sqrmod(s,np),np), addmod(s,s,np), n), n);
+  if (n-r < r) r = n-r;
   if (sqrmod(r,n) != (a % n)) return UV_MAX;
   return r;
 }
