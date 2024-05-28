@@ -4611,7 +4611,7 @@ an error while we return undef.
 
 Given two integers C<a> and C<n>, return C<-a mod |n|>.
 
-This is similar to C<submod(0,$a,$n)> or C<n ? modint(-a, absint(n)) : undef>.
+This is similar to C<submod(0,$a,$n)> or C<$n ? modint(-$a,absint($n)) : undef>.
 
 =head2 addmod
 

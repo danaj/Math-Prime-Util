@@ -6037,18 +6037,26 @@ sub negmod {
   validate_integer($a);
   validate_integer($n);
 
-  return undef if $n == 0;   # standard mod behavior with n = 0
-  $n = -$n if $n < 0;        # we use |n|, unlike modint
+  # $n ? Mmodint(-$a, Mabsint($n)) : undef;
+
+  if ($n <= 0) {
+    return undef if $n == 0;   # standard mod behavior with n = 0
+    $n = -$n;                  # we use |n|, unlike modint
+  }
   Msubmod(0, $a, $n);
 
+  # Alternatives to the submod
   #Mmodint(-$a,$n);
-  #Msubmod(0, Mmodint($a,$n), $n);
   #$a = Mmodint($a,$n) if $a >= $n || $a < 0;   return ($a) ? ($n-$a) : 0;
 }
 
+# No validation.
 sub _negmod {
   my($a,$n) = @_;
-  return undef if $n == 0;
+  if ($n <= 0) {
+    return undef if $n == 0;
+    $n = -$n;
+  }
   $a = Mmodint($a,$n) if $a >= $n || $a < 0;
   return ($a) ? ($n-$a) : 0;
 }

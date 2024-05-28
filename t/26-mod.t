@@ -134,7 +134,7 @@ my @rootmods = (
 );
 
 plan tests => 0
-            + 8                      # negmod
+            + 10                     # negmod
             + 5 + scalar(@invmods)   # invmod
             + scalar(@sqrtmods)*2    # sqrtmod / allsqrtmod
             + 5*2
@@ -154,16 +154,18 @@ plan tests => 0
 
 ###### negmod
 
-# For n > 0, negmod(a,n) = modint(-a,n).
+# For n != 0, negmod(a,n) = modint(-a,n).
 # For all inputs, negmod(a,n) = $n ? submod(0, modint(a,n), n) : undef;
 is(negmod(0,0), undef, "negmod(0,0) = undef");
 is(negmod(1,0), undef, "negmod(1,0) = undef");
 is(negmod(0,1), 0, "negmod(0,1) = 0");
 is(negmod(100,1), 0, "negmod(100,1) = 0");
-is(negmod(100, 123), 23, "negmod(100, 123) = 23");
-is(negmod(100,-123), 23, "negmod(100,-123) = 23");
-is(negmod(10000, 123), 86, "negmod(10000, 123) = 86");
-is(negmod(10000,-123), 86, "negmod(10000,-123) = 86");
+is(negmod( 100, 123), 23, "negmod(100, 123) = 23");
+is(negmod( 100,-123), 23, "negmod(100,-123) = 23");
+is(negmod(-100, 123), 100, "negmod(-100, 123) = 100");
+is(negmod( 10000, 123), 86, "negmod(10000, 123) = 86");
+is(negmod( 10000,-123), 86, "negmod(10000,-123) = 86");
+is(negmod(-10000, 123), 37, "negmod(-10000, 123) = 37");
 
 ###### invmod
 ok(!eval { invmod(undef,11); }, "invmod(undef,11)");
