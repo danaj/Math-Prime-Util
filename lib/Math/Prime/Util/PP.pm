@@ -2234,13 +2234,13 @@ sub nth_perfect_power {
   my($n) = @_;
   validate_integer_nonneg($n);
   return (undef,1,4,8,9,16,25,27)[$n] if $n < 8;
-  my($g,$c,$gn);
+  my($g,$c,$apn,$gn);
 
   $gn = 1;
-  $g = nth_perfect_power_approx($n);
+  $g = $apn = nth_perfect_power_approx($n);
   $c = _perfect_power_count($g);
   while ($n != $c && abs($n-$c) > 1000) {
-    $g += nth_perfect_power_approx($n) - nth_perfect_power_approx($c);
+    $g += $apn - nth_perfect_power_approx($c);
     $c = _perfect_power_count($g);
     last if $gn++ >= 20;
   }

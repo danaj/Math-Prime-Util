@@ -4269,7 +4269,7 @@ greater than C<n> where C<is_perfect_power> returns true.
 =head2 prev_perfect_power
 
 Given an integer C<n>, returns the greatest perfect power less than C<n>.
-Similar in API to L</prev_prime>, but returns the next perfect power
+Similar in API to L</prev_prime>, but returns the previous perfect power
 with exponent greater than 1.
 
 Negative inputs are supported, with the result being the nearest value
