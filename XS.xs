@@ -2099,12 +2099,13 @@ void nth_perfect_power(IN SV* svn)
       XSRETURN_UV(ret);
     }
     switch (ix) {
-      case 0:  _vcallsub_with_pp("nth_perfect_power");          break;
-      case 1:  _vcallsub_with_pp("nth_perfect_power_upper");    break;
-      case 2:  _vcallsub_with_pp("nth_perfect_power_lower");    break;
+      case 0:  _vcallsub_with_gmp(0.53,"nth_perfect_power");        break;
+      case 1:  _vcallsub_with_pp("nth_perfect_power_upper");        break;
+      case 2:  _vcallsub_with_pp("nth_perfect_power_lower");        break;
       case 3:
-      default: _vcallsub_with_pp("nth_perfect_power_approx");   break;
+      default: _vcallsub_with_gmp(0.53,"nth_perfect_power_approx"); break;
     }
+    objectify_result(aTHX_ svn, ST(0));
     return;
 
 void nth_ramanujan_prime(IN SV* svn)
@@ -2294,9 +2295,9 @@ void next_perfect_power(IN SV* svn)
         XSRETURN_IV(-(IV)n);
     }
     switch (ix) {
-      case 0:  _vcallsub_with_gmp(0.53,"next_perfect_power");  break;
+      case 0:  _vcallsub_with_gmp(0.53,"next_perfect_power"); break;
       case 1:
-      default: _vcallsub_with_gmp(0.53,"prev_perfect_power");  break;
+      default: _vcallsub_with_gmp(0.53,"prev_perfect_power"); break;
     }
     objectify_result(aTHX_ svn, ST(0));
     return;
