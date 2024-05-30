@@ -53,7 +53,7 @@ sub mpu_public_regex {
       is_frobenius_underwood_pseudoprime is_frobenius_khashin_pseudoprime
       is_perrin_pseudoprime is_catalan_pseudoprime
       is_aks_prime is_bpsw_prime is_ramanujan_prime is_mersenne_prime
-      is_delicate_prime
+      is_delicate_prime is_chen_prime
       is_odd is_even is_divisible is_congruent
       is_power is_prime_power is_perfect_power is_square
       is_square_free is_powerfree
@@ -79,6 +79,7 @@ sub mpu_public_regex {
       next_prime prev_prime
       next_prime_power prev_prime_power
       next_perfect_power prev_perfect_power
+      next_chen_prime
       prime_count prime_count_lower prime_count_upper prime_count_approx
       nth_prime nth_prime_lower nth_prime_upper nth_prime_approx inverse_li
       twin_prime_count twin_prime_count_approx
@@ -160,7 +161,8 @@ sub mpu_PPM_regex {
       Mprimorial Mpn_primorial
       MLi Mpowersum
       Murandomb Murandomm Mvaluation
-      Mis_power Mis_prime Mis_odd Mis_even
+      Mprimes
+      Mis_power Mis_prime Mis_prime_power Mis_odd Mis_even
       Mis_semiprime Mis_square_free
       Mvecall Mvecany Mvecmin Mvecmax Mvecnone Mvecprod Mvecsum
       Mtodigits

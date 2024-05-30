@@ -58,6 +58,7 @@ Revision history for Perl module Math::Prime::Util
     - is_perfect_number(n)            is n equal to sum of its proper divisors
     - is_omega_prime(k,n)             is n divisible by exactly k primes
     - is_almost_prime(k,n)            does n have exactly k prime factors
+    - is_chen_prime(n)                is n prime and n+2 prime or semiprime
     - is_powerfree(n[,k])             is n a k-powerfree number (default k=2)
     - is_powerful(n[,k])              is n a k-powerful number (default k=2)
     - is_perfect_power(n)             is n a perfect power (1,4,8,9,16,25,..)
@@ -131,6 +132,7 @@ Revision history for Perl module Math::Prime::Util
     - nth_perfect_power_approx(n)     fast approximate nth perfect power
     - nth_perfect_power_lower(n)      fast nth perfect power lower bound
     - nth_perfect_power_upper(n)      fast nth perfect power upper bound
+    - next_chen_prime(n)              next Chen prime: p > n
     - lucky_numbers([start],] end)    array ref of lucky numbers
     - lucky_count([start,] end)       count of lucky numbers
     - lucky_count_approx(n)           fast approximate lucky count

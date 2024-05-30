@@ -8,7 +8,7 @@
   * prove -b -I../Math-Prime-Util-GMP/blib/lib -I../Math-Prime-Util-GMP/blib/arch
 
 - For new functions:
-  XS, .h, .c, PP, PPFE, export, t exports, lib/ntheory.pm, Changes, doc, test
+  XS, .h, .c, PP, PPFE, export, t 92 and 02, lib/ntheory.pm, Changes, doc, test
 
 
 - Move .c / .h files into separate directory.
@@ -362,11 +362,7 @@
   to XS.xs.  Everything after modular functions was not reviewed.
 
 
-- make new XS routine: _validate_simple_int(SV *svn, int negok)
-  then make PP link _valint($n,negok) to either XS or PP.
-  especially PP valuation base 2 is really slow with current validation
-  .
-  Similarly, a routine to return the best form (int or bigint) for post-calc
+- new XS function to return best int/bigint form of result for PP post-calc.
 
 - PP needs a revamp of the bigint->int downgrade.  Using the babs(BMAX) is
   wrong.  We can use max/min.  Better come up with something more consistent.
@@ -410,4 +406,5 @@
 
 - new semiprime approximations should be used in PP.
 
-- get rid of the pp shell for prime_powers, semiprimes, etc.  Just use XS.
+- is_chen_prime, next_chen_prime
+  PP, PPFE, test

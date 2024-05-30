@@ -951,3 +951,28 @@ UV generate_almost_primes(UV** list, uint32_t k, UV lo, UV hi) {
   *list = L;
   return Lpos;
 }
+
+
+/******************************************************************************/
+/*                                CHEN PRIMES                                 */
+/******************************************************************************/
+
+/* consider Chen(h,k) where p prime and bigomega(p+h) <= k */
+
+#if BITS_PER_WORD == 64
+  #define MAX_CHEN_PRIME UVCONST(18446744073709551437)
+#else
+  #define MAX_CHEN_PRIME UVCONST(4294967291)
+#endif
+
+int is_chen_prime(UV n) {
+  if (n < 2 || n > MAX_CHEN_PRIME) return 0;
+  return (is_prime(n) && (is_prime(n+2) || is_semiprime(n+2)));
+}
+
+UV next_chen_prime(UV n) {
+  for ( n = next_prime(n);  n != 0 && n < MAX_CHEN_PRIME;  n = next_prime(n+2) )
+    if (is_prime(n+2) || is_semiprime(n+2))
+      return n;
+  return 0;
+}

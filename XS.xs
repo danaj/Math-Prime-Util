@@ -1321,7 +1321,8 @@ void is_prime(IN SV* svn)
     is_euler_plumb_pseudoprime = 11
     is_ramanujan_prime = 12
     is_semiprime = 13
-    is_mersenne_prime = 14
+    is_chen_prime = 14
+    is_mersenne_prime = 15
   PREINIT:
     int status, ret;
     UV n;
@@ -1344,7 +1345,8 @@ void is_prime(IN SV* svn)
         case 11: ret = is_euler_plumb_pseudoprime(n); break;
         case 12: ret = is_ramanujan_prime(n); break;
         case 13: ret = is_semiprime(n); break;
-        case 14: ret = is_mersenne_prime(n);  if (ret == -1) status = 0; break;
+        case 14: ret = is_chen_prime(n); break;
+        case 15: ret = is_mersenne_prime(n);  if (ret == -1) status = 0; break;
         default: break;
       }
     }
@@ -1364,7 +1366,8 @@ void is_prime(IN SV* svn)
       case 11:_vcallsub_with_gmp(0.39,"is_euler_plumb_pseudoprime"); break;
       case 12:_vcallsub_with_gmp(0.00,"is_ramanujan_prime"); break;
       case 13:_vcallsub_with_gmp(0.42,"is_semiprime"); break;
-      case 14:_vcallsub_with_gmp(0.28,"is_mersenne_prime"); break;
+      case 14:_vcallsub_with_gmp(0.00,"is_chen_prime"); break;
+      case 15:_vcallsub_with_gmp(0.28,"is_mersenne_prime"); break;
       default: break;
     }
     return; /* skip implicit PUTBACK */
@@ -2256,7 +2259,7 @@ void next_prime_power(IN SV* svn)
       case 1:
       default: _vcallsub_with_pp("prev_prime_power");  break;
     }
-    objectify_result(aTHX_ svn, ST(0));
+    /* objectify_result(aTHX_ svn, ST(0)); */
     return;
 
 void next_perfect_power(IN SV* svn)
@@ -2291,11 +2294,23 @@ void next_perfect_power(IN SV* svn)
         XSRETURN_IV(-(IV)n);
     }
     switch (ix) {
-      case 0:  _vcallsub_with_pp("next_perfect_power");  break;
+      case 0:  _vcallsub_with_gmp(0.53,"next_perfect_power");  break;
       case 1:
-      default: _vcallsub_with_pp("prev_perfect_power");  break;
+      default: _vcallsub_with_gmp(0.53,"prev_perfect_power");  break;
     }
     objectify_result(aTHX_ svn, ST(0));
+    return;
+
+void next_chen_prime(IN SV* svn)
+  PREINIT:
+    UV n, ret;
+  PPCODE:
+    if (_validate_and_set(&n, aTHX_ svn, IFLAG_POS)) {
+      ret = next_chen_prime(n);
+      if (ret != 0) XSRETURN_UV(ret);
+    }
+    _vcallsub_with_pp("next_chen_prime");
+    /* No objectify because we're calling PP, not GMP */
     return;
 
 void urandomb(IN UV bits)

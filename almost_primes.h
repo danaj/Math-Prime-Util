@@ -25,4 +25,8 @@ extern UV range_almost_prime_sieve(UV** list, uint32_t k, UV lo, UV hi);
 
 extern UV generate_almost_primes(UV** list, uint32_t k, UV lo, UV hi);
 
+
+extern int is_chen_prime(UV n);
+extern UV next_chen_prime(UV n);
+
 #endif

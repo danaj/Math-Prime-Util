@@ -247,6 +247,7 @@ Tags:
   is_semiprime(n)                     does n have exactly 2 prime factors
   is_almost_prime(k,n)                does n have exactly k prime factors
   is_omega_prime(k,n)                 is n divisible by exactly k primes
+  is_chen_prime(n)                    is n prime and n+2 prime or semiprime
   is_polygonal(n,k)                   is n a k-polygonal number
   is_polygonal(n,k,\$root)            as above but also set $root
   is_sum_of_squares(n[,k])            is n a sum of k (def 2) squares
@@ -378,6 +379,7 @@ Tags:
   nth_perfect_power_lower(n)          fast lower bound for nth perfect power
   nth_perfect_power_upper(n)          fast upper bound for nth perfect power
   nth_perfect_power_approx(n)         fast approximate nth perfect power
+  next_chen_prime(n)                  next Chen prime > n
   smooth_count(n,k)                   count of k-smooth numbers <= n
   rough_count(n,k)                    count of k-rough numbers <= n
   powerfree_count(n[,k])              count of k-powerfree numbers <= n
