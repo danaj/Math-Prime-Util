@@ -15,7 +15,7 @@ plan tests => 3     # simple is square free
             + 11*2  # powerfree_count, powerfree_sum
             + 6+2   # ""
             + 7     # nth_powerfree
-            + 1+8   # powerfree_part
+            + 2+8   # powerfree_part
             + 8*2;  # powerfree_part_sum
 
 ##### is_powerfree
@@ -71,6 +71,8 @@ is(nth_powerfree("100000000",5), 103692775, "nth_powerfree(10^8,5) = 103692775")
 is_deeply( [map { powerfree_part($_) } 0..30],
            [0,1,2,3,1,5,6,7,2,1,10,11,3,13,14,15,1,17,2,19,5,21,22,23,6,1,26,3,7,29,30],
            "powerfree_part(0..30)" );
+
+is(powerfree_part(-4000), -10, "powerfree_part(-4000) = -10");
 
 {
   my $n = "3709362688507618309707310743757146859608351353598858915828644464895074572939593330420817674692554750";

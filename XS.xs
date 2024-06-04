@@ -1804,20 +1804,6 @@ void lucasuv(IN SV* svp, IN SV* svq, IN SV* svk)
     }
 
 
-void is_fundamental(IN SV* svn)
-  PREINIT:
-    int status, ret;
-    UV n;
-  PPCODE:
-    status = _validate_and_set(&n, aTHX_ svn, IFLAG_ANY);
-    if (status != 0) {
-      ret = (status == 1) ? is_fundamental(n, 0)
-                          : is_fundamental(-(IV)n, 1);
-      RETURN_NPARITY(ret);
-    }
-    _vcallsub_with_gmp(0.00,"is_fundamental");
-    return;
-
 void is_sum_of_squares(IN SV* svn, IN UV k = 2)
   PREINIT:
     int status, ret;
@@ -1838,12 +1824,12 @@ void is_sum_of_squares(IN SV* svn, IN UV k = 2)
     return;
 
 
-void is_square_free(IN SV* svn)
+void is_square(IN SV* svn)
   ALIAS:
     is_carmichael = 1
     is_quasi_carmichael = 2
-    is_square = 3
-    is_perfect_power = 4
+    is_perfect_power = 3
+    is_fundamental = 4
     is_lucky = 5
     is_practical = 6
     is_perfect_number = 7
@@ -1853,20 +1839,24 @@ void is_square_free(IN SV* svn)
     UV n;
   PPCODE:
     ret = 0;
-    status = _validate_and_set(&n, aTHX_ svn, (ix==0) ? IFLAG_ABS : IFLAG_ANY);
-    if (ix == 4 && status == -1) {  /* is_perfect_power special behavior */
+    status = _validate_and_set(&n, aTHX_ svn, IFLAG_ANY);
+    if (ix == 3 && status == -1) {  /* is_perfect_power special behavior */
       n = -(IV)n;
       ret = is_power(n,0);
       /* A power with exponent other than 0,1,2,4,8,... is ok */
       ret = (n == 1 || (ret > 2 && (ret & (ret-1)) != 0));
     }
+    if (ix == 4 && status == -1) {  /* is_fundamental special behavior */
+      n = -(IV)n;
+      ret = is_fundamental(n,1);
+    }
     if (status == 1) {
       switch (ix) {
-        case 0: ret = is_square_free(n); break;
+        case 0: ret = is_power(n,2); break;
         case 1: ret = is_carmichael(n); break;
         case 2: ret = is_quasi_carmichael(n); break;
-        case 3: ret = is_power(n,2); break;
-        case 4: ret = is_perfect_power(n); break;
+        case 3: ret = is_perfect_power(n); break;
+        case 4: ret = is_fundamental(n,0); break;
         case 5: ret = is_lucky(n); break;
         case 6: ret = is_practical(n); break;
         case 7: ret = is_perfect_number(n); break;
@@ -1876,11 +1866,11 @@ void is_square_free(IN SV* svn)
     }
     if (status != 0)  RETURN_NPARITY(ret);
     switch (ix) {
-      case  0: _vcallsub_with_gmp(0.00,"is_square_free"); break;
+      case  0: _vcallsub_with_gmp(0.47,"is_square"); break;
       case  1: _vcallsub_with_gmp(0.47,"is_carmichael"); break;
       case  2: _vcallsub_with_gmp(0.00,"is_quasi_carmichael"); break;
-      case  3: _vcallsub_with_gmp(0.47,"is_square"); break;
-      case  4: _vcallsub_with_gmp(0.47,"is_perfect_power"); break;
+      case  3: _vcallsub_with_gmp(0.47,"is_perfect_power"); break;
+      case  4: _vcallsub_with_gmp(0.47,"is_fundamental"); break;
       case  5: _vcallsub_with_gmp(0.48,"is_lucky"); break;
       case  6: _vcallsub_with_gmp(0.53,"is_practical"); break;
       case  7: _vcallsub_with_gmp(0.53,"is_perfect_number"); break;
@@ -1891,45 +1881,71 @@ void is_square_free(IN SV* svn)
 
 void is_powerfree(IN SV* svn, IN int k = 2)
   ALIAS:
-    powerfree_count = 1
-    nth_powerfree = 2
-    powerfree_sum = 3
-    powerfree_part = 4
-    powerfree_part_sum = 5
+    powerfree_sum = 1
+    powerfree_part = 2
+    powerfree_part_sum = 3
   PREINIT:
     int status;
     UV n, res;
   PPCODE:
-    status = _validate_and_set(&n, aTHX_ svn, (ix==2) ? IFLAG_POS : IFLAG_ABS);
-    res = 0;
+    status = _validate_and_set(&n, aTHX_ svn, IFLAG_ANY);
+    if (status == -1) {
+      if (ix == 2)
+        XSRETURN_IV( -(IV)powerfree_part(-(IV)n,k) );
+      RETURN_NPARITY(0);
+    }
     if (status == 1) {
       switch (ix) {
         case 0:  res = is_powerfree(n,k);    break;
-        case 1:  res = powerfree_count(n,k); break;
-        case 2:  if (n == 0 || k < 2)  XSRETURN_UNDEF;
-                 res = nth_powerfree(n,k);   break;
-        case 3:  res = powerfree_sum(n,k);   break;
-        case 4:  res = powerfree_part(n,k);  break;
-        case 5:
+        case 1:  res = powerfree_sum(n,k);   break;
+        case 2:  res = powerfree_part(n,k);  break;
+        case 3:
         default: res = powerfree_part_sum(n,k);  break;
       }
       if (ix == 0)
         RETURN_NPARITY(res);
-      if (res == 0 && n > 0) {
-        /* overflow.  Go to PP below. */
-      } else {
+      if (res != 0 || n == 0)
         XSRETURN_UV(res);
+      /* res is 0 and n > 0, so we overflowed.  Fall through to PP. */
+    }
+    switch (ix) {
+      case  0: _vcallsub_with_gmp(0.53,"is_powerfree"); break;
+      case  1: _vcallsub_with_pp("powerfree_sum"); break;
+      case  2: _vcallsub_with_pp("powerfree_part"); break;
+      case  3:
+      default: _vcallsub_with_pp("powerfree_part_sum"); break;
+    }
+    return;
+
+void powerfree_count(IN SV* svn, IN int k = 2)
+  ALIAS:
+    nth_powerfree = 1
+  PREINIT:
+    int status;
+    UV n, res;
+  PPCODE:
+    status = _validate_and_set(&n, aTHX_ svn, (ix==0) ? IFLAG_ANY : IFLAG_POS);
+    if (status != 0) {
+      if (status == -1)
+        XSRETURN_UV(0);
+      if (ix == 0) {
+        res = powerfree_count(n,k);
+        XSRETURN_UV(res);
+      } else {
+        if (n == 0 || k < 2)
+          XSRETURN_UNDEF;
+        res = nth_powerfree(n,k);
+        if (res != 0)
+          XSRETURN_UV(res);
+        /* if res = 0, overflow */
       }
     }
     switch (ix) {
-      case  0: _vcallsub_with_gmp(0.00,"is_powerfree"); break;
-      case  1: _vcallsub_with_pp("powerfree_count"); break;
-      case  2: _vcallsub_with_pp("nth_powerfree"); break;
-      case  3: _vcallsub_with_pp("powerfree_sum"); break;
-      case  4: _vcallsub_with_pp("powerfree_part"); break;
-      case  5:
-      default: _vcallsub_with_pp("powerfree_part_sum"); break;
+      case  0: _vcallsub_with_gmp(0.53,"powerfree_count"); break;
+      case  1: _vcallsub_with_gmp(0.53,"nth_powerfree"); break;
+      default: break;
     }
+    objectify_result(aTHX_ svn, ST(0));
     return;
 
 void
@@ -3616,17 +3632,15 @@ void sqrtint(IN SV* svn)
   ALIAS:
     carmichael_lambda = 1
     exp_mangoldt = 2
-    hammingweight = 3
   PREINIT:
     UV n, r;
   PPCODE:
-    if (_validate_and_set(&n, aTHX_ svn, (ix <= 2) ? IFLAG_POS : IFLAG_ABS)) {
+    if (_validate_and_set(&n, aTHX_ svn, IFLAG_POS)) {
       r = 0;
       switch (ix) {
         case 0:  r = isqrt(n);  break;
         case 1:  r = carmichael_lambda(n);  break;
         case 2:  r = exp_mangoldt(n);  break;
-        case 3:  r = popcnt(n);  break;
         default: break;
       }
       XSRETURN_UV(r);
@@ -3635,17 +3649,44 @@ void sqrtint(IN SV* svn)
       case 0:  _vcallsub_with_gmp(0.40,"sqrtint"); break;
       case 1:  _vcallsub_with_gmp(0.22,"carmichael_lambda"); break;
       case 2:  _vcallsub_with_gmp(0.19,"exp_mangoldt"); break;
-      case 3:  if (_XS_get_callgmp() >= 47) { /* Very fast */
+      default: break;
+    }
+    objectify_result(aTHX_ svn, ST(0));
+    return; /* skip implicit PUTBACK */
+
+void prime_omega(IN SV* svn)
+  ALIAS:
+    prime_bigomega = 1
+    hammingweight = 2
+    is_square_free = 3
+  PREINIT:
+    UV n, ret;
+  PPCODE:
+    if (_validate_and_set(&n, aTHX_ svn, IFLAG_ABS)) {
+      switch (ix) {
+        case 0:  ret = prime_omega(n);    break;
+        case 1:  ret = prime_bigomega(n); break;
+        case 2:  ret = popcnt(n);         break;
+        case 3:  ret = is_square_free(n); break;
+        default: break;
+      }
+      RETURN_NPARITY(ret);
+    }
+    switch (ix) {
+      case 0:  _vcallsub_with_gmp(0.53,"prime_omega"); break;
+      case 1:  _vcallsub_with_gmp(0.53,"prime_bigomega"); break;
+      case 2:  if (_XS_get_callgmp() >= 47) { /* Very fast */
                  _vcallsub_with_gmp(0.47,"hammingweight");
                } else {                       /* Better than PP */
                  char* ptr;  STRLEN len;  ptr = SvPV(svn, len);
                  XSRETURN_UV(mpu_popcount_string(ptr, len));
                }
                break;
+      case 3: _vcallsub_with_gmp(0.53,"is_square_free"); break;
       default: break;
     }
-    objectify_result(aTHX_ svn, ST(0));
-    return; /* skip implicit PUTBACK */
+    /* No objectify */
+    return;
 
 void factorial(IN SV* svn)
   ALIAS:
@@ -3714,17 +3755,15 @@ void mertens(IN SV* svn)
   ALIAS:
     liouville = 1
     sumliouville = 2
-    prime_omega = 3
-    prime_bigomega = 4
-    is_pillai = 5
-    is_congruent_number = 6
-    hclassno = 7
-    ramanujan_tau = 8
+    is_pillai = 3
+    is_congruent_number = 4
+    hclassno = 5
+    ramanujan_tau = 6
   PREINIT:
     UV n;
     int status;
   PPCODE:
-    status = _validate_and_set(&n, aTHX_ svn, (ix < 7) ? IFLAG_POS : IFLAG_ANY);
+    status = _validate_and_set(&n, aTHX_ svn, (ix < 5) ? IFLAG_POS : IFLAG_ANY);
     if (status == -1)
       XSRETURN_IV(0);
     if (status == 1) {
@@ -3733,12 +3772,10 @@ void mertens(IN SV* svn)
         case 0:  r = mertens(n); break;
         case 1:  r = liouville(n); break;
         case 2:  r = sumliouville(n); break;
-        case 3:  r = prime_omega(n); break;
-        case 4:  r = prime_bigomega(n); break;
-        case 5:  r = pillai_v(n); break;
-        case 6:  r = is_congruent_number(n); break;
-        case 7:  r = hclassno(n); break;
-        case 8:  r = ramanujan_tau(n);
+        case 3:  r = pillai_v(n); break;
+        case 4:  r = is_congruent_number(n); break;
+        case 5:  r = hclassno(n); break;
+        case 6:  r = ramanujan_tau(n);
                  if (r == 0 && n != 0)
                    status = 0;
                  break;
@@ -3750,12 +3787,10 @@ void mertens(IN SV* svn)
       case 0:  _vcallsub_with_pp("mertens"); break;
       case 1:  _vcallsub_with_gmp(0.22,"liouville"); break;
       case 2:  _vcallsub_with_gmp(0.00,"sumliouville"); break;
-      case 3:  _vcallsub_with_gmp(0.53,"prime_omega"); break;
-      case 4:  _vcallsub_with_gmp(0.53,"prime_bigomega"); break;
-      case 5:  _vcallsub_with_gmp(0.00,"is_pillai"); break;
-      case 6:  _vcallsub_with_gmp(0.00,"is_congruent_number"); break;
-      case 7:  _vcallsub_with_pp("hclassno"); break;
-      case 8:  _vcallsub_with_gmp(0.32,"ramanujan_tau"); break;
+      case 3:  _vcallsub_with_gmp(0.00,"is_pillai"); break;
+      case 4:  _vcallsub_with_gmp(0.00,"is_congruent_number"); break;
+      case 5:  _vcallsub_with_pp("hclassno"); break;
+      case 6:  _vcallsub_with_gmp(0.32,"ramanujan_tau"); break;
       default: break;
     }
     objectify_result(aTHX_ svn, ST(0));
