@@ -2000,11 +2000,13 @@ sub powerfree_sum {
 sub powerfree_part {
   my($n, $k) = @_;
   validate_integer($n);
+  my $negmul = ($n < 0) ? -1 : 1;
   $n = -$n if $n < 0;
   if (defined $k) { validate_integer_nonneg($k); }
   else            { $k = 2; }
 
-  return (($n == 1) ? 1 : 0)  if $k < 2 || $n <= 1;
+  return $negmul if $n == 1;
+  return 0 if $k < 2 || $n == 0;
 
   #return Mvecprod(map { Mpowint($_->[0], $_->[1] % $k) } Mfactor_exp($n));
 
@@ -2015,7 +2017,7 @@ sub powerfree_part {
       $P = Mdivint($P, Mpowint($pe->[0], $pe->[1] - ($pe->[1] % $k)));
     }
   }
-  $P;
+  return ($negmul == 1) ? $P : -$P;
 }
 
 sub _T {
@@ -2533,6 +2535,24 @@ sub is_almost_prime {
 
   return (scalar(Mfactor($n)) == $k) ? 1 : 0;
 }
+sub is_chen_prime {
+  my($n) = @_;
+  validate_integer_nonneg($n);
+  return 0 if $n < 2;
+  my $n2 = Maddint($n,2);
+  return (Mis_prime($n) && (Mis_prime($n2) || Mis_semiprime($n2)));
+}
+sub next_chen_prime {
+  my($n) = @_;
+  validate_integer_nonneg($n);
+  $n = Mnext_prime($n);
+  while (1) {
+    my $n2 = Maddint($n,2);
+    return $n if Mis_prime($n2) || Mis_semiprime($n2);
+    $n = Mnext_prime($n2);
+  }
+}
+
 sub is_omega_prime {
   my($k, $n) = @_;
   validate_integer_nonneg($k);

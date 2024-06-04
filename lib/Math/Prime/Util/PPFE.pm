@@ -148,6 +148,7 @@ sub entropy_bytes {
 *is_fundamental = \&Math::Prime::Util::PP::is_fundamental;
 *is_semiprime = \&Math::Prime::Util::PP::is_semiprime;
 *is_almost_prime = \&Math::Prime::Util::PP::is_almost_prime;
+*is_chen_prime = \&Math::Prime::Util::PP::is_chen_prime;
 *is_omega_prime = \&Math::Prime::Util::PP::is_omega_prime;
 *is_totient = \&Math::Prime::Util::PP::is_totient;
 *is_square = \&Math::Prime::Util::PP::is_square;
@@ -175,6 +176,7 @@ sub entropy_bytes {
 *powerfree_part_sum = \&Math::Prime::Util::PP::powerfree_part_sum;
 # TODO: Should this do validation here?
 *powersum = \&Math::Prime::Util::PP::powersum;
+*next_chen_prime = \&Math::Prime::Util::PP::next_chen_prime;
 
 *random_prime = \&Math::Prime::Util::PP::random_prime;
 *random_ndigit_prime = \&Math::Prime::Util::PP::random_ndigit_prime;
