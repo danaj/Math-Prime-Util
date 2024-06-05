@@ -57,7 +57,9 @@ push @testn64, "1434569741817480287"  if $usegmp || $usexs;
 push @testn64, "1256490565186616147"  if $usegmp || $usexs;
 push @testn64, "13356777177440210791" if $usegmp || $usexs;
 
-my @omega = ([0,1,1], [1,0,0], [2,1,1], [36,4,2], [102,3,3], [8593952,7,3]);
+my @omegai = (qw/0 1 2 36 102 392 8593952 18505662216305663679/);
+my @omegao = (qw/1 0 1 2  3   2   3       5/);
+my @omegab = (qw/1 0 1 4  3   5   7       7/);
 
 push @testn, @testn64 if $use64;
 
@@ -130,7 +132,7 @@ plan tests => (3 * scalar @testn)
             + 2*scalar(keys %factor_exponents)
             + 10*10  # 10 extra factoring tests * 10 algorithms
             + 8
-            + 2*scalar(@omega)
+            + 4      # omega and bigomega
             + 7;
 
 foreach my $n (@testn) {
@@ -250,8 +252,7 @@ sub linear_to_exp {
 }
 
 ######
-for my $ov (@omega) {
-  my($n,$bo,$o) = @$ov;
-  is( prime_bigomega($n), $bo, "prime_bigomega($n) = $bo" );
-  is( prime_omega($n), $o, "prime_omega($n) = $o" );
-}
+is_deeply([map { prime_omega($_)    } @omegai], \@omegao, "prime_omega(n)");
+is_deeply([map { prime_bigomega($_) } @omegai], \@omegab, "prime_bigomega(n)");
+is_deeply([map { prime_omega('-'.$_)    } @omegai], \@omegao, "prime_omega(-n)");
+is_deeply([map { prime_bigomega('-'.$_) } @omegai], \@omegab, "prime_bigomega(-n)");

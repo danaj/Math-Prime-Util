@@ -3707,7 +3707,7 @@ There will often be multiple solutions, but only one is returned.
 
   say "$n has ", prime_bigomega($n), " total factors";
 
-Given a non-negative integer C<n>, returns Ω(n), the prime Omega function.
+Given a non-negative integer C<n>, returns Ω(|n|), the prime Omega function.
 This is the total number of prime factors of C<n> including multiplicities.
 The result is identical to C<scalar(factor($n))>.
 The return value is a read-only constant.
@@ -3719,7 +3719,7 @@ and Mathematica's C<PrimeOmega[n]> function.
 
   say "$n has ", prime_omega($n), " distinct factors";
 
-Given a non-negative integer C<n>, returns ω(n), the prime omega function.
+Given a non-negative integer C<n>, returns ω(|n|), the prime omega function.
 This is the number of distinct prime factors of C<n>.
 The result is identical to C<scalar(factor_exp($n))>.
 The return value is a read-only constant.

@@ -11,32 +11,17 @@ my $usegmp= Math::Prime::Util::prime_get_config->{'gmp'};
 #my $use64 = Math::Prime::Util::prime_get_config->{'maxbits'} > 32;
 #$use64 = 0 if $use64 && 18446744073709550592 == ~0;
 
-my @popcounts = (
-  [0, 0],
-  [1, 1],
-  [2, 1],
-  [3, 2],
-  [452398, 12],
-  [-452398, 12],
-  [4294967295, 32],
-  ["777777777777777714523989234823498234098249108234236", 83],
-  ["65520150907877741108803406077280119039314703968014509493068998974809747144933", 118],
-);
+my @inputs = (qw/0 1 2 3 15 -15 452398 -452398 4294967295 506198202011006650616143 777777777777777714523989234823498234098249108234236 65520150907877741108803406077280119039314703968014509493068998974809747144933/);
+my @popcnt = (0,1,1,2,4,4,12,12,32,45,83,118);
 
-plan tests => scalar(@popcounts) * 2;
+plan tests => 2;
 
 ###### hammingweight
-foreach my $r (@popcounts) {
-  my($n, $exp) = @$r;
-  is( hammingweight($n), $exp, "hammingweight($n) = $exp" );
-}
+is_deeply( [map { hammingweight($_) } @inputs], \@popcnt, "hammingweight for various inputs" );
 
 ###### Turn off gmp and try
 SKIP: {
-  skip "No need to test non-GMP when not using GMP", scalar(@popcounts) unless $usegmp;
+  skip "No need to test non-GMP when not using GMP", 1 unless $usegmp;
   prime_set_config(gmp=>0);
-  foreach my $r (@popcounts) {
-    my($n, $exp) = @$r;
-    is( hammingweight($n), $exp, "non-GMP hammingweight($n) = $exp" );
-  }
+  is_deeply( [map { hammingweight($_) } @inputs], \@popcnt, "non-GMP hammingweight for various inputs" );
 }
