@@ -235,7 +235,7 @@ sub _validate_integer {
 
   if (!$refn) {   # Typical case, an integer or string
     croak "Parameter '$n' must be an integer"
-      if $n eq '' || ($n =~ tr/-0123456789//c && $n !~ /^([-+]?)\d+\z/);
+      if $n eq '' || ($n =~ tr/0123456789//c && $n !~ /^([+-]?)\d+\z/);
     substr($_[0],0,1,'') if $1 && (substr($n,0,1) eq '+' || $n eq '-0');
     #if ($2) { substr($_[0], -length($2), length($2), "0" x substr($2,1));  $n = $_[0]; }
     # If probably a bigint, do the upgrade, then verify for edge cases.
@@ -1466,10 +1466,16 @@ sub sumtotient {
 
 
 sub prime_bigomega {
-  return scalar(Mfactor($_[0]));
+  my($n) = @_;
+  validate_integer($n);
+  $n = -$n if $n < 0;
+  return scalar(Mfactor($n));
 }
 sub prime_omega {
-  return scalar(Mfactor_exp($_[0]));
+  my($n) = @_;
+  validate_integer($n);
+  $n = -$n if $n < 0;
+  return scalar(Mfactor_exp($n));
 }
 
 sub moebius {

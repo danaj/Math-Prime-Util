@@ -168,6 +168,7 @@ sub entropy_bytes {
 *nth_powerful = \&Math::Prime::Util::PP::nth_powerful;
 *sumpowerful = \&Math::Prime::Util::PP::sumpowerful;
 *perfect_power_count = \&Math::Prime::Util::PP::perfect_power_count;
+*is_square_free = \&Math::Prime::Util::PP::is_square_free;
 *is_powerfree = \&Math::Prime::Util::PP::is_powerfree;
 *powerfree_count = \&Math::Prime::Util::PP::powerfree_count;
 *nth_powerfree = \&Math::Prime::Util::PP::nth_powerfree;
@@ -557,11 +558,6 @@ sub is_mersenne_prime {
   _validate_integer_nonneg($p);
   return Math::Prime::Util::PP::is_mersenne_prime($p);
 }
-sub is_square_free {
-  my($n) = @_;
-  _validate_integer($n);
-  return Math::Prime::Util::PP::is_square_free($n);
-}
 sub lucas_sequence {
   my($n, $P, $Q, $k) = @_;
   my ($vp, $vq) = ($P, $Q);
@@ -849,7 +845,6 @@ sub is_delicate_prime {
 sub hammingweight {
   my($n) = @_;
   _validate_integer($n);
-  $n = -$n if $n < 0;
   return Math::Prime::Util::PP::hammingweight($n);
 }
 

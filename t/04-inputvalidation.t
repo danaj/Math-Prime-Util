@@ -15,6 +15,7 @@ my @incorrect = (
   '+',
   '++4',
   '+-4',
+  '0-0',
   '-0004',
   'a',
   '5.6',
@@ -47,18 +48,18 @@ plan tests =>   2                      # undefined and empty string
 my $qrnn = qr/ must be a (non-negative|positive) integer/;
 
 eval { next_prime(undef); };
-like($@, qr/^Parameter must be defined/, "next_prime(undef)");
+like($@, qr/^Parameter must be defined/, "Gives Error:  next_prime(undef)");
 
 eval { next_prime(""); };
-like($@, $qrnn, "next_prime('')");
+like($@, $qrnn, "Gives Error:  next_prime('')");
 
 foreach my $v (@incorrect) {
   eval { next_prime($v); };
-  like($@, $qrnn, "next_prime($v)");
+  like($@, $qrnn, "Gives Error:  next_prime($v)");
 }
 
 while (my($v, $expect) = each (%correct)) {
-  is(next_prime($v), $expect, "Correct: next_prime($v)");
+  is(next_prime($v), $expect, "Correct:      next_prime($v)");
 }
 
 # The next two tests really are not critical, but are nice to check.
@@ -69,7 +70,7 @@ SKIP: {
   $infinity = +(20**20**20) if 65535 > $infinity;
   skip "Your machine seems to not have infinity", 1 if 65535 > $infinity;
   eval { next_prime($infinity); };
-  like($@, $qrnn, "next_prime( infinity )");
+  like($@, $qrnn, "Gives Error:  next_prime( infinity )");
 }
 
 SKIP: {
@@ -79,7 +80,7 @@ SKIP: {
   $nan      = -sin('inf') if $nan >= 0;
   skip "Your machine seems to not have NaN", 1 if $nan >= 0 || $nan =~ /^\d*$/;
   eval { next_prime($nan); };
-  like($@, $qrnn, "next_prime( nan ) [nan = '$nan']");
+  like($@, $qrnn, "Gives Error:  next_prime( nan ) [nan = '$nan']");
 }
 
 
@@ -87,5 +88,5 @@ SKIP: {
   skip "You need to upgrade either Perl or Carp to avoid invalid non-native inputs from causing a segfault.  Makefile.PL should have requested a Carp upgrade.", 1
     if $] < 5.008 || $Carp::VERSION < 1.17;
   eval { next_prime("11111111111111111111111111111111111111111x"); };
-  like($@, $qrnn, "next_prime('111...111x')");
+  like($@, $qrnn, "Gives Error:  next_prime('111...111x')");
 }

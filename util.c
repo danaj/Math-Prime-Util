@@ -1160,21 +1160,11 @@ int is_almost_prime(UV k, UV n) {
 }
 
 int is_fundamental(UV n, int neg) {
-  UV r = n & 15;
+  uint32_t r = n & 15;
   if (r) {
-    if (!neg) {
-      switch (r & 3) {
-        case 0:  return (r ==  4) ? 0 : is_square_free(n >> 2);
-        case 1:  return is_square_free(n);
-        default: break;
-      }
-    } else {
-      switch (r & 3) {
-        case 0:  return (r == 12) ? 0 : is_square_free(n >> 2);
-        case 3:  return is_square_free(n);
-        default: break;
-      }
-    }
+    if (neg) r = 16-r;
+    if ((r & 3) == 0 && r != 4) return is_square_free(n >> 2);
+    if ((r & 3) == 1)           return is_square_free(n);
   }
   return 0;
 }
