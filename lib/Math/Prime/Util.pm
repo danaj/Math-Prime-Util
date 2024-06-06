@@ -2110,11 +2110,13 @@ A fast upper limit on the Nth Ramanujan prime.
 
 =head2 is_pseudoprime
 
-Given an integer C<n> and one or more positive bases,
+Given an integer C<n> and zero or more positive bases,
 returns 1 if C<n> is positive and a probable prime to each base,
 and returns 0 otherwise.
 This is the simple Fermat primality test.
 Removing primes, given base 2 this produces the sequence L<OEIS A001567|http://oeis.org/A001567>.
+
+If no bases are given, base 2 is used.  All bases must be 2 or greater.
 
 For practical use, L</is_strong_pseudoprime> is a much stronger test with
 similar or better performance.
@@ -2126,11 +2128,13 @@ and Miller-Rabin tests).
 
 =head2 is_euler_pseudoprime
 
-Given an integer C<n> and one or more positive bases,
+Given an integer C<n> and zero or more positive bases,
 returns 1 if C<n> is positive and an Euler probable prime to each base,
 and returns 0 otherwise.
 This is the Euler test, sometimes called the Euler-Jacobi test.
 Removing primes, given base 2 this produces the sequence L<OEIS A047713|http://oeis.org/A047713>.
+
+If no bases are given, base 2 is used.  All bases must be 2 or greater.
 
 If 0 is returned, then the number really is a composite (for bases less than n).
 If 1 is returned, then it is either a prime or an Euler pseudoprime to all the given bases.
@@ -2145,12 +2149,14 @@ at most 1/4 pass for the strong pseudoprime test.
 
 =head2 is_strong_pseudoprime
 
-  my $maybe_prime = is_strong_pseudoprime($n, 2);
+  my $maybe_prime = is_strong_pseudoprime($n);
   my $probably_prime = is_strong_pseudoprime($n, 2, 3, 5, 7, 11, 13, 17);
 
-Given an integer C<n> and one or more positive bases,
+Given an integer C<n> and zero or more positive bases,
 returns 1 if C<n> is positive and a strong probable prime to each base,
 and returns 0 otherwise.
+
+If no bases are given, base 2 is used.  All bases must be 2 or greater.
 
 If 0 is returned, then the number really is a composite (for any base).
 If 1 is returned, then it is either a prime or a strong pseudoprime to all the given bases.
@@ -2292,7 +2298,7 @@ other compositeness tests.
 =head2 is_frobenius_pseudoprime
 
 Given an integer C<n> and two optional integer parameters C<a> and C<b>,
-returns 1 if C<n> is positive and is a Frobenius probable prime with respect
+returns 1 if C<n> is positive and a Frobenius probable prime with respect
 to the polynomial C<x^2 - ax + b>, and returns 0 otherwise.
 Without the parameters, C<b = 2> and
 C<a> is the least positive odd number such that C<(a^2-4b|n) = -1>.
@@ -2321,13 +2327,13 @@ and run quite a bit faster.
 
 =head2 is_frobenius_underwood_pseudoprime
 
-Given an integer C<n>, returns 1 if C<n> is positive and
-passes the efficient Frobenius test of Paul Underwood, and returns 0 otherwise.
-This selects a parameter C<a>
-as the least non-negative integer such that C<(a^2-4|n)=-1>, then verifies that
-C<(x+2)^(n+1) = 2a + 5 mod (x^2-ax+1,n)>.  This combines a Fermat and Lucas
-test with a cost of only slightly more than 2 strong pseudoprime tests.  This
-makes it similar to, but faster than, a regular Frobenius test.
+Given an integer C<n>, returns 1 if C<n> is positive and passes the
+efficient Frobenius test of Paul Underwood, and returns 0 otherwise.
+This selects a parameter C<a> as the least non-negative integer such that
+C<(a^2-4|n)=-1>, then verifies that C<(x+2)^(n+1) = 2a + 5 mod (x^2-ax+1,n)>.
+This combines a Fermat and Lucas test with a cost of only slightly more
+than 2 strong pseudoprime tests.
+This makes it similar to, but faster than, a regular Frobenius test.
 
 There are no known pseudoprimes to this test and extensive computation has
 shown no counterexamples under C<2^50>.  This test also has no overlap
@@ -2339,7 +2345,7 @@ Performance at 1e12 is about 60% slower than BPSW.
 
 Given an integer C<n>, returns 1 if C<n> is positive and
 passes the Frobenius test of Sergey Khashin, and returns 0 otherwise.
-This ensures C<n> is not a perfect square,
+The test verifies C<n> is not a perfect square,
 selects the parameter C<c> as the smallest odd prime such that C<(c|n)=-1>,
 then verifies that C<(1+D)^n = (1-D) mod n> where C<D = sqrt(c) mod n>.
 
