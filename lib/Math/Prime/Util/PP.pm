@@ -123,6 +123,7 @@ BEGIN {
 *Mprev_prime = \&Math::Prime::Util::prev_prime;
 *Mprime_count = \&Math::Prime::Util::prime_count;
 *Mlucasumod = \&Math::Prime::Util::lucasumod;
+*Mznorder = \&Math::Prime::Util::znorder;
 
 *Mvecall = \&Math::Prime::Util::vecall;
 *Mvecany = \&Math::Prime::Util::vecany;
@@ -7245,28 +7246,41 @@ sub is_primitive_root {
   my($a, $n) = @_;
   validate_integer($a);
   validate_integer($n);
-  $n = -$n if $n < 0;  # Ignore sign of n
-  return (undef,1)[$n] if $n <= 1;
-  $a = Mmodint($a, $n)  if $a < 0 || $a >= $n;
+
+  if ($n <= 4) {
+    $n = -$n if $n < 0;  # Ignore sign of n
+    return (undef,1)[$n] if $n <= 1;
+    return ($a == $n-1)  if $n <= 4;
+  }
+  $a = Mmodint($a, $n)   if $a < 0 || $a >= $n;
+  return 0 if $a <= 1;
 
   return Math::Prime::Util::GMP::is_primitive_root($a,$n)
     if $Math::Prime::Util::_GMPfunc{"is_primitive_root"};
 
-  if ($Math::Prime::Util::_GMPfunc{"znorder"} && $Math::Prime::Util::_GMPfunc{"totient"}) {
-    my $order = Math::Prime::Util::GMP::znorder($a,$n);
-    return 0 unless defined $order;
-    my $totient = Math::Prime::Util::GMP::totient($n);
-    return ($order eq $totient) ? 1 : 0;
+  if (Mis_even($n)) {
+    return 0 if ($n % 4) == 0; # n can't still be even after we shift it
+    return 0 if Mis_even($a);  # n and a cannot both be even
+    $n = Mrshiftint($n,1);     # a is odd, so it is a primroot of p^k also
   }
-
   return 0 if Mgcd($a, $n) != 1;
-  my $s = Mtotient($n);
-  return 0 if ($s % 2) == 0 && Mpowmod($a,$s >> 1,$n) == 1;
-  return 0 if ($s % 3) == 0 && Mpowmod($a,int($s/3),$n) == 1;
-  return 0 if ($s % 5) == 0 && Mpowmod($a,int($s/5),$n) == 1;
-  foreach my $f (Mfactor_exp($s)) {
+  return 0 if _is_perfect_square($a);
+
+  my ($p,$k,$phi);
+  $k = Mis_prime_power($n,\$p);
+  return 0 if !$k;
+  $n = $p;
+  $phi = Msubint($n,1);
+  return 0 if $k > 1 && Mpowmod($a, $phi, Mmulint($p,$p)) == 1;
+
+  return 0 if Mkronecker($a,$n) != -1;
+  return 0 if ($phi % 3) == 0 && Mpowmod($a,Mdivint($phi,3),$n) == 1;
+  return 0 if ($phi % 5) == 0 && Mpowmod($a,Mdivint($phi,5),$n) == 1;
+  my $order = Mznorder($a,$n);  return 0 unless defined $order;  return 0+($order == Mtotient($n));
+
+  foreach my $f (Mfactor_exp($phi)) {
     my $fp = $f->[0];
-    return 0 if $fp > 5 && Mpowmod($a, int($s/$fp), $n) == 1;
+    return 0 if $fp > 5 && Mpowmod($a, Mdivint($phi,$fp), $n) == 1;
   }
   1;
 }
@@ -7403,7 +7417,7 @@ sub znlog {
   ($a,$g,$n) = map { ref($_) eq 'Math::BigInt' ? $_ : Math::BigInt->new("$_") } ($a,$g,$n);
 
   if ($x == 0) {
-    my $ord = znorder($g, $n);
+    my $ord = Mznorder($g, $n);
     if (defined $ord && $ord > 1000) {
       $ord = Math::BigInt->new("$ord") unless ref($ord) eq 'Math::BigInt';
       $x = _dlp_bsgs($a, $g, $n, $ord, $_verbose);
@@ -8425,7 +8439,7 @@ sub is_aks_prime {
   while ($r < $n) {
     return 0 if !($n % $r);
     #return 1 if $r >= $sqrtn;
-    last if znorder($n, $r) > $limit;  # Note the arguments!
+    last if Mznorder($n, $r) > $limit;  # Note the arguments!
     $r = Mnext_prime($r);
   }
 
