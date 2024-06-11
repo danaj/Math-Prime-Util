@@ -7088,6 +7088,11 @@ sub binomial {
   # 4. Overflow.  Solve using Math::BigInt
   return 1 if $k == 0;        # Work around bug in old
   return $n if $k == $n-1;    # Math::BigInt (fixed in 1.90)
+
+  # Incomplete work around problem with Math::BigInt not liking bigint n
+  return Mdivint(falling_factorial($n,$k),Mfactorial($k))
+    if $n > INTMAX && $k < 100;
+
   if ($n >= 0) {
     $r = Math::BigInt->new(''.$n)->bnok($k);
     $r = _bigint_to_int($r) if $r->bacmp(BMAX) <= 0;
@@ -7145,6 +7150,26 @@ sub _product {
     _product($c, $b, $r);
     $r->[$a] -> bmul( $r->[$c] );
   }
+}
+
+sub _falling_factorial {
+  my($n,$m) = @_;
+  if ($m <= 1) { return ($m == 0) ? 1 : $n }
+  return 0 if $m > $n;
+
+  Mvecprod($n,map { Msubint($n,$_) } 1 .. Msubint($m,1));
+}
+sub falling_factorial {
+  my($n,$m) = @_;
+  validate_integer($n);
+  validate_integer_nonneg($m);
+  _falling_factorial($n,$m);
+}
+sub rising_factorial {
+  my($n,$m) = @_;
+  validate_integer($n);
+  validate_integer_nonneg($m);
+  _falling_factorial(Mvecsum($n,$m,-1),$m);
 }
 
 sub factorial {
