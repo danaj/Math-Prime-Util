@@ -7258,6 +7258,8 @@ sub is_primitive_root {
   return Math::Prime::Util::GMP::is_primitive_root($a,$n)
     if $Math::Prime::Util::_GMPfunc{"is_primitive_root"};
 
+  # my $order = Mznorder($a,$n);  return 0 unless defined $order;  return 0+($order == Mtotient($n));
+
   if (Mis_even($n)) {
     return 0 if ($n % 4) == 0; # n can't still be even after we shift it
     return 0 if Mis_even($a);  # n and a cannot both be even
@@ -7276,8 +7278,6 @@ sub is_primitive_root {
   return 0 if Mkronecker($a,$n) != -1;
   return 0 if ($phi % 3) == 0 && Mpowmod($a,Mdivint($phi,3),$n) == 1;
   return 0 if ($phi % 5) == 0 && Mpowmod($a,Mdivint($phi,5),$n) == 1;
-  my $order = Mznorder($a,$n);  return 0 unless defined $order;  return 0+($order == Mtotient($n));
-
   foreach my $f (Mfactor_exp($phi)) {
     my $fp = $f->[0];
     return 0 if $fp > 5 && Mpowmod($a, Mdivint($phi,$fp), $n) == 1;
