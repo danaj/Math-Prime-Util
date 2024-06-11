@@ -4850,7 +4850,8 @@ Given an integer C<n>, where C<n> is treated as C<|n>,
  returns the smallest primitive root of C<(Z/nZ)^*>,
 or C<undef> if no root exists.
 A root exists when C<euler_phi($n) == carmichael_lambda($n)>,
-which will be true for all prime C<n> and some composites.
+which will be true only if
+C<n one of {2, 4, p^k, 2p^k}> for odd prime p.
 
 Like other modular functions, if C<n = 0> the function returns undef.
 

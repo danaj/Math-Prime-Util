@@ -70,6 +70,7 @@ extern int moebius(UV n);
 extern UV  exp_mangoldt(UV n);
 extern UV  znprimroot(UV n);
 extern UV  znorder(UV a, UV n);
+/* nprime says to assume n = p or n = 2p.  Skips power and primality tests. */
 extern int is_primitive_root(UV a, UV n, int nprime);
 extern UV  factorialmod(UV n, UV m);
 extern int binomialmod(UV *res, UV n, UV k, UV m);

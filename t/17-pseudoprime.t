@@ -321,7 +321,9 @@ is( is_perrin_pseudoprime("364573433665",3), 0, "364573433665 is not a Grantham 
 
 # Implicit base 2
 {
-  my(@ns) = (2047,3277,121,703,781,1541);
+  my(@ns) = (91,133,145,697,703,1065,1541,1891,2047,3277,3781,6697,12403);
+
+
   my(@carm) = (1729, 2821, 6601, 8911);
 
   is_deeply( [map { is_pseudoprime($_, 2) } @ns],
