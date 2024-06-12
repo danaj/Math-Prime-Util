@@ -33,9 +33,13 @@
 #include "rootmod.h"
 #include "lucas_seq.h"
 
-int _numcmp(const void *a, const void *b) {
-  const UV *x = a, *y = b;
-  return (*x > *y) ? 1 : (*x < *y) ? -1 : 0;
+static int _numcmp(const void *a, const void *b) {
+  UV x = *(UV*)a, y = *(UV*)b;
+  return (x > y) - (x < y);
+}
+void sort_uv_array(UV* L, UV nelems)
+{
+  (void) qsort(L, nelems, sizeof(UV), _numcmp);
 }
 
 static int _verbose = 0;
@@ -2808,7 +2812,7 @@ void randperm(void* ctx, UV n, UV k, UV *S) {
     for (j = 0; j < k; ) {
       for (i = j; i < k; i++) /* Fill S[j .. k-1] then sort S */
         S[i] = urandomm64(ctx,n);
-      qsort(S, k, sizeof(UV), _numcmp);
+      sort_uv_array(S, k);
       for (j = 0, i = 1; i < k; i++)  /* Find and remove dups.  O(n). */
         if (S[j] != S[i])
           S[++j] = S[i];

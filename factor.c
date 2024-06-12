@@ -413,7 +413,7 @@ UV* divisor_list(UV n, UV *num_divisors, UV maxd)
   New(0, divs, ndivisors, UV);
   ndivisors = _divisors_from_factors(nfactors, factors, exponents, divs, maxd);
   /* Sort divisors (numeric ascending) */
-  qsort(divs, ndivisors, sizeof(UV), _numcmp);
+  sort_uv_array(divs, ndivisors);
   /* Return number of divisors and list */
   *num_divisors = ndivisors;
   return divs;

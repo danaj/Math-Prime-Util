@@ -253,7 +253,7 @@ static UV _range_semiprime_selection(UV** semis, UV lo, UV hi)
   }
   Safefree(pr);
   if (semis != 0) {
-    qsort(S, count, sizeof(UV), _numcmp);
+    sort_uv_array(S, count);
     *semis = S;
   }
   return count;

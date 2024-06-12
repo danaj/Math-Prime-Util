@@ -3,7 +3,7 @@
 
 #include "ptypes.h"
 
-extern int _numcmp(const void *a, const void *b); /* qsort numerical sorting */
+extern void sort_uv_array(UV* L, UV nelems);
 
 extern int  _XS_get_verbose(void);
 extern void _XS_set_verbose(int v);

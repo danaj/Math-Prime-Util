@@ -704,7 +704,7 @@ static void _tidy_list(UV **list, UV *Lsize, UV *count, int minimal) {
 
   if (*count > 1) {
     UV i, j;
-    qsort(L, *count, sizeof(UV), _numcmp);
+    sort_uv_array(L, *count);
     for (j = 0, i = 1; i < *count; i++) {
       if (L[i] != L[j])
         L[++j] = L[i];
@@ -947,7 +947,7 @@ UV generate_almost_primes(UV** list, uint32_t k, UV lo, UV hi) {
 
   New(0, L, Lsize, UV);
   _genkap(lo, hi, k, 1, 2, &L, &Lpos, &Lsize);
-  qsort(L, Lpos, sizeof(UV), _numcmp);
+  sort_uv_array(L, Lpos);
   *list = L;
   return Lpos;
 }

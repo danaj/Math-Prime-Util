@@ -86,7 +86,7 @@ UV rec_omega_primes(UV** ret, uint32_t k, UV lo, UV hi) {
   skop = 256;
   New(0, *ret, skop, UV);
   _omega_prime_gen_rec(ret, &skop, &nkop, k, lo, hi, 1, 2);
-  qsort(*ret, nkop, sizeof(UV), _numcmp);
+  sort_uv_array(*ret, nkop);
   return nkop;
 }
 

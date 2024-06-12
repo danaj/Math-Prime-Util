@@ -490,7 +490,7 @@ static UV* _trial_allsqrtmod(UV* nroots, UV a, UV n) {
         roots[numr++] = n-i;
     }
   }
-  qsort(roots, numr, sizeof(UV), _numcmp);
+  sort_uv_array(roots, numr);
   *nroots = numr;
   return roots;
 }
@@ -916,7 +916,7 @@ UV* allsqrtmod(UV* nroots, UV a, UV n) {
 
   nfactors = factor_exp(n, fac, exp);
   roots = _allsqrtmodfact(&numr, a, n, nfactors, fac, exp);
-  if (numr > 0) qsort(roots, numr, sizeof(UV), _numcmp);
+  if (numr > 0) sort_uv_array(roots, numr);
   *nroots = numr;
   return roots;
 }
@@ -1055,7 +1055,7 @@ static UV* _allrootmod_prime_power(UV* nroots, UV a, UV k, UV p, UV e) {
       if (numr == 2 && roots[0] == roots[1])
         numr = 1;
       if (numr > 2) {
-        qsort(roots, numr, sizeof(UV), _numcmp);
+        sort_uv_array(roots, numr);
         for (j = 0, i = 1; i < numr; i++)
           if (roots[j] != roots[i])
             roots[++j] = roots[i];
@@ -1150,7 +1150,7 @@ UV* allrootmod(UV* nroots, UV a, UV k, UV n) {
 
   }
   if (numr > 1)
-    qsort(roots, numr, sizeof(UV), _numcmp);
+    sort_uv_array(roots, numr);
   *nroots = numr;
   return roots;
 }

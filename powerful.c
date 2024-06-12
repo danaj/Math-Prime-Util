@@ -346,7 +346,7 @@ UV* powerful_numbers_range(UV* npowerful, UV lo, UV hi, UV k)
     i = 0;
     _pcg(lo, hi, k, 1, 2*k-1, pn, &i);
     MPUassert(i == npn, "Number of powerful numbers generated != count");
-    qsort(pn, npn, sizeof(UV), _numcmp);
+    sort_uv_array(pn, npn);
   }
   *npowerful = npn;
   return pn;

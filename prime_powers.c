@@ -130,7 +130,7 @@ UV prime_power_sieve2(UV** list, UV lo, UV hi) {
   }
 
   /* Sort them and return */
-  qsort(powers, np, sizeof(UV), _numcmp);
+  sort_uv_array(powers, np);
   *list = powers;
   return np;
 }
