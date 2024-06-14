@@ -252,7 +252,7 @@ sub linear_to_exp {
 }
 
 ######
-is_deeply([map { prime_omega($_)    } @omegai], \@omegao, "prime_omega(n)");
-is_deeply([map { prime_bigomega($_) } @omegai], \@omegab, "prime_bigomega(n)");
-is_deeply([map { prime_omega('-'.$_)    } @omegai], \@omegao, "prime_omega(-n)");
-is_deeply([map { prime_bigomega('-'.$_) } @omegai], \@omegab, "prime_bigomega(-n)");
+is_deeply([map { prime_omega($_)     } @omegai],\@omegao,"prime_omega(n)");
+is_deeply([map { prime_bigomega($_)  } @omegai],\@omegab,"prime_bigomega(n)");
+is_deeply([map {prime_omega('-'.$_)  } @omegai],\@omegao,"prime_omega(-n)");
+is_deeply([map {prime_bigomega('-'.$_)}@omegai],\@omegab,"prime_bigomega(-n)");

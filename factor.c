@@ -1310,9 +1310,19 @@ int cheb_factor(UV n, UV *factors, UV B, UV initx)
 
 
 
+static const uint32_t _fr_chunk = 256*1024;
 
-static const uint32_t _fr_chunk = 8192;
-static const uint32_t _fr_sieve_crossover = 10000000;  /* About 10^14 */
+/* Help performance by doing a cube root sieve for small ranges */
+static int _fr_full_sieve(UV sqrtn, UV range)  /* range = hi-lo */
+{
+  if (sqrtn <   10000000U) return 1;               /* Below 10^14 */
+  if (sqrtn <   35000000U) return (range >   900); /* Below 10^15 */
+  if (sqrtn <  100000000U) return (range >  1700); /* Below 10^16 */
+  if (sqrtn <  350000000U) return (range >  3400); /* Below 10^17 */
+  if (sqrtn < 1000000000U) return (range >  5500); /* Below 10^18 */
+  if (sqrtn < 3500000000U) return (range > 17000); /* Below 10^19 */
+  return (range > 19000);
+}
 
 static void _vec_factor(UV lo, UV hi, UV *nfactors, UV *farray, UV noffset, int square_free)
 {
@@ -1324,7 +1334,7 @@ static void _vec_factor(UV lo, UV hi, UV *nfactors, UV *farray, UV noffset, int 
     N[j] = 1;
     nfactors[j] = 0;
   }
-  sievelim = (sqrthi < _fr_sieve_crossover) ? sqrthi : icbrt(hi);
+  sievelim = _fr_full_sieve(sqrthi, hi-lo)  ?  sqrthi  :  icbrt(hi);
   START_DO_FOR_EACH_PRIME(2, sievelim) {
     UV q, t, A;
     if (square_free == 0) {
@@ -1396,7 +1406,7 @@ factor_range_context_t factor_range_init(UV lo, UV hi, int square_free) {
     New(0, ctx._farray, _fr_chunk * ctx._noffset, UV);
     { /* Prealloc all the sieving primes now. */
       UV t = isqrt(hi);
-      if (t >= _fr_sieve_crossover) t = icbrt(hi);
+      if (!_fr_full_sieve(t, hi-lo))  t = icbrt(hi);
       get_prime_cache(t, 0);
     }
   } else {                    /* factor each number */
