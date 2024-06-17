@@ -860,7 +860,7 @@ sub random_safe_prime {
   return (83,107)[urandomb(1)] if $bits == 7;
 
   # In general not faster :(
-  #return random_safe_prime_large($bits) if $bits > 35;
+  #return _random_safe_prime_large($bits) if $bits > 35;
 
   my($p,$q);
   while (1) {

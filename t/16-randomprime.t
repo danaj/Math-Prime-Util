@@ -236,7 +236,8 @@ sub check_semi_bits {
 
 ###### Safe primes
 ok(!eval { random_safe_prime(2); }, "random_safe_prime(2) is invalid");
-for my $bits (3 .. 10, 48, 80) {
+# This can be very slow over 65 bits
+for my $bits (3 .. 10, 48, 65) {
   my $p = random_safe_prime($bits);
   my $q = ($p-1) >> 1;
   ok ( is_nbit($p, $bits) && is_prime($p) && is_prime($q),
