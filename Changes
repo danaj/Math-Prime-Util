@@ -143,6 +143,7 @@ Revision history for Perl module Math::Prime::Util
     - nth_lucky_lower(n)              fast nth lucky number lower bound
     - nth_lucky_upper(n)              fast nth lucky number upper bound
     - chinese2([a1,m1],[a2,m2],...)   CRT returning (solution,modulus)
+    - frobenius_number(...)           Frobenius number of a set
     - vecmex(...)                     least non-negative value not in list
     - vecpmex(...)                    least positive value not in list
 

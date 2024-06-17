@@ -2727,6 +2727,73 @@ UV consecutive_integer_lcm(UV n)
   return ilcm;
 }
 
+UV frobenius_number(UV* A, uint32_t alen)
+{
+  UV g, i, j, max, *N, nlen;
+
+  if (alen <= 1) return 0;
+  sort_uv_array(A, alen);
+  if (A[0] <= 1) return 0;
+
+  for (g = A[0], i = 1; i < alen; i++)
+    g = gcd_ui(g, A[i]);
+  if (g != 1) croak("Frobenius number set must be coprime");
+
+  if (UV_MAX/A[0] < A[1]) return UV_MAX;   /* Overflow */
+
+  if (alen == 2)
+    return A[0] * A[1] - A[0] - A[1];
+
+  /* Algorithm "Round Robin" by Böcker and Lipták
+   *
+   * https://bio.informatik.uni-jena.de/wp/wp-content/uploads/2024/01/BoeckerLiptak_FastSimpleAlgorithm_reprint_2007.pdf
+   *
+   * This is the basic version, not the optimized one.  It's quite fast
+   * in general, but the time is more or less O(A[0] * alen) and uses
+   * A[0] * sizeof(UV) memory.  This means it's not going to work with very
+   * large inputs, where something like DQQDU would work much better.
+   *
+   * See https://www.combinatorics.org/ojs/index.php/eljc/article/view/v12i1r27/pdf
+   */
+
+  nlen = A[0];
+  /* if (nlen > 1000000000U) croak("overflow in frobenius number"); */
+  New(0, N, nlen+1, UV);
+  N[0] = 0;
+  for (j = 1; j < nlen; j++)
+    N[j] = UV_MAX;
+
+  for (i = 1; i < alen; i++) {
+    UV r, d, np, ai = A[i];
+    np = N[ai % nlen];
+    if (np != UV_MAX && np <= ai) continue;  /* Redundant basis (opt 3) */
+    d = gcd_ui(nlen, ai);
+    for (r = 0; r < d; r++) {
+      UV p, q, n = 0;
+      if (r > 0) {
+        for (n = UV_MAX, q = r; q < nlen; q += d)
+          if (N[q] < n)
+            n = N[q];
+      }
+      if (n != UV_MAX) {
+        for (j = 0; j < (nlen / d); j++) {
+          n += ai;
+          p = n % nlen;
+          if (N[p] >= n)  N[p] = n;
+          else            n = N[p];
+        }
+      }
+    }
+  }
+  max = 0;
+  for (i = 0; i < nlen; i++)
+    if (N[i] == UV_MAX || (N[i] != UV_MAX && N[i] > max))
+      max = N[i];
+  Safefree(N);
+  if (max == UV_MAX)  return UV_MAX;
+  return max - nlen;
+}
+
 
 /* These rank/unrank are O(n^2) algorithms using O(n) in-place space.
  * Bonet 2008 gives O(n log n) algorithms using a bit more space.

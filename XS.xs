@@ -1652,6 +1652,32 @@ vecmex(...)
     XSRETURN_UV(i+min);
 
 void
+frobenius_number(...)
+  PROTOTYPE: @
+  PREINIT:
+    int i, found1 = 0;
+    UV fn, n, *A;
+  PPCODE:
+    if (items == 0) XSRETURN_UNDEF;
+    Newz(0, A, items, UV);
+    for (i = 0; i < items; i++) {
+      if (!_validate_and_set(&n, aTHX_ ST(i), IFLAG_POS | IFLAG_NONZERO)) break;
+      if (n == 1) { found1 = 1; break; }
+      A[i] = n;
+    }
+    if (i == items) {
+      fn = frobenius_number(A, i);
+      Safefree(A);
+      if (fn == 0) XSRETURN_UNDEF;
+      if (fn != UV_MAX) XSRETURN_UV(fn);
+    } else {
+      Safefree(A);
+      if (found1) XSRETURN_IV(-1);
+    }
+    (void)_vcallsubn(aTHX_ GIMME_V, VCALL_PP, "frobenius_number", items, 0);
+    return;
+
+void
 chinese(...)
   ALIAS:
     chinese2 = 1

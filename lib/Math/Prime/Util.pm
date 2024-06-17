@@ -92,6 +92,7 @@ our @EXPORT_OK =
       random_factored_integer
       primorial pn_primorial consecutive_integer_lcm gcdext chinese chinese2
       gcd lcm factor factor_exp divisors valuation hammingweight
+      frobenius_number
       todigits fromdigits todigitstring sumdigits
       tozeckendorf fromzeckendorf
       sqrtmod allsqrtmod rootmod allrootmod cornacchia
@@ -873,7 +874,7 @@ __END__
 
 =encoding utf8
 
-=for stopwords Möbius Deléglise Bézout uniqued k-tuples von SoE primesieve primegen libtommath pari yafu fonction qui compte le nombre nombres voor PhD superset sqrt(N) gcd(A^M k-th (10001st untruncated OpenPFGW gmpy2 Über Primzahl-Zählfunktion n-te und verallgemeinerte multiset compositeness GHz significand TestU01 subfactorial s-gonal XSLoader
+=for stopwords Möbius Deléglise Bézout uniqued k-tuples von SoE primesieve primegen libtommath pari yafu fonction qui compte le nombre nombres voor PhD superset sqrt(N) gcd(A^M k-th (10001st untruncated OpenPFGW gmpy2 Über Primzahl-Zählfunktion n-te und verallgemeinerte multiset compositeness GHz significand TestU01 subfactorial s-gonal XSLoader setwise
 
 =for test_synopsis use v5.14;  my($k,$x);
 
@@ -3259,6 +3260,18 @@ the lcm of the absolute values of all the given moduli.
 
 If no solution exists, both return values will be C<undef>.
 
+=head2 frobenius_number
+
+Finds the Frobenius number of a set of positive integers.
+This is the largest positive integer that cannot be represented
+as a non-negative linear combination of the input set.  Each set element
+must be positive (all elements greater than zero) and setwise coprime:
+C<gcd(a1,a2,...,an) = 1>.
+
+This is sometimes called the "coin problem".
+
+This corresponds to Mathematica's C<FrobeniusNumber> function.  Matching
+their API, we return -1 if any set element is C<1>.
 
 =head2 vecsum
 

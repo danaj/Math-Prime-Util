@@ -1261,6 +1261,57 @@ sub consecutive_integer_lcm {
   return $pn;
 }
 
+sub frobenius_number {
+  my(@A) = @_;
+  return undef if scalar(@A) == 0;
+  for my $i (0 .. $#A) {
+    validate_integer_positive($A[$i]);
+  }
+  @A = sort { $a <=> $b } @A;
+  return -1 if $A[0] == 1;
+  return undef if $A[0] <= 1 || scalar(@A) <= 1;
+  croak "Frobenius number set must be coprime" unless Mgcd(@A) == 1;
+
+  return Msubint(Msubint(Mmulint($A[0],$A[1]),$A[0]),$A[1]) if scalar(@A) == 2;
+
+  # Basic Round Robin algorithm from Böcker and Lipták
+  # https://bio.informatik.uni-jena.de/wp/wp-content/uploads/2024/01/BoeckerLiptak_FastSimpleAlgorithm_reprint_2007.pdf
+
+  my $nlen = $A[0];
+  my @N = (0, (undef) x ($nlen-1));
+  for my $i (1 .. $#A) {
+    { # Optimization 3, skip redundant bases
+      my $ai = $A[$i];
+      my $np = $N[Mmodint($ai,$nlen)];
+      next if defined $np && $np <= $ai;
+    }
+    my $d = Mgcd($A[0], $A[$i]);
+    my $nlend = Mdivint($nlen,$d);
+    for my $r (0 .. $d-1) {
+      my $n = ($r == 0) ? 0
+            : Mvecmin(grep {defined} @N[map { $r+$_*$d } 0..$nlend]);
+      if (defined $n) {
+        if (Maddint($n,Mmulint($A[$i],$nlend-1)) <= INTMAX) {
+          for (1 .. $nlend-1) {
+            $n += $A[$i];
+            my $p = $n % $nlen;
+            if (!defined $N[$p] || $N[$p] >= $n) {$N[$p]=$n;} else {$n=$N[$p];}
+          }
+        } else {
+          for (1 .. $nlend-1) {
+            $n = Maddint($n,$A[$i]);
+            my $p = Mmodint($n,$nlen);
+            if (!defined $N[$p] || $N[$p] >= $n) {$N[$p]=$n;} else {$n=$N[$p];}
+          }
+        }
+      }
+    }
+  }
+  my $max = Mvecmax(grep { defined } @N);
+  $max -= $nlen if defined $max;
+  $max;
+}
+
 sub jordan_totient {
   my($k, $n) = @_;
   return ($n == 1) ? 1 : 0  if $k == 0;
@@ -2193,19 +2244,38 @@ sub nth_perfect_power_approx {
   # Without this upgrade, it will return non-integers.
   $n = _upgrade_to_float($n) if $n > 2**32;
 
-  my $pp = $n*$n  +  (13/3)*$n**(4/3)  +  (32/15)*$n**(16/15);
+  if (!ref($n)) {
+    my $pp = $n*$n  +  (13/3)*$n**(4/3)  +  (32/15)*$n**(16/15);
+    $pp += -2*$n**( 5/ 3) + -2*$n**( 7/ 5);
+    $pp += -2*$n**( 9/ 7) +  2*$n**(12/10);
+    $pp += -2*$n**(13/11) + -2*$n**(15/13);
+    $pp +=  2*$n**(16/14) +  2*$n**(17/15);
+    $pp -= 0.48*$n**(19/17);
+    $pp -= 1.5;
+    return int($pp) if $pp < ~0;
+    return Math::BigInt->new("$pp");
+  }
 
-  $pp += -2*$n**( 5/ 3) + -2*$n**( 7/ 5);
-  $pp += -2*$n**( 9/ 7) +  2*$n**(12/10);
-  $pp += -2*$n**(13/11) + -2*$n**(15/13);
-  $pp +=  2*$n**(16/14) +  2*$n**(17/15);
+  # Taking roots is very expensive with Math::BigFloat, so minimize.
+  my $n143 = $n->copy->broot(143);
+  my $n105 = $n->copy->broot(105);
 
-  $pp -= 0.48*$n**(19/17);
+  my $n15 = $n105->copy->bpow(7);
+  my $n13  = $n143->copy->bpow(11);
+  my $n11  = $n143->copy->bpow(13);
+  my $n7  = $n105->copy->bpow(15);
+  my $n5  = $n105->copy->bpow(21);
+  my $n3  = $n105->copy->bpow(35);
+
+  my $pp = $n*$n  +  (13/3)*$n*$n3 +  (32/15)*$n*$n15;
+  $pp += -2*$n*$n3**2   + -2*$n*$n5**2;
+  $pp += -2*$n*$n7**2   +  2*$n*$n5;
+  $pp += -2*$n*$n11**2  + -2*$n*$n13**2;
+  $pp +=  2*$n*$n7      +  2*$n*$n15**2;
+  $pp -= 0.48*$n*$n143**16.82352941176470588;  # close to 2/17
   $pp -= 1.5;
-
-  return int($pp) if $pp < ~0;
-  $pp = $pp->as_int() if ref($pp);
-  return Math::BigInt->new("$pp");
+  $pp = $pp->as_int();
+  return ($pp < ~0)  ?  int($pp)  :  $pp;
 }
 
 sub nth_perfect_power_lower {
@@ -2853,6 +2923,9 @@ sub carmichael_lambda {
 sub is_carmichael {
   my($n) = @_;
   validate_integer_nonneg($n);
+
+  return reftyped($_[0], Math::Prime::Util::GMP::is_carmichael($n))
+    if $Math::Prime::Util::_GMPfunc{"is_carmichael"};
 
   # This works fine, but very slow
   # return !is_prime($n) && ($n % carmichael_lambda($n)) == 1;
@@ -3659,6 +3732,7 @@ sub prime_count_upper {
   #
   # See https://arxiv.org/pdf/2404.17165 page 9 for Mossinghoff and Trudgian.
   # Page 26 also points out the Dusart 2018 improvement to Schoenfeld.
+  # https://math.colgate.edu/~integers/y34/y34.pdf
 
   my($result,$a);
   my $fl1 = log($x);

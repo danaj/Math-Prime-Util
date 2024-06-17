@@ -211,6 +211,7 @@ t/26-congruentnum.t
 t/26-cornacchia.t
 t/26-delicateprime.t
 t/26-digits.t
+t/26-frobeniusnum.t
 t/26-isalmostprime.t
 t/26-iscarmichael.t
 t/26-isdivisible.t

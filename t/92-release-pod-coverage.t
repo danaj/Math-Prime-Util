@@ -119,6 +119,7 @@ sub mpu_public_regex {
       random_factored_integer
       primorial pn_primorial consecutive_integer_lcm gcdext chinese chinese2
       gcd lcm factor factor_exp divisors valuation hammingweight
+      frobenius_number
       todigits fromdigits todigitstring sumdigits
       tozeckendorf fromzeckendorf
       sqrtmod allsqrtmod rootmod allrootmod cornacchia
@@ -155,7 +156,7 @@ sub mpu_PPM_regex {
       Maddmod Msubmod Mmulmod Mrootmod Mdivmod Mpowmod Minvmod
       Mmuladdmod Mmulsubmod
       Mbinomial Mchinese Mfactor Mfactor_exp Mdivisors
-      Mfactorial Mfordivisors Mforprimes Mgcd Mlcm
+      Mfactorial Mfordivisors Mforprimes Mgcd Mlcm Mznorder
       Mkronecker Mmoebius Mtotient Mstirling
       Mnext_prime Mprev_prime Mprime_count
       Mprimorial Mpn_primorial
