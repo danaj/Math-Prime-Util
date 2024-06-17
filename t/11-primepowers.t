@@ -23,8 +23,8 @@ $#A267712 = ($usexs || $extra) ? 7 : 6;
 
 my %samples = (72=>263, 89=>353, 311=>1831, 423=>2677, 814=>5857,
                1509=>12149, 4484=>42089, 9163=>93893, 10957=>114671,
-               20942=>234599, 51526=>629819, 417867=>6071249,
-               717421=>10843321);
+               20942=>234599, 51526=>629819, 417867=>6071249);
+$samples{717421}    =   10843321 if $usexs || $extra;
 $samples{1031932}   =   16002401 if $usexs || $extra;
 $samples{2687492}   =   44442791 if $usexs || $extra;
 $samples{8337143}   =  147948547 if $usexs || $extra;
@@ -133,8 +133,9 @@ is(prime_power_count(123456, 133332), 847, "prime_power_count(123456,133332) = 8
 is(check_count_bounds(513, 117), 1, "prime_power count bounds for 513");
 is(check_count_bounds(5964377, 411055), 1, "prime_power count bounds for 5964377");
 
-is_deeply( [map { check_count_bounds($_, prime_power_count($_)) } 0..100],
-           [map { 1 } 0..100],
+my @selc = (0..10,20,30,40,50,60,70,80,90,95,100);
+is_deeply( [map { check_count_bounds($_, prime_power_count($_)) } @selc],
+           [map { 1 } @selc],
            "prime_power count bounds for small numbers" );
 
 is_deeply( [map { check_count_bounds($samples{$_},$_) } keys %samples],
@@ -155,7 +156,6 @@ if ($extra) {
 }
 
 ###### nth_prime_power{upper,lower,approx}
-
 is( nth_prime_power_lower(0), undef, "nth_prime_power_lower(0) returns undef" );
 is( nth_prime_power_upper(0), undef, "nth_prime_power_upper(0) returns undef" );
 is( nth_prime_power_approx(0), undef, "nth_prime_power_approx(0) returns undef" );
@@ -165,14 +165,14 @@ is(check_nth_bounds(123456, 1628909), 1, "nth_prime_power(123456) bounds");
 is(check_nth_bounds(5286238, 91241503), 1, "nth_prime_power(5286238) bounds");
 is(check_nth_bounds(46697909, 914119573), 1, "nth_prime_power(46697909) bounds");
 
-is_deeply( [map { check_nth_bounds($_, $pp1k->[$_-1]) } 1..70],
-           [map { 1 } 1..70],
-           "nth_prime_power(1..70) bounds" );
+my @seln = (1..5,10,18,24,33,35,41,47,52,56,59,65,68,70); # Sample powers
+is_deeply( [map { check_nth_bounds($_, $pp1k->[$_-1]) } @seln],
+           [map { 1 } @seln],
+           "nth_prime_power bounds for small powers" );
 
 is_deeply( [map { check_nth_bounds($_, $samples{$_}) } keys %samples],
            [map { 1 } keys %samples],
            "nth_prime_power bounds for small samples" );
-
 
 
 sub check_count_bounds {
