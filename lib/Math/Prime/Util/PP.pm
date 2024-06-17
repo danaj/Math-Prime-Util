@@ -2667,8 +2667,8 @@ sub is_practical {
 
 sub is_delicate_prime {
   my($n, $b) = @_;
-
-  $b = 10 unless defined $b;
+  validate_integer_nonneg($n);
+  if (defined $b) { validate_integer_nonneg($b); } else { $b = 10; }
   croak "is_delicate_prime base must be >= 2" if $b < 2;
 
   return 0 if $b == 10 && $n < 100;   # Easy shown.

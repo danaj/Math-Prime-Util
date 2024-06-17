@@ -164,6 +164,7 @@ sub entropy_bytes {
 *is_congruent = \&Math::Prime::Util::PP::is_congruent;
 *is_congruent_number = \&Math::Prime::Util::PP::is_congruent_number;
 *is_perfect_number = \&Math::Prime::Util::PP::is_perfect_number;
+*is_delicate_prime = \&Math::Prime::Util::PP::is_delicate_prime;
 *powerful_count = \&Math::Prime::Util::PP::powerful_count;
 *nth_powerful = \&Math::Prime::Util::PP::nth_powerful;
 *sumpowerful = \&Math::Prime::Util::PP::sumpowerful;
@@ -836,12 +837,6 @@ sub is_practical {
   my($n) = @_;
   _validate_integer_nonneg($n);
   return Math::Prime::Util::PP::is_practical($n);
-}
-sub is_delicate_prime {
-  my($n, $b) = @_;
-  _validate_integer_nonneg($n);
-  if (!defined $b) { $b = 10; } else { _validate_integer_nonneg($b); }
-  return Math::Prime::Util::PP::is_delicate_prime($n,$b);
 }
 sub hammingweight {
   my($n) = @_;

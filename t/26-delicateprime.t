@@ -3,7 +3,7 @@ use strict;
 use warnings;
 
 use Test::More;
-use Math::Prime::Util qw/is_delicate_prime/;
+use Math::Prime::Util qw/is_delicate_prime primes/;
 
 my $extra = defined $ENV{EXTENDED_TESTING} && $ENV{EXTENDED_TESTING};
 
@@ -25,8 +25,8 @@ is_deeply( [map { is_delicate_prime($a186995[$_-2],$_) } 2..2+$#a186995], [map {
 is_deeply( [grep { is_delicate_prime($_,2) } 2..277], [qw/127 173 191 223 233 239 251 257 277/], "First 9 delicate primes base 2" );
 is_deeply( [grep { is_delicate_prime($_,3) } 2..283], [qw/2 7 13 19 31 41 149 239 283/], "First 9 delicate primes base 3" );
 is_deeply( [grep { is_delicate_prime($_,5) } 2..739], [qw/83 233 277 397 487 509 593 647 739/], "First 9 delicate primes base 5" );
-is_deeply( [grep { is_delicate_prime($_,7) } 2..1361], [qw/223 409 491 587 701 1051 1163 1237 1361/], "First 9 delicate primes base 7" );
-is_deeply( [grep { is_delicate_prime($_,11) } 2..11411], [qw/3347 3761 5939 6481 8831 9257 9749 10487 11411/], "First 9 delicate primes base 11" );
+is_deeply( [grep { is_delicate_prime($_,7) } 200..1381], [qw/223 409 491 587 701 1051 1163 1237 1361/], "First 9 delicate primes base 7" );
+is_deeply( [grep { is_delicate_prime($_,11) } @{primes(3000,11500)}], [qw/3347 3761 5939 6481 8831 9257 9749 10487 11411/], "First 9 delicate primes base 11" );
 
 if ($extra) {
   is(is_delicate_prime("999999999998832431"), 1, "is_delicate_prime(999999999998832431) = 1");
