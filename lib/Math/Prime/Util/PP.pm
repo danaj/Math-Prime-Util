@@ -7537,28 +7537,30 @@ sub znprimroot {
   $n = -$n if $n < 0;
   return (undef,0,1,2,3)[$n] if $n <= 4;
   return if $n % 4 == 0;
-  my $phi = $n-1;
-  if (!is_prob_prime($n)) {
-    $phi = Mtotient($n);
-    # Check that a primitive root exists.
-    return if $phi != Math::Prime::Util::carmichael_lambda($n);
-  }
-  my @exp = map { Mdivint($phi, $_->[0]) }
-            Mfactor_exp($phi);
-  #print "phi: $phi  factors: ", join(",",factor($phi)), "\n";
-  #print "  exponents: ", join(",", @exp), "\n";
+
+  my $iseven = Mis_even($n);
+  $n = Mrshiftint($n,1) if $iseven;
+
+  my($k,$p);
+  $k = Mis_prime_power($n, \$p);
+  return if $k < 1;
+  return 5 if $p == 3 && $iseven;
+  my $ispow = ($k > 1);
+
+  my $phi = $p-1;
+  my $psquared = $ispow ? Mmulint($p,$p) : 0;
+
+  my @phidivfac = map  { Mdivint($phi, $_) }
+                  grep { $_ > 2 }
+                  map  { $_->[0] }  Mfactor_exp($phi);
   my $a = 1;
   while (1) {
-    my $fail = 0;
-    do { $a++ } while Mkronecker($a,$n) == 0;
-    return if $a >= $n;
-    foreach my $f (@exp) {
-      if (Mpowmod($a,$f,$n) == 1) {
-        $fail = 1;
-        last;
-      }
-    }
-    return $a if !$fail;
+    $a += $iseven ? 2 : 1;
+    return if $a >= $p;
+    next if $a == 4 || $a == 8 || $a == 9;
+    next if Mkronecker($a,$p) != -1;
+    next if Mvecany(sub { Mpowmod($a,$_,$p) == 1 }, @phidivfac);
+    return $a unless $ispow && Mpowmod($a,$phi,$psquared) == 1;
   }
 }
 
