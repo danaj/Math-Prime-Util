@@ -248,6 +248,8 @@ Revision history for Perl module Math::Prime::Util
 
     - is_primitive_root faster.  Much faster for p^k and 2p^k with k >= 2.
 
+    - znprimroot faster.  2-20x faster for p^k and 2p^k with k >= 2.
+
     [OTHER]
 
     - Legendre, Meissel, and Lehmer prime counting got rewritten to use our

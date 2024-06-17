@@ -37,6 +37,10 @@ if ($use64) {
   $primroots{14123555781055773271} = 6;     # bmodpow hits RT 71548
   $primroots{89637484042681} = 335;         # smallest root is large
   $primroots{9223372036854775837} = 5;      # Pari #905
+  $primroots{36002292036481} = 13;
+  $primroots{72004584072962} = 13;
+  $primroots{2067900233973681742} = 17;
+  $primroots{8000468009126059319} = 13;
 }
 
 plan tests => 0

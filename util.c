@@ -1363,48 +1363,58 @@ UV znorder(UV a, UV n) {
 UV znprimroot(UV n) {
   UV fac[MPU_MAX_FACTORS+1];
   UV phi_div_fac[MPU_MAX_FACTORS+1];
-  UV a, phi, on, r;
-  int i, nfactors;
+  UV k, p, phi, a, psquared;
+  int i, nfactors, isneven, ispow;
 
   if (n <= 4) return (n == 0) ? 0 : n-1;
   if (n % 4 == 0)  return 0;
 
-  on = (n&1) ? n : (n>>1);
-  a = powerof(on);
-  r = rootint(on, a);
-  if (!is_prob_prime(r)) return 0;        /* c^a or 2c^a */
-  phi = (r-1) * (on/r);                   /* p^a or 2p^a */
+  isneven = !(n & 1);
+  if (isneven)  n >>= 1;
+
+  k = powerof(n);
+  p = rootint(n, k);
+  if (p == 3 && isneven) return 5;
+  if (!is_prob_prime(p)) return 0;
+  ispow = (k > 1);
+
+  phi = p-1;  /* p an odd prime */
+  psquared = ispow ? p*p : 0;
 
   nfactors = factor_exp(phi, fac, 0);
-  for (i = 0; i < nfactors; i++)
+  for (i = 1; i < nfactors; i++)
     phi_div_fac[i] = phi / fac[i];
 
 #if USE_MONTMATH
-  if (n & 1) {
-    const uint64_t npi = mont_inverse(n),  mont1 = mont_get1(n);
-    for (a = 2; a < n; a++) {
-      if (a == 4 || a == 8 || a == 9) continue;  /* Skip some perfect powers */
-      /* Skip values we know can't be right: (a|n) = 0 (or 1 for odd primes) */
-      if (phi == n-1) { if (kronecker_uu(a, n) != -1) continue; }
-      else            { if (gcd_ui(a,n) != 1) continue; }
-      r = mont_geta(a, n);
-      for (i = 0; i < nfactors; i++)
-        if (mont_powmod(r, phi_div_fac[i], n) == mont1)
-          break;
-      if (i == nfactors) return a;
-    }
-  } else
-#endif
-  for (a = 2; a < n; a++) {
+ {
+  UV r;
+  const uint64_t npi = mont_inverse(p),  mont1 = mont_get1(p);
+  for (a = 2; a < p; a++) {
+    if (isneven && !(a&1)) continue;
     if (a == 4 || a == 8 || a == 9) continue;  /* Skip some perfect powers */
-    /* Skip values we know can't be right: (a|n) = 0 (or 1 for odd primes) */
-    if (phi == n-1) { if (kronecker_uu(a, n) != -1) continue; }
-    else            { if (gcd_ui(a,n) != 1) continue; }
-    for (i = 0; i < nfactors; i++)
-      if (powmod(a, phi_div_fac[i], n) == 1)
+    if (kronecker_uu(a, p) != -1) continue;
+    r = mont_geta(a, p);
+    for (i = 1; i < nfactors; i++)
+      if (mont_powmod(r, phi_div_fac[i], p) == mont1)
         break;
-    if (i == nfactors) return a;
+    if (i == nfactors)
+      if (!ispow || powmod(a, phi, psquared) != 1)
+        return a;
   }
+ }
+#else
+  for (a = 2; a < p; a++) {
+    if (isneven && !(a&1)) continue;
+    if (a == 4 || a == 8 || a == 9) continue;  /* Skip some perfect powers */
+    if (kronecker_uu(a, p) != -1) continue;
+    for (i = 1; i < nfactors; i++)
+      if (powmod(a, phi_div_fac[i], p) == 1)
+        break;
+    if (i == nfactors)
+      if (!ispow || powmod(a, phi, psquared) != 1)
+        return a;
+  }
+#endif
   return 0;
 }
 
