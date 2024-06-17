@@ -12,7 +12,7 @@ use Math::Prime::Util qw/ prime_get_config
                           urandomb urandomm random_bytes
                           addint subint add1int sub1int
                           mulint divint powint modint lshiftint rshiftint
-                          powmod vecprod divrem
+                          powmod vecprod cdivint
                         /;
 
 BEGIN {
@@ -947,8 +947,7 @@ sub random_strong_prime {
     my $qpp = random_nbit_prime($lpp);
     my $qp2 = mulint(2,$qp);
     my $qpp2 = mulint(2,$qpp);
-    my ($il, $rem) = divrem(sub1int(lshiftint(1,$l-1)),$qpp2);
-    $il = add1int($il) if $rem > 0;
+    my $il = cdivint(sub1int(lshiftint(1,$l-1)),$qpp2);
     my $iu = divint(subint(lshiftint(2,$l),2),$qpp2);
     my $istart = addint($il, urandomm($iu - $il + 1));
     for (my $i = $istart; $i <= $iu; $i=add1int($i)) {  # Search for q
@@ -956,8 +955,7 @@ sub random_strong_prime {
       next unless is_prob_prime($q);
       my $qqp2 = mulint($q,$qp2);
       my $pp = sub1int(mulint($qp2, powmod($qp, $q-2, $q)));
-      my ($jl, $rem) = divrem(subint(lshiftint(1,$t-1),$pp), $qqp2);
-      $jl = add1int($jl) if $rem > 0;
+      my $jl = cdivint(subint(lshiftint(1,$t-1),$pp), $qqp2);
       my $ju = divint(subint(lshiftint(1,$t),$pp+1), $qqp2);
       my $jstart = addint($jl, urandomm($ju - $jl + 1));
       for (my $j = $jstart; $j <= $ju; $j=add1int($j)) {  # Search for p
