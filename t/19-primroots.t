@@ -5,10 +5,10 @@ use warnings;
 use Test::More;
 use Math::Prime::Util qw/ znprimroot is_primitive_root qnr is_qr/;
 
-#my $extra = defined $ENV{EXTENDED_TESTING} && $ENV{EXTENDED_TESTING};
+my $extra = defined $ENV{EXTENDED_TESTING} && $ENV{EXTENDED_TESTING};
 my $use64 = Math::Prime::Util::prime_get_config->{'maxbits'} > 32;
-#my $usexs = Math::Prime::Util::prime_get_config->{'xs'};
-#my $usegmp= Math::Prime::Util::prime_get_config->{'gmp'};
+my $usexs = Math::Prime::Util::prime_get_config->{'xs'};
+my $usegmp= Math::Prime::Util::prime_get_config->{'gmp'};
 $use64 = 0 if $use64 && 18446744073709550592 == ~0;
 
 my %primroots = (
@@ -42,6 +42,16 @@ if ($use64) {
   $primroots{2067900233973681742} = 17;
   $primroots{8000468009126059319} = 13;
 }
+if ($usegmp || $extra) {  # in each case, p-1 is very easy to factor
+  # p^2
+  $primroots{"474264225821700214950222988868518911801235024731324721"} = 7;
+  # 2p^2
+  $primroots{"1580603145023079446166874838636458851122"} = 7;
+  # p^3
+  $primroots{"11154774760949852441478897023837868805975434161260919037124141673071282481903446814549"} = 2;
+  # 2p^3
+  $primroots{"44434394326141300867665315903406029736550298166159399085858"} = 23;
+}
 
 plan tests => 0
                 + scalar(keys %primroots) + 1  # znprimroot
@@ -52,7 +62,7 @@ plan tests => 0
 
 ###### znprimroot
 while (my($n, $root) = each (%primroots)) {
-  is( znprimroot(0+$n), $root, "znprimroot($n) == " . ((defined $root) ? $root : "<undef>") );
+  is( znprimroot($n), $root, "znprimroot($n) == " . ((defined $root) ? $root : "<undef>") );
 }
 is( znprimroot("-100000898"), 31, "znprimroot(\"-100000898\") == 31" );
 # I don't think we should rely on this parsing correctly.
@@ -61,9 +71,9 @@ is( znprimroot("-100000898"), 31, "znprimroot(\"-100000898\") == 31" );
 ###### is_primitive_root
 while (my($n, $root) = each (%primroots)) {
   if (defined $root) {
-    is( is_primitive_root(0+$root,0+$n), 1, "$root is a primitive root mod $n" );
+    is( is_primitive_root(0+$root,$n), 1, "$root is a primitive root mod $n" );
   } else {
-    is( is_primitive_root(2,0+$n), 0, "2 is not a primitive root mod $n" );
+    is( is_primitive_root(2,$n), 0, "2 is not a primitive root mod $n" );
   }
 }
 is(is_primitive_root(2,0), undef, "is_primitive_root(2,0) => undef");
