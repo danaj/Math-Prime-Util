@@ -2940,8 +2940,8 @@ L<OEIS A069891|http://oeis.org/A069891>.
 
 =head2 squarefree_kernel
 
-Given an integer C<n>, returns the squarefree kernel of C<n>.  This is
-also known as the integer radical.  It is the largest squarefree divisor
+Given an integer C<n>, returns the square-free kernel of C<n>.  This is
+also known as the integer radical.  It is the largest square-free divisor
 of C<n>, which is also the product of the distinct primes dividing C<n>.
 
 We choose to accept negative inputs, with the result matching the input sign.
