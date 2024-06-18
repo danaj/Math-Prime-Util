@@ -12,4 +12,6 @@ extern UV powerfree_part_sum(UV n, uint32_t k);
 
 extern UV nth_powerfree(UV n, uint32_t k);
 
+extern UV  squarefree_kernel(UV n);
+
 #endif

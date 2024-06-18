@@ -77,7 +77,7 @@ our @EXPORT_OK =
       perfect_power_count_lower perfect_power_count_upper
       nth_perfect_power nth_perfect_power_approx
       nth_perfect_power_lower nth_perfect_power_upper
-      nth_powerfree powerfree_count powerfree_sum
+      nth_powerfree powerfree_count powerfree_sum squarefree_kernel
       powerfree_part powerfree_part_sum
       smooth_count rough_count powersum
       lucky_count lucky_count_approx lucky_count_lower lucky_count_upper
@@ -2937,6 +2937,16 @@ but substantially faster.
 
 With C<k == 2> this produces the sequence
 L<OEIS A069891|http://oeis.org/A069891>.
+
+=head2 squarefree_kernel
+
+Given an integer C<n>, returns the squarefree kernel of C<n>.  This is
+also known as the integer radical.  It is the largest squarefree divisor
+of C<n>, which is also the product of the distinct primes dividing C<n>.
+
+We choose to accept negative inputs, with the result matching the input sign.
+
+This is the L<OEIS series A007947|http://oeis.org/A007947>.
 
 =head2 sqrtint
 

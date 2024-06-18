@@ -5,18 +5,32 @@ use warnings;
 use Test::More;
 use Math::Prime::Util qw/is_powerfree powerfree_count powerfree_sum
                          powerfree_part powerfree_part_sum nth_powerfree
-                         is_square_free vecsum vecmax factor_exp/;
+                         squarefree_kernel is_square_free
+                         vecsum vecmax factor_exp/;
 
 my @simple = (0 .. 16,
               758096738,434420340,870589313,695486396,602721315,418431087,
               752518565,723570005,506916483,617459403);
+
+my @T = (             # powerfree part, squarefree_kernel
+ [0, [0, 0]],
+ [1, [1, 1]],
+ [2, [2, 2]],
+ [ 48, [3, 6]],
+ [-48, [-3, -6]],
+ [2*2*3*5, [3*5, 2*3*5]],
+ [2*3*3*3*5*5*7, [2*3*7, 2*3*5*7]],
+ ["54713282649239", [5471, 547116413]],
+ ["4000000000000027", ["4162330905307", "129032258064517"]],
+);
 
 plan tests => 3     # simple is square free
             + 11*2  # powerfree_count, powerfree_sum
             + 6+2   # ""
             + 7     # nth_powerfree
             + 2+8   # powerfree_part
-            + 8*2;  # powerfree_part_sum
+            + 8*2   # powerfree_part_sum
+            + 2;    # powerfree_part and squarefree_kernel
 
 ##### is_powerfree
 
@@ -97,6 +111,11 @@ for my $k (0 .. 7) {
   );
   is( powerfree_part_sum(654321,$k), $pfpst[$k], "powerfree_part_sum(654321,$k) = $pfpst[$k]" );
 }
+
+##### powerfree_part and squarefree_kernel
+
+is_deeply( [map { powerfree_part($_->[0]) } @T], [map { $_->[1]->[0] } @T], "powerfree_part" );
+is_deeply( [map { squarefree_kernel($_->[0]) } @T], [map { $_->[1]->[1] } @T], "squarefree_kernel" );
 
 ##### subs
 

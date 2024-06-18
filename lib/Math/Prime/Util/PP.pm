@@ -2103,6 +2103,13 @@ sub powerfree_part_sum {
   $sum;
 }
 
+sub squarefree_kernel {
+  my($n) = @_;
+  validate_integer($n);
+  return -1 * Mlcm(Mfactor(-$n)) if $n < 0;
+  Mlcm(Mfactor($n));
+}
+
 sub is_perfect_power {
   my($n) = @_;
   validate_integer($n);

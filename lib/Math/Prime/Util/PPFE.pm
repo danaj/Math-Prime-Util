@@ -176,6 +176,7 @@ sub entropy_bytes {
 *powerfree_sum = \&Math::Prime::Util::PP::powerfree_sum;
 *powerfree_part = \&Math::Prime::Util::PP::powerfree_part;
 *powerfree_part_sum = \&Math::Prime::Util::PP::powerfree_part_sum;
+*squarefree_kernel = \&Math::Prime::Util::PP::squarefree_kernel;
 # TODO: Should this do validation here?
 *powersum = \&Math::Prime::Util::PP::powersum;
 *next_chen_prime = \&Math::Prime::Util::PP::next_chen_prime;

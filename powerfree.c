@@ -268,3 +268,16 @@ UV nth_powerfree(UV n, uint32_t k)
   }
   return qk;
 }
+
+/******************************************************************************/
+
+UV squarefree_kernel(UV n)
+{
+  UV P, fac[MPU_MAX_FACTORS+1];
+  int i, nfactors;
+
+  nfactors = factor_exp(n, fac, 0);
+  for (P = 1, i = 0; i < nfactors; i++)
+    P *= fac[i];
+  return P;
+}

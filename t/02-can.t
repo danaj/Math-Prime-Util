@@ -71,7 +71,7 @@ my @functions =  qw(
       perfect_power_count_lower perfect_power_count_upper
       nth_perfect_power nth_perfect_power_approx
       nth_perfect_power_lower nth_perfect_power_upper
-      nth_powerfree powerfree_count powerfree_sum
+      nth_powerfree powerfree_count powerfree_sum squarefree_kernel
       powerfree_part powerfree_part_sum
       smooth_count rough_count powersum
       lucky_count lucky_count_approx lucky_count_lower lucky_count_upper

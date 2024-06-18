@@ -388,6 +388,7 @@ Tags:
   powerfree_sum(n[,k])                sum of k-powerfree numbers <= n
   powerfree_part(n[,k])               remove excess powers so n is k-free
   powerfree_part_sum(n[,k])           sum of k-powerfree parts for 1 to n
+  squarefree_kernel(n)                integer radical of |n|
   powersum(n,k)                       sum of kth powers from 1 to n
 
 =head2 NON-INTEGER MATH

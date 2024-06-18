@@ -1905,6 +1905,19 @@ void is_square(IN SV* svn)
     }
     return; /* skip implicit PUTBACK */
 
+void squarefree_kernel(IN SV* svn)
+  PREINIT:
+    int status;
+    UV n;
+  PPCODE:
+    status = _validate_and_set(&n, aTHX_ svn, IFLAG_ANY);
+    if (status == -1)
+      XSRETURN_IV( -(IV)squarefree_kernel(-(IV)n) );
+    if (status == 1)
+      XSRETURN_UV( squarefree_kernel(n) );
+    _vcallsub_with_pp("squarefree_kernel");
+    return;
+
 void is_powerfree(IN SV* svn, IN int k = 2)
   ALIAS:
     powerfree_sum = 1
@@ -3098,7 +3111,6 @@ void qnr(IN SV* svn)
     else          _vcallsub_with_gmp(0.22,"znprimroot");
     objectify_result(aTHX_ svn, ST(0));
     return;
-
 
 void
 is_smooth(IN SV* svn, IN SV* svk)
