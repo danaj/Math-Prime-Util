@@ -107,7 +107,7 @@ our @EXPORT_OK =
       kronecker is_qr qnr
       ramanujan_tau ramanujan_sum
       stirling znorder znprimroot znlog legendre_phi
-      factorial factorialmod binomial binomialmod
+      factorial factorialmod subfactorial binomial binomialmod
       ExponentialIntegral LogarithmicIntegral RiemannZeta RiemannR LambertW Pi
       irand irand64 drand urandomb urandomm csrand random_bytes entropy_bytes
   );
@@ -4444,6 +4444,16 @@ defined as the product of the integers 1 to C<n> with the special case
 of C<factorial(0) = 1>.  This corresponds to Pari's C<factorial(n)>
 and Mathematica's C<Factorial[n]> functions.
 
+=head2 subfactorial
+
+Given a non-negative integer C<n>, returns the subfactorial of C<n>,
+which is the number of derangements of C<n> objects.  This is the number
+of permutations of n items where each item is not allowed to stay in its
+starting position.
+
+This is L<OEIS series A000166|http://oeis.org/A000166>.
+This corresponds to Mathematica's C<Subfactorial[n]> function.
+
 =head2 binomial
 
 Given two integers C<n> and C<k>, returns the binomial coefficient
@@ -6002,13 +6012,13 @@ Calculate and print derangements using permutations:
 
 Compute the subfactorial of n (L<OEIS A000166|http://oeis.org/A000166>):
 
-  sub subfactorial { my $n = shift;
+  sub my_subfactorial { my $n = shift;
     vecsum(map{ vecprod((-1)**($n-$_),binomial($n,$_),factorial($_)) }0..$n);
   }
 
 Compute subfactorial (number of derangements) using simple recursion:
 
-  sub subfactorial { my $n = shift;
+  sub my_subfactorial { my $n = shift;
     use bigint;
     ($n < 1)  ?  1  :  $n * subfactorial($n-1) + (-1)**$n;
   }

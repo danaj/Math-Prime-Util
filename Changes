@@ -94,6 +94,7 @@ Revision history for Perl module Math::Prime::Util
     - rough_count(n,k)                count of k-rough numbers <= n
     - allsqrtmod(a,n)                 all square roots of a (mod n)
     - qnr(n)                          least quadratic non-residue
+    - subfactorial(n)                 count of derangements of n objects
     - binomialmod(n,k,m)              fast binomial(n,k) mod m
     - negmod(a, n)                    -a mod n
     - submod(a, b, n)                 a - b mod n

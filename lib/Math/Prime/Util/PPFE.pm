@@ -222,6 +222,7 @@ sub entropy_bytes {
 *partitions = \&Math::Prime::Util::PP::partitions;
 *consecutive_integer_lcm = \&Math::Prime::Util::PP::consecutive_integer_lcm;
 *frobenius_number = \&Math::Prime::Util::PP::frobenius_number;
+*subfactorial = \&Math::Prime::Util::PP::subfactorial;
 
 *divint = \&Math::Prime::Util::PP::divint;
 *modint = \&Math::Prime::Util::PP::modint;
@@ -612,7 +613,7 @@ sub kronecker {
 
 sub factorial {
   my($n) = @_;
-  _validate_integer($n);
+  _validate_integer_nonneg($n);
   return Math::Prime::Util::PP::factorial($n);
 }
 

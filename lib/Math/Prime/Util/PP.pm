@@ -7327,6 +7327,13 @@ sub factorialmod {
   $F;
 }
 
+sub subfactorial {
+  my($n) = @_;
+  validate_integer_nonneg($n);
+  if ($n <= 3) { return ($n == 0) ? 1 : $n-1; }
+  Mvecsum(map{ Mvecprod((-1)**($n-$_),Mbinomial($n,$_),Mfactorial($_)) }0..$n);
+}
+
 sub _is_perfect_square {
   my($n) = @_;
   return (1,1,0,0,1)[$n] if $n <= 4;
@@ -8365,7 +8372,7 @@ sub is_catalan_pseudoprime {
   my($n) = @_;
   return 0+($n >= 2) if $n < 4;
   my $m = ($n-1)>>1;
-  return (binomial($m<<1,$m) % $n) == (($m&1) ? $n-1 : 1) ? 1 : 0;
+  return (Mbinomial($m<<1,$m) % $n) == (($m&1) ? $n-1 : 1) ? 1 : 0;
 }
 
 sub is_frobenius_pseudoprime {
@@ -9599,7 +9606,10 @@ sub _taup {
     return (0,1,-24,252,-1472,4830,-6048,-16744,84480)[$p] if $p <= 8;
     my $ds5  = $bp->copy->bpow( 5)->binc();  # divisor_sum(p,5)
     my $ds11 = $bp->copy->bpow(11)->binc();  # divisor_sum(p,11)
-    my $s    = Math::BigInt->new("".Mvecsum(map { Mvecprod(BTWO,Math::Prime::Util::divisor_sum($_,5), Math::Prime::Util::divisor_sum($p-$_,5)) } 1..($p-1)>>1));
+    my $s    = Math::BigInt->new("". Mvecsum(
+                map {
+                  Mvecprod(BTWO, Math::Prime::Util::divisor_sum($_,5), Math::Prime::Util::divisor_sum($p-$_,5))
+                } 1..($p-1)>>1));
     $n = ( 65*$ds11 + 691*$ds5 - (691*252)*$s ) / 756;
   } else {
     my $t = Math::BigInt->new(""._taup($p,1));
@@ -9611,11 +9621,14 @@ sub _taup {
     } else {
       $n += Mvecsum( map { Mvecprod( ($_&1) ? - BONE : BONE,
                                      $bp->copy->bpow(11*$_),
+                                     #Mpowint($p,11*$_),
                                      Mbinomial($e-$_, $e-2*$_),
+                                     #Mpowint($t,$e-2*$_) ) } 1 .. ($e>>1) );
                                      $t ** ($e-2*$_) ) } 1 .. ($e>>1) );
     }
   }
-  $n = _bigint_to_int($n) if ref($n) && $n->bacmp(BMAX) <= 0;
+  #$n = _bigint_to_int($n) if ref($n) && $n->bacmp(BMAX) <= 0;
+  $n = _bigint_to_int($n) if ref($n) && $n->bacmp(BMAX) <= 0 && $n->bcmp(-(BMAX>>1)) > 0;
   $n;
 }
 

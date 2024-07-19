@@ -3,7 +3,7 @@ use strict;
 use warnings;
 
 use Test::More;
-use Math::Prime::Util qw/binomial factorial factorialmod
+use Math::Prime::Util qw/binomial factorial subfactorial factorialmod
                          forcomb forperm forderange formultiperm
                          numtoperm permtonum randperm shuffle
                          csrand
@@ -49,9 +49,10 @@ my @binomials = (
 
 # TODO: Add a bunch of combs here:  "5,3" => [[..],[..],[..]],
 
-plan tests => 1                        # Factorial
-            + 1 + 1*$extra + 2         # Factorialmod
-            + 2 + scalar(@binomials)   # Binomial
+plan tests => 2                        # factorial
+            + 1 + 1*$extra + 2         # factorialmod
+            + 3                        # subfactorial
+            + 2 + scalar(@binomials)   # binomial
             + 7 + 4                    # Combinations
             + scalar(keys(%perms)) + 1 # Permutations
             + 4                        # Multiset Permutations
@@ -70,6 +71,7 @@ sub fact { my $n = Math::BigInt->new("$_[0]"); $n->bfac; }
   my @expect = map { fact($_) } 0 .. 100;
   is_deeply( \@result, \@expect, "Factorials 0 to 100" );
 }
+ok(!eval { factorial(-5); }, "factorial(-5) gives error");
 
 ###### factorialmod
 {
@@ -86,6 +88,14 @@ SKIP: {
   is( factorialmod(1000000000,1000000008), 0, "1000000000! mod 1000000008 is zero" );
   is( factorialmod(50000,10000019), 8482159, "50000! mod 10000019" );
 }
+
+###### subfactorial
+is_deeply( [ map { subfactorial($_) } 0..23 ],
+           [qw/1 0 1 2 9 44 265 1854 14833 133496 1334961 14684570 176214841 2290792932 32071101049 481066515734 7697064251745 130850092279664 2355301661033953 44750731559645106 895014631192902121 18795307255050944540 413496759611120779881 9510425471055777937262/],
+           "subfactoral(n) for 0..23" );
+is(subfactorial(110), "5842828822584214646127804296800556812003401310647230252823417994828330749128488139372248218138294820842482275906806317309680576864190217329860297083368061950972635498019334565561", "subfactorial(110)");
+ok(!eval { subfactorial(-5); }, "subfactorial(-5) gives error");
+
 
 ###### binomial
 foreach my $r (@binomials) {

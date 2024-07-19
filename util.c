@@ -915,6 +915,11 @@ UV factorial(UV n) {
     r *= i;
   return r;
 }
+UV subfactorial(UV n) {
+  if (n <= 3)  return (n ? n-1 : 1);
+  if (n >= ((BITS_PER_WORD == 64) ? 21 : 14))  return 0;
+  return (n * subfactorial(n-1) + ((n & 1) ? -1 : 1));
+}
 
 UV binomial(UV n, UV k) {    /* Thanks to MJD and RosettaCode for ideas */
   UV d, g, r = 1;

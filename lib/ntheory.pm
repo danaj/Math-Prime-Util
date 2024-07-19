@@ -296,6 +296,7 @@ Tags:
   pn_primorial(n)                     product of first n primes
   factorial(n)                        product of first n integers: n!
   factorialmod(n,m)                   factorial mod m
+  subfactorial(n)                     count of derangements of n objects
   binomial(n,k)                       binomial coefficient
   binomialmod(n,k,m)                  binomial(n,k) mod m
   partitions(n)                       number of integer partitions

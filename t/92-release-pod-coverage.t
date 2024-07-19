@@ -134,7 +134,7 @@ sub mpu_public_regex {
       kronecker is_qr qnr
       ramanujan_tau ramanujan_sum
       stirling znorder znprimroot znlog legendre_phi
-      factorial factorialmod binomial binomialmod
+      factorial factorialmod subfactorial binomial binomialmod
       ExponentialIntegral LogarithmicIntegral RiemannZeta RiemannR LambertW Pi
       irand irand64 drand urandomb urandomm csrand random_bytes entropy_bytes
   );
