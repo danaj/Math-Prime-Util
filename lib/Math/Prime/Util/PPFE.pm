@@ -223,6 +223,7 @@ sub entropy_bytes {
 *consecutive_integer_lcm = \&Math::Prime::Util::PP::consecutive_integer_lcm;
 *frobenius_number = \&Math::Prime::Util::PP::frobenius_number;
 *subfactorial = \&Math::Prime::Util::PP::subfactorial;
+*fubini = \&Math::Prime::Util::PP::fubini;
 
 *divint = \&Math::Prime::Util::PP::divint;
 *modint = \&Math::Prime::Util::PP::modint;

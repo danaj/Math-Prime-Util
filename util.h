@@ -46,6 +46,7 @@ extern UV pn_primorial(UV n);
 extern UV primorial(UV n);
 extern UV factorial(UV n);
 extern UV subfactorial(UV n);
+extern UV fubini(UV n);
 extern UV binomial(UV n, UV k);
 extern IV gcdext(IV a, IV b, IV* u, IV* v, IV* s, IV* t); /* Ext Euclidean */
 extern UV modinverse(UV a, UV p);              /* Returns 1/a mod p */

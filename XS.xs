@@ -3729,9 +3729,10 @@ void prime_omega(IN SV* svn)
 void factorial(IN SV* svn)
   ALIAS:
     subfactorial = 1
-    primorial = 2
-    pn_primorial = 3
-    sumtotient = 4
+    fubini = 2
+    primorial = 3
+    pn_primorial = 4
+    sumtotient = 5
   PREINIT:
     UV n, r;
   PPCODE:
@@ -3740,13 +3741,14 @@ void factorial(IN SV* svn)
       switch(ix) {
         case 0:  r = factorial(n);    break;
         case 1:  r = subfactorial(n); break;
-        case 2:  r = primorial(n);    break;
-        case 3:  r = pn_primorial(n); break;
-        case 4:  r = sumtotient(n);   break;
+        case 2:  r = fubini(n);       break;
+        case 3:  r = primorial(n);    break;
+        case 4:  r = pn_primorial(n); break;
+        case 5:  r = sumtotient(n);   break;
         default: break;
       }
       if (n == 0 || r > 0) XSRETURN_UV(r);
-      if (ix == 4) {  /* Probably an overflow, try 128-bit. */
+      if (ix == 5) {  /* Probably an overflow, try 128-bit. */
         UV hicount, count;
         int retok = sumtotient128(n, &hicount, &count);
         if (retok == 1 && hicount > 0)
@@ -3758,9 +3760,10 @@ void factorial(IN SV* svn)
     switch (ix) {
       case 0:  _vcallsub_with_pp("factorial"); break;  /* use PP */
       case 1:  _vcallsub_with_gmp(0.51,"subfactorial"); break;
-      case 2:  _vcallsub_with_gmp(0.37,"primorial"); break;
-      case 3:  _vcallsub_with_gmp(0.37,"pn_primorial"); break;
-      case 4:  _vcallsub_with_gmp(0.00,"sumtotient"); break;
+      case 2:  _vcallsub_with_gmp(0.00,"fubini"); break;
+      case 3:  _vcallsub_with_gmp(0.37,"primorial"); break;
+      case 4:  _vcallsub_with_gmp(0.37,"pn_primorial"); break;
+      case 5:  _vcallsub_with_gmp(0.00,"sumtotient"); break;
       default: break;
     }
     objectify_result(aTHX_ svn, ST(0));

@@ -7334,6 +7334,13 @@ sub subfactorial {
   Mvecsum(map{ Mvecprod((-1)**($n-$_),Mbinomial($n,$_),Mfactorial($_)) }0..$n);
 }
 
+sub fubini {
+  my($n) = @_;
+  validate_integer_nonneg($n);
+  return 1 if $n <= 1;
+  Mvecsum(map{ Mmulint(Mfactorial($_),Mstirling($n,$_,2)) }1..$n);
+}
+
 sub _is_perfect_square {
   my($n) = @_;
   return (1,1,0,0,1)[$n] if $n <= 4;

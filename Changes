@@ -95,6 +95,7 @@ Revision history for Perl module Math::Prime::Util
     - allsqrtmod(a,n)                 all square roots of a (mod n)
     - qnr(n)                          least quadratic non-residue
     - subfactorial(n)                 count of derangements of n objects
+    - fubini(n)                       Fubini (Ordered Bell) number
     - binomialmod(n,k,m)              fast binomial(n,k) mod m
     - negmod(a, n)                    -a mod n
     - submod(a, b, n)                 a - b mod n

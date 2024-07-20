@@ -106,7 +106,7 @@ our @EXPORT_OK =
       divisor_sum carmichael_lambda hclassno inverse_totient
       kronecker is_qr qnr
       ramanujan_tau ramanujan_sum
-      stirling znorder znprimroot znlog legendre_phi
+      stirling fubini znorder znprimroot znlog legendre_phi
       factorial factorialmod subfactorial binomial binomialmod
       ExponentialIntegral LogarithmicIntegral RiemannZeta RiemannR LambertW Pi
       irand irand64 drand urandomb urandomm csrand random_bytes entropy_bytes
@@ -4535,6 +4535,12 @@ permutations of C<n> symbols with exactly C<k> cycles.  Stirling numbers
 of the second kind are the number of ways to partition a set of C<n>
 elements into C<k> non-empty subsets.  The Lah numbers are the number of
 ways to split a set of C<n> elements into C<k> non-empty lists.
+
+=head2 fubini
+
+Given a non-negative integer C<n>, returns the Fubini number of n,
+also called the ordered Bell numbers, or the number of ordered partitions
+of C<n>.  It is the count of rankings of C<n> items allowing for ties.
 
 =head2 harmfrac
 

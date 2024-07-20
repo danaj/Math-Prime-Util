@@ -3,7 +3,7 @@ use strict;
 use warnings;
 
 use Test::More;
-use Math::Prime::Util qw/binomial factorial subfactorial factorialmod
+use Math::Prime::Util qw/binomial factorial subfactorial factorialmod fubini
                          forcomb forperm forderange formultiperm
                          numtoperm permtonum randperm shuffle
                          csrand
@@ -52,6 +52,7 @@ my @binomials = (
 plan tests => 2                        # factorial
             + 1 + 1*$extra + 2         # factorialmod
             + 3                        # subfactorial
+            + 1                        # fubini
             + 2 + scalar(@binomials)   # binomial
             + 7 + 4                    # Combinations
             + scalar(keys(%perms)) + 1 # Permutations
@@ -96,6 +97,10 @@ is_deeply( [ map { subfactorial($_) } 0..23 ],
 is(subfactorial(110), "5842828822584214646127804296800556812003401310647230252823417994828330749128488139372248218138294820842482275906806317309680576864190217329860297083368061950972635498019334565561", "subfactorial(110)");
 ok(!eval { subfactorial(-5); }, "subfactorial(-5) gives error");
 
+###### fubini
+is_deeply( [ map { fubini($_) } 0..23 ],
+           [qw/1 1 3 13 75 541 4683 47293 545835 7087261 102247563 1622632573 28091567595 526858348381 10641342970443 230283190977853 5315654681981355 130370767029135901 3385534663256845323 92801587319328411133 2677687796244384203115 81124824998504073881821 2574844419803190384544203 85438451336745709294580413/],
+           "fubini(n) for 0..23" );
 
 ###### binomial
 foreach my $r (@binomials) {
