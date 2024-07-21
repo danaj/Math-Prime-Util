@@ -3278,30 +3278,43 @@ int cornacchia(UV *x, UV *y, UV d, UV p) {
   return 0;
 }
 
+#define SWAP4(x,y) { UV t; t=x; x=y; y=t;  t=x##8; x##8=y##8; y##8=t; }
+
 /* is_congruent_number(n).  OEIS A003273. */
 int is_congruent_number(UV n) {
+  UV N, fac[MPU_MAX_FACTORS+1], exp[MPU_MAX_FACTORS+1];
   UV m8 = n % 8;
+  int i, j, nfactors;
 
   if (n < 13)   return (n >= 5 && n <= 7);
+  /* ACK conjecture, n in CN if n = {5,6,7} mod 8.  (BSD implies ACK) */
   if (m8 == 5 || m8 == 6 || m8 == 7)  return 1;
 
-  if (!is_square_free(n)) {
-    UV N, fac[MPU_MAX_FACTORS+1], exp[MPU_MAX_FACTORS+1];
-    int i, nfactors;
-
-    nfactors = factor_exp(n, fac, exp);
-    for (i = 0, N = 1; i < nfactors; i++) {
-      if (exp[i] & 1)  /* Remove all squares */
-        N *= fac[i];
+  nfactors = factor_exp(n, fac, exp);
+  for (i = 0, j = 0, N = 1; i < nfactors; i++) {
+    if (exp[i] & 1) {
+      fac[j++] = fac[i];
+      N *= fac[i];
     }
-    return is_congruent_number(N);
   }
+  if (n != N) {    /* n wasn't square free, replace with N. */
+    nfactors = j;
+    n = N;
+    m8 = n % 8;
+    if (n < 13)   return (n >= 5 && n <= 7);
+    if (m8 == 5 || m8 == 6 || m8 == 7)  return 1;
+  }
+  /* n is now square free and we can ignore exp[] */
 
-  if (!(n&1) && is_prime(n>>1)) {
-    UV p = n >> 1, m8 = p % 8;
-    if (m8 == 3 || m8 == 7)     return 1;  /* we don't see these here */
-    if (m8 == 5 || (p%16) == 9) return 0;  /* Bastien 1915 */
-  } else if (is_prime(n)) {
+  /*
+   * Evink 2021   https://arxiv.org/pdf/2105.01450.pdf
+   * Feng 1996    http://matwbn.icm.edu.pl/ksiazki/aa/aa75/aa7513.pdf
+   * Monsky 1990  https://gdz.sub.uni-goettingen.de/id/PPN266833020_0204
+   * Reinholz 2013 https://central.bac-lac.gc.ca/.item?id=TC-BVAU-44941&op=pdf
+   */
+
+  if (nfactors == 1) {                   /* n = p */
+
     UV r, p = n;
     if (m8 == 3)  return 0;
     if (m8 == 5 || m8 == 7)  return 1;  /* not seen here, handled earlier */
@@ -3309,7 +3322,6 @@ int is_congruent_number(UV n) {
     /* https://arxiv.org/pdf/2105.01450.pdf, Prop 2.1.2 */
     if (sqrtmodp(&r, 2, p) && kronecker_uu(1+r, p) == -1)
       return 0;
-
 #if 0
     { /* Evink 2021 shows these are equivalent to the sqrt test above */
       UV a,b;
@@ -3323,48 +3335,91 @@ int is_congruent_number(UV n) {
           { printf("ret 2\n"); return 0; }
     }
 #endif
-  } else { /* Some families for performance, see Feng 1996. */
 
-    UV fac[MPU_MAX_FACTORS+1];
-    int nfactors;
+  } else if (!(n&1) && nfactors == 2) {  /* n = 2p */
 
-    nfactors = factor(n, fac);
+    UV p = n >> 1, m8 = p % 8;
+    if (m8 == 3 || m8 == 7)     return 1;  /* we don't see these here */
+    if (m8 == 5 || (p%16) == 9) return 0;  /* Bastien 1915 */
 
-    if (nfactors == 2) {
+  } else if ( (n&1) && nfactors == 2) {  /* n = pq */
 
-      UV p = fac[0], q = fac[1], p8 = fac[0] % 8, q8 = fac[1] % 8;
-
-      if (p8 == 3 && q8 == 3) return 0;
-
-      if (p8 > q8) { UV t;  t=p; p=q; q=t;  t=p8; p8=q8; q8=t; }
-#if 0
-      /* Monsky: https://gdz.sub.uni-goettingen.de/id/PPN266833020_0204 */
-      if (p8 == 3 && q8 == 7) return 1;
-      if (p8 == 3 && q8 == 5) return 1;
-      if (p8 == 1 && q8 == 5 && kronecker_uu(p,q) == -1) return 1;
-      if (p8 == 1 && q8 == 7 && kronecker_uu(p,q) == -1) return 1;
+    UV p = fac[0], q = fac[1],  p8 = p % 8, q8 = q % 8;
+    if (p8 > q8) SWAP4(p,q);
+    if (p8 == 3 && q8 == 3) return 0;
+#if 0  /* Monsky, all special cases of ACK */
+    if (p8 == 3 && q8 == 7) return 1;
+    if (p8 == 3 && q8 == 5) return 1;
+    if (p8 == 1 && q8 == 5 && kronecker_uu(p,q) == -1) return 1;
+    if (p8 == 1 && q8 == 7 && kronecker_uu(p,q) == -1) return 1;
 #endif
+    if (p8 == 1 && q8 == 3 && kronecker_uu(p,q) == -1) return 0;
+    if (p8 == 5 && q8 == 7 && kronecker_uu(p,q) == -1) return 0;
 
-      if (p8 == 1 && q8 == 3 && kronecker_uu(p,q) == -1) return 0;
+  } else if (!(n&1) && nfactors == 3) {  /* n = 2pq */
 
-    } else if (nfactors == 3 && fac[0] == 2) {
-
-      UV p = fac[1], q = fac[2], p8 = fac[1] % 8, q8 = fac[2] % 8;
-
-      if (p8 == 5 && q8 == 5) return 0;
-
-      if (p8 > q8) { UV t;  t=p; p=q; q=t;  t=p8; p8=q8; q8=t; }
-#if 0
-      /* Monsky: https://gdz.sub.uni-goettingen.de/id/PPN266833020_0204 */
-      if (p8 == 3 && q8 == 5) return 1;
-      if (p8 == 5 && q8 == 7) return 1;
-      if (p8 == 1 && q8 == 7 && kronecker_uu(p,q) == -1) return 1;
-      if (p8 == 1 && q8 == 3 && kronecker_uu(p,q) == -1) return 1;
+    UV p = fac[1], q = fac[2],  p8 = p % 8, q8 = q % 8;
+    if (p8 > q8) SWAP4(p,q);
+    if (p8 == 5 && q8 == 5) return 0;
+    if (p8 == 3 && q8 == 3) return 0; /* Lagrange 1974 */
+#if 0  /* Monsky, all special cases of ACK */
+    if (p8 == 3 && q8 == 5) return 1;
+    if (p8 == 5 && q8 == 7) return 1;
+    if (p8 == 1 && q8 == 7 && kronecker_uu(p,q) == -1) return 1;
+    if (p8 == 1 && q8 == 3 && kronecker_uu(p,q) == -1) return 1;
 #endif
-      if (p8 == 1 && q8 == 5 && kronecker_uu(p,q) == -1) return 0;
+    if (p8 == 1 && q8 == 5 && kronecker_uu(p,q) == -1) return 0;
+    if (p8 == 3 && q8 == 7 && kronecker_uu(p,q) == -1) return 0;
 
-    }
+  } else if ( (n&1) && nfactors == 3) {  /* n = pqr */
+    UV p=fac[0], q=fac[1], r=fac[2], p8=fac[0]%8, q8=fac[1]%8, r8=fac[2]%8;
+    if (p8 == 3 && q8 == 1) SWAP4(p,q);
+    if (q8 == 1 && r8 == 3) SWAP4(q,r);
+    if (p8 == 1 && q8 == 3 && r8 == 1 && kronecker_uu(p,q) == -1 && kronecker_uu(q,r) == -1) return 0;
 
+    if (q8 < p8) SWAP4(p,q);
+    if (r8 < q8) SWAP4(q,r);
+    if (q8 < p8) SWAP4(p,q);
+    /* Serf 1991 */
+    if (p8 == 3 && q8 == 3 && r8 == 5) return 1;
+    if (p8 == 3 && q8 == 3 && r8 == 7) return 1;
+    if (p8 == 7 && q8 == 7 && r8 == 7 && kronecker_uu(p,q) == -kronecker_uu(p,r) == kronecker_uu(q,r)) return 1;
+    if (p8 == 1 && q8 == 3 && r8 == 3 && kronecker_uu(p,q) == -kronecker_uu(p,r)) return 0;
+    if (p8 == 3 && q8 == 5 && r8 == 7 && kronecker_uu(q,r) == -1) return 0;
+    if (p8 == 3 && q8 == 7 && r8 == 7 && kronecker_uu(p,q) == -kronecker_uu(p,r) && kronecker_uu(p,q) == kronecker_uu(q,r)) return 0;
+
+  } else if (!(n&1) && nfactors == 4) {  /* n = 2pqr */
+    UV p=fac[1], q=fac[2], r=fac[3], p8=fac[1]%8, q8=fac[2]%8, r8=fac[3]%8;
+    if (p8 == 5 && q8 == 1) SWAP4(p,q);
+    if (q8 == 1 && r8 == 5) SWAP4(q,r);
+    if (p8 == 1 && q8 == 5 && r8 == 1 && kronecker_uu(p,q) == -1 && kronecker_uu(q,r) == -1) return 0;
+
+    if (q8 < p8) SWAP4(p,q);
+    if (r8 < q8) SWAP4(q,r);
+    if (q8 < p8) SWAP4(p,q);
+    /* Serf 1991 */
+    if (p8 == 3 && q8 == 3 && r8 == 7) return 1;
+    if (p8 == 3 && q8 == 5 && r8 == 5) return 1;
+    if (p8 == 5 && q8 == 5 && r8 == 7) return 1;
+    if (p8 == 7 && q8 == 7 && r8 == 7 && kronecker_uu(p,q) == -kronecker_uu(p,r) && kronecker_uu(p,q) == kronecker_uu(q,r)) return 1;
+    /* Lagrange 1974 */
+    if (p8 == 1 && q8 == 3 && r8 == 3 && kronecker_uu(p,q) == -kronecker_uu(p,r)) return 0;
+    if (p8 == 1 && q8 == 5 && r8 == 5 && kronecker_uu(p,q) == -kronecker_uu(p,r)) return 0;
+    if (p8 == 3 && q8 == 5 && r8 == 7 && kronecker_uu(p,r) == -kronecker_uu(q,r)) return 0;
+    if (p8 == 5 && q8 == 7 && r8 == 7 && kronecker_uu(p,q) == -kronecker_uu(p,r) && kronecker_uu(p,q) == kronecker_uu(q,r)) return 0;
+
+  }
+
+  { /* Iskra 1996 */
+    int i, j, all3 = 1, allleg = 1;
+    for (i = 0; all3 && i < nfactors; i++)
+      if ((fac[i] % 8) != 3)
+        all3 = 0;
+    for (i = 1; all3 && allleg && i < nfactors; i++)
+      for (j = 0; allleg && j < i; j++)
+        if (kronecker_uu(fac[j],fac[i]) != -1)
+          allleg = 0;
+    if (all3 && allleg) return 0;
   }
 
   /* Assume the BSD conjecture.  Tunnell's method. */

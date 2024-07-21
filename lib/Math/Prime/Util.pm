@@ -4542,6 +4542,8 @@ Given a non-negative integer C<n>, returns the Fubini number of n,
 also called the ordered Bell numbers, or the number of ordered partitions
 of C<n>.  It is the count of rankings of C<n> items allowing for ties.
 
+This is the L<OEIS series A000670|http://oeis.org/A000670>.
+
 =head2 harmfrac
 
 Given a non-negative integer C<n>, returns the Harmonic number C<H_n> as a
