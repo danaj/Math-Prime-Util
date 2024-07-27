@@ -1015,6 +1015,37 @@ UV fubini(UV n) {
   return sum;
 }
 
+UV falling_factorial(UV n, UV m)
+{
+  UV i, r = n;
+  if (m == 0) return 1;
+  if (m > n) return 0;
+  for (i = 1; i < m; i++) {
+    if (UV_MAX/(n-1) < r) return UV_MAX;  /* Overflow */
+    r *= (n-i);
+  }
+  return r;
+}
+UV rising_factorial(UV n, UV m)
+{
+  if (m == 0) return 1;
+  if ((m-1) > (UV_MAX-n)) return UV_MAX;  /* Overflow */
+  return falling_factorial(n+m-1, m);
+}
+
+IV falling_factorial_s(IV n, UV m)
+{
+  UV r = (n>=0) ? falling_factorial(n,m) : rising_factorial(-n,m);
+  if (r >= IV_MAX) return IV_MAX;  /* Overflow */
+  return (n < 0 && (m&1)) ? -(IV)r : (IV)r;
+}
+IV rising_factorial_s(IV n, UV m)
+{
+  UV r = (n>=0) ? rising_factorial(n,m) : falling_factorial(-n,m);
+  if (r >= IV_MAX) return IV_MAX;  /* Overflow */
+  return (n < 0 && (m&1)) ? -(IV)r : (IV)r;
+}
+
 int is_carmichael(UV n) {
   UV fac[MPU_MAX_FACTORS+1];
   UV exp[MPU_MAX_FACTORS+1];

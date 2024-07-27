@@ -48,6 +48,10 @@ extern UV factorial(UV n);
 extern UV subfactorial(UV n);
 extern UV fubini(UV n);
 extern UV binomial(UV n, UV k);
+extern UV falling_factorial(UV n, UV m);
+extern UV rising_factorial(UV n, UV m);
+extern IV falling_factorial_s(IV n, UV m);
+extern IV rising_factorial_s(IV n, UV m);
 extern IV gcdext(IV a, IV b, IV* u, IV* v, IV* s, IV* t); /* Ext Euclidean */
 extern UV modinverse(UV a, UV p);              /* Returns 1/a mod p */
 extern UV divmod(UV a, UV b, UV n);            /* Returns a/b mod n */

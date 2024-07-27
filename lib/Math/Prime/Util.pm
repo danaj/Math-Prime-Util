@@ -108,6 +108,7 @@ our @EXPORT_OK =
       ramanujan_tau ramanujan_sum
       stirling fubini znorder znprimroot znlog legendre_phi
       factorial factorialmod subfactorial binomial binomialmod
+      falling_factorial rising_factorial
       ExponentialIntegral LogarithmicIntegral RiemannZeta RiemannR LambertW Pi
       irand irand64 drand urandomb urandomm csrand random_bytes entropy_bytes
   );
@@ -4467,6 +4468,24 @@ the C<n E<lt> 0, k E<lt>= n> extension and instead returns C<0> for this
 case.  GMP's API does not allow negative C<k> but otherwise matches.
 C<Math::BigInt> version 1.999816 and later supports negative arguments
 with similar semantics.  Prior to this, C<n E<lt> 0, k > 0> was undefined.
+
+=head2 falling_factorial
+
+Given two integers C<x> and C<n>, with C<n> non-negative, returns the
+falling factorial of C<n>.
+
+  falling_factorial(x,n) = x * (x-1) * (x-2) * ... * (x-(n-1))
+
+This corresponds to Mathematica's C<FactorialPower[x,n]> function.
+
+=head2 rising_factorial
+
+Given two integers C<x> and C<n>, with C<n> non-negative, returns the
+rising factorial of C<n>.
+
+  rising_factorial(x,n) = x * (x+1) * (x+2) * ... * (x+(n-1))
+
+This corresponds to Mathematica's C<Pochhammer[x,n]> function.
 
 =head2 powersum
 

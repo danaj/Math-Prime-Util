@@ -224,6 +224,8 @@ sub entropy_bytes {
 *frobenius_number = \&Math::Prime::Util::PP::frobenius_number;
 *subfactorial = \&Math::Prime::Util::PP::subfactorial;
 *fubini = \&Math::Prime::Util::PP::fubini;
+*falling_factorial = \&Math::Prime::Util::PP::falling_factorial;
+*rising_factorial = \&Math::Prime::Util::PP::rising_factorial;
 
 *divint = \&Math::Prime::Util::PP::divint;
 *modint = \&Math::Prime::Util::PP::modint;

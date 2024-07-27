@@ -39,7 +39,7 @@ add_stopwords(qw/-th
                  gcd lcm gcdext chinese
                  sqrtmod allsqrtmod rootmod allrootmod
                  negmod invmod addmod submod mulmod powmod divmod muladdmod mulsubmod
-                 binomialmod factorialmod
+                 fubini binomialmod factorialmod
                  bernfrac bernreal harmfrac harmreal stirling hclassno
                  vecsum vecprod vecmin vecmax vecreduce vecextract vecequal
                  vecall vecany vecnone vecnotall vecfirst vecfirstidx vecmex vecpmex

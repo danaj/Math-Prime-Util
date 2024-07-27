@@ -3795,6 +3795,28 @@ void binomial(IN SV* svn, IN SV* svk)
     objectify_result(aTHX_ svn, ST(0));
     return;
 
+void falling_factorial(IN SV* svn, IN SV* svk)
+  ALIAS:
+    rising_factorial = 1
+  PREINIT:
+    int nstatus, kstatus;
+    UV n, k;
+  PPCODE:
+    nstatus = _validate_and_set(&n, aTHX_ svn, IFLAG_ANY | IFLAG_IV);
+    kstatus = _validate_and_set(&k, aTHX_ svk, IFLAG_POS);
+    if (nstatus == 1 && kstatus == 1) {
+      UV ret = (ix==0) ? falling_factorial(n,k) : rising_factorial(n,k);
+      if (ret != UV_MAX) XSRETURN_UV(ret);
+    } else {
+      IV in = (IV)n;
+      IV ret = (ix==0) ? falling_factorial_s(in,k) : rising_factorial_s(in,k);
+      if (ret != IV_MAX) XSRETURN_IV(ret);
+    }
+    if (ix == 0) _vcallsub_with_gmp(0.51,"falling_factorial");
+    else         _vcallsub_with_gmp(0.51,"rising_factorial");
+    objectify_result(aTHX_ svn, ST(0));
+    return;
+
 void mertens(IN SV* svn)
   ALIAS:
     liouville = 1

@@ -7236,9 +7236,9 @@ sub _product {
 sub _falling_factorial {
   my($n,$m) = @_;
   if ($m <= 1) { return ($m == 0) ? 1 : $n }
-  return 0 if $m > $n;
-
-  Mvecprod($n,map { Msubint($n,$_) } 1 .. Msubint($m,1));
+  return 0 if $n >= 0 && $m > $n;
+  return Mvecprod($n,map { Msubint($n,$_) } 1 .. Msubint($m,1))  if $m < 250;
+  Mmulint(Mbinomial($n,$m),Mfactorial($m));
 }
 sub falling_factorial {
   my($n,$m) = @_;

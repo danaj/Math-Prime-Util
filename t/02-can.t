@@ -102,6 +102,7 @@ my @functions =  qw(
       ramanujan_tau ramanujan_sum
       stirling fubini znorder znprimroot znlog legendre_phi
       factorial factorialmod subfactorial binomial binomialmod
+      falling_factorial rising_factorial
       ExponentialIntegral LogarithmicIntegral RiemannZeta RiemannR LambertW Pi
       irand irand64 drand urandomb urandomm csrand random_bytes entropy_bytes
 );

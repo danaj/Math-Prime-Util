@@ -96,6 +96,8 @@ Revision history for Perl module Math::Prime::Util
     - qnr(n)                          least quadratic non-residue
     - subfactorial(n)                 count of derangements of n objects
     - fubini(n)                       Fubini (Ordered Bell) number
+    = falling_factorial(x,n)          falling factorial
+    = rising_factorial(x,n)           rising factorial
     - binomialmod(n,k,m)              fast binomial(n,k) mod m
     - negmod(a, n)                    -a mod n
     - submod(a, b, n)                 a - b mod n
