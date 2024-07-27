@@ -4,7 +4,7 @@
 # Dana Jacobsen, 2014
 #
 # This is an alternative to T.R. Nicely's cglp4 program from:
-#      http://www.trnicely.net/#Downloads
+#      https://faculty.lynchburg.edu/~nicely/#Downloads
 # This runs 2-4x faster on my machines.  If cglp4 can use PFGW, then it will
 # cross over speed around 3000 digits, and PFGW is much faster at 10k+.
 #

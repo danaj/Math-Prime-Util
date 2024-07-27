@@ -6093,7 +6093,7 @@ Uses a set of C<k> static-random bases.  The bases are randomly chosen
 using a PRNG that is seeded identically each call (the seed changes
 with each release).  This offers a very slight advantage over using
 the first C<k> prime bases, but not much.  See, for example, Nicely's
-L<mpz_probab_prime_p pseudoprimes|http://www.trnicely.net/misc/mpzspsp.html>
+L<mpz_probab_prime_p pseudoprimes|https://faculty.lynchburg.edu/~nicely/misc/mpzspsp.html>
 page.
 
 =item L<Math::Pari> (not recent Pari/GP)
