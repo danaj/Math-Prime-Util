@@ -194,6 +194,7 @@ UV almost_prime_count(uint32_t k, UV n)
   if (n >= max_nth_almost_prime(k))
     return max_almost_prime_count(k);
 
+  if (k == 0) return n;
   if (k == 1) return prime_count(n);
   if (k == 2) return semiprime_count(n);
   if (k == 3) return almost3prime_count(n);

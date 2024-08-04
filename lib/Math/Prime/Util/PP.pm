@@ -112,6 +112,7 @@ BEGIN {
 *Mmoebius = \&Math::Prime::Util::moebius;
 *Mtotient = \&Math::Prime::Util::euler_phi;
 *Mfactorial = \&Math::Prime::Util::factorial;
+*Mfalling_factorial = \&Math::Prime::Util::falling_factorial;
 *Mprimorial = \&Math::Prime::Util::primorial;
 *Mpn_primorial = \&Math::Prime::Util::pn_primorial;
 *Mbinomial = \&Math::Prime::Util::binomial;
@@ -3878,6 +3879,7 @@ sub almost_prime_count {
   return ($n >= 1) if $k == 0;
   my $ok = $k;
   ($k, $n) = _kap_reduce_count($k, $n);
+  return $n if $k == 0;
   # If we reduced parameters, try again if XS might be able to do it.
   return Math::Prime::Util::almost_prime_count($k,$n) if $ok != $k && !ref($n) && Math::Prime::Util::prime_get_config()->{'xs'};
   return Mprime_count($n) if $k == 1;
@@ -7171,7 +7173,7 @@ sub binomial {
   return $n if $k == $n-1;    # Math::BigInt (fixed in 1.90)
 
   # Incomplete work around problem with Math::BigInt not liking bigint n
-  return Mdivint(falling_factorial($n,$k),Mfactorial($k))
+  return Mdivint(Mfalling_factorial($n,$k),Mfactorial($k))
     if $n > INTMAX && $k < 100;
 
   if ($n >= 0) {
@@ -9645,6 +9647,7 @@ sub _tauprime {
   my $p = shift;
   return -24 if $p == 2;
   my $sum = Math::BigInt->new(0);
+
   if ($p < (MPU_32BIT ?  300  :  1600)) {
     my($p9,$pp7) = (9*$p, 7*$p*$p);
     for my $t (1 .. Msqrtint($p)) {
