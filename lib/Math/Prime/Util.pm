@@ -97,8 +97,9 @@ our @EXPORT_OK =
       tozeckendorf fromzeckendorf
       sqrtmod allsqrtmod rootmod allrootmod cornacchia
       negmod invmod addmod submod mulmod divmod powmod muladdmod mulsubmod
-      vecsum vecmin vecmax vecprod vecreduce vecextract vecequal
+      vecsum vecmin vecmax vecprod vecreduce vecextract vecequal vecuniq
       vecany vecall vecnotall vecnone vecfirst vecfirstidx vecmex vecpmex
+      setbinop sumset
       moebius mertens liouville sumliouville prime_omega prime_bigomega
       euler_phi jordan_totient exp_mangoldt sumtotient
       partitions bernfrac bernreal harmfrac harmreal
@@ -3411,6 +3412,17 @@ the ordering is preserved.  Hence these are equivalent:
     vecextract($aref, $iref);
     @$aref[@$iref];
 
+=head2 vecuniq
+
+  my @vec = vecuniq(1,2,3,2,-10,-100,1);  # returns (1,2,3,-10,-100)
+
+Given an array of integers, returns an array with all duplicate entries
+removed.  The original ordering is preserved.  All values B<must> be defined.
+
+This is similar to L<List::Util::uniq> but restricted to integers,
+while L<List::Util::uniq> supports undef and arbitrary types.
+In return our function is about 2x faster in XS for native signed ints.
+
 =head2 vecequal
 
   my $is_equal = vecequal( [1,2,-3,[4,5,undef]], [1,2,-3,[4,5,undef]] );
@@ -3458,6 +3470,39 @@ of the set complement.  Repeated values are allowed in the list.
 C<vecpmex>() = 1.
 C<vecpmex>(1,2,...,I<w>) = I<w>+1.
 
+
+=head2 setbinop
+
+  my @sumset = setbinop { $a + $b } [1,2,3], [2,3,4];  # [3,4,5,6,7]
+  my @difset = setbinop { $a - $b } [1,2,3], [2,3,4];  # [-3,-2,-1,0,1]
+  my @setsum = setbinop { $a + $b } [1,2,3];           # [2,3,4,5,6]
+
+Given a code block and two array references containing integers, constructs
+a new set (as a sorted list) from the cross product of the two given sets.
+If only one array reference is given, it will be used with itself.
+
+This corresponds to Pari's C<setbinop> function.
+Our function uses B<much> less memory, as of Pari 2.17.0.
+
+=head2 sumset
+
+Given two array references of integers, returns the sumset as a list.
+This is equivalent to:
+
+  my %r;  my @A=(2,4,6,8);  my @B=(3,5,7);
+  forsetproduct { $r{vecsum(@_)}=undef; } \@A,\@B;
+  my @sumset = sort { $a<=>$b } keys %r;
+
+If only one array reference is given, it will be used for both.
+It is common to see sumset applied to a single set.
+
+This is a specific set operation, and is similar to:
+
+  my @sumset1 = setbinop { $a + $b } [1,2,3];
+  my @sumset2 = setbinop { $a + $b } [1,2,3], [2,3,4];
+
+In Mathematica one can use C<Total[Tuples[A,B],{2}]>.
+In Pari/GP one can use C<setbinop((a,b)->a+b,X,Y)>.
 
 =head2 todigits
 
@@ -6712,6 +6757,18 @@ Additionally important for servers, L<Crypt::Primes/maurer> uses excessive
 system entropy and can grind to a halt if C</dev/random> is exhausted
 (it can take B<days> to return).
 
+=head2 SUMSETS
+
+  Finding the sumset size of the first 10,000 primes.
+
+  my %r;  my $p = primes(nth_prime(10000));
+
+  14.5s   15MB  forsetproduct {$r{vecsum(@_)}=undef;} $p,$p;
+                say scalar(keys %r);
+   9.4s 3900MB  Pari/GP X=primes(10000); #setbinop((a,b)->a+b,X,X)
+   2.8s    3MB  say scalar setbinop { $a+$b } $p;
+   0.4s    3MB  say scalar sumset $p;
+
 
 =head1 AUTHORS
 
@@ -6837,7 +6894,7 @@ Douglas A. Stoll and Patrick Demichel , "The impact of ζ(s) complex zeros on π
 
 =head1 COPYRIGHT
 
-Copyright 2011-2021 by Dana Jacobsen E<lt>dana@acm.orgE<gt>
+Copyright 2011-2024 by Dana Jacobsen E<lt>dana@acm.orgE<gt>
 
 This program is free software; you can redistribute it and/or modify it under the same terms as Perl itself.
 

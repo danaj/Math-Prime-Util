@@ -66,6 +66,7 @@ WriteMakefile1(
                     'entropy.o '      .
                     'csprng.o '       .
                     'chacha.o '       .
+                    'ds_iset.o '      .
                     'XS.o',
     LIBS         => ['-lm'],
 

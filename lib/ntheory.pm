@@ -205,6 +205,7 @@ Tags:
   vecprod(@list)                      integer product of list
   vecmin(@list)                       minimum of list of integers
   vecmax(@list)                       maximum of list of integers
+  vecuniq(@list)                      remove duplicates from list of integers
   vecextract(\@list, mask)            select from list based on mask
   vecequal(\@list1, \@list2)          compare equality of two arrays
   vecreduce { ... } @list             reduce / left fold applied to list
@@ -216,6 +217,9 @@ Tags:
   vecfirstidx { ... } @list           return first index that evals true
   vecmex(@list)                       return least non-neg value not in list
   vecpmex(@list)                      return least positive value not in list
+
+  setbinop { ... } \@A[,\@B]          apply operation to all a,b [a:A,b:B]
+  sumset \@A[,\@B]                    apply a+b to all a,b [a:A,b:B]
 
 =head2 MATH
 

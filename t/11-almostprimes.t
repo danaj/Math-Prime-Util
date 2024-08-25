@@ -31,7 +31,7 @@ my @aptests = (
 );
 
 plan tests =>   5   # almost_primes sieve
-              + 3   # count
+              + 4   # count
               + 10  # nth
               + 2   # limits
               + 2   # approx
@@ -53,6 +53,8 @@ is_deeply([map { almost_prime_count($_, 1e6) } 0..20], \@counts_at_1e6, "k-almos
 is(almost_prime_count(17,1e9), 38537, "There are 38537 17-almost-primes <= 1,000,000,000");
 
 is_deeply([map{almost_prime_count($_,206)}1..10],[46,67,48,26,12,4,2,0,0,0],"almost_prime_count_approx n=206, k 1..10");
+
+is(almost_prime_count(10,1024),1,"almost_prime_count(10,1024) = 1");
 
 ###### Test nth_almost_prime
 is(nth_almost_prime(1,2), 3, "2nd 1-almost-prime is 3");

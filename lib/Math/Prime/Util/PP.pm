@@ -10576,6 +10576,69 @@ sub shuffle {
   @S;
 }
 
+sub _sorted_keys {
+  my $rset = shift;
+  my @ret = sort { $a <=> $b } keys %$rset;
+  return @ret;
+}
+sub setbinop (&$;$) {   ## no critic qw(ProhibitSubroutinePrototypes)
+  my($sub, $ra, $rb) = @_;
+  croak 'Not a subroutine reference' unless (ref($sub) || '') eq 'CODE';
+  croak 'Not an array reference' unless (ref($ra) || '') eq 'ARRAY';
+  if (defined $rb) {
+    croak 'Not an array reference' unless (ref($rb) || '') eq 'ARRAY';
+  } else {
+    $rb = $ra;
+  }
+
+  my $caller = caller();
+  no strict 'refs'; ## no critic(strict)
+  local(*{$caller.'::a'}) = \my $a;
+  local(*{$caller.'::b'}) = \my $b;
+  my %set;
+  for my $ia (@$ra) {
+    $a = $ia;
+    for my $ib (@$rb) {
+      $b = $ib;
+      $set{ $sub->() } = undef;
+    }
+  }
+  return wantarray  ?  _sorted_keys(\%set)  :  scalar(keys %set);
+}
+
+sub sumset {
+  my($ra,$rb) = @_;
+  croak 'Not an array reference' unless (ref($ra) || '') eq 'ARRAY';
+  if (defined $rb) {
+    croak 'Not an array reference' unless (ref($rb) || '') eq 'ARRAY';
+  } else {
+    $rb = $ra;
+  }
+  return () if scalar(@$ra) == 0 || scalar(@$rb) == 0;
+
+  validate_integer($_) for @$ra;
+  validate_integer($_) for @$rb;
+
+  my %sums;
+  for my $x (@$ra) {
+    for my $y (@$rb) {
+      $sums{ Maddint($x,$y) } = undef;
+    }
+  }
+
+  my @set = sort { $a<=>$b } keys(%sums);
+  return @set;
+}
+
+sub vecuniq {
+  my %seen = ();
+  my $k;
+  # Validation means about 1.4x slower.
+  #my @T = @_; return grep { validate_integer($_) && not $seen{$k = $_}++; } @T;
+  # We have decided to skip validation and not support undefined values.
+  return grep { not $seen{$k = $_}++; } @_;
+}
+
 ###############################################################################
 
 sub foralmostprimes {

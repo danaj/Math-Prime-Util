@@ -8,6 +8,7 @@ use Math::Prime::Util qw/vecreduce
                          vecequal
                          vecmin vecmax
                          vecsum vecprod factorial
+                         vecuniq
                          vecany vecall vecnotall vecnone vecfirst vecfirstidx/;
 
 my $extra = defined $ENV{EXTENDED_TESTING} && $ENV{EXTENDED_TESTING};
@@ -90,6 +91,7 @@ plan tests => 0
             + 3*4  # vec{any,all,notall,none}
             + 5    # vecfirst
             + 5    # vecfirstidx
+            + 7    # vecuniq
             + 0;
 
 ###### vecmin
@@ -198,4 +200,22 @@ ok(  (vecnone { 1 }), 'none empty list' );
   $v = vecfirstidx { 0 }; is($v, -1, "first idx empty list");
   $v = vecfirstidx { $_->[1] le "e" and "e" le $_->[2] } [qw(a b c)], [qw(d e f)], [qw(g h i)];  is($v, 1, "first idx with reference args");
   $v = vecfirstidx {while(1) {return ($_>6)} } 2,4,6,12; is($v,3,"first idx returns in loop");
+}
+
+###### vecuniq
+{
+  my @t = map { (1 .. 10) } 0 .. 1;
+  my @u = vecuniq @t;
+  is_deeply(\@u, [1 .. 10], "vecuniq simple 1..10");
+  my $u = vecuniq @t;
+  is(10,$u,"vecuniq scalar count correct");
+
+  my @n = map { reverse -5 .. 5 } 0..2;
+  my @v = vecuniq @n;
+  is_deeply(\@v, [reverse -5 .. 5], "vecuniq simple 5 to -5");
+
+  is_deeply([vecuniq()], [], "vecuniq with empty input returns empty");
+  is_deeply([vecuniq(0)], [0], "vecuniq with one input returns it");
+  is_deeply([vecuniq(0,"18446744073709551615",0,4294967295,"18446744073709551615",4294967295)], [0,"18446744073709551615",4294967295], "vecuniq with 64-bit inputs");
+  is_deeply([vecuniq("-9223372036854775808","9223372036854775807",4294967295,"9223372036854775807",4294967295,"-9223372036854775808")], ["-9223372036854775808","9223372036854775807",4294967295], "vecuniq with signed 64-bit inputs");
 }

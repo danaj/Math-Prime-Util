@@ -151,6 +151,9 @@ Revision history for Perl module Math::Prime::Util
     - frobenius_number(...)           Frobenius number of a set
     - vecmex(...)                     least non-negative value not in list
     - vecpmex(...)                    least positive value not in list
+    - vecuniq(...)                    remove duplicates from list of integers
+    - setbinop {...} \@A[,\@B]        apply op to cross product of set(s)
+    - sumset(\@A[,\@B])               new set from a+b {a:A,b:B}
 
     [FIXES]
 

@@ -49,6 +49,7 @@
 #include "lucky_numbers.h"
 #include "rootmod.h"
 #include "real.h"
+#include "ds_iset.h"
 
 #ifdef FACTORING_HARNESSES
 #include <sys/time.h>
@@ -140,13 +141,13 @@ static double my_difftime (struct timeval * start, struct timeval * end) {
   static const unsigned int ivmax_maxlen = 10;
   static const char uvmax_str[] = "4294967295";
   /* static const char ivmax_str[] = "2147483648"; */
-  static const char ivmin_str[] = "2147483647";
+  static const char ivmin_str[] = "2147483648";
 #else
   static const unsigned int uvmax_maxlen = 20;
   static const unsigned int ivmax_maxlen = 19;
   static const char uvmax_str[] = "18446744073709551615";
   /* static const char ivmax_str[] =  "9223372036854775808"; */
-  static const char ivmin_str[] =  "9223372036854775807";
+  static const char ivmin_str[] =  "9223372036854775808";
 #endif
 
 #define MY_CXT_KEY "Math::Prime::Util::API_guts"
@@ -271,13 +272,18 @@ static int _validate_and_set(UV* val, pTHX_ SV* svn, uint32_t mask) {
   return status;
 }
 
+static UV neg_iv(UV n) {
+  if ((IV)n == IV_MIN)  return (UV_MAX >> 1) + 1;
+  else                  return (UV) (-(IV)n);
+}
+
 /* Given 'a' and astatus (-1 means 'a' is an IV), properly mod with n */
 static void _mod_with(UV *a, int astatus, UV n) {
   if (n == 0) return;
   if (astatus != -1) {
     *a %= n;
   } else {
-    UV r = (-(IV)*a) % n;
+    UV r = neg_iv(*a) % n;
     *a = (r == 0) ? 0 : n-r;
   }
 }
@@ -435,6 +441,35 @@ static int arrayref_to_int_array(pTHX_ UV** ret, AV* av, int base)
   }
   /* printf("array is ["); for(i=0;i<len;i++)printf("%lu,",r[i]); printf("]\n"); */
   *ret = r;
+  return len;
+}
+
+static int arrayref_to_iv_array(pTHX_ IV** ret, SV* sva, const char* fstr)
+{
+  AV *av;
+  int len, i;
+
+  if ((!SvROK(sva)) || (SvTYPE(SvRV(sva)) != SVt_PVAV))
+    croak("%s argument must be an array reference", fstr);
+  av = (AV*) SvRV(sva);
+  len = av_len(av);
+  *ret = 0;
+  if (len >= 0) {
+    UV val;
+    IV *r;
+    New(0, r, len+1, IV);
+    for (i = 0; i <= len; i++) {
+      SV **iv = av_fetch(av, i, 0);
+      if (iv==0 || _validate_and_set(&val, aTHX_ *iv, IFLAG_ANY|IFLAG_IV) == 0)
+        break;
+      r[i] = (IV)val;
+    }
+    if (i <= len) {
+      Safefree(r);
+      return -2;
+    }
+    *ret = r;
+  }
   return len;
 }
 
@@ -1518,7 +1553,7 @@ gcd(...)
         ret *= n;
       }
       if (sign == -1 && status != 0) {
-        if (ret <= (UV)IV_MAX)  XSRETURN_IV(-(IV)ret);
+        if (ret <= (UV)IV_MAX)  XSRETURN_IV(neg_iv(ret));
         else                    status = 0;
       }
     } else {
@@ -1867,13 +1902,13 @@ void is_square(IN SV* svn)
     ret = 0;
     status = _validate_and_set(&n, aTHX_ svn, IFLAG_ANY);
     if (ix == 3 && status == -1) {  /* is_perfect_power special behavior */
-      n = -(IV)n;
+      n = neg_iv(n);
       ret = is_power(n,0);
       /* A power with exponent other than 0,1,2,4,8,... is ok */
       ret = (n == 1 || (ret > 2 && (ret & (ret-1)) != 0));
     }
     if (ix == 4 && status == -1) {  /* is_fundamental special behavior */
-      n = -(IV)n;
+      n = neg_iv(n);
       ret = is_fundamental(n,1);
     }
     if (status == 1) {
@@ -1912,7 +1947,7 @@ void squarefree_kernel(IN SV* svn)
   PPCODE:
     status = _validate_and_set(&n, aTHX_ svn, IFLAG_ANY);
     if (status == -1)
-      XSRETURN_IV( -(IV)squarefree_kernel(-(IV)n) );
+      XSRETURN_IV( neg_iv(squarefree_kernel(neg_iv(n))) );
     if (status == 1)
       XSRETURN_UV( squarefree_kernel(n) );
     _vcallsub_with_pp("squarefree_kernel");
@@ -1930,7 +1965,7 @@ void is_powerfree(IN SV* svn, IN int k = 2)
     status = _validate_and_set(&n, aTHX_ svn, IFLAG_ANY);
     if (status == -1) {
       if (ix == 2)
-        XSRETURN_IV( -(IV)powerfree_part(-(IV)n,k) );
+        XSRETURN_IV( neg_iv(powerfree_part(neg_iv(n),k)) );
       RETURN_NPARITY(0);
     }
     if (status == 1) {
@@ -1998,7 +2033,7 @@ is_power(IN SV* svn, IN UV k = 0, IN SV* svroot = 0)
       if (status == -1) {
         /* Negative n with even positive k return 0. */
         if (k > 0 && !(k & 1))  RETURN_NPARITY(0);
-        n = -(IV)n;
+        n = neg_iv(n);
       }
       ret = is_power(n, k);
       if (status == -1 && k == 0) {
@@ -2326,7 +2361,7 @@ void next_perfect_power(IN SV* svn)
     int status, power;
   PPCODE:
     status = _validate_and_set(&n, aTHX_ svn, IFLAG_ANY);
-    if (status == -1) n = -(IV)n;
+    if (status == -1) n = neg_iv(n);
     if        (status == 1 && ix == 0) {
       ret = next_perfect_power(n);
       if (ret != 0) XSRETURN_UV(ret);
@@ -2340,14 +2375,14 @@ void next_perfect_power(IN SV* svn)
         n = prev_perfect_power(n);
         power = is_power(n,0);
       } while (n > 1 && (power <= 2 || (power & (power-1)) == 0));
-      XSRETURN_IV(-(IV)n);
+      XSRETURN_IV(neg_iv(n));
     } else if (status == -1 && ix == 1) { /* prev perfect power: negative n */
       do {
         n = next_perfect_power(n);
         power = is_power(n,0);
       } while (n > 1 && (power <= 2 || (power & (power-1)) == 0));
       if (n <= (UV)IV_MAX)
-        XSRETURN_IV(-(IV)n);
+        XSRETURN_IV(neg_iv(n));
     }
     switch (ix) {
       case 0:  _vcallsub_with_gmp(0.53,"next_perfect_power"); break;
@@ -2966,7 +3001,7 @@ void binomialmod(IN SV* svn, IN SV* svk, IN SV* svm)
            (nstatus ==-1 && (kstatus == -1 && k > n)) )
          XSRETURN_UV(0);
       if (kstatus == -1) k = n - k;
-      if (nstatus == -1) n = (-(IV)n) + k - 1;
+      if (nstatus == -1) n = neg_iv(n) + k - 1;
       if (binomialmod(&ret, n, k, m)) {
         if ((nstatus == -1) && (k & 1)) ret = (ret==0) ? 0 : m-ret;
         XSRETURN_UV(ret);
@@ -3229,9 +3264,9 @@ void kronecker(IN SV* sva, IN SV* svb)
     if (astatus != 0 && bstatus != 0) {
       int k;
       if (bstatus == 1)
-        k = (astatus==1) ? kronecker_uu(a,b)      :  kronecker_su((IV)a,b);
+        k = (astatus==1) ? kronecker_uu(a,b)         :  kronecker_su((IV)a,b);
       else
-        k = (astatus==1) ? kronecker_uu(a,-(IV)b) : -kronecker_su((IV)a,-(IV)b);
+        k = (astatus==1) ? kronecker_uu(a,neg_iv(b)) : -kronecker_su((IV)a,neg_iv(b));
       RETURN_NPARITY( k );
     }
     _vcallsub_with_gmp(0.17,"kronecker");
@@ -3279,27 +3314,27 @@ void addint(IN SV* sva, IN SV* svb)
 
       if (ix == 0 && smask != 0) {
         switch (smask) {
-          case 1: nix=1; b = -(IV)b; break;                  /* a - |b| */
-          case 2: nix=1; t = -(IV)a; a = b; b = t; break;    /* b - |a| */
-          case 3: a = -(IV)a; b = -(IV)b; postneg=1; break;  /* -(|a| + |b|) */
+          case 1: nix=1; b = neg_iv(b); break;                /* a - |b| */
+          case 2: nix=1; t = neg_iv(a); a = b; b = t; break;  /* b - |a| */
+          case 3: a=neg_iv(a); b=neg_iv(b); postneg=1; break; /* -(|a| + |b|) */
           default: break;
         }
         astatus = bstatus = 1;
       }
       if (ix == 1 && smask != 0) {
         switch (smask) {
-          case 1: nix=0; b = -(IV)b; break;                  /* a + |b| */
-          case 2: nix=0; a = -(IV)a; postneg=1; break;       /* -(|a| + b) */
-          case 3: t = -(IV)a; a = -(IV)b; b = t; break;      /* |b| - |a| */
+          case 1: nix=0; b = neg_iv(b); break;                 /* a + |b| */
+          case 2: nix=0; a = neg_iv(a); postneg=1; break;      /* -(|a| + b) */
+          case 3: t=neg_iv(a); a=neg_iv(b); b = t; break;      /* |b| - |a| */
           default: break;
         }
         astatus = bstatus = 1;
       }
       if (ix == 2 && smask != 0) {
         switch (smask) {
-          case 1: b = -(IV)b; postneg = 1; break;
-          case 2: a = -(IV)a; postneg = 1; break;
-          case 3: a = -(IV)a; b = -(IV)b; break;
+          case 1: b = neg_iv(b); postneg = 1; break;
+          case 2: a = neg_iv(a); postneg = 1; break;
+          case 3: a = neg_iv(a); b = neg_iv(b); break;
           default: break;
         }
         astatus = bstatus = 1;
@@ -3322,7 +3357,7 @@ void addint(IN SV* sva, IN SV* svb)
         }
       }
       if (ix == 6 && astatus != 1) {  /* bstatus is never -1 for powint */
-        a = -(IV)a;
+        a = neg_iv(a);
         postneg = (b & 1);
         astatus = 1;
       }
@@ -3351,7 +3386,7 @@ void addint(IN SV* sva, IN SV* svb)
           if (!postneg)
             XSRETURN_UV(ret);
           if (ret <= (UV)IV_MAX)
-            XSRETURN_IV(-(IV)ret);
+            XSRETURN_IV(neg_iv(ret));
         }
       }
     }
@@ -3399,8 +3434,9 @@ void absint(IN SV* svn)
         XSRETURN_UV(n);
       _vcallsub_with_gmp(0.52,"absint");
     } else {
-      if (_validate_and_set(&n, aTHX_ svn, IFLAG_IV))
-        XSRETURN_IV( -(IV)n );
+      int status = _validate_and_set(&n, aTHX_ svn, IFLAG_IV);
+      if      (status == -1) XSRETURN_UV(neg_iv(n));
+      else if (status ==  1) XSRETURN_IV(neg_iv(n));
       _vcallsub_with_gmp(0.52,"negint");
     }
     objectify_result(aTHX_ svn, ST(0));
@@ -3544,7 +3580,7 @@ void lshiftint(IN SV* svn, IN unsigned long k = 1)
       if ( ((n << k) >> k) == n)        XSRETURN_UV(n << k);  /* Left shift */
       /* Fall through -- left shift needs more bits */
     } else if (status == -1 && k < BITS_PER_WORD) {
-      n = -(IV)n;
+      n = neg_iv(n);
       nk = n >> k;
       if (ix == 1)                      XSRETURN_IV(-nk);
       if (ix == 2)                      XSRETURN_IV(((nk<<k)==n) ? -nk : -nk-1);
@@ -3783,10 +3819,10 @@ void binomial(IN SV* svn, IN SV* svk)
       if (kstatus == -1)
         k = n - k; /* n<0,k<=n:  (-1)^(n-k) * binomial(-k-1,n-k) */
       if (nstatus == -1) {
-        ret = binomial( (-(IV)n)+k-1, k );
+        ret = binomial( neg_iv(n)+k-1, k );
         if (ret > 0 && ret <= (UV)IV_MAX)
           XSRETURN_IV( (IV)ret * ((k&1) ? -1 : 1) );
-      } else {
+      } else if (nstatus == 1) {
         ret = binomial(n, k);
         if (ret != 0) XSRETURN_UV(ret);
       }
@@ -3876,6 +3912,188 @@ void chebyshev_theta(IN SV* svn)
     /* Result is FP, don't objectify */
     return;
 
+void sumset(IN SV* sva, IN SV* svb = 0)
+  PROTOTYPE: $;$
+  PREINIT:
+    int alen, blen, i, j;
+    IV *seta, *setb;
+    iset_t s;
+    unsigned long k, sz;
+  PPCODE:
+    alen = arrayref_to_iv_array(aTHX_ &seta, sva, "sumset first arg");
+    if (svb == 0) {
+      blen = alen;
+      setb = seta;
+    } else if (alen >= 0) {
+      blen = arrayref_to_iv_array(aTHX_ &setb, svb, "sumset second arg");
+    }
+    if (alen == -1 || blen == -1)   XSRETURN_EMPTY;
+    /* Check for overflow */
+    if (alen >= 0) {
+      for (i = 0; i <= alen; i++)
+        if (seta[i] > IV_MAX/2 || seta[i] < IV_MIN/2)
+          break;
+      if (i <= alen) alen = -1;
+    }
+    if (blen >= 0 && alen >= 0 && seta != setb) {
+      for (j = 0; j <= blen; j++)
+        if (setb[j] > IV_MAX/2 || setb[j] < IV_MIN/2)
+          break;
+      if (j <= blen) blen = -1;
+    }
+    if (alen < 0 || blen < 0) {  /* IV Overflow  or  bigint */
+      if (setb != seta) Safefree(setb);
+      Safefree(seta);
+      _vcallsubn(aTHX_ GIMME_V, VCALL_PP, "sumset", items, 0);
+      return;
+    }
+    /* Sumset */
+    s = iset_create( 10UL * ((unsigned long)alen + (unsigned long)blen + 2) );
+    for (i = 0; i <= alen; i++)
+      for (j = 0; j <= blen; j++)
+        iset_add(&s, (UV) (seta[i] + setb[j]));
+    if (setb != seta) Safefree(setb);
+    Safefree(seta);
+    sz = iset_size(s);
+    if (GIMME_V == G_SCALAR) {
+      iset_destroy(&s);
+      XSRETURN_UV(sz);
+    }
+    /* Retrieve sorted set values and put them on return stack */
+    New(0, seta, sz, IV);
+    iset_allvals(s, (UV*)seta);
+    iset_destroy(&s);
+    for (k = 0; k < sz; k++)
+      XPUSHs(sv_2mortal(newSViv(seta[k])));
+    Safefree(seta);
+
+void setbinop(SV* block, IN SV* sva, IN SV* svb = 0)
+  PROTOTYPE: &$;$
+  CODE:
+  {
+    AV *ava, *avb;
+    GV *agv, *bgv, *gv;
+    SV **iva, **ivb;
+    iset_t s;
+    int alen, blen, i, j, status;
+    unsigned long k, sz;
+    UV ret;
+    IV *setr;
+
+    HV *stash;
+    CV *cv = sv_2cv(block, &stash, &gv, 0);
+
+    if (cv == Nullcv) croak("Not a subroutine reference");
+
+    /* ====== Get and store the input array references ====== */
+    if ((!SvROK(sva)) || (SvTYPE(SvRV(sva)) != SVt_PVAV))
+      croak("setbinop: first array arg must be an array reference");
+    ava = (AV*) SvRV(sva);
+    alen = av_len(ava);
+    if (alen < 0) XSRETURN_EMPTY;
+
+    if (svb == 0) {
+      avb = ava;
+    } else {
+      if ((!SvROK(svb)) || (SvTYPE(SvRV(svb)) != SVt_PVAV))
+        croak("setbinop: second array arg must be an array reference");
+      avb = (AV*) SvRV(svb);
+    }
+    blen = av_len(avb);
+    if (blen < 0) XSRETURN_EMPTY;
+
+    /* ====== Walk the array references storing the SV pointers ====== */
+    SV **asv, **bsv;
+    New(0, asv, alen+1, SV*);
+    for (i = 0; i <= alen; i++) {
+      SV** iv = av_fetch(ava, i, 0);
+      if (iv == 0) break;
+      asv[i] = *iv;
+    }
+    if (i > alen) {
+      if (avb == ava) {
+        bsv = asv;
+        j = blen+1;
+      } else {
+        for (j = 0; j <= blen; j++) {
+          SV** iv = av_fetch(avb, j, 0);
+          if (iv == 0) break;
+          bsv[j] = *iv;
+        }
+      }
+    }
+    if (i <= alen || j <= blen) {
+      _vcallsubn(aTHX_ GIMME_V, VCALL_PP, "setbinop", items, 0);
+      return;
+    }
+
+    /* ====== Call block on cross product, insert result into set ====== */
+    agv = gv_fetchpv("a", GV_ADD, SVt_PV);
+    bgv = gv_fetchpv("b", GV_ADD, SVt_PV);
+    SAVESPTR(GvSV(agv));
+    SAVESPTR(GvSV(bgv));
+    s = iset_create( 4UL *  ((unsigned long)alen + (unsigned long)blen + 2) );
+#ifdef dMULTICALL
+    if (!CvISXSUB(cv)) {
+      dMULTICALL;
+      I32 gimme = G_SCALAR;
+      PUSH_MULTICALL(cv);
+      for (i = 0; i <= alen; i++) {
+        GvSV(agv) = asv[i];
+        for (j = 0; j <= blen; j++) {
+          GvSV(bgv) = bsv[j];
+          { ENTER; MULTICALL; LEAVE; }
+          status = _validate_and_set(&ret, aTHX_ *PL_stack_sp, IFLAG_ANY);
+          if (status == 0) break;
+          iset_add(&s, ret);
+        }
+        if (j <= blen) break;
+      }
+      FIX_MULTICALL_REFCOUNT;
+      POP_MULTICALL;
+    }
+    else
+#endif
+    {
+      for (i = 0; i <= alen; i++) {
+        GvSV(agv) = asv[i];
+        for (j = 0; j <= blen; j++) {
+          dSP;
+          GvSV(bgv) = bsv[j];
+          PUSHMARK(SP);
+          call_sv((SV*)cv, G_SCALAR);
+          status = _validate_and_set(&ret, aTHX_ *PL_stack_sp, IFLAG_ANY);
+          if (status == 0) break;
+          iset_add(&s, ret);
+        }
+        if (j <= blen) break;
+      }
+    }
+
+    /* ====== Free cached SV pointers.  Call PP if we not complete. ====== */
+    if (bsv != asv) Safefree(bsv);
+    Safefree(asv);
+    sz = iset_size(s);
+    /* ====== Call PP if not finished. Return scalar if all needed. ====== */
+    if (i <= alen || j <= blen) {
+      iset_destroy(&s);
+      _vcallsubn(aTHX_ GIMME_V, VCALL_PP, "setbinop", items, 0);
+      return;
+    }
+    if (GIMME_V == G_SCALAR) {
+      iset_destroy(&s);
+      XSRETURN_UV(sz);
+    }
+    /* ====== Get sorted set values.  Put on return stack. ====== */
+    New(0, setr, sz, IV);
+    iset_allvals(s, (UV*)setr);
+    iset_destroy(&s);
+    EXTEND(SP,sz);
+    for (k = 0; k < sz; k++)
+      ST(k) = sv_2mortal(newSViv(setr[k]));
+    Safefree(setr);
+    XSRETURN(sz);
+  }
 
 void
 numtoperm(IN UV n, IN SV* svk)
@@ -5116,6 +5334,71 @@ PPCODE:
     if (ret_true)  XSRETURN_YES;
     else           XSRETURN_NO;
 }
+
+void vecuniq(...)
+  PROTOTYPE: @
+  PREINIT:
+    iset_t s;
+    int i, status, retvals, seen_iv, seen_uv;
+    UV n;
+    unsigned long count;
+  PPCODE:
+    retvals = (GIMME_V != G_SCALAR);
+    seen_iv = seen_uv = 0;
+    s = iset_create(items);
+    for (status = 1, i = 0; i < items; i++) {
+      status = _validate_and_set(&n, aTHX_ ST(i), IFLAG_ANY);
+      if (status == -1) seen_iv = 1;
+      if (status == 1 && n > (UV)IV_MAX) seen_uv = 1;
+      if (seen_iv && seen_uv) { status = 0; break; }
+      if (iset_add(&s,n) && retvals)
+        PUSHs(sv_2mortal( (status == 1) ? newSVuv(n) : newSViv((IV)n) ));
+    }
+    count = iset_size(s);
+    iset_destroy(&s);
+    if (status != 0 && retvals) {
+      XSRETURN(count);
+    } else if (status != 0) {
+      ST(0) = sv_2mortal(newSVuv(count));
+      XSRETURN(1);
+    } else {
+      /* This is 100% from List::MoreUtils::XS by Parseval and Rehsack */
+      I32 i;
+      IV count = 0, seen_undef = 0;
+      HV *hv = newHV();
+      SV **args = &PL_stack_base[ax];
+      SV *tmp = sv_newmortal();
+      sv_2mortal(newRV_noinc((SV*)hv));
+
+      if (GIMME_V == G_SCALAR) { /* don't build return list if not needed */
+        for (i = 0; i < items; i++) {
+          SvGETMAGIC(args[i]);
+          if (SvOK(args[i])) {
+            sv_setsv_nomg(tmp, args[i]);
+            if (!hv_exists_ent(hv, tmp, 0)) {
+              ++count;
+              hv_store_ent(hv, tmp, &PL_sv_yes, 0);
+            }
+          } else if (0 == seen_undef++)
+            ++count;
+        }
+        ST(0) = sv_2mortal(newSVuv(count));
+        XSRETURN(1);
+      }
+      /* list context: populate SP with mortal copies */
+      for (i = 0; i < items; i++) {
+        SvGETMAGIC(args[i]);
+        if (SvOK(args[i])) {
+          SvSetSV_nosteal(tmp, args[i]);
+          if (!hv_exists_ent(hv, tmp, 0)) {
+            args[count++] = args[i];
+            hv_store_ent(hv, tmp, &PL_sv_yes, 0);
+          }
+        } else if (0 == seen_undef++)
+          args[count++] = args[i];
+      }
+      XSRETURN(count);
+    }
 
 #ifdef FACTORING_HARNESSES
 void
