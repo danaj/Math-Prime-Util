@@ -41,7 +41,7 @@ add_stopwords(qw/-th
                  negmod invmod addmod submod mulmod powmod divmod muladdmod mulsubmod
                  fubini binomialmod factorialmod
                  bernfrac bernreal harmfrac harmreal stirling hclassno
-                 vecsum vecprod vecmin vecmax vecreduce vecextract vecequal
+                 vecsum vecprod vecmin vecmax vecreduce vecextract vecequal vecuniq
                  vecall vecany vecnone vecnotall vecfirst vecfirstidx vecmex vecpmex
                  sqrtint logint rootint powint addint subint mulint divint cdivint modint negint absint divrem tdivrem fdivrem cdivrem
                  qnr cornacchia
@@ -51,6 +51,7 @@ add_stopwords(qw/-th
                  lshiftint rshiftint rashiftint signint cmpint
                  biquadrate powerfree k-powerfree k-free
                  sumpowerful powersum
+                 sumset setbinop
                  pp 100ns/);
 
 all_pod_files_spelling_ok();

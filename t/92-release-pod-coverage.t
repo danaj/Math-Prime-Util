@@ -159,6 +159,7 @@ sub mpu_PPM_regex {
       Mmuladdmod Mmulsubmod
       Mbinomial Mchinese Mfactor Mfactor_exp Mdivisors
       Mfactorial Mfordivisors Mforprimes Mgcd Mlcm Mznorder
+      Mfalling_factorial
       Mkronecker Mmoebius Mtotient Mstirling
       Mnext_prime Mprev_prime Mprime_count
       Mprimorial Mpn_primorial

@@ -3421,7 +3421,7 @@ removed.  The original ordering is preserved.  All values B<must> be defined.
 
 This is similar to L<List::Util::uniq> but restricted to integers,
 while L<List::Util::uniq> supports undef and arbitrary types.
-In return our function is about 2x faster in XS for native signed ints.
+In return our function is about 2x faster in XS for native signed integers.
 
 =head2 vecequal
 
