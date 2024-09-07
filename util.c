@@ -37,9 +37,17 @@ static int _numcmp(const void *a, const void *b) {
   UV x = *(UV*)a, y = *(UV*)b;
   return (x > y) - (x < y);
 }
+static int _snumcmp(const void *a, const void *b) {
+  IV x = *(IV*)a, y = *(IV*)b;
+  return (x > y) - (x < y);
+}
 void sort_uv_array(UV* L, UV nelems)
 {
   (void) qsort(L, nelems, sizeof(UV), _numcmp);
+}
+void sort_iv_array(IV* L, UV nelems)
+{
+  (void) qsort(L, nelems, sizeof(IV), _snumcmp);
 }
 
 static int _verbose = 0;

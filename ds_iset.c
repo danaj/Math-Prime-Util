@@ -32,7 +32,8 @@ iset_t iset_create(unsigned long init_size) {
   iset_t set;
   int bits = 4;
 
-  set.size = set.contains_zero = 0;
+  set.size = set.contains_zero = set.seen_uv = 0;
+  set.sign = 1;
 
   while (bits < BITS_PER_WORD-1 && ((UVCONST(1) << bits) * FILL_RATIO + 1) < init_size)
     bits++;
@@ -43,7 +44,9 @@ iset_t iset_create(unsigned long init_size) {
 }
 
 void iset_destroy(iset_t *set) {
-  set->maxsize = set->size = set->contains_zero = 0;
+  set->maxsize = set->size = 0;
+  set->contains_zero = set->seen_uv = 0;
+  set->sign = 1;
   Safefree(set->arr);
   set->arr = 0;
 }
@@ -79,8 +82,15 @@ static void _iset_resize(iset_t *set) {
   set->mask = newmask;
 }
 
-int iset_add(iset_t *set, UV val) {
+int iset_add(iset_t *set, UV val, int sign) {
   UV h;
+  if (sign != 1 && sign != -1)
+    set->sign = 0;
+  if (val > (UV)IV_MAX) {
+    if (sign == 1) set->seen_uv = 1;
+    if (set->seen_uv && (sign != set->sign)) set->sign = 0;
+    else if (sign == -1 && set->sign ==  1)  set->sign = -1;
+  }
   if (val == 0) {
     if (set->contains_zero)  return 0;
     set->contains_zero = 1;
@@ -88,7 +98,8 @@ int iset_add(iset_t *set, UV val) {
     return 1;
   }
   h = _iset_pos(set->arr, set->mask, val);
-  if (set->arr[h] == val) return 0;
+  if (set->arr[h] == val)
+    return 0;
   set->arr[h] = val;
   if (++set->size > FILL_RATIO * (double)set->maxsize)
     _iset_resize(set);
@@ -103,8 +114,59 @@ void iset_allvals(const iset_t set, UV* array) {
     if (set.arr[j] != 0)
       array[i++] = set.arr[j];
   if (i != set.size) croak("iset_allvals bad size");
-  sort_uv_array(array, i);
+  if (set.sign == -1) sort_iv_array((IV*)array, i);
+  else                sort_uv_array(array, i);
 }
+
+
+
+void iset_union_with(iset_t *set, const iset_t L) {
+  unsigned long i, lsize;
+  UV v, *larr;
+  int lsign;
+
+  lsize = L.maxsize;
+  larr = L.arr;
+  lsign = L.sign;
+  for (i = 0; i < lsize; i++)
+    if (v = larr[i], v != 0)
+      iset_add(set, v, lsign);
+  set->contains_zero |= L.contains_zero;
+}
+
+void iset_intersect_with(iset_t *set, const iset_t L) {
+  unsigned long i, setsize;
+  UV v, *setarr;
+  int setsign, ivuv;;
+  iset_t s;
+
+  if (set->sign == 0 || L.sign == 0)  return;  /* Invalid sets */
+
+  setsize = set->maxsize;
+  setarr = set->arr;
+  setsign = set->sign;
+
+  s = iset_create(setsize);
+
+  /* one set contains negative numbers, the other contains large unsigned */
+  ivuv = ( (L.sign == -1 && set->sign == 1 && set->seen_uv) ||
+           (set->sign == -1 && L.sign == 1 && L.seen_uv) );
+
+  for (i = 0; i < setsize; i++) {
+    if (v = setarr[i], v != 0) {
+      if (iset_contains(L,v)) {
+        iset_add(&s, v, setsign);
+        if (ivuv && v > (UV)IV_MAX)
+          s.sign = 0;
+      }
+    }
+  }
+
+  set->contains_zero &= L.contains_zero;
+  iset_destroy(set);
+  *set = s;
+}
+
 
 void iset_test(void) {
   iset_t s;
@@ -115,12 +177,12 @@ void iset_test(void) {
   s = iset_create(0);
   printf("done\n"); fflush(stdout);
   for (i = ts/2; i < ts; i++) {
-    iset_add(&s, i);
+    iset_add(&s, i, 1);
   }
   printf("done adding.  size is %lu\n", iset_size(s)); fflush(stdout);
   if (iset_contains(s,0) != 0) croak("fail 0");
   for (i = 0; i < ts; i++) {
-    iset_add(&s, i);
+    iset_add(&s, i, 1);
   }
   printf("done adding.  size is %lu\n", iset_size(s)); fflush(stdout);
 

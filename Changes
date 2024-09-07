@@ -154,6 +154,11 @@ Revision history for Perl module Math::Prime::Util
     - vecuniq(...)                    remove duplicates from list of integers
     - setbinop {...} \@A[,\@B]        apply op to cross product of set(s)
     - sumset(\@A[,\@B])               new set from a+b {a:A,b:B}
+    - setunion(\@A,\@B)               union of two integer lists
+    - setintersect(\@A,\@B)           intersection of two integer lists
+    - setminus(\@A,\@B)               difference of two integer lists
+    - setdelta(\@A,\@B)               symmetric difference of two int lists
+    - toset(\@A)                      convert to unique sorted integer list
 
     [FIXES]
 

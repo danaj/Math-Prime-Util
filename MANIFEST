@@ -238,6 +238,7 @@ t/26-powerful.t
 t/26-powersum.t
 t/26-practical.t
 t/26-setbinop.t
+t/26-setops.t
 t/26-smooth.t
 t/26-sumset.t
 t/26-vec.t

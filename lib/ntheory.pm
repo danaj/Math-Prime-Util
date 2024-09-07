@@ -220,6 +220,11 @@ Tags:
 
   setbinop { ... } \@A[,\@B]          apply operation to all a,b [a:A,b:B]
   sumset \@A[,\@B]                    apply a+b to all a,b [a:A,b:B]
+  setunion(\@A,\@B)                   union of two integer lists
+  setintersect(\@A,\@B)               intersection of two integer lists
+  setminus(\@A,\@B)                   difference of two integer lists
+  setdelta(\@A,\@B)                   symmetric difference of two int lists
+  toset(\@A)                          convert to unique sorted integer list
 
 =head2 MATH
 

@@ -99,7 +99,7 @@ our @EXPORT_OK =
       negmod invmod addmod submod mulmod divmod powmod muladdmod mulsubmod
       vecsum vecmin vecmax vecprod vecreduce vecextract vecequal vecuniq
       vecany vecall vecnotall vecnone vecfirst vecfirstidx vecmex vecpmex
-      setbinop sumset
+      setbinop sumset setunion setintersect setminus setdelta toset
       moebius mertens liouville sumliouville prime_omega prime_bigomega
       euler_phi jordan_totient exp_mangoldt sumtotient
       partitions bernfrac bernreal harmfrac harmreal
@@ -3421,7 +3421,7 @@ removed.  The original ordering is preserved.  All values B<must> be defined.
 
 This is similar to L<List::Util::uniq> but restricted to integers,
 while L<List::Util::uniq> supports undef and arbitrary types.
-In return our function is about 2x faster in XS for native signed integers.
+In return our function is 2-10x faster in XS for native signed integers.
 
 =head2 vecequal
 
@@ -3471,6 +3471,17 @@ C<vecpmex>() = 1.
 C<vecpmex>(1,2,...,I<w>) = I<w>+1.
 
 
+=head2 toset
+
+Given an array reference containing integers, returns a list ideal for set
+operations.  Duplicates will be removed and the result sorted.
+While many of the set operations below do not require this,
+L</setsearch> and L</setinsert> must have the input in this form.
+
+After the set is in this form, the size of the set is simply the list length.
+Similarly the set minimum and maximum are trivial.
+
+
 =head2 setbinop
 
   my @sumset = setbinop { $a + $b } [1,2,3], [2,3,4];  # [3,4,5,6,7]
@@ -3503,6 +3514,73 @@ This is a specific set operation, and is similar to:
 
 In Mathematica one can use C<Total[Tuples[A,B],{2}]>.
 In Pari/GP one can use C<setbinop((a,b)->a+b,X,Y)>.
+
+=head2 setunion
+
+Given exactly two array references of integers, treats them as sets and
+returns the union as a list.
+The returned list will have all elements that appear in either input set.
+
+The input arrays must only contain integers (signed integers, bigints,
+objects that evaluate to integers, strings representing integers are all ok).
+Duplications and non-sorted lists are allowed.
+
+The result will be sorted and all duplicates removed.
+
+This corresponds to Pari's C<setunion> function,
+Mathematica's C<Union> function, and
+Sage's C<union> function on Set objects.
+
+=head2 setintersect
+
+Given exactly two array references of integers, treats them as sets and
+returns the intersection as a list.
+The returned list will have all elements that appear in both input sets.
+
+The input arrays must only contain integers (signed integers, bigints,
+objects that evaluate to integers, strings representing integers are all ok).
+Duplications and non-sorted lists are allowed.
+
+The result will be sorted and all duplicates removed.
+
+This corresponds to Pari's C<setintersect> function
+and Mathematica's C<Intersection> function, and
+Sage's C<intersection> function on Set objects.
+
+=head2 setminus
+
+Given exactly two array references of integers, treats them as sets and
+returns the difference as a list.
+The returned list will have all elements that appear in the first set but
+not in the second.
+
+The input arrays must only contain integers (signed integers, bigints,
+objects that evaluate to integers, strings representing integers are all ok).
+Duplications and non-sorted lists are allowed.
+
+The result will be sorted and all duplicates removed.
+
+This corresponds to Pari's C<setminus> function, and
+Sage's C<difference> function on Set objects.
+
+=head2 setdelta
+
+Given exactly two array references of integers, treats them as sets and
+returns the symmetric difference as a list.
+The returned list will have all elements that appear in only one of the
+two input sets.
+
+The input arrays must only contain integers (signed integers, bigints,
+objects that evaluate to integers, strings representing integers are all ok).
+Duplications and non-sorted lists are allowed.
+
+The result will be sorted and all duplicates removed.
+
+This corresponds to Pari's C<setdelta> function
+and Mathematica's C<SymmetricDifference> function, and
+Sage's C<symmetric_difference> function on Set objects.
+
+
 
 =head2 todigits
 
@@ -6757,9 +6835,9 @@ Additionally important for servers, L<Crypt::Primes/maurer> uses excessive
 system entropy and can grind to a halt if C</dev/random> is exhausted
 (it can take B<days> to return).
 
-=head2 SUMSETS
+=head2 SETS
 
-  Finding the sumset size of the first 10,000 primes.
+Finding the sumset size of the first 10,000 primes.
 
   my %r;  my $p = primes(nth_prime(10000));
 
@@ -6768,6 +6846,18 @@ system entropy and can grind to a halt if C</dev/random> is exhausted
    9.4s 3900MB  Pari/GP X=primes(10000); #setbinop((a,b)->a+b,X,X)
    2.8s    3MB  say scalar setbinop { $a+$b } $p;
    0.4s    3MB  say scalar sumset $p;
+
+Set intersection of C<[-1000..100]> and C<[-100..1000]>.
+
+    12 uS  Pari/GP 2.17.0
+    16 uS  Set::IntSpan::Fast
+    24 uS  setintersect
+   167 uS  PP::setintersect
+   341 uS  Set::Object
+  1659 uS  Set::Scalar
+
+Set::IntSpan::Fast is very fast when the sets are single spans, but for
+sparse single values it is ~400x slower.  The other modules don't change.
 
 
 =head1 AUTHORS

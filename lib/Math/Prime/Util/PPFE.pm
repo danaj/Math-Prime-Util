@@ -264,6 +264,11 @@ sub entropy_bytes {
 *vecuniq = \&Math::Prime::Util::PP::vecuniq;
 *setbinop = \&Math::Prime::Util::PP::setbinop;
 *sumset = \&Math::Prime::Util::PP::sumset;
+*setunion = \&Math::Prime::Util::PP::setunion;
+*setintersect = \&Math::Prime::Util::PP::setintersect;
+*setminus = \&Math::Prime::Util::PP::setminus;
+*setdelta = \&Math::Prime::Util::PP::setdelta;
+*toset = \&Math::Prime::Util::PP::toset;
 
 *tozeckendorf = \&Math::Prime::Util::PP::tozeckendorf;
 *fromzeckendorf = \&Math::Prime::Util::PP::fromzeckendorf;

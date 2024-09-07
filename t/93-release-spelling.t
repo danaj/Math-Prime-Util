@@ -51,7 +51,7 @@ add_stopwords(qw/-th
                  lshiftint rshiftint rashiftint signint cmpint
                  biquadrate powerfree k-powerfree k-free
                  sumpowerful powersum
-                 sumset setbinop
+                 sumset setbinop setunion setintersect setminus setdelta toset
                  pp 100ns/);
 
 all_pod_files_spelling_ok();

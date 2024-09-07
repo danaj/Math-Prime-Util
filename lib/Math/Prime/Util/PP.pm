@@ -10576,6 +10576,31 @@ sub shuffle {
   @S;
 }
 
+###############################################################################
+
+sub vecsort {
+  my(@s) = @_;
+  _validate_integer($_) for @s;
+  @s = sort { $a<=>$b } @s;
+  return @s;
+}
+
+sub vecsorti {
+  croak 'Not an array reference' unless (ref($_[0]) || '') eq 'ARRAY';
+  _validate_integer($_) for @{$_[0]};
+
+  #$_[0] = [sort { $a <=> $b } @{$_[0]}];
+
+  @{$_[0]} = sort { $a <=> $b } @{$_[0]};
+
+  # This forces in-place sort
+  #use Data::Alias qw/alias/;
+  #alias my @ar = @{$_[0]};
+  #@ar = sort { $a<=>$b } @ar;
+
+  1;
+}
+
 sub _sorted_keys {
   my $rset = shift;
   my @ret = sort { $a <=> $b } keys %$rset;
@@ -10638,6 +10663,101 @@ sub vecuniq {
   # We have decided to skip validation and not support undefined values.
   return grep { not $seen{$k = $_}++; } @_;
 }
+
+sub setunion {
+  my($ra,$rb) = @_;
+  croak 'Not an array reference' unless (ref($ra) || '') eq 'ARRAY';
+  croak 'Not an array reference' unless (ref($rb) || '') eq 'ARRAY';
+  my(%seen,$k);
+  my @set = grep { not $seen{$k = $_}++ } @$ra,@$rb;
+  #vecsorti(\@set) && return @set;
+  for (@set) { return vecsort(@set) if !ref($_) && ($_ >= INTMAX || $_ <= INTMIN); }
+  @set = sort { $a<=>$b } @set;
+  return @set;
+}
+
+sub setintersect {
+  my($ra,$rb) = @_;
+  croak 'Not an array reference' unless (ref($ra) || '') eq 'ARRAY';
+  croak 'Not an array reference' unless (ref($rb) || '') eq 'ARRAY';
+  ($ra,$rb) = ($rb,$ra) if scalar(@$ra) > scalar(@$rb);  # Performance
+  my(%ina,%seen,$k);
+  $ina{$_}=undef for @$ra;
+  my @set = grep { exists $ina{$_} && not $seen{$k=$_}++ } @$rb;
+  for (@set) { return vecsort(@set) if !ref($_) && ($_ >= INTMAX || $_ <= INTMIN); }
+  @set = sort { $a<=>$b } @set;
+  return @set;
+}
+
+sub setminus {
+  my($ra,$rb) = @_;
+  croak 'Not an array reference' unless (ref($ra) || '') eq 'ARRAY';
+  croak 'Not an array reference' unless (ref($rb) || '') eq 'ARRAY';
+  my(%inb,%seen,$k);
+  $inb{$_}=undef for @$rb;
+  my @set = grep { !exists $inb{$_} && not $seen{$k=$_}++ } @$ra;
+  for (@set) { return vecsort(@set) if !ref($_) && ($_ >= INTMAX || $_ <= INTMIN); }
+  @set = sort { $a<=>$b } @set;
+  return @set;
+}
+
+sub setdelta {
+  my($ra,$rb) = @_;
+  croak 'Not an array reference' unless (ref($ra) || '') eq 'ARRAY';
+  croak 'Not an array reference' unless (ref($rb) || '') eq 'ARRAY';
+
+  my(%ina, %inb, %s);
+  $ina{$_}=undef for @$ra;
+  $inb{$_}=undef for @$rb;
+  $s{$_}=undef for grep { !exists $inb{$_} } @$ra;
+  $s{$_}=undef for grep { !exists $ina{$_} } @$rb;
+  return scalar(keys %s) unless wantarray;
+  my @set = keys %s;
+  for (@set) { return vecsort(@set) if !ref($_) && ($_ >= INTMAX || $_ <= INTMIN); }
+  @set = sort { $a<=>$b } @set;
+  return @set;
+}
+
+# Can do setminus([$min..$max],\@L) albeit 2x slower
+sub _setcomplement {
+  my($ra, $min, $max) = @_;
+  croak 'Not an array reference' unless (ref($ra) || '') eq 'ARRAY';
+  validate_integer($min);
+  validate_integer($max);
+  my %ina;
+  $ina{$_} = undef for @$ra;
+  my @s;
+  if ((ref($min) && !ref($max)) || (!ref($min) && ref($max))) {
+    while ($min <= $max) {
+      push @s, $min unless exists $ina{$min};
+      $min = Maddint($min,1);
+    }
+  } else {
+    while ($min <= $max) {
+      push @s, $min unless exists $ina{$min};
+      $min++;
+    }
+  }
+  @s;
+}
+
+sub toset {
+  my($ra) = @_;
+  croak 'Not an array reference' unless (ref($ra) || '') eq 'ARRAY';
+
+  my %s;
+  $s{$_}=undef for @$ra;
+  return scalar(keys %s) unless wantarray;
+  my @set = keys %s;
+  for (@set) { return vecsort(@set) if !ref($_) && ($_ >= INTMAX || $_ <= INTMIN); }
+  @set = sort { $a<=>$b } @set;
+  return @set;
+}
+
+
+# TODO:
+# setsearch(L, val, \$r);
+# setinsert(L, val);
 
 ###############################################################################
 

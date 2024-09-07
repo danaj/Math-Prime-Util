@@ -473,6 +473,34 @@ static int arrayref_to_iv_array(pTHX_ IV** ret, SV* sva, const char* fstr)
   return len;
 }
 
+/* Returns -1 for IVs, 1 for UVs, 0 for failed (overflow or bigints) */
+static iset_t arrayref_to_iset(pTHX_ int *status, SV* sva, const char* fstr)
+{
+  AV *av;
+  iset_t s;
+  UV val;
+  int len, i, istatus;
+
+  if ((!SvROK(sva)) || (SvTYPE(SvRV(sva)) != SVt_PVAV))
+    croak("%s argument must be an array reference", fstr);
+  av = (AV*) SvRV(sva);
+  len = av_len(av);
+  s = iset_create((unsigned long)len+1);
+  if (len < 0) { *status = 1; return s; }
+  for (i = 0; i <= len; i++) {
+    SV **iv = av_fetch(av, i, 0);
+    if (iv == 0) break;
+    istatus = _validate_and_set(&val, aTHX_ *iv, IFLAG_ANY);
+    if (istatus == 0) break;
+    iset_add(&s, val, istatus);
+    if (iset_sign(s) == 0) break;
+  }
+  *status = (i <= len) ? 0 : iset_sign(s);
+  if (*status == 0)
+    iset_destroy(&s);
+  return s;
+}
+
 static int _compare_array_refs(pTHX_ SV* a, SV* b)
 {
   AV *ava, *avb;
@@ -496,12 +524,10 @@ static int _compare_array_refs(pTHX_ SV* a, SV* b)
     sva = *iva;
     svb = *ivb;
 
-    /* One undef and one defined value are not equal. */
-    if (SvOK(sva) != SvOK(svb))
-      return 0;
-    /* Two undefs are fine. */
-    if (!SvOK(sva) && !SvOK(svb))
+    if (!SvOK(sva) && !SvOK(svb))  /* Two undefs are fine. */
       continue;
+    if (!SvOK(sva) || !SvOK(svb))  /* One undef isn't ok. */
+      return 0;
     /* Hashes, I/O, etc. are not ok. */
     if (SvTYPE(sva) >= SVt_PVAV || SvTYPE(svb) >= SVt_PVAV)
       return -1;
@@ -3951,7 +3977,7 @@ void sumset(IN SV* sva, IN SV* svb = 0)
     s = iset_create( 10UL * ((unsigned long)alen + (unsigned long)blen + 2) );
     for (i = 0; i <= alen; i++)
       for (j = 0; j <= blen; j++)
-        iset_add(&s, (UV) (seta[i] + setb[j]));
+        iset_add(&s, (UV) (seta[i] + setb[j]), -1);
     if (setb != seta) Safefree(setb);
     Safefree(seta);
     sz = iset_size(s);
@@ -3977,8 +4003,7 @@ void setbinop(SV* block, IN SV* sva, IN SV* svb = 0)
     iset_t s;
     int alen, blen, i, j, status;
     unsigned long k, sz;
-    UV ret;
-    IV *setr;
+    UV ret, *setr;
 
     HV *stash;
     CV *cv = sv_2cv(block, &stash, &gv, 0);
@@ -4045,7 +4070,8 @@ void setbinop(SV* block, IN SV* sva, IN SV* svb = 0)
           { ENTER; MULTICALL; LEAVE; }
           status = _validate_and_set(&ret, aTHX_ *PL_stack_sp, IFLAG_ANY);
           if (status == 0) break;
-          iset_add(&s, ret);
+          iset_add(&s, ret, status);
+          if (iset_sign(s) == 0) break;
         }
         if (j <= blen) break;
       }
@@ -4064,7 +4090,8 @@ void setbinop(SV* block, IN SV* sva, IN SV* svb = 0)
           call_sv((SV*)cv, G_SCALAR);
           status = _validate_and_set(&ret, aTHX_ *PL_stack_sp, IFLAG_ANY);
           if (status == 0) break;
-          iset_add(&s, ret);
+          iset_add(&s, ret, status);
+          if (iset_sign(s) == 0) break;
         }
         if (j <= blen) break;
       }
@@ -4085,15 +4112,130 @@ void setbinop(SV* block, IN SV* sva, IN SV* svb = 0)
       XSRETURN_UV(sz);
     }
     /* ====== Get sorted set values.  Put on return stack. ====== */
-    New(0, setr, sz, IV);
-    iset_allvals(s, (UV*)setr);
-    iset_destroy(&s);
+    New(0, setr, sz, UV);
+    iset_allvals(s, setr);
     EXTEND(SP,sz);
-    for (k = 0; k < sz; k++)
-      ST(k) = sv_2mortal(newSViv(setr[k]));
+    if (iset_sign(s) == -1)
+      for (k = 0; k < sz; k++)
+        ST(k) = sv_2mortal(newSViv((IV)setr[k]));
+    else
+      for (k = 0; k < sz; k++)
+        ST(k) = sv_2mortal(newSVuv(setr[k]));
     Safefree(setr);
+    iset_destroy(&s);
     XSRETURN(sz);
   }
+
+void setunion(IN SV* sva, IN SV* svb)
+  PROTOTYPE: $$
+  ALIAS:
+    setintersect = 1
+    setminus = 2
+    setdelta = 3
+  PREINIT:
+    int alen, blen, i, j;
+    IV *seta, *setb;
+    iset_t s;
+    unsigned long k, sz;
+  PPCODE:
+    /* To simplify things, we only do IVs. */
+    alen = arrayref_to_iv_array(aTHX_ &seta, sva, "setunion first arg");
+    blen = arrayref_to_iv_array(aTHX_ &setb, svb, "setunion second arg");
+    if (alen < 0 || blen < 0) {  /* IV Overflow  or  bigint */
+      Safefree(seta);
+      Safefree(setb);
+      switch (ix) {
+        case 0: _vcallsubn(aTHX_ GIMME_V,VCALL_PP,"setunion",    items,0);break;
+        case 1: _vcallsubn(aTHX_ GIMME_V,VCALL_PP,"setintersect",items,0);break;
+        case 2: _vcallsubn(aTHX_ GIMME_V,VCALL_PP,"setminus",    items,0);break;
+        case 3:
+        default:_vcallsubn(aTHX_ GIMME_V,VCALL_PP,"setdelta",    items,0);break;
+      }
+      return;
+    }
+    s = iset_create( (unsigned long)(alen+1) + (unsigned long)(blen+1) );
+    if (ix == 0) {         /* UNION */
+      for (i = 0; i <= alen; i++)
+        iset_add(&s, (UV) seta[i], -1);
+      for (j = 0; j <= blen; j++)
+        iset_add(&s, (UV) setb[j], -1);
+    } else if (ix == 1) {  /* INTERSECTION */
+      iset_t sa = iset_create( (unsigned long)(alen+1) );
+      for (i = 0; i <= alen; i++)
+        iset_add(&sa, (UV) seta[i], -1);
+      for (j = 0; j <= blen; j++)
+        if (iset_contains(sa, (UV)setb[j]))
+          iset_add(&s, (UV) setb[j], -1);
+      iset_destroy(&sa);
+    } else if (ix == 2) {  /* DIFFERENCE */
+      iset_t sb = iset_create( (unsigned long)(blen+1) );
+      for (j = 0; j <= blen; j++)
+        iset_add(&sb, (UV) setb[j], -1);
+      for (i = 0; i <= alen; i++)
+        if (!iset_contains(sb, (UV)seta[i]))
+          iset_add(&s, (UV) seta[i], -1);
+      iset_destroy(&sb);
+    } else if (ix == 3) {  /* SYMMETRIC DIFFERENCE */
+      iset_t sa = iset_create( (unsigned long)(alen+1) );
+      iset_t sb = iset_create( (unsigned long)(blen+1) );
+      for (i = 0; i <= alen; i++)
+        iset_add(&sa, (UV) seta[i], -1);
+      for (j = 0; j <= blen; j++)
+        iset_add(&sb, (UV) setb[j], -1);
+      for (i = 0; i <= alen; i++)
+        if (!iset_contains(sb, (UV)seta[i]))
+          iset_add(&s, (UV) seta[i], -1);
+      for (j = 0; j <= blen; j++)
+        if (!iset_contains(sa, (UV)setb[j]))
+          iset_add(&s, (UV) setb[j], -1);
+      iset_destroy(&sa);
+      iset_destroy(&sb);
+    } else {
+      croak("unknown function called");
+    }
+    Safefree(setb);
+    Safefree(seta);
+    sz = iset_size(s);
+    if (GIMME_V == G_SCALAR) {
+      iset_destroy(&s);
+      XSRETURN_UV(sz);
+    }
+    /* Retrieve sorted set values and put them on return stack */
+    New(0, seta, sz, IV);
+    iset_allvals(s, (UV*)seta);
+    iset_destroy(&s);
+    for (k = 0; k < sz; k++)
+      XPUSHs(sv_2mortal(newSViv(seta[k])));
+    Safefree(seta);
+
+void toset(IN SV* sva)
+  PREINIT:
+    iset_t s;
+    int status;
+    UV *setdata;
+    unsigned long k, sz;
+  PPCODE:
+    s = arrayref_to_iset(aTHX_ &status, sva, "toset:");
+    if (status == 0) {
+      iset_destroy(&s);
+      _vcallsubn(aTHX_ GIMME_V,VCALL_PP,"toset",items,0);
+      return;
+    }
+    sz = iset_size(s);
+    if (GIMME_V == G_SCALAR) {
+      iset_destroy(&s);
+      XSRETURN_UV(sz);
+    }
+    /* Retrieve sorted set values and put them on return stack */
+    New(0, setdata, sz, UV);
+    iset_allvals(s, setdata);
+    iset_destroy(&s);
+    EXTEND(SP, (IV)sz);
+    for (k = 0; k < sz; k++) {
+      SV* svi = (status == 1) ? newSVuv(setdata[k]) : newSViv((IV)setdata[k]);
+      PUSHs(sv_2mortal(svi));
+    }
+    Safefree(setdata);
 
 void
 numtoperm(IN UV n, IN SV* svk)
@@ -5339,19 +5481,19 @@ void vecuniq(...)
   PROTOTYPE: @
   PREINIT:
     iset_t s;
-    int i, status, retvals, seen_iv, seen_uv;
+    int i, status, retvals;
     UV n;
     unsigned long count;
   PPCODE:
     retvals = (GIMME_V != G_SCALAR);
-    seen_iv = seen_uv = 0;
     s = iset_create(items);
     for (status = 1, i = 0; i < items; i++) {
       status = _validate_and_set(&n, aTHX_ ST(i), IFLAG_ANY);
-      if (status == -1) seen_iv = 1;
-      if (status == 1 && n > (UV)IV_MAX) seen_uv = 1;
-      if (seen_iv && seen_uv) { status = 0; break; }
-      if (iset_add(&s,n) && retvals)
+      if (status == 0) break;
+      if (iset_add(&s, n, status) == 0)
+        continue;
+      if (iset_sign(s) == 0) { status = 0; break; }
+      if (retvals)
         PUSHs(sv_2mortal( (status == 1) ? newSVuv(n) : newSViv((IV)n) ));
     }
     count = iset_size(s);
