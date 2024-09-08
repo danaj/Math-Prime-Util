@@ -316,9 +316,6 @@ UV* powerful_numbers_range(UV* npowerful, UV lo, UV hi, UV k)
 {
   UV *pn, npn, i;
 
-  /* Like powerful_count, we ignore 0. */
-  if (lo < 1) lo = 1;
-
   /* For small ranges it is faster to test each number vs generate. */
   UV const single_thresh = (    (lo <     500000U)  ?   30
                               : (lo <  400000000U)  ?  160  :  600 )

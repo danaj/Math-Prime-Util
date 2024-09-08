@@ -130,11 +130,12 @@ static UV _inverse_interpolate(UV lo, UV hi, UV n,
     UV x0 = lo,  x1 = lo + ((hi-lo)>>1);   /* x2 = hi */
     UV rx1 = CALLBACK(x1);
     IV fx0 = rlo-n,  fx1 = rx1-n,  fx2=rhi-n+1;
-    if(_dbgprint)printf("  2s lo %lu  mid %lu  hi %lu  (%lu)\n", lo, x1, hi, (rx1>n) ? rx1-n : n-rx1);
 
     double pos = ((double)(x1-x0) * (double)fx1)
                / sqrtl((double)fx1 * (double)fx1 - (double)fx0 * (double)fx2);
     UV x3 = x1 - (IV)(pos+0.5);
+
+    if(_dbgprint)printf("  2s lo %lu  mid %lu  hi %lu  (%lu)\n", lo, x1, hi, (rx1>n) ? rx1-n : n-rx1);
 
     if (x3 >= hi || x3 <= lo || x3 == x1) {
       /* We got nothing from the new point.  Just use the bisection. */

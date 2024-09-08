@@ -61,11 +61,10 @@ static UV squarefree_count(UV n)
 {
   signed char* mu;
   IV *M, *Mx, Mxisum, mert;
-  UV sqrtn, I, D, i, j, S1 = 0, S2 = 0;
+  UV I, D, i, j, S1 = 0, S2 = 0;
 
   if (n < 4) return n;
 
-  sqrtn = isqrt(n);
   I = rootint(n, 5);   /* times loglogn ^ (4/5) */
   D = isqrt(n / I);
   mu = range_moebius(0, D);

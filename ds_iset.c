@@ -119,6 +119,7 @@ void iset_allvals(const iset_t set, UV* array) {
 }
 
 
+/******************************************************************************/
 
 void iset_union_with(iset_t *set, const iset_t L) {
   unsigned long i, lsize;
@@ -131,46 +132,93 @@ void iset_union_with(iset_t *set, const iset_t L) {
   for (i = 0; i < lsize; i++)
     if (v = larr[i], v != 0)
       iset_add(set, v, lsign);
-  set->contains_zero |= L.contains_zero;
+  if (L.contains_zero && !set->contains_zero)  iset_add(set,0,1);
 }
 
 void iset_intersect_with(iset_t *set, const iset_t L) {
-  unsigned long i, setsize;
-  UV v, *setarr;
-  int setsign, ivuv;;
-  iset_t s;
-
-  if (set->sign == 0 || L.sign == 0)  return;  /* Invalid sets */
-
-  setsize = set->maxsize;
-  setarr = set->arr;
-  setsign = set->sign;
-
-  s = iset_create(setsize);
-
-  /* one set contains negative numbers, the other contains large unsigned */
-  ivuv = ( (L.sign == -1 && set->sign == 1 && set->seen_uv) ||
-           (set->sign == -1 && L.sign == 1 && L.seen_uv) );
-
-  for (i = 0; i < setsize; i++) {
-    if (v = setarr[i], v != 0) {
-      if (iset_contains(L,v)) {
-        iset_add(&s, v, setsign);
-        if (ivuv && v > (UV)IV_MAX)
-          s.sign = 0;
-      }
-    }
-  }
-
-  set->contains_zero &= L.contains_zero;
+  iset_t s = iset_intersection_of(*set, L);
   iset_destroy(set);
   *set = s;
 }
 
+void iset_difference_with(iset_t *set, const iset_t L) {
+  iset_t s = iset_difference_of(*set, L);
+  iset_destroy(set);
+  *set = s;
+}
+
+void iset_symdiff_with(iset_t *set, const iset_t L) {
+  iset_t s = iset_symdiff_of(*set, L);
+  iset_destroy(set);
+  *set = s;
+}
+
+/******************************************************************************/
+
+iset_t iset_union_of(const iset_t A, const iset_t B) {
+  unsigned long i;
+  UV v;
+  iset_t s = iset_create(A.size + B.size);
+
+  for (i = 0; i < A.maxsize; i++)
+    if (v = A.arr[i], v != 0)
+      iset_add(&s, v, A.sign);
+  for (i = 0; i < B.maxsize; i++)
+    if (v = B.arr[i], v != 0)
+      iset_add(&s, v, B.sign);
+  if (A.contains_zero || B.contains_zero)  iset_add(&s,0,1);
+  return s;
+}
+
+iset_t iset_intersection_of(const iset_t A, const iset_t B) {
+  int samesign = (A.sign == B.sign);
+  unsigned long i;
+  UV v;
+  iset_t s = iset_create((A.size > B.size) ? A.size : B.size);
+
+  for (i = 0; i < A.maxsize; i++)
+    if (v = A.arr[i], v != 0)
+      if ( !((v > (UV)IV_MAX) && !samesign) && iset_contains(B, v))
+        iset_add(&s, v, A.sign);
+  if (A.contains_zero && B.contains_zero)  iset_add(&s,0,1);
+  return s;
+}
+iset_t iset_difference_of(const iset_t A, const iset_t B) {
+  int samesign = (A.sign == B.sign);
+  unsigned long i;
+  UV v;
+  iset_t s = iset_create((A.size > B.size) ? A.size : B.size);
+
+  for (i = 0; i < A.maxsize; i++)
+    if (v = A.arr[i], v != 0)
+      if ( ((v > (UV)IV_MAX) && !samesign) || !iset_contains(B, v) )
+        iset_add(&s, v, A.sign);
+  if (A.contains_zero && !B.contains_zero)  iset_add(&s,0,1);
+  return s;
+}
+iset_t iset_symdiff_of(const iset_t A, const iset_t B) {
+  int samesign = (A.sign == B.sign);
+  unsigned long i;
+  UV v;
+  iset_t s = iset_create((A.size > B.size) ? A.size : B.size);
+
+  for (i = 0; i < A.maxsize; i++)
+    if (v = A.arr[i], v != 0)
+      if ( ((v > (UV)IV_MAX) && !samesign) || !iset_contains(B, v) )
+        iset_add(&s, v, A.sign);
+  for (i = 0; i < B.maxsize; i++)
+    if (v = B.arr[i], v != 0)
+      if ( ((v > (UV)IV_MAX) && !samesign) || !iset_contains(A, v) )
+        iset_add(&s, v, B.sign);
+  if ((A.contains_zero + B.contains_zero) == 1)  iset_add(&s,0,1);
+  return s;
+}
+
+/******************************************************************************/
 
 void iset_test(void) {
   iset_t s;
-  UV i, sz, *S;
+  UV i, *S;
   const unsigned long ts = 30000000;
 
   printf("create .. "); fflush(stdout);
@@ -190,6 +238,7 @@ void iset_test(void) {
   if (iset_contains(s,ts-1) != 1) croak("fail 999");
   if (iset_contains(s,ts) != 0) croak("fail 1000");
   if (iset_contains(s,0) != 1) croak("fail 0");
+  if (iset_sign(s) != 1) croak("fail sign");
   if (iset_size(s) != ts) croak("fail size");
 
   New(0,S,iset_size(s),UV);

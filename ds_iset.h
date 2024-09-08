@@ -38,6 +38,13 @@ void iset_allvals(const iset_t set, UV* array);
 
 void iset_union_with(iset_t *set, const iset_t L);
 void iset_intersect_with(iset_t *set, const iset_t L);
+void iset_difference_with(iset_t *set, const iset_t L);
+void iset_symdiff_with(iset_t *set, const iset_t L);
+
+iset_t iset_union_of(const iset_t A, const iset_t B);
+iset_t iset_intersection_of(const iset_t A, const iset_t B);
+iset_t iset_difference_of(const iset_t A, const iset_t B);
+iset_t iset_symdiff_of(const iset_t A, const iset_t B);
 
 void iset_test(void);
 
