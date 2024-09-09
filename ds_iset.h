@@ -7,23 +7,32 @@
 /*                        INTEGER SET DATA STRUCTURE                          */
 /******************************************************************************/
 
+#define ISET_TYPE_ANY      0
+#define ISET_TYPE_UV       1
+#define ISET_TYPE_IV       2
+#define ISET_TYPE_INVALID  3
+
 typedef struct {
   UV *arr;
   UV mask;
   unsigned long maxsize;
   unsigned long size;
   char contains_zero;
-  char seen_uv;
-  char sign;
+  unsigned char type;
 } iset_t;
 
 iset_t iset_create(unsigned long init_size);
 void  iset_destroy(iset_t *set);
 
-static unsigned long iset_size(const iset_t set) { return set.size; }
-
 /* Returns 1 if unsigned, -1 if signed, 0 if messed up. */
-static int iset_sign(const iset_t set) { return set.sign; }
+static int iset_sign(const iset_t set) {
+  static const char _iset_typeret[4] = {1,1,-1,0};
+  return _iset_typeret[set.type];
+}
+static int iset_is_invalid(const iset_t set)
+  { return set.type == ISET_TYPE_INVALID; }
+
+static unsigned long iset_size(const iset_t set) { return set.size; }
 
 int iset_contains(const iset_t set, UV val);   /* returns 0 or 1 */
 

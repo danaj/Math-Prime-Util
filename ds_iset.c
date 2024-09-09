@@ -32,8 +32,7 @@ iset_t iset_create(unsigned long init_size) {
   iset_t set;
   int bits = 4;
 
-  set.size = set.contains_zero = set.seen_uv = 0;
-  set.sign = 1;
+  set.size = set.contains_zero = set.type = 0;
 
   while (bits < BITS_PER_WORD-1 && ((UVCONST(1) << bits) * FILL_RATIO + 1) < init_size)
     bits++;
@@ -44,9 +43,7 @@ iset_t iset_create(unsigned long init_size) {
 }
 
 void iset_destroy(iset_t *set) {
-  set->maxsize = set->size = 0;
-  set->contains_zero = set->seen_uv = 0;
-  set->sign = 1;
+  set->maxsize = set->size = set->contains_zero = set->type = 0;
   Safefree(set->arr);
   set->arr = 0;
 }
@@ -84,13 +81,10 @@ static void _iset_resize(iset_t *set) {
 
 int iset_add(iset_t *set, UV val, int sign) {
   UV h;
-  if (sign != 1 && sign != -1)
-    set->sign = 0;
-  if (val > (UV)IV_MAX) {
-    if (sign == 1) set->seen_uv = 1;
-    if (set->seen_uv && (sign != set->sign)) set->sign = 0;
-    else if (sign == -1 && set->sign ==  1)  set->sign = -1;
-  }
+  if (sign == 0)
+    set->type = ISET_TYPE_INVALID;
+  else if (val > (UV)IV_MAX)
+    set->type |= ((sign > 0) ? ISET_TYPE_UV : ISET_TYPE_IV);
   if (val == 0) {
     if (set->contains_zero)  return 0;
     set->contains_zero = 1;
@@ -114,8 +108,8 @@ void iset_allvals(const iset_t set, UV* array) {
     if (set.arr[j] != 0)
       array[i++] = set.arr[j];
   if (i != set.size) croak("iset_allvals bad size");
-  if (set.sign == -1) sort_iv_array((IV*)array, i);
-  else                sort_uv_array(array, i);
+  if (set.type == ISET_TYPE_IV) sort_iv_array((IV*)array, i);
+  else                          sort_uv_array(array, i);
 }
 
 
@@ -124,11 +118,10 @@ void iset_allvals(const iset_t set, UV* array) {
 void iset_union_with(iset_t *set, const iset_t L) {
   unsigned long i, lsize;
   UV v, *larr;
-  int lsign;
+  int lsign = iset_sign(L);;
 
   lsize = L.maxsize;
   larr = L.arr;
-  lsign = L.sign;
   for (i = 0; i < lsize; i++)
     if (v = larr[i], v != 0)
       iset_add(set, v, lsign);
@@ -158,33 +151,41 @@ void iset_symdiff_with(iset_t *set, const iset_t L) {
 iset_t iset_union_of(const iset_t A, const iset_t B) {
   unsigned long i;
   UV v;
+  int asign = iset_sign(A), bsign = iset_sign(B);
   iset_t s = iset_create(A.size + B.size);
 
   for (i = 0; i < A.maxsize; i++)
     if (v = A.arr[i], v != 0)
-      iset_add(&s, v, A.sign);
+      iset_add(&s, v, asign);
   for (i = 0; i < B.maxsize; i++)
     if (v = B.arr[i], v != 0)
-      iset_add(&s, v, B.sign);
+      iset_add(&s, v, bsign);
   if (A.contains_zero || B.contains_zero)  iset_add(&s,0,1);
   return s;
 }
 
 iset_t iset_intersection_of(const iset_t A, const iset_t B) {
-  int samesign = (A.sign == B.sign);
+  int asign = iset_sign(A), bsign = iset_sign(B);
+  int samesign = (asign == bsign);
   unsigned long i;
   UV v;
-  iset_t s = iset_create((A.size > B.size) ? A.size : B.size);
+  iset_t s;
+
+  if (A.size > B.maxsize)               /* Swap for performance. */
+    return iset_intersection_of(B,A);
+
+  s = iset_create((A.size > B.size) ? A.size : B.size);
 
   for (i = 0; i < A.maxsize; i++)
     if (v = A.arr[i], v != 0)
       if ( !((v > (UV)IV_MAX) && !samesign) && iset_contains(B, v))
-        iset_add(&s, v, A.sign);
+        iset_add(&s, v, asign);
   if (A.contains_zero && B.contains_zero)  iset_add(&s,0,1);
   return s;
 }
 iset_t iset_difference_of(const iset_t A, const iset_t B) {
-  int samesign = (A.sign == B.sign);
+  int asign = iset_sign(A), bsign = iset_sign(B);
+  int samesign = (asign == bsign);
   unsigned long i;
   UV v;
   iset_t s = iset_create((A.size > B.size) ? A.size : B.size);
@@ -192,12 +193,13 @@ iset_t iset_difference_of(const iset_t A, const iset_t B) {
   for (i = 0; i < A.maxsize; i++)
     if (v = A.arr[i], v != 0)
       if ( ((v > (UV)IV_MAX) && !samesign) || !iset_contains(B, v) )
-        iset_add(&s, v, A.sign);
+        iset_add(&s, v, asign);
   if (A.contains_zero && !B.contains_zero)  iset_add(&s,0,1);
   return s;
 }
 iset_t iset_symdiff_of(const iset_t A, const iset_t B) {
-  int samesign = (A.sign == B.sign);
+  int asign = iset_sign(A), bsign = iset_sign(B);
+  int samesign = (asign == bsign);
   unsigned long i;
   UV v;
   iset_t s = iset_create((A.size > B.size) ? A.size : B.size);
@@ -205,11 +207,11 @@ iset_t iset_symdiff_of(const iset_t A, const iset_t B) {
   for (i = 0; i < A.maxsize; i++)
     if (v = A.arr[i], v != 0)
       if ( ((v > (UV)IV_MAX) && !samesign) || !iset_contains(B, v) )
-        iset_add(&s, v, A.sign);
+        iset_add(&s, v, asign);
   for (i = 0; i < B.maxsize; i++)
     if (v = B.arr[i], v != 0)
       if ( ((v > (UV)IV_MAX) && !samesign) || !iset_contains(A, v) )
-        iset_add(&s, v, B.sign);
+        iset_add(&s, v, bsign);
   if ((A.contains_zero + B.contains_zero) == 1)  iset_add(&s,0,1);
   return s;
 }
@@ -239,6 +241,7 @@ void iset_test(void) {
   if (iset_contains(s,ts) != 0) croak("fail 1000");
   if (iset_contains(s,0) != 1) croak("fail 0");
   if (iset_sign(s) != 1) croak("fail sign");
+  if (iset_is_invalid(s) != 0) croak("fail invalid");
   if (iset_size(s) != ts) croak("fail size");
 
   New(0,S,iset_size(s),UV);

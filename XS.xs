@@ -491,9 +491,8 @@ static iset_t arrayref_to_iset(pTHX_ int *status, SV* sva, const char* fstr)
     SV **iv = av_fetch(av, i, 0);
     if (iv == 0) break;
     istatus = _validate_and_set(&val, aTHX_ *iv, IFLAG_ANY);
-    if (istatus == 0) break;
-    iset_add(&s, val, istatus);
-    if (iset_sign(s) == 0) break;
+    if (istatus != 0)  iset_add(&s, val, istatus);
+    if (istatus == 0 || iset_is_invalid(s)) break;
   }
   *status = (i <= len) ? 0 : iset_sign(s);
   if (*status == 0)
@@ -3763,6 +3762,7 @@ void prime_omega(IN SV* svn)
     UV n, ret;
   PPCODE:
     if (_validate_and_set(&n, aTHX_ svn, IFLAG_ABS)) {
+      ret = 0;
       switch (ix) {
         case 0:  ret = prime_omega(n);    break;
         case 1:  ret = prime_bigomega(n); break;
@@ -3999,7 +3999,7 @@ void setbinop(SV* block, IN SV* sva, IN SV* svb = 0)
   {
     AV *ava, *avb;
     GV *agv, *bgv, *gv;
-    SV **iva, **ivb;
+    SV **asv, **bsv;
     iset_t s;
     int alen, blen, i, j, status;
     unsigned long k, sz;
@@ -4028,7 +4028,6 @@ void setbinop(SV* block, IN SV* sva, IN SV* svb = 0)
     if (blen < 0) XSRETURN_EMPTY;
 
     /* ====== Walk the array references storing the SV pointers ====== */
-    SV **asv, **bsv;
     New(0, asv, alen+1, SV*);
     for (i = 0; i <= alen; i++) {
       SV** iv = av_fetch(ava, i, 0);
@@ -4040,6 +4039,7 @@ void setbinop(SV* block, IN SV* sva, IN SV* svb = 0)
         bsv = asv;
         j = blen+1;
       } else {
+        New(0, bsv, blen+1, SV*);
         for (j = 0; j <= blen; j++) {
           SV** iv = av_fetch(avb, j, 0);
           if (iv == 0) break;
@@ -4069,9 +4069,8 @@ void setbinop(SV* block, IN SV* sva, IN SV* svb = 0)
           GvSV(bgv) = bsv[j];
           { ENTER; MULTICALL; LEAVE; }
           status = _validate_and_set(&ret, aTHX_ *PL_stack_sp, IFLAG_ANY);
-          if (status == 0) break;
-          iset_add(&s, ret, status);
-          if (iset_sign(s) == 0) break;
+          if (status != 0)  iset_add(&s, ret, status);
+          if (status == 0 || iset_is_invalid(s)) break;
         }
         if (j <= blen) break;
       }
@@ -4089,9 +4088,8 @@ void setbinop(SV* block, IN SV* sva, IN SV* svb = 0)
           PUSHMARK(SP);
           call_sv((SV*)cv, G_SCALAR);
           status = _validate_and_set(&ret, aTHX_ *PL_stack_sp, IFLAG_ANY);
-          if (status == 0) break;
-          iset_add(&s, ret, status);
-          if (iset_sign(s) == 0) break;
+          if (status != 0)  iset_add(&s, ret, status);
+          if (status == 0 || iset_is_invalid(s)) break;
         }
         if (j <= blen) break;
       }
@@ -4114,7 +4112,7 @@ void setbinop(SV* block, IN SV* sva, IN SV* svb = 0)
     /* ====== Get sorted set values.  Put on return stack. ====== */
     New(0, setr, sz, UV);
     iset_allvals(s, setr);
-    EXTEND(SP,sz);
+    EXTEND(SP,(long)sz);
     if (iset_sign(s) == -1)
       for (k = 0; k < sz; k++)
         ST(k) = sv_2mortal(newSViv((IV)setr[k]));
@@ -4131,7 +4129,6 @@ void setunion(IN SV* sva, IN SV* svb)
   ALIAS:
     setintersect = 1
     setminus = 2
-    setdelta = 3
   PREINIT:
     int alen, blen, i, j;
     IV *seta, *setb;
@@ -4147,9 +4144,8 @@ void setunion(IN SV* sva, IN SV* svb)
       switch (ix) {
         case 0: _vcallsubn(aTHX_ GIMME_V,VCALL_PP,"setunion",    items,0);break;
         case 1: _vcallsubn(aTHX_ GIMME_V,VCALL_PP,"setintersect",items,0);break;
-        case 2: _vcallsubn(aTHX_ GIMME_V,VCALL_PP,"setminus",    items,0);break;
-        case 3:
-        default:_vcallsubn(aTHX_ GIMME_V,VCALL_PP,"setdelta",    items,0);break;
+        case 2:
+        default:_vcallsubn(aTHX_ GIMME_V,VCALL_PP,"setminus",    items,0);break;
       }
       return;
     }
@@ -4160,6 +4156,11 @@ void setunion(IN SV* sva, IN SV* svb)
       for (j = 0; j <= blen; j++)
         iset_add(&s, (UV) setb[j], -1);
     } else if (ix == 1) {  /* INTERSECTION */
+      if (alen > blen) {
+        int t;  IV* sett;
+        t = alen; alen = blen; blen = t;
+        sett = seta; seta = setb; setb = sett;
+      }
       iset_t sa = iset_create( (unsigned long)(alen+1) );
       for (i = 0; i <= alen; i++)
         iset_add(&sa, (UV) seta[i], -1);
@@ -4174,21 +4175,6 @@ void setunion(IN SV* sva, IN SV* svb)
       for (i = 0; i <= alen; i++)
         if (!iset_contains(sb, (UV)seta[i]))
           iset_add(&s, (UV) seta[i], -1);
-      iset_destroy(&sb);
-    } else if (ix == 3) {  /* SYMMETRIC DIFFERENCE */
-      iset_t sa = iset_create( (unsigned long)(alen+1) );
-      iset_t sb = iset_create( (unsigned long)(blen+1) );
-      for (i = 0; i <= alen; i++)
-        iset_add(&sa, (UV) seta[i], -1);
-      for (j = 0; j <= blen; j++)
-        iset_add(&sb, (UV) setb[j], -1);
-      for (i = 0; i <= alen; i++)
-        if (!iset_contains(sb, (UV)seta[i]))
-          iset_add(&s, (UV) seta[i], -1);
-      for (j = 0; j <= blen; j++)
-        if (!iset_contains(sa, (UV)setb[j]))
-          iset_add(&s, (UV) setb[j], -1);
-      iset_destroy(&sa);
       iset_destroy(&sb);
     } else {
       croak("unknown function called");
@@ -4206,6 +4192,43 @@ void setunion(IN SV* sva, IN SV* svb)
     iset_destroy(&s);
     for (k = 0; k < sz; k++)
       XPUSHs(sv_2mortal(newSViv(seta[k])));
+    Safefree(seta);
+
+void setdelta(IN SV* sva, IN SV* svb)
+  PROTOTYPE: $$
+  PREINIT:
+    iset_t s, sa, sb;
+    unsigned long k, sz;
+    int astatus, bstatus, sign;
+    UV *seta;
+  PPCODE:
+    /* It would be nice to do all 4 set functions like this. */
+    /* The performance for union, intersect, and difference is worse though. */
+    sa = arrayref_to_iset(aTHX_ &astatus, sva, "setunion first arg");
+    sb = arrayref_to_iset(aTHX_ &bstatus, svb, "setunion second arg");
+    if (astatus != 0 && bstatus != 0) {
+      s = iset_symdiff_of(sa, sb);
+      if (iset_sign(s) == 0)
+        astatus = bstatus = 0;
+    }
+    iset_destroy(&sa);
+    iset_destroy(&sb);
+    if (astatus == 0 || bstatus == 0) {
+      _vcallsubn(aTHX_ GIMME_V,VCALL_PP,"setdelta",items,0);
+      return;
+    }
+    sz = iset_size(s);
+    if (GIMME_V == G_SCALAR) {
+      iset_destroy(&s);
+      XSRETURN_UV(sz);
+    }
+    /* Retrieve sorted set values and put them on return stack */
+    sign = iset_sign(s);
+    New(0, seta, sz, UV);
+    iset_allvals(s, seta);
+    iset_destroy(&s);
+    for (k = 0; k < sz; k++)
+      XPUSHs(sv_2mortal( (sign==1) ? newSVuv(seta[k]) : newSViv(seta[k]) ));
     Safefree(seta);
 
 void toset(IN SV* sva)
