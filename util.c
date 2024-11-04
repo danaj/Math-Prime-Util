@@ -3169,8 +3169,8 @@ int is_delicate_prime(UV n, uint32_t b) {
 #endif
 
     /* Algorithm isWeakly from Emily Stamm, 2020. */
-    UV current, m, bm = 1;
-    for (m = 0;  n >= bm;  m++, bm *= b) {
+    UV current, bm;
+    for (bm = 1;  n >= bm;  bm *= b) {
       uint32_t j, counter;
       UV bmb = bm * b;
       if ( ((UV_MAX/b) < bm) || ((UV_MAX-bmb) < n) ) return -1; /* overflow */
