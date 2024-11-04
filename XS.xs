@@ -416,7 +416,7 @@ static SV* sv_to_bigint_nonneg(pTHX_ SV* r) {
        } \
   } while(0)
 
-static int arrayref_to_int_array(pTHX_ UV** ret, AV* av, int base)
+static int arrayref_to_digit_array(pTHX_ UV** ret, AV* av, int base)
 {
   int len, i;
   UV *r, carry = 0;
@@ -473,30 +473,52 @@ static int arrayref_to_iv_array(pTHX_ IV** ret, SV* sva, const char* fstr)
   return len;
 }
 
-/* Returns -1 for IVs, 1 for UVs, 0 for failed (overflow or bigints) */
-static iset_t arrayref_to_iset(pTHX_ int *status, SV* sva, const char* fstr)
+static int arrayref_to_int_array(pTHX_ unsigned long *retlen, UV** ret, SV* sva, const char* fstr)
 {
   AV *av;
-  iset_t s;
-  UV val;
-  int len, i, istatus;
+  int len, i, istatus, sflag;
+  UV  val, *r;
 
   if ((!SvROK(sva)) || (SvTYPE(SvRV(sva)) != SVt_PVAV))
     croak("%s argument must be an array reference", fstr);
   av = (AV*) SvRV(sva);
   len = av_len(av);
-  s = iset_create((unsigned long)len+1);
-  if (len < 0) { *status = 1; return s; }
+  if (len < 0) {
+    *retlen = 0;  *ret = 0;  return 1;
+  }
+  sflag = 0;
+  New(0, r, len+1, UV);
   for (i = 0; i <= len; i++) {
     SV **iv = av_fetch(av, i, 0);
     if (iv == 0) break;
     istatus = _validate_and_set(&val, aTHX_ *iv, IFLAG_ANY);
-    if (istatus != 0)  iset_add(&s, val, istatus);
-    if (istatus == 0 || iset_is_invalid(s)) break;
+    if (val > (UV)IV_MAX) {
+      sflag |= ((istatus == 1) ? 1 : 2);
+      if (sflag == 3) istatus = 0;
+    }
+    if (istatus == 0) break;
+    r[i] = val;
   }
-  *status = (i <= len) ? 0 : iset_sign(s);
-  if (*status == 0)
-    iset_destroy(&s);
+  if (i <= len) {
+    Safefree(r);
+    *retlen = 0;  *ret = 0;  return 0;
+  }
+  *retlen = len+1;
+  *ret = r;
+  return ((sflag == 2) ? -1 : 1);
+}
+
+/* Status -1 for IVs, 1 for UVs, 0 for failed (overflow or bigints) */
+static iset_t arrayref_to_iset(pTHX_ int *status, SV* sva, const char* fstr)
+{
+  UV *r;
+  unsigned long len;
+  iset_t s;
+
+  /* Doing this in two steps is much faster than one, probably caching. */
+  *status = arrayref_to_int_array(aTHX_ &len, &r, sva, fstr);
+  s = iset_create_from_array(r, len, *status);
+  Safefree(r);
   return s;
 }
 
@@ -3938,6 +3960,23 @@ void chebyshev_theta(IN SV* svn)
     /* Result is FP, don't objectify */
     return;
 
+
+
+#define RETURN_SET_VALS(s)   /* Return sorted set values */ \
+  { \
+    UV *sdata; \
+    unsigned long k, slen = iset_size(s); \
+    int sign = iset_sign(s); \
+    New(0, sdata, slen, UV); \
+    iset_allvals(s, sdata); \
+    EXTEND(SP,(long)slen); \
+    for (k = 0; k < slen; k++) \
+      ST(k) = sv_2mortal( (sign==1) ? newSVuv(sdata[k]) : newSViv(sdata[k]) ); \
+    Safefree(sdata); \
+    iset_destroy(&s); \
+    XSRETURN(slen); \
+  }
+
 void sumset(IN SV* sva, IN SV* svb = 0)
   PROTOTYPE: $;$
   PREINIT:
@@ -4002,9 +4041,7 @@ void setbinop(SV* block, IN SV* sva, IN SV* svb = 0)
     SV **asv, **bsv;
     iset_t s;
     int alen, blen, i, j, status;
-    unsigned long k, sz;
-    UV ret, *setr;
-
+    UV ret;
     HV *stash;
     CV *cv = sv_2cv(block, &stash, &gv, 0);
 
@@ -4098,7 +4135,6 @@ void setbinop(SV* block, IN SV* sva, IN SV* svb = 0)
     /* ====== Free cached SV pointers.  Call PP if we not complete. ====== */
     if (bsv != asv) Safefree(bsv);
     Safefree(asv);
-    sz = iset_size(s);
     /* ====== Call PP if not finished. Return scalar if all needed. ====== */
     if (i <= alen || j <= blen) {
       iset_destroy(&s);
@@ -4106,22 +4142,12 @@ void setbinop(SV* block, IN SV* sva, IN SV* svb = 0)
       return;
     }
     if (GIMME_V == G_SCALAR) {
+      unsigned long slen = iset_size(s);
       iset_destroy(&s);
-      XSRETURN_UV(sz);
+      XSRETURN_UV(slen);
     }
     /* ====== Get sorted set values.  Put on return stack. ====== */
-    New(0, setr, sz, UV);
-    iset_allvals(s, setr);
-    EXTEND(SP,(long)sz);
-    if (iset_sign(s) == -1)
-      for (k = 0; k < sz; k++)
-        ST(k) = sv_2mortal(newSViv((IV)setr[k]));
-    else
-      for (k = 0; k < sz; k++)
-        ST(k) = sv_2mortal(newSVuv(setr[k]));
-    Safefree(setr);
-    iset_destroy(&s);
-    XSRETURN(sz);
+    RETURN_SET_VALS(s);
   }
 
 void setunion(IN SV* sva, IN SV* svb)
@@ -4129,114 +4155,133 @@ void setunion(IN SV* sva, IN SV* svb)
   ALIAS:
     setintersect = 1
     setminus = 2
-  PREINIT:
-    int alen, blen, i, j;
-    IV *seta, *setb;
-    iset_t s;
-    unsigned long k, sz;
-  PPCODE:
-    /* To simplify things, we only do IVs. */
-    alen = arrayref_to_iv_array(aTHX_ &seta, sva, "setunion first arg");
-    blen = arrayref_to_iv_array(aTHX_ &setb, svb, "setunion second arg");
-    if (alen < 0 || blen < 0) {  /* IV Overflow  or  bigint */
-      Safefree(seta);
-      Safefree(setb);
-      switch (ix) {
-        case 0: _vcallsubn(aTHX_ GIMME_V,VCALL_PP,"setunion",    items,0);break;
-        case 1: _vcallsubn(aTHX_ GIMME_V,VCALL_PP,"setintersect",items,0);break;
-        case 2:
-        default:_vcallsubn(aTHX_ GIMME_V,VCALL_PP,"setminus",    items,0);break;
-      }
-      return;
-    }
-    s = iset_create( (unsigned long)(alen+1) + (unsigned long)(blen+1) );
-    if (ix == 0) {         /* UNION */
-      for (i = 0; i <= alen; i++)
-        iset_add(&s, (UV) seta[i], -1);
-      for (j = 0; j <= blen; j++)
-        iset_add(&s, (UV) setb[j], -1);
-    } else if (ix == 1) {  /* INTERSECTION */
-      if (alen > blen) {
-        int t;  IV* sett;
-        t = alen; alen = blen; blen = t;
-        sett = seta; seta = setb; setb = sett;
-      }
-      iset_t sa = iset_create( (unsigned long)(alen+1) );
-      for (i = 0; i <= alen; i++)
-        iset_add(&sa, (UV) seta[i], -1);
-      for (j = 0; j <= blen; j++)
-        if (iset_contains(sa, (UV)setb[j]))
-          iset_add(&s, (UV) setb[j], -1);
-      iset_destroy(&sa);
-    } else if (ix == 2) {  /* DIFFERENCE */
-      iset_t sb = iset_create( (unsigned long)(blen+1) );
-      for (j = 0; j <= blen; j++)
-        iset_add(&sb, (UV) setb[j], -1);
-      for (i = 0; i <= alen; i++)
-        if (!iset_contains(sb, (UV)seta[i]))
-          iset_add(&s, (UV) seta[i], -1);
-      iset_destroy(&sb);
-    } else {
-      croak("unknown function called");
-    }
-    Safefree(setb);
-    Safefree(seta);
-    sz = iset_size(s);
-    if (GIMME_V == G_SCALAR) {
-      iset_destroy(&s);
-      XSRETURN_UV(sz);
-    }
-    /* Retrieve sorted set values and put them on return stack */
-    New(0, seta, sz, IV);
-    iset_allvals(s, (UV*)seta);
-    iset_destroy(&s);
-    for (k = 0; k < sz; k++)
-      XPUSHs(sv_2mortal(newSViv(seta[k])));
-    Safefree(seta);
-
-void setdelta(IN SV* sva, IN SV* svb)
-  PROTOTYPE: $$
+    setdelta = 3
   PREINIT:
     iset_t s, sa, sb;
-    unsigned long k, sz;
-    int astatus, bstatus, sign;
-    UV *seta;
+    int astatus, bstatus;
   PPCODE:
-    /* It would be nice to do all 4 set functions like this. */
-    /* The performance for union, intersect, and difference is worse though. */
     sa = arrayref_to_iset(aTHX_ &astatus, sva, "setunion first arg");
     sb = arrayref_to_iset(aTHX_ &bstatus, svb, "setunion second arg");
     if (astatus != 0 && bstatus != 0) {
-      s = iset_symdiff_of(sa, sb);
-      if (iset_sign(s) == 0)
+      switch (ix) {
+        case 0:  s = iset_union_of(sa, sb);  break;
+        case 1:  s = iset_intersection_of(sa, sb);  break;
+        case 2:  s = iset_difference_of(sa, sb);  break;
+        case 3:  s = iset_symdiff_of(sa, sb);  break;
+        default: croak("unknown function called");
+      }
+      if (iset_is_invalid(s))
         astatus = bstatus = 0;
     }
     iset_destroy(&sa);
     iset_destroy(&sb);
     if (astatus == 0 || bstatus == 0) {
-      _vcallsubn(aTHX_ GIMME_V,VCALL_PP,"setdelta",items,0);
+      switch (ix) {
+        case 0: _vcallsubn(aTHX_ GIMME_V,VCALL_PP,"setunion",    items,0);break;
+        case 1: _vcallsubn(aTHX_ GIMME_V,VCALL_PP,"setintersect",items,0);break;
+        case 2: _vcallsubn(aTHX_ GIMME_V,VCALL_PP,"setminus",    items,0);break;
+        case 3:
+        default:_vcallsubn(aTHX_ GIMME_V,VCALL_PP,"setdelta",    items,0);break;
+      }
       return;
     }
-    sz = iset_size(s);
     if (GIMME_V == G_SCALAR) {
+      unsigned long slen = iset_size(s);
       iset_destroy(&s);
-      XSRETURN_UV(sz);
+      XSRETURN_UV(slen);
     }
-    /* Retrieve sorted set values and put them on return stack */
-    sign = iset_sign(s);
-    New(0, seta, sz, UV);
-    iset_allvals(s, seta);
+    RETURN_SET_VALS(s);
+
+void is_subset(IN SV* sva, IN SV* svb)
+  PROTOTYPE: $$
+  PREINIT:
+    iset_t sa, sb;
+    int astatus, bstatus, ret;
+  PPCODE:
+    ret = -1;
+    sa = arrayref_to_iset(aTHX_ &astatus, sva, "is_subset first arg");
+    if (astatus != 0) {
+      sb = arrayref_to_iset(aTHX_ &bstatus, svb, "is_subset second arg");
+      if (bstatus != 0)
+        ret = iset_is_subset_of(sa, sb);
+      iset_destroy(&sb);
+    }
+    iset_destroy(&sa);
+    if (ret != -1)  RETURN_NPARITY(ret);
+    _vcallsubn(aTHX_ GIMME_V,VCALL_PP,"is_subset",items,0);
+    return;
+
+void is_sidon_set(IN SV* sva)
+  PROTOTYPE: $
+  PREINIT:
+    int status;
+    unsigned long len, i, j;
+    UV *data;
+    iset_t s;
+  PPCODE:
+    status = arrayref_to_int_array(aTHX_ &len, &data, sva, "is_sidon_set arg");
+    if (status == -1) {   /* All elements must be non-negative */
+      Safefree(data);
+      RETURN_NPARITY(0);
+    }
+    if (status == 1) {  /* Check for UV overflow */
+      for (i = 0; i < len && status != 0; i++)
+        if (data[i] > (UV_MAX/2))
+          status = 0;
+    }
+    if (status == 0) {
+      Safefree(data);
+      _vcallsubn(aTHX_ GIMME_V, VCALL_PP, "is_sidon_set", items, 0);
+      return;
+    }
+    s = iset_create( 20UL * len );
+    for (i = 0; i < len && status != 0; i++)
+      for (j = i; j < len && status != 0; j++)
+        if (!iset_add(&s, data[i] + data[j], 1))
+          status = 0;
+    Safefree(data);
     iset_destroy(&s);
-    for (k = 0; k < sz; k++)
-      XPUSHs(sv_2mortal( (sign==1) ? newSVuv(seta[k]) : newSViv(seta[k]) ));
-    Safefree(seta);
+    RETURN_NPARITY( status != 0 );
+
+void is_sumfree_set(IN SV* sva)
+  PROTOTYPE: $
+  PREINIT:
+    int status;
+    unsigned long len, i, j;
+    UV *data;
+    iset_t sa;
+  PPCODE:
+    status = arrayref_to_int_array(aTHX_ &len, &data, sva, "is_sumfree_set arg");
+    if (status == 1) {  /* Check for UV overflow */
+      for (i = 0; i < len && status != 0; i++)
+        if (data[i] > (UV_MAX/2))
+          status = 0;
+    } else if (status == -1) {  /* Check for IV overflow */
+      for (i = 0; i < len && status != 0; i++)
+        if ((IV)data[i] > (IV_MAX/2) || (IV)data[i] < (IV_MIN/2))
+          status = 0;
+    }
+    if (status != 0) {
+      sa = iset_create_from_array(data, len, status);
+      if (status == 0) iset_destroy(&sa);
+    }
+    if (status == 0) {
+      Safefree(data);
+      _vcallsubn(aTHX_ GIMME_V, VCALL_PP, "is_sumfree_set", items, 0);
+      return;
+    }
+    for (i = 0; i < len && status != 0; i++)
+      for (j = i; j < len && status != 0; j++)
+        if (iset_contains(sa, data[i] + data[j]))
+          status = 0;
+    Safefree(data);
+    iset_destroy(&sa);
+    RETURN_NPARITY( status != 0 );
 
 void toset(IN SV* sva)
   PREINIT:
     iset_t s;
     int status;
-    UV *setdata;
-    unsigned long k, sz;
   PPCODE:
     s = arrayref_to_iset(aTHX_ &status, sva, "toset:");
     if (status == 0) {
@@ -4244,21 +4289,15 @@ void toset(IN SV* sva)
       _vcallsubn(aTHX_ GIMME_V,VCALL_PP,"toset",items,0);
       return;
     }
-    sz = iset_size(s);
     if (GIMME_V == G_SCALAR) {
+      unsigned long slen = iset_size(s);
       iset_destroy(&s);
-      XSRETURN_UV(sz);
+      XSRETURN_UV(slen);
     }
-    /* Retrieve sorted set values and put them on return stack */
-    New(0, setdata, sz, UV);
-    iset_allvals(s, setdata);
-    iset_destroy(&s);
-    EXTEND(SP, (IV)sz);
-    for (k = 0; k < sz; k++) {
-      SV* svi = (status == 1) ? newSVuv(setdata[k]) : newSViv((IV)setdata[k]);
-      PUSHs(sv_2mortal(svi));
-    }
-    Safefree(setdata);
+    RETURN_SET_VALS(s);
+
+
+
 
 void
 numtoperm(IN UV n, IN SV* svk)
@@ -4437,7 +4476,7 @@ void todigits(SV* svn, int base=10, int length=-1)
         }
       } else if (!_is_sv_bigint(aTHX_ svn)) {     /* array ref of digits */
         UV* r = 0;
-        int len = arrayref_to_int_array(aTHX_ &r, (AV*) SvRV(svn), base);
+        int len = arrayref_to_digit_array(aTHX_ &r, (AV*) SvRV(svn), base);
         if (from_digit_to_UV(&n, r, len, base)) {
           Safefree(r);
           XSRETURN_UV(n);

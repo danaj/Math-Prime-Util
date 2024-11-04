@@ -225,6 +225,10 @@ Tags:
   setminus(\@A,\@B)                   difference of two integer lists
   setdelta(\@A,\@B)                   symmetric difference of two int lists
   toset(\@A)                          convert to unique sorted integer list
+  is_subset(\@A,\@B)                  is integer list A a subset of B
+  is_sidon_set(\@L)                   is integer list L a Sidon set
+  is_sumfree_set(\@L)                 is integer list L a sum-free set
+
 
 =head2 MATH
 

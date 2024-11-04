@@ -9,6 +9,8 @@
 #define FILL_RATIO 0.50
 
 #if BITS_PER_WORD == 32
+/* 16 0x45d9f3b  16 0x45d9f3b  16 */
+/* 16 0x21f0aaad 15 0x735a2d97 15 */
 static UV _hash(UV x) {
     x = ((x >> 16) ^ x) * 0x45d9f3b;
     x = ((x >> 16) ^ x) * 0x45d9f3b;
@@ -16,6 +18,9 @@ static UV _hash(UV x) {
     return x;
 }
 #else
+/* 30 0xbf58476d1ce4e5b9 27 0x94d049bb133111eb 31     SplitMix64/Meuller */
+/* 32 0xd6e8feb86659fd93 32 0xd6e8feb86659fd93 32     degski */
+/* 33 0xff51afd7ed558ccd 33 0xc4ceb9fe1a85ec53 33     Murmur64 */
 static UV _hash(UV x) {
     x = (x ^ (x >> 30)) * UVCONST(0xbf58476d1ce4e5b9);
     x = (x ^ (x >> 27)) * UVCONST(0x94d049bb133111eb);
@@ -80,24 +85,48 @@ static void _iset_resize(iset_t *set) {
 }
 
 int iset_add(iset_t *set, UV val, int sign) {
-  UV h;
   if (sign == 0)
     set->type = ISET_TYPE_INVALID;
   else if (val > (UV)IV_MAX)
     set->type |= ((sign > 0) ? ISET_TYPE_UV : ISET_TYPE_IV);
   if (val == 0) {
-    if (set->contains_zero)  return 0;
+    if (set->contains_zero)
+      return 0;
     set->contains_zero = 1;
     set->size++;
-    return 1;
+  } else {
+    UV h = _iset_pos(set->arr, set->mask, val);
+    if (set->arr[h] == val)
+      return 0;
+    set->arr[h] = val;
+    if (++set->size > FILL_RATIO * (double)set->maxsize)
+      _iset_resize(set);
   }
-  h = _iset_pos(set->arr, set->mask, val);
-  if (set->arr[h] == val)
-    return 0;
-  set->arr[h] = val;
-  if (++set->size > FILL_RATIO * (double)set->maxsize)
-    _iset_resize(set);
   return 1;
+}
+
+iset_t iset_create_from_array(UV* d, unsigned long dlen, int dsign) {
+  unsigned long i;
+  unsigned char typemask = ((dsign > 0) ? ISET_TYPE_UV : ISET_TYPE_IV);
+  iset_t s = iset_create(dlen);
+
+  if (dsign != 0) {
+    for (i = 0; i < dlen; i++) {
+      UV h, val = d[i];
+      if (val == 0) {
+        if (!s.contains_zero) { s.contains_zero = 1;  s.size++; }
+      } else {
+        if (val > (UV)IV_MAX)
+          s.type |= typemask;
+        h = _iset_pos(s.arr, s.mask, val);
+        if (s.arr[h] != val) {
+          s.arr[h] = val;
+          s.size++;
+        }
+      }
+    }
+  }
+  return s;
 }
 
 void iset_allvals(const iset_t set, UV* array) {
@@ -111,6 +140,35 @@ void iset_allvals(const iset_t set, UV* array) {
   if (set.type == ISET_TYPE_IV) sort_iv_array((IV*)array, i);
   else                          sort_uv_array(array, i);
 }
+
+#if 0
+void iset_minmax(const iset_t set, UV *min, UV *max) {
+  unsigned long i;
+  UV v;
+
+  if (set.type == ISET_TYPE_INVALID || set.size == 0) { *min=*max=0; return; }
+
+  if (set.type != ISET_TYPE_IV) {
+    *min = UV_MAX;
+    *max = 0;
+    for (i = 0; i < set.maxsize; i++)
+      if (v = A.arr[i], v != 0) {
+        if (v < *min) *min = v;
+        if (v > *max) *max = v;
+      }
+    }
+  } else {
+    *min = IV_MAX;
+    *max = IV_MIN;
+    for (i = 0; i < set.maxsize; i++)
+      if (v = A.arr[i], v != 0) {
+        if ((IV)v < *min) *min = v;
+        if ((IV)v > *max) *max = v;
+      }
+    }
+  }
+}
+#endif
 
 
 /******************************************************************************/
@@ -214,6 +272,21 @@ iset_t iset_symdiff_of(const iset_t A, const iset_t B) {
         iset_add(&s, v, bsign);
   if ((A.contains_zero + B.contains_zero) == 1)  iset_add(&s,0,1);
   return s;
+}
+int iset_is_subset_of(const iset_t A, const iset_t B) {
+  int samesign = (iset_sign(A) == iset_sign(B));
+  unsigned long i;
+  UV v;
+
+  if (A.size > B.size)
+    return 0;
+  if (A.contains_zero && !B.contains_zero)
+    return 0;
+  for (i = 0; i < A.maxsize; i++)
+    if (v = A.arr[i], v != 0)
+      if ( ((v > (UV)IV_MAX) && !samesign) || !iset_contains(B, v) )
+        return 0;
+  return 1;
 }
 
 /******************************************************************************/

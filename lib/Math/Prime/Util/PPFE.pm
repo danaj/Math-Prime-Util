@@ -269,6 +269,9 @@ sub entropy_bytes {
 *setminus = \&Math::Prime::Util::PP::setminus;
 *setdelta = \&Math::Prime::Util::PP::setdelta;
 *toset = \&Math::Prime::Util::PP::toset;
+*is_subset = \&Math::Prime::Util::PP::is_subset;
+*is_sidon_set = \&Math::Prime::Util::PP::is_sidon_set;
+*is_sumfree_set = \&Math::Prime::Util::PP::is_sumfree_set;
 
 *tozeckendorf = \&Math::Prime::Util::PP::tozeckendorf;
 *fromzeckendorf = \&Math::Prime::Util::PP::fromzeckendorf;

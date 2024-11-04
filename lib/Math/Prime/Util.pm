@@ -100,6 +100,7 @@ our @EXPORT_OK =
       vecsum vecmin vecmax vecprod vecreduce vecextract vecequal vecuniq
       vecany vecall vecnotall vecnone vecfirst vecfirstidx vecmex vecpmex
       setbinop sumset setunion setintersect setminus setdelta toset
+      is_subset is_sidon_set is_sumfree_set
       moebius mertens liouville sumliouville prime_omega prime_bigomega
       euler_phi jordan_totient exp_mangoldt sumtotient
       partitions bernfrac bernreal harmfrac harmreal
@@ -3580,6 +3581,32 @@ This corresponds to Pari's C<setdelta> function
 and Mathematica's C<SymmetricDifference> function, and
 Sage's C<symmetric_difference> function on Set objects.
 
+=head2 is_subset
+
+Given exactly two array references of integers, treats them as sets and
+return 1 if the first set is a subset of the second, and 0 otherwise.
+That is, if every integer in the first list also appears anywhere in the
+second list, then 1 is returned.
+
+This corresponds to Mathematica's C<SubsetQ> function, though with
+the arguments reversed (they ask if B is a subset of A).
+
+=head2 is_sidon_set
+
+Given an array reference of integers, treats it as a set and returns 1
+if it is a Sidon set (sometimes called Sidon sequence), and 0 otherwise.
+To be a Sidon set, all elements must be non-negative and
+all pair-wise sums a_i + a_j (i E<gt>= j) are unique.
+
+All finite Sidon sets are Golomb rulers, and all Golumb rulers are Sidon.
+
+=head2 is_sumfree_set
+
+Given an array reference of integers, treats it as a set and returns 1
+if it is a sum-free set, and 0 otherwise.
+A sum-free set is one where no sum of two elements from the set is equal
+to any element of the set.  That is, the set and its sumset are disjoint.
+
 
 
 =head2 todigits
@@ -6172,6 +6199,18 @@ Compute subfactorial (number of derangements) using simple recursion:
     use bigint;
     ($n < 1)  ?  1  :  $n * subfactorial($n-1) + (-1)**$n;
   }
+
+Recognize Sidon and sum-free sets.  We have specific functions
+L</is_sidon_set> and L</is_sumfree_set> that are faster.
+
+  sub is_sidon { my $set = shift;  my $len = scalar(@$set);
+    0+(scalar(sumset($set))==(($len*$len+$len)/2));
+  }
+  sub is_sum_free { my $set = shift;
+    my @sumset = sumset($set);
+    0+(scalar(setintersect($set,\@sumset)) == 0);
+  }
+
 
 
 =head1 PRIMALITY TESTING NOTES

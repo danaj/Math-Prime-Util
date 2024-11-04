@@ -24,6 +24,8 @@ typedef struct {
 iset_t iset_create(unsigned long init_size);
 void  iset_destroy(iset_t *set);
 
+iset_t iset_create_from_array(UV* d, unsigned long dlen, int dsign);
+
 /* Returns 1 if unsigned, -1 if signed, 0 if messed up. */
 static int iset_sign(const iset_t set) {
   static const char _iset_typeret[4] = {1,1,-1,0};
@@ -35,6 +37,8 @@ static int iset_is_invalid(const iset_t set)
 static unsigned long iset_size(const iset_t set) { return set.size; }
 
 int iset_contains(const iset_t set, UV val);   /* returns 0 or 1 */
+
+/* void iset_minmax(const iset_t set, UV *min, UV *max); */
 
 /* sign indicates: val is a UV (1) or IV (-1) */
 int iset_add(iset_t *set, UV val, int sign); /* Returns 1 if added, 0 if not */
@@ -54,6 +58,7 @@ iset_t iset_union_of(const iset_t A, const iset_t B);
 iset_t iset_intersection_of(const iset_t A, const iset_t B);
 iset_t iset_difference_of(const iset_t A, const iset_t B);
 iset_t iset_symdiff_of(const iset_t A, const iset_t B);
+int iset_is_subset_of(const iset_t A, const iset_t B);  /* A subset of B? */
 
 void iset_test(void);
 

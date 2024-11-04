@@ -94,6 +94,7 @@ my @functions =  qw(
       vecsum vecmin vecmax vecprod vecreduce vecextract vecequal vecuniq
       vecany vecall vecnotall vecnone vecfirst vecfirstidx vecmex vecpmex
       setbinop sumset setunion setintersect setminus setdelta toset
+      is_subset is_sidon_set is_sumfree_set
       moebius mertens liouville sumliouville prime_omega prime_bigomega
       euler_phi jordan_totient exp_mangoldt sumtotient
       partitions bernfrac bernreal harmfrac harmreal

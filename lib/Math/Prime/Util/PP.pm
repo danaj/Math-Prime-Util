@@ -10601,11 +10601,6 @@ sub vecsorti {
   1;
 }
 
-sub _sorted_keys {
-  my $rset = shift;
-  my @ret = sort { $a <=> $b } keys %$rset;
-  return @ret;
-}
 sub setbinop (&$;$) {   ## no critic qw(ProhibitSubroutinePrototypes)
   my($sub, $ra, $rb) = @_;
   croak 'Not a subroutine reference' unless (ref($sub) || '') eq 'CODE';
@@ -10628,7 +10623,7 @@ sub setbinop (&$;$) {   ## no critic qw(ProhibitSubroutinePrototypes)
       $set{ $sub->() } = undef;
     }
   }
-  return wantarray  ?  _sorted_keys(\%set)  :  scalar(keys %set);
+  return wantarray  ?  vecsort(keys %set)  :  scalar(keys %set);
 }
 
 sub sumset {
@@ -10752,6 +10747,54 @@ sub toset {
   for (@set) { return vecsort(@set) if !ref($_) && ($_ >= INTMAX || $_ <= INTMIN); }
   @set = sort { $a<=>$b } @set;
   return @set;
+}
+
+sub is_subset {
+  my($ra,$rb) = @_;
+  croak 'Not an array reference' unless (ref($ra) || '') eq 'ARRAY';
+  croak 'Not an array reference' unless (ref($rb) || '') eq 'ARRAY';
+  # Is A is a subset of B?
+  my(%inb);
+  $inb{$_}=undef for @$rb;
+  for (@$ra) {
+    return 0 unless exists $inb{$_};
+  }
+  1;
+}
+
+sub is_sidon_set {
+  my($ra) = @_;
+  croak 'Not an array reference' unless (ref($ra) || '') eq 'ARRAY';
+
+  my %sums;
+  my @S = @$ra;
+  for (@S) {  validate_integer($_);  return 0 if $_ < 0;  }
+  while (@S) {
+    my $x = pop @S;
+    for my $y ($x, @S) {
+      my $s = Maddint($x, $y);
+      return 0 if exists $sums{$s};
+      $sums{$s} = undef;
+    }
+  }
+  1;
+}
+
+sub is_sumfree_set {
+  my($ra) = @_;
+  croak 'Not an array reference' unless (ref($ra) || '') eq 'ARRAY';
+
+  my %ina;
+  my @S = @$ra;
+  for (@S) { validate_integer($_); }
+  $ina{$_}=undef for @S;
+  while (@S) {
+    my $x = pop @S;
+    for my $y ($x, @S) {
+      return 0 if exists $ina{Maddint($x,$y)};
+    }
+  }
+  1;
 }
 
 
