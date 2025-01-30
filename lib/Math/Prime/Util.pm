@@ -3475,9 +3475,12 @@ C<vecpmex>(1,2,...,I<w>) = I<w>+1.
 =head2 toset
 
 Given an array reference containing integers, returns a list ideal for set
-operations.  Duplicates will be removed and the result sorted.
+operations.  Duplicates will be removed and the result sorted (least first).
 While many of the set operations below do not require this,
 L</setsearch> and L</setinsert> must have the input in this form.
+
+Some operations such as setintersect and setunion may be up to 2x faster
+when given presorted inputs.
 
 After the set is in this form, the size of the set is simply the list length.
 Similarly the set minimum and maximum are trivial.
@@ -3639,7 +3642,6 @@ by L</todigits>.
 
 The first argument C<n> is the input integer.  The sign is ignored.
 If no other arguments are given, this just returns the string of C<n>.
-
 An optional second argument is the base C<base> which must be between 2 and 36.
 No prefix such as "0x" will be added, and all bases over 9 use lower case
 C<a> to C<z>.
@@ -6888,15 +6890,25 @@ Finding the sumset size of the first 10,000 primes.
 
 Set intersection of C<[-1000..100]> and C<[-100..1000]>.
 
+     4 uS  Set::IntSpan::Fast::XS
     12 uS  Pari/GP 2.17.0
     16 uS  Set::IntSpan::Fast
-    24 uS  setintersect
-   167 uS  PP::setintersect
+    18 uS  setintersect
+    73 uS  native Perl hash intersection
+    90 uS  Set::Functional
+   170 uS  PP::setintersect
+   217 uS  Array::Set
+   326 uS  Set::SortedArray
    341 uS  Set::Object
   1659 uS  Set::Scalar
 
 Set::IntSpan::Fast is very fast when the sets are single spans, but for
-sparse single values it is ~400x slower.  The other modules don't change.
+sparse single values it is much slower.  The other modules don't change.
+Set::Functional runs faster because inputs are assured to be sets.
+
+Using our own set objects wrapping a C structure of some sort would be
+much faster.  We are 1-3x slower than Pari/GP for set operations,
+due to processing Perl arrays as the input along with input validation.
 
 
 =head1 AUTHORS

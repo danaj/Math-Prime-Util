@@ -416,6 +416,28 @@ static SV* sv_to_bigint_nonneg(pTHX_ SV* r) {
        } \
   } while(0)
 
+#define RETURN_LIST_VALS(in_alen,arr,sign)   /* Return array values */ \
+  { \
+    unsigned long k, alen = in_alen; \
+    EXTEND(SP,(long)alen); \
+    for (k = 0; k < alen; k++) \
+      ST(k) = sv_2mortal( (sign==1) ? newSVuv(arr[k]) : newSViv(arr[k]) ); \
+    Safefree(arr); \
+    XSRETURN(alen); \
+  }
+
+#define RETURN_LIST_REF(in_alen,arr,sign)   /* Return array values as ref */ \
+  { \
+    AV* av; \
+    unsigned long k, alen = in_alen; \
+    CREATE_AV(av); \
+    av_extend(av, (SSize_t)alen); \
+    for (k = 0; k < alen; k++) \
+      av_push(av, (sign==1) ? newSVuv(arr[k]) : newSViv(arr[k]) ); \
+    Safefree(arr); \
+    XSRETURN(1); \
+  }
+
 static int arrayref_to_digit_array(pTHX_ UV** ret, AV* av, int base)
 {
   int len, i;
@@ -3961,20 +3983,15 @@ void chebyshev_theta(IN SV* svn)
     return;
 
 
-
 #define RETURN_SET_VALS(s)   /* Return sorted set values */ \
   { \
     UV *sdata; \
-    unsigned long k, slen = iset_size(s); \
+    unsigned long slen = iset_size(s); \
     int sign = iset_sign(s); \
     New(0, sdata, slen, UV); \
     iset_allvals(s, sdata); \
-    EXTEND(SP,(long)slen); \
-    for (k = 0; k < slen; k++) \
-      ST(k) = sv_2mortal( (sign==1) ? newSVuv(sdata[k]) : newSViv(sdata[k]) ); \
-    Safefree(sdata); \
     iset_destroy(&s); \
-    XSRETURN(slen); \
+    RETURN_LIST_VALS( slen, sdata, sign ); \
   }
 
 void sumset(IN SV* sva, IN SV* svb = 0)
@@ -4150,6 +4167,9 @@ void setbinop(SV* block, IN SV* sva, IN SV* svb = 0)
     RETURN_SET_VALS(s);
   }
 
+#define SIGNED_CMP_LE(pos,x,y) ((pos)  ?  (x <= y)  :  ((IV)x <= (IV)y))
+#define SIGNED_CMP_LT(pos,x,y) ((pos)  ?  (x <  y)  :  ((IV)x <  (IV)y))
+
 void setunion(IN SV* sva, IN SV* svb)
   PROTOTYPE: $$
   ALIAS:
@@ -4160,8 +4180,107 @@ void setunion(IN SV* sva, IN SV* svb)
     iset_t s, sa, sb;
     int astatus, bstatus;
   PPCODE:
+#if 0
     sa = arrayref_to_iset(aTHX_ &astatus, sva, "setunion first arg");
     sb = arrayref_to_iset(aTHX_ &bstatus, svb, "setunion second arg");
+#else
+    /* Get the integers and check if they are sorted unique integers first. */
+    {
+      UV *ra, *rb;
+      unsigned long i, alen, blen;
+
+      astatus = arrayref_to_int_array(aTHX_ &alen, &ra, sva, "setunion arg 1");
+      bstatus = arrayref_to_int_array(aTHX_ &blen, &rb, svb, "setunion arg 2");
+
+      if (astatus != 0 && bstatus != 0) {
+        int type = ISET_TYPE_INVALID, pcmp, asorted = 1, bsorted = 1;
+
+        for (i = 1;  asorted && i < alen;  i++)
+          if (SIGNED_CMP_LE(astatus == 1, ra[i], ra[i-1]))
+            asorted = 0;
+        for (i = 1;  bsorted && i < blen;  i++)
+          if (SIGNED_CMP_LE(bstatus == 1, rb[i], rb[i-1]))
+            bsorted = 0;
+
+        if (astatus == 1) {
+          if (bstatus == 1) type = ISET_TYPE_UV;
+          else if (ra[alen-1] <= (UV)IV_MAX) type = ISET_TYPE_IV;
+        } else {
+          if (bstatus == -1) type = ISET_TYPE_IV;
+          else if (rb[blen-1] <= (UV)IV_MAX) type = ISET_TYPE_IV;
+        }
+        pcmp = (type == ISET_TYPE_UV) ? 1 : 0;
+
+        if (asorted && bsorted && type != ISET_TYPE_INVALID) {
+          UV *r;
+          unsigned long rlen = 0, ia = 0, ib = 0;
+
+          if (ix == 1) {        /* intersect */
+            New(0, r, (alen > blen) ? alen : blen, UV);
+            while (ia < alen && ib < blen) {
+              if (ra[ia] == rb[ib]) {
+                r[rlen++] = ra[ia];
+                ia++; ib++;
+              } else {
+                if (SIGNED_CMP_LT(pcmp, ra[ia], rb[ib])) ia++;
+                else                                     ib++;
+              }
+            }
+          } else if (ix == 0) { /* union */
+            New(0, r, alen + blen, UV);
+            while (ia < alen && ib < blen) {
+              if (ra[ia] == rb[ib]) {
+                r[rlen++] = ra[ia];
+                ia++; ib++;
+              } else {
+                if (SIGNED_CMP_LT(pcmp, ra[ia], rb[ib])) r[rlen++] = ra[ia++];
+                else                                     r[rlen++] = rb[ib++];
+              }
+            }
+            while (ia < alen)   r[rlen++] = ra[ia++];
+            while (ib < blen)   r[rlen++] = rb[ib++];
+          } else if (ix == 2) { /* minus (difference) */
+            New(0, r, alen, UV);
+            while (ia < alen && ib < blen) {
+              if (ra[ia] == rb[ib]) {
+                ia++; ib++;
+              } else {
+                if (SIGNED_CMP_LT(pcmp, ra[ia], rb[ib])) r[rlen++] = ra[ia++];
+                else                                     ib++;
+              }
+            }
+            while (ia < alen)   r[rlen++] = ra[ia++];
+          } else if (ix == 3) { /* delta (symmetric difference) */
+            New(0, r, alen + blen, UV);
+            while (ia < alen && ib < blen) {
+              if (ra[ia] == rb[ib]) {
+                ia++; ib++;
+              } else {
+                if (SIGNED_CMP_LT(pcmp, ra[ia], rb[ib])) r[rlen++] = ra[ia++];
+                else                                     r[rlen++] = rb[ib++];
+              }
+            }
+            while (ia < alen)   r[rlen++] = ra[ia++];
+            while (ib < blen)   r[rlen++] = rb[ib++];
+          }
+          Safefree(ra);
+          Safefree(rb);
+          if (GIMME_V == G_SCALAR) {
+            Safefree(r);
+            XSRETURN_UV(rlen);
+          }
+          RETURN_LIST_VALS(rlen, r, astatus);
+        }
+      }
+      if (astatus != 0 && bstatus != 0) {
+        sa = iset_create_from_array(ra, alen, astatus);
+        sb = iset_create_from_array(rb, blen, bstatus);
+      }
+      Safefree(ra);
+      Safefree(rb);
+    }
+    /* If we're here, the inputs are integers, but not sorted uniques. */
+#endif
     if (astatus != 0 && bstatus != 0) {
       switch (ix) {
         case 0:  s = iset_union_of(sa, sb);  break;
@@ -4172,9 +4291,9 @@ void setunion(IN SV* sva, IN SV* svb)
       }
       if (iset_is_invalid(s))
         astatus = bstatus = 0;
+      iset_destroy(&sa);
+      iset_destroy(&sb);
     }
-    iset_destroy(&sa);
-    iset_destroy(&sb);
     if (astatus == 0 || bstatus == 0) {
       switch (ix) {
         case 0: _vcallsubn(aTHX_ GIMME_V,VCALL_PP,"setunion",    items,0);break;

@@ -27,6 +27,8 @@ my @sets = (
   # This tests that we sort correctly even when given strings that Perl
   # doesn't compare properly.  This will fail if we try to use sort {$a<=>$b}.
   [ [$pr.6,$pr.5,$pr.7,$pr.4,$pr.8], [$pr.6,$pr.5,$pr.3], "mix 64-bit and 65-bit as strings", [map { $pr.$_ } 3..8], [$pr.5,$pr.6], [$pr.4,$pr.7,$pr.8], [$pr.3,$pr.4,$pr.7,$pr.8] ],
+  # More sign overlap
+  [ [-20,-16,-14,-12,-10,0,12,14], [-30,-18,-14,-11,-10,-8,1,13,14], "sign overlap", [qw/-30 -20 -18 -16 -14 -12 -11 -10 -8 0 1 12 13 14/], [qw/-14 -10 14/], [qw/-20 -16 -12 0 12/], [qw/-30 -20 -18 -16 -12 -11 -8 0 1 12 13/] ],
 );
 
 plan tests => 2 + 4*scalar(@sets) + 6 + 6 + 2 + 2;
