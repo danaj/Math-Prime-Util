@@ -6,7 +6,7 @@ use Math::Random::ISAAC;           #           32-bit 2^32-1
 use Math::Random::MT;              #           32-bit 2^32
 use Math::Random::MT::Auto;        #           52-bit (x>>12)*2^-52+2^-53
 use Math::Random::Xorshift;        #           32-bit 2^32-1
-use Math::Random::MTwist;          #  :rand    52-bit x*2^-53
+#use Math::Random::MTwist;          #  :rand    52-bit x*2^-53
 use Math::Random::Secure;          #           32-bit 2^32
 use ntheory;                       #  :rand    NV bit x*2^-64
 use Math::Prime::Util::GMP;        #           53+bit x*2^-64
@@ -63,7 +63,7 @@ cmpthese($trials, {
 
   # 52-bit, 53-bit doubles
   'M::R::MT::A::rand' => sub { Math::Random::MT::Auto::rand for 1..1000 },
-  'M::R::MTwist::rand' => sub { Math::Random::MTwist::_rand for 1..1000 },
+  #'M::R::MTwist::rand' => sub { Math::Random::MTwist::_rand for 1..1000 },
   'Crypt::PRNG::rand' => sub { Crypt::PRNG::rand for 1..1000 },
   # 53-bit or 64-bit NVs
   'MPU::GMP' => sub { Math::Prime::Util::GMP::drand for 1..1000 },
