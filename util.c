@@ -41,13 +41,24 @@ static int _snumcmp(const void *a, const void *b) {
   IV x = *(IV*)a, y = *(IV*)b;
   return (x > y) - (x < y);
 }
-void sort_uv_array(UV* L, UV nelems)
+void sort_uv_array(UV* L, unsigned long len)
 {
-  (void) qsort(L, nelems, sizeof(UV), _numcmp);
+  (void) qsort(L, len, sizeof(UV), _numcmp);
 }
-void sort_iv_array(IV* L, UV nelems)
+void sort_iv_array(IV* L, unsigned long len)
 {
-  (void) qsort(L, nelems, sizeof(IV), _snumcmp);
+  (void) qsort(L, len, sizeof(IV), _snumcmp);
+}
+void sort_dedup_uv_array(UV* L, int data_is_signed, unsigned long *len)
+{
+  unsigned long i, j;
+  if (*len > 1) {
+    (void) qsort(L, *len, sizeof(UV), data_is_signed ? _snumcmp : _numcmp);
+    for (i=0, j=1; j < *len; j++)
+      if (L[i] != L[j])
+        L[++i] = L[j];
+    *len = i+1;
+  }
 }
 
 static int _verbose = 0;

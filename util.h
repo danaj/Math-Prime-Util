@@ -3,8 +3,10 @@
 
 #include "ptypes.h"
 
-extern void sort_uv_array(UV* L, UV nelems);
-extern void sort_iv_array(IV* L, UV nelems);
+extern void sort_uv_array(UV* L, unsigned long len);
+extern void sort_iv_array(IV* L, unsigned long len);
+
+extern void sort_dedup_uv_array(UV* L, int data_is_signed, unsigned long *len);
 
 extern int  _XS_get_verbose(void);
 extern void _XS_set_verbose(int v);
