@@ -206,6 +206,9 @@ Tags:
   vecmin(@list)                       minimum of list of integers
   vecmax(@list)                       maximum of list of integers
   vecuniq(@list)                      remove duplicates from list of integers
+  vecsort(@list)                      numerically sort a list of integers
+  vecsortr(\@list)                    numerically sort a list ref
+  vecsortrr(\@list)                   as vecsortr but returns a list ref
   vecextract(\@list, mask)            select from list based on mask
   vecequal(\@list1, \@list2)          compare equality of two arrays
   vecreduce { ... } @list             reduce / left fold applied to list

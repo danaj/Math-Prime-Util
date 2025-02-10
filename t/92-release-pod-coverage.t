@@ -126,6 +126,7 @@ sub mpu_public_regex {
       negmod invmod addmod submod mulmod divmod powmod muladdmod mulsubmod
       vecsum vecmin vecmax vecprod vecreduce vecextract vecequal vecuniq
       vecany vecall vecnotall vecnone vecfirst vecfirstidx vecmex vecpmex
+      vecsort vecsortr vecsortrr
       setbinop sumset setunion setintersect setminus setdelta toset
       is_subset is_sidon_set is_sumfree_set
       moebius mertens liouville sumliouville prime_omega prime_bigomega

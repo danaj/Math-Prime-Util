@@ -152,6 +152,9 @@ Revision history for Perl module Math::Prime::Util
     - vecmex(...)                     least non-negative value not in list
     - vecpmex(...)                    least positive value not in list
     - vecuniq(...)                    remove duplicates from list of integers
+    - vecsort(@L)                     numerically sort integer list
+    - vecsortr(\@L)                   numerically sort integer list ref
+    - vecsortrr(\@L)                  as vecsortr but returns a list ref
     - setbinop {...} \@A[,\@B]        apply op to cross product of set(s)
     - sumset(\@A[,\@B])               new set from a+b {a:A,b:B}
     - setunion(\@A,\@B)               union of two integer lists

@@ -9,6 +9,7 @@ use Math::Prime::Util qw/vecreduce
                          vecmin vecmax
                          vecsum vecprod factorial
                          vecuniq
+                         vecsort vecsortr vecsortrr
                          vecany vecall vecnotall vecnone vecfirst vecfirstidx/;
 
 my $extra = defined $ENV{EXTENDED_TESTING} && $ENV{EXTENDED_TESTING};
@@ -80,6 +81,20 @@ my @vecprods = (
   [ "-2147483648", 32768, -65536 ],
 );
 
+my @vecsorts = (
+  [ [], [], "empty input" ],
+  [ [0], [0], "single input" ],
+  [ [5,0], [0,5], "two positive inputs" ],
+  [ [~0,-1], [-1,~0], "-1 and maxuv" ],
+  [ ["-9223372036854775808","-9223372036854775809"], ["-9223372036854775809","-9223372036854775808"], "two large negative inputs" ],
+  [ [qw/9223372036854775807 18446744073709551615 127 32767 2147483647 1 140737488355327/],
+    [qw/1 127 32767 2147483647 140737488355327 9223372036854775807 18446744073709551615/],
+    "various 64-bit positive inputs" ],
+  [ [qw/18446744073709551615 19342813113834066795298815 4722366482869645213695 65535 4294967295/],
+    [qw/65535 4294967295 18446744073709551615 4722366482869645213695 19342813113834066795298815/],
+    "large string inputs" ],
+);
+
 plan tests => 0
             + scalar(@vecmins)
             + scalar(@vecmaxs)
@@ -92,6 +107,7 @@ plan tests => 0
             + 5    # vecfirst
             + 5    # vecfirstidx
             + 7    # vecuniq
+            + scalar(@vecsorts)
             + 0;
 
 ###### vecmin
@@ -218,4 +234,12 @@ ok(  (vecnone { 1 }), 'none empty list' );
   is_deeply([vecuniq(0)], [0], "vecuniq with one input returns it");
   is_deeply([vecuniq(0,"18446744073709551615",0,4294967295,"18446744073709551615",4294967295)], [0,"18446744073709551615",4294967295], "vecuniq with 64-bit inputs");
   is_deeply([vecuniq("-9223372036854775808","9223372036854775807",4294967295,"9223372036854775807",4294967295,"-9223372036854775808")], ["-9223372036854775808","9223372036854775807",4294967295], "vecuniq with signed 64-bit inputs");
+}
+
+###### vecsort
+foreach my $r (@vecsorts) {
+  my($in, $out, $str) = @$r;
+  is_deeply( [ [vecsort(@$in)], [vecsortr($in)], [vecsortrr($in)] ],
+             [ $out, $out, [$out] ],
+             "vecsort/r/rr $str" );
 }

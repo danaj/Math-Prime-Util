@@ -10580,9 +10580,23 @@ sub shuffle {
 
 sub vecsort {
   my(@s) = @_;
-  _validate_integer($_) for @s;
+  _validate_integer($_) for @s;   # Everything is now a native int or bigint
   @s = sort { $a<=>$b } @s;
   return @s;
+}
+sub vecsortr {
+  my($ra) = @_;
+  croak 'Not an array reference' unless (ref($ra) || '') eq 'ARRAY';
+  _validate_integer($_) for @$ra;  # Everything is now a native int or bigint
+  my @s = sort { $a<=>$b } @$ra;
+  return @s;
+}
+sub vecsortrr {
+  my($ra) = @_;
+  croak 'Not an array reference' unless (ref($ra) || '') eq 'ARRAY';
+  _validate_integer($_) for @$ra;  # Everything is now a native int or bigint
+  my @s = sort { $a<=>$b } @$ra;
+  return \@s;
 }
 
 sub vecsorti {

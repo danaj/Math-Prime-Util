@@ -99,7 +99,9 @@ our @EXPORT_OK =
       negmod invmod addmod submod mulmod divmod powmod muladdmod mulsubmod
       vecsum vecmin vecmax vecprod vecreduce vecextract vecequal vecuniq
       vecany vecall vecnotall vecnone vecfirst vecfirstidx vecmex vecpmex
-      setbinop sumset setunion setintersect setminus setdelta toset
+      vecsort vecsortr vecsortrr
+      setbinop sumset toset
+      setunion setintersect setminus setdelta
       is_subset is_sidon_set is_sumfree_set
       moebius mertens liouville sumliouville prime_omega prime_bigomega
       euler_phi jordan_totient exp_mangoldt sumtotient
@@ -3424,6 +3426,37 @@ This is similar to L<List::Util::uniq> but restricted to integers,
 while L<List::Util::uniq> supports undef and arbitrary types.
 In return our function is 2-10x faster in XS for native signed integers.
 
+=head2 vecsort
+
+  my @sorted = vecsort(1,2,3,2,-10,-100,1);  # returns (-100,-10,1,1,2,2,3)
+
+Given an array of integers, returns an array of the inputs numerically sorted.
+
+All values must be defined and integers.
+They may be any mix of native IV, native UV, strings, bigints.
+
+In particular, integers as strings can sometimes give incorrect results with
+Perl's built-in numerical sort as it coerces them into an NV type.
+
+=head2 vecsortr
+
+  my @sorted = vecsortr([1,2,3,2,-10,-100,1]);
+
+Given an array reference of integers,
+returns an array of the inputs numerically sorted.
+
+Similar to L<vecsort> but slightly faster with large lists.
+
+=head2 vecsortrr
+
+  my $sorted_aref = vecsortrr([1,2,3,2,-10,-100,1]);
+
+Given an array reference of integers,
+returns an array reference of the inputs numerically sorted.
+
+Similar to L<vecsort> and L<vecsortr> but slightly faster with large lists.
+
+
 =head2 vecequal
 
   my $is_equal = vecequal( [1,2,-3,[4,5,undef]], [1,2,-3,[4,5,undef]] );
@@ -3475,15 +3508,14 @@ C<vecpmex>(1,2,...,I<w>) = I<w>+1.
 =head2 toset
 
 Given an array reference containing integers, returns a list ideal for set
-operations.  Duplicates will be removed and the result sorted (least first).
-While many of the set operations below do not require this,
-L</setsearch> and L</setinsert> must have the input in this form.
-
-Some operations such as setintersect and setunion may be up to 2x faster
-when given presorted inputs.
+operations.  The result is numerically sorted with duplicates removed.
+The input array must only contain integers (signed integers, bigints,
+objects that evaluate to integers, strings representing integers are all ok).
+This "set form" is optimal for the set operations.
 
 After the set is in this form, the size of the set is simply the list length.
-Similarly the set minimum and maximum are trivial.
+Similarly the set minimum and maximum are trivial.  All values in the output
+will be either typed as either native integers (IV or UV) or bigints.
 
 
 =head2 setbinop
@@ -3492,26 +3524,31 @@ Similarly the set minimum and maximum are trivial.
   my @difset = setbinop { $a - $b } [1,2,3], [2,3,4];  # [-3,-2,-1,0,1]
   my @setsum = setbinop { $a + $b } [1,2,3];           # [2,3,4,5,6]
 
-Given a code block and two array references containing integers, constructs
-a new set (as a sorted list) from the cross product of the two given sets.
+Given a code block and two array references containing integers, treats
+them as integer sets and constructs a new set from the cross product of
+the two given sets.
 If only one array reference is given, it will be used with itself.
+
+The result will be in set form (numerically sorted, no duplicates).
 
 This corresponds to Pari's C<setbinop> function.
 Our function uses B<much> less memory, as of Pari 2.17.0.
 
 =head2 sumset
 
-Given two array references of integers, returns the sumset as a list.
+Given two array references of integers, treates them as integer sets and
+returns the sumset as a list in set form.
+
+If only one array reference is given, it will be used for both.
+It is common to see sumset applied to a single set.
+
 This is equivalent to:
 
   my %r;  my @A=(2,4,6,8);  my @B=(3,5,7);
   forsetproduct { $r{vecsum(@_)}=undef; } \@A,\@B;
   my @sumset = sort { $a<=>$b } keys %r;
 
-If only one array reference is given, it will be used for both.
-It is common to see sumset applied to a single set.
-
-This is a specific set operation, and is similar to:
+or
 
   my @sumset1 = setbinop { $a + $b } [1,2,3];
   my @sumset2 = setbinop { $a + $b } [1,2,3], [2,3,4];
@@ -3525,11 +3562,9 @@ Given exactly two array references of integers, treats them as sets and
 returns the union as a list.
 The returned list will have all elements that appear in either input set.
 
-The input arrays must only contain integers (signed integers, bigints,
-objects that evaluate to integers, strings representing integers are all ok).
-Duplications and non-sorted lists are allowed.
-
-The result will be sorted and all duplicates removed.
+This is more efficient if the input is in set form
+(numerically sorted, no duplicates).
+The result will be in set form.
 
 This corresponds to Pari's C<setunion> function,
 Mathematica's C<Union> function, and
@@ -3541,11 +3576,9 @@ Given exactly two array references of integers, treats them as sets and
 returns the intersection as a list.
 The returned list will have all elements that appear in both input sets.
 
-The input arrays must only contain integers (signed integers, bigints,
-objects that evaluate to integers, strings representing integers are all ok).
-Duplications and non-sorted lists are allowed.
-
-The result will be sorted and all duplicates removed.
+This is more efficient if the input is in set form
+(numerically sorted, no duplicates).
+The result will be in set form.
 
 This corresponds to Pari's C<setintersect> function
 and Mathematica's C<Intersection> function, and
@@ -3558,11 +3591,9 @@ returns the difference as a list.
 The returned list will have all elements that appear in the first set but
 not in the second.
 
-The input arrays must only contain integers (signed integers, bigints,
-objects that evaluate to integers, strings representing integers are all ok).
-Duplications and non-sorted lists are allowed.
-
-The result will be sorted and all duplicates removed.
+This is more efficient if the input is in set form
+(numerically sorted, no duplicates).
+The result will be in set form.
 
 This corresponds to Pari's C<setminus> function, and
 Sage's C<difference> function on Set objects.
@@ -3574,11 +3605,9 @@ returns the symmetric difference as a list.
 The returned list will have all elements that appear in only one of the
 two input sets.
 
-The input arrays must only contain integers (signed integers, bigints,
-objects that evaluate to integers, strings representing integers are all ok).
-Duplications and non-sorted lists are allowed.
-
-The result will be sorted and all duplicates removed.
+This is more efficient if the input is in set form
+(numerically sorted, no duplicates).
+The result will be in set form.
 
 This corresponds to Pari's C<setdelta> function
 and Mathematica's C<SymmetricDifference> function, and
@@ -3948,9 +3977,9 @@ This function is defined as C<sum(moebius(1..n))>, but calculated more
 efficiently for large inputs.  For example, computing Mertens(100M) takes:
 
    time    approx mem
-     0.03s     0.1MB   mertens(100_000_000)
-     3.0s    880MB     vecsum(moebius(1,100_000_000))
-    56s        0MB     $sum += moebius($_) for 1..100_000_000
+     0.01s     0.1MB   mertens(100_000_000)
+     1.3s    880MB     vecsum(moebius(1,100_000_000))
+    16s        0MB     $sum += moebius($_) for 1..100_000_000
 
 The summation of individual terms via factoring is quite expensive in time,
 though uses O(1) space.  Using the range version of moebius is much faster,
@@ -6882,21 +6911,21 @@ Finding the sumset size of the first 10,000 primes.
 
   my %r;  my $p = primes(nth_prime(10000));
 
-  14.5s   15MB  forsetproduct {$r{vecsum(@_)}=undef;} $p,$p;
+  13.4s   15MB  forsetproduct {$r{vecsum(@_)}=undef;} $p,$p;
                 say scalar(keys %r);
    9.4s 3900MB  Pari/GP X=primes(10000); #setbinop((a,b)->a+b,X,X)
-   2.8s    3MB  say scalar setbinop { $a+$b } $p;
+   2.6s    3MB  say scalar setbinop { $a+$b } $p;
    0.4s    3MB  say scalar sumset $p;
 
 Set intersection of C<[-1000..100]> and C<[-100..1000]>.
 
      4 uS  Set::IntSpan::Fast::XS
-    12 uS  Pari/GP 2.17.0
+     7 uS  Pari/GP 2.17.0
+     8 uS  setintersect
     16 uS  Set::IntSpan::Fast
-    18 uS  setintersect
     73 uS  native Perl hash intersection
     90 uS  Set::Functional
-   170 uS  PP::setintersect
+   115 uS  PP::setintersect
    217 uS  Array::Set
    326 uS  Set::SortedArray
    341 uS  Set::Object
@@ -6904,11 +6933,11 @@ Set intersection of C<[-1000..100]> and C<[-100..1000]>.
 
 Set::IntSpan::Fast is very fast when the sets are single spans, but for
 sparse single values it is much slower.  The other modules don't change.
-Set::Functional runs faster because inputs are assured to be sets.
 
 Using our own set objects wrapping a C structure of some sort would be
-much faster.  We are 1-3x slower than Pari/GP for set operations,
-due to processing Perl arrays as the input along with input validation.
+faster and lower memory.  In particular, we often spend more time just
+reading the set values than we do performing the set operation.
+The C<Set::IntSpan::Fast> and L<Set::Object> modules can avoid this.
 
 
 =head1 AUTHORS
@@ -7035,7 +7064,7 @@ Douglas A. Stoll and Patrick Demichel , "The impact of ζ(s) complex zeros on π
 
 =head1 COPYRIGHT
 
-Copyright 2011-2024 by Dana Jacobsen E<lt>dana@acm.orgE<gt>
+Copyright 2011-2025 by Dana Jacobsen E<lt>dana@acm.orgE<gt>
 
 This program is free software; you can redistribute it and/or modify it under the same terms as Perl itself.
 
