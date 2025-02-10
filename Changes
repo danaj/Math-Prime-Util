@@ -270,6 +270,9 @@ Revision history for Perl module Math::Prime::Util
 
     - znprimroot faster.  2-20x faster for p^k and 2p^k with k >= 2.
 
+    - native integer input parsing is a little faster.  A big deal for fast
+      functions and long lists.
+
     [OTHER]
 
     - Legendre, Meissel, and Lehmer prime counting got rewritten to use our

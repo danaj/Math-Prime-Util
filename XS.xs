@@ -212,13 +212,16 @@ static int _validate_int(pTHX_ SV* n, int negok)
   } else if (ptr[0] == '+') {
     ptr++; len--;                      /* Allow a single plus sign */
   }
-  ret    = isneg ? -1           : 1;
-  maxlen = isneg ? ivmax_maxlen : uvmax_maxlen;
-  maxstr = isneg ? ivmin_str    : uvmax_str;    /* ivmin_str is intentional */
-  if (len == 0 || !isDIGIT(ptr[0]))
-    croak("Parameter '%" SVf "' %s", n, mustbe);
+  /* Empty string or non-numeric */
+  if (len == 0 || !isDIGIT(ptr[0])) croak("Parameter '%" SVf "' %s", n, mustbe);
+  /* Leading zeros and if left with only zero */
   while (len > 0 && *ptr == '0')       /* Strip all leading zeros */
     { ptr++; len--; }
+  if (len == 0)                        /* 0 or -0 */
+    return 1;
+  /* We're going to look more carefully at the string to ensure it's a number */
+  if (isneg) { ret = -1;  maxlen = ivmax_maxlen;  maxstr = ivmin_str; }
+  else       { ret =  1;  maxlen = uvmax_maxlen;  maxstr = uvmax_str; }
   if (len > maxlen)
     return 0;                          /* Huge number, don't even look at it */
   for (i = 0; i < len; i++)            /* Ensure all characters are digits */
@@ -240,35 +243,42 @@ static int _validate_int(pTHX_ SV* n, int negok)
 #define IFLAG_IV       0x00000008U  /* Value returned as IV */
 
 static int _validate_and_set(UV* val, pTHX_ SV* svn, uint32_t mask) {
-  UV n = 0;
-  int negok = !(mask & IFLAG_POS);
-  int status = _validate_int(aTHX_ svn, negok);
+  int status;
 
-  if (status == 1) {
-    n = my_svuv(svn);
-#if 0  /* _validate_int already does this */
-  } else if (status == -1 && (mask & IFLAG_POS)) {
-    croak("parameter must be a non-negative integer");
-#endif
-  } else if (status == -1) {
-    if (mask & IFLAG_ABS) {
-      n = (UV)(-(my_sviv(svn)));
-      status = 1;
-    } else {
-      n = (UV)my_sviv(svn);
+  /* Streamline the typical path of input being a native integer. */
+  if (SVNUMTEST(svn)) {
+    IV n = SvIVX(svn);
+    if (n >= 0) {
+      if (n == 0 && (mask & IFLAG_NONZERO))
+        croak("Parameter '%" SVf "' must be a positive integer", svn);
+      *val = (UV)n;
+      return 1;
     }
+    if (SvIsUV(svn)) {
+      if (mask & IFLAG_IV)
+        return 0;
+      *val = (UV)n;
+      return 1;
+    }
+    if (mask & IFLAG_ABS) { *val = (UV)(-n); return 1; }
+    if (mask & IFLAG_POS) croak("Parameter '%" SVf "' must be a non-negative integer", svn);
+    *val = n;
+    return -1;
   }
 
-  if (status != 0 && (mask & IFLAG_NONZERO) && n == 0)
-    croak("Parameter '%" SVf "' must be a positive integer", svn);
-
-  /* If they want an IV returned, verify it fits. */
-  if (status == 1 && (mask & IFLAG_IV) && n > (UV)IV_MAX)
-    status = 0;
-
-  if (status != 0)
+  status = _validate_int( aTHX_ svn, !(mask & IFLAG_POS) );
+  if (status == 1) {
+    UV n = my_svuv(svn);
+    if (n == 0 && (mask & IFLAG_NONZERO))
+      croak("Parameter '%" SVf "' must be a positive integer", svn);
+    if (n > (UV)IV_MAX && (mask & IFLAG_IV))
+      return 0;
     *val = n;
-
+  } else if (status == -1) {
+    IV n = my_sviv(svn);
+    if (mask & IFLAG_ABS) { *val = (UV)(-n); status = 1; }
+    else                  { *val = (UV)n; }
+  }
   return status;
 }
 
