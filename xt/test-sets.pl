@@ -3,7 +3,9 @@ use strict;
 use warnings;
 $| = 1;  # fast pipes
 
-use Math::Prime::Util qw/vecequal toset setintersect setunion setminus setdelta/;
+use Math::Prime::Util qw/vecequal toset is_subset
+                         setintersect setunion setminus setdelta/;
+use Math::Prime::Util::PP;   # Have it available for comparison
 use Benchmark qw/:all/;
 
 
@@ -14,7 +16,6 @@ my @set2 = map { 2*$_   } 0..$N-1;          # Evens
 my @set3 = reverse @set1;                   # Odds descending
 my @set4 = map { _hash32($_) } 0..$N-1;     # random1
 my @set5 = map {_hash32(10*$N+$_)} 0..$N-1; # random2
-
 
 sub _hash32 {
   use integer;
@@ -88,21 +89,27 @@ my @sf4 = Set::Functional::setify(@iset4);
 my @sf5 = Set::Functional::setify(@iset5);
 
 
+#my $ts=0;
+#cmpthese(-1, {
+#  "is_subset" => sub { $ts += is_subset(\@set1, [85]); $ts += is_subset(\@iset4, \@iset5); },
+#});
+#exit(0);
+
 cmpthese(-1, {
   "intersect odds/odds"   => sub { @R=setintersect(\@set1,\@set1); },
   "intersect odds/evens"  => sub { @R=setintersect(\@set1,\@set2); },
   "intersect rodds/evens" => sub { @R=setintersect(\@set2,\@set3); },
   "intersect hashes"      => sub { @R=setintersect(\@set4,\@set5); },
   "intersect iset hashes" => sub { @R=setintersect(\@iset4,\@iset5); },
-  #"Set::SortedArray iset" => sub { $R=$saset4->intersection($saset5); },
-  #"Array::Set iset"       => sub { $R=set_intersect(\@iset4,\@iset5); },
-  #"Set::IntSpan::Fast iset"=>sub { $R=$sisf4->intersection($sisf5); },
+  "Set::SortedArray iset" => sub { $R=$saset4->intersection($saset5); },
+  "Array::Set iset"       => sub { $R=set_intersect(\@iset4,\@iset5); },
+  "Set::IntSpan::Fast iset"=>sub { $R=$sisf4->intersection($sisf5); },
   "Set::Functional"       => sub {@R=Set::Functional::intersection(\@sf4,\@sf5);},
+  "MPUPP iset"=>sub { $R=Math::Prime::Util::PP::setintersect(\@iset4,\@iset5); },
   #"inter1 iset hashes" => sub { @R=inter1(\@iset4,\@iset5); },
   #"inter2 iset hashes" => sub { @R=inter2(\@iset4,\@iset5); },
   #"inter3 iset hashes" => sub { @R=inter3(\@iset4,\@iset5); },
 });
-exit(0);
 
 cmpthese(-1, {
   "union odds/odds"   => sub { @R=setunion(\@set1,\@set1); },
@@ -135,6 +142,7 @@ cmpthese(-1, {
   "Set::SortedArray iset" => sub { $R=$saset4->symmetric_difference($saset5);},
   "Array::Set iset"       => sub { $R=set_symdiff(\@iset4,\@iset5); },
   "Set::IntSpan::Fast iset"=>sub { $R=$sisf4->diff($sisf5); },
+  "MPUPP iset"=>sub { $R=Math::Prime::Util::PP::setdelta(\@iset4,\@iset5); },
 });
 
 

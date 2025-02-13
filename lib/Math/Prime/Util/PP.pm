@@ -134,7 +134,9 @@ BEGIN {
 *Mvecmin = \&Math::Prime::Util::vecmin;
 *Mvecmax = \&Math::Prime::Util::vecmax;
 *Mvecfirst = \&Math::Prime::Util::vecfirst;
+*Mvecsort = \&Math::Prime::Util::vecsort;
 *Mtodigits = \&Math::Prime::Util::todigits;
+*Mtoset = \&Math::Prime::Util::toset;
 
 *Mprimes = \&Math::Prime::Util::primes;
 *Mfordivisors = \&Math::Prime::Util::fordivisors;
@@ -10637,7 +10639,7 @@ sub setbinop (&$;$) {   ## no critic qw(ProhibitSubroutinePrototypes)
       $set{ $sub->() } = undef;
     }
   }
-  return wantarray  ?  vecsort(keys %set)  :  scalar(keys %set);
+  return wantarray  ?  Mvecsort(keys %set)  :  scalar(keys %set);
 }
 
 sub sumset {
@@ -10651,17 +10653,18 @@ sub sumset {
   return () if scalar(@$ra) == 0 || scalar(@$rb) == 0;
 
   validate_integer($_) for @$ra;
-  validate_integer($_) for @$rb;
+  if ($ra != $rb) { validate_integer($_) for @$rb; }
 
-  my %sums;
+  my(%seen, @sums);
   for my $x (@$ra) {
     for my $y (@$rb) {
-      $sums{ Maddint($x,$y) } = undef;
+      my $s = Maddint($x,$y);
+      next if exists $seen{$s};
+      push @sums, $s;
+      $seen{$s} = undef;
     }
   }
-
-  my @set = sort { $a<=>$b } keys(%sums);
-  return @set;
+  return wantarray  ?  vecsortr(\@sums)  :  scalar(@sums);
 }
 
 sub vecuniq {
@@ -10673,58 +10676,47 @@ sub vecuniq {
   return grep { not $seen{$k = $_}++; } @_;
 }
 
+# SET/VEC generic.
+
 sub setunion {
   my($ra,$rb) = @_;
   croak 'Not an array reference' unless (ref($ra) || '') eq 'ARRAY';
   croak 'Not an array reference' unless (ref($rb) || '') eq 'ARRAY';
+  # return toset([@$ra,@$rb]);
   my(%seen,$k);
-  my @set = grep { not $seen{$k = $_}++ } @$ra,@$rb;
-  #vecsorti(\@set) && return @set;
-  for (@set) { return vecsort(@set) if !ref($_) && ($_ >= INTMAX || $_ <= INTMIN); }
-  @set = sort { $a<=>$b } @set;
-  return @set;
+  return Mtoset([grep { not $seen{$k = $_}++ } @$ra,@$rb]);
 }
-
 sub setintersect {
   my($ra,$rb) = @_;
   croak 'Not an array reference' unless (ref($ra) || '') eq 'ARRAY';
   croak 'Not an array reference' unless (ref($rb) || '') eq 'ARRAY';
   ($ra,$rb) = ($rb,$ra) if scalar(@$ra) > scalar(@$rb);  # Performance
-  my(%ina,%seen,$k);
-  $ina{$_}=undef for @$ra;
-  my @set = grep { exists $ina{$_} && not $seen{$k=$_}++ } @$rb;
-  for (@set) { return vecsort(@set) if !ref($_) && ($_ >= INTMAX || $_ <= INTMIN); }
-  @set = sort { $a<=>$b } @set;
-  return @set;
+  return if scalar(@$ra) == 0;
+  my %ina;
+  undef @ina{@$ra};
+  return Mtoset([grep { exists $ina{$_} } @$rb]);
 }
-
 sub setminus {
   my($ra,$rb) = @_;
   croak 'Not an array reference' unless (ref($ra) || '') eq 'ARRAY';
   croak 'Not an array reference' unless (ref($rb) || '') eq 'ARRAY';
-  my(%inb,%seen,$k);
-  $inb{$_}=undef for @$rb;
-  my @set = grep { !exists $inb{$_} && not $seen{$k=$_}++ } @$ra;
-  for (@set) { return vecsort(@set) if !ref($_) && ($_ >= INTMAX || $_ <= INTMIN); }
-  @set = sort { $a<=>$b } @set;
-  return @set;
+  return @$ra if scalar(@$rb) == 0;
+  my %inb;
+  undef @inb{@$rb};
+  return Mtoset([grep { !exists $inb{$_} } @$ra]);
 }
-
 sub setdelta {
   my($ra,$rb) = @_;
   croak 'Not an array reference' unless (ref($ra) || '') eq 'ARRAY';
   croak 'Not an array reference' unless (ref($rb) || '') eq 'ARRAY';
-
-  my(%ina, %inb, %s);
-  $ina{$_}=undef for @$ra;
-  $inb{$_}=undef for @$rb;
-  $s{$_}=undef for grep { !exists $inb{$_} } @$ra;
-  $s{$_}=undef for grep { !exists $ina{$_} } @$rb;
-  return scalar(keys %s) unless wantarray;
-  my @set = keys %s;
-  for (@set) { return vecsort(@set) if !ref($_) && ($_ >= INTMAX || $_ <= INTMIN); }
-  @set = sort { $a<=>$b } @set;
-  return @set;
+  return @$ra if scalar(@$rb) == 0;
+  return @$rb if scalar(@$ra) == 0;
+  my(%ina, %inb);
+  undef @ina{@$ra};
+  undef @inb{@$rb};
+  my @s =  grep { !exists $inb{$_} } @$ra;
+  push @s, grep { !exists $ina{$_} } @$rb;
+  return Mtoset(\@s);
 }
 
 # Can do setminus([$min..$max],\@L) albeit 2x slower
@@ -10754,12 +10746,17 @@ sub toset {
   my($ra) = @_;
   croak 'Not an array reference' unless (ref($ra) || '') eq 'ARRAY';
 
-  my %s;
-  $s{$_}=undef for @$ra;
-  return scalar(keys %s) unless wantarray;
-  my @set = keys %s;
-  for (@set) { return vecsort(@set) if !ref($_) && ($_ >= INTMAX || $_ <= INTMIN); }
-  @set = sort { $a<=>$b } @set;
+  validate_integer($_) for @$ra;
+  return @$ra if scalar(@$ra) <= 1;
+  #my(%seen, @set);
+  #for my $v (@$ra) {
+  #  next if exists $seen{$v};
+  #  push @set, $v;
+  #  $seen{$v} = undef;
+  #}
+  #@set = sort { $a<=>$b } @set;
+  my($k,%seen);
+  my @set = sort { $a<=>$b }  grep { not $seen{$k = $_}++; }  @$ra;
   return @set;
 }
 
@@ -10781,10 +10778,10 @@ sub is_sidon_set {
   croak 'Not an array reference' unless (ref($ra) || '') eq 'ARRAY';
 
   my %sums;
-  my @S = @$ra;
-  for (@S) {  validate_integer($_);  return 0 if $_ < 0;  }
+  my @S = Mtoset($ra);  # Validated, sorted, deduped.
   while (@S) {
     my $x = pop @S;
+    return 0 if $x < 0;
     for my $y ($x, @S) {
       my $s = Maddint($x, $y);
       return 0 if exists $sums{$s};
@@ -10799,8 +10796,7 @@ sub is_sumfree_set {
   croak 'Not an array reference' unless (ref($ra) || '') eq 'ARRAY';
 
   my %ina;
-  my @S = @$ra;
-  for (@S) { validate_integer($_); }
+  my @S = Mtoset($ra);  # Validated, sorted, deduped.
   $ina{$_}=undef for @S;
   while (@S) {
     my $x = pop @S;

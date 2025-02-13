@@ -505,39 +505,74 @@ static int arrayref_to_iv_array(pTHX_ IV** ret, SV* sva, const char* fstr)
   return len;
 }
 
-static int arrayref_to_int_array(pTHX_ unsigned long *retlen, UV** ret, SV* sva, const char* fstr)
+#define IARR_TYPE_ANY 0x00
+#define IARR_TYPE_NEG 0x01
+#define IARR_TYPE_POS 0x02
+#define IARR_TYPE_BAD 0x03
+
+/* BAD always bad, ANY with ANY/POS/NEG, POS and NEG only with ANY and self. */
+#define CAN_COMBINE_IARR_TYPES(t1,t2)  ( ((t1) | (t2)) != IARR_TYPE_BAD )
+/* Convert to 0/1/-1 status */
+#define IARR_TYPE_TO_STATUS(t) \
+  (((t) == IARR_TYPE_BAD) ? 0 : ((t) == IARR_TYPE_NEG) ? -1 : 1)
+
+static int arrayref_to_int_array(pTHX_ unsigned long *retlen, UV** ret, int want_sort, SV* sva, const char* fstr)
 {
   AV *av;
-  int len, i, istatus, sflag;
-  UV  val, *r;
+  int len, i, itype = IARR_TYPE_ANY;
+  UV  *r;
 
   if ((!SvROK(sva)) || (SvTYPE(SvRV(sva)) != SVt_PVAV))
     croak("%s argument must be an array reference", fstr);
   av = (AV*) SvRV(sva);
   len = av_len(av);
   if (len < 0) {
-    *retlen = 0;  *ret = 0;  return 1;
+    *retlen = 0;  *ret = 0;  return itype;
   }
-  sflag = 0;
   New(0, r, len+1, UV);
   for (i = 0; i <= len; i++) {
     SV **iv = av_fetch(av, i, 0);
     if (iv == 0) break;
-    istatus = _validate_and_set(&val, aTHX_ *iv, IFLAG_ANY);
-    if (val > (UV)IV_MAX) {
-      sflag |= ((istatus == 1) ? 1 : 2);
-      if (sflag == 3) istatus = 0;
+    if (SVNUMTEST(*iv)) {
+      IV n = SvIVX(*iv);
+      if (n < 0) {
+        if (SvIsUV(*iv))  itype |= IARR_TYPE_POS;
+        else              itype |= IARR_TYPE_NEG;
+        if (itype == IARR_TYPE_BAD) break;
+      }
+      r[i] = (UV)n;
+    } else {
+      UV n;
+      int istatus = _validate_and_set(&n, aTHX_ *iv, IFLAG_ANY);
+      if (istatus == -1) {
+        itype |= IARR_TYPE_NEG;
+      } else if (istatus == 1 && n > (UV)IV_MAX) {
+        itype |= IARR_TYPE_POS;
+      }
+      if (istatus == 0 || itype == IARR_TYPE_BAD) break;
+      r[i] = n;
     }
-    if (istatus == 0) break;
-    r[i] = val;
   }
   if (i <= len) {
     Safefree(r);
-    *retlen = 0;  *ret = 0;  return 0;
+    *retlen = 0;  *ret = 0;  return IARR_TYPE_BAD;
   }
   *retlen = len+1;
   *ret = r;
-  return ((sflag == 2) ? -1 : 1);
+  if (want_sort) {
+    if (itype == IARR_TYPE_NEG) {
+      for (i = 1; i <= len; i++)
+        if ( (IV)r[i] <= (IV)r[i-1] )
+          break;
+    } else {
+      for (i = 1; i <= len; i++)
+        if (r[i] <= r[i-1])
+          break;
+    }
+    if (i <= len)
+      sort_dedup_uv_array(*ret, itype == IARR_TYPE_NEG, retlen);
+  }
+  return itype;
 }
 
 /* Status -1 for IVs, 1 for UVs, 0 for failed (overflow or bigints) */
@@ -546,10 +581,15 @@ static iset_t arrayref_to_iset(pTHX_ int *status, SV* sva, const char* fstr)
   UV *r;
   unsigned long len;
   iset_t s;
+  int itype;
 
   /* Doing this in two steps is much faster than one, probably caching. */
-  *status = arrayref_to_int_array(aTHX_ &len, &r, sva, fstr);
-  s = iset_create_from_array(r, len, *status);
+  itype = arrayref_to_int_array(aTHX_ &len, &r, 0, sva, fstr);
+  *status = IARR_TYPE_TO_STATUS(itype);
+  if (*status == 0)
+    s = iset_create(0);
+  else
+    s = iset_create_from_array(r, len, *status);
   Safefree(r);
   return s;
 }
@@ -4187,139 +4227,86 @@ void setunion(IN SV* sva, IN SV* svb)
     setminus = 2
     setdelta = 3
   PREINIT:
-    iset_t s, sa, sb;
-    int astatus, bstatus;
+    int atype, btype;
+    UV *ra, *rb;
+    unsigned long alen, blen;
   PPCODE:
-#if 0
-    sa = arrayref_to_iset(aTHX_ &astatus, sva, "setunion first arg");
-    sb = arrayref_to_iset(aTHX_ &bstatus, svb, "setunion second arg");
-#else
     /* Get the integers and check if they are sorted unique integers first. */
-    {
-      UV *ra, *rb;
-      unsigned long i, alen, blen;
+    atype = arrayref_to_int_array(aTHX_ &alen, &ra, 1, sva, "setunion arg 1");
+    btype = arrayref_to_int_array(aTHX_ &blen, &rb, 1, svb, "setunion arg 2");
 
-      astatus = arrayref_to_int_array(aTHX_ &alen, &ra, sva, "setunion arg 1");
-      bstatus = arrayref_to_int_array(aTHX_ &blen, &rb, svb, "setunion arg 2");
+    if (CAN_COMBINE_IARR_TYPES(atype,btype)) {
+      UV *r;
+      unsigned long rlen = 0, ia = 0, ib = 0;
+      int pcmp = (atype == IARR_TYPE_NEG || btype == IARR_TYPE_NEG) ? 0 : 1;
 
-      if (astatus != 0 && bstatus != 0) {
-        int type = ISET_TYPE_INVALID, pcmp, asorted = 1, bsorted = 1;
-
-        for (i = 1;  asorted && i < alen;  i++)
-          if (SIGNED_CMP_LE(astatus == 1, ra[i], ra[i-1]))
-            asorted = 0;
-        for (i = 1;  bsorted && i < blen;  i++)
-          if (SIGNED_CMP_LE(bstatus == 1, rb[i], rb[i-1]))
-            bsorted = 0;
-
-        if (astatus == 1) {
-          if (bstatus == 1) type = ISET_TYPE_UV;
-          else if (ra[alen-1] <= (UV)IV_MAX) type = ISET_TYPE_IV;
-        } else {
-          if (bstatus == -1) type = ISET_TYPE_IV;
-          else if (rb[blen-1] <= (UV)IV_MAX) type = ISET_TYPE_IV;
-        }
-        pcmp = (type == ISET_TYPE_UV) ? 1 : 0;
-
-        if (asorted && bsorted && type != ISET_TYPE_INVALID) {
-          UV *r;
-          unsigned long rlen = 0, ia = 0, ib = 0;
-
-          if (ix == 1) {        /* intersect */
-            New(0, r, (alen > blen) ? alen : blen, UV);
-            while (ia < alen && ib < blen) {
-              if (ra[ia] == rb[ib]) {
-                r[rlen++] = ra[ia];
-                ia++; ib++;
-              } else {
-                if (SIGNED_CMP_LT(pcmp, ra[ia], rb[ib])) ia++;
-                else                                     ib++;
-              }
-            }
-          } else if (ix == 0) { /* union */
-            New(0, r, alen + blen, UV);
-            while (ia < alen && ib < blen) {
-              if (ra[ia] == rb[ib]) {
-                r[rlen++] = ra[ia];
-                ia++; ib++;
-              } else {
-                if (SIGNED_CMP_LT(pcmp, ra[ia], rb[ib])) r[rlen++] = ra[ia++];
-                else                                     r[rlen++] = rb[ib++];
-              }
-            }
-            while (ia < alen)   r[rlen++] = ra[ia++];
-            while (ib < blen)   r[rlen++] = rb[ib++];
-          } else if (ix == 2) { /* minus (difference) */
-            New(0, r, alen, UV);
-            while (ia < alen && ib < blen) {
-              if (ra[ia] == rb[ib]) {
-                ia++; ib++;
-              } else {
-                if (SIGNED_CMP_LT(pcmp, ra[ia], rb[ib])) r[rlen++] = ra[ia++];
-                else                                     ib++;
-              }
-            }
-            while (ia < alen)   r[rlen++] = ra[ia++];
-          } else if (ix == 3) { /* delta (symmetric difference) */
-            New(0, r, alen + blen, UV);
-            while (ia < alen && ib < blen) {
-              if (ra[ia] == rb[ib]) {
-                ia++; ib++;
-              } else {
-                if (SIGNED_CMP_LT(pcmp, ra[ia], rb[ib])) r[rlen++] = ra[ia++];
-                else                                     r[rlen++] = rb[ib++];
-              }
-            }
-            while (ia < alen)   r[rlen++] = ra[ia++];
-            while (ib < blen)   r[rlen++] = rb[ib++];
+      if (ix == 0) {        /* union */
+        New(0, r, alen + blen, UV);
+        while (ia < alen && ib < blen) {
+          if (ra[ia] == rb[ib]) {
+            r[rlen++] = ra[ia];
+            ia++; ib++;
+          } else {
+            if (SIGNED_CMP_LT(pcmp, ra[ia], rb[ib])) r[rlen++] = ra[ia++];
+            else                                     r[rlen++] = rb[ib++];
           }
-          Safefree(ra);
-          Safefree(rb);
-          if (GIMME_V == G_SCALAR) {
-            Safefree(r);
-            XSRETURN_UV(rlen);
-          }
-          RETURN_LIST_VALS(rlen, r, astatus);
         }
-      }
-      if (astatus != 0 && bstatus != 0) {
-        sa = iset_create_from_array(ra, alen, astatus);
-        sb = iset_create_from_array(rb, blen, bstatus);
+        while (ia < alen)   r[rlen++] = ra[ia++];
+        while (ib < blen)   r[rlen++] = rb[ib++];
+      } else if (ix == 1) { /* intersect */
+        New(0, r, (alen > blen) ? alen : blen, UV);
+        while (ia < alen && ib < blen) {
+          if (ra[ia] == rb[ib]) {
+            r[rlen++] = ra[ia];
+            ia++; ib++;
+          } else {
+            if (SIGNED_CMP_LT(pcmp, ra[ia], rb[ib])) ia++;
+            else                                     ib++;
+          }
+        }
+      } else if (ix == 2) { /* minus (difference) */
+        New(0, r, alen, UV);
+        while (ia < alen && ib < blen) {
+          if (ra[ia] == rb[ib]) {
+            ia++; ib++;
+          } else {
+            if (SIGNED_CMP_LT(pcmp, ra[ia], rb[ib])) r[rlen++] = ra[ia++];
+            else                                     ib++;
+          }
+        }
+        while (ia < alen)   r[rlen++] = ra[ia++];
+      } else if (ix == 3) { /* delta (symmetric difference) */
+        New(0, r, alen + blen, UV);
+        while (ia < alen && ib < blen) {
+          if (ra[ia] == rb[ib]) {
+            ia++; ib++;
+          } else {
+            if (SIGNED_CMP_LT(pcmp, ra[ia], rb[ib])) r[rlen++] = ra[ia++];
+            else                                     r[rlen++] = rb[ib++];
+          }
+        }
+        while (ia < alen)   r[rlen++] = ra[ia++];
+        while (ib < blen)   r[rlen++] = rb[ib++];
       }
       Safefree(ra);
       Safefree(rb);
-    }
-    /* If we're here, the inputs are integers, but not sorted uniques. */
-#endif
-    if (astatus != 0 && bstatus != 0) {
-      switch (ix) {
-        case 0:  s = iset_union_of(sa, sb);  break;
-        case 1:  s = iset_intersection_of(sa, sb);  break;
-        case 2:  s = iset_difference_of(sa, sb);  break;
-        case 3:  s = iset_symdiff_of(sa, sb);  break;
-        default: croak("unknown function called");
+      if (GIMME_V == G_SCALAR) {
+        Safefree(r);
+        XSRETURN_UV(rlen);
       }
-      if (iset_is_invalid(s))
-        astatus = bstatus = 0;
-      iset_destroy(&sa);
-      iset_destroy(&sb);
+      RETURN_LIST_VALS(rlen, r, pcmp);
     }
-    if (astatus == 0 || bstatus == 0) {
-      switch (ix) {
-        case 0: _vcallsubn(aTHX_ GIMME_V,VCALL_PP,"setunion",    items,0);break;
-        case 1: _vcallsubn(aTHX_ GIMME_V,VCALL_PP,"setintersect",items,0);break;
-        case 2: _vcallsubn(aTHX_ GIMME_V,VCALL_PP,"setminus",    items,0);break;
-        case 3:
-        default:_vcallsubn(aTHX_ GIMME_V,VCALL_PP,"setdelta",    items,0);break;
-      }
-      return;
+    /* if (atype != IARR_TYPE_BAD && btype != IARR_TYPE_BAD) { .. isets .. } */
+    Safefree(ra);
+    Safefree(rb);
+    switch (ix) {
+      case 0: _vcallsubn(aTHX_ GIMME_V,VCALL_PP,"setunion",    items,0);break;
+      case 1: _vcallsubn(aTHX_ GIMME_V,VCALL_PP,"setintersect",items,0);break;
+      case 2: _vcallsubn(aTHX_ GIMME_V,VCALL_PP,"setminus",    items,0);break;
+      case 3:
+      default:_vcallsubn(aTHX_ GIMME_V,VCALL_PP,"setdelta",    items,0);break;
     }
-    if (GIMME_V == G_SCALAR) {
-      unsigned long slen = iset_size(s);
-      iset_destroy(&s);
-      XSRETURN_UV(slen);
-    }
-    RETURN_SET_VALS(s);
+    return;
 
 void is_subset(IN SV* sva, IN SV* svb)
   PROTOTYPE: $$
@@ -4343,69 +4330,66 @@ void is_subset(IN SV* sva, IN SV* svb)
 void is_sidon_set(IN SV* sva)
   PROTOTYPE: $
   PREINIT:
-    int status;
+    int itype, is_sidon;
     unsigned long len, i, j;
     UV *data;
     iset_t s;
   PPCODE:
-    status = arrayref_to_int_array(aTHX_ &len, &data, sva, "is_sidon_set arg");
-    if (status == -1) {   /* All elements must be non-negative */
+    itype = arrayref_to_int_array(aTHX_ &len, &data, 1, sva,"is_sidon_set arg");
+    if (itype == IARR_TYPE_NEG) {  /* All elements must be non-negative. */
       Safefree(data);
       RETURN_NPARITY(0);
     }
-    if (status == 1) {  /* Check for UV overflow */
-      for (i = 0; i < len && status != 0; i++)
-        if (data[i] > (UV_MAX/2))
-          status = 0;
-    }
-    if (status == 0) {
+    /* If any bigints or we cannot add the values in 64-bits, call PP. */
+    if (itype == IARR_TYPE_BAD || itype == IARR_TYPE_POS) {
       Safefree(data);
       _vcallsubn(aTHX_ GIMME_V, VCALL_PP, "is_sidon_set", items, 0);
       return;
     }
+    /* Check if the set is a Sidon set. */
+    is_sidon = 1;
     s = iset_create( 20UL * len );
-    for (i = 0; i < len && status != 0; i++)
-      for (j = i; j < len && status != 0; j++)
+    for (i = 0; i < len && is_sidon; i++)
+      for (j = i; j < len; j++)
         if (!iset_add(&s, data[i] + data[j], 1))
-          status = 0;
+          { is_sidon = 0; break; }
     Safefree(data);
     iset_destroy(&s);
-    RETURN_NPARITY( status != 0 );
+    RETURN_NPARITY(is_sidon);
 
 void is_sumfree_set(IN SV* sva)
   PROTOTYPE: $
   PREINIT:
-    int status;
+    int itype, is_sumfree;
     unsigned long len, i, j;
     UV *data;
     iset_t sa;
   PPCODE:
-    status = arrayref_to_int_array(aTHX_ &len, &data, sva, "is_sumfree_set arg");
-    if (status == 1) {  /* Check for UV overflow */
-      for (i = 0; i < len && status != 0; i++)
-        if (data[i] > (UV_MAX/2))
-          status = 0;
-    } else if (status == -1) {  /* Check for IV overflow */
-      for (i = 0; i < len && status != 0; i++)
+    itype = arrayref_to_int_array(aTHX_ &len, &data,1,sva,"is_sumfree_set arg");
+    /* Check for UV overflow on sum */
+    if (itype == IARR_TYPE_POS)  itype = IARR_TYPE_BAD;
+    /* Check for IV overflow on sum */
+    if (itype == IARR_TYPE_NEG) {
+      for (i = 0; i < len; i++)
         if ((IV)data[i] > (IV_MAX/2) || (IV)data[i] < (IV_MIN/2))
-          status = 0;
+          break;
+      if (i < len)  itype = IARR_TYPE_BAD;
     }
-    if (status != 0) {
-      sa = iset_create_from_array(data, len, status);
-      if (status == 0) iset_destroy(&sa);
-    }
-    if (status == 0) {
+    /* Call PP code if bigints or summation overflow */
+    if (itype == IARR_TYPE_BAD) {
       Safefree(data);
       _vcallsubn(aTHX_ GIMME_V, VCALL_PP, "is_sumfree_set", items, 0);
       return;
     }
-    for (i = 0; i < len && status != 0; i++)
-      for (j = i; j < len && status != 0; j++)
+    sa = iset_create_from_array(data, len, IARR_TYPE_TO_STATUS(itype));
+    is_sumfree = 1;
+    for (i = 0; i < len && is_sumfree; i++)
+      for (j = i; j < len; j++)
         if (iset_contains(sa, data[i] + data[j]))
-          status = 0;
-    Safefree(data);
+          { is_sumfree = 0; break; }
     iset_destroy(&sa);
-    RETURN_NPARITY( status != 0 );
+    Safefree(data);
+    RETURN_NPARITY(is_sumfree);
 
 void toset(IN SV* sva)
   PREINIT:
@@ -4425,7 +4409,59 @@ void toset(IN SV* sva)
     }
     RETURN_SET_VALS(s);
 
+void vecsortr(IN SV* sva)
+  PROTOTYPE: $
+  ALIAS:
+    vecsortrr = 1
+  PREINIT:
+    int type;
+    unsigned long len;
+    UV *L;
+  PPCODE:
+    type = arrayref_to_int_array(aTHX_ &len, &L, 0, sva, "vecsort arg");
+    if (type == IARR_TYPE_ANY || type == IARR_TYPE_POS) {
+      sort_uv_array(L, len);
+    } else if (type == IARR_TYPE_NEG) {
+      sort_iv_array((IV*)L, len);
+    } else {
+      Safefree(L);
+      _vcallsubn(aTHX_ GIMME_V, VCALL_PP, (ix == 0) ? "vecsortr" : "vecsortrr", items, 0);
+      return;
+    }
+    if (ix == 0) { RETURN_LIST_VALS( len, L, (type != IARR_TYPE_NEG) ); }
+    else         { RETURN_LIST_REF(  len, L, (type != IARR_TYPE_NEG) ); }
 
+void vecsort(...)
+  PROTOTYPE: @
+  PREINIT:
+    UV *L;
+    int type;
+    I32 i;
+  PPCODE:
+    if (items == 0) XSRETURN_EMPTY;
+    New(0, L, items, UV);
+    type = IARR_TYPE_ANY;
+    for (i = 0; i < items; i++) {
+      UV n;
+      int istatus = _validate_and_set(&n, aTHX_ ST(i), IFLAG_ANY);
+      if (istatus == -1) {
+        type |= IARR_TYPE_NEG;
+      } else if (istatus == 1 && n > (UV)IV_MAX) {
+        type |= IARR_TYPE_POS;
+      }
+      if (istatus == 0 || type == IARR_TYPE_BAD) break;
+      L[i] = n;
+    }
+    if (i < items) {
+      Safefree(L);
+      _vcallsubn(aTHX_ GIMME_V, VCALL_PP, "vecsort", items, 0);
+      return;
+    }
+    if (type == IARR_TYPE_ANY || type == IARR_TYPE_POS)
+      sort_uv_array(L, items);
+    else
+      sort_iv_array((IV*)L, items);
+    RETURN_LIST_VALS( items, L, (type != IARR_TYPE_NEG) );
 
 
 void

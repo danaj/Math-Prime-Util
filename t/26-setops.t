@@ -8,55 +8,41 @@ use Math::Prime::Util qw/setunion setintersect setminus setdelta
                          powint addint/;
 use Math::BigInt;
 
-my $bi1 = Math::BigInt->new("98198086365677506205371483123156488634");
-my $bi2 = Math::BigInt->new("59724578844314338843734830435499460367");
+my $bi1 = Math::BigInt->new("59724578844314338843734830435499460367");
+my $bi2 = Math::BigInt->new("98198086365677506205371483123156488634");
 my $bi3 = Math::BigInt->new("606571739116749108206251582180042583662");
 my $pr = "1844674407370955161";
 
-my @sets = (
-  [ [0,1,2], [2,3,4], "simple unsigned", [0,1,2,3,4], [2], [0,1], [0,1,3,4] ],
-  [ [0,1,2], [0,2,3,4], "simple unsigned", [0,1,2,3,4], [0,2], [1], [1,3,4] ],
+# Generic numeric lists (not sorted, maybe duplicates).
+my @vecs = (
   [ [7,1,3,5,1], [3,7,8,3,9], "simple unsigned unsorted with dups", [1,3,5,7,8,9], [3,7], [1,5], [1,5,8,9] ],
-  [ [], [1,2,3], "empty first list", [1,2,3], [], [], [1,2,3] ],
-  [ [1,2,3], [], "empty second list", [1,2,3], [], [1,2,3], [1,2,3] ],
-  [ [], [], "empty lists", [], [], [], [] ],
-  [ [-5..1],[-1..5], "signed overlap", [-5..5],[-1..1],[-5..-2],[-5..-2,2..5] ],
   [ ["9223372036854775808","9223372036854775807"],["9223372036854775807","9223372036854775810"], "too big for IV", ["9223372036854775807","9223372036854775808","9223372036854775810"], ["9223372036854775807"], ["9223372036854775808"],["9223372036854775808","9223372036854775810"] ],
   [ ["10223372036854775808","-9223372036854775807"],["-9223372036854775807","10223372036854775810"], "range bigger than IV or UV", ["-9223372036854775807","10223372036854775808","10223372036854775810"], ["-9223372036854775807"], ["10223372036854775808"],["10223372036854775808","10223372036854775810"] ],
   [ [$bi1,$bi2],[$bi3,$bi2], "bigints", [$bi2,$bi1,$bi3],[$bi2],[$bi1],[$bi1,$bi3] ],
   # This tests that we sort correctly even when given strings that Perl
   # doesn't compare properly.  This will fail if we try to use sort {$a<=>$b}.
   [ [$pr.6,$pr.5,$pr.7,$pr.4,$pr.8], [$pr.6,$pr.5,$pr.3], "mix 64-bit and 65-bit as strings", [map { $pr.$_ } 3..8], [$pr.5,$pr.6], [$pr.4,$pr.7,$pr.8], [$pr.3,$pr.4,$pr.7,$pr.8] ],
+);
+
+# Inputs in proper set form (numerically sorted with no duplicates).
+my @sets = (
+  [ [0,1,2], [2,3,4], "simple unsigned", [0,1,2,3,4], [2], [0,1], [0,1,3,4] ],
+  [ [0,1,2], [0,2,3,4], "simple unsigned", [0,1,2,3,4], [0,2], [1], [1,3,4] ],
+  [ [], [1,2,3], "empty first list", [1,2,3], [], [], [1,2,3] ],
+  [ [1,2,3], [], "empty second list", [1,2,3], [], [1,2,3], [1,2,3] ],
+  [ [], [], "empty lists", [], [], [], [] ],
+  [ [-5..1],[-1..5], "signed overlap", [-5..5],[-1..1],[-5..-2],[-5..-2,2..5] ],
+  [ ["-9223372036854775807","10223372036854775808"],["-9223372036854775807","10223372036854775810"], "range bigger than IV or UV", ["-9223372036854775807","10223372036854775808","10223372036854775810"], ["-9223372036854775807"], ["10223372036854775808"],["10223372036854775808","10223372036854775810"] ],
   # More sign overlap
   [ [-20,-16,-14,-12,-10,0,12,14], [-30,-18,-14,-11,-10,-8,1,13,14], "sign overlap", [qw/-30 -20 -18 -16 -14 -12 -11 -10 -8 0 1 12 13 14/], [qw/-14 -10 14/], [qw/-20 -16 -12 0 12/], [qw/-30 -20 -18 -16 -12 -11 -8 0 1 12 13/] ],
 );
 
-plan tests => 2 + 4*scalar(@sets) + 6 + 6 + 2 + 2;
+plan tests => 2 + 4*scalar(@sets) + 4*scalar(@vecs) + 6 + 6 + 2 + 2;
 
 ###### some specific tests
 
-is_deeply([setunion([1,2,3],[-5,10,-11])],[-11,-5,1,2,3,10],"union signed properly sorted");
+is_deeply([setunion([1,2,3],[-11,-5,10])],[-11,-5,1,2,3,10],"setunion signed properly sorted");
 is( scalar setdelta([7,1,3,5,1], [3,7,8,3,9]), 4, "scalar setdelta with dups yields same as array" );
-
-###### union, intersect, difference, symmetric difference
-
-for my $info (@sets) {
-  my($x,$y,$str,$aunion,$ainter,$aminus,$adelta) = @$info;
-  is_deeply( [setunion($x,$y)], $aunion, "$str   union" );
-  is_deeply( [setintersect($x,$y)], $ainter, "$str   intersect" );
-  is_deeply( [setminus($x,$y)], $aminus, "$str   minus" );
-  is_deeply( [setdelta($x,$y)], $adelta, "$str   delta" );
-}
-
-###### setcomplement
-
-#is_deeply([setcomplement([1,3,5],0,8)], [0,2,4,6,7,8], "setcomplement 0..8");
-#is_deeply([setcomplement([1,3,5],-2,8)], [-2,-1,0,2,4,6,7,8], "setcomplement -2..8");
-#is_deeply([setcomplement([],0,5)], [0..5], "setcomplement 0..5 with empty set");
-#is_deeply([setcomplement([],0,5)], [0..5], "setcomplement 0..5 with empty set");
-#is_deeply([setcomplement([0..5],6,8)], [6..8], "setcomplement 0..5 with 6..8");
-#is_deeply([setcomplement(["-9223372036854775810","-9223372036854775806"],"-9223372036854775810","-9223372036854775806")], ["-9223372036854775809","-9223372036854775808","-9223372036854775807"], "setcomplement crossing IV");
-#is_deeply([setcomplement(["18446744073709551614","18446744073709551617"],"18446744073709551614","18446744073709551617")], ["18446744073709551615","18446744073709551616"], "setcomplement crossing UV");
 
 ###### toset
 is_deeply( [toset([])],[],"toset: empty list" );
@@ -74,6 +60,43 @@ is_deeply( [toset([qw/1 -9223372036854775807 3 2 9223372036854775808/])],
   my @R = map { addint($b,$_) } (-2,0,3);
   is_deeply( [toset(\@L)], \@R, "toset: 129-bit unsigned inputs" );
 }
+
+###### union, intersect, difference, symmetric difference
+
+for my $info (@sets) {
+  my($x,$y,$str,$aunion,$ainter,$aminus,$adelta) = @$info;
+
+  is_deeply( [setunion($x,$y)], $aunion,     "setunion     $str" );
+  is_deeply( [setintersect($x,$y)], $ainter, "setintersect $str" );
+  is_deeply( [setminus($x,$y)], $aminus,     "setminus     $str" );
+  is_deeply( [setdelta($x,$y)], $adelta,     "setdelta     $str" );
+}
+
+# With unsorted and/or non-unique lists, the set functions still work,
+# though possibly slower.
+for my $info (@vecs) {
+  my($x,$y,$str,$aunion,$ainter,$aminus,$adelta) = @$info;
+  my($vunion, $vinter, $vminus, $vdelta) = (
+  [setunion($x,$y)], [setintersect($x,$y)], [setminus($x,$y)], [setdelta($x,$y)]
+  );
+  ($aunion,$ainter,$aminus,$adelta,$vunion,$vinter,$vminus,$vdelta) =
+      map { [sort @$_] }
+      ($aunion,$ainter,$aminus,$adelta,$vunion,$vinter,$vminus,$vdelta);
+  is_deeply( $vunion, $aunion, "setunion     $str" );
+  is_deeply( $vinter, $ainter, "setintersect $str" );
+  is_deeply( $vminus, $aminus, "setminus     $str" );
+  is_deeply( $vdelta, $adelta, "setdelta     $str" );
+}
+
+###### setcomplement
+
+#is_deeply([setcomplement([1,3,5],0,8)], [0,2,4,6,7,8], "setcomplement 0..8");
+#is_deeply([setcomplement([1,3,5],-2,8)], [-2,-1,0,2,4,6,7,8], "setcomplement -2..8");
+#is_deeply([setcomplement([],0,5)], [0..5], "setcomplement 0..5 with empty set");
+#is_deeply([setcomplement([],0,5)], [0..5], "setcomplement 0..5 with empty set");
+#is_deeply([setcomplement([0..5],6,8)], [6..8], "setcomplement 0..5 with 6..8");
+#is_deeply([setcomplement(["-9223372036854775810","-9223372036854775806"],"-9223372036854775810","-9223372036854775806")], ["-9223372036854775809","-9223372036854775808","-9223372036854775807"], "setcomplement crossing IV");
+#is_deeply([setcomplement(["18446744073709551614","18446744073709551617"],"18446744073709551614","18446744073709551617")], ["18446744073709551615","18446744073709551616"], "setcomplement crossing UV");
 
 ###### is_subset
 is( is_subset([3,1],[1,2,3]), 1, "{1,3} is a subset of {1,2,3}" );
@@ -104,13 +127,14 @@ is_deeply( [
 
 ###### is_sidon_set
 my @sidons = (
-  [], [0], [0,1], [0,1,3], [0,1,4,6], [0,1,4,9,11], [0,1,4,10,12,17],
+  [], [0], [0,1], [0,1,3], [0,1,4,6], [0,1,4,9,11],
+  [0,1,4,10,12,17], [0,1,8,11,13,17],
   [qw/239 106 56 53 161/],[qw/9 10 1 3 14/],
   [qw/18446744073709551614 18446744073709551612 18446744073709551606/],
   [qw/0 5 20 51 57 83 136 169 196 292 425 434 544 586 786 910 1016 1187 1210 1228 1350 1369 1405 1453 1507 1760 1785 1850 1920 1964 2130 2223 2237 2318 2352 2390 2429 2439 2533 2601 2609 2622 2683 2808 2848 2870 2872 2917 2928 2945 3016 3045 3075 3229 3230 3321 3356 3576 3579 3677 3684 3727 3901 3905 3917/],
 );
 my @nonsidons = (
-  [7,7], [2,7,12], [1,10,11,12], [2,5,13,21,26],
+  [2,7,12], [1,10,11,12], [2,5,13,21,26], [0,1,4,10,12,16],
   [-1], [0,-1],[-9,17],
 );
 is_deeply( [map { is_sidon_set($_) } @sidons], [map { 1 } 0..$#sidons], "is_sidon_set with Sidon sets" );
