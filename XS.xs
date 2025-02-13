@@ -476,34 +476,6 @@ static int arrayref_to_digit_array(pTHX_ UV** ret, AV* av, int base)
   return len;
 }
 
-static int arrayref_to_iv_array(pTHX_ IV** ret, SV* sva, const char* fstr)
-{
-  AV *av;
-  int len, i;
-
-  if ((!SvROK(sva)) || (SvTYPE(SvRV(sva)) != SVt_PVAV))
-    croak("%s argument must be an array reference", fstr);
-  av = (AV*) SvRV(sva);
-  len = av_len(av);
-  *ret = 0;
-  if (len >= 0) {
-    UV val;
-    IV *r;
-    New(0, r, len+1, IV);
-    for (i = 0; i <= len; i++) {
-      SV **iv = av_fetch(av, i, 0);
-      if (iv==0 || _validate_and_set(&val, aTHX_ *iv, IFLAG_ANY|IFLAG_IV) == 0)
-        break;
-      r[i] = (IV)val;
-    }
-    if (i <= len) {
-      Safefree(r);
-      return -2;
-    }
-    *ret = r;
-  }
-  return len;
-}
 
 #define IARR_TYPE_ANY 0x00
 #define IARR_TYPE_NEG 0x01
@@ -573,6 +545,28 @@ static int arrayref_to_int_array(pTHX_ unsigned long *retlen, UV** ret, int want
       sort_dedup_uv_array(*ret, itype == IARR_TYPE_NEG, retlen);
   }
   return itype;
+}
+
+static int type_of_sumset(int typea, int typeb, UV amin, UV amax, UV bmin, UV bmax) {
+  if (typea == IARR_TYPE_BAD || typeb == IARR_TYPE_BAD)
+    return IARR_TYPE_BAD;
+  if (typea != IARR_TYPE_NEG && typeb != IARR_TYPE_NEG) {
+    /* ANY+ANY  ANY+POS  POS+ANY  POS+POS */
+    if (UV_MAX-amax < bmax)     return IARR_TYPE_BAD;
+    if (amax+bmax > (UV)IV_MAX) return IARR_TYPE_POS;
+    return IARR_TYPE_ANY;
+  }
+  /* For simplicity, throw out NEG+POS to avoid UV+IV */
+  if (typea == IARR_TYPE_POS || typeb == IARR_TYPE_POS)
+    return IARR_TYPE_BAD;
+  /* NEG+NEG  NEG+ANY  ANY+NEG */
+  if ((IV)amax > 0 && (IV)bmax > 0 && amax + bmax > (UV)IV_MAX)
+    return IARR_TYPE_BAD;  /* overflow */
+  if ((IV)amin < 0 && (IV)bmin < 0 && (UV)(-(IV)amin) + (UV)(-(IV)bmin) > (UV)IV_MAX)
+    return IARR_TYPE_BAD;  /* underflow */
+  if (((IV)amin > 0 || (IV)bmin > 0) && (IV)(amin+bmin) >= 0)
+    return IARR_TYPE_ANY;  /* Result is all positive */
+  return IARR_TYPE_NEG;
 }
 
 /* Status -1 for IVs, 1 for UVs, 0 for failed (overflow or bigints) */
@@ -4038,6 +4032,10 @@ void chebyshev_theta(IN SV* svn)
     UV *sdata; \
     unsigned long slen = iset_size(s); \
     int sign = iset_sign(s); \
+    if (GIMME_V == G_SCALAR) { \
+      iset_destroy(&s); \
+      XSRETURN_UV(slen); \
+    } \
     New(0, sdata, slen, UV); \
     iset_allvals(s, sdata); \
     iset_destroy(&s); \
@@ -4047,57 +4045,44 @@ void chebyshev_theta(IN SV* svn)
 void sumset(IN SV* sva, IN SV* svb = 0)
   PROTOTYPE: $;$
   PREINIT:
-    int alen, blen, i, j;
-    IV *seta, *setb;
+    int atype, btype, stype, sign;
+    UV *ra, *rb;
+    unsigned long alen, blen,  i, j;
     iset_t s;
-    unsigned long k, sz;
   PPCODE:
-    alen = arrayref_to_iv_array(aTHX_ &seta, sva, "sumset first arg");
-    if (svb == 0) {
+    atype = arrayref_to_int_array(aTHX_ &alen, &ra, 1, sva, "sumset arg 1");
+    if (svb == 0 || atype == IARR_TYPE_BAD) {
+      rb = ra;
       blen = alen;
-      setb = seta;
-    } else if (alen >= 0) {
-      blen = arrayref_to_iv_array(aTHX_ &setb, svb, "sumset second arg");
+      btype = atype;
+    } else {
+      btype = arrayref_to_int_array(aTHX_ &blen, &rb, 1, svb, "sumset arg 2");
     }
-    if (alen == -1 || blen == -1)   XSRETURN_EMPTY;
-    /* Check for overflow */
-    if (alen >= 0) {
-      for (i = 0; i <= alen; i++)
-        if (seta[i] > IV_MAX/2 || seta[i] < IV_MIN/2)
-          break;
-      if (i <= alen) alen = -1;
+    if (alen == 0 || blen == 0) {
+      if (rb != ra) Safefree(rb);
+      Safefree(ra);
+      XSRETURN_EMPTY;
     }
-    if (blen >= 0 && alen >= 0 && seta != setb) {
-      for (j = 0; j <= blen; j++)
-        if (setb[j] > IV_MAX/2 || setb[j] < IV_MIN/2)
-          break;
-      if (j <= blen) blen = -1;
-    }
-    if (alen < 0 || blen < 0) {  /* IV Overflow  or  bigint */
-      if (setb != seta) Safefree(setb);
-      Safefree(seta);
+    if (atype == IARR_TYPE_BAD || btype == IARR_TYPE_BAD)
+      stype = IARR_TYPE_BAD;
+    else
+      stype = type_of_sumset(atype, btype, ra[0],ra[alen-1], rb[0],rb[blen-1]);
+
+    if (stype == IARR_TYPE_BAD) {
+      if (rb != ra) Safefree(rb);
+      Safefree(ra);
       _vcallsubn(aTHX_ GIMME_V, VCALL_PP, "sumset", items, 0);
       return;
     }
+    sign = IARR_TYPE_TO_STATUS(stype);
     /* Sumset */
-    s = iset_create( 10UL * ((unsigned long)alen + (unsigned long)blen + 2) );
-    for (i = 0; i <= alen; i++)
-      for (j = 0; j <= blen; j++)
-        iset_add(&s, (UV) (seta[i] + setb[j]), -1);
-    if (setb != seta) Safefree(setb);
-    Safefree(seta);
-    sz = iset_size(s);
-    if (GIMME_V == G_SCALAR) {
-      iset_destroy(&s);
-      XSRETURN_UV(sz);
-    }
-    /* Retrieve sorted set values and put them on return stack */
-    New(0, seta, sz, IV);
-    iset_allvals(s, (UV*)seta);
-    iset_destroy(&s);
-    for (k = 0; k < sz; k++)
-      XPUSHs(sv_2mortal(newSViv(seta[k])));
-    Safefree(seta);
+    s = iset_create( 10UL * (alen+blen) );
+    for (i = 0; i < alen; i++)
+      for (j = 0; j < blen; j++)
+        iset_add(&s, ra[i]+rb[j], sign);
+    if (rb != ra) Safefree(rb);
+    Safefree(ra);
+    RETURN_SET_VALS(s);
 
 void setbinop(SV* block, IN SV* sva, IN SV* svb = 0)
   PROTOTYPE: &$;$
@@ -4207,11 +4192,6 @@ void setbinop(SV* block, IN SV* sva, IN SV* svb = 0)
       iset_destroy(&s);
       _vcallsubn(aTHX_ GIMME_V, VCALL_PP, "setbinop", items, 0);
       return;
-    }
-    if (GIMME_V == G_SCALAR) {
-      unsigned long slen = iset_size(s);
-      iset_destroy(&s);
-      XSRETURN_UV(slen);
     }
     /* ====== Get sorted set values.  Put on return stack. ====== */
     RETURN_SET_VALS(s);
@@ -4401,11 +4381,6 @@ void toset(IN SV* sva)
       iset_destroy(&s);
       _vcallsubn(aTHX_ GIMME_V,VCALL_PP,"toset",items,0);
       return;
-    }
-    if (GIMME_V == G_SCALAR) {
-      unsigned long slen = iset_size(s);
-      iset_destroy(&s);
-      XSRETURN_UV(slen);
     }
     RETURN_SET_VALS(s);
 

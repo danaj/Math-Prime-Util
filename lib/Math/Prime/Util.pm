@@ -3546,12 +3546,12 @@ This is equivalent to:
 
   my %r;  my @A=(2,4,6,8);  my @B=(3,5,7);
   forsetproduct { $r{vecsum(@_)}=undef; } \@A,\@B;
-  my @sumset = sort { $a<=>$b } keys %r;
+  my @sumset = vecsort(keys %r);
 
 or
 
-  my @sumset1 = setbinop { $a + $b } [1,2,3];
-  my @sumset2 = setbinop { $a + $b } [1,2,3], [2,3,4];
+  my @sumset1 = setbinop { addint($a,$b) } [1,2,3];
+  my @sumset2 = setbinop { addint($a,$b) } [1,2,3], [2,3,4];
 
 In Mathematica one can use C<Total[Tuples[A,B],{2}]>.
 In Pari/GP one can use C<setbinop((a,b)->a+b,X,Y)>.

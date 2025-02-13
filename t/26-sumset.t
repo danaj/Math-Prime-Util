@@ -3,9 +3,9 @@ use strict;
 use warnings;
 
 use Test::More;
-use Math::Prime::Util qw/sumset/;
+use Math::Prime::Util qw/sumset setbinop addint/;
 
-plan tests => 11;
+plan tests => 11+17;
 
 ###### sumset
 my $pr200 = [qw/2 3 5 7 11 13 17 19 23 29 31 37 41 43 47 53 59 61 67 71 73 79 83 89 97 101 103 107 109 113 127 131 137 139 149 151 157 163 167 173 179 181 191 193 197 199/];
@@ -32,3 +32,33 @@ is_deeply([sumset([0,3,7,12],[2,4,11,14])], [2,4,5,7,9,11,14,16,17,18,21,23,26],
   is(scalar(sumset(\@s)), 36, "[124]{2} has 3^2 elements, A+A has 6^2 elements");
   # A-A should have 7^2 elements
 }
+
+# Specific combination tests
+testsumset([1,2],[3,4], "sumset ANY ANY ok");
+testsumset([1,2],[3,4,"18446744073709551615"], "sumset ANY POS overflow");
+testsumset([1,2],[3,4,"18446744073709551605"], "sumset ANY POS ok");
+testsumset([1,2,"18446744073709551615"],[3,4], "sumset POS ANY overflow");
+testsumset([1,2,"18446744073709551605"],[3,4], "sumset POS ANY ok");
+testsumset([1,2,"9223372036854775808"],[3,4,9223372036854775808], "sumset POS POS overflow");
+
+testsumset([-1,"4611686018427387904"], [3,"9911686018427387905"], "sumset NEG POS overflow");
+testsumset([-100,-99], ["9223372036854775808","9223372036854775809"], "sumset NEG POS with sumset ANY");
+testsumset([-1,1], [3,"9911686018427387905"], "sumset NEG POS with sumset POS");
+
+testsumset([-1,"4611686018427387904"], [3,"4611686018427387905"], "sumset NEG ANY overflow");
+testsumset([-1,"4611686018427387904"], [-3,"4611686018427387905"], "sumset NEG NEG overflow");
+testsumset([1,2,"-4611686018427387904"], [3,4,"-4611686018427387904"], "sumset NEG NEG ok");
+testsumset([1,2,"-4611686018427387905"], [3,4,"-4611686018427387905"], "sumset NEG NEG undeflow");
+testsumset([-1,2], [3,4], "sumset NEG ANY with sumset ANY");
+testsumset([-6,2], [3,4], "sumset NEG ANY with sumset NEG");
+testsumset([-6,2], [-3,4], "sumset NEG NEG with sumset NEG");
+testsumset([-6,-2], [-4,-3], "sumset NEG NEG with sumset NEG");
+
+sub testsumset {
+  my($ra, $rb, $name) = @_;
+
+  my @sumset1 = sumset($ra,$rb);
+  my @sumset2 = setbinop { addint($a,$b) } $ra, $rb;
+  is_deeply(\@sumset1, \@sumset2, $name);
+}
+
