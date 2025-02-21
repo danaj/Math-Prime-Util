@@ -155,6 +155,8 @@ Revision history for Perl module Math::Prime::Util
     - vecsort(@L)                     numerically sort integer list
     - vecsortr(\@L)                   numerically sort integer list ref
     - vecsortrr(\@L)                  as vecsortr but returns a list ref
+    - setcontains(\@A,$v)             is integer $v in integer set A
+    - setcontains(\@A,\@B)            is integer set B a subset of int set A
     - setbinop {...} \@A[,\@B]        apply op to cross product of set(s)
     - sumset(\@A[,\@B])               new set from a+b {a:A,b:B}
     - setunion(\@A,\@B)               union of two integer lists

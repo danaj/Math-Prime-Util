@@ -271,6 +271,7 @@ sub entropy_bytes {
 *setintersect = \&Math::Prime::Util::PP::setintersect;
 *setminus = \&Math::Prime::Util::PP::setminus;
 *setdelta = \&Math::Prime::Util::PP::setdelta;
+*setcontains = \&Math::Prime::Util::PP::setcontains;
 *toset = \&Math::Prime::Util::PP::toset;
 *is_subset = \&Math::Prime::Util::PP::is_subset;
 *is_sidon_set = \&Math::Prime::Util::PP::is_sidon_set;

@@ -245,6 +245,7 @@ static int _validate_int(pTHX_ SV* n, int negok)
 static int _validate_and_set(UV* val, pTHX_ SV* svn, uint32_t mask) {
   int status;
 
+  if (svn == 0) croak("Parameter must be defined");
   /* Streamline the typical path of input being a native integer. */
   if (SVNUMTEST(svn)) {
     IV n = SvIVX(svn);
@@ -487,6 +488,12 @@ static int arrayref_to_digit_array(pTHX_ UV** ret, AV* av, int base)
 /* Convert to 0/1/-1 status */
 #define IARR_TYPE_TO_STATUS(t) \
   (((t) == IARR_TYPE_BAD) ? 0 : ((t) == IARR_TYPE_NEG) ? -1 : 1)
+#define STATUS_TO_IARR_TYPE(s,n) \
+  (((s) == 0) ? IARR_TYPE_BAD : ((s) == -1) ? IARR_TYPE_NEG : ((n) > (UV)IV_MAX) ? IARR_TYPE_POS : IARR_TYPE_ANY)
+
+#define SIGNED_CMP_LE(pos,x,y) ((pos)  ?  (x <= y)  :  ((IV)x <= (IV)y))
+#define SIGNED_CMP_LT(pos,x,y) ((pos)  ?  (x <  y)  :  ((IV)x <  (IV)y))
+#define SIGNED_CMP_GT(pos,x,y) ((pos)  ?  (x >  y)  :  ((IV)x >  (IV)y))
 
 static int arrayref_to_int_array(pTHX_ unsigned long *retlen, UV** ret, int want_sort, SV* sva, const char* fstr)
 {
@@ -504,7 +511,7 @@ static int arrayref_to_int_array(pTHX_ unsigned long *retlen, UV** ret, int want
   New(0, r, len+1, UV);
   for (i = 0; i <= len; i++) {
     SV **iv = av_fetch(av, i, 0);
-    if (iv == 0) break;
+    if (iv == 0) croak("Array entries must be defined");
     if (SVNUMTEST(*iv)) {
       IV n = SvIVX(*iv);
       if (n < 0) {
@@ -568,6 +575,174 @@ static int type_of_sumset(int typea, int typeb, UV amin, UV amax, UV bmin, UV bm
     return IARR_TYPE_ANY;  /* Result is all positive */
   return IARR_TYPE_NEG;
 }
+
+#if 0
+/* Find an element in a set (array ref of sorted unique integers) */
+/* -1 = bigint, 0 = not found would be before index, 1 = found at index */
+static int find_in_set(pTHX_ AV* av, UV sval, int sign)
+{
+  SV **iv;
+  int last_index, lo, hi, lostatus, histatus, midstatus;
+  UV  rlo, rhi, rmid;
+
+  if (sign != 1 && sign != -1)
+    return -1;
+  last_index = av_len(av);
+  if (last_index < 0)
+    return 0;
+
+  lo = 0;
+  iv = av_fetch(av, lo, 0);
+  lostatus = _validate_and_set(&rlo, aTHX_ iv ? *iv : 0, IFLAG_ANY);
+  if      (lostatus == 0) {  return -1;  }
+  else if (lostatus == 1) {  if (sign == -1 || sval < rlo) return 0; }
+  else                    {  if (sign == -1 && (IV)sval < (IV)rlo) return 0; }
+  if (lostatus == sign && rlo == sval)
+    return 1;
+  /* sval > rlo */
+
+  hi = last_index;
+  iv = av_fetch(av, hi, 0);
+  histatus = _validate_and_set(&rhi, aTHX_ iv ? *iv : 0, IFLAG_ANY);
+  if      (histatus == 0) {  return -1;  }
+  else if (histatus == 1) {  if (sign == 1 && sval > rhi) return 0; }
+  else                    {  if (sign == -1 && (IV)sval > (IV)rhi) return 0; }
+  /* sval <= rhi */
+
+  while (hi-lo > 1 && (histatus >= sign || rhi > sval)) {
+    int mid = lo + ((hi-lo) >> 1);
+    iv = av_fetch(av, mid, 0);
+    midstatus = _validate_and_set(&rmid, aTHX_ iv ? *iv : 0, IFLAG_ANY);
+    if (midstatus == 0) return -1;
+    if ( (midstatus ==  1 && sign == 1 && rmid < sval) ||
+         (midstatus == -1 && (sign == 1 || (IV)rmid < (IV)sval)) )
+         { lo = mid; rlo = rmid; lostatus = midstatus; }
+    else { hi = mid; rhi = rmid; histatus = midstatus; }
+  }
+  return (histatus == sign && rhi == sval);
+}
+#else
+typedef struct {
+  char *status;
+  UV   *val;
+} set_data_t;
+
+static set_data_t init_set_data_cache(pTHX_ AV *av) {
+  set_data_t d = {0,0};
+  int last_index = av_len(av);
+  if (last_index >= 0) {
+    Newz(0, d.status, last_index+1, char);
+    New(0, d.val, last_index+1, UV);
+  }
+  return d;
+}
+static void free_set_data_cache(set_data_t *d) {
+  Safefree(d->status);
+  Safefree(d->val);
+}
+
+#define SET_ARR_VALUE(statvar, var,  cache, av, i) \
+  do { \
+    if (cache != 0 && cache->status[i] != 0) { \
+      statvar = cache->status[i];  var = cache->val[i]; \
+    } else { \
+      SV** iv = av_fetch(av, i, 0); \
+      statvar = _validate_and_set(&var, aTHX_ iv ? *iv : 0, IFLAG_ANY); \
+      if (statvar == 0) return -1; \
+      if (cache) { cache->status[i] = statvar;  cache->val[i] = var; } \
+    } \
+  } while (0)
+
+/* Find an element in a set (array ref of sorted unique integers) */
+/* -1 = bigint, 0 = not found would be before index, 1 = found at index */
+static int find_in_set(pTHX_ AV* av, set_data_t *cache, UV sval, int sign)
+{
+  int last_index, lo, hi, lostatus, histatus, midstatus;
+  UV  rlo, rhi, rmid;
+
+  if (sign != 1 && sign != -1)
+    return -1;
+  last_index = av_len(av);
+  if (last_index < 0)
+    return 0;
+
+  lo = 0;
+  SET_ARR_VALUE(lostatus, rlo,  cache, av, lo);
+  if (lostatus == 1) {  if (sign == -1 || sval < rlo) return 0; }
+  else               {  if (sign == -1 && (IV)sval < (IV)rlo) return 0; }
+  if (lostatus == sign && rlo == sval)
+    return 1;
+  /* sval > rlo */
+
+  hi = last_index;
+  SET_ARR_VALUE(histatus, rhi,  cache, av, hi);
+  if (histatus == 1) {  if (sign == 1 && sval > rhi) return 0; }
+  else               {  if (sign == -1 && (IV)sval > (IV)rhi) return 0; }
+  /* sval <= rhi */
+
+  while (hi-lo > 1 && (histatus >= sign || rhi > sval)) {
+    int mid = lo + ((hi-lo) >> 1);
+    SET_ARR_VALUE(midstatus, rmid,  cache, av, mid);
+    if ( (midstatus ==  1 && sign == 1 && rmid < sval) ||
+         (midstatus == -1 && (sign == 1 || (IV)rmid < (IV)sval)) )
+         { lo = mid; rlo = rmid; lostatus = midstatus; }
+    else { hi = mid; rhi = rmid; histatus = midstatus; }
+  }
+  return (histatus == sign && rhi == sval);
+}
+#endif
+
+#if 0
+/* Take two SV pointers to array references, slurp them all in.
+ * Returns -1 if cannot answer, 0 if not a subset, 1 if a subset. */
+static int is_subset_read_all(pTHX_ SV* svset, SV* svsub)
+{
+  int atype, btype, bstatus, res;
+  UV *ra, *rb;
+  unsigned long alen, blen, ia, ib;
+
+  atype = arrayref_to_int_array(aTHX_ &alen, &ra, 1, svset, "setcontains arg 1");
+  if (atype != IARR_TYPE_BAD) {
+    if (SvROK(svsub) && SvTYPE(SvRV(svsub)) == SVt_PVAV) {
+      btype = arrayref_to_int_array(aTHX_ &blen, &rb, 1, svsub, "setcontains arg 1");
+    } else {   /* We got a single integer */
+      blen = 1;
+      New(0, rb, blen, UV);
+      bstatus = _validate_and_set(rb+0, aTHX_ svsub, IFLAG_ANY);
+      btype = STATUS_TO_IARR_TYPE(bstatus, rb[0]);
+    }
+  }
+  if (atype == IARR_TYPE_BAD || btype == IARR_TYPE_BAD) {
+    Safefree(ra);
+    Safefree(rb);
+    return -1;
+  }
+  res = 1;
+  /* Check for empty sets */
+  if (alen == 0 || blen == 0)
+    { Safefree(ra);  Safefree(rb);  return (blen == 0); }
+  /* Check if impossible via types */
+  if ( (btype == IARR_TYPE_NEG && atype != IARR_TYPE_NEG) ||
+       (btype == IARR_TYPE_POS && atype != IARR_TYPE_POS) ||
+       (blen > alen) )
+    res = 0;
+  /* Check to see if the subset is outside the range */
+  if ( (atype != IARR_TYPE_NEG &&
+        (rb[0] < ra[0] || rb[blen-1] > ra[alen-1])) ||
+       (atype == IARR_TYPE_NEG &&
+        ((IV)rb[0] < (IV)ra[0] || (IV)rb[blen-1] > (IV)ra[alen-1])) )
+    res = 0;
+  for (ia = 0, ib = 0;  ia < alen && ib < blen && res; ia++) {
+    if (ra[ia] == rb[ib])
+      ib++;
+    else if (SIGNED_CMP_GT(btype != IARR_TYPE_NEG, ra[ia], rb[ib]))
+      res = 0;
+  }
+  Safefree(ra);
+  Safefree(rb);
+  return res;
+}
+#endif
 
 /* Status -1 for IVs, 1 for UVs, 0 for failed (overflow or bigints) */
 static iset_t arrayref_to_iset(pTHX_ int *status, SV* sva, const char* fstr)
@@ -4058,21 +4233,20 @@ void sumset(IN SV* sva, IN SV* svb = 0)
     } else {
       btype = arrayref_to_int_array(aTHX_ &blen, &rb, 1, svb, "sumset arg 2");
     }
-    if (alen == 0 || blen == 0) {
-      if (rb != ra) Safefree(rb);
-      Safefree(ra);
-      XSRETURN_EMPTY;
-    }
     if (atype == IARR_TYPE_BAD || btype == IARR_TYPE_BAD)
       stype = IARR_TYPE_BAD;
     else
       stype = type_of_sumset(atype, btype, ra[0],ra[alen-1], rb[0],rb[blen-1]);
-
     if (stype == IARR_TYPE_BAD) {
       if (rb != ra) Safefree(rb);
       Safefree(ra);
       _vcallsubn(aTHX_ GIMME_V, VCALL_PP, "sumset", items, 0);
       return;
+    }
+    if (alen == 0 || blen == 0) {
+      if (rb != ra) Safefree(rb);
+      Safefree(ra);
+      XSRETURN_EMPTY;
     }
     sign = IARR_TYPE_TO_STATUS(stype);
     /* Sumset */
@@ -4197,9 +4371,6 @@ void setbinop(SV* block, IN SV* sva, IN SV* svb = 0)
     RETURN_SET_VALS(s);
   }
 
-#define SIGNED_CMP_LE(pos,x,y) ((pos)  ?  (x <= y)  :  ((IV)x <= (IV)y))
-#define SIGNED_CMP_LT(pos,x,y) ((pos)  ?  (x <  y)  :  ((IV)x <  (IV)y))
-
 void setunion(IN SV* sva, IN SV* svb)
   PROTOTYPE: $$
   ALIAS:
@@ -4305,6 +4476,55 @@ void is_subset(IN SV* sva, IN SV* svb)
     iset_destroy(&sa);
     if (ret != -1)  RETURN_NPARITY(ret);
     _vcallsubn(aTHX_ GIMME_V,VCALL_PP,"is_subset",items,0);
+    return;
+
+void setcontains(IN SV* sva, IN SV* svb)
+  PROTOTYPE: $$
+  PREINIT:
+    UV b;
+    AV *ava, *avb;
+    int bstatus, subset, alast, blast, i;
+  PPCODE:
+    /* First arg must be an array reference (set) */
+    if ((!SvROK(sva)) || (SvTYPE(SvRV(sva)) != SVt_PVAV))
+      croak("setcontains first argument must be an array reference");
+    ava = (AV*) SvRV(sva);
+    alast = av_len(ava);
+    /* Case of the second argument being a single integer. */
+    if (!SvROK(svb) || SvTYPE(SvRV(svb)) != SVt_PVAV) {
+      bstatus = _validate_and_set(&b, aTHX_ svb, IFLAG_ANY);
+      subset = find_in_set(aTHX_ ava, 0, b, bstatus);
+    } else { /* The second argument is an array reference (set) */
+      avb = (AV*) SvRV(svb);
+      blast = av_len(avb);
+      if (blast > alast) {
+        subset = 0;  /* cannot fit */
+      } else if (alast > 4) {
+        set_data_t cache = init_set_data_cache(aTHX_ ava);
+        for (i = 0, subset = 1; i <= blast && subset == 1; i++) {
+          SV **iv = av_fetch(avb, i, 0);
+          if (iv != 0) {
+            bstatus = _validate_and_set(&b, aTHX_ *iv, IFLAG_ANY);
+            subset = find_in_set(aTHX_ ava, &cache, b, bstatus);
+          }
+        }
+        free_set_data_cache(&cache);
+      } else {
+        for (i = 0, subset = 1; i <= blast && subset == 1; i++) {
+          SV **iv = av_fetch(avb, i, 0);
+          if (iv != 0) {
+            bstatus = _validate_and_set(&b, aTHX_ *iv, IFLAG_ANY);
+            subset = find_in_set(aTHX_ ava, 0, b, bstatus);
+          }
+        }
+      }
+      /* Much slower in most cases:
+       * subset = is_subset_read_all(aTHX_ sva, svb);
+       */
+    }
+    if (subset != -1)
+      RETURN_NPARITY(subset);
+    _vcallsubn(aTHX_ GIMME_V, VCALL_PP, "setcontains", items, 0);
     return;
 
 void is_sidon_set(IN SV* sva)
@@ -4474,7 +4694,7 @@ permtonum(IN SV* svp)
       int V[32], A[32] = {0};
       for (i = 0; i <= plen; i++) {
         SV **iv = av_fetch(av, i, 0);
-        if (iv == 0 || _validate_and_set(&val, aTHX_ *iv, IFLAG_POS) != 1)
+        if (_validate_and_set(&val, aTHX_ iv ? *iv : 0, IFLAG_POS) != 1)
           break;
         if (val > (UV)plen || A[val] != 0) break;
         A[val] = i+1;

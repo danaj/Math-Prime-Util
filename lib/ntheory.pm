@@ -221,6 +221,8 @@ Tags:
   vecmex(@list)                       return least non-neg value not in list
   vecpmex(@list)                      return least positive value not in list
 
+  setcontains(\@A,$v)                 is integer v in integer set A
+  setcontains(\@A,\@B)                is int set B a subset of int set A
   setbinop { ... } \@A[,\@B]          apply operation to all a,b [a:A,b:B]
   sumset \@A[,\@B]                    apply a+b to all a,b [a:A,b:B]
   setunion(\@A,\@B)                   union of two integer lists
@@ -250,7 +252,7 @@ Tags:
   is_square(n)                        return 1 if n is a perfect square
   is_power(n)                         return k if n = c^k for integer c
   is_power(n,k)                       return 1 if n = c^k for integer c, k
-  is_power(n,k,\$root)                as above but also set $root to c.
+  is_power(n,k,\$root)                as above but also set $root to c
   is_perfect_power(n)                 return 1 if n = c^k for c != 0, k > 1
   is_prime_power(n)                   return k if n = p^k for prime p, k > 0
   is_prime_power(n,\$p)               as above but also set $p to p
@@ -301,7 +303,7 @@ Tags:
   rootint(n,k)                        integer k-th root
   rootint(n,k,\$rk)                   as above but also set $rk to r^k
   logint(n,b)                         integer logarithm
-  logint(n,b,\$be)                    as above but also set $be to b^e.
+  logint(n,b,\$be)                    as above but also set $be to b^e
   gcd(@list)                          greatest common divisor
   lcm(@list)                          least common multiple
   gcdext(x,y)                         return (u,v,d) where u*x+v*y=d

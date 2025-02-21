@@ -4,14 +4,17 @@ use warnings;
 
 use Test::More;
 use Math::Prime::Util qw/setunion setintersect setminus setdelta
+                         setcontains
                          toset is_subset is_sidon_set is_sumfree_set
-                         powint addint/;
+                         powint addint subint negint/;
 use Math::BigInt;
 
 my $bi1 = Math::BigInt->new("59724578844314338843734830435499460367");
 my $bi2 = Math::BigInt->new("98198086365677506205371483123156488634");
 my $bi3 = Math::BigInt->new("606571739116749108206251582180042583662");
 my $pr = "1844674407370955161";
+
+# Inputs, description, results:  union, intersection, minus, delta
 
 # Generic numeric lists (not sorted, maybe duplicates).
 my @vecs = (
@@ -37,7 +40,8 @@ my @sets = (
   [ [-20,-16,-14,-12,-10,0,12,14], [-30,-18,-14,-11,-10,-8,1,13,14], "sign overlap", [qw/-30 -20 -18 -16 -14 -12 -11 -10 -8 0 1 12 13 14/], [qw/-14 -10 14/], [qw/-20 -16 -12 0 12/], [qw/-30 -20 -18 -16 -12 -11 -8 0 1 12 13/] ],
 );
 
-plan tests => 2 + 4*scalar(@sets) + 4*scalar(@vecs) + 6 + 6 + 2 + 2;
+plan tests => 2 + 4*scalar(@sets) + 4*scalar(@vecs) + 6 + 6 + 2 + 2
+            + 3+2+5+4+6+6+7+7+1;  # setcontains
 
 ###### some specific tests
 
@@ -153,3 +157,63 @@ my @nsf = (
 );
 is_deeply( [map { is_sumfree_set($_) } @sf], [map { 1 } 0..$#sf], "is_sumfree_set with sumfree sets" );
 is_deeply( [map { is_sumfree_set($_) } @nsf], [map { 0 } 0..$#nsf], "is_sumfree_set with non-sumfree sets" );
+
+###### setcontains
+is( setcontains([],[]), 1, "empty set contains empty set");
+is( setcontains([1],[]), 1, "regular set contains empty set");
+is( setcontains([],[1]), 0, "empty set does not contain regular set");
+
+is( setcontains([1,3,5,8],[1,3,5]), 1, "setcontains basic true");
+is( setcontains([1,3,5,8],[3,5,9]), 0, "setcontains basic false");
+
+is( setcontains([1,8],[1,8,9]), 0, "setcontains with bigger subset");
+is( setcontains([1..8],[-5..-1]), 0, "setcontains with smaller subset");
+is( setcontains([1..8],[-5..-1]), 0, "setcontains with smaller subset");
+is( setcontains([-5..5],[-7..-3]), 0, "setcontains with small bottom overlap");
+is( setcontains([-5..5],[3..8]), 0, "setcontains with small top overlap");
+
+is( setcontains([-5..5],[-3..3]), 1, "setcontains both signs subset true");
+is( setcontains([-5..5],[-1..6]), 0, "setcontains both signs subset false");
+is( setcontains([-5..-1],[-5,-3,-1]), 1, "setcontains neg true");
+is( setcontains([-5..-1],[-6,-4,-2]), 0, "setcontains neg false");
+
+my $ivpos = subint(powint(2,63),1000000);
+my $ivneg = negint($ivpos);
+my $uvpos = addint(powint(2,63),1000000);
+my $uvneg = negint($uvpos);
+
+# mix large IVs near min/max
+is( setcontains([$ivneg,$ivpos],[$ivneg]), 1, "setcontains ivneg 1");
+is( setcontains([$ivneg,$ivpos],[$ivpos]), 1, "setcontains ivneg 2");
+is( setcontains([$ivpos],$ivneg), 0, "setcontains ivneg 3");
+is( setcontains([$ivneg],$ivneg), 1, "setcontains ivneg 4");
+is( setcontains([$ivpos],$ivpos), 1, "setcontains ivneg 5");
+is( setcontains([$ivneg],$ivpos), 0, "setcontains ivneg 6");
+
+# mix negative IV and positive UV
+is( setcontains([$ivneg,$uvpos],[$ivneg]), 1, "setcontains ivneg 1");
+is( setcontains([$ivneg,$uvpos],[$uvpos]), 1, "setcontains ivneg 2");
+is( setcontains([$uvpos],$ivneg), 0, "setcontains ivneg 3");
+is( setcontains([$ivneg],$ivneg), 1, "setcontains ivneg 4");
+is( setcontains([$uvpos],$uvpos), 1, "setcontains ivneg 5");
+is( setcontains([$ivneg],$uvpos), 0, "setcontains ivneg 6");
+
+# mix negative and positive both near 64-bit
+is( setcontains([$uvneg,$uvpos],[$uvneg]), 1, "setcontains uvneg 1");
+is( setcontains([$uvneg,$uvpos],[$uvpos]), 1, "setcontains uvneg 2");
+is( setcontains([$uvpos],$uvneg), 0, "setcontains uvneg 3");
+is( setcontains([$uvneg],$uvneg), 1, "setcontains uvneg 4");
+is( setcontains([$uvpos],$uvpos), 1, "setcontains uvneg 5");
+is( setcontains([$uvneg],$uvpos), 0, "setcontains uvneg 6");
+is( setcontains([$uvneg],-1000000), 0, "setcontains uvneg 7");
+
+is( setcontains([1,3,5,8],$bi1), 0, "setcontains bigint false");
+is( setcontains([$bi2,$bi3],$bi1), 0, "setcontains bigint false");
+is( setcontains([$bi1,$bi3],$bi1), 1, "setcontains bigint true");
+is( setcontains([$bi1,$bi3],[]), 1, "setcontains bigint empty set");
+is( setcontains([$bi1,$bi3],[1]), 0, "setcontains bigint false");
+is( setcontains([$bi1,$bi3],[$bi2]), 0, "setcontains bigint false");
+is( setcontains([$bi1,$bi2],[$bi2]), 1, "setcontains bigint true");
+
+# We think we work with unsorted second arg
+is( setcontains([1..8],[5,4,5,1,3]), 1, "setcontains with non-set second arg");

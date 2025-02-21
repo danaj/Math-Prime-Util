@@ -137,6 +137,7 @@ BEGIN {
 *Mvecsort = \&Math::Prime::Util::vecsort;
 *Mtodigits = \&Math::Prime::Util::todigits;
 *Mtoset = \&Math::Prime::Util::toset;
+*Msetcontains = \&Math::Prime::Util::setcontains;
 
 *Mprimes = \&Math::Prime::Util::primes;
 *Mfordivisors = \&Math::Prime::Util::fordivisors;
@@ -10691,7 +10692,7 @@ sub setintersect {
   croak 'Not an array reference' unless (ref($ra) || '') eq 'ARRAY';
   croak 'Not an array reference' unless (ref($rb) || '') eq 'ARRAY';
   ($ra,$rb) = ($rb,$ra) if scalar(@$ra) > scalar(@$rb);  # Performance
-  return if scalar(@$ra) == 0;
+  if (scalar(@$ra) == 0) { return wantarray ? () : 0; }
   my %ina;
   undef @ina{@$ra};
   return Mtoset([grep { exists $ina{$_} } @$rb]);
@@ -10758,6 +10759,37 @@ sub toset {
   my($k,%seen);
   my @set = sort { $a<=>$b }  grep { not $seen{$k = $_}++; }  @$ra;
   return @set;
+}
+
+# Is $rb contained in $ra?  Is the second set a subset of the first set?
+sub setcontains {
+  my($ra,$rb) = @_;
+  #validate_integer($_) for @$ra;
+  if (defined $rb && ref($rb) eq 'ARRAY') {
+    # TODO pick one of these
+    #return 0+(scalar(@$rb) == scalar(Math::Prime::Util::setintersect($ra,$rb)));
+    return 0 + Mvecall(sub { Msetcontains($ra,$_) }, @$rb);
+    #for my $el (@$rb) {  return 0 unless Msetcontains($ra,$el);  }
+    #return 1;
+  } else {
+    my $v = $rb;
+    validate_integer($v);
+    if (scalar(@$ra) <= 10) {  # Linear search
+      return 0 if scalar(@$ra) == 0;
+      for my $el (@$ra) {
+        return 0 + ($el == $v) if $el >= $v;
+      }
+    } else {                  # Binary search
+      my($lo,$hi) = (0,$#$ra);
+      while ($lo < $hi) {
+        my $mid = $lo + (($hi-$lo) >> 1);
+        if ($ra->[$mid] < $v) { $lo = $mid+1; }
+        else                  { $hi = $mid; }
+      }
+      return 1 if $ra->[$hi] == $v;
+    }
+    return 0;
+  }
 }
 
 sub is_subset {

@@ -102,6 +102,7 @@ our @EXPORT_OK =
       vecsort vecsortr vecsortrr
       setbinop sumset toset
       setunion setintersect setminus setdelta
+      setcontains
       is_subset is_sidon_set is_sumfree_set
       moebius mertens liouville sumliouville prime_omega prime_bigomega
       euler_phi jordan_totient exp_mangoldt sumtotient
@@ -3516,6 +3517,22 @@ This "set form" is optimal for the set operations.
 After the set is in this form, the size of the set is simply the list length.
 Similarly the set minimum and maximum are trivial.  All values in the output
 will be either typed as either native integers (IV or UV) or bigints.
+
+
+=head2 setcontains
+
+   my $has_element = setcontains( [-12,1..20], 15 );
+   my $is_subset   = setcontains( [-12,1..20], [-12,5,10,15] );
+
+Given an array reference of integers in set form, and a second argument of
+of either a single integer or an array reference of integers in set form,
+returns either 1 or 0 indicating whether the second argument is a subset of
+the first set.
+
+If the first array reference is not in set form (numerically sorted with no
+duplicates, and no string forms), the result is undefined.  It is unlikely
+to give a correct answer.  Use L</toset> to convert an arbitrary integer list
+into set form.
 
 
 =head2 setbinop
