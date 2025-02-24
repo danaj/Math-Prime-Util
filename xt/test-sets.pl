@@ -88,6 +88,10 @@ use Set::Functional;
 my @sf4 = Set::Functional::setify(@iset4);
 my @sf5 = Set::Functional::setify(@iset5);
 
+use Set::Tiny;
+my $st4 = Set::Tiny->new(@iset4);
+my $st5 = Set::Tiny->new(@iset5);
+
 
 #my $ts=0;
 #cmpthese(-1, {
@@ -104,7 +108,8 @@ cmpthese(-1, {
   "Set::SortedArray iset" => sub { $R=$saset4->intersection($saset5); },
   "Array::Set iset"       => sub { $R=set_intersect(\@iset4,\@iset5); },
   "Set::IntSpan::Fast iset"=>sub { $R=$sisf4->intersection($sisf5); },
-  "Set::Functional"       => sub {@R=Set::Functional::intersection(\@sf4,\@sf5);},
+  "Set::Functional"     => sub {@R=Set::Functional::intersection(\@sf4,\@sf5);},
+  "Set::Tiny"             => sub { $R=$st4->intersection($st5);},
   "MPUPP iset"=>sub { $R=Math::Prime::Util::PP::setintersect(\@iset4,\@iset5); },
   #"inter1 iset hashes" => sub { @R=inter1(\@iset4,\@iset5); },
   #"inter2 iset hashes" => sub { @R=inter2(\@iset4,\@iset5); },
@@ -117,6 +122,7 @@ cmpthese(-1, {
   "union rodds/evens" => sub { @R=setunion(\@set2,\@set3); },
   "union hashes"      => sub { @R=setunion(\@set4,\@set5); },
   "union iset hashes" => sub { @R=setunion(\@iset4,\@iset5); },
+  "union Set::Tiny"   => sub { $R=$st4->union($st5);},
   #"Set::SortedArray iset" => sub { $R=$saset4->union($saset5); },
   #"Array::Set iset"       => sub { $R=set_union(\@iset4,\@iset5); },
   #"Set::IntSpan::Fast iset"=>sub { $R=$sisf4->union($sisf5); },
@@ -128,6 +134,7 @@ cmpthese(-1, {
   "minus rodds/evens" => sub { @R=setminus(\@set2,\@set3); },
   "minus hashes"      => sub { @R=setminus(\@set4,\@set5); },
   "minus iset hashes" => sub { @R=setminus(\@iset4,\@iset5); },
+  "minus Set::Tiny"   => sub { $R=$st4->difference($st5);},
   #"Set::SortedArray iset" => sub { $R=$saset4->difference($saset5); },
   #"Array::Set iset"       => sub { $R=set_diff(\@iset4,\@iset5); },
   #"Set::IntSpan::Fast iset"=>sub { $R=$sisf4->diff($sisf5); },
@@ -139,6 +146,7 @@ cmpthese(-1, {
   "delta rodds/evens" => sub { @R=setdelta(\@set2,\@set3); },
   "delta hashes"      => sub { @R=setdelta(\@set4,\@set5); },
   "delta iset hashes" => sub { @R=setdelta(\@iset4,\@iset5); },
+  "Set::Tiny iset"    => sub { $R=$st4->symmetric_difference($st5);},
   "Set::SortedArray iset" => sub { $R=$saset4->symmetric_difference($saset5);},
   "Array::Set iset"       => sub { $R=set_symdiff(\@iset4,\@iset5); },
   "Set::IntSpan::Fast iset"=>sub { $R=$sisf4->diff($sisf5); },
@@ -177,3 +185,33 @@ sub inter3 {
   @set = sort { $a<=>$b } @set;
   return @set;
 }
+
+
+# Insert
+#
+# tmmpu 'csrand(5); for (1..500000) { push @s,urandomm(2000000); } @s=toset(\@s); say scalar(@s)'
+# 442393   0.100s
+#
+# tmmpu 'use Set::Tiny; csrand(5); $s=Set::Tiny->new(); for (1..500000) { $s->insert(urandomm(2000000)) } say $s->size()'
+# 442393   0.260s
+#
+# tmmpu 'csrand(5); %h=(); for (1..500000) { $h{urandomm(2000000)}=1;} @s=vecsort(keys %h); say scalar(@s);'
+# 442393   0.277s
+#
+# tmmpu 'csrand(5); $s=[]; for (1..500000) { $t+=setinsert($s,urandomm(2000000)); } say $t;'
+# 442393   4.041s
+#
+# tmmpu 'use Math::Prime::Util::PP; csrand(5); $s=[]; for (1..500000) { $t+=Math::Prime::Util::PP::setinsert($s,urandomm(2000000)); } say $t;'
+# 442393   13.770s
+#
+# tmmpu 'use List::BinarySearch::XS qw/:all/; @s=(); csrand(5); for (1..500000) { $v=urandomm(2000000); $index=binsearch_pos {$a<=>$b} $v,@s; splice @s,$index,0,$v if $s[$index] != $v; } say scalar(@s)'
+# 442393   17.570s
+#
+# tmmpu 'use Set::Intspan::Fast::XS; csrand(5); $s=Set::IntSpan::Fast::XS->new(); for (1..500000) { $s->add(urandomm(2000000)) } say $s->cardinality()'
+# 442393   22.637s
+#
+# tmmpu 'use Tie::Array::Sorted; tie @s,"Tie::Array::Sorted",sub{ $_[0]<=>$_[1] }; csrand(5); for (1..500000) { push @s,urandomm(2000000); } @s=toset(\@s); say scalar(@s)'
+# 442393   26.004s
+#
+# tmmpu 'use Set::SortedArray; my $s=Set::SortedArray->new(); csrand(5); for (1..50000) { $s=$s+[urandomm(2000000)]; } say $s->size();'
+# 49407   over 3 minutes, maybe there is a better way to insert

@@ -455,7 +455,7 @@ static int arrayref_to_digit_array(pTHX_ UV** ret, AV* av, int base)
   UV *r, carry = 0;
   if (SvTYPE((SV*)av) != SVt_PVAV)
     croak("fromdigits first argument must be a string or array reference");
-  len = 1 + av_len(av);
+  len = av_count(av);
   New(0, r, len, UV);
   for (i = len-1; i >= 0; i--) {
     SV** psvd = av_fetch(av, i, 0);
@@ -491,9 +491,17 @@ static int arrayref_to_digit_array(pTHX_ UV** ret, AV* av, int base)
 #define STATUS_TO_IARR_TYPE(s,n) \
   (((s) == 0) ? IARR_TYPE_BAD : ((s) == -1) ? IARR_TYPE_NEG : ((n) > (UV)IV_MAX) ? IARR_TYPE_POS : IARR_TYPE_ANY)
 
+/* Compare using first argument non-zero to indicate UV, otherwise IV */
 #define SIGNED_CMP_LE(pos,x,y) ((pos)  ?  (x <= y)  :  ((IV)x <= (IV)y))
 #define SIGNED_CMP_LT(pos,x,y) ((pos)  ?  (x <  y)  :  ((IV)x <  (IV)y))
 #define SIGNED_CMP_GT(pos,x,y) ((pos)  ?  (x >  y)  :  ((IV)x >  (IV)y))
+
+/* Given values and a sign indicating IV or UV, returns -1 (<), 0 (eq), 1 (>) */
+#define SIGN_CMP(xsign, x, ysign, y) \
+  ( ((xsign) == (ysign) && (x) == (y))      ? 0 : \
+    ( ((xsign) < (ysign)) || \
+      ((xsign)<0 && (IV)(x) < (IV)(y)) || \
+      ((ysign)>0 && (x) < (y)) )            ? -1 : 1 )
 
 static int arrayref_to_int_array(pTHX_ unsigned long *retlen, UV** ret, int want_sort, SV* sva, const char* fstr)
 {
@@ -576,52 +584,6 @@ static int type_of_sumset(int typea, int typeb, UV amin, UV amax, UV bmin, UV bm
   return IARR_TYPE_NEG;
 }
 
-#if 0
-/* Find an element in a set (array ref of sorted unique integers) */
-/* -1 = bigint, 0 = not found would be before index, 1 = found at index */
-static int find_in_set(pTHX_ AV* av, UV sval, int sign)
-{
-  SV **iv;
-  int last_index, lo, hi, lostatus, histatus, midstatus;
-  UV  rlo, rhi, rmid;
-
-  if (sign != 1 && sign != -1)
-    return -1;
-  last_index = av_len(av);
-  if (last_index < 0)
-    return 0;
-
-  lo = 0;
-  iv = av_fetch(av, lo, 0);
-  lostatus = _validate_and_set(&rlo, aTHX_ iv ? *iv : 0, IFLAG_ANY);
-  if      (lostatus == 0) {  return -1;  }
-  else if (lostatus == 1) {  if (sign == -1 || sval < rlo) return 0; }
-  else                    {  if (sign == -1 && (IV)sval < (IV)rlo) return 0; }
-  if (lostatus == sign && rlo == sval)
-    return 1;
-  /* sval > rlo */
-
-  hi = last_index;
-  iv = av_fetch(av, hi, 0);
-  histatus = _validate_and_set(&rhi, aTHX_ iv ? *iv : 0, IFLAG_ANY);
-  if      (histatus == 0) {  return -1;  }
-  else if (histatus == 1) {  if (sign == 1 && sval > rhi) return 0; }
-  else                    {  if (sign == -1 && (IV)sval > (IV)rhi) return 0; }
-  /* sval <= rhi */
-
-  while (hi-lo > 1 && (histatus >= sign || rhi > sval)) {
-    int mid = lo + ((hi-lo) >> 1);
-    iv = av_fetch(av, mid, 0);
-    midstatus = _validate_and_set(&rmid, aTHX_ iv ? *iv : 0, IFLAG_ANY);
-    if (midstatus == 0) return -1;
-    if ( (midstatus ==  1 && sign == 1 && rmid < sval) ||
-         (midstatus == -1 && (sign == 1 || (IV)rmid < (IV)sval)) )
-         { lo = mid; rlo = rmid; lostatus = midstatus; }
-    else { hi = mid; rhi = rmid; histatus = midstatus; }
-  }
-  return (histatus == sign && rhi == sval);
-}
-#else
 typedef struct {
   char *status;
   UV   *val;
@@ -629,10 +591,10 @@ typedef struct {
 
 static set_data_t init_set_data_cache(pTHX_ AV *av) {
   set_data_t d = {0,0};
-  int last_index = av_len(av);
-  if (last_index >= 0) {
-    Newz(0, d.status, last_index+1, char);
-    New(0, d.val, last_index+1, UV);
+  int len = av_count(av);
+  if (len > 0) {
+    Newz(0, d.status, len, char);
+    New(0, d.val, len, UV);
   }
   return d;
 }
@@ -653,44 +615,54 @@ static void free_set_data_cache(set_data_t *d) {
     } \
   } while (0)
 
-/* Find an element in a set (array ref of sorted unique integers) */
-/* -1 = bigint, 0 = not found would be before index, 1 = found at index */
-static int find_in_set(pTHX_ AV* av, set_data_t *cache, UV sval, int sign)
+/* Find index in a set (array ref of sorted unique integers)
+ *    -1 bigint
+ *    0  already in set
+ *    n  should be in n-th position (1 means should be first element)
+ */
+static int index_in_set(pTHX_ AV* av, set_data_t *cache, int sign, UV val)
 {
-  int last_index, lo, hi, lostatus, histatus, midstatus;
+  int last_index, lo, hi, lostatus, histatus, midstatus, cmp;
   UV  rlo, rhi, rmid;
 
   if (sign != 1 && sign != -1)
     return -1;
   last_index = av_len(av);
   if (last_index < 0)
-    return 0;
+    return 1;
 
   lo = 0;
   SET_ARR_VALUE(lostatus, rlo,  cache, av, lo);
-  if (lostatus == 1) {  if (sign == -1 || sval < rlo) return 0; }
-  else               {  if (sign == -1 && (IV)sval < (IV)rlo) return 0; }
-  if (lostatus == sign && rlo == sval)
-    return 1;
-  /* sval > rlo */
+  cmp = SIGN_CMP(sign, val, lostatus, rlo);
+  if (cmp <= 0) return (cmp == 0) ? 0 : lo+1;
+  /* val > rlo */
 
   hi = last_index;
   SET_ARR_VALUE(histatus, rhi,  cache, av, hi);
-  if (histatus == 1) {  if (sign == 1 && sval > rhi) return 0; }
-  else               {  if (sign == -1 && (IV)sval > (IV)rhi) return 0; }
-  /* sval <= rhi */
+  cmp = SIGN_CMP(sign, val, histatus, rhi);
+  if (cmp >= 0) return (cmp == 0) ? 0 : hi+2;
+  /* val < rhi */
 
-  while (hi-lo > 1 && (histatus >= sign || rhi > sval)) {
+  while (hi-lo > 1) {
     int mid = lo + ((hi-lo) >> 1);
     SET_ARR_VALUE(midstatus, rmid,  cache, av, mid);
-    if ( (midstatus ==  1 && sign == 1 && rmid < sval) ||
-         (midstatus == -1 && (sign == 1 || (IV)rmid < (IV)sval)) )
-         { lo = mid; rlo = rmid; lostatus = midstatus; }
-    else { hi = mid; rhi = rmid; histatus = midstatus; }
+    cmp = SIGN_CMP(midstatus, rmid, sign, val);
+    if (cmp == 0) return 0;
+    if (cmp < 0) { lo = mid; rlo = rmid; lostatus = midstatus; }
+    else         { hi = mid; rhi = rmid; histatus = midstatus; }
   }
-  return (histatus == sign && rhi == sval);
+  if (sign == histatus && rhi == val) return 0;
+  if (SIGN_CMP(sign,val, histatus, rhi) > 0) croak("internal index error");
+  return hi+1;
 }
-#endif
+
+/* See if an element is in a set (array ref of sorted unique integers) */
+/* -1 = bigint, 0 = not found, 1 = found */
+static int is_in_set(pTHX_ AV* av, set_data_t *cache, int sign, UV val)
+{
+  int index = index_in_set(aTHX_ av, cache, sign, val);
+  return (index < 0) ? index : !index;
+}
 
 #if 0
 /* Take two SV pointers to array references, slurp them all in.
@@ -4493,7 +4465,7 @@ void setcontains(IN SV* sva, IN SV* svb)
     /* Case of the second argument being a single integer. */
     if (!SvROK(svb) || SvTYPE(SvRV(svb)) != SVt_PVAV) {
       bstatus = _validate_and_set(&b, aTHX_ svb, IFLAG_ANY);
-      subset = find_in_set(aTHX_ ava, 0, b, bstatus);
+      subset = is_in_set(aTHX_ ava, 0, bstatus, b);
     } else { /* The second argument is an array reference (set) */
       avb = (AV*) SvRV(svb);
       blast = av_len(avb);
@@ -4505,7 +4477,7 @@ void setcontains(IN SV* sva, IN SV* svb)
           SV **iv = av_fetch(avb, i, 0);
           if (iv != 0) {
             bstatus = _validate_and_set(&b, aTHX_ *iv, IFLAG_ANY);
-            subset = find_in_set(aTHX_ ava, &cache, b, bstatus);
+            subset = is_in_set(aTHX_ ava, &cache, bstatus, b);
           }
         }
         free_set_data_cache(&cache);
@@ -4514,7 +4486,7 @@ void setcontains(IN SV* sva, IN SV* svb)
           SV **iv = av_fetch(avb, i, 0);
           if (iv != 0) {
             bstatus = _validate_and_set(&b, aTHX_ *iv, IFLAG_ANY);
-            subset = find_in_set(aTHX_ ava, 0, b, bstatus);
+            subset = is_in_set(aTHX_ ava, 0, bstatus, b);
           }
         }
       }
@@ -4526,6 +4498,50 @@ void setcontains(IN SV* sva, IN SV* svb)
       RETURN_NPARITY(subset);
     _vcallsubn(aTHX_ GIMME_V, VCALL_PP, "setcontains", items, 0);
     return;
+
+void setinsert(IN SV* sva, IN SV* svb)
+  PROTOTYPE: $$
+  PREINIT:
+    UV b;
+    AV *ava;
+    int bstatus;
+  PPCODE:
+    /* First arg must be an array reference (set) */
+    if ((!SvROK(sva)) || (SvTYPE(SvRV(sva)) != SVt_PVAV))
+      croak("setcontains first argument must be an array reference");
+    ava = (AV*) SvRV(sva);
+    bstatus = _validate_and_set(&b, aTHX_ svb, IFLAG_ANY);
+    if (bstatus != 0) {
+      Size_t count = av_count(ava);
+      int index = index_in_set(aTHX_ ava, 0, bstatus, b);
+      if (index == 0) RETURN_NPARITY(0);
+      if (index > 0) { /* Insert into array reference */
+        SV *newb, **arr;
+        SV* newsvb = (bstatus==1) ? newSVuv(b) : newSViv(b);
+        if ((Size_t)index > count/2) {
+          av_push(ava, newsvb);
+          if ((Size_t)index <= count) {
+            arr = AvARRAY(ava);
+            newb = arr[count];
+            memmove(arr+index, arr+index-1, sizeof(SV*) * (count-(index-1)));
+            arr[index-1] = newb;
+          }
+        } else {
+          av_unshift(ava, 1);
+          av_store(ava, 0, newsvb);
+          if (index > 1) {
+            arr = AvARRAY(ava);
+            newb = arr[0];
+            memmove(arr+0, arr+1, sizeof(SV*) * index);
+            arr[index-1] = newb;
+          }
+        }
+        RETURN_NPARITY(1);
+      }
+    }
+    _vcallsubn(aTHX_ GIMME_V, VCALL_PP, "setinsert", items, 0);
+    return;
+
 
 void is_sidon_set(IN SV* sva)
   PROTOTYPE: $

@@ -864,11 +864,6 @@ sub harmreal {
   Math::Prime::Util::PP::harmreal($n, $precision);
 }
 
-sub setinsert {
-  require Math::Prime::Util::PP;
-  Math::Prime::Util::PP::setinsert(@_);
-}
-
 
 #############################################################################
 
@@ -3537,6 +3532,11 @@ inserted, while 0 indicates it was already in the set.
 If the first array reference is not in set form, the position of the new
 element is undefined.
 
+Inserting at the start or end is very efficient.  Because the set is a
+sorted array, as it gets large and many values are inserted in the middle,
+it can get quite slow.  If many values are to be added before using the set,
+It might be faster to add the values to the end in bulk then use L</toset>.
+
 =head2 setcontains
 
    my $has_element = setcontains( [-12,1..20], 15 );
@@ -3606,6 +3606,8 @@ Mathematica's C<Union> function, and
 Sage's C<union> function on Set objects.
 
 =head2 setintersect
+
+  my $is_disjoint = scalar(setintersect($set1, $set2)) == 0;
 
 Given exactly two array references of integers, treats them as sets and
 returns the intersection as a list.
@@ -6942,6 +6944,11 @@ system entropy and can grind to a halt if C</dev/random> is exhausted
 
 =head2 SETS
 
+Measuring the performance of various modules for set operations doesn't
+give a strict order.  Many modules are fast at some operations and slow
+at others.  Some have particular inputs they are very fast or very slow
+with.  Each module has different functionality.
+
 Finding the sumset size of the first 10,000 primes.
 
   my %r;  my $p = primes(nth_prime(10000));
@@ -6958,9 +6965,10 @@ Set intersection of C<[-1000..100]> and C<[-100..1000]>.
      7 uS  Pari/GP 2.17.0
      8 uS  setintersect
     16 uS  Set::IntSpan::Fast
-    73 uS  native Perl hash intersection
+    73 uS  native Perl hash intersection          /\ /\ /\  Faster
+    75 uS  Set::Tiny
     90 uS  Set::Functional
-   115 uS  PP::setintersect
+   115 uS  PP::setintersect                       \/ \/ \/  Slower
    217 uS  Array::Set
    326 uS  Set::SortedArray
    341 uS  Set::Object
