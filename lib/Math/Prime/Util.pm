@@ -102,7 +102,7 @@ our @EXPORT_OK =
       vecsort vecsortr vecsortrr
       setbinop sumset toset
       setunion setintersect setminus setdelta
-      setcontains
+      setcontains setinsert
       is_subset is_sidon_set is_sumfree_set
       moebius mertens liouville sumliouville prime_omega prime_bigomega
       euler_phi jordan_totient exp_mangoldt sumtotient
@@ -862,6 +862,11 @@ sub harmreal {
 
   require Math::Prime::Util::PP;
   Math::Prime::Util::PP::harmreal($n, $precision);
+}
+
+sub setinsert {
+  require Math::Prime::Util::PP;
+  Math::Prime::Util::PP::setinsert(@_);
 }
 
 
@@ -3518,6 +3523,19 @@ After the set is in this form, the size of the set is simply the list length.
 Similarly the set minimum and maximum are trivial.  All values in the output
 will be either typed as either native integers (IV or UV) or bigints.
 
+
+=head2 setinsert
+
+   my $s=[-10..-1,1..10];  setinsert($s, 0);  # $s is now [-10..10]
+
+Given an array reference of integers in set form, and a single integer,
+inserts the integer into the set.  This is inserting an integer in-place
+into a numerically sorted array of integers without duplicates.  The
+array reference is modified.  A return value of 1 indicates the value was
+inserted, while 0 indicates it was already in the set.
+
+If the first array reference is not in set form, the position of the new
+element is undefined.
 
 =head2 setcontains
 

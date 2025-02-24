@@ -221,6 +221,8 @@ Tags:
   vecmex(@list)                       return least non-neg value not in list
   vecpmex(@list)                      return least positive value not in list
 
+  toset(\@A)                          convert to unique sorted integer list
+  setinsert(\@A,$v)                   insert integer v into integer set A
   setcontains(\@A,$v)                 is integer v in integer set A
   setcontains(\@A,\@B)                is int set B a subset of int set A
   setbinop { ... } \@A[,\@B]          apply operation to all a,b [a:A,b:B]
@@ -229,7 +231,6 @@ Tags:
   setintersect(\@A,\@B)               intersection of two integer lists
   setminus(\@A,\@B)                   difference of two integer lists
   setdelta(\@A,\@B)                   symmetric difference of two int lists
-  toset(\@A)                          convert to unique sorted integer list
   is_subset(\@A,\@B)                  is integer list A a subset of B
   is_sidon_set(\@L)                   is integer list L a Sidon set
   is_sumfree_set(\@L)                 is integer list L a sum-free set

@@ -128,7 +128,7 @@ sub mpu_public_regex {
       vecany vecall vecnotall vecnone vecfirst vecfirstidx vecmex vecpmex
       vecsort vecsortr vecsortrr
       setbinop sumset setunion setintersect setminus setdelta toset
-      setcontains
+      setcontains setinsert
       is_subset is_sidon_set is_sumfree_set
       moebius mertens liouville sumliouville prime_omega prime_bigomega
       euler_phi jordan_totient exp_mangoldt sumtotient

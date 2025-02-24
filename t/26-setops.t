@@ -4,7 +4,7 @@ use warnings;
 
 use Test::More;
 use Math::Prime::Util qw/setunion setintersect setminus setdelta
-                         setcontains
+                         setcontains setinsert
                          toset is_subset is_sidon_set is_sumfree_set
                          powint addint subint negint/;
 use Math::BigInt;
@@ -40,8 +40,22 @@ my @sets = (
   [ [-20,-16,-14,-12,-10,0,12,14], [-30,-18,-14,-11,-10,-8,1,13,14], "sign overlap", [qw/-30 -20 -18 -16 -14 -12 -11 -10 -8 0 1 12 13 14/], [qw/-14 -10 14/], [qw/-20 -16 -12 0 12/], [qw/-30 -20 -18 -16 -12 -11 -8 0 1 12 13/] ],
 );
 
+my @inserts = (
+  [ [], "-9223372037410331363", "insert negative 64-bit int" ],
+  [ [],  "9223372037410331363", "insert positive 64-bit int" ],
+  [ [1,3,5], 0, "insert at start" ],
+  [ [1,3,5], 7, "insert at end" ],
+  [ [1,3,5], 2, "insert in middle" ],
+  [ [1,3,5], 4, "insert in middle" ],
+  [ [1,3,5], 1, "duplicate" ],
+  [ [1,3,5], 3, "duplicate" ],
+  [ [1,3,5], -12, "negative entries ok" ],
+  [ [-12,1,3,5], -11, "negative entries ok" ],
+);
+
 plan tests => 2 + 4*scalar(@sets) + 4*scalar(@vecs) + 6 + 6 + 2 + 2
-            + 3+2+5+4+6+6+7+7+1;  # setcontains
+            + 3+2+5+4+6+6+7+7+1   # setcontains
+            + scalar(@inserts);   # setinsert
 
 ###### some specific tests
 
@@ -217,3 +231,13 @@ is( setcontains([$bi1,$bi2],[$bi2]), 1, "setcontains bigint true");
 
 # We think we work with unsorted second arg
 is( setcontains([1..8],[5,4,5,1,3]), 1, "setcontains with non-set second arg");
+
+
+###### setinsert
+for my $test (@inserts) {
+  my($s,$v,$what) = @$test;
+  my @new = (@$s, $v);
+  my $expect = [toset(\@new)];
+  setinsert($s,$v);
+  is_deeply( $s, [toset(\@new)], "setinsert $what" );
+}

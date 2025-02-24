@@ -10792,6 +10792,31 @@ sub setcontains {
   }
 }
 
+sub setinsert {
+  my($rset, $v) = @_;
+  validate_integer($v);
+
+  if (scalar(@$rset) == 0 || $v > $rset->[-1]) {
+    push @$rset, $v;
+  } elsif ($v < $rset->[0]) {
+    unshift @$rset, $v;
+  } elsif (scalar(@$rset) > 1) {
+    my($lo,$hi) = (0,$#$rset);
+    while ($lo < $hi) {
+      my $mid = $lo + (($hi-$lo) >> 1);
+      if ($rset->[$mid] < $v) { $lo = $mid+1; }
+      else                    { $hi = $mid; }
+    }
+    return 0 if $rset->[$hi] == $v;
+    croak "internal too high" if $hi > 0 && $rset->[$hi-1] >= $v;
+    croak "internal too low"  if $rset->[$hi] <= $v;
+    splice @$rset, $hi, 0, $v;
+  } else {
+    return 0;   # Single element already in list.
+  }
+  1;
+}
+
 sub is_subset {
   my($ra,$rb) = @_;
   croak 'Not an array reference' unless (ref($ra) || '') eq 'ARRAY';

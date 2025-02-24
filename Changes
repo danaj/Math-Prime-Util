@@ -155,7 +155,9 @@ Revision history for Perl module Math::Prime::Util
     - vecsort(@L)                     numerically sort integer list
     - vecsortr(\@L)                   numerically sort integer list ref
     - vecsortrr(\@L)                  as vecsortr but returns a list ref
-    - setcontains(\@A,$v)             is integer $v in integer set A
+    - toset(\@A)                      convert to unique sorted integer list
+    - setinsert(\@A,$v)               insert integer v into integer set A
+    - setcontains(\@A,$v)             is integer v in integer set A
     - setcontains(\@A,\@B)            is integer set B a subset of int set A
     - setbinop {...} \@A[,\@B]        apply op to cross product of set(s)
     - sumset(\@A[,\@B])               new set from a+b {a:A,b:B}
@@ -163,7 +165,6 @@ Revision history for Perl module Math::Prime::Util
     - setintersect(\@A,\@B)           intersection of two integer lists
     - setminus(\@A,\@B)               difference of two integer lists
     - setdelta(\@A,\@B)               symmetric difference of two int lists
-    - toset(\@A)                      convert to unique sorted integer list
     - is_subset(\@A,\@B)              is integer list A a subset of B
     - is_sidon_set(\@L)               is integer list L a Sidon set
     - is_sumfree_set(\@L)             is integer list L a sum-free set
