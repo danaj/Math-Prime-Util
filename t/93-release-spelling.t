@@ -43,6 +43,7 @@ add_stopwords(qw/-th
                  bernfrac bernreal harmfrac harmreal stirling hclassno
                  vecsum vecprod vecmin vecmax vecreduce vecextract vecequal vecuniq
                  vecall vecany vecnone vecnotall vecfirst vecfirstidx vecmex vecpmex
+                 vecsort vecsortr vecsortrr
                  sqrtint logint rootint powint addint subint mulint divint cdivint modint negint absint divrem tdivrem fdivrem cdivrem
                  qnr cornacchia
                  todigits todigitstring fromdigits sumdigits hammingweight
@@ -52,6 +53,7 @@ add_stopwords(qw/-th
                  biquadrate powerfree k-powerfree k-free
                  sumpowerful powersum
                  sumset setbinop setunion setintersect setminus setdelta toset
+                 setcontains setinsert
                  pp 100ns/);
 
 all_pod_files_spelling_ok();

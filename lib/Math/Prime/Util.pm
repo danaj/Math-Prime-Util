@@ -3571,7 +3571,7 @@ Our function uses B<much> less memory, as of Pari 2.17.0.
 
 =head2 sumset
 
-Given two array references of integers, treates them as integer sets and
+Given two array references of integers, treats them as integer sets and
 returns the sumset as a list in set form.
 
 If only one array reference is given, it will be used for both.

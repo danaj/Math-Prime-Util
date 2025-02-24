@@ -172,8 +172,9 @@ sub mpu_PPM_regex {
       Mis_power Mis_prime Mis_prime_power Mis_odd Mis_even
       Mis_semiprime Mis_square_free
       Mvecall Mvecany Mvecmin Mvecmax Mvecnone Mvecprod Mvecsum
+      Mtoset Msetcontains
       Mtodigits
-      Mlucasumod Mvecfirst
+      Mlucasumod Mvecfirst Mvecsort
       Saddint Ssubint Smulint Sdivint Spowint
       reftyped
       validate_integer     validate_integer_nonneg
