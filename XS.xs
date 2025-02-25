@@ -4672,20 +4672,6 @@ void is_sumfree_set(IN SV* sva)
     Safefree(data);
     RETURN_NPARITY(is_sumfree);
 
-#if 1
-void toset(IN SV* sva)
-  PREINIT:
-    iset_t s;
-    int status;
-  PPCODE:
-    s = arrayref_to_iset(aTHX_ &status, sva, "toset:");
-    if (status == 0) {
-      iset_destroy(&s);
-      CALLPPSUB("toset");
-      return;
-    }
-    RETURN_SET_VALS(s);
-#else
 void toset(IN SV* sva)
   PREINIT:
     int atype;
@@ -4698,7 +4684,6 @@ void toset(IN SV* sva)
       return;
     }
     RETURN_LIST_VALS(alen, ra, atype != IARR_TYPE_NEG);
-#endif
 
 
 void vecsortr(IN SV* sva)
