@@ -10685,7 +10685,8 @@ sub setunion {
                                      && (ref($rb) || '') eq 'ARRAY';
   # return toset([@$ra,@$rb]);
   my(%seen,$k);
-  return Mtoset([grep { not $seen{$k = $_}++ } @$ra,@$rb]);
+  my @res = Mtoset([grep { not $seen{$k = $_}++ } @$ra,@$rb]);
+  return wantarray ? @res : scalar(@res);
 }
 sub setintersect {
   my($ra,$rb) = @_;
@@ -10695,7 +10696,8 @@ sub setintersect {
   if (scalar(@$ra) == 0) { return wantarray ? () : 0; }
   my %ina;
   undef @ina{@$ra};
-  return Mtoset([grep { exists $ina{$_} } @$rb]);
+  my @res = Mtoset([grep { exists $ina{$_} } @$rb]);
+  return wantarray ? @res : scalar(@res);
 }
 sub setminus {
   my($ra,$rb) = @_;
@@ -10704,7 +10706,8 @@ sub setminus {
   return @$ra if scalar(@$rb) == 0;
   my %inb;
   undef @inb{@$rb};
-  return Mtoset([grep { !exists $inb{$_} } @$ra]);
+  my @res = Mtoset([grep { !exists $inb{$_} } @$ra]);
+  return wantarray ? @res : scalar(@res);
 }
 sub setdelta {
   my($ra,$rb) = @_;
@@ -10717,7 +10720,8 @@ sub setdelta {
   undef @inb{@$rb};
   my @s =  grep { !exists $inb{$_} } @$ra;
   push @s, grep { !exists $ina{$_} } @$rb;
-  return Mtoset(\@s);
+  my @res =  Mtoset(\@s);
+  return wantarray ? @res : scalar(@res);
 }
 
 # Can do setminus([$min..$max],\@L) albeit 2x slower
@@ -10860,19 +10864,6 @@ sub set_is_proper_intersection {
   my $minsize = (scalar(@$s) < scalar(@$t)) ? scalar(@$s) : scalar(@$t);
   my $intersize = scalar(setintersect($s,$t));
   return ($intersize > 0 && $intersize < $minsize) ? 1 : 0;
-}
-
-sub is_subset {
-  my($ra,$rb) = @_;
-  croak 'Not an array reference' unless (ref($ra) || '') eq 'ARRAY'
-                                     && (ref($rb) || '') eq 'ARRAY';
-  # Is A is a subset of B?
-  my(%inb);
-  $inb{$_}=undef for @$rb;
-  for (@$ra) {
-    return 0 unless exists $inb{$_};
-  }
-  1;
 }
 
 sub is_sidon_set {

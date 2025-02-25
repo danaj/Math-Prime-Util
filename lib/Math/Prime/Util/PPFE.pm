@@ -274,7 +274,6 @@ sub entropy_bytes {
 *setinsert = \&Math::Prime::Util::PP::setinsert;
 *setcontains = \&Math::Prime::Util::PP::setcontains;
 *toset = \&Math::Prime::Util::PP::toset;
-*is_subset = \&Math::Prime::Util::PP::is_subset;
 *is_sidon_set = \&Math::Prime::Util::PP::is_sidon_set;
 *is_sumfree_set = \&Math::Prime::Util::PP::is_sumfree_set;
 *set_is_disjoint = \&Math::Prime::Util::PP::set_is_disjoint;

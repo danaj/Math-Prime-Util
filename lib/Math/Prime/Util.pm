@@ -103,7 +103,7 @@ our @EXPORT_OK =
       setbinop sumset toset
       setunion setintersect setminus setdelta
       setcontains setinsert
-      is_subset is_sidon_set is_sumfree_set
+      is_sidon_set is_sumfree_set
       set_is_disjoint set_is_equal set_is_proper_intersection
       set_is_subset set_is_proper_subset set_is_superset set_is_proper_superset
       moebius mertens liouville sumliouville prime_omega prime_bigomega
@@ -3652,16 +3652,6 @@ This corresponds to Pari's C<setdelta> function
 and Mathematica's C<SymmetricDifference> function, and
 Sage's C<symmetric_difference> function on Set objects.
 
-=head2 is_subset
-
-Given exactly two array references of integers, treats them as sets and
-return 1 if the first set is a subset of the second, and 0 otherwise.
-That is, if every integer in the first list also appears anywhere in the
-second list, then 1 is returned.
-
-This corresponds to Mathematica's C<SubsetQ> function, though with
-the arguments reversed (they ask if B is a subset of A).
-
 =head2 is_sidon_set
 
 Given an array reference of integers, treats it as a set and returns 1
@@ -3696,6 +3686,8 @@ Given two array references of integers, treats them as sets and returns
 1 if the first set also contains all elements of the second set.
 
 The L</setcontains> function can be used equivalently.
+
+This corresponds to Mathematica's C<SubsetQ> function (is B a subset of A).
 
 =head2 set_is_proper_subset
 

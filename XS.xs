@@ -717,25 +717,6 @@ static int is_subset_read_all(pTHX_ SV* svset, SV* svsub)
 }
 #endif
 
-/* Status -1 for IVs, 1 for UVs, 0 for failed (overflow or bigints) */
-static iset_t arrayref_to_iset(pTHX_ int *status, SV* sva, const char* fstr)
-{
-  UV *r;
-  unsigned long len;
-  iset_t s;
-  int itype;
-
-  /* Doing this in two steps is much faster than one, probably caching. */
-  itype = arrayref_to_int_array(aTHX_ &len, &r, 0, sva, fstr);
-  *status = IARR_TYPE_TO_STATUS(itype);
-  if (*status == 0)
-    s = iset_create(0);
-  else
-    s = iset_create_from_array(r, len, *status);
-  Safefree(r);
-  return s;
-}
-
 static int _compare_array_refs(pTHX_ SV* a, SV* b)
 {
   AV *ava, *avb;
@@ -4452,6 +4433,14 @@ void set_is_disjoint(IN SV* sva, IN SV* svb)
     atype = arrayref_to_int_array(aTHX_ &alen, &ra, 1, sva, "setunion arg 1");
     btype = arrayref_to_int_array(aTHX_ &blen, &rb, 1, svb, "setunion arg 2");
 
+    /* Shortcut on length if we can to skip intersection. */
+    if (atype != IARR_TYPE_BAD && btype != IARR_TYPE_BAD) {
+      if ( (ix == 1 && alen != blen) ||
+           (ix == 2 && alen <  blen) || (ix == 3 && alen <= blen) ||
+           (ix == 4 && alen >  blen) || (ix == 5 && alen >= blen) )
+        RETURN_NPARITY(0);
+    }
+
     if (CAN_COMBINE_IARR_TYPES(atype,btype)) {
       unsigned long rlen = 0, ia = 0, ib = 0;
       int pcmp = (atype == IARR_TYPE_NEG || btype == IARR_TYPE_NEG) ? 0 : 1;
@@ -4493,27 +4482,6 @@ void set_is_disjoint(IN SV* sva, IN SV* svb)
       default:CALLPPSUB("set_is_proper_intersection"); break;
     }
     return;
-
-#if 1
-void is_subset(IN SV* sva, IN SV* svb)
-  PROTOTYPE: $$
-  PREINIT:
-    iset_t sa, sb;
-    int astatus, bstatus, ret;
-  PPCODE:
-    ret = -1;
-    sa = arrayref_to_iset(aTHX_ &astatus, sva, "is_subset first arg");
-    if (astatus != 0) {
-      sb = arrayref_to_iset(aTHX_ &bstatus, svb, "is_subset second arg");
-      if (bstatus != 0)
-        ret = iset_is_subset_of(sa, sb);
-      iset_destroy(&sb);
-    }
-    iset_destroy(&sa);
-    if (ret != -1)  RETURN_NPARITY(ret);
-    CALLPPSUB("is_subset");
-    return;
-#endif
 
 void setcontains(IN SV* sva, IN SV* svb)
   PROTOTYPE: $$
