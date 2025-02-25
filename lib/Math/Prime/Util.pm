@@ -104,6 +104,8 @@ our @EXPORT_OK =
       setunion setintersect setminus setdelta
       setcontains setinsert
       is_subset is_sidon_set is_sumfree_set
+      set_is_disjoint set_is_equal set_is_proper_intersection
+      set_is_subset set_is_proper_subset set_is_superset set_is_proper_superset
       moebius mertens liouville sumliouville prime_omega prime_bigomega
       euler_phi jordan_totient exp_mangoldt sumtotient
       partitions bernfrac bernreal harmfrac harmreal
@@ -3676,6 +3678,51 @@ if it is a sum-free set, and 0 otherwise.
 A sum-free set is one where no sum of two elements from the set is equal
 to any element of the set.  That is, the set and its sumset are disjoint.
 
+=head2 set_is_disjoint
+
+Given two array references of integers, treats them as sets and returns
+1 if the sets are have no elements in common.
+
+=head2 set_is_equal
+
+Given two array references of integers, treats them as sets and returns
+1 if the sets have all elements in common.
+
+The L</vecequal> function can be used equivalently.
+
+=head2 set_is_subset
+
+Given two array references of integers, treats them as sets and returns
+1 if the first set also contains all elements of the second set.
+
+The L</setcontains> function can be used equivalently.
+
+=head2 set_is_proper_subset
+
+Given two array references of integers, treats them as sets and returns
+1 if the first set also contains all elements of the second set, but are
+not equal.
+The size of the first set must be strictly larger than the second.
+
+=head2 set_is_superset
+
+Given two array references of integers, treats them as sets and returns
+1 if the second set also contains all elements of the first set.
+
+The L</setcontains> function can be used equivalently.
+
+=head2 set_is_proper_superset
+
+Given two array references of integers, treats them as sets and returns
+1 if the second set also contains all elements of the first set, but are
+not equal.
+The size of the second set must be strictly larger than the first.
+
+=head2 set_is_proper_intersection
+
+Given two array references of integers, treats them as sets and returns
+1 if the two sets have at least one element in common, and each of the
+two sets have at least one element not present in the other set.
 
 
 =head2 todigits

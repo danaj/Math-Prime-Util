@@ -10681,16 +10681,16 @@ sub vecuniq {
 
 sub setunion {
   my($ra,$rb) = @_;
-  croak 'Not an array reference' unless (ref($ra) || '') eq 'ARRAY';
-  croak 'Not an array reference' unless (ref($rb) || '') eq 'ARRAY';
+  croak 'Not an array reference' unless (ref($ra) || '') eq 'ARRAY'
+                                     && (ref($rb) || '') eq 'ARRAY';
   # return toset([@$ra,@$rb]);
   my(%seen,$k);
   return Mtoset([grep { not $seen{$k = $_}++ } @$ra,@$rb]);
 }
 sub setintersect {
   my($ra,$rb) = @_;
-  croak 'Not an array reference' unless (ref($ra) || '') eq 'ARRAY';
-  croak 'Not an array reference' unless (ref($rb) || '') eq 'ARRAY';
+  croak 'Not an array reference' unless (ref($ra) || '') eq 'ARRAY'
+                                     && (ref($rb) || '') eq 'ARRAY';
   ($ra,$rb) = ($rb,$ra) if scalar(@$ra) > scalar(@$rb);  # Performance
   if (scalar(@$ra) == 0) { return wantarray ? () : 0; }
   my %ina;
@@ -10699,8 +10699,8 @@ sub setintersect {
 }
 sub setminus {
   my($ra,$rb) = @_;
-  croak 'Not an array reference' unless (ref($ra) || '') eq 'ARRAY';
-  croak 'Not an array reference' unless (ref($rb) || '') eq 'ARRAY';
+  croak 'Not an array reference' unless (ref($ra) || '') eq 'ARRAY'
+                                     && (ref($rb) || '') eq 'ARRAY';
   return @$ra if scalar(@$rb) == 0;
   my %inb;
   undef @inb{@$rb};
@@ -10708,8 +10708,8 @@ sub setminus {
 }
 sub setdelta {
   my($ra,$rb) = @_;
-  croak 'Not an array reference' unless (ref($ra) || '') eq 'ARRAY';
-  croak 'Not an array reference' unless (ref($rb) || '') eq 'ARRAY';
+  croak 'Not an array reference' unless (ref($ra) || '') eq 'ARRAY'
+                                     && (ref($rb) || '') eq 'ARRAY';
   return @$ra if scalar(@$rb) == 0;
   return @$rb if scalar(@$ra) == 0;
   my(%ina, %inb);
@@ -10817,10 +10817,55 @@ sub setinsert {
   1;
 }
 
+sub set_is_disjoint {
+  my($s,$t) = @_;
+  croak 'Not an array reference' unless (ref($s) || '') eq 'ARRAY'
+                                     && (ref($t) || '') eq 'ARRAY';
+  return 0 + (scalar(setintersect($s,$t) == 0));
+}
+sub set_is_equal {
+  my($s,$t) = @_;
+  croak 'Not an array reference' unless (ref($s) || '') eq 'ARRAY'
+                                     && (ref($t) || '') eq 'ARRAY';
+  return 0 + (@$s == @$t && scalar(setintersect($s,$t)) == @$t);
+}
+sub set_is_subset {
+  my($s,$t) = @_;
+  croak 'Not an array reference' unless (ref($s) || '') eq 'ARRAY'
+                                     && (ref($t) || '') eq 'ARRAY';
+  return 0 + (@$s >= @$t && scalar(setintersect($s,$t)) == @$t);
+}
+sub set_is_proper_subset {
+  my($s,$t) = @_;
+  croak 'Not an array reference' unless (ref($s) || '') eq 'ARRAY'
+                                     && (ref($t) || '') eq 'ARRAY';
+  return 0 + (@$s > @$t && scalar(setintersect($s,$t)) == @$t);
+}
+sub set_is_superset {
+  my($s,$t) = @_;
+  croak 'Not an array reference' unless (ref($s) || '') eq 'ARRAY'
+                                     && (ref($t) || '') eq 'ARRAY';
+  return 0 + (@$s <= @$t && scalar(setintersect($s,$t)) == @$s);
+}
+sub set_is_proper_superset {
+  my($s,$t) = @_;
+  croak 'Not an array reference' unless (ref($s) || '') eq 'ARRAY'
+                                     && (ref($t) || '') eq 'ARRAY';
+  return 0 + (@$s < @$t && scalar(setintersect($s,$t)) == @$s);
+}
+sub set_is_proper_intersection {
+  my($s,$t) = @_;
+  croak 'Not an array reference' unless (ref($s) || '') eq 'ARRAY'
+                                     && (ref($t) || '') eq 'ARRAY';
+  my $minsize = (scalar(@$s) < scalar(@$t)) ? scalar(@$s) : scalar(@$t);
+  my $intersize = scalar(setintersect($s,$t));
+  return ($intersize > 0 && $intersize < $minsize) ? 1 : 0;
+}
+
 sub is_subset {
   my($ra,$rb) = @_;
-  croak 'Not an array reference' unless (ref($ra) || '') eq 'ARRAY';
-  croak 'Not an array reference' unless (ref($rb) || '') eq 'ARRAY';
+  croak 'Not an array reference' unless (ref($ra) || '') eq 'ARRAY'
+                                     && (ref($rb) || '') eq 'ARRAY';
   # Is A is a subset of B?
   my(%inb);
   $inb{$_}=undef for @$rb;

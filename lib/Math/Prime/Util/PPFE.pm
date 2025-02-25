@@ -277,6 +277,13 @@ sub entropy_bytes {
 *is_subset = \&Math::Prime::Util::PP::is_subset;
 *is_sidon_set = \&Math::Prime::Util::PP::is_sidon_set;
 *is_sumfree_set = \&Math::Prime::Util::PP::is_sumfree_set;
+*set_is_disjoint = \&Math::Prime::Util::PP::set_is_disjoint;
+*set_is_equal = \&Math::Prime::Util::PP::set_is_equal;
+*set_is_subset = \&Math::Prime::Util::PP::set_is_subset;
+*set_is_proper_subset = \&Math::Prime::Util::PP::set_is_proper_subset;
+*set_is_superset = \&Math::Prime::Util::PP::set_is_superset;
+*set_is_proper_superset = \&Math::Prime::Util::PP::set_is_proper_superset;
+*set_is_proper_intersection = \&Math::Prime::Util::PP::set_is_proper_intersection;
 
 *tozeckendorf = \&Math::Prime::Util::PP::tozeckendorf;
 *fromzeckendorf = \&Math::Prime::Util::PP::fromzeckendorf;

@@ -330,6 +330,7 @@ static int _vcallsubn(pTHX_ I32 flags, I32 stashflags, const char* name, int nar
 #define _vcallsub(func) (void)_vcallsubn(aTHX_ G_SCALAR, VCALL_ROOT, func, items,0)
 #define _vcallsub_with_gmp(ver,func) (void)_vcallsubn(aTHX_ G_SCALAR, VCALL_GMP|VCALL_PP, func, items,(int)(100*(ver)))
 #define _vcallsub_with_pp(func) (void)_vcallsubn(aTHX_ G_SCALAR, VCALL_PP, func, items,0)
+#define CALLPPSUB(func) (void)_vcallsubn(aTHX_ GIMME_V,VCALL_PP,func,items,0)
 /* #define _vcallsub_with_gmpobj(ver,func) (void)_vcallsubn(aTHX_ G_SCALAR, (PERL_REVISION >= 5 && PERL_VERSION > 8) ? VCALL_GMP|VCALL_PP : VCALL_PP, func, items,(int)(100*(ver))) */
 #define _vcallsub_with_gmpobj(ver,func) _vcallsub_with_gmp(ver,func)
 
@@ -411,9 +412,9 @@ static SV* sv_to_bigint_nonneg(pTHX_ SV* r) {
 }
 
 #define RETURN_128(hi,lo) \
-  do { char str[40]; \
-       int slen = to_string_128(str, hi, lo); \
-       ST(0) = sv_to_bigint( aTHX_ sv_2mortal(newSVpv(str,slen)) ); \
+  do { char str_[40]; \
+       int slen_ = to_string_128(str_, hi, lo); \
+       ST(0) = sv_to_bigint( aTHX_ sv_2mortal(newSVpv(str_,slen_)) ); \
        XSRETURN(1); } while(0)
 
 #define CREATE_AV(av) \
@@ -429,22 +430,22 @@ static SV* sv_to_bigint_nonneg(pTHX_ SV* r) {
 
 #define RETURN_LIST_VALS(in_alen,arr,sign)   /* Return array values */ \
   { \
-    unsigned long k, alen = in_alen; \
-    EXTEND(SP,(long)alen); \
-    for (k = 0; k < alen; k++) \
-      ST(k) = sv_2mortal( (sign==1) ? newSVuv(arr[k]) : newSViv(arr[k]) ); \
+    unsigned long k_, alen_ = in_alen; \
+    EXTEND(SP,(long)alen_); \
+    for (k_ = 0; k_ < alen_; k_++) \
+      ST(k_) = sv_2mortal(((sign)==1) ? newSVuv(arr[k_]) : newSViv(arr[k_])); \
     Safefree(arr); \
-    XSRETURN(alen); \
+    XSRETURN(alen_); \
   }
 
 #define RETURN_LIST_REF(in_alen,arr,sign)   /* Return array values as ref */ \
   { \
-    AV* av; \
-    unsigned long k, alen = in_alen; \
-    CREATE_AV(av); \
-    av_extend(av, (SSize_t)alen); \
-    for (k = 0; k < alen; k++) \
-      av_push(av, (sign==1) ? newSVuv(arr[k]) : newSViv(arr[k]) ); \
+    AV* av_; \
+    unsigned long k_, alen_ = in_alen; \
+    CREATE_AV(av_); \
+    av_extend(av_, (SSize_t)alen_); \
+    for (k_ = 0; k_ < alen_; k_++) \
+      av_push(av_, ((sign)==1) ? newSVuv(arr[k_]) : newSViv(arr[k_]) ); \
     Safefree(arr); \
     XSRETURN(1); \
   }
@@ -4423,14 +4424,77 @@ void setunion(IN SV* sva, IN SV* svb)
     Safefree(ra);
     Safefree(rb);
     switch (ix) {
-      case 0: _vcallsubn(aTHX_ GIMME_V,VCALL_PP,"setunion",    items,0);break;
-      case 1: _vcallsubn(aTHX_ GIMME_V,VCALL_PP,"setintersect",items,0);break;
-      case 2: _vcallsubn(aTHX_ GIMME_V,VCALL_PP,"setminus",    items,0);break;
+      case 0: CALLPPSUB("setunion");     break;
+      case 1: CALLPPSUB("setintersect"); break;
+      case 2: CALLPPSUB("setminus");     break;
       case 3:
-      default:_vcallsubn(aTHX_ GIMME_V,VCALL_PP,"setdelta",    items,0);break;
+      default:CALLPPSUB("setdelta");     break;
     }
     return;
 
+void set_is_disjoint(IN SV* sva, IN SV* svb)
+  PROTOTYPE: $$
+  ALIAS:
+    set_is_equal = 1
+    set_is_subset = 2
+    set_is_proper_subset = 3
+    set_is_superset = 4
+    set_is_proper_superset = 5
+    set_is_proper_intersection = 6
+  PREINIT:
+    int atype, btype, ret;
+    UV *ra, *rb;
+    unsigned long alen, blen;
+  PPCODE:
+    /* If one set is much smaller than the other, it would be faster using
+     * is_in_set().  We'll keep things simple and slurp in both sets. */
+    /* Get the integers as sorted arrays of IV or UV */
+    atype = arrayref_to_int_array(aTHX_ &alen, &ra, 1, sva, "setunion arg 1");
+    btype = arrayref_to_int_array(aTHX_ &blen, &rb, 1, svb, "setunion arg 2");
+
+    if (CAN_COMBINE_IARR_TYPES(atype,btype)) {
+      unsigned long rlen = 0, ia = 0, ib = 0;
+      int pcmp = (atype == IARR_TYPE_NEG || btype == IARR_TYPE_NEG) ? 0 : 1;
+
+      while (ia < alen && ib < blen) {
+        if (ra[ia] == rb[ib]) {
+          rlen++;
+          ia++; ib++;
+        } else {
+          if (SIGNED_CMP_LT(pcmp, ra[ia], rb[ib])) ia++;
+          else                                     ib++;
+        }
+      }
+      Safefree(ra);
+      Safefree(rb);
+      ret = 0;
+      switch (ix) {
+        case 0: if (rlen == 0) ret = 1;   break;
+        case 1: if (alen == blen && rlen == blen) ret = 1;  break;
+        case 2: if (alen >= blen && rlen == blen) ret = 1;  break;
+        case 3: if (alen >  blen && rlen == blen) ret = 1;  break;
+        case 4: if (alen <= blen && rlen == alen) ret = 1;  break;
+        case 5: if (alen <  blen && rlen == alen) ret = 1;  break;
+        case 6:
+        default:if (rlen > 1 && rlen < alen && rlen < blen) ret = 1; break;
+      }
+      RETURN_NPARITY(ret);
+    }
+    Safefree(ra);
+    Safefree(rb);
+    switch (ix) {
+      case 0: CALLPPSUB("set_is_disjoint");       break;
+      case 1: CALLPPSUB("set_is_equal");          break;
+      case 2: CALLPPSUB("set_is_subset");         break;
+      case 3: CALLPPSUB("set_is_proper_subset");  break;
+      case 4: CALLPPSUB("set_is_superset");       break;
+      case 5: CALLPPSUB("set_is_proper_superset");break;
+      case 6:
+      default:CALLPPSUB("set_is_proper_intersection"); break;
+    }
+    return;
+
+#if 1
 void is_subset(IN SV* sva, IN SV* svb)
   PROTOTYPE: $$
   PREINIT:
@@ -4447,8 +4511,9 @@ void is_subset(IN SV* sva, IN SV* svb)
     }
     iset_destroy(&sa);
     if (ret != -1)  RETURN_NPARITY(ret);
-    _vcallsubn(aTHX_ GIMME_V,VCALL_PP,"is_subset",items,0);
+    CALLPPSUB("is_subset");
     return;
+#endif
 
 void setcontains(IN SV* sva, IN SV* svb)
   PROTOTYPE: $$
@@ -4496,7 +4561,7 @@ void setcontains(IN SV* sva, IN SV* svb)
     }
     if (subset != -1)
       RETURN_NPARITY(subset);
-    _vcallsubn(aTHX_ GIMME_V, VCALL_PP, "setcontains", items, 0);
+    CALLPPSUB("setcontains");
     return;
 
 void setinsert(IN SV* sva, IN SV* svb)
@@ -4539,7 +4604,7 @@ void setinsert(IN SV* sva, IN SV* svb)
         RETURN_NPARITY(1);
       }
     }
-    _vcallsubn(aTHX_ GIMME_V, VCALL_PP, "setinsert", items, 0);
+    CALLPPSUB("setinsert");
     return;
 
 
@@ -4559,7 +4624,7 @@ void is_sidon_set(IN SV* sva)
     /* If any bigints or we cannot add the values in 64-bits, call PP. */
     if (itype == IARR_TYPE_BAD || itype == IARR_TYPE_POS) {
       Safefree(data);
-      _vcallsubn(aTHX_ GIMME_V, VCALL_PP, "is_sidon_set", items, 0);
+      CALLPPSUB("is_sidon_set");
       return;
     }
     /* Check if the set is a Sidon set. */
@@ -4594,7 +4659,7 @@ void is_sumfree_set(IN SV* sva)
     /* Call PP code if bigints or summation overflow */
     if (itype == IARR_TYPE_BAD) {
       Safefree(data);
-      _vcallsubn(aTHX_ GIMME_V, VCALL_PP, "is_sumfree_set", items, 0);
+      CALLPPSUB("is_sumfree_set");
       return;
     }
     sa = iset_create_from_array(data, len, IARR_TYPE_TO_STATUS(itype));
@@ -4607,6 +4672,7 @@ void is_sumfree_set(IN SV* sva)
     Safefree(data);
     RETURN_NPARITY(is_sumfree);
 
+#if 1
 void toset(IN SV* sva)
   PREINIT:
     iset_t s;
@@ -4615,10 +4681,25 @@ void toset(IN SV* sva)
     s = arrayref_to_iset(aTHX_ &status, sva, "toset:");
     if (status == 0) {
       iset_destroy(&s);
-      _vcallsubn(aTHX_ GIMME_V,VCALL_PP,"toset",items,0);
+      CALLPPSUB("toset");
       return;
     }
     RETURN_SET_VALS(s);
+#else
+void toset(IN SV* sva)
+  PREINIT:
+    int atype;
+    UV *ra;
+    unsigned long alen;
+  PPCODE:
+    atype = arrayref_to_int_array(aTHX_ &alen, &ra, 1, sva, "toset");
+    if (atype == IARR_TYPE_BAD) {
+      CALLPPSUB("toset");
+      return;
+    }
+    RETURN_LIST_VALS(alen, ra, atype != IARR_TYPE_NEG);
+#endif
+
 
 void vecsortr(IN SV* sva)
   PROTOTYPE: $
@@ -4636,7 +4717,7 @@ void vecsortr(IN SV* sva)
       sort_iv_array((IV*)L, len);
     } else {
       Safefree(L);
-      _vcallsubn(aTHX_ GIMME_V, VCALL_PP, (ix == 0) ? "vecsortr" : "vecsortrr", items, 0);
+      CALLPPSUB((ix == 0) ? "vecsortr" : "vecsortrr");
       return;
     }
     if (ix == 0) { RETURN_LIST_VALS( len, L, (type != IARR_TYPE_NEG) ); }
@@ -4665,7 +4746,7 @@ void vecsort(...)
     }
     if (i < items) {
       Safefree(L);
-      _vcallsubn(aTHX_ GIMME_V, VCALL_PP, "vecsort", items, 0);
+      CALLPPSUB("vecsort");
       return;
     }
     if (type == IARR_TYPE_ANY || type == IARR_TYPE_POS)

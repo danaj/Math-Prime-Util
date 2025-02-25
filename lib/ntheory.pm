@@ -234,7 +234,13 @@ Tags:
   is_subset(\@A,\@B)                  is integer list A a subset of B
   is_sidon_set(\@L)                   is integer list L a Sidon set
   is_sumfree_set(\@L)                 is integer list L a sum-free set
-
+  set_is_disjoint(\@A,\@B)            is set B disjoint from set A
+  set_is_equal(\@A,\@B)               is set B equal to set A
+  set_is_subset(\@A,\@B)              is set B a subset of set A
+  set_is_proper_subset(\@A,\@B)       is set B a proper subset of set A
+  set_is_superset(\@A,\@B)            is set B a superet of set A
+  set_is_proper_superset(\@A,\@B)     is set B a proper superet of set A
+  set_is_proper_intersection(\@A,\@B) is set B a proper intersection of set A
 
 =head2 MATH
 
