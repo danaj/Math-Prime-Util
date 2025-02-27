@@ -585,34 +585,54 @@ static int type_of_sumset(int typea, int typeb, UV amin, UV amax, UV bmin, UV bm
   return IARR_TYPE_NEG;
 }
 
+#define SC_SIZE  257   /* Choose 131, 257, 521, 1031, 2053 */
 typedef struct {
-  char *status;
-  UV   *val;
+  char lostatus, histatus, *midstatus;
+  UV loval, hival, *midval;
+  int *midindex;
 } set_data_t;
-
-static set_data_t init_set_data_cache(pTHX_ AV *av) {
-  set_data_t d = {0,0};
+static set_data_t init_set_lookup_cache(pTHX_ AV *av) {
+  set_data_t d;
   int len = av_count(av);
-  if (len > 0) {
-    Newz(0, d.status, len, char);
-    New(0, d.val, len, UV);
-  }
+  if (len > SC_SIZE) len = SC_SIZE;
+  d.lostatus = d.histatus = 0;
+  Newz(0, d.midstatus, len, char);
+  New(0, d.midval, len, UV);
+  New(0, d.midindex, len, int);
   return d;
 }
-static void free_set_data_cache(set_data_t *d) {
-  Safefree(d->status);
-  Safefree(d->val);
+static void free_set_lookup_cache(set_data_t *d) {
+  Safefree(d->midstatus);
+  Safefree(d->midval);
+  Safefree(d->midindex);
 }
+#define _SC_GET_VALUE(statvar, var, av, i) \
+  SV** iv = av_fetch(av, i, 0); \
+  statvar = _validate_and_set(&var, aTHX_ iv ? *iv : 0, IFLAG_ANY); \
+  if (statvar == 0) return -1;
 
-#define SET_ARR_VALUE(statvar, var,  cache, av, i) \
+#define SC_SET_LO_VALUE(statvar, var, av, i, cache) \
+  if (cache != 0 && cache->lostatus != 0) { \
+    statvar = cache->lostatus;  var = cache->loval; \
+  } else { \
+    _SC_GET_VALUE(statvar, var, av, i) \
+    if (cache) { cache->lostatus = statvar;  cache->loval = var; } \
+  }
+#define SC_SET_HI_VALUE(statvar, var, av, i, cache) \
+  if (cache != 0 && cache->histatus != 0) { \
+    statvar = cache->histatus;  var = cache->hival; \
+  } else { \
+    _SC_GET_VALUE(statvar, var, av, i) \
+    if (cache) { cache->histatus = statvar;  cache->hival = var; } \
+  }
+#define SC_SET_MID_VALUE(statvar, var, av, i, cache) \
   do { \
-    if (cache != 0 && cache->status[i] != 0) { \
-      statvar = cache->status[i];  var = cache->val[i]; \
+    unsigned int imod_ = i % SC_SIZE; \
+    if (cache != 0 && cache->midstatus[imod_] != 0 && cache->midindex[imod_] == i) { \
+      statvar = cache->midstatus[imod_];  var = cache->midval[imod_]; \
     } else { \
-      SV** iv = av_fetch(av, i, 0); \
-      statvar = _validate_and_set(&var, aTHX_ iv ? *iv : 0, IFLAG_ANY); \
-      if (statvar == 0) return -1; \
-      if (cache) { cache->status[i] = statvar;  cache->val[i] = var; } \
+      _SC_GET_VALUE(statvar, var, av, i) \
+      if (cache) { cache->midstatus[imod_] = statvar;  cache->midval[imod_] = var; cache->midindex[imod_] = i; } \
     } \
   } while (0)
 
@@ -633,20 +653,20 @@ static int index_in_set(pTHX_ AV* av, set_data_t *cache, int sign, UV val)
     return 1;
 
   lo = 0;
-  SET_ARR_VALUE(lostatus, rlo,  cache, av, lo);
+  SC_SET_LO_VALUE(lostatus, rlo, av, lo, cache);
   cmp = SIGN_CMP(sign, val, lostatus, rlo);
   if (cmp <= 0) return (cmp == 0) ? 0 : lo+1;
   /* val > rlo */
 
   hi = last_index;
-  SET_ARR_VALUE(histatus, rhi,  cache, av, hi);
+  SC_SET_HI_VALUE(histatus, rhi, av, hi, cache);
   cmp = SIGN_CMP(sign, val, histatus, rhi);
   if (cmp >= 0) return (cmp == 0) ? 0 : hi+2;
   /* val < rhi */
 
   while (hi-lo > 1) {
     int mid = lo + ((hi-lo) >> 1);
-    SET_ARR_VALUE(midstatus, rmid,  cache, av, mid);
+    SC_SET_MID_VALUE(midstatus, rmid, av, mid, cache);
     cmp = SIGN_CMP(midstatus, rmid, sign, val);
     if (cmp == 0) return 0;
     if (cmp < 0) { lo = mid; rlo = rmid; lostatus = midstatus; }
@@ -4509,8 +4529,8 @@ void setcontains(IN SV* sva, IN SV* svb)
       blast = av_len(avb);
       if (blast > alast) {
         subset = 0;  /* cannot fit */
-      } else if (alast > 4) {
-        set_data_t cache = init_set_data_cache(aTHX_ ava);
+      } else {
+        set_data_t cache = init_set_lookup_cache(aTHX_ ava);
         for (i = 0, subset = 1; i <= blast && subset == 1; i++) {
           SV **iv = av_fetch(avb, i, 0);
           if (iv != 0) {
@@ -4518,15 +4538,7 @@ void setcontains(IN SV* sva, IN SV* svb)
             subset = is_in_set(aTHX_ ava, &cache, bstatus, b);
           }
         }
-        free_set_data_cache(&cache);
-      } else {
-        for (i = 0, subset = 1; i <= blast && subset == 1; i++) {
-          SV **iv = av_fetch(avb, i, 0);
-          if (iv != 0) {
-            bstatus = _validate_and_set(&b, aTHX_ *iv, IFLAG_ANY);
-            subset = is_in_set(aTHX_ ava, 0, bstatus, b);
-          }
-        }
+        free_set_lookup_cache(&cache);
       }
       /* Much slower in most cases:
        * subset = is_subset_read_all(aTHX_ sva, svb);
