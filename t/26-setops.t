@@ -2,6 +2,32 @@
 use strict;
 use warnings;
 
+# Any integer lists as input:
+#   toset
+#   is_sidon_set
+#   is_sumfree_set
+#   setbinop
+#
+# Any integer lists as input, more efficient if set form:
+#   setunion
+#   setintersect
+#   setminus
+#   setdelta
+#   set_is_disjoint
+#   sumset
+#
+# MUST not have duplicates:
+#   set_is_equal
+#   set_is_subset
+#   set_is_superset
+#   set_is_proper_subset
+#   set_is_proper_superset
+#   set_is_proper_intersection (XS ok, PP not ok)
+#
+# MUST be in set form (numerically sorted and no duplicates):
+#   setinsert
+#   setcontains
+
 use Test::More;
 use Math::Prime::Util qw/setunion setintersect setminus setdelta
                          setcontains setinsert

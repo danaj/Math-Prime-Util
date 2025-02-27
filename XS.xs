@@ -4425,21 +4425,26 @@ void set_is_disjoint(IN SV* sva, IN SV* svb)
   PREINIT:
     int atype, btype, ret;
     UV *ra, *rb;
-    unsigned long alen, blen;
+    unsigned long alen, blen, inalen, inblen;
   PPCODE:
     /* If one set is much smaller than the other, it would be faster using
      * is_in_set().  We'll keep things simple and slurp in both sets. */
+
+    /* THIS ASSUMES THE INPUT LISTS HAVE NO DUPLICATES */
+    inalen = inblen = 0;
+    if (SvROK(sva) && SvTYPE(SvRV(sva)) == SVt_PVAV && SvROK(svb) && SvTYPE(SvRV(svb)) == SVt_PVAV) {
+      /* Shortcut on length if we can to skip intersection. */
+      inalen = av_count((AV*) SvRV(sva));
+      inblen = av_count((AV*) SvRV(svb));
+      if ( (ix == 1 && inalen != inblen) ||
+           (ix == 2 && inalen <  inblen) || (ix == 3 && inalen <= inblen) ||
+           (ix == 4 && inalen >  inblen) || (ix == 5 && inalen >= inblen) )
+        RETURN_NPARITY(0);
+    }
+
     /* Get the integers as sorted arrays of IV or UV */
     atype = arrayref_to_int_array(aTHX_ &alen, &ra, 1, sva, "setunion arg 1");
     btype = arrayref_to_int_array(aTHX_ &blen, &rb, 1, svb, "setunion arg 2");
-
-    /* Shortcut on length if we can to skip intersection. */
-    if (atype != IARR_TYPE_BAD && btype != IARR_TYPE_BAD) {
-      if ( (ix == 1 && alen != blen) ||
-           (ix == 2 && alen <  blen) || (ix == 3 && alen <= blen) ||
-           (ix == 4 && alen >  blen) || (ix == 5 && alen >= blen) )
-        RETURN_NPARITY(0);
-    }
 
     if (CAN_COMBINE_IARR_TYPES(atype,btype)) {
       unsigned long rlen = 0, ia = 0, ib = 0;

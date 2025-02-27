@@ -3545,9 +3545,10 @@ It might be faster to add the values to the end in bulk then use L</toset>.
    my $is_subset   = setcontains( [-12,1..20], [-12,5,10,15] );
 
 Given an array reference of integers in set form, and a second argument of
-of either a single integer or an array reference of integers in set form,
-returns either 1 or 0 indicating whether the second argument is a subset of
-the first set.
+of either a single integer or an array reference of integers,
+returns either 1 or 0 indicating whether the second argument
+is a subset of the first set
+(i.e. if all elements from the second argument are members of the first set).
 
 If the first array reference is not in set form (numerically sorted with no
 duplicates, and no string forms), the result is undefined.  It is unlikely
@@ -3670,20 +3671,21 @@ to any element of the set.  That is, the set and its sumset are disjoint.
 
 =head2 set_is_disjoint
 
-Given two array references of integers, treats them as sets and returns
-1 if the sets are have no elements in common.
+Given two array references of integers, treats them as sets and
+returns 1 if the sets are have no elements in common, 0 otherwise.
 
 =head2 set_is_equal
 
-Given two array references of integers, treats them as sets and returns
-1 if the sets have all elements in common.
+Given two array references of integers in set form,
+returns 1 if the sets have all elements in common, 0 otherwise.
 
 The L</vecequal> function can be used equivalently.
 
 =head2 set_is_subset
 
-Given two array references of integers, treats them as sets and returns
-1 if the first set also contains all elements of the second set.
+Given two array references of integers in set form,
+returns 1 if the first set also contains all elements of the second set,
+0 otherwise.
 
 The L</setcontains> function can be used equivalently.
 
@@ -3691,30 +3693,32 @@ This corresponds to Mathematica's C<SubsetQ> function (is B a subset of A).
 
 =head2 set_is_proper_subset
 
-Given two array references of integers, treats them as sets and returns
-1 if the first set also contains all elements of the second set, but are
-not equal.
+Given two array references of integers in set form,
+returns 1 if the first set also contains all elements of the second set
+but are not equal, 0 otherwise.
 The size of the first set must be strictly larger than the second.
 
 =head2 set_is_superset
 
-Given two array references of integers, treats them as sets and returns
-1 if the second set also contains all elements of the first set.
+Given two array references of integers in set form,
+returns 1 if the second set also contains all elements of the first set,
+0 otherwise.
 
 The L</setcontains> function can be used equivalently.
 
 =head2 set_is_proper_superset
 
-Given two array references of integers, treats them as sets and returns
-1 if the second set also contains all elements of the first set, but are
-not equal.
+Given two array references of integers in set form,
+returns 1 if the second set also contains all elements of the first set
+but are not equal, 0 otherwise.
 The size of the second set must be strictly larger than the first.
 
 =head2 set_is_proper_intersection
 
-Given two array references of integers, treats them as sets and returns
-1 if the two sets have at least one element in common, and each of the
-two sets have at least one element not present in the other set.
+Given two array references of integers in set form,
+returns 1 if the two sets have at least one element in common,
+and each of the two sets have at least one element not present
+in the other set.  Returns 0 otherwise.
 
 
 =head2 todigits
@@ -6987,6 +6991,19 @@ Measuring the performance of various modules for set operations doesn't
 give a strict order.  Many modules are fast at some operations and slow
 at others.  Some have particular inputs they are very fast or very slow
 with.  Each module has different functionality.
+
+Our choice of Perl integer lists for sets allows some flexibility and use
+for other purposes, but it leads to some poor performance in some cases,
+e.g. when adding and removing items, or processing very large sets
+(100k+ entries) where we spend a relatively large amount of time parsing
+the Perl input array.
+
+For many purposes, L<Set::Tiny> works quite well.  It is E<extremely> tiny,
+unlike this module.  It has basic features and is quite fast.  It is not
+limited to integers.  On the other hand, even using native Perl sorted
+arrays rather than a dedicated set objects, our module is typically much
+faster (2-10x) and uses less memory,
+though of course it is XS so this should not be surprising.
 
 Finding the sumset size of the first 10,000 primes.
 
