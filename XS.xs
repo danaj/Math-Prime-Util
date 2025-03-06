@@ -411,6 +411,8 @@ static SV* sv_to_bigint_nonneg(pTHX_ SV* r) {
   return call_sv_to_func(aTHX_ r, "Math::Prime::Util::_to_bigint_nonneg");
 }
 
+#define NEWSVINT(sign,v) (((sign) > 0) ? newSVuv(v) : newSViv(v))
+
 #define RETURN_128(hi,lo) \
   do { char str_[40]; \
        int slen_ = to_string_128(str_, hi, lo); \
@@ -433,7 +435,7 @@ static SV* sv_to_bigint_nonneg(pTHX_ SV* r) {
     unsigned long k_, alen_ = in_alen; \
     EXTEND(SP,(long)alen_); \
     for (k_ = 0; k_ < alen_; k_++) \
-      ST(k_) = sv_2mortal(((sign)==1) ? newSVuv(arr[k_]) : newSViv(arr[k_])); \
+      ST(k_) = sv_2mortal(NEWSVINT(sign,arr[k_])); \
     Safefree(arr); \
     XSRETURN(alen_); \
   }
@@ -445,7 +447,7 @@ static SV* sv_to_bigint_nonneg(pTHX_ SV* r) {
     CREATE_AV(av_); \
     av_extend(av_, (SSize_t)alen_); \
     for (k_ = 0; k_ < alen_; k_++) \
-      av_push(av_, ((sign)==1) ? newSVuv(arr[k_]) : newSViv(arr[k_]) ); \
+      av_push(av_, NEWSVINT(sign,arr[k_])); \
     Safefree(arr); \
     XSRETURN(1); \
   }
@@ -498,11 +500,18 @@ static int arrayref_to_digit_array(pTHX_ UV** ret, AV* av, int base)
 #define SIGNED_CMP_GT(pos,x,y) ((pos)  ?  (x >  y)  :  ((IV)x >  (IV)y))
 
 /* Given values and a sign indicating IV or UV, returns -1 (<), 0 (eq), 1 (>) */
-#define SIGN_CMP(xsign, x, ysign, y) \
-  ( ((xsign) == (ysign) && (x) == (y))      ? 0 : \
-    ( ((xsign) < (ysign)) || \
-      ((xsign)<0 && (IV)(x) < (IV)(y)) || \
-      ((ysign)>0 && (x) < (y)) )            ? -1 : 1 )
+static int _sign_cmp(int xsign, UV x, int ysign, UV y) {
+  if (xsign == ysign && x == y) return 0;
+  /* Convert sign to -1 (neg), 0 (small pos), 1 (big pos) */
+  if (x <= (UV)IV_MAX) xsign = 0;
+  if (y <= (UV)IV_MAX) ysign = 0;
+  if (xsign != ysign) return (xsign < ysign) ? -1 : 1;
+  if (xsign == -1) return ((IV)x < (IV)y) ? -1 : 1;
+  return (x < y) ? -1 : 1;
+}
+
+#define DEBUG_PRINT_ARRAY(name,av) \
+  { Size_t j_; SV** arr_ = AvARRAY(av);  printf("%s: [",name);  for(j_=0; j_<av_count(av); j_++) printf("%lu ",SvUV(arr_[j_])); printf("]\n"); }
 
 static int arrayref_to_int_array(pTHX_ unsigned long *retlen, UV** ret, int want_sort, SV* sva, const char* fstr)
 {
@@ -611,23 +620,9 @@ static void free_set_lookup_cache(set_data_t *d) {
   statvar = _validate_and_set(&var, aTHX_ iv ? *iv : 0, IFLAG_ANY); \
   if (statvar == 0) return -1;
 
-#define SC_SET_LO_VALUE(statvar, var, av, i, cache) \
-  if (cache != 0 && cache->lostatus != 0) { \
-    statvar = cache->lostatus;  var = cache->loval; \
-  } else { \
-    _SC_GET_VALUE(statvar, var, av, i) \
-    if (cache) { cache->lostatus = statvar;  cache->loval = var; } \
-  }
-#define SC_SET_HI_VALUE(statvar, var, av, i, cache) \
-  if (cache != 0 && cache->histatus != 0) { \
-    statvar = cache->histatus;  var = cache->hival; \
-  } else { \
-    _SC_GET_VALUE(statvar, var, av, i) \
-    if (cache) { cache->histatus = statvar;  cache->hival = var; } \
-  }
 #define SC_SET_MID_VALUE(statvar, var, av, i, cache) \
   do { \
-    unsigned int imod_ = i % SC_SIZE; \
+    unsigned int imod_ = (i) % SC_SIZE; \
     if (cache != 0 && cache->midstatus[imod_] != 0 && cache->midindex[imod_] == i) { \
       statvar = cache->midstatus[imod_];  var = cache->midval[imod_]; \
     } else { \
@@ -635,6 +630,23 @@ static void free_set_lookup_cache(set_data_t *d) {
       if (cache) { cache->midstatus[imod_] = statvar;  cache->midval[imod_] = var; cache->midindex[imod_] = i; } \
     } \
   } while (0)
+
+static int _sc_set_lohi(pTHX_ AV* av, set_data_t *cache, int loindex, int hiindex, int *lostatus, int *histatus, UV *loval, UV *hival)
+{
+  if (cache != 0 && cache->lostatus != 0) {
+    *lostatus = cache->lostatus;  *loval = cache->loval;
+  } else {
+    _SC_GET_VALUE(*lostatus, *loval, av, loindex);
+    if (cache) { cache->lostatus = *lostatus;  cache->loval = *loval; }
+  }
+  if (cache != 0 && cache->histatus != 0) {
+    *histatus = cache->histatus;  *hival = cache->hival;
+  } else {
+    _SC_GET_VALUE(*histatus, *hival, av, hiindex);
+    if (cache) { cache->histatus = *histatus;  cache->hival = *hival; }
+  }
+  return 1;
+}
 
 /* Find index in a set (array ref of sorted unique integers)
  *    -1 bigint
@@ -653,27 +665,27 @@ static int index_in_set(pTHX_ AV* av, set_data_t *cache, int sign, UV val)
     return 1;
 
   lo = 0;
-  SC_SET_LO_VALUE(lostatus, rlo, av, lo, cache);
-  cmp = SIGN_CMP(sign, val, lostatus, rlo);
+  hi = last_index;
+  if (_sc_set_lohi(aTHX_ av, cache, lo, hi, &lostatus, &histatus, &rlo, &rhi) < 0)
+    return -1;
+
+  cmp = _sign_cmp(sign, val, lostatus, rlo);
   if (cmp <= 0) return (cmp == 0) ? 0 : lo+1;
   /* val > rlo */
-
-  hi = last_index;
-  SC_SET_HI_VALUE(histatus, rhi, av, hi, cache);
-  cmp = SIGN_CMP(sign, val, histatus, rhi);
+  cmp = _sign_cmp(sign, val, histatus, rhi);
   if (cmp >= 0) return (cmp == 0) ? 0 : hi+2;
   /* val < rhi */
 
   while (hi-lo > 1) {
     int mid = lo + ((hi-lo) >> 1);
     SC_SET_MID_VALUE(midstatus, rmid, av, mid, cache);
-    cmp = SIGN_CMP(midstatus, rmid, sign, val);
+    cmp = _sign_cmp(midstatus, rmid, sign, val);
     if (cmp == 0) return 0;
     if (cmp < 0) { lo = mid; rlo = rmid; lostatus = midstatus; }
     else         { hi = mid; rhi = rmid; histatus = midstatus; }
   }
   if (sign == histatus && rhi == val) return 0;
-  if (SIGN_CMP(sign,val, histatus, rhi) > 0) croak("internal index error");
+  if (_sign_cmp(sign,val, histatus, rhi) > 0) croak("internal index error");
   return hi+1;
 }
 
@@ -4560,34 +4572,128 @@ void setinsert(IN SV* sva, IN SV* svb)
     if ((!SvROK(sva)) || (SvTYPE(SvRV(sva)) != SVt_PVAV))
       croak("setcontains first argument must be an array reference");
     ava = (AV*) SvRV(sva);
-    bstatus = _validate_and_set(&b, aTHX_ svb, IFLAG_ANY);
-    if (bstatus != 0) {
-      Size_t count = av_count(ava);
-      int index = index_in_set(aTHX_ ava, 0, bstatus, b);
-      if (index == 0) RETURN_NPARITY(0);
-      if (index > 0) { /* Insert into array reference */
-        SV *newb, **arr;
-        SV* newsvb = (bstatus==1) ? newSVuv(b) : newSViv(b);
-        if ((Size_t)index > count/2) {
-          av_push(ava, newsvb);
-          if ((Size_t)index <= count) {
-            arr = AvARRAY(ava);
-            newb = arr[count];
-            memmove(arr+index, arr+index-1, sizeof(SV*) * (count-(index-1)));
-            arr[index-1] = newb;
+    /* Case of the second argument being a single integer. */
+    if (!SvROK(svb) || SvTYPE(SvRV(svb)) != SVt_PVAV) {
+      bstatus = _validate_and_set(&b, aTHX_ svb, IFLAG_ANY);
+      if (bstatus != 0) {
+        Size_t count = av_count(ava);
+        int index = index_in_set(aTHX_ ava, 0, bstatus, b);
+        if (index == 0) RETURN_NPARITY(0);
+        if (index > 0) { /* Insert into array reference */
+          SV *newb, **arr;
+          SV* newsvb = NEWSVINT(bstatus, b);
+          if ((Size_t)index > count/2) {
+            av_push(ava, newsvb);
+            if ((Size_t)index <= count) {
+              arr = AvARRAY(ava);
+              newb = arr[count];
+              memmove(arr+index, arr+index-1, sizeof(SV*) * (count-(index-1)));
+              arr[index-1] = newb;
+            }
+          } else {
+            av_unshift(ava, 1);
+            av_store(ava, 0, newsvb);
+            if (index > 1) {
+              arr = AvARRAY(ava);
+              newb = arr[0];
+              memmove(arr+0, arr+1, sizeof(SV*) * index);
+              arr[index-1] = newb;
+            }
           }
-        } else {
-          av_unshift(ava, 1);
-          av_store(ava, 0, newsvb);
-          if (index > 1) {
-            arr = AvARRAY(ava);
-            newb = arr[0];
-            memmove(arr+0, arr+1, sizeof(SV*) * index);
-            arr[index-1] = newb;
-          }
+          RETURN_NPARITY(1);
         }
-        RETURN_NPARITY(1);
       }
+    } else {
+      UV *rb;
+      unsigned long i, blen, nbeg, nmid, nend, nmidcheck;
+      int btype = arrayref_to_int_array(aTHX_ &blen, &rb, 1, svb, "setinsert arg 2");
+      bstatus = IARR_TYPE_TO_STATUS(btype);
+      if (bstatus != 0) {
+        Size_t alen = av_count(ava);
+        int alostatus, ahistatus;
+        UV  alo, ahi;
+        set_data_t cache;
+
+        /* 1. ava is empty.  push everything and we're done. */
+        if (alen == 0) {
+          for (i = 0; i < blen; i++)
+            av_push(ava, NEWSVINT(bstatus, rb[i]));
+          Safefree(rb);
+          RETURN_NPARITY(blen);
+        }
+        /* Get ready to insert */
+        cache = init_set_lookup_cache(aTHX_ ava);
+        /* Get hi and lo values of set */
+        if (_sc_set_lohi(aTHX_ ava, &cache, 0, alen-1, &alostatus, &ahistatus, &alo, &ahi) >= 0) {
+          nbeg = nend = nmid = 0;
+          /* 1. Find out how many elements go in front. */
+          while (nbeg < blen && _sign_cmp(bstatus,rb[nbeg],alostatus,alo) < 0)
+            nbeg++;
+            ;
+          /* 2. Find out how many elements go at the end. */
+          while (nend < blen-nbeg && _sign_cmp(bstatus,rb[blen-1-nend],ahistatus,ahi) > 0)
+            nend++;
+          /* 3. In-place insert everything in the middle. */
+          nmidcheck = blen - nbeg - nend;
+          if (nmidcheck > 0) {
+            unsigned long *insert_idx;
+            SV **insert_sv;
+            New(0, insert_idx, nmidcheck, unsigned long);
+            New(0, insert_sv,  nmidcheck, SV*);
+            for (i = nbeg; bstatus != 0 && i < blen-nend; i++) {
+              int index = index_in_set(aTHX_ ava, &cache, bstatus, rb[i]);
+              if (index < 0) croak("bigint value found in interior of non-bigint sorted set");
+              if (index > 0) {
+                insert_sv[nmid]  = NEWSVINT(bstatus,rb[i]);/* Value to insert */
+                insert_idx[nmid] = index-1;                /* Where to insert */
+                nmid++;
+              }
+            }
+            if (nmid > 0) {
+              SV** arr;
+              Size_t newalen = alen + nmid;
+              unsigned long index_lastorig = alen-1;
+              unsigned long index_moveto   = index_lastorig + nmid;
+
+              av_extend(ava, newalen);
+              /* Push new values on end so Perl calculates array right. */
+              for (i = 0; i < nmid; i++)
+                av_push(ava, insert_sv[i]);
+              arr = AvARRAY(ava);
+              /* SV* pointer manipulation to insert new values in place. */
+              for (i = 0; i < nmid; i++) {
+                unsigned long j   = nmid-1-i;
+                unsigned long idx = insert_idx[j];
+                if (i == 0 || idx != insert_idx[j+1]) {
+                  unsigned long nmove  = index_lastorig - idx + 1;
+                  unsigned long moveto = index_moveto - nmove + 1;
+                  memmove(arr+moveto, arr+idx, sizeof(SV*) * nmove);
+                  index_lastorig -= nmove;
+                  index_moveto -= nmove;
+                }
+                arr[index_moveto--] = insert_sv[j];
+              }
+            }
+            Safefree(insert_sv);
+            Safefree(insert_idx);
+          }
+          /* 4. Insert at front */
+          if (nbeg > 0) {
+            av_unshift(ava, nbeg);
+            for (i = 0; i < nbeg; i++)
+              av_store(ava, i, NEWSVINT(bstatus, rb[i]));
+          }
+          /* 5. Push onto back */
+          if (nend > 0) {
+            for (i = 0; i < nend; i++)
+              av_push(ava, NEWSVINT(bstatus, rb[blen-nend+i]));
+          }
+          Safefree(rb);
+          RETURN_NPARITY(nbeg+nmid+nend);
+        }
+        free_set_lookup_cache(&cache);
+      }
+      Safefree(rb);
     }
     CALLPPSUB("setinsert");
     return;
@@ -5983,7 +6089,7 @@ void vecuniq(...)
         continue;
       if (iset_sign(s) == 0) { status = 0; break; }
       if (retvals)
-        PUSHs(sv_2mortal( (status == 1) ? newSVuv(n) : newSViv((IV)n) ));
+        PUSHs(sv_2mortal(NEWSVINT(status,n)));
     }
     count = iset_size(s);
     iset_destroy(&s);

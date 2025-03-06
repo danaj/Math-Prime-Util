@@ -98,6 +98,13 @@ my @inserts = (
   [ [1,3,5], 3, "duplicate" ],
   [ [1,3,5], -12, "negative entries ok" ],
   [ [-12,1,3,5], -11, "negative entries ok" ],
+  [ [-10,0,10], [-9], "single element list middle" ],
+  [ [-10,0,10], [-1,1], "two element list" ],
+  [ [-10,0,10], [-11,-9,-1,1,9,11], "list on all sides" ],
+  [ [-10,0,10], [-100,-90], "list on front" ],
+  [ [-10,0,10], [90,100], "list on back" ],
+  [ [negint(powint(2,63)),0], [10,100,1000], "negative set, add small pos" ],
+  [ [negint(powint(2,63)),0], [10,100,addint(powint(2,63),1000)], "negative set, add big pos" ],
 );
 
 plan tests => 2        # specific tests
@@ -285,9 +292,10 @@ subtest 'setcontains', sub {
 subtest 'setinsert', sub {
   for my $test (@inserts) {
     my($s,$v,$what) = @$test;
-    my @new = (@$s, $v);
-    my $expect = [toset(\@new)];
+    my @new = ref($v) ? (@$s,@$v) : (@$s, $v);
     setinsert($s,$v);
+    #print "  # exp @{[toset(\@new)]}\n";
+    #print "  # got @$s\n";
     is_deeply( $s, [toset(\@new)], "setinsert $what" );
   }
 };

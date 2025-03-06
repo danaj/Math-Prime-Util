@@ -10602,7 +10602,7 @@ sub vecsortrr {
   return \@s;
 }
 
-sub vecsorti {
+sub _vecsorti {
   croak 'Not an array reference' unless (ref($_[0]) || '') eq 'ARRAY';
   _validate_integer($_) for @{$_[0]};
 
@@ -10796,7 +10796,7 @@ sub setcontains {
   }
 }
 
-sub setinsert {
+sub _setinsert1 {
   my($rset, $v) = @_;
   validate_integer($v);
 
@@ -10820,6 +10820,52 @@ sub setinsert {
   }
   1;
 }
+
+sub setinsert {
+  my($set, $in) = @_;
+  my @newset;
+  if (!ref($in) || ref($in) ne 'ARRAY') {
+    _validate_integer($in);
+    @newset = ($in);
+  } else {
+    @newset = Mtoset($in);
+  }
+  my $setsize = scalar(@$set);
+  if ($setsize == 0 || $newset[0] > $set->[-1]) {
+    push @$set, @newset;
+  } elsif ($newset[-1] < $set->[0]) {
+    unshift @$set, @newset;
+  } else {
+    my($nbeg,$nend) = (0,0);
+    $nend++ while $nend < scalar(@newset) && $newset[-1 - $nend] > $set->[-1];
+    push @$set, splice(@newset,-$nend) if $nend > 0;
+    $nbeg++ while $nbeg < scalar(@newset) && $newset[$nbeg] < $set->[0];
+    unshift @$set, splice(@newset,0,$nbeg) if $nbeg > 0;
+
+    # Some ways to do this:
+    #   _setinsert1($set, $_) for @newset;
+    #   @$set = Math::Prime::Util::setunion($set,\@newset);
+    #   Math::Prime::Util::setinsert($set, $_) for @newset;
+    #if (@newset > 100) { @$set = Math::Prime::Util::setunion($set,\@newset); }
+    #else               { Math::Prime::Util::setinsert($set, $_) for @newset; }
+
+    if (@newset > 100) {
+      @$set = Math::Prime::Util::setunion($set,\@newset);
+    } else {
+      for my $v (@newset) {
+        my($lo,$hi) = (0,$#$set);
+        while ($lo < $hi) {
+          my $mid = $lo + (($hi-$lo) >> 1);
+          if ($set->[$mid] < $v) { $lo = $mid+1; }
+          else                   { $hi = $mid; }
+        }
+        splice @$set, $hi, 0, $v if $set->[$hi] != $v;
+      }
+    }
+  }
+  return scalar(@$set) - $setsize;
+}
+
 
 sub set_is_disjoint {
   my($s,$t) = @_;

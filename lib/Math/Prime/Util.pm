@@ -3523,21 +3523,26 @@ will be either typed as either native integers (IV or UV) or bigints.
 
 =head2 setinsert
 
-   my $s=[-10..-1,1..10];  setinsert($s, 0);  # $s is now [-10..10]
+   my $s=[-10..-1,1..10];
+   setinsert($s, 0);            # $s is now [-10..10]
+   setinsert($s, [5,10,15,20]); # $s is now [-10..10,15,20]
 
-Given an array reference of integers in set form, and a single integer,
-inserts the integer into the set.  This is inserting an integer in-place
-into a numerically sorted array of integers without duplicates.  The
-array reference is modified.  A return value of 1 indicates the value was
-inserted, while 0 indicates it was already in the set.
+Given an array reference of integers in set form, and a second argument of
+of either a single integer or an array reference of integers,
+inserts the integers into the set.  This is inserting one or more
+integers in-place into a numerically sorted array of integers without
+duplicates.
+
+An integer value is returned indicating how many values were inserted.
 
 If the first array reference is not in set form, the position of the new
-element is undefined.
+elements is undefined.
 
-Inserting at the start or end is very efficient.  Because the set is a
+Inserting values at the start or end is very efficient.  Because the set is a
 sorted array, as it gets large and many values are inserted in the middle,
 it can get quite slow.  If many values are to be added before using the set,
-It might be faster to add the values to the end in bulk then use L</toset>.
+It might be faster to add the values to the end in bulk then use L</toset>
+which will sort and remove duplicates.
 
 =head2 setcontains
 
@@ -6998,7 +7003,7 @@ e.g. when adding and removing items, or processing very large sets
 (100k+ entries) where we spend a relatively large amount of time parsing
 the Perl input array.
 
-For many purposes, L<Set::Tiny> works quite well.  It is E<extremely> tiny,
+For many purposes, L<Set::Tiny> works quite well.  It is B<very> tiny,
 unlike this module.  It has basic features and is quite fast.  It is not
 limited to integers.  On the other hand, even using native Perl sorted
 arrays rather than a dedicated set objects, our module is typically much

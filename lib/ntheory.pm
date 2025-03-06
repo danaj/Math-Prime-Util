@@ -223,6 +223,7 @@ Tags:
 
   toset(\@A)                          convert to unique sorted integer list
   setinsert(\@A,$v)                   insert integer v into integer set A
+  setinsert(\@A,\@B)                  insert list B values into integer set A
   setcontains(\@A,$v)                 is integer v in integer set A
   setcontains(\@A,\@B)                is int set B a subset of int set A
   setbinop { ... } \@A[,\@B]          apply operation to all a,b [a:A,b:B]

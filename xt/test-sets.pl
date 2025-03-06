@@ -192,6 +192,12 @@ sub inter3 {
 # tmmpu 'csrand(5); for (1..500000) { push @s,urandomm(2000000); } @s=toset(\@s); say scalar(@s)'
 # 442393   0.100s
 #
+# tmmpu 'csrand(5); $s=[]; $t+=setinsert($s,[map{urandomm(2000000)}1..500000]); say $t;'
+# 442393   0.110s
+#
+# tmmpu 'csrand(5); $s=[]; for (1..500000) { $t+=setinsert($s,urandomm(2000000)); } say $t;'
+# 442393   0.146s
+#
 # tmmpu 'use Set::Tiny; csrand(5); $s=Set::Tiny->new(); for (1..500000) { $s->insert(urandomm(2000000)) } say $s->size()'
 # 442393   0.260s
 #
