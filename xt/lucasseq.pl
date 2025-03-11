@@ -33,7 +33,7 @@ sub _lucasvmod {
   # Outputs V_k, <...>, Q_k
   ($V1, $V2, mulmod($Q1,$Q2,$n));
 }
-  
+
 sub _lucasuvmod {
   my($P,$Q, $k, $n) = @_;
   return (0,0) if $n == 1;

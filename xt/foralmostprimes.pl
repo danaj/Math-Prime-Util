@@ -24,7 +24,7 @@ while (1) {
   #die "\nforalmostprimes { say } $k, $a, $b;\n" unless areq(\@a1,\@a2);
   die "\nforalmostprimes { say } $k, $a, $b;\n" unless vecequal(\@a1,\@a2);
 }
- 
+
 
 # We have vecequal now
 sub areq {

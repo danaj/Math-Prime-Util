@@ -22,7 +22,7 @@
  * cgen (using count array)     0.005    0.133    5.741   344.04
  * wilson (iterated nth lucky)  0.024    0.879   54.069  3457.5
  */
- 
+
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -947,7 +947,7 @@ int main(int argc, char *argv[])
     bitmask126_destroy(pl);
   }
 #endif
-  
+
   return(0);
 }
 
