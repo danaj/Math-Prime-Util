@@ -505,9 +505,10 @@ static int _sign_cmp(int xsign, UV x, int ysign, UV y) {
   /* Convert sign to -1 (neg), 0 (small pos), 1 (big pos) */
   if (x <= (UV)IV_MAX) xsign = 0;
   if (y <= (UV)IV_MAX) ysign = 0;
+  /* neg < small pos < big pos */
   if (xsign != ysign) return (xsign < ysign) ? -1 : 1;
-  if (xsign == -1) return ((IV)x < (IV)y) ? -1 : 1;
-  return (x < y) ? -1 : 1;
+  /* Numerical comparison as IV or UV */
+  return ((xsign == -1 && (IV)x < (IV)y) || (xsign != -1 && x < y)) ? -1 : 1;
 }
 
 #define DEBUG_PRINT_ARRAY(name,av) \
@@ -4570,7 +4571,7 @@ void setinsert(IN SV* sva, IN SV* svb)
   PPCODE:
     /* First arg must be an array reference (set) */
     if ((!SvROK(sva)) || (SvTYPE(SvRV(sva)) != SVt_PVAV))
-      croak("setcontains first argument must be an array reference");
+      croak("setinsert first argument must be an array reference");
     ava = (AV*) SvRV(sva);
     /* Case of the second argument being a single integer. */
     if (!SvROK(svb) || SvTYPE(SvRV(svb)) != SVt_PVAV) {
@@ -4616,6 +4617,7 @@ void setinsert(IN SV* sva, IN SV* svb)
 
         /* 1. ava is empty.  push everything and we're done. */
         if (alen == 0) {
+          av_extend(ava, blen);
           for (i = 0; i < blen; i++)
             av_push(ava, NEWSVINT(bstatus, rb[i]));
           Safefree(rb);
@@ -4623,8 +4625,11 @@ void setinsert(IN SV* sva, IN SV* svb)
         }
         /* Get ready to insert */
         cache = init_set_lookup_cache(aTHX_ ava);
-        /* Get hi and lo values of set */
+        /* Get hi and lo values of set. */
         if (_sc_set_lohi(aTHX_ ava, &cache, 0, alen-1, &alostatus, &ahistatus, &alo, &ahi) >= 0) {
+          if (_sign_cmp(alostatus,alo,ahistatus,ahi) > 0)
+            croak("Bad input set: set not sorted numerically ascending.");
+          /* Both lo/hi are not bigint, so there are no bigints in the set. */
           nbeg = nend = nmid = 0;
           /* 1. Find out how many elements go in front. */
           while (nbeg < blen && _sign_cmp(bstatus,rb[nbeg],alostatus,alo) < 0)
@@ -4642,30 +4647,30 @@ void setinsert(IN SV* sva, IN SV* svb)
             New(0, insert_sv,  nmidcheck, SV*);
             for (i = nbeg; bstatus != 0 && i < blen-nend; i++) {
               int index = index_in_set(aTHX_ ava, &cache, bstatus, rb[i]);
-              if (index < 0) croak("bigint value found in interior of non-bigint sorted set");
+              if (index < 0)
+                croak("Bad input set: bigint value in interior, not sorted.");
               if (index > 0) {
                 insert_sv[nmid]  = NEWSVINT(bstatus,rb[i]);/* Value to insert */
                 insert_idx[nmid] = index-1;                /* Where to insert */
                 nmid++;
               }
             }
+            av_extend(ava, alen + nmid + nbeg + nend);
             if (nmid > 0) {
               SV** arr;
-              Size_t newalen = alen + nmid;
               unsigned long index_lastorig = alen-1;
               unsigned long index_moveto   = index_lastorig + nmid;
 
-              av_extend(ava, newalen);
               /* Push new values on end so Perl calculates array right. */
               for (i = 0; i < nmid; i++)
                 av_push(ava, insert_sv[i]);
               arr = AvARRAY(ava);
               /* SV* pointer manipulation to insert new values in place. */
               for (i = 0; i < nmid; i++) {
-                unsigned long j   = nmid-1-i;
-                unsigned long idx = insert_idx[j];
-                if (i == 0 || idx != insert_idx[j+1]) {
-                  unsigned long nmove  = index_lastorig - idx + 1;
+                unsigned long j     = nmid-1-i;
+                unsigned long idx   = insert_idx[j];
+                unsigned long nmove = index_lastorig - idx + 1;
+                if (nmove > 0) {
                   unsigned long moveto = index_moveto - nmove + 1;
                   memmove(arr+moveto, arr+idx, sizeof(SV*) * nmove);
                   index_lastorig -= nmove;
