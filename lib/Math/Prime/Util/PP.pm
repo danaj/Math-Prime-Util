@@ -10894,20 +10894,24 @@ sub setremove {
   }
   my $setsize = scalar(@$set);
   return 0 if $setsize == 0 || scalar(@newset) == 0 || $newset[0] > $set->[-1] || $newset[-1] < $set->[0];
-  # TODO: trim ends first pop and shift
 
   if (@newset > 100) {
     @$set = Math::Prime::Util::setminus($set,\@newset);
   } else {
     #_setremove1($set, $_) for @newset;
     for my $v (@newset) {
+      next if $v < $set->[0];
+      last if $v > $set->[-1];
       my($lo,$hi) = (0,$#$set);
       while ($lo < $hi) {
         my $mid = $lo + (($hi-$lo) >> 1);
         if ($set->[$mid] < $v) { $lo = $mid+1; }
         else                   { $hi = $mid; }
       }
-      splice @$set, $hi, 1 if $set->[$hi] == $v;
+      if ($set->[$hi] == $v) {
+        splice @$set, $hi, 1;
+        last if @$set == 0;
+      }
     }
   }
   return $setsize - scalar(@$set);
