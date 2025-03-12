@@ -4,7 +4,7 @@ use warnings;
 
 use Test::More;
 use Math::Prime::Util qw/negmod invmod sqrtmod allsqrtmod rootmod allrootmod addmod submod mulmod muladdmod mulsubmod divmod powmod/;
-use Math::BigInt try=>"GMP,Pari";
+use Math::BigInt try=>"GMP,GMPz,Pari";
 
 my $extra = defined $ENV{EXTENDED_TESTING} && $ENV{EXTENDED_TESTING};
 my $use64 = Math::Prime::Util::prime_get_config->{'maxbits'} > 32;

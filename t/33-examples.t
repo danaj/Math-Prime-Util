@@ -14,6 +14,9 @@ BEGIN {
   }
 }
 
+use Math::BigInt try=>"GMP,GMPz,Pari";
+my $have_gmp = prime_get_config->{'gmp'} || Math::BigInt->config()->{lib} eq 'Math::BigInt::GMP';
+
 plan tests => 100;
 
 {
@@ -177,14 +180,15 @@ ok( is_prime(random_prime(100,10000)), "random_prime(100,10000)" );
 is( length(random_ndigit_prime(4)), 4, "random_ndigit_prime(4) is 4 digits" );
 {
   my $bigprime;
-  $bigprime = random_nbit_prime(512);
-  is( length($bigprime->as_bin), 2+512, "random_nbit_prime(512) is 512 bits" );
-  $bigprime = random_safe_prime(512);
-  is( length($bigprime->as_bin), 2+512, "random_safe_prime(512) is 512 bits" );
-  $bigprime = random_strong_prime(512);
-  is( length($bigprime->as_bin), 2+512, "random_strong_prime(512) is 512 bits" );
-  $bigprime = random_proven_prime(512);
-  is( length($bigprime->as_bin), 2+512, "random_proven_prime(512) is 512 bits" );
+  my $bits = ($have_gmp) ? 512 : 192;
+  $bigprime = random_nbit_prime($bits);
+  is( length($bigprime->as_bin), 2+$bits, "random_nbit_prime($bits) is $bits bits" );
+  $bigprime = random_safe_prime($bits);
+  is( length($bigprime->as_bin), 2+$bits, "random_safe_prime($bits) is $bits bits" );
+  $bigprime = random_strong_prime($bits);
+  is( length($bigprime->as_bin), 2+$bits, "random_strong_prime($bits) is $bits bits" );
+  $bigprime = random_proven_prime($bits);
+  is( length($bigprime->as_bin), 2+$bits, "random_proven_prime($bits) is $bits bits" );
 }
 # TODO: More of the random primes and certs
 

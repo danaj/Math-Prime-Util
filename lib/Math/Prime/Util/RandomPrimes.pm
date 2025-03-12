@@ -10,7 +10,7 @@ use Math::Prime::Util qw/ prime_get_config
                           is_extra_strong_lucas_pseudoprime
                           next_prime prev_prime
                           urandomb urandomm random_bytes
-                          addint subint add1int sub1int
+                          addint subint add1int sub1int logint
                           mulint divint powint modint lshiftint rshiftint
                           powmod vecprod cdivint
                         /;
@@ -859,8 +859,9 @@ sub random_safe_prime {
   return (47,59)[urandomb(1)] if $bits == 6;
   return (83,107)[urandomb(1)] if $bits == 7;
 
-  # In general not faster :(
-  #return _random_safe_prime_large($bits) if $bits > 35;
+  # Without GMP (e.g. Calc), this can be significantly faster.
+  # With GMP, they are about the same.
+  return _random_safe_prime_large($bits) if $bits > 35;
 
   my($p,$q);
   while (1) {
@@ -886,33 +887,49 @@ sub _random_safe_prime_large {
   $base = addint($base, lshiftint(urandomb($bits - 35), 2));
 
   while (1) {
-    my($p,$q,$qmod);
+    my($p,$q,$qmod,$pmod);
     # 1. generate random nbit p
     $p = lshiftint(urandomb(32), $bits-33);
     $p = addint($base, $p);
+
     # 2. p = 2q+1  =>  q = p>>1
     $q = rshiftint($p,1);
-    croak "fail rsp" unless $p == 2*$q+1;
-    # 3. Fast compositeness pre-tests for q and p
-    $qmod = modint($q, 1155);  # qmod is now a nice native int
-    croak "something wrong with modint" if ref($qmod);
-    next if ($qmod % 3) != 2
-         || ($qmod % 5) == 0 || ($qmod % 7) == 0 || ($qmod % 11) == 0
-         || ($qmod % 5) == 2 || ($qmod % 7) == 3 || ($qmod % 11) == 5;
-    # 4. more pre-testing for p or 1 divisible by small numbers
-    $qmod = modint($q, 13*17*19*23*29);
-    next if ($qmod % 13) == 0 || ($qmod % 13) == (13>>1);
-    next if ($qmod % 17) == 0 || ($qmod % 17) == (17>>1);
-    next if ($qmod % 19) == 0 || ($qmod % 19) == (19>>1);
-    next if ($qmod % 23) == 0 || ($qmod % 23) == (23>>1);
-    next if ($qmod % 29) == 0 || ($qmod % 29) == (29>>1);
-    # ... more
 
-    # 5. Strong testing.
-    #    We will do a strong test on q, split into two.
-    #    For p, we will be using Pocklington's theorem
-    next unless is_strong_pseudoprime($q, 2);
-    #
+    # 3. Force q mod 6 = 5
+    $qmod = modint(add1int($q),6);
+    if ($qmod > 0) {
+      $q = subint($q,$qmod);
+      $q = addint($q,12) if 1+logint($q,2) != $bits-1;
+      $p = add1int(lshiftint($q,1));
+    }
+
+    # 4. Fast compositeness pre-tests for q and p
+    $pmod = modint($p, 5*7*11*13*17*19*23*37);
+    next if (($pmod %  5) >> 1) == 0 ||
+            (($pmod %  7) >> 1) == 0 ||
+            (($pmod % 11) >> 1) == 0 ||
+            (($pmod % 13) >> 1) == 0 ||
+            (($pmod % 17) >> 1) == 0 ||
+            (($pmod % 19) >> 1) == 0 ||
+            (($pmod % 23) >> 1) == 0 ||
+            (($pmod % 37) >> 1) == 0;
+    $pmod = modint($p, 29*31*41*43*47*53);
+    next if (($pmod % 29) >> 1) == 0 ||
+            (($pmod % 31) >> 1) == 0 ||
+            (($pmod % 41) >> 1) == 0 ||
+            (($pmod % 43) >> 1) == 0 ||
+            (($pmod % 47) >> 1) == 0 ||
+            (($pmod % 53) >> 1) == 0;
+    $pmod = modint($p, 59*61*67*71*73);
+    next if (($pmod % 59) >> 1) == 0 ||
+            (($pmod % 61) >> 1) == 0 ||
+            (($pmod % 67) >> 1) == 0 ||
+            (($pmod % 71) >> 1) == 0 ||
+            (($pmod % 73) >> 1) == 0;
+
+    # 6. Primality testing on p and q
+
+    # Use Pocklington's theorem for p, BPSW for q.
     # If we find an 'a' such that
     #   1. a^(p-1) = 1 mod p   (This is a Fermat test base 'a')
     #   2. gcd(a^(p-1)/q - 1, p) = 1   =>  gcd(a^2-1, p) = 1
@@ -922,9 +939,15 @@ sub _random_safe_prime_large {
     #   - q is prime
     #   - p passes a base 2 Fermat test
     #   - p is not divisible by 3
+
     next unless is_pseudoprime($p, 2);
+
+    # Now strong testing on q.  Split in two.
+    next unless is_strong_pseudoprime($q, 2);
     next unless is_extra_strong_lucas_pseudoprime($q);
-    # q passes BPSW, and p is prime if q is prime.
+    croak "random safe prime internal failure" unless $p == 2*$q+1;
+
+    # q passes BPSW, p passes Fermat base 2.  p is prime if q is prime.
     return $p;
   }
 }

@@ -13,7 +13,7 @@ use Math::Prime::Util qw/primes prev_prime next_prime
                          is_power is_semiprime is_almost_prime
                          vecsum sqrtint divisors
                          prime_iterator prime_iterator_object/;
-use Math::BigInt try => "GMP,Pari";
+use Math::BigInt try => "GMP,GMPz,Pari";
 use Math::BigFloat;
 
 my $use64 = Math::Prime::Util::prime_get_config->{'maxbits'} > 32;
