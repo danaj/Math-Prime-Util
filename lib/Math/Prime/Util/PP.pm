@@ -10765,35 +10765,45 @@ sub toset {
   return @set;
 }
 
-# Is $rb contained in $ra?  Is the second set a subset of the first set?
+# Is the second set a subset of the first set?
 sub setcontains {
-  my($ra,$rb) = @_;
-  #validate_integer($_) for @$ra;
-  if (defined $rb && ref($rb) eq 'ARRAY') {
-    # TODO pick one of these
-    #return 0+(scalar(@$rb) == scalar(Math::Prime::Util::setintersect($ra,$rb)));
-    return 0 + Mvecall(sub { Msetcontains($ra,$_) }, @$rb);
-    #for my $el (@$rb) {  return 0 unless Msetcontains($ra,$el);  }
-    #return 1;
+  my($set, $sub) = @_;
+  my @newset;
+  if (!ref($sub) || ref($sub) ne 'ARRAY') {
+    _validate_integer($sub);
+    @newset = ($sub);
   } else {
-    my $v = $rb;
-    validate_integer($v);
-    if (scalar(@$ra) <= 10) {  # Linear search
-      return 0 if scalar(@$ra) == 0;
-      for my $el (@$ra) {
-        return 0 + ($el == $v) if $el >= $v;
+    @newset = Mtoset($sub);
+  }
+  return 1 if @newset == 0;
+  return 0 if @$set == 0 || @newset > @$set || $newset[-1] > $set->[-1] || $newset[0] < $set->[0];
+
+  if (@$set <= 150 || (@$set <= 250 && @newset > 2)) {   # Linear search
+    for my $sv (@$set) {
+      if ($sv >= $newset[0]) {
+        return 0 if $sv > $newset[0];
+        shift @newset;
+        return 1 if @newset == 0;
       }
-    } else {                  # Binary search
-      my($lo,$hi) = (0,$#$ra);
-      while ($lo < $hi) {
-        my $mid = $lo + (($hi-$lo) >> 1);
-        if ($ra->[$mid] < $v) { $lo = $mid+1; }
-        else                  { $hi = $mid; }
-      }
-      return 1 if $ra->[$hi] == $v;
     }
     return 0;
   }
+
+  my $newlo = 0;
+  # The next value is probably in this range.  Can save a lot of steps.
+  my $range = Mcdivint(scalar(@$set),(scalar(@newset)+1) >> 1);
+  for my $v (@newset) {
+    my($lo,$hi) = ($newlo,$#$set);
+    $hi = $lo + $range if $hi-$lo > $range && $set->[$lo+$range] >= $v;
+    while ($lo < $hi) {
+      my $mid = $lo + (($hi-$lo) >> 1);
+      if ($set->[$mid] < $v) { $lo = $mid+1; }
+      else                   { $hi = $mid; }
+    }
+    return 0 if $set->[$hi] != $v;
+    $newlo = $hi+1;
+  }
+  1;
 }
 
 sub _setinsert1 {
