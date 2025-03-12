@@ -53,7 +53,7 @@ add_stopwords(qw/-th
                  biquadrate powerfree k-powerfree k-free
                  sumpowerful powersum
                  sumset setbinop setunion setintersect setminus setdelta toset
-                 setcontains setinsert
+                 setcontains setinsert setremove setinvert
                  pp 100ns/);
 
 all_pod_files_spelling_ok();

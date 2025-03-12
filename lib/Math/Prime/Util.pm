@@ -102,7 +102,7 @@ our @EXPORT_OK =
       vecsort vecsortr vecsortrr
       setbinop sumset toset
       setunion setintersect setminus setdelta
-      setcontains setinsert
+      setcontains setinsert setremove setinvert
       is_sidon_set is_sumfree_set
       set_is_disjoint set_is_equal set_is_proper_intersection
       set_is_subset set_is_proper_subset set_is_superset set_is_proper_superset
@@ -865,6 +865,16 @@ sub harmreal {
   require Math::Prime::Util::PP;
   Math::Prime::Util::PP::harmreal($n, $precision);
 }
+
+sub setremove {
+  require Math::Prime::Util::PP;
+  Math::Prime::Util::PP::setremove(@_);
+}
+sub setinvert {
+  require Math::Prime::Util::PP;
+  Math::Prime::Util::PP::setinvert(@_);
+}
+
 
 
 #############################################################################
@@ -3531,7 +3541,7 @@ Given an array reference of integers in set form, and a second argument of
 of either a single integer or an array reference of integers,
 inserts the integers into the set.  This is inserting one or more
 integers in-place into a numerically sorted array of integers without
-duplicates.
+duplicates.  This may be viewed as an in-place L</setunion>.
 
 An integer value is returned indicating how many values were inserted.
 
@@ -3543,6 +3553,44 @@ sorted array, as it gets large and many values are inserted in the middle,
 it can get quite slow.  If many values are to be added before using the set,
 It might be faster to add the values to the end in bulk then use L</toset>
 which will sort and remove duplicates.
+
+=head2 setremove
+
+   my $s=[-10..10];
+   setremove($s, 0);            # $s is now [-10..-1,1..10]
+   setremove($s, [5,10,15,20]); # $s is now [-10..-1,1..4,6..9]
+
+Given an array reference of integers in set form, and a second argument of
+of either a single integer or an array reference of integers,
+removes the integers from the set.  This is deleting one or more
+integers in-place from a numerically sorted array of integers without
+duplicates.  This may be viewed as an in-place L</setminus>.
+
+An integer value is returned indicating how many values were removed.
+
+If the first array reference is not in set form, the result is undefined.
+
+=head2 setinvert
+
+   my $s=[-10..10];
+   setinvert($s, 0);            # $s is now [-10..-1,1..10]
+   setinvert($s, [5,10,15,20]); # $s is now [-10..-1,1..4,6..9,15,20]
+
+Given an array reference of integers in set form, and a second argument of
+of either a single integer or an array reference of integers,
+either insert (if not in the set) or remove (if in the set) the integers
+from the set.  This is inserting or deleting one or more
+integers in-place from a numerically sorted array of integers without
+duplicates.  This may be viewed as an in-place L</setdelta>.
+
+The second argument is treated as a set, meaning duplicates are removed
+before processing.
+
+An integer value is returned indicating how many values were inserted,
+minus the number of values deleted..
+
+If the first array reference is not in set form, the result is undefined.
+
 
 =head2 setcontains
 
@@ -7001,7 +7049,8 @@ Our choice of Perl integer lists for sets allows some flexibility and use
 for other purposes, but it leads to some poor performance in some cases,
 e.g. when adding and removing items, or processing very large sets
 (100k+ entries) where we spend a relatively large amount of time parsing
-the Perl input array.
+the Perl input array.  It also is quite space inefficient, using
+approximately 40 bytes for each integer, which is about 5x more than needed.
 
 For many purposes, L<Set::Tiny> works quite well.  It is B<very> tiny,
 unlike this module.  It has basic features and is quite fast.  It is not
@@ -7024,7 +7073,7 @@ Set intersection of C<[-1000..100]> and C<[-100..1000]>.
 
      4 uS  Set::IntSpan::Fast::XS
      7 uS  Pari/GP 2.17.0
-     8 uS  setintersect
+     8 uS  setintersect            <======  this module
     16 uS  Set::IntSpan::Fast
     73 uS  native Perl hash intersection          /\ /\ /\  Faster
     75 uS  Set::Tiny

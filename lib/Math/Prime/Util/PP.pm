@@ -10866,6 +10866,89 @@ sub setinsert {
   return scalar(@$set) - $setsize;
 }
 
+sub _setremove1 {
+  my($rset, $v) = @_;
+  validate_integer($v);
+
+  return 0 if scalar(@$rset) == 0 || $v > $rset->[-1] || $v < $rset->[0];
+
+  my($lo,$hi) = (0,$#$rset);
+  while ($lo < $hi) {
+    my $mid = $lo + (($hi-$lo) >> 1);
+    if ($rset->[$mid] < $v) { $lo = $mid+1; }
+    else                    { $hi = $mid; }
+  }
+  return 0 if $rset->[$hi] != $v;
+  splice @$rset, $hi, 1;
+  1;
+}
+
+sub setremove {
+  my($set, $in) = @_;
+  my @newset;
+  if (!ref($in) || ref($in) ne 'ARRAY') {
+    _validate_integer($in);
+    @newset = ($in);
+  } else {
+    @newset = Mtoset($in);
+  }
+  my $setsize = scalar(@$set);
+  return 0 if $setsize == 0 || scalar(@newset) == 0 || $newset[0] > $set->[-1] || $newset[-1] < $set->[0];
+  # TODO: trim ends first pop and shift
+
+  if (@newset > 100) {
+    @$set = Math::Prime::Util::setminus($set,\@newset);
+  } else {
+    #_setremove1($set, $_) for @newset;
+    for my $v (@newset) {
+      my($lo,$hi) = (0,$#$set);
+      while ($lo < $hi) {
+        my $mid = $lo + (($hi-$lo) >> 1);
+        if ($set->[$mid] < $v) { $lo = $mid+1; }
+        else                   { $hi = $mid; }
+      }
+      splice @$set, $hi, 1 if $set->[$hi] == $v;
+    }
+  }
+  return $setsize - scalar(@$set);
+}
+
+sub setinvert {
+  my($set, $in) = @_;
+  my @newset;
+  if (!ref($in) || ref($in) ne 'ARRAY') {
+    _validate_integer($in);
+    @newset = ($in);
+  } else {
+    @newset = Mtoset($in);
+    return 0 if scalar(@newset) == 0;
+  }
+  # newset is in integer set form.  No duplicates.
+  my $setsize = scalar(@$set);
+  if ($setsize == 0) {
+    @$set = @newset;
+    return scalar(@$set);
+  }
+  if (@newset > 100) {
+    @$set = Math::Prime::Util::setdelta($set,\@newset);
+  } else {
+    for my $v (@newset) {
+      #_setremove1($set,$v) or _setinsert1($set,$v);
+      my($lo,$hi) = (0,$#$set);
+      while ($lo < $hi) {
+        my $mid = $lo + (($hi-$lo) >> 1);
+        if ($set->[$mid] < $v) { $lo = $mid+1; }
+        else                   { $hi = $mid; }
+      }
+      if ($set->[$hi] == $v) {
+        splice @$set, $hi, 1;
+      } else {
+        splice @$set, $hi, 0, $v;
+      }
+    }
+  }
+  return scalar(@$set) - $setsize;
+}
 
 sub set_is_disjoint {
   my($s,$t) = @_;

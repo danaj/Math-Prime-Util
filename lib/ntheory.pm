@@ -224,6 +224,10 @@ Tags:
   toset(\@A)                          convert to unique sorted integer list
   setinsert(\@A,$v)                   insert integer v into integer set A
   setinsert(\@A,\@B)                  insert list B values into integer set A
+  setremove(\@A,$v)                   remove integer v from integer set A
+  setremove(\@A,\@B)                  remove list B values from integer set A
+  setinvert(\@A,$v)                   if v is in set A, remove, otherwise add
+  setinvert(\@A,\@B)                  invert for all values in integer list B
   setcontains(\@A,$v)                 is integer v in integer set A
   setcontains(\@A,\@B)                is int set B a subset of int set A
   setbinop { ... } \@A[,\@B]          apply operation to all a,b [a:A,b:B]

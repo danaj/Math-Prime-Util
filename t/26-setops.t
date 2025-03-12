@@ -24,13 +24,16 @@ use warnings;
 #   set_is_proper_superset
 #   set_is_proper_intersection (XS ok, PP not ok)
 #
-# MUST be in set form (numerically sorted and no duplicates):
+# first arg MUST be in set form (numerically sorted and no duplicates)
+# second arg is any integer list:
 #   setinsert
 #   setcontains
+#   setremove
+#   setinvert
 
 use Test::More;
 use Math::Prime::Util qw/setunion setintersect setminus setdelta
-                         setcontains setinsert
+                         setcontains setinsert setremove setinvert
                          toset is_sidon_set is_sumfree_set
                          set_is_disjoint set_is_equal
                          set_is_subset set_is_superset
@@ -106,6 +109,24 @@ my @inserts = (
   [ [negint(powint(2,63)),0], [10,100,1000], "negative set, add small pos" ],
   [ [negint(powint(2,63)),0], [10,100,addint(powint(2,63),1000)], "negative set, add big pos" ],
 );
+my @removes = (
+  [ [], [],           0, [], "empty sets" ],
+  [ [1,2,3], [],      0, [1,2,3], "remove empty set" ],
+  [ [1,2,3], 2,       1, [1,3], "remove middle element" ],
+  [ [1,2,3], 0,       0, [1,2,3], "remove non element" ],
+  [ [1,2,3], [1],     1, [2,3], "remove first element" ],
+  [ [1,2,3], [3,2,1], 3, [], "remove all elements" ],
+  [ [1,2,3], [1,1,1], 1, [2,3], "list with duplicates" ],
+);
+my @inverts = (
+  [ [], [],           0, [], "empty sets" ],
+  [ [1,2,3], [],      0, [1,2,3], "invert empty set" ],
+  [ [1,2,3], 2,      -1, [1,3], "invert middle element" ],
+  [ [1,2,3], -12,     1, [-12,1,2,3], "invert non element" ],
+  [ [1,2,3], [1],    -1, [2,3], "invert first element" ],
+  [ [1,2,3], [3,2,1],-3, [], "invert all elements" ],
+  [ [1,2,3], [1,1],  -1, [2,3], "list with duplicates" ],
+);
 
 plan tests => 2        # specific tests
             + 1        # toset
@@ -115,6 +136,8 @@ plan tests => 2        # specific tests
             + 1        # setinsert
             + 1        # set_is_subset
             + 7        # equal, disjoint, etc.
+            + 1        # setremove
+            + 1        # setinvert
             + 0;
 
 ###### some specific tests
@@ -370,5 +393,20 @@ subtest 'set_is_proper_intersection', sub {
   for my $info (@set2) {
     my($s,$t,$str,$exp) = @$info;
     is( set_is_proper_intersection($s,$t), $exp->[4], $str );
+  }
+};
+
+subtest 'setremove', sub {
+  for my $test (@removes) {
+    my($A,$B,$exp,$NEWA,$what) = @$test;
+    my $res = setremove($A,$B);
+    is_deeply( [$res,$A], [$exp,$NEWA], $what );
+  }
+};
+subtest 'setinvert', sub {
+  for my $test (@inverts) {
+    my($A,$B,$exp,$NEWA,$what) = @$test;
+    my $res = setinvert($A,$B);
+    is_deeply( [$res,$A], [$exp,$NEWA], $what );
   }
 };
