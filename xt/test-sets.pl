@@ -3,7 +3,7 @@ use strict;
 use warnings;
 $| = 1;  # fast pipes
 
-use Math::Prime::Util qw/vecequal toset is_subset
+use Math::Prime::Util qw/vecequal toset set_is_subset setcontains
                          setintersect setunion setminus setdelta/;
 use Math::Prime::Util::PP;   # Have it available for comparison
 use Benchmark qw/:all/;
@@ -93,11 +93,11 @@ my $st4 = Set::Tiny->new(@iset4);
 my $st5 = Set::Tiny->new(@iset5);
 
 
-#my $ts=0;
-#cmpthese(-1, {
-#  "is_subset" => sub { $ts += is_subset(\@set1, [85]); $ts += is_subset(\@iset4, \@iset5); },
-#});
-#exit(0);
+my $ts=0;
+cmpthese(-1, {
+  "is_subset" => sub { $ts += set_is_subset(\@iset4, \@iset5); },
+  "contains"  => sub { $ts += setcontains(\@iset4, \@iset5); },
+});
 
 cmpthese(-1, {
   "intersect odds/odds"   => sub { @R=setintersect(\@set1,\@set1); },
@@ -190,25 +190,25 @@ sub inter3 {
 # Insert
 #
 # tmmpu 'csrand(5); for (1..500000) { push @s,urandomm(2000000); } @s=toset(\@s); say scalar(@s)'
-# 442393   0.100s
+# 442393   0.098s
 #
 # tmmpu 'csrand(5); $s=[]; $t+=setinsert($s,[map{urandomm(2000000)}1..500000]); say $t;'
 # 442393   0.110s
 #
-# tmmpu 'csrand(5); $s=[]; for (1..500000) { $t+=setinsert($s,urandomm(2000000)); } say $t;'
-# 442393   0.146s
+# tmmpu 'csrand(5); $s=[]; use Math::Prime::Util::PP; $t+=Math::Prime::Util::PP::setinsert($s,[map{urandomm(2000000)}1..500000]); say $t;'
+# 442393   0.149s
 #
 # tmmpu 'use Set::Tiny; csrand(5); $s=Set::Tiny->new(); for (1..500000) { $s->insert(urandomm(2000000)) } say $s->size()'
 # 442393   0.260s
 #
 # tmmpu 'csrand(5); %h=(); for (1..500000) { $h{urandomm(2000000)}=1;} @s=vecsort(keys %h); say scalar(@s);'
-# 442393   0.277s
+# 442393   0.273s
 #
 # tmmpu 'csrand(5); $s=[]; for (1..500000) { $t+=setinsert($s,urandomm(2000000)); } say $t;'
-# 442393   4.041s
+# 442393   3.980s
 #
 # tmmpu 'use Math::Prime::Util::PP; csrand(5); $s=[]; for (1..500000) { $t+=Math::Prime::Util::PP::setinsert($s,urandomm(2000000)); } say $t;'
-# 442393   13.770s
+# 442393   14.291s
 #
 # tmmpu 'use List::BinarySearch::XS qw/:all/; @s=(); csrand(5); for (1..500000) { $v=urandomm(2000000); $index=binsearch_pos {$a<=>$b} $v,@s; splice @s,$index,0,$v if $s[$index] != $v; } say scalar(@s)'
 # 442393   17.570s

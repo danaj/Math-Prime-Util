@@ -120,6 +120,7 @@ bench/bench-pp-sieve.pl
 bench/bench-mp-nextprime.pl
 bench/bench-mp-psrp.pl
 bench/bench-mp-prime_count.pl
+bench/bench-set-tiny.pl
 bench/factor-gnufactor.pl
 examples/README
 examples/csrand.pl

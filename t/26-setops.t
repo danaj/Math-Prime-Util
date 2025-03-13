@@ -16,7 +16,7 @@ use warnings;
 #   set_is_disjoint
 #   sumset
 #
-# MUST not have duplicates:
+# BOTH lists MUST not have duplicates
 #   set_is_equal
 #   set_is_subset
 #   set_is_superset

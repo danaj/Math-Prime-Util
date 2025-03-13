@@ -3673,8 +3673,8 @@ This is more efficient if the input is in set form
 (numerically sorted, no duplicates).
 The result will be in set form.
 
-This corresponds to Pari's C<setintersect> function
-and Mathematica's C<Intersection> function, and
+This corresponds to Pari's C<setintersect> function,
+Mathematica's C<Intersection> function, and
 Sage's C<intersection> function on Set objects.
 
 =head2 setminus
@@ -3688,7 +3688,8 @@ This is more efficient if the input is in set form
 (numerically sorted, no duplicates).
 The result will be in set form.
 
-This corresponds to Pari's C<setminus> function, and
+This corresponds to Pari's C<setminus> function,
+Mathematica's C<Complement> function, and
 Sage's C<difference> function on Set objects.
 
 =head2 setdelta
@@ -3702,8 +3703,8 @@ This is more efficient if the input is in set form
 (numerically sorted, no duplicates).
 The result will be in set form.
 
-This corresponds to Pari's C<setdelta> function
-and Mathematica's C<SymmetricDifference> function, and
+This corresponds to Pari's C<setdelta> function,
+Mathematica's C<SymmetricDifference> function, and
 Sage's C<symmetric_difference> function on Set objects.
 
 =head2 is_sidon_set
@@ -3727,6 +3728,8 @@ to any element of the set.  That is, the set and its sumset are disjoint.
 Given two array references of integers, treats them as sets and
 returns 1 if the sets are have no elements in common, 0 otherwise.
 
+This corresponds to Mathematica's C<DisjointQ> function.
+
 =head2 set_is_equal
 
 Given two array references of integers in set form,
@@ -3740,7 +3743,8 @@ Given two array references of integers in set form,
 returns 1 if the first set also contains all elements of the second set,
 0 otherwise.
 
-The L</setcontains> function can be used equivalently.
+The L</setcontains> function can be used equivalently, and
+does not require the second list to be in set form.
 
 This corresponds to Mathematica's C<SubsetQ> function (is B a subset of A).
 
@@ -3757,7 +3761,8 @@ Given two array references of integers in set form,
 returns 1 if the second set also contains all elements of the first set,
 0 otherwise.
 
-The L</setcontains> function can be used equivalently.
+The L</setcontains> function can be used equivalently
+(with reversed arguments).
 
 =head2 set_is_proper_superset
 
@@ -7045,17 +7050,19 @@ give a strict order.  Many modules are fast at some operations and slow
 at others.  Some have particular inputs they are very fast or very slow
 with.  Each module has different functionality.
 
-Our choice of Perl integer lists for sets allows some flexibility and use
-for other purposes, but it leads to some poor performance in some cases,
-e.g. when adding and removing items, or processing very large sets
-(100k+ entries) where we spend a relatively large amount of time parsing
-the Perl input array.  It also is quite space inefficient, using
-approximately 40 bytes for each integer, which is about 5x more than needed.
+We chose, following Pari and Mathematica, to represent sets as native lists
+of sorted de-duplicated integers, rather than a dedicated object.
+This allows some flexibility and use for other purposes, but it can result
+in poor performance for some cases, especially with very large sets
+(100k+ entries) where we spend a large amount of time parsing
+and manipulating the Perl input array.
+It also is quite space inefficient, using approximately 32 bytes for
+each integer.
 
 For many purposes, L<Set::Tiny> works quite well.  It is B<very> tiny,
 unlike this module.  It has basic features and is quite fast.  It is not
 limited to integers.  On the other hand, even using native Perl sorted
-arrays rather than a dedicated set objects, our module is typically much
+arrays rather than a dedicated set objects, our module is typically
 faster (2-10x) and uses less memory,
 though of course it is XS so this should not be surprising.
 
@@ -7072,13 +7079,13 @@ Finding the sumset size of the first 10,000 primes.
 Set intersection of C<[-1000..100]> and C<[-100..1000]>.
 
      4 uS  Set::IntSpan::Fast::XS
+     4 uS  setintersect                       <===========  this module
      7 uS  Pari/GP 2.17.0
-     8 uS  setintersect            <======  this module
     16 uS  Set::IntSpan::Fast
     73 uS  native Perl hash intersection          /\ /\ /\  Faster
     75 uS  Set::Tiny
     90 uS  Set::Functional
-   115 uS  PP::setintersect                       \/ \/ \/  Slower
+   118 uS  PP::setintersect                       \/ \/ \/  Slower
    217 uS  Array::Set
    326 uS  Set::SortedArray
    341 uS  Set::Object

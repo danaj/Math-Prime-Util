@@ -137,7 +137,10 @@ BEGIN {
 *Mvecsort = \&Math::Prime::Util::vecsort;
 *Mtodigits = \&Math::Prime::Util::todigits;
 *Mtoset = \&Math::Prime::Util::toset;
+*Msetinsert = \&Math::Prime::Util::setinsert;
 *Msetcontains = \&Math::Prime::Util::setcontains;
+*Msetunion = \&Math::Prime::Util::setunion;
+*Msetintersect = \&Math::Prime::Util::setintersect;
 
 *Mprimes = \&Math::Prime::Util::primes;
 *Mfordivisors = \&Math::Prime::Util::fordivisors;
@@ -10845,32 +10848,28 @@ sub setinsert {
     push @$set, @newset;
   } elsif ($newset[-1] < $set->[0]) {
     unshift @$set, @newset;
+  } elsif (@newset > 100) {
+    @$set = Msetunion($set,\@newset);
   } else {
+    # 1. values in front and back.
     my($nbeg,$nend) = (0,0);
     $nend++ while $nend < scalar(@newset) && $newset[-1 - $nend] > $set->[-1];
     push @$set, splice(@newset,-$nend) if $nend > 0;
     $nbeg++ while $nbeg < scalar(@newset) && $newset[$nbeg] < $set->[0];
     unshift @$set, splice(@newset,0,$nbeg) if $nbeg > 0;
-
-    # Some ways to do this:
-    #   _setinsert1($set, $_) for @newset;
-    #   @$set = Math::Prime::Util::setunion($set,\@newset);
-    #   Math::Prime::Util::setinsert($set, $_) for @newset;
-    #if (@newset > 100) { @$set = Math::Prime::Util::setunion($set,\@newset); }
-    #else               { Math::Prime::Util::setinsert($set, $_) for @newset; }
-
-    if (@newset > 100) {
-      @$set = Math::Prime::Util::setunion($set,\@newset);
-    } else {
-      for my $v (@newset) {
-        my($lo,$hi) = (0,$#$set);
-        while ($lo < $hi) {
-          my $mid = $lo + (($hi-$lo) >> 1);
-          if ($set->[$mid] < $v) { $lo = $mid+1; }
-          else                   { $hi = $mid; }
-        }
-        splice @$set, $hi, 0, $v if $set->[$hi] != $v;
+    # 2. values in the middle.
+    my $start = 0;
+    my $range = Mcdivint(scalar(@$set),(scalar(@newset)+2) >> 1);
+    for my $v (@newset) {
+      my($lo,$hi) = ($start,$#$set);
+      $hi = $lo + $range if $hi-$lo > $range && $set->[$lo+$range] >= $v;
+      while ($lo < $hi) {
+        my $mid = $lo + (($hi-$lo) >> 1);
+        if ($set->[$mid] < $v) { $lo = $mid+1; }
+        else                   { $hi = $mid; }
       }
+      splice @$set, $hi, 0, $v if $set->[$hi] != $v;
+      $start = $hi+1;
     }
   }
   return scalar(@$set) - $setsize;
@@ -10968,44 +10967,44 @@ sub set_is_disjoint {
   my($s,$t) = @_;
   croak 'Not an array reference' unless (ref($s) || '') eq 'ARRAY'
                                      && (ref($t) || '') eq 'ARRAY';
-  return 0 + (scalar(setintersect($s,$t) == 0));
+  return 0 + (scalar(Msetintersect($s,$t) == 0));
 }
 sub set_is_equal {
   my($s,$t) = @_;
   croak 'Not an array reference' unless (ref($s) || '') eq 'ARRAY'
                                      && (ref($t) || '') eq 'ARRAY';
-  return 0 + (@$s == @$t && scalar(setintersect($s,$t)) == @$t);
+  return 0 + (@$s == @$t && scalar(Msetintersect($s,$t)) == @$t);
 }
 sub set_is_subset {
   my($s,$t) = @_;
   croak 'Not an array reference' unless (ref($s) || '') eq 'ARRAY'
                                      && (ref($t) || '') eq 'ARRAY';
-  return 0 + (@$s >= @$t && scalar(setintersect($s,$t)) == @$t);
+  return 0 + (@$s >= @$t && scalar(Msetintersect($s,$t)) == @$t);
 }
 sub set_is_proper_subset {
   my($s,$t) = @_;
   croak 'Not an array reference' unless (ref($s) || '') eq 'ARRAY'
                                      && (ref($t) || '') eq 'ARRAY';
-  return 0 + (@$s > @$t && scalar(setintersect($s,$t)) == @$t);
+  return 0 + (@$s > @$t && scalar(Msetintersect($s,$t)) == @$t);
 }
 sub set_is_superset {
   my($s,$t) = @_;
   croak 'Not an array reference' unless (ref($s) || '') eq 'ARRAY'
                                      && (ref($t) || '') eq 'ARRAY';
-  return 0 + (@$s <= @$t && scalar(setintersect($s,$t)) == @$s);
+  return 0 + (@$s <= @$t && scalar(Msetintersect($s,$t)) == @$s);
 }
 sub set_is_proper_superset {
   my($s,$t) = @_;
   croak 'Not an array reference' unless (ref($s) || '') eq 'ARRAY'
                                      && (ref($t) || '') eq 'ARRAY';
-  return 0 + (@$s < @$t && scalar(setintersect($s,$t)) == @$s);
+  return 0 + (@$s < @$t && scalar(Msetintersect($s,$t)) == @$s);
 }
 sub set_is_proper_intersection {
   my($s,$t) = @_;
   croak 'Not an array reference' unless (ref($s) || '') eq 'ARRAY'
                                      && (ref($t) || '') eq 'ARRAY';
   my $minsize = (scalar(@$s) < scalar(@$t)) ? scalar(@$s) : scalar(@$t);
-  my $intersize = scalar(setintersect($s,$t));
+  my $intersize = scalar(Msetintersect($s,$t));
   return ($intersize > 0 && $intersize < $minsize) ? 1 : 0;
 }
 
@@ -11043,10 +11042,6 @@ sub is_sumfree_set {
   1;
 }
 
-
-# TODO:
-# setsearch(L, val, \$r);
-# setinsert(L, val);
 
 ###############################################################################
 
