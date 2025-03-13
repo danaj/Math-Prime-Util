@@ -4134,7 +4134,7 @@ void falling_factorial(IN SV* svn, IN SV* svk)
     if (nstatus == 1 && kstatus == 1) {
       UV ret = (ix==0) ? falling_factorial(n,k) : rising_factorial(n,k);
       if (ret != UV_MAX) XSRETURN_UV(ret);
-    } else {
+    } else if (nstatus == -1 && kstatus == 1) {
       IV in = (IV)n;
       IV ret = (ix==0) ? falling_factorial_s(in,k) : rising_factorial_s(in,k);
       if (ret != IV_MAX) XSRETURN_IV(ret);
