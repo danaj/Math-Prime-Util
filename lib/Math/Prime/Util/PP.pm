@@ -7175,8 +7175,8 @@ sub binomial {
   }
 
   # 4. Overflow.  Solve using Math::BigInt
-  return 1 if $k == 0;        # Work around bug in old
-  return $n if $k == $n-1;    # Math::BigInt (fixed in 1.90)
+  return 1 if $k == 0;                   # Work around bug in old
+  return $n if $k == 1 || $k == $n-1;    # Math::BigInt (fixed in 1.90)
 
   # Incomplete work around problem with Math::BigInt not liking bigint n
   return Mdivint(Mfalling_factorial($n,$k),Mfactorial($k))
@@ -10586,34 +10586,31 @@ sub shuffle {
 
 sub vecsort {
   my(@s) = @_;
-  _validate_integer($_) for @s;   # Everything is now a native int or bigint
-  @s = sort { $a<=>$b } @s;
+  validate_integer($_) for @s;   # Everything is now a native int or bigint
+  if ($] < 5.026) {  # Before Perl 5.26, numerical sort used doubles (sigh).
+    # All we need to do is prevent sort from using built-in routine.
+    @s = map { $_->[0] }  sort { $a->[0] <=> $b->[0] }  map { [$_] }  @s;
+  } else {
+    @s = sort { $a<=>$b } @s;
+  }
   return @s;
 }
 sub vecsortr {
   my($ra) = @_;
   croak 'Not an array reference' unless (ref($ra) || '') eq 'ARRAY';
-  _validate_integer($_) for @$ra;  # Everything is now a native int or bigint
-  my @s = sort { $a<=>$b } @$ra;
-  return @s;
+  vecsort(@$ra);
 }
 sub vecsortrr {
   my($ra) = @_;
   croak 'Not an array reference' unless (ref($ra) || '') eq 'ARRAY';
-  _validate_integer($_) for @$ra;  # Everything is now a native int or bigint
-  my @s = sort { $a<=>$b } @$ra;
-  return \@s;
+  [vecsort(@$ra)];
 }
 
 sub _vecsorti {
   croak 'Not an array reference' unless (ref($_[0]) || '') eq 'ARRAY';
-  _validate_integer($_) for @{$_[0]};
+  @{$_[0]} = Mvecsort(@{$_[0]});
 
-  #$_[0] = [sort { $a <=> $b } @{$_[0]}];
-
-  @{$_[0]} = sort { $a <=> $b } @{$_[0]};
-
-  # This forces in-place sort
+  # This forces in-place sort (careful of pre-5.26.0 sort bug)
   #use Data::Alias qw/alias/;
   #alias my @ar = @{$_[0]};
   #@ar = sort { $a<=>$b } @ar;
@@ -10756,15 +10753,13 @@ sub toset {
 
   validate_integer($_) for @$ra;
   return @$ra if scalar(@$ra) <= 1;
-  #my(%seen, @set);
-  #for my $v (@$ra) {
-  #  next if exists $seen{$v};
-  #  push @set, $v;
-  #  $seen{$v} = undef;
-  #}
-  #@set = sort { $a<=>$b } @set;
   my($k,%seen);
-  my @set = sort { $a<=>$b }  grep { not $seen{$k = $_}++; }  @$ra;
+  my @set = grep { not $seen{$k = $_}++; }  @$ra;
+  if ($] < 5.026) {
+    @set = map { $_->[0] }  sort { $a->[0] <=> $b->[0] }  map { [$_] }  @set;
+  } else {
+    @set = sort { $a<=>$b } @set;
+  }
   return @set;
 }
 
@@ -10773,7 +10768,7 @@ sub setcontains {
   my($set, $sub) = @_;
   my @newset;
   if (!ref($sub) || ref($sub) ne 'ARRAY') {
-    _validate_integer($sub);
+    validate_integer($sub);
     @newset = ($sub);
   } else {
     @newset = Mtoset($sub);
@@ -10838,7 +10833,7 @@ sub setinsert {
   my($set, $in) = @_;
   my @newset;
   if (!ref($in) || ref($in) ne 'ARRAY') {
-    _validate_integer($in);
+    validate_integer($in);
     @newset = ($in);
   } else {
     @newset = Mtoset($in);
@@ -10896,7 +10891,7 @@ sub setremove {
   my($set, $in) = @_;
   my @newset;
   if (!ref($in) || ref($in) ne 'ARRAY') {
-    _validate_integer($in);
+    validate_integer($in);
     @newset = ($in);
   } else {
     @newset = Mtoset($in);
@@ -10930,7 +10925,7 @@ sub setinvert {
   my($set, $in) = @_;
   my @newset;
   if (!ref($in) || ref($in) ne 'ARRAY') {
-    _validate_integer($in);
+    validate_integer($in);
     @newset = ($in);
   } else {
     @newset = Mtoset($in);
