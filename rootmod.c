@@ -316,11 +316,11 @@ static int _rootmod_return(UV r, UV *s, UV a, UV k, UV p) {
 
 /* Generalized Tonelli-Shanks for k-th root mod a prime, with k prime */
 static UV _ts_prime(UV a, UV k, UV p, UV *z) {
-  UV A, B, y, x, e, r, T, ke, t;
+  UV A, B, y, x, r, T, ke, t;
 
   /* Assume:  k > 1,  1 < a < p,  p > 2,  k prime,  p prime */
 
-  for (e = 0, r = p-1; !(r % k); r /= k) e++;
+  for (r = p-1; !(r % k); r /= k) ;
   /*  p-1 = r * k^e   =>   ke = ipow(k,e) = (p-1)/r  */
   ke = (p-1)/r;
 
