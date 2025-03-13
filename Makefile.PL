@@ -73,7 +73,7 @@ WriteMakefile1(
     EXE_FILES    => ['bin/primes.pl', 'bin/factor.pl'],
 
     TEST_REQUIRES=> {
-                      'Test::More'       => '0.45',
+                      'Test::More'       => '0.96',
                       'bignum'           => '0.22',   # 'use bigint' in tests
                     },
     PREREQ_PM    => {
