@@ -8,6 +8,11 @@ extern void sort_iv_array(IV* L, unsigned long len);
 
 extern void sort_dedup_uv_array(UV* L, int data_is_signed, unsigned long *len);
 
+extern unsigned long index_in_sorted_uv_array(UV v, UV* L, unsigned long len);
+extern unsigned long index_in_sorted_iv_array(IV v, IV* L, unsigned long len);
+#define is_in_sorted_uv_array(v,L,len) (index_in_sorted_uv_array(v,L,len) > 0)
+#define is_in_sorted_iv_array(v,L,len) (index_in_sorted_iv_array(v,L,len) > 0)
+
 extern int  _XS_get_verbose(void);
 extern void _XS_set_verbose(int v);
 extern int  _XS_get_callgmp(void);

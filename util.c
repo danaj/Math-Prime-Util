@@ -61,6 +61,37 @@ void sort_dedup_uv_array(UV* L, int data_is_signed, unsigned long *len)
   }
 }
 
+/* Returns 0 if not found, index+1 if found (returns leftmost if dups) */
+unsigned long index_in_sorted_uv_array(UV v, UV* L, unsigned long len)
+{
+  unsigned long lo, hi;
+  if (len == 0 || v < L[0] || v > L[len-1])
+    return 0;
+  lo = 0;
+  hi = len-1;
+  while (lo < hi) {
+    unsigned long mid = lo + ((hi-lo) >> 1);
+    if (L[mid] < v)  lo = mid + 1;
+    else             hi = mid;
+  }
+  return (L[lo] == v)  ?  lo+1  :  0;
+}
+unsigned long index_in_sorted_iv_array(IV v, IV* L, unsigned long len)
+{
+  unsigned long lo, hi;
+  if (len == 0 || v < L[0] || v > L[len-1])
+    return 0;
+  lo = 0;
+  hi = len-1;
+  while (lo < hi) {
+    unsigned long mid = lo + ((hi-lo) >> 1);
+    if (L[mid] < v)  lo = mid + 1;
+    else             hi = mid;
+  }
+  return (L[lo] == v)  ?  lo+1  :  0;
+}
+
+
 static int _verbose = 0;
 void _XS_set_verbose(int v) { _verbose = v; }
 int _XS_get_verbose(void) { return _verbose; }
