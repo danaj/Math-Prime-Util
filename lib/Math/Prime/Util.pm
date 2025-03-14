@@ -3735,7 +3735,8 @@ This corresponds to Mathematica's C<DisjointQ> function.
 Given two array references of integers in set form,
 returns 1 if the sets have all elements in common, 0 otherwise.
 
-The L</vecequal> function can be used equivalently.
+This function works even if the inputs are not sorted.  If they are sorted
+(proper set form) then L</vecequal> can be used and is typically much faster.
 
 =head2 set_is_subset
 

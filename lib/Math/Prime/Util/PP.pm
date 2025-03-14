@@ -135,6 +135,7 @@ BEGIN {
 *Mvecmax = \&Math::Prime::Util::vecmax;
 *Mvecfirst = \&Math::Prime::Util::vecfirst;
 *Mvecsort = \&Math::Prime::Util::vecsort;
+*Mvecsortr = \&Math::Prime::Util::vecsortr;
 *Mtodigits = \&Math::Prime::Util::todigits;
 *Mtoset = \&Math::Prime::Util::toset;
 *Msetinsert = \&Math::Prime::Util::setinsert;
@@ -10596,14 +10597,22 @@ sub vecsort {
   return @s;
 }
 sub vecsortr {
-  my($ra) = @_;
-  croak 'Not an array reference' unless (ref($ra) || '') eq 'ARRAY';
-  vecsort(@$ra);
+  my($r) = @_;
+  croak 'Not an array reference' unless (ref($r) || '') eq 'ARRAY';
+  Mvecsort(@$r);
 }
+
+# In-place sort.  TODO: Change this to vecsorti, implement in XS
 sub vecsortrr {
-  my($ra) = @_;
-  croak 'Not an array reference' unless (ref($ra) || '') eq 'ARRAY';
-  [vecsort(@$ra)];
+  my($r) = @_;
+  croak 'Not an array reference' unless (ref($r) || '') eq 'ARRAY';
+  validate_integer($_) for @$r;
+  if ($] < 5.026) {
+    @$r = map { $_->[0] }  sort { $a->[0] <=> $b->[0] }  map { [$_] }  @$r;
+  } else {
+    @$r = sort { $a<=>$b } @$r;
+  }
+  $r;
 }
 
 sub _vecsorti {
@@ -10632,15 +10641,17 @@ sub setbinop (&$;$) {   ## no critic qw(ProhibitSubroutinePrototypes)
   no strict 'refs'; ## no critic(strict)
   local(*{$caller.'::a'}) = \my $a;
   local(*{$caller.'::b'}) = \my $b;
-  my %set;
+
+  # Typically faster and less memory to push them all instead of hashing here.
+  my @set;
   for my $ia (@$ra) {
     $a = $ia;
     for my $ib (@$rb) {
       $b = $ib;
-      $set{ $sub->() } = undef;
+      push @set, $sub->();
     }
   }
-  return wantarray  ?  Mvecsort(keys %set)  :  scalar(keys %set);
+  Mtoset(\@set);
 }
 
 sub sumset {
@@ -10656,16 +10667,13 @@ sub sumset {
   validate_integer($_) for @$ra;
   if ($ra != $rb) { validate_integer($_) for @$rb; }
 
-  my(%seen, @sums);
+  my @set;
   for my $x (@$ra) {
     for my $y (@$rb) {
-      my $s = Maddint($x,$y);
-      next if exists $seen{$s};
-      push @sums, $s;
-      $seen{$s} = undef;
+      push @set, Maddint($x,$y);
     }
   }
-  return wantarray  ?  vecsortr(\@sums)  :  scalar(@sums);
+  Mtoset(\@set);
 }
 
 sub vecuniq {

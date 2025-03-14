@@ -110,7 +110,7 @@ plan tests => 0
             + 5    # vecfirst
             + 5    # vecfirstidx
             + 7    # vecuniq
-            + scalar(@vecsorts)
+            + 1 + scalar(@vecsorts)
             + 0;
 
 ###### vecmin
@@ -245,4 +245,9 @@ foreach my $r (@vecsorts) {
   is_deeply( [ [vecsort(@$in)], [vecsortr($in)], [vecsortrr($in)] ],
              [ $out, $out, [$out] ],
              "vecsort/r/rr $str" );
+}
+{
+   my @s = (5,2,1,3,4);
+   my @t = vecsortr(\@s);
+   is_deeply([[@s],[@t]], [[5,2,1,3,4],[1,2,3,4,5]], "vecsortr sorts without modifying input");
 }

@@ -62,7 +62,7 @@ my %tests = (
     },
     C_is_equal => {
         t => sub { $s_t1->is_equal($s_t2) },
-        #m => sub { vecequal($s_m1,$s_m2) },    # Probably faster
+        #m => sub { vecequal($s_m1,$s_m2) },    # Probably much faster
         m => sub { Math::Prime::Util::set_is_equal($s_m1,$s_m2) },
         #s => sub { $s_s1->is_equal($s_s2) },
         #o => sub { $s_o1->equal($s_o2) },
