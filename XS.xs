@@ -4751,9 +4751,8 @@ void is_sumfree_set(IN SV* sva)
   PROTOTYPE: $
   PREINIT:
     int itype, is_sumfree;
-    unsigned long len, i, j;
+    unsigned long len, i, j, lo, hi;
     UV *data;
-    iset_t sa;
   PPCODE:
     itype = arrayref_to_int_array(aTHX_ &len, &data,1,sva,"is_sumfree_set");
     /* Check for UV overflow on sum */
@@ -4771,13 +4770,18 @@ void is_sumfree_set(IN SV* sva)
       CALLPPSUB("is_sumfree_set");
       return;
     }
-    sa = iset_create_from_array(data, len, IARR_TYPE_TO_STATUS(itype));
     is_sumfree = 1;
-    for (i = 0; i < len && is_sumfree; i++)
-      for (j = i; j < len; j++)
-        if (iset_contains(sa, data[i] + data[j]))
-          { is_sumfree = 0; break; }
-    iset_destroy(&sa);
+    if (itype == IARR_TYPE_ANY) {
+      for (i = 0; i < len && is_sumfree; i++)
+        for (j = i; j < len; j++)
+          if (is_in_sorted_uv_array(data[i]+data[j], data, len))
+            { is_sumfree = 0; break; }
+    } else {
+      for (i = 0; i < len && is_sumfree; i++)
+        for (j = i; j < len; j++)
+          if (is_in_sorted_iv_array((IV)data[i]+(IV)data[j], (IV*)data, len))
+            { is_sumfree = 0; break; }
+    }
     Safefree(data);
     RETURN_NPARITY(is_sumfree);
 
