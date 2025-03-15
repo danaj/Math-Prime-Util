@@ -111,7 +111,7 @@ UV prime_power_sieve2(UV** list, UV lo, UV hi) {
 
   if (hi < 2 || lo > hi) { *list = 0; return 0; }
 
-  /* Estimate how many powers we'll have */
+  /* Bound on how many powers we'll have */
   log2n = log2floor(hi);
   for (k = 2; k <= log2n; k++) {
     npmax += prime_count_upper(rootint(hi,k));
@@ -124,8 +124,7 @@ UV prime_power_sieve2(UV** list, UV lo, UV hi) {
   for (k = 2; k <= log2n; k++) {
     START_DO_FOR_EACH_PRIME(2, rootint(hi,k)) {
       UV pk = ipow(p,k);
-      //if (pk >= lo)  powers[np++] = pk;
-      if (pk >= lo)  { if (np >= npmax) croak("overflow"); powers[np++] = pk; }
+      if (pk >= lo)  powers[np++] = pk;
     } END_DO_FOR_EACH_PRIME
   }
 

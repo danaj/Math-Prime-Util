@@ -62,7 +62,7 @@ static void _omega_prime_gen_rec(UV** kop, UV* skop, UV* nkop, uint32_t k, UV lo
   START_DO_FOR_EACH_PRIME(pstart, rootint(hi/m, k)) {
     if ((m % p) == 0) continue;
     for (v = m*p; v <= hi; v *= p) {
-      if (v >= lo) { // Add v to kop list
+      if (v >= lo) { /* Add v to kop list */
         if (n >= lsize) {
           lsize = 1 + lsize * 1.2;
           Renew(l, lsize, UV);
