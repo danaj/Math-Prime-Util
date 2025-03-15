@@ -3585,13 +3585,13 @@ void addint(IN SV* sva, IN SV* svb)
     divint = 3
     modint = 4
     cdivint = 5
-    powint = 6
+    powint = 7
   PREINIT:
     int astatus, bstatus, overflow, postneg, nix, smask;
     UV a, b, t, ret;
   PPCODE:
     astatus = _validate_and_set(&a, aTHX_ sva, IFLAG_ANY);
-    bstatus = _validate_and_set(&b, aTHX_ svb, (ix == 6) ? IFLAG_POS : IFLAG_ANY);
+    bstatus = _validate_and_set(&b, aTHX_ svb, (ix == 7) ? IFLAG_POS : IFLAG_ANY);
 
     if (astatus != 0 && bstatus != 0) {
       /* We will try to do everything with non-negative integers, with overflow
@@ -3602,82 +3602,87 @@ void addint(IN SV* sva, IN SV* svb)
       smask = ((astatus == -1) << 1) + (bstatus == -1);
       /* smask=0: +a +b  smask=1: +a -b  smask=2: -a +b  smask=3: -a -b */
 
-      if (ix == 0 && smask != 0) {
-        switch (smask) {
-          case 1: nix=1; b = neg_iv(b); break;                /* a - |b| */
-          case 2: nix=1; t = neg_iv(a); a = b; b = t; break;  /* b - |a| */
-          case 3: a=neg_iv(a); b=neg_iv(b); postneg=1; break; /* -(|a| + |b|) */
-          default: break;
+      if (ix == 3 && b == 0) croak("divint: divide by zero");
+      if (ix == 4 && b == 0) croak("modint: divide by zero");
+      if (ix == 5 && b == 0) croak("cdivint: divide by zero");
+
+      if (smask != 0) { /* Manipulate so all arguments are positive */
+        if (smask & 2) a = neg_iv(a);
+        if (smask & 1) b = neg_iv(b);
+
+        if (ix == 0) {
+          switch (smask) {
+            case 1: nix=1; break;                /* a - |b| */
+            case 2: nix=1; t=a; a=b; b=t; break; /* b - |a| */
+            case 3: postneg=1; break;            /* -(|a| + |b|) */
+            default: break;
+          }
+        } else if (ix == 1) {
+          switch (smask) {
+            case 1: nix=0; break;                /* a + |b| */
+            case 2: nix=0; postneg=1; break;     /* -(|a| + b) */
+            case 3: t=a; a=b; b=t; break;        /* |b| - |a| */
+            default: break;
+          }
+        } else if (ix == 2) {
+          switch (smask) {
+            case 1:
+            case 2: postneg = 1; break;
+            default: break;
+          }
+        } else if (ix == 3) {
+          switch (smask) {
+            case 1:
+            case 2: postneg = 1; nix = 5; break;
+            default: break;
+          }
+        } else if (ix == 4) {
+          switch (smask) {
+            case 1: nix = 6; postneg = 1; break;
+            case 2: nix = 6; break;
+            case 3: postneg = 1; break;
+            default: break;
+          }
+        } else if (ix == 5) {
+          switch (smask) {
+            case 1:
+            case 2: postneg = 1; nix = 3; break;
+            default: break;
+          }
+        } else if (ix == 6) {
+          /* ix = 6 is cmodint */
+        } else if (ix == 7) {
+          /* bstatus is never -1 for powint */
+          postneg = (b & 1);
         }
-        astatus = bstatus = 1;
       }
-      if (ix == 1 && smask != 0) {
-        switch (smask) {
-          case 1: nix=0; b = neg_iv(b); break;                 /* a + |b| */
-          case 2: nix=0; a = neg_iv(a); postneg=1; break;      /* -(|a| + b) */
-          case 3: t=neg_iv(a); a=neg_iv(b); b = t; break;      /* |b| - |a| */
-          default: break;
-        }
-        astatus = bstatus = 1;
+      switch (nix) {
+        case 0:  ret = a + b;                  /* addint */
+                 overflow = UV_MAX-a < b;
+                 break;
+        case 1:  ret = a - b;                  /* subint */
+                 if (b > a && (IV)ret < 0) XSRETURN_IV((IV)ret);
+                 overflow = (b > a);
+                 break;
+        case 2:  ret = a * b;                  /* mulint */
+                 overflow = a > 0 && UV_MAX/a < b;
+                 break;
+        case 3:  ret = a / b; break;           /* divint */
+        case 4:  ret = a % b; break;           /* modint */
+        case 5:  ret = a / b + (a % b != 0);   /* cdivint */
+                 break;
+        case 6:  ret = (a%b) ? b-(a%b) : 0;    /* cmodint */
+                 break;
+        case 7:
+        default: ret = ipowsafe(a, b);
+                 overflow = (a > 1 && ret == UV_MAX);
+                 break;
       }
-      if (ix == 2 && smask != 0) {
-        switch (smask) {
-          case 1: b = neg_iv(b); postneg = 1; break;
-          case 2: a = neg_iv(a); postneg = 1; break;
-          case 3: a = neg_iv(a); b = neg_iv(b); break;
-          default: break;
-        }
-        astatus = bstatus = 1;
-      }
-      if (ix == 3 || ix == 4) {
-        if (ix == 3 && b == 0) croak("divint: divide by zero");
-        if (ix == 4 && b == 0) croak("modint: divide by zero");
-        if (smask != 0 && (astatus == -1 || a <= (UV)IV_MAX) && (bstatus == -1 || b <= (UV)IV_MAX)) {
-          IV q, r;
-          (void) fdivrem(&q, &r, (IV)a, (IV)b);
-          XSRETURN_IV( (ix == 3) ? q : r );
-        }
-      }
-      if (ix == 5) {
-        if (b == 0) croak("cdivint: divide by zero");
-        if (smask != 0 && (astatus == -1 || a <= (UV)IV_MAX) && (bstatus == -1 || b <= (UV)IV_MAX)) {
-          IV q, r;
-          (void) cdivrem(&q, &r, (IV)a, (IV)b);
-          XSRETURN_IV( q );
-        }
-      }
-      if (ix == 6 && astatus != 1) {  /* bstatus is never -1 for powint */
-        a = neg_iv(a);
-        postneg = (b & 1);
-        astatus = 1;
-      }
-      if (astatus == 1 && bstatus == 1) {
-        switch (nix) {
-          case 0:  ret = a + b;                  /* addint */
-                   overflow = UV_MAX-a < b;
-                   break;
-          case 1:  ret = a - b;                  /* subint */
-                   if (b > a && (IV)ret < 0) XSRETURN_IV((IV)ret);
-                   overflow = (b > a);
-                   break;
-          case 2:  ret = a * b;                  /* mulint */
-                   overflow = a > 0 && UV_MAX/a < b;
-                   break;
-          case 3:  ret = a / b; break;           /* divint */
-          case 4:  ret = a % b; break;           /* modint */
-          case 5:  ret = a / b + (a % b != 0);   /* cdivint */
-                   break;
-          case 6:
-          default: ret = ipowsafe(a, b);
-                   overflow = (a > 1 && ret == UV_MAX);
-                   break;
-        }
-        if (!overflow) {
-          if (!postneg)
-            XSRETURN_UV(ret);
-          if (ret <= (UV)IV_MAX)
-            XSRETURN_IV(neg_iv(ret));
-        }
+      if (!overflow) {
+        if (!postneg)
+          XSRETURN_UV(ret);
+        if (ret <= (UV)IV_MAX)
+          XSRETURN_IV(neg_iv(ret));
       }
     }
     switch (ix) {
@@ -3687,7 +3692,7 @@ void addint(IN SV* sva, IN SV* svb)
       case 3:  _vcallsub_with_gmp(0.52,"divint"); break;
       case 4:  _vcallsub_with_gmp(0.52,"modint"); break;
       case 5:  _vcallsub_with_gmp(0.53,"cdivint"); break;
-      case 6:
+      case 7:
       default: _vcallsub_with_gmp(0.52,"powint"); break;
     }
     objectify_result(aTHX_ ST(0), ST(0));
