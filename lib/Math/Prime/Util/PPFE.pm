@@ -927,6 +927,9 @@ sub forfactored(&$;$) { ## no critic qw(ProhibitSubroutinePrototypes)
 sub forsquarefree(&$;$) { ## no critic qw(ProhibitSubroutinePrototypes)
   Math::Prime::Util::_generic_forfac(1, @_);
 }
+sub forsquarefreeint(&$;$) { ## no critic qw(ProhibitSubroutinePrototypes)
+  Math::Prime::Util::_generic_forfac(1, @_);
+}
 
 sub fordivisors (&$) {    ## no critic qw(ProhibitSubroutinePrototypes)
   my($sub, $n) = @_;

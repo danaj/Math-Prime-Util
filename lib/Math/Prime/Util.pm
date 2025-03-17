@@ -45,7 +45,7 @@ our @EXPORT_OK =
       sieve_prime_cluster sieve_range prime_powers lucky_numbers
       forprimes forcomposites foroddcomposites forsemiprimes foralmostprimes
       forpart forcomp forcomb forperm forderange formultiperm forsetproduct
-      fordivisors forfactored forsquarefree
+      fordivisors forfactored forsquarefree forsquarefreeint
       lastfor
       numtoperm permtonum randperm shuffle
       prime_iterator prime_iterator_object
@@ -1363,6 +1363,16 @@ repeated factor.  Inside the block, the moebius function can be cheaply
 computed as C<((scalar(@_) & 1) ? -1 : 1)> or similar.
 
 This corresponds to the Pari/GP 2.10 C<forsquarefree> function.
+
+=head2 forsquarefreeint
+
+Similar to L</forsquarefree>, but only sieves for square-free integers in
+the range (in segments so very large ranges still use little memory).
+No factoring information is returned: the C<@_> variable is not set.
+In return it is 2 to 20 times faster.
+
+As with range functions such as L</foralmostprimes> this can be B<much>
+faster than calling L</is_square_free> for each integer in a large range.
 
 
 =head2 fordivisors

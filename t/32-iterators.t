@@ -6,7 +6,7 @@ use Test::More;
 use Math::Prime::Util qw/primes prev_prime next_prime
                          forprimes forcomposites foroddcomposites fordivisors
                          forpart forcomp forcomb forperm forderange formultiperm
-                         forfactored forsquarefree
+                         forfactored forsquarefree forsquarefreeint
                          forsemiprimes foralmostprimes
                          forsetproduct
                          lastfor
@@ -20,7 +20,7 @@ my $use64 = Math::Prime::Util::prime_get_config->{'maxbits'} > 32;
 my $broken64 = (18446744073709550592 == ~0);
 
 plan tests => 8        # forprimes errors
-            + 12 + 7   # forprimes simple
+            + 14 + 7   # forprimes simple
             + 3        # forcomposites simple
             + 2        # fordivisors simple
             + 3        # iterator errors
@@ -33,7 +33,7 @@ plan tests => 8        # forprimes errors
             + 7        # oo iterator simple
             + 28       # oo iterator methods
             + 12       # lastfor
-            + 5        # forfactored and forsquarefree
+            + 13       # forfactored and forsquarefree
             + 1        # forsemiprimes
             + 1+10     # foralmostprimes
             + 9        # forsetproduct
@@ -50,6 +50,8 @@ ok(!eval { forprimes { 1 } "abc"; },   "forprimes abc");
 ok(!eval { forprimes { 1 } 2, "abc"; },   "forprimes 2, abc");
 ok(!eval { forprimes { 1 } 5.6; },   "forprimes abc");
 
+{my @t; forprimes {push @t,$_} 0,0; is_deeply( [@t], [], "forprimes 0,0" ); }
+{my @t; forprimes {push @t,$_} 0,1; is_deeply( [@t], [], "forprimes 0,1" ); }
 {my @t; forprimes {push @t,$_} 1; is_deeply( [@t], [], "forprimes 1" ); }
 {my @t; forprimes {push @t,$_} 2; is_deeply( [@t], [2], "forprimes 3" ); }
 {my @t; forprimes {push @t,$_} 3; is_deeply( [@t], [2,3], "forprimes 3" ); }
@@ -366,11 +368,21 @@ sub a053462 {
 
 {
   my $s;
+  $s=0; forfactored      { $s += 1+$_ } 0,0; is($s, 0, "forfactored {} 0,0");
+  $s=0; forsquarefree    { $s += 1+$_ } 0,0; is($s, 0, "forsquarefree {} 0,0");
+  $s=0; forsquarefreeint { $s += 1+$_ } 0,0; is($s, 0, "forsquarefreeint {} 0,0");
+  $s=0; forfactored      { $s += 1+$_ } 0,1; is($s, 2, "forfactored {} 0,1");
+  $s=0; forsquarefree    { $s += 1+$_ } 0,1; is($s, 2, "forsquarefree {} 0,1");
+  $s=0; forsquarefreeint { $s += 1+$_ } 0,1; is($s, 2, "forsquarefreeint {} 0,1");
+
   $s=0; forfactored { $s += $_ } 1; is($s, 1, "forfactored {} 1");
   $s=0; forfactored { $s += vecsum($_,@_) } 100; is($s, 7330, "forfactored {} 100");
   $s=0; forsquarefree { $s += vecsum($_,@_) } 100; is($s, 4763, "forsquarefree {} 100");
   $s=0; forfactored { $s += vecsum($_,@_) } 1e8,1e8+10; is($s, 1208835222, "forfactored {} 10^8,10^8+10");
   is( a053462(6), 607926, "A053462 using forsquarefree");
+
+  $s = 0; forsquarefree    { $s += $_ } 7193953,7195732; is($s, 7813597636, "forsquarefree {} 7193953,7195732");
+  $s = 0; forsquarefreeint { $s += $_ } 7193953,7195732; is($s, 7813597636, "forsquarefreeint {} 7193953,7195732");
 }
 
 ################### forsemiprimes

@@ -157,6 +157,7 @@ Tags:
   foralmostprimes {...} k,[beg,],end  loop over k-almost-primes in range
   forfactored {...} [start,] end      loop with factors
   forsquarefree {...} [start,] end    loop with factors of square-free n
+  forsquarefreeint {...} [start,] end loop over square-free n
   fordivisors { ... } n               loop over the divisors of n
   forpart { ... } n [,{...}]          loop over integer partitions
   forcomp { ... } n [,{...}]          loop over integer compositions

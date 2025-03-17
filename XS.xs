@@ -330,6 +330,7 @@ static int _vcallsubn(pTHX_ I32 flags, I32 stashflags, const char* name, int nar
 #define _vcallsub(func) (void)_vcallsubn(aTHX_ G_SCALAR, VCALL_ROOT, func, items,0)
 #define _vcallsub_with_gmp(ver,func) (void)_vcallsubn(aTHX_ G_SCALAR, VCALL_GMP|VCALL_PP, func, items,(int)(100*(ver)))
 #define _vcallsub_with_pp(func) (void)_vcallsubn(aTHX_ G_SCALAR, VCALL_PP, func, items,0)
+#define _vcallsub_with_pp_void(func) (void)_vcallsubn(aTHX_ G_VOID|G_DISCARD, VCALL_PP, func, items,0)
 #define CALLPPSUB(func) (void)_vcallsubn(aTHX_ GIMME_V,VCALL_PP,func,items,0)
 /* #define _vcallsub_with_gmpobj(ver,func) (void)_vcallsubn(aTHX_ G_SCALAR, (PERL_REVISION >= 5 && PERL_VERSION > 8) ? VCALL_GMP|VCALL_PP : VCALL_PP, func, items,(int)(100*(ver))) */
 #define _vcallsub_with_gmpobj(ver,func) _vcallsub_with_gmp(ver,func)
@@ -1123,7 +1124,7 @@ void prime_memfree()
   PPCODE:
     prime_memfree();
     /* (void) _vcallgmpsubn(aTHX_ G_VOID|G_DISCARD, "_GMP_memfree", 0, 49); */
-    if (MY_CXT.MPUPP != NULL) _vcallsub_with_pp("prime_memfree");
+    if (MY_CXT.MPUPP != NULL) _vcallsub_with_pp_void("prime_memfree");
     return;
 
 void
@@ -1306,7 +1307,7 @@ void print_primes(IN SV* svlo, IN SV* svhi = 0, IN int infd = -1)
         print_primes(lo, hi, fd);
       }
     } else {
-      _vcallsub_with_pp("print_primes");
+      _vcallsub_with_pp_void("print_primes");
     }
     return;
 
@@ -5453,7 +5454,7 @@ foralmostprimes (SV* block, IN UV k, IN SV* svbeg, IN SV* svend = 0)
 
     if (!_validate_and_set(&beg, aTHX_ svbeg, IFLAG_POS) ||
         (svend && !_validate_and_set(&end, aTHX_ svend, IFLAG_POS))) {
-      _vcallsub_with_pp("foralmostprimes");
+      _vcallsub_with_pp_void("foralmostprimes");
       return;
     }
     if (!svend) { end = beg; beg = 1; }
@@ -5596,7 +5597,7 @@ forpart (SV* block, IN SV* svn, IN SV* svh = 0)
     if (cv == Nullcv)
       croak("Not a subroutine reference");
     if (!_validate_and_set(&n, aTHX_ svn, IFLAG_POS)) {
-      _vcallsub_with_pp("forpart");
+      _vcallsub_with_pp_void("forpart");
       return;
     }
     if (n > (UV_MAX-2)) croak("forpart argument overflow");
@@ -5729,9 +5730,9 @@ forcomb (SV* block, IN SV* svn, IN SV* svk = 0)
 
     if (!_validate_and_set(&n, aTHX_ svn, IFLAG_POS) ||
         (svk && !_validate_and_set(&k, aTHX_ svk, IFLAG_POS))) {
-      _vcallsub_with_pp(   (ix == 0) ? "forcomb"
-                         : (ix == 1) ? "forperm"
-                                     : "forderange" );
+      _vcallsub_with_pp_void(   (ix == 0) ? "forcomb"
+                              : (ix == 1) ? "forperm"
+                                          : "forderange" );
       return;
     }
 
@@ -5908,6 +5909,7 @@ forfactored (SV* block, IN SV* svbeg, IN SV* svend = 0)
       return;
     }
     if (!svend) { end = beg; beg = 1; }
+    if (beg < 1) beg = 1;
     if (beg > end) return;
 
     for (maxfactors = 0, n = end >> 1;  n;  n >>= 1)
@@ -5917,10 +5919,10 @@ forfactored (SV* block, IN SV* svbeg, IN SV* svend = 0)
       SvREADONLY_on(svals[i]);
     }
 
+    START_FORCOUNT;
     SAVESPTR(GvSV(PL_defgv));
     svarg = newSVuv(0);
     GvSV(PL_defgv) = svarg;
-    START_FORCOUNT;
     if (beg <= 1) {
       PUSHMARK(SP);
       sv_setuv(svarg, 1);
@@ -5979,6 +5981,80 @@ forfactored (SV* block, IN SV* svbeg, IN SV* svend = 0)
     SvREFCNT_dec(svarg);
     for (i = 0; i < maxfactors; i++)
       SvREFCNT_dec(svals[i]);
+    END_FORCOUNT;
+
+void forsquarefreeint(SV* block, IN SV* svbeg, IN SV* svend = 0)
+  PROTOTYPE: &$;$
+  PREINIT:
+    UV beg, end, i;
+    unsigned char* isf;
+    GV *gv;
+    HV *stash;
+    SV* svarg;  /* We use svarg to prevent clobbering $_ outside the block */
+    CV *cv;
+    DECL_FORCOUNT;
+    dMY_CXT;
+  PPCODE:
+    cv = sv_2cv(block, &stash, &gv, 0);
+    if (cv == Nullcv)
+      croak("Not a subroutine reference");
+
+    if (!_validate_and_set(&beg, aTHX_ svbeg, IFLAG_POS) ||
+        (svend && !_validate_and_set(&end, aTHX_ svend, IFLAG_POS))) {
+      _vcallsubn(aTHX_ G_VOID|G_DISCARD, VCALL_ROOT, "_generic_forsquarefree", items, 0);
+      return;
+    }
+    if (!svend) { end = beg; beg = 1; }
+    if (beg < 1) beg = 1;
+    if (beg > end) return;
+
+    START_FORCOUNT;
+    SAVESPTR(GvSV(PL_defgv));
+    svarg = newSVuv(0);
+    GvSV(PL_defgv) = svarg;
+    if (beg <= 1) {
+      PUSHMARK(SP);
+      sv_setuv(svarg, 1);
+      PUTBACK; call_sv((SV*)cv, G_VOID|G_DISCARD); SPAGAIN;
+      beg = 2;
+    }
+    while (beg <= end) {
+      UV seglo = beg, seghi = end;
+      if (seghi-seglo > (65536*256))
+        seghi = seglo + 65536*256 - 1;
+      isf = range_issquarefree(seglo, seghi);
+#if USE_MULTICALL
+      if (!CvISXSUB(cv)) {
+        dMULTICALL;
+        I32 gimme = G_VOID;
+        AV *av = save_ary(PL_defgv);
+        AvREAL_off(av);
+        PUSH_MULTICALL(cv);
+        for (i = 0; i < seghi-seglo+1; i++) {
+          CHECK_FORCOUNT;
+          if (isf[i]) {
+            sv_setuv(svarg, seglo+i);
+            { ENTER; MULTICALL; LEAVE; }
+          }
+        }
+        FIX_MULTICALL_REFCOUNT;
+        POP_MULTICALL;
+      }
+      else
+#endif
+      for (i = 0; i < seghi-seglo+1; i++) {
+        CHECK_FORCOUNT;
+        if (isf[i]) {
+          sv_setuv(svarg, seglo+i);
+          PUTBACK; call_sv((SV*)cv, G_VOID|G_DISCARD); SPAGAIN;
+        }
+      }
+      Safefree(isf);
+      if (seghi == UV_MAX) break;
+      beg = seghi+1;
+      CHECK_FORCOUNT;
+    }
+    SvREFCNT_dec(svarg);
     END_FORCOUNT;
 
 void

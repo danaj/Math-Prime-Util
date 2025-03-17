@@ -72,7 +72,7 @@ sub mpu_public_regex {
       sieve_prime_cluster sieve_range prime_powers lucky_numbers
       forprimes forcomposites foroddcomposites forsemiprimes foralmostprimes
       forpart forcomp forcomb forperm forderange formultiperm forsetproduct
-      fordivisors forfactored forsquarefree
+      fordivisors forfactored forsquarefree forsquarefreeint
       lastfor
       numtoperm permtonum randperm shuffle
       prime_iterator prime_iterator_object

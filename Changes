@@ -67,6 +67,7 @@ Revision history for Perl module Math::Prime::Util
     - is_divisible(n,d)               is n exactly divisible by d
     - is_congruent(n,c,d)             is n congruent to c mod d
     - is_qr(a,n)                      is a a quadratic non-residue mod n
+    - forsquarefreeint {} lo,hi       loop over square-free integers
     - almost_primes(k,[start,]end)    array ref of k-almost-primes
     - almost_prime_count(k,n)         count of integers with exactly k factors
     - almost_prime_count_approx(k,n)  fast approximate k-almost-prime count
@@ -235,6 +236,8 @@ Revision history for Perl module Math::Prime::Util
       behaviour.  Specifically, single digit inputs and bases a multiple of n.
 
     - kronecker in XS with 63-bit signed a and 64-bit unsigned n fixed.
+
+    - forfactored and forsquarefree were incorrect near 64-bit boundary.
 
     [FUNCTIONALITY AND PERFORMANCE]
 
