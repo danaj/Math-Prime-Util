@@ -795,6 +795,38 @@ UV logint(UV n, UV b)
   return e;
 }
 
+unsigned char* range_issquarefree(UV lo, UV hi) {
+  unsigned char* isf;
+  UV i, p2, range = hi-lo+1, sqrthi = isqrt(hi);
+  if (hi < lo) return 0;
+  New(0, isf, range, unsigned char);
+  memset(isf, 1, range);
+  if (lo == 0) isf[0] = 0;
+
+  { /* Sieve multiples of 2^2,3^2,5^2 */
+    UV p = 2;
+    while (p < 7 && p <= sqrthi) {
+      for (p2=p*p, i = P_GT_LO(p2, p2, lo); i >= lo && i <= hi; i += p2)
+        isf[i-lo] = 0;
+      p += 1 + (p > 2);
+    }
+  }
+  if (sqrthi >= 7) { /* Sieve multiples of higher prime squares */
+    unsigned char* segment;
+    UV seg_base, seg_low, seg_high;
+    void* ctx = start_segment_primes(7, sqrthi, &segment);
+    while (next_segment_primes(ctx, &seg_base, &seg_low, &seg_high)) {
+      START_DO_FOR_EACH_SIEVE_PRIME( segment, seg_base, seg_low, seg_high )
+        for (p2=p*p, i = P_GT_LO(p2, p2, lo); i >= lo && i <= hi; i += p2)
+          isf[i-lo] = 0;
+      END_DO_FOR_EACH_SIEVE_PRIME
+    }
+    end_segment_primes(ctx);
+  }
+  return isf;
+}
+
+
 #if BITS_PER_WORD == 32
 static const uint32_t _maxpowersumn[32] = {0,92681,2343,361,116,53,30,20,14,11,8,7,6,5,4,4,3,3,3,3,3,2,2,2,2,2,2,2,2,2,2,2};
 #else

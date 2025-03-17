@@ -99,21 +99,6 @@ int is_powerful(UV n, UV k) {
 }
 
 
-static unsigned char* _squarefree_range(UV lo, UV hi) {
-  unsigned char* isf;
-  UV i, i2, j, range = hi-lo+1, sqrthi = isqrt(hi);
-
-  if (hi < lo) return 0;
-
-  New(0, isf, range, unsigned char);
-  memset(isf, 1, range);
-  if (lo == 0) isf[0] = 0;
-  for (i = 2; i <= sqrthi; i++)
-    for (i2 = i*i, j = P_GT_LO(i2, i2, lo); j <= hi; j += i2)
-      isf[j] = 0;
-  return isf;
-}
-
 static UV _pcr(UV n, UV k, unsigned char* isf, UV m, UV r) {
   UV i, sum = 0, lim = rootint(n/m, r);
 
@@ -139,7 +124,7 @@ UV powerful_count(UV n, UV k) {
   if (k >= BITS_PER_WORD) return 1;
 
   lim = rootint(n, k+1);
-  isf = _squarefree_range(0, lim);
+  isf = range_issquarefree(0, lim);  /* in util.c */
 
   if (k == 2) {
     for (i = 1; i <= lim; i++)
@@ -286,7 +271,7 @@ UV sumpowerful(UV n, UV k)
   if (k == 1)  return (n & 1)  ?  n*((n+1)>>1)  :  (n>>1)*(n+1);
 
   lim = rootint(n, k+1);
-  isf = _squarefree_range(0, lim);
+  isf = range_issquarefree(0, lim);
   sum = _sumpowerful(1, 2*k-1, n, k, isf);
   Safefree(isf);
   return sum;
