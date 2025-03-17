@@ -1428,7 +1428,7 @@ int factor_range_next(factor_range_context_t *ctx) {
     if (ctx->_coffset >= _fr_chunk) {
       UV clo = n;
       UV chi = n + _fr_chunk - 1;
-      if (chi > ctx->hi) chi = ctx->hi;
+      if (chi > ctx->hi || chi < clo) chi = ctx->hi;
       _vec_factor(clo, chi, ctx->_nfactors, ctx->_farray, ctx->_noffset, ctx->is_square_free);
       ctx->_coffset = 0;
     }
