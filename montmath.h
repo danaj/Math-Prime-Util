@@ -38,7 +38,7 @@ static INLINE uint64_t mont_inverse(const uint64_t n) {
 
 /* MULREDC asm from Ben Buhrow */
 static INLINE uint64_t _mulredc63(uint64_t a, uint64_t b, uint64_t n, uint64_t npi) {
-    asm("mulq %2 \n\t"
+    __asm__ ("mulq %2 \n\t"
         "movq %%rax, %%r10 \n\t"
         "movq %%rdx, %%r11 \n\t"
         "mulq %3 \n\t"
@@ -55,7 +55,7 @@ static INLINE uint64_t _mulredc63(uint64_t a, uint64_t b, uint64_t n, uint64_t n
   return a;
 }
 static INLINE uint64_t _mulredc64(uint64_t a, uint64_t b, uint64_t n, uint64_t npi) {
-    asm("mulq %1 \n\t"
+    __asm__ ("mulq %1 \n\t"
         "movq %%rax, %%r10 \n\t"
         "movq %%rdx, %%r11 \n\t"
         "movq $0, %%r12 \n\t"

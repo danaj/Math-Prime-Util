@@ -23,7 +23,7 @@
   /* Beware: if (a*b)/c > 2^64, there will be an FP exception */
   static INLINE UV _mulmod(UV a, UV b, UV n) {
     UV d, dummy;                    /* d will get a*b mod c */
-    asm ("mulq %3\n\t"              /* mul a*b -> rdx:rax */
+    __asm__ ("mulq %3\n\t"              /* mul a*b -> rdx:rax */
          "divq %4\n\t"              /* (a*b)/c -> quot in rax remainder in rdx */
          :"=a"(dummy), "=&d"(d)     /* output */
          :"a"(a), "r"(b), "r"(n)    /* input */
@@ -43,7 +43,7 @@
   static INLINE UV _addmod(UV a, UV b, UV n) {
     UV t = a-n;
     a += b;
-    asm ("add %2, %1\n\t"    /* t := t + b */
+    __asm__ ("add %2, %1\n\t"    /* t := t + b */
          "cmovc %1, %0\n\t"  /* if (carry) a := t */
          :"+r" (a), "+&r" (t)
          :"r" (b)
