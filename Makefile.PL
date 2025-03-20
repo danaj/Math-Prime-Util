@@ -55,6 +55,7 @@ WriteMakefile1(
                     'prime_sums.o '   .
                     'prime_powers.o ' .
                     'perfect_powers.o ' .
+                    'congruent_numbers.o ' .
                     'powerfree.o '    .
                     'powerful.o '    .
                     'lucky_numbers.o '.

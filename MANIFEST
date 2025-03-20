@@ -32,6 +32,8 @@ almost_primes.h
 almost_primes.c
 cache.h
 cache.c
+congruent_numbers.h
+congruent_numbers.c
 constants.h
 ds_bitmask126.h
 ds_pagelist32.h

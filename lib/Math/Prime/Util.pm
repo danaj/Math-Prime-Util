@@ -4047,7 +4047,11 @@ Given a non-negative integer C<n>, returns 1 if C<n> is the area of a
 rational right triangle, and 0 otherwise.
 
 This function answers the B<congruent number problem> using Tunnell's theorem
-which relies on the Birch Swinnerton-Dyer conjecture.
+which relies on the Birch Swinnerton-Dyer conjecture.  It uses an extensive
+filter for known non-congruent families, including the works of
+Bastien (1915), Lagrange (1974), Monsky (1990), Serf (1991),
+Iskra (1996), Feng (1996), Reinholz et al. (2013),
+Cheng and Guo (2018 and 2019), Das and Saikia (2020), and Evink (2021).
 
 =head2 cornacchia
 
@@ -7053,6 +7057,24 @@ result (I highly recommended running a primality test on the output).
 Additionally important for servers, L<Crypt::Primes/maurer> uses excessive
 system entropy and can grind to a halt if C</dev/random> is exhausted
 (it can take B<days> to return).
+
+=head2 CONGRUENT NUMBERS
+
+The L</is_congruent_number> function, combined with our L</forsquarefreeint>
+operator to loop over square free integers in a range, is quite fast
+compared to most public implementations.
+For computing many values, it is expected that fast theta series
+computations, such as demonstrated in
+Hart et al. (2009) (L<https://wrap.warwick.ac.uk/id/eprint/41654/>),
+are significantly faster, albeit requiring more memory and disk space.
+
+All congruent numbers less than 300,000 can be identified in under 2 seconds.
+
+Giovanni Resta's list of 213318 squarefree and C<mod 8 <= 4>
+congruent numbers less than C<10^7> can be generated in 26 minutes on
+a single core of an M1 laptop.
+
+
 
 =head2 SETS
 

@@ -44,6 +44,7 @@
 #include "omega_primes.h"
 #include "prime_counts.h"
 #include "prime_sums.h"
+#include "congruent_numbers.h"
 #include "powerfree.h"
 #include "powerful.h"
 #include "lucky_numbers.h"
@@ -4757,7 +4758,7 @@ void is_sumfree_set(IN SV* sva)
   PROTOTYPE: $
   PREINIT:
     int itype, is_sumfree;
-    unsigned long len, i, j, lo, hi;
+    unsigned long len, i, j;
     UV *data;
   PPCODE:
     itype = arrayref_to_int_array(aTHX_ &len, &data,1,sva,"is_sumfree_set");
