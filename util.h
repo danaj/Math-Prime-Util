@@ -230,12 +230,20 @@ static UV lcm_ui(UV x, UV y) {
 /* See:  http://mersenneforum.org/showpost.php?p=110896 */
 static int is_perfect_square(UV n)
 {
-  /* Step 1, reduce to 18% of inputs */
-  uint32_t m = n & 127;
-  if ((m*0x8bc40d7d) & (m*0xa1e2f5d1) & 0x14020a)  return 0;
-  /* Step 2, reduce to 7% of inputs (mod 99 reduces to 4% but slower) */
-  m = n %240; if ((m*0xfa445556) & (m*0x8021feb1) & 0x614aaa0f) return 0;
-  /* m = n % 99; if ((m*0x5411171d) & (m*0xe41dd1c7) & 0x80028a80) return 0; */
+  uint32_t m;
+#if BITS_PER_WORD == 64
+  /* Step 1, reject 81.3% of non-squares */
+  m = n &  63; if ((UVCONST(1) << m) & UVCONST(0xfdfdfdedfdfcfdec)) return 0;
+  /* Step 2, reject 95.0% of non-squares (both filters) */
+  m = n %  45; if ((UVCONST(1) << m) & UVCONST(0xfffffeeb7df6f9ec)) return 0;
+  /* Adding 77 rejects 98.5% of non-squares (all filters) */
+  /*m = n %  77; if ((m*0x00498ba1) & (m*0xd124ba4d) & 0xe1c05000) return 0;*/
+#else
+  /* Step 1, reject 78.1% of non-squares */
+  m = n &  31; if ((1U << m) & 0xfdfcfdec) return 0;
+  /* Step 2, reject 95.0% of non-squares (both filters) */
+  m = n % 105; if ((m*0xd24554cd) & (m*0x0929579a) & 0x38020141) return 0;
+#endif
   /* Step 3, do the square root instead of any more rejections */
   m = isqrt(n);
   return (UV)m*(UV)m == n;
