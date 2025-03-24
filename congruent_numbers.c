@@ -362,8 +362,7 @@ int is_congruent_number(UV n) {
         n8z = n - 8*z*z;
         for (y = 0, limy = isqrt(n8z/2);  y <= limy;  y++) {
           x = n8z - 2*y*y;   /* n odd => n8z odd => x odd */
-          if (!(x&1)) croak("even x\n");
-          if ((x&1) && is_perfect_square(x))
+          if (is_perfect_square(x))
             sols[z&1] += 1 << (1+(y>0)+(z>0));
         }
       }
