@@ -6450,25 +6450,28 @@ sub is_congruent_number {
   }
 
   # General test
-  # TODO: big n, careful with 8*z*z
   my @sols = (0,0);
   if (Mis_odd($n)) {
-    for (my $z = 0; 8*$z*$z <= $n; $z++) {
+    my $limz = Msqrtint($n >> 3);
+    foreach my $z (0 .. $limz) {
+      my $zidx = $z % 2;
       my $n8z = $n - 8*$z*$z;
-      my $mx = Msqrtint($n8z >> 1);
-      foreach my $x (0 .. $mx) {
-        my $y = $n8z - 2*$x*$x;
-        $sols[$z % 2] += 1 << (($x>0) + ($y>0) + ($z>0))
-          if $y == 0 || _is_perfect_square($y);
+      my $limy = Msqrtint($n8z >> 1);
+      foreach my $y (0 .. $limy) {
+        my $x = $n8z - 2*$y*$y;
+        $sols[$zidx] += 1 << (1 + ($y>0) + ($z>0))
+          if _is_perfect_square($x);
       }
     }
   } else {
-    for (my $z = 0; 8*$z*$z <= $ndiv2; $z++) {
-      my $n8z = $ndiv2 - 8*$z*$z;
-      my $mx = Msqrtint($n8z);
-      foreach my $x (0 .. $mx) {
+    my $limz = Msqrtint($ndiv2 >> 3);
+    foreach my $z (0 .. $limz) {
+      my $zidx = $z % 2;
+      my $n8z = $ndiv2 - 8*$z*$z;   # ndiv2 odd => n8z is odd
+      my $limx = Msqrtint($n8z);
+      for (my $x = 1; $x <= $limx; $x += 2) {
         my $y = $n8z - $x*$x;
-        $sols[$z % 2] += 1 << (($x>0) + ($y>0) + ($z>0))
+        $sols[$zidx] += 1 << (1 + ($y>0) + ($z>0))
           if $y == 0 || _is_perfect_square($y);
       }
     }
@@ -7362,8 +7365,7 @@ sub _is_perfect_square {
       return 1 if $sq == $n;
     }
   } else {
-    my $mc = $n & 31;
-    if ($mc==0||$mc==1||$mc==4||$mc==9||$mc==16||$mc==17||$mc==25) {
+    if (((1 << ($n & 31)) & 0xfdfcfdec) == 0) {
       my $sq = int(sqrt($n));
       return 1 if ($sq*$sq) == $n;
     }

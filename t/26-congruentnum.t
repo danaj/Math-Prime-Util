@@ -4,7 +4,7 @@ use warnings;
 
 use Test::More;
 use Math::Prime::Util qw/is_congruent_number/;
-#my $usexs = Math::Prime::Util::prime_get_config->{'xs'};
+my $usexs = Math::Prime::Util::prime_get_config->{'xs'};
 #my $usegmp = Math::Prime::Util::prime_get_config->{'gmp'};
 my $extra = defined $ENV{EXTENDED_TESTING} && $ENV{EXTENDED_TESTING};
 
@@ -22,7 +22,8 @@ is_deeply([grep { is_congruent_number($_) } 1..200], \@cn200, "congruent numbers
 
 is_deeply([grep { is_congruent_number(1000000+$_) } 1..10], \@cn1e6, "congruent numbers 10^6 + (1..10)");
 
-{
+SKIP: {
+  skip "PP doesn't have all the NC families",6 unless $usexs;
   is_deeply([map { is_congruent_number($_) } (1419,7611,840873)],
             [1,1,0],
             "Selected values");

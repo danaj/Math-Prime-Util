@@ -353,7 +353,8 @@ int is_congruent_number(UV n) {
     }
   }
 
-  /* Assume the BSD conjecture.  Tunnell's method. */
+  /* Tunnell's method, counting integer solutions to ternary quadratics. */
+  /* Assumes the weak BSD conjecture. */
   {
     UV x, y, z, limz, limy, limx, n8z, sols[2] = {0,0};
 
