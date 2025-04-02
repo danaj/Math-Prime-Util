@@ -32,7 +32,7 @@ our @EXPORT_OK =
       is_square_free is_powerfree
       is_pillai is_polygonal is_congruent_number is_perfect_number
       is_semiprime is_almost_prime is_omega_prime
-      is_primitive_root is_carmichael is_quasi_carmichael
+      is_primitive_root is_carmichael is_quasi_carmichael is_cyclic
       is_fundamental is_totient is_gaussian_prime is_sum_of_squares
       is_smooth is_rough is_powerful is_practical is_lucky
       sqrtint rootint logint lshiftint rshiftint rashiftint absint negint
@@ -3934,6 +3934,15 @@ C<t_INT> arguments.
   say "$n has no repeating factors" if is_square_free($n);
 
 Given integer C<n>, returns 1 if C<|n|> has no repeated factor.
+
+=head2 is_cyclic
+
+Given integer C<n>, returns 1 if C<n> is positive and cyclic in the number
+theory sense, and returns 0 otherwise.
+A cyclic number C<n> has only only one group of order C<n>.
+C<n> and C<φ(n)> are relatively prime.
+
+This is the L<OEIS series A003277|http://oeis.org/A003277>.
 
 =head2 is_carmichael
 

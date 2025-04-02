@@ -2935,6 +2935,19 @@ sub carmichael_lambda {
   $lcm;
 }
 
+sub is_cyclic {
+  my($n) = @_;
+  validate_integer($n);
+
+  return 0+($n > 0) if $n < 4;
+  return 0 if ($n % 2) == 0;
+  return 0 if (!($n % 9) || !($n%25) || !($n%49) || !($n%121));
+  return 0 if (!($n %21) || !($n%39) || !($n%55) || !($n%57) || !($n%93));
+
+  return 1 if Mgcd($n,Mtotient($n)) == 1;
+  0;
+}
+
 sub is_carmichael {
   my($n) = @_;
   validate_integer_nonneg($n);

@@ -95,6 +95,7 @@ extern int is_perfect_number(UV n);
 extern int is_fundamental(UV n, int neg);
 extern int is_semiprime(UV n);
 extern int is_almost_prime(UV k, UV n);
+extern int is_cyclic(UV n);
 extern int is_carmichael(UV n);
 extern UV  is_quasi_carmichael(UV n);  /* Returns number of bases */
 extern UV  pillai_v(UV n);             /* v: v! % n == n-1 && n % v != 1 */

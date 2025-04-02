@@ -67,6 +67,7 @@ Revision history for Perl module Math::Prime::Util
     - is_divisible(n,d)               is n exactly divisible by d
     - is_congruent(n,c,d)             is n congruent to c mod d
     - is_qr(a,n)                      is a a quadratic non-residue mod n
+    - is_cyclic(n)                    does n have exactly one group of order n
     - forsquarefreeint {} lo,hi       loop over square-free integers
     - almost_primes(k,[start,]end)    array ref of k-almost-primes
     - almost_prime_count(k,n)         count of integers with exactly k factors

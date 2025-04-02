@@ -270,6 +270,7 @@ Tags:
   is_prime_power(n,\$p)               as above but also set $p to p
   is_square_free(n)                   return true if no repeated factors
   is_powerfree(n[,k])                 is n free of any k-th powers
+  is_cyclic(n)                        does n have only one group of order n
   is_carmichael(n)                    is n a Carmichael number
   is_quasi_carmichael(n)              is n a quasi-Carmichael number
   is_primitive_root(r,n)              is r a primitive root mod n

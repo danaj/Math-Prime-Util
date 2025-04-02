@@ -219,6 +219,7 @@ t/26-digits.t
 t/26-frobeniusnum.t
 t/26-isalmostprime.t
 t/26-iscarmichael.t
+t/26-iscyclic.t
 t/26-isdivisible.t
 t/26-isfundamental.t
 t/26-isgaussianprime.t

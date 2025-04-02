@@ -1128,6 +1128,33 @@ IV rising_factorial_s(IV n, UV m)
   return (n < 0 && (m&1)) ? -(IV)r : (IV)r;
 }
 
+int is_cyclic(UV n) {
+  UV phi, facs[MPU_MAX_FACTORS+1];
+  int i, nfacs;
+
+  if (n < 4) return (n != 0);
+
+  /* Fast filters */
+  if (   !(n & 1)                                              /* 2 only even */
+      || !(n% 9) || !(n%25) || !(n%49)                         /* not sq free */
+      || !(n%21) || !(n%39) || !(n%55) || !(n%57) || !(n%93)   /* q = 1 mod p */
+      || !(n%121) || !(n%169)                                  /* not sq free */
+      || !(n%111) || !(n%129) || !(n%155) || !(n%183))         /* q = 1 mod p */
+    return 0;
+
+  /* return gcd_ui(n, totient(n)) == 1; */
+
+  nfacs = factor(n, facs);
+  if (nfacs == 1)
+    return 1;                        /* prime => cyclic */
+  for (i = 1; i < nfacs; i++)
+    if (facs[i] == facs[i-1])
+      return 0;                      /* repeated factor => not cyclic */
+  for (phi = 1, i = 0; i < nfacs; i++)
+    phi *= facs[i]-1;
+  return gcd_ui(n, phi) == 1;        /* cyclic <=> coprime with totient */
+}
+
 int is_carmichael(UV n) {
   UV fac[MPU_MAX_FACTORS+1];
   UV exp[MPU_MAX_FACTORS+1];

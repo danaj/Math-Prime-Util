@@ -2186,7 +2186,8 @@ void is_square(IN SV* svn)
     is_lucky = 5
     is_practical = 6
     is_perfect_number = 7
-    is_totient = 8
+    is_cyclic = 8
+    is_totient = 9
   PREINIT:
     int status, ret;
     UV n;
@@ -2213,7 +2214,8 @@ void is_square(IN SV* svn)
         case 5: ret = is_lucky(n); break;
         case 6: ret = is_practical(n); break;
         case 7: ret = is_perfect_number(n); break;
-        case 8:
+        case 8: ret = is_cyclic(n); break;
+        case 9:
         default:ret = is_totient(n); break;
       }
     }
@@ -2227,7 +2229,8 @@ void is_square(IN SV* svn)
       case  5: _vcallsub_with_gmp(0.48,"is_lucky"); break;
       case  6: _vcallsub_with_gmp(0.53,"is_practical"); break;
       case  7: _vcallsub_with_gmp(0.53,"is_perfect_number"); break;
-      case  8:
+      case  8: _vcallsub_with_gmp(0.00,"is_cyclic"); break;
+      case  9:
       default: _vcallsub_with_gmp(0.47,"is_totient"); break;
     }
     return; /* skip implicit PUTBACK */
