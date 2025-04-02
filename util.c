@@ -1134,13 +1134,15 @@ int is_cyclic(UV n) {
 
   if (n < 4) return (n != 0);
 
-  /* Fast filters */
+  /* Fast filters for necessary conditions */
   if (   !(n & 1)                                              /* 2 only even */
       || !(n% 9) || !(n%25) || !(n%49)                         /* not sq free */
       || !(n%21) || !(n%39) || !(n%55) || !(n%57) || !(n%93)   /* q = 1 mod p */
       || !(n%121) || !(n%169)                                  /* not sq free */
       || !(n%111) || !(n%129) || !(n%155) || !(n%183))         /* q = 1 mod p */
     return 0;
+
+  if (n <= 200) return 1;    /* Filters above were sufficient for tiny inputs */
 
   /* return gcd_ui(n, totient(n)) == 1; */
 
