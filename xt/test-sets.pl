@@ -186,38 +186,52 @@ sub inter3 {
   return @set;
 }
 
+__END__
 
 # Insert
-#
-# tmmpu 'csrand(5); for (1..500000) { push @s,urandomm(2000000); } @s=toset(\@s); say scalar(@s)'
-# 442393   0.098s
-#
-# tmmpu 'csrand(5); $s=[]; $t+=setinsert($s,[map{urandomm(2000000)}1..500000]); say $t;'
-# 442393   0.110s
-#
-# tmmpu 'csrand(5); $s=[]; use Math::Prime::Util::PP; $t+=Math::Prime::Util::PP::setinsert($s,[map{urandomm(2000000)}1..500000]); say $t;'
-# 442393   0.149s
-#
-# tmmpu 'use Set::Tiny; csrand(5); $s=Set::Tiny->new(); for (1..500000) { $s->insert(urandomm(2000000)) } say $s->size()'
-# 442393   0.260s
-#
-# tmmpu 'csrand(5); %h=(); for (1..500000) { $h{urandomm(2000000)}=1;} @s=vecsort(keys %h); say scalar(@s);'
-# 442393   0.273s
-#
-# tmmpu 'csrand(5); $s=[]; for (1..500000) { $t+=setinsert($s,urandomm(2000000)); } say $t;'
-# 442393   3.980s
-#
-# tmmpu 'use Math::Prime::Util::PP; csrand(5); $s=[]; for (1..500000) { $t+=Math::Prime::Util::PP::setinsert($s,urandomm(2000000)); } say $t;'
-# 442393   14.291s
-#
-# tmmpu 'use List::BinarySearch::XS qw/:all/; @s=(); csrand(5); for (1..500000) { $v=urandomm(2000000); $index=binsearch_pos {$a<=>$b} $v,@s; splice @s,$index,0,$v if $s[$index] != $v; } say scalar(@s)'
-# 442393   17.570s
-#
-# tmmpu 'use Set::Intspan::Fast::XS; csrand(5); $s=Set::IntSpan::Fast::XS->new(); for (1..500000) { $s->add(urandomm(2000000)) } say $s->cardinality()'
-# 442393   22.637s
-#
-# tmmpu 'use Tie::Array::Sorted; tie @s,"Tie::Array::Sorted",sub{ $_[0]<=>$_[1] }; csrand(5); for (1..500000) { push @s,urandomm(2000000); } @s=toset(\@s); say scalar(@s)'
-# 442393   26.004s
-#
-# tmmpu 'use Set::SortedArray; my $s=Set::SortedArray->new(); csrand(5); for (1..50000) { $s=$s+[urandomm(2000000)]; } say $s->size();'
-# 49407   over 3 minutes, maybe there is a better way to insert
+
+tmmpu 'csrand(5); for (1..500000) { push @s,urandomm(2000000); } @s=toset(\@s); say scalar(@s)'
+442393   0.098s
+
+tmmpu 'csrand(5); $s=[]; $t+=setinsert($s,[map{urandomm(2000000)}1..500000]); say $t;'
+442393   0.110s
+
+tmmpu 'csrand(5); $s=[]; use Math::Prime::Util::PP; $t+=Math::Prime::Util::PP::setinsert($s,[map{urandomm(2000000)}1..500000]); say $t;'
+442393   0.149s
+
+tmmpu 'use Set::Tiny; csrand(5); $s=Set::Tiny->new(); for (1..500000) { $s->insert(urandomm(2000000)) } say $s->size()'
+442393   0.260s
+
+tmmpu 'csrand(5); %h=(); for (1..500000) { $h{urandomm(2000000)}=1;} @s=vecsort(keys %h); say scalar(@s);'
+442393   0.273s
+
+tmmpu 'csrand(5); $s=[]; for (1..500000) { $t+=setinsert($s,urandomm(2000000)); } say $t;'
+442393   3.980s
+
+tmmpu 'use Math::Prime::Util::PP; csrand(5); $s=[]; for (1..500000) { $t+=Math::Prime::Util::PP::setinsert($s,urandomm(2000000)); } say $t;'
+442393   14.291s
+
+tmmpu 'use List::BinarySearch::XS qw/:all/; @s=(); csrand(5); for (1..500000) { $v=urandomm(2000000); $index=binsearch_pos {$a<=>$b} $v,@s; splice @s,$index,0,$v if $s[$index] != $v; } say scalar(@s)'
+442393   17.570s
+
+tmmpu 'use Set::Intspan::Fast::XS; csrand(5); $s=Set::IntSpan::Fast::XS->new(); for (1..500000) { $s->add(urandomm(2000000)) } say $s->cardinality()'
+442393   22.637s
+
+tmmpu 'use Tie::Array::Sorted; tie @s,"Tie::Array::Sorted",sub{ $_[0]<=>$_[1] }; csrand(5); for (1..500000) { push @s,urandomm(2000000); } @s=toset(\@s); say scalar(@s)'
+442393   26.004s
+
+tmmpu 'use Set::SortedArray; my $s=Set::SortedArray->new(); csrand(5); for (1..50000) { $s=$s+[urandomm(2000000)]; } say $s->size();'
+49407   over 3 minutes, maybe there is a better way to insert
+
+
+
+# Another insert test, 20 inserts, final count is 786538
+
+tmmpu 'csrand(5); $s=[1999990]; for (1..20) { setinsert($s,[map {urandomm(2000000)}1..50000]); say scalar(@$s); }'
+0.272s
+
+tmmpu 'use Set::Tiny; csrand(5); $s=Set::Tiny->new(1999990); for (1..20) { $s->insert(map {urandomm(2000000)}1..50000); say $s->size(); }'
+0.506s
+
+tmmpu 'use Set::Scalar; csrand(5); $s=Set::Scalar->new(1999990); for (1..20) { $s->insert(map {urandomm(2000000)}1..50000); say $s->size(); }'
+1.512s

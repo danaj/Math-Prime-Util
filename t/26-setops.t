@@ -106,6 +106,8 @@ my @inserts = (
   [ [-10,0,10], [-11,-9,-1,1,9,11], "list on all sides" ],
   [ [-10,0,10], [-100,-90], "list on front" ],
   [ [-10,0,10], [90,100], "list on back" ],
+  [ [15,17,19,22,24], [18,20,21], "inserts into middle" ],
+  [ [15,17,19,22,24], [14,20,25], "inserts into front, middle, back" ],
   [ [negint(powint(2,63)),0], [10,100,1000], "negative set, add small pos" ],
   [ [negint(powint(2,63)),0], [10,100,addint(powint(2,63),1000)], "negative set, add big pos" ],
 );

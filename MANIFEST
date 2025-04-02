@@ -304,6 +304,7 @@ xt/primes-edgecases.pl
 xt/rootmod.pl
 xt/rwh_primecount.py
 xt/rwh_primecount_numpy.py
+xt/setop.pl
 xt/test-bpsw.pl
 xt/test-factor-mpxs.pl
 xt/test-nthapprox.pl
