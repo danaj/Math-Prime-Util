@@ -6,7 +6,7 @@
 #include "ds_iset.h"
 #include "util.h"
 
-#define FILL_RATIO 0.50
+#define FILL_RATIO 0.55
 
 #if BITS_PER_WORD == 32
 /* 16 0x45d9f3b  16 0x45d9f3b  16 */
@@ -21,10 +21,13 @@ static UV _hash(UV x) {
 /* 30 0xbf58476d1ce4e5b9 27 0x94d049bb133111eb 31     SplitMix64/Meuller */
 /* 32 0xd6e8feb86659fd93 32 0xd6e8feb86659fd93 32     degski */
 /* 33 0xff51afd7ed558ccd 33 0xc4ceb9fe1a85ec53 33     Murmur64 */
+/* 32 0xe9846af9b1a615d  32 0xe9846af9b1a615d  28     xmxmx */
+/* 32 0xbea225f9eb34556d 29 0xbea225f9eb34556d 32 0xbea225f9eb34556d 29   mx3 */
+
 static UV _hash(UV x) {
-    x = (x ^ (x >> 30)) * UVCONST(0xbf58476d1ce4e5b9);
-    x = (x ^ (x >> 27)) * UVCONST(0x94d049bb133111eb);
-    x = x ^ (x >> 31);
+    x = (x ^ (x >> 32)) * UVCONST(0xe9846af9b1a615d);
+    x = (x ^ (x >> 32)) * UVCONST(0xe9846af9b1a615d);
+    x =  x ^ (x >> 28);
     return x;
 }
 #endif
