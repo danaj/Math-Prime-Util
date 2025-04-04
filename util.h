@@ -103,6 +103,7 @@ extern UV  qnr(UV n);
 extern int is_qr(UV a, UV n);          /* kronecker that works for composites */
 extern int is_practical(UV n);
 extern int is_delicate_prime(UV n, uint32_t b);
+extern int happy_height(UV n, uint32_t base, uint32_t exponent);
 
 extern int is_smooth(UV n, UV k);
 extern int is_rough(UV n, UV k);

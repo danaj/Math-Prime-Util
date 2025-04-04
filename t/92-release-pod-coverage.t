@@ -61,7 +61,7 @@ sub mpu_public_regex {
       is_semiprime is_almost_prime is_omega_prime
       is_primitive_root is_carmichael is_quasi_carmichael is_cyclic
       is_fundamental is_totient is_gaussian_prime is_sum_of_squares
-      is_smooth is_rough is_powerful is_practical is_lucky
+      is_smooth is_rough is_powerful is_practical is_lucky is_happy
       sqrtint rootint logint lshiftint rshiftint rashiftint absint negint
       signint cmpint addint subint add1int sub1int mulint powint
       divint modint cdivint divrem fdivrem cdivrem tdivrem

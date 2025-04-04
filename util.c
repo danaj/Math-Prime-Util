@@ -2177,6 +2177,52 @@ UV pisano_period(UV n)
   return 0;
 }
 
+/******************************************************************************/
+/*                                   HAPPY                                    */
+/******************************************************************************/
+
+static UV sum_of_digits(UV n, uint32_t base, uint32_t k) {
+  UV t, r, sum = 0;
+  while (n) {
+    t = n / base;
+    r = n - base * t;
+    switch (k) {
+      case 0:  sum += 1;         break;
+      case 1:  sum += r;         break;
+      case 2:  sum += r*r;       break;
+      default: sum += ipow(r,k); break;
+    }
+    n = t;
+  }
+  return sum;
+}
+static UV sum_of_squared_digits(UV n) {
+  UV t, r, sum = 0;
+  while (n) {
+    t = n / 10;
+    r = n - 10 * t;
+    sum += r*r;
+    n = t;
+  }
+  return sum;
+}
+
+int happy_height(UV n, uint32_t base, uint32_t exponent) {
+  int h;
+
+  if (base == 10 && exponent == 2) {
+    for (h = 1;  n > 1 && n != 4;  h++)
+      n = sum_of_squared_digits(n);
+  } else {
+    UV ncheck = 0;
+    for (h = 1;  n > 1 && n != ncheck;  h++) {
+      if ((h & (h-1)) == 0) ncheck = n;
+      n = sum_of_digits(n, base, exponent);
+    }
+  }
+  return (n == 1) ? h : 0;
+}
+
 
 /******************************************************************************/
 /*                                    CRT                                     */

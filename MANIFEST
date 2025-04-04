@@ -224,6 +224,7 @@ t/26-iscyclic.t
 t/26-isdivisible.t
 t/26-isfundamental.t
 t/26-isgaussianprime.t
+t/26-ishappy.t
 t/26-isodd.t
 t/26-isomegaprime.t
 t/26-isperfectnumber.t

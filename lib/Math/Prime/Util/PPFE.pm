@@ -166,6 +166,7 @@ sub entropy_bytes {
 *is_congruent_number = \&Math::Prime::Util::PP::is_congruent_number;
 *is_perfect_number = \&Math::Prime::Util::PP::is_perfect_number;
 *is_delicate_prime = \&Math::Prime::Util::PP::is_delicate_prime;
+*is_happy = \&Math::Prime::Util::PP::is_happy;
 *powerful_count = \&Math::Prime::Util::PP::powerful_count;
 *nth_powerful = \&Math::Prime::Util::PP::nth_powerful;
 *sumpowerful = \&Math::Prime::Util::PP::sumpowerful;

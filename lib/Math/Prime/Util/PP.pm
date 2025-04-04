@@ -5312,6 +5312,57 @@ sub sumdigits {
   $sum;
 }
 
+sub is_happy {
+  my($n, $base, $k) = @_;
+  validate_integer_nonneg($n);
+
+  my $h = 1;
+
+  if (!defined $base && !defined $k) {   # default base 10 exponent 2
+    while ($n > 1 && $n != 4) {
+      my $sum = 0;
+      $sum += $_*$_ for (split(//,$n));
+      $n = $sum;
+      $h++;
+    }
+    return ($n == 1) ? $h : 0;
+  }
+
+  if (defined $base) {
+    validate_integer_nonneg($base);
+    croak "is_happy: invalid base $base" if $base < 2 || $base > 36;
+  } else {
+    $base = 10;
+  }
+  if (defined $k) {
+    validate_integer_nonneg($k);
+    croak "is_happy: invalid exponent $k" if $k > 10;
+  } else {
+    $k = 2;
+  }
+
+  my %seen;
+  while ($n > 1 && !exists $seen{$n}) {
+    $seen{$n} = undef;
+    if ($base == 10) {
+      my $sum = 0;
+      $sum += $_ ** $k for (split(//,$n));
+      $n = $sum;
+    } else {
+      my @d;
+      while ($n >= 1) {
+        my $rem = $n % $base;
+        push @d, ($k <= 6) ? int($rem ** $k) : Mpowint($rem,$k);
+        #push @d, Mpowint($rem,$k);
+        $n = ($n-$rem)/$base;    # Always an exact division
+      }
+      $n = Mvecsum(@d);
+    }
+    $h++;
+  }
+  return ($n == 1) ? $h : 0;
+}
+
 sub invmod {
   my($a,$n) = @_;
   $n = -$n if $n < 0;

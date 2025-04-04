@@ -34,7 +34,7 @@ our @EXPORT_OK =
       is_semiprime is_almost_prime is_omega_prime
       is_primitive_root is_carmichael is_quasi_carmichael is_cyclic
       is_fundamental is_totient is_gaussian_prime is_sum_of_squares
-      is_smooth is_rough is_powerful is_practical is_lucky
+      is_smooth is_rough is_powerful is_practical is_lucky is_happy
       sqrtint rootint logint lshiftint rshiftint rashiftint absint negint
       signint cmpint addint subint add1int sub1int mulint powint
       divint modint cdivint divrem fdivrem cdivrem tdivrem
@@ -4506,6 +4506,28 @@ The actual value will always be greater than or equal to the result.
 Given a single non-negative integer C<n>, quickly returns a
 upper bound of the C<n>-th lucky number.
 The actual value will always be less than or equal to the result.
+
+
+=head2 is_happy
+
+Given a single non-negative integer C<n>, returns the number of iterations
+required for the map of sum of squared base-10 digits to converge to C<1>,
+or C<0> if it does not converge to the value C<1>.
+
+This returns the height using the OEIS A090425 definition of height, which is
+zero for non-happy numbers, 1 for C<n=1>, 2 for numbers that produce 1 after
+a single iteration, etc.
+This is one more than the definitions used in many papers
+(e.g. Cai and Zhou 2008) where C<n=1> is considered to have height 0.
+
+An optional base and exponent may be given (default base 10 exponent 2).
+The base must be between 2 and 36, and the exponent between 0 and 10.
+The input C<n> is read as a decimal number, so giving input such as "1001"
+will be treated as the decimal C<1001> regardless of base.
+
+With base 10 and exponent 2,
+non-zero values produce L<OEIS series A007770|http://oeis.org/A007770>.
+The values themselves produce L<OEIS series A090425|http://oeis.org/A090425>.
 
 
 

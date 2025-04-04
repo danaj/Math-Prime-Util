@@ -50,7 +50,7 @@
 #include "lucky_numbers.h"
 #include "rootmod.h"
 #include "real.h"
-#include "ds_iset.h"
+#include "ds_iset.h"  /* Used for sumset, setbinop, is_sidon_set, vecuniq */
 
 #ifdef FACTORING_HARNESSES
 #include <sys/time.h>
@@ -4944,6 +4944,20 @@ void shuffle(...)
       { SV* t = ST(i); ST(i) = ST(i+j); ST(i+j) = t; }
     }
     XSRETURN(items);
+
+void is_happy(SV* svn, UV base = 10, UV k = 2)
+  PREINIT:
+    UV n;
+    int status;
+  PPCODE:
+    if (base < 2 || base > 36) croak("sumdigits: invalid base %"UVuf, base);
+    if (k > 10) croak("is_happy: invalid exponent %"UVuf, k);
+    status = _validate_and_set(&n, aTHX_ svn, IFLAG_POS);
+    if (status != 0)
+      RETURN_NPARITY(happy_height(n, base, k));
+    /* TODO: string */
+    _vcallsub_with_pp("is_happy");
+    return;
 
 void
 sumdigits(SV* svn, UV ibase = 255)
