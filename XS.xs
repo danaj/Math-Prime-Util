@@ -4947,15 +4947,24 @@ void shuffle(...)
 
 void is_happy(SV* svn, UV base = 10, UV k = 2)
   PREINIT:
-    UV n;
-    int status;
+    UV n, sum;
+    int h, status;
   PPCODE:
     if (base < 2 || base > 36) croak("sumdigits: invalid base %"UVuf, base);
     if (k > 10) croak("is_happy: invalid exponent %"UVuf, k);
     status = _validate_and_set(&n, aTHX_ svn, IFLAG_POS);
+    if (status == 0 && base == 10) { /* String op to reduce into range. */
+      STRLEN i, len;
+      const char* s = SvPV(svn, len);
+      if (len <= UV_MAX/ipow(9,k)) {
+        for (sum = 0, i = 0; i < len; i++)
+          sum += ipow(s[i]-'0',k);
+        h = happy_height(sum, base, k);
+        RETURN_NPARITY( (h>0) ? h+1 : 0);
+      }
+    }
     if (status != 0)
       RETURN_NPARITY(happy_height(n, base, k));
-    /* TODO: string */
     _vcallsub_with_pp("is_happy");
     return;
 
