@@ -2211,12 +2211,14 @@ int happy_height(UV n, uint32_t base, uint32_t exponent) {
   int h;
 
   if (base == 10 && exponent == 2) {
-    for (h = 1;  n > 1 && n != 4;  h++)
+    static const char sh[101] = {0,1,0,0,0,0,0,6,0,0,2,0,0,3,0,0,0,0,0,5,0,0,0,4,0,0,0,0,4,0,0,3,4,0,0,0,0,0,0,0,0,0,0,0,5,0,0,0,0,5,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,3,0,6,0,0,0,0,0,0,0,0,4,0,0,4,0,0,0,3,0,0,0,0,5,0,0,5,0,0,4,0,0,2};
+    for (h = 0;  n > 100;  h++)
       n = sum_of_squared_digits(n);
+    return (sh[n] == 0) ? 0 : h+sh[n];
   } else {
     UV ncheck = 0;
     for (h = 1;  n > 1 && n != ncheck;  h++) {
-      if ((h & (h-1)) == 0) ncheck = n;
+      if ((h & (h-1)) == 0) ncheck = n;         /* Brent cycle finding */
       n = sum_of_digits(n, base, exponent);
     }
   }
