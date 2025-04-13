@@ -6518,26 +6518,28 @@ sub is_congruent_number {
   if (Mis_odd($n)) {
     my $limz = Msqrtint($n >> 3);
     foreach my $z (0 .. $limz) {
-      my $zidx = $z % 2;
+      my $zsols = 0;
       my $n8z = $n - 8*$z*$z;
       my $limy = Msqrtint($n8z >> 1);
       foreach my $y (0 .. $limy) {
         my $x = $n8z - 2*$y*$y;
-        $sols[$zidx] += 1 << (1 + ($y>0) + ($z>0))
+        $zsols += 1 << (1 + ($y>0) + ($z>0))
           if _is_perfect_square($x);
       }
+      $sols[$z % 2] += $zsols;
     }
   } else {
     my $limz = Msqrtint($ndiv2 >> 3);
     foreach my $z (0 .. $limz) {
-      my $zidx = $z % 2;
+      my $zsols = 0;
       my $n8z = $ndiv2 - 8*$z*$z;   # ndiv2 odd => n8z is odd
       my $limx = Msqrtint($n8z);
       for (my $x = 1; $x <= $limx; $x += 2) {
         my $y = $n8z - $x*$x;
-        $sols[$zidx] += 1 << (1 + ($y>0) + ($z>0))
+        $zsols += 1 << (1 + ($y>0) + ($z>0))
           if $y == 0 || _is_perfect_square($y);
       }
+      $sols[$z % 2] += $zsols;
     }
   }
   return ($sols[0] == $sols[1]) ? 1 : 0;
