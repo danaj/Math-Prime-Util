@@ -49,6 +49,7 @@
 #include "powerful.h"
 #include "lucky_numbers.h"
 #include "rootmod.h"
+#include "rational.h"
 #include "real.h"
 #include "ds_iset.h"  /* Used for sumset, setbinop, is_sidon_set, vecuniq */
 
@@ -2821,6 +2822,108 @@ void random_factored_integer(IN SV* svn)
       (void)_vcallsubn(aTHX_ G_ARRAY, VCALL_PP, "random_factored_integer",items,0);
       return;
     }
+
+
+
+void contfrac(IN SV* svnum, IN SV* svden)
+  PREINIT:
+    UV num, den;
+  PPCODE:
+    if (_validate_and_set(&num, aTHX_ svnum, IFLAG_POS) && _validate_and_set(&den, aTHX_ svden, IFLAG_POS | IFLAG_NONZERO)) {
+      UV *cf, rem;
+      int i, steps = contfrac(&cf, &rem, num, den);
+      EXTEND(SP, steps);
+      for (i = 0; i < steps; i++)
+        PUSHs(sv_2mortal(newSVuv( cf[i] )));
+      Safefree(cf);
+    } else {
+      CALLPPSUB("contfrac");
+      return;
+    }
+
+void next_calkin_wilf(IN SV* svnum, IN SV* svden)
+  ALIAS:
+    next_stern_brocot = 1
+  PREINIT:
+    UV num, den;
+    int status;
+  PPCODE:
+    if (_validate_and_set(&num, aTHX_ svnum, IFLAG_POS | IFLAG_NONZERO) && _validate_and_set(&den, aTHX_ svden, IFLAG_POS | IFLAG_NONZERO)) {
+      switch (ix) {
+        case 0:  status = next_calkin_wilf(&num, &den);  break;
+        case 1:  status = next_stern_brocot(&num, &den); break;
+        default: status = 0;  break;
+      }
+      if (status) {
+        XPUSHs(sv_2mortal(newSVuv( num )));
+        XPUSHs(sv_2mortal(newSVuv( den )));
+        XSRETURN(2);
+      }
+    }
+    switch (ix) {
+      case 0: CALLPPSUB("next_calkin_wilf");  break;
+      case 1: CALLPPSUB("next_stern_brocot"); break;
+      default: break;
+    }
+    return;
+
+void calkin_wilf_n(IN SV* svnum, IN SV* svden)
+  ALIAS:
+    stern_brocot_n = 1
+  PREINIT:
+    UV num, den, n;
+  PPCODE:
+    if (_validate_and_set(&num, aTHX_ svnum, IFLAG_POS | IFLAG_NONZERO) && _validate_and_set(&den, aTHX_ svden, IFLAG_POS | IFLAG_NONZERO)) {
+      switch (ix) {
+        case 0:  n = calkin_wilf_n(num, den);  break;
+        case 1:  n = stern_brocot_n(num, den); break;
+        default: n = 0;  break;
+      }
+      if (n)  XSRETURN_UV(n);
+    }
+    switch (ix) {
+      case 0:  _vcallsub_with_pp("calkin_wilf_n");  break;
+      case 1:  _vcallsub_with_pp("stern_brocot_n"); break;
+      default: break;
+    }
+    return;
+
+void nth_calkin_wilf(IN SV* svn)
+  ALIAS:
+    nth_stern_brocot = 1
+  PREINIT:
+    UV n, num, den;
+    int status;
+  PPCODE:
+    if (_validate_and_set(&n, aTHX_ svn, IFLAG_POS | IFLAG_NONZERO)) {
+      switch (ix) {
+        case 0:  status = nth_calkin_wilf(&num, &den, n);  break;
+        case 1:  status = nth_stern_brocot(&num, &den, n);  break;
+        default: status = 0;  break;
+      }
+      if (status) {
+        XPUSHs(sv_2mortal(newSVuv( num )));
+        XPUSHs(sv_2mortal(newSVuv( den )));
+        XSRETURN(2);
+      }
+    }
+    switch (ix) {
+      case 0: CALLPPSUB("nth_calkin_wilf");    break;
+      case 1: CALLPPSUB("nth_stern_brocot"); break;
+      default: break;
+    }
+    return;
+
+void nth_stern_diatomic(IN SV* svn)
+  PREINIT:
+    UV n;
+  PPCODE:
+    if (_validate_and_set(&n, aTHX_ svn, IFLAG_POS))
+      XSRETURN_UV(nth_stern_diatomic(n));
+    _vcallsub_with_pp("nth_stern_diatomic");
+    return;
+
+
 
 void Pi(IN UV digits = 0)
   PREINIT:

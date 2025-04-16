@@ -109,6 +109,11 @@ my @functions =  qw(
       stirling fubini znorder znprimroot znlog legendre_phi
       factorial factorialmod subfactorial binomial binomialmod
       falling_factorial rising_factorial
+      contfrac
+      next_calkin_wilf next_stern_brocot
+      calkin_wilf_n stern_brocot_n
+      nth_calkin_wilf nth_stern_brocot
+      nth_stern_diatomic
       ExponentialIntegral LogarithmicIntegral RiemannZeta RiemannR LambertW Pi
       irand irand64 drand urandomb urandomm csrand random_bytes entropy_bytes
 );

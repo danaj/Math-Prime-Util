@@ -428,6 +428,17 @@ Tags:
   squarefree_kernel(n)                integer radical of |n|
   powersum(n,k)                       sum of kth powers from 1 to n
 
+=head2 RATIONALS
+
+  contfrac(n,d)                       array of continued fraction for n/d
+  next_calkin_wilf(n,d)               next breadth-first CW rational
+  next_stern_brocot(n,d)              next breadth-first SB rational
+  calkin_wilf_n(n,d)                  index of breadth-first CW rational
+  stern_brocot_n(n,d)                 index of breadth-first SB rational
+  nth_calkin_wilf(n)                  CW rational at breadth-first index n
+  nth_stern_brocot(n)                 SB rational at breadth-first index n
+  nth_stern_diatomic(n)               Stern's Diatomic series; fusc(n)
+
 =head2 NON-INTEGER MATH
 
   ExponentialIntegral(x)              Ei(x)

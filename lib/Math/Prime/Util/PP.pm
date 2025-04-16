@@ -83,6 +83,7 @@ BEGIN {
 *Mcmpint = \&Math::Prime::Util::cmpint;
 *Mlshiftint = \&Math::Prime::Util::lshiftint;
 *Mrshiftint = \&Math::Prime::Util::rshiftint;
+*Mtdivrem = \&Math::Prime::Util::tdivrem;
 
 *Maddmod = \&Math::Prime::Util::addmod;
 *Msubmod = \&Math::Prime::Util::submod;
@@ -136,12 +137,15 @@ BEGIN {
 *Mvecfirst = \&Math::Prime::Util::vecfirst;
 *Mvecsort = \&Math::Prime::Util::vecsort;
 *Mvecsortr = \&Math::Prime::Util::vecsortr;
-*Mtodigits = \&Math::Prime::Util::todigits;
 *Mtoset = \&Math::Prime::Util::toset;
 *Msetinsert = \&Math::Prime::Util::setinsert;
 *Msetcontains = \&Math::Prime::Util::setcontains;
 *Msetunion = \&Math::Prime::Util::setunion;
 *Msetintersect = \&Math::Prime::Util::setintersect;
+
+*Mfromdigits = \&Math::Prime::Util::fromdigits;
+*Mtodigits = \&Math::Prime::Util::todigits;
+*Mtodigitstring = \&Math::Prime::Util::todigitstring;
 
 *Mprimes = \&Math::Prime::Util::primes;
 *Mfordivisors = \&Math::Prime::Util::fordivisors;
@@ -2712,7 +2716,7 @@ sub is_delicate_prime {
       for my $dnew (0 .. $b-1) {
         next if $dnew == $dold;
         $D->[$d] = $dnew;
-        return 0 if Mis_prime(Math::Prime::Util::fromdigits($D,$b));
+        return 0 if Mis_prime(Mfromdigits($D,$b));
       }
       $D->[$d] = $dold;
     }
@@ -4988,7 +4992,7 @@ sub lshiftint {
 sub rshiftint {
   my($n, $k) = @_;
   my $k2 = (!defined $k) ? 2 : ($k < MPU_MAXBITS) ? (1<<$k) : Mpowint(2,$k);
-  (Math::Prime::Util::tdivrem($n, $k2))[0];
+  (Mtdivrem($n, $k2))[0];
 }
 
 sub rashiftint {
@@ -7418,6 +7422,96 @@ sub fubini {
   return 1 if $n <= 1;
   Mvecsum(map{ Mmulint(Mfactorial($_),Mstirling($n,$_,2)) }1..$n);
 }
+
+
+# Rational maps
+
+sub _rational_cfrac {
+  my($num,$den,$non_reduce_ok) = @_;
+  my @CF;
+  while ($den > 0) {
+    my($quo,$rem) = Mtdivrem($num,$den);
+    ($num,$den) = ($den,$rem);
+    push @CF, $quo;
+  }
+  croak "Rational must be reduced" unless $num == 1 || $non_reduce_ok;
+  @CF;
+}
+
+sub contfrac {
+  my($num,$den) = @_;
+  validate_integer_nonneg($num);
+  validate_integer_positive($den);
+  _rational_cfrac($num,$den,1);
+}
+
+sub next_calkin_wilf {
+  my($num,$den) = @_;
+  validate_integer_positive($num);
+  validate_integer_positive($den);
+  # Check gcd to ensure a valid CW entry?
+  ($den, Mvecprod(2,$den,Mdivint($num,$den)) + $den - $num);
+}
+sub next_stern_brocot {
+  my($num,$den) = @_;
+  validate_integer_positive($num);
+  validate_integer_positive($den);
+  # There should be a better solution
+  nth_stern_brocot(Maddint(stern_brocot_n($num,$den),1));
+}
+
+sub calkin_wilf_n {
+  my($num,$den) = @_;
+  validate_integer_positive($num);
+  validate_integer_positive($den);
+
+  my @CF = _rational_cfrac($num,$den);
+  # Note:  vecsum(@CF) gives the number of bits in the output
+
+  $CF[-1]--;
+  my $bitstr = '1';
+  $bitstr .= (1-($_%2)) x $CF[$_]  for reverse 0 .. $#CF;
+  return Mfromdigits($bitstr,2);
+}
+sub stern_brocot_n {
+  my($num,$den) = @_;
+  validate_integer_positive($num);
+  validate_integer_positive($den);
+  my @CF = _rational_cfrac($num,$den);
+  $CF[-1]--;
+  my $bitstr = '1';
+  $bitstr .= (1-($_%2)) x $CF[$_]  for 0 .. $#CF;
+  return Mfromdigits($bitstr,2);
+}
+
+sub nth_calkin_wilf {
+  my($n) = @_;
+  validate_integer_positive($n);
+
+  my @M = (1,0);
+  $M[$_] = Mvecsum(@M) for split(//, Mtodigitstring($n,2));
+  ($M[1],$M[0]);
+}
+sub nth_stern_brocot {
+  my($n) = @_;
+  validate_integer_positive($n);
+
+  my @M = (1,0);
+  my @bits = split(//,Mtodigitstring($n,2));
+  $M[$_] = Mvecsum(@M) for 1,reverse(@bits[1..$#bits]);
+  ($M[1],$M[0]);
+}
+
+sub nth_stern_diatomic {
+  my ($n) = @_;
+  validate_integer_nonneg($n);
+  my @M = (1,0);
+  $M[$_] = Mvecsum(@M) for split(//, Mtodigitstring($n,2));
+  $M[1];
+}
+
+# End of Rational maps
+
 
 sub _is_perfect_square {
   my($n) = @_;

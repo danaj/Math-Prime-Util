@@ -116,6 +116,11 @@ our @EXPORT_OK =
       stirling fubini znorder znprimroot znlog legendre_phi
       factorial factorialmod subfactorial binomial binomialmod
       falling_factorial rising_factorial
+      contfrac
+      next_calkin_wilf next_stern_brocot
+      calkin_wilf_n stern_brocot_n
+      nth_calkin_wilf nth_stern_brocot
+      nth_stern_diatomic
       ExponentialIntegral LogarithmicIntegral RiemannZeta RiemannR LambertW Pi
       irand irand64 drand urandomb urandomm csrand random_bytes entropy_bytes
   );
@@ -4076,6 +4081,114 @@ will always return a solution.
 There will often be multiple solutions, but only one is returned.
 
 
+=head2 contfrac
+
+    my @CF = contfrac(415,93);
+    # CF = (4,2,6,7)  =>  4+(1/(2+1/(6+1/7))) = 415/93
+    #                     ^     ^    ^   ^
+
+Given a non-negative integer C<n> and a positive integer C<d>,
+returns a list with the continued fraction representation of
+the rational C<n / d>.
+
+This corresponds to a subset of Pari's C<contfrac> function,
+Mathematica's C<ContinuedFraction[n/d]> function,
+and Sage's C<continued_fraction> function.
+
+=head2 next_calkin_wilf
+
+    ($n,$d) = next_calkin_wilf($n,$d);
+
+Given two positive coprime integers C<n> and C<d> representing
+the rational C<n / d>, returns the next value in the breadth-first
+traversal of the Calkin-Wilf tree of rationals as a two-element list.
+
+The Calkin-Wilf tree has an entry for all positive rationals in lowest
+form, with each one appearing only once.  While it is not a binary search
+tree over the positive rationals like the Stern-Brocot tree, it is
+more efficient to traverse in both depth and breadth order.
+
+This corresponds to Julia's Nemo C<next_calkin_wilf> function.
+
+This can efficiently iterate through
+L<OEIS series A002487|http://oeis.org/A002487>.
+
+=head2 next_stern_brocot
+
+    ($n,$d) = next_stern_brocot($n,$d);
+
+Given two positive coprime integers C<n> and C<d> representing
+the rational C<n / d>, returns the next value in the breadth-first
+traversal of the Stern-Brocot tree of rationals as a two-element list.
+
+The Stern-Brocot tree has an entry for all positive rationals in lowest
+form, with each one appearing only once.
+Read left-to-right on each row, the numbers appear in ascending order.
+It is a binary search tree over the positive rationals (this was exactly
+Brocot's motivation).
+It is not as efficient as L</next_calkin_wilf>.
+
+This produces L<OEIS series A007305|http://oeis.org/A007305> (numerators)
+and L<OEIS series A047679|http://oeis.org/A047679> (denominators).
+
+=head2 calkin_wilf_n
+
+    my $idx = calkin_wilf_n($n,$d);
+
+Given two positive coprime integers C<n> and C<d> representing
+the rational C<n / d>, returns the index in the breadth-first
+traversal of the Calkin-Wilf tree of rationals.
+
+This corresponds to the C<xy_to_n> method
+in L<Math::PlanePath::RationalsTree> with C<tree_type => 'CW'>.
+
+=head2 stern_brocot_n
+
+    my $idx = stern_brocot_n($n,$d);
+
+Given two positive coprime integers C<n> and C<d> representing
+the rational C<n / d>, returns the index in the breadth-first
+traversal of the Stern-Brocot tree of rationals.
+
+This corresponds to the C<xy_to_n> method
+in L<Math::PlanePath::RationalsTree> with C<tree_type => 'SB'>.
+
+=head2 nth_calkin_wilf
+
+  ($n,$d) = nth_calkin_wilf($idx);
+
+Given a positive integer C<i>, returns the rational in the
+corresponding index in
+the breadth-first traversal of the Calkin-Wilf tree of rationals.
+
+This corresponds to the C<n_to_xy> method
+in L<Math::PlanePath::RationalsTree> with C<tree_type => 'CW'>.
+
+=head2 nth_stern_brocot
+
+  ($n,$d) = nth_stern_brocot($idx);
+
+Given a positive integer C<i>, returns the rational in the
+corresponding index in
+the breadth-first traversal of the Stern-Brocot tree of rationals.
+
+This corresponds to the C<n_to_xy> method
+in L<Math::PlanePath::RationalsTree> with C<tree_type => 'SB'>.
+
+=head2 nth_stern_diatomic
+
+  $n = nth_stern_diatomic($idx);
+
+Given a non-negative integer C<i>, returns the C<i>-th Stern diatomic number.
+This is sometimes called C<fusc(i)> (Dijkstra), Stern's diatomic series,
+or the Stern-Brocot sequence.  The latter can be easily confused with the
+Stern-Brocot tree.
+
+This corresponds to Sidef's C<fusc> function.  See also L</next_calkin_wilf>
+where the sequence of numerators generates this sequence.
+
+This produces L<OEIS series A002487|http://oeis.org/A002487>.
+
 =head2 prime_bigomega
 
   say "$n has ", prime_bigomega($n), " total factors";
@@ -7101,7 +7214,7 @@ are significantly faster, albeit requiring more memory and disk space.
 
 All congruent numbers less than 300,000 can be identified in under 2 seconds.
 
-Giovanni Resta's list of 213318 squarefree and C<mod 8 <= 4>
+Giovanni Resta's list of 213318 square-free and C<mod 8 <= 4>
 congruent numbers less than C<10^7> can be generated in 19 minutes on
 a single core of an M1 laptop.
 

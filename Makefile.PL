@@ -54,11 +54,12 @@ WriteMakefile1(
                     'prime_counts.o ' .
                     'prime_sums.o '   .
                     'prime_powers.o ' .
+                    'lucky_numbers.o '.
                     'perfect_powers.o ' .
                     'congruent_numbers.o ' .
                     'powerfree.o '    .
                     'powerful.o '    .
-                    'lucky_numbers.o '.
+                    'rational.o '      .
                     'real.o '         .
                     'rootmod.o '      .
                     'totients.o '     .

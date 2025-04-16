@@ -229,6 +229,15 @@ sub entropy_bytes {
 *falling_factorial = \&Math::Prime::Util::PP::falling_factorial;
 *rising_factorial = \&Math::Prime::Util::PP::rising_factorial;
 
+*contfrac = \&Math::Prime::Util::PP::contfrac;
+*next_calkin_wilf = \&Math::Prime::Util::PP::next_calkin_wilf;
+*next_stern_brocot = \&Math::Prime::Util::PP::next_stern_brocot;
+*calkin_wilf_n = \&Math::Prime::Util::PP::calkin_wilf_n;
+*stern_brocot_n = \&Math::Prime::Util::PP::stern_brocot_n;
+*nth_calkin_wilf = \&Math::Prime::Util::PP::nth_calkin_wilf;
+*nth_stern_brocot = \&Math::Prime::Util::PP::nth_stern_brocot;
+*nth_stern_diatomic = \&Math::Prime::Util::PP::nth_stern_diatomic;
+
 *divint = \&Math::Prime::Util::PP::divint;
 *modint = \&Math::Prime::Util::PP::modint;
 *cdivint = \&Math::Prime::Util::PP::cdivint;

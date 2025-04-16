@@ -31,7 +31,8 @@ add_stopwords(qw/-th
                  csrand srand irand irand64 drand urandomb urandomm
                  forprimes forcomposites foroddcomposites fordivisors
                  forpart forcomp forcomb forperm forderange formultiperm forsetproduct
-                 forsemiprimes forfactored forsquarefree foralmostprimes
+                 forsemiprimes forfactored foralmostprimes
+                 forsquarefree forsquarefreeint
                  lastfor
                  numtoperm permtonum randperm
                  totient moebius mertens liouville kronecker znorder znprimroot znlog
@@ -54,6 +55,7 @@ add_stopwords(qw/-th
                  sumpowerful powersum
                  sumset setbinop setunion setintersect setminus setdelta toset
                  setcontains setinsert setremove setinvert
+                 contfrac
                  pp 100ns/);
 
 all_pod_files_spelling_ok();

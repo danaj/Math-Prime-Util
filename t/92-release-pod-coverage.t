@@ -142,6 +142,11 @@ sub mpu_public_regex {
       stirling fubini znorder znprimroot znlog legendre_phi
       factorial factorialmod subfactorial binomial binomialmod
       falling_factorial rising_factorial
+      contfrac
+      next_calkin_wilf next_stern_brocot
+      calkin_wilf_n stern_brocot_n
+      nth_calkin_wilf nth_stern_brocot
+      nth_stern_diatomic
       ExponentialIntegral LogarithmicIntegral RiemannZeta RiemannR LambertW Pi
       irand irand64 drand urandomb urandomm csrand random_bytes entropy_bytes
   );
@@ -158,6 +163,7 @@ sub mpu_factor_regex {
 sub mpu_PPM_regex {
   my @funcs = qw(
       Maddint Msubint Mmulint Mdivint Mcdivint Mpowint Mabsint Mnegint
+      Mtdivrem
       Mmodint Mlogint Mrootint Msqrtint Mcmpint
       Mlshiftint Mrshiftint
       Maddmod Msubmod Mmulmod Mrootmod Mdivmod Mpowmod Minvmod
@@ -174,9 +180,10 @@ sub mpu_PPM_regex {
       Mis_power Mis_prime Mis_prime_power Mis_odd Mis_even
       Mis_semiprime Mis_square_free
       Mvecall Mvecany Mvecmin Mvecmax Mvecnone Mvecprod Mvecsum
+      Msetinsert Msetintersect Msetunion
       Mtoset Msetcontains
-      Mtodigits
-      Mlucasumod Mvecfirst Mvecsort
+      Mtodigits Mtodigitstring Mfromdigits
+      Mlucasumod Mvecfirst Mvecsort Mvecsortr
       Saddint Ssubint Smulint Sdivint Spowint
       reftyped
       validate_integer     validate_integer_nonneg
