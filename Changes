@@ -157,8 +157,7 @@ Revision history for Perl module Math::Prime::Util
     - vecpmex(...)                    least positive value not in list
     - vecuniq(...)                    remove duplicates from list of integers
     - vecsort(@L)                     numerically sort integer list
-    - vecsortr(\@L)                   numerically sort integer list ref
-    - vecsortrr(\@L)                  as vecsortr but returns a list ref
+    - vecsorti(\@L)                   in-place numeric sort a list ref
     - toset(\@A)                      convert to unique sorted integer list
     - setinsert(\@A,$v)               insert integer v into integer set A
     - setinsert(\@A,\@B)              insert list B into integer set A

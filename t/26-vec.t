@@ -9,7 +9,7 @@ use Math::Prime::Util qw/vecreduce
                          vecmin vecmax
                          vecsum vecprod factorial
                          vecuniq
-                         vecsort vecsortr vecsortrr
+                         vecsort vecsorti
                          vecany vecall vecnotall vecnone vecfirst vecfirstidx/;
 
 my $extra = defined $ENV{EXTENDED_TESTING} && $ENV{EXTENDED_TESTING};
@@ -242,12 +242,24 @@ ok(  (vecnone { 1 }), 'none empty list' );
 ###### vecsort
 foreach my $r (@vecsorts) {
   my($in, $out, $str) = @$r;
-  is_deeply( [ [vecsort(@$in)], [vecsortr($in)], [vecsortrr($in)] ],
-             [ $out, $out, [$out] ],
-             "vecsort/r/rr $str" );
+  my @got1 = vecsort(@$in);
+  my @got2 = vecsort($in);
+  vecsorti($in);
+  is_deeply( [ \@got1, \@got2, $in ],
+             [ $out, $out, $out ],
+             "vecsort list, ref, in-place [$str]" );
 }
 {
-   my @s = (5,2,1,3,4);
-   my @t = vecsortr(\@s);
-   is_deeply([[@s],[@t]], [[5,2,1,3,4],[1,2,3,4,5]], "vecsortr sorts without modifying input");
+   my @s = ("5",2,1,3,4);
+
+   my $in0_beg = length( do { no if $] >= 5.022, "feature", "bitwise"; no warnings "numeric"; $s[0] & "" }) ? "number" : "string";
+   my @t = vecsort(\@s);
+   my $in0_end = length( do { no if $] >= 5.022, "feature", "bitwise"; no warnings "numeric"; $s[0] & "" }) ? "number" : "string";
+
+   is_deeply([[@s],[@t]], [[5,2,1,3,4],[1,2,3,4,5]], "vecsort sorts without modifying input");
+
+   # Both of these should be "string".  XS doesn't copy for validation.
+   if ($extra) {
+     diag "vecsort input:   $in0_beg => $in0_end" if $in0_beg ne $in0_end;
+   }
 }

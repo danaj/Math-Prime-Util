@@ -99,7 +99,7 @@ our @EXPORT_OK =
       negmod invmod addmod submod mulmod divmod powmod muladdmod mulsubmod
       vecsum vecmin vecmax vecprod vecreduce vecextract vecequal vecuniq
       vecany vecall vecnotall vecnone vecfirst vecfirstidx vecmex vecpmex
-      vecsort vecsortr vecsortrr
+      vecsort vecsorti
       setbinop sumset toset
       setunion setintersect setminus setdelta
       setcontains setinsert setremove setinvert
@@ -3456,34 +3456,32 @@ In return our function is 2-10x faster in XS for native signed integers.
 
 =head2 vecsort
 
-  my @sorted = vecsort(1,2,3,2,-10,-100,1);  # returns (-100,-10,1,1,2,2,3)
+  my @sorted = vecsort(1,2,3,2,-10,-100,1);   # returns (-100,-10,1,1,2,2,3)
+  my @sorted = vecsort([1,2,3,2,-10,-100,1]); # same
 
-Given an array of integers, returns an array of the inputs numerically sorted.
+Numerically (ascending) sort a list of integers.  The input is either a list
+or a single array reference which holds the list.
 
 All values must be defined and integers.
 They may be any mix of native IV, native UV, strings, bigints.
 
 In particular, integers as strings can sometimes give incorrect results with
-Perl's built-in numerical sort as it coerces them into an NV type.
+Perl's built-in numerical sort as it coerces them into an NV type.  Prior to
+Perl version 5.26, this happened with large 64-bit integers as well.
 
-=head2 vecsortr
+It is not uncommon for this to be faster than Perl's built-in numerical
+sort: C<@a = sort { $a<=>$b } @a>.
 
-  my @sorted = vecsortr([1,2,3,2,-10,-100,1]);
+=head2 vecsorti
 
-Given an array reference of integers,
-returns an array of the inputs numerically sorted.
-
-Similar to L<vecsort> but slightly faster with large lists.
-
-=head2 vecsortrr
-
-  my $sorted_aref = vecsortrr([1,2,3,2,-10,-100,1]);
+  my $aref = [reverse 0..100000];
+  vecsorti($aref);
 
 Given an array reference of integers,
-returns an array reference of the inputs numerically sorted.
+numerically (ascending) sorts the integers in-place.
+The array reference is also returned for convenience.
 
-Similar to L<vecsort> and L<vecsortr> but slightly faster with large lists.
-
+This can be more efficient than L<vecsort> or Perl's C<sort>.
 
 =head2 vecequal
 
@@ -6772,6 +6770,10 @@ though a few sequences support random access.  The primary advantage I see
 is the uniform access mechanism for a I<lot> of sequences.  For those methods
 that overlap, MPU is usually much faster.  Importantly, most of the sequences
 in Math::NumSeq are limited to 32-bit indices.
+
+L<Math::PlanePath::RationalsTree> enumerates fractions in various trees
+including the Calkin-Wilf and Stern-Brocot trees.  All values must fit
+in native integers.  There is a wealth of information in its documentation.
 
 L<Math::ModInt::ChineseRemainder/cr_combine> is similar to MPU's L</chinese>,
 and in fact they use the same algorithm.  The former module uses caching

@@ -136,7 +136,7 @@ BEGIN {
 *Mvecmax = \&Math::Prime::Util::vecmax;
 *Mvecfirst = \&Math::Prime::Util::vecfirst;
 *Mvecsort = \&Math::Prime::Util::vecsort;
-*Mvecsortr = \&Math::Prime::Util::vecsortr;
+*Mvecsorti = \&Math::Prime::Util::vecsorti;
 *Mtoset = \&Math::Prime::Util::toset;
 *Msetinsert = \&Math::Prime::Util::setinsert;
 *Msetcontains = \&Math::Prime::Util::setcontains;
@@ -10749,44 +10749,29 @@ sub shuffle {
 
 sub vecsort {
   my(@s) = @_;
-  validate_integer($_) for @s;   # Everything is now a native int or bigint
-  if ($] < 5.026) {  # Before Perl 5.26, numerical sort used doubles (sigh).
-    # All we need to do is prevent sort from using built-in routine.
-    @s = map { $_->[0] }  sort { $a->[0] <=> $b->[0] }  map { [$_] }  @s;
+  # If we have a single array reference, unpack it.
+  @s = @{$s[0]} if scalar(@s) == 1 && (ref($s[0]) || '') eq 'ARRAY';
+
+  # Validate and convert everything into a native int or bigint
+  validate_integer($_) for @s;
+
+  # Before Perl 5.26, numerical sort used doubles (sigh).
+  if ($] < 5.026) {
+    @s = sort { 0+($a<=>$b) } @s;  # Prevent sort from using built-in compare
   } else {
     @s = sort { $a<=>$b } @s;
   }
   return @s;
 }
-sub vecsortr {
-  my($r) = @_;
-  croak 'Not an array reference' unless (ref($r) || '') eq 'ARRAY';
-  Mvecsort(@$r);
-}
 
-# In-place sort.  TODO: Change this to vecsorti, implement in XS
-sub vecsortrr {
+# In-place sort.
+sub vecsorti {
   my($r) = @_;
   croak 'Not an array reference' unless (ref($r) || '') eq 'ARRAY';
   validate_integer($_) for @$r;
-  if ($] < 5.026) {
-    @$r = map { $_->[0] }  sort { $a->[0] <=> $b->[0] }  map { [$_] }  @$r;
-  } else {
-    @$r = sort { $a<=>$b } @$r;
-  }
-  $r;
-}
-
-sub _vecsorti {
-  croak 'Not an array reference' unless (ref($_[0]) || '') eq 'ARRAY';
-  @{$_[0]} = Mvecsort(@{$_[0]});
-
-  # This forces in-place sort (careful of pre-5.26.0 sort bug)
-  #use Data::Alias qw/alias/;
-  #alias my @ar = @{$_[0]};
-  #@ar = sort { $a<=>$b } @ar;
-
-  1;
+  if ($] < 5.026) { @$r = sort { 0+($a<=>$b) } @$r; }
+  else            { @$r = sort {    $a<=>$b  } @$r; }
+  return $r;
 }
 
 sub setbinop (&$;$) {   ## no critic qw(ProhibitSubroutinePrototypes)

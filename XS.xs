@@ -4912,59 +4912,73 @@ void toset(IN SV* sva)
     RETURN_LIST_VALS(alen, ra, atype != IARR_TYPE_NEG);
 
 
-void vecsortr(IN SV* sva)
-  PROTOTYPE: $
-  ALIAS:
-    vecsortrr = 1
+void vecsort(...)
+  PROTOTYPE: @
   PREINIT:
     int type;
-    unsigned long len;
+    unsigned long i, len;
     UV *L;
   PPCODE:
-    type = arrayref_to_int_array(aTHX_ &len, &L, 0, sva, "vecsort");
+    if (items == 0)
+      XSRETURN_EMPTY;
+    if (SvROK(ST(0)) && SvTYPE(SvRV(ST(0))) == SVt_PVAV) {
+      if (items != 1)
+        croak("vecsort requires an integer list or a single array reference");
+      type = arrayref_to_int_array(aTHX_ &len, &L, 0, ST(0), "vecsort");
+    } else {
+      len = (unsigned long) items;
+      New(0, L, len, UV);
+      type = IARR_TYPE_ANY;
+      for (i = 0; i < len; i++) {
+        UV n;
+        int istatus = _validate_and_set(&n, aTHX_ ST(i), IFLAG_ANY);
+        if (istatus == -1) {
+          type |= IARR_TYPE_NEG;
+        } else if (istatus == 1 && n > (UV)IV_MAX) {
+          type |= IARR_TYPE_POS;
+        }
+        if (istatus == 0 || type == IARR_TYPE_BAD) break;
+        L[i] = n;
+      }
+      if (i < len)
+        type = IARR_TYPE_BAD;
+    }
     if (type == IARR_TYPE_ANY || type == IARR_TYPE_POS) {
       sort_uv_array(L, len);
     } else if (type == IARR_TYPE_NEG) {
       sort_iv_array((IV*)L, len);
     } else {
       Safefree(L);
-      CALLPPSUB((ix == 0) ? "vecsortr" : "vecsortrr");
-      return;
-    }
-    if (ix == 0) { RETURN_LIST_VALS( len, L, (type != IARR_TYPE_NEG) ); }
-    else         { RETURN_LIST_REF(  len, L, (type != IARR_TYPE_NEG) ); }
-
-void vecsort(...)
-  PROTOTYPE: @
-  PREINIT:
-    UV *L;
-    int type;
-    I32 i;
-  PPCODE:
-    if (items == 0) XSRETURN_EMPTY;
-    New(0, L, items, UV);
-    type = IARR_TYPE_ANY;
-    for (i = 0; i < items; i++) {
-      UV n;
-      int istatus = _validate_and_set(&n, aTHX_ ST(i), IFLAG_ANY);
-      if (istatus == -1) {
-        type |= IARR_TYPE_NEG;
-      } else if (istatus == 1 && n > (UV)IV_MAX) {
-        type |= IARR_TYPE_POS;
-      }
-      if (istatus == 0 || type == IARR_TYPE_BAD) break;
-      L[i] = n;
-    }
-    if (i < items) {
-      Safefree(L);
       CALLPPSUB("vecsort");
       return;
     }
-    if (type == IARR_TYPE_ANY || type == IARR_TYPE_POS)
-      sort_uv_array(L, items);
-    else
-      sort_iv_array((IV*)L, items);
-    RETURN_LIST_VALS( items, L, (type != IARR_TYPE_NEG) );
+    RETURN_LIST_VALS( len, L, (type != IARR_TYPE_NEG) );
+
+void vecsorti(IN SV* sva)
+  PROTOTYPE: $
+  PREINIT:
+    int type;
+    unsigned long i, len;
+    UV *L;
+    SV **arr;
+  PPCODE:
+    type = arrayref_to_int_array(aTHX_ &len, &L, 0, sva, "vecsorti");
+    if (type == IARR_TYPE_ANY || type == IARR_TYPE_POS) {
+      sort_uv_array(L, len);
+    } else if (type == IARR_TYPE_NEG) {
+      sort_iv_array((IV*)L, len);
+    } else {
+      Safefree(L);
+      CALLPPSUB("vecsorti");
+      return;
+    }
+    arr = AvARRAY(SvRV(sva));
+    for (i = 0; i < len; i++) {
+      if (type == IARR_TYPE_NEG) sv_setiv(arr[i],(IV)L[i]);
+      else                       sv_setuv(arr[i],L[i]);
+    }
+    Safefree(L);
+    XSRETURN(1);
 
 
 void

@@ -126,7 +126,7 @@ sub mpu_public_regex {
       negmod invmod addmod submod mulmod divmod powmod muladdmod mulsubmod
       vecsum vecmin vecmax vecprod vecreduce vecextract vecequal vecuniq
       vecany vecall vecnotall vecnone vecfirst vecfirstidx vecmex vecpmex
-      vecsort vecsortr vecsortrr
+      vecsort vecsorti
       setbinop sumset setunion setintersect setminus setdelta toset
       setcontains setinsert setremove setinvert
       is_sidon_set is_sumfree_set
@@ -183,7 +183,7 @@ sub mpu_PPM_regex {
       Msetinsert Msetintersect Msetunion
       Mtoset Msetcontains
       Mtodigits Mtodigitstring Mfromdigits
-      Mlucasumod Mvecfirst Mvecsort Mvecsortr
+      Mlucasumod Mvecfirst Mvecsort Mvecsorti
       Saddint Ssubint Smulint Sdivint Spowint
       reftyped
       validate_integer     validate_integer_nonneg
