@@ -3465,12 +3465,25 @@ or a single array reference which holds the list.
 All values must be defined and integers.
 They may be any mix of native IV, native UV, strings, bigints.
 
-In particular, integers as strings can sometimes give incorrect results with
-Perl's built-in numerical sort as it coerces them into an NV type.  Prior to
-Perl version 5.26, this happened with large 64-bit integers as well.
+Perl's built-in numerical sort can sometimes give incorrect results for
+our usage.  Prior to version 5.26, large 64-bit integers were turned into
+NV (floating point) types.  With all versions, strings are turned into
+NV types even if they are the text of a 64-bit integer.
 
-It is not uncommon for this to be faster than Perl's built-in numerical
-sort: C<@a = sort { $a<=>$b } @a>.
+In scalar context, C<vecsort> returns the number of items without sorting
+(but after input validation).  This is both not surprising as well as
+typically what we want -- if we only want the number of divisors, we call
+in scalar context and get the number without needing to sort them.
+Having the same results from
+C<$x = vecsort(5,6,7)> and <@v = vecsort(5,6,7); $x=@v;>
+is what we want.
+This contrasts with Perl's built-in C<sort> which has B<undefined> behaviour
+in scalar context (in all current implementations it returns undef).
+In particular this forces all programs to use a workaround if they want to
+return a sorted array using Perl's C<sort>.
+
+Depending on the input size and order, it can be either faster or slower
+than Perl's built-in numerical sort: C<@a = sort { $a<=>$b } @a>.
 
 =head2 vecsorti
 
@@ -3481,7 +3494,7 @@ Given an array reference of integers,
 numerically (ascending) sorts the integers in-place.
 The array reference is also returned for convenience.
 
-This can be more efficient than L<vecsort> or Perl's C<sort>.
+This might be more efficient than L<vecsort> or Perl's C<sort>.
 
 =head2 vecequal
 

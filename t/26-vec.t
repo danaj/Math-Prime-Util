@@ -110,7 +110,7 @@ plan tests => 0
             + 5    # vecfirst
             + 5    # vecfirstidx
             + 7    # vecuniq
-            + 1 + scalar(@vecsorts)
+            + 2 + scalar(@vecsorts)
             + 0;
 
 ###### vecmin
@@ -263,3 +263,9 @@ foreach my $r (@vecsorts) {
      diag "vecsort input:   $in0_beg => $in0_end" if $in0_beg ne $in0_end;
    }
 }
+{
+  my @actx = return_sort(12,13,14,11);
+  my $sctx = return_sort(12,13,14,11);
+  is($sctx, scalar(@actx), "returning vecsort(\@L) gives the number of items");
+}
+sub return_sort { return vecsort(@_); }

@@ -883,8 +883,8 @@ sub prime_powers {
         push @powers, $P if $P >= $low;
       }, 5, $rootn);
     }
-    my @result = sort { $a <=> $b } @powers, @{Mprimes($low,$high)};
-    return \@result;
+    push @powers, @{Mprimes($low,$high)};
+    return Mvecsorti(\@powers);
   }
 }
 
@@ -1279,7 +1279,7 @@ sub frobenius_number {
   for my $i (0 .. $#A) {
     validate_integer_positive($A[$i]);
   }
-  @A = sort { $a <=> $b } @A;
+  Mvecsorti(\@A);
   return -1 if $A[0] == 1;
   return undef if $A[0] <= 1 || scalar(@A) <= 1;
   croak "Frobenius number set must be coprime" unless Mgcd(@A) == 1;
@@ -1447,8 +1447,7 @@ sub inverse_totient {
     }, $n);
     return () unless defined $r{$n};
     delete @r{ grep { $_ != $n } keys %r };  # Delete all intermediate results
-    my @result = sort { $a <=> $b } @{$r{$n}};
-    return @result;
+    return Mvecsort($r{$n});
   }
 }
 
@@ -1885,8 +1884,7 @@ sub powerful_numbers {
 
   my $pn = [];
   _pcg($lo, $hi, $k, 1, 2*$k-1, $pn);
-  $pn = [sort { $a <=> $b } @$pn];
-  $pn;
+  Mvecsorti($pn);
 }
 
 sub is_powerfree {
@@ -2526,8 +2524,7 @@ sub almost_primes {
 
   my @ap;
   _generate_almost_primes($low, $high, $k, sub { push @ap,$_[0]; });
-  @ap = sort { $a <=> $b } @ap;
-  \@ap;
+  Mvecsorti(\@ap);
 }
 
 sub _rec_omega_primes {
@@ -2558,19 +2555,17 @@ sub omega_primes {
   $low = Mvecmax($low, Mpn_primorial($k));
   return [] if $low > $high;
 
-  my @opl;
+  my $opl = [];
 
   # Simple iteration
-  #  while ($low <= $high) {
-  #    push @opl, $low if Math::Prime::Util::prime_omega($low) == $k;
-  #    $low++;
-  #  }
-
+  #     while ($low <= $high) {
+  #       push @$opl, $low if Math::Prime::Util::prime_omega($low) == $k;
+  #       $low++;
+  #     }
   # Recursive method from trizen
-  _rec_omega_primes($k, $low, $high, 1, 2, \@opl);
-  @opl = sort { $a <=> $b } @opl;
+  _rec_omega_primes($k, $low, $high, 1, 2, $opl);
 
-  \@opl;
+  Mvecsorti($opl);
 }
 
 sub is_semiprime {
@@ -5580,9 +5575,7 @@ sub allsqrtmod {
   $n = -$n if $n < 0;
   return $n ? (0) : () if $n <= 1;
   $A = Mmodint($A,$n);
-  my @roots = sort { $a <=> $b }
-              _allsqrtmodfact($A, $n, [ Mfactor_exp($n) ]);
-  return @roots;
+  Mvecsort(  _allsqrtmodfact($A, $n, [ Mfactor_exp($n) ])  );
 }
 
 
@@ -6094,8 +6087,7 @@ sub allrootmod {
     }
   }
 
-  @roots = sort { $a <=> $b } @roots;
-  return @roots;
+  Mvecsort(@roots);
 }
 
 ################################################################################
@@ -8972,8 +8964,7 @@ sub factor {
     }
     push @factors, $n  if $n != 1;
   }
-  @factors = sort {$a<=>$b} @factors;
-  return @factors;
+  Mvecsort(@factors);
 }
 
 sub _found_factor {
@@ -9708,8 +9699,7 @@ sub divisors {
 
   @d = grep { $_ <= $k } @d  if $k < $n;
   @d = map { $_ <= INTMAX ? _bigint_to_int($_) : $_ } @d   if $bigint;
-  @d = sort { $a <=> $b } @d;
-  @d;
+  Mvecsort(@d);
 }
 
 
@@ -10755,6 +10745,10 @@ sub vecsort {
   # Validate and convert everything into a native int or bigint
   validate_integer($_) for @s;
 
+  # See https://github.com/perl/perl5/issues/12803 for various discussion.
+  # Optimize to skip the sorting.
+  return scalar(@s) unless wantarray;
+
   # Before Perl 5.26, numerical sort used doubles (sigh).
   if ($] < 5.026) {
     @s = sort { 0+($a<=>$b) } @s;  # Prevent sort from using built-in compare
@@ -10909,13 +10903,7 @@ sub toset {
   validate_integer($_) for @$ra;
   return @$ra if scalar(@$ra) <= 1;
   my($k,%seen);
-  my @set = grep { not $seen{$k = $_}++; }  @$ra;
-  if ($] < 5.026) {
-    @set = map { $_->[0] }  sort { $a->[0] <=> $b->[0] }  map { [$_] }  @set;
-  } else {
-    @set = sort { $a<=>$b } @set;
-  }
-  return @set;
+  Mvecsort( grep { not $seen{$k = $_}++; } @$ra );
 }
 
 # Is the second set a subset of the first set?

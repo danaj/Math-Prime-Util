@@ -4943,6 +4943,8 @@ void vecsort(...)
       if (i < len)
         type = IARR_TYPE_BAD;
     }
+    if (GIMME_V != G_ARRAY) /* In scalar context, return number of elements */
+      XSRETURN_UV(len);
     if (type == IARR_TYPE_ANY || type == IARR_TYPE_POS) {
       sort_uv_array(L, len);
     } else if (type == IARR_TYPE_NEG) {

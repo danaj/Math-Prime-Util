@@ -51,7 +51,7 @@ add_stopwords(qw/-th
                  tozeckendorf fromzeckendorf
                  lucasu lucasv lucasuv lucasumod lucasvmod lucasuvmod
                  lshiftint rshiftint rashiftint signint cmpint
-                 biquadrate powerfree k-powerfree k-free
+                 biquadrate powerfree k-powerfree k-free workaround
                  sumpowerful powersum
                  sumset setbinop setunion setintersect setminus setdelta toset
                  setcontains setinsert setremove setinvert
