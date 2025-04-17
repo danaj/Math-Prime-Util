@@ -6010,13 +6010,12 @@ sub _allrootmod_prime_power {
       push @rootst, $r if Mpowmod($r, $k, $n) == ($a % $n);
     }
     my $ndivp = Mdivint($n,$p);
-    my %roots;  # We want to remove duplicates
+    my $rset = [];
     for my $r (@rootst) {
-      for my $j (0 .. $k-1) {
-        $roots{ Mmulmod($r, Maddmod(Mmulmod($j, $ndivp, $n), 1, $n), $n) } = undef;
-      }
+      Msetinsert($rset, Mmulmod($r, Maddmod(Mmulmod($_, $ndivp, $n),1,$n), $n))
+        for 0 .. $k-1;
     }
-    @roots = keys(%roots);
+    @roots = @$rset;
   }
   return @roots;
 }
@@ -6139,11 +6138,8 @@ sub divmod {
   $n = -$n if $n < 0;
   return (undef,0)[$n] if $n <= 1;
   my $ret = Math::BigInt->new("$b")->bmodinv("$n")->bmul("$a")->bmod("$n");
-  if ($ret->is_nan) {
-    $ret = undef;
-  } else {
-    $ret = _bigint_to_int($ret) if $ret->bacmp(BMAX) <= 0;
-  }
+  return undef if $ret->is_nan;
+  $ret = _bigint_to_int($ret) if $ret->bacmp(BMAX) <= 0;
   $ret;
 }
 sub powmod {
@@ -6158,11 +6154,8 @@ sub powmod {
   }
 
   my $ret = Math::BigInt->new("$a")->bmod("$n")->bmodpow("$b","$n");
-  if ($ret->is_nan) {
-    $ret = undef;
-  } else {
-    $ret = _bigint_to_int($ret) if $ret->bacmp(BMAX) <= 0;
-  }
+  return undef if $ret->is_nan;
+  $ret = _bigint_to_int($ret) if $ret->bacmp(BMAX) <= 0;
   $ret;
 }
 

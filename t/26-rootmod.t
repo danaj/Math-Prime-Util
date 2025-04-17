@@ -185,6 +185,8 @@ foreach my $r (@rootmods) {
 # is(powmod(rootmod(12,41,1147),41,1147), 12, "41st root of 12 mod 1147 is correct");
 is(rootmod(12,41,1147),1106, "41st root of 12 mod 1147 is correct");
 
+# Example with 383 roots:
+# say scalar allrootmod(32247425005, 383, 64552988163);
 
 
 sub is_one_of {
