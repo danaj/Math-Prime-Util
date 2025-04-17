@@ -141,9 +141,9 @@ UV semiprime_count(UV n)
  *       Using P_GT_LO_0 might help, but the biggest issue is 2*p*p overflows.
  */
 #define MARKSEMI(p,arr,lo,hi) \
-    do {  UV i, p2=(p)*(p); \
-      for (i = P_GT_LO(p2, p, lo); i >= lo && i <= hi; i += p) arr[i-lo]++; \
-      for (i = P_GT_LO(2*p2, p2, lo); i >= lo && i <= hi; i += p2) arr[i-lo]++; \
+    do {  UV i_, p2=(p)*(p); \
+      for (i_=P_GT_LO(p2, p, lo); i_ >= lo && i_ <= hi; i_ += p) arr[i_-lo]++; \
+      for (i_=P_GT_LO(2*p2, p2, lo); i_ >= lo && i_ <= hi; i_ += p2) arr[i_-lo]++; \
     } while (0);
 
 UV range_semiprime_sieve(UV** semis, UV lo, UV hi)

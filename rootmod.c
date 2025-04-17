@@ -943,7 +943,7 @@ static UV* _allrootmod_prime(UV* nroots, UV a, UV k, UV p) {
   /* If co-prime, we have one root */
   g = gcd_ui(k, p-1);
   if (g == 1) {
-    UV r = powmod(a, modinverse(k % (p-1), p-1), p);
+    r = powmod(a, modinverse(k % (p-1), p-1), p);
     return _one_root(nroots, r);
   }
   /* At this point k < p.  (k is a prime so if k>=p, g=1) */

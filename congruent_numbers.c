@@ -78,9 +78,9 @@ int is_congruent_number(UV n) {
 
   } else if (!(n&1) && nfactors == 2) {  /* n = 2p */
 
-    UV p = n >> 1, m8 = p % 8;
-    if (m8 == 3 || m8 == 7)     return 1;  /* we don't see these here */
-    if (m8 == 5 || (p%16) == 9) return 0;  /* Bastien 1915 */
+    UV p = n >> 1, p8 = p % 8;
+    if (p8 == 3 || p8 == 7)     return 1;  /* we don't see these here */
+    if (p8 == 5 || (p%16) == 9) return 0;  /* Bastien 1915 */
 
   } else if ( (n&1) && nfactors == 2) {  /* n = pq */
 
@@ -153,7 +153,7 @@ int is_congruent_number(UV n) {
   {
     int noddfactors = (n&1)  ?  nfactors  :  nfactors-1;
     UV* oddfac      = (n&1)  ?  fac       :  fac+1;
-    int i, j, k, l, allmod3 = 1;
+    int k, l, allmod3 = 1;
 
     for (i = 1;  allmod3 && i <= noddfactors;  i++)
       if ((oddfac[i-1] % 8) != 3)

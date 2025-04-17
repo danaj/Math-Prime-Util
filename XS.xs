@@ -6333,14 +6333,14 @@ void vecuniq(...)
   PROTOTYPE: @
   PREINIT:
     iset_t s;
-    int i, status, retvals;
+    int j, status, retvals;
     UV n;
-    unsigned long count;
+    unsigned long sz;
   PPCODE:
     retvals = (GIMME_V != G_SCALAR);
     s = iset_create(items);
-    for (status = 1, i = 0; i < items; i++) {
-      status = _validate_and_set(&n, aTHX_ ST(i), IFLAG_ANY);
+    for (status = 1, j = 0; j < items; j++) {
+      status = _validate_and_set(&n, aTHX_ ST(j), IFLAG_ANY);
       if (status == 0) break;
       if (iset_add(&s, n, status) == 0)
         continue;
@@ -6348,12 +6348,12 @@ void vecuniq(...)
       if (retvals)
         PUSHs(sv_2mortal(NEWSVINT(status,n)));
     }
-    count = iset_size(s);
+    sz = iset_size(s);
     iset_destroy(&s);
     if (status != 0 && retvals) {
-      XSRETURN(count);
+      XSRETURN(sz);
     } else if (status != 0) {
-      ST(0) = sv_2mortal(newSVuv(count));
+      ST(0) = sv_2mortal(newSVuv(sz));
       XSRETURN(1);
     } else {
       /* This is 100% from List::MoreUtils::XS by Parseval and Rehsack */

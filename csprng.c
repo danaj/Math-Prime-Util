@@ -65,7 +65,7 @@
 static INLINE uint32_t rotl(const uint32_t x, int k) {
   return (x << k) | (x >> (32 - k));
 }
-uint32_t prng_next(char* ctx) {
+uint32_t prng_next(void* ctx) {
   uint32_t *s = (uint32_t*) ctx;
   const uint32_t result_starstar = rotl(s[0] * 5, 7) * 9;
   const uint32_t t = s[1] << 9;
@@ -74,37 +74,37 @@ uint32_t prng_next(char* ctx) {
   s[3] = rotl(s[3], 11);
   return result_starstar;
 }
-char* prng_new(uint32_t a, uint32_t b, uint32_t c, uint32_t d) {
+void* prng_new(uint32_t a, uint32_t b, uint32_t c, uint32_t d) {
   uint32_t *state;
   New(0, state, 4, uint32_t);
   state[0] = 1;  state[1] = b;  state[2] = c;  state[3] = d;
-  (void) prng_next((char*)state);
+  (void) prng_next((void*)state);
   state[0] += a;
-  (void) prng_next((char*)state);
-  return (char*) state;
+  (void) prng_next((void*)state);
+  return (void*) state;
 }
 #else
 /* PCG RXS M XS 32.  32-bit output, 32-bit state and types. */
-uint32_t prng_next(char* ctx) {
+uint32_t prng_next(void* ctx) {
   uint32_t *rng = (uint32_t*) ctx;
   uint32_t word, oldstate = rng[0];
   rng[0] = rng[0] * 747796405U + rng[1];
   word = ((oldstate >> ((oldstate >> 28u) + 4u)) ^ oldstate) * 277803737u;
   return (word >> 22u) ^ word;
 }
-char* prng_new(uint32_t a, uint32_t b, uint32_t c, uint32_t d) {
+void* prng_new(uint32_t a, uint32_t b, uint32_t c, uint32_t d) {
   uint32_t *state;
   New(0, state, 2, uint32_t);
   state[0] = 0U;
   state[1] = (b << 1u) | 1u;
-  (void) prng_next((char*)state);
+  (void) prng_next((void*)state);
   state[0] += a;
-  (void) prng_next((char*)state);
+  (void) prng_next((void*)state);
   state[0] ^= c;
-  (void) prng_next((char*)state);
+  (void) prng_next((void*)state);
   state[0] ^= d;
-  (void) prng_next((char*)state);
-  return (char*) state;
+  (void) prng_next((void*)state);
+  return (void*) state;
 }
 #endif
 
@@ -124,7 +124,7 @@ void csprng_seed(void *ctx, uint32_t bytes, const unsigned char* data)
   if (bytes >= SEED_BYTES) {
     memcpy(seed, data, SEED_BYTES);
   } else {
-    char* rng;
+    void* rng;
     uint32_t a, b, c, d, i;
     memcpy(seed, data, bytes);
     memset(seed+bytes, 0, sizeof(seed)-bytes);
