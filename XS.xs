@@ -3474,9 +3474,13 @@ void allsqrtmod(IN SV* sva, IN SV* svn)
       _mod_with(&a, astatus, n);
       roots = allsqrtmod(&numr, a, n);
       if (roots != 0) {
-        EXTEND(SP, (IV)numr);
-        for (i = 0; i < numr; i++)
-          PUSHs(sv_2mortal(newSVuv(roots[i])));
+        if (GIMME_V != G_ARRAY) {
+          PUSHs(sv_2mortal(newSVuv(numr)));
+        } else {
+          EXTEND(SP, (IV)numr);
+          for (i = 0; i < numr; i++)
+            PUSHs(sv_2mortal(newSVuv(roots[i])));
+        }
         Safefree(roots);
       }
     } else {
@@ -3498,9 +3502,13 @@ void allrootmod(IN SV* sva, IN SV* svg, IN SV* svn)
       if (!prep_pow_inv(&a,&g,gstatus,n)) XSRETURN_EMPTY;
       roots = allrootmod(&numr, a, g, n);
       if (roots != 0) {
-        EXTEND(SP, (IV)numr);
-        for (i = 0; i < numr; i++)
-          PUSHs(sv_2mortal(newSVuv(roots[i])));
+        if (GIMME_V != G_ARRAY) {
+          PUSHs(sv_2mortal(newSVuv(numr)));
+        } else {
+          EXTEND(SP, (IV)numr);
+          for (i = 0; i < numr; i++)
+            PUSHs(sv_2mortal(newSVuv(roots[i])));
+        }
         Safefree(roots);
       }
     } else {
