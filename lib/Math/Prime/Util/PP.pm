@@ -7495,6 +7495,38 @@ sub nth_stern_diatomic {
   $M[1];
 }
 
+sub farey {
+  my($n,$k) = @_;
+  validate_integer_positive($n);
+  my $len = Maddint(Math::Prime::Util::sumtotient($n),1);
+
+  my($p0, $q0, $p1, $q1, $p2, $q2, $j) = (0,1,1,$n);
+
+  if (defined $k) {
+    validate_integer_nonneg($k);
+    return undef if $k >= $len;
+    for (1 .. $k) {
+      $j = Mdivint(($q0 + $n), $q1);
+      $p2 = Mmulint($j, $p1) - $p0;
+      $q2 = Mmulint($j, $q1) - $q0;
+      ($p0, $q0, $p1, $q1) = ($p1, $q1, $p2, $q2);
+    }
+    return [$p0,$q0];
+  }
+
+  return $len unless wantarray;
+
+  my @V;
+  for (1 .. $len) {
+    push @V, [$p0, $q0];
+    $j = Mdivint(($q0 + $n), $q1);
+    $p2 = Mmulint($j, $p1) - $p0;
+    $q2 = Mmulint($j, $q1) - $q0;
+    ($p0, $q0, $p1, $q1) = ($p1, $q1, $p2, $q2);
+  }
+  @V;
+}
+
 # End of Rational maps
 
 

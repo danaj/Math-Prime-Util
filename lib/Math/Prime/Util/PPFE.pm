@@ -237,6 +237,8 @@ sub entropy_bytes {
 *nth_calkin_wilf = \&Math::Prime::Util::PP::nth_calkin_wilf;
 *nth_stern_brocot = \&Math::Prime::Util::PP::nth_stern_brocot;
 *nth_stern_diatomic = \&Math::Prime::Util::PP::nth_stern_diatomic;
+*farey = \&Math::Prime::Util::PP::farey;
+
 
 *divint = \&Math::Prime::Util::PP::divint;
 *modint = \&Math::Prime::Util::PP::modint;

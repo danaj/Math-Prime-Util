@@ -110,7 +110,7 @@ Revision history for Perl module Math::Prime::Util
     - rootmod(a, k, n)                modular k-th root
     - allrootmod(a,k,n)               all k-th roots of a (mod n)
     - cornacchia(d,n)                 find x,y for x^2 + d * y^2 = n
-    - vecequal(\@a, \@b)              compare two arrays for equality
+    - vecequal(\@a, \@b)              compare two array refs for equality
     - tozeckendorf(n)                 Zeckendorf binary string from n
     - fromzeckendorf(str)             n from Zeckendorf binary string
     - lucasu(p,q,k)                   U(p,q)_k
@@ -182,7 +182,7 @@ Revision history for Perl module Math::Prime::Util
     - set_is_superset(\@A,\@B)        is set B a superet of set A
     - set_is_proper_superset(\@A,\@B) is set B a proper superet of set A
     - set_is_proper_intersection(\@A,\@B)   "" a proper intersection ""
-    - contfrac(n,d)                   array of continued fraction for n/d
+    - contfrac(n,d)                   list of continued fraction for n/d
     - next_calkin_wilf(n,d)           next breadth-first CW rational
     - next_stern_brocot(n,d)          next breadth-first SB rational
     - calkin_wilf_n(n,d)              index of breadth-first CW rational
@@ -190,6 +190,8 @@ Revision history for Perl module Math::Prime::Util
     - nth_calkin_wilf(n)              CW rational at breadth-first index n
     - nth_stern_brocot(n)             SB rational at breadth-first index n
     - nth_stern_diatomic(n)           Stern's Diatomic series; fusc(n)
+    - farey(n)                        list of Farey sequence order n
+    - farey(n,k)                      k'th entry of Farey sequence order n
 
 
     [FIXES]

@@ -2923,6 +2923,65 @@ void nth_stern_diatomic(IN SV* svn)
     _vcallsub_with_pp("nth_stern_diatomic");
     return;
 
+void farey(IN SV* svn, IN SV* svk = 0)
+  PREINIT:
+    UV n, k, i, len;
+    int wantsingle;
+  PPCODE:
+    wantsingle = svk != 0;
+    if (wantsingle) {
+      if (!_validate_and_set(&k, aTHX_ svk, IFLAG_POS))
+        k = UV_MAX;
+    }
+    if (_validate_and_set(&n, aTHX_ svn, IFLAG_POS | IFLAG_NONZERO)) {
+      /* In theory we don't need to calculate the length */
+      len = 1 + sumtotient(n);
+      if (len != 1) {
+        AV* av;
+        UV j, p0 = 0, q0 = 1, p1 = 1, q1 = n, p2, q2;
+
+        /* Return a single entry */
+        if (wantsingle) {
+          if (k >= len)
+            XSRETURN_UNDEF;
+          if (k > len/2) {  /* Exploit symmetry about 1/2, iterate backwards */
+            p0 = 1;
+            p1 = n-1;
+            k = (len-1)-k;
+          }
+          for (i = 0; i < k; i++) {
+            j = (q0 + n) / q1;
+            p2 = j * p1 - p0;
+            q2 = j * q1 - q0;
+            p0 = p1; q0 = q1; p1 = p2; q1 = q2;
+          }
+          av = newAV();
+          av_push(av, newSVuv(p0));
+          av_push(av, newSVuv(q0));
+          PUSHs(sv_2mortal(newRV_noinc((SV*) av)));
+          XSRETURN(1);
+        }
+
+        /* Return the whole sequence of order n */
+        if (GIMME_V != G_ARRAY)
+          XSRETURN_UV(len);
+        EXTEND(SP, (IV)len);
+        for (i = 0; i < len; i++) {
+          av = newAV();
+          av_push(av, newSVuv(p0));
+          av_push(av, newSVuv(q0));
+          PUSHs(sv_2mortal(newRV_noinc((SV*) av)));
+          /* Haros (1802), gives p/q using two previous terms */
+          j = (q0 + n) / q1;
+          p2 = j * p1 - p0;
+          q2 = j * q1 - q0;
+          p0 = p1; q0 = q1; p1 = p2; q1 = q2;
+        }
+        XSRETURN(len);
+      }
+    }
+    _vcallsub_with_pp("farey");
+    return;
 
 
 void Pi(IN UV digits = 0)

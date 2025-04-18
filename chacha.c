@@ -213,7 +213,7 @@ static int _test_core(void) {
           croak("core modified state");
     }
     for (i = 0; i < 64; i++)
-      sprintf(got+2*i,"%02x", ctx.buf[i]);
+      sprintf(got+2*i, "%02x", ctx.buf[i]);
     got[128] = '\0';
     if (memcmp(got, expout, 128))
       croak("fail core test vector %u:\n  exp %s\n  got %s\n",test,expout,got);
@@ -248,7 +248,7 @@ static int _test_keystream(void) {
     if (gen < len) croak("short keystream");
     /* Check state block counter */
     for (i = 0; i < len; i++)
-      sprintf(got+2*i,"%02x", kbuf[i]);
+      sprintf(got+2*i, "%02x", kbuf[i]);
     got[2*len] = '\0';
     if (memcmp(got, expout, 2*len))
       croak("fail keystream test vector %u:\n  exp %s\n  got %s\n",test,expout,got);

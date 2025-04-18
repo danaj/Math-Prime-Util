@@ -460,7 +460,7 @@ UV LMO_prime_count(UV n)
   if (n >  500000000000UL) { /* Crossover on 2020 Macbook M1 (with parallel!) */
     FILE *f;
     char cmd[100];
-    sprintf(cmd, "primecount %lu", n);
+    snprintf(cmd, 100, "primecount %lu", n);
     f = popen(cmd, "r");
     fscanf(f, "%lu", &sum1);
     pclose(f);

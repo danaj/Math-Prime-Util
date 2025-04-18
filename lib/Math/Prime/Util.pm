@@ -121,6 +121,7 @@ our @EXPORT_OK =
       calkin_wilf_n stern_brocot_n
       nth_calkin_wilf nth_stern_brocot
       nth_stern_diatomic
+      farey
       ExponentialIntegral LogarithmicIntegral RiemannZeta RiemannR LambertW Pi
       irand irand64 drand urandomb urandomm csrand random_bytes entropy_bytes
   );
@@ -4094,9 +4095,9 @@ There will often be multiple solutions, but only one is returned.
 
 =head2 contfrac
 
-    my @CF = contfrac(415,93);
-    # CF = (4,2,6,7)  =>  4+(1/(2+1/(6+1/7))) = 415/93
-    #                     ^     ^    ^   ^
+  my @CF = contfrac(415,93);
+  # CF = (4,2,6,7)  =>  4+(1/(2+1/(6+1/7))) = 415/93
+  #                     ^     ^    ^   ^
 
 Given a non-negative integer C<n> and a positive integer C<d>,
 returns a list with the continued fraction representation of
@@ -4108,7 +4109,7 @@ and Sage's C<continued_fraction> function.
 
 =head2 next_calkin_wilf
 
-    ($n,$d) = next_calkin_wilf($n,$d);
+  ($n,$d) = next_calkin_wilf($n,$d);
 
 Given two positive coprime integers C<n> and C<d> representing
 the rational C<n / d>, returns the next value in the breadth-first
@@ -4126,7 +4127,7 @@ L<OEIS series A002487|http://oeis.org/A002487>.
 
 =head2 next_stern_brocot
 
-    ($n,$d) = next_stern_brocot($n,$d);
+  ($n,$d) = next_stern_brocot($n,$d);
 
 Given two positive coprime integers C<n> and C<d> representing
 the rational C<n / d>, returns the next value in the breadth-first
@@ -4144,7 +4145,7 @@ and L<OEIS series A047679|http://oeis.org/A047679> (denominators).
 
 =head2 calkin_wilf_n
 
-    my $idx = calkin_wilf_n($n,$d);
+  my $idx = calkin_wilf_n($n,$d);
 
 Given two positive coprime integers C<n> and C<d> representing
 the rational C<n / d>, returns the index in the breadth-first
@@ -4155,7 +4156,7 @@ in L<Math::PlanePath::RationalsTree> with C<tree_type => 'CW'>.
 
 =head2 stern_brocot_n
 
-    my $idx = stern_brocot_n($n,$d);
+  my $idx = stern_brocot_n($n,$d);
 
 Given two positive coprime integers C<n> and C<d> representing
 the rational C<n / d>, returns the index in the breadth-first
@@ -4199,6 +4200,35 @@ This corresponds to Sidef's C<fusc> function.  See also L</next_calkin_wilf>
 where the sequence of numerators generates this sequence.
 
 This produces L<OEIS series A002487|http://oeis.org/A002487>.
+
+=head2 farey
+
+  #    F[3] = 0/1  1/3  1/2  2/3  1/1
+  #
+  say scalar farey(3);   #  5
+  my @F3 = farey(3);     #  ([0,1], [1,3], [1,2], [2,3], [1,1])
+  my $F33 = farey(3,3);  #  [2/3] = $F3[3]
+  # Print the list in readable form
+  say join " ",map { join "/",@$_ } farey(3);
+
+Given a single positive integer C<n> returns the Farey sequence of order C<n>.
+In scalar context, returns the length without computing terms.
+In array context, returns a list with each rational as a 2-entry array
+reference.
+
+Given two values: a positive integer C<n> and a non-negative integer C<k>,
+returns the C<k-th> entry of the order C<n> Farey sequence.  The index
+starts at zero so it matches using the full list as an array.
+If C<k> is larger than the number of entries, undef is returned.
+
+This corresponds to Mathematica's C<FareySequence> function (their
+two argument version is 1-based rather than 0-based).
+
+The lengths are L<OEIS series A005728|http://oeis.org/A005728>.
+The numerators are L<OEIS series A006842|http://oeis.org/A006842>.
+The denominators are L<OEIS series A006843|http://oeis.org/A006843>.
+
+
 
 =head2 prime_bigomega
 

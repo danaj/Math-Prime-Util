@@ -210,7 +210,7 @@ Tags:
   vecsort(@list)                      numerically sort a list of integers
   vecsorti(\@list)                    in-place numeric sort a list ref
   vecextract(\@list, mask)            select from list based on mask
-  vecequal(\@list1, \@list2)          compare equality of two arrays
+  vecequal(\@list1, \@list2)          compare equality of two array refs
   vecreduce { ... } @list             reduce / left fold applied to list
   vecall { ... } @list                return true if all are true
   vecany { ... } @list                return true if any are true
@@ -429,7 +429,7 @@ Tags:
 
 =head2 RATIONALS
 
-  contfrac(n,d)                       array of continued fraction for n/d
+  contfrac(n,d)                       list of continued fraction for n/d
   next_calkin_wilf(n,d)               next breadth-first CW rational
   next_stern_brocot(n,d)              next breadth-first SB rational
   calkin_wilf_n(n,d)                  index of breadth-first CW rational
@@ -437,6 +437,8 @@ Tags:
   nth_calkin_wilf(n)                  CW rational at breadth-first index n
   nth_stern_brocot(n)                 SB rational at breadth-first index n
   nth_stern_diatomic(n)               Stern's Diatomic series; fusc(n)
+  farey(n)                            list of Farey sequence order n
+  farey(n,k)                          k'th entry of Farey sequence order n
 
 =head2 NON-INTEGER MATH
 
