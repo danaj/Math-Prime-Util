@@ -55,7 +55,7 @@ add_stopwords(qw/-th
                  sumpowerful powersum
                  sumset setbinop setunion setintersect setminus setdelta toset
                  setcontains setinsert setremove setinvert
-                 contfrac
+                 contfrac farey
                  pp 100ns/);
 
 all_pod_files_spelling_ok();
