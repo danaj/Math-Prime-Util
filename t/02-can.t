@@ -114,7 +114,7 @@ my @functions =  qw(
       calkin_wilf_n stern_brocot_n
       nth_calkin_wilf nth_stern_brocot
       nth_stern_diatomic
-      farey
+      farey next_farey farey_rank
       ExponentialIntegral LogarithmicIntegral RiemannZeta RiemannR LambertW Pi
       irand irand64 drand urandomb urandomm csrand random_bytes entropy_bytes
 );

@@ -97,6 +97,7 @@ BEGIN {
 
 *Mgcd = \&Math::Prime::Util::gcd;
 *Mlcm = \&Math::Prime::Util::lcm;
+*Mgcdext = \&Math::Prime::Util::gcdext;
 *Mfactor = \&Math::Prime::Util::factor;
 *Mfactor_exp = \&Math::Prime::Util::factor_exp;
 *Mdivisors = \&Math::Prime::Util::divisors;
@@ -7525,6 +7526,47 @@ sub farey {
     ($p0, $q0, $p1, $q1) = ($p1, $q1, $p2, $q2);
   }
   @V;
+}
+
+# Uses gcdext to find next entry with only one point.
+sub next_farey {
+  my($n,$frac) = @_;
+  validate_integer_positive($n);
+  croak "next_farey second argument not an array reference" unless ref($frac) eq 'ARRAY';
+  my($p,$q) = @$frac;
+  validate_integer_nonneg($p);
+  validate_integer_positive($q);
+  return undef if $p >= $q;
+  my($u,$v,$g) = Mgcdext($p,$q);
+  ($p,$q) = (Mdivint($p,$g),Mdivint($q,$g)) if $g != 1;
+  my $d = Mmulint(Mdivint(($n+$u),$q),$q) - $u;
+  my $c = Mdivint((Mmulint($d,$p)+1),$q);
+  [$c,$d];
+}
+
+sub farey_rank {
+  my($n,$frac) = @_;
+  validate_integer_positive($n);
+  croak "next_farey second argument not an array reference" unless ref($frac) eq 'ARRAY';
+  my($p,$q) = @$frac;
+  validate_integer_nonneg($p);
+  validate_integer_positive($q);
+
+  return 0 if $p == 0;
+
+  my $g = Mgcd($p,$q);
+  ($p,$q) = (Mdivint($p,$g),Mdivint($q,$g)) if $g != 1;
+
+  my @count = (0,0,map { Mdivint(Mmulint($p,$_)-1,$q); } 2..$n);
+  my $sum = 1;
+  for my $i (2 .. $n) {
+    my $icount = $count[$i];
+    for (my $j = Mmulint($i,2); $j <= $n; $j = Maddint($j,$i)) {
+      $count[$j] -= $icount;
+    }
+    $sum += $icount;
+  }
+  $sum;
 }
 
 # End of Rational maps

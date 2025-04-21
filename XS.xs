@@ -433,6 +433,14 @@ static SV* sv_to_bigint_nonneg(pTHX_ SV* r) {
        } \
   } while(0)
 
+#define PUSH_2ELEM_AREF(p, q) \
+  do { \
+    AV* av_ = newAV(); \
+    av_push(av_, newSVuv(p)); \
+    av_push(av_, newSVuv(q)); \
+    PUSHs(sv_2mortal(newRV_noinc((SV*) av_))); \
+  } while (0)
+
 #define RETURN_LIST_VALS(in_alen,arr,sign)   /* Return array values */ \
   { \
     unsigned long k_, alen_ = in_alen; \
@@ -2925,8 +2933,8 @@ void nth_stern_diatomic(IN SV* svn)
 
 void farey(IN SV* svn, IN SV* svk = 0)
   PREINIT:
-    UV n, k, i, len;
-    int wantsingle;
+    UV n, k;
+    int wantsingle, kresult;
   PPCODE:
     wantsingle = svk != 0;
     if (wantsingle) {
@@ -2934,54 +2942,77 @@ void farey(IN SV* svn, IN SV* svk = 0)
         k = UV_MAX;
     }
     if (_validate_and_set(&n, aTHX_ svn, IFLAG_POS | IFLAG_NONZERO)) {
-      /* In theory we don't need to calculate the length */
-      len = 1 + sumtotient(n);
-      if (len != 1) {
-        AV* av;
-        UV j, p0 = 0, q0 = 1, p1 = 1, q1 = n, p2, q2;
-
-        /* Return a single entry */
+      if (!wantsingle && GIMME_V != G_ARRAY)
+        XSRETURN_UV(farey_length(n));
+      if (n <= UVCONST(4294967295)) {
         if (wantsingle) {
-          if (k >= len)
-            XSRETURN_UNDEF;
-          if (k > len/2) {  /* Exploit symmetry about 1/2, iterate backwards */
-            p0 = 1;
-            p1 = n-1;
-            k = (len-1)-k;
+          uint32_t p, q;
+          kresult = kth_farey(n, k, &p, &q);
+          if (kresult == 0) XSRETURN_UNDEF;
+          if (kresult == 1) {
+            PUSH_2ELEM_AREF(p, q);
+            XSRETURN(1);
           }
-          for (i = 0; i < k; i++) {
-            j = (q0 + n) / q1;
-            p2 = j * p1 - p0;
-            q2 = j * q1 - q0;
-            p0 = p1; q0 = q1; p1 = p2; q1 = q2;
+        } else {
+          uint32_t *num, *den;
+          UV i, len = farey_array(n, &num, &den);
+          if (len > 0) {
+            EXTEND(SP, (IV)len);
+            for (i = 0; i < len; i++)
+              PUSH_2ELEM_AREF(num[i], den[i]);
+            Safefree(num);
+            Safefree(den);
+            XSRETURN(len);
           }
-          av = newAV();
-          av_push(av, newSVuv(p0));
-          av_push(av, newSVuv(q0));
-          PUSHs(sv_2mortal(newRV_noinc((SV*) av)));
-          XSRETURN(1);
         }
-
-        /* Return the whole sequence of order n */
-        if (GIMME_V != G_ARRAY)
-          XSRETURN_UV(len);
-        EXTEND(SP, (IV)len);
-        for (i = 0; i < len; i++) {
-          av = newAV();
-          av_push(av, newSVuv(p0));
-          av_push(av, newSVuv(q0));
-          PUSHs(sv_2mortal(newRV_noinc((SV*) av)));
-          /* Haros (1802), gives p/q using two previous terms */
-          j = (q0 + n) / q1;
-          p2 = j * p1 - p0;
-          q2 = j * q1 - q0;
-          p0 = p1; q0 = q1; p1 = p2; q1 = q2;
-        }
-        XSRETURN(len);
       }
     }
-    _vcallsub_with_pp("farey");
+    CALLPPSUB("farey");
     return;
+
+void next_farey(IN SV* svn, IN SV* svfrac)
+  ALIAS:
+    farey_rank = 1
+  PREINIT:
+    SV **psvp, **psvq;
+    AV* av;
+    UV n, p64, q64;
+    uint32_t p, q;
+    int status;
+  PPCODE:
+    if (_validate_and_set(&n, aTHX_ svn, IFLAG_POS | IFLAG_NONZERO) &&
+        n <= UVCONST(4294967295)) {
+      if (!SvROK(svfrac) || SvTYPE(SvRV(svfrac)) != SVt_PVAV || av_count((AV*)SvRV(svfrac)) != 2)
+        croak("next_farey second argument must be a 2-element array reference");
+      av = (AV*) SvRV(svfrac);
+      psvp = av_fetch(av, 0, 0);
+      psvq = av_fetch(av, 1, 0);
+      status = 1;
+      if (psvp == 0 || psvq == 0)
+         status = 0;
+      if (status != 0)
+        status = _validate_and_set(&p64, aTHX_ *psvp, IFLAG_POS);
+      if (status != 0)
+        status = _validate_and_set(&q64, aTHX_ *psvq, IFLAG_POS | IFLAG_NONZERO);
+      if (status != 0 && p64 >= q64) {
+        if (ix == 0) XSRETURN_UNDEF;
+        else         XSRETURN_UV(farey_length(n) - (p64 == q64));
+      }
+      p = p64;  q = q64;
+      if (p != p64 || q != q64)
+        status = 0;  /* We only do 32-bit here */
+      if (status != 0 && ix == 1)
+        XSRETURN_UV(farey_rank(n, p, q));
+      if (status != 0 && ix == 0) {
+        if (next_farey(n, &p, &q)) {
+          PUSH_2ELEM_AREF(p, q);
+          XSRETURN(1);
+        }
+      }
+    }
+    CALLPPSUB( (ix == 0) ? "next_farey" : "farey_rank");
+    return;
+
 
 
 void Pi(IN UV digits = 0)
@@ -3073,12 +3104,8 @@ factor(IN SV* svn)
           nfactors = factor_exp(n, factors, exponents);
           /* if (n == 1)  XSRETURN_EMPTY; */
           EXTEND(SP, nfactors);
-          for (i = 0; i < nfactors; i++) {
-            AV* av = newAV();
-            av_push(av, newSVuv(factors[i]));
-            av_push(av, newSVuv(exponents[i]));
-            PUSHs( sv_2mortal(newRV_noinc( (SV*) av )) );
-          }
+          for (i = 0; i < nfactors; i++)
+            PUSH_2ELEM_AREF( factors[i], exponents[i] );
         }
       }
     } else {

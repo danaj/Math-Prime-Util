@@ -439,6 +439,8 @@ Tags:
   nth_stern_diatomic(n)               Stern's Diatomic series; fusc(n)
   farey(n)                            list of Farey sequence order n
   farey(n,k)                          k'th entry of Farey sequence order n
+  next_farey(n,[p,q])                 next order-n rational after p/q
+  farey_rank(n,[p,q])                 number of F_n less than p/q
 
 =head2 NON-INTEGER MATH
 

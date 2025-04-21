@@ -238,6 +238,8 @@ sub entropy_bytes {
 *nth_stern_brocot = \&Math::Prime::Util::PP::nth_stern_brocot;
 *nth_stern_diatomic = \&Math::Prime::Util::PP::nth_stern_diatomic;
 *farey = \&Math::Prime::Util::PP::farey;
+*next_farey = \&Math::Prime::Util::PP::next_farey;
+*farey_rank = \&Math::Prime::Util::PP::farey_rank;
 
 
 *divint = \&Math::Prime::Util::PP::divint;

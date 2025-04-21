@@ -121,7 +121,7 @@ our @EXPORT_OK =
       calkin_wilf_n stern_brocot_n
       nth_calkin_wilf nth_stern_brocot
       nth_stern_diatomic
-      farey
+      farey next_farey farey_rank
       ExponentialIntegral LogarithmicIntegral RiemannZeta RiemannR LambertW Pi
       irand irand64 drand urandomb urandomm csrand random_bytes entropy_bytes
   );
@@ -4228,6 +4228,35 @@ The lengths are L<OEIS series A005728|http://oeis.org/A005728>.
 The numerators are L<OEIS series A006842|http://oeis.org/A006842>.
 The denominators are L<OEIS series A006843|http://oeis.org/A006843>.
 
+=head2 next_farey
+
+  my $next = next_farey(9,[5,9]);  # returns [4,7]
+
+Given a positive integer C<n> and a 2-element array reference containing
+a non-negative integer C<p> and a positive integer C<q>, returns the next
+rational appearing after C<p/q> in the order C<n> Farey sequence.
+Returns undef if C<p/q> is greater than or equal to one.
+
+=head2 farey_rank
+
+  my $rank = farey_rank(9,[5,9]);  # returns 15
+
+Given a positive integer C<n> and a 2-element array reference containing
+a non-negative integer C<p> and a positive integer C<q>, returns the number
+of rationals less than C<p/q> in the order C<n> Farey sequence.
+The given fraction does not need to be an entry in the sequence, nor does
+it need to be in reduced form.
+
+A unit fraction will return the totient sum of C<n>.  Any fraction greater
+than one will return the length of the order C<n> sequence, as expected.
+
+Many OEIS sequences can be produced from this, including
+L<OEIS series A005728|http://oeis.org/A005728> (E<lt>= 1),
+L<OEIS series A005728|http://oeis.org/A049806> (E<lt>= 1/2),
+L<OEIS series A005728|http://oeis.org/A049807> (E<lt>= 1/3),
+L<OEIS series A005728|http://oeis.org/A049808> (E<lt>= 1/4),
+...,
+L<OEIS series A005728|http://oeis.org/A049805> (E<lt>= 1/k),
 
 
 =head2 prime_bigomega

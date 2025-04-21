@@ -7,7 +7,7 @@ use Math::Prime::Util qw/next_calkin_wilf next_stern_brocot
                          calkin_wilf_n stern_brocot_n
                          nth_calkin_wilf nth_stern_brocot
                          nth_stern_diatomic
-                         farey/;
+                         farey next_farey farey_rank/;
 
 my @CW = ([1,1],[1,2],[2,1],[1,3],[3,2],[2,3],[3,1],[1,4],[4,3],[3,5],[5,2],[2,5],[5,3],[3,4],[4,1],[1,5],[5,4],[4,7],[7,3],[3,8],[8,5],[5,7],[7,2],[2,7],[7,5],[5,8],[8,3],[3,7],[7,4],[4,5],[5,1],[1,6],[6,5],[5,9],[9,4],[4,11],[11,7],[7,10],[10,3],[3,11],[11,8],[8,13],[13,5],[5,12],[12,7],[7,9],[9,2],[2,9],[9,7],[7,12],[12,5],[5,13],[13,8],[8,11],[11,3],[3,10],[10,7],[7,11],[11,4],[4,9],[9,5],[5,6],[6,1],[1,7],[7,6],[6,11],[11,5],[5,14],[14,9],[9,13],[13,4],[4,15],[15,11],[11,18],[18,7],[7,17],[17,10],[10,13],[13,3],[3,14],[14,11],[11,19],[19,8],[8,21],[21,13],[13,18],[18,5],[5,17],[17,12],[12,19],[19,7],[7,16],[16,9],[9,11],[11,2],[2,11],[11,9],[9,16],[16,7],[7,19]);
 my @SB = ([1,1],[1,2],[2,1],[1,3],[2,3],[3,2],[3,1],[1,4],[2,5],[3,5],[3,4],[4,3],[5,3],[5,2],[4,1],[1,5],[2,7],[3,8],[3,7],[4,7],[5,8],[5,7],[4,5],[5,4],[7,5],[8,5],[7,4],[7,3],[8,3],[7,2],[5,1],[1,6],[2,9],[3,11],[3,10],[4,11],[5,13],[5,12],[4,9],[5,9],[7,12],[8,13],[7,11],[7,10],[8,11],[7,9],[5,6],[6,5],[9,7],[11,8],[10,7],[11,7],[13,8],[12,7],[9,5],[9,4],[12,5],[13,5],[11,4],[10,3],[11,3],[9,2],[6,1],[1,7],[2,11],[3,14],[3,13],[4,15],[5,18],[5,17],[4,13],[5,14],[7,19],[8,21],[7,18],[7,17],[8,19],[7,16],[5,11],[6,11],[9,16],[11,19],[10,17],[11,18],[13,21],[12,19],[9,14],[9,13],[12,17],[13,18],[11,15],[10,13],[11,14],[9,11],[6,7],[7,6],[11,9],[14,11],[13,10],[15,11]);
@@ -61,7 +61,7 @@ my @farey_ex = (
 
 
 plan tests => 3 + 3 + 2*scalar(@ex) + 2
-            + 3*(scalar(@Farey)-1) + scalar(@farey_ex);
+            + (scalar(@Farey)-1) + 2*scalar(@farey_ex);
 
 {
   my @s=([1,1]);
@@ -123,18 +123,35 @@ for my $t (@ex) {
 # mpu 'say join " ",map { join "/",@$_ } farey(5)'
 # mpu '$n=12; say join " ",map { join "/",@{farey($n,$_)} } 0..farey($n)-1;'
 
+# tmmpu '$n=500; @x=farey($n); say scalar(@x)'
+# tmmpu '$n=500; $x=[0,1]; do { $x=next_farey($n,$x); $i++; } while defined $x; say $i'
+# tmmpu '$n=500; do { $x=farey($n,$i++) } while defined $x; say $i'
+
 for my $n (1 .. $#Farey) {
-  my @expf = @{$Farey[$n]};
-  my @gotf = farey($n);
-  my $gotlen = farey($n);
-  my $explen = scalar(@expf);
-  my @gotf1 = map { farey($n,$_) } 0 .. $gotlen;
-  is( $gotlen, $explen, "scalar farey($n) = $explen" );
-  is_deeply( \@gotf, \@expf, "farey($n) produces correct sequence" );
-  is_deeply( \@gotf1, [@expf,undef], "farey($n,0..) produces correct sequence" );
+  subtest "Farey sequence order $n", sub {
+    my @expf = @{$Farey[$n]};
+    my @gotf = farey($n);
+    my $gotlen = farey($n);
+    my $explen = scalar(@expf);
+    my @gotf1 = map { farey($n,$_) } 0 .. $gotlen;
+    my @gotf2 = ([0,1]);
+    for (1..10000) {  # while(1) but we're testing
+      my $next = next_farey($n,$gotf2[-1]);
+      last unless defined $next;
+      push @gotf2, $next;
+    }
+    my @gotrank = map { farey_rank($n,$_) } @expf;
+    is( $gotlen, $explen, "scalar farey($n) = $explen" );
+    is_deeply( \@gotf, \@expf, "farey($n)" );
+    is_deeply( \@gotf1, [@expf,undef], "farey($n,0..)" );
+    is_deeply( \@gotf2, \@expf, "next_farey($n,F)" );
+    is_deeply( \@gotrank, [0 .. $#expf], "farey_rank($n,F)" );
+  };
 }
 
 for my $t (@farey_ex) {
   my($n,$k,$frac) = @$t;
-  is_deeply( farey($n,$k), $frac, "farey($n,$k) = $frac->[0] / $frac->[1]" );
+  my $fracstr = join "/",@$frac;
+  is_deeply( farey($n,$k), $frac, "farey($n,$k) = $fracstr" );
+  is( farey_rank($n,$frac), $k, "farey_rank($n,[$fracstr]) = $k" );
 }
